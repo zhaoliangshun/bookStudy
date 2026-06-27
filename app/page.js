@@ -182,7 +182,8 @@ export default function Home() {
         <a href="/ts" className="topbar-link">TypeScript</a>
         <a href="/tw" className="topbar-link">Tailwind CSS</a>
         <a href="/py" className="topbar-link">Python</a>
-        <a href="/sass" className="topbar-link">Sass →</a>
+        <a href="/sass" className="topbar-link">Sass</a>
+        <a href="/gql" className="topbar-link">GraphQL →</a>
       </header>
 
       <div className="main-layout">

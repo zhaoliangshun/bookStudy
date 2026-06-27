@@ -1553,6 +1553,11 @@ fastReadable.on("data", function (chunk) {
   }
 });
 
+// 当可读流结束时，通知可写流也结束
+fastReadable.on("end", function () {
+  manualWritable.end();
+});
+
 manualWritable.on("finish", function () {
   console.log("  背压处理完成，共写入 " + writeCount + " 块");
 });
@@ -3224,7 +3229,8 @@ function verifyWithScrypt(pw, stored) {
   var scryptSalt = parts[0];
   var scryptHash = parts[1];
   var newHash = crypto.scryptSync(pw, scryptSalt, 64).toString("hex");
-  return scryptHash === newHash;
+  // 使用 timingSafeEqual 防止时序攻击
+  return crypto.timingSafeEqual(Buffer.from(scryptHash), Buffer.from(newHash));
 }
 
 var scryptHash = hashWithScrypt("mypassword123");

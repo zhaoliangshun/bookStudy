@@ -355,60 +355,124 @@ console.log("\\n（程序继续执行到末尾后自动退出，届时会触发 
     group: "基础入门",
     content: `## 为什么需要模块系统？
 
-在没有模块系统的时代，所有 JavaScript 代码都运行在同一个全局作用域中。如果两个脚本都定义了 \`var x = 10\`，后者会覆盖前者。这在小型项目中勉强可以接受，但当项目规模增大、引入多个第三方库时，**全局变量污染**会成为噩梦。
+### 没有模块系统时的噩梦
 
-模块系统的核心目标是：
-1. **隔离作用域**：每个模块有自己的独立作用域，不污染全局。
-2. **复用代码**：把功能封装成模块，在多个项目中复用。
-3. **依赖管理**：明确声明依赖关系，按需加载。
-4. **封装实现**：只暴露接口，隐藏内部实现细节。
+让我们先看一个真实的例子。假设你有一个 HTML 页面，引入了三个脚本：
+
+\`\`\`html
+<script src="utils.js"></script>
+<script src="app.js"></script>
+<script src="third-party.js"></script>
+\`\`\`
+
+这三个文件都运行在同一个全局作用域中。如果 \`utils.js\` 定义了 \`var name = "工具函数"\`，而 \`app.js\` 也定义了 \`var name = "主应用"\`，那么**后加载的会覆盖先加载的**。更糟糕的是，\`third-party.js\` 可能内部也用了 \`name\` 变量，导致三方库莫名其妙地出 bug。
+
+这就是**全局变量污染**——所有代码共享一个全局作用域，变量名冲突变得不可避免。在小型项目中勉强可以接受，但当项目规模增大、引入多个第三方库时，这将成为噩梦。
+
+模块系统就是为解决这个问题而生的。它的核心目标是：
+
+1. **隔离作用域**：每个模块有自己的独立作用域，模块内部的变量不会污染全局，也不会被其他模块意外修改。
+2. **复用代码**：把功能封装成模块，在多个项目中复用，不需要复制粘贴。
+3. **依赖管理**：明确声明模块之间的依赖关系，按需加载，不需要手动管理 script 标签的顺序。
+4. **封装实现**：只暴露必要的接口（API），隐藏内部实现细节，降低耦合。
 
 ---
 
 ## CommonJS 规范详解
 
-Node.js 默认使用 **CommonJS** 模块规范（由 Kevin Dangoor 在 2009 年发起的 ServerJS 工作组制定）。每个 \`.js\` 文件默认就是一个 CommonJS 模块。
+Node.js 默认使用 **CommonJS** 模块规范。它由 Kevin Dangoor 在 2009 年发起的 ServerJS 工作组制定（后来改名为 CommonJS），目标是让 JavaScript 在服务端也能拥有模块化能力。
 
-### 三大核心 API
+### 一句话理解 CommonJS
 
-| API | 作用 | 本质 |
-| --- | --- | --- |
-| \`require(modulePath)\` | 导入模块 | 返回模块导出的对象（即 \`module.exports\`） |
-| \`module.exports\` | 导出模块 | **真正决定模块导出内容**的对象，require 返回的就是它 |
-| \`exports\` | 导出的快捷方式 | 初始时指向 \`module.exports\`，本质是引用 |
+**每个 \`.js\` 文件就是一个独立的模块。** 文件内的变量和函数默认是私有的，只有通过 \`module.exports\` 或 \`exports\` 明确导出的内容，才能被其他文件通过 \`require()\` 导入。
+
+### 三大核心 API 详解
+
+| API | 作用 | 本质 | 比喻 |
+| --- | --- | --- | --- |
+| \`require(modulePath)\` | 导入模块 | 返回模块导出的对象（即 \`module.exports\`） | 像"取快递"——你拿到的是别人打包好的包裹 |
+| \`module.exports\` | 导出模块 | **真正决定模块导出内容**的对象，require 返回的就是它 | 像"快递盒"——最终寄出去的就是这个盒子 |
+| \`exports\` | 导出的快捷方式 | 初始时指向 \`module.exports\`，本质是引用 | 像"快递盒上的标签"——贴标签可以，但换盒子就不行 |
+
+### 从一个最简单的例子开始
+
+假设你有一个 \`math.js\` 文件：
+
+\`\`\`javascript
+// math.js —— 定义一个数学工具模块
+function add(a, b) {
+  return a + b;
+}
+
+function subtract(a, b) {
+  return a - b;
+}
+
+const PI = 3.14159265;
+
+// 把需要暴露的函数和常量挂到 module.exports 上
+module.exports = {
+  add: add,
+  subtract: subtract,
+  PI: PI
+};
+\`\`\`
+
+然后在 \`app.js\` 中使用它：
+
+\`\`\`javascript
+// app.js —— 使用 math 模块
+const math = require('./math');  // 导入 math.js，拿到它的导出对象
+
+console.log(math.add(1, 2));        // 输出: 3
+console.log(math.subtract(10, 3));  // 输出: 7
+console.log(math.PI);               // 输出: 3.14159265
+\`\`\`
+
+运行 \`node app.js\`，你会看到正确的输出。请注意：
+- \`require('./math')\` 中的 \`./\` 表示"当前目录"，不能省略
+- \`math\` 变量接收的就是 \`module.exports\` 对象
+- add、subtract、PI 这三样是你可以使用的，math.js 内部的其他变量（如果有的话）你访问不到
 
 ### 模块作用域五大变量
 
-每个 CommonJS 模块被包装在函数中执行，因此模块内部拥有以下"伪全局"变量——它们不是真正的全局变量，而是**函数参数注入**的：
+每个 CommonJS 模块被包装在函数中执行，因此模块内部拥有以下"伪全局"变量。它们不是真正的全局变量，而是**函数参数注入**的：
 
-| 变量 | 含义 | 示例值 |
+| 变量 | 含义 | 典型用法 |
 | --- | --- | --- |
-| \`__filename\` | 当前模块文件的完整路径 | \`/home/project/app.js\` |
-| \`__dirname\` | 当前模块文件所在目录的完整路径 | \`/home/project\` |
-| \`require\` | 当前模块专属的 require 函数 | 可以 \`require.resolve()\`、\`require.cache\` 等 |
-| \`module\` | 当前模块的 module 对象 | 包含 \`id\`、\`exports\`、\`filename\`、\`parent\`、\`children\` 等 |
-| \`exports\` | module.exports 的引用 | 初始指向 \`{}\` |
+| \`__filename\` | 当前模块文件的完整路径 | 读取同目录下的配置文件 |
+| \`__dirname\` | 当前模块文件所在目录的完整路径 | 拼接其他文件的路径 |
+| \`require\` | 当前模块专属的 require 函数 | 导入其他模块 |
+| \`module\` | 当前模块的 module 对象 | 获取 module.parent、module.children |
+| \`exports\` | module.exports 的引用 | 导出多个值时的快捷方式 |
+
+**动手验证**：在任意 \`.js\` 文件中加一行 \`console.log(__filename)\`，然后 \`node\` 运行它，你会看到当前文件的完整路径。
 
 ---
 
 ## require 的工作流程（五步详解）
 
-当你调用 \`require('./math')\` 时，Node.js 内部经历以下五个步骤，每一步都有精确的算法规则。
+当你调用 \`require('./math')\` 时，Node.js 内部经历以下五个步骤。每一步都有精确的算法规则，理解它们能帮你诊断各种模块加载问题。
 
-### 步骤 1：路径解析（Resolution）
+### 步骤 1：路径解析（Resolution）—— 确定"去哪里找"
 
-确定模块的**绝对路径**。根据 require 参数的不同形式，解析方式截然不同：
+首先要确定模块的绝对路径。根据 require 参数的不同形式，解析方式截然不同：
 
 | 参数形式 | 分类 | 解析方式 | 示例 |
 | --- | --- | --- | --- |
-| \`require('fs')\` | 核心模块 | 直接返回内置模块，速度最快 | fs, path, http, crypto 等 |
+| \`require('fs')\` | 核心模块 | 直接返回内置模块，**速度最快** | fs, path, http, crypto, os, events 等 |
 | \`require('./utils')\` | 相对路径文件 | 以当前文件所在目录为起点拼接 | \`./utils\` → \`/home/project/src/utils\` |
 | \`require('../utils')\` | 相对路径文件 | 向上一级目录拼接 | \`../utils\` → \`/home/project/utils\` |
 | \`require('/abs/path')\` | 绝对路径文件 | 直接使用，不做转换 | \`/usr/local/lib/myModule\` |
-| \`require('lodash')\` | 第三方包 | 从当前目录逐级向上查找 node_modules | 见下方 node_modules 查找算法 |
+| \`require('lodash')\` | 第三方包 | 从当前目录逐级向上查找 node_modules | 见下方详解 |
+
+**核心模块的优先级最高**。即使你在 \`node_modules\` 里放了一个叫 \`fs\` 的文件夹，\`require('fs')\` 返回的依然是 Node.js 内置的文件系统模块，不会被你的文件夹覆盖。
 
 **node_modules 查找算法（逐级向上）**：
-从当前文件所在目录开始，逐级向上查找 \`node_modules\` 目录，直到文件系统根目录。例如，在 \`/home/user/project/src/app.js\` 中 require('lodash')，Node.js 会依次查找：
+
+这是 Node.js 最精妙的设计之一。从当前文件所在目录开始，逐级向上查找 \`node_modules\` 目录，直到文件系统根目录。
+
+例如，在 \`/home/user/project/src/app.js\` 中 \`require('lodash')\`，Node.js 会依次查找：
 
 \`\`\`
 ① /home/user/project/src/node_modules/lodash/
@@ -418,98 +482,131 @@ Node.js 默认使用 **CommonJS** 模块规范（由 Kevin Dangoor 在 2009 年�
 ⑤ /node_modules/lodash/
 \`\`\`
 
-**NODE_PATH 环境变量**：还可以通过设置 \`NODE_PATH\` 环境变量添加额外的模块搜索路径，这些路径的优先级在 node_modules 之后。但**不推荐**在生产中使用，因为它会破坏模块的可移植性。
+**这意味着什么？** 你可以在项目根目录 \`npm install lodash\`，它会被安装到 \`/home/user/project/node_modules/lodash/\`。无论你的代码在 \`src/\` 还是 \`src/utils/\` 还是 \`src/utils/deep/\`，\`require('lodash')\` 都能找到它——因为 Node.js 会一路向上搜索，直到找到为止。
 
-### 步骤 2：文件定位（File Location）
+**npm 的 \`node_modules\` 扁平化**：npm v3+ 会尽量把依赖安装在项目根目录的 \`node_modules\` 中，避免嵌套过深。但如果有版本冲突，npm 会在子目录创建自己的 \`node_modules\` 来安装特定版本。
 
-找到文件的确切物理位置，涉及扩展名补全和目录加载两层逻辑。
+**NODE_PATH 环境变量**：还可以通过设置 \`NODE_PATH\` 环境变量添加额外的模块搜索路径。但**不推荐**在生产中使用，因为它会破坏模块的可移植性——你的代码换一台机器就可能找不到模块。
+
+### 步骤 2：文件定位（File Location）—— 确定"具体是哪个文件"
+
+找到目标目录后，还需要确定具体加载哪个文件。这涉及扩展名补全和目录加载两层逻辑。
 
 **扩展名补全规则**（按顺序尝试，找到即停）：
-1. 精确匹配文件名（如 \`math\`）
-2. 追加 \`.js\`（\`math.js\`）
-3. 追加 \`.json\`（\`math.json\`）
-4. 追加 \`.node\`（\`math.node\`，C++ 编译的二进制模块）
 
-**目录加载规则**（当找到了一个目录而非文件时）：
-1. 读取目录下的 \`package.json\`，取 \`"main"\` 字段指定的文件
+\`require('./math')\` 会依次尝试以下文件：
+1. \`./math\` —— 精确匹配文件名（不加扩展名）
+2. \`./math.js\` —— JavaScript 文件
+3. \`./math.json\` —— JSON 文件
+4. \`./math.node\` —— C++ 编译的二进制模块（\`.node\` 扩展名）
+
+**关于 \`.json\` 文件**：当你 \`require('./config.json')\` 时，Node.js 会读取文件内容，自动调用 \`JSON.parse()\` 解析，然后把解析后的对象赋值给 \`module.exports\`。不需要手动 \`fs.readFileSync\` + \`JSON.parse\`。
+
+**目录加载规则**（当找到了一个**目录**而非文件时）：
+
+\`require('./myModule')\` 如果 \`myModule\` 是一个目录，Node.js 会：
+1. 读取目录下的 \`package.json\`，取 \`"main"\` 字段指定的文件（如 \`"main": "lib/index.js"\`）
 2. 如果没有 \`package.json\` 或 main 指向的文件不存在，尝试 \`index.js\`
 3. 再尝试 \`index.json\`
 4. 最后尝试 \`index.node\`
 
+这就是为什么很多 npm 包的主入口是 \`index.js\`——因为这是 Node.js 的默认行为。
+
 **\`require.resolve()\` 方法**：只做路径解析和文件定位，不执行模块。返回模块的绝对路径字符串，常用于检查模块是否存在：
 
 \`\`\`javascript
-// 返回模块的绝对路径，但不加载
-const path = require.resolve('lodash');
-// "/home/user/project/node_modules/lodash/index.js"
+// 获取模块的绝对路径，但不加载
+const lodashPath = require.resolve('lodash');
+console.log(lodashPath);
+// 输出: "/home/user/project/node_modules/lodash/lodash.js"
 
 // 如果找不到模块，抛出 MODULE_NOT_FOUND 错误
 try {
   require.resolve('nonexistent-module');
 } catch (e) {
-  console.log(e.code); // 'MODULE_NOT_FOUND'
+  console.log(e.code); // 输出: 'MODULE_NOT_FOUND'
 }
 \`\`\`
 
-### 步骤 3：包装（Wrapping）
+### 步骤 3：包装（Wrapping）—— 给模块代码穿上"外套"
 
-读取文件内容后，Node.js 不会直接执行它，而是将代码包裹在一个**模块包装器函数**中：
+这是最关键的一步，也是很多初学者不理解的地方。Node.js 读取文件内容后，**不会直接执行它**，而是将代码包裹在一个**模块包装器函数**中：
 
 \`\`\`javascript
+// 你的 math.js 文件内容（原始代码）：
+function add(a, b) { return a + b; }
+module.exports = { add };
+
+// Node.js 实际执行的是（包装后的代码）：
 (function(exports, require, module, __filename, __dirname) {
-  // ===== 你的模块代码被放在这里 =====
-  // 这就是为什么模块中可以用 require / module / exports 等变量
-  // 它们不是真正的全局变量，而是这个函数的参数！
+  function add(a, b) { return a + b; }
+  module.exports = { add };
 });
+\`\`\`
+
+**为什么要包装？** 因为函数创建了新的作用域！\`add\` 函数被定义在包装器函数内部，所以它不会成为全局变量。这就是模块隔离的底层原理。
+
+**动手看一下包装器**：运行下面这行代码，可以看到 \`module\` 内置模块暴露的包装器字符串：
+
+\`\`\`javascript
+const m = require('module');
+console.log(m.wrapper[0]);
+// 输出: '(function (exports, require, module, __filename, __dirname) { '
+console.log(m.wrapper[1]);
+// 输出: '\n});'
 \`\`\`
 
 **包装器的五个作用**：
 1. **隔离作用域**：模块顶级声明的 \`var\`、\`let\`、\`const\` 不会污染全局
 2. **注入专属变量**：每个模块有自己的 \`require\`、\`module\`、\`exports\`、\`__filename\`、\`__dirname\`
 3. **隐式返回**：函数执行完后，\`module.exports\` 就是导出的值
-4. **调试友好**：函数名保留在调用栈中，便于定位错误
+4. **调试友好**：函数名保留在调用栈中，便于定位错误发生在哪个模块
 5. **this 指向**：在模块顶级作用域中，\`this\` 等于 \`module.exports\`（初始为 \`{}\`）
 
-**如何查看包装后的代码**：使用 \`require('module').wrapper\`：
-
-\`\`\`javascript
-const m = require('module');
-console.log(m.wrapper);
-// ['(function (exports, require, module, __filename, __dirname) { ',
-//  '\\n});']
-// 第一个元素是包装器头部，第二个是尾部
-// Node.js 会把你的代码拼接在这两个字符串之间
-\`\`\`
-
-### 步骤 4：编译执行（Compilation & Execution）
+### 步骤 4：编译执行（Compilation & Execution）—— 真正运行代码
 
 根据文件扩展名使用不同的编译器：
 
-| 扩展名 | 编译器 | 说明 |
+| 扩展名 | 编译器 | 处理方式 |
 | --- | --- | --- |
-| \`.js\` | JavaScript 编译器 | 用 \`vm.compileFunction()\` 编译包装器函数 |
-| \`.json\` | JSON 编译器 | 直接 \`JSON.parse()\` 后赋值给 \`module.exports\` |
-| \`.node\` | 原生模块 | 用 \`process.dlopen()\` 加载 C++ 编译的二进制 |
+| \`.js\` | JavaScript 编译器 | 用 \`vm.compileFunction()\` 编译包装器函数，然后调用它 |
+| \`.json\` | JSON 编译器 | 直接 \`JSON.parse()\` 后赋值给 \`module.exports\`，**不执行代码** |
+| \`.node\` | 原生模块 | 用 \`process.dlopen()\` 加载 C++ 编译的二进制模块 |
 | \`.mjs\` | ESM 加载器 | 走 ESM 解析流程，不走 CommonJS 包装器 |
 
-**\_\_filename 和 \_\_dirname 的生成机制**：
-它们是包装器函数的参数，由 Node.js 在调用时传入：
+**__filename 和 __dirname 的生成**：它们是包装器函数的参数，在函数调用前由 Node.js 计算：
 
 \`\`\`javascript
-// 在执行包装器函数之前，Node.js 计算出：
-// __filename = '/home/user/project/src/app.js'
-// __dirname  = path.dirname(__filename) = '/home/user/project/src'
-// 然后作为参数传入包装器函数
+// Node.js 内部伪代码：
+const __filename = '/home/user/project/src/app.js';
+const __dirname = path.dirname(__filename); // '/home/user/project/src'
+// 然后把这两个值作为参数传给包装器函数
 \`\`\`
 
-### 步骤 5：缓存（Caching）
+### 步骤 5：缓存（Caching）—— 模块只执行一次
 
 模块**第一次被加载时**会执行完整流程，执行后把 \`module.exports\` 对象缓存到 \`require.cache\` 中。之后再 require 同一个模块，**直接返回缓存的对象，不会再次执行模块代码**。
+
+**缓存的工作原理**（用生活中的例子理解）：
+
+想象你有一个"数据库连接"模块。第一次 \`require('./database')\` 时，模块代码执行，创建数据库连接，然后把连接对象缓存起来。之后 100 次、1000 次 \`require('./database')\`，返回的都是同一个连接对象，不会重复创建连接。
+
+\`\`\`javascript
+// 演示：缓存让模块只执行一次
+// config.js 的内容：
+console.log('config.js 被执行了！');
+module.exports = { env: 'production' };
+
+// app.js 的内容：
+const config1 = require('./config'); // 输出: config.js 被执行了！
+const config2 = require('./config'); // 不会输出，因为命中了缓存
+console.log(config1 === config2);    // 输出: true（同一个对象）
+\`\`\`
 
 **缓存的关键特性**：
 - 缓存键是模块的**绝对路径**（不是相对路径）
 - 多次 require 同一个模块返回的是**同一个对象引用**
-- 可以利用缓存实现**单例模式**
+- 可以利用缓存实现**单例模式**（整个应用只有一个实例）
 - 删除缓存可以**强制重新加载**模块
 
 \`\`\`javascript
@@ -520,7 +617,7 @@ console.log(Object.keys(require.cache));
 const modulePath = require.resolve('./myModule');
 delete require.cache[modulePath];
 
-// 注意事项：删除缓存后，之前已获取的旧引用不会自动更新
+// 注意：删除缓存后，之前已获取的旧引用不会自动更新
 // 需要重新 require 才能拿到新版本
 \`\`\`
 
@@ -528,227 +625,272 @@ delete require.cache[modulePath];
 
 ## module 对象详解
 
-每个模块执行时，都有一个 \`module\` 对象表示当前模块本身。它包含以下属性：
+每个模块执行时，都有一个 \`module\` 对象表示当前模块本身。它就像模块的"身份证"：
 
 | 属性 | 类型 | 说明 |
 | --- | --- | --- |
 | \`module.id\` | string | 模块标识符。主模块为 \`'.'\`，其他模块为其绝对路径 |
-| \`module.exports\` | any | 模块的导出对象，require 的返回值 |
+| \`module.exports\` | any | **模块的导出对象**，require 的返回值 |
 | \`module.filename\` | string | 模块文件的完整路径 |
 | \`module.path\` | string | 模块文件所在目录 |
-| \`module.parent\` | object | 第一个 require 本模块的模块对象（已废弃但仍可用） |
+| \`module.parent\` | object | 第一个 require 本模块的模块对象 |
 | \`module.children\` | array | 本模块直接 require 的子模块列表 |
 | \`module.loaded\` | boolean | 模块是否已完成加载 |
 | \`module.paths\` | string[] | 本模块的 node_modules 搜索路径 |
-| \`module.require\` | function | 本模块的 require 函数 |
+| \`module.require\` | function | 本模块的 require 函数（和全局 require 一样） |
 
-### module.parent 与依赖树
+### module.parent 与 module.children —— 模块的"父子关系"
 
-每个模块都有一个 \`module.parent\`，指向第一个 require 它的模块。主模块（入口文件）的 \`module.parent\` 为 \`null\`。通过 \`module.children\` 可以遍历依赖树：
+每个模块都有一个 \`module.parent\`，指向第一个 require 它的模块。主模块（入口文件）的 \`module.parent\` 为 \`null\`。通过 \`module.children\` 可以遍历依赖树，了解整个应用的模块结构：
 
 \`\`\`javascript
-// 遍历依赖树
-function printTree(mod, indent = '') {
-  console.log(indent + mod.filename);
-  mod.children.forEach(child => printTree(child, indent + '  '));
+// 打印依赖树（可以看到模块之间的引用关系）
+function printTree(mod, indent) {
+  indent = indent || '';
+  console.log(indent + '├── ' + mod.filename);
+  mod.children.forEach(function(child) {
+    printTree(child, indent + '│   ');
+  });
 }
-printTree(module); // 打印当前模块的依赖树
+// 在入口文件 app.js 中运行：
+printTree(module);
 \`\`\`
 
-### \`require.main\` 与主模块判断
+### \`require.main\` —— 判断"我是主模块吗？"
 
-\`require.main\` 指向程序的入口模块（即直接由 \`node app.js\` 启动的模块）。可以通过它判断当前模块是否被直接运行：
+\`require.main\` 指向程序的入口模块。这是一个非常实用的技巧，可以让你写一个模块既可以被其他模块 require，也可以直接运行：
 
 \`\`\`javascript
-// 判断当前模块是否被直接运行（而非被 require）
-if (require.main === module) {
-  console.log('当前模块是入口模块，执行主逻辑');
-} else {
-  console.log('当前模块被其他模块 require 了');
+// 一个模块既可以被 require，也可以直接运行
+function myFunction() {
+  return 'Hello World';
 }
+
+// 如果当前模块是入口模块（被 node xxx.js 直接运行），执行测试代码
+if (require.main === module) {
+  console.log('直接运行这个模块，执行测试:');
+  console.log(myFunction()); // 输出: Hello World
+}
+
+// 导出给其他模块使用
+module.exports = myFunction;
 \`\`\`
 
 ---
 
 ## module.exports vs exports 陷阱（深度剖析）
 
-这是 CommonJS 最常见也最容易出错的陷阱，理解它需要明白 JavaScript 的**引用传递**机制。
+这是 CommonJS 最常见也最容易出错的陷阱。很多人在这里掉坑，花几个小时 debug。理解它需要明白 JavaScript 的**引用传递**机制。
+
+### 用"快递"来理解
+
+\`\`\`
+│   module.exports  = 快递盒 （最终寄出去的就是这个）
+│   exports         = 快递盒上的标签 （贴标签可以，换盒子不行）
+│   require()       = 收快递 （拿到的是快递盒里的内容）
+\`\`\`
 
 ### 内存模型图解
 
 \`\`\`javascript
-// 初始状态：Node.js 在模块内部做了这两件事
-// module.exports = {};        // 创建一个空对象，假设地址为 0x001
-// exports = module.exports;   // exports 和 module.exports 都指向 0x001
+// Node.js 在模块内部初始化时做了这两件事：
+// module.exports = {};        // 创建一个空对象，假设内存地址为 0x001
+// exports = module.exports;   // exports 和 module.exports 都指向地址 0x001
 //
-// 内存状态：
+// 内存状态（可视化）：
 //   module.exports ───┐
 //                     ├──► { }  (地址 0x001)
 //   exports ──────────┘
+//   两个变量指向同一个对象！
 \`\`\`
 
-### 三种典型用法与内存变化
+### 四种典型场景（逐个分析）
 
-**用法一：给 exports 添加属性 ✅ 正确**
+**场景一：给 exports 添加属性 ✅ 正确——最常用的导出方式**
+
 \`\`\`javascript
-// 初始：module.exports = {}  (0x001),  exports → 0x001
+// 初始状态：module.exports = {} (0x001), exports → 0x001
 exports.add = function(a, b) { return a + b; };
+exports.subtract = function(a, b) { return a - b; };
 exports.PI = 3.14;
-// 两个变量仍指向同一个对象，给 exports 加属性就是给 module.exports 加属性
-// 内存状态未变，对象内容变了：
+
+// 内存变化：两个变量仍指向同一个对象，只是对象的内容变了
 //   module.exports ───┐
-//                     ├──► { add: fn, PI: 3.14 }  (0x001)
+//                     ├──► { add: fn, subtract: fn, PI: 3.14 } (0x001)
 //   exports ──────────┘
-// 结果：require 返回 { add: fn, PI: 3.14 }  ✅
+// 结果：require 返回 { add: fn, subtract: fn, PI: 3.14 }  ✅
 \`\`\`
 
-**用法二：直接给 module.exports 赋新值 ✅ 正确**
+**场景二：给 module.exports 赋新值 ✅ 正确——导出单个值**
+
 \`\`\`javascript
-// 初始：module.exports = {}  (0x001),  exports → 0x001
-module.exports = function MyClass() { this.name = 'test'; };
-// module.exports 现在指向新对象 0x002
-// exports 仍然指向旧对象 0x001（但没关系，最终导出的是 module.exports）
-// 内存状态：
-//   module.exports ──────► function MyClass() (0x002)
-//   exports ─────────────► { }  (0x001)  ← 被抛弃了
-// 结果：require 返回 function MyClass ✅
+// 初始状态：module.exports = {} (0x001), exports → 0x001
+module.exports = function Calculator() {
+  this.add = function(a, b) { return a + b; };
+};
+
+// 内存变化：module.exports 指向了新对象，exports 还指向旧对象
+//   module.exports ──────► function Calculator() {} (0x002)
+//   exports ─────────────► { } (0x001)  ← 被抛弃了，但没关系
+// 结果：require 返回 Calculator 函数 ✅
+// 使用时：const Calculator = require('./calculator');
+//         const calc = new Calculator();
 \`\`\`
 
-**用法三：直接给 exports 赋新值 ❌ 错误（最常犯的错误）**
+**场景三：给 exports 赋新值 ❌ 错误——最常见的陷阱**
+
 \`\`\`javascript
-// 初始：module.exports = {}  (0x001),  exports → 0x001
-exports = { add: function(a, b) { return a + b; } };
-// exports 现在指向新对象 0x003
-// 但 module.exports 仍然指向 0x001（空对象）
-// 内存状态：
-//   module.exports ──────► { }  (0x001)  ← require 返回这个！
-//   exports ─────────────► { add: fn }  (0x003)  ← 白写了！
-// 结果：require 返回 {} ❌
+// 初始状态：module.exports = {} (0x001), exports → 0x001
+exports = {
+  add: function(a, b) { return a + b; },
+  PI: 3.14
+};
+
+// 内存变化：exports 指向了新对象，但 module.exports 还是旧对象
+//   module.exports ──────► { } (0x001)  ← require 返回这个空对象！
+//   exports ─────────────► { add: fn, PI: 3.14 } (0x003)  ← 白写了！
+// 结果：require 返回 {} ❌ 你的导出全部丢失！
 \`\`\`
 
-**终极口诀**：最终导出的是 \`module.exports\`，不是 \`exports\`。\`exports\` 只是一个会被覆盖的引用。如果你需要导出单个值（函数、类、字符串等），**必须**用 \`module.exports = ...\`。
+**场景四：混合使用 ✅ 正确——导出函数并附带属性**
+
+\`\`\`javascript
+// 导出主函数，同时附带工具方法
+function main() {
+  return '这是主功能';
+}
+main.version = '1.0.0';
+main.helper = function() { return '这是辅助方法'; };
+
+module.exports = main;
+
+// 结果：require 返回 main 函数，同时可以访问 main.version 和 main.helper()
+// 类比：express 就是这样导出的—— express() 是一个函数，
+//        但 express.static()、express.json() 是它的属性
+\`\`\`
+
+### 终极口诀
+
+> **最终导出的是 \`module.exports\`，不是 \`exports\`。\`exports\` 只是一个可能会被覆盖的引用。**
+>
+> - 如果你需要导出**多个值**（一个对象包含多个函数/常量），用 \`exports.xxx = ...\` 或 \`module.exports = { ... }\` 都可以。
+> - 如果你需要导出**单个值**（一个函数、一个类、一个字符串），**必须**用 \`module.exports = ...\`。
 
 ---
 
 ## 模块缓存机制与循环依赖（深度剖析）
 
-### require.cache 的内部结构
+### 缓存的实际效果
 
-\`require.cache\` 是一个对象，键是模块的**绝对文件路径**，值是对应的 \`module\` 对象：
+\`require.cache\` 是一个普通 JavaScript 对象，键是模块的绝对文件路径，值是对应的 \`module\` 对象。你可以直接操作它：
 
 \`\`\`javascript
-// require.cache 的结构示例：
-{
-  '/home/user/project/app.js': {           // 主模块
-    id: '.',
-    exports: {},
-    filename: '/home/user/project/app.js',
-    loaded: false,
-    children: [
-      { /* lodash 模块对象 */ },
-      { /* utils 模块对象 */ }
-    ]
-  },
-  '/home/user/project/node_modules/lodash/index.js': {
-    id: '/home/user/project/node_modules/lodash/index.js',
-    exports: { /* lodash 的所有方法 */ },
-    loaded: true,
-    children: []
-  }
-}
+// 查看缓存中有哪些模块
+console.log(Object.keys(require.cache));
+
+// 查看某个模块的缓存
+const fsPath = require.resolve('fs');
+console.log(require.cache[fsPath].loaded); // true
 \`\`\`
 
-### 强制重新加载模块
+### 热更新（Hot Reload）—— 利用缓存实现
 
-有时需要热更新模块（如开发环境中的配置热加载），可以通过删除缓存实现：
+开发环境中，你修改了配置文件，想让应用重新加载而不重启，可以利用缓存删除：
 
 \`\`\`javascript
 function reloadModule(moduleName) {
+  // 1. 找到模块的绝对路径
   const modulePath = require.resolve(moduleName);
+  // 2. 从缓存中删除
   delete require.cache[modulePath];
+  // 3. 重新加载（此时会再次执行模块代码）
   return require(moduleName);
 }
-// 注意：旧的引用不会自动更新，需要重新获取
+
+// 使用示例
+const config1 = require('./config');
+console.log(config1.version); // "1.0.0"
+
+// 修改 config.js 后热更新
+const config2 = reloadModule('./config');
+console.log(config2.version); // "1.1.0"（新版本）
+
+// ⚠️ 注意：config1 仍然是旧版本！旧引用不会自动更新
+console.log(config1.version); // 还是 "1.0.0"
 \`\`\`
 
-### 循环依赖深入剖析
+### 循环依赖：当 A 引用 B，B 又引用 A
 
-当模块 A require 模块 B，模块 B 又 require 模块 A 时，就形成了**循环依赖**。Node.js 的处理方式：**返回 A 当前已导出的部分（可能是不完整的）**。
+当模块 A require 模块 B，模块 B 又 require 模块 A 时，就形成了**循环依赖**。这在真实项目中很常见，比如两个模块互相引用对方的工具函数。
 
-**执行流程图解**：
+**Node.js 的处理方式**：返回当前已导出的部分（可能是不完整的）。
 
-\`\`\`javascript
-// a.js                               // b.js
-// ────────────────                    // ─────────────────
-exports.done = false;                  exports.done = false;
-const b = require('./b'); ──────►      const a = require('./a');
-// 暂停执行，等待 b 加载完成            // a 此时 exports = { done: false }
-//                                     // 返回不完整的 a
-console.log('a 中 b.done:', b.done);   console.log('b 中 a.done:', a.done);
-exports.done = true;    ◄────────      exports.done = true;
-// b 执行完毕，a 继续执行
+**执行时间线（按时间顺序）**：
+
 \`\`\`
-
-**执行输出**：
-\`\`\`
-a 开始
-b 开始
-b 中 a.done = false    ← a 还没执行到 exports.done = true
-b 结束
-a 中 b.done = true     ← b 已经执行完了
-a 结束
+时间 1: a.js 开始执行
+时间 2: a.js 设置了 exports.done = false
+时间 3: a.js 调用 require('./b')，暂停执行
+时间 4: b.js 开始执行
+时间 5: b.js 设置了 exports.done = false
+时间 6: b.js 调用 require('./a')，发现 a 已经在加载中
+时间 7: b.js 拿到 a 的不完整导出 { done: false }
+时间 8: b.js 输出 "b 中 a.done = false"
+时间 9: b.js 设置 exports.done = true
+时间 10: b.js 执行完毕，a.js 恢复执行
+时间 11: a.js 拿到 b 的完整导出 { done: true }
+时间 12: a.js 输出 "a 中 b.done = true"
+时间 13: a.js 执行完毕
 \`\`\`
 
 **为什么不会无限循环？** 因为当 b require a 时，Node.js 发现 a 已经在加载中（有缓存但 loaded=false），就直接返回 a 当前的不完整导出，不会再执行 a——这就是缓存的另一个作用：**防止无限递归**。
 
-**最佳实践**：
-1. 尽量避免循环依赖，把共享代码提取到第三个模块
-2. 如果必须循环依赖，把需要被依赖的导出放在模块顶部
-3. 不要在模块顶层执行需要完整导出的逻辑
+**三个实战建议**：
+1. **尽量避免循环依赖**：把共享代码提取到第三个模块（如 \`common.js\`）
+2. **如果必须循环依赖**：把需要被依赖的导出放在模块**最顶部**，确保另一方 require 时能拿到
+3. **延迟 require**：把 \`require()\` 放在函数内部，而不是模块顶层，这样只有在函数被调用时才会触发 require，绕过了循环依赖
 
 ---
 
 ## package.json 中的模块相关字段
 
-### \`"main"\` 字段
+### \`"main"\` 字段 —— 指定包的入口文件
 
-指定包的入口文件。当 require('my-package') 时，Node.js 读取 \`main\` 字段来决定加载哪个文件：
+当你发布一个 npm 包时，别人 \`require('my-package')\` 会加载哪个文件？由 \`"main"\` 决定：
 
 \`\`\`json
 {
   "name": "my-package",
+  "version": "1.0.0",
   "main": "dist/index.js"   // 默认值为 "index.js"
 }
 \`\`\`
 
-### \`"exports"\` 字段（现代替代方案，Node.js 12.7+）
+### \`"exports"\` 字段（Node.js 12.7+）—— 更强大的模块封装
 
-\`"exports"\` 比 \`"main"\` 更强大，可以精确控制包的哪些部分可以被外部 require：
+\`"exports"\` 比 \`"main"\` 更强大，可以精确控制包的哪些部分可以被外部访问：
 
 \`\`\`json
 {
   "name": "my-package",
   "exports": {
-    ".": "./dist/index.js",           // 主入口
-    "./utils": "./dist/utils.js",     // 子路径导出
-    "./internal/*": null,             // 阻止访问内部文件
-    "./package.json": "./package.json"
+    ".": "./dist/index.js",           // 主入口：require('my-package')
+    "./utils": "./dist/utils.js",     // 子路径：require('my-package/utils')
+    "./package.json": "./package.json" // 允许读取 package.json
   }
 }
 \`\`\`
 
-**\`"exports"\` 的封装效果**：一旦定义了 \`"exports"\`，外部就不能 \`require('my-package/dist/internal.js')\`——只有 exports 中明确声明的路径才能被访问。这提供了真正的模块封装。
+**关键特性：封装**。一旦定义了 \`"exports"\`，外部就不能 \`require('my-package/dist/internal.js')\`——只有 exports 中明确声明的路径才能被访问。这提供了真正的模块封装，防止外部代码绕过 API 直接访问内部实现。
 
-### 条件导出（Conditional Exports）
-
-\`"exports"\` 支持条件导出，根据运行环境返回不同的文件：
+### 条件导出 —— 同一个包在 ESM 和 CJS 中加载不同文件
 
 \`\`\`json
 {
   "exports": {
     ".": {
-      "import": "./esm/index.mjs",     // ESM 环境使用
-      "require": "./cjs/index.cjs",    // CommonJS 环境使用
+      "import": "./esm/index.mjs",     // import 时使用
+      "require": "./cjs/index.cjs",    // require 时使用
       "default": "./dist/index.js"     // 兜底
     }
   }
@@ -759,66 +901,66 @@ a 结束
 
 ## ES Modules 深入
 
-ES Modules（ESM）是 ECMAScript 官方的模块系统，从 Node.js v13.2 开始稳定支持（需要 \`--experimental-modules\` flag 到 v12）。
+ES Modules（ESM）是 ECMAScript 官方的模块系统，从 Node.js v13.2 开始稳定支持。它是 JavaScript 的未来。
 
 ### 启用 ESM 的三种方式
 
 1. **\`package.json\` 中设置 \`"type": "module"\`**（推荐，整个包都使用 ESM）
 2. 使用 \`.mjs\` 扩展名（无论 package.json 怎么设置，.mjs 永远是 ESM）
-3. 使用 \`.cjs\` 扩展名强制 CommonJS（在 type:module 的包中仍可用）
+3. 使用 \`.cjs\` 扩展名强制 CommonJS（在 type: "module" 的包中仍可用）
 
-### ESM 语法全览
+### ESM 导入导出完整语法
 
 \`\`\`javascript
-// ===== 导出 =====
-// 命名导出
+// ===== 导出方式 =====
+// 1. 命名导出（边定义边导出）
 export const PI = 3.14;
 export function add(a, b) { return a + b; }
 export class Calculator {}
 
-// 导出列表
-export { PI, add, Calculator };
+// 2. 导出列表（统一导出）
+const version = '1.0.0';
+const name = 'my-lib';
+export { version, name };
 
-// 重命名导出
-export { PI as MATH_PI, add as sum };
+// 3. 重命名导出
+export { version as libraryVersion, name as libraryName };
 
-// 默认导出（每个模块只能有一个 default）
+// 4. 默认导出（每个模块只能有一个）
 export default function main() {}
-export default class App {}
 
-// 重新导出其他模块的内容
-export { foo } from './other.js';
-export * from './other.js';
-export { default as OtherDefault } from './other.js';
+// 5. 重新导出（从其他模块转发）
+export { default as App } from './App.js';
+export * from './utils.js';
 
-// ===== 导入 =====
-// 命名导入
+// ===== 导入方式 =====
+// 1. 命名导入
 import { PI, add } from './math.js';
 
-// 默认导入
+// 2. 默认导入
 import Calculator from './math.js';
 
-// 混合导入
+// 3. 混合导入
 import Calculator, { PI, add } from './math.js';
 
-// 命名空间导入
+// 4. 命名空间导入
 import * as math from './math.js';
 
-// 仅执行副作用
+// 5. 仅执行副作用（不导入任何内容）
 import './init.js';
 
-// 动态导入
+// 6. 动态导入（返回 Promise）
 const module = await import('./math.js');
 \`\`\`
 
-### \`import.meta\` 元数据
+### \`import.meta\` —— ESM 中的元数据
 
-ESM 模块中，\`import.meta\` 提供当前模块的元信息：
+ESM 模块中没有 \`__dirname\` 和 \`__filename\`，用 \`import.meta\` 代替：
 
 \`\`\`javascript
-// import.meta.url：当前模块的 URL（file:// 协议）
+// import.meta.url 是当前模块的 URL（file:// 协议）
 console.log(import.meta.url);
-// "file:///home/user/project/app.mjs"
+// 输出: "file:///home/user/project/app.mjs"
 
 // 替代 __dirname 和 __filename
 import { fileURLToPath } from 'url';
@@ -827,56 +969,53 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 \`\`\`
 
-### ESM 的"活绑定"与循环依赖
+### ESM 的"活绑定"—— 变量是引用，不是副本
 
-ESM 的导入是**活绑定（live binding）**，即导入的变量是导出的引用，而不是副本。当导出值改变时，导入方也会看到新值。这在处理循环依赖时意义重大：
+ESM 的导入是**活绑定**，即导入的变量是导出的引用。当导出值改变时，导入方也会看到新值：
 
 \`\`\`javascript
-// a.mjs
-import { bValue } from './b.mjs';
-export let aValue = 'a';
-console.log('a 中 bValue:', bValue); // 已经是 'b'（活绑定生效）
+// counter.mjs
+export let count = 0;
+export function increment() { count++; }
 
-// b.mjs
-import { aValue } from './a.mjs';
-console.log('b 中 aValue:', aValue); // undefined（声明但未初始化）
-export let bValue = 'b';
+// app.mjs
+import { count, increment } from './counter.mjs';
+console.log(count); // 0
+increment();
+console.log(count); // 1（活绑定，看到了变化）
 \`\`\`
 
 ---
 
-## CommonJS 与 ESM 深度对比
+## CommonJS 与 ESM 完整对比
 
-| 特性 | CommonJS | ES Modules |
+| 特性 | CommonJS (CJS) | ES Modules (ESM) |
 | --- | --- | --- |
-| **语法** | require / module.exports | import / export |
-| **加载时机** | 运行时同步加载（可在条件/循环中使用） | 编译时静态分析（import 必须在顶层） |
-| **加载方式** | 同步阻塞加载 | 异步加载（Node.js 中 import 是异步的） |
-| **this 指向** | 指向 module.exports（初始 {}） | undefined |
+| **语法** | \`require()\` / \`module.exports\` | \`import\` / \`export\` |
+| **加载时机** | 运行时，可放在条件/循环中 | 编译时静态分析，import 必须在顶层 |
+| **加载方式** | 同步阻塞（服务端 OK） | 异步加载 |
+| **this 指向** | 指向 \`module.exports\`（初始 {}） | \`undefined\` |
 | **顶层 await** | 不支持 | 支持 |
-| **\_\_dirname / \_\_filename** | 直接可用 | 需要 import.meta.url 转换 |
-| **扩展名** | 可省略（.js / .json / .node） | 必须写完整（.js / .mjs） |
-| **循环依赖** | 返回部分导出（不完整对象） | 活绑定（变量引用，即使声明顺序靠后） |
-| **tree-shaking** | 不支持（运行时才知道导入了什么） | 支持（编译时就知道导入关系） |
-| **缓存行为** | require.cache 缓存 | 模块缓存（不同机制但效果类似） |
-| **JSON 导入** | 直接 require('./data.json') | 需要 import assertion: import data from './data.json' assert { type: 'json' } |
+| **__dirname / __filename** | 直接可用 | 需要 \`import.meta.url\` 转换 |
+| **扩展名** | 可省略（.js/.json/.node） | 必须写完整 |
+| **循环依赖** | 返回不完整对象 | 活绑定（变量引用） |
+| **tree-shaking** | 不支持 | 支持（打包时可移除未使用代码） |
+| **JSON 导入** | \`require('./data.json')\` | 需要 import assertion |
 
 ### 互操作规则
 
 | 场景 | 是否支持 | 说明 |
 | --- | --- | --- |
-| ESM → CJS（默认导入） | ✅ | import cjs from './mod.cjs' → 拿到 module.exports |
-| ESM → CJS（命名导入） | ✅ | import { method } from './mod.cjs' → 自动解构 |
-| CJS → ESM（动态 import） | ✅ | const esm = await import('./mod.mjs') |
-| CJS → ESM（require） | ❌ | 不能用 require 加载 ESM 模块 |
+| ESM 中导入 CJS（默认导入） | ✅ | \`import cjs from './mod.cjs'\` → 拿到 module.exports |
+| ESM 中导入 CJS（命名导入） | ✅ | \`import { method } from './mod.cjs'\` → 自动解构 |
+| CJS 中导入 ESM（动态 import） | ✅ | \`const esm = await import('./mod.mjs')\` |
+| CJS 中 require ESM | ❌ | 不能用 require 加载 ESM 模块 |
 
 ---
 
 ## 其他模块系统简介
 
-### AMD（Asynchronous Module Definition）
-
-主要用于浏览器环境，代表实现是 RequireJS。支持异步加载，但语法繁琐，已逐渐被淘汰：
+### AMD — 浏览器的异步模块加载
 
 \`\`\`javascript
 define(['moduleA', 'moduleB'], function(a, b) {
@@ -884,9 +1023,7 @@ define(['moduleA', 'moduleB'], function(a, b) {
 });
 \`\`\`
 
-### UMD（Universal Module Definition）
-
-一个兼容 AMD、CommonJS 和全局变量的"万能"包装模式，常用于库的打包：
+### UMD — 兼容一切的万能包装
 
 \`\`\`javascript
 (function(root, factory) {
@@ -895,14 +1032,14 @@ define(['moduleA', 'moduleB'], function(a, b) {
   } else if (typeof module === 'object' && module.exports) {
     module.exports = factory();    // CommonJS
   } else {
-    root.MyLib = factory();       // 全局变量
+    root.MyLib = factory();       // 浏览器全局变量
   }
 }(typeof self !== 'undefined' ? self : this, function() {
   return { /* 库的代码 */ };
 }));
 \`\`\`
 
-### 模块系统演进总结
+### 模块系统演进时间线
 
 \`\`\`
 2009 ─── CommonJS 规范诞生（ServerJS）
@@ -919,56 +1056,56 @@ define(['moduleA', 'moduleB'], function(a, b) {
 
 ## 实战：模块设计最佳实践
 
-### 1. 单一职责原则
+### 1. 单一职责
 
-一个模块只做一件事，做好一件事。如果一个模块导出了 10 个不相关的函数，就该拆分了。
+一个模块只做一件事。如果一个模块导出了 10 个不相关的函数，就该拆分了。
 
-### 2. 显式导出优于隐式导出
+### 2. 显式导出
 
 \`\`\`javascript
-// ✅ 推荐：显式列出所有导出
+// ✅ 推荐：在文件末尾一次性导出
 module.exports = { add, subtract, multiply, PI };
 
-// ❌ 避免：到处挂属性，难以追踪
+// ❌ 避免：分散在文件各处，难以追踪
 exports.add = add;
 // ...（100 行后）
 exports.PI = 3.14;
 \`\`\`
 
-### 3. 导出函数优于导出类
+### 3. 导出工厂函数而非实例
 
 \`\`\`javascript
-// ✅ 推荐：导出纯函数，无副作用
+// ✅ 推荐：导出工厂函数，每个调用方有自己的实例
 module.exports = function createLogger(options) { /* ... */ };
 
-// ❌ 避免：导出类实例，共享状态
-module.exports = new Logger(); // 所有 require 方共享同一个实例
+// ❌ 避免：导出实例，所有调用方共享状态
+module.exports = new Logger();
 \`\`\`
 
 ### 4. 模块顶层不要有副作用
 
 \`\`\`javascript
-// ❌ 避免：模块加载时执行副作用
+// ❌ 避免：模块加载时产生副作用
 console.log('模块被加载了！');
-fs.writeFileSync('/tmp/log.txt', 'loaded'); // 不可预测的副作用
+fs.writeFileSync('/tmp/log.txt', 'loaded');
 
-// ✅ 推荐：副作用封装在函数中
+// ✅ 推荐：封装在函数中
 module.exports = function init() {
   console.log('初始化完成');
 };
 \`\`\`
 
-### 5. 延迟 require 处理循环依赖
+### 5. 延迟 require 解决循环依赖
 
 \`\`\`javascript
-// 如果不可避免循环依赖，把 require 放在函数内部
+// 把 require 放在函数内部，延迟到调用时才加载
 function doSomething() {
   const other = require('./other'); // 延迟加载
   return other.helper();
 }
 \`\`\`
 
-下面这段代码在一个文件中用对象字面量模拟多个场景，帮助全面理解 CommonJS 的导出/导入机制及各种高级用法。`,
+下面这段代码在一个文件中用对象字面量模拟 CommonJS 的完整机制，涵盖导出/导入、缓存、循环依赖、exports 陷阱等所有核心概念。`,
     code: `// ============================================================
 // 第二章代码演示：CommonJS 模块系统深度模拟
 // ============================================================
@@ -1017,7 +1154,7 @@ function createCounterModule() {
   };
 }
 
-console.log("\\n===== 演示 2：闭包实现私有状态 =====");
+console.log("\\\\n===== 演示 2：闭包实现私有状态 =====");
 const counter = createCounterModule();
 console.log("初始值:", counter.getValue());
 counter.increment(); counter.increment(); counter.increment();
@@ -1044,7 +1181,7 @@ Person.prototype.birthday = function () {
   return this; // 链式调用
 };
 
-console.log("\\n===== 演示 3：导出构造函数 =====");
+console.log("\\\\n===== 演示 3：导出构造函数 =====");
 const person = new Person("小明", 20);
 console.log(person.greet());
 person.birthday().birthday();
@@ -1057,7 +1194,7 @@ console.log("person instanceof Person:", person instanceof Person);
 // 演示 4：require.resolve() 模拟 —— 路径解析
 // ============================================================
 // require.resolve() 只解析路径，不执行模块，返回绝对路径
-console.log("\\n===== 演示 4：require.resolve() 路径解析 =====");
+console.log("\\\\n===== 演示 4：require.resolve() 路径解析 =====");
 
 // 用 path 模块展示真实的文件路径解析
 const path = require("path");
@@ -1086,7 +1223,7 @@ console.log("require('../config') →", simulateResolve("../config"));
 console.log("require('/usr/lib')  →", simulateResolve("/usr/lib"));
 
 // 真实环境中 require.resolve 返回模块绝对路径
-console.log("\\n真实的 require.resolve:");
+console.log("\\\\n真实的 require.resolve:");
 console.log("require.resolve('path') →", require.resolve("path"));
 console.log("require.resolve('fs')   →", require.resolve("fs"));
 
@@ -1100,7 +1237,7 @@ try {
 // ============================================================
 // 演示 5：module.exports vs exports 陷阱（内存模型可视化）
 // ============================================================
-console.log("\\n===== 演示 5：exports vs module.exports 内存模型 =====");
+console.log("\\\\n===== 演示 5：exports vs module.exports 内存模型 =====");
 
 // 场景 1：给 exports 添加属性 ✅
 console.log("--- 场景 1：给 exports 添加属性 ---");
@@ -1113,7 +1250,7 @@ console.log("module.exports 有 PI:", modExp1.PI); // 3.14
 console.log("结果：✅ 正确，require 返回 { add: fn, PI: 3.14 }");
 
 // 场景 2：给 module.exports 赋新值 ✅
-console.log("\\n--- 场景 2：给 module.exports 赋新值 ---");
+console.log("\\\\n--- 场景 2：给 module.exports 赋新值 ---");
 let modExp2 = {};
 let exp2 = modExp2;
 modExp2 = function greet(name) { return "Hello, " + name; };
@@ -1122,7 +1259,7 @@ console.log("exports 还是旧对象:", typeof exp2); // object
 console.log("结果：✅ 正确，require 返回 greet 函数");
 
 // 场景 3：给 exports 赋新值 ❌
-console.log("\\n--- 场景 3：给 exports 赋新值（常见错误）---");
+console.log("\\\\n--- 场景 3：给 exports 赋新值（常见错误）---");
 let modExp3 = {};
 let exp3 = modExp3;
 exp3 = { multiply: function (a, b) { return a * b; } };
@@ -1132,7 +1269,7 @@ console.log("module.exports 还是空对象:", JSON.stringify(modExp3)); // {}
 console.log("结果：❌ 错误！require 返回 {}，你的导出全部丢失！");
 
 // 场景 4：同时用两种方式 ✅
-console.log("\\n--- 场景 4：混合使用（常见模式）---");
+console.log("\\\\n--- 场景 4：混合使用（常见模式）---");
 let modExp4 = {};
 let exp4 = modExp4;
 exp4.helper = function () { return "helper"; };
@@ -1145,7 +1282,7 @@ console.log("结果：✅ 正确，手动合并实现完整导出");
 // ============================================================
 // 演示 6：require.cache 模拟 —— 缓存与单例
 // ============================================================
-console.log("\\n===== 演示 6：require.cache 缓存与单例 =====");
+console.log("\\\\n===== 演示 6：require.cache 缓存与单例 =====");
 
 // 模拟 require.cache 结构
 const fakeCache = {};
@@ -1184,12 +1321,12 @@ console.log("第三次 require('./database'):");
 const db3 = fakeRequire("./database");
 console.log("  connectionId:", db3.connectionId);
 
-console.log("\\n模块实际初始化次数:", loadCount, "（只有第一次真正初始化了模块）");
+console.log("\\\\n模块实际初始化次数:", loadCount, "（只有第一次真正初始化了模块）");
 console.log("三次返回同一个对象:", db1 === db2 && db2 === db3);
 console.log("这就是单例模式——所有 require 方共享同一个实例");
 
 // 模拟删除缓存，强制重新加载
-console.log("\\n删除缓存后重新加载:");
+console.log("\\\\n删除缓存后重新加载:");
 delete fakeCache["./database"];
 const db4 = fakeRequire("./database");
 console.log("  connectionId:", db4.connectionId, "（新的连接 ID）");
@@ -1197,16 +1334,17 @@ console.log("  connectionId:", db4.connectionId, "（新的连接 ID）");
 // ============================================================
 // 演示 7：循环依赖模拟
 // ============================================================
-console.log("\\n===== 演示 7：循环依赖模拟 =====");
+console.log("\\\\n===== 演示 7：循环依赖模拟 =====");
 
 // 模拟循环依赖：a.js → b.js → a.js
-// Node.js 会返回 a 的不完整导出
+// Node.js 的处理方式：遇到 require 时立即创建模块缓存条目（空 exports），
+// 然后执行模块代码。如果被依赖的模块又 require 回来，会拿到不完整的 exports。
 function simulateCircleDependency() {
-  const cache = {};
+  var cache = {};
 
   function createModule(filename, factory) {
     // 模拟 Node.js 的模块加载逻辑
-    const mod = { exports: {}, loaded: false, filename: filename };
+    var mod = { exports: {}, loaded: false, filename: filename };
     cache[filename] = mod;
 
     // 如果模块已经在加载中（loaded=false 但有缓存），
@@ -1216,6 +1354,10 @@ function simulateCircleDependency() {
         console.log("  [" + dep + " 还在加载中，返回不完整导出]");
         return cache[dep].exports;
       }
+      if (!cache[dep]) {
+        console.log("  [错误：" + dep + " 模块不存在]");
+        return {};
+      }
       return cache[dep].exports;
     };
 
@@ -1224,18 +1366,39 @@ function simulateCircleDependency() {
     return mod;
   }
 
-  // 模块 a
-  const modA = createModule("a.js", function (exports, require) {
+  // 关键：先把 b.js 放入缓存（模拟 Node.js 在 require 时创建模块对象）
+  // 这模拟了 Node.js 的真实行为：模块解析后立即创建 Module 实例并放入缓存
+  var bModule = { exports: {}, loaded: false, filename: "b.js" };
+  cache["b.js"] = bModule;
+
+  // 模块 a：a.js 依赖 b.js
+  var modA = createModule("a.js", function (exports, require) {
     console.log("a.js 开始执行");
     exports.done = false;
-    const b = require("b.js"); // 触发加载 b
+
+    // 此时 b.js 在缓存中但未加载（loaded=false）
+    // 模拟 Node.js 加载 b.js
+    console.log("a.js 触发 b.js 的加载...");
+    (function (exp, req) {
+      console.log("b.js 开始执行");
+      exp.done = false;
+      // b.js 又 require a.js —— 此时 a.js 在缓存中且 loaded=false
+      var a = req("a.js"); // 循环依赖！拿到不完整的 a
+      console.log("b.js 中 a.done =", a.done, "（a 还不完整！）");
+      exp.done = true;
+      console.log("b.js 执行完毕");
+    })(bModule.exports, require);
+    bModule.loaded = true;
+
+    var b = require("b.js"); // b 已加载完成
     console.log("a.js 中 b.done =", b.done);
     exports.done = true;
     console.log("a.js 执行完毕");
   });
 
-  console.log("\\nA 模块的最终导出:", JSON.stringify(modA.exports));
-  console.log("这就是循环依赖——a 拿到 b 时 b 已加载完，b 拿到 a 时 a 还不完整");
+  console.log("\\\\nA 模块的最终导出:", JSON.stringify(modA.exports));
+  console.log("B 模块的最终导出:", JSON.stringify(bModule.exports));
+  console.log("核心：b 拿到 a 时 a 还不完整（done=false），而 a 拿到 b 时 b 已完整");
 }
 
 simulateCircleDependency();
@@ -1243,7 +1406,7 @@ simulateCircleDependency();
 // ============================================================
 // 演示 8：module 对象结构
 // ============================================================
-console.log("\\n===== 演示 8：module 对象结构 =====");
+console.log("\\\\n===== 演示 8：module 对象结构 =====");
 
 // 在真实模块中，module 对象有以下属性
 const sampleModule = {
@@ -1273,7 +1436,7 @@ console.log("module.paths 数量:", sampleModule.paths.length);
 // ============================================================
 // 演示 9：require.main === module（判断入口模块）
 // ============================================================
-console.log("\\n===== 演示 9：require.main === module =====");
+console.log("\\\\n===== 演示 9：require.main === module =====");
 
 // 模拟：如果当前模块是入口模块
 function isMainModule(mainRef, currentMod) {
@@ -1296,7 +1459,7 @@ console.log("被 require 的模块:", isMainModule(entryModule, otherModule));
 // ============================================================
 // 演示 10：模拟 node_modules 逐级查找算法
 // ============================================================
-console.log("\\n===== 演示 10：node_modules 逐级查找 =====");
+console.log("\\\\n===== 演示 10：node_modules 逐级查找 =====");
 
 function simulateNodeModulesLookup(startDir, moduleName) {
   const parts = startDir.split("/");
@@ -1322,7 +1485,7 @@ console.log("Node.js 会按顺序逐个查找，找到即停止");
 // ============================================================
 // 演示 11：模块热加载模拟
 // ============================================================
-console.log("\\n===== 演示 11：模块热加载 =====");
+console.log("\\\\n===== 演示 11：模块热加载 =====");
 
 function createConfigModule() {
   return {
@@ -1352,7 +1515,7 @@ console.log("  version:", cfg1.version, "| updatedAt:", cfg1.updatedAt);
 
 // 等待一小段时间模拟修改
 setTimeout(() => {
-  console.log("\\n热更新后:");
+  console.log("\\\\n热更新后:");
   const cfg2 = hotReload("config");
   console.log("  version:", cfg2.version, "| updatedAt:", cfg2.updatedAt);
   console.log("  cfg1 === cfg2:", cfg1 === cfg2, "（热更新返回新对象）");
@@ -1360,7 +1523,7 @@ setTimeout(() => {
   // ============================================================
   // 演示 12：模块设计最佳实践对比
   // ============================================================
-  console.log("\\n===== 演示 12：模块设计最佳实践 =====");
+  console.log("\\\\n===== 演示 12：模块设计最佳实践 =====");
 
   // ❌ 反模式：导出实例（共享状态）
   function LoggerInstance() {
@@ -1384,7 +1547,7 @@ setTimeout(() => {
   sharedLogger.log("B 记录的日志");
   console.log("所有调用方共享日志:", sharedLogger.getLogs());
 
-  console.log("\\n--- 推荐：导出工厂函数 ---");
+  console.log("\\\\n--- 推荐：导出工厂函数 ---");
   var loggerA = createLogger();
   var loggerB = createLogger();
   loggerA.log("A 的日志");
@@ -1393,7 +1556,7 @@ setTimeout(() => {
   console.log("loggerB 的日志:", loggerB.getLogs());
   console.log("两个实例独立:", loggerA !== loggerB);
 
-  console.log("\\n===== 所有演示完成 =====");
+  console.log("\\\\n===== 所有演示完成 =====");
 }, 100);`,
   },
 
@@ -2575,8 +2738,8 @@ const fsp = fs.promises;
         fs.rmSync(fp, { recursive: true, force: true });
       }
     }
-    // 删除工作目录本身
-    fs.rmdirSync(workDir);
+    // 删除工作目录本身（使用 fs.rmSync 替代废弃的 fs.rmdirSync）
+    fs.rmSync(workDir, { recursive: true, force: true });
     console.log("已删除所有演示文件和目录");
     console.log("工作目录还存在:", fs.existsSync(workDir));
   } catch (err) {

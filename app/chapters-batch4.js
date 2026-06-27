@@ -3265,7 +3265,7 @@ runner.run("lint");
 
 // 运行不存在的脚本
 console.log("\\n--- 运行不存在的脚本 ---");
-runner.run("deploy");
+runner.run("nonexistent-script");
 
 // ============================================================
 // 第四部分：依赖分析工具
@@ -3741,7 +3741,7 @@ VS Code 内置了强大的 Node.js 调试支持，比 Chrome DevTools 更方便�
 #### process.debugPort
 
 \`\`\`javascript
-// 查看当前调试端口（未启用调试时为 undefined）
+// 查看当前调试端口（默认 9229，可通过 --inspect-port 修改）
 console.log(process.debugPort); // 9229
 \`\`\`
 

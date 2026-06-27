@@ -2756,7 +2756,99 @@ function dohResolve(hostname) {
     code: `// ============================================================
 // 第四章代码演示：DNS 模块——域名解析全解析
 // ============================================================
-const dns = require("dns");
+// 尝试加载 dns 模块，沙箱环境中可能不可用，回退到模拟实现
+var dns;
+try {
+  dns = require("dns");
+} catch (e) {
+  // 模拟 dns 模块（沙箱环境回退方案）
+  dns = {
+    _servers: ["8.8.8.8"],
+    lookup: function (hostname, options, callback) {
+      if (typeof options === "function") { callback = options; options = {}; }
+      var addresses = { "localhost": "127.0.0.1", "example.com": "93.184.216.34" };
+      setTimeout(function () {
+        var addr = addresses[hostname] || "93.184.216.34";
+        if (options.all) {
+          callback(null, [{ address: addr, family: 4 }]);
+        } else {
+          callback(null, addr, 4);
+        }
+      }, 10);
+    },
+    resolve4: function (hostname, callback) {
+      setTimeout(function () {
+        if (hostname === "thishostdoesnotexist12345.com") {
+          callback({ code: "ENOTFOUND", hostname: hostname });
+        } else if (hostname === "localhost") {
+          callback({ code: "ENODATA" });
+        } else {
+          callback(null, ["93.184.216.34"]);
+        }
+      }, 10);
+    },
+    resolve6: function (hostname, callback) {
+      setTimeout(function () {
+        callback(null, ["2606:2800:220:1:248:1893:25c8:1946"]);
+      }, 10);
+    },
+    resolveMx: function (hostname, callback) {
+      setTimeout(function () {
+        if (hostname === "localhost") {
+          callback({ code: "ENODATA" });
+        } else {
+          callback(null, [{ exchange: "aspmx.l.google.com", priority: 10 }]);
+        }
+      }, 10);
+    },
+    resolveCname: function (hostname, callback) {
+      setTimeout(function () {
+        callback(null, ["github.com"]);
+      }, 10);
+    },
+    resolveTxt: function (hostname, callback) {
+      setTimeout(function () {
+        callback(null, [["v=spf1 include:_spf.google.com ~all"]]);
+      }, 10);
+    },
+    resolveNs: function (hostname, callback) {
+      setTimeout(function () {
+        callback(null, ["a.iana-servers.net", "b.iana-servers.net"]);
+      }, 10);
+    },
+    reverse: function (ip, callback) {
+      setTimeout(function () {
+        callback(null, ["dns.google"]);
+      }, 10);
+    },
+    getServers: function () { return this._servers.slice(); },
+    setServers: function (servers) { this._servers = servers.slice(); },
+    promises: {
+      resolve4: function (hostname) {
+        return new Promise(function (resolve, reject) {
+          dns.resolve4(hostname, function (err, result) {
+            if (err) reject(err); else resolve(result);
+          });
+        });
+      },
+      resolve6: function (hostname) {
+        return new Promise(function (resolve, reject) {
+          dns.resolve6(hostname, function (err, result) {
+            if (err) reject(err); else resolve(result);
+          });
+        });
+      },
+      resolveMx: function (hostname) {
+        return new Promise(function (resolve, reject) {
+          dns.resolveMx(hostname, function (err, result) {
+            if (err) reject(err); else resolve(result);
+          });
+        });
+      },
+    },
+  };
+  console.log("（提示：当前运行在沙箱环境中，dns 模块使用模拟数据）");
+}
 
 // ---- 1. dns.lookup：系统级解析 ----
 console.log("===== 1. dns.lookup（系统解析器）====");

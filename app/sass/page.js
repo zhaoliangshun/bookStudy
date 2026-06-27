@@ -260,6 +260,7 @@ export default function SassTutorial() {
         <a href="/ts" className="topbar-link">TypeScript</a>
         <a href="/tw" className="topbar-link">Tailwind</a>
         <a href="/py" className="topbar-link">Python</a>
+        <a href="/gql" className="topbar-link">GraphQL →</a>
       </header>
 
       <div className="main-layout">

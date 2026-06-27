@@ -1,27 +1,29 @@
 "use client";
 
 // =============================================================
-// Tailwind CSS 交互式教程页面
+// GraphQL 交互式教程页面
 // -------------------------------------------------------------
-// 与 Node.js / TypeScript 教程页面的主要区别：
-//   1. 数据源：twChapters / twChapterGroups
-//   2. 没有"运行 API"——代码是 HTML 片段，前端用 iframe 直接渲染预览
-//   3. 用 Tailwind Play CDN（https://cdn.tailwindcss.com）让 iframe 里的
-//      class 实时生效，无需本地构建
-//   4. 高亮器：highlightHtml（支持 HTML 标签 + Tailwind class 着色）
-//   5. 输出区是 iframe 预览，而不是控制台文本
+// 结构与 JS/TS/Python 教程页面基本一致，区别：
+//   1. 数据源：gqlChapters / gqlChapterGroups（来自 gql-tutorial-data）
+//   2. 运行接口：/api/run-gql（构建 Schema + 执行 Query）
+//   3. 高亮器：highlightGraphQL（支持 query/mutation/type/$
+//      变量/@指令/内置标量类型等）
+//   4. 文案：GraphQL 教程、.graphql 文件名
+//   5. 输出区显示 JSON 格式的 data/errors
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { twChapters, twChapterGroups } from "../tw-tutorial-data";
+import { gqlChapters, gqlChapterGroups } from "../gql-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import { highlightHtml } from "../html-highlight";
+import { highlightGraphQL } from "../gql-highlight";
 
-export default function TailwindTutorial() {
+export default function GraphQLTutorial() {
   // ---------- 状态管理 ----------
-  const [activeId, setActiveId] = useState(twChapters[0].id);
-  const [code, setCode] = useState(twChapters[0].code);
-  const [previewKey, setPreviewKey] = useState(0); // 用于强制刷新 iframe
+  const [activeId, setActiveId] = useState(gqlChapters[0].id);
+  const [code, setCode] = useState(gqlChapters[0].code);
+  const [output, setOutput] = useState("");
+  const [error, setError] = useState("");
+  const [isRunning, setIsRunning] = useState(false);
   const [hasRun, setHasRun] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -29,11 +31,10 @@ export default function TailwindTutorial() {
   const highlightRef = useRef(null);
   const lineNumbersRef = useRef(null);
   const contentRef = useRef(null);
-  const iframeRef = useRef(null);
 
-  // 把当前 HTML 代码高亮成 HTML 字符串（用于叠加层渲染）
+  // 把当前代码高亮成 HTML
   const highlightedHTML = useMemo(
-    () => highlightHtml(code) + "\n",
+    () => highlightGraphQL(code) + "\n",
     [code]
   );
 
@@ -51,34 +52,16 @@ export default function TailwindTutorial() {
   }, []);
 
   const activeChapter =
-    twChapters.find((c) => c.id === activeId) || twChapters[0];
-
-  // 构造预览用的完整 HTML 文档（含 Tailwind CDN）
-  // 用户写的 code 片段会被塞进 body 里。如果 code 开头有
-  // <script>tailwind.config = {...}</script>，会被正确执行。
-  const previewDoc = useMemo(() => {
-    return `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { margin: 0; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif; }
-  </style>
-</head>
-<body>
-${code}
-</body>
-</html>`;
-  }, [code]);
+    gqlChapters.find((c) => c.id === activeId) || gqlChapters[0];
 
   // ---------- 切换章节 ----------
   const selectChapter = useCallback((chapterId) => {
-    const chapter = twChapters.find((c) => c.id === chapterId);
+    const chapter = gqlChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
     setActiveId(chapterId);
     setCode(chapter.code);
+    setOutput("");
+    setError("");
     setHasRun(false);
     setSidebarOpen(false);
     if (contentRef.current) {
@@ -86,31 +69,64 @@ ${code}
     }
   }, []);
 
-  // ---------- 运行（刷新预览） ----------
-  // 与 JS/TS 教程不同，这里不调 API。直接刷新 iframe 的 srcdoc 即可。
-  // 通过修改 previewKey 强制 React 重建 iframe，确保内容更新。
-  const runPreview = useCallback(() => {
-    setHasRun(true);
-    setPreviewKey((k) => k + 1);
-  }, []);
+  // ---------- 执行查询 ----------
+  // 调用 /api/run-gql，后端构建 Schema + 执行 Query
+  const runCode = useCallback(async () => {
+    setIsRunning(true);
+    setOutput("正在构建 Schema 并执行查询...");
+    setError("");
+    try {
+      const res = await fetch("/api/run-gql", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+
+      // 格式化 JSON 输出
+      let outputText = "";
+      if (data.data !== null && data.data !== undefined) {
+        outputText += "// === 查询结果 (data) ===\n";
+        outputText += JSON.stringify(data.data, null, 2);
+      }
+      if (data.errors && data.errors.length > 0) {
+        outputText += "\n\n// === 错误 (errors) ===\n";
+        outputText += data.errors.map((e) => e.message).join("\n");
+      }
+      if (!data.data && (!data.errors || data.errors.length === 0)) {
+        outputText += "(无返回数据)";
+      }
+
+      setOutput(outputText);
+      setError("");
+    } catch (err) {
+      setError("请求失败: " + err.message);
+      setOutput("");
+    } finally {
+      setIsRunning(false);
+      setHasRun(true);
+    }
+  }, [code]);
 
   // ---------- 重置代码 ----------
   const resetCode = useCallback(() => {
     setCode(activeChapter.code);
+    setOutput("");
+    setError("");
     setHasRun(false);
   }, [activeChapter]);
 
-  // ---------- 键盘快捷键：Ctrl/Cmd + Enter 刷新预览 ----------
+  // ---------- 键盘快捷键 ----------
   useEffect(() => {
     const handleKey = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
-        runPreview();
+        runCode();
       }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [runPreview]);
+  }, [runCode]);
 
   // ---------- Tab 键缩进 ----------
   const handleKeyDown = (e) => {
@@ -128,10 +144,9 @@ ${code}
     }
   };
 
-  // 按分组组织章节
-  const groupedChapters = twChapterGroups.map((group) => ({
+  const groupedChapters = gqlChapterGroups.map((group) => ({
     group,
-    items: twChapters.filter((c) => c.group === group),
+    items: gqlChapters.filter((c) => c.group === group),
   }));
 
   return (
@@ -146,26 +161,26 @@ ${code}
           ☰
         </button>
         <div className="topbar-title">
-          <span className="topbar-logo">◈</span>
-          <span>Tailwind CSS 交互式教程</span>
+          <span className="topbar-logo">⚡</span>
+          <span>GraphQL 交互式教程</span>
         </div>
         <div className="topbar-meta">
-          共 {twChapters.length} 章 · 实时预览
+          共 {gqlChapters.length} 章 · 在线执行查询
         </div>
         <a href="/" className="topbar-link">← Node.js</a>
         <a href="/ts" className="topbar-link">TypeScript</a>
+        <a href="/tw" className="topbar-link">Tailwind</a>
         <a href="/py" className="topbar-link">Python</a>
         <a href="/sass" className="topbar-link">Sass</a>
-        <a href="/gql" className="topbar-link">GraphQL →</a>
       </header>
 
       <div className="main-layout">
-        {/* ===== 侧边栏：章节导航 ===== */}
+        {/* ===== 侧边栏 ===== */}
         <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
           <div className="sidebar-inner">
             <div className="sidebar-header">
               <h2>学习目录</h2>
-              <p className="sidebar-tip">点击章节开始学习 Tailwind CSS</p>
+              <p className="sidebar-tip">点击章节开始学习 GraphQL</p>
             </div>
             <nav className="chapter-nav">
               {groupedChapters.map(({ group, items }) => (
@@ -188,19 +203,17 @@ ${code}
               ))}
             </nav>
             <div className="sidebar-footer">
-              <p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 刷新预览</p>
+              <p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 执行查询</p>
             </div>
           </div>
         </aside>
 
-        {/* 移动端遮罩 */}
         {sidebarOpen && (
           <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
         )}
 
         {/* ===== 主内容区 ===== */}
         <main className="content" ref={contentRef}>
-          {/* 章节标题区 */}
           <div className="chapter-header">
             <div className="chapter-breadcrumb">
               <span>{activeChapter.group}</span>
@@ -213,38 +226,38 @@ ${code}
             </h1>
           </div>
 
-          {/* Markdown 讲解区 */}
           <section className="lesson-section">
             <MarkdownRenderer content={activeChapter.content} />
           </section>
 
-          {/* 代码编辑器区 */}
+          {/* 代码编辑器 */}
           <section className="editor-section">
             <div className="editor-header">
               <div className="editor-label">
                 <span className="dot dot-red"></span>
                 <span className="dot dot-yellow"></span>
                 <span className="dot dot-green"></span>
-                <span className="editor-filename">preview.html</span>
+                <span className="editor-filename">schema.graphql</span>
               </div>
               <div className="editor-actions">
                 <button
                   className="btn btn-secondary"
                   onClick={resetCode}
+                  disabled={isRunning}
                   title="恢复章节初始代码"
                 >
                   ↺ 重置
                 </button>
                 <button
                   className="btn btn-primary"
-                  onClick={runPreview}
+                  onClick={runCode}
+                  disabled={isRunning}
                 >
-                  ▶ 刷新预览
+                  {isRunning ? "⏳ 执行中..." : "▶ 执行查询"}
                 </button>
               </div>
             </div>
             <div className="editor-wrap">
-              {/* 行号显示 */}
               <div className="line-numbers" ref={lineNumbersRef}>
                 {code.split("\n").map((_, i) => (
                   <div key={i} className="line-number">
@@ -252,7 +265,6 @@ ${code}
                   </div>
                 ))}
               </div>
-              {/* 编辑区：高亮层 + textarea 叠加 */}
               <div className="editor-area">
                 <pre
                   ref={highlightRef}
@@ -271,45 +283,47 @@ ${code}
                   autoCapitalize="off"
                   autoCorrect="off"
                   wrap="off"
-                  placeholder="在这里编写 HTML + Tailwind class，可自由修改后刷新预览..."
+                  placeholder="在这里编写 GraphQL Schema + Resolvers + Query，点击「执行查询」..."
                 />
               </div>
             </div>
           </section>
 
-          {/* 预览区（替代控制台） */}
-          <section className="preview-section">
-            <div className="preview-header">
-              <span className="preview-title">实时预览</span>
-              <span className="preview-hint">
-                {hasRun ? "已刷新" : '点击"刷新预览"按钮查看效果'}
+          {/* 输出控制台 */}
+          <section className="console-section">
+            <div className="console-header">
+              <span className="console-title">查询结果</span>
+              <span className="console-hint">
+                {isRunning ? "执行中..." : hasRun ? "执行完成" : "点击执行查询查看结果"}
               </span>
             </div>
-            <div className="preview-wrap">
-              {hasRun ? (
-                <iframe
-                  key={previewKey}
-                  ref={iframeRef}
-                  className="preview-iframe"
-                  srcDoc={previewDoc}
-                  title="Tailwind 预览"
-                  sandbox="allow-scripts"
-                />
-              ) : (
-                <div className="preview-placeholder">
-                  <span className="preview-placeholder-icon">▶</span>
-                  <span>点击上方"刷新预览"按钮，或按 Ctrl+Enter 渲染 HTML</span>
+            <div className="console-body">
+              {output && (
+                <pre className={`console-output ${error ? "has-error" : ""}`}>
+                  {output}
+                </pre>
+              )}
+              {error && (
+                <pre className="console-error">
+                  <span className="error-label">错误:</span>
+                  {"\n"}
+                  {error}
+                </pre>
+              )}
+              {!hasRun && !isRunning && (
+                <div className="console-placeholder">
+                  <span className="placeholder-icon">⚡</span>
+                  <span>点击上方"执行查询"按钮，或按 Ctrl+Enter 执行 GraphQL 查询</span>
                 </div>
               )}
             </div>
           </section>
 
-          {/* 章节底部导航：上一章/下一章 */}
           <ChapterNav activeId={activeId} onSelect={selectChapter} />
 
           <footer className="content-footer">
             <p>
-              Tailwind CSS 交互式教程 · 代码在 iframe 中通过 Play CDN 实时渲染 · 支持 utility class / 响应式 / 暗黑模式 / 自定义配置
+              GraphQL 交互式教程 · 代码包含 Schema 定义 + Resolver 解析器 + Query 查询 · 后端用 graphql 包构建并执行，返回 JSON
             </p>
           </footer>
         </main>
@@ -318,11 +332,11 @@ ${code}
   );
 }
 
-// ===== 上一章 / 下一章 导航组件 =====
+// ===== 上一章 / 下一章 导航 =====
 function ChapterNav({ activeId, onSelect }) {
-  const idx = twChapters.findIndex((c) => c.id === activeId);
-  const prev = idx > 0 ? twChapters[idx - 1] : null;
-  const next = idx < twChapters.length - 1 ? twChapters[idx + 1] : null;
+  const idx = gqlChapters.findIndex((c) => c.id === activeId);
+  const prev = idx > 0 ? gqlChapters[idx - 1] : null;
+  const next = idx < gqlChapters.length - 1 ? gqlChapters[idx + 1] : null;
 
   return (
     <nav className="chapter-nav-bottom">

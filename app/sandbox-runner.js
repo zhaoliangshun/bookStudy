@@ -171,6 +171,7 @@ export async function runInSandbox(code) {
     URLSearchParams,
     TextEncoder,
     TextDecoder,
+    performance,
   };
   sandbox.exports = sandbox.module.exports;
 

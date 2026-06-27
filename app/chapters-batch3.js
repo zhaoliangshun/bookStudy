@@ -1055,8 +1055,8 @@ setTimeout(() => {
 
 延迟原因：
 - 事件循环可能正忙于处理其他回调
-- HTML5 规范规定最小延迟 4ms（嵌套超过 5 层时）
-- Node.js 中 \`setTimeout(fn, 0)\` 实际延迟 1ms
+- Node.js 中 setTimeout(fn, 0) 最小延迟为 1ms（由 libuv 实现，不遵循浏览器 HTML5 规范）
+- 系统负载高时，实际延迟可能明显大于设定值
 
 #### setTimeout vs setInterval 的陷阱
 
