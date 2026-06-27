@@ -155,7 +155,8 @@ export default function TypeScriptTutorial() {
         </div>
         <a href="/" className="topbar-link">← Node.js</a>
         <a href="/tw" className="topbar-link">Tailwind CSS</a>
-        <a href="/py" className="topbar-link">Python →</a>
+        <a href="/py" className="topbar-link">Python</a>
+        <a href="/sass" className="topbar-link">Sass →</a>
       </header>
 
       <div className="main-layout">

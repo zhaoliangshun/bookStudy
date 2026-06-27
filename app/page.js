@@ -181,7 +181,8 @@ export default function Home() {
         </div>
         <a href="/ts" className="topbar-link">TypeScript</a>
         <a href="/tw" className="topbar-link">Tailwind CSS</a>
-        <a href="/py" className="topbar-link">Python →</a>
+        <a href="/py" className="topbar-link">Python</a>
+        <a href="/sass" className="topbar-link">Sass →</a>
       </header>
 
       <div className="main-layout">
