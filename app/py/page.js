@@ -1,66 +1,43 @@
-// =============================================================
-// Node.js 交互式教程主页面
-// -------------------------------------------------------------
-// 这是一个 Client Component（'use client'），因为需要：
-//   - 状态管理（当前章节、代码内容、运行结果）
-//   - 事件处理（切换章节、点击运行、修改代码）
-//   - 浏览器交互（textarea 编辑、滚动）
-//
-// 页面结构：
-//   ┌──────────┬─────────────────────────────┐
-//   │  侧边栏   │       主内容区               │
-//   │  章节列表 │  ┌─ Markdown 讲解 ─────────┐ │
-//   │          │  └────────────────────────┘ │
-//   │          │  ┌─ 代码编辑器 ────────────┐ │
-//   │          │  │  [运行] [重置]           │ │
-//   │          │  └────────────────────────┘ │
-//   │          │  ┌─ 输出控制台 ────────────┐ │
-//   │          │  └────────────────────────┘ │
-//   └──────────┴─────────────────────────────┘
-// =============================================================
-
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { chapters, chapterGroups } from "./tutorial-data";
-import { MarkdownRenderer } from "./MarkdownRenderer";
-import { highlightJavaScript } from "./highlight";
+// =============================================================
+// Python 交互式教程页面
+// -------------------------------------------------------------
+// 结构与 Node.js / TypeScript 教程页面基本一致，区别：
+//   1. 数据源：pyChapters / pyChapterGroups（来自 py-tutorial-data）
+//   2. 运行接口：/api/run-py（调用系统 python3 子进程执行）
+//   3. 高亮器：highlightPython（支持 def/class/import 等关键字、
+//      三引号字符串、装饰器 @xxx、内建函数）
+//   4. 文案：Python 教程、example.py 文件名
+// =============================================================
 
-export default function Home() {
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { pyChapters, pyChapterGroups } from "../py-tutorial-data";
+import { MarkdownRenderer } from "../MarkdownRenderer";
+import { highlightPython } from "../py-highlight";
+
+export default function PythonTutorial() {
   // ---------- 状态管理 ----------
-  // 当前选中的章节 id
-  const [activeId, setActiveId] = useState(chapters[0].id);
-  // 代码编辑器中的代码（用户可修改）
-  const [code, setCode] = useState(chapters[0].code);
-  // 运行输出结果
+  const [activeId, setActiveId] = useState(pyChapters[0].id);
+  const [code, setCode] = useState(pyChapters[0].code);
   const [output, setOutput] = useState("");
-  // 运行错误信息
   const [error, setError] = useState("");
-  // 是否正在运行中
   const [isRunning, setIsRunning] = useState(false);
-  // 是否已运行过（用于控制台初始提示）
   const [hasRun, setHasRun] = useState(false);
-  // 侧边栏在移动端的展开状态
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // 代码编辑器 textarea 的引用（用于支持 Tab 键缩进）
   const textareaRef = useRef(null);
-  // 高亮层 <pre> 的引用（用于和 textarea 同步滚动）
   const highlightRef = useRef(null);
-  // 行号容器的引用（同样需要同步滚动）
   const lineNumbersRef = useRef(null);
-  // 主内容区引用（用于切换章节时滚动到顶部）
   const contentRef = useRef(null);
 
-  // 把当前代码高亮成 HTML，用 useMemo 缓存，避免每次渲染都重新计算。
-  // 末尾补一个换行，保证最后一行代码下方的留白和高亮层与 textarea 对齐。
+  // 把当前代码高亮成 HTML（用 Python 高亮器，含 def/class 等关键字）
   const highlightedHTML = useMemo(
-    () => highlightJavaScript(code) + "\n",
+    () => highlightPython(code) + "\n",
     [code]
   );
 
-  // 编辑器滚动同步：textarea 滚动时，让高亮层和行号跟着一起滚。
-  // 三者用相同的字体度量/padding，所以 scrollTop/scrollLeft 可以直接复用。
+  // 编辑器滚动同步：textarea 滚动时，让高亮层和行号跟着一起滚
   const handleEditorScroll = useCallback(() => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -74,11 +51,12 @@ export default function Home() {
   }, []);
 
   // 当前章节对象
-  const activeChapter = chapters.find((c) => c.id === activeId) || chapters[0];
+  const activeChapter =
+    pyChapters.find((c) => c.id === activeId) || pyChapters[0];
 
   // ---------- 切换章节 ----------
   const selectChapter = useCallback((chapterId) => {
-    const chapter = chapters.find((c) => c.id === chapterId);
+    const chapter = pyChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
     setActiveId(chapterId);
     setCode(chapter.code);
@@ -86,20 +64,20 @@ export default function Home() {
     setError("");
     setHasRun(false);
     setSidebarOpen(false);
-    // 滚动内容区到顶部
+    // 切换章节后滚动到顶部
     if (contentRef.current) {
       contentRef.current.scrollTop = 0;
     }
   }, []);
 
   // ---------- 运行代码 ----------
+  // 调用 /api/run-py，后端用子进程 python3 执行，返回 stdout/stderr
   const runCode = useCallback(async () => {
     setIsRunning(true);
-    setOutput("正在执行...");
+    setOutput("正在调用 python3 执行...");
     setError("");
     try {
-      // 向 /api/run 发送代码，等待执行结果
-      const res = await fetch("/api/run", {
+      const res = await fetch("/api/run-py", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code }),
@@ -124,8 +102,7 @@ export default function Home() {
     setHasRun(false);
   }, [activeChapter]);
 
-  // ---------- 键盘快捷键 ----------
-  // Ctrl/Cmd + Enter 运行代码
+  // ---------- 键盘快捷键：Ctrl/Cmd + Enter 运行 ----------
   useEffect(() => {
     const handleKey = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
@@ -137,7 +114,7 @@ export default function Home() {
     return () => window.removeEventListener("keydown", handleKey);
   }, [runCode]);
 
-  // ---------- 代码编辑器：支持 Tab 键缩进 ----------
+  // ---------- Tab 键缩进 ----------
   const handleKeyDown = (e) => {
     if (e.key === "Tab") {
       e.preventDefault();
@@ -145,20 +122,19 @@ export default function Home() {
       if (!textarea) return;
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
-      // 在光标处插入两个空格
-      const newCode = code.slice(0, start) + "  " + code.slice(end);
+      // Python 惯用 4 空格缩进
+      const newCode = code.slice(0, start) + "    " + code.slice(end);
       setCode(newCode);
-      // 把光标移到插入位置之后
       requestAnimationFrame(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + 2;
+        textarea.selectionStart = textarea.selectionEnd = start + 4;
       });
     }
   };
 
   // 按分组组织章节
-  const groupedChapters = chapterGroups.map((group) => ({
+  const groupedChapters = pyChapterGroups.map((group) => ({
     group,
-    items: chapters.filter((c) => c.group === group),
+    items: pyChapters.filter((c) => c.group === group),
   }));
 
   return (
@@ -173,15 +149,15 @@ export default function Home() {
           ☰
         </button>
         <div className="topbar-title">
-          <span className="topbar-logo">⬢</span>
-          <span>Node.js 交互式教程</span>
+          <span className="topbar-logo">🐍</span>
+          <span>Python 交互式教程</span>
         </div>
         <div className="topbar-meta">
-          共 {chapters.length} 章 · 可在线编辑运行
+          共 {pyChapters.length} 章 · 在线编辑运行
         </div>
+        <a href="/" className="topbar-link">← Node.js</a>
         <a href="/ts" className="topbar-link">TypeScript</a>
         <a href="/tw" className="topbar-link">Tailwind CSS</a>
-        <a href="/py" className="topbar-link">Python →</a>
       </header>
 
       <div className="main-layout">
@@ -190,14 +166,14 @@ export default function Home() {
           <div className="sidebar-inner">
             <div className="sidebar-header">
               <h2>学习目录</h2>
-              <p className="sidebar-tip">点击章节开始学习</p>
+              <p className="sidebar-tip">点击章节开始学习 Python</p>
             </div>
             <nav className="chapter-nav">
               {groupedChapters.map(({ group, items }) => (
                 <div key={group} className="chapter-group">
                   <div className="group-title">{group}</div>
                   <ul>
-                    {items.map((ch, idx) => (
+                    {items.map((ch) => (
                       <li key={ch.id}>
                         <button
                           className={`chapter-item ${activeId === ch.id ? "active" : ""}`}
@@ -250,7 +226,7 @@ export default function Home() {
                 <span className="dot dot-red"></span>
                 <span className="dot dot-yellow"></span>
                 <span className="dot dot-green"></span>
-                <span className="editor-filename">example.js</span>
+                <span className="editor-filename">example.py</span>
               </div>
               <div className="editor-actions">
                 <button
@@ -281,23 +257,12 @@ export default function Home() {
               </div>
               {/* 编辑区：高亮层 + textarea 叠加 */}
               <div className="editor-area">
-                {/*
-                  高亮层：放在 textarea 下方（z-index 较低），渲染彩色代码。
-                  aria-hidden 对屏幕阅读器隐藏，因为 textarea 才是真正的可编辑内容。
-                  dangerouslySetInnerHTML 直接注入高亮后的 HTML（已做转义，安全）。
-                */}
                 <pre
                   ref={highlightRef}
                   className="editor-highlight"
                   aria-hidden="true"
                   dangerouslySetInnerHTML={{ __html: highlightedHTML }}
                 />
-                {/*
-                  textarea：放在高亮层上方（z-index 较高），文字颜色设为透明，
-                  只保留光标 (caret-color)，用户「看到」的是下层的高亮代码，
-                  但「编辑」的依然是这个 textarea 里的原始文本。
-                  onScroll 用于把滚动量同步给高亮层和行号。
-                */}
                 <textarea
                   ref={textareaRef}
                   className="code-editor"
@@ -309,7 +274,7 @@ export default function Home() {
                   autoCapitalize="off"
                   autoCorrect="off"
                   wrap="off"
-                  placeholder="在这里编写 Node.js 代码，可以自由修改后运行..."
+                  placeholder="在这里编写 Python 代码，可以自由修改后运行..."
                 />
               </div>
             </div>
@@ -346,14 +311,11 @@ export default function Home() {
           </section>
 
           {/* 章节底部导航：上一章/下一章 */}
-          <ChapterNav
-            activeId={activeId}
-            onSelect={selectChapter}
-          />
+          <ChapterNav activeId={activeId} onSelect={selectChapter} />
 
           <footer className="content-footer">
             <p>
-              Node.js 交互式教程 · 代码在服务端沙箱中执行 · 支持 fs/path/crypto 等内置模块
+              Python 交互式教程 · 代码由系统 python3 子进程执行 · 支持 def/class/装饰器/生成器/asyncio，含超时保护
             </p>
           </footer>
         </main>
@@ -364,9 +326,9 @@ export default function Home() {
 
 // ===== 上一章 / 下一章 导航组件 =====
 function ChapterNav({ activeId, onSelect }) {
-  const idx = chapters.findIndex((c) => c.id === activeId);
-  const prev = idx > 0 ? chapters[idx - 1] : null;
-  const next = idx < chapters.length - 1 ? chapters[idx + 1] : null;
+  const idx = pyChapters.findIndex((c) => c.id === activeId);
+  const prev = idx > 0 ? pyChapters[idx - 1] : null;
+  const next = idx < pyChapters.length - 1 ? pyChapters[idx + 1] : null;
 
   return (
     <nav className="chapter-nav-bottom">
