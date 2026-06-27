@@ -152,8 +152,7 @@ ${code}
         <div className="topbar-meta">
           共 {twChapters.length} 章 · 实时预览
         </div>
-        <a href="/" className="topbar-link">← Node.js</a>
-        <a href="/ts" className="topbar-link">TypeScript</a>
+        <a href="/ts" className="topbar-link">← TypeScript</a>
         <a href="/py" className="topbar-link">Python</a>
         <a href="/sass" className="topbar-link">Sass</a>
         <a href="/gql" className="topbar-link">GraphQL →</a>

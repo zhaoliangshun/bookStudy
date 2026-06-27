@@ -8,18 +8,21 @@
 // 通信协议：通过 stdin/stdout 传递 JSON
 //   输入 JSON: { sdl: string, resolversCode: string, query: string }
 //   输出 JSON: { data: object|null, errors: [{message: string}]|null }
+//
+// Resolver 签名适配：
+//   教程代码使用标准 (parent, args, context, info) 签名，
+//   本执行器通过自定义 fieldResolver 统一适配，支持：
+//   1. 根级 Query/Mutation resolver
+//   2. 嵌套类型 resolver（如 User: { fullName: (parent) => ... }）
 // =============================================================
 
-const { buildSchema, graphql } = require("graphql");
+const { buildSchema, graphql, defaultFieldResolver } = require("graphql");
 const {
   createContext,
   runInContext,
   Script,
 } = require("vm");
 
-/**
- * 在沙箱中执行 resolvers 代码，返回 resolvers 对象。
- */
 function executeResolvers(resolversCode) {
   const sandbox = {
     console: {
@@ -71,7 +74,42 @@ function executeResolvers(resolversCode) {
   return context.result;
 }
 
-// 读取 stdin 全部数据
+function createFieldResolver(resolvers) {
+  const queryResolvers = resolvers.Query || {};
+  const mutationResolvers = resolvers.Mutation || {};
+  const subscriptionResolvers = resolvers.Subscription || {};
+
+  const typeResolvers = {};
+  for (const [typeName, fieldResolvers] of Object.entries(resolvers)) {
+    if (typeName !== "Query" && typeName !== "Mutation" && typeName !== "Subscription" && typeof fieldResolvers === "object" && fieldResolvers !== null) {
+      typeResolvers[typeName] = fieldResolvers;
+    }
+  }
+
+  return function fieldResolver(source, args, contextValue, info) {
+    const fieldName = info.fieldName;
+    const parentTypeName = info.parentType.name;
+
+    let resolverFn = null;
+
+    if (parentTypeName === "Query" && typeof queryResolvers[fieldName] === "function") {
+      resolverFn = queryResolvers[fieldName];
+    } else if (parentTypeName === "Mutation" && typeof mutationResolvers[fieldName] === "function") {
+      resolverFn = mutationResolvers[fieldName];
+    } else if (parentTypeName === "Subscription" && typeof subscriptionResolvers[fieldName] === "function") {
+      resolverFn = subscriptionResolvers[fieldName];
+    } else if (typeResolvers[parentTypeName] && typeof typeResolvers[parentTypeName][fieldName] === "function") {
+      resolverFn = typeResolvers[parentTypeName][fieldName];
+    }
+
+    if (resolverFn) {
+      return resolverFn(source, args, contextValue, info);
+    }
+
+    return defaultFieldResolver(source, args, contextValue, info);
+  };
+}
+
 let inputData = "";
 process.stdin.setEncoding("utf8");
 process.stdin.on("data", (chunk) => {
@@ -88,8 +126,7 @@ process.stdin.on("end", () => {
           data: null,
           errors: [
             {
-              message:
-                "缺少必要参数: sdl, resolversCode, query",
+              message: "缺少必要参数: sdl, resolversCode, query",
             },
           ],
         })
@@ -97,7 +134,6 @@ process.stdin.on("end", () => {
       process.exit(0);
     }
 
-    // 1. 构建 Schema
     let schema;
     try {
       schema = buildSchema(sdl);
@@ -115,7 +151,6 @@ process.stdin.on("end", () => {
       process.exit(0);
     }
 
-    // 2. 执行 resolvers
     let resolvers;
     try {
       resolvers = executeResolvers(resolversCode);
@@ -125,8 +160,7 @@ process.stdin.on("end", () => {
             data: null,
             errors: [
               {
-                message:
-                  "Resolvers 代码执行后未返回 resolvers 对象，请确保定义了 const resolvers = { ... }。",
+                message: "Resolvers 代码执行后未返回 resolvers 对象，请确保定义了 const resolvers = { ... }。",
               },
             ],
           })
@@ -151,11 +185,13 @@ process.stdin.on("end", () => {
       process.exit(0);
     }
 
-    // 3. 执行查询
+    const fieldResolver = createFieldResolver(resolvers);
+
     graphql({
       schema,
       source: query,
-      rootValue: resolvers,
+      rootValue: {},
+      fieldResolver,
     }).then((result) => {
       process.stdout.write(
         JSON.stringify({

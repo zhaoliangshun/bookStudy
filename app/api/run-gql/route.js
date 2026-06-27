@@ -178,6 +178,6 @@ export async function GET() {
   return NextResponse.json({
     status: "ok",
     message: "GraphQL 执行服务正在运行（子进程模式）",
-    graphqlVersion: "16.x",
+    graphqlVersion: "16.14.2",
   });
 }

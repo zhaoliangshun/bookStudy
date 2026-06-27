@@ -167,11 +167,7 @@ export default function GraphQLTutorial() {
         <div className="topbar-meta">
           共 {gqlChapters.length} 章 · 在线执行查询
         </div>
-        <a href="/" className="topbar-link">← Node.js</a>
-        <a href="/ts" className="topbar-link">TypeScript</a>
-        <a href="/tw" className="topbar-link">Tailwind</a>
-        <a href="/py" className="topbar-link">Python</a>
-        <a href="/sass" className="topbar-link">Sass</a>
+        <a href="/sass" className="topbar-link">← Sass</a>
       </header>
 
       <div className="main-layout">
