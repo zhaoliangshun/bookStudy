@@ -135,6 +135,18 @@ body {
   color: var(--text-muted);
 }
 
+.topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  min-width: 0;
+}
+.topbar-nav::-webkit-scrollbar {
+  display: none;
+}
+
 .topbar-link {
   color: var(--accent-green);
   font-size: 13px;
@@ -142,12 +154,20 @@ body {
   padding: 5px 12px;
   border: 1px solid var(--border-dark);
   border-radius: var(--radius-sm);
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .topbar-link:hover {
   background: var(--bg-sidebar-hover);
   border-color: var(--accent-green);
+}
+.topbar-link.active {
+  background: var(--accent-green);
+  color: var(--bg-sidebar);
+  border-color: var(--accent-green);
+  font-weight: 600;
+  cursor: default;
 }
 
 /* ===== 主布局 ===== */
@@ -902,6 +922,15 @@ body {
   }
   .topbar-meta {
     display: none;
+  }
+  .topbar-title {
+    font-size: 15px;
+  }
+  .topbar-title > span:last-child {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
   }
 
   .sidebar {

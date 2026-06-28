@@ -1,4553 +1,3199 @@
 // =============================================================
-// Node.js 交互式教程 —— 第六批章节（共 6 章）
-// -------------------------------------------------------------
-// 本文件包含以下章节：
-//   1. node-timers-deep  — Timers 深入
-//   2. node-child-process — 子进程 (Child Process)
-//   3. node-net           — Net 模块 (TCP)
-//   4. node-dns           — DNS 模块
-//   5. node-tls           — TLS/SSL 模块
-//   6. node-http2         — HTTP/2 与 HTTP/3
-//
-// 每个章节包含：
-//   id      : 唯一标识
-//   title   : 章节标题
-//   icon    : 展示用 emoji
-//   group   : 分组名
-//   content : Markdown 格式的详细讲解（文字量是普通教程的 5 倍）
-//   code    : 可运行、带详细中文注释的示例代码
-//
-// 代码运行环境约束：
-//   - Node.js vm 沙箱，5 秒超时
-//   - 仅可 require: fs, path, os, url, crypto, util, events, stream,
-//     buffer, querystring, string_decoder, zlib, assert, timers
-//   - 全局可用: console, process, Buffer, setTimeout, setInterval,
-//     setImmediate, clearTimeout, clearInterval, clearImmediate,
-//     URL, URLSearchParams, TextEncoder, TextDecoder, Promise,
-//     __dirname, __filename, require, module, exports
-//   - 注意：沙箱中无法真正启动子进程或建立TCP连接，用对象字面量+接口模拟相关概念
+// Node.js 交互式教程 —— 第六批章节（认证与安全组，共 6 章）
 // =============================================================
 
 export const chapters = [
   // =========================================================
-  // 第一章：Timers 深入
+  // 第一章：安全最佳实践
   // =========================================================
   {
-    id: "node-timers-deep",
-    title: "Timers 深入",
-    icon: "⏱️",
-    group: "核心模块补充",
-    content: `## Timers 深入：从原理到高级用法
+    id: "node-security",
+    icon: "🛡️",
+    group: "认证与安全",
+    title: "安全最佳实践",
+    content: `## 为什么安全是 Node.js 开发的核心
 
-定时器是 JavaScript 中最基础也最容易被误解的异步机制。从浏览器到 Node.js，定时器看似简单，实则背后涉及事件循环、系统调度、精度限制等诸多细节。本章将深入剖析 Node.js 中定时器的方方面面。
+Node.js 作为服务端运行时，处理着大量敏感数据。根据 OWASP（开放 Web 应用安全项目）的统计，安全漏洞是导致数据泄露的首要原因。Node.js 应用的常见攻击面包括：用户输入、文件系统、数据库查询、网络请求和第三方依赖。
 
----
+安全不是可选的附加功能，而是开发过程中必须内建的防线。一个安全的 Node.js 应用需要在**每一层**都做好防护：输入验证 → 输出编码 → 访问控制 → 错误处理 → 依赖管理 → 传输加密。
 
-### 一、定时器在事件循环中的位置
+### 常见安全威胁与防御
 
-Node.js 的事件循环分为 6 个阶段，定时器回调在 **Timers 阶段** 执行：
+#### 1. 注入攻击（Injection）
 
-\`\`\`
-    ┌───────────────────────────┐
- ┌─>│           timers          │ ← setTimeout / setInterval 到期回调在这里执行
- │  └─────────────┬─────────────┘
- │  ┌─────────────┴─────────────┐
- │  │     pending callbacks     │ ← 系统级回调（TCP错误等）
- │  └─────────────┬─────────────┘
- │  ┌─────────────┴─────────────┐
- │  │       idle, prepare       │ ← libuv 内部使用
- │  └─────────────┬─────────────┘
- │  ┌─────────────┴─────────────┐
- │  │           poll            │ ← I/O 回调（文件读取、网络数据等）
- │  └─────────────┬─────────────┘
- │  ┌─────────────┴─────────────┐
- │  │           check           │ ← setImmediate 回调在这里执行
- │  └─────────────┬─────────────┘
- │  ┌─────────────┴─────────────┐
- │  │      close callbacks      │ ← socket.destroy() 等关闭回调
- │  └───────────────────────────┘
- └──────────────────────────────────────────────────────────────┘
+注入攻击是 OWASP Top 10 中排名第一的威胁。攻击者通过将恶意数据作为命令或查询的一部分发送，欺骗解释器执行非预期的操作。
+
+**SQL 注入**：攻击者在输入中嵌入 SQL 代码片段。
+
+\`\`\`javascript
+// ❌ 危险写法：直接拼接 SQL
+const sql = "SELECT * FROM users WHERE name = '" + username + "'";
+// 如果 username = "admin' OR '1'='1"，结果变成
+// SELECT * FROM users WHERE name = 'admin' OR '1'='1'
+// 这将返回所有用户！
+
+// ✅ 安全写法：使用参数化查询
+const sql = "SELECT * FROM users WHERE name = ?";
+db.query(sql, [username]);
 \`\`\`
 
-关键理解：**定时器的回调并不在设定的时间点精确执行，而是在事件循环运行到 Timers 阶段时，检查哪些定时器已经到期，然后执行它们的回调**。如果事件循环在 Poll 阶段被阻塞了很久，定时器回调就会延迟执行。
+**命令注入**：攻击者注入系统命令。
 
----
+\`\`\`javascript
+// ❌ 危险：exec("ls " + userInput)
+// 如果 userInput = "; rm -rf /"，后果不堪设想
 
-### 二、setTimeout 精度与最小延迟
+// ✅ 安全：使用 child_process.execFile 并验证参数
+\`\`\`
 
-#### 2.1 理论上的 0ms ≠ 实际的 0ms
+#### 2. XSS（跨站脚本攻击）
 
-当你写 \`setTimeout(fn, 0)\` 时，很多人以为回调会立即执行。但实际上，Node.js 和浏览器都有一个**最小延迟限制**：
+当应用将用户输入直接渲染到 HTML 中时，攻击者可能注入恶意脚本。
 
-| 环境 | setTimeout(fn, 0) 实际延迟 | 说明 |
+\`\`\`javascript
+// ❌ 危险：直接输出用户输入
+response.send("<h1>" + userComment + "</h1>");
+
+// ✅ 安全：HTML 实体编码
+function htmlEncode(str) {
+  return str.replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+}
+\`\`\`
+
+#### 3. CSRF（跨站请求伪造）
+
+攻击者诱导用户在已登录的状态下访问恶意网站，利用用户的身份凭证发送伪造请求。
+
+**防御措施**：
+- 使用 CSRF Token（每次请求验证令牌）
+- 检查 Referer/Origin 头
+- 使用 SameSite Cookie 属性
+- 关键操作要求二次确认
+
+#### 4. SSRF（服务端请求伪造）
+
+攻击者利用服务端发起请求的功能，让服务器访问内网资源或其他敏感地址。
+
+\`\`\`javascript
+// ❌ 危险：用户控制请求目标
+const url = request.query.url;
+fetch(url); // 攻击者可以传入 http://internal-service:8080/admin
+
+// ✅ 安全：URL 白名单验证
+const ALLOWED_HOSTS = ['api.example.com', 'cdn.example.com'];
+const parsed = new URL(url);
+if (!ALLOWED_HOSTS.includes(parsed.hostname)) {
+  throw new Error('不允许的请求目标');
+}
+\`\`\`
+
+#### 5. 路径遍历攻击
+
+攻击者通过 \`../\` 等方式访问文件系统上的任意文件。
+
+\`\`\`javascript
+// ❌ 危险：用户控制文件路径
+fs.readFile('/data/' + filename);
+
+// 如果 filename = "../../etc/passwd"，会读取系统敏感文件
+
+// ✅ 安全：路径规范化 + 基础目录验证
+const safePath = path.resolve('/data', filename);
+if (!safePath.startsWith('/data')) {
+  throw new Error('路径遍历攻击！');
+}
+\`\`\`
+
+### 输入验证原则
+
+**核心原则：永远不信任用户的输入。**
+
+1. **白名单优于黑名单**：定义允许的输入，而不是排除已知的恶意输入
+2. **服务端验证是必须的**：前端验证只是用户体验优化，不能作为安全防线
+3. **验证类型、长度、格式和范围**：使用 schema 验证库（如 Joi、Zod）
+4. **尽早验证**：在数据进入应用逻辑之前就完成验证
+
+### 输出编码
+
+根据输出上下文选择正确的编码方式：
+
+| 输出上下文 | 编码方式 | 示例 |
 | --- | --- | --- |
-| Node.js | 约 1ms | libuv 会将 0 自动提升为 1ms |
-| 浏览器（Chrome） | 约 1ms（嵌套层级 ≤ 5） | 嵌套超过 5 层后提升到 4ms |
-| 浏览器（Firefox） | 约 4ms | 较保守的最小延迟 |
+| HTML 正文 | HTML 实体编码 | \`<\` → \`&lt;\` |
+| HTML 属性 | HTML 属性编码 | 引号转义 |
+| JavaScript | JS 字符串转义 | 反斜杠转义 |
+| URL | URL 编码 | encodeURIComponent |
+| CSS | CSS 转义 | 反斜杠十六进制 |
 
-**为什么 Node.js 会把 0ms 提升到 1ms？** 这是 libuv 的设计决策。libuv 的定时器实现基于 \`uv_timer_start\`，当传入 \`timeout=0\` 时，它会自动将其设为 1ms，以避免过于频繁的定时器触发导致 CPU 空转。
+### HTTPS 与传输安全
 
-\`\`\`javascript
-// 测量实际延迟
-const start = Date.now();
-setTimeout(() => {
-  console.log('实际延迟:', Date.now() - start, 'ms');
-}, 0);
-// 输出通常为 1~3ms，而非 0ms
-\`\`\`
+- **强制 HTTPS**：使用 HSTS 头告诉浏览器只通过 HTTPS 访问
+- **证书管理**：使用 Let's Encrypt 免费证书，自动化续期
+- **禁用弱加密套件**：只允许 TLS 1.2+ 和强加密算法
+- **安全的 Cookie 属性**：Secure、HttpOnly、SameSite
 
-#### 2.2 嵌套定时器的 4ms 限制
-
-在浏览器中，当 setTimeout 嵌套超过 5 层时，最小延迟会被强制提升到 4ms。Node.js 对嵌套定时器没有这个限制，但仍然受限于 1ms 的最小值。
+### 敏感信息管理
 
 \`\`\`javascript
-// 浏览器行为：嵌套第 6 层开始延迟 ≥ 4ms
-// Node.js 行为：始终 ≥ 1ms，没有额外限制
+// ❌ 危险：硬编码密钥
+const API_KEY = 'sk-abc123xyz';
+
+// ✅ 安全：使用环境变量
+const API_KEY = process.env.API_KEY;
+
+// ❌ 危险：在错误中暴露敏感信息
+throw new Error('数据库连接失败: ' + connectionString);
+
+// ✅ 安全：脱敏后记录
+throw new Error('数据库连接失败: ' + maskConnectionString(connectionString));
 \`\`\`
 
-#### 2.3 高精度定时器：performance.now()
+### 安全头（Security Headers）
 
-如果你需要精确测量时间间隔（而非调度回调），应该使用 \`performance.now()\` 而非 \`Date.now()\`：
-
-| 方法 | 精度 | 基准点 | 用途 |
-| --- | --- | --- | --- |
-| \`Date.now()\` | 毫秒级 | 1970-01-01 | 获取时间戳 |
-| \`performance.now()\` | 微秒级（Node.js 中通常是纳秒级） | 进程启动时 | 测量时间间隔 |
-
-\`\`\`javascript
-const { performance } = require('perf_hooks');
-const t0 = performance.now();
-// ... 执行一些操作 ...
-const t1 = performance.now();
-console.log('耗时:', (t1 - t0).toFixed(3), 'ms');
-\`\`\`
-
----
-
-### 三、setTimeout(fn, 0) vs setImmediate(fn) 的经典问题
-
-这是 Node.js 面试中最高频的问题之一。两者的执行顺序是**不确定的**——取决于事件循环的启动时机。
-
-#### 3.1 在主模块中：顺序不确定
-
-\`\`\`javascript
-// 在主模块（入口文件）中执行
-setTimeout(() => console.log('setTimeout'), 0);
-setImmediate(() => console.log('setImmediate'));
-// 输出顺序不确定！
-// 有时 setTimeout 先，有时 setImmediate 先
-\`\`\`
-
-**原因分析**：当 Node.js 启动时，事件循环需要初始化。在 Timers 阶段，如果系统时间已经过了 1ms，setTimeout 回调就会在这一轮执行，早于同轮后面的 check 阶段的 setImmediate。但如果系统时间还没到，setTimeout 会被推迟到下一轮，而 setImmediate 在当前轮就会执行。
-
-#### 3.2 在 I/O 回调中：setImmediate 一定先执行
-
-\`\`\`javascript
-const fs = require('fs');
-fs.readFile('file.txt', () => {
-  setTimeout(() => console.log('setTimeout'), 0);
-  setImmediate(() => console.log('setImmediate'));
-  // 输出顺序确定：setImmediate → setTimeout
-});
-\`\`\`
-
-**原因分析**：I/O 回调在 Poll 阶段执行。Poll 阶段之后紧接着是 Check 阶段（setImmediate）。而 Timers 阶段在下一轮事件循环的开头。所以 setImmediate 一定在当前轮执行，setTimeout 在下一轮。
-
-#### 3.3 对比总结表
-
-| 场景 | setTimeout(fn, 0) | setImmediate(fn) | 谁先执行 |
-| --- | --- | --- | --- |
-| 主模块 | Timers 阶段 | Check 阶段 | **不确定** |
-| I/O 回调内 | 下一轮 Timers | 当前轮 Check | **setImmediate 先** |
-| process.nextTick 内 | 迟于 nextTick | 迟于 nextTick | 取决于主模块规则 |
-| Promise.then 内 | 迟于微任务 | 迟于微任务 | 取决于主模块规则 |
-
----
-
-### 四、process.nextTick：优先级之王
-
-#### 4.1 执行优先级
-
-\`process.nextTick\` 的回调拥有最高的执行优先级，它不属于事件循环的任何阶段，而是在**每个阶段转换之间**执行：
-
-\`\`\`
-同步代码 → process.nextTick 队列 → 微任务队列(Promise) → 事件循环阶段
-\`\`\`
-
-#### 4.2 执行顺序演示
-
-\`\`\`javascript
-console.log('1. 同步');
-process.nextTick(() => console.log('3. nextTick'));
-Promise.resolve().then(() => console.log('4. Promise'));
-setTimeout(() => console.log('5. setTimeout'), 0);
-setImmediate(() => console.log('6. setImmediate'));
-console.log('2. 同步');
-// 输出: 1 → 2 → 3 → 4 → (5/6顺序不确定)
-\`\`\`
-
-#### 4.3 nextTick 的递归陷阱
-
-如果在 nextTick 回调中递归调用 nextTick，会**饿死事件循环**：
-
-\`\`\`javascript
-// ❌ 危险！事件循环被永远阻塞
-function recursiveNextTick() {
-  process.nextTick(recursiveNextTick);
-}
-recursiveNextTick();
-// setTimeout / setImmediate 永远不会执行！
-\`\`\`
-
-Node.js 对此有保护机制：\`process.maxTickDepth\` 默认值为 1000，当 nextTick 递归超过此深度时，会强制让出给事件循环。但**依赖此保护机制是不安全的**，不同版本可能不同。
-
-#### 4.4 nextTick 的适用场景
-
-| 场景 | 说明 |
+| 安全头 | 作用 |
 | --- | --- |
-| **错误处理** | 在构造函数中，可以在抛出错误前给用户注册事件监听器的机会 |
-| **释放资源** | 在当前操作完成后立即释放锁/资源 |
-| **保证异步** | 让回调始终异步执行，避免 Zalgo 问题 |
-| **批量处理** | 把多次操作合并到一次 nextTick 中 |
+| Content-Security-Policy | 控制浏览器可以加载哪些资源 |
+| X-Frame-Options | 防止点击劫持 |
+| X-Content-Type-Options | 禁止 MIME 类型嗅探 |
+| Strict-Transport-Security | 强制 HTTPS 连接 |
+| Referrer-Policy | 控制 Referer 头信息 |
+| Permissions-Policy | 控制浏览器 API 权限 |
 
-\`\`\`javascript
-// 经典用法：保证回调始终异步
-function maybeAsync(arg, callback) {
-  if (arg) {
-    return callback(null, 'sync');  // 同步调用
-  }
-  process.nextTick(() => callback(null, 'async'));  // 异步调用
-}
-// 这样调用方始终可以用统一的方式处理回调
+### 依赖安全审计
+
+\`\`\`bash
+# 检查已知漏洞
+npm audit
+
+# 自动修复（小心 breaking changes）
+npm audit fix
+
+# 查看详细报告
+npm audit --json
+
+# 定期更新依赖
+npm outdated
+npm update
 \`\`\`
 
----
-
-### 五、setInterval 的累积延迟问题
-
-#### 5.1 问题描述
-
-\`setInterval\` 不会等待上一次回调执行完毕再开始计时。如果回调的执行时间超过了间隔时间，就会发生**回调堆积**：
-
-\`\`\`javascript
-setInterval(() => {
-  // 如果这个回调执行了 200ms
-  heavyTask(); // 耗时 200ms
-}, 100); // 但间隔只有 100ms
-// 后果：回调不断堆积，CPU 使用率飙升
-\`\`\`
-
-#### 5.2 解决方案：递归 setTimeout
-
-用递归 setTimeout 替代 setInterval 可以避免堆积：
-
-\`\`\`javascript
-// ✅ 推荐：递归 setTimeout
-function safeInterval(fn, delay) {
-  function run() {
-    fn();
-    setTimeout(run, delay);  // 等 fn 执行完毕后再设置下一次
-  }
-  setTimeout(run, delay);
-}
-
-// 使用
-safeInterval(() => {
-  heavyTask(); // 即使耗时超过 delay，也不会堆积
-}, 100);
-\`\`\`
-
-#### 5.3 setInterval 的另一个陷阱：不精确
-
-即使回调执行很快，setInterval 的间隔也不精确。受事件循环繁忙程度影响，实际间隔可能比设定值大。
-
-\`\`\`javascript
-let count = 0;
-const start = Date.now();
-const timer = setInterval(() => {
-  count++;
-  const elapsed = Date.now() - start;
-  const expected = count * 100;
-  console.log(\`第\${count}次，预期\${expected}ms，实际\${elapsed}ms，偏差\${elapsed - expected}ms\`);
-  if (count >= 10) clearInterval(timer);
-}, 100);
-// 你能看到偏差在逐渐累积
-\`\`\`
-
----
-
-### 六、ref() 与 unref()：控制事件循环退出
-
-#### 6.1 事件循环何时退出？
-
-Node.js 的事件循环在**没有待处理的任务**时退出。一个活动的定时器会阻止事件循环退出：
-
-\`\`\`javascript
-setTimeout(() => console.log('done'), 5000);
-// 事件循环会等待 5 秒，直到定时器触发
-// 即使没有其他代码，进程也不会退出
-\`\`\`
-
-#### 6.2 unref()：让定时器不阻止退出
-
-\`\`\`javascript
-const timer = setTimeout(() => {
-  console.log('这条日志可能永远不会打印');
-}, 5000);
-timer.unref();  // 告诉事件循环：不要因为这个定时器而保持运行
-// 如果事件循环没有其他任务，进程会立即退出
-// 定时器回调会被丢弃
-\`\`\`
-
-#### 6.3 ref()：恢复阻止退出
-
-\`\`\`javascript
-timer.unref();
-// ... 过了一会，你决定还是需要这个定时器
-timer.ref();  // 恢复，事件循环会等待这个定时器
-\`\`\`
-
-#### 6.4 实际应用场景
-
-\`\`\`javascript
-// 场景：HTTP 服务器空闲超时自动关闭
-const server = require('http').createServer();
-let idleTimer = setTimeout(() => {
-  server.close();
-  console.log('服务器空闲超时，已关闭');
-}, 30000);
-idleTimer.unref(); // 如果只有这个定时器，允许进程退出
-
-server.on('request', () => {
-  // 有请求时重置空闲计时器
-  clearTimeout(idleTimer);
-  idleTimer = setTimeout(() => server.close(), 30000);
-  idleTimer.unref();
-});
-\`\`\`
-
----
-
-### 七、clearTimeout / clearInterval 的正确用法
-
-#### 7.1 清除不存在的定时器是安全的
-
-\`\`\`javascript
-clearTimeout(undefined);  // 不会报错
-clearTimeout(null);       // 不会报错
-clearTimeout(12345);      // 不会报错（即使 12345 不是有效的定时器 ID）
-\`\`\`
-
-#### 7.2 定时器 ID 的复用
-
-Node.js 会复用定时器 ID。当你清除一个定时器后，新创建的定时器可能会获得相同的 ID。所以**不要依赖定时器 ID 来做判断**：
-
-\`\`\`javascript
-// ❌ 错误做法
-const timer = setTimeout(() => {}, 1000);
-clearTimeout(timer);
-// 此时 timer 的值可能被新定时器复用
-if (timer) { /* 这个判断不可靠 */ }
-\`\`\`
-
-#### 7.3 推荐的清除模式
-
-\`\`\`javascript
-let timer = null;
-
-function start() {
-  stop(); // 先清除旧的
-  timer = setTimeout(doSomething, 1000);
-}
-
-function stop() {
-  if (timer !== null) {
-    clearTimeout(timer);
-    timer = null;  // 重置为 null
-  }
-}
-\`\`\`
-
----
-
-### 八、requestAnimationFrame 在 Node.js 中不存在
-
-浏览器中的 \`requestAnimationFrame\` 用于在下一次浏览器重绘前执行动画更新。Node.js 没有渲染循环，因此**没有原生的 requestAnimationFrame**。
-
-如果你需要在 Node.js 中模拟类似的行为，可以用 \`setImmediate\`（它会在当前事件循环轮次中尽快执行，类似于 rAF 在帧末尾执行的行为）：
-
-\`\`\`javascript
-// 浏览器：
-// requestAnimationFrame(() => updateAnimation());
-
-// Node.js 替代：
-// setImmediate(() => processFrame());
-// 或者用 setTimeout(fn, 16) 模拟 60fps
-\`\`\`
-
----
-
-### 九、Timers Promises API（Node.js 16+）
-
-从 Node.js 16 开始，\`timers/promises\` 模块提供了基于 Promise 的定时器 API：
-
-\`\`\`javascript
-import { setTimeout } from 'timers/promises';
-
-await setTimeout(1000);  // 暂停 1 秒
-console.log('1 秒后执行');
-
-// 也可以用 AbortController 取消
-const ac = new AbortController();
-setTimeout(2000, null, { signal: ac.signal }).catch(() => {});
-ac.abort();  // 取消定时器
-\`\`\`
-
----
-
-### 十、最佳实践总结
-
-| 场景 | 推荐方案 |
-| --- | --- |
-| 延迟执行代码 | \`setTimeout\` |
-| 尽快异步执行（I/O 回调后） | \`setImmediate\` |
-| 最高优先级异步执行 | \`process.nextTick\`（谨慎使用） |
-| 重复执行 | \`递归 setTimeout\`（而非 setInterval） |
-| 让定时器不阻塞退出 | \`timer.unref()\` |
-| 需要可取消的延迟 | \`AbortController + timers/promises\` |
-| 精确计时 | \`performance.now()\` |
-| 动画/游戏循环 | \`setImmediate\` 或 \`setTimeout(16)\` 模拟 |
-
-下面这段代码将完整演示定时器的执行顺序、精度、ref/unref、防抖和节流等核心概念。`,
+**最佳实践**：
+- 在 CI/CD 中集成 \`npm audit\`（设置 severity 阈值）
+- 使用 Dependabot 或 Renovate 自动创建依赖更新 PR
+- 定期审查依赖树，移除不必要的依赖
+- 锁定依赖版本（package-lock.json），避免供应链攻击`,
     code: `// ============================================================
-// 第一章代码演示：Timers 深入——执行顺序、精度、防抖节流
+// 第一章代码演示：安全最佳实践
+// 演示输入过滤、路径遍历攻击防范、敏感信息脱敏
 // ============================================================
 
-// ---- 1. 执行顺序对比：nextTick vs Promise vs setTimeout vs setImmediate ----
-console.log("===== 1. 执行优先级对比 =====");
-console.log("A. 同步代码开始");
+var path = require("path");
+var crypto = require("crypto");
 
-// process.nextTick：最高优先级的异步回调
-process.nextTick(() => {
-  console.log("D. process.nextTick 回调（优先级最高）");
-  // 在 nextTick 中嵌套 nextTick
-  process.nextTick(() => {
-    console.log("E. 嵌套的 nextTick（在上一个nextTick后立即执行）");
-  });
-});
+// ---- 1. 输入验证演示 ----
+console.log("========== 1. 输入验证 ==========");
 
-// Promise.then：微任务，优先级次于 nextTick
-Promise.resolve().then(() => {
-  console.log("F. Promise.then 回调（微任务）");
-  Promise.resolve().then(() => {
-    console.log("G. 嵌套的 Promise.then");
-  });
-});
+// 模拟一个用户注册的输入验证函数
+function validateUserInput(input) {
+  var errors = [];
 
-// queueMicrotask：与 Promise.then 同级
-if (typeof queueMicrotask === "function") {
-  queueMicrotask(() => {
-    console.log("H. queueMicrotask 回调（与Promise同级）");
-  });
+  // 用户名验证：只允许字母、数字、下划线，长度 3-20
+  if (!input.username || !/^[a-zA-Z0-9_]{3,20}$/.test(input.username)) {
+    errors.push("用户名必须为 3-20 位字母、数字或下划线");
+  }
+
+  // 邮箱验证：基本格式检查
+  var emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+  if (!input.email || !emailRegex.test(input.email)) {
+    errors.push("邮箱格式不正确");
+  }
+
+  // 年龄验证：必须是数字，范围 1-150
+  var age = parseInt(input.age, 10);
+  if (isNaN(age) || age < 1 || age > 150) {
+    errors.push("年龄必须是 1-150 之间的数字");
+  }
+
+  // 密码强度验证：至少 8 位，包含大小写字母和数字
+  if (!input.password || input.password.length < 8) {
+    errors.push("密码长度至少 8 位");
+  } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)/.test(input.password)) {
+    errors.push("密码必须包含大小写字母和数字");
+  }
+
+  // 输入长度限制：防止超长输入
+  if (input.bio && input.bio.length > 500) {
+    errors.push("个人简介不能超过 500 个字符");
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors: errors,
+    sanitized: errors.length === 0 ? {
+      username: input.username.trim(),
+      email: input.email.trim().toLowerCase(),
+      age: age,
+      bio: input.bio ? input.bio.trim().slice(0, 500) : "",
+    } : null,
+  };
 }
 
-// setTimeout(fn, 0)：宏任务，Timers 阶段
-setTimeout(() => {
-  console.log("I. setTimeout(()=>{}, 0) 回调（Timers阶段）");
-}, 0);
+// 测试用例
+var testCases = [
+  {
+    desc: "合法输入",
+    data: { username: "Alice_123", email: "alice@example.com", age: "25", password: "Abc12345", bio: "你好" },
+  },
+  {
+    desc: "用户名含特殊字符",
+    data: { username: "admin<script>", email: "admin@test.com", age: "30", password: "Abc12345" },
+  },
+  {
+    desc: "SQL 注入尝试",
+    data: { username: "admin' OR '1'='1", email: "hacker@evil.com", age: "99", password: "Abc12345" },
+  },
+  {
+    desc: "邮箱格式错误",
+    data: { username: "test_user", email: "not-an-email", age: "20", password: "Abc12345" },
+  },
+  {
+    desc: "弱密码",
+    data: { username: "test_user", email: "test@test.com", age: "20", password: "12345" },
+  },
+  {
+    desc: "年龄超出范围",
+    data: { username: "test_user", email: "test@test.com", age: "999", password: "Abc12345" },
+  },
+];
 
-// setImmediate：宏任务，Check 阶段
-setImmediate(() => {
-  console.log("J. setImmediate 回调（Check阶段）");
+testCases.forEach(function (tc) {
+  var result = validateUserInput(tc.data);
+  var status = result.valid ? "✅ 通过" : "❌ 拒绝";
+  console.log(status + " [" + tc.desc + "]");
+  if (!result.valid) {
+    result.errors.forEach(function (err) {
+      console.log("   → " + err);
+    });
+  }
 });
 
-console.log("B. 同步代码中间部分");
-console.log("C. 同步代码结束");
+// ---- 2. HTML 实体编码防止 XSS ----
+console.log("\\n========== 2. HTML 实体编码（XSS 防御）==========");
 
-// 执行顺序预期：
-// A → B → C → D → E → F → G → H → (I/J 顺序不确定)
+function htmlEncode(str) {
+  if (typeof str !== "string") return str;
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;")
+    .replace(/\\//g, "&#x2F;");
+}
 
-// ---- 2. setTimeout 精度测量 ----
-setTimeout(() => {
-  console.log("\\n===== 2. setTimeout 精度测量 =====");
+// 模拟恶意输入
+var maliciousInputs = [
+  { raw: '<script>alert("XSS")</script>', context: "XSS 脚本注入" },
+  { raw: '<img src=x onerror="alert(1)">', context: "图片标签注入" },
+  { raw: "javascript:alert('XSS')", context: "JavaScript 协议" },
+  { raw: '<a href="http://evil.com">点击</a>', context: "恶意链接" },
+  { raw: "正常用户评论：很不错！", context: "正常输入" },
+];
 
-  // 测量 setTimeout(fn, 0) 的实际延迟
-  const t0 = Date.now();
-  setTimeout(() => {
-    const delay = Date.now() - t0;
-    console.log("setTimeout(fn, 0) 实际延迟:", delay, "ms");
-    console.log("（理论值 0ms，实际约 1~3ms，取决于系统负载）");
-  }, 0);
-
-  // 测量 setTimeout(fn, 1) 的实际延迟
-  const t1 = Date.now();
-  setTimeout(() => {
-    const delay = Date.now() - t1;
-    console.log("setTimeout(fn, 1) 实际延迟:", delay, "ms");
-  }, 1);
-
-  // 测量 setTimeout(fn, 10) 的实际延迟
-  const t2 = Date.now();
-  setTimeout(() => {
-    const delay = Date.now() - t2;
-    console.log("setTimeout(fn, 10) 实际延迟:", delay, "ms");
-  }, 10);
-
-  // 测量 setTimeout(fn, 100) 的实际延迟
-  const t3 = Date.now();
-  setTimeout(() => {
-    const delay = Date.now() - t3;
-    console.log("setTimeout(fn, 100) 实际延迟:", delay, "ms");
-    console.log("（延迟越大，相对精度越高）");
-  }, 100);
-}, 50);
-
-// ---- 3. setTimeout vs setImmediate 在 I/O 回调中 ----
-setTimeout(() => {
-  console.log("\\n===== 3. I/O 回调中的 setTimeout vs setImmediate =====");
-  console.log("模拟 I/O 回调（如 fs.readFile 的回调）:");
-  // 在 I/O 回调的"模拟"中，setImmediate 一定先于 setTimeout
-  setImmediate(() => console.log("  [1] setImmediate 先执行（Check阶段紧随Poll）"));
-  setTimeout(() => console.log("  [2] setTimeout 后执行（下一轮Timers阶段）"), 0);
-  console.log("  [0] I/O 回调中的同步代码先执行");
-}, 100);
-
-// ---- 4. 用性能计时器测量精度 ----
-setTimeout(() => {
-  console.log("\\n===== 4. 高精度计时 =====");
-  // 使用 Date.now() 进行毫秒级计时
-  const start = Date.now();
-  let sum = 0;
-  for (let i = 0; i < 1000000; i++) {
-    sum += Math.sqrt(i);
-  }
-  const elapsed = Date.now() - start;
-  console.log("100万次 sqrt 计算耗时:", elapsed, "ms");
-  console.log("（Date.now() 精度为毫秒级）");
-}, 200);
-
-// ---- 5. ref / unref 演示 ----
-setTimeout(() => {
-  console.log("\\n===== 5. ref / unref —— 控制事件循环退出 =====");
-
-  // 创建一个 5 秒的定时器
-  const longTimer = setTimeout(() => {
-    console.log("这条消息不会打印（因为 unref 后进程会提前退出）");
-  }, 5000);
-
-  console.log("创建了一个 5 秒后的定时器");
-  console.log("定时器对象:", typeof longTimer, "hasRef:", longTimer.hasRef ? longTimer.hasRef() : "unknown");
-
-  // unref：让这个定时器不再阻止事件循环退出
-  longTimer.unref();
-  console.log("调用 unref() 后，如果只有这个定时器，进程会退出");
-
-  // ref：恢复阻止退出
-  longTimer.ref();
-  console.log("调用 ref() 后，定时器恢复阻止退出");
-
-  // 再次 unref
-  longTimer.unref();
-  console.log("再次 unref()，定时器不再阻止退出");
-
-  // 在另一个定时器中清除 longTimer
-  setTimeout(() => {
-    clearTimeout(longTimer);
-    console.log("longTimer 已被清除");
-  }, 100);
-}, 300);
-
-// ---- 6. 递归 setTimeout 替代 setInterval（避免累积延迟） ----
-setTimeout(() => {
-  console.log("\\n===== 6. 递归 setTimeout vs setInterval =====");
-
-  // 6a. 使用 setInterval（有累积延迟问题）
-  let intervalCount = 0;
-  const intervalStart = Date.now();
-  console.log("--- setInterval 方式 ---");
-  const intervalId = setInterval(() => {
-    intervalCount++;
-    // 模拟稍重的计算（约 30ms）
-    const busyStart = Date.now();
-    while (Date.now() - busyStart < 30) { /* busy wait */ }
-    const elapsed = Date.now() - intervalStart;
-    const expected = intervalCount * 80;
-    console.log(
-      "  setInterval 第" + intervalCount + "次，" +
-      "预期" + expected + "ms，实际" + elapsed + "ms，" +
-      "偏差" + (elapsed - expected) + "ms"
-    );
-    if (intervalCount >= 5) {
-      clearInterval(intervalId);
-      console.log("  setInterval 已清除");
-    }
-  }, 80);
-
-  // 6b. 使用递归 setTimeout（推荐，避免累积）
-  setTimeout(() => {
-    let recCount = 0;
-    const recStart = Date.now();
-    console.log("\\n--- 递归 setTimeout 方式（推荐）---");
-    function recTimeout() {
-      recCount++;
-      // 模拟稍重的计算（约 30ms）
-      const busyStart = Date.now();
-      while (Date.now() - busyStart < 30) { /* busy wait */ }
-      const elapsed = Date.now() - recStart;
-      const expected = recCount * 80;
-      console.log(
-        "  recTimeout 第" + recCount + "次，" +
-        "预期" + expected + "ms，实际" + elapsed + "ms，" +
-        "偏差" + (elapsed - expected) + "ms"
-      );
-      if (recCount < 5) {
-        // 等上一次回调执行完毕后再设置下一次
-        setTimeout(recTimeout, 80);
-      } else {
-        console.log("  recTimeout 已完成");
-        console.log("\\n注意：递归 setTimeout 不会堆积，");
-        console.log("即使回调耗时超过间隔，也只会延迟不会堆积");
-      }
-    }
-    setTimeout(recTimeout, 80);
-  }, 800);
-}, 400);
-
-// ---- 7. 防抖（Debounce）函数 ----
-setTimeout(() => {
-  console.log("\\n===== 7. 防抖函数（Debounce）====");
-
-  /**
-   * 防抖：在事件触发后等待一段时间，如果期间再次触发则重新计时。
-   * 适用场景：搜索框输入、窗口 resize、按钮点击（防止重复提交）
-   */
-  function debounce(fn, delay) {
-    let timer = null;
-    return function (...args) {
-      // 清除之前的定时器
-      if (timer !== null) {
-        clearTimeout(timer);
-      }
-      // 设置新的定时器
-      timer = setTimeout(() => {
-        fn.apply(this, args);
-        timer = null;
-      }, delay);
+console.log("原始输入 → 编码后输出:");
+console.table(
+  maliciousInputs.map(function (item) {
+    return {
+      上下文: item.context,
+      原始输入: item.raw,
+      编码输出: htmlEncode(item.raw),
     };
+  })
+);
+
+// ---- 3. 路径遍历攻击防范 ----
+console.log("\\n========== 3. 路径遍历攻击防范 ==========");
+
+var BASE_DIR = "/var/www/uploads";
+
+function safeFilePath(userFilename) {
+  // 步骤 1：路径规范化，消除 ../ 和 ./
+  var resolved = path.resolve(BASE_DIR, userFilename);
+
+  // 步骤 2：验证解析后的路径是否在基础目录内
+  if (!resolved.startsWith(BASE_DIR + path.sep) && resolved !== BASE_DIR) {
+    return { safe: false, error: "路径遍历攻击被阻止！路径超出允许范围" };
   }
 
-  // 模拟：用户快速输入搜索关键词
-  const search = debounce((keyword) => {
-    console.log('🔍 实际发起搜索请求: "' + keyword + '"');
-  }, 300);
-
-  console.log("模拟用户快速输入 'hello':");
-  search("h");       // 被取消
-  search("he");      // 被取消
-  search("hel");     // 被取消
-  search("hell");    // 被取消
-  search("hello");   // 只有这个会真正执行
-
-  setTimeout(() => {
-    console.log("\\n模拟用户输入 'world' (有停顿):");
-    search("w");       // 被取消
-    search("wo");      // 被取消
-    // 停顿 400ms
-    setTimeout(() => {
-      search("wor");    // 被取消
-      search("worl");   // 被取消
-      search("world");  // 只有这个会真正执行
-    }, 400);
-  }, 500);
-}, 2000);
-
-// ---- 8. 节流（Throttle）函数 ----
-setTimeout(() => {
-  console.log("\\n===== 8. 节流函数（Throttle）====");
-
-  /**
-   * 节流：在指定时间内只执行一次，无论触发多少次。
-   * 适用场景：滚动事件、鼠标移动、游戏帧更新
-   */
-  function throttle(fn, interval) {
-    let lastTime = 0;
-    let timer = null;
-    return function (...args) {
-      const now = Date.now();
-      const remaining = interval - (now - lastTime);
-
-      if (remaining <= 0) {
-        // 超过间隔时间，立即执行
-        if (timer) {
-          clearTimeout(timer);
-          timer = null;
-        }
-        lastTime = now;
-        fn.apply(this, args);
-      } else if (!timer) {
-        // 还没到时间，设置一个定时器
-        timer = setTimeout(() => {
-          lastTime = Date.now();
-          timer = null;
-          fn.apply(this, args);
-        }, remaining);
-      }
-    };
+  // 步骤 3：禁止访问隐藏文件（以 . 开头）
+  var basename = path.basename(resolved);
+  if (basename.startsWith(".")) {
+    return { safe: false, error: "不允许访问隐藏文件" };
   }
 
-  // 模拟：滚动事件（每 200ms 最多处理一次）
-  const handleScroll = throttle((position) => {
-    console.log("📜 处理滚动事件，位置:", position);
-  }, 200);
+  return { safe: true, path: resolved };
+}
 
-  console.log("模拟快速滚动（每 50ms 触发一次，但处理节流到 200ms）:");
-  let scrollPos = 0;
-  const scrollTimer = setInterval(() => {
-    scrollPos += 50;
-    handleScroll(scrollPos);
-    if (scrollPos >= 1000) {
-      clearInterval(scrollTimer);
-      console.log("滚动模拟结束");
+// 测试各种路径遍历攻击
+var pathTests = [
+  { input: "photo.jpg", desc: "正常文件路径" },
+  { input: "../../etc/passwd", desc: "路径遍历（../）" },
+  { input: "..\\\\..\\\\windows\\\\system32", desc: "Windows 路径遍历" },
+  { input: "./subdir/.././subdir/photo.jpg", desc: "混合路径（规范化后可接受）" },
+  { input: "../../../.env", desc: "访问隐藏文件" },
+  { input: "./../../../etc/shadow", desc: "深度路径遍历" },
+  { input: "report.pdf", desc: "正常 PDF 文件" },
+];
+
+pathTests.forEach(function (test) {
+  var result = safeFilePath(test.input);
+  var status = result.safe ? "✅ 安全" : "🚫 阻止";
+  console.log(status + " [" + test.desc + "]");
+  console.log("  输入: " + test.input);
+  if (result.safe) {
+    console.log("  解析路径: " + result.path);
+  } else {
+    console.log("  原因: " + result.error);
+  }
+});
+
+// ---- 4. 敏感信息脱敏 ----
+console.log("\\n========== 4. 敏感信息脱敏 ==========");
+
+// 手机号脱敏：保留前 3 后 4 位
+function maskPhone(phone) {
+  if (!phone || phone.length < 7) return "***";
+  return phone.slice(0, 3) + "****" + phone.slice(-4);
+}
+
+// 邮箱脱敏
+function maskEmail(email) {
+  if (!email || !email.includes("@")) return "***";
+  var parts = email.split("@");
+  var name = parts[0];
+  if (name.length <= 2) return name[0] + "***@" + parts[1];
+  return name[0] + "***" + name[name.length - 1] + "@" + parts[1];
+}
+
+// 身份证号脱敏
+function maskIdCard(idCard) {
+  if (!idCard || idCard.length < 8) return "***";
+  return idCard.slice(0, 4) + "**********" + idCard.slice(-4);
+}
+
+// 连接字符串脱敏
+function maskConnectionString(connStr) {
+  return connStr.replace(/\\/\\/([^:]+):([^@]+)@/, "//$1:***@");
+}
+
+// 密码完全隐藏
+function maskPassword(password) {
+  return "********";
+}
+
+console.log("脱敏示例:");
+console.table([
+  { 类型: "手机号", 原始: "13812345678", 脱敏: maskPhone("13812345678") },
+  { 类型: "邮箱", 原始: "zhangsan@example.com", 脱敏: maskEmail("zhangsan@example.com") },
+  { 类型: "短邮箱", 原始: "a@test.com", 脱敏: maskEmail("a@test.com") },
+  { 类型: "身份证", 原始: "110101199001011234", 脱敏: maskIdCard("110101199001011234") },
+  { 类型: "连接字符串", 原始: "mysql://root:secret123@localhost/db", 脱敏: maskConnectionString("mysql://root:secret123@localhost/db") },
+  { 类型: "密码", 原始: "MyP@ssw0rd!", 脱敏: maskPassword("MyP@ssw0rd!") },
+]);
+
+// 模拟错误日志脱敏
+console.log("\\n模拟错误日志脱敏:");
+var originalError = "数据库连接失败: mysql://admin:SuperSecret@db.internal:3306/users";
+var maskedError = maskConnectionString(originalError);
+console.log("❌ 不安全的日志: " + originalError);
+console.log("✅ 安全的日志:   " + maskedError);
+
+// ---- 5. URL 白名单验证（SSRF 防范） ----
+console.log("\\n========== 5. URL 白名单验证（SSRF 防范）==========");
+
+var ALLOWED_HOSTS = ["api.example.com", "cdn.example.com", "images.example.com"];
+
+function validateUrl(userUrl) {
+  try {
+    var parsed = new URL(userUrl);
+
+    // 只允许 HTTP/HTTPS 协议
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return { valid: false, reason: "只允许 HTTP/HTTPS 协议" };
     }
-  }, 50);
-}, 3500);
 
-// ---- 9. 组合实践：带防抖的自动保存 ----
-setTimeout(() => {
-  console.log("\\n===== 9. 实战：自动保存（防抖模式）====");
+    // 主机名白名单验证
+    var hostname = parsed.hostname;
+    if (!ALLOWED_HOSTS.includes(hostname)) {
+      return { valid: false, reason: "主机名不在白名单中: " + hostname };
+    }
 
-  // 模拟保存到"数据库"的操作
-  const saveData = debounce((data) => {
-    console.log('💾 保存数据: ' + JSON.stringify(data));
-  }, 500);
+    // 禁止访问内网 IP（简化演示）
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("192.168.") || hostname.startsWith("10.")) {
+      return { valid: false, reason: "不允许访问内网地址" };
+    }
 
-  console.log("编辑文档...");
-  saveData({ title: "未命名文档", content: "A" });
-  saveData({ title: "未命名文档", content: "AB" });
-  saveData({ title: "未命名文档", content: "ABC" });
-  saveData({ title: "我的文档", content: "ABCD" });
-  console.log("停止编辑 500ms 后，只会保存最后一次内容");
-}, 5000);
+    return { valid: true, url: parsed.href };
+  } catch (e) {
+    return { valid: false, reason: "URL 格式无效: " + e.message };
+  }
+}
 
-// ---- 10. 定时器 ID 与清除安全 ----
-setTimeout(() => {
-  console.log("\\n===== 10. 定时器清除的安全性 =====");
+var urlTests = [
+  { url: "https://api.example.com/users", desc: "合法外网 URL" },
+  { url: "https://cdn.example.com/image.png", desc: "合法 CDN URL" },
+  { url: "http://localhost:8080/admin", desc: "内网地址（localhost）" },
+  { url: "http://192.168.1.1/config", desc: "内网 IP 地址" },
+  { url: "https://evil.com/steal", desc: "不在白名单的域名" },
+  { url: "file:///etc/passwd", desc: "file 协议攻击" },
+  { url: "https://api.example.com/../admin", desc: "合法域名但含路径遍历" },
+];
 
-  // 清除不存在的定时器不会报错
-  console.log("清除 undefined 定时器:");
-  clearTimeout(undefined);
-  console.log("  ✓ 没有报错");
+urlTests.forEach(function (test) {
+  var result = validateUrl(test.url);
+  var status = result.valid ? "✅ 允许" : "🚫 阻止";
+  console.log(status + " [" + test.desc + "]");
+  console.log("  URL: " + test.url);
+  if (!result.valid) {
+    console.log("  原因: " + result.reason);
+  }
+});
 
-  console.log("清除 null 定时器:");
-  clearTimeout(null);
-  console.log("  ✓ 没有报错");
+// ---- 6. 密码强度检查 ----
+console.log("\\n========== 6. 密码强度检查 ==========");
 
-  console.log("清除已过期的定时器:");
-  const expired = setTimeout(() => {}, 0);
-  setTimeout(() => {
-    clearTimeout(expired);
-    console.log("  ✓ 没有报错");
-  }, 50);
+function checkPasswordStrength(password) {
+  var score = 0;
+  var feedback = [];
 
-  // 正确的清除模式
-  console.log("\\n推荐模式：清除后置 null");
-  let timer = setTimeout(() => {}, 1000);
-  clearTimeout(timer);
-  timer = null;
-  console.log("clearTimeout 后 timer =", timer);
-}, 5500);
+  if (password.length >= 8) { score++; } else { feedback.push("长度至少 8 位"); }
+  if (password.length >= 12) { score++; }
+  if (/[a-z]/.test(password)) { score++; } else { feedback.push("需要包含小写字母"); }
+  if (/[A-Z]/.test(password)) { score++; } else { feedback.push("需要包含大写字母"); }
+  if (/\\d/.test(password)) { score++; } else { feedback.push("需要包含数字"); }
+  if (/[^a-zA-Z0-9]/.test(password)) { score++; } else { feedback.push("建议包含特殊字符"); }
 
-// ---- 11. 执行总结 ----
-setTimeout(() => {
-  console.log("\\n===== 11. 定时器优先级总结 =====");
-  console.log("┌─────────────────────────────────────┐");
-  console.log("│ 执行优先级（从高到低）              │");
-  console.log("│ 1. 同步代码                         │");
-  console.log("│ 2. process.nextTick 回调            │");
-  console.log("│ 3. Promise.then / queueMicrotask    │");
-  console.log("│ 4. setTimeout / setInterval         │");
-  console.log("│ 5. setImmediate（I/O中确定在4前）   │");
-  console.log("├─────────────────────────────────────┤");
-  console.log("│ 关键技巧                            │");
-  console.log("│ • 递归setTimeout替代setInterval     │");
-  console.log("│ • unref() 让定时器不阻止退出        │");
-  console.log("│ • 防抖debounce：等待停止后执行      │");
-  console.log("│ • 节流throttle：固定间隔执行        │");
-  console.log("└─────────────────────────────────────┘");
-}, 6000);`,
+  var levels = ["非常弱", "弱", "一般", "较强", "强", "很强", "非常强"];
+  return {
+    score: score,
+    level: levels[Math.min(score, levels.length - 1)],
+    feedback: feedback,
+  };
+}
+
+var passwords = ["123456", "password", "Pass1234", "MyP@ssw0rd!", "Tr0ub4dor&3", "correct-horse-battery-staple"];
+passwords.forEach(function (pw) {
+  var result = checkPasswordStrength(pw);
+  console.log("密码: " + maskPassword(pw) + " → 强度: " + result.level + " (" + result.score + "/6)");
+  if (result.feedback.length > 0) {
+    console.log("  建议: " + result.feedback.join("; "));
+  }
+});
+
+// ---- 7. 依赖安全检查模拟 ----
+console.log("\\n========== 7. 依赖安全检查模拟 ==========");
+
+var dependencies = [
+  { name: "express", version: "4.18.2", knownVulns: 0 },
+  { name: "lodash", version: "4.17.15", knownVulns: 3 },
+  { name: "axios", version: "1.6.0", knownVulns: 0 },
+  { name: "old-package", version: "1.0.0", knownVulns: 5 },
+  { name: "jsonwebtoken", version: "9.0.0", knownVulns: 0 },
+];
+
+console.log("依赖安全检查报告:");
+console.log("=" .repeat(50));
+var totalVulns = 0;
+var criticalDeps = [];
+
+dependencies.forEach(function (dep) {
+  var status = dep.knownVulns === 0 ? "✅ 安全" : "⚠️ 有漏洞";
+  console.log(status + " " + dep.name + "@" + dep.version + " (漏洞: " + dep.knownVulns + ")");
+  totalVulns += dep.knownVulns;
+  if (dep.knownVulns > 0) {
+    criticalDeps.push(dep);
+  }
+});
+
+console.log("\\n总结: 共 " + dependencies.length + " 个依赖, " + totalVulns + " 个已知漏洞");
+if (criticalDeps.length > 0) {
+  console.log("建议立即更新的依赖:");
+  criticalDeps.forEach(function (dep) {
+    console.log("  → npm update " + dep.name + " (当前: " + dep.version + ")");
+  });
+  console.log("\\n提示: 在 CI/CD 中运行 npm audit 自动检测漏洞");
+}
+
+// ---- 8. 安全编码总结 ----
+console.log("\\n========== 8. 安全编码最佳实践总结 ==========");
+
+var bestPractices = [
+  { 原则: "永远不信任用户输入", 实践: "所有输入必须验证、过滤、编码" },
+  { 原则: "最小权限原则", 实践: "只授予完成任务所需的最小权限" },
+  { 原则: "纵深防御", 实践: "多层安全防护，不依赖单一防线" },
+  { 原则: "默认安全", 实践: "默认配置应该是安全的，用户需要主动降低安全性" },
+  { 原则: "不暴露敏感信息", 实践: "错误信息、日志中不包含密码、密钥等敏感数据" },
+  { 原则: "保持依赖更新", 实践: "定期运行 npm audit，及时修复已知漏洞" },
+  { 原则: "加密传输", 实践: "使用 HTTPS，设置安全的 Cookie 属性" },
+  { 原则: "安全头", 实践: "设置 CSP、HSTS、X-Frame-Options 等安全头" },
+];
+
+console.table(bestPractices);
+
+console.log("\\n===== 安全最佳实践演示完成 =====");`,
   },
 
   // =========================================================
-  // 第二章：子进程 (Child Process)
+  // 第二章：JWT 认证实战
   // =========================================================
   {
-    id: "node-child-process",
-    title: "子进程 (Child Process)",
-    icon: "👶",
-    group: "核心模块补充",
-    content: `## 子进程 (Child Process)：让 Node.js 打破单进程限制
+    id: "node-jwt",
+    icon: "🎫",
+    group: "认证与安全",
+    title: "JWT 认证实战",
+    content: `## JWT 是什么？
 
-Node.js 的主进程是单线程的，但通过 \`child_process\` 模块，你可以创建子进程来执行系统命令、运行其他程序、或启动新的 Node.js 实例。这是 Node.js 扩展能力的关键机制之一。
+JWT（JSON Web Token）是一种开放标准（RFC 7519），用于在各方之间**安全地传输信息**。它定义了一种紧凑且自包含的方式，将 JSON 对象编码为令牌（Token），可以通过 URL、POST 参数或 HTTP 头传递。
 
----
+JWT 的核心优势在于**无状态**——服务端不需要存储会话信息，所有必要的数据都编码在令牌中并经过签名验证。
 
-### 一、为什么需要子进程？
+### JWT 的三个部分
 
-#### 1.1 单进程的局限
+JWT 由三部分组成，用点号（.）分隔：
 
-Node.js 单进程面临的核心问题：
-
-| 问题 | 说明 |
-| --- | --- |
-| **CPU 密集型任务阻塞** | 一个耗时的计算会阻塞整个事件循环 |
-| **无法利用多核** | 单进程只能使用一个 CPU 核心 |
-| **进程崩溃影响全局** | 一个未捕获的异常可能导致整个进程退出 |
-| **无法调用系统命令** | 需要执行 shell 脚本或其他语言编写的程序 |
-
-#### 1.2 子进程能解决什么
-
-| 能力 | 说明 |
-| --- | --- |
-| **并行计算** | 把 CPU 密集型任务分给子进程，主进程继续处理请求 |
-| **多核利用** | 通过 fork 创建多个 Node.js 子进程，充分利用多核 |
-| **隔离崩溃** | 子进程崩溃不会影响主进程（可以监听 exit 重启） |
-| **系统集成** | 调用 Python 脚本、shell 命令、C++ 编译的程序等 |
-
----
-
-### 二、四种创建方式详解
-
-\`child_process\` 模块提供了四种创建子进程的方法，各有不同的适用场景：
-
-#### 2.1 spawn —— 最通用的方式
-
-\`spawn(command, [args], [options])\` 启动一个子进程来执行命令，返回 \`ChildProcess\` 对象。它是**流式**的，适合处理大量数据输出。
-
-\`\`\`javascript
-const { spawn } = require('child_process');
-
-// 执行 ls -la 命令
-const ls = spawn('ls', ['-la', '/usr']);
-
-ls.stdout.on('data', (data) => {
-  console.log(\`stdout: \${data}\`);
-});
-
-ls.stderr.on('data', (data) => {
-  console.error(\`stderr: \${data}\`);
-});
-
-ls.on('close', (code) => {
-  console.log(\`子进程退出，退出码: \${code}\`);
-});
+\`\`\`
+Header.Payload.Signature
+eyJhbG... .eyJzdWI... .SflKxw...
 \`\`\`
 
-**特点**：
-- 不会创建 shell（默认），更安全、更高效
-- 输出是流式的，适合处理大文件
-- 可以精确控制参数，避免命令注入
-- 不缓冲输出，没有大小限制
+#### 1. Header（头部）
 
-#### 2.2 exec —— 执行完整命令字符串
+包含令牌类型和签名算法：
 
-\`exec(command, [options], callback)\` 执行一个完整的 shell 命令字符串，通过回调返回结果。它会缓冲 stdout 和 stderr 到内存中。
-
-\`\`\`javascript
-const { exec } = require('child_process');
-
-exec('ls -la /usr | wc -l', (error, stdout, stderr) => {
-  if (error) {
-    console.error(\`执行出错: \${error}\`);
-    return;
-  }
-  console.log(\`stdout: \${stdout}\`);
-  console.error(\`stderr: \${stderr}\`);
-});
-\`\`\`
-
-**特点**：
-- 默认使用 shell 执行（\`/bin/sh\` 或 \`cmd.exe\`）
-- 支持管道、重定向等 shell 特性
-- 有 **maxBuffer** 限制（默认 1MB），超出会杀死进程
-- 适合执行短命令、输出量小的场景
-
-#### 2.3 execFile —— 直接执行可执行文件
-
-\`execFile(file, [args], [options], callback)\` 直接执行一个可执行文件，**不通过 shell**。
-
-\`\`\`javascript
-const { execFile } = require('child_process');
-
-execFile('node', ['--version'], (error, stdout, stderr) => {
-  if (error) throw error;
-  console.log('Node.js 版本:', stdout.trim());
-});
-\`\`\`
-
-**特点**：
-- 不通过 shell，更安全、更高效
-- 没有 shell 注入风险
-- 不能使用管道、重定向等 shell 特性
-- 适合执行已知路径的可执行文件
-
-#### 2.4 fork —— 创建 Node.js 子进程
-
-\`fork(modulePath, [args], [options])\` 是 \`spawn\` 的特殊变体，专门用于创建 Node.js 子进程。它默认建立了 IPC 通信通道。
-
-\`\`\`javascript
-// parent.js
-const { fork } = require('child_process');
-const child = fork('./child.js');
-
-child.on('message', (msg) => {
-  console.log('父进程收到:', msg);
-});
-
-child.send({ hello: 'world' });
-
-// child.js
-process.on('message', (msg) => {
-  console.log('子进程收到:', msg);
-  process.send({ result: 'ok' });
-});
-\`\`\`
-
-**特点**：
-- 自动建立 IPC 通道（基于 \`process.send()\` 和 \`message\` 事件）
-- 子进程是独立的 V8 实例（独立的内存空间）
-- 额外开销比 spawn 大（需要启动完整的 Node.js）
-- 适合 CPU 密集型任务的分发
-
----
-
-### 三、四种方式对比
-
-| 特性 | spawn | exec | execFile | fork |
-| --- | --- | --- | --- | --- |
-| **使用 shell** | 默认否 | 默认是 | 默认否 | 默认否 |
-| **数据输出** | 流式（Stream） | 缓冲（Buffer） | 缓冲（Buffer） | 流式（Stream） |
-| **输出大小限制** | 无限制 | maxBuffer（1MB） | maxBuffer（1MB） | 无限制 |
-| **IPC 通信** | 可选 | 否 | 否 | 默认启用 |
-| **命令格式** | 命令 + 参数数组 | 完整命令字符串 | 文件路径 + 参数 | 模块路径 |
-| **适用场景** | 长运行、大输出 | 短命令、小输出 | 执行已知程序 | Node.js 子进程 |
-| **安全性** | 较高（无 shell 注入） | 较低（shell 注入风险） | 最高 | 高 |
-
----
-
-### 四、stdio 管道配置详解
-
-\`options.stdio\` 用于配置子进程的标准输入/输出/错误流的处理方式，是子进程通信的核心。
-
-#### 4.1 stdio 配置格式
-
-\`stdio\` 可以是一个数组 \`[stdin, stdout, stderr]\`，每个元素可以是：
-
-| 值 | 说明 |
-| --- | --- |
-| \`'pipe'\` | 在父子进程间创建管道（默认值，stdin/stdout/stderr 都是 pipe） |
-| \`'inherit'\` | 子进程直接使用父进程的 stdio（输出会直接显示在终端） |
-| \`'ignore'\` | 忽略该流（数据会被丢弃） |
-| \`'ipc'\` | 创建 IPC 通道（用于 \`process.send()\` 通信） |
-| \`Stream\` 对象 | 使用已有的流对象 |
-| \`正整数（fd）\` | 使用指定的文件描述符 |
-
-#### 4.2 常见配置示例
-
-\`\`\`javascript
-// 配置1：只捕获 stdout，忽略 stderr
-spawn('cmd', ['arg'], { stdio: ['pipe', 'pipe', 'ignore'] });
-
-// 配置2：子进程的输出直接显示在终端
-spawn('cmd', ['arg'], { stdio: 'inherit' });
-
-// 配置3：IPC 通信 + 忽略 stdio
-fork('child.js', [], { stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
-
-// 配置4：stdin 来自文件，stdout 写入文件
-const fs = require('fs');
-const out = fs.openSync('./out.log', 'a');
-const err = fs.openSync('./err.log', 'a');
-spawn('cmd', ['arg'], { stdio: ['ignore', out, err] });
-\`\`\`
-
----
-
-### 五、IPC 通信（进程间通信）
-
-#### 5.1 fork 的 IPC 通道
-
-fork 自动建立 IPC 通道，父子进程可以通过 \`send()\` 和 \`message\` 事件通信：
-
-\`\`\`javascript
-// 父进程
-const child = fork('child.js');
-child.send({ type: 'task', data: [1, 2, 3] });  // 发送任务
-child.on('message', (msg) => {
-  console.log('收到结果:', msg.result);
-});
-
-// 子进程（child.js）
-process.on('message', (msg) => {
-  if (msg.type === 'task') {
-    const result = msg.data.reduce((a, b) => a + b, 0);
-    process.send({ result });  // 返回结果
-  }
-});
-\`\`\`
-
-#### 5.2 IPC 通信的序列化
-
-IPC 通信使用**结构化克隆算法**（structured clone algorithm）进行序列化。可以传递的类型包括：
-
-- 基本类型：string, number, boolean, null, undefined
-- 对象和数组（无循环引用）
-- Date, RegExp, Map, Set
-- Buffer, ArrayBuffer, TypedArray
-- Error 对象
-
-**不能传递**：
-- 函数（会报错）
-- Symbol
-- DOM 节点（Node.js 中不适用）
-- 包含循环引用的对象
-
-#### 5.3 双向通信模式
-
-\`\`\`javascript
-// 请求-响应模式
-// 父进程
-const child = fork('worker.js');
-const pending = new Map();
-let reqId = 0;
-
-function request(task) {
-  return new Promise((resolve) => {
-    const id = ++reqId;
-    pending.set(id, resolve);
-    child.send({ id, task });
-  });
+\`\`\`json
+{
+  "alg": "HS256",
+  "typ": "JWT"
 }
-
-child.on('message', (msg) => {
-  if (pending.has(msg.id)) {
-    pending.get(msg.id)(msg.result);
-    pending.delete(msg.id);
-  }
-});
-
-// 使用
-const result = await request({ action: 'compute', data: 42 });
 \`\`\`
 
----
+#### 2. Payload（载荷）
 
-### 六、子进程生命周期管理
+包含声明（Claims），即要传输的数据。分为三种类型：
 
-#### 6.1 事件
+**注册声明（Registered Claims）**：
+| 声明 | 全称 | 说明 |
+| --- | --- | --- |
+| \`iss\` | Issuer | 签发者 |
+| \`sub\` | Subject | 主题（通常是用户 ID） |
+| \`aud\` | Audience | 接收方 |
+| \`exp\` | Expiration Time | 过期时间（Unix 时间戳） |
+| \`nbf\` | Not Before | 生效时间 |
+| \`iat\` | Issued At | 签发时间 |
+| \`jti\` | JWT ID | 唯一标识（用于防重放） |
 
-| 事件 | 触发时机 |
-| --- | --- |
-| \`'spawn'\` | 子进程成功启动 |
-| \`'message'\` | 收到子进程的 IPC 消息 |
-| \`'error'\` | 启动失败或无法发送消息 |
-| \`'exit'\` | 子进程退出（code + signal） |
-| \`'close'\` | 子进程的 stdio 流关闭 |
-| \`'disconnect'\` | IPC 通道断开 |
+**公开声明（Public Claims）**：自定义的公共字段，应避免冲突
 
-**exit 和 close 的区别**：
-- \`exit\`：子进程自身退出时触发（可能 stdio 还没关闭）
-- \`close\`：子进程的 stdio 流全部关闭时触发（通常在 exit 之后）
+**私有声明（Private Claims）**：服务端与客户端之间约定的自定义字段
 
-#### 6.2 终止子进程
-
-\`\`\`javascript
-// 1. child.kill([signal]) —— 发送信号
-child.kill();        // 默认发送 SIGTERM
-child.kill('SIGINT'); // 发送 Ctrl+C 信号
-child.kill('SIGKILL'); // 强制杀死（不可捕获）
-
-// 2. child.disconnect() —— 断开 IPC（子进程可能继续运行）
-child.disconnect();
-
-// 3. 超时自动杀死
-const child = spawn('long-running-task');
-setTimeout(() => {
-  child.kill('SIGTERM');
-  // 给子进程 5 秒优雅退出
-  setTimeout(() => {
-    if (!child.killed) {
-      child.kill('SIGKILL'); // 强制杀死
-    }
-  }, 5000);
-}, 30000); // 30 秒超时
+\`\`\`json
+{
+  "sub": "1234567890",
+  "name": "张三",
+  "role": "admin",
+  "iat": 1700000000,
+  "exp": 1700003600
+}
 \`\`\`
 
-#### 6.3 退出码
+#### 3. Signature（签名）
 
-| 退出码 | 含义 |
-| --- | --- |
-| 0 | 正常退出 |
-| 1 | 一般性错误 |
-| 127 | 命令未找到 |
-| 128 + N | 被信号 N 终止（如 130 = 128 + 2 = SIGINT） |
-| null | 子进程被信号杀死（通过 \`child.kill()\`） |
+用于验证消息在传输过程中未被篡改。对于 HMAC SHA256 算法：
 
----
-
-### 七、shell 选项的安全风险
-
-#### 7.1 命令注入攻击
-
-当使用 \`exec\` 且命令字符串包含用户输入时，存在**命令注入**风险：
-
-\`\`\`javascript
-// ❌ 危险！用户输入被直接拼接到命令中
-const userInput = req.query.filename; // 用户输入: "; rm -rf /"
-exec(\`cat \${userInput}\`, (err, stdout) => {
-  // 实际执行: cat ; rm -rf /
-  // 后果：灾难性的！
-});
-
-// ✅ 安全：使用 spawn + 参数数组
-const { spawn } = require('child_process');
-const child = spawn('cat', [userInput]); // 即使包含特殊字符也只作为参数
+\`\`\`
+HMACSHA256(
+  base64UrlEncode(header) + "." + base64UrlEncode(payload),
+  secret
+)
 \`\`\`
 
-#### 7.2 安全防护建议
+### JWT 的生成与验证流程
 
-| 建议 | 说明 |
-| --- | --- |
-| 避免 exec 处理用户输入 | 优先使用 spawn/execFile |
-| 参数白名单验证 | 只允许预定义的参数值 |
-| shell: false | 不启用 shell 可以减少攻击面 |
-| 输入转义 | 如果必须用 exec，对用户输入进行转义 |
-| 最小权限原则 | 子进程以最小必要权限运行 |
+**生成流程**：
+1. 创建 Header JSON，Base64URL 编码
+2. 创建 Payload JSON（包含用户信息和过期时间），Base64URL 编码
+3. 拼接 Header + "." + Payload
+4. 使用密钥和指定算法计算签名
+5. 拼接完整 Token：Header.Payload.Signature
 
----
+**验证流程**：
+1. 按 "." 分割 Token
+2. 重新计算签名，与 Token 中的签名对比
+3. 检查过期时间（exp）是否已过期
+4. 检查生效时间（nbf）是否已到达
+5. 如果都通过，解析 Payload 获取用户信息
 
-### 八、子进程错误处理
+### Access Token + Refresh Token 双令牌模式
 
-\`\`\`javascript
-const child = spawn('some-command', ['arg']);
+这是生产环境中推荐的做法：
 
-child.on('error', (err) => {
-  // 无法启动子进程（如命令不存在、权限不足）
-  console.error('启动失败:', err.message);
-});
+| 特性 | Access Token | Refresh Token |
+| --- | --- | --- |
+| **有效期** | 短（15 分钟 - 1 小时） | 长（7 天 - 30 天） |
+| **存储位置** | 内存（前端） | HttpOnly Cookie |
+| **用途** | 访问 API 资源 | 获取新的 Access Token |
+| **泄露风险** | 较高（每次请求携带） | 较低（仅在刷新时使用） |
 
-child.on('exit', (code, signal) => {
-  if (code !== 0) {
-    console.error(\`异常退出，code=\${code}, signal=\${signal}\`);
-  }
-});
+**工作流程**：
+1. 用户登录 → 服务端颁发 Access Token（短有效期）和 Refresh Token（长有效期）
+2. 客户端每次请求携带 Access Token
+3. Access Token 过期 → 客户端使用 Refresh Token 请求新的 Access Token
+4. Refresh Token 过期 → 用户需要重新登录
 
-child.stderr.on('data', (data) => {
-  console.error('stderr:', data.toString());
-});
+### JWT 的存储方式
 
-// 确保子进程不会无限运行
-const timeout = setTimeout(() => {
-  child.kill('SIGKILL');
-  console.error('子进程超时，已强制终止');
-}, 30000);
+| 存储方式 | 优点 | 缺点 | 安全建议 |
+| --- | --- | --- | --- |
+| 内存 | 不持久化，页面关闭即消失 | 刷新页面丢失 | 适合 SPA 应用 |
+| localStorage | 持久化，使用方便 | 容易受 XSS 攻击 | 不推荐 |
+| Cookie (HttpOnly) | 无法被 JS 读取，防 XSS | 需要防 CSRF | **推荐方案** |
+| SessionStorage | 标签页隔离 | 关闭标签即丢失 | 适合临时数据 |
 
-child.on('exit', () => clearTimeout(timeout));
-\`\`\`
+### JWT 撤销（黑名单机制）
 
----
+JWT 本身是无状态的，无法主动撤销。但可以通过以下方式实现：
 
-### 九、常见陷阱与最佳实践
+**黑名单模式**：
+1. 维护一个已撤销 Token 的列表（存储在 Redis 或内存中）
+2. 每次验证 Token 时，检查是否在黑名单中
+3. 黑名单条目可以设置过期时间（与 Token 的 exp 一致）
 
-1. **exec 的 maxBuffer 限制**：如果预期输出较大，用 spawn 代替 exec
-2. **僵尸进程**：确保监听 exit 事件并清理，或使用 \`child.unref()\`
-3. **环境变量继承**：子进程默认继承父进程的环境变量，可以通过 \`options.env\` 覆盖
-4. **Windows 兼容性**：spawn 在 Windows 上需要特殊处理（\`shell: true\` 或使用 \`.cmd\` 后缀）
-5. **错误优先**：始终监听 error、exit、close 事件
+**版本号模式**：
+1. 用户表中存储一个 token_version 字段
+2. JWT Payload 中也包含 token_version
+3. 验证时对比两个版本号
+4. 修改密码时递增 token_version → 所有旧 Token 失效
 
-下面这段代码通过对象字面量模拟四种进程创建方式、IPC 通信、stdio 管道和生命周期管理。`,
+### JWT 安全最佳实践
+
+1. **使用强密钥**：至少 256 位（32 字节）的随机密钥
+2. **设置合理的过期时间**：Access Token 不宜超过 1 小时
+3. **不要在 Payload 中存储敏感信息**：Payload 只是 Base64 编码，不是加密
+4. **使用 HTTPS 传输**：防止 Token 在传输中被窃取
+5. **验证算法**：防止攻击者将算法改为 "none"
+6. **使用 HttpOnly Cookie 存储 Refresh Token**：防止 XSS 攻击窃取 Token`,
     code: `// ============================================================
-// 第二章代码演示：子进程概念模拟（对象字面量 + 接口模拟）
+// 第二章代码演示：JWT 认证实战
+// 使用 crypto 实现 JWT 的生成(HMAC-SHA256)、验证、过期处理和刷新
 // ============================================================
-// 注意：沙箱无法真正创建子进程，以下代码用对象字面量模拟核心概念。
-// 在真实 Node.js 环境中，使用 require('child_process') 替换模拟。
-// 但进程退出事件、IPC 模式、生命周期管理等概念是通用的。
 
-const EventEmitter = require("events");
+var crypto = require("crypto");
 
-// ---- 1. 模拟子进程基类 ----
-console.log("===== 1. 模拟子进程类型定义 =====");
+// ---- 1. JWT 工具函数实现 ----
+console.log("========== 1. JWT 工具函数 ==========");
 
-/**
- * 模拟 ChildProcess 类
- * 真实环境中由 child_process 模块返回
- */
-class SimulatedChildProcess extends EventEmitter {
-  constructor(options = {}) {
-    super();
-    this.pid = Math.floor(Math.random() * 90000) + 10000;
-    this.killed = false;
-    this.connected = options.ipc || false;
-    this.exitCode = null;
-    this.signalCode = null;
-    this.stdout = new EventEmitter();
-    this.stderr = new EventEmitter();
-    this.stdin = { write: () => {}, end: () => {} };
-    this._messageQueue = [];
-    this._messageHandlers = [];
-  }
+// 密钥（生产环境应从环境变量读取）
+var JWT_SECRET = "my-super-secret-key-at-least-256-bits-long!!";
 
-  // 模拟发送 IPC 消息
-  send(message) {
-    if (!this.connected) {
-      throw new Error("IPC channel is not open");
-    }
-    console.log(
-      "  [父进程 → 子进程] send:",
-      JSON.stringify(message).slice(0, 60)
-    );
-    // 模拟子进程收到消息后回复
-    setTimeout(() => {
-      if (this._messageHandlers.length > 0) {
-        const handler = this._messageHandlers.shift();
-        handler(message);
-      }
-    }, 10);
-    return true;
-  }
-
-  // 模拟注册消息处理器（子进程侧）
-  onMessage(handler) {
-    this._messageHandlers.push(handler);
-  }
-
-  // 模拟子进程发送消息给父进程
-  _sendToParent(message) {
-    console.log(
-      "  [子进程 → 父进程] send:",
-      JSON.stringify(message).slice(0, 60)
-    );
-    this.emit("message", message);
-  }
-
-  // 模拟杀死子进程
-  kill(signal = "SIGTERM") {
-    if (this.killed) return false;
-    this.killed = true;
-    this.signalCode = signal;
-    console.log("  [kill] 发送信号:", signal);
-    // 模拟退出
-    setTimeout(() => {
-      const code = signal === "SIGKILL" ? null : 0;
-      this.exitCode = code;
-      this.emit("exit", code, signal);
-      this.emit("close", code, signal);
-    }, 20);
-    return true;
-  }
-
-  // 断开 IPC
-  disconnect() {
-    this.connected = false;
-    this.emit("disconnect");
-    console.log("  [disconnect] IPC 通道已断开");
-  }
+// Base64URL 编码（JWT 使用的特殊 Base64 变体）
+function base64UrlEncode(str) {
+  return Buffer.from(str)
+    .toString("base64")
+    .replace(/\\+/g, "-")
+    .replace(/\\//g, "_")
+    .replace(/=/g, "");
 }
 
-// ---- 2. 模拟 spawn：流式输出，无输出限制 ----
-console.log("\\n===== 2. spawn 模式模拟 =====");
-console.log("特点：流式输出，适合大输出量的命令");
-
-function simulateSpawn(command, args, options = {}) {
-  console.log("spawn('" + command + "', " + JSON.stringify(args) + ")");
-  const child = new SimulatedChildProcess(options);
-
-  // 模拟命令执行
-  setTimeout(() => {
-    if (command === "notexist") {
-      child.emit("error", new Error("spawn notexist ENOENT"));
-      return;
-    }
-
-    // 模拟 stdout 流式输出
-    console.log("  [stdout] 流式数据块1: 'line1\\n'");
-    child.stdout.emit("data", Buffer.from("line1\\n"));
-    setTimeout(() => {
-      console.log("  [stdout] 流式数据块2: 'line2\\n'");
-      child.stdout.emit("data", Buffer.from("line2\\n"));
-      setTimeout(() => {
-        console.log("  [stdout] 流式数据块3: 'line3\\n'");
-        child.stdout.emit("data", Buffer.from("line3\\n"));
-        // 流结束，子进程退出
-        child.exitCode = 0;
-        child.emit("exit", 0, null);
-        child.emit("close", 0, null);
-      }, 10);
-    }, 10);
-  }, 10);
-
-  return child;
+// Base64URL 解码
+function base64UrlDecode(str) {
+  // 补全等号
+  str = str.replace(/-/g, "+").replace(/_/g, "/");
+  while (str.length % 4) {
+    str += "=";
+  }
+  return Buffer.from(str, "base64").toString("utf8");
 }
 
-// 使用 spawn 模拟
-const spawnChild = simulateSpawn("cat", ["file.txt"]);
-spawnChild.stdout.on("data", (data) => {
-  console.log("  收到流数据:", data.toString().trim());
-});
-spawnChild.on("exit", (code) => {
-  console.log("  spawn 子进程退出，退出码:", code);
-});
+// 使用 HMAC-SHA256 生成签名
+function sign(data, secret) {
+  return crypto
+    .createHmac("sha256", secret)
+    .update(data)
+    .digest("base64")
+    .replace(/\\+/g, "-")
+    .replace(/\\//g, "_")
+    .replace(/=/g, "");
+}
 
-// ---- 3. 模拟 exec：缓冲输出，有 maxBuffer 限制 ----
-setTimeout(() => {
-  console.log("\\n===== 3. exec 模式模拟 =====");
-  console.log("特点：缓冲全部输出，有 maxBuffer（默认1MB）限制");
+// 生成 JWT Token
+function generateToken(payload, secret, expiresInSeconds) {
+  // 1. 创建 Header
+  var header = {
+    alg: "HS256",
+    typ: "JWT",
+  };
 
-  function simulateExec(command, options, callback) {
-    console.log("exec('" + command + "', callback)");
-    if (typeof options === "function") {
-      callback = options;
-      options = {};
-    }
-    const maxBuffer = options.maxBuffer || 1024 * 1024; // 默认 1MB
-
-    const child = new SimulatedChildProcess();
-    let stdout = "";
-    let stderr = "";
-
-    setTimeout(() => {
-      // 模拟命令输出
-      const output = "total 5\\ndrwxr-xr-x  3 user  staff   96\\n";
-      stdout += output;
-
-      if (Buffer.byteLength(stdout) > maxBuffer) {
-        child.kill("SIGKILL");
-        callback(
-          new Error("stdout maxBuffer length exceeded"),
-          "",
-          "maxBuffer exceeded"
-        );
-        return;
-      }
-
-      child.exitCode = 0;
-      child.emit("exit", 0, null);
-      callback(null, stdout, stderr);
-    }, 10);
-
-    return child;
+  // 2. 创建 Payload（添加标准声明）
+  var now = Math.floor(Date.now() / 1000);
+  var fullPayload = {
+    iat: now,                         // 签发时间
+    exp: now + (expiresInSeconds || 3600), // 过期时间
+    jti: crypto.randomBytes(16).toString("hex"), // 唯一标识
+  };
+  // 合并用户自定义 payload
+  for (var key in payload) {
+    fullPayload[key] = payload[key];
   }
 
-  simulateExec("ls -la", (error, stdout, stderr) => {
-    if (error) {
-      console.log("  exec 出错:", error.message);
-    } else {
-      console.log("  exec 输出:");
-      console.log(stdout.trim());
-    }
-  });
+  // 3. Base64URL 编码
+  var headerB64 = base64UrlEncode(JSON.stringify(header));
+  var payloadB64 = base64UrlEncode(JSON.stringify(fullPayload));
 
-  // 模拟 maxBuffer 超限
-  simulateExec(
-    "cat hugefile",
-    { maxBuffer: 10 },
-    (error, stdout, stderr) => {
-      setTimeout(() => {
-        console.log("\\n--- maxBuffer 超限模拟 ---");
-        console.log("  exec 命令: cat hugefile");
-        console.log("  maxBuffer 限制: 10 字节");
-        console.log("  stdout 超过 10 字节，子进程被 SIGKILL");
-        console.log("  错误:", error ? error.message : "无");
-      }, 20);
-    }
+  // 4. 生成签名
+  var signingInput = headerB64 + "." + payloadB64;
+  var signature = sign(signingInput, secret);
+
+  // 5. 返回完整 Token
+  return signingInput + "." + signature;
+}
+
+// 验证 JWT Token
+function verifyToken(token, secret) {
+  var parts = token.split(".");
+  if (parts.length !== 3) {
+    return { valid: false, error: "Token 格式错误" };
+  }
+
+  var headerB64 = parts[0];
+  var payloadB64 = parts[1];
+  var signature = parts[2];
+
+  // 1. 验证签名
+  var signingInput = headerB64 + "." + payloadB64;
+  var expectedSignature = sign(signingInput, secret);
+  if (signature !== expectedSignature) {
+    return { valid: false, error: "签名验证失败，Token 可能被篡改" };
+  }
+
+  // 2. 解析 Payload
+  var payload;
+  try {
+    payload = JSON.parse(base64UrlDecode(payloadB64));
+  } catch (e) {
+    return { valid: false, error: "Payload 解析失败" };
+  }
+
+  // 3. 检查过期时间
+  var now = Math.floor(Date.now() / 1000);
+  if (payload.exp && now > payload.exp) {
+    return {
+      valid: false,
+      error: "Token 已过期，过期时间: " + new Date(payload.exp * 1000).toISOString(),
+      expired: true,
+    };
+  }
+
+  // 4. 检查生效时间
+  if (payload.nbf && now < payload.nbf) {
+    return { valid: false, error: "Token 尚未生效" };
+  }
+
+  return { valid: true, payload: payload };
+}
+
+console.log("JWT 工具函数已就绪");
+console.log("  签名算法: HMAC-SHA256");
+console.log("  密钥长度: " + JWT_SECRET.length + " 字符");
+
+// ---- 2. 生成 Access Token ----
+console.log("\\n========== 2. 生成 Access Token ==========");
+
+var accessToken = generateToken(
+  {
+    sub: "user_12345",
+    name: "张三",
+    role: "admin",
+    email: "zhangsan@example.com",
+  },
+  JWT_SECRET,
+  3600 // 1 小时过期
+);
+
+console.log("Access Token 生成成功!");
+console.log("Token 长度: " + accessToken.length + " 字符");
+console.log("\\nToken 结构:");
+var parts = accessToken.split(".");
+console.log("  Header  : " + parts[0].substring(0, 30) + "...");
+console.log("  Payload : " + parts[1].substring(0, 30) + "...");
+console.log("  Signature: " + parts[2].substring(0, 30) + "...");
+
+// 解码查看 Payload 内容
+var decodedPayload = JSON.parse(base64UrlDecode(parts[1]));
+console.log("\\n解码后的 Payload:");
+console.log(JSON.stringify(decodedPayload, null, 2));
+
+// ---- 3. 验证 Token ----
+console.log("\\n========== 3. 验证 Token ==========");
+
+var verifyResult = verifyToken(accessToken, JWT_SECRET);
+if (verifyResult.valid) {
+  console.log("✅ Token 验证成功!");
+  console.log("  用户 ID: " + verifyResult.payload.sub);
+  console.log("  用户名: " + verifyResult.payload.name);
+  console.log("  角色: " + verifyResult.payload.role);
+  console.log("  签发时间: " + new Date(verifyResult.payload.iat * 1000).toISOString());
+  console.log("  过期时间: " + new Date(verifyResult.payload.exp * 1000).toISOString());
+} else {
+  console.log("❌ Token 验证失败: " + verifyResult.error);
+}
+
+// ---- 4. 模拟篡改后的 Token ----
+console.log("\\n========== 4. 篡改 Token 检测 ==========");
+
+// 模拟攻击者篡改 Payload（把 role 改成 admin）
+var tamperedPayload = {
+  sub: "user_12345",
+  name: "张三",
+  role: "superadmin", // 篡改的角色
+  iat: decodedPayload.iat,
+  exp: decodedPayload.exp,
+};
+var tamperedPayloadB64 = base64UrlEncode(JSON.stringify(tamperedPayload));
+var tamperedToken = parts[0] + "." + tamperedPayloadB64 + "." + parts[2];
+
+var tamperedResult = verifyToken(tamperedToken, JWT_SECRET);
+console.log("原始 Token 角色: admin");
+console.log("篡改后 Token 角色: superadmin");
+console.log("验证结果: " + (tamperedResult.valid ? "✅ 通过" : "❌ " + tamperedResult.error));
+console.log("→ 签名验证机制确保了 Payload 的完整性");
+
+// ---- 5. 过期 Token 模拟 ----
+console.log("\\n========== 5. 过期 Token 处理 ==========");
+
+// 生成一个已过期的 Token（过期时间设为过去）
+var expiredToken = generateToken(
+  { sub: "user_12345", name: "张三" },
+  JWT_SECRET,
+  -1 // 立即过期
+);
+
+var expiredResult = verifyToken(expiredToken, JWT_SECRET);
+console.log("过期 Token 验证结果:");
+console.log("  valid: " + expiredResult.valid);
+console.log("  error: " + expiredResult.error);
+console.log("  expired: " + expiredResult.expired);
+
+// ---- 6. Access Token + Refresh Token 双令牌模式 ----
+console.log("\\n========== 6. Access Token + Refresh Token 双令牌模式 ==========");
+
+// Refresh Token 存储（模拟 Redis）
+var refreshTokenStore = {};
+
+// 登录：生成双令牌
+function login(userId, userInfo) {
+  // Access Token：短期有效（15 分钟）
+  var accessToken = generateToken(
+    { sub: userId, name: userInfo.name, role: userInfo.role },
+    JWT_SECRET,
+    900 // 15 分钟
   );
-}, 100);
 
-// ---- 4. 模拟 execFile：直接执行文件，无 shell ----
-setTimeout(() => {
-  console.log("\\n===== 4. execFile 模式模拟 =====");
-  console.log("特点：不通过 shell，直接执行可执行文件，安全性最高");
+  // Refresh Token：长期有效（7 天），包含特殊声明
+  var refreshToken = generateToken(
+    {
+      sub: userId,
+      type: "refresh",
+      tokenVersion: userInfo.tokenVersion || 1,
+    },
+    JWT_SECRET,
+    604800 // 7 天
+  );
 
-  function simulateExecFile(file, args, callback) {
-    console.log("execFile('" + file + "', " + JSON.stringify(args) + ")");
+  // 存储 Refresh Token（生产环境存入 Redis）
+  refreshTokenStore[userId] = {
+    token: refreshToken,
+    tokenVersion: userInfo.tokenVersion || 1,
+    createdAt: new Date().toISOString(),
+  };
 
-    setTimeout(() => {
-      if (file === "nonexistent") {
-        callback(new Error("spawn nonexistent ENOENT"), "", "");
-        return;
-      }
-      // 模拟输出
-      const stdout = "v20.10.0\\n";
-      callback(null, stdout, "");
-    }, 10);
+  return {
+    accessToken: accessToken,
+    refreshToken: refreshToken,
+    expiresIn: 900,
+    tokenType: "Bearer",
+  };
+}
+
+// 刷新 Access Token
+function refreshAccessToken(refreshToken) {
+  var result = verifyToken(refreshToken, JWT_SECRET);
+
+  if (!result.valid) {
+    return { success: false, error: result.error };
   }
 
-  simulateExecFile("node", ["--version"], (error, stdout, stderr) => {
-    console.log("  Node.js 版本:", stdout.trim());
-    console.log("  注意：execFile 不经过 shell，无法使用管道和重定向");
-  });
-}, 200);
+  // 检查是否是 refresh 类型的 Token
+  if (result.payload.type !== "refresh") {
+    return { success: false, error: "Token 类型错误，不是 Refresh Token" };
+  }
 
-// ---- 5. 模拟 fork：Node.js 子进程 + IPC ----
-setTimeout(() => {
-  console.log("\\n===== 5. fork 模式模拟（IPC 通信）====");
-  console.log("特点：独立 V8 实例，默认 IPC 通道");
+  var userId = result.payload.sub;
 
-  function simulateFork(modulePath, args = [], options = {}) {
-    console.log("fork('" + modulePath + "')");
-    const child = new SimulatedChildProcess({ ipc: true });
-    child._isFork = true;
+  // 检查 Refresh Token 是否在存储中（未被撤销）
+  var stored = refreshTokenStore[userId];
+  if (!stored || stored.token !== refreshToken) {
+    return { success: false, error: "Refresh Token 已被撤销" };
+  }
 
-    // 模拟子进程启动
-    console.log("  子进程 PID:", child.pid);
-    console.log("  独立 V8 实例已启动");
+  // 生成新的 Access Token
+  var newAccessToken = generateToken(
+    {
+      sub: userId,
+      name: result.payload.name || "用户",
+      role: result.payload.role || "user",
+      tokenVersion: stored.tokenVersion,
+    },
+    JWT_SECRET,
+    900 // 15 分钟
+  );
 
-    // 模拟子进程的消息处理逻辑（相当于 child.js 中的代码）
-    child.onMessage((msg) => {
-      console.log("  [子进程收到消息]", JSON.stringify(msg));
-      if (msg.type === "compute") {
-        const result = msg.data.reduce((a, b) => a + b, 0);
-        // 子进程回复
-        child._sendToParent({
-          id: msg.id,
-          type: "result",
-          result: result,
-          pid: child.pid,
+  return {
+    success: true,
+    accessToken: newAccessToken,
+    expiresIn: 900,
+  };
+}
+
+// 演示登录流程
+console.log("--- 用户登录 ---");
+var loginResult = login("user_12345", {
+  name: "张三",
+  role: "admin",
+  tokenVersion: 1,
+});
+console.log("登录成功!");
+console.log("  Access Token: " + loginResult.accessToken.substring(0, 40) + "...");
+console.log("  Refresh Token: " + loginResult.refreshToken.substring(0, 40) + "...");
+console.log("  Access Token 有效期: " + loginResult.expiresIn + " 秒 (15 分钟)");
+
+// 演示刷新流程
+console.log("\\n--- Access Token 过期，使用 Refresh Token 刷新 ---");
+var refreshResult = refreshAccessToken(loginResult.refreshToken);
+if (refreshResult.success) {
+  console.log("✅ 刷新成功!");
+  console.log("  新的 Access Token: " + refreshResult.accessToken.substring(0, 40) + "...");
+  console.log("  新有效期: " + refreshResult.expiresIn + " 秒");
+} else {
+  console.log("❌ 刷新失败: " + refreshResult.error);
+}
+
+// ---- 7. JWT 黑名单（撤销机制） ----
+console.log("\\n========== 7. JWT 黑名单（撤销机制）==========");
+
+var tokenBlacklist = {};
+
+// 将 Token 加入黑名单
+function revokeToken(token) {
+  var parts = token.split(".");
+  if (parts.length !== 3) return false;
+
+  var payload = JSON.parse(base64UrlDecode(parts[1]));
+  var jti = payload.jti;
+  var exp = payload.exp;
+
+  tokenBlacklist[jti] = {
+    revokedAt: new Date().toISOString(),
+    expiresAt: new Date(exp * 1000).toISOString(),
+  };
+
+  return true;
+}
+
+// 检查 Token 是否在黑名单中
+function isTokenRevoked(token) {
+  var parts = token.split(".");
+  if (parts.length !== 3) return true;
+
+  try {
+    var payload = JSON.parse(base64UrlDecode(parts[1]));
+    return !!tokenBlacklist[payload.jti];
+  } catch (e) {
+    return true;
+  }
+}
+
+// 带黑名单检查的验证
+function verifyTokenWithBlacklist(token, secret) {
+  if (isTokenRevoked(token)) {
+    return { valid: false, error: "Token 已被撤销（黑名单）" };
+  }
+  return verifyToken(token, secret);
+}
+
+// 演示撤销
+var testToken = generateToken({ sub: "user_999", name: "测试用户" }, JWT_SECRET, 3600);
+console.log("生成测试 Token: " + testToken.substring(0, 40) + "...");
+
+var beforeRevoke = verifyTokenWithBlacklist(testToken, JWT_SECRET);
+console.log("撤销前验证: " + (beforeRevoke.valid ? "✅ 通过" : "❌ 失败"));
+
+revokeToken(testToken);
+var afterRevoke = verifyTokenWithBlacklist(testToken, JWT_SECRET);
+console.log("撤销后验证: " + (afterRevoke.valid ? "✅ 通过" : "❌ " + afterRevoke.error));
+
+console.log("\\n当前黑名单数量: " + Object.keys(tokenBlacklist).length);
+console.log("黑名单条目到期后可以自动清理（与 Token exp 一致）");
+
+// ---- 8. JWT 安全最佳实践总结 ----
+console.log("\\n========== 8. JWT 安全总结 ==========");
+
+var jwtSecurityTips = [
+  { 类别: "密钥管理", 建议: "使用至少 256 位的随机密钥，存储在环境变量中" },
+  { 类别: "过期时间", 建议: "Access Token 不超过 1 小时，Refresh Token 不超过 30 天" },
+  { 类别: "Payload 安全", 建议: "不要在 Payload 中存储密码等敏感信息" },
+  { 类别: "传输安全", 建议: "始终通过 HTTPS 传输 JWT" },
+  { 类别: "存储方式", 建议: "Refresh Token 使用 HttpOnly Secure Cookie 存储" },
+  { 类别: "算法验证", 建议: "服务端验证时必须指定算法，拒绝 'none' 算法" },
+  { 类别: "撤销机制", 建议: "实现黑名单或版本号机制来支持 Token 撤销" },
+  { 类别: "CSRF 防护", 建议: "使用 Cookie 存储时配合 CSRF Token" },
+];
+
+console.table(jwtSecurityTips);
+
+console.log("\\n===== JWT 认证实战演示完成 =====");`,
+  },
+
+  // =========================================================
+  // 第三章：密码加密与哈希
+  // =========================================================
+  {
+    id: "node-password-hash",
+    icon: "🔑",
+    group: "认证与安全",
+    title: "密码加密与哈希",
+    content: `## 为什么密码不能明文存储？
+
+密码明文存储是安全领域最严重的错误之一。一旦数据库被泄露（内部人员、SQL 注入、备份文件泄露等），所有用户的密码将直接暴露。更糟糕的是，大多数用户会在多个网站使用相同的密码，一个网站的泄露会导致连锁反应。
+
+### 哈希 vs 加密
+
+**哈希（Hash）**：
+- 单向函数，不可逆
+- 相同输入产生相同输出
+- 固定长度输出
+- 适用于密码存储
+
+**加密（Encryption）**：
+- 双向函数，可解密
+- 需要密钥
+- 密文长度随输入变化
+- 适用于数据传输
+
+**密码存储必须使用哈希，而不是加密。** 如果使用加密，密钥泄露意味着所有密码泄露。
+
+### 为什么需要加盐（Salt）？
+
+即使使用哈希，简单的哈希函数也不够安全：
+
+**彩虹表攻击**：攻击者预先计算大量常见密码的哈希值，建立密码→哈希的映射表。通过查表可以快速反查出原始密码。
+
+\`\`\`
+// 彩虹表示例
+"123456"    → e10adc3949ba59abbe56e057f20f883e
+"password"  → 5f4dcc3b5aa765d61d8327deb882cf99
+"admin"     → 21232f297a57a5a743894a0e4a801fc3
+\`\`\`
+
+**加盐解决这个问题**：为每个密码生成一个**随机且唯一的盐值**，将盐值与密码拼接后再哈希。
+
+\`\`\`
+hash(password + salt) = 存储的哈希值
+\`\`\`
+
+即使两个用户使用相同的密码，由于盐值不同，存储的哈希值也完全不同。这使得彩虹表攻击完全失效。
+
+### 密码哈希算法对比
+
+| 算法 | 特点 | 安全性 | 推荐度 |
+| --- | --- | --- | --- |
+| MD5 | 快速，已破解 | ❌ 不安全 | 禁止使用 |
+| SHA-1 | 已被碰撞攻击 | ❌ 不安全 | 禁止使用 |
+| SHA-256 | 通用哈希，速度快 | ⚠️ 不适合密码 | 不推荐 |
+| **PBKDF2** | 迭代哈希，可配置 | ✅ 安全 | 推荐 |
+| **bcrypt** | 自动加盐，抗暴力破解 | ✅ 安全 | 强烈推荐 |
+| **scrypt** | 内存密集型，抗硬件攻击 | ✅ 最安全 | 强烈推荐 |
+| **Argon2** | 2015 年密码哈希竞赛冠军 | ✅ 最安全 | 强烈推荐 |
+
+### PBKDF2 详解
+
+PBKDF2（Password-Based Key Derivation Function 2）是 Node.js 内置支持的密码哈希算法。它通过对密码进行多次迭代哈希来增加暴力破解的难度。
+
+\`\`\`javascript
+const crypto = require('crypto');
+
+// PBKDF2 参数
+crypto.pbkdf2(password, salt, iterations, keylen, digest, callback);
+// password  : 原始密码
+// salt      : 随机盐值
+// iterations: 迭代次数（推荐 100000+）
+// keylen    : 输出密钥长度（推荐 64 字节）
+// digest    : 哈希算法（推荐 sha512）
+\`\`\`
+
+### 迭代次数的重要性
+
+迭代次数决定了暴力破解的计算成本。随着硬件性能的提升，推荐值也在不断增加：
+
+| 年份 | 推荐迭代次数 |
+| --- | --- |
+| 2015 | 10,000 |
+| 2018 | 50,000 |
+| 2020 | 100,000 |
+| 2023 | 210,000 |
+| 2025 | 600,000 |
+
+**原则**：迭代次数应使哈希操作在目标服务器上耗时约 100ms。不要太快（容易被暴力破解），也不要太慢（影响用户体验）。
+
+### 密码强度验证
+
+一个好的密码策略应该要求：
+
+1. **最小长度**：至少 8 位，推荐 12 位以上
+2. **字符多样性**：包含大小写字母、数字、特殊字符
+3. **禁止常见密码**：如 "123456"、"password"、"qwerty" 等
+4. **禁止个人信息**：不允许包含用户名、邮箱等
+5. **密码历史**：不允许重复使用最近 N 次密码
+
+### 完整的密码管理流程
+
+**注册流程**：
+1. 验证密码强度
+2. 生成随机盐值（16+ 字节）
+3. 使用 PBKDF2/bcrypt 对密码+盐值进行哈希
+4. 存储：哈希值 + 盐值 + 迭代次数 + 算法标识
+
+**登录流程**：
+1. 根据用户名查询存储的盐值和哈希值
+2. 使用相同的盐值和参数对输入的密码进行哈希
+3. 比较两个哈希值（使用时间恒定比较，防止时序攻击）
+
+**密码重置流程**：
+1. 生成一次性重置令牌（带过期时间）
+2. 通过邮箱/短信发送重置链接
+3. 用户点击链接后设置新密码
+4. 令牌使用后立即失效`,
+    code: `// ============================================================
+// 第三章代码演示：密码加密与哈希
+// 使用 crypto.pbkdf2 实现密码哈希、验证和盐值管理
+// ============================================================
+
+var crypto = require("crypto");
+
+// ---- 1. 哈希算法对比 ----
+console.log("========== 1. 哈希算法对比 ==========");
+
+function hashWithAlgorithm(data, algorithm) {
+  var hash = crypto.createHash(algorithm);
+  hash.update(data);
+  return hash.digest("hex");
+}
+
+var testPassword = "MyP@ssw0rd";
+var algorithms = ["md5", "sha1", "sha256", "sha512"];
+
+console.log("密码: " + testPassword);
+console.log("\\n不同算法的哈希结果:");
+algorithms.forEach(function (alg) {
+  var result = hashWithAlgorithm(testPassword, alg);
+  console.log("  " + alg.toUpperCase() + ": " + result.substring(0, 32) + "...");
+  console.log("    长度: " + result.length + " 字符 (" + result.length / 2 + " 字节)");
+});
+
+console.log("\\n⚠️  MD5 和 SHA1 已被破解，禁止用于密码存储!");
+console.log("⚠️  SHA256 虽快但无加盐，不适合直接存储密码!");
+
+// ---- 2. 盐值（Salt）的重要性 ----
+console.log("\\n========== 2. 盐值（Salt）的重要性 ==========");
+
+// 生成随机盐值
+function generateSalt(length) {
+  return crypto.randomBytes(length || 16).toString("hex");
+}
+
+// 无盐哈希（不安全）
+function hashWithoutSalt(password) {
+  return crypto.createHash("sha256").update(password).digest("hex");
+}
+
+// 有盐哈希
+function hashWithSalt(password, salt) {
+  return crypto.createHash("sha256").update(salt + password).digest("hex");
+}
+
+// 演示：两个用户使用相同密码
+var samePassword = "password123";
+var salt1 = generateSalt();
+var salt2 = generateSalt();
+
+console.log("两个用户都使用相同的密码: '" + samePassword + "'");
+console.log("\\n无盐哈希（不安全）:");
+var hash1 = hashWithoutSalt(samePassword);
+var hash2 = hashWithoutSalt(samePassword);
+console.log("  用户 A 哈希: " + hash1.substring(0, 32) + "...");
+console.log("  用户 B 哈希: " + hash2.substring(0, 32) + "...");
+console.log("  → 相同！攻击者知道这是常见密码");
+
+console.log("\\n有盐哈希（安全）:");
+var hash3 = hashWithSalt(samePassword, salt1);
+var hash4 = hashWithSalt(samePassword, salt2);
+console.log("  用户 A 盐值: " + salt1.substring(0, 20) + "...");
+console.log("  用户 A 哈希: " + hash3.substring(0, 32) + "...");
+console.log("  用户 B 盐值: " + salt2.substring(0, 20) + "...");
+console.log("  用户 B 哈希: " + hash4.substring(0, 32) + "...");
+console.log("  → 完全不同！即使密码相同，哈希值也不同");
+
+// ---- 3. PBKDF2 密码哈希实现 ----
+console.log("\\n========== 3. PBKDF2 密码哈希 ==========");
+
+// PBKDF2 配置参数
+var PBKDF2_CONFIG = {
+  saltLength: 16,       // 盐值长度（字节）
+  iterations: 100000,   // 迭代次数
+  keyLength: 64,        // 输出密钥长度（字节）
+  digest: "sha512",     // 哈希算法
+};
+
+// 密码哈希（异步版本）
+function hashPassword(password) {
+  return new Promise(function (resolve, reject) {
+    var salt = crypto.randomBytes(PBKDF2_CONFIG.saltLength);
+
+    crypto.pbkdf2(
+      password,
+      salt,
+      PBKDF2_CONFIG.iterations,
+      PBKDF2_CONFIG.keyLength,
+      PBKDF2_CONFIG.digest,
+      function (err, derivedKey) {
+        if (err) return reject(err);
+
+        // 存储格式：iterations$salt$hash（均为 hex 编码）
+        var stored = [
+          PBKDF2_CONFIG.iterations,
+          salt.toString("hex"),
+          derivedKey.toString("hex"),
+        ].join("$");
+
+        resolve({
+          hash: stored,
+          salt: salt.toString("hex"),
+          iterations: PBKDF2_CONFIG.iterations,
         });
-      } else if (msg.type === "ping") {
-        child._sendToParent({ id: msg.id, type: "pong", timestamp: Date.now() });
       }
-    });
+    );
+  });
+}
 
-    return child;
+// 密码验证
+function verifyPassword(password, storedHash) {
+  return new Promise(function (resolve, reject) {
+    var parts = storedHash.split("$");
+    if (parts.length !== 3) {
+      return resolve({ valid: false, error: "存储格式错误" });
+    }
+
+    var iterations = parseInt(parts[0], 10);
+    var salt = Buffer.from(parts[1], "hex");
+    var originalHash = parts[2];
+
+    crypto.pbkdf2(
+      password,
+      salt,
+      iterations,
+      PBKDF2_CONFIG.keyLength,
+      PBKDF2_CONFIG.digest,
+      function (err, derivedKey) {
+        if (err) return reject(err);
+
+        var newHash = derivedKey.toString("hex");
+
+        // 时间恒定比较（防止时序攻击）
+        var valid = crypto.timingSafeEqual(
+          Buffer.from(originalHash, "hex"),
+          Buffer.from(newHash, "hex")
+        );
+
+        resolve({ valid: valid });
+      }
+    );
+  });
+}
+
+console.log("PBKDF2 配置:");
+console.log("  盐值长度: " + PBKDF2_CONFIG.saltLength + " 字节");
+console.log("  迭代次数: " + PBKDF2_CONFIG.iterations);
+console.log("  密钥长度: " + PBKDF2_CONFIG.keyLength + " 字节");
+console.log("  哈希算法: " + PBKDF2_CONFIG.digest);
+
+// ---- 4. 密码注册与登录模拟 ----
+console.log("\\n========== 4. 密码注册与登录模拟 ==========");
+
+// 模拟用户数据库
+var userDb = {};
+
+// 注册
+function register(username, password) {
+  console.log("\\n--- 注册用户: " + username + " ---");
+  console.log("  原始密码: " + password);
+
+  return hashPassword(password).then(function (result) {
+    userDb[username] = {
+      username: username,
+      passwordHash: result.hash,
+      createdAt: new Date().toISOString(),
+    };
+    console.log("  存储的哈希: " + result.hash.substring(0, 40) + "...");
+    console.log("  ✅ 注册成功!");
+    return result;
+  });
+}
+
+// 登录
+function login(username, password) {
+  console.log("\\n--- 登录尝试: " + username + " ---");
+
+  var user = userDb[username];
+  if (!user) {
+    console.log("  ❌ 用户不存在");
+    return Promise.resolve({ success: false, reason: "用户不存在" });
   }
 
-  // 模拟父进程
-  const forkChild = simulateFork("./worker.js");
-
-  // 父进程监听消息
-  forkChild.on("message", (msg) => {
-    console.log("  [父进程收到回复]", JSON.stringify(msg));
+  return verifyPassword(password, user.passwordHash).then(function (result) {
+    if (result.valid) {
+      console.log("  ✅ 登录成功! 密码验证通过");
+      return { success: true };
+    } else {
+      console.log("  ❌ 密码错误");
+      return { success: false, reason: "密码错误" };
+    }
   });
+}
 
-  // 父进程发送任务
-  setTimeout(() => {
-    console.log("\\n  父进程发送计算任务:");
-    forkChild.send({ id: 1, type: "compute", data: [1, 2, 3, 4, 5] });
-  }, 20);
+// 执行注册和登录流程
+register("alice", "SecureP@ss123")
+  .then(function () {
+    return register("bob", "SecureP@ss123"); // 相同密码，但哈希不同
+  })
+  .then(function () {
+    return login("alice", "SecureP@ss123"); // 正确密码
+  })
+  .then(function () {
+    return login("alice", "WrongPassword"); // 错误密码
+  })
+  .then(function () {
+    return login("bob", "SecureP@ss123"); // Bob 的正确密码
+  })
+  .then(function () {
+    // 验证相同密码产生不同哈希
+    console.log("\\n========== 5. 相同密码的哈希对比 ==========");
+    console.log("Alice 密码: SecureP@ss123");
+    console.log("Bob   密码: SecureP@ss123");
+    console.log("\\nAlice 哈希: " + userDb["alice"].passwordHash.substring(0, 50) + "...");
+    console.log("Bob   哈希: " + userDb["bob"].passwordHash.substring(0, 50) + "...");
+    var aliceHash = userDb["alice"].passwordHash.split("$")[2];
+    var bobHash = userDb["bob"].passwordHash.split("$")[2];
+    console.log("\\nAlice 哈希值: " + aliceHash.substring(0, 40) + "...");
+    console.log("Bob   哈希值: " + bobHash.substring(0, 40) + "...");
+    console.log("两次哈希相同? " + (aliceHash === bobHash ? "是" : "否（不同盐值导致不同哈希）"));
+  })
+  .then(function () {
+    // ---- 6. 时序攻击防护 ----
+    console.log("\\n========== 6. 时序攻击防护 ==========");
 
-  setTimeout(() => {
-    console.log("\\n  父进程发送 ping:");
-    forkChild.send({ id: 2, type: "ping" });
-  }, 40);
+    console.log("时序攻击原理:");
+    console.log("  使用 === 比较字符串时，逐字符比较，遇到不匹配立即返回");
+    console.log("  攻击者可以通过测量响应时间逐位猜测正确的哈希值");
+    console.log("");
+    console.log("防护方案: crypto.timingSafeEqual()");
+    console.log("  无论是否匹配，比较时间始终相同");
+    console.log("  要求两个 Buffer 长度相同");
 
-  setTimeout(() => {
-    forkChild.kill("SIGTERM");
-  }, 80);
-}, 300);
+    // 演示 timingSafeEqual
+    var buf1 = Buffer.from(aliceHash, "hex");
+    var buf2 = Buffer.from(aliceHash, "hex");
+    var buf3 = Buffer.from(bobHash, "hex");
 
-// ---- 6. stdio 管道配置模拟 ----
-setTimeout(() => {
-  console.log("\\n===== 6. stdio 管道配置模拟 =====");
+    console.log("\\n比较演示:");
+    console.log("  相同哈希 timingSafeEqual: " + crypto.timingSafeEqual(buf1, buf2));
+    console.log("  不同哈希 timingSafeEqual: " + crypto.timingSafeEqual(buf1, buf3));
 
-  const stdioConfigs = [
-    {
-      config: "['pipe', 'pipe', 'pipe']",
-      desc: "默认配置：stdin/stdout/stderr 都通过管道传输",
-      effects: "父进程可以捕获子进程的输出，也可以向子进程输入数据",
-    },
-    {
-      config: "'inherit'",
-      desc: "子进程直接使用父进程的 stdio",
-      effects: "子进程的 console.log 直接显示在父进程的终端中",
-    },
-    {
-      config: "['pipe', 'pipe', 'ignore']",
-      desc: "忽略 stderr",
-      effects: "stderr 数据被丢弃，不会触发 data 事件",
-    },
-    {
-      config: "['ignore', 'ignore', 'ignore', 'ipc']",
-      desc: "只保留 IPC 通道（fork 常用）",
-      effects: "子进程的 stdio 全部忽略，仅通过 IPC 通信",
-    },
-    {
-      config: "['pipe', fs.openSync('out.log'), fs.openSync('err.log')]",
-      desc: "stdout 写入文件，stderr 写入另一个文件",
-      effects: "适合长时间运行的子进程，输出持久化到文件",
-    },
-  ];
+    // ---- 7. 迭代次数与性能 ----
+    console.log("\\n========== 7. 迭代次数与性能测试 ==========");
 
-  console.table(stdioConfigs.map((c) => ({
-    配置: c.config,
-    说明: c.desc,
-    效果: c.effects.slice(0, 40) + "...",
-  })));
-}, 400);
+    var testPassword2 = "TestPassword123";
+    var testSalt = crypto.randomBytes(PBKDF2_CONFIG.saltLength);
 
-// ---- 7. 子进程生命周期模拟 ----
-setTimeout(() => {
-  console.log("\\n===== 7. 子进程生命周期管理 =====");
+    var iterationTests = [1000, 10000, 50000, 100000];
 
-  const lifeChild = new SimulatedChildProcess({ ipc: true });
-  console.log("子进程创建，PID:", lifeChild.pid);
+    // 同步版本的性能测试（简化演示）
+    console.log("PBKDF2 迭代次数对性能的影响:");
+    console.log("（使用同步版本 pbkdf2Sync 进行测量）");
 
-  // 监听所有生命周期事件
-  lifeChild.on("spawn", () => console.log("  [事件] spawn - 子进程启动"));
-  lifeChild.on("error", (err) => console.log("  [事件] error -", err.message));
-  lifeChild.on("exit", (code, signal) =>
-    console.log("  [事件] exit - code:", code, "signal:", signal)
-  );
-  lifeChild.on("close", (code, signal) =>
-    console.log("  [事件] close - code:", code, "signal:", signal)
-  );
-  lifeChild.on("disconnect", () =>
-    console.log("  [事件] disconnect - IPC断开")
-  );
-
-  // 模拟正常生命周期
-  console.log("\\n--- 正常退出流程 ---");
-  setTimeout(() => {
-    lifeChild.emit("spawn");
-    setTimeout(() => {
-      lifeChild.exitCode = 0;
-      lifeChild.emit("exit", 0, null);
-      lifeChild.emit("close", 0, null);
-      console.log("  退出码 0 表示正常退出");
-    }, 20);
-  }, 10);
-
-  // 模拟异常退出
-  setTimeout(() => {
-    console.log("\\n--- 异常退出流程 ---");
-    const errChild = new SimulatedChildProcess();
-    errChild.on("exit", (code, signal) => {
-      console.log("  [exit] 异常退出 code:", code, "signal:", signal);
-      console.log("  退出码非 0 表示错误，signal 非 null 表示被信号终止");
+    iterationTests.forEach(function (iters) {
+      var start = process.hrtime.bigint();
+      crypto.pbkdf2Sync(
+        testPassword2,
+        testSalt,
+        iters,
+        PBKDF2_CONFIG.keyLength,
+        PBKDF2_CONFIG.digest
+      );
+      var end = process.hrtime.bigint();
+      var ms = Number(end - start) / 1000000;
+      console.log("  迭代 " + iters + " 次: " + ms.toFixed(2) + " ms");
     });
-    errChild.kill("SIGTERM");
-  }, 80);
-}, 500);
 
-// ---- 8. 退出码含义表 ----
-setTimeout(() => {
-  console.log("\\n===== 8. 退出码含义 =====");
-  const exitCodes = [
-    { code: 0, meaning: "正常退出", example: "程序执行完毕" },
-    { code: 1, meaning: "一般性错误", example: "程序逻辑错误" },
-    { code: 2, meaning: "误用 shell 命令", example: "bash 语法错误" },
-    { code: 126, meaning: "命令无法执行", example: "权限不足" },
-    { code: 127, meaning: "命令未找到", example: "command not found" },
-    { code: 128, meaning: "无效的退出参数", example: "exit 3.14" },
-    { code: "128+N", meaning: "被信号 N 终止", example: "130 = 128+2 = SIGINT" },
-    { code: "null", meaning: "被信号杀死", example: "child.kill('SIGKILL')" },
-  ];
-  console.table(exitCodes);
-}, 600);
+    console.log("\\n推荐: 迭代次数应使单次哈希耗时约 100ms");
+    console.log("  当前配置: " + PBKDF2_CONFIG.iterations + " 次迭代");
 
-// ---- 9. 安全：shell 注入风险对比 ----
-setTimeout(() => {
-  console.log("\\n===== 9. 命令注入安全风险 =====");
+    // ---- 8. 密码安全最佳实践 ----
+    console.log("\\n========== 8. 密码安全最佳实践总结 ==========");
 
-  const userInput = "; rm -rf /";
+    var passwordBestPractices = [
+      { 原则: "永远不存储明文密码", 说明: "使用 PBKDF2/bcrypt/scrypt/Argon2 进行哈希" },
+      { 原则: "每个密码使用唯一的盐值", 说明: "至少 16 字节的随机盐值" },
+      { 原则: "足够的迭代次数", 说明: "推荐 100,000+ 次迭代，使单次哈希约 100ms" },
+      { 原则: "时间恒定比较", 说明: "使用 crypto.timingSafeEqual 防止时序攻击" },
+      { 原则: "密码强度验证", 说明: "要求最低长度、字符多样性，拒绝常见密码" },
+      { 原则: "哈希存储格式", 说明: "存储 iterations$salt$hash，便于将来升级参数" },
+      { 原则: "安全传输", 说明: "通过 HTTPS 传输密码，不要在 URL 中传递" },
+      { 原则: "登录限制", 说明: "限制登录尝试次数，防止暴力破解" },
+    ];
 
-  console.log("用户输入:", JSON.stringify(userInput));
-  console.log("");
+    console.table(passwordBestPractices);
 
-  // ❌ 危险方式（exec）
-  console.log("❌ exec 方式（危险）:");
-  const dangerousCmd = "cat " + userInput;
-  console.log("  拼接后的命令:", dangerousCmd);
-  console.log("  实际会执行: cat ; rm -rf /");
-  console.log("  （先执行 cat（无参数），然后执行 rm -rf /）");
-  console.log("");
-
-  // ✅ 安全方式（spawn）
-  console.log("✅ spawn 方式（安全）:");
-  console.log("  spawn('cat', ['" + userInput + "'])");
-  console.log("  cat 会尝试打开名为 '; rm -rf /' 的文件");
-  console.log("  特殊字符被当作文件名的一部分，不会作为命令执行");
-  console.log("");
-  console.log("安全建议：");
-  console.log("  1. 优先使用 spawn/execFile");
-  console.log("  2. 避免 exec 处理用户输入");
-  console.log("  3. 对参数进行白名单验证");
-  console.log("  4. 设置 shell: false 减少攻击面");
-}, 700);
-
-// ---- 10. 综合总结 ----
-setTimeout(() => {
-  console.log("\\n===== 10. 四种方式选择指南 =====");
-  console.log("┌──────────┬──────────────────────────────┐");
-  console.log("│ spawn    │ 通用方案，流式输出，大输出量  │");
-  console.log("│ exec     │ 短命令，小输出，需要 shell    │");
-  console.log("│ execFile │ 执行已知程序，安全性最高      │");
-  console.log("│ fork     │ Node.js 子进程，IPC 通信      │");
-  console.log("├──────────┴──────────────────────────────┤");
-  console.log("│ 关键事件：error → exit → close          │");
-  console.log("│ IPC 通信：send() + message 事件          │");
-  console.log("│ 生命周期：kill() + 信号 + 退出码         │");
-  console.log("└─────────────────────────────────────────┘");
-}, 800);`,
+    console.log("\\n===== 密码加密与哈希演示完成 =====");
+  })
+  .catch(function (err) {
+    console.error("错误:", err);
+  });`,
   },
 
   // =========================================================
-  // 第三章：Net 模块 (TCP)
+  // 第四章：安全头与防护
   // =========================================================
   {
-    id: "node-net",
-    title: "Net 模块 (TCP)",
-    icon: "🌐",
-    group: "核心模块补充",
-    content: `## Net 模块：TCP 网络编程
+    id: "node-helmet",
+    icon: "⛑️",
+    group: "认证与安全",
+    title: "安全头与防护",
+    content: `## HTTP 安全头的重要性
 
-\`net\` 模块是 Node.js 网络编程的基石。它提供了创建 TCP 服务器和客户端的异步网络 API。HTTP 模块、HTTPS 模块、甚至很多数据库驱动，底层都是基于 net 模块构建的。
+HTTP 安全头是 Web 应用安全的**第一道防线**。它们通过 HTTP 响应头告诉浏览器启用各种安全机制，从源头上阻止大量常见攻击。正确配置安全头可以防御 XSS、点击劫持、MIME 嗅探、中间人攻击等多种威胁。
 
----
+### 核心安全头详解
 
-### 一、TCP 协议基础
+#### 1. Content-Security-Policy（CSP）
 
-#### 1.1 什么是 TCP？
+CSP 是最强大的安全头之一。它通过白名单机制控制浏览器可以加载和执行哪些资源。
 
-TCP（Transmission Control Protocol，传输控制协议）是互联网协议栈中**传输层**的核心协议。它提供：
+\`\`\`
+Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-abc123'; style-src 'self' 'unsafe-inline'; img-src * data:;
+\`\`\`
 
-| 特性 | 说明 |
-| --- | --- |
-| **面向连接** | 通信前需要三次握手建立连接 |
-| **可靠传输** | 保证数据按序到达、不丢失、不重复 |
-| **全双工** | 双方可以同时发送和接收数据 |
-| **流式传输** | 数据是连续的字节流，没有消息边界 |
-| **流量控制** | 通过滑动窗口机制防止发送方过快 |
-| **拥塞控制** | 自动调整发送速率适应网络状况 |
+**CSP 核心指令**：
 
-#### 1.2 TCP vs UDP 对比
-
-| 特性 | TCP | UDP |
+| 指令 | 控制范围 | 示例 |
 | --- | --- | --- |
-| 连接 | 面向连接（三次握手） | 无连接 |
-| 可靠性 | 可靠（确认+重传） | 不可靠（发送即忘） |
-| 顺序 | 保证有序 | 不保证 |
-| 速度 | 相对较慢 | 快 |
-| 适用场景 | HTTP、文件传输、数据库 | 视频直播、DNS、游戏 |
-| 头部开销 | 20 字节 | 8 字节 |
+| \`default-src\` | 默认策略（兜底） | \`'self'\` |
+| \`script-src\` | JavaScript 来源 | \`'self' cdn.example.com\` |
+| \`style-src\` | CSS 来源 | \`'self' 'unsafe-inline'\` |
+| \`img-src\` | 图片来源 | \`* data: blob:\` |
+| \`font-src\` | 字体来源 | \`'self' fonts.gstatic.com\` |
+| \`connect-src\` | XHR/WebSocket/EventSource | \`'self' api.example.com\` |
+| \`frame-src\` | iframe 来源 | \`'none'\` |
+| \`media-src\` | 音视频来源 | \`'self'\` |
+| \`object-src\` | 插件来源 | \`'none'\` |
+| \`form-action\` | 表单提交目标 | \`'self'\` |
+| \`base-uri\` | base 标签限制 | \`'self'\` |
+| \`frame-ancestors\` | 页面嵌入限制 | \`'none'\` 或 \`'self'\` |
 
-#### 1.3 TCP 三次握手
+**CSP 特殊值**：
+- \`'self'\`：当前域名
+- \`'none'\`：禁止所有
+- \`'unsafe-inline'\`：允许内联（不推荐，会降低安全性）
+- \`'unsafe-eval'\`：允许 eval()（不推荐）
+- \`'nonce-随机值'\`：一次性随机数，允许特定内联脚本
+- \`'sha256-哈希值'\`：允许特定哈希值的内联脚本
+
+**CSP 报告模式**：可以先使用 \`Content-Security-Policy-Report-Only\` 头观察违规情况，调整策略后再强制启用。
+
+#### 2. X-Frame-Options
+
+防止点击劫持（Clickjacking）——攻击者将你的页面嵌入 iframe 并覆盖透明层。
 
 \`\`\`
-客户端                          服务器
-  │                               │
-  │──── SYN (seq=x) ────────────▶│  第1次：客户端请求建立连接
-  │                               │
-  │◀─── SYN+ACK (seq=y,ack=x+1) ─│  第2次：服务器确认并同意
-  │                               │
-  │──── ACK (ack=y+1) ──────────▶│  第3次：客户端确认
-  │                               │
-  │◀══════ 连接建立，开始通信 ════▶│
+X-Frame-Options: DENY        # 完全禁止嵌入
+X-Frame-Options: SAMEORIGIN  # 允许同源页面嵌入
+X-Frame-Options: ALLOW-FROM https://trusted.com  # 允许指定域名
 \`\`\`
 
----
+**注意**：CSP 的 \`frame-ancestors\` 指令可以替代此头，且更灵活。
 
-### 二、net.createServer —— 创建 TCP 服务器
+#### 3. X-Content-Type-Options
 
-#### 2.1 基本用法
+禁止浏览器 MIME 类型嗅探，强制按服务器声明的 Content-Type 解析资源。
 
-\`\`\`javascript
-const net = require('net');
-
-const server = net.createServer((socket) => {
-  // socket 是 Duplex Stream（可读可写）
-  // 每个新连接都会触发这个回调
-
-  console.log('客户端已连接:', socket.remoteAddress, socket.remotePort);
-
-  // 接收数据
-  socket.on('data', (data) => {
-    console.log('收到:', data.toString());
-    // 回复客户端
-    socket.write('服务器已收到: ' + data.toString());
-  });
-
-  // 连接关闭
-  socket.on('end', () => {
-    console.log('客户端断开连接');
-  });
-
-  // 错误处理
-  socket.on('error', (err) => {
-    console.error('Socket 错误:', err.message);
-  });
-});
-
-server.listen(3000, () => {
-  console.log('TCP 服务器监听在 3000 端口');
-});
+\`\`\`
+X-Content-Type-Options: nosniff
 \`\`\`
 
-#### 2.2 服务器事件
+阻止攻击者将恶意脚本伪装成图片上传（MIME 混淆攻击）。
 
-| 事件 | 触发时机 |
+#### 4. Strict-Transport-Security（HSTS）
+
+强制浏览器只能通过 HTTPS 访问网站，防止 SSL 剥离攻击。
+
+\`\`\`
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+\`\`\`
+
+- \`max-age\`：有效期（秒），推荐至少 1 年
+- \`includeSubDomains\`：对子域名也生效
+- \`preload\`：申请加入浏览器 HSTS 预加载列表
+
+#### 5. Referrer-Policy
+
+控制 Referer 请求头中发送的信息量：
+
+| 值 | 行为 |
 | --- | --- |
-| \`'listening'\` | 服务器开始监听 |
-| \`'connection'\` | 新的客户端连接建立 |
-| \`'close'\` | 服务器关闭 |
-| \`'error'\` | 服务器出错（如端口被占用） |
+| \`no-referrer\` | 完全不发送 Referer |
+| \`no-referrer-when-downgrade\` | HTTPS→HTTP 时不发送（默认） |
+| \`origin\` | 只发送源（域名），不发送完整路径 |
+| \`strict-origin\` | HTTPS→HTTP 不发送，否则只发送源 |
+| \`strict-origin-when-cross-origin\` | 跨域只发送源，同源发送完整 URL（推荐） |
 
----
+#### 6. Permissions-Policy（原 Feature-Policy）
 
-### 三、net.createConnection —— 创建 TCP 客户端
+控制浏览器 API 的使用权限：
 
-\`\`\`javascript
-const net = require('net');
-
-const client = net.createConnection({ port: 3000, host: 'localhost' }, () => {
-  console.log('已连接到服务器');
-  client.write('Hello, Server!');
-});
-
-client.on('data', (data) => {
-  console.log('服务器回复:', data.toString());
-  client.end(); // 关闭连接
-});
-
-client.on('end', () => {
-  console.log('连接已断开');
-});
-
-client.on('error', (err) => {
-  console.error('连接错误:', err.message);
-});
+\`\`\`
+Permissions-Policy: camera=(), microphone=(), geolocation=(self), payment=()
 \`\`\`
 
----
+#### 7. Cross-Origin-* 系列
 
-### 四、Socket 事件详解
-
-net.Socket 继承自 stream.Duplex，因此它既是可读流又是可写流。
-
-#### 4.1 核心事件
-
-| 事件 | 触发时机 | 说明 |
-| --- | --- | --- |
-| \`'data'\` | 收到数据 | 参数是 Buffer，可能包含粘包数据 |
-| \`'end'\` | 对方发送 FIN 包 | 半关闭：对方不再发送数据，但本端可能还能发送 |
-| \`'close'\` | Socket 完全关闭 | 双向关闭 |
-| \`'connect'\` | 连接建立成功 | 仅客户端 socket 触发 |
-| \`'drain'\` | 写缓冲区排空 | 当 write() 返回 false 后，缓冲区排空时触发 |
-| \`'error'\` | 发生错误 | 必须监听，否则会抛出未捕获异常 |
-| \`'timeout'\` | 超时 | 通过 socket.setTimeout() 设置 |
-| \`'lookup'\` | DNS 解析完成 | 连接建立前的 DNS 查询 |
-
-#### 4.2 Socket 属性
-
-| 属性 | 说明 |
+| 头 | 说明 |
 | --- | --- |
-| \`socket.remoteAddress\` | 远端 IP 地址 |
-| \`socket.remotePort\` | 远端端口号 |
-| \`socket.localAddress\` | 本地 IP 地址 |
-| \`socket.localPort\` | 本地端口号 |
-| \`socket.remoteFamily\` | 远端地址族（IPv4/IPv6） |
-| \`socket.bytesRead\` | 接收的字节数 |
-| \`socket.bytesWritten\` | 发送的字节数 |
-| \`socket.readyState\` | 连接状态（'opening'/'open'/'readOnly'/'writeOnly'） |
+| \`Cross-Origin-Resource-Policy\` | 控制谁可以加载资源 |
+| \`Cross-Origin-Opener-Policy\` | 控制顶级浏览上下文组 |
+| \`Cross-Origin-Embedder-Policy\` | 控制跨域嵌入 |
 
----
+### 安全头配置原则
 
-### 五、半双工 vs 全双工通信
+1. **从严格开始，逐步放宽**：先设置最严格的策略，根据实际需求调整
+2. **使用 Report-Only 模式测试**：CSP 可以先观察再强制执行
+3. **合理设置缓存**：安全头可以通过 \`Cache-Control\` 影响缓存
+4. **监控违规报告**：CSP 可以配置报告端点，收集违规信息
+5. **定期审查**：项目变更时检查安全头是否仍然合适`,
+    code: `// ============================================================
+// 第四章代码演示：安全头与防护
+// 实现一个安全头中间件，设置各种安全响应头
+// ============================================================
 
-#### 5.1 概念对比
+// ---- 1. 安全头配置对象 ----
+console.log("========== 1. 安全头配置 ==========");
 
-| 模式 | 说明 | 类比 |
-| --- | --- | --- |
-| **单工** | 单向通信 | 广播电台 |
-| **半双工** | 双向通信，但同一时间只能一个方向 | 对讲机 |
-| **全双工** | 双向同时通信 | 电话 |
+var securityHeadersConfig = {
+  // Content-Security-Policy：最核心的安全头
+  csp: {
+    "default-src": ["'self'"],
+    "script-src": ["'self'", "'nonce-random123'"],
+    "style-src": ["'self'", "'unsafe-inline'"],
+    "img-src": ["'self'", "data:", "https:"],
+    "font-src": ["'self'", "https://fonts.gstatic.com"],
+    "connect-src": ["'self'", "https://api.example.com"],
+    "frame-src": ["'none'"],
+    "object-src": ["'none'"],
+    "base-uri": ["'self'"],
+    "form-action": ["'self'"],
+    "frame-ancestors": ["'none'"],
+  },
 
-TCP 是**全双工**的，双方可以同时发送和接收数据。但 TCP 也支持**半关闭**：通过 \`socket.end()\` 关闭本端的写端，对方会收到 \`'end'\` 事件，但本端仍可以接收数据。
+  // 其他安全头
+  headers: {
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
+    "X-Permitted-Cross-Domain-Policies": "none",
+    "Cross-Origin-Resource-Policy": "same-origin",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "X-DNS-Prefetch-Control": "off",
+    "X-Download-Options": "noopen",
+    "X-XSS-Protection": "0", // 已被 CSP 取代，设为 0 禁用旧版保护
+  },
+};
 
-\`\`\`javascript
-// 半关闭示例
-socket.end('最后一段数据');  // 发送完最后的数据后关闭写端
-// 此时 socket 仍可接收数据
-socket.on('data', (data) => {
-  // 还能接收对方发来的数据
-});
-\`\`\`
+console.log("安全头配置已加载");
+console.log("  CSP 指令数: " + Object.keys(securityHeadersConfig.csp).length);
+console.log("  其他安全头: " + Object.keys(securityHeadersConfig.headers).length);
 
----
+// ---- 2. CSP 生成器 ----
+console.log("\\n========== 2. CSP 策略生成 ==========");
 
-### 六、Buffer 收发与编码
-
-TCP 传输的是**字节流**，Node.js 中使用 Buffer 表示：
-
-\`\`\`javascript
-socket.on('data', (buffer) => {
-  // buffer 是 Buffer 对象
-  console.log('原始字节:', buffer);
-  console.log('十六进制:', buffer.toString('hex'));
-  console.log('UTF-8 文本:', buffer.toString('utf8'));
-});
-
-// 发送文本
-socket.write('Hello', 'utf8');
-
-// 发送二进制
-socket.write(Buffer.from([0x01, 0x02, 0x03]));
-\`\`\`
-
----
-
-### 七、TCP 粘包问题与处理（重点）
-
-#### 7.1 什么是粘包？
-
-TCP 是**流式协议**，没有消息边界。当你连续发送多个数据包时，TCP 可能把它们合并（粘包）或拆分（拆包）：
-
-\`\`\`
-发送方：  write("ABC")  write("DEF")  write("GHI")
-接收方可能收到：
-  情况1: "ABCDEFGHI"        （全部粘在一起）
-  情况2: "ABC" "DEF" "GHI" （恰好分开，但不可靠）
-  情况3: "ABCD" "EFGHI"    （部分粘包）
-  情况4: "AB" "CDEFG" "HI" （各种拆分+粘合）
-\`\`\`
-
-#### 7.2 为什么会有粘包？
-
-1. **Nagle 算法**：TCP 默认启用的优化算法，会把小的数据包合并后再发送
-2. **发送缓冲区**：TCP 发送缓冲区满了才发送，可能把多个 write 的数据合并
-3. **接收缓冲区**：接收方读取速度可能和发送速度不一致
-
-#### 7.3 解决方案一：分隔符协议
-
-用特殊字符（如 \`\\n\`）分割消息：
-
-\`\`\`javascript
-let buffer = '';
-
-socket.on('data', (chunk) => {
-  buffer += chunk.toString();
-  let newlineIndex;
-  while ((newlineIndex = buffer.indexOf('\\n')) !== -1) {
-    const message = buffer.slice(0, newlineIndex);
-    buffer = buffer.slice(newlineIndex + 1);
-    console.log('完整消息:', message);
+function buildCSPPolicy(cspConfig) {
+  var policies = [];
+  for (var directive in cspConfig) {
+    var sources = cspConfig[directive];
+    policies.push(directive + " " + sources.join(" "));
   }
-});
-\`\`\`
-
-**优点**：简单直观，适合文本协议  
-**缺点**：分隔符不能出现在消息内容中（需要转义）；二进制数据不适用
-
-#### 7.4 解决方案二：长度前缀协议
-
-在每条消息前加上固定长度的头部，表明消息体的长度：
-
-\`\`\`javascript
-// 发送：4字节长度前缀 + 消息体
-function sendMessage(socket, message) {
-  const body = Buffer.from(message, 'utf8');
-  const header = Buffer.alloc(4);
-  header.writeUInt32BE(body.length, 0);  // 大端序写入长度
-  socket.write(Buffer.concat([header, body]));
+  return policies.join("; ");
 }
 
-// 接收：先读4字节头部，再读对应长度的消息体
-let buffer = Buffer.alloc(0);
+var cspPolicy = buildCSPPolicy(securityHeadersConfig.csp);
+console.log("生成的 CSP 策略:");
+console.log(cspPolicy);
 
-socket.on('data', (chunk) => {
-  buffer = Buffer.concat([buffer, chunk]);
+// 分析 CSP 策略
+console.log("\\nCSP 策略分析:");
+var cspAnalysis = [
+  { 指令: "default-src", 值: "'self'", 含义: "默认只允许同源资源" },
+  { 指令: "script-src", 值: "'self' + nonce", 含义: "禁止内联脚本，只允许带 nonce 的脚本" },
+  { 指令: "img-src", 值: "'self' data: https:", 含义: "允许同源图片、data URI 和 HTTPS 图片" },
+  { 指令: "frame-src", 值: "'none'", 含义: "完全禁止 iframe 嵌入外部内容" },
+  { 指令: "object-src", 值: "'none'", 含义: "禁止 Flash 等插件" },
+  { 指令: "frame-ancestors", 值: "'none'", 含义: "禁止被其他页面嵌入（防点击劫持）" },
+  { 指令: "form-action", 值: "'self'", 含义: "表单只能提交到同源地址" },
+];
+console.table(cspAnalysis);
 
-  while (buffer.length >= 4) {
-    const bodyLength = buffer.readUInt32BE(0);
-    if (buffer.length < 4 + bodyLength) break; // 数据不完整
+// ---- 3. 安全头中间件实现 ----
+console.log("\\n========== 3. 安全头中间件实现 ==========");
 
-    const body = buffer.slice(4, 4 + bodyLength);
-    buffer = buffer.slice(4 + bodyLength);
-    console.log('完整消息:', body.toString('utf8'));
-  }
+// 模拟 HTTP 请求/响应对象
+function createMockResponse() {
+  var headers = {};
+  return {
+    headers: headers,
+    setHeader: function (name, value) {
+      headers[name.toLowerCase()] = value;
+      return this;
+    },
+    getHeaders: function () {
+      return headers;
+    },
+  };
+}
+
+// 安全头中间件
+function securityHeadersMiddleware(config) {
+  return function (req, res, next) {
+    // 设置 CSP
+    var csp = buildCSPPolicy(config.csp);
+    res.setHeader("Content-Security-Policy", csp);
+
+    // 设置其他安全头
+    var otherHeaders = config.headers;
+    for (var headerName in otherHeaders) {
+      res.setHeader(headerName, otherHeaders[headerName]);
+    }
+
+    // 移除可能泄露信息的头
+    res.setHeader("X-Powered-By", ""); // 移除框架标识
+
+    if (typeof next === "function") {
+      next();
+    }
+  };
+}
+
+// 创建中间件实例
+var middleware = securityHeadersMiddleware(securityHeadersConfig);
+
+// 模拟一个请求
+var mockReq = { url: "/api/users", method: "GET" };
+var mockRes = createMockResponse();
+
+middleware(mockReq, mockRes, function () {
+  console.log("中间件执行完毕，继续处理请求...");
 });
+
+console.log("安全头已设置到响应对象:");
+console.log("");
+
+// 打印所有设置的响应头
+var allHeaders = mockRes.getHeaders();
+var headerList = Object.keys(allHeaders).sort();
+headerList.forEach(function (name) {
+  var value = allHeaders[name];
+  var displayValue = value.length > 80 ? value.substring(0, 77) + "..." : value;
+  console.log("  " + name + ": " + displayValue);
+});
+
+// ---- 4. 安全头详解 ----
+console.log("\\n========== 4. 安全头作用详解 ==========");
+
+var headerExplanations = [
+  {
+    安全头: "Content-Security-Policy",
+    防御的攻击: "XSS、数据注入",
+    作用: "白名单机制控制资源加载来源",
+    强度: "⭐⭐⭐⭐⭐",
+  },
+  {
+    安全头: "X-Frame-Options",
+    防御的攻击: "点击劫持 (Clickjacking)",
+    作用: "禁止页面被嵌入 iframe",
+    强度: "⭐⭐⭐⭐",
+  },
+  {
+    安全头: "X-Content-Type-Options",
+    防御的攻击: "MIME 类型嗅探攻击",
+    作用: "强制按声明类型解析资源",
+    强度: "⭐⭐⭐",
+  },
+  {
+    安全头: "Strict-Transport-Security",
+    防御的攻击: "SSL 剥离、中间人攻击",
+    作用: "强制 HTTPS 连接",
+    强度: "⭐⭐⭐⭐⭐",
+  },
+  {
+    安全头: "Referrer-Policy",
+    防御的攻击: "信息泄露",
+    作用: "控制 Referer 头发送的信息量",
+    强度: "⭐⭐⭐",
+  },
+  {
+    安全头: "Permissions-Policy",
+    防御的攻击: "恶意使用浏览器 API",
+    作用: "控制浏览器功能权限",
+    强度: "⭐⭐⭐⭐",
+  },
+  {
+    安全头: "Cross-Origin-Resource-Policy",
+    防御的攻击: "跨域资源窃取",
+    作用: "控制谁可以加载资源",
+    强度: "⭐⭐⭐⭐",
+  },
+];
+
+console.table(headerExplanations);
+
+// ---- 5. CSP 违规报告模拟 ----
+console.log("\\n========== 5. CSP 违规报告模拟 ==========");
+
+// 模拟 CSP 违规报告端点
+function handleCSPReport(report) {
+  console.log("收到 CSP 违规报告:");
+  console.log("  被阻止的 URI: " + (report["blocked-uri"] || "未知"));
+  console.log("  违规指令: " + (report["violated-directive"] || "未知"));
+  console.log("  文档 URI: " + (report["document-uri"] || "未知"));
+  console.log("  原始策略: " + (report["original-policy"] || "未知"));
+  console.log("  来源文件: " + (report["source-file"] || "内联"));
+  console.log("  行号: " + (report["line-number"] || "未知"));
+}
+
+// 模拟几个违规报告
+var simulatedReports = [
+  {
+    "blocked-uri": "https://evil.com/malicious.js",
+    "violated-directive": "script-src 'self'",
+    "document-uri": "https://myapp.com/page",
+    "original-policy": cspPolicy,
+    "source-file": "https://evil.com/malicious.js",
+    "line-number": 1,
+    "desc": "外部恶意脚本被阻止",
+  },
+  {
+    "blocked-uri": "inline",
+    "violated-directive": "script-src 'self'",
+    "document-uri": "https://myapp.com/page",
+    "original-policy": cspPolicy,
+    "source-file": "https://myapp.com/page",
+    "line-number": 42,
+    "desc": "内联脚本被阻止（需要使用 nonce）",
+  },
+  {
+    "blocked-uri": "http://insecure-cdn.com/image.jpg",
+    "violated-directive": "img-src https:",
+    "document-uri": "https://myapp.com/page",
+    "original-policy": cspPolicy,
+    "desc": "HTTP 图片被阻止（只允许 HTTPS）",
+  },
+];
+
+simulatedReports.forEach(function (report) {
+  console.log("\\n--- " + report.desc + " ---");
+  handleCSPReport(report);
+});
+
+// ---- 6. 安全头分级策略 ----
+console.log("\\n========== 6. 安全头分级策略 ==========");
+
+var securityLevels = {
+  strict: {
+    name: "严格模式",
+    description: "适用于银行、金融等高风险应用",
+    headers: {
+      "X-Frame-Options": "DENY",
+      "Referrer-Policy": "no-referrer",
+      "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    },
+  },
+  moderate: {
+    name: "中等模式",
+    description: "适用于大多数企业应用",
+    headers: {
+      "X-Frame-Options": "SAMEORIGIN",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Permissions-Policy": "camera=(self), microphone=(self)",
+    },
+  },
+  basic: {
+    name: "基础模式",
+    description: "最小安全要求",
+    headers: {
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "SAMEORIGIN",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+    },
+  },
+};
+
+for (var level in securityLevels) {
+  var config = securityLevels[level];
+  console.log(config.name + " (" + level + "):");
+  console.log("  " + config.description);
+  var hdrs = config.headers;
+  for (var h in hdrs) {
+    console.log("    " + h + ": " + hdrs[h]);
+  }
+}
+
+// ---- 7. 安全头检查工具 ----
+console.log("\\n========== 7. 安全头检查工具 ==========");
+
+function auditSecurityHeaders(headers) {
+  var results = [];
+  var score = 0;
+  var maxScore = 0;
+
+  var checks = [
+    { name: "Content-Security-Policy", weight: 3, desc: "防御 XSS 攻击的核心头" },
+    { name: "X-Frame-Options", weight: 2, desc: "防止点击劫持" },
+    { name: "X-Content-Type-Options", weight: 2, desc: "防止 MIME 嗅探" },
+    { name: "Strict-Transport-Security", weight: 3, desc: "强制 HTTPS" },
+    { name: "Referrer-Policy", weight: 1, desc: "控制 Referer 信息泄露" },
+    { name: "Permissions-Policy", weight: 1, desc: "控制浏览器 API 权限" },
+    { name: "Cross-Origin-Resource-Policy", weight: 1, desc: "跨域资源策略" },
+  ];
+
+  checks.forEach(function (check) {
+    maxScore += check.weight;
+    var headerName = check.name.toLowerCase();
+    if (headers[headerName]) {
+      results.push({
+        安全头: check.name,
+        状态: "✅ 已设置",
+        权重: check.weight,
+        说明: check.desc,
+      });
+      score += check.weight;
+    } else {
+      results.push({
+        安全头: check.name,
+        状态: "❌ 缺失",
+        权重: check.weight,
+        说明: check.desc,
+      });
+    }
+  });
+
+  console.table(results);
+  console.log("\\n安全评分: " + score + "/" + maxScore + " (" + Math.round(score / maxScore * 100) + "%)");
+
+  if (score === maxScore) {
+    console.log("🎉 所有关键安全头已正确配置!");
+  } else if (score >= maxScore * 0.7) {
+    console.log("⚠️  大部分安全头已配置，建议补充缺失的头");
+  } else {
+    console.log("🚨 安全配置严重不足，请立即添加安全头!");
+  }
+}
+
+// 检查刚才配置的响应头
+console.log("检查当前安全头配置:");
+auditSecurityHeaders(mockRes.getHeaders());
+
+// ---- 8. 安全头最佳实践总结 ----
+console.log("\\n========== 8. 安全头最佳实践总结 ==========");
+
+var bestPractices = [
+  { 实践: "CSP 从严格开始", 说明: "先设置 'self'，根据实际需求逐步放宽" },
+  { 实践: "使用 Report-Only 模式", 说明: "先用 Report-Only 观察违规，再强制启用" },
+  { 实践: "移除 X-Powered-By", 说明: "隐藏服务器技术栈信息" },
+  { 实践: "HSTS 预加载", 说明: "提交到浏览器 HSTS 预加载列表，确保首次访问也是 HTTPS" },
+  { 实践: "定期审查", 说明: "每次部署前检查安全头是否正确配置" },
+  { 实践: "监控 CSP 违规", 说明: "配置 report-uri 端点，收集和分析 CSP 违规报告" },
+  { 实践: "使用自动化工具", 说明: "Mozilla Observatory、SecurityHeaders.com 等在线检测工具" },
+];
+
+console.table(bestPractices);
+
+console.log("\\n===== 安全头与防护演示完成 =====");`,
+  },
+
+  // =========================================================
+  // 第五章：限流与防刷
+  // =========================================================
+  {
+    id: "node-rate-limit",
+    icon: "🚧",
+    group: "认证与安全",
+    title: "限流与防刷",
+    content: `## 为什么需要限流？
+
+限流（Rate Limiting）是保护 API 服务的关键手段。在没有限流的情况下，恶意用户或脚本可以：
+- 暴力破解密码（每秒尝试数十万次）
+- 爬取敏感数据
+- 发起 DDoS 攻击耗尽服务器资源
+- 滥用短信/邮件发送接口造成财务损失
+
+限流的核心思想是**控制请求的频率**，在保护服务和提供良好用户体验之间取得平衡。
+
+### 限流算法对比
+
+#### 1. 固定窗口（Fixed Window）
+
+将时间划分为固定窗口（如每分钟），在窗口内计数。到达限制后拒绝请求。
+
+**优点**：实现简单，内存占用小
+**缺点**：窗口边界问题——在窗口末尾和下一窗口开始瞬间可以发送 2 倍限制的请求
+
+\`\`\`
+窗口 1 (00:00-00:01): 100 个请求（达到限制）
+窗口 2 (00:01-00:02): 100 个请求（达到限制）
+→ 在 00:00:59 和 00:01:00 两秒内可以发送 200 个请求
 \`\`\`
 
-**优点**：支持任意二进制数据，无转义问题  
-**缺点**：需要额外 4 字节（或 2 字节）的头部开销
+#### 2. 滑动窗口（Sliding Window）
 
-#### 7.5 方案对比
+使用更细粒度的时间段（如每秒），统计过去 N 个时间段内的请求数。
+
+**优点**：平滑，没有固定窗口的边界问题
+**缺点**：实现稍复杂，需要存储更多时间戳数据
+
+#### 3. 滑动窗口日志（Sliding Window Log）
+
+记录每个请求的时间戳，每次检查时计算窗口内的请求数。
+
+**优点**：精确，无边界问题
+**缺点**：内存占用大（活跃用户多时）
+
+#### 4. 令牌桶（Token Bucket）
+
+维护一个令牌桶，以固定速率放入令牌。每个请求消耗一个令牌，令牌不足时拒绝。
+
+**优点**：允许突发流量（桶容量），非常灵活
+**缺点**：实现复杂，需要定时器
+
+#### 5. 漏桶（Leaky Bucket）
+
+请求先进入队列，以固定速率处理。队列满时拒绝请求。
+
+**优点**：平滑输出速率，适合流量整形
+**缺点**：无法处理突发流量
+
+### 限流维度
+
+| 维度 | 说明 | 示例 |
+| --- | --- | --- |
+| IP 限流 | 基于客户端 IP 地址 | 每 IP 每分钟 100 次请求 |
+| 用户限流 | 基于用户 ID | 每用户每天 1000 次 API 调用 |
+| 接口限流 | 基于 API 端点 | /login 每分钟 5 次，/api/data 每分钟 100 次 |
+| 全局限流 | 系统整体限制 | 整个服务每秒 10000 次请求 |
+
+### 限流存储方案
 
 | 方案 | 优点 | 缺点 | 适用场景 |
 | --- | --- | --- | --- |
-| **分隔符** | 简单直观，可读性好 | 需要转义，不适合二进制 | 文本协议（如 Redis RESP） |
-| **长度前缀** | 支持二进制，无转义 | 需要额外头部开销 | 二进制协议（如 gRPC） |
-| **固定长度** | 最简单 | 浪费带宽 | 每条消息大小固定的场景 |
-| **JSON+分隔符** | 易读易调试 | 性能较低 | 内部工具、调试用 |
+| 内存 | 极快，无外部依赖 | 进程重启丢失，多进程不共享 | 单进程应用 |
+| Redis | 持久化，多进程共享 | 需要额外基础设施 | 分布式应用 |
+| 数据库 | 持久化，已有基础设施 | 速度慢，增加数据库压力 | 低频限流 |
 
----
+### 限流响应
 
-### 八、net 模块与 HTTP 模块的关系
+当请求被限流时，应该返回明确的响应：
 
-HTTP 协议是建立在 TCP 之上的应用层协议。当你用 \`http.createServer()\` 创建 HTTP 服务器时，底层实际上是在使用 net 模块：
+**HTTP 状态码**：\`429 Too Many Requests\`
 
-\`\`\`javascript
-// HTTP 服务器底层等价于
-const net = require('net');
-const server = net.createServer((socket) => {
-  socket.on('data', (data) => {
-    // 解析 HTTP 请求
-    const request = parseHttpRequest(data.toString());
-    // 构造 HTTP 响应
-    const response = 'HTTP/1.1 200 OK\\r\\nContent-Length: 13\\r\\n\\r\\nHello World!';
-    socket.write(response);
-  });
-});
-\`\`\`
+**响应头**（RFC 6585）：
+| 响应头 | 说明 |
+| --- | --- |
+| \`Retry-After\` | 多少秒后可以重试 |
+| \`X-RateLimit-Limit\` | 限制值 |
+| \`X-RateLimit-Remaining\` | 剩余次数 |
+| \`X-RateLimit-Reset\` | 重置时间（Unix 时间戳） |
 
-这意味着你完全可以用 net 模块手动实现一个 HTTP 服务器，只不过 HTTP 模块已经帮你处理好了协议解析、头部管理、状态码等繁琐细节。
+### 限流策略设计
 
----
+**渐进式限流**：
+1. 正常状态：标准限制（如每分钟 100 次）
+2. 接近限制：返回警告头
+3. 达到限制：返回 429
+4. 持续超限：临时增加限制或封禁 IP
 
-### 九、常见陷阱与最佳实践
+**白名单**：内部服务、管理员、VIP 用户可以不限流或使用更高限制。
 
-1. **必须监听 error 事件**：未处理的 socket error 会抛出异常导致进程崩溃
-2. **粘包处理**：始终假设数据可能粘包或拆包，实现消息边界
-3. **背压处理**：\`socket.write()\` 返回 false 时，应该暂停发送，等待 drain 事件
-4. **超时设置**：设置 socket 超时，防止僵尸连接
-5. **优雅关闭**：使用 \`socket.end()\` 而非 \`socket.destroy()\`，让数据发送完毕
-6. **连接池**：客户端应使用连接池复用连接，避免频繁创建/销毁
+**黑名单**：检测到恶意行为后，可以临时或永久封禁。
 
-下面这段代码模拟了 TCP 服务器/客户端通信、粘包处理、Socket 事件流等核心概念。`,
+### 分布式限流
+
+在微服务或多实例部署中，单机内存限流无法满足需求。需要使用共享存储：
+
+**Redis 方案**：
+- 使用 Redis 的 INCR + EXPIRE 实现计数器
+- 使用 Redis Sorted Set 实现滑动窗口
+- 使用 Redis Lua 脚本保证原子性
+- 使用 Redis Cluster 保证高可用
+
+**分布式限流的关键问题**：
+1. **时钟同步**：不同服务器的时间可能不一致，需要 NTP 同步
+2. **网络延迟**：Redis 调用引入额外延迟，需要设置合理的超时
+3. **原子性**：多个操作必须原子执行，防止竞态条件
+4. **故障降级**：Redis 不可用时的降级策略（开放或关闭）
+
+### 限流监控与告警
+
+限流不仅是防护手段，也是系统健康度的重要指标：
+
+- **监控指标**：限流触发次数、限流触发比例、各接口限流分布
+- **告警规则**：限流比例突增（可能表示攻击或流量异常）
+- **日志记录**：记录被限流的请求信息（IP、接口、时间、User-Agent）
+- **分析优化**：根据限流数据调整限制阈值和扩容策略
+
+### 实际生产中的限流架构
+
+一个完整的限流系统通常包含以下层次：
+
+1. **CDN 层**：WAF（Web 应用防火墙）级别的限流
+2. **反向代理层**：Nginx/Envoy 的 rate limiting 模块
+3. **应用层**：应用代码中的限流中间件（本章重点）
+4. **业务层**：特定业务逻辑的限流（如验证码发送频率）`,
     code: `// ============================================================
-// 第三章代码演示：Net 模块（TCP）概念模拟
+// 第五章代码演示：限流与防刷
+// 实现滑动窗口限流算法，支持 IP 和接口级别的限流
 // ============================================================
-// 注意：沙箱无法建立真正的 TCP 连接，以下代码用对象字面量模拟。
-// 所有核心概念（粘包、事件流、消息边界）都是通用的。
 
-const EventEmitter = require("events");
+// ---- 1. 滑动窗口限流器实现 ----
+console.log("========== 1. 滑动窗口限流器 ==========");
 
-// ---- 1. 模拟 Socket 类 ----
-console.log("===== 1. Socket 类型定义 =====");
+function SlidingWindowRateLimiter(options) {
+  this.windowMs = options.windowMs || 60000;    // 时间窗口（默认 60 秒）
+  this.maxRequests = options.maxRequests || 100; // 窗口内最大请求数
+  this.buckets = options.buckets || 10;          // 窗口内的桶数（用于滑动窗口）
+  this.store = {};                               // 存储：Map<key, bucketArray>
 
-class SimulatedSocket extends EventEmitter {
-  constructor(options = {}) {
-    super();
-    this.remoteAddress = options.remoteAddress || "127.0.0.1";
-    this.remotePort = options.remotePort || 0;
-    this.remoteFamily = "IPv4";
-    this.localAddress = options.localAddress || "127.0.0.1";
-    this.localPort = options.localPort || 3000;
-    this.bytesRead = 0;
-    this.bytesWritten = 0;
-    this.readyState = "opening";
-    this._partner = null; // 通信的另一端
-    this._writeBuffer = [];
-    this._destroyed = false;
-    this._timeout = null;
-    this._timeoutMs = 0;
-  }
-
-  // 模拟关联两端（配对）
-  pair(partner) {
-    this._partner = partner;
-    partner._partner = this;
-    this.readyState = "open";
-    partner.readyState = "open";
-  }
-
-  // 模拟写入数据
-  write(data, encoding = "utf8") {
-    if (this._destroyed) {
-      this.emit("error", new Error("Socket is destroyed"));
-      return false;
-    }
-    const buf = Buffer.isBuffer(data) ? data : Buffer.from(data, encoding);
-    this.bytesWritten += buf.length;
-
-    // 模拟数据发送给对端
-    if (this._partner && !this._partner._destroyed) {
-      // 模拟网络延迟
-      setTimeout(() => {
-        this._partner.bytesRead += buf.length;
-        this._partner.emit("data", buf);
-      }, 5);
-    }
-
-    // 模拟背压：如果缓冲区超过 64KB，返回 false
-    this._writeBuffer.push(buf);
-    const bufferSize = this._writeBuffer.reduce((s, b) => s + b.length, 0);
-    if (bufferSize > 64 * 1024) {
-      // 模拟 drain 事件
-      setTimeout(() => {
-        this._writeBuffer = [];
-        this.emit("drain");
-      }, 10);
-      return false;
-    }
-    return true;
-  }
-
-  // 模拟关闭写端（半关闭）
-  end(data) {
-    if (data) {
-      this.write(data);
-    }
-    this.readyState = "readOnly";
-    if (this._partner && !this._partner._destroyed) {
-      setTimeout(() => {
-        this._partner.emit("end");
-      }, 5);
-    }
-  }
-
-  // 模拟销毁
-  destroy(error) {
-    this._destroyed = true;
-    this.readyState = "closed";
-    this.emit("close", !!error);
-    if (error) {
-      this.emit("error", error);
-    }
-    if (this._partner && !this._partner._destroyed) {
-      this._partner.destroy();
-    }
-  }
-
-  // 模拟设置超时
-  setTimeout(ms) {
-    this._timeoutMs = ms;
-    if (this._timeout) clearTimeout(this._timeout);
-    this._timeout = setTimeout(() => {
-      this.emit("timeout");
-    }, ms);
-  }
-
-  // 模拟连接
-  connect(port, host, callback) {
-    this.readyState = "open";
-    this.remotePort = port;
-    this.remoteAddress = host;
-    if (callback) setTimeout(() => callback(), 5);
-    this.emit("connect");
-  }
+  // 每个桶的时间跨度
+  this.bucketSpan = Math.ceil(this.windowMs / this.buckets);
 }
 
-// ---- 2. 模拟 TCP 服务器 ----
-console.log("\\n===== 2. 模拟 TCP 服务器 =====");
-
-class SimulatedServer extends EventEmitter {
-  constructor() {
-    super();
-    this._connections = [];
-    this._listening = false;
-  }
-
-  listen(port, callback) {
-    this._listening = true;
-    this._port = port;
-    console.log("TCP 服务器正在监听端口:", port);
-    this.emit("listening");
-    if (callback) callback();
-  }
-
-  // 模拟接受新连接
-  _acceptConnection(clientSocket) {
-    const serverSocket = new SimulatedSocket({
-      remoteAddress: clientSocket.remoteAddress,
-      remotePort: clientSocket.remotePort,
-      localAddress: "127.0.0.1",
-      localPort: this._port,
-    });
-    serverSocket.pair(clientSocket);
-    this._connections.push(serverSocket);
-    this.emit("connection", serverSocket);
-    return serverSocket;
-  }
-
-  close(callback) {
-    this._listening = false;
-    this._connections.forEach((s) => s.destroy());
-    this._connections = [];
-    this.emit("close");
-    if (callback) callback();
-  }
-}
-
-// 创建服务器
-const server = new SimulatedServer();
-server.on("listening", () => console.log("  [事件] listening - 服务器已启动"));
-server.on("connection", (socket) => {
-  console.log(
-    "  [事件] connection - 新客户端:",
-    socket.remoteAddress + ":" + socket.remotePort
-  );
-});
-server.on("close", () => console.log("  [事件] close - 服务器已关闭"));
-server.listen(3000);
-
-// ---- 3. 模拟 TCP 客户端连接 ----
-console.log("\\n===== 3. 模拟 TCP 客户端 =====");
-
-const client = new SimulatedSocket({
-  remoteAddress: "127.0.0.1",
-  remotePort: 3000,
-  localAddress: "127.0.0.1",
-  localPort: 54321,
-});
-
-// 客户端事件监听
-client.on("connect", () => {
-  console.log("  [事件] connect - 客户端已连接");
-});
-client.on("data", (data) => {
-  console.log("  [事件] data - 客户端收到:", data.toString().trim());
-});
-client.on("end", () => {
-  console.log("  [事件] end - 服务器关闭了写端");
-});
-client.on("close", () => {
-  console.log("  [事件] close - 连接已关闭");
-});
-client.on("error", (err) => {
-  console.log("  [事件] error -", err.message);
-});
-
-// 服务器接受连接
-const serverSocket = server._acceptConnection(client);
-client.readyState = "open";
-client.emit("connect");
-
-// 服务器端事件监听
-serverSocket.on("data", (data) => {
-  console.log("  [服务器] data - 收到:", data.toString().trim());
-  // 服务器回复
-  serverSocket.write("Echo: " + data.toString().trim());
-});
-
-// ---- 4. 基本通信演示 ----
-console.log("\\n===== 4. 基本通信 =====");
-
-setTimeout(() => {
-  console.log("客户端发送: Hello Server!");
-  client.write("Hello Server!");
-}, 20);
-
-setTimeout(() => {
-  console.log("客户端发送: 第二条消息");
-  client.write("第二条消息");
-}, 40);
-
-setTimeout(() => {
-  console.log("客户端发送完毕，关闭写端");
-  client.end();
-}, 60);
-
-// ---- 5. Socket 属性展示 ----
-setTimeout(() => {
-  console.log("\\n===== 5. Socket 属性 =====");
-  const props = {
-    remoteAddress: serverSocket.remoteAddress,
-    remotePort: serverSocket.remotePort,
-    remoteFamily: serverSocket.remoteFamily,
-    localAddress: serverSocket.localAddress,
-    localPort: serverSocket.localPort,
-    bytesRead: serverSocket.bytesRead,
-    bytesWritten: serverSocket.bytesWritten,
-    readyState: serverSocket.readyState,
-  };
-  console.table(props);
-}, 100);
-
-// ---- 6. TCP 粘包问题模拟 ----
-setTimeout(() => {
-  console.log("\\n===== 6. TCP 粘包问题模拟 =====");
-
-  // 创建新的服务器和客户端来演示粘包
-  const server2 = new SimulatedServer();
-  server2.listen(3001);
-
-  const client2 = new SimulatedSocket();
-  const serverSock2 = server2._acceptConnection(client2);
-  client2.readyState = "open";
-  client2.emit("connect");
-
-  // 模拟发送方发送 3 条消息
-  console.log("发送方连续发送 3 条消息:");
-  client2.write("ABC");
-  client2.write("DEF");
-  client2.write("GHI");
-  console.log("  发送: 'ABC', 'DEF', 'GHI'");
-
-  // 接收方可能收到粘包的数据
-  const receivedChunks = [];
-  let totalData = "";
-  serverSock2.on("data", (chunk) => {
-    receivedChunks.push(chunk.toString());
-    totalData += chunk.toString();
-  });
-
-  setTimeout(() => {
-    console.log("\\n接收方实际收到的数据块:");
-    receivedChunks.forEach((chunk, i) => {
-      console.log("  块" + (i + 1) + ": '" + chunk + "'");
-    });
-
-    if (receivedChunks.length === 1) {
-      console.log("\\n⚠️  发生粘包！3 条消息被合并成 1 个数据块: '" + totalData + "'");
-      console.log("如果没有消息边界，接收方无法区分 ABC、DEF、GHI");
-    }
-
-    console.log("\\n粘包原因:");
-    console.log("  1. Nagle 算法：合并小的数据包");
-    console.log("  2. TCP 是流式协议，没有消息边界");
-    console.log("  3. 接收方 read 速度与发送方 write 速度不一致");
-  }, 30);
-}, 200);
-
-// ---- 7. 粘包解决方案一：分隔符协议 ----
-setTimeout(() => {
-  console.log("\\n===== 7. 解决方案一：分隔符协议 =====");
-
-  class DelimiterProtocol {
-    constructor(delimiter = "\\n") {
-      this._delimiter = delimiter;
-      this._buffer = "";
-    }
-
-    feed(chunk) {
-      this._buffer += chunk.toString();
-      const messages = [];
-      let idx;
-      while ((idx = this._buffer.indexOf(this._delimiter)) !== -1) {
-        messages.push(this._buffer.slice(0, idx));
-        this._buffer = this._buffer.slice(idx + this._delimiter.length);
-      }
-      return messages;
-    }
-  }
-
-  const proto = new DelimiterProtocol("\\n");
-
-  // 模拟接收混合数据
-  const testData = [
-    "message1\\nmessage2\\nmess",  // 不完整
-    "age3\\nmessage4\\n",          // 完整 + 新消息
-  ];
-
-  console.log("分隔符: '\\\\n'");
-  testData.forEach((chunk, i) => {
-    console.log("收到数据块" + (i + 1) + ": " + JSON.stringify(chunk));
-    const msgs = proto.feed(chunk);
-    msgs.forEach((m) => console.log("  → 解析出完整消息: '" + m + "'"));
-  });
-  console.log("缓冲区剩余: " + JSON.stringify(proto._buffer));
-
-  console.log("\\n优点: 简单直观，适合文本协议");
-  console.log("缺点: 消息内容不能包含分隔符（需转义）");
-}, 400);
-
-// ---- 8. 粘包解决方案二：长度前缀协议 ----
-setTimeout(() => {
-  console.log("\\n===== 8. 解决方案二：长度前缀协议 =====");
-
-  class LengthPrefixProtocol {
-    constructor(headerSize = 4) {
-      this._headerSize = headerSize; // 默认 4 字节头部
-      this._buffer = Buffer.alloc(0);
-    }
-
-    // 打包消息：4字节长度(大端序) + 消息体
-    static pack(message) {
-      const body = Buffer.from(message, "utf8");
-      const header = Buffer.alloc(4);
-      header.writeUInt32BE(body.length, 0);
-      return Buffer.concat([header, body]);
-    }
-
-    // 喂数据，返回解析出的完整消息
-    feed(chunk) {
-      this._buffer = Buffer.concat([this._buffer, chunk]);
-      const messages = [];
-
-      while (this._buffer.length >= this._headerSize) {
-        const bodyLength = this._buffer.readUInt32BE(0);
-        const totalLength = this._headerSize + bodyLength;
-        if (this._buffer.length < totalLength) break;
-
-        const body = this._buffer.slice(this._headerSize, totalLength);
-        messages.push(body.toString("utf8"));
-        this._buffer = this._buffer.slice(totalLength);
-      }
-      return messages;
-    }
-  }
-
-  // 打包消息
-  console.log("打包消息:");
-  const packed1 = LengthPrefixProtocol.pack("Hello");
-  console.log("  'Hello' →", packed1.toString("hex"), "(" + packed1.length + " 字节)");
-  console.log("  头部(4字节):", packed1.slice(0, 4).toString("hex"), "= 长度 5");
-  console.log("  消息体:", packed1.slice(4).toString());
-
-  const packed2 = LengthPrefixProtocol.pack("World!");
-  console.log("  'World!' →", packed2.toString("hex"), "(" + packed2.length + " 字节)");
-
-  // 模拟接收（粘包）
-  const proto = new LengthPrefixProtocol();
-  const combined = Buffer.concat([packed1, packed2]);
-  console.log("\\n接收方收到粘包数据:", combined.toString("hex"));
-
-  const msgs = proto.feed(combined);
-  msgs.forEach((m, i) => console.log("  → 解析出消息" + (i + 1) + ": '" + m + "'"));
-
-  console.log("\\n优点: 支持任意二进制数据，无转义问题");
-  console.log("缺点: 额外 4 字节头部开销");
-}, 600);
-
-// ---- 9. 背压（Backpressure）处理 ----
-setTimeout(() => {
-  console.log("\\n===== 9. 背压（Backpressure）处理 =====");
-
-  const bpClient = new SimulatedSocket();
-  const bpServer = new SimulatedSocket();
-  bpServer.pair(bpClient);
-
-  let drainCount = 0;
-  let writeCount = 0;
-
-  bpClient.on("drain", () => {
-    drainCount++;
-    console.log("  [drain] 缓冲区已排空，可以继续写入 (第" + drainCount + "次)");
-  });
-
-  console.log("模拟大量写入，触发背压:");
-
-  // 写入大量数据直到 write 返回 false
-  const largeData = Buffer.alloc(32 * 1024, "X"); // 32KB
-  for (let i = 0; i < 5; i++) {
-    const result = bpClient.write(largeData);
-    writeCount++;
-    if (!result) {
-      console.log(
-        "  write() 返回 false (第" + writeCount + "次写入)，缓冲区已满！"
-      );
-      console.log("  应该暂停写入，等待 drain 事件");
-      break;
-    }
-  }
-
-  console.log("\\n背压处理最佳实践:");
-  console.log("  function writeData(socket, data, callback) {");
-  console.log("    if (!socket.write(data)) {");
-  console.log("      socket.once('drain', callback);");
-  console.log("    } else {");
-  console.log("      process.nextTick(callback);");
-  console.log("    }");
-  console.log("  }");
-}, 800);
-
-// ---- 10. 半关闭（Half-close）演示 ----
-setTimeout(() => {
-  console.log("\\n===== 10. 半关闭（Half-close）演示 =====");
-
-  const hcClient = new SimulatedSocket();
-  const hcServer = new SimulatedSocket();
-  hcServer.pair(hcClient);
-
-  hcServer.on("data", (data) => {
-    console.log("  服务器收到:", data.toString().trim());
-  });
-  hcServer.on("end", () => {
-    console.log("  服务器收到 end 事件（客户端不再发送数据）");
-    console.log("  但服务器仍可以发送数据！");
-    hcServer.write("最后的回复");
-    console.log("  服务器发送完毕");
-    hcServer.end();
-  });
-
-  hcClient.on("data", (data) => {
-    console.log("  客户端收到:", data.toString().trim());
-  });
-  hcClient.on("end", () => {
-    console.log("  客户端收到 end 事件");
-  });
-
-  // 客户端发送数据后关闭写端
-  console.log("客户端发送请求并关闭写端:");
-  hcClient.write("请求数据");
-  hcClient.end(); // 半关闭：只关写端，读端仍然开放
-
-  console.log("\\nTCP 全双工 + 半关闭 = 灵活的资源管理");
-}, 1000);
-
-// ---- 11. 超时处理 ----
-setTimeout(() => {
-  console.log("\\n===== 11. Socket 超时处理 =====");
-
-  const timeoutSocket = new SimulatedSocket();
-  timeoutSocket.on("timeout", () => {
-    console.log("  [timeout] Socket 超时（30 秒无活动）");
-    console.log("  应关闭连接防止资源泄漏");
-    timeoutSocket.destroy();
-  });
-
-  timeoutSocket.setTimeout(30);
-  console.log("Socket 超时设置为 30ms");
-  console.log("（生产环境通常设为 30-60 秒）");
-}, 1200);
-
-// ---- 12. 综合总结 ----
-setTimeout(() => {
-  console.log("\\n===== 12. Net 模块总结 =====");
-  console.log("┌──────────────────────────────────────────┐");
-  console.log("│ TCP 核心概念                              │");
-  console.log("│ • 全双工：双方可同时收发                 │");
-  console.log("│ • 流式传输：无消息边界，需处理粘包       │");
-  console.log("│ • 可靠传输：确认+重传+有序               │");
-  console.log("├──────────────────────────────────────────┤");
-  console.log("│ 粘包解决方案                              │");
-  console.log("│ • 分隔符：\\\\n 等特殊字符分割            │");
-  console.log("│ • 长度前缀：4字节头 + 消息体             │");
-  console.log("│ • 固定长度：每条消息大小固定             │");
-  console.log("├──────────────────────────────────────────┤");
-  console.log("│ Socket 事件流                             │");
-  console.log("│ connect → data... → end → close          │");
-  console.log("│ drain ← 背压恢复                         │");
-  console.log("│ timeout ← 超时警告                        │");
-  console.log("└──────────────────────────────────────────┘");
-}, 1400);`,
-  },
-
-  // =========================================================
-  // 第四章：DNS 模块
-  // =========================================================
-  {
-    id: "node-dns",
-    title: "DNS 模块",
-    icon: "🔍",
-    group: "核心模块补充",
-    content: `## DNS 模块：域名解析的原理与实践
-
-DNS（Domain Name System，域名系统）是互联网的"电话簿"。当你输入 \`google.com\` 时，DNS 负责将其转换为计算机可以理解的 IP 地址（如 \`142.250.80.46\`）。Node.js 的 \`dns\` 模块提供了这个转换能力。
-
----
-
-### 一、DNS 基础概念
-
-#### 1.1 DNS 解析流程
-
-当你在浏览器输入 \`www.example.com\` 时，DNS 解析经历以下步骤：
-
-\`\`\`
-1. 浏览器缓存 → 2. 操作系统缓存 → 3. 路由器缓存
-    ↓（都未命中）
-4. 本地 DNS 服务器（ISP 提供）
-    ↓
-5. 根域名服务器（Root .） → 返回 .com 服务器地址
-    ↓
-6. .com 顶级域名服务器 → 返回 example.com 的权威 DNS
-    ↓
-7. example.com 权威 DNS → 返回 www.example.com 的 IP
-    ↓
-8. 返回给浏览器，浏览器建立 TCP 连接
-\`\`\`
-
-#### 1.2 DNS 记录类型
-
-| 记录类型 | 全称 | 说明 | 示例 |
-| --- | --- | --- | --- |
-| **A** | Address | IPv4 地址 | example.com → 93.184.216.34 |
-| **AAAA** | IPv6 Address | IPv6 地址 | example.com → 2606:2800:220:1:248:1893:25c8:1946 |
-| **CNAME** | Canonical Name | 别名（指向另一个域名） | www.example.com → example.com |
-| **MX** | Mail Exchange | 邮件服务器 | example.com → mail.example.com (priority 10) |
-| **NS** | Name Server | 权威 DNS 服务器 | example.com → ns1.example.com |
-| **TXT** | Text | 文本信息（常用于 SPF/DKIM 验证） | example.com → "v=spf1 ..." |
-| **SRV** | Service | 服务位置 | _sip._tcp.example.com → sipserver:5060 |
-| **PTR** | Pointer | 反向解析（IP → 域名） | 93.184.216.34 → example.com |
-| **SOA** | Start of Authority | 域管理信息 | 包含主 DNS、管理员邮箱、序列号等 |
-
----
-
-### 二、dns.lookup vs dns.resolve：核心区别
-
-这是 DNS 模块中最重要、最容易被误解的概念。两者虽然都做域名解析，但底层机制完全不同。
-
-#### 2.1 dns.lookup —— 使用操作系统解析器
-
-\`dns.lookup(hostname, [options], callback)\` 使用操作系统的 \`getaddrinfo()\` 函数进行解析。
-
-\`\`\`javascript
-const dns = require('dns');
-
-dns.lookup('example.com', (err, address, family) => {
-  console.log('IP 地址:', address);    // 93.184.216.34
-  console.log('地址族:', family);      // 4
-});
-\`\`\`
-
-**特点**：
-- 使用操作系统底层的 DNS 解析器（调用 libc 的 getaddrinfo）
-- 受操作系统 DNS 缓存影响（如 \`/etc/hosts\` 文件）
-- **在 libuv 线程池中执行**（会占用一个线程池线程）
-- 默认同时解析 IPv4 和 IPv6（可通过 options 控制）
-- 不能指定 DNS 服务器
-- 速度较快（有系统缓存）
-
-#### 2.2 dns.resolve —— 使用 libuv 的异步解析器
-
-\`dns.resolve(hostname, [rrtype], callback)\` 使用 libuv 内置的异步 DNS 解析器。
-
-\`\`\`javascript
-const dns = require('dns');
-
-dns.resolve4('example.com', (err, addresses) => {
-  console.log('IPv4 地址:', addresses);  // ['93.184.216.34']
-});
-
-dns.resolveMx('google.com', (err, addresses) => {
-  addresses.forEach((mx) => {
-    console.log(\`MX: \${mx.exchange}, 优先级: \${mx.priority}\`);
-  });
-});
-\`\`\`
-
-**特点**：
-- 使用 libuv 内置的 c-ares 库进行异步 DNS 解析
-- **不经过操作系统 DNS 缓存**
-- 不在 libuv 线程池中执行（真正的异步 I/O）
-- 通过 \`dns.setServers()\` 可以指定 DNS 服务器
-- 可以查询特定类型的记录（MX、CNAME、TXT 等）
-- 绕过 \`/etc/hosts\` 文件
-
-#### 2.3 核心区别对比表
-
-| 特性 | dns.lookup | dns.resolve |
-| --- | --- | --- |
-| **底层实现** | 系统 getaddrinfo() | libuv c-ares 库 |
-| **执行位置** | libuv 线程池（阻塞线程） | 真正的异步 I/O（不阻塞） |
-| **系统 hosts 文件** | 受其影响 | 不受影响 |
-| **DNS 缓存** | 使用系统缓存 | 不使用 |
-| **自定义 DNS 服务器** | 不支持 | 支持（dns.setServers） |
-| **查询特定记录类型** | 只返回 IP 地址 | 支持 MX、CNAME、TXT 等 |
-| **并发大量请求** | 可能耗尽线程池 | 更适合高并发 |
-| **返回格式** | 单个 IP 字符串 | IP 地址数组 |
-
-#### 2.4 何时使用哪个？
-
-| 场景 | 推荐 |
-| --- | --- |
-| 一般 HTTP 请求（通过 http 模块） | 使用默认行为（http 模块内部用 lookup） |
-| 需要查询 MX/TXT/CNAME 等特定记录 | **dns.resolve** |
-| 需要指定 DNS 服务器 | **dns.resolve** |
-| 高并发 DNS 查询 | **dns.resolve**（不占用线程池） |
-| 需要遵循系统 hosts 配置 | **dns.lookup** |
-
----
-
-### 三、dns.resolve* 系列方法
-
-#### 3.1 所有 resolve 方法
-
-| 方法 | 查询类型 | 返回值 |
-| --- | --- | --- |
-| \`dns.resolve(hostname, rrtype)\` | 通用查询 | 根据 rrtype 不同 |
-| \`dns.resolve4(hostname)\` | A 记录 | \`string[]\`（IPv4 地址数组） |
-| \`dns.resolve6(hostname)\` | AAAA 记录 | \`string[]\`（IPv6 地址数组） |
-| \`dns.resolveMx(hostname)\` | MX 记录 | \`object[]\`（\`{exchange, priority}\`） |
-| \`dns.resolveCname(hostname)\` | CNAME 记录 | \`string[]\`（规范域名数组） |
-| \`dns.resolveNs(hostname)\` | NS 记录 | \`string[]\`（DNS 服务器地址） |
-| \`dns.resolveTxt(hostname)\` | TXT 记录 | \`string[][]\`（文本数组的数组） |
-| \`dns.resolveSrv(hostname)\` | SRV 记录 | \`object[]\`（\`{name, port, priority, weight}\`） |
-| \`dns.resolvePtr(hostname)\` | PTR 记录 | \`string[]\`（域名数组） |
-| \`dns.resolveSoa(hostname)\` | SOA 记录 | \`object\`（域管理信息） |
-| \`dns.resolveAny(hostname)\` | 所有记录 | \`object[]\`（已废弃，不建议使用） |
-
-#### 3.2 使用示例
-
-\`\`\`javascript
-// 查询 MX 记录（邮件服务器）
-dns.resolveMx('google.com', (err, addresses) => {
-  // [
-  //   { exchange: 'aspmx.l.google.com', priority: 10 },
-  //   { exchange: 'alt1.aspmx.l.google.com', priority: 20 },
-  //   ...
-  // ]
-});
-
-// 查询 TXT 记录（SPF 验证）
-dns.resolveTxt('google.com', (err, records) => {
-  // records 是一个二维数组，因为 TXT 记录可能包含多个字符串
-  records.forEach(record => {
-    console.log(record.join(''));
-  });
-});
-\`\`\`
-
----
-
-### 四、dns.reverse —— 反向解析
-
-反向解析是 DNS 查询的逆过程：从 IP 地址查找对应的域名。
-
-\`\`\`javascript
-dns.reverse('8.8.8.8', (err, hostnames) => {
-  console.log(hostnames);  // ['dns.google']
-});
-
-dns.reverse('93.184.216.34', (err, hostnames) => {
-  console.log(hostnames);  // ['example.com']
-});
-\`\`\`
-
-**反向解析原理**：DNS 有一个特殊的顶级域 \`arpa\`，用于反向解析。查询 \`8.8.8.8\` 实际上会查询 \`8.8.8.8.in-addr.arpa\` 的 PTR 记录。
-
----
-
-### 五、dns.setServers —— 设置 DNS 服务器
-
-\`dns.setServers()\` 允许你指定自定义 DNS 服务器（仅影响 \`dns.resolve\` 系列方法，不影响 \`dns.lookup\`）：
-
-\`\`\`javascript
-// 使用 Google 的公共 DNS
-dns.setServers(['8.8.8.8', '8.8.4.4']);
-
-// 使用 Cloudflare 的 DNS
-dns.setServers(['1.1.1.1', '1.0.0.1']);
-
-// 使用阿里 DNS
-dns.setServers(['223.5.5.5', '223.6.6.6']);
-\`\`\`
-
-**注意**：
-- IP 地址必须包含端口（默认 53），格式如 \`'8.8.8.8:53'\`
-- 设置后所有后续的 \`dns.resolve\` 调用都使用新服务器
-- 不影响 \`dns.lookup\`（它使用系统 DNS）
-
----
-
-### 六、DNS 缓存与 TTL
-
-#### 6.1 什么是 TTL？
-
-TTL（Time To Live）是 DNS 记录的有效期（秒）。DNS 服务器会缓存查询结果，在 TTL 过期前不再重新查询。
-
-\`\`\`javascript
-// 查询 SOA 记录可以获取 TTL 信息
-dns.resolveSoa('example.com', (err, soa) => {
-  console.log('最小 TTL:', soa.minimum);  // 如 86400（24小时）
-});
-\`\`\`
-
-#### 6.2 Node.js 中的 DNS 缓存
-
-Node.js 本身**不内置 DNS 缓存**。但：
-- \`dns.lookup\` 受操作系统 DNS 缓存影响
-- \`dns.resolve\` 每次都是全新查询，不受缓存影响
-
-如果你的应用需要 DNS 缓存以提高性能，可以自己实现：
-
-\`\`\`javascript
-const dnsCache = new Map();
-const TTL = 60 * 1000; // 60 秒
-
-async function cachedResolve(hostname) {
-  const cached = dnsCache.get(hostname);
-  if (cached && Date.now() - cached.timestamp < TTL) {
-    return cached.addresses;
-  }
-
-  const addresses = await dns.promises.resolve4(hostname);
-  dnsCache.set(hostname, { addresses, timestamp: Date.now() });
-  return addresses;
-}
-\`\`\`
-
----
-
-### 七、dns.promises API
-
-Node.js 10+ 提供了 Promise 版本的 DNS API：
-
-\`\`\`javascript
-const dns = require('dns');
-const { Resolver } = dns.promises;
-
-// 使用默认解析器
-dns.promises.resolve4('example.com')
-  .then(addresses => console.log(addresses))
-  .catch(err => console.error(err));
-
-// 使用自定义 Resolver 实例
-const resolver = new Resolver();
-resolver.setServers(['8.8.8.8']);
-const addresses = await resolver.resolve4('example.com');
-\`\`\`
-
-\`Resolver\` 实例的好处：
-- 每个实例可以有不同的 DNS 服务器配置
-- 可以独立管理超时和重试
-- 不会互相干扰
-
----
-
-### 八、DNS 解析的性能影响
-
-#### 8.1 每次 HTTP 请求都做 DNS 解析？
-
-\`http\` 模块默认使用 \`dns.lookup\` 进行 DNS 解析。每次 \`http.get()\` 都会触发 DNS 查询。在高并发场景下，这会成为性能瓶颈。
-
-**优化建议**：
-1. 使用 \`http.Agent\` 的 \`keepAlive\` 复用连接（同域名只解析一次）
-2. 自己实现 DNS 缓存层
-3. 使用 IP 直连（跳过 DNS 解析）
-
-\`\`\`javascript
-// 使用 keepAlive Agent 复用连接
-const http = require('http');
-const agent = new http.Agent({ keepAlive: true });
-
-http.get({ hostname: 'example.com', agent }, (res) => {
-  // 连接被复用，不会重复 DNS 解析
-});
-\`\`\`
-
-#### 8.2 dns.lookup 的线程池问题
-
-\`dns.lookup\` 在 libuv 线程池中执行。如果你的应用有大量并发 DNS 查询，线程池可能被耗尽（默认 4 个线程）。如果有大量自定义 DNS 查询，建议使用 \`dns.resolve\`。
-
----
-
-### 九、DNS over HTTPS (DoH) 概念
-
-传统的 DNS 查询是明文传输的（UDP 53 端口），容易被中间人窃听和篡改。DNS over HTTPS（DoH）通过 HTTPS 加密 DNS 查询，提供更好的隐私保护。
-
-Node.js 目前不原生支持 DoH，但可以通过第三方库实现：
-
-\`\`\`javascript
-// 使用 https 模块手动查询 Cloudflare 的 DoH 服务
-const https = require('https');
-
-function dohResolve(hostname) {
-  return new Promise((resolve, reject) => {
-    const url = \`https://cloudflare-dns.com/dns-query?name=\${hostname}&type=A\`;
-    https.get(url, {
-      headers: { 'Accept': 'application/dns-json' }
-    }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        const json = JSON.parse(data);
-        resolve(json.Answer?.map(a => a.data) || []);
-      });
-    }).on('error', reject);
-  });
-}
-\`\`\`
-
----
-
-### 十、常见错误码
-
-| 错误码 | 含义 |
-| --- | --- |
-| \`ENOTFOUND\` | 域名不存在 |
-| \`ENODATA\` | 域名存在但没有请求的记录类型 |
-| \`ETIMEOUT\` | DNS 查询超时 |
-| \`ESERVFAIL\` | DNS 服务器返回错误 |
-| \`ECONNREFUSED\` | DNS 服务器拒绝连接 |
-| \`EBADQUERY\` | 查询格式错误 |
-
-下面这段代码演示了 DNS 模块的各种用法，并在安全环境中展示核心概念。`,
-    code: `// ============================================================
-// 第四章代码演示：DNS 模块——域名解析全解析
-// ============================================================
-// 尝试加载 dns 模块，沙箱环境中可能不可用，回退到模拟实现
-var dns;
-try {
-  dns = require("dns");
-} catch (e) {
-  // 模拟 dns 模块（沙箱环境回退方案）
-  dns = {
-    _servers: ["8.8.8.8"],
-    lookup: function (hostname, options, callback) {
-      if (typeof options === "function") { callback = options; options = {}; }
-      var addresses = { "localhost": "127.0.0.1", "example.com": "93.184.216.34" };
-      setTimeout(function () {
-        var addr = addresses[hostname] || "93.184.216.34";
-        if (options.all) {
-          callback(null, [{ address: addr, family: 4 }]);
-        } else {
-          callback(null, addr, 4);
-        }
-      }, 10);
-    },
-    resolve4: function (hostname, callback) {
-      setTimeout(function () {
-        if (hostname === "thishostdoesnotexist12345.com") {
-          callback({ code: "ENOTFOUND", hostname: hostname });
-        } else if (hostname === "localhost") {
-          callback({ code: "ENODATA" });
-        } else {
-          callback(null, ["93.184.216.34"]);
-        }
-      }, 10);
-    },
-    resolve6: function (hostname, callback) {
-      setTimeout(function () {
-        callback(null, ["2606:2800:220:1:248:1893:25c8:1946"]);
-      }, 10);
-    },
-    resolveMx: function (hostname, callback) {
-      setTimeout(function () {
-        if (hostname === "localhost") {
-          callback({ code: "ENODATA" });
-        } else {
-          callback(null, [{ exchange: "aspmx.l.google.com", priority: 10 }]);
-        }
-      }, 10);
-    },
-    resolveCname: function (hostname, callback) {
-      setTimeout(function () {
-        callback(null, ["github.com"]);
-      }, 10);
-    },
-    resolveTxt: function (hostname, callback) {
-      setTimeout(function () {
-        callback(null, [["v=spf1 include:_spf.google.com ~all"]]);
-      }, 10);
-    },
-    resolveNs: function (hostname, callback) {
-      setTimeout(function () {
-        callback(null, ["a.iana-servers.net", "b.iana-servers.net"]);
-      }, 10);
-    },
-    reverse: function (ip, callback) {
-      setTimeout(function () {
-        callback(null, ["dns.google"]);
-      }, 10);
-    },
-    getServers: function () { return this._servers.slice(); },
-    setServers: function (servers) { this._servers = servers.slice(); },
-    promises: {
-      resolve4: function (hostname) {
-        return new Promise(function (resolve, reject) {
-          dns.resolve4(hostname, function (err, result) {
-            if (err) reject(err); else resolve(result);
-          });
-        });
-      },
-      resolve6: function (hostname) {
-        return new Promise(function (resolve, reject) {
-          dns.resolve6(hostname, function (err, result) {
-            if (err) reject(err); else resolve(result);
-          });
-        });
-      },
-      resolveMx: function (hostname) {
-        return new Promise(function (resolve, reject) {
-          dns.resolveMx(hostname, function (err, result) {
-            if (err) reject(err); else resolve(result);
-          });
-        });
-      },
-    },
-  };
-  console.log("（提示：当前运行在沙箱环境中，dns 模块使用模拟数据）");
-}
-
-// ---- 1. dns.lookup：系统级解析 ----
-console.log("===== 1. dns.lookup（系统解析器）====");
-console.log("特点：使用 getaddrinfo，受 hosts 文件影响，在 libuv 线程池执行");
-
-// 尝试真实查询
-dns.lookup("localhost", (err, address, family) => {
-  if (err) {
-    console.log("  lookup('localhost') 出错:", err.code);
-  } else {
-    console.log("  lookup('localhost'):");
-    console.log("    IP 地址:", address);
-    console.log("    地址族:", family, "(4=IPv4, 6=IPv6)");
-  }
-});
-
-// 查询所有地址
-dns.lookup("localhost", { all: true }, (err, addresses) => {
-  if (err) {
-    console.log("  lookup('localhost', {all:true}) 出错:", err.code);
-  } else {
-    console.log("\\n  lookup('localhost', {all:true}):");
-    addresses.forEach((addr) => {
-      console.log("    " + addr.address + " (IPv" + addr.family + ")");
-    });
-  }
-});
-
-// ---- 2. dns.resolve4：IPv4 地址解析 ----
-setTimeout(() => {
-  console.log("\\n===== 2. dns.resolve4（IPv4 解析）====");
-  console.log("特点：使用 c-ares 库，绕过系统缓存，不占用线程池");
-
-  // 尝试真实解析
-  dns.resolve4("example.com", (err, addresses) => {
-    if (err) {
-      console.log("  resolve4('example.com') 出错:", err.code);
-      console.log("  （沙箱环境可能无法进行网络DNS查询）");
-    } else {
-      console.log("  example.com 的 IPv4 地址:");
-      addresses.forEach((addr) => console.log("    " + addr));
-    }
-  });
-
-  // 查询一个可能有多个 IP 的域名
-  dns.resolve4("google.com", (err, addresses) => {
-    if (err) {
-      console.log("  resolve4('google.com') 出错:", err.code);
-    } else {
-      console.log("\\n  google.com 的 IPv4 地址:");
-      addresses.forEach((addr) => console.log("    " + addr));
-    }
-  });
-}, 100);
-
-// ---- 3. dns.resolveMx：邮件服务器查询 ----
-setTimeout(() => {
-  console.log("\\n===== 3. dns.resolveMx（MX 邮件记录）====");
-
-  dns.resolveMx("google.com", (err, addresses) => {
-    if (err) {
-      console.log("  resolveMx('google.com') 出错:", err.code);
-    } else {
-      console.log("  google.com 的邮件服务器:");
-      addresses
-        .sort((a, b) => a.priority - b.priority)
-        .forEach((mx) => {
-          console.log("    优先级 " + mx.priority + ": " + mx.exchange);
-        });
-    }
-  });
-}, 200);
-
-// ---- 4. dns.resolveCname：别名解析 ----
-setTimeout(() => {
-  console.log("\\n===== 4. dns.resolveCname（CNAME 别名）====");
-
-  dns.resolveCname("www.github.com", (err, addresses) => {
-    if (err) {
-      console.log("  resolveCname('www.github.com') 出错:", err.code);
-    } else {
-      console.log("  www.github.com 的 CNAME:");
-      addresses.forEach((cname) => console.log("    " + cname));
-    }
-  });
-}, 300);
-
-// ---- 5. dns.resolveTxt：TXT 记录查询 ----
-setTimeout(() => {
-  console.log("\\n===== 5. dns.resolveTxt（TXT 记录）====");
-
-  dns.resolveTxt("google.com", (err, records) => {
-    if (err) {
-      console.log("  resolveTxt('google.com') 出错:", err.code);
-    } else {
-      console.log("  google.com 的 TXT 记录:");
-      records.forEach((record, i) => {
-        console.log("    [" + i + "]: " + record.join("").slice(0, 80) + "...");
-      });
-    }
-  });
-}, 400);
-
-// ---- 6. dns.resolveNs：权威 DNS 服务器 ----
-setTimeout(() => {
-  console.log("\\n===== 6. dns.resolveNs（NS 记录）====");
-
-  dns.resolveNs("example.com", (err, addresses) => {
-    if (err) {
-      console.log("  resolveNs('example.com') 出错:", err.code);
-    } else {
-      console.log("  example.com 的权威 DNS:");
-      addresses.forEach((ns) => console.log("    " + ns));
-    }
-  });
-}, 500);
-
-// ---- 7. dns.reverse：反向解析 ----
-setTimeout(() => {
-  console.log("\\n===== 7. dns.reverse（反向解析）====");
-
-  dns.reverse("8.8.8.8", (err, hostnames) => {
-    if (err) {
-      console.log("  reverse('8.8.8.8') 出错:", err.code);
-    } else {
-      console.log("  8.8.8.8 的反向解析:");
-      hostnames.forEach((name) => console.log("    " + name));
-    }
-  });
-
-  // 反向解析的原理
-  console.log("\\n  反向解析原理:");
-  console.log("  查询 8.8.8.8 的 PTR 记录");
-  console.log("  = 查询 8.8.8.8.in-addr.arpa 的 PTR");
-  console.log("  (IP 地址倒序 + .in-addr.arpa)");
-}, 600);
-
-// ---- 8. dns.setServers：自定义 DNS 服务器 ----
-setTimeout(() => {
-  console.log("\\n===== 8. dns.setServers（自定义 DNS）====");
-
-  // 获取当前 DNS 服务器
-  console.log("  当前 DNS 服务器:", dns.getServers());
-
-  // 设置为 Google 公共 DNS
-  dns.setServers(["8.8.8.8", "8.8.4.4"]);
-  console.log("  设置后 DNS 服务器:", dns.getServers());
-
-  // 验证新 DNS 服务器是否生效
-  dns.resolve4("example.com", (err, addresses) => {
-    if (err) {
-      console.log("  使用 Google DNS 查询出错:", err.code);
-    } else {
-      console.log("  使用 Google DNS 查询 example.com:", addresses);
-    }
-  });
-
-  console.log("\\n  常用公共 DNS:");
-  console.log("    Google:    8.8.8.8 / 8.8.4.4");
-  console.log("    Cloudflare: 1.1.1.1 / 1.0.0.1");
-  console.log("    阿里:      223.5.5.5 / 223.6.6.6");
-  console.log("    腾讯:      119.29.29.29 / 182.254.116.116");
-}, 700);
-
-// ---- 9. dns.promises Promise API ----
-setTimeout(() => {
-  console.log("\\n===== 9. dns.promises（Promise API）====");
-
-  async function promiseDemo() {
-    try {
-      // 并行查询多个记录
-      const [ipv4, ipv6, mx] = await Promise.all([
-        dns.promises.resolve4("google.com").catch(() => ["N/A"]),
-        dns.promises.resolve6("google.com").catch(() => ["N/A"]),
-        dns.promises.resolveMx("google.com").catch(() => []),
-      ]);
-
-      console.log("  IPv4:", ipv4.slice(0, 2).join(", "));
-      console.log("  IPv6:", ipv6[0] ? ipv6[0].slice(0, 30) + "..." : "N/A");
-      console.log("  MX 数量:", mx.length);
-      if (mx.length > 0) {
-        console.log("  首选 MX:", mx[0].exchange, "(优先级 " + mx[0].priority + ")");
-      }
-    } catch (err) {
-      console.log("  Promise 查询出错:", err.code);
-    }
-
-    // 时序对比
-    console.log("\\n  时序对比（dns.lookup vs dns.resolve4）:");
-    const start1 = Date.now();
-    dns.lookup("localhost", () => {
-      console.log("    lookup 耗时:", Date.now() - start1, "ms");
-    });
-
-    const start2 = Date.now();
-    dns.resolve4("localhost").then(() => {
-      console.log("    resolve4 耗时:", Date.now() - start2, "ms");
-    }).catch(() => {});
-  }
-
-  promiseDemo();
-}, 800);
-
-// ---- 10. DNS 缓存模拟 ----
-setTimeout(() => {
-  console.log("\\n===== 10. DNS 缓存策略模拟 =====");
-
-  class DNSCache {
-    constructor(ttlMs = 60000) {
-      this._cache = new Map();
-      this._ttl = ttlMs;
-    }
-
-    async resolve(hostname) {
-      const cached = this._cache.get(hostname);
-      if (cached && Date.now() - cached.timestamp < this._ttl) {
-        console.log("    [缓存命中] " + hostname + " → " + cached.addresses.join(", "));
-        return cached.addresses;
-      }
-
-      console.log("    [缓存未命中] " + hostname + "，发起真实查询");
-      try {
-        const addresses = await dns.promises.resolve4(hostname);
-        this._cache.set(hostname, { addresses, timestamp: Date.now() });
-        return addresses;
-      } catch (err) {
-        throw err;
-      }
-    }
-
-    getStats() {
-      return {
-        entries: this._cache.size,
-        ttl: this._ttl + "ms",
-        hosts: Array.from(this._cache.keys()),
-      };
-    }
-
-    clear() {
-      this._cache.clear();
-    }
-  }
-
-  async function cacheDemo() {
-    const cache = new DNSCache(30000); // 30 秒 TTL
-
-    // 第一次查询（缓存未命中）
-    console.log("  第一次查询 example.com:");
-    await cache.resolve("example.com").catch((e) => console.log("    查询失败:", e.code));
-
-    // 第二次查询（缓存命中）
-    console.log("\\n  第二次查询 example.com:");
-    await cache.resolve("example.com").catch(() => {});
-
-    console.log("\\n  缓存统计:", JSON.stringify(cache.getStats()));
-    console.log("\\n  缓存策略:");
-    console.log("    • TTL 过期后自动失效");
-    console.log("    • 内存缓存，重启后丢失");
-    console.log("    • 适合高频查询的域名");
-  }
-
-  cacheDemo();
-}, 1000);
-
-// ---- 11. lookup vs resolve 深度对比 ----
-setTimeout(() => {
-  console.log("\\n===== 11. dns.lookup vs dns.resolve 深度对比 =====");
-
-  const comparison = [
-    {
-      特性: "底层实现",
-      lookup: "系统 getaddrinfo()",
-      resolve: "libuv c-ares 库",
-    },
-    {
-      特性: "执行位置",
-      lookup: "libuv 线程池（阻塞线程）",
-      resolve: "真正异步 I/O（不阻塞）",
-    },
-    {
-      特性: "系统 hosts 文件",
-      lookup: "受其影响",
-      resolve: "不受影响",
-    },
-    {
-      特性: "系统 DNS 缓存",
-      lookup: "使用系统缓存",
-      resolve: "不使用",
-    },
-    {
-      特性: "自定义 DNS 服务器",
-      lookup: "不支持",
-      resolve: "支持（setServers）",
-    },
-    {
-      特性: "查询特定记录类型",
-      lookup: "只返回 IP",
-      resolve: "支持 MX/CNAME/TXT 等",
-    },
-    {
-      特性: "并发大量请求",
-      lookup: "可能耗尽线程池",
-      resolve: "更适合高并发",
-    },
-    {
-      特性: "http 模块默认",
-      lookup: "是（内部使用）",
-      resolve: "否",
-    },
-  ];
-
-  console.table(comparison);
-}, 1200);
-
-// ---- 12. DNS 错误码演示 ----
-setTimeout(() => {
-  console.log("\\n===== 12. DNS 常见错误码 =====");
-
-  // 查询一个不存在的域名
-  dns.resolve4("thishostdoesnotexist12345.com", (err) => {
-    if (err) {
-      console.log("  ENOTFOUND: 域名不存在");
-      console.log("    code:", err.code);
-      console.log("    hostname:", err.hostname);
-    }
-  });
-
-  // 查询一个存在但无 MX 记录的域名
-  setTimeout(() => {
-    dns.resolveMx("localhost", (err) => {
-      if (err) {
-        console.log("\\n  ENODATA: 域名存在但无对应记录类型");
-        console.log("    code:", err.code);
-        console.log("    （localhost 没有 MX 记录）");
-      }
-    });
-  }, 100);
-}, 1400);
-
-// ---- 13. 综合总结 ----
-setTimeout(() => {
-  console.log("\\n===== 13. DNS 模块总结 =====");
-  console.log("┌──────────────────────────────────────────┐");
-  console.log("│ DNS 查询方法选择指南                      │");
-  console.log("│                                           │");
-  console.log("│ 一般 HTTP 请求 → 默认行为（lookup）      │");
-  console.log("│ 查询 MX/TXT/CNAME → dns.resolve*()       │");
-  console.log("│ 自定义 DNS 服务器 → dns.resolve + setServers │");
-  console.log("│ 高并发 DNS 查询 → dns.resolve            │");
-  console.log("│ 需要系统 hosts 生效 → dns.lookup          │");
-  console.log("│ 现代异步代码 → dns.promises               │");
-  console.log("├──────────────────────────────────────────┤");
-  console.log("│ 关键区别                                  │");
-  console.log("│ lookup  = 系统解析器 + 线程池              │");
-  console.log("│ resolve = c-ares 库 + 真正异步 I/O        │");
-  console.log("└──────────────────────────────────────────┘");
-}, 1800);`,
-  },
-
-  // =========================================================
-  // 第五章：TLS/SSL 模块
-  // =========================================================
-  {
-    id: "node-tls",
-    title: "TLS/SSL 模块",
-    icon: "🔐",
-    group: "核心模块补充",
-    content: `## TLS/SSL 模块：网络安全的基石
-
-TLS（Transport Layer Security，传输层安全协议）及其前身 SSL（Secure Sockets Layer）是保障互联网通信安全的核心协议。每次你访问 HTTPS 网站、使用加密的 API、或通过安全 WebSocket 通信，背后都是 TLS 在工作。
-
----
-
-### 一、TLS/SSL 协议基础
-
-#### 1.1 为什么需要 TLS？
-
-在 TCP 层面，数据是明文传输的。任何能够截获网络包的人都可以读取其中的内容。TLS 在 TCP 之上添加了三个关键保障：
-
-| 保障 | 说明 | 实现方式 |
-| --- | --- | --- |
-| **加密（Encryption）** | 数据在传输过程中被加密，无法被窃听 | 对称加密（AES、ChaCha20） |
-| **身份验证（Authentication）** | 确认通信对方的身份，防止中间人攻击 | 非对称加密 + 证书链 |
-| **完整性（Integrity）** | 确保数据在传输过程中未被篡改 | MAC（Message Authentication Code） |
-
-#### 1.2 TLS 协议在协议栈中的位置
-
-\`\`\`
-┌─────────────────┐
-│   HTTP / SMTP   │ ← 应用层
-├─────────────────┤
-│      TLS        │ ← 安全层（本章重点）
-├─────────────────┤
-│      TCP        │ ← 传输层
-├─────────────────┤
-│       IP        │ ← 网络层
-└─────────────────┘
-\`\`\`
-
-TLS 运行在 TCP 之上、应用层协议之下。它不改变应用层协议的逻辑，只是在传输过程中加了一层"保护壳"。
-
-#### 1.3 TLS 握手过程（简化版）
-
-TLS 握手是建立安全连接的第一步，也是最复杂的过程：
-
-\`\`\`
-客户端                                    服务器
-  │                                         │
-  │── ClientHello ──────────────────────▶  │
-  │   (支持的TLS版本、密码套件、随机数)     │
-  │                                         │
-  │◀── ServerHello ──────────────────────  │
-  │   (选定的TLS版本、密码套件、随机数)     │
-  │◀── Certificate ──────────────────────  │
-  │   (服务器的证书链)                     │
-  │◀── ServerHelloDone ────────────────    │
-  │                                         │
-  │── ClientKeyExchange ────────────────▶  │
-  │   (用服务器公钥加密的预主密钥)         │
-  │── ChangeCipherSpec ────────────────▶   │
-  │── Finished ────────────────────────▶   │
-  │                                         │
-  │◀── ChangeCipherSpec ────────────────   │
-  │◀── Finished ────────────────────────   │
-  │                                         │
-  │◀════ 安全通道建立，开始加密通信 ════▶  │
-\`\`\`
-
-**握手的关键步骤**：
-1. **协商加密参数**：客户端和服务器就 TLS 版本、加密算法达成一致
-2. **身份验证**：服务器发送证书证明身份（可选双向认证）
-3. **密钥交换**：双方通过非对称加密安全地交换"会话密钥"
-4. **切换到加密通信**：后续所有数据使用会话密钥进行对称加密
-
----
-
-### 二、对称加密 vs 非对称加密
-
-TLS 同时使用两种加密方式，取长补短：
-
-#### 2.1 对称加密
-
-使用**同一个密钥**进行加密和解密：
-
-| 特性 | 说明 |
-| --- | --- |
-| 速度 | **快**（适合大量数据加密） |
-| 密钥管理 | 困难（如何安全地共享密钥？） |
-| 常用算法 | AES-256-GCM、ChaCha20-Poly1305 |
-| TLS 中的用途 | 加密实际传输的数据（会话密钥） |
-
-#### 2.2 非对称加密
-
-使用**一对密钥**（公钥和私钥）：
-
-| 特性 | 说明 |
-| --- | --- |
-| 速度 | **慢**（不适合大量数据） |
-| 密钥管理 | 简单（公钥可以公开，私钥保密） |
-| 常用算法 | RSA、ECDSA、Ed25519 |
-| TLS 中的用途 | 握手阶段交换会话密钥、验证证书 |
-
-#### 2.3 TLS 1.3 的改进
-
-TLS 1.3 相比 TLS 1.2 做了重大简化：
-
-| 改进 | TLS 1.2 | TLS 1.3 |
-| --- | --- | --- |
-| 握手往返次数 | 2-RTT | 1-RTT（或 0-RTT 恢复） |
-| 支持的密钥交换 | RSA、DHE、ECDHE | 仅 ECDHE（前向安全性） |
-| 密码套件数量 | 数十个 | 5 个（简化且更安全） |
-| 过时算法 | 支持 RC4、DES、MD5 | 全部移除 |
-
----
-
-### 三、证书与 CA 体系
-
-#### 3.1 证书是什么？
-
-证书是一个**数字文档**，包含以下信息：
-- 域名（Subject/CNAME）
-- 颁发者（Issuer，即 CA）
-- 有效期（Not Before / Not After）
-- 公钥
-- 签名（CA 用其私钥对上述信息签名）
-
-#### 3.2 证书链
-
-浏览器信任的不是服务器证书，而是**根 CA 证书**。通过证书链验证：
-
-\`\`\`
-根 CA 证书（信任锚点，预装在操作系统/浏览器中）
-  └── 中间 CA 证书（由根 CA 签名）
-        └── 服务器证书（由中间 CA 签名）
-\`\`\`
-
-#### 3.3 自签名证书 vs CA 证书
-
-| 特性 | 自签名证书 | CA 签发证书 |
-| --- | --- | --- |
-| 颁发者 | 自己 | 受信任的 CA（如 Let's Encrypt） |
-| 浏览器信任 | ❌ 不信任（显示警告） | ✅ 自动信任 |
-| 费用 | 免费 | 免费（Let's Encrypt）或付费 |
-| 适用场景 | 开发/测试/内网 | 生产环境 |
-| 生成方式 | openssl 自签 | 向 CA 申请 |
-
-\`\`\`bash
-# 生成自签名证书（开发用）
-openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
-\`\`\`
-
----
-
-### 四、Node.js 中创建 TLS 服务器
-
-#### 4.1 tls.createServer
-
-\`\`\`javascript
-const tls = require('tls');
-const fs = require('fs');
-
-const options = {
-  key: fs.readFileSync('server-key.pem'),   // 私钥
-  cert: fs.readFileSync('server-cert.pem'), // 证书
-  // 可选：CA 证书（用于客户端认证）
-  ca: fs.readFileSync('ca-cert.pem'),
-  // 可选：要求客户端证书
-  requestCert: true,
-  rejectUnauthorized: true,  // 拒绝无效证书
+// 获取当前桶索引
+SlidingWindowRateLimiter.prototype.getCurrentBucket = function () {
+  return Math.floor(Date.now() / this.bucketSpan);
 };
 
-const server = tls.createServer(options, (socket) => {
-  console.log('安全连接已建立');
-  console.log('客户端已授权:', socket.authorized);
-  console.log('客户端证书:', socket.getPeerCertificate());
+// 清理过期桶
+SlidingWindowRateLimiter.prototype.cleanExpiredBuckets = function (key, currentBucket) {
+  var entry = this.store[key];
+  if (!entry) return;
 
-  socket.write('欢迎使用 TLS 安全连接!');
-  socket.setEncoding('utf8');
-  socket.on('data', (data) => {
-    console.log('收到:', data);
-  });
-});
+  var windowBuckets = this.buckets;
+  var oldestValidBucket = currentBucket - windowBuckets + 1;
 
-server.listen(8443, () => {
-  console.log('TLS 服务器监听在 8443 端口');
-});
-\`\`\`
-
-#### 4.2 tls.connect（客户端）
-
-\`\`\`javascript
-const tls = require('tls');
-
-const options = {
-  host: 'localhost',
-  port: 8443,
-  // 如果不验证证书（仅开发环境！）
-  rejectUnauthorized: false,
-  // 或提供 CA 证书进行验证
-  // ca: fs.readFileSync('ca-cert.pem'),
-};
-
-const socket = tls.connect(options, () => {
-  console.log('已连接到 TLS 服务器');
-  console.log('服务器证书:', socket.getPeerCertificate());
-  socket.write('Hello Secure World!');
-});
-
-socket.on('data', (data) => {
-  console.log('收到:', data.toString());
-});
-\`\`\`
-
----
-
-### 五、ALPN / NPN 协议协商
-
-ALPN（Application-Layer Protocol Negotiation）允许客户端和服务器在 TLS 握手阶段协商应用层协议（如 HTTP/2 或 HTTP/1.1）：
-
-\`\`\`javascript
-const server = tls.createServer({
-  ALPNProtocols: ['h2', 'http/1.1'],  // 服务器支持的协议
-  key, cert
-}, (socket) => {
-  console.log('协商的协议:', socket.alpnProtocol);  // 'h2' 或 'http/1.1'
-});
-
-// 客户端
-const socket = tls.connect({
-  ALPNProtocols: ['h2', 'http/1.1'],
-  host, port
-}, () => {
-  console.log('协商的协议:', socket.alpnProtocol);
-});
-\`\`\`
-
----
-
-### 六、SNI（Server Name Indication）
-
-SNI 允许在同一 IP 地址上托管多个 TLS 站点（虚拟主机）。在 TLS 握手的 ClientHello 中包含目标域名，服务器据此选择正确的证书：
-
-\`\`\`javascript
-const server = tls.createServer((socket) => {
-  // SNI 回调：在握手期间触发
-});
-
-server.on('secureConnection', (socket) => {
-  console.log('SNI 域名:', socket.servername);
-});
-
-// 或者使用 SNICallback
-const options = {
-  SNICallback: (servername, cb) => {
-    // 根据域名动态选择证书
-    if (servername === 'site1.example.com') {
-      cb(null, tls.createSecureContext({
-        key: site1Key, cert: site1Cert
-      }));
-    } else {
-      cb(null, tls.createSecureContext({
-        key: defaultKey, cert: defaultCert
-      }));
+  // 移除超出窗口的桶
+  for (var bucket in entry.buckets) {
+    if (parseInt(bucket, 10) < oldestValidBucket) {
+      delete entry.buckets[bucket];
     }
   }
 };
-\`\`\`
 
----
+// 检查是否允许请求
+SlidingWindowRateLimiter.prototype.check = function (key) {
+  var currentBucket = this.getCurrentBucket();
 
-### 七、安全配置最佳实践
-
-#### 7.1 禁用弱密码
-
-\`\`\`javascript
-const server = tls.createServer({
-  key, cert,
-  // 只允许安全的密码套件
-  ciphers: [
-    'ECDHE-RSA-AES256-GCM-SHA384',
-    'ECDHE-RSA-AES128-GCM-SHA256',
-  ].join(':'),
-  // 要求最低 TLS 1.2
-  minVersion: 'TLSv1.2',
-  // 禁用不安全的 TLS 1.0/1.1
-  maxVersion: 'TLSv1.3',
-});
-\`\`\`
-
-#### 7.2 安全配置检查清单
-
-| 配置项 | 推荐设置 |
-| --- | --- |
-| 最低 TLS 版本 | TLS 1.2（建议 TLS 1.3） |
-| 密码套件 | 仅允许 ECDHE + AEAD（如 AES-GCM、ChaCha20-Poly1305） |
-| 证书密钥长度 | RSA 2048+ 或 ECDSA P-256+ |
-| 证书有效期 | 不超过 90 天（Let's Encrypt 标准） |
-| HSTS | 开启（Strict-Transport-Security） |
-| 证书验证 | \`rejectUnauthorized: true\`（生产环境必须） |
-
-#### 7.3 常见安全漏洞防护
-
-| 漏洞 | 说明 | 防护 |
-| --- | --- | --- |
-| POODLE | 利用 SSL 3.0 的 CBC 模式缺陷 | 禁用 SSL 3.0 |
-| BEAST | 利用 TLS 1.0 的 CBC 缺陷 | 使用 TLS 1.2+ |
-| CRIME/BREACH | 利用压缩率泄露信息 | 禁用 TLS 压缩 |
-| Heartbleed | OpenSSL 心跳扩展的越界读取 | 升级 OpenSSL |
-| 降级攻击 | 强制使用低版本协议 | 禁用旧协议版本 |
-
----
-
-### 八、TLS 与 crypto 模块的关系
-
-TLS 模块底层依赖 \`crypto\` 模块完成加密、解密、签名、哈希等操作。crypto 模块提供了 TLS 所需的全部密码学原语：
-
-\`\`\`javascript
-// crypto 模块提供 TLS 需要的密码学操作
-const crypto = require('crypto');
-
-// 1. 生成密钥对（模拟 TLS 握手中的密钥交换）
-const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
-  modulusLength: 2048,
-});
-
-// 2. 哈希计算（证书签名验证中使用）
-const hash = crypto.createHash('sha256').update('data').digest('hex');
-
-// 3. 对称加密（TLS 会话加密）
-const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-\`\`\`
-
----
-
-### 九、最佳实践
-
-1. **生产环境必须使用 CA 签发的证书**（Let's Encrypt 免费）
-2. **私钥绝不要提交到版本控制**（使用 .gitignore）
-3. **定期更新证书**（Let's Encrypt 证书 90 天过期，建议自动续期）
-4. **开启 HSTS** 防止降级攻击
-5. **使用 TLS 1.3** 获得更好的安全性和性能
-6. **禁用不安全的密码套件**
-7. **使用 Mozilla SSL Configuration Generator** 生成安全的配置
-
-下面这段代码使用 crypto 模块模拟 TLS 握手、证书验证和加密通信。`,
-    code: `// ============================================================
-// 第五章代码演示：TLS/SSL 概念模拟（crypto + 对象字面量）
-// ============================================================
-// 沙箱中无法创建真正的 TLS 服务器/客户端，但 crypto 模块可用。
-// 以下代码用 crypto 生成密钥对，模拟 TLS 握手和加密通信。
-
-const crypto = require("crypto");
-
-// ---- 1. 对称加密 vs 非对称加密对比 ----
-console.log("===== 1. 对称加密 vs 非对称加密 =====");
-
-// 1a. 对称加密：同一个密钥加密和解密
-console.log("--- 对称加密（AES-256-GCM）---");
-const symmetricKey = crypto.randomBytes(32); // 256 位密钥
-const iv = crypto.randomBytes(12); // 96 位初始化向量
-
-// 加密
-const cipher = crypto.createCipheriv("aes-256-gcm", symmetricKey, iv);
-let encrypted = cipher.update("这是需要加密的敏感数据", "utf8", "hex");
-encrypted += cipher.final("hex");
-const authTag = cipher.getAuthTag(); // 认证标签，用于完整性验证
-console.log("  原始数据: 这是需要加密的敏感数据");
-console.log("  加密后(hex):", encrypted.slice(0, 40) + "...");
-console.log("  认证标签:", authTag.toString("hex"));
-console.log("  密钥(hex):", symmetricKey.toString("hex").slice(0, 20) + "...");
-
-// 解密
-const decipher = crypto.createDecipheriv("aes-256-gcm", symmetricKey, iv);
-decipher.setAuthTag(authTag);
-let decrypted = decipher.update(encrypted, "hex", "utf8");
-decrypted += decipher.final("utf8");
-console.log("  解密后:", decrypted);
-console.log("  特点: 加解密用同一个密钥，速度快");
-
-// 1b. 非对称加密：公钥加密，私钥解密
-console.log("\\n--- 非对称加密（RSA-2048）---");
-const { publicKey, privateKey } = crypto.generateKeyPairSync("rsa", {
-  modulusLength: 2048,
-  publicKeyEncoding: { type: "spki", format: "pem" },
-  privateKeyEncoding: { type: "pkcs8", format: "pem" },
-});
-
-// 公钥加密
-const plaintext = "会话密钥内容";
-const encrypted2 = crypto.publicEncrypt(
-  publicKey,
-  Buffer.from(plaintext, "utf8")
-);
-console.log("  原始数据:", plaintext);
-console.log("  公钥加密后:", encrypted2.toString("base64").slice(0, 40) + "...");
-
-// 私钥解密
-const decrypted2 = crypto.privateDecrypt(privateKey, encrypted2);
-console.log("  私钥解密后:", decrypted2.toString("utf8"));
-console.log("  特点: 加解密用不同密钥，安全但速度慢");
-
-// ---- 2. 模拟 TLS 握手中的密钥交换 ----
-console.log("\\n===== 2. TLS 握手密钥交换模拟 =====");
-
-/**
- * 模拟 TLS 握手过程：
- * 1. 客户端生成随机数
- * 2. 服务器发送证书（含公钥）
- * 3. 客户端用服务器公钥加密"预主密钥"
- * 4. 双方用预主密钥 + 随机数生成会话密钥
- */
-function simulateTLSHandshake() {
-  console.log("--- TLS 握手开始 ---");
-
-  // 步骤1: 客户端生成随机数
-  const clientRandom = crypto.randomBytes(32);
-  console.log("1. 客户端生成随机数:", clientRandom.toString("hex").slice(0, 20) + "...");
-
-  // 步骤2: 服务器生成密钥对（模拟证书中的公钥）
-  const serverKeys = crypto.generateKeyPairSync("rsa", {
-    modulusLength: 2048,
-    publicKeyEncoding: { type: "spki", format: "pem" },
-    privateKeyEncoding: { type: "pkcs8", format: "pem" },
-  });
-  const serverRandom = crypto.randomBytes(32);
-  console.log("2. 服务器→客户端: 证书(含公钥) + 随机数");
-  console.log("   服务器随机数:", serverRandom.toString("hex").slice(0, 20) + "...");
-
-  // 步骤3: 客户端生成预主密钥，用服务器公钥加密
-  const preMasterSecret = crypto.randomBytes(48); // 48字节预主密钥
-  const encryptedPMS = crypto.publicEncrypt(
-    serverKeys.publicKey,
-    preMasterSecret
-  );
-  console.log("3. 客户端: 生成预主密钥，用服务器公钥加密后发送");
-  console.log("   加密的预主密钥:", encryptedPMS.toString("hex").slice(0, 30) + "...");
-
-  // 步骤4: 服务器用私钥解密预主密钥
-  const decryptedPMS = crypto.privateDecrypt(
-    serverKeys.privateKey,
-    encryptedPMS
-  );
-  console.log("4. 服务器: 用私钥解密获得预主密钥");
-
-  // 步骤5: 双方用 PRF（伪随机函数）生成会话密钥
-  const seed = Buffer.concat([clientRandom, serverRandom]);
-  const masterSecret = crypto
-    .createHmac("sha256", decryptedPMS)
-    .update(seed)
-    .digest();
-  console.log("5. 双方生成会话密钥:", masterSecret.toString("hex").slice(0, 20) + "...");
-
-  console.log("--- TLS 握手完成，后续通信使用会话密钥 ---");
-  return masterSecret;
-}
-
-const sessionKey = simulateTLSHandshake();
-
-// ---- 3. 用会话密钥加密通信 ----
-console.log("\\n===== 3. TLS 加密通信模拟 =====");
-
-function encryptWithSessionKey(key, plaintext) {
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv("aes-256-gcm", key.slice(0, 32), iv);
-  let encrypted = cipher.update(plaintext, "utf8", "hex");
-  encrypted += cipher.final("hex");
-  const tag = cipher.getAuthTag();
-  return { iv: iv.toString("hex"), encrypted, tag: tag.toString("hex") };
-}
-
-function decryptWithSessionKey(key, encryptedData) {
-  const decipher = crypto.createDecipheriv(
-    "aes-256-gcm",
-    key.slice(0, 32),
-    Buffer.from(encryptedData.iv, "hex")
-  );
-  decipher.setAuthTag(Buffer.from(encryptedData.tag, "hex"));
-  let decrypted = decipher.update(encryptedData.encrypted, "hex", "utf8");
-  decrypted += decipher.final("utf8");
-  return decrypted;
-}
-
-// 加密消息
-const message1 = "GET /api/users HTTP/1.1";
-const encrypted1 = encryptWithSessionKey(sessionKey, message1);
-console.log("客户端发送(加密):", encrypted1.encrypted.slice(0, 40) + "...");
-
-// 解密消息
-const decrypted1 = decryptWithSessionKey(sessionKey, encrypted1);
-console.log("服务器解密后:", decrypted1);
-
-// 双向通信
-const response = 'HTTP/1.1 200 OK\\r\\nContent-Type: application/json\\r\\n\\r\\n{"users":[]}';
-const encryptedResp = encryptWithSessionKey(sessionKey, response);
-console.log("服务器回复(加密):", encryptedResp.encrypted.slice(0, 40) + "...");
-const decryptedResp = decryptWithSessionKey(sessionKey, encryptedResp);
-console.log("客户端解密后:", decryptedResp.slice(0, 50) + "...");
-
-// ---- 4. 证书验证模拟（签名验证） ----
-console.log("\\n===== 4. 证书签名验证模拟 =====");
-
-// 模拟 CA 用自己的私钥签发证书
-const caKeys = crypto.generateKeyPairSync("rsa", {
-  modulusLength: 2048,
-  publicKeyEncoding: { type: "spki", format: "pem" },
-  privateKeyEncoding: { type: "pkcs8", format: "pem" },
-});
-
-// 证书内容
-const certificate = {
-  subject: "example.com",
-  issuer: "Trusted CA",
-  validFrom: "2024-01-01",
-  validTo: "2025-01-01",
-  publicKey: publicKey,
-};
-
-// CA 对证书签名
-const sign = crypto.createSign("sha256");
-sign.update(JSON.stringify(certificate));
-const signature = sign.sign(caKeys.privateKey, "base64");
-console.log("CA 签发了证书:");
-console.log("  域名:", certificate.subject);
-console.log("  签发者:", certificate.issuer);
-console.log("  签名:", signature.slice(0, 30) + "...");
-
-// 客户端验证证书签名
-const verify = crypto.createVerify("sha256");
-verify.update(JSON.stringify(certificate));
-const isValid = verify.verify(caKeys.publicKey, signature, "base64");
-console.log("\\n客户端验证证书:");
-console.log("  签名验证:", isValid ? "✅ 通过" : "❌ 失败");
-
-// 模拟篡改证书
-const tamperedCert = { ...certificate, subject: "evil.com" };
-const verify2 = crypto.createVerify("sha256");
-verify2.update(JSON.stringify(tamperedCert));
-const isValid2 = verify2.verify(caKeys.publicKey, signature, "base64");
-console.log("  篡改后验证:", isValid2 ? "✅ 通过（危险！）" : "❌ 失败（证书被篡改！）");
-
-// ---- 5. 哈希与完整性校验 ----
-console.log("\\n===== 5. 哈希与完整性校验 =====");
-
-const data = "重要数据，不能篡改";
-const hash = crypto.createHash("sha256").update(data).digest("hex");
-console.log("原始数据:", data);
-console.log("SHA-256 哈希:", hash);
-
-// 验证数据完整性
-const receivedData = "重要数据，不能篡改";
-const receivedHash = crypto
-  .createHash("sha256")
-  .update(receivedData)
-  .digest("hex");
-console.log("\\n完整性验证:", hash === receivedHash ? "✅ 数据完整" : "❌ 数据被篡改");
-
-// 模拟篡改
-const tamperedData = "重要数据，已被篡改";
-const tamperedHash = crypto
-  .createHash("sha256")
-  .update(tamperedData)
-  .digest("hex");
-console.log("篡改后验证:", hash === tamperedHash ? "一致" : "❌ 不一致（检测到篡改）");
-
-// ---- 6. TLS 安全配置总结 ----
-console.log("\\n===== 6. TLS 安全配置最佳实践 =====");
-console.log("┌──────────────────────────────────────────┐");
-console.log("│ TLS 安全配置清单                          │");
-console.log("│ • 最低版本: TLS 1.2（推荐 1.3）          │");
-console.log("│ • 密码套件: 仅 ECDHE + AEAD             │");
-console.log("│ • 密钥长度: RSA 2048+ 或 ECDSA P-256+   │");
-console.log("│ • 证书管理: Let's Encrypt 自动续期      │");
-console.log("│ • 禁用: SSLv3, TLS 1.0, TLS 1.1         │");
-console.log("│ • 开启: HSTS, OSCP Stapling              │");
-console.log("├──────────────────────────────────────────┤");
-console.log("│ 两种加密方式                              │");
-console.log("│ 对称加密: 速度快，适合大量数据（AES）    │");
-console.log("│ 非对称加密: 安全，但慢（RSA/ECDSA）      │");
-console.log("│ TLS 组合: 握手用非对称，通信用对称       │");
-console.log("└──────────────────────────────────────────┘");`,
-  },
-
-  // =========================================================
-  // 第六章：HTTP/2 与 HTTP/3
-  // =========================================================
-  {
-    id: "node-http2",
-    title: "HTTP/2 与 HTTP/3",
-    icon: "🚄",
-    group: "核心模块补充",
-    content: `## HTTP/2 与 HTTP/3：下一代 HTTP 协议
-
-HTTP/2 和 HTTP/3 是 HTTP 协议的最新迭代，它们解决了 HTTP/1.1 的许多固有问题。Node.js 从 v8.4 开始提供 http2 模块，支持 HTTP/2 服务器和客户端。
-
----
-
-### 一、HTTP/1.1 的局限性
-
-#### 1.1 队头阻塞（Head-of-Line Blocking）
-
-HTTP/1.1 在一个 TCP 连接上，请求必须按顺序处理。如果第一个请求慢，后面所有请求都得等：
-
-\`\`\`
-连接1: [请求1]────────────[响应1]────────────[请求3]──[响应3]
-                       ↑ 请求1 慢，阻塞了请求2 和请求3
-连接2: [请求2]────────────[响应2]
-\`\`\`
-
-这导致浏览器通常需要打开 6-8 个并发 TCP 连接来并行加载资源，但每个连接都有队头阻塞问题。
-
-#### 1.2 多连接开销
-
-| 问题 | 说明 |
-| --- | --- |
-| 连接数限制 | 浏览器通常限制同域名 6-8 个并发连接 |
-| 连接建立成本 | 每个连接都需要 TCP 三次握手 + TLS 握手 |
-| 带宽竞争 | 多个 TCP 连接互相竞争带宽 |
-| 连接管理复杂 | 需要维护连接池、超时重连等逻辑 |
-
-#### 1.3 头部冗余
-
-HTTP/1.1 每次请求都发送完整的头部（Cookie、User-Agent 等），这些头部在多次请求中大量重复：
-
-\`\`\`http
-GET /page1 HTTP/1.1
-Host: example.com
-Cookie: session_id=abc123...(500字节)
-User-Agent: Mozilla/5.0...(200字节)
-Accept: text/html,application/xhtml+xml...(100字节)
-
-GET /page2 HTTP/1.1
-Host: example.com
-Cookie: session_id=abc123...(500字节)  ← 完全重复！
-User-Agent: Mozilla/5.0...(200字节)    ← 完全重复！
-Accept: text/html,application/xhtml+xml...(100字节) ← 完全重复！
-\`\`\`
-
----
-
-### 二、HTTP/2 核心特性
-
-HTTP/2 不改变 HTTP 的语义（方法、状态码、URI 等），但完全改变了传输方式。
-
-#### 2.1 多路复用（Multiplexing）
-
-HTTP/2 在一个 TCP 连接上可以同时发送多个请求和响应，这些请求/响应被分解为**帧（Frame）**，交错传输：
-
-\`\`\`
-HTTP/1.1:
-连接: [请求1──────────响应1──────────][请求2──响应2]
-
-HTTP/2:
-连接: [帧1.1][帧2.1][帧1.2][帧2.2][帧1.3][帧2.3]...
-       ↑ 请求1和请求2的帧交错传输，互不阻塞
-\`\`\`
-
-#### 2.2 二进制帧（Binary Framing）
-
-HTTP/2 将数据分解为二进制帧。每个帧有类型标识：
-
-| 帧类型 | 说明 |
-| --- | --- |
-| DATA | 传输 HTTP 消息体 |
-| HEADERS | 传输 HTTP 头部 |
-| PRIORITY | 指定流的优先级 |
-| RST_STREAM | 终止流 |
-| SETTINGS | 连接级别的参数协商 |
-| PUSH_PROMISE | 服务器推送通知 |
-| PING | 心跳检测 |
-| GOAWAY | 优雅关闭连接 |
-| WINDOW_UPDATE | 流量控制 |
-| CONTINUATION | 继续传输头部片段 |
-
-#### 2.3 流（Stream）与优先级
-
-每个请求/响应在一个"流"上进行，流有独立的 ID（客户端发起的流是奇数，服务器推送是偶数）：
-
-| 特性 | 说明 |
-| --- | --- |
-| 流 ID | 唯一标识一个流 |
-| 优先级 | 1-256，高优先级先分配资源 |
-| 依赖关系 | 流可以依赖其他流（如 CSS 依赖 HTML） |
-| 权重 | 同优先级下分配带宽的比例 |
-
-#### 2.4 头部压缩（HPACK）
-
-HTTP/2 使用 HPACK 算法压缩头部，大幅减少冗余：
-
-| 技术 | 说明 |
-| --- | --- |
-| 静态表 | 61 个预定义的常见头部（如 :method: GET） |
-| 动态表 | 连接期间动态维护的头部表 |
-| Huffman 编码 | 对字符串进行压缩编码 |
-
-\`\`\`
-HTTP/1.1 头部: 约 500-800 字节
-HTTP/2 头部: 约 20-100 字节（首次后更少）
-\`\`\`
-
-#### 2.5 服务器推送（Server Push）
-
-服务器可以主动推送客户端尚未请求的资源：
-
-\`\`\`javascript
-// 当客户端请求 index.html 时，服务器主动推送 style.css
-stream.pushStream({ ':path': '/style.css' }, (err, pushStream) => {
-  pushStream.respond({ ':status': 200, 'content-type': 'text/css' });
-  pushStream.end('body { color: red; }');
-});
-\`\`\`
-
----
-
-### 三、http2 模块用法
-
-#### 3.1 创建 HTTP/2 服务器
-
-\`\`\`javascript
-const http2 = require('http2');
-const fs = require('fs');
-
-const server = http2.createSecureServer({
-  key: fs.readFileSync('server-key.pem'),
-  cert: fs.readFileSync('server-cert.pem'),
-});
-
-server.on('stream', (stream, headers) => {
-  // stream 是双向流
-  console.log('请求路径:', headers[':path']);
-
-  stream.respond({
-    ':status': 200,
-    'content-type': 'text/html',
-  });
-
-  stream.end('<h1>Hello HTTP/2!</h1>');
-});
-
-server.listen(8443);
-\`\`\`
-
-#### 3.2 创建 HTTP/2 客户端
-
-\`\`\`javascript
-const http2 = require('http2');
-
-const client = http2.connect('https://localhost:8443');
-
-const req = client.request({ ':path': '/' });
-
-req.on('response', (headers) => {
-  console.log('状态码:', headers[':status']);
-});
-
-let data = '';
-req.on('data', (chunk) => data += chunk);
-req.on('end', () => {
-  console.log('响应体:', data);
-  client.close();
-});
-
-req.end();
-\`\`\`
-
-#### 3.3 服务器推送（Server Push）
-
-\`\`\`javascript
-server.on('stream', (stream, headers) => {
-  if (headers[':path'] === '/') {
-    // 推送 CSS 文件
-    stream.pushStream({ ':path': '/style.css' }, (err, pushStream) => {
-      if (err) throw err;
-      pushStream.respond({ ':status': 200, 'content-type': 'text/css' });
-      pushStream.end('body { font-family: sans-serif; }');
-    });
-
-    // 响应 HTML
-    stream.respond({ ':status': 200, 'content-type': 'text/html' });
-    stream.end('<link rel="stylesheet" href="/style.css"><h1>Hello</h1>');
+  // 初始化存储条目
+  if (!this.store[key]) {
+    this.store[key] = { buckets: {}, lastAccess: Date.now() };
   }
-});
-\`\`\`
 
----
+  var entry = this.store[key];
+  entry.lastAccess = Date.now();
 
-### 四、HTTP/2 vs HTTP/1.1 性能对比
+  // 清理过期桶
+  this.cleanExpiredBuckets(key, currentBucket);
 
-| 特性 | HTTP/1.1 | HTTP/2 |
-| --- | --- | --- |
-| 连接复用 | 多个 TCP 连接 | 单个 TCP 连接 |
-| 请求并发 | 6-8 个/域名 | 无限制（多路复用） |
-| 头部压缩 | 无 | HPACK |
-| 请求优先级 | 无 | 有（流优先级） |
-| 服务器推送 | 无 | 有 |
-| 协议格式 | 文本 | 二进制帧 |
-| 队头阻塞 | 有（HTTP 层） | 有（TCP 层，已大幅缓解） |
-| 连接建立 | 慢（多连接） | 快（单连接） |
+  // 当前桶的计数
+  if (!entry.buckets[currentBucket]) {
+    entry.buckets[currentBucket] = 0;
+  }
 
----
+  // 计算窗口内的总请求数
+  var totalRequests = 0;
+  var windowBuckets = this.buckets;
+  var oldestValidBucket = currentBucket - windowBuckets + 1;
 
-### 五、HTTP/3 与 QUIC
+  for (var bucket in entry.buckets) {
+    var bucketNum = parseInt(bucket, 10);
+    if (bucketNum >= oldestValidBucket && bucketNum <= currentBucket) {
+      totalRequests += entry.buckets[bucket];
+    }
+  }
 
-#### 5.1 HTTP/3 的核心变化
+  var remaining = this.maxRequests - totalRequests - 1;
 
-HTTP/3 最大的变化是：**不再使用 TCP，而是使用 QUIC（基于 UDP）**。
-
-| 对比 | HTTP/2 | HTTP/3 |
-| --- | --- | --- |
-| 传输层 | TCP | QUIC（基于 UDP） |
-| 连接建立 | 3 次握手 + TLS | 0-RTT 或 1-RTT |
-| 队头阻塞 | TCP 层仍有 | 完全消除 |
-| 连接迁移 | 不支持（换 IP 需重连） | 支持（Connection ID） |
-| 加密 | TLS 1.2+ | 内置 TLS 1.3 |
-| 头部压缩 | HPACK | QPACK（改进版） |
-
-#### 5.2 QUIC 的关键优势
-
-1. **0-RTT 恢复**：之前连接过的服务器可以 0-RTT 恢复会话
-2. **无队头阻塞**：每个流独立，一个丢包不影响其他流
-3. **连接迁移**：切换网络（WiFi→4G）时连接不中断
-4. **内置加密**：QUIC 自带 TLS 1.3，不再需要额外的 TLS 握手
-
-#### 5.3 Node.js 对 HTTP/3 的支持
-
-截至 2024 年，Node.js 核心模块**尚未内置 HTTP/3 支持**。但可以通过以下方式使用：
-- 使用 \`nodejs/quic\` 实验性模块
-- 通过第三方库如 \`@fails-components/quic\`
-- 使用反向代理（如 Nginx + HTTP/3）在前面
-
----
-
-### 六、实际应用建议
-
-1. **大多数场景直接使用 HTTP/2**，Node.js 原生支持
-2. **HTTP/2 需要 HTTPS**（浏览器要求，但 Node.js 支持明文 h2c）
-3. **服务器推送要谨慎使用**，避免推送不需要的资源
-4. **HTTP/3 在 CDN/边缘节点层面使用**，应用层暂时不需要关心
-5. **向后兼容**：HTTP/2 服务器依旧可以处理 HTTP/1.1 请求
-
-下面这段代码用对象字面量模拟 HTTP/2 多路复用、头部压缩和服务器推送。`,
-    code: `// ============================================================
-// 第六章代码演示：HTTP/2 多路复用、头部压缩、服务器推送模拟
-// ============================================================
-// 沙箱中无法建立真正的 HTTP/2 连接，以下代码用对象字面量模拟。
-// 核心概念：多路复用、流、帧、头部压缩、服务器推送。
-
-// ---- 1. HTTP/1.1 队头阻塞演示 ----
-console.log("===== 1. HTTP/1.1 队头阻塞 =====");
-
-function simulateHTTP11() {
-  console.log("HTTP/1.1 请求模型（同一连接串行）:");
-  const requests = [
-    { id: 1, resource: "index.html", delay: 100 },
-    { id: 2, resource: "style.css", delay: 30 },
-    { id: 3, resource: "script.js", delay: 50 },
-    { id: 4, resource: "logo.png", delay: 80 },
-  ];
-
-  let totalTime = 0;
-  requests.forEach((req) => {
-    totalTime += req.delay;
-    console.log(\`  [请求\${req.id}] \${req.resource} → 耗时 \${req.delay}ms\`);
-  });
-  console.log(\`  HTTP/1.1 总耗时: \${totalTime}ms（串行累积）\`);
-  console.log(\`  如果请求1很慢，后续请求全部排队等待\`);
-}
-simulateHTTP11();
-
-// ---- 2. HTTP/2 多路复用模拟 ----
-console.log("\\n===== 2. HTTP/2 多路复用 =====");
-
-/**
- * 模拟 HTTP/2 连接：一个连接上多个流并发传输
- */
-class HTTP2Connection {
-  constructor() {
-    this.streams = new Map();
-    this.nextStreamId = 1; // 客户端发起的流使用奇数 ID
-    this.nextPushStreamId = 2; // 服务器推送的流使用偶数 ID
-    this._settings = {
-      SETTINGS_MAX_CONCURRENT_STREAMS: 100,
-      SETTINGS_INITIAL_WINDOW_SIZE: 65535,
-      SETTINGS_MAX_FRAME_SIZE: 16384,
-      SETTINGS_ENABLE_PUSH: 1,
+  if (remaining < 0) {
+    // 达到限制
+    return {
+      allowed: false,
+      remaining: 0,
+      limit: this.maxRequests,
+      retryAfterMs: this.bucketSpan,
+      totalRequests: totalRequests,
     };
   }
 
-  // 创建请求流
-  createStream(headers) {
-    const streamId = this.nextStreamId;
-    this.nextStreamId += 2;
-    const stream = new HTTP2Stream(streamId, "client", headers);
-    this.streams.set(streamId, stream);
-    return stream;
-  }
+  // 允许请求，增加计数
+  entry.buckets[currentBucket]++;
+  totalRequests++;
 
-  // 创建推送流（服务器推送）
-  createPushStream(promisedStreamId, headers) {
-    const stream = new HTTP2Stream(promisedStreamId, "server", headers);
-    this.streams.set(promisedStreamId, stream);
-    return stream;
-  }
+  return {
+    allowed: true,
+    remaining: remaining,
+    limit: this.maxRequests,
+    totalRequests: totalRequests,
+  };
+};
 
-  getSettings() {
-    return this._settings;
+// 重置指定 key 的计数
+SlidingWindowRateLimiter.prototype.reset = function (key) {
+  delete this.store[key];
+};
+
+// 获取存储状态
+SlidingWindowRateLimiter.prototype.getStats = function () {
+  var keys = Object.keys(this.store);
+  return {
+    activeKeys: keys.length,
+    totalStored: keys.length,
+  };
+};
+
+console.log("滑动窗口限流器已初始化");
+console.log("  窗口大小: 60 秒");
+console.log("  最大请求: 100 次/窗口");
+console.log("  桶数量: 10 个");
+
+// ---- 2. 基础限流演示 ----
+console.log("\\n========== 2. 基础限流演示 ==========");
+
+var limiter = new SlidingWindowRateLimiter({
+  windowMs: 60000,
+  maxRequests: 5,  // 设为 5 方便演示
+  buckets: 10,
+});
+
+var testKey = "192.168.1.100";
+
+console.log("模拟 IP " + testKey + " 的请求序列（限制: 5 次/分钟）:");
+for (var i = 1; i <= 8; i++) {
+  var result = limiter.check(testKey);
+  var status = result.allowed ? "✅ 通过" : "🚫 限流";
+  console.log(
+    "  请求 " + i + ": " + status +
+    " | 已用: " + result.totalRequests + "/" + result.limit +
+    " | 剩余: " + result.remaining
+  );
+}
+
+// ---- 3. IP 级别限流 ----
+console.log("\\n========== 3. IP 级别限流 ==========");
+
+var ipLimiter = new SlidingWindowRateLimiter({
+  windowMs: 60000,
+  maxRequests: 10,
+  buckets: 10,
+});
+
+var ipAddresses = ["192.168.1.1", "192.168.1.2", "10.0.0.1", "192.168.1.1", "192.168.1.1"];
+
+console.log("模拟多个 IP 的请求:");
+ipAddresses.forEach(function (ip, index) {
+  var result = ipLimiter.check(ip);
+  console.log("  [" + (index + 1) + "] " + ip + " → " + (result.allowed ? "✅" : "🚫") + " 剩余: " + result.remaining);
+});
+
+// ---- 4. 接口级别限流 ----
+console.log("\\n========== 4. 接口级别限流 ==========");
+
+// 不同接口不同的限制规则
+var apiLimiters = {
+  "/api/login": new SlidingWindowRateLimiter({
+    windowMs: 60000,
+    maxRequests: 5,   // 登录接口严格限制
+    buckets: 10,
+  }),
+  "/api/data": new SlidingWindowRateLimiter({
+    windowMs: 60000,
+    maxRequests: 100, // 数据接口宽松
+    buckets: 10,
+  }),
+  "/api/upload": new SlidingWindowRateLimiter({
+    windowMs: 60000,
+    maxRequests: 10,  // 上传接口中等限制
+    buckets: 10,
+  }),
+  "/api/search": new SlidingWindowRateLimiter({
+    windowMs: 60000,
+    maxRequests: 50,  // 搜索接口
+    buckets: 10,
+  }),
+};
+
+console.log("接口限流规则:");
+for (var api in apiLimiters) {
+  var lim = apiLimiters[api];
+  console.log("  " + api + " → " + lim.maxRequests + " 次/分钟");
+}
+
+// 模拟登录接口的暴力破解防护
+console.log("\\n模拟登录接口暴力破解:");
+var attackerIp = "10.10.10.10";
+var loginLimiter = apiLimiters["/api/login"];
+
+for (var i = 1; i <= 8; i++) {
+  var result = loginLimiter.check(attackerIp);
+  var status = result.allowed ? "✅ 允许" : "🚫 拒绝";
+  console.log("  登录尝试 " + i + ": " + status + " (剩余 " + result.remaining + " 次)");
+  if (!result.allowed) {
+    console.log("  → 触发限流！建议后续尝试: " + result.retryAfterMs + "ms 后");
   }
 }
 
-/**
- * 模拟 HTTP/2 流
- */
-class HTTP2Stream {
-  constructor(id, type, headers) {
-    this.id = id;
-    this.type = type; // 'client' or 'server'
-    this.headers = headers || {};
-    this.state = "idle"; // idle → open → half-closed → closed
-    this._data = [];
-    this._frames = [];
+// ---- 5. 用户级别限流 ----
+console.log("\\n========== 5. 用户级别限流 ==========");
+
+var userLimiter = new SlidingWindowRateLimiter({
+  windowMs: 60000,
+  maxRequests: 20,
+  buckets: 10,
+});
+
+// 组合 key：用户 ID + 接口路径
+function getUserApiKey(userId, apiPath) {
+  return "user:" + userId + ":" + apiPath;
+}
+
+var users = ["user_001", "user_002", "user_001", "user_001"];
+var api = "/api/data";
+
+users.forEach(function (userId, index) {
+  var key = getUserApiKey(userId, api);
+  var result = userLimiter.check(key);
+  console.log("  [" + (index + 1) + "] " + userId + " 请求 " + api + " → " + (result.allowed ? "✅" : "🚫") + " 剩余: " + result.remaining);
+});
+
+// ---- 6. 限流响应头生成 ----
+console.log("\\n========== 6. 限流响应头 ==========");
+
+function generateRateLimitHeaders(limitResult) {
+  var headers = {};
+  headers["X-RateLimit-Limit"] = limitResult.limit;
+  headers["X-RateLimit-Remaining"] = Math.max(0, limitResult.remaining);
+  headers["X-RateLimit-Reset"] = Math.ceil(Date.now() / 1000) + Math.ceil(limitResult.retryAfterMs / 1000);
+
+  if (!limitResult.allowed) {
+    headers["Retry-After"] = Math.ceil(limitResult.retryAfterMs / 1000);
   }
 
-  // 发送 HEADERS 帧
-  sendHeaders(headers) {
-    this.state = "open";
-    this._frames.push({ type: "HEADERS", streamId: this.id, headers });
-    console.log(
-      \`  [流\${this.id}] HEADERS 帧 → \${JSON.stringify(headers).slice(0, 50)}...\`
-    );
+  return headers;
+}
+
+// 模拟不同场景的响应头
+var scenarios = [
+  { desc: "正常请求", allowed: true, remaining: 95, limit: 100 },
+  { desc: "接近限制", allowed: true, remaining: 2, limit: 100 },
+  { desc: "达到限制", allowed: false, remaining: 0, limit: 100, retryAfterMs: 6000 },
+  { desc: "严重超限", allowed: false, remaining: 0, limit: 100, retryAfterMs: 30000 },
+];
+
+console.log("不同场景的限流响应头:");
+scenarios.forEach(function (scenario) {
+  var headers = generateRateLimitHeaders(scenario);
+  console.log("\\n--- " + scenario.desc + " ---");
+  for (var h in headers) {
+    console.log("  " + h + ": " + headers[h]);
+  }
+});
+
+// ---- 7. 令牌桶算法实现 ----
+console.log("\\n========== 7. 令牌桶算法 ==========");
+
+function TokenBucket(options) {
+  this.capacity = options.capacity || 100;       // 桶容量
+  this.fillRate = options.fillRate || 10;        // 每秒填充速率
+  this.tokens = this.capacity;                   // 当前令牌数
+  this.lastFill = Date.now();                    // 上次填充时间
+}
+
+TokenBucket.prototype.fill = function () {
+  var now = Date.now();
+  var elapsed = (now - this.lastFill) / 1000;    // 过去秒数
+  var newTokens = elapsed * this.fillRate;
+  this.tokens = Math.min(this.capacity, this.tokens + newTokens);
+  this.lastFill = now;
+};
+
+TokenBucket.prototype.consume = function (count) {
+  count = count || 1;
+  this.fill();
+  if (this.tokens >= count) {
+    this.tokens -= count;
+    return { allowed: true, tokensLeft: Math.floor(this.tokens) };
+  }
+  return { allowed: false, tokensLeft: Math.floor(this.tokens) };
+};
+
+// 演示令牌桶
+var bucket = new TokenBucket({ capacity: 10, fillRate: 2 }); // 每秒填充 2 个令牌
+
+console.log("令牌桶配置: 容量 10, 填充速率 2/秒");
+console.log("\\n模拟突发请求（消耗所有令牌）:");
+for (var i = 1; i <= 12; i++) {
+  var result = bucket.consume(1);
+  var status = result.allowed ? "✅" : "🚫";
+  console.log("  请求 " + i + ": " + status + " 剩余令牌: " + result.tokensLeft);
+}
+
+console.log("\\n说明: 令牌桶允许短时间的突发流量，");
+console.log("      但长期平均速率被限制为填充速率");
+
+// ---- 8. 渐进式限流与封禁 ----
+console.log("\\n========== 8. 渐进式限流与封禁 ==========");
+
+function ProgressiveRateLimiter(options) {
+  this.baseLimit = options.baseLimit || 100;
+  this.warningThreshold = options.warningThreshold || 0.8; // 80% 时警告
+  this.blockThreshold = options.blockThreshold || 3;       // 连续超限 3 次封禁
+  this.store = {};
+}
+
+ProgressiveRateLimiter.prototype.check = function (key) {
+  if (!this.store[key]) {
+    this.store[key] = { count: 0, violations: 0, blocked: false, blockedUntil: 0 };
   }
 
-  // 发送 DATA 帧
-  sendData(data) {
-    this._frames.push({ type: "DATA", streamId: this.id, length: data.length });
-    console.log(\`  [流\${this.id}] DATA 帧 → \${data.length} 字节\`);
+  var entry = this.store[key];
+
+  // 检查是否被封禁
+  if (entry.blocked) {
+    if (Date.now() < entry.blockedUntil) {
+      var remaining = Math.ceil((entry.blockedUntil - Date.now()) / 1000);
+      return { allowed: false, blocked: true, unblockIn: remaining };
+    }
+    // 解封
+    entry.blocked = false;
+    entry.violations = 0;
+    entry.count = 0;
   }
 
-  // 响应
-  respond(headers) {
-    this.sendHeaders(headers);
+  entry.count++;
+  var usage = entry.count / this.baseLimit;
+
+  // 接近限制，返回警告
+  if (usage >= this.warningThreshold && usage < 1.0) {
+    return {
+      allowed: true,
+      warning: true,
+      usagePercent: Math.round(usage * 100),
+      remaining: this.baseLimit - entry.count,
+    };
   }
 
-  // 结束流
-  end(data) {
-    if (data) this.sendData(data);
-    this.state = "closed";
-    this._frames.push({ type: "END_STREAM", streamId: this.id });
+  // 达到限制
+  if (usage >= 1.0) {
+    entry.violations++;
+
+    if (entry.violations >= this.blockThreshold) {
+      // 封禁 5 分钟
+      entry.blocked = true;
+      entry.blockedUntil = Date.now() + 300000;
+      return { allowed: false, blocked: true, unblockIn: 300 };
+    }
+
+    return {
+      allowed: false,
+      limited: true,
+      violations: entry.violations,
+      violationLimit: this.blockThreshold,
+    };
   }
 
-  // 推送流
-  pushStream(headers, callback) {
-    const pushId = this.id + 1;
-    this._frames.push({
-      type: "PUSH_PROMISE",
-      streamId: this.id,
-      promisedStreamId: pushId,
-      headers,
-    });
-    console.log(
-      \`  [流\${this.id}] PUSH_PROMISE → 推送流\${pushId}: \${JSON.stringify(headers).slice(0, 50)}...\`
-    );
-    const pushStream = new HTTP2Stream(pushId, "server", headers);
-    callback(null, pushStream);
-    return pushStream;
-  }
+  return { allowed: true, remaining: this.baseLimit - entry.count };
+};
 
-  // 优先级
-  setPriority(weight, dependsOn) {
-    this._frames.push({
-      type: "PRIORITY",
-      streamId: this.id,
-      weight,
-      dependsOn,
-    });
-    console.log(
-      \`  [流\${this.id}] PRIORITY → 权重=\${weight}, 依赖流\${dependsOn || "无"}\`
-    );
+var progressiveLimiter = new ProgressiveRateLimiter({
+  baseLimit: 5,
+  warningThreshold: 0.6,
+  blockThreshold: 3,
+});
+
+console.log("渐进式限流配置: 基础限制 5 次, 警告阈值 60%, 封禁阈值 3 次超限");
+console.log("\\n模拟攻击者多次超限:");
+
+var attackerKey = "attacker_1";
+for (var i = 1; i <= 25; i++) {
+  var result = progressiveLimiter.check(attackerKey);
+
+  if (result.blocked) {
+    console.log("  请求 " + i + ": 🚫 已封禁! 剩余解封时间: " + result.unblockIn + " 秒");
+    break;
+  } else if (result.warning) {
+    console.log("  请求 " + i + ": ⚠️  警告! 使用率 " + result.usagePercent + "%");
+  } else if (result.limited) {
+    console.log("  请求 " + i + ": 🚫 限流! 超限次数 " + result.violations + "/" + result.violationLimit);
+  } else {
+    console.log("  请求 " + i + ": ✅ 通过");
   }
 }
 
-// 模拟 HTTP/2 多路复用
-function simulateHTTP2Multiplexing() {
-  const conn = new HTTP2Connection();
-  console.log("HTTP/2 连接建立（单个 TCP 连接）");
-  console.log("设置:", JSON.stringify(conn.getSettings()));
+// ---- 9. 限流最佳实践总结 ----
+console.log("\\n========== 9. 限流最佳实践总结 ==========");
 
-  // 并发发起多个请求
-  const requests = [
-    { path: "/index.html", priority: 256, weight: 40 },
-    { path: "/style.css", priority: 200, weight: 30 },
-    { path: "/script.js", priority: 150, weight: 20 },
-    { path: "/logo.png", priority: 100, weight: 10 },
-  ];
+var rateLimitBestPractices = [
+  { 实践: "选择合适的算法", 说明: "滑动窗口适合大多数场景，令牌桶适合需要突发流量的场景" },
+  { 实践: "分级限流", 说明: "不同接口设置不同限制，登录等敏感接口更严格" },
+  { 实践: "返回标准响应头", 说明: "X-RateLimit-* 系列头帮助客户端自适应" },
+  { 实践: "渐进式处理", 说明: "警告 → 限流 → 封禁，而非直接拒绝" },
+  { 实践: "白名单机制", 说明: "内部服务和管理员可以不受限流影响" },
+  { 实践: "分布式限流", 说明: "多实例部署时使用 Redis 等共享存储" },
+  { 实践: "监控与告警", 说明: "记录限流事件，对异常模式设置告警" },
+  { 实践: "优雅降级", 说明: "限流时返回友好的错误信息，而非直接断开连接" },
+];
 
-  const streams = requests.map((req) => {
-    const stream = conn.createStream({ ":method": "GET", ":path": req.path });
-    stream.setPriority(req.weight, 1);
-    console.log(\`  创建流\${stream.id}: \${req.path} (权重 \${req.weight})\`);
-    return stream;
-  });
+console.table(rateLimitBestPractices);
 
-  // 模拟响应（交错）
-  console.log("\\n帧交错传输:");
-  streams.forEach((stream, i) => {
-    setTimeout(() => {
-      stream.sendHeaders({ ":status": 200, "content-type": "text/html" });
-      stream.sendData(\`\${stream.headers[":path"]} 的内容\`);
-      stream.end();
-    }, i * 5);
-  });
+console.log("\\n===== 限流与防刷演示完成 =====");`,
+  },
 
-  setTimeout(() => {
-    console.log("\\nHTTP/2 多路复用优势:");
-    console.log("  • 所有请求共享一个 TCP 连接");
-    console.log("  • 请求/响应帧交错传输，互不阻塞");
-    console.log("  • 1 个慢请求不会阻塞其他请求");
-    console.log("  • 支持流优先级，重要资源优先传输");
-  }, 50);
-}
+  // =========================================================
+  // 第六章：输入过滤与防注入
+  // =========================================================
+  {
+    id: "node-input-sanitize",
+    icon: "🧹",
+    group: "认证与安全",
+    title: "输入过滤与防注入",
+    content: `## 输入过滤的重要性
 
-simulateHTTP2Multiplexing();
+输入过滤是安全防御的**第一道防线**。所有来自外部的数据——URL 参数、表单提交、HTTP 头、Cookie、文件上传——都必须经过过滤和验证才能进入应用逻辑。OWASP 将"注入"列为 Web 应用安全的第一大威胁，而输入过滤正是对抗注入攻击的最有效手段。
 
-// ---- 3. 头部压缩（HPACK）模拟 ----
-setTimeout(() => {
-  console.log("\\n===== 3. 头部压缩（HPACK）模拟 =====");
+### 安全原则
 
-  /**
-   * 模拟 HPACK 的静态表和动态表
-   */
-  class HPACKSimulator {
-    constructor() {
-      // 静态表（HPACK 预定义的 61 个常见头部，这里展示部分）
-      this._staticTable = [
-        { name: ":authority", value: "" },
-        { name: ":method", value: "GET" },
-        { name: ":method", value: "POST" },
-        { name: ":path", value: "/" },
-        { name: ":path", value: "/index.html" },
-        { name: ":status", value: "200" },
-        { name: ":status", value: "404" },
-        { name: "content-type", value: "text/html" },
-        { name: "content-type", value: "application/json" },
-        { name: "accept", value: "*/*" },
-        { name: "accept-encoding", value: "gzip, deflate" },
-      ];
-      this._dynamicTable = []; // 动态表（连接期间维护）
-      this._totalCompressed = 0;
-      this._totalOriginal = 0;
+**核心原则：永远不信任用户输入。**
+
+1. **白名单优于黑名单**：定义允许的输入模式，而不是列举要排除的危险模式
+2. **服务端验证是必须的**：前端验证只是用户体验优化，不能作为安全防线
+3. **验证后再过滤**：先验证格式和类型，再对通过验证的内容进行编码/过滤
+4. **最小权限**：输入过滤应尽可能严格，只放行确实需要的内容
+
+### XSS 过滤（HTML 实体编码）
+
+XSS（跨站脚本攻击）的本质是攻击者注入的 HTML/JavaScript 代码在浏览器被执行。防御的核心是**根据输出上下文进行编码**。
+
+**HTML 实体编码对照表**：
+
+| 字符 | 实体编码 | 说明 |
+| --- | --- | --- |
+| \`&\` | \`&amp;\` | 实体起始符，必须最先编码 |
+| \`<\` | \`&lt;\` | 标签起始符 |
+| \`>\` | \`&gt;\` | 标签结束符 |
+| \`"\` | \`&quot;\` | 属性值分隔符 |
+| \`'\` | \`&#x27;\` | 属性值分隔符（单引号） |
+| \`/\` | \`&#x2F;\` | 结束标签 |
+
+**编码顺序很重要**：必须先编码 \`&\`，否则后续编码会产生新的 \`&\` 字符。
+
+### SQL 注入防范
+
+SQL 注入是最危险的注入攻击之一。防御的核心是**参数化查询**：
+
+\`\`\`javascript
+// ❌ 危险：字符串拼接
+const sql = "SELECT * FROM users WHERE id = " + userId;
+
+// ✅ 安全：参数化查询
+const sql = "SELECT * FROM users WHERE id = ?";
+db.query(sql, [userId]);
+\`\`\`
+
+**参数化查询的原理**：参数值被发送到数据库后，数据库将其视为**数据**而非**SQL 代码**。即使参数中包含 SQL 关键字，也不会被解释执行。
+
+### 命令注入防范
+
+在 Node.js 中执行系统命令时，必须严格过滤用户输入：
+
+\`\`\`javascript
+// ❌ 危险：用户输入直接拼接到命令中
+const { exec } = require('child_process');
+exec('ls ' + userInput);
+
+// ✅ 安全：使用 execFile 并显式传参
+const { execFile } = require('child_process');
+execFile('ls', [userInput], { shell: false });
+\`\`\`
+
+### 路径遍历防范
+
+路径遍历攻击（Directory Traversal）通过 \`../\` 等技巧访问基础目录之外的文件。
+
+**防御步骤**：
+1. 使用 \`path.resolve()\` 规范化路径
+2. 验证规范化后的路径是否在允许的基础目录内
+3. 禁止访问隐藏文件（以 \`.\` 开头）
+4. 使用白名单限制可访问的文件
+
+### 正则拒绝服务（ReDoS）防范
+
+某些正则表达式在某些输入下会导致指数级回溯，造成 CPU 100% 占用。
+
+**危险的正则特征**：
+- 嵌套量词：\`(a+)+$\`
+- 重叠选择：\`(a|aa)+$\`
+- 贪婪匹配 + 回溯
+
+**防范措施**：
+- 避免复杂的嵌套量词
+- 使用原子组或占有量词
+- 设置正则执行超时
+- 限制输入长度后再匹配
+
+### 输入长度限制
+
+所有输入都应该有长度限制：
+- 防止缓冲区溢出
+- 防止 DoS（处理超长字符串消耗资源）
+- 防止数据库存储异常数据
+
+### 完整的输入过滤流程
+
+\`\`\`
+用户输入 → 类型检查 → 格式验证 → 长度限制 → 内容过滤 → 输出编码 → 使用
+\`\`\`
+
+每一层都是独立的防线，即使某一层失效，其他层仍然能提供保护。这就是**纵深防御**原则。
+
+### 输入过滤的上下文感知
+
+不同的输入上下文需要不同的过滤策略。一个常见的错误是使用单一的过滤方式处理所有输入：
+
+| 输入类型 | 典型场景 | 过滤策略 |
+| --- | --- | --- |
+| 用户名 | 登录/注册 | 字母数字 + 长度限制 |
+| 用户评论 | 论坛/评论区 | HTML 实体编码 |
+| 搜索关键词 | 搜索框 | 特殊字符转义 + 长度限制 |
+| 文件上传名 | 文件管理 | 路径安全化 + 扩展名白名单 |
+| JSON 数据 | API 请求 | Schema 验证 |
+| URL 参数 | 路由参数 | 类型检查 + 格式验证 |
+
+### 安全的 JSON 解析
+
+JSON.parse 本身是安全的，但解析后的数据仍需验证：
+
+\`\`\`javascript
+// ❌ 假设 JSON 数据是安全的
+const data = JSON.parse(request.body);
+db.query("INSERT INTO users SET ?", data); // 可能包含额外字段
+
+// ✅ 验证 JSON 数据的结构和类型
+const schema = {
+  username: { type: 'string', required: true, maxLength: 20 },
+  email: { type: 'string', required: true, pattern: /^[^\\s@]+@[^\\s@]+$/ },
+};
+const validated = validate(data, schema);
+\`\`\`
+
+### 文件上传安全
+
+文件上传是 Web 应用中最危险的输入之一：
+
+1. **文件类型验证**：检查 MIME 类型和文件魔术数字（magic bytes），不信任扩展名
+2. **文件大小限制**：设置合理的文件大小上限
+3. **文件名安全化**：移除路径分隔符和特殊字符
+4. **存储隔离**：上传文件存储在 Web 根目录之外
+5. **病毒扫描**：对上传文件进行病毒扫描
+6. **权限控制**：上传目录设置最小权限
+
+### 实战：构建安全的输入验证模块
+
+一个好的输入验证模块应该具备以下特性：
+
+\`\`\`javascript
+const InputValidator = {
+  // 链式验证 API
+  string().min(3).max(20).alphanumeric().required(),
+  
+  // 自定义验证规则
+  custom(value => value !== 'admin'),
+  
+  // 错误收集（返回所有错误，而非遇到第一个就停止）
+  validateAll(),
+  
+  // 数据转换（类型转换、trim、默认值）
+  transform(),
+};
+\`\`\`
+
+### 输入过滤的常见陷阱
+
+1. **过度过滤**：过滤掉用户的合法输入（如名字中的撇号 O'Brien）
+2. **过滤不足**：只做了前端验证，服务端未做
+3. **黑名单思维**：试图列举所有危险输入，总有遗漏
+4. **编码后再次编码**：多重编码导致数据损坏
+5. **在错误的位置编码**：在存储时编码而非输出时编码`,
+    code: `// ============================================================
+// 第六章代码演示：输入过滤与防注入
+// 实现输入过滤工具，包括 HTML 编码、路径安全化、字符串脱敏
+// ============================================================
+
+var path = require("path");
+var crypto = require("crypto");
+
+// ---- 1. HTML 实体编码工具 ----
+console.log("========== 1. HTML 实体编码 ==========");
+
+var HtmlEncoder = {
+  // 标准 HTML 实体编码
+  encode: function (str) {
+    if (typeof str !== "string") return String(str);
+    return str
+      .replace(/&/g, "&amp;")     // 必须最先编码 &
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#x27;")
+      .replace(/\\//g, "&#x2F;");
+  },
+
+  // 解码（仅用于展示，实际不应对用户输入解码）
+  decode: function (str) {
+    if (typeof str !== "string") return str;
+    return str
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#x27;/g, "'")
+      .replace(/&#x2F;/g, "/");
+  },
+
+  // HTML 属性编码（比正文编码更严格）
+  encodeAttribute: function (str) {
+    if (typeof str !== "string") return String(str);
+    return this.encode(str)
+      .replace(/ /g, "&#x20;")
+      .replace(/\\t/g, "&#x09;");
+  },
+
+  // JavaScript 字符串转义
+  encodeForJS: function (str) {
+    if (typeof str !== "string") return String(str);
+    return str
+      .replace(/\\\\/g, "\\\\\\\\")
+      .replace(/'/g, "\\\\'")
+      .replace(/"/g, '\\\\"')
+      .replace(/\\n/g, "\\\\n")
+      .replace(/\\r/g, "\\\\r");
+  },
+
+  // URL 编码
+  encodeForURL: function (str) {
+    if (typeof str !== "string") return String(str);
+    return encodeURIComponent(str);
+  },
+};
+
+// 演示各种编码
+var xssPayloads = [
+  { raw: '<script>alert("XSS")</script>', desc: "基础 XSS 脚本" },
+  { raw: '<img src=x onerror="alert(1)">', desc: "图片事件注入" },
+  { raw: "javascript:alert('XSS')", desc: "JavaScript 协议" },
+  { raw: '<a href="http://evil.com">点击</a>', desc: "恶意链接" },
+  { raw: "正常用户评论：很不错！", desc: "正常输入" },
+  { raw: '<div style="background:url(javascript:alert(1))">', desc: "CSS 注入" },
+];
+
+console.log("HTML 实体编码演示:");
+console.table(
+  xssPayloads.map(function (item) {
+    return {
+      攻击类型: item.desc,
+      原始输入: item.raw,
+      编码输出: HtmlEncoder.encode(item.raw),
+    };
+  })
+);
+
+// ---- 2. 路径安全化工具 ----
+console.log("\\n========== 2. 路径安全化 ==========");
+
+var PathSanitizer = {
+  // 允许的字符集（白名单）
+  ALLOWED_CHARS: /^[a-zA-Z0-9._\\-]+$/,
+
+  // 基础目录
+  BASE_DIR: "/var/www/uploads",
+
+  // 安全化文件路径
+  sanitize: function (userInput, baseDir) {
+    baseDir = baseDir || this.BASE_DIR;
+
+    // 1. 检查空输入
+    if (!userInput || typeof userInput !== "string") {
+      return { valid: false, error: "路径不能为空" };
     }
 
-    // 查找表索引
-    _lookup(name, value) {
-      // 先查静态表
-      for (let i = 0; i < this._staticTable.length; i++) {
-        if (
-          this._staticTable[i].name === name &&
-          this._staticTable[i].value === value
-        ) {
-          return { index: i + 1, type: "static" };
-        }
-      }
-      // 再查动态表
-      for (let i = 0; i < this._dynamicTable.length; i++) {
-        if (
-          this._dynamicTable[i].name === name &&
-          this._dynamicTable[i].value === value
-        ) {
-          return { index: this._staticTable.length + i + 1, type: "dynamic" };
-        }
-      }
-      return null;
-    }
+    // 2. 路径规范化
+    var resolved = path.resolve(baseDir, userInput);
 
-    // 压缩头部
-    compress(headers) {
-      const result = [];
-      let originalSize = 0;
-
-      for (const [name, value] of Object.entries(headers)) {
-        originalSize += name.length + value.length + 2;
-        const lookup = this._lookup(name, value);
-
-        if (lookup) {
-          // 命中静态表或动态表，只需发送索引
-          result.push({ type: "indexed", index: lookup.index });
-        } else {
-          // 未命中，发送完整头部并加入动态表
-          result.push({ type: "literal", name, value });
-          this._dynamicTable.unshift({ name, value });
-          // 动态表大小限制（模拟）
-          if (this._dynamicTable.length > 100) {
-            this._dynamicTable.pop();
-          }
-        }
-      }
-
-      const compressedSize = JSON.stringify(result).length;
-      this._totalCompressed += compressedSize;
-      this._totalOriginal += originalSize;
-
-      console.log(
-        \`  原始: \${originalSize}B → 压缩: \${compressedSize}B (节省 \${((1 - compressedSize / originalSize) * 100).toFixed(0)}%)\`
-      );
-
-      return result;
-    }
-
-    getStats() {
+    // 3. 检查是否在基础目录内
+    if (!resolved.startsWith(baseDir + path.sep) && resolved !== baseDir) {
       return {
-        totalOriginal: this._totalOriginal,
-        totalCompressed: this._totalCompressed,
-        compressionRatio:
-          ((1 - this._totalCompressed / this._totalOriginal) * 100).toFixed(
-            1
-          ) + "%",
-        dynamicTableSize: this._dynamicTable.length,
+        valid: false,
+        error: "路径遍历攻击被阻止",
+        attempted: userInput,
+        resolved: resolved,
       };
     }
+
+    // 4. 检查文件名
+    var basename = path.basename(resolved);
+    if (basename.startsWith(".")) {
+      return { valid: false, error: "不允许访问隐藏文件" };
+    }
+
+    // 5. 检查文件名是否包含非法字符
+    if (!this.ALLOWED_CHARS.test(basename)) {
+      return { valid: false, error: "文件名包含非法字符" };
+    }
+
+    // 6. 检查路径深度（防止无限深层）
+    var relative = path.relative(baseDir, resolved);
+    var depth = relative.split(path.sep).length;
+    if (depth > 10) {
+      return { valid: false, error: "路径深度超出限制" };
+    }
+
+    return { valid: true, path: resolved, relative: relative };
+  },
+
+  // 安全化文件名（移除危险字符）
+  sanitizeFilename: function (filename) {
+    if (typeof filename !== "string") return "unnamed";
+
+    // 移除路径分隔符
+    var safe = filename.replace(/[\\\\\\/]/g, "_");
+
+    // 移除控制字符
+    safe = safe.replace(/[\\x00-\\x1f\\x7f]/g, "");
+
+    // 移除前导点和空格
+    safe = safe.replace(/^[\\.\\s]+/, "");
+
+    // 截断到最大长度
+    var maxLen = 255;
+    if (safe.length > maxLen) {
+      var ext = path.extname(safe);
+      var name = safe.substring(0, maxLen - ext.length) + ext;
+      safe = name;
+    }
+
+    // 如果为空，使用默认名称
+    if (!safe) {
+      safe = "unnamed";
+    }
+
+    return safe;
+  },
+};
+
+// 测试路径遍历攻击
+var pathTests = [
+  { input: "photo.jpg", desc: "正常文件路径" },
+  { input: "../../etc/passwd", desc: "路径遍历（../）" },
+  { input: "../../../.env", desc: "访问隐藏文件" },
+  { input: "./././photo.jpg", desc: "冗余路径" },
+  { input: "subdir/photo.jpg", desc: "子目录中的文件" },
+  { input: "../../etc/shadow%00.jpg", desc: "空字节注入" },
+  { input: "..\\..\\windows\\system32", desc: "Windows 路径遍历" },
+  { input: "report.pdf", desc: "正常 PDF 文件" },
+];
+
+console.log("路径安全化测试:");
+pathTests.forEach(function (test) {
+  var result = PathSanitizer.sanitize(test.input);
+  var status = result.valid ? "✅ 安全" : "🚫 阻止";
+  console.log(status + " [" + test.desc + "]");
+  console.log("  输入: " + test.input);
+  if (result.valid) {
+    console.log("  输出: " + result.path);
+  } else {
+    console.log("  原因: " + result.error);
   }
+});
 
-  const hpack = new HPACKSimulator();
+// 文件名安全化测试
+console.log("\\n文件名安全化:");
+var filenameTests = [
+  "../../../malicious.sh",
+  "normal-file.txt",
+  ".hidden-file",
+  "file<script>.js",
+  "file with spaces.pdf",
+  "a".repeat(300) + ".txt",
+  "",
+  "null\\x00char.txt",
+];
 
-  // 第1次请求
-  console.log("第1次请求（首次，头部全量发送）:");
-  hpack.compress({
-    ":method": "GET",
-    ":path": "/index.html",
-    ":authority": "example.com",
-    "user-agent": "Mozilla/5.0",
-    "accept": "text/html",
-    "cookie": "session=abc123",
-  });
+filenameTests.forEach(function (filename) {
+  var safe = PathSanitizer.sanitizeFilename(filename);
+  console.log("  '" + filename + "' → '" + safe + "'");
+});
 
-  // 第2次请求（大部分头部命中动态表）
-  console.log("\\n第2次请求（复用动态表，仅需发送索引）:");
-  hpack.compress({
-    ":method": "GET",
-    ":path": "/style.css",
-    ":authority": "example.com",
-    "user-agent": "Mozilla/5.0",
-    "accept": "text/css",
-    "cookie": "session=abc123",
-  });
+// ---- 3. 字符串脱敏工具 ----
+console.log("\\n========== 3. 字符串脱敏工具 ==========");
 
-  // 第3次请求
-  console.log("\\n第3次请求（更多命中）:");
-  hpack.compress({
-    ":method": "GET",
-    ":path": "/script.js",
-    ":authority": "example.com",
-    "user-agent": "Mozilla/5.0",
-    "cookie": "session=abc123",
-  });
+var StringSanitizer = {
+  // 移除控制字符
+  removeControlChars: function (str) {
+    if (typeof str !== "string") return "";
+    return str.replace(/[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f\\x7f]/g, "");
+  },
 
-  console.log("\\nHPACK 压缩统计:", JSON.stringify(hpack.getStats()));
+  // 限制长度
+  truncate: function (str, maxLength) {
+    if (typeof str !== "string") return "";
+    maxLength = maxLength || 1000;
+    if (str.length <= maxLength) return str;
+    return str.slice(0, maxLength);
+  },
 
-  // HTTP/1.1 对比
-  console.log("\\nHTTP/1.1 对比:");
-  console.log("  HTTP/1.1: 每次请求都发送完整头部（无压缩）");
-  console.log("  HTTP/2:   首次后头部大幅压缩（HPACK）");
-  console.log("  效果: Cookie/User-Agent 等重复头部仅首次发送");
-}, 100);
+  // 移除多余空白
+  normalizeWhitespace: function (str) {
+    if (typeof str !== "string") return "";
+    return str.replace(/\\s+/g, " ").trim();
+  },
 
-// ---- 4. 服务器推送（Server Push）模拟 ----
-setTimeout(() => {
-  console.log("\\n===== 4. 服务器推送（Server Push）模拟 =====");
+  // 只保留字母数字和基本标点
+  alphanumericOnly: function (str, allowSpaces) {
+    if (typeof str !== "string") return "";
+    var pattern = allowSpaces ? /[^a-zA-Z0-9\\s]/g : /[^a-zA-Z0-9]/g;
+    return str.replace(pattern, "");
+  },
 
-  console.log("场景: 客户端请求 index.html");
-  console.log("服务器主动推送 style.css 和 script.js");
+  // 正则注入防护：转义正则特殊字符
+  escapeRegex: function (str) {
+    if (typeof str !== "string") return "";
+    var escapeRegExp = new RegExp("[.*+?^\${}()|[\\]\\\\]", "g");
+    return str.replace(escapeRegExp, "\\$&");
+  },
+};
 
-  const conn = new HTTP2Connection();
+// 测试字符串脱敏
+var stringTests = [
+  { input: "Hello\\x00World\\x01", desc: "含控制字符" },
+  { input: "  太多      空格    ", desc: "多余空白" },
+  { input: "admin' OR '1'='1", desc: "SQL 注入尝试" },
+  { input: "<script>alert(1)</script>", desc: "XSS 脚本" },
+  { input: "a".repeat(2000), desc: "超长字符串" },
+  { input: "Normal Text 123", desc: "正常文本" },
+];
 
-  // 客户端请求 index.html
-  const mainStream = conn.createStream({
-    ":method": "GET",
-    ":path": "/index.html",
-  });
+console.log("字符串脱敏演示:");
+stringTests.forEach(function (test) {
+  console.log("\\n[" + test.desc + "]");
+  console.log("  原始: " + test.input.substring(0, 50) + (test.input.length > 50 ? "..." : ""));
+  console.log("  去控制字符: " + StringSanitizer.removeControlChars(test.input).substring(0, 50));
+  console.log("  标准化空白: " + StringSanitizer.normalizeWhitespace(test.input).substring(0, 50));
+  console.log("  仅字母数字: " + StringSanitizer.alphanumericOnly(test.input, true).substring(0, 50));
+  console.log("  截断(100): " + StringSanitizer.truncate(test.input, 100).substring(0, 50));
+});
 
-  // 服务器推送 style.css（在响应 index.html 之前）
-  console.log("\\n服务器推送:");
-  mainStream.pushStream({ ":path": "/style.css" }, (err, pushStream) => {
-    pushStream.respond({
-      ":status": 200,
-      "content-type": "text/css",
+// ---- 4. ReDoS 防护 ----
+console.log("\\n========== 4. 正则拒绝服务（ReDoS）防护 ==========");
+
+var RegexSafety = {
+  // 危险正则模式检测
+  DANGEROUS_PATTERNS: [
+    /\\(.\\+\\)\\+/,
+    /\\(.\\*\\)\\+/,
+    /\\(.\\+\\)\\*/,
+    /\\(.\\|.+\\)\\+/,
+  ],
+
+  // 检查正则是否危险
+  isDangerous: function (regexStr) {
+    for (var i = 0; i < this.DANGEROUS_PATTERNS.length; i++) {
+      if (this.DANGEROUS_PATTERNS[i].test(regexStr)) {
+        return true;
+      }
+    }
+    return false;
+  },
+
+  // 安全的正则执行（带输入长度限制）
+  safeTest: function (regex, input, maxLength) {
+    maxLength = maxLength || 1000;
+
+    if (typeof input !== "string") {
+      return false;
+    }
+
+    // 限制输入长度
+    if (input.length > maxLength) {
+      return false;
+    }
+
+    try {
+      return regex.test(input);
+    } catch (e) {
+      return false;
+    }
+  },
+
+  // 检查危险正则
+  checkPattern: function (pattern) {
+    var dangerous = this.isDangerous(pattern);
+    var result = {
+      pattern: pattern,
+      dangerous: dangerous,
+    };
+
+    if (dangerous) {
+      result.warning = "⚠️  此正则包含嵌套量词，可能导致 ReDoS 攻击";
+    }
+
+    return result;
+  },
+};
+
+// 检查危险正则
+var regexPatterns = [
+  { pattern: "(a+)+$", desc: "嵌套量词（危险）" },
+  { pattern: "([a-zA-Z]+)*$", desc: "字符类嵌套量词（危险）" },
+  { pattern: "(a|aa)+$", desc: "重叠选择（危险）" },
+  { pattern: "^[a-zA-Z0-9_]+$", desc: "简单字符类（安全）" },
+  { pattern: "^\\d{4}-\\d{2}-\\d{2}$", desc: "日期格式（安全）" },
+  { pattern: "(a|b|c)+$", desc: "不重叠选择（检查）" },
+];
+
+console.log("正则表达式安全性检查:");
+regexPatterns.forEach(function (item) {
+  var result = RegexSafety.checkPattern(item.pattern);
+  var status = result.dangerous ? "🚫 危险" : "✅ 安全";
+  console.log(status + " [" + item.desc + "]");
+  console.log("  正则: " + item.pattern);
+  if (result.warning) {
+    console.log("  " + result.warning);
+  }
+});
+
+// ---- 5. 综合输入过滤器 ----
+console.log("\\n========== 5. 综合输入过滤器 ==========");
+
+var InputFilter = {
+  // 过滤用户输入（根据字段类型）
+  filter: function (input, rules) {
+    var result = {};
+    var errors = [];
+
+    for (var field in rules) {
+      var rule = rules[field];
+      var value = input[field];
+
+      // 必填检查
+      if (rule.required && (value === undefined || value === null || value === "")) {
+        errors.push(field + " 是必填字段");
+        continue;
+      }
+
+      if (value === undefined || value === null) {
+        result[field] = rule.defaultValue || null;
+        continue;
+      }
+
+      // 类型转换
+      var filtered = String(value);
+
+      // 长度限制
+      if (rule.maxLength && filtered.length > rule.maxLength) {
+        filtered = filtered.slice(0, rule.maxLength);
+      }
+
+      // 根据类型过滤
+      switch (rule.type) {
+        case "text":
+          filtered = StringSanitizer.removeControlChars(filtered);
+          filtered = StringSanitizer.normalizeWhitespace(filtered);
+          break;
+
+        case "html":
+          filtered = HtmlEncoder.encode(filtered);
+          break;
+
+        case "alphanumeric":
+          filtered = StringSanitizer.alphanumericOnly(filtered, rule.allowSpaces);
+          break;
+
+        case "email":
+          filtered = filtered.trim().toLowerCase();
+          if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(filtered)) {
+            errors.push(field + " 格式不正确");
+          }
+          break;
+
+        case "integer":
+          var num = parseInt(filtered, 10);
+          if (isNaN(num)) {
+            errors.push(field + " 必须是数字");
+          } else {
+            if (rule.min !== undefined && num < rule.min) {
+              errors.push(field + " 不能小于 " + rule.min);
+            }
+            if (rule.max !== undefined && num > rule.max) {
+              errors.push(field + " 不能大于 " + rule.max);
+            }
+            filtered = num;
+          }
+          break;
+
+        case "url":
+          try {
+            var parsed = new URL(filtered);
+            if (rule.allowedProtocols && !rule.allowedProtocols.includes(parsed.protocol.replace(":", ""))) {
+              errors.push(field + " 使用了不允许的协议");
+            }
+            filtered = parsed.href;
+          } catch (e) {
+            errors.push(field + " 不是有效的 URL");
+          }
+          break;
+
+        default:
+          // 默认进行基本过滤
+          filtered = StringSanitizer.removeControlChars(filtered);
+      }
+
+      result[field] = filtered;
+    }
+
+    return {
+      valid: errors.length === 0,
+      data: result,
+      errors: errors,
+    };
+  },
+};
+
+// 定义过滤规则
+var userProfileRules = {
+  username: { type: "alphanumeric", required: true, maxLength: 20, allowSpaces: false },
+  displayName: { type: "text", required: true, maxLength: 50 },
+  bio: { type: "html", maxLength: 500 },
+  email: { type: "email", required: true },
+  age: { type: "integer", min: 1, max: 150 },
+  website: { type: "url", allowedProtocols: ["http", "https"] },
+};
+
+// 测试输入
+var testInputs = [
+  {
+    desc: "正常输入",
+    data: {
+      username: "john_doe",
+      displayName: "John Doe",
+      bio: "Hello <b>World</b>",
+      email: "john@example.com",
+      age: "30",
+      website: "https://johndoe.com",
+    },
+  },
+  {
+    desc: "恶意输入",
+    data: {
+      username: "admin<script>",
+      displayName: "Hacker\\x00",
+      bio: '<script>alert("xss")</script>',
+      email: "not-an-email",
+      age: "999",
+      website: "javascript:alert(1)",
+    },
+  },
+  {
+    desc: "超长输入",
+    data: {
+      username: "a".repeat(100),
+      displayName: "b".repeat(200),
+      bio: "c".repeat(2000),
+      email: "test@test.com",
+      age: "25",
+      website: "https://example.com",
+    },
+  },
+];
+
+console.log("综合输入过滤演示:");
+testInputs.forEach(function (test) {
+  console.log("\\n--- " + test.desc + " ---");
+  var result = InputFilter.filter(test.data, userProfileRules);
+
+  if (result.valid) {
+    console.log("✅ 过滤通过");
+    console.log(JSON.stringify(result.data, null, 2));
+  } else {
+    console.log("❌ 过滤失败");
+    result.errors.forEach(function (err) {
+      console.log("  - " + err);
     });
-    pushStream.sendData("body { margin: 0; }");
-    pushStream.end();
-    console.log("  ✓ 已推送 style.css");
-  });
+  }
+});
 
-  // 服务器推送 script.js
-  mainStream.pushStream({ ":path": "/script.js" }, (err, pushStream) => {
-    pushStream.respond({
-      ":status": 200,
-      "content-type": "application/javascript",
-    });
-    pushStream.sendData("console.log('loaded');");
-    pushStream.end();
-    console.log("  ✓ 已推送 script.js");
-  });
+// ---- 6. 输入过滤最佳实践总结 ----
+console.log("\\n========== 6. 输入过滤最佳实践总结 ==========");
 
-  // 响应主请求
-  mainStream.respond({ ":status": 200, "content-type": "text/html" });
-  mainStream.sendData("<html>...</html>");
-  mainStream.end();
+var sanitizeBestPractices = [
+  { 实践: "白名单验证", 说明: "定义允许的输入模式，而非列举危险模式" },
+  { 实践: "分层过滤", 说明: "类型检查 → 格式验证 → 长度限制 → 内容过滤 → 输出编码" },
+  { 实践: "HTML 编码顺序", 说明: "先编码 &，再编码 < > \" ' /" },
+  { 实践: "参数化查询", 说明: "使用占位符而非字符串拼接构造 SQL" },
+  { 实践: "路径规范化", 说明: "使用 path.resolve + 基础目录验证防止路径遍历" },
+  { 实践: "ReDoS 防护", 说明: "避免嵌套量词，限制输入长度，设置匹配超时" },
+  { 实践: "长度限制", 说明: "所有输入字段都应有合理的长度上限" },
+  { 实践: "编码上下文", 说明: "根据输出上下文（HTML/JS/URL/CSS）选择正确的编码方式" },
+];
 
-  console.log("\\n服务器推送 vs 传统方式:");
-  console.log("  传统: 客户端请求 HTML → 解析 → 请求 CSS → 请求 JS");
-  console.log("  推送: 客户端请求 HTML → 同时收到 CSS + JS");
-  console.log("  优势: 减少 1-2 个 RTT，首屏加载更快");
-  console.log("  注意: 不要推送不需要的资源，避免浪费带宽");
-}, 200);
+console.table(sanitizeBestPractices);
 
-// ---- 5. HTTP/2 vs HTTP/1.1 关键对比 ----
-setTimeout(() => {
-  console.log("\\n===== 5. HTTP/2 vs HTTP/1.1 对比 =====");
-
-  const comparison = [
-    {
-      特性: "传输格式",
-      "HTTP/1.1": "文本（人类可读）",
-      "HTTP/2": "二进制帧（机器友好）",
-    },
-    {
-      特性: "连接复用",
-      "HTTP/1.1": "多个TCP连接（6-8个/域名）",
-      "HTTP/2": "单个TCP连接",
-    },
-    {
-      特性: "请求并发",
-      "HTTP/1.1": "串行（队头阻塞）",
-      "HTTP/2": "多路复用（无阻塞）",
-    },
-    {
-      特性: "头部压缩",
-      "HTTP/1.1": "无",
-      "HTTP/2": "HPACK（静态表+动态表+Huffman）",
-    },
-    {
-      特性: "请求优先级",
-      "HTTP/1.1": "无",
-      "HTTP/2": "流优先级+权重+依赖",
-    },
-    {
-      特性: "服务器推送",
-      "HTTP/1.1": "无",
-      "HTTP/2": "PUSH_PROMISE 帧",
-    },
-    {
-      特性: "流量控制",
-      "HTTP/1.1": "TCP 级别",
-      "HTTP/2": "连接级 + 流级别",
-    },
-    {
-      特性: "连接建立",
-      "HTTP/1.1": "慢（多连接）",
-      "HTTP/2": "快（单连接）",
-    },
-  ];
-
-  console.table(comparison);
-}, 300);
-
-// ---- 6. HTTP/3 (QUIC) 概念介绍 ----
-setTimeout(() => {
-  console.log("\\n===== 6. HTTP/3 与 QUIC =====");
-
-  const quicAdvantages = [
-    {
-      特性: "传输层",
-      "HTTP/2": "TCP",
-      "HTTP/3 (QUIC)": "UDP + QUIC",
-    },
-    {
-      特性: "连接建立",
-      "HTTP/2": "TCP握手 + TLS握手 = 2-3 RTT",
-      "HTTP/3 (QUIC)": "0-RTT（恢复）或 1-RTT（新建）",
-    },
-    {
-      特性: "队头阻塞",
-      "HTTP/2": "TCP 层仍有（丢包重传阻塞所有流）",
-      "HTTP/3 (QUIC)": "完全消除（每流独立重传）",
-    },
-    {
-      特性: "连接迁移",
-      "HTTP/2": "不支持（换IP需重连）",
-      "HTTP/3 (QUIC)": "支持（Connection ID 保持连接）",
-    },
-    {
-      特性: "加密",
-      "HTTP/2": "TLS 1.2+（可选，但浏览器要求）",
-      "HTTP/3 (QUIC)": "内置 TLS 1.3（强制）",
-    },
-    {
-      特性: "Node.js 支持",
-      "HTTP/2": "v8.4+ 稳定支持",
-      "HTTP/3 (QUIC)": "实验性（2024年尚未内置）",
-    },
-  ];
-
-  console.table(quicAdvantages);
-
-  console.log("\\nQUIC 核心优势:");
-  console.log("  1. 0-RTT: 之前连接过的服务器可瞬间恢复会话");
-  console.log("  2. 无队头阻塞: 一个流丢包不影响其他流");
-  console.log("  3. 连接迁移: WiFi→4G 切换时连接不中断");
-  console.log("  4. 内置加密: 不再需要单独的 TLS 握手");
-  console.log("\\n当前建议:");
-  console.log("  • 生产环境使用 HTTP/2（Node.js 原生支持）");
-  console.log("  • HTTP/3 通过 CDN/反向代理（Nginx）提供");
-  console.log("  • 关注 Node.js HTTP/3 支持进展");
-}, 400);
-
-// ---- 7. 综合总结 ----
-setTimeout(() => {
-  console.log("\\n===== 7. HTTP 协议演进总结 =====");
-  console.log("┌──────────────────────────────────────────┐");
-  console.log("│ HTTP 协议演进                              │");
-  console.log("│                                           │");
-  console.log("│ HTTP/1.1 (1997)  → 文本，队头阻塞        │");
-  console.log("│ HTTP/2   (2015)  → 二进制，多路复用      │");
-  console.log("│ HTTP/3   (2022)  → QUIC，零队头阻塞      │");
-  console.log("├──────────────────────────────────────────┤");
-  console.log("│ HTTP/2 核心特性                           │");
-  console.log("│ • 多路复用: 单连接并发请求/响应           │");
-  console.log("│ • 二进制帧: 高效解析，扩展性强           │");
-  console.log("│ • 头部压缩: HPACK 大幅减少冗余           │");
-  console.log("│ • 服务器推送: 主动推送资源               │");
-  console.log("│ • 流优先级: 重要资源优先传输              │");
-  console.log("└──────────────────────────────────────────┘");
-}, 500);`,
+console.log("\\n===== 输入过滤与防注入演示完成 =====");`,
   },
 ];
 
 // 侧边栏分组顺序
-export const chapterGroups = [
-  "基础入门",
-  "核心模块",
-  "核心模块补充",
-  "异步编程",
-  "进阶实战",
-  "工程化",
-];
+export const chapterGroups = ["认证与安全"];

@@ -1,1623 +1,2478 @@
 // =============================================================
-// Node.js 交互式教程 —— 第二批章节（共 6 章）
-// -------------------------------------------------------------
-// 本文件包含以下章节：
-//   1. url     — URL 模块
-//   2. events  — 事件模块 (Events)
-//   3. stream  — 流 (Stream)
-//   4. buffer  — Buffer 缓冲区
-//   5. http    — HTTP 模块（沙箱模拟版）
-//   6. crypto  — 加密模块 (Crypto)
-//
-// 每个章节包含：
-//   id      : 唯一标识
-//   title   : 章节标题
-//   icon    : 展示用 emoji
-//   group   : 分组名
-//   content : Markdown 格式的详细讲解（文字量是普通教程的 5 倍）
-//   code    : 可运行、带详细中文注释的示例代码
-//
-// 代码运行环境约束：
-//   - Node.js vm 沙箱，5 秒超时
-//   - 仅可 require: fs, path, os, url, crypto, util, events, stream,
-//     buffer, querystring, string_decoder, zlib, assert, timers
-//   - 全局可用: console, process, Buffer, setTimeout, setInterval,
-//     setImmediate, clearTimeout, clearInterval, clearImmediate,
-//     URL, URLSearchParams, TextEncoder, TextDecoder, Promise,
-//     __dirname, __filename, require, module, exports
-//   - console 仅支持: log, info, warn, error, debug, table, dir, trace
-//     （不支持 time/timeEnd/group/groupEnd/count）
+// Node.js 交互式教程 —— 第二批章节（核心基础组，共 8 章）
 // =============================================================
 
 export const chapters = [
   // =========================================================
-  // 第一章：URL 模块
+  // 第一章：全局对象与内置常量
   // =========================================================
   {
-    id: "url",
-    title: "URL 模块",
-    icon: "🔗",
-    group: "核心模块",
-    content: `## URL 模块详解
+    id: "node-globals",
+    icon: "🌐",
+    group: "核心基础",
+    title: "全局对象与内置常量",
+    content: `## 全局对象与内置常量
 
-URL（Uniform Resource Locator，统一资源定位符）是 Web 的基础。无论你是构建 API 服务、解析请求路径、拼接资源地址，还是处理文件路径，都离不开 URL 解析。Node.js 的 \`url\` 模块提供了完整的 URL 解析与操作能力。
+Node.js 启动时会自动注入一系列**全局对象**和**内置常量**。它们是无需 \`require\` 即可在任何模块中直接使用的核心 API。理解这些全局变量，是写出高效 Node.js 代码的基础。
 
-### 什么是 URL？
+### globalThis 与 global
 
-一个 URL 描述了互联网上一个资源的位置和访问方式。它的完整格式（RFC 3986）如下：
+在浏览器中，全局作用域是 \`window\`；在 Node.js 中，全局作用域是 \`global\`。而 \`globalThis\` 是 ES2020 引入的标准全局对象，在浏览器、Node.js 和 Web Worker 中都能统一访问全局作用域。
 
+\`\`\`javascript
+// 以下三者在 Node.js 模块顶层等价
+globalThis === global; // true
+globalThis === this;   // false（模块顶层 this 不是 global）
 \`\`\`
-  https://user:pass@example.com:8080/api/users?id=100&role=admin#profile
-  ┕─┕─┘┕──┕─┕──┕─┕───────┕──┕──┕─┕──────┕─┕─────────────┕─┕─────┕
-  协议  用户 密码     主机名    端口  路径       查询字符串     锚点
-\`\`\`
 
-### URL 的组成部分详解
+> 注意：在 Node.js 模块中，顶层的 \`this\` 指向 \`module.exports\`，而不是 \`global\`。这与浏览器行为不同。
 
-| 属性 | 含义 | 示例值 | 说明 |
-| --- | --- | --- | --- |
-| \`protocol\` | 协议 | \`https:\` | 含冒号，如 http: / https: / file: / ftp: |
-| \`username\` | 用户名 | \`user\` | HTTP 基本认证的用户名（很少用） |
-| \`password\` | 密码 | \`pass\` | HTTP 基本认证的密码（明文传输，不安全） |
-| \`hostname\` | 主机名 | \`example.com\` | 域名或 IP 地址，不含端口 |
-| \`port\` | 端口 | \`8080\` | 端口号字符串，如省略则返回空字符串 |
-| \`host\` | 主机 | \`example.com:8080\` | hostname + port |
-| \`pathname\` | 路径 | \`/api/users\` | 以 / 开头的路径部分 |
-| \`search\` | 查询字符串 | \`?id=100&role=admin\` | 含 ?，是 URLSearchParams 的字符串形式 |
-| \`hash\` | 锚点 | \`#profile\` | 含 #，页面内定位（不发送到服务器） |
-| \`origin\` | 来源 | \`https://example.com:8080\` | protocol + host，用于 CORS 判断 |
-| \`href\` | 完整 URL | 完整字符串 | 整个 URL |
+### __dirname 与 __filename
 
-#### protocol 的细节
+这两个是每个模块中自动注入的变量（不是 global 的属性）：
 
-协议决定了数据的传输方式。常见协议：
-
-| 协议 | 端口 | 用途 |
+| 变量 | 含义 | 示例 |
 | --- | --- | --- |
-| \`http:\` | 80 | 超文本传输（明文） |
-| \`https:\` | 443 | 加密超文本传输（TLS/SSL） |
-| \`file:\` | - | 本地文件路径 |
-| \`ftp:\` | 21 | 文件传输 |
-| \`ws:\` / \`wss:\` | 80/443 | WebSocket 通信 |
-| \`data:\` | - | 内嵌数据（如 Base64 图片） |
-
-> 注意：WHATWG URL 的 \`protocol\` 属性**包含冒号**（如 \`https:\`），而 Legacy API 的 \`protocol\` 也包含冒号。这是常见混淆点。
-
-#### hostname 与 host 的区别
+| \`__dirname\` | 当前模块所在目录的**绝对路径** | \`/home/user/project/src\` |
+| \`__filename\` | 当前模块文件的**绝对路径**（含文件名） | \`/home/user/project/src/index.js\` |
 
 \`\`\`javascript
-const u = new URL("https://example.com:8080/path");
-u.hostname; // "example.com"  ← 只有域名
-u.host;     // "example.com:8080"  ← 域名 + 端口
+console.log(__dirname);  // 当前文件所在目录
+console.log(__filename); // 当前文件的完整路径
 \`\`\`
 
-当端口是协议默认端口（http→80, https→443）时，\`host\` 和 \`hostname\` 的值相同（端口被省略）。
+> 在 ESM 模块中，\`__dirname\` 和 \`__filename\` 不可用，需要用 \`import.meta.url\` 配合 \`fileURLToPath\` 替代。
 
-#### search 与 hash 的区别
+### process 全局对象
 
-- \`search\` 是查询参数，以 \`?\` 开头，**会发送到服务器**
-- \`hash\` 是页面锚点，以 \`#\` 开头，**不会发送到服务器**（仅浏览器端使用）
+\`process\` 是 Node.js 中最重要的全局对象，提供了与当前进程交互的能力。它包含了环境变量、命令行参数、标准输入输出、进程信息等。详见"进程对象"章节。
 
-\`\`\`javascript
-const u = new URL("https://example.com/page?id=1#section2");
-u.search; // "?id=1"    → 发送到服务器
-u.hash;   // "#section2" → 浏览器端定位，服务器看不到
-\`\`\`
+### Buffer 全局类
 
-### 两套 API：Legacy vs WHATWG
+\`Buffer\` 是处理二进制数据的全局类。它是 Node.js 特有的，在浏览器中不可用。详见"Buffer 缓冲区"章节。
 
-Node.js 的 url 模块提供两套 API：
+### console 全局对象
 
-| 特性 | Legacy API | WHATWG API |
-| --- | --- | --- |
-| 创建方式 | \`url.parse(urlStr)\` | \`new URL(urlStr)\` |
-| 返回类型 | \`Url\` 对象 | \`URL\` 对象（全局可用） |
-| 查询参数 | \`query\` 属性（可解析为对象） | \`searchParams\` 属性（URLSearchParams） |
-| 标准兼容 | Node.js 专有 | WHATWG URL 标准（与浏览器一致） |
-| 推荐程度 | ⚠️ 已废弃（不推荐） | ✅ 推荐 |
-| 错误处理 | 返回 null 或抛出 | 抛出 TypeError |
-| 编码处理 | 部分支持 | 完整支持 RFC 3986 |
-
-#### Legacy API 示例
-
-\`\`\`javascript
-const url = require("url");
-
-// url.parse：解析 URL 字符串
-// 第二个参数 true 表示把 query 解析为对象
-const parsed = url.parse("https://example.com/path?a=1&b=2#hash", true);
-console.log(parsed.pathname); // "/path"
-console.log(parsed.query);    // { a: "1", b: "2" }  ← 对象形式
-
-// url.format：把对象转回 URL 字符串
-const formatted = url.format({
-  protocol: "https",
-  hostname: "example.com",
-  pathname: "/api",
-  query: { id: 1 },
-});
-// "https://example.com/api?id=1"
-\`\`\`
-
-> ⚠️ \`url.parse()\` 从 Node.js v11 起标记为废弃（DEP0169），因为它在处理某些边缘情况（如特殊字符编码、协议缺失）时行为不一致。新代码应使用 \`new URL()\`。
-
-#### WHATWG API 示例
-
-\`\`\`javascript
-// URL 是全局对象，也可通过 require("url").URL 获取
-const u = new URL("https://example.com/path?a=1&b=2#hash");
-console.log(u.pathname);      // "/path"
-console.log(u.searchParams.get("a")); // "1"
-\`\`\`
-
-### WHATWG URL 的所有属性和方法
-
-#### 属性（可读可写）
-
-所有属性都可以直接修改，修改后 \`href\` 会自动更新：
-
-\`\`\`javascript
-const u = new URL("https://example.com/path");
-u.protocol = "http:";      // 修改协议
-u.hostname = "api.test.com"; // 修改主机名
-u.pathname = "/v2/data";   // 修改路径
-u.search = "?page=1";      // 修改查询字符串
-u.hash = "#top";           // 修改锚点
-console.log(u.href);       // 自动更新
-\`\`\`
-
-| 属性 | 可写 | 说明 |
-| --- | --- | --- |
-| \`href\` | ✅ | 完整 URL（设置时会重新解析） |
-| \`origin\` | ❌ | 只读，protocol + host |
-| \`protocol\` | ✅ | 含冒号 |
-| \`username\` | ✅ | 认证用户名 |
-| \`password\` | ✅ | 认证密码 |
-| \`host\` | ✅ | hostname + port |
-| \`hostname\` | ✅ | 仅主机名 |
-| \`port\` | ✅ | 端口（字符串） |
-| \`pathname\` | ✅ | 路径 |
-| \`search\` | ✅ | 含 ? 的查询串 |
-| \`searchParams\` | ❌ | URLSearchParams 对象（只读引用，但可操作内容） |
-| \`hash\` | ✅ | 含 # 的锚点 |
-
-#### 方法
+\`console\` 提供了类似浏览器的控制台输出功能：
 
 | 方法 | 说明 |
 | --- | --- |
-| \`toString()\` | 返回 href（等价于 \`u.href\`） |
-| \`toJSON()\` | 返回 href（用于 JSON.stringify） |
+| \`console.log()\` | 标准输出（带换行） |
+| \`console.info()\` | 信息输出（同 log） |
+| \`console.warn()\` | 警告输出（输出到 stderr） |
+| \`console.error()\` | 错误输出（输出到 stderr） |
+| \`console.debug()\` | 调试输出（同 log） |
+| \`console.table()\` | 以表格形式打印数据 |
+| \`console.dir()\` | 打印对象结构 |
+| \`console.trace()\` | 打印调用栈 |
+| \`console.time()\` / \`console.timeEnd()\` | 计时器（沙箱可能不支持） |
+| \`console.assert()\` | 断言输出 |
 
-\`\`\`javascript
-const u = new URL("https://example.com");
-console.log(u.toString()); // "https://example.com/"
-console.log(JSON.stringify({ url: u })); // '{"url":"https://example.com/"}'
-\`\`\`
+### 定时器函数
 
-### URLSearchParams 详解
+Node.js 提供与浏览器兼容的定时器函数：
 
-\`URLSearchParams\` 是专门操作查询参数的类。它让你不用手动拼接 \`?key=value&...\` 字符串。
-
-#### 创建方式
-
-\`\`\`javascript
-// 1. 从字符串创建（不含前导 ?）
-const p1 = new URLSearchParams("a=1&b=2");
-
-// 2. 从对象创建
-const p2 = new URLSearchParams({ a: "1", b: "2" });
-
-// 3. 从数组创建（支持同键多值）
-const p3 = new URLSearchParams([["a", "1"], ["a", "2"]]);
-
-// 4. 从 URL 对象获取
-const u = new URL("https://example.com?a=1");
-const p4 = u.searchParams;
-\`\`\`
-
-#### 所有方法详解
-
-| 方法 | 说明 | 示例 |
+| 函数 | 说明 | 清除函数 |
 | --- | --- | --- |
-| \`get(key)\` | 获取第一个值 | \`params.get("id")\` → \`"100"\` |
-| \`getAll(key)\` | 获取所有同名值 | \`params.getAll("tags")\` → \`["js","node"]\` |
-| \`has(key)\` | 判断是否存在 | \`params.has("page")\` → \`false\` |
-| \`set(key, value)\` | 设置（覆盖已有） | \`params.set("page", "1")\` |
-| \`append(key, value)\` | 追加（不覆盖） | \`params.append("tags", "new")\` |
-| \`delete(key)\` | 删除某键所有值 | \`params.delete("role")\` |
-| \`sort()\` | 按 key 字母排序 | \`params.sort()\` |
-| \`toString()\` | 序列化为查询串 | \`params.toString()\` → \`"a=1&b=2"\` |
-| \`entries()\` | [key, value] 迭代器 | \`for (const [k,v] of params)\` |
-| \`keys()\` | key 迭代器 | \`for (const k of params.keys())\` |
-| \`values()\` | value 迭代器 | \`for (const v of params.values())\` |
-| \`forEach(cb)\` | 遍历 | \`params.forEach((v,k) => ...)\` |
+| \`setTimeout(cb, delay)\` | 延迟执行一次 | \`clearTimeout\` |
+| \`setInterval(cb, delay)\` | 每隔 delay 重复执行 | \`clearInterval\` |
+| \`setImmediate(cb)\` | 在事件循环的下一个迭代立即执行 | \`clearImmediate\` |
 
-#### get vs getAll
+#### setImmediate vs setTimeout(fn, 0)
+
+\`setImmediate\` 和 \`setTimeout(fn, 0)\` 都用于延迟执行，但执行时机不同：
+
+- \`setImmediate\`：在当前事件循环迭代的**check 阶段**执行
+- \`setTimeout(fn, 0)\`：在**timers 阶段**执行（受系统调度影响，实际延迟可能 > 1ms）
 
 \`\`\`javascript
-const params = new URLSearchParams("tags=js&tags=node&tags=react");
-params.get("tags");    // "js"      ← 只返回第一个
-params.getAll("tags"); // ["js","node","react"]  ← 返回所有
+setImmediate(() => console.log("setImmediate"));
+setTimeout(() => console.log("setTimeout"), 0);
+// 输出顺序取决于具体上下文，在 I/O 回调中 setImmediate 总是先执行
 \`\`\`
 
-> 这是常见陷阱：\`get()\` 只返回**第一个**匹配的值。如果有多个同名参数，需要用 \`getAll()\`。
+### URL 和 URLSearchParams
 
-#### set vs append
+这两个是 WHATWG URL 标准的全局类，无需 \`require('url')\` 即可使用。详见"URL 解析与构造"章节。
+
+### TextEncoder / TextDecoder
+
+这两个是 WHATWG Encoding 标准的全局类，用于字符串和二进制数据的编解码：
 
 \`\`\`javascript
-const p = new URLSearchParams("a=1");
-p.set("a", "2");       // a=2      ← 覆盖已有值
-p.append("a", "3");    // a=2&a=3  ← 追加新值
+// 字符串 → Uint8Array
+const encoder = new TextEncoder();
+const bytes = encoder.encode("你好");
+
+// Uint8Array → 字符串
+const decoder = new TextDecoder();
+const text = decoder.decode(bytes);
 \`\`\`
 
-### 相对路径解析
+### performance
 
-\`new URL(relative, base)\` 可以解析相对路径，这是处理网页中链接的基础：
+\`performance\` 是 Web Performance API 的 Node.js 实现，用于高精度时间测量（纳秒级）：
 
 \`\`\`javascript
-const base = new URL("https://example.com/docs/intro/");
-
-new URL("./images/logo.png", base).href;
-// "https://example.com/docs/intro/images/logo.png"
-
-new URL("../style.css", base).href;
-// "https://example.com/docs/style.css"
-
-new URL("/root.js", base).href;
-// "https://example.com/root.js"  ← 绝对路径从根开始
-
-new URL("https://cdn.com/lib.js", base).href;
-// "https://cdn.com/lib.js"  ← 绝对 URL 忽略 base
+const start = performance.now();
+// 执行一些操作
+const end = performance.now();
+console.log("耗时:", (end - start).toFixed(3), "ms");
 \`\`\`
 
-#### 相对路径解析规则
+### AbortController
 
-| 相对路径 | 说明 | 结果（base: \`/docs/intro/\`） |
-| --- | --- | --- |
-| \`./file\` | 当前目录 | \`/docs/intro/file\` |
-| \`file\` | 当前目录（省略 ./） | \`/docs/intro/file\` |
-| \`../file\` | 上级目录 | \`/docs/file\` |
-| \`/file\` | 根目录 | \`/file\` |
-| \`//other.com\` | 协议相对（继承协议） | \`https://other.com\` |
-
-### file URL 与路径转换
-
-在 Node.js 中，\`file://\` 协议用于表示本地文件路径。这在 ESM 模块系统中尤其重要（\`import.meta.url\` 返回 file URL）。
-
-| 方法 | 说明 | 示例 |
-| --- | --- | --- |
-| \`url.pathToFileURL(path)\` | 路径 → file URL | \`/a/b.txt\` → \`file:///a/b.txt\` |
-| \`url.fileURLToPath(url)\` | file URL → 路径 | \`file:///a/b.txt\` → \`/a/b.txt\` |
+\`AbortController\` 用于取消异步操作，常用于 fetch 请求取消、流取消等场景：
 
 \`\`\`javascript
-const url = require("url");
-const fileUrl = url.pathToFileURL("/home/user/file.txt");
-// file:///home/user/file.txt
+const controller = new AbortController();
+const signal = controller.signal;
 
-const back = url.fileURLToPath(fileUrl);
-// /home/user/file.txt
+// 5 秒后取消
+setTimeout(() => controller.abort(), 5000);
+
+// 在支持 signal 的 API 中使用
+fetch(url, { signal });
 \`\`\`
 
-> Windows 上路径如 \`C:\\\\Users\\\\file.txt\` 会被编码为 \`file:///C:/Users/file.txt\`。
+### 其他全局变量
 
-### 国际化域名（IDN）
+| 全局变量 | 说明 |
+| --- | --- |
+| \`require\` | 模块加载函数 |
+| \`module\` | 当前模块对象 |
+| \`exports\` | \`module.exports\` 的快捷引用 |
+| \`Promise\` | Promise 构造函数 |
 
-\`url.domainToASCII()\` 和 \`url.domainToUnicode()\` 用于国际化域名的 Punycode 转换：
-
-\`\`\`javascript
-url.domainToASCII("你好.com");   // "xn--nnqy534a.com"
-url.domainToUnicode("xn--nnqy534a.com"); // "你好.com"
-\`\`\`
-
-### URL 解析的实际应用场景
-
-1. **API 请求拼接**：根据 base URL 和路径构造完整请求 URL
-2. **查询参数构建**：用 URLSearchParams 构建 \`?key=value\` 串
-3. **请求路由**：解析 pathname 进行路由匹配
-4. **文件路径转换**：ESM 中 \`import.meta.url\` → \`__dirname\`
-5. **CORS 判断**：比较 origin 是否在允许列表中
-6. **爬虫链接解析**：将相对链接转为绝对链接
-
-### 常见陷阱
-
-1. **\`new URL()\` 需要完整 URL**：\`new URL("/path")\` 会报错，需要提供 base：\`new URL("/path", "http://localhost")\`
-
-2. **\`get()\` 只返回第一个值**：多值参数用 \`getAll()\`
-
-3. **\`protocol\` 含冒号**：\`u.protocol === "https"\` 是错的，应该是 \`"https:"\`
-
-4. **URL 编码**：URLSearchParams 会自动编码中文和特殊字符，\`toString()\` 的结果可能包含 \`%XX\`
-
-5. **\`url.parse()\` 已废弃**：新项目用 \`new URL()\`
-
-下面这段代码演示了 URL 模块的完整用法。`,
+下面这段代码演示了常用全局对象的用法。`,
     code: `// ============================================================
-// 第一章代码演示：URL 模块全面实战
+// 第一章代码演示：全局对象与内置常量
 // ============================================================
-const url = require("url");
 
-// ---- 1. WHATWG URL：解析复杂 URL ----
-console.log("===== 1. WHATWG URL 解析 =====");
-// new URL() 是 WHATWG 标准，与浏览器完全一致
-// 解析一个包含所有组成部分的复杂 URL
-const complexUrl = new URL(
-  "https://user:pass@example.com:8080/api/users?id=100&role=admin&tags=js&tags=node#profile"
-);
+// ---- 1. globalThis 与 global ----
+console.log("===== 1. globalThis 与 global =====");
+// globalThis 是 ES2020 的标准全局对象，跨环境统一
+console.log("globalThis === global:", globalThis === global);
+// 检测 global 上的一些常用属性
+console.log("global 上有 console:", "console" in global);
+console.log("global 上有 process:", "process" in global);
+console.log("global 上有 Buffer:", "Buffer" in global);
 
-// 逐个展示 URL 的所有属性
-console.log("href     :", complexUrl.href);
-console.log("protocol :", complexUrl.protocol);
-console.log("username :", complexUrl.username);
-console.log("password :", complexUrl.password);
-console.log("host     :", complexUrl.host);
-console.log("hostname :", complexUrl.hostname);
-console.log("port     :", complexUrl.port);
-console.log("pathname :", complexUrl.pathname);
-console.log("search   :", complexUrl.search);
-console.log("hash     :", complexUrl.hash);
-console.log("origin   :", complexUrl.origin);
+// ---- 2. __dirname 与 __filename ----
+console.log("\\n===== 2. __dirname 与 __filename =====");
+// __dirname：当前文件所在目录的绝对路径
+console.log("__dirname:", __dirname);
+// __filename：当前文件的完整绝对路径
+console.log("__filename:", __filename);
+// 用 path 模块提取文件名和扩展名
+var path = require("path");
+console.log("文件名:", path.basename(__filename));
+console.log("扩展名:", path.extname(__filename));
+console.log("所在目录:", path.dirname(__filename));
 
-// 属性是可写的，修改后 href 自动更新
-complexUrl.port = 3000;
-console.log("修改端口后 host:", complexUrl.host);
-
-// ---- 2. URLSearchParams：查询参数操作 ----
-console.log("\\n===== 2. URLSearchParams 操作 =====");
-const params = complexUrl.searchParams;
-
-// get：获取单个值（只返回第一个）
-console.log("id =", params.get("id"));
-// getAll：获取同名参数的所有值
-console.log("tags =", params.getAll("tags"));
-// has：判断参数是否存在
-console.log("has 'role':", params.has("role"));
-console.log("has 'page':", params.has("page"));
-
-// set：设置参数（覆盖已有同名参数）
-params.set("page", "1");
-// append：追加同名参数（不覆盖）
-params.append("tags", "backend");
-// delete：删除参数
-params.delete("role");
-
-console.log("\\n修改后 toString():", params.toString());
-console.log("修改后 search:", complexUrl.search);
-
-// sort：按 key 字母排序
-params.sort();
-console.log("排序后:", params.toString());
-
-// ---- 3. 遍历查询参数 ----
-console.log("\\n===== 3. 遍历查询参数 =====");
-// entries()：[key, value] 迭代器
-console.log("entries():");
-for (const [key, value] of params.entries()) {
-  console.log("  " + key + " = " + value);
+// ---- 3. console 的各种方法 ----
+console.log("\\n===== 3. console 方法 =====");
+// console.log：标准输出
+console.log("  log: 普通日志输出");
+// console.info：同 log
+console.info("  info: 信息输出");
+// console.warn：警告输出（到 stderr）
+console.warn("  warn: 警告信息");
+// console.error：错误输出（到 stderr）
+console.error("  error: 错误信息");
+// console.debug：调试输出
+console.debug("  debug: 调试信息");
+// console.table：表格形式打印数组
+var users = [
+  { name: "张三", age: 25, city: "北京" },
+  { name: "李四", age: 30, city: "上海" },
+  { name: "王五", age: 28, city: "深圳" },
+];
+console.log("\\n  console.table 示例:");
+console.table(users);
+// console.dir：打印对象结构
+console.log("\\n  console.dir 示例:");
+console.dir({ name: "test", nested: { a: 1, b: 2 } }, { depth: 2 });
+// console.trace：打印调用栈
+console.log("\\n  console.trace 示例:");
+function innerFunction() {
+  console.trace("  调用栈追踪");
 }
-// keys() / values()
-console.log("keys():", Array.from(params.keys()));
-console.log("values():", Array.from(params.values()));
-
-// forEach 也可以遍历
-console.log("forEach:");
-params.forEach((value, key) => {
-  console.log("  " + key + " => " + value);
-});
-
-// ---- 4. 独立使用 URLSearchParams ----
-console.log("\\n===== 4. 构造查询字符串 =====");
-// 从对象构造（最常用）
-const search1 = new URLSearchParams({
-  name: "张三",
-  age: "25",
-  city: "北京",
-});
-console.log("从对象构造:", search1.toString());
-// 注意：中文会被自动编码
-console.log("解码:", decodeURIComponent(search1.toString()));
-
-// 从字符串构造
-const search2 = new URLSearchParams("foo=bar&baz=qux");
-console.log("从字符串构造:", search2.toString());
-
-// 从数组构造（支持同键多值）
-const search3 = new URLSearchParams([["a", "1"], ["a", "2"], ["b", "3"]]);
-console.log("从数组构造:", search3.toString());
-console.log("a 的所有值:", search3.getAll("a"));
-
-// ---- 5. Legacy API：url.parse / url.format ----
-console.log("\\n===== 5. Legacy API (url.parse / url.format) =====");
-// url.parse 是旧版 API，Node.js 仍支持但不推荐用于新代码
-// 第二个参数 true 表示自动解析 query 为对象
-try {
-  const parsed = url.parse("https://example.com:3000/path/page?q=hello&n=42#section", true);
-  console.log("url.parse 结果:");
-  console.log("  protocol:", parsed.protocol);
-  console.log("  hostname:", parsed.hostname);
-  console.log("  port    :", parsed.port);
-  console.log("  pathname:", parsed.pathname);
-  console.log("  query   :", JSON.stringify(parsed.query));
-  console.log("  hash    :", parsed.hash);
-
-  // url.format：将对象转回 URL 字符串
-  const formatted = url.format({
-    protocol: "https",
-    hostname: "example.com",
-    port: 8080,
-    pathname: "/api/data",
-    query: { id: 1, type: "json" },
-  });
-  console.log("url.format 结果:", formatted);
-} catch (e) {
-  console.log("Legacy API 提示:", e.message);
+function outerFunction() {
+  innerFunction();
 }
+outerFunction();
 
-// ---- 6. 相对路径解析 ----
-console.log("\\n===== 6. 相对路径解析 =====");
-// new URL(relative, base) 可以解析相对路径
-const baseUrl = new URL("https://example.com/docs/intro/");
-console.log("base:", baseUrl.href);
+// ---- 4. 定时器函数 ----
+console.log("\\n===== 4. 定时器 setTimeout / setInterval / setImmediate =====");
+// setTimeout：延迟执行一次
+var timeoutId = setTimeout(function () {
+  console.log("  setTimeout: 延迟 50ms 执行");
+}, 50);
+// clearTimeout：取消定时器
+clearTimeout(timeoutId);
+console.log("  setTimeout 已被取消，不会执行");
 
-const img1 = new URL("./images/logo.png", baseUrl);
-console.log("./images/logo.png →", img1.href);
-
-const img2 = new URL("../style.css", baseUrl);
-console.log("../style.css →", img2.href);
-
-const abs = new URL("https://cdn.example.com/lib.js", baseUrl);
-console.log("绝对路径 →", abs.href);
-
-// url.resolve（Legacy 方式）
-console.log("url.resolve('/a/b/c', './d'):", url.resolve("/a/b/c", "./d"));
-console.log("url.resolve('/a/b/c', '/d'):", url.resolve("/a/b/c", "/d"));
-console.log("url.resolve('/a/b/c', '../../d'):", url.resolve("/a/b/c", "../../d"));
-
-// ---- 7. file URL 与路径转换 ----
-console.log("\\n===== 7. file URL 转换 =====");
-// pathToFileURL：把本地路径转为 file:// URL
-const fileUrl = url.pathToFileURL(__filename);
-console.log("pathToFileURL:", fileUrl.href);
-// fileURLToPath：把 file:// URL 转回本地路径
-const backToPath = url.fileURLToPath(fileUrl);
-console.log("fileURLToPath:", backToPath);
-console.log("转换一致:", backToPath === __filename);
-
-// ---- 8. 国际化域名 ----
-console.log("\\n===== 8. 国际化域名 =====");
-// domainToASCII：把 Unicode 域名转为 ASCII（Punycode）
-console.log("domainToASCII('你好.com'):", url.domainToASCII("你好.com"));
-// domainToUnicode：反向转换
-console.log("domainToUnicode('xn--nnqy534a.com'):", url.domainToUnicode("xn--nnqy534a.com"));
-
-// ---- 9. 实战：构建完整的 API 请求 URL ----
-console.log("\\n===== 9. 实战：构建 API URL =====");
-function buildApiUrl(base, path, queryParams) {
-  const apiUrl = new URL(path, base);
-  if (queryParams) {
-    Object.entries(queryParams).forEach(function (entry) {
-      apiUrl.searchParams.append(entry[0], String(entry[1]));
-    });
+// setInterval：周期性执行
+var counter = 0;
+var intervalId = setInterval(function () {
+  counter++;
+  console.log("  setInterval 第 " + counter + " 次");
+  if (counter >= 3) {
+    clearInterval(intervalId);
+    console.log("  setInterval 已清除");
   }
-  return apiUrl;
-}
-
-const apiUrl = buildApiUrl("https://api.example.com/v1/", "users/search", {
-  q: "node.js",
-  page: 1,
-  limit: 20,
-  tags: ["backend", "server"],
-});
-console.log("构建的 API URL:", apiUrl.href);
-console.log("protocol:", apiUrl.protocol);
-console.log("hostname:", apiUrl.hostname);
-console.log("pathname:", apiUrl.pathname);
-console.log("查询参数:");
-for (const [k, v] of apiUrl.searchParams) {
-  console.log("  " + k + " = " + v);
-}
-
-// ---- 10. 实战：URL 编码对比 ----
-console.log("\\n===== 10. URL 编码对比 =====");
-// URLSearchParams 自动编码特殊字符
-const encoded = new URLSearchParams({ msg: "Hello World & <script>" });
-console.log("自动编码:", encoded.toString());
-console.log("解码:", decodeURIComponent(encoded.toString()));
-
-// 特殊字符编码
-const specialChars = new URLSearchParams({ path: "/a/b/c", eq: "a=b=c" });
-console.log("特殊字符:", specialChars.toString());`,
-  },
-
-  // =========================================================
-  // 第二章：事件模块 (Events)
-  // =========================================================
-  {
-    id: "events",
-    title: "事件模块 (Events)",
-    icon: "⚡",
-    group: "核心模块",
-    content: `## 事件模块 (Events)
-
-\`events\` 模块是 Node.js 事件驱动架构的核心基石。它提供了 \`EventEmitter\` 类，实现了**观察者模式**（也叫发布-订阅模式）。Node.js 中几乎所有能触发事件的对象——HTTP 服务器、流（Stream）、进程（process）——都继承自 \`EventEmitter\`。
-
-### 观察者模式 / 发布-订阅模式
-
-观察者模式是一种设计模式，定义了对象间**一对多**的依赖关系：当一个对象（主题/发布者）状态变化时，所有依赖它的对象（观察者/订阅者）都会收到通知。
-
-#### 生活中的类比
-
-- **报纸订阅**：你向报社订阅报纸（\`on\`），报社每天发报纸（\`emit\`），你退订就不再收到（\`off\`）
-- **微信公众号**：关注公众号（\`on\`），公众号推送文章（\`emit\`），取关后不再推送（\`off\`）
-- **红绿灯**：行人注册"绿灯亮"事件（\`on\`），灯变绿时触发（\`emit\`）
-
-#### 模式结构
-
-\`\`\`
-  发布者 (EventEmitter)               订阅者 (Listener)
-  ┌─────────────────┐                ┌─────────────────┐
-  │  事件队列        │  emit("data")  │  回调函数 A      │
-  │  "data": [A, B] │ ──────────────→│  回调函数 B      │
-  │  "error": [C]   │                │  回调函数 C      │
-  └─────────────────┘                └─────────────────┘
-\`\`\`
-
-#### 与 Promise/回调的区别
-
-| 特性 | 回调 | Promise | 事件 (EventEmitter) |
-| --- | --- | --- | --- |
-| 触发次数 | 一次 | 一次 | **多次** |
-| 适用场景 | 单次操作 | 单次异步操作 | 持续性事件流 |
-| 取消机制 | 无 | 无 | **可移除监听器** |
-| 多消费者 | 难 | 需 Promise 分发 | **天然支持多监听器** |
-
-### EventEmitter 核心方法详解
-
-#### 注册监听器
-
-| 方法 | 说明 | 别名 |
-| --- | --- | --- |
-| \`on(event, listener)\` | 注册监听器（可多次触发） | \`addListener\` |
-| \`once(event, listener)\` | 注册只触发一次的监听器 | - |
-| \`prependListener(event, listener)\` | 注册到监听器数组**开头** | - |
-| \`prependOnceListener(event, listener)\` | 注册到开头且只触发一次 | - |
-
-#### 移除监听器
-
-| 方法 | 说明 |
-| --- | --- |
-| \`off(event, listener)\` | 移除指定监听器（别名 \`removeListener\`） |
-| \`removeAllListeners([event])\` | 移除某事件全部监听器（或所有事件） |
-
-#### 触发与查询
-
-| 方法 | 说明 | 返回值 |
-| --- | --- | --- |
-| \`emit(event, ...args)\` | 触发事件 | \`boolean\`：是否有监听器 |
-| \`listeners(event)\` | 获取监听器数组副本 | \`Function[]\` |
-| \`rawListeners(event)\` | 获取原始监听器（含 once 包装器） | \`Function[]\` |
-| \`listenerCount(event)\` | 获取监听器数量 | \`number\` |
-| \`eventNames()\` | 获取所有有监听器的事件名 | \`Array\` |
-
-#### 配置方法
-
-| 方法 | 说明 |
-| --- | --- |
-| \`setMaxListeners(n)\` | 设置最大监听器数（默认 10） |
-| \`getMaxListeners()\` | 获取最大监听器数 |
-
-### 同步执行特性
-
-**EventEmitter 的监听器是同步调用的**——\`emit()\` 会按照注册顺序依次同步执行所有监听器，然后才返回。这与浏览器事件不同（浏览器事件可能是异步的）。
-
-\`\`\`javascript
-const ee = new EventEmitter();
-ee.on("test", () => console.log("监听器 A"));
-ee.on("test", () => console.log("监听器 B"));
-
-console.log("emit 之前");
-ee.emit("test");
-console.log("emit 之后");
-
-// 输出顺序：
-// emit 之前
-// 监听器 A
-// 监听器 B
-// emit 之后
-\`\`\`
-
-> 如果需要异步执行监听器，可以在监听器内部使用 \`setImmediate()\` 或 \`process.nextTick()\`。
-
-### 监听器注册顺序
-
-监听器按注册顺序执行。\`on()\` 添加到**末尾**，\`prependListener()\` 添加到**开头**：
-
-\`\`\`javascript
-ee.on("e", () => console.log("A"));       // 第1个
-ee.on("e", () => console.log("B"));       // 第2个
-ee.prependListener("e", () => console.log("C")); // 插到最前面
-ee.emit("e");
-// 输出：C → A → B
-\`\`\`
-
-### error 事件的特殊处理
-
-\`error\` 是 EventEmitter 中一个**特殊的事件名**。如果你 \`emit("error")\` 但没有注册 \`error\` 监听器，Node.js 会**抛出错误并使进程崩溃**：
-
-\`\`\`javascript
-const ee = new EventEmitter();
-ee.emit("error", new Error("出错了"));
-// ↓ 没有 error 监听器，进程崩溃！
-// Error [ERR_UNHANDLED_ERROR]: Unhandled error. (undefined)
-\`\`\`
-
-**解决方案**：始终注册 error 监听器：
-
-\`\`\`javascript
-ee.on("error", (err) => {
-  console.error("捕获到错误:", err.message);
-});
-ee.emit("error", new Error("出错了")); // 现在安全了
-\`\`\`
-
-> 这就是为什么流（Stream）在出错时如果没有 error 监听器会导致进程崩溃。**最佳实践：始终为可能出错的对象注册 error 事件。**
-
-### 内存泄漏警告（MaxListenersExceededWarning）
-
-EventEmitter 默认允许每个事件最多 **10** 个监听器。如果超过这个数字，Node.js 会打印警告：
-
-\`\`\`
-MaxListenersExceededWarning: Possible EventEmitter memory leak detected.
-11 test listeners added. Use emitter.setMaxListeners() to increase limit.
-\`\`\`
-
-这个警告是为了帮你发现**忘记移除监听器**导致的内存泄漏。常见场景：
-
-\`\`\`javascript
-// ❌ 危险：每次请求都添加监听器，但从不移除
-function handleRequest(req) {
-  req.on("data", (chunk) => { /* ... */ });
-  // 请求结束后 req 被回收，但如果有外部引用持有 req...
-}
-\`\`\`
-
-如果确实需要超过 10 个监听器（不是泄漏），可以用 \`setMaxListeners\` 调整：
-
-\`\`\`javascript
-emitter.setMaxListeners(20);  // 调整上限
-emitter.setMaxListeners(0);   // 0 = 不限制（不推荐）
-\`\`\`
-
-### once 的实现原理
-
-\`once\` 注册一个只执行一次的监听器。其内部原理是包装一个 wrapper 函数：
-
-\`\`\`javascript
-// once 的简化实现原理：
-function once(emitter, event, listener) {
-  const wrapper = function (...args) {
-    emitter.removeListener(event, wrapper); // 先移除自己
-    listener.apply(emitter, args);          // 再执行真正的回调
-  };
-  emitter.on(event, wrapper);
-}
-
-// rawListeners() 可以看到这个包装器
-const ee = new EventEmitter();
-ee.once("test", () => {});
-console.log(ee.listeners("test").length);    // 1（看起来只有1个）
-console.log(ee.rawListeners("test").length); // 1（含包装器的原始引用）
-\`\`\`
-
-> \`rawListeners()\` 返回的是包含 wrapper 的原始函数引用，\`listeners()\` 返回的是 unwrapped 后的函数。
-
-### 事件命名约定
-
-| 命名风格 | 示例 | 说明 |
-| --- | --- | --- |
-| 小写单词 | \`data\`, \`end\`, \`close\` | Node.js 内置事件 |
-| 冒号分隔 | \`task:start\`, \`task:done\` | 自定义事件（推荐，避免冲突） |
-| 驼峰 | \`dataReceived\` | 也可以但不推荐 |
-
-> 推荐：自定义事件用 \`命名空间:动作\` 格式（如 \`connection:open\`），内置事件用小写单词。**不要用 \`error\` 作为自定义事件名**（除非你真的在处理错误）。
-
-### 继承 EventEmitter
-
-Node.js 中很多类都继承自 EventEmitter：
-
-\`\`\`javascript
-const EventEmitter = require("events");
-
-class MyStream extends EventEmitter {
-  constructor() {
-    super();
-    this.data = [];
-  }
-  write(chunk) {
-    this.data.push(chunk);
-    this.emit("data", chunk);    // 触发 data 事件
-  }
-  close() {
-    this.emit("close");          // 触发 close 事件
-  }
-}
-\`\`\`
-
-Node.js 内置的继承者：
-- \`http.Server\` → 继承 \`EventEmitter\`（触发 \`request\`、\`connection\` 等）
-- \`stream.Readable\` / \`stream.Writable\` → 继承 \`EventEmitter\`（触发 \`data\`、\`end\` 等）
-- \`process\` → 继承 \`EventEmitter\`（触发 \`exit\`、\`SIGINT\` 等）
-
-### 常见陷阱
-
-1. **忘记注册 error 监听器**：emit error 无监听器 → 进程崩溃
-
-2. **监听器内存泄漏**：反复 on 但不 off → MaxListenersExceededWarning
-
-3. **箭头函数导致无法移除**：
-\`\`\`javascript
-// ❌ 无法移除（每次创建新函数）
-ee.on("e", () => {});
-ee.off("e", () => {}); // 这是另一个函数，off 无效！
-
-// ✅ 保存引用
-const handler = () => {};
-ee.on("e", handler);
-ee.off("e", handler); // 正确移除
-\`\`\`
-
-4. **emit 是同步的**：不要期望 emit 后的代码在监听器之后执行
-
-5. **once 的 wrapper**：\`listeners()\` 不显示 wrapper，\`rawListeners()\` 显示
-
-下面这段代码实现了一个完整的自定义事件发射器，演示所有核心 API。`,
-    code: `// ============================================================
-// 第二章代码演示：EventEmitter 事件模块全面实战
-// ============================================================
-const EventEmitter = require("events");
-
-// ---- 1. 基本用法：on 和 emit ----
-console.log("===== 1. 基本用法 on / emit =====");
-const emitter = new EventEmitter();
-
-// on：注册监听器（别名 addListener）
-emitter.on("greet", function (name) {
-  console.log("你好, " + name + "!");
-});
-// emit：触发事件，传入参数
-emitter.emit("greet", "张三");
-emitter.emit("greet", "李四");
-
-// emit 返回布尔值：表示是否有监听器
-const hasListener = emitter.emit("greet", "王五");
-const noListener = emitter.emit("nonexistent");
-console.log("greet 有监听器:", hasListener);
-console.log("nonexistent 有监听器:", noListener);
-
-// ---- 2. once：只触发一次 ----
-console.log("\\n===== 2. once 一次性监听 =====");
-let tickCount = 0;
-emitter.once("tick", function () {
-  tickCount++;
-  console.log("tick 被触发，这是唯一一次执行");
-});
-emitter.emit("tick"); // 执行
-emitter.emit("tick"); // 不执行
-emitter.emit("tick"); // 不执行
-console.log("tickCount =", tickCount, "(once 只执行一次)");
-
-// ---- 3. 多个监听器的执行顺序 ----
-console.log("\\n===== 3. 多个监听器（按注册顺序同步执行）=====");
-const emitter2 = new EventEmitter();
-emitter2.on("event", function () { console.log("  监听器 A"); });
-emitter2.on("event", function () { console.log("  监听器 B"); });
-emitter2.on("event", function () { console.log("  监听器 C"); });
-console.log("触发 event：");
-emitter2.emit("event");
-// 输出：A → B → C（按注册顺序）
-
-// ---- 4. prependListener：插入到最前面 ----
-console.log("\\n===== 4. prependListener =====");
-// prependListener 把新监听器插入到数组开头
-emitter2.prependListener("event", function () {
-  console.log("  监听器 FIRST（后注册但先执行）");
-});
-console.log("再次触发 event：");
-emitter2.emit("event");
-// 输出：FIRST → A → B → C
-
-// prependOnceListener：插入到最前面但只执行一次
-emitter2.prependOnceListener("event", function () {
-  console.log("  一次性 FIRST");
-});
-console.log("第三次触发（含一次性）：");
-emitter2.emit("event"); // 一次性 FIRST → FIRST → A → B → C
-console.log("第四次触发（一次性已移除）：");
-emitter2.emit("event"); // FIRST → A → B → C
-
-// ---- 5. off / removeListener：移除监听器 ----
-console.log("\\n===== 5. off / removeListener =====");
-const emitter3 = new EventEmitter();
-const handler1 = function () { console.log("  handler1 被调用"); };
-const handler2 = function () { console.log("  handler2 被调用"); };
-
-emitter3.on("test", handler1);
-emitter3.on("test", handler2);
-console.log("emit 第一次：");
-emitter3.emit("test");
-
-// off 是 removeListener 的别名，需要传入同一个函数引用
-emitter3.off("test", handler1);
-console.log("移除 handler1 后 emit：");
-emitter3.emit("test"); // 只有 handler2
-
-// removeAllListeners：移除某事件的所有监听器
-emitter3.removeAllListeners("test");
-console.log("移除全部后 emit：");
-console.log("  emit 返回:", emitter3.emit("test"), "(false = 无监听器)");
-
-// ---- 6. listeners / listenerCount / eventNames ----
-console.log("\\n===== 6. listeners / listenerCount / eventNames =====");
-const emitter4 = new EventEmitter();
-const fn1 = function () {};
-const fn2 = function () {};
-emitter4.on("data", fn1);
-emitter4.on("data", fn2);
-emitter4.on("error", function (e) { console.log("  error:", e.message); });
-
-// listenerCount：获取监听器数量
-console.log("data 的监听器数量:", emitter4.listenerCount("data"));
-// listeners：返回监听器数组副本
-console.log("data 的监听器数组长度:", emitter4.listeners("data").length);
-// eventNames：返回所有有监听器的事件名
-console.log("所有事件名:", emitter4.eventNames());
-
-// rawListeners vs listeners（once 的包装器区别）
-const emitter5 = new EventEmitter();
-emitter5.on("a", fn1);
-emitter5.once("a", fn2);
-console.log("listeners('a') 数量:", emitter5.listeners("a").length);
-console.log("rawListeners('a') 数量:", emitter5.rawListeners("a").length, "(含 once 包装器)");
-
-// ---- 7. setMaxListeners：调整最大监听器数 ----
-console.log("\\n===== 7. setMaxListeners =====");
-const emitter6 = new EventEmitter();
-console.log("默认最大监听器数:", emitter6.getMaxListeners());
-// 超过 10 个同事件监听器会触发 MaxListenersExceededWarning
-emitter6.setMaxListeners(20);
-console.log("设置后最大监听器数:", emitter6.getMaxListeners());
-
-// ---- 8. error 事件：特殊处理 ----
-console.log("\\n===== 8. error 事件 =====");
-const emitter7 = new EventEmitter();
-// 必须注册 error 监听器，否则 emit('error') 会导致进程崩溃
-emitter7.on("error", function (err) {
-  console.log("  捕获到 error 事件:", err.message);
-});
-// 触发 error 事件，有监听器所以不会崩溃
-emitter7.emit("error", new Error("数据库连接失败"));
-emitter7.emit("error", new Error("文件未找到"));
-console.log("  error 事件被安全捕获，进程没有崩溃");
-
-// ---- 9. 实战：自定义任务进度发射器 ----
-console.log("\\n===== 9. 自定义任务进度发射器 =====");
-class TaskRunner extends EventEmitter {
-  constructor(tasks) {
-    super();
-    this.tasks = tasks;
-    this.completed = 0;
-  }
-
-  run() {
-    // 触发开始事件
-    this.emit("start", { total: this.tasks.length });
-
-    for (let i = 0; i < this.tasks.length; i++) {
-      var task = this.tasks[i];
-      // 触发任务开始事件
-      this.emit("task:start", { index: i, name: task });
-
-      // 模拟任务执行（同步）
-      this.completed++;
-      var progress = Math.round((this.completed / this.tasks.length) * 100);
-
-      // 触发任务完成事件
-      this.emit("task:done", {
-        index: i,
-        name: task,
-        progress: progress + "%",
-      });
-    }
-
-    // 触发完成事件
-    this.emit("complete", { completed: this.completed });
-  }
-}
-
-var runner = new TaskRunner(["下载文件", "解析数据", "写入数据库", "发送通知"]);
-
-// 注册各类事件监听器
-runner.on("start", function (info) {
-  console.log("  任务开始，共 " + info.total + " 个任务");
-});
-runner.on("task:start", function (info) {
-  console.log("  [开始] 任务 " + (info.index + 1) + ": " + info.name);
-});
-runner.on("task:done", function (info) {
-  console.log("  [完成] 任务 " + (info.index + 1) + ": " + info.name + " (" + info.progress + ")");
-});
-runner.on("complete", function (info) {
-  console.log("  全部完成！共完成 " + info.completed + " 个任务");
+}, 20);
+
+// setImmediate：在事件循环当前迭代完成后立即执行
+setImmediate(function () {
+  console.log("  setImmediate: 在当前事件循环迭代的 check 阶段执行");
 });
 
-// 运行任务
-runner.run();
-
-// ---- 10. 继承 EventEmitter ----
-console.log("\\n===== 10. 继承 EventEmitter =====");
-// 自定义类继承 EventEmitter 获得事件能力
-class Counter extends EventEmitter {
-  constructor(initial) {
-    super();
-    this.value = initial || 0;
-  }
-  increment() {
-    this.value++;
-    this.emit("change", { value: this.value, action: "increment" });
-    if (this.value === 10) {
-      this.emit("milestone", { value: this.value });
-    }
-    return this;
-  }
-  decrement() {
-    this.value--;
-    this.emit("change", { value: this.value, action: "decrement" });
-    return this;
-  }
-}
-
-var counter = new Counter(7);
-counter.on("change", function (info) {
-  console.log("  计数器" + info.action + ": " + info.value);
-});
-counter.once("milestone", function () {
-  console.log("  达到里程碑 10！");
-});
-
-// 链式调用
-counter.increment().increment().increment(); // 7→8→9→10
-counter.decrement(); // 10→9
-console.log("  最终值:", counter.value);
-
-// ---- 11. 事件驱动解耦示例 ----
-console.log("\\n===== 11. 事件驱动解耦 =====");
-// 演示如何用事件解耦模块
-class DataStore extends EventEmitter {
-  constructor() {
-    super();
-    this.data = {};
-  }
-  set(key, value) {
-    var oldValue = this.data[key];
-    this.data[key] = value;
-    this.emit("change", { key: key, oldValue: oldValue, newValue: value });
-  }
-  get(key) {
-    return this.data[key];
-  }
-}
-
-var store = new DataStore();
-
-// 不同模块监听同一事件，互不干扰
-store.on("change", function (info) {
-  console.log("  [日志模块] " + info.key + ": " + info.oldValue + " → " + info.newValue);
-});
-store.on("change", function (info) {
-  console.log("  [缓存模块] 失效缓存: " + info.key);
-});
-store.on("change", function (info) {
-  if (info.newValue === null) {
-    console.log("  [告警模块] " + info.key + " 被删除！");
-  }
-});
-
-store.set("user", "张三");
-store.set("user", "李四");
-store.set("user", null);`,
-  },
-
-  // =========================================================
-  // 第三章：流 (Stream)
-  // =========================================================
-  {
-    id: "stream",
-    title: "流 (Stream)",
-    icon: "🌊",
-    group: "核心模块",
-    content: `## 流 (Stream)
-
-流（Stream）是 Node.js 处理**大数据**和**持续数据流**的核心抽象。它允许数据分块（chunk）逐步处理，而不是一次性把所有数据读进内存。理解流是掌握 Node.js 的高级技能。
-
-### 为什么需要流？
-
-#### 问题：传统方式的内存困境
-
-假设你要读取一个 5GB 的日志文件并统计行数：
-
-\`\`\`javascript
-// ❌ 传统方式：一次性读取全部
-const data = fs.readFileSync("huge.log", "utf8"); // 需要 5GB 内存！
-const lines = data.split("\\n").length;
-\`\`\`
-
-这会导致：
-1. **内存爆炸**：5GB 文件需要 5GB+ 内存，大部分服务器扛不住
-2. **等待时间长**：必须等整个文件读完才能开始处理
-3. **无法处理无限流**：如网络直播数据、传感器实时数据
-
-#### 解决方案：流式处理
-
-\`\`\`javascript
-// ✅ 流式方式：逐块处理
-const stream = fs.createReadStream("huge.log", "utf8");
-let lineCount = 0;
-stream.on("data", (chunk) => {
-  lineCount += chunk.split("\\n").length - 1;
-});
-stream.on("end", () => {
-  console.log("行数:", lineCount);
-});
-\`\`\`
-
-流式处理只需 **几 KB 内存**（一个 chunk 的大小），就能处理任意大小的文件。
-
-#### 流的核心优势
-
-| 优势 | 说明 | 示例 |
-| --- | --- | --- |
-| **内存效率** | 只需缓冲一小块数据 | 5GB 文件只需 64KB 内存 |
-| **时间效率** | 拿到第一块数据就能开始处理 | 不必等全部读完 |
-| **可组合性** | 用 pipe/pipeline 串联流 | 读取 → 解压 → 解密 → 解析 |
-| **背压控制** | 自动调节读写速度 | 快读慢写时自动暂停读取 |
-
-### 流的四种类型
-
-| 类型 | 方向 | 说明 | 典型示例 |
-| --- | --- | --- | --- |
-| **Readable** | 读出 | 数据可从中读出 | fs.createReadStream、HTTP 请求体 |
-| **Writable** | 写入 | 数据可写入其中 | fs.createWriteStream、HTTP 响应体 |
-| **Duplex** | 双向 | 同时可读可写（读写独立） | TCP socket、WebSocket |
-| **Transform** | 转换 | 读入数据变换后写出 | zlib 压缩、加密、行分割 |
-
-#### Duplex vs Transform 的区别
-
-- **Duplex**：读写是**独立**的两个通道（如电话，双方都能说话）
-- **Transform**：写入的数据经过**变换**后从读取端出来（如翻译机，输入中文输出英文）
-
-\`\`\`
-Duplex:    写入端 → [缓冲] → 读出端  (独立通道)
-           写入端 ← [缓冲] ← 读出端
-
-Transform: 写入端 → [变换函数] → 读出端  (数据经过处理)
-\`\`\`
-
-### 流的模式：flowing vs paused
-
-Readable 流有两种工作模式：
-
-| 模式 | 说明 | 触发方式 |
-| --- | --- | --- |
-| **paused**（暂停模式） | 需要手动 \`read()\` 读取 | 默认模式 |
-| **flowing**（流动模式） | 数据自动推送 | 注册 \`data\` 事件、调用 \`pipe()\` |
-
-#### 模式切换
-
-\`\`\`javascript
-const readable = getReadableStream();
-
-// 进入 flowing 模式（自动推送数据）
-readable.on("data", (chunk) => { console.log(chunk); });
-
-// 切回 paused 模式
-readable.pause();
-
-// 手动读取（paused 模式）
-readable.on("readable", () => {
-  let chunk;
-  while ((chunk = readable.read()) !== null) {
-    console.log(chunk);
-  }
-});
-\`\`\`
-
-### Readable 流的事件
-
-| 事件 | 说明 | 触发时机 |
-| --- | --- | --- |
-| \`data\` | 数据到达 | flowing 模式下，每块数据到达时 |
-| \`end\` | 流结束 | 所有数据读完（没有更多数据） |
-| \`error\` | 发生错误 | 读取过程中出错 |
-| \`close\` | 流关闭 | 底层资源关闭（如文件描述符） |
-| \`readable\` | 有数据可读 | paused 模式下有数据可读时 |
-
-### Writable 流的事件
-
-| 事件 | 说明 | 触发时机 |
-| --- | --- | --- |
-| \`drain\` | 可以继续写入 | 缓冲区排空后（write 返回 false 后恢复） |
-| \`finish\` | 写入完成 | 调用 \`end()\` 且所有数据写入完毕 |
-| \`error\` | 发生错误 | 写入过程中出错 |
-| \`close\` | 流关闭 | 底层资源关闭 |
-
-### 重要方法详解
-
-#### Readable 方法
-
-| 方法 | 说明 |
-| --- | --- |
-| \`read([size])\` | paused 模式下手动读取数据 |
-| \`pipe(destination)\` | 把数据管道到 Writable 流 |
-| \`unpipe([destination])\` | 取消管道 |
-| \`pause()\` | 暂停 flowing 模式 |
-| \`resume()\` | 恢复 flowing 模式 |
-| \`destroy([err])\` | 销毁流，触发 error/close |
-
-#### Writable 方法
-
-| 方法 | 说明 |
-| --- | --- |
-| \`write(chunk[, cb])\` | 写入数据，返回 false 表示需要等待 drain |
-| \`end([chunk][, cb])\` | 标记写入结束，触发 finish |
-| \`destroy([err])\` | 销毁流 |
-
-### 背压 (Backpressure) 机制详解
-
-背压是流中最重要的概念之一。当**读取速度 > 写入速度**时，数据会在内存中堆积，导致内存溢出。背压机制通过**暂停读取**来解决这个问题。
-
-#### 没有 pipe 的手动背压处理
-
-\`\`\`javascript
-readable.on("data", (chunk) => {
-  const canContinue = writable.write(chunk);
-  if (!canContinue) {
-    // 返回 false 表示缓冲区满了，需要暂停读取
-    readable.pause();
-    // 等待缓冲区排空后恢复
-    writable.once("drain", () => {
-      readable.resume();
-    });
-  }
-});
-\`\`\`
-
-#### pipe 自动处理背压
-
-\`\`\`javascript
-// pipe 自动处理背压，无需手动 pause/resume
-readable.pipe(writable);
-\`\`\`
-
-> **最佳实践**：使用 \`pipeline()\` 代替 \`pipe()\`，因为 pipeline 会自动处理错误传播和清理。
-
-### 自定义流
-
-#### 自定义 Readable
-
-\`\`\`javascript
-const { Readable } = require("stream");
-
-class MyReadable extends Readable {
-  constructor(options) {
-    super(options);
-    this.current = 1;
-    this.max = 5;
-  }
-  _read() {
-    // _read 在消费者请求数据时被自动调用
-    if (this.current <= this.max) {
-      this.push(String(this.current++));  // push 推送数据
-    } else {
-      this.push(null);  // null 表示流结束
-    }
-  }
-}
-\`\`\`
-
-#### 自定义 Writable
-
-\`\`\`javascript
-const { Writable } = require("stream");
-
-class MyWritable extends Writable {
-  _write(chunk, encoding, callback) {
-    console.log("写入:", chunk.toString());
-    callback();  // 必须调用 callback 表示写入完成
-  }
-  _final(callback) {
-    console.log("所有数据写入完毕");
-    callback();
-  }
-}
-\`\`\`
-
-#### 自定义 Transform
-
-\`\`\`javascript
-const { Transform } = require("stream");
-
-class UpperCase extends Transform {
-  _transform(chunk, encoding, callback) {
-    // 处理数据并推送
-    this.push(chunk.toString().toUpperCase());
-    callback();
-  }
-}
-\`\`\`
-
-### 流的链式操作 (pipeline)
-
-\`pipeline()\` 是连接多个流的推荐方式（比 \`pipe()\` 链式调用更安全）：
-
-\`\`\`javascript
-const { pipeline } = require("stream");
-const fs = require("fs");
-const zlib = require("zlib");
-
-// 读取文件 → gzip 压缩 → 写入文件
-pipeline(
-  fs.createReadStream("input.txt"),
-  zlib.createGzip(),
-  fs.createWriteStream("output.txt.gz"),
-  (err) => {
-    if (err) console.error("管道失败:", err);
-    else console.log("管道完成");
-  }
-);
-\`\`\`
-
-#### pipeline vs pipe 的区别
-
-| 特性 | \`pipe()\` | \`pipeline()\` |
-| --- | --- | --- |
-| 错误处理 | 需要手动监听每个流的 error | **自动传播**错误并清理 |
-| 资源清理 | 需要手动 destroy | **自动销毁**所有流 |
-| 回调 | 无 | 提供**完成回调** |
-| 推荐程度 | 旧代码 | ✅ **推荐** |
-
-### 对象模式 (Object Mode)
-
-默认情况下流处理 \`Buffer\` 或字符串。对象模式允许流处理**任意 JavaScript 对象**：
-
-\`\`\`javascript
-const readable = new Readable({ objectMode: true });
-readable.push({ name: "张三", age: 20 });  // 推送对象而非 Buffer
-readable.push(null);
-\`\`\`
-
-| 特性 | 普通模式 | 对象模式 |
-| --- | --- | --- |
-| 数据类型 | Buffer / 字符串 | 任意 JS 值 |
-| highWaterMark | 字节数 | 对象数 |
-| 用途 | 文件、网络 | 数据处理管道 |
-
-### 常见陷阱
-
-1. **忘记调用 \`end()\`**：Writable 不调用 end，finish 事件不触发
-
-2. **pipe 错误不传播**：\`a.pipe(b)\` 中 b 出错不会通知 a，用 \`pipeline\` 替代
-
-3. **data 事件丢失**：在 paused 模式下不注册 data 事件，数据可能丢失
-
-4. **背压不处理**：手动 write 不检查返回值，内存可能溢出
-
-5. **对象模式混用**：pipe 连接普通模式和对象模式的流可能出错
-
-下面这段代码演示了各种流的用法。`,
-    code: `// ============================================================
-// 第三章代码演示：Stream 流模块全面实战
-// ============================================================
-const { Readable, Writable, Transform, pipeline } = require("stream");
-
-// ---- 1. Readable.from：从可迭代对象创建流 ----
-console.log("===== 1. Readable.from 创建流 =====");
-// Readable.from 接受数组、Set、Generator 等可迭代对象
-var readable1 = Readable.from(["Node.js ", "流式 ", "处理 ", "数据"]);
-var parts = [];
-readable1.on("data", function (chunk) {
-  console.log("  收到数据块:", JSON.stringify(chunk));
-  parts.push(chunk);
-});
-readable1.on("end", function () {
-  console.log("  拼接结果:", parts.join(""));
-  console.log("  流结束（end 事件触发）");
-});
-
-// ---- 2. Readable 事件：data / end ----
-console.log("\\n===== 2. Readable 事件详解 =====");
-var readable2 = Readable.from([1, 2, 3, 4, 5]);
+// 演示 setTimeout(fn, 0) 与 setImmediate 的顺序
+setTimeout(function () {
+  console.log("  setTimeout(fn, 0): 在 timers 阶段执行");
+}, 0);
+
+// ---- 5. TextEncoder / TextDecoder ----
+console.log("\\n===== 5. TextEncoder / TextDecoder =====");
+// TextEncoder：将字符串编码为 Uint8Array（UTF-8）
+var encoder = new TextEncoder();
+var text = "Hello 你好 🎉";
+var encoded = encoder.encode(text);
+console.log("  原文:", text);
+console.log("  编码后字节数:", encoded.length);
+console.log("  Uint8Array:", encoded);
+
+// TextDecoder：将 Uint8Array 解码为字符串
+var decoder = new TextDecoder("utf-8");
+var decoded = decoder.decode(encoded);
+console.log("  解码后:", decoded);
+console.log("  编解码一致:", text === decoded);
+
+// 演示不同编码
+var latin1Text = "Bonjour";
+var latin1Encoded = encoder.encode(latin1Text);
+console.log("  Latin1 文本 '" + latin1Text + "' 字节数:", latin1Encoded.length);
+
+// ---- 6. performance 高精度计时 ----
+console.log("\\n===== 6. performance 高精度计时 =====");
+// performance.now() 返回毫秒级的高精度时间戳
+var start = performance.now();
+// 执行一些计算来模拟耗时操作
 var sum = 0;
-readable2.on("data", function (chunk) {
-  sum += chunk;
-});
-readable2.on("end", function () {
-  console.log("  求和结果:", sum);
-  console.log("  流结束");
-});
-
-// ---- 3. 自定义 Readable（对象模式）----
-console.log("\\n===== 3. 自定义 Readable 流 =====");
-// 继承 Readable 并实现 _read 方法
-class NumberStream extends Readable {
-  constructor(max) {
-    super({ objectMode: true }); // objectMode 允许推送任意 JS 对象
-    this.max = max;
-    this.current = 1;
-  }
-  // _read 在消费者请求数据时被自动调用
-  _read() {
-    if (this.current <= this.max) {
-      this.push({
-        num: this.current,
-        square: this.current * this.current,
-        cube: this.current * this.current * this.current,
-      });
-      this.current++;
-    } else {
-      this.push(null); // null 表示流结束
-    }
-  }
+for (var i = 0; i < 1000000; i++) {
+  sum += Math.sqrt(i);
 }
+var end = performance.now();
+console.log("  100万次 sqrt 计算耗时:", (end - start).toFixed(3), "ms");
 
-// 消费自定义流
-var numbers = new NumberStream(5);
-var collected = [];
-numbers.on("data", function (item) {
-  collected.push(item);
-});
-numbers.on("end", function () {
-  console.log("  收集到的数据:");
-  console.table(collected);
-});
-
-// ---- 4. 自定义 Transform：数据转换 ----
-console.log("\\n===== 4. 自定义 Transform 转换流 =====");
-// Transform 流：读取数据 → 变换 → 写出
-class FormatTransform extends Transform {
-  constructor() {
-    super({ objectMode: true });
+// 多次计时对比
+var times = [];
+for (var j = 0; j < 5; j++) {
+  var t1 = performance.now();
+  var s = 0;
+  for (var k = 0; k < 100000; k++) {
+    s += k;
   }
-  // _transform 处理每一块数据
-  _transform(chunk, encoding, callback) {
-    var formatted = "数字 " + chunk.num + " → 平方=" + chunk.square + ", 立方=" + chunk.cube;
-    this.push(formatted);
-    callback(); // 表示本次处理完成
-  }
+  var t2 = performance.now();
+  times.push(parseFloat((t2 - t1).toFixed(3)));
 }
+console.log("  5次重复计时(ms):", times);
 
-// ---- 5. 自定义 Writable：数据消费 ----
-console.log("\\n===== 5. 自定义 Writable 可写流 =====");
-class LogWritable extends Writable {
-  constructor() {
-    super({ objectMode: true });
-    this.results = [];
-  }
-  _write(chunk, encoding, callback) {
-    console.log("  写入:", chunk);
-    this.results.push(chunk);
-    callback();
-  }
-  _final(callback) {
-    console.log("  可写流完成，共写入 " + this.results.length + " 条");
-    callback();
-  }
-}
+// ---- 7. AbortController 信号取消 ----
+console.log("\\n===== 7. AbortController =====");
+// AbortController 用于取消异步操作
+var controller = new AbortController();
+var signal = controller.signal;
 
-// ---- 6. pipeline：流式管道（推荐方式）----
-console.log("\\n===== 6. pipeline 管道连接 =====");
-// pipeline 自动处理错误传播和背压
-var logSink = new LogWritable();
-pipeline(
-  new NumberStream(5),      // 源：生成数字对象
-  new FormatTransform(),    // 转换：格式化为字符串
-  logSink,                  // 汇：输出日志
-  function (err) {
-    if (err) {
-      console.error("  管道错误:", err.message);
-    } else {
-      console.log("  管道执行完成");
-    }
-  }
-);
-
-// ---- 7. 字符串转换流（非对象模式）----
-console.log("\\n===== 7. 字符串转换流 =====");
-// 非对象模式处理字符串
-class UpperCaseTransform extends Transform {
-  constructor() {
-    super({ objectMode: true });
-  }
-  _transform(chunk, encoding, callback) {
-    this.push(String(chunk).toUpperCase());
-    callback();
-  }
-}
-
-// 创建字符串流
-var textStream = Readable.from(["hello world\\n", "node.js streams\\n", "pipeline demo\\n"]);
-var upperCased = [];
-var collectWritable = new Writable({
-  objectMode: true,
-  write: function (chunk, encoding, callback) {
-    upperCased.push(String(chunk));
-    callback();
-  },
+// 监听 abort 事件
+signal.addEventListener("abort", function () {
+  console.log("  abort 事件触发：操作已被取消！");
 });
 
-// pipe 链式连接
-textStream
-  .pipe(new UpperCaseTransform())
-  .pipe(collectWritable);
+// 检查 signal 状态
+console.log("  取消前 aborted:", signal.aborted);
+// 触发取消
+controller.abort();
+console.log("  取消后 aborted:", signal.aborted);
+// 检查 reason
+console.log("  取消原因:", signal.reason || "默认取消");
 
-collectWritable.on("finish", function () {
-  console.log("  转换结果:");
-  upperCased.forEach(function (s) {
-    console.log("    " + s.trim());
-  });
-  console.log("  pipe 链完成");
+// 演示超时取消模式
+var controller2 = new AbortController();
+var signal2 = controller2.signal;
+var timedOut = false;
+// 模拟超时：150ms 后取消
+var timeoutId2 = setTimeout(function () {
+  timedOut = true;
+  controller2.abort("操作超时");
+}, 150);
+
+// 在超时前检查并取消（模拟正常完成）
+setTimeout(function () {
+  if (!timedOut) {
+    clearTimeout(timeoutId2);
+    console.log("  操作在超时前正常完成");
+  }
+}, 50);
+
+// 150ms 后检查
+setTimeout(function () {
+  if (signal2.aborted) {
+    console.log("  超时取消已触发: " + signal2.reason);
+  }
+}, 200);
+
+// ---- 8. require / module / exports ----
+console.log("\\n===== 8. require / module / exports =====");
+// require 是模块加载函数
+console.log("  require 是一个函数:", typeof require === "function");
+// module 是当前模块对象
+console.log("  module.id:", module.id);
+// exports 是 module.exports 的快捷引用
+console.log("  exports === module.exports:", exports === module.exports);
+
+// ---- 9. Promise 全局对象 ----
+console.log("\\n===== 9. Promise 全局对象 =====");
+// Promise 无需 require 即可使用
+var promise = Promise.resolve("Hello Promise");
+console.log("  Promise.resolve 类型:", typeof Promise.resolve);
+// 使用 Promise
+Promise.resolve("异步值").then(function (value) {
+  console.log("  Promise 解析结果:", value);
 });
 
-// ---- 8. Transform 链式转换 ----
-console.log("\\n===== 8. Transform 链式转换 =====");
-// 多个 Transform 串联：数字 → 乘10 → 格式化
-class MultiplyTransform extends Transform {
-  constructor(factor) {
-    super({ objectMode: true });
-    this.factor = factor;
-  }
-  _transform(chunk, encoding, callback) {
-    this.push({ num: chunk.num, result: chunk.num * this.factor });
-    callback();
-  }
-}
-
-class StringifyTransform extends Transform {
-  constructor() {
-    super({ objectMode: true });
-  }
-  _transform(chunk, encoding, callback) {
-    this.push(chunk.num + " x 10 = " + chunk.result);
-    callback();
-  }
-}
-
-var stringResults = [];
-var stringSink = new Writable({
-  objectMode: true,
-  write: function (chunk, encoding, callback) {
-    stringResults.push(chunk);
-    callback();
-  },
-});
-
-pipeline(
-  new NumberStream(5),
-  new MultiplyTransform(10),
-  new StringifyTransform(),
-  stringSink,
-  function (err) {
-    if (err) {
-      console.error("  管道错误:", err.message);
-    } else {
-      console.log("  链式转换结果:");
-      stringResults.forEach(function (s) {
-        console.log("    " + s);
-      });
-    }
-  }
-);
-
-// ---- 9. 流模式说明 ----
-console.log("\\n===== 9. 流模式说明 =====");
-console.log("  paused mode：默认模式，需要手动 read() 读取");
-console.log("  flowing mode：注册 'data' 监听器后自动进入");
-console.log("  pipe() 会自动切换到 flowing mode");
-console.log("  pause() / resume() 可以切换模式");
-
-// ---- 10. 背压（Backpressure）概念演示 ----
-console.log("\\n===== 10. 背压概念 =====");
-console.log("  背压：当写入速度慢于读取速度时自动暂停读取");
-console.log("  write() 返回 false 表示缓冲区已满");
-console.log("  drain 事件表示缓冲区已排空，可继续写入");
-console.log("  pipe() / pipeline() 自动处理背压");
-
-// 手动背压处理演示
-var fastReadable = Readable.from(["数据块1", "数据块2", "数据块3"]);
-var writeCount = 0;
-var manualWritable = new Writable({
-  objectMode: true,
-  write: function (chunk, encoding, callback) {
-    writeCount++;
-    console.log("  写入: " + chunk);
-    callback();
-  },
-});
-
-fastReadable.on("data", function (chunk) {
-  var canContinue = manualWritable.write(chunk);
-  if (!canContinue) {
-    // 缓冲区满，暂停读取
-    fastReadable.pause();
-    manualWritable.once("drain", function () {
-      fastReadable.resume();
-    });
-  }
-});
-
-// 当可读流结束时，通知可写流也结束
-fastReadable.on("end", function () {
-  manualWritable.end();
-});
-
-manualWritable.on("finish", function () {
-  console.log("  背压处理完成，共写入 " + writeCount + " 块");
-});
-
-// ---- 11. 从 Generator 创建流 ----
-console.log("\\n===== 11. 从 Generator 创建流 =====");
-// Readable.from 也接受生成器函数
-function* fibonacciGenerator() {
-  var a = 0, b = 1;
-  for (var i = 0; i < 8; i++) {
-    yield a;
-    var temp = a + b;
-    a = b;
-    b = temp;
-  }
-}
-
-var fibStream = Readable.from(fibonacciGenerator());
-var fibNumbers = [];
-fibStream.on("data", function (n) {
-  fibNumbers.push(n);
-});
-fibStream.on("end", function () {
-  console.log("  斐波那契数列:", fibNumbers.join(", "));
-});`,
+// ---- 10. 总结：全局对象一览 ----
+console.log("\\n===== 10. 全局对象总结 =====");
+var globalObjects = [
+  ["globalThis", typeof globalThis, "ES2020 标准全局对象"],
+  ["global", typeof global, "Node.js 全局对象"],
+  ["process", typeof process, "进程对象"],
+  ["Buffer", typeof Buffer, "二进制缓冲区"],
+  ["console", typeof console, "控制台输出"],
+  ["setTimeout", typeof setTimeout, "延迟执行（一次性）"],
+  ["setInterval", typeof setInterval, "周期性执行"],
+  ["setImmediate", typeof setImmediate, "立即异步执行"],
+  ["URL", typeof URL, "URL 解析（WHATWG）"],
+  ["URLSearchParams", typeof URLSearchParams, "查询参数操作"],
+  ["TextEncoder", typeof TextEncoder, "文本编码器"],
+  ["TextDecoder", typeof TextDecoder, "文本解码器"],
+  ["performance", typeof performance, "高精度性能计时"],
+  ["AbortController", typeof AbortController, "取消异步操作"],
+  ["Promise", typeof Promise, "Promise 异步编程"],
+  ["require", typeof require, "模块加载函数"],
+  ["module", typeof module, "当前模块对象"],
+  ["exports", typeof exports, "导出快捷引用"],
+];
+console.table(globalObjects);`,
   },
 
   // =========================================================
-  // 第四章：Buffer 缓冲区
+  // 第二章：文件系统基础
   // =========================================================
   {
-    id: "buffer",
+    id: "node-fs-basics",
+    icon: "📁",
+    group: "核心基础",
+    title: "文件系统基础",
+    content: `## 文件系统基础
+
+\`fs\`（File System）模块是 Node.js 最核心的模块之一，提供了与文件系统交互的完整 API。无论是读取配置文件、写入日志、还是操作目录，都离不开 \`fs\` 模块。
+
+### 三种 API 风格
+
+Node.js 的 \`fs\` 模块提供了三种风格的 API：
+
+| 风格 | 方式 | 特点 | 适用场景 |
+| --- | --- | --- | --- |
+| **同步 (Sync)** | \`readFileSync\` | 阻塞当前线程，直接返回结果 | 脚本、初始化配置 |
+| **回调 (Callback)** | \`readFile\` | 异步回调，不阻塞，错误优先 | 传统异步代码 |
+| **Promise** | \`fs.promises.readFile\` | 返回 Promise，支持 async/await | 现代异步代码（推荐） |
+
+#### 同步 API 详解
+
+同步 API 以 \`Sync\` 结尾，会阻塞事件循环直到操作完成。在初始化阶段（如读取配置文件）使用是合适的，但**不要在请求处理中使用同步 API**，否则会阻塞所有请求。
+
+\`\`\`javascript
+const fs = require("fs");
+const data = fs.readFileSync("/path/to/file.txt", "utf8");
+console.log(data);
+\`\`\`
+
+#### 回调 API 详解
+
+回调 API 遵循 Node.js 的**错误优先**（Error-First）约定：第一个参数是 \`err\`（没有错误则为 \`null\`），第二个参数是结果。
+
+\`\`\`javascript
+fs.readFile("/path/to/file.txt", "utf8", (err, data) => {
+  if (err) {
+    console.error("读取失败:", err.message);
+    return;
+  }
+  console.log(data);
+});
+\`\`\`
+
+#### Promise API 详解
+
+Promise API 通过 \`fs.promises\` 访问，支持 async/await：
+
+\`\`\`javascript
+const fs = require("fs/promises");
+const data = await fs.readFile("/path/to/file.txt", "utf8");
+console.log(data);
+\`\`\`
+
+### 读取文件：readFileSync
+
+\`\`\`javascript
+// 读取文本文件（指定编码）
+const text = fs.readFileSync("file.txt", "utf8");
+
+// 读取二进制文件（不指定编码，返回 Buffer）
+const buffer = fs.readFileSync("image.png");
+\`\`\`
+
+#### 编码参数
+
+| 编码 | 返回值类型 | 用途 |
+| --- | --- | --- |
+| \`"utf8"\` | 字符串 | 文本文件 |
+| 不传 | Buffer | 二进制文件（图片、视频等） |
+| \`"base64"\` | 字符串 | Base64 编码 |
+| \`"hex"\` | 字符串 | 十六进制编码 |
+
+### 写入文件：writeFileSync
+
+\`\`\`javascript
+// 写入字符串（覆盖已有内容）
+fs.writeFileSync("file.txt", "Hello World", "utf8");
+
+// 写入 Buffer
+fs.writeFileSync("file.bin", Buffer.from([0x00, 0x01, 0x02]));
+\`\`\`
+
+> **注意**：\`writeFileSync\` 会**覆盖**已有文件内容。如果需要追加内容，使用 \`appendFileSync\`。
+
+### 文件存在性检查：existsSync
+
+\`\`\`javascript
+if (fs.existsSync("file.txt")) {
+  console.log("文件存在");
+}
+\`\`\`
+
+> ⚠️ **反模式**：不要用 \`existsSync\` 检查文件是否存在后再操作，因为存在竞态条件（文件可能在检查和操作之间被删除）。正确做法是直接操作并处理错误。
+
+### 文件信息：statSync
+
+\`statSync\` 返回一个 \`fs.Stats\` 对象，包含文件的各种元信息：
+
+\`\`\`javascript
+const stats = fs.statSync("file.txt");
+console.log(stats.size);       // 文件大小（字节）
+console.log(stats.isFile());   // 是否是普通文件
+console.log(stats.isDirectory()); // 是否是目录
+console.log(stats.mtime);      // 最后修改时间
+console.log(stats.birthtime);  // 创建时间
+\`\`\`
+
+#### fs.Stats 常用属性
+
+| 属性 | 说明 |
+| --- | --- |
+| \`size\` | 文件大小（字节） |
+| \`isFile()\` | 是否为普通文件 |
+| \`isDirectory()\` | 是否为目录 |
+| \`isSymbolicLink()\` | 是否为符号链接 |
+| \`dev\` | 设备 ID |
+| \`ino\` | inode 编号 |
+| \`mode\` | 文件权限位 |
+| \`mtime\` | 最后修改时间 |
+| \`ctime\` | 最后状态改变时间 |
+| \`birthtime\` | 创建时间 |
+
+### 文件描述符
+
+文件描述符是一个非负整数，代表打开的文件。在类 Unix 系统中，0、1、2 分别代表标准输入、标准输出和标准错误。
+
+\`\`\`javascript
+// 打开文件获取文件描述符
+const fd = fs.openSync("file.txt", "r");
+const buf = Buffer.alloc(1024);
+fs.readSync(fd, buf, 0, buf.length, 0);
+fs.closeSync(fd);
+\`\`\`
+
+### 文件模式
+
+| 模式 | 说明 | 文件不存在时 |
+| --- | --- | --- |
+| \`"r"\` | 只读 | 报错 |
+| \`"r+"\` | 读写 | 报错 |
+| \`"w"\` | 只写（覆盖） | 创建 |
+| \`"w+"\` | 读写（覆盖） | 创建 |
+| \`"a"\` | 追加 | 创建 |
+| \`"a+"\` | 追加+读 | 创建 |
+
+### 目录操作
+
+| 方法 | 说明 |
+| --- | --- |
+| \`mkdirSync(path)\` | 创建目录 |
+| \`readdirSync(path)\` | 读取目录内容（返回文件名数组） |
+| \`rmdirSync(path)\` | 删除空目录 |
+
+\`\`\`javascript
+// 创建目录（recursive 选项创建多级目录）
+fs.mkdirSync("a/b/c", { recursive: true });
+
+// 读取目录
+const files = fs.readdirSync(".");
+console.log(files); // ["file1.js", "file2.js", "dir1"]
+
+// 删除目录
+fs.rmdirSync("emptyDir");
+\`\`\`
+
+### 文件权限
+
+在 Unix 系统中，文件权限用三位八进制数表示：所有者、组、其他人。每个位组合读(4)、写(2)、执行(1)：
+
+| 权限 | 数值 | 含义 |
+| --- | --- | --- |
+| \`r\` | 4 | 读 |
+| \`w\` | 2 | 写 |
+| \`x\` | 1 | 执行 |
+| \`rwx\` | 7 | 读写执行 |
+| \`rw-\` | 6 | 读写 |
+| \`r--\` | 4 | 只读 |
+
+\`\`\`javascript
+// 0644 = 所有者可读写，组和其他人只读
+fs.writeFileSync("file.txt", "data", { mode: 0o644 });
+\`\`\`
+
+下面这段代码演示了 fs 模块同步方法的核心用法。`,
+    code: `// ============================================================
+// 第二章代码演示：文件系统基础（fs 同步 API）
+// ============================================================
+var fs = require("fs");
+var path = require("path");
+
+// ---- 1. 创建临时目录用于测试 ----
+console.log("===== 1. 创建临时测试目录 =====");
+var testDir = path.join(__dirname, "_fs_test_" + Date.now());
+fs.mkdirSync(testDir, { recursive: true });
+console.log("测试目录创建:", testDir);
+
+// ---- 2. 写入文件：writeFileSync ----
+console.log("\\n===== 2. writeFileSync 写入文件 =====");
+// 写入文本文件
+var textFile = path.join(testDir, "hello.txt");
+fs.writeFileSync(textFile, "Hello, Node.js 文件系统！\\n这是第二行内容。\\n这是第三行。", "utf8");
+console.log("文本文件写入:", textFile);
+
+// 写入 JSON 文件
+var jsonFile = path.join(testDir, "config.json");
+var config = {
+  app: "my-app",
+  version: "1.0.0",
+  debug: false,
+  database: { host: "localhost", port: 5432 },
+};
+fs.writeFileSync(jsonFile, JSON.stringify(config, null, 2), "utf8");
+console.log("JSON 文件写入:", jsonFile);
+
+// ---- 3. existsSync 检查文件是否存在 ----
+console.log("\\n===== 3. existsSync 检查文件 =====");
+console.log("hello.txt 存在:", fs.existsSync(textFile));
+console.log("nonexistent.txt 存在:", fs.existsSync(path.join(testDir, "nonexistent.txt")));
+
+// ---- 4. statSync 获取文件信息 ----
+console.log("\\n===== 4. statSync 获取文件信息 =====");
+var stats = fs.statSync(textFile);
+console.log("hello.txt 文件信息:");
+console.log("  大小:", stats.size, "字节");
+console.log("  是文件:", stats.isFile());
+console.log("  是目录:", stats.isDirectory());
+console.log("  是符号链接:", stats.isSymbolicLink());
+console.log("  权限模式:", "0o" + (stats.mode & 0o777).toString(8));
+console.log("  修改时间:", stats.mtime);
+console.log("  创建时间:", stats.birthtime);
+
+// 目录的 stat
+var dirStats = fs.statSync(testDir);
+console.log("\\n测试目录信息:");
+console.log("  是文件:", dirStats.isFile());
+console.log("  是目录:", dirStats.isDirectory());
+
+// ---- 5. readFileSync 读取文件 ----
+console.log("\\n===== 5. readFileSync 读取文件 =====");
+// 读取文本文件（指定 utf8 编码）
+var textContent = fs.readFileSync(textFile, "utf8");
+console.log("hello.txt 内容:");
+console.log(textContent);
+
+// 读取 JSON 文件并解析
+var jsonContent = fs.readFileSync(jsonFile, "utf8");
+var parsedConfig = JSON.parse(jsonContent);
+console.log("config.json 解析结果:");
+console.log("  app:", parsedConfig.app);
+console.log("  version:", parsedConfig.version);
+console.log("  database.host:", parsedConfig.database.host);
+
+// 不指定编码返回 Buffer
+var bufferContent = fs.readFileSync(textFile);
+console.log("\\nBuffer 形式读取:");
+console.log("  类型:", bufferContent.constructor.name);
+console.log("  字节数:", bufferContent.length);
+console.log("  前20字节:", bufferContent.subarray(0, 20).toString());
+
+// ---- 6. appendFileSync 追加内容 ----
+console.log("\\n===== 6. appendFileSync 追加内容 =====");
+fs.appendFileSync(textFile, "\\n这是追加的第四行内容。", "utf8");
+fs.appendFileSync(textFile, "\\n这是追加的第五行内容。", "utf8");
+var updatedContent = fs.readFileSync(textFile, "utf8");
+console.log("追加后的内容:");
+console.log(updatedContent);
+
+// ---- 7. 文件描述符操作 ----
+console.log("\\n===== 7. 文件描述符操作 =====");
+// 用文件描述符打开文件进行读写
+var fd = fs.openSync(textFile, "r");
+console.log("文件描述符:", fd);
+// 用 readSync 读取
+var buf = Buffer.alloc(100);
+var bytesRead = fs.readSync(fd, buf, 0, buf.length, 0);
+console.log("通过 fd 读取了", bytesRead, "字节");
+console.log("内容:", buf.subarray(0, bytesRead).toString());
+// 关闭文件描述符
+fs.closeSync(fd);
+console.log("文件描述符已关闭");
+
+// ---- 8. 目录操作 ----
+console.log("\\n===== 8. 目录操作 =====");
+// 创建子目录
+var subDir = path.join(testDir, "subdir");
+fs.mkdirSync(subDir, { recursive: true });
+console.log("子目录创建:", subDir);
+
+// 在子目录中创建文件
+var subFile = path.join(subDir, "subfile.txt");
+fs.writeFileSync(subFile, "子目录中的文件内容", "utf8");
+
+// 读取目录内容
+var entries = fs.readdirSync(testDir);
+console.log("\\n测试目录内容:");
+entries.forEach(function (entry) {
+  var entryPath = path.join(testDir, entry);
+  var entryStats = fs.statSync(entryPath);
+  var type = entryStats.isDirectory() ? "[目录]" : "[文件]";
+  console.log("  " + type + " " + entry + " (" + entryStats.size + " 字节)");
+});
+
+// 读取子目录
+var subEntries = fs.readdirSync(subDir);
+console.log("\\n子目录内容:", subEntries);
+
+// ---- 9. 文件权限 ----
+console.log("\\n===== 9. 文件权限 =====");
+// 创建带特定权限的文件
+var permFile = path.join(testDir, "permission.txt");
+fs.writeFileSync(permFile, "测试权限", { mode: 0o644 }); // rw-r--r--
+var permStats = fs.statSync(permFile);
+console.log("permission.txt 权限:", "0o" + (permStats.mode & 0o777).toString(8));
+console.log("  解释: 所有者rw-(6), 组r--(4), 其他人r--(4)");
+
+// ---- 10. 文件复制与重命名 ----
+console.log("\\n===== 10. 文件复制与重命名 =====");
+// 复制文件（通过读写实现）
+var copyFile = path.join(testDir, "hello_copy.txt");
+var sourceContent = fs.readFileSync(textFile);
+fs.writeFileSync(copyFile, sourceContent);
+console.log("文件复制:", path.basename(textFile), "→", path.basename(copyFile));
+
+// 重命名文件
+var renamedFile = path.join(testDir, "hello_renamed.txt");
+fs.renameSync(copyFile, renamedFile);
+console.log("文件重命名: hello_copy.txt → hello_renamed.txt");
+console.log("旧文件存在:", fs.existsSync(copyFile));
+console.log("新文件存在:", fs.existsSync(renamedFile));
+
+// ---- 11. 删除文件与目录 ----
+console.log("\\n===== 11. 删除操作 =====");
+// 删除文件
+fs.unlinkSync(renamedFile);
+console.log("已删除: hello_renamed.txt");
+console.log("文件还存在:", fs.existsSync(renamedFile));
+
+// 删除子目录中的文件后删除子目录
+fs.unlinkSync(subFile);
+fs.rmdirSync(subDir);
+console.log("已删除子目录:", subDir);
+console.log("子目录还存在:", fs.existsSync(subDir));
+
+// ---- 12. 错误处理：优雅处理文件操作错误 ----
+console.log("\\n===== 12. 错误处理 =====");
+// try-catch 包装同步操作
+try {
+  var missingFile = path.join(testDir, "does_not_exist.txt");
+  fs.readFileSync(missingFile, "utf8");
+} catch (err) {
+  console.log("  捕获错误:", err.code);
+  console.log("  错误信息:", err.message);
+}
+
+// 安全的文件读取函数
+function safeReadFile(filePath, defaultValue) {
+  try {
+    return fs.readFileSync(filePath, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      console.log("  文件不存在，返回默认值");
+      return defaultValue;
+    }
+    throw err; // 其他错误继续抛出
+  }
+}
+
+var result = safeReadFile(path.join(testDir, "missing.txt"), "默认内容");
+console.log("  safeReadFile 结果:", result);
+
+// ---- 13. 清理测试目录 ----
+console.log("\\n===== 13. 清理测试目录 =====");
+try {
+  // 清理所有测试文件
+  var remainingFiles = fs.readdirSync(testDir);
+  remainingFiles.forEach(function (file) {
+    var filePath = path.join(testDir, file);
+    var st = fs.statSync(filePath);
+    if (st.isDirectory()) {
+      // 清理子目录中的文件
+      var subFiles = fs.readdirSync(filePath);
+      subFiles.forEach(function (sf) {
+        fs.unlinkSync(path.join(filePath, sf));
+      });
+      fs.rmdirSync(filePath);
+    } else {
+      fs.unlinkSync(filePath);
+    }
+  });
+  fs.rmdirSync(testDir);
+  console.log("测试目录已清理:", testDir);
+  console.log("清理后目录存在:", fs.existsSync(testDir));
+} catch (e) {
+  console.log("清理时出错:", e.message);
+}
+
+console.log("\\n===== 文件系统基础演示结束 =====");`,
+  },
+
+  // =========================================================
+  // 第三章：文件系统进阶
+  // =========================================================
+  {
+    id: "node-fs-advanced",
+    icon: "📂",
+    group: "核心基础",
+    title: "文件系统进阶",
+    content: `## 文件系统进阶
+
+在掌握了 \`fs\` 模块的基础读写操作后，本章深入讲解文件监视、递归目录遍历、符号链接、大文件处理等进阶话题。
+
+### 文件监视：fs.watch 与 fs.watchFile
+
+Node.js 提供了两种文件监视方式：
+
+| 方法 | 原理 | 跨平台 | 性能 | 推荐 |
+| --- | --- | --- | --- | --- |
+| \`fs.watch\` | 操作系统原生事件（inotify/FSEvents） | 部分差异 | 高 | ✅ |
+| \`fs.watchFile\` | 轮询（polling）检查文件 stat | 一致 | 低 | 网络文件系统 |
+
+#### fs.watch 详解
+
+\`fs.watch\` 利用操作系统底层文件变更通知机制，效率最高：
+
+\`\`\`javascript
+const watcher = fs.watch("file.txt", (eventType, filename) => {
+  console.log(eventType, filename); // change / rename
+});
+// 停止监视
+watcher.close();
+\`\`\`
+
+- \`eventType\`：\`"change"\`（内容变更）或 \`"rename"\`（重命名/删除）
+- \`filename\`：触发事件的文件名（可能为 null，取决于平台）
+- macOS 上 \`recursive\` 选项需要以目录名结尾
+
+#### fs.watchFile 详解
+
+\`fs.watchFile\` 通过定期检查文件 stat 来检测变化，每隔 \`interval\` 毫秒轮询一次：
+
+\`\`\`javascript
+fs.watchFile("file.txt", { interval: 1000 }, (curr, prev) => {
+  console.log("mtime changed:", curr.mtime !== prev.mtime);
+});
+// 停止监视
+fs.unwatchFile("file.txt");
+\`\`\`
+
+> 推荐使用 \`fs.watch\`，仅在网络文件系统等 \`fs.watch\` 不可用的场景使用 \`fs.watchFile\`。
+
+### 递归目录遍历
+
+递归遍历目录树是一个常见的需求，Node.js 没有内置的递归遍历函数，需要自己实现：
+
+\`\`\`javascript
+function walkDir(dir, callback) {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      walkDir(fullPath, callback); // 递归
+    } else {
+      callback(fullPath, entry);
+    }
+  }
+}
+\`\`\`
+
+#### readdirSync 的 withFileTypes 选项
+
+\`\`\`javascript
+// 传统方式：返回文件名数组，需要额外 stat 判断类型
+const names = fs.readdirSync(dir);
+// 需要逐个 stat：fs.statSync(path.join(dir, name)).isDirectory()
+
+// 推荐方式：withFileTypes 直接返回 Dirent 对象
+const entries = fs.readdirSync(dir, { withFileTypes: true });
+entries[0].isDirectory(); // 直接判断，无需额外 stat
+\`\`\`
+
+> \`withFileTypes: true\` 可以避免为每个条目调用一次 \`statSync\`，大幅提升性能。
+
+### 文件复制
+
+Node.js 提供了多种复制文件的方式：
+
+| 方法 | 说明 | 适用场景 |
+| --- | --- | --- |
+| \`copyFileSync\` | 简单复制 | 小文件（一次性读取） |
+| 流式复制 | 分块复制 | 大文件（内存友好） |
+| 系统命令 | 调用 cp 命令 | 保留权限等元数据 |
+
+\`\`\`javascript
+// 简单复制
+fs.copyFileSync("source.txt", "dest.txt");
+
+// 流式复制（大文件推荐）
+const rs = fs.createReadStream("source.mp4");
+const ws = fs.createWriteStream("dest.mp4");
+rs.pipe(ws);
+\`\`\`
+
+### 文件重命名/移动
+
+\`\`\`javascript
+// 重命名（同目录内）
+fs.renameSync("old.txt", "new.txt");
+
+// 移动（不同目录）
+fs.renameSync("/tmp/file.txt", "/home/user/file.txt");
+\`\`\`
+
+> \`renameSync\` 可以用于移动文件，但不能跨文件系统。跨文件系统移动需要先复制再删除。
+
+### 符号链接
+
+符号链接（Symbolic Link）是文件系统中的一个特殊文件，指向另一个文件或目录：
+
+\`\`\`javascript
+// 创建符号链接
+fs.symlinkSync("target.txt", "link.txt");
+
+// 创建目录的符号链接
+fs.symlinkSync("/usr/local/bin", "bin");
+
+// 读取符号链接指向的目标
+const target = fs.readlinkSync("link.txt");
+console.log(target); // "target.txt"
+\`\`\`
+
+### 文件权限：chmod
+
+\`\`\`javascript
+// 修改文件权限
+fs.chmodSync("script.sh", 0o755); // rwxr-xr-x
+fs.chmodSync("config.json", 0o600); // rw-------
+\`\`\`
+
+### 大文件分片读写
+
+处理大文件时，不能一次性读入内存，需要分片处理：
+
+\`\`\`javascript
+const fd = fs.openSync("large.bin", "r");
+const chunkSize = 64 * 1024; // 64KB
+const buf = Buffer.alloc(chunkSize);
+let bytesRead;
+let offset = 0;
+
+while ((bytesRead = fs.readSync(fd, buf, 0, chunkSize, offset)) > 0) {
+  // 处理 buf 中的 bytesRead 字节
+  offset += bytesRead;
+}
+fs.closeSync(fd);
+\`\`\`
+
+### 临时文件与目录
+
+Node.js 提供了 \`os.tmpdir()\` 获取系统临时目录，配合 \`fs.mkdtempSync\` 创建唯一临时目录：
+
+\`\`\`javascript
+const os = require("os");
+const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "myapp-"));
+// 使用完毕后清理
+// fs.rmSync(tmpDir, { recursive: true });
+\`\`\`
+
+> 临时文件应在使用后及时清理，避免占用磁盘空间。
+
+下面这段代码实现递归目录遍历，过滤特定扩展名文件，统计文件数量和大小。`,
+    code: `// ============================================================
+// 第三章代码演示：文件系统进阶（递归遍历、监视、复制等）
+// ============================================================
+var fs = require("fs");
+var path = require("path");
+var os = require("os");
+
+// ---- 1. 创建测试目录结构 ----
+console.log("===== 1. 创建测试目录结构 =====");
+var testRoot = path.join(os.tmpdir(), "_fs_advanced_" + Date.now());
+fs.mkdirSync(testRoot, { recursive: true });
+
+// 创建多层目录结构
+var dirs = [
+  path.join(testRoot, "src"),
+  path.join(testRoot, "src", "components"),
+  path.join(testRoot, "src", "utils"),
+  path.join(testRoot, "docs"),
+  path.join(testRoot, "test"),
+  path.join(testRoot, "dist"),
+  path.join(testRoot, "dist", "assets"),
+];
+dirs.forEach(function (dir) {
+  fs.mkdirSync(dir, { recursive: true });
+});
+
+// 创建各类文件
+var files = [
+  { p: path.join(testRoot, "package.json"), c: '{"name":"test","version":"1.0.0"}' },
+  { p: path.join(testRoot, "README.md"), c: "# 测试项目" },
+  { p: path.join(testRoot, "src", "index.js"), c: 'console.log("main entry");' },
+  { p: path.join(testRoot, "src", "components", "Header.js"), c: '// Header component' },
+  { p: path.join(testRoot, "src", "components", "Footer.js"), c: '// Footer component' },
+  { p: path.join(testRoot, "src", "utils", "helpers.js"), c: '// helpers' },
+  { p: path.join(testRoot, "src", "utils", "format.js"), c: '// format utils' },
+  { p: path.join(testRoot, "docs", "guide.md"), c: '## 使用指南' },
+  { p: path.join(testRoot, "docs", "api.md"), c: '## API 文档' },
+  { p: path.join(testRoot, "test", "index.test.js"), c: '// test index' },
+  { p: path.join(testRoot, "dist", "bundle.js"), c: '// bundled' },
+  { p: path.join(testRoot, "dist", "assets", "style.css"), c: 'body { margin: 0; }' },
+  { p: path.join(testRoot, ".gitignore"), c: 'node_modules\\ndist' },
+];
+files.forEach(function (f) {
+  fs.writeFileSync(f.p, f.c, "utf8");
+});
+console.log("测试目录创建完成:", testRoot);
+
+// ---- 2. 递归目录遍历（核心函数）----
+console.log("\\n===== 2. 递归目录遍历 =====");
+
+function walkDir(dir, callback, depth) {
+  depth = depth || 0;
+  var entries = fs.readdirSync(dir, { withFileTypes: true });
+  var indent = "  ".repeat(depth);
+
+  entries.forEach(function (entry) {
+    var fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      console.log(indent + "[目录] " + entry.name + "/");
+      callback(fullPath, entry, "directory");
+      walkDir(fullPath, callback, depth + 1);
+    } else if (entry.isFile()) {
+      var stats = fs.statSync(fullPath);
+      console.log(indent + "[文件] " + entry.name + " (" + stats.size + " 字节)");
+      callback(fullPath, entry, "file", stats);
+    } else if (entry.isSymbolicLink()) {
+      console.log(indent + "[链接] " + entry.name + " → " + fs.readlinkSync(fullPath));
+      callback(fullPath, entry, "symlink");
+    }
+  });
+}
+
+// 执行遍历
+console.log("目录树结构:");
+walkDir(testRoot, function () {
+  // 回调中可以收集信息
+});
+
+// ---- 3. 过滤特定扩展名文件 ----
+console.log("\\n===== 3. 按扩展名过滤文件 =====");
+
+function findFilesByExt(dir, extensions) {
+  var results = [];
+  function search(currentDir) {
+    var entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    entries.forEach(function (entry) {
+      var fullPath = path.join(currentDir, entry.name);
+      if (entry.isDirectory()) {
+        search(fullPath);
+      } else if (entry.isFile()) {
+        var ext = path.extname(entry.name).toLowerCase();
+        if (extensions.indexOf(ext) !== -1) {
+          results.push(fullPath);
+        }
+      }
+    });
+  }
+  search(dir);
+  return results;
+}
+
+var jsFiles = findFilesByExt(testRoot, [".js"]);
+console.log(".js 文件（共 " + jsFiles.length + " 个）:");
+jsFiles.forEach(function (f) {
+  console.log("  " + path.relative(testRoot, f));
+});
+
+var mdFiles = findFilesByExt(testRoot, [".md"]);
+console.log(".md 文件（共 " + mdFiles.length + " 个）:");
+mdFiles.forEach(function (f) {
+  console.log("  " + path.relative(testRoot, f));
+});
+
+// ---- 4. 统计文件数量和总大小 ----
+console.log("\\n===== 4. 统计文件数量与大小 =====");
+
+function analyzeDirectory(dir) {
+  var stats = {
+    totalFiles: 0,
+    totalDirs: 0,
+    totalSize: 0,
+    byExtension: {},
+  };
+
+  function collect(currentDir) {
+    var entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    entries.forEach(function (entry) {
+      var fullPath = path.join(currentDir, entry.name);
+      if (entry.isDirectory()) {
+        stats.totalDirs++;
+        collect(fullPath);
+      } else if (entry.isFile()) {
+        stats.totalFiles++;
+        var fileStats = fs.statSync(fullPath);
+        stats.totalSize += fileStats.size;
+        var ext = path.extname(entry.name).toLowerCase() || "(无扩展名)";
+        if (!stats.byExtension[ext]) {
+          stats.byExtension[ext] = { count: 0, size: 0 };
+        }
+        stats.byExtension[ext].count++;
+        stats.byExtension[ext].size += fileStats.size;
+      }
+    });
+  }
+  collect(dir);
+  return stats;
+}
+
+var analysis = analyzeDirectory(testRoot);
+console.log("目录分析结果:");
+console.log("  文件总数:", analysis.totalFiles);
+console.log("  目录总数:", analysis.totalDirs);
+console.log("  总大小:", analysis.totalSize, "字节 (" + (analysis.totalSize / 1024).toFixed(2), "KB)");
+console.log("\\n  按扩展名统计:");
+Object.keys(analysis.byExtension).sort().forEach(function (ext) {
+  var info = analysis.byExtension[ext];
+  console.log("    " + ext + ": " + info.count + " 个文件, " + info.size + " 字节");
+});
+
+// ---- 5. 文件复制与重命名 ----
+console.log("\\n===== 5. 文件复制与重命名 =====");
+// copyFileSync 复制文件
+var sourceFile = path.join(testRoot, "src", "index.js");
+var destFile = path.join(testRoot, "src", "index_backup.js");
+fs.copyFileSync(sourceFile, destFile);
+console.log("复制:", path.relative(testRoot, sourceFile), "→", path.relative(testRoot, destFile));
+
+// 验证复制
+var sourceContent = fs.readFileSync(sourceFile, "utf8");
+var destContent = fs.readFileSync(destFile, "utf8");
+console.log("复制内容一致:", sourceContent === destContent);
+
+// renameSync 重命名/移动
+var moveDest = path.join(testRoot, "dist", "index_moved.js");
+fs.renameSync(destFile, moveDest);
+console.log("移动:", "index_backup.js", "→", path.relative(testRoot, moveDest));
+console.log("旧位置还存在:", fs.existsSync(destFile));
+console.log("新位置存在:", fs.existsSync(moveDest));
+
+// 清理
+fs.unlinkSync(moveDest);
+
+// ---- 6. 符号链接 ----
+console.log("\\n===== 6. 符号链接 =====");
+var targetFile = path.join(testRoot, "README.md");
+var linkFile = path.join(testRoot, "README_link.md");
+try {
+  fs.symlinkSync(targetFile, linkFile);
+  console.log("创建符号链接: README_link.md → README.md");
+  var linkTarget = fs.readlinkSync(linkFile);
+  console.log("链接指向:", linkTarget);
+  // 读取符号链接的内容（会跟随链接）
+  var linkContent = fs.readFileSync(linkFile, "utf8");
+  console.log("链接内容:", linkContent.trim());
+  // 判断是否为符号链接
+  var linkStats = fs.lstatSync(linkFile);
+  console.log("是符号链接:", linkStats.isSymbolicLink());
+  // 清理
+  fs.unlinkSync(linkFile);
+} catch (e) {
+  console.log("符号链接出错:", e.message);
+}
+
+// ---- 7. 文件权限修改 ----
+console.log("\\n===== 7. 文件权限修改 =====");
+var permFile = path.join(testRoot, "perm_test.txt");
+fs.writeFileSync(permFile, "权限测试", "utf8");
+var origStats = fs.statSync(permFile);
+console.log("原始权限:", "0o" + (origStats.mode & 0o777).toString(8));
+// 修改为只读
+fs.chmodSync(permFile, 0o444);
+var newStats = fs.statSync(permFile);
+console.log("修改后权限:", "0o" + (newStats.mode & 0o777).toString(8));
+// 恢复权限以便后续清理
+fs.chmodSync(permFile, 0o644);
+
+// ---- 8. 大文件分片读写演示 ----
+console.log("\\n===== 8. 大文件分片读写 =====");
+// 创建一个稍大的文件用于演示
+var largeFile = path.join(testRoot, "large_data.bin");
+var writeFd = fs.openSync(largeFile, "w");
+var chunkSize = 256;
+var totalWritten = 0;
+for (var i = 0; i < 10; i++) {
+  var chunk = Buffer.alloc(chunkSize);
+  // 填充一些数据
+  for (var j = 0; j < chunkSize; j++) {
+    chunk[j] = (i * chunkSize + j) % 256;
+  }
+  fs.writeSync(writeFd, chunk, 0, chunk.length);
+  totalWritten += chunk.length;
+}
+fs.closeSync(writeFd);
+
+// 分片读取
+var readFd = fs.openSync(largeFile, "r");
+var readBuf = Buffer.alloc(128); // 每次读 128 字节
+var bytesRead;
+var totalRead = 0;
+var readOffset = 0;
+console.log("分片读取大文件:");
+while ((bytesRead = fs.readSync(readFd, readBuf, 0, readBuf.length, readOffset)) > 0) {
+  console.log("  读取偏移=" + readOffset + ", 字节数=" + bytesRead);
+  totalRead += bytesRead;
+  readOffset += bytesRead;
+}
+fs.closeSync(readFd);
+console.log("总读取字节:", totalRead);
+console.log("文件大小:", fs.statSync(largeFile).size);
+
+// ---- 9. 临时文件与目录 ----
+console.log("\\n===== 9. 临时文件与目录 =====");
+console.log("系统临时目录:", os.tmpdir());
+// 创建临时目录
+var tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "node-demo-"));
+console.log("创建临时目录:", tempDir);
+// 在临时目录中写入文件
+fs.writeFileSync(path.join(tempDir, "temp.txt"), "临时数据", "utf8");
+console.log("临时文件已创建");
+// 清理
+fs.unlinkSync(path.join(tempDir, "temp.txt"));
+fs.rmdirSync(tempDir);
+console.log("临时目录已清理:", !fs.existsSync(tempDir));
+
+// ---- 10. 清理所有测试文件 ----
+console.log("\\n===== 10. 清理测试目录 =====");
+function removeDirRecursive(dir) {
+  if (!fs.existsSync(dir)) return;
+  var entries = fs.readdirSync(dir, { withFileTypes: true });
+  entries.forEach(function (entry) {
+    var fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      removeDirRecursive(fullPath);
+    } else {
+      fs.unlinkSync(fullPath);
+    }
+  });
+  fs.rmdirSync(dir);
+}
+removeDirRecursive(testRoot);
+console.log("测试目录已清理:", !fs.existsSync(testRoot));
+
+console.log("\\n===== 文件系统进阶演示结束 =====");`,
+  },
+
+  // =========================================================
+  // 第四章：路径处理
+  // =========================================================
+  {
+    id: "node-path",
+    icon: "🛤️",
+    group: "核心基础",
+    title: "路径处理",
+    content: `## 路径处理
+
+\`path\` 模块是 Node.js 中处理文件和目录路径的工具集。它提供了跨平台的路径操作能力，自动处理 Windows 的反斜杠（\`\\\`）和 POSIX 的正斜杠（\`/\`）差异。
+
+### 为什么需要 path 模块？
+
+在 Node.js 中拼接路径时，不能简单用字符串拼接：
+
+\`\`\`javascript
+// ❌ 错误方式：硬编码路径分隔符
+const filePath = dir + "/" + file; // 在 Windows 上会出错
+
+// ✅ 正确方式：使用 path.join
+const filePath = path.join(dir, file);
+\`\`\`
+
+### 路径拼接：path.join
+
+\`path.join\` 是使用最频繁的方法，用于将多个路径片段拼接成一个规范路径：
+
+\`\`\`javascript
+path.join("/a", "b", "c");     // "/a/b/c"
+path.join("/a", "/b", "c");    // "/a/b/c"（多余的 / 被规范化）
+path.join("/a", "..", "b");    // "/b"（.. 表示上级目录）
+path.join("a", "b", "..", "c"); // "a/c"
+\`\`\`
+
+#### join 的行为规则
+
+- 从右向左拼接，遇到第一个绝对路径片段时停止
+- 自动处理多余的 \`/\`、\`.\` 和 \`..\`
+- 使用平台特定的路径分隔符
+
+### 路径解析：path.resolve
+
+\`path.resolve\` 将路径片段解析为**绝对路径**。如果给定的路径片段不能组成绝对路径，会自动使用当前工作目录：
+
+\`\`\`javascript
+path.resolve("a", "b");      // "/current/working/dir/a/b"
+path.resolve("/a", "b");     // "/a/b"（第一个是绝对路径）
+path.resolve("/a", "/b");    // "/b"（最右边的绝对路径覆盖）
+path.resolve("a", "..");     // "/current/working/dir"
+\`\`\`
+
+#### join vs resolve 的区别
+
+| 方法 | 行为 | 相对路径处理 |
+| --- | --- | --- |
+| \`join\` | 直接拼接，规范化 | 保留相对路径 |
+| \`resolve\` | 解析为绝对路径 | 自动补全为绝对路径 |
+
+\`\`\`javascript
+path.join("a", "b");    // "a/b"
+path.resolve("a", "b"); // "/current/working/dir/a/b"
+\`\`\`
+
+### 路径提取
+
+| 方法 | 说明 | 示例 |
+| --- | --- | --- |
+| \`basename(p, [ext])\` | 获取文件名 | \`/a/b/c.txt\` → \`c.txt\` |
+| \`dirname(p)\` | 获取目录名 | \`/a/b/c.txt\` → \`/a/b\` |
+| \`extname(p)\` | 获取扩展名 | \`/a/b/c.txt\` → \`.txt\` |
+
+\`\`\`javascript
+const p = "/home/user/docs/file.txt";
+
+path.basename(p);       // "file.txt"
+path.basename(p, ".txt"); // "file"（去掉扩展名）
+path.dirname(p);        // "/home/user/docs"
+path.extname(p);        // ".txt"
+\`\`\`
+
+#### extname 的细节
+
+\`\`\`javascript
+path.extname("file.txt");     // ".txt"
+path.extname("file");         // ""（无扩展名）
+path.extname("file.tar.gz");  // ".gz"（不是 ".tar.gz"）
+path.extname(".gitignore");   // ""（点开头不是扩展名）
+path.extname("file.");        // "."
+\`\`\`
+
+### 路径解析与格式化
+
+| 方法 | 说明 |
+| --- | --- |
+| \`parse(p)\` | 将路径解析为对象 |
+| \`format(obj)\` | 将对象格式化为路径 |
+
+\`\`\`javascript
+const parsed = path.parse("/home/user/file.txt");
+// {
+//   root: "/",
+//   dir: "/home/user",
+//   base: "file.txt",
+//   ext: ".txt",
+//   name: "file"
+// }
+
+const formatted = path.format(parsed);
+// "/home/user/file.txt"
+\`\`\`
+
+### 路径规范化
+
+| 方法 | 说明 | 示例 |
+| --- | --- | --- |
+| \`normalize(p)\` | 规范化路径（处理多余的 /、.、..） | \`/a//b/../c\` → \`/a/c\` |
+| \`relative(from, to)\` | 计算相对路径 | \`/a/b\` → \`/a/c/d\` = \`../c/d\` |
+
+\`\`\`javascript
+path.normalize("/a//b/../c/");   // "/a/c"
+path.relative("/a/b", "/a/c/d"); // "../c/d"
+path.relative("/a/b/c", "/a/b"); // ".."
+\`\`\`
+
+### 平台相关属性
+
+| 属性 | POSIX | Windows |
+| --- | --- | --- |
+| \`path.sep\` | \`/\` | \`\\\` |
+| \`path.delimiter\` | \`:\` | \`;\` |
+
+\`\`\`javascript
+console.log(path.sep);       // "/" (macOS/Linux) 或 "\\\\" (Windows)
+console.log(path.delimiter); // ":" (macOS/Linux) 或 ";" (Windows)
+
+// 解析 PATH 环境变量
+const paths = process.env.PATH.split(path.delimiter);
+\`\`\`
+
+### 路径遍历攻击防范
+
+路径遍历攻击（Path Traversal）是指攻击者通过构造 \`../\` 等特殊字符访问预期目录之外的文件：
+
+\`\`\`javascript
+// ❌ 危险：用户输入可能包含 ../ 来突破目录限制
+const file = path.join("/safe/dir", userInput);
+// 如果 userInput = "../../etc/passwd"，结果可能是 /etc/passwd
+
+// ✅ 安全：使用 path.resolve 检查结果是否在允许目录内
+function safePath(baseDir, userPath) {
+  const resolved = path.resolve(baseDir, userPath);
+  if (!resolved.startsWith(baseDir + path.sep)) {
+    throw new Error("路径遍历攻击");
+  }
+  return resolved;
+}
+\`\`\`
+
+### 跨平台路径处理技巧
+
+\`\`\`javascript
+// 1. 始终使用 path.join 而非字符串拼接
+const p = path.join("a", "b", "c"); // 而非 "a/b/c"
+
+// 2. 使用 path.resolve 获取绝对路径
+const abs = path.resolve("relative/path");
+
+// 3. 使用 path.sep 处理平台差异
+const parts = somePath.split(path.sep);
+
+// 4. posix 和 win32 子命名空间
+// 在 Windows 上处理 POSIX 路径，或反过来
+const normalized = path.posix.normalize("a/b/c");
+\`\`\`
+
+下面这段代码演示了 path 模块的各种核心用法。`,
+    code: `// ============================================================
+// 第四章代码演示：path 路径处理
+// ============================================================
+var path = require("path");
+
+// ---- 1. path.join：路径拼接 ----
+console.log("===== 1. path.join 路径拼接 =====");
+// 基本拼接
+console.log("join('a','b','c'):", path.join("a", "b", "c"));
+// 多余的 / 被规范化
+console.log("join('/a','/b','c'):", path.join("/a", "/b", "c"));
+// .. 表示上级目录
+console.log("join('/a','..','b'):", path.join("/a", "..", "b"));
+// . 表示当前目录
+console.log("join('a','.','b'):", path.join("a", ".", "b"));
+// 连续多个 ..
+console.log("join('/a/b/c','../../d'):", path.join("/a/b/c", "../../d"));
+
+// 实际场景：构建项目文件路径
+var projectDir = "/home/user/my-project";
+var configFile = path.join(projectDir, "config", "app.json");
+console.log("\\n项目配置文件路径:", configFile);
+var srcIndex = path.join(projectDir, "src", "components", "index.js");
+console.log("组件入口路径:", srcIndex);
+
+// ---- 2. path.resolve：解析为绝对路径 ----
+console.log("\\n===== 2. path.resolve 解析绝对路径 =====");
+// 从右向左，遇到第一个绝对路径停止
+console.log("resolve('a','b'):", path.resolve("a", "b"));
+console.log("resolve('/a','b'):", path.resolve("/a", "b"));
+console.log("resolve('/a','/b'):", path.resolve("/a", "/b"));
+console.log("resolve('a','..'):", path.resolve("a", ".."));
+
+// join vs resolve 的区别
+console.log("\\njoin vs resolve 对比:");
+console.log("  join('a','b'):", path.join("a", "b"));
+console.log("  resolve('a','b'):", path.resolve("a", "b"));
+
+// ---- 3. basename / dirname / extname：路径提取 ----
+console.log("\\n===== 3. basename / dirname / extname =====");
+var testPaths = [
+  "/home/user/docs/file.txt",
+  "/var/log/app.log",
+  "/usr/local/bin/node",
+  "relative/path/data.json",
+  "no_ext_file",
+  ".gitignore",
+  "archive.tar.gz",
+];
+
+testPaths.forEach(function (p) {
+  console.log("\\n路径:", p);
+  console.log("  basename:", path.basename(p));
+  console.log("  basename(去扩展名):", path.basename(p, path.extname(p)));
+  console.log("  dirname:", path.dirname(p));
+  console.log("  extname:", path.extname(p));
+});
+
+// extname 细节
+console.log("\\nextname 细节:");
+console.log("  'file.txt':", path.extname("file.txt"));
+console.log("  'file':", path.extname("file"));
+console.log("  'file.tar.gz':", path.extname("file.tar.gz"));
+console.log("  '.gitignore':", path.extname(".gitignore"));
+console.log("  'file.':", path.extname("file."));
+
+// ---- 4. path.parse / path.format：解析与格式化 ----
+console.log("\\n===== 4. path.parse / path.format =====");
+var filePath = "/home/user/projects/my-app/src/index.js";
+var parsed = path.parse(filePath);
+console.log("parse('/home/user/projects/my-app/src/index.js'):");
+console.log("  root:", parsed.root);
+console.log("  dir:", parsed.dir);
+console.log("  base:", parsed.base);
+console.log("  ext:", parsed.ext);
+console.log("  name:", parsed.name);
+
+// format 还原
+var formatted = path.format(parsed);
+console.log("\\nformat 还原:", formatted);
+console.log("还原一致:", formatted === filePath);
+
+// 修改部分属性后 format
+var modified = Object.assign({}, parsed, { name: "main", ext: ".js" });
+console.log("修改后 format:", path.format(modified));
+
+// ---- 5. normalize / relative：规范化与相对路径 ----
+console.log("\\n===== 5. normalize / relative =====");
+// normalize 规范化路径
+console.log("normalize('/a//b/../c/'):", path.normalize("/a//b/../c/"));
+console.log("normalize('/a/b/c/../../'):", path.normalize("/a/b/c/../../"));
+console.log("normalize('a/./b/./c'):", path.normalize("a/./b/./c"));
+console.log("normalize('/a/b/c/../../../..'):", path.normalize("/a/b/c/../../../.."));
+
+// relative 计算相对路径
+console.log("\\nrelative 相对路径:");
+console.log("  relative('/a/b', '/a/c/d'):", path.relative("/a/b", "/a/c/d"));
+console.log("  relative('/a/b/c', '/a/b'):", path.relative("/a/b/c", "/a/b"));
+console.log("  relative('/a', '/b'):", path.relative("/a", "/b"));
+console.log("  relative('/a/b', '/a/b'):", path.relative("/a/b", "/a/b"));
+
+// actual use: 计算两个文件之间的相对路径
+var from = "/home/user/project/src/components/Header.js";
+var to = "/home/user/project/src/utils/helpers.js";
+console.log("\\n实际场景:");
+console.log("  from:", from);
+console.log("  to:", to);
+console.log("  relative:", path.relative(path.dirname(from), to));
+
+// ---- 6. path.sep / path.delimiter：平台相关属性 ----
+console.log("\\n===== 6. path.sep / path.delimiter =====");
+console.log("path.sep:", JSON.stringify(path.sep), "(路径分隔符)");
+console.log("path.delimiter:", JSON.stringify(path.delimiter), "(PATH 环境变量分隔符)");
+
+// 演示解析 PATH 环境变量
+var pathEnv = process.env.PATH || "/usr/bin:/bin:/usr/local/bin";
+console.log("\\nPATH 环境变量:", pathEnv);
+var pathDirs = pathEnv.split(path.delimiter);
+console.log("拆分后的路径列表（前5个）:");
+pathDirs.slice(0, 5).forEach(function (dir, i) {
+  console.log("  " + (i + 1) + ". " + dir);
+});
+
+// ---- 7. isAbsolute：判断是否为绝对路径 ----
+console.log("\\n===== 7. path.isAbsolute =====");
+console.log("isAbsolute('/a/b'):", path.isAbsolute("/a/b"));
+console.log("isAbsolute('/'):", path.isAbsolute("/"));
+console.log("isAbsolute('a/b'):", path.isAbsolute("a/b"));
+console.log("isAbsolute('.'):", path.isAbsolute("."));
+console.log("isAbsolute(''):", path.isAbsolute(""));
+
+// ---- 8. 路径遍历攻击防范 ----
+console.log("\\n===== 8. 路径遍历攻击防范 =====");
+function safeResolve(baseDir, userPath) {
+  // 用 path.resolve 解析，然后检查是否在 baseDir 内
+  var resolved = path.resolve(baseDir, userPath);
+  var normalizedBase = path.resolve(baseDir) + path.sep;
+  if (!resolved.startsWith(normalizedBase) && resolved !== path.resolve(baseDir)) {
+    throw new Error("路径遍历攻击检测: " + userPath);
+  }
+  return resolved;
+}
+
+var baseDir = "/var/www/data";
+console.log("基础目录:", baseDir);
+console.log("安全路径 'images/logo.png':", safeResolve(baseDir, "images/logo.png"));
+try {
+  console.log("危险路径 '../../../etc/passwd':");
+  safeResolve(baseDir, "../../../etc/passwd");
+} catch (e) {
+  console.log("  " + e.message);
+}
+
+// ---- 9. 跨平台路径处理 ----
+console.log("\\n===== 9. 跨平台路径处理 =====");
+// 使用 path.posix 在 Windows 上处理 POSIX 路径
+console.log("当前平台分隔符:", path.sep);
+// 构建跨平台安全的路径
+function buildPath() {
+  var parts = Array.prototype.slice.call(arguments);
+  return path.join.apply(path, parts);
+}
+console.log("buildPath('a','b','c'):", buildPath("a", "b", "c"));
+console.log("buildPath('/root','sub','file.txt'):", buildPath("/root", "sub", "file.txt"));
+
+// ---- 10. 实战：文件路径工具函数 ----
+console.log("\\n===== 10. 实战：路径工具函数 =====");
+// 获取文件所在目录
+function getDir(filePath) {
+  return path.dirname(filePath);
+}
+// 获取不含扩展名的文件名
+function getBaseName(filePath) {
+  return path.basename(filePath, path.extname(filePath));
+}
+// 替换文件扩展名
+function replaceExt(filePath, newExt) {
+  return path.join(path.dirname(filePath), path.basename(filePath, path.extname(filePath)) + newExt);
+}
+// 判断是否为子路径
+function isSubPath(parentPath, childPath) {
+  var relative = path.relative(parentPath, childPath);
+  return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
+var testFile = "/home/user/project/src/test.js";
+console.log("测试文件:", testFile);
+console.log("  getDir:", getDir(testFile));
+console.log("  getBaseName:", getBaseName(testFile));
+console.log("  replaceExt(.ts):", replaceExt(testFile, ".ts"));
+console.log("  replaceExt(.json):", replaceExt(testFile, ".json"));
+console.log("  isSubPath('/home/user', '/home/user/project'):", isSubPath("/home/user", "/home/user/project"));
+console.log("  isSubPath('/home/user', '/etc/passwd'):", isSubPath("/home/user", "/etc/passwd"));
+
+console.log("\\n===== 路径处理演示结束 =====");`,
+  },
+
+  // =========================================================
+  // 第五章：进程对象
+  // =========================================================
+  {
+    id: "node-process",
+    icon: "⚙️",
+    group: "核心基础",
+    title: "进程对象",
+    content: `## 进程对象
+
+\`process\` 是 Node.js 中最重要的全局对象，它提供了当前 Node.js 进程的信息和控制能力。从命令行参数、环境变量到进程退出、内存监控，都通过 \`process\` 对象完成。
+
+### 命令行参数：process.argv
+
+\`process.argv\` 是一个数组，包含启动 Node.js 时传入的命令行参数：
+
+\`\`\`javascript
+// node script.js arg1 arg2 arg3
+// process.argv = [
+//   "/usr/bin/node",       // Node.js 可执行文件路径
+//   "/path/to/script.js",  // 脚本文件路径
+//   "arg1", "arg2", "arg3" // 用户参数
+// ]
+\`\`\`
+
+#### 提取用户参数
+
+\`\`\`javascript
+// 从索引 2 开始是用户参数
+const args = process.argv.slice(2);
+// 或使用 util.parseArgs（Node.js 18.3+）
+\`\`\`
+
+### Node.js 可执行文件信息
+
+| 属性 | 说明 | 示例 |
+| --- | --- | --- |
+| \`process.execPath\` | Node.js 可执行文件的绝对路径 | \`/usr/local/bin/node\` |
+| \`process.execArgv\` | 传给 Node.js 的选项（不含脚本） | \`["--inspect", "--max-old-space-size=4096"]\` |
+
+\`\`\`javascript
+// node --inspect --max-old-space-size=4096 script.js arg1
+// process.execArgv = ["--inspect", "--max-old-space-size=4096"]
+// process.argv[2] = "arg1"
+\`\`\`
+
+### 环境变量：process.env
+
+\`process.env\` 是一个包含所有环境变量的对象。详见"环境变量与配置管理"章节。
+
+### 版本信息
+
+| 属性 | 说明 |
+| --- | --- |
+| \`process.version\` | Node.js 版本号（如 \`v20.10.0\`） |
+| \`process.versions\` | 所有依赖组件的版本对象 |
+| \`process.release\` | 发行版信息 |
+
+\`\`\`javascript
+console.log(process.version); // "v20.10.0"
+console.log(process.versions);
+// { node: "20.10.0", v8: "11.3.244.8", uv: "1.46.0",
+//   zlib: "1.2.13", openssl: "3.0.12", ... }
+\`\`\`
+
+### 系统与架构信息
+
+| 属性 | 说明 | 可能值 |
+| --- | --- | --- |
+| \`process.arch\` | CPU 架构 | \`"x64"\` / \`"arm64"\` / \`"ia32"\` |
+| \`process.platform\` | 操作系统平台 | \`"darwin"\` / \`"linux"\` / \`"win32"\` |
+
+### 进程标识
+
+| 属性 | 说明 |
+| --- | --- |
+| \`process.pid\` | 当前进程 ID |
+| \`process.ppid\` | 父进程 ID |
+
+### 进程工作目录
+
+| 方法 | 说明 |
+| --- | --- |
+| \`process.cwd()\` | 返回当前工作目录 |
+| \`process.chdir(dir)\` | 改变当前工作目录 |
+
+\`\`\`javascript
+console.log(process.cwd()); // 当前工作目录
+process.chdir("/tmp");       // 切换工作目录
+\`\`\`
+
+> 注意：\`process.cwd()\` 和 \`__dirname\` 不同！\`cwd()\` 是启动进程时的目录，\`__dirname\` 是脚本文件所在目录。
+
+### 进程信息
+
+| 属性/方法 | 说明 |
+| --- | --- |
+| \`process.uptime()\` | 进程运行时间（秒） |
+| \`process.memoryUsage()\` | 内存使用情况 |
+| \`process.cpuUsage()\` | CPU 使用情况 |
+
+#### memoryUsage 详解
+
+\`\`\`javascript
+const mem = process.memoryUsage();
+// {
+//   rss: 内存驻留集大小（总内存占用）
+//   heapTotal: V8 堆总大小
+//   heapUsed: V8 堆已用大小
+//   external: 绑定到 V8 的 C++ 对象内存
+//   arrayBuffers: ArrayBuffer 和 SharedArrayBuffer 内存
+// }
+\`\`\`
+
+#### cpuUsage 详解
+
+\`\`\`javascript
+const start = process.cpuUsage();
+// 执行一些操作
+const end = process.cpuUsage(start);
+// end.user: 用户态 CPU 时间（微秒）
+// end.system: 内核态 CPU 时间（微秒）
+\`\`\`
+
+### process.exit()
+
+\`process.exit([code])\` 以指定退出码终止进程。0 表示成功，非 0 表示错误。
+
+\`\`\`javascript
+process.exit(0); // 成功退出
+process.exit(1); // 错误退出
+\`\`\`
+
+> 注意：\`process.exit()\` 会立即终止进程，不会等待异步操作完成。推荐让它自然退出。
+
+### process.nextTick
+
+\`process.nextTick(callback)\` 将回调函数添加到当前操作完成后、下一个事件循环阶段开始前执行。它比 \`setImmediate\` 和 \`setTimeout(fn, 0)\` 优先级更高。
+
+\`\`\`javascript
+console.log("第一");
+process.nextTick(() => console.log("nextTick"));
+console.log("第二");
+// 输出：第一 → 第二 → nextTick
+\`\`\`
+
+### 标准输入输出
+
+| 属性 | 说明 | 类型 |
+| --- | --- | --- |
+| \`process.stdin\` | 标准输入流 | Readable Stream |
+| \`process.stdout\` | 标准输出流 | Writable Stream |
+| \`process.stderr\` | 标准错误流 | Writable Stream |
+
+### 进程事件
+
+| 事件 | 说明 |
+| --- | --- |
+| \`exit\` | 进程即将退出时触发（只能执行同步操作） |
+| \`beforeExit\` | 事件循环为空、进程即将退出时触发（可执行异步操作） |
+| \`uncaughtException\` | 未捕获的异常（应避免依赖此事件） |
+| \`unhandledRejection\` | 未处理的 Promise 拒绝 |
+| \`SIGINT\` | 用户按下 Ctrl+C |
+
+\`\`\`javascript
+process.on("exit", (code) => {
+  console.log("进程退出，退出码:", code);
+});
+
+process.on("SIGINT", () => {
+  console.log("收到 Ctrl+C，正在退出...");
+  process.exit(0);
+});
+\`\`\`
+
+下面这段代码演示了 process 对象的各种属性和方法。`,
+    code: `// ============================================================
+// 第五章代码演示：process 进程对象
+// ============================================================
+
+// ---- 1. process.argv：命令行参数 ----
+console.log("===== 1. process.argv 命令行参数 =====");
+console.log("完整 argv:");
+process.argv.forEach(function (arg, i) {
+  console.log("  [" + i + "] " + arg);
+});
+// 提取用户参数（跳过 node 和脚本路径）
+var userArgs = process.argv.slice(2);
+console.log("用户参数:", userArgs.length > 0 ? userArgs : "(无)");
+
+// ---- 2. process.execPath / process.execArgv ----
+console.log("\\n===== 2. execPath / execArgv =====");
+console.log("Node.js 可执行文件路径:", process.execPath);
+console.log("Node.js 启动参数:", process.execArgv.length > 0 ? process.execArgv : "(无)");
+
+// ---- 3. 版本信息 ----
+console.log("\\n===== 3. 版本信息 =====");
+console.log("Node.js 版本:", process.version);
+console.log("V8 版本:", process.versions.v8);
+console.log("libuv 版本:", process.versions.uv);
+console.log("OpenSSL 版本:", process.versions.openssl);
+console.log("zlib 版本:", process.versions.zlib);
+
+// process.release
+console.log("发行版名称:", process.release.name);
+console.log("LTS 版本:", process.release.lts || "非 LTS");
+
+// ---- 4. 系统与架构信息 ----
+console.log("\\n===== 4. 系统与架构 =====");
+console.log("CPU 架构:", process.arch);
+console.log("操作系统平台:", process.platform);
+// 平台判断
+var platform = process.platform;
+console.log("平台判断:");
+console.log("  是 macOS:", platform === "darwin");
+console.log("  是 Linux:", platform === "linux");
+console.log("  是 Windows:", platform === "win32");
+
+// ---- 5. 进程标识 ----
+console.log("\\n===== 5. 进程标识 =====");
+console.log("当前进程 PID:", process.pid);
+console.log("父进程 PPID:", process.ppid);
+console.log("进程标题:", process.title);
+
+// ---- 6. 工作目录 ----
+console.log("\\n===== 6. 工作目录 =====");
+console.log("当前工作目录 cwd():", process.cwd());
+console.log("脚本文件目录 __dirname:", __dirname);
+console.log("cwd() === __dirname:", process.cwd() === __dirname);
+
+// ---- 7. 进程运行信息 ----
+console.log("\\n===== 7. 进程运行信息 =====");
+// uptime：进程运行时间
+var uptime = process.uptime();
+console.log("进程运行时间:", uptime.toFixed(2), "秒");
+console.log("  =", (uptime / 60).toFixed(2), "分钟");
+
+// memoryUsage：内存使用情况
+var mem = process.memoryUsage();
+console.log("\\n内存使用情况:");
+console.log("  RSS (常驻内存):", (mem.rss / 1024 / 1024).toFixed(2), "MB");
+console.log("  heapTotal (V8堆总大小):", (mem.heapTotal / 1024 / 1024).toFixed(2), "MB");
+console.log("  heapUsed (V8堆已用):", (mem.heapUsed / 1024 / 1024).toFixed(2), "MB");
+console.log("  external (C++绑定):", (mem.external / 1024 / 1024).toFixed(2), "MB");
+console.log("  arrayBuffers:", (mem.arrayBuffers / 1024).toFixed(2), "KB");
+
+// cpuUsage：CPU 使用情况
+var startCpu = process.cpuUsage();
+// 执行一些计算
+var sum = 0;
+for (var i = 0; i < 500000; i++) {
+  sum += Math.sqrt(i);
+}
+var endCpu = process.cpuUsage(startCpu);
+console.log("\\nCPU 使用情况（500K 次 sqrt）:");
+console.log("  用户态:", (endCpu.user / 1000).toFixed(2), "ms");
+console.log("  内核态:", (endCpu.system / 1000).toFixed(2), "ms");
+
+// ---- 8. process.nextTick ----
+console.log("\\n===== 8. process.nextTick =====");
+// nextTick 在当前操作完成后、下个事件循环阶段前执行
+console.log("A: 同步输出");
+process.nextTick(function () {
+  console.log("C: nextTick 回调（在 B 之后、事件循环之前）");
+});
+console.log("B: 同步输出");
+
+// nextTick 与 setImmediate 的优先级对比
+setImmediate(function () {
+  console.log("E: setImmediate 回调（在事件循环 check 阶段）");
+});
+process.nextTick(function () {
+  console.log("D: nextTick 回调（优先级最高）");
+});
+
+// ---- 9. 标准输入输出 ----
+console.log("\\n===== 9. 标准输入输出 =====");
+console.log("stdout 是可写流:", process.stdout.writable);
+console.log("stderr 是可写流:", process.stderr.writable);
+console.log("stdin 是可读流:", process.stdin.readable);
+
+// 使用 stdout.write（不自动换行）
+process.stdout.write("  使用 stdout.write 输出（无换行）");
+process.stdout.write("...\\n");
+
+// 使用 stderr 输出
+process.stderr.write("  stderr 输出（重定向时 stderr 和 stdout 可以分开）\\n");
+
+// ---- 10. process.env 环境变量 ----
+console.log("\\n===== 10. process.env 环境变量 =====");
+console.log("常用环境变量:");
+var commonEnvKeys = ["HOME", "USER", "PATH", "SHELL", "PWD", "LANG", "NODE_ENV"];
+commonEnvKeys.forEach(function (key) {
+  var value = process.env[key];
+  if (value) {
+    var display = value.length > 50 ? value.slice(0, 50) + "..." : value;
+    console.log("  " + key + " = " + display);
+  } else {
+    console.log("  " + key + " = (未设置)");
+  }
+});
+
+// ---- 11. process.exit 与退出码 ----
+console.log("\\n===== 11. process.exit =====");
+console.log("process.exitCode:", process.exitCode);
+console.log("提示: process.exit(0) 成功退出, exit(1) 错误退出");
+console.log("提示: 沙箱环境不会真正退出进程");
+
+// ---- 12. 进程事件 ----
+console.log("\\n===== 12. 进程事件 =====");
+// beforeExit 事件（事件循环为空时触发）
+var beforeExitFired = false;
+process.once("beforeExit", function (code) {
+  beforeExitFired = true;
+  console.log("  beforeExit 事件触发，退出码:", code);
+  console.log("  （沙箱环境可能不会触发此事件）");
+});
+
+// 注册 uncaughtException 处理器（仅作演示，不建议在生产中依赖）
+// 在实际应用中，应让进程崩溃并重启，而非吞掉异常
+
+// 信号处理信息
+console.log("  常见信号:");
+console.log("    SIGINT  - Ctrl+C 中断");
+console.log("    SIGTERM - 终止信号（kill 默认）");
+console.log("    SIGKILL - 强制终止（无法捕获）");
+console.log("    SIGHUP  - 终端断开");
+
+// ---- 13. 实战：解析命令行参数 ----
+console.log("\\n===== 13. 实战：解析命令行参数 =====");
+function parseArgs(argv) {
+  var args = argv.slice(2);
+  var options = {};
+  var positional = [];
+
+  for (var i = 0; i < args.length; i++) {
+    var arg = args[i];
+    if (arg.startsWith("--")) {
+      var key = arg.slice(2);
+      var value = args[i + 1];
+      if (value && !value.startsWith("--")) {
+        options[key] = value;
+        i++; // 跳过值
+      } else {
+        options[key] = true;
+      }
+    } else if (arg.startsWith("-")) {
+      var key = arg.slice(1);
+      options[key] = true;
+    } else {
+      positional.push(arg);
+    }
+  }
+
+  return { options: options, positional: positional };
+}
+
+// 模拟命令行参数
+var parsed = parseArgs(["node", "script.js", "--port", "3000", "--debug", "input.txt", "-v"]);
+console.log("模拟命令行: node script.js --port 3000 --debug input.txt -v");
+console.log("  解析结果:");
+console.log("  选项:", JSON.stringify(parsed.options));
+console.log("  位置参数:", parsed.positional);
+
+// ---- 14. 实战：进程信息概览 ----
+console.log("\\n===== 14. 进程信息概览 =====");
+var info = {
+  "Node.js 版本": process.version,
+  "V8 版本": process.versions.v8,
+  "平台": process.platform,
+  "架构": process.arch,
+  "PID": process.pid,
+  "运行时间(s)": parseFloat(process.uptime().toFixed(2)),
+  "内存RSS(MB)": parseFloat((process.memoryUsage().rss / 1024 / 1024).toFixed(2)),
+  "堆已用(MB)": parseFloat((process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)),
+  "工作目录": process.cwd(),
+};
+console.table(Object.entries(info).map(function (e) {
+  return { 属性: e[0], 值: e[1] };
+}));
+
+console.log("\\n===== 进程对象演示结束 =====");`,
+  },
+
+  // =========================================================
+  // 第六章：环境变量与配置管理
+  // =========================================================
+  {
+    id: "node-env-config",
+    icon: "🔧",
+    group: "核心基础",
+    title: "环境变量与配置管理",
+    content: `## 环境变量与配置管理
+
+配置管理是生产级应用的基础。正确管理环境变量和配置，是区分"能跑"和"可靠的"项目的关键分水岭。本章深入讲解配置管理的最佳实践。
+
+### 什么是环境变量？
+
+环境变量是操作系统级别的键值对，进程在启动时从父进程继承。在 Node.js 中通过 \`process.env\` 访问：
+
+\`\`\`javascript
+console.log(process.env.HOME);     // "/home/user"
+console.log(process.env.NODE_ENV); // "production"
+\`\`\`
+
+### NODE_ENV 环境区分
+
+\`NODE_ENV\` 是 Node.js 生态中的约定俗成，用于区分运行环境：
+
+| 环境 | 说明 | 典型行为 |
+| --- | --- | --- |
+| \`development\` | 本地开发 | 详细日志、热重载、错误堆栈 |
+| \`production\` | 生产环境 | 最小日志、性能优化、缓存开启 |
+| \`test\` | 测试环境 | CI 运行、模拟数据 |
+
+\`\`\`javascript
+const isProduction = process.env.NODE_ENV === "production";
+const isDevelopment = !process.env.NODE_ENV || process.env.NODE_ENV === "development";
+
+if (isProduction) {
+  // 启用缓存、压缩、最小日志
+} else {
+  // 启用详细日志、错误堆栈
+}
+\`\`\`
+
+### 常用环境变量
+
+| 变量 | 用途 | 示例 |
+| --- | --- | --- |
+| \`PORT\` | 服务端口 | \`3000\` |
+| \`HOST\` | 绑定地址 | \`0.0.0.0\` |
+| \`DATABASE_URL\` | 数据库连接串 | \`postgres://...\` |
+| \`REDIS_URL\` | 缓存连接 | \`redis://...\` |
+| \`API_KEY\` | 外部 API 密钥 | \`sk-xxxx\` |
+| \`LOG_LEVEL\` | 日志级别 | \`debug\` / \`info\` / \`error\` |
+| \`SECRET_KEY\` | 加密密钥 | \`base64...\` |
+| \`CORS_ORIGIN\` | 允许的跨域来源 | \`https://example.com\` |
+
+### .env 文件概念
+
+\`.env\` 文件是存放环境变量的文本文件，在开发环境中使用（不应提交到版本控制）：
+
+\`\`\`
+# .env 文件示例
+PORT=3000
+NODE_ENV=development
+DATABASE_URL=postgres://localhost:5432/myapp
+API_KEY=sk-xxxxxxxxxxxx
+\`\`\`
+
+#### dotenv 库
+
+Node.js 本身不解析 .env 文件，常用 \`dotenv\` 库：
+
+\`\`\`javascript
+require("dotenv").config(); // 加载 .env 到 process.env
+const port = process.env.PORT || 3000;
+\`\`\`
+
+> 由于沙箱限制，本章代码手动实现 .env 解析逻辑。
+
+### 配置优先级
+
+配置来源应遵循以下优先级（从低到高）：
+
+\`\`\`
+默认值 < 配置文件 < 环境变量 < 命令行参数
+\`\`\`
+
+| 优先级 | 来源 | 说明 | 可覆盖 |
+| --- | --- | --- | --- |
+| 1（最低） | 代码默认值 | 硬编码的 fallback | ✅ |
+| 2 | 配置文件 | \`.env\` / \`config.json\` | ✅ |
+| 3 | 环境变量 | \`process.env\` | ✅ |
+| 4（最高） | 命令行参数 | \`--port=3000\` | ❌ |
+
+\`\`\`javascript
+// 实现优先级：命令行 > 环境变量 > 配置文件 > 默认值
+const port = args.port || process.env.PORT || configFile.port || 3000;
+\`\`\`
+
+### config 模块模式
+
+大型项目中，通常将配置集中在一个模块中：
+
+\`\`\`javascript
+// config.js
+module.exports = {
+  port: parseInt(process.env.PORT, 10) || 3000,
+  db: {
+    host: process.env.DB_HOST || "localhost",
+    port: parseInt(process.env.DB_PORT, 10) || 5432,
+    name: process.env.DB_NAME || "myapp",
+  },
+  redis: {
+    url: process.env.REDIS_URL || "redis://localhost:6379",
+  },
+  logLevel: process.env.LOG_LEVEL || "info",
+  isProduction: process.env.NODE_ENV === "production",
+};
+\`\`\`
+
+### 12-Factor App 配置原则
+
+12-Factor App 是一套构建云原生应用的方法论，其中第三条"配置"原则：
+
+> **在环境中存储配置，而不是代码中。**
+
+核心要点：
+1. 配置与代码严格分离
+2. 配置存储在环境变量中
+3. 不同部署环境使用不同的环境变量
+4. 不要把密钥、密码、连接串硬编码在代码中
+5. 不要把 .env 文件提交到 Git
+
+**违反原则的后果：**
+- 代码中的密钥泄露（GitHub 有专门的扫描检测）
+- 换环境部署需要改代码
+- 无法区分开发/测试/生产环境的配置
+
+### 配置验证
+
+生产环境应验证配置的完整性，启动时检查必需的配置项：
+
+\`\`\`javascript
+const required = ["DATABASE_URL", "SECRET_KEY", "API_KEY"];
+for (const key of required) {
+  if (!process.env[key]) {
+    console.error("缺少必需的环境变量:", key);
+    process.exit(1);
+  }
+}
+\`\`\`
+
+### 配置类型转换
+
+环境变量始终是字符串，使用时需要类型转换：
+
+\`\`\`javascript
+const port = parseInt(process.env.PORT, 10); // 转数字
+const debug = process.env.DEBUG === "true";   // 转布尔
+const allowed = process.env.ALLOWED_ORIGINS?.split(","); // 转数组
+const config = JSON.parse(process.env.COMPLEX_CONFIG);   // 转对象
+\`\`\`
+
+### 安全注意事项
+
+| 注意事项 | 说明 |
+| --- | --- |
+| 不要硬编码密钥 | 使用环境变量或密钥管理服务 |
+| 不要提交 .env | 添加到 .gitignore |
+| 不要打印环境变量 | 日志中不要输出 process.env |
+| 使用 .env.example | 提供配置模板文件 |
+| 生产环境密钥轮换 | 定期更换密钥 |
+
+下面这段代码实现了一个完整的配置管理模块。`,
+    code: `// ============================================================
+// 第六章代码演示：环境变量与配置管理
+// ============================================================
+var fs = require("fs");
+var path = require("path");
+var os = require("os");
+
+// ---- 1. process.env 环境变量 ----
+console.log("===== 1. process.env 环境变量 =====");
+// 列出所有环境变量（仅显示前 10 个）
+var envKeys = Object.keys(process.env);
+console.log("环境变量总数:", envKeys.length);
+console.log("前 10 个环境变量:");
+envKeys.slice(0, 10).forEach(function (key) {
+  var val = process.env[key];
+  var display = val.length > 40 ? val.slice(0, 40) + "..." : val;
+  console.log("  " + key + " = " + display);
+});
+
+// 常用环境变量检查
+console.log("\\n常用环境变量:");
+[["HOME", "用户主目录"], ["USER", "当前用户"], ["PATH", "可执行文件路径"],
+ ["SHELL", "Shell 程序"], ["LANG", "语言设置"], ["TMPDIR", "临时目录"],
+ ["NODE_ENV", "Node 环境"]].forEach(function (item) {
+  var key = item[0], desc = item[1];
+  var val = process.env[key];
+  if (val) {
+    var d = val.length > 50 ? val.slice(0, 50) + "..." : val;
+    console.log("  " + key + " (" + desc + ") = " + d);
+  } else {
+    console.log("  " + key + " (" + desc + ") = (未设置)");
+  }
+});
+
+// ---- 2. NODE_ENV 环境区分 ----
+console.log("\\n===== 2. NODE_ENV 环境区分 =====");
+var nodeEnv = process.env.NODE_ENV || "development";
+console.log("当前 NODE_ENV:", nodeEnv);
+if (nodeEnv === "production") {
+  console.log("  运行在生产环境：启用缓存、压缩、最小日志");
+} else if (nodeEnv === "test") {
+  console.log("  运行在测试环境：使用模拟数据");
+} else {
+  console.log("  运行在开发环境：启用详细日志和错误堆栈");
+}
+
+// ---- 3. 手动解析 .env 文件 ----
+console.log("\\n===== 3. 解析 .env 文件（模拟 dotenv）=====");
+function parseEnvFile(content) {
+  var result = {};
+  var lines = content.split("\\n");
+  lines.forEach(function (line) {
+    // 去掉注释和空白
+    var trimmed = line.trim();
+    if (trimmed === "" || trimmed.startsWith("#")) return;
+
+    var eqIndex = trimmed.indexOf("=");
+    if (eqIndex === -1) return;
+
+    var key = trimmed.slice(0, eqIndex).trim();
+    var value = trimmed.slice(eqIndex + 1).trim();
+
+    // 去掉引号
+    if ((value.startsWith("'") && value.endsWith("'")) ||
+        (value.startsWith('"') && value.endsWith('"'))) {
+      value = value.slice(1, -1);
+    }
+
+    result[key] = value;
+  });
+  return result;
+}
+
+// 创建临时 .env 文件
+var tempEnvFile = path.join(os.tmpdir(), "_test_env_" + Date.now() + ".env");
+var envContent = [
+  "# 应用配置",
+  "PORT=3000",
+  "NODE_ENV=development",
+  "DATABASE_URL=postgres://localhost:5432/myapp",
+  "REDIS_URL=redis://localhost:6379",
+  "API_KEY=sk-test-key-12345",
+  "LOG_LEVEL=debug",
+  "CORS_ORIGIN=https://example.com",
+  'APP_NAME="My Application"',
+  "DEBUG=true",
+  "MAX_CONNECTIONS=100",
+  "# 空行被忽略",
+  "",
+  "ALLOWED_HOSTS=localhost,example.com",
+].join("\\n");
+
+fs.writeFileSync(tempEnvFile, envContent, "utf8");
+
+// 读取并解析
+var envContent2 = fs.readFileSync(tempEnvFile, "utf8");
+var parsedEnv = parseEnvFile(envContent2);
+console.log("解析的配置项:");
+console.table(Object.entries(parsedEnv).map(function (e) {
+  return { 配置项: e[0], 值: e[1] };
+}));
+
+// 清理
+fs.unlinkSync(tempEnvFile);
+
+// ---- 4. 配置优先级：默认值 < 配置文件 < 环境变量 < 命令行 ----
+console.log("\\n===== 4. 配置优先级 =====");
+// 模拟不同来源的配置
+var defaults = {
+  port: 3000,
+  host: "localhost",
+  logLevel: "info",
+  debug: false,
+  maxConnections: 50,
+};
+var fileConfig = parseEnvFile(envContent2); // 模拟配置文件
+var envConfig = { PORT: "8080" }; // 模拟环境变量
+var cliConfig = { logLevel: "error" }; // 模拟命令行参数
+
+// 实现优先级合并
+function mergeConfig(defaults, fileConfig, envConfig, cliConfig) {
+  // 从低到高合并
+  var result = Object.assign({}, defaults);
+
+  // 配置文件覆盖
+  Object.keys(fileConfig).forEach(function (key) {
+    var lowerKey = key.toLowerCase();
+    result[lowerKey] = fileConfig[key];
+  });
+
+  // 环境变量覆盖（环境变量名转小写匹配）
+  Object.keys(envConfig).forEach(function (key) {
+    var lowerKey = key.toLowerCase();
+    result[lowerKey] = envConfig[key];
+  });
+
+  // 命令行参数覆盖（最高优先级）
+  Object.keys(cliConfig).forEach(function (key) {
+    var lowerKey = key.toLowerCase();
+    result[lowerKey] = cliConfig[key];
+  });
+
+  return result;
+}
+
+var finalConfig = mergeConfig(defaults, fileConfig, envConfig, cliConfig);
+console.log("最终配置（优先级：命令行 > 环境变量 > 配置文件 > 默认值）:");
+console.table(Object.entries(finalConfig).map(function (e) {
+  return { 配置项: e[0], 值: String(e[1]) };
+}));
+
+// 验证优先级
+console.log("\\n优先级验证:");
+console.log("  port (环境变量覆盖配置文件):", finalConfig["port"], "(期望: 8080)");
+console.log("  loglevel (命令行覆盖所有):", finalConfig["loglevel"], "(期望: error)");
+
+// ---- 5. 配置管理模块（正式实现）----
+console.log("\\n===== 5. 配置管理模块（正式实现）=====");
+
+function createConfig(options) {
+  var defaults = options.defaults || {};
+  var envMap = options.envMap || {};
+
+  // 从默认值开始
+  var config = Object.assign({}, defaults);
+
+  // 从环境变量读取（按映射关系）
+  Object.keys(envMap).forEach(function (configKey) {
+    var envKey = envMap[configKey];
+    if (process.env[envKey] !== undefined) {
+      config[configKey] = process.env[envKey];
+    }
+  });
+
+  // 类型转换
+  function get(key) {
+    return config[key];
+  }
+
+  function getInt(key) {
+    var val = parseInt(config[key], 10);
+    if (isNaN(val)) {
+      throw new Error("配置 " + key + " 不是有效的整数: " + config[key]);
+    }
+    return val;
+  }
+
+  function getBool(key) {
+    var val = config[key];
+    if (typeof val === "boolean") return val;
+    return val === "true" || val === "1" || val === "yes";
+  }
+
+  function getArray(key) {
+    var val = config[key];
+    if (Array.isArray(val)) return val;
+    return String(val).split(",").map(function (s) { return s.trim(); });
+  }
+
+  return {
+    get: get,
+    getInt: getInt,
+    getBool: getBool,
+    getArray: getArray,
+    all: config,
+  };
+}
+
+// 使用配置模块
+var appConfig = createConfig({
+  defaults: {
+    port: "3000",
+    host: "localhost",
+    debug: "false",
+    databaseUrl: "postgres://localhost:5432/defaultdb",
+    logLevel: "info",
+    corsOrigins: "*",
+    maxConnections: "50",
+  },
+  envMap: {
+    port: "PORT",
+    host: "HOST",
+    debug: "DEBUG",
+    databaseUrl: "DATABASE_URL",
+    logLevel: "LOG_LEVEL",
+    corsOrigins: "CORS_ORIGIN",
+    maxConnections: "MAX_CONNECTIONS",
+  },
+});
+
+console.log("应用配置:");
+console.log("  port (int):", appConfig.getInt("port"));
+console.log("  host:", appConfig.get("host"));
+console.log("  debug (bool):", appConfig.getBool("debug"));
+console.log("  databaseUrl:", appConfig.get("databaseUrl"));
+console.log("  logLevel:", appConfig.get("logLevel"));
+console.log("  corsOrigins (array):", appConfig.getArray("corsOrigins"));
+console.log("  maxConnections (int):", appConfig.getInt("maxConnections"));
+
+// ---- 6. 配置验证 ----
+console.log("\\n===== 6. 配置验证 =====");
+function validateConfig(config, requiredKeys) {
+  var errors = [];
+  requiredKeys.forEach(function (key) {
+    var value = config.get(key);
+    if (value === undefined || value === null || value === "") {
+      errors.push("缺少必需的配置项: " + key);
+    }
+  });
+  if (errors.length > 0) {
+    console.log("  配置验证失败:");
+    errors.forEach(function (err) {
+      console.log("    " + err);
+    });
+    return false;
+  }
+  console.log("  配置验证通过");
+  return true;
+}
+
+// 验证必需配置
+validateConfig(appConfig, ["port", "host", "databaseUrl"]);
+
+// 验证缺少的配置
+var incompleteConfig = createConfig({
+  defaults: { port: "3000" },
+  envMap: { port: "PORT", secretKey: "SECRET_KEY" },
+});
+validateConfig(incompleteConfig, ["port", "secretKey"]);
+
+// ---- 7. 12-Factor App 配置原则 ----
+console.log("\\n===== 7. 12-Factor App 配置原则 =====");
+console.log("  原则 1: 配置与代码严格分离");
+console.log("  原则 2: 配置存储在环境变量中");
+console.log("  原则 3: 不同部署环境使用不同环境变量");
+console.log("  原则 4: 不要把密钥硬编码在代码中");
+console.log("  原则 5: 不要把 .env 文件提交到 Git");
+console.log("  原则 6: 配置变更不需要重新部署代码");
+
+// ---- 8. 安全提示 ----
+console.log("\\n===== 8. 安全提示 =====");
+console.log("  ✓ 使用环境变量存储密钥");
+console.log("  ✓ 将 .env 添加到 .gitignore");
+console.log("  ✓ 提供 .env.example 模板文件");
+console.log("  ✓ 日志中不输出 process.env");
+console.log("  ✓ 生产环境定期轮换密钥");
+console.log("  ✗ 不要硬编码密钥在代码中");
+console.log("  ✗ 不要将密钥提交到版本控制");
+
+console.log("\\n===== 环境变量与配置管理演示结束 =====");`,
+  },
+
+  // =========================================================
+  // 第七章：Buffer 缓冲区
+  // =========================================================
+  {
+    id: "node-buffer",
+    icon: "🧊",
+    group: "核心基础",
     title: "Buffer 缓冲区",
-    icon: "🗃️",
-    group: "核心模块",
     content: `## Buffer 缓冲区
 
-\`Buffer\` 是 Node.js 处理**二进制数据**的核心全局对象。在文件操作、网络通信、加密计算等场景中无处不在。理解 Buffer 是掌握 Node.js 底层的关键。
+\`Buffer\` 是 Node.js 处理**二进制数据**的核心全局类。从文件读写、网络通信到加密计算，Buffer 无处不在。理解 Buffer 是掌握 Node.js 底层操作的关键。
 
 ### 为什么需要 Buffer？
 
-JavaScript 原生设计用于浏览器，只有字符串处理能力，没有处理二进制数据的好方式。但服务端需要处理：
-- **文件二进制**：图片、视频、压缩包
-- **网络数据**：TCP 流、HTTP 请求体
-- **加密数据**：哈希值、密钥、签名
-- **协议数据**：DNS、TLS 等二进制协议
+JavaScript 最初设计用于浏览器环境，主要处理字符串，缺乏原生二进制数据处理能力。但在服务端，二进制数据无处不在：
 
-Node.js 引入 Buffer 来填补这个空缺。Buffer 类似一个**字节数组**（每个元素 0-255），但分配在 V8 堆外内存中，性能更高。
+- **文件**：图片、视频、音频、压缩包
+- **网络**：TCP 流、HTTP 请求/响应体
+- **加密**：哈希值、密钥、数字签名
+- **协议**：DNS、TLS 等二进制协议
 
-#### Buffer vs 普通数组
+Buffer 就是为了填补这个空白而设计的。它类似于一个**字节数组**（每个元素 0-255），但分配在 V8 堆外内存中，性能更高。
 
-| 特性 | 普通数组 (Array) | Buffer |
-| --- | --- | --- |
-| 元素类型 | 任意 | 0-255 的整数（字节） |
-| 内存位置 | V8 堆内 | V8 堆外（C++ 层分配） |
-| 大小 | 动态可变 | **固定大小**（创建后不可变） |
-| 性能 | 较低（需要装箱） | **高**（直接内存操作） |
-| 继承 | Array | **Uint8Array** |
-
-### Buffer 与 TypedArray (Uint8Array) 的关系
+### Buffer 与 Uint8Array 的关系
 
 从 Node.js v6 起，Buffer 是 \`Uint8Array\` 的子类：
 
@@ -1627,231 +2482,153 @@ TypedArray (抽象基类)
         └── Buffer (Node.js 扩展，添加了编码/解码等方法)
 \`\`\`
 
-这意味着：
-- Buffer **兼容**所有接受 Uint8Array 的 API
-- Buffer 可以和 TypedArray 互转（共享内存）
-- Buffer 的元素是 0-255 的整数
+这意味着 Buffer 兼容所有接受 Uint8Array 的 API，同时拥有 Node.js 特有的编码转换能力。
 
-\`\`\`javascript
-const buf = Buffer.from("Hello");
-console.log(buf instanceof Uint8Array); // true
-console.log(buf[0]); // 72 (ASCII 'H')
-\`\`\`
+### 创建 Buffer 的三种方式
 
-### 创建 Buffer
+#### 1. Buffer.alloc(size[, fill[, encoding]])
 
-#### Buffer.alloc(size[, fill[, encoding]])
-
-创建指定大小的 Buffer，**默认填充 0**（安全）：
+创建指定大小的 Buffer，**默认填充 0**（安全但稍慢）：
 
 \`\`\`javascript
 const buf = Buffer.alloc(10);        // 10 字节，全 0
-const buf2 = Buffer.alloc(10, 255);  // 10 字节，全 255
+const buf2 = Buffer.alloc(10, 0xFF); // 10 字节，全 255
 const buf3 = Buffer.alloc(10, "A");  // 10 字节，全 'A'
 \`\`\`
 
-#### Buffer.allocUnsafe(size)
+#### 2. Buffer.allocUnsafe(size)
 
-创建指定大小的 Buffer，但**不初始化**（可能包含旧数据）：
+创建指定大小的 Buffer，但**不初始化**内容（可能包含旧数据，快但不安全）：
 
 \`\`\`javascript
 const buf = Buffer.allocUnsafe(10); // 10 字节，内容随机！
 \`\`\`
 
-> ⚠️ **allocUnsafe 的风险**：分配的内存可能包含上一个进程残留的敏感数据。只有在**立即覆写全部内容**时才使用。Node.js 内部大量使用 allocUnsafe（如读取文件），但会立即填入数据。
+> ⚠️ allocUnsafe 分配的内存可能包含前一个进程的敏感数据残留。仅在**确定会立即覆写全部内容**时使用。
 
-#### alloc vs allocUnsafe 对比
-
-| 特性 | \`alloc\` | \`allocUnsafe\` |
-| --- | --- | --- |
-| 初始化 | ✅ 填 0 | ❌ 不初始化 |
-| 安全性 | 安全 | 可能泄露旧数据 |
-| 性能 | 较慢（需要清零） | **更快** |
-| < 4KB | 从预分配池取（都很快） | 从预分配池取 |
-| >= 4KB | 直接分配并清零 | 直接分配不清零 |
-| 推荐场景 | 通用 | 确定会立即覆写时 |
-
-#### Buffer.from(source)
+#### 3. Buffer.from(source)
 
 从各种来源创建 Buffer：
 
 \`\`\`javascript
-// 从字符串
-Buffer.from("Hello", "utf8");
-
-// 从数组
-Buffer.from([0x48, 0x65, 0x6c, 0x6c, 0x6f]);
-
-// 从另一个 Buffer（复制）
-Buffer.from(otherBuffer);
-
-// 从 ArrayBuffer（共享内存，不复制）
-Buffer.from(arrayBuffer, byteOffset, length);
-
-// 从 Uint8Array（共享内存）
-Buffer.from(uint8Array);
+Buffer.from("Hello", "utf8");          // 从字符串
+Buffer.from([0x48, 0x65, 0x6c]);       // 从字节数组
+Buffer.from(otherBuffer);               // 从另一个 Buffer（复制）
+Buffer.from(arrayBuffer, offset, len);  // 从 ArrayBuffer（共享内存）
 \`\`\`
 
-#### Buffer.concat(list[, totalLength])
+### 编码转换
 
-拼接多个 Buffer：
-
-\`\`\`javascript
-const combined = Buffer.concat([buf1, buf2, buf3]);
-// 指定总长度可优化性能（避免多次扩容）
-const combined2 = Buffer.concat([buf1, buf2], buf1.length + buf2.length);
-\`\`\`
-
-### 编码 (Encoding)
-
-Buffer 支持多种字符串编码：
+Buffer 支持多种字符编码，可以在不同编码之间转换：
 
 | 编码 | 说明 | 用途 |
 | --- | --- | --- |
 | \`utf8\` | UTF-8 编码（默认） | 通用文本，支持中文 |
-| \`ascii\` | ASCII 编码 | 仅英文字符（高位被丢弃） |
+| \`ascii\` | ASCII 编码 | 纯英文字符 |
 | \`base64\` | Base64 编码 | 数据传输、Data URL |
 | \`hex\` | 十六进制编码 | 哈希值、密钥表示 |
-| \`latin1\` / \`binary\` | Latin-1 编码 | 每字节一个字符（0-255） |
-| \`ucs2\` / \`utf16le\` | UTF-16 小端序 | Windows 环境 |
-
-#### 编码转换示例
+| \`latin1\` / \`binary\` | Latin-1 编码 | 每字节一个字符 |
 
 \`\`\`javascript
 const text = "你好";
-
-// UTF-8 → Base64
-const base64 = Buffer.from(text, "utf8").toString("base64");
-
-// Base64 → UTF-8
-const decoded = Buffer.from(base64, "base64").toString("utf8");
-
-// UTF-8 → Hex
-const hex = Buffer.from(text, "utf8").toString("hex");
+const buf = Buffer.from(text, "utf8");
+console.log(buf.toString("hex"));    // "e4bda0e5a5bd"
+console.log(buf.toString("base64")); // "5L2g5aW9"
 \`\`\`
 
 ### Buffer 读写二进制数据
 
-Buffer 提供了大量方法读写各种数值类型：
+Buffer 提供了丰富的二进制读写方法：
 
-#### 读取方法
-
-| 方法 | 说明 | 字节数 |
+| 读取方法 | 说明 | 字节数 |
 | --- | --- | --- |
-| \`readUInt8(offset)\` | 无符号 8 位整数 | 1 |
-| \`readInt8(offset)\` | 有符号 8 位整数 | 1 |
-| \`readUInt16BE(offset)\` | 无符号 16 位（大端序） | 2 |
-| \`readUInt16LE(offset)\` | 无符号 16 位（小端序） | 2 |
-| \`readUInt32BE(offset)\` | 无符号 32 位（大端序） | 4 |
-| \`readInt32BE(offset)\` | 有符号 32 位（大端序） | 4 |
-| \`readFloatBE(offset)\` | 32 位浮点（大端序） | 4 |
-| \`readDoubleBE(offset)\` | 64 位浮点（大端序） | 8 |
-
-#### 写入方法
-
-| 方法 | 说明 |
-| --- | --- |
-| \`writeUInt8(value, offset)\` | 写无符号 8 位 |
-| \`writeInt32BE(value, offset)\` | 写有符号 32 位（大端） |
-| \`writeFloatBE(value, offset)\` | 写 32 位浮点 |
-| \`write(string, offset, length, encoding)\` | 写字符串 |
+| \`readUInt8(offset)\` | 无符号 8 位 | 1 |
+| \`readUInt16BE(offset)\` | 无符号 16 位大端 | 2 |
+| \`readUInt16LE(offset)\` | 无符号 16 位小端 | 2 |
+| \`readUInt32BE(offset)\` | 无符号 32 位大端 | 4 |
+| \`readInt32BE(offset)\` | 有符号 32 位大端 | 4 |
+| \`readFloatBE(offset)\` | 32 位浮点 | 4 |
+| \`readDoubleBE(offset)\` | 64 位浮点 | 8 |
 
 #### 大端序 vs 小端序
 
-| 字节序 | 说明 | 内存布局 (0x1234) | 用途 |
+| 字节序 | 说明 | 内存布局 (值 0x1234) | 用途 |
 | --- | --- | --- | --- |
-| **BE** (Big Endian) | 高位在前 | \`12 34\` | 网络协议、Java |
-| **LE** (Little Endian) | 低位在前 | \`34 12\` | x86 CPU |
+| BE (Big Endian) | 高位在前 | \`12 34\` | 网络协议 |
+| LE (Little Endian) | 低位在前 | \`34 12\` | x86 CPU |
 
-### 常用方法
+### 常用操作方法
 
 | 方法 | 说明 |
 | --- | --- |
-| \`buf.toString([encoding])\` | 转字符串 |
-| \`buf.length\` | 字节长度 |
-| \`Buffer.byteLength(string, [enc])\` | 计算字符串的字节长度 |
-| \`Buffer.concat([buf1, buf2])\` | 拼接 |
-| \`Buffer.isBuffer(obj)\` | 判断是否 Buffer |
+| \`Buffer.concat([buf1, buf2])\` | 拼接多个 Buffer |
+| \`Buffer.isBuffer(obj)\` | 判断是否为 Buffer |
+| \`Buffer.byteLength(str, [enc])\` | 计算字符串的字节长度 |
 | \`buf.equals(other)\` | 比较是否相等 |
-| \`Buffer.compare(a, b)\` | 比较（-1/0/1） |
+| \`Buffer.compare(a, b)\` | 比较大小（-1/0/1） |
 | \`buf.subarray([start, end])\` | 切片（共享内存，推荐） |
-| \`buf.slice([start, end])\` | 切片（已废弃，用 subarray） |
-| \`buf.copy(target[, tStart[, sStart[, sEnd]]])\` | 复制到另一个 Buffer |
-| \`buf.fill(value[, start[, end]])\` | 填充 |
-| \`buf.indexOf(value)\` | 查找位置 |
-| \`buf.includes(value)\` | 是否包含 |
+| \`buf.copy(target[, start])\` | 复制到另一个 Buffer |
+| \`buf.fill(value[, start, end])\` | 填充 |
+| \`buf.indexOf(value)\` | 查找字节位置 |
+| \`buf.includes(value)\` | 是否包含某字节 |
 
 ### 字节长度 vs 字符串长度
 
-这是最常见的 Buffer 陷阱：
+这是最常见的陷阱：
 
 \`\`\`javascript
 "你好".length;                  // 2（字符数）
-Buffer.byteLength("你好");       // 6（字节数，每个中文 UTF-8 占 3 字节）
+Buffer.byteLength("你好");       // 6（字节数，UTF-8 每个中文占 3 字节）
 Buffer.from("你好").length;     // 6
 \`\`\`
 
-| 字符 | UTF-8 字节数 | 说明 |
-| --- | --- | --- |
-| ASCII (a-z, 0-9) | 1 | 基本拉丁字符 |
-| 拉丁扩展 (é, ñ) | 2 | 欧洲字符 |
-| 中文 (你, 好) | 3 | CJK 字符 |
-| Emoji (🎉) | 4 | 补充字符 |
+| 字符 | UTF-8 字节数 |
+| --- | --- |
+| ASCII (a-z, 0-9) | 1 |
+| 拉丁扩展 (é, ñ) | 2 |
+| 中文/日文/韩文 | 3 |
+| Emoji (🎉) | 4 |
+
+### Buffer 拼接的正确方式
+
+拼接多个 Buffer 时，避免使用字符串拼接（会导致编码问题）：
+
+\`\`\`javascript
+// ❌ 错误：字符串拼接可能导致编码问题
+let result = "";
+bufs.forEach(b => result += b.toString());
+
+// ✅ 正确：使用 Buffer.concat
+const result = Buffer.concat(bufs);
+\`\`\`
 
 ### Buffer 与 TypedArray 互转
 
 \`\`\`javascript
 // Buffer → Uint8Array（共享内存）
 const buf = Buffer.from("Hello");
-const uint8 = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+const u8 = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 
 // Uint8Array → Buffer（共享内存）
 const u8 = new Uint8Array([72, 101, 108, 108, 111]);
-const fromU8 = Buffer.from(u8);
+const buf = Buffer.from(u8.buffer);
 \`\`\`
 
-### 内存管理
-
-#### allocUnsafe 的性能优势
-
-Node.js 内部维护一个**预分配池**（8KB），小于 4KB 的 allocUnsafe 直接从池中切取，无需系统调用，非常快。alloc 也使用池但需要额外清零。
-
-\`\`\`javascript
-// 性能对比（伪代码）
-Buffer.alloc(1024);       // 需要清零，较慢
-Buffer.allocUnsafe(1024); // 从池中取，极快（但可能含旧数据）
-\`\`\`
-
-> **最佳实践**：应用代码用 \`alloc\`，性能关键路径且确定会覆写时用 \`allocUnsafe\`。
-
-### 常见陷阱
-
-1. **字符长度 ≠ 字节长度**：\`"你好".length\` 是 2，\`Buffer.byteLength("你好")\` 是 6
-
-2. **allocUnsafe 含旧数据**：不覆写就使用可能泄露敏感信息
-
-3. **slice vs subarray**：两者都共享内存，但 subarray 是标准 API，推荐使用
-
-4. **Buffer 不可变大小**：创建后不能改变 length，需要新 Buffer 用 concat
-
-5. **编码默认 utf8**：不指定编码时默认 utf8
-
-6. **Buffer.alloc vs Buffer.from**：alloc 创建空 Buffer，from 从数据创建
-
-下面这段代码演示了 Buffer 的各种用法。`,
+下面这段代码演示了 Buffer 的创建、操作和编码转换。`,
     code: `// ============================================================
-// 第四章代码演示：Buffer 缓冲区全面实战
+// 第七章代码演示：Buffer 缓冲区
 // ============================================================
 // Buffer 是全局对象，无需 require
 
 // ---- 1. 创建 Buffer 的各种方式 ----
 console.log("===== 1. 创建 Buffer =====");
 // alloc：创建指定大小的 Buffer，填充 0（安全）
-var buf1 = Buffer.alloc(10);
-console.log("alloc(10):", buf1);
+var buf1 = Buffer.alloc(12);
+console.log("alloc(12):", buf1);
+console.log("  每个字节:", Array.from(buf1));
 
-// alloc(10, 255)：填充指定值
-var buf1b = Buffer.alloc(10, 65);
+// alloc(10, fill)：填充指定值
+var buf1b = Buffer.alloc(10, 65); // 65 = 'A' 的 ASCII
 console.log("alloc(10, 65):", buf1b, "→", buf1b.toString());
 
 // allocUnsafe：不初始化（可能含旧数据，快但不安全）
@@ -1859,60 +2636,64 @@ var buf2 = Buffer.allocUnsafe(10);
 console.log("allocUnsafe(10):", buf2);
 
 // from(string)：从字符串创建
-var buf3 = Buffer.from("Hello Node.js", "utf8");
-console.log("from('Hello'):", buf3, "→", buf3.toString());
+var buf3 = Buffer.from("Hello Node.js Buffer!", "utf8");
+console.log("from('Hello...'):", buf3, "→", buf3.toString());
 
 // from(array)：从字节数组创建
-var buf4 = Buffer.from([0x48, 0x65, 0x6c, 0x6c, 0x6f]);
+var buf4 = Buffer.from([0x48, 0x65, 0x6c, 0x6c, 0x6f]); // 'Hello'
 console.log("from([0x48,...]):", buf4, "→", buf4.toString());
 
 // from(Buffer)：从另一个 Buffer 复制
 var buf5 = Buffer.from(buf3);
 console.log("from(buf3):", buf5, "→", buf5.toString());
+console.log("  复制后是独立 Buffer:", buf3 !== buf5);
 
 // ---- 2. 编码转换 ----
 console.log("\\n===== 2. 编码转换 =====");
-var text = "你好，世界！";
+var text = "你好，世界！Node.js 🎉";
 var utf8Buf = Buffer.from(text, "utf8");
 console.log("原文:", text);
 console.log("UTF-8 字节数:", utf8Buf.length);
+console.log("字符数:", text.length);
 console.log("Hex:", utf8Buf.toString("hex"));
 console.log("Base64:", utf8Buf.toString("base64"));
 
-// 编码往返：utf8 → base64 → utf8
+// 编码往返验证
 var base64 = utf8Buf.toString("base64");
-var decoded = Buffer.from(base64, "base64").toString("utf8");
-console.log("Base64 解码:", decoded);
-console.log("往返一致:", text === decoded);
+var fromBase64 = Buffer.from(base64, "base64").toString("utf8");
+console.log("Base64 往返:", fromBase64);
+console.log("往返一致:", text === fromBase64);
 
-// 编码往返：utf8 → hex → utf8
 var hex = utf8Buf.toString("hex");
 var fromHex = Buffer.from(hex, "hex").toString("utf8");
-console.log("Hex 解码:", fromHex);
+console.log("Hex 往返:", fromHex);
+console.log("往返一致:", text === fromHex);
 
 // ---- 3. 字节长度 vs 字符串长度 ----
 console.log("\\n===== 3. 字节长度 vs 字符长度 =====");
-var samples = ["Hello", "你好", "🎉", "abc你好🎉"];
+var samples = ["Hello", "你好", "Hello你好", "🎉", "abc🎉你好"];
+console.log("  原文".padEnd(20) + "字符数".padEnd(10) + "字节数");
+console.log("  " + "-".repeat(40));
 samples.forEach(function (s) {
-  console.log("  '" + s + "': 字符数=" + s.length + ", 字节数=" + Buffer.byteLength(s, "utf8"));
+  console.log("  " + s.padEnd(20) + String(s.length).padEnd(10) + Buffer.byteLength(s, "utf8"));
 });
 
 // ---- 4. concat 拼接 ----
 console.log("\\n===== 4. concat 拼接 =====");
 var part1 = Buffer.from("Hello ");
 var part2 = Buffer.from("World ");
-var part3 = Buffer.from("!");
+var part3 = Buffer.from("from Buffer!");
 var combined = Buffer.concat([part1, part2, part3]);
-console.log("拼接:", combined.toString());
-console.log("总长度:", combined.length);
+console.log("拼接结果:", combined.toString());
+console.log("总字节数:", combined.length);
 
-// 指定总长度（优化性能）
+// 指定总长度优化性能
 var combined2 = Buffer.concat([part1, part2, part3], part1.length + part2.length + part3.length);
 console.log("指定总长度:", combined2.toString());
 
 // ---- 5. 二进制读写 ----
 console.log("\\n===== 5. 二进制读写 =====");
-var binBuf = Buffer.alloc(16);
+var binBuf = Buffer.alloc(20);
 // writeUInt8：在偏移 0 写入 1 字节无符号整数
 binBuf.writeUInt8(255, 0);
 // writeUInt16BE：在偏移 1 写入 2 字节大端序整数
@@ -1920,21 +2701,33 @@ binBuf.writeUInt16BE(1000, 1);
 // writeInt32LE：在偏移 3 写入 4 字节小端序有符号整数
 binBuf.writeInt32LE(-123456, 3);
 // writeFloatBE：在偏移 7 写入 4 字节浮点
-binBuf.writeFloatBE(3.14, 7);
-// write：在偏移 11 写入字符串
-binBuf.write("Hi", 11, "utf8");
+binBuf.writeFloatBE(3.14159, 7);
+// writeDoubleBE：在偏移 11 写入 8 字节浮点
+binBuf.writeDoubleBE(2.718281828, 11);
+// write：在偏移 19 写入字符串
+binBuf.write("X", 19, "utf8");
 
 console.log("二进制 Buffer:", binBuf);
 console.log("readUInt8(0):", binBuf.readUInt8(0));
 console.log("readUInt16BE(1):", binBuf.readUInt16BE(1));
 console.log("readInt32LE(3):", binBuf.readInt32LE(3));
-console.log("readFloatBE(7):", binBuf.readFloatBE(7).toFixed(2));
+console.log("readFloatBE(7):", binBuf.readFloatBE(7).toFixed(5));
+console.log("readDoubleBE(11):", binBuf.readDoubleBE(11).toFixed(9));
+
+// 大端序 vs 小端序对比
+var testBuf = Buffer.alloc(4);
+testBuf.writeUInt32BE(0x12345678, 0);
+console.log("\\n大端序 writeUInt32BE(0x12345678):");
+console.log("  字节:", testBuf.toString("hex"));
+console.log("  readUInt32BE:", "0x" + testBuf.readUInt32BE(0).toString(16));
+console.log("  readUInt32LE:", "0x" + testBuf.readUInt32LE(0).toString(16));
 
 // ---- 6. 判断与比较 ----
 console.log("\\n===== 6. 判断与比较 =====");
 console.log("isBuffer(Buffer.alloc(4)):", Buffer.isBuffer(Buffer.alloc(4)));
 console.log("isBuffer('string'):", Buffer.isBuffer("string"));
 console.log("isBuffer([1,2,3]):", Buffer.isBuffer([1, 2, 3]));
+console.log("isBuffer(new Uint8Array(4)):", Buffer.isBuffer(new Uint8Array(4)));
 
 var a = Buffer.from("abc");
 var b = Buffer.from("abc");
@@ -1944,40 +2737,36 @@ console.log("equals (abc == abd):", a.equals(c));
 console.log("compare (abc vs abd):", Buffer.compare(a, c));
 console.log("compare (abc vs abc):", Buffer.compare(a, b));
 
-// ---- 7. subarray / slice / copy / fill ----
-console.log("\\n===== 7. subarray / copy / fill =====");
+// ---- 7. subarray / copy / fill / indexOf ----
+console.log("\\n===== 7. subarray / copy / fill / indexOf =====");
 var orig = Buffer.from("Hello World");
-// subarray：切片（共享内存，推荐）
+
+// subarray：切片（共享内存）
 var sub = orig.subarray(0, 5);
 console.log("subarray(0,5):", sub.toString());
-// 修改 sub 会影响 orig（共享内存）
-sub[0] = 104; // 'h'
-console.log("修改 sub 后 orig:", orig.toString());
+sub[0] = 104; // 'h' (ASCII)
+console.log("修改 sub 后 orig:", orig.toString(), "(共享内存!)");
 
 // fill：填充
 var fillBuf = Buffer.alloc(10);
-fillBuf.fill(65); // 填充 'A'
+fillBuf.fill(65); // 'A'
 console.log("fill(65):", fillBuf.toString());
-fillBuf.fill("Hi", 2, 6);
-console.log("fill('Hi',2,6):", fillBuf.toString());
+fillBuf.fill("Hi", 3, 7);
+console.log("fill('Hi',3,7):", fillBuf.toString());
 
 // copy：复制到另一个 Buffer
 var target = Buffer.alloc(5);
-orig.copy(target, 0, 0, 5); // 把 orig 前 5 字节复制到 target
+orig.copy(target, 0, 0, 5);
 console.log("copy 结果:", target.toString());
 
-// ---- 8. indexOf / includes ----
-console.log("\\n===== 8. indexOf / includes =====");
+// indexOf / includes
 var searchBuf = Buffer.from("Hello Node.js World");
 console.log("indexOf('Node'):", searchBuf.indexOf("Node"));
-console.log("indexOf('node'):", searchBuf.indexOf("node")); // -1（大小写敏感）
-console.log("indexOf('Node', 10):", searchBuf.indexOf("Node", 10));
+console.log("indexOf('Python'):", searchBuf.indexOf("Python"));
 console.log("includes('World'):", searchBuf.includes("World"));
-console.log("includes(0x4e):", searchBuf.includes(0x4e)); // 0x4e = 'N'
 
-// ---- 9. Buffer 与 TypedArray (Uint8Array) ----
-console.log("\\n===== 9. Buffer 与 TypedArray =====");
-// Buffer 是 Uint8Array 的子类
+// ---- 8. Buffer 与 TypedArray (Uint8Array) ----
+console.log("\\n===== 8. Buffer 与 TypedArray =====");
 console.log("Buffer 是 Uint8Array 的子类:", Buffer.alloc(4) instanceof Uint8Array);
 
 // 从 Uint8Array 创建 Buffer
@@ -1990,1357 +2779,446 @@ var buf = Buffer.from("Test");
 var u8 = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 console.log("Buffer 转 Uint8Array:", Array.from(u8));
 
-// ---- 10. JSON 互转 ----
-console.log("\\n===== 10. JSON 互转 =====");
-var jsonBuf = Buffer.from("JSON Test");
-// Buffer 的 toJSON 方法返回 { type: "Buffer", data: [...] }
+// ---- 9. JSON 互转 ----
+console.log("\\n===== 9. JSON 互转 =====");
+var jsonBuf = Buffer.from("JSON Test Data");
+// Buffer 的 toJSON 返回 { type: "Buffer", data: [...] }
 var json = JSON.stringify(jsonBuf);
 console.log("Buffer → JSON:", json);
+
 // 从 JSON 恢复
 var parsed = JSON.parse(json);
-var fromJson;
-if (parsed.type === "Buffer") {
-  fromJson = Buffer.from(parsed.data);
-} else {
-  fromJson = Buffer.from(parsed);
-}
+var fromJson = Buffer.from(parsed.data);
 console.log("JSON → Buffer:", fromJson.toString());
 console.log("往返一致:", jsonBuf.equals(fromJson));
 
-// ---- 11. 实战：Base64 编码 ----
-console.log("\\n===== 11. 实战：Base64 编码 =====");
-// 模拟将二进制数据编码为 Base64（常用于 data URL）
-var binaryData = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]); // PNG 文件头
-var base64Data = binaryData.toString("base64");
-console.log("PNG 头部 hex:", binaryData.toString("hex"));
-console.log("PNG 头部 base64:", base64Data);
-console.log("Data URL: data:image/png;base64," + base64Data);
+// ---- 10. 实战：Base64 编码 ----
+console.log("\\n===== 10. 实战：Base64 编码 =====");
+// 模拟 PNG 文件头（8 字节）
+var pngHeader = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+console.log("PNG 头部 hex:", pngHeader.toString("hex"));
+console.log("PNG 头部 base64:", pngHeader.toString("base64"));
+console.log("Data URL: data:image/png;base64," + pngHeader.toString("base64"));
 
-// ---- 12. 实战：计算文件大小 ----
+// ---- 11. 实战：Buffer 拼接 vs 字符串拼接 ----
+console.log("\\n===== 11. Buffer 拼接 vs 字符串拼接 =====");
+var chunks = [
+  Buffer.from([0xe4, 0xbd, 0xa0]), // "你" 的第一个 UTF-8 字节
+  Buffer.from([0xe5, 0xa5, 0xbd]), // "好" 的 UTF-8 字节
+];
+
+// 正确方式：Buffer.concat
+var correct = Buffer.concat(chunks);
+console.log("Buffer.concat 结果:", correct.toString());
+
+// 错误方式：分别 toString 再拼接（可能破坏多字节字符）
+console.log("  注意：分别 toString 再拼接可能破坏多字节字符");
+
+// ---- 12. 实战：计算文件大小模拟 ----
 console.log("\\n===== 12. 实战：字节计算 =====");
 var messages = [
-  { name: "ASCII 文本", content: "Hello World" },
+  { name: "英文文本", content: "Hello World" },
   { name: "中文文本", content: "你好世界" },
-  { name: "混合文本", content: "Hello 你好 🎉" },
+  { name: "混合文本", content: "Hello 你好" },
+  { name: "含 Emoji", content: "Hello 🎉" },
 ];
 messages.forEach(function (m) {
   var byteLen = Buffer.byteLength(m.content, "utf8");
   var charLen = m.content.length;
-  console.log("  " + m.name + ": " + charLen + " 字符 / " + byteLen + " 字节");
-});`,
+  console.log("  " + m.name + ": " + charLen + " 字符, " + byteLen + " 字节");
+});
+
+console.log("\\n===== Buffer 缓冲区演示结束 =====");`,
   },
 
   // =========================================================
-  // 第五章：HTTP 模块（沙箱模拟版）
+  // 第八章：URL 解析与构造
   // =========================================================
   {
-    id: "http",
-    title: "HTTP 模块",
-    icon: "🌐",
-    group: "核心模块",
-    content: `## HTTP 模块
+    id: "node-url",
+    icon: "🔗",
+    group: "核心基础",
+    title: "URL 解析与构造",
+    content: `## URL 解析与构造
 
-\`http\` 模块是 Node.js 构建 Web 服务的基石。Express、Koa、Fastify 等框架都是基于它封装的。由于沙箱环境无法真正监听端口和发起网络请求，本章用 \`EventEmitter\` 和 \`URL\` 模拟 HTTP 的核心概念。
+URL（Uniform Resource Locator）是 Web 的基石。Node.js 的 \`url\` 模块和全局的 \`URL\` 类提供了完整的 URL 解析与操作能力。本章深入讲解 URL 的解析、构造、参数操作等核心功能。
 
-### HTTP 协议基础
+### URL 的组成部分
 
-HTTP（HyperText Transfer Protocol，超文本传输协议）是 Web 通信的基础。它采用**请求-响应**模型：
-
-\`\`\`
-  客户端 (浏览器)                           服务器 (Node.js)
-      │                                        │
-      │ ──── HTTP 请求 ────────────────────→ │
-      │                                        │
-      │     GET /api/users?id=1 HTTP/1.1      │
-      │     Host: example.com                 │
-      │     User-Agent: Mozilla/5.0           │
-      │                                        │
-      │ ←─── HTTP 响应 ────────────────────── │
-      │                                        │
-      │     HTTP/1.1 200 OK                    │
-      │     Content-Type: application/json    │
-      │                                        │
-      │     {"id":1,"name":"小明"}             │
-      │                                        │
-\`\`\`
-
-#### HTTP 请求结构
-
-一个 HTTP 请求由三部分组成：
+一个完整的 URL 包含以下部分：
 
 \`\`\`
-POST /api/users HTTP/1.1          ← 请求行（方法 + 路径 + 版本）
-Host: example.com                 ← 请求头
-Content-Type: application/json
-Authorization: Bearer token123
-                                  ← 空行（分隔头和体）
-{"name":"张三","age":20}           ← 请求体（可选）
+  https://user:pass@example.com:8080/api/users?id=100&role=admin#profile
+  ┕─┕─┘┕──┕─┕──┕─┕───────┕──┕──┕─┕──────┕─┕─────────────┕─┕─────┕
+  协议  用户 密码     主机名    端口  路径       查询字符串     锚点
 \`\`\`
 
-#### HTTP 响应结构
-
-\`\`\`
-HTTP/1.1 200 OK                   ← 状态行（版本 + 状态码 + 状态消息）
-Content-Type: application/json    ← 响应头
-Content-Length: 25
-                                  ← 空行
-{"id":1,"name":"张三"}             ← 响应体
-\`\`\`
-
-### HTTP 请求方法
-
-| 方法 | 语义 | 幂等 | 安全 | 典型用途 |
-| --- | --- | --- | --- | --- |
-| \`GET\` | 获取资源 | ✅ | ✅ | 查询数据 |
-| \`POST\` | 创建资源 | ❌ | ❌ | 提交表单、上传文件 |
-| \`PUT\` | 完整更新 | ✅ | ❌ | 替换整个资源 |
-| \`PATCH\` | 部分更新 | ❌ | ❌ | 修改部分字段 |
-| \`DELETE\` | 删除资源 | ✅ | ❌ | 删除数据 |
-| \`HEAD\` | 获取头信息 | ✅ | ✅ | 检查资源是否存在 |
-| \`OPTIONS\` | 查询支持的方法 | ✅ | ✅ | CORS 预检 |
-
-> **幂等**：多次执行结果相同。**安全**：不修改服务器数据。
-
-### HTTP 状态码
-
-| 范围 | 类别 | 常见状态码 |
+| 属性 | 含义 | 示例值 |
 | --- | --- | --- |
-| **1xx** | 信息 | 100 Continue |
-| **2xx** | 成功 | 200 OK, 201 Created, 204 No Content |
-| **3xx** | 重定向 | 301 永久重定向, 302 临时重定向, 304 Not Modified |
-| **4xx** | 客户端错误 | 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 429 Too Many Requests |
-| **5xx** | 服务端错误 | 500 Internal Server Error, 502 Bad Gateway, 503 Service Unavailable |
+| \`protocol\` | 协议（含冒号） | \`https:\` |
+| \`hostname\` | 主机名 | \`example.com\` |
+| \`port\` | 端口 | \`8080\` |
+| \`host\` | 主机（hostname:port） | \`example.com:8080\` |
+| \`pathname\` | 路径 | \`/api/users\` |
+| \`search\` | 查询字符串（含 ?） | \`?id=100&role=admin\` |
+| \`hash\` | 锚点（含 #） | \`#profile\` |
+| \`origin\` | 来源（只读） | \`https://example.com:8080\` |
+| \`href\` | 完整 URL | 整个字符串 |
 
-#### 常用状态码详解
+### 两套 API：Legacy vs WHATWG
 
-| 状态码 | 含义 | 使用场景 |
+Node.js 的 url 模块提供两套 API，推荐使用 WHATWG API：
+
+| 特性 | Legacy API | WHATWG API |
 | --- | --- | --- |
-| 200 | OK | 请求成功 |
-| 201 | Created | POST 创建资源成功 |
-| 204 | No Content | 成功但无返回内容（DELETE） |
-| 400 | Bad Request | 请求参数错误 |
-| 401 | Unauthorized | 未登录/认证失败 |
-| 403 | Forbidden | 已登录但无权限 |
-| 404 | Not Found | 资源不存在 |
-| 500 | Internal Server Error | 服务器内部错误 |
-| 502 | Bad Gateway | 网关/代理错误 |
-| 503 | Service Unavailable | 服务不可用（维护中） |
+| 创建方式 | \`url.parse(urlStr)\` | \`new URL(urlStr)\` |
+| 标准兼容 | Node.js 专有 | 与浏览器一致 |
+| 推荐程度 | ⚠️ 已废弃 | ✅ 推荐 |
 
-### Node.js http 模块概述
+#### 使用 WHATWG URL 类
 
-> ⚠️ 沙箱环境无法 \`require('http')\`，以下为概念讲解，代码部分用模拟实现。
-
-#### 创建服务器
+\`URL\` 是全局可用的类，无需 require：
 
 \`\`\`javascript
-const http = require("http");
-
-// 创建 HTTP 服务器
-const server = http.createServer((req, res) => {
-  // req: IncomingMessage（请求对象，是可读流）
-  // res: ServerResponse（响应对象，是可写流）
-  res.writeHead(200, { "Content-Type": "text/plain" });
-  res.end("Hello World");
-});
-
-// 监听端口
-server.listen(3000, () => {
-  console.log("服务器运行在 http://localhost:3000");
-});
+const u = new URL("https://example.com:8080/path?a=1&b=2#hash");
+console.log(u.protocol);  // "https:"
+console.log(u.hostname);  // "example.com"
+console.log(u.port);      // "8080"
+console.log(u.pathname);  // "/path"
+console.log(u.search);    // "?a=1&b=2"
+console.log(u.hash);      // "#hash"
 \`\`\`
 
-#### 发起请求
+#### URL 属性可读写
+
+修改任意属性后，\`href\` 会自动更新：
 
 \`\`\`javascript
-// 方式1: http.request
-const req = http.request("http://example.com", (res) => {
-  res.on("data", (chunk) => console.log(chunk.toString()));
-});
-req.end();
-
-// 方式2: http.get（简化版，只能 GET）
-http.get("http://example.com", (res) => {
-  res.on("data", (chunk) => console.log(chunk.toString()));
-});
-
-// 方式3: fetch（Node 18+ 内置全局）
-const res = await fetch("http://example.com");
-const data = await res.json();
+const u = new URL("https://example.com/api");
+u.protocol = "http:";
+u.hostname = "api.example.com";
+u.pathname = "/v2/data";
+console.log(u.href); // "http://api.example.com/v2/data"
 \`\`\`
 
-### IncomingMessage（请求对象）详解
+### URLSearchParams 详解
 
-\`req\` 对象（继承自 Readable 流）的常用属性：
+\`URLSearchParams\` 是专门操作查询参数的类，可以从 URL 对象获取或独立创建：
 
-| 属性 | 说明 | 示例 |
-| --- | --- | --- |
-| \`req.method\` | 请求方法 | \`"GET"\` / \`"POST"\` |
-| \`req.url\` | 请求路径（含查询串） | \`"/api/users?id=1"\` |
-| \`req.headers\` | 请求头对象 | \`{host: "example.com"}\` |
-| \`req.httpVersion\` | HTTP 版本 | \`"1.1"\` |
-| \`req.socket\` | 底层 socket | - |
-
-#### 读取请求体
-
-\`req\` 是可读流，通过 \`data\` / \`end\` 事件读取请求体：
+#### 创建方式
 
 \`\`\`javascript
-server.on("request", (req, res) => {
-  let body = "";
-  req.on("data", (chunk) => { body += chunk; });
-  req.on("end", () => {
-    console.log("请求体:", body);
-    res.end("收到");
-  });
-});
+// 从字符串
+const p1 = new URLSearchParams("a=1&b=2");
+
+// 从对象
+const p2 = new URLSearchParams({ a: "1", b: "2" });
+
+// 从 URL 对象
+const u = new URL("https://example.com?a=1");
+const p3 = u.searchParams;
 \`\`\`
 
-### ServerResponse（响应对象）详解
-
-\`res\` 对象（继承自 Writable 流）的常用方法：
-
-| 方法 | 说明 |
-| --- | --- |
-| \`res.writeHead(status, headers)\` | 设置状态码和响应头 |
-| \`res.setHeader(name, value)\` | 设置单个响应头 |
-| \`res.write(data)\` | 写入响应体（可多次调用） |
-| \`res.end([data])\` | 结束响应（必须调用） |
-| \`res.statusCode = 200\` | 设置状态码 |
-| \`res.statusMessage = "OK"\` | 设置状态消息 |
-
-#### 设置响应头
-
-\`\`\`javascript
-// 方式1: writeHead（一次设置）
-res.writeHead(200, {
-  "Content-Type": "application/json",
-  "X-Custom-Header": "value"
-});
-
-// 方式2: setHeader + statusCode（分步设置）
-res.statusCode = 200;
-res.setHeader("Content-Type", "application/json");
-\`\`\`
-
-> \`writeHead\` 会立即发送头部，之后不能再用 \`setHeader\`。推荐用 \`setHeader\` + \`end\`，更灵活。
-
-### 路由实现原理
-
-路由是根据请求的 \`method\` + \`pathname\` 分发到不同处理函数：
-
-\`\`\`javascript
-const server = http.createServer((req, res) => {
-  const url = new URL(req.url, "http://localhost");
-  const { method } = req;
-  const { pathname } = url;
-
-  if (pathname === "/api/users" && method === "GET") {
-    // 处理获取用户列表
-  } else if (pathname === "/api/users" && method === "POST") {
-    // 处理创建用户
-  } else if (pathname.startsWith("/api/users/") && method === "GET") {
-    // 处理获取单个用户
-  } else {
-    res.writeHead(404);
-    res.end("Not Found");
-  }
-});
-\`\`\`
-
-#### 路由参数
-
-| 参数类型 | 位置 | 获取方式 | 示例 |
-| --- | --- | --- | --- |
-| 路径参数 | URL 路径 | \`/:id\` | \`/api/users/42\` → \`id=42\` |
-| 查询参数 | URL 查询串 | \`?key=value\` | \`?q=node&page=1\` |
-| 请求体 | body | \`req.on('data')\` | \`{"name":"张三"}\` |
-| 请求头 | headers | \`req.headers\` | \`Authorization: Bearer xxx\` |
-
-### 中间件概念
-
-中间件（Middleware）是在请求到达路由处理函数之前/之后执行的函数链。Express 的核心就是中间件系统：
-
-\`\`\`javascript
-// Express 中间件示例
-app.use((req, res, next) => {
-  console.log(req.method, req.url); // 日志中间件
-  next(); // 调用 next() 传递给下一个中间件
-});
-
-app.use((req, res, next) => {
-  res.setHeader("X-Custom", "value"); // 设置响应头
-  next();
-});
-
-app.get("/api/users", (req, res) => {
-  res.json({ users: [] }); // 路由处理
-});
-\`\`\`
-
-#### 中间件执行流程
-
-\`\`\`
-请求 → [日志中间件] → [CORS中间件] → [解析中间件] → [路由处理] → 响应
-         ↓ next()       ↓ next()       ↓ next()
-\`\`\`
-
-### HTTPS 简介
-
-HTTPS = HTTP + TLS/SSL。通过加密防止数据被窃听和篡改。
-
-\`\`\`javascript
-const https = require("https");
-const fs = require("fs");
-
-const server = https.createServer({
-  key: fs.readFileSync("key.pem"),
-  cert: fs.readFileSync("cert.pem"),
-}, (req, res) => {
-  res.end("Secure Hello");
-});
-
-server.listen(443);
-\`\`\`
-
-> 生产环境通常用 Nginx 做 TLS 终止，Node.js 只处理 HTTP。或用 Let's Encrypt 免费证书。
-
-### Web 框架简介
-
-| 框架 | 特点 | 适用场景 |
-| --- | --- | --- |
-| **Express** | 最流行，简单灵活，中间件丰富 | 中小型项目、API 服务 |
-| **Koa** | 语法现代，async/await 原生支持 | 现代项目 |
-| **Fastify** | 高性能，Schema 验证，插件系统 | 高性能 API |
-| **NestJS** | 企业级，TypeScript，依赖注入 | 大型企业项目 |
-| **Next.js** | 全栈框架，SSR/SSG/API Routes | 全栈 Web 应用 |
-
-#### Express 简单示例
-
-\`\`\`javascript
-const express = require("express");
-const app = express();
-
-app.use(express.json()); // JSON 解析中间件
-
-app.get("/api/users", (req, res) => {
-  res.json({ users: [{ id: 1, name: "小明" }] });
-});
-
-app.post("/api/users", (req, res) => {
-  const user = req.body;
-  res.status(201).json({ id: Date.now(), ...user });
-});
-
-app.listen(3000);
-\`\`\`
-
-### 常见陷阱
-
-1. **忘记调用 \`res.end()\`**：请求会一直挂起，最终超时
-
-2. **writeHead 后 setHeader**：\`writeHead\` 已发送头部，\`setHeader\` 无效
-
-3. **路由顺序**：更具体的路由要放在更通用的路由前面
-
-4. **异步处理忘记 end**：异步回调中要确保 \`res.end()\` 被调用
-
-5. **端口冲突**：多个服务监听同一端口会报 EADDRINUSE
-
-下面这段代码用 EventEmitter 和 URL 模拟 HTTP 服务器的核心概念。`,
-    code: `// ============================================================
-// 第五章代码演示：HTTP 概念模拟（沙箱无法 require http）
-// ============================================================
-// 用 EventEmitter 模拟 HTTP 服务器，用 URL 解析请求路径
-// 演示：请求/响应模型、路由分发、中间件链、状态码
-
-var EventEmitter = require("events");
-var url = require("url");
-
-// ---- 1. 模拟 ServerResponse（对应 http.ServerResponse）----
-class MockResponse {
-  constructor() {
-    this.statusCode = 200;
-    this.statusMessage = "OK";
-    this.headers = {};
-    this.body = "";
-    this.finished = false;
-    this.headersSent = false;
-  }
-  // writeHead：设置状态码和响应头
-  writeHead(status, headers) {
-    this.statusCode = status;
-    if (headers) {
-      this.headers = Object.assign({}, this.headers, headers);
-    }
-    this.headersSent = true;
-  }
-  // setHeader：设置单个响应头
-  setHeader(name, value) {
-    this.headers[name] = value;
-  }
-  // write：写入响应体（可多次调用）
-  write(data) {
-    if (this.finished) throw new Error("Cannot write after end()");
-    this.body += typeof data === "string" ? data : data.toString();
-  }
-  // end：结束响应（必须调用）
-  end(data) {
-    if (data !== undefined) {
-      this.body += typeof data === "string" ? data : data.toString();
-    }
-    this.finished = true;
-    this.headersSent = true;
-  }
-}
-
-// ---- 2. 模拟 HTTP 服务器（对应 http.createServer）----
-class MockHTTPServer extends EventEmitter {
-  constructor() {
-    super();
-    this.middleware = [];
-  }
-  // use：注册中间件（类似 Express）
-  use(fn) {
-    this.middleware.push(fn);
-    return this;
-  }
-  // 模拟接收 HTTP 请求
-  handleRequest(method, requestUrl, headers, body) {
-    headers = headers || {};
-    body = body || "";
-
-    // 用 WHATWG URL 解析请求 URL（需要提供 origin）
-    var parsedUrl = new URL(requestUrl, "http://localhost:3000");
-
-    // 构造请求对象（对应 http.IncomingMessage）
-    var req = {
-      method: method,
-      url: requestUrl,
-      headers: headers,
-      body: body,
-      parsedUrl: parsedUrl,
-      // 查询参数（从 searchParams 转为普通对象）
-      query: {},
-    };
-    parsedUrl.searchParams.forEach(function (value, key) {
-      req.query[key] = value;
-    });
-
-    // 构造响应对象
-    var res = new MockResponse();
-
-    // 触发 request 事件（模拟 http server 的 request 事件）
-    this.emit("request", req, res);
-
-    return { req: req, res: res };
-  }
-}
-
-// ---- 3. 创建服务器并注册中间件 ----
-console.log("===== 3. 创建 HTTP 服务器（模拟）=====");
-var server = new MockHTTPServer();
-
-// 中间件1：日志记录
-console.log("注册中间件：日志记录");
-server.use(function (req, res, next) {
-  console.log("  [日志] " + req.method + " " + req.url);
-  next();
-});
-
-// 中间件2：CORS 响应头
-console.log("注册中间件：CORS");
-server.use(function (req, res, next) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE");
-  next();
-});
-
-// 中间件3：JSON 请求体解析
-console.log("注册中间件：JSON 解析");
-server.use(function (req, res, next) {
-  if (req.body && req.headers["Content-Type"] === "application/json") {
-    try {
-      req.body = JSON.parse(req.body);
-      console.log("  [解析] JSON body 已解析");
-    } catch (e) {
-      console.log("  [解析] JSON 解析失败: " + e.message);
-    }
-  }
-  next();
-});
-
-// ---- 4. 路由分发 ----
-console.log("\\n===== 4. 路由分发 =====");
-server.on("request", function (req, res) {
-  // 执行中间件链
-  var mwIndex = 0;
-  var runNext = function () {
-    if (mwIndex < server.middleware.length) {
-      var mw = server.middleware[mwIndex++];
-      mw(req, res, runNext);
-    } else {
-      // 所有中间件执行完毕，进入路由
-      handleRoute(req, res);
-    }
-  };
-  runNext();
-});
-
-// 路由处理函数
-function handleRoute(req, res) {
-  var method = req.method;
-  var path = req.parsedUrl.pathname;
-  var params = req.parsedUrl.searchParams;
-
-  // GET / - 首页
-  if (path === "/" && method === "GET") {
-    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-    res.end("<h1>欢迎来到首页</h1>");
-    return;
-  }
-
-  // GET /api/users - 用户列表
-  if (path === "/api/users" && method === "GET") {
-    var users = [
-      { id: 1, name: "小明", age: 20 },
-      { id: 2, name: "小红", age: 22 },
-      { id: 3, name: "小刚", age: 19 },
-    ];
-    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify(users));
-    return;
-  }
-
-  // GET /api/users/:id - 获取单个用户（模拟路径参数）
-  if (path.indexOf("/api/users/") === 0 && method === "GET") {
-    var userId = parseInt(path.split("/").pop(), 10);
-    if (isNaN(userId)) {
-      res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
-      res.end("400 Bad Request - 无效的用户 ID");
-      return;
-    }
-    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify({ id: userId, name: "用户" + userId, age: 25 }));
-    return;
-  }
-
-  // GET /api/search?q=keyword - 搜索（模拟查询参数）
-  if (path === "/api/search" && method === "GET") {
-    var q = params.get("q") || "";
-    var page = params.get("page") || "1";
-    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify({
-      query: q,
-      page: parseInt(page, 10),
-      results: [
-        { title: "包含 '" + q + "' 的结果 1" },
-        { title: "包含 '" + q + "' 的结果 2" },
-      ],
-    }));
-    return;
-  }
-
-  // POST /api/echo - 回显请求体
-  if (path === "/api/echo" && method === "POST") {
-    var bodyStr = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
-    res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
-    res.end("收到 POST: " + bodyStr);
-    return;
-  }
-
-  // 404
-  res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-  res.end("404 Not Found - " + path);
-}
-
-// ---- 5. 模拟多个 HTTP 请求 ----
-console.log("\\n===== 5. 模拟 HTTP 请求 =====");
-var testRequests = [
-  { method: "GET", url: "/" },
-  { method: "GET", url: "/api/users" },
-  { method: "GET", url: "/api/users/42" },
-  { method: "GET", url: "/api/search?q=nodejs&page=2" },
-  { method: "POST", url: "/api/echo", headers: { "Content-Type": "application/json" }, body: '{"msg":"hello"}' },
-  { method: "GET", url: "/unknown/path" },
-];
-
-testRequests.forEach(function (tc, i) {
-  console.log("\\n--- 请求 #" + (i + 1) + ": " + tc.method + " " + tc.url + " ---");
-  var result = server.handleRequest(tc.method, tc.url, tc.headers, tc.body);
-  var res = result.res;
-  console.log("  响应状态:", res.statusCode);
-  console.log("  响应头:", JSON.stringify(res.headers));
-  var bodyPreview = res.body.length > 80 ? res.body.slice(0, 80) + "..." : res.body;
-  console.log("  响应体:", bodyPreview);
-});
-
-// ---- 6. HTTP 状态码说明 ----
-console.log("\\n\\n===== 6. HTTP 状态码 =====");
-var statusCodes = {
-  "2xx 成功": { 200: "OK", 201: "Created", 204: "No Content" },
-  "3xx 重定向": { 301: "Moved Permanently", 302: "Found", 304: "Not Modified" },
-  "4xx 客户端错误": { 400: "Bad Request", 401: "Unauthorized", 403: "Forbidden", 404: "Not Found" },
-  "5xx 服务端错误": { 500: "Internal Server Error", 502: "Bad Gateway", 503: "Service Unavailable" },
-};
-Object.keys(statusCodes).forEach(function (category) {
-  console.log("  " + category + ":");
-  Object.keys(statusCodes[category]).forEach(function (code) {
-    console.log("    " + code + " - " + statusCodes[category][code]);
-  });
-});
-
-// ---- 7. HTTP 请求方法 ----
-console.log("\\n===== 7. HTTP 请求方法 =====");
-var httpMethods = [
-  ["GET", "获取资源", "安全且幂等"],
-  ["POST", "创建资源", "非幂等"],
-  ["PUT", "完整更新", "幂等"],
-  ["PATCH", "部分更新", "非幂等"],
-  ["DELETE", "删除资源", "幂等"],
-  ["HEAD", "只获取头", "安全且幂等"],
-  ["OPTIONS", "查询支持的方法", "安全且幂等"],
-];
-httpMethods.forEach(function (m) {
-  console.log("  " + m[0].padEnd(8) + " " + m[1].padEnd(8) + " (" + m[2] + ")");
-});
-
-// ---- 8. URL 解析实战（HTTP 请求行解析）----
-console.log("\\n===== 8. URL 解析实战 =====");
-// 模拟解析 HTTP 请求行
-var requestLines = [
-  "GET /api/users?role=admin&page=1 HTTP/1.1",
-  "POST /api/login HTTP/1.1",
-  "DELETE /api/users/42 HTTP/1.1",
-];
-
-requestLines.forEach(function (line) {
-  var parts = line.split(" ");
-  var method = parts[0];
-  var fullUrl = parts[1];
-  var version = parts[2];
-  var parsed = new URL(fullUrl, "http://localhost");
-  console.log("  " + line);
-  console.log("    方法: " + method + ", 路径: " + parsed.pathname + ", 查询: " + parsed.search + ", 版本: " + version);
-});
-
-// ---- 9. 真实 http 模块用法（参考代码）----
-console.log("\\n===== 9. 真实 http 模块用法（参考）=====");
-console.log("// 沙箱无法运行以下代码，仅作参考：");
-console.log("//");
-console.log("// const http = require('http');");
-console.log("//");
-console.log("// // 创建服务器");
-console.log("// const server = http.createServer((req, res) => {");
-console.log("//   const url = new URL(req.url, 'http://localhost:3000');");
-console.log("//   if (url.pathname === '/') {");
-console.log("//     res.writeHead(200, {'Content-Type':'text/plain'});");
-console.log("//     res.end('Hello World');");
-console.log("//   }");
-console.log("// });");
-console.log("//");
-console.log("// server.listen(3000, () => console.log('Server on :3000'));");
-console.log("//");
-console.log("// // 发起请求");
-console.log("// http.get('http://example.com', (res) => {");
-console.log("//   res.on('data', chunk => console.log(chunk.toString()));");
-console.log("// });");
-console.log("//");
-console.log("// // 或用 fetch（Node 18+ 内置）");
-console.log("// const res = await fetch('http://example.com');");
-console.log("// const data = await res.json();");
-
-// ---- 10. 模拟 Express 风格的路由 ----
-console.log("\\n===== 10. 模拟 Express 风格路由 =====");
-// 简化的路由注册器
-var routes = [];
-
-function registerRoute(method, path, handler) {
-  routes.push({ method: method, path: path, handler: handler });
-}
-
-// 注册路由
-registerRoute("GET", "/", function (req, res) {
-  res.writeHead(200, { "Content-Type": "text/plain" });
-  res.end("首页");
-});
-
-registerRoute("GET", "/api/time", function (req, res) {
-  res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ time: new Date().toISOString() }));
-});
-
-registerRoute("POST", "/api/upper", function (req, res) {
-  res.writeHead(200, { "Content-Type": "text/plain" });
-  res.end(String(req.body).toUpperCase());
-});
-
-// 模拟请求
-console.log("注册了 " + routes.length + " 条路由");
-routes.forEach(function (r) {
-  console.log("  " + r.method.padEnd(6) + " " + r.path);
-});
-
-// 测试路由匹配
-var testReq = { method: "GET", url: "/api/time" };
-var matchedRoute = routes.find(function (r) {
-  return r.method === testReq.method && r.path === new URL(testReq.url, "http://localhost").pathname;
-});
-if (matchedRoute) {
-  console.log("\\n匹配到路由: " + matchedRoute.method + " " + matchedRoute.path);
-  var testRes = new MockResponse();
-  matchedRoute.handler({ method: testReq.method, parsedUrl: new URL(testReq.url, "http://localhost") }, testRes);
-  console.log("响应:", testRes.statusCode, testRes.body);
-} else {
-  console.log("未匹配到路由");
-}`,
-  },
-
-  // =========================================================
-  // 第六章：加密模块 (Crypto)
-  // =========================================================
-  {
-    id: "crypto",
-    title: "加密模块 (Crypto)",
-    icon: "🔐",
-    group: "核心模块",
-    content: `## 加密模块 (Crypto)
-
-\`crypto\` 模块提供了加密、解密、签名、哈希等安全功能。无论你是存储用户密码、验证 API 签名、加密敏感数据，还是生成随机令牌，都离不开这个模块。
-
-### 加密基础概念
-
-#### 1. 哈希 (Hash)
-
-哈希是将**任意长度**数据映射为**固定长度**摘要的单向函数。
-
-\`\`\`
-"Hello" → SHA-256 → "185f8db...e8d4c2"（64 字符十六进制）
-\`\`\`
-
-特点：
-- **单向**：无法从哈希值还原原文
-- **确定性**：相同输入永远得到相同输出
-- **雪崩效应**：输入微小变化导致输出剧烈变化
-- **固定长度**：无论输入多大，输出长度固定
-
-用途：文件完整性校验、密码存储（需加盐）、数字签名
-
-#### 2. 对称加密 (Symmetric Encryption)
-
-加密和解密使用**同一把密钥**。
-
-\`\`\`
-明文 → [密钥加密] → 密文 → [同一密钥解密] → 明文
-\`\`\`
-
-特点：速度快，适合大量数据加密。但密钥分发是难题。
-
-常用算法：AES-256-CBC、AES-256-GCM、ChaCha20
-
-#### 3. 非对称加密 (Asymmetric Encryption)
-
-使用**一对密钥**：公钥（公开）和私钥（保密）。
-
-\`\`\`
-公钥加密 → 私钥解密（保密通信）
-私钥签名 → 公钥验证（数字签名）
-\`\`\`
-
-特点：解决了密钥分发问题，但速度慢。常用算法：RSA、ECDSA、Ed25519
-
-#### 4. 签名 (Signature)
-
-用私钥对数据签名，用公钥验证签名，确保数据**未被篡改**且**来源可信**。
-
-#### 5. 编码 (Encoding)
-
-加密操作产生的二进制数据通常用编码表示：
-
-| 编码 | 说明 | 示例 |
-| --- | --- | --- |
-| \`hex\` | 十六进制 | \`48656c6c6f\` |
-| \`base64\` | Base64 | \`SGVsbG8=\` |
-| \`utf8\` | UTF-8 文本 | \`Hello\` |
-| \`binary\` / \`latin1\` | 原始字节 | - |
-
-### Hash 算法
-
-\`crypto.createHash(algorithm)\` 创建哈希对象：
-
-\`\`\`javascript
-const crypto = require("crypto");
-
-const hash = crypto.createHash("sha256")
-  .update("Hello, World!")
-  .digest("hex");
-// "dffd6021bb2bd5b0af676290809ec3a5..."
-
-// 分段 update
-const h = crypto.createHash("sha256");
-h.update("Hello, ");
-h.update("World!");
-h.digest("hex"); // 与上面相同
-\`\`\`
-
-#### 常用哈希算法对比
-
-| 算法 | 输出长度 | 安全性 | 速度 | 用途 |
-| --- | --- | --- | --- | --- |
-| \`md5\` | 128 位 (32 hex) | ❌ 不安全 | 最快 | 文件校验（非安全场景） |
-| \`sha1\` | 160 位 (40 hex) | ❌ 不安全 | 快 | Git（已不推荐） |
-| \`sha256\` | 256 位 (64 hex) | ✅ 安全 | 中等 | 通用推荐 |
-| \`sha512\` | 512 位 (128 hex) | ✅ 安全 | 中等 | 高安全需求 |
-
-> **密码存储不要用纯哈希**！因为哈希是确定性的，相同密码产生相同哈希，容易被彩虹表破解。应该用 PBKDF2 / scrypt / bcrypt 等慢哈希 + 盐。
-
-#### update 和 digest
-
-\`\`\`javascript
-const h = crypto.createHash("sha256");
-h.update("数据块1"); // 可以多次 update
-h.update("数据块2");
-h.update("数据块3");
-const result = h.digest("hex"); // digest 后不能再 update
-\`\`\`
-
-\`digest()\` 的参数：
-- \`"hex"\`：十六进制字符串（最常用）
-- \`"base64"\`：Base64 字符串
-- \`"binary"\` / \`"latin1"\`：原始字节字符串
-- 不传参：返回 Buffer
-
-### HMAC（带密钥的哈希）
-
-HMAC（Hash-based Message Authentication Code）是用密钥增强的哈希。只有知道密钥的人才能生成和验证 HMAC。
-
-\`\`\`javascript
-const hmac = crypto.createHmac("sha256", "secret-key")
-  .update("message")
-  .digest("hex");
-\`\`\`
-
-#### HMAC vs Hash
-
-| 特性 | Hash | HMAC |
-| --- | --- | --- |
-| 密钥 | 无 | 有 |
-| 验证 | 任何人都能计算 | 需要密钥 |
-| 用途 | 完整性校验 | 完整性 + 身份验证 |
-| 场景 | 文件校验 | API 签名、JWT |
-
-#### API 签名示例
-
-\`\`\`javascript
-// 客户端生成签名
-function sign(params, secret) {
-  const sorted = Object.keys(params).sort()
-    .map(k => k + "=" + params[k]).join("&");
-  return crypto.createHmac("sha256", secret).update(sorted).digest("hex");
-}
-
-// 服务端验证签名
-function verify(params, secret, signature) {
-  return sign(params, secret) === signature;
-}
-\`\`\`
-
-### 对称加密
-
-\`crypto.createCipheriv(algorithm, key, iv)\` 创建加密器，\`createDecipheriv\` 创建解密器。
-
-#### AES-256-CBC 示例
-
-\`\`\`javascript
-const algorithm = "aes-256-cbc";
-const key = crypto.randomBytes(32); // AES-256 需要 32 字节密钥
-const iv = crypto.randomBytes(16);  // CBC 模式需要 16 字节 IV
-
-// 加密
-function encrypt(text) {
-  const cipher = crypto.createCipheriv(algorithm, key, iv);
-  let encrypted = cipher.update(text, "utf8", "hex");
-  encrypted += cipher.final("hex");
-  return encrypted;
-}
-
-// 解密
-function decrypt(encrypted) {
-  const decipher = crypto.createDecipheriv(algorithm, key, iv);
-  let decrypted = decipher.update(encrypted, "hex", "utf8");
-  decrypted += decipher.final("utf8");
-  return decrypted;
-}
-\`\`\`
-
-#### 参数说明
-
-| 参数 | 说明 | AES-256-CBC 要求 |
-| --- | --- | --- |
-| \`key\` | 加密密钥 | 32 字节（256 位） |
-| \`iv\` | 初始向量 | 16 字节（每次加密应不同） |
-| \`algorithm\` | 算法 | \`aes-256-cbc\` / \`aes-256-gcm\` |
-
-#### CBC vs GCM
-
-| 模式 | 认证 | 并行 | 推荐 |
-| --- | --- | --- | --- |
-| CBC | ❌ 无认证 | 解密可并行 | 需额外 MAC |
-| GCM | ✅ 带认证 | 可并行 | ✅ 推荐 |
-
-> GCM 模式提供**认证加密**，不仅保密还防篡改。推荐用 \`aes-256-gcm\` 而非 \`aes-256-cbc\`。
-
-#### IV（初始向量）的重要性
-
-IV 的作用是让**相同明文 + 相同密钥**产生**不同密文**。如果每次加密用相同 IV，攻击者可能推断明文关系。
-
-> **最佳实践**：每次加密生成随机 IV，将 IV 和密文一起存储/传输（IV 不需要保密）。
-
-### 随机数
+#### 核心方法
 
 | 方法 | 说明 | 返回值 |
 | --- | --- | --- |
-| \`randomBytes(size)\` | 生成加密安全随机字节 | Buffer |
-| \`randomInt(min, max)\` | 生成随机整数 | number |
-| \`randomUUID()\` | 生成 UUID v4 | string |
+| \`get(key)\` | 获取第一个值 | string |
+| \`getAll(key)\` | 获取所有同名值 | string[] |
+| \`has(key)\` | 判断是否存在 | boolean |
+| \`set(key, value)\` | 设置（覆盖已有） | - |
+| \`append(key, value)\` | 追加（不覆盖） | - |
+| \`delete(key)\` | 删除 | - |
+| \`sort()\` | 按 key 排序 | - |
+| \`toString()\` | 序列化 | string |
+| \`entries()\` | 迭代器 | Iterator |
+| \`forEach(cb)\` | 遍历 | - |
 
-#### randomBytes
-
-\`\`\`javascript
-// 同步
-const bytes = crypto.randomBytes(16);
-console.log(bytes.toString("hex")); // 32 字符十六进制
-
-// 异步（回调）
-crypto.randomBytes(16, (err, buf) => {
-  console.log(buf.toString("hex"));
-});
-\`\`\`
-
-> \`randomBytes\` 使用操作系统的加密安全随机数源（如 /dev/urandom），比 \`Math.random()\` 安全得多。\`Math.random()\` **不能用于安全场景**！
-
-#### randomUUID
+#### get vs getAll 陷阱
 
 \`\`\`javascript
-crypto.randomUUID(); // "1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed"
+const params = new URLSearchParams("tags=js&tags=node&tags=react");
+params.get("tags");    // "js" ← 只返回第一个！
+params.getAll("tags"); // ["js", "node", "react"] ← 获取所有
 \`\`\`
 
-UUID v4 格式：\`xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx\`，其中 y 是 8/9/a/b。
-
-### PBKDF2（密码派生）
-
-PBKDF2（Password-Based Key Derivation Function 2）通过**多次迭代**哈希来增加暴力破解成本，专门用于密码存储。
+#### set vs append 区别
 
 \`\`\`javascript
-crypto.pbkdf2Sync(password, salt, iterations, keylen, digest);
+const p = new URLSearchParams("a=1");
+p.set("a", "2");     // a=2（覆盖）
+p.append("a", "3");  // a=2&a=3（追加）
 \`\`\`
 
-| 参数 | 说明 | 推荐值 |
-| --- | --- | --- |
-| \`password\` | 用户密码 | - |
-| \`salt\` | 盐（随机） | 16+ 字节 |
-| \`iterations\` | 迭代次数 | 100,000+ |
-| \`keylen\` | 输出长度 | 64 字节 |
-| \`digest\` | 哈希算法 | \`sha512\` / \`sha256\` |
+### 相对路径解析
 
-#### 为什么需要 PBKDF2？
-
-直接用 SHA-256 哈希密码的问题：
-1. **速度快**：GPU 每秒能计算数十亿次 SHA-256
-2. **彩虹表**：预计算的密码-哈希对照表
-3. **相同密码相同哈希**：容易被发现重复密码
-
-PBKDF2 的解决方案：
-1. **慢**：10 万次迭代让每次验证需要 ~100ms
-2. **盐**：随机盐防止彩虹表
-3. **不同盐不同哈希**：即使相同密码也产生不同哈希
-
-#### 密码存储最佳实践
+\`new URL(relative, base)\` 可以解析相对路径：
 
 \`\`\`javascript
-function hashPassword(password) {
-  const salt = crypto.randomBytes(16).toString("hex");
-  const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, "sha512").toString("hex");
-  return salt + ":" + hash; // 盐和哈希一起存储
-}
+const base = new URL("https://example.com/docs/intro/");
 
-function verifyPassword(password, stored) {
-  const [salt, hash] = stored.split(":");
-  const newHash = crypto.pbkdf2Sync(password, salt, 100000, 64, "sha512").toString("hex");
-  return crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(newHash, "hex"));
-}
+new URL("./images/logo.png", base).href;
+// "https://example.com/docs/intro/images/logo.png"
+
+new URL("../style.css", base).href;
+// "https://example.com/docs/style.css"
+
+new URL("/root.js", base).href;
+// "https://example.com/root.js"
 \`\`\`
 
-> \`timingSafeEqual\` 防止**时序攻击**（通过比较耗时推断字符是否正确）。
+### file URL 与路径转换
 
-### scrypt 简介
-
-\`scrypt\` 是比 PBKDF2 更现代的密码哈希算法，设计上需要大量内存，进一步增加 ASIC/GPU 攻击成本。
+在 ESM 模块中，\`import.meta.url\` 返回 file URL，需要转换为本地路径：
 
 \`\`\`javascript
-crypto.scryptSync(password, salt, keylen);
+const url = require("url");
+const fileUrl = url.pathToFileURL("/home/user/file.txt");
+// file:///home/user/file.txt
+
+const back = url.fileURLToPath(fileUrl);
+// /home/user/file.txt
 \`\`\`
 
-| 特性 | PBKDF2 | scrypt |
-| --- | --- | --- |
-| CPU 成本 | 高 | 高 |
-| 内存成本 | 低 | **高** |
-| ASIC 抗性 | 弱 | **强** |
-| 推荐度 | 可用 | ✅ 推荐 |
+### url.parse vs new URL
 
-### 数字签名简介
-
-数字签名用非对称加密实现**不可否认性**：
+Legacy API 的 \`url.parse()\` 从 Node.js v11 起标记为废弃，不推荐在新代码中使用。但了解其用法有助于阅读旧代码：
 
 \`\`\`javascript
-// 生成密钥对
-const { publicKey, privateKey } = crypto.generateKeyPairSync("rsa", {
-  modulusLength: 2048,
-});
-
-// 签名
-const sign = crypto.createSign("sha256");
-sign.update("数据");
-sign.end();
-const signature = sign.sign(privateKey, "hex");
-
-// 验证
-const verify = crypto.createVerify("sha256");
-verify.update("数据");
-verify.end();
-const isValid = verify.verify(publicKey, signature, "hex");
+const parsed = url.parse("https://example.com/path?a=1&b=2", true);
+// 第二个参数 true 表示自动解析 query 为对象
+console.log(parsed.query); // { a: "1", b: "2" }
 \`\`\`
-
-> 由于沙箱限制，本章代码不演示密钥生成和签名（较复杂），重点演示哈希、HMAC、对称加密、密码存储等常用功能。
 
 ### 常见陷阱
 
-1. **用 MD5 存密码**：MD5 不安全，且纯哈希没有盐，容易被彩虹表破解
+1. **\`protocol\` 含冒号**：\`u.protocol\` 是 \`"https:"\`，不是 \`"https"\`
+2. **\`get()\` 只返回第一个值**：多值参数用 \`getAll()\`
+3. **\`new URL()\` 需要完整 URL**：相对路径需要提供 base 参数
+4. **URLSearchParams 自动编码**：中文等特殊字符会被编码
+5. **\`host\` vs \`hostname\`**：\`host\` 含端口，\`hostname\` 不含
 
-2. **AES IV 重用**：每次加密必须用新 IV，否则安全性大打折扣
-
-3. **Math.random() 做安全令牌**：\`Math.random()\` 不是加密安全的，必须用 \`crypto.randomBytes()\`
-
-4. **不加盐的密码哈希**：相同密码产生相同哈希，容易被发现
-
-5. **迭代次数太少**：PBKDF2 迭代次数 < 10000 几乎没有保护
-
-6. **密钥硬编码**：密钥不要写在代码里，用环境变量或密钥管理服务
-
-7. **CBC 无认证**：CBC 模式不防篡改，推荐 GCM 模式
-
-下面这段代码演示了 crypto 模块的核心功能。`,
+下面这段代码演示了 URL 解析、构造和参数操作的完整用法。`,
     code: `// ============================================================
-// 第六章代码演示：Crypto 加密模块全面实战
+// 第八章代码演示：URL 解析与构造
 // ============================================================
-var crypto = require("crypto");
+// URL 和 URLSearchParams 是全局对象，无需 require
+var url = require("url");
 
-// ---- 1. 哈希（Hash）----
-console.log("===== 1. 哈希（Hash）=====");
-var data = "Hello, Node.js!";
+// ---- 1. WHATWG URL 解析 ----
+console.log("===== 1. WHATWG URL 解析 =====");
+// 解析一个包含所有组成部分的复杂 URL
+var complexUrl = new URL(
+  "https://user:pass@example.com:8080/api/users?id=100&role=admin&tags=js&tags=node#profile"
+);
 
-// 对比不同哈希算法
-var algorithms = ["md5", "sha1", "sha256", "sha512"];
-algorithms.forEach(function (algo) {
-  var hash = crypto.createHash(algo).update(data).digest("hex");
-  console.log("  " + algo.padEnd(8) + " (" + hash.length + "字符): " + hash.slice(0, 32) + "...");
+// 展示所有属性
+console.log("href     :", complexUrl.href);
+console.log("protocol :", complexUrl.protocol);
+console.log("username :", complexUrl.username);
+console.log("password :", complexUrl.password);
+console.log("host     :", complexUrl.host);
+console.log("hostname :", complexUrl.hostname);
+console.log("port     :", complexUrl.port);
+console.log("pathname :", complexUrl.pathname);
+console.log("search   :", complexUrl.search);
+console.log("hash     :", complexUrl.hash);
+console.log("origin   :", complexUrl.origin);
+
+// 属性是可写的
+complexUrl.port = "3000";
+console.log("\\n修改端口后:");
+console.log("host:", complexUrl.host);
+console.log("href:", complexUrl.href);
+
+// ---- 2. URLSearchParams 操作 ----
+console.log("\\n===== 2. URLSearchParams 操作 =====");
+var params = complexUrl.searchParams;
+
+// get：获取单个值（只返回第一个）
+console.log("get('id'):", params.get("id"));
+console.log("get('tags'):", params.get("tags"), "(只返回第一个)");
+
+// getAll：获取所有同名值
+console.log("getAll('tags'):", params.getAll("tags"));
+
+// has：判断是否存在
+console.log("has('role'):", params.has("role"));
+console.log("has('page'):", params.has("page"));
+
+// set：设置参数（覆盖同名）
+params.set("page", "1");
+// append：追加参数（不覆盖）
+params.append("tags", "backend");
+// delete：删除参数
+params.delete("role");
+
+console.log("\\n修改后 search:", complexUrl.search);
+console.log("toString():", params.toString());
+
+// sort：按 key 字母排序
+params.sort();
+console.log("排序后:", params.toString());
+
+// ---- 3. 遍历查询参数 ----
+console.log("\\n===== 3. 遍历查询参数 =====");
+// entries() 迭代器
+console.log("entries():");
+for (var kv of params.entries()) {
+  console.log("  " + kv[0] + " = " + kv[1]);
+}
+
+// keys() / values()
+console.log("keys():", Array.from(params.keys()));
+console.log("values():", Array.from(params.values()));
+
+// forEach
+console.log("forEach:");
+params.forEach(function (value, key) {
+  console.log("  " + key + " => " + value);
 });
 
-// 同一输入永远得到相同输出（确定性）
-var h1 = crypto.createHash("sha256").update(data).digest("hex");
-var h2 = crypto.createHash("sha256").update(data).digest("hex");
-console.log("  一致性验证:", h1 === h2);
+// ---- 4. 独立使用 URLSearchParams ----
+console.log("\\n===== 4. 构造查询字符串 =====");
+// 从对象构造
+var search1 = new URLSearchParams({
+  name: "张三",
+  age: "25",
+  city: "北京",
+});
+console.log("从对象:", search1.toString());
+console.log("解码:", decodeURIComponent(search1.toString()));
 
-// 哈希不可逆：无法从哈希值还原原文
-console.log("  不可逆: 无法从哈希值还原 '" + data + "'");
+// 从字符串构造
+var search2 = new URLSearchParams("foo=bar&baz=qux");
+console.log("从字符串:", search2.toString());
 
-// update 可以分多次调用（流式处理）
-var hashStream = crypto.createHash("sha256");
-hashStream.update("Hello, ");
-hashStream.update("Node");
-hashStream.update(".js!");
-console.log("  分段 update 结果:", hashStream.digest("hex").slice(0, 32) + "...");
+// 从数组构造（支持同键多值）
+var search3 = new URLSearchParams([["a", "1"], ["a", "2"], ["b", "3"]]);
+console.log("从数组:", search3.toString());
+console.log("a 的所有值:", search3.getAll("a"));
 
-// 雪崩效应：微小变化导致巨大差异
-var h3 = crypto.createHash("sha256").update("Hello").digest("hex");
-var h4 = crypto.createHash("sha256").update("Hello.").digest("hex");
-console.log("  雪崩效应:");
-console.log("    'Hello'  → " + h3.slice(0, 16) + "...");
-console.log("    'Hello.' → " + h4.slice(0, 16) + "...");
+// ---- 5. Legacy API：url.parse / url.format ----
+console.log("\\n===== 5. Legacy API (url.parse / url.format) =====");
+try {
+  var parsed = url.parse("https://example.com:3000/path?q=hello&n=42#section", true);
+  console.log("url.parse 结果:");
+  console.log("  protocol:", parsed.protocol);
+  console.log("  hostname:", parsed.hostname);
+  console.log("  port:", parsed.port);
+  console.log("  pathname:", parsed.pathname);
+  console.log("  query:", JSON.stringify(parsed.query));
+  console.log("  hash:", parsed.hash);
 
-// ---- 2. HMAC（带密钥的哈希）----
-console.log("\\n===== 2. HMAC（带密钥的哈希）=====");
-var secret = "my-secret-key-123";
-var hmac = crypto.createHmac("sha256", secret).update(data).digest("hex");
-console.log("  HMAC-SHA256:", hmac.slice(0, 32) + "...");
-
-// 不同密钥产生不同结果
-var hmac2 = crypto.createHmac("sha256", "wrong-key").update(data).digest("hex");
-console.log("  正确密钥:", hmac.slice(0, 20) + "...");
-console.log("  错误密钥:", hmac2.slice(0, 20) + "...");
-console.log("  密钥不同结果不同:", hmac !== hmac2);
-
-// API 签名验证示例
-function createSignature(params, key) {
-  // 按 key 排序后拼接，确保客户端和服务端一致
-  var sortedParams = Object.keys(params).sort().map(function (k) {
-    return k + "=" + params[k];
-  }).join("&");
-  return crypto.createHmac("sha256", key).update(sortedParams).digest("hex");
+  // url.format：将对象转回 URL 字符串
+  var formatted = url.format({
+    protocol: "https",
+    hostname: "example.com",
+    port: 8080,
+    pathname: "/api/data",
+    query: { id: 1, type: "json" },
+  });
+  console.log("url.format:", formatted);
+} catch (e) {
+  console.log("Legacy API 提示:", e.message);
 }
 
-var params = { timestamp: "1700000000", nonce: "abc123", user: "admin" };
-var signature = createSignature(params, secret);
-console.log("  API 签名:", signature.slice(0, 32) + "...");
+// ---- 6. 相对路径解析 ----
+console.log("\\n===== 6. 相对路径解析 =====");
+// new URL(relative, base) 解析相对路径
+var base = new URL("https://example.com/docs/intro/");
+console.log("base:", base.href);
 
-// 服务端验证签名
-var serverSig = createSignature(params, secret);
-console.log("  签名验证:", signature === serverSig ? "通过" : "失败");
+var img = new URL("./images/logo.png", base);
+console.log("./images/logo.png →", img.href);
 
-// ---- 3. AES 对称加密 ----
-console.log("\\n===== 3. AES-256-CBC 对称加密 =====");
-var algorithm = "aes-256-cbc";
-// AES-256 需要 32 字节（256 位）密钥
-var aesKey = crypto.randomBytes(32);
-// CBC 模式需要 16 字节（128 位）IV（初始向量）
-var aesIv = crypto.randomBytes(16);
+var style = new URL("../style.css", base);
+console.log("../style.css →", style.href);
 
-function encrypt(text) {
-  var cipher = crypto.createCipheriv(algorithm, aesKey, aesIv);
-  var encrypted = cipher.update(text, "utf8", "hex");
-  encrypted += cipher.final("hex");
-  return encrypted;
-}
+var root = new URL("/root.js", base);
+console.log("/root.js →", root.href);
 
-function decrypt(encryptedText) {
-  var decipher = crypto.createDecipheriv(algorithm, aesKey, aesIv);
-  var decrypted = decipher.update(encryptedText, "hex", "utf8");
-  decrypted += decipher.final("utf8");
-  return decrypted;
-}
+var abs = new URL("https://cdn.example.com/lib.js", base);
+console.log("绝对 URL →", abs.href);
 
-var plaintext = "这是一段需要加密的秘密信息";
-var encrypted = encrypt(plaintext);
-var decrypted = decrypt(encrypted);
-console.log("  原文:", plaintext);
-console.log("  密文(hex):", encrypted.slice(0, 32) + "...");
-console.log("  解密:", decrypted);
-console.log("  加解密成功:", plaintext === decrypted);
+// url.resolve（Legacy 方式）
+console.log("\\nurl.resolve (Legacy):");
+console.log("  '/a/b/c' + './d':", url.resolve("/a/b/c", "./d"));
+console.log("  '/a/b/c' + '../d':", url.resolve("/a/b/c", "../d"));
 
-// IV 的作用：相同明文用不同 IV 得到不同密文
-var iv2 = crypto.randomBytes(16);
-var cipher2 = crypto.createCipheriv(algorithm, aesKey, iv2);
-var encrypted2 = cipher2.update(plaintext, "utf8", "hex") + cipher2.final("hex");
-console.log("  相同明文不同 IV:");
-console.log("    密文1:", encrypted.slice(0, 20) + "...");
-console.log("    密文2:", encrypted2.slice(0, 20) + "...");
-console.log("    密文不同:", encrypted !== encrypted2);
+// ---- 7. file URL 与路径转换 ----
+console.log("\\n===== 7. file URL 转换 =====");
+// pathToFileURL：本地路径 → file:// URL
+var fileUrl = url.pathToFileURL(__filename);
+console.log("pathToFileURL:", fileUrl.href);
 
-// ---- 4. 随机数生成 ----
-console.log("\\n===== 4. 随机数生成 =====");
-// randomBytes：加密安全的随机字节
-var randomBytes16 = crypto.randomBytes(16);
-console.log("  16字节随机数(hex):", randomBytes16.toString("hex"));
-console.log("  16字节随机数(base64):", randomBytes16.toString("base64"));
+// fileURLToPath：file:// URL → 本地路径
+var backToPath = url.fileURLToPath(fileUrl);
+console.log("fileURLToPath:", backToPath);
+console.log("转换一致:", backToPath === __filename);
 
-// 生成 token（常用场景）
-var apiToken = crypto.randomBytes(32).toString("hex");
-console.log("  API Token (64字符):", apiToken.slice(0, 20) + "...");
+// ---- 8. 国际化域名 ----
+console.log("\\n===== 8. 国际化域名 =====");
+console.log("domainToASCII('你好.com'):", url.domainToASCII("你好.com"));
+console.log("domainToUnicode('xn--nnqy534a.com'):", url.domainToUnicode("xn--nnqy534a.com"));
 
-// randomInt：随机整数（含 min，不含 max）
-var randomNums = [];
-for (var i = 0; i < 5; i++) {
-  randomNums.push(crypto.randomInt(1, 101)); // 1~100
-}
-console.log("  5个随机数(1-100):", randomNums);
-
-// randomUUID：UUID v4
-console.log("  UUID 1:", crypto.randomUUID());
-console.log("  UUID 2:", crypto.randomUUID());
-console.log("  UUID 3:", crypto.randomUUID());
-console.log("  UUID 格式: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx");
-
-// ---- 5. PBKDF2 密码派生 ----
-console.log("\\n===== 5. PBKDF2 密码派生 =====");
-var password = "mypassword123";
-var salt = crypto.randomBytes(16);
-
-// pbkdf2Sync：同步版本
-// 参数：密码, 盐, 迭代次数, 密钥长度, 哈希算法
-var iterations = 10000;
-var derivedKey = crypto.pbkdf2Sync(password, salt, iterations, 64, "sha512");
-console.log("  密码:", password);
-console.log("  盐(hex):", salt.toString("hex"));
-console.log("  迭代次数:", iterations);
-console.log("  派生密钥(hex):", derivedKey.toString("hex").slice(0, 32) + "...");
-
-// 相同密码+盐+参数 → 相同派生密钥
-var derived2 = crypto.pbkdf2Sync(password, salt, iterations, 64, "sha512");
-console.log("  一致性验证:", derivedKey.equals(derived2));
-
-// 不同盐 → 不同派生密钥
-var salt2 = crypto.randomBytes(16);
-var derived3 = crypto.pbkdf2Sync(password, salt2, iterations, 64, "sha512");
-console.log("  不同盐不同结果:", !derivedKey.equals(derived3));
-
-// ---- 6. 密码存储最佳实践（加盐慢哈希）----
-console.log("\\n===== 6. 密码存储（PBKDF2 加盐慢哈希）=====");
-
-function hashPassword(pw) {
-  // 1. 生成随机盐（每个密码不同的盐）
-  var pwSalt = crypto.randomBytes(16).toString("hex");
-  // 2. 用 pbkdf2 派生哈希（高迭代次数防止暴力破解）
-  var pwHash = crypto.pbkdf2Sync(pw, pwSalt, 100000, 64, "sha512").toString("hex");
-  // 3. 存储 salt:hash（盐不需要保密）
-  return pwSalt + ":" + pwHash;
-}
-
-function verifyPassword(pw, stored) {
-  var parts = stored.split(":");
-  var pwSalt = parts[0];
-  var pwHash = parts[1];
-  var newHash = crypto.pbkdf2Sync(pw, pwSalt, 100000, 64, "sha512").toString("hex");
-  // 用 timingSafeEqual 防止时序攻击
-  var hashBuf = Buffer.from(pwHash, "hex");
-  var newHashBuf = Buffer.from(newHash, "hex");
-  if (hashBuf.length !== newHashBuf.length) return false;
-  return crypto.timingSafeEqual(hashBuf, newHashBuf);
-}
-
-var storedHash = hashPassword("mypassword123");
-console.log("  存储的密码哈希:", storedHash.slice(0, 40) + "...");
-console.log("  验证正确密码:", verifyPassword("mypassword123", storedHash));
-console.log("  验证错误密码:", verifyPassword("wrongpassword", storedHash));
-console.log("  验证另一错误密码:", verifyPassword("admin123", storedHash));
-
-// 相同密码两次哈希结果不同（因为盐不同）
-var storedHash2 = hashPassword("mypassword123");
-console.log("  相同密码两次哈希不同:", storedHash !== storedHash2);
-console.log("  但都能验证通过:", verifyPassword("mypassword123", storedHash) && verifyPassword("mypassword123", storedHash2));
-
-// ---- 7. scrypt 密码哈希 ----
-console.log("\\n===== 7. scrypt 密码哈希 =====");
-function hashWithScrypt(pw) {
-  var scryptSalt = crypto.randomBytes(16).toString("hex");
-  var scryptHash = crypto.scryptSync(pw, scryptSalt, 64).toString("hex");
-  return scryptSalt + ":" + scryptHash;
-}
-function verifyWithScrypt(pw, stored) {
-  var parts = stored.split(":");
-  var scryptSalt = parts[0];
-  var scryptHash = parts[1];
-  var newHash = crypto.scryptSync(pw, scryptSalt, 64).toString("hex");
-  // 使用 timingSafeEqual 防止时序攻击
-  return crypto.timingSafeEqual(Buffer.from(scryptHash), Buffer.from(newHash));
-}
-
-var scryptHash = hashWithScrypt("mypassword123");
-console.log("  scrypt 哈希:", scryptHash.slice(0, 40) + "...");
-console.log("  验证正确密码:", verifyWithScrypt("mypassword123", scryptHash));
-console.log("  验证错误密码:", verifyWithScrypt("wrong", scryptHash));
-
-// ---- 8. 文件完整性校验 ----
-console.log("\\n===== 8. 文件完整性校验 =====");
-var fileContent = "这是文件的内容，用于校验完整性\\n第二行内容\\n";
-var fileHash = crypto.createHash("sha256").update(fileContent).digest("hex");
-console.log("  文件内容:", fileContent.split("\\n")[0].trim() + "...");
-console.log("  SHA-256:", fileHash.slice(0, 32) + "...");
-
-// 模拟传输后校验（内容一致）
-var receivedContent = "这是文件的内容，用于校验完整性\\n第二行内容\\n";
-var receivedHash = crypto.createHash("sha256").update(receivedContent).digest("hex");
-console.log("  接收内容哈希:", receivedHash.slice(0, 32) + "...");
-console.log("  完整性校验:", fileHash === receivedHash ? "通过（内容一致）" : "失败");
-
-// 模拟篡改后校验
-var tamperedContent = fileContent + "被篡改的内容";
-var tamperedHash = crypto.createHash("sha256").update(tamperedContent).digest("hex");
-console.log("  篡改内容哈希:", tamperedHash.slice(0, 32) + "...");
-console.log("  完整性校验:", fileHash === tamperedHash ? "通过" : "失败（检测到篡改）");
-
-// ---- 9. 实战：安全的用户认证系统 ----
-console.log("\\n===== 9. 实战：用户认证系统 =====");
-// 模拟用户数据库
-var userDB = {};
-
-// 注册：存储密码哈希
-function register(username, password) {
-  if (userDB[username]) {
-    return { success: false, message: "用户已存在" };
+// ---- 9. 实战：构建 API 请求 URL ----
+console.log("\\n===== 9. 实战：构建 API URL =====");
+function buildApiUrl(base, path, queryParams) {
+  var apiUrl = new URL(path, base);
+  if (queryParams) {
+    Object.entries(queryParams).forEach(function (entry) {
+      var key = entry[0], value = entry[1];
+      if (Array.isArray(value)) {
+        value.forEach(function (v) {
+          apiUrl.searchParams.append(key, String(v));
+        });
+      } else {
+        apiUrl.searchParams.set(key, String(value));
+      }
+    });
   }
-  userDB[username] = {
-    username: username,
-    passwordHash: hashPassword(password),
-    createdAt: new Date().toISOString(),
-  };
-  return { success: true, message: "注册成功" };
+  return apiUrl;
 }
 
-// 登录：验证密码
-function login(username, password) {
-  var user = userDB[username];
-  if (!user) {
-    return { success: false, message: "用户不存在" };
-  }
-  if (verifyPassword(password, user.passwordHash)) {
-    // 生成会话 token
-    var token = crypto.randomBytes(32).toString("hex");
-    return { success: true, token: token, message: "登录成功" };
-  }
-  return { success: false, message: "密码错误" };
-}
-
-// 测试注册和登录
-console.log("  注册用户 'alice':", register("alice", "password123").message);
-console.log("  注册用户 'alice'（重复）:", register("alice", "password123").message);
-console.log("  登录（正确密码）:", login("alice", "password123").message);
-console.log("  登录（错误密码）:", login("alice", "wrongpassword").message);
-console.log("  登录（不存在用户）:", login("bob", "password123").message);
-
-// ---- 10. 加密算法对比 ----
-console.log("\\n===== 10. 加密算法对比 =====");
-// 各种加密算法的特性对比表
-var comparisons = [
-  ["MD5", "哈希", "128 位", "❌ 不安全", "文件校验（非安全）"],
-  ["SHA-1", "哈希", "160 位", "❌ 不安全", "Git（已不推荐）"],
-  ["SHA-256", "哈希", "256 位", "✅ 安全", "通用推荐"],
-  ["SHA-512", "哈希", "512 位", "✅ 安全", "高安全需求"],
-  ["HMAC-SHA256", "带密钥哈希", "256 位", "✅ 安全", "API 签名 / JWT"],
-  ["AES-256-CBC", "对称加密", "可变", "✅ 安全", "数据加密（需额外认证）"],
-  ["AES-256-GCM", "对称加密+认证", "可变", "✅ 推荐", "数据加密（防篡改）"],
-  ["PBKDF2", "密码派生（慢哈希）", "可变", "✅ 安全", "密码存储"],
-  ["scrypt", "密码派生（内存硬）", "可变", "✅ 推荐", "密码存储（抗 ASIC）"],
-  ["RSA", "非对称加密", "2048+ 位", "✅ 安全", "签名 / 密钥交换"],
-];
-
-// 打印表头
-console.log("  " + "算法".padEnd(16) + "类型".padEnd(16) + "输出".padEnd(12) + "安全性".padEnd(14) + "用途");
-console.log("  " + "-".repeat(70));
-// 打印每一行
-comparisons.forEach(function (row) {
-  console.log("  " + row[0].padEnd(16) + row[1].padEnd(16) + row[2].padEnd(12) + row[3].padEnd(14) + row[4]);
+var apiUrl = buildApiUrl("https://api.example.com/v1/", "users/search", {
+  q: "node.js",
+  page: 1,
+  limit: 20,
+  tags: ["backend", "server"],
+  sort: "desc",
+});
+console.log("构建的 API URL:", apiUrl.href);
+console.log("pathname:", apiUrl.pathname);
+console.log("查询参数:");
+apiUrl.searchParams.forEach(function (v, k) {
+  console.log("  " + k + " = " + v);
 });
 
-// ---- 11. 加密方案选择指南 ----
-console.log("\\n===== 11. 加密方案选择指南 =====");
-var guide = [
-  ["存储用户密码", "PBKDF2 / scrypt + 随机盐", "慢哈希防暴力破解，盐防彩虹表"],
-  ["校验文件完整性", "SHA-256", "单向哈希，确定性强"],
-  ["API 请求签名", "HMAC-SHA256", "带密钥，可验证来源"],
-  ["加密敏感数据", "AES-256-GCM", "认证加密，防篡改"],
-  ["生成会话 token", "crypto.randomBytes(32)", "加密安全随机数"],
-  ["生成唯一 ID", "crypto.randomUUID()", "UUID v4，无碰撞"],
-  ["数字签名", "RSA / Ed25519", "不可否认性"],
-  ["HTTPS 通信", "TLS + RSA/ECDHE", "传输层加密"],
-];
-guide.forEach(function (item, i) {
-  console.log("  " + (i + 1) + ". " + item[0]);
-  console.log("     推荐: " + item[1]);
-  console.log("     原因: " + item[2]);
+// ---- 10. 实战：URL 编码对比 ----
+console.log("\\n===== 10. URL 编码对比 =====");
+// URLSearchParams 自动编码特殊字符
+var encoded = new URLSearchParams({
+  msg: "Hello World & <script>",
+  path: "/a/b/c",
+  eq: "a=b=c",
 });
+console.log("自动编码:", encoded.toString());
+console.log("解码:", decodeURIComponent(encoded.toString()));
 
-console.log("\\n===== 加密模块演示结束 =====");
-console.log("提示：永远不要用 Math.random() 生成安全令牌！");
-console.log("提示：密码存储不要用纯哈希，要用 PBKDF2/scrypt/bcrypt + 盐！");
-console.log("提示：AES 推荐用 GCM 模式（带认证），而非 CBC 模式！");`,
+// 特殊字符编码
+var specialChars = new URLSearchParams({ path: "/a/b/c", eq: "a=b=c" });
+console.log("特殊字符:", specialChars.toString());
+
+// ---- 11. 常见陷阱提醒 ----
+console.log("\\n===== 11. 常见陷阱 =====");
+console.log("  1. protocol 含冒号: 'https:' 不是 'https'");
+console.log("  2. get() 只返回第一个值，多值用 getAll()");
+console.log("  3. new URL() 需要完整 URL，相对路径需要 base");
+console.log("  4. URLSearchParams 自动编码中文等特殊字符");
+console.log("  5. host 含端口，hostname 不含端口");
+console.log("  6. url.parse() 已废弃，推荐 new URL()");
+
+console.log("\\n===== URL 解析与构造演示结束 =====");`,
   },
 ];

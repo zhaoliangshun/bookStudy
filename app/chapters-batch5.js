@@ -1,3371 +1,4135 @@
 // =============================================================
-// Node.js 交互式教程 —— 第五批章节（共 6 章）
-// -------------------------------------------------------------
-// 本文件包含以下章节：
-//   1. node-memory    — 内存管理与垃圾回收
-//   2. node-v8-engine — V8 引擎深入
-//   3. node-repl      — REPL 与交互式开发
-//   4. node-cli       — 命令行参数与环境变量
-//   5. node-logging   — 日志与调试基础
-//   6. node-error-adv — 错误处理深入
-//
-// 每个章节包含：
-//   id      : 唯一标识
-//   title   : 章节标题
-//   icon    : 展示用 emoji
-//   group   : 分组名
-//   content : Markdown 格式的详细讲解
-//   code    : 可运行、带详细中文注释的示例代码
-//
-// 代码运行环境约束：
-//   - Node.js vm 沙箱，5 秒超时
-//   - 仅可 require: fs, path, os, url, crypto, util, events, stream,
-//     buffer, querystring, string_decoder, zlib, assert, timers
-//   - 全局可用: console, process, Buffer, setTimeout, setInterval,
-//     setImmediate, clearTimeout, clearInterval, clearImmediate,
-//     URL, URLSearchParams, TextEncoder, TextDecoder, Promise,
-//     __dirname, __filename, require, module, exports
+// Node.js 交互式教程 —— 第五批章节（构建 API 组，共 8 章）
 // =============================================================
 
 export const chapters = [
   // =========================================================
-  // 第一章：内存管理与垃圾回收
+  // 第一章：路由设计
   // =========================================================
   {
-    id: "node-memory",
-    title: "内存管理与垃圾回收",
-    icon: "🧠",
-    group: "基础补充",
-    content: `## V8 内存结构全景
+    id: "node-router",
+    group: "构建 API",
+    icon: "🧭",
+    title: "路由设计",
+    content: `## 路由设计
 
-Node.js 基于 V8 引擎运行，V8 的内存管理机制直接影响着 Node.js 应用的性能和稳定性。理解 V8 的内存结构是写出高效、无内存泄漏的 Node.js 应用的基础。
+路由是 Web API 的核心骨架，它决定了客户端请求如何映射到具体的处理函数。一个好的路由设计不仅让 API 结构清晰，还直接影响代码的可维护性和扩展性。
 
-### 内存分区概览
+### 路由匹配原理
 
-V8 将内存分为几个关键区域：
+路由的本质是**路径 + HTTP 方法**的组合匹配。当一个请求到达时，路由系统需要回答两个问题：
 
-| 区域 | 说明 | 特点 |
+1. 这个请求的 URL 路径匹配哪个路由规则？
+2. 这个请求的 HTTP 方法（GET/POST/PUT/DELETE）匹配哪个处理函数？
+
+**基本匹配流程**：
+
+\`\`\`
+请求: GET /api/users/123
+  │
+  ├─ 1. 提取路径: /api/users/123
+  ├─ 2. 提取方法: GET
+  ├─ 3. 遍历路由表，匹配路径模式
+  ├─ 4. 提取路径参数: { id: "123" }
+  ├─ 5. 解析查询参数: ?page=1&limit=10
+  └─ 6. 调用对应的处理函数
+\`\`\`
+
+### 路径参数提取
+
+路径参数是 URL 路径中的动态部分，通常用 \`:paramName\` 或 \`{paramName}\` 表示。例如：
+
+| 路由模式 | 匹配 URL | 提取的参数 |
 | --- | --- | --- |
-| **栈（Stack）** | 存储原始值和对象引用 | 自动分配释放，速度快，空间小（通常 1-8MB） |
-| **堆（Heap）** | 存储对象、闭包、函数等 | 由 GC 管理，空间大，分配成本较高 |
-| **新生代（New Space）** | 堆的一部分，存放新创建的对象 | 空间小（通常 1-8MB），GC 频繁但快速 |
-| **老生代（Old Space）** | 堆的一部分，存放长期存活的对象 | 空间大（可达 1.4GB），GC 较少但耗时长 |
-| **大对象空间（Large Object Space）** | 存放超过一定大小的对象 | 独立管理，避免在新生代中频繁复制 |
-| **代码空间（Code Space）** | 存放 JIT 编译后的机器码 | 由 V8 内部管理 |
-| **Cell Space / Property Cell Space** | 存放全局变量、常量等 | 内部使用 |
+| \`/users/:id\` | \`/users/42\` | \`{ id: "42" }\` |
+| \`/users/:userId/posts/:postId\` | \`/users/42/posts/8\` | \`{ userId: "42", postId: "8" }\` |
+| \`/files/:category/*\` | \`/files/image/2024/photo.jpg\` | \`{ category: "image", "*": "2024/photo.jpg" }\` |
 
-**栈 vs 堆的关键区别**：
+**路径参数 vs 查询参数**：
 
-\`\`\`javascript
-// 栈上存储（原始值直接存在栈上）
-let age = 25;          // number 直接压在栈上
-let name = "hello";    // 短字符串也可能在栈上
-
-// 堆上存储（对象在堆上，栈上只存引用）
-let obj = { a: 1 };   // { a: 1 } 在堆上，obj 在栈上存放指向堆的指针
-let arr = [1, 2, 3];  // 数组在堆上
-\`\`\`
-
-### 新生代（New Space / Young Generation）
-
-新生代是大多数对象"出生"的地方。当你创建一个新对象时，V8 首先把它分配在新生代。
-
-**新生代的结构**：新生代使用 **半空间（Semi-space）** 设计，分为两个大小相等的半空间：
-
-| 半空间 | 作用 |
-| --- | --- |
-| **From 空间** | 当前活跃对象所在的空间 |
-| **To 空间** | 空闲空间，GC 时作为目标 |
-
-任何时候只有一个半空间在使用，另一个保持空闲。
-
-**Scavenge 算法（Cheney 算法）详解**：
-
-Scavenge 是新生代的 GC 算法，采用**复制**策略。它的工作流程如下：
-
-1. **标记阶段**：从根对象（Root Set，包括全局对象、栈上的局部变量等）出发，标记所有可达的对象。
-2. **复制阶段**：把 From 空间中所有存活的对象复制到 To 空间，并更新引用指针。
-3. **翻转阶段**：交换 From 和 To 空间的角色。原来的 To 空间变成新的 From 空间，原来的 From 空间被整体清空（一次性释放）。
-
-\`\`\`javascript
-// 模拟 Scavenge 的过程
-// 假设 From 空间中有 3 个对象，其中 2 个存活
-// From: [objA(存活), 碎片, objB(存活), 碎片, objC(已死)]
-// 复制后：
-// To:   [objA, objB, 空闲, 空闲, 空闲]
-// 然后翻转：From ↔ To
-\`\`\`
-
-**Scavenge 的优缺点**：
-
-| 优点 | 缺点 |
-| --- | --- |
-| 速度极快（只处理存活对象） | 空间利用率只有 50%（一半空间始终空闲） |
-| 无内存碎片（复制时会整理） | 不适合大对象（复制成本高） |
-| 新生代对象大多"朝生夕死"，存活率低，所以复制成本低 | 需要额外的内存空间 |
-
-**对象晋升（Promotion）**：一个对象在新生代中存活足够久后，会被"晋升"到老生代。晋升条件有两个：
-
-1. **经历过一次 Scavenge 后仍然存活**：对象从 From 复制到 To 时，如果它已经经历过一次 Scavenge（即不是第一次被复制），则直接晋升到老生代。
-2. **To 空间使用率超过 25%**：当一个对象被复制到 To 空间时，如果 To 空间的使用率已经超过 25%，这个对象会直接晋升到老生代。这个阈值是为了确保下次 Scavenge 时 To 空间有足够的空闲空间。
-
-### 老生代（Old Space / Old Generation）
-
-老生代存放经历过多次 GC 仍然存活的对象，以及大对象。老生代的 GC 使用两种算法配合：
-
-**Mark-Sweep（标记-清除）算法**：
-
-这是老生代的主要 GC 算法，分为两个阶段：
-
-1. **标记阶段（Mark）**：从根对象出发，递归遍历所有可达对象，将它们标记为"存活"。
-2. **清除阶段（Sweep）**：遍历整个老生代堆，回收所有未被标记的对象的内存空间。
-
-\`\`\`javascript
-// Mark-Sweep 示意
-// 标记后： [objA✓, 碎片, objB✓, 碎片, objC(未标记), 碎片]
-// 清除后： [objA, 空闲, objB, 空闲, 空闲, 空闲]
-// 注意：产生了内存碎片！
-\`\`\`
-
-**Mark-Compact（标记-整理）算法**：
-
-当老生代碎片化严重时，V8 会使用 Mark-Compact 来整理内存。它在 Mark-Sweep 的基础上增加了第三步：
-
-1. **标记阶段**：同 Mark-Sweep。
-2. **整理阶段（Compact）**：把所有存活对象向一端移动，消除碎片。
-3. **更新引用**：更新所有指向被移动对象的指针。
-
-\`\`\`javascript
-// Mark-Compact 示意
-// 整理前：[objA, 空闲, objB, 空闲, 空闲, objC, 空闲]
-// 整理后：[objA, objB, objC, 空闲, 空闲, 空闲, 空闲]
-// 所有对象紧密排列，无碎片
-\`\`\`
-
-**三色标记法（Tri-color Marking）**：
-
-V8 使用**增量标记（Incremental Marking）**来减少 GC 暂停时间，其核心是**三色标记法**：
-
-| 颜色 | 含义 | 状态 |
+| 特性 | 路径参数 | 查询参数 |
 | --- | --- | --- |
-| **白色** | 尚未被标记的对象 | 初始状态，GC 结束时白色对象会被回收 |
-| **灰色** | 自身已被标记，但子对象尚未扫描 | 中间状态，表示"待处理" |
-| **黑色** | 自身和所有子对象都已被标记 | 最终状态，确定存活 |
+| 位置 | URL 路径中 | \`?\` 之后 |
+| 用途 | 标识资源 | 过滤、排序、分页 |
+| 是否必填 | 通常必填 | 通常可选 |
+| 示例 | \`/users/123\` | \`/users?page=1&limit=10\` |
 
-增量标记的工作方式：GC 不一次性完成所有标记工作，而是和 JavaScript 执行交替进行。每次执行一小段标记后，把控制权交还给 JavaScript 执行，然后再继续标记。这样虽然总的 GC 时间变长了，但每次暂停时间很短，用户几乎感觉不到。
+### RESTful 路由设计
 
-**写屏障（Write Barrier）**：在增量标记期间，JavaScript 代码可能修改对象引用关系。写屏障的作用是：当黑色对象被添加了一个指向白色对象的新引用时，把黑色对象重新标记为灰色，确保不会漏标。
+RESTful API 遵循资源导向的设计原则，使用标准的 HTTP 方法来操作资源：
 
-### GC 触发条件
+| HTTP 方法 | 路径 | 操作 | 说明 |
+| --- | --- | --- | --- |
+| \`GET\` | \`/users\` | 列表 | 获取用户列表 |
+| \`GET\` | \`/users/:id\` | 详情 | 获取单个用户 |
+| \`POST\` | \`/users\` | 创建 | 创建新用户 |
+| \`PUT\` | \`/users/:id\` | 完整更新 | 替换整个用户资源 |
+| \`PATCH\` | \`/users/:id\` | 部分更新 | 更新用户的部分字段 |
+| \`DELETE\` | \`/users/:id\` | 删除 | 删除用户 |
 
-V8 的 GC 不是随机触发的，而是基于以下条件：
+**RESTful 设计原则**：
 
-| 触发条件 | 说明 |
-| --- | --- |
-| **新生代空间不足** | 当新生代分配新对象时发现空间不够，触发 Scavenge |
-| **老生代空间不足** | 当老生代分配新对象时空间不够，触发 Mark-Sweep |
-| **增量标记完成** | 增量标记的最终阶段触发完整 GC |
-| **空闲时间 GC（Idle GC）** | 当事件循环空闲时，V8 主动执行 GC |
-| **手动触发** | 可通过 \`--expose-gc\` 和 \`global.gc()\` 手动触发（仅开发调试用） |
+1. **资源用名词复数**：\`/users\` 而非 \`/getUsers\` 或 \`/user\`
+2. **层级关系用路径表示**：\`/users/:id/posts\` 表示用户的帖子
+3. **动作用 HTTP 方法表示**：不要用 \`/users/create\`，用 \`POST /users\`
+4. **过滤、排序、分页用查询参数**：\`/users?page=1&limit=10&sort=name\`
 
-**关键内存限制**：
+### 路由分组
 
-V8 对堆大小有硬性限制：
-- **64 位系统**：老生代默认约 1.4GB（新生代约 32MB）
-- **32 位系统**：老生代默认约 0.7GB（新生代约 16MB）
+当 API 规模变大时，按功能模块对路由进行分组是非常必要的。常见的分组方式：
 
-可以通过 Node.js 启动参数调整：
-
-\`\`\`bash
-# 调整老生代最大内存（单位 MB）
-node --max-old-space-size=4096 app.js   # 4GB
-
-# 调整新生代最大内存（单位 MB）
-node --max-semi-space-size=64 app.js
-
-# 查看当前的 GC 相关参数
-node --v8-options | grep gc
-\`\`\`
-
-### process.memoryUsage() 详解
-
-\`process.memoryUsage()\` 返回一个对象，描述当前进程的内存使用情况：
-
-| 字段 | 含义 | 说明 |
-| --- | --- | --- |
-| \`rss\` | Resident Set Size | 进程实际占用的物理内存（包括代码段、堆、栈、共享库等所有部分） |
-| \`heapTotal\` | V8 堆总申请量 | V8 已向操作系统申请的内存总量 |
-| \`heapUsed\` | V8 堆实际使用量 | V8 堆中实际被对象占用的内存 |
-| \`external\` | 外部内存 | V8 管理的 C++ 对象占用的内存（如 Buffer 的底层内存） |
-| \`arrayBuffers\` | ArrayBuffer 内存 | ArrayBuffer 和 SharedArrayBuffer 占用的内存（Node 12+） |
+- **按资源分组**：用户模块、订单模块、商品模块
+- **按版本分组**：v1、v2
+- **按功能分组**：公开 API、管理后台 API
 
 \`\`\`javascript
-const mem = process.memoryUsage();
-// rss 通常 > heapTotal，因为 rss 包含了堆之外的内存
-// heapUsed 通常 < heapTotal，因为堆中有一部分空闲空间
-// external 主要来自 Buffer 分配
+// 路由分组示例
+const router = new Router();
+
+// 用户模块路由组
+router.group('/users', (userRouter) => {
+  userRouter.get('/', listUsers);
+  userRouter.get('/:id', getUser);
+  userRouter.post('/', createUser);
+});
+
+// 订单模块路由组
+router.group('/orders', (orderRouter) => {
+  orderRouter.get('/', listOrders);
+  orderRouter.post('/', createOrder);
+});
 \`\`\`
 
-### Buffer 内存分配的特殊性
+### 404 处理
 
-Buffer 的内存分配不经过 V8 堆，而是直接在堆外分配（通过 C++ 的 \`malloc\`）。这意味着：
-
-1. **不参与 V8 GC**：Buffer 的内存不受 V8 GC 管理，不会触发 GC 暂停。
-2. **计入 external**：在 \`process.memoryUsage()\` 中显示为 \`external\` 字段。
-3. **独立释放**：当 Buffer 对象被 GC 回收时，其底层内存通过 C++ 析构函数释放。
-4. **大 Buffer 使用慢速分配**：小于 4KB 的 Buffer 从预分配的内存池中分配（快速），大于 4KB 的直接调用 \`malloc\`（稍慢）。
+当请求的 URL 无法匹配任何路由规则时，应该返回 404 响应。404 处理应该作为路由表的"兜底"规则，放在所有路由定义之后：
 
 \`\`\`javascript
-// 观察 Buffer 分配对 external 内存的影响
-const mem1 = process.memoryUsage();
-console.log('分配前 external:', mem1.external);
-
-const buf = Buffer.alloc(10 * 1024 * 1024); // 10MB
-const mem2 = process.memoryUsage();
-console.log('分配后 external:', mem2.external);
-// external 会增加约 10MB
+// 所有路由定义之后
+router.use((req, res) => {
+  res.statusCode = 404;
+  res.end(JSON.stringify({
+    error: 'Not Found',
+    path: req.path,
+    method: req.method,
+  }));
+});
 \`\`\`
 
-### 内存泄漏常见原因
+### 路由优先级
 
-在 Node.js 中，内存泄漏通常由以下原因引起：
+路由匹配通常按照**定义顺序**进行，先定义先匹配。因此需要注意：
 
-| 原因 | 说明 | 示例 |
-| --- | --- | --- |
-| **全局变量** | 全局变量永远不会被 GC 回收 | \`global.cache = {}\` 不断累积数据 |
-| **闭包引用** | 闭包无意中持有大对象的引用 | 回调函数持有外部大对象的引用 |
-| **事件监听器未移除** | EventEmitter 的监听器累积 | 每次请求添加监听器但不移除 |
-| **定时器未清除** | setInterval 持续运行 | 忘记 clearInterval 的定时器 |
-| **流未关闭** | 文件流、网络流未正确关闭 | 忘记 close 的 readStream |
-| **缓存无限增长** | 缓存没有淘汰策略 | 把所有请求结果都缓存在内存中 |
-| **Promise 未处理的拒绝** | 未处理的 Promise 拒绝会持有引用 | 忘记 catch 的 Promise |
-| **模块级缓存** | require.cache 持有模块引用 | 模块中缓存大量数据 |
+1. **静态路由优先于动态路由**：\`/users/me\` 应该在 \`/users/:id\` 之前定义
+2. **具体路由优先于通配路由**：\`/api/users\` 应该在 \`/api/*\` 之前定义
+3. **404 路由放在最后**：确保所有路由都尝试匹配后再返回 404
 
-**检测内存泄漏的方法**：
-
-\`\`\`javascript
-// 方法 1：监控 process.memoryUsage()
-// 如果 heapUsed 持续增长而不回落，可能存在内存泄漏
-
-// 方法 2：使用 Node.js 内置的 --inspect 和 Chrome DevTools
-// node --inspect app.js
-// 在 Chrome 中打开 chrome://inspect，使用 Memory 面板
-
-// 方法 3：使用 process.memoryUsage() 配合定时器监控
-setInterval(() => {
-  const mem = process.memoryUsage();
-  console.log(\`heapUsed: \${(mem.heapUsed / 1024 / 1024).toFixed(2)} MB\`);
-}, 5000);
-\`\`\`
-
-### 垃圾回收的最佳实践
-
-1. **避免在热路径中创建大量临时对象**：每次 GC 都要扫描这些对象，频繁创建会触发频繁 GC。
-2. **使用对象池复用大对象**：对于频繁创建销毁的大对象，考虑使用对象池。
-3. **及时释放引用**：不再使用的对象设置为 \`null\`，帮助 GC 识别。
-4. **合理使用 Buffer**：处理大文件时使用流（Stream），而不是一次性读入内存。
-5. **监控内存**：在生产环境中监控 \`process.memoryUsage()\`，设置告警阈值。
-
-下面这段代码演示了内存使用监控、内存泄漏模拟、Buffer 内存分配等内容。`,
+下面这段代码实现了一个完整的路由匹配器，支持路径参数、不同 HTTP 方法、路由分组和 404 处理。`,
     code: `// ============================================================
-// 第一章代码演示：内存管理与垃圾回收实战
+// 第一章代码演示：路由匹配器实现
 // ============================================================
-const os = require("os");
+const url = require("url");
 
-// ---- 1. 基础内存使用情况 ----
-console.log("===== 1. 基础内存使用情况 =====");
-function printMemory(label) {
-  const mem = process.memoryUsage();
-  console.log("\\n[" + label + "]");
-  console.log("  rss          : " + (mem.rss / 1024 / 1024).toFixed(2) + " MB  (常驻物理内存)");
-  console.log("  heapTotal    : " + (mem.heapTotal / 1024 / 1024).toFixed(2) + " MB  (V8堆申请总量)");
-  console.log("  heapUsed     : " + (mem.heapUsed / 1024 / 1024).toFixed(2) + " MB  (V8堆实际使用)");
-  console.log("  external     : " + (mem.external / 1024 / 1024).toFixed(2) + " MB  (外部内存)");
-  if (mem.arrayBuffers !== undefined) {
-    console.log("  arrayBuffers : " + (mem.arrayBuffers / 1024 / 1024).toFixed(2) + " MB  (ArrayBuffer)");
+// ---- 模拟请求对象 ----
+function createRequest(method, path, body) {
+  return {
+    method: method.toUpperCase(),
+    path: path,
+    body: body || null,
+    params: {},
+    query: {},
+    headers: { "content-type": "application/json" },
+  };
+}
+
+// ---- 模拟响应对象 ----
+function createResponse() {
+  return {
+    statusCode: 200,
+    body: null,
+    headers: {},
+    json: function (data) {
+      this.body = JSON.stringify(data);
+      this.headers["content-type"] = "application/json";
+      return this;
+    },
+    status: function (code) {
+      this.statusCode = code;
+      return this;
+    },
+    end: function (data) {
+      if (data) this.body = data;
+      return this;
+    },
+  };
+}
+
+// ---- 1. 路由匹配器实现 ----
+console.log("===== 1. 路由匹配器实现 =====");
+
+class Router {
+  constructor() {
+    // 路由表：存储所有注册的路由
+    this.routes = [];
+    // 全局中间件
+    this.middlewares = [];
+    // 路由前缀
+    this.prefix = "";
   }
-  return mem;
-}
 
-// 初始内存快照
-const snapshot1 = printMemory("初始内存快照");
+  // 注册路由（支持多种 HTTP 方法）
+  register(method, pattern, handler) {
+    // 将路径参数占位符 :param 转换为正则表达式捕获组
+    const paramNames = [];
+    const regexPattern = pattern
+      .replace(/\\/:([^/]+)/g, function (_, name) {
+        paramNames.push(name);
+        return "/([^/]+)";
+      })
+      .replace(/\\*/g, "(.*)");
 
-// ---- 2. 模拟对象分配，观察内存增长 ----
-console.log("\\n===== 2. 模拟对象分配观察内存增长 =====");
-
-// 创建一个大型数组来消耗堆内存
-const largeArray = [];
-const objectCount = 100000;
-console.log("创建 " + objectCount + " 个对象...");
-for (let i = 0; i < objectCount; i++) {
-  largeArray.push({
-    id: i,
-    name: "Item-" + i,
-    data: "x".repeat(50), // 50 字节字符串
-    timestamp: Date.now(),
-  });
-}
-// 每个对象大概 100-200 字节，10 万个大约 10-20 MB
-const snapshot2 = printMemory("分配 " + objectCount + " 个对象后");
-
-// 计算增长量
-console.log("\\n--- 内存增长对比 ---");
-console.log("heapUsed 增长: " + ((snapshot2.heapUsed - snapshot1.heapUsed) / 1024 / 1024).toFixed(2) + " MB");
-console.log("rss 增长: " + ((snapshot2.rss - snapshot1.rss) / 1024 / 1024).toFixed(2) + " MB");
-
-// ---- 3. Buffer 内存分配演示 ----
-console.log("\\n===== 3. Buffer 内存分配演示 =====");
-
-// Buffer 内存分配在 V8 堆外，会计入 external
-const externalBefore = process.memoryUsage().external;
-console.log("分配前 external: " + (externalBefore / 1024 / 1024).toFixed(2) + " MB");
-
-// 分配多个 Buffer 观察 external 增长
-const buffers = [];
-const bufSize = 1024 * 1024; // 1MB
-const bufCount = 5;
-console.log("分配 " + bufCount + " 个 " + (bufSize / 1024 / 1024) + "MB Buffer...");
-for (let i = 0; i < bufCount; i++) {
-  buffers.push(Buffer.alloc(bufSize, i));
-}
-const externalAfter = process.memoryUsage().external;
-console.log("分配后 external: " + (externalAfter / 1024 / 1024).toFixed(2) + " MB");
-console.log("external 增长: " + ((externalAfter - externalBefore) / 1024 / 1024).toFixed(2) + " MB");
-console.log("Buffer 数量: " + buffers.length);
-
-// Buffer 大小分类
-console.log("\\nBuffer 大小分类:");
-// 小于 4KB 的 Buffer 从 V8 的内存池分配
-const smallBuf = Buffer.alloc(1024);      // 1KB ← 从内存池
-const mediumBuf = Buffer.alloc(4096);    // 4KB ← 边界
-const largeBuf = Buffer.alloc(8192);     // 8KB ← 直接 malloc
-console.log("  1KB Buffer  : " + smallBuf.length + " 字节 (从内存池)");
-console.log("  4KB Buffer  : " + mediumBuf.length + " 字节 (边界)");
-console.log("  8KB Buffer  : " + largeBuf.length + " 字节 (直接 malloc)");
-
-// ---- 4. 模拟内存泄漏 ----
-console.log("\\n===== 4. 模拟内存泄漏 =====");
-
-// 场景 1：全局缓存无限增长（常见泄漏模式）
-console.log("--- 场景 1：缓存无限增长 ---");
-const leakyCache = [];
-function addToLeakyCache() {
-  for (let i = 0; i < 1000; i++) {
-    leakyCache.push({
-      id: leakyCache.length,
-      data: "leaked-data-" + "x".repeat(200),
-      time: Date.now(),
+    const regex = new RegExp("^" + regexPattern + "$");
+    this.routes.push({
+      method: method.toUpperCase(),
+      pattern: pattern,
+      regex: regex,
+      paramNames: paramNames,
+      handler: handler,
     });
-  }
-}
-
-// 初始状态
-const memBeforeLeak = process.memoryUsage();
-console.log("泄漏前 heapUsed: " + (memBeforeLeak.heapUsed / 1024 / 1024).toFixed(2) + " MB");
-
-// 模拟 3 轮泄漏
-for (let round = 1; round <= 3; round++) {
-  addToLeakyCache();
-  const mem = process.memoryUsage();
-  console.log("第 " + round + " 轮泄漏后 heapUsed: " + (mem.heapUsed / 1024 / 1024).toFixed(2) + " MB");
-  console.log("  缓存中的对象数: " + leakyCache.length);
-}
-
-// 释放引用
-console.log("\\n释放泄漏的缓存引用...");
-leakyCache.length = 0; // 清空数组，让 GC 可以回收
-
-// 场景 2：事件监听器泄漏（模拟）
-console.log("\\n--- 场景 2：事件监听器泄漏 ---");
-const events = require("events");
-const emitter = new events.EventEmitter();
-
-// 添加大量监听器（模拟每次请求添加但不移除）
-let listenerCount = 0;
-for (let i = 0; i < 20; i++) {
-  emitter.on("data", function handler() {
-    listenerCount++;
-  });
-}
-console.log("已添加监听器数量: " + emitter.listenerCount("data"));
-// 注意：默认最大监听器数量是 10，超过会打印警告
-console.log("如果超过 10 个监听器，Node.js 会发出 MaxListenersExceededWarning");
-
-// 正确做法：移除不需要的监听器
-emitter.removeAllListeners("data");
-console.log("移除后监听器数量: " + emitter.listenerCount("data"));
-
-// ---- 5. 系统内存信息 ----
-console.log("\\n===== 5. 系统内存信息 =====");
-const totalMem = os.totalmem();
-const freeMem = os.freemem();
-const usedMem = totalMem - freeMem;
-console.log("系统总内存: " + (totalMem / 1024 / 1024 / 1024).toFixed(2) + " GB");
-console.log("系统可用内存: " + (freeMem / 1024 / 1024 / 1024).toFixed(2) + " GB");
-console.log("系统已用内存: " + (usedMem / 1024 / 1024 / 1024).toFixed(2) + " GB");
-console.log("系统内存使用率: " + ((usedMem / totalMem) * 100).toFixed(1) + "%");
-
-// Node 进程占用系统内存的比例
-const processMem = process.memoryUsage();
-const processRssGB = processMem.rss / 1024 / 1024 / 1024;
-console.log("\\nNode 进程 RSS: " + processRssGB.toFixed(4) + " GB");
-console.log("Node 进程占系统内存比例: " + ((processMem.rss / totalMem) * 100).toFixed(2) + "%");
-
-// ---- 6. 内存使用总结报告 ----
-console.log("\\n===== 6. 内存使用总结报告 =====");
-const finalMem = process.memoryUsage();
-console.log("字段               | 值                    | 说明");
-console.log("-------------------|----------------------|-----------------------------");
-console.log("rss                | " + (finalMem.rss / 1024 / 1024).toFixed(2).padStart(10) + " MB      | 进程实际物理内存");
-console.log("heapTotal          | " + (finalMem.heapTotal / 1024 / 1024).toFixed(2).padStart(10) + " MB      | V8 堆申请量");
-console.log("heapUsed           | " + (finalMem.heapUsed / 1024 / 1024).toFixed(2).padStart(10) + " MB      | V8 堆实际使用");
-console.log("external           | " + (finalMem.external / 1024 / 1024).toFixed(2).padStart(10) + " MB      | 外部内存(Buffer等)");
-console.log("系统总内存         | " + (totalMem / 1024 / 1024 / 1024).toFixed(2).padStart(10) + " GB      | 操作系统可用的总内存");
-
-console.log("\\n=== 内存管理关键要点 ===");
-console.log("1. V8 堆内存分为新生代和老生代，分别用不同算法回收");
-console.log("2. Buffer 内存分配在堆外，不受 V8 GC 管理");
-console.log("3. 内存泄漏常见原因：全局缓存、事件监听器、定时器");
-console.log("4. 生产环境应监控 heapUsed 趋势，防止内存泄漏");
-console.log("5. 大文件处理使用流(Stream)，避免一次性读入内存");`,
-  },
-
-  // =========================================================
-  // 第二章：V8 引擎深入
-  // =========================================================
-  {
-    id: "node-v8-engine",
-    title: "V8 引擎深入",
-    icon: "⚡",
-    group: "基础补充",
-    content: `## V8 引擎架构
-
-V8 是 Google 开发的高性能 JavaScript 和 WebAssembly 引擎，用 C++ 编写。它是 Node.js 和 Chrome 浏览器的核心引擎。V8 不只是一个简单的解释器——它是一套完整的**即时编译（JIT）**系统，能够在运行时将 JavaScript 代码编译成高效的机器码。
-
-### V8 整体架构
-
-V8 的编译流水线经历了多次演进。目前（V8 9.x+，对应 Node.js 18+）的架构如下：
-
-\`\`\`
-源代码（JavaScript）
-    │
-    ▼
-解析器（Parser） ───► 生成 AST（抽象语法树）
-    │
-    ▼
-Ignition（解释器） ───► 生成字节码并执行
-    │
-    │  （收集类型反馈信息）
-    ▼
-TurboFan（优化编译器） ───► 生成高度优化的机器码
-    │
-    │  （如果优化假设失效）
-    ▼
-去优化（Deoptimization） ───► 回退到 Ignition 解释执行
-\`\`\`
-
-### 各组件详解
-
-#### 1. 解析器（Parser）
-
-解析器将 JavaScript 源代码转换为**抽象语法树（AST）**。V8 的解析器做了很多优化：
-
-- **惰性解析（Lazy Parsing）**：对于不立即执行的函数，V8 只做快速扫描（Pre-parsing），检查语法错误但不生成完整的 AST。只有当函数真正被调用时才会完整解析。这大大减少了启动时间。
-- **流式解析（Streaming Parsing）**：从网络加载脚本时，V8 可以边下载边解析，不等整个文件下载完。
-- **代码缓存（Code Caching）**：解析后的字节码可以被缓存，下次加载同一脚本时跳过解析步骤。
-
-#### 2. Ignition（解释器）
-
-Ignition 是 V8 的字节码解释器，于 2017 年引入（V8 5.9），取代了旧的 Full-codegen 编译器。它负责：
-
-- 将 AST 编译为字节码（比机器码更紧凑，节省内存）
-- 逐条解释执行字节码
-- 在执行过程中**收集类型反馈（Type Feedback）**信息
-
-**类型反馈**是 V8 优化的关键。当 Ignition 执行代码时，它记录每个操作的实际类型信息，例如：
-
-\`\`\`javascript
-function add(a, b) {
-  return a + b;
-}
-// Ignition 执行时会记录：
-// - 第一次调用 add(1, 2)：a 和 b 都是 Smi（小整数）
-// - 第二次调用 add(1, 2)：a 和 b 还是 Smi → 确认是稳定的整数类型
-// - 这些信息被传递给 TurboFan 用于优化
-\`\`\`
-
-#### 3. TurboFan（优化编译器）
-
-TurboFan 是 V8 的优化编译器，于 2017 年引入，取代了旧的 Crankshaft 编译器。当 Ignition 发现某个函数被频繁调用（"热点"函数），TurboFan 会介入：
-
-1. 获取 Ignition 收集的类型反馈信息
-2. 基于"大多数情况下类型是稳定的"这一假设，生成高度优化的机器码
-3. 在优化代码中插入**类型检查守卫**，如果运行时类型与假设不符，触发去优化
-
-**TurboFan 的优化技术**：
-
-- **内联（Inlining）**：把被调用函数体直接嵌入调用处，消除函数调用开销
-- **逃逸分析（Escape Analysis）**：如果对象不逃逸出函数，直接在栈上分配
-- **循环优化**：循环不变量外提、循环展开等
-- **死代码消除**：移除永远不会执行的代码
-- **类型特化**：基于类型反馈生成针对特定类型的机器码
-
-### 隐藏类（Hidden Classes / Maps）
-
-V8 使用**隐藏类**（也叫 Map 或 Shape）来优化对象属性访问。这是 V8 性能优化的核心概念之一。
-
-**问题背景**：JavaScript 对象是动态的，可以随时添加或删除属性。如果每次访问属性都要遍历对象的所有属性来查找，效率会很低。V8 通过隐藏类实现类似 C++ 中通过偏移量直接访问属性的效果。
-
-**隐藏类的工作原理**：
-
-\`\`\`javascript
-// 场景 1：标准化属性初始化
-function Point(x, y) {
-  this.x = x;  // 创建隐藏类 HC1（无属性 → 有 x）
-  this.y = y;  // 过渡到隐藏类 HC2（有 x → 有 x, y）
-}
-// 所有 Point 实例共享相同的隐藏类 HC2
-// 属性访问变成：对象 + 固定偏移量 → 直接读取
-\`\`\`
-
-\`\`\`javascript
-// 场景 2：非标准化属性初始化（破坏隐藏类共享）
-function Point(x, y) {
-  this.x = x;
-  this.y = y;
-}
-const p1 = new Point(1, 2);
-const p2 = new Point(3, 4);
-p2.z = 5;  // p2 现在有不同的隐藏类！
-// p1 和 p2 不再共享隐藏类，优化失效
-\`\`\`
-
-**隐藏类的关键规则**：
-
-| 规则 | 说明 |
-| --- | --- |
-| 相同顺序初始化属性 | 用相同顺序添加属性，对象共享隐藏类 |
-| 构造函数中初始化所有属性 | 避免在构造函数之外添加属性 |
-| 避免删除属性 | 删除属性会改变隐藏类，用 \`obj.prop = null\` 代替 |
-| 避免动态属性 | 不要用 \`obj["prop" + index]\` 模式 |
-
-### 内联缓存（Inline Cache / IC）
-
-内联缓存是 V8 加速属性访问的另一项关键技术。它缓存了属性访问的"路径"，避免重复查找。
-
-**工作流程**：
-
-\`\`\`javascript
-function getX(obj) {
-  return obj.x;  // 属性访问
-}
-// 第一次调用 getX({x:1})：
-//   1. 查找 obj 的隐藏类
-//   2. 在隐藏类中找到 x 的偏移量
-//   3. 缓存这个 "隐藏类 → 偏移量" 映射（内联缓存）
-// 第二次调用 getX({x:2})：
-//   1. 检查 obj 的隐藏类是否与缓存匹配
-//   2. 如果匹配，直接用缓存的偏移量读取（非常快）
-//   3. 如果不匹配，重新查找并更新缓存
-\`\`\`
-
-**内联缓存的状态**：
-
-| 状态 | 说明 | 性能 |
-| --- | --- | --- |
-| **单态（Monomorphic）** | 只见过一种隐藏类 | 最快（直接比较 + 偏移读取） |
-| **多态（Polymorphic）** | 见过 2-4 种隐藏类 | 较慢（需要比较多个缓存） |
-| **超态（Megamorphic）** | 见过 5+ 种隐藏类 | 最慢（放弃缓存，每次查找） |
-
-\`\`\`javascript
-// 单态示例（最佳性能）
-function process(obj) { return obj.x + obj.y; }
-process({x:1, y:2});
-process({x:3, y:4});  // 相同的隐藏类 → 单态
-
-// 多态示例
-function process(obj) { return obj.x + obj.y; }
-process({x:1, y:2});      // 隐藏类 A
-process({x:1, y:2, z:3}); // 隐藏类 B → 多态
-
-// 超态示例（性能最差）
-function process(obj) { return obj.x; }
-process({x:1}); process({x:2, a:1}); process({x:3, b:2});
-process({x:4, c:3}); process({x:5, d:4}); process({x:6, e:5});
-// 6 种不同的隐藏类 → 超态
-\`\`\`
-
-### 去优化（Deoptimization）
-
-当 TurboFan 生成的优化代码基于的类型假设不再成立时，就会发生去优化：V8 丢弃优化后的机器码，回退到 Ignition 解释执行。
-
-**触发去优化的常见条件**：
-
-| 条件 | 说明 | 示例 |
-| --- | --- | --- |
-| 类型变化 | 函数的参数类型与优化时假设不同 | 原来都是整数，突然传入字符串 |
-| 隐藏类变化 | 对象属性结构与优化时不同 | 调用函数时传入不同形状的对象 |
-| \`try-catch\` | 包含 try-catch 的函数 | 优化编译器可能避开 |
-| \`arguments\` 对象 | 在非严格模式使用 arguments | 会阻止某些优化 |
-| \`eval()\` | 使用 eval | 完全阻止优化 |
-| \`for-in\` 循环 | 某些情况下 | 可能阻止优化 |
-| \`delete\` 操作 | 删除对象属性 | 改变隐藏类 |
-| \`with\` 语句 | 使用 with | 严重阻止优化 |
-
-**如何避免去优化**：
-
-\`\`\`javascript
-// ❌ 避免：函数参数类型不稳定
-function add(a, b) {
-  return a + b;
-}
-add(1, 2);     // 优化为整数加法
-add("a", "b");  // 去优化！实际是字符串拼接
-
-// ✅ 推荐：保持参数类型稳定
-function addInts(a, b) {
-  return a + b;
-}
-addInts(1, 2);
-addInts(3, 4); // 都是整数，稳定优化
-
-// ❌ 避免：在构造函数外添加属性
-function Point(x, y) {
-  this.x = x;
-  this.y = y;
-}
-const p = new Point(1, 2);
-p.z = 3; // 改变隐藏类
-
-// ✅ 推荐：在构造函数中初始化所有属性
-function Point(x, y, z) {
-  this.x = x;
-  this.y = y;
-  this.z = z || 0; // 即使不需要也初始化
-}
-\`\`\`
-
-### 函数优化禁止原因
-
-V8 会阻止某些函数的优化，常见原因包括：
-
-| 原因 | 触发条件 |
-| --- | --- |
-| **使用了 \`arguments\`** | 非严格模式下访问 arguments |
-| **使用了 \`eval()\`** | 任何形式的 eval |
-| **try-catch / try-finally** | 包含异常处理的函数 |
-| **for-in 循环** | 某些情况下 |
-| **过大的函数** | 函数体超过一定大小（约 600 字节码） |
-| **调试器语句** | 使用了 debugger 语句 |
-
-可以通过 Node.js 的 \`--trace-opt\` 和 \`--trace-deopt\` 标志来观察优化和去优化情况：
-
-\`\`\`bash
-# 观察哪些函数被优化了
-node --trace-opt app.js
-
-# 观察哪些函数被去优化了
-node --trace-deopt app.js
-
-# 观察哪些函数没有被优化
-node --trace-opt --trace-opt-verbose app.js
-\`\`\`
-
-### V8 版本与 Node.js 对应关系
-
-| Node.js 版本 | V8 版本 | 关键特性 |
-| --- | --- | --- |
-| Node 16 | V8 9.0 - 9.4 | 指针压缩、WebAssembly 改进 |
-| Node 18 | V8 10.1 - 10.7 | 更快的属性访问、WebAssembly 异常处理 |
-| Node 20 | V8 11.3 | 字符串性能改进、新的 GC 优化 |
-| Node 22 | V8 12.4 | WebAssembly 多内存、新正则表达式引擎 |
-
-### V8 性能最佳实践
-
-1. **保持对象形状一致**：在构造函数中初始化所有属性，按相同顺序添加。
-2. **避免动态属性名**：使用 \`obj.prop\` 而非 \`obj["prop"]\`。
-3. **保持函数参数类型稳定**：不要同一函数时而传数字时而传字符串。
-4. **避免使用 \`arguments\`**：使用剩余参数 \`...args\` 代替。
-5. **避免 \`delete\` 操作**：用 \`obj.prop = null\` 代替。
-6. **避免在热路径中使用 try-catch**：将 try-catch 移到外层。
-7. **使用数组字面量**：\`[1, 2, 3]\` 比 \`new Array(1, 2, 3)\` 更快。
-
-下面这段代码演示了隐藏类、内联缓存、去优化等 V8 核心概念，并通过性能对比展示优化效果。`,
-    code: `// ============================================================
-// 第二章代码演示：V8 引擎优化实战
-// ============================================================
-
-// ---- 1. 隐藏类（Hidden Classes）演示 ----
-console.log("===== 1. 隐藏类（Hidden Classes）演示 =====");
-
-// 场景 A：标准化初始化（共享隐藏类）✅
-console.log("--- 场景 A：标准化初始化 ---");
-function PointGood(x, y) {
-  this.x = x;  // 隐藏类 HC1: {} → {x}
-  this.y = y;  // 隐藏类 HC2: {x} → {x, y}
-}
-const p1 = new PointGood(1, 2);
-const p2 = new PointGood(3, 4);
-// p1 和 p2 共享相同的隐藏类链
-console.log("p1 属性: x=" + p1.x + ", y=" + p1.y);
-console.log("p2 属性: x=" + p2.x + ", y=" + p2.y);
-console.log("p1 和 p2 共享相同隐藏类 → 属性访问可被优化");
-
-// 场景 B：非标准化初始化（破坏隐藏类共享）❌
-console.log("\\n--- 场景 B：非标准化初始化 ---");
-function PointBad(x, y) {
-  this.x = x;
-  if (y > 0) {
-    this.y = y;  // 条件性添加属性
-  }
-}
-const p3 = new PointBad(1, 2);
-const p4 = new PointBad(3, -1); // y 为负值，不会添加 y 属性
-console.log("p3 属性: x=" + p3.x + ", y=" + p3.y);
-console.log("p4 属性: x=" + p4.x + ", y=" + p4.y);
-console.log("p3 和 p4 隐藏类不同 → 属性访问无法被优化");
-
-// 场景 C：在构造函数外添加属性 ❌
-console.log("\\n--- 场景 C：事后添加属性 ---");
-function PointPartial(x) {
-  this.x = x;
-}
-const p5 = new PointPartial(1);
-p5.y = 2; // 事后添加，改变隐藏类
-const p6 = new PointPartial(3);
-p6.y = 4;
-p6.z = 5; // p6 有三个属性，隐藏类与 p5 完全不同
-console.log("p5 在构造后添加了 y");
-console.log("p6 在构造后添加了 y 和 z → 隐藏类不稳定");
-
-// ---- 2. 内联缓存（Inline Cache）状态演示 ----
-console.log("\\n===== 2. 内联缓存（IC）状态演示 =====");
-
-// 单态（Monomorphic）—— 只见过一种隐藏类
-console.log("--- 单态（Monomorphic）---");
-function getValue(obj) {
-  return obj.value;
-}
-const monoObj = { value: 42 };
-console.log("调用 1: " + getValue(monoObj));
-console.log("调用 2: " + getValue(monoObj));
-console.log("调用 3: " + getValue(monoObj));
-console.log("→ 单态：IC 只缓存了一种隐藏类，性能最优");
-
-// 多态（Polymorphic）—— 见过 2-4 种隐藏类
-console.log("\\n--- 多态（Polymorphic）---");
-function getValuePoly(obj) {
-  return obj.value;
-}
-const polyObj1 = { value: 1 };
-const polyObj2 = { value: 2, extra: true };
-const polyObj3 = { value: 3, name: "test" };
-console.log("调用 1: " + getValuePoly(polyObj1));
-console.log("调用 2: " + getValuePoly(polyObj2));
-console.log("调用 3: " + getValuePoly(polyObj3));
-console.log("→ 多态：IC 缓存了 3 种隐藏类，需要比较匹配");
-
-// 超态（Megamorphic）—— 见过 5+ 种隐藏类
-console.log("\\n--- 超态（Megamorphic）---");
-function getValueMega(obj) {
-  return obj.value;
-}
-const megaObjs = [];
-for (let i = 0; i < 6; i++) {
-  const obj = { value: i };
-  // 给每个对象添加不同的额外属性，制造不同的隐藏类
-  obj["extra" + i] = "data" + i;
-  megaObjs.push(obj);
-  getValueMega(obj);
-}
-console.log("调用了 6 种不同隐藏类的对象");
-console.log("→ 超态：IC 放弃缓存，每次都要查找，性能最差");
-
-// ---- 3. 去优化触发条件演示 ----
-console.log("\\n===== 3. 去优化（Deoptimization）触发演示 =====");
-
-// 场景：参数类型不稳定 → 触发去优化
-console.log("--- 场景：参数类型不稳定 ---");
-function add(a, b) {
-  return a + b;
-}
-
-// 先以整数参数调用（V8 会优化为整数加法）
-console.log("整数调用: add(1, 2) = " + add(1, 2));
-console.log("整数调用: add(3, 4) = " + add(3, 4));
-
-// 突然传入字符串 → 类型假设失效 → 去优化！
-console.log("字符串调用: add('hello', 'world') = " + add("hello", "world"));
-console.log("→ 类型从整数变为字符串，触发去优化");
-
-// 场景：delete 操作改变隐藏类
-console.log("\\n--- 场景：delete 改变隐藏类 ---");
-const obj = { a: 1, b: 2, c: 3 };
-console.log("原始对象: " + JSON.stringify(obj));
-delete obj.b; // delete 会改变隐藏类结构
-console.log("delete b 后: " + JSON.stringify(obj));
-console.log("→ delete 操作改变了隐藏类，可能触发去优化");
-
-// ---- 4. 性能对比：优化 vs 未优化 ----
-console.log("\\n===== 4. 性能对比测试 =====");
-
-// 测试 1：单态 vs 多态 vs 超态 性能对比
-const iterations = 1000000;
-
-function benchmarkMonomorphic() {
-  const obj = { a: 1, b: 2, c: 3 };
-  let sum = 0;
-  const start = Date.now();
-  for (let i = 0; i < iterations; i++) {
-    sum += obj.a + obj.b + obj.c; // 始终同一隐藏类
-  }
-  const elapsed = Date.now() - start;
-  return { sum, elapsed };
-}
-
-function benchmarkPolymorphic() {
-  const shapes = [
-    { a: 1, b: 2, c: 3 },
-    { a: 1, b: 2, c: 3, d: 4 },
-    { a: 1, b: 2, c: 3, e: 5 },
-    { a: 1, b: 2, c: 3, f: 6 },
-  ];
-  let sum = 0;
-  const start = Date.now();
-  for (let i = 0; i < iterations; i++) {
-    const obj = shapes[i % 4]; // 4 种不同隐藏类
-    sum += obj.a + obj.b + obj.c;
-  }
-  const elapsed = Date.now() - start;
-  return { sum, elapsed };
-}
-
-console.log("运行 " + (iterations / 1000).toFixed(0) + "k 次迭代...");
-const monoResult = benchmarkMonomorphic();
-const polyResult = benchmarkPolymorphic();
-
-console.log("\\n--- 属性访问性能对比 ---");
-console.log("单态（1种隐藏类）: " + monoResult.elapsed + "ms");
-console.log("多态（4种隐藏类）: " + polyResult.elapsed + "ms");
-if (monoResult.elapsed < polyResult.elapsed) {
-  const slowdown = (polyResult.elapsed / monoResult.elapsed).toFixed(1);
-  console.log("单态比多态快约 " + slowdown + " 倍");
-  console.log("→ 结论：保持对象形状一致显著提升性能");
-} else {
-  console.log("（注意：小规模测试中差异可能不明显，但大规模应用下差异巨大）");
-}
-
-// 测试 2：构造函数初始化 vs 事后添加属性
-console.log("\\n--- 构造函数初始化 vs 事后添加 ---");
-const iterations2 = 500000;
-
-function benchmarkConstructorInit() {
-  function Point(x, y) {
-    this.x = x;
-    this.y = y;
-  }
-  let sum = 0;
-  const start = Date.now();
-  for (let i = 0; i < iterations2; i++) {
-    const p = new Point(i, i + 1);
-    sum += p.x + p.y;
-  }
-  const elapsed = Date.now() - start;
-  return { sum, elapsed };
-}
-
-function benchmarkLateAdd() {
-  function Point(x) {
-    this.x = x;
-  }
-  let sum = 0;
-  const start = Date.now();
-  for (let i = 0; i < iterations2; i++) {
-    const p = new Point(i);
-    p.y = i + 1; // 构造后添加属性
-    sum += p.x + p.y;
-  }
-  const elapsed = Date.now() - start;
-  return { sum, elapsed };
-}
-
-const constrResult = benchmarkConstructorInit();
-const lateResult = benchmarkLateAdd();
-
-console.log("构造函数初始化: " + constrResult.elapsed + "ms");
-console.log("构造后添加属性: " + lateResult.elapsed + "ms");
-
-// ---- 5. V8 版本信息 ----
-console.log("\\n===== 5. V8 版本信息 =====");
-console.log("Node.js 版本: " + process.version);
-console.log("V8 版本: " + process.versions.v8);
-console.log("V8 版本号格式: 主版本.次版本.构建号.补丁号");
-
-// ---- 6. V8 性能优化建议总结 ----
-console.log("\\n===== 6. V8 性能优化建议总结 =====");
-console.log("1. ✅ 在构造函数中初始化所有属性");
-console.log("2. ✅ 保持函数参数类型稳定");
-console.log("3. ✅ 避免 delete 操作，用 obj.prop = null 代替");
-console.log("4. ✅ 避免使用 arguments，用剩余参数 ...args");
-console.log("5. ✅ 避免在热路径中使用 try-catch");
-console.log("6. ✅ 保持对象形状一致，让它们共享隐藏类");
-console.log("7. ✅ 使用数组字面量 [] 而非 new Array()");
-console.log("8. ❌ 避免在构造函数外添加属性");
-console.log("9. ❌ 避免动态属性名 obj['prop' + index]");
-console.log("10. ❌ 避免使用 eval() 和 with 语句");`,
-  },
-
-  // =========================================================
-  // 第三章：REPL 与交互式开发
-  // =========================================================
-  {
-    id: "node-repl",
-    title: "REPL 与交互式开发",
-    icon: "🖥️",
-    group: "基础补充",
-    content: `## REPL 概述
-
-REPL 是 **Read-Eval-Print Loop**（读取-求值-输出-循环）的缩写，是 Node.js 内置的交互式编程环境。它让你可以在终端中逐行输入 JavaScript 代码，立即看到执行结果，非常适合快速测试代码片段、探索 API 和学习新特性。
-
-### REPL 启动方式
-
-有几种方式可以进入 Node.js REPL：
-
-**方式 1：直接运行 node（最常用）**
-
-\`\`\`bash
-$ node
-> 
-\`\`\`
-
-只需在终端输入 \`node\`（不带任何参数），就会进入 REPL 环境。提示符 \`>\` 表示等待输入。
-
-**方式 2：执行代码后进入 REPL**
-
-\`\`\`bash
-$ node -i -e "const x = 10"
-> x
-10
-> 
-\`\`\`
-
-\`-i\` 标志表示执行代码后进入交互模式，\`-e\` 表示执行后面的代码字符串。
-
-**方式 3：require REPL 模块**
-
-\`\`\`bash
-$ node -e "require('repl').start()"
-> 
-\`\`\`
-
-**方式 4：管道输入**
-
-\`\`\`bash
-$ echo "1 + 2" | node -i
-3
-> 
-\`\`\`
-
-### REPL 特殊命令
-
-在 REPL 环境中，以点号（\`.\`）开头的命令是 REPL 的特殊命令（不是 JavaScript 代码）：
-
-| 命令 | 说明 | 示例 |
-| --- | --- | --- |
-| \`.help\` | 显示所有可用命令 | \`.help\` |
-| \`.break\` | 中断当前多行输入（如输入到一半的代码块） | 按 Ctrl+C 也可以 |
-| \`.clear\` | 清空 REPL 上下文，重置为初始状态 | \`.clear\` |
-| \`.exit\` | 退出 REPL（按 Ctrl+D 两次也可以） | \`.exit\` |
-| \`.save <file>\` | 把当前 REPL 会话的历史保存到文件 | \`.save session.js\` |
-| \`.load <file>\` | 加载并执行一个 JavaScript 文件 | \`.load myScript.js\` |
-| \`.editor\` | 进入编辑器模式（适合输入多行代码） | \`.editor\` 然后 Ctrl+D 执行 |
-
-**\`.editor\` 模式的详细用法**：
-
-\`\`\`
-> .editor
-// 进入编辑器模式
-// 可以输入多行代码，像在文件中写代码一样
-function fibonacci(n) {
-  if (n <= 1) return n;
-  return fibonacci(n - 1) + fibonacci(n - 2);
-}
-console.log(fibonacci(10));
-// 按 Ctrl+D 结束输入并执行
-55
-\`\`\`
-
-### REPL 的实用技巧
-
-**1. 特殊变量 \`_\`**
-
-\`_\` 保存了**上一个表达式的结果**：
-
-\`\`\`
-> 1 + 2
-3
-> _ * 10
-30
-> Math.pow(_, 2)
-900
-\`\`\`
-
-**2. Tab 键自动补全**
-
-在 REPL 中输入部分代码后按 Tab 键，可以自动补全变量名、属性名、方法名等。如果有多个可能的补全，按两次 Tab 会列出所有选项。
-
-\`\`\`
-> process.ver<Tab>
-> process.version
-\`\`\`
-
-**3. 多行输入**
-
-当你输入未完成的代码块时（如函数定义、循环、条件语句），REPL 会自动切换到多行模式，提示符变为 \`...\`：
-
-\`\`\`
-> function add(a, b) {
-... return a + b;
-... }
-undefined
-> add(3, 4)
-7
-\`\`\`
-
-**4. 访问核心模块**
-
-REPL 中可以直接使用所有全局对象和核心模块（通过 require）：
-
-\`\`\`
-> const fs = require('fs')
-> fs.readdirSync('.')
-[ 'app.js', 'package.json', ... ]
-\`\`\`
-
-**5. REPL 的上下文**
-
-REPL 有一个全局上下文，你在其中定义的所有变量都会保留，直到退出 REPL 或使用 \`.clear\` 清空。
-
-### 自定义 REPL（repl 模块）
-
-Node.js 的 \`repl\` 模块允许你创建自定义的 REPL 环境，可以定制提示符、评估函数、完成器等。
-
-**基本用法**：
-
-\`\`\`javascript
-const repl = require('repl');
-
-// 启动自定义 REPL
-const server = repl.start({
-  prompt: 'my-app> ',           // 自定义提示符
-  useColors: true,              // 语法高亮
-  ignoreUndefined: true,       // 忽略 undefined 返回值
-  replMode: repl.REPL_MODE_SLOPPY, // 或 REPL_MODE_STRICT
-});
-\`\`\`
-
-**repl.start() 的配置选项**：
-
-| 选项 | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| \`prompt\` | string | \`'> '\` | 提示符字符串 |
-| \`input\` | ReadableStream | \`process.stdin\` | 输入流 |
-| \`output\` | WritableStream | \`process.stdout\` | 输出流 |
-| \`terminal\` | boolean | \`true\` | 是否终端模式（支持 ANSI 颜色） |
-| \`eval\` | function | 默认 eval | 自定义评估函数（可做沙箱） |
-| \`writer\` | function | 默认格式化 | 自定义输出格式化函数 |
-| \`completer\` | function | 默认补全 | 自定义自动补全函数 |
-| \`useColors\` | boolean | \`false\` | 是否启用语法高亮 |
-| \`useGlobal\` | boolean | \`true\` | 是否使用全局上下文 |
-| \`ignoreUndefined\` | boolean | \`false\` | 忽略 \`undefined\` 返回 |
-| \`replMode\` | symbol | \`REPL_MODE_SLOPPY\` | 严格模式或宽松模式 |
-| \`breakEvalOnSigint\` | boolean | \`false\` | Ctrl+C 是否中断执行 |
-| \`preview\` | boolean | \`false\` | 是否显示输入预览 |
-
-**自定义 eval 函数（实现沙箱）**：
-
-\`\`\`javascript
-const repl = require('repl');
-const vm = require('vm');
-
-const server = repl.start({
-  eval: (cmd, context, filename, callback) => {
-    // cmd 是用户输入的代码
-    // context 是 REPL 的上下文对象
-    try {
-      const result = vm.runInContext(cmd, context);
-      callback(null, result);
-    } catch (err) {
-      callback(err);
-    }
-  },
-});
-\`\`\`
-
-**自定义自动补全（completer）**：
-
-\`\`\`javascript
-const server = repl.start({
-  completer: (line) => {
-    const completions = ['.help', '.exit', '.clear', '.save', '.load'];
-    const hits = completions.filter((c) => c.startsWith(line));
-    // 返回 [匹配列表, 匹配的原始字符串]
-    return [hits.length ? hits : completions, line];
-  },
-});
-\`\`\`
-
-### REPL 与 async/await
-
-在 Node.js 16+ 中，REPL 支持顶层 await：
-
-\`\`\`
-> await Promise.resolve(42)
-42
-> const data = await fetch('https://api.github.com')
-> data.status
-200
-\`\`\`
-
-### REPL 的历史记录
-
-REPL 会将输入历史保存到 \`~/.node_repl_history\` 文件中，可以通过环境变量 \`NODE_REPL_HISTORY\` 自定义路径：
-
-\`\`\`bash
-# 设置自定义历史文件路径
-export NODE_REPL_HISTORY=~/.my_node_history
-
-# 设置历史记录最大条数（默认 1000）
-export NODE_REPL_HISTORY_SIZE=5000
-\`\`\`
-
-### REPL 环境变量
-
-| 环境变量 | 说明 | 默认值 |
-| --- | --- | --- |
-| \`NODE_REPL_HISTORY\` | 历史文件路径 | \`~/.node_repl_history\` |
-| \`NODE_REPL_HISTORY_SIZE\` | 最大历史记录数 | 1000 |
-| \`NODE_REPL_MODE\` | REPL 模式 | \`sloppy\`（可设为 \`strict\`） |
-
-下面这段代码模拟了自定义 REPL 环境的创建和使用，演示了 REPL 的核心概念。`,
-    code: `// ============================================================
-// 第三章代码演示：REPL 交互式开发模拟
-// ============================================================
-// 注意：repl 模块不在沙箱允许的 require 列表中，
-// 因此本章用代码模拟 REPL 的核心概念和行为。
-
-const util = require("util");
-
-// ---- 1. REPL 核心概念：Read-Eval-Print-Loop 模拟 ----
-console.log("===== 1. REPL 核心循环模拟 =====");
-
-// 模拟 REPL 的 Read-Eval-Print 循环
-function simulateRepl(inputs) {
-  const context = {}; // 模拟 REPL 上下文
-  const results = [];
-
-  for (const input of inputs) {
-    // Read：读取输入（已完成）
-    console.log("\\n> " + input);
-
-    try {
-      // Eval：用 eval 评估输入（REPL 内部使用 vm 模块）
-      // 注意：真实 REPL 使用 vm.createContext 沙箱
-      const result = eval(input);
-
-      // Print：打印结果
-      if (result !== undefined) {
-        const formatted = util.inspect(result, {
-          colors: false,
-          depth: 3,
-          maxArrayLength: 20,
-        });
-        console.log(formatted);
-        results.push({ input, result, error: null });
-      } else {
-        results.push({ input, result: undefined, error: null });
-      }
-    } catch (err) {
-      // Print Error
-      console.log("Uncaught " + err.name + ": " + err.message);
-      results.push({ input, result: null, error: err.message });
-    }
+    return this;
   }
 
-  return results;
-}
-
-// 模拟一段 REPL 会话
-console.log("模拟 REPL 会话:");
-simulateRepl([
-  "1 + 2",
-  "Math.pow(3, 4)",
-  "const greeting = 'Hello, REPL!'",
-  "greeting.toUpperCase()",
-  "typeof greeting",
-  "JSON.stringify({name: 'test', value: 42})",
-  "[1, 2, 3].map(x => x * 2)",
-]);
-
-// ---- 2. REPL 特殊变量 _ 模拟 ----
-console.log("\\n===== 2. REPL 特殊变量 _ 模拟 =====");
-
-// 在真实 REPL 中，_ 自动保存上一个表达式的结果
-let replLastResult = undefined;
-
-function replEval(input) {
-  console.log("> " + input);
-  // 替换 _ 为上一次的结果
-  const processedInput = input.replace(/\\b_\\b/g,
-    JSON.stringify(replLastResult)
-  );
-  try {
-    const result = eval(processedInput);
-    replLastResult = result;
-    if (result !== undefined) {
-      console.log(result);
-    }
-  } catch (e) {
-    console.log(e.message);
-  }
-}
-
-console.log("模拟 REPL _ 变量:");
-replEval("2 + 3");
-replEval("_ * 10");       // 应该输出 50
-replEval("Math.pow(_, 2)"); // 应该输出 2500
-
-// ---- 3. 自定义 REPL 配置模拟 ----
-console.log("\\n===== 3. 自定义 REPL 配置模拟 =====");
-
-// 模拟 repl.start() 的配置选项
-function createCustomRepl(options) {
-  console.log("--- 创建自定义 REPL ---");
-  console.log("配置选项:");
-  console.log("  prompt: " + JSON.stringify(options.prompt || "> "));
-  console.log("  useColors: " + (options.useColors || false));
-  console.log("  ignoreUndefined: " + (options.ignoreUndefined || false));
-  console.log("  replMode: " + (options.replMode === "strict" ? "严格模式" : "宽松模式"));
-
-  // 模拟自定义 writer（格式化输出）
-  const writer = options.writer || util.inspect;
-
-  return {
-    prompt: options.prompt || "> ",
-    context: {},
-    eval: function (input) {
-      try {
-        const result = eval(input);
-        if (result === undefined && options.ignoreUndefined) {
-          return ""; // 忽略 undefined
-        }
-        return writer(result);
-      } catch (e) {
-        return "Error: " + e.message;
-      }
-    },
-  };
-}
-
-// 创建不同配置的 REPL
-const repl1 = createCustomRepl({
-  prompt: "my-app> ",
-  useColors: true,
-  ignoreUndefined: true,
-  replMode: "strict",
-});
-
-const repl2 = createCustomRepl({
-  prompt: "debug> ",
-  ignoreUndefined: false,
-});
-
-console.log("\\nREPL 1 (my-app) 评估: " + repl1.eval("1 + 2"));
-console.log("REPL 1 (my-app) 评估 undefined: '" + repl1.eval("var x = 1") + "' (被忽略)");
-console.log("REPL 2 (debug) 评估 undefined: '" + repl2.eval("var x = 1") + "'");
-
-// ---- 4. 自动补全（Completer）模拟 ----
-console.log("\\n===== 4. 自动补全（Completer）模拟 =====");
-
-// 模拟补全逻辑
-function createCompleter(completions) {
-  return function (line) {
-    const hits = completions.filter(function (c) {
-      return c.startsWith(line);
-    });
-    // 真实补全返回 [hits, line]
-    if (hits.length === 1) {
-      return { completion: hits[0], matches: hits };
-    } else if (hits.length > 1) {
-      return { completion: line, matches: hits };
-    }
-    return { completion: line, matches: [] };
-  };
-}
-
-// 模拟一个带自定义命令的 REPL 补全
-const customCommands = [
-  ".help", ".exit", ".clear", ".save", ".load",
-  ".editor", ".break",
-];
-const globalCompletions = [
-  "console", "process", "Buffer", "setTimeout", "setInterval",
-  "require", "module", "__dirname", "__filename",
-  "Math", "JSON", "Array", "Object", "String", "Number",
-  "Promise", "Map", "Set", "Date", "RegExp",
-];
-
-const replCompleter = createCompleter(
-  customCommands.concat(globalCompletions)
-);
-
-console.log("输入 'con' 的补全:");
-console.log(replCompleter("con"));
-
-console.log("\\n输入 'process' 的补全:");
-console.log(replCompleter("process"));
-
-console.log("\\n输入 '.he' 的补全:");
-console.log(replCompleter(".he"));
-
-console.log("\\n输入 'xyz' 的补全:");
-console.log(replCompleter("xyz"));
-
-// ---- 5. REPL 多行输入模拟 ----
-console.log("\\n===== 5. 多行输入模拟 =====");
-
-// 模拟 REPL 检测未完成的代码块
-function isIncompleteCode(code) {
-  // 简单检测：计算括号平衡
-  const openParens = (code.match(/[{(\\[]/g) || []).length;
-  const closeParens = (code.match(/[})\\]]/g) || []).length;
-  if (openParens !== closeParens) return true;
-
-  // 检测函数定义未完成
-  if (/function\\s*\\w*\\s*\\([^)]*\\)\\s*\\{[^}]*$/.test(code)) return true;
-
-  // 检测以 { 结尾但未闭合
-  if (code.trim().endsWith("{")) return true;
-
-  return false;
-}
-
-const testCases = [
-  "function add(a, b) {",
-  "return a + b;",
-  "}",
-  "if (true) {",
-  "  console.log('hello')",
-  "}",
-  "const obj = { name: 'test',",
-  "  age: 20",
-  "}",
-  "1 + 2",
-];
-
-let accumulated = "";
-for (const line of testCases) {
-  accumulated += (accumulated ? "\\n" : "") + line;
-  const incomplete = isIncompleteCode(accumulated);
-  console.log((incomplete ? "... " : "> ") + line);
-  if (!incomplete) {
-    console.log("  → 完整代码块，可以执行");
-    // 执行代码
-    try {
-      const result = eval(accumulated);
-      if (result !== undefined) {
-        console.log("  结果: " + util.inspect(result));
-      }
-    } catch (e) {
-      console.log("  错误: " + e.message);
-    }
-    accumulated = "";
-  }
-}
-
-// ---- 6. .editor 模式模拟 ----
-console.log("\\n===== 6. .editor 模式模拟 =====");
-
-// .editor 模式允许多行输入，按 Ctrl+D 结束
-function simulateEditorMode(code) {
-  console.log("// 进入 editor 模式");
-  console.log("// 输入以下代码:");
-  console.log(code);
-  console.log("// 按 Ctrl+D 结束输入并执行");
-  console.log("\\n执行结果:");
-  try {
-    const result = eval(code);
-    if (result !== undefined) {
-      console.log(util.inspect(result, { depth: 3 }));
-    }
-  } catch (e) {
-    console.log("Error: " + e.message);
-  }
-}
-
-simulateEditorMode(
-  "function fibonacci(n) {\\n" +
-  "  if (n <= 1) return n;\\n" +
-  "  return fibonacci(n - 1) + fibonacci(n - 2);\\n" +
-  "}\\n" +
-  "fibonacci(10)"
-);
-
-// ---- 7. REPL 历史记录模拟 ----
-console.log("\\n===== 7. REPL 历史记录模拟 =====");
-
-// 模拟 REPL 历史记录管理
-function createHistoryManager(maxSize) {
-  const history = [];
-  return {
-    add: function (input) {
-      // 忽略空行和重复命令
-      if (input.trim() === "") return;
-      if (history.length > 0 && history[history.length - 1] === input) return;
-      history.push(input);
-      if (history.length > maxSize) {
-        history.shift(); // 移除最旧的记录
-      }
-    },
-    getAll: function () {
-      return history.slice();
-    },
-    getRecent: function (n) {
-      return history.slice(-n);
-    },
-    size: function () {
-      return history.length;
-    },
-    clear: function () {
-      history.length = 0;
-    },
-  };
-}
-
-const history = createHistoryManager(5);
-history.add("const x = 10");
-history.add("x * 2");
-history.add("Math.pow(x, 3)");
-history.add("const y = 20");
-history.add("x + y");
-history.add("console.log(x, y)"); // 第6条，会挤掉第1条
-
-console.log("历史记录（最多保留 " + 5 + " 条）:");
-history.getAll().forEach(function (cmd, i) {
-  console.log("  " + (i + 1) + ". " + cmd);
-});
-
-// ---- 8. .save 和 .load 模拟 ----
-console.log("\\n===== 8. .save 和 .load 模拟 =====");
-
-const fs = require("fs");
-const path = require("path");
-const os = require("os");
-
-// 模拟 .save：保存当前会话历史到文件
-const historyFile = path.join(os.tmpdir(), "repl-session-demo.js");
-const sessionCode = [
-  "const greeting = 'Hello from saved session';",
-  "const numbers = [1, 2, 3, 4, 5];",
-  "const sum = numbers.reduce((a, b) => a + b, 0);",
-  "console.log('Sum:', sum);",
-].join("\\n");
-
-try {
-  fs.writeFileSync(historyFile, sessionCode, "utf8");
-  console.log(".save → 已保存会话到: " + historyFile);
-} catch (e) {
-  console.log("保存失败: " + e.message);
-}
-
-// 模拟 .load：加载并执行文件
-try {
-  const loadedCode = fs.readFileSync(historyFile, "utf8");
-  console.log(".load → 加载文件内容:");
-  console.log("---");
-  console.log(loadedCode.trim());
-  console.log("---");
-  console.log("执行加载的代码:");
-  eval(loadedCode);
-
-  // 清理
-  fs.unlinkSync(historyFile);
-} catch (e) {
-  console.log("加载失败: " + e.message);
-}
-
-// ---- 9. REPL 使用技巧总结 ----
-console.log("\\n===== 9. REPL 使用技巧总结 =====");
-console.log("1. 直接输入 node 进入 REPL");
-console.log("2. _ 变量保存上一个表达式的结果");
-console.log("3. Tab 键自动补全，按两次显示所有选项");
-console.log("4. .editor 进入多行编辑模式");
-console.log("5. .save 和 .load 保存/加载会话");
-console.log("6. .clear 清空上下文，.exit 退出");
-console.log("7. .break 或 Ctrl+C 中断当前输入");
-console.log("8. Ctrl+D 两次退出 REPL（或 .exit）");
-console.log("9. 使用 repl 模块创建自定义 REPL 环境");
-console.log("10. Node 16+ 支持 REPL 顶层 await");`,
-  },
-
-  // =========================================================
-  // 第四章：命令行参数与环境变量
-  // =========================================================
-  {
-    id: "node-cli",
-    title: "命令行参数与环境变量",
-    icon: "⚙️",
-    group: "基础补充",
-    content: `## 命令行参数与环境变量概述
-
-在 Node.js 中，\`process.argv\` 和 \`process.env\` 是两个最常用的全局对象，用于获取启动参数和环境配置。它们是构建 CLI 工具和配置应用的基础。
-
-### process.argv 详解
-
-\`process.argv\` 是一个字符串数组，包含启动 Node.js 进程时传入的所有命令行参数。
-
-**数组结构**：
-
-| 索引 | 内容 | 说明 |
-| --- | --- | --- |
-| \`argv[0]\` | Node.js 可执行文件的绝对路径 | 如 \`/usr/local/bin/node\` |
-| \`argv[1]\` | 正在执行的脚本文件的绝对路径 | 如 \`/home/user/app.js\` |
-| \`argv[2]\` | 第一个用户传入的参数 | 程序的实际参数从这里开始 |
-| \`argv[3]\` | 第二个用户传入的参数 | ... |
-| ... | 更多参数 | ... |
-
-**示例**：
-
-\`\`\`bash
-$ node app.js --name=test --verbose --port 3000
-\`\`\`
-
-\`\`\`javascript
-console.log(process.argv);
-// [
-//   '/usr/local/bin/node',           // argv[0]
-//   '/home/user/app.js',             // argv[1]
-//   '--name=test',                   // argv[2]
-//   '--verbose',                     // argv[3]
-//   '--port',                        // argv[4]
-//   '3000'                           // argv[5]
-// ]
-\`\`\`
-
-**process.argv0**：\`process.argv0\` 是启动 Node.js 时使用的原始命令名，不等于 \`process.argv[0]\`，后者是解析后的完整路径。
-
-\`\`\`javascript
-// 如果你用 /usr/local/bin/node 启动，但 PATH 中的 node 是符号链接
-// process.argv0 可能是 'node'
-// process.argv[0] 是 '/usr/local/bin/node'
-\`\`\`
-
-**process.execArgv**：Node.js 自身的启动参数（如 \`--inspect\`、\`--harmony\`），不包含脚本名和用户参数。
-
-\`\`\`bash
-$ node --inspect --max-old-space-size=4096 app.js --port 3000
-\`\`\`
-
-\`\`\`javascript
-process.execArgv  // ['--inspect', '--max-old-space-size=4096']
-process.argv      // [..., 'app.js', '--port', '3000']
-\`\`\`
-
-### 解析命令行参数的最佳实践
-
-**简单解析（自己实现）**：
-
-\`\`\`javascript
-// 从 argv[2] 开始解析用户参数
-const args = process.argv.slice(2);
-
-// 获取位置参数
-const input = args[0];
-const output = args[1];
-
-// 获取命名参数
-const verbose = args.includes('--verbose');
-const portIndex = args.indexOf('--port');
-const port = portIndex !== -1 ? args[portIndex + 1] : 3000;
-\`\`\`
-
-**使用第三方库（推荐）**：
-
-在生产环境中，推荐使用成熟的 CLI 参数解析库：
-
-| 库 | 特点 | 适用场景 |
-| --- | --- | --- |
-| \`commander\` | 最流行，功能全面 | 复杂 CLI 工具 |
-| \`yargs\` | 功能丰富，自动生成帮助 | 需要复杂参数解析 |
-| \`minimist\` | 极简，轻量 | 简单参数解析 |
-| \`arg\` | 现代化，TypeScript 友好 | 需要类型安全 |
-
-### process.env 详解
-
-\`process.env\` 是一个包含所有环境变量的对象。环境变量是操作系统级别的配置，在进程启动时被注入。
-
-**基本用法**：
-
-\`\`\`javascript
-// 读取环境变量
-const nodeEnv = process.env.NODE_ENV || 'development';
-const port = process.env.PORT || 3000;
-const dbUrl = process.env.DATABASE_URL;
-
-// 如果环境变量不存在，返回 undefined
-console.log(process.env.NOT_SET_VAR); // undefined
-\`\`\`
-
-**重要环境变量**：
-
-| 环境变量 | 说明 | 常见值 |
-| --- | --- | --- |
-| \`NODE_ENV\` | 运行环境标识 | \`'development'\`, \`'production'\`, \`'test'\` |
-| \`PORT\` | 应用端口号 | \`3000\`, \`8080\` |
-| \`PATH\` | 可执行文件搜索路径 | 系统 PATH |
-| \`HOME\` | 用户主目录 | \`/home/user\` 或 \`C:\\\\Users\\\\user\` |
-| \`USER\` / \`USERNAME\` | 当前用户名 | 当前登录用户 |
-| \`TMPDIR\` / \`TEMP\` | 临时目录 | 系统临时文件目录 |
-| \`LANG\` | 系统语言和区域设置 | \`en_US.UTF-8\` |
-| \`SHELL\` | 默认 Shell | \`/bin/bash\`, \`/bin/zsh\` |
-| \`PWD\` | 当前工作目录 | 当前所在目录 |
-
-**环境变量的特点**：
-
-1. **值始终是字符串**：即使你设置了 \`PORT=3000\`，\`process.env.PORT\` 的值也是字符串 \`'3000'\`，不是数字。
-2. **键名大小写敏感**：在大多数系统上，\`process.env.PATH\` 和 \`process.env.path\` 是不同的。
-3. **Windows 不区分大小写**：在 Windows 上，环境变量名不区分大小写（但 Node.js 会保持原始大小写）。
-4. **值是只读快照**：\`process.env\` 是进程启动时的环境变量快照，在运行时修改只会影响当前进程。
-
-### NODE_ENV 详解
-
-\`NODE_ENV\` 是 Node.js 生态系统中的约定俗成的环境变量，并不是 Node.js 内核的一部分。它被广泛用于区分开发环境和生产环境。
-
-**典型用法**：
-
-\`\`\`javascript
-if (process.env.NODE_ENV === 'production') {
-  // 生产环境：启用缓存、压缩、最小化日志
-} else if (process.env.NODE_ENV === 'test') {
-  // 测试环境：使用测试数据库、模拟服务
-} else {
-  // 开发环境：详细日志、热重载
-}
-\`\`\`
-
-**设置 NODE_ENV 的方式**：
-
-\`\`\`bash
-# Unix / macOS
-NODE_ENV=production node app.js
-export NODE_ENV=production && node app.js
-
-# Windows (CMD)
-set NODE_ENV=production && node app.js
-
-# Windows (PowerShell)
-$env:NODE_ENV="production"; node app.js
-
-# 使用 cross-env（跨平台）
-npx cross-env NODE_ENV=production node app.js
-\`\`\`
-
-**注意**：许多框架（Express、Next.js 等）会根据 \`NODE_ENV\` 自动调整行为。
-
-### NODE_OPTIONS 环境变量
-
-\`NODE_OPTIONS\` 是一个特殊的环境变量，用于向 Node.js 传递命令行选项，而不需要在命令行中显式指定。
-
-\`\`\`bash
-# 设置最大内存
-NODE_OPTIONS="--max-old-space-size=4096" node app.js
-
-# 开启调试
-NODE_OPTIONS="--inspect" node app.js
-
-# 多个选项
-NODE_OPTIONS="--max-old-space-size=4096 --inspect" node app.js
-\`\`\`
-
-**NODE_OPTIONS 的限制**：
-
-- 不能使用 \`--require\` 或 \`--loader\`（出于安全考虑，Node 19+）
-- 不能使用 \`--v8-options\`
-- 不能使用 \`--perf-basic-prof\`
-- 如果选项在 \`NODE_OPTIONS\` 和命令行中同时出现，**命令行中的选项优先**
-
-### 进程退出码（Exit Code）
-
-退出码是进程结束时返回给操作系统的整数，表示进程的执行结果。
-
-**约定**：
-
-| 退出码 | 含义 |
-| --- | --- |
-| \`0\` | 正常退出，没有错误 |
-| \`1\` | 一般性错误（Uncaught Fatal Exception） |
-| \`2\` | 使用错误（如参数不正确） |
-| \`3\` | 内部 JavaScript 解析错误 |
-| \`4\` | 内部 JavaScript 执行失败 |
-| \`5\` | 致命错误（V8 无法恢复） |
-| \`6\` | 非函数的内部异常处理 |
-| \`7\` | 内部异常处理运行时失败 |
-| \`9\` | 无效参数 |
-| \`10\` | 内部 JavaScript 运行时失败 |
-| \`12\` | 无效的调试参数 |
-| \`128 + 信号值\` | 被信号终止（如 \`SIGTERM\` 的 15 → 退出码 143） |
-
-**使用方式**：
-
-\`\`\`javascript
-// 方式 1：process.exit() 立即退出
-process.exit(0);  // 正常退出
-process.exit(1);  // 异常退出
-
-// 方式 2：process.exitCode 设置退出码，等待进程自然结束
-process.exitCode = 1;
-// 进程会在事件循环为空时自然退出，退出码为 1
-\`\`\`
-
-**process.exit() vs process.exitCode**：
-
-| 特性 | process.exit(code) | process.exitCode = code |
-| --- | --- | --- |
-| 退出时机 | 立即退出，跳过后续代码 | 等待进程自然结束 |
-| 异步操作 | 不会等待异步操作完成 | 等待事件循环清空 |
-| exit 事件 | 会触发 | 会触发 |
-| stdout/stderr | 可能丢失未刷新的数据 | 数据正常刷新 |
-
-**最佳实践**：
-
-\`\`\`javascript
-// ✅ 推荐：让进程自然退出
-process.exitCode = 1;
-
-// ❌ 避免：在正常流程中强行退出
-// process.exit(0);  // 可能中断正在进行的 I/O 操作
-
-// ✅ 只在需要立即终止时使用 exit
-process.on('uncaughtException', (err) => {
-  console.error('致命错误:', err);
-  process.exit(1);  // 这种情况下立即退出是合理的
-});
-\`\`\`
-
-### 环境变量文件 (.env)
-
-对于复杂的配置，建议使用 \`.env\` 文件配合 \`dotenv\` 库管理环境变量：
-
-\`\`\`bash
-# .env 文件
-DATABASE_URL=postgres://localhost:5432/mydb
-API_KEY=secret-key-here
-PORT=3000
-NODE_ENV=development
-\`\`\`
-
-\`\`\`javascript
-// 加载 .env 文件
-require('dotenv').config();
-console.log(process.env.DATABASE_URL);
-\`\`\`
-
-> 注意：\`.env\` 文件不应提交到版本控制（添加到 \`.gitignore\`），应提供 \`.env.example\` 作为模板。
-
-下面这段代码演示了命令行参数解析、环境变量读取、退出码等实战用法。`,
-    code: `// ============================================================
-// 第四章代码演示：命令行参数与环境变量
-// ============================================================
-
-// ---- 1. process.argv 详解 ----
-console.log("===== 1. process.argv 详解 =====");
-console.log("argv[0] (Node.js 路径): " + process.argv[0]);
-console.log("argv[1] (脚本路径): " + process.argv[1]);
-console.log("argv 完整数组: " + JSON.stringify(process.argv));
-console.log("用户参数数量: " + Math.max(0, process.argv.length - 2));
-
-// 提取用户参数（从 argv[2] 开始）
-const userArgs = process.argv.slice(2);
-console.log("用户参数: " + JSON.stringify(userArgs));
-
-// ---- 2. process.execArgv ----
-console.log("\\n===== 2. process.execArgv =====");
-// execArgv 是 Node.js 自身的启动参数
-console.log("Node.js 启动参数: " + JSON.stringify(process.execArgv));
-if (process.execArgv.length === 0) {
-  console.log("（未传入任何 Node.js 启动参数）");
-}
-
-// ---- 3. 简易命令行参数解析器 ----
-console.log("\\n===== 3. 简易命令行参数解析器 =====");
-
-// 模拟命令行参数（实际运行时从 process.argv 读取）
-const simulatedArgs = [
-  "--name=myapp",
-  "--port",
-  "8080",
-  "--verbose",
-  "--config",
-  "./config.json",
-  "input.txt",
-  "output.txt",
-];
-
-function parseArgs(args) {
-  const result = {
-    _: [],        // 位置参数（非命名参数）
-    flags: {},    // 布尔标志
-    options: {},  // 键值对选项
-  };
-
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-
-    // 处理 --key=value 格式
-    if (arg.startsWith("--") && arg.includes("=")) {
-      const eqIndex = arg.indexOf("=");
-      const key = arg.slice(2, eqIndex);
-      const value = arg.slice(eqIndex + 1);
-      result.options[key] = value;
-    }
-    // 处理 --key value 格式
-    else if (arg.startsWith("--")) {
-      const key = arg.slice(2);
-      // 查看下一个参数是否是值
-      if (i + 1 < args.length && !args[i + 1].startsWith("--")) {
-        result.options[key] = args[i + 1];
-        i++; // 跳过下一个参数
-      } else {
-        result.flags[key] = true; // 布尔标志
-      }
-    }
-    // 处理 -k value 格式（短选项）
-    else if (arg.startsWith("-") && arg.length === 2) {
-      const key = arg.slice(1);
-      if (i + 1 < args.length && !args[i + 1].startsWith("-")) {
-        result.options[key] = args[i + 1];
-        i++;
-      } else {
-        result.flags[key] = true;
-      }
-    }
-    // 位置参数
-    else {
-      result._.push(arg);
-    }
-  }
-
-  return result;
-}
-
-const parsed = parseArgs(simulatedArgs);
-console.log("模拟输入: " + simulatedArgs.join(" "));
-console.log("\\n解析结果:");
-console.log("  位置参数: " + JSON.stringify(parsed._));
-console.log("  布尔标志: " + JSON.stringify(parsed.flags));
-console.log("  键值选项: " + JSON.stringify(parsed.options));
-
-// 获取常用选项
-const appName = parsed.options.name || "default-app";
-const port = parseInt(parsed.options.port) || 3000;
-const verbose = !!parsed.flags.verbose;
-const configFile = parsed.options.config || "./config.json";
-
-console.log("\\n应用配置:");
-console.log("  名称: " + appName);
-console.log("  端口: " + port + " (类型: " + typeof port + ")");
-console.log("  详细模式: " + verbose);
-console.log("  配置文件: " + configFile);
-
-// ---- 4. process.env 环境变量 ----
-console.log("\\n===== 4. process.env 环境变量 =====");
-
-// 所有环境变量的键
-const envKeys = Object.keys(process.env);
-console.log("环境变量总数: " + envKeys.length);
-
-// 常用环境变量
-console.log("\\n常用环境变量:");
-console.log("  NODE_ENV        : " + (process.env.NODE_ENV || "(未设置)"));
-console.log("  HOME            : " + (process.env.HOME || "(未设置)"));
-console.log("  USER            : " + (process.env.USER || process.env.USERNAME || "(未设置)"));
-console.log("  PATH (前50字符) : " + (process.env.PATH || "").slice(0, 50) + "...");
-console.log("  SHELL           : " + (process.env.SHELL || "(未设置)"));
-console.log("  LANG            : " + (process.env.LANG || "(未设置)"));
-console.log("  PWD             : " + (process.env.PWD || "(未设置)"));
-console.log("  TMPDIR          : " + (process.env.TMPDIR || process.env.TEMP || "(未设置)"));
-
-// ---- 5. 环境变量默认值模式 ----
-console.log("\\n===== 5. 环境变量默认值模式 =====");
-
-// 模式 1：|| 运算符（简单默认值）
-const dbHost = process.env.DB_HOST || "localhost";
-const dbPort = process.env.DB_PORT || "5432";
-console.log("数据库主机: " + dbHost + " (默认: localhost)");
-console.log("数据库端口: " + dbPort + " (默认: 5432)");
-
-// 模式 2：空值合并运算符 ??（区别空字符串和未设置）
-const apiKey = process.env.API_KEY ?? "default-key";
-const emptyStr = process.env.EMPTY_TEST ?? "default-val";
-console.log("API Key: " + apiKey + " (默认: default-key)");
-console.log("空字符串测试: " + JSON.stringify(emptyStr) + " (当未设置时使用默认值)");
-
-// 模式 3：类型转换
-const maxConnections = parseInt(process.env.MAX_CONNECTIONS) || 10;
-const enableSsl = process.env.ENABLE_SSL === "true";
-const timeout = parseFloat(process.env.TIMEOUT) || 5.0;
-console.log("最大连接数: " + maxConnections + " (类型: " + typeof maxConnections + ")");
-console.log("启用 SSL: " + enableSsl + " (类型: " + typeof enableSsl + ")");
-console.log("超时时间: " + timeout + " (类型: " + typeof timeout + ")");
-
-// ---- 6. NODE_ENV 模式判断 ----
-console.log("\\n===== 6. NODE_ENV 模式判断 =====");
-
-const nodeEnv = process.env.NODE_ENV || "development";
-console.log("当前 NODE_ENV: " + nodeEnv);
-
-switch (nodeEnv) {
-  case "production":
-    console.log("→ 生产模式：启用缓存、压缩、最小化日志");
-    break;
-  case "test":
-    console.log("→ 测试模式：使用测试数据库、模拟服务");
-    break;
-  case "development":
-  default:
-    console.log("→ 开发模式：详细日志、热重载");
-    break;
-}
-
-// ---- 7. 进程退出码演示 ----
-console.log("\\n===== 7. 进程退出码 =====");
-
-// 退出码约定
-const exitCodes = {
-  0: "正常退出",
-  1: "一般性错误",
-  2: "使用错误（参数不正确）",
-  3: "内部 JavaScript 解析错误",
-  5: "致命错误（V8 无法恢复）",
-  9: "无效参数",
-  128: "被信号终止的基准偏移",
-};
-
-console.log("常见退出码及其含义:");
-for (const [code, desc] of Object.entries(exitCodes)) {
-  console.log("  " + code + " → " + desc);
-}
-
-// process.exitCode 演示
-console.log("\\n当前 process.exitCode: " + (process.exitCode || "未设置（默认 0）"));
-
-// 设置 exitCode（不会立即退出）
-// process.exitCode = 0; // 正常退出
-
-// exit 事件监听
-process.on("exit", function (code) {
-  console.log("\\n[exit 事件] 进程退出码: " + code);
-  if (code === 0) {
-    console.log("[exit 事件] 程序正常退出");
-  } else {
-    console.log("[exit 事件] 程序异常退出（退出码: " + code + "）");
-  }
-});
-
-// ---- 8. 环境变量安全性 ----
-console.log("\\n===== 8. 环境变量安全性 =====");
-
-// 敏感信息检查：不要在生产环境中打印所有环境变量
-const sensitiveKeys = ["PASSWORD", "SECRET", "KEY", "TOKEN", "CREDENTIAL"];
-const safeEnvKeys = envKeys.filter(function (key) {
-  const upperKey = key.toUpperCase();
-  return !sensitiveKeys.some(function (sk) {
-    return upperKey.includes(sk);
-  });
-});
-
-console.log("环境变量总数: " + envKeys.length);
-console.log("过滤掉敏感键后: " + safeEnvKeys.length);
-console.log("（生产环境中绝不应打印完整的环境变量内容）");
-
-// ---- 9. 构建配置对象的最佳实践 ----
-console.log("\\n===== 9. 构建配置对象 =====");
-
-function loadConfig() {
-  return {
-    // 应用配置
-    app: {
-      name: process.env.APP_NAME || "my-app",
-      env: process.env.NODE_ENV || "development",
-      port: parseInt(process.env.PORT) || 3000,
-      host: process.env.HOST || "0.0.0.0",
-    },
-    // 数据库配置
-    db: {
-      host: process.env.DB_HOST || "localhost",
-      port: parseInt(process.env.DB_PORT) || 5432,
-      name: process.env.DB_NAME || "myapp",
-      user: process.env.DB_USER || "postgres",
-      // 密码应该有更安全的管理方式
-      password: process.env.DB_PASSWORD ? "***" : "(未设置)",
-    },
-    // 日志配置
-    log: {
-      level: process.env.LOG_LEVEL || "info",
-      format: process.env.LOG_FORMAT || "json",
-      file: process.env.LOG_FILE || "app.log",
-    },
-    // 特性开关
-    features: {
-      debug: process.env.DEBUG === "true",
-      maintenance: process.env.MAINTENANCE_MODE === "true",
-      beta: process.env.ENABLE_BETA === "true",
-    },
-  };
-}
-
-const config = loadConfig();
-console.log("应用配置（从环境变量加载）:");
-console.log(JSON.stringify(config, null, 2));
-
-// ---- 10. process.argv0 与 process.argv[0] 的区别 ----
-console.log("\\n===== 10. process.argv0 vs process.argv[0] =====");
-console.log("process.argv0: " + process.argv0 + "  (原始命令名)");
-console.log("process.argv[0]: " + process.argv[0] + "  (解析后的完整路径)");
-console.log("相同? " + (process.argv0 === process.argv[0]));
-
-console.log("\\n===== 命令行参数与环境变量演示完成 =====");`,
-  },
-
-  // =========================================================
-  // 第五章：日志与调试基础
-  // =========================================================
-  {
-    id: "node-logging",
-    title: "日志与调试基础",
-    icon: "📋",
-    group: "基础补充",
-    content: `## 日志与调试概述
-
-日志是应用程序的"黑匣子"，记录了程序运行时的各种信息。Node.js 提供了丰富的内置工具来帮助你记录日志和调试代码，包括 \`console\` 对象全家、\`util.inspect\`、\`util.format\` 等。
-
-### console 对象全家桶
-
-\`console\` 是 Node.js 的全局对象，无需 require 即可使用。它提供了 20+ 种方法，覆盖了各种输出需求。
-
-#### 基本输出方法
-
-| 方法 | 输出目标 | 说明 |
-| --- | --- | --- |
-| \`console.log(...args)\` | stdout | 普通日志输出（最常用） |
-| \`console.info(...args)\` | stdout | 信息级别日志，行为与 log 一致 |
-| \`console.debug(...args)\` | stdout | 调试信息（默认不显示，需 \`NODE_DEBUG\` 或 \`--inspect\`） |
-| \`console.warn(...args)\` | stderr | 警告信息 |
-| \`console.error(...args)\` | stderr | 错误信息 |
-
-\`\`\`javascript
-console.log("普通信息");
-console.info("信息日志");
-console.warn("警告信息");
-console.error("错误信息");
-// warn 和 error 输出到 stderr，其他输出到 stdout
-\`\`\`
-
-#### 格式化输出
-
-\`console.log\` 支持 printf 风格的格式化占位符：
-
-| 占位符 | 说明 | 示例 |
-| --- | --- | --- |
-| \`%s\` | 字符串 | \`console.log('Hello %s', 'World')\` |
-| \`%d\` / \`%i\` | 整数 | \`console.log('Count: %d', 42)\` |
-| \`%f\` | 浮点数 | \`console.log('PI: %f', 3.14159)\` |
-| \`%j\` | JSON 格式 | \`console.log('Data: %j', {a: 1})\` |
-| \`%o\` | 对象（展开显示） | \`console.log('Obj: %o', {a: 1, b: 2})\` |
-| \`%O\` | 对象（展开显示，含更多细节） | \`console.log('Obj: %O', {a: 1})\` |
-| \`%%\` | 百分号本身 | \`console.log('100%%')\` 输出 \`100%\` |
-
-\`\`\`javascript
-const name = "Alice";
-const age = 30;
-console.log("用户 %s 的年龄是 %d 岁", name, age);
-// 输出：用户 Alice 的年龄是 30 岁
-\`\`\`
-
-#### 计时方法
-
-\`console.time()\` 和 \`console.timeEnd()\` 用于测量代码执行时间：
-
-\`\`\`javascript
-console.time('loop');
-for (let i = 0; i < 1000000; i++) { /* ... */ }
-console.timeEnd('loop');
-// loop: 2.345ms
-
-// 可以同时运行多个计时器（用不同标签区分）
-console.time('db-query');
-console.time('api-call');
-
-// 中间查看耗时（不结束计时器）
-console.timeLog('db-query', '查询进行中...');
-
-console.timeEnd('db-query');
-console.timeEnd('api-call');
-\`\`\`
-
-#### 分组输出
-
-\`\`\`javascript
-console.group('用户信息');
-console.log('姓名: Alice');
-console.log('年龄: 30');
-console.group('地址');
-console.log('城市: 北京');
-console.log('街道: 长安街');
-console.groupEnd(); // 结束地址分组
-console.groupEnd(); // 结束用户信息分组
-\`\`\`
-
-#### 表格输出
-
-\`console.table()\` 以表格形式展示数据，非常适合数组和对象数组：
-
-\`\`\`javascript
-const users = [
-  { name: 'Alice', age: 30, role: 'admin' },
-  { name: 'Bob', age: 25, role: 'user' },
-];
-console.table(users);
-// ┌─────────┬─────────┬─────┬─────────┐
-// │ (index) │  name   │ age │  role   │
-// ├─────────┼─────────┼─────┼─────────┤
-// │    0    │ 'Alice' │ 30  │ 'admin' │
-// │    1    │  'Bob'  │ 25  │ 'user'  │
-// └─────────┴─────────┴─────┴─────────┘
-\`\`\`
-
-#### 调用栈追踪
-
-\`console.trace()\` 输出当前调用栈：
-
-\`\`\`javascript
-function a() { b(); }
-function b() { c(); }
-function c() { console.trace('当前位置'); }
-a();
-// Trace: 当前位置
-//     at c (...)
-//     at b (...)
-//     at a (...)
-\`\`\`
-
-#### 断言与计数
-
-\`\`\`javascript
-// console.assert：条件为 false 时输出错误
-console.assert(1 === 2, '断言失败：1 不等于 2');
-// Assertion failed: 断言失败：1 不等于 2
-
-// console.count：计数器
-for (let i = 0; i < 3; i++) {
-  console.count('loop');
-}
-// loop: 1
-// loop: 2
-// loop: 3
-
-console.countReset('loop'); // 重置计数器
-\`\`\`
-
-#### 其他方法
-
-| 方法 | 说明 |
-| --- | --- |
-| \`console.clear()\` | 清空控制台（发送 ANSI 转义序列） |
-| \`console.dir(obj, opts)\` | 以交互式列表形式打印对象 |
-| \`console.profile(label)\` | 启动 CPU 分析（需 --inspect） |
-| \`console.profileEnd(label)\` | 停止 CPU 分析 |
-
-### util.inspect —— 深度对象打印
-
-\`util.inspect()\` 是 Node.js 中用于将任意对象转换为可读字符串的核心工具。\`console.log\` 内部就是使用它来格式化对象的。
-
-**基本用法**：
-
-\`\`\`javascript
-const util = require('util');
-
-const obj = {
-  name: 'test',
-  nested: { a: { b: { c: 'deep' } } },
-  arr: [1, 2, 3],
-  fn: function() { return 'hello'; },
-};
-
-console.log(util.inspect(obj));
-\`\`\`
-
-**配置选项**：
-
-| 选项 | 类型 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| \`showHidden\` | boolean | \`false\` | 是否显示不可枚举属性 |
-| \`depth\` | number | \`2\` | 递归深度（\`null\` 表示无限） |
-| \`colors\` | boolean | \`false\` | 是否使用 ANSI 颜色 |
-| \`maxArrayLength\` | number | \`100\` | 数组最大显示元素数 |
-| \`maxStringLength\` | number | \`10000\` | 字符串最大显示长度 |
-| \`breakLength\` | number | \`80\` | 每行最大长度 |
-| \`compact\` | boolean | \`3\` | 紧凑模式（元素少于 3 个时单行） |
-| \`sorted\` | boolean | \`false\` | 是否按字母排序属性 |
-| \`getters\` | boolean | \`false\` | 是否显示 getter 的值 |
-| \`numericSeparator\` | boolean | \`false\` | 是否使用数字分隔符 |
-
-\`\`\`javascript
-// 自定义 inspect 深度
-util.inspect(deepObj, { depth: 5, colors: true });
-
-// 设置全局默认 inspect 选项
-util.inspect.defaultOptions.depth = 5;
-util.inspect.defaultOptions.colors = true;
-\`\`\`
-
-### util.format —— 字符串格式化
-
-\`util.format()\` 类似于 \`console.log\` 的格式化引擎，但返回字符串而不是输出到控制台：
-
-\`\`\`javascript
-const util = require('util');
-
-const msg = util.format('用户 %s 的年龄是 %d', 'Alice', 30);
-console.log(msg); // '用户 Alice 的年龄是 30'
-
-// 也可以直接格式化对象
-const objMsg = util.format('数据: %j', { a: 1 });
-console.log(objMsg); // '数据: {"a":1}'
-\`\`\`
-
-### 日志级别设计
-
-一个良好的日志系统应该定义清晰的日志级别：
-
-| 级别 | 值 | 说明 | 使用场景 |
-| --- | --- | --- | --- |
-| **fatal** | 60 | 致命错误，应用无法继续运行 | 数据库连接断开、磁盘满 |
-| **error** | 50 | 错误，但应用可以继续运行 | API 调用失败、文件读写错误 |
-| **warn** | 40 | 警告，潜在问题 | 配置缺失、即将达到限制 |
-| **info** | 30 | 一般信息，记录关键操作 | 服务启动、用户登录、请求处理 |
-| **debug** | 20 | 调试信息，开发时使用 | 变量值、函数调用链路 |
-| **trace** | 10 | 最详细的追踪信息 | 方法进入/退出、详细的变量值 |
-
-**环境与日志级别的关系**：
-
-\`\`\`javascript
-const LOG_LEVELS = {
-  production: 'info',   // 生产环境只记录 info 及以上
-  staging: 'debug',     // 预发布环境记录 debug 及以上
-  development: 'debug', // 开发环境记录 debug 及以上
-  test: 'error',        // 测试环境只记录 error 及以上
-};
-\`\`\`
-
-### 结构化日志
-
-传统的文本日志难以被机器解析和分析。结构化日志（如 JSON 格式）可以被日志聚合系统（如 ELK、Splunk）轻松索引和搜索。
-
-\`\`\`javascript
-// ❌ 非结构化日志（难以解析）
-console.log('User Alice logged in at 2024-01-01 10:00:00');
-
-// ✅ 结构化日志（JSON 格式，易于搜索和分析）
-console.log(JSON.stringify({
-  level: 'info',
-  timestamp: new Date().toISOString(),
-  event: 'user_login',
-  user: 'Alice',
-  ip: '192.168.1.1',
-}));
-\`\`\`
-
-### 调试技巧
-
-**1. 使用 util.debuglog**
-
-\`\`\`javascript
-const util = require('util');
-const debug = util.debuglog('myapp');
-
-// 只有在 NODE_DEBUG=myapp 时才输出
-debug('这条消息只在 NODE_DEBUG=myapp 时显示');
-\`\`\`
-
-**2. 使用 Node.js 内置调试器**
-
-\`\`\`bash
-# 启动调试模式
-node inspect app.js
-
-# 使用 Chrome DevTools
-node --inspect app.js
-node --inspect-brk app.js  # 在第一行暂停
-\`\`\`
-
-**3. 使用 debug 模块**
-
-\`debug\` 是 Node.js 生态中最流行的调试日志库，支持命名空间过滤：
-
-\`\`\`javascript
-const debug = require('debug')('app:db');
-debug('数据库查询: %s', sql);
-// 运行时通过 DEBUG=app:* node app.js 启用
-\`\`\`
-
-下面这段代码演示了 console 各种方法、性能测量、深度对象打印和简易日志系统的实现。`,
-    code: `// ============================================================
-// 第五章代码演示：日志与调试基础实战
-// ============================================================
-const util = require("util");
-
-// ---- 1. console 基本输出方法 ----
-console.log("===== 1. console 基本输出方法 =====");
-console.log("✓ console.log   → 普通日志（stdout）");
-console.info("✓ console.info  → 信息日志（stdout）");
-console.warn("⚠ console.warn  → 警告信息（stderr）");
-console.error("✗ console.error → 错误信息（stderr）");
-
-// ---- 2. console 格式化占位符 ----
-console.log("\\n===== 2. 格式化占位符 =====");
-const name = "Alice";
-const age = 30;
-const pi = 3.14159265;
-const data = { id: 1, name: "test", tags: ["a", "b"] };
-
-console.log("字符串 %%s: 用户 %s 的年龄是 %d", name, age);
-console.log("整数 %%d: 数量 %d, 十六进制 %d", 255, 255);
-console.log("浮点数 %%f: PI = %f", pi);
-console.log("JSON %%j: %j", data);
-console.log("对象 %%o: %o", { a: 1, b: { c: 2 } });
-console.log("百分号 %%%%: 完成率 100%%");
-
-// ---- 3. console.table 表格展示 ----
-console.log("\\n===== 3. console.table 表格展示 =====");
-
-// 对象数组（最常用）
-const users = [
-  { name: "Alice", age: 30, role: "admin", active: true },
-  { name: "Bob", age: 25, role: "user", active: true },
-  { name: "Charlie", age: 35, role: "moderator", active: false },
-  { name: "Diana", age: 28, role: "user", active: true },
-];
-console.log("用户列表:");
-console.table(users);
-
-// 二维数组
-console.log("\\n二维数组:");
-console.table([
-  ["姓名", "年龄", "城市"],
-  ["Alice", 30, "北京"],
-  ["Bob", 25, "上海"],
-]);
-
-// 简单对象
-console.log("\\n简单对象:");
-console.table({ a: 1, b: 2, c: 3 });
-
-// ---- 4. console.dir 深度打印对象 ----
-console.log("\\n===== 4. console.dir 深度打印 =====");
-
-const deepObj = {
-  level1: {
-    name: "L1",
-    level2: {
-      name: "L2",
-      level3: {
-        name: "L3",
-        level4: {
-          name: "L4",
-          value: "very deep",
-        },
-      },
-      siblings: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    },
-  },
-  fn: function hello() { return "world"; },
-  date: new Date(),
-  reg: /test/i,
-};
-
-console.log("console.dir 默认深度:");
-console.dir(deepObj);
-console.log("\\nconsole.dir 深度=5, 显示隐藏属性:");
-console.dir(deepObj, { depth: 5, showHidden: false });
-
-// ---- 5. 性能测量（console.time / Date.now）----
-console.log("\\n===== 5. 性能测量 =====");
-
-// 方式 1：Date.now() 手动计时
-function measurePerformance(label, fn) {
-  const start = Date.now();
-  const result = fn();
-  const elapsed = Date.now() - start;
-  console.log(label + ": " + elapsed + "ms");
-  return result;
-}
-
-// 测试循环性能
-measurePerformance("100 万次循环求和", function () {
-  let sum = 0;
-  for (let i = 0; i < 1000000; i++) {
-    sum += i;
-  }
-  return sum;
-});
-
-// 测试字符串拼接
-measurePerformance("10 万次字符串拼接", function () {
-  let str = "";
-  for (let i = 0; i < 100000; i++) {
-    str += "a";
-  }
-  return str.length;
-});
-
-// 测试数组操作
-measurePerformance("10 万次数组 push", function () {
-  const arr = [];
-  for (let i = 0; i < 100000; i++) {
-    arr.push(i);
-  }
-  return arr.length;
-});
-
-// 测试对象创建
-measurePerformance("10 万个对象创建", function () {
-  const objs = [];
-  for (let i = 0; i < 100000; i++) {
-    objs.push({ id: i, name: "obj-" + i });
-  }
-  return objs.length;
-});
-
-// ---- 6. util.inspect 深度对象打印 ----
-console.log("\\n===== 6. util.inspect 深度对象打印 =====");
-
-const complexObj = {
-  name: "root",
-  values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-  nested: {
-    a: { b: { c: { d: { e: "deep" } } } },
-  },
-  secret: "should-not-show",
-  createdAt: new Date(),
-  buffer: Buffer.from("Hello"),
-};
-
-// 不同配置的 inspect
-console.log("默认 inspect (depth=2):");
-console.log(util.inspect(complexObj));
-
-console.log("\\ndepth=5, compact=false:");
-console.log(util.inspect(complexObj, { depth: 5, compact: false }));
-
-console.log("\\nmaxArrayLength=5, sorted=true:");
-console.log(util.inspect(complexObj, {
-  maxArrayLength: 5,
-  sorted: true,
-  depth: 3,
-}));
-
-console.log("\\nshowHidden=true, getters=true:");
-console.log(util.inspect(complexObj, {
-  showHidden: true,
-  getters: true,
-  depth: 2,
-}));
-
-// ---- 7. util.format 格式化 ----
-console.log("\\n===== 7. util.format 格式化 =====");
-
-// 基本格式化
-console.log(util.format("Hello %s, you have %d messages", "Alice", 5));
-
-// 对象格式化
-console.log(util.format("Config: %j", { port: 3000, host: "localhost" }));
-
-// 多个占位符
-console.log(util.format(
-  "[%s] %s - %s (耗时 %dms)",
-  new Date().toISOString(),
-  "INFO",
-  "用户登录成功",
-  42
-));
-
-// 不提供足够参数时，占位符保持原样
-console.log(util.format("Hello %s and %s", "Alice"));
-
-// ---- 8. console.trace 调用栈追踪 ----
-console.log("\\n===== 8. console.trace 调用栈 =====");
-
-function level3() {
-  console.trace("当前位置：level3");
-}
-function level2() {
-  level3();
-}
-function level1() {
-  level2();
-}
-level1();
-console.log("（上面显示了从 level1 → level2 → level3 的完整调用链）");
-
-// ---- 9. console.assert 断言 ----
-console.log("\\n===== 9. console.assert 断言 =====");
-
-console.assert(true, "这条不会显示（断言通过）");
-console.assert(1 === 2, "断言失败：1 不等于 2");
-console.assert(3 > 5, "断言失败：3 不大于 5");
-console.assert("hello".length === 5, "这条不会显示（断言通过）");
-
-// ---- 10. console.count 计数器 ----
-console.log("\\n===== 10. console.count 计数器 =====");
-
-for (let i = 0; i < 3; i++) {
-  console.count("loop-A");
-}
-console.count("loop-A");
-console.countReset("loop-A");
-console.log("（重置计数器后）");
-console.count("loop-A");
-
-// 不同标签的计数器独立
-console.count("users");
-console.count("users");
-console.count("products");
-console.count("users");
-
-// ---- 11. 简易结构化日志系统 ----
-console.log("\\n===== 11. 简易结构化日志系统 =====");
-
-const LOG_LEVELS = {
-  trace: 10,
-  debug: 20,
-  info: 30,
-  warn: 40,
-  error: 50,
-  fatal: 60,
-};
-
-const LOG_LABELS = {
-  trace: "TRACE",
-  debug: "DEBUG",
-  info: "INFO ",
-  warn: "WARN ",
-  error: "ERROR",
-  fatal: "FATAL",
-};
-
-function createLogger(options) {
-  const opts = Object.assign({
-    level: "info",
-    format: "json", // 'json' 或 'text'
-    timestamp: true,
-  }, options);
-
-  const minLevel = LOG_LEVELS[opts.level] || 30;
-
-  function shouldLog(level) {
-    return (LOG_LEVELS[level] || 0) >= minLevel;
-  }
-
-  function formatMessage(level, message, meta) {
-    if (opts.format === "json") {
-      return JSON.stringify({
-        level: level,
-        timestamp: opts.timestamp ? new Date().toISOString() : undefined,
-        message: message,
-        ...meta,
+  // 便捷方法
+  get(pattern, handler) { return this.register("GET", pattern, handler); }
+  post(pattern, handler) { return this.register("POST", pattern, handler); }
+  put(pattern, handler) { return this.register("PUT", pattern, handler); }
+  patch(pattern, handler) { return this.register("PATCH", pattern, handler); }
+  delete(pattern, handler) { return this.register("DELETE", pattern, handler); }
+
+  // 路由分组
+  group(prefix, callback) {
+    const subRouter = new Router();
+    subRouter.prefix = this.prefix + prefix;
+    callback(subRouter);
+    // 将子路由合并到当前路由表
+    subRouter.routes.forEach(function (route) {
+      this.routes.push({
+        method: route.method,
+        pattern: subRouter.prefix + route.pattern,
+        regex: new RegExp("^" + subRouter.prefix.replace(/\\//g, "\\\\/") +
+          route.regex.source.slice(1)),
+        paramNames: route.paramNames,
+        handler: route.handler,
       });
-    } else {
-      const ts = opts.timestamp ? "[" + new Date().toISOString() + "] " : "";
-      const label = LOG_LABELS[level] || level.toUpperCase();
-      const metaStr = meta && Object.keys(meta).length > 0
-        ? " " + JSON.stringify(meta)
-        : "";
-      return ts + "[" + label + "] " + message + metaStr;
-    }
+    }.bind(this));
+    return this;
   }
 
+  // 添加全局中间件
+  use(handler) {
+    this.middlewares.push(handler);
+    return this;
+  }
+
+  // 处理请求
+  handle(req, res) {
+    // 解析查询参数
+    const parsedUrl = url.parse(req.path, true);
+    req.query = parsedUrl.query;
+    const pathname = parsedUrl.pathname;
+
+    // 匹配路由
+    for (let i = 0; i < this.routes.length; i++) {
+      const route = this.routes[i];
+      const match = pathname.match(route.regex);
+
+      if (match && req.method === route.method) {
+        // 提取路径参数
+        req.params = {};
+        for (let j = 0; j < route.paramNames.length; j++) {
+          req.params[route.paramNames[j]] = match[j + 1];
+        }
+        // 执行处理函数
+        route.handler(req, res);
+        return;
+      }
+    }
+
+    // 404 处理
+    res.status(404).json({
+      error: "Not Found",
+      message: "路径 " + pathname + " 未找到匹配的路由",
+      method: req.method,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  // 列出所有注册的路由
+  listRoutes() {
+    console.log("\\n已注册的路由列表:");
+    this.routes.forEach(function (route, index) {
+      console.log("  " + (index + 1) + ". [" + route.method + "] " + route.pattern);
+    });
+    console.log("共 " + this.routes.length + " 条路由");
+  }
+}
+
+// ---- 2. 创建路由并注册 ----
+console.log("\\n===== 2. 注册路由 =====");
+
+const router = new Router();
+
+// 注册用户相关路由
+router.get("/users", function (req, res) {
+  res.json({
+    data: [
+      { id: 1, name: "张三", email: "zhangsan@example.com" },
+      { id: 2, name: "李四", email: "lisi@example.com" },
+    ],
+    total: 2,
+    page: parseInt(req.query.page) || 1,
+  });
+});
+
+router.get("/users/:id", function (req, res) {
+  res.json({
+    data: { id: parseInt(req.params.id), name: "张三", email: "zhangsan@example.com" },
+  });
+});
+
+router.post("/users", function (req, res) {
+  res.status(201).json({
+    message: "用户创建成功",
+    data: { id: 3, name: req.body ? req.body.name : "新用户" },
+  });
+});
+
+router.put("/users/:id", function (req, res) {
+  res.json({
+    message: "用户更新成功",
+    data: { id: parseInt(req.params.id), name: "更新后的名字" },
+  });
+});
+
+router.delete("/users/:id", function (req, res) {
+  res.json({
+    message: "用户 ID " + req.params.id + " 已删除",
+  });
+});
+
+// 注册产品相关路由
+router.get("/products", function (req, res) {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  res.json({
+    data: [
+      { id: 1, name: "商品A", price: 99.9 },
+      { id: 2, name: "商品B", price: 199.9 },
+    ],
+    page: page,
+    limit: limit,
+  });
+});
+
+// 路由分组演示
+router.group("/admin", function (adminRouter) {
+  adminRouter.get("/dashboard", function (req, res) {
+    res.json({ stats: { users: 100, orders: 500, revenue: 50000 } });
+  });
+  adminRouter.get("/users", function (req, res) {
+    res.json({ data: [], message: "管理后台用户列表" });
+  });
+});
+
+// 显示路由表
+router.listRoutes();
+
+// ---- 3. 测试路由匹配 ----
+console.log("\\n===== 3. 测试路由匹配 =====");
+
+function testRoute(method, path, body) {
+  const req = createRequest(method, path, body);
+  const res = createResponse();
+  router.handle(req, res);
+
+  console.log("\\n--- " + method + " " + path + " ---");
+  console.log("状态码: " + res.statusCode);
+  if (req.params && Object.keys(req.params).length > 0) {
+    console.log("路径参数: " + JSON.stringify(req.params));
+  }
+  if (req.query && Object.keys(req.query).length > 0) {
+    console.log("查询参数: " + JSON.stringify(req.query));
+  }
+  if (res.body) {
+    const bodyStr = res.body.length > 200
+      ? res.body.slice(0, 200) + "..."
+      : res.body;
+    console.log("响应体: " + bodyStr);
+  }
+}
+
+// 测试各种路由场景
+testRoute("GET", "/users");
+testRoute("GET", "/users/42");
+testRoute("GET", "/users?page=2&limit=20");
+testRoute("POST", "/users", { name: "王五", email: "wangwu@example.com" });
+testRoute("PUT", "/users/42");
+testRoute("DELETE", "/users/42");
+testRoute("GET", "/products?page=1&limit=5");
+testRoute("GET", "/admin/dashboard");
+testRoute("GET", "/admin/users");
+
+// 404 测试
+testRoute("GET", "/nonexistent");
+testRoute("POST", "/users/42"); // 没有注册 POST /users/:id
+
+// ---- 4. 路径参数提取详解 ----
+console.log("\\n===== 4. 路径参数提取详解 =====");
+
+// 注册嵌套路径参数路由
+const detailRouter = new Router();
+detailRouter.get("/posts/:postId/comments/:commentId", function (req, res) {
+  res.json({
+    postId: req.params.postId,
+    commentId: req.params.commentId,
+    message: "获取评论详情",
+  });
+});
+
+console.log("测试嵌套路径参数:");
+const req1 = createRequest("GET", "/posts/100/comments/5");
+const res1 = createResponse();
+detailRouter.handle(req1, res1);
+console.log("请求: GET /posts/100/comments/5");
+console.log("响应: " + res1.body);
+console.log("提取的参数: " + JSON.stringify(req1.params));
+
+// ---- 5. RESTful 路由设计总结 ----
+console.log("\\n===== 5. RESTful 路由设计最佳实践 =====");
+
+const restfulExamples = [
+  { method: "GET", path: "/resources", desc: "获取资源列表" },
+  { method: "GET", path: "/resources/:id", desc: "获取单个资源" },
+  { method: "POST", path: "/resources", desc: "创建新资源" },
+  { method: "PUT", path: "/resources/:id", desc: "完整更新资源" },
+  { method: "PATCH", path: "/resources/:id", desc: "部分更新资源" },
+  { method: "DELETE", path: "/resources/:id", desc: "删除资源" },
+  { method: "GET", path: "/resources/:id/sub", desc: "获取子资源列表" },
+];
+
+console.log("标准 RESTful API 设计:");
+restfulExamples.forEach(function (r) {
+  console.log("  " + r.method.padEnd(7) + " " + r.path.padEnd(25) + " → " + r.desc);
+});
+
+console.log("\\n===== 路由设计演示完成 =====");`,
+  },
+
+  // =========================================================
+  // 第二章：中间件模式
+  // =========================================================
+  {
+    id: "node-middleware",
+    group: "构建 API",
+    icon: "🔗",
+    title: "中间件模式",
+    content: `## 中间件模式
+
+中间件是 Node.js Web 框架（如 Express、Koa）的核心设计模式。它允许你将请求处理流程拆分为一系列可组合、可复用的函数，每个函数都可以访问请求对象、响应对象以及流程中的下一个中间件。
+
+### 中间件概念
+
+中间件本质上是一个函数，它接收请求上下文并决定是继续传递还是终止请求。中间件可以执行以下操作：
+
+- 执行任何代码
+- 修改请求和响应对象
+- 调用下一个中间件
+- 终止请求-响应循环
+- 捕获并处理错误
+
+**基本中间件签名**：
+
+\`\`\`javascript
+// Express 风格中间件
+function middleware(req, res, next) {
+  // 1. 处理请求前逻辑
+  console.log(\`\${req.method} \${req.path}\`);
+
+  // 2. 调用下一个中间件
+  next();
+
+  // 3. 处理响应后逻辑（洋葱模型的下半部分）
+  console.log(\`响应状态码: \${res.statusCode}\`);
+}
+\`\`\`
+
+### 洋葱模型
+
+中间件的执行顺序遵循**洋葱模型**：请求从外向内穿过每一层中间件，到达核心处理函数后再从内向外穿过每一层返回。每一层中间件可以在请求进入时和响应离开时执行代码。
+
+\`\`\`
+请求 →  [中间件1] → [中间件2] → [中间件3] → [核心处理]
+       ↓                                    ↓
+响应 ←  [中间件1] ← [中间件2] ← [中间件3] ← [核心处理]
+\`\`\`
+
+\`\`\`javascript
+// 洋葱模型示例
+app.use(async (ctx, next) => {
+  console.log('1. 进入中间件1');
+  await next();
+  console.log('6. 离开中间件1');
+});
+
+app.use(async (ctx, next) => {
+  console.log('2. 进入中间件2');
+  await next();
+  console.log('5. 离开中间件2');
+});
+
+app.use(async (ctx, next) => {
+  console.log('3. 进入中间件3');
+  await next();
+  console.log('4. 离开中间件3');
+});
+
+// 输出顺序：1 → 2 → 3 → 4 → 5 → 6
+\`\`\`
+
+### next 函数
+
+\`next\` 函数是中间件模式的关键。调用 \`next()\` 会将控制权传递给下一个中间件。如果不在中间件中调用 \`next()\`，请求处理流程就会终止。
+
+**next 的几种用法**：
+
+| 用法 | 说明 |
+| --- | --- |
+| \`next()\` | 传递给下一个中间件 |
+| \`next(err)\` | 传递错误给错误处理中间件 |
+| \`next('route')\` | 跳过当前路由的剩余中间件（Express 特有） |
+| 不调用 \`next()\` | 终止请求处理流程 |
+
+### 中间件顺序
+
+中间件的注册顺序决定了执行顺序，这一点非常重要：
+
+1. **错误处理中间件应该最后注册**：它需要捕获前面所有中间件的错误
+2. **日志中间件应该最先注册**：记录所有请求
+3. **认证中间件应该在业务逻辑之前**：保护需要认证的路由
+4. **静态文件中间件通常靠前**：避免不必要的处理
+
+### 常见中间件类型
+
+| 中间件类型 | 功能 | 位置 |
+| --- | --- | --- |
+| **Logger** | 记录请求日志（方法、路径、耗时） | 最前面 |
+| **CORS** | 处理跨域请求 | 靠前 |
+| **Body Parser** | 解析请求体（JSON、表单等） | 认证之前 |
+| **Auth** | 身份认证和授权 | 业务逻辑之前 |
+| **Validator** | 请求参数验证 | 业务逻辑之前 |
+| **Error Handler** | 统一错误处理 | 最后面 |
+
+### Express vs Koa 中间件对比
+
+| 特性 | Express | Koa |
+| --- | --- | --- |
+| 中间件签名 | \`(req, res, next)\` | \`(ctx, next)\` |
+| 异步处理 | 回调风格 | async/await |
+| 洋葱模型 | 部分支持 | 完整支持 |
+| 响应发送 | \`res.send()\` | \`ctx.body = ...\` |
+| 错误处理 | \`(err, req, res, next)\` | \`try-catch\` 或错误中间件 |
+
+下面这段代码实现了完整的中间件管道，支持洋葱模型执行和错误处理中间件。`,
+    code: `// ============================================================
+// 第二章代码演示：中间件管道实现
+// ============================================================
+
+// ---- 模拟请求上下文 ----
+function createContext(method, path, body) {
   return {
-    trace: function (msg, meta) {
-      if (shouldLog("trace")) console.log(formatMessage("trace", msg, meta));
+    req: {
+      method: method,
+      path: path,
+      body: body || null,
+      params: {},
+      query: {},
+      headers: {},
+      startTime: Date.now(),
     },
-    debug: function (msg, meta) {
-      if (shouldLog("debug")) console.log(formatMessage("debug", msg, meta));
+    res: {
+      statusCode: 200,
+      body: null,
+      headers: {},
+      status: function (code) {
+        this.statusCode = code;
+        return this;
+      },
+      json: function (data) {
+        this.body = JSON.stringify(data);
+        this.headers["content-type"] = "application/json";
+        return this;
+      },
+      end: function (data) {
+        this.body = data;
+        return this;
+      },
     },
-    info: function (msg, meta) {
-      if (shouldLog("info")) console.log(formatMessage("info", msg, meta));
-    },
-    warn: function (msg, meta) {
-      if (shouldLog("warn")) console.warn(formatMessage("warn", msg, meta));
-    },
-    error: function (msg, meta) {
-      if (shouldLog("error")) console.error(formatMessage("error", msg, meta));
-    },
-    fatal: function (msg, meta) {
-      if (shouldLog("fatal")) console.error(formatMessage("fatal", msg, meta));
+    state: {}, // 中间件之间共享状态
+    throw: function (statusCode, message) {
+      const err = new Error(message);
+      err.statusCode = statusCode;
+      throw err;
     },
   };
 }
 
-// 创建不同级别的日志器
-const prodLogger = createLogger({ level: "info", format: "json" });
-const devLogger = createLogger({ level: "debug", format: "text" });
+// ---- 1. 中间件管道实现（洋葱模型）----
+console.log("===== 1. 中间件管道实现 =====");
 
-console.log("--- 生产环境日志器（level=info, json）---");
-prodLogger.debug("这条不会显示（debug < info）");
-prodLogger.info("应用启动", { port: 3000, env: "production" });
-prodLogger.warn("磁盘空间不足", { usage: "92%", disk: "/dev/sda1" });
-prodLogger.error("数据库连接失败", { host: "db.example.com", retry: 3 });
+class MiddlewarePipeline {
+  constructor() {
+    // 普通中间件栈
+    this.middlewares = [];
+    // 错误处理中间件栈
+    this.errorMiddlewares = [];
+  }
 
-console.log("\\n--- 开发环境日志器（level=debug, text）---");
-devLogger.debug("变量值", { x: 10, y: 20 });
-devLogger.info("请求处理", { method: "GET", path: "/api/users" });
-devLogger.warn("缓存未命中", { key: "user:123" });
-devLogger.error("文件读取失败", { file: "config.json", code: "ENOENT" });
+  // 注册普通中间件
+  use(fn) {
+    this.middlewares.push(fn);
+    return this;
+  }
 
-// ---- 12. 日志级别过滤演示 ----
-console.log("\\n===== 12. 日志级别过滤 =====");
+  // 注册错误处理中间件
+  catch(fn) {
+    this.errorMiddlewares.push(fn);
+    return this;
+  }
 
-const levels = ["trace", "debug", "info", "warn", "error", "fatal"];
-const testLogger = createLogger({ level: "info", format: "text" });
+  // 组合中间件（洋葱模型核心）
+  compose(middlewares, ctx) {
+    let index = -1;
 
-console.log("当日志级别设为 'info' 时，以下级别会被过滤:");
-levels.forEach(function (level) {
-  const levelNum = LOG_LEVELS[level];
-  const infoNum = LOG_LEVELS["info"];
-  const visible = levelNum >= infoNum;
-  console.log("  " + level + " (" + levelNum + ") → " + (visible ? "✓ 显示" : "✗ 过滤"));
+    const dispatch = function (i) {
+      // 防止多次调用 next
+      if (i <= index) {
+        return Promise.reject(new Error("next() 被多次调用"));
+      }
+      index = i;
+
+      if (i >= middlewares.length) {
+        return Promise.resolve();
+      }
+
+      const fn = middlewares[i];
+      try {
+        return Promise.resolve(fn(ctx, function next() {
+          return dispatch(i + 1);
+        }));
+      } catch (err) {
+        return Promise.reject(err);
+      }
+    };
+
+    return dispatch(0);
+  }
+
+  // 执行管道
+  async execute(ctx) {
+    try {
+      // 执行普通中间件链
+      await this.compose(this.middlewares, ctx);
+      return ctx;
+    } catch (err) {
+      // 使用错误中间件链处理错误
+      ctx.error = err;
+      ctx.res.statusCode = err.statusCode || 500;
+
+      // 构建带错误信息的上下文
+      const errorCtx = Object.assign({}, ctx, {
+        error: err,
+        message: err.message,
+        statusCode: err.statusCode || 500,
+      });
+
+      // 执行错误中间件
+      for (let i = 0; i < this.errorMiddlewares.length; i++) {
+        try {
+          await this.errorMiddlewares[i](errorCtx, err);
+        } catch (e) {
+          console.error("错误处理中间件自身出错:", e.message);
+        }
+      }
+
+      return ctx;
+    }
+  }
+}
+
+// ---- 2. 创建中间件管道并注册中间件 ----
+console.log("\\n===== 2. 注册中间件 =====");
+
+const app = new MiddlewarePipeline();
+
+// 中间件 1：Logger —— 记录请求信息
+app.use(async function logger(ctx, next) {
+  const start = Date.now();
+  console.log("  [Logger 进入] " + ctx.req.method + " " + ctx.req.path);
+
+  await next(); // 进入下一层
+
+  const duration = Date.now() - start;
+  console.log("  [Logger 离开] " + ctx.req.method + " " + ctx.req.path +
+    " → " + ctx.res.statusCode + " (" + duration + "ms)");
 });
 
-// ---- 13. console.group 分组 ----
-console.log("\\n===== 13. console.group 分组 =====");
+// 中间件 2：CORS —— 处理跨域（模拟）
+app.use(async function cors(ctx, next) {
+  console.log("  [CORS 进入] 设置跨域头");
+  ctx.res.headers["Access-Control-Allow-Origin"] = "*";
+  ctx.res.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,DELETE";
+  ctx.res.headers["Access-Control-Allow-Headers"] = "Content-Type";
 
-console.group("🔍 用户请求详情");
-console.log("方法: GET");
-console.log("路径: /api/users");
-console.group("📋 请求头");
-console.log("Content-Type: application/json");
-console.log("Authorization: Bearer ***");
-console.groupEnd();
-console.group("📊 响应");
-console.log("状态码: 200");
-console.log("耗时: 42ms");
-console.groupEnd();
-console.groupEnd();
+  await next();
 
-console.log("\\n===== 日志与调试演示完成 =====");`,
+  console.log("  [CORS 离开]");
+});
+
+// 中间件 3：Body Parser —— 解析请求体
+app.use(async function bodyParser(ctx, next) {
+  console.log("  [BodyParser 进入] 解析请求体");
+  if (ctx.req.body) {
+    try {
+      ctx.req.body = typeof ctx.req.body === "string"
+        ? JSON.parse(ctx.req.body)
+        : ctx.req.body;
+    } catch (e) {
+      ctx.throw(400, "请求体 JSON 格式无效");
+    }
+  }
+  await next();
+  console.log("  [BodyParser 离开]");
+});
+
+// 中间件 4：认证中间件
+app.use(async function auth(ctx, next) {
+  console.log("  [Auth 进入] 检查认证");
+  const token = ctx.req.headers.authorization;
+  if (!token) {
+    ctx.state.user = null;
+    console.log("  [Auth] 未提供认证令牌，以匿名用户继续");
+  } else {
+    ctx.state.user = { id: 1, name: "认证用户", role: "user" };
+    console.log("  [Auth] 用户已认证: " + ctx.state.user.name);
+  }
+  await next();
+  console.log("  [Auth 离开]");
+});
+
+// 中间件 5：核心业务处理
+app.use(async function businessHandler(ctx, next) {
+  console.log("  [Business 进入] 执行业务逻辑");
+
+  // 模拟业务逻辑
+  if (ctx.req.path === "/api/users" && ctx.req.method === "GET") {
+    ctx.res.json({
+      data: [
+        { id: 1, name: "张三" },
+        { id: 2, name: "李四" },
+      ],
+      user: ctx.state.user,
+    });
+  } else if (ctx.req.path === "/api/error") {
+    ctx.throw(500, "模拟业务错误");
+  } else if (ctx.req.path === "/api/notfound") {
+    ctx.throw(404, "资源未找到");
+  } else {
+    ctx.res.json({ message: "请求已处理", path: ctx.req.path });
+  }
+
+  await next();
+  console.log("  [Business 离开]");
+});
+
+// ---- 3. 注册错误处理中间件 ----
+console.log("\\n===== 3. 注册错误处理中间件 =====");
+
+// 错误处理中间件 1：日志记录
+app.catch(async function errorLogger(ctx, err) {
+  console.log("  [ErrorLogger] 记录错误: " + err.message);
+});
+
+// 错误处理中间件 2：统一错误响应格式
+app.catch(async function errorResponder(ctx, err) {
+  const statusCode = err.statusCode || 500;
+  ctx.res.status(statusCode).json({
+    error: {
+      message: err.message,
+      code: statusCode,
+      timestamp: new Date().toISOString(),
+    },
+  });
+  console.log("  [ErrorResponder] 返回错误响应: " + statusCode);
+});
+
+// ---- 4. 测试中间件管道 ----
+console.log("\\n===== 4. 测试中间件管道 =====");
+
+async function testRequest(label, method, path, body, headers) {
+  console.log("\\n--- " + label + " ---");
+  const ctx = createContext(method, path, body);
+  if (headers) {
+    Object.assign(ctx.req.headers, headers);
+  }
+  await app.execute(ctx);
+  if (ctx.res.body) {
+    const bodyStr = ctx.res.body.length > 300
+      ? ctx.res.body.slice(0, 300) + "..."
+      : ctx.res.body;
+    console.log("  最终响应: " + bodyStr);
+  }
+  console.log("  状态码: " + ctx.res.statusCode);
+  console.log("  state: " + JSON.stringify(ctx.state));
+}
+
+// 测试正常请求
+testRequest("正常 GET 请求", "GET", "/api/users", null);
+
+// 测试带认证的请求
+testRequest("带认证令牌的请求", "GET", "/api/users", null, {
+  authorization: "Bearer token123",
+});
+
+// 测试 POST 请求（带请求体）
+testRequest("POST 请求（带 JSON 体）", "POST", "/api/data",
+  JSON.stringify({ name: "test", value: 42 }));
+
+// 测试错误场景
+testRequest("业务错误", "GET", "/api/error", null);
+
+// 测试 404
+testRequest("资源未找到", "GET", "/api/notfound", null);
+
+// 测试无效 JSON
+testRequest("无效 JSON 请求体", "POST", "/api/data", "{invalid json}");
+
+// ---- 5. 洋葱模型执行顺序演示 ----
+console.log("\\n===== 5. 洋葱模型执行顺序 =====");
+
+const onionApp = new MiddlewarePipeline();
+
+onionApp.use(async function layer1(ctx, next) {
+  console.log("  1. 进入 第1层");
+  await next();
+  console.log("  8. 离开 第1层");
+});
+
+onionApp.use(async function layer2(ctx, next) {
+  console.log("  2. 进入 第2层");
+  await next();
+  console.log("  7. 离开 第2层");
+});
+
+onionApp.use(async function layer3(ctx, next) {
+  console.log("  3. 进入 第3层");
+  await next();
+  console.log("  6. 离开 第3层");
+});
+
+onionApp.use(async function core(ctx, next) {
+  console.log("  4. 进入 核心处理");
+  ctx.res.json({ message: "核心处理完成" });
+  await next();
+  console.log("  5. 离开 核心处理");
+});
+
+console.log("\\n洋葱模型执行顺序:");
+const onionCtx = createContext("GET", "/test");
+onionApp.execute(onionCtx);
+
+console.log("\\n执行顺序: 1→2→3→4→5→6→7→8 (层层进入，层层返回)");
+
+// ---- 6. Express vs Koa 中间件对比 ----
+console.log("\\n===== 6. Express vs Koa 中间件对比 =====");
+
+console.log("| 特性           | Express              | Koa                  |");
+console.log("|----------------|----------------------|----------------------|");
+console.log("| 中间件签名     | (req, res, next)     | (ctx, next)          |");
+console.log("| 异步处理       | 回调风格             | async/await          |");
+console.log("| 洋葱模型       | 部分支持             | 完整支持             |");
+console.log("| 错误处理       | (err,req,res,next)   | try-catch            |");
+console.log("| 响应发送       | res.send()/res.json()| ctx.body = ...       |");
+
+console.log("\\n===== 中间件模式演示完成 =====");`,
   },
 
   // =========================================================
-  // 第六章：错误处理深入
+  // 第三章：请求参数解析
   // =========================================================
   {
-    id: "node-error-adv",
-    title: "错误处理深入",
-    icon: "⚠️",
-    group: "基础补充",
-    content: `## 错误处理深入概述
+    id: "node-request-parse",
+    group: "构建 API",
+    icon: "📥",
+    title: "请求参数解析",
+    content: `## 请求参数解析
 
-错误处理是 Node.js 应用健壮性的基石。一个没有良好错误处理的应用，在生产环境中随时可能崩溃。Node.js 提供了丰富的错误处理机制，包括内置错误类型、自定义错误类、堆栈捕获、全局异常处理等。
+请求参数解析是 API 开发中最基础也最频繁的操作。客户端可以通过多种方式向服务端传递参数：URL 路径参数、查询参数、请求头以及请求体。正确解析和验证这些参数是构建健壮 API 的第一步。
 
-### Error 类型体系
+### 参数来源分类
 
-Node.js 内置了多种错误类型，每种类型都继承自 \`Error\`：
-
-| 错误类型 | 说明 | 常见场景 |
-| --- | --- | --- |
-| \`Error\` | 通用错误，所有错误类型的基类 | 通用错误 |
-| \`TypeError\` | 类型错误 | 对非函数类型的值调用、访问 null 的属性 |
-| \`RangeError\` | 范围错误 | 数组长度无效、数字超出范围 |
-| \`ReferenceError\` | 引用错误 | 访问未定义的变量 |
-| \`SyntaxError\` | 语法错误 | JSON.parse 失败、eval 执行无效代码 |
-| \`URIError\` | URI 错误 | encodeURI/decodeURI 参数无效 |
-| \`EvalError\` | Eval 错误 | eval 相关错误（已基本不用） |
-| \`AssertionError\` | 断言错误 | assert 模块断言失败 |
-| \`SystemError\` | 系统错误 | 操作系统层面的错误（文件不存在、权限不足） |
-
-**Error 对象的属性**：
-
-| 属性 | 说明 |
-| --- | --- |
-| \`name\` | 错误类型名称（如 'Error'、'TypeError'） |
-| \`message\` | 错误描述信息 |
-| \`stack\` | 错误堆栈跟踪字符串 |
-| \`code\` | 错误码（字符串，如 'ENOENT'、'ECONNREFUSED'） |
-| \`cause\` | 引发此错误的原始错误（ES2022，Node 16.9+） |
-
-\`\`\`javascript
-const err = new Error('Something went wrong');
-console.log(err.name);     // 'Error'
-console.log(err.message);  // 'Something went wrong'
-console.log(err.stack);    // 完整的堆栈跟踪
-\`\`\`
-
-### Error.captureStackTrace 详解
-
-\`Error.captureStackTrace()\` 是 V8 提供的一个强大工具，用于创建自定义的堆栈跟踪。它可以让你控制堆栈跟踪的起点和范围。
-
-**语法**：
-
-\`\`\`javascript
-Error.captureStackTrace(targetObject[, constructorOpt])
-\`\`\`
-
-- \`targetObject\`：要在其上添加 \`.stack\` 属性的对象
-- \`constructorOpt\`（可选）：一个函数，堆栈跟踪将在该函数之后开始（即隐藏该函数及其调用者）
-
-**为什么需要它？**
-
-当你创建自定义错误类时，默认的堆栈跟踪会包含构造函数本身的调用。\`captureStackTrace\` 可以让你排除构造函数，让堆栈跟踪从用户代码开始。
-
-\`\`\`javascript
-// 自定义错误类
-class MyError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = 'MyError';
-    // 捕获堆栈，排除 MyError 构造函数本身
-    Error.captureStackTrace(this, MyError);
-  }
-}
-\`\`\`
-
-**实用场景**：
-
-\`\`\`javascript
-// 场景 1：创建自定义错误类
-class ValidationError extends Error {
-  constructor(message, field) {
-    super(message);
-    this.name = 'ValidationError';
-    this.field = field;
-    Error.captureStackTrace(this, ValidationError);
-  }
-}
-
-// 场景 2：给普通对象添加堆栈信息
-const result = { error: true, data: null };
-Error.captureStackTrace(result);
-console.log(result.stack); // 现在 result 对象有 stack 属性了
-\`\`\`
-
-### 自定义 Error 类
-
-在实际项目中，创建自定义错误类可以让你更好地分类和处理错误：
-
-\`\`\`javascript
-// 基础应用错误
-class AppError extends Error {
-  constructor(message, statusCode, code) {
-    super(message);
-    this.name = this.constructor.name;
-    this.statusCode = statusCode;
-    this.code = code;
-    this.isOperational = true; // 标记为可预期的操作错误
-    Error.captureStackTrace(this, this.constructor);
-  }
-}
-
-// 具体错误类型
-class NotFoundError extends AppError {
-  constructor(message = 'Resource not found') {
-    super(message, 404, 'NOT_FOUND');
-  }
-}
-
-class ValidationError extends AppError {
-  constructor(message = 'Validation failed', errors = []) {
-    super(message, 400, 'VALIDATION_ERROR');
-    this.errors = errors;
-  }
-}
-
-class UnauthorizedError extends AppError {
-  constructor(message = 'Unauthorized') {
-    super(message, 401, 'UNAUTHORIZED');
-  }
-}
-
-class DatabaseError extends AppError {
-  constructor(message = 'Database error', originalError = null) {
-    super(message, 500, 'DATABASE_ERROR');
-    this.originalError = originalError;
-    this.isOperational = false; // 数据库错误通常是系统性的
-  }
-}
-\`\`\`
-
-### 操作错误 vs 程序错误
-
-区分两种错误类型对于错误处理策略至关重要：
-
-| 类型 | 说明 | 示例 | 处理方式 |
+| 参数来源 | 位置 | 示例 | 典型用途 |
 | --- | --- | --- | --- |
-| **操作错误（Operational Error）** | 可预期的运行时错误 | 用户输入无效、文件不存在、网络超时 | 优雅处理，返回错误信息 |
-| **程序错误（Programmer Error）** | 代码中的 bug | 读取 undefined 的属性、类型错误 | 立即崩溃，让进程管理器重启 |
+| **路径参数** | URL 路径中 | \`/users/:id\` → \`id: 123\` | 资源标识 |
+| **查询参数** | URL \`?\` 之后 | \`?page=1&limit=10\` | 过滤、排序、分页 |
+| **请求体** | HTTP Body | \`{"name": "张三"}\` | 创建/更新数据 |
+| **请求头** | HTTP Headers | \`Authorization: Bearer ...\` | 认证、内容协商 |
+
+### 查询参数解析（Query String）
+
+查询参数是通过 URL 中的 \`?\` 传递的键值对，多个参数之间用 \`&\` 分隔。
+
+**Node.js 内置解析方式**：
 
 \`\`\`javascript
-// 操作错误：可以处理
-try {
-  const data = fs.readFileSync('config.json', 'utf8');
-} catch (err) {
-  if (err.code === 'ENOENT') {
-    console.log('配置文件不存在，使用默认配置');
+const url = require('url');
+
+// 完整 URL 解析
+const parsed = url.parse('/users?page=1&limit=10&sort=name', true);
+console.log(parsed.query); // { page: '1', limit: '10', sort: 'name' }
+
+// URLSearchParams 方式（推荐）
+const params = new URLSearchParams('page=1&limit=10&sort=name');
+params.get('page');  // '1'
+params.has('sort');  // true
+params.getAll('tag'); // 获取同名参数的所有值
+\`\`\`
+
+**查询参数的类型转换**：
+
+查询参数的值始终是字符串，需要手动转换：
+
+\`\`\`javascript
+const page = parseInt(req.query.page) || 1;
+const limit = Math.min(parseInt(req.query.limit) || 10, 100);
+const isActive = req.query.active === 'true';
+const date = req.query.date ? new Date(req.query.date) : null;
+\`\`\`
+
+### 请求体解析
+
+请求体可以通过多种格式发送，最常见的是 JSON 和 URL 编码格式。
+
+**JSON 格式（application/json）**：
+
+\`\`\`javascript
+// Content-Type: application/json
+// Body: {"name": "张三", "age": 30}
+
+function parseJsonBody(body) {
+  try {
+    return JSON.parse(body);
+  } catch (err) {
+    throw new Error('无效的 JSON 格式');
   }
 }
-
-// 程序错误：应该让它崩溃
-// 不要在 try-catch 中吞掉程序错误！
 \`\`\`
 
-### uncaughtException 与 unhandledRejection
-
-这两个事件是 Node.js 进程最后的"安全网"，用于捕获未被处理的异常。
-
-#### uncaughtException
-
-当同步代码中抛出异常且没有被 try-catch 捕获时，会触发 \`uncaughtException\` 事件：
+**URL 编码格式（application/x-www-form-urlencoded）**：
 
 \`\`\`javascript
-process.on('uncaughtException', (err) => {
-  console.error('未捕获的异常:', err);
-  // 记录日志后退出
-  process.exit(1);
-});
+const querystring = require('querystring');
 
-// 触发 uncaughtException
-throw new Error('Oops!');
+// Content-Type: application/x-www-form-urlencoded
+// Body: name=%E5%BC%A0%E4%B8%89&age=30
+
+function parseUrlEncodedBody(body) {
+  return querystring.parse(body);
+}
+// 结果: { name: '张三', age: '30' }
 \`\`\`
 
-**重要警告**：uncaughtException 是一个非常危险的机制。当它被触发时，应用可能处于不一致的状态，继续运行可能导致更严重的问题。**最佳实践是在 uncaughtException 中记录错误后立即退出进程**。
+**multipart/form-data 格式**：
 
-#### unhandledRejection
+用于文件上传，格式更复杂，需要使用专门的解析器。数据由 boundary 分隔符分隔，每个部分可以包含文件和普通字段。
 
-当 Promise 被拒绝但没有 \`.catch()\` 处理时，会触发 \`unhandledRejection\` 事件：
+### Content-Type 判断
 
-\`\`\`javascript
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('未处理的 Promise 拒绝:', reason);
-  // 记录日志后退出
-  process.exit(1);
-});
+在解析请求体之前，必须先检查 Content-Type 请求头，以确定使用哪种解析方式：
 
-// 触发 unhandledRejection
-Promise.reject(new Error('Async error!'));
-\`\`\`
-
-**两种事件的对比**：
-
-| 特性 | uncaughtException | unhandledRejection |
+| Content-Type | 解析方式 | 说明 |
 | --- | --- | --- |
-| 触发时机 | 同步代码抛出未捕获异常 | Promise 被拒绝且无 catch |
-| 默认行为 | 打印堆栈，进程退出 | 打印警告（Node 15+ 会退出） |
-| 是否可恢复 | 理论上可以，但强烈不推荐 | 理论上可以，但强烈不推荐 |
-| 建议处理 | 记录日志 → 优雅退出 | 记录日志 → 优雅退出 |
+| \`application/json\` | \`JSON.parse()\` | JSON 数据 |
+| \`application/x-www-form-urlencoded\` | \`querystring.parse()\` | 表单数据 |
+| \`multipart/form-data\` | 特殊解析器 | 文件上传 |
+| \`text/plain\` | 直接读取 | 纯文本 |
+| \`application/xml\` | XML 解析器 | XML 数据 |
 
-### 优雅退出（Graceful Shutdown）
+### 请求头读取
 
-优雅退出是指进程在终止前，完成正在处理的请求、关闭数据库连接、刷新日志等清理工作。
+请求头包含大量元信息，对 API 开发至关重要：
 
-**优雅退出的步骤**：
+| 请求头 | 说明 | 示例 |
+| --- | --- | --- |
+| \`Content-Type\` | 请求体的媒体类型 | \`application/json\` |
+| \`Authorization\` | 认证凭据 | \`Bearer eyJhbG...\` |
+| \`Accept\` | 客户端期望的响应格式 | \`application/json\` |
+| \`User-Agent\` | 客户端标识 | \`Mozilla/5.0 ...\` |
+| \`Accept-Language\` | 期望的语言 | \`zh-CN,zh;q=0.9\` |
+| \`X-Request-ID\` | 请求追踪 ID | \`550e8400-e29b-...\` |
+| \`X-Forwarded-For\` | 原始客户端 IP | \`192.168.1.1\` |
 
-1. 停止接收新请求
-2. 等待当前请求处理完成（设置超时）
-3. 关闭数据库连接、缓存连接等
-4. 刷新日志缓冲区
-5. 退出进程
+### 参数验证基础
 
-\`\`\`javascript
-// 优雅退出实现
-let isShuttingDown = false;
+解析参数后，验证是必不可少的步骤：
 
-async function gracefulShutdown(signal) {
-  if (isShuttingDown) return;
-  isShuttingDown = true;
+1. **必填字段检查**：确保关键参数存在
+2. **类型检查**：确保参数是期望的类型
+3. **格式检查**：如邮箱格式、手机号格式
+4. **范围检查**：如数值范围、字符串长度
+5. **业务规则检查**：如唯一性、关联性
 
-  console.log(\`收到 \${signal} 信号，开始优雅退出...\`);
+下面这段代码实现了完整的请求参数解析器，支持 JSON 和 URL 编码的请求体解析。`,
+    code: `// ============================================================
+// 第三章代码演示：请求参数解析器实现
+// ============================================================
+const url = require("url");
+const querystring = require("querystring");
 
-  // 1. 停止接收新请求
-  server.close(() => {
-    console.log('HTTP 服务器已关闭');
+// ---- 1. 查询参数解析 ----
+console.log("===== 1. 查询参数解析 =====");
+
+// 方式 1：使用 url.parse
+const parsed1 = url.parse("/users?page=1&limit=10&sort=name&active=true&tags=a&tags=b", true);
+console.log("url.parse 解析结果:");
+console.log(JSON.stringify(parsed1.query, null, 2));
+
+// 方式 2：使用 URLSearchParams
+const urlStr = "https://example.com/api/users?page=2&limit=20&sort=name&active=true";
+const searchParams = new URLSearchParams(urlStr.split("?")[1] || "");
+console.log("\\nURLSearchParams 解析:");
+console.log("  page: " + searchParams.get("page"));
+console.log("  limit: " + searchParams.get("limit"));
+console.log("  sort: " + searchParams.get("sort"));
+console.log("  active: " + searchParams.get("active"));
+console.log("  has('sort'): " + searchParams.has("sort"));
+console.log("  has('nonexist'): " + searchParams.has("nonexist"));
+
+// 遍历所有参数
+console.log("\\n遍历所有查询参数:");
+searchParams.forEach(function (value, key) {
+  console.log("  " + key + " = " + value);
+});
+
+// ---- 2. 查询参数类型转换 ----
+console.log("\\n===== 2. 查询参数类型转换 =====");
+
+// 查询参数的值始终是字符串，需要手动转换
+function parseQueryParams(queryString) {
+  const params = new URLSearchParams(queryString);
+  const result = {};
+
+  params.forEach(function (value, key) {
+    // 尝试转换为数字
+    if (/^\\d+$/.test(value)) {
+      result[key] = parseInt(value);
+    }
+    // 尝试转换为布尔值
+    else if (value === "true" || value === "false") {
+      result[key] = value === "true";
+    }
+    // 尝试转换为日期
+    else if (/^\\d{4}-\\d{2}-\\d{2}/.test(value)) {
+      const date = new Date(value);
+      if (!isNaN(date.getTime())) {
+        result[key] = date;
+      } else {
+        result[key] = value;
+      }
+    }
+    // 保持为字符串
+    else {
+      result[key] = value;
+    }
   });
 
-  // 2. 设置强制退出超时（30 秒后强制退出）
-  setTimeout(() => {
-    console.error('强制退出（超时）');
-    process.exit(1);
-  }, 30000);
+  return result;
+}
 
-  // 3. 关闭数据库连接
+const testQuery = "page=3&limit=50&active=true&sort=name&date=2024-01-15&name=test";
+const parsedQuery = parseQueryParams(testQuery);
+console.log("原始查询串: " + testQuery);
+console.log("解析并转换后:");
+console.log(JSON.stringify(parsedQuery, null, 2));
+console.log("  page 类型: " + typeof parsedQuery.page);
+console.log("  active 类型: " + typeof parsedQuery.active);
+console.log("  date 类型: " + (parsedQuery.date instanceof Date ? "Date" : typeof parsedQuery.date));
+
+// ---- 3. JSON 请求体解析 ----
+console.log("\\n===== 3. JSON 请求体解析 =====");
+
+function parseJsonBody(body) {
+  if (!body) return null;
+  if (typeof body === "object") return body;
+
   try {
-    await db.disconnect();
-    console.log('数据库连接已关闭');
+    const parsed = JSON.parse(body);
+    return parsed;
   } catch (err) {
-    console.error('关闭数据库连接失败:', err);
+    throw new Error("请求体 JSON 格式无效: " + err.message);
+  }
+}
+
+// 测试有效 JSON
+const jsonBody1 = '{"name":"张三","age":30,"email":"zhangsan@example.com","hobbies":["阅读","编程"]}';
+try {
+  const result = parseJsonBody(jsonBody1);
+  console.log("有效 JSON 解析:");
+  console.log(JSON.stringify(result, null, 2));
+  console.log("  name 类型: " + typeof result.name);
+  console.log("  age 类型: " + typeof result.age);
+  console.log("  hobbies 类型: " + Array.isArray(result.hobbies));
+} catch (err) {
+  console.log("解析错误: " + err.message);
+}
+
+// 测试无效 JSON
+const jsonBody2 = '{name: 张三, age: 30}'; // 无效的 JSON
+try {
+  parseJsonBody(jsonBody2);
+} catch (err) {
+  console.log("\\n无效 JSON 解析:");
+  console.log("  错误: " + err.message);
+}
+
+// 测试已解析的对象
+const jsonBody3 = { name: "李四", age: 25 };
+try {
+  const result = parseJsonBody(jsonBody3);
+  console.log("\\n已解析对象:");
+  console.log(JSON.stringify(result));
+} catch (err) {
+  console.log("错误: " + err.message);
+}
+
+// ---- 4. URL 编码请求体解析 ----
+console.log("\\n===== 4. URL 编码请求体解析 =====");
+
+function parseUrlEncodedBody(body) {
+  if (!body) return {};
+  if (typeof body === "object") return body;
+
+  const parsed = querystring.parse(body);
+  // 类型转换
+  const result = {};
+  for (const key in parsed) {
+    const value = parsed[key];
+    if (/^\\d+$/.test(value)) {
+      result[key] = parseInt(value);
+    } else if (value === "true" || value === "false") {
+      result[key] = value === "true";
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+// 测试 URL 编码数据
+const urlEncodedBody = "name=%E5%BC%A0%E4%B8%89&age=30&city=%E5%8C%97%E4%BA%AC&active=true";
+const urlEncodedResult = parseUrlEncodedBody(urlEncodedBody);
+console.log("原始 URL 编码数据: " + urlEncodedBody);
+console.log("解析结果:");
+console.log(JSON.stringify(urlEncodedResult, null, 2));
+console.log("  age 类型: " + typeof urlEncodedResult.age);
+
+// 测试空数据和已解析对象
+console.log("\\n空数据: " + JSON.stringify(parseUrlEncodedBody(null)));
+console.log("已解析对象: " + JSON.stringify(parseUrlEncodedBody({ a: 1 })));
+
+// ---- 5. 统一的请求参数解析器 ----
+console.log("\\n===== 5. 统一请求参数解析器 =====");
+
+class RequestParser {
+  constructor() {
+    // 支持的 Content-Type 与解析器映射
+    this.parsers = {
+      "application/json": this.parseJson,
+      "application/x-www-form-urlencoded": this.parseUrlEncoded,
+      "text/plain": this.parseText,
+    };
   }
 
-  // 4. 退出
-  process.exit(0);
+  // 解析 JSON
+  parseJson(body) {
+    try {
+      return JSON.parse(body);
+    } catch (err) {
+      throw new Error("JSON 解析失败: " + err.message);
+    }
+  }
+
+  // 解析 URL 编码
+  parseUrlEncoded(body) {
+    const parsed = querystring.parse(body);
+    const result = {};
+    for (const key in parsed) {
+      result[key] = this.autoConvertType(parsed[key]);
+    }
+    return result;
+  }
+
+  // 解析纯文本
+  parseText(body) {
+    return { text: body };
+  }
+
+  // 自动类型转换
+  autoConvertType(value) {
+    if (/^\\d+$/.test(value)) return parseInt(value);
+    if (/^\\d+\\.\\d+$/.test(value)) return parseFloat(value);
+    if (value === "true") return true;
+    if (value === "false") return false;
+    if (value === "null") return null;
+    return value;
+  }
+
+  // 根据 Content-Type 解析请求体
+  parse(body, contentType) {
+    if (!body) return {};
+
+    // 如果已经是对象，直接返回
+    if (typeof body === "object" && !Buffer.isBuffer(body)) {
+      return body;
+    }
+
+    // 提取 Content-Type（去除 charset 等参数）
+    const cleanType = (contentType || "application/json").split(";")[0].trim();
+
+    const parser = this.parsers[cleanType];
+    if (!parser) {
+      throw new Error("不支持的 Content-Type: " + cleanType);
+    }
+
+    return parser.call(this, body);
+  }
+
+  // 解析查询参数
+  parseQuery(queryString) {
+    const parsed = new URLSearchParams(queryString);
+    const result = {};
+    parsed.forEach(function (value, key) {
+      result[key] = this.autoConvertType(value);
+    }.bind(this));
+    return result;
+  }
+
+  // 完整解析请求
+  parseRequest(req) {
+    const result = {
+      query: {},
+      body: {},
+      params: {},
+      headers: req.headers || {},
+      method: req.method,
+      path: req.path,
+    };
+
+    // 解析查询参数
+    if (req.query) {
+      result.query = typeof req.query === "string"
+        ? this.parseQuery(req.query)
+        : req.query;
+    }
+
+    // 解析请求体
+    if (req.body) {
+      const contentType = req.headers["content-type"] || "application/json";
+      result.body = this.parse(req.body, contentType);
+    }
+
+    // 路径参数
+    if (req.params) {
+      result.params = req.params;
+    }
+
+    return result;
+  }
 }
 
-// 监听退出信号
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+// ---- 6. 测试统一解析器 ----
+console.log("\\n===== 6. 测试统一解析器 =====");
+
+const parser = new RequestParser();
+
+// 测试 1：JSON 请求
+const testReq1 = {
+  method: "POST",
+  path: "/api/users",
+  headers: { "content-type": "application/json; charset=utf-8" },
+  body: '{"name":"张三","age":30,"email":"test@example.com"}',
+  query: "page=1&limit=10",
+};
+console.log("--- JSON 请求 ---");
+console.log(JSON.stringify(parser.parseRequest(testReq1), null, 2));
+
+// 测试 2：URL 编码请求
+const testReq2 = {
+  method: "POST",
+  path: "/api/login",
+  headers: { "content-type": "application/x-www-form-urlencoded" },
+  body: "username=admin&password=123456&remember=true",
+  query: "",
+};
+console.log("\\n--- URL 编码请求 ---");
+console.log(JSON.stringify(parser.parseRequest(testReq2), null, 2));
+
+// 测试 3：GET 请求（只有查询参数，没有请求体）
+const testReq3 = {
+  method: "GET",
+  path: "/api/users",
+  headers: {},
+  body: null,
+  query: "page=1&limit=20&sort=name&active=true",
+};
+console.log("\\n--- GET 请求（仅查询参数）---");
+console.log(JSON.stringify(parser.parseRequest(testReq3), null, 2));
+
+// 测试 4：纯文本请求
+const testReq4 = {
+  method: "POST",
+  path: "/api/log",
+  headers: { "content-type": "text/plain" },
+  body: "这是一条纯文本日志消息",
+  query: "",
+};
+console.log("\\n--- 纯文本请求 ---");
+console.log(JSON.stringify(parser.parseRequest(testReq4), null, 2));
+
+// ---- 7. 请求头读取演示 ----
+console.log("\\n===== 7. 请求头读取演示 =====");
+
+const sampleHeaders = {
+  "content-type": "application/json",
+  "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "accept": "application/json, text/plain",
+  "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+  "accept-language": "zh-CN,zh;q=0.9,en;q=0.8",
+  "x-request-id": "550e8400-e29b-41d4-a716-446655440000",
+  "x-forwarded-for": "192.168.1.100",
+  "cache-control": "no-cache",
+};
+
+console.log("请求头信息:");
+console.log("  Content-Type: " + sampleHeaders["content-type"]);
+console.log("  Authorization: " + sampleHeaders["authorization"].slice(0, 30) + "...");
+console.log("  Accept: " + sampleHeaders["accept"]);
+console.log("  User-Agent: " + sampleHeaders["user-agent"].slice(0, 50) + "...");
+console.log("  Accept-Language: " + sampleHeaders["accept-language"]);
+console.log("  X-Request-ID: " + sampleHeaders["x-request-id"]);
+console.log("  X-Forwarded-For: " + sampleHeaders["x-forwarded-for"]);
+
+// 提取 Bearer Token
+const authHeader = sampleHeaders["authorization"];
+if (authHeader && authHeader.startsWith("Bearer ")) {
+  const token = authHeader.slice(7);
+  console.log("\\n提取的 Bearer Token: " + token.slice(0, 30) + "...");
+}
+
+// Content-Type 解析
+const contentType = sampleHeaders["content-type"];
+const mediaType = contentType.split(";")[0].trim();
+console.log("媒体类型: " + mediaType);
+
+console.log("\\n===== 请求参数解析演示完成 =====");`,
+  },
+
+  // =========================================================
+  // 第四章：请求验证
+  // =========================================================
+  {
+    id: "node-validation",
+    group: "构建 API",
+    icon: "✅",
+    title: "请求验证",
+    content: `## 请求验证
+
+请求验证是 API 安全的第一道防线。永远不要信任客户端传来的数据——这是 Web 开发中最重要的安全原则之一。一个完善的验证系统可以防止无效数据进入业务逻辑，避免安全漏洞和数据污染。
+
+### 验证的重要性
+
+没有验证的 API 面临的风险：
+
+| 风险 | 说明 | 示例 |
+| --- | --- | --- |
+| **数据污染** | 无效数据写入数据库 | 空字符串代替必填字段 |
+| **安全漏洞** | 恶意输入导致注入攻击 | SQL 注入、XSS 攻击 |
+| **类型错误** | 期望数字却收到字符串 | \`"abc"\` 代替期望的年龄 |
+| **业务逻辑错误** | 无效数据导致错误计算 | 负数的库存数量 |
+| **用户体验差** | 模糊的错误信息 | 500 错误而非具体的验证提示 |
+
+### 常见验证规则
+
+| 规则 | 说明 | 示例 |
+| --- | --- | --- |
+| \`required\` | 字段必填，不能为 undefined/null/空字符串 | \`name: required\` |
+| \`type\` | 类型检查（string/number/boolean/array/object） | \`age: type.number\` |
+| \`min\` | 最小值/最小长度 | \`age: min(1)\` |
+| \`max\` | 最大值/最大长度 | \`name: max(50)\` |
+| \`regex\` | 正则表达式匹配 | \`email: regex(emailPattern)\` |
+| \`enum\` | 枚举值，值必须在指定列表中 | \`status: enum(['active','inactive'])\` |
+| \`custom\` | 自定义验证函数 | \`custom((v) => complexCheck(v))\` |
+| \`email\` | 邮箱格式验证 | \`email: email()\` |
+| \`url\` | URL 格式验证 | \`website: url()\` |
+| \`length\` | 精确长度 | \`code: length(6)\` |
+
+### 自定义验证函数
+
+当内置规则不够用时，自定义验证函数可以处理复杂的业务逻辑：
+
+\`\`\`javascript
+// 自定义验证：检查用户名是否唯一
+const uniqueUsername = async (value) => {
+  const exists = await db.users.findOne({ username: value });
+  if (exists) throw new Error('用户名已被使用');
+  return true;
+};
+
+// 自定义验证：密码强度检查
+const strongPassword = (value) => {
+  const hasUpper = /[A-Z]/.test(value);
+  const hasLower = /[a-z]/.test(value);
+  const hasNumber = /[0-9]/.test(value);
+  const hasSpecial = /[!@#$%^&*]/.test(value);
+  if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
+    throw new Error('密码必须包含大小写字母、数字和特殊字符');
+  }
+  return true;
+};
 \`\`\`
 
-### 错误处理最佳实践
+### 错误消息格式化
 
-1. **使用 async/await 配合 try-catch**：比 Promise 链更清晰的错误处理。
-2. **区分操作错误和程序错误**：操作错误可以处理，程序错误应该崩溃。
-3. **创建自定义错误类**：让错误分类更清晰。
-4. **使用 Error.cause 链式传递错误**：保留原始错误信息。
-5. **不要在回调中抛出异常**：在异步回调中抛出异常无法被 try-catch 捕获。
-6. **总是处理 Promise 的拒绝**：每个 Promise 都应有 catch 或 try-catch。
-7. **使用 uncaughtException 和 unhandledRejection 作为最后防线**：但处理后就退出。
-8. **实现优雅退出**：确保资源被正确释放，不丢失数据。
+好的错误消息应该清晰、具体、有帮助：
 
-### 错误处理的反模式
-
-以下是常见但不推荐的错误处理方式：
-
-| 反模式 | 说明 | 为什么不好 |
+| 风格 | 示例 | 评价 |
 | --- | --- | --- |
-| 吞掉错误 | \`try { ... } catch(e) {}\` | 隐藏了问题，导致难以调试 |
-| 在回调中抛出异常 | 异步回调中 \`throw err\` | 无法被 try-catch 捕获，会触发 uncaughtException |
-| 返回错误码 | 用返回值表示错误 | 容易忘记检查，不如抛出异常 |
-| 过度使用 uncaughtException | 依赖它来恢复应用 | 应用可能处于不一致状态 |
-| 混合使用回调和 Promise | 同一函数又用回调又用 Promise | 容易导致错误漏掉或被处理两次 |
+| 差 | \`"Invalid input"\` | 太模糊，用户不知道哪里错了 |
+| 一般 | \`"name is required"\` | 稍好，但缺少上下文 |
+| 好 | \`"姓名 是必填字段"\` | 清晰，包含字段名和规则 |
+| 最佳 | \`"姓名 不能为空，请填写您的姓名"\` | 清晰且有指导性 |
 
-下面这段代码演示了自定义错误类、Error.captureStackTrace、uncaughtException 处理和优雅退出等核心概念。`,
+### 条件验证
+
+某些字段的验证依赖于其他字段的值：
+
+\`\`\`javascript
+// 当 type 为 'company' 时，companyName 必填
+const schema = {
+  type: { required: true, enum: ['individual', 'company'] },
+  companyName: {
+    required: (data) => data.type === 'company',
+    message: '企业用户必须填写公司名称'
+  },
+};
+\`\`\`
+
+### 批量验证
+
+一次请求可能包含多个需要验证的字段。批量验证应该收集所有错误，而不是在第一个错误处就停止：
+
+\`\`\`javascript
+// ✅ 好的做法：收集所有错误
+const errors = [];
+for (const [field, rules] of Object.entries(schema)) {
+  for (const rule of rules) {
+    try {
+      await rule.validate(data[field]);
+    } catch (err) {
+      errors.push({ field, message: err.message });
+    }
+  }
+}
+// 返回所有错误让用户一次性修正
+\`\`\`
+
+### Joi / Zod 概念对照
+
+Joi 和 Zod 是 Node.js 生态中最流行的验证库：
+
+| 特性 | Joi | Zod |
+| --- | --- | --- |
+| 类型推断 | 有限 | 完整的 TypeScript 类型推断 |
+| 验证方式 | 链式调用 | 链式调用 |
+| 错误消息 | 可自定义 | 可自定义 |
+| 异步验证 | 支持 | 支持 |
+| 转换/强制类型 | 支持 | 支持 |
+| 包大小 | 较大 | 较小 |
+
+下面这段代码实现了一个完整的请求验证器，支持链式规则定义和自定义错误消息。`,
     code: `// ============================================================
-// 第六章代码演示：错误处理深入实战
+// 第四章代码演示：请求验证器实现
 // ============================================================
 
-// ---- 1. Error 基本属性 ----
-console.log("===== 1. Error 基本属性 =====");
+// ---- 1. 验证规则定义 ----
+console.log("===== 1. 验证规则定义 =====");
 
-const basicErr = new Error("Something went wrong");
-console.log("name: " + basicErr.name);
-console.log("message: " + basicErr.message);
-console.log("stack 前 100 字符:");
-console.log(basicErr.stack.slice(0, 150) + "...");
+// 验证规则基类
+class ValidationRule {
+  constructor(name, validator, message) {
+    this.name = name;
+    this.validator = validator;
+    this.message = message || "验证失败";
+  }
 
-// ---- 2. 内置错误类型 ----
-console.log("\\n===== 2. 内置错误类型 =====");
-
-// TypeError
-try {
-  null.someMethod();
-} catch (e) {
-  console.log("TypeError: " + e.name + " - " + e.message.slice(0, 50));
+  validate(value, fieldName) {
+    const result = this.validator(value);
+    if (result === false) {
+      return this.message.replace("{field}", fieldName);
+    }
+    if (typeof result === "string") {
+      return result;
+    }
+    return null; // 验证通过
+  }
 }
 
-// RangeError
-try {
-  new Array(-1);
-} catch (e) {
-  console.log("RangeError: " + e.name + " - " + e.message.slice(0, 50));
+// 预定义验证规则
+const rules = {
+  // 必填
+  required: function (message) {
+    return new ValidationRule("required", function (value) {
+      if (value === undefined || value === null) return false;
+      if (typeof value === "string" && value.trim() === "") return false;
+      return true;
+    }, message || "{field} 是必填字段");
+  },
+
+  // 类型检查
+  type: function (expectedType, message) {
+    return new ValidationRule("type", function (value) {
+      if (value === undefined || value === null) return true; // 由 required 处理
+      const actualType = Array.isArray(value) ? "array" : typeof value;
+      return actualType === expectedType;
+    }, message || "{field} 必须是 " + expectedType + " 类型");
+  },
+
+  // 最小值
+  min: function (minValue, message) {
+    return new ValidationRule("min", function (value) {
+      if (value === undefined || value === null) return true;
+      if (typeof value === "string") return value.length >= minValue;
+      if (typeof value === "number") return value >= minValue;
+      return false;
+    }, message || "{field} 不能小于 " + minValue);
+  },
+
+  // 最大值
+  max: function (maxValue, message) {
+    return new ValidationRule("max", function (value) {
+      if (value === undefined || value === null) return true;
+      if (typeof value === "string") return value.length <= maxValue;
+      if (typeof value === "number") return value <= maxValue;
+      return false;
+    }, message || "{field} 不能大于 " + maxValue);
+  },
+
+  // 正则匹配
+  regex: function (pattern, message) {
+    return new ValidationRule("regex", function (value) {
+      if (value === undefined || value === null) return true;
+      return pattern.test(String(value));
+    }, message || "{field} 格式不正确");
+  },
+
+  // 枚举值
+  enum: function (allowedValues, message) {
+    return new ValidationRule("enum", function (value) {
+      if (value === undefined || value === null) return true;
+      return allowedValues.includes(value);
+    }, message || "{field} 必须是以下值之一: " + allowedValues.join(", "));
+  },
+
+  // 邮箱
+  email: function (message) {
+    const emailPattern = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+    return new ValidationRule("email", function (value) {
+      if (value === undefined || value === null) return true;
+      return emailPattern.test(String(value));
+    }, message || "{field} 不是有效的邮箱地址");
+  },
+
+  // 自定义验证
+  custom: function (fn, message) {
+    return new ValidationRule("custom", function (value) {
+      try {
+        return fn(value);
+      } catch (e) {
+        return e.message;
+      }
+    }, message || "{field} 自定义验证失败");
+  },
+};
+
+// ---- 2. 字段验证器 ----
+console.log("\\n===== 2. 字段验证器 =====");
+
+class FieldValidator {
+  constructor(fieldName) {
+    this.fieldName = fieldName;
+    this.ruleList = [];
+    this.isOptional = false;
+  }
+
+  // 链式添加规则
+  addRule(rule) {
+    this.ruleList.push(rule);
+    return this;
+  }
+
+  // 设置为可选字段
+  optional() {
+    this.isOptional = true;
+    return this;
+  }
+
+  // 验证单个字段
+  validate(value) {
+    // 可选字段且值为空时跳过验证
+    if (this.isOptional && (value === undefined || value === null)) {
+      return [];
+    }
+
+    const errors = [];
+    for (let i = 0; i < this.ruleList.length; i++) {
+      const rule = this.ruleList[i];
+      const error = rule.validate(value, this.fieldName);
+      if (error) {
+        errors.push({
+          field: this.fieldName,
+          rule: rule.name,
+          message: error,
+        });
+      }
+    }
+    return errors;
+  }
 }
 
-// SyntaxError
-try {
-  JSON.parse("{invalid json}");
-} catch (e) {
-  console.log("SyntaxError: " + e.name + " - " + e.message.slice(0, 50));
+// ---- 3. 验证器（Schema Validator）----
+console.log("\\n===== 3. Schema 验证器 =====");
+
+class Validator {
+  constructor() {
+    this.fields = {};
+  }
+
+  // 定义字段验证规则
+  field(name, fieldValidator) {
+    this.fields[name] = fieldValidator;
+    return this;
+  }
+
+  // 批量验证
+  validate(data) {
+    const allErrors = [];
+
+    for (const fieldName in this.fields) {
+      const fieldValidator = this.fields[fieldName];
+      const value = data[fieldName];
+      const errors = fieldValidator.validate(value);
+      allErrors.push.apply(allErrors, errors);
+    }
+
+    return {
+      valid: allErrors.length === 0,
+      errors: allErrors,
+      errorCount: allErrors.length,
+    };
+  }
+
+  // 断言验证（失败时抛出错误）
+  assert(data) {
+    const result = this.validate(data);
+    if (!result.valid) {
+      const messages = result.errors.map(function (e) {
+        return e.message;
+      });
+      const err = new Error("验证失败:\\n  " + messages.join("\\n  "));
+      err.validationErrors = result.errors;
+      throw err;
+    }
+    return data;
+  }
 }
 
-// ReferenceError
-try {
-  eval("console.log(undefinedVariable)");
-} catch (e) {
-  console.log("ReferenceError: " + e.name + " - " + e.message.slice(0, 50));
+// ---- 4. 创建验证规则快捷方法 ----
+function createFieldValidator(fieldName) {
+  return new FieldValidator(fieldName);
 }
 
-// ---- 3. 自定义 Error 类 ----
-console.log("\\n===== 3. 自定义 Error 类 =====");
+// ---- 5. 测试验证器 ----
+console.log("\\n===== 5. 测试验证器 =====");
+
+// 创建用户注册验证 Schema
+const userSchema = new Validator();
+
+userSchema
+  .field("username", createFieldValidator("用户名")
+    .addRule(rules.required("用户名 不能为空"))
+    .addRule(rules.min(3, "用户名 长度不能少于3个字符"))
+    .addRule(rules.max(20, "用户名 长度不能超过20个字符"))
+    .addRule(rules.regex(/^[a-zA-Z0-9_]+$/, "用户名 只能包含字母、数字和下划线"))
+  )
+  .field("email", createFieldValidator("邮箱")
+    .addRule(rules.required("邮箱 不能为空"))
+    .addRule(rules.email("邮箱 格式不正确"))
+  )
+  .field("age", createFieldValidator("年龄")
+    .addRule(rules.required("年龄 不能为空"))
+    .addRule(rules.type("number", "年龄 必须是数字"))
+    .addRule(rules.min(1, "年龄 不能小于1"))
+    .addRule(rules.max(150, "年龄 不能大于150"))
+  )
+  .field("role", createFieldValidator("角色")
+    .addRule(rules.required("角色 不能为空"))
+    .addRule(rules.enum(["admin", "user", "moderator"], "角色 必须是 admin/user/moderator 之一"))
+  )
+  .field("bio", createFieldValidator("个人简介")
+    .optional()
+    .addRule(rules.max(200, "个人简介 不能超过200个字符"))
+  );
+
+// 测试 1：有效数据
+console.log("--- 测试 1：有效数据 ---");
+const validData = {
+  username: "john_doe",
+  email: "john@example.com",
+  age: 25,
+  role: "user",
+  bio: "热爱编程的开发者",
+};
+const result1 = userSchema.validate(validData);
+console.log("验证结果: " + (result1.valid ? "✓ 通过" : "✗ 失败"));
+console.log("错误数: " + result1.errorCount);
+
+// 测试 2：无效数据（多个错误）
+console.log("\\n--- 测试 2：无效数据（多个错误）---");
+const invalidData = {
+  username: "ab",          // 太短
+  email: "not-an-email",   // 格式错误
+  age: -5,                 // 小于最小值
+  role: "superadmin",      // 不在枚举中
+};
+const result2 = userSchema.validate(invalidData);
+console.log("验证结果: " + (result2.valid ? "✓ 通过" : "✗ 失败"));
+console.log("错误数: " + result2.errorCount);
+result2.errors.forEach(function (err) {
+  console.log("  ✗ [" + err.rule + "] " + err.message);
+});
+
+// 测试 3：缺少必填字段
+console.log("\\n--- 测试 3：缺少必填字段 ---");
+const missingData = {
+  username: "test",
+  // 缺少 email
+  age: 30,
+  // 缺少 role
+};
+const result3 = userSchema.validate(missingData);
+console.log("验证结果: " + (result3.valid ? "✓ 通过" : "✗ 失败"));
+result3.errors.forEach(function (err) {
+  console.log("  ✗ " + err.message);
+});
+
+// 测试 4：可选字段
+console.log("\\n--- 测试 4：可选字段 ---");
+const minimalData = {
+  username: "jane_doe",
+  email: "jane@example.com",
+  age: 28,
+  role: "admin",
+  // bio 不提供（可选）
+};
+const result4 = userSchema.validate(minimalData);
+console.log("验证结果: " + (result4.valid ? "✓ 通过" : "✗ 失败"));
+
+// 测试 5：assert 模式
+console.log("\\n--- 测试 5：assert 模式 ---");
+try {
+  userSchema.assert({
+    username: "x",  // 太短
+    email: "bad",
+    age: 999,       // 太大
+    role: "guest",  // 不在枚举中
+  });
+} catch (err) {
+  console.log("assert 抛出错误:");
+  console.log(err.message);
+}
+
+// ---- 6. 自定义验证函数 ----
+console.log("\\n===== 6. 自定义验证函数 =====");
+
+// 密码强度验证
+const passwordSchema = new Validator();
+passwordSchema
+  .field("password", createFieldValidator("密码")
+    .addRule(rules.required("密码 不能为空"))
+    .addRule(rules.min(8, "密码 长度至少8位"))
+    .addRule(rules.custom(function (value) {
+      if (!/[A-Z]/.test(value)) return "密码 必须包含至少一个大写字母";
+      if (!/[a-z]/.test(value)) return "密码 必须包含至少一个小写字母";
+      if (!/[0-9]/.test(value)) return "密码 必须包含至少一个数字";
+      if (!/[!@#$%^&*]/.test(value)) return "密码 必须包含至少一个特殊字符(!@#$%^&*)";
+      return true;
+    }))
+  );
+
+const testPasswords = [
+  "short",           // 太短
+  "onlylowercase",   // 缺少大写和数字
+  "NoSpecialChar1",  // 缺少特殊字符
+  "Str0ng!Pass",     // 有效
+];
+
+testPasswords.forEach(function (pw) {
+  const result = passwordSchema.validate({ password: pw });
+  const status = result.valid ? "✓" : "✗";
+  console.log(status + " 密码 '" + pw + "': " +
+    (result.valid ? "通过" : result.errors[0].message));
+});
+
+// ---- 7. 条件验证 ----
+console.log("\\n===== 7. 条件验证 =====");
+
+// 当用户类型为企业时，公司名称必填
+const conditionalSchema = new Validator();
+conditionalSchema
+  .field("type", createFieldValidator("用户类型")
+    .addRule(rules.required("用户类型 不能为空"))
+    .addRule(rules.enum(["individual", "company"], "用户类型 必须是 individual 或 company"))
+  )
+  .field("companyName", createFieldValidator("公司名称")
+    .addRule(rules.custom(function (value, data) {
+      // 这里需要访问 data 上下文，简化处理
+      return true;
+    }))
+  );
+
+// 手动条件验证
+function validateWithCondition(data) {
+  const errors = [];
+
+  // 验证基础字段
+  const baseResult = conditionalSchema.validate(data);
+  errors.push.apply(errors, baseResult.errors);
+
+  // 条件验证：如果 type 是 company，则 companyName 必填
+  if (data.type === "company") {
+    if (!data.companyName || data.companyName.trim() === "") {
+      errors.push({
+        field: "公司名称",
+        rule: "conditional",
+        message: "企业用户必须填写公司名称",
+      });
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors: errors,
+    errorCount: errors.length,
+  };
+}
+
+console.log("个人用户（无公司名称）:");
+const indResult = validateWithCondition({ type: "individual", companyName: "" });
+console.log("  验证: " + (indResult.valid ? "✓ 通过" : "✗ 失败"));
+
+console.log("企业用户（无公司名称）:");
+const compResult = validateWithCondition({ type: "company", companyName: "" });
+console.log("  验证: " + (compResult.valid ? "✓ 通过" : "✗ 失败"));
+if (!compResult.valid) {
+  console.log("  ✗ " + compResult.errors[0].message);
+}
+
+console.log("企业用户（有公司名称）:");
+const compValidResult = validateWithCondition({ type: "company", companyName: "科技有限公司" });
+console.log("  验证: " + (compValidResult.valid ? "✓ 通过" : "✗ 失败"));
+
+// ---- 8. 验证最佳实践总结 ----
+console.log("\\n===== 8. 验证最佳实践总结 =====");
+
+console.log("1. 永远不要信任客户端传来的数据");
+console.log("2. 在业务逻辑之前进行验证（验证中间件）");
+console.log("3. 收集所有验证错误，一次性返回（而非逐个返回）");
+console.log("4. 错误消息应该清晰、具体、有帮助");
+console.log("5. 区分必填验证和格式验证");
+console.log("6. 使用白名单而非黑名单（枚举允许的值）");
+console.log("7. 对敏感操作（如删除）进行二次验证");
+console.log("8. 数据库层面也要有约束（作为最后防线）");
+
+console.log("\\n===== 请求验证演示完成 =====");`,
+  },
+
+  // =========================================================
+  // 第五章：CORS 跨域
+  // =========================================================
+  {
+    id: "node-cors",
+    group: "构建 API",
+    icon: "🌍",
+    title: "CORS 跨域",
+    content: `## CORS 跨域资源共享
+
+CORS（Cross-Origin Resource Sharing，跨域资源共享）是浏览器实施的安全机制，用于控制不同源（Origin）之间的 HTTP 请求。理解 CORS 对于开发前后端分离的 Web 应用至关重要。
+
+### 同源策略
+
+同源策略是浏览器最核心的安全机制。两个 URL 被视为同源，当且仅当它们的**协议、域名和端口**完全相同。
+
+| URL 1 | URL 2 | 是否同源 | 原因 |
+| --- | --- | --- | --- |
+| \`http://example.com\` | \`http://example.com/api\` | ✅ 是 | 协议、域名、端口相同 |
+| \`http://example.com\` | \`https://example.com\` | ❌ 否 | 协议不同 |
+| \`http://example.com\` | \`http://api.example.com\` | ❌ 否 | 域名不同 |
+| \`http://example.com:3000\` | \`http://example.com:8080\` | ❌ 否 | 端口不同 |
+
+同源策略限制了：
+- 跨域的 AJAX/Fetch 请求
+- 跨域的 DOM 访问（iframe）
+- 跨域的 Cookie、LocalStorage 读取
+- 跨域的 WebSocket 连接
+
+### CORS 机制
+
+CORS 通过一系列 HTTP 响应头来告诉浏览器，允许哪些跨域请求。服务端需要设置以下响应头：
+
+**核心 CORS 响应头**：
+
+| 响应头 | 说明 | 示例 |
+| --- | --- | --- |
+| \`Access-Control-Allow-Origin\` | 允许的源 | \`https://example.com\` 或 \`*\` |
+| \`Access-Control-Allow-Methods\` | 允许的 HTTP 方法 | \`GET, POST, PUT, DELETE\` |
+| \`Access-Control-Allow-Headers\` | 允许的请求头 | \`Content-Type, Authorization\` |
+| \`Access-Control-Allow-Credentials\` | 是否允许携带凭证 | \`true\` |
+| \`Access-Control-Max-Age\` | 预检请求缓存时间（秒） | \`86400\`（24小时） |
+| \`Access-Control-Expose-Headers\` | 允许客户端读取的响应头 | \`X-Total-Count, X-Request-ID\` |
+
+### 简单请求 vs 预检请求
+
+浏览器将跨域请求分为两类：
+
+**简单请求**（不触发预检）：
+
+必须同时满足以下所有条件：
+- 方法：\`GET\`、\`HEAD\`、\`POST\` 之一
+- 仅使用以下请求头：\`Accept\`、\`Accept-Language\`、\`Content-Language\`、\`Content-Type\`
+- \`Content-Type\` 仅限于：\`text/plain\`、\`multipart/form-data\`、\`application/x-www-form-urlencoded\`
+- 没有使用 \`ReadableStream\`
+
+**预检请求**（Preflight Request）：
+
+不满足简单请求条件的请求，浏览器会先发送一个 \`OPTIONS\` 请求来"询问"服务端是否允许实际请求。预检请求头包含：
+
+| 请求头 | 说明 |
+| --- | --- |
+| \`Origin\` | 请求来源 |
+| \`Access-Control-Request-Method\` | 实际请求使用的 HTTP 方法 |
+| \`Access-Control-Request-Headers\` | 实际请求携带的自定义请求头 |
+
+### 预检请求流程
+
+\`\`\`
+客户端                          服务端
+  │                               │
+  │── OPTIONS /api/users ────────→│ 预检请求
+  │   Origin: https://app.com     │
+  │   Access-Control-Request-     │
+  │     Method: POST              │
+  │   Access-Control-Request-     │
+  │     Headers: Authorization    │
+  │                               │
+  │←── 200 OK ────────────────────│ 预检响应
+  │   Access-Control-Allow-Origin:│
+  │     https://app.com           │
+  │   Access-Control-Allow-Methods│
+  │     : POST                    │
+  │   Access-Control-Allow-Headers│
+  │     : Authorization           │
+  │                               │
+  │── POST /api/users ───────────→│ 实际请求
+  │   Origin: https://app.com     │
+  │   Authorization: Bearer ...   │
+  │                               │
+  │←── 200 OK ────────────────────│ 实际响应
+\`\`\`
+
+### Credentials 模式
+
+默认情况下，跨域请求不会携带 Cookie 和 HTTP 认证信息。如果需要携带凭证：
+
+**客户端设置**：
+\`\`\`javascript
+fetch('https://api.example.com/data', {
+  credentials: 'include',  // 或 'same-origin'
+});
+\`\`\`
+
+**服务端设置**：
+\`\`\`
+Access-Control-Allow-Credentials: true
+Access-Control-Allow-Origin: https://specific-app.com  // 不能是 *
+\`\`\`
+
+**重要限制**：当 \`credentials: 'include'\` 时，\`Access-Control-Allow-Origin\` 不能是 \`*\`，必须指定具体的源。
+
+### CORS 中间件最佳实践
+
+1. **使用 Origin 白名单**：不要简单地返回 \`*\`，而是检查请求的 Origin 是否在允许列表中
+2. **动态设置 Allow-Origin**：根据请求的 Origin 动态设置，而非固定值
+3. **合理设置 Max-Age**：减少预检请求次数，建议 86400 秒（24小时）
+4. **只暴露必要的响应头**：通过 Expose-Headers 控制
+5. **处理 OPTIONS 请求**：正确响应预检请求，通常返回 204 或 200
+
+下面这段代码实现了一个完整的 CORS 中间件，支持 Origin 白名单、预检请求处理和凭证。`,
+    code: `// ============================================================
+// 第五章代码演示：CORS 中间件实现
+// ============================================================
+
+// ---- 模拟请求对象 ----
+function createRequest(method, path, headers) {
+  return {
+    method: method.toUpperCase(),
+    path: path,
+    headers: headers || {},
+  };
+}
+
+// ---- 模拟响应对象 ----
+function createResponse() {
+  return {
+    statusCode: 200,
+    headers: {},
+    body: null,
+    setHeader: function (name, value) {
+      this.headers[name] = value;
+    },
+    getHeader: function (name) {
+      return this.headers[name];
+    },
+    status: function (code) {
+      this.statusCode = code;
+      return this;
+    },
+    json: function (data) {
+      this.body = JSON.stringify(data);
+      this.setHeader("Content-Type", "application/json");
+      return this;
+    },
+    end: function (data) {
+      if (data) this.body = String(data);
+      return this;
+    },
+  };
+}
+
+// ---- 1. CORS 中间件实现 ----
+console.log("===== 1. CORS 中间件实现 =====");
+
+class CorsMiddleware {
+  constructor(options) {
+    // Origin 白名单（支持字符串、正则、函数）
+    this.origin = options.origin || "*";
+    // 允许的 HTTP 方法
+    this.methods = options.methods || "GET,HEAD,PUT,PATCH,POST,DELETE";
+    // 允许的请求头
+    this.allowedHeaders = options.allowedHeaders || "Content-Type,Authorization";
+    // 暴露的响应头
+    this.exposedHeaders = options.exposedHeaders || "";
+    // 是否允许凭证
+    this.credentials = options.credentials || false;
+    // 预检请求缓存时间（秒）
+    this.maxAge = options.maxAge || 86400;
+    // 预检请求响应状态码
+    this.preflightContinue = options.preflightContinue || false;
+    // 预检请求成功状态码
+    this.optionsSuccessStatus = options.optionsSuccessStatus || 204;
+  }
+
+  // 检查 Origin 是否允许
+  isOriginAllowed(origin) {
+    if (this.origin === "*") return true;
+
+    // 字符串精确匹配
+    if (typeof this.origin === "string") {
+      return this.origin === origin;
+    }
+
+    // 数组匹配
+    if (Array.isArray(this.origin)) {
+      return this.origin.indexOf(origin) !== -1;
+    }
+
+    // 正则匹配
+    if (this.origin instanceof RegExp) {
+      return this.origin.test(origin);
+    }
+
+    // 函数匹配
+    if (typeof this.origin === "function") {
+      return this.origin(origin);
+    }
+
+    return false;
+  }
+
+  // 设置 CORS 响应头
+  setCorsHeaders(req, res) {
+    const origin = req.headers["origin"] || "";
+
+    // 设置 Allow-Origin
+    if (this.origin === "*" && !this.credentials) {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+    } else if (this.isOriginAllowed(origin)) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      // Vary 头告诉缓存根据 Origin 区分响应
+      res.setHeader("Vary", "Origin");
+    }
+
+    // 设置凭证
+    if (this.credentials) {
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+    }
+
+    // 设置暴露的响应头
+    if (this.exposedHeaders) {
+      res.setHeader("Access-Control-Expose-Headers", this.exposedHeaders);
+    }
+  }
+
+  // 处理预检请求
+  handlePreflight(req, res) {
+    // 设置 Allow-Methods
+    res.setHeader("Access-Control-Allow-Methods", this.methods);
+
+    // 设置 Allow-Headers
+    const requestHeaders = req.headers["access-control-request-headers"];
+    if (requestHeaders) {
+      res.setHeader("Access-Control-Allow-Headers", requestHeaders);
+    } else {
+      res.setHeader("Access-Control-Allow-Headers", this.allowedHeaders);
+    }
+
+    // 设置缓存时间
+    if (this.maxAge) {
+      res.setHeader("Access-Control-Max-Age", String(this.maxAge));
+    }
+
+    // 设置跨域头
+    this.setCorsHeaders(req, res);
+
+    // 返回预检响应
+    if (!this.preflightContinue) {
+      res.status(this.optionsSuccessStatus).end();
+      return true;
+    }
+    return false;
+  }
+
+  // 中间件处理函数
+  handle(req, res, next) {
+    // 设置 CORS 响应头
+    this.setCorsHeaders(req, res);
+
+    // 处理预检请求
+    if (req.method === "OPTIONS") {
+      const handled = this.handlePreflight(req, res);
+      if (handled) return;
+    }
+
+    // 继续处理实际请求
+    if (next) next();
+  }
+}
+
+// ---- 2. 创建 CORS 中间件实例 ----
+console.log("\\n===== 2. 创建 CORS 中间件实例 =====");
+
+// 实例 1：宽松配置（允许所有源）
+const looseCors = new CorsMiddleware({
+  origin: "*",
+  methods: "GET,POST,PUT,DELETE",
+  allowedHeaders: "Content-Type,Authorization",
+  maxAge: 86400,
+});
+
+console.log("宽松 CORS 配置:");
+console.log("  origin: *");
+console.log("  methods: GET,POST,PUT,DELETE");
+console.log("  credentials: false");
+
+// 实例 2：严格配置（白名单 + 凭证）
+const strictCors = new CorsMiddleware({
+  origin: ["https://myapp.com", "https://admin.myapp.com"],
+  methods: "GET,POST,PUT,DELETE",
+  allowedHeaders: "Content-Type,Authorization,X-Request-ID",
+  credentials: true,
+  maxAge: 3600,
+  exposedHeaders: "X-Total-Count,X-Request-ID",
+});
+
+console.log("\\n严格 CORS 配置:");
+console.log('  origin: ["https://myapp.com", "https://admin.myapp.com"]');
+console.log("  credentials: true");
+console.log("  exposedHeaders: X-Total-Count, X-Request-ID");
+
+// 实例 3：正则匹配
+const regexCors = new CorsMiddleware({
+  origin: /^https:\\/\\/(.*\\.)?myapp\\.com$/,
+  methods: "GET,POST",
+  credentials: false,
+});
+
+console.log("\\n正则 CORS 配置:");
+console.log("  origin: /^https:\\\\/\\\\/(.*\\\\.)?myapp\\\\.com$/");
+
+// ---- 3. 测试 Origin 检查 ----
+console.log("\\n===== 3. 测试 Origin 检查 =====");
+
+function testOrigin(cors, origin) {
+  const allowed = cors.isOriginAllowed(origin);
+  console.log('  Origin "' + origin + '": ' + (allowed ? '✓ 允许' : '✗ 拒绝'));
+}
+
+console.log("--- 宽松 CORS (*) ---");
+testOrigin(looseCors, "https://evil.com");
+testOrigin(looseCors, "https://myapp.com");
+testOrigin(looseCors, "http://localhost:3000");
+
+console.log("\\n--- 严格 CORS (白名单) ---");
+testOrigin(strictCors, "https://myapp.com");
+testOrigin(strictCors, "https://admin.myapp.com");
+testOrigin(strictCors, "https://evil.com");
+testOrigin(strictCors, "http://localhost:3000");
+
+console.log("\\n--- 正则 CORS ---");
+testOrigin(regexCors, "https://myapp.com");
+testOrigin(regexCors, "https://api.myapp.com");
+testOrigin(regexCors, "https://evil.com");
+testOrigin(regexCors, "http://myapp.com"); // 协议不匹配
+
+// ---- 4. 测试简单请求 ----
+console.log("\\n===== 4. 测试简单请求 =====");
+
+function testSimpleRequest(label, cors, origin) {
+  console.log("\\n--- " + label + " ---");
+  const req = createRequest("GET", "/api/data", {
+    origin: origin,
+  });
+  const res = createResponse();
+  cors.handle(req, res);
+
+  console.log("请求: GET /api/data");
+  console.log("Origin: " + origin);
+  console.log("响应状态码: " + res.statusCode);
+  console.log("响应头:");
+  for (const key in res.headers) {
+    console.log("  " + key + ": " + res.headers[key]);
+  }
+}
+
+testSimpleRequest("宽松 CORS 处理正常请求", looseCors, "https://myapp.com");
+testSimpleRequest("严格 CORS 处理白名单请求", strictCors, "https://myapp.com");
+testSimpleRequest("严格 CORS 处理非白名单请求", strictCors, "https://evil.com");
+
+// ---- 5. 测试预检请求 ----
+console.log("\\n===== 5. 测试预检请求（OPTIONS）====");
+
+function testPreflight(label, cors, origin, requestMethod, requestHeaders) {
+  console.log("\\n--- " + label + " ---");
+  const req = createRequest("OPTIONS", "/api/users", {
+    origin: origin,
+    "access-control-request-method": requestMethod,
+    "access-control-request-headers": requestHeaders,
+  });
+  const res = createResponse();
+  cors.handle(req, res);
+
+  console.log("请求: OPTIONS /api/users");
+  console.log("Origin: " + origin);
+  console.log("请求方法: " + requestMethod);
+  console.log("请求头: " + requestHeaders);
+  console.log("响应状态码: " + res.statusCode);
+  console.log("响应头:");
+  for (const key in res.headers) {
+    console.log("  " + key + ": " + res.headers[key]);
+  }
+}
+
+testPreflight("预检请求（宽松 CORS）", looseCors, "https://myapp.com",
+  "POST", "Content-Type,Authorization");
+
+testPreflight("预检请求（严格 CORS + 白名单）", strictCors, "https://myapp.com",
+  "DELETE", "Authorization,X-Request-ID");
+
+testPreflight("预检请求（严格 CORS + 非白名单）", strictCors, "https://evil.com",
+  "POST", "Content-Type");
+
+// ---- 6. Credentials 模式演示 ----
+console.log("\\n===== 6. Credentials 模式演示 =====");
+
+// 带凭证的 CORS 配置
+const credCors = new CorsMiddleware({
+  origin: "https://myapp.com",
+  credentials: true,
+  methods: "GET,POST",
+});
+
+console.log("带凭证的 CORS 配置:");
+console.log("  origin: https://myapp.com (不能是 *)");
+console.log("  credentials: true");
+
+const credReq = createRequest("GET", "/api/me", {
+  origin: "https://myapp.com",
+  cookie: "session=abc123",
+});
+const credRes = createResponse();
+credCors.handle(credReq, credRes);
+
+console.log("\\n响应头:");
+for (const key in credRes.headers) {
+  console.log("  " + key + ": " + credRes.headers[key]);
+}
+console.log("\\n注意: credentials=true 时 Allow-Origin 不能是 *");
+
+// ---- 7. CORS 错误场景 ----
+console.log("\\n===== 7. CORS 常见错误场景 =====");
+
+console.log("1. CORS 头缺失 → 浏览器阻止请求");
+console.log("   → 确保服务端正确设置了 CORS 响应头");
+
+console.log("\\n2. credentials=true 但 Allow-Origin=*");
+console.log("   → 浏览器拒绝，必须指定具体 Origin");
+
+console.log("\\n3. 预检请求失败 → 实际请求不会发送");
+console.log("   → 确保 OPTIONS 请求返回正确的 CORS 头");
+
+console.log("\\n4. Allow-Headers 不完整 → 自定义头被阻止");
+console.log("   → 确保 Allow-Headers 包含所有自定义请求头");
+
+console.log("\\n5. 通配符 * 与 credentials 冲突");
+console.log("   → 当需要携带 Cookie 时，必须指定具体 Origin");
+
+// ---- 8. CORS 最佳实践总结 ----
+console.log("\\n===== 8. CORS 最佳实践总结 =====");
+
+console.log("1. 生产环境使用 Origin 白名单，不要使用 *");
+console.log("2. 合理设置 Access-Control-Max-Age 减少预检请求");
+console.log("3. 设置 Vary: Origin 响应头确保 CDN 正确缓存");
+console.log("4. 只暴露必要的响应头（Access-Control-Expose-Headers）");
+console.log("5. 正确处理 OPTIONS 预检请求（返回 204）");
+console.log("6. 谨慎使用 credentials 模式（需要具体 Origin）");
+console.log("7. 开发环境可以使用宽松的 CORS 配置");
+console.log("8. 在反向代理层（Nginx）也可以配置 CORS");
+
+console.log("\\n===== CORS 跨域演示完成 =====");`,
+  },
+
+  // =========================================================
+  // 第六章：统一错误处理
+  // =========================================================
+  {
+    id: "node-error-handler",
+    group: "构建 API",
+    icon: "⚠️",
+    title: "统一错误处理",
+    content: `## 统一错误处理
+
+在 API 开发中，错误处理的一致性和可预测性至关重要。客户端需要知道每个错误的具体含义和状态码，开发者需要能够快速定位和修复问题。统一错误处理系统可以让 API 的行为更加规范和专业。
+
+### 自定义错误类（AppError）
+
+创建自定义错误类可以让你在错误对象中携带更多上下文信息，如 HTTP 状态码、业务错误码、是否可预期的操作错误等。
+
+**AppError 的设计要点**：
+
+| 属性 | 类型 | 说明 |
+| --- | --- | --- |
+| \`message\` | string | 人类可读的错误描述 |
+| \`statusCode\` | number | HTTP 状态码 |
+| \`code\` | string | 业务错误码（机器可读） |
+| \`isOperational\` | boolean | 是否为可预期的操作错误 |
+| \`details\` | any | 额外的错误详情 |
+| \`cause\` | Error | 原始错误（错误链） |
+
+### 错误码与 HTTP 状态码映射
+
+| 错误类型 | HTTP 状态码 | 业务错误码 | 说明 |
+| --- | --- | --- | --- |
+| 资源未找到 | 404 | \`NOT_FOUND\` | 请求的资源不存在 |
+| 验证失败 | 400 | \`VALIDATION_ERROR\` | 请求参数验证失败 |
+| 未认证 | 401 | \`UNAUTHORIZED\` | 缺少或无效的认证信息 |
+| 无权限 | 403 | \`FORBIDDEN\` | 已认证但无权访问 |
+| 冲突 | 409 | \`CONFLICT\` | 资源冲突（如重复创建） |
+| 请求过多 | 429 | \`TOO_MANY_REQUESTS\` | 触发限流 |
+| 内部错误 | 500 | \`INTERNAL_ERROR\` | 服务器内部错误 |
+| 服务不可用 | 503 | \`SERVICE_UNAVAILABLE\` | 服务暂时不可用 |
+
+### 统一错误响应格式
+
+API 应该返回格式一致的错误响应，让客户端能够统一处理：
+
+\`\`\`json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "请求参数验证失败",
+    "statusCode": 400,
+    "details": [
+      { "field": "email", "message": "邮箱格式不正确" },
+      { "field": "age", "message": "年龄不能小于1" }
+    ],
+    "timestamp": "2024-01-15T10:30:00.000Z",
+    "requestId": "req_abc123"
+  }
+}
+\`\`\`
+
+### 操作错误 vs 编程错误
+
+| 类型 | 操作错误（Operational） | 编程错误（Programmer） |
+| --- | --- | --- |
+| 定义 | 可预期的运行时问题 | 代码中的 bug |
+| 示例 | 用户输入无效、文件不存在 | 读取 undefined 属性、类型错误 |
+| 处理方式 | 返回友好的错误信息 | 立即崩溃，重启进程 |
+| 标记 | \`isOperational = true\` | \`isOperational = false\` |
+| 日志级别 | warn | error / fatal |
+
+区分这两类错误是错误处理策略的核心。操作错误是可以安全处理的，应该返回给客户端；编程错误表示代码有 bug，最好的做法是立即崩溃，让进程管理器（如 PM2）重启。
+
+### 错误日志
+
+良好的错误日志是排查问题的关键：
+
+| 日志信息 | 说明 |
+| --- | --- |
+| 时间戳 | 错误发生的时间 |
+| 错误级别 | error / warn / info |
+| 错误消息 | 人类可读的描述 |
+| 堆栈跟踪 | 完整调用栈 |
+| 请求上下文 | URL、方法、请求体、用户 ID |
+| 错误码 | 业务错误码 |
+
+### 开发 vs 生产环境
+
+| 方面 | 开发环境 | 生产环境 |
+| --- | --- | --- |
+| 错误详情 | 完整堆栈跟踪 | 简化的错误消息 |
+| 敏感信息 | 可包含调试信息 | 必须过滤掉 |
+| 日志输出 | 控制台 | 文件 + 日志聚合 |
+| 错误响应 | 详细 | 简洁、安全 |
+
+下面这段代码实现了自定义错误类和统一错误处理中间件。`,
+    code: `// ============================================================
+// 第六章代码演示：统一错误处理实现
+// ============================================================
+
+// ---- 1. 自定义错误类体系 ----
+console.log("===== 1. 自定义错误类体系 =====");
 
 // 基础应用错误
 class AppError extends Error {
-  constructor(message, statusCode, code) {
+  constructor(message, statusCode, code, isOperational) {
     super(message);
     this.name = this.constructor.name;
     this.statusCode = statusCode || 500;
     this.code = code || "INTERNAL_ERROR";
-    this.isOperational = true;
+    this.isOperational = isOperational !== undefined ? isOperational : true;
+    this.timestamp = new Date().toISOString();
     Error.captureStackTrace(this, this.constructor);
   }
 }
 
-// 具体错误类型
+// 404 资源未找到
 class NotFoundError extends AppError {
   constructor(message) {
-    super(message || "Resource not found", 404, "NOT_FOUND");
+    super(message || "请求的资源不存在", 404, "NOT_FOUND");
   }
 }
 
+// 400 验证错误
 class ValidationError extends AppError {
-  constructor(message, errors) {
-    super(message || "Validation failed", 400, "VALIDATION_ERROR");
-    this.errors = errors || [];
+  constructor(message, details) {
+    super(message || "请求参数验证失败", 400, "VALIDATION_ERROR");
+    this.details = details || [];
   }
 }
 
+// 401 未认证
 class UnauthorizedError extends AppError {
   constructor(message) {
-    super(message || "Unauthorized", 401, "UNAUTHORIZED");
+    super(message || "请先登录", 401, "UNAUTHORIZED");
   }
 }
 
-class DatabaseError extends AppError {
-  constructor(message, originalError) {
-    super(message || "Database error", 500, "DATABASE_ERROR");
-    this.originalError = originalError || null;
-    this.isOperational = false;
-  }
-}
-
-// 演示自定义错误
-console.log("--- NotFoundError ---");
-const notFound = new NotFoundError("用户 ID: 12345 不存在");
-console.log("name: " + notFound.name);
-console.log("message: " + notFound.message);
-console.log("statusCode: " + notFound.statusCode);
-console.log("code: " + notFound.code);
-console.log("isOperational: " + notFound.isOperational);
-console.log("instanceof Error: " + (notFound instanceof Error));
-console.log("instanceof AppError: " + (notFound instanceof AppError));
-console.log("instanceof NotFoundError: " + (notFound instanceof NotFoundError));
-
-console.log("\\n--- ValidationError ---");
-const validation = new ValidationError("输入验证失败", [
-  { field: "email", message: "邮箱格式不正确" },
-  { field: "age", message: "年龄必须在 1-150 之间" },
-]);
-console.log("name: " + validation.name);
-console.log("errors: " + JSON.stringify(validation.errors));
-
-// ---- 4. Error.captureStackTrace 演示 ----
-console.log("\\n===== 4. Error.captureStackTrace 演示 =====");
-
-// 场景 1：自定义错误类中排除构造函数
-class CustomError extends Error {
+// 403 无权限
+class ForbiddenError extends AppError {
   constructor(message) {
-    super(message);
-    this.name = "CustomError";
-    // 排除 CustomError 构造函数，堆栈从调用 CustomError 的地方开始
-    Error.captureStackTrace(this, CustomError);
+    super(message || "无权访问该资源", 403, "FORBIDDEN");
   }
 }
 
-function createError() {
-  return new CustomError("从 createError 中创建");
-}
-
-const capturedErr = createError();
-console.log("堆栈跟踪（CustomError 构造函数被排除）:");
-console.log(capturedErr.stack.slice(0, 200) + "...");
-
-// 场景 2：给普通对象添加堆栈信息
-const resultObj = { error: true, data: null, message: "操作失败" };
-Error.captureStackTrace(resultObj);
-console.log("\\n普通对象也有了 stack 属性:");
-console.log("resultObj.stack 存在: " + (typeof resultObj.stack === "string"));
-console.log(resultObj.stack.slice(0, 150) + "...");
-
-// 场景 3：对比有无 captureStackTrace 的堆栈
-class ErrorWithoutCapture extends Error {
+// 409 冲突
+class ConflictError extends AppError {
   constructor(message) {
-    super(message);
-    this.name = "ErrorWithoutCapture";
-    // 没有调用 Error.captureStackTrace
+    super(message || "资源冲突", 409, "CONFLICT");
   }
 }
 
-class ErrorWithCapture extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "ErrorWithCapture";
-    Error.captureStackTrace(this, ErrorWithCapture);
+// 429 请求过多
+class TooManyRequestsError extends AppError {
+  constructor(message, retryAfter) {
+    super(message || "请求过于频繁，请稍后再试", 429, "TOO_MANY_REQUESTS");
+    this.retryAfter = retryAfter || 60;
   }
 }
 
-function throwErrors() {
-  const e1 = new ErrorWithoutCapture("无 captureStackTrace");
-  const e2 = new ErrorWithCapture("有 captureStackTrace");
-  console.log("\\n--- 无 captureStackTrace 的堆栈 ---");
-  console.log(e1.stack.slice(0, 200) + "...");
-  console.log("\\n--- 有 captureStackTrace 的堆栈 ---");
-  console.log(e2.stack.slice(0, 200) + "...");
-  console.log("\\n注意：有 captureStackTrace 的堆栈不包含 ErrorWithCapture 构造函数");
-}
-throwErrors();
-
-// ---- 5. 操作错误 vs 程序错误 ----
-console.log("\\n===== 5. 操作错误 vs 程序错误 =====");
-
-// 操作错误：可以预期并处理
-function readConfigFile(filePath) {
-  try {
-    // 模拟文件不存在的情况
-    throw { code: "ENOENT", message: "文件不存在: " + filePath };
-  } catch (err) {
-    if (err.code === "ENOENT") {
-      console.log("操作错误: 配置文件不存在，使用默认配置");
-      return { port: 3000, host: "localhost" };
-    }
-    // 其他错误继续抛出
-    throw err;
+// 500 内部错误
+class InternalError extends AppError {
+  constructor(message, cause) {
+    super(message || "服务器内部错误", 500, "INTERNAL_ERROR", false);
+    this.cause = cause || null;
   }
 }
 
-const config = readConfigFile("config.json");
-console.log("默认配置: " + JSON.stringify(config));
-
-// 程序错误：应该让它崩溃（这里用 try-catch 模拟展示）
-console.log("\\n--- 程序错误示例 ---");
-try {
-  // 这模拟了一个程序错误：访问 undefined 的属性
-  const obj = undefined;
-  // 在实际代码中这行会抛出 TypeError
-  // obj.property; // 取消注释会导致程序错误
-  console.log("（跳过模拟程序错误，避免实际崩溃）");
-} catch (e) {
-  console.log("程序错误（不应该吞掉，应该让它崩溃）: " + e.message);
-}
-
-// ---- 6. 错误处理模式对比 ----
-console.log("\\n===== 6. 错误处理模式对比 =====");
-
-// 模式 1：同步 try-catch
-console.log("--- 模式 1：同步 try-catch ---");
-function syncOperation(shouldFail) {
-  if (shouldFail) {
-    throw new Error("同步操作失败");
-  }
-  return "同步操作成功";
-}
-
-try {
-  console.log("成功: " + syncOperation(false));
-} catch (e) {
-  console.log("失败: " + e.message);
-}
-
-try {
-  syncOperation(true);
-} catch (e) {
-  console.log("捕获: " + e.message);
-}
-
-// 模式 2：错误优先回调（Error-first Callback）
-console.log("\\n--- 模式 2：错误优先回调 ---");
-function callbackOperation(shouldFail, callback) {
-  if (shouldFail) {
-    callback(new Error("回调操作失败"), null);
-  } else {
-    callback(null, "回调操作成功");
-  }
-}
-
-callbackOperation(false, function (err, result) {
-  if (err) {
-    console.log("错误: " + err.message);
-  } else {
-    console.log("成功: " + result);
-  }
-});
-
-callbackOperation(true, function (err, result) {
-  if (err) {
-    console.log("错误: " + err.message);
-  } else {
-    console.log("成功: " + result);
-  }
-});
-
-// 模式 3：Promise 链
-console.log("\\n--- 模式 3：Promise 链 ---");
-function promiseOperation(shouldFail) {
-  return new Promise(function (resolve, reject) {
-    if (shouldFail) {
-      reject(new Error("Promise 操作失败"));
-    } else {
-      resolve("Promise 操作成功");
-    }
-  });
-}
-
-promiseOperation(false)
-  .then(function (result) {
-    console.log("成功: " + result);
-  })
-  .catch(function (err) {
-    console.log("错误: " + err.message);
-  });
-
-promiseOperation(true)
-  .then(function (result) {
-    console.log("成功: " + result);
-  })
-  .catch(function (err) {
-    console.log("错误: " + err.message);
-  });
-
-// 模式 4：async/await
-console.log("\\n--- 模式 4：async/await ---");
-async function asyncOperationHandler() {
-  try {
-    const result = await promiseOperation(false);
-    console.log("成功: " + result);
-  } catch (err) {
-    console.log("错误: " + err.message);
-  }
-
-  try {
-    await promiseOperation(true);
-  } catch (err) {
-    console.log("错误: " + err.message);
-  }
-}
-
-// 立即执行 async 函数
-asyncOperationHandler();
-
-// ---- 7. 错误链式传递（Error Cause）----
-console.log("\\n===== 7. 错误链式传递（Error Cause）====");
-
-function parseUserData(jsonString) {
-  try {
-    return JSON.parse(jsonString);
-  } catch (err) {
-    // 使用 cause 属性保留原始错误
-    throw new Error("解析用户数据失败", { cause: err });
-  }
-}
-
-try {
-  parseUserData("{invalid json}");
-} catch (err) {
-  console.log("外层错误: " + err.message);
-  if (err.cause) {
-    console.log("原始错误: " + err.cause.message);
-    console.log("原始错误类型: " + err.cause.constructor.name);
-  }
-}
-
-// ---- 8. uncaughtException 处理模拟 ----
-console.log("\\n===== 8. uncaughtException 处理 =====");
-
-// 注册 uncaughtException 处理器（作为最后防线）
-// 注意：在实际代码中，uncaughtException 后应该退出进程
-// 这里只是演示，不会实际触发
-const hadUncaughtHandler = process.listenerCount("uncaughtException") > 0;
-console.log("uncaughtException 监听器数量: " + process.listenerCount("uncaughtException"));
-if (!hadUncaughtHandler) {
-  console.log("（未注册 uncaughtException 处理器——在生产环境中应该注册）");
-}
-
-// ---- 9. unhandledRejection 处理模拟 ----
-console.log("\\n===== 9. unhandledRejection 处理 =====");
-
-const hadRejectionHandler = process.listenerCount("unhandledRejection") > 0;
-console.log("unhandledRejection 监听器数量: " + process.listenerCount("unhandledRejection"));
-if (!hadRejectionHandler) {
-  console.log("（未注册 unhandledRejection 处理器——在生产环境中应该注册）");
-}
-
-// 演示：正确处理 Promise 拒绝
-console.log("\\n--- 正确处理 Promise 拒绝 ---");
-Promise.resolve()
-  .then(function () {
-    return Promise.reject(new Error("这是一个被处理的拒绝"));
-  })
-  .catch(function (err) {
-    console.log("已捕获: " + err.message);
-  });
-
-// 演示：未处理的 Promise 拒绝（仅演示，实际不会执行）
-console.log("\\n--- 潜在未处理的 Promise 拒绝示例 ---");
-console.log("// 以下代码在生产环境中会导致 unhandledRejection");
-console.log("// Promise.reject(new Error('未被处理的拒绝'));");
-console.log("// 正确的做法是始终添加 .catch() 或 try-catch");
-
-// ---- 10. 优雅退出模拟 ----
-console.log("\\n===== 10. 优雅退出（Graceful Shutdown）模拟 =====");
-
-// 模拟优雅退出流程
-const shutdownSteps = [];
-
-function simulateGracefulShutdown(signal) {
-  console.log("收到信号: " + signal);
-
-  // 步骤 1：停止接收新请求
-  shutdownSteps.push("停止接收新请求");
-  console.log("  1. ✓ 停止接收新请求");
-
-  // 步骤 2：等待当前请求完成
-  shutdownSteps.push("等待当前请求完成");
-  console.log("  2. ✓ 等待当前请求完成（设置 30s 超时）");
-
-  // 步骤 3：关闭数据库连接
-  shutdownSteps.push("关闭数据库连接");
-  console.log("  3. ✓ 关闭数据库连接");
-
-  // 步骤 4：关闭缓存连接
-  shutdownSteps.push("关闭缓存连接");
-  console.log("  4. ✓ 关闭 Redis 缓存连接");
-
-  // 步骤 5：刷新日志
-  shutdownSteps.push("刷新日志缓冲区");
-  console.log("  5. ✓ 刷新日志缓冲区");
-
-  // 步骤 6：退出
-  shutdownSteps.push("退出进程");
-  console.log("  6. ✓ 退出进程（exit code: 0）");
-}
-
-console.log("模拟 SIGTERM 信号触发的优雅退出:");
-simulateGracefulShutdown("SIGTERM");
-
-console.log("\\n完整退出步骤:");
-shutdownSteps.forEach(function (step, i) {
-  console.log("  " + (i + 1) + ". " + step);
-});
-
-// ---- 11. 错误处理最佳实践总结 ----
-console.log("\\n===== 11. 错误处理最佳实践总结 =====");
-
-const bestPractices = [
-  "使用 async/await 配合 try-catch，比 Promise 链更清晰",
-  "区分操作错误（可处理）和程序错误（应崩溃）",
-  "创建自定义错误类，让错误分类更清晰",
-  "使用 Error.cause 链式传递错误，保留上下文",
-  "不要在异步回调中抛出异常，使用 callback(err)",
-  "每个 Promise 都应有 .catch() 或 try-catch 处理",
-  "uncaughtException 和 unhandledRejection 处理后立即退出",
-  "实现优雅退出，确保资源被正确释放",
-  "使用 Error.captureStackTrace 美化堆栈跟踪",
-  "生产环境记录完整错误日志，但不要暴露给用户",
+// 演示各种错误类型
+const errors = [
+  new NotFoundError("用户 ID 999 不存在"),
+  new ValidationError("输入数据无效", [
+    { field: "email", message: "邮箱格式不正确" },
+    { field: "age", message: "年龄必须在1-150之间" },
+  ]),
+  new UnauthorizedError("访问令牌已过期"),
+  new ForbiddenError("只有管理员可以执行此操作"),
+  new ConflictError("该用户名已被使用"),
+  new TooManyRequestsError("请求频率超限", 30),
+  new InternalError("数据库连接失败"),
 ];
 
-console.log("错误处理 10 条黄金法则:");
-bestPractices.forEach(function (rule, i) {
-  console.log("  " + (i + 1) + ". " + rule);
+errors.forEach(function (err) {
+  console.log("\\n" + err.name + ":");
+  console.log("  statusCode: " + err.statusCode);
+  console.log("  code: " + err.code);
+  console.log("  message: " + err.message);
+  console.log("  isOperational: " + err.isOperational);
+  if (err.details) {
+    console.log("  details: " + JSON.stringify(err.details));
+  }
+  if (err.retryAfter) {
+    console.log("  retryAfter: " + err.retryAfter + "s");
+  }
 });
 
-console.log("\\n===== 错误处理深入演示完成 =====");`,
+// ---- 2. 错误码与状态码映射 ----
+console.log("\\n===== 2. 错误码与状态码映射 =====");
+
+const ERROR_CODE_MAP = {
+  NOT_FOUND: 404,
+  VALIDATION_ERROR: 400,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  CONFLICT: 409,
+  TOO_MANY_REQUESTS: 429,
+  INTERNAL_ERROR: 500,
+  SERVICE_UNAVAILABLE: 503,
+  BAD_GATEWAY: 502,
+  GATEWAY_TIMEOUT: 504,
+};
+
+console.log("错误码 → HTTP 状态码映射表:");
+for (const code in ERROR_CODE_MAP) {
+  console.log("  " + code.padEnd(25) + " → " + ERROR_CODE_MAP[code]);
+}
+
+// ---- 3. 统一错误响应格式 ----
+console.log("\\n===== 3. 统一错误响应格式 =====");
+
+function formatErrorResponse(err, requestId) {
+  const response = {
+    error: {
+      code: err.code || "INTERNAL_ERROR",
+      message: err.message || "服务器内部错误",
+      statusCode: err.statusCode || 500,
+      timestamp: err.timestamp || new Date().toISOString(),
+    },
+  };
+
+  // 添加请求追踪 ID
+  if (requestId) {
+    response.error.requestId = requestId;
+  }
+
+  // 添加详情（如验证错误详情）
+  if (err.details) {
+    response.error.details = err.details;
+  }
+
+  // 添加重试信息
+  if (err.retryAfter) {
+    response.error.retryAfter = err.retryAfter;
+  }
+
+  return response;
+}
+
+// 测试错误响应格式化
+const testError = new ValidationError("输入验证失败", [
+  { field: "username", message: "用户名不能为空" },
+  { field: "password", message: "密码长度至少8位" },
+]);
+const errorResponse = formatErrorResponse(testError, "req_abc123xyz");
+console.log(JSON.stringify(errorResponse, null, 2));
+
+// ---- 4. 统一错误处理中间件 ----
+console.log("\\n===== 4. 统一错误处理中间件 =====");
+
+class ErrorHandler {
+  constructor(options) {
+    this.options = Object.assign({
+      // 是否为开发环境
+      isDevelopment: false,
+      // 是否包含堆栈信息
+      includeStack: false,
+      // 日志函数
+      logger: console,
+    }, options);
+  }
+
+  // 处理错误
+  handle(err, req, res) {
+    // 确保错误是 AppError 实例
+    if (!(err instanceof AppError)) {
+      // 将未知错误包装为 InternalError
+      const wrappedErr = new InternalError(
+        this.options.isDevelopment ? err.message : "服务器内部错误",
+        err
+      );
+      wrappedErr.stack = err.stack;
+      err = wrappedErr;
+    }
+
+    // 记录日志
+    this.logError(err, req);
+
+    // 构建错误响应
+    const response = this.buildErrorResponse(err, req);
+
+    // 设置状态码和响应
+    res.statusCode = err.statusCode || 500;
+    res.headers = res.headers || {};
+    res.headers["Content-Type"] = "application/json";
+    res.body = JSON.stringify(response);
+
+    return res;
+  }
+
+  // 构建错误响应
+  buildErrorResponse(err, req) {
+    const response = {
+      error: {
+        code: err.code,
+        message: err.message,
+        statusCode: err.statusCode,
+        timestamp: err.timestamp || new Date().toISOString(),
+      },
+    };
+
+    // 添加请求追踪 ID
+    if (req && req.headers && req.headers["x-request-id"]) {
+      response.error.requestId = req.headers["x-request-id"];
+    }
+
+    // 验证错误详情
+    if (err.details && err.details.length > 0) {
+      response.error.details = err.details;
+    }
+
+    // 开发环境：添加堆栈信息
+    if (this.options.isDevelopment && this.options.includeStack && err.stack) {
+      response.error.stack = err.stack.split("\\n").map(function (s) {
+        return s.trim();
+      });
+    }
+
+    // 原始错误信息（仅开发环境）
+    if (this.options.isDevelopment && err.cause) {
+      response.error.cause = {
+        message: err.cause.message,
+        name: err.cause.name,
+      };
+    }
+
+    return response;
+  }
+
+  // 记录错误日志
+  logError(err, req) {
+    const logData = {
+      level: err.isOperational ? "warn" : "error",
+      code: err.code,
+      message: err.message,
+      statusCode: err.statusCode,
+      timestamp: err.timestamp,
+      isOperational: err.isOperational,
+    };
+
+    if (req) {
+      logData.method = req.method;
+      logData.path = req.path;
+    }
+
+    if (this.options.isDevelopment && err.stack) {
+      logData.stack = err.stack.split("\\n").slice(0, 5).map(function (s) {
+        return s.trim();
+      });
+    }
+
+    const logger = this.options.logger || console;
+    if (err.isOperational) {
+      logger.warn("[操作错误] " + JSON.stringify(logData));
+    } else {
+      logger.error("[编程错误] " + JSON.stringify(logData));
+    }
+  }
+}
+
+// ---- 5. 测试错误处理中间件 ----
+console.log("\\n===== 5. 测试错误处理中间件 =====");
+
+// 模拟请求
+function createMockRequest(method, path) {
+  return {
+    method: method,
+    path: path,
+    headers: { "x-request-id": "req_test_001" },
+  };
+}
+
+// 模拟响应
+function createMockResponse() {
+  return {
+    statusCode: 200,
+    headers: {},
+    body: null,
+  };
+}
+
+// 生产环境错误处理器
+const productionHandler = new ErrorHandler({
+  isDevelopment: false,
+  includeStack: false,
+});
+
+// 开发环境错误处理器
+const developmentHandler = new ErrorHandler({
+  isDevelopment: true,
+  includeStack: true,
+});
+
+// 测试场景
+function testErrorHandler(label, handler, err) {
+  console.log("\\n--- " + label + " ---");
+  const req = createMockRequest("GET", "/api/users/999");
+  const res = createMockResponse();
+  handler.handle(err, req, res);
+  console.log("状态码: " + res.statusCode);
+  if (res.body) {
+    const body = JSON.parse(res.body);
+    console.log(JSON.stringify(body, null, 2));
+  }
+}
+
+// 操作错误
+const opError = new NotFoundError("用户 ID 999 不存在");
+testErrorHandler("生产环境 - 操作错误", productionHandler, opError);
+testErrorHandler("开发环境 - 操作错误", developmentHandler, opError);
+
+// 验证错误
+const valError = new ValidationError("输入验证失败", [
+  { field: "email", message: "无效的邮箱格式" },
+]);
+testErrorHandler("生产环境 - 验证错误", productionHandler, valError);
+
+// 未知错误（编程错误）
+const unknownError = new TypeError("Cannot read property 'name' of undefined");
+testErrorHandler("生产环境 - 未知错误（隐藏详情）", productionHandler, unknownError);
+testErrorHandler("开发环境 - 未知错误（显示详情）", developmentHandler, unknownError);
+
+// ---- 6. 全局错误捕获模拟 ----
+console.log("\\n===== 6. 全局错误捕获 =====");
+
+// 模拟全局错误捕获处理器
+class GlobalErrorCatcher {
+  constructor(handler) {
+    this.handler = handler;
+    this.uncaughtCount = 0;
+    this.rejectionCount = 0;
+  }
+
+  // 处理未捕获的异常
+  handleUncaughtException(err) {
+    this.uncaughtCount++;
+    const req = { method: "UNKNOWN", path: "UNKNOWN", headers: {} };
+    const res = { statusCode: 500, headers: {}, body: null };
+    this.handler.handle(err, req, res);
+    console.log("\\n[致命] 未捕获的异常（第 " + this.uncaughtCount + " 次）");
+    console.log("[建议] 记录错误日志后优雅退出进程");
+  }
+
+  // 处理未处理的 Promise 拒绝
+  handleUnhandledRejection(reason) {
+    this.rejectionCount++;
+    const err = reason instanceof Error ? reason : new Error(String(reason));
+    const req = { method: "UNKNOWN", path: "UNKNOWN", headers: {} };
+    const res = { statusCode: 500, headers: {}, body: null };
+    this.handler.handle(err, req, res);
+    console.log("\\n[严重] 未处理的 Promise 拒绝（第 " + this.rejectionCount + " 次）");
+    console.log("[建议] 记录错误日志后优雅退出进程");
+  }
+}
+
+const globalCatcher = new GlobalErrorCatcher(productionHandler);
+
+// 模拟触发全局错误捕获
+console.log("模拟 uncaughtException 处理:");
+globalCatcher.handleUncaughtException(
+  new Error("模拟的未捕获异常")
+);
+
+console.log("\\n模拟 unhandledRejection 处理:");
+globalCatcher.handleUnhandledRejection(
+  new Error("模拟的未处理 Promise 拒绝")
+);
+
+// ---- 7. 开发 vs 生产环境对比 ----
+console.log("\\n===== 7. 开发 vs 生产环境对比 =====");
+
+console.log("| 方面         | 开发环境           | 生产环境           |");
+console.log("|--------------|--------------------|--------------------|");
+console.log("| 错误详情     | 完整堆栈跟踪       | 简短错误消息       |");
+console.log("| 敏感信息     | 可包含调试信息     | 必须过滤           |");
+console.log("| 堆栈跟踪     | 返回给客户端       | 不返回给客户端     |");
+console.log("| 错误原因     | 显示原始错误       | 隐藏原始错误       |");
+console.log("| 日志级别     | 控制台输出         | 文件 + 日志聚合    |");
+console.log("| 错误频率     | 可容忍             | 必须告警           |");
+
+// ---- 8. 错误处理最佳实践 ----
+console.log("\\n===== 8. 错误处理最佳实践 =====");
+
+console.log("1. 创建自定义错误类体系，按类型分类错误");
+console.log("2. 区分操作错误（可处理）和编程错误（应崩溃）");
+console.log("3. 使用统一的错误响应格式（code + message + statusCode）");
+console.log("4. 为每个请求分配追踪 ID，方便问题排查");
+console.log("5. 生产环境不暴露堆栈跟踪和内部错误详情");
+console.log("6. 记录完整的错误日志（时间、上下文、堆栈）");
+console.log("7. 使用 uncaughtException 和 unhandledRejection 作为最后防线");
+console.log("8. 操作错误使用 warn 级别，编程错误使用 error 级别");
+console.log("9. 为错误设置合理的 HTTP 状态码");
+console.log("10. 实现优雅退出机制，确保资源被正确释放");
+
+console.log("\\n===== 统一错误处理演示完成 =====");`,
+  },
+
+  // =========================================================
+  // 第七章：文件上传
+  // =========================================================
+  {
+    id: "node-file-upload",
+    group: "构建 API",
+    icon: "📤",
+    title: "文件上传",
+    content: `## 文件上传
+
+文件上传是 Web 应用中常见的功能，从用户头像到文档管理都离不开它。虽然 Node.js 没有内置的 HTTP 服务器模块，但我们可以深入理解文件上传的底层原理，包括 multipart/form-data 格式解析、文件存储和校验。
+
+### 文件上传流程
+
+一个完整的文件上传流程包括以下步骤：
+
+\`\`\`
+客户端                          服务端
+  │                               │
+  │── POST /upload ──────────────→│ 1. 接收请求
+  │   Content-Type:               │
+  │   multipart/form-data;        │ 2. 解析 boundary
+  │   boundary=----WebKit...      │
+  │                               │ 3. 按 boundary 分隔数据
+  │   ------WebKit...             │
+  │   Content-Disposition: ...    │ 4. 解析每个 part
+  │   Content-Type: image/png     │    - 普通字段
+  │                               │    - 文件内容
+  │   <二进制文件数据>            │
+  │   ------WebKit...             │ 5. 校验文件
+  │   Content-Disposition: ...    │    - 大小检查
+  │                               │    - 类型检查
+  │   name=张三                   │
+  │   ------WebKit...--           │ 6. 保存文件
+  │                               │
+  │←── 200 OK ────────────────────│ 7. 返回结果
+  │   {"fileId": "abc123"}        │
+\`\`\`
+
+### multipart/form-data 格式
+
+当上传文件时，请求的 Content-Type 为 \`multipart/form-data\`，数据通过一个**boundary**（边界分隔符）将不同部分分隔开。
+
+**格式结构**：
+
+\`\`\`
+--boundary\\r\\n
+Content-Disposition: form-data; name="field1"\\r\\n
+\\r\\n
+value1\\r\\n
+--boundary\\r\\n
+Content-Disposition: form-data; name="file"; filename="photo.png"\\r\\n
+Content-Type: image/png\\r\\n
+\\r\\n
+<二进制文件内容>\\r\\n
+--boundary--\\r\\n
+\`\`\`
+
+**关键组成部分**：
+
+| 部分 | 说明 |
+| --- | --- |
+| \`boundary\` | 分隔符，从 Content-Type 头中提取 |
+| \`Content-Disposition\` | 描述部分的元信息（name、filename） |
+| \`Content-Type\` | 文件的 MIME 类型 |
+| 空行 \`\\r\\n\\r\\n\` | 分隔头部和内容 |
+| 文件内容 | 二进制数据 |
+
+### 文件大小限制
+
+限制上传文件大小是重要的安全措施：
+
+| 层面 | 限制方式 | 说明 |
+| --- | --- | --- |
+| 应用层 | 检查 Content-Length | 在接收完整文件前先检查 |
+| 解析层 | 限制解析的 Buffer 大小 | 防止内存溢出 |
+| 存储层 | 检查最终文件大小 | 最后一道防线 |
+
+**推荐的文件大小限制**：
+
+| 文件类型 | 建议限制 | 说明 |
+| --- | --- | --- |
+| 头像 | 5MB | 小图片，只需展示小尺寸 |
+| 文档 | 50MB | PDF、Word 等 |
+| 视频 | 500MB | 大文件建议用分片上传 |
+| 批量上传 | 100MB | 总大小限制 |
+
+### MIME 类型校验
+
+不要仅依赖文件扩展名，应该检查文件的 MIME 类型和文件内容（魔数）：
+
+| 文件类型 | 扩展名 | MIME 类型 | 魔数（文件头字节） |
+| --- | --- | --- | --- |
+| PNG | \`.png\` | \`image/png\` | \`89 50 4E 47\` |
+| JPEG | \`.jpg\` | \`image/jpeg\` | \`FF D8 FF\` |
+| GIF | \`.gif\` | \`image/gif\` | \`47 49 46 38\` |
+| PDF | \`.pdf\` | \`application/pdf\` | \`25 50 44 46\` |
+| ZIP | \`.zip\` | \`application/zip\` | \`50 4B 03 04\` |
+
+**白名单 vs 黑名单**：
+
+- ✅ **白名单（推荐）**：只允许特定类型的文件
+- ❌ **黑名单**：禁止特定类型（容易遗漏危险类型）
+
+### 文件存储策略
+
+| 策略 | 说明 | 优点 | 缺点 |
+| --- | --- | --- | --- |
+| 本地文件系统 | 存储在服务器磁盘 | 简单、快速 | 不易扩展 |
+| 云存储（S3/OSS） | 存储在云端 | 可扩展、高可用 | 成本高、有延迟 |
+| 数据库 | 存储在数据库 | 事务性、备份 | 性能差、成本高 |
+| CDN | 边缘节点分发 | 快速访问 | 仅适合静态文件 |
+
+### 文件命名防冲突
+
+使用以下策略避免文件名冲突：
+
+\`\`\`javascript
+const crypto = require('crypto');
+const path = require('path');
+
+// 策略 1：时间戳 + 随机数
+const name1 = Date.now() + '_' + Math.random().toString(36).slice(2);
+
+// 策略 2：内容哈希（推荐）
+const name2 = crypto.createHash('md5')
+  .update(fileBuffer)
+  .digest('hex');
+
+// 策略 3：UUID
+const name3 = crypto.randomUUID();
+
+// 保留原始扩展名
+const ext = path.extname(originalName);
+const finalName = name3 + ext;
+\`\`\`
+
+下面这段代码使用 Buffer 和 fs 模拟文件上传处理流程，包括 multipart 数据解析、文件保存和校验。`,
+    code: `// ============================================================
+// 第七章代码演示：文件上传处理模拟
+// ============================================================
+const crypto = require("crypto");
+const path = require("path");
+const fs = require("fs");
+const os = require("os");
+
+// ---- 1. multipart/form-data 格式理解 ----
+console.log("===== 1. multipart/form-data 格式 =====");
+
+// multipart 数据由 boundary 分隔
+const boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
+
+// 模拟构建 multipart 数据
+function buildMultipartData(fields, files) {
+  const parts = [];
+  const crlf = "\\r\\n";
+
+  // 添加普通字段
+  for (const name in fields) {
+    parts.push("--" + boundary);
+    parts.push("Content-Disposition: form-data; name=\\"" + name + "\\"");
+    parts.push("");
+    parts.push(fields[name]);
+  }
+
+  // 添加文件
+  for (const file of files) {
+    parts.push("--" + boundary);
+    parts.push(
+      "Content-Disposition: form-data; name=\\"" + file.fieldName + "\\"; filename=\\"" + file.originalName + "\\""
+    );
+    parts.push("Content-Type: " + file.mimeType);
+    parts.push("");
+    // 文件内容（二进制）
+    parts.push(file.content);
+  }
+
+  // 结束标记
+  parts.push("--" + boundary + "--");
+  parts.push("");
+
+  return Buffer.from(parts.join(crlf));
+}
+
+// 模拟文件内容
+const imageContent = Buffer.from(
+  "\\x89PNG\\r\\n\\x1a\\n" + "模拟的PNG图片二进制数据".repeat(10),
+  "utf8"
+);
+
+const testFields = { username: "张三", description: "我的头像" };
+const testFiles = [
+  {
+    fieldName: "avatar",
+    originalName: "photo.png",
+    mimeType: "image/png",
+    content: imageContent,
+  },
+];
+
+const multipartData = buildMultipartData(testFields, testFiles);
+console.log("构建的 multipart 数据大小: " + (multipartData.length / 1024).toFixed(2) + " KB");
+console.log("\\n数据预览（前 500 字节）:");
+console.log(multipartData.toString("utf8", 0, 500));
+
+// ---- 2. multipart 数据解析器 ----
+console.log("\\n===== 2. multipart 数据解析器 =====");
+
+class MultipartParser {
+  constructor(boundary, options) {
+    this.boundary = boundary;
+    this.options = Object.assign({
+      maxFileSize: 10 * 1024 * 1024, // 10MB 单文件限制
+      maxTotalSize: 50 * 1024 * 1024, // 50MB 总大小限制
+      maxFields: 100,                 // 最大字段数
+      maxFiles: 10,                   // 最大文件数
+    }, options);
+  }
+
+  // 解析 multipart 数据
+  parse(buffer) {
+    // 检查总大小
+    if (buffer.length > this.options.maxTotalSize) {
+      throw new Error("上传数据总大小超过限制 (" +
+        (this.options.maxTotalSize / 1024 / 1024) + "MB)");
+    }
+
+    const result = {
+      fields: {},
+      files: [],
+    };
+
+    const boundaryBuffer = Buffer.from("--" + this.boundary);
+    const endBoundary = Buffer.from("--" + this.boundary + "--");
+    const crlf = Buffer.from("\\r\\n");
+    const doubleCrlf = Buffer.from("\\r\\n\\r\\n");
+
+    // 查找所有 boundary 位置
+    let pos = 0;
+    const parts = [];
+
+    while (pos < buffer.length) {
+      const boundaryPos = buffer.indexOf(boundaryBuffer, pos);
+      if (boundaryPos === -1) break;
+
+      const nextPos = boundaryPos + boundaryBuffer.length;
+
+      // 检查是否是结束标记
+      if (buffer.slice(nextPos, nextPos + 2).toString() === "--") {
+        break;
+      }
+
+      // 跳过 boundary 后的 \\r\\n
+      const contentStart = nextPos + 2;
+      const nextBoundary = buffer.indexOf(boundaryBuffer, contentStart);
+
+      const partEnd = nextBoundary !== -1
+        ? nextBoundary - 2  // 减去前面的 \\r\\n
+        : buffer.length;
+
+      if (contentStart < partEnd) {
+        parts.push(buffer.slice(contentStart, partEnd));
+      }
+
+      pos = nextPos;
+    }
+
+    // 解析每个 part
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      const headerEnd = part.indexOf(doubleCrlf);
+
+      if (headerEnd === -1) continue;
+
+      const headerStr = part.slice(0, headerEnd).toString("utf8");
+      const content = part.slice(headerEnd + doubleCrlf.length);
+
+      // 解析头部
+      const headers = this.parseHeaders(headerStr);
+      const disposition = headers["content-disposition"] || "";
+
+      // 检查是否是文件
+      const filenameMatch = disposition.match(/filename="([^"]*)"/);
+
+      if (filenameMatch) {
+        // 文件部分
+        if (result.files.length >= this.options.maxFiles) {
+          throw new Error("文件数量超过限制 (" + this.options.maxFiles + ")");
+        }
+        if (content.length > this.options.maxFileSize) {
+          throw new Error("文件大小超过限制 (" +
+            (this.options.maxFileSize / 1024 / 1024) + "MB)");
+        }
+
+        const nameMatch = disposition.match(/name="([^"]*)"/);
+        result.files.push({
+          fieldName: nameMatch ? nameMatch[1] : "file",
+          originalName: filenameMatch[1],
+          mimeType: headers["content-type"] || "application/octet-stream",
+          size: content.length,
+          buffer: content,
+        });
+      } else {
+        // 普通字段
+        if (Object.keys(result.fields).length >= this.options.maxFields) {
+          throw new Error("字段数量超过限制 (" + this.options.maxFields + ")");
+        }
+        const nameMatch = disposition.match(/name="([^"]*)"/);
+        if (nameMatch) {
+          result.fields[nameMatch[1]] = content.toString("utf8");
+        }
+      }
+    }
+
+    return result;
+  }
+
+  // 解析 part 头部
+  parseHeaders(headerStr) {
+    const headers = {};
+    const lines = headerStr.split("\\r\\n");
+    for (const line of lines) {
+      const colonIndex = line.indexOf(":");
+      if (colonIndex !== -1) {
+        const key = line.slice(0, colonIndex).trim().toLowerCase();
+        const value = line.slice(colonIndex + 1).trim();
+        headers[key] = value;
+      }
+    }
+    return headers;
+  }
+}
+
+// ---- 3. 测试 multipart 解析 ----
+console.log("\\n===== 3. 测试 multipart 解析 =====");
+
+const parser = new MultipartParser(boundary, {
+  maxFileSize: 10 * 1024 * 1024,
+  maxTotalSize: 50 * 1024 * 1024,
+});
+
+try {
+  const parsed = parser.parse(multipartData);
+
+  console.log("解析结果:");
+  console.log("\\n普通字段:");
+  for (const key in parsed.fields) {
+    console.log("  " + key + ": " + parsed.fields[key]);
+  }
+
+  console.log("\\n文件:");
+  parsed.files.forEach(function (file, index) {
+    console.log("  文件 " + (index + 1) + ":");
+    console.log("    字段名: " + file.fieldName);
+    console.log("    原始文件名: " + file.originalName);
+    console.log("    MIME类型: " + file.mimeType);
+    console.log("    大小: " + (file.size / 1024).toFixed(2) + " KB");
+    console.log("    内容前20字节: " + file.buffer.toString("hex", 0, 20));
+  });
+} catch (err) {
+  console.log("解析错误: " + err.message);
+}
+
+// ---- 4. 文件校验器 ----
+console.log("\\n===== 4. 文件校验器 =====");
+
+class FileValidator {
+  constructor() {
+    // 允许的 MIME 类型白名单
+    this.allowedMimeTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "application/pdf",
+      "text/plain",
+      "application/zip",
+    ];
+
+    // 魔数映射（文件头字节 → MIME 类型）
+    this.magicNumbers = {
+      "89504e47": "image/png",
+      "ffd8ff": "image/jpeg",
+      "47494638": "image/gif",
+      "25504446": "application/pdf",
+      "504b0304": "application/zip",
+      "52617221": "application/x-rar-compressed",
+    };
+  }
+
+  // 校验文件
+  validate(file) {
+    const errors = [];
+
+    // 检查 MIME 类型
+    if (!this.allowedMimeTypes.includes(file.mimeType)) {
+      errors.push("不支持的文件类型: " + file.mimeType);
+    }
+
+    // 检查魔数（文件头字节）
+    const magic = this.detectMagicNumber(file.buffer);
+    if (magic && magic !== file.mimeType) {
+      errors.push(
+        "文件类型不匹配: 声明为 " + file.mimeType +
+        "，实际检测为 " + magic
+      );
+    }
+
+    // 检查文件大小
+    if (file.size === 0) {
+      errors.push("文件为空");
+    }
+
+    // 检查文件名安全性
+    if (file.originalName.includes("..") || file.originalName.includes("/")) {
+      errors.push("文件名包含不安全字符");
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors: errors,
+    };
+  }
+
+  // 通过魔数检测文件类型
+  detectMagicNumber(buffer) {
+    if (buffer.length < 4) return null;
+    const hex = buffer.toString("hex", 0, 4);
+
+    for (const magic in this.magicNumbers) {
+      if (hex.startsWith(magic)) {
+        return this.magicNumbers[magic];
+      }
+    }
+
+    // 检查 JPEG（魔数只有 3 字节）
+    if (hex.startsWith("ffd8ff")) {
+      return "image/jpeg";
+    }
+
+    return null;
+  }
+}
+
+const validator = new FileValidator();
+
+// 测试文件校验
+console.log("--- 校验 PNG 文件 ---");
+const pngFile = {
+  fieldName: "avatar",
+  originalName: "photo.png",
+  mimeType: "image/png",
+  size: imageContent.length,
+  buffer: imageContent,
+};
+const pngResult = validator.validate(pngFile);
+console.log("校验结果: " + (pngResult.valid ? "✓ 通过" : "✗ 失败"));
+if (!pngResult.valid) {
+  pngResult.errors.forEach(function (e) { console.log("  ✗ " + e); });
+}
+
+console.log("\\n--- 校验伪造的文件类型 ---");
+const fakeFile = {
+  fieldName: "file",
+  originalName: "virus.exe",
+  mimeType: "image/png",  // 声称是 PNG
+  size: 100,
+  buffer: Buffer.from("This is actually an executable file, not a PNG"),
+};
+const fakeResult = validator.validate(fakeFile);
+console.log("校验结果: " + (fakeResult.valid ? "✓ 通过" : "✗ 失败"));
+fakeResult.errors.forEach(function (e) { console.log("  ✗ " + e); });
+
+console.log("\\n--- 校验危险文件名 ---");
+const dangerousFile = {
+  fieldName: "file",
+  originalName: "../../../etc/passwd",
+  mimeType: "text/plain",
+  size: 100,
+  buffer: Buffer.from("test"),
+};
+const dangerResult = validator.validate(dangerousFile);
+console.log("校验结果: " + (dangerResult.valid ? "✓ 通过" : "✗ 失败"));
+dangerResult.errors.forEach(function (e) { console.log("  ✗ " + e); });
+
+// ---- 5. 文件存储处理 ----
+console.log("\\n===== 5. 文件存储处理 =====");
+
+class FileStorage {
+  constructor(uploadDir) {
+    this.uploadDir = uploadDir || path.join(os.tmpdir(), "uploads");
+    this.ensureDir();
+  }
+
+  // 确保上传目录存在
+  ensureDir() {
+    try {
+      if (!fs.existsSync(this.uploadDir)) {
+        fs.mkdirSync(this.uploadDir, { recursive: true });
+      }
+    } catch (err) {
+      console.log("创建上传目录失败: " + err.message);
+    }
+  }
+
+  // 生成安全的文件名
+  generateSafeName(originalName) {
+    const ext = path.extname(originalName);
+    // 使用时间戳 + 随机数 + 哈希 确保唯一性
+    const timestamp = Date.now();
+    const random = crypto.randomBytes(8).toString("hex");
+    const hash = crypto.createHash("md5")
+      .update(timestamp + random + originalName)
+      .digest("hex")
+      .slice(0, 12);
+    return hash + "_" + timestamp + ext;
+  }
+
+  // 保存文件
+  save(file) {
+    const safeName = this.generateSafeName(file.originalName);
+    const filePath = path.join(this.uploadDir, safeName);
+
+    try {
+      fs.writeFileSync(filePath, file.buffer);
+      const stats = fs.statSync(filePath);
+
+      return {
+        success: true,
+        originalName: file.originalName,
+        savedName: safeName,
+        path: filePath,
+        size: stats.size,
+        mimeType: file.mimeType,
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: "文件保存失败: " + err.message,
+      };
+    }
+  }
+
+  // 删除文件
+  delete(filePath) {
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        return { success: true };
+      }
+      return { success: false, error: "文件不存在" };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+}
+
+// 测试文件存储
+const storage = new FileStorage(path.join(os.tmpdir(), "node-upload-demo"));
+
+console.log("上传目录: " + storage.uploadDir);
+
+// 保存文件
+const saveResult = storage.save({
+  originalName: "test-photo.png",
+  mimeType: "image/png",
+  buffer: imageContent,
+});
+
+console.log("\\n保存结果:");
+console.log(JSON.stringify(saveResult, null, 2));
+
+// 清理测试文件
+if (saveResult.success) {
+  storage.delete(saveResult.path);
+  console.log("\\n测试文件已清理");
+}
+
+// ---- 6. 完整上传流程模拟 ----
+console.log("\\n===== 6. 完整上传流程模拟 =====");
+
+async function simulateUpload(fields, files) {
+  console.log("开始模拟文件上传...");
+
+  try {
+    // 步骤 1：构建 multipart 数据
+    console.log("1. 构建 multipart 数据...");
+    const data = buildMultipartData(fields, files);
+
+    // 步骤 2：解析数据
+    console.log("2. 解析 multipart 数据...");
+    const parser = new MultipartParser(boundary);
+    const parsed = parser.parse(data);
+
+    // 步骤 3：校验文件
+    console.log("3. 校验文件...");
+    const validator = new FileValidator();
+    const validationErrors = [];
+
+    for (const file of parsed.files) {
+      const result = validator.validate(file);
+      if (!result.valid) {
+        validationErrors.push({
+          file: file.originalName,
+          errors: result.errors,
+        });
+      }
+    }
+
+    if (validationErrors.length > 0) {
+      return {
+        success: false,
+        message: "文件校验失败",
+        errors: validationErrors,
+      };
+    }
+
+    // 步骤 4：保存文件
+    console.log("4. 保存文件...");
+    const savedFiles = [];
+    for (const file of parsed.files) {
+      const saveResult = storage.save(file);
+      if (saveResult.success) {
+        savedFiles.push(saveResult);
+      }
+    }
+
+    // 步骤 5：返回结果
+    console.log("5. 返回结果");
+    return {
+      success: true,
+      message: "上传成功",
+      fields: parsed.fields,
+      files: savedFiles,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      message: "上传失败: " + err.message,
+    };
+  }
+}
+
+// 执行模拟上传
+simulateUpload(
+  { username: "张三", description: "我的头像照片" },
+  [
+    {
+      fieldName: "avatar",
+      originalName: "profile.png",
+      mimeType: "image/png",
+      content: imageContent,
+    },
+  ]
+).then(function (result) {
+  console.log("\\n上传结果:");
+  console.log(JSON.stringify(result, null, 2));
+
+  // 清理
+  if (result.files) {
+    result.files.forEach(function (f) {
+      storage.delete(f.path);
+    });
+  }
+});
+
+// ---- 7. 文件上传安全要点 ----
+console.log("\\n===== 7. 文件上传安全要点 =====");
+
+console.log("1. 限制文件大小（服务端验证，不依赖客户端）");
+console.log("2. 使用 MIME 类型白名单，而非黑名单");
+console.log("3. 检查文件魔数（文件头字节），防止类型伪造");
+console.log("4. 生成安全的文件名（不要使用用户提供的文件名）");
+console.log("5. 将上传文件存储在 Web 根目录之外");
+console.log("6. 限制上传频率（防止 DoS 攻击）");
+console.log("7. 扫描病毒（集成 ClamAV 等工具）");
+console.log("8. 设置适当的文件权限（如 0644）");
+console.log("9. 验证文件名中不包含路径遍历字符（如 ../）");
+console.log("10. 对图片文件进行重新编码（清除恶意代码）");
+
+console.log("\\n===== 文件上传演示完成 =====");`,
+  },
+
+  // =========================================================
+  // 第八章：API 版本管理
+  // =========================================================
+  {
+    id: "node-api-version",
+    group: "构建 API",
+    icon: "📌",
+    title: "API 版本管理",
+    content: `## API 版本管理
+
+随着业务的发展，API 不可避免地需要变更。一个良好的版本管理策略可以让你在不破坏现有客户端的情况下迭代 API，同时给客户端足够的时间迁移。
+
+### 版本策略
+
+常见的 API 版本管理有三种策略：
+
+| 策略 | 方式 | 示例 | 优点 | 缺点 |
+| --- | --- | --- | --- | --- |
+| **URL 路径** | 版本号在 URL 中 | \`/v1/users\`、\`/v2/users\` | 最直观，易于调试 | URL 不够"干净" |
+| **请求头** | 自定义请求头 | \`Accept-Version: v1\` | URL 干净 | 不易调试，缓存复杂 |
+| **查询参数** | URL 查询参数 | \`/users?version=1\` | 简单灵活 | 污染查询参数，缓存复杂 |
+
+**推荐使用 URL 路径版本**：这是最广泛使用的方式，简单直观，对缓存友好，易于在网关层路由。
+
+### 语义化版本
+
+遵循语义化版本规范（SemVer）来管理 API 版本：
+
+\`\`\`
+v1.2.3
+│ │ │
+│ │ └─ 补丁版本（Patch）：向后兼容的 bug 修复
+│ └─── 次版本（Minor）：向后兼容的新功能
+└───── 主版本（Major）：不兼容的 API 变更
+\`\`\`
+
+**API 版本管理中的应用**：
+
+| 变更类型 | 版本变化 | 示例 |
+| --- | --- | --- |
+| 修复 bug、性能优化 | 补丁版本 | v1.0.0 → v1.0.1 |
+| 新增可选字段、新增端点 | 次版本 | v1.0.0 → v1.1.0 |
+| 删除字段、修改响应结构 | 主版本 | v1.x.x → v2.0.0 |
+
+### 向后兼容
+
+保持向后兼容是 API 版本管理中最重要的事情。以下变更是向后兼容的：
+
+| 变更 | 兼容性 | 说明 |
+| --- | --- | --- |
+| 新增 API 端点 | ✅ 兼容 | 客户端不知道新端点，不影响 |
+| 新增可选请求参数 | ✅ 兼容 | 旧客户端不传也不影响 |
+| 新增响应字段 | ✅ 兼容 | 健壮的客户端应忽略未知字段 |
+| 放宽验证规则 | ✅ 兼容 | 原来能通过的现在也能通过 |
+| 修改字段含义 | ❌ 不兼容 | 需要新版本 |
+| 删除字段 | ❌ 不兼容 | 可能破坏客户端 |
+| 修改字段类型 | ❌ 不兼容 | 一定破坏客户端 |
+| 收紧验证规则 | ❌ 不兼容 | 原来能通过的现在可能失败 |
+
+### 路由版本分组
+
+通过版本路由器实现版本分组管理：
+
+\`\`\`javascript
+const router = new VersionRouter();
+
+// v1 版本路由
+router.version('v1', (v1) => {
+  v1.get('/users', v1ListUsers);
+  v1.get('/users/:id', v1GetUser);
+});
+
+// v2 版本路由（新增功能）
+router.version('v2', (v2) => {
+  v2.get('/users', v2ListUsers);    // 增强的列表接口
+  v2.get('/users/:id', v2GetUser);  // 增加的响应字段
+  v2.post('/users', v2CreateUser);  // v2 新增创建功能
+});
+\`\`\`
+
+### 废弃 API 处理
+
+当 API 需要废弃时，应该遵循以下流程：
+
+1. **标记废弃**：在响应头中添加 \`Deprecated: true\` 或 \`Sunset: <date>\`
+2. **通知客户端**：通过文档、邮件、响应头告知迁移计划
+3. **灰度下线**：逐步减少流量，观察错误率
+4. **完全移除**：确认无流量后删除旧版本代码
+
+### 版本迁移策略
+
+| 策略 | 说明 | 适用场景 |
+| --- | --- | --- |
+| 并行运行 | 同时维护多个版本 | 大规模 API，客户端众多 |
+| 适配层 | 在旧版本和新版本之间加转换层 | 希望快速迁移 |
+| 强制升级 | 设定截止日期，到期后关闭旧版本 | 内部 API 或客户端可控 |
+| 渐进废弃 | 逐步减少旧版本功能，引导迁移 | 对外 API 的最佳实践 |
+
+下面这段代码实现了一个支持多版本的路由系统，根据版本号匹配不同处理器。`,
+    code: `// ============================================================
+// 第八章代码演示：API 版本管理系统
+// ============================================================
+const url = require("url");
+
+// ---- 模拟请求与响应 ----
+function createRequest(method, path, headers) {
+  return {
+    method: method.toUpperCase(),
+    path: path,
+    headers: headers || {},
+    params: {},
+    query: {},
+    body: null,
+  };
+}
+
+function createResponse() {
+  return {
+    statusCode: 200,
+    body: null,
+    headers: {},
+    status: function (code) {
+      this.statusCode = code;
+      return this;
+    },
+    json: function (data) {
+      this.body = JSON.stringify(data);
+      this.headers["content-type"] = "application/json";
+      return this;
+    },
+    setHeader: function (name, value) {
+      this.headers[name] = value;
+    },
+    end: function (data) {
+      if (data) this.body = String(data);
+      return this;
+    },
+  };
+}
+
+// ---- 1. 版本路由器实现 ----
+console.log("===== 1. 版本路由器实现 =====");
+
+class VersionRouter {
+  constructor() {
+    // 版本路由映射: { v1: Router, v2: Router }
+    this.versions = {};
+    // 默认版本
+    this.defaultVersion = "v1";
+    // 版本提取策略
+    this.versionStrategy = "path"; // 'path' | 'header' | 'query'
+    // 废弃版本列表
+    this.deprecatedVersions = {};
+  }
+
+  // 注册一个版本的路由组
+  version(versionName, callback) {
+    const router = new Router();
+    callback(router);
+    this.versions[versionName] = router;
+    return this;
+  }
+
+  // 设置默认版本
+  setDefaultVersion(version) {
+    this.defaultVersion = version;
+    return this;
+  }
+
+  // 设置版本提取策略
+  setVersionStrategy(strategy) {
+    this.versionStrategy = strategy;
+    return this;
+  }
+
+  // 标记版本为废弃
+  deprecateVersion(version, sunsetDate, message) {
+    this.deprecatedVersions[version] = {
+      sunset: sunsetDate,
+      message: message || "该 API 版本已废弃，请升级到最新版本",
+    };
+    return this;
+  }
+
+  // 从请求中提取版本号
+  extractVersion(req) {
+    switch (this.versionStrategy) {
+      case "path":
+        // 从 URL 路径提取: /v1/users/123 → v1
+        const pathMatch = req.path.match(/^\\/(v\\d+)\\//);
+        return pathMatch ? pathMatch[1] : this.defaultVersion;
+
+      case "header":
+        // 从请求头提取: Accept-Version: v1
+        return req.headers["accept-version"] || this.defaultVersion;
+
+      case "query":
+        // 从查询参数提取: ?version=v1
+        const parsedUrl = url.parse(req.path, true);
+        return parsedUrl.query.version || this.defaultVersion;
+
+      default:
+        return this.defaultVersion;
+    }
+  }
+
+  // 处理请求
+  handle(req, res) {
+    // 提取版本号
+    const version = this.extractVersion(req);
+
+    // 检查版本是否存在
+    const router = this.versions[version];
+    if (!router) {
+      res.status(400).json({
+        error: {
+          code: "UNSUPPORTED_VERSION",
+          message: "不支持的 API 版本: " + version,
+          supportedVersions: Object.keys(this.versions),
+        },
+      });
+      return;
+    }
+
+    // 检查是否为废弃版本
+    if (this.deprecatedVersions[version]) {
+      const depInfo = this.deprecatedVersions[version];
+      res.setHeader("Deprecated", "true");
+      res.setHeader("Sunset", depInfo.sunset);
+      res.setHeader("Warning", '299 - "' + depInfo.message + '"');
+    }
+
+    // 如果版本策略是路径模式，需要去掉路径中的版本前缀
+    if (this.versionStrategy === "path") {
+      const originalPath = req.path;
+      req.path = req.path.replace(/^\\/v\\d+/, "") || "/";
+      req._originalPath = originalPath;
+      req._apiVersion = version;
+    }
+
+    // 将请求交给对应版本的路由器处理
+    router.handle(req, res);
+  }
+
+  // 列出所有版本及路由
+  listVersions() {
+    console.log("\\n已注册的 API 版本:");
+    for (const version in this.versions) {
+      const isDeprecated = !!this.deprecatedVersions[version];
+      const depLabel = isDeprecated ? " [已废弃]" : "";
+      console.log("  " + version + depLabel);
+      console.log("    路由数: " + this.versions[version].routes.length);
+    }
+  }
+}
+
+// ---- 2. 基础路由类（复用第一章的路由器）----
+class Router {
+  constructor() {
+    this.routes = [];
+  }
+
+  register(method, pattern, handler) {
+    const paramNames = [];
+    const regexPattern = pattern
+      .replace(/\\/:([^/]+)/g, function (_, name) {
+        paramNames.push(name);
+        return "/([^/]+)";
+      })
+      .replace(/\\*/g, "(.*)");
+
+    this.routes.push({
+      method: method.toUpperCase(),
+      pattern: pattern,
+      regex: new RegExp("^" + regexPattern + "$"),
+      paramNames: paramNames,
+      handler: handler,
+    });
+    return this;
+  }
+
+  get(pattern, handler) { return this.register("GET", pattern, handler); }
+  post(pattern, handler) { return this.register("POST", pattern, handler); }
+  put(pattern, handler) { return this.register("PUT", pattern, handler); }
+  delete(pattern, handler) { return this.register("DELETE", pattern, handler); }
+
+  handle(req, res) {
+    const parsedUrl = url.parse(req.path, true);
+    req.query = parsedUrl.query;
+    const pathname = parsedUrl.pathname;
+
+    for (let i = 0; i < this.routes.length; i++) {
+      const route = this.routes[i];
+      const match = pathname.match(route.regex);
+
+      if (match && req.method === route.method) {
+        req.params = {};
+        for (let j = 0; j < route.paramNames.length; j++) {
+          req.params[route.paramNames[j]] = match[j + 1];
+        }
+        route.handler(req, res);
+        return;
+      }
+    }
+
+    res.status(404).json({
+      error: {
+        code: "NOT_FOUND",
+        message: "路径 " + pathname + " 未找到匹配的路由",
+        version: req._apiVersion,
+      },
+    });
+  }
+}
+
+// ---- 3. 创建版本路由系统 ----
+console.log("\\n===== 3. 创建版本路由系统 =====");
+
+const apiRouter = new VersionRouter();
+
+// 设置版本提取策略为 URL 路径模式
+apiRouter.setVersionStrategy("path");
+apiRouter.setDefaultVersion("v1");
+
+// v1 版本：基础用户 API
+apiRouter.version("v1", function (v1) {
+  v1.get("/users", function (req, res) {
+    res.json({
+      version: "v1",
+      data: [
+        { id: 1, name: "张三" },
+        { id: 2, name: "李四" },
+      ],
+      total: 2,
+      // v1 没有分页信息
+    });
+  });
+
+  v1.get("/users/:id", function (req, res) {
+    res.json({
+      version: "v1",
+      data: {
+        id: parseInt(req.params.id),
+        name: "张三",
+        // v1 只有基本字段
+      },
+    });
+  });
+
+  v1.get("/products", function (req, res) {
+    res.json({
+      version: "v1",
+      data: [
+        { id: 1, name: "商品A", price: 99.9 },
+      ],
+    });
+  });
+});
+
+// v2 版本：增强的用户 API（新增字段、分页）
+apiRouter.version("v2", function (v2) {
+  v2.get("/users", function (req, res) {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    res.json({
+      version: "v2",
+      data: [
+        { id: 1, name: "张三", email: "zhangsan@example.com", avatar: "https://cdn.example.com/avatars/1.jpg", createdAt: "2024-01-01" },
+        { id: 2, name: "李四", email: "lisi@example.com", avatar: "https://cdn.example.com/avatars/2.jpg", createdAt: "2024-01-02" },
+      ],
+      pagination: {
+        page: page,
+        limit: limit,
+        total: 100,
+        totalPages: 10,
+      },
+      // v2 增加了 email、avatar、createdAt 字段和分页信息
+    });
+  });
+
+  v2.get("/users/:id", function (req, res) {
+    res.json({
+      version: "v2",
+      data: {
+        id: parseInt(req.params.id),
+        name: "张三",
+        email: "zhangsan@example.com",
+        avatar: "https://cdn.example.com/avatars/1.jpg",
+        createdAt: "2024-01-01",
+        updatedAt: "2024-06-15",
+        // v2 增加了更多字段
+      },
+    });
+  });
+
+  // v2 新增的端点
+  v2.post("/users", function (req, res) {
+    res.status(201).json({
+      version: "v2",
+      message: "用户创建成功（v2 版本）",
+      data: { id: 3, name: "新用户" },
+    });
+  });
+
+  v2.get("/products", function (req, res) {
+    res.json({
+      version: "v2",
+      data: [
+        { id: 1, name: "商品A", price: 99.9, category: "电子产品", stock: 50, rating: 4.5 },
+      ],
+    });
+  });
+});
+
+// v3 版本：最新版本（结构变更）
+apiRouter.version("v3", function (v3) {
+  v3.get("/users", function (req, res) {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    res.json({
+      apiVersion: "3.0",  // v3 使用新的版本声明格式
+      items: [             // v3 将 data 改为 items
+        { id: 1, profile: { name: "张三", email: "zhangsan@example.com" }, meta: { createdAt: "2024-01-01" } },
+        { id: 2, profile: { name: "李四", email: "lisi@example.com" }, meta: { createdAt: "2024-01-02" } },
+      ],
+      pagination: { page: page, limit: limit, total: 100 },
+      _links: {            // v3 增加了 HATEOAS 链接
+        self: "/v3/users?page=" + page,
+        next: "/v3/users?page=" + (page + 1),
+      },
+    });
+  });
+});
+
+// 标记 v1 为废弃版本
+apiRouter.deprecateVersion("v1", "2025-12-31", "v1 版本将于 2025-12-31 停止服务，请迁移到 v2 或 v3");
+
+// 列出所有版本
+apiRouter.listVersions();
+
+// ---- 4. 测试版本路由 ----
+console.log("\\n===== 4. 测试版本路由 =====");
+
+function testVersionRoute(label, method, path) {
+  console.log("\\n--- " + label + " ---");
+  const req = createRequest(method, path);
+  const res = createResponse();
+  apiRouter.handle(req, res);
+
+  console.log("请求: " + method + " " + path);
+  if (req._apiVersion) {
+    console.log("提取的版本: " + req._apiVersion);
+  }
+  console.log("状态码: " + res.statusCode);
+
+  // 显示废弃警告
+  if (res.headers["Deprecated"]) {
+    console.log("⚠ 废弃警告: " + res.headers["Warning"]);
+  }
+
+  if (res.body) {
+    const bodyStr = res.body.length > 500
+      ? res.body.slice(0, 500) + "..."
+      : res.body;
+    console.log("响应: " + bodyStr);
+  }
+}
+
+// 测试不同版本
+testVersionRoute("v1 - 获取用户列表", "GET", "/v1/users");
+testVersionRoute("v1 - 获取单个用户", "GET", "/v1/users/5");
+testVersionRoute("v1 - 产品列表", "GET", "/v1/products");
+
+testVersionRoute("v2 - 获取用户列表", "GET", "/v2/users");
+testVersionRoute("v2 - 获取单个用户", "GET", "/v2/users/5");
+testVersionRoute("v2 - 创建用户", "POST", "/v2/users");
+testVersionRoute("v2 - 产品列表", "GET", "/v2/products");
+
+testVersionRoute("v3 - 获取用户列表", "GET", "/v3/users");
+
+// 不存在的版本
+testVersionRoute("不支持的版本", "GET", "/v999/users");
+
+// ---- 5. 版本策略对比演示 ----
+console.log("\\n===== 5. 版本策略对比 =====");
+
+// 策略 1：URL 路径
+const pathRouter = new VersionRouter();
+pathRouter.setVersionStrategy("path");
+pathRouter.version("v1", function (v1) {
+  v1.get("/test", function (req, res) {
+    res.json({ strategy: "path", version: req._apiVersion });
+  });
+});
+
+// 策略 2：请求头
+const headerRouter = new VersionRouter();
+headerRouter.setVersionStrategy("header");
+headerRouter.version("v1", function (v1) {
+  v1.get("/test", function (req, res) {
+    res.json({ strategy: "header", version: "v1" });
+  });
+});
+
+// 策略 3：查询参数
+const queryRouter = new VersionRouter();
+queryRouter.setVersionStrategy("query");
+queryRouter.version("v1", function (v1) {
+  v1.get("/test", function (req, res) {
+    res.json({ strategy: "query", version: "v1" });
+  });
+});
+
+console.log("策略 1 - URL 路径模式:");
+console.log("  请求: GET /v1/test");
+console.log("  优点: 直观、易于调试、缓存友好");
+console.log('  缺点: URL 不够"干净"');
+
+console.log("\\n策略 2 - 请求头模式:");
+console.log("  请求: GET /test, Header: Accept-Version: v1");
+console.log("  优点: URL 干净");
+console.log("  缺点: 不易调试，缓存需要 Vary 头");
+
+console.log("\\n策略 3 - 查询参数模式:");
+console.log("  请求: GET /test?version=v1");
+console.log("  优点: 简单灵活");
+console.log("  缺点: 污染查询参数，缓存复杂");
+
+// 测试请求头策略
+console.log("\\n--- 请求头策略测试 ---");
+const headerReq = createRequest("GET", "/test", {
+  "accept-version": "v1",
+});
+const headerRes = createResponse();
+headerRouter.handle(headerReq, headerRes);
+console.log("请求: GET /test");
+console.log("请求头: Accept-Version: v1");
+console.log("响应: " + headerRes.body);
+
+// 测试查询参数策略
+console.log("\\n--- 查询参数策略测试 ---");
+const queryReq = createRequest("GET", "/test?version=v1");
+const queryRes = createResponse();
+queryRouter.handle(queryReq, queryRes);
+console.log("请求: GET /test?version=v1");
+console.log("响应: " + queryRes.body);
+
+// ---- 6. 废弃版本处理演示 ----
+console.log("\\n===== 6. 废弃版本处理演示 =====");
+
+console.log("废弃版本处理流程:");
+console.log("1. 标记废弃: 在响应中添加 Deprecated 和 Sunset 头");
+console.log("2. 通知客户端: 通过 Warning 头告知迁移信息");
+console.log("3. 监控流量: 观察还有多少客户端使用旧版本");
+console.log("4. 灰度下线: 逐步减少旧版本流量");
+console.log("5. 完全移除: 确认无流量后删除旧版本代码");
+
+// 废弃版本信息
+console.log("\\n当前废弃版本:");
+for (const version in apiRouter.deprecatedVersions) {
+  const depInfo = apiRouter.deprecatedVersions[version];
+  console.log("  " + version + ":");
+  console.log("    停止日期: " + depInfo.sunset);
+  console.log("    迁移提示: " + depInfo.message);
+}
+
+// ---- 7. 向后兼容检查清单 ----
+console.log("\\n===== 7. 向后兼容检查清单 =====");
+
+const compatChecks = [
+  { change: "新增 API 端点", compatible: true, desc: "旧客户端不会调用新端点，无影响" },
+  { change: "新增可选请求参数", compatible: true, desc: "旧客户端不传此参数，使用默认值" },
+  { change: "新增响应字段", compatible: true, desc: "健壮的客户端忽略未知字段" },
+  { change: "放宽验证规则", compatible: true, desc: "原来能通过的请求现在也能通过" },
+  { change: "修改字段含义", compatible: false, desc: "例如 price 从美元改为人民币" },
+  { change: "删除字段", compatible: false, desc: "依赖该字段的客户端会出错" },
+  { change: "修改字段类型", compatible: false, desc: "例如 age 从 number 改为 string" },
+  { change: "收紧验证规则", compatible: false, desc: "原来能通过的请求现在可能失败" },
+  { change: "修改响应结构", compatible: false, desc: "例如从 data 改为 items" },
+  { change: "修改错误码含义", compatible: false, desc: "客户端依赖错误码做判断" },
+];
+
+console.log("兼容性检查表:");
+compatChecks.forEach(function (check) {
+  const icon = check.compatible ? "✅" : "❌";
+  console.log("  " + icon + " " + check.change);
+  console.log("     " + check.desc);
+});
+
+// ---- 8. API 版本管理最佳实践 ----
+console.log("\\n===== 8. API 版本管理最佳实践 =====");
+
+console.log("1. 推荐使用 URL 路径版本策略（v1、v2）");
+console.log("2. 遵循语义化版本规范（SemVer）");
+console.log("3. 尽量保持向后兼容，避免破坏性变更");
+console.log("4. 新增字段而非修改字段，新增端点而非修改端点");
+console.log("5. 废弃版本要有明确的停止日期（Sunset）");
+console.log("6. 在响应头中提示废弃信息（Deprecated/Warning）");
+console.log("7. 提供清晰的迁移指南和文档");
+console.log("8. 同时维护的版本不要超过 3 个");
+console.log("9. 为每个版本编写独立的测试用例");
+console.log("10. 使用网关层（如 Nginx/Kong）也可以做版本路由");
+
+console.log("\\n===== API 版本管理演示完成 =====");`,
   },
 ];
 
 // 侧边栏分组顺序
-export const chapterGroups = ["基础入门", "核心模块", "异步编程", "进阶实战", "工程化", "基础补充"];
+export const chapterGroups = ["基础入门", "核心模块", "异步编程", "进阶实战", "工程化", "基础补充", "构建 API"];

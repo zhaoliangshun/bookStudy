@@ -1,28 +1,26 @@
 // =============================================================
 // Node.js 教程章节数据（聚合入口）
 // -------------------------------------------------------------
-// 为了便于维护与编写，教程内容按章节分组拆分到 9 个独立文件：
-//   chapters-batch1.js : 基础入门（intro, modules, globals, path, fs, os）
-//   chapters-batch2.js : 核心模块（url, events, stream, buffer, http, crypto）
-//   chapters-batch3.js : 异步编程（process, eventloop, async, util, errors）
-//   chapters-batch4.js : 进阶实战 + 工程化（worker, cluster, npm, debugging）
-//   chapters-batch5.js : 基础补充（memory, v8-engine, repl, cli, logging, error-adv）
-//   chapters-batch6.js : 核心模块补充（timers-deep, child-process, net, dns, tls, http2）
-//   chapters-batch7.js : 异步编程补充（eventemitter-deep, stream-deep, promise-deep,
-//                                  async-await-deep, concurrency, async-patterns）
-//   chapters-batch8.js : 进阶实战补充（profiling, memory-leak, security, caching,
-//                                  database, message-queue）
-//   chapters-batch9.js : 实战补充（rest-api, websocket, file-upload, auth, middleware,
-//                                  microservices）
+// 教程内容按章节分组拆分到 12 个独立文件，共 79 章：
 //
-// 本文件把 9 个分组的章节按顺序合并成一个 chapters 数组导出，
-// 同时导出侧边栏分组顺序 chapterGroups。
+//   chapters-batch1.js  : 快速入门（5 章）
+//   chapters-batch2.js  : 核心基础（8 章）
+//   chapters-batch3.js  : 异步编程（6 章）
+//   chapters-batch4.js  : 核心模块（8 章）
+//   chapters-batch5.js  : 构建 API（8 章）
+//   chapters-batch6.js  : 认证与安全（6 章）
+//   chapters-batch7.js  : 数据存储（6 章）
+//   chapters-batch8.js  : 测试与调试（6 章）
+//   chapters-batch9.js  : 工程化（6 章）
+//   chapters-batch10.js : 性能与优化（6 章）
+//   chapters-batch11.js : 实战模式（6 章）
+//   chapters-batch12.js : 实用场景（8 章）
 //
 // 每个章节对象的结构：
-//   id      : 唯一标识，用于路由/选中状态
+//   id      : 唯一标识
 //   title   : 章节标题
 //   icon    : 展示用 emoji
-//   group   : 分组名，用于侧边栏分类
+//   group   : 分组名
 //   content : Markdown 格式的详细讲解
 //   code    : 可运行、带详细注释的示例代码
 // =============================================================
@@ -36,8 +34,11 @@ import { chapters as batch6 } from "./chapters-batch6";
 import { chapters as batch7 } from "./chapters-batch7";
 import { chapters as batch8 } from "./chapters-batch8";
 import { chapters as batch9 } from "./chapters-batch9";
+import { chapters as batch10 } from "./chapters-batch10";
+import { chapters as batch11 } from "./chapters-batch11";
+import { chapters as batch12 } from "./chapters-batch12";
 
-// 按分组顺序拼接所有章节
+// 按分组顺序拼接所有章节（79 章）
 export const chapters = [
   ...batch1,
   ...batch2,
@@ -48,18 +49,23 @@ export const chapters = [
   ...batch7,
   ...batch8,
   ...batch9,
+  ...batch10,
+  ...batch11,
+  ...batch12,
 ];
 
-// 侧边栏分组顺序（与上面拼接顺序一致）
+// 侧边栏分组顺序（12 组 79 章）
 export const chapterGroups = [
-  "基础入门",
-  "基础补充",
-  "核心模块",
-  "核心模块补充",
+  "快速入门",
+  "核心基础",
   "异步编程",
-  "异步编程补充",
-  "进阶实战",
-  "进阶实战补充",
+  "核心模块",
+  "构建 API",
+  "认证与安全",
+  "数据存储",
+  "测试与调试",
   "工程化",
-  "实战补充",
+  "性能与优化",
+  "实战模式",
+  "实用场景",
 ];
