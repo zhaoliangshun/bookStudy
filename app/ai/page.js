@@ -1,0 +1,334 @@
+"use client";
+
+// =============================================================
+// AI 编程方法交互式教程页面
+// -------------------------------------------------------------
+// 结构与 Node.js / Java / Python 教程页面基本一致，区别：
+//   1. 数据源：aiChapters / aiChapterGroups（来自 ai-tutorial-data）
+//   2. 运行接口：/api/run（Node.js 沙箱执行 JavaScript 代码）
+//   3. 高亮器：highlightJavaScript（复用主教程的高亮器）
+//   4. 文案：AI 编程方法教程
+// =============================================================
+
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { aiChapters, aiChapterGroups } from "../ai-tutorial-data";
+import { MarkdownRenderer } from "../MarkdownRenderer";
+import { highlightJavaScript } from "../highlight";
+import SiteNav from "../components/SiteNav";
+
+export default function AITutorial() {
+  // ---------- 状态管理 ----------
+  const [activeId, setActiveId] = useState(aiChapters[0].id);
+  const [code, setCode] = useState(aiChapters[0].code);
+  const [output, setOutput] = useState("");
+  const [error, setError] = useState("");
+  const [isRunning, setIsRunning] = useState(false);
+  const [hasRun, setHasRun] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const textareaRef = useRef(null);
+  const highlightRef = useRef(null);
+  const lineNumbersRef = useRef(null);
+  const contentRef = useRef(null);
+
+  // 把当前代码高亮成 HTML
+  const highlightedHTML = useMemo(
+    () => highlightJavaScript(code) + "\n",
+    [code]
+  );
+
+  // 编辑器滚动同步
+  const handleEditorScroll = useCallback(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    if (highlightRef.current) {
+      highlightRef.current.scrollTop = ta.scrollTop;
+      highlightRef.current.scrollLeft = ta.scrollLeft;
+    }
+    if (lineNumbersRef.current) {
+      lineNumbersRef.current.scrollTop = ta.scrollTop;
+    }
+  }, []);
+
+  // 当前章节对象
+  const activeChapter =
+    aiChapters.find((c) => c.id === activeId) || aiChapters[0];
+
+  // ---------- 切换章节 ----------
+  const selectChapter = useCallback((chapterId) => {
+    const chapter = aiChapters.find((c) => c.id === chapterId);
+    if (!chapter) return;
+    setActiveId(chapterId);
+    setCode(chapter.code);
+    setOutput("");
+    setError("");
+    setHasRun(false);
+    setSidebarOpen(false);
+    if (contentRef.current) {
+      contentRef.current.scrollTop = 0;
+    }
+  }, []);
+
+  // ---------- 运行代码 ----------
+  const runCode = useCallback(async () => {
+    setIsRunning(true);
+    setOutput("正在执行...");
+    setError("");
+    try {
+      const res = await fetch("/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+      setOutput(data.output || "(无输出)");
+      setError(data.error || "");
+    } catch (err) {
+      setError("请求失败: " + err.message);
+      setOutput("");
+    } finally {
+      setIsRunning(false);
+      setHasRun(true);
+    }
+  }, [code]);
+
+  // ---------- 重置代码 ----------
+  const resetCode = useCallback(() => {
+    setCode(activeChapter.code);
+    setOutput("");
+    setError("");
+    setHasRun(false);
+  }, [activeChapter]);
+
+  // ---------- 键盘快捷键：Ctrl/Cmd + Enter 运行 ----------
+  useEffect(() => {
+    const handleKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        e.preventDefault();
+        runCode();
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [runCode]);
+
+  // ---------- Tab 键缩进 ----------
+  const handleKeyDown = (e) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newCode = code.slice(0, start) + "  " + code.slice(end);
+      setCode(newCode);
+      requestAnimationFrame(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + 2;
+      });
+    }
+  };
+
+  // 按分组组织章节
+  const groupedChapters = aiChapterGroups.map((group) => ({
+    group,
+    items: aiChapters.filter((c) => c.group === group),
+  }));
+
+  return (
+    <div className="app-shell">
+      <SiteNav currentPath="/ai" meta={`共 ${aiChapters.length} 章 · 在线编辑运行`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+
+      <div className="main-layout">
+        {/* ===== 侧边栏：章节导航 ===== */}
+        <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
+          <div className="sidebar-inner">
+            <div className="sidebar-header">
+              <h2>学习目录</h2>
+              <p className="sidebar-tip">点击章节学习 AI 编程</p>
+            </div>
+            <nav className="chapter-nav">
+              {groupedChapters.map(({ group, items }) => (
+                <div key={group} className="chapter-group">
+                  <div className="group-title">{group}</div>
+                  <ul>
+                    {items.map((ch) => (
+                      <li key={ch.id}>
+                        <button
+                          className={`chapter-item ${activeId === ch.id ? "active" : ""}`}
+                          onClick={() => selectChapter(ch.id)}
+                        >
+                          <span className="chapter-icon">{ch.icon}</span>
+                          <span className="chapter-title-text">{ch.title}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </nav>
+            <div className="sidebar-footer">
+              <p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码</p>
+            </div>
+          </div>
+        </aside>
+
+        {/* 移动端遮罩 */}
+        {sidebarOpen && (
+          <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+        )}
+
+        {/* ===== 主内容区 ===== */}
+        <main className="content" ref={contentRef}>
+          {/* 章节标题区 */}
+          <div className="chapter-header">
+            <div className="chapter-breadcrumb">
+              <span>{activeChapter.group}</span>
+              <span className="breadcrumb-sep">/</span>
+              <span>{activeChapter.title}</span>
+            </div>
+            <h1 className="chapter-main-title">
+              <span className="chapter-main-icon">{activeChapter.icon}</span>
+              {activeChapter.title}
+            </h1>
+          </div>
+
+          {/* Markdown 讲解区 */}
+          <section className="lesson-section">
+            <MarkdownRenderer content={activeChapter.content} />
+          </section>
+
+          {/* 代码编辑器区 */}
+          <section className="editor-section">
+            <div className="editor-header">
+              <div className="editor-label">
+                <span className="dot dot-red"></span>
+                <span className="dot dot-yellow"></span>
+                <span className="dot dot-green"></span>
+                <span className="editor-filename">example.js</span>
+              </div>
+              <div className="editor-actions">
+                <button
+                  className="btn btn-secondary"
+                  onClick={resetCode}
+                  disabled={isRunning}
+                  title="恢复章节初始代码"
+                >
+                  ↺ 重置
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={runCode}
+                  disabled={isRunning}
+                >
+                  {isRunning ? "⏳ 执行中..." : "▶ 运行代码"}
+                </button>
+              </div>
+            </div>
+            <div className="editor-wrap">
+              {/* 行号显示 */}
+              <div className="line-numbers" ref={lineNumbersRef}>
+                {code.split("\n").map((_, i) => (
+                  <div key={i} className="line-number">
+                    {i + 1}
+                  </div>
+                ))}
+              </div>
+              {/* 编辑区：高亮层 + textarea 叠加 */}
+              <div className="editor-area">
+                <pre
+                  ref={highlightRef}
+                  className="editor-highlight"
+                  aria-hidden="true"
+                  dangerouslySetInnerHTML={{ __html: highlightedHTML }}
+                />
+                <textarea
+                  ref={textareaRef}
+                  className="code-editor"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onScroll={handleEditorScroll}
+                  spellCheck={false}
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  wrap="off"
+                  placeholder="在这里编写代码，可自由修改后运行..."
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* 输出控制台 */}
+          <section className="console-section">
+            <div className="console-header">
+              <span className="console-title">控制台输出</span>
+              <span className="console-hint">
+                {isRunning ? "执行中..." : hasRun ? "执行完成" : "点击运行查看结果"}
+              </span>
+            </div>
+            <div className="console-body">
+              {output && (
+                <pre className={`console-output ${error ? "has-error" : ""}`}>
+                  {output}
+                </pre>
+              )}
+              {error && (
+                <pre className="console-error">
+                  <span className="error-label">错误:</span>
+                  {"\n"}
+                  {error}
+                </pre>
+              )}
+              {!hasRun && !isRunning && (
+                <div className="console-placeholder">
+                  <span className="placeholder-icon">▶</span>
+                  <span>点击上方"运行代码"按钮，或按 Ctrl+Enter 执行代码</span>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* 章节底部导航：上一章/下一章 */}
+          <ChapterNav
+            activeId={activeId}
+            onSelect={selectChapter}
+          />
+
+          <footer className="content-footer">
+            <p>
+              AI 编程方法教程 · 代码在 Node.js 沙箱中执行 · 涵盖 AI 编程认知、提示词工程、AI 辅助编码、学习、工作流、实战、陷阱伦理、未来趋势共 40 章
+            </p>
+          </footer>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+// ===== 上一章 / 下一章 导航组件 =====
+function ChapterNav({ activeId, onSelect }) {
+  const idx = aiChapters.findIndex((c) => c.id === activeId);
+  const prev = idx > 0 ? aiChapters[idx - 1] : null;
+  const next = idx < aiChapters.length - 1 ? aiChapters[idx + 1] : null;
+
+  return (
+    <nav className="chapter-nav-bottom">
+      {prev ? (
+        <button className="nav-btn nav-prev" onClick={() => onSelect(prev.id)}>
+          <span className="nav-dir">← 上一章</span>
+          <span className="nav-title">{prev.icon} {prev.title}</span>
+        </button>
+      ) : (
+        <span />
+      )}
+      {next ? (
+        <button className="nav-btn nav-next" onClick={() => onSelect(next.id)}>
+          <span className="nav-dir">下一章 →</span>
+          <span className="nav-title">{next.icon} {next.title}</span>
+        </button>
+      ) : (
+        <span />
+      )}
+    </nav>
+  );
+}

@@ -16,6 +16,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { backendChapters, backendChapterGroups } from "../backend-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightJavaScript } from "../highlight";
+import SiteNav from "../components/SiteNav";
 
 export default function BackendTutorial() {
   // ---------- 状态管理 ----------
@@ -137,34 +138,7 @@ export default function BackendTutorial() {
 
   return (
     <div className="app-shell">
-      {/* ===== 顶部导航栏 ===== */}
-      <header className="topbar">
-        <button
-          className="menu-btn"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          aria-label="切换菜单"
-        >
-          ☰
-        </button>
-        <div className="topbar-title">
-          <span className="topbar-logo">🛠</span>
-          <span>后端开发综合教程</span>
-        </div>
-        <div className="topbar-meta">
-          共 {backendChapters.length} 章 · 语言无关 · 在线运行示例
-        </div>
-        <nav className="topbar-nav">
-          <a href="/" className="topbar-link">Node.js</a>
-          <a href="/ts" className="topbar-link">TypeScript</a>
-          <a href="/tw" className="topbar-link">Tailwind CSS</a>
-          <a href="/py" className="topbar-link">Python</a>
-          <a href="/java" className="topbar-link">Java</a>
-          <a href="/sass" className="topbar-link">Sass</a>
-          <a href="/gql" className="topbar-link">GraphQL</a>
-          <a href="/backend" className="topbar-link active">后端开发</a>
-          <a href="/career" className="topbar-link">职业出路</a>
-        </nav>
-      </header>
+      <SiteNav currentPath="/backend" meta={`共 ${backendChapters.length} 章 · 综合教程`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
 
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}

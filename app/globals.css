@@ -97,6 +97,7 @@ body {
   flex-shrink: 0;
   box-shadow: var(--shadow-sm);
   z-index: 50;
+  position: relative;
 }
 
 .menu-btn {
@@ -142,6 +143,7 @@ body {
   overflow-x: auto;
   scrollbar-width: none;
   min-width: 0;
+  margin-left: auto;
 }
 .topbar-nav::-webkit-scrollbar {
   display: none;
@@ -168,6 +170,183 @@ body {
   border-color: var(--accent-green);
   font-weight: 600;
   cursor: default;
+}
+
+/* ===== 书籍目录下拉按钮 ===== */
+.topbar-directory-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--accent-green);
+  font-size: 13px;
+  padding: 5px 14px;
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  font-family: inherit;
+}
+.topbar-directory-btn:hover {
+  background: var(--bg-sidebar-hover);
+  border-color: var(--accent-green);
+}
+.topbar-directory-btn.active {
+  background: var(--accent-green);
+  color: var(--bg-sidebar);
+  border-color: var(--accent-green);
+  font-weight: 600;
+}
+
+.directory-btn-icon {
+  font-size: 15px;
+}
+
+.directory-arrow {
+  font-size: 11px;
+  transition: transform 0.2s;
+  display: inline-block;
+}
+.directory-arrow.open {
+  transform: rotate(180deg);
+}
+
+/* ===== 书籍目录下拉面板 ===== */
+.directory-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 12px;
+  margin-top: 8px;
+  width: 420px;
+  max-height: 70vh;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-dark);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  overflow: hidden;
+  animation: dropdownIn 0.15s ease-out;
+}
+
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.directory-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-dark);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-on-dark);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.directory-body {
+  padding: 8px;
+  overflow-y: auto;
+  max-height: calc(70vh - 48px);
+}
+
+.directory-category {
+  margin-bottom: 4px;
+}
+.directory-category:last-child {
+  margin-bottom: 0;
+}
+
+.directory-category-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.directory-category-count {
+  margin-left: auto;
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 7px;
+  border-radius: 10px;
+  color: var(--text-muted);
+}
+
+.directory-books {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 3px;
+  padding: 0 6px 6px;
+}
+
+.directory-book-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--text-on-dark);
+  text-decoration: none;
+  font-size: 13px;
+  transition: background 0.12s;
+  position: relative;
+}
+.directory-book-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.directory-book-item.active {
+  background: rgba(74, 222, 128, 0.12);
+  color: var(--accent-green);
+}
+
+.directory-book-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.directory-book-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.directory-book-badge {
+  font-size: 10px;
+  background: var(--accent-green);
+  color: var(--bg-sidebar);
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* 移动端适配 */
+@media (max-width: 640px) {
+  .directory-dropdown {
+    position: fixed;
+    top: 56px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-height: 60vh;
+  }
+  .directory-books {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ===== 主布局 ===== */

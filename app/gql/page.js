@@ -16,6 +16,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { gqlChapters, gqlChapterGroups } from "../gql-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightGraphQL } from "../gql-highlight";
+import SiteNav from "../components/SiteNav";
 
 export default function GraphQLTutorial() {
   // ---------- 状态管理 ----------
@@ -151,34 +152,7 @@ export default function GraphQLTutorial() {
 
   return (
     <div className="app-shell">
-      {/* ===== 顶部导航栏 ===== */}
-      <header className="topbar">
-        <button
-          className="menu-btn"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          aria-label="切换菜单"
-        >
-          ☰
-        </button>
-        <div className="topbar-title">
-          <span className="topbar-logo">⚡</span>
-          <span>GraphQL 交互式教程</span>
-        </div>
-        <div className="topbar-meta">
-          共 {gqlChapters.length} 章 · 在线执行查询
-        </div>
-        <nav className="topbar-nav">
-          <a href="/" className="topbar-link">Node.js</a>
-          <a href="/ts" className="topbar-link">TypeScript</a>
-          <a href="/tw" className="topbar-link">Tailwind CSS</a>
-          <a href="/py" className="topbar-link">Python</a>
-          <a href="/java" className="topbar-link">Java</a>
-          <a href="/sass" className="topbar-link">Sass</a>
-          <a href="/gql" className="topbar-link active">GraphQL</a>
-          <a href="/backend" className="topbar-link">后端开发</a>
-          <a href="/career" className="topbar-link">职业出路</a>
-        </nav>
-      </header>
+      <SiteNav currentPath="/gql" meta={`共 ${gqlChapters.length} 章 · 在线查询执行`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
 
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}
