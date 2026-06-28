@@ -1,29 +1,30 @@
 "use client";
 
 // =============================================================
-// 怼人艺术书籍 - 阅读页面
+// AI Agent开发实战书籍 - 阅读页面
 // -------------------------------------------------------------
-// 纯内容阅读型书籍页面,无代码编辑器,无运行按钮。
+// 纯内容阅读型技术书籍页面,无代码编辑器,无运行按钮。
 // 结构:侧边栏章节导航 + 主内容区 Markdown 渲染。
 // 支持:上一章/下一章导航、移动端侧边栏抽屉。
+// 本书特点:系统讲解AI Agent开发,从基础概念到生产部署。
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { duiChapters, duiChapterGroups } from "../dui-book-data";
+import { aiAgentChapters, aiAgentChapterGroups } from "../ai-agent-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
-export default function DuiBook() {
-  const [activeId, setActiveId] = useState(duiChapters[0].id);
+export default function AIAgentBook() {
+  const [activeId, setActiveId] = useState(aiAgentChapters[0].id);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const contentRef = useRef(null);
 
   const activeChapter =
-    duiChapters.find((c) => c.id === activeId) || duiChapters[0];
+    aiAgentChapters.find((c) => c.id === activeId) || aiAgentChapters[0];
 
   const selectChapter = useCallback((chapterId) => {
-    const chapter = duiChapters.find((c) => c.id === chapterId);
+    const chapter = aiAgentChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
     setActiveId(chapterId);
     setSidebarOpen(false);
@@ -32,27 +33,32 @@ export default function DuiBook() {
     }
   }, []);
 
-  const groupedChapters = duiChapterGroups.map((group) => ({
+  const groupedChapters = aiAgentChapterGroups.map((group) => ({
     group,
-    items: duiChapters.filter((c) => c.group === group),
+    items: aiAgentChapters.filter((c) => c.group === group),
   }));
 
   // 上一章 / 下一章
-  const idx = duiChapters.findIndex((c) => c.id === activeId);
-  const prevChapter = idx > 0 ? duiChapters[idx - 1] : null;
+  const idx = aiAgentChapters.findIndex((c) => c.id === activeId);
+  const prevChapter = idx > 0 ? aiAgentChapters[idx - 1] : null;
   const nextChapter =
-    idx < duiChapters.length - 1 ? duiChapters[idx + 1] : null;
+    idx < aiAgentChapters.length - 1 ? aiAgentChapters[idx + 1] : null;
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/dui" onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+      {/* ===== 顶部导航栏 ===== */}
+      <SiteNav
+        currentPath="/ai-agent"
+        onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+        meta={`共 ${aiAgentChapters.length} 章 · 从入门到精通`}
+      />
 
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}
         <Sidebar
           title="目录"
           tip="点击章节开始阅读"
-          footer={<p>💡 用智慧与格调回应世界的冒犯</p>}
+          footer={<p>🤖 从入门到精通,成为Agent时代的构建者</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}
@@ -110,7 +116,7 @@ export default function DuiBook() {
 
           <footer className="content-footer">
             <p>
-              怼人艺术 · 用智慧与格调回应世界的冒犯 · 愿你既有锋芒,也有温度
+              AI Agent开发实战 · 从入门到精通 · 工具会变,构建系统能力永远有价值
             </p>
           </footer>
         </main>

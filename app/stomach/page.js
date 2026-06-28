@@ -12,6 +12,7 @@ import { useState, useRef, useCallback } from "react";
 import { stomachChapters, stomachChapterGroups } from "../stomach-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import SiteNav from "../components/SiteNav";
+import Sidebar from "../components/Sidebar";
 
 export default function StomachBook() {
   const [activeId, setActiveId] = useState(stomachChapters[0].id);
@@ -48,44 +49,16 @@ export default function StomachBook() {
 
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}
-        <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
-          <div className="sidebar-inner">
-            <div className="sidebar-header">
-              <h2>目录</h2>
-              <p className="sidebar-tip">点击章节开始阅读</p>
-            </div>
-            <nav className="chapter-nav">
-              {groupedChapters.map(({ group, items }) => (
-                <div key={group} className="chapter-group">
-                  <div className="group-title">{group}</div>
-                  <ul>
-                    {items.map((ch) => (
-                      <li key={ch.id}>
-                        <button
-                          className={`chapter-item ${activeId === ch.id ? "active" : ""}`}
-                          onClick={() => selectChapter(ch.id)}
-                        >
-                          <span className="chapter-icon">{ch.icon}</span>
-                          <span className="chapter-title-text">{ch.title}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </nav>
-            <div className="sidebar-footer">
-              <p>🌿 养好脾胃,养好身体的根基</p>
-            </div>
-          </div>
-        </aside>
-
-        {sidebarOpen && (
-          <div
-            className="sidebar-overlay"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
+        <Sidebar
+          title="目录"
+          tip="点击章节开始阅读"
+          footer={<p>🌿 养好脾胃,养好身体的根基</p>}
+          groupedChapters={groupedChapters}
+          activeId={activeId}
+          onSelectChapter={selectChapter}
+          sidebarOpen={sidebarOpen}
+          onCloseSidebar={() => setSidebarOpen(false)}
+        />
 
         {/* ===== 主内容区 ===== */}
         <main className="content" ref={contentRef}>

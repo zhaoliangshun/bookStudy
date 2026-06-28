@@ -1,29 +1,28 @@
 "use client";
 
 // =============================================================
-// 怼人艺术书籍 - 阅读页面
+// 前端面试技巧指南 - 阅读页面
 // -------------------------------------------------------------
-// 纯内容阅读型书籍页面,无代码编辑器,无运行按钮。
-// 结构:侧边栏章节导航 + 主内容区 Markdown 渲染。
-// 支持:上一章/下一章导航、移动端侧边栏抽屉。
+// 纯内容阅读型书籍页面，无代码编辑器，无运行按钮。
+// 结构：侧边栏章节导航 + 主内容区 Markdown 渲染。
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { duiChapters, duiChapterGroups } from "../dui-book-data";
+import { feInterviewChapters, feInterviewChapterGroups } from "../fe-interview-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
-export default function DuiBook() {
-  const [activeId, setActiveId] = useState(duiChapters[0].id);
+export default function FeInterviewBook() {
+  const [activeId, setActiveId] = useState(feInterviewChapters[0].id);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const contentRef = useRef(null);
 
   const activeChapter =
-    duiChapters.find((c) => c.id === activeId) || duiChapters[0];
+    feInterviewChapters.find((c) => c.id === activeId) || feInterviewChapters[0];
 
   const selectChapter = useCallback((chapterId) => {
-    const chapter = duiChapters.find((c) => c.id === chapterId);
+    const chapter = feInterviewChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
     setActiveId(chapterId);
     setSidebarOpen(false);
@@ -32,27 +31,25 @@ export default function DuiBook() {
     }
   }, []);
 
-  const groupedChapters = duiChapterGroups.map((group) => ({
+  const groupedChapters = feInterviewChapterGroups.map((group) => ({
     group,
-    items: duiChapters.filter((c) => c.group === group),
+    items: feInterviewChapters.filter((c) => c.group === group),
   }));
 
-  // 上一章 / 下一章
-  const idx = duiChapters.findIndex((c) => c.id === activeId);
-  const prevChapter = idx > 0 ? duiChapters[idx - 1] : null;
+  const idx = feInterviewChapters.findIndex((c) => c.id === activeId);
+  const prevChapter = idx > 0 ? feInterviewChapters[idx - 1] : null;
   const nextChapter =
-    idx < duiChapters.length - 1 ? duiChapters[idx + 1] : null;
+    idx < feInterviewChapters.length - 1 ? feInterviewChapters[idx + 1] : null;
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/dui" onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+      <SiteNav currentPath="/fe-interview" meta={`共 ${feInterviewChapters.length} 章 · 面试技巧指南`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
 
       <div className="main-layout">
-        {/* ===== 侧边栏 ===== */}
         <Sidebar
           title="目录"
           tip="点击章节开始阅读"
-          footer={<p>💡 用智慧与格调回应世界的冒犯</p>}
+          footer={<p>💡 共 {feInterviewChapters.length} 章，助你拿下心仪 Offer</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}
@@ -60,7 +57,6 @@ export default function DuiBook() {
           onCloseSidebar={() => setSidebarOpen(false)}
         />
 
-        {/* ===== 主内容区 ===== */}
         <main className="content" ref={contentRef}>
           <div className="chapter-header">
             <div className="chapter-breadcrumb">
@@ -78,7 +74,6 @@ export default function DuiBook() {
             <MarkdownRenderer content={activeChapter.content} />
           </section>
 
-          {/* 上一章 / 下一章 导航 */}
           <nav className="chapter-nav-bottom">
             {prevChapter ? (
               <button
@@ -110,7 +105,7 @@ export default function DuiBook() {
 
           <footer className="content-footer">
             <p>
-              怼人艺术 · 用智慧与格调回应世界的冒犯 · 愿你既有锋芒,也有温度
+              前端面试技巧指南 · 20 章系统化内容 · 涵盖基础能力、框架工程化、项目算法、实战准备
             </p>
           </footer>
         </main>

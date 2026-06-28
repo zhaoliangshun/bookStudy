@@ -1,29 +1,33 @@
 "use client";
 
 // =============================================================
-// 怼人艺术书籍 - 阅读页面
+// 回怼护盾书籍 - 阅读页面
 // -------------------------------------------------------------
-// 纯内容阅读型书籍页面,无代码编辑器,无运行按钮。
-// 结构:侧边栏章节导航 + 主内容区 Markdown 渲染。
-// 支持:上一章/下一章导航、移动端侧边栏抽屉。
+// 纯内容阅读型书籍页面，无代码编辑器，无运行按钮。
+// 结构：侧边栏章节导航 + 主内容区 Markdown 渲染。
+// 支持：上一章/下一章导航、移动端侧边栏抽屉。
+//
+// 本书主旨：
+//   在别人不怀好意怼你的时候，如何回怼，让别人伤害不到你。
+//   实战话术 + 心理护甲并重，列举各种情境下别人怼你时如何回复。
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { duiChapters, duiChapterGroups } from "../dui-book-data";
+import { shieldChapters, shieldChapterGroups } from "../shield-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
-export default function DuiBook() {
-  const [activeId, setActiveId] = useState(duiChapters[0].id);
+export default function ShieldBook() {
+  const [activeId, setActiveId] = useState(shieldChapters[0].id);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const contentRef = useRef(null);
 
   const activeChapter =
-    duiChapters.find((c) => c.id === activeId) || duiChapters[0];
+    shieldChapters.find((c) => c.id === activeId) || shieldChapters[0];
 
   const selectChapter = useCallback((chapterId) => {
-    const chapter = duiChapters.find((c) => c.id === chapterId);
+    const chapter = shieldChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
     setActiveId(chapterId);
     setSidebarOpen(false);
@@ -32,27 +36,27 @@ export default function DuiBook() {
     }
   }, []);
 
-  const groupedChapters = duiChapterGroups.map((group) => ({
+  const groupedChapters = shieldChapterGroups.map((group) => ({
     group,
-    items: duiChapters.filter((c) => c.group === group),
+    items: shieldChapters.filter((c) => c.group === group),
   }));
 
   // 上一章 / 下一章
-  const idx = duiChapters.findIndex((c) => c.id === activeId);
-  const prevChapter = idx > 0 ? duiChapters[idx - 1] : null;
+  const idx = shieldChapters.findIndex((c) => c.id === activeId);
+  const prevChapter = idx > 0 ? shieldChapters[idx - 1] : null;
   const nextChapter =
-    idx < duiChapters.length - 1 ? duiChapters[idx + 1] : null;
+    idx < shieldChapters.length - 1 ? shieldChapters[idx + 1] : null;
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/dui" onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+      <SiteNav currentPath="/shield" onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
 
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}
         <Sidebar
           title="目录"
           tip="点击章节开始阅读"
-          footer={<p>💡 用智慧与格调回应世界的冒犯</p>}
+          footer={<p>🛡️ 让别人伤害不到你</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}
@@ -110,7 +114,7 @@ export default function DuiBook() {
 
           <footer className="content-footer">
             <p>
-              怼人艺术 · 用智慧与格调回应世界的冒犯 · 愿你既有锋芒,也有温度
+              回怼护盾 · 让别人伤害不到你 · 愿你既有锋芒，也有温度
             </p>
           </footer>
         </main>

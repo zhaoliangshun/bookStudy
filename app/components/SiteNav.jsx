@@ -33,6 +33,8 @@ const BOOK_CATEGORIES = [
       { path: "/gql", label: "GraphQL", icon: "◈" },
       { path: "/backend", label: "后端开发", icon: "🖥️" },
       { path: "/ai", label: "AI编程", icon: "🤖" },
+      { path: "/ai-agent", label: "AI Agent开发", icon: "🤖" },
+      { path: "/fe-interview", label: "前端面试", icon: "🎯" },
     ],
   },
   {
@@ -46,15 +48,9 @@ const BOOK_CATEGORIES = [
       { path: "/stomach", label: "脾胃调养", icon: "🌿" },
       { path: "/dui", label: "怼人艺术", icon: "🎯" },
       { path: "/fandui", label: "反怼心理学", icon: "🛡️" },
+      { path: "/shield", label: "回怼护盾", icon: "🛡️" },
       { path: "/quotes", label: "怼人语录", icon: "💬" },
       { path: "/curse", label: "毒舌词典", icon: "🐍" },
-    ],
-  },
-  {
-    name: "休闲娱乐",
-    icon: "🎮",
-    books: [
-      { path: "/mahjong", label: "麻将胡牌", icon: "🀄" },
     ],
   },
 ];
@@ -111,12 +107,6 @@ export default function SiteNav({ currentPath = "/", onMenuToggle, meta }) {
       >
         ☰
       </button>
-
-      {/* 当前书籍标题 */}
-      <div className="topbar-title">
-        <span className="topbar-logo">{currentBook.icon}</span>
-        <span>{currentBook.label} 交互式教程</span>
-      </div>
 
       {/* 元信息 */}
       {meta && <div className="topbar-meta">{meta}</div>}

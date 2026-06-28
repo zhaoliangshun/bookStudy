@@ -17,6 +17,7 @@ import { backendChapters, backendChapterGroups } from "../backend-tutorial-data"
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightJavaScript } from "../highlight";
 import SiteNav from "../components/SiteNav";
+import Sidebar from "../components/Sidebar";
 
 export default function BackendTutorial() {
   // ---------- 状态管理 ----------
@@ -142,41 +143,16 @@ export default function BackendTutorial() {
 
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}
-        <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
-          <div className="sidebar-inner">
-            <div className="sidebar-header">
-              <h2>学习目录</h2>
-              <p className="sidebar-tip">点击章节开始学习后端开发</p>
-            </div>
-            <nav className="chapter-nav">
-              {groupedChapters.map(({ group, items }) => (
-                <div key={group} className="chapter-group">
-                  <div className="group-title">{group}</div>
-                  <ul>
-                    {items.map((ch) => (
-                      <li key={ch.id}>
-                        <button
-                          className={`chapter-item ${activeId === ch.id ? "active" : ""}`}
-                          onClick={() => selectChapter(ch.id)}
-                        >
-                          <span className="chapter-icon">{ch.icon}</span>
-                          <span className="chapter-title-text">{ch.title}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </nav>
-            <div className="sidebar-footer">
-              <p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 执行代码</p>
-            </div>
-          </div>
-        </aside>
-
-        {sidebarOpen && (
-          <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
-        )}
+        <Sidebar
+          title="学习目录"
+          tip="点击章节开始学习后端开发"
+          footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 执行代码</p>}
+          groupedChapters={groupedChapters}
+          activeId={activeId}
+          onSelectChapter={selectChapter}
+          sidebarOpen={sidebarOpen}
+          onCloseSidebar={() => setSidebarOpen(false)}
+        />
 
         {/* ===== 主内容区 ===== */}
         <main className="content" ref={contentRef}>
