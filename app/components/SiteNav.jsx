@@ -45,6 +45,7 @@ const BOOK_CATEGORIES = [
       { path: "/work", label: "职场", icon: "💼" },
       { path: "/stomach", label: "脾胃调养", icon: "🌿" },
       { path: "/dui", label: "怼人艺术", icon: "🎯" },
+      { path: "/fandui", label: "反怼心理学", icon: "🛡️" },
       { path: "/quotes", label: "怼人语录", icon: "💬" },
       { path: "/curse", label: "毒舌词典", icon: "🐍" },
     ],

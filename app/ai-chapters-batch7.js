@@ -1016,14 +1016,14 @@ console.log(detector.formatReport(report));
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { CodePitfallDetector };
 }
-\`
+`
   },
   {
     id: "ai-legal-ethics",
     icon: "⚖️",
     group: "陷阱与伦理",
     title: "代码所有权的法律与伦理",
-    content: \`
+    content: `
 # 代码所有权的法律与伦理
 
 ## 章节概述
@@ -1435,8 +1435,8 @@ AI生成代码的法律与伦理问题正处在一个快速演变的阶段。作
 ---
 
 > **思考题：** 你的团队目前有AI代码使用政策吗？如果团队明天开始使用AI代码生成工具，你认为最大的风险是什么？如何规避这些风险？
-\`,
-    code: \`
+`,
+    code: `
 // ============================================================
 // 许可证合规检查器
 // 功能：分析代码中的许可证冲突和AI生成代码的归属要求

@@ -1361,10 +1361,10 @@ record Rectangle(double width, double height) implements Shape {
 }`
   },
   {
-    id: "java-adapter-pattern",
+    id: "java-adapter-pattern-interface",
     group: "接口与抽象类深入",
     icon: "🔌",
-    title: "适配器模式",
+    title: "适配器模式（接口实战）",
     content: `# 适配器模式
 
 适配器模式（Adapter Pattern）将一个类的接口转换成客户端期望的另一个接口，让原本不兼容的类可以一起工作。
@@ -1484,10 +1484,10 @@ class SimpleMouseListener extends MouseAdapter {
 }`
   },
   {
-    id: "java-strategy-pattern",
+    id: "java-strategy-pattern-interface",
     group: "接口与抽象类深入",
     icon: "🎯",
-    title: "策略模式",
+    title: "策略模式（接口实战）",
     content: `# 策略模式
 
 策略模式（Strategy Pattern）定义一系列算法，把它们封装成独立的策略对象，使算法可以互换，而不影响使用算法的客户端。
