@@ -16,7 +16,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { backendChapters, backendChapterGroups } from "../backend-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightJavaScript } from "../highlight";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function BackendTutorial() {
@@ -147,8 +146,6 @@ export default function BackendTutorial() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/backend" meta={`共 ${backendChapters.length} 章 · 综合教程`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}
         <Sidebar
@@ -160,6 +157,8 @@ export default function BackendTutorial() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/backend"
+          meta={`共 ${backendChapters.length} 章 · 综合教程`}
         />
 
         {/* ===== 主内容区 ===== */}

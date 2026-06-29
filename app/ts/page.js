@@ -14,7 +14,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { tsChapters, tsChapterGroups } from "../ts-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightTypeScript } from "../ts-highlight";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function TypeScriptTutorial() {
@@ -147,8 +146,6 @@ export default function TypeScriptTutorial() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/ts" meta={`共 ${tsChapters.length} 章 · 可在线编辑运行`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏：章节导航 ===== */}
         <Sidebar
@@ -160,6 +157,8 @@ export default function TypeScriptTutorial() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/ts"
+          meta={`共 ${tsChapters.length} 章 · 可在线编辑运行`}
         />
 
         {/* ===== 主内容区 ===== */}

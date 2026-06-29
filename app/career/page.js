@@ -10,7 +10,6 @@
 import { useState, useRef, useCallback } from "react";
 import { careerChapters, careerChapterGroups } from "../career-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function CareerTutorial() {
@@ -44,8 +43,6 @@ export default function CareerTutorial() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/career" meta={`共 ${careerChapters.length} 章 · 职业发展指南`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}
         <Sidebar
@@ -57,6 +54,8 @@ export default function CareerTutorial() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/career"
+          meta={`共 ${careerChapters.length} 章 · 职业发展指南`}
         />
 
         {/* ===== 主内容区 ===== */}

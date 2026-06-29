@@ -13,7 +13,6 @@
 import { useState, useRef, useCallback } from "react";
 import { pywebChapters, pywebChapterGroups } from "../pyweb-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function PyWebBook() {
@@ -46,12 +45,6 @@ export default function PyWebBook() {
 
   return (
     <div className="app-shell">
-      <SiteNav
-        currentPath="/pyweb"
-        meta={`共 ${pywebChapters.length} 章 · Python Web 后端开发`}
-        onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-      />
-
       <div className="main-layout">
         <Sidebar
           title="目录"
@@ -62,6 +55,8 @@ export default function PyWebBook() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/pyweb"
+          meta={`共 ${pywebChapters.length} 章 · Python Web 后端开发`}
         />
 
         <main className="content" ref={contentRef}>

@@ -12,7 +12,6 @@
 import { useState, useRef, useCallback } from "react";
 import { curseChapters, curseChapterGroups } from "../curse-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function CurseBook() {
@@ -46,13 +45,6 @@ export default function CurseBook() {
 
   return (
     <div className="app-shell">
-      {/* ===== 顶部导航栏 ===== */}
-      <SiteNav
-        currentPath="/curse"
-        onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-        meta={`共 ${curseChapters.length} 章 · 骂人不带脏字`}
-      />
-
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}
         <Sidebar
@@ -64,6 +56,8 @@ export default function CurseBook() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/curse"
+          meta={`共 ${curseChapters.length} 章 · 骂人不带脏字`}
         />
 
         {/* ===== 主内容区 ===== */}

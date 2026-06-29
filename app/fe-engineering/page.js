@@ -12,7 +12,6 @@
 import { useState, useRef, useCallback } from "react";
 import { feEngineeringChapters, feEngineeringChapterGroups } from "../fe-engineering-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function FeEngineeringBook() {
@@ -45,12 +44,6 @@ export default function FeEngineeringBook() {
 
   return (
     <div className="app-shell">
-      <SiteNav
-        currentPath="/fe-engineering"
-        meta={`共 ${feEngineeringChapters.length} 章 · 前端工程化教程`}
-        onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-      />
-
       <div className="main-layout">
         <Sidebar
           title="目录"
@@ -61,6 +54,8 @@ export default function FeEngineeringBook() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/fe-engineering"
+          meta={`共 ${feEngineeringChapters.length} 章 · 前端工程化教程`}
         />
 
         <main className="content" ref={contentRef}>

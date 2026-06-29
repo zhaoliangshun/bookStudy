@@ -26,8 +26,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import SiteNav from "../components/SiteNav";
 import CodeEditor from "../components/CodeEditor";
+import Sidebar from "../components/Sidebar";
 import { highlightJavaScript } from "../highlight";
 import { highlightTypeScript } from "../ts-highlight";
 import { highlightPython } from "../py-highlight";
@@ -905,7 +905,7 @@ export default function PlaygroundPage() {
   const [toast, setToast] = useState("");
   // 自动运行开关：开启后代码改变会自动执行（防抖）
   const [autoRun, setAutoRun] = useState(true);
-  // 移动端侧边栏（SiteNav 用）
+  // 移动端侧边栏
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // ---------- ref ----------
@@ -1108,13 +1108,18 @@ export default function PlaygroundPage() {
 
   return (
     <div className="app-shell">
-      <SiteNav
-        currentPath="/playground"
-        meta={`Playground · ${LANGUAGES.length} 种语言 · 在线编辑运行`}
-        onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-      />
-
       <div className="main-layout playground-main">
+        <Sidebar
+          title="Playground"
+          tip="在线代码编辑器"
+          currentPath="/playground"
+          meta={`Playground · ${LANGUAGES.length} 种语言 · 在线编辑运行`}
+          defaultCollapsed={true}
+          groupedChapters={[]}
+          sidebarOpen={sidebarOpen}
+          onCloseSidebar={() => setSidebarOpen(false)}
+          onToggleSidebar={() => setSidebarOpen((v) => !v)}
+        />
         <main className="content playground-content">
           {/* ===== 顶部工具栏：语言切换 + 操作按钮 ===== */}
           <div className="pg-toolbar">

@@ -13,7 +13,6 @@
 import { useState, useRef, useCallback } from "react";
 import { nextjsChapters, nextjsChapterGroups } from "../nextjs-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function NextjsBook() {
@@ -46,12 +45,6 @@ export default function NextjsBook() {
 
   return (
     <div className="app-shell">
-      <SiteNav
-        currentPath="/nextjs"
-        meta={`共 ${nextjsChapters.length} 章 · Next.js 16 教程`}
-        onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-      />
-
       <div className="main-layout">
         <Sidebar
           title="目录"
@@ -62,6 +55,8 @@ export default function NextjsBook() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/nextjs"
+          meta={`共 ${nextjsChapters.length} 章 · Next.js 16 教程`}
         />
 
         <main className="content" ref={contentRef}>

@@ -15,7 +15,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { goChapters, goChapterGroups } from "../go-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightGo } from "../go-highlight";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 // 默认代码示例：用户首次进入时显示，可自由修改后运行
@@ -184,8 +183,6 @@ export default function GoTutorial() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/go" meta={`共 ${goChapters.length} 章 · 在线编译运行`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏：章节导航 ===== */}
         <Sidebar
@@ -197,6 +194,8 @@ export default function GoTutorial() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/go"
+          meta={`共 ${goChapters.length} 章 · 在线编译运行`}
         />
 
         {/* ===== 主内容区 ===== */}

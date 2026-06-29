@@ -19,7 +19,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { react18Chapters, react18ChapterGroups } from "../react18-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightJavaScript } from "../highlight";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function React18Tutorial() {
@@ -165,12 +164,6 @@ export default function React18Tutorial() {
 
   return (
     <div className="app-shell">
-      <SiteNav
-        currentPath="/react18"
-        meta={`共 ${react18Chapters.length} 章 · 在线运行 JS 演示`}
-        onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-      />
-
       <div className="main-layout">
         {/* ===== 侧边栏：章节导航 ===== */}
         <Sidebar
@@ -189,6 +182,8 @@ export default function React18Tutorial() {
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
           onToggleSidebar={toggleSidebar}
+          currentPath="/react18"
+          meta={`共 ${react18Chapters.length} 章 · 在线运行 JS 演示`}
         />
 
         {/* ===== 主内容区 ===== */}

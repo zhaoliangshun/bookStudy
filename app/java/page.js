@@ -15,7 +15,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { javaChapters, javaChapterGroups } from "../java-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightJava } from "../java-highlight";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function JavaTutorial() {
@@ -149,8 +148,6 @@ export default function JavaTutorial() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/java" meta={`共 ${javaChapters.length} 章 · 在线编译运行`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏：章节导航 ===== */}
         <Sidebar
@@ -162,6 +159,8 @@ export default function JavaTutorial() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/java"
+          meta={`共 ${javaChapters.length} 章 · 在线编译运行`}
         />
 
         {/* ===== 主内容区 ===== */}

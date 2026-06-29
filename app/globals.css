@@ -80,273 +80,8 @@ body {
 /* ===== 应用骨架 ===== */
 .app-shell {
   display: flex;
-  flex-direction: column;
   height: 100vh;
   overflow: hidden;
-}
-
-/* ===== 顶部导航栏 ===== */
-.topbar {
-  height: var(--topbar-h);
-  background: var(--bg-sidebar);
-  color: var(--text-on-dark);
-  display: flex;
-  align-items: center;
-  padding: 0 20px;
-  gap: 16px;
-  flex-shrink: 0;
-  box-shadow: var(--shadow-sm);
-  z-index: 50;
-  position: relative;
-}
-
-.menu-btn {
-  display: none;
-  background: none;
-  border: none;
-  color: var(--text-on-dark);
-  font-size: 20px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-}
-.menu-btn:hover {
-  background: var(--bg-sidebar-hover);
-}
-
-.topbar-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-}
-
-.topbar-logo {
-  color: var(--accent-green);
-  font-size: 22px;
-  display: inline-block;
-  transform: translateY(-1px);
-}
-
-.topbar-meta {
-  margin-left: auto;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.topbar-nav {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  min-width: 0;
-  margin-left: auto;
-}
-.topbar-nav::-webkit-scrollbar {
-  display: none;
-}
-
-.topbar-link {
-  color: var(--accent-green);
-  font-size: 13px;
-  text-decoration: none;
-  padding: 5px 12px;
-  border: 1px solid var(--border-dark);
-  border-radius: var(--radius-sm);
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.topbar-link:hover {
-  background: var(--bg-sidebar-hover);
-  border-color: var(--accent-green);
-}
-.topbar-link.active {
-  background: var(--accent-green);
-  color: var(--bg-sidebar);
-  border-color: var(--accent-green);
-  font-weight: 600;
-  cursor: default;
-}
-
-/* ===== 书籍目录下拉按钮 ===== */
-.topbar-directory-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: transparent;
-  color: var(--accent-green);
-  font-size: 13px;
-  padding: 5px 14px;
-  border: 1px solid var(--border-dark);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-  font-family: inherit;
-}
-.topbar-directory-btn:hover {
-  background: var(--bg-sidebar-hover);
-  border-color: var(--accent-green);
-}
-.topbar-directory-btn.active {
-  background: var(--accent-green);
-  color: var(--bg-sidebar);
-  border-color: var(--accent-green);
-  font-weight: 600;
-}
-
-.directory-btn-icon {
-  font-size: 15px;
-}
-
-.directory-arrow {
-  font-size: 11px;
-  transition: transform 0.2s;
-  display: inline-block;
-}
-.directory-arrow.open {
-  transform: rotate(180deg);
-}
-
-/* ===== 书籍目录下拉面板 ===== */
-.directory-dropdown {
-  position: absolute;
-  top: 100%;
-  right: 12px;
-  margin-top: 8px;
-  width: 420px;
-  max-height: 70vh;
-  background: var(--bg-sidebar);
-  border: 1px solid var(--border-dark);
-  border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-  z-index: 1000;
-  overflow: hidden;
-  animation: dropdownIn 0.15s ease-out;
-}
-
-@keyframes dropdownIn {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.directory-header {
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border-dark);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-on-dark);
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.directory-body {
-  padding: 8px;
-  overflow-y: auto;
-  max-height: calc(70vh - 48px);
-}
-
-.directory-category {
-  margin-bottom: 4px;
-}
-.directory-category:last-child {
-  margin-bottom: 0;
-}
-
-.directory-category-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px 4px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.directory-category-count {
-  margin-left: auto;
-  font-size: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  padding: 1px 7px;
-  border-radius: 10px;
-  color: var(--text-muted);
-}
-
-.directory-books {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 3px;
-  padding: 0 6px 6px;
-}
-
-.directory-book-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  color: var(--text-on-dark);
-  text-decoration: none;
-  font-size: 13px;
-  transition: background 0.12s;
-  position: relative;
-}
-.directory-book-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-.directory-book-item.active {
-  background: rgba(74, 222, 128, 0.12);
-  color: var(--accent-green);
-}
-
-.directory-book-icon {
-  font-size: 16px;
-  flex-shrink: 0;
-}
-
-.directory-book-label {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.directory-book-badge {
-  font-size: 10px;
-  background: var(--accent-green);
-  color: var(--bg-sidebar);
-  padding: 1px 6px;
-  border-radius: 8px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-/* 移动端适配 */
-@media (max-width: 640px) {
-  .directory-dropdown {
-    position: fixed;
-    top: 56px;
-    left: 8px;
-    right: 8px;
-    width: auto;
-    max-height: 60vh;
-  }
-  .directory-books {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* ===== 主布局 ===== */
@@ -385,6 +120,197 @@ body {
   height: 100%;
   overflow: hidden;
   min-width: 0;
+}
+
+/* ===== 书籍目录切换器（位于侧边栏顶部，替代原顶部 header） ===== */
+.sidebar-book-switcher {
+  position: relative;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--border-dark);
+  background: rgba(0, 0, 0, 0.18);
+  flex-shrink: 0;
+}
+
+.sidebar-book-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-on-dark);
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  text-align: left;
+}
+.sidebar-book-btn:hover {
+  background: var(--bg-sidebar-hover);
+  border-color: var(--accent-green);
+}
+.sidebar-book-btn.active {
+  border-color: var(--accent-green);
+  background: rgba(74, 222, 128, 0.1);
+}
+
+.sidebar-book-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.sidebar-book-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-book-arrow {
+  font-size: 11px;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+.sidebar-book-arrow.open {
+  transform: rotate(180deg);
+  color: var(--accent-green);
+}
+
+/* 下拉面板：从顶部展开，覆盖在章节列表之上 */
+.sidebar-book-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 14px;
+  right: 14px;
+  max-height: 60vh;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-dark);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  z-index: 1000;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: sidebarDropdownIn 0.15s ease-out;
+}
+
+@keyframes sidebarDropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sidebar-book-dropdown-header {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-dark);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-on-dark);
+  background: rgba(255, 255, 255, 0.04);
+  flex-shrink: 0;
+}
+
+.sidebar-book-dropdown-body {
+  padding: 6px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+.sidebar-book-dropdown-body::-webkit-scrollbar {
+  width: 6px;
+}
+.sidebar-book-dropdown-body::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 3px;
+}
+
+.sidebar-book-category {
+  margin-bottom: 4px;
+}
+.sidebar-book-category:last-child {
+  margin-bottom: 0;
+}
+
+.sidebar-book-category-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-book-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0 4px 6px;
+}
+
+.sidebar-book-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  color: var(--text-on-dark);
+  text-decoration: none;
+  font-size: 13px;
+  transition: background 0.12s;
+}
+.sidebar-book-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.sidebar-book-item.active {
+  background: rgba(74, 222, 128, 0.14);
+  color: var(--accent-green);
+  font-weight: 600;
+}
+
+.sidebar-book-item-icon {
+  font-size: 15px;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+
+.sidebar-book-item-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 侧边栏元信息（章节统计等，位于切换器下方） */
+.sidebar-meta {
+  padding: 6px 14px 8px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-dark);
+  background: rgba(0, 0, 0, 0.12);
+  flex-shrink: 0;
+}
+
+/* 收起状态下隐藏书籍切换器（避免溢出） */
+.sidebar.collapsed .sidebar-book-switcher,
+.sidebar.collapsed .sidebar-meta {
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* 侧边栏头部行布局 */
@@ -602,6 +528,11 @@ body {
   display: none;
 }
 
+/* 移动端浮动菜单按钮（桌面端隐藏，仅在 max-width:900px 下显示） */
+.mobile-menu-btn {
+  display: none;
+}
+
 /* ===== 主内容区 ===== */
 .content {
   flex: 1;
@@ -611,14 +542,11 @@ body {
   min-width: 0;
 }
 
-/* 章节头部 */
+/* 章节头部 —— 跟随页面滚动，不固定 */
 .chapter-header {
   background: var(--bg-elevated);
   padding: 28px 40px 20px;
   border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 10;
   box-shadow: var(--shadow-sm);
 }
 
@@ -1358,25 +1286,33 @@ body {
 
 /* ===== 响应式：移动端 ===== */
 @media (max-width: 900px) {
-  .menu-btn {
-    display: block;
+  /* 移动端浮动菜单按钮（替代原顶部 header 的菜单按钮） */
+  .mobile-menu-btn {
+    display: flex;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 45;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text);
+    font-size: 20px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
   }
-  .topbar-meta {
-    display: none;
-  }
-  .topbar-title {
-    font-size: 15px;
-  }
-  .topbar-title > span:last-child {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 120px;
+  .mobile-menu-btn:hover {
+    background: var(--primary-light);
+    border-color: var(--primary);
   }
 
   .sidebar {
     position: fixed;
-    top: var(--topbar-h);
+    top: 0;
     left: 0;
     bottom: 0;
     width: var(--sidebar-w) !important;
@@ -1393,7 +1329,7 @@ body {
   .sidebar-resize-handle {
     display: none;
   }
-  /* 移动端不显示展开浮动按钮（用顶部菜单按钮代替） */
+  /* 移动端不显示桌面端展开浮动按钮 */
   .sidebar-expand-btn {
     display: none;
   }
@@ -1401,7 +1337,7 @@ body {
   .sidebar-overlay {
     display: block;
     position: fixed;
-    top: var(--topbar-h);
+    top: 0;
     left: 0;
     right: 0;
     bottom: 0;

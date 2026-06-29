@@ -11,7 +11,6 @@
 import { useState, useRef, useCallback } from "react";
 import { commChapters, commChapterGroups } from "../comm-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function CommBook() {
@@ -45,8 +44,6 @@ export default function CommBook() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/comm" meta={`共 ${commChapters.length} 章 · 沟通技巧指南`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}
         <Sidebar
@@ -58,6 +55,8 @@ export default function CommBook() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/comm"
+          meta={`共 ${commChapters.length} 章 · 沟通技巧指南`}
         />
 
         {/* ===== 主内容区 ===== */}

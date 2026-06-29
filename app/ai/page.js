@@ -14,7 +14,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { aiChapters, aiChapterGroups } from "../ai-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightJavaScript } from "../highlight";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function AITutorial() {
@@ -145,8 +144,6 @@ export default function AITutorial() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/ai" meta={`共 ${aiChapters.length} 章 · 在线编辑运行`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏：章节导航 ===== */}
         <Sidebar
@@ -158,6 +155,8 @@ export default function AITutorial() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/ai"
+          meta={`共 ${aiChapters.length} 章 · 在线编辑运行`}
         />
 
         {/* ===== 主内容区 ===== */}

@@ -29,6 +29,58 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 
+// =============================================================
+// 书籍目录数据（从 SiteNav 移入，集中维护）
+// =============================================================
+const BOOK_CATEGORIES = [
+  {
+    name: "编程教程",
+    icon: "💻",
+    books: [
+      { path: "/playground", label: "代码 Playground", icon: "🛝" },
+      { path: "/", label: "Node.js", icon: "⬢" },
+      { path: "/pnpm", label: "pnpm", icon: "📦" },
+      { path: "/ts", label: "TypeScript", icon: "🔷" },
+      { path: "/tw", label: "Tailwind CSS", icon: "🎨" },
+      { path: "/react18", label: "React 18", icon: "⚛️" },
+      { path: "/py", label: "Python", icon: "🐍" },
+      { path: "/pyweb", label: "Python Web", icon: "🌐" },
+      { path: "/java", label: "Java", icon: "☕" },
+      { path: "/csharp", label: "C#", icon: "🟪" },
+      { path: "/go", label: "Go", icon: "🐹" },
+      { path: "/sass", label: "Sass", icon: "💅" },
+      { path: "/gql", label: "GraphQL", icon: "◈" },
+      { path: "/sql", label: "数据库开发", icon: "🗄️" },
+      { path: "/backend", label: "后端开发", icon: "🖥️" },
+      { path: "/ai", label: "AI编程", icon: "🤖" },
+      { path: "/ai-agent", label: "AI Agent开发", icon: "🤖" },
+      { path: "/fe-interview", label: "前端面试", icon: "🎯" },
+      { path: "/fe-engineering", label: "前端工程化", icon: "⚙️" },
+      { path: "/nextjs", label: "Next.js", icon: "▲" },
+    ],
+  },
+  {
+    name: "综合知识",
+    icon: "📚",
+    books: [
+      { path: "/career", label: "职业出路", icon: "🛤️" },
+      { path: "/comm", label: "沟通交流", icon: "💬" },
+      { path: "/psychology", label: "心理学", icon: "🧠" },
+      { path: "/work", label: "职场", icon: "💼" },
+      { path: "/stomach", label: "脾胃调养", icon: "🌿" },
+      { path: "/dui", label: "怼人艺术", icon: "🎯" },
+      { path: "/fandui", label: "反怼心理学", icon: "🛡️" },
+      { path: "/shield", label: "回怼护盾", icon: "🛡️" },
+      { path: "/quotes", label: "怼人语录", icon: "💬" },
+      { path: "/curse", label: "毒舌词典", icon: "🐍" },
+    ],
+  },
+];
+
+const ALL_BOOKS = BOOK_CATEGORIES.flatMap((cat) =>
+  cat.books.map((b) => ({ ...b, category: cat.name }))
+);
+
 const MIN_SIDEBAR_W = 200;
 const MAX_SIDEBAR_W = 480;
 const DEFAULT_SIDEBAR_W = 280;
@@ -43,9 +95,29 @@ export default function Sidebar({
   sidebarOpen = false,
   onCloseSidebar,
   onToggleSidebar,
+  currentPath = "/",
+  meta = "",
+  defaultCollapsed = false,
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const [width, setWidth] = useState(DEFAULT_SIDEBAR_W);
+  const [bookDropdownOpen, setBookDropdownOpen] = useState(false);
+  const bookDropdownRef = useRef(null);
+
+  // 当前书籍信息
+  const currentBook = ALL_BOOKS.find((b) => b.path === currentPath) || ALL_BOOKS[0];
+
+  // 点击外部关闭书籍目录下拉
+  useEffect(() => {
+    if (!bookDropdownOpen) return;
+    const handler = (e) => {
+      if (bookDropdownRef.current && !bookDropdownRef.current.contains(e.target)) {
+        setBookDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [bookDropdownOpen]);
 
   // ===== Ctrl+B 切换侧边栏（类似 VS Code） =====
   // -------------------------------------------------------------
@@ -198,11 +270,68 @@ export default function Sidebar({
 
   return (
     <>
+      {/* 移动端浮动菜单按钮（桌面端由 CSS 隐藏） */}
+      {!sidebarOpen && typeof onToggleSidebar === "function" && (
+        <button
+          className="mobile-menu-btn"
+          onClick={onToggleSidebar}
+          aria-label="打开目录"
+          title="打开目录"
+        >
+          ☰
+        </button>
+      )}
+
       <aside
         className={`sidebar ${sidebarOpen ? "open" : ""} ${collapsed ? "collapsed" : ""}`}
         style={collapsed ? undefined : { width: `${width}px` }}
       >
         <div className="sidebar-inner">
+          {/* 书籍目录切换器 */}
+          <div className="sidebar-book-switcher" ref={bookDropdownRef}>
+            <button
+              className={`sidebar-book-btn ${bookDropdownOpen ? "active" : ""}`}
+              onClick={() => setBookDropdownOpen(!bookDropdownOpen)}
+              aria-expanded={bookDropdownOpen}
+            >
+              <span className="sidebar-book-icon">{currentBook.icon}</span>
+              <span className="sidebar-book-label">{currentBook.label}</span>
+              <span className={`sidebar-book-arrow ${bookDropdownOpen ? "open" : ""}`}>▾</span>
+            </button>
+            {bookDropdownOpen && (
+              <div className="sidebar-book-dropdown">
+                <div className="sidebar-book-dropdown-header">
+                  📚 全部书籍（{ALL_BOOKS.length} 本）
+                </div>
+                <div className="sidebar-book-dropdown-body">
+                  {BOOK_CATEGORIES.map((category) => (
+                    <div key={category.name} className="sidebar-book-category">
+                      <div className="sidebar-book-category-title">
+                        <span>{category.icon}</span>
+                        <span>{category.name}</span>
+                      </div>
+                      <div className="sidebar-book-list">
+                        {category.books.map((book) => (
+                          <a
+                            key={book.path}
+                            href={book.path}
+                            className={`sidebar-book-item ${currentPath === book.path ? "active" : ""}`}
+                            onClick={() => setBookDropdownOpen(false)}
+                          >
+                            <span className="sidebar-book-item-icon">{book.icon}</span>
+                            <span className="sidebar-book-item-label">{book.label}</span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {meta && <div className="sidebar-meta">{meta}</div>}
+
           <div className="sidebar-header">
             <div className="sidebar-header-row">
               <h2>{title}</h2>

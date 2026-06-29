@@ -15,7 +15,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { pyChapters, pyChapterGroups } from "../py-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightPython } from "../py-highlight";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function PythonTutorial() {
@@ -149,8 +148,6 @@ export default function PythonTutorial() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/py" meta={`共 ${pyChapters.length} 章 · 可在线编辑运行`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏：章节导航 ===== */}
         <Sidebar
@@ -162,6 +159,8 @@ export default function PythonTutorial() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/py"
+          meta={`共 ${pyChapters.length} 章 · 可在线编辑运行`}
         />
 
         {/* ===== 主内容区 ===== */}

@@ -15,7 +15,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { sqlChapters, sqlChapterGroups } from "../sql-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightSql } from "../sql-highlight";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function SQLTutorial() {
@@ -138,8 +137,6 @@ export default function SQLTutorial() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/sql" meta={`共 ${sqlChapters.length} 章 · SQLite 在线执行`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}
         <Sidebar
@@ -151,6 +148,8 @@ export default function SQLTutorial() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/sql"
+          meta={`共 ${sqlChapters.length} 章 · SQLite 在线执行`}
         />
 
         {/* ===== 主内容区 ===== */}

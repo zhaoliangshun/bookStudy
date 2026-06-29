@@ -18,7 +18,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { pnpmChapters, pnpmChapterGroups } from "../pnpm-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightShell } from "../shell-highlight";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 // 默认代码示例：用户首次进入时显示，可自由修改后运行
@@ -161,12 +160,6 @@ export default function PnpmTutorial() {
 
   return (
     <div className="app-shell">
-      <SiteNav
-        currentPath="/pnpm"
-        meta={`共 ${pnpmChapters.length} 章 · 在线运行 Shell 示例`}
-        onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-      />
-
       <div className="main-layout">
         {/* ===== 侧边栏：章节导航 ===== */}
         <Sidebar
@@ -178,6 +171,8 @@ export default function PnpmTutorial() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/pnpm"
+          meta={`共 ${pnpmChapters.length} 章 · 在线运行 Shell 示例`}
         />
 
         {/* ===== 主内容区 ===== */}
