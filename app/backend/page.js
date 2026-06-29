@@ -104,6 +104,14 @@ export default function BackendTutorial() {
     setHasRun(false);
   }, [activeChapter]);
 
+  // ---------- 在 Playground 中打开 ----------
+  const handlePlayground = useCallback(() => {
+    try {
+      localStorage.setItem("playground:code:backend", code);
+    } catch {}
+    window.open(`/playground?lang=backend`, "_blank", "noopener,noreferrer");
+  }, [code]);
+
   // ---------- 键盘快捷键 ----------
   useEffect(() => {
     const handleKey = (e) => {
@@ -196,6 +204,13 @@ export default function BackendTutorial() {
                   disabled={isRunning}
                 >
                   {isRunning ? "⏳ 执行中..." : "▶ 运行代码"}
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handlePlayground}
+                  title="在 Playground 中打开"
+                >
+                  🚀 Playground
                 </button>
               </div>
             </div>

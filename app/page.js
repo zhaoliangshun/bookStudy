@@ -134,6 +134,14 @@ export default function Home() {
     setHasRun(false);
   }, [activeChapter]);
 
+  // ---------- 在 Playground 中打开 ----------
+  const handlePlayground = useCallback(() => {
+    try {
+      localStorage.setItem("playground:code:node", code);
+    } catch {}
+    window.open(`/playground?lang=node`, "_blank", "noopener,noreferrer");
+  }, [code]);
+
   // ---------- 键盘快捷键 ----------
   // Ctrl/Cmd + Enter 运行代码
   useEffect(() => {
@@ -239,6 +247,13 @@ export default function Home() {
                   disabled={isRunning}
                 >
                   {isRunning ? "⏳ 执行中..." : "▶ 运行代码"}
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handlePlayground}
+                  title="在 Playground 中打开"
+                >
+                  🚀 Playground
                 </button>
               </div>
             </div>

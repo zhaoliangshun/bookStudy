@@ -206,6 +206,14 @@ export default function SassTutorial() {
     setHasRun(false);
   }, [activeChapter]);
 
+  // ---------- 在 Playground 中打开 ----------
+  const handlePlayground = useCallback(() => {
+    try {
+      localStorage.setItem("playground:code:sass", code);
+    } catch {}
+    window.open(`/playground?lang=sass`, "_blank", "noopener,noreferrer");
+  }, [code]);
+
   // ---------- 键盘快捷键：Ctrl/Cmd + Enter 编译预览 ----------
   useEffect(() => {
     const handleKey = (e) => {

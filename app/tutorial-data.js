@@ -1,7 +1,7 @@
 // =============================================================
 // Node.js 教程章节数据（聚合入口）
 // -------------------------------------------------------------
-// 教程内容按章节分组拆分到 12 个独立文件，共 79 章：
+// 教程内容按章节分组拆分到 15 个独立文件，共 100 章：
 //
 //   chapters-batch1.js  : 快速入门（5 章）
 //   chapters-batch2.js  : 核心基础（8 章）
@@ -15,6 +15,9 @@
 //   chapters-batch10.js : 性能与优化（6 章）
 //   chapters-batch11.js : 实战模式（6 章）
 //   chapters-batch12.js : 实用场景（8 章）
+//   chapters-batch13.js : 进阶干货·底层机制与诊断篇（7 章）
+//   chapters-batch14.js : 进阶干货·生产工程篇（7 章）
+//   chapters-batch15.js : 进阶干货·高级实战与可观测篇（7 章）
 //
 // 每个章节对象的结构：
 //   id      : 唯一标识
@@ -37,8 +40,11 @@ import { chapters as batch9 } from "./chapters-batch9";
 import { chapters as batch10 } from "./chapters-batch10";
 import { chapters as batch11 } from "./chapters-batch11";
 import { chapters as batch12 } from "./chapters-batch12";
+import { chapters as batch13 } from "./chapters-batch13";
+import { chapters as batch14 } from "./chapters-batch14";
+import { chapters as batch15 } from "./chapters-batch15";
 
-// 按分组顺序拼接所有章节（79 章）
+// 按分组顺序拼接所有章节（100 章）
 export const chapters = [
   ...batch1,
   ...batch2,
@@ -52,9 +58,12 @@ export const chapters = [
   ...batch10,
   ...batch11,
   ...batch12,
+  ...batch13,
+  ...batch14,
+  ...batch15,
 ];
 
-// 侧边栏分组顺序（12 组 79 章）
+// 侧边栏分组顺序（13 组 100 章）
 export const chapterGroups = [
   "快速入门",
   "核心基础",
@@ -68,4 +77,5 @@ export const chapterGroups = [
   "性能与优化",
   "实战模式",
   "实用场景",
+  "进阶干货",
 ];

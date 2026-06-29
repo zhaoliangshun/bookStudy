@@ -139,6 +139,14 @@ export default function GoTutorial() {
     setHasRun(false);
   }, []);
 
+  // ---------- 在 Playground 中打开 ----------
+  const handlePlayground = useCallback(() => {
+    try {
+      localStorage.setItem("playground:code:go", code);
+    } catch {}
+    window.open(`/playground?lang=go`, "_blank", "noopener,noreferrer");
+  }, [code]);
+
   // ---------- 键盘快捷键：Ctrl/Cmd + Enter 运行 ----------
   useEffect(() => {
     const handleKey = (e) => {
@@ -235,6 +243,13 @@ export default function GoTutorial() {
                   disabled={isRunning}
                 >
                   {isRunning ? "⏳ 编译中..." : "▶ 运行代码"}
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handlePlayground}
+                  title="在 Playground 中打开"
+                >
+                  🚀 Playground
                 </button>
               </div>
             </div>

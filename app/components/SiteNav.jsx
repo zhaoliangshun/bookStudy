@@ -35,6 +35,7 @@ const BOOK_CATEGORIES = [
       { path: "/go", label: "Go", icon: "🐹" },
       { path: "/sass", label: "Sass", icon: "💅" },
       { path: "/gql", label: "GraphQL", icon: "◈" },
+      { path: "/sql", label: "数据库开发", icon: "🗄️" },
       { path: "/backend", label: "后端开发", icon: "🖥️" },
       { path: "/ai", label: "AI编程", icon: "🤖" },
       { path: "/ai-agent", label: "AI Agent开发", icon: "🤖" },
