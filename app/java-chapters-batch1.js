@@ -383,10 +383,14 @@ Java 数据类型
 #### 整型
 
 \`\`\`java
-int age = 28;                // 最常用
-long population = 14000000000L;  // long 字面量必须加 L 后缀
-byte b = 100;                // byte 范围小，注意溢出
-short s = 1000;
+public class Main {
+    public static void main(String[] args) {
+        int age = 28;                // 最常用
+        long population = 14000000000L;  // long 字面量必须加 L 后缀
+        byte b = 100;                // byte 范围小，注意溢出
+        short s = 1000;
+    }
+}
 \`\`\`
 
 **注意**：整数字面量默认是 \`int\` 类型。赋给 \`long\` 时必须加 \`L\` 后缀（小写 l 容易和 1 混淆，推荐大写 L）。
@@ -394,40 +398,61 @@ short s = 1000;
 Java 支持下划线分隔大数字（Java 7+），提高可读性：
 
 \`\`\`java
-int million = 1_000_000;
-long big = 1_000_000_000_000L;
+public class Main {
+    public static void main(String[] args) {
+        int million = 1_000_000;
+        long big = 1_000_000_000_000L;
+    }
+}
 \`\`\`
 
 支持二进制（\`0b\`）、八进制（\`0\`）、十六进制（\`0x\`）字面量：
 
 \`\`\`java
-int bin = 0b1010;     // 10
-int oct = 012;        // 10
-int hex = 0xFF;       // 255
+public class Main {
+    public static void main(String[] args) {
+        int bin = 0b1010;     // 10
+        int oct = 012;        // 10
+        int hex = 0xFF;       // 255
+    }
+}
 \`\`\`
 
 #### 浮点型
 
 \`\`\`java
-double pi = 3.141592653589793;  // 默认就是 double
-float f = 3.14f;                // float 字面量必须加 f 后缀
-double scientific = 6.022e23;   // 科学计数法
+public class Main {
+    public static void main(String[] args) {
+        double pi = 3.141592653589793;  // 默认就是 double
+        float f = 3.14f;                // float 字面量必须加 f 后缀
+        double scientific = 6.022e23;   // 科学计数法
+    }
+}
 \`\`\`
 
 **浮点精度陷阱**：和所有 IEEE 754 浮点数一样，Java 的 double 也有精度问题：
 
 \`\`\`java
-System.out.println(0.1 + 0.2);        // 0.30000000000000004
-System.out.println(0.1 + 0.2 == 0.3); // false
+public class Main {
+    public static void main(String[] args) {
+        System.out.println(0.1 + 0.2);        // 0.30000000000000004
+        System.out.println(0.1 + 0.2 == 0.3); // false
+    }
+}
 \`\`\`
 
 涉及金额等精确计算时，应使用 \`java.math.BigDecimal\`：
 
 \`\`\`java
 import java.math.BigDecimal;
-BigDecimal a = new BigDecimal("0.1");
-BigDecimal b = new BigDecimal("0.2");
-System.out.println(a.add(b));   // 0.3，精确
+
+public class Main {
+    public static void main(String[] args) {
+        BigDecimal a = new BigDecimal("0.1");
+        BigDecimal b = new BigDecimal("0.2");
+        System.out.println(a.add(b));   // 0.3，精确
+    }
+}
 \`\`\`
 
 #### 字符型 char
@@ -435,25 +460,37 @@ System.out.println(a.add(b));   // 0.3，精确
 \`char\` 存储**单个 Unicode 字符**，用单引号包裹：
 
 \`\`\`java
-char letter = 'A';
-char chinese = '中';
-char num = '9';
+public class Main {
+    public static void main(String[] args) {
+        char letter = 'A';
+        char chinese = '中';
+        char num = '9';
+    }
+}
 \`\`\`
 
 \`char\` 本质上是一个**无符号 16 位整数**（0-65535），可以参与整数运算：
 
 \`\`\`java
-char c = 'A';
-System.out.println((int) c);     // 65，A 的 Unicode 码点
-System.out.println((char) 66);   // B
-System.out.println(c + 1);       // 66（char 提升为 int 参与运算）
+public class Main {
+    public static void main(String[] args) {
+        char c = 'A';
+        System.out.println((int) c);     // 65，A 的 Unicode 码点
+        System.out.println((char) 66);   // B
+        System.out.println(c + 1);       // 66（char 提升为 int 参与运算）
+    }
+}
 \`\`\`
 
 #### 布尔型 boolean
 
 \`\`\`java
-boolean isJavaFun = true;
-boolean isBoring = false;
+public class Main {
+    public static void main(String[] args) {
+        boolean isJavaFun = true;
+        boolean isBoring = false;
+    }
+}
 \`\`\`
 
 Java 的 boolean 只有 \`true\` 和 \`false\` 两个值，**不能**像 C/C++ 那样用 0/1 代替，也**不能**与整数相互转换。
@@ -463,48 +500,66 @@ Java 的 boolean 只有 \`true\` 和 \`false\` 两个值，**不能**像 C/C++ �
 引用类型变量存储的是**对象的内存地址**（引用），而非对象本身。最常见的引用类型是 \`String\`：
 
 \`\`\`java
-String name = "张三";          // 字符串字面量
-String greeting = new String("Hello");  // 用 new 创建
+public class Main {
+    public static void main(String[] args) {
+        String name = "张三";          // 字符串字面量
+        String greeting = new String("Hello");  // 用 new 创建
+    }
+}
 \`\`\`
 
 基本类型和引用类型的核心区别：
 
 \`\`\`java
-// 基本类型：赋值是拷贝值
-int a = 10;
-int b = a;
-b = 20;
-System.out.println(a);  // 10，a 不受影响
+public class Main {
+    public static void main(String[] args) {
+        // 基本类型：赋值是拷贝值
+        int a = 10;
+        int b = a;
+        b = 20;
+        System.out.println(a);  // 10，a 不受影响
 
-// 引用类型：赋值是拷贝引用（指向同一个对象）
-int[] arr1 = {1, 2, 3};
-int[] arr2 = arr1;
-arr2[0] = 99;
-System.out.println(arr1[0]);  // 99，arr1 也变了！因为是同一个数组对象
+        // 引用类型：赋值是拷贝引用（指向同一个对象）
+        int[] arr1 = {1, 2, 3};
+        int[] arr2 = arr1;
+        arr2[0] = 99;
+        System.out.println(arr1[0]);  // 99，arr1 也变了！因为是同一个数组对象
+    }
+}
 \`\`\`
 
 ### 变量声明与初始化
 
 \`\`\`java
-// 先声明后赋值
-int x;
-x = 10;
+public class Main {
+    public static void main(String[] args) {
+        // 先声明后赋值
+        int x;
+        x = 10;
 
-// 声明同时初始化
-int y = 20;
+        // 声明同时初始化
+        int y = 20;
 
-// 同时声明多个同类型变量
-int m = 1, n = 2, k = 3;
+        // 同时声明多个同类型变量
+        int m = 1, n = 2, k = 3;
+    }
+}
 \`\`\`
 
 **成员变量**（类中方法外）有默认值（0、false、null），**局部变量**（方法内）没有默认值，使用前必须初始化，否则编译报错：
 
 \`\`\`java
-public void demo() {
-    int z;
-    // System.out.println(z);  // ❌ 编译错误：可能尚未初始化变量 z
-    z = 5;
-    System.out.println(z);     // ✅
+public class Main {
+    public void demo() {
+        int z;
+        // System.out.println(z);  // ❌ 编译错误：可能尚未初始化变量 z
+        z = 5;
+        System.out.println(z);     // ✅
+    }
+
+    public static void main(String[] args) {
+        new Main().demo();
+    }
 }
 \`\`\`
 
@@ -513,9 +568,13 @@ public void demo() {
 Java 10 引入了 \`var\` 关键字，用于**局部变量类型推断**。编译器会根据右侧的值自动推断类型：
 
 \`\`\`java
-var name = "张三";       // 推断为 String
-var age = 28;            // 推断为 int
-var list = new ArrayList<String>();  // 推断为 ArrayList<String>
+public class Main {
+    public static void main(String[] args) {
+        var name = "张三";       // 推断为 String
+        var age = 28;            // 推断为 int
+        var list = new java.util.ArrayList<String>();  // 推断为 ArrayList<String>
+    }
+}
 \`\`\`
 
 **注意**：
@@ -530,10 +589,14 @@ var list = new ArrayList<String>();  // 推断为 ArrayList<String>
 小类型向大类型自动转换，不会丢失精度：
 
 \`\`\`java
-byte b = 100;
-int i = b;        // byte → int，自动
-long l = i;       // int → long，自动
-double d = l;     // long → double，自动
+public class Main {
+    public static void main(String[] args) {
+        byte b = 100;
+        int i = b;        // byte → int，自动
+        long l = i;       // int → long，自动
+        double d = l;     // long → double，自动
+    }
+}
 \`\`\`
 
 转换方向（从低到高）：
@@ -544,13 +607,17 @@ double d = l;     // long → double，自动
 大类型向小类型转换必须显式强转，**可能丢失精度**：
 
 \`\`\`java
-double d = 3.99;
-int i = (int) d;    // 3，直接截断小数部分（不是四舍五入）
-System.out.println(i);
+public class Main {
+    public static void main(String[] args) {
+        double d = 3.99;
+        int i = (int) d;    // 3，直接截断小数部分（不是四舍五入）
+        System.out.println(i);
 
-int big = 300;
-byte b = (byte) big;  // 溢出！300 超出 byte 范围，结果为 44
-System.out.println(b);
+        int big = 300;
+        byte b = (byte) big;  // 溢出！300 超出 byte 范围，结果为 44
+        System.out.println(b);
+    }
+}
 \`\`\`
 
 #### 表达式中的自动提升
@@ -558,9 +625,13 @@ System.out.println(b);
 在表达式中，\`byte\`、\`short\`、\`char\` 会自动提升为 \`int\` 参与运算：
 
 \`\`\`java
-byte a = 10, b = 20;
-// byte c = a + b;   // ❌ 编译错误：a + b 的结果是 int
-byte c = (byte)(a + b);  // ✅ 需要强转
+public class Main {
+    public static void main(String[] args) {
+        byte a = 10, b = 20;
+        // byte c = a + b;   // ❌ 编译错误：a + b 的结果是 int
+        byte c = (byte)(a + b);  // ✅ 需要强转
+    }
+}
 \`\`\`
 
 ### 包装类（Wrapper Classes）
@@ -579,12 +650,16 @@ Java 是面向对象语言，但 8 种基本类型不是对象。为了在需要
 | boolean | Boolean |
 
 \`\`\`java
-Integer ageObj = Integer.valueOf(28);   // int → Integer
-int age = ageObj.intValue();            // Integer → int
+public class Main {
+    public static void main(String[] args) {
+        Integer ageObj = Integer.valueOf(28);   // int → Integer
+        int age = ageObj.intValue();            // Integer → int
 
-// 直接赋值也行（自动装箱）
-Integer x = 100;   // 自动装箱
-int y = x;         // 自动拆箱
+        // 直接赋值也行（自动装箱）
+        Integer x = 100;   // 自动装箱
+        int y = x;         // 自动拆箱
+    }
+}
 \`\`\`
 
 ### 自动装箱与拆箱（Autoboxing / Unboxing）
@@ -592,11 +667,15 @@ int y = x;         // 自动拆箱
 Java 5 引入了自动装箱/拆箱，让基本类型和包装类之间自动转换：
 
 \`\`\`java
-// 自动装箱：int → Integer
-Integer a = 10;   // 等价于 Integer a = Integer.valueOf(10);
+public class Main {
+    public static void main(String[] args) {
+        // 自动装箱：int → Integer
+        Integer a = 10;   // 等价于 Integer a = Integer.valueOf(10);
 
-// 自动拆箱：Integer → int
-int b = a;        // 等价于 int b = a.intValue();
+        // 自动拆箱：Integer → int
+        int b = a;        // 等价于 int b = a.intValue();
+    }
+}
 \`\`\`
 
 这让包装类使用起来几乎和基本类型一样方便。但要注意：
@@ -604,21 +683,34 @@ int b = a;        // 等价于 int b = a.intValue();
 **1. Integer 缓存陷阱**：\`Integer\` 会缓存 -128 到 127 的对象，这个范围内 \`==\` 比较为 true，超出范围为 false：
 
 \`\`\`java
-Integer a = 127;
-Integer b = 127;
-System.out.println(a == b);   // true（缓存）
+public class Main {
+    public static void main(String[] args) {
+        Integer a = 127;
+        Integer b = 127;
+        System.out.println(a == b);   // true（缓存）
 
-Integer c = 128;
-Integer d = 128;
-System.out.println(c == d);   // false（超出缓存，是不同对象）
-System.out.println(c.equals(d));  // true（比较值，推荐用 equals）
+        Integer c = 128;
+        Integer d = 128;
+        System.out.println(c == d);   // false（超出缓存，是不同对象）
+        System.out.println(c.equals(d));  // true（比较值，推荐用 equals）
+    }
+}
 \`\`\`
 
 **2. 空指针风险**：包装类可以为 null，自动拆箱时会抛 \`NullPointerException\`：
 
 \`\`\`java
-Integer obj = null;
-int n = obj;   // ❌ NullPointerException
+public class Main {
+    public static void main(String[] args) {
+        Integer obj = null;
+        try {
+            int n = obj;   // ❌ NullPointerException（自动拆箱时）
+            System.out.println(n);
+        } catch (NullPointerException e) {
+            System.out.println("抛出 NullPointerException：obj 为 null 时不能自动拆箱");
+        }
+    }
+}
 \`\`\`
 
 **3. 性能**：自动装箱会创建对象，在循环中频繁装箱影响性能，基本类型更高效。
@@ -628,10 +720,14 @@ int n = obj;   // ❌ NullPointerException
 用 \`final\` 关键字声明的变量只能赋值一次，成为常量：
 
 \`\`\`java
-final double PI = 3.14159265;
-// PI = 3.14;  // ❌ 编译错误：不能修改 final 变量
+public class Main {
+    public static void main(String[] args) {
+        final double PI = 3.14159265;
+        // PI = 3.14;  // ❌ 编译错误：不能修改 final 变量
 
-final String APP_NAME = "我的应用";
+        final String APP_NAME = "我的应用";
+    }
+}
 \`\`\`
 
 命名约定：常量用**全大写 + 下划线**，如 \`MAX_SIZE\`、\`DEFAULT_TIMEOUT\`。
@@ -852,17 +948,25 @@ public class Main {
 Java 的 \`/\` 对整数是**截断除法**（向零取整），不是 Python 的地板除：
 
 \`\`\`java
-System.out.println(7 / 2);    // 3（截断小数）
-System.out.println(-7 / 2);   // -3（向零取整，注意与 Python 的 -4 不同）
-System.out.println(7 / 2.0);  // 3.5（有浮点数参与则为浮点除法）
+public class Main {
+    public static void main(String[] args) {
+        System.out.println(7 / 2);    // 3（截断小数）
+        System.out.println(-7 / 2);   // -3（向零取整，注意与 Python 的 -4 不同）
+        System.out.println(7 / 2.0);  // 3.5（有浮点数参与则为浮点除法）
+    }
+}
 \`\`\`
 
 #### 取余 %
 
 \`\`\`java
-System.out.println(7 % 3);    // 1
-System.out.println(-7 % 3);   // -1（结果符号与被除数相同，注意与 Python 不同）
-System.out.println(7 % -3);   // 1
+public class Main {
+    public static void main(String[] args) {
+        System.out.println(7 % 3);    // 1
+        System.out.println(-7 % 3);   // -1（结果符号与被除数相同，注意与 Python 不同）
+        System.out.println(7 % -3);   // 1
+    }
+}
 \`\`\`
 
 #### 自增自减 ++ --
@@ -870,9 +974,13 @@ System.out.println(7 % -3);   // 1
 \`++\` 和 \`--\` 有**前置**和**后置**两种形式，区别在于返回值：
 
 \`\`\`java
-int i = 5;
-int a = i++;   // a=5, i=6（后置：先赋值再自增）
-int b = ++i;   // i=7, b=7（前置：先自增再赋值）
+public class Main {
+    public static void main(String[] args) {
+        int i = 5;
+        int a = i++;   // a=5, i=6（后置：先赋值再自增）
+        int b = ++i;   // i=7, b=7（前置：先自增再赋值）
+    }
+}
 \`\`\`
 
 **建议**：为避免混淆，尽量单独使用 \`i++\`，不要嵌在复杂表达式中。
@@ -891,8 +999,12 @@ int b = ++i;   // i=7, b=7（前置：先自增再赋值）
 | \`<=\` | 小于等于 | \`5 <= 4\` → false |
 
 \`\`\`java
-System.out.println(3 == 3);   // true
-System.out.println(5 > 3);    // true
+public class Main {
+    public static void main(String[] args) {
+        System.out.println(3 == 3);   // true
+        System.out.println(5 > 3);    // true
+    }
+}
 \`\`\`
 
 **注意**：比较**引用类型**时，\`==\` 比较的是地址（是否同一对象），\`equals()\` 比较的是内容。这是 Java 最经典的陷阱之一，字符串章节会详细讲解。
@@ -911,9 +1023,13 @@ Java 有两组逻辑运算符：
 | \`^\` | 逻辑异或 | ❌ 不短路 |
 
 \`\`\`java
-System.out.println(true && false);   // false
-System.out.println(true || false);   // true
-System.out.println(!true);           // false
+public class Main {
+    public static void main(String[] args) {
+        System.out.println(true && false);   // false
+        System.out.println(true || false);   // true
+        System.out.println(!true);           // false
+    }
+}
 \`\`\`
 
 #### 短路求值（Short-circuit）
@@ -921,18 +1037,38 @@ System.out.println(!true);           // false
 \`&&\` 和 \`\|\|\` 具有**短路特性**：如果能由左操作数确定结果，就不计算右操作数。
 
 \`\`\`java
-// && 短路：左边为 false 时，不计算右边
-boolean result = (1 > 2) && expensiveCall();   // expensiveCall 不会被调用
+public class Main {
+    // 模拟一个"昂贵"的调用，用来观察是否被执行
+    static boolean expensiveCall() {
+        System.out.println("  expensiveCall 被调用了！");
+        return true;
+    }
 
-// || 短路：左边为 true 时，不计算右边
-boolean result2 = (1 < 2) || expensiveCall();  // expensiveCall 不会被调用
+    public static void main(String[] args) {
+        // && 短路：左边为 false 时，不计算右边
+        boolean result = (1 > 2) && expensiveCall();   // expensiveCall 不会被调用
+        System.out.println("result = " + result);
+
+        // || 短路：左边为 true 时，不计算右边
+        boolean result2 = (1 < 2) || expensiveCall();  // expensiveCall 不会被调用
+        System.out.println("result2 = " + result2);
+    }
+}
 \`\`\`
 
 短路求值常用于**安全访问**，避免空指针：
 
 \`\`\`java
-if (str != null && str.length() > 0) {
-    // 如果 str 为 null，由于短路，str.length() 不会被执行，避免空指针
+public class Main {
+    public static void main(String[] args) {
+        String str = null;
+        if (str != null && str.length() > 0) {
+            // 如果 str 为 null，由于短路，str.length() 不会被执行，避免空指针
+            System.out.println("字符串非空");
+        } else {
+            System.out.println("str 为 null 或空串，短路保护避免了 NPE");
+        }
+    }
 }
 \`\`\`
 
@@ -941,12 +1077,17 @@ if (str != null && str.length() > 0) {
 \`&&\` 和 \`&\` 在布尔运算中结果相同，区别在于：
 
 \`\`\`java
-int x = 0;
-// && 短路：x != 0 为 false，不计算 10/x，不会除零
-boolean r1 = (x != 0) && (10 / x > 1);   // 安全，r1 = false
+public class Main {
+    public static void main(String[] args) {
+        int x = 0;
+        // && 短路：x != 0 为 false，不计算 10/x，不会除零
+        boolean r1 = (x != 0) && (10 / x > 1);   // 安全，r1 = false
+        System.out.println("r1 = " + r1);
 
-// & 不短路：两边都计算，10/x 会抛 ArithmeticException
-// boolean r2 = (x != 0) & (10 / x > 1);  // ❌ 除零异常
+        // & 不短路：两边都计算，10/x 会抛 ArithmeticException
+        // boolean r2 = (x != 0) & (10 / x > 1);  // ❌ 除零异常
+    }
+}
 \`\`\`
 
 日常逻辑判断**始终用 \`&&\` 和 \`\|\|\`**，\`&\` 和 \`\|\`\` 留给位运算。
@@ -966,26 +1107,37 @@ boolean r1 = (x != 0) && (10 / x > 1);   // 安全，r1 = false
 | \`>>>\` | 无符号右移 | \`-8 >>> 28\` | 高位补 0 |
 
 \`\`\`java
-// 5 的二进制: 0101
-// 3 的二进制: 0011
-System.out.println(5 & 3);    // 1  (0001)
-System.out.println(5 | 3);    // 7  (0111)
-System.out.println(5 ^ 3);    // 6  (0110)
-System.out.println(~5);       // -6 (取反)
-System.out.println(5 << 2);   // 20 (左移2位 = *4)
-System.out.println(20 >> 2);  // 5  (右移2位 = /4)
+public class Main {
+    public static void main(String[] args) {
+        // 5 的二进制: 0101
+        // 3 的二进制: 0011
+        System.out.println(5 & 3);    // 1  (0001)
+        System.out.println(5 | 3);    // 7  (0111)
+        System.out.println(5 ^ 3);    // 6  (0110)
+        System.out.println(~5);       // -6 (取反)
+        System.out.println(5 << 2);   // 20 (左移2位 = *4)
+        System.out.println(20 >> 2);  // 5  (右移2位 = /4)
+    }
+}
 \`\`\`
 
 位运算常见用途：
 
 \`\`\`java
-// 判断奇偶（比 n % 2 更快）
-boolean isOdd = (n & 1) == 1;
+public class Main {
+    public static void main(String[] args) {
+        // 判断奇偶（比 n % 2 更快）
+        int n = 7;
+        boolean isOdd = (n & 1) == 1;
+        System.out.println(n + " 是奇数吗: " + isOdd);
 
-// 权限标志（位掩码）
-final int READ = 4, WRITE = 2, EXECUTE = 1;  // 100, 010, 001
-int permission = READ | WRITE;   // 110 = 6
-boolean canRead = (permission & READ) != 0;
+        // 权限标志（位掩码）
+        final int READ = 4, WRITE = 2, EXECUTE = 1;  // 100, 010, 001
+        int permission = READ | WRITE;   // 110 = 6
+        boolean canRead = (permission & READ) != 0;
+        System.out.println("权限值: " + permission + "，有读权限: " + canRead);
+    }
+}
 \`\`\`
 
 ### 赋值运算符
@@ -993,7 +1145,11 @@ boolean canRead = (permission & READ) != 0;
 #### 基本赋值
 
 \`\`\`java
-int x = 10;
+public class Main {
+    public static void main(String[] args) {
+        int x = 10;
+    }
+}
 \`\`\`
 
 #### 复合赋值运算符
@@ -1012,12 +1168,16 @@ int x = 10;
 | \`>>=\` | \`x = x >> y\` |
 
 \`\`\`java
-int x = 10;
-x += 5;    // x = 15
-x -= 3;    // x = 12
-x *= 2;    // x = 24
-x /= 4;    // x = 6
-x %= 4;    // x = 2
+public class Main {
+    public static void main(String[] args) {
+        int x = 10;
+        x += 5;    // x = 15
+        x -= 3;    // x = 12
+        x *= 2;    // x = 24
+        x /= 4;    // x = 6
+        x %= 4;    // x = 2
+    }
+}
 \`\`\`
 
 **注意**：复合赋值运算符包含**隐式类型转换**。\`x += y\` 等价于 \`x = (类型)(x + y)\`，所以 \`byte b = 10; b += 5;\` 合法（不需要强转），但 \`b = b + 5;\` 编译错误。
@@ -1027,18 +1187,28 @@ x %= 4;    // x = 2
 Java 的三目运算符语法：
 
 \`\`\`java
-// 条件 ? 值1 : 值2
-// 条件为 true 返回值1，否则返回值2
+public class Main {
+    public static void main(String[] args) {
+        // 条件 ? 值1 : 值2
+        // 条件为 true 返回值1，否则返回值2
 
-int age = 20;
-String status = age >= 18 ? "成年" : "未成年";  // "成年"
+        int age = 20;
+        String status = age >= 18 ? "成年" : "未成年";  // "成年"
+        System.out.println(status);
+    }
+}
 \`\`\`
 
 三目运算符可以嵌套，但不宜过深：
 
 \`\`\`java
-int score = 85;
-String grade = score >= 90 ? "优秀" : (score >= 80 ? "良好" : "及格");
+public class Main {
+    public static void main(String[] args) {
+        int score = 85;
+        String grade = score >= 90 ? "优秀" : (score >= 80 ? "良好" : "及格");
+        System.out.println(grade);
+    }
+}
 \`\`\`
 
 ### instanceof 运算符
@@ -1046,23 +1216,32 @@ String grade = score >= 90 ? "优秀" : (score >= 80 ? "良好" : "及格");
 \`instanceof\` 用于判断对象是否是某个类（或其子类、接口实现）的实例：
 
 \`\`\`java
-String s = "hello";
-System.out.println(s instanceof String);     // true
-System.out.println(s instanceof Object);    // true（String 是 Object 子类）
+public class Main {
+    public static void main(String[] args) {
+        String s = "hello";
+        System.out.println(s instanceof String);     // true
+        System.out.println(s instanceof Object);    // true（String 是 Object 子类）
 
-Object obj = "test";
-if (obj instanceof String) {
-    String str = (String) obj;   // 安全强转
-    System.out.println(str.length());
+        Object obj = "test";
+        if (obj instanceof String) {
+            String str = (String) obj;   // 安全强转
+            System.out.println(str.length());
+        }
+    }
 }
 \`\`\`
 
 Java 16+ 引入了**模式匹配 instanceof**，可以一步完成类型检查和赋值：
 
 \`\`\`java
-if (obj instanceof String str) {
-    // str 已自动声明并强转，直接用
-    System.out.println(str.length());
+public class Main {
+    public static void main(String[] args) {
+        Object obj = "test";
+        if (obj instanceof String str) {
+            // str 已自动声明并强转，直接用
+            System.out.println(str.length());
+        }
+    }
 }
 \`\`\`
 
@@ -1090,11 +1269,15 @@ if (obj instanceof String str) {
 | 14（最低） | \`=\`、\`+=\`、\`-=\` 等 |
 
 \`\`\`java
-System.out.println(2 + 3 * 4);      // 14，先乘后加
-System.out.println((2 + 3) * 4);    // 20，括号优先
+public class Main {
+    public static void main(String[] args) {
+        System.out.println(2 + 3 * 4);      // 14，先乘后加
+        System.out.println((2 + 3) * 4);    // 20，括号优先
 
-System.out.println(true || false && false);  // true，&& 优先级高于 ||
-// 等价于 true || (false && false) = true || false = true
+        System.out.println(true || false && false);  // true，&& 优先级高于 ||
+        // 等价于 true || (false && false) = true || false = true
+    }
+}
 \`\`\`
 
 **最佳实践**：不要死记优先级，**多用括号**让意图清晰，既避免错误又提高可读性。
@@ -1289,9 +1472,14 @@ public class Main {
 Java 中 \`String\` 对象一旦创建，内容就**不能被修改**。所有"修改"字符串的操作（拼接、替换等）实际上都创建了**新的 String 对象**。
 
 \`\`\`java
-String s = "hello";
-s = s + " world";   // 这不是修改原对象，而是创建新对象 "hello world" 并让 s 指向它
-// 原 "hello" 对象仍存在于内存中（可能被 GC 回收）
+public class Main {
+    public static void main(String[] args) {
+        String s = "hello";
+        s = s + " world";   // 这不是修改原对象，而是创建新对象 "hello world" 并让 s 指向它
+        // 原 "hello" 对象仍存在于内存中（可能被 GC 回收）
+        System.out.println(s);
+    }
+}
 \`\`\`
 
 不可变性的好处：
@@ -1306,18 +1494,26 @@ s = s + " world";   // 这不是修改原对象，而是创建新对象 "hello w
 #### 字符串字面量
 
 \`\`\`java
-String s1 = "hello";       // 字符串字面量，存放在字符串常量池
-String s2 = "hello";       // 同一字面量，复用常量池中的对象
-System.out.println(s1 == s2);   // true（同一对象）
+public class Main {
+    public static void main(String[] args) {
+        String s1 = "hello";       // 字符串字面量，存放在字符串常量池
+        String s2 = "hello";       // 同一字面量，复用常量池中的对象
+        System.out.println(s1 == s2);   // true（同一对象）
+    }
+}
 \`\`\`
 
 #### new 关键字
 
 \`\`\`java
-String s3 = new String("hello");   // 在堆上创建新对象
-String s4 = new String("hello");
-System.out.println(s3 == s4);      // false（两个不同对象）
-System.out.println(s3.equals(s4)); // true（内容相同）
+public class Main {
+    public static void main(String[] args) {
+        String s3 = new String("hello");   // 在堆上创建新对象
+        String s4 = new String("hello");
+        System.out.println(s3 == s4);      // false（两个不同对象）
+        System.out.println(s3.equals(s4)); // true（内容相同）
+    }
+}
 \`\`\`
 
 **字符串常量池**：Java 为了节省内存，维护了一个字符串常量池。字面量创建的字符串会进入常量池，相同字面量复用同一对象。而 \`new String()\` 会在堆上创建新对象（即使内容相同）。
@@ -1330,13 +1526,17 @@ System.out.println(s3.equals(s4)); // true（内容相同）
 - \`equals()\` 比较的是**内容**（字符序列是否相同）
 
 \`\`\`java
-String a = "hello";
-String b = "hello";
-String c = new String("hello");
+public class Main {
+    public static void main(String[] args) {
+        String a = "hello";
+        String b = "hello";
+        String c = new String("hello");
 
-System.out.println(a == b);         // true（常量池复用）
-System.out.println(a == c);         // false（c 是堆上新对象）
-System.out.println(a.equals(c));    // true（内容相同）
+        System.out.println(a == b);         // true（常量池复用）
+        System.out.println(a == c);         // false（c 是堆上新对象）
+        System.out.println(a.equals(c));    // true（内容相同）
+    }
+}
 \`\`\`
 
 **结论**：比较字符串内容**始终用 \`equals()\`**，绝不要用 \`==\`。除非你确实要判断是否是同一对象（极少需要）。
@@ -1344,7 +1544,11 @@ System.out.println(a.equals(c));    // true（内容相同）
 \`equalsIgnoreCase()\` 忽略大小写比较：
 
 \`\`\`java
-"Hello".equalsIgnoreCase("hello");   // true
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello".equalsIgnoreCase("hello"));   // true
+    }
+}
 \`\`\`
 
 ### 常用方法
@@ -1352,76 +1556,111 @@ System.out.println(a.equals(c));    // true（内容相同）
 #### 长度与字符
 
 \`\`\`java
-String s = "Hello";
-System.out.println(s.length());      // 5，长度
-System.out.println(s.charAt(0));     // 'H'，指定索引的字符
-System.out.println(s.charAt(4));     // 'o'
-System.out.println(s.isEmpty());     // false（空字符串 "" 返回 true）
+public class Main {
+    public static void main(String[] args) {
+        String s = "Hello";
+        System.out.println(s.length());      // 5，长度
+        System.out.println(s.charAt(0));     // 'H'，指定索引的字符
+        System.out.println(s.charAt(4));     // 'o'
+        System.out.println(s.isEmpty());     // false（空字符串 "" 返回 true）
+    }
+}
 \`\`\`
 
 #### 查找
 
 \`\`\`java
-String s = "Hello, World";
-System.out.println(s.indexOf("World"));   // 7，首次出现的位置
-System.out.println(s.indexOf("Java"));    // -1，找不到返回 -1
-System.out.println(s.indexOf('o'));       // 4
-System.out.println(s.lastIndexOf('o'));   // 8，最后一次出现
-System.out.println(s.contains("World"));  // true，是否包含
-System.out.println(s.startsWith("Hello")); // true
-System.out.println(s.endsWith("World"));   // true
+public class Main {
+    public static void main(String[] args) {
+        String s = "Hello, World";
+        System.out.println(s.indexOf("World"));   // 7，首次出现的位置
+        System.out.println(s.indexOf("Java"));    // -1，找不到返回 -1
+        System.out.println(s.indexOf('o'));       // 4
+        System.out.println(s.lastIndexOf('o'));   // 8，最后一次出现
+        System.out.println(s.contains("World"));  // true，是否包含
+        System.out.println(s.startsWith("Hello")); // true
+        System.out.println(s.endsWith("World"));   // true
+    }
+}
 \`\`\`
 
 #### 截取子串 substring
 
 \`\`\`java
-String s = "Hello, World";
-System.out.println(s.substring(7));      // "World"，从索引 7 到末尾
-System.out.println(s.substring(0, 5));   // "Hello"，[0, 5) 左闭右开
+public class Main {
+    public static void main(String[] args) {
+        String s = "Hello, World";
+        System.out.println(s.substring(7));      // "World"，从索引 7 到末尾
+        System.out.println(s.substring(0, 5));   // "Hello"，[0, 5) 左闭右开
+    }
+}
 \`\`\`
 
 #### 替换
 
 \`\`\`java
-String s = "Hello, World, Hello";
-System.out.println(s.replace("Hello", "Hi"));   // "Hi, World, Hi"
-System.out.println(s.replaceFirst("Hello", "Hi")); // "Hi, World, Hello"
+public class Main {
+    public static void main(String[] args) {
+        String s = "Hello, World, Hello";
+        System.out.println(s.replace("Hello", "Hi"));   // "Hi, World, Hi"
+        System.out.println(s.replaceFirst("Hello", "Hi")); // "Hi, World, Hello"
+    }
+}
 \`\`\`
 
 #### 分割 split
 
 \`\`\`java
-String s = "苹果,香蕉,橘子,葡萄";
-String[] fruits = s.split(",");          // 按逗号分割
-for (String f : fruits) {
-    System.out.println(f);
-}
+public class Main {
+    public static void main(String[] args) {
+        String s = "苹果,香蕉,橘子,葡萄";
+        String[] fruits = s.split(",");          // 按逗号分割
+        for (String f : fruits) {
+            System.out.println(f);
+        }
 
-// 按正则分割
-"1 2  3   4".split("\\\\s+");   // 按一个或多个空白分割
+        // 按正则分割
+        String[] parts = "1 2  3   4".split("\\\\s+");   // 按一个或多个空白分割
+        System.out.println(java.util.Arrays.toString(parts));
+    }
+}
 \`\`\`
 
 #### 去除空白
 
 \`\`\`java
-String s = "  Hello World  ";
-System.out.println(s.trim());       // "Hello World"（去除两端空白）
-// Java 11+ strip() 更强大，能处理 Unicode 空白
-System.out.println(s.strip());
+public class Main {
+    public static void main(String[] args) {
+        String s = "  Hello World  ";
+        System.out.println(s.trim());       // "Hello World"（去除两端空白）
+        // Java 11+ strip() 更强大，能处理 Unicode 空白
+        System.out.println(s.strip());
+    }
+}
 \`\`\`
 
 #### 大小写转换
 
 \`\`\`java
-"Hello".toUpperCase();   // "HELLO"
-"Hello".toLowerCase();   // "hello"
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello".toUpperCase());   // "HELLO"
+        System.out.println("Hello".toLowerCase());   // "hello"
+    }
+}
 \`\`\`
 
 #### 拼接 join
 
 \`\`\`java
-String result = String.join("-", "2024", "01", "15");  // "2024-01-15"
-String result2 = String.join(", ", "苹果", "香蕉", "橘子");  // "苹果, 香蕉, 橘子"
+public class Main {
+    public static void main(String[] args) {
+        String result = String.join("-", "2024", "01", "15");  // "2024-01-15"
+        String result2 = String.join(", ", "苹果", "香蕉", "橘子");  // "苹果, 香蕉, 橘子"
+        System.out.println(result);
+        System.out.println(result2);
+    }
+}
 \`\`\`
 
 ### StringBuilder 与 StringBuffer
@@ -1435,30 +1674,39 @@ String result2 = String.join(", ", "苹果", "香蕉", "橘子");  // "苹果, �
 | \`StringBuffer\` | ✅ 安全（synchronized） | 较慢 | 多线程下大量拼接 |
 
 \`\`\`java
-// 不推荐：用 + 在循环中拼接（每次创建新对象）
-String s = "";
-for (int i = 0; i < 100; i++) {
-    s += i;   // 每次都创建新 String，效率极低
-}
+public class Main {
+    public static void main(String[] args) {
+        // 不推荐：用 + 在循环中拼接（每次创建新对象）
+        String s = "";
+        for (int i = 0; i < 100; i++) {
+            s += i;   // 每次都创建新 String，效率极低
+        }
 
-// 推荐：用 StringBuilder
-StringBuilder sb = new StringBuilder();
-for (int i = 0; i < 100; i++) {
-    sb.append(i);   // 原地修改，不创建新对象
+        // 推荐：用 StringBuilder
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 100; i++) {
+            sb.append(i);   // 原地修改，不创建新对象
+        }
+        String result = sb.toString();
+        System.out.println("两种方式结果长度相同: " + (s.length() == result.length()));
+    }
 }
-String result = sb.toString();
 \`\`\`
 
 StringBuilder 常用方法：
 
 \`\`\`java
-StringBuilder sb = new StringBuilder("Hello");
-sb.append(", World");      // 追加
-sb.insert(5, " Java");     // 在索引 5 处插入
-sb.delete(5, 10);          // 删除 [5, 10)
-sb.reverse();              // 反转
-sb.length();               // 长度
-sb.toString();             // 转回 String
+public class Main {
+    public static void main(String[] args) {
+        StringBuilder sb = new StringBuilder("Hello");
+        sb.append(", World");      // 追加
+        sb.insert(5, " Java");     // 在索引 5 处插入
+        sb.delete(5, 10);          // 删除 [5, 10)
+        sb.reverse();              // 反转
+        System.out.println("长度: " + sb.length());   // 长度
+        System.out.println("结果: " + sb.toString()); // 转回 String
+    }
+}
 \`\`\`
 
 **经验**：单线程下用 \`StringBuilder\`，多线程下用 \`StringBuffer\`。日常绝大多数场景用 \`StringBuilder\`。
@@ -1468,10 +1716,15 @@ sb.toString();             // 转回 String
 \`String.format()\` 类似 C 的 printf，用占位符格式化字符串：
 
 \`\`\`java
-String name = "张三";
-int age = 28;
-String s = String.format("我叫 %s，今年 %d 岁", name, age);
-// "我叫 张三，今年 28 岁"
+public class Main {
+    public static void main(String[] args) {
+        String name = "张三";
+        int age = 28;
+        String s = String.format("我叫 %s，今年 %d 岁", name, age);
+        // "我叫 张三，今年 28 岁"
+        System.out.println(s);
+    }
+}
 \`\`\`
 
 常用占位符：
@@ -1489,8 +1742,12 @@ String s = String.format("我叫 %s，今年 %d 岁", name, age);
 | \`%-10s\` | 左对齐宽 10 | |
 
 \`\`\`java
-System.out.printf("圆周率: %.2f%n", 3.14159);   // 圆周率: 3.14
-System.out.printf("编号: %05d%n", 42);          // 编号: 00042
+public class Main {
+    public static void main(String[] args) {
+        System.out.printf("圆周率: %.2f%n", 3.14159);   // 圆周率: 3.14
+        System.out.printf("编号: %05d%n", 42);          // 编号: 00042
+    }
+}
 \`\`\`
 
 \`System.out.printf()\` 是 \`System.out.print(String.format(...))\` 的简写，直接格式化并输出。
@@ -1500,19 +1757,27 @@ System.out.printf("编号: %05d%n", 42);          // 编号: 00042
 Java 13 引入、Java 15 正式的**文本块**用三个双引号 \`\"\"\"\` 包裹，可以优雅地书写多行字符串，无需转义换行和引号：
 
 \`\`\`java
-// 传统写法：满是转义
-String json = "{\\n" +
-              "  \\"name\\": \\"张三\\",\\n" +
-              "  \\"age\\": 28\\n" +
-              "}";
+public class Main {
+    public static void main(String[] args) {
+        // 传统写法：满是转义
+        String json = "{\\n" +
+                      "  \\"name\\": \\"张三\\",\\n" +
+                      "  \\"age\\": 28\\n" +
+                      "}";
 
-// 文本块：清晰直观
-String json2 = """
-        {
-          "name": "张三",
-          "age": 28
-        }
-        """;
+        // 文本块：清晰直观
+        String json2 = """
+                {
+                  "name": "张三",
+                  "age": 28
+                }
+                """;
+        System.out.println("--- 传统写法 ---");
+        System.out.println(json);
+        System.out.println("--- 文本块写法 ---");
+        System.out.println(json2);
+    }
+}
 \`\`\`
 
 文本块的特点：
@@ -1527,19 +1792,29 @@ String json2 = """
 #### 基本类型转字符串
 
 \`\`\`java
-String s1 = String.valueOf(42);        // "42"
-String s2 = String.valueOf(3.14);      // "3.14"
-String s3 = String.valueOf(true);      // "true"
-String s4 = 42 + "";                   // "42"（最简写法）
-String s5 = Integer.toString(42);      // "42"
+public class Main {
+    public static void main(String[] args) {
+        String s1 = String.valueOf(42);        // "42"
+        String s2 = String.valueOf(3.14);      // "3.14"
+        String s3 = String.valueOf(true);      // "true"
+        String s4 = 42 + "";                   // "42"（最简写法）
+        String s5 = Integer.toString(42);      // "42"
+        System.out.println(s1 + ", " + s2 + ", " + s3 + ", " + s4 + ", " + s5);
+    }
+}
 \`\`\`
 
 #### 字符串转基本类型
 
 \`\`\`java
-int i = Integer.parseInt("42");        // 42
-double d = Double.parseDouble("3.14"); // 3.14
-boolean b = Boolean.parseBoolean("true"); // true
+public class Main {
+    public static void main(String[] args) {
+        int i = Integer.parseInt("42");        // 42
+        double d = Double.parseDouble("3.14"); // 3.14
+        boolean b = Boolean.parseBoolean("true"); // true
+        System.out.println("i=" + i + ", d=" + d + ", b=" + b);
+    }
+}
 \`\`\`
 
 如果字符串不是合法数字，\`parseInt\` 会抛 \`NumberFormatException\`。
@@ -1767,15 +2042,19 @@ public class Main {
 最基本的条件判断：
 
 \`\`\`java
-int score = 85;
-if (score >= 90) {
-    System.out.println("优秀");
-} else if (score >= 80) {
-    System.out.println("良好");
-} else if (score >= 60) {
-    System.out.println("及格");
-} else {
-    System.out.println("不及格");
+public class Main {
+    public static void main(String[] args) {
+        int score = 85;
+        if (score >= 90) {
+            System.out.println("优秀");
+        } else if (score >= 80) {
+            System.out.println("良好");
+        } else if (score >= 60) {
+            System.out.println("及格");
+        } else {
+            System.out.println("不及格");
+        }
+    }
 }
 \`\`\`
 
@@ -1786,11 +2065,17 @@ if (score >= 90) {
 #### 嵌套 if
 
 \`\`\`java
-if (age >= 18) {
-    if (hasLicense) {
-        System.out.println("可以开车");
-    } else {
-        System.out.println("成年但无驾照");
+public class Main {
+    public static void main(String[] args) {
+        int age = 20;
+        boolean hasLicense = false;
+        if (age >= 18) {
+            if (hasLicense) {
+                System.out.println("可以开车");
+            } else {
+                System.out.println("成年但无驾照");
+            }
+        }
     }
 }
 \`\`\`
@@ -1802,52 +2087,68 @@ if (age >= 18) {
 #### 传统 switch 语句
 
 \`\`\`java
-int day = 3;
-switch (day) {
-    case 1:
-        System.out.println("星期一");
-        break;   // 必须有 break，否则会"穿透"
-    case 2:
-        System.out.println("星期二");
-        break;
-    case 3:
-        System.out.println("星期三");
-        break;
-    default:
-        System.out.println("未知");
+public class Main {
+    public static void main(String[] args) {
+        int day = 3;
+        switch (day) {
+            case 1:
+                System.out.println("星期一");
+                break;   // 必须有 break，否则会"穿透"
+            case 2:
+                System.out.println("星期二");
+                break;
+            case 3:
+                System.out.println("星期三");
+                break;
+            default:
+                System.out.println("未知");
+        }
+    }
 }
 \`\`\`
 
 **case 穿透（fall-through）**：如果 case 后没有 \`break\`，执行完该 case 后会继续执行下一个 case，直到遇到 break 或 switch 结束。有时这是期望行为（多个 case 共用代码），但更多时候是 bug 来源。
 
 \`\`\`java
-// 利用穿透：多个 case 共用代码
-switch (month) {
-    case 1: case 3: case 5: case 7: case 8: case 10: case 12:
-        days = 31;
-        break;
-    case 4: case 6: case 9: case 11:
-        days = 30;
-        break;
-    case 2:
-        days = isLeap ? 29 : 28;
-        break;
+public class Main {
+    public static void main(String[] args) {
+        // 利用穿透：多个 case 共用代码
+        int month = 2;
+        boolean isLeap = true;
+        int days = 0;
+        switch (month) {
+            case 1: case 3: case 5: case 7: case 8: case 10: case 12:
+                days = 31;
+                break;
+            case 4: case 6: case 9: case 11:
+                days = 30;
+                break;
+            case 2:
+                days = isLeap ? 29 : 28;
+                break;
+        }
+        System.out.println(month + " 月有 " + days + " 天");
+    }
 }
 \`\`\`
 
 #### switch 支持 String（Java 7+）
 
 \`\`\`java
-String command = "start";
-switch (command) {
-    case "start":
-        System.out.println("启动");
-        break;
-    case "stop":
-        System.out.println("停止");
-        break;
-    default:
-        System.out.println("未知命令");
+public class Main {
+    public static void main(String[] args) {
+        String command = "start";
+        switch (command) {
+            case "start":
+                System.out.println("启动");
+                break;
+            case "stop":
+                System.out.println("停止");
+                break;
+            default:
+                System.out.println("未知命令");
+        }
+    }
 }
 \`\`\`
 
@@ -1858,23 +2159,32 @@ switch (command) {
 Java 14 引入了**新的 switch 表达式**，更简洁、更安全，没有穿透问题：
 
 \`\`\`java
-// 用箭头语法，无穿透，无需 break
-String result = switch (day) {
-    case 1, 2, 3, 4, 5 -> "工作日";
-    case 6, 7 -> "周末";
-    default -> "未知";
-};
+public class Main {
+    public static void main(String[] args) {
+        // 用箭头语法，无穿透，无需 break
+        int day = 3;
+        String result = switch (day) {
+            case 1, 2, 3, 4, 5 -> "工作日";
+            case 6, 7 -> "周末";
+            default -> "未知";
+        };
+        System.out.println(result);
 
-// 块语法：需要 yield 返回值
-int days = switch (month) {
-    case 1, 3, 5, 7, 8, 10, 12 -> 31;
-    case 4, 6, 9, 11 -> 30;
-    case 2 -> {
-        int d = isLeap ? 29 : 28;
-        yield d;   // 块中用 yield 返回值
+        // 块语法：需要 yield 返回值
+        int month = 2;
+        boolean isLeap = true;
+        int days = switch (month) {
+            case 1, 3, 5, 7, 8, 10, 12 -> 31;
+            case 4, 6, 9, 11 -> 30;
+            case 2 -> {
+                int d = isLeap ? 29 : 28;
+                yield d;   // 块中用 yield 返回值
+            }
+            default -> 0;
+        };
+        System.out.println(days);
     }
-    default -> 0;
-};
+}
 \`\`\`
 
 新 switch 表达式的优势：
@@ -1887,10 +2197,14 @@ int days = switch (month) {
 #### 传统 for 循环
 
 \`\`\`java
-for (int i = 0; i < 5; i++) {
-    System.out.println(i);
+public class Main {
+    public static void main(String[] args) {
+        for (int i = 0; i < 5; i++) {
+            System.out.println(i);
+        }
+        // 输出 0 1 2 3 4
+    }
 }
-// 输出 0 1 2 3 4
 \`\`\`
 
 语法：\`for (初始化; 条件; 更新) { 循环体 }\`
@@ -1898,23 +2212,32 @@ for (int i = 0; i < 5; i++) {
 三部分都可以省略（\`for (;;)\` 是死循环），但分号不能省。
 
 \`\`\`java
-// 累加求和
-int sum = 0;
-for (int i = 1; i <= 100; i++) {
-    sum += i;
+public class Main {
+    public static void main(String[] args) {
+        // 累加求和
+        int sum = 0;
+        for (int i = 1; i <= 100; i++) {
+            sum += i;
+        }
+        // sum = 5050
+        System.out.println("sum = " + sum);
+    }
 }
-// sum = 5050
 \`\`\`
 
 #### 嵌套循环
 
 \`\`\`java
-// 九九乘法表
-for (int i = 1; i <= 9; i++) {
-    for (int j = 1; j <= i; j++) {
-        System.out.print(j + "x" + i + "=" + (i * j) + "\\t");
+public class Main {
+    public static void main(String[] args) {
+        // 九九乘法表
+        for (int i = 1; i <= 9; i++) {
+            for (int j = 1; j <= i; j++) {
+                System.out.print(j + "x" + i + "=" + (i * j) + "\\t");
+            }
+            System.out.println();
+        }
     }
-    System.out.println();
 }
 \`\`\`
 
@@ -1923,14 +2246,18 @@ for (int i = 1; i <= 9; i++) {
 用于遍历**数组**和**集合**，无需索引，更简洁：
 
 \`\`\`java
-int[] nums = {10, 20, 30};
-for (int n : nums) {
-    System.out.println(n);
-}
+public class Main {
+    public static void main(String[] args) {
+        int[] nums = {10, 20, 30};
+        for (int n : nums) {
+            System.out.println(n);
+        }
 
-String[] fruits = {"苹果", "香蕉", "橘子"};
-for (String f : fruits) {
-    System.out.println(f);
+        String[] fruits = {"苹果", "香蕉", "橘子"};
+        for (String f : fruits) {
+            System.out.println(f);
+        }
+    }
 }
 \`\`\`
 
@@ -1944,10 +2271,14 @@ for (String f : fruits) {
 ### while 循环
 
 \`\`\`java
-int i = 0;
-while (i < 5) {
-    System.out.println(i);
-    i++;
+public class Main {
+    public static void main(String[] args) {
+        int i = 0;
+        while (i < 5) {
+            System.out.println(i);
+            i++;
+        }
+    }
 }
 \`\`\`
 
@@ -1956,36 +2287,45 @@ while (i < 5) {
 适用场景：**循环次数不确定**，如读取输入直到结束、处理数据直到满足条件。
 
 \`\`\`java
-// 经典：计算一个数的位数
-int n = 12345;
-int count = 0;
-while (n > 0) {
-    n /= 10;
-    count++;
+public class Main {
+    public static void main(String[] args) {
+        // 经典：计算一个数的位数
+        int n = 12345;
+        int count = 0;
+        while (n > 0) {
+            n /= 10;
+            count++;
+        }
+        // count = 5
+        System.out.println("count = " + count);
+    }
 }
-// count = 5
 \`\`\`
 
 ### do-while 循环
 
 \`\`\`java
-int i = 0;
-do {
-    System.out.println(i);
-    i++;
-} while (i < 5);
+public class Main {
+    public static void main(String[] args) {
+        int i = 0;
+        do {
+            System.out.println(i);
+            i++;
+        } while (i < 5);
+    }
+}
 \`\`\`
 
 \`do-while\` **先执行一次循环体，再判断条件**。所以循环体至少执行一次。
 
 适用场景：需要**至少执行一次**的情况，如菜单选择、输入验证。
 
-\`\`\`java
+\`\`\`text
 // 模拟菜单：至少展示一次
 int choice;
 do {
     System.out.println("1. 开始  2. 设置  3. 退出");
-    // choice = readInput();
+    // choice = readInput();  // 实际项目中这里读取用户输入
 } while (choice != 3);
 \`\`\`
 
@@ -1994,25 +2334,33 @@ do {
 #### break：跳出循环
 
 \`\`\`java
-for (int i = 0; i < 10; i++) {
-    if (i == 5) {
-        break;   // i==5 时跳出整个循环
+public class Main {
+    public static void main(String[] args) {
+        for (int i = 0; i < 10; i++) {
+            if (i == 5) {
+                break;   // i==5 时跳出整个循环
+            }
+            System.out.println(i);
+        }
+        // 输出 0 1 2 3 4
     }
-    System.out.println(i);
 }
-// 输出 0 1 2 3 4
 \`\`\`
 
 #### continue：跳过本次，进入下次
 
 \`\`\`java
-for (int i = 0; i < 10; i++) {
-    if (i % 2 == 0) {
-        continue;   // 跳过偶数
+public class Main {
+    public static void main(String[] args) {
+        for (int i = 0; i < 10; i++) {
+            if (i % 2 == 0) {
+                continue;   // 跳过偶数
+            }
+            System.out.println(i);
+        }
+        // 输出 1 3 5 7 9
     }
-    System.out.println(i);
 }
-// 输出 1 3 5 7 9
 \`\`\`
 
 \`break\` 和 \`continue\` 只对**最近一层**循环起作用。
@@ -2022,13 +2370,17 @@ for (int i = 0; i < 10; i++) {
 Java 支持**带标签的 break/continue**，可以跳出多层嵌套循环：
 
 \`\`\`java
-outer:   // 定义标签
-for (int i = 0; i < 5; i++) {
-    for (int j = 0; j < 5; j++) {
-        if (i * j > 6) {
-            break outer;   // 直接跳出外层循环
+public class Main {
+    public static void main(String[] args) {
+        outer:   // 定义标签
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 5; j++) {
+                if (i * j > 6) {
+                    break outer;   // 直接跳出外层循环
+                }
+                System.out.println("i=" + i + ", j=" + j);
+            }
         }
-        System.out.println("i=" + i + ", j=" + j);
     }
 }
 \`\`\`

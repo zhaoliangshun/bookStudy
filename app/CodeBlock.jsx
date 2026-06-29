@@ -19,7 +19,6 @@
 // =============================================================
 
 import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 
 // ------------------------------------------------------------------
 // 语言映射表
@@ -120,8 +119,6 @@ function parseRunResult(langLower, data) {
 }
 
 export function CodeBlock({ code, lang }) {
-  const router = useRouter();
-
   // 交互状态
   const [copied, setCopied] = useState(false); // 是否已复制（用于按钮文案反馈）
   const [output, setOutput] = useState(""); // 运行输出
@@ -187,10 +184,12 @@ export function CodeBlock({ code, lang }) {
     }
   }, [code, langLower, langInfo]);
 
-  // ---------- 复制到 Playground 并跳转 ----------
+  // ---------- 复制到 Playground 并在新标签页打开 ----------
   // 把代码写入 localStorage（key 与 playground 页面一致），
-  // 然后跳转到 /playground?lang=xxx，playground 会在挂载时
-  // 读取 URL 参数自动切换到对应语言标签
+  // 然后在新标签页打开 /playground?lang=xxx，playground 会在挂载时
+  // 读取 URL 参数自动切换到对应语言标签。
+  // 用 window.open 而非 router.push，确保在新标签页打开，
+  // 不离开当前教程页面，方便对照学习。
   const handlePlayground = useCallback(() => {
     if (!langInfo?.pgId) return;
     try {
@@ -198,8 +197,13 @@ export function CodeBlock({ code, lang }) {
     } catch {
       // localStorage 不可用时静默跳转（会使用默认代码）
     }
-    router.push(`/playground?lang=${langInfo.pgId}`);
-  }, [code, langInfo, router]);
+    // _blank 表示新标签页；noopener 提升安全性；noreferrer 避免泄漏来源
+    window.open(
+      `/playground?lang=${langInfo.pgId}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }, [code, langInfo]);
 
   return (
     <div className={`md-code-block-wrap ${showOutput ? "has-output" : ""}`}>

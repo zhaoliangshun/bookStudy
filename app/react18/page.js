@@ -1,39 +1,33 @@
-// =============================================================
-// Node.js 交互式教程主页面
-// -------------------------------------------------------------
-// 这是一个 Client Component（'use client'），因为需要：
-//   - 状态管理（当前章节、代码内容、运行结果）
-//   - 事件处理（切换章节、点击运行、修改代码）
-//   - 浏览器交互（textarea 编辑、滚动）
-//
-// 页面结构：
-//   ┌──────────┬─────────────────────────────┐
-//   │  侧边栏   │       主内容区               │
-//   │  章节列表 │  ┌─ Markdown 讲解 ─────────┐ │
-//   │          │  └────────────────────────┘ │
-//   │          │  ┌─ 代码编辑器 ────────────┐ │
-//   │          │  │  [运行] [重置]           │ │
-//   │          │  └────────────────────────┘ │
-//   │          │  ┌─ 输出控制台 ────────────┐ │
-//   │          │  └────────────────────────┘ │
-//   └──────────┴─────────────────────────────┘
-// =============================================================
-
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { chapters, chapterGroups } from "./tutorial-data";
-import { MarkdownRenderer } from "./MarkdownRenderer";
-import { highlightJavaScript } from "./highlight";
-import SiteNav from "./components/SiteNav";
-import Sidebar from "./components/Sidebar";
+// =============================================================
+// React 18 新特性交互式教程页面
+// -------------------------------------------------------------
+// 结构与 Node.js / pnpm 教程页面一致，区别：
+//   1. 数据源：react18Chapters / react18ChapterGroups（来自 react18-tutorial-data）
+//   2. 运行接口：/api/run（在 Node.js vm 沙箱里执行纯 JS 代码）
+//   3. 高亮器：highlightJavaScript（JS 语法高亮）
+//   4. 文案：React 18 新特性、playground.js 文件名
+//
+// 说明：React 18 的并发渲染、Suspense、Hooks 等特性依赖浏览器 DOM
+//   和 react 模块，无法直接在 Node 沙箱运行。因此每章的 code 字段
+//   用纯 JS 模拟演示对应特性的底层原理（如用 setTimeout 模拟时间
+//   切片、用 Promise 模拟 Suspense 数据获取），帮助理解机制。
+// =============================================================
 
-export default function Home() {
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { react18Chapters, react18ChapterGroups } from "../react18-tutorial-data";
+import { MarkdownRenderer } from "../MarkdownRenderer";
+import { highlightJavaScript } from "../highlight";
+import SiteNav from "../components/SiteNav";
+import Sidebar from "../components/Sidebar";
+
+export default function React18Tutorial() {
   // ---------- 状态管理 ----------
   // 当前选中的章节 id
-  const [activeId, setActiveId] = useState(chapters[0].id);
+  const [activeId, setActiveId] = useState(react18Chapters[0].id);
   // 代码编辑器中的代码（用户可修改）
-  const [code, setCode] = useState(chapters[0].code);
+  const [code, setCode] = useState(react18Chapters[0].code);
   // 运行输出结果
   const [output, setOutput] = useState("");
   // 运行错误信息
@@ -76,11 +70,12 @@ export default function Home() {
   }, []);
 
   // 当前章节对象
-  const activeChapter = chapters.find((c) => c.id === activeId) || chapters[0];
+  const activeChapter =
+    react18Chapters.find((c) => c.id === activeId) || react18Chapters[0];
 
   // ---------- 切换章节 ----------
   const selectChapter = useCallback((chapterId) => {
-    const chapter = chapters.find((c) => c.id === chapterId);
+    const chapter = react18Chapters.find((c) => c.id === chapterId);
     if (!chapter) return;
     setActiveId(chapterId);
     setCode(chapter.code);
@@ -108,7 +103,6 @@ export default function Home() {
     setOutput("正在执行...");
     setError("");
     try {
-      // 向 /api/run 发送代码，等待执行结果
       const res = await fetch("/api/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -134,8 +128,7 @@ export default function Home() {
     setHasRun(false);
   }, [activeChapter]);
 
-  // ---------- 键盘快捷键 ----------
-  // Ctrl/Cmd + Enter 运行代码
+  // ---------- 键盘快捷键：Ctrl/Cmd + Enter 运行 ----------
   useEffect(() => {
     const handleKey = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
@@ -147,7 +140,7 @@ export default function Home() {
     return () => window.removeEventListener("keydown", handleKey);
   }, [runCode]);
 
-  // ---------- 代码编辑器：支持 Tab 键缩进 ----------
+  // ---------- Tab 键缩进 ----------
   const handleKeyDown = (e) => {
     if (e.key === "Tab") {
       e.preventDefault();
@@ -155,10 +148,9 @@ export default function Home() {
       if (!textarea) return;
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
-      // 在光标处插入两个空格
+      // JS 代码用 2 空格缩进
       const newCode = code.slice(0, start) + "  " + code.slice(end);
       setCode(newCode);
-      // 把光标移到插入位置之后
       requestAnimationFrame(() => {
         textarea.selectionStart = textarea.selectionEnd = start + 2;
       });
@@ -166,20 +158,24 @@ export default function Home() {
   };
 
   // 按分组组织章节
-  const groupedChapters = chapterGroups.map((group) => ({
+  const groupedChapters = react18ChapterGroups.map((group) => ({
     group,
-    items: chapters.filter((c) => c.group === group),
+    items: react18Chapters.filter((c) => c.group === group),
   }));
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/" meta={`共 ${chapters.length} 章 · 可在线编辑运行`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+      <SiteNav
+        currentPath="/react18"
+        meta={`共 ${react18Chapters.length} 章 · 在线运行 JS 演示`}
+        onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+      />
 
       <div className="main-layout">
         {/* ===== 侧边栏：章节导航 ===== */}
         <Sidebar
           title="学习目录"
-          tip="点击章节开始学习"
+          tip="点击章节开始学习 React 18"
           footer={
             <p>
               💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码
@@ -222,14 +218,14 @@ export default function Home() {
                 <span className="dot dot-red"></span>
                 <span className="dot dot-yellow"></span>
                 <span className="dot dot-green"></span>
-                <span className="editor-filename">example.js</span>
+                <span className="editor-filename">playground.js</span>
               </div>
               <div className="editor-actions">
                 <button
                   className="btn btn-secondary"
                   onClick={resetCode}
                   disabled={isRunning}
-                  title="恢复章节初始代码"
+                  title="恢复默认代码"
                 >
                   ↺ 重置
                 </button>
@@ -253,23 +249,12 @@ export default function Home() {
               </div>
               {/* 编辑区：高亮层 + textarea 叠加 */}
               <div className="editor-area">
-                {/*
-                  高亮层：放在 textarea 下方（z-index 较低），渲染彩色代码。
-                  aria-hidden 对屏幕阅读器隐藏，因为 textarea 才是真正的可编辑内容。
-                  dangerouslySetInnerHTML 直接注入高亮后的 HTML（已做转义，安全）。
-                */}
                 <pre
                   ref={highlightRef}
                   className="editor-highlight"
                   aria-hidden="true"
                   dangerouslySetInnerHTML={{ __html: highlightedHTML }}
                 />
-                {/*
-                  textarea：放在高亮层上方（z-index 较高），文字颜色设为透明，
-                  只保留光标 (caret-color)，用户「看到」的是下层的高亮代码，
-                  但「编辑」的依然是这个 textarea 里的原始文本。
-                  onScroll 用于把滚动量同步给高亮层和行号。
-                */}
                 <textarea
                   ref={textareaRef}
                   className="code-editor"
@@ -281,7 +266,7 @@ export default function Home() {
                   autoCapitalize="off"
                   autoCorrect="off"
                   wrap="off"
-                  placeholder="在这里编写 Node.js 代码，可以自由修改后运行..."
+                  placeholder="在这里编写 JavaScript 代码，可以自由修改后运行..."
                 />
               </div>
             </div>
@@ -318,14 +303,11 @@ export default function Home() {
           </section>
 
           {/* 章节底部导航：上一章/下一章 */}
-          <ChapterNav
-            activeId={activeId}
-            onSelect={selectChapter}
-          />
+          <ChapterNav activeId={activeId} onSelect={selectChapter} />
 
           <footer className="content-footer">
             <p>
-              Node.js 交互式教程 · 代码在服务端沙箱中执行 · 支持 fs/path/crypto 等内置模块
+              React 18 新特性交互式教程 · JS 代码在 Node.js 沙箱中运行 · 涵盖并发渲染/自动批处理/startTransition/useTransition/useDeferredValue/Suspense/流式SSR/useId/useSyncExternalStore/useInsertionEffect/Strict Mode/迁移指南
             </p>
           </footer>
         </main>
@@ -336,9 +318,9 @@ export default function Home() {
 
 // ===== 上一章 / 下一章 导航组件 =====
 function ChapterNav({ activeId, onSelect }) {
-  const idx = chapters.findIndex((c) => c.id === activeId);
-  const prev = idx > 0 ? chapters[idx - 1] : null;
-  const next = idx < chapters.length - 1 ? chapters[idx + 1] : null;
+  const idx = react18Chapters.findIndex((c) => c.id === activeId);
+  const prev = idx > 0 ? react18Chapters[idx - 1] : null;
+  const next = idx < react18Chapters.length - 1 ? react18Chapters[idx + 1] : null;
 
   return (
     <nav className="chapter-nav-bottom">

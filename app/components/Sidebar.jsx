@@ -8,6 +8,10 @@
 //   2. 可收起 / 展开（桌面端点击 ✕ 收起，点击浮动按钮展开）
 //   3. 可拖拽调整宽度（200px ~ 480px，双击恢复默认 280px）
 //   4. 移动端抽屉式（通过 sidebarOpen 控制）
+//   5. Ctrl+B 快捷键切换侧边栏（类似 VS Code）
+//      - 桌面端：切换 collapsed（收起 / 展开侧边栏）
+//      - 移动端：调用 onToggleSidebar 切换抽屉（需父组件传入该 prop）
+//      - 在输入框 / 编辑器内同样生效，并阻止浏览器默认粗体行为
 //
 // 用法：
 //   <Sidebar
@@ -19,6 +23,7 @@
 //     onSelectChapter={selectChapter}
 //     sidebarOpen={sidebarOpen}
 //     onCloseSidebar={() => setSidebarOpen(false)}
+//     onToggleSidebar={() => setSidebarOpen(v => !v)}  // 可选，启用移动端 Ctrl+B
 //   />
 // =============================================================
 
@@ -37,9 +42,55 @@ export default function Sidebar({
   onSelectChapter,
   sidebarOpen = false,
   onCloseSidebar,
+  onToggleSidebar,
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [width, setWidth] = useState(DEFAULT_SIDEBAR_W);
+
+  // ===== Ctrl+B 切换侧边栏（类似 VS Code） =====
+  // -------------------------------------------------------------
+  // 全局监听 keydown：
+  //   - Ctrl+B (Win/Linux) 或 Cmd+B (Mac) 触发
+  //   - preventDefault 阻止浏览器默认的"加粗"行为，确保在 textarea
+  //     / 输入框内也能正常切换侧边栏
+  //   - 桌面端（宽度 > 768px）：toggle 内部 collapsed 状态
+  //   - 移动端：调用父组件传入的 onToggleSidebar 切换抽屉
+  //     （若未传入则降级为：仅在抽屉打开时调用 onCloseSidebar 关闭）
+  //
+  // 用 matchMedia 做断点判断，与 CSS 媒体查询保持一致，比 innerWidth 更稳。
+  // 依赖项里放入回调，确保拿到最新闭包；监听器只在挂载时注册一次。
+  // -------------------------------------------------------------
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // 同时兼容 Ctrl（Win/Linux）和 Cmd（Mac）
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const key = e.key.toLowerCase();
+      if (key !== "b") return;
+
+      // 阻止浏览器默认行为（如 contentEditable 的加粗、书签等）
+      e.preventDefault();
+
+      // 桌面端：切换收起 / 展开
+      const isDesktop = window.matchMedia("(min-width: 769px)").matches;
+      if (isDesktop) {
+        setCollapsed((c) => !c);
+        return;
+      }
+
+      // 移动端：优先用父组件的 toggle 回调
+      if (typeof onToggleSidebar === "function") {
+        onToggleSidebar();
+        return;
+      }
+      // 降级：抽屉打开时关闭它
+      if (sidebarOpen && typeof onCloseSidebar === "function") {
+        onCloseSidebar();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [sidebarOpen, onCloseSidebar, onToggleSidebar]);
 
   // ===== URL Hash 同步 =====
   // -------------------------------------------------------------
@@ -158,7 +209,7 @@ export default function Sidebar({
               <button
                 className="sidebar-collapse-btn"
                 onClick={() => setCollapsed(true)}
-                title="收起目录"
+                title="收起目录 (Ctrl+B)"
                 aria-label="收起目录"
               >
                 ✕
@@ -210,7 +261,7 @@ export default function Sidebar({
         <button
           className="sidebar-expand-btn"
           onClick={() => setCollapsed(false)}
-          title="展开目录"
+          title="展开目录 (Ctrl+B)"
           aria-label="展开目录"
         >
           <span className="expand-btn-icon">📖</span>
