@@ -65,7 +65,6 @@ const BOOK_CATEGORIES = [
     books: [
       { path: "/career", label: "职业出路", icon: "🛤️" },
       { path: "/comm", label: "沟通交流", icon: "💬" },
-      { path: "/psychology", label: "心理学", icon: "🧠" },
       { path: "/work", label: "职场", icon: "💼" },
       { path: "/stomach", label: "脾胃调养", icon: "🌿" },
       { path: "/dui", label: "怼人艺术", icon: "🎯" },
