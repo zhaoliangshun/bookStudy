@@ -24,6 +24,7 @@ const BOOK_CATEGORIES = [
     books: [
       { path: "/playground", label: "代码 Playground", icon: "🛝" },
       { path: "/", label: "Node.js", icon: "⬢" },
+      { path: "/pnpm", label: "pnpm", icon: "📦" },
       { path: "/ts", label: "TypeScript", icon: "🔷" },
       { path: "/tw", label: "Tailwind CSS", icon: "🎨" },
       { path: "/py", label: "Python", icon: "🐍" },
@@ -36,6 +37,7 @@ const BOOK_CATEGORIES = [
       { path: "/ai", label: "AI编程", icon: "🤖" },
       { path: "/ai-agent", label: "AI Agent开发", icon: "🤖" },
       { path: "/fe-interview", label: "前端面试", icon: "🎯" },
+      { path: "/fe-engineering", label: "前端工程化", icon: "⚙️" },
     ],
   },
   {

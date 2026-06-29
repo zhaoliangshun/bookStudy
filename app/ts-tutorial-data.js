@@ -32,6 +32,10 @@
 //   ts-chapters-batch11.js: 补充专题 2（assert-functions,
 //                                  unique-symbol, index-signature-deep,
 //                                  overloading-deep, runtime-validation）
+//   ts-chapters-batch12.js: 泛型深度专题（generics-essentials,
+//                                  constraints-deep, inference-deep,
+//                                  conditional-infer, mapped-templates,
+//                                  variance, patterns-pitfalls）
 //
 // 用户代码会先被 TypeScript 编译器转译成 JS（/api/run-ts），
 // 再在 vm 沙箱中执行，因此所有 demo 都支持 TS 语法。
@@ -48,6 +52,7 @@ import { chapters as batch8 } from "./ts-chapters-batch8";
 import { chapters as batch9 } from "./ts-chapters-batch9";
 import { chapters as batch10 } from "./ts-chapters-batch10";
 import { chapters as batch11 } from "./ts-chapters-batch11";
+import { chapters as batch12 } from "./ts-chapters-batch12";
 
 // 按分组顺序拼接所有章节
 export const tsChapters = [
@@ -62,6 +67,7 @@ export const tsChapters = [
   ...batch9,
   ...batch10,
   ...batch11,
+  ...batch12,
 ];
 
 // 侧边栏分组顺序
@@ -75,4 +81,5 @@ export const tsChapterGroups = [
   "工程化",
   "工程化进阶",
   "实战",
+  "泛型专题",
 ];

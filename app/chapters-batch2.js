@@ -2390,6 +2390,131 @@ process.on("SIGINT", () => {
 });
 \`\`\`
 
+---
+
+### 「底层原理」
+
+\`process\` 对象并非纯 JavaScript 实现，而是由 C++ 层创建并通过 V8 绑定注入到全局作用域。其核心来源与事件循环驱动关系如下：
+
+\`\`\`
+┌─────────────────────────────────────────────────────────────┐
+│              process 对象的构建链路                          │
+├─────────────────────────────────────────────────────────────┤
+│  src/node_process.cc                                        │
+│   ├─ CreateProcessObject() → 创建 V8 Object                 │
+│   ├─ process.argv      ← 取自 uv_setup_args() 的 argc/argv  │
+│   ├─ process.env       ← 包装 C 运行时 environ 指针         │
+│  │   │   (posix: char **environ; win32: GetEnvironmentStringsW) │
+│  │   └─ 写入时调用 setenv()/putenv() 同步到 OS              │
+│   ├─ process.versions  ← 编译期填充的 V8/uv/openssl 版本    │
+│   ├─ process.memoryUsage() ← V8 Isolate::GetHeapStatistics  │
+│  │                          + uv_get_rss / uv_get_free_memory │
+│   ├─ process.hrtime()  ← uv_hrtime() (高精度单调时钟, ns)   │
+│   └─ process._events   ← EventEmitter (libuv 驱动信号)      │
+│         ├─ SIGINT/SIGTERM ← uv_signal_t                     │
+│         └─ exit/uncaughtException ← JS 层 emit              │
+└─────────────────────────────────────────────────────────────┘
+\`\`\`
+
+| 属性/方法 | 数据来源 | 实现层 |
+| --- | --- | --- |
+| \`process.argv\` | uv_setup_args 缓存的启动参数 | C++ |
+| \`process.env\` | OS 环境块（environ / 环境变量表） | C++ 包装 + JS 代理 |
+| \`process.pid\` | uv_os_getpid() | libuv |
+| \`process.cwd()\` | uv_cwd() | libuv |
+| \`process.hrtime()\` | uv_hrtime()（CLOCK_MONOTONIC） | libuv |
+| \`process.memoryUsage()\` | V8 HeapStatistics + uv_get_rss | V8 + libuv |
+
+\`process.nextTick\` 与事件循环的关系：nextTick 队列由 V8 微任务机制驱动，在每个 C++ \`RunMicrotasks\` 时机清空，**早于 libuv 的任何阶段**。递归调用 nextTick 会"饿死"I/O 回调，因为事件循环永远进不到 poll 阶段。
+
+---
+
+### 「常见陷阱」
+
+**陷阱 1：process.exit() 不等待异步操作**
+
+\`\`\`javascript
+// ❌ 错误：强制退出，未完成的 I/O 被截断
+function saveAndExit() {
+  fs.writeFile("log.txt", data, () => {});
+  process.exit(0); // 写入可能还没落盘就退出了
+}
+
+// ✅ 正确：等待异步完成再退出，或用 exit 事件做同步收尾
+async function saveAndExit() {
+  await fs.promises.writeFile("log.txt", data);
+  process.exit(0);
+}
+// 仅同步收尾可在 'exit' 中执行
+process.on("exit", () => fs.writeFileSync("log.txt", data));
+\`\`\`
+
+**陷阱 2：'exit' 回调中执行异步操作无效**
+
+\`\`\`javascript
+// ❌ 错误：'exit' 后事件循环已停止，异步不会执行
+process.on("exit", () => {
+  setTimeout(() => console.log("bye"), 100); // 永不输出
+});
+
+// ✅ 正确：'exit' 中只能做同步操作；异步收尾用 beforeExit
+process.on("beforeExit", (code) => {
+  // 可安排异步任务，完成后才会真正退出
+});
+\`\`\`
+
+**陷阱 3：修改 process.env 不影响父进程**
+
+\`\`\`javascript
+// ❌ 错误：以为能向父 shell 注入环境变量
+process.env.MY_VAR = "hello";
+// 子进程能读到，但父 shell 看不到，进程结束后即消失
+
+// ✅ 正确：父子通信用 stdout/退出码；持久化用文件或配置中心
+\`\`\`
+
+**陷阱 4：uncaughtException 后继续运行状态不可预测**
+
+\`\`\`javascript
+// ❌ 错误：吞掉异常继续跑，资源可能已处于半开状态
+process.on("uncaughtException", (err) => {
+  console.error(err); // 进程仍在跑，但连接/文件句柄可能泄漏
+});
+
+// ✅ 正确：记录后优雅退出，由进程管理器重启
+process.on("uncaughtException", (err) => {
+  logger.fatal(err);
+  server.close(() => process.exit(1));
+  setTimeout(() => process.exit(1), 5000); // 兜底
+});
+\`\`\`
+
+**陷阱 5：SIGPIPE 默认会导致进程退出**
+
+\`\`\`javascript
+// ❌ 错误：向已关闭的 socket 写入时进程被杀
+process.stdout.write(bigData); // 管道已关闭 → SIGPIPE → 退出
+
+// ✅ 正确：捕获或忽略 SIGPIPE，按错误处理
+process.on("SIGPIPE", () => {}); // 忽略，让 write 返回 false
+\`\`\`
+
+---
+
+### 「性能提示」
+
+**1. 高精度计时用 process.hrtime.bigint()**
+
+\`process.hrtime.bigint()\` 返回 BigInt 纳秒，单调递增且不受系统时钟影响，比 \`Date.now()\`（毫秒、可被 NTP 回拨）更准；比 \`performance.now()\` 少一层封装。差值计算用 \`Number(end - start) / 1e6\` 转毫秒。
+
+**2. 避免在热路径频繁调用 process.memoryUsage()**
+
+\`process.memoryUsage()\` 内部要调用 V8 \`GetHeapStatistics\` 并遍历统计，开销不小。监控类需求采样间隔应 ≥ 1 秒，且不要在请求处理的关键路径上调用。需要 RSS 趋势时改用 \`process.resourceUsage().maxRSS\`。
+
+**3. process.nextTick 递归会饿死 I/O**
+
+nextTick 优先级高于所有 libuv 阶段，递归调用会让 poll 永远得不到执行机会，I/O 回调被无限延后。需要"让出"控制权时用 \`setImmediate\` 而非 \`process.nextTick\`，前者在 check 阶段执行，允许 I/O 先处理。
+
 下面这段代码演示了 process 对象的各种属性和方法。`,
     code: `// ============================================================
 // 第五章代码演示：process 进程对象
@@ -2770,6 +2895,136 @@ const config = JSON.parse(process.env.COMPLEX_CONFIG);   // 转对象
 | 不要打印环境变量 | 日志中不要输出 process.env |
 | 使用 .env.example | 提供配置模板文件 |
 | 生产环境密钥轮换 | 定期更换密钥 |
+
+---
+
+### 「底层原理」
+
+环境变量在操作系统层面是进程环境块（Environment Block）中的一组键值对，Node.js 通过 C++ 层对其封装后暴露为 \`process.env\`：
+
+\`\`\`
+┌─────────────────────────────────────────────────────────────┐
+│              process.env 的数据流                            │
+├─────────────────────────────────────────────────────────────┤
+│  OS 进程环境块 (Environment Block)                          │
+│  ┌───────────────────────────────────────────────┐          │
+│  │ PATH=/usr/bin                                 │          │
+│  │ HOME=/home/user                               │          │
+│  │ NODE_ENV=production                           │          │
+│  │ ... (key=value\\0key=value\\0...\\0\\0)          │          │
+│  └───────────────┬───────────────────────────────┘          │
+│                  │ fork/exec 时由内核复制给子进程            │
+│                  ▼                                           │
+│  Node.js C++ 层 (node_process_object.cc)                    │
+│   ├─ 启动时读取 environ → 构造 V8 Object                    │
+│   ├─ 读：直接返回缓存的 JS 字符串                            │
+│   └─ 写：process.env.K = V → setenv(K, V) 同步回 OS         │
+│                  │                                           │
+│                  ▼                                           │
+│  JS 层 process.env                                          │
+│   └─ 带有 Proxy/拦截器：所有赋值都触发底层 setenv           │
+└─────────────────────────────────────────────────────────────┘
+\`\`\`
+
+| 环节 | POSIX | Windows |
+| --- | --- | --- |
+| 存储位置 | \`char **environ\` 全局变量 | 进程环境块（注册表式键值对） |
+| 读取 | \`getenv(name)\` | \`GetEnvironmentVariableW()\` |
+| 写入 | \`setenv(name, val, 1)\` | \`SetEnvironmentVariableW()\` |
+| 继承方式 | fork() 复制父进程副本 | CreateProcess 时复制 |
+
+dotenv 的工作原理：在 JS 启动阶段同步读取 \`.env\` 文件，按 \`KEY=VALUE\` 逐行解析，再通过 \`process.env[KEY] = VALUE\` 注入。由于 \`process.env\` 的写入会同步到 OS 环境块，\`child_process.spawn\` 创建的子进程能继承这些变量。
+
+NODE_ENV 影响性能的真相：当 \`NODE_ENV=production\` 时，Express/Koa 等框架会关闭堆栈追踪、启用视图缓存、跳过开发中间件；更重要的是 V8 会对 \`process.env.NODE_ENV === "development"\` 这类分支做内联缓存优化，但条件反转后 dead-code 不会自动消除，需借助构建工具剔除。
+
+---
+
+### 「常见陷阱」
+
+**陷阱 1：process.env 的值永远是字符串**
+
+\`\`\`javascript
+// ❌ 错误：直接当布尔值用
+if (process.env.ENABLE_CACHE) {
+  // 当 ENABLE_CACHE="false" 时仍会进入！非空字符串都为真
+}
+
+// ✅ 正确：显式解析并校验
+const enableCache = process.env.ENABLE_CACHE === "true";
+const port = parseInt(process.env.PORT, 10) || 3000;
+\`\`\`
+
+**陷阱 2：运行时修改 process.env 不影响已读取的变量**
+
+\`\`\`javascript
+// ❌ 错误：以为改了 env 就能切换配置
+const config = { dbUrl: process.env.DATABASE_URL };
+// ...后来
+process.env.DATABASE_URL = "new-url";
+console.log(config.dbUrl); // 仍是旧值，已快照
+
+// ✅ 正确：配置变更需重新读取或集中管理
+function getConfig() {
+  return { dbUrl: process.env.DATABASE_URL };
+}
+// 或用配置中心 + 热加载
+\`\`\`
+
+**陷阱 3：把 .env 提交到版本控制**
+
+\`\`\`javascript
+// ❌ 错误：git add .env 并提交，密钥泄漏
+# .env
+DATABASE_URL=postgres://prod:password@db:5432/prod
+STRIPE_SECRET_KEY=sk_live_xxxxx
+
+// ✅ 正确：提交 .env.example 模板，真实 .env 加入 .gitignore
+# .env.example（提交）
+DATABASE_URL=postgres://user:pass@host:5432/db
+STRIPE_SECRET_KEY=sk_test_xxxxx
+# .gitignore（提交）
+.env
+\`\`\`
+
+**陷阱 4：NODE_ENV 未设置时被当作开发环境**
+
+\`\`\`javascript
+// ❌ 错误：默认值不明确，生产环境漏配 NODE_ENV 会走开发逻辑
+const isProd = process.env.NODE_ENV === "production"; // undefined → false
+
+// ✅ 正确：启动时强制校验，缺失即报错
+const env = process.env.NODE_ENV;
+if (!["development", "production", "test"].includes(env)) {
+  throw new Error(\`NODE_ENV 必须是 development|production|test，当前: \${env}\`);
+}
+\`\`\`
+
+**陷阱 5：在日志中打印整个 process.env**
+
+\`\`\`javascript
+// ❌ 错误：把密钥写进日志文件
+logger.info("启动配置", process.env); // API_KEY、SECRET 全暴露
+
+// ✅ 正确：白名单输出，或脱敏
+const safe = { PORT: process.env.PORT, NODE_ENV: process.env.NODE_ENV };
+logger.info("启动配置", safe);
+\`\`\`
+
+---
+
+### 「性能提示」
+
+**1. 启动时一次性读取并缓存配置，避免热路径反复访问 process.env**
+
+\`process.env\` 的读取经过 JS 层 → C++ 层 \`getenv\` 的调用链，频繁读取有开销。应在启动时构建一个冻结的配置对象，运行时只引用该对象，既快又能防止意外篡改。
+
+**2. 配置校验放在启动阶段，快速失败**
+
+用 joi/zod 等 schema 在进程启动时一次性校验所有必需的环境变量，缺失或类型错误立即 \`process.exit(1)\`。这比在请求处理时才发现配置缺失要可靠得多，能让进程管理器尽早重启。
+
+**3. 用 NODE_ENV=production 触发 V8 与框架的优化路径**
+
+生产环境设置 \`NODE_ENV=production\` 不仅影响框架行为（启用缓存、跳过开发中间件），还能让 V8 对 \`process.env.NODE_ENV === "production"\` 这类守卫做更稳定的内联缓存。配合构建期变量替换（如 webpack DefinePlugin）可彻底消除开发分支的死代码。
 
 下面这段代码实现了一个完整的配置管理模块。`,
     code: `// ============================================================
@@ -3229,6 +3484,134 @@ const u8 = new Uint8Array([72, 101, 108, 108, 111]);
 const buf = Buffer.from(u8.buffer);
 \`\`\`
 
+---
+
+### 「底层原理」
+
+Buffer 的本质是 V8 \`ArrayBuffer\` 的视图（\`Uint8Array\` 子类），底层内存由 Node.js 的 **Slab 分配器**统一管理，分配在 V8 堆外，避免 GC 扫描大块二进制数据的开销：
+
+\`\`\`
+┌─────────────────────────────────────────────────────────────┐
+│              Buffer 内存分配机制                             │
+├─────────────────────────────────────────────────────────────┤
+│  Buffer.poolSize = 8192 (8KB 预分配池, node_buffer.cc)      │
+│  ┌─────────────────────────────────────────────┐            │
+│  │  共享 Slab (8KB ArrayBuffer)                 │            │
+│  │  ┌─────┬─────┬─────┬─────────────────────┐  │            │
+│  │  │ buf1│ buf2│ buf3│  空闲 (poolOffset→) │  │            │
+│  │  │ 16B │ 32B │ 8B  │                     │  │            │
+│  │  └─────┴─────┴─────┴─────────────────────┘  │            │
+│  └─────────────────────────────────────────────┘            │
+│   ↑ 小于 4KB 的 allocUnsafe 从池中切分（零拷贝）             │
+│                                                              │
+│  ≥ poolSize/2 (4KB) → 直接 malloc 独立 ArrayBuffer           │
+│  < poolSize/2       → 从共享池切分，可能含残留数据           │
+└─────────────────────────────────────────────────────────────┘
+\`\`\`
+
+| 创建方式 | 内存来源 | 是否清零 | 性能 |
+| --- | --- | --- | --- |
+| \`Buffer.alloc(n)\` | Slab 或独立 malloc | ✅ fill(0) | 稍慢（清零） |
+| \`Buffer.allocUnsafe(n)\` | Slab 或独立 malloc | ❌ 残留旧数据 | 最快 |
+| \`Buffer.allocUnsafeSlow(n)\` | 独立 malloc（不走池） | ❌ 残留旧数据 | 快，无池污染 |
+| \`Buffer.from(str)\` | 新分配 + 写入字符串字节 | ✅ 写入即初始化 | 中等 |
+
+Buffer 与 \`ArrayBuffer\` 的关系：每个 Buffer 内部持有一个 \`ArrayBuffer\`（\`buf.buffer\`），Buffer 本身是该 ArrayBuffer 的 \`Uint8Array\` 视图（带 \`byteOffset\` 偏移）。从 Slab 切出的多个小 Buffer 可能共享同一个 8KB \`ArrayBuffer\`，只是 \`byteOffset\` 不同。这意味着 \`buf.buffer\` 的长度可能远大于 \`buf.length\`，直接传给 Web API 时需用 \`buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)\` 截取。
+
+---
+
+### 「常见陷阱」
+
+**陷阱 1：allocUnsafe 未初始化导致数据泄漏**
+
+\`\`\`javascript
+// ❌ 错误：分配后未完全写入就使用，残留前一个进程的数据
+const buf = Buffer.allocUnsafe(100);
+socket.write(buf); // 100 字节里有随机旧数据被发出去
+
+// ✅ 正确：确定会立即覆写全部内容时才用 allocUnsafe
+const buf = Buffer.allocUnsafe(64);
+fs.readSync(fd, buf, 0, 64, 0); // 立即覆盖
+// 否则用 alloc，安全优先
+const safe = Buffer.alloc(100); // 全 0
+\`\`\`
+
+**陷阱 2：混淆 Buffer 字节长度与字符串字符长度**
+
+\`\`\`javascript
+// ❌ 错误：用字符串长度预分配 Buffer
+const text = "你好世界";
+const buf = Buffer.alloc(text.length); // text.length=4，但 UTF-8 需要 12 字节
+buf.write(text); // 只写入前 4 字节，乱码
+
+// ✅ 正确：用 Buffer.byteLength 计算实际字节数
+const bytes = Buffer.byteLength(text, "utf8"); // 12
+const buf = Buffer.alloc(bytes);
+buf.write(text, 0, "utf8");
+// 或直接
+const buf2 = Buffer.from(text, "utf8"); // 自动算长度
+\`\`\`
+
+**陷阱 3：误用 buf.buffer 导致越界或读到共享池残留**
+
+\`\`\`javascript
+// ❌ 错误：直接用 buf.buffer 传给 TypedArray，包含整个 Slab
+const buf = Buffer.from("Hi");          // 长度 2
+const view = new Uint8Array(buf.buffer); // 长度可能是 8192！
+console.log(view.length); // 8192，包含无关数据
+
+// ✅ 正确：用 byteOffset/byteLength 截取正确视图
+const view = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+console.log(view.length); // 2
+\`\`\`
+
+**陷阱 4：Buffer.concat 拼接海量小 Buffer 占用峰值过高**
+
+\`\`\`javascript
+// ❌ 错误：把流的所有 chunk 都攒进数组再 concat，峰值内存翻倍
+const chunks = [];
+stream.on("data", (c) => chunks.push(c));
+stream.on("end", () => {
+  const all = Buffer.concat(chunks); // 同时存在 chunks 数组 + 新大 Buffer
+});
+
+// ✅ 正确：边收边写入预分配的目标 Buffer，或直接 pipe
+const buf = Buffer.alloc(totalSize);
+let offset = 0;
+stream.on("data", (c) => { c.copy(buf, offset); offset += c.length; });
+\`\`\`
+
+**陷阱 5：修改 Buffer 会影响共享同一 ArrayBuffer 的其它视图**
+
+\`\`\`javascript
+// ❌ 错误：以为 Buffer 是值拷贝
+const a = Buffer.from([1, 2, 3, 4]);
+const b = a.subarray(1, 3); // 共享内存
+b[0] = 99;
+console.log(a); // <Buffer 01 63 03 04> ← a 也被改了！
+
+// ✅ 正确：需要独立副本时用 slice（已废弃）或显式拷贝
+const b = Buffer.from(a.subarray(1, 3)); // 新分配
+b[0] = 99;
+console.log(a); // <Buffer 01 02 03 04> ← a 不受影响
+\`\`\`
+
+---
+
+### 「性能提示」
+
+**1. 小 Buffer 优先用 allocUnsafe 并立即填充**
+
+对确定会立即覆写全部内容的场景（如读取文件到缓冲区、加密计算），\`Buffer.allocUnsafe\` 比 \`Buffer.alloc\` 快约 30%–40%，因为它跳过了 8KB 池的清零。Node.js 内部的 fs/crypto 等模块大量使用 allocUnsafe 来提升吞吐。
+
+**2. 用 Buffer.from(string) 而非 alloc + write**
+
+\`Buffer.from(str, encoding)\` 内部一次性计算字节长度并写入，比 \`Buffer.alloc(n).write(str)\` 少一次长度计算和一次内存写入，且避免长度不匹配导致的截断。拼接字符串时也应先 \`concat\` 字符串再 \`Buffer.from\`，而非拼接多个 Buffer。
+
+**3. 预分配并复用 Buffer 池，避免高频分配**
+
+在流式处理或高频网络收发场景，预先 \`Buffer.allocUnsafe\` 一块大缓冲区并循环复用，能显著减少 GC 压力。结合 \`buf.fill(0)\` 仅在需要时清空，可比每次新建 Buffer 提升数倍吞吐。
+
 下面这段代码演示了 Buffer 的创建、操作和编码转换。`,
     code: `// ============================================================
 // 第七章代码演示：Buffer 缓冲区
@@ -3612,6 +3995,138 @@ console.log(parsed.query); // { a: "1", b: "2" }
 3. **\`new URL()\` 需要完整 URL**：相对路径需要提供 base 参数
 4. **URLSearchParams 自动编码**：中文等特殊字符会被编码
 5. **\`host\` vs \`hostname\`**：\`host\` 含端口，\`hostname\` 不含
+
+---
+
+### 「底层原理」
+
+WHATWG URL 解析器是一个**有限状态机**，由 C++ 实现（\`node_url.cc\` + V8 内置 \`url\` 模块），逐字符扫描输入并按 URL Standard 规范的状态迁移填充各组成部分：
+
+\`\`\`
+┌─────────────────────────────────────────────────────────────┐
+│         WHATWG URL 状态机解析流程                            │
+├─────────────────────────────────────────────────────────────┤
+│  输入: "https://user:pass@host:8080/p?a=1#h"                │
+│                                                              │
+│  [scheme state]  → 读到 ':' → protocol = "https:"            │
+│        │                                                     │
+│        ▼                                                     │
+│  [special authority slashes] → 跳过 "//"                     │
+│        │                                                     │
+│        ▼                                                     │
+│  [authority state] → 读到 '@' → 切分 userinfo               │
+│        │                  user:pass → username/password      │
+│        ▼                                                     │
+│  [host state]  → 读到 ':' 或 '/' → host = "host"             │
+│        │                  ':' 后进入 port state              │
+│        ▼                                                     │
+│  [path state]  → 读到 '?' → pathname = "/p"                  │
+│        │                                                     │
+│        ▼                                                     │
+│  [query state] → 读到 '#' → search = "?a=1"                  │
+│        │                                                     │
+│        ▼                                                     │
+│  [fragment state] → 剩余 → hash = "#h"                       │
+│                                                              │
+│  每个 setter 触发规范化（Punycode、百分号编码、端口默认值删除）│
+└─────────────────────────────────────────────────────────────┘
+\`\`\`
+
+| 特性 | WHATWG API (\`new URL\`) | Legacy API (\`url.parse\`) |
+| --- | --- | --- |
+| 实现 | C++ 状态机 + V8 内置 | 纯 JS 正则 |
+| 规范 | URL Standard（与浏览器一致） | RFC 3986（Node 专有变体） |
+| 容错 | 严格，非法输入抛 TypeError | 宽松，返回可能不规范的结果 |
+| IDN/Punycode | ✅ 自动转码 | ⚠️ 需手动处理 |
+| 性能 | 更快（C++ 实现） | 较慢 |
+
+\`URLSearchParams\` 的内部表示是一个 \`Array<[string, string]>\`，每次 \`get/append/delete\` 都是线性扫描。它遵循 \`application/x-www-form-urlencoded\` 规范：空格编码为 \`+\`，特殊字符百分号编码。修改 \`searchParams\` 后会自动同步回 \`url.search\` 和 \`url.href\`。
+
+---
+
+### 「常见陷阱」
+
+**陷阱 1：protocol 带冒号，比较时容易出错**
+
+\`\`\`javascript
+// ❌ 错误：忘了 protocol 含冒号
+const u = new URL("https://example.com");
+if (u.protocol === "https") { /* 永远不成立 */ }
+
+// ✅ 正确：带上冒号，或用 origin 判断
+if (u.protocol === "https:") { /* 成立 */ }
+if (u.origin.startsWith("https://")) { /* 也行 */ }
+\`\`\`
+
+**陷阱 2：new URL() 传相对路径直接抛错**
+
+\`\`\`javascript
+// ❌ 错误：相对路径无法解析
+const u = new URL("/api/users?id=1");
+// TypeError: Invalid URL
+
+// ✅ 正确：提供 base 参数
+const u = new URL("/api/users?id=1", "https://example.com");
+console.log(u.href); // "https://example.com/api/users?id=1"
+
+// 或用 url.resolve（legacy）拼接
+const full = new URL("../list", "https://example.com/a/b/").href;
+\`\`\`
+
+**陷阱 3：get() 只返回第一个值，丢失多值参数**
+
+\`\`\`javascript
+// ❌ 错误：多值查询参数用 get 只拿到一个
+const u = new URL("?tag=a&tag=b&tag=c", "https://x.com");
+console.log(u.searchParams.get("tag")); // "a"，b/c 丢失
+
+// ✅ 正确：多值用 getAll
+console.log(u.searchParams.getAll("tag")); // ["a", "b", "c"]
+\`\`\`
+
+**陷阱 4：误用 host 与 hostname 导致端口校验错误**
+
+\`\`\`javascript
+// ❌ 错误：用 hostname 却以为含端口
+const u = new URL("https://example.com:8080");
+if (u.hostname.endsWith(":8080")) { /* 永远不成立，hostname 不含端口 */ }
+
+// ✅ 正确：区分 host（含端口）与 hostname（不含）
+console.log(u.host);     // "example.com:8080"
+console.log(u.hostname); // "example.com"
+console.log(u.port);     // "8080"
+// 校验端口用 port
+if (u.port === "8080") { /* 成立 */ }
+\`\`\`
+
+**陷阱 5：修改 searchParams 后忘记重新读取 href**
+
+\`\`\`javascript
+// ❌ 错误：缓存了旧 href，修改参数后用了过期值
+const u = new URL("https://example.com/api");
+const cachedHref = u.href;
+u.searchParams.set("page", "2");
+fetch(cachedHref); // 还是第一页！
+
+// ✅ 正确：修改后实时读取 href（属性是 getter，会重新序列化）
+fetch(u.href); // 包含 ?page=2
+\`\`\`
+
+---
+
+### 「性能提示」
+
+**1. 复用 URL 对象而非反复字符串拼接 + 重新解析**
+
+\`new URL()\` 触发完整状态机解析，开销不小。需要频繁调整查询参数时，应保留 URL 对象并通过 \`searchParams.set/append\` 修改，最后再读 \`href\`，比每次字符串拼接后重新 \`new URL()\` 快一个数量级。
+
+**2. 优先用 WHATWG API，放弃 legacy url.parse**
+
+\`new URL()\` 由 C++ 状态机实现，比纯 JS 正则的 \`url.parse()\` 快约 2–3 倍，且结果规范、与浏览器一致。\`url.parse()\` 已被标记为 legacy，仅在维护老代码时才考虑，新代码一律用 WHATWG API。
+
+**3. 批量操作查询参数用 URLSearchParams 而非手动拼字符串**
+
+手动拼接 \`?a=1&b=2\` 容易漏掉编码导致注入或解析错误，且每次都要重新序列化。\`URLSearchParams\` 内部缓存序列化结果，仅在读取 \`toString()\` 时才生成字符串，多次增删改后只序列化一次，性能与正确性兼得。
 
 下面这段代码演示了 URL 解析、构造和参数操作的完整用法。`,
     code: `// ============================================================

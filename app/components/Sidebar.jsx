@@ -22,7 +22,7 @@
 //   />
 // =============================================================
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 
 const MIN_SIDEBAR_W = 200;
 const MAX_SIDEBAR_W = 480;
@@ -40,6 +40,72 @@ export default function Sidebar({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [width, setWidth] = useState(DEFAULT_SIDEBAR_W);
+
+  // ===== URL Hash 同步 =====
+  // -------------------------------------------------------------
+  // 用 URL hash（如 #fe-eng-overview）记录当前章节：
+  //   1. 点击章节 -> pushState 更新 URL（不刷新页面）
+  //   2. 刷新页面 -> mount 时读取 hash，自动恢复章节
+  //   3. 浏览器前进/后退 -> 监听 popstate / hashchange 同步
+  //
+  // 只改这一个文件，所有教程页面自动获得 hash 同步能力。
+  // -------------------------------------------------------------
+
+  // 收集所有章节 id（用于验证 hash 有效性）
+  const allChapterIds = useMemo(
+    () => groupedChapters.flatMap((g) => g.items.map((c) => c.id)),
+    [groupedChapters]
+  );
+
+  // 用 ref 保存最新值，避免 useEffect 频繁重新注册监听器
+  const activeIdRef = useRef(activeId);
+  activeIdRef.current = activeId;
+  const onSelectRef = useRef(onSelectChapter);
+  onSelectRef.current = onSelectChapter;
+  const validIdsRef = useRef(allChapterIds);
+  validIdsRef.current = allChapterIds;
+
+  useEffect(() => {
+    // 从 URL hash 读取章节 id，若有效且与当前不同则同步
+    const syncFromHash = () => {
+      const hash = window.location.hash.slice(1);
+      if (
+        hash &&
+        hash !== activeIdRef.current &&
+        validIdsRef.current.includes(hash)
+      ) {
+        onSelectRef.current(hash);
+      }
+    };
+
+    // mount 后立即同步一次（解决刷新后回到第一章的问题）
+    syncFromHash();
+
+    // 浏览器前进 / 后退、手动改 hash 时同步
+    window.addEventListener("hashchange", syncFromHash);
+    window.addEventListener("popstate", syncFromHash);
+    return () => {
+      window.removeEventListener("hashchange", syncFromHash);
+      window.removeEventListener("popstate", syncFromHash);
+    };
+  }, []);
+
+  // activeId 变化时同步到 URL hash
+  // 覆盖底部"上一章/下一章"按钮等非 Sidebar 触发的章节切换
+  // 跳过首次渲染，避免覆盖初始 URL hash
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const currentHash = window.location.hash.slice(1);
+    if (activeId && activeId !== currentHash) {
+      const url = `${window.location.pathname}${window.location.search}#${activeId}`;
+      window.history.pushState(null, "", url);
+    }
+  }, [activeId]);
 
   // ===== 拖拽调整宽度 =====
   const startResize = useCallback((e) => {
@@ -68,6 +134,12 @@ export default function Sidebar({
 
   const handleSelect = useCallback(
     (chapterId) => {
+      // 更新 URL hash（不触发滚动、不刷新页面）
+      // 使用 pushState 而非直接改 hash，避免触发 hashchange 造成重复回调
+      if (typeof window !== "undefined" && window.history) {
+        const url = `${window.location.pathname}${window.location.search}#${chapterId}`;
+        window.history.pushState(null, "", url);
+      }
       onSelectChapter(chapterId);
     },
     [onSelectChapter]

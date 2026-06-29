@@ -183,7 +183,108 @@ npm update
 - 在 CI/CD 中集成 \`npm audit\`（设置 severity 阈值）
 - 使用 Dependabot 或 Renovate 自动创建依赖更新 PR
 - 定期审查依赖树，移除不必要的依赖
-- 锁定依赖版本（package-lock.json），避免供应链攻击`,
+- 锁定依赖版本（package-lock.json），避免供应链攻击
+
+### 「底层原理」安全机制的底层原理
+
+安全机制之所以有效，是因为它们利用了密码学、浏览器沙箱、操作系统权限等底层保证。
+
+**HTTP 安全头与浏览器行为**：
+
+\`\`\`
+服务器响应 ──> 浏览器解析响应头 ──> 启用对应安全策略
+   │              │
+   │              ├─ CSP      → 构建 SourceList，阻止违规资源加载
+   │              ├─ HSTS     → 写入 TransportSecurity 内存库，强制 HTTPS
+   │              ├─ X-Frame  → 渲染前检查 frame-ancestors，拒绝嵌入
+   │              └─ nosniff  → 禁用 MIME 嗅探，按 Content-Type 严格解析
+   └─> 攻击载荷被浏览器主动拦截（不依赖服务端检测）
+\`\`\`
+
+**密码哈希算法（bcrypt 的 Eksblowfish）**：
+
+bcrypt 基于 Blowfish 改造，关键在于 "Eks"（Expensive Key Schedule）：
+1. **加盐阶段**：将 salt 和 password 混合，初始化 P-box 和 S-box
+2. **可调成本**：通过 cost factor（如 12）让密钥扩展循环 2^12 = 4096 次
+3. **不可加速**：Eksblowfish 状态依赖密码，GPU/ASIC 并行度受限
+
+**JWT 签名验证流程（HMAC-SHA256）**：
+
+\`\`\`
+Token = base64(header).base64(payload).HMAC-SHA256(signingInput, secret)
+                                          │
+验证: ┌──────────────────────────────────┘
+      │ 1. 重新计算 HMAC-SHA256(header.payload, secret)
+      │ 2. 与 Token 第三段做时间恒定比较
+      │ 3. 检查 exp/nbf/iss/aud 等声明
+      └─> 任一失败则拒绝（不能"部分通过"）
+\`\`\`
+
+**限流算法**：令牌桶按固定速率投放令牌，请求消耗令牌；滑动窗口维护 N 个时间桶，按桶求和。两者均依赖原子计数与时间戳。
+
+**XSS/SQL 注入的过滤原理**：
+- XSS：输出前将 \`<\` \`>\` 转义为 \`&lt;\` \`&gt;\`，浏览器识别为文本而非标签
+- SQL 注入：参数化查询将参数作为"数据"传输，数据库引擎在解析阶段就区分 SQL 结构与字面量
+
+### 「常见陷阱」安全常见错误
+
+**1. 弱密钥与硬编码**
+\`\`\`javascript
+// ❌ 错误：使用短密钥或硬编码
+const JWT_SECRET = "secret123";
+
+// ✅ 正确：环境变量 + 至少 32 字节随机密钥
+const JWT_SECRET = process.env.JWT_SECRET;
+// 生成：crypto.randomBytes(32).toString('hex')
+\`\`\`
+
+**2. CORS 配置过松**
+\`\`\`javascript
+// ❌ 错误：允许所有来源携带凭证
+app.use(cors({ origin: '*', credentials: true }));
+
+// ✅ 正确：白名单 + 显式凭证
+app.use(cors({
+  origin: ['https://app.example.com'],
+  credentials: true,
+}));
+\`\`\`
+
+**3. 同步加密阻塞事件循环**
+\`\`\`javascript
+// ❌ 错误：pbkdf2Sync 阻塞主线程
+const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512');
+
+// ✅ 正确：使用异步版本
+crypto.pbkdf2(password, salt, 100000, 64, 'sha512', (err, key) => { /*...*/ });
+\`\`\`
+
+**4. 错误信息泄露内部细节**
+\`\`\`javascript
+// ❌ 错误：将堆栈和 SQL 暴露给用户
+res.status(500).json({ error: err.stack, sql: query });
+
+// ✅ 正确：返回通用错误，详细记录到日志
+logger.error(err);
+res.status(500).json({ error: '服务器内部错误' });
+\`\`\`
+
+**5. 仅前端验证**
+\`\`\`javascript
+// ❌ 错误：只在前端校验
+<input required pattern="[A-Za-z]{3,20}" />
+
+// ✅ 正确：服务端必须独立验证
+if (!/^[A-Za-z]{3,20}$/.test(username)) return res.status(400).end();
+\`\`\`
+
+### 「性能提示」安全性能最佳实践
+
+**1. 异步加密释放事件循环**：\`bcrypt.hash\` / \`crypto.pbkdf2\` 均提供异步版本，避免阻塞主线程。高并发登录场景可使用 worker_threads 池处理哈希。
+
+**2. 限流结果缓存**：对于通过验证的 JWT，可将用户 ID + Token jti 缓存到 LRU 中，避免每次请求都重新计算 HMAC；黑名单查询优先走 Redis SET。
+
+**3. 安全头一次性设置**：CSP 等安全头值是固定字符串，启动时预先生成并复用，避免每个请求都重新拼接字符串。`,
     code: `// ============================================================
 // 第一章代码演示：安全最佳实践
 // 演示输入过滤、路径遍历攻击防范、敏感信息脱敏
@@ -683,7 +784,100 @@ JWT 本身是无状态的，无法主动撤销。但可以通过以下方式实�
 3. **不要在 Payload 中存储敏感信息**：Payload 只是 Base64 编码，不是加密
 4. **使用 HTTPS 传输**：防止 Token 在传输中被窃取
 5. **验证算法**：防止攻击者将算法改为 "none"
-6. **使用 HttpOnly Cookie 存储 Refresh Token**：防止 XSS 攻击窃取 Token`,
+6. **使用 HttpOnly Cookie 存储 Refresh Token**：防止 XSS 攻击窃取 Token
+
+### 「底层原理」JWT 签名验证的底层机制
+
+**HMAC-SHA256 对称签名**：
+
+\`\`\`
+签发端                                验证端
+  │                                     │
+  ├─ signingInput = header.payload      │
+  ├─ signature = HMAC(secret, input)    │
+  │                                     ├─ 重新计算 HMAC(secret, input)
+  │                                     ├─ timingSafeEqual(sig, expected)
+  │                                     └─ 检查 exp/nbf/iat/iss/aud
+  └────────── 同一 secret ──────────────┘
+\`\`\`
+
+HMAC 内部使用 SHA-256，安全强度由密钥长度决定。HMAC 设计保证：即使攻击者能查询 oracle，也无法在多项式时间内伪造签名（依赖 SHA-256 抗碰撞）。
+
+**RS256 非对称签名流程**：
+
+\`\`\`
+签发端 (私钥)                    验证端 (公钥)
+  │                                 │
+  ├─ signature = RSA-SIGN(priv, input)
+  │                                 ├─ RSA-VERIFY(pub, input, sig)
+  │                                 └─ 公钥可公开分发，验证无需秘密
+  └─> 适合微服务：签发方独占私钥，所有服务仅验签
+\`\`\`
+
+**Base64URL 编码差异**：JWT 用 URL-safe Base64（\`+\`→\`-\`，\`/\`→\`_\`，去掉 \`=\`），保证 Token 可放入 URL/HTTP 头而无需额外编码。
+
+**"none" 算法漏洞原理**：旧版库允许 \`alg: "none"\` 跳过签名验证，攻击者删除签名段即可伪造任意 Payload。修复方式是服务端**显式指定白名单算法**，绝不信任 Header 中的 alg。
+
+### 「常见陷阱」JWT 使用常见错误
+
+**1. JWT 存 localStorage 被 XSS 窃取**
+\`\`\`javascript
+// ❌ 错误：localStorage 可被任意 JS 读取
+localStorage.setItem('token', jwt);
+fetch(url, { headers: { Authorization: 'Bearer ' + localStorage.token }});
+
+// ✅ 正确：HttpOnly Cookie 防 JS 读取
+res.cookie('access_token', jwt, {
+  httpOnly: true, secure: true, sameSite: 'strict', maxAge: 3600000
+});
+\`\`\`
+
+**2. 服务端不验证算法**
+\`\`\`javascript
+// ❌ 错误：使用默认解码，允许 alg=none
+const decoded = jwt.decode(token);
+
+// ✅ 正确：显式指定算法
+jwt.verify(token, secret, { algorithms: ['HS256'] });
+\`\`\`
+
+**3. Payload 存敏感信息**
+\`\`\`javascript
+// ❌ 错误：Payload 仅 Base64 编码，可被解码
+const token = jwt.sign({ password: 'xyz', creditCard: '4111...' }, secret);
+
+// ✅ 正确：只放最小必要信息
+const token = jwt.sign({ sub: userId, role: 'user' }, secret);
+\`\`\`
+
+**4. Refresh Token 永不过期**
+\`\`\`javascript
+// ❌ 错误：Refresh Token 长期有效且无法撤销
+jwt.sign({ sub: userId }, secret, { expiresIn: '10y' });
+
+// ✅ 正确：合理有效期 + Redis 撤销列表
+jwt.sign({ sub: userId, jti }, secret, { expiresIn: '7d' });
+// 服务端校验 jti 是否在 Redis 撤销集合中
+\`\`\`
+
+**5. 用 === 比较签名（时序攻击）**
+\`\`\`javascript
+// ❌ 错误：=== 在第一个不同字符处返回
+if (token === expectedToken) { loginSuccess(); }
+
+// ✅ 正确：时间恒定比较
+const valid = crypto.timingSafeEqual(
+  Buffer.from(token), Buffer.from(expectedToken)
+);
+\`\`\`
+
+### 「性能提示」JWT 性能最佳实践
+
+**1. 缓存验证结果**：对短期高频请求（如同一 Token 1 秒内多次调用），用 LRU 缓存 \`jti -> payload\`，避免重复计算 HMAC；缓存条目 TTL 不超过 Token 剩余有效期。
+
+**2. 黑名单用 Redis SET + TTL**：撤销 Token 时 \`SADD blacklist:<jti>\` 并设 \`EXPIRE\` 为 Token 剩余时间，自动清理；查询复杂度 O(1)。
+
+**3. RS256 验证用公钥缓存**：RSA 验签比 HMAC 慢一个数量级，可将公钥 \`createPublicKey\` 后缓存复用，避免每次重新解析 PEM。`,
     code: `// ============================================================
 // 第二章代码演示：JWT 认证实战
 // 使用 crypto 实现 JWT 的生成(HMAC-SHA256)、验证、过期处理和刷新
@@ -1183,7 +1377,105 @@ crypto.pbkdf2(password, salt, iterations, keylen, digest, callback);
 1. 生成一次性重置令牌（带过期时间）
 2. 通过邮箱/短信发送重置链接
 3. 用户点击链接后设置新密码
-4. 令牌使用后立即失效`,
+4. 令牌使用后立即失效
+
+### 「底层原理」bcrypt 的 Eksblowfish 算法
+
+bcrypt 设计目标是"故意变慢"，其底层算法是 Eksblowfish（Expensive Key Schedule Blowfish）：
+
+\`\`\`
+1. 标准 Blowfish：
+   - P-array (18 个 32 位字) + S-boxes (4×256 个 32 位字)
+   - 密钥扩展：用密钥迭代替换 P/S 初始值
+
+2. Eksblowfish 改造（关键差异）：
+   ├─ 初始状态依赖 salt + password（标准 Blowfish 仅依赖密钥）
+   ├─ "ExpandKey" 函数循环 2^cost 次
+   │     每次都消费 salt 和 password，状态持续混淆
+   └─ cost factor（4-31）→ 2^cost 次迭代
+        cost=10 → 1024 次
+        cost=12 → 4096 次
+        cost=14 → 16384 次
+\`\`\`
+
+**为什么抗 GPU/ASIC**：
+- 状态依赖密码 → 无法预计算（彩虹表失效）
+- 大量内存访问 P/S-box（4KB）→ GPU 并行度受限
+- salt 唯一 → 无法批量处理相同输入
+
+**cost factor 调整原则**：
+
+\`\`\`
+目标延迟 ~250ms (登录场景可接受)
+│
+├─ 2020 年硬件: cost=12 (~250ms)
+├─ 2023 年硬件: cost=13 (~250ms)
+└─ 2025 年硬件: cost=14 (~250ms)
+\`\`\`
+
+bcrypt 哈希格式：\`$2b$cost$salt(22字符)hash(31字符)\`，cost 内嵌于哈希，可随硬件升级平滑迁移。
+
+**PBKDF2 原理对比**：PBKDF2 = HMAC(password, salt) 迭代 N 次，每次输出作为下次输入。安全性依赖 HMAC 抗差分攻击，但 GPU 友好（仅需 SHA 计算），抗暴力破解弱于 bcrypt/scrypt/Argon2。
+
+### 「常见陷阱」密码哈希常见错误
+
+**1. 使用 MD5/SHA1 等弱算法**
+\`\`\`javascript
+// ❌ 错误：MD5 已被破解，且速度过快
+const hash = crypto.createHash('md5').update(password).digest('hex');
+
+// ✅ 正确：使用 bcrypt 或 PBKDF2
+const bcrypt = require('bcrypt');
+const hash = await bcrypt.hash(password, 12); // cost=12
+\`\`\`
+
+**2. 不加盐或共享盐**
+\`\`\`javascript
+// ❌ 错误：所有用户用同一盐（彩虹表攻击仍有效）
+const hash = sha256(GLOBAL_SALT + password);
+
+// ✅ 正确：每用户独立随机盐
+const salt = crypto.randomBytes(16);
+const hash = pbkdf2(password, salt, 100000, 64, 'sha512');
+\`\`\`
+
+**3. 用 === 比较哈希（时序攻击）**
+\`\`\`javascript
+// ❌ 错误：=== 在第一个不同字符处返回
+if (storedHash === inputHash) { loginSuccess(); }
+
+// ✅ 正确：时间恒定比较
+const valid = crypto.timingSafeEqual(
+  Buffer.from(storedHash, 'hex'),
+  Buffer.from(inputHash, 'hex')
+);
+\`\`\`
+
+**4. 同步哈希阻塞事件循环**
+\`\`\`javascript
+// ❌ 错误：pbkdf2Sync 阻塞主线程，100ms 卡死所有请求
+const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512');
+
+// ✅ 正确：异步回调
+crypto.pbkdf2(password, salt, 100000, 64, 'sha512', (err, key) => { /*...*/ });
+\`\`\`
+
+**5. cost factor 设过低**
+\`\`\`javascript
+// ❌ 错误：cost=4 几乎无防护，GPU 每秒可尝试 10 万次
+const hash = await bcrypt.hash(password, 4);
+
+// ✅ 正确：根据目标延迟选 cost，目标 250ms
+const hash = await bcrypt.hash(password, 12);
+\`\`\`
+
+### 「性能提示」密码哈希性能最佳实践
+
+**1. 异步 API + 队列控制**：\`bcrypt.hash\` / \`pbkdf2\` 异步版本内部使用 libuv 线程池，但默认池大小为 4。高并发登录场景应在应用层加并发限制（如 p-limit），避免线程池被哈希任务占满。
+
+**2. 哈希参数版本化**：存储格式包含 \`$algorithm$iterations$salt$hash\`，参数升级时对登录成功的用户用新参数重新哈希并写回，无需强制全员重置密码。
+
+**3. 限制登录尝试频率**：密码哈希本身就慢，再叠加限流（如 5 次/分钟/IP），攻击者暴力破解成本指数级上升；同时避免被恶意登录请求拖垮 CPU。`,
     code: `// ============================================================
 // 第三章代码演示：密码加密与哈希
 // 使用 crypto.pbkdf2 实现密码哈希、验证和盐值管理
@@ -1598,7 +1890,108 @@ Permissions-Policy: camera=(), microphone=(), geolocation=(self), payment=()
 2. **使用 Report-Only 模式测试**：CSP 可以先观察再强制执行
 3. **合理设置缓存**：安全头可以通过 \`Cache-Control\` 影响缓存
 4. **监控违规报告**：CSP 可以配置报告端点，收集违规信息
-5. **定期审查**：项目变更时检查安全头是否仍然合适`,
+5. **定期审查**：项目变更时检查安全头是否仍然合适
+
+### 「底层原理」HTTP 安全头的浏览器行为
+
+安全头之所以有效，是因为现代浏览器在**渲染前**主动读取并强制执行这些响应头，将安全检查下沉到客户端。
+
+**CSP 执行流程**：
+
+\`\`\`
+HTML 加载阶段
+   │
+   ├─ 解析 Content-Security-Policy 头
+   ├─ 构建 cspSourceMap（指令 → 来源列表）
+   │
+   └─ 每个资源请求前：
+        ┌─ script-src 包含当前域名？
+        │   ├─ 是 → 允许加载/执行
+        │   └─ 否 → 阻止 + 上报 report-uri
+        ├─ inline 脚本有 nonce/sha256？
+        │   ├─ 是 → 执行
+        │   └─ 否 → 阻止
+        └─ eval() 是否允许 'unsafe-eval'？
+\`\`\`
+
+**HSTS 与浏览器内部状态**：
+
+\`\`\`
+首次访问 HTTPS 站点 ─> 服务器返回 HSTS 头
+                          │
+                          └─ 浏览器写入内部 TransportSecurity 数据库
+                              ├─ max-age 期间所有 http:// 链接自动改写为 https://
+                              ├─ includeSubDomains → 子域名同样强制
+                              └─ preload → 内置于浏览器，首次访问也走 HTTPS
+\`\`\`
+
+**X-Frame-Options vs CSP frame-ancestors**：
+- X-Frame-Options：旧标准，仅支持 DENY/SAMEORIGIN
+- CSP \`frame-ancestors\`：现代标准，支持来源白名单，浏览器优先使用 CSP，回退到 X-Frame-Options
+
+**X-Content-Type-Options: nosniff**：浏览器默认会嗅探响应内容（如把 text/plain 当 HTML 解析），nosniff 强制按 Content-Type 处理，阻断"上传图片实为脚本"的攻击。
+
+**Referrer-Policy**：控制 \`Referer\` 头的发送粒度。\`strict-origin-when-cross-origin\` 是 Chrome 85+ 默认值，跨域只发送 origin（不含路径），同源发送完整 URL。
+
+### 「常见陷阱」安全头配置常见错误
+
+**1. CSP 使用 'unsafe-inline'**
+\`\`\`
+# ❌ 错误：内联脚本全放开，CSP 防御能力大幅削弱
+Content-Security-Policy: script-src 'self' 'unsafe-inline';
+
+# ✅ 正确：用 nonce 或 sha256 精确允许
+Content-Security-Policy: script-src 'self' 'nonce-rAnd0m123';
+<script nonce="rAnd0m123">...</script>
+\`\`\`
+
+**2. HSTS 未启用 preload**
+\`\`\`
+# ❌ 错误：首次访问仍可能被中间人降级
+Strict-Transport-Security: max-age=31536000
+
+# ✅ 正确：申请 preload 列表，覆盖首次访问
+Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+# 并提交到 https://hstspreload.org
+\`\`\`
+
+**3. CORS 与 CSP 混淆**
+\`\`\`javascript
+// ❌ 错误：用 CORS 代替 CSP，或反之
+// CORS 控制浏览器是否"允许读取跨域响应"
+// CSP 控制浏览器是否"允许发起跨域请求"
+app.use(cors({ origin: '*' })); // 不能替代 CSP
+
+// ✅ 正确：两者独立配置
+app.use(cors({ origin: ['https://app.example.com'] }));
+app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'self'"] } } }));
+\`\`\`
+
+**4. X-XSS-Protection 设为 1**
+\`\`\`
+# ❌ 错误：旧版 XSS Auditor 反而引入信息泄露漏洞
+X-XSS-Protection: 1; mode=block
+
+# ✅ 正确：禁用旧过滤器，依赖 CSP
+X-XSS-Protection: 0
+\`\`\`
+
+**5. 安全头只在 HTML 响应设置**
+\`\`\`javascript
+// ❌ 错误：API JSON 响应不设安全头
+app.get('/api/data', (req, res) => res.json(data));
+
+// ✅ 正确：所有响应统一通过中间件设置
+app.use(helmet()); // 覆盖所有路由
+\`\`\`
+
+### 「性能提示」安全头性能最佳实践
+
+**1. 预生成 CSP 字符串**：CSP 策略在应用生命周期内不变，启动时拼好字符串并缓存，中间件只做 \`res.setHeader\`，避免每请求重新拼接。
+
+**2. helmet() 一次性中间件**：helmet 内部已对每个头做常量化处理，调用一次 \`app.use(helmet())\` 即可，无需手动逐个 setHeader，性能开销可忽略。
+
+**3. CSP Report-Only 渐进上线**：先用 \`Content-Security-Policy-Report-Only\` 收集违规报告，确认无业务影响后再切换为强制策略，避免一次性上线导致页面白屏。`,
     code: `// ============================================================
 // 第四章代码演示：安全头与防护
 // 实现一个安全头中间件，设置各种安全响应头
@@ -2085,7 +2478,130 @@ console.log("\\n===== 安全头与防护演示完成 =====");`,
 1. **CDN 层**：WAF（Web 应用防火墙）级别的限流
 2. **反向代理层**：Nginx/Envoy 的 rate limiting 模块
 3. **应用层**：应用代码中的限流中间件（本章重点）
-4. **业务层**：特定业务逻辑的限流（如验证码发送频率）`,
+4. **业务层**：特定业务逻辑的限流（如验证码发送频率）
+
+### 「底层原理」限流算法的实现原理
+
+**令牌桶算法（Token Bucket）**：
+
+\`\`\`
+持续以 R 个/秒速率投放令牌 ──> [桶, 容量 C]
+                                  │
+请求到达 ─> 桶中令牌 >= 1？
+            ├─ 是 → 消耗 1 令牌，放行
+            └─ 否 → 拒绝（或排队）
+
+特性：
+  - 允许突发：桶满时可瞬间消耗 C 个令牌
+  - 长期平均速率 ≤ R
+  - 适合 API 限流（容忍偶发尖峰）
+\`\`\`
+
+**滑动窗口算法（Sliding Window）**：
+
+\`\`\`
+将窗口 W 划分为 N 个桶（每桶 W/N 秒）
+                                    当前桶
+时间轴 ─> [b1][b2][b3][b4][b5][b6][b7][b8]
+                                    │
+求和 = b3+b4+b5+b6+b7+b8（最近 N 个桶）
+                                    │
+                            sum < limit？
+                            ├─ 是 → 当前桶++, 放行
+                            └─ 否 → 拒绝
+\`\`\`
+
+相比固定窗口，滑动窗口将边界尖峰分摊到多个桶，临界突变限制在 \`limit / N\` 内。
+
+**滑动窗口日志（精确版）**：维护请求时间戳列表，每次过滤出窗口内时间戳计数。精确但内存占用高，适合低 QPS 接口。
+
+**Redis 分布式限流的原子性**：
+
+\`\`\`
+单机限流: memory++ (单线程，天然原子)
+              │
+多机限流:  Redis INCR + EXPIRE
+              │
+问题: INCR 与 EXPIRE 之间可能崩溃 → 永久占用 key
+              │
+解决: Lua 脚本（Redis 单线程执行，整体原子）
+─────
+local count = redis.call('INCR', KEYS[1])
+if count == 1 then
+  redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+return count
+─────
+\`\`\`
+
+### 「常见陷阱」限流常见错误
+
+**1. 仅基于 IP 限流，被代理绕过**
+\`\`\`javascript
+// ❌ 错误：直接用 req.ip，反向代理后都是同一 IP
+const ip = req.ip;
+
+// ✅ 正确：信任代理头 + 组合用户维度
+app.set('trust proxy', 1);
+const ip = req.headers['x-forwarded-for']?.split(',')[0].trim();
+const key = userId ? 'user:' + userId : 'ip:' + ip;
+\`\`\`
+
+**2. 内存存储多实例不共享**
+\`\`\`javascript
+// ❌ 错误：4 个 Pod 各自计数，实际限额放大 4 倍
+const counter = new Map();
+
+// ✅ 正确：Redis 共享计数
+const count = await redis.incr('ratelimit:' + key);
+if (count === 1) await redis.expire('ratelimit:' + key, 60);
+\`\`\`
+
+**3. 限流后直接 500 错误**
+\`\`\`javascript
+// ❌ 错误：用 500 状态码，客户端无法区分
+return res.status(500).json({ error: 'too many requests' });
+
+// ✅ 正确：429 + Retry-After 头
+return res.status(429)
+  .set('Retry-After', String(retryAfterSeconds))
+  .set('X-RateLimit-Remaining', '0')
+  .json({ error: 'Too Many Requests' });
+\`\`\`
+
+**4. 限流器内存无限增长**
+\`\`\`javascript
+// ❌ 错误：从不清理过期 key，内存持续膨胀
+const store = {};
+function hit(key) { store[key] = (store[key] || 0) + 1; }
+
+// ✅ 正确：定期清理 + LRU 上限
+setInterval(() => {
+  for (const k of Object.keys(store)) {
+    if (Date.now() - store[k].lastAccess > 3600000) delete store[k];
+  }
+}, 60000).unref();
+\`\`\`
+
+**5. 敏感接口与普通接口同等限制**
+\`\`\`javascript
+// ❌ 错误：登录接口和数据接口都用 100/min，暴力破解无防护
+app.use(rateLimit({ max: 100, windowMs: 60000 }));
+
+// ✅ 正确：分级配置，敏感接口更严格
+const loginLimiter = rateLimit({ max: 5, windowMs: 60000 });
+const apiLimiter = rateLimit({ max: 100, windowMs: 60000 });
+app.post('/login', loginLimiter, loginHandler);
+app.use('/api', apiLimiter);
+\`\`\`
+
+### 「性能提示」限流性能最佳实践
+
+**1. Redis 共享状态 + Pipeline**：分布式部署必须用 Redis 共享计数；批量请求时使用 \`redis.pipeline()\` 减少 RTT，单次限流检查可控制在 1ms 内。
+
+**2. 本地缓存 + 异步同步**：极端高 QPS 场景下，可在本地维护"令牌桶预热"（每 100ms 从 Redis 批量领取令牌），请求消耗本地令牌，避免每请求都访问 Redis。
+
+**3. key 设计精简**：限流 key 用 \`rl:{type}:{id}:{bucket}\` 短前缀，避免 Redis key 过长；过期时间设为窗口大小的 1.5 倍，自动清理无需额外 GC。`,
     code: `// ============================================================
 // 第五章代码演示：限流与防刷
 // 实现滑动窗口限流算法，支持 IP 和接口级别的限流
@@ -2667,7 +3183,128 @@ const InputValidator = {
 2. **过滤不足**：只做了前端验证，服务端未做
 3. **黑名单思维**：试图列举所有危险输入，总有遗漏
 4. **编码后再次编码**：多重编码导致数据损坏
-5. **在错误的位置编码**：在存储时编码而非输出时编码`,
+5. **在错误的位置编码**：在存储时编码而非输出时编码
+
+### 「底层原理」XSS 与 SQL 注入的过滤原理
+
+**XSS 防御：上下文感知编码**
+
+浏览器解析 HTML 时按"状态机"切换上下文，不同上下文对特殊字符的处理不同，因此编码必须匹配上下文：
+
+\`\`\`
+HTML 正文:    <div>USER_INPUT</div>
+              └─ 编码 < > & → 浏览器识别为文本节点
+
+HTML 属性:    <input value="USER_INPUT">
+              └─ 额外编码 " ' → 防止闭合属性注入新属性
+
+JavaScript:   <script>var x = "USER_INPUT";</script>
+              └─ 转义 \\ " ' → 防止闭合字符串注入代码
+
+URL:          <a href="USER_INPUT">
+              └─ 校验协议白名单 → 防止 javascript: 协议
+\`\`\`
+
+**为什么必须先编码 \`&\`**：若先编码 \`<\` 为 \`&lt;\`，再编码 \`&\` 会得到 \`&amp;lt;\`，浏览器显示为 \`&lt;\` 而非 \`<\`，导致双重编码。
+
+**SQL 注入防御：参数化查询**
+
+\`\`\`
+字符串拼接:
+  "SELECT * FROM users WHERE name = '" + input + "'"
+   输入 admin' OR '1'='1
+   → SELECT * FROM users WHERE name = 'admin' OR '1'='1'
+   → SQL 解析器无法区分代码与数据 → 注入成功
+
+参数化查询:
+  "SELECT * FROM users WHERE name = ?"  [input]
+   数据库协议层:
+   ├─ 先发送 SQL 模板，数据库完成语法解析
+   ├─ 再发送参数值，作为字面量绑定到占位符
+   └─ 参数值永远不会被当作 SQL 语法解析
+   → 即使参数含 'OR' 也是普通字符串
+\`\`\`
+
+**ReDoS 的回溯灾难**：
+
+\`\`\`
+正则: (a+)+$
+输入: aaaaaaaaaaaaaaaaaaaaaaaX
+
+回溯过程（指数级）:
+  ┌─ 尝试 a+ 匹配 1~N 个 a
+  ├─ 失败后回溯，重新切分 (a+) 边界
+  ├─ 切分方式 = 2^(N-1) 种
+  └─ N=23 时约 800 万次回溯
+
+防御:
+  - 避免嵌套量词 (a+)+
+  - 用占有量词 (a++) 或原子组 (?>a+)
+  - 限制输入长度
+\`\`\`
+
+### 「常见陷阱」输入过滤常见错误
+
+**1. 黑名单思维**
+\`\`\`javascript
+// ❌ 错误：枚举危险字符，总有遗漏
+const dirty = input.replace(/['"<>&;]/g, '');
+
+// ✅ 正确：白名单定义允许的字符
+if (!/^[a-zA-Z0-9_]{3,20}$/.test(input)) throw new Error('非法字符');
+\`\`\`
+
+**2. 过滤后存储，输出时不再编码**
+\`\`\`javascript
+// ❌ 错误：以为入库时过滤了就安全，输出到不同上下文仍可能注入
+db.save(stripHtml(input));
+res.send('<div>' + input + '</div>');
+
+// ✅ 正确：入库存原文，输出按上下文编码
+db.save(input);
+res.send('<div>' + htmlEncode(input) + '</div>');
+\`\`\`
+
+**3. 过度过滤合法输入**
+\`\`\`javascript
+// ❌ 错误：禁止所有特殊字符，"O'Brien" 无法注册
+if (/[^a-zA-Z]/.test(name)) throw new Error('非法');
+
+// ✅ 正确：允许合法字符，仅转义输出
+if (!/^[\\p{L}\\s'.-]{1,50}$/u.test(name)) throw new Error('非法');
+// 输出时 htmlEncode(name)
+\`\`\`
+
+**4. 只验证不转换**
+\`\`\`javascript
+// ❌ 错误：验证后直接使用，前后空格/大小写不一致
+if (validate(email)) user.email = email;
+
+// ✅ 正确：验证 + 标准化转换
+if (validate(email)) user.email = email.trim().toLowerCase();
+\`\`\`
+
+**5. JSON.parse 后未做 schema 验证**
+\`\`\`javascript
+// ❌ 错误：直接信任前端 JSON 结构
+const data = JSON.parse(req.body);
+db.query('INSERT INTO users SET ?', data);
+
+// ✅ 正确：用 Zod/Joi 校验 schema
+const schema = z.object({
+  username: z.string().min(3).max(20),
+  email: z.string().email(),
+});
+const data = schema.parse(JSON.parse(req.body));
+\`\`\`
+
+### 「性能提示」输入过滤性能最佳实践
+
+**1. 长度优先短路**：在执行复杂正则前先做长度检查（如 \`if (input.length > 100) return reject\`），可拦截大部分 ReDoS 与超长输入攻击，开销极低。
+
+**2. 编码函数预编译**：HTML 实体编码表用对象字面量 \`const MAP = { '<': '&lt;' }\` 一次性定义，配合 \`replace(/[<>&"'/]/g, c => MAP[c])\`，比链式 replace 调用快 5-10 倍。
+
+**3. Schema 验证器复用**：Zod/Joi 的 schema 对象可缓存复用，避免每请求重新构建；大型 schema 可拆分为字段级验证器，按需组合。`,
     code: `// ============================================================
 // 第六章代码演示：输入过滤与防注入
 // 实现输入过滤工具，包括 HTML 编码、路径安全化、字符串脱敏
