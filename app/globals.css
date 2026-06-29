@@ -936,6 +936,12 @@ body {
   max-height: 520px;
 }
 
+/* CodeEditor 根元素：嵌套在 flex 容器中时需撑满宽度，否则会塌缩到行号宽度 */
+.ce-editor-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
 /* 行号 */
 .line-numbers {
   background: var(--editor-gutter-bg);
