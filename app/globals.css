@@ -671,10 +671,8 @@ body {
   position: relative;
   margin: 14px 0;
 }
-/* 编辑器容器：替代旧的 md-code-block pre，为工具栏留出空间 */
+/* 编辑器容器：紧贴在工具栏下方，去掉顶部留白 */
 .md-code-editor-container {
-  padding-top: 32px;
-  border-radius: var(--radius-sm);
   overflow: hidden;
   position: relative;
 }
@@ -682,45 +680,83 @@ body {
 .md-code-editor-container .ce-editor-wrap {
   border-radius: 0;
   border: 1px solid var(--editor-border);
-  box-shadow: var(--shadow-sm);
+  border-top: none;
+  box-shadow: none;
   min-height: 80px;
   max-height: 400px;
 }
 /* 有输出面板时，编辑器底部圆角去掉，与输出面板衔接 */
 .md-code-block-wrap.has-output .ce-editor-wrap {
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-radius: 0;
   border-bottom: none;
 }
 
-/* 右上角工具栏 */
+/* 顶部黑色工具栏（仿 Playground 的 pg-pane-header 风格） */
 .md-code-toolbar {
-  position: absolute;
-  top: 6px;
-  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 14px;
+  background: var(--bg-sidebar);
+  color: var(--text-on-dark);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  flex-shrink: 0;
+}
+
+.md-code-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.md-code-toolbar-right {
   display: flex;
   align-items: center;
   gap: 4px;
-  z-index: 1;
+  flex-shrink: 0;
+}
+
+/* 圆点（macOS 窗口红绿黄灯风格） */
+.md-code-toolbar .dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.md-code-toolbar .dot-red {
+  background: #ff5f57;
+}
+.md-code-toolbar .dot-yellow {
+  background: #febc2e;
+}
+.md-code-toolbar .dot-green {
+  background: #28c840;
 }
 
 /* 语言标签 */
 .md-code-lang-tag {
-  font-size: 11px;
-  color: var(--text-muted);
+  font-size: 12px;
+  color: var(--text-on-dark);
   font-family: var(--mono);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-right: 4px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  margin-left: 4px;
   user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* 通用按钮样式 */
+/* 通用按钮样式（深色背景下使用浅色描边按钮） */
 .md-code-btn {
-  background: #f1f5f9;
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-on-dark);
+  border: 1px solid var(--border-dark);
   border-radius: 4px;
-  padding: 3px 9px;
+  padding: 3px 10px;
   font-size: 11px;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
@@ -729,9 +765,9 @@ body {
   line-height: 1.4;
 }
 .md-code-btn:hover {
-  background: #e2e8f0;
-  border-color: #cbd5e1;
-  color: var(--text);
+  background: rgba(255, 255, 255, 0.18);
+  border-color: var(--text-muted);
+  color: #fff;
 }
 .md-code-btn:active {
   transform: translateY(1px);
@@ -743,16 +779,16 @@ body {
 
 /* 运行按钮 hover 绿色 */
 .md-code-btn-run:hover {
-  background: rgba(22, 163, 74, 0.12);
-  border-color: rgba(22, 163, 74, 0.5);
-  color: #15803d;
+  background: rgba(22, 163, 74, 0.2);
+  border-color: rgba(74, 222, 128, 0.6);
+  color: #4ade80;
 }
 
 /* Playground 按钮 hover 蓝色 */
 .md-code-btn-pg:hover {
-  background: rgba(37, 99, 235, 0.12);
-  border-color: rgba(37, 99, 235, 0.5);
-  color: #2563eb;
+  background: rgba(37, 99, 235, 0.2);
+  border-color: rgba(96, 165, 250, 0.6);
+  color: #93c5fd;
 }
 
 /* ===== 就地运行结果面板 ===== */

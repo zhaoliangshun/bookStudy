@@ -217,6 +217,55 @@ export function CodeBlock({ code: initialCode, lang }) {
 
   return (
     <div className={`md-code-block-wrap ${showOutput ? "has-output" : ""}`}>
+      {/* 顶部黑色工具栏：语言标签 + 操作按钮（仿 Playground pg-pane-header） */}
+      <div className="md-code-toolbar">
+        <div className="md-code-toolbar-left">
+          <span className="dot dot-red"></span>
+          <span className="dot dot-yellow"></span>
+          <span className="dot dot-green"></span>
+          {displayLabel && (
+            <span className="md-code-lang-tag">{displayLabel}</span>
+          )}
+        </div>
+        <div className="md-code-toolbar-right">
+          {hasChanged && (
+            <button
+              className="md-code-btn"
+              onClick={handleReset}
+              title="重置为原始代码"
+            >
+              ↺ 重置
+            </button>
+          )}
+          <button
+            className="md-code-btn"
+            onClick={handleCopy}
+            title="复制代码到剪贴板"
+          >
+            {copied ? "✓ 已复制" : "复制"}
+          </button>
+          {canRun && (
+            <button
+              className="md-code-btn md-code-btn-run"
+              onClick={handleRun}
+              disabled={isRunning}
+              title={`运行 ${langInfo.label} 代码（Ctrl/Cmd + Enter）`}
+            >
+              {isRunning ? "运行中..." : "▶ 运行"}
+            </button>
+          )}
+          {canPlayground && (
+            <button
+              className="md-code-btn md-code-btn-pg"
+              onClick={handlePlayground}
+              title="在 Playground 中打开"
+            >
+              🚀 Playground
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* 代码编辑器（与 Playground 完全相同的组件） */}
       <div className="md-code-editor-container">
         <CodeEditor
@@ -229,48 +278,6 @@ export function CodeBlock({ code: initialCode, lang }) {
           maxHeight={400}
           placeholder=""
         />
-      </div>
-
-      {/* 右上角工具栏 */}
-      <div className="md-code-toolbar">
-        {displayLabel && (
-          <span className="md-code-lang-tag">{displayLabel}</span>
-        )}
-        {hasChanged && (
-          <button
-            className="md-code-btn"
-            onClick={handleReset}
-            title="重置为原始代码"
-          >
-            ↺ 重置
-          </button>
-        )}
-        <button
-          className="md-code-btn"
-          onClick={handleCopy}
-          title="复制代码到剪贴板"
-        >
-          {copied ? "✓ 已复制" : "复制"}
-        </button>
-        {canRun && (
-          <button
-            className="md-code-btn md-code-btn-run"
-            onClick={handleRun}
-            disabled={isRunning}
-            title={`运行 ${langInfo.label} 代码（Ctrl/Cmd + Enter）`}
-          >
-            {isRunning ? "运行中..." : "▶ 运行"}
-          </button>
-        )}
-        {canPlayground && (
-          <button
-            className="md-code-btn md-code-btn-pg"
-            onClick={handlePlayground}
-            title="在 Playground 中打开"
-          >
-            🚀 Playground
-          </button>
-        )}
       </div>
 
       {/* 运行结果输出面板 */}
