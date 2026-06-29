@@ -1,7 +1,7 @@
 // =============================================================
 // TypeScript 教程章节数据（聚合入口）
 // -------------------------------------------------------------
-// 教程内容按章节分组拆分到 9 个独立文件：
+// 教程内容按章节分组拆分到 11 个独立文件：
 //   ts-chapters-batch1.js : 基础（intro, basic-types, annotations,
 //                                  interface, type-alias）
 //   ts-chapters-batch2.js : 核心（functions, classes, generics,
@@ -26,6 +26,12 @@
 //   ts-chapters-batch9.js : 实战（design-patterns, state-machine,
 //                                  real-world, performance,
 //                                  best-practices）
+//   ts-chapters-batch10.js: 补充专题 1（satisfies, ts5-features,
+//                                  variance, unknown-any-deep,
+//                                  assertion-vs-guard）
+//   ts-chapters-batch11.js: 补充专题 2（assert-functions,
+//                                  unique-symbol, index-signature-deep,
+//                                  overloading-deep, runtime-validation）
 //
 // 用户代码会先被 TypeScript 编译器转译成 JS（/api/run-ts），
 // 再在 vm 沙箱中执行，因此所有 demo 都支持 TS 语法。
@@ -40,6 +46,8 @@ import { chapters as batch6 } from "./ts-chapters-batch6";
 import { chapters as batch7 } from "./ts-chapters-batch7";
 import { chapters as batch8 } from "./ts-chapters-batch8";
 import { chapters as batch9 } from "./ts-chapters-batch9";
+import { chapters as batch10 } from "./ts-chapters-batch10";
+import { chapters as batch11 } from "./ts-chapters-batch11";
 
 // 按分组顺序拼接所有章节
 export const tsChapters = [
@@ -52,6 +60,8 @@ export const tsChapters = [
   ...batch7,
   ...batch8,
   ...batch9,
+  ...batch10,
+  ...batch11,
 ];
 
 // 侧边栏分组顺序

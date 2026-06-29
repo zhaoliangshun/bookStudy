@@ -237,7 +237,9 @@ async function runCsharpCode(code) {
     [
       "run",
       "--project", RUNNER_DIR,
-      "--no-build",  // 不预先 build（让 dotnet run 一次搞定）
+      // 不使用 --no-build：--no-build 会跳过编译直接运行已有程序集，
+      // 但首次运行时还没有构建产物，会导致找不到可执行文件。
+      // 让 dotnet run 自动构建并运行（首次稍慢，后续有缓存）。
       "-c", "Release",
     ],
     {

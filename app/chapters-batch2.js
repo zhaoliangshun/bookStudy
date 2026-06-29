@@ -144,6 +144,137 @@ fetch(url, { signal });
 | \`exports\` | \`module.exports\` 的快捷引用 |
 | \`Promise\` | Promise 构造函数 |
 
+---
+
+### 「底层原理」
+
+Node.js 的全局对象在启动时由 V8 和 libuv 共同注入，其内存布局和初始化流程如下：
+
+\`\`\`
+┌─────────────────────────────────────────────────────────────┐
+│                    Node.js 进程启动                          │
+├─────────────────────────────────────────────────────────────┤
+│  1. V8 初始化 Isolate（隔离实例）                            │
+│     └─ 创建 Context（执行上下文）                            │
+│  2. Node.js 绑定 C++ 原生模块到 global 对象                  │
+│     ├─ process → C++ Process 对象                           │
+│     ├─ Buffer  → C++ Buffer 池（在 V8 堆外分配）             │
+│     ├─ console → C++ stdout/stderr 绑定                     │
+│     └─ timers  → libuv uv_timer_t 句柄                      │
+│  3. 模块加载器注入 __dirname / __filename / require / module │
+│     └─ 这些是模块级变量，不是 global 的属性                  │
+│  4. 注册 WHATWG 标准类：URL / URLSearchParams / AbortController │
+└─────────────────────────────────────────────────────────────┘
+\`\`\`
+
+| 对象 | 内存位置 | 生命周期 | 实现层 |
+| --- | --- | --- | --- |
+| \`global\` / \`globalThis\` | V8 堆 | 进程全程 | V8 + Node.js |
+| \`process\` | V8 堆（C++ 绑定） | 进程全程 | C++ (node_process.cc) |
+| \`Buffer\` | V8 堆外（C++ malloc） | 手动管理 | C++ (node_buffer.cc) |
+| \`console\` | V8 堆 | 进程全程 | JS 封装 + C++ 输出 |
+| 定时器 | libuv 事件循环 | 随句柄销毁 | libuv (uv_timer) |
+
+定时器的调度机制：\`setTimeout\` 和 \`setInterval\` 由 libuv 的 **timer heap**（最小堆）管理，按过期时间排序；\`setImmediate\` 使用 libuv 的 **check 阶段**专用队列，在每次 I/O 回调后立即执行；\`process.nextTick\` 则维护一个独立的 JS 层微任务队列，在每个操作完成后、事件循环切换阶段前清空，优先级最高。
+
+---
+
+### 「常见陷阱」
+
+**陷阱 1：模块顶层 this 不是 global**
+
+\`\`\`javascript
+// ❌ 错误：误以为顶层 this 指向全局对象
+console.log(this === global); // false
+console.log(this === module.exports); // true
+
+// ✅ 正确：使用 globalThis 或 global
+console.log(globalThis === global); // true
+\`\`\`
+
+**陷阱 2：setTimeout(fn, 0) 并非真正 0 毫秒**
+
+\`\`\`javascript
+// ❌ 错误：认为 0ms 定时器会立即执行
+setTimeout(() => console.log("timeout"), 0);
+setImmediate(() => console.log("immediate"));
+// 在主模块中执行顺序不确定，受系统调度影响
+
+// ✅ 正确：理解事件循环阶段
+// I/O 回调中 setImmediate 总是先于 setTimeout(fn, 0)
+const fs = require("fs");
+fs.readFile(__filename, () => {
+  setTimeout(() => console.log("timeout"), 0);
+  setImmediate(() => console.log("immediate"));
+  // 输出顺序确定：immediate → timeout
+});
+\`\`\`
+
+**陷阱 3：忘记清除定时器导致内存泄漏**
+
+\`\`\`javascript
+// ❌ 错误：定时器持有回调引用，无法被 GC
+function startPolling() {
+  setInterval(() => {
+    fetchData(); // 如果不 clearInterval，进程不会退出
+  }, 1000);
+}
+
+// ✅ 正确：保存引用，在适当时机清除
+function startPolling() {
+  const timer = setInterval(fetchData, 1000);
+  return () => clearInterval(timer); // 返回清理函数
+}
+const stop = startPolling();
+stop(); // 需要时停止
+\`\`\`
+
+**陷阱 4：混用 __dirname 和 process.cwd()**
+
+\`\`\`javascript
+// ❌ 错误：不理解两者区别
+// 假设在 /home/user/project 目录下执行 node src/index.js
+console.log(__dirname); // "/home/user/project/src" ← 文件所在目录
+console.log(process.cwd()); // "/home/user/project" ← 启动命令所在目录
+
+// ✅ 正确：根据用途选择
+// 读取相对配置文件 → 用 process.cwd()
+// 读取与当前文件同级的资源 → 用 __dirname
+\`\`\`
+
+**陷阱 5：AbortController 的 signal 只能触发一次 abort**
+
+\`\`\`javascript
+// ❌ 错误：尝试复用已 abort 的 controller
+const controller = new AbortController();
+controller.abort();
+fetch(url, { signal: controller.signal }); // 立即失败，无法"重置"
+
+// ✅ 正确：每次异步操作创建新的 AbortController
+function fetchWithTimeout(url, ms = 5000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ms);
+  return fetch(url, { signal: controller.signal })
+    .finally(() => clearTimeout(timeout));
+}
+\`\`\`
+
+---
+
+### 「性能提示」
+
+**1. 优先使用 setImmediate 而非 setTimeout(fn, 0) 进行 I/O 后调度**
+
+在 I/O 回调中需要延迟执行时，\`setImmediate\` 的 check 阶段比 timers 阶段更快触发，且不受系统时钟粒度影响（Windows 上定时器精度约 15ms）。
+
+**2. 使用 performance.now() 替代 Date.now() 进行性能测量**
+
+\`performance.now()\` 返回单调递增的高精度时间（纳秒级），不受系统时间调整影响；\`Date.now()\` 精度为毫秒且可能被 NTP 回拨导致负耗时。
+
+**3. 避免在全局作用域挂载大量变量**
+
+\`global\` 对象是 V8 运行时 Context 的全局属性，频繁在其上增删属性会导致 V8 的隐藏类（Hidden Class）转换，降低所有模块中全局变量访问的性能。需要共享数据时使用模块导出而非 global 赋值。
+
 下面这段代码演示了常用全局对象的用法。`,
     code: `// ============================================================
 // 第一章代码演示：全局对象与内置常量
@@ -554,6 +685,160 @@ fs.rmdirSync("emptyDir");
 fs.writeFileSync("file.txt", "data", { mode: 0o644 });
 \`\`\`
 
+---
+
+### 「底层原理」
+
+Node.js 的 \`fs\` 模块底层通过 **libuv** 跨平台 I/O 库调用操作系统的系统调用，同步 API 直接阻塞事件循环线程：
+
+\`\`\`
+  用户 JS 代码               libuv 层                  操作系统内核
+  ────────────              ───────────              ─────────────
+  fs.readFileSync() ──→ uv_fs_open() ──→ open() 系统调用
+         │                    │               ↓ (阻塞等待磁盘I/O)
+         │                    │         read() 系统调用
+         │                    │               ↓
+         ←──── 返回数据 ←─────┘ ←──── 从内核缓冲区复制到用户空间
+  (线程在此期间被阻塞)
+
+  异步 readFile 路径:
+  fs.readFile(cb) ──→ uv_fs_open(..., callback)
+         │                    │ 提交到线程池 (默认4线程)
+         │                    │    ↓ 工作线程执行阻塞 I/O
+         │                    │    ↓ I/O 完成后通知主线程
+         ←───── 回调入队 ←─────┘ (事件循环 I/O callbacks 阶段)
+\`\`\`
+
+| 系统调用 (POSIX) | 对应 Node.js API | 说明 |
+| --- | --- | --- |
+| \`open(2)\` | \`fs.openSync\` | 打开文件，返回文件描述符 |
+| \`read(2)\` | \`fs.readSync\` | 从文件描述符读取字节到 Buffer |
+| \`write(2)\` | \`fs.writeSync\` | 将 Buffer 写入文件描述符 |
+| \`close(2)\` | \`fs.closeSync\` | 关闭文件描述符 |
+| \`stat(2)\` | \`fs.statSync\` | 获取文件元数据（inode 信息） |
+| \`mkdir(2)\` | \`fs.mkdirSync\` | 创建目录 |
+| \`unlink(2)\` | \`fs.unlinkSync\` | 删除目录条目（文件链接） |
+
+**文件描述符本质**：每个进程维护一个**文件描述符表**（内核级数组），fd 是这个数组的索引。0=stdin、1=stdout、2=stderr，新打开的文件从 3 开始分配。Node.js 进程能打开的 fd 数量受限于 \`ulimit -n\`（通常默认 1024 或 65535）。
+
+**同步 vs 异步的底层差异**：同步 API 直接在主线程调用阻塞式系统调用（\`read(2)\` 等），会暂停事件循环；异步 API 将 I/O 操作提交给 libuv 的**线程池**（默认大小 4，可通过 \`UV_THREADPOOL_SIZE\` 环境变量调整，最大 1024），工作线程执行阻塞 I/O，完成后通过 IPC 通知主线程执行回调。
+
+---
+
+### 「常见陷阱」
+
+**陷阱 1：在请求处理中使用同步 API 阻塞事件循环**
+
+\`\`\`javascript
+// ❌ 错误：服务器每次请求都同步读取文件，阻塞所有其他请求
+const http = require("http");
+http.createServer((req, res) => {
+  const data = fs.readFileSync("./large-file.txt"); // 阻塞！
+  res.end(data);
+}).listen(3000);
+
+// ✅ 正确：启动时同步读取一次（缓存），或使用异步 API
+const config = fs.readFileSync("./config.json", "utf8"); // 启动时可以
+http.createServer(async (req, res) => {
+  const data = await fs.promises.readFile("./large-file.txt"); // 异步
+  res.end(data);
+}).listen(3000);
+\`\`\`
+
+**陷阱 2：用 existsSync 做"先检查后操作"（TOCTOU 竞态条件）**
+
+\`\`\`javascript
+// ❌ 错误：竞态条件——文件可能在检查和操作之间被删除
+if (fs.existsSync("config.json")) {
+  const data = fs.readFileSync("config.json"); // 文件此时可能已不存在！
+}
+
+// ✅ 正确：直接操作，用 try-catch 处理错误
+try {
+  const data = fs.readFileSync("config.json");
+} catch (err) {
+  if (err.code === "ENOENT") {
+    console.log("配置文件不存在，使用默认值");
+  } else {
+    throw err;
+  }
+}
+\`\`\`
+
+**陷阱 3：忘记关闭文件描述符导致 fd 泄漏**
+
+\`\`\`javascript
+// ❌ 错误：打开后不关闭，最终耗尽文件描述符
+function leakyRead(path) {
+  const fd = fs.openSync(path, "r");
+  const buf = Buffer.alloc(1024);
+  fs.readSync(fd, buf, 0, 1024, 0);
+  return buf;
+  // 忘记 fs.closeSync(fd)！每次调用泄漏一个 fd
+}
+
+// ✅ 正确：使用 try-finally 确保关闭
+function safeRead(path) {
+  const fd = fs.openSync(path, "r");
+  try {
+    const buf = Buffer.alloc(1024);
+    fs.readSync(fd, buf, 0, 1024, 0);
+    return buf;
+  } finally {
+    fs.closeSync(fd); // 确保无论如何都关闭
+  }
+}
+// 更好的方式：直接用 fs.readFileSync（内部自动管理 fd）
+\`\`\`
+
+**陷阱 4：writeFileSync 默认覆盖文件内容**
+
+\`\`\`javascript
+// ❌ 错误：以为 writeFileSync 是追加，实际覆盖
+fs.writeFileSync("log.txt", "第一行\n");
+fs.writeFileSync("log.txt", "第二行\n");
+// 文件内容只有"第二行"，第一行被覆盖了！
+
+// ✅ 正确1：追加内容使用 appendFileSync
+fs.appendFileSync("log.txt", "第一行\n");
+fs.appendFileSync("log.txt", "第二行\n");
+
+// ✅ 正确2：使用 flag: 'a' 模式打开
+fs.writeFileSync("log.txt", "第一行\n", { flag: "a" });
+\`\`\`
+
+**陷阱 5：读取文件不指定编码返回 Buffer 而非字符串**
+
+\`\`\`javascript
+// ❌ 错误：不指定编码，以为返回字符串
+const data = fs.readFileSync("file.txt");
+console.log(data.toUpperCase()); // Buffer 没有 toUpperCase 方法！报错
+
+// ✅ 正确：需要字符串时指定编码
+const text = fs.readFileSync("file.txt", "utf8");
+console.log(text.toUpperCase());
+
+// 或者需要时手动转换
+const buf = fs.readFileSync("file.txt");
+const str = buf.toString("utf8");
+\`\`\`
+
+---
+
+### 「性能提示」
+
+**1. 批量操作时优先使用异步 API + 并发控制，避免同步 API 阻塞**
+
+同步 API 虽然写法简单，但在 HTTP 服务器等场景会阻塞事件循环，吞吐量急剧下降。高并发场景使用 \`fs.promises\` 配合 \`Promise.all\`（注意并发数，用 p-limit 等库限制）。
+
+**2. 使用 withFileTypes: true 替代 readdirSync + statSync 遍历目录**
+
+\`fs.readdirSync(dir, { withFileTypes: true })\` 返回的 \`Dirent\` 对象直接包含 \`isDirectory()\`、\`isFile()\` 等方法，避免为每个文件额外调用一次 \`statSync\`，目录遍历性能可提升 **2-3 倍**。
+
+**3. 大文件使用流式读写（createReadStream/createWriteStream），避免一次性加载到内存**
+
+\`fs.readFileSync\` 会将整个文件读入内存，处理 GB 级文件会导致 OOM。使用 \`fs.createReadStream\` 分块（默认 64KB）读取，配合 \`.pipe()\` 处理，内存占用恒定且不阻塞事件循环。
+
 下面这段代码演示了 fs 模块同步方法的核心用法。`,
     code: `// ============================================================
 // 第二章代码演示：文件系统基础（fs 同步 API）
@@ -939,6 +1224,192 @@ const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "myapp-"));
 \`\`\`
 
 > 临时文件应在使用后及时清理，避免占用磁盘空间。
+
+---
+
+### 「底层原理」
+
+**文件监视的底层机制**：
+
+\`fs.watch\` 在不同平台使用不同的操作系统原生 API：
+
+\`\`\`
+┌─────────────────────────────────────────────────────────────┐
+│                    fs.watch 底层实现                         │
+├─────────────────────────────────────────────────────────────┤
+│  Linux   → inotify (内核2.6.13+)                            │
+│            └─ inotify_init / inotify_add_watch              │
+│            └─ 事件驱动，无轮询开销，支持递归需手动实现       │
+│  macOS   → FSEvents (内核级)                                │
+│            └─ 原生支持目录递归监视（带 recursive 选项）       │
+│            └─ 事件可能合并，粒度较粗                         │
+│  Windows → ReadDirectoryChangesW                            │
+│            └─ 基于 IOCP (I/O Completion Ports)              │
+│            └─ 支持递归监视                                  │
+│  网络文件系统 (NFS/SMB) → 无法使用原生通知 → fallback 到轮询  │
+└─────────────────────────────────────────────────────────────┘
+\`\`\`
+
+\`fs.watchFile\` 则完全在 JS 层实现，使用 \`setInterval\` 定期调用 \`stat\` 检查 \`mtime\`，轮询间隔默认 5007ms。
+
+**流式复制的工作原理**：
+
+\`fs.createReadStream\` 和 \`fs.createWriteStream\` 底层使用 libuv 的流机制：
+
+\`\`\`
+  ReadStream (highWaterMark=64KB)
+     │  内部维护 _readableState.buffer
+     │  每次从 fd 读取 64KB 到 Buffer
+     ↓
+  .pipe() → 自动处理背压（backpressure）
+     │  当写入速度 < 读取速度时，暂停读取
+     │  防止缓冲区溢出导致内存暴涨
+     ↓
+  WriteStream
+     │  内部缓冲写入请求
+     │  批量刷入内核缓冲区
+     ↓
+  磁盘
+\`\`\`
+
+**符号链接本质**：符号链接是一个特殊文件（inode 类型为 \`S_IFLNK\`），其内容是一个**路径字符串**（指向目标的文本路径），不包含目标文件的 inode 号。因此：
+- 符号链接可以跨文件系统
+- 目标不存在时成为"悬空链接"（dangling link）
+- \`stat\` 跟随链接，\`lstat\` 查看链接本身
+
+---
+
+### 「常见陷阱」
+
+**陷阱 1：fs.watch 在不同平台行为不一致，filename 可能为 null**
+
+\`\`\`javascript
+// ❌ 错误：假设 filename 总是有值
+fs.watch("dir", (eventType, filename) => {
+  console.log(filename.toUpperCase()); // macOS 某些场景 filename 为 null，崩溃！
+});
+
+// ✅ 正确：始终检查 filename
+fs.watch("dir", (eventType, filename) => {
+  if (filename) {
+    console.log(`文件变化: ${filename}, 类型: ${eventType}`);
+  } else {
+    console.log("文件名未知，需要重新扫描目录");
+  }
+});
+\`\`\`
+
+**陷阱 2：renameSync 不能跨文件系统移动文件**
+
+\`\`\`javascript
+// ❌ 错误：跨文件系统移动会报错 EXDEV
+fs.renameSync("/tmp/file.txt", "/mnt/other-disk/file.txt");
+// Error: EXDEV: cross-device link not permitted
+
+// ✅ 正确：跨设备移动需要 copy + unlink
+function moveFile(src, dest) {
+  try {
+    fs.renameSync(src, dest);
+  } catch (err) {
+    if (err.code === "EXDEV") {
+      fs.copyFileSync(src, dest);
+      fs.unlinkSync(src);
+    } else {
+      throw err;
+    }
+  }
+}
+\`\`\`
+
+**陷阱 3：递归遍历目录时符号链接导致无限循环**
+
+\`\`\`javascript
+// ❌ 错误：目录中存在指向自身的符号链接会导致无限递归
+function badWalk(dir) {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      badWalk(full); // 若 entry 是符号链接指向父目录 → 无限循环！
+    }
+  }
+}
+
+// ✅ 正确：用 lstat 判断，不跟随符号链接
+function safeWalk(dir, visited = new Set()) {
+  const real = fs.realpathSync(dir);
+  if (visited.has(real)) return; // 防循环
+  visited.add(real);
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isSymbolicLink()) continue; // 跳过符号链接
+    if (entry.isDirectory()) safeWalk(full, visited);
+  }
+}
+\`\`\`
+
+**陷阱 4：fs.watch 不递归（除 macOS 外），需要手动递归监视子目录**
+
+\`\`\`javascript
+// ❌ 错误：以为 watch 能递归监视所有子目录
+const watcher = fs.watch("project", (event, filename) => {
+  console.log("变化:", filename); // 只能监视 project 根目录，子目录变化不触发！
+});
+
+// ✅ 正确：手动遍历目录，为每个子目录添加 watch
+function watchRecursive(dir, callback) {
+  const watchers = [];
+  function walk(current) {
+    const w = fs.watch(current, callback);
+    watchers.push(w);
+    const entries = fs.readdirSync(current, { withFileTypes: true });
+    for (const e of entries) {
+      if (e.isDirectory()) walk(path.join(current, e.name));
+    }
+  }
+  walk(dir);
+  return () => watchers.forEach(w => w.close());
+}
+\`\`\`
+
+**陷阱 5：mkdtemp 忘记清理，临时目录泄漏**
+
+\`\`\`javascript
+// ❌ 错误：创建临时目录后不清理，磁盘逐渐被占满
+function processData() {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "proc-"));
+  fs.writeFileSync(path.join(tmp, "data"), content);
+  // 没有清理！
+}
+
+// ✅ 正确：使用 try-finally 确保清理
+function processData() {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "proc-"));
+  try {
+    fs.writeFileSync(path.join(tmp, "data"), content);
+    // 处理...
+  } finally {
+    fs.rmSync(tmp, { recursive: true }); // 确保清理
+  }
+}
+\`\`\`
+
+---
+
+### 「性能提示」
+
+**1. 文件复制优先使用 fs.copyFileSync（小文件）或流式 copy（大文件），避免手动 read+write**
+
+Node.js 10+ 的 \`fs.copyFileSync\` 在大多数平台使用操作系统的**写时复制**（copy-on-write，如 macOS 的 \`clonefile\`、Linux 的 \`FICLONE\`），比手动 read+write 快数倍；超大文件（>100MB）建议使用 \`fs.copyFile\` 异步版本或流式复制避免阻塞。
+
+**2. 递归目录遍历使用 withFileTypes: true + 同步 API 比异步递归快**
+
+目录元数据在内核的目录项缓存（dentry cache）中命中率极高，同步 \`readdirSync\` + \`withFileTypes: true\` 避免了异步递归的回调开销，遍历性能优于 async/await 递归。只有涉及大量非缓存 I/O（如冷启动遍历百万文件）时异步才有优势。
+
+**3. 避免在 fs.watch 回调中执行重 I/O 操作**
+
+\`fs.watch\` 的回调在事件循环的主线程执行，且文件变化事件可能短时间内密集触发（如编辑器保存时产生多次 change + rename 事件）。回调中应做最少工作：**防抖（debounce）后将实际处理推迟到 setImmediate 或异步任务中**，避免阻塞事件循环导致事件丢失。
 
 下面这段代码实现递归目录遍历，过滤特定扩展名文件，统计文件数量和大小。`,
     code: `// ============================================================
@@ -1401,6 +1872,150 @@ const parts = somePath.split(path.sep);
 // 在 Windows 上处理 POSIX 路径，或反过来
 const normalized = path.posix.normalize("a/b/c");
 \`\`\`
+
+---
+
+### 「底层原理」
+
+`path` 模块是**纯 JS 实现**的字符串处理工具，不涉及任何系统调用。它的核心是路径规范化算法，本质上是对路径字符串进行词法分析和状态机转换：
+
+\`\`\`
+输入路径字符串
+    │
+    ▼
+┌──────────────────────────────────────────┐
+│  1. 拆分：按分隔符拆分为路径组件           │
+│     POSIX: split('/')                    │
+│     Windows: split(/[\\/]/)              │
+│     注意: Windows 需先识别驱动器前缀 (C:\) │
+└──────────────────────────────────────────┘
+    │
+    ▼
+┌──────────────────────────────────────────┐
+│  2. 规范化处理：逐组件处理                 │
+│     '.'    → 丢弃（当前目录）             │
+│     '..'   → 弹出上一个组件（上级目录）    │
+│     ''     → 保留（绝对路径根/连续斜杠）   │
+│     其他   → 压入栈                       │
+│                                          │
+│  栈操作示意 (a/b/../c):                  │
+│  push('a') → ['a']                       │
+│  push('b') → ['a','b']                   │
+│  '..' pop  → ['a']                       │
+│  push('c') → ['a','c']                   │
+│  结果: 'a/c'                             │
+└──────────────────────────────────────────┘
+    │
+    ▼
+┌──────────────────────────────────────────┐
+│  3. 重组：用平台分隔符拼接组件             │
+│     POSIX: join('/')                     │
+│     Windows: join('\\')                  │
+└──────────────────────────────────────────┘
+\`\`\`
+
+**path.posix 与 path.win32 的关系**：Node.js 在模块加载时根据 \`process.platform\` 选择实现：
+
+\`\`\`javascript
+// Node.js 内部逻辑（简化）
+const path = process.platform === "win32" ? pathWin32 : pathPosix;
+\`\`\`
+
+两个实现共享大部分逻辑，仅分隔符、驱动器识别等平台相关部分不同。显式使用 \`path.posix\` 或 \`path.win32\` 可以强制使用特定平台的路径规则，在跨平台工具中非常有用。
+
+**path.resolve 的绝对路径解析**：\`path.resolve\` 从右向左处理路径片段，遇到第一个绝对路径标记（POSIX 的 \`/\`、Windows 的 \`C:\\\`）时停止，如果所有片段处理完仍非绝对路径，则**自动加上 \`process.cwd()\`** 作为前缀。这是它和 \`path.join\` 的根本区别。
+
+---
+
+### 「常见陷阱」
+
+**陷阱 1：用 path.join 处理 URL，斜杠被平台替换**
+
+\`\`\`javascript
+// ❌ 错误：path.join 是文件路径工具，不适合处理 URL
+const url = "https://example.com/" + path.join("api", "users");
+// Windows 上得到 "https://example.com/api\\users"（反斜杠！）
+
+// ✅ 正确：URL 拼接用 URL 类或手动处理
+const apiUrl = new URL("api/users", "https://example.com").href;
+// 或者纯 POSIX 风格路径使用 path.posix.join
+const urlPath = path.posix.join("/api", "users");
+\`\`\`
+
+**陷阱 2：混淆 __dirname 和 process.cwd()，导致相对路径错误**
+
+\`\`\`javascript
+// ❌ 错误：使用相对路径读取文件，依赖启动目录
+fs.readFileSync("./config.json");
+// 如果从其他目录启动 node，会找错位置！
+
+// ✅ 正确：用 __dirname 构造相对于当前文件的路径
+const configPath = path.join(__dirname, "config.json");
+const data = fs.readFileSync(configPath);
+// ✅ 或用 path.resolve 基于 cwd（命令行工具场景）
+const configPath = path.resolve("config.json");
+\`\`\`
+
+**陷阱 3：path.extname 对 .gitignore 和 file.tar.gz 的判断不符合预期**
+
+\`\`\`javascript
+// ❌ 错误：以为 extname 能识别"复合扩展名"
+path.extname("file.tar.gz"); // ".gz"（不是 ".tar.gz"！）
+path.extname(".gitignore");  // ""（不是 ".gitignore"！）
+
+// ✅ 正确：明确处理特殊情况
+function getFullExt(filename) {
+  const base = path.basename(filename);
+  if (base.startsWith(".") && !base.includes(".", 1)) return ""; // 点文件无扩展名
+  const parts = base.split(".");
+  return parts.length > 2 ? "." + parts.slice(-2).join(".") : "." + parts.slice(-1);
+}
+// 或者使用专门的库（如 pathe）
+\`\`\`
+
+**陷阱 4：path.resolve 在路径片段中包含绝对路径时"覆盖"前面的内容**
+
+\`\`\`javascript
+// ❌ 错误：不知道 resolve 从右向左处理
+path.resolve("/a", "/b", "c"); // "/b/c"，不是 "/a/b/c"！
+// 因为 "/b" 是绝对路径，"/a" 被丢弃了
+
+// ✅ 正确：理解 resolve 的行为
+// 从右向左找第一个绝对路径，忽略左边的
+path.resolve("/a", "b", "c");     // "/a/b/c"（/a 是绝对路径）
+path.resolve("a", "/b", "c");     // "/b/c"（/b 覆盖了 a）
+path.resolve("a", "b", "/c");     // "/c"（/c 覆盖了 a/b）
+\`\`\`
+
+**陷阱 5：Windows 路径大小写不敏感，但比较时用精确字符串匹配**
+
+\`\`\`javascript
+// ❌ 错误：在 Windows 上路径大小写不敏感，但直接比较字符串
+const p1 = "C:\\Users\\Admin\\file.txt";
+const p2 = "c:\\users\\admin\\FILE.TXT";
+p1 === p2; // false，但 Windows 认为是同一个文件！
+
+// ✅ 正确：用 fs.realpathSync 规范化后比较
+const real1 = fs.realpathSync(p1).toLowerCase();
+const real2 = fs.realpathSync(p2).toLowerCase();
+// 或跨平台场景统一用 toLowerCase 比较（Windows only）
+\`\`\`
+
+---
+
+### 「性能提示」
+
+**1. 高频路径拼接避免每次都调用 path.join，简单场景可用模板字符串 + 常量分隔符**
+
+在确定平台的服务端代码（如 Linux 服务器），\`path.posix.join\` 或简单字符串拼接比通用的 \`path.join\` 快约 2-3 倍。但请仅在性能瓶颈路径（如静态资源中间件、热路径路由）中使用这种优化，一般业务代码优先保证可读性。
+
+**2. 批量路径处理复用已解析的目录，避免重复解析**
+
+遍历目录树时，先缓存 \`path.dirname(file)\` 结果，避免对每个文件重复调用 \`path.dirname\` 和 \`path.extname\`。路径解析虽然快，但在处理 10 万+ 文件场景下累积效应明显。
+
+**3. 路径安全检查使用 startsWith 前务必先 normalize 和 addTrailingSeparator**
+
+路径遍历检测的标准模式是：\`path.resolve(baseDir, userPath).startsWith(path.resolve(baseDir) + path.sep)\`。不加 \`path.sep\` 后缀会导致 \`/var/www\` 和 \`/var/www2\` 被误判为子目录。
 
 下面这段代码演示了 path 模块的各种核心用法。`,
     code: `// ============================================================

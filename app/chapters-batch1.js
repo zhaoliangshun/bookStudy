@@ -144,7 +144,256 @@ volta pin node@20
 node --version    # 查看 Node.js 版本
 npm --version     # 查看 npm 版本
 node -e "console.log('Hello, Node.js!')"  # 快速测试
-\`\`\``,
+\`\`\`
+
+---
+
+### 「底层原理」
+
+#### V8 引擎如何执行 JavaScript 代码
+
+V8 是 Google 为 Chrome 浏览器开发的高性能 JavaScript 引擎，Node.js 直接嵌入了 V8。V8 执行 JS 代码的过程分为几个关键阶段：
+
+\`\`\`
+源码
+  │
+  ▼
+┌─────────────┐    ┌──────────────┐    ┌──────────────┐    ┌───────────┐
+│  Parser     │───▶│  Ignition    │───▶│  TurboFan    │───▶│ 机器码    │
+│ (解析器)    │    │ (解释器)     │    │ (JIT编译器)  │    │ (执行)    │
+│ 生成AST     │    │ 生成字节码   │    │ 热点代码优化 │    │           │
+└─────────────┘    └──────────────┘    └──────────────┘    └───────────┘
+                          │                   ▲
+                          │   类型反馈        │
+                          └───────────────────┘
+\`\`\`
+
+1. **Parser（解析器）**：将源码解析为抽象语法树（AST）
+2. **Ignition（解释器）**：将 AST 转换为字节码并直接解释执行，启动速度快
+3. **TurboFan（JIT 编译器）**：监控热点代码（重复执行的函数），基于 Ignition 收集的类型反馈信息，将热点代码编译为高度优化的机器码
+4. **去优化（Deoptimization）**：如果类型假设错误（如参数类型变化），TurboFan 会回退到 Ignition 字节码
+
+#### libuv 事件循环的底层实现
+
+libuv 使用 C 语言编写，是跨平台异步 I/O 的核心。事件循环本质是一个 \`while(true)\` 循环：
+
+\`\`\`
+while (uv_loop_alive(loop)) {
+    uv__update_time(loop);           // 更新当前时间
+    uv__run_timers(loop);            // timers 阶段：处理 setTimeout/setInterval
+    ran_pending = uv__run_pending(loop); // pending callbacks
+    uv__run_idle(loop);              // idle
+    uv__run_prepare(loop);           // prepare
+    timeout = uv_backend_timeout(loop);
+    uv__io_poll(loop, timeout);      // poll 阶段：阻塞等待 I/O 事件
+    uv__run_check(loop);             // check 阶段：执行 setImmediate
+    uv__run_closing_handles(loop);   // close callbacks
+    // 每个阶段之间处理 nextTick 和 Promise microtask
+}
+\`\`\`
+
+**线程池工作机制**：
+
+\`\`\`
+         ┌─────────────────────────────────────────┐
+         │           主线程 (Event Loop)            │
+         │  JS执行 │ 事件循环 │ I/O回调 │ 微任务    │
+         └───────┬─────────────┬───────────────────┘
+                 │             │
+     文件I/O     │  DNS查询    │  加密计算
+     ───────────▶│────────────▶│
+                 │             │
+         ┌───────▼─────────────▼───────────────────┐
+         │         libuv 线程池 (默认4线程)         │
+         │  Thread1 │ Thread2 │ Thread3 │ Thread4   │
+         │  (真正的并行执行，不阻塞主线程)           │
+         └─────────────────────────────────────────┘
+\`\`\`
+
+线程池大小可通过 \`UV_THREADPOOL_SIZE\` 环境变量调整（最大 1024），但默认 4 个线程已足够大多数场景。
+
+#### V8 内存模型
+
+V8 的堆内存分为几个区域：
+
+| 区域 | 说明 | 新生代/老生代 |
+| --- | --- | --- |
+| **New Space** | 新创建的对象，1-8MB，回收频繁 | 新生代（Scavenge GC） |
+| **Old Space** | 存活较久的对象，采用标记-清除-整理 | 老生代（Mark-Sweep-Compact） |
+| **Large Object Space** | 超过一定大小的对象（>1MB） | 老生代 |
+| **Code Space** | JIT 编译后的机器码 | 老生代 |
+| **Map Space** | 对象的隐藏类（Hidden Class） | 老生代 |
+
+新生代垃圾回收（Scavenge）速度快，但空间利用率低；老生代回收（Mark-Sweep-Compact）速度慢但碎片少。
+
+Node.js 默认堆内存限制约 1.4GB（32位）或 4GB（64位），可通过 \`--max-old-space-size\` 调整。
+
+---
+
+### 「常见陷阱」
+
+#### 陷阱 1：用 Node.js 处理 CPU 密集型任务导致阻塞
+
+Node.js 的主线程是单线程的，CPU 密集型计算会阻塞整个事件循环，所有 I/O 操作都要等待。
+
+\`\`\`javascript
+// ❌ 错误：在主线程执行斐波那契计算，阻塞所有请求
+const http = require('http');
+http.createServer((req, res) => {
+  if (req.url === '/fib') {
+    const fib = n => n <= 1 ? n : fib(n - 1) + fib(n - 2);
+    res.end('fib(40) = ' + fib(40)); // 主线程阻塞数秒！
+  } else {
+    res.end('hello');
+  }
+}).listen(3000);
+// 当 /fib 正在计算时，对 / 的请求也无法响应！
+
+// ✅ 正确：使用 worker_threads 处理 CPU 密集任务
+const { Worker, isMainThread, parentPort } = require('worker_threads');
+
+if (isMainThread) {
+  http.createServer((req, res) => {
+    if (req.url === '/fib') {
+      const worker = new Worker(__filename, { workerData: 40 });
+      worker.on('message', result => res.end('fib(40) = ' + result));
+    } else {
+      res.end('hello');
+    }
+  }).listen(3000);
+} else {
+  const { workerData } = require('worker_threads');
+  const fib = n => n <= 1 ? n : fib(n - 1) + fib(n - 2);
+  parentPort.postMessage(fib(workerData));
+}
+\`\`\`
+
+#### 陷阱 2：混淆 nextTick 和微任务执行时机
+
+\`process.nextTick\` 的回调在**每个阶段切换之间**执行，优先级高于 Promise 微任务。递归调用 nextTick 会导致事件循环无法前进——这叫"nextTick 饿死"。
+
+\`\`\`javascript
+// ❌ 错误：递归 nextTick 阻塞 I/O
+function tickForever() {
+  process.nextTick(tickForever);
+}
+// setInterval 永远不会触发！因为 nextTick 队列始终非空
+setInterval(() => console.log('timer'), 100);
+tickForever();
+
+// ✅ 正确：使用 setImmediate 或限制递归深度
+function safeTick(depth = 0) {
+  if (depth > 100) return; // 限制深度
+  setImmediate(() => { /* 任务 */ });
+}
+\`\`\`
+
+#### 陷阱 3：误以为 Node.js 完全单线程就没有并发问题
+
+虽然 JS 代码在单线程执行，但 libuv 线程池和 V8 内部仍然存在并发访问，特别是在使用 native addon 或共享 ArrayBuffer 时。
+
+\`\`\`javascript
+// ❌ 错误：以为单线程就完全没有竞态条件
+let counter = 0;
+async function increment() {
+  const val = await readFromDB(); // 异步操作期间控制权移交
+  counter = counter + 1; // 多个异步操作可能交错
+}
+
+// ✅ 正确：理解异步操作之间仍可能有交错
+// 使用原子操作或串行化机制
+const { Atomic } = require('...');
+// 或使用队列保证顺序
+\`\`\`
+
+#### 陷阱 4：随意修改 --max-old-space-size 解决内存问题
+
+加大堆内存限制只是推迟问题，不是解决方案。
+
+\`\`\`bash
+# ❌ 错误：盲目加大内存，掩盖内存泄漏
+node --max-old-space-size=8000 app.js
+
+# ✅ 正确：先用工具诊断内存泄漏
+node --inspect app.js
+# 打开 Chrome DevTools → Memory → 取 Heap Snapshot 分析
+# 或使用 clinic.js
+clinic heapprofiler node app.js
+\`\`\`
+
+#### 陷阱 5：不理解 EventEmitter 的内存泄漏警告
+
+默认情况下，EventEmitter 对同一事件注册超过 10 个监听器会打印警告，但这并不总是 bug。
+
+\`\`\`javascript
+// ❌ 错误：忽略或粗暴关闭警告
+emitter.setMaxListeners(0); // 设为 0 等于无限，不推荐
+
+// ✅ 正确：如果确实需要多个监听器，合理设置上限
+emitter.setMaxListeners(20);
+// 或检查是否重复注册了监听器（忘记 removeListener）
+\`\`\`
+
+---
+
+### 「性能提示」
+
+#### 1. 善用流（Stream）处理大数据，避免将整个文件读入内存
+
+\`\`\`javascript
+// ❌ 差：一次性读取大文件，占用大量内存
+const fs = require('fs');
+const data = fs.readFileSync('huge-file.txt'); // 整个文件载入内存
+res.end(data);
+
+// ✅ 好：使用流，内存占用恒定（几十KB）
+fs.createReadStream('huge-file.txt').pipe(res);
+
+// ✅ 更好：使用 pipeline 自动处理错误和资源清理
+const { pipeline } = require('stream/promises');
+await pipeline(
+  fs.createReadStream('huge-file.txt'),
+  zlib.createGzip(),
+  res
+);
+\`\`\`
+
+流模式下内存占用仅为 chunk 大小（默认 64KB），而 readFile 方式内存占用等于文件大小。
+
+#### 2. 使用 \`--prof\` 进行 V8 级别的性能分析，不要凭直觉优化
+
+\`\`\`bash
+# 生成 V8 性能日志
+node --prof app.js
+
+# 压测后，分析日志生成可读报告
+node --prof-process isolate-*.log > profile.txt
+
+# 或使用更现代的 clinic.js
+npm install -g clinic
+clinic flame node app.js  # 生成火焰图
+clinic bubbleprof node app.js  # 分析异步操作
+\`\`\`
+
+重点关注：
+- **C++ 占比高**：瓶颈在 native 层，可能是 I/O 或加密操作
+- **JS 占比高**：查看哪些函数最耗时，针对性优化
+- **GC 占比高**：对象创建过于频繁，需要减少临时对象
+
+#### 3. 合理配置 UV_THREADPOOL_SIZE
+
+libuv 线程池默认 4 个线程，对于大量文件 I/O 或加密操作的场景可能不足：
+
+\`\`\`bash
+# 根据 CPU 核心数和 I/O 等待时间调整
+# 例如：8 核服务器，主要做文件处理
+UV_THREADPOOL_SIZE=8 node app.js
+
+# 注意：线程数不是越多越好，过多线程会增加上下文切换开销
+# 一般建议：4 ~ CPU核心数 * 2
+\`\`\`
+
+网络 I/O（HTTP、TCP）不占用线程池（由操作系统 epoll/kqueue 直接处理），只有文件系统 I/O、DNS 查询、crypto 相关操作才使用线程池。`,
     code: `// ============================================================
 // 第一章代码演示：Node.js 运行时信息全景
 // ============================================================
@@ -543,7 +792,255 @@ process.exit();
 // 读取环境变量
 const env = process.env.NODE_ENV || "development";
 const port = process.env.PORT || 3000;
-\`\`\``,
+\`\`\`
+
+---
+
+### 「底层原理」
+
+#### console 的底层实现：stdout 与 stderr 的本质
+
+Node.js 中的 \`console.log\` 并不像浏览器那样连接到开发者工具，而是最终写入操作系统的**文件描述符**：
+
+\`\`\`
+console.log("hello")
+      │
+      ▼
+┌──────────────────┐
+│  Console 类      │
+│  (util.inspect)  │  ← 将参数格式化为字符串
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│ process.stdout   │  ← Writable Stream（可写流）
+│ (fd = 1)         │
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│    libuv         │
+│  uv_tty_t /      │  ← 判断是否为终端(TTY)
+│  uv_pipe_t       │
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│ 操作系统内核      │
+│ write(1, buf)    │  ← 系统调用写入文件描述符1
+└──────────────────┘
+\`\`\`
+
+关键细节：
+- **stdout（fd=1）** 和 **stderr（fd=2）** 是进程启动时由操作系统自动打开的文件描述符
+- 当 stdout 指向终端（TTY）时，libuv 使用 \`uv_tty_t\`，输出是**行缓冲**（遇到换行符才刷新）
+- 当 stdout 被重定向到文件或管道时，使用 \`uv_pipe_t\`，输出是**块缓冲**（缓冲区满或显式 flush 才写入）
+- \`console.error\` 写入 stderr（fd=2），即使 stdout 被重定向，错误信息仍会显示在终端
+
+#### process 对象的内部结构
+
+\`process\` 对象是 Node.js 启动时由 C++ 层创建并注入到 JS 上下文的全局对象，它是一个 **EventEmitter 实例**：
+
+| 分类 | 关键属性/方法 | C++ 绑定来源 |
+| --- | --- | --- |
+| **进程信息** | pid, ppid, title, version, versions | node_process.cc |
+| **环境信息** | env, platform, arch, cwd() | node_process.cc |
+| **内存** | memoryUsage(), heapStatistics() | v8::HeapStatistics |
+| **I/O 流** | stdin, stdout, stderr | stream_base.cc |
+| **事件** | on('exit'), on('uncaughtException') | async_wrap.cc |
+| **任务调度** | nextTick(), _tickCallback() | task_queue.cc |
+
+#### process.nextTick 与微任务队列的 C++ 实现
+
+\`process.nextTick\` 的回调存储在 JS 层的一个数组中，但执行时机由 C++ 层控制：
+
+\`\`\`
+每个事件循环阶段切换时:
+  1. 先清空全部 nextTickQueue（循环执行直到队列为空）
+  2. 再清空全部 Promise microtask queue
+  3. 然后进入下一个阶段
+\`\`\`
+
+nextTick 队列的处理优先级高于 Promise 微任务，这是因为在 Node.js 的历史中，nextTick 出现得比原生 Promise 更早，保持了向后兼容性。
+
+#### 进程退出码的操作系统含义
+
+| 退出码 | 含义 | 操作系统层面 |
+| --- | --- | --- |
+| 0 | 成功 | waitpid() 返回 WIFEXITED=true, WEXITSTATUS=0 |
+| 1 | 一般错误 | 未捕获异常、手动 exit(1) |
+| 2 | 使用错误 | Bash 内置命令参数错误 |
+| 3-124 | 应用自定义 | 程序员自定义含义 |
+| 128+N | 被信号 N 终止 | 如 SIGKILL=9 → 退出码137 |
+| 130 | Ctrl+C（SIGINT=2） | 128+2=130 |
+| 137 | SIGKILL 杀死 | 128+9=137 |
+| 143 | SIGTERM 终止 | 128+15=143 |
+
+---
+
+### 「常见陷阱」
+
+#### 陷阱 1：在异步回调中访问 process.env 误以为是实时的
+
+\`process.env\` 在 Node.js 启动时从操作系统环境变量**复制**到 JS 对象中。在 JS 中修改 \`process.env\` 不会影响操作系统环境变量，但子进程可以继承修改后的值。
+
+\`\`\`javascript
+// ❌ 误解：以为 process.env 是动态读取的
+// terminal1: node app.js
+// terminal2: export MY_VAR=hello  (在另一个终端设置环境变量)
+// terminal1 中的 app.js 不会看到 MY_VAR，因为环境变量在启动时已固定
+
+// ❌ 误解：修改 process.env 会影响系统环境变量
+process.env.PATH = '/usr/local/bin'; // 只影响当前进程和子进程，不影响系统
+
+// ✅ 正确：理解 process.env 的生命周期
+// 环境变量在进程创建时确定，之后通过修改 process.env 只影响当前进程
+// 如果需要动态配置，使用配置文件或配置中心
+\`\`\`
+
+#### 陷阱 2：console.log 影响性能，尤其在同步场景下
+
+当 stdout 是文件/管道时，console.log 在某些情况下会变成同步操作（特别是写入到非 TTY 流时），在高吞吐日志场景下可能成为性能瓶颈。
+
+\`\`\`javascript
+// ❌ 错误：在热路径中大量使用 console.log
+for (let i = 0; i < 100000; i++) {
+  console.log("Processing item", i); // 大量同步 I/O 阻塞主线程
+}
+
+// ✅ 正确：生产环境使用专业日志库
+// 使用 pino、winston 等支持异步写入的日志库
+const pino = require('pino')();
+for (let i = 0; i < 100000; i++) {
+  pino.info({ item: i }, "Processing item"); // 异步写入，性能极高
+}
+\`\`\`
+
+#### 陷阱 3：混淆 __dirname / __filename 的可用性
+
+\`__dirname\` 和 \`__filename\` 只在 CommonJS 模块中存在。在 ESM 模块中直接使用会抛出 \`ReferenceError\`。
+
+\`\`\`javascript
+// ❌ 错误：在 .mjs 文件中使用 __dirname
+// app.mjs
+console.log(__dirname); // ReferenceError: __dirname is not defined
+
+// ✅ 正确：ESM 中使用 import.meta.url 转换
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+\`\`\`
+
+#### 陷阱 4：process.exit() 导致异步操作中断
+
+调用 \`process.exit()\` 会立即终止进程，即使有待处理的异步操作（如未完成的文件写入、数据库操作）也会被强制中断。
+
+\`\`\`javascript
+// ❌ 错误：在异步操作完成前调用 process.exit
+fs.writeFile('data.json', JSON.stringify(data), (err) => {
+  if (err) console.error(err);
+  console.log('写入完成');
+});
+process.exit(0); // 文件还没写完进程就退出了！
+
+// ✅ 正确：在所有异步操作完成后退出
+fs.writeFile('data.json', JSON.stringify(data), (err) => {
+  if (err) {
+    console.error(err);
+    process.exit(1);
+  } else {
+    console.log('写入完成');
+    process.exit(0);
+  }
+});
+
+// ✅ 更好：让事件循环自然结束（不调用 exit）
+// 当没有待处理的回调时，Node.js 会自动退出，退出码为0
+\`\`\`
+
+#### 陷阱 5：process.argv 解析不当导致安全和健壮性问题
+
+手动解析 process.argv 容易出错（如包含空格的参数、标志位等），且可能漏掉边界情况。
+
+\`\`\`javascript
+// ❌ 错误：简单地按空格分割或手动解析
+// node app.js --name "John Doe" --port=3000
+// 手动 slice(2) 后得到 ['--name', 'John Doe', '--port=3000']
+// "John Doe" 被拆成两个参数
+
+// ✅ 正确：使用成熟的参数解析库
+// 推荐使用 minimist（轻量）或 commander（完整 CLI 框架）
+const minimist = require('minimist');
+const args = minimist(process.argv.slice(2));
+console.log(args.name); // "John Doe"
+console.log(args.port); // 3000
+\`\`\`
+
+---
+
+### 「性能提示」
+
+#### 1. 生产环境用专业日志库替代 console.log
+
+\`console.log\` 是同步格式化+同步写入的（在非 TTY 环境），在请求密集的服务中会显著影响吞吐量。
+
+\`\`\`bash
+# 性能对比（每条日志约 100 字节）：
+# console.log:       ~50,000 条/秒
+# pino（异步）:  ~2,000,000 条/秒
+# winston:         ~300,000 条/秒
+\`\`\`
+
+推荐：
+- 开发环境：\`console.log\` 足够用，方便调试
+- 生产环境：使用 \`pino\`（性能最优）或 \`winston\`（功能丰富），支持日志级别、日志切割、异步写入
+
+#### 2. 合理使用 process.nextTick 避免 I/O 饥饿
+
+虽然 \`process.nextTick\` 能保证回调在当前操作完成后立即执行，但递归调用会导致事件循环无法进入 I/O 阶段。
+
+\`\`\`javascript
+// ❌ 差：递归 nextTick 阻塞事件循环
+function run() {
+  process.nextTick(run);
+}
+run();
+// setTimeout、I/O 回调永远不会执行！
+
+// ✅ 好：使用 setImmediate 允许 I/O 回调插队
+function run() {
+  setImmediate(run);
+}
+run();
+// setImmediate 在 check 阶段执行，I/O 回调在 poll 阶段有机会执行
+
+// ✅ 更好：批处理 + 让出线程
+async function processBatch(items, batchSize = 1000) {
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    batch.forEach(processItem);
+    await new Promise(resolve => setImmediate(resolve)); // 让出事件循环
+  }
+}
+\`\`\`
+
+#### 3. 使用 NODE_ENV=production 优化运行时性能
+
+设置 \`NODE_ENV=production\` 会让 Node.js 和许多框架启用生产模式优化：
+
+\`\`\`bash
+# 生产环境启动方式
+NODE_ENV=production node app.js
+
+# 或写入 .env 文件，使用 dotenv 加载
+\`\`\`
+
+优化效果：
+- Express 等框架会缓存视图模板、压缩响应、禁用调试输出
+- React/Vue SSR 会使用生产构建，跳过 propTypes 检查等开发期代码
+- 某些 npm 包在 NODE_ENV=production 时会使用更高效的代码路径
+- 性能提升通常在 2-3 倍之间（取决于框架）`,
     code: `// ============================================================
 // 第二章代码演示：第一个 Node.js 应用
 // 展示 console 的各种方法、路径信息、命令行参数
@@ -910,7 +1407,348 @@ try {
 } catch (e) {
   console.log('模块不存在:', e.code); // MODULE_NOT_FOUND
 }
-\`\`\``,
+\`\`\`
+
+---
+
+### 「底层原理」
+
+#### Module 构造函数与模块加载的 C++ 实现
+
+Node.js 的 CommonJS 模块系统由 JS 层的 \`Module\` 类（\`lib/internal/modules/cjs/loader.js\`）和 C++ 层的 \`node_contextify.cc\` 共同实现。每个被加载的文件对应一个 \`Module\` 实例：
+
+\`\`\`
+┌─────────────────────────────────────────────┐
+│              Module 实例                      │
+├─────────────────────────────────────────────┤
+│  id: 模块绝对路径（缓存键）                    │
+│  path: 模块所在目录                           │
+│  exports: {}  ← 模块导出对象（初始为空对象）    │
+│  parent: 父模块的 Module 引用                 │
+│  filename: 文件名                             │
+│  loaded: false  ← 初始为false，加载完成后true  │
+│  children: []  ← 本模块 require 的子模块列表   │
+│  paths: []  ← node_modules 搜索路径数组        │
+└─────────────────────────────────────────────┘
+\`\`\`
+
+#### require() 的完整执行流程（源码级别）
+
+\`\`\`
+require(X) 调用链：
+
+  Module.prototype.require(id)
+    │
+    ▼
+  Module._load(id, parent, isMain)
+    │
+    ├─▶ 1. 检查 Module._cache 中是否已缓存
+    │     └─ 若缓存且 loaded=true → 直接返回 module.exports
+    │
+    ├─▶ 2. 若是原生模块（如 'fs', 'path'）
+    │     └─▶ NativeModule.require() → 返回内置模块（C++绑定）
+    │
+    ├─▶ 3. 创建新 Module 实例，立即放入 _cache
+    │     （这一步是解决循环依赖的关键——先放缓存，再执行）
+    │
+    ├─▶ 4. module.load(filename)
+    │     │
+    │     ▼
+    │   5. module._compile(content, filename)
+    │     │
+    │     ▼
+    │   6. 包裹模块代码（模块包装器）
+    │     (function(exports, require, module, __filename, __dirname) {
+    │       // 你的代码在这里
+    │     });
+    │
+    └─▶ 7. 执行包裹函数 → module.loaded = true → 返回 module.exports
+\`\`\`
+
+关键细节：步骤3在执行模块代码之前就把 module 放入缓存，exports 初始为空对象 \`{}\`。这就是为什么循环依赖时另一方会拿到一个**不完整**的 exports——代码还没执行完，但模块已经在缓存里了。
+
+#### 模块包装器的作用与实现
+
+为什么模块内的变量不会污染全局？因为 Node.js 在执行前用包装器函数将代码包裹：
+
+\`\`\`javascript
+// Node.js 内部实际执行的代码（简化版）
+(function (exports, require, module, __filename, __dirname) {
+  // ↓↓↓ 你的 .js 文件内容被插入在这里 ↓↓↓
+  const hello = 'world';
+  module.exports = { hello };
+  // ↑↑↑ 你的 .js 文件内容结束 ↑↑↑
+});
+\`\`\`
+
+包装器函数的5个参数就是每个模块内部"自动可用"的变量。你可以通过以下方式查看实际的包装器源码：
+
+\`\`\`javascript
+console.log(require('module').wrapper);
+// [
+//   '(function (exports, require, module, __filename, __dirname) { ',
+//   '\\n});'
+// ]
+\`\`\`
+
+#### node_modules 查找算法的伪代码
+
+\`\`\`
+function resolveNodeModules(startDir, moduleName) {
+  let currentDir = startDir;
+  while (true) {
+    const candidate = join(currentDir, 'node_modules', moduleName);
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+    const parentDir = dirname(currentDir);
+    if (parentDir === currentDir) break; // 到达根目录
+    currentDir = parentDir;
+  }
+  // 最后查找全局 node_modules 目录
+  return checkGlobalPaths(moduleName);
+}
+\`\`\`
+
+查找过程会逐级向上遍历目录树，这意味着：
+- 每个项目可以有自己的依赖版本
+- 内层 node_modules 优先于外层（就近原则）
+- 查找深度可能很大（但 npm@3+ 使用扁平化结构优化）
+
+#### JSON 模块的加载机制
+
+当 \`require('./config.json')\` 时，Node.js 内部执行的是：
+
+\`\`\`javascript
+// 内部伪代码
+Module._extensions['.json'] = function (module, filename) {
+  const content = fs.readFileSync(filename, 'utf8');
+  try {
+    module.exports = JSON.parse(stripBOM(content));
+  } catch (err) {
+    err.message = filename + ': ' + err.message;
+    throw err;
+  }
+};
+\`\`\`
+
+注意：JSON 模块是**同步读取 + JSON.parse**，大 JSON 文件会阻塞事件循环。
+
+---
+
+### 「常见陷阱」
+
+#### 陷阱 1：使用 exports 直接赋值导致导出丢失
+
+这是最经典的 CommonJS 错误。\`exports\` 只是 \`module.exports\` 的引用，给 exports 重新赋值不会改变 module.exports。
+
+\`\`\`javascript
+// ❌ 错误：exports 被重新赋值，module.exports 仍是空对象
+// utils.js
+exports = {
+  add(a, b) { return a + b; }
+};
+// main.js
+const utils = require('./utils');
+console.log(utils); // {} ← 空对象！不是期望的 { add }
+
+// ✅ 正确：给 module.exports 赋值
+module.exports = {
+  add(a, b) { return a + b; }
+};
+
+// ✅ 正确：给 exports 添加属性（不重新赋值）
+exports.add = function(a, b) { return a + b; };
+\`\`\`
+
+记忆口诀：导出的是 \`module.exports\`，不是 \`exports\`。\`exports\` 只是便捷引用。
+
+#### 陷阱 2：循环依赖导致拿到未初始化的导出
+
+模块加载是"先入缓存，后执行代码"，循环依赖时被依赖方可能尚未执行到导出语句。
+
+\`\`\`javascript
+// ❌ 问题：循环依赖中拿到不完整对象
+// a.js
+console.log('a 开始');
+exports.done = false;
+const b = require('./b');
+console.log('a 中 b.done =', b.done);
+exports.done = true;
+console.log('a 结束');
+
+// b.js
+console.log('b 开始');
+exports.done = false;
+const a = require('./a'); // a 在缓存中，但 done=false（未执行完）
+console.log('b 中 a.done =', a.done); // false ← 拿到了半成品！
+exports.done = true;
+console.log('b 结束');
+
+// main.js
+const a = require('./a');
+// 输出顺序：
+// a 开始 → b 开始 → b 中 a.done = false → b 结束 → a 中 b.done = true → a 结束
+
+// ✅ 正确：避免循环依赖
+// 方案1：提取共享代码到第三个模块 c.js，a 和 b 都 require c
+// 方案2：将关键导出放在文件顶部（在 require 其他模块之前先导出所有内容）
+// 方案3：在函数内部延迟 require（将 require 移入函数体中，调用时才执行）
+\`\`\`
+
+#### 陷阱 3：require 路径大小写不敏感导致跨平台问题
+
+macOS 默认文件系统是大小写不敏感的，Windows 也是，但 Linux 是大小写敏感的。
+
+\`\`\`javascript
+// ❌ 错误：在 macOS 上开发正常，部署到 Linux 崩溃
+// 文件实际叫 Utils.js
+const utils = require('./utils'); // macOS: 可以找到  Linux: MODULE_NOT_FOUND!
+
+// ✅ 正确：路径大小写严格匹配实际文件名
+const utils = require('./Utils');
+\`\`\`
+
+建议：文件名统一使用小写 + 连字符（kebab-case），避免大小写问题。
+
+#### 陷阱 4：删除 require.cache 后旧引用仍然有效
+
+热更新时删除缓存可以强制重新加载模块，但之前已经拿到的旧引用不会自动更新。
+
+\`\`\`javascript
+// ❌ 陷阱：旧引用不更新
+let config = require('./config');
+console.log(config.version); // "1.0.0"
+
+delete require.cache[require.resolve('./config')];
+// 修改 config.js 文件内容，version 改为 "2.0.0"
+let newConfig = require('./config');
+console.log(newConfig.version); // "2.0.0" ✅
+console.log(config.version);    // "1.0.0" ❌ 旧引用还是老对象！
+
+// ✅ 正确：每次使用都重新 require，或设计成可更新的模式
+function getConfig() {
+  delete require.cache[require.resolve('./config')];
+  return require('./config');
+}
+\`\`\`
+
+#### 陷阱 5：require 动态表达式导致打包工具无法静态分析
+
+使用变量作为 require 参数时，webpack、esbuild 等打包工具无法在构建时确定依赖关系。
+
+\`\`\`javascript
+// ❌ 问题：打包工具无法识别动态 require
+function loadModule(name) {
+  return require('./' + name); // webpack 无法知道需要打包哪些文件
+}
+
+// ❌ 危险：用户输入可控制 require 路径，可能导致任意文件加载
+const moduleName = req.query.module;
+const mod = require('./plugins/' + moduleName);
+// 攻击者传入 '../../etc/passwd' 可能读取敏感文件！
+
+// ✅ 正确：使用白名单映射
+function loadModule(name) {
+  const modules = {
+    'user': require('./user'),
+    'order': require('./order'),
+    'product': require('./product'),
+  };
+  if (!modules[name]) throw new Error('Unknown module: ' + name);
+  return modules[name];
+}
+\`\`\`
+
+---
+
+### 「性能提示」
+
+#### 1. 模块加载是同步阻塞的，避免运行时动态 require 大模块
+
+\`require()\` 是同步操作——文件 I/O、包裹、编译、执行全部在主线程同步完成。在请求处理路径上动态 require 大模块会阻塞所有其他请求。
+
+\`\`\`javascript
+// ❌ 差：在请求处理中 require 大模块
+app.get('/report', (req, res) => {
+  const pdf = require('pdfkit'); // 首次请求时同步加载，阻塞！
+  // ... 生成 PDF
+});
+
+// ✅ 好：在应用启动时预加载所有依赖
+const pdf = require('pdfkit'); // 启动时加载，只执行一次
+app.get('/report', (req, res) => {
+  // 直接使用，命中缓存
+});
+
+// ✅ 好：对可选大模块使用延迟加载 + 缓存
+let pdfKit = null;
+function getPdfKit() {
+  if (!pdfKit) pdfKit = require('pdfkit'); // 只加载一次
+  return pdfKit;
+}
+\`\`\`
+
+#### 2. 利用模块缓存实现高效的单例模式
+
+CommonJS 的缓存机制天然实现了单例——模块代码只执行一次，所有 require 方共享同一个 exports 对象。
+
+\`\`\`javascript
+// ✅ 推荐：利用模块缓存实现数据库连接池单例
+// db.js
+const mysql = require('mysql2/promise');
+const pool = mysql.createPool({ /* 配置 */ }); // 只创建一次
+module.exports = pool;
+
+// user.js
+const pool = require('./db'); // 同一个 pool
+
+// order.js
+const pool = require('./db'); // 还是同一个 pool！
+
+// ❌ 错误：每次调用都创建新连接（浪费资源）
+// db.js
+module.exports = function createConnection() {
+  return mysql.createConnection({ /* ... */ }); // 每次都创建新连接！
+};
+\`\`\`
+
+单例模式适用场景：数据库连接池、Redis 客户端、配置对象、日志实例。
+
+不适用场景：需要独立状态的对象（如每个请求的上下文、用户会话）——这些应导出工厂函数。
+
+#### 3. 避免深嵌套的 node_modules 结构（npm 依赖地狱）
+
+npm@3 之前采用嵌套安装（每个包的依赖装在自己的 node_modules 下），导致极深的目录树和大量重复包。npm@3+ 使用扁平化结构提升性能。
+
+\`\`\`bash
+# npm@2 嵌套结构（差）：
+# node_modules/
+#   └── express/
+#       └── node_modules/
+#           └── accepts/
+#               └── node_modules/
+#                   └── mime-types/...（路径极长，Windows 路径长度限制报错）
+
+# npm@3+ 扁平化结构（好）：
+# node_modules/
+#   ├── express/
+#   ├── accepts/      ← 提升到顶层
+#   └── mime-types/   ← 提升到顶层
+
+# 查看依赖树，发现重复依赖
+npm ls
+# 或者
+npm ls mime-types  # 查看哪些包依赖了 mime-types
+
+# 去重优化
+npm dedupe  # 将能提升的依赖提升到顶层，减少重复
+\`\`\`
+
+保持依赖树扁平的好处：
+- 减少文件 I/O（require 查找更快）
+- 减少磁盘占用（同一个版本只存一份）
+- 避免 Windows 系统路径长度限制问题（MAX_PATH=260字符）`,
     code: `// ============================================================
 // 第三章代码演示：CommonJS 模块系统核心机制
 // 在沙箱中用一个文件模拟 CommonJS 的完整机制
@@ -1421,7 +2259,305 @@ const configData = await fs.readFile('./config.json', 'utf8');
 export const config = JSON.parse(configData);
 \`\`\`
 
-这大大简化了需要在模块初始化时进行异步操作的场景。但注意：**导入顶层 await 模块的模块，会等待它完成后再执行**。`,
+这大大简化了需要在模块初始化时进行异步操作的场景。但注意：**导入顶层 await 模块的模块，会等待它完成后再执行**。
+
+---
+
+### 「底层原理」
+
+#### ESM 模块的三阶段加载过程
+
+ESM 与 CommonJS 最根本的区别在于加载方式。CommonJS 是**运行时同步加载**，而 ESM 分为三个独立阶段，这也是它能支持 tree-shaking 和顶层 await 的原因：
+
+\`\`\`
+┌─────────────────────────────────────────────────────────────────┐
+│                    ESM 模块加载三阶段                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ① 构造（Construction）── 同步，可并行                            │
+│     ├─ 下载/读取模块文件                                         │
+│     ├─ 解析 import/export 语句，解析为 Module Record             │
+│     └─ 将所有模块加入模块图（Module Graph），但不执行代码          │
+│     ↓                                                           │
+│  ② 实例化（Instantiation）── 同步                                │
+│     ├─ 为所有 export 创建绑定（内存地址）                         │
+│     ├─ 将 import 指向对应 export 的内存地址（活绑定的基础）        │
+│     └─ 此时还没有执行代码，export 的值是 undefined                │
+│     ↓                                                           │
+│  ③ 求值（Evaluation）── 可异步（顶层 await）                     │
+│     ├─ 按依赖拓扑顺序执行模块代码                                 │
+│     ├─ 遇到顶层 await 时，暂停当前模块，等待异步操作完成           │
+│     └─ 执行完毕后，export 绑定被填充为实际值                       │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+\`\`\`
+
+这与 CommonJS 的关键不同：
+- CJS 是**边加载边执行**：执行到 require 时才同步加载依赖，加载完立即执行
+- ESM 是**先全部解析，再建立绑定，最后执行**：import 语句会被"提升"到模块顶部
+
+#### 活绑定（Live Binding）的底层机制
+
+ESM 的活绑定之所以能在导出值变化时自动更新，是因为 import 拿到的不是值的副本，而是**指向 export 绑定的引用**：
+
+\`\`\`
+// ESM 内存模型（简化）
+
+模块 counter.mjs 的 Module Environment Record:
+┌─────────────────────────────────────────┐
+│  Export Bindings（导出绑定表）           │
+│  ┌──────────┬───────────────────────┐  │
+│  │ 名称     │ 指向的内存位置         │  │
+│  ├──────────┼───────────────────────┤  │
+│  │ count    │ → 0x7ffd8a... (实际值) │  │
+│  │ increment│ → 0x7ffd8b... (函数)   │  │
+│  └──────────┴───────────────────────┘  │
+└─────────────────────────────────────────┘
+
+模块 app.mjs 的 Module Environment Record:
+┌─────────────────────────────────────────┐
+│  Import Bindings（导入绑定表）           │
+│  ┌──────────┬───────────────────────┐  │
+│  │ 名称     │ 指向的内存位置         │  │
+│  ├──────────┼───────────────────────┤  │
+│  │ count    │ → counter.count 的位置 │  │ ← 直接指向源模块的内存！
+│  │ increment│ → counter.increment    │  │
+│  └──────────┴───────────────────────┘  │
+└─────────────────────────────────────────┘
+
+当 increment() 修改 count 时，修改的是同一块内存，
+所以 app.mjs 中读取 count 总是拿到最新值。
+\`\`\`
+
+而 CommonJS 的 require 是在执行时**拷贝** module.exports 的属性值（或拷贝对象引用），没有这种直接内存绑定。
+
+#### 顶层 await 如何暂停模块执行
+
+顶层 await 让模块求值阶段可以异步暂停。Node.js 使用 **Async Module Evaluation** 算法处理：
+
+\`\`\`
+async function evaluateModule(module) {
+  // 先求值所有依赖
+  for (const dep of module.dependencies) {
+    if (!dep.evaluated) {
+      await evaluateModule(dep); // 等待依赖完成
+    }
+  }
+
+  // 执行模块代码，如果顶层有 await，这里会暂停
+  await module.execute();
+
+  module.evaluated = true;
+  // 通知所有等待此模块的父模块继续执行
+}
+\`\`\`
+
+这意味着：如果 A import B，B 有顶层 await，那么 A 的执行会被推迟到 B 的 await 完成。这形成了一个隐式的依赖等待链。
+
+#### import.meta 的内部结构
+
+\`import.meta\` 是 V8 在模块实例化阶段创建的一个普通 JS 对象，由宿主环境（Node.js）填充属性：
+
+| 属性 | 值 | 设置方 |
+| --- | --- | --- |
+| \`import.meta.url\` | 当前模块的 file:// URL | Node.js 内部 |
+| \`import.meta.resolve(specifier)\` | 解析模块说明符为绝对 URL | Node.js (v16+) |
+
+\`\`\`javascript
+// import.meta 不是模块作用域的变量，而是一个特殊的语法结构
+// V8 在解析时识别 import.meta 并在运行时从 HostGetImportMetaProperties 获取属性
+\`\`\`
+
+---
+
+### 「常见陷阱」
+
+#### 陷阱 1：ESM 中忘记写文件扩展名
+
+CommonJS 可以省略 .js/.json 扩展名，但 ESM 中**必须**写完整路径，包括扩展名。
+
+\`\`\`javascript
+// ❌ 错误：ESM 不支持省略扩展名
+import { add } from './math';    // ERR_MODULE_NOT_FOUND
+import config from './config';   // ERR_MODULE_NOT_FOUND
+
+// ✅ 正确：必须写完整路径和扩展名
+import { add } from './math.js';
+import config from './config.json' assert { type: 'json' };
+import utils from './utils/index.js';
+\`\`\`
+
+注意：\`import fs from 'fs'\`（核心模块和第三方包）不需要写扩展名，Node.js 会在包内部通过 exports/main 字段解析。
+
+#### 陷阱 2：ESM 中 this 是 undefined，不要用 this 指向 exports
+
+在 CommonJS 中，模块顶层的 \`this\` 指向 \`module.exports\`；在 ESM 中，顶层 \`this\` 是 \`undefined\`。
+
+\`\`\`javascript
+// ❌ 错误：在 ESM 中用 this 导出
+// app.mjs
+this.greeting = 'hello'; // this 是 undefined，报错！
+// TypeError: Cannot set property 'greeting' of undefined
+
+// ✅ 正确：使用 export 语法
+export const greeting = 'hello';
+\`\`\`
+
+同样，ESM 中没有 \`__dirname\`、\`__filename\`、\`require\`、\`module\`、\`exports\` 这些 CommonJS 变量。
+
+#### 陷阱 3：在 ESM 中 require JSON 需要 import assertion
+
+CommonJS 可以直接 \`require('./data.json')\`，但 ESM 中导入 JSON 需要显式声明类型。
+
+\`\`\`javascript
+// ❌ 错误：ESM 中直接导入 JSON（无 assert）
+import data from './data.json';
+// 旧 Node.js 版本：ERR_IMPORT_ASSERTION_TYPE_MISSING
+// Node.js v22+ 可能自动推断，但最好显式声明
+
+// ✅ 正确：使用 import assertion（import attributes）
+import data from './data.json' assert { type: 'json' };
+// 或使用 createRequire 兼容 CJS 方式
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const data = require('./data.json');
+\`\`\`
+
+#### 陷阱 4：顶层 await 导致的死锁和性能问题
+
+顶层 await 虽然方便，但滥用可能导致整个模块树无法执行（死锁），或启动时间变长。
+
+\`\`\`javascript
+// ❌ 危险：顶层 await 等待永不 resolve 的 Promise
+// deadlock.mjs
+await new Promise(() => {}); // 永远 pending！
+// 所有 import deadlock.mjs 的模块都会卡住，永远无法执行
+
+// ❌ 差：顶层 await 串行等待多个异步操作
+// config.mjs
+const a = await fetchA(); // 等 a 完成
+const b = await fetchB(); // 再等 b 完成（如果 a 和 b 独立，这是浪费）
+
+// ✅ 好：独立的异步操作使用 Promise.all 并行
+const [a, b] = await Promise.all([fetchA(), fetchB()]);
+
+// ✅ 好：不需要在模块初始化时完成的异步操作，放到函数中延迟执行
+export async function initialize() {
+  // 延迟初始化，由调用方决定何时执行
+  const data = await loadData();
+  return data;
+}
+\`\`\`
+
+#### 陷阱 5：ESM 和 CJS 互操作时默认导入的混淆
+
+在 ESM 中导入 CJS 模块时，默认导入拿到的是 \`module.exports\`，而命名导入是 Node.js 自动做的静态分析解构，但这并非总是能正确工作。
+
+\`\`\`javascript
+// cjs-module.cjs
+module.exports = { name: 'cjs', version: '1.0.0' };
+
+// ❌ 问题：命名导入在某些情况下不工作
+// app.mjs
+import { name } from './cjs-module.cjs'; // 可能在旧版本不支持或行为不一致
+
+// ✅ 正确：导入 CJS 模块时优先使用默认导入
+import cjs from './cjs-module.cjs';
+console.log(cjs.name);    // 'cjs'
+console.log(cjs.version); // '1.0.0'
+
+// ❌ 错误：在 CJS 中直接 require ESM 模块
+// app.cjs
+const esm = require('./esm-module.mjs');
+// ERR_REQUIRE_ESM: Must use import to load ES Module
+
+// ✅ 正确：CJS 中用动态 import() 加载 ESM
+async function loadEsm() {
+  const esm = await import('./esm-module.mjs');
+  console.log(esm.default, esm.namedExport);
+}
+\`\`\`
+
+---
+
+### 「性能提示」
+
+#### 1. ESM 支持 tree-shaking，优先使用命名导出而非默认导出
+
+打包工具（Rollup、esbuild、Webpack）在 ESM 模式下可以静态分析导入导出，移除未使用的代码（tree-shaking）。命名导出比默认导出更容易被静态分析。
+
+\`\`\`javascript
+// ✅ 推荐：命名导出便于 tree-shaking
+// utils.mjs
+export function add(a, b) { return a + b; }
+export function subtract(a, b) { return a - b; }
+export function multiply(a, b) { return a * b; }
+export function divide(a, b) { return a / b; }
+
+// 使用方
+import { add } from './utils.js'; // 打包时 subtract/multiply/divide 可被移除
+
+// ⚠️ 默认导出的对象无法被 tree-shaking 细化
+// utils.mjs
+export default { add, subtract, multiply, divide }; // 整个对象作为一个导出
+
+// app.mjs
+import utils from './utils.js';
+// 打包工具无法移除 subtract/multiply/divide，因为它们在同一个对象上
+\`\`\`
+
+对于库作者，推荐使用**命名导出**作为主要导出方式，默认导出仅用于模块的主要功能。
+
+#### 2. 使用 exports 字段定义包的公共 API，提升解析性能和封装性
+
+在 package.json 中使用 \`exports\` 字段替代旧的 \`main\` 字段，可以明确暴露公共 API，同时让 Node.js 更快解析模块路径（不需要尝试多种扩展名和目录索引）。
+
+\`\`\`json
+{
+  "exports": {
+    ".": "./dist/index.js",
+    "./utils": "./dist/utils.js",
+    "./package.json": "./package.json"
+  }
+}
+\`\`\`
+
+性能收益：
+- Node.js 不需要尝试 .js/.json/.node 等扩展名补全
+- 不需要检查目录下的 package.json 和 index.js
+- 避免通过深层路径导入内部文件（\`require('pkg/dist/internal/helper.js')\`）
+- 支持条件导出，CJS 和 ESM 用户各自加载对应格式
+
+#### 3. 避免在模块顶层执行重型计算，利用 ESM 的异步加载能力
+
+CommonJS 中模块顶层只能执行同步代码，重型计算会阻塞整个 require 链。ESM 的顶层 await 允许异步初始化，但要注意并行化。
+
+\`\`\`javascript
+// ❌ 差：CommonJS 模式的同步初始化（在 ESM 中也能写，但不推荐）
+// db.mjs
+import { createPoolSync } from 'mysql2';
+export const pool = createPoolSync({ /* ... */ }); // 同步阻塞！
+
+// ✅ 好：ESM 中使用异步初始化
+// db.mjs
+import mysql from 'mysql2/promise';
+export const pool = await mysql.createPool({ /* ... */ }); // 异步，不阻塞主线程
+
+// ✅ 更好：导出一个初始化 Promise，让使用方控制时机
+// db.mjs
+import mysql from 'mysql2/promise';
+let pool = null;
+export async function getPool() {
+  if (!pool) {
+    pool = await mysql.createPool({ /* ... */ });
+  }
+  return pool;
+}
+// 这样做的好处：
+// 1. 不使用顶层 await，模块导入不会等待连接建立
+// 2. 延迟到真正需要数据库时才连接
+// 3. 支持优雅地处理连接失败重试
+\`\`\``,
     code: `// ============================================================
 // 第四章代码演示：ESM 模块系统概念
 // 在 CommonJS 沙箱中用 require 模拟 ESM 的核心概念
@@ -1932,7 +3068,391 @@ npm install 的执行流程：
 | \`homepage\` | 项目主页 |
 | \`browserslist\` | 目标浏览器配置（给 Babel 等工具使用） |
 | \`sideEffects\` | 是否包含副作用（给 Webpack tree-shaking 使用） |
-| \`overrides\` | 覆盖嵌套依赖的版本（npm 8.3+） |`,
+| \`overrides\` | 覆盖嵌套依赖的版本（npm 8.3+） |
+
+---
+
+### 「底层原理」
+
+#### npm install 的依赖解析算法（Arborist）
+
+npm v7+ 使用名为 **Arborist** 的依赖树管理工具，它负责解析依赖、构建 node_modules 树。其核心算法是**广度优先遍历 + 去重提升**：
+
+\`\`\`
+┌──────────────────────────────────────────────────────────────┐
+│                    npm install 依赖树构建过程                 │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  1. 读取 package.json 的 dependencies/devDependencies       │
+│     构建顶层依赖列表                                          │
+│                      │                                       │
+│                      ▼                                       │
+│  2. 广度优先遍历所有依赖及其子依赖                             │
+│     - 为每个包查询 npm registry，获取版本信息                  │
+│     - 根据 SemVer 范围选择最合适的版本                        │
+│     - 记录依赖关系图                                          │
+│                      │                                       │
+│                      ▼                                       │
+│  3. 扁平化（Deduplication / Hoisting）                       │
+│     - 尽量将依赖"提升"到顶层 node_modules                     │
+│     - 当同一包有多个版本需求时：                               │
+│       · 最常被依赖的版本 → 提升到顶层                         │
+│       · 不兼容的版本 → 保留在父包的 node_modules 中           │
+│                      │                                       │
+│                      ▼                                       │
+│  4. 计算完整性校验（SHA-512），检查包的完整性                  │
+│     对比 package-lock.json 中的 integrity 字段                │
+│                      │                                       │
+│                      ▼                                       │
+│  5. 下载包到缓存目录 → 解压到 node_modules                    │
+│     - npm 缓存: ~/.npm/_cacache/                             │
+│     - 使用硬链接/符号链接减少磁盘占用                          │
+│                      │                                       │
+│                      ▼                                       │
+│  6. 执行生命周期脚本（preinstall → install → postinstall）   │
+│     注意：postinstall 脚本可执行任意代码，存在安全风险         │
+│                      │                                       │
+│                      ▼                                       │
+│  7. 生成/更新 package-lock.json                              │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+\`\`\`
+
+#### package-lock.json 的内部结构
+
+lock 文件精确记录了依赖树中每个包的信息，保证不同环境安装结果一致：
+
+\`\`\`json
+{
+  "name": "my-project",
+  "version": "1.0.0",
+  "lockfileVersion": 3,  // lock 文件格式版本（npm v9+ 使用版本3）
+  "packages": {
+    // 键是包在 node_modules 中的路径
+    "": {
+      "name": "my-project",
+      "dependencies": { "express": "^4.18.2" }
+    },
+    "node_modules/express": {
+      "version": "4.18.2",           // 实际安装的精确版本
+      "resolved": "https://registry.npmjs.org/express/-/express-4.18.2.tgz",
+      "integrity": "sha512-...",     // SHA-512 完整性校验
+      "dependencies": { /* ... */ },
+      "engines": { "node": ">= 0.10.0" }
+    },
+    "node_modules/express/node_modules/debug": {
+      "version": "2.6.9",  // 嵌套依赖（版本与顶层不兼容时才会嵌套）
+    }
+  }
+}
+\`\`\`
+
+lockfileVersion 说明：
+- v1：npm v5-v6 使用的旧格式
+- v2：npm v7-v8，支持 workspaces
+- v3：npm v9+，格式优化，性能更好
+
+#### SemVer 版本范围匹配算法
+
+npm 使用 \`semver\` 包解析版本范围，核心规则如下：
+
+| 符号 | 示例 | 匹配范围 | 说明 |
+| --- | --- | --- | --- |
+| 无 | \`1.2.3\` | 精确匹配 \`1.2.3\` | 钉死版本 |
+| \`^\` | \`^1.2.3\` | \`>=1.2.3 <2.0.0\` | 兼容：不改变最左非零数字 |
+| \`^\` | \`^0.2.3\` | \`>=0.2.3 <0.3.0\` | 0.x 版本特殊：次版本视为不兼容 |
+| \`^\` | \`^0.0.3\` | \`=0.0.3\` | 0.0.x 版本：精确匹配 |
+| \`~\` | \`~1.2.3\` | \`>=1.2.3 <1.3.0\` | 近似：只允许修订号更新 |
+| \`>\` \`>=\` | \`>=1.2.0\` | 大于等于 | 范围 |
+| \`-\` | \`1.0.0 - 2.0.0\` | \`>=1.0.0 <=2.0.0\` | 闭区间 |
+| \`x\` | \`1.x\` | \`>=1.0.0 <2.0.0\` | 通配符 |
+
+**重要**：0.x.y 版本在 SemVer 规范中被视为初始开发阶段，\`^\` 的行为不同——次版本号变化也被认为可能不兼容。
+
+#### scripts 命令的执行机制（npm run）
+
+执行 \`npm run script-name\` 时，npm 做了以下事情：
+
+\`\`\`
+npm run build
+
+1. 在 package.json 的 scripts 中查找 "build" 命令
+        │
+        ▼
+2. 将 node_modules/.bin 临时加入 PATH 环境变量
+   （这样可以直接调用本地安装的命令，如 webpack、eslint）
+        │
+        ▼
+3. 使用系统 shell 执行命令字符串
+   - Unix: /bin/sh -c "command"
+   - Windows: cmd.exe /d /s /c "command"
+        │
+        ▼
+4. 注入 npm_package_* 环境变量（package.json 各字段）
+   注入 npm_config_* 环境变量（npm 配置）
+        │
+        ▼
+5. 等待命令执行，传递退出码
+\`\`\`
+
+这就是为什么在 scripts 中可以直接写 \`"build": "webpack"\` 而不需要 \`./node_modules/.bin/webpack\`——npm 已经把 \`.bin\` 目录加到 PATH 里了。
+
+#### npm 缓存机制
+
+npm 使用**内容寻址缓存**（Content-Addressable Cache）存储下载的包：
+
+\`\`\`
+~/.npm/_cacache/
+├── content-v2/          # 按 SHA 哈希存储的包内容
+│   └── sha512/
+│       └── a0/
+│           └── b1/
+│               └── <hash> → 实际包文件
+└── index-v5/            # 元数据索引（URL → 哈希映射）
+\`\`\`
+
+同一个包版本只在缓存中存储一次，多个项目可共享。缓存永不自动删除，需手动 \`npm cache clean --force\`。
+
+---
+
+### 「常见陷阱」
+
+#### 陷阱 1：dependencies 和 devDependencies 混淆
+
+把开发依赖放到 dependencies 中会导致生产环境安装不必要的包，增加部署时间和镜像体积；把运行时依赖放到 devDependencies 中则会导致生产环境运行时找不到模块。
+
+\`\`\`bash
+# ❌ 错误：安装时不加 --save-dev/-D，开发依赖进入 dependencies
+npm install jest     # jest 跑到 dependencies 里了！
+npm install eslint   # eslint 也跑错地方了
+
+# ✅ 正确：开发依赖必须加 -D
+npm install jest --save-dev
+npm install eslint -D
+
+# ✅ 正确：运行时依赖不加 -D
+npm install express
+npm install lodash
+
+# 安装生产依赖（仅 dependencies）：
+npm install --production  # 或 --omit=dev
+# 这在 Dockerfile 构建中很重要，能大幅减少镜像层大小
+\`\`\`
+
+区分原则：
+- **dependencies**：代码运行时 \`require()\` / \`import\` 的包（express、lodash、react）
+- **devDependencies**：构建工具、测试框架、代码检查器（webpack、jest、eslint、prettier、typescript）
+
+#### 陷阱 2：忽略 package-lock.json 导致依赖版本不一致
+
+\`\`\`bash
+# ❌ 错误：将 package-lock.json 加入 .gitignore
+# echo "package-lock.json" >> .gitignore
+# 后果：每个团队成员 npm install 得到的版本可能不同
+#       "我本地能跑，你那怎么不行？"
+
+# ✅ 正确：package-lock.json 必须提交到 Git
+# 它保证所有人安装的依赖版本完全一致
+#
+# 例外场景：
+# - 如果你发布的是一个库（library），可以考虑不提交 lock 文件
+#   因为库的使用者不使用你的 lock 文件
+# - 如果你开发的是应用（app/service），必须提交 lock 文件
+\`\`\`
+
+什么时候需要更新 lock 文件？
+- 修改 package.json 中的依赖版本后：\`npm install\` 会自动更新
+- 主动更新依赖：\`npm update <package>\` 或 \`npm install <pkg>@latest\`
+- 修复安全漏洞：\`npm audit fix\`
+
+#### 陷阱 3：在 scripts 中使用跨平台不兼容的命令
+
+npm scripts 最终调用系统 shell，Unix 和 Windows 的命令差异会导致跨平台问题。
+
+\`\`\`json
+{
+  "scripts": {
+    // ❌ 错误：rm -rf 在 Windows 上不存在
+    "clean": "rm -rf dist",
+    // ❌ 错误：环境变量设置方式不同
+    "start": "NODE_ENV=production node app.js",
+    // ❌ 错误：&& 在 Windows cmd 中是 & （但在 PowerShell 中也用 &&，所以复杂）
+    "build": "mkdir dist && webpack"
+  }
+}
+
+// ✅ 正确：使用跨平台工具
+{
+  "scripts": {
+    // 使用 rimraf 替代 rm -rf
+    "clean": "rimraf dist",
+    // 使用 cross-env 设置环境变量
+    "start": "cross-env NODE_ENV=production node app.js",
+    // mkdir -p 在 Node.js v12+ 可用 fs.mkdirSync recursive
+    // 或使用 mkdirp 包
+    "build": "mkdirp dist && webpack"
+  }
+}
+\`\`\`
+
+建议安装：\`npm install -D rimraf cross-env mkdirp\`
+
+#### 陷阱 4：版本范围太松（"\*"）或太死（固定版本）
+
+\`\`\`json
+{
+  "dependencies": {
+    // ❌ 危险："*" 允许任意版本，破坏性更新随时可能发生
+    "lodash": "*",
+    // ❌ 过度锁定：固定版本无法获得 bug 修复和安全更新
+    "lodash": "4.17.21",
+    // ✅ 推荐：^ 允许兼容更新（大多数包的默认行为）
+    "lodash": "^4.17.21",
+    // ✅ 推荐：~ 更保守，只接受修订号更新（稳定性要求极高的场景）
+    "critical-package": "~2.3.0"
+  }
+}
+\`\`\`
+
+最佳实践：
+- 大多数包用 \`^\`（npm install 默认行为）
+- 核心基础包（数据库驱动、核心框架）可考虑用 \`~\` 或固定版本
+- 永远不要用 \`*\`
+- 定期运行 \`npm outdated\` 检查可更新的依赖
+- 重大版本升级手动测试：\`npm install pkg@latest\`
+
+#### 陷阱 5：不了解 postinstall 脚本的安全风险
+
+任何包在安装时都可以通过 \`postinstall\` 脚本执行任意代码。这是供应链攻击的常见入口。
+
+\`\`\`bash
+# 查看哪些包有 install/postinstall 脚本
+npm ls --all | grep -E "install|postinstall"
+# 或更直接地：
+find node_modules -name "package.json" -exec grep -l "postinstall" {} \;
+
+# ✅ 防护措施：
+# 1. 使用 npm audit 检查已知漏洞
+npm audit
+
+# 2. 使用 --ignore-scripts 阻止安装脚本执行（安全要求极高的环境）
+npm install --ignore-scripts
+# 注意：这会导致有原生编译的包（如 node-sass、bcrypt）无法正常工作
+# 需要手动对可信包执行 rebuild
+
+# 3. 锁定依赖版本（通过 package-lock.json），防止意外升级到恶意版本
+# 4. 使用 npm ci 替代 npm install（严格按 lock 文件安装）
+\`\`\`
+
+---
+
+### 「性能提示」
+
+#### 1. 使用 npm ci 替代 npm install 进行 CI/CD 和生产构建
+
+\`npm ci\`（CI 代表 Continuous Integration）是专为自动化环境设计的安装命令，比 \`npm install\` 更快、更可靠。
+
+\`\`\`bash
+# ❌ 普通 npm install 在 CI 中的问题：
+# - 可能修改 package-lock.json（如果 package.json 与 lock 不一致）
+# - 可能安装到不在 lock 文件中的版本
+# - 速度较慢（需要解析依赖树）
+
+# ✅ 使用 npm ci：
+npm ci
+# 要求：必须存在 package-lock.json
+# 行为：
+#   1. 先删除整个 node_modules 目录
+#   2. 严格按照 package-lock.json 安装，不修改 lock 文件
+#   3. 速度比 npm install 快 2-10 倍（跳过大版本解析）
+#   4. 如果 package.json 与 lock 不一致，直接报错退出（不会静默更新）
+\`\`\`
+
+Dockerfile 最佳实践：
+\`\`\`dockerfile
+# 先复制 package 文件，利用 Docker 层缓存
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev    # 仅安装生产依赖，且严格按 lock 文件
+COPY . .
+\`\`\`
+
+#### 2. 合理使用 .npmignore 和 files 字段减小包体积
+
+发布到 npm 的包应该只包含必要的文件，避免将源码、测试文件、配置文件等一起发布。这能加快安装速度、减少磁盘占用。
+
+\`\`\`json
+{
+  // ✅ 推荐：使用 files 白名单（更安全，不会意外发布敏感文件）
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ]
+  // npm 总是自动包含：package.json, README, LICENSE, CHANGELOG
+  // npm 总是自动排除：.git, node_modules, .npmrc, .DS_Store 等
+}
+\`\`\`
+
+\`\`\`bash
+# 检查哪些文件会被发布到 npm
+npm pack --dry-run
+
+# 或者打包成 tarball 后查看内容
+npm pack
+tar -tzf *.tgz
+
+# 对比：忽略 .npmignore vs files 白名单
+# .npmignore（黑名单）：列出要排除的文件/目录（类似 .gitignore）
+# files（白名单）：列出要包含的文件/目录 ← 推荐，更安全
+\`\`\`
+
+#### 3. 使用 workspaces 管理 Monorepo，避免重复安装依赖
+
+对于包含多个包的项目（Monorepo），npm workspaces 可以将所有依赖提升到根目录的 node_modules，大幅减少安装时间和磁盘占用。
+
+\`\`\`json
+{
+  "name": "my-monorepo",
+  "private": true,  // 根目录设为 private，防止意外发布
+  "workspaces": [
+    "packages/*",    // packages 下每个子目录都是一个包
+    "apps/*"
+  ]
+}
+\`\`\`
+
+目录结构：
+\`\`\`
+my-monorepo/
+├── package.json
+├── package-lock.json
+├── node_modules/          # 所有依赖提升到这里
+│   ├── express/
+│   ├── jest/
+│   └── packages/ → ../packages/* （符号链接）
+├── packages/
+│   ├── utils/             # workspace 包 @myorg/utils
+│   │   └── package.json
+│   └── ui/                # workspace 包 @myorg/ui
+│       └── package.json
+└── apps/
+    └── web/               # workspace 包 @myorg/web
+        └── package.json
+\`\`\`
+
+优点：
+- 所有依赖安装一次，各包间共享
+- 包间互相引用自动链接（\`import { x } from '@myorg/utils'\`）
+- 一个 \`npm install\` 安装整个项目的所有依赖
+- 比 Lerna 等传统方案更轻量（npm 原生支持）
+
+其他 Monorepo 工具对比：
+| 工具 | 特点 |
+| --- | --- |
+| npm workspaces | 原生、零配置，适合中小型 Monorepo |
+| pnpm workspaces | 更快、更省磁盘空间，依赖管理更严格 |
+| Turborepo | 在 workspaces 基础上加增量构建缓存 |
+| Nx | 功能最全，包含依赖图分析、构建编排 |`,
     code: `// ============================================================
 // 第五章代码演示：package.json 详解
 // 用 fs 读取和解析 package.json，展示各字段含义

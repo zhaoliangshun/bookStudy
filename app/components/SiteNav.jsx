@@ -22,6 +22,7 @@ const BOOK_CATEGORIES = [
     name: "编程教程",
     icon: "💻",
     books: [
+      { path: "/playground", label: "代码 Playground", icon: "🛝" },
       { path: "/", label: "Node.js", icon: "⬢" },
       { path: "/ts", label: "TypeScript", icon: "🔷" },
       { path: "/tw", label: "Tailwind CSS", icon: "🎨" },

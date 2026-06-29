@@ -16,6 +16,7 @@
 // =============================================================
 
 import React from "react";
+import { CodeBlock } from "./CodeBlock";
 
 // 把一行文本中的行内标记（`代码`、**加粗**）解析为 React 元素
 function renderInline(text, keyPrefix) {
@@ -102,9 +103,7 @@ export function MarkdownRenderer({ content }) {
       }
       i++; // 跳过结束的 ```
       blocks.push(
-        <pre key={key++} className="md-code-block">
-          <code className={`language-${lang}`}>{codeLines.join("\n")}</code>
-        </pre>
+        <CodeBlock key={key++} code={codeLines.join("\n")} lang={lang} />
       );
       continue;
     }
