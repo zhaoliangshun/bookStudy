@@ -880,16 +880,13 @@ export default function PlaygroundPage() {
   // 当前语言 id
   const [langId, setLangId] = useState(LANGUAGES[0].id);
   // 各语言对应的代码（对象映射，切换语言时保留各自内容）
+  // 注意：初始化时只用默认代码，不读 localStorage，保证服务端/客户端
+  // 首次渲染结果一致，避免 hydration mismatch。localStorage 中的内容
+  // 会在挂载后通过 useEffect 读取并覆盖。
   const [codes, setCodes] = useState(() => {
-    // 初始化：优先读取 localStorage，否则用默认代码
     const init = {};
     for (const lang of LANGUAGES) {
-      try {
-        const saved = localStorage.getItem(STORAGE_PREFIX + lang.id);
-        init[lang.id] = saved !== null ? saved : lang.defaultCode;
-      } catch {
-        init[lang.id] = lang.defaultCode;
-      }
+      init[lang.id] = lang.defaultCode;
     }
     return init;
   });
@@ -1430,6 +1427,30 @@ export default function PlaygroundPage() {
       }
     }
   }, [selectLanguage]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ---------- 从 localStorage 恢复用户代码 ----------
+  // 挂载后读取 localStorage 中保存的代码，覆盖默认代码。
+  // 放在 useEffect 中而非 useState 初始化，避免服务端/客户端渲染不一致
+  // 导致的 hydration mismatch（服务端无 localStorage，客户端有）。
+  // 仅在挂载时执行一次（空依赖数组）。
+  useEffect(() => {
+    setCodes((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const lang of LANGUAGES) {
+        try {
+          const saved = localStorage.getItem(STORAGE_PREFIX + lang.id);
+          if (saved !== null && saved !== prev[lang.id]) {
+            next[lang.id] = saved;
+            changed = true;
+          }
+        } catch {
+          // localStorage 不可用时保持默认代码
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, []);
 
   return (
     <div className="app-shell">

@@ -38,6 +38,7 @@ const BOOK_CATEGORIES = [
       { path: "/ai-agent", label: "AI Agent开发", icon: "🤖" },
       { path: "/fe-interview", label: "前端面试", icon: "🎯" },
       { path: "/fe-engineering", label: "前端工程化", icon: "⚙️" },
+      { path: "/nextjs", label: "Next.js", icon: "▲" },
     ],
   },
   {
