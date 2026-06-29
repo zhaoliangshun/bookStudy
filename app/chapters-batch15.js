@@ -2727,7 +2727,7 @@ console.log("  5. 监控 + 告警是必备");`,
   // 第七章：Node.js 最佳实践清单
   // =========================================================
   {
-    id: "node-best-practices",
+    id: "node-best-practices-pro",
     group: "进阶干货",
     icon: "✅",
     title: "Node.js 最佳实践清单",

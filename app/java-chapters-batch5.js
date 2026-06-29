@@ -1197,8 +1197,8 @@ public class Main {
         System.out.println("占有匹配: " + "aaaa".matches("a++a"));     // false 不回溯
         System.out.println("贪婪匹配: " + "aaaa".matches("a+a"));      // true 会回溯
 
-        // 匹配中文
-        System.out.println("是中文: " + "汉字".matches("\\\\p{Han}+"));
+        // 匹配中文（Java 正则用 \\p{IsHan} 或 \\p{script=Han} 匹配汉字）
+        System.out.println("是中文: " + "汉字".matches("\\\\p{IsHan}+"));
     }
 }`
   },

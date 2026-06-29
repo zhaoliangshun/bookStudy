@@ -608,7 +608,7 @@ try {
 console.log("\\n---- 7. 与 Node assert 模块结合 ----");
 
 // Node.js 内置 assert 模块
-const assert = require("assert") as {
+const nodeAssert = require("assert") as {
   ok: (cond: unknown, msg?: string) => void;
   equal: (a: unknown, b: unknown, msg?: string) => void;
   strictEqual: (a: unknown, b: unknown, msg?: string) => void;
@@ -617,12 +617,12 @@ const assert = require("assert") as {
 
 // 包装 Node assert.ok 为类型断言函数
 function assertOk<T>(x: T, msg?: string): asserts x {
-  assert.ok(x, msg);
+  nodeAssert.ok(x, msg);
 }
 
 // 包装为非空断言
 function assertNotNull<T>(x: T, msg?: string): asserts x is NonNullable<T> {
-  assert.ok(x !== null && x !== undefined, msg || "Expected non-null");
+  nodeAssert.ok(x !== null && x !== undefined, msg || "Expected non-null");
 }
 
 function findUser(id: number): { id: number; name: string } | null {
@@ -648,14 +648,14 @@ try {
 // 用 Node assert 做测试断言
 function testAddition(): void {
   const result = 1 + 2;
-  assert.strictEqual(result, 3, "1+2 应该等于 3");
+  nodeAssert.strictEqual(result, 3, "1+2 应该等于 3");
   console.log("  ✓ 1 + 2 = 3 测试通过");
 }
 
 function testStringOps(): void {
   const s = "hello";
-  assert.ok(s.length === 5, "hello 长度应该是 5");
-  assert.ok(s.toUpperCase() === "HELLO", "大写转换测试");
+  nodeAssert.ok(s.length === 5, "hello 长度应该是 5");
+  nodeAssert.ok(s.toUpperCase() === "HELLO", "大写转换测试");
   console.log("  ✓ 字符串操作测试通过");
 }
 

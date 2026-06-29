@@ -39,8 +39,10 @@ const BOOK_CATEGORIES = [
     books: [
       { path: "/playground", label: "代码 Playground", icon: "🛝" },
       { path: "/", label: "Node.js", icon: "⬢" },
+      { path: "/nodejs2", label: "Node.js 进阶", icon: "🟢" },
       { path: "/pnpm", label: "pnpm", icon: "📦" },
       { path: "/ts", label: "TypeScript", icon: "🔷" },
+      { path: "/ts2", label: "TypeScript 进阶", icon: "🔶" },
       { path: "/tw", label: "Tailwind CSS", icon: "🎨" },
       { path: "/react18", label: "React 18", icon: "⚛️" },
       { path: "/py", label: "Python", icon: "🐍" },
@@ -65,6 +67,7 @@ const BOOK_CATEGORIES = [
     books: [
       { path: "/career", label: "职业出路", icon: "🛤️" },
       { path: "/comm", label: "沟通交流", icon: "💬" },
+      { path: "/psychology", label: "心向阳光", icon: "🧠" },
       { path: "/work", label: "职场", icon: "💼" },
       { path: "/stomach", label: "脾胃调养", icon: "🌿" },
       { path: "/dui", label: "怼人艺术", icon: "🎯" },

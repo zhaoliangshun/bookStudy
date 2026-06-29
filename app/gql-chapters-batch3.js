@@ -987,48 +987,25 @@ const resolvers = {
 };
 
 # === Query ===
-// 模拟执行解析器链
-function executeQuery() {
-  // 模拟查询：获取所有用户及其文章和文章标签
-  var allUsers = resolvers.Query.users();
-  var results = allUsers.map(function(user) {
-    var userPosts = resolvers.User.posts(user);
-    var postsWithTags = userPosts.map(function(post) {
-      var postTags = resolvers.Post.tags(post);
-      return {
-        id: post.id,
-        title: post.title,
-        tags: postTags.map(function(t) { return t.name; }),
-      };
-    });
-    return {
-      id: user.id,
-      name: user.name,
-      totalPosts: resolvers.User.totalPosts(user),
-      posts: postsWithTags,
-    };
-  });
-  return results;
+# 查询所有用户及其文章、标签，演示关联数据解析与 N+1 问题
+query GetUsersWithRelations {
+  users {
+    id
+    name
+    email
+    posts {
+      id
+      title
+      tags {
+        id
+        name
+      }
+      commentCount
+    }
+    totalPosts
+    totalComments
+  }
 }
-
-// 输出结果
-console.log("=== 关联数据查询结果 ===");
-console.log(JSON.stringify(executeQuery(), null, 2));
-
-// 模拟 N+1 问题统计
-console.log("\\n=== N+1 问题分析 ===");
-console.log("如果每个 User.posts 都单独查询数据库，会产生 N+1 次查询");
-console.log("用户数量: " + users.length);
-console.log("如果直接逐条查询: 1(users) + " + users.length + "(每个用户的posts) = " + (1 + users.length) + " 次查询");
-console.log("使用批量加载后: 只需 2 次查询（1次users + 1次批量posts）");
-
-// 模拟 DataLoader 批量加载效果
-console.log("\\n=== DataLoader 批量加载模拟 ===");
-var allAuthorIds = users.map(function(u) { return u.id; });
-var allPosts = batchLoadPosts(allAuthorIds);
-allAuthorIds.forEach(function(id, index) {
-  console.log("用户 " + id + " 的文章数量: " + allPosts[index].length);
-});
 `,
   },
 
@@ -1955,70 +1932,27 @@ var resolvers = {
 };
 
 # === Query ===
-// 异步函数：模拟 Subscription 的消费
-async function simulateSubscription() {
-  console.log("=== GraphQL Subscription 模拟演示 ===");
-
-  // 1. 客户端订阅 roomId=r1 的消息
-  var subscription = resolvers.Subscription.messageAdded.subscribe(null, { roomId: "r1" });
-
-  console.log("客户端已订阅房间 r1 的消息...");
-
-  // 2. 模拟异步消费消息
-  var consumePromise = (async function() {
-    // 消费前 3 条消息
-    for (var i = 0; i < 3; i++) {
-      var result = await subscription.next();
-      if (!result.done) {
-        var msg = result.value.messageAdded;
-        console.log("收到消息: [" + msg.id + "] " + msg.content + " (房间: " + msg.roomId + ")");
-      }
+# 查询聊天室 r1 的消息列表与所有房间信息
+query GetChatRooms {
+  messages(roomId: "r1") {
+    id
+    content
+    sender {
+      id
+      name
     }
-    console.log("订阅结束");
-  })();
-
-  // 3. 模拟其他用户发送消息（触发 Mutation）
-  setTimeout(function() {
-    console.log("\\nAlice 发送了一条消息...");
-    resolvers.Mutation.sendMessage(null, { roomId: "r1", content: "今天天气不错！", senderId: "1" });
-  }, 500);
-
-  setTimeout(function() {
-    console.log("\\nBob 发送了一条消息...");
-    resolvers.Mutation.sendMessage(null, { roomId: "r1", content: "是的，很适合出去走走", senderId: "2" });
-  }, 1000);
-
-  setTimeout(function() {
-    console.log("\\nCharlie 发送了一条消息...");
-    resolvers.Mutation.sendMessage(null, { roomId: "r1", content: "大家周末有什么计划？", senderId: "3" });
-  }, 1500);
-
-  await consumePromise;
-  console.log("\\n=== 演示完成 ===");
+    roomId
+    createdAt
+  }
+  rooms {
+    id
+    name
+    members {
+      id
+      name
+    }
+  }
 }
-
-// 运行演示
-simulateSubscription().then(function() {
-  // 演示 Pub/Sub 的发布订阅机制
-  console.log("\\n=== Pub/Sub 模式演示 ===");
-  var testPubSub = new SimplePubSub();
-
-  // 订阅者 1
-  var sub1 = testPubSub.asyncIterator(["NEWS"]);
-  sub1.next().then(function(result) {
-    console.log("订阅者 1 收到: " + result.value.message);
-  });
-
-  // 订阅者 2
-  var sub2 = testPubSub.asyncIterator(["NEWS"]);
-  sub2.next().then(function(result) {
-    console.log("订阅者 2 收到: " + result.value.message);
-  });
-
-  // 发布消息
-  console.log("发布者向 NEWS 频道发布消息...");
-  testPubSub.publish("NEWS", { message: "重大新闻！" });
-});
 `,
   },
 
@@ -2933,71 +2867,36 @@ var resolvers = {
 };
 
 # === Query ===
-// 演示分页功能
-function demonstratePagination() {
-  console.log("=== GraphQL 分页演示 ===");
-  console.log("总文章数: " + allPosts.length);
-
-  // 1. 获取第一页（正向分页）
-  console.log("\\n--- 第一页（first: 5）---");
-  var page1 = resolvers.Query.posts(null, { first: 5, orderBy: "CREATED_AT_DESC" });
-  console.log("hasNextPage: " + page1.pageInfo.hasNextPage);
-  console.log("endCursor: " + page1.pageInfo.endCursor);
-  page1.edges.forEach(function(edge) {
-    console.log("  [" + edge.node.id + "] " + edge.node.title + " | cursor: " + edge.cursor);
-  });
-
-  // 2. 获取第二页
-  console.log("\\n--- 第二页（first: 5, after: endCursor）---");
-  var page2 = resolvers.Query.posts(null, {
-    first: 5,
-    after: page1.pageInfo.endCursor,
-    orderBy: "CREATED_AT_DESC",
-  });
-  console.log("hasNextPage: " + page2.pageInfo.hasNextPage);
-  console.log("hasPreviousPage: " + page2.pageInfo.hasPreviousPage);
-  page2.edges.forEach(function(edge) {
-    console.log("  [" + edge.node.id + "] " + edge.node.title);
-  });
-
-  // 3. 获取最后一页（反向分页）
-  console.log("\\n--- 最后一页（last: 5）---");
-  var lastPage = resolvers.Query.posts(null, { last: 5, orderBy: "CREATED_AT_DESC" });
-  console.log("hasPreviousPage: " + lastPage.pageInfo.hasPreviousPage);
-  console.log("startCursor: " + lastPage.pageInfo.startCursor);
-  lastPage.edges.forEach(function(edge) {
-    console.log("  [" + edge.node.id + "] " + edge.node.title);
-  });
-
-  // 4. totalCount
-  console.log("\\n--- totalCount ---");
-  console.log("总记录数: " + page1.totalCount);
-
-  // 5. 简化版分页（limit-offset）
-  console.log("\\n--- 简化版分页（limit: 3, offset: 0）---");
-  var userPage1 = resolvers.Query.users(null, { limit: 3, offset: 0 });
-  console.log("total: " + userPage1.total + ", hasMore: " + userPage1.hasMore);
-  userPage1.items.forEach(function(user) {
-    console.log("  [" + user.id + "] " + user.name);
-  });
-
-  console.log("\\n--- 简化版分页（limit: 3, offset: 3）---");
-  var userPage2 = resolvers.Query.users(null, { limit: 3, offset: 3 });
-  console.log("total: " + userPage2.total + ", hasMore: " + userPage2.hasMore);
-  userPage2.items.forEach(function(user) {
-    console.log("  [" + user.id + "] " + user.name);
-  });
-
-  // 6. 游标编解码演示
-  console.log("\\n--- 游标编解码演示 ---");
-  var testCursor = encodeCursor("42");
-  console.log("编码: post:42 -> " + testCursor);
-  var decoded = decodeCursor(testCursor);
-  console.log("解码: " + testCursor + " -> " + decoded);
+# 演示 Relay 风格游标分页与简化版分页
+query GetPaginatedPosts {
+  posts(first: 5, orderBy: CREATED_AT_DESC) {
+    edges {
+      node {
+        id
+        title
+        content
+        createdAt
+        authorId
+      }
+      cursor
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+    totalCount
+  }
+  users(limit: 3, offset: 0) {
+    items {
+      id
+      name
+    }
+    total
+    hasMore
+  }
 }
-
-// 运行演示
-demonstratePagination();
 `,
   },
 
@@ -4007,107 +3906,25 @@ var resolvers = {
 };
 
 # === Query ===
-// 演示文件上传和批量操作
-function demonstrateUploadAndBatch() {
-  console.log("=== 文件上传与批量操作演示 ===\\n");
-
-  // 1. 模拟文件上传
-  console.log("--- 1. 单个文件上传 ---");
-  var mockFile = createMockFile("avatar.png", "image/png", "mock-image-binary-data");
-  var uploadedFile = resolvers.Mutation.uploadFile(null, { file: mockFile });
-  console.log("上传成功: " + JSON.stringify(uploadedFile, null, 2));
-
-  // 2. 模拟批量文件上传
-  console.log("\\n--- 2. 批量文件上传 ---");
-  var mockFiles = [
-    createMockFile("photo1.jpg", "image/jpeg", "photo-data-1"),
-    createMockFile("photo2.jpg", "image/jpeg", "photo-data-2"),
-    createMockFile("document.pdf", "application/pdf", "pdf-content"),
-  ];
-  var uploadedFiles = resolvers.Mutation.uploadFiles(null, { files: mockFiles });
-  console.log("批量上传成功，共 " + uploadedFiles.length + " 个文件");
-  uploadedFiles.forEach(function(f) {
-    console.log("  - " + f.filename + " (" + f.mimetype + ")");
-  });
-
-  // 3. 批量创建用户
-  console.log("\\n--- 3. 批量创建用户 ---");
-  var batchResult = resolvers.Mutation.batchCreateUsers(null, {
-    input: {
-      users: [
-        { name: "Charlie", email: "charlie@test.com", age: 25 },
-        { name: "", email: "bad@test.com", age: 30 },
-        { name: "David", email: "invalid-email", age: 35 },
-        { name: "Eve", email: "eve@test.com", age: 22 },
-      ],
-      idempotencyKey: "batch-001",
-    },
-  });
-  console.log("成功: " + batchResult.successCount + ", 失败: " + batchResult.failureCount);
-  batchResult.users.forEach(function(u) {
-    console.log("  创建: [" + u.id + "] " + u.name + " <" + u.email + ">");
-  });
-  batchResult.errors.forEach(function(e) {
-    console.log("  错误: 索引 " + e.index + " - " + e.message);
-  });
-
-  // 4. 幂等性测试
-  console.log("\\n--- 4. 幂等性测试 ---");
-  var idempotentResult = resolvers.Mutation.batchCreateUsers(null, {
-    input: {
-      users: [{ name: "Frank", email: "frank@test.com" }],
-      idempotencyKey: "batch-001",
-    },
-  });
-  console.log("重复提交（相同幂等键）:");
-  console.log("  成功: " + idempotentResult.successCount + "（应该与之前相同，0 新增）");
-
-  // 5. 创建订单（复杂 Mutation）
-  console.log("\\n--- 5. 创建订单 ---");
-  var orderResult = resolvers.Mutation.createOrder(null, {
-    input: {
-      userId: "1",
-      items: [
-        { productId: "p1", quantity: 2 },
-        { productId: "p2", quantity: 1 },
-      ],
-      shippingAddress: {
-        recipientName: "Alice",
-        phone: "13800138000",
-        city: "上海",
-        detail: "浦东新区张江高科技园区",
-      },
-      paymentMethod: "ALIPAY",
-      couponCode: "SAVE10",
-    },
-  });
-  console.log("订单创建成功:");
-  console.log("  订单 ID: " + orderResult.order.id);
-  console.log("  商品明细:");
-  orderResult.order.items.forEach(function(item) {
-    console.log("    - " + item.productName + " x" + item.quantity + " = " + item.subtotal.toFixed(2));
-  });
-  console.log("  总金额: " + orderResult.order.totalAmount.toFixed(2));
-  console.log("  支付链接: " + orderResult.paymentUrl);
-  console.log("  预计送达: " + orderResult.estimatedDelivery);
-
-  // 6. 库存验证
-  console.log("\\n--- 6. 库存验证 ---");
-  products.forEach(function(p) {
-    console.log("  " + p.name + " 剩余库存: " + p.stock);
-  });
-
-  // 7. 文件列表
-  console.log("\\n--- 7. 文件列表 ---");
-  var allFiles = resolvers.Query.files();
-  console.log("共存储 " + allFiles.length + " 个文件:");
-  allFiles.forEach(function(f) {
-    console.log("  [" + f.id + "] " + f.filename + " (" + f.size + " bytes)");
-  });
+# 查询文件存储记录（初始为空，演示查询结构）
+query GetFiles {
+  files {
+    id
+    filename
+    mimetype
+    size
+    url
+    uploadedAt
+  }
+  file(id: "1") {
+    id
+    filename
+    mimetype
+    size
+    url
+    uploadedAt
+  }
 }
-
-// 运行演示
-demonstrateUploadAndBatch();
 `,
   },
 ];

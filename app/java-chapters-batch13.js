@@ -304,28 +304,27 @@ ArrayList **非线程安全**。多线程并发修改可能导致数据错乱、
 下面通过代码演示 ArrayList 的容量与扩容行为：`,
     code: `// 演示 ArrayList 的容量、扩容与随机访问特性
 import java.util.*;
-import java.lang.reflect.Field;
 
 public class Main {
-    public static void main(String[] args) throws Exception {
-        // 无参构造：首次 add 前是空数组
+    public static void main(String[] args) {
+        // 无参构造：首次 add 前是空数组（容量 0），首次 add 后扩到 10
         ArrayList<Integer> list = new ArrayList<>();
-        System.out.println("新建后容量: " + getCapacity(list));
+        System.out.println("新建后 size: " + list.size() + "（内部容量为 0，首次 add 才分配）");
         list.add(1);
-        System.out.println("首次 add 后容量: " + getCapacity(list));
+        System.out.println("首次 add 后 size: " + list.size() + "（内部容量扩到 10）");
 
         // 指定初始容量
         ArrayList<Integer> list2 = new ArrayList<>(100);
-        System.out.println("指定容量100: " + getCapacity(list2));
+        System.out.println("指定容量100, size: " + list2.size() + "（内部容量为 100）");
 
-        // 演示 1.5 倍扩容
+        // 演示 1.5 倍扩容：默认容量 10，填满后扩到 15
         ArrayList<Integer> list3 = new ArrayList<>();
         list3.add(1); // 容量从 0 扩到 10
-        System.out.println("首次扩容后: " + getCapacity(list3));
+        System.out.println("首次 add 后 size: " + list3.size() + "（容量 10）");
         for (int i = 0; i < 9; i++) list3.add(i); // 填满 10
-        System.out.println("填满10后容量: " + getCapacity(list3));
-        list3.add(99); // 触发再次扩容
-        System.out.println("再次扩容后(10*1.5=15): " + getCapacity(list3));
+        System.out.println("填满10后 size: " + list3.size() + "（容量仍为 10）");
+        list3.add(99); // 触发再次扩容，10 -> 15
+        System.out.println("再次扩容后 size: " + list3.size() + "（容量 10*1.5=15）");
 
         // 随机访问 O(1)
         List<Integer> big = new ArrayList<>();
@@ -341,23 +340,19 @@ public class Main {
         long t4 = System.nanoTime();
         System.out.println("100w 元素中间插入: " + (t4 - t3) / 1_000_000 + " ms (O(n))");
 
-        // ensureCapacity 手动预分配
+        // ensureCapacity 手动预分配（减少扩容次数）
         ArrayList<Integer> list4 = new ArrayList<>();
         list4.ensureCapacity(10000);
-        System.out.println("预分配后容量: " + getCapacity(list4));
+        System.out.println("ensureCapacity(10000) 后 size: " + list4.size() + "（预分配容量 10000）");
 
         // trimToSize 回收多余空间
         list4.add(1);
         list4.trimToSize();
-        System.out.println("trimToSize 后容量: " + getCapacity(list4));
-    }
+        System.out.println("trimToSize 后 size: " + list4.size() + "（容量缩减到 1）");
 
-    // 通过反射读取 ArrayList 内部数组容量
-    private static int getCapacity(ArrayList<?> list) throws Exception {
-        Field f = ArrayList.class.getDeclaredField("elementData");
-        f.setAccessible(true);
-        Object[] arr = (Object[]) f.get(list);
-        return arr.length;
+        // 说明：ArrayList 内部用 Object[] elementData 存储元素，
+        // 容量(capacity) >= size，扩容公式为 newCapacity = oldCapacity + oldCapacity >> 1（即 1.5 倍）。
+        // Java 16+ 限制了对 ArrayList 内部字段的反射访问，因此这里通过 size 和说明演示容量行为。
     }
 }`
   },
@@ -1008,7 +1003,8 @@ public class Main {
         // ===== 应用：动态维护排行榜 Top3 =====
         TreeSet<Integer> scores = new TreeSet<>(Comparator.reverseOrder());
         Collections.addAll(scores, 88, 95, 76, 90, 82, 99, 70);
-        System.out.println("Top3 分数: " + scores.headSet(100).toArray()[0]
+        // 降序 TreeSet：第一个元素最大，直接取前 3 个
+        System.out.println("Top3 分数: " + scores.toArray()[0]
             + ", " + scores.toArray()[1] + ", " + scores.toArray()[2]);
 
         // ===== pollFirst/pollLast 弹出端点 =====
@@ -1278,10 +1274,9 @@ HashMap **多线程下不安全**，可能出现：
 下面通过代码演示 HashMap 的哈希分布与扩容行为：`,
     code: `// 演示 HashMap 的底层结构、哈希计算与扩容行为
 import java.util.*;
-import java.lang.reflect.Field;
 
 public class Main {
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         // ===== 基本 API =====
         HashMap<String, Integer> map = new HashMap<>();
         map.put("apple", 3);
@@ -1290,14 +1285,14 @@ public class Main {
         System.out.println("HashMap: " + map);
         System.out.println("get apple: " + map.get("apple"));
 
-        // ===== 观察桶分布（反射） =====
+        // ===== 桶分布与扩容说明 =====
+        // HashMap 默认初始容量 16，负载因子 0.75，size > 16*0.75=12 时扩容（翻倍）
         HashMap<Integer, String> test = new HashMap<>();
         for (int i = 0; i < 16; i++) test.put(i, "v" + i);
-        System.out.println("插入16个元素后桶数量: " + getTableCapacity(test));
+        System.out.println("插入16个元素后 size: " + test.size() + "（容量 16，已触发扩容到 32）");
 
-        // 触发扩容（16 * 0.75 = 12，超过则扩容）
         test.put(16, "v16");
-        System.out.println("插入17个元素后桶数量(扩容到32): " + getTableCapacity(test));
+        System.out.println("插入17个元素后 size: " + test.size() + "（容量 32）");
 
         // ===== 允许 null 键和多个 null 值 =====
         HashMap<String, String> nullMap = new HashMap<>();
@@ -1318,8 +1313,8 @@ public class Main {
 
         // ===== 哈希冲突演示：构造相同桶下标的键 =====
         // 字符串 "Aa" 和 "BB" 在 Java 中 hashCode 相同
-        System.out.println("\"Aa\".hashCode() = " + "Aa".hashCode());
-        System.out.println("\"BB\".hashCode() = " + "BB".hashCode());
+        System.out.println("\\"Aa\\".hashCode() = " + "Aa".hashCode());
+        System.out.println("\\"BB\\".hashCode() = " + "BB".hashCode());
         HashMap<String, Integer> collision = new HashMap<>();
         collision.put("Aa", 1);
         collision.put("BB", 2); // 哈希冲突，落入同一桶
@@ -1343,14 +1338,9 @@ public class Main {
         for (int i = 0; i < n; i++) pre.put(i, "v" + i);
         long t6 = System.nanoTime();
         System.out.println("预分配容量插入100w: " + (t6 - t5) / 1_000_000 + " ms");
-    }
 
-    // 通过反射读取 HashMap 桶数组长度
-    private static int getTableCapacity(HashMap<?, ?> map) throws Exception {
-        Field f = HashMap.class.getDeclaredField("table");
-        f.setAccessible(true);
-        Object[] table = (Object[]) f.get(map);
-        return table == null ? 0 : table.length;
+        // 说明：HashMap 内部用 Node[] table 存储桶数组，Java 16+ 限制了对内部字段的反射访问。
+        // 扩容阈值 = 容量 * 负载因子(默认 0.75)，超过阈值触发扩容，容量翻倍。
     }
 }`
   },

@@ -2426,7 +2426,7 @@ async function asyncPool(limit, items, iteratorFn) {
 
   for (var i = 0; i < items.length; i++) {
     // 创建任务
-    (function (index) {
+    (async function (index) {
       var item = items[index];
       var p = Promise.resolve().then(function () {
         return iteratorFn(item, index);
@@ -2533,7 +2533,7 @@ async function asyncPoolWithTimeout(limit, items, iteratorFn, timeoutMs) {
   var executing = [];
 
   for (var i = 0; i < items.length; i++) {
-    (function (index) {
+    (async function (index) {
       var item = items[index];
       var p = Promise.resolve().then(function () {
         // 给每个任务加上超时控制
@@ -2644,7 +2644,7 @@ async function batchProcessData(items) {
   var limit = 3;
 
   for (var i = 0; i < items.length; i++) {
-    (function (index) {
+    (async function (index) {
       var item = items[index];
 
       var p = (async function () {

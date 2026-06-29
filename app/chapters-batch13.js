@@ -528,7 +528,7 @@ console.log("  提示：启动时用 --max-old-space-size=N 调整上限");`,
   // 第三章：Stream 高级实战
   // =========================================================
   {
-    id: "node-stream-advanced",
+    id: "node-stream-advanced-pro",
     group: "进阶干货",
     icon: "🌊",
     title: "Stream 高级实战",

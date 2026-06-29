@@ -633,7 +633,7 @@ class CodePitfallDetector {
       memoryLeak: {
         severity: 'warning',
         patterns: [
-          /useEffect\\([^)]*\\)\\s*\\{[^}]*setInterval\\([^)]*\\)(?!.*return\\s+/)g,
+          /useEffect\\([^)]*\\)\\s*\\{[^}]*setInterval\\([^)]*\\)(?!.*return\\s+)/g,
           /addEventListener\\([^)]*\\)(?!.*removeEventListener)/g,
           /new\\s+WebSocket\\([^)]*\\)(?!.*\\.close\\(\\))/g
         ],

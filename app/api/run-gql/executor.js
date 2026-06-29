@@ -52,6 +52,7 @@ function executeResolvers(resolversCode) {
     undefined,
     btoa: (s) => Buffer.from(s).toString("base64"),
     atob: (s) => Buffer.from(s, "base64").toString("utf8"),
+    Buffer,
   };
 
   const context = createContext(sandbox);
@@ -107,6 +108,30 @@ function createFieldResolver(resolvers) {
     }
 
     return defaultFieldResolver(source, args, contextValue, info);
+  };
+}
+
+function createTypeResolver(resolvers) {
+  const resolveTypeMap = {};
+  for (const [typeName, fieldResolvers] of Object.entries(resolvers)) {
+    if (
+      typeName !== "Query" &&
+      typeName !== "Mutation" &&
+      typeName !== "Subscription" &&
+      typeof fieldResolvers === "object" &&
+      fieldResolvers !== null &&
+      typeof fieldResolvers.__resolveType === "function"
+    ) {
+      resolveTypeMap[typeName] = fieldResolvers.__resolveType;
+    }
+  }
+
+  return function typeResolver(value, contextValue, info, abstractType) {
+    const fn = resolveTypeMap[abstractType.name];
+    if (fn) {
+      return fn(value, contextValue, info, abstractType);
+    }
+    return undefined;
   };
 }
 
@@ -186,12 +211,14 @@ process.stdin.on("end", () => {
     }
 
     const fieldResolver = createFieldResolver(resolvers);
+    const typeResolver = createTypeResolver(resolvers);
 
     graphql({
       schema,
       source: query,
       rootValue: {},
       fieldResolver,
+      typeResolver,
     }).then((result) => {
       process.stdout.write(
         JSON.stringify({

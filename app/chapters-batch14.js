@@ -343,7 +343,7 @@ console.log("  5. 高并发场景考虑 HTTP/2 或 undici");`,
   // 第二章：文件系统高阶
   // =========================================================
   {
-    id: "node-fs-advanced",
+    id: "node-fs-advanced-pro",
     group: "进阶干货",
     icon: "📁",
     title: "文件系统高阶",

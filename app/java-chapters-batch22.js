@@ -490,14 +490,12 @@ public class Main {
         };
     }
 
-    // 守卫演示
+    // 守卫演示（基元模式 case int i 为预览功能，改用 if-else 守卫）
     static String describeNumber(int n) {
-        return switch (n) {
-            case int i when i < 0 -> "负数";
-            case 0 -> "零";
-            case int i when i < 100 -> "小正数";
-            default -> "大正数";
-        };
+        if (n < 0) return "负数";
+        if (n == 0) return "零";
+        if (n < 100) return "小正数";
+        return "大正数";
     }
 
     // 记录模式解构
@@ -854,7 +852,7 @@ public class Main {
             case Integer i when i < 0 -> "负整数：" + i;
             case Integer i -> "零";
             case String s when s.isEmpty() -> "空字符串";
-            case String s -> "字符串：\"" + s + "\"";
+            case String s -> "字符串：\\"" + s + "\\"";
             case Point(int x, int y) when x == y -> "对角点 (" + x + "," + y + ")";
             case Point(int x, int y) -> "普通点 (" + x + "," + y + ")";
             default -> "其他类型：" + obj.getClass().getSimpleName();
@@ -1826,6 +1824,8 @@ Gradle 以**任务（Task）**为核心：
 构建工具是工程化基础，理解其原理能极大提升开发效率。
     `,
     code: `// 演示项目结构概念（不真正调用构建工具）
+import java.util.List;
+
 public class Main {
     public static void main(String[] args) {
         System.out.println("=== Maven 与 Gradle 项目结构演示 ===\\n");
@@ -2357,13 +2357,13 @@ public class Main {
         System.out.println();
 
         // === 片段 2：方法调用 ===
-        System.out.println("jshell> \"Java\".length()");
+        System.out.println("jshell> \\"Java\\".length()");
         int $2 = "Java".length();
         System.out.println("$2 ==> " + $2);
         System.out.println();
 
         // === 片段 3：变量声明 ===
-        System.out.println("jshell> var name = \"Alice\"");
+        System.out.println("jshell> var name = \\"Alice\\"");
         var name = "Alice";
         System.out.println("name ==> " + name);
         System.out.println();
@@ -2389,13 +2389,13 @@ public class Main {
         System.out.println();
 
         // === 片段 7：List 操作 ===
-        System.out.println("jshell> List.of(\"a\", \"b\", \"c\").stream().map(String::toUpperCase).toList()");
+        System.out.println("jshell> List.of(\\"a\\", \\"b\\", \\"c\\").stream().map(String::toUpperCase).toList()");
         var $6 = java.util.List.of("a", "b", "c").stream().map(String::toUpperCase).toList();
         System.out.println("$6 ==> " + $6);
         System.out.println();
 
         // === 片段 8：异常处理 ===
-        System.out.println("jshell> Integer.parseInt(\"abc\")");
+        System.out.println("jshell> Integer.parseInt(\\"abc\\")");
         try {
             Integer.parseInt("abc");
         } catch (NumberFormatException e) {
@@ -2407,7 +2407,7 @@ public class Main {
         System.out.println("jshell> /vars");
         System.out.println("|    int $1 = " + $1);
         System.out.println("|    int $2 = " + $2);
-        System.out.println("|    String name = \"" + name + "\"");
+        System.out.println("|    String name = \\"" + name + "\\"");
         System.out.println("|    int $3 = " + $3);
         System.out.println("|    Point $4 = " + $4);
         System.out.println("|    int $5 = " + $5);
@@ -3542,7 +3542,12 @@ public class Main {
             var futures = IntStream.range(0, 100).mapToObj(i ->
                 executor.submit(() -> counter.merge("key", 1, Integer::sum))
             ).toList();
-            for (var f : futures) f.get();
+            try {
+                for (var f : futures) f.get();
+            } catch (InterruptedException | ExecutionException e) {
+                Thread.currentThread().interrupt();
+                System.out.println("并发任务异常：" + e.getMessage());
+            }
         }
         System.out.println("100 个虚拟线程并发自增结果：" + counter.get("key"));
 

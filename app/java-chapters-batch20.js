@@ -1315,6 +1315,7 @@ while (true) {
     code: `// 演示网络编程基础
 import java.net.*;
 import java.io.*;
+import java.util.Enumeration;
 
 public class Main {
     public static void main(String[] args) throws Exception {
@@ -1367,11 +1368,12 @@ public class Main {
 
         // ===== TCP Socket 通信演示（本地回环）=====
         System.out.println("\\n--- TCP Socket 演示 ---");
-        // 启动服务器线程
+        int port = 18080;
+        // 启动服务器线程（设为守护线程，避免阻塞 JVM 退出）
         Thread server = new Thread(() -> {
-            try (ServerSocket ss = new ServerSocket(0)) { // 0 表示自动分配端口
-                int port = ss.getLocalPort();
-                System.out.println("服务器监听端口: " + port);
+            try (ServerSocket ss = new ServerSocket(port)) {
+                ss.setSoTimeout(3000); // 设置 accept 超时，避免永久阻塞
+                System.out.println("服务器监听端口: " + ss.getLocalPort());
                 try (Socket client = ss.accept();
                      BufferedReader in = new BufferedReader(
                          new InputStreamReader(client.getInputStream()));
@@ -1381,27 +1383,24 @@ public class Main {
                     out.println("Echo: " + msg);
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                // 超时或连接异常时静默退出
             }
         });
+        server.setDaemon(true);
         server.start();
         Thread.sleep(200); // 等服务器启动
 
-        // 客户端连接（使用固定端口演示，实际中应获取动态端口）
-        try (ServerSocket probe = new ServerSocket(18080)) {
-            Thread client = new Thread(() -> {
-                try (Socket s = new Socket("localhost", 18080);
-                     PrintWriter out = new PrintWriter(s.getOutputStream(), true);
-                     BufferedReader in = new BufferedReader(
-                         new InputStreamReader(s.getInputStream()))) {
-                    out.println("Hello, Server!");
-                    System.out.println("客户端收到: " + in.readLine());
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-            // 简化：直接演示 Datagram
+        // 客户端连接到同一端口
+        try (Socket s = new Socket("localhost", port);
+             PrintWriter out = new PrintWriter(s.getOutputStream(), true);
+             BufferedReader in = new BufferedReader(
+                 new InputStreamReader(s.getInputStream()))) {
+            out.println("Hello, Server!");
+            System.out.println("客户端收到: " + in.readLine());
+        } catch (IOException e) {
+            System.out.println("客户端连接失败: " + e.getMessage());
         }
+        server.join(1000); // 等待服务器线程结束
 
         // ===== UDP 演示（DatagramSocket）=====
         System.out.println("\\n--- UDP Datagram 演示 ---");
@@ -1795,6 +1794,7 @@ try (Connection c = ...;
 下面通过代码演示 JDBC 概念（不实际连接数据库）：`,
     code: `// 演示 JDBC 概念（不实际连接数据库）
 import java.sql.*;
+import java.util.Enumeration;
 
 public class Main {
     public static void main(String[] args) throws Exception {
@@ -2596,7 +2596,7 @@ public class Main {
         // ===== 当前模块信息 =====
         System.out.println("--- 当前模块系统 ---");
         Module module = Main.class.getModule();
-        System.out.println("模块名: " + module.getName().orElse("(未命名模块)"));
+        System.out.println("模块名: " + (module.getName() != null ? module.getName() : "(未命名模块)"));
         System.out.println("是否命名模块: " + module.isNamed());
         System.out.println("类加载器: " + Main.class.getClassLoader());
 
@@ -2627,14 +2627,14 @@ public class Main {
         // ===== 系统模块 =====
         System.out.println("\\n--- 系统模块 ---");
         ModuleLayer bootLayer = ModuleLayer.boot();
-        Set<Module> systemModules = new TreeSet<>(Comparator.comparing(m -> m.getName().orElse("")));
+        Set<Module> systemModules = new TreeSet<>(Comparator.comparing(m -> m.getName() != null ? m.getName() : ""));
         for (Module m : bootLayer.modules()) {
             systemModules.add(m);
         }
         System.out.println("引导层模块数: " + systemModules.size());
         System.out.println("部分系统模块:");
         systemModules.stream()
-            .filter(m -> m.getName().isPresent())
+            .filter(m -> m.getName() != null)
             .map(Module::getName)
             .filter(n -> n.startsWith("java."))
             .limit(10)
@@ -3292,8 +3292,8 @@ public class Main {
             java.util.HexFormat hex = java.util.HexFormat.of();
             String hexStr = hex.formatHex(new byte[]{1, 2, 15, (byte) 255});
             System.out.println("字节转十六进制: " + hexStr);
-            byte[] parsed = hex.parseHex(hexStr);
-            System.out.println("十六进制转字节: " + Arrays.toString(parsed));
+            byte[] parsedBytes = hex.parseHex(hexStr);
+            System.out.println("十六进制转字节: " + Arrays.toString(parsedBytes));
             // 带分隔符
             java.util.HexFormat hexDelim = java.util.HexFormat.ofDelimiter("-");
             System.out.println("带分隔: " + hexDelim.formatHex(new byte[]{1, 2, 3}));

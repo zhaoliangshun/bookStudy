@@ -3002,6 +3002,7 @@ list.forEach(s -> System.out.println(s));
 下面通过代码演示迭代器模式与自定义迭代器：`,
     code: `// 演示迭代器模式
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.*;
 
 public class Main {
