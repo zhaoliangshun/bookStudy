@@ -26,4 +26,15 @@ function testFile(filename) {
       console.log(`  ✗ FAILED`);
       console.log(`  Error: ${e.message.substring(0, 500)}`);
       if (e.stdout) console.log(`  stdout: ${e.stdout.toString().substring(0, 300)}`);
-      if (e.stderr) console
+      if (e.stderr) console.log(`  stderr: ${e.stderr.toString().substring(0, 300)}`);
+      allPassed = false;
+    }
+  }
+  return allPassed;
+}
+
+const r1 = testFile('py5-chapters-batch11.js');
+const r2 = testFile('py5-chapters-batch12.js');
+
+console.log(`\n${'='.repeat(60)}`);
+console.log(`Final result: ${r1 && r2 ? 'ALL PASSED ✓' :
