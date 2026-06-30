@@ -195,6 +195,7 @@ def seed():
         for p_data in posts_data:
             tags = p_data.pop("tags")
             author = p_data.pop("author")
+            print(tags,author)
             post = Post(**p_data, author_id=author.id, tags=tags)
             db.add(post)
         db.commit()

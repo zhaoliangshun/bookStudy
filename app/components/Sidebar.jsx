@@ -47,6 +47,7 @@ const BOOK_CATEGORIES = [
       { path: "/react18", label: "React 18", icon: "⚛️" },
       { path: "/react19", label: "React 19", icon: "⚛️" },
       { path: "/py", label: "Python", icon: "🐍" },
+      { path: "/blog-tutorial", label: "Blog 系统教程", icon: "📝" },
       { path: "/pyweb", label: "Python Web", icon: "🌐" },
       { path: "/java", label: "Java", icon: "☕" },
       { path: "/csharp", label: "C#", icon: "🟪" },
