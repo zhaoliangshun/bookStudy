@@ -20,7 +20,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { react19Chapters, react19ChapterGroups } from "../react19-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightJavaScript } from "../highlight";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function React19Tutorial() {
@@ -166,12 +165,6 @@ export default function React19Tutorial() {
 
   return (
     <div className="app-shell">
-      <SiteNav
-        currentPath="/react19"
-        meta={`共 ${react19Chapters.length} 章 · 在线运行 JS 演示`}
-        onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-      />
-
       <div className="main-layout">
         {/* ===== 侧边栏：章节导航 ===== */}
         <Sidebar
@@ -190,6 +183,8 @@ export default function React19Tutorial() {
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
           onToggleSidebar={toggleSidebar}
+          currentPath="/react19"
+          meta={`共 ${react19Chapters.length} 章 · 在线运行 JS 演示`}
         />
 
         {/* ===== 主内容区 ===== */}

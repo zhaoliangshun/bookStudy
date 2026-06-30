@@ -2194,7 +2194,7 @@ React 19 的迁移底层涉及几个关键变化：
 
 5. **事件系统改进**：React 19 的事件系统（SyntheticEvent）进行了优化，内部事件委托机制更高效。对于大多数应用来说这是透明的，但如果你的代码依赖了 SyntheticEvent 的内部属性（如 \`nativeEvent._reactName\`），可能需要调整。
 
-## 常见陷阱补充
+## 常见陷阱
 
 - **混合使用 React 18 和 React 19 的包**：如果你的项目依赖的某个库内部使用了 React 18，而你的项目使用 React 19，可能导致运行时冲突。使用 \`npm dedupe\` 或 \`resolutions\`/\`overrides\` 确保只有一个 React 版本。
 - **SSR 水合不匹配**：React 19 对 SSR 水合（hydration）的匹配算法更严格。服务端和客户端渲染的不一致会触发更明显的警告。确保你的 SSR 和客户端渲染输出完全一致。
