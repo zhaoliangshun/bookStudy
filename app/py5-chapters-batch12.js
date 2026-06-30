@@ -62,7 +62,7 @@ print(f"  函数名保留: {slow_add.__name__}")
 
 print("\\n=== 带参数的装饰器 ===")
 call_count = 0
-@retry(attempts=2, delay=0)
+@retry(attempts=3, delay=0)
 def flaky_function():
     global call_count
     call_count += 1

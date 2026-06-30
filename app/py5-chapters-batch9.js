@@ -71,39 +71,35 @@ finally:
     def __init__(self, balance, amount):
         self.balance = balance
         self.amount = amount
-        super().__init__(f"余额不足：账户余额 {balance}，需要 {amount}")
+        super().__init__(f"余额不足：{balance} < {amount}")
 
 class InvalidAmountError(ValueError):
     pass
 
 def withdraw(balance, amount):
     if amount < 0:
-        raise InvalidAmountError(f"金额不能为负数：{amount}")
+        raise InvalidAmountError(f"金额不能为负：{amount}")
     if amount > balance:
         raise InsufficientFundsError(balance, amount)
     return balance - amount
 
 try:
-    new_bal = withdraw(100, 150)
+    withdraw(100, 150)
 except InsufficientFundsError as e:
     print(f"业务异常：{e}")
-    print(f"  差额：{e.amount - e.balance}")
-
-print()
 
 def process_payment():
     try:
         withdraw(50, -10)
     except InvalidAmountError as e:
-        raise RuntimeError("支付处理失败") from e
+        raise RuntimeError("支付失败") from e
 
 try:
     process_payment()
 except RuntimeError as e:
-    print(f"捕获异常：{e}")
-    print(f"  原因链 (__cause__)：{e.__cause__}")
+    print(f"捕获：{e}")
+    print(f"  原因：{e.__cause__}")
 
-print()
 print("异常链演示完成")
 `,
   },
@@ -170,30 +166,25 @@ print("ExceptionGroup 处理完成")
 `,
     code: `from contextlib import contextmanager, suppress
 
-class DatabaseConnection:
-    def __init__(self, dsn):
-        self.dsn = dsn
+class DB:
+    def __init__(self, name):
+        self.name = name
         self.connected = False
     def __enter__(self):
-        print(f"连接数据库：{self.dsn}")
+        print(f"连接：{self.name}")
         self.connected = True
         return self
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        print(f"关闭数据库连接")
+    def __exit__(self, exc_type, exc_val, tb):
+        print("关闭连接")
         self.connected = False
-        if exc_type:
-            print(f"  异常被抑制：{exc_val}")
-            return True
-        return False
+        return bool(exc_type)
     def query(self, sql):
-        print(f"  执行SQL：{sql}")
         return [{"id": 1}]
 
-with DatabaseConnection("sqlite:///test.db") as db:
-    rows = db.query("SELECT 1")
-    print(f"  结果：{rows}")
+with DB("test.db") as db:
+    print(f"结果：{db.query('SELECT 1')}")
     raise ValueError("模拟错误")
-print("  connected =", db.connected)
+print("connected =", db.connected)
 
 @contextmanager
 def tag(name):
@@ -201,12 +192,12 @@ def tag(name):
     yield
     print(f"</{name}>")
 
-with tag("body"):
-    print("  内容")
+with tag("h1"):
+    print("Hello")
 
 with suppress(FileNotFoundError):
-    open("/nonexistent_file.txt")
-print("suppress 后继续执行")
+    open("/missing.txt")
+print("完成")
 `,
   },
 ];

@@ -161,58 +161,44 @@ print(f"\\n  zip_longest: {list(itertools.zip_longest('AB', [1,2,3], fillvalue='
 - **预激（prime）**：首次必须 \`next()\` 或 \`send(None)\` 启动到第一个 yield
 - 管道中每个阶段用 \`send()\` 把数据传给下一个协程
 `,
-    code: `def coroutine(func):
-    def primer(*args, **kwargs):
-        gen = func(*args, **kwargs)
-        next(gen)
-        return gen
-    return primer
-
-@coroutine
-def printer(prefix):
+    code: `def printer(name):
     try:
         while True:
-            val = yield
-            print(f"  {prefix}: {val}")
+            v = yield
+            print(f"  {name}: {v}")
     except GeneratorExit:
-        print(f"  {prefix} 已关闭")
+        pass
 
-@coroutine
-def multiplier(factor, target):
-    try:
-        while True:
-            val = yield
-            target.send(val * factor)
-    except GeneratorExit:
-        print("  multiplier 已关闭")
+def doubler(target):
+    while True:
+        v = yield
+        target.send(v * 2)
 
-print("=== send() 管道: 输入 -> x2 -> 打印 ===")
+print("=== send/close: x2 管道 ===")
 p = printer("结果")
-m = multiplier(2, p)
-for i in range(1, 6):
-    m.send(i)
-m.close()
+next(p)
+d = doubler(p)
+next(d)
+for i in range(1, 5):
+    d.send(i)
+d.close()
 p.close()
 
 print("\\n=== throw() 演示 ===")
-@coroutine
 def handler():
-    try:
-        while True:
-            try:
-                val = yield
-                print(f"  收到: {val}")
-            except ValueError as e:
-                print(f"  捕获: {e}")
-    except GeneratorExit:
-        print("  handler 已关闭")
-
+    while True:
+        try:
+            v = yield
+            print(f"  值: {v}")
+        except ValueError as e:
+            print(f"  捕获: {e}")
 h = handler()
+next(h)
 h.send(10)
-h.throw(ValueError("测试错误"))
+h.throw(ValueError("错误"))
 h.send(20)
 h.close()
-print("\\n协程演示完成")
+print("完成")
 `,
   },
 ];
