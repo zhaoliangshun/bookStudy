@@ -61,7 +61,6 @@ print("GIL 提示: CPU 密集用多进程，I/O 密集用多线程")
 - 每个进程有独立内存空间，不共享全局变量`,
     code: `import multiprocessing
 import time
-from concurrent.futures import ProcessPoolExecutor
 
 def square(n):
     time.sleep(0.05)
@@ -72,24 +71,32 @@ def producer(queue):
         queue.put(f"消息{i}")
         time.sleep(0.05)
 
-def consumer(queue):
-    time.sleep(0.1)
-    while not queue.empty():
-        msg = queue.get()
-        print(f"收到: {msg}")
+def consumer(queue, result_list):
+    while True:
+        try:
+            msg = queue.get(timeout=0.5)
+            result_list.append(msg)
+        except Exception:
+            break
 
 if __name__ == "__main__":
+    multiprocessing.set_start_method("fork", force=True)
+
     q = multiprocessing.Queue()
+    manager = multiprocessing.Manager()
+    received = manager.list()
+
     p1 = multiprocessing.Process(target=producer, args=(q,))
-    p2 = multiprocessing.Process(target=consumer, args=(q,))
+    p2 = multiprocessing.Process(target=consumer, args=(q, received))
     p1.start()
     p2.start()
     p1.join()
     p2.join()
+    print(f"收到消息: {list(received)}")
 
-    with ProcessPoolExecutor(max_workers=4) as pool:
+    with multiprocessing.Pool(processes=4) as pool:
         nums = [1, 2, 3, 4, 5]
-        results = list(pool.map(square, nums))
+        results = pool.map(square, nums)
         print(f"进程池平方结果: {results}")
     print("多进程适合 CPU 密集计算，不受 GIL 限制")
 `

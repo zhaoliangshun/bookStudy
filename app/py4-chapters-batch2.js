@@ -536,12 +536,138 @@ for t in tests:
     icon: "✅",
     title: "布尔运算、短路、比较",
     content: `
-- 逻辑运算符：\`and\` / \`or\` / \`not\`（不是 \`&&\` / \`||\` / \`!\`）
-- **短路求值**：\`a or b\` 若 a 为真就不算 b
-- 成员：\`in / not in\`；身份：\`is / is not\`（比 \`==\` 更严格）
-- 链式比较：\`1 < x < 10\`（Python 特色）
-- Falsy 值：\`0, 0.0, None, "", [], {}, set(), False\`
-- \`all()\` / \`any()\`：批量判断
+## 概念解释
+
+Python 布尔运算三件套：\`and\` / \`or\` / \`not\`（**不是** \`&&\` / \`||\` / \`!\`）。配套有比较运算符 \`==\`、\`!=\`、\`<\`、\`in\`、\`is\` 等，以及内置 \`all()\` / \`any()\`。
+
+\`\`\`python
+a and b    # 两个都真才真
+a or b     # 至少一个真就真
+not a      # 取反
+1 < x < 10 # 链式比较（Python 特色）
+\`\`\`
+
+## 设计原理
+
+### 为什么用 \`and/or/not\` 而非符号？
+
+Python 走"可读性优先"路线：\`if a and b or c\` 比 \`if a && b || c\` 更接近自然语言。这套关键字继承自 ABC 语言，Pascal 也用同样写法。好处是新手一眼能懂，坏处是打字多几下。
+
+### 短路求值（Short-circuit）
+
+\`a and b\`：若 \`a\` 为假，**直接返回 a，不再算 b**。
+\`a or b\`：若 \`a\` 为真，**直接返回 a，不再算 b**。
+
+注意返回的是**原值**，不是布尔！\`0 or "default"\` 返回 \`"default"\`，\`"a" and "b"\` 返回 \`"b"\`。这特性常用来给默认值：\`name = input_name or "anonymous"\`，或避免 None 报错：\`if obj and obj.attr:\`。
+
+### 链式比较
+
+\`1 < x < 10\` 在 Python 里等价于 \`1 < x and x < 10\`，但 \`x\` 只求值一次。C/Java 不支持这种写法——\`1 < x < 10\` 在 C 里会被解析成 \`(1 < x) < 10\`，恒为真（因为 \`(1<x)\` 是 0/1，总 <10）。
+
+### \`is\` vs \`==\`
+
+- \`==\` 比较**值相等**（调用 \`__eq__\`，可重载）
+- \`is\` 比较**身份相同**（是否同一对象，看 \`id()\` 内存地址，不可重载）
+
+\`a = [1,2]; b = [1,2]; a == b\` 为 True（值同），\`a is b\` 为 False（两个不同对象）。\`is\` 通常只用来判 None：\`if x is None\`（PEP8 推荐，比 \`== None\` 更准更快，还能避免 \`__eq__\` 被恶意重载）。
+
+## 使用场景
+
+- **逻辑组合**：\`if a and not b:\`
+- **默认值**：\`name = raw or "default"\`
+- **避免 None 报错**：\`if obj and obj.attr:\`（短路保护）
+- **判空**：\`if not my_list:\`（空列表为 falsy）
+- **身份判断**：\`if x is None\`、\`if x is True\`
+- **批量判断**：\`all(iterable)\` / \`any(iterable)\`
+- **避免**：用 \`is\` 比较普通值（\`x is 5\` 行为不定，CPython 整数缓存会骗人）
+
+## 代码逐行讲解
+
+\`\`\`python
+# 链式比较（Python 特色）
+x = 5
+print(1 < x < 10)                   # True；等价 1<x and x<10，x 只算一次
+print(1 == x == 5)                  # True；1==x 且 x==5
+print(1 < x <= 10)                  # True；混合链式也行
+\`\`\`
+
+链式比较任意长度都行：\`0 < x < 100\`、\`a < b < c < d\`。读起来像数学不等式，非常直观。
+
+\`\`\`python
+# 短路求值
+print(0 or "default")               # 'default'；0 falsy，返回右边的 "default"
+print("a" and "b")                  # 'b'；"a" truthy，返回右边的 "b"
+print(1 or print("不会执行"))        # 1；1 truthy，print 不被执行（短路）
+\`\`\`
+
+记住口诀：\`and\` 返回第一个 falsy（没有就返回最后一个）；\`or\` 返回第一个 truthy（没有就返回最后一个）。
+
+\`\`\`python
+# in / not in
+print("py" in "python", 1 in [1, 2, 3])   # True True
+print("x" not in "abc")                   # True
+\`\`\`
+
+\`in\` 检查成员关系：字符串子串、列表元素、字典键、集合元素。注意字典 \`in\` 查的是**键**不是值。
+
+\`\`\`python
+# is vs ==
+a = b = [1, 2]                      # a 和 b 指向同一个列表
+print(a is b, a == b)               # True True；同一对象，值当然也相等
+c = [1, 2]                          # 新建一个内容相同的列表
+print(a is c, a == c)               # False True；不同对象但值相等
+\`\`\`
+
+\`is\` 看 \`id()\`（内存地址），\`==\` 看 \`__eq__\`（值）。日常用 \`==\`，判 None 用 \`is\`。
+
+\`\`\`python
+# all / any
+nums = [1, 2, 3, 0, 5]
+print(all(x > 0 for x in nums))     # False；有 0，不全部 >0
+print(any(x > 0 for x in nums))     # True；至少有一个 >0
+print(all([True, True, False]))     # False；有一个 False 就 False
+\`\`\`
+
+\`all\` 全真才真（空可迭代对象返回 True）；\`any\` 一真即真（空可迭代对象返回 False）。配合生成器表达式 \`x > 0 for x in nums\`，**惰性求值**，遇到第一个 False/True 就短路返回。
+
+## truthy / falsy 规则
+
+**falsy 值**（\`bool(x)\` 为 False）：
+- \`False\`、\`None\`
+- 数字 0：\`0\`、\`0.0\`、\`0j\`、\`Decimal(0)\`
+- 空容器：\`""\`、\`[]\`、\`{}\`、\`set()\`、\`()\`、\`range(0)\`
+- 自定义类：定义 \`__bool__\` 返回 False 或 \`__len__\` 返回 0
+
+**truthy 值**：除上述外都是 True。注意 \`"0"\`（字符串）、\`[0]\`（含 0 的列表）都是 truthy——非空就是真。
+
+## 对比
+
+| 运算 | Python | C/Java | 说明 |
+|------|--------|--------|------|
+| 与 | \`and\` | \`&&\` | Python 返回原值，C 返回 0/1 |
+| 或 | \`or\` | \`||\` | 同上 |
+| 非 | \`not\` | \`!\` | Python 返回 True/False |
+| 链式比较 | \`1<x<10\` | 不支持 | C 写 \`1<x && x<10\` |
+
+| 比较 | \`==\` | \`is\` |
+|------|-------|-------|
+| 比较对象 | 值 | 身份（id） |
+| 可重载 | 是（\`__eq__\`） | 否 |
+| 用于 | 普通值比较 | None/True/False、单例 |
+| 速度 | 慢（可能调用方法） | 快（比指针） |
+
+## 易错点小结
+
+| 坑 | 错误写法 | 正确做法 |
+|----|----------|----------|
+| 用 \`&&\` | \`a && b\` | \`a and b\` |
+| 用 \`is\` 比较值 | \`if x is 5:\` | \`if x == 5:\`（\`is\` 留给 None/单例） |
+| 用 \`== None\` | \`if x == None:\` | \`if x is None:\`（PEP8 推荐） |
+| 短路当布尔用 | \`if (a or b) == True\` | \`if a or b\`（返回值非布尔） |
+| 链式比较误用 | 担心 \`1 < x < 10\` 解析错 | 放心用，Python 原生支持 |
+| \`in\` 字典查值 | \`v in d\` 想查值 | \`v in d\` 查键，查值用 \`.values()\` |
+| 空集合当 False 漏判 | \`if lst == []:\` | \`if not lst:\`（更 Pythonic） |
+| 整数缓存骗人 | \`a=256; b=256; a is b\` 为 True | 别依赖，永远用 \`==\` 比值 |
 `,
     code: `# 链式比较（Python 特色）
 x = 5
