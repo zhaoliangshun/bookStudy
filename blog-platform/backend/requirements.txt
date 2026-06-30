@@ -1,0 +1,43 @@
+# ============================================================
+# Blog Platform 后端依赖
+# ------------------------------------------------------------
+# 安装：pip install -r requirements.txt
+# 注意：建议在虚拟环境里安装
+# ============================================================
+
+# Web 框架（含 Starlette、Pydantic v2）
+fastapi[standard]>=0.109.0
+
+# ASGI 服务器
+uvicorn[standard]>=0.27.0
+
+# ORM：SQLAlchemy 2.0（推荐用 2.0 风格）
+SQLAlchemy>=2.0.0
+
+# MySQL 驱动：PyMySQL（纯 Python 实现，安装简单，兼容性好）
+# 也可以用 mysqlclient（C 实现，更快但需要系统库）
+PyMySQL>=1.1.0
+
+# 密码哈希：bcrypt
+#   - 业界推荐的密码哈希算法（自带 salt、抗暴力破解）
+#   - 直接用 bcrypt 库，不依赖 passlib（passlib 与 bcrypt 5.x 兼容性有 warning）
+bcrypt>=4.0.0
+
+# JWT：python-jose（生成/验证 JSON Web Token）
+#   - [cryptography]：装上 cryptography 后支持 RS256 等非对称算法
+python-jose[cryptography]>=3.3.0
+
+# 解析表单数据（FastAPI 的 Form() 依赖它）
+python-multipart>=0.0.9
+
+# 环境变量加载（从 .env 读取配置）
+python-dotenv>=1.0.0
+
+# email 校验
+email-validator>=2.0.0
+
+# Pydantic v2 配置类（BaseSettings 已迁移到独立包 pydantic-settings）
+pydantic-settings>=2.0.0
+
+# Python 3.9 兼容：让 Pydantic 能解析 `X | None` 这种 3.10+ 语法
+eval_type_backport>=0.2.0

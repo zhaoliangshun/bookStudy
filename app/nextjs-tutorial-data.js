@@ -7,7 +7,7 @@
 // 重点覆盖 Next.js 16 破坏性变更：
 //   - Turbopack 默认（无需 --turbopack 标志）
 //   - Async Request APIs（params/searchParams/cookies/headers 全部 Promise）
-//   - middleware → proxy（Node.js 运行时）
+//   - middleware 弃用为 proxy（Node.js 运行时）
 //   - cacheComponents 取代 PPR
 //   - revalidateTag 第二参数 / updateTag / refresh 新 API
 //   - React Compiler 稳定 / React 19.2 新特性

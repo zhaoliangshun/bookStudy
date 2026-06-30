@@ -658,7 +658,7 @@ class UpperCaseTransform extends Transform {
   _flush(callback) {
     console.log(\`[UpperCaseTransform] _flush 调用，共处理 \${this.totalChunks} 块，追加尾信息\`);
     // 在最后追加一行总结（_flush 的典型用法）
-    this.push(\\n--- 大写转换完成，共处理 \${this.totalChunks} 个数据块 ---\\n\`);
+    this.push(\`\\n--- 大写转换完成，共处理 \${this.totalChunks} 个数据块 ---\\n\`);
     callback();
   }
 }

@@ -62,7 +62,7 @@ root.unmount();
 | 模式 | 同步、不可中断 | 并发、可中断可恢复 |
 | 自动批处理 | 仅 React 事件内 | 事件、定时器、Promise、原生事件全覆盖 |
 | Transition / useDeferredValue | 不可用 | 可用 |
-| Strict Mode 双调用行为 | 偶发 | 一致（开发环境严格双调用） |
+| Strict Mode 双调用行为 | 不可用 | 一致（开发环境严格双调用） |
 | 废弃状态 | React 18 标记弃用，控制台警告 | 推荐入口 |
 
 迁移时，React 18 在使用 \`ReactDOM.render\` 时会打印一条警告：
@@ -118,7 +118,7 @@ React 18 的 StrictMode 在开发环境下会**故意额外调用一次**这些�
 
 1. 升级 \`react\` 和 \`react-dom\` 到 18+。
 2. 把入口从 \`ReactDOM.render\` 改成 \`createRoot\`。
-3. 把测试里的 \`act\` 从 \`react-dom/test-utils\` 改为 \`react-dom/test-utils\` 的兼容版本或 \`@testing-library/react\`（已内置 act）。
+3. 把测试里的 \`act\` 从 \`react-dom/test-utils\` 迁移到 \`react\` 包直接导入（\`import { act } from 'react'\`），或使用 \`@testing-library/react\`（已内置 act）。
 4. 检查 hydration：服务端渲染改用 \`hydrateRoot\`。
 5. 移除 \`ReactDOM.unstable_batchedUpdates\`（已被自动批处理取代，调用变成空操作）。
 6. 排查 StrictMode 双调用暴露的副作用清理问题。

@@ -30,7 +30,27 @@
 //   />
 // =============================================================
 
-import { useRef, useCallback, useMemo } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
+
+// ---------- 计算一段文本在等宽字体下的像素宽度 ----------
+// 等宽字体下：ASCII 字符是 1 个 charWidth，但中文/全角符号/Tab 是 2 倍宽度。
+// 之前用「字符数 × charWidth」算选区矩形，中文注释的宽度会被算少一半，
+// 导致选区背景覆盖不全文字。这里按字符逐个累加实际宽度。
+//   - Tab (\t)：tab-size: 2，等于 2 个 charWidth
+//   - 非 ASCII（code > 127）：中文、全角符号等，等宽字体下是 2 倍宽度
+//   - 其他 ASCII：1 个 charWidth
+function measureTextWidth(text, charWidth) {
+  let width = 0;
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (code === 9 || code > 127) {
+      width += charWidth * 2;
+    } else {
+      width += charWidth;
+    }
+  }
+  return width;
+}
 
 export default function CodeEditor({
   value = "",
@@ -46,6 +66,14 @@ export default function CodeEditor({
   const textareaRef = useRef(null);
   const highlightRef = useRef(null);
   const lineNumbersRef = useRef(null);
+  // 选区层 inner（和高亮层共用 transform 同步滚动）
+  const selectionRef = useRef(null);
+  // 隐藏测量 span（测量等宽字体单字符宽度，用于计算选区矩形）
+  const measureRef = useRef(null);
+  // 字符宽度（测量后存入 state 触发矩形重算）
+  const [charWidth, setCharWidth] = useState(0);
+  // 选区起止位置（由 selectionchange 事件驱动更新）
+  const [selection, setSelection] = useState({ start: 0, end: 0 });
 
   // 高亮 HTML（依赖外部高亮函数 + 代码内容）
   const highlightedHTML = useMemo(() => {
@@ -65,16 +93,98 @@ export default function CodeEditor({
     [value]
   );
 
+  // ---------- 测量等宽字体单字符宽度 ----------
+  // 用于计算选区矩形：选区跨越的每行，left = 列数 × charWidth。
+  // 等宽字体下所有 ASCII 字符宽度一致，测一个 'x' 即可。
+  useEffect(() => {
+    if (measureRef.current) {
+      setCharWidth(measureRef.current.getBoundingClientRect().width);
+    }
+  }, []);
+
+  // ---------- 监听选区变化 ----------
+  // selectionchange 是 document 级别事件，需要判断 activeElement 是否
+  // 是当前 textarea，避免多实例互相干扰。
+  useEffect(() => {
+    const handler = () => {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      if (document.activeElement === ta) {
+        setSelection({ start: ta.selectionStart, end: ta.selectionEnd });
+      }
+    };
+    document.addEventListener("selectionchange", handler);
+    return () => document.removeEventListener("selectionchange", handler);
+  }, []);
+
+  // ---------- 计算选区矩形 ----------
+  // 根据 selectionStart/End 把选区拆成每行一个矩形 div。
+  // 矩形坐标基于内容原点（不含滚动偏移），滚动同步由 transform 统一处理。
+  const selectionRects = useMemo(() => {
+    if (charWidth === 0) return [];
+    const { start, end } = selection;
+    if (start === end) return []; // 无选区，不绘制
+    const lineHeight = 13 * 1.6; // 与 CSS font-size:13px / line-height:1.6 对应
+    const paddingLeft = 16; // editor-highlight-inner 的 padding-left
+    const paddingTop = 14; // editor-highlight-inner 的 padding-top
+    const lines = value.split("\n");
+    const rects = [];
+    let pos = 0; // 当前字符在全文中的偏移
+    for (let i = 0; i < lines.length; i++) {
+      const lineLen = lines[i].length;
+      const lineStart = pos;
+      const lineEnd = pos + lineLen; // 不含行尾 \n
+      // 选区和这一行有交集就生成矩形
+      if (start < lineEnd && end > lineStart) {
+        const selStart = Math.max(start, lineStart);
+        const selEnd = Math.min(end, lineEnd);
+        const lineText = lines[i];
+        // 按字符实际宽度计算 left/width
+        // 中文、全角、Tab 是 2 倍 charWidth，不能简单用「字符数 × charWidth」
+        const selStartCol = selStart - lineStart;
+        const selEndCol = selEnd - lineStart;
+        const leftOffset = measureTextWidth(
+          lineText.slice(0, selStartCol),
+          charWidth
+        );
+        const selWidth = measureTextWidth(
+          lineText.slice(selStartCol, selEndCol),
+          charWidth
+        );
+        rects.push({
+          left: paddingLeft + leftOffset,
+          top: paddingTop + i * lineHeight,
+          width: selWidth,
+          height: lineHeight,
+        });
+      }
+      pos = lineEnd + 1; // +1 跳过 \n
+    }
+    return rects;
+  }, [selection, charWidth, value]);
+
   // ---------- 编辑器滚动同步 ----------
+  // 关键：用 transform: translate() 同步，而不是 scrollTop。
+  // 高亮层、选区层、行号列都用同一个 transform 值平移，确保三者
+  // 在同一帧移动。选区层是自绘的（textarea 原生选区已隐藏），
+  // 所以选区背景和高亮文字完全同步，不再有 1 帧错位闪动。
   const handleScroll = useCallback(() => {
     const ta = textareaRef.current;
     if (!ta) return;
-    if (highlightRef.current) {
-      highlightRef.current.scrollTop = ta.scrollTop;
-      highlightRef.current.scrollLeft = ta.scrollLeft;
+    const x = ta.scrollLeft;
+    const y = ta.scrollTop;
+    const tf = `translate(${-x}px, ${-y}px)`;
+    // 高亮层 inner div 平移
+    if (highlightRef.current?.firstElementChild) {
+      highlightRef.current.firstElementChild.style.transform = tf;
     }
-    if (lineNumbersRef.current) {
-      lineNumbersRef.current.scrollTop = ta.scrollTop;
+    // 选区层 inner 平移（和高亮层同一个 transform 值，保证同帧同步）
+    if (selectionRef.current) {
+      selectionRef.current.style.transform = tf;
+    }
+    // 行号列只用 Y 轴平移
+    if (lineNumbersRef.current?.firstElementChild) {
+      lineNumbersRef.current.firstElementChild.style.transform = `translateY(${-y}px)`;
     }
   }, []);
 
@@ -326,29 +436,58 @@ export default function CodeEditor({
         maxHeight: `${maxHeight}px`,
       }}
     >
-      {/* 行号 */}
+      {/* 行号：外层做裁剪容器，内层 inner 用 transform 平移同步滚动 */}
       <div
         className="line-numbers"
         ref={lineNumbersRef}
         aria-hidden="true"
       >
-        {Array.from({ length: lineCount }, (_, i) => (
-          <div key={i} className="line-number">
-            {i + 1}
-          </div>
-        ))}
+        <div className="line-numbers-inner">
+          {Array.from({ length: lineCount }, (_, i) => (
+            <div key={i} className="line-number">
+              {i + 1}
+            </div>
+          ))}
+        </div>
       </div>
-      {/* 编辑区：高亮层 + textarea 叠加 */}
+      {/* 编辑区：选区层 + 高亮层 + textarea 叠加 */}
       <div className="editor-area">
+        {/* 选区层（最底）：自绘选区背景矩形。
+            隐藏 textarea 原生 ::selection（它由合成器即时绘制，
+            和高亮层的 transform 同步差 1 帧 → 滚动时错位闪动）。
+            改为自己画选区，和高亮层共用同一个 transform 值，
+            保证选区背景和彩色文字在同一帧移动，彻底消除闪动。 */}
+        <div className="editor-selection" aria-hidden="true">
+          <div className="editor-selection-inner" ref={selectionRef}>
+            {selectionRects.map((r, i) => (
+              <div
+                key={i}
+                className="editor-selection-rect"
+                style={{
+                  left: `${r.left}px`,
+                  top: `${r.top}px`,
+                  width: `${r.width}px`,
+                  height: `${r.height}px`,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+        {/* 高亮层：外层 pre 做裁剪容器（overflow:hidden），内层 inner 用
+            transform 平移同步滚动。 */}
         <pre
           ref={highlightRef}
           className="editor-highlight"
           aria-hidden="true"
-          dangerouslySetInnerHTML={{ __html: highlightedHTML }}
-        />
+        >
+          <div
+            className="editor-highlight-inner"
+            dangerouslySetInnerHTML={{ __html: highlightedHTML }}
+          />
+        </pre>
         <textarea
           ref={textareaRef}
-          className="code-editor"
+          className="code-editor ce-code-editor"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -360,6 +499,10 @@ export default function CodeEditor({
           readOnly={readOnly}
           placeholder={placeholder}
         />
+        {/* 隐藏测量 span：测量等宽字体单字符宽度，用于计算选区矩形 */}
+        <span ref={measureRef} className="editor-measure" aria-hidden="true">
+          x
+        </span>
       </div>
     </div>
   );

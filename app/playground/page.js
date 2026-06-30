@@ -27,7 +27,6 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import CodeEditor from "../components/CodeEditor";
-import Sidebar from "../components/Sidebar";
 import { highlightJavaScript } from "../highlight";
 import { highlightTypeScript } from "../ts-highlight";
 import { highlightPython } from "../py-highlight";
@@ -901,12 +900,17 @@ export default function PlaygroundPage() {
   const [hasRun, setHasRun] = useState(false);
   // 快捷键帮助面板是否展开
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  // 语言下拉菜单是否展开（把一排语言按钮收进下拉菜单）
+  const [langMenuOpen, setLangMenuOpen] = useState(false);
+  // 「更多功能」下拉菜单是否展开（保存/重置/清空/快捷键/自动运行都收进去）
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  // 顶部工具栏是否可见（默认隐藏，需要切换语言/功能时点浮动按钮唤出，
+  // 让编辑器+输出占满整个视口，更沉浸。运行用 Ctrl/Cmd+Enter 不受影响）
+  const [toolbarVisible, setToolbarVisible] = useState(false);
   // 保存提示信息（短暂显示）
   const [toast, setToast] = useState("");
   // 自动运行开关：开启后代码改变会自动执行（防抖）
   const [autoRun, setAutoRun] = useState(true);
-  // 移动端侧边栏
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // ---------- ref ----------
   const requestIdRef = useRef(0);
@@ -1082,6 +1086,21 @@ export default function PlaygroundPage() {
     }
   }, [selectLanguage]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ---------- 点击外部关闭下拉菜单 ----------
+  // 两个下拉菜单（语言 / 更多功能）展开时，点击菜单以外区域自动收起。
+  // 用 mousedown 而非 click，避免按下→拖到外面→松开这种场景误触发选中。
+  useEffect(() => {
+    if (!langMenuOpen && !moreMenuOpen) return;
+    const handler = (e) => {
+      // 点击点落在任意 .pg-dropdown 内都不关闭（让按钮自己处理切换）
+      if (e.target.closest && e.target.closest(".pg-dropdown")) return;
+      setLangMenuOpen(false);
+      setMoreMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [langMenuOpen, moreMenuOpen]);
+
   // ---------- 从 localStorage 恢复用户代码 ----------
   // 挂载后读取 localStorage 中保存的代码，覆盖默认代码。
   // 放在 useEffect 中而非 useState 初始化，避免服务端/客户端渲染不一致
@@ -1108,73 +1127,142 @@ export default function PlaygroundPage() {
 
   return (
     <div className="app-shell">
-      <div className="main-layout playground-main">
-        <Sidebar
-          title="Playground"
-          tip="在线代码编辑器"
-          currentPath="/playground"
-          meta={`Playground · ${LANGUAGES.length} 种语言 · 在线编辑运行`}
-          defaultCollapsed={true}
-          groupedChapters={[]}
-          sidebarOpen={sidebarOpen}
-          onCloseSidebar={() => setSidebarOpen(false)}
-          onToggleSidebar={() => setSidebarOpen((v) => !v)}
-        />
-        <main className="content playground-content">
-          {/* ===== 顶部工具栏：语言切换 + 操作按钮 ===== */}
-          <div className="pg-toolbar">
-            <div className="pg-langs" role="tablist">
-              {LANGUAGES.map((lang) => (
-                <button
-                  key={lang.id}
-                  className={`pg-lang-btn ${langId === lang.id ? "active" : ""}`}
-                  onClick={() => selectLanguage(lang.id)}
-                  title={`切换到 ${lang.label}`}
-                >
-                  <span className="pg-lang-icon">{lang.icon}</span>
-                  <span>{lang.label}</span>
-                </button>
-              ))}
+      <main className="content playground-content playground-fullscreen">
+          {/* 工具栏默认隐藏：点右上角浮动按钮唤出，需要时再切换语言/功能。
+              运行代码用 Ctrl/Cmd+Enter 全局快捷键，不受工具栏隐藏影响。 */}
+          {!toolbarVisible && (
+            <button
+              className="pg-toolbar-toggle"
+              onClick={() => setToolbarVisible(true)}
+              title="显示工具栏（切换语言 / 更多功能）"
+              aria-label="显示工具栏"
+            >
+              ☰
+            </button>
+          )}
+          {/* ===== 顶部工具栏：语言下拉 + 更多功能下拉 + 运行按钮 ===== */}
+          {/* 工具栏可见时显示；用 pg-toolbar-hidden 类控制 display:none，
+              避免用条件渲染卸载子组件导致下拉菜单内部状态丢失。 */}
+          <div className={`pg-toolbar${toolbarVisible ? "" : " pg-toolbar-hidden"}`}>
+            {/* ----- 语言下拉菜单 ----- */}
+            <div className="pg-dropdown">
+              <button
+                className="pg-lang-btn active"
+                onClick={() => {
+                  setLangMenuOpen((v) => !v);
+                  setMoreMenuOpen(false);
+                }}
+                title="切换语言"
+                aria-expanded={langMenuOpen}
+                aria-haspopup="menu"
+              >
+                <span className="pg-lang-icon">{activeLang.icon}</span>
+                <span>{activeLang.label}</span>
+                <span className="pg-caret">▾</span>
+              </button>
+              {langMenuOpen && (
+                <div className="pg-dropdown-menu" role="menu">
+                  {LANGUAGES.map((lang) => (
+                    <button
+                      key={lang.id}
+                      className={`pg-dropdown-item ${langId === lang.id ? "active" : ""}`}
+                      onClick={() => {
+                        selectLanguage(lang.id);
+                        setLangMenuOpen(false);
+                      }}
+                      role="menuitem"
+                      title={`切换到 ${lang.label}`}
+                    >
+                      <span className="pg-lang-icon">{lang.icon}</span>
+                      <span>{lang.label}</span>
+                      {langId === lang.id && <span className="pg-check">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
+            {/* ----- 右侧：更多功能下拉 + 运行按钮 ----- */}
             <div className="pg-actions">
-              <button
-                className={`btn ${autoRun ? "btn-primary" : "btn-secondary"}`}
-                onClick={() => setAutoRun((v) => !v)}
-                title="自动运行：代码改变后自动执行（防抖 800ms）"
-                aria-pressed={autoRun}
-              >
-                {autoRun ? "⚡ 自动运行: 开" : "⏸ 自动运行: 关"}
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={manualSave}
-                title="保存到本地 (Ctrl/Cmd+S)"
-              >
-                💾 保存
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={resetCode}
-                disabled={isRunning}
-                title="恢复默认代码"
-              >
-                ↺ 重置
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={clearOutput}
-                title="清空输出 (Ctrl/Cmd+Backspace)"
-              >
-                🗑 清空
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setShortcutsOpen((v) => !v)}
-                title="查看快捷键"
-              >
-                ⌨ 快捷键
-              </button>
+              {/* 更多功能下拉：自动运行 / 保存 / 重置 / 清空 / 快捷键 */}
+              <div className="pg-dropdown">
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setMoreMenuOpen((v) => !v);
+                    setLangMenuOpen(false);
+                  }}
+                  title="更多功能"
+                  aria-expanded={moreMenuOpen}
+                  aria-haspopup="menu"
+                >
+                  ☰ 更多 <span className="pg-caret">▾</span>
+                </button>
+                {moreMenuOpen && (
+                  <div className="pg-dropdown-menu pg-dropdown-menu-right" role="menu">
+                    <button
+                      className="pg-dropdown-item"
+                      onClick={() => {
+                        setAutoRun((v) => !v);
+                        setMoreMenuOpen(false);
+                      }}
+                      role="menuitem"
+                      aria-pressed={autoRun}
+                      title="代码改变后自动执行（防抖 800ms）"
+                    >
+                      {autoRun ? "⚡ 自动运行: 开" : "⏸ 自动运行: 关"}
+                      <span className="pg-check">{autoRun ? "✓" : ""}</span>
+                    </button>
+                    <button
+                      className="pg-dropdown-item"
+                      onClick={() => {
+                        manualSave();
+                        setMoreMenuOpen(false);
+                      }}
+                      role="menuitem"
+                      title="保存到本地 (Ctrl/Cmd+S)"
+                    >
+                      💾 保存
+                    </button>
+                    <button
+                      className="pg-dropdown-item"
+                      onClick={() => {
+                        resetCode();
+                        setMoreMenuOpen(false);
+                      }}
+                      disabled={isRunning}
+                      role="menuitem"
+                      title="恢复默认代码"
+                    >
+                      ↺ 重置
+                    </button>
+                    <button
+                      className="pg-dropdown-item"
+                      onClick={() => {
+                        clearOutput();
+                        setMoreMenuOpen(false);
+                      }}
+                      role="menuitem"
+                      title="清空输出 (Ctrl/Cmd+Backspace)"
+                    >
+                      🗑 清空
+                    </button>
+                    <button
+                      className="pg-dropdown-item"
+                      onClick={() => {
+                        setShortcutsOpen((v) => !v);
+                        setMoreMenuOpen(false);
+                      }}
+                      role="menuitem"
+                      title="查看快捷键"
+                    >
+                      ⌨ 快捷键
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* 运行按钮保留为独立主操作 */}
               <button
                 className="btn btn-primary"
                 onClick={runCode}
@@ -1182,6 +1270,15 @@ export default function PlaygroundPage() {
                 title="运行代码 (Ctrl/Cmd+Enter)"
               >
                 {isRunning ? "⏳ 执行中..." : "▶ 运行"}
+              </button>
+              {/* 收起工具栏：点 ✕ 隐藏工具栏，回到沉浸模式 */}
+              <button
+                className="pg-toolbar-close"
+                onClick={() => setToolbarVisible(false)}
+                title="收起工具栏"
+                aria-label="收起工具栏"
+              >
+                ✕
               </button>
             </div>
           </div>
@@ -1297,7 +1394,6 @@ export default function PlaygroundPage() {
             </span>
           </div>
         </main>
-      </div>
 
       {/* ===== 保存提示 toast ===== */}
       {toast && <div className="pg-toast">{toast}</div>}

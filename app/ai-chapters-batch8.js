@@ -4046,7 +4046,8 @@ class CompetencyAnalyzer {
     console.log('📈 各维度评分：');
     console.log('─'.repeat(50));
     for (const [key, category] of Object.entries(analysis.scores)) {
-      const bar = '█'.repeat(Math.floor(category.score / 5)) + '░'.repeat(20 - Math.floor(category.score / 5));
+      const filled = Math.max(0, Math.min(20, Math.floor(category.score / 5)));
+      const bar = '█'.repeat(filled) + '░'.repeat(20 - filled);
       console.log(\`   \${category.name.padEnd(12)} \${bar} \${category.score}%\`);
       category.details.forEach(detail => {
         console.log(\`     - \${detail.name}: \${detail.score}/100 (AI影响: \${detail.aiLevel})\`);

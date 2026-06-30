@@ -5,7 +5,7 @@
 // 路由基础与布局导航、Server/Client 组件、动态路由与路由组。
 // 所有内容基于 Next.js 16.2.9 + React 19.2.4 的实际 API 编写，
 // 重点突出 Next.js 16 的破坏性变更（Turbopack 默认、params 为
-// Promise、middleware 改为 proxy、React Compiler 等）。
+// Promise、middleware 弃用为 proxy、React Compiler 等）。
 // =============================================================
 
 export const chapters = [
@@ -44,7 +44,7 @@ Next.js 历史上有两套路由体系：早期的 **Pages Router**（\`pages/\`
 | 默认组件 | 全部是客户端组件 | 默认是 Server Component |
 | 布局机制 | \`_app.js\` 全局 + 自定义 Layout 组件 | \`layout.js\` 文件约定，嵌套保留状态 |
 | 数据获取 | \`getServerSideProps\` / \`getStaticProps\` | 组件内直接 \`await fetch\`，async Server Component |
-| React 版本 | 使用 \`package.json\` 里的 React | 内置 React canary（含 React 19 全部稳定特性） |
+| React 版本 | 使用 \`package.json\` 里的 React | 内置 React 19.2 稳定版 |
 | 新特性支持 | 不再获得新特性 | 所有新特性主战场（RSC、Streaming、Suspense） |
 | 维护状态 | 维护模式，向后兼容 | 主推方向，文档默认 |
 
@@ -95,16 +95,18 @@ export default async function Page({ params }) {
 
 ### 2.3 React 19.2 与 React Compiler
 
-Next.js 16 内置 React 19.2（App Router 使用 React canary，已包含 React 19 全部稳定特性），并默认启用了若干 React 19 能力，例如：
+Next.js 16 内置 React 19.2 稳定版，并默认启用了若干 React 19 能力，例如：
 
 - **Actions**：表单与异步操作的标准化处理。
 - **\`use()\` API**：在组件中读取 Promise / Context。
 - **React Compiler**（可选）：通过 \`create-next-app\` 时勾选 React Compiler，可以让编译器自动优化 memoization，减少手写 \`useMemo\` / \`useCallback\` 的负担。
 - **\`cacheComponents\` 配置**：开启后，Next.js 会自动对可缓存的组件做更细粒度的缓存优化，进一步减少重复渲染。
 
-### 2.4 middleware 改名为 proxy
+### 2.4 middleware 改名为 proxy（弃用，非强制）
 
-Next.js 16 把运行在请求边缘的 \`middleware.ts\` **重命名为 \`proxy.ts\`**，更准确地表达它的语义：它在「请求被路由到页面之前」做拦截、重写、重定向，本质上是一个请求代理层。文件约定、签名基本一致，但目录顶级文件变成了 \`proxy.ts\`。
+Next.js 16 把运行在请求边缘的 \`middleware.ts\` **改名为 \`proxy.ts\`**（推荐用法），更准确地表达它的语义：它在「请求被路由到页面之前」做拦截、重写、重定向，本质上是一个请求代理层。文件约定、签名基本一致，目录顶级文件由 \`middleware.ts\` 变为 \`proxy.ts\`。
+
+> 注意：\`middleware.ts\` **仍然可用但已被弃用**，启动时会出现 \`The "middleware" file convention is deprecated. Please use "proxy" instead.\` 的警告。如果同时存在 \`middleware.ts\` 和 \`proxy.ts\`，构建会直接报错，必须只保留 \`proxy.ts\`。新项目建议直接用 \`proxy.ts\`。
 
 ### 2.5 构建不再自动跑 lint
 

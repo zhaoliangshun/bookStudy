@@ -978,7 +978,9 @@ body {
   min-width: 0;
 }
 
-/* 行号 */
+/* 行号：padding 放外层（教程页面和 CodeEditor 共用）。
+   CodeEditor 里多一层 .line-numbers-inner 做 transform 平移，
+   inner 不带 padding，行号正常显示。 */
 .line-numbers {
   background: var(--editor-gutter-bg);
   color: var(--editor-gutter-text);
@@ -988,12 +990,14 @@ body {
   line-height: 1.6;
   text-align: right;
   user-select: none;
-  /* 行号列不滚动，但内容会通过 JS 同步 scrollTop，
-     所以这里允许 hidden + overflow，避免出现两根滚动条 */
   overflow: hidden;
   flex-shrink: 0;
   min-width: 48px;
   border-right: 1px solid var(--editor-border);
+}
+/* 行号内层（仅 CodeEditor 用）：transform 平移容器，无 padding */
+.line-numbers-inner {
+  will-change: transform;
 }
 .line-number {
   height: calc(13px * 1.6);
@@ -1007,7 +1011,9 @@ body {
   overflow: hidden;
 }
 
-/* 高亮层 <pre>：绝对定位铺满编辑区，渲染彩色代码 */
+/* 高亮层 <pre>：padding 放外层（教程页面和 CodeEditor 共用）。
+   CodeEditor 里多一层 .editor-highlight-inner 做 transform 平移，
+   inner 不带 padding，代码正常缩进。 */
 .editor-highlight {
   position: absolute;
   inset: 0;
@@ -1017,16 +1023,49 @@ body {
   font-size: 13px;
   line-height: 1.6;
   white-space: pre;
-  overflow: auto;
+  /* hidden：CodeEditor 用 inner transform 平移；教程页面也用 hidden
+     保持一致（教程页面的滚动由上层 textarea 驱动） */
+  overflow: hidden;
   /* 不响应鼠标事件，所有点击/选中都交给上层 textarea */
   pointer-events: none;
   color: var(--editor-text);
-  /* 滚动条隐藏：滚动由 textarea 驱动，这里只是被动跟随 */
-  scrollbar-width: none;
   tab-size: 2;
 }
-.editor-highlight::-webkit-scrollbar {
-  display: none;
+/* 高亮内层（仅 CodeEditor 用）：transform 平移容器，无 padding */
+.editor-highlight-inner {
+  will-change: transform;
+}
+
+/* ===== 选区层：自绘选区背景，替代 textarea 原生 ::selection ===== */
+/* 选区层在高亮层之下（DOM 顺序更早）、textarea 之下。
+   textarea ::selection 已设为 transparent，选区背景完全由此层绘制。
+   关键：选区层 inner 和高亮层 inner 用同一个 transform 值同步滚动，
+   保证选区背景和彩色文字在同一帧移动，彻底消除 1 帧错位闪动。 */
+.editor-selection {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.editor-selection-inner {
+  position: relative;
+  will-change: transform;
+}
+.editor-selection-rect {
+  position: absolute;
+  background: rgba(37, 99, 235, 0.18);
+  border-radius: 2px;
+}
+
+/* 隐藏测量 span：测量等宽字体单字符宽度 */
+.editor-measure {
+  position: absolute;
+  visibility: hidden;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre;
+  pointer-events: none;
 }
 
 /* 代码编辑 textarea（浅色模式 + 叠加层） */
@@ -1058,9 +1097,16 @@ body {
   color: var(--editor-placeholder);
   -webkit-text-fill-color: var(--editor-placeholder);
 }
+/* 教程页面的 textarea：保留原生 ::selection，用户能看到选中效果 */
 .code-editor::selection {
-  /* 选区用半透明主题色，让用户能看到选中了哪些代码 */
   background: rgba(37, 99, 235, 0.18);
+}
+/* CodeEditor 组件的 textarea：隐藏原生 ::selection。
+   原生选区由合成器即时绘制，和高亮层 transform 同步差 1 帧，
+   滚动时选区背景会和高亮文字错位闪动。
+   改为自绘选区层（.editor-selection），和高亮层共用 transform 同步。 */
+.code-editor.ce-code-editor::selection {
+  background: transparent;
 }
 .code-editor::-webkit-scrollbar-thumb {
   background: var(--editor-scrollbar);
@@ -1452,6 +1498,62 @@ body {
   flex-direction: column;
   overflow: hidden;
   height: 100%;
+  /* 作为右上角浮动按钮（pg-toolbar-toggle）的定位基准 */
+  position: relative;
+}
+
+/* 工具栏隐藏：默认隐藏，点浮动按钮唤出 */
+.pg-toolbar-hidden {
+  display: none !important;
+}
+
+/* 右上角浮动按钮：工具栏隐藏时显示，点击唤出工具栏 */
+.pg-toolbar-toggle {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  z-index: 150;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.pg-toolbar-toggle:hover {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* 工具栏内的收起按钮（✕）：点它隐藏工具栏，回到沉浸模式 */
+.pg-toolbar-close {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.pg-toolbar-close:hover {
+  background: #fef2f2;
+  color: var(--error);
+  border-color: #fecaca;
 }
 
 /* ===== 顶部工具栏 ===== */
@@ -1512,6 +1614,100 @@ body {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+/* ===== 下拉菜单容器（语言下拉 / 更多功能下拉共用） ===== */
+.pg-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+/* 下拉箭头 */
+.pg-caret {
+  font-size: 10px;
+  line-height: 1;
+  margin-left: 2px;
+  opacity: 0.7;
+}
+
+/* 下拉菜单面板：绝对定位，从按钮下方展开 */
+.pg-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 200px;
+  max-height: 360px;
+  overflow-y: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 6px;
+  z-index: 200;
+  animation: pgDropdownIn 0.14s ease-out;
+}
+/* 「更多功能」下拉贴右对齐（避免超出工具栏右边界） */
+.pg-dropdown-menu-right {
+  left: auto;
+  right: 0;
+}
+
+@keyframes pgDropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 下拉菜单项 */
+.pg-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.pg-dropdown-item:hover:not(:disabled) {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+.pg-dropdown-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.pg-dropdown-item.active {
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+}
+/* 选中对勾 / 状态标记，推到最右 */
+.pg-check {
+  margin-left: auto;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+/* 下拉菜单滚动条 */
+.pg-dropdown-menu::-webkit-scrollbar {
+  width: 6px;
+}
+.pg-dropdown-menu::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 3px;
 }
 
 /* ===== 快捷键帮助面板 ===== */

@@ -1253,7 +1253,7 @@ class CodeAnalyzer {
       designPatterns: {
         singleton: { name: "单例模式", indicators: ["getInstance", "static instance", "private constructor"], description: "确保一个类只有一个实例，并提供全局访问点" },
         factory: { name: "工厂模式", indicators: ["create", "factory", "build", "switch case return new"], description: "通过工厂方法创建对象，而不是直接使用new" },
-        observer: { name: "观察者模式", indicators: ["addEventListener", "subscribe", "notify", "on(", "emit"], description: "定义一对多依赖关系，当对象状态改变时通知所有依赖者" },
+        observer: { name: "观察者模式", indicators: ["addEventListener", "subscribe", "notify", "on\\\\(", "emit"], description: "定义一对多依赖关系，当对象状态改变时通知所有依赖者" },
         strategy: { name: "策略模式", indicators: ["strategy", "algorithm", "interface.*do|execute"], description: "定义一系列算法，使它们可以互相替换" },
         decorator: { name: "装饰器模式", indicators: ["@", "decorator", "wrapper", "wrap"], description: "动态地给对象添加额外的职责" }
       },
@@ -2042,7 +2042,7 @@ class DocumentationGenerator {
   }
 
   generateReadme(projectInfo) {
-    const { name = "my-project", description = "一个实用的工具库", features = [], installCommand = "npm install my-project", language = "javascript", quickStart = "", license = "MIT" } = projectInfo;
+    let { name = "my-project", description = "一个实用的工具库", features = [], installCommand = "npm install my-project", language = "javascript", quickStart = "", license = "MIT" } = projectInfo;
     let doc = this.templates.readme;
     doc = doc.replace(/\\{\\{projectName\\}\\}/g, name);
     doc = doc.replace(/\\{\\{description\\}\\}/g, description);

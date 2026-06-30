@@ -1000,9 +1000,9 @@ export const metadata = {
 
 这是 Next.js 16 最重要的破坏性变更之一。从 v16 起：
 
-1. **\`middleware.ts\` 文件约定被弃用并重命名为 \`proxy.ts\`**。功能本身不变，但文件名和导出函数名都要改。
+1. **\`middleware.ts\` 文件约定被弃用，推荐改用 \`proxy.ts\`**。功能本身不变，文件名和导出函数名（\`middleware\` → \`proxy\`）建议同步更改；旧 \`middleware.ts\` 仍可运行但会输出弃用警告，若与 \`proxy.ts\` 同存则构建报错。
 2. **Proxy 默认使用 Node.js 运行时**。不再是 Edge Runtime，且 \`runtime\` 配置项在 Proxy 文件中**不可用**——设置它会抛错。
-3. 官方提供 codemod 一键迁移：\`npx @next/codemod@canary middleware-to-proxy .\`
+3. 官方提供 codemod 一键迁移：\`npx @next/codemod@latest middleware-to-proxy .\`
 
 为什么改名？官方解释："middleware" 容易和 Express.js 的中间件混淆，导致误用。而"proxy"更准确地反映了它"运行在应用前面的网络边界、在请求到达应用前处理"的本质。官方也建议：**除非别无选择，否则不要依赖 Proxy**，未来会提供更好的 API 替代。
 
@@ -1326,8 +1326,8 @@ export default config
 
 ## 小结
 
-- **Next.js 16：middleware 改名 proxy，默认 Node.js 运行时，不能设 runtime**
-- 用 codemod 迁移：\`npx @next/codemod@canary middleware-to-proxy .\`
+- **Next.js 16：middleware 弃用为 proxy，默认 Node.js 运行时，不能设 runtime**
+- 用 codemod 迁移：\`npx @next/codemod@latest middleware-to-proxy .\`
 - 必须配 \`matcher\`，否则会拦截静态资源；负向匹配排除 \`_next\`、metadata 文件
 - Server Action 会被同一 matcher 覆盖，**权限务必在 Server Action 内部再校验一次**
 - 实战：认证守卫、角色重定向、地理重写、i18n、CORS、请求头改写、后台埋点

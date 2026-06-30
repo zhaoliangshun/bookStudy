@@ -963,29 +963,33 @@ dotenv 本身不做配置验证，也不支持多环境切换，它只是负责�
 
 总结一下配置管理的最佳实践：代码和配置分离；使用环境变量存储配置，尤其是敏感配置；按优先级覆盖配置；启动时验证配置；配置冻结防止修改；缺少必要配置时快速失败。一个好的配置管理体系应该让开发者在不同环境部署应用时感到安心，而不是担心哪里的配置没配对导致事故。
 `,
-    code: `const Joi = {
-  string: () => ({
-    required: () => ({ type: 'string', required: true }),
-    default: (val) => ({ type: 'string', default: val }),
-    valid: (...values) => ({ type: 'string', enum: values }),
-    regex: () => ({ type: 'string' })
-  }),
-  number: () => ({
-    required: () => ({ type: 'number', required: true }),
-    default: (val) => ({ type: 'number', default: val }),
-    min: () => ({ type: 'number' }),
-    max: () => ({ type: 'number' })
-  }),
-  boolean: () => ({
-    default: (val) => ({ type: 'boolean', default: val })
-  })
+    code: `// 沙箱中没有 Joi 模块，用纯 JS 模拟简化版 Joi（支持链式调用）
+const Joi = {
+  string: () => createSchema('string'),
+  number: () => createSchema('number'),
+  boolean: () => createSchema('boolean')
 };
+
+function createSchema(type) {
+  const rules = { type, required: false, default: undefined, enum: null };
+  const api = {
+    required() { rules.required = true; return api; },
+    default(val) { rules.default = val; return api; },
+    valid(...values) { rules.enum = values; return api; },
+    min(val) { rules.min = val; return api; },
+    max(val) { rules.max = val; return api; },
+    regex(re) { rules.regex = re; return api; }
+  };
+  Object.defineProperty(api, '__rules', { value: rules });
+  return api;
+}
 
 function validate(config, schema) {
   const errors = [];
   const validated = {};
   
-  for (const [key, rule] of Object.entries(schema)) {
+  for (const [key, builder] of Object.entries(schema)) {
+    const rule = builder.__rules || builder;
     let value = config[key];
     
     if (value === undefined) {
