@@ -2351,11 +2351,12 @@ console.log("pipe('hello', toUpper, length) =", result2);
 
 // 数字管道
 const square = (n: number) => n * n;
-const add1 = (n: number) => n + 1;
+// 重命名为 add1b：上方柯里化演示已声明过 const add1，同作用域重复声明会报 SyntaxError
+const add1b = (n: number) => n + 1;
 const toString = (n: number) => "Result: " + n;
 
-const numResult = pipe(3, square, add1, square, toString);
-console.log("pipe(3, square, add1, square, toString) =", numResult);
+const numResult = pipe(3, square, add1b, square, toString);
+console.log("pipe(3, square, add1b, square, toString) =", numResult);
 
 // Compose 示例
 const transform = compose(addExclaim, toUpper, trim);

@@ -470,7 +470,7 @@ var firstNames = ["张", "李", "王", "赵", "陈", "刘", "周", "吴", "徐",
 var lastNames = ["伟", "芳", "敏", "静", "丽", "强", "磊", "洋", "勇", "军"];
 var cities = ["北京", "上海", "广州", "深圳", "杭州", "成都", "南京", "武汉"];
 
-for (var i = 0; i < 5000; i++) {
+for (var i = 0; i < 500; i++) {
   sampleData.users.push({
     id: i + 1,
     name: firstNames[i % firstNames.length] + lastNames[i % lastNames.length],
@@ -1014,6 +1014,11 @@ console.log("-".repeat(90));
 
 Object.keys(files).forEach(function (fileName) {
   var filePath = path.join(tmpDir, fileName);
+  // 文件名可能包含目录分隔（如 "/api/users"），先确保父目录存在
+  var fileDir = path.dirname(filePath);
+  if (!fs.existsSync(fileDir)) {
+    fs.mkdirSync(fileDir, { recursive: true });
+  }
   fs.writeFileSync(filePath, files[fileName], "utf8");
 
   var type;

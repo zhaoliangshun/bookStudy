@@ -527,12 +527,14 @@ class SSEFormatter {
       lines.push(\`retry: \${retry}\`);
     }
 
-    // 数据行（支持多行和对象）
-    const dataStr = typeof data === 'string' ? data : JSON.stringify(data);
-    const dataLines = dataStr.split('\\n');
-    dataLines.forEach((line) => {
-      lines.push(\`data: \${line}\`);
-    });
+    // 数据行（支持多行和对象；data 缺省时跳过）
+    if (data !== undefined && data !== null) {
+      const dataStr = typeof data === 'string' ? data : JSON.stringify(data);
+      const dataLines = String(dataStr).split('\\n');
+      dataLines.forEach((line) => {
+        lines.push(\`data: \${line}\`);
+      });
+    }
 
     // 以空行结束表示事件结束
     lines.push('');

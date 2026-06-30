@@ -71,9 +71,9 @@ print("done")
 - 通信靠 \`Queue\` / \`Pipe\`，内存不共享
 - 注意：\`if __name__ == "__main__":\` 保护
 `,
-    code: `import time, concurrent.futures, multiprocessing
+    code: `import time, concurrent.futures
 
-# CPU 密集：多进程加速
+# CPU 密集任务
 def cpu_task(n):
     s = 0
     for i in range(n):
@@ -83,12 +83,15 @@ def cpu_task(n):
 if __name__ == "__main__":
     N = 200_000
     t0 = time.perf_counter()
-    with concurrent.futures.ProcessPoolExecutor() as ex:
+    # 沙箱通过 stdin 传代码，子进程无法重新导入 __main__，ProcessPoolExecutor
+    # 会卡住超时。这里改用线程池演示同样的 .map 接口；真实 CPU 密集场景应
+    # 使用 ProcessPoolExecutor（需把代码保存为 .py 文件运行）。
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
         results = list(ex.map(cpu_task, [N] * 4))
-    print("process pool cost:", time.perf_counter() - t0)
+    print("pool cost:", time.perf_counter() - t0)
     print("results sample:", results[:2])
 
-# 线程 vs 进程对比（CPU 密集）
+# 串行 vs 线程对比（CPU 密集，受 GIL 限制几乎无加速）
 def cpu_bench(n):
     s = 0
     for i in range(n):
@@ -96,7 +99,7 @@ def cpu_bench(n):
     return s
 
 if __name__ == "__main__":
-    N = 5_000_000
+    N = 1_000_000
     t0 = time.perf_counter()
     cpu_bench(N)
     print("serial:", time.perf_counter() - t0)
@@ -106,11 +109,10 @@ if __name__ == "__main__":
         list(ex.map(cpu_bench, [N, N]))
     print("threads:", time.perf_counter() - t0, "(GIL 限制)")
 
-    t0 = time.perf_counter()
-    # ProcessPool 在 Windows 需要 __main__ 保护
-    with concurrent.futures.ProcessPoolExecutor(2) as ex:
-        list(ex.map(cpu_bench, [N, N]))
-    print("process:", time.perf_counter() - t0)
+    # 概念说明：ProcessPoolExecutor 与 ThreadPoolExecutor 接口完全一致，
+    # 但每个任务在独立进程运行，绕开 GIL，适合真正的 CPU 密集并行。
+    # 进程间通信靠 multiprocessing.Queue / Pipe（内存不共享）。
+    print("提示: ProcessPoolExecutor 接口相同，需独立进程运行环境")
 `,
   },
   {

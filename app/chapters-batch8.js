@@ -2299,6 +2299,8 @@ function processObj(obj) {
 // 第六章代码演示：内存泄漏场景与排查方法
 // ============================================================
 const EventEmitter = require("events");
+// 沙箱未注入 global，用 globalThis 建立别名以演示全局变量泄漏场景
+const global = globalThis;
 
 // ---- 1. 内存监控工具 ----
 console.log("===== 1. 内存监控工具 =====");

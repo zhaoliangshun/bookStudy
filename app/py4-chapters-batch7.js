@@ -158,7 +158,7 @@ print("site-packages:", sys.prefix)
 - 相对导入只在包内可用（不能在主模块用）
 - \`__all__\`：控制 \`from pkg import *\` 导出的内容
 `,
-    code: `import os, tempfile, textwrap
+    code: `import os, sys, tempfile, textwrap
 
 # 模拟包结构
 with tempfile.TemporaryDirectory() as tmp:

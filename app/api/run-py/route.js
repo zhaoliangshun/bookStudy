@@ -176,11 +176,21 @@ export async function POST(request) {
   // 调用子进程执行
   const result = await runPythonCode(code);
 
-  // Python 的异常 traceback 走 stderr，exitCode 非 0 表示有错误。
-  // 把 stderr 作为 error 字段返回，前端会在「错误」区显示。
+  let output = result.output || "";
+  let error = result.error || "";
+
+  // 程序正常退出（exitCode === 0）时，stderr 可能是正常日志输出
+  // （如 Python logging、unittest 都写到 stderr），不应显示为"错误"，
+  // 合并到 output 字段。超时（exitCode=-1）和异常（exitCode 非 0）保持原行为：
+  // stderr 作为 error 返回，前端在「错误」区显示。
+  if (result.exitCode === 0 && error) {
+    output = output ? `${output}\n${error}` : error;
+    error = "";
+  }
+
   return NextResponse.json({
-    output: result.output || "",
-    error: result.error || "",
+    output,
+    error,
     exitCode: result.exitCode,
   });
 }

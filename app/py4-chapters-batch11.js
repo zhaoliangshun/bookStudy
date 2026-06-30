@@ -59,7 +59,7 @@ print("map+filter:", result)
 - 比较函数：\`eq / ne / lt / le / gt / ge\`
 - 替代 lambda，可读性更好
 `,
-    code: `import operator
+    code: `import operator, functools
 
 # itemgetter：取字典/列表元素
 users = [
@@ -89,7 +89,6 @@ print("add:", list(map(operator.add, nums, nums)))
 print("mul:", list(map(operator.mul, nums, nums)))
 print("reduce mul:", functools.reduce(operator.mul, nums, 1))
 
-import functools
 # 比较函数
 print("lt:", operator.lt(1, 2), operator.eq(1, 1))
 `,

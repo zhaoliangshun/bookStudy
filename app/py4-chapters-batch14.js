@@ -20,8 +20,7 @@ export const chapters = [
 - **TypeVar / Generic**：泛型
 - 静态检查：mypy / pyright
 `,
-    code: `from typing import Optional, Protocol, TypeVar, Generic
-from typing_extensions import TypedDict
+    code: `from typing import Optional, Protocol, TypeVar, Generic, TypedDict
 
 # 1) 基础类型注解
 def first[T](xs: list[T]) -> T | None:

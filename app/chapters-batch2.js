@@ -149,6 +149,33 @@ fetch(url, { signal });
 // 第一章代码演示：全局对象与内置常量
 // ============================================================
 
+// 沙箱未注入 global，这里用 globalThis 建立别名以演示 Node.js 的全局对象
+var global = globalThis;
+
+// 沙箱未提供 AbortController，注入最小化实现以演示信号取消
+if (typeof AbortController === "undefined") {
+  globalThis.AbortController = function AbortController() {
+    var listeners = [];
+    this.signal = {
+      aborted: false,
+      reason: undefined,
+      addEventListener: function (type, cb) { if (type === "abort") listeners.push(cb); },
+      removeEventListener: function (type, cb) {
+        if (type === "abort") {
+          var i = listeners.indexOf(cb);
+          if (i !== -1) listeners.splice(i, 1);
+        }
+      },
+    };
+    this.abort = function (reason) {
+      if (this.signal.aborted) return;
+      this.signal.aborted = true;
+      this.signal.reason = reason;
+      listeners.forEach(function (cb) { try { cb(); } catch (e) {} });
+    };
+  };
+}
+
 // ---- 1. globalThis 与 global ----
 console.log("===== 1. globalThis 与 global =====");
 // globalThis 是 ES2020 的标准全局对象，跨环境统一
@@ -1792,8 +1819,8 @@ console.log("用户参数:", userArgs.length > 0 ? userArgs : "(无)");
 
 // ---- 2. process.execPath / process.execArgv ----
 console.log("\\n===== 2. execPath / execArgv =====");
-console.log("Node.js 可执行文件路径:", process.execPath);
-console.log("Node.js 启动参数:", process.execArgv.length > 0 ? process.execArgv : "(无)");
+console.log("Node.js 可执行文件路径:", process.execPath || "(沙箱未提供)");
+console.log("Node.js 启动参数:", process.execArgv && process.execArgv.length > 0 ? process.execArgv : "(无)");
 
 // ---- 3. 版本信息 ----
 console.log("\\n===== 3. 版本信息 =====");
@@ -1804,8 +1831,8 @@ console.log("OpenSSL 版本:", process.versions.openssl);
 console.log("zlib 版本:", process.versions.zlib);
 
 // process.release
-console.log("发行版名称:", process.release.name);
-console.log("LTS 版本:", process.release.lts || "非 LTS");
+console.log("发行版名称:", process.release && process.release.name ? process.release.name : "node");
+console.log("LTS 版本:", process.release && process.release.lts ? process.release.lts : "非 LTS");
 
 // ---- 4. 系统与架构信息 ----
 console.log("\\n===== 4. 系统与架构 =====");

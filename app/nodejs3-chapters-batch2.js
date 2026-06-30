@@ -2233,6 +2233,11 @@ const enemyPrototype = {
   position: { x: 0, y: 0 },
   skills: ['attack', 'defend'],
   
+  init(x, y) {
+    this.position = { x, y };
+    return this;
+  },
+  
   takeDamage(dmg) {
     this.health -= dmg;
     return this.health;
@@ -2247,12 +2252,6 @@ const enemyPrototype = {
     cloned.skills = [...this.skills];
     return cloned;
   }
-};
-
-const enemy1 = Object.create(enemyPrototype);
-enemy1.init = function(x, y) {
-  this.position = { x, y };
-  return this;
 };
 
 const bossPrototype = Object.create(enemyPrototype);

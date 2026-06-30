@@ -1065,7 +1065,7 @@ const getUser = get('/api/user');
 const createUser = post('/api/user');
 
 console.log(getUser(null));
-console.log(getUser('/api/user/123')(null));
+console.log(curriedRequest('GET', '/api/user/123')(null));
 console.log(createUser({ name: '张三' }));
 
 // ========== 5. 实现compose函数(从右到左) ==========

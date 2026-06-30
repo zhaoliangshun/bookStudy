@@ -222,9 +222,21 @@ export async function POST(request) {
 
   const result = await runJavaCode(code);
 
+  let output = result.output || "";
+  let error = result.error || "";
+
+  // 程序正常退出（exitCode === 0）时，stderr 可能是正常日志输出
+  // （如 java.util.logging 默认输出到 stderr），不应显示为"错误"，
+  // 合并到 output 字段。编译错误、超时（exitCode=-1）和异常（exitCode 非 0）
+  // 保持原行为：stderr 作为 error 返回。
+  if (result.exitCode === 0 && error) {
+    output = output ? `${output}\n${error}` : error;
+    error = "";
+  }
+
   return NextResponse.json({
-    output: result.output || "",
-    error: result.error || "",
+    output,
+    error,
     exitCode: result.exitCode,
   });
 }

@@ -1856,7 +1856,7 @@ const SortStrategies = {
     const left = arr.filter(x => x < pivot);
     const middle = arr.filter(x => x === pivot);
     const right = arr.filter(x => x > pivot);
-    return [...this.quick(left), ...middle, ...this.quick(right)];
+    return [...SortStrategies.quick(left), ...middle, ...SortStrategies.quick(right)];
   },
   insertion(arr) {
     const a = [...arr];

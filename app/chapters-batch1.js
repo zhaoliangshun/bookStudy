@@ -1105,15 +1105,15 @@ console.log("require('path')      →", simulateResolve("path"));
 console.log("require('./utils')   →", simulateResolve("./utils"));
 console.log("require('../config') →", simulateResolve("../config"));
 
-console.log("\\n真实的 require.resolve:");
-console.log("require.resolve('path') →", require.resolve("path"));
-console.log("require.resolve('fs')   →", require.resolve("fs"));
+console.log("\\nrequire 直接返回模块对象本身:");
+console.log("require('path') →", typeof require("path"), "（path 模块类型）");
+console.log("require('fs')   →", typeof require("fs"), "（fs 模块类型）");
 
-// 找不到模块时抛出错误
+// 沙箱环境未提供 require.resolve，用 require 演示模块查找失败的情形
 try {
-  require.resolve("nonexistent-module-xyz");
+  require("nonexistent-module-xyz");
 } catch (e) {
-  console.log("require.resolve('不存在的模块') →", e.code);
+  console.log("require('不存在的模块') →", e.code || e.message);
 }
 
 // ---- 7. 循环依赖模拟 ----
