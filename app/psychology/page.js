@@ -1,17 +1,16 @@
 "use client";
 
 // =============================================================
-// 人际关系心理学书籍 - 阅读页面
+// 心理学书籍阅读页面
 // -------------------------------------------------------------
-// 纯内容阅读型书籍页面，无代码编辑器，无运行按钮。
+// 《心向阳光——心理健康与自我疗愈指南》
+// 纯内容阅读型书籍，无代码编辑器，无运行按钮。
 // 结构：侧边栏章节导航 + 主内容区 Markdown 渲染。
-// 支持：上一章/下一章导航、移动端侧边栏抽屉。
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { psychologyChapters, psychologyChapterGroups } from "../psychology-book-data";
+import { psychologyChapters, psychologyChapterGroups } from "../psychology-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function PsychologyBook() {
@@ -45,19 +44,26 @@ export default function PsychologyBook() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/psychology" meta="人际关系心理学 · 全书阅读" onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}
         <Sidebar
-          title="目录"
+          title="心向阳光"
           tip="点击章节开始阅读"
-          footer={<p>💡 受伤、释怀与重建的心理学读物</p>}
+          footer={
+            <p>
+              💡 本书共 {psychologyChapters.length} 章，覆盖心理健康、心理疗愈、拧巴性格疗愈三大主题
+              <br />
+              📂 按 <kbd>Ctrl</kbd> + <kbd>B</kbd> 收起 / 展开目录
+            </p>
+          }
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          onToggleSidebar={() => setSidebarOpen((v) => !v)}
+          currentPath="/psychology"
+          meta={`共 ${psychologyChapters.length} 章 · 心理健康与自我疗愈指南`}
         />
 
         {/* ===== 主内容区 ===== */}
@@ -110,7 +116,8 @@ export default function PsychologyBook() {
 
           <footer className="content-footer">
             <p>
-              人际关系心理学 · 受伤、释怀与重建 · 愿你被温柔以待，也愿你温柔以待
+              《心向阳光——心理健康与自我疗愈指南》 · 深度阅读 ·
+              愿你在这里找到温柔与力量
             </p>
           </footer>
         </main>

@@ -116,9 +116,9 @@ public class Main {
 
         // ===== 代码块体（显式 return）=====
         Function<Integer, Integer> factorial = n -> {
-            int r = 1;
-            for (int i = 2; i <= n; i++) r *= i;
-            return r;
+            int result = 1;
+            for (int i = 2; i <= n; i++) result *= i;
+            return result;
         };
         System.out.println("5! = " + factorial.apply(5));
 

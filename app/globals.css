@@ -80,273 +80,8 @@ body {
 /* ===== 应用骨架 ===== */
 .app-shell {
   display: flex;
-  flex-direction: column;
   height: 100vh;
   overflow: hidden;
-}
-
-/* ===== 顶部导航栏 ===== */
-.topbar {
-  height: var(--topbar-h);
-  background: var(--bg-sidebar);
-  color: var(--text-on-dark);
-  display: flex;
-  align-items: center;
-  padding: 0 20px;
-  gap: 16px;
-  flex-shrink: 0;
-  box-shadow: var(--shadow-sm);
-  z-index: 50;
-  position: relative;
-}
-
-.menu-btn {
-  display: none;
-  background: none;
-  border: none;
-  color: var(--text-on-dark);
-  font-size: 20px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-}
-.menu-btn:hover {
-  background: var(--bg-sidebar-hover);
-}
-
-.topbar-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-}
-
-.topbar-logo {
-  color: var(--accent-green);
-  font-size: 22px;
-  display: inline-block;
-  transform: translateY(-1px);
-}
-
-.topbar-meta {
-  margin-left: auto;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.topbar-nav {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  min-width: 0;
-  margin-left: auto;
-}
-.topbar-nav::-webkit-scrollbar {
-  display: none;
-}
-
-.topbar-link {
-  color: var(--accent-green);
-  font-size: 13px;
-  text-decoration: none;
-  padding: 5px 12px;
-  border: 1px solid var(--border-dark);
-  border-radius: var(--radius-sm);
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.topbar-link:hover {
-  background: var(--bg-sidebar-hover);
-  border-color: var(--accent-green);
-}
-.topbar-link.active {
-  background: var(--accent-green);
-  color: var(--bg-sidebar);
-  border-color: var(--accent-green);
-  font-weight: 600;
-  cursor: default;
-}
-
-/* ===== 书籍目录下拉按钮 ===== */
-.topbar-directory-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: transparent;
-  color: var(--accent-green);
-  font-size: 13px;
-  padding: 5px 14px;
-  border: 1px solid var(--border-dark);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-  font-family: inherit;
-}
-.topbar-directory-btn:hover {
-  background: var(--bg-sidebar-hover);
-  border-color: var(--accent-green);
-}
-.topbar-directory-btn.active {
-  background: var(--accent-green);
-  color: var(--bg-sidebar);
-  border-color: var(--accent-green);
-  font-weight: 600;
-}
-
-.directory-btn-icon {
-  font-size: 15px;
-}
-
-.directory-arrow {
-  font-size: 11px;
-  transition: transform 0.2s;
-  display: inline-block;
-}
-.directory-arrow.open {
-  transform: rotate(180deg);
-}
-
-/* ===== 书籍目录下拉面板 ===== */
-.directory-dropdown {
-  position: absolute;
-  top: 100%;
-  right: 12px;
-  margin-top: 8px;
-  width: 420px;
-  max-height: 70vh;
-  background: var(--bg-sidebar);
-  border: 1px solid var(--border-dark);
-  border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-  z-index: 1000;
-  overflow: hidden;
-  animation: dropdownIn 0.15s ease-out;
-}
-
-@keyframes dropdownIn {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.directory-header {
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border-dark);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-on-dark);
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.directory-body {
-  padding: 8px;
-  overflow-y: auto;
-  max-height: calc(70vh - 48px);
-}
-
-.directory-category {
-  margin-bottom: 4px;
-}
-.directory-category:last-child {
-  margin-bottom: 0;
-}
-
-.directory-category-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px 4px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.directory-category-count {
-  margin-left: auto;
-  font-size: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  padding: 1px 7px;
-  border-radius: 10px;
-  color: var(--text-muted);
-}
-
-.directory-books {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 3px;
-  padding: 0 6px 6px;
-}
-
-.directory-book-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  color: var(--text-on-dark);
-  text-decoration: none;
-  font-size: 13px;
-  transition: background 0.12s;
-  position: relative;
-}
-.directory-book-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-.directory-book-item.active {
-  background: rgba(74, 222, 128, 0.12);
-  color: var(--accent-green);
-}
-
-.directory-book-icon {
-  font-size: 16px;
-  flex-shrink: 0;
-}
-
-.directory-book-label {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.directory-book-badge {
-  font-size: 10px;
-  background: var(--accent-green);
-  color: var(--bg-sidebar);
-  padding: 1px 6px;
-  border-radius: 8px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-/* 移动端适配 */
-@media (max-width: 640px) {
-  .directory-dropdown {
-    position: fixed;
-    top: 56px;
-    left: 8px;
-    right: 8px;
-    width: auto;
-    max-height: 60vh;
-  }
-  .directory-books {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* ===== 主布局 ===== */
@@ -385,6 +120,197 @@ body {
   height: 100%;
   overflow: hidden;
   min-width: 0;
+}
+
+/* ===== 书籍目录切换器（位于侧边栏顶部，替代原顶部 header） ===== */
+.sidebar-book-switcher {
+  position: relative;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--border-dark);
+  background: rgba(0, 0, 0, 0.18);
+  flex-shrink: 0;
+}
+
+.sidebar-book-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-on-dark);
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  text-align: left;
+}
+.sidebar-book-btn:hover {
+  background: var(--bg-sidebar-hover);
+  border-color: var(--accent-green);
+}
+.sidebar-book-btn.active {
+  border-color: var(--accent-green);
+  background: rgba(74, 222, 128, 0.1);
+}
+
+.sidebar-book-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.sidebar-book-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-book-arrow {
+  font-size: 11px;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+.sidebar-book-arrow.open {
+  transform: rotate(180deg);
+  color: var(--accent-green);
+}
+
+/* 下拉面板：从顶部展开，覆盖在章节列表之上 */
+.sidebar-book-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 14px;
+  right: 14px;
+  max-height: 60vh;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-dark);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  z-index: 1000;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: sidebarDropdownIn 0.15s ease-out;
+}
+
+@keyframes sidebarDropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sidebar-book-dropdown-header {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-dark);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-on-dark);
+  background: rgba(255, 255, 255, 0.04);
+  flex-shrink: 0;
+}
+
+.sidebar-book-dropdown-body {
+  padding: 6px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+.sidebar-book-dropdown-body::-webkit-scrollbar {
+  width: 6px;
+}
+.sidebar-book-dropdown-body::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 3px;
+}
+
+.sidebar-book-category {
+  margin-bottom: 4px;
+}
+.sidebar-book-category:last-child {
+  margin-bottom: 0;
+}
+
+.sidebar-book-category-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-book-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0 4px 6px;
+}
+
+.sidebar-book-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  color: var(--text-on-dark);
+  text-decoration: none;
+  font-size: 13px;
+  transition: background 0.12s;
+}
+.sidebar-book-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.sidebar-book-item.active {
+  background: rgba(74, 222, 128, 0.14);
+  color: var(--accent-green);
+  font-weight: 600;
+}
+
+.sidebar-book-item-icon {
+  font-size: 15px;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+
+.sidebar-book-item-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 侧边栏元信息（章节统计等，位于切换器下方） */
+.sidebar-meta {
+  padding: 6px 14px 8px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-dark);
+  background: rgba(0, 0, 0, 0.12);
+  flex-shrink: 0;
+}
+
+/* 收起状态下隐藏书籍切换器（避免溢出） */
+.sidebar.collapsed .sidebar-book-switcher,
+.sidebar.collapsed .sidebar-meta {
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* 侧边栏头部行布局 */
@@ -602,6 +528,11 @@ body {
   display: none;
 }
 
+/* 移动端浮动菜单按钮（桌面端隐藏，仅在 max-width:900px 下显示） */
+.mobile-menu-btn {
+  display: none;
+}
+
 /* ===== 主内容区 ===== */
 .content {
   flex: 1;
@@ -611,14 +542,11 @@ body {
   min-width: 0;
 }
 
-/* 章节头部 */
+/* 章节头部 —— 跟随页面滚动，不固定 */
 .chapter-header {
   background: var(--bg-elevated);
   padding: 28px 40px 20px;
   border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  z-index: 10;
   box-shadow: var(--shadow-sm);
 }
 
@@ -722,8 +650,8 @@ body {
 }
 
 .md-code-block {
-  background: var(--bg-code);
-  color: var(--text-code);
+  background: var(--editor-bg);
+  color: var(--text);
   padding: 16px 18px;
   border-radius: var(--radius-sm);
   overflow-x: auto;
@@ -731,7 +659,8 @@ body {
   font-family: var(--mono);
   font-size: 13px;
   line-height: 1.6;
-  border: 1px solid #313244;
+  border: 1px solid var(--editor-border);
+  box-shadow: var(--shadow-sm);
 }
 .md-code-block code {
   font-family: inherit;
@@ -742,46 +671,92 @@ body {
   position: relative;
   margin: 14px 0;
 }
-/* 包装器内的代码块重置 margin（由 wrap 统一控制）并留出工具栏空间 */
-.md-code-block-wrap > .md-code-block {
-  margin: 0;
-  padding-top: 34px;
+/* 编辑器容器：紧贴在工具栏下方，去掉顶部留白 */
+.md-code-editor-container {
+  overflow: hidden;
+  position: relative;
 }
-/* 有输出面板时，代码块底部圆角去掉，与输出面板衔接 */
-.md-code-block-wrap.has-output > .md-code-block {
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+/* CodeEditor 在 markdown 代码块中的样式覆盖 */
+.md-code-editor-container .ce-editor-wrap {
+  border-radius: 0;
+  border: 1px solid var(--editor-border);
+  border-top: none;
+  box-shadow: none;
+  min-height: 80px;
+  max-height: 400px;
+}
+/* 有输出面板时，编辑器底部圆角去掉，与输出面板衔接 */
+.md-code-block-wrap.has-output .ce-editor-wrap {
+  border-radius: 0;
   border-bottom: none;
 }
 
-/* 右上角工具栏 */
+/* 顶部黑色工具栏（仿 Playground 的 pg-pane-header 风格） */
 .md-code-toolbar {
-  position: absolute;
-  top: 6px;
-  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 14px;
+  background: var(--bg-sidebar);
+  color: var(--text-on-dark);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  flex-shrink: 0;
+}
+
+.md-code-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.md-code-toolbar-right {
   display: flex;
   align-items: center;
   gap: 4px;
-  z-index: 1;
+  flex-shrink: 0;
+}
+
+/* 圆点（macOS 窗口红绿黄灯风格） */
+.md-code-toolbar .dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.md-code-toolbar .dot-red {
+  background: #ff5f57;
+}
+.md-code-toolbar .dot-yellow {
+  background: #febc2e;
+}
+.md-code-toolbar .dot-green {
+  background: #28c840;
 }
 
 /* 语言标签 */
 .md-code-lang-tag {
-  font-size: 11px;
-  color: #6c7086;
+  font-size: 12px;
+  color: var(--text-on-dark);
   font-family: var(--mono);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-right: 4px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  margin-left: 4px;
   user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* 通用按钮样式 */
+/* 通用按钮样式（深色背景下使用浅色描边按钮） */
 .md-code-btn {
   background: rgba(255, 255, 255, 0.08);
-  color: #cdd6f4;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-on-dark);
+  border: 1px solid var(--border-dark);
   border-radius: 4px;
-  padding: 3px 9px;
+  padding: 3px 10px;
   font-size: 11px;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
@@ -790,8 +765,9 @@ body {
   line-height: 1.4;
 }
 .md-code-btn:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.18);
+  border-color: var(--text-muted);
+  color: #fff;
 }
 .md-code-btn:active {
   transform: translateY(1px);
@@ -803,22 +779,22 @@ body {
 
 /* 运行按钮 hover 绿色 */
 .md-code-btn-run:hover {
-  background: rgba(22, 163, 74, 0.35);
-  border-color: rgba(22, 163, 74, 0.6);
+  background: rgba(22, 163, 74, 0.2);
+  border-color: rgba(74, 222, 128, 0.6);
   color: #4ade80;
 }
 
 /* Playground 按钮 hover 蓝色 */
 .md-code-btn-pg:hover {
-  background: rgba(37, 99, 235, 0.35);
-  border-color: rgba(37, 99, 235, 0.6);
+  background: rgba(37, 99, 235, 0.2);
+  border-color: rgba(96, 165, 250, 0.6);
   color: #93c5fd;
 }
 
 /* ===== 就地运行结果面板 ===== */
 .md-code-output {
-  background: var(--bg-console);
-  border: 1px solid #313244;
+  background: #f8fafc;
+  border: 1px solid var(--editor-border);
   border-top: none;
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
   overflow: hidden;
@@ -828,16 +804,16 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 5px 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border-bottom: 1px solid #313244;
+  background: #f1f5f9;
+  border-bottom: 1px solid var(--editor-border);
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-family: var(--mono);
 }
 .md-code-output-close {
   background: none;
   border: none;
-  color: #94a3b8;
+  color: var(--text-muted);
   cursor: pointer;
   font-size: 13px;
   padding: 0 4px;
@@ -845,12 +821,12 @@ body {
   border-radius: 3px;
 }
 .md-code-output-close:hover {
-  color: #f87171;
-  background: rgba(248, 113, 113, 0.12);
+  color: #b91c1c;
+  background: rgba(185, 28, 28, 0.1);
 }
 .md-code-output-body {
   padding: 10px 14px;
-  color: #cdd6f4;
+  color: var(--text);
   font-family: var(--mono);
   font-size: 12.5px;
   line-height: 1.55;
@@ -861,18 +837,18 @@ body {
   overflow-y: auto;
 }
 .md-code-output-body.has-error {
-  color: #f87171;
+  color: #b91c1c;
 }
 .md-code-output-error {
   padding: 10px 14px;
-  color: #f87171;
+  color: #b91c1c;
   font-family: var(--mono);
   font-size: 12.5px;
   line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-word;
   margin: 0;
-  border-top: 1px solid #313244;
+  border-top: 1px solid var(--editor-border);
   max-height: 320px;
   overflow-y: auto;
 }
@@ -994,6 +970,12 @@ body {
   box-shadow: var(--shadow);
   min-height: 320px;
   max-height: 520px;
+}
+
+/* CodeEditor 根元素：嵌套在 flex 容器中时需撑满宽度，否则会塌缩到行号宽度 */
+.ce-editor-wrap {
+  flex: 1;
+  min-width: 0;
 }
 
 /* 行号 */
@@ -1346,25 +1328,33 @@ body {
 
 /* ===== 响应式：移动端 ===== */
 @media (max-width: 900px) {
-  .menu-btn {
-    display: block;
+  /* 移动端浮动菜单按钮（替代原顶部 header 的菜单按钮） */
+  .mobile-menu-btn {
+    display: flex;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 45;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text);
+    font-size: 20px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
   }
-  .topbar-meta {
-    display: none;
-  }
-  .topbar-title {
-    font-size: 15px;
-  }
-  .topbar-title > span:last-child {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 120px;
+  .mobile-menu-btn:hover {
+    background: var(--primary-light);
+    border-color: var(--primary);
   }
 
   .sidebar {
     position: fixed;
-    top: var(--topbar-h);
+    top: 0;
     left: 0;
     bottom: 0;
     width: var(--sidebar-w) !important;
@@ -1381,7 +1371,7 @@ body {
   .sidebar-resize-handle {
     display: none;
   }
-  /* 移动端不显示展开浮动按钮（用顶部菜单按钮代替） */
+  /* 移动端不显示桌面端展开浮动按钮 */
   .sidebar-expand-btn {
     display: none;
   }
@@ -1389,7 +1379,7 @@ body {
   .sidebar-overlay {
     display: block;
     position: fixed;
-    top: var(--topbar-h);
+    top: 0;
     left: 0;
     right: 0;
     bottom: 0;
@@ -1574,8 +1564,9 @@ body {
 .pg-kbd {
   display: inline-block;
   padding: 2px 8px;
-  background: var(--bg-code);
-  color: var(--text-code);
+  background: #f1f5f9;
+  color: var(--text);
+  border: 1px solid var(--border);
   border-radius: 4px;
   font-family: var(--mono);
   font-size: 12px;
@@ -1664,18 +1655,17 @@ body {
   flex: 1;
   overflow: auto;
   padding: 14px 16px;
-  background: var(--bg-console);
-  color: var(--text-code);
+  background: #f8fafc;
+  color: var(--text);
   font-family: var(--mono);
   font-size: 13px;
   line-height: 1.6;
   min-height: 0;
 }
-/* 控制台里的输出/错误复用全局 .console-output / .console-error 样式，
-   但在 playground 深色背景下调整一下，让文字更清晰 */
+/* 控制台里的输出/错误复用全局 .console-output / .console-error 样式 */
 .pg-console-body .console-output {
   background: transparent;
-  color: var(--text-code);
+  color: var(--text);
   padding: 0;
   margin: 0;
   white-space: pre-wrap;
@@ -1683,14 +1673,14 @@ body {
 }
 .pg-console-body .console-error {
   background: transparent;
-  color: var(--accent-red);
+  color: #b91c1c;
   padding: 0;
   margin-top: 10px;
   white-space: pre-wrap;
   word-break: break-word;
 }
 .pg-console-body .console-error .error-label {
-  color: var(--accent-red);
+  color: #b91c1c;
   font-weight: 700;
 }
 .pg-console-body .console-placeholder {

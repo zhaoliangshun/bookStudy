@@ -2154,7 +2154,7 @@ public class Main {
             IllegalArgumentException.class,
             () -> service.deposit(-100)
         );
-        assertEquals("存款金额必须为正: -100", e1.getMessage());
+        assertEquals("存款金额必须为正: -100.0", e1.getMessage());
         System.out.println("通过: " + e1.getMessage());
 
         // 2. 验证自定义异常字段

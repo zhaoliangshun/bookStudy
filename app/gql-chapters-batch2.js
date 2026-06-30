@@ -2833,7 +2833,7 @@ const resolvers = {
 # === Query ===
 # 变量示例：使用 @include/@skip 和多种变量类型
 query SearchPosts(
-  $keyword: String!,
+  $keyword: String! = "GraphQL",
   $tags: [String!],
   $minLikes: Int,
   $maxLikes: Int,

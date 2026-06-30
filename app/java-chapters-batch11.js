@@ -1701,8 +1701,8 @@ interface Shape {
     double area(double param);
 }
 
-// 形状枚举实现接口
-enum ShapeType implements Shape {
+// 形状枚举实现接口（同时实现 Describable，便于统一调度）
+enum ShapeType implements Shape, Describable {
     CIRCLE {
         @Override public double area(double r) { return Math.PI * r * r; }
     },
@@ -1712,6 +1712,11 @@ enum ShapeType implements Shape {
     TRIANGLE {
         @Override public double area(double base) { return 0.5 * base * base; } // 等腰直角
     };
+
+    @Override
+    public String describe() {
+        return name() + " 形状";
+    }
 }
 
 // 可描述接口（非公开）

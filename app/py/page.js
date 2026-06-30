@@ -15,7 +15,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { pyChapters, pyChapterGroups } from "../py-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightPython } from "../py-highlight";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function PythonTutorial() {
@@ -104,6 +103,14 @@ export default function PythonTutorial() {
     setHasRun(false);
   }, [activeChapter]);
 
+  // ---------- 在 Playground 中打开 ----------
+  const handlePlayground = useCallback(() => {
+    try {
+      localStorage.setItem("playground:code:python", code);
+    } catch {}
+    window.open(`/playground?lang=python`, "_blank", "noopener,noreferrer");
+  }, [code]);
+
   // ---------- 键盘快捷键：Ctrl/Cmd + Enter 运行 ----------
   useEffect(() => {
     const handleKey = (e) => {
@@ -141,8 +148,6 @@ export default function PythonTutorial() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/py" meta={`共 ${pyChapters.length} 章 · 可在线编辑运行`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏：章节导航 ===== */}
         <Sidebar
@@ -154,6 +159,8 @@ export default function PythonTutorial() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/py"
+          meta={`共 ${pyChapters.length} 章 · 可在线编辑运行`}
         />
 
         {/* ===== 主内容区 ===== */}
@@ -200,6 +207,13 @@ export default function PythonTutorial() {
                   disabled={isRunning}
                 >
                   {isRunning ? "⏳ 执行中..." : "▶ 运行代码"}
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handlePlayground}
+                  title="在 Playground 中打开"
+                >
+                  🚀 Playground
                 </button>
               </div>
             </div>

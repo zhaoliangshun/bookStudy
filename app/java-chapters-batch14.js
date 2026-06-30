@@ -60,51 +60,23 @@ HashMap 允许最多一个 null 键（hash 为 0，固定放在第 0 个桶）�
 
 下面通过反射窥探 HashMap 的内部状态：`,
     code: `// 演示 HashMap 的内部行为：桶数组、链表与树化
-import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 
 public class Main {
-    public static void main(String[] args) throws Exception {
-        // HashMap 的内部桶数组在 Java 8+ 中字段名为 "table"
-        Map<String, Integer> map = new HashMap<>(4);
+    public static void main(String[] args) {
+        // 用自定义 SimpleHashMap 演示 HashMap 内部桶数组、链表结构
+        // （Java 16+ 限制了对 HashMap 内部字段的反射访问，因此用自定义类演示原理）
+        SimpleHashMap<String, Integer> map = new SimpleHashMap<>(4);
 
-        // 故意构造哈希冲突：让多个 key 落到同一桶
-        // 这些字符串经过扰动后 hashCode 模运算结果接近，便于观察链表
+        // 插入 8 个元素，观察桶分布与链表
         for (int i = 0; i < 8; i++) {
             map.put("key" + i, i);
         }
 
         System.out.println("map.size = " + map.size());
-
-        // 通过反射读取桶数组长度（capacity）
-        Field tableField = HashMap.class.getDeclaredField("table");
-        tableField.setAccessible(true);
-        Object[] table = (Object[]) tableField.get(map);
-        System.out.println("桶数组长度 capacity = " + (table == null ? 0 : table.length));
-
-        // 统计每个桶的链表/树长度
-        if (table != null) {
-            for (int i = 0; i < table.length; i++) {
-                Object node = table[i];
-                int count = 0;
-                boolean isTree = false;
-                while (node != null) {
-                    count++;
-                    // 红黑树节点类型为 TreeNode，是 Node 的子类
-                    if (node.getClass().getSimpleName().equals("TreeNode")) {
-                        isTree = true;
-                    }
-                    // 通过 next 字段遍历链表
-                    Field nextField = node.getClass().getSuperclass().getDeclaredField("next");
-                    nextField.setAccessible(true);
-                    node = nextField.get(node);
-                }
-                if (count > 0) {
-                    System.out.println("桶[" + i + "] 元素数 = " + count + (isTree ? " (已树化)" : " (链表)"));
-                }
-            }
-        }
+        System.out.println("桶数组长度 capacity = " + map.capacity());
+        map.printBuckets();
 
         // 演示 null 键：固定放在 hash=0 的桶
         map.put(null, 100);
@@ -114,6 +86,75 @@ public class Main {
         map.put("key0", 999);
         System.out.println("key0 覆盖后 = " + map.get("key0"));
         System.out.println("size 仍为 = " + map.size());
+
+        // 说明：真实 HashMap 在链表长度 >= 8 且容量 >= 64 时将链表树化为红黑树（TreeNode），
+        // 链表长度 <= 6 时退化为链表。这里用 SimpleHashMap 演示桶+链表的基本结构。
+    }
+}
+
+// 简化版 HashMap，演示桶数组 + 链表结构
+class SimpleHashMap<K, V> {
+    private Node<K, V>[] table;
+    private int size;
+    private final int capacity;
+
+    static class Node<K, V> {
+        final K key;
+        V value;
+        Node<K, V> next;
+        Node(K key, V value) { this.key = key; this.value = value; }
+    }
+
+    @SuppressWarnings("unchecked")
+    SimpleHashMap(int capacity) {
+        this.capacity = capacity;
+        this.table = (Node<K, V>[]) new Node[capacity];
+    }
+
+    private int index(K key) {
+        int h = key == null ? 0 : key.hashCode();
+        return (capacity - 1) & h; // 等价于 h % capacity（当 capacity 为 2 的幂）
+    }
+
+    void put(K key, V value) {
+        int idx = index(key);
+        Node<K, V> cur = table[idx];
+        while (cur != null) {
+            if (key == null ? cur.key == null : key.equals(cur.key)) {
+                cur.value = value; // 覆盖
+                return;
+            }
+            cur = cur.next;
+        }
+        // 头插法：新节点插到链表头部
+        Node<K, V> node = new Node<>(key, value);
+        node.next = table[idx];
+        table[idx] = node;
+        size++;
+    }
+
+    V get(K key) {
+        int idx = index(key);
+        Node<K, V> cur = table[idx];
+        while (cur != null) {
+            if (key == null ? cur.key == null : key.equals(cur.key)) return cur.value;
+            cur = cur.next;
+        }
+        return null;
+    }
+
+    int size() { return size; }
+    int capacity() { return capacity; }
+
+    void printBuckets() {
+        for (int i = 0; i < table.length; i++) {
+            int count = 0;
+            Node<K, V> cur = table[i];
+            while (cur != null) { count++; cur = cur.next; }
+            if (count > 0) {
+                System.out.println("桶[" + i + "] 元素数 = " + count + " (链表)");
+            }
+        }
     }
 }`
   },
@@ -176,44 +217,55 @@ Map<String, String> map = new HashMap<>(cap);
 
 下面通过实验观察容量变化：`,
     code: `// 演示 HashMap 容量、负载因子与扩容行为
-import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 
 public class Main {
-    // 通过反射获取 HashMap 当前桶数组长度
-    static int capacity(Map<?, ?> map) throws Exception {
-        Field f = HashMap.class.getDeclaredField("table");
-        f.setAccessible(true);
-        Object[] table = (Object[]) f.get(map);
-        return table == null ? 0 : table.length;
+    // 模拟 HashMap 的容量计算（Java 16+ 限制反射访问内部字段，用模拟值演示）
+    // 真实 HashMap：初始容量为 2 的幂，扩容阈值 = 容量 * 负载因子，size > 阈值时翻倍
+    static int expectedCapacity(int initialCap, float loadFactor, int size) {
+        if (size == 0) return 0; // 未分配
+        int cap = roundUpToPowerOf2(initialCap);
+        int threshold = (int) (cap * loadFactor);
+        while (size > threshold) {
+            cap *= 2;
+            threshold = (int) (cap * loadFactor);
+        }
+        return cap;
     }
 
-    public static void main(String[] args) throws Exception {
+    static int roundUpToPowerOf2(int n) {
+        if (n <= 1) return 1;
+        int p = 1;
+        while (p < n) p <<= 1;
+        return p;
+    }
+
+    public static void main(String[] args) {
         // 1) 默认配置：初始容量 16，负载因子 0.75
         Map<Integer, String> m1 = new HashMap<>();
-        System.out.println("默认初始容量 = " + capacity(m1)); // 还未分配，0
+        System.out.println("默认初始容量 = " + expectedCapacity(16, 0.75f, 0)); // 还未分配，0
         m1.put(1, "a");
-        System.out.println("首次 put 后容量 = " + capacity(m1)); // 16
+        System.out.println("首次 put 后容量 = " + expectedCapacity(16, 0.75f, m1.size())); // 16
 
         // 当 size > 16 * 0.75 = 12 时触发扩容
         for (int i = 0; i < 12; i++) {
             m1.put(i, "v");
         }
-        System.out.println("放 12 个元素后容量 = " + capacity(m1)); // 16，未扩容
+        System.out.println("放 12 个元素后容量 = " + expectedCapacity(16, 0.75f, m1.size())); // 16，未扩容
         m1.put(100, "v");
-        System.out.println("放 13 个元素后容量 = " + capacity(m1)); // 32，已扩容
+        System.out.println("放 13 个元素后容量 = " + expectedCapacity(16, 0.75f, m1.size())); // 32，已扩容
 
         // 2) 指定初始容量与负载因子
         // 容量 64，负载因子 1.0 → size > 64 才扩容
         Map<Integer, String> m2 = new HashMap<>(64, 1.0f);
-        System.out.println("自定义初始容量 = " + capacity(m2)); // 64
+        System.out.println("自定义初始容量 = " + expectedCapacity(64, 1.0f, 0)); // 0，未分配
         for (int i = 0; i < 64; i++) {
             m2.put(i, "v");
         }
-        System.out.println("放 64 个元素后容量 = " + capacity(m2)); // 64，未扩容
+        System.out.println("放 64 个元素后容量 = " + expectedCapacity(64, 1.0f, m2.size())); // 64，未扩容
         m2.put(100, "v");
-        System.out.println("放 65 个元素后容量 = " + capacity(m2)); // 128，扩容
+        System.out.println("放 65 个元素后容量 = " + expectedCapacity(64, 1.0f, m2.size())); // 128，扩容
 
         // 3) 预估容量的建议公式
         int expected = 1000;
@@ -225,7 +277,10 @@ public class Main {
         for (int i = 0; i < 9; i++) {
             m3.put(i, "v");
         }
-        System.out.println("0.5 负载因子放 9 个元素后容量 = " + capacity(m3)); // 32，提前扩容
+        System.out.println("0.5 负载因子放 9 个元素后容量 = " + expectedCapacity(16, 0.5f, m3.size())); // 32，提前扩容
+
+        // 说明：以上容量值通过模拟 HashMap 扩容算法计算（初始容量 2 的幂，超阈值翻倍）。
+        // Java 16+ 限制了对 HashMap 内部 table 字段的反射访问，无法直接读取真实容量。
     }
 }`
   },

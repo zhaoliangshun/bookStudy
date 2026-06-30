@@ -3147,9 +3147,9 @@ class APIDesigner {
     doc += '---\\n\\n';
     doc += '## 通用响应格式\\n\\n';
     doc += '### 成功响应\\n\\n';
-    doc += \`\`\`\`json\\n{\\n  "success": true,\\n  "data": { ... },\\n  "meta": {\\n    "page": 1,\\n    "pageSize": 10,\\n    "total": 150,\\n    "totalPages": 15\\n  }\\n}\\n\`\`\`\`\\n\\n\`;
+    doc += '\`\`\`json\\n{\\n  "success": true,\\n  "data": { ... },\\n  "meta": {\\n    "page": 1,\\n    "pageSize": 10,\\n    "total": 150,\\n    "totalPages": 15\\n  }\\n}\\n\`\`\`\\n\\n';
     doc += '### 错误响应\\n\\n';
-    doc += \`\`\`\`json\\n{\\n  "success": false,\\n  "error": {\\n    "code": "VALIDATION_ERROR",\\n    "message": "请求参数验证失败",\\n    "details": [...]\\n  }\\n}\\n\`\`\`\`\\n\\n\`;
+    doc += '\`\`\`json\\n{\\n  "success": false,\\n  "error": {\\n    "code": "VALIDATION_ERROR",\\n    "message": "请求参数验证失败",\\n    "details": [...]\\n  }\\n}\\n\`\`\`\\n\\n';
 
     doc += '---\\n\\n';
     doc += '## 状态码说明\\n\\n';
@@ -3162,7 +3162,7 @@ class APIDesigner {
     // 按资源分组
     for (const resource of resources) {
       doc += \`## \${resource.name} 资源\\n\\n\`;
-      doc += \`基础路径：\`/\${this.pluralize(resource.name.toLowerCase())}\`\\n\\n\`;
+      doc += \`基础路径：/\${this.pluralize(resource.name.toLowerCase())}\\n\\n\`;
 
       const resourceEndpoints = endpoints.filter(
         e => e.tags && e.tags.includes(resource.name)
@@ -3188,10 +3188,10 @@ class APIDesigner {
 
         if (endpoint.requestBody) {
           doc += '**请求体：**\\n\\n';
-          doc += \`\`\`\`json\\n\`;
+          doc += '\`\`\`json\\n';
           const schema = endpoint.requestBody.content['application/json'].schema;
           doc += this.formatSchemaExample(schema, 0);
-          doc += \`\`\`\`\\n\\n\`;
+          doc += '\`\`\`\\n\\n';
         }
 
         doc += '**响应：**\\n\\n';
@@ -3203,9 +3203,9 @@ class APIDesigner {
 
         // curl示例
         doc += '**curl示例：**\\n\\n';
-        doc += \`\`\`\`bash\\n\`;
+        doc += '\`\`\`bash\\n';
         doc += this.generateCurlExample(endpoint);
-        doc += \`\`\`\`\\n\\n\`;
+        doc += '\`\`\`\\n\\n';
 
         doc += '---\\n\\n';
       }
@@ -4797,10 +4797,10 @@ class ArchitectureRecommender {
     console.log('  📊 评估结果');
     console.log('========================================\\n');
 
-    for (const eval of evaluations) {
-      const bar = '█'.repeat(Math.floor(eval.score / 5));
-      console.log(\`\${eval.pattern.name} [\${eval.score}分] \${bar}\`);
-      for (const detail of eval.details) {
+    for (const evaluation of evaluations) {
+      const bar = '█'.repeat(Math.floor(evaluation.score / 5));
+      console.log(\`\${evaluation.pattern.name} [\${evaluation.score}分] \${bar}\`);
+      for (const detail of evaluation.details) {
         console.log(\`  \${detail}\`);
       }
       console.log('');

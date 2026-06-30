@@ -958,68 +958,6 @@ query GetAllPosts {
     }
   }
 }
-
-# 查询单篇文章详情
-query GetPost($id: ID!) {
-  post(id: $id) {
-    title
-    content
-    author
-    createdAt
-    comments {
-      author
-      content
-      createdAt
-    }
-  }
-}
-
-# 创建新文章
-mutation CreateNewPost {
-  createPost(input: {
-    title: "GraphQL 与 TypeScript 集成",
-    content: "详细介绍 GraphQL 和 TypeScript 的集成方案...",
-    author: "张三"
-  }) {
-    id
-    title
-    createdAt
-  }
-}
-
-# 更新文章
-mutation UpdatePostTitle {
-  updatePost(id: "1", input: {
-    title: "GraphQL 入门指南（修订版）"
-  }) {
-    id
-    title
-    content
-  }
-}
-
-# 删除文章
-mutation RemovePost {
-  deletePost(id: "2")
-}
-
-# 创建评论
-mutation AddComment {
-  createComment(input: {
-    postId: "1",
-    content: "很有价值的教程！",
-    author: "李四"
-  }) {
-    id
-    content
-    createdAt
-  }
-}
-
-# 删除评论
-mutation RemoveComment {
-  deleteComment(id: "1")
-}
 `
   },
 
@@ -1658,6 +1596,24 @@ type RegisterResult {
   message: String!
 }
 
+type Post {
+  id: ID!
+  title: String!
+  content: String!
+  author: String!
+  createdAt: String!
+}
+
+input PostInput {
+  title: String!
+  content: String!
+}
+
+input PostUpdateInput {
+  title: String
+  content: String
+}
+
 type Query {
   me: User
   users: [User!]!
@@ -2013,11 +1969,7 @@ console.log("用户总数: " + users.length);
 console.log("文章总数: " + posts.length);
 
 # === Query ===
-# ------------------------------------------------------------
-# 客户端认证相关查询
-# ------------------------------------------------------------
-
-# 登录
+# 登录获取 Token（login 不需要认证）
 mutation Login {
   login(username: "zhangsan", password: "pass123") {
     token
@@ -2026,53 +1978,8 @@ mutation Login {
       username
       email
       role
+      createdAt
     }
-  }
-}
-
-# 注册
-mutation Register {
-  register(
-    username: "newuser"
-    password: "secure123"
-    email: "newuser@blog.com"
-  ) {
-    success
-    message
-  }
-}
-
-# 获取当前用户（需要认证 Header）
-query GetMe {
-  me {
-    id
-    username
-    email
-    role
-  }
-}
-
-# 管理员查看所有用户（需要管理员权限）
-query GetAllUsers {
-  users {
-    id
-    username
-    email
-    role
-    createdAt
-  }
-}
-
-# 创建文章（需要认证，自动使用当前用户作为作者）
-mutation CreatePost {
-  createPost(input: {
-    title: "我的文章"
-    content: "文章内容..."
-  }) {
-    id
-    title
-    author
-    createdAt
   }
 }
 `
@@ -2945,11 +2852,6 @@ setTimeout(function () {
 }, 100);
 
 # === Query ===
-# ------------------------------------------------------------
-# 前端 GraphQL 查询示例
-# 展示各类前端调用场景
-# ------------------------------------------------------------
-
 # 查询所有文章（列表页）
 query GetPosts {
   posts {
@@ -2958,55 +2860,6 @@ query GetPosts {
     author
     createdAt
   }
-}
-
-# 查询单篇文章（详情页）
-query GetPost($id: ID!) {
-  post(id: $id) {
-    title
-    content
-    author
-    createdAt
-  }
-}
-
-# 创建文章（表单提交）
-mutation CreatePost($input: PostInput!) {
-  createPost(input: $input) {
-    id
-    title
-    author
-    createdAt
-  }
-}
-
-# 删除文章
-mutation DeletePost($id: ID!) {
-  deletePost(id: $id)
-}
-
-# 前端 JavaScript fetch 调用代码示例
-// 使用 fetch 发送 GraphQL 请求
-const query = \`
-  query GetPosts {
-    posts { id title author }
-  }
-\`;
-
-const response = await fetch("/graphql", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "Authorization": "Bearer " + token
-  },
-  body: JSON.stringify({ query: query })
-});
-
-const result = await response.json();
-if (result.errors) {
-  console.error("GraphQL 错误:", result.errors);
-} else {
-  console.log("查询结果:", result.data.posts);
 }
 `
   },
@@ -4008,10 +3861,6 @@ printResult("发布文章", { id: published.id, status: published.status });
 printResult("分页信息（总数）", resolvers.Query.posts(null, { first: 2 }).pageInfo);
 
 # === Query ===
-# ------------------------------------------------------------
-# 客户端最佳实践查询示例
-# ------------------------------------------------------------
-
 # 分页查询（带游标）
 query GetFirstPage {
   posts(first: 10) {
@@ -4021,67 +3870,17 @@ query GetFirstPage {
         title
         author
         status
+        createdAt
       }
       cursor
     }
     pageInfo {
       hasNextPage
+      hasPreviousPage
+      startCursor
       endCursor
       totalCount
     }
-  }
-}
-
-# 带过滤的分页查询
-query GetPublishedPosts {
-  posts(first: 5, status: PUBLISHED) {
-    edges {
-      node {
-        id
-        title
-        author
-        createdAt
-      }
-    }
-    pageInfo {
-      totalCount
-    }
-  }
-}
-
-# 搜索查询
-query SearchPosts {
-  posts(first: 10, search: "GraphQL") {
-    edges {
-      node {
-        id
-        title
-        content
-      }
-    }
-  }
-}
-
-# 创建文章（带验证）
-mutation CreatePost {
-  createPost(input: {
-    title: "GraphQL 安全防护"
-    content: "详细介绍 GraphQL 的安全防护策略和最佳实践..."
-    author: "张三"
-  }) {
-    id
-    title
-    status
-    createdAt
-  }
-}
-
-# 发布文章（状态转换）
-mutation PublishPost {
-  publishPost(id: "1") {
-    id
-    status
-    updatedAt
   }
 }
 `

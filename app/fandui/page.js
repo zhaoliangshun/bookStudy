@@ -11,7 +11,6 @@
 import { useState, useRef, useCallback } from "react";
 import { fanduiChapters, fanduiChapterGroups } from "../fandui-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function FanduiBook() {
@@ -45,8 +44,6 @@ export default function FanduiBook() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/fandui" onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}
         <Sidebar
@@ -58,6 +55,7 @@ export default function FanduiBook() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/fandui"
         />
 
         {/* ===== 主内容区 ===== */}

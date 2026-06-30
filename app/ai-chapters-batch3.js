@@ -1070,12 +1070,12 @@ console.log(generator.generateCode(analysis1));
 
 // 演示3：生成完整代码
 console.log('【演示3】生成完整代码文件\\n');
-const spec2 = '函数：validateEmail\n功能：验证邮箱格式是否合法\n参数：email: string\n返回：boolean\n要求：使用正则表达式验证';
+const spec2 = '函数：validateEmail\\n功能：验证邮箱格式是否合法\\n参数：email: string\\n返回：boolean\\n要求：使用正则表达式验证';
 console.log(generator.generateComplete(spec2));
 
 // 演示4：不同质量等级
 console.log('【演示4】不同质量等级的代码生成\\n');
-const spec3 = '函数：processUserData\n功能：处理用户数据\n参数：data: object\n返回：object';
+const spec3 = '函数：processUserData\\n功能：处理用户数据\\n参数：data: object\\n返回：object';
 
 console.log('--- minimal 质量 ---');
 console.log(generator.generateWithQuality(spec3, 'minimal'));
@@ -1758,7 +1758,7 @@ if (typeof input !== 'string' || input.trim().length === 0) {
           return \`
 const response = await fetch(url);
 if (!response.ok) {
-  throw new Error(\`HTTP \${response.status}: \${response.statusText}\`);
+  throw new Error(\\\`HTTP \\\${response.status}: \\\${response.statusText}\\\`);
 }
 const data = await response.json();
 return data;\`;
@@ -4076,12 +4076,12 @@ class RefactoringEngine {
 
 console.log('╔══════════════════════════════════════════════╗');
 console.log('║    AI 代码重构模拟器 - 第14章演示           ║');
-console.log('╚══════════════════════════════════════════════╝\n');
+console.log('╚══════════════════════════════════════════════╝\\n');
 
 const refactoring = new RefactoringEngine();
 
 // 演示1：检测代码坏味道
-console.log('【演示1】检测代码坏味道\n');
+console.log('【演示1】检测代码坏味道\\n');
 
 const smellyCode = \`
 function calc(d) {
@@ -4106,13 +4106,13 @@ console.log('原始代码：');
 console.log(smellyCode);
 
 const smells = refactoring.detectSmells(smellyCode);
-console.log('\n发现的坏味道：');
+console.log('\\n发现的坏味道：');
 for (const smell of smells) {
   console.log(\`  • [\${smell.type}] \${smell.message}\`);
 }
 
 // 演示2：改善命名
-console.log('\n【演示2】改善命名\n');
+console.log('\\n【演示2】改善命名\\n');
 
 const namingResult = refactoring.improveNaming('function calc(d) { var r = 0; return r; }');
 console.log('原始：function calc(d) { var r = 0; return r; }');
@@ -4120,7 +4120,7 @@ console.log('改进：' + namingResult.code);
 console.log('变更：' + JSON.stringify(namingResult.changes));
 
 // 演示3：现代化语法
-console.log('\n【演示3】现代化语法\n');
+console.log('\\n【演示3】现代化语法\\n');
 
 const oldCode = \`
 var numbers = [1, 2, 3, 4, 5];
@@ -4143,7 +4143,7 @@ for (const change of modernResult.changes) {
 }
 
 // 演示4：完整重构流程
-console.log('\n【演示4】完整重构流程\n');
+console.log('\\n【演示4】完整重构流程\\n');
 
 const result = refactoring.refactor(smellyCode);
 console.log('重构步骤：');
@@ -4152,18 +4152,18 @@ for (const step of result.steps) {
 }
 
 // 演示5：重构前后对比
-console.log('\n【演示5】重构前后对比示例\n');
+console.log('\\n【演示5】重构前后对比示例\\n');
 
 const beforeAfterExamples = [
   {
     name: '提取方法',
-    before: 'function print(invoice) {\n  // 打印banner\n  console.log("***");\n  // 计算\n  let t = 0;\n  for (let o of invoice.orders) t += o.amount;\n  // 打印\n  console.log(t);\n}',
-    after: 'function print(invoice) {\n  printBanner();\n  const t = calculateTotal(invoice);\n  printTotal(t);\n}'
+    before: 'function print(invoice) {\\n  // 打印banner\\n  console.log("***");\\n  // 计算\\n  let t = 0;\\n  for (let o of invoice.orders) t += o.amount;\\n  // 打印\\n  console.log(t);\\n}',
+    after: 'function print(invoice) {\\n  printBanner();\\n  const t = calculateTotal(invoice);\\n  printTotal(t);\\n}'
   },
   {
     name: 'Guard Clauses',
-    before: 'function getStatus(u) {\n  let s = "unknown";\n  if (u) {\n    if (u.active) {\n      s = "active";\n    }\n  }\n  return s;\n}',
-    after: 'function getStatus(u) {\n  if (!u) return "unknown";\n  if (!u.active) return "inactive";\n  return "active";\n}'
+    before: 'function getStatus(u) {\\n  let s = "unknown";\\n  if (u) {\\n    if (u.active) {\\n      s = "active";\\n    }\\n  }\\n  return s;\\n}',
+    after: 'function getStatus(u) {\\n  if (!u) return "unknown";\\n  if (!u.active) return "inactive";\\n  return "active";\\n}'
   },
   {
     name: '简化条件',
@@ -4947,28 +4947,28 @@ class TestGenerator {
     if (options.nullCheck !== false && params.length > 0) {
       tests += \`  // 空值检查\n\`;
       const nullTests = this.templates.nullCheck.generate(funcName, params);
-      tests += nullTests.split('\\n').map(l => l ? '  ' + l : '').join('\\n') + '\n';
+      tests += nullTests.split('\\n').map(l => l ? '  ' + l : '').join('\\n') + '\\n';
     }
 
     // 边界条件
     if (options.boundary !== false && params.length > 0) {
       tests += \`  // 边界条件测试\n\`;
       const boundaryTests = this.templates.boundaryConditions.generate(funcName, params);
-      tests += boundaryTests.split('\\n').map(l => l ? '  ' + l : '').join('\\n') + '\n';
+      tests += boundaryTests.split('\\n').map(l => l ? '  ' + l : '').join('\\n') + '\\n';
     }
 
     // 类型检查
     if (options.typeCheck !== false && params.length > 0) {
       tests += \`  // 类型检查\n\`;
       const typeTests = this.templates.typeCheck.generate(funcName, params);
-      tests += typeTests.split('\\n').map(l => l ? '  ' + l : '').join('\\n') + '\n';
+      tests += typeTests.split('\\n').map(l => l ? '  ' + l : '').join('\\n') + '\\n';
     }
 
     // 异步测试
     if (isAsync && options.async !== false) {
       tests += \`  // 异步测试\n\`;
       const asyncTests = this.templates.asyncTest.generate(funcName, params);
-      tests += asyncTests.split('\\n').map(l => l ? '  ' + l : '').join('\\n') + '\n';
+      tests += asyncTests.split('\\n').map(l => l ? '  ' + l : '').join('\\n') + '\\n';
     }
 
     tests += \`});\n\`;
@@ -5025,12 +5025,12 @@ class TestGenerator {
 
 console.log('╔══════════════════════════════════════════════╗');
 console.log('║    AI 测试生成模拟器 - 第15章演示           ║');
-console.log('╚══════════════════════════════════════════════╝\n');
+console.log('╚══════════════════════════════════════════════╝\\n');
 
 const testGen = new TestGenerator();
 
 // 演示1：分析函数并生成测试
-console.log('【演示1】分析函数签名\n');
+console.log('【演示1】分析函数签名\\n');
 
 const funcCode = 'function calculateDiscount(price, membershipLevel, isHoliday)';
 const analysis = testGen.analyzeFunction(funcCode);
@@ -5039,7 +5039,7 @@ console.log('分析结果：');
 console.log(JSON.stringify(analysis, null, 2));
 
 // 演示2：生成完整测试套件
-console.log('\n【演示2】生成测试用例\n');
+console.log('\\n【演示2】生成测试用例\\n');
 
 const testCode = \`
 function validateEmail(email) {
@@ -5059,13 +5059,13 @@ const result = testGen.generateTests(testCode, {
 
 console.log('原始函数：');
 console.log(testCode);
-console.log('\n生成的测试：');
+console.log('\\n生成的测试：');
 console.log(result.code);
 console.log(\`测试数量：\${result.testCount}\`);
 console.log('覆盖范围：', JSON.stringify(result.coverage));
 
 // 演示3：测试质量评估
-console.log('\n【演示3】测试质量评估\n');
+console.log('\\n【演示3】测试质量评估\\n');
 
 const quality = testGen.evaluateTestQuality(result.code);
 console.log('测试指标：');
@@ -5073,7 +5073,7 @@ console.log(JSON.stringify(quality.metrics, null, 2));
 console.log(\`质量评分：\${quality.score}/100\`);
 
 // 演示4：不同测试类型的生成
-console.log('\n【演示4】不同函数类型的测试生成\n');
+console.log('\\n【演示4】不同函数类型的测试生成\\n');
 
 const functionTypes = [
   {
@@ -5102,7 +5102,7 @@ for (const ft of functionTypes) {
 }
 
 // 演示5：测试覆盖率策略
-console.log('【演示5】测试覆盖率策略\n');
+console.log('【演示5】测试覆盖率策略\\n');
 
 const coverageStrategies = [
   { name: '语句覆盖率', target: '80%+', description: '确保每个语句至少被执行一次', ai: 'AI可以生成覆盖所有语句的测试' },

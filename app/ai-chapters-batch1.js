@@ -668,7 +668,7 @@ async function fetchData(url, method = 'GET') {
 \`,
       '查询数据': () => \`
 async function queryDatabase(table, where = {}) {
-  const query = \`SELECT * FROM \${table} WHERE \${buildWhereClause(where)}\`;
+  const query = \\\`SELECT * FROM \\\${table} WHERE \\\${buildWhereClause(where)}\\\`;
   const result = await db.execute(query);
   return result.rows;
 }
@@ -3749,7 +3749,7 @@ class DataProcessor {
       case 'min': return Math.min(...values);
       case 'max': return Math.max(...values);
       case 'count': return values.length;
-      default: throw new Error(\`不支持的聚合方法：\${method}\`);
+      default: throw new Error(\\\`不支持的聚合方法：\\\${method}\\\`);
     }
   }
 }
@@ -3765,7 +3765,7 @@ class APIClient {
   }
 
   async request(method, path, options = {}) {
-    const url = \`\${this.baseURL}\${path}\`;
+    const url = \\\`\${this.baseURL}\\\${path}\\\`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
@@ -3784,7 +3784,7 @@ class APIClient {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        throw new Error(\`HTTP \${response.status}: \${response.statusText}\`);
+        throw new Error(\\\`HTTP \\\${response.status}: \\\${response.statusText}\\\`);
       }
 
       const data = await response.json();
@@ -3793,7 +3793,7 @@ class APIClient {
       clearTimeout(timeoutId);
 
       if (error.name === 'AbortError') {
-        throw new Error(\`请求超时（\${this.timeout}ms）\`);
+        throw new Error(\\\`请求超时（\\\${this.timeout}ms）\\\`);
       }
 
       throw error;
@@ -3907,7 +3907,7 @@ class APIClient {
     return code
       .replace('SHA-256', 'bcrypt')
       .replace('Math.random()', 'crypto.randomBytes()')
-      .replace('eval(condition)', 'new Function(\'item\', \'return \' + condition)(item)');
+      .replace('eval(condition)', "new Function('item', 'return ' + condition)(item)");
   }
 
   // 记录日志

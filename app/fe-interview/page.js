@@ -10,7 +10,6 @@
 import { useState, useRef, useCallback } from "react";
 import { feInterviewChapters, feInterviewChapterGroups } from "../fe-interview-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function FeInterviewBook() {
@@ -43,8 +42,6 @@ export default function FeInterviewBook() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/fe-interview" meta={`共 ${feInterviewChapters.length} 章 · 面试技巧指南`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         <Sidebar
           title="目录"
@@ -55,6 +52,8 @@ export default function FeInterviewBook() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/fe-interview"
+          meta={`共 ${feInterviewChapters.length} 章 · 面试技巧指南`}
         />
 
         <main className="content" ref={contentRef}>

@@ -1020,18 +1020,21 @@ public class Main {
         System.out.println("Singleton 是否唯一: " + (Singleton.getInstance() == Singleton.getInstance()));
 
         // ===== 5. volatile 与普通变量的可见性差异 =====
-        // 注意：现代 JVM 优化较强，普通变量也可能及时可见，volatile 是规范保证
-        demo.plainFlag = true;
+        // 注意：非 volatile 变量可能被 JIT 优化，导致循环看不到更新。
+        // 这里用 yield 避免忙循环被优化为死循环，并用带超时的 join 防止卡死。
+        demo.plainFlag = false;
         Thread t2 = new Thread(() -> {
             int n = 0;
-            while (!demo.plainFlag) { n++; } // 若 plainFlag 非 volatile，JIT 可能优化为死循环
+            while (!demo.plainFlag) { n++; Thread.yield(); }
             System.out.println("普通变量循环退出 (n=" + n + ")");
         }, "t2");
-        demo.plainFlag = false; // 先设为 false
         t2.start();
         Thread.sleep(20);
-        demo.plainFlag = true; // 再设为 true
-        t2.join();
+        demo.plainFlag = true;
+        t2.join(500);
+        if (t2.isAlive()) {
+            System.out.println("普通变量循环未退出（JIT 优化导致，non-volatile 不可见）");
+        }
 
         System.out.println("\\n主线程结束");
     }
@@ -1206,7 +1209,7 @@ public class Main {
         };
 
         Runnable consumer = () -> {
-            for (int i = 0; i < 5; i++) {
+            for (int i = 0; i < 10; i++) { // 消费 10 个，匹配 2 个生产者各 5 个
                 try {
                     int x = buffer.take();
                     System.out.println(Thread.currentThread().getName() + " 消费: " + x);
@@ -1635,7 +1638,7 @@ public class Main {
 
         // ===== 1. submit Runnable =====
         Future<?> f1 = pool.submit(() -> {
-            Thread.sleep(10);
+            try { Thread.sleep(10); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
             System.out.println("Runnable 完成");
         });
         f1.get(); // 等待完成
@@ -1644,7 +1647,7 @@ public class Main {
         // ===== 2. submit Runnable with result =====
         String preset = "预设结果";
         Future<String> f2 = pool.submit(() -> {
-            Thread.sleep(10);
+            try { Thread.sleep(10); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
         }, preset);
         System.out.println("submit Runnable+result 返回: " + f2.get() + "\\n");
 
@@ -2127,7 +2130,7 @@ public class Main {
 
         // ===== 7. 异常处理 =====
         Integer safe = CompletableFuture
-            .supplyAsync(() -> { throw new RuntimeException("计算错误"); })
+            .<Integer>supplyAsync(() -> { throw new RuntimeException("计算错误"); })
             .exceptionally(ex -> {
                 System.out.println("7. exceptionally 捕获: " + ex.getMessage());
                 return -1;
@@ -2691,7 +2694,7 @@ public class Main {
         System.out.println("8. FieldUpdater 更新 count: " + c.count);
 
         // ===== 9. 性能对比：AtomicLong vs LongAdder =====
-        int n = 10;
+        int n = 5;
         int loop = 50000;
         AtomicLong al = new AtomicLong(0);
         long t1 = System.nanoTime();

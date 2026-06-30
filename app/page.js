@@ -25,7 +25,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { chapters, chapterGroups } from "./tutorial-data";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { highlightJavaScript } from "./highlight";
-import SiteNav from "./components/SiteNav";
 import Sidebar from "./components/Sidebar";
 
 export default function Home() {
@@ -134,6 +133,14 @@ export default function Home() {
     setHasRun(false);
   }, [activeChapter]);
 
+  // ---------- 在 Playground 中打开 ----------
+  const handlePlayground = useCallback(() => {
+    try {
+      localStorage.setItem("playground:code:node", code);
+    } catch {}
+    window.open(`/playground?lang=node`, "_blank", "noopener,noreferrer");
+  }, [code]);
+
   // ---------- 键盘快捷键 ----------
   // Ctrl/Cmd + Enter 运行代码
   useEffect(() => {
@@ -173,8 +180,6 @@ export default function Home() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/" meta={`共 ${chapters.length} 章 · 可在线编辑运行`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏：章节导航 ===== */}
         <Sidebar
@@ -193,6 +198,8 @@ export default function Home() {
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
           onToggleSidebar={toggleSidebar}
+          currentPath="/"
+          meta={`共 ${chapters.length} 章 · 可在线编辑运行`}
         />
 
         {/* ===== 主内容区 ===== */}
@@ -239,6 +246,13 @@ export default function Home() {
                   disabled={isRunning}
                 >
                   {isRunning ? "⏳ 执行中..." : "▶ 运行代码"}
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handlePlayground}
+                  title="在 Playground 中打开"
+                >
+                  🚀 Playground
                 </button>
               </div>
             </div>

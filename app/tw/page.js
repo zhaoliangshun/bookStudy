@@ -16,7 +16,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { twChapters, twChapterGroups } from "../tw-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightHtml } from "../html-highlight";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function TailwindTutorial() {
@@ -138,8 +137,6 @@ ${code}
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/tw" meta={`共 ${twChapters.length} 章 · 可在线编辑运行`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏：章节导航 ===== */}
         <Sidebar
@@ -151,6 +148,8 @@ ${code}
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/tw"
+          meta={`共 ${twChapters.length} 章 · 可在线编辑运行`}
         />
 
         {/* ===== 主内容区 ===== */}

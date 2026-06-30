@@ -12,7 +12,6 @@
 import { useState, useRef, useCallback } from "react";
 import { aiAgentChapters, aiAgentChapterGroups } from "../ai-agent-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function AIAgentBook() {
@@ -46,13 +45,6 @@ export default function AIAgentBook() {
 
   return (
     <div className="app-shell">
-      {/* ===== 顶部导航栏 ===== */}
-      <SiteNav
-        currentPath="/ai-agent"
-        onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-        meta={`共 ${aiAgentChapters.length} 章 · 从入门到精通`}
-      />
-
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}
         <Sidebar
@@ -64,6 +56,8 @@ export default function AIAgentBook() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/ai-agent"
+          meta={`共 ${aiAgentChapters.length} 章 · 从入门到精通`}
         />
 
         {/* ===== 主内容区 ===== */}

@@ -11,7 +11,6 @@
 import { useState, useRef, useCallback } from "react";
 import { duiChapters, duiChapterGroups } from "../dui-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function DuiBook() {
@@ -45,8 +44,6 @@ export default function DuiBook() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/dui" onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}
         <Sidebar
@@ -58,6 +55,7 @@ export default function DuiBook() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/dui"
         />
 
         {/* ===== 主内容区 ===== */}

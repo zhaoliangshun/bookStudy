@@ -15,7 +15,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { csharpChapters, csharpChapterGroups } from "../csharp-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightCsharp } from "../csharp-highlight";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 // 默认代码示例：用户首次进入时显示，可自由修改后运行
@@ -129,6 +128,14 @@ export default function CsharpTutorial() {
     setHasRun(false);
   }, []);
 
+  // ---------- 在 Playground 中打开 ----------
+  const handlePlayground = useCallback(() => {
+    try {
+      localStorage.setItem("playground:code:csharp", code);
+    } catch {}
+    window.open(`/playground?lang=csharp`, "_blank", "noopener,noreferrer");
+  }, [code]);
+
   // ---------- 键盘快捷键：Ctrl/Cmd + Enter 运行 ----------
   useEffect(() => {
     const handleKey = (e) => {
@@ -166,8 +173,6 @@ export default function CsharpTutorial() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/csharp" meta={`共 ${csharpChapters.length} 章 · 在线编译运行`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏：章节导航 ===== */}
         <Sidebar
@@ -179,6 +184,8 @@ export default function CsharpTutorial() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/csharp"
+          meta={`共 ${csharpChapters.length} 章 · 在线编译运行`}
         />
 
         {/* ===== 主内容区 ===== */}
@@ -225,6 +232,13 @@ export default function CsharpTutorial() {
                   disabled={isRunning}
                 >
                   {isRunning ? "⏳ 编译中..." : "▶ 运行代码"}
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handlePlayground}
+                  title="在 Playground 中打开"
+                >
+                  🚀 Playground
                 </button>
               </div>
             </div>

@@ -11,7 +11,6 @@
 import { useState, useRef, useCallback } from "react";
 import { workChapters, workChapterGroups } from "../work-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function WorkBook() {
@@ -45,8 +44,6 @@ export default function WorkBook() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/work" meta={`共 ${workChapters.length} 章 · 中等篇幅`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}
         <Sidebar
@@ -58,6 +55,8 @@ export default function WorkBook() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/work"
+          meta={`共 ${workChapters.length} 章 · 中等篇幅`}
         />
 
         {/* ===== 主内容区 ===== */}

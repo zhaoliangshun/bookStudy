@@ -225,7 +225,7 @@ def repeat(times):
         return wrapper
     return decorator
 
-@repeat(3)
+@repeat_decorator(3)
 def say(name):
     print("hi,", name)
 
@@ -765,7 +765,7 @@ print("=" * 50)
 print("4. 带参数装饰器：repeat")
 print("=" * 50)
 
-def repeat(times):
+def repeat_decorator(times):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -777,7 +777,7 @@ def repeat(times):
         return wrapper
     return decorator
 
-@repeat(3)
+@repeat_decorator(3)
 def say(name):
     print("  hi,", name)
 
@@ -2553,13 +2553,13 @@ print("9. re 正则")
 print("=" * 50)
 
 text = "电话 138-1234-5678，邮箱 tom@example.com"
-m = re.search(r"\d{3}-\d{4}-\d{4}", text)
+m = re.search(r"\\d{3}-\\d{4}-\\d{4}", text)
 print("  电话:", m.group() if m else "无")
-print("  所有数字:", re.findall(r"\d+", "a1 b22 c333"))
-print("  替换:", re.sub(r"\d", "*", "a1b2c3"))
-print("  分割:", re.split(r"[\s,]+", "a, b , c  d"))
+print("  所有数字:", re.findall(r"\\d+", "a1 b22 c333"))
+print("  替换:", re.sub(r"\\d", "*", "a1b2c3"))
+print("  分割:", re.split(r"[\\s,]+", "a, b , c  d"))
 
-m = re.search(r"(?P<user>\w+)@(?P<domain>\w+\.\w+)", text)
+m = re.search(r"(?P<user>\\w+)@(?P<domain>\\w+\\.\\w+)", text)
 print("  用户名:", m.group("user"))
 print("  域名:", m.group("domain"))
 

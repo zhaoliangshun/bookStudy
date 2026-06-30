@@ -14,7 +14,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { aiChapters, aiChapterGroups } from "../ai-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightJavaScript } from "../highlight";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function AITutorial() {
@@ -101,6 +100,14 @@ export default function AITutorial() {
     setHasRun(false);
   }, [activeChapter]);
 
+  // ---------- 在 Playground 中打开 ----------
+  const handlePlayground = useCallback(() => {
+    try {
+      localStorage.setItem("playground:code:node", code);
+    } catch {}
+    window.open(`/playground?lang=node`, "_blank", "noopener,noreferrer");
+  }, [code]);
+
   // ---------- 键盘快捷键：Ctrl/Cmd + Enter 运行 ----------
   useEffect(() => {
     const handleKey = (e) => {
@@ -137,8 +144,6 @@ export default function AITutorial() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/ai" meta={`共 ${aiChapters.length} 章 · 在线编辑运行`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏：章节导航 ===== */}
         <Sidebar
@@ -150,6 +155,8 @@ export default function AITutorial() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/ai"
+          meta={`共 ${aiChapters.length} 章 · 在线编辑运行`}
         />
 
         {/* ===== 主内容区 ===== */}
@@ -196,6 +203,13 @@ export default function AITutorial() {
                   disabled={isRunning}
                 >
                   {isRunning ? "⏳ 执行中..." : "▶ 运行代码"}
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handlePlayground}
+                  title="在 Playground 中打开"
+                >
+                  🚀 Playground
                 </button>
               </div>
             </div>

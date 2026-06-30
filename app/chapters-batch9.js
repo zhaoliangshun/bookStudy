@@ -2434,7 +2434,7 @@ var comparison = {
       "COPY . .",
       "RUN npm ci",
       "RUN npm run build",
-      "CMD [\"node\", \"dist/index.js\"]",
+      'CMD ["node", "dist/index.js"]',
     ],
     layers: [
       { name: "基础镜像", size: 900 },
@@ -2466,7 +2466,7 @@ var comparison = {
       "COPY --from=builder /app/dist ./dist",
       "COPY --from=builder /app/node_modules ./node_modules",
       "COPY --from=builder /app/package*.json ./",
-      "CMD [\"node\", \"dist/index.js\"]",
+      'CMD ["node", "dist/index.js"]',
     ],
     layers: [
       { name: "Alpine 基础镜像", size: 50 },

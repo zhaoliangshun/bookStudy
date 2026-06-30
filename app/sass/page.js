@@ -20,7 +20,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { sassChapters, sassChapterGroups } from "../sass-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightScss } from "../sass-highlight";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 // 通用 demo HTML：放进 iframe body 里，让用户写的 SCSS 有元素可样式化。
@@ -206,6 +205,14 @@ export default function SassTutorial() {
     setHasRun(false);
   }, [activeChapter]);
 
+  // ---------- 在 Playground 中打开 ----------
+  const handlePlayground = useCallback(() => {
+    try {
+      localStorage.setItem("playground:code:sass", code);
+    } catch {}
+    window.open(`/playground?lang=sass`, "_blank", "noopener,noreferrer");
+  }, [code]);
+
   // ---------- 键盘快捷键：Ctrl/Cmd + Enter 编译预览 ----------
   useEffect(() => {
     const handleKey = (e) => {
@@ -242,8 +249,6 @@ export default function SassTutorial() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/sass" meta={`共 ${sassChapters.length} 章 · 在线编译运行`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏：章节导航 ===== */}
         <Sidebar
@@ -255,6 +260,8 @@ export default function SassTutorial() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/sass"
+          meta={`共 ${sassChapters.length} 章 · 在线编译运行`}
         />
 
         {/* ===== 主内容区 ===== */}

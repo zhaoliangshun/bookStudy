@@ -15,7 +15,6 @@
 import { useState, useRef, useCallback } from "react";
 import { shieldChapters, shieldChapterGroups } from "../shield-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function ShieldBook() {
@@ -49,8 +48,6 @@ export default function ShieldBook() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/shield" onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}
         <Sidebar
@@ -62,6 +59,7 @@ export default function ShieldBook() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/shield"
         />
 
         {/* ===== 主内容区 ===== */}

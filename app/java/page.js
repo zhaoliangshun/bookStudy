@@ -15,7 +15,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { javaChapters, javaChapterGroups } from "../java-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightJava } from "../java-highlight";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function JavaTutorial() {
@@ -104,6 +103,14 @@ export default function JavaTutorial() {
     setHasRun(false);
   }, [activeChapter]);
 
+  // ---------- 在 Playground 中打开 ----------
+  const handlePlayground = useCallback(() => {
+    try {
+      localStorage.setItem("playground:code:java", code);
+    } catch {}
+    window.open(`/playground?lang=java`, "_blank", "noopener,noreferrer");
+  }, [code]);
+
   // ---------- 键盘快捷键：Ctrl/Cmd + Enter 运行 ----------
   useEffect(() => {
     const handleKey = (e) => {
@@ -141,8 +148,6 @@ export default function JavaTutorial() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/java" meta={`共 ${javaChapters.length} 章 · 在线编译运行`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏：章节导航 ===== */}
         <Sidebar
@@ -154,6 +159,8 @@ export default function JavaTutorial() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/java"
+          meta={`共 ${javaChapters.length} 章 · 在线编译运行`}
         />
 
         {/* ===== 主内容区 ===== */}
@@ -200,6 +207,13 @@ export default function JavaTutorial() {
                   disabled={isRunning}
                 >
                   {isRunning ? "⏳ 编译中..." : "▶ 运行代码"}
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handlePlayground}
+                  title="在 Playground 中打开"
+                >
+                  🚀 Playground
                 </button>
               </div>
             </div>

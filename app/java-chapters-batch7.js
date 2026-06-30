@@ -1017,9 +1017,9 @@ public class Main {
 }
 
 class Person {
-    // 实例变量
-    private String name;       // 默认 null
-    private int age;           // 默认 0
+    // 实例变量（包级可见，便于演示默认值）
+    String name;       // 默认 null
+    int age;           // 默认 0
     private String[] hobbies = new String[3]; // 显式初始化
 
     // 构造器初始化

@@ -2282,7 +2282,7 @@ class CodeGenerator {
   }
 
   generateImports(parsed) {
-    let imports = \\\`import React from 'react';\\n\\\`;
+    let imports = \`import React from 'react';\\n\`;
     const usedComponents = new Set();
     parsed.components.forEach(c => {
       const lib = this.parser.componentLibrary[c.type];
@@ -2290,39 +2290,39 @@ class CodeGenerator {
     });
     if (usedComponents.size > 0) {
       const componentList = Array.from(usedComponents).join(', ');
-      imports += \\\`import { \${componentList} } from '@/components/ui';\\\`;
+      imports += \`import { \${componentList} } from '@/components/ui';\`;
     }
     if (parsed.interactions.some(i => i.trigger === 'state')) {
-      imports += \\\`\\nimport { useState } from 'react';\\\`;
+      imports += \`\\nimport { useState } from 'react';\`;
     }
     return imports;
   }
 
   generateComponentCode(parsed, name) {
-    let code = \\\`export default function \${name}() {\\n\\\`;
+    let code = \`export default function \${name}() {\\n\`;
     const hasState = parsed.interactions.some(i => i.trigger === 'state');
     if (hasState) {
-      code += \\\`  const [loading, setLoading] = useState(false);\\n\\\`;
+      code += \`  const [loading, setLoading] = useState(false);\\n\`;
       if (parsed.components.some(c => c.type === 'modal')) {
-        code += \\\`  const [isOpen, setIsOpen] = useState(false);\\n\\\`;
+        code += \`  const [isOpen, setIsOpen] = useState(false);\\n\`;
       }
     }
-    code += \\\`\\n  return (\\n\\\`;
+    code += \`\\n  return (\\n\`;
     const layout = parsed.layout[0];
     if (layout && layout.type === 'grid') {
-      code += \\\`    <div className="grid grid-cols-1 md:grid-cols-\${layout.columns} gap-4">\\n\\\`;
+      code += \`    <div className="grid grid-cols-1 md:grid-cols-\${layout.columns} gap-4">\\n\`;
     } else if (layout && layout.type === 'flex') {
-      code += \\\`    <div className="flex \${layout.direction === 'column' ? 'flex-col' : ''} items-center justify-between">\\n\\\`;
+      code += \`    <div className="flex \${layout.direction === 'column' ? 'flex-col' : ''} items-center justify-between">\\n\`;
     } else if (layout && layout.type === 'center') {
-      code += \\\`    <div className="flex items-center justify-center min-h-screen">\\n\\\`;
+      code += \`    <div className="flex items-center justify-center min-h-screen">\\n\`;
     } else {
-      code += \\\`    <div className="container mx-auto px-4">\\n\\\`;
+      code += \`    <div className="container mx-auto px-4">\\n\`;
     }
     parsed.components.forEach(comp => {
       code += this.renderComponentCode(comp, parsed);
     });
-    if (layout) code += \\\`    </div>\\n\\\`;
-    code += \\\`  );\\n}\\\`;
+    if (layout) code += \`    </div>\\n\`;
+    code += \`  );\\n}\`;
     return code;
   }
 
@@ -2331,76 +2331,76 @@ class CodeGenerator {
     let code = '';
     switch (comp.type) {
       case 'button':
-        code += \\\`\${indent}<Button variant="\${comp.variants[0] || 'primary'}" size="\${comp.size}"\\n\\\`;
-        if (comp.rounded) code += \\\`\${indent}  className="rounded-full"\\n\\\`;
-        code += \\\`\${indent}>\\n\${indent}  按钮文本\\n\${indent}</Button>\\n\\\`;
+        code += \`\${indent}<Button variant="\${comp.variants[0] || 'primary'}" size="\${comp.size}"\\n\`;
+        if (comp.rounded) code += \`\${indent}  className="rounded-full"\\n\`;
+        code += \`\${indent}>\\n\${indent}  按钮文本\\n\${indent}</Button>\\n\`;
         break;
       case 'input':
-        code += \\\`\${indent}<div className="space-y-2">\\n\\\`;
-        if (comp.hasLabel) code += \\\`\${indent}  <label className="text-sm font-medium">标签</label>\\n\\\`;
-        code += \\\`\${indent}  <Input type="\${comp.variant === 'search' ? 'search' : 'text'}" placeholder="请输入..." />\\n\\\`;
-        if (comp.hasError) code += \\\`\${indent}  <p className="text-sm text-red-500">错误提示信息</p>\\n\\\`;
-        code += \\\`\${indent}</div>\\n\\\`;
+        code += \`\${indent}<div className="space-y-2">\\n\`;
+        if (comp.hasLabel) code += \`\${indent}  <label className="text-sm font-medium">标签</label>\\n\`;
+        code += \`\${indent}  <Input type="\${comp.variant === 'search' ? 'search' : 'text'}" placeholder="请输入..." />\\n\`;
+        if (comp.hasError) code += \`\${indent}  <p className="text-sm text-red-500">错误提示信息</p>\\n\`;
+        code += \`\${indent}</div>\\n\`;
         break;
       case 'card':
-        code += \\\`\${indent}<Card className="\${comp.hover ? 'hover:shadow-lg transition-shadow' : ''} \${comp.shadow ? 'shadow-md' : ''}">\\n\\\`;
-        if (comp.hasImage) code += \\\`\${indent}  <img src="/placeholder.jpg" alt="图片" className="w-full h-48 object-cover rounded-t-lg" />\\n\\\`;
-        code += \\\`\${indent}  <CardHeader><CardTitle>卡片标题</CardTitle><CardDescription>卡片描述信息</CardDescription></CardHeader>\\n\\\`;
-        code += \\\`\${indent}  <CardContent><p>卡片内容区域</p></CardContent>\\n\\\`;
-        if (comp.hasFooter) code += \\\`\${indent}  <CardFooter><Button variant="outline">取消</Button><Button>确认</Button></CardFooter>\\n\\\`;
-        code += \\\`\${indent}</Card>\\n\\\`;
+        code += \`\${indent}<Card className="\${comp.hover ? 'hover:shadow-lg transition-shadow' : ''} \${comp.shadow ? 'shadow-md' : ''}">\\n\`;
+        if (comp.hasImage) code += \`\${indent}  <img src="/placeholder.jpg" alt="图片" className="w-full h-48 object-cover rounded-t-lg" />\\n\`;
+        code += \`\${indent}  <CardHeader><CardTitle>卡片标题</CardTitle><CardDescription>卡片描述信息</CardDescription></CardHeader>\\n\`;
+        code += \`\${indent}  <CardContent><p>卡片内容区域</p></CardContent>\\n\`;
+        if (comp.hasFooter) code += \`\${indent}  <CardFooter><Button variant="outline">取消</Button><Button>确认</Button></CardFooter>\\n\`;
+        code += \`\${indent}</Card>\\n\`;
         break;
       case 'navbar':
-        code += \\\`\${indent}<nav className="\${comp.position === 'fixed' ? 'fixed top-0' : ''} w-full \${comp.transparent ? 'bg-transparent' : 'bg-white'} border-b z-50">\\n\\\`;
-        code += \\\`\${indent}  <div className="container mx-auto px-4 h-16 flex items-center justify-between">\\n\\\`;
-        if (comp.hasLogo) code += \\\`\${indent}    <div className="text-xl font-bold">Logo</div>\\n\\\`;
-        code += \\\`\${indent}    <div className="hidden md:flex items-center space-x-6">\\n\\\`;
-        code += \\\`\${indent}      <a href="#" className="hover:text-primary">首页</a>\\n\\\`;
-        code += \\\`\${indent}      <a href="#" className="hover:text-primary">关于</a>\\n\\\`;
-        code += \\\`\${indent}      <a href="#" className="hover:text-primary">联系</a>\\n\\\`;
-        code += \\\`\${indent}    </div>\\n\\\`;
-        if (comp.hasUserMenu) code += \\\`\${indent}    <Avatar src="/avatar.jpg" alt="用户" size="sm" />\\n\\\`;
-        code += \\\`\${indent}  </div>\\n\${indent}</nav>\\n\\\`;
+        code += \`\${indent}<nav className="\${comp.position === 'fixed' ? 'fixed top-0' : ''} w-full \${comp.transparent ? 'bg-transparent' : 'bg-white'} border-b z-50">\\n\`;
+        code += \`\${indent}  <div className="container mx-auto px-4 h-16 flex items-center justify-between">\\n\`;
+        if (comp.hasLogo) code += \`\${indent}    <div className="text-xl font-bold">Logo</div>\\n\`;
+        code += \`\${indent}    <div className="hidden md:flex items-center space-x-6">\\n\`;
+        code += \`\${indent}      <a href="#" className="hover:text-primary">首页</a>\\n\`;
+        code += \`\${indent}      <a href="#" className="hover:text-primary">关于</a>\\n\`;
+        code += \`\${indent}      <a href="#" className="hover:text-primary">联系</a>\\n\`;
+        code += \`\${indent}    </div>\\n\`;
+        if (comp.hasUserMenu) code += \`\${indent}    <Avatar src="/avatar.jpg" alt="用户" size="sm" />\\n\`;
+        code += \`\${indent}  </div>\\n\${indent}</nav>\\n\`;
         break;
       case 'modal':
-        code += \\\`\${indent}<Modal open={isOpen} onClose={() => setIsOpen(false)}>\\n\\\`;
-        code += \\\`\${indent}  <ModalHeader><h2 className="text-lg font-semibold">弹窗标题</h2></ModalHeader>\\n\\\`;
-        code += \\\`\${indent}  <ModalBody><p>弹窗内容</p></ModalBody>\\n\\\`;
-        code += \\\`\${indent}  <ModalFooter><Button variant="outline" onClick={() => setIsOpen(false)}>取消</Button><Button onClick={() => setIsOpen(false)}>确认</Button></ModalFooter>\\n\\\`;
-        code += \\\`\${indent}</Modal>\\n\\\`;
+        code += \`\${indent}<Modal open={isOpen} onClose={() => setIsOpen(false)}>\\n\`;
+        code += \`\${indent}  <ModalHeader><h2 className="text-lg font-semibold">弹窗标题</h2></ModalHeader>\\n\`;
+        code += \`\${indent}  <ModalBody><p>弹窗内容</p></ModalBody>\\n\`;
+        code += \`\${indent}  <ModalFooter><Button variant="outline" onClick={() => setIsOpen(false)}>取消</Button><Button onClick={() => setIsOpen(false)}>确认</Button></ModalFooter>\\n\`;
+        code += \`\${indent}</Modal>\\n\`;
         break;
       case 'table':
-        code += \\\`\${indent}<div className="rounded-md border">\\n\\\`;
-        code += \\\`\${indent}  <Table>\\n\${indent}    <TableHeader>\\n\${indent}      <TableRow>\\n\\\`;
-        if (comp.hasSelection) code += \\\`\${indent}        <TableHead className="w-12"><Checkbox /></TableHead>\\n\\\`;
-        code += \\\`\${indent}        <TableHead>列1</TableHead><TableHead>列2</TableHead><TableHead>列3</TableHead>\\n\\\`;
-        code += \\\`\${indent}      </TableRow>\\n\${indent}    </TableHeader>\\n\${indent}    <TableBody>\\n\\\`;
+        code += \`\${indent}<div className="rounded-md border">\\n\`;
+        code += \`\${indent}  <Table>\\n\${indent}    <TableHeader>\\n\${indent}      <TableRow>\\n\`;
+        if (comp.hasSelection) code += \`\${indent}        <TableHead className="w-12"><Checkbox /></TableHead>\\n\`;
+        code += \`\${indent}        <TableHead>列1</TableHead><TableHead>列2</TableHead><TableHead>列3</TableHead>\\n\`;
+        code += \`\${indent}      </TableRow>\\n\${indent}    </TableHeader>\\n\${indent}    <TableBody>\\n\`;
         for (let i = 0; i < 3; i++) {
-          code += \\\`\${indent}      <TableRow className="\${comp.striped && i % 2 === 0 ? 'bg-muted/50' : ''}">\\n\\\`;
-          if (comp.hasSelection) code += \\\`\${indent}        <TableCell><Checkbox /></TableCell>\\n\\\`;
-          code += \\\`\${indent}        <TableCell>数据\${i + 1}-1</TableCell><TableCell>数据\${i + 1}-2</TableCell><TableCell>数据\${i + 1}-3</TableCell>\\n\\\`;
-          code += \\\`\${indent}      </TableRow>\\n\\\`;
+          code += \`\${indent}      <TableRow className="\${comp.striped && i % 2 === 0 ? 'bg-muted/50' : ''}">\\n\`;
+          if (comp.hasSelection) code += \`\${indent}        <TableCell><Checkbox /></TableCell>\\n\`;
+          code += \`\${indent}        <TableCell>数据\${i + 1}-1</TableCell><TableCell>数据\${i + 1}-2</TableCell><TableCell>数据\${i + 1}-3</TableCell>\\n\`;
+          code += \`\${indent}      </TableRow>\\n\`;
         }
-        code += \\\`\${indent}    </TableBody>\\n\${indent}  </Table>\\n\\\`;
+        code += \`\${indent}    </TableBody>\\n\${indent}  </Table>\\n\`;
         if (comp.hasPagination) {
-          code += \\\`\${indent}  <div className="flex items-center justify-between px-4 py-3 border-t">\\n\\\`;
-          code += \\\`\${indent}    <span className="text-sm text-muted-foreground">共 100 条记录</span>\\n\\\`;
-          code += \\\`\${indent}    <div className="flex items-center space-x-2"><Button variant="outline" size="sm" disabled>上一页</Button><Button variant="outline" size="sm">下一页</Button></div>\\n\\\`;
-          code += \\\`\${indent}  </div>\\n\\\`;
+          code += \`\${indent}  <div className="flex items-center justify-between px-4 py-3 border-t">\\n\`;
+          code += \`\${indent}    <span className="text-sm text-muted-foreground">共 100 条记录</span>\\n\`;
+          code += \`\${indent}    <div className="flex items-center space-x-2"><Button variant="outline" size="sm" disabled>上一页</Button><Button variant="outline" size="sm">下一页</Button></div>\\n\`;
+          code += \`\${indent}  </div>\\n\`;
         }
-        code += \\\`\${indent}</div>\\n\\\`;
+        code += \`\${indent}</div>\\n\`;
         break;
       case 'form':
-        code += \\\`\${indent}<form className="space-y-4 max-w-md">\\n\\\`;
-        code += \\\`\${indent}  <div className="space-y-2"><label className="text-sm font-medium">字段1</label><Input placeholder="请输入" /></div>\\n\\\`;
-        code += \\\`\${indent}  <div className="space-y-2"><label className="text-sm font-medium">字段2</label><Input placeholder="请输入" /></div>\\n\\\`;
-        code += \\\`\${indent}  <div className="flex space-x-4">\\n\\\`;
-        if (comp.hasSubmit) code += \\\`\${indent}    <Button type="submit">提交</Button>\\n\\\`;
-        if (comp.hasReset) code += \\\`\${indent}    <Button type="reset" variant="outline">重置</Button>\\n\\\`;
-        code += \\\`\${indent}  </div>\\n\${indent}</form>\\n\\\`;
+        code += \`\${indent}<form className="space-y-4 max-w-md">\\n\`;
+        code += \`\${indent}  <div className="space-y-2"><label className="text-sm font-medium">字段1</label><Input placeholder="请输入" /></div>\\n\`;
+        code += \`\${indent}  <div className="space-y-2"><label className="text-sm font-medium">字段2</label><Input placeholder="请输入" /></div>\\n\`;
+        code += \`\${indent}  <div className="flex space-x-4">\\n\`;
+        if (comp.hasSubmit) code += \`\${indent}    <Button type="submit">提交</Button>\\n\`;
+        if (comp.hasReset) code += \`\${indent}    <Button type="reset" variant="outline">重置</Button>\\n\`;
+        code += \`\${indent}  </div>\\n\${indent}</form>\\n\`;
         break;
       default:
-        code += \\\`\${indent}<div>组件：\${comp.type}</div>\\n\\\`;
+        code += \`\${indent}<div>组件：\${comp.type}</div>\\n\`;
     }
     return code;
   }
@@ -2434,22 +2434,22 @@ class MultimodalSimulator {
   }
 
   simulate(description, name) {
-    console.log(\\\`\\\\n\${\\\\='=\\\`.repeat(50)}\\\`);
-    console.log(\\\`  🎨 多模态编程模拟：\\\${name}\\\`);
-    console.log(\\\`\${\\\\='=\\\`.repeat(50)}\\\\n\\\`);
-    console.log(\\\`📝 输入描述：\\\${description}\\\\n\\\`);
+    console.log(\`\\n\${"=".repeat(50)}\`);
+    console.log(\`  🎨 多模态编程模拟：\\\${name}\`);
+    console.log(\`\${"=".repeat(50)}\\n\`);
+    console.log(\`📝 输入描述：\\\${description}\\n\`);
     const parsed = this.generator.parser.parseDescription(description);
-    console.log(\\\`🔍 解析结果：\\\`);
-    console.log(\\\`  布局：\${parsed.layout.map(l => l.type).join(', ')}\\\`);
-    console.log(\\\`  组件（\${parsed.components.length}个）：\${parsed.components.map(c => c.type).join(', ')}\\\`);
-    console.log(\\\`  交互（\${parsed.interactions.length}个）：\${parsed.interactions.map(i => i.trigger + '→' + i.effect).join(', ')}\\\`);
+    console.log(\`🔍 解析结果：\`);
+    console.log(\`  布局：\${parsed.layout.map(l => l.type).join(', ')}\`);
+    console.log(\`  组件（\${parsed.components.length}个）：\${parsed.components.map(c => c.type).join(', ')}\`);
+    console.log(\`  交互（\${parsed.interactions.length}个）：\${parsed.interactions.map(i => i.trigger + '→' + i.effect).join(', ')}\`);
     const componentName = name.replace(/[^a-zA-Z0-9]/g, '');
     const result = this.generator.generateComponent(description, componentName);
-    console.log(\\\`\\\\n💻 生成的组件代码：\\\`);
-    console.log(\\\`\${\\\\='-\\\`.repeat(40)}\\\`);
+    console.log(\`\\n💻 生成的组件代码：\`);
+    console.log(\`\${"-".repeat(40)}\`);
     console.log(result.jsx);
-    console.log(\\\`\${\\\\='-\\\`.repeat(40)}\\\`);
-    console.log(\\\`\\\\n📋 组件属性：\${result.props.map(p => p.name + ':' + p.type).join(', ')}\\\`);
+    console.log(\`\${"-".repeat(40)}\`);
+    console.log(\`\\n📋 组件属性：\${result.props.map(p => p.name + ':' + p.type).join(', ')}\`);
     return result;
   }
 
@@ -2459,9 +2459,9 @@ class MultimodalSimulator {
     console.log('║   设计描述 → 组件代码                       ║');
     console.log('╚════════════════════════════════════════════╝');
     this.examples.forEach(example => { this.simulate(example.input, example.name); });
-    console.log(\\\`\\\\n\${\\\\='=\\\`.repeat(50)}\\\`);
+    console.log(\`\\n\${"=".repeat(50)}\`);
     console.log('  ✅ 多模态编程模拟完成！');
-    console.log(\\\`\${\\\\='=\\\`.repeat(50)}\\\\n\\\`);
+    console.log(\`\${"=".repeat(50)}\\n\`);
     console.log('📊 模拟总结：');
     console.log('  这个模拟器展示了多模态AI编程的核心流程：');
     console.log('  1. 接收自然语言描述（模拟多模态输入）');
@@ -4813,9 +4813,9 @@ class AITransformationPlanner {
     const weekNames = ['工具和基础', '深度应用', 'AI Agent', '总结和展望'];
 
     weeks.forEach((week, idx) => {
-      console.log(\`\${\\\\='=\\\`.repeat(50)}\\\`);
-      console.log(\`  第\${week}周：\${weekNames[idx]}\\\`);
-      console.log(\`\${\\\\='=\\\`.repeat(50)}\\n\`);
+      console.log(\`\${"=".repeat(50)}\`);
+      console.log(\`  第\${week}周：\${weekNames[idx]}\`);
+      console.log(\`\${"=".repeat(50)}\\n\`);
 
       const weekDays = plan.filter(d => d.week === week);
       let completedCount = 0;
@@ -4838,9 +4838,9 @@ class AITransformationPlanner {
     // 总体进度
     const totalCompleted = plan.filter(d => d.completed).length;
     const totalProgress = Math.round((totalCompleted / plan.length) * 100);
-    console.log(\`\${\\\\='=\\\`.repeat(50)}\\\`);
-    console.log(\`  总体进度：\${totalCompleted}/30 天完成 (\${totalProgress}%)\\\`);
-    console.log(\`\${\\\\='=\\\`.repeat(50)}\\n\`);
+    console.log(\`\${"=".repeat(50)}\`);
+    console.log(\`  总体进度：\${totalCompleted}/30 天完成 (\${totalProgress}%)\`);
+    console.log(\`\${"=".repeat(50)}\\n\`);
   }
 
   trackProgress(plan, day, completed) {

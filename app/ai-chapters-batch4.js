@@ -821,7 +821,7 @@ function formatPlan(plan) {
 }
 
 // 使用示例
-console.log("=== AI学习计划生成器 ===\n");
+console.log("=== AI学习计划生成器 ===\\n");
 const pythonPlan = generateLearningPlan("python", "beginner");
 console.log(formatPlan(pythonPlan));
 const jsPlan = generateLearningPlan("javascript", "beginner");
@@ -1412,19 +1412,19 @@ class CodeAnalyzer {
   }
 
   format(analysis) {
-    let output = \`\\n\${\\"=\\".repeat(60)}\\n  代码分析报告\\n\${\\"=\\".repeat(60)}\\n\\n\`;
-    output += \`📋 代码概览\\n\${\\"-\\".repeat(40)}\\n  行数：\${analysis.overview.totalLines}\\n  推断用途：\${analysis.overview.purpose.join("、")}\\n\\n\`;
-    output += \`🏗️ 代码结构\\n\${\\"-\\".repeat(40)}\\n  复杂度：\${analysis.structure.complexity}\\n  最大嵌套层级：\${analysis.structure.nestingLevel}\\n\\n\`;
+    let output = \`\\n\${"=".repeat(60)}\\n  代码分析报告\\n\${"=".repeat(60)}\\n\\n\`;
+    output += \`📋 代码概览\\n\${"-".repeat(40)}\\n  行数：\${analysis.overview.totalLines}\\n  推断用途：\${analysis.overview.purpose.join("、")}\\n\\n\`;
+    output += \`🏗️ 代码结构\\n\${"-".repeat(40)}\\n  复杂度：\${analysis.structure.complexity}\\n  最大嵌套层级：\${analysis.structure.nestingLevel}\\n\\n\`;
     if (analysis.designPatterns.length > 0) {
-      output += \`🎨 设计模式\\n\${\\"-\\".repeat(40)}\\n\`;
+      output += \`🎨 设计模式\\n\${"-".repeat(40)}\\n\`;
       analysis.designPatterns.forEach(dp => { output += \`  • \${dp.pattern}（置信度：\${dp.confidence}）\\n    \${dp.description}\\n\`; });
       output += \`\\n\`;
     }
-    output += \`🔄 数据流分析\\n\${\\"-\\".repeat(40)}\\n\`;
+    output += \`🔄 数据流分析\\n\${"-".repeat(40)}\\n\`;
     output += \`  输入：\${analysis.dataFlow.inputs.length > 0 ? analysis.dataFlow.inputs.join("、") : "无明确输入"}\\n\`;
     output += \`  处理：\${analysis.dataFlow.processing.length > 0 ? analysis.dataFlow.processing.join("、") : "无明确处理"}\\n\`;
     output += \`  输出：\${analysis.dataFlow.outputs.length > 0 ? analysis.dataFlow.outputs.join("、") : "无明确输出"}\\n\\n\`;
-    output += \`✅ 代码质量\\n\${\\"-\\".repeat(40)}\\n  评分：\${analysis.codeQuality.overallScore}/100\\n\`;
+    output += \`✅ 代码质量\\n\${"-".repeat(40)}\\n  评分：\${analysis.codeQuality.overallScore}/100\\n\`;
     if (analysis.codeQuality.issues.length > 0) {
       output += \`\\n  问题：\\n\`;
       analysis.codeQuality.issues.forEach(issue => {
@@ -1438,14 +1438,14 @@ class CodeAnalyzer {
     }
     output += \`\\n\`;
     if (analysis.suggestions.length > 0) {
-      output += \`💡 改进建议\\n\${\\"-\\".repeat(40)}\\n\`;
+      output += \`💡 改进建议\\n\${"-".repeat(40)}\\n\`;
       analysis.suggestions.forEach(s => {
         const icon = s.priority === "高" ? "🔴" : s.priority === "中" ? "🟡" : "🟢";
         output += \`  \${icon} [\${s.category}] \${s.suggestion}\\n\`;
       });
       output += \`\\n\`;
     }
-    output += \`📝 总结\\n\${\\"-\\".repeat(40)}\\n  \${analysis.summary}\\n\\n\${\\"=\\".repeat(60)}\\n\`;
+    output += \`📝 总结\\n\${"-".repeat(40)}\\n  \${analysis.summary}\\n\\n\${"=".repeat(60)}\\n\`;
     return output;
   }
 }
@@ -2101,7 +2101,7 @@ class DocumentationGenerator {
   }
 
   format(type, content) {
-    return \`\\n\${\\"=\\".repeat(60)}\\n  文档生成器 - \${type}\\n\${\\"=\\".repeat(60)}\\n\\n\` + content;
+    return \`\\n\${"=".repeat(60)}\\n  文档生成器 - \${type}\\n\${"=".repeat(60)}\\n\\n\` + content;
   }
 }
 
@@ -2714,26 +2714,26 @@ class TechComparisonEngine {
 
   format(comparison) {
     if (comparison.error) return \`错误：\${comparison.error}\`;
-    let output = \`\\n\${\\"=\\".repeat(60)}\\n  技术对比报告\\n\${\\"=\\".repeat(60)}\\n\\n\`;
-    output += \`📊 对比对象\\n\${\\"-\\".repeat(40)}\\n\`;
+    let output = \`\\n\${"=".repeat(60)}\\n  技术对比报告\\n\${"=".repeat(60)}\\n\\n\`;
+    output += \`📊 对比对象\\n\${"-".repeat(40)}\\n\`;
     output += \`  方案A：\${comparison.tech1.name}（\${comparison.tech1.type}）\\n\`;
     output += \`  方案B：\${comparison.tech2.name}（\${comparison.tech2.type}）\\n\\n\`;
-    output += \`📋 详细对比\\n\${\\"-\\".repeat(40)}\\n\`;
+    output += \`📋 详细对比\\n\${"-".repeat(40)}\\n\`;
     output += \`| 评估维度 | 权重 | \${comparison.tech1.name} | \${comparison.tech2.name} | 优势方 |\\n\`;
-    output += \`|----------|------|\${\\"-\\".repeat(comparison.tech1.name.length + 4)}|\${\\"-\\".repeat(comparison.tech2.name.length + 4)}|--------|\\n\`;
+    output += \`|----------|------|\${"-".repeat(comparison.tech1.name.length + 4)}|\${"-".repeat(comparison.tech2.name.length + 4)}|--------|\\n\`;
     comparison.results.forEach(r => {
       output += \`| \${r.description} | \${r.weight} | \${r.score1} | \${r.score2} | \${r.winner} |\\n\`;
     });
-    output += \`\\n📈 综合评分\\n\${\\"-\\".repeat(40)}\\n\`;
+    output += \`\\n📈 综合评分\\n\${"-".repeat(40)}\\n\`;
     output += \`  \${comparison.tech1.name}：\${comparison.overall1}/10\\n\`;
     output += \`  \${comparison.tech2.name}：\${comparison.overall2}/10\\n\\n\`;
-    output += \`🎯 推荐方案\\n\${\\"-\\".repeat(40)}\\n\`;
+    output += \`🎯 推荐方案\\n\${"-".repeat(40)}\\n\`;
     if (comparison.recommendation === "两者相当") {
       output += \`  两个方案综合评分相当，建议根据团队熟悉度和具体场景进一步评估。\\n\`;
     } else {
       output += \`  推荐使用：\${comparison.recommendation}（综合评分 \${comparison.recommendationScore}/10）\\n\`;
     }
-    output += \`\\n\${\\"=\\".repeat(60)}\\n\`;
+    output += \`\\n\${"=".repeat(60)}\\n\`;
     return output;
   }
 }

@@ -16,7 +16,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { gqlChapters, gqlChapterGroups } from "../gql-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightGraphQL } from "../gql-highlight";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function GraphQLTutorial() {
@@ -118,6 +117,14 @@ export default function GraphQLTutorial() {
     setHasRun(false);
   }, [activeChapter]);
 
+  // ---------- 在 Playground 中打开 ----------
+  const handlePlayground = useCallback(() => {
+    try {
+      localStorage.setItem("playground:code:gql", code);
+    } catch {}
+    window.open(`/playground?lang=gql`, "_blank", "noopener,noreferrer");
+  }, [code]);
+
   // ---------- 键盘快捷键 ----------
   useEffect(() => {
     const handleKey = (e) => {
@@ -153,8 +160,6 @@ export default function GraphQLTutorial() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/gql" meta={`共 ${gqlChapters.length} 章 · 在线查询执行`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}
         <Sidebar
@@ -166,6 +171,8 @@ export default function GraphQLTutorial() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/gql"
+          meta={`共 ${gqlChapters.length} 章 · 在线查询执行`}
         />
 
         {/* ===== 主内容区 ===== */}
@@ -210,6 +217,13 @@ export default function GraphQLTutorial() {
                   disabled={isRunning}
                 >
                   {isRunning ? "⏳ 执行中..." : "▶ 执行查询"}
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handlePlayground}
+                  title="在 Playground 中打开"
+                >
+                  🚀 Playground
                 </button>
               </div>
             </div>

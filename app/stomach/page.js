@@ -11,7 +11,6 @@
 import { useState, useRef, useCallback } from "react";
 import { stomachChapters, stomachChapterGroups } from "../stomach-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function StomachBook() {
@@ -45,8 +44,6 @@ export default function StomachBook() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/stomach" onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}
         <Sidebar
@@ -58,6 +55,7 @@ export default function StomachBook() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/stomach"
         />
 
         {/* ===== 主内容区 ===== */}

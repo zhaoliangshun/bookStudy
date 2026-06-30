@@ -16,7 +16,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { backendChapters, backendChapterGroups } from "../backend-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightJavaScript } from "../highlight";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function BackendTutorial() {
@@ -104,6 +103,14 @@ export default function BackendTutorial() {
     setHasRun(false);
   }, [activeChapter]);
 
+  // ---------- 在 Playground 中打开 ----------
+  const handlePlayground = useCallback(() => {
+    try {
+      localStorage.setItem("playground:code:backend", code);
+    } catch {}
+    window.open(`/playground?lang=backend`, "_blank", "noopener,noreferrer");
+  }, [code]);
+
   // ---------- 键盘快捷键 ----------
   useEffect(() => {
     const handleKey = (e) => {
@@ -139,8 +146,6 @@ export default function BackendTutorial() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/backend" meta={`共 ${backendChapters.length} 章 · 综合教程`} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}
         <Sidebar
@@ -152,6 +157,8 @@ export default function BackendTutorial() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/backend"
+          meta={`共 ${backendChapters.length} 章 · 综合教程`}
         />
 
         {/* ===== 主内容区 ===== */}
@@ -196,6 +203,13 @@ export default function BackendTutorial() {
                   disabled={isRunning}
                 >
                   {isRunning ? "⏳ 执行中..." : "▶ 运行代码"}
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handlePlayground}
+                  title="在 Playground 中打开"
+                >
+                  🚀 Playground
                 </button>
               </div>
             </div>

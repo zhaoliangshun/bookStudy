@@ -12,7 +12,6 @@
 import { useState, useRef, useCallback } from "react";
 import { quotesChapters, quotesChapterGroups } from "../quotes-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import SiteNav from "../components/SiteNav";
 import Sidebar from "../components/Sidebar";
 
 export default function QuotesBook() {
@@ -46,8 +45,6 @@ export default function QuotesBook() {
 
   return (
     <div className="app-shell">
-      <SiteNav currentPath="/quotes" onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
       <div className="main-layout">
         {/* ===== 侧边栏 ===== */}
         <Sidebar
@@ -59,6 +56,7 @@ export default function QuotesBook() {
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
+          currentPath="/quotes"
         />
 
         {/* ===== 主内容区 ===== */}

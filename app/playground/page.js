@@ -26,7 +26,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import SiteNav from "../components/SiteNav";
+import CodeEditor from "../components/CodeEditor";
+import Sidebar from "../components/Sidebar";
 import { highlightJavaScript } from "../highlight";
 import { highlightTypeScript } from "../ts-highlight";
 import { highlightPython } from "../py-highlight";
@@ -902,18 +903,12 @@ export default function PlaygroundPage() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   // 保存提示信息（短暂显示）
   const [toast, setToast] = useState("");
-  // 光标位置（行 / 列，显示在状态栏）
-  const [cursor, setCursor] = useState({ line: 1, col: 1 });
   // 自动运行开关：开启后代码改变会自动执行（防抖）
   const [autoRun, setAutoRun] = useState(true);
-  // 移动端侧边栏（SiteNav 用）
+  // 移动端侧边栏
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // ---------- ref ----------
-  const textareaRef = useRef(null);
-  const highlightRef = useRef(null);
-  const lineNumbersRef = useRef(null);
-  // 请求序号：用于自动运行时丢弃过时请求的结果（用户已输入新内容）
   const requestIdRef = useRef(0);
 
   // 当前语言配置对象
@@ -922,12 +917,6 @@ export default function PlaygroundPage() {
 
   // 当前代码（从 codes 映射里取）
   const code = codes[langId];
-
-  // 高亮 HTML（依赖当前语言的高亮函数 + 代码内容）
-  const highlightedHTML = useMemo(
-    () => activeLang.highlight(code) + "\n",
-    [code, activeLang]
-  );
 
   // ---------- 更新某语言代码 ----------
   const setCode = useCallback(
@@ -945,34 +934,7 @@ export default function PlaygroundPage() {
     setHasRun(false);
   }, []);
 
-  // ---------- 编辑器滚动同步 ----------
-  const handleEditorScroll = useCallback(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    if (highlightRef.current) {
-      highlightRef.current.scrollTop = ta.scrollTop;
-      highlightRef.current.scrollLeft = ta.scrollLeft;
-    }
-    if (lineNumbersRef.current) {
-      lineNumbersRef.current.scrollTop = ta.scrollTop;
-    }
-  }, []);
-
-  // ---------- 更新光标位置 ----------
-  const updateCursor = useCallback(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const pos = ta.selectionStart;
-    const before = ta.value.slice(0, pos);
-    const line = before.split("\n").length;
-    const col = pos - before.lastIndexOf("\n");
-    setCursor({ line, col });
-  }, []);
-
   // ---------- 运行代码 ----------
-  // 注意：必须定义在 handleKeyDown 之前，因为 handleKeyDown 的依赖数组
-  // 引用了 runCode（const 不会提升，提前引用会触发 TDZ 错误）
-  //
   // silent 参数说明：
   //   false（默认，手动运行）—— 立即显示「正在执行...」占位，让用户看到反馈
   //   true（自动运行）—— 不显示占位，保留上一次的输出直到新结果回来，
@@ -1021,314 +983,6 @@ export default function PlaygroundPage() {
     },
     [code, activeLang]
   );
-
-  // =============================================================
-  // 编辑器键盘快捷键处理
-  // -------------------------------------------------------------
-  // 这是本页面的核心：模拟 VS Code 常用编辑快捷键。
-  // 思路：在 textarea 的 onKeyDown 里拦截组合键，操作 textarea
-  //       的 value / selectionStart / selectionEnd 来实现。
-  //       所有文本修改都通过 setCode 写回状态，并用
-  //       requestAnimationFrame 恢复光标位置。
-  // =============================================================
-  const handleKeyDown = useCallback(
-    (e) => {
-      const ta = textareaRef.current;
-      if (!ta) return;
-      const mod = e.ctrlKey || e.metaKey; // Ctrl 或 Cmd
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      const value = code;
-
-      // ----- Ctrl/Cmd + Enter：运行代码 -----
-      if (mod && e.key === "Enter") {
-        e.preventDefault();
-        runCode();
-        return;
-      }
-
-      // ----- Ctrl/Cmd + S：保存到本地 -----
-      if (mod && (e.key === "s" || e.key === "S")) {
-        e.preventDefault();
-        try {
-          localStorage.setItem(STORAGE_PREFIX + langId, code);
-          showToast("已保存到本地");
-        } catch {
-          showToast("保存失败（存储不可用）");
-        }
-        return;
-      }
-
-      // ----- Ctrl/Cmd + Backspace：清空输出 -----
-      if (mod && e.key === "Backspace") {
-        e.preventDefault();
-        setOutput("");
-        setError("");
-        setHasRun(false);
-        showToast("已清空输出");
-        return;
-      }
-
-      // ----- Ctrl/Cmd + /：注释 / 取消注释 -----
-      if (mod && e.key === "/") {
-        e.preventDefault();
-        toggleComment(ta, value, start, end, activeLang.comment);
-        return;
-      }
-
-      // ----- Ctrl/Cmd + ] 或 [：增减缩进 -----
-      if (mod && (e.key === "]" || e.key === "[")) {
-        e.preventDefault();
-        const indent = e.key === "]" ? "  " : null;
-        changeIndent(ta, value, start, end, indent);
-        return;
-      }
-
-      // ----- Ctrl/Cmd + D：复制当前行 -----
-      if (mod && (e.key === "d" || e.key === "D") && !e.shiftKey) {
-        e.preventDefault();
-        duplicateLine(ta, value, start, end);
-        return;
-      }
-
-      // ----- Ctrl/Cmd + Shift + K：删除当前行 -----
-      if (mod && e.shiftKey && (e.key === "k" || e.key === "K")) {
-        e.preventDefault();
-        deleteLine(ta, value, start, end);
-        return;
-      }
-
-      // ----- Alt + ↑/↓：上移 / 下移当前行 -----
-      if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
-        e.preventDefault();
-        moveLine(ta, value, start, end, e.key === "ArrowUp" ? -1 : 1);
-        return;
-      }
-
-      // ----- Tab：缩进 / Shift+Tab：减少缩进 -----
-      if (e.key === "Tab") {
-        e.preventDefault();
-        if (e.shiftKey) {
-          changeIndent(ta, value, start, end, null);
-        } else {
-          // 没有选区时插入两个空格；有选区时整体缩进
-          if (start === end) {
-            const newVal = value.slice(0, start) + "  " + value.slice(end);
-            setCode(newVal);
-            requestAnimationFrame(() => {
-              if (ta) {
-                ta.selectionStart = ta.selectionEnd = start + 2;
-                updateCursor();
-              }
-            });
-          } else {
-            changeIndent(ta, value, start, end, "  ");
-          }
-        }
-        return;
-      }
-    },
-    [code, langId, activeLang, runCode]
-  );
-
-  // ---------- 注释 / 取消注释（VS Code Ctrl+/ 行为） ----------
-  // 逻辑：取选区涉及的所有行，若全部已注释则取消注释，否则全部加上注释
-  function toggleComment(ta, value, start, end, commentPrefix) {
-    const lineStart = value.lastIndexOf("\n", start - 1) + 1;
-    const lineEndIdx = value.indexOf("\n", end);
-    const lineEndReal = lineEndIdx === -1 ? value.length : lineEndIdx;
-
-    const block = value.slice(lineStart, lineEndReal);
-    const lines = block.split("\n");
-
-    // 判断是否所有非空行都已注释
-    const allCommented = lines.every((ln) => {
-      const trimmed = ln.trim();
-      return trimmed === "" || trimmed.startsWith(commentPrefix);
-    });
-
-    let newLines;
-    if (allCommented) {
-      // 取消注释：去掉行首空白后的注释前缀
-      newLines = lines.map((ln) => {
-        const idx = ln.indexOf(commentPrefix);
-        // idx 可能出现在首字符或缩进之后
-        if (idx === -1) return ln;
-        // 删除注释前缀及其后一个空格（如果有）
-        let after = ln.slice(0, idx) + ln.slice(idx + commentPrefix.length);
-        if (after.startsWith(" ")) after = after.slice(1);
-        return after;
-      });
-    } else {
-      // 加注释：在行首（缩进之前）插入注释前缀 + 空格
-      newLines = lines.map((ln) => {
-        if (ln.trim() === "") return commentPrefix;
-        // 保留缩进
-        const m = ln.match(/^(\s*)(.*)$/);
-        return m[1] + commentPrefix + " " + m[2];
-      });
-    }
-
-    const newBlock = newLines.join("\n");
-    const newVal =
-      value.slice(0, lineStart) + newBlock + value.slice(lineEndReal);
-    setCode(newVal);
-
-    // 恢复选区，覆盖整块
-    requestAnimationFrame(() => {
-      if (ta) {
-        ta.selectionStart = lineStart;
-        ta.selectionEnd = lineStart + newBlock.length;
-        updateCursor();
-      }
-    });
-  }
-
-  // ---------- 增减缩进 ----------
-  // indent 为 "  " 表示增加，null 表示减少
-  function changeIndent(ta, value, start, end, indent) {
-    const lineStart = value.lastIndexOf("\n", start - 1) + 1;
-    const lineEndIdx = value.indexOf("\n", end);
-    const lineEndReal = lineEndIdx === -1 ? value.length : lineEndIdx;
-
-    const block = value.slice(lineStart, lineEndReal);
-    let lines = block.split("\n");
-
-    if (indent) {
-      lines = lines.map((ln) => "  " + ln);
-    } else {
-      // 减少缩进：每行最多去掉 2 个前导空格
-      lines = lines.map((ln) => {
-        if (ln.startsWith("  ")) return ln.slice(2);
-        if (ln.startsWith(" ")) return ln.slice(1);
-        if (ln.startsWith("\t")) return ln.slice(1);
-        return ln;
-      });
-    }
-
-    const newBlock = lines.join("\n");
-    const newVal =
-      value.slice(0, lineStart) + newBlock + value.slice(lineEndReal);
-    setCode(newVal);
-
-    requestAnimationFrame(() => {
-      if (ta) {
-        ta.selectionStart = lineStart;
-        ta.selectionEnd = lineStart + newBlock.length;
-        updateCursor();
-      }
-    });
-  }
-
-  // ---------- 复制当前行 ----------
-  function duplicateLine(ta, value, start, end) {
-    const lineStart = value.lastIndexOf("\n", start - 1) + 1;
-    const lineEndIdx = value.indexOf("\n", end);
-    const lineEndReal = lineEndIdx === -1 ? value.length : lineEndIdx;
-
-    const line = value.slice(lineStart, lineEndReal);
-    const insertText = line + "\n" + line;
-    const newVal =
-      value.slice(0, lineStart) + insertText + value.slice(lineEndReal);
-    setCode(newVal);
-
-    // 选中复制出来的那一行（VS Code 行为）
-    requestAnimationFrame(() => {
-      if (ta) {
-        const selStart = lineStart + line.length + 1;
-        ta.selectionStart = selStart;
-        ta.selectionEnd = selStart + line.length;
-        updateCursor();
-      }
-    });
-  }
-
-  // ---------- 删除当前行 ----------
-  function deleteLine(ta, value, start, end) {
-    const lineStart = value.lastIndexOf("\n", start - 1) + 1;
-    let lineEndIdx = value.indexOf("\n", end);
-    if (lineEndIdx === -1) {
-      // 最后一行：连同前一个换行一起删
-      if (lineStart > 0) {
-        const newVal = value.slice(0, lineStart - 1);
-        setCode(newVal);
-        requestAnimationFrame(() => {
-          if (ta) {
-            ta.selectionStart = ta.selectionEnd = Math.min(
-              lineStart - 1,
-              newVal.length
-            );
-            updateCursor();
-          }
-        });
-      }
-      return;
-    }
-    const newVal =
-      value.slice(0, lineStart) + value.slice(lineEndIdx + 1);
-    setCode(newVal);
-    requestAnimationFrame(() => {
-      if (ta) {
-        ta.selectionStart = ta.selectionEnd = lineStart;
-        updateCursor();
-      }
-    });
-  }
-
-  // ---------- 移动当前行（上移 / 下移） ----------
-  function moveLine(ta, value, start, end, dir) {
-    const lineStart = value.lastIndexOf("\n", start - 1) + 1;
-    const lineEndIdx = value.indexOf("\n", end);
-    const lineEndReal = lineEndIdx === -1 ? value.length : lineEndIdx;
-
-    const currentBlock = value.slice(lineStart, lineEndReal);
-
-    if (dir === -1) {
-      // 上移：需要找到上一行的边界
-      if (lineStart === 0) return; // 已是第一行
-      const prevLineEnd = lineStart - 1;
-      const prevLineStart = value.lastIndexOf("\n", prevLineEnd - 1) + 1;
-      const prevBlock = value.slice(prevLineStart, prevLineEnd);
-      const newVal =
-        value.slice(0, prevLineStart) +
-        currentBlock +
-        "\n" +
-        prevBlock +
-        value.slice(lineEndReal);
-      setCode(newVal);
-      requestAnimationFrame(() => {
-        if (ta) {
-          const offset = currentBlock.length + 1;
-          ta.selectionStart = prevLineStart;
-          ta.selectionEnd = prevLineStart + offset - 1;
-          updateCursor();
-        }
-      });
-    } else {
-      // 下移：找到下一行边界
-      if (lineEndIdx === -1) return; // 已是最后一行
-      const nextLineStart = lineEndIdx + 1;
-      const nextLineEndIdx = value.indexOf("\n", nextLineStart);
-      const nextLineEnd =
-        nextLineEndIdx === -1 ? value.length : nextLineEndIdx;
-      const nextBlock = value.slice(nextLineStart, nextLineEnd);
-      const newVal =
-        value.slice(0, lineStart) +
-        nextBlock +
-        "\n" +
-        currentBlock +
-        value.slice(nextLineEnd);
-      setCode(newVal);
-      requestAnimationFrame(() => {
-        if (ta) {
-          const offset = nextBlock.length + 1;
-          ta.selectionStart = lineStart + offset;
-          ta.selectionEnd = lineStart + offset + currentBlock.length;
-          updateCursor();
-        }
-      });
-    }
-  }
 
   // ---------- 显示短暂提示 ----------
   function showToast(msg) {
@@ -1401,7 +1055,7 @@ export default function PlaygroundPage() {
       const mod = e.ctrlKey || e.metaKey;
       if (mod && e.key === "Enter") {
         // 仅当焦点不在 textarea 时拦截，避免与编辑器内重复
-        if (document.activeElement !== textareaRef.current) {
+        if (!(document.activeElement instanceof HTMLTextAreaElement)) {
           e.preventDefault();
           runCode();
         }
@@ -1454,13 +1108,18 @@ export default function PlaygroundPage() {
 
   return (
     <div className="app-shell">
-      <SiteNav
-        currentPath="/playground"
-        meta={`Playground · ${LANGUAGES.length} 种语言 · 在线编辑运行`}
-        onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-      />
-
       <div className="main-layout playground-main">
+        <Sidebar
+          title="Playground"
+          tip="在线代码编辑器"
+          currentPath="/playground"
+          meta={`Playground · ${LANGUAGES.length} 种语言 · 在线编辑运行`}
+          defaultCollapsed={true}
+          groupedChapters={[]}
+          sidebarOpen={sidebarOpen}
+          onCloseSidebar={() => setSidebarOpen(false)}
+          onToggleSidebar={() => setSidebarOpen((v) => !v)}
+        />
         <main className="content playground-content">
           {/* ===== 顶部工具栏：语言切换 + 操作按钮 ===== */}
           <div className="pg-toolbar">
@@ -1570,43 +1229,16 @@ export default function PlaygroundPage() {
                 </span>
               </div>
               <div className="editor-wrap pg-editor-wrap">
-                {/* 行号 */}
-                <div
-                  className="line-numbers"
-                  ref={lineNumbersRef}
-                  aria-hidden="true"
-                >
-                  {Array.from({ length: lineCount }, (_, i) => (
-                    <div key={i} className="line-number">
-                      {i + 1}
-                    </div>
-                  ))}
-                </div>
-                {/* 编辑区：高亮层 + textarea 叠加 */}
-                <div className="editor-area">
-                  <pre
-                    ref={highlightRef}
-                    className="editor-highlight"
-                    aria-hidden="true"
-                    dangerouslySetInnerHTML={{ __html: highlightedHTML }}
-                  />
-                  <textarea
-                    ref={textareaRef}
-                    className="code-editor"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    onScroll={handleEditorScroll}
-                    onKeyUp={updateCursor}
-                    onClick={updateCursor}
-                    onSelect={updateCursor}
-                    spellCheck={false}
-                    autoCapitalize="off"
-                    autoCorrect="off"
-                    wrap="off"
-                    placeholder={`在这里编写 ${activeLang.label} 代码...`}
-                  />
-                </div>
+                <CodeEditor
+                  value={code}
+                  onChange={setCode}
+                  highlight={activeLang.highlight}
+                  comment={activeLang.comment}
+                  onRun={runCode}
+                  placeholder={`在这里编写 ${activeLang.label} 代码...`}
+                  minHeight={200}
+                  maxHeight={9999}
+                />
               </div>
             </section>
 
@@ -1657,9 +1289,6 @@ export default function PlaygroundPage() {
           <div className="pg-statusbar">
             <span className="pg-status-item">
               {activeLang.icon} {activeLang.label}
-            </span>
-            <span className="pg-status-item">
-              行 {cursor.line}, 列 {cursor.col}
             </span>
             <span className="pg-status-item pg-status-hint">
               {autoRun
