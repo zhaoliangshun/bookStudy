@@ -60,7 +60,7 @@ print("=== 堆叠装饰器 ===")
 print(f"  结果: {slow_add(3, 4)}")
 print(f"  函数名保留: {slow_add.__name__}")
 
-print("\n=== 带参数的装饰器 ===")
+print("\\n=== 带参数的装饰器 ===")
 call_count = 0
 @retry(attempts=2, delay=0)
 def flaky_function():
@@ -130,7 +130,7 @@ class User:
 
 print(f"  {User('Alice', 25)}")
 
-print("\n=== singleton: 单例模式 ===")
+print("\\n=== singleton: 单例模式 ===")
 @singleton
 class AppConfig:
     def __init__(self):
@@ -144,7 +144,7 @@ cfg1.set("debug", False)
 print(f"  cfg1 is cfg2: {cfg1 is cfg2}")
 print(f"  cfg2.settings['debug']: {cfg2.settings['debug']}")
 
-print("\n=== register: 注册模式 ===")
+print("\\n=== register: 注册模式 ===")
 @register("shape_circle")
 class Circle:
     def draw(self): return "画圆形"
@@ -222,11 +222,11 @@ except TypeError as e:
 p.age = 30
 print(f"  修改后: name={p.name}, age={p.age}")
 
-print("\n=== LazyProperty 惰性计算 ===")
+print("\\n=== LazyProperty 惰性计算 ===")
 print(f"  首次访问 bio: {p.bio}")
 print(f"  再次访问 bio（缓存）: {p.bio}")
 
-print("\n=== 模拟 property 实现 ===")
+print("\\n=== 模拟 property 实现 ===")
 class MyProperty:
     def __init__(self, fget=None, fset=None):
         self.fget = fget
@@ -253,7 +253,8 @@ class Circle:
         self._radius = val
     @MyProperty
     def area(self):
-        return 3.14159 * self._radius ** 2
+        import math
+        return math.pi * self._radius ** 2
 
 c = Circle(5)
 print(f"  半径: {c.radius}, 面积: {c.area:.2f}")
@@ -288,7 +289,7 @@ print(f"  {dog.describe()}, species={dog.species}")
 Dog = type("Dog", (Animal,), {"species": "犬科"})
 print(f"  Dog.species = {Dog.species}")
 
-print("\n=== __init_subclass__: 简单 ORM 示例 ===")
+print("\\n=== __init_subclass__: 简单 ORM 示例 ===")
 class Field:
     def __init__(self, field_type, primary_key=False):
         self.field_type = field_type
@@ -315,7 +316,10 @@ class ModelBase:
         for name, field in self._fields.items():
             val = getattr(self, name, None)
             fields.append(name)
-            values.append(f"'{val}'" if field.field_type is str else str(val))
+            if field.field_type is str:
+                values.append(repr(str(val)))
+            else:
+                values.append(str(val))
         sql = f"INSERT INTO {self._table_name} ({', '.join(fields)}) VALUES ({', '.join(values)})"
         print(f"  SQL: {sql}")
 
@@ -338,7 +342,7 @@ u.save()
 p = Product(sku="A001", title="键盘", price=299.99)
 p.save()
 
-print("\n=== 元类: 自动注册 ===")
+print("\\n=== 元类: 自动注册 ===")
 class PluginMeta(type):
     registry = {}
     def __new__(mcs, name, bases, ns):

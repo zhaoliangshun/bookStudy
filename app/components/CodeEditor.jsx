@@ -32,6 +32,26 @@
 
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 
+// ---------- 计算一段文本在等宽字体下的像素宽度 ----------
+// 等宽字体下：ASCII 字符是 1 个 charWidth，但中文/全角符号/Tab 是 2 倍宽度。
+// 之前用「字符数 × charWidth」算选区矩形，中文注释的宽度会被算少一半，
+// 导致选区背景覆盖不全文字。这里按字符逐个累加实际宽度。
+//   - Tab (\t)：tab-size: 2，等于 2 个 charWidth
+//   - 非 ASCII（code > 127）：中文、全角符号等，等宽字体下是 2 倍宽度
+//   - 其他 ASCII：1 个 charWidth
+function measureTextWidth(text, charWidth) {
+  let width = 0;
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (code === 9 || code > 127) {
+      width += charWidth * 2;
+    } else {
+      width += charWidth;
+    }
+  }
+  return width;
+}
+
 export default function CodeEditor({
   value = "",
   onChange,
@@ -118,10 +138,23 @@ export default function CodeEditor({
       if (start < lineEnd && end > lineStart) {
         const selStart = Math.max(start, lineStart);
         const selEnd = Math.min(end, lineEnd);
+        const lineText = lines[i];
+        // 按字符实际宽度计算 left/width
+        // 中文、全角、Tab 是 2 倍 charWidth，不能简单用「字符数 × charWidth」
+        const selStartCol = selStart - lineStart;
+        const selEndCol = selEnd - lineStart;
+        const leftOffset = measureTextWidth(
+          lineText.slice(0, selStartCol),
+          charWidth
+        );
+        const selWidth = measureTextWidth(
+          lineText.slice(selStartCol, selEndCol),
+          charWidth
+        );
         rects.push({
-          left: paddingLeft + (selStart - lineStart) * charWidth,
+          left: paddingLeft + leftOffset,
           top: paddingTop + i * lineHeight,
-          width: (selEnd - selStart) * charWidth,
+          width: selWidth,
           height: lineHeight,
         });
       }

@@ -187,30 +187,26 @@ class DatabaseConnection:
         return False
     def query(self, sql):
         print(f"  执行SQL：{sql}")
-        return [{"id": 1, "name": "测试"}]
+        return [{"id": 1}]
 
 with DatabaseConnection("sqlite:///test.db") as db:
-    rows = db.query("SELECT * FROM users")
-    print(f"  查询结果：{rows}")
-    raise ValueError("模拟查询错误")
-print("  with 之后，connected =", db.connected)
+    rows = db.query("SELECT 1")
+    print(f"  结果：{rows}")
+    raise ValueError("模拟错误")
+print("  connected =", db.connected)
 
 @contextmanager
-def temp_file_simulation(name):
-    path = "/tmp/" + name
-    print(f"\\n创建临时文件：{path}")
-    try:
-        yield path
-    finally:
-        print(f"删除临时文件：{path}")
+def tag(name):
+    print(f"<{name}>")
+    yield
+    print(f"</{name}>")
 
-with temp_file_simulation("data.txt") as path:
-    print(f"  使用文件：{path}")
+with tag("body"):
+    print("  内容")
 
 with suppress(FileNotFoundError):
-    import os
-    os.remove("/nonexistent_file.txt")
-print("suppress 之后代码继续执行")
+    open("/nonexistent_file.txt")
+print("suppress 后继续执行")
 `,
   },
 ];

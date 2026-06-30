@@ -169,65 +169,50 @@ print(f"\\n  zip_longest: {list(itertools.zip_longest('AB', [1,2,3], fillvalue='
     return primer
 
 @coroutine
-def multiplier(factor, target=None):
-    try:
-        while True:
-            received = yield
-            result = received * factor
-            if target:
-                target.send(result)
-            else:
-                print(f"    [x{factor}] {received} -> {result}")
-    except GeneratorExit:
-        print(f"    multiplier(x{factor}) 已关闭")
-
-@coroutine
-def filter_even(target):
-    try:
-        while True:
-            received = yield
-            if received % 2 == 0:
-                target.send(received)
-    except GeneratorExit:
-        print("    filter_even 已关闭")
-
-@coroutine
 def printer(prefix):
     try:
         while True:
-            received = yield
-            print(f"    {prefix}: {received}")
+            val = yield
+            print(f"  {prefix}: {val}")
     except GeneratorExit:
-        print("    printer 已关闭")
+        print(f"  {prefix} 已关闭")
 
-print("=== 协程管道: 输入 -> 乘2 -> 过滤偶数 -> 打印 ===")
+@coroutine
+def multiplier(factor, target):
+    try:
+        while True:
+            val = yield
+            target.send(val * factor)
+    except GeneratorExit:
+        print("  multiplier 已关闭")
+
+print("=== send() 管道: 输入 -> x2 -> 打印 ===")
 p = printer("结果")
-f = filter_even(p)
-m = multiplier(2, f)
-
-for i in range(1, 8):
+m = multiplier(2, p)
+for i in range(1, 6):
     m.send(i)
-
 m.close()
-f.close()
 p.close()
 
 print("\\n=== throw() 演示 ===")
 @coroutine
-def error_handler():
-    while True:
-        try:
-            val = yield
-            print(f"    收到值: {val}")
-        except ValueError as e:
-            print(f"    捕获异常: {e}")
+def handler():
+    try:
+        while True:
+            try:
+                val = yield
+                print(f"  收到: {val}")
+            except ValueError as e:
+                print(f"  捕获: {e}")
+    except GeneratorExit:
+        print("  handler 已关闭")
 
-eh = error_handler()
-eh.send(10)
-eh.throw(ValueError("测试错误"))
-eh.send(20)
-eh.close()
-print("\\n协程管道演示完成")
+h = handler()
+h.send(10)
+h.throw(ValueError("测试错误"))
+h.send(20)
+h.close()
+print("\\n协程演示完成")
 `,
   },
 ];
