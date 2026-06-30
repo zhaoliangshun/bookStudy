@@ -104,7 +104,7 @@ print(sorted([3, 1, 4, 1, 5], reverse=True))
     icon: "🧩",
     title: "match-case：结构模式匹配",
     content: `
-- 3.10+ 新增，比 if/elif 链更清晰
+- 3.10+ 新增，比 if/elif 链更清晰（注意：下方 demo 同时给出 3.9 兼容写法和 3.10+ match-case 写法）
 - 可匹配：字面量、序列、映射、类对象、OR 模式
 - **guard**：\`case X if cond:\` 加额外条件
 - 通配 \`_\` 匹配任意但不绑定
@@ -112,38 +112,36 @@ print(sorted([3, 1, 4, 1, 5], reverse=True))
 - 不像 switch：case 从上到下依次尝试，第一个匹配即执行
 `,
     code: `from dataclasses import dataclass
+import sys
 
 @dataclass
 class Point:
     x: int
     y: int
 
+# === 3.9 兼容写法：用 if/elif 模拟 match-case（可运行）===
 def describe(shape):
-    match shape:
-        # 序列模式
-        case [0, 0]:
+    if isinstance(shape, list) and len(shape) == 2:
+        x, y = shape
+        if x == 0 and y == 0:
             return "origin"
-        case [x, 0]:
+        if y == 0:
             return f"x-axis at {x}"
-        case [0, y]:
+        if x == 0:
             return f"y-axis at {y}"
-        case [x, y]:
-            return f"point ({x}, {y})"
-        # OR + 捕获
-        case ["left" | "right" as direction, n]:
-            return f"move {direction} {n}"
-        # 类模式
-        case Point(x=0, y=0):
+        return f"point ({x}, {y})"
+    if isinstance(shape, list) and len(shape) == 2 and shape[0] in ("left", "right"):
+        direction, n = shape
+        return f"move {direction} {n}"
+    if isinstance(shape, Point):
+        if shape.x == 0 and shape.y == 0:
             return "Point at origin"
-        case Point(x=x, y=y) if x == y:
-            return f"diagonal ({x},{y})"
-        case Point(x=x, y=y):
-            return f"Point({x},{y})"
-        # 映射模式
-        case {"action": "echo", "msg": msg}:
-            return f"echo: {msg}"
-        case _:
-            return "unknown"
+        if shape.x == shape.y:
+            return f"diagonal ({shape.x},{shape.y})"
+        return f"Point({shape.x},{shape.y})"
+    if isinstance(shape, dict) and shape.get("action") == "echo":
+        return f"echo: {shape.get('msg')}"
+    return "unknown"
 
 tests = [
     [0, 0], [3, 0], [5, 5],
@@ -152,6 +150,20 @@ tests = [
 ]
 for t in tests:
     print(f"{str(t):45} -> {describe(t)}")
+
+# === 3.10+ match-case 写法（仅在 Python 3.10+ 运行，此处注释展示）===
+# def describe(shape):
+#     match shape:
+#         case [0, 0]: return "origin"
+#         case [x, 0]: return f"x-axis at {x}"
+#         case [0, y]: return f"y-axis at {y}"
+#         case [x, y]: return f"point ({x}, {y})"
+#         case ["left" | "right" as direction, n]: return f"move {direction} {n}"
+#         case Point(x=0, y=0): return "Point at origin"
+#         case Point(x=x, y=y) if x == y: return f"diagonal ({x},{y})"
+#         case Point(x=x, y=y): return f"Point({x},{y})"
+#         case {"action": "echo", "msg": msg}: return f"echo: {msg}"
+#         case _: return "unknown"
 `,
   },
   {

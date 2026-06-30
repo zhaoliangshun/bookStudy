@@ -167,8 +167,10 @@ print("hello world".replace("world", "python"))
 print("python".startswith("py"), "python".endswith("on"))
 print("hello".find("ll"), "hello".index("ll"))
 
-# 3.12+ 嵌套引号
-print(f"dict: { {k: len(k) for k in ["a", "bc"]} }")
+# 3.12+ 支持 f-string 嵌套相同引号；3.9-3.11 需用不同引号或先计算
+# print(f"dict: { {k: len(k) for k in ["a", "bc"]} }")  # 3.12+ 才合法
+d = {k: len(k) for k in ["a", "bc"]}
+print("dict:", d)
 `,
   },
 ];

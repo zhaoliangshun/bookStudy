@@ -28,6 +28,7 @@
 
 import { NextResponse } from "next/server";
 import { spawn } from "child_process";
+import { existsSync } from "fs";
 
 // 执行超时（毫秒）。Python 教程的 demo 都很短，10 秒足够；
 // 死循环 / input() 阻塞等会被超时强制终止。
@@ -36,9 +37,17 @@ const EXEC_TIMEOUT_MS = 10000;
 // stdout 最大缓冲（字节）。超过则截断并提示，避免把内存撑爆。
 const MAX_OUTPUT_BYTES = 1 * 1024 * 1024; // 1MB
 
-// python3 可执行文件名。在 macOS / Linux 上通常是 python3；
-// 如果系统只装了 python，可改成 "python"。
-const PYTHON_BIN = "python3";
+// Python 可执行路径。优先使用 python3.13（Homebrew 安装），找不到再降级到系统 python3。
+const CANDIDATES = [
+  "/opt/homebrew/bin/python3.13",
+  "/usr/local/bin/python3.13",
+  "python3.13",
+  "python3",
+];
+const PYTHON_BIN = CANDIDATES.find((p) => {
+  if (p.startsWith("/")) return existsSync(p);
+  return true;
+});
 
 /**
  * 在子进程中执行 Python 代码。
