@@ -851,7 +851,7 @@ const getPosts = defineServerAction("getPosts", async function () {
 // ========== 阶段二：客户端调用模拟 ==========
 
 // 模拟客户端调用 Server Action —— 序列化参数，发起网络请求
-async function callServerAction(action, params) {
+async function callServerAction(action, params = {}) {
   if (!action.__isServerAction) {
     throw new Error("不是有效的 Server Action");
   }
@@ -2141,7 +2141,7 @@ function MyInput({ ref, ...props }) {
 | 文档元数据 | 使用 \`<title>\` / \`<meta>\` | 检查页面标题和 meta 标签 |
 | prerender | 使用 \`prerenderToNodeStream\` | 检查静态生成输出 |
 
-## 五、常见迁移陷阱
+## 五、迁移过程中的典型问题
 
 ### 陷阱一：依赖版本不匹配
 
