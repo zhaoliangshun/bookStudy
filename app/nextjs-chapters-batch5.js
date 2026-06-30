@@ -1134,7 +1134,7 @@ Next.js 16 内置 React 19.2，带来一批改变写法的新 API：View Transit
 
 ## View Transitions：原生路由动画
 
-View Transitions API 让浏览器在两帧之间做平滑过渡。React 19.2 暴露 \`<ViewTransition>\` 组件，Next.js 16 的 App Router 可直接使用：
+View Transitions API 让浏览器在两帧之间做平滑过渡。React 19.2 计划暴露 \`<ViewTransition>\` 组件，但目前仍为实验性 API，尚未从 \`react\` 稳定导出。以下代码展示预期用法，实际使用需关注 React 后续版本的更新：
 
 \`\`\`tsx filename="app/components/ProductGrid.tsx"
 import { ViewTransition } from 'react'
@@ -1211,7 +1211,9 @@ export function Timer({ onTick }: { onTick: (elapsed: number) => void }) {
 
 ## Activity：隐藏但保留状态
 
-\`<Activity>\`（即原 \`<Offscreen>\`）以 \`display: none\` 隐藏子树，但**保留其 state 与 effect**。常用于 tab 切换、keep-alive 列表：
+\`<Activity>\`（即原 \`<Offscreen>\`）以 \`display: none\` 隐藏子树，但**保留其 state 与 effect**。常用于 tab 切换、keep-alive 列表。
+
+> **注意**：\`<Activity>\` 在 React 19.2 中仍为实验性 API，未从 \`react\` 稳定导出。以下代码展示预期用法，实际使用需开启实验性 flag 并关注 React 后续版本更新。
 
 \`\`\`tsx filename="app/components/Tabs.tsx"
 'use client'

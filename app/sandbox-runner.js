@@ -104,6 +104,7 @@ function formatArg(arg, seen = new WeakSet()) {
 export async function runInSandbox(code) {
   const logs = [];
 
+  const timers = new Map();
   const captureConsole = {
     log: (...args) => logs.push(args.map((a) => formatArg(a)).join(" ")),
     info: (...args) => logs.push(args.map((a) => formatArg(a)).join(" ")),
@@ -114,6 +115,27 @@ export async function runInSandbox(code) {
     dir: (obj) => logs.push(formatArg(obj)),
     trace: (...args) =>
       logs.push("Trace: " + args.map((a) => formatArg(a)).join(" ")),
+    time: (label = "default") => timers.set(label, process.hrtime.bigint()),
+    timeEnd: (label = "default") => {
+      const start = timers.get(label);
+      if (start !== undefined) {
+        const ms = Number(process.hrtime.bigint() - start) / 1e6;
+        logs.push(`${label}: ${ms.toFixed(3)}ms`);
+        timers.delete(label);
+      }
+    },
+    group: (...args) => logs.push(args.map((a) => formatArg(a)).join(" ")),
+    groupEnd: () => {},
+    assert: (condition, ...args) => {
+      if (!condition) logs.push("Assertion failed: " + args.map((a) => formatArg(a)).join(" "));
+    },
+    count: (label = "default") => {
+      const count = (captureConsole._counts?.[label] || 0) + 1;
+      if (!captureConsole._counts) captureConsole._counts = {};
+      captureConsole._counts[label] = count;
+      logs.push(`${label}: ${count}`);
+    },
+    clear: () => { logs.length = 0; },
   };
 
   // 自定义 require：只放行白名单中的模块

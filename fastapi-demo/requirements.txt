@@ -1,0 +1,6 @@
+# FastAPI 框架（含 Pydantic v2、Starlette 等核心依赖）
+fastapi[standard]>=0.110.0
+
+# ASGI 服务器，用于运行 FastAPI 应用
+# standard 会额外装上 uvloop / httptools，性能更好
+uvicorn[standard]>=0.27.0

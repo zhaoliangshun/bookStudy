@@ -1011,7 +1011,7 @@ React 想检测你的组件是不是"纯函数"。纯函数应该：
 
 6. **useEffect 的 cleanup 不是"组件卸载时才调用"**：cleanup 在每次 re-run effect 前都会调用（依赖变化时），以及组件卸载时。Strict Mode 强制让你体验这个语义。
 
-7. **ref 的回调函数也会被调用两次**（带 null 一次，带 DOM 一次），这是 React 18 的行为，不是 Strict Mode 独有。
+7. **ref 的回调函数也会被调用两次**（带 null 一次，带 DOM 一次），这是 React 18 Strict Mode 在开发环境的行为，生产环境不会发生。
 
 ### 性能提示
 

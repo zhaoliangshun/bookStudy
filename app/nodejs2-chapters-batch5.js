@@ -1982,7 +1982,7 @@ console.log("========================================");
 console.log("  综合练习：数据处理管道");
 console.log("========================================");
 console.log("  整合模块: events, stream, crypto, assert, util");
-console.log("========================================\n");
+console.log("========================================\\n");
 
 const rawData = [
   { id: 1, name: '张三', email: 'zhangsan@example.com', age: 28, city: '北京' },
@@ -2000,7 +2000,7 @@ const rawData = [
 const pipelineInstance = new DataPipeline('my-secret-key-2024');
 
 pipelineInstance.on('pipeline:start', function(s) {
-  console.log("🚀 管道启动，待处理记录数: " + s.totalRecords + "\n");
+  console.log("🚀 管道启动，待处理记录数: " + s.totalRecords + "\\n");
 });
 pipelineInstance.on('record:valid', function(e) {
   console.log("  ✅ 记录 #" + e.id + ": 校验通过");
@@ -2012,13 +2012,13 @@ pipelineInstance.on('record:encrypted', function(e) {
   console.log("  🔒 记录 #" + e.id + ": 加密完成");
 });
 pipelineInstance.on('pipeline:complete', function(s) {
-  console.log("\n🎉 管道处理完成！");
+  console.log("\\n🎉 管道处理完成！");
   console.log("  总记录数:   " + s.total);
   console.log("  校验通过:   " + s.valid);
   console.log("  校验失败:   " + s.invalid);
   console.log("  成功处理:   " + s.processed);
   console.log("  耗时:       " + s.durationMs + "ms");
-  console.log("  处理速率:   " + s.recordsPerSecond + " 条/秒\n");
+  console.log("  处理速率:   " + s.recordsPerSecond + " 条/秒\\n");
 });
 
 (async function() {
@@ -2028,7 +2028,7 @@ pipelineInstance.on('pipeline:complete', function(s) {
     const stats = result.stats;
     console.log("--- 处理后的数据示例（前3条）---");
     output.slice(0, 3).forEach(function(record, i) {
-      console.log("\n  记录 " + (i + 1) + ":");
+      console.log("\\n  记录 " + (i + 1) + ":");
       console.log("    匿名名称: " + record.name);
       console.log("    脱敏邮箱: " + record.email);
       console.log("    城市: " + (record.city || '未填写'));
@@ -2037,7 +2037,7 @@ pipelineInstance.on('pipeline:complete', function(s) {
       console.log("    加密数据长度: " + record._enc.data.length + " 字符");
     });
 
-    console.log("\n--- 验证处理流程 ---");
+    console.log("\\n--- 验证处理流程 ---");
     console.log("  输入 10 条记录，其中 " + stats.invalid + " 条因格式错误被过滤");
     console.log("  成功处理 " + output.length + " 条有效记录");
 
@@ -2054,9 +2054,9 @@ pipelineInstance.on('pipeline:complete', function(s) {
     }).length;
     console.log("  预期有效记录数: " + expectedValid + "，实际处理: " + output.length + "，校验 " + (output.length === expectedValid ? '通过 ✓' : '失败 ✗'));
 
-    console.log("\n🎓 Node.js 进阶之旅到此结束。");
+    console.log("\\n🎓 Node.js 进阶之旅到此结束。");
     console.log("   继续写代码，继续构建，继续探索。");
-    console.log("   技术之路没有终点，只有不断的启程。\n");
+    console.log("   技术之路没有终点，只有不断的启程。\\n");
   } catch (err) {
     console.error('管道出错:', err);
   }
