@@ -6,34 +6,37 @@ export const chapters = [
     title: "map/filter/reduce",
     content: `
 ## 概述
-map/filter/reduce 是函数式编程三大核心工具，分别对应映射、过滤与归约，配合 all/any 可构建声明式数据处理管道。
+map/filter/reduce 是函数式编程三大核心工具，分别对应映射、过滤与归约，配合 all/any 与生成器表达式可构建声明式、惰性求值的数据处理管道，是 Python 数据处理的基础设施。
 
 ## 核心要点
-- **map(func, iterable)**: \`list(map(str, [1,2,3]))\` - 对每个元素应用函数，返回迭代器
+- **map(func, iterable)**: \`list(map(str, [1,2,3]))\` - 对每个元素应用函数，返回迭代器（Python 3 起）
 - **filter(func, iterable)**: \`list(filter(lambda x: x%2==0, nums))\` - 保留 func 返回 True 的元素
-- **functools.reduce(func, iterable, initial)**: \`reduce(lambda a,b: a+b, nums)\` - 累积归约为单值
+- **functools.reduce(func, iterable, initial)**: \`reduce(lambda a,b: a+b, nums)\` - 从左到右累积归约为单值
 - **all(iterable)**: \`all(x>0 for x in nums)\` - 全为 True 则 True，空集返回 True
 - **any(iterable)**: \`any(x%2==0 for x in nums)\` - 任一为 True 则 True，空集返回 False
 - **map 多迭代器**: \`list(map(lambda a,b: a+b, [1,2],[3,4]))\` - 并行处理，按最短截断
 - **reduce 三参数**: \`reduce(f, iter, initial)\` - initial 作初始累加器，空序列也能工作
 - **生成器表达式**: \`(x*x for x in nums)\` - 比 map/filter 更省内存的惰性方案
+- **filter(None, iter)**: \`list(filter(None, [0,1,'',2]))\` - 过滤所有假值，等价 \`filter(bool, iter)\`
+- **sum/max/min 内建**: 求和优先 \`sum(nums)\`，最大值优先 \`max(nums)\`，比 reduce 更清晰
 
 ## 原理与机制
-- **惰性求值**: map/filter 返回迭代器，仅在消费时计算，节省内存
-- **reduce 累积**: 每步将上次结果与下一元素传入 func，等价 for 循环累积
+- **惰性求值**: map/filter 返回迭代器，仅在消费时计算，节省内存，但只能迭代一次
+- **reduce 累积**: 每步将上次结果与下一元素传入 func；无 initial 时取首元素作初值
 - **短路求值**: all 遇 False 立即返回，any 遇 True 立即返回，避免遍历整个序列
-- **可迭代协议**: 接受任意可迭代对象（生成器、文件、字典视图等）
+- **可迭代协议**: 接受任意可迭代对象（生成器、文件、字典视图、range 等）
+- **迭代器协议**: map/filter 对象实现 \`__next__\` 与 \`__iter__\`，可被 for/sum/list 等消费
 
 ## 易错点与陷阱
 - **忘记 list() 转换**: Python 3 中 \`map(...)\` 返回迭代器，print 显示 \`<map object>\`，且只能消费一次
 - **reduce 默认无 initial**: 空序列调用 \`reduce(f, [])\` 抛 TypeError，需显式传 initial
 - **all([]) 为 True**: 数学约定（空真命题），但易引发逻辑错误，需显式判断空集
-- **lambda 闭包变量**: 循环里创建 lambda 时变量是引用，可能捕获到最后的值
+- **lambda 闭包变量**: 循环里创建 lambda 时变量是引用，可能捕获到最后的值，需用默认参数绑定
 
 ## 实战建议
 - **优先列表推导**: 简单场景用 \`[x*2 for x in nums]\` 比 map 更 Pythonic、更可读
 - **大数据用生成器**: 处理大文件用 \`map(str.strip, file)\` 配合迭代，避免一次性载入
-- **reduce 慎用**: 求和优先 \`sum(nums)\`、求积优先 \`math.prod(nums)\`，reduce 留给复杂归约
+- **reduce 慎用**: 求和优先 \`sum(nums)\`、求积优先 \`math.prod(nums)\`（3.8+），reduce 留给复杂归约
     `.trim(),
     code: `
 from functools import reduce
@@ -76,7 +79,7 @@ print(f"  存在偶数: {any(x % 2 == 0 for x in nums)}")
     title: "operator 模块",
     content: `
 ## 概述
-operator 模块把 Python 运算符封装成可调用函数，避免临时 lambda，在排序、归约、数据选取等场景下既快又可读。
+operator 模块把 Python 运算符封装成可调用函数，避免临时 lambda，在排序、归约、数据选取等场景下既快又可读，且可被 pickle 序列化，是函数式数据处理的常配库。
 
 ## 核心要点
 - **算术函数**: \`operator.add(10,3)\` 等价 \`+\`，还有 sub/mul/truediv/floordiv/mod/pow
@@ -87,17 +90,22 @@ operator 模块把 Python 运算符封装成可调用函数，避免临时 lambd
 - **多键 itemgetter**: \`itemgetter('a','b')(d)\` - 一次取多项，返回元组
 - **inplace 运算**: \`operator.iadd\`、\`operator.isub\` 对应 \`+=\`、\`-=\`，用于原地修改
 - **reduce 配合**: \`reduce(operator.add, nums)\` 比等价 lambda 更清晰
+- **逻辑运算**: \`operator.and_\`、\`operator.or_\`、\`operator.xor\`、\`operator.not_\` 对应位/逻辑运算
+- **truth/is_/index**: \`truth(x)\` 转 bool，\`is_(a,b)\` 等价 \`a is b\`，\`index(x)\` 调用 \`__index__\`
+- **set 操作**: \`operator.concat\` 等价 \`+\` 用于列表拼接，\`operator.contains(a,b)\` 等价 \`b in a\`
 
 ## 原理与机制
 - **C 实现**: operator 函数底层是 C 实现，比等价 lambda 略快且无 Python 函数调用开销
 - **可 pickle**: operator 函数可序列化，lambda 不行，多进程场景必需
 - **协议对接**: itemgetter 调用 \`__getitem__\`，attrgetter 调用 \`__getattribute__\`
 - **属性链**: \`attrgetter('point.x')\` 支持点路径取嵌套属性
+- **多键性能**: 多键 itemgetter 一次取多项，比多次 lambda 取值更快
 
 ## 易错点与陷阱
 - **attrgetter 不支持计算**: 只能取直接属性，不能写 \`attrgetter('x*2')\` 之类表达式
 - **itemgetter vs attrgetter 混用**: 字典用 itemgetter，对象用 attrgetter，错用抛 AttributeError
 - **truediv vs floordiv**: \`/\` 返回 float，\`//\` 返回 int，需求不同别选错
+- **index vs getitem**: \`operator.index(x)\` 用于切片下标转换，与 \`__getitem__\` 含义不同
 
 ## 实战建议
 - **排序优先用 operator**: \`sorted(rows, key=itemgetter('age'))\` 比 lambda 更快更易读
@@ -165,14 +173,16 @@ print(f"  reduce(mul): {reduce(operator.mul, nums)}")
     title: "functools 高阶函数",
     content: `
 ## 概述
-functools 是 Python 高阶函数工具箱，提供偏函数、缓存、装饰器元信息、单分派等，是函数式编程与性能优化的核心库。
+functools 是 Python 高阶函数工具箱，提供偏函数、缓存、装饰器元信息、单分派等，是函数式编程与性能优化的核心库，与 operator 模块常配合使用。
 
 ## 核心要点
 - **partial(func, *args)**: \`square = partial(pow, exp=2)\` - 冻结部分参数生成偏函数
 - **@lru_cache(maxsize)**: \`@lru_cache(maxsize=128)\` - LRU 记忆化缓存，加速重复调用
 - **@cache**: \`@cache\` - 3.9+ 等价 \`@lru_cache(maxsize=None)\`，无界缓存
+- **@cached_property**: \`@cached_property\` - 3.8+，把方法结果缓存为实例属性，首次访问后不再计算
 - **@wraps**: 装饰器内用 \`@wraps(func)\` 保留原函数 \`__name__\`/\`__doc__\` 元信息
 - **@singledispatch**: 按第一个参数类型分派，实现面向对象的"方法重载"
+- **@singledispatchmethod**: 3.8+，方法版单分派，支持类方法按类型分派
 - **cmp_to_key**: \`sorted(xs, key=cmp_to_key(cmp))\` - 老 cmp 函数转 key 函数
 - **cache_info/cache_clear**: \`fib.cache_info()\` 查命中，\`fib.cache_clear()\` 清空
 - **total_ordering**: 类只定义 \`__eq__\`+一个比较方法，自动补齐其余比较运算符
@@ -270,7 +280,7 @@ print(f"  按长度排序: {sorted_words}")
     title: "函数组合与柯里化",
     content: `
 ## 概述
-函数组合、管道、柯里化是函数式编程核心范式，Python 虽无内置支持，但用几十行代码即可实现，让数据处理逻辑更声明式、可复用。
+函数组合、管道、柯里化是函数式编程核心范式，Python 虽无内置支持，但用几十行代码即可实现，让数据处理逻辑更声明式、可复用、可测试。
 
 ## 核心要点
 - **compose(*funcs)**: \`compose(g, f)(x) = g(f(x))\` - 从右向左组合函数
@@ -279,12 +289,16 @@ print(f"  按长度排序: {sorted_words}")
 - **部分应用**: \`partial(add, 1)(2)\` - 与柯里化相关但更灵活，可一次传多个参数
 - **数据管道**: \`pipe(filter, map, sum)\` - 链式处理，类似 Unix 管道组合
 - **point-free 风格**: 不显式提参数名，如 \`process = pipe(strip, lower)\` 更声明式
+- **恒等函数**: \`identity = lambda x: x\` - 常用作占位或调试断点
+- **flip 调整参数**: 自定义 flip 翻转前两个参数，便于偏函数组合
+- **tap 调试**: \`tap = lambda f: lambda x: (f(x), x)[1]\` - 副作用观察点，不破坏管道
 
 ## 原理与机制
 - **闭包捕获**: compose/pipe/curry 都依赖闭包捕获 funcs 列表，返回内部函数
 - **柯里化递归**: 每次接收部分参数，未满 arity 则返回新 curried 函数等待剩余
 - **arity 推断**: \`func.__code__.co_argcount\` 读取参数个数，决定何时调用原函数
 - **惰性链式**: pipe 内部按顺序 for 循环调用，每个函数处理上一步输出
+- **reduce 实现**: compose 可用 \`reduce(lambda f,g: lambda x: g(f(x)), funcs)\` 一行实现
 
 ## 易错点与陷阱
 - **compose 方向**: \`compose(f,g,h)(x) = f(g(h(x)))\` 从右向左，与 pipe 相反，容易写反

@@ -192,6 +192,139 @@ argon2 是目前最先进的密码哈希算法，支持调节**内存**和**CPU*
 
 ---
 
+## 深入补充：哈希原理、攻击向量与密码策略
+
+### A. 哈希函数的数学基础
+
+哈希函数 \`H\` 是一个将任意长度输入映射为定长输出的数学函数：\`H: {0,1}* → {0,1}^n\`。以 SHA256 为例，无论输入是 1 字节还是 1GB，输出永远是 256 位（32 字节）。理想的密码学哈希函数具备四个性质：
+
+- **确定性**：相同输入永远产生相同输出。\`SHA256("abc")\` 在任何机器上算都是 \`ba7816bf...\`。
+- **雪崩效应**：输入改 1 个比特，输出约一半的比特发生变化。
+- **抗碰撞**：找不到两个不同输入 \`x ≠ y\` 使 \`H(x) = H(y)\`。SHA256 输出空间有 \`2^256\` 种可能，远超宇宙原子数，碰撞概率可忽略。
+- **抗原像性**：给定哈希值 \`h\`，找不到 \`x\` 使 \`H(x) = h\`。这正是密码存储的安全基石——攻击者拿到哈希值，无法在多项式时间内反推密码。
+
+\`\`\`python
+import hashlib
+h1 = hashlib.sha256(b"hello").hexdigest()
+h2 = hashlib.sha256(b"hellp").hexdigest()  # 只改了一个字符
+print(h1)  # 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
+print(h2)  # 完全不同
+print(sum(a != b for a, b in zip(h1, h2)), "个字符不同")  # 约 32 个（64 的一半）
+\`\`\`
+
+### B. 彩虹表攻击是如何工作的
+
+**彩虹表**是一种空间优化的预计算表，用于反查哈希值。朴素做法是存 \`{(密码, 哈希)}\` 全表，但存储量极大。彩虹表用**哈希链**压缩：定义一个还原函数 \`R\`（把哈希值映射回密码空间），交替执行 \`H\` 和 \`R\`：
+
+\`\`\`
+p1 →H→ h1 →R→ p2 →H→ h2 →R→ ... → pn
+\`\`\`
+
+只存每条链的起点 \`p1\` 和终点 \`pn\`。查询时对目标哈希反复套 \`R\`/\`H\`，命中某条链终点后从起点重放找到原文。一张表能覆盖海量密码，存储却只需链端点。
+
+加盐后彩虹表彻底失效——每个用户的 salt 不同，攻击者必须为每个 salt 单独造一张表，等于退化成逐用户暴力破解。
+
+| 防御手段 | 原理 | 效果 |
+| --- | --- | --- |
+| 加盐 | 每用户不同 salt | 彩虹表完全失效 |
+| 慢哈希 | bcrypt/scrypt 故意慢 | 造表成本指数级上升 |
+| 长密码 | ≥12 位随机 | 搜索空间大到无法穷举 |
+
+### C. salt 作用机制图解
+
+\`\`\`
+不加盐：
+  用户A 密码 "123456" → hash → e10adc... ←┐ 相同！可批量破解
+  用户B 密码 "123456" → hash → e10adc... ←┘
+
+加盐（bcrypt 内置）：
+  用户A "123456" + salt_A(x7K!...) → hash → a3f9c2...
+  用户B "123456" + salt_B(p2Rm...) → hash → b8e1d7...
+  哈希不同，攻击者只能逐个破解
+\`\`\`
+
+bcrypt 把 salt 编码进哈希字符串（前文讲过的 \`$2b$12$N9qo8uLOickgx2ZMRZoMy.\` 段），验证时自动取出。每个用户的 salt 随机生成（16 字节熵），即便两个用户密码相同，哈希值也完全不同。**salt 不需要保密**——它的作用不是"加密"，而是"让每个用户的哈希独立"，所以明文存在哈希字符串里也没问题。
+
+### D. bcrypt 工作因子（cost）调优详解
+
+cost 每提高 1，耗时翻倍（\`2^cost\` 轮）：
+
+| cost | 轮数 | 大约耗时（现代 CPU） | 适用场景 |
+| --- | --- | --- | --- |
+| 8 | 256 | ~10ms | 测试/开发 |
+| 10 | 1024 | ~60ms | 低安全要求 |
+| 12 | 4096 | ~250ms | **推荐默认** |
+| 14 | 16384 | ~1s | 高安全 |
+| 16 | 65536 | ~4s | 极高安全（登录体验差） |
+
+**调优原则**：在不影响登录体验的前提下尽量高。人类对 <300ms 的延迟几乎无感，cost=12 是甜点。cost 编码在哈希字符串里，调高后旧用户登录时 passlib 的 \`deprecated="auto"\` 会自动用新 cost 重新哈希——无缝升级，无需批量迁移。
+
+\`\`\`python
+from passlib.context import CryptContext
+import time
+pwd = CryptContext(schemes=["bcrypt"], bcrypt__rounds=12)
+t = time.time()
+h = pwd.hash("test123")
+print(f"cost=12 耗时: {(time.time()-t)*1000:.0f}ms")
+# 验证密码时同样耗时，攻击者暴力破解每个候选都要花这么久
+\`\`\`
+
+> ⚠️ **常见陷阱**：cost 设太高（如 20）一次哈希要几秒，登录接口超时，用户以为系统坏了。生产环境务必先 benchmark 再定 cost。
+
+### E. argon2 vs bcrypt 深度对比
+
+| 维度 | bcrypt | argon2id |
+| --- | --- | --- |
+| 设计年代 | 1999 | 2015（PHC 竞赛冠军） |
+| 抗 GPU | 一般（GPU 能并行加速） | 强（内存硬度限制并行） |
+| 抗 ASIC | 弱 | 强（需大量内存，ASIC 造不起） |
+| 内存可调 | 否（固定 4KB） | 是（\`memory_cost\` 参数） |
+| 时间可调 | 是（cost） | 是（\`time_cost\` 参数） |
+| 并行度可调 | 否 | 是（\`parallelism\` 参数） |
+| 72 字节限制 | 有 | 无 |
+| 生态成熟度 | 极高（几乎所有语言支持） | 高（新项目首选） |
+
+argon2 的核心创新是**内存硬度**：哈希过程占用大量内存（如 64MB）。GPU 虽有数千核心但每核心内存很少，无法并行运行多个 argon2 实例，从而抵消了 GPU 的并行优势。
+
+\`\`\`python
+# argon2 用法（需安装 argon2-cffi）
+from argon2 import PasswordHasher
+ph = PasswordHasher(memory_cost=65536, time_cost=3, parallelism=4)  # 64MB, 3 轮, 4 线程
+h = ph.hash("mypassword")
+ph.verify(h, "mypassword")  # True
+\`\`\`
+
+**选型建议**：新项目环境支持就用 argon2id；老项目或需广泛兼容用 bcrypt（cost≥12）。两者都比 MD5/SHA 强无数倍。
+
+### F. 密码策略最佳实践
+
+| 层面 | 建议 | 原因 |
+| --- | --- | --- |
+| 最小长度 | ≥8 位（NIST 建议），推荐 ≥12 | 长度比复杂度更能抵抗暴力破解 |
+| 复杂度 | 不强制特殊字符（NIST 800-63B 新规） | 强制复杂度导致 \`Password1!\` 这类可预测弱密码 |
+| 黑名单 | 拒绝已知泄露密码（如 HaveIBeenPwned API） | 阻止 \`123456\`、\`password\` 等高频密码 |
+| 唯一性 | 拒绝与历史密码相同 | 防止循环使用 |
+| 截断 | bcrypt 限 72 字节，超长先 SHA256 | 避免截断导致碰撞 |
+| 存储 | 只存 bcrypt/argon2 哈希 | 单向不可逆 |
+| 传输 | 全程 HTTPS | 防中间人窃听 |
+| 重置 | 一次性 token（短时效），不存明文 | 安全重置流程 |
+
+> 💡 **面试要点**：NIST 800-63B（2017）颠覆了传统密码建议——不再要求"必须含大小写+数字+特殊字符"，而是强调**长度**和**黑名单**。因为强制复杂度反而让用户产生可预测变形（\`Spring2024!\`、\`P@ssw0rd1\`），更容易被字典攻击猜中。面试时提到这一点能体现你对安全规范更新的关注。
+
+### G. 内部实现细节：bcrypt 的 EksBlowfish 算法
+
+bcrypt 内部并非简单迭代 SHA，而是基于 **Blowfish 加密算法**改造的 **EksBlowfish**（Expensive Key Schedule Blowfish）：
+
+1. 用密码和 salt 初始化 Blowfish 的 P-box 和 S-box（这一步故意做得很慢，称为 "expensive key schedule"）。
+2. 重复 \`2^cost\` 轮加密一个固定常量字符串 "OrpheanBeholderScryDoubt"（24 字节）。
+3. 输出最终密文作为哈希值（23 字节，Base64 编码后 31 字符）。
+
+这种设计的关键在于：**key schedule 不可被并行化**（每轮依赖上一轮状态），所以 GPU 的并行优势被削弱。而通用哈希（SHA256）每轮独立，GPU 可以同时计算数百万个。
+
+> 🔒 **最佳实践总结**：密码存储 = argon2id（或 bcrypt cost≥12）+ 每用户随机 salt + 不返回哈希值 + 改密码让旧 token 失效 + 全程 HTTPS。这五条做到了，密码安全就达标了。
+
+---
+
 ## 十、本章小结
 
 - 密码**只存哈希**，不存明文/加密/编码。
@@ -497,6 +630,187 @@ access token 短命（15 分钟）能降低泄露风险，但用户每 15 分钟
 - 流程：access token 过期 → 客户端用 refresh token 调 \`/token/refresh\` → 服务器签发新的 access token。
 
 refresh token 通常存在数据库（可撤销），access token 不存库（纯无状态）。这样兼顾了安全和体验。
+
+---
+
+## 深入补充：编码细节、签名原理与安全陷阱
+
+### A. Base64URL 编码细节
+
+标准 Base64 用 \`A-Za-z0-9+/\` 共 64 个字符表示 6 位数据，遇到 \`+\`/\`/\`/\`=\` 在 URL 里会有歧义。JWT 选用的 **Base64URL** 做了三处替换：
+
+| 字符 | 标准 Base64 | Base64URL | 原因 |
+| --- | --- | --- | --- |
+| 第 62 位 | \`+\` | \`-\` | \`+\` 在 URL query 中是空格 |
+| 第 63 位 | \`/\` | \`_\` | \`/\` 是 URL 路径分隔符 |
+| 填充 | \`=\` | 去掉 | \`=\` 在某些框架需转义 |
+
+手动实现时要注意：**解码时必须先补回 \`=\` 填充**，因为 Base64 的长度必须是 4 的倍数。
+
+\`\`\`python
+import base64
+def b64url_encode(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+def b64url_decode(s: str) -> bytes:
+    pad = "=" * (-len(s) % 4)  # 补回被去掉的 =
+    return base64.urlsafe_b64decode(s + pad)
+
+# 验证：编码后再解码，内容一致
+raw = b'{"sub":"alice"}'
+print(b64url_encode(raw))  # eyJzdWIiOiJhbGljZSJ9
+print(b64url_decode("eyJzdWIiOiJhbGljZSJ9"))  # b'{"sub":"alice"}'
+\`\`\`
+
+### B. HMAC-SHA256 数学原理
+
+JWT 的 HS256 签名用的是 **HMAC**（Hash-based Message Authentication Code），它不是一个新哈希函数，而是在 SHA256 基础上封装出的**带密钥哈希**。普通 SHA256 任何人都能算，无法防篡改；HMAC 只有持有密钥的人才能算出正确结果。
+
+HMAC 的核心思想是**双重哈希 + 密钥混合**：
+
+\`\`\`
+HMAC(key, msg) = H( (key ⊕ opad) || H( (key ⊕ ipad) || msg ) )
+\`\`\`
+
+- \`ipad\` = 0x36 重复，\`opad\` = 0x5c 重复（填充到哈希块大小）。
+- \`⊕\` 是 XOR，\`||\` 是拼接。
+- 先用 \`key ⊕ ipad\` 与消息拼接做内层哈希，再用 \`key ⊕ opad\` 与内层结果拼接做外层哈希。
+
+为什么要双层？防止**长度扩展攻击**——直接用 \`SHA256(key || msg)\` 的话，攻击者可以在不知道 key 的情况下追加内容。HMAC 的双层结构阻断了这种攻击。
+
+\`\`\`python
+import hmac, hashlib
+# HMAC-SHA256 签名
+msg = b'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhbGljZSJ9'
+secret = b'my-secret'
+sig = hmac.new(secret, msg, hashlib.sha256).digest()
+# 验证时用 compare_digest 防时序攻击
+expected = hmac.new(secret, msg, hashlib.sha256).digest()
+print(hmac.compare_digest(sig, expected))  # True
+\`\`\`
+
+> ⚠️ **常见陷阱**：验证签名时**绝不能用 \`==\` 比较**，而要用 \`hmac.compare_digest\`。\`==\` 是短路比较，逐字节返回，攻击者可通过测量响应时间逐字节猜出正确签名（时序攻击）。\`compare_digest\` 是常量时间比较，无论是否匹配都花同样时间。
+
+### C. JWT 三段结构的字节级剖析
+
+以一个真实 token 为例，逐段拆解：
+
+\`\`\`
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9       ← Header（36 字符）
+.
+eyJzdWIiOiJhbGljZSIsImlhdCI6MTcwMDAsImV4cCI6MTcwMzYwfQ  ← Payload（52 字符）
+.
+SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c  ← Signature（43 字符）
+\`\`\`
+
+| 段 | 解码后 | 字节数 | 作用 |
+| --- | --- | --- | --- |
+| Header | \`{"alg":"HS256","typ":"JWT"}\` | 27B → 36 字符 | 声明算法 |
+| Payload | \`{"sub":"alice","iat":17000,"exp":170360}\` | 41B → 52 字符 | 存放声明 |
+| Signature | HMAC-SHA256 输出 | 32B → 43 字符 | 防篡改 |
+
+注意 Base64URL 编码后字符数 ≈ 字节数 × 4/3（每 3 字节编成 4 字符）。签名固定 32 字节（SHA256 输出），编码后固定 43 字符。
+
+### D. JWS vs JWE：签名 vs 加密
+
+JWT 家族有两个标准，常被混淆：
+
+| 标准 | 全称 | 作用 | 内容可读 | 典型用途 |
+| --- | --- | --- | --- | --- |
+| **JWS** | JSON Web Signature | 签名（防篡改） | 是（Payload 仅编码） | 99% 的 JWT 场景 |
+| **JWE** | JSON Web Encryption | 加密（防窃读） | 否（密文） | 高敏感数据传输 |
+
+平时说的"JWT"默认指 JWS——它**只签名不加密**，Payload 可被任何人 Base64 解码读取。如果需要 Payload 保密（如存放信用卡号），要用 JWE，它用 AES 等算法加密 Payload，只有持有密钥的接收方才能解密。
+
+> 💡 **最佳实践**：绝大多数认证场景用 JWS 就够了——Payload 里只放用户 ID 和角色等非敏感信息，敏感操作再查库。不要为了"保密"而用 JWE，那会增加复杂度且性能更差。
+
+### E. JWT 安全陷阱详解
+
+#### 陷阱 1：alg=none 攻击
+
+JWT 规范允许 \`alg: "none"\`，表示"不签名"。攻击流程：
+
+1. 攻击者拿到一个合法 JWT，解码 Header。
+2. 把 \`alg\` 改成 \`none\`，Payload 改成 \`{"sub":"admin","role":"admin"}\`。
+3. 签名段留空，得到 \`header.payload.\`。
+4. 某些库（旧版本）看到 \`alg=none\` 会跳过签名验证，直接信任 Payload！
+
+**防御**：验证时**必须显式指定允许的算法列表**：
+
+\`\`\`python
+# ✅ 正确：显式指定算法，alg=none 会被拒绝
+payload = jwt.decode(token, SECRET, algorithms=["HS256"])
+
+# ❌ 危险：从 token Header 读 alg，alg=none 会绕过验证
+payload = jwt.decode(token, SECRET)  # PyJWT 新版已禁止，但旧版/其他库可能不行
+\`\`\`
+
+#### 陷阱 2：密钥混淆攻击（RS256 → HS256）
+
+场景：服务端用 RS256（公钥验签），公钥是公开的。攻击者把 Header 的 \`alg\` 从 \`RS256\` 改成 \`HS256\`，用**公钥当 HMAC 密钥**重新签名。如果服务端验证时不检查 alg 一致性，就会用公钥做 HMAC 验证——而公钥攻击者也知道，于是伪造的 token 通过验证！
+
+**防御**：验证时锁定算法，绝不从 Header 动态读取。用 RS256 就只接受 RS256。
+
+#### 陷阱 3：时序攻击
+
+用 \`==\` 比较签名会泄露信息（前面讲过）。所有签名比较必须用常量时间函数。
+
+| 陷阱 | 根因 | 防御 |
+| --- | --- | --- |
+| alg=none | 信任 Header 的 alg | 显式指定 \`algorithms=["HS256"]\` |
+| 密钥混淆 | 算法可切换 | 锁定算法，公钥不当 HMAC key |
+| 时序攻击 | \`==\` 短路比较 | 用 \`compare_digest\` |
+| Payload 泄露 | JWS 不加密 | 不放敏感信息，需要保密用 JWE |
+
+### F. Refresh Token 机制详解
+
+access token 短命（15 分钟）降低泄露风险，但用户每 15 分钟就要重新登录，体验差。refresh token 解决这个矛盾：
+
+\`\`\`
+┌─────────┐     1.登录(用户名+密码)      ┌─────────┐
+│ 客户端  │ ──────────────────────────→ │ 服务器  │
+│         │ ←── 2.access_token(15min) ── │         │
+│         │ ←── 2.refresh_token(7天) ─── │         │
+└─────────┘                              └─────────┘
+     │                                        │
+     │  3.业务请求 + access_token             │
+     │ ─────────────────────────────────→     │
+     │ ←── 4.业务响应 ──────────────────────  │
+     │                                        │
+     │  5.access_token 过期(401)              │
+     │                                        │
+     │  6.用 refresh_token 换新 access_token  │
+     │ ─────────────────────────────────→     │
+     │ ←── 7.新 access_token ───────────────  │
+└─────────┘                              └─────────┘
+\`\`\`
+
+- **access token**：短命（15 分钟），用于业务请求，不存库（纯无状态）。
+- **refresh token**：长命（7 天），**只用于换 access token**，不用于业务。通常存数据库（可撤销）。
+
+refresh token 存库的意义：用户改密码或退出登录时，删除该用户的 refresh token 记录，旧 token 无法再换新 access token。这样既保留了 access token 的无状态优势，又能实现"撤销"。
+
+\`\`\`python
+# 签发 refresh token
+def create_refresh_token(username: str) -> str:
+    jti = uuid4().hex  # 唯一 ID，存库可撤销
+    payload = {"sub": username, "type": "refresh", "jti": jti,
+               "exp": datetime.now(timezone.utc) + timedelta(days=7)}
+    db.refresh_tokens[jti] = username  # 存库
+    return jwt.encode(payload, SECRET, algorithm="HS256")
+
+# 刷新接口
+@app.post("/token/refresh")
+def refresh(refresh_token: str):
+    payload = jwt.decode(refresh_token, SECRET, algorithms=["HS256"])
+    if payload.get("type") != "refresh":
+        raise HTTPException(401, "非 refresh token")
+    if payload["jti"] not in db.refresh_tokens:  # 已被撤销
+        raise HTTPException(401, "token 已失效")
+    return {"access_token": create_access_token(payload["sub"])}
+\`\`\`
+
+> 💡 **面试要点**：JWT 不能主动撤销是最大痛点。三种解法对比：① 黑名单（牺牲无状态）；② 短 exp + refresh token（主流方案）；③ token 版本号（用户表加 \`token_version\`，签发时写入，验证时比对，改密码时版本号+1 使旧 token 失效）。面试时说出三种方案及取舍即可。
 
 ---
 
@@ -806,6 +1120,196 @@ oauth2 = OAuth2PasswordBearer(tokenUrl="/token", scopes={"read": "读权限", "w
 \`\`\`
 
 签发时带 scope：\`{"sub": "alice", "scopes": ["read", "write"]}\`。验证时用 \`Security(get_current_user, scopes=["write"])\` 检查。这适合细粒度权限控制，但大多数博客系统用更简单的"角色字段"就够了。
+
+---
+
+## 深入补充：认证流程、依赖链路与 token 生命周期管理
+
+### A. OAuth2PasswordBearer 工作流程全解
+
+\`OAuth2PasswordBearer\` 看似简单，内部做了三件事，理解它们有助于排查认证问题：
+
+\`\`\`
+请求进入
+  ↓
+oauth2_scheme(token) 被调用
+  ↓
+查找 Authorization 头 → "Bearer xxx"
+  ↓
+有？ ──否──→ 抛 401 + WWW-Authenticate: Bearer
+  │是
+  ↓
+提取 "xxx" 作为 token 返回
+  ↓
+交给 get_current_user 验证
+\`\`\`
+
+它的 \`tokenUrl\` 参数**不会自动创建路由**，只是告诉 Swagger "登录接口在 /token"。你仍需自己实现 \`POST /token\`。如果忘了实现，Swagger 的 Authorize 按钮会报 404。
+
+\`\`\`python
+# OAuth2PasswordBearer 源码核心逻辑（简化版）
+class OAuth2PasswordBearer:
+    def __call__(self, request):
+        auth = request.headers.get("Authorization")
+        if not auth or not auth.startswith("Bearer "):
+            raise HTTPException(401, headers={"WWW-Authenticate": "Bearer"})
+        return auth.split(" ")[1]  # 返回 token 字符串
+\`\`\`
+
+> ⚠️ **常见陷阱**：\`auto_error=True\`（默认）时没 token 直接 401。如果想在依赖里自行处理（如匿名用户也能访问），设 \`auto_error=False\`，此时没 token 返回 \`None\` 而非报错。
+
+### B. Depends 依赖链路剖析
+
+FastAPI 的 \`Depends\` 是一个**依赖注入容器**，它会递归解析依赖树：
+
+\`\`\`
+GET /users/me
+  └─→ get_current_user(token=Depends(oauth2_scheme))
+                      └─→ oauth2_scheme(request)  # 从 Header 提取 token
+\`\`\`
+
+FastAPI 解析顺序：先执行 \`oauth2_scheme\` 拿到 token，再把 token 传给 \`get_current_user\`。依赖可以无限嵌套：
+
+\`\`\`python
+def get_db(): ...                          # 依赖 1：数据库会话
+def get_current_user(token=Depends(oauth2_scheme), db=Depends(get_db)): ...  # 依赖 2+3
+def get_current_active_user(user=Depends(get_current_user)): ...  # 依赖 4
+def get_current_admin(user=Depends(get_current_active_user)): ... # 依赖 5
+
+@app.delete("/users/{uid}")
+def delete_user(uid: int, admin=Depends(get_current_admin)):  # 链路深度 5
+    ...
+\`\`\`
+
+FastAPI 会缓存同一请求内相同依赖的结果——\`get_db\` 在一个请求里只执行一次，即便多个依赖都依赖它。
+
+| 特性 | 说明 |
+| --- | --- |
+| 依赖嵌套 | 支持任意深度，按依赖树拓扑排序执行 |
+| 结果缓存 | 同一请求内，相同依赖只执行一次 |
+| yield 依赖 | \`def get_db(): yield db\` 可在请求结束后清理资源 |
+| 子依赖覆盖 | 测试时可注入 mock 依赖（\`app.dependency_overrides\`） |
+
+### C. token 过期处理实战
+
+token 过期时 PyJWT 抛 \`ExpiredSignatureError\`（\`PyJWTError\` 的子类）。前端拿到 401 后应**静默刷新**（用 refresh token 换新 access token）并重发请求：
+
+\`\`\`python
+# 后端：区分过期和无效，给前端不同提示
+def get_current_user(token: str = Depends(oauth2_scheme)):
+    try:
+        payload = jwt.decode(token, SECRET, algorithms=["HS256"])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(401, "token 已过期，请刷新",
+                            headers={"WWW-Authenticate": "Bearer"})
+    except jwt.InvalidTokenError:
+        raise HTTPException(401, "token 无效",
+                            headers={"WWW-Authenticate": "Bearer"})
+    ...
+\`\`\`
+
+前端（axios 拦截器）处理 401 的标准模式：
+
+\`\`\`javascript
+// 前端伪代码
+axios.interceptors.response.use(null, async (err) => {
+  if (err.response?.status === 401 && !err.config._retry) {
+    err.config._retry = true
+    const { data } = await axios.post('/token/refresh', { refresh_token })
+    localStorage.setItem('token', data.access_token)
+    err.config.headers.Authorization = 'Bearer ' + data.access_token
+    return axios(err.config)  // 用新 token 重发原请求
+  }
+  return Promise.reject(err)
+})
+\`\`\`
+
+### D. 密码修改后 token 失效策略
+
+用户改密码后，旧 token 仍有效（JWT 无状态），这是安全隐患。三种失效策略：
+
+| 策略 | 实现 | 优点 | 缺点 |
+| --- | --- | --- | --- |
+| **token 版本号** | 用户表加 \`token_version\`，签发时写入 Payload，验证时比对 | 简单、无状态 | 每次验证多一次查库 |
+| **黑名单** | 改密码时把旧 token 的 jti 存 Redis 黑名单，验证时检查 | 精确控制 | 需 Redis，牺牲无状态 |
+| **短 exp** | access token 只活 15 分钟，改密码后最多 15 分钟旧 token 失效 | 零额外成本 | 有时间窗口 |
+
+**推荐**：token 版本号 + 短 exp 组合。改密码时 \`token_version += 1\`，旧 token 的版本号不匹配，立即失效。
+
+\`\`\`python
+def create_token(user):
+    payload = {"sub": user.id, "ver": user.token_version,  # 写入版本号
+               "exp": datetime.now(timezone.utc) + timedelta(minutes=30)}
+    return jwt.encode(payload, SECRET, algorithm="HS256")
+
+def get_current_user(token=Depends(oauth2_scheme), db=Depends(get_db)):
+    payload = jwt.decode(token, SECRET, algorithms=["HS256"])
+    user = db.get(User, payload["sub"])
+    if user.token_version != payload["ver"]:  # 版本号不匹配 → 失效
+        raise HTTPException(401, "凭证已过期，请重新登录")
+    return user
+
+@app.put("/users/me/password")
+def change_password(new_pw: str, user=Depends(get_current_user), db=Depends(get_db)):
+    user.hashed_password = pwd.hash(new_pw)
+    user.token_version += 1  # 让所有旧 token 失效
+    db.commit()
+\`\`\`
+
+### E. JWT 认证 vs Session 认证对比
+
+| 维度 | JWT（无状态） | Session（有状态） |
+| --- | --- | --- |
+| 状态存储 | 客户端（token 自包含） | 服务端（内存/Redis） |
+| 扩展性 | 任意服务器独立验证 | 需共享 session 存储 |
+| 撤销 | 难（需黑名单/版本号） | 删 session 即可 |
+| 性能 | 验证需解码+签名计算 | 查内存/Redis，更快 |
+| 安全 | token 泄露在 exp 前都有效 | session 可随时销毁 |
+| 移动端 | 友好（Header 传 token） | 不友好（Cookie 机制） |
+| CSRF | 天然免疫（不用 Cookie） | 需 CSRF token 防护 |
+| 大小 | 数百字节 | session_id 很短 |
+| 适用 | 微服务、移动端、跨域 | 单体应用、Web 网页 |
+
+**选型建议**：单体 Web 应用、需要随时踢人下线 → Session；微服务、移动端、跨域、水平扩展 → JWT。两者也可混用：JWT 做服务间认证，Session 做用户会话管理。
+
+### F. OAuth2PasswordRequestForm 的表单之谜
+
+为什么登录用表单（\`application/x-www-form-urlencoded\`）而非 JSON？这是 **OAuth2 规范**（RFC 6749）的硬性要求——\`password\` grant type 定义为表单提交。FastAPI 的 \`OAuth2PasswordRequestForm\` 自动解析：
+
+\`\`\`python
+from fastapi.security import OAuth2PasswordRequestForm
+
+@app.post("/token")
+def login(form: OAuth2PasswordRequestForm = Depends()):
+    # form.username, form.password 来自表单字段
+    # form.scope 可选，form.grant_type 固定 "password"
+    ...
+\`\`\`
+
+测试时要注意用 \`data=\` 而非 \`json=\`：
+
+\`\`\`python
+# ✅ 正确：表单提交
+client.post("/token", data={"username": "alice", "password": "123"})
+# ❌ 错误：JSON 提交，会 422
+client.post("/token", json={"username": "alice", "password": "123"})
+\`\`\`
+
+> 💡 **面试要点**：面试官常问"为什么登录用表单不用 JSON"。答：OAuth2 规范要求 + 兼容传统浏览器表单提交 + Swagger UI 的 Authorize 按钮按表单格式发请求。如果你不需要兼容 OAuth2 规范，完全可以自定义 JSON 登录接口。
+
+### G. 内部实现细节：FastAPI 如何自动生成 401
+
+当 \`OAuth2PasswordBearer\` 检测到没有 token 时，它抛出：
+
+\`\`\`python
+HTTPException(
+    status_code=401,
+    detail="Not authenticated",
+    headers={"WWW-Authenticate": "Bearer"},
+)
+\`\`\`
+
+这个 \`WWW-Authenticate: Bearer\` 响应头是 HTTP/1.1 规范要求的——它告诉客户端"用 Bearer 方案认证"。Swagger UI 读到这个头后，会在文档页面弹出 Authorize 对话框。这就是为什么"只要声明了 \`OAuth2PasswordBearer\`，Swagger 就自动有登录按钮"的底层原因。
 
 ---
 
@@ -1182,6 +1686,180 @@ def create_post(...):
 \`\`\`
 
 \`response_model=PostOut\` 确保返回里只有声明的字段，多出的字段（如 \`hashed_password\`）被自动剔除。这是防止敏感信息泄露的最后一道防线。
+
+---
+
+## 深入补充：RESTful 设计、分页过滤与工程化实践
+
+### A. RESTful 设计原则
+
+REST（Representational State Transfer）的核心是**资源导向**：URL 表示资源，HTTP 方法表示操作。好的 RESTful API 应该做到"看 URL 就知道在操作什么资源，看方法就知道在做什么操作"。
+
+| 原则 | 正确示例 | 错误示例 | 原因 |
+| --- | --- | --- | --- |
+| URL 用名词 | \`GET /posts\` | \`GET /getPosts\` | URL 是资源，不是动作 |
+| 方法表语义 | \`DELETE /posts/1\` | \`POST /posts/1/delete\` | 删除用 DELETE |
+| 复数命名 | \`/posts\` | \`/post\` | 统一复数，列表/详情都基于复数 |
+| 层级表达关系 | \`GET /users/1/posts\` | \`GET /posts?user=1\` | 子资源用路径表达（也可用 query） |
+| 不在 URL 放动词 | \`POST /posts\` | \`POST /createPost\` | 动词由 HTTP 方法承担 |
+
+\`\`\`
+GET    /posts          → 列表
+POST   /posts          → 创建
+GET    /posts/{id}     → 详情
+PUT    /posts/{id}     → 全量更新
+PATCH  /posts/{id}     → 部分更新
+DELETE /posts/{id}     → 删除
+GET    /posts/{id}/comments → 文章的评论列表
+\`\`\`
+
+### B. HTTP 方法语义详解
+
+| 方法 | 幂等 | 安全 | 语义 | 有请求体 | 典型状态码 |
+| --- | --- | --- | --- | --- | --- |
+| GET | 是 | 是 | 获取资源 | 否 | 200 |
+| POST | 否 | 否 | 创建资源 | 是 | 201 |
+| PUT | 是 | 否 | 全量替换 | 是 | 200 |
+| PATCH | 否 | 否 | 部分更新 | 是 | 200 |
+| DELETE | 是 | 否 | 删除 | 否 | 204 |
+| HEAD | 是 | 是 | 只取响应头 | 否 | 200 |
+| OPTIONS | 是 | 是 | 查询支持的方法 | 否 | 200 |
+
+**幂等性**是关键概念：同一个请求执行一次和执行 N 次，结果相同。GET/PUT/DELETE 是幂等的（GET 多次结果一样，PUT 多次覆盖成同一值，DELETE 多次第一次删后续无操作）。POST 不幂等（多次提交创建多条记录）。这就是为什么浏览器刷新 POST 会弹"确认重新提交"——因为 POST 不幂等，重复执行有副作用。
+
+> 💡 **最佳实践**：需要幂等性的操作（如"更新文章"）用 PUT/PATCH；创建操作用 POST。支付场景用 POST + 幂等键（\`Idempotency-Key\` 头）防止重复扣款。
+
+### C. 状态码规范深入
+
+HTTP 状态码分五类：
+
+| 类别 | 含义 | 常见 |
+| --- | --- | --- |
+| 1xx | 信息 | 100 Continue |
+| 2xx | 成功 | 200, 201, 204 |
+| 3xx | 重定向 | 301, 304 |
+| 4xx | 客户端错误 | 400, 401, 403, 404, 422, 429 |
+| 5xx | 服务端错误 | 500, 502, 503 |
+
+几个易混淆的状态码：
+
+- **200 vs 201**：201 是 200 的子集，专指"创建成功"。POST 创建资源用 201 更精确，但用 200 也不算错。
+- **204 No Content**：DELETE 成功且无返回体时用 204。如果返回 \`{"deleted": id}\` 则用 200。
+- **400 vs 422**：400 是通用请求错误（如业务规则不满足）；422 是"格式正确但语义错误"（Pydantic 校验失败 FastAPI 自动返回 422）。
+- **409 Conflict**：资源冲突，如用户名已存在、并发修改冲突。
+- **429 Too Many Requests**：限流。配合 \`Retry-After\` 头告诉客户端多久后重试。
+
+### D. 分页、排序、过滤最佳实践
+
+**分页**有两种风格：
+
+| 风格 | 参数 | 示例 | 优点 | 缺点 |
+| --- | --- | --- | --- | --- |
+| 偏移分页 | \`skip\`/\`limit\` 或 \`page\`/\`size\` | \`?skip=20&limit=10\` | 简单、支持跳页 | 大偏移慢（OFFSET 扫描） |
+| 游标分页 | \`cursor\`/\`limit\` | \`?cursor=abc&limit=10\` | 大数据集稳定、无重复 | 不能跳页 |
+
+\`\`\`python
+# 偏移分页（适合中小数据集）
+@app.get("/posts")
+def list_posts(skip: int = 0, limit: int = Query(20, le=100), db = Depends(get_db)):
+    total = db.query(Post).count()
+    items = db.query(Post).offset(skip).limit(limit).all()
+    return {"items": items, "total": total, "skip": skip, "limit": limit}
+
+# 游标分页（适合大数据集/无限滚动）
+@app.get("/posts")
+def list_posts(cursor: int = 0, limit: int = 20, db = Depends(get_db)):
+    q = db.query(Post).filter(Post.id > cursor).order_by(Post.id).limit(limit)
+    items = q.all()
+    next_cursor = items[-1].id if items else None
+    return {"items": items, "next_cursor": next_cursor}
+\`\`\`
+
+**排序**：用 \`sort\` 参数，\`-\` 前缀表示降序。\`?sort=-created_at,title\` = 按创建时间降序+标题升序。
+
+**过滤**：简单过滤用 query 参数（\`?author_id=1&status=published\`），复杂过滤可用 \`filter\` 参数（\`?filter[status]=published\`）或 GraphQL。**不要**把 SQL 直接暴露在 URL 里（\`?where=status='published'\`，有注入风险）。
+
+> ⚠️ **常见陷阱**：\`limit\` 必须设上限（如 \`le=100\`），否则 \`?limit=999999\` 一次查出百万条，内存爆炸。
+
+### E. 软删除 vs 硬删除深入
+
+| 维度 | 硬删除 | 软删除 |
+| --- | --- | --- |
+| 实现 | \`db.delete(post)\` | \`post.deleted_at = now()\` |
+| 查询 | 直接查 | 需 \`filter(deleted_at == None)\` |
+| 恢复 | 不可能 | 改回 \`deleted_at = None\` |
+| 存储 | 删后释放空间 | 数据仍在，占空间 |
+| 审计 | 无痕迹 | 有删除时间记录 |
+| 外键 | 关联数据需级联处理 | 保留关联关系 |
+| 适用 | 博客文章、用户头像 | 订单、财务、医疗记录 |
+
+软删除的**最大陷阱**是忘记过滤——所有查询都要加 \`filter(deleted_at == None)\`。SQLAlchemy 可用事件监听或 query 工厂自动过滤：
+
+\`\`\`python
+# SQLAlchemy 软删除混入（Mixin 模式）
+class SoftDeleteMixin:
+    deleted_at = Column(DateTime, nullable=True)
+
+# 每次查询自动过滤已删除的
+posts = db.query(Post).filter(Post.deleted_at.is_(None)).all()
+\`\`\`
+
+### F. 批量操作
+
+单个创建/删除效率低，批量操作能大幅减少数据库往返：
+
+\`\`\`python
+# 批量创建
+@app.post("/posts/batch", status_code=201)
+def batch_create(posts: list[PostIn], user=Depends(get_current_user), db=Depends(get_db)):
+    created = []
+    for p in posts:
+        post = Post(title=p.title, content=p.content, author_id=user.id)
+        db.add(post)
+        created.append(post)
+    db.commit()  # 一次提交，而非每条一次
+    for p in created: db.refresh(p)
+    return [{"id": p.id, "title": p.title} for p in created]
+
+# 批量删除
+@app.delete("/posts/batch")
+def batch_delete(ids: list[int], user=Depends(get_current_user), db=Depends(get_db)):
+    deleted = db.query(Post).filter(Post.id.in_(ids), Post.author_id == user.id).delete(synchronize_session=False)
+    db.commit()
+    return {"deleted_count": deleted}
+\`\`\`
+
+> 💡 **最佳实践**：批量操作要限制单次数量（如最多 100 条），防止超长请求和长事务锁表。
+
+### G. API 版本控制
+
+API 演进时需要版本控制，避免破坏旧客户端。三种主流方案：
+
+| 方案 | 示例 | 优点 | 缺点 |
+| --- | --- | --- | --- |
+| URL 路径 | \`/v1/posts\`、\`/v2/posts\` | 直观、缓存友好 | URL 变长 |
+| Header | \`Accept: application/vnd.api.v2+json\` | URL 不变 | 不直观、调试难 |
+| Query | \`/posts?version=2\` | 简单 | 易忽略，缓存不友好 |
+
+FastAPI 用 \`APIRouter\` 实现路径版本控制：
+
+\`\`\`python
+v1 = APIRouter(prefix="/v1")
+v2 = APIRouter(prefix="/v2")
+
+@v1.get("/posts")  # 旧版
+def list_posts_v1(): ...
+
+@v2.get("/posts")  # 新版，字段更丰富
+def list_posts_v2(): ...
+
+app.include_router(v1)
+app.include_router(v2)
+\`\`\`
+
+**版本策略**：major 变更（不兼容）才升版本号；minor 变更（加字段、加端点）向后兼容，不升版本。尽量用"可选字段"而非"改字段"来演进，减少版本数。
+
+> 💡 **面试要点**：RESTful 不是标准而是风格，不必教条。核心是**一致性**——团队内统一命名、统一状态码、统一分页参数，比纠结 \`posts\` 还是 \`post\` 重要得多。面试时强调"一致性和可预测性"比背诵 REST 定义更得分。
 
 ---
 
@@ -1604,6 +2282,246 @@ blog-api/
 4. **Alembic 迁移**：数据库 schema 版本管理，改表结构不丢数据。
 5. **后台任务**：\`BackgroundTasks\` 或 Celery，发邮件、生成报表。
 6. **API 版本化**：\`/v1/posts\`、\`/v2/posts\`，平滑升级。
+
+---
+
+## 深入补充：异常机制、CORS 原理与生产部署
+
+### A. FastAPI 异常处理机制全解
+
+FastAPI 的异常处理分两层：**内置处理**和**自定义 handler**。理解它们的优先级和触发顺序很关键：
+
+\`\`\`
+请求 → 路由函数
+        │
+        ├─ raise HTTPException → FastAPI 内置 handler → {"detail": "..."}
+        │
+        ├─ raise 自定义异常 → @app.exception_handler(该异常) → 自定义响应
+        │
+        └─ raise 其他异常 → Starlette 兜底 → 500 Internal Server Error
+\`\`\`
+
+关键区别：
+
+| 维度 | HTTPException | 自定义异常 + handler |
+| --- | --- | --- |
+| 谁处理 | FastAPI 内置 | 你注册的 handler |
+| 状态码 | 构造时指定 | handler 里决定 |
+| 响应格式 | 固定 \`{"detail": ...}\` | 完全自定义 |
+| 能否被覆盖 | 可以（注册 \`@app.exception_handler(HTTPException)\`） | 互相独立 |
+| 适用 | 简单 401/403/404 | 业务错误、统一错误码 |
+
+**覆盖 HTTPException**：如果你想统一所有错误格式（包括 HTTPException），可以注册一个处理 \`HTTPException\` 的 handler：
+
+\`\`\`python
+from fastapi import HTTPException
+
+@app.exception_handler(HTTPException)
+def custom_http_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": "HTTP_ERROR", "message": exc.detail, "path": request.url.path},
+        headers=exc.headers,  # 保留 WWW-Authenticate 等头
+    )
+\`\`\`
+
+> ⚠️ **常见陷阱**：注册 \`@app.exception_handler(Exception)\` 能捕获所有异常，但这会**吞掉 500 错误的堆栈**，生产环境排查困难。建议只捕获特定异常，让未预期错误走默认 500 + 日志。
+
+### B. CORS 原理与预检请求详解
+
+**同源策略**：浏览器规定，JS 发起的请求只能访问与当前页面**同协议+同域名+同端口**的资源。\`http://localhost:3000\`（前端）访问 \`http://localhost:8000\`（后端）算跨域（端口不同），浏览器会拦截响应。
+
+CORS 是服务端告诉浏览器"我允许这个源访问"的机制。分两种请求：
+
+**简单请求**（不触发预检）：GET/POST/HEAD + 常规 Header（\`Content-Type\` 仅限 \`text/plain\`/\`multipart/form-data\`/\`application/x-www-form-urlencoded\`）。浏览器直接发请求，看响应有没有 \`Access-Control-Allow-Origin\`。
+
+**预检请求**（触发 OPTIONS）：不满足简单请求条件时（如带 \`Authorization\` 头、\`Content-Type: application/json\`），浏览器先发一个 \`OPTIONS\` 请求询问：
+
+\`\`\`
+OPTIONS /api/posts HTTP/1.1
+Origin: http://localhost:3000
+Access-Control-Request-Method: POST
+Access-Control-Request-Headers: Authorization, Content-Type
+\`\`\`
+
+服务器响应允许列表：
+
+\`\`\`
+HTTP/1.1 200 OK
+Access-Control-Allow-Origin: http://localhost:3000
+Access-Control-Allow-Methods: GET, POST, PUT, DELETE
+Access-Control-Allow-Headers: Authorization, Content-Type
+Access-Control-Max-Age: 3600   ← 预检结果缓存 1 小时，期间不再预检
+\`\`\`
+
+预检通过后，浏览器才发真正的请求。FastAPI 的 \`CORSMiddleware\` 自动处理这个 \`OPTIONS\`。
+
+| 配置项 | 说明 | 生产建议 |
+| --- | --- | --- |
+| \`allow_origins\` | 允许的源 | 明确列出，不用 \`*\` |
+| \`allow_methods\` | 允许的方法 | 列出实际用到的 |
+| \`allow_headers\` | 允许的请求头 | 必含 \`Authorization\` |
+| \`allow_credentials\` | 允许带 Cookie | True 时 \`allow_origins\` 不能是 \`*\` |
+| \`max_age\` | 预检缓存时间 | 设 3600 减少预检请求 |
+
+> 💡 **面试要点**：CORS 是**浏览器**的安全机制，不是服务端的。用 curl/Postman 不受 CORS 限制。CORS 防的是"恶意网页偷偷用用户的身份发跨域请求"，不是防"攻击者直接调 API"。
+
+### C. ASGI 部署：uvicorn / gunicorn / workers
+
+FastAPI 是 **ASGI**（Asynchronous Server Gateway Interface）应用，需要 ASGI 服务器运行。部署架构：
+
+\`\`\`
+                    ┌─ uvicorn worker 1 (async 事件循环)
+nginx ──→ gunicorn ─┼─ uvicorn worker 2
+                    ├─ uvicorn worker 3
+                    └─ uvicorn worker 4
+\`\`\`
+
+- **uvicorn**：ASGI 服务器，基于 uvloop（高性能事件循环）+ httptools。单进程异步，能处理大量并发 I/O。
+- **gunicorn**：进程管理器，prefork 多个 worker 进程，每个 worker 跑一个 uvicorn。用多进程利用多核 CPU。
+- **worker 数量**：推荐 \`2 * CPU + 1\`。太多 worker 会争抢 CPU，反而变慢。
+
+\`\`\`bash
+# 开发：单进程 + 热重载
+uvicorn main:app --reload --port 8000
+
+# 生产：gunicorn 管理 4 个 uvicorn worker
+gunicorn main:app \
+  -w 4 \
+  -k uvicorn.workers.UvicornWorker \
+  -b 0.0.0.0:8000 \
+  --timeout 120 \
+  --access-logfile -
+\`\`\`
+
+| 参数 | 作用 | 建议值 |
+| --- | --- | --- |
+| \`-w\` | worker 进程数 | \`2*CPU+1\` |
+| \`-k\` | worker 类型 | \`uvicorn.workers.UvicornWorker\` |
+| \`--timeout\` | 请求超时（秒） | 120（长任务调大） |
+| \`--max-requests\` | worker 重启阈值 | 1000（防内存泄漏） |
+| \`--access-logfile\` | 访问日志 | \`-\`（stdout）或文件路径 |
+
+> ⚠️ **常见陷阱**：\`uvicorn --workers 4\` 也能多进程，但不如 gunicorn 的进程管理健壮（gunicorn 会在 worker 崩溃后自动重启）。生产环境推荐 gunicorn + uvicorn worker。
+
+### D. 反向代理（nginx）配置
+
+nginx 前置在 gunicorn 前，负责：TLS 终止、静态文件、限流、负载均衡。
+
+\`\`\`nginx
+server {
+    listen 80;
+    server_name api.example.com;
+    return 301 https://$host$request_uri;  # 强制 HTTPS
+}
+
+server {
+    listen 443 ssl http2;
+    server_name api.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/api.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;
+
+    # 静态文件直接由 nginx 处理，不经过 Python
+    location /static/ {
+        alias /app/static/;
+        expires 30d;
+    }
+
+    # API 请求转发给 gunicorn
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # 限流：每 IP 每秒 10 个请求
+    limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+    location /api/ {
+        limit_req zone=api burst=20;
+        proxy_pass http://127.0.0.1:8000;
+    }
+}
+\`\`\`
+
+FastAPI 要信任 nginx 的 \`X-Forwarded-*\` 头，需配置 \`ProxyHeadersMiddleware\`（uvicorn 的 \`--proxy-headers\` 参数）。
+
+### E. Docker 部署完整示例
+
+\`\`\`dockerfile
+# 多阶段构建：先装依赖，再拷代码，减少镜像层数
+FROM python:3.11-slim AS builder
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+FROM python:3.11-slim
+WORKDIR /app
+# 从 builder 拷贝已装的依赖
+COPY --from=builder /root/.local /root/.local
+COPY . .
+ENV PATH=/root/.local/bin:$PATH
+ENV PYTHONUNBUFFERED=1
+EXPOSE 8000
+CMD ["gunicorn", "main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000"]
+\`\`\`
+
+\`\`\`yaml
+# docker-compose.yml
+services:
+  api:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      - DATABASE_URL=postgresql://user:pass@db:5432/blog
+      - SECRET_KEY=\${SECRET_KEY}
+    depends_on: [db]
+  db:
+    image: postgres:16
+    environment:
+      - POSTGRES_PASSWORD=pass
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+volumes:
+  pgdata:
+\`\`\`
+
+> 💡 **最佳实践**：镜像用 \`slim\` 基础镜像（更小）；\`requirements.txt\` 单独拷贝先装（利用 Docker 缓存层，代码改动不用重装依赖）；\`PYTHONUNBUFFERED=1\` 让日志即时输出（默认会缓冲）。
+
+### F. 生产环境安全检查清单（完整版）
+
+| 类别 | 检查项 | 要求 | 风险 |
+| --- | --- | --- | --- |
+| **密钥** | SECRET_KEY | ≥32 字节随机，环境变量注入 | 泄露可伪造任意 token |
+| **密钥** | 数据库密码 | 强随机，不入代码库 | 数据库被拖 |
+| **调试** | DEBUG=False | 关闭错误详情 | traceback 泄露内部结构 |
+| **传输** | HTTPS | 全站强制 HTTPS | token 被中间人窃听 |
+| **CORS** | allow_origins | 明确域名，不用 \`*\` | 任意网站可调 API |
+| **依赖** | requirements.txt | 锁版本（\`==\`） | 依赖漏洞 |
+| **依赖** | 安全扫描 | \`pip-audit\` / \`safety\` | 已知 CVE |
+| **数据库** | 连接池 | 配置 \`pool_size\`、\`max_overflow\` | 连接耗尽 |
+| **数据库** | SQL 注入 | 用 ORM/参数化查询 | 拖库 |
+| **限流** | 登录接口 | 限频防暴力破解 | 密码被爆破 |
+| **日志** | 敏感信息 | 不记密码/token | 日志泄露 |
+| **日志** | 结构化 | JSON 格式集中收集 | 排查困难 |
+| **监控** | 健康检查 | \`/health\` 端点 + 告警 | 故障发现晚 |
+| **监控** | 错误率 | Sentry 等错误追踪 | 线上错误未知 |
+| **备份** | 数据库 | 定期自动备份 + 恢复演练 | 数据丢失不可恢复 |
+| **头安全** | 安全头 | HSTS/X-Frame-Options/CSP | XSS/点击劫持 |
+
+\`\`\`python
+# 安全响应头中间件
+@app.middleware("http")
+async def security_headers(request, call_next):
+    resp = await call_next(request)
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["X-Frame-Options"] = "DENY"
+    resp.headers["Strict-Transport-Security"] = "max-age=31536000"
+    return resp
+\`\`\`
+
+> 🔒 **部署前必做**：跑一遍上表逐项检查。很多线上事故不是代码 bug，而是配置疏忽（DEBUG 没关、SECRET_KEY 硬编码、CORS 开 \`*\`）。这份清单能避免 80% 的低级安全事故。
 
 ---
 
