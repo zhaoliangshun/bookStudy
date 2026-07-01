@@ -791,6 +791,101 @@ body {
   color: #93c5fd;
 }
 
+/* 外网运行按钮 hover 紫色 */
+.md-code-btn-ext:hover {
+  background: rgba(147, 51, 234, 0.2);
+  border-color: rgba(192, 132, 252, 0.6);
+  color: #d8b4fe;
+}
+
+/* ===== 外网运行下拉菜单（深色工具栏内） ===== */
+.md-ext-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+/* 下拉面板：绝对定位，从按钮下方展开，贴左对齐（按钮在最左侧） */
+.md-ext-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 160px;
+  background: #1e293b;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 6px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  padding: 5px;
+  z-index: 200;
+  animation: mdExtMenuIn 0.14s ease-out;
+}
+
+@keyframes mdExtMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 下拉菜单项 */
+.md-ext-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 12px;
+  border: none;
+  background: transparent;
+  color: #e2e8f0;
+  font-size: 12px;
+  font-family: var(--mono);
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.md-ext-item:hover {
+  background: rgba(147, 51, 234, 0.18);
+  color: #fff;
+}
+.md-ext-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* ===== 外网运行 Toast 提示 ===== */
+.ext-pg-toast {
+  position: fixed;
+  bottom: 36px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: #1e293b;
+  color: #f1f5f9;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: var(--mono);
+  z-index: 99999;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+  max-width: 90vw;
+  text-align: center;
+}
+.ext-pg-toast-info {
+  border-left: 3px solid #818cf8;
+}
+.ext-pg-toast-error {
+  border-left: 3px solid #f87171;
+  color: #fca5a5;
+}
+
 /* ===== 就地运行结果面板 ===== */
 .md-code-output {
   background: #f8fafc;
@@ -1694,6 +1789,14 @@ body {
   color: #fff;
   font-weight: 600;
 }
+
+/* 下拉菜单分隔线 */
+.pg-dropdown-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 5px 4px;
+}
+
 /* 选中对勾 / 状态标记，推到最右 */
 .pg-check {
   margin-left: auto;

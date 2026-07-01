@@ -28,7 +28,7 @@ export const chapters = [
     title: "网络分层模型与整体架构",
     icon: "🌐",
     group: "网络基础篇",
-    content: \`## 一、为什么这一章重要
+    content: `## 一、为什么这一章重要
 
 打开浏览器输入一个网址，背后发生的事情远比想象中复杂：DNS 把域名解析成 IP、TCP 建立可靠连接、TLS 协商密钥、HTTP 传输请求与响应，最后浏览器渲染页面。这每一步都对应网络协议栈的不同层次。理解分层模型，就像拿到了一张「网络世界地图」——当线上出现「连接超时」「502 Bad Gateway」「证书错误」时，你能迅速定位问题出在哪一层，而不是盲目重启服务。
 
@@ -254,9 +254,10 @@ TCP/IP 模型之所以胜出，因为它先有实现（1974 年的 TCP/IP）后�
 4. 应用层（HTTP/DNS）、传输层（TCP/UDP）、网络层（IP）、链路层（以太网/ARP）是工作最常打交道的四层。
 5. 排障按层逐层定位：物理→链路→网络→传输→应用，一个 curl 就能区分大半。
 6. MTU 默认 1500，分片有性能损耗，用 MSS/PMTUD 避免。
+7. 理解分层后，排查任何网络问题都先定位"卡在哪一层"——这是工程师与初学者的分水岭，也是后续章节逐层展开的主线。
 
-下一章我们深入传输层，看 TCP 三次握手四次挥手的细节，以及流量控制、拥塞控制是怎么工作的。\`,
-    code: \`# ============================================================
+下一章我们深入传输层，看 TCP 三次握手四次挥手的细节，以及流量控制、拥塞控制是怎么工作的。`,
+    code: `# ============================================================
 # 第一章代码演示：网络分层模型
 # ------------------------------------------------------------
 # 演示内容：
@@ -347,7 +348,7 @@ print(f"  {resp.decode()}")
 client.close()
 print(f"[传输层] client close（触发四次挥手）")
 print("\\n[完成] 整个过程跨越应用层、传输层、网络层（回环绕过链路层）")
-\`,
+`,
   },
 
   // ============================================================
@@ -358,7 +359,7 @@ print("\\n[完成] 整个过程跨越应用层、传输层、网络层（回环�
     title: "TCP/UDP 协议详解",
     icon: "🤝",
     group: "网络基础篇",
-    content: \`## 一、传输层的两个主角
+    content: `## 一、传输层的两个主角
 
 传输层是网络协议栈中最常被面试、也最常被排查的一层。它向上承接应用层的 HTTP/MySQL/Redis 连接，向下使用 IP 提供的"尽力而为"服务，向应用进程提供两种风格截然不同的服务：
 
@@ -653,8 +654,8 @@ UDP 适用场景：DNS（一次查询一问一答，握手太重）、视频/语
 6. 流量控制（rwnd）保护接收方，拥塞控制（cwnd）保护网络。
 7. UDP 头部 8 字节，适合 DNS/视频/QUIC 等实时或自控可靠性场景。
 
-下一章我们看应用层最常用的 HTTP，从 1.0 一路演进到 3.0。\`,
-    code: \`# ============================================================
+下一章我们看应用层最常用的 HTTP，从 1.0 一路演进到 3.0。`,
+    code: `# ============================================================
 # 第二章代码演示：TCP / UDP 协议对比
 # ------------------------------------------------------------
 # 演示内容：
@@ -753,7 +754,7 @@ print("TCP: socket() -> bind() -> listen() -> accept() [握手] -> recv/send -> 
 print("UDP: socket() -> bind() ----------------------------> recvfrom/sendto -> close()")
 print("TCP 头部 20+ 字节，UDP 头部 8 字节")
 print("TCP 面向连接可靠有序；UDP 无连接不可靠但轻量快速")
-\`,
+`,
   },
 
   // ============================================================
@@ -764,7 +765,7 @@ print("TCP 面向连接可靠有序；UDP 无连接不可靠但轻量快速")
     title: "HTTP 协议从 1.0 到 3.0",
     icon: "📄",
     group: "网络基础篇",
-    content: \`## 一、HTTP 是什么，为什么重要
+    content: `## 一、HTTP 是什么，为什么重要
 
 HTTP（HyperText Transfer Protocol）是互联网上应用最广的协议——你浏览的每个网页、调用的每个 API、甚至很多 RPC 框架（gRPC、RESTful）底层都是 HTTP。它是应用层协议，定义了客户端和服务器之间交换数据的格式和交互规则。
 
@@ -1049,8 +1050,8 @@ HTTP/3 over QUIC：
 5. HTTP/2 解决 HTTP 层队头阻塞，HTTP/3 解决 TCP 层队头阻塞。
 6. 工作中关注 Content-Type、CORS、缓存、Keep-Alive 调优。
 
-下一章我们把 HTTP 升级到 HTTPS，看 TLS 怎么加密通信。\`,
-    code: \`# ============================================================
+下一章我们把 HTTP 升级到 HTTPS，看 TLS 怎么加密通信。`,
+    code: `# ============================================================
 # 第三章代码演示：HTTP 协议交互
 # ------------------------------------------------------------
 # 演示内容：
@@ -1184,7 +1185,7 @@ server.shutdown()
 print("HTTP server 已关闭")
 print("\\n[小结] 演示了 GET/POST/PUT/DELETE 与 200/201/204/404 状态码")
 print("观察请求行、请求头、空行、请求体，以及响应的结构")
-\`,
+`,
   },
 
   // ============================================================
@@ -1195,7 +1196,7 @@ print("观察请求行、请求头、空行、请求体，以及响应的结构"
     title: "HTTPS 与 TLS 握手",
     icon: "🔒",
     group: "网络基础篇",
-    content: \`## 一、为什么需要 HTTPS
+    content: `## 一、为什么需要 HTTPS
 
 HTTP 是明文传输——你登录的密码、银行卡号、Token 在网络上一路裸奔，任何中间节点（路由器、运营商、咖啡店 Wi-Fi）都能窃听、篡改。HTTPS = HTTP + TLS，在 HTTP 下加一层加密，解决三大安全问题：
 
@@ -1490,23 +1491,26 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 6. HSTS 强制 HTTPS 防降级，preload 加入浏览器内置列表。
 7. 工作中：Nginx 配 fullchain、开 TLS 1.3、自动续期、避免 0-RTT 用于非幂等。
 
-至此网络基础篇四章结束。接下来应用层协议篇将深入 DNS、WebSocket、CORS/CSRF、Cookie/Session。\`,
-    code: \`# ============================================================
+至此网络基础篇四章结束。接下来应用层协议篇将深入 DNS、WebSocket、CORS/CSRF、Cookie/Session。`,
+    code: `# ============================================================
 # 第四章代码演示：HTTPS 与 TLS 握手
 # ------------------------------------------------------------
 # 演示内容：
-#   1. 用 ssl 模块配置证书验证上下文
-#   2. 用 openssl 命令生成自签名证书
-#   3. 启动 HTTPS server（本地自签名）+ client 连接
-#   4. 打印 TLS 握手信息（协议版本、密码套件、证书信息）
+#   1. 用 ssl 模块配置证书验证上下文，打印支持的密码套件
+#   2. 用 hashlib + hmac 演示 TLS 1.2 的 PRF 密钥派生概念
+#   3. 用 base64 + hashlib 演示证书指纹计算
+#   4. 用 cryptography 生成自签名证书，起一个真实 HTTPS server
+#      （若 cryptography 未装则跳过第 4 节，前 3 节仍可独立运行）
 # ============================================================
 import os
 import ssl
 import socket
 import threading
 import time
-import subprocess
 import tempfile
+import hashlib
+import hmac
+import base64
 
 print("=" * 60)
 print("HTTPS 与 TLS 握手演示")
@@ -1524,118 +1528,197 @@ print(f"默认最低版本: {ssl.TLSVersion.MINIMUM_SUPPORTED}")
 print(f"默认最高版本: {ssl.TLSVersion.MAXIMUM_SUPPORTED}")
 print(f"verify_mode: {client_ctx.verify_mode} (CERT_REQUIRED=要求验证)")
 print(f"check_hostname: {client_ctx.check_hostname}")
-print("支持的密码套件（部分）:")
-for c in client_ctx.get_ciphers()[:5]:
-    print(f"  - {c['name']}  version={c['protocol']}  kx={c['kx']}")
+print("支持的密码套件（前 6 个）:")
+for c in client_ctx.get_ciphers()[:6]:
+    print(f"  - {c['name']}  protocol={c['protocol']}  bits={c['strength_bits']}")
 
 # ============================================================
-# 2. 用 openssl 生成自签名证书
+# 2. TLS 1.2 PRF 密钥派生概念（HMAC-SHA256）
+# ------------------------------------------------------------
+# TLS 1.2 的 PRF 基于 P_hash：P_hash(secret, seed) 按
+#   A0=seed, A_i=HMAC(secret,A_{i-1}) 递推，再拼接 HMAC(secret,A_i+seed)
+# master_secret = PRF(pre_master, "master secret", client_random+server_random)
+# 这里用标准库 hmac 还原这个派生过程。
 # ============================================================
-print("\\n[2] 生成自签名证书（openssl）")
+print("\\n[2] TLS PRF 密钥派生概念（HMAC-SHA256）")
 print("-" * 60)
 
-tmpdir = tempfile.mkdtemp()
-cert_path = os.path.join(tmpdir, "cert.pem")
-key_path = os.path.join(tmpdir, "key.pem")
 
-cmd = [
-    "openssl", "req", "-x509", "-newkey", "rsa:2048",
-    "-keyout", key_path, "-out", cert_path,
-    "-days", "1", "-nodes",
-    "-subj", "/CN=localhost",
-]
-result = subprocess.run(cmd, capture_output=True, text=True, timeout=8)
-if result.returncode == 0:
-    print(f"openssl 成功生成证书: {os.path.getsize(cert_path)} 字节")
+def p_hash(secret, seed, length):
+    """TLS 1.2 的 P_hash 扩展函数。"""
+    out = b""
+    a = seed
+    while len(out) < length:
+        a = hmac.new(secret, a, hashlib.sha256).digest()
+        out += hmac.new(secret, a + seed, hashlib.sha256).digest()
+    return out[:length]
+
+
+def tls12_prf(secret, label, seed, length):
+    """TLS 1.2 PRF = P_hash(secret, label + seed)。"""
+    return p_hash(secret, label + seed, length)
+
+
+pre_master = os.urandom(48)
+client_random = os.urandom(32)
+server_random = os.urandom(32)
+label = b"master secret"
+seed = client_random + server_random
+master_secret = tls12_prf(pre_master, label, seed, 48)
+
+print(f"pre_master_secret : {pre_master.hex()[:32]}... (48 字节)")
+print(f"client_random     : {client_random.hex()[:32]}... (32 字节)")
+print(f"server_random     : {server_random.hex()[:32]}... (32 字节)")
+print(f"label             : {label.decode()}")
+print(f"派生 master_secret: {master_secret.hex()[:32]}... (48 字节)")
+print("说明：master_secret 由 PRF 从 pre_master 派生，再扩成会话密钥")
+
+# ============================================================
+# 3. 证书指纹计算概念（SHA-256 + base64）
+# ------------------------------------------------------------
+# 客户端用 SHA-256 指纹唯一标识一张证书，这是证书钉扎(pinning)的基础。
+# ============================================================
+print("\\n[3] 证书指纹计算概念（SHA-256 + base64）")
+print("-" * 60)
+
+fake_cert_der = (
+    b"-----BEGIN CERTIFICATE-----\\n"
+    + base64.b64encode(os.urandom(64))
+    + b"\\n-----END CERTIFICATE-----"
+)
+sha256_fp = hashlib.sha256(fake_cert_der).hexdigest()
+digest = hashlib.sha256(fake_cert_der).digest()
+b64_digest = base64.b64encode(digest).decode()
+
+print(f"证书内容(模拟): {fake_cert_der[:40]}...")
+print(f"SHA-256 指纹(十六进制): {sha256_fp[:48]}...")
+print(f"SHA-256 摘要(base64)  : {b64_digest}")
+print("说明：证书钉扎就是客户端硬编码期望指纹，防止中间人替换证书")
+
+# ============================================================
+# 4. 真实 HTTPS server（自签名证书 + TLS 包装 socket）
+# ------------------------------------------------------------
+# 用 cryptography 库在内存签一张自签名证书（不依赖 openssl 命令）。
+# 若该库未安装，跳过本节，前面 1-3 节仍完整演示 TLS 核心概念。
+# ============================================================
+print("\\n[4] 真实 HTTPS server（自签名证书 + TLS 包装 socket）")
+print("-" * 60)
+
+try:
+    from cryptography import x509
+    from cryptography.x509.oid import NameOID
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    import datetime
+
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "localhost")])
+    now = datetime.datetime.now(datetime.timezone.utc)
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now)
+        .not_valid_after(now + datetime.timedelta(days=1))
+        .add_extension(
+            x509.SubjectAlternativeName([x509.DNSName("localhost")]),
+            critical=False,
+        )
+        .sign(key, hashes.SHA256())
+    )
+
+    tmpdir = tempfile.mkdtemp()
+    cert_path = os.path.join(tmpdir, "cert.pem")
+    key_path = os.path.join(tmpdir, "key.pem")
+    with open(cert_path, "wb") as f:
+        f.write(cert.public_bytes(serialization.Encoding.PEM))
+    with open(key_path, "wb") as f:
+        f.write(
+            key.private_bytes(
+                serialization.Encoding.PEM,
+                serialization.PrivateFormat.TraditionalOpenSSL,
+                serialization.NoEncryption(),
+            )
+        )
+    print(f"cryptography 生成自签名证书: {os.path.getsize(cert_path)} 字节")
     print(f"  证书: {cert_path}")
     print(f"  私钥: {key_path}")
-else:
-    print(f"openssl 失败: {result.stderr[:200]}")
-    raise SystemExit(1)
 
-# ============================================================
-# 3. 启动 HTTPS server
-# ============================================================
-print("\\n[3] 启动 HTTPS server（TLS 包装 socket）")
-print("-" * 60)
+    server_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    server_ctx.load_cert_chain(cert_path, key_path)
+    print(f"server 端协议: {server_ctx.protocol}")
+    print("已加载自签名证书链")
 
-server_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-server_ctx.load_cert_chain(cert_path, key_path)
-print(f"server 端协议: {server_ctx.protocol}")
-print("已加载自签名证书链")
+    raw_srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    raw_srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    raw_srv.bind(("127.0.0.1", 0))
+    raw_srv.listen(1)
+    port = raw_srv.getsockname()[1]
+    print(f"HTTPS server listen: https://127.0.0.1:{port}")
 
-raw_srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-raw_srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-raw_srv.bind(("127.0.0.1", 0))
-raw_srv.listen(1)
-port = raw_srv.getsockname()[1]
-print(f"HTTPS server listen: https://127.0.0.1:{port}")
+    def serve_https():
+        conn, addr = raw_srv.accept()
+        # 用 TLS 包装连接 -> 这一步完成 TLS 握手
+        tls_conn = server_ctx.wrap_socket(conn, server_side=True)
+        print(f"  [server] TLS 握手完成，对端={addr}")
+        tls_conn.recv(1024)
+        body = b'{"msg":"hello over TLS"}'
+        resp = (
+            b"HTTP/1.1 200 OK\\r\\n"
+            b"Content-Type: application/json\\r\\n"
+            b"Content-Length: " + str(len(body)).encode() + b"\\r\\n"
+            b"Connection: close\\r\\n\\r\\n" + body
+        )
+        tls_conn.sendall(resp)
+        tls_conn.close()
 
-def serve_https():
-    conn, addr = raw_srv.accept()
-    # 用 TLS 包装连接 -> 这一步完成 TLS 握手
-    tls_conn = server_ctx.wrap_socket(conn, server_side=True)
-    print(f"  [server] TLS 握手完成，对端={addr}")
-    data = tls_conn.recv(1024)
-    body = b'{"msg":"hello over TLS"}'
-    resp = (
-        b"HTTP/1.1 200 OK\\r\\n"
-        b"Content-Type: application/json\\r\\n"
-        b"Content-Length: " + str(len(body)).encode() + b"\\r\\n"
-        b"Connection: close\\r\\n\\r\\n" + body
-    )
-    tls_conn.sendall(resp)
-    tls_conn.close()
+    threading.Thread(target=serve_https, daemon=True).start()
+    time.sleep(0.2)
 
-threading.Thread(target=serve_https, daemon=True).start()
-time.sleep(0.2)
+    # 客户端：信任自签证书并发起 TLS 握手
+    trust_ctx = ssl.create_default_context(cafile=cert_path)
+    print(f"客户端用 cafile={os.path.basename(cert_path)} 信任自签证书")
 
-# ============================================================
-# 4. 客户端连接，演示 TLS 握手信息
-# ============================================================
-print("\\n[4] 客户端发起 HTTPS 请求")
-print("-" * 60)
+    raw_cli = socket.create_connection(("127.0.0.1", port), timeout=5)
+    # wrap_socket 这一步触发 TLS 握手
+    tls_cli = trust_ctx.wrap_socket(raw_cli, server_hostname="localhost")
 
-# 信任我们自签的证书（生产环境应使用受信任的 CA 证书）
-trust_ctx = ssl.create_default_context(cafile=cert_path)
-print(f"客户端用 cafile={os.path.basename(cert_path)} 信任自签证书")
+    print("\\n=== TLS 握手结果 ===")
+    print(f"协商的协议版本: {tls_cli.version()}")
+    cipher = tls_cli.cipher()
+    print(f"协商的密码套件: {cipher[0]}")
+    print(f"套件类型: {cipher[1]} (TLS 1.3 套件名不含密钥交换)")
 
-raw_cli = socket.create_connection(("127.0.0.1", port), timeout=5)
-# wrap_socket 这一步触发 TLS 握手
-tls_cli = trust_ctx.wrap_socket(raw_cli, server_hostname="localhost")
+    cert_dict = tls_cli.getpeercert()
+    print("\\n=== 服务器证书信息 ===")
+    for rdn in cert_dict.get("subject", []):
+        for k, v in rdn:
+            print(f"  {k}: {v}")
+    print(f"  颁发者: {cert_dict.get('issuer')}")
+    print(f"  有效期: {cert_dict.get('notBefore')} ~ {cert_dict.get('notAfter')}")
+    print(f"  SAN: {cert_dict.get('subjectAltName')}")
 
-print(f"\\n=== TLS 握手结果 ===")
-print(f"协商的协议版本: {tls_cli.version()}")
-cipher = tls_cli.cipher()
-print(f"协商的密码套件: {cipher[0]}")
-print(f"套件类型: {cipher[1]} (TLS 1.3 套件名不含密钥交换)")
+    request = b"GET / HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n"
+    tls_cli.sendall(request)
+    print("\\n=== HTTPS 请求/响应 ===")
+    print(f"客户端发送:\\n{request.decode().strip()}")
+    response = tls_cli.recv(4096)
+    print(f"服务器响应:\\n{response.decode()}")
+    tls_cli.close()
+    raw_srv.close()
 
-# 获取并打印证书信息
-cert_dict = tls_cli.getpeercert()
-print(f"\\n=== 服务器证书信息 ===")
-for rdn in cert_dict.get("subject", []):
-    for k, v in rdn:
-        print(f"  {k}: {v}")
-print(f"  颁发者: {cert_dict.get('issuer')}")
-print(f"  有效期: {cert_dict.get('notBefore')} ~ {cert_dict.get('notAfter')}")
-print(f"  SAN: {cert_dict.get('subjectAltName')}")
-
-# 发送 HTTPS 请求
-print(f"\\n=== HTTPS 请求/响应 ===")
-request = b"GET / HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n"
-tls_cli.sendall(request)
-print(f"客户端发送:\\n{request.decode().strip()}")
-
-response = tls_cli.recv(4096)
-print(f"服务器响应:")
-print(response.decode())
-tls_cli.close()
+except Exception as e:
+    print(f"cryptography 不可用或出错({type(e).__name__}: {e})，跳过真实 HTTPS server 演示。")
+    print("前 3 节（SSLContext 配置、PRF 概念、证书指纹）已完整展示 TLS 核心概念。")
 
 print("\\n[小结]")
-print("- 客户端用 create_default_context(cafile=...) 信任自签证书")
-print("- wrap_socket 触发 TLS 握手（协商版本、套件、验证证书）")
-print("- 本环境协商出 TLS 1.3 + TLS_AES_256_GCM_SHA384")
-print("- 之后 HTTP 明文被 TLS 加密成密文传输（HTTPS = HTTP over TLS）")
-\`,
+print("- HTTPS = HTTP over TLS，TLS 在传输层之上、应用层之下")
+print("- TLS 1.2 用 PRF(HMAC-SHA256) 从 pre_master 派生 master_secret")
+print("- 证书指纹(SHA-256) 是证书钉扎(pinning)的基础")
+print("- 真实握手：协商版本/套件、验证证书链、用 ECDHE 协商对称密钥")
+print("- 握手后 HTTP 明文被 TLS 加密成密文传输")
+`,
   },
 ];

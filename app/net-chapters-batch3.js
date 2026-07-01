@@ -17,15 +17,13 @@
 // =============================================================
 
 export const chapters = [
-  // =========================================================
-  // 第一章：正向代理与反向代理
-  // =========================================================
+
   {
     id: "net-proxy",
     title: "正向代理与反向代理",
     icon: "🔁",
     group: "工程实践篇",
-    content: \`## 一、为什么这一章重要
+    content: `## 一、为什么这一章重要
 
 代理（Proxy）是工程实践中出现频率最高的网络概念之一。你上线一个网站，几乎一定要在前面挂一层 Nginx 做反向代理；公司内网要让员工合规上网，要部署正向代理；做爬虫要绕过封锁，要用代理池；做容器编排，Kubernetes 的 Service、Ingress 本质上也是代理。可以说，**只要你在做后端、做运维、做前端工程化，就绕不开代理**。
 
@@ -152,7 +150,7 @@ server {
 }
 \`\`\`
 
-把所有 80 端口的请求转发到本机 8080 的后端。`proxy_pass` 是反向代理最核心的指令。
+把所有 80 端口的请求转发到本机 8080 的后端。\`proxy_pass\` 是反向代理最核心的指令。
 
 #### 8.2 upstream 定义后端集群
 
@@ -170,7 +168,7 @@ server {
 }
 \`\`\`
 
-`upstream` 把多个后端聚合成一个逻辑组，`proxy_pass` 直接引用组名。
+\`upstream\` 把多个后端聚合成一个逻辑组，\`proxy_pass\` 直接引用组名。
 
 #### 8.3 负载均衡策略
 
@@ -202,8 +200,8 @@ upstream backend {
 }
 \`\`\`
 
-- `max_fails=3`：30 秒内失败 3 次，标记为不可用。
-- `fail_timeout=30s`：不可用后，30 秒内不再把请求发过去；30 秒后重试一次。
+- \`max_fails=3\`：30 秒内失败 3 次，标记为不可用。
+- \`fail_timeout=30s\`：不可用后，30 秒内不再把请求发过去；30 秒后重试一次。
 
 主动健康检查需要 Nginx Plus 或第三方模块（如 nginx_upstream_check_module）。
 
@@ -213,17 +211,17 @@ upstream backend {
 
 \`\`\`nginx
 location / {
-    proxy_set_header Host \$host;
-    proxy_set_header X-Real-IP \$remote_addr;
-    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto \$scheme;
+    proxy_set_header Host \\$host;
+    proxy_set_header X-Real-IP \\$remote_addr;
+    proxy_set_header X-Forwarded-For \\$proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto \\$scheme;
     proxy_pass http://backend;
 }
 \`\`\`
 
-- `X-Forwarded-For`：记录经过的代理链，`客户端IP, 代理1 IP, 代理2 IP`。
-- `X-Real-IP`：最末端代理填的客户端真实 IP。
-- 后端拿到这两个头，要把 `RemoteAddr` 替换成 `X-Forwarded-For` 的第一个 IP。
+- \`X-Forwarded-For\`：记录经过的代理链，\`客户端IP, 代理1 IP, 代理2 IP\`。
+- \`X-Real-IP\`：最末端代理填的客户端真实 IP。
+- 后端拿到这两个头，要把 \`RemoteAddr\` 替换成 \`X-Forwarded-For\` 的第一个 IP。
 
 #### 8.6 WebSocket 代理
 
@@ -233,7 +231,7 @@ WebSocket 是升级后的 HTTP 连接，需要透传 Upgrade/Connection 头：
 location /ws {
     proxy_pass http://backend;
     proxy_http_version 1.1;
-    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Upgrade \\$http_upgrade;
     proxy_set_header Connection "upgrade";
     proxy_read_timeout 3600s;   # WebSocket 长连接，超时要拉长
 }
@@ -263,15 +261,15 @@ proxy_buffers 8 4k;           # 响应体缓冲
 
 ### 十、常见陷阱与最佳实践
 
-1. **X-Forwarded-For 信任问题**：客户端可以伪造这个头。第一跳的代理要把头清空重写，不能直接信任。安全做法：在最外层网关把 `X-Forwarded-For` 重写为 `\$remote_addr`。
-2. **后端拿到的是代理 IP**：忘了配 `X-Real-IP`，后端日志全是 Nginx 的 IP，风控、审计全废。一定要在反向代理处透传真实 IP，后端要信任并解析。
-3. **WebSocket 不生效**：忘了加 `proxy_http_version 1.1` 和 Upgrade 头，WebSocket 握手失败。
-4. **HTTPS 后端证书校验**：`proxy_pass https://backend` 默认校验证书，自签证书要配 `proxy_ssl_verify off`（仅测试环境）。
-5. **buffering 拖慢大文件**：下载大文件时 proxy_buffering on 会先缓存到磁盘，可能撑爆磁盘。流式接口（SSE、大文件下载）要 `proxy_buffering off`。
+1. **X-Forwarded-For 信任问题**：客户端可以伪造这个头。第一跳的代理要把头清空重写，不能直接信任。安全做法：在最外层网关把 \`X-Forwarded-For\` 重写为 \`\\$remote_addr\`。
+2. **后端拿到的是代理 IP**：忘了配 \`X-Real-IP\`，后端日志全是 Nginx 的 IP，风控、审计全废。一定要在反向代理处透传真实 IP，后端要信任并解析。
+3. **WebSocket 不生效**：忘了加 \`proxy_http_version 1.1\` 和 Upgrade 头，WebSocket 握手失败。
+4. **HTTPS 后端证书校验**：\`proxy_pass https://backend\` 默认校验证书，自签证书要配 \`proxy_ssl_verify off\`（仅测试环境）。
+5. **buffering 拖慢大文件**：下载大文件时 proxy_buffering on 会先缓存到磁盘，可能撑爆磁盘。流式接口（SSE、大文件下载）要 \`proxy_buffering off\`。
 6. **超时配置不合理**：默认 60s 对慢接口不够，对快接口太长。要根据业务分别配 location 级超时。
 7. **upstream 健康检查只有被动**：开源 Nginx 没有主动探测，后端假死（TCP 通但应用不响应）时 Nginx 仍会发请求。生产要补主动检查。
-8. **DNS 缓存**：`proxy_pass http://backend.example.com` 中的域名在 Nginx 启动时解析一次就缓存了。如果域名 IP 经常变，要用 `resolver` + 变量形式强制动态解析。
-9. **重试放大**：`proxy_next_upstream` 默认对错误和超时重试到下一台，可能导致一个请求被打到多台后端，对非幂等接口（POST 转账）是灾难。非幂等接口要关掉重试。
+8. **DNS 缓存**：\`proxy_pass http://backend.example.com\` 中的域名在 Nginx 启动时解析一次就缓存了。如果域名 IP 经常变，要用 \`resolver\` + 变量形式强制动态解析。
+9. **重试放大**：\`proxy_next_upstream\` 默认对错误和超时重试到下一台，可能导致一个请求被打到多台后端，对非幂等接口（POST 转账）是灾难。非幂等接口要关掉重试。
 
 ### 十一、面试要点
 
@@ -288,20 +286,32 @@ A：轮询、加权轮询、ip_hash、least_conn、一致性哈希。性能相�
 A：反向代理在转发时通过 X-Real-IP 和 X-Forwarded-For 头透传。X-Forwarded-For 是代理链，逗号分隔，第一个是客户端真实 IP。后端要信任并解析这两个头，注意防伪造——第一跳网关要重写。
 
 **Q5：Nginx 如何代理 WebSocket？**
-A：WebSocket 握手是 HTTP 升级，需要 `proxy_http_version 1.1`、`proxy_set_header Upgrade $http_upgrade`、`proxy_set_header Connection "upgrade"`，并把 read_timeout 拉长（长连接）。
+A：WebSocket 握手是 HTTP 升级，需要 \`proxy_http_version 1.1\`、\`proxy_set_header Upgrade $http_upgrade\`、\`proxy_set_header Connection "upgrade"\`，并把 read_timeout 拉长（长连接）。
 
 **Q6：为什么反向代理后面要做健康检查？**
 A：后端可能假死（进程卡死、OOM、磁盘满），TCP 通但应用不响应。Nginx 开源版只有被动检查（失败 N 次后剔除），生产环境要补主动探测，及时把不健康节点从路由表摘除，避免请求打到坏节点。
 
+
+### 十一补、代理与 API 网关：从转发到全生命周期治理
+
+工程里常被问到一个问题：Nginx 反向代理和 Kong、APISIX、Spring Cloud Gateway 这类「API 网关」到底什么关系？答案是：**API 网关是反向代理的超集**，它在「转发」之上叠加了一整套「治理能力」。
+
+- **路由**：按 Path、Method、Header、Host 把请求分发到不同后端——这一点和 Nginx 的 location 类似，但网关通常支持更复杂的表达式路由，甚至能按请求体字段路由。
+- **认证鉴权**：统一做 JWT 校验、OAuth2 introspect、API Key 校验，后端无需重复实现鉴权逻辑。
+- **限流熔断**：按租户 / IP / 接口维度限流（令牌桶 / 漏桶），后端过载时熔断返回 503，保护后端不被打垮。
+- **协议转换**：把外部 HTTP 转成内部 gRPC / Thrift，把旧版 REST 转成新版 GraphQL，客户端无感。
+- **可观测性**：统一打 access log、metrics（QPS / 延迟 / 错误率）、distributed tracing（透传 traceparent 头）。
+- **插件化**：Kong 用 Lua 插件、APISIX 用插件链，可热插拔地加鉴权、日志、改写逻辑，无需改后端代码。
+
+选型建议：纯转发 + 静态路由用 Nginx 足够；需要动态路由、多租户治理、插件生态时上 APISIX / Kong；Java 技术栈内部微服务网关常用 Spring Cloud Gateway。但无论选哪个，**底层都跑不脱「中间人转发」这个代理本质**——理解了本章的代理原理，再学任何网关产品都是套壳。
 ### 十二、小结
 
 - 代理的本质是中间人转发，能做转发、路由、负载均衡、缓存、改写、终止 TLS、鉴权、协议转换。
 - 正向代理代理客户端，客户端感知，用于翻墙/上网管理；反向代理代理服务端，客户端不感知，用于负载均衡/SSL 卸载/缓存/安全。
 - 四层代理基于 IP:Port，七层代理基于 HTTP 内容，生产常组合 LVS + Nginx。
 - Nginx 反向代理核心是 upstream + proxy_pass，配合负载均衡策略、健康检查、Header 透传、WebSocket 配置。
-- 工程陷阱：X-Forwarded-For 伪造、后端拿不到真实 IP、WebSocket 头缺失、超时配置、重试放大、DNS 缓存。
-\`,
-    code: \`# ============================================================
+- 工程陷阱：X-Forwarded-For 伪造、后端拿不到真实 IP、WebSocket 头缺失、超时配置、重试放大、DNS 缓存。`,
+    code: `# ============================================================
 # 第一章代码演示：代理服务器
 # ------------------------------------------------------------
 # 演示内容：
@@ -410,19 +420,14 @@ if __name__ == "__main__":
         time.sleep(0.05)
 
     print("=" * 60)
-    print("观察：X-Backend 在 B1/B2 之间交替，验证轮询负载均衡")
-\`,
+    print("观察：X-Backend 在 B1/B2 之间交替，验证轮询负载均衡")`,
   },
-
-  // =========================================================
-  // 第二章：CDN 与缓存策略
-  // =========================================================
   {
     id: "net-cdn",
     title: "CDN 与缓存策略",
     icon: "🌍",
     group: "工程实践篇",
-    content: \`## 一、为什么这一章重要
+    content: `## 一、为什么这一章重要
 
 做前端要做性能优化，做后端要做接口加速，做运维要扛大流量——三者的交汇点就是**缓存**。一个设计良好的缓存策略，能让你的服务在同等硬件下扛住 10 倍甚至 100 倍的流量；一个糟糕的缓存策略，能让用户看到陈旧数据甚至缓存雪崩打挂整个系统。
 
@@ -458,7 +463,7 @@ CDN 的工作流可以拆成三步：
 
 **第一步：DNS 调度——把用户分到最近的边缘节点**
 
-用户访问 `cdn.example.com` 时，DNS 解析不是返回固定 IP，而是返回"离用户最近的 CDN 节点 IP"。CDN 厂商的智能 DNS 会根据用户 EDNS Client Subnet（ECS）携带的客户端网段、节点健康度、负载情况，动态返回最佳节点 IP。
+用户访问 \`cdn.example.com\` 时，DNS 解析不是返回固定 IP，而是返回"离用户最近的 CDN 节点 IP"。CDN 厂商的智能 DNS 会根据用户 EDNS Client Subnet（ECS）携带的客户端网段、节点健康度、负载情况，动态返回最佳节点 IP。
 
 \`\`\`
 用户 -> LocalDNS -> CDN智能DNS -> 返回最近边缘节点IP
@@ -510,10 +515,10 @@ HTTP 缓存分两大类：**强缓存**和**协商缓存**。
 
 强缓存命中时，浏览器**根本不发请求**，直接用本地副本。控制强缓存的头：
 
-- `Cache-Control: max-age=3600`：缓存 3600 秒，HTTP/1.1 主推。
-- `Expires: Wed, 01 Jul 2026 00:00:00 GMT`：绝对过期时间，HTTP/1.0，受客户端时钟影响，已不推荐单独使用。
+- \`Cache-Control: max-age=3600\`：缓存 3600 秒，HTTP/1.1 主推。
+- \`Expires: Wed, 01 Jul 2026 00:00:00 GMT\`：绝对过期时间，HTTP/1.0，受客户端时钟影响，已不推荐单独使用。
 
-强缓存命中的特征：浏览器 Network 面板显示 `(from disk cache)` 或 `(from memory cache)`，状态码仍是 200，但请求没真的发出去。
+强缓存命中的特征：浏览器 Network 面板显示 \`(from disk cache)\` 或 \`(from memory cache)\`，状态码仍是 200，但请求没真的发出去。
 
 #### 6.2 协商缓存
 
@@ -526,14 +531,14 @@ HTTP 缓存分两大类：**强缓存**和**协商缓存**。
 
 服务器比对后：
 
-- 没变 → 返回 `304 Not Modified`，无 body，浏览器用本地副本。
-- 变了 → 返回 `200 OK` + 新内容 + 新的 ETag/Last-Modified。
+- 没变 → 返回 \`304 Not Modified\`，无 body，浏览器用本地副本。
+- 变了 → 返回 \`200 OK\` + 新内容 + 新的 ETag/Last-Modified。
 
 ETag 优先级高于 Last-Modified，因为 ETag 能区分"内容变了但修改时间没变"和"内容没变但修改时间变了"的边界情况。
 
 #### 6.3 Cache-Control 指令详解
 
-`Cache-Control` 是 HTTP/1.1 缓存控制的核心，指令很丰富：
+\`Cache-Control\` 是 HTTP/1.1 缓存控制的核心，指令很丰富：
 
 | 指令 | 含义 |
 |------|------|
@@ -547,7 +552,7 @@ ETag 优先级高于 Last-Modified，因为 ETag 能区分"内容变了但修改
 | proxy-revalidate | 共享缓存过期后必须回源验证（类似 must-revalidate 但只对代理） |
 | immutable | 资源永不变化，过期前即使刷新也不发请求（配合带 hash 的文件名） |
 
-**最常见的误解**：`no-cache` 不是"不缓存"！它名字误导，真正含义是"缓存了但用之前必须验证"。真正不缓存是 `no-store`。
+**最常见的误解**：\`no-cache\` 不是"不缓存"！它名字误导，真正含义是"缓存了但用之前必须验证"。真正不缓存是 \`no-store\`。
 
 ### 七、缓存新鲜度计算
 
@@ -559,14 +564,14 @@ CDN 节点收到响应后，要算"这个缓存还新鲜吗"。公式：
 是否新鲜 = 当前 age < 新鲜度寿命
 \`\`\`
 
-`Age` 响应头表示"这个响应在缓存里待了多少秒"，每经过一个代理加一跳。CDN 节点用 `Age` 头判断缓存是否过期。
+\`Age\` 响应头表示"这个响应在缓存里待了多少秒"，每经过一个代理加一跳。CDN 节点用 \`Age\` 头判断缓存是否过期。
 
 ### 八、CDN 缓存刷新与预热
 
 - **刷新（Purge）**：主动把某个 URL 从缓存里删掉，下次请求强制回源。用于内容更新后让用户立刻看到新版本。
 - **预热（Prefetch）**：在用户访问前，主动把内容推到边缘节点缓存。用于新版本上线前预热，避免上线瞬间大量回源。
 
-工程实践：前端发版时，文件名带 hash（`app.abc123.js`），新文件名是新的 URL，CDN 自动回源拉取，老文件名自然过期。**永远不要把 no-cache 用在带 hash 的静态资源上**——它们内容不变，应该 max-age 设一年。
+工程实践：前端发版时，文件名带 hash（\`app.abc123.js\`），新文件名是新的 URL，CDN 自动回源拉取，老文件名自然过期。**永远不要把 no-cache 用在带 hash 的静态资源上**——它们内容不变，应该 max-age 设一年。
 
 ### 九、静态加速 vs 动态加速
 
@@ -589,18 +594,18 @@ proxy_cache_path /var/cache/nginx
 server {
     location /api {
         proxy_cache api_cache;
-        proxy_cache_key "\$scheme\$host\$request_uri";
+        proxy_cache_key "\\$scheme\\$host\\$request_uri";
         proxy_cache_valid 200 10m;     # 200 响应缓存 10 分钟
         proxy_cache_valid 404 1m;     # 404 缓存 1 分钟
         proxy_cache_use_stale error timeout updating;  # 回源失败时用旧缓存兜底
         proxy_cache_lock on;         # 同一 key 回源时只放一个请求，其他等待
-        add_header X-Cache-Status \$upstream_cache_status;  # MISS/HIT/EXPIRED
+        add_header X-Cache-Status \\$upstream_cache_status;  # MISS/HIT/EXPIRED
         proxy_pass http://backend;
     }
 }
 \`\`\`
 
-`$upstream_cache_status` 是调试利器，值有 MISS（未命中）、HIT（命中）、EXPIRED（过期已回源）、STALE（用了旧缓存）、UPDATING（正在更新）。
+\`$upstream_cache_status\` 是调试利器，值有 MISS（未命中）、HIT（命中）、EXPIRED（过期已回源）、STALE（用了旧缓存）、UPDATING（正在更新）。
 
 ### 十一、缓存策略设计
 
@@ -618,11 +623,11 @@ server {
 
 1. **no-cache 误用为不缓存**：真正不缓存是 no-store。no-cache 仍会缓存，每次验证。
 2. **private 漏配**：用户私人数据没加 private，被 CDN 缓存后串号——A 的订单页被 B 看到。涉及用户隐私的接口必须 private 或 no-store。
-3. **缓存雪崩**：同一批缓存同时过期，瞬间大量回源打挂源站。解法：过期时间加随机抖动 `max-age=3600+rand(0,300)`；或用 singleflight（proxy_cache_lock）合并回源。
+3. **缓存雪崩**：同一批缓存同时过期，瞬间大量回源打挂源站。解法：过期时间加随机抖动 \`max-age=3600+rand(0,300)\`；或用 singleflight（proxy_cache_lock）合并回源。
 4. **缓存击穿**：单个热 key 过期瞬间，大量请求同时回源。解法：互斥锁只放一个回源，其他等；或永不过期+后台异步刷新。
 5. **缓存穿透**：查询不存在的 key，缓存和数据库都没有，每次都打数据库。解法：缓存空值（短 TTL）；布隆过滤器前置拦截。
 6. **POST 缓存**：默认 POST 不缓存，但有的 CDN 支持缓存 POST 响应，要谨慎——除非接口幂等且响应稳定。
-7. **Vary 头忽略**：响应带 `Vary: Accept-Encoding` 时，CDN 要按客户端编码分别缓存（gzip/br/identity），忘了 Vary 会导致给不支持 br 的浏览器返回 br 内容。
+7. **Vary 头忽略**：响应带 \`Vary: Accept-Encoding\` 时，CDN 要按客户端编码分别缓存（gzip/br/identity），忘了 Vary 会导致给不支持 br 的浏览器返回 br 内容。
 8. **大文件缓存**：CDN 缓存大文件要分片（如 HLS 视频分片），单文件太大缓存命中率低且首包慢。
 9. **CDN 刷新不彻底**：刷新了主文件没刷新引用的子资源，或刷新了一个地域其他地域没刷新，导致版本不一致。
 
@@ -646,15 +651,35 @@ A：雪崩——过期时间加随机抖动 + 多级缓存；击穿——互斥�
 **Q6：带 hash 的静态资源怎么配缓存？**
 A：Cache-Control: public, max-age=31536000, immutable。文件名带内容 hash，内容变了 hash 变了 URL 就变了，所以可以永久缓存且不需要验证。HTML 入口文件不要强缓存（要 no-cache），否则用户拿不到新 hash 的引用。
 
+
+### 十三补、CDN 故障排查与回源优化实战
+
+CDN 接入后最怕的不是没命中，而是「以为命中了其实没命中」导致回源流量打爆源站。排查要按链路逐段定位。
+
+**1. 判断请求是否命中 CDN 缓存**：看响应头里的 \`X-Cache\`（阿里云）/ \`CF-Cache-Status\`（Cloudflare）/ \`X-Cache-Lookup\`。\`HIT\` 表示边缘命中，\`MISS\` 表示未命中已回源，\`EXPIRED\` 表示过期已回源，\`STALE\` 表示返回了过期但仍在用的旧内容。如果大量 \`MISS\` 持续出现，先排查 Cache-Control 是否被源站误设成 \`no-cache\` / \`private\`。
+
+**2. 回源优化三板斧**：
+- **源站 shield（二级缓存）**：在 CDN 和源站之间加一层中转节点（shield），所有边缘节点只回源到 shield，shield 再回源站。这样即使 100 个边缘节点同时 miss，源站也只看到 1 次回源请求。阿里云 / Cloudflare 都提供此能力。
+- **缓存预热**：新版本发布前，主动把资源 PUSH 到 CDN 节点，避免上线瞬间集中回源。发布大文件（APK / IPA）尤其要做预热。
+- **回源限流**：在 CDN 侧对回源 QPS 设上限，超过阈值的请求直接返回降级内容或排队，防止源站被击穿。
+
+**3. 缓存雪崩场景**：大量 key 同时过期导致回源洪峰。解法是给 max-age 加随机抖动（\`max-age=3600\` 改成 \`max-age=3300-3900\` 随机），让过期时间分散开；或用 \`stale-while-revalidate\` 让过期后先返回旧内容同时异步刷新。
+
+**4. URL 与缓存键**：CDN 默认用完整 URL（含 query string）作为缓存键。如果 query string 里有随机参数（如 \`?t=123456\` 防盗链），每个 URL 都是独立缓存，命中率会趋近于 0。要在 CDN 控制台配置「忽略指定 query 参数」或「仅保留指定参数」做缓存键归一化。
+
+**5. 跨域与 CORS**：CDN 缓存的响应如果带 \`Access-Control-Allow-Origin: *\` 没问题；但如果是 \`Access-Control-Allow-Origin: https://具体域名\`，CDN 会把针对 A 域名的 CORS 响应缓存后返回给 B 域名，导致跨域错误。解法是按 Origin 维度分桶缓存，或源站统一返回 \`*\`。
+
+**6. 缓存命中率监控**：上线 CDN 后一定要把「缓存命中率」当核心指标盯。一般静态资源站点命中率应做到 90% 以上，低于 80% 就要报警排查。看分布要按状态码、按 URL 类目、按边缘节点分桶：如果某个边缘节点命中率明显偏低，多半是该节点刚上线还没预热；如果某个 URL 类目命中率为 0，基本是 Cache-Control 写错或缓存键被打碎。把命中率指标接到 Grafana，配上回源 QPS、回源带宽两个辅助指标，就能一眼看出 CDN 是在「省源站压力」还是在「给源站添堵」。
+
+排查口诀：**先看 X-Cache 是 HIT 还是 MISS，再看 Cache-Control 有没有写错，再看缓存键有没有被 query 参数打碎，最后才轮到看源站**。
 ### 十四、小结
 
 - CDN 通过 DNS 调度 + 边缘缓存 + 回源，把内容推到离用户最近的地方。
 - HTTP 缓存分强缓存（Cache-Control/Expires，命中不发请求）和协商缓存（ETag/Last-Modified，命中返回 304）。
 - Cache-Control 指令要分清：no-cache 是"用了要验证"，no-store 才是"不缓存"，private 防 CDN 缓存私人数据。
 - 缓存设计要分级：带 hash 静态资源永久缓存，HTML 走协商缓存，私人 API private/no-store，列表接口 s-maxage 短缓存。
-- 防雪崩加随机过期，防击穿加互斥锁，防穿透缓存空值 + 布隆过滤器。
-\`,
-    code: \`# ============================================================
+- 防雪崩加随机过期，防击穿加互斥锁，防穿透缓存空值 + 布隆过滤器。`,
+    code: `# ============================================================
 # 第二章代码演示：CDN 与缓存策略（ETag 协商缓存）
 # ------------------------------------------------------------
 # 演示内容：
@@ -671,7 +696,7 @@ import threading
 import time
 
 # ---------- 模拟源站：带 ETag 协商缓存 ----------
-RESOURCE = b"<!doctype html><html><body>CDN 缓存演示 v1</body></html>"
+RESOURCE = "<!doctype html><html><body>CDN 缓存演示 v1</body></html>".encode("utf-8")
 RESOURCE_ETAG = '"' + hashlib.md5(RESOURCE).hexdigest() + '"'
 
 class OriginHandler(http.server.BaseHTTPRequestHandler):
@@ -809,19 +834,14 @@ if __name__ == "__main__":
     print("=" * 60)
     print("观察：")
     print("  第1次 MISS 回源；第2次 HIT 命中边缘缓存；")
-    print("  第3次带 If-None-Match 协商（边缘未实现协商，直接 HIT）")
-\`,
+    print("  第3次带 If-None-Match 协商（边缘未实现协商，直接 HIT）")`,
   },
-
-  // =========================================================
-  // 第三章：抓包与网络调试
-  // =========================================================
   {
     id: "net-debug",
     title: "抓包与网络调试",
     icon: "🔍",
     group: "工程实践篇",
-    content: \`## 一、为什么这一章重要
+    content: `## 一、为什么这一章重要
 
 线上报警"接口慢"、"连不上"、"偶发超时"，DNS 解析诡异、TLS 握手失败、跨域被拦、CDN 回源异常……这些问题的排查都依赖一套网络调试技能。**不会抓包、不会用 curl、不会读 Wireshark 的工程师，遇到网络问题只能瞎猜**。这一章把工作中真正高频的网络调试工具和思路讲清楚。
 
@@ -1095,9 +1115,8 @@ A：ss -tnp 看连接状态分布，是否有大量 SYN_SENT（建连失败）�
 - curl -w 分阶段时间是定位 HTTP 慢在哪一步的神器，必背。
 - 浏览器 Timing 各阶段：Queueing/DNS/Connection/SSL/Request/Waiting(TTFB)/Download，TTFB 慢几乎一定是后端慢。
 - 502 是后端返回错（进程崩），504 是网关等不到响应（后端慢或超时小）。
-- HTTPS 抓包用 mitmproxy 或 SSLKEYLOGFILE + Wireshark。
-\`,
-    code: \`# ============================================================
+- HTTPS 抓包用 mitmproxy 或 SSLKEYLOGFILE + Wireshark。`,
+    code: `# ============================================================
 # 第三章代码演示：抓包与网络调试
 # ------------------------------------------------------------
 # 演示内容：
@@ -1209,7 +1228,7 @@ if __name__ == "__main__":
     # 给出等价的 curl 命令
     print("\\n[等价 curl 命令]")
     print("  curl -v http://127.0.0.1:%d/api/test" % PORT)
-    print("  curl -w 'DNS:%{time_namelookup} TTFB:%{time_starttransfer} 总:%{time_total}\\n'"
+    print("  curl -w 'DNS:%%{time_namelookup} TTFB:%%{time_starttransfer} 总:%%{time_total}\\n'"
           " -o /dev/null -s http://127.0.0.1:%d/api/test" % PORT)
     print("  printf 'GET /api/test HTTP/1.1\\r\\nHost: x\\r\\n\\r\\n' | nc 127.0.0.1 %d" % PORT)
     print("  tcpdump -i any -A -s0 'tcp port %d'" % PORT)
@@ -1226,19 +1245,14 @@ if __name__ == "__main__":
 
     print("\\n" + "=" * 60)
     print("观察：raw socket 模式打印了完整的 HTTP 报文，")
-    print("和 tcpdump/Wireshark Follow TCP Stream 看到的一致。")
-\`,
+    print("和 tcpdump/Wireshark Follow TCP Stream 看到的一致。")`,
   },
-
-  // =========================================================
-  // 第四章：网络性能优化
-  // =========================================================
   {
     id: "net-performance",
     title: "网络性能优化",
     icon: "⚡",
     group: "工程实践篇",
-    content: \`## 一、为什么这一章重要
+    content: `## 一、为什么这一章重要
 
 性能是用户体验的生命线。Google 研究表明，页面加载时间从 1 秒到 3 秒，跳出率上升 32%；3 秒到 5 秒，跳出率再升 90%。电商页面慢 100ms，转化率就下降 1%。**网络性能优化是工程实践中投入产出比最高的一类优化**——往往改改配置、加个缓存、上个 CDN，就能让响应快一个数量级，而不需要重写业务。
 
@@ -1320,11 +1334,11 @@ server {
 }
 \`\`\`
 
-注意 `proxy_set_header Connection ""`——不清空的话 Nginx 默认发 `Connection: close`，后端每请求一连接，长连接池白搭。
+注意 \`proxy_set_header Connection ""\`——不清空的话 Nginx 默认发 \`Connection: close\`，后端每请求一连接，长连接池白搭。
 
 #### TCP Fast Open
 
-TFO 允许在 SYN 包里就带数据，省一个 RTT。需要客户端和服务端都支持（内核参数 `tcp_fastopen`）。HTTPS 握手能省一个 RTT，移动端收益明显。
+TFO 允许在 SYN 包里就带数据，省一个 RTT。需要客户端和服务端都支持（内核参数 \`tcp_fastopen\`）。HTTPS 握手能省一个 RTT，移动端收益明显。
 
 #### 拥塞窗口调优
 
@@ -1390,7 +1404,7 @@ brotli_types text/plain application/json application/javascript text/css;
 
 - **雪碧图（Sprite）**：把多个小图标合并成一张大图，用 CSS background-position 切割。HTTP/1.1 时代有效，HTTP/2 后多路复用让小图并发加载，雪碧图收益下降。
 - **Base64 内联**：小图标（< 4KB）直接 base64 编码进 CSS，省一个请求。但 base64 比原图大 33%，且不能缓存，权衡用。
-- **懒加载**：图片/组件按需加载，`<img loading="lazy">`、IntersectionObserver、组件动态 import。
+- **懒加载**：图片/组件按需加载，\`<img loading="lazy">\`、IntersectionObserver、组件动态 import。
 
 #### 预加载 preload / prefetch
 
@@ -1445,7 +1459,7 @@ server {
     gzip_types text/plain application/json application/javascript text/css;
 
     # 静态资源强缓存
-    location ~* \\.(js|css|png|jpg|woff2)\$ {
+    location ~* \\.(js|css|png|jpg|woff2)\\$ {
         root /var/www/static;
         expires 1y;
         add_header Cache-Control "public, immutable";
@@ -1498,6 +1512,23 @@ A：DNS 调度把用户分到最近的边缘节点，降 RTT；边缘缓存命�
 **Q6：如何减少 DNS 解析时间？**
 A：减少域名数量（每个域名一次解析）；DNS 预解析 dns-prefetch 提前发起；preconnect 把 DNS+TCP+TLS 一起提前；用 HTTPDNS 防劫持并智能调度；合理 TTL 平衡解析速度和切换灵活性。
 
+
+### 十二补、性能优化落地路线图与度量闭环
+
+性能优化最大的坑不是不知道怎么优化，而是「优化完没人度量、上线后悄悄退化」。要把性能做成闭环，需要四个环节。
+
+**1. 度量先行：RUM 与合成监控双管齐下**
+- **RUM（Real User Monitoring）**：在页面埋点采集真实用户的 LCP / FID / CLS / 白屏时间，按地域 / 浏览器 / 网络分桶统计。代表工具：Google Analytics 4 的 Web Vitals、Sentry Performance、自建 PerformanceObserver 上报。RUM 反映真实分布，能发现「90 分位用户慢得离谱」的长尾问题。
+- **合成监控（Synthetic）**：用无头浏览器定时访问关键页面，在固定网络 / 设备下测 LCP / TTFB。代表工具：Lighthouse CI、WebPageTest。合成监控数据稳定、适合做回归门禁（PR 不达标不让合并）。
+- 两者互补：RUM 发现问题，合成监控复现并守底线。
+
+**2. 设性能预算（Performance Budget）**：给关键指标定上限，比如「首屏 JS gzip 后不超过 150KB」「LCP P75 不超过 2.5s」「CLS 不超过 0.1」。把预算写进 CI，超预算的 PR 直接 fail。没有预算的优化都是耍流氓——今天加个埋点 SDK 长了 20KB，明天加个 UI 库长了 50KB，半年后页面就退化成龟速。
+
+**3. 按影响面排序优化**：别一上来就抠 1KB 的图片，先按「优化收益 / 实现成本」排序。经验上：首屏阻塞 JS > 接口 TTFB > 图片体积 > 字体 > CSS。把 200KB 的同步首屏 JS 改成按需加载，收益远大于把 PNG 压成 WebP。用 Lighthouse 的 opportunity 排序，优先做「Estimated savings」最大的项。
+
+**4. 防退化机制**：性能是会呼吸的——不持续守就会退化。要把 Web Vitals 接入告警（LCP P75 连续 1 小时 > 4s 就报警），每次发布对比前后 RUM 分位数据，关键页面跑 Lighthouse 回归。把性能当 SLO 来运营，而不是「上线前跑一次 Lighthouse 看看分」。
+
+闭环一句话：**度量定基线 → 预算卡 PR → 优化按收益排 → 告警防退化**。少做一次性优化，多做可度量的持续治理。
 ### 十三、小结
 
 - 性能优化四主线：减少请求、减少数据、加快传输、并行化。
@@ -1506,9 +1537,8 @@ A：减少域名数量（每个域名一次解析）；DNS 预解析 dns-prefetc
 - HTTP 层：HTTP/2 多路复用、HPACK 头部压缩、HTTP/3 0-RTT。
 - 资源层：gzip/brotli 压缩、preload 关键资源、懒加载非关键资源、雪碧图/Base64 按场景。
 - CDN 是降 RTT 根本手段，配合多级缓存和预热。
-- 实践陷阱：不压缩图片、HTTP/2 还分域名、base64 大图、CDN 不预热大促雪崩。
-\`,
-    code: \`# ============================================================
+- 实践陷阱：不压缩图片、HTTP/2 还分域名、base64 大图、CDN 不预热大促雪崩。`,
+    code: `# ============================================================
 # 第四章代码演示：网络性能优化
 # ------------------------------------------------------------
 # 演示内容：
@@ -1651,7 +1681,7 @@ if __name__ == "__main__":
           (len(RAW_BODY), len(GZIP_BODY),
            100 * (1 - len(GZIP_BODY) / len(RAW_BODY))))
     print("  2. Keep-Alive 复用连接，省去重复 TCP 握手，N 个请求更快")
-    print("  3. 生产中配合 HTTP/2 多路复用 + brotli + CDN 效果更佳")
-\`,
-  },
+    print("  3. 生产中配合 HTTP/2 多路复用 + brotli + CDN 效果更佳")`,
+  }
+
 ];

@@ -9,11 +9,12 @@
 //   - 语法高亮（叠加技术：透明 textarea 覆盖在高亮 pre 上）
 //   - 可编辑（用户可修改代码后运行）
 //   - VS Code 风格快捷键（Tab 缩进、Ctrl+/ 注释、Ctrl+D 复制行等）
-//   - 复制 / 运行 / Playground 三个操作按钮
+//   - 复制 / 运行 / Playground / 外网运行 四个操作按钮
 // =============================================================
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import CodeEditor from "./components/CodeEditor";
+import { getExternalPlaygrounds, openExternal } from "./external-playgrounds";
 
 // 高亮函数引入
 import { highlightJavaScript } from "./highlight";
@@ -139,6 +140,8 @@ export function CodeBlock({ code: initialCode, lang }) {
   const [error, setError] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [showOutput, setShowOutput] = useState(false);
+  // 外网运行下拉菜单展开状态
+  const [extMenuOpen, setExtMenuOpen] = useState(false);
 
   // 语言信息查询
   const langLower = (lang || "").toLowerCase().trim();
@@ -148,6 +151,13 @@ export function CodeBlock({ code: initialCode, lang }) {
   const displayLabel = langInfo?.label || (lang ? lang.toUpperCase() : "");
   const highlightFn = langInfo?.highlight || null;
   const commentPrefix = langInfo?.comment || "//";
+
+  // 当前语言可用的外网平台列表
+  const externalPGs = useMemo(
+    () => getExternalPlaygrounds(langLower),
+    [langLower]
+  );
+  const canExternal = externalPGs.length > 0;
 
   // ---------- 复制代码到剪贴板 ----------
   const handleCopy = useCallback(async () => {
@@ -212,6 +222,27 @@ export function CodeBlock({ code: initialCode, lang }) {
     setCode(initialCode);
   }, [initialCode]);
 
+  // ---------- 打开外网在线运行平台 ----------
+  const handleExternal = useCallback(
+    async (pgId) => {
+      setExtMenuOpen(false);
+      await openExternal(pgId, code, langLower);
+    },
+    [code, langLower]
+  );
+
+  // ---------- 外网下拉菜单：点击外部自动收起 ----------
+  useEffect(() => {
+    if (!extMenuOpen) return;
+    const handler = (e) => {
+      if (!e.target.closest || !e.target.closest(".md-ext-dropdown")) {
+        setExtMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [extMenuOpen]);
+
   // 代码是否有修改（用于显示重置按钮）
   const hasChanged = code !== initialCode;
 
@@ -228,6 +259,34 @@ export function CodeBlock({ code: initialCode, lang }) {
           )}
         </div>
         <div className="md-code-toolbar-right">
+          {canExternal && (
+            <div className="md-ext-dropdown">
+              <button
+                className="md-code-btn md-code-btn-ext"
+                onClick={() => setExtMenuOpen((v) => !v)}
+                title="在外部网站运行代码（无需本地环境）"
+                aria-expanded={extMenuOpen}
+                aria-haspopup="menu"
+              >
+                🌐 外网 <span className="pg-caret">▾</span>
+              </button>
+              {extMenuOpen && (
+                <div className="md-ext-menu" role="menu">
+                  {externalPGs.map((pg) => (
+                    <button
+                      key={pg.id}
+                      className="md-ext-item"
+                      onClick={() => handleExternal(pg.id)}
+                      role="menuitem"
+                    >
+                      <span className="md-ext-icon">{pg.icon}</span>
+                      <span>{pg.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {hasChanged && (
             <button
               className="md-code-btn"

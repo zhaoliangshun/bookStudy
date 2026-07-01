@@ -11,7 +11,7 @@ export const chapters = [
     title: "grep 正则搜索",
     icon: "🔎",
     group: "文本处理",
-    content: \`## 概述
+    content: `## 概述
 
 grep 是 Linux 下最常用的文本搜索工具，名字来自 ed 编辑器的 "g/re/p"（global / regex / print）——全局正则打印。它按行扫描输入，把匹配正则的行打印出来。运维查日志、爬虫筛数据、代码搜索几乎都绕不开它。配合正则、管道和各种参数，能组合出极强的搜索能力。
 
@@ -46,8 +46,8 @@ grep 是 Linux 下最常用的文本搜索工具，名字来自 ed 编辑器的 
 - 查日志找错误：\`grep -niE 'error|exception|fatal' app.log\`，一次抓多种关键字。
 - 配合管道逐层过滤：\`grep ERROR app.log | grep -v DEBUG | grep -c\`，层层缩小范围。
 - 递归搜索先用 \`--include\` 限定类型，避免扫到二进制文件报 "Binary file matches"。
-\`,
-    code: \`# 生成示例日志文件
+`,
+    code: `# 生成示例日志文件
 cat > /tmp/demo.log <<'EOF'
 2024-01-01 10:00:00 INFO  server started
 2024-01-01 10:01:12 ERROR connection refused
@@ -76,7 +76,7 @@ echo "=== 6. -o 只输出匹配片段 ==="
 grep -oE '[0-9]{2}:[0-9]{2}:[0-9]{2}' /tmp/demo.log
 
 rm -f /tmp/demo.log
-\`,
+`,
   },
 
   // =========================================================
@@ -87,7 +87,7 @@ rm -f /tmp/demo.log
     title: "sed 流编辑",
     icon: "✂️",
     group: "文本处理",
-    content: \`## 概述
+    content: `## 概述
 
 sed（stream editor）是流编辑器，按行读取输入，对每一行执行编辑命令后输出。与交互式编辑器不同，sed 不打开文件让你逐行改，而是把"做什么"写成命令让 sed 自动批量处理。它最擅长批量替换、删除、插入，是改配置文件、清洗数据的利器。一个 sed 命令往往顶得上一段脚本。
 
@@ -122,8 +122,8 @@ sed（stream editor）是流编辑器，按行读取输入，对每一行执行�
 - 批量改配置：\`sed -i.bak 's/port=8080/port=9090/g' app.conf\`，留备份防翻车。
 - 删空行和注释行：\`sed -e '/^$/d' -e '/^#/d' file\`，一眼看清有效配置。
 - 路径替换换分隔符：\`sed 's|/var/log|/opt/log|g'\`，比转义斜杠清爽得多。
-\`,
-    code: \`# 生成示例文本
+`,
+    code: `# 生成示例文本
 cat > /tmp/conf.txt <<'EOF'
 port=8080
 host=127.0.0.1
@@ -152,7 +152,7 @@ echo "=== 6. & 引用匹配串（-E 扩展正则）==="
 echo "price: 100" | sed -E 's/[0-9]{3}/& dollars/'
 
 rm -f /tmp/conf.txt /tmp/conf.txt.bak
-\`,
+`,
   },
 
   // =========================================================
@@ -163,7 +163,7 @@ rm -f /tmp/conf.txt /tmp/conf.txt.bak
     title: "awk 文本分析",
     icon: "📊",
     group: "文本处理",
-    content: \`## 概述
+    content: `## 概述
 
 awk 是一个完整的文本处理语言（不只是命令），名字来自三位作者 Aho、Weinberger、Kernighan 的姓氏首字母。它把输入按行拆成字段，对每一行执行"模式-动作"规则。grep 负责找、sed 负责改、awk 负责算——统计、汇总、按列处理是 awk 的主场。一个 awk 脚本就能完成"按某列分组求和""统计访问量 Top10"这类任务。
 
@@ -198,8 +198,8 @@ awk 是一个完整的文本处理语言（不只是命令），名字来自三�
 - 统计访问量 Top IP：\`awk '{ip[$1]++} END{for(k in ip) print ip[k], k}' access.log | sort -rn | head\`。
 - 按列求和：\`awk -F, '{sum+=$3} END{print "total:", sum}' data.csv\`，处理 CSV 很顺手。
 - 调试分两步：先 \`head\` 看几行确认字段位置，再写 awk，避免列号数错。
-\`,
-    code: \`# 生成示例访问日志
+`,
+    code: `# 生成示例访问日志
 cat > /tmp/access.log <<'EOF'
 192.168.1.10 GET /home
 192.168.1.20 POST /login
@@ -228,7 +228,7 @@ echo "=== 6. -F 指定分隔符：拆分路径 ==="
 echo "/usr/local/bin/node" | awk -F/ '{print "最后一段: "$NF}'
 
 rm -f /tmp/access.log
-\`,
+`,
   },
 
   // =========================================================
@@ -239,7 +239,7 @@ rm -f /tmp/access.log
     title: "管道、重定向与 xargs",
     icon: "🔗",
     group: "文本处理",
-    content: \`## 概述
+    content: `## 概述
 
 管道和重定向是 Shell 的"胶水"，把一个个独立的小命令拼成强大的处理流水线。管道 \`|\` 把前一个命令的输出当作后一个的输入；重定向 \`>\` \`>>\` \`<\` 控制输入输出文件；\`2>&1\` 合并标准错误；\`/dev/null\` 是黑洞；\`tee\` 三通分流；\`xargs\` 把 stdin 转成命令参数；\`$()\` 命令替换把命令结果嵌进另一条命令。掌握这些，才能写出"一行顶十行"的 Shell。
 
@@ -274,8 +274,8 @@ rm -f /tmp/access.log
 - 备份同时看进度：\`cmd | tee run.log\`，既留档又实时输出，排错两不误。
 - 批量处理文件：\`find . -name '*.log' -print0 | xargs -0 -I{} gzip {}\`，带空格也不怕。
 - 静默运行后台任务：\`nohup cmd > /dev/null 2>&1 &\`，丢弃输出并脱离终端。
-\`,
-    code: \`# 生成示例文件
+`,
+    code: `# 生成示例文件
 mkdir -p /tmp/osdemo
 echo "apple banana" > /tmp/osdemo/a.txt
 echo "cherry date"  > /tmp/osdemo/b.txt
@@ -306,6 +306,6 @@ echo '=== 7. 命令替换 $(cmd) ==='
 echo "示例目录 txt 文件数: $(ls /tmp/osdemo/*.txt 2>/dev/null | wc -l)"
 
 rm -rf /tmp/osdemo
-\`,
+`,
   },
 ];

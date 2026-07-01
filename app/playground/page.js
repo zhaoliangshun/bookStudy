@@ -27,6 +27,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import CodeEditor from "../components/CodeEditor";
+import { getExternalPlaygrounds, openExternal } from "../external-playgrounds";
 import { highlightJavaScript } from "../highlight";
 import { highlightTypeScript } from "../ts-highlight";
 import { highlightPython } from "../py-highlight";
@@ -922,6 +923,38 @@ export default function PlaygroundPage() {
   // 当前代码（从 codes 映射里取）
   const code = codes[langId];
 
+  // ---------- 外网运行平台 ----------
+  // Playground 语言 id → 外网模块语言 key 的映射
+  const PG_LANG_MAP = {
+    node: "js", "client-js": "js",
+    ts: "ts",
+    python: "py",
+    java: "java",
+    csharp: "cs",
+    go: "go",
+    sass: "scss",
+    gql: "gql",
+    c: "c",
+    cpp: "cpp",
+    ruby: "rb",
+    swift: "swift",
+    shell: "sh",
+    sql: "sql",
+  };
+  const externalPGs = useMemo(
+    () => getExternalPlaygrounds(PG_LANG_MAP[langId] || ""),
+    [langId]
+  );
+
+  // 打开外网运行平台
+  const handleExternal = useCallback(
+    async (pgId) => {
+      setMoreMenuOpen(false);
+      await openExternal(pgId, code, PG_LANG_MAP[langId] || "");
+    },
+    [code, langId]
+  );
+
   // ---------- 更新某语言代码 ----------
   const setCode = useCallback(
     (newCode) => {
@@ -1258,6 +1291,20 @@ export default function PlaygroundPage() {
                     >
                       ⌨ 快捷键
                     </button>
+                    {externalPGs.length > 0 && (
+                      <div className="pg-dropdown-sep" />
+                    )}
+                    {externalPGs.map((pg) => (
+                      <button
+                        key={pg.id}
+                        className="pg-dropdown-item"
+                        onClick={() => handleExternal(pg.id)}
+                        role="menuitem"
+                        title={`在 ${pg.label} 中运行代码（无需本地环境）`}
+                      >
+                        {pg.icon} 外网: {pg.label}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
