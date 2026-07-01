@@ -1,1313 +1,490 @@
 // =============================================================
-// Java Web 应用开发实战教程 —— 第二批章节
+// Java Web 应用开发教程 —— 第二批章节
 // 分组:Servlet 入门(共 4 章)
 // -------------------------------------------------------------
 // 本文件包含以下章节:
-//   jw-05: Servlet 生命周期与 API
-//   jw-06: 请求处理:HttpServletRequest
-//   jw-07: 响应处理:HttpServletResponse
-//   jw-08: 会话管理:Cookie 与 HttpSession
+//   jw-05: Servlet 基础与生命周期
+//   jw-06: HttpServletRequest 请求处理
+//   jw-07: HttpServletResponse 响应处理
+//   jw-08: 请求转发与重定向
 //
 // 每个章节 content 包含六个模块:
-//   概念讲解 / 设计原则 / 使用场景 / 代码逐行讲解 / 对比 / 常见陷阱
+//   概念解释 / 设计原理 / 使用场景 / 代码示例 / 对比分析 / 常见陷阱
 // =============================================================
 
 export const chapters = [
   // =========================================================
-  // 第五章:Servlet 生命周期与 API
+  // 第五章:Servlet 基础与生命周期
   // =========================================================
   {
     id: "jw-05",
     group: "Servlet 入门",
-    icon: "🔌",
-    title: "Servlet 生命周期与 API",
-    content: `# Servlet 生命周期与 API
+    icon: "⚙️",
+    title: "Servlet 基础与生命周期",
+    content: `# Servlet 基础与生命周期
 
-## 概念讲解
-
-### Servlet 是什么
+## 概念解释
 
 **Servlet** 是 Java Web 的核心抽象:一个运行在 Servlet 容器中的 Java 类,负责接收 HTTP 请求、处理业务、生成响应。所有 Java Web 框架(Spring MVC、Struts)底层都是 Servlet 的封装。理解 Servlet,就理解了 Java Web 的"骨架"。
 
-Servlet 的本质是一个**实现了 \`javax.servlet.Servlet\` 接口(或 \`jakarta.servlet.Servlet\`)**的 Java 对象。容器(Tomcat)负责它的实例化、初始化、调用、销毁——这就是"生命周期"。
+Servlet 的本质是实现了 \`jakarta.servlet.Servlet\` 接口的 Java 对象。容器(Tomcat)负责它的实例化、初始化、调用、销毁——这就是"生命周期"。
 
-### Servlet 接口体系
+Servlet 的类继承体系:\`Servlet\` 接口 → \`GenericServlet\`(抽象类,通用协议)→ \`HttpServlet\`(抽象类,HTTP 专用)→ 我们自己写的 Servlet。日常开发只需继承 \`HttpServlet\`,重写 \`doGet\`/\`doPost\` 即可。
 
-Servlet 的类继承体系如下:
+\`HttpServlet\` 的 \`service()\` 方法会根据 HTTP 方法自动分发:\`GET\` → \`doGet\`、\`POST\` → \`doPost\`、\`PUT\` → \`doPut\`、\`DELETE\` → \`doDelete\`。若未重写对应方法,默认返回 405 Method Not Allowed。
 
-\`\`\`
-           Servlet (接口)
-             │
-      GenericServlet (抽象类,通用协议)
-             │
-        HttpServlet (抽象类,HTTP 专用)
-             │
-     我们自己写的 MyServlet
-\`\`\`
+## 设计原理
 
-各层职责:
+Servlet 生命周期由容器全程管理,开发者只在关键节点插入逻辑:
 
-- **\`Servlet\` 接口**:定义 5 个生命周期方法(\`init\`/\`service\`/\`destroy\`/\`getServletConfig\`/\`getServletInfo\`)。任何 Servlet 必须实现它。
-- **\`GenericServlet\`**:实现了 \`Servlet\` 与 \`ServletConfig\`,把 \`service\` 留作抽象。它是协议无关的(不只服务 HTTP)。提供了 \`getInitParameter\` 等便利方法。
-- **\`HttpServlet\`**:专门处理 HTTP。它实现了 \`service()\`,根据 HTTP 方法(GET/POST/PUT/DELETE...)分发到对应的 \`doGet\`/\`doPost\`/\`doPut\`/\`doDelete\` 等方法。我们通常只需重写 \`doGet\`/\`doPost\`。
+1. **加载与实例化**:容器首次收到请求(或 \`loadOnStartup\` 启动时),用反射调用无参构造创建实例。**Servlet 默认是单例**(一个类只有一个实例),除非实现 \`SingleThreadModel\`(已废弃,不推荐)。
+2. **初始化**:容器调用 \`init(ServletConfig)\` 一次,传入配置参数(\`@WebInitParam\` 或 web.xml 的 \`<init-param>\`)。适合做读取配置、建连接池等一次性初始化。
+3. **请求处理**:每个请求调一次 \`service()\`,它分发到 \`doGet/doPost\`。**多线程并发调用同一个 Servlet 实例**——这是性能关键,但也意味着 Servlet 不能有实例可变状态,否则会有线程安全问题。
+4. **销毁**:容器关闭或应用卸载时调 \`destroy()\` 一次,释放资源(关连接、关线程池)。
 
-\`HttpServlet.service()\` 的分发逻辑大致是:
+为什么 Servlet 设计成单例多线程?因为创建对象有开销,Web 场景请求量大,若每请求 new 一个 Servlet,GC 压力巨大。单例 + 线程池并发,性能最优。代价是开发者必须保证线程安全——局部变量天然安全,实例字段需加锁或避免使用。
 
-\`\`\`java
-protected void service(HttpServletRequest req, HttpServletResponse resp) {
-    String method = req.getMethod();
-    if (method.equals("GET"))      doGet(req, resp);
-    else if (method.equals("POST")) doPost(req, resp);
-    else if (method.equals("PUT"))  doPut(req, resp);
-    else if (method.equals("DELETE")) doDelete(req, resp);
-    // ... 其他方法
-    else super.service(req, resp);  // 抛 UnsupportedOperationException
-}
-\`\`\`
-
-所以**重写时不要覆盖 \`service()\`**,而应覆盖具体的 \`doGet\`/\`doPost\`,否则方法分发失效。
-
-### 生命周期方法
-
-Servlet 生命周期有三个关键阶段,每个阶段对应一个方法:
-
-**1. 初始化:init(ServletConfig config)**
-
-- 容器在**实例化后、处理请求前**调用,且**只调一次**。
-- 用于一次性初始化:加载配置、连接资源、读配置文件。
-- \`ServletConfig\` 参数携带该 Servlet 的初始化参数(在 web.xml 的 \`<init-param>\` 或 \`@WebInitParam\` 配置)。
-- 若初始化失败,抛 \`ServletException\`,容器会卸载该 Servlet。
-
-**2. 处理请求:service(HttpServletRequest req, HttpServletResponse resp)**
-
-- **每次请求**都会调用(对 HttpServlet,实际是 \`doGet\`/\`doPost\` 等)。
-- 多个请求**并发**调用同一个 Servlet 实例(单例多线程,见下文)。
-- 这是写业务逻辑的地方。
-
-**3. 销毁:destroy()**
-
-- 容器关闭或应用卸载时调用,**只调一次**。
-- 用于释放资源:关数据库连接、关文件、停线程。
-- 容器会给正在执行的 \`service()\` 一定时间完成,超时强制回收。
-
-完整时序:
-
-\`\`\`
-容器启动
-  │
-  ├─ (若 load-on-startup) 实例化 → init()
-  │
-  ▼
-请求1 → service()  ┐
-请求2 → service()  ├─ 并发(同实例多线程)
-请求3 → service()  ┘
-  │
-  ▼
-容器关闭 → destroy() → 实例被 GC
-\`\`\`
-
-### init 参数与 ServletConfig
-
-每个 Servlet 可有自己的初始化参数,通过 \`ServletConfig\` 读取:
-
-注解方式:
-
-\`\`\`java
-@WebServlet(urlPatterns = "/db",
-    initParams = {
-        @WebInitParam(name = "url", value = "jdbc:mysql://localhost:3306/test"),
-        @WebInitParam(name = "user", value = "root")
-    }
-)
-public class DbServlet extends HttpServlet {
-    public void init() throws ServletException {
-        ServletConfig config = getServletConfig();
-        String url = config.getInitParameter("url");   // 读初始化参数
-        String user = config.getInitParameter("user");
-        // 用这些参数建立连接...
-    }
-}
-\`\`\`
-
-web.xml 方式:
-
-\`\`\`xml
-<servlet>
-    <servlet-name>db</servlet-name>
-    <servlet-class>com.example.DbServlet</servlet-class>
-    <init-param>
-        <param-name>url</param-name>
-        <param-value>jdbc:mysql://localhost:3306/test</param-value>
-    </init-param>
-</servlet>
-\`\`\`
-
-注意区分 **init-param**(Servlet 级,通过 \`ServletConfig\` 取)与 **context-param**(应用级,通过 \`ServletContext\` 取)。
-
-### 单实例多线程模型
-
-这是 Servlet 最重要的运行特性,务必牢记:
-
-- **默认情况下,容器只为每个 Servlet 声明创建一个实例**(单例)。
-- **每个请求由一个独立线程调用该实例的 \`service()\`**(多线程)。
-- 这意味着:多个请求**同时**访问同一个 Servlet 对象。
-
-\`\`\`
-请求1 ──┐
-请求2 ──┼──► 唯一的 MyServlet 实例 ──► 各自线程执行 service()
-请求3 ──┘
-\`\`\`
-
-### 线程安全问题
-
-既然单实例多线程,那么 **Servlet 的实例变量(成员变量)是共享的**,多个线程同时读写会有竞态条件。
-
-**反面教材**:
-
-\`\`\`java
-public class CounterServlet extends HttpServlet {
-    private int count = 0;   // 危险!实例变量被多线程共享
-
-    protected void doGet(...) {
-        count++;              // 非原子操作,并发下丢失更新
-        resp.getWriter().println(count);
-    }
-}
-\`\`\`
-
-上面代码在高并发下 \`count\` 会小于实际请求数(丢更新)。
-
-**解决方法**:
-
-1. **不要用实例变量存请求相关状态**:把状态用局部变量(方法内),每次调用都是独立的。
-2. **加锁**:用 \`synchronized\` 保护临界区(性能差,慎用)。
-3. **用 Atomic 类**:\`AtomicInteger\` 等提供原子操作。
-4. **实现 SingleThreadModel**(已废弃):让容器为每个请求创建实例,不推荐。
-
-**经验法则**:**Servlet 里尽量只用局部变量,不要在实例变量里存可变状态**。需要共享的数据放 ServletContext(应用级)、Session(会话级)、数据库。
-
-### load-on-startup
-
-默认情况下,Servlet 在**首次被请求时**才实例化与 init(惰性)。这会让第一个用户感觉慢。配置 \`load-on-startup\` 可让容器启动时就加载:
-
-\`\`\`java
-@WebServlet(urlPatterns = "/init", loadOnStartup = 1)
-\`\`\`
-
-数字代表加载顺序(≥0 时启动加载,数字小的先加载;负数或不写表示按需加载)。适合:启动时初始化资源(如读取配置、预热缓存)的 Servlet。
-
-### ServletContext 应用级对象
-
-每个 Web 应用有一个 \`ServletContext\`(一个应用一个),所有 Servlet 共享。用途:
-
-- 读应用级初始化参数(\`context-param\`)。
-- 存应用级共享数据(\`setAttribute\`/\`getAttribute\`)。
-- 获取真实路径(\`getRealPath\`)、MIME 类型。
-- 写日志(\`log\`)。
-
-\`\`\`java
-// 在 Servlet 中获取
-ServletContext ctx = getServletContext();
-String driver = ctx.getInitParameter("driver");   // 读 context-param
-ctx.setAttribute("onlineCount", 100);              // 存全局数据
-Integer count = (Integer) ctx.getAttribute("onlineCount");
-\`\`\`
-
-## 设计原则
-
-### 1. 无状态优先
-
-Servlet 应尽量无状态(不用实例变量存请求间共享数据)。这是线程安全的根本保证,也让 Servlet 天然支持高并发。
-
-### 2. 重写 doGet/doPost,不重写 service
-
-\`HttpServlet.service()\` 负责方法分发,覆盖它会破坏分发逻辑。只在 doGet/doPost 写业务。
-
-### 3. init 做重活,service 做快活
-
-把耗时的初始化(读配置、建连接池)放 \`init()\`,只执行一次;\`service()\` 里只做轻量请求处理,保证响应快。
-
-### 4. 资源在 destroy 释放
-
-数据库连接、文件句柄、线程池,在 \`destroy()\` 关闭,避免资源泄漏。
+\`loadOnStartup\` 控制初始化时机:不配则首次请求时才 init(首请求慢);配为非负整数则容器启动时按数字顺序 init(适合需要预热的应用)。
 
 ## 使用场景
 
-- **理解 Spring MVC**:\`DispatcherServlet\` 就是一个 Servlet,理解生命周期才能理解 Spring 的请求处理。
-- **资源初始化**:数据库连接池、Redis 客户端在 \`init()\` 创建,\`destroy()\` 关闭。
-- **全局共享数据**:在线人数、配置缓存存 \`ServletContext\`。
-- **遗留系统维护**:很多老项目直接用 Servlet。
+**适合**:处理动态请求(表单提交、API 接口)、生成动态内容(报表、流式下载)、做过滤器/监听器基类。**理解框架底层**:Spring MVC 的 \`DispatcherServlet\` 本质就是一个 Servlet。
 
-## 代码逐行讲解
+**不适合**:大量静态资源(交给 Nginx);纯展示页面(用 JSP/Thymeleaf);复杂业务编排(Servlet 应只做请求接发,业务放 Service 层)。
 
-下面是一个完整演示生命周期的 Servlet:
+## 代码示例
+
+下面演示完整的生命周期方法:
 
 \`\`\`java
 package com.example;
 
-import jakarta.servlet.*;
-import jakarta.servlet.http.*;
-import jakarta.servlet.annotation.*;
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.Enumeration;
-import java.util.concurrent.atomic.AtomicInteger;
 
-// loadOnStartup=1:容器启动即加载并调用 init()
-@WebServlet(urlPatterns = "/life", loadOnStartup = 1,
-    initParams = @WebInitParam(name = "encoding", value = "UTF-8"))
-public class LifecycleServlet extends HttpServlet {
+// loadOnStartup=1:容器启动时就初始化,而非首次请求时
+@WebServlet(urlPatterns = "/life", loadOnStartup = 1)
+public class LifeCycleServlet extends HttpServlet {
 
-    // 用 AtomicInteger 存访问计数,线程安全
-    private AtomicInteger visitCount = new AtomicInteger(0);
-
-    // 初始化:只调一次,可读 initParams
-    @Override
-    public void init() throws ServletException {
-        System.out.println("[init] 实例化完成,开始初始化...");
-        // 通过 getInitParameter 读 <init-param> 或 @WebInitParam
-        String encoding = getInitParameter("encoding");
-        System.out.println("[init] 配置的编码: " + encoding);
-        // 这里可建立连接池、加载配置等
-        System.out.println("[init] 初始化完成");
+    // 1. 构造方法:容器创建实例时调用一次
+    public LifeCycleServlet() {
+        System.out.println("1. 构造方法:实例化");
     }
 
-    // GET 请求处理
+    // 2. init:容器初始化时调用一次,可获取配置参数
+    @Override
+    public void init(ServletConfig config) throws ServletException {
+        super.init(config);   // 必须调用父类,保留 ServletConfig
+        String dbUrl = config.getInitParameter("dbUrl");  // 读初始化参数
+        System.out.println("2. init:初始化,dbUrl=" + dbUrl);
+    }
+
+    // 3. service/doGet:每次请求调用,多线程并发
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
-        // 计数+1(原子操作,线程安全)
-        int current = visitCount.incrementAndGet();
-
+        // 这里是请求处理逻辑,每次请求都会进入
         resp.setContentType("text/html;charset=UTF-8");
-        PrintWriter out = resp.getWriter();
-        out.println("<h1>Servlet 生命周期演示</h1>");
-        out.println("<p>当前访问次数: " + current + "</p>");
-
-        // 读 ServletConfig 的所有初始化参数
-        out.println("<h3>初始化参数:</h3><ul>");
-        Enumeration<String> params = getInitParameterNames();
-        while (params.hasMoreElements()) {
-            String name = params.nextElement();
-            out.println("<li>" + name + " = " + getInitParameter(name) + "</li>");
-        }
-        out.println("</ul>");
-
-        // 读 ServletContext(应用级)信息
-        ServletContext ctx = getServletContext();
-        out.println("<p>应用名: " + ctx.getContextPath() + "</p>");
-        out.println("<p>服务器: " + ctx.getServerInfo() + "</p>");
+        resp.getWriter().println("<h1>请求处理中...</h1>");
+        System.out.println("3. doGet:处理请求,线程=" + Thread.currentThread().getName());
     }
 
-    // 销毁:只调一次,释放资源
+    // 4. destroy:容器关闭时调用一次,释放资源
     @Override
     public void destroy() {
-        System.out.println("[destroy] 当前访问次数: " + visitCount.get());
-        System.out.println("[destroy] 释放资源,Servlet 即将卸载...");
+        System.out.println("4. destroy:销毁,释放资源");
     }
 }
 \`\`\`
 
-逐行解释:
+逐行解释:\`@WebServlet(loadOnStartup = 1)\` 让容器启动时即初始化,避免首请求变慢;\`init(ServletConfig)\` 重写时**必须调用 \`super.init(config)\`**,否则 \`getServletConfig()\` 会返回 null;\`config.getInitParameter("dbUrl")\` 读取 \`@WebInitParam\` 配置的参数;\`doGet\` 中打印线程名,可验证"多请求并发用不同线程调用同一实例"。
 
-- \`@WebServlet(urlPatterns = "/life", loadOnStartup = 1, initParams = ...)\`:\`loadOnStartup=1\` 让容器启动时初始化;\`initParams\` 配置一个 \`encoding\` 参数。
-- \`private AtomicInteger visitCount\`:用 \`AtomicInteger\` 而非 \`int\`,因为 \`int++\` 不是原子操作,多线程下会丢更新。\`AtomicInteger.incrementAndGet()\` 是原子的。
-- \`init()\`:重写时无需手动调 \`super.init()\`(\`GenericServlet\` 已实现)。可用 \`getInitParameter()\` 读初始化参数(底层从 \`ServletConfig\` 取)。
-- \`getInitParameterNames()\`:获取所有初始化参数名,枚举遍历。
-- \`getServletContext()\`:获取应用级上下文,所有 Servlet 共享。\`getServerInfo()\` 返回容器信息(如 \`Apache Tomcat/10.1.x\`)。
-- \`destroy()\`:此处只打印日志,实际可关闭连接池、停线程。
+## 对比分析
 
-## 对比
-
-| 特性 | 实例变量 | 局部变量 | ServletContext 属性 | Session 属性 |
-| --- | --- | --- | --- | --- |
-| 作用域 | 整个 Servlet 生命周期 | 单次方法调用 | 整个应用 | 单个会话 |
-| 线程安全 | 否(共享,需同步) | 是(栈上,独立) | 否(需同步) | 是(单会话) |
-| 适合存 | 不变配置(只读) | 临时计算变量 | 全局共享数据 | 用户会话数据 |
-| 示例 | 数据源(只读) | 临时计数器 | 在线人数 | 购物车 |
+| 维度 | Servlet | CGI(Common Gateway Interface) |
+| --- | --- | --- |
+| 运行方式 | 常驻 JVM,单例多线程 | 每请求启动一个进程 |
+| 性能 | 高(无进程创建开销) | 低(进程创建昂贵) |
+| 状态共享 | 同实例可共享数据 | 进程隔离,无法共享 |
+| 资源占用 | 少(线程级) | 多(进程级) |
+| 平台 | 跨平台(基于 JVM) | 依赖系统脚本 |
 
 ## 常见陷阱
 
 | 陷阱 | 原因 | 解决 |
 | --- | --- | --- |
-| 实例变量并发丢更新 | 单实例多线程,共享变量 | 用局部变量或 Atomic/synchronized |
-| 覆盖 service() 后 doXxx 不调 | service() 是分发入口,覆盖后分发逻辑没了 | 重写 doGet/doPost,不覆盖 service |
-| init() 每次请求都调 | 误以为每次请求都 init | init 只调一次,service 才每次调 |
-| load-on-startup 不生效 | 写成负数或没配 | 配 ≥0 的整数,值小先加载 |
-| init 参数读不到 | 用了 context-param(应用级)而非 init-param(Servlet 级) | init-param 用 getInitParameter,context-param 用 ctx.getInitParameter |
-| destroy 不执行就关 JVM | 容器被强制 kill | 用 shutdown 脚本优雅停机 |
-| ServletConfig 与 ServletContext 混淆 | 命名相似 | ServletConfig 是 Servlet 级配置,ServletContext 是应用级共享 |`,
+| Servlet 有实例可变字段 | 单例多线程,实例字段被并发修改 | 用局部变量,或加锁,或用 ThreadLocal |
+| 重写 init 漏调 super.init | ServletConfig 丢失 | 必须 \`super.init(config)\` |
+| 在构造方法里读配置 | 构造时尚未 init,ServletConfig 为 null | 配置读取放 init 方法 |
+| doGet 里写大量业务代码 | Servlet 职责膨胀,难测试 | 业务下沉到 Service 层 |
+| loadOnStartup 未配导致首请求慢 | 首次请求才初始化 | 关键 Servlet 配 loadOnStartup |
+| 线程安全问题难复现 | 并发时序随机 | 用压测工具并发验证 |`,
   },
 
   // =========================================================
-  // 第六章:请求处理:HttpServletRequest
+  // 第六章:HttpServletRequest 请求处理
   // =========================================================
   {
     id: "jw-06",
     group: "Servlet 入门",
-    icon: "🔌",
-    title: "请求处理:HttpServletRequest",
-    content: `# 请求处理:HttpServletRequest
+    icon: "📥",
+    title: "HttpServletRequest 请求处理",
+    content: `# HttpServletRequest 请求处理
 
-## 概念讲解
+## 概念解释
 
-### HttpServletRequest 概述
+**HttpServletRequest** 是 Servlet 容器解析 HTTP 请求后封装的对象,封装了请求行、请求头、请求体、参数、Cookie 等所有信息。开发者在 \`doGet/doPost\` 中通过它读取客户端传来的数据。它是 Java Web 请求处理的"输入端"。
 
-当容器收到 HTTP 请求,会把它封装成一个 \`HttpServletRequest\` 对象,传给 Servlet 的 \`doGet\`/\`doPost\`。这个对象包含了请求的**所有信息**:请求行、头、参数、体、Cookie、Session 等。它是 Servlet 读取用户输入的唯一入口。
+核心能力包括:获取请求参数(\`getParameter\`/\`getParameterValues\`)、获取请求头(\`getHeader\`)、获取请求路径信息(\`getRequestURI\`/\`getQueryString\`)、读取 Cookie(\`getCookies\`)、操作请求属性(\`setAttribute\`/\`getAttribute\`)、获取会话(\`getSession\`)、读取请求体流(\`getInputStream\`)、文件上传(\`getPart\`)。
 
-\`HttpServletRequest\` 继承自 \`ServletRequest\`,增加了 HTTP 特有的方法。它的生命周期是**单次请求**:请求结束即失效,不能跨请求保存。
+区分**参数**与**属性**很重要:**参数(parameter)** 来自客户端(查询串或表单体),只读,类型是 String;\`getParameter("name")\` 取单个,\`getParameterValues("name")\` 取多值(如复选框)。**属性(attribute)** 是服务端代码设置的,用于在请求处理链(过滤器、转发)间传递数据,可读写,类型是 Object。
 
-### 获取请求参数
+## 设计原理
 
-请求参数是用户提交的数据,可能来自:
+容器在收到请求时,把 HTTP 报文解析成 \`HttpServletRequest\` 对象,注入给 \`service()\` 方法。请求结束后对象即失效(不要在异步线程里持有它,会引发数据错乱)。
 
-- GET 请求的查询串:\`?name=zhangsan&age=20\`
-- POST 请求的表单体:\`application/x-www-form-urlencoded\`
-- 表单的复选框等多值参数:\`hobby=read&hobby=code\`
+\`getParameter\` 的工作原理:对 GET 请求,从 URL 查询串解析;对 POST 表单请求,从请求体解析(需 \`application/x-www-form-urlencoded\` 类型)。两者可统一用 \`getParameter\` 获取。但注意:**POST 体只能读一次**(流式),若你先 \`getInputStream\` 读过,\`getParameter\` 就取不到——反之亦然。
 
-相关 API:
+请求编码:\`setCharacterEncoding\` 只对**请求体**生效(POST),对 GET 的 URL 参数无效——GET 参数的编码由 Connector 的 URIEncoding 决定(Tomcat 8+ 默认 UTF-8)。
 
-\`\`\`java
-// 获取单个参数(只取第一个值),没有返回 null
-String name = req.getParameter("name");
-
-// 获取多值参数(如复选框),返回数组
-String[] hobbies = req.getParameterValues("hobby");
-
-// 获取所有参数的 Map(key→String[],因为可能多值)
-Map<String, String[]> paramMap = req.getParameterMap();
-
-// 获取所有参数名
-Enumeration<String> names = req.getParameterNames();
-\`\`\`
-
-注意:\`getParameterMap()\` 返回的是 \`Map<String, String[]>\`,即使单值参数也是数组,因为底层统一处理。\`getParameterValues\` 用于多值场景(复选框、多选下拉框)。
-
-### 请求头获取
-
-HTTP 头是键值对,API 用 \`getHeader\` 系列:
-
-\`\`\`java
-String ua = req.getHeader("User-Agent");      // 获取指定头
-long len = req.getContentLength();             // 等价于 Content-Length
-String ct = req.getContentType();               // Content-Type
-String host = req.getHeader("Host");
-int port = req.getIntHeader("X-Custom-Num");    // 数值头(返回 int)
-
-Enumeration<String> names = req.getHeaderNames(); // 所有头名
-while (names.hasMoreElements()) {
-    String h = names.nextElement();
-    System.out.println(h + ": " + req.getHeader(h));
-}
-\`\`\`
-
-常用头:\`User-Agent\`(客户端类型)、\`Referer\`(来源)、\`Authorization\`(令牌)、\`Accept\`(可接受类型)、\`Cookie\`(会话)。
-
-### 请求体读取
-
-对于非表单的请求体(如 JSON、文件),需要直接读流:
-
-\`\`\`java
-// 字节流:适合二进制(文件上传)
-ServletInputStream in = req.getInputStream();
-byte[] buf = new byte[1024];
-int n;
-ByteArrayOutputStream out = new ByteArrayOutputStream();
-while ((n = in.read(buf)) != -1) {
-    out.write(buf, 0, n);
-}
-byte[] body = out.toByteArray();
-
-// 字符流:适合文本(JSON、XML)
-BufferedReader reader = req.getReader();
-String line;
-StringBuilder sb = new StringBuilder();
-while ((line = reader.readLine()) != null) {
-    sb.append(line);
-}
-String json = sb.toString();
-\`\`\`
-
-**注意**:\`getInputStream\` 与 \`getReader\` 二选一,不能同时用(流只能读一次)。若已用 \`getParameter\` 读过表单,再读流会为空。
-
-### 请求转发(forward)
-
-转发是服务器**内部**的资源跳转,浏览器地址栏不变:
-
-\`\`\`java
-// 在 Servlet A 中转发到 Servlet B
-req.getRequestDispatcher("/b").forward(req, resp);
-\`\`\`
-
-转发的特点:
-
-- **一次请求**:浏览器只发一次请求,A 与 B 共享同一个 request 对象。
-- **地址栏不变**:浏览器看到的是 A 的 URL。
-- **内部跳转**:只能转发到**同应用内**的资源,不能跨域。
-- **可传数据**:通过 \`request.setAttribute\` 把数据带给 B。
-
-\`\`\`java
-// A 设置属性后转发
-req.setAttribute("msg", "来自A的数据");
-req.getRequestDispatcher("/b").forward(req, resp);
-
-// B 中读取
-String msg = (String) req.getAttribute("msg");
-\`\`\`
-
-转发常用于:Servlet 处理完业务后,把结果交给 JSP/模板渲染。
-
-### request 域属性
-
-\`request\` 对象本身就是一个"数据容器",可在请求链中传递数据:
-
-\`\`\`java
-req.setAttribute("user", userObj);     // 存任意对象
-Object u = req.getAttribute("user");   // 取(需强转)
-req.removeAttribute("user");           // 删
-Enumeration<String> attrs = req.getAttributeNames();  // 所有属性名
-\`\`\`
-
-作用域:**一次请求**。请求结束(响应已发送)就失效。转发链中 A 和 B 是同一次请求,所以能共享。
-
-### CharacterEncoding 处理 POST 乱码
-
-这是 POST 中文乱码的根治方法:
-
-\`\`\`java
-// ★ 必须在 getParameter 之前调用!
-req.setCharacterEncoding("UTF-8");
-String name = req.getParameter("name");   // 中文正常
-\`\`\`
-
-原理:POST 参数在请求体,容器默认用 ISO-8859-1 解码。\`setCharacterEncoding\` 告诉容器用 UTF-8 解析请求体。**必须在读取参数前调用**,否则已解码完来不及生效。
-
-GET 参数在 URL 里,Tomcat 用 \`URIEncoding\` 解码(server.xml 配置,Tomcat 8+ 默认 UTF-8)。
-
-乱码的通用原因:**编码与解码用了不同字符集**。排查时确认每一步用什么编码:
-- 浏览器发送用什么编码(HTML 的 \`charset\`)。
-- 容器解析用什么编码(\`setCharacterEncoding\` / \`URIEncoding\`)。
-- 数据库存取用什么编码(连接串 \`characterEncoding\`)。
-
-### 其他常用方法
-
-\`\`\`java
-req.getMethod();          // GET / POST
-req.getRequestURI();      // /app/user
-req.getRequestURL();      // http://localhost:8080/app/user(完整)
-req.getQueryString();     // id=1&name=xx(查询串)
-req.getContextPath();     // /app(上下文路径)
-req.getServletPath();     // /user(Servlet 路径)
-req.getPathInfo();        // 路径额外信息
-req.getRemoteAddr();      // 客户端 IP
-req.getRemoteHost();      // 客户端主机名
-req.getLocale();          // 客户端语言(国际化)
-req.getProtocol();        // HTTP/1.1
-req.isSecure();           // 是否 HTTPS
-\`\`\`
-
-## 设计原则
-
-### 1. 先设编码再读参数
-
-\`req.setCharacterEncoding("UTF-8")\` 必须在所有 \`getParameter\` 之前。用过滤器(Filter)统一设置是最佳实践,避免每个 Servlet 都写。
-
-### 2. 请求体只读一次
-
-\`getInputStream\` 与 \`getReader\` 是互斥的,且流只能读一次。若要在过滤器与 Servlet 都读 body,需用包装器缓存(如 Spring 的 \`ContentCachingRequestWrapper\`)。
-
-### 3. request 域只放本次请求需要的数据
-
-跨请求的数据用 Session,跨用户的数据用 ServletContext。不要滥用 request 域存大对象(占内存且请求结束才回收)。
-
-### 4. 参数校验在入口
-
-读取参数后立即校验(非空、格式、范围),非法输入早返回,不要让脏数据流入业务层。
+属性的作用域:\`request\` 域属性只在**本次请求**有效,转发(forward)时共享,但重定向(redirect)是新请求,属性丢失。
 
 ## 使用场景
 
-- **表单处理**:读取并校验用户提交的注册、登录、订单表单。
-- **JSON API**:前后端分离时,读 JSON body 反序列化为对象。
-- **文件上传**:读 \`multipart\` 体的文件字节(\`@MultipartConfig\`)。
-- **请求转发**:Servlet 处理逻辑后转 JSP 渲染页面。
-- **国际化**:根据 \`Accept-Language\` 选语言包。
+**读取表单数据**:用户注册、登录、搜索等表单提交。**读取请求头**:做客户端识别(User-Agent)、防盗链(Referer)、内容协商(Accept)。**文件上传**:\`getPart\` 配 \`@MultipartConfig\` 处理 multipart。**请求间传值**:转发前 \`setAttribute\`,目标 Servlet/JSP \`getAttribute\`。**会话管理**:\`getSession\` 获取或创建 Session。
 
-## 代码逐行讲解
-
-下面演示一个注册表单的完整处理:
+## 代码示例
 
 \`\`\`java
-package com.example;
-
-import jakarta.servlet.*;
-import jakarta.servlet.http.*;
-import jakarta.servlet.annotation.*;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.Map;
-
-@WebServlet("/register")
-public class RegisterServlet extends HttpServlet {
-
-    @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp)
-            throws ServletException, IOException {
-
-        // ★ 第一步:设置请求编码(POST 中文不乱码的关键)
-        req.setCharacterEncoding("UTF-8");
-        resp.setContentType("text/html;charset=UTF-8");
-
-        PrintWriter out = resp.getWriter();
-
-        // 第二步:读取单个参数
-        String username = req.getParameter("username");
-        String password = req.getParameter("password");
-        String email = req.getParameter("email");
-
-        // 第三步:读取多值参数(复选框 hobby)
-        String[] hobbies = req.getParameterValues("hobby");
-
-        // 第四步:参数校验(简单的非空校验)
-        if (username == null || username.trim().isEmpty()) {
-            out.println("<p style='color:red'>用户名不能为空</p>");
-            return;   // 早返回,不继续处理
-        }
-        if (password == null || password.length() < 6) {
-            out.println("<p style='color:red'>密码至少 6 位</p>");
-            return;
-        }
-
-        // 第五步:读取请求头信息
-        String userAgent = req.getHeader("User-Agent");
-        String isMobile = userAgent != null && userAgent.contains("Mobile") ? "移动端" : "PC";
-
-        // 第六步:遍历所有参数(调试用)
-        out.println("<h2>注册成功</h2>");
-        out.println("<p>用户名: " + username + "</p>");
-        out.println("<p>邮箱: " + email + "</p>");
-        out.println("<p>设备: " + isMobile + "</p>");
-        out.println("<p>爱好: ");
-        if (hobbies != null) {
-            for (String h : hobbies) {
-                out.println(h + " ");
-            }
-        }
-        out.println("</p>");
-
-        // 第七步:把用户对象存入 request 域,转发到结果页
-        User user = new User(username, email);
-        req.setAttribute("user", user);
-        // 转发到 /result(共享同一个 request)
-        req.getRequestDispatcher("/result").forward(req, resp);
-    }
-
-    // 简单 POJO
-    static class User {
-        String name; String email;
-        User(String n, String e) { name = n; email = e; }
-    }
-}
-\`\`\`
-
-逐行解释:
-
-- \`req.setCharacterEncoding("UTF-8")\`:POST 表单中文不乱码的第一行,**必须在 getParameter 前**。
-- \`req.getParameterValues("hobby")\`:复选框同名多值,返回数组。若没选返回 \`null\`,要先判空。
-- 参数校验后 \`return\`:非法输入早返回,避免后续逻辑出错。生产应用更严格的校验(正则、Bean Validation)。
-- \`req.getHeader("User-Agent")\`:读请求头判断客户端类型。简单判断移动端(不严谨,UA 可伪造)。
-- \`req.setAttribute("user", user)\`:存对象到 request 域,转发链可读。
-- \`getRequestDispatcher("/result").forward(req, resp)\`:转发到 \`/result\` Servlet,地址栏不变,共享 request。
-
-读取 JSON body 的示例:
-
-\`\`\`java
-@WebServlet("/api/user")
-public class JsonApiServlet extends HttpServlet {
+@WebServlet("/form")
+public class FormServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
             throws IOException {
-        // JSON 请求需用字符流读取
-        BufferedReader reader = req.getReader();
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line);
-        }
-        String json = sb.toString();
-        // 用 Jackson 解析:User u = new ObjectMapper().readValue(json, User.class);
-        System.out.println("收到 JSON: " + json);
+        // ★ 必须在 getParameter 之前设编码,解决 POST 中文乱码
+        req.setCharacterEncoding("UTF-8");
+        resp.setContentType("text/html;charset=UTF-8");
+        PrintWriter out = resp.getWriter();
 
-        resp.setContentType("application/json;charset=UTF-8");
-        resp.getWriter().println("{\\"code\\":0,\\"msg\\":\\"ok\\"}");
+        // 1. 读取单值参数
+        String username = req.getParameter("username");
+        out.println("用户名: " + username);
+
+        // 2. 读取多值参数(复选框 checkbox 同名)
+        String[] hobbies = req.getParameterValues("hobby");
+        if (hobbies != null) {
+            out.println("爱好: " + String.join(", ", hobbies));
+        }
+
+        // 3. 读取请求头
+        String ua = req.getHeader("User-Agent");   // 客户端类型
+        String referer = req.getHeader("Referer");   // 来源页
+        out.println("客户端: " + ua);
+
+        // 4. 设置请求属性,供转发目标使用
+        req.setAttribute("processedAt", System.currentTimeMillis());
+
+        // 5. 获取会话
+        HttpSession session = req.getSession();
+        session.setAttribute("user", username);
     }
 }
 \`\`\`
 
-- \`req.getReader()\`:返回 \`BufferedReader\`,适合读文本(JSON、XML)。
-- 注意 \`getReader\` 与 \`getInputStream\` 只能用一个,且只能读一次。
+逐行解释:\`setCharacterEncoding("UTF-8")\` 必须在读取参数前调用,否则已用默认 ISO-8859-1 解码就晚了;\`getParameterValues\` 取同名多值参数(复选框);\`getHeader\` 按名取请求头,返回 null 表示不存在;\`setAttribute\` 存入对象供后续 \`getAttribute\` 读取;\`getSession\` 获取会话,无则创建,数据跨请求保留。
 
-## 对比
+文件上传需在类上加 \`@MultipartConfig\`,用 \`req.getPart("file")\` 获取:
 
-| 跳转方式 | forward(转发) | sendRedirect(重定向) |
+\`\`\`java
+@MultipartConfig   // 开启 multipart 支持
+@WebServlet("/upload")
+public class UploadServlet extends HttpServlet {
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException, ServletException {
+        req.setCharacterEncoding("UTF-8");
+        // getPart 按表单字段名获取上传文件
+        Part filePart = req.getPart("avatar");
+        String fileName = filePart.getSubmittedFileName();   // 原始文件名
+        // 写入磁盘
+        filePart.write("/uploads/" + fileName);
+    }
+}
+\`\`\`
+
+## 对比分析
+
+| 维度 | getParameter | getAttribute |
 | --- | --- | --- |
-| 发起方 | 服务器内部 | 浏览器(服务器返回 302) |
-| 请求数 | 1 次(共享 request) | 2 次(新 request) |
-| 地址栏 | 不变 | 变为目标 URL |
-| 跨应用 | 否(仅本应用内) | 是(可任意 URL) |
-| 传数据 | request 域属性 | URL 参数或 Session |
-| 适合 | 内部页面渲染 | 跳首页、跳外部、避免重复提交 |
+| 来源 | 客户端(查询串/表单体) | 服务端代码 set |
+| 类型 | String(只能字符串) | Object(任意对象) |
+| 可写 | 只读,不可 set | 可读可写 |
+| 作用域 | 整个请求期间 | 整个请求期间(转发共享) |
+| 典型用途 | 读取用户提交的数据 | 在请求链间传递处理结果 |
 
 ## 常见陷阱
 
 | 陷阱 | 原因 | 解决 |
 | --- | --- | --- |
 | POST 中文乱码 | 未设请求编码 | \`getParameter\` 前 \`setCharacterEncoding("UTF-8")\` |
-| getParameterValues 返回 null | 用户没选任何复选框 | 先判 null 再遍历 |
-| getReader 读不到数据 | 已先调 getParameter 解析了表单 | 表单与 JSON 互斥,二选一 |
-| 转发后还写响应 | forward 后容器已提交响应 | forward 后立即 return,不要再 out.write |
-| 乱码出现在 GET 参数 | URL 编码不一致 | Tomcat 配 URIEncoding=UTF-8,或前端 URLEncoder.encode |
-| 转发到外部应用报错 | forward 只能本应用内 | 改用 sendRedirect 跨域跳转 |
-| request 域存大数据没回收 | request 生命周期到响应结束 | 别存大对象,用数据库或缓存 |`,
+| getParameter 返回 null | 参数名拼错或未提交 | 检查表单字段 name 属性 |
+| POST 体读不到参数 | 先读了 getInputStream | 二者只能读一次,优先用 getParameter |
+| 复选框只取到一个值 | 用了 getParameter | 多值用 getParameterValues |
+| 文件上传 getPart 返回 null | 未加 @MultipartConfig | 类上加该注解 |
+| 异步线程里用 request | 请求已结束,对象失效 | 需要的数据拷贝出来再传给线程 |
+| Session 跨域丢 | Cookie 域不匹配 | setCookie 时配 domain |`,
   },
 
   // =========================================================
-  // 第七章:响应处理:HttpServletResponse
+  // 第七章:HttpServletResponse 响应处理
   // =========================================================
   {
     id: "jw-07",
     group: "Servlet 入门",
-    icon: "🔌",
-    title: "响应处理:HttpServletResponse",
-    content: `# 响应处理:HttpServletResponse
+    icon: "📤",
+    title: "HttpServletResponse 响应处理",
+    content: `# HttpServletResponse 响应处理
 
-## 概念讲解
+## 概念解释
 
-### HttpServletResponse 概述
+**HttpServletResponse** 是 Servlet 容器提供的响应对象,开发者通过它向客户端写回数据:状态码、响应头、响应体。它是 Java Web 请求处理的"输出端"。
 
-\`HttpServletResponse\` 是 Servlet 输出响应的入口。容器为每个请求创建一个 response 对象,Servlet 通过它设置状态码、响应头、响应体。响应一旦"提交"(committed,即已发到网络),就不能再改状态码与头了。
+核心能力包括:设置状态码(\`setStatus\`/\`sendError\`)、设置响应头(\`setHeader\`/\`addHeader\`)、设置内容类型与编码(\`setContentType\`)、获取字符输出流(\`getWriter\`)、获取字节输出流(\`getOutputStream\`)、重定向(\`sendRedirect\`)、添加 Cookie(\`addCookie\`)。
 
-\`HttpServletResponse\` 继承自 \`ServletResponse\`,增加 HTTP 特有方法(状态码、HTTP 头)。
+响应体有两种写法:**字符流** \`getWriter()\` 适合写文本(HTML/JSON);**字节流** \`getOutputStream()\` 适合写二进制(图片/PDF/文件下载)。**两者互斥**,只能用一个。
 
-### 处理响应乱码
+## 设计原理
 
-响应乱码与请求乱码类似,根源是编码不一致。响应涉及三步:
+响应头的写入有时机要求:**响应头必须在响应体写入之前设置**。一旦开始写响应体(或调用 flush),Tomcat 会自动提交(commit)响应,此时再设头就无效了——因为头已经发给客户端了。这是新手常踩的坑。
 
-1. **服务器写**:用某字符集把字符串编码成字节。
-2. **网络传输**:字节原样传输。
-3. **浏览器解码**:按某字符集把字节解析成字符。
+\`setContentType("text/html;charset=UTF-8")\` 同时做两件事:设 Content-Type 头告诉浏览器响应格式,设字符集让 Tomcat 用该编码把字符转字节。所以**写中文前必须设**,否则默认 ISO-8859-1 编码导致乱码。
 
-只有三步用同一字符集,才不乱码。控制方法:
+缓冲机制:Tomcat 默认用缓冲区(约 8KB),写到缓冲区未满时不真正发送,允许你修改头。一旦缓冲区满或显式 flush,响应提交,头锁定。\`setBufferSize\` 可调大小,\`reset()\` 可清空缓冲区回滚到初始(但已提交则不能 reset)。
 
-\`\`\`java
-// 方式一:setContentType(同时设 Content-Type 头与响应编码)
-resp.setContentType("text/html;charset=UTF-8");
+状态码语义:\`setStatus(200)\` 设成功状态;\`sendError(404, "资源不存在")\` 发送错误页(容器可能用自定义错误页);\`sendRedirect("/login")\` 触发 302 重定向。
 
-// 方式二:setCharacterEncoding + setContentType(分开设)
-resp.setCharacterEncoding("UTF-8");   // 只设编码
-resp.setContentType("text/html");      // 只设 MIME
-\`\`\`
+## 使用场景
 
-推荐方式一,一行搞定。\`charset=UTF-8\` 既告诉 Tomcat 用 UTF-8 编码响应体,又写入 \`Content-Type\` 头告诉浏览器用什么解码。
+**生成 HTML/JSON**:\`getWriter\` 写文本响应。**文件下载**:\`getOutputStream\` 写字节,配 \`Content-Disposition: attachment\` 头。**重定向**:\`sendRedirect\` 跳转页面。**设置 Cookie**:\`addCookie\` 下发会话标识。**控制缓存**:\`setHeader("Cache-Control", "no-cache")\`。**跨域 CORS**:\`setHeader("Access-Control-Allow-Origin", "*")\`。
 
-**关键时序**:这些设置必须在 \`getWriter()\` **之前**调用!因为 \`getWriter\` 会根据当前编码创建字符流,之后再设编码不生效。
-
-### getWriter 与 getOutputStream
-
-response 有两个输出流,二选一:
-
-- **\`getWriter()\`**:返回 \`PrintWriter\`,字符流,适合输出文本(HTML、JSON、XML)。
-- **\`getOutputStream()\`**:返回 \`ServletOutputStream\`,字节流,适合输出二进制(图片、文件下载、PDF)。
+## 代码示例
 
 \`\`\`java
-// 字符流输出 HTML
-PrintWriter out = resp.getWriter();
-out.println("<html>...</html>");
+@WebServlet("/resp")
+public class RespServlet extends HttpServlet {
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
+        // ★ 必须在 getWriter 之前设 Content-Type 与编码
+        resp.setContentType("text/html;charset=UTF-8");
+        // 设置响应头(如禁缓存)
+        resp.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
 
-// 字节流输出图片
-ServletOutputStream sos = resp.getOutputStream();
-sos.write(imageBytes);
+        PrintWriter out = resp.getWriter();   // 获取字符流
+        out.println("<html><body>");
+        out.println("<h1>响应示例</h1>");
+        out.println("</body></html>");
+    }
+}
 \`\`\`
 
-**不能同时用**:一个 response 只能用一个流,两个都调会抛 \`IllegalStateException\`。
-
-### 响应头设置
-
-\`\`\`java
-resp.setHeader("Content-Type", "text/html");   // 设置(覆盖)
-resp.addHeader("X-Custom", "v1");                // 添加(可多个同名)
-resp.setIntHeader("X-Count", 100);               // 数值头
-resp.setDateHeader("Expires", System.currentTimeMillis());  // 日期头(毫秒)
-\`\`\`
-
-常用响应头:
-
-- \`Content-Type\`:响应体类型与编码(也可 \`setContentType\`)。
-- \`Content-Length\`:字节数(可 \`setContentLength\`)。
-- \`Cache-Control\`:缓存策略(\`no-cache\`、\`max-age=3600\`)。
-- \`Location\`:重定向目标(配合 302)。
-- \`Content-Disposition\`:文件下载(\`attachment; filename=xx.pdf\`)。
-- \`Set-Cookie\`:下发 Cookie(也可 \`resp.addCookie\`)。
-
-### 重定向 sendRedirect
-
-重定向是让浏览器**重新发一次请求**到新地址:
-
-\`\`\`java
-resp.sendRedirect("/app/success");   // 浏览器会跳转到 /app/success
-\`\`\`
-
-底层原理:服务器返回 \`302\` 状态码 + \`Location\` 头,浏览器收到后自动再发一次 GET 到 Location。
-
-特点(与转发对比):
-
-- **两次请求**:原请求结束,浏览器发新请求。
-- **地址栏变化**:看到目标 URL。
-- **新 request**:不共享原 request 域数据(要用 Session 或 URL 参数传)。
-- **可跨应用**:可重定向到任意 URL(外部网站也行)。
-
-适合场景:登录后跳首页、表单提交后跳结果页(避免重复提交)、跳外部链接。
-
-### 响应状态码
-
-\`\`\`java
-resp.setStatus(200);              // 设置 2xx/3xx(普通)
-resp.setStatus(404);              // 客户端错误
-resp.sendError(404, "页面不存在");  // 发送错误页(容器默认错误页)
-resp.sendError(500, "服务器异常");
-\`\`\`
-
-\`setStatus\` 只设状态码,\`sendError\` 还会清空缓冲区并触发错误页处理。生产环境自定义错误页常用 web.xml 的 \`<error-page>\`:
-
-\`\`\`xml
-<error-page>
-    <error-code>404</error-code>
-    <location>/404.html</location>
-</error-page>
-\`\`\`
-
-### 文件下载实现
-
-文件下载是 response 的经典应用。原理:把文件字节写入 \`getOutputStream\`,设 \`Content-Disposition\` 头让浏览器下载而非显示:
+文件下载示例:
 
 \`\`\`java
 @WebServlet("/download")
 public class DownloadServlet extends HttpServlet {
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
-            throws IOException {
-        String filename = "report.pdf";
-        // 设置响应头:让浏览器下载文件
-        resp.setContentType("application/octet-stream");   // 二进制流
-        resp.setHeader("Content-Disposition",
-            "attachment; filename=\\"" + filename + "\\"");
-
-        // 读文件字节,写入响应流
-        String path = "/data/" + filename;
-        FileInputStream fis = new FileInputStream(path);
-        ServletOutputStream out = resp.getOutputStream();
-        byte[] buf = new byte[4096];
-        int n;
-        while ((n = fis.read(buf)) != -1) {
-            out.write(buf, 0, n);
-        }
-        fis.close();
-        out.flush();
-    }
-}
-\`\`\`
-
-关键点:
-
-- \`Content-Type: application/octet-stream\`:通用二进制类型,浏览器不知道怎么打开就下载。
-- \`Content-Disposition: attachment; filename="xxx"\`:\`attachment\` 强制下载,\`filename\` 指定保存名。
-- 中文文件名要做 URL 编码(\`URLEncoder.encode\`),否则部分浏览器乱码。
-
-## 设计原则
-
-### 1. 先设头与编码,再获取输出流
-
-状态码、响应头、编码必须在 \`getWriter/getOutputStream\` **之前**设置。一旦开始写响应体,响应就被"提交"(committed),改头无效。
-
-### 2. 字符流与字节流二选一
-
-文本用 \`getWriter\`,二进制用 \`getOutputStream\`,不要混用。
-
-### 3. 重定向避免重复提交
-
-POST 表单处理后用 \`sendRedirect\` 跳转(PRG 模式:Post-Redirect-Get),防止用户刷新重复提交。
-
-### 4. 大文件下载用流式传输
-
-不要把大文件整个读进内存,用缓冲区分块读写,避免 OOM。
-
-## 使用场景
-
-- **页面渲染**:返回 HTML(传统 JSP 模式)。
-- **JSON API**:返回 \`application/json\`(前后端分离)。
-- **文件下载**:PDF、Excel、图片下载。
-- **图片验证码**:动态生成图片字节返回。
-- **重定向**:登录后跳转、表单提交后跳页。
-
-## 代码逐行讲解
-
-下面演示一个完整的响应处理 Servlet,涵盖多种输出:
-
-\`\`\`java
-package com.example;
-
-import jakarta.servlet.*;
-import jakarta.servlet.http.*;
-import jakarta.servlet.annotation.*;
-import java.io.IOException;
-import java.io.PrintWriter;
-
-@WebServlet("/resp")
-public class ResponseDemoServlet extends HttpServlet {
-
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
-            throws ServletException, IOException {
+            throws IOException {
+        // 读取磁盘文件
+        java.io.File file = new java.io.File("/data/report.pdf");
+        // 设置响应头:告诉浏览器这是附件下载,指定文件名
+        resp.setHeader("Content-Disposition", "attachment; filename=report.pdf");
+        resp.setContentType("application/octet-stream");
+        resp.setContentLengthLong(file.length());   // 响应体大小
 
-        String type = req.getParameter("type");   // ?type=html|json|redirect|download
-
-        switch (type == null ? "html" : type) {
-
-            case "html":
-                // 情况1:输出 HTML 页面
-                // ★ 必须在 getWriter 前设编码
-                resp.setContentType("text/html;charset=UTF-8");
-                // 设置自定义响应头
-                resp.setHeader("X-Powered-By", "MyApp");
-                PrintWriter out = resp.getWriter();
-                out.println("<!DOCTYPE html>");
-                out.println("<html><body>");
-                out.println("<h1>HTML 响应</h1>");
-                out.println("<p>当前时间: " + new java.util.Date() + "</p>");
-                out.println("</body></html>");
-                break;
-
-            case "json":
-                // 情况2:返回 JSON(前后端分离常用)
-                resp.setContentType("application/json;charset=UTF-8");
-                // 禁用缓存(动态 JSON 不应缓存)
-                resp.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-                resp.setHeader("Pragma", "no-cache");
-                resp.setDateHeader("Expires", 0);
-
-                PrintWriter jsonOut = resp.getWriter();
-                // 生产环境用 Jackson/Gson 序列化,这里手写演示
-                jsonOut.println("{");
-                jsonOut.println("  \\"code\\": 0,");
-                jsonOut.println("  \\"msg\\": \\"success\\",");
-                jsonOut.println("  \\"data\\": { \\"name\\": \\"张三\\", \\"age\\": 20 }");
-                jsonOut.println("}");
-                break;
-
-            case "redirect":
-                // 情况3:重定向到首页
-                // 注意路径:建议用 contextPath 拼绝对路径
-                String ctx = req.getContextPath();
-                resp.sendRedirect(ctx + "/index.html");
-                // 重定向后不要继续写响应
-                break;
-
-            case "error":
-                // 情况4:发送错误状态
-                resp.sendError(403, "无权访问");
-                break;
-
-            case "download":
-                // 情况5:文件下载(简化版)
-                resp.setContentType("application/octet-stream");
-                resp.setHeader("Content-Disposition",
-                    "attachment; filename=\\"hello.txt\\"");
-                ServletOutputStream sos = resp.getOutputStream();
-                sos.write("Hello, 这是要下载的文件内容。".getBytes("UTF-8"));
-                sos.flush();
-                break;
-
-            default:
-                resp.setStatus(400);
-                resp.getWriter().println("不支持的 type 参数");
+        // 用字节流写文件
+        try (java.io.OutputStream out = resp.getOutputStream();
+             java.io.FileInputStream in = new java.io.FileInputStream(file)) {
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) != -1) {
+                out.write(buf, 0, n);   // 边读边写,避免一次性加载大文件
+            }
         }
     }
 }
 \`\`\`
 
-逐行解释:
-
-- \`switch (type)\`:根据参数演示不同响应类型,实际项目按需选一种。
-- \`resp.setHeader("X-Powered-By", "MyApp")\`:自定义响应头,可用 \`X-\` 前缀(虽新规范不强制)。
-- JSON 场景设 \`Cache-Control: no-cache\`:动态数据不应被浏览器/CDN 缓存。
-- \`resp.sendRedirect(ctx + "/index.html")\`:用 \`contextPath\` 拼绝对路径,避免不同部署路径下 404。
-- \`resp.sendError(403, ...)\`:触发错误页,403 表示禁止访问。
-- 下载场景:\`Content-Disposition: attachment\` 强制下载,文件名用双引号包裹。
-
-文件下载的中文文件名处理:
+JSON 响应示例(前后端分离常用):
 
 \`\`\`java
-String filename = "报表.pdf";
-// 不同浏览器对中文文件名处理不同,通用做法:URL 编码
-String encoded = java.net.URLEncoder.encode(filename, "UTF-8").replace("+", "%20");
-resp.setHeader("Content-Disposition",
-    "attachment; filename=\\"" + encoded + "\\"; filename*=UTF-8''" + encoded);
+@WebServlet("/api/user")
+public class UserApiServlet extends HttpServlet {
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
+        resp.setContentType("application/json;charset=UTF-8");
+        PrintWriter out = resp.getWriter();
+        // 手写 JSON(实际项目用 Jackson/Gson 序列化)
+        out.println("{\\"name\\":\\"张三\\",\\"age\\":20}");
+    }
+}
 \`\`\`
 
-- \`filename="xxx"\`:旧浏览器用,需编码。
-- \`filename*=UTF-8''xxx\`:RFC 5987 标准,现代浏览器优先用,可正确显示中文。
+逐行解释:\`setContentType\` 必须在 \`getWriter\` 之前调;\`setHeader("Content-Disposition", "attachment; filename=...")\` 触发浏览器下载而非内联显示;\`setContentLengthLong\` 让浏览器显示下载进度;\`application/octet-stream\` 是通用二进制类型;JSON 响应用 \`application/json\`,转义引号用 \`\\"。\`
 
-## 对比
+## 对比分析
 
-| 输出方式 | getWriter | getOutputStream | sendRedirect | sendError |
-| --- | --- | --- | --- | --- |
-| 类型 | 字符流 | 字节流 | 重定向 | 错误响应 |
-| 适合 | HTML/JSON 文本 | 图片/文件二进制 | 跳页 | 报错 |
-| 可同时用 | 否(二选一) | 否 | 否 | 否 |
-| 提交后可改 | 否 | 否 | 否 | 否 |
+| 维度 | getWriter() | getOutputStream() |
+| --- | --- | --- |
+| 数据类型 | 字符(文本) | 字节(二进制) |
+| 适合内容 | HTML、JSON、纯文本 | 图片、PDF、文件下载 |
+| 编码 | 按 contentType 的 charset 自动转码 | 直接写字节,需自己处理编码 |
+| 互斥性 | 与 getOutputStream 互斥 | 与 getWriter 互斥 |
+| 缓冲 | 有缓冲区 | 有缓冲区 |
 
 ## 常见陷阱
 
 | 陷阱 | 原因 | 解决 |
 | --- | --- | --- |
-| 响应中文乱码 | 未设编码或设在 getWriter 之后 | \`getWriter\` 前 \`setContentType("...;charset=UTF-8")\` |
-| IllegalStateException | getWriter 与 getOutputStream 都调 | 一个 response 只用一个流 |
-| 响应已提交无法设头 | 已开始写响应体才设头 | 所有头与编码在写响应前设 |
-| 重定向后还写响应 | 重定向是结束当前响应 | sendRedirect 后立即 return |
-| 重定向路径错误 | 用相对路径在不同部署下失效 | 用 contextPath 拼绝对路径 |
-| 下载文件名中文乱码 | 浏览器对中文文件名编码不同 | URLEncoder.encode + filename* 语法 |
-| 大文件下载 OOM | 整个文件读进内存 | 用缓冲区分块流式读写 |
-| JSON 没禁缓存被 CDN 缓存 | 未设 Cache-Control | 动态 JSON 设 no-cache/no-store |`,
+| 响应头不生效 | 写完响应体才设头,已提交 | 头必须在 getWriter/写体之前设 |
+| 中文乱码 | 未设 charset | \`setContentType("...;charset=UTF-8")\` |
+| getOutputStream 与 getWriter 冲突 | 同一响应同时调 | 只能用一个 |
+| 大文件 OOM | 一次性读入内存 | 用缓冲边读边写 |
+| 下载文件名中文乱码 | filename 头未编码 | 用 \`URLEncoder.encode\` 或 RFC 5987 编码 |
+| 已提交后 reset 抛异常 | 响应已发送,无法回滚 | reset 只能在提交前调 |
+| flush 后改头无效 | 已提交锁定 | 规划好头部再写体 |`,
   },
 
   // =========================================================
-  // 第八章:会话管理:Cookie 与 HttpSession
+  // 第八章:请求转发与重定向
   // =========================================================
   {
     id: "jw-08",
     group: "Servlet 入门",
-    icon: "🔌",
-    title: "会话管理:Cookie 与 HttpSession",
-    content: `# 会话管理:Cookie 与 HttpSession
+    icon: "🔀",
+    title: "请求转发与重定向",
+    content: `# 请求转发与重定向
 
-## 概念讲解
+## 概念解释
 
-### 为什么需要会话管理
+Web 应用中,一个 Servlet 处理完请求后,常需要把请求"转交"给另一个资源(Servlet/JSP/HTML)。Java Web 提供两种机制:**请求转发(forward)** 与 **重定向(redirect)**。它们看似都做"跳转",机制却截然不同。
 
-HTTP 是**无状态**协议:服务器处理完请求就"忘记"了客户端。但很多业务需要"记住"用户:登录后保持登录态、购物车跨页面保留商品、记住上次选择的语言。**会话管理**就是在无状态的 HTTP 上构建"有状态"体验的机制。
+**请求转发(forward)**:服务器内部行为。当前 Servlet 把请求与响应对象原封不动交给同一服务器内的另一个资源处理,**客户端完全无感知**。浏览器地址栏不变,只发了一次请求。
 
-两种主流方案:
+**重定向(redirect)**:服务器告诉浏览器"去访问另一个地址"。浏览器收到 302 响应后,**自动发起新的请求**到目标 URL。地址栏会变成新 URL,实际发了两次请求。
 
-- **Cookie**:数据存在**客户端**(浏览器)。
-- **Session**:数据存在**服务端**,通过一个 ID 关联客户端。
+理解二者的区别是 Java Web 的关键知识点,直接影响数据传递、地址栏、性能与场景选择。
 
-实际中常组合使用:Session 在服务端存数据,用 Cookie 携带 Session ID。
+## 设计原理
 
-### Cookie 详解
+**转发**通过 \`RequestDispatcher\` 实现:\`req.getRequestDispatcher("/target").forward(req, resp)\`。转发发生在**服务器内部**,同一个 request/response 对象被传递,所以 \`request\` 域属性(\`setAttribute\`)能在两个资源间共享。转发只能转到**同一 Web 应用**内的资源,不能跨域。
 
-**Cookie** 是服务器通过响应头 \`Set-Cookie\` 下发到浏览器的一小段数据。浏览器保存后,后续对同域的请求会自动通过 \`Cookie\` 请求头带回。
+转发流程:浏览器请求 /a → Servlet A 处理 → A 设置属性 → A 调 forward → Servlet B 处理 → B 生成响应 → 浏览器收到响应(以为来自 /a)。
 
-**Cookie 的属性**:
+**重定向**通过 \`resp.sendRedirect("/target")\` 实现。它实际是设置 302 状态码与 \`Location\` 响应头,浏览器据此重新发请求。
 
-| 属性 | 作用 | 示例 |
-| --- | --- | --- |
-| \`Name=Value\` | 键值对 | \`user=zhangsan\` |
-| \`Max-Age\` | 有效期(秒),到期自动删除 | \`Max-Age=3600\`(1小时) |
-| \`Expires\` | 过期时间点(旧属性) | \`Expires=Wed, 09 Jun 2026 ...\` |
-| \`Path\` | 生效路径 | \`Path=/app\`(只 /app 下请求带) |
-| \`Domain\` | 生效域名 | \`Domain=.example.com\`(子域共享) |
-| \`Secure\` | 仅 HTTPS 传输 | \`Secure\` |
-| \`HttpOnly\` | JS 无法读取(防 XSS) | \`HttpOnly\` |
-| \`SameSite\` | 跨站发送策略(防 CSRF) | \`SameSite=Lax\` |
+重定向流程:浏览器请求 /a → Servlet A 返回 302 + Location: /b → 浏览器自动请求 /b → Servlet B 处理 → 浏览器收到响应(地址栏显示 /b)。
 
-**Cookie 的创建与读取**:
-
-\`\`\`java
-// 创建 Cookie
-Cookie cookie = new Cookie("user", "zhangsan");
-cookie.setMaxAge(3600);        // 1小时后过期
-cookie.setPath("/");            // 对全站生效
-cookie.setHttpOnly(true);        // JS 读不到,防 XSS
-cookie.setSecure(true);         // 仅 HTTPS 发送
-resp.addCookie(cookie);         // 通过 Set-Cookie 头下发
-
-// 读取 Cookie(从请求中)
-Cookie[] cookies = req.getCookies();
-if (cookies != null) {
-    for (Cookie c : cookies) {
-        if ("user".equals(c.getName())) {
-            String value = c.getValue();   // zhangsan
-        }
-    }
-}
-
-// 删除 Cookie:设 MaxAge=0 再下发
-Cookie del = new Cookie("user", "");
-del.setMaxAge(0);              // 立即过期
-del.setPath("/");               // 路径要和创建时一致!
-resp.addCookie(del);
-\`\`\`
-
-**关键点**:
-
-- Cookie 有**大小限制**(约 4KB),且**每个域名 cookie 总数有限**(约 50 个)。
-- **删除 Cookie 必须设相同 Path 与 Domain**,否则浏览器视为不同 cookie,删不掉。
-- \`MaxAge < 0\`:会话级(浏览器关闭就删);\`MaxAge = 0\`:立即删;\`MaxAge > 0\`:存活指定秒。
-- \`HttpOnly\`:设了之后 \`document.cookie\` 读不到,防 XSS 窃取。**敏感 Cookie 必加**。
-
-### Session 原理(JSESSIONID)
-
-**HttpSession** 是服务端保存的会话对象。它的工作原理:
-
-\`\`\`
-1. 用户首次访问 → 服务器调 req.getSession() → 创建 Session,生成唯一 ID
-2. 服务器通过 Set-Cookie: JSESSIONID=xxx 下发 ID 给浏览器
-3. 后续请求浏览器自动带 Cookie: JSESSIONID=xxx
-4. 服务器据 ID 找到对应 Session → 读取/写入数据
-\`\`\`
-
-关键:\`JSESSIONID\` 是默认的 Cookie 名,Tomcat 用它关联 Session。如果浏览器禁用 Cookie,可用 **URL 重写**(\`resp.encodeURL(url)\`)把 ID 拼在 URL 上(\`;jsessionid=xxx\`),但现代应用很少这么做了。
-
-### HttpSession API
-
-\`\`\`java
-// 获取或创建 Session
-HttpSession session = req.getSession();        // 没有就创建
-HttpSession session = req.getSession(false);   // 没有返回 null(不创建)
-
-// 存取数据(任意 Java 对象)
-session.setAttribute("user", userObj);
-Object u = session.getAttribute("user");   // 需强转
-session.removeAttribute("user");
-
-// 其他方法
-session.getId();              // 会话 ID
-session.getCreationTime();    // 创建时间(毫秒)
-session.getLastAccessedTime(); // 最后访问时间
-session.setMaxInactiveInterval(1800);  // 30 分钟不活动则失效
-session.isNew();              // 是否本次新建
-
-// 销毁 Session(注销登录)
-session.invalidate();         // 清空所有数据并销毁
-\`\`\`
-
-Session 数据存在服务端内存,可存任意大小的对象(但要考虑内存占用)。一个用户一个 Session,Session 间数据隔离。
-
-### Session 超时配置
-
-Session 不能永久占用内存,需要过期机制:
-
-**方式一:web.xml(全局)**
-
-\`\`\`xml
-<session-config>
-    <session-timeout>30</session-timeout>   <!-- 单位:分钟 -->
-</session-config>
-\`\`\`
-
-**方式二:代码(单个 Session)**
-
-\`\`\`java
-session.setMaxInactiveInterval(30 * 60);   // 单位:秒,30 分钟
-\`\`\`
-
-**方式三:Tomcat web.xml(全局默认)**
-
-\`conf/web.xml\` 里默认 30 分钟。
-
-超时机制:\`MaxInactiveInterval\` 是"两次请求间的最大间隔",超过就失效。每次访问会重置计时。设 \`0\` 或负数表示永不过期(不推荐,易内存泄漏)。
-
-### Session 持久化
-
-Tomcat 支持把 Session 持久化到磁盘,重启不丢失。配置 \`conf/context.xml\` 的 \`<Manager>\` 元素。但实际生产更多用 Redis 等外部存储做 Session 共享(见下)。
-
-### 分布式 Session 问题预览
-
-当应用部署到多台服务器(集群),问题来了:
-
-\`\`\`
-用户登录 → 请求落到服务器A → Session 存在 A 的内存
-下次请求 → 负载均衡到服务器B → B 没有 Session → 用户被踢出!
-\`\`\`
-
-解决方案:
-
-1. **Session 粘性(Sticky Session)**:负载均衡按 JSESSIONID 固定路由到同一台。简单但有单点风险。
-2. **Session 复制**:Tomcat 集群间同步 Session。开销大,节点多时不适用。
-3. **集中存储(主流)**:Session 存 Redis 等共享存储,所有服务器都访问同一份。Spring Session + Redis 是现代标准方案。
-4. **无状态令牌(JWT)**:不用 Session,身份信息编码在令牌里由客户端携带,服务端无状态。彻底解决扩展问题。
-
-## 设计原则
-
-### 1. 敏感数据存 Session,非敏感存 Cookie
-
-登录状态、用户 ID 存 Session(服务端,安全);语言偏好、最近浏览等放 Cookie(省服务端内存)。
-
-### 2. Cookie 必加 HttpOnly + Secure
-
-防 XSS 窃取(HttpOnly)、防明文传输(Secure)、防 CSRF(SameSite=Lax)。
-
-### 3. Session 数据尽量小
-
-Session 占服务端内存,不要存大集合。需要的大数据存 Redis,Session 只存 ID。
-
-### 4. 注销要 invalidate
-
-登出时调 \`session.invalidate()\`,不要只删某个属性,确保彻底销毁。
-
-### 5. 分布式用集中存储或 JWT
-
-集群环境避免内存 Session,用 Redis Session 或 JWT 无状态方案。
+为什么有两种机制?转发保留请求上下文(适合内部协作,如 Servlet 处理后转 JSP 渲染),重定向制造新请求(适合跳到外部、避免重复提交、URL 变更需要可见)。表单 POST 后用重定向(PRG 模式:Post-Redirect-Get),刷新不会重复提交。
 
 ## 使用场景
 
-- **登录态保持**:登录后 Session 存用户对象,后续请求据 Session 判断已登录。
-- **购物车**:未登录也可用 Session 存购物车(登录后合并到账户)。
-- **验证码**:生成后存 Session,提交时比对。
-- **记住我**:Cookie 存长期令牌,下次自动登录。
-- **个性化**:Cookie 存语言、主题偏好。
+**转发适合**:Servlet 处理业务后转 JSP 渲染页面;过滤器链中传递请求;同一应用内资源协作;需要共享 request 数据的场景。地址栏不变,用户看不到内部结构(更安全)。
 
-## 代码逐行讲解
+**重定向适合**:表单提交后跳转(防刷新重复提交);跳到外部站点;跳到不同 Web 应用;需要地址栏更新的场景(如登录后跳首页);/book/123 → /book?id=123 的 URL 美化。
 
-下面是一个登录登出 + 访问计数的完整示例:
+## 代码示例
+
+转发示例(Servlet 处理后转 JSP 渲染):
 
 \`\`\`java
-package com.example;
-
-import jakarta.servlet.*;
-import jakarta.servlet.http.*;
-import jakarta.servlet.annotation.*;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.concurrent.atomic.AtomicInteger;
-
-@WebServlet("/login")
-public class LoginServlet extends HttpServlet {
-
+@WebServlet("/list")
+public class ListServlet extends HttpServlet {
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp)
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
-        req.setCharacterEncoding("UTF-8");
-        resp.setContentType("text/html;charset=UTF-8");
+        // 1. 业务处理:查询数据
+        List<String> items = List.of("苹果", "香蕉", "橙子");
 
-        String username = req.getParameter("username");
-        String password = req.getParameter("password");
-        String remember = req.getParameter("remember");  // 记住我复选框
+        // 2. 把数据存入 request 域,供转发目标使用
+        req.setAttribute("items", items);
 
-        // 1. 简单校验(实际用数据库 + 加密)
-        if (!"admin".equals(username) || !"123456".equals(password)) {
-            resp.getWriter().println("<p>用户名或密码错误</p>");
-            return;
-        }
-
-        // 2. 登录成功,创建/获取 Session
-        HttpSession session = req.getSession();
-        session.setAttribute("user", username);     // 存登录用户
-        session.setMaxInactiveInterval(30 * 60);     // 30 分钟不活动失效
-
-        // 3. 记住我:用 Cookie 存长期令牌
-        if ("on".equals(remember)) {
-            Cookie tokenCookie = new Cookie("authToken", "some-jwt-token-here");
-            tokenCookie.setMaxAge(7 * 24 * 3600);   // 7 天
-            tokenCookie.setPath("/");
-            tokenCookie.setHttpOnly(true);           // 防 XSS
-            tokenCookie.setSecure(req.isSecure());    // HTTPS 时才 Secure
-            resp.addCookie(tokenCookie);
-        }
-
-        // 4. 重定向到首页(PRG 模式,防重复提交)
-        resp.sendRedirect(req.getContextPath() + "/home");
-    }
-}
-
-// 首页:显示登录信息与访问计数
-@WebServlet("/home")
-class HomeServlet extends HttpServlet {
-    // 应用级访问计数(ServletContext 属性)
-    @Override
-    public void init() {
-        getServletContext().setAttribute("visitCount", new AtomicInteger(0));
-    }
-
-    @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
-            throws IOException {
-        resp.setContentType("text/html;charset=UTF-8");
-        HttpSession session = req.getSession(false);   // 不创建
-
-        // 未登录拦截
-        if (session == null || session.getAttribute("user") == null) {
-            resp.sendRedirect(req.getContextPath() + "/login.html");
-            return;
-        }
-
-        // 计数+1
-        AtomicInteger count = (AtomicInteger) getServletContext().getAttribute("visitCount");
-        int total = count.incrementAndGet();
-
-        PrintWriter out = resp.getWriter();
-        out.println("<h1>欢迎," + session.getAttribute("user") + "</h1>");
-        out.println("<p>本应用总访问量: " + total + "</p>");
-        out.println("<p>Session ID: " + session.getId() + "</p>");
-        out.println("<p>上次访问: " + new java.util.Date(session.getLastAccessedTime()) + "</p>");
-        out.println("<a href='/app/logout'>退出</a>");
-    }
-}
-
-// 登出:销毁 Session
-@WebServlet("/logout")
-class LogoutServlet extends HttpServlet {
-    @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
-            throws IOException {
-        HttpSession session = req.getSession(false);
-        if (session != null) {
-            session.invalidate();   // 彻底销毁 Session
-        }
-        // 清除记住我 Cookie
-        Cookie del = new Cookie("authToken", "");
-        del.setMaxAge(0);
-        del.setPath("/");
-        del.setHttpOnly(true);
-        resp.addCookie(del);
-
-        resp.sendRedirect(req.getContextPath() + "/login.html");
+        // 3. 转发到 JSP 渲染(地址栏不变,仍是 /list)
+        req.getRequestDispatcher("/WEB-INF/list.jsp").forward(req, resp);
     }
 }
 \`\`\`
 
-逐行解释:
+重定向示例(登录后跳首页):
 
-- \`req.getSession()\`:登录时获取或创建 Session。容器自动通过 \`Set-Cookie: JSESSIONID\` 把 ID 发给浏览器。
-- \`session.setAttribute("user", username)\`:存登录用户名,后续请求可据此判断已登录。
-- \`session.setMaxInactiveInterval(30 * 60)\`:30 分钟无活动自动失效。\`0\` 表示立即失效,负数表示永不超时。
-- \`req.getParameter("remember")\`:复选框选中时值是 \`on\`(或自定义 value),未选则参数不存在。
-- \`tokenCookie.setHttpOnly(true)\`:**记住我 Cookie 必加**,否则 JS 可读取被窃。
-- \`req.getSession(false)\`:首页用 \`false\`,没 Session 返回 null 而非创建新空 Session(否则无法判断未登录)。
-- \`session.invalidate()\`:登出时彻底销毁,清空所有数据,后续请求需重新登录。
-- 删除 Cookie 时 \`setMaxAge(0)\` + **相同 Path**,浏览器才会删原 Cookie。
+\`\`\`java
+@WebServlet("/login")
+public class LoginServlet extends HttpServlet {
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
+        String user = req.getParameter("user");
+        String pwd = req.getParameter("pwd");
 
-## 对比
+        if (checkLogin(user, pwd)) {
+            // ★ 登录成功用重定向跳首页,避免刷新重复提交表单
+            resp.sendRedirect("/index");
+        } else {
+            // 失败也用重定向回登录页
+            resp.sendRedirect("/login.html?error=1");
+        }
+    }
 
-| 维度 | Cookie | HttpSession |
+    private boolean checkLogin(String u, String p) {
+        return "admin".equals(u) && "123".equals(p);
+    }
+}
+\`\`\`
+
+JSP 中读取转发来的属性(\`/WEB-INF/list.jsp\`):
+
+\`\`\`html
+<%@ page contentType="text/html;charset=UTF-8" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>
+<ul>
+    <!-- 用 EL 表达式读取 request 域的 items 属性 -->
+    <c:forEach items="\${items}" var="it">
+        <li>\${it}</li>
+    </c:forEach>
+</ul>
+\`\`\`
+
+逐行解释:\`getRequestDispatcher("/WEB-INF/list.jsp")\` 获取转发器,路径以 /\` 开头表示相对上下文;\`forward(req, resp)\` 把控制权交给目标,之后的代码不再执行;\`sendRedirect("/index")\` 触发 302,浏览器自动跳转;\`/WEB-INF/\` 下的资源**只能通过转发访问**,客户端直接访问会 404,这是安全设计。注意 EL 表达式 \`\${items}\` 里的 \`$\` 必须转义为 \\\$,否则 JS 模板字符串会误当插值。
+
+## 对比分析
+
+| 维度 | 请求转发(forward) | 重定向(redirect) |
 | --- | --- | --- |
-| 存储位置 | 客户端(浏览器) | 服务端(内存/Redis) |
-| 大小限制 | 约 4KB/个 | 理论无限制(受内存) |
-| 安全性 | 低(客户端可改) | 高(服务端可控) |
-| 性能 | 不占服务端内存,每次请求携带 | 占内存,但传输小(仅 ID) |
-| 生命周期 | 可长期(Max-Age) | 默认会话级或短超时 |
-| 跨域 | 受同源策略限制 | 通过 ID Cookie 关联,跨域需特殊处理 |
-| 适合 | 偏好、非敏感令牌 | 登录态、购物车 |
+| 发起方 | 服务器内部 | 浏览器(收到 302 后) |
+| 请求次数 | 1 次 | 2 次 |
+| 地址栏 | 不变 | 变为新 URL |
+| request 域 | 共享(同一 request) | 不共享(新 request) |
+| 跨应用 | 不能,仅限同应用 | 可以,跳任意 URL |
+| 速度 | 快(无浏览器往返) | 慢(多一次往返) |
+| 典型场景 | Servlet→JSP 渲染 | 登录跳转、防重复提交 |
 
 ## 常见陷阱
 
 | 陷阱 | 原因 | 解决 |
 | --- | --- | --- |
-| Cookie 删不掉 | Path/Domain 与创建时不一致 | 删除时设相同 Path 与 Domain |
-| Cookie 被 JS 读取 | 未设 HttpOnly | 敏感 Cookie 设 \`setHttpOnly(true)\` |
-| 登出后仍能访问 | 只 removeAttribute 未 invalidate | 用 \`session.invalidate()\` 彻底销毁 |
-| Session 丢失(集群) | 多机 Session 不共享 | 用 Redis Session 或 JWT |
-| Session 占满内存 | 存大对象或永不超时 | 数据小、设合理超时、用缓存 |
-| getSession(false) 误判 | 新建空 Session 也算"已登录" | 用 false 不创建,再判属性 |
-| JSESSIONID 泄露 | URL 重写导致 ID 出现在日志 | 禁用 URL 重写,强制用 Cookie |
-| CSRF 攻击 | Cookie 自动携带被利用 | 设 \`SameSite=Lax\`,加 CSRF Token |`,
+| 转发后 request 属性读不到 | 用了重定向而非转发 | 共享数据用 forward |
+| 转发后地址栏没变 | 转发本就不变 | 想改地址栏用 redirect |
+| 重定向丢数据 | 新请求,request 域清空 | 用 Session 或 URL 参数传递 |
+| forward 后还写响应 | forward 已交出控制 | forward 后不应再写体 |
+| 直接访问 /WEB-INF 下 JSP 404 | 安全保护设计 | 只能通过转发访问 |
+| 重定向到外部丢失 Session | 跨域 Cookie 不带 | Session ID 拼到 URL |
+| 转发路径写错 404 | 相对路径解析错 | 用绝对路径(以 / 开头) |`,
   },
 ];

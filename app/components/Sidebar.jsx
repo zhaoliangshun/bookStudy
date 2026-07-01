@@ -57,6 +57,7 @@ const BOOK_CATEGORIES = [
       { path: "/fastapi", label: "FastAPI", icon: "⚡" },
       { path: "/java", label: "Java", icon: "☕" },
       { path: "/java-web", label: "Java Web", icon: "🌐" },
+      { path: "/leetcode", label: "算法面试200题", icon: "📝" },
       { path: "/csharp", label: "C#", icon: "🟪" },
       { path: "/go", label: "Go", icon: "🐹" },
       { path: "/sass", label: "Sass", icon: "💅" },
