@@ -1,859 +1,768 @@
 // =============================================================
-// AI Agent开发实战 - 第三批章节(第三部分,共 4 章)
+// AI Agent 应用开发实战 - 第三批章节（OpenAI API，共 4 章）
+// 第 9-12 章：SDK 安装与首次调用 / Chat Completions / 流式响应 / 参数调优
 // =============================================================
 
-const chapters = [
+export const chapters = [
   {
-    id: 'a-ch09',
-    group: '第三部分 主流Agent框架',
-    icon: '🔗',
-    title: 'LangChain入门——构建Chain与Agent',
-    content: `## 第九章　LangChain入门——构建Chain与Agent
+    id: 'openai-install',
+    group: 'OpenAI API',
+    icon: '📦',
+    title: 'OpenAI SDK 安装与首次调用',
+    content: `## OpenAI SDK 安装与首次调用
 
-### 9.1 LangChain 是什么
+理论讲再多，不如亲手调一次 API。从本章开始，我们正式进入代码实战，用 OpenAI 官方 SDK 把第一个请求跑通。本章手把手带你完成 SDK 安装、Key 配置、第一个调用和错误处理。
 
-LangChain 是目前最具影响力的 LLM 应用开发框架之一,由 Harrison Chase 在 2022 年底开源。它的核心理念是:**把"大模型 + 数据 + 工具 + 记忆"组装成可复用、可编排的组件**,让开发者像搭积木一样构建复杂的 AI 应用。
+### 一、openai 库安装
 
-LangChain 解决了一个关键痛点:直接调用 OpenAI API 写应用,代码很快就会变成"面条式"的——Prompt、解析、重试、工具调用、上下文记忆全部耦合在一起。LangChain 把这些环节抽象成独立组件,通过统一的接口组合起来。
+OpenAI 官方 Python SDK 就是 \`openai\` 这个包。1.0 版本后 API 有大改（从函数式改为客户端式），本书基于 1.x 版本讲解。
 
-> **核心理念**:Chain(链)是 LangChain 的灵魂——把"输入处理 → 模型调用 → 输出解析"这一流程标准化,任何环节都可以替换、组合、嵌套。
+\`\`\`bash
+# 激活虚拟环境后安装
+pip install openai
 
-### 9.2 五大核心概念
+# 建议固定版本，避免 API 变动导致代码失效
+pip install "openai>=1.0"
 
-LangChain 的世界观由五个核心概念支撑,理解它们就掌握了 80% 的内容。
-
-**1. Model(模型)**
-统一的模型抽象层,屏蔽不同厂商差异:
-
-\`\`\`python
-from langchain_openai import ChatOpenAI
-from langchain_anthropic import ChatAnthropic
-
-# 同一接口,不同后端
-llm_openai = ChatOpenAI(model='gpt-4o', temperature=0)
-llm_claude = ChatAnthropic(model='claude-3-5-sonnet-20241022')
-
-# 切换模型,业务代码无需改动
-llm = llm_openai
-response = llm.invoke('用一句话解释什么是 Agent')
+# 验证安装成功
+python -c "import openai; print(openai.__version__)"
 \`\`\`
 
-**2. Prompt(提示词)**
-PromptTemplate 把变量插值与模板管理统一起来,支持部分插值和组合:
+### 二、API Key 获取
 
-\`\`\`python
-from langchain_core.prompts import ChatPromptTemplate
+API Key 是调用 OpenAI 服务的凭证，**每个 key 对应一个账号的额度**。获取步骤：
 
-prompt = ChatPromptTemplate.from_messages([
-    ('system', '你是一名{role},回答风格要{style}。'),
-    ('user', '{question}'),
-])
+1. 注册 OpenAI 账号（openai.com）。
+2. 进入平台后台，创建 API Key（形如 \`sk-xxxx\`）。
+3. **充值额度**：新账号有少量免费额度，正式使用需绑定信用卡充值。
+4. **妥善保管**：Key 一旦泄露会被盗刷，只放 .env，绝不硬编码、绝不提交 Git。
 
-# 部分插值:先固定 system 角色,后续再填 user
-partial = prompt.partial(role='Python 老师', style='幽默')
-chain = partial | llm
+\`\`\`bash
+# .env 文件
+OPENAI_API_KEY=sk-你的真实key
 \`\`\`
 
-**3. Chain(链)**
-链是把多个组件串联起来的执行单元。在 LangChain 0.1+ 时代,链的实现统一为 LCEL 表达式语言(下节详述)。
+### 三、环境变量配置
 
-**4. Memory(记忆)**
-Memory 负责跨轮次保存对话上下文。常用实现:
-- \`ConversationBufferMemory\`:保存全部历史,简单但 token 膨胀快
-- \`ConversationBufferWindowMemory\`:只保留最近 k 轮
-- \`ConversationSummaryMemory\`:用模型把历史压缩成摘要
-- \`VectorStoreRetrieverMemory\`:把历史向量化,按需检索
-
-**5. Tool(工具)**
-Tool 是 Agent 调用外部能力的统一抽象,任何函数都能被包装成 Tool:
+SDK 默认读取环境变量 \`OPENAI_API_KEY\`，所以配好环境变量后代码里不用显式传 key。
 
 \`\`\`python
-from langchain_core.tools import tool
+# config.py —— 统一配置
+import os
+from dotenv import load_dotenv
 
-@tool
-def get_weather(city: str) -> str:
-    """查询指定城市的实时天气。
+load_dotenv()  # 从 .env 加载
 
-    Args:
-        city: 城市中文名,例如"北京"
-    """
-    # 实际接入天气 API
-    return f'{city}今天晴,气温 22℃'
-
-# Tool 自带 schema,模型可识别参数
-print(get_weather.name)        # get_weather
-print(get_weather.description) # 查询指定城市的实时天气...
+# SDK 会自动读取这个环境变量
+# 也可以在代码里显式传给客户端
 \`\`\`
 
-### 9.3 LCEL 表达式语言
+\`\`\`bash
+# 也可以在终端临时设置（不推荐长期用，重启终端会丢）
+export OPENAI_API_KEY=sk-你的key
+\`\`\`
 
-LCEL(LangChain Expression Language)是 LangChain 推荐的链式语法,用管道符 \`|\` 把组件串联起来。它的优势在于:
+### 四、第一个调用示例
 
-- **流式输出**原生支持,无需额外改造
-- **异步/同步**同一份代码两种调用方式
-- **批处理**通过 \`batch\` 自动并行
-- **回退机制**用 \`.with_fallbacks()\` 配置降级
-
-下面是一个典型的 LCEL 链:
+万事俱备，跑第一个请求：
 
 \`\`\`python
-from langchain_core.output_parsers import StrOutputParser
+# first_call.py —— OpenAI 首次调用
+import os
+from dotenv import load_dotenv
+from openai import OpenAI
 
-# 经典 RAG 三段式链
-chain = (
-    {"context": retriever, "question": RunnablePassthrough()}
-    | prompt
-    | llm
-    | StrOutputParser()
+# 1. 加载环境变量（读取 .env 中的 OPENAI_API_KEY）
+load_dotenv()
+
+# 2. 创建客户端（自动用环境变量里的 key）
+client = OpenAI()
+
+# 3. 发起聊天请求
+response = client.chat.completions.create(
+    model="gpt-4o-mini",          # 用的模型
+    messages=[                     # 消息列表
+        {"role": "system", "content": "你是一个友好的助手。"},
+        {"role": "user", "content": "用一句话介绍你自己"}
+    ]
 )
 
-# 同步调用
-answer = chain.invoke('LangChain 的作者是谁?')
+# 4. 取出回答
+answer = response.choices[0].message.content
+print("回答：", answer)
 
-# 流式输出
-for chunk in chain.stream('详细介绍 LangChain'):
-    print(chunk, end='', flush=True)
-
-# 批处理
-answers = chain.batch([
-    '什么是 LCEL?',
-    'Memory 有哪些类型?',
-    '如何自定义 Tool?'
-])
+# 5. 查看 token 用量
+print("输入token：", response.usage.prompt_tokens)
+print("输出token：", response.usage.completion_tokens)
+print("总token：", response.usage.total_tokens)
 \`\`\`
 
-> **LCEL 的本质**:每个组件都实现 \`Runnable\` 接口(\`invoke\`/\`stream\`/\`batch\`/\`ainvoke\`),管道符 \`|\` 把上一个 Runnable 的输出作为下一个的输入。这种"约定大于配置"的设计让组件可任意组合。
+跑通后你会看到模型回答和 token 统计，说明调用链路完全打通。
 
-### 9.4 构建第一个 Agent
+### 五、消息结构：role + content
 
-把 LLM 升级为"会主动调用工具的决策者",就得到了 Agent。Agent 的运行循环是:**接收任务 → 思考是否需要工具 → 调用工具 → 观察结果 → 继续思考 → 给出最终答案**。
+OpenAI 的 Chat API 用 **消息列表（messages）** 描述对话，每条消息有 \`role\` 和 \`content\`：
 
 \`\`\`python
-from langchain.agents import create_tool_calling_agent, AgentExecutor
-from langchain_core.tools import tool
-
-@tool
-def add(a: float, b: float) -> float:
-    """两个数相加,返回和。"""
-    return a + b
-
-@tool
-def multiply(a: float, b: float) -> float:
-    """两个数相乘,返回积。"""
-    return a * b
-
-tools = [add, multiply]
-
-# Agent 提示词模板
-prompt = ChatPromptTemplate.from_messages([
-    ('system', '你是一个会使用工具的数学助手。'),
-    ('placeholder', '{chat_history}'),
-    ('user', '{input}'),
-    ('placeholder', '{agent_scratchpad}'),
-])
-
-llm = ChatOpenAI(model='gpt-4o', temperature=0)
-agent = create_tool_calling_agent(llm, tools, prompt)
-
-# AgentExecutor 负责驱动 Agent 循环
-executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
-
-result = executor.invoke({
-    'input': '先计算 12 加 8,再把结果乘以 3,告诉我最终答案。'
-})
-print(result['output'])
+messages = [
+    {"role": "system", "content": "系统设定"},     # 可选，设定行为
+    {"role": "user", "content": "用户说的"},        # 用户输入
+    {"role": "assistant", "content": "模型上次答的"}, # 历史回答
+    {"role": "user", "content": "用户又说的"}       # 新输入
+]
 \`\`\`
 
-运行时,你会看到 Agent 先调用 \`add(12, 8)\` 得到 20,再调用 \`multiply(20, 3)\` 得到 60,最后输出"最终答案是 60"。这就是经典的 **ReAct(Reasoning + Acting)** 模式。
+- **system**：设定模型行为基调（见第 6 章）。
+- **user**：用户的输入。
+- **assistant**：模型的历史回答，多轮对话时带上以保持上下文。
 
-### 9.5 AgentExecutor 详解
+### 六、模型选择：价格 vs 性能
 
-\`AgentExecutor\` 是 Agent 的"驱动引擎",核心参数:
+不同模型性能和价格差异大，按需选择：
 
-- \`max_iterations\`:最大循环次数,防止 Agent 失控(默认 15)
-- \`early_stopping_method\`:超限后的兜底策略(\`generate\` 让模型强行收尾,或 \`force\` 直接报错)
-- \`handle_parsing_errors\`:模型输出格式错误时的回调,避免直接崩溃
-- \`return_intermediate_steps\`:是否返回中间步骤,调试时很有用
+| 模型 | 能力 | 价格（参考） | 适合 |
+| --- | --- | --- | --- |
+| gpt-4o | 最强，多模态 | 较贵 | 复杂 Agent、重要任务 |
+| gpt-4o-mini | 性价比高 | 便宜 | 日常任务、大量调用 |
+| gpt-3.5-turbo | 老牌便宜 | 最便宜 | 简单分类、预算敏感 |
+
+\`\`\`text
+原则：
+- 开发调试用 mini 省钱
+- 关键生产用 4o 保质量
+- 大量调用算清楚成本
+\`\`\`
+
+### 七、同步 vs 异步调用
+
+\`openai\` 库提供同步和异步两套客户端：
 
 \`\`\`python
-executor = AgentExecutor(
-    agent=agent,
-    tools=tools,
-    verbose=True,
-    max_iterations=10,
-    handle_parsing_errors=True,
-    return_intermediate_steps=True,
-)
+# 同步：简单直接，阻塞等待结果
+from openai import OpenAI
+client = OpenAI()
+response = client.chat.completions.create(...)  # 会阻塞直到返回
+
+# 异步：不阻塞，适合高并发、Web 服务
+import asyncio
+from openai import AsyncOpenAI
+async_client = AsyncOpenAI()
+
+async def call():
+    response = await async_client.chat.completions.create(...)  # await 等待
+    return response
+
+asyncio.run(call())
 \`\`\`
 
-### 9.6 实战要点
+**何时用异步**：做 Web 服务（FastAPI）、批量并发调用多个请求时。普通脚本用同步即可。
 
-1. **工具描述决定能力边界**:模型靠 description 决定何时调用哪个工具,描述要清晰、有边界、含示例。
-2. **限制迭代次数**:Agent 极易陷入"调用→失败→再调用"的死循环,务必设置 \`max_iterations\`。
-3. **错误必须兜底**:工具调用失败时,AgentExecutor 会把错误信息回传给模型让它重试,要避免敏感信息泄露。
-4. **优先用 \`create_tool_calling_agent\`**:它依赖模型原生 function calling,比旧的 ReAct 文本解析更稳定。
-5. **生产环境慎用 verbose**:verbose 输出包含完整 prompt,可能泄露用户数据,日志要做脱敏。
+### 八、错误处理
 
-### 9.7 小结
+调用 API 会遇到各种错误，必须处理：
 
-LangChain 的价值不在"封装 OpenAI API",而在于提供了一套**可组合、可替换、可观察**的组件体系。LCEL 让链式调用变得优雅,AgentExecutor 让"工具循环"变得可控。掌握这一章,你就拥有了构建复杂 LLM 应用的"标准零件库"。
-`,
+\`\`\`python
+from openai import OpenAI, RateLimitError, AuthenticationError, APIError
+
+client = OpenAI()
+
+def safe_chat(messages):
+    """带错误处理的聊天函数"""
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages
+        )
+        return response.choices[0].message.content
+
+    except AuthenticationError:
+        # API Key 无效或过期
+        return "错误：API Key 无效，请检查 .env 配置"
+
+    except RateLimitError:
+        # 调用太快或额度用完
+        return "错误：请求过快或余额不足，请稍后重试"
+
+    except APIError as e:
+        # OpenAI 服务端错误
+        return f"服务异常：{e}"
+
+    except Exception as e:
+        # 其他未知错误
+        return f"未知错误：{e}"
+
+print(safe_chat([{"role": "user", "content": "你好"}]))
+\`\`\`
+
+常见错误速查：
+
+| 错误 | 原因 | 处理 |
+| --- | --- | --- |
+| AuthenticationError | Key 无效/过期 | 检查 .env |
+| RateLimitError | 调用过快/余额不足 | 加重试、充值 |
+| BadRequestError | 参数错误（如模型名写错） | 检查参数 |
+| APIConnectionError | 网络问题 | 重试、检查网络 |
+| APITimeoutError | 请求超时 | 设超时、重试 |
+
+### 九、本章小结与易错点
+
+| 易错点 | 说明 | 正确做法 |
+| --- | --- | --- |
+| Key 硬编码 | 泄露风险 | 用 .env 环境变量 |
+| 不固定 SDK 版本 | 升级后 API 变 | requirements.txt 锁版本 |
+| 不处理错误 | 程序崩溃 | try/except 捕获常见异常 |
+| 全用 gpt-4o | 成本爆炸 | 调试用 mini，生产用 4o |
+| 忽略 token 用量 | 超额才发现 | 每次看 usage 统计 |
+
+> **核心结论**：调通第一个 API 请求只需三步——**配 Key、建客户端、调 create**。重点掌握消息结构、模型选择和错误处理。能在出错时优雅降级，是一个 Agent 是否"能上线"的分水岭。`,
   },
   {
-    id: 'a-ch10',
-    group: '第三部分 主流Agent框架',
-    icon: '🦙',
-    title: 'LlamaIndex——数据驱动的Agent框架',
-    content: `## 第十章　LlamaIndex——数据驱动的Agent框架
+    id: 'openai-chat',
+    group: 'OpenAI API',
+    icon: '💬',
+    title: 'Chat Completions 详解',
+    content: `## Chat Completions 详解
 
-### 10.1 LlamaIndex 的定位
+\`chat.completions.create\` 是 OpenAI 最核心的 API，几乎所有应用都绕不开它。本章把它的参数、返回结构、多轮对话、token 统计讲透，让你用起来心里有底。
 
-如果说 LangChain 是"通用 LLM 应用框架",那么 LlamaIndex 就是"数据驱动的 RAG 框架"。它由 Jerry Liu 创建,最初叫 \`gpt-index\`,核心目标是:**让私有数据与 LLM 高效对接**。
+### 一、Chat Completions API 完整参数
 
-LlamaIndex 的设计哲学是:在大多数企业场景中,LLM 的瓶颈不是模型能力,而是**如何把企业内部文档、数据库、API 数据高质量地喂给模型**。它围绕"数据摄入 → 索引 → 查询"这条主线,提供了完整工具链。
+\`\`\`python
+response = client.chat.completions.create(
+    model="gpt-4o-mini",         # 模型名
+    messages=[...],              # 消息列表（必填）
+    temperature=0.7,             # 温度，控制随机性，0-2
+    max_tokens=1000,             # 最大输出 token 数
+    top_p=1,                     # 核采样，0-1
+    frequency_penalty=0,         # 频率惩罚，-2~2，抑制重复词
+    presence_penalty=0,          # 存在惩罚，-2~2，促进新话题
+    stop=None,                   # 停止序列，遇到就停
+    seed=None,                   # 随机种子（可复现，3+支持）
+    stream=False,                # 是否流式
+    response_format=None,        # 输出格式（如 JSON 模式）
+    n=1                          # 生成几条回答
+)
+\`\`\`
 
-> **核心差异**:LangChain 强调"流程编排",LlamaIndex 强调"数据管道"。两者并非互斥,LlamaIndex 的检索组件甚至可以作为 LangChain 的 Retriever 使用。
+参数虽多，最常用的是 \`model\`、\`messages\`、\`temperature\`、\`max_tokens\`。其他按需调。
 
-### 10.2 LlamaIndex vs LangChain
+### 二、messages 参数详解
 
-| 维度 | LangChain | LlamaIndex |
+\`messages\` 是必填项，是一个消息列表，描述完整对话：
+
+\`\`\`python
+messages = [
+    # system：设定模型行为（可选，建议放第一条）
+    {"role": "system", "content": "你是旅游顾问，专门推荐国内景点。"},
+
+    # user：用户的每次提问
+    {"role": "user", "content": "推荐一个适合带孩子去的地方"},
+
+    # assistant：模型的每次回答（多轮对话历史）
+    {"role": "assistant", "content": "推荐去三亚，沙滩适合亲子..."},
+
+    # user：用户新提问
+    {"role": "user", "content": "那有什么美食"}
+]
+\`\`\`
+
+**关键点**：多轮对话要把历史消息全部带上，模型才能"记住"上下文。
+
+### 三、response 结构详解
+
+返回的 \`response\` 对象结构：
+
+\`\`\`python
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "你好"}]
+)
+
+# 1. choices：生成的回答列表（n=1 时就一条）
+choice = response.choices[0]
+print("回答内容：", choice.message.content)        # 文本内容
+print("回答角色：", choice.message.role)            # "assistant"
+print("结束原因：", choice.finish_reason)          # "stop"/"length"/"tool_calls"
+
+# 2. usage：token 用量统计
+print("输入token：", response.usage.prompt_tokens)
+print("输出token：", response.usage.completion_tokens)
+print("总token：", response.usage.total_tokens)
+
+# 3. 元信息
+print("模型：", response.model)        # 实际用的模型
+print("创建时间：", response.created)  # 时间戳
+\`\`\`
+
+\`finish_reason\` 几种值的含义：
+
+| 值 | 含义 | 处理 |
 | --- | --- | --- |
-| 核心抽象 | Chain / Agent / Runnable | Index / QueryEngine / Retriever |
-| 强项 | 流程编排、工具调用 | 数据摄入、索引结构、检索质量 |
-| 文档处理 | 基础 splitter | 内置多种高级 parser(PDF/HTML/Markdown) |
-| Agent 能力 | 成熟、生态广 | 较新、聚焦数据 Agent |
-| 适用场景 | 通用对话、工具型 Agent | 知识库问答、文档分析 |
+| stop | 正常结束（遇到停止符） | 完整回答 |
+| length | 达到 max_tokens 被截断 | 调大 max_tokens 或分段 |
+| tool_calls | 模型要调用工具 | 执行工具后继续 |
+| content_filter | 触发内容过滤 | 修改输入或换模型 |
 
-**选择建议**:
-- 需要复杂工具编排、多步骤决策 → LangChain
-- 核心需求是"基于文档回答问题" → LlamaIndex
-- 两者都需要的复杂系统 → 用 LlamaIndex 做检索,LangChain 做编排
+### 四、多轮对话消息构造
 
-### 10.3 三大核心抽象
-
-#### 10.3.1 数据连接器(DataConnector)
-
-\`SimpleDirectoryReader\` 是最常用的入口,支持 PDF、Word、Markdown、HTML 等几十种格式:
+实现一个能"记住上下文"的聊天：
 
 \`\`\`python
-from llama_index.core import SimpleDirectoryReader
+from openai import OpenAI
+from dotenv import load_dotenv
 
-# 一行代码加载整个目录
-documents = SimpleDirectoryReader('./docs').load_data()
-print(f'加载 {len(documents)} 个文档片段')
-\`\`\`
+load_dotenv()
+client = OpenAI()
 
-对于复杂 PDF(表格、图片),用 \`LlamaParse\` 服务能拿到结构化结果,质量远超朴素解析。
-
-#### 10.3.2 索引(Index)
-
-索引是 LlamaIndex 的核心数据结构,常见的有四种:
-
-- **VectorStoreIndex**:语义检索,用 embedding 找相似片段
-- **SummaryIndex**:把所有节点串成链,适合"整体摘要"类查询
-- **KnowledgeGraphIndex**:构建知识图谱,支持多跳推理
-- **TreeIndex**:层级树状索引,适合长文档逐层压缩
-
-\`\`\`python
-from llama_index.core import VectorStoreIndex
-
-# 从文档构建向量索引
-index = VectorStoreIndex.from_documents(documents)
-
-# 持久化到磁盘
-index.storage_context.persist(persist_dir='./storage')
-
-# 重新加载
-from llama_index.core import load_index_from_storage
-from llama_index.core import StorageContext
-storage_context = StorageContext.from_defaults(persist_dir='./storage')
-index = load_index_from_storage(storage_context)
-\`\`\`
-
-#### 10.3.3 查询引擎(QueryEngine)
-
-QueryEngine 把"检索 + 拼 Prompt + 调模型 + 解析输出"封装为一次调用:
-
-\`\`\`python
-query_engine = index.as_query_engine(similarity_top_k=5)
-response = query_engine.query('公司的差旅报销标准是什么?')
-print(response.response)
-
-# 查看检索到的源文档
-for node in response.source_nodes:
-    print(node.node.text[:80], '| score:', node.score)
-\`\`\`
-
-### 10.4 构建 RAG Agent
-
-把 QueryEngine 升级为"会主动决策的 Agent",就是 LlamaIndex 的 Agent 形态。下面是一个完整的 RAG Agent,它能根据问题决定是否需要查文档、查哪个文档:
-
-\`\`\`python
-from llama_index.core.agent import ReActAgent
-from llama_index.core.tools import QueryEngineTool, ToolMetadata
-from llama_index.llms.openai import OpenAI
-
-# 分别针对"产品手册"和"HR 制度"建两个索引
-product_index = VectorStoreIndex.from_documents(product_docs)
-hr_index = VectorStoreIndex.from_documents(hr_docs)
-
-# 把每个 QueryEngine 包装成 Tool
-tools = [
-    QueryEngineTool(
-        query_engine=product_index.as_query_engine(),
-        metadata=ToolMetadata(
-            name='product_manual',
-            description='查询产品使用手册、功能说明、故障排查。'
-        ),
-    ),
-    QueryEngineTool(
-        query_engine=hr_index.as_query_engine(),
-        metadata=ToolMetadata(
-            name='hr_policy',
-            description='查询 HR 制度、请假、报销、考勤等。'
-        ),
-    ),
+# 用一个列表保存对话历史
+history = [
+    {"role": "system", "content": "你是一个友好的助手，回答简洁。"}
 ]
 
-llm = OpenAI(model='gpt-4o', temperature=0)
-agent = ReActAgent.from_tools(tools, llm=llm, verbose=True)
+def chat(user_input):
+    """多轮对话函数：把历史+新输入一起发"""
+    # 1. 把用户新输入加入历史
+    history.append({"role": "user", "content": user_input})
 
-# Agent 会自动判断该用哪个工具
-answer = agent.chat('我想报销差旅费,需要哪些材料?')
-print(answer.response)
+    # 2. 带上全部历史发请求
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=history
+    )
+    answer = response.choices[0].message.content
+
+    # 3. 把模型回答也存进历史，下次能"记住"
+    history.append({"role": "assistant", "content": answer})
+
+    return answer
+
+# 测试多轮
+print(chat("我叫张三"))           # 模型记住名字
+print(chat("我叫什么？"))         # 能回答"张三"，因为有历史
 \`\`\`
 
-运行时,Agent 会先思考"这是 HR 问题",调用 \`hr_policy\` 工具检索,再用检索结果生成答案。这就是 **Agentic RAG**——把 RAG 从"无脑向量检索"升级为"会判断、会选择"的智能体。
+### 五、system / user / assistant 角色轮换
 
-### 10.5 高级技巧:查询变换
+构造消息时角色顺序很重要，规范是 **system → user/assistant 交替 → 当前 user**：
 
-直接用原始问题做检索,效果往往不佳。LlamaIndex 提供了一系列查询变换器,显著提升检索质量:
+\`\`\`text
+✅ 正确顺序：
+system → user → assistant → user → assistant → user
 
-- **SubQuestionQueryEngine**:把复杂问题拆成多个子问题,分别检索再合并
-- **HyDE(Hypothetical Document Embeddings)**:先让模型生成"假设答案",再用它做检索
-- **MultiQuery**:让模型从多个角度重写问题,提高召回
+❌ 错误顺序（会报错）：
+user → user              # 两个连续 user 不行
+assistant → user → system # system 没放最前
+\`\`\`
 
 \`\`\`python
-from llama_index.core.query_engine import SubQuestionQueryEngine
-
-# 把"对比 A 和 B 产品的优缺点"拆成两个子问题
-sub_engine = SubQuestionQueryEngine.from_defaults(query_engine_tools=tools)
-response = sub_engine.query('对比产品 A 和产品 B 的性能差异')
+# 规范的多轮消息构造
+def build_messages(history, system_prompt, user_input):
+    """构造规范的消息列表"""
+    messages = [{"role": "system", "content": system_prompt}]
+    # history 里是 [user, assistant, user, assistant, ...] 交替
+    messages.extend(history)
+    # 最后加当前用户输入
+    messages.append({"role": "user", "content": user_input})
+    return messages
 \`\`\`
 
-### 10.6 实战要点
+### 六、token 用量统计
 
-1. **Chunk Size 是关键参数**:chunk 太小丢失上下文,太大稀释语义。经验值 256-512 token,overlap 10%-20%。
-2. **不要迷信 top_k**:k 越大召回越多但噪音也多,配合 reranker(如 Cohere Rerank)效果更好。
-3. **评估必须做**:用 \`ragas\` 或 LlamaIndex 自带的 \`FaithfulnessEvaluator\` 量化 RAG 质量,不要凭感觉。
-4. **Metadata 过滤提效**:给文档打标签(部门、时间、版本),查询时用 metadata filter 缩小检索范围。
-5. **Streaming 必备**:RAG 响应通常较长,流式输出显著改善体验:\`query_engine.query(...).response_gen\`。
-
-### 10.7 小结
-
-LlamaIndex 把"让 LLM 读懂你的数据"这件事做到了极致。它的索引结构、查询变换、文档解析能力,是构建生产级 RAG 系统的利器。把它和 LangChain 的编排能力结合,基本能覆盖 90% 的企业 LLM 应用场景。
-`,
-  },
-  {
-    id: 'a-ch11',
-    group: '第三部分 主流Agent框架',
-    icon: '🤖',
-    title: '开源Agent项目分析——AutoGPT、BabyAGI、MetaGPT',
-    content: `## 第十一章　开源Agent项目分析——AutoGPT、BabyAGI、MetaGPT
-
-### 11.1 为什么研究开源项目
-
-理论书籍讲 Agent,容易停留在"工具调用循环"的抽象层面。而真正理解 Agent 的工程价值,必须看那些**已经跑在 GitHub 上、被数万人尝试过的开源项目**。本章分析三个里程碑式项目:AutoGPT、BabyAGI、MetaGPT。它们分别代表了 Agent 的三种范式:**自主目标驱动**、**任务清单驱动**、**多角色协作**。
-
-### 11.2 AutoGPT:目标驱动的自主 Agent
-
-AutoGPT 由 Significant Gravitas 在 2023 年 3 月发布,一度引爆全网。它的核心理念是:**用户只给一个高层目标,Agent 自主规划、行动、反思,直到完成目标**。
-
-#### 11.2.1 核心循环:思考-行动-观察
-
-AutoGPT 的执行循环可以概括为:
-
-\`\`\`
-1. 思考(Thoughts):基于当前状态推理下一步该做什么
-2. 推理(Reasoning):解释为什么这么做
-3. 计划(Plan):列出后续几步
-4. 批评(Criticism):自我质疑,发现风险
-5. 行动(Action):调用工具(搜索、写文件、执行代码)
-6. 观察(Observation):读取工具返回结果
-7. 回到 1,直到任务完成或达到迭代上限
-\`\`\`
-
-这个循环就是经典的 **Reasoning + Acting + Observation**,ReAct 的工程化实现。
-
-#### 11.2.2 架构分析
-
-AutoGPT 的核心模块:
-
-- **Agent Server**:主循环驱动,负责调度思考与行动
-- **Workspace**:文件系统工作区,Agent 读写文件的地方
-- **Plugins**:工具插件,如 web 搜索、网页抓取、代码执行
-- **Memory**:基于 Pinecone/Redis 的长期向量记忆
-- **JSON 指令协议**:Agent 输出结构化 JSON,框架解析后执行
+每次调用都会返回 \`usage\`，重点关注：
 
 \`\`\`python
-# AutoGPT 的 Prompt 协议(简化版)
-INSTRUCTION = """
-You are AutoGPT, an AI assistant optimizing toward a goal.
-Respond STRICTLY with JSON:
-{
-  "thoughts": {
-    "text": "思考内容",
-    "reasoning": "推理过程",
-    "plan": ["步骤1", "步骤2"],
-    "criticism": "自我批评"
-  },
-  "command": {
-    "name": "google_search",
-    "args": {"query": "搜索词"}
-  }
-}
-"""
+response = client.chat.completions.create(...)
+usage = response.usage
+
+# 三类 token
+prompt_tokens = usage.prompt_tokens       # 输入（system+历史+用户输入）
+completion_tokens = usage.completion_tokens  # 输出
+total_tokens = usage.total_tokens          # 总和
+
+# 算成本（以 gpt-4o-mini 参考价：输入$0.15/百万，输出$0.6/百万）
+cost = (prompt_tokens * 0.15 + completion_tokens * 0.6) / 1_000_000
+print(f"本次花费约 \${cost:.6f}")
 \`\`\`
 
-#### 11.2.3 启发与局限
+**实战建议**：在 Agent 里累计统计 token，超预算就告警或降级。
 
-**启发**:
-- **结构化输出**让 Agent 行为可解析、可中断、可恢复
-- **长期记忆**让 Agent 能跨越长任务保留上下文
-- **工作区文件**是 Agent 的"外部大脑",缓解上下文窗口限制
-
-**局限**:
-- **容易跑偏**:目标模糊时,Agent 会无限发散,典型表现是"在网上乱搜一通"
-- **成本失控**:每轮都要带长 prompt + 历史,token 消耗惊人
-- **难以终止**:何时算"完成"很难定义,经常卡在循环里
-- **可靠性差**:JSON 解析失败、工具调用报错频繁
-
-> AutoGPT 的最大贡献不是产品本身,而是它**证明了"LLM + 工具 + 循环"可以完成非平凡任务**,点燃了整个 Agent 赛道。
-
-### 11.3 BabyAGI:任务清单驱动的极简 Agent
-
-BabyAGI 由 Yohei Nakajima(AutoGPT 同一作者)发布,是 AutoGPT 的"瘦身版"。它只有几百行代码,却把 Agent 的核心机制讲得最清楚。
-
-#### 11.3.1 三个核心 Agent
-
-BabyAGI 由三个协作的 Agent 组成:
-
-- **Creation Agent**:根据目标和上一步结果,创建新任务
-- **Prioritization Agent**:对任务清单重新排序
-- **Execution Agent**:执行队列头部任务,返回结果
-
-#### 11.3.2 执行循环
+### 七、常见错误处理
 
 \`\`\`python
-# BabyAGI 核心循环(简化伪代码)
-def run(goal):
-    task_list = [Task(description=goal)]
-    while task_list:
-        # 1. 取出最高优先级任务
-        task = task_list.pop(0)
-        # 2. 执行任务
-        result = execution_agent(task, context)
-        # 3. 根据结果创建新任务
-        new_tasks = creation_agent(goal, result, task_list)
-        # 4. 重新排序任务清单
-        task_list = prioritization_agent(task_list + new_tasks)
-        # 5. 保存结果到向量库
-        memory.add(result)
-\`\`\`
+from openai import OpenAI, BadRequestError, RateLimitError
 
-#### 11.3.3 启发
-
-BabyAGI 的精妙在于它揭示了 Agent 的本质:**用 LLM 把"任务管理"本身自动化**。传统软件的 TODO 列表是人写的,BabyAGI 让模型自己创建、排序、执行任务。
-
-这种模式特别适合"目标明确但路径未知"的场景,如:
-- 学术综述:目标是写一篇综述,子任务是"读某篇论文""总结某个方向"
-- 市场调研:目标是出一份报告,子任务是"查某个公司财报""分析某个细分市场"
-
-### 11.4 MetaGPT:多角色协作的软件团队
-
-MetaGPT 由 DeepWisdom 团队开源,核心创新是:**把软件开发流程(产品经理→架构师→工程师→QA)用多个 Agent 角色模拟出来**,让一群 Agent 协作完成一个软件项目。
-
-#### 11.4.1 角色与 SOP
-
-MetaGPT 借鉴人类软件公司的 SOP(标准作业流程):
-
-- **ProductManager(产品经理)**:把模糊需求转成 PRD(产品需求文档)
-- **Architect(架构师)**:基于 PRD 设计系统架构、技术选型
-- **ProjectManager(项目经理)**:拆分任务、分配给工程师
-- **Engineer(工程师)**:按设计写代码
-- **QAEngineer(测试工程师)**:写测试用例、验证代码
-
-每个角色有专属 prompt 和产出物格式,角色之间通过"文档"传递信息,而非裸对话。
-
-#### 11.4.2 消息机制
-
-MetaGPT 用 **Environment + Message Queue** 实现角色通信:
-
-\`\`\`python
-# 简化的 MetaGPT 角色协作
-from metagpt.roles import ProductManager, Architect, Engineer, QAEngineer
-from metagpt.team import Team
-
-team = Team()
-team.hire([
-    ProductManager(),
-    Architect(),
-    ProjectManager(),
-    Engineer(),
-    QAEngineer(),
-])
-team.invest('写一个贪吃蛇游戏')
-team.run()
-\`\`\`
-
-运行后,产品经理会先输出 PRD,架构师看到 PRD 后输出设计文档,工程师根据设计写代码,QA 写测试。整个过程高度结构化,产出物接近真实项目。
-
-#### 11.4.3 启发与局限
-
-**启发**:
-- **SOP 比自由协作更可靠**:结构化的角色和流程显著提升输出质量
-- **文档驱动**比"裸对话"更适合复杂任务,文档是知识的稳定载体
-- **多 Agent 角色分工**能模拟出超越单 Agent 的复杂行为
-
-**局限**:
-- **成本高**:一次任务多个角色多轮调用,token 消耗大
-- **依赖模型强**:GPT-4 才能稳定输出结构化文档,弱模型容易塌方
-- **场景受限**:适合"流程化"任务,创意性任务收益不明显
-
-### 11.5 三个项目的对比与启示
-
-| 项目 | 范式 | 适合场景 | 核心贡献 |
-| --- | --- | --- | --- |
-| AutoGPT | 自主目标驱动 | 开放式探索 | 结构化输出协议 |
-| BabyAGI | 任务清单驱动 | 目标明确的分步任务 | 任务自动生成与排序 |
-| MetaGPT | 多角色协作 | 流程化生产任务 | SOP + 文档驱动 |
-
-**对开发者的启示**:
-1. **不要追求"全自主"**:AutoGPT 式的全自主 Agent 在生产环境几乎不可用,要做"半自主"——人定义边界,Agent 在边界内自主。
-2. **结构化输出是生命线**:所有可靠 Agent 系统都依赖结构化协议(JSON/Function Calling),不要让 Agent 输出自由文本。
-3. **任务分解胜过单次推理**:把复杂任务拆成小步骤,BabyAGI 的"任务清单"模式比"一把梭"更可靠。
-4. **角色协作能放大能力**:MetaGPT 证明,多个有明确职责的 Agent 协作,效果常常优于单个"全能 Agent"。
-
-### 11.6 小结
-
-这三个开源项目是 Agent 工程的"活教材"。AutoGPT 教会我们结构化输出,BabyGPT 教会我们任务分解,MetaGPT 教会我们角色协作。理解它们的原理与局限,你就能在自己的项目里取其精华、避其坑点。
-`,
-  },
-  {
-    id: 'a-ch12',
-    group: '第三部分 主流Agent框架',
-    icon: '🛠️',
-    title: 'OpenAI Assistants API详解',
-    content: `## 第十二章　OpenAI Assistants API详解
-
-### 12.1 Assistants API 的定位
-
-2023 年 11 月,OpenAI 在 DevDay 上发布 Assistants API,它的目标是:**让开发者不用自己搭建"Agent 基础设施",就能快速得到一个有记忆、能用工具的 Agent**。
-
-在 Assistants API 出现前,自建一个 Agent 需要自己实现:对话上下文管理、工具调用解析、代码沙箱、文件检索、状态持久化……这些工作量大且容易出错。Assistants API 把这些能力封装成托管服务,开发者只需关心业务逻辑。
-
-> **核心价值**:把 Agent 的"基础设施"托管化,开发者专注业务。代价是必须绑定 OpenAI 生态,且对底层控制力减弱。
-
-### 12.2 四个核心对象
-
-Assistants API 的世界观由四个对象组成,理解它们的关系就掌握了全部:
-
-**1. Assistant(助手)**
-代表一个"配置好的 Agent 人格",包含模型、指令、工具配置。Assistant 是无状态的,创建后可被多个 Thread 复用。
-
-\`\`\`python
-from openai import OpenAI
 client = OpenAI()
 
-assistant = client.beta.assistants.create(
-    name='数学辅导老师',
-    instructions='你是一名耐心的数学老师,讲解要分步骤,优先用代码演示。',
-    model='gpt-4o',
-    tools=[{'type': 'code_interpreter'}],
-)
-print(assistant.id)  # asst_xxx
+def robust_chat(messages, max_retries=3):
+    """带重试的健壮调用"""
+    for attempt in range(max_retries):
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages
+            )
+            return response.choices[0].message.content
+
+        except BadRequestError as e:
+            # 参数错误，重试没用，直接报错
+            raise ValueError(f"参数错误：{e}")
+
+        except RateLimitError:
+            # 限流，等一会再试
+            import time
+            time.sleep(2 ** attempt)  # 指数退避：1s, 2s, 4s
+            continue
+
+    raise RuntimeError("重试多次仍失败")
 \`\`\`
 
-**2. Thread(会话)**
-代表一次会话的上下文,管理消息历史。每个用户、每段对话都应有独立 Thread。
+### 八、本章小结与易错点
 
-\`\`\`python
-thread = client.beta.threads.create()
-print(thread.id)  # thread_xxx
+| 易错点 | 说明 | 正确做法 |
+| --- | --- | --- |
+| 不带历史消息 | 多轮失忆 | 把 user/assistant 历史全带上 |
+| 角色顺序错 | 报错 | system→交替user/assistant→当前user |
+| 忽略 finish_reason | 截断没察觉 | 检查是不是 length 被截 |
+| 不统计 token | 成本失控 | 累计 usage |
+| 不做重试 | 限流就崩 | 指数退避重试 |
+
+> **核心结论**：Chat Completions 是 OpenAI 最核心 API。掌握 **messages 结构、response 解析、多轮对话历史管理、token 统计** 这四件事，就能应对绝大多数对话场景。`,
+  },
+  {
+    id: 'openai-stream',
+    group: 'OpenAI API',
+    icon: '🌊',
+    title: '流式响应 Streaming',
+    content: `## 流式响应 Streaming
+
+你肯定体验过 ChatGPT 那种"边生成边显示"的打字机效果，这就是流式响应。流式让用户**首字延迟低**，体验远好于"等几秒一次性蹦出来"。本章讲清楚流式原理、Python 实现和异步流式。
+
+### 一、为什么需要流式
+
+非流式：模型把整段回答生成完才一次性返回，用户干等几秒甚至几十秒。
+
+\`\`\`text
+非流式：[生成5秒] ──▶ 一次性返回整段
+用户体验：盯着空白转圈，焦虑
 \`\`\`
 
-**3. Message(消息)**
-会话中的单条消息,有 \`user\` / \`assistant\` 两种角色。可以包含文本、图片、文件。
+流式：模型生成一个字就立即推送一个字，用户看到"打字机"效果。
 
-\`\`\`python
-message = client.beta.threads.messages.create(
-    thread_id=thread.id,
-    role='user',
-    content='帮我计算斐波那契数列前 20 项的和。',
-)
+\`\`\`text
+流式：[字1][字2][字3]...实时推送
+用户体验：立刻有反馈，感觉"在思考"
 \`\`\`
 
-**4. Run(运行)**
-触发 Assistant 在某个 Thread 上"运行",这是真正调用模型的动作。Run 是异步的,需要轮询状态。
+**核心价值**：降低首字延迟，改善用户体验。即使总生成时间不变，"早看到一点"也比"等完才看到"舒服得多。
+
+### 二、stream=True 参数
+
+开启流式只需加 \`stream=True\`：
 
 \`\`\`python
-run = client.beta.threads.runs.create(
-    thread_id=thread.id,
-    assistant_id=assistant.id,
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "讲个100字的故事"}],
+    stream=True   # 关键：开启流式
+)
+# 这时 response 不再是单个对象，而是一个迭代器
+\`\`\`
+
+### 三、SSE 原理：Server-Sent Events
+
+流式基于 **SSE（Server-Sent Events）** 协议：服务器持续推送数据块（chunk），每个 chunk 是一小段。数据以 \`data: \` 开头，最后以 \`data: [DONE]\` 结束。
+
+\`\`\`text
+data: {"choices":[{"delta":{"content":"从"}}]}
+data: {"choices":[{"delta":{"content":"前"}}]}
+data: {"choices":[{"delta":{"content":"有"}}]}
+data: [DONE]
+\`\`\`
+
+### 四、逐 chunk 解析与拼接
+
+每个 chunk 里的 \`delta.content\` 是一小片段，需要自己拼起来：
+
+\`\`\`python
+# 同步流式：逐块拼接
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "用50字介绍 Python"}],
+    stream=True
 )
 
-# 轮询直到完成
+full_text = ""  # 用来拼完整内容
+for chunk in response:  # 遍历每个数据块
+    # chunk.choices 可能为空（最后一个），要判空
+    if chunk.choices and chunk.choices[0].delta.content:
+        piece = chunk.choices[0].delta.content
+        full_text += piece       # 拼接
+        print(piece, end="", flush=True)  # 实时打印，不换行
+
+print()  # 最后换行
+print("完整内容：", full_text)
+\`\`\`
+
+**关键点**：\`delta.content\` 是增量，不是累积。每个 chunk 只有新的一小段，必须自己拼。
+
+### 五、流式 vs 完整响应对比
+
+| 维度 | 非流式（stream=False） | 流式（stream=True） |
+| --- | --- | --- |
+| 返回 | 完整对象 | 迭代器，逐块 |
+| 首字延迟 | 高（等全部生成） | 低（生成即推） |
+| 代码复杂度 | 简单 | 要拼接 delta |
+| 获取 usage | 直接 response.usage | 要 stream_options（见下） |
+| 适合场景 | 后台任务、要完整结果 | 用户交互、聊天界面 |
+
+### 六、异步流式：AsyncOpenAI
+
+Web 服务用异步流式，不阻塞其他请求：
+
+\`\`\`python
+import asyncio
+from openai import AsyncOpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
+async_client = AsyncOpenAI()
+
+async def stream_chat(prompt):
+    """异步流式：用 async for 遍历"""
+    response = await async_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        stream=True
+    )
+    full = ""
+    async for chunk in response:  # 异步遍历
+        if chunk.choices and chunk.choices[0].delta.content:
+            piece = chunk.choices[0].delta.content
+            full += piece
+            print(piece, end="", flush=True)
+    return full
+
+# 运行
+asyncio.run(stream_chat("讲个笑话"))
+\`\`\`
+
+### 七、流式中的 usage 统计
+
+老版本流式默认不返回 token 用量。新版本用 \`stream_options\` 开启：
+
+\`\`\`python
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "你好"}],
+    stream=True,
+    stream_options={"include_usage": True}  # 流式也返回 usage
+)
+
+# 最后一个 chunk 会带 usage
+for chunk in response:
+    if chunk.usage:  # 只在最后一个 chunk 有
+        print("总token：", chunk.usage.total_tokens)
+    if chunk.choices and chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+\`\`\`
+
+### 八、实战：打字机效果
+
+\`\`\`python
 import time
-while run.status in ['queued', 'in_progress']:
-    time.sleep(1)
-    run = client.beta.threads.runs.retrieve(
-        thread_id=thread.id,
-        run_id=run.id,
-    )
-
-print(run.status)  # completed
-\`\`\`
-
-四者关系:**Assistant(人格) + Thread(上下文) + Message(输入) → Run(执行) → Message(输出)**。
-
-### 12.3 内置三大工具
-
-Assistants API 最大的卖点之一是内置了三个开箱即用的工具,无需自己实现。
-
-#### 12.3.1 Code Interpreter(代码解释器)
-
-让 Agent 能在沙箱里执行 Python 代码,适合数据处理、计算、生成图表:
-
-\`\`\`python
-assistant = client.beta.assistants.create(
-    name='数据分析助手',
-    instructions='你是数据分析师,优先用代码处理数据。',
-    model='gpt-4o',
-    tools=[{'type': 'code_interpreter'}],
-)
-
-# 上传数据文件
-file = client.files.create(
-    file=open('sales.csv', 'rb'),
-    purpose='assistants',
-)
-
-# 在消息中附加文件
-message = client.beta.threads.messages.create(
-    thread_id=thread.id,
-    role='user',
-    content='分析这个 CSV 的销售趋势,画一张折线图。',
-    attachments=[{'file_id': file.id, 'tools': [{'type': 'code_interpreter'}]}],
-)
-\`\`\`
-
-Agent 会自动写 pandas 代码读取文件、清洗、绘图,并把生成的图片作为返回消息发回。
-
-#### 12.3.2 Retrieval(文件检索)
-
-把文件上传给 Assistant,OpenAI 自动做切分、向量化、检索(注:后续已升级为 \`file_search\` 工具):
-
-\`\`\`python
-assistant = client.beta.assistants.create(
-    name='知识库助手',
-    model='gpt-4o',
-    tools=[{'type': 'file_search'}],
-)
-
-# 创建向量存储并上传文档
-vector_store = client.beta.vector_stores.create(name='company_docs')
-client.beta.vector_stores.files.create(
-    vector_store_id=vector_store.id,
-    file_id=file.id,
-)
-
-assistant = client.beta.assistants.update(
-    assistant_id=assistant.id,
-    tool_resources={'file_search': {'vector_store_ids': [vector_store.id]}},
-)
-\`\`\`
-
-查询时,Agent 自动检索相关片段并引用来源,无需手写 RAG 流程。
-
-#### 12.3.3 Function Calling(自定义函数)
-
-当内置工具不够用时,自定义函数让 Agent 调用你的业务 API:
-
-\`\`\`python
-assistant = client.beta.assistants.create(
-    name='客服助手',
-    model='gpt-4o',
-    tools=[{
-        'type': 'function',
-        'function': {
-            'name': 'get_order_status',
-            'description': '查询订单状态',
-            'parameters': {
-                'type': 'object',
-                'properties': {
-                    'order_id': {'type': 'string', 'description': '订单号'}
-                },
-                'required': ['order_id']
-            }
-        }
-    }],
-)
-\`\`\`
-
-Run 执行时,如果 Agent 决定调用函数,Run 状态会变成 \`requires_action\`,你需要解析参数、执行函数、把结果回传:
-
-\`\`\`python
-if run.status == 'requires_action':
-    tool_calls = run.required_action.submit_tool_outputs.tool_calls
-    outputs = []
-    for call in tool_calls:
-        if call.function.name == 'get_order_status':
-            args = json.loads(call.function.arguments)
-            result = my_backend.get_order(args['order_id'])
-            outputs.append({
-                'tool_call_id': call.id,
-                'output': json.dumps(result),
-            })
-    # 回传工具结果,让 Run 继续
-    run = client.beta.threads.runs.submit_tool_outputs(
-        thread_id=thread.id,
-        run_id=run.id,
-        tool_outputs=outputs,
-    )
-\`\`\`
-
-### 12.4 流式输出与异步
-
-长任务等待让人焦躁,Assistants API 支持 streaming:
-
-\`\`\`python
-from typing_extensions import override
-from openai import AssistantEventHandler
-
-class EventHandler(AssistantEventHandler):
-    @override
-    def on_text_created(self, text):
-        print('Assistant: ', end='', flush=True)
-
-    @override
-    def on_text_delta(self, delta, snapshot):
-        print(delta.value, end='', flush=True)
-
-    @override
-    def on_tool_call_created(self, tool_call):
-        print(f'\\n调用工具: {tool_call.type}')
-
-with client.beta.threads.runs.stream(
-    thread_id=thread.id,
-    assistant_id=assistant.id,
-    event_handler=EventHandler(),
-) as stream:
-    stream.until_done()
-\`\`\`
-
-### 12.5 完整示例:构建一个数据问答 Agent
-
-下面是一个端到端的例子,综合运用 Code Interpreter 和 Function Calling:
-
-\`\`\`python
-import json, time
 from openai import OpenAI
+from dotenv import load_dotenv
 
+load_dotenv()
 client = OpenAI()
 
-# 1. 创建带两类工具的 Assistant
-assistant = client.beta.assistants.create(
-    name='运营分析助手',
-    instructions='你是运营分析师。数值计算用 code_interpreter,查询业务数据用 function。',
-    model='gpt-4o',
-    tools=[
-        {'type': 'code_interpreter'},
-        {
-            'type': 'function',
-            'function': {
-                'name': 'query_metrics',
-                'description': '查询指定日期的运营指标',
-                'parameters': {
-                    'type': 'object',
-                    'properties': {
-                        'date': {'type': 'string', 'description': '日期 YYYY-MM-DD'},
-                        'metric': {'type': 'string', 'enum': ['dau', 'revenue', 'retention']}
-                    },
-                    'required': ['date', 'metric']
-                }
-            }
-        }
-    ],
-)
+def typewriter_chat(user_input):
+    """模拟打字机效果：边生成边显示"""
+    print("助手：", end="", flush=True)
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": user_input}],
+        stream=True
+    )
+    for chunk in response:
+        if chunk.choices and chunk.choices[0].delta.content:
+            text = chunk.choices[0].delta.content
+            print(text, end="", flush=True)  # 立即输出，不缓冲
+            time.sleep(0.02)  # 可选：稍微放慢，更像打字
+    print()  # 换行
 
-# 2. 创建会话
-thread = client.beta.threads.create()
-client.beta.threads.messages.create(
-    thread_id=thread.id,
-    role='user',
-    content='帮我分析最近 7 天的 DAU 趋势,并预测明天。',
-)
-
-# 3. 运行并处理工具调用
-run = client.beta.threads.runs.create(
-    thread_id=thread.id, assistant_id=assistant.id
-)
-
-while run.status in ['queued', 'in_progress', 'requires_action']:
-    if run.status == 'requires_action':
-        outputs = []
-        for call in run.required_action.submit_tool_outputs.tool_calls:
-            if call.function.name == 'query_metrics':
-                args = json.loads(call.function.arguments)
-                data = backend.query(args['date'], args['metric'])  # 你的业务逻辑
-                outputs.append({
-                    'tool_call_id': call.id,
-                    'output': json.dumps(data)
-                })
-        run = client.beta.threads.runs.submit_tool_outputs(
-            thread_id=thread.id, run_id=run.id, tool_outputs=outputs
-        )
-    else:
-        time.sleep(1)
-        run = client.beta.threads.runs.retrieve(
-            thread_id=thread.id, run_id=run.id
-        )
-
-# 4. 读取最终答案
-messages = client.beta.threads.messages.list(thread_id=thread.id)
-print(messages.data[0].content[0].text.value)
+typewriter_chat("用三句话介绍流式响应的好处")
 \`\`\`
 
-### 12.6 与自建 Agent 的取舍
+### 九、本章小结与易错点
 
-Assistants API 不是银弹,要不要用,要看场景:
+| 易错点 | 说明 | 正确做法 |
+| --- | --- | --- |
+| 不拼接 delta | 只显示最后一块 | 累加 delta.content |
+| 不判 choices 空 | 最后 chunk 报错 | 加判空 if chunk.choices |
+| 流式要完整结果 | 不知道何时结束 | 拼到 [DONE] 自动停 |
+| 忽略 usage | 流式不统计 | 用 stream_options |
+| 后台任务也用流式 | 没必要 | 后台用非流式更简单 |
 
-**用 Assistants API 的理由**:
-- **快速验证 MVP**:几天就能上线一个有记忆、能用工具的 Agent
-- **不想维护基础设施**:沙箱、向量库、状态管理都托管了
-- **生态绑定可接受**:你的业务深度依赖 OpenAI 模型
+> **核心结论**：流式通过 \`stream=True\` 开启，逐 chunk 接收 \`delta.content\` 并拼接。它能大幅降低首字延迟，是聊天/交互场景的标配。异步服务用 \`AsyncOpenAI + async for\`。`,
+  },
+  {
+    id: 'openai-params',
+    group: 'OpenAI API',
+    icon: '🎛️',
+    title: '参数调优：temperature / top_p 等',
+    content: `## 参数调优：temperature / top_p 等
 
-**自建 Agent(LangChain/LlamaIndex)的理由**:
-- **多模型支持**:要随时切换 Claude、Gemini、开源模型
-- **数据合规要求高**:数据不能出境、需私有化部署
-- **深度定制**:需要自定义检索算法、特殊记忆策略
-- **成本敏感**:Assistants API 按 token 计费且文件存储有额外费用,大规模场景自建更经济
+同样一个 prompt，为什么有时模型答得很稳，有时又"放飞自我"？秘密就在那些采样参数里。本章把 temperature、top_p、penalty 等参数讲透，让你能精确控制模型的"创造 vs 稳定"。
 
-> **经验法则**:MVP 阶段用 Assistants API 快速验证,生产规模化阶段评估是否自建。两者也可以混用——用 Assistants 做对话,用自建 RAG 做检索,通过 Function Calling 桥接。
+### 一、temperature：控制随机性
 
-### 12.7 实战要点
+\`temperature\`（温度）控制模型输出的随机程度，范围 0-2：
 
-1. **Thread 要按用户/会话隔离**:不要让多个用户共享一个 Thread,会串话。
-2. **Run 一定要轮询超时**:加上最大轮询时间,防止卡死。
-3. **文件要清理**:上传的文件、向量存储会持续计费,用完调用 \`delete\`。
-4. **instructions 要稳定**:每次更新 Assistant 的 instructions,历史 Run 行为可能不一致。
-5. **限流要处理**:Assistants API 有严格的 rate limit,要做指数退避重试。
+- **低（0-0.3）**：输出确定、保守、聚焦。每次基本一样。
+- **中（0.7 左右）**：平衡，有点变化但不离谱。
+- **高（1.5-2）**：高度随机、天马行空、甚至乱说。
 
-### 12.8 小结
+\`\`\`text
+temperature=0：贪心，每次都选概率最高的 token → 稳定、可复现
+temperature=1：按原始概率采样 → 自然、有变化
+temperature=2：概率被放大，小概率词也常选 → 发散、可能胡言
+\`\`\`
 
-Assistants API 把 Agent 的"脏活累活"托管化了,是快速构建 Agent 应用的捷径。但它本质是"黑盒基础设施",在多模型、私有化、深度定制场景下,LangChain + LlamaIndex 的自建方案依然不可替代。理解两者的取舍,根据项目阶段和约束灵活选择,才是成熟的工程决策。
-`,
+\`\`\`python
+# 对比不同温度的输出
+for temp in [0, 0.7, 1.5]:
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": "给'月亮'写一句比喻"}],
+        temperature=temp
+    )
+    print(f"温度{temp}：{response.choices[0].message.content}")
+# 温度0每次几乎一样；温度1.5每次都不同，可能很惊艳也可能离谱
+\`\`\`
+
+**经验**：temperature=0 用于分类/抽取等要确定的；0.7 用于对话/创作；高于 1.2 基本不推荐。
+
+### 二、top_p：核采样
+
+\`top_p\`（核采样/Nucleus Sampling）从概率角度限制候选词：只从**累计概率达到 p** 的词里选，p 范围 0-1。
+
+\`\`\`text
+top_p=0.1：只从概率前10%的词里选 → 非常保守
+top_p=1：所有词都可能选 → 不限制
+\`\`\`
+
+**temperature vs top_p**：两者都是控制随机性，**通常只调一个，不要同时调**。OpenAI 官方建议：要么调 temperature，要么调 top_p，别两个都改。
+
+### 三、frequency_penalty：抑制重复词
+
+\`frequency_penalty\`（频率惩罚）范围 -2~2，**正值**会让模型**少重复已经出现过的词**。
+
+\`\`\`text
+frequency_penalty=0：正常
+frequency_penalty=1：少重复用过的词 → 文本更多样
+frequency_penalty=-1：鼓励重复 → 适合列表、强调
+\`\`\`
+
+适合写长文时避免"车轱辘话"。
+
+### 四、presence_penalty：促进新话题
+
+\`presence_penalty\`（存在惩罚）范围 -2~2，**正值**鼓励模型**引入新词、新话题**，避免一直在原地打转。
+
+\`\`\`text
+presence_penalty=1：更倾向聊新内容 → 适合开放式对话、头脑风暴
+\`\`\`
+
+**frequency vs presence 区别**：frequency 看一个词出现几次（多次就抑制），presence 只看有没有出现（出现过就抑制）。前者防"啰嗦"，后者促"新颖"。
+
+### 五、max_tokens：限制输出长度
+
+\`max_tokens\` 限制模型最多生成多少 token。超过就强制停止（finish_reason=length）。
+
+\`\`\`python
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "详细介绍Python"}],
+    max_tokens=100  # 只生成约100 token，会被截断
+)
+# 注意：是"输出"上限，不含输入
+\`\`\`
+
+**注意**：max_tokens 是"上限"不是"目标"，模型可能提前结束。设太小会截断，设太大浪费额度上限。
+
+### 六、seed：可复现（3+ 支持）
+
+\`seed\` 让相同输入 + 相同 seed 产生相同输出，方便调试和复现：
+
+\`\`\`python
+# 固定 seed，结果可复现
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "随机写个数字"}],
+    seed=42,            # 固定种子
+    temperature=0.7     # 配合非0温度才有意义
+)
+# 同样 seed + temperature 下，多次调用结果基本一致
+\`\`\`
+
+注意：seed 只是"尽量"复现，不保证 100% 一致（系统状态有影响）。
+
+### 七、stop：停止序列
+
+\`stop\` 指定遇到某些文本就停止生成：
+
+\`\`\`python
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "写3个要点，每个以'要点：'开头"}],
+    stop=["要点：", "\\n\\n"]  # 遇到这两个之一就停
+)
+\`\`\`
+
+适合控制输出结构，比如"只生成第一个要点"。
+
+### 八、参数调优建议
+
+\`\`\`text
+任务类型          推荐参数
+─────────────────────────────────────
+分类/抽取/JSON    temperature=0, top_p=1（要确定）
+对话/问答         temperature=0.7（自然）
+创意写作          temperature=0.9, top_p=0.9
+头脑风暴          temperature=1.0, presence_penalty=0.5
+\`\`\`
+
+\`\`\`python
+# 不同场景的参数预设
+PRESETS = {
+    "分类": {"temperature": 0, "max_tokens": 100},
+    "对话": {"temperature": 0.7, "max_tokens": 1000},
+    "创作": {"temperature": 0.9, "top_p": 0.9, "max_tokens": 2000},
+    "头脑风暴": {"temperature": 1.0, "presence_penalty": 0.5, "max_tokens": 1000},
+}
+
+def chat_with_preset(user_input, preset_name):
+    """按预设参数调用"""
+    params = PRESETS[preset_name]
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": user_input}],
+        **params
+    )
+    return response.choices[0].message.content
+\`\`\`
+
+### 九、本章小结与易错点
+
+| 易错点 | 说明 | 正确做法 |
+| --- | --- | --- |
+| 同时调 temp 和 top_p | 效果混乱 | 只调一个 |
+| 事实类用高温度 | 答案乱飘 | 事实/分类用 temperature=0 |
+| 创作用温度 0 | 千篇一律 | 创作用 0.7-0.9 |
+| max_tokens 设太小 | 输出被截断 | 留够余量 |
+| 用 seed 期望完全一致 | 不保证100% | 只做"尽量"复现 |
+
+> **核心结论**：采样参数是控制模型"稳定 vs 创造"的旋钮。**temperature** 最常用——事实/分类任务设 0，对话设 0.7，创作设 0.9。top_p 与 temperature 二选一。penalty 用于控制重复和新颖度。`,
   },
 ];
-
-export { chapters };

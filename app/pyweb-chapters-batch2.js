@@ -1,1764 +1,990 @@
 // =============================================================
-// Python Web 后端开发教程 —— 第二批章节（数据库篇，共 5 章）
+// Python Web 应用开发实战教程 - 第 2 批章节（WSGI 与 ASGI 4 章）
 // -------------------------------------------------------------
-// 本文件包含以下章节：
-//   1. pyweb-sqlalchemy   — SQLAlchemy 2.0 核心概念
-//   2. pyweb-db-integration — FastAPI 数据库集成
-//   3. pyweb-alembic      — Alembic 数据库迁移
-//   4. pyweb-async-db     — 异步数据库实战
-//   5. pyweb-structure    — 项目结构与分层架构
+// 本批包含 4 章：
+//   wsgi-concept    : WSGI 协议详解
+//   asgi-concept    : ASGI 协议详解
+//   server-gunicorn : Gunicorn 服务器
+//   server-uvicorn  : Uvicorn 服务器
 //
-// 技术栈：Python 3.11+ / FastAPI 0.110+ / SQLAlchemy 2.0+ /
-//         Alembic / Pydantic v2 / aiosqlite
-//
-// 格式约定：
-//   - content 为反引号模板字符串
-//   - content 内部所有反引号必须转义为 \`
-//   - 代码块围栏写作 \`\`\`
-//   - 围绕"博客系统 API"项目展开
+// 教程定位：纯阅读型，代码示例在 content 的 markdown 代码块中展示。
+// 重点讲清「为什么」和「怎么想」，框架会变，Web 原理长存。
 // =============================================================
 
 export const chapters = [
-  // =========================================================
-  // 第一章：SQLAlchemy 2.0 核心概念
-  // =========================================================
+  // ============================================================
+  // 第 5 章：WSGI 协议详解
+  // ============================================================
   {
-    id: "pyweb-sqlalchemy",
-    group: "数据库",
-    icon: "🗄️",
-    title: "SQLAlchemy 2.0 核心概念",
-    content: `
-## 为什么需要 ORM
+    id: "wsgi-concept",
+    group: "WSGI 与 ASGI",
+    icon: "🔌",
+    title: "WSGI 协议详解",
+    content: `# WSGI 协议详解
 
-在传统的数据库开发中，我们需要手写 SQL 语句，然后把结果集手动映射成对象。这种方式有几个明显的痛点：**SQL 字符串与业务代码混杂**导致维护困难；**字段映射重复枯燥**，每张表都要写一遍近乎相同的转换逻辑；**SQL 注入风险**始终存在，稍有不慎就会拼接出危险语句；**数据库方言不统一**，切换数据库时几乎要重写所有 SQL。
+## 一句话定义
 
-**ORM（Object-Relational Mapping，对象关系映射）** 的核心思想是：把数据库里的**表**映射成程序里的**类**，把**行**映射成**对象**，把**列**映射成**属性**。这样你只需要操作 Python 对象，ORM 会自动帮你生成对应的 SQL 并执行。使用 ORM 后，业务代码不再混杂 SQL 字符串，字段映射由框架自动完成，参数化查询天然防止注入，而且不同数据库的方言差异被 ORM 抽象层吸收。
+WSGI（Web Server Gateway Interface，Web 服务器网关接口）是 Python Web 服务器和 Web 框架之间的一套接口规范。它规定了一个 Python 应用该长什么样，服务器该怎么调用它。简单说：WSGI 让「服务器」和「框架」能解耦——你换服务器不用改框架，换框架不用改服务器。
 
-当然 ORM 不是银弹。对于极其复杂的统计查询、需要极致性能的批量操作，手写 SQL 往往更直接高效。SQLAlchemy 提供了**核心层（Core）**和**ORM 层**两个层次，你可以在 ORM 中随时下沉到 Core 甚至原生 SQL，做到"该抽象时抽象，该下沉时下沉"。
+## 为什么需要 WSGI
 
-| 对比维度 | 原生 SQL | ORM（SQLAlchemy） |
-| --- | --- | --- |
-| **开发效率** | 低，手写映射 | 高，对象操作 |
-| **可维护性** | SQL 散落各处 | 模型集中定义 |
-| **SQL 注入** | 需手动防护 | 参数化查询天然安全 |
-| **数据库迁移** | 改 SQL | 改模型 + 迁移工具 |
-| **性能** | 极致可控 | 有额外开销，可优化 |
-| **学习曲线** | SQL 本身 | ORM API + SQL |
-| **复杂查询** | 灵活直接 | 复杂时需下沉 |
+在 WSGI 出现之前（PEP 3333，2010 年定稿），Python Web 世界很乱：每个服务器和每个框架都有自己的对接方式。你想用 Nginx + Flask？对不起，得写专门的适配。换个框架又得改一遍。
 
-## SQLAlchemy 2.0 的新特性
+这就像每个品牌的手机用不同的充电口——服务器是充电器，框架是手机，接口不统一就得配各种转接头。
 
-SQLAlchemy 2.0 是一次重大升级，它在**类型提示、API 一致性、异步支持**等方面做了全面革新。最直观的变化是模型定义方式和查询 API 都全面现代化了。
+WSGI 的意义就是**统一接口**：
+- 服务器只要按 WSGI 规范实现，就能跑任何 WSGI 框架（Flask、Django、Bottle……）。
+- 框架只要按 WSGI 规范写，就能跑在任何 WSGI 服务器上（gunicorn、uWSGI、waitress……）。
 
-### 1. DeclarativeBase 取代 declarative_base
+一个标准，解开了 N×M 的组合爆炸，变成 N+M。这是 Python Web 生态能繁荣的基础。
 
-在 1.x 时代，我们用 \`declarative_base()\` 工厂函数生成基类：
+## WSGI 应用签名
+
+WSGI 规定一个应用必须是一个**可调用对象（callable）**，通常是函数，签名固定：
 
 \`\`\`python
-# 旧写法（1.x，已不推荐）
-from sqlalchemy.orm import declarative_base
-
-Base = declarative_base()
-
-class User(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True)
-    name = Column(String(50))
+def app(environ, start_response):
+    # environ: 字典，包含所有请求信息
+    # start_response: 回调函数，用来发送状态码和响应头
+    # 返回值: 一个可迭代对象，每个元素是响应正文的字节
+    ...
 \`\`\`
 
-2.0 推荐直接继承 \`DeclarativeBase\`，这与 Pydantic、dataclass 的风格一致，也方便类型检查器推断：
+两个参数：
+- \`environ\`：一个字典，装着请求的全部信息（方法、路径、查询串、请求头等）。
+- \`start_response\`：一个回调函数，应用调用它来「告诉」服务器要返回的状态码和响应头。
+
+返回值：一个**可迭代的字节串**。最简单的是一个列表 \`[b"hello"]\`，也可以是生成器。
+
+## environ 字典
+
+\`environ\` 把 HTTP 请求翻译成了一堆环境变量，常用的有：
+
+| 键 | 含义 | 示例 |
+|----|------|------|
+| REQUEST_METHOD | HTTP 方法 | "GET" / "POST" |
+| PATH_INFO | 请求路径 | "/api/users" |
+| QUERY_STRING | 查询串 | "page=2&role=admin" |
+| SERVER_NAME | 服务器主机名 | "example.com" |
+| SERVER_PORT | 端口 | "8000" |
+| HTTP_HOST | Host 头 | "example.com" |
+| HTTP_USER_AGENT | User-Agent 头 | "Mozilla/5.0..." |
+| CONTENT_TYPE | 正文类型 | "application/json" |
+| CONTENT_LENGTH | 正文长度 | "128" |
+| wsgi.input | 读正文的文件对象 | — |
+
+注意请求头在 environ 里的命名规则：**HTTP\_ 加上头部名大写，横线变下划线**。比如 \`User-Agent\` 变成 \`HTTP_USER_AGENT\`。这是 CGI 时代的传统。
+
+## start_response 回调
+
+\`start_response\` 是服务器传给你的函数，你调用它来发送响应行和头部：
 
 \`\`\`python
-# 新写法（2.0，推荐）
-from sqlalchemy.orm import DeclarativeBase
-
-class Base(DeclarativeBase):
-    pass
-
-class User(Base):
-    __tablename__ = "users"
-    # 下面用 Mapped + mapped_column 定义列
+start_response(status, headers, exc_info=None)
 \`\`\`
 
-### 2. Mapped 与 mapped_column
+- \`status\`：字符串，格式是 \`"200 OK"\`（状态码 + 原因短语）。
+- \`headers\`：列表，元素是 \`[(header_name, header_value), ...]\`。
+- \`exc_info\`：错误处理用，一般不传。
 
-2.0 引入了 \`Mapped[T]\` 类型注解和 \`mapped_column()\` 配置函数。**类型即文档**：一眼就能看出 \`name\` 是 \`str\`、\`age\` 是 \`int\`、\`created_at\` 是 \`datetime\`。类型检查器（mypy / pyright）也能据此做静态检查。
+调用它并不会立刻把数据发给客户端，而是「声明」了状态和头部。真正发送要等返回的可迭代对象被消费时。
+
+## 完整的 WSGI 应用示例
 
 \`\`\`python
-from datetime import datetime
-from sqlalchemy import String
-from sqlalchemy.orm import Mapped, mapped_column
-
-class User(Base):
-    __tablename__ = "users"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(50))
-    age: Mapped[int | None] = mapped_column(default=None)  # 可空整型
-    created_at: Mapped[datetime] = mapped_column(default=datetime.now)
+def application(environ, start_response):
+    # 1. 从 environ 取请求信息
+    method = environ.get("REQUEST_METHOD", "GET")
+    path = environ.get("PATH_INFO", "/")
+    query = environ.get("QUERY_STRING", "")
+    
+    # 2. 根据路径处理（最简单的路由）
+    if path == "/" and method == "GET":
+        status = "200 OK"
+        headers = [("Content-Type", "text/plain; charset=utf-8")]
+        body = "Hello, WSGI!"
+    elif path == "/api/time" and method == "GET":
+        import datetime
+        status = "200 OK"
+        headers = [("Content-Type", "application/json")]
+        body = '{"time": "' + datetime.datetime.now().isoformat() + '"}'
+    else:
+        status = "404 Not Found"
+        headers = [("Content-Type", "text/plain")]
+        body = "Not Found"
+    
+    # 3. 调用 start_response，发送状态码和头部
+    start_response(status, headers)
+    
+    # 4. 返回可迭代的字节串（注意要 encode 成字节）
+    return [body.encode("utf-8")]
 \`\`\`
 
-\`Mapped[int | None]\` 表示该列可空（对应数据库 \`NULL\`），\`Mapped[int]\` 表示非空（\`NOT NULL\`）。这比旧的 \`nullable=True\` 更直观。
+这就是一个完整的 WSGI 应用。你给它 environ 和 start_response，它返回字节列表。任何 WSGI 服务器都能跑它。
 
-### 3. select() 语句取代 query()
-
-1.x 的 \`session.query(User).filter(...)\` 风格已被标记为 legacy。2.0 统一使用 \`select()\` 构造查询，无论 ORM 还是 Core 都用同一套 API：
+用 Python 自带的 wsgiref 跑起来看看：
 
 \`\`\`python
-# 旧写法（legacy）
-users = session.query(User).filter(User.age > 18).all()
+from wsgiref.simple_server import make_server
 
-# 新写法（2.0）
-from sqlalchemy import select
-stmt = select(User).where(User.age > 18)
-users = session.scalars(stmt).all()
+# 把上面的 application 函数传给 make_server
+server = make_server("0.0.0.0", 8000, application)
+print("WSGI 应用跑在 http://localhost:8000")
+server.serve_forever()
 \`\`\`
 
-\`select()\` 风格的好处是：返回的是语句对象，可以灵活组合、打印调试、传递给其他函数，符合"声明式"编程思想。
+访问 \`http://localhost:8000\` 看到 Hello, WSGI！这就是 Flask、Django 背后的本质——它们只是把这套封装得更优雅。
 
-## Engine：数据库连接的引擎
+## WSGI 服务器
 
-**Engine** 是 SQLAlchemy 与数据库通信的入口。它内部维护一个**连接池**，负责创建、复用、回收数据库连接。一个 Engine 由三部分组成：**URL（数据库地址）**、**Dialect（方言）**、**Pool（连接池）**。
+WSGI 应用不能自己监听端口（它只是个函数），需要专门的 WSGI 服务器来：
+1. 监听端口，接收 HTTP 连接。
+2. 把 HTTP 请求解析成 environ。
+3. 调用你的 WSGI 应用，传入 environ 和 start_response。
+4. 把应用返回的字节发给客户端。
+
+常见的 WSGI 服务器：
+- **Gunicorn**：最流行，稳定、配置简单、性能好。
+- **uWSGI**：功能多但配置复杂，老项目常用。
+- **waitress**：纯 Python，跨平台，Windows 友好。
+- **gunicorn + uvicorn worker**：跑 ASGI 应用的组合（后面讲）。
+
+开发时用的 \`flask run\`、\`python manage.py runserver\` 内置的是开发服务器（Werkzeug），**绝对不能用于生产**——单线程、无并发、慢。
+
+## WSGI 中间件
+
+中间件是「包装」应用的另一层应用。它既像服务器（调用内层应用），又像应用（被外层调用）：
 
 \`\`\`python
-from sqlalchemy import create_engine
+class TimingMiddleware:
+    """计时中间件：记录每个请求的处理时间"""
+    def __init__(self, app):
+        self.app = app  # 被包装的内层应用
+    
+    def __call__(self, environ, start_response):
+        import time
+        start = time.time()
+        # 调用内层应用
+        response = self.app(environ, start_response)
+        elapsed = time.time() - start
+        # 记录耗时（这里简化为打印）
+        print(f"{environ['PATH_INFO']} 耗时 {elapsed:.4f}s")
+        return response
 
-# 同步引擎（SQLite）
-engine = create_engine(
-    "sqlite:///blog.db",
-    echo=True,           # 打印执行的 SQL，调试时很有用
-    pool_size=5,         # 连接池大小（SQLite 不真正用连接池，但其他库会用到）
-    pool_pre_ping=True,  # 取连接前先 ping 一下，避免拿到已断开的连接
-)
+# 用中间件包装应用
+wrapped_app = TimingMiddleware(application)
+# 现在 wrapped_app 也是一个 WSGI 应用，可以传给服务器
 \`\`\`
 
-URL 的格式决定了使用哪个驱动：\`sqlite:///blog.db\` 是同步 SQLite，\`sqlite+aiosqlite:///blog.db\` 是异步 SQLite，\`postgresql+asyncpg://user:pass@host/db\` 是异步 PostgreSQL。Engine 是**进程级单例**，整个应用共享一个即可，不要每次查询都新建。
+中间件能干很多事：日志、认证、CORS、压缩、限流……Flask 的 \`before_request\`/Django 的中间件本质上都是这套机制。
 
-## Session：与数据库对话的工作单元
+## 同步模型
 
-**Session** 是 ORM 操作的载体。你可以把它理解成"工作单元（Unit of Work）"：你在 Session 上对对象做的增删改，并不会立即落到数据库，而是先暂存在内存中；调用 \`session.commit()\` 时，Session 会把所有变更**一次性**提交，出错则 \`rollback()\` 回滚。这种"批处理"模式既减少了数据库往返次数，又保证了事务的原子性。
+WSGI 是**同步（synchronous）**的：一个请求一个线程/进程，处理完才能处理下一个。当你的视图函数在等数据库查询时，这个线程就卡住了，别的请求只能排队。
 
-\`\`\`python
-from sqlalchemy.orm import Session
+为什么？因为 WSGI 设计于 2003 年（PEP 333），那时候 Python 还没有 async/await，多线程是主流的并发模型。服务器靠多进程/多线程来扛并发：
+- Gunicorn 默认 pre-fork 出多个 worker 进程。
+- 每个 worker 进程可以再开多线程。
 
-# 同步 Session 的基本用法
-with Session(engine) as session:
-    # 1. 创建：把对象加入 Session
-    user = User(name="张三", age=25)
-    session.add(user)
-    # 此时还没写库，user.id 还是 None
+## 为什么 WSGI 不支持异步和 WebSocket
 
-    # 2. 查询
-    stmt = select(User).where(User.name == "张三")
-    found = session.scalars(stmt).first()
+这是 WSGI 最大的局限，也是 ASGI 诞生的原因：
 
-    # 3. 修改：直接改对象属性
-    found.age = 26
+1. **不支持 async/await**：WSGI 的 \`app(environ, start_response)\` 是同步调用，必须立刻返回响应。async 函数返回的是协程对象，不是字节列表——根本对不上 WSGI 的接口。
 
-    # 4. 删除
-    # session.delete(found)
+2. **不支持 WebSocket**：WebSocket 是「长连接」，建立后服务器和客户端可以双向持续通信。但 WSGI 模型是「请求来了 -> 处理 -> 返回 -> 结束」，一次调用对应一次响应，没法表达「持续通信」。
 
-    # 5. 提交：增、改、删一次性落库
-    session.commit()
-\`\`\`
+3. **不支持 HTTP/2**：HTTP/2 有多路复用、服务器推送，WSGI 的请求-响应模型表达不了。
 
-Session **不是线程安全**的，多线程环境下每个线程要用独立的 Session。在 FastAPI 中，我们通常用依赖注入为每个请求创建一个 Session。
+正因为这些局限，Python 社区推出了 ASGI（下一章）。
 
-## 模型定义：博客三表模型
+## 易错点小结
 
-下面定义博客系统的三张核心表：**User（用户）**、**Post（文章）**、**Comment（评论）**。它们构成一对多关系：一个用户有多篇文章，一篇文章有多条评论。
+| 易错点 | 错误做法 | 正确做法 |
+|--------|----------|----------|
+| 忘 encode | return ["hello"] | return [b"hello"] |
+| status 格式错 | "200" | "200 OK" |
+| headers 不是列表 | ("Content-Type", "text/plain") | [("Content-Type", "text/plain")] |
+| 用开发服务器上生产 | flask run 跑线上 | 用 gunicorn 部署 |
+| 请求头取值 | environ["User-Agent"] | environ["HTTP_USER_AGENT"] |
+| 同步卡死 | WSGI 里跑长耗时请求阻塞线程 | 用异步框架或后台任务 |
 
-\`\`\`python filename="models.py"
-from datetime import datetime
-from typing import Optional
-from sqlalchemy import String, ForeignKey, Text, func
-from sqlalchemy.orm import (
-    DeclarativeBase, Mapped, mapped_column, relationship,
-)
-
-
-class Base(DeclarativeBase):
-    """所有模型的基类，继承 DeclarativeBase 即可启用 2.0 风格。"""
-    pass
-
-
-class User(Base):
-    __tablename__ = "users"
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    # String(50) 限制长度，索引加速按用户名查询
-    username: Mapped[str] = mapped_column(String(50), unique=True, index=True)
-    email: Mapped[str] = mapped_column(String(120), unique=True)
-    # 可空字段用 Optional / None 标注
-    bio: Mapped[Optional[str]] = mapped_column(Text, default=None)
-    created_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(),  # 数据库端默认值
-    )
-
-    # 一对多：一个用户有多篇文章
-    # back_populates 双向绑定，posts 属性访问文章列表
-    posts: Mapped[list["Post"]] = relationship(
-        back_populates="author", cascade="all, delete-orphan"
-    )
-
-    def __repr__(self) -> str:
-        return f"<User {self.username}>"
-
-
-class Post(Base):
-    __tablename__ = "posts"
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    title: Mapped[str] = mapped_column(String(200), index=True)
-    content: Mapped[str] = mapped_column(Text)
-    # 外键指向 users.id；ON DELETE CASCADE 由数据库处理
-    author_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE")
-    )
-    published: Mapped[bool] = mapped_column(default=False)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-
-    # 多对一：文章归属某用户
-    author: Mapped["User"] = relationship(back_populates="posts")
-    # 一对多：文章有多条评论
-    comments: Mapped[list["Comment"]] = relationship(
-        back_populates="post", cascade="all, delete-orphan"
-    )
-    # 多对多：文章与标签（见下方 association_table）
-    tags: Mapped[list["Tag"]] = relationship(
-        secondary="post_tags", back_populates="posts"
-    )
-
-    def __repr__(self) -> str:
-        return f"<Post {self.title}>"
-
-
-class Comment(Base):
-    __tablename__ = "comments"
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    body: Mapped[str] = mapped_column(Text)
-    post_id: Mapped[int] = mapped_column(
-        ForeignKey("posts.id", ondelete="CASCADE")
-    )
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-
-    post: Mapped["Post"] = relationship(back_populates="comments")
-
-    def __repr__(self) -> str:
-        return f"<Comment {self.body[:20]}>"
-
-
-class Tag(Base):
-    __tablename__ = "tags"
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(30), unique=True)
-
-    posts: Mapped[list["Post"]] = relationship(
-        secondary="post_tags", back_populates="tags"
-    )
-\`\`\`
-
-## 多对多关系：文章与标签
-
-多对多需要一张**关联表（association table）**。下面的 \`post_tags\` 表只有两个外键列，没有自己的业务字段。在 2.0 中推荐用 \`Table\` 直接定义关联表，然后在 relationship 里用 \`secondary\` 指向它。
-
-\`\`\`python
-from sqlalchemy import Table, Column, ForeignKey
-
-# 关联表：文章 <-> 标签（多对多）
-post_tags = Table(
-    "post_tags",
-    Base.metadata,
-    Column("post_id", ForeignKey("posts.id", ondelete="CASCADE"), primary_key=True),
-    Column("tag_id", ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True),
-)
-\`\`\`
-
-定义好关系后，操作就非常自然：\`post.tags.append(tag)\` 会自动在关联表插入一行；\`user.posts\` 会自动查出该用户的所有文章。
-
-## 懒加载 vs Eager Loading
-
-默认情况下，\`relationship\` 是**懒加载（lazy）**的：访问 \`user.posts\` 时才发起 SQL 查询。这很方便，但有两个隐患：**N+1 查询问题**——循环遍历 N 个用户访问各自的 posts，会触发 N 次额外查询；**游离会话问题**——Session 关闭后再访问关系属性会报错。
-
-| 加载策略 | 关键字 | 何时发 SQL | 适用场景 |
-| --- | --- | --- | --- |
-| **懒加载** | lazy="select"（默认） | 访问属性时 | 不一定用到关系 |
-| **selectinload** | lazy="selectin" | 一次 IN 查询加载所有 | 一对多，集合 |
-| **joinedload** | lazy="joined" | JOIN 一次查全 | 多对一，单值 |
-| **subqueryload** | lazy="subquery" | 子查询加载 | 一对多，集合 |
-| **raise** | lazy="raise" | 访问即抛错 | 强制显式加载 |
-
-下面演示如何在查询时**显式指定**加载策略，避免 N+1：
-
-\`\`\`python
-from sqlalchemy.orm import selectinload, joinedload
-
-# ❌ 危险：N+1 查询
-users = session.scalars(select(User)).all()
-for u in users:
-    print(u.username, len(u.posts))  # 每个用户都触发一次 posts 查询
-
-# ✅ selectinload：用 IN 查询一次性加载所有 posts
-stmt = select(User).options(selectinload(User.posts))
-users = session.scalars(stmt).unique().all()
-for u in users:
-    print(u.username, len(u.posts))  # 不再额外查询
-
-# ✅ 嵌套加载：同时加载 posts 和 posts 的 comments
-stmt = (
-    select(User)
-    .options(selectinload(User.posts).selectinload(Post.comments))
-)
-users = session.scalars(stmt).unique().all()
-
-# ✅ joinedload：多对一关系用 JOIN 更高效
-stmt = select(Post).options(joinedload(Post.author))
-posts = session.scalars(stmt).unique().all()
-for p in posts:
-    print(p.title, p.author.username)  # 不再额外查询
-\`\`\`
-
-经验法则：**一对多/集合关系用 selectinload**（IN 查询不会产生笛卡尔积），**多对一/单值关系用 joinedload**（JOIN 不会行数膨胀）。在 API 层返回嵌套数据时，务必显式指定 eager loading，否则前端拿到的可能是残缺数据或触发延迟查询报错。
-
-## 小结
-
-本章建立了 SQLAlchemy 2.0 的心智模型：**Engine 管连接、Session 管事务、Model 映射表、relationship 描述关系、select 构造查询**。2.0 的 \`DeclarativeBase\` + \`Mapped\` + \`mapped_column\` 让模型定义类型安全且现代；\`select()\` 语句让查询构造统一且可组合。理解了懒加载的代价，才能在 API 层正确选择 \`selectinload\` / \`joinedload\` 避免 N+1。下一章我们把这套模型接到 FastAPI 上，做成完整的数据库集成。
-`
+下一章我们看 ASGI 如何用事件驱动的思路解决 WSGI 的局限。`
   },
 
-  // =========================================================
-  // 第二章：FastAPI 数据库集成
-  // =========================================================
+  // ============================================================
+  // 第 6 章：ASGI 协议详解
+  // ============================================================
   {
-    id: "pyweb-db-integration",
-    group: "数据库",
-    icon: "🔗",
-    title: "FastAPI 数据库集成",
-    content: `
-## 同步 vs 异步数据库
+    id: "asgi-concept",
+    group: "WSGI 与 ASGI",
+    icon: "⚡",
+    title: "ASGI 协议详解",
+    content: `# ASGI 协议详解
 
-FastAPI 本身是异步框架，但数据库访问可以是同步也可以是异步。两种方式各有取舍：
+## 一句话定义
 
-| 维度 | 同步数据库 | 异步数据库 |
-| --- | --- | --- |
-| **驱动** | sqlite3 / psycopg2 | aiosqlite / asyncpg |
-| **引擎** | create_engine | create_async_engine |
-| **会话** | Session | AsyncSession |
-| **函数** | 普通 def | async def + await |
-| **阻塞** | 会阻塞事件循环 | 不阻塞 |
-| **吞吐** | 低（线程池兜底） | 高（真并发） |
-| **生态** | 成熟稳定 | 主流库已支持 |
-| **调试** | 简单 | 需注意异步上下文 |
+ASGI（Asynchronous Server Gateway Interface，异步服务器网关接口）是 WSGI 的异步升级版。它用「事件驱动」的模型重新定义了服务器和框架之间的接口，支持 async/await、WebSocket、HTTP/2，是现代 Python Web（FastAPI、Starlette、Django 3.0+ async）的底座。
 
-在 FastAPI 中，即便路由是 \`async def\`，如果用同步数据库驱动，SQL 执行时仍会阻塞事件循环（FastAPI 会把同步 \`def\` 路由丢到线程池，但 \`async def\` 里调同步 DB 不会）。**对于 I/O 密集的 Web API，推荐异步数据库**，让一个事件循环能同时处理大量并发请求。本章用 \`aiosqlite\`（异步 SQLite 驱动）做演示，生产环境可换成 \`asyncpg\`（PostgreSQL）。
+## 为什么需要 ASGI
 
-## 数据库配置模块
+上一章我们看到 WSGI 有三个硬伤：不支持 async、不支持 WebSocket、不支持 HTTP/2。
 
-把数据库相关的"基础设施"集中到一个模块，避免到处散落引擎和会话工厂。下面是博客项目的 \`database.py\`：
+随着 Web 应用变复杂（实时聊天、推送、长轮询），同步的 WSGI 模型越来越吃力。一个聊天服务器，每个连接要一直挂着等消息，WSGI 得用一整个线程一直占着——一万个连接要一万线程，内存和上下文切换开销爆炸。
 
-\`\`\`python filename="database.py"
-from sqlalchemy.ext.asyncio import (
-    AsyncSession, create_async_engine, async_sessionmaker,
-)
-from sqlalchemy.orm import DeclarativeBase
+异步 I/O 才是正解：一个事件循环能同时管理上万个连接，哪个有数据就处理哪个，没数据时不占 CPU。Node.js、Go、Nginx 都是这套思路。
 
+ASGI 就是把这套异步模型标准化，给 Python Web 一个统一的异步接口规范。
 
-# 1. 异步引擎：进程级单例
-# sqlite+aiosqlite 指定异步驱动；echo=False 关闭 SQL 日志（生产环境）
-engine = create_async_engine(
-    "sqlite+aiosqlite:///./blog.db",
-    echo=False,
-    future=True,
-)
+## ASGI 应用签名
 
-# 2. 异步会话工厂：每次调用生成一个新 AsyncSession
-# expire_on_commit=False 让提交后对象仍可用（异步下避免二次查询）
-async_session_factory = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
-
-
-# 3. 模型基类：所有 ORM 模型继承它
-class Base(DeclarativeBase):
-    pass
-
-
-# 4. 建表辅助函数（开发期用，生产用 Alembic）
-async def init_db() -> None:
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-\`\`\`
-
-几个关键点：\`create_async_engine\` 的 URL 必须带异步驱动前缀（\`sqlite+aiosqlite\`）；\`async_sessionmaker\` 是 2.0 推荐的会话工厂写法；\`expire_on_commit=False\` 在异步场景下很重要——默认情况下 commit 后对象会"过期"，下次访问属性会触发懒加载查询，但异步下没有活动的事务上下文会报错，关闭过期可避免这个坑。
-
-## 会话依赖：每个请求一个 Session
-
-FastAPI 的依赖注入系统非常适合管理 Session 生命周期。我们写一个 \`get_db\` 依赖，用 \`yield\` 保证请求结束后 Session 一定被关闭：
-
-\`\`\`python filename="deps.py"
-from typing import AsyncGenerator
-from sqlalchemy.ext.asyncio import AsyncSession
-from database import async_session_factory
-
-
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """每个请求获取一个独立的 AsyncSession，请求结束自动关闭。"""
-    async with async_session_factory() as session:
-        try:
-            yield session
-            # 路由函数正常返回后，统一提交
-            await session.commit()
-        except Exception:
-            # 出错回滚，保证事务原子性
-            await session.rollback()
-            raise
-        finally:
-            # finally 确保会话关闭，归还连接
-            await session.close()
-\`\`\`
-
-\`yield\` 依赖的妙处在于：\`yield\` 之前是请求前置逻辑，\`yield\` 之后是请求后置逻辑（无论成功失败都会执行）。这样事务的"提交或回滚"被集中管理，路由函数只管业务，不用操心事务边界。
-
-## CRUD 操作封装
-
-把对单张表的增删改查封装成函数，路由层只调用这些函数，不直接写 SQL。下面是文章（Post）的完整 CRUD：
-
-\`\`\`python filename="crud/post.py"
-from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload, joinedload
-from models import Post
-
-
-async def create_post(
-    db: AsyncSession, title: str, content: str, author_id: int
-) -> Post:
-    """新增文章。add 后 flush 让 id 生成，但不提交（由依赖负责）。"""
-    post = Post(title=title, content=content, author_id=author_id)
-    db.add(post)
-    await db.flush()        # 让 post.id 可用，但不落库
-    await db.refresh(post)  # 加载服务端默认值（created_at 等）
-    return post
-
-
-async def get_post(db: AsyncSession, post_id: int) -> Post | None:
-    """按主键查单条，同时用 joinedload 预加载 author 避免 N+1。"""
-    stmt = (
-        select(Post)
-        .where(Post.id == post_id)
-        .options(joinedload(Post.author))
-    )
-    return (await db.execute(stmt)).scalar_one_or_none()
-
-
-async def list_posts(
-    db: AsyncSession, skip: int = 0, limit: int = 20
-) -> list[Post]:
-    """分页查询文章列表，按创建时间倒序。"""
-    stmt = (
-        select(Post)
-        .order_by(Post.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-        .options(selectinload(Post.author))
-    )
-    return list((await db.execute(stmt)).scalars().all())
-
-
-async def update_post(
-    db: AsyncSession, post_id: int, **fields
-) -> Post | None:
-    """按字段更新文章；只更新 fields 里出现的列。"""
-    post = await db.get(Post, post_id)
-    if post is None:
-        return None
-    for key, value in fields.items():
-        # 只更新显式传入且确实属于模型的字段
-        if hasattr(post, key) and value is not None:
-            setattr(post, key, value)
-    await db.flush()
-    return post
-
-
-async def delete_post(db: AsyncSession, post_id: int) -> bool:
-    """删除文章，返回是否删除成功。"""
-    post = await db.get(Post, post_id)
-    if post is None:
-        return False
-    await db.delete(post)
-    await db.flush()
-    return True
-
-
-async def count_posts(db: AsyncSession) -> int:
-    """统计文章总数，用于分页元信息。"""
-    stmt = select(func.count()).select_from(Post)
-    return (await db.execute(stmt)).scalar_one()
-\`\`\`
-
-注意几个异步特有的细节：\`await db.execute(stmt)\` 返回 \`Result\` 对象，要用 \`.scalars()\` 取标量、\`.scalar_one()\` 取唯一值；\`db.get(Model, pk)\` 是按主键查的快捷方法；\`flush\` 把变更发到数据库但**不提交**，方便在事务中拿到自增 id；\`refresh\` 重新加载对象的服务端默认值。
-
-## 路由层：把 CRUD 接到 HTTP
-
-有了 CRUD 函数，路由层就非常薄，只做"参数解析 + 调用 + 响应序列化"：
-
-\`\`\`python filename="routers/post.py"
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from deps import get_db
-import crud.post as post_crud
-
-router = APIRouter(prefix="/posts", tags=["文章"])
-
-
-@router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_post(
-    title: str, content: str, author_id: int,
-    db: AsyncSession = Depends(get_db),
-):
-    post = await post_crud.create_post(db, title, content, author_id)
-    return {"id": post.id, "title": post.title}
-
-
-@router.get("/")
-async def list_posts(
-    skip: int = 0, limit: int = 20,
-    db: AsyncSession = Depends(get_db),
-):
-    posts = await post_crud.list_posts(db, skip, limit)
-    total = await post_crud.count_posts(db)
-    return {"items": [p.id for p in posts], "total": total}
-
-
-@router.get("/{post_id}")
-async def get_post(post_id: int, db: AsyncSession = Depends(get_db)):
-    post = await post_crud.get_post(db, post_id)
-    if post is None:
-        raise HTTPException(404, "文章不存在")
-    return {"id": post.id, "title": post.title, "author": post.author.username}
-
-
-@router.put("/{post_id}")
-async def update_post(
-    post_id: int, title: str | None = None, content: str | None = None,
-    db: AsyncSession = Depends(get_db),
-):
-    post = await post_crud.update_post(
-        db, post_id, title=title, content=content
-    )
-    if post is None:
-        raise HTTPException(404, "文章不存在")
-    return {"id": post.id, "title": post.title}
-
-
-@router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_post(post_id: int, db: AsyncSession = Depends(get_db)):
-    ok = await post_crud.delete_post(db, post_id)
-    if not ok:
-        raise HTTPException(404, "文章不存在")
-    return None
-\`\`\`
-
-## 分页查询
-
-分页是列表 API 的标配。常用的有两种风格：**offset/limit 偏移分页**简单直观但深翻性能差；**游标分页（cursor）** 用上一页最后一条的排序值作为锚点，深翻稳定但不支持跳页。
-
-\`\`\`python filename="crud/page.py"
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from models import Post
-
-
-async def paginate_offset(
-    db: AsyncSession, page: int = 1, size: int = 20
-) -> dict:
-    """offset/limit 偏移分页：page 从 1 开始。"""
-    if page < 1 or size < 1 or size > 100:
-        raise ValueError("分页参数非法")
-    skip = (page - 1) * size
-    stmt = (
-        select(Post)
-        .order_by(Post.id.desc())
-        .offset(skip)
-        .limit(size)
-    )
-    items = list((await db.execute(stmt)).scalars().all())
-    return {
-        "items": items,
-        "page": page,
-        "size": size,
-        "has_next": len(items) == size,  # 够一页说明可能有下一页
-    }
-
-
-async def paginate_cursor(
-    db: AsyncSession, cursor: int | None = None, size: int = 20
-) -> dict:
-    """游标分页：cursor 是上一页最后一条的 id。"""
-    stmt = select(Post).order_by(Post.id.desc()).limit(size)
-    if cursor is not None:
-        # 取 id 小于 cursor 的（按 id 倒序，所以是"下一页"）
-        stmt = stmt.where(Post.id < cursor)
-    items = list((await db.execute(stmt)).scalars().all())
-    next_cursor = items[-1].id if items else None
-    return {
-        "items": items,
-        "next_cursor": next_cursor,
-        "has_next": len(items) == size,
-    }
-\`\`\`
-
-| 分页方式 | 优点 | 缺点 | 适用 |
-| --- | --- | --- | --- |
-| **offset/limit** | 可跳页，实现简单 | 深翻慢（需跳过 N 行） | 后台管理 |
-| **游标分页** | 深翻稳定，性能好 | 不能跳页 | 信息流、无限滚动 |
-
-## 错误处理与连接池
-
-数据库操作可能抛出多种异常：\`IntegrityError\`（唯一约束冲突）、\`OperationalError\`（连接断开）、\`TimeoutError\`（连接池耗尽）。建议用 FastAPI 的异常处理器统一捕获，把 ORM 异常翻译成合适的 HTTP 状态码：
-
-\`\`\`python filename="main.py"
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-from sqlalchemy.exc import IntegrityError, OperationalError
-
-app = FastAPI()
-
-
-@app.exception_handler(IntegrityError)
-async def integrity_handler(request: Request, exc: IntegrityError):
-    # 唯一约束、外键冲突 → 409
-    return JSONResponse(
-        status_code=409,
-        content={"detail": "数据冲突：唯一约束或外键约束被违反"},
-    )
-
-
-@app.exception_handler(OperationalError)
-async def operational_handler(request: Request, exc: OperationalError):
-    # 连接断开、超时 → 503
-    return JSONResponse(
-        status_code=503,
-        content={"detail": "数据库暂时不可用，请稍后重试"},
-    )
-
-
-@app.on_event("startup")
-async def startup():
-    # 启动时建表（仅演示，生产用 Alembic）
-    from database import init_db
-    await init_db()
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    # 关闭引擎，释放连接池
-    from database import engine
-    await engine.dispose()
-\`\`\`
-
-连接池配置对生产环境很关键。对 PostgreSQL/MySQL 这类有真正连接池的数据库，要合理设置 \`pool_size\`（常驻连接数）、\`max_overflow\`（溢出连接数）、\`pool_timeout\`（获取连接等待秒数）、\`pool_recycle\`（连接最长存活时间，避免被数据库端踢掉）：
+ASGI 应用也是一个可调用对象，但参数变了：
 
 \`\`\`python
-from sqlalchemy.ext.asyncio import create_async_engine
-
-engine = create_async_engine(
-    "postgresql+asyncpg://user:pass@localhost/blog",
-    pool_size=10,        # 常驻 10 个连接
-    max_overflow=20,     # 高峰可临时扩到 30
-    pool_timeout=30,     # 等 30 秒还拿不到连接就抛错
-    pool_recycle=1800,   # 30 分钟回收一次，避免 MySQL 8 小时空闲断开
-    pool_pre_ping=True,  # 取连接前 ping，避免拿到死连接
-)
+async def app(scope, receive, send):
+    # scope: 字典，连接的「类型和元信息」
+    # receive: 异步函数，用来接收对方发来的事件
+    # send: 异步函数，用来发送事件给对方
+    ...
 \`\`\`
 
-## 小结
+注意三个关键变化：
+1. **async def**：ASGI 应用是协程函数，可以 await。
+2. **scope 替代 environ**：装的是连接级别的信息。
+3. **receive/send 替代 start_response**：用「收发事件」来表达通信，而不是「一次性返回响应」。
 
-本章把 SQLAlchemy 2.0 接到了 FastAPI 上：\`create_async_engine\` + \`async_sessionmaker\` 搭建异步基础设施；\`get_db\` 用 \`yield\` 依赖管理"每请求一会话 + 统一事务"；CRUD 函数封装单表操作，路由层保持轻薄；分页要按场景选 offset 或 cursor；异常处理器把 ORM 错误翻译成 HTTP 状态码；连接池参数决定生产吞吐与稳定性。下一章我们解决"表结构变更如何安全推进"这个运维难题——用 Alembic 做数据库迁移。
-`
+## scope 字典
+
+\`scope\` 描述这次「连接」是什么。最重要的字段是 \`type\`，区分连接类型：
+
+\`\`\`python
+{
+    "type": "http",          # 连接类型：http / websocket / lifespan
+    "method": "GET",         # HTTP 方法（http 才有）
+    "path": "/api/users",    # 请求路径
+    "query_string": b"page=2",  # 查询串（字节）
+    "headers": [...],        # 请求头列表（字节对）
+    "client": ("1.2.3.4", 5000),  # 客户端地址
+    "server": ("0.0.0.0", 8000),  # 服务器地址
+    "scheme": "http",        # 协议
+}
+\`\`\`
+
+三种 type：
+- \`http\`：普通 HTTP 请求。
+- \`websocket\`：WebSocket 连接。
+- \`lifespan\`：应用启停事件（启动时初始化、关闭时清理）。
+
+## receive 与 send：事件驱动
+
+这是 ASGI 和 WSGI 最大的区别。WSGI 是「调一次函数拿一次响应」，ASGI 是「收发一连串事件」。
+
+一次 HTTP 请求，服务器和应用的对话：
+
+**服务器 -> 应用（receive 收到的事件）：**
+- \`http.request\`：请求来了，带 body（可能分多次，流式）。
+- \`http.disconnect\`：客户端断开了。
+
+**应用 -> 服务器（send 发送的事件）：**
+- \`http.response.start\`：响应开始，发状态码和头部。
+- \`http.response.body\`：响应正文（可以分多次发，流式）。
+
+\`\`\`python
+async def app(scope, receive, send):
+    # 1. 等待请求事件（receive 收请求）
+    request = await receive()
+    body = request.get("body", b"")  # 请求正文
+    
+    # 2. 发送响应开始事件：状态码 + 头部
+    await send({
+        "type": "http.response.start",
+        "status": 200,
+        "headers": [[b"content-type", b"application/json"]],
+    })
+    
+    # 3. 发送响应正文事件
+    await send({
+        "type": "http.response.body",
+        "body": b'{"message": "Hello, ASGI!"}',
+    })
+\`\`\`
+
+看出门道了吗？响应不是「一次返回」，而是「先发 start 事件，再发 body 事件」。body 还能分多次发，实现**流式响应**（边生成边发，比如大文件下载、SSE 推送）。
+
+## 事件驱动模型
+
+ASGI 的核心是**事件驱动（event-driven）**：
+- 一切通信都是「事件」的收发。
+- 收发是异步的，\`await receive()\` 挂起等待，不阻塞线程。
+- 一个事件循环可以同时管理成千上万个这样的协程。
+
+对比 WSGI：
+- WSGI：请求来了 -> 同步处理（卡线程）-> 返回。
+- ASGI：请求来了 -> 启动一个协程 -> 协程在 await 时让出 CPU -> 事件循环处理别的 -> 数据好了再回来。
+
+这就是 ASGI 能扛高并发的秘密：**I/O 等待时不占资源**。
+
+## WebSocket 支持
+
+ASGI 天然支持 WebSocket，因为它的「收发事件」模型正好匹配 WebSocket 的「双向通信」：
+
+\`\`\`python
+async def app(scope, receive, send):
+    if scope["type"] == "websocket":
+        # 1. 等客户端发起 WebSocket 握手
+        event = await receive()
+        if event["type"] == "websocket.connect":
+            # 接受连接
+            await send({"type": "websocket.accept"})
+        
+        # 2. 循环收发消息
+        while True:
+            event = await receive()
+            if event["type"] == "websocket.disconnect":
+                break  # 客户端断开
+            # 收到消息，原样回显
+            message = event.get("text", "")
+            await send({
+                "type": "websocket.send",
+                "text": f"你说了: {message}",
+            })
+\`\`\`
+
+WSGI 根本没法表达这种「循环收发」——它的接口要求一次调用返回一次响应。
+
+## ASGI 服务器
+
+常见的 ASGI 服务器：
+- **Uvicorn**：最流行，基于 uvloop（C 实现的事件循环）+ httptools，快。
+- **Hypercorn**：支持 HTTP/2 和 HTTP/3，功能全。
+- **Daphne**：Django Channels 用的，Django 项目常见。
+
+## ASGI vs WSGI 对比
+
+| 维度 | WSGI | ASGI |
+|------|------|------|
+| 同步/异步 | 同步 | 异步（也兼容同步） |
+| 接口签名 | app(environ, start_response) | async app(scope, receive, send) |
+| 通信模型 | 一次调用一次响应 | 事件收发 |
+| WebSocket | 不支持 | 支持 |
+| HTTP/2 | 不支持 | 支持 |
+| 并发模型 | 多线程/多进程 | 事件循环 + 协程 |
+| 适用场景 | 传统请求-响应 | 实时、高并发、I/O 密集 |
+| 代表框架 | Flask、Django（传统） | FastAPI、Starlette、Django（async） |
+
+选型建议：
+- 纯 CRUD、I/O 不密集，WSGI（Flask）够用，简单稳定。
+- 实时通信、高并发、大量 I/O 等待（调外部 API、查数据库），ASGI（FastAPI）更合适。
+- ASGI 也能跑同步代码（FastAPI 把 \`def\` 视图自动放线程池），不是非此即彼。
+
+## 代码示例：手写 ASGI 应用
+
+一个能区分 HTTP 和 WebSocket 的完整 ASGI 应用：
+
+\`\`\`python
+async def application(scope, receive, send):
+    # 根据 type 分发到不同处理函数
+    if scope["type"] == "http":
+        await handle_http(scope, receive, send)
+    elif scope["type"] == "websocket":
+        await handle_websocket(scope, receive, send)
+    elif scope["type"] == "lifespan":
+        await handle_lifespan(scope, receive, send)
+
+async def handle_http(scope, receive, send):
+    # 接收请求（事件）
+    request = await receive()
+    
+    # 解析路径，做最简单的路由
+    path = scope["path"]
+    if path == "/":
+        body = b'{"msg": "Hello ASGI"}'
+    elif path == "/time":
+        import datetime
+        now = datetime.datetime.now().isoformat()
+        body = ('{"time": "' + now + '"}').encode("utf-8")
+    else:
+        # 404
+        await send({
+            "type": "http.response.start",
+            "status": 404,
+            "headers": [[b"content-type", b"text/plain"]],
+        })
+        await send({"type": "http.response.body", "body": b"Not Found"})
+        return
+    
+    # 发送 200 响应
+    await send({
+        "type": "http.response.start",
+        "status": 200,
+        "headers": [[b"content-type", b"application/json"]],
+    })
+    await send({"type": "http.response.body", "body": body})
+
+async def handle_websocket(scope, receive, send):
+    # 等连接
+    event = await receive()
+    if event["type"] == "websocket.connect":
+        await send({"type": "websocket.accept"})
+    
+    # 循环回显
+    while True:
+        event = await receive()
+        if event["type"] == "websocket.disconnect":
+            break
+        await send({
+            "type": "websocket.send",
+            "text": "echo: " + event.get("text", ""),
+        })
+
+async def handle_lifespan(scope, receive, send):
+    # 应用启动/关闭钩子
+    while True:
+        event = await receive()
+        if event["type"] == "lifespan.startup":
+            print("应用启动，初始化资源")
+            await send({"type": "lifespan.startup.complete"})
+        elif event["type"] == "lifespan.shutdown":
+            print("应用关闭，清理资源")
+            await send({"type": "lifespan.shutdown.complete"})
+            break
+\`\`\`
+
+用 Uvicorn 跑：\`uvicorn main:application\`。看，这就是 FastAPI \`@app.get\` 背后的本质——它把这套事件收发封装成了你熟悉的路由装饰器。
+
+## 易错点小结
+
+| 易错点 | 错误做法 | 正确做法 |
+|--------|----------|----------|
+| 忘 await | send({...}) | await send({...}) |
+| 同步阻塞 | 视图里 time.sleep(10) | 用 asyncio.sleep 等异步版 |
+| 误用 environ | scope["REQUEST_METHOD"] | scope["method"] |
+| query_string 当字符串 | scope["query_string"] | 它是字节，要 decode |
+| 混用同步库 | async 视图里用 requests | 用 httpx 等异步库 |
+| 忘发 response.start | 直接发 body | 先 start 再 body |
+
+下一章我们看 Gunicorn 这个老牌 WSGI 服务器怎么部署应用。`
   },
 
-  // =========================================================
-  // 第三章：Alembic 数据库迁移
-  // =========================================================
+  // ============================================================
+  // 第 7 章：Gunicorn 服务器
+  // ============================================================
   {
-    id: "pyweb-alembic",
-    group: "数据库",
-    icon: "🔄",
-    title: "Alembic 数据库迁移",
-    content: `
-## 为什么需要数据库迁移
+    id: "server-gunicorn",
+    group: "WSGI 与 ASGI",
+    icon: "🚀",
+    title: "Gunicorn 服务器",
+    content: `# Gunicorn 服务器
 
-项目演进中，表结构几乎必然变化：加字段、改类型、加索引、拆表合并。如果靠手动改库，会出现几个问题：**多环境不一致**——开发、测试、生产环境的表结构慢慢对不上；**改动不可追溯**——谁在什么时候改了什么，全靠口头沟通；**回滚困难**——改错了想退回去，却记不清改之前是什么样；**部署风险高**——发版时要手动执行一堆 SQL，漏一条就出事。
+## 一句话定义
 
-**数据库迁移工具**把表结构的每一次变更都记录成**版本化的脚本**，像 Git 管代码一样管表结构：每个版本有唯一的 revision id，版本之间用 \`down_revision\` 串成链；可以一键升级（upgrade）到新版本，也可以降级（downgrade）回退；脚本随代码一起进版本库，团队共享同一份表结构历史。
+Gunicorn（Green Unicorn，绿色独角兽）是 Python 最流行的 WSGI HTTP 服务器。它基于 **pre-fork worker** 模型：启动时先 fork 出多个工作进程（worker），每个进程独立处理请求，靠多进程来扛并发。稳定、简单、配置少，是 Python Web 部署的事实标准。
 
-| 对比维度 | 手动改表 | Alembic 迁移 |
-| --- | --- | --- |
-| **可追溯** | 靠记忆 | 版本链清晰 |
-| **多环境同步** | 易漂移 | 跑同样脚本即可 |
-| **回滚** | 难 | downgrade 脚本 |
-| **团队协作** | 口口相传 | 脚本入库共享 |
-| **CI/CD** | 人工干预 | 自动执行 upgrade |
+## 为什么需要 Gunicorn
 
-Alembic 是 SQLAlchemy 官方的迁移工具，与 ORM 模型深度集成，支持 **autogenerate** 自动对比模型与数据库差异生成迁移脚本。
+上一章说过，Flask/Django 自带的是开发服务器，不能上生产。原因：
+- 单线程，并发能力差。
+- 没有进程管理（崩了不会自动重启）。
+- 没有优雅停机。
+- 性能差。
 
-## 初始化 Alembic
+Gunicorn 解决了这些：
+- **多进程**：pre-fork 多个 worker，并行处理。
+- **进程管理**：worker 挂了自动重启。
+- **优雅停机**：收到信号后等处理完再退出。
+- **性能好**：用 C 扩展解析 HTTP，吞吐量高。
 
-在项目根目录执行初始化命令，会生成 \`alembic.ini\` 配置文件和 \`alembic/\` 迁移目录：
+## 安装与启动
 
 \`\`\`bash
 # 安装
-pip install alembic
+pip install gunicorn
 
-# 在项目根目录初始化
-alembic init alembic
+# 启动（假设你的应用在 main.py 的 app 变量里）
+gunicorn main:app
+
+# 常用启动参数
+gunicorn main:app \\
+  --bind 0.0.0.0:8000 \\      # 绑定地址和端口
+  --workers 4 \\                # worker 进程数
+  --timeout 30 \\               # 请求超时秒数
+  --log-level info              # 日志级别
 \`\`\`
 
-生成的目录结构如下：
+注意 \`main:app\` 的格式：\`模块名:应用变量名\`。Gunicorn 会 import \`main\` 模块，取其中的 \`app\` 对象（必须是 WSGI 应用）。
 
-\`\`\`
-project/
-├── alembic.ini          # 配置文件（数据库 URL 等）
-├── alembic/
-│   ├── env.py           # 运行环境，每次迁移时执行
-│   ├── script.py.mako   # 迁移脚本模板
-│   └── versions/        # 存放各个版本的迁移脚本
-└── models.py            # 你的 ORM 模型
-\`\`\`
+## pre-fork worker 模型
 
-## 配置 alembic.ini
+Gunicorn 的核心是 pre-fork（预派生）模型：
 
-\`alembic.ini\` 里最关键的是 \`sqlalchemy.url\`，它告诉 Alembic 连哪个库。但把连接串硬编码进 ini 文件有两个问题：**敏感信息（密码）会进版本库**；**多环境（开发/测试/生产）需要不同 URL**。更好的做法是 \`env.py\` 里从环境变量读取，覆盖 ini 的配置。
+1. **主进程（master）**：启动时不处理请求，只负责管理 worker。
+2. **fork worker**：主进程 fork 出 N 个 worker 子进程。
+3. **worker 干活**：每个 worker 独立处理请求。
+4. **主进程监督**：worker 崩了，主进程立刻 fork 新的补上。
 
-\`\`\`ini
-# alembic.ini 片段
-[alembic]
-# 这里只放一个占位，真实 URL 在 env.py 里从环境变量读
-sqlalchemy.url = sqlite:///./blog.db
-script_location = alembic
-\`\`\`
+为什么叫 pre-fork？因为 worker 在请求**到来之前**就 fork 好了，请求一来就有现成的 worker 处理，不用临时 fork（减少延迟）。
 
-## 配置 env.py：异步支持与 autogenerate
+好处：
+- 多进程绕开了 Python GIL，真正并行。
+- worker 之间隔离，一个崩了不影响别的。
+- 主进程是「看门狗」，保证高可用。
 
-\`env.py\` 是 Alembic 的"运行时入口"，每次执行迁移命令都会跑它。我们需要做三件事：**导入模型让 autogenerate 能看到元数据**；**从环境变量读真实 URL**；**配置异步引擎执行迁移**。下面是适配异步 + autogenerate 的完整 \`env.py\`：
+## worker 类型
 
-\`\`\`python filename="alembic/env.py"
-import asyncio
-import os
-from logging.config import fileConfig
+Gunicorn 支持不同类型的 worker，适配不同场景：
 
-from sqlalchemy import pool
-from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
-
-from alembic import context
-
-# 1. 加载配置
-config = context.config
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
-
-# 2. 从环境变量覆盖 URL，避免硬编码
-db_url = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./blog.db")
-config.set_main_option("sqlalchemy.url", db_url)
-
-# 3. 导入所有模型，让 autogenerate 能感知到表
-#    关键：import 触发模型类定义，Base.metadata 才会被填充
-import models  # noqa: F401  （你的模型模块）
-target_metadata = models.Base.metadata
-
-
-def run_migrations_offline() -> None:
-    """离线模式：只生成 SQL 不执行（用于审查或交给 DBA）。"""
-    url = config.get_main_option("sqlalchemy.url")
-    context.configure(
-        url=url,
-        target_metadata=target_metadata,
-        literal_binds=True,
-        dialect_opts={"paramstyle": "named"},
-        compare_type=True,   # 比较列类型（默认 False 会漏掉类型变更）
-    )
-    with context.begin_transaction():
-        context.run_migrations()
-
-
-def do_run_migrations(connection: Connection) -> None:
-    """在给定连接上执行迁移。"""
-    context.configure(
-        connection=connection,
-        target_metadata=target_metadata,
-        compare_type=True,
-    )
-    with context.begin_transaction():
-        context.run_migrations()
-
-
-async def run_async_migrations() -> None:
-    """异步模式：用异步引擎跑迁移。"""
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,  # 迁移不需要连接池
-    )
-    async with connectable.connect() as connection:
-        await connection.run_sync(do_run_migrations)
-    await connectable.dispose()
-
-
-def run_migrations_online() -> None:
-    """在线模式的入口：根据 URL 判断走同步还是异步。"""
-    url = config.get_main_option("sqlalchemy.url")
-    if "asyncpg" in url or "aiosqlite" in url:
-        # 异步驱动走异步分支
-        asyncio.run(run_async_migrations())
-    else:
-        # 同步驱动走 Alembic 默认逻辑
-        from sqlalchemy import engine_from_config
-        connectable = engine_from_config(
-            config.get_section(config.config_ini_section, {}),
-            prefix="sqlalchemy.",
-            poolclass=pool.NullPool,
-        )
-        with connectable.connect() as connection:
-            do_run_migrations(connection)
-    # connectable 在同步分支未显式 dispose，进程退出时回收
-
-
-if context.is_offline_mode():
-    run_migrations_offline()
-else:
-    run_migrations_online()
-\`\`\`
-
-两个关键配置：\`compare_type=True\` 让 autogenerate 检测列类型变更（如 \`String(50)\` → \`String(100)\`），否则会漏掉；\`target_metadata = models.Base.metadata\` 把模型的元数据交给 Alembic 做对比。异步分支里用 \`connection.run_sync(do_run_migrations)\` 把同步的迁移逻辑包进异步上下文——这是 SQLAlchemy 异步 API 的标准用法。
-
-## 生成迁移脚本
-
-改完 \`models.py\` 后，用 \`autogenerate\` 生成迁移脚本：
+| worker 类型 | 模型 | 适用 | 安装 |
+|-------------|------|------|------|
+| sync（默认） | 同步，一个请求一个 | 普通 WSGI 应用 | 自带 |
+| gevent | 协程，事件循环 | I/O 密集 WSGI | pip install gevent |
+| eventlet | 协程，类似 gevent | I/O 密集 WSGI | pip install eventlet |
+| uvicorn.workers.UvicornWorker | 异步 | ASGI 应用（FastAPI） | pip install uvicorn |
 
 \`\`\`bash
-# -m 给迁移起个有意义的名字
-alembic revision --autogenerate -m "create posts table"
+# 同步 worker（默认，跑 Flask/Django）
+gunicorn main:app --workers 4
 
-# 生成的脚本在 alembic/versions/ 下，文件名形如：
-# a1b2c3d4e5f6_create_posts_table.py
+# 用 gevent（协程，扛更多并发连接）
+gunicorn main:app --workers 4 --worker-class gevent --worker-connections 1000
+
+# 跑 ASGI 应用（FastAPI）—— 用 UvicornWorker
+gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker
 \`\`\`
 
-生成的脚本长这样，包含 upgrade 和 downgrade 两部分：
+## worker 数量怎么定
 
-\`\`\`python filename="alembic/versions/a1b2c3_create_posts.py"
-"""create posts table
-
-Revision ID: a1b2c3d4e5f6
-Revises:
-Create Date: 2025-01-01 12:00:00
-"""
-from alembic import op
-import sqlalchemy as sa
-
-
-# 迁移版本号
-revision = "a1b2c3d4e5f6"
-down_revision = None   # 第一个迁移，没有前驱
-branch_labels = None
-depends_on = None
-
-
-def upgrade() -> None:
-    """升级：创建 posts 表。"""
-    op.create_table(
-        "posts",
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("title", sa.String(length=200), nullable=False),
-        sa.Column("content", sa.Text(), nullable=False),
-        sa.Column("author_id", sa.Integer(), nullable=False),
-        sa.Column("published", sa.Boolean(), nullable=False, server_default="0"),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now()),
-        sa.ForeignKeyConstraint(["author_id"], ["users.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    # 加索引加速常用查询
-    op.create_index("ix_posts_title", "posts", ["title"])
-
-
-def downgrade() -> None:
-    """降级：回滚到没有 posts 表的状态。"""
-    op.drop_index("ix_posts_title", table_name="posts")
-    op.drop_table("posts")
-\`\`\`
-
-**重要：autogenerate 生成的脚本一定要人工审查！** 它只能检测"模型和数据库的差异"，但有些变更它发现不了或会处理不当：
-
-- **列类型变更**：需要 \`compare_type=True\` 才检测，且某些方言下不准
-- **server_default 变更**：默认值改动可能漏检
-- **数据迁移**：autogenerate 只管结构，不管数据；需要手动写数据搬迁逻辑
-- **重命名**：它会把"改名列"识别成"删旧列 + 加新列"，会丢数据，需要手动改成 \`op.alter_column(...)\`
-
-## 升级、降级与查看历史
+经典公式：\`workers = 2 * CPU核数 + 1\`
 
 \`\`\`bash
-# 升级到最新版本
-alembic upgrade head
-
-# 升级到指定版本
-alembic upgrade a1b2c3d4e5f6
-
-# 升级 1 个版本
-alembic upgrade +1
-
-# 降级到上一个版本
-alembic downgrade -1
-
-# 降级到最初（清空所有迁移）
-alembic downgrade base
-
-# 查看迁移历史
-alembic history
-
-# 查看当前版本
-alembic current
-
-# 查看待执行的迁移（还没跑的）
-alembic heads
+# 4 核机器
+gunicorn main:app --workers 9
 \`\`\`
 
-| 命令 | 作用 | 典型场景 |
-| --- | --- | --- |
-| \`upgrade head\` | 升到最新 | 部署发版 |
-| \`upgrade +1\` | 升一级 | 逐步验证 |
-| \`downgrade -1\` | 退一级 | 发版出问题回滚 |
-| \`downgrade base\` | 退到最初 | 销毁重建 |
-| \`current\` | 当前版本 | 排查环境 |
-| \`history\` | 版本链 | 代码审查 |
+为什么是这个数？因为 sync worker 是「一个 worker 同时处理一个请求」，worker 数 = 并发数。CPU 密集型任务，worker 多了反而争抢 CPU；I/O 密集型，worker 等待多，可以稍多。2*CPU+1 是个平衡的经验值。
 
-## 加字段的迁移示例
+Gunicorn 还提供了快捷写法：
 
-假设博客文章要加一个 \`summary\` 摘要字段。先改模型：
+\`\`\`bash
+# 让 Gunicorn 自己算（等于 2*CPU+1）
+gunicorn main:app --workers $(python -c "import multiprocessing; print(multiprocessing.cpu_count() * 2 + 1)")
+\`\`\`
+
+注意：worker 不是越多越好。每个 worker 是独立进程，占内存，多了反而内存吃紧、上下文切换频繁。一般不超过几十个。
+
+## 常用参数详解
+
+\`\`\`bash
+gunicorn main:app \\
+  --bind 0.0.0.0:8000 \\
+  --workers 4 \\
+  --worker-class sync \\
+  --worker-connections 1000 \\
+  --timeout 30 \\
+  --graceful-timeout 30 \\
+  --keep-alive 2 \\
+  --preload \\
+  --log-level info \\
+  --access-logfile - \\
+  --error-logfile -
+\`\`\`
+
+| 参数 | 含义 | 典型值 |
+|------|------|--------|
+| --bind (-b) | 监听地址:端口 | 0.0.0.0:8000 |
+| --workers (-w) | worker 进程数 | 2*CPU+1 |
+| --worker-class (-k) | worker 类型 | sync / gevent / uvicorn... |
+| --worker-connections | 每个 worker 的连接数（gevent 用） | 1000 |
+| --threads | 每个 worker 的线程数 | 1（sync） |
+| --timeout (-t) | 请求处理超时（秒） | 30 |
+| --graceful-timeout | 优雅停机等待时间 | 30 |
+| --keep-alive | keep-alive 超时 | 2 |
+| --preload | 启动时预加载应用 | 减少 worker 内存 |
+| --log-level | 日志级别 | info |
+| --access-logfile | 访问日志文件（- 是 stdout） | - |
+
+## --preload 预加载
+
+默认每个 worker 各自 import 你的应用，加载一份代码到内存。如果应用初始化很重（加载模型、连数据库），N 个 worker 就加载 N 次。
+
+\`--preload\` 让主进程先加载应用，再 fork worker。fork 是写时复制（COW），worker 共享主进程的内存页，直到写才复制。
+
+好处：
+- **省内存**：共享代码，N 个 worker 不用 N 份。
+- **省启动时间**：只加载一次。
+
+注意：如果应用里有连接池（数据库连接），preload 后 fork 会导致 worker 共享同一个连接池——这会出问题。所以用 preload 时要确保 fork 后重新初始化连接。
+
+## --timeout 超时
+
+\`--timeout 30\` 表示 worker 处理一个请求超过 30 秒就被主进程杀掉重启。
+
+这能防止一个卡死的请求拖垮整个 worker。但注意：
+- 超时太短，长耗时任务（如大文件处理、报表生成）会被误杀。
+- 长耗时任务应该放后台（Celery），不该在 Web worker 里同步跑。
+
+\`\`\`bash
+# 有长耗时接口，适当调大
+gunicorn main:app --timeout 120
+\`\`\`
+
+## --graceful-timeout 优雅停机
+
+发 \`kill\` 或 \`kill -HUP\`（reload）时，Gunicorn 不会立刻杀 worker，而是：
+1. 停止给 worker 派新请求。
+2. 等正在处理的请求完成（最多等 graceful-timeout 秒）。
+3. 超时还没完成才强杀。
+
+这保证部署更新时不会中断正在处理的请求。
+
+## 配置文件
+
+参数多了，写成配置文件更清晰。创建 \`gunicorn.conf.py\`：
 
 \`\`\`python
-# models.py 给 Post 加字段
-class Post(Base):
-    ...
-    summary: Mapped[str | None] = mapped_column(String(500), default=None)
+# gunicorn.conf.py —— Gunicorn 配置文件
+
+# 绑定地址
+bind = "0.0.0.0:8000"
+
+# worker 数量
+workers = 4
+
+# worker 类型（ASGI 应用用 uvicorn worker）
+worker_class = "sync"
+
+# 每个 worker 的线程数（sync worker 用）
+threads = 2
+
+# 请求超时
+timeout = 30
+
+# 优雅停机超时
+graceful_timeout = 30
+
+# keep-alive
+keepalive = 2
+
+# 预加载应用（省内存）
+preload_app = True
+
+# 日志
+accesslog = "-"
+errorlog = "-"
+loglevel = "info"
+
+# 进程名（方便 ps 查看）
+proc_name = "myapp"
+
+# 优雅停机时是否重用端口（配合 systemd）
+reuse_addr = True
 \`\`\`
 
-然后生成并审查迁移：
+启动时指定配置文件：
 
 \`\`\`bash
-alembic revision --autogenerate -m "add summary to posts"
+gunicorn main:app --config gunicorn.conf.py
 \`\`\`
 
-审查生成的脚本，确认是 \`add_column\` 而非误判的 drop+add：
+## 部署示例：Flask + Gunicorn
 
 \`\`\`python
-def upgrade() -> None:
-    op.add_column("posts", sa.Column("summary", sa.String(500), nullable=True))
+# main.py —— Flask 应用
+from flask import Flask, jsonify
 
-def downgrade() -> None:
-    op.drop_column("posts", "summary")
+app = Flask(__name__)
+
+@app.route("/")
+def index():
+    return jsonify({"msg": "Hello from Gunicorn + Flask"})
+
+@app.route("/health")
+def health():
+    # 健康检查接口，给负载均衡探活用
+    return jsonify({"status": "ok"})
 \`\`\`
-
-如果新字段需要给存量数据填默认值，要在 \`add_column\` 后手动加一段数据更新：
-
-\`\`\`python
-def upgrade() -> None:
-    op.add_column("posts", sa.Column("summary", sa.String(500), nullable=True))
-    # 给存量文章填摘要（取正文前 100 字）
-    op.execute("UPDATE posts SET summary = SUBSTR(content, 1, 100) WHERE summary IS NULL")
-\`\`\`
-
-## 生产环境迁移策略
-
-生产环境的迁移要遵循几条原则：**小步快跑**——一次迁移只做一件事，别把加字段、改类型、搬数据混在一起；**先加后删**——删字段要分两次：先发版让代码不再写旧字段（但表里还留着），下个迭代再发迁移删掉，给回滚留余地；**可逆**——每个 upgrade 都要写出能回滚的 downgrade，删表删字段的 downgrade 要想清楚能否恢复数据；**备份**——执行迁移前先备份数据库，迁移脚本再严谨也可能有意外；**CI 验证**——在 CI 里对空库跑一遍 upgrade + downgrade，确保脚本可执行且可回滚。
 
 \`\`\`bash
-# CI 里的迁移自检脚本示例
-alembic upgrade head           # 升到最新
-alembic downgrade -1           # 退一级
-alembic upgrade head           # 再升回去
-# 任何一步失败都说明迁移脚本有问题
+# 安装
+pip install flask gunicorn
+
+# 启动（4 个 worker）
+gunicorn main:app --workers 4 --bind 0.0.0.0:8000
+
+# 后台运行 + 日志
+gunicorn main:app --workers 4 --bind 0.0.0.0:8000 --daemon --access-logfile access.log --error-logfile error.log
 \`\`\`
 
-## 小结
+## 生产部署组合
 
-Alembic 让表结构变更像代码一样版本化、可追溯、可回滚。\`env.py\` 是核心枢纽：导入模型让 autogenerate 看到元数据，从环境变量读 URL 适配多环境，异步分支让迁移与运行时一致。autogenerate 是省力工具但不是"自动驾驶"——生成的脚本必须人工审查，尤其警惕"改名被误判为删+加"导致的数据丢失。生产迁移要小步、可逆、有备份。下一章我们深入异步数据库，看看 \`async/await\` 如何提升并发吞吐。
-`
+实际生产很少让 Gunicorn 直接对外，前面一般有 Nginx：
+
+\`\`\`
+用户 -> Nginx (80/443) -> Gunicorn (8000) -> Flask 应用
+\`\`\`
+
+Nginx 负责：
+- TLS 终止（HTTPS 解密）。
+- 静态文件服务（CSS/JS/图片）。
+- 负载均衡（多个 Gunicorn 实例）。
+- 缓冲慢客户端。
+
+Gunicorn 负责：
+- 跑 Python 应用。
+- 多 worker 并发。
+
+## 易错点小结
+
+| 易错点 | 错误做法 | 正确做法 |
+|--------|----------|----------|
+| 用开发服务器上生产 | flask run 跑线上 | 用 gunicorn 部署 |
+| worker 太多 | 设几十上百个 | 2*CPU+1，一般不超过几十 |
+| 长任务阻塞 | 视图里跑长耗时任务 | 用 Celery 后台跑 |
+| preload + 连接池 | preload 后共享连接池 | fork 后重新建连接 |
+| timeout 太短 | 默认 30 秒杀长任务 | 调大或移到后台 |
+| 忘 graceful-timeout | 部署时中断请求 | 设优雅停机 |
+
+下一章我们看 Uvicorn，ASGI 应用的部署选择。`
   },
 
-  // =========================================================
-  // 第四章：异步数据库实战
-  // =========================================================
+  // ============================================================
+  // 第 8 章：Uvicorn 服务器
+  // ============================================================
   {
-    id: "pyweb-async-db",
-    group: "数据库",
+    id: "server-uvicorn",
+    group: "WSGI 与 ASGI",
     icon: "⚡",
-    title: "异步数据库实战",
-    content: `
-## 异步 IO 原理
+    title: "Uvicorn 服务器",
+    content: `# Uvicorn 服务器
 
-要理解异步数据库的价值，先得理解**异步 IO** 的本质。传统的同步 IO 在执行 \`socket.recv()\` 时，如果数据没到，线程会**阻塞**——操作系统把它挂起，让出 CPU，直到数据到达才唤醒。这意味着一个线程同一时刻只能处理一个连接。如果用"一个连接一个线程"的模型，1000 个并发连接就要 1000 个线程，线程切换和内存开销吃不消。
+## 一句话定义
 
-异步 IO 的思路是：**单线程 + 事件循环**。线程不阻塞等待，而是注册一个"我关心这个 socket 可读"的事件，然后去处理别的连接；事件循环（epoll/kqueue）负责监听所有 socket，哪个就绪了就回来通知。这样**一个线程就能同时管理成千上万个连接**，线程数与连接数解耦。
+Uvicorn 是一个基于 uvloop（C 实现的 asyncio 事件循环）和 httptools（C 实现的 HTTP 解析器）的 ASGI 服务器。它专为异步 Python Web 应用设计，是 FastAPI、Starlette 等 ASGI 框架的默认部署选择，速度快、轻量。
 
-| 模型 | 线程数 | 并发连接数 | 上下文切换 | 适用 |
-| --- | --- | --- | --- | --- |
-| **同步阻塞** | = 连接数 | 受线程数限制 | 频繁 | 简单业务 |
-| **多线程池** | 固定（如 10） | 受池大小限制 | 中等 | CPU/IO 混合 |
-| **异步 IO** | 1（事件循环） | 上万 | 极少 | I/O 密集 |
+## Uvicorn 是什么
 
-\`asyncio\` 是 Python 的异步 IO 标准库。 \`async def\` 定义协程函数， \`await\` 把控制权交还事件循环。在 Web API 场景，一个请求的大部分时间花在等数据库、等下游服务——这正是异步 IO 的主场。
+上一章的 Gunicorn 是 WSGI 服务器（虽然也能跑 ASGI worker）。Uvicorn 是专门的 ASGI 服务器，原生支持 async/await。
 
-## aiosqlite 与 asyncpg：异步驱动
+它的快来自两个底层库：
+- **uvloop**：把 Python 标准库的 asyncio 事件循环用 Cython/C 重写，性能接近 Node.js、Go。Mac/Linux 上自动启用（Windows 不支持 uvloop，回退到标准 asyncio）。
+- **httptools**：用 C 写的 HTTP 解析器（来自 Node.js 的 http-parser），解析 HTTP 请求比纯 Python 快得多。
 
-异步数据库需要**异步驱动**：驱动把"发 SQL / 收结果"做成非阻塞的，遇到 socket 未就绪就 await，让事件循环去处理别的请求。
-
-| 数据库 | 同步驱动 | 异步驱动 | 备注 |
-| --- | --- | --- | --- |
-| **SQLite** | sqlite3（内置） | aiosqlite | 单文件库，无网络 |
-| **PostgreSQL** | psycopg2 | asyncpg | 性能极佳 |
-| **MySQL** | mysqlclient | aiomysql | 兼容性好 |
-| **PostgreSQL** | psycopg（v3） | psycopg（async 模式） | 新版本原生支持异步 |
-
-\`aiosqlite\` 的 URL 是 \`sqlite+aiosqlite:///./blog.db\`，\`asyncpg\` 是 \`postgresql+asyncpg://user:pass@host/db\`。换了 URL 前缀，引擎和会话代码几乎不用动——这是 SQLAlchemy 抽象层的好处。
-
-## 异步 CRUD 完整示例
-
-下面是异步版的博客文章 CRUD，注意所有数据库调用都要 \`await\`：
-
-\`\`\`python filename="async_crud.py"
-from sqlalchemy import select, func, delete
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-from models import Post, User, Comment
-
-
-async def async_create_post(
-    db: AsyncSession, title: str, content: str, author_id: int
-) -> Post:
-    """异步新增文章。"""
-    post = Post(title=title, content=content, author_id=author_id)
-    db.add(post)
-    await db.flush()         # 等待 INSERT，拿到 id
-    await db.refresh(post)   # 加载服务端默认值
-    return post
-
-
-async def async_get_post_with_relations(db: AsyncSession, post_id: int) -> Post | None:
-    """异步查单条，并用 selectinload 一次加载 author 和 comments。"""
-    stmt = (
-        select(Post)
-        .where(Post.id == post_id)
-        .options(
-            selectinload(Post.author),
-            selectinload(Post.comments),
-        )
-    )
-    result = await db.execute(stmt)
-    return result.scalar_one_or_none()
-
-
-async def async_search_posts(
-    db: AsyncSession, keyword: str, limit: int = 10
-) -> list[Post]:
-    """异步模糊搜索文章标题。"""
-    stmt = (
-        select(Post)
-        .where(Post.title.like(f"%{keyword}%"))
-        .order_by(Post.created_at.desc())
-        .limit(limit)
-    )
-    result = await db.execute(stmt)
-    return list(result.scalars().all())
-
-
-async def async_delete_unpublished(db: AsyncSession) -> int:
-    """异步批量删除未发布文章，返回删除条数。"""
-    stmt = delete(Post).where(Post.published == False)  # noqa: E712
-    result = await db.execute(stmt)
-    await db.flush()
-    # rowcount 是底层驱动报告的影响行数
-    return result.rowcount or 0
+\`\`\`
+请求进来
+  -> httptools 解析 HTTP（C，快）
+  -> uvloop 事件循环调度（C，快）
+  -> 调用你的 ASGI 应用（async）
+  -> 响应发回
 \`\`\`
 
-几个异步特有的注意点：\`db.execute(stmt)\` 返回的是 \`Result\` 对象，要 \`.scalars()\` / \`.scalar_one()\` 取值，**不能**像同步那样直接 \`session.scalars(stmt).all()\`（虽然 2.0 也提供了 \`session.scalars\`，但异步下推荐显式 execute 再取）；\`flush\` 也要 await；commit 由依赖注入统一处理。
+## 安装与启动
 
-## 并发查询：asyncio.gather
+\`\`\`bash
+# 安装（带 uvloop 等高性能依赖）
+pip install uvicorn[standard]
 
-异步最大的优势是**并发等待**：如果一次请求要查好几个无依赖的东西，可以并发发起，总耗时约等于最慢的那个，而不是累加。场景：博客首页要同时拿"最新文章列表"和"热门标签"和"本周评论数"，三者互不依赖。
+# 基本启动（假设应用在 main.py 的 app 变量）
+uvicorn main:app
 
-\`\`\`python filename="concurrent_query.py"
-import asyncio
-from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
-from models import Post, Tag, Comment
-
-
-async def fetch_recent_posts(db: AsyncSession, limit: int = 10):
-    stmt = select(Post).order_by(Post.created_at.desc()).limit(limit)
-    result = await db.execute(stmt)
-    return list(result.scalars().all())
-
-
-async def fetch_popular_tags(db: AsyncSession, limit: int = 10):
-    stmt = select(Tag).limit(limit)
-    result = await db.execute(stmt)
-    return list(result.scalars().all())
-
-
-async def fetch_weekly_comment_count(db: AsyncSession):
-    stmt = select(func.count()).select_from(Comment)
-    result = await db.execute(stmt)
-    return result.scalar_one()
-
-
-async def get_home_data(db: AsyncSession) -> dict:
-    """并发获取首页所需的三个数据集。"""
-    # asyncio.gather 并发执行三个协程
-    posts, tags, comment_count = await asyncio.gather(
-        fetch_recent_posts(db),
-        fetch_popular_tags(db),
-        fetch_weekly_comment_count(db),
-    )
-    return {
-        "recent_posts": [p.id for p in posts],
-        "popular_tags": [t.name for t in tags],
-        "comment_count": comment_count,
-    }
+# 常用参数
+uvicorn main:app \\
+  --host 0.0.0.0 \\        # 绑定地址
+  --port 8000 \\           # 端口
+  --reload \\               # 热重载（开发用）
+  --workers 4 \\            # worker 进程数（生产用）
+  --log-level info          # 日志级别
 \`\`\`
 
-**重要警告**：\`AsyncSession\` 不是并发安全的！上面的 \`asyncio.gather\` 共享同一个 \`db\`，在 SQLite 这种单连接的数据库上可能出问题。安全做法是给每个并发任务开独立的 Session：
+启动后你会看到：
+
+\`\`\`
+INFO:     Started server process [12345]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+\`\`\`
+
+## --reload 热重载
+
+开发时最有用的功能：代码改了自动重启。
+
+\`\`\`bash
+# 开发模式：热重载
+uvicorn main:app --reload
+\`\`\`
+
+改了 Python 文件保存，Uvicorn 自动重新加载，刷新浏览器就看到改动。不用手动停启。
+
+注意：\`--reload\` **只用于开发**，生产别开（有性能开销，且单进程）。它和 \`--workers\` 互斥（reload 时强制单 worker）。
+
+## --workers 多 worker
+
+生产环境要开多 worker 来利用多核：
+
+\`\`\`bash
+# 生产模式：4 个 worker
+uvicorn main:app --workers 4 --host 0.0.0.0 --port 8000
+\`\`\`
+
+Uvicorn 的多 worker 也是 pre-fork 模型（类似 Gunicorn）。但 Uvicorn 自己的进程管理功能比 Gunicorn 弱一些——这也是为什么生产常用「Gunicorn + Uvicorn Worker」组合。
+
+## --host / --port 绑定
+
+\`\`\`bash
+# 只本机访问
+uvicorn main:app --host 127.0.0.1 --port 8000
+
+# 对外开放
+uvicorn main:app --host 0.0.0.0 --port 80
+\`\`\`
+
+生产环境一般 Uvicorn 监听本地端口（如 8000），前面放 Nginx 监听 80/443 转发。
+
+## --log-level 日志级别
+
+\`\`\`bash
+uvicorn main:app --log-level debug   # 最详细（开发调优）
+uvicorn main:app --log-level info    # 默认（生产常用）
+uvicorn main:app --log-level warning # 只警告以上
+uvicorn main:app --log-level error   # 只错误
+\`\`\`
+
+debug 级别会打印每个请求详情，方便排查；info 会打印启动信息和每个请求的访问日志；生产一般用 info 或 warning。
+
+## uvloop 为什么快
+
+标准库的 asyncio 事件循环是用纯 Python 写的，每次事件回调要走 Python 解释器。uvloop 用 Cython 重写了事件循环，关键路径编译成 C，绕开解释器开销。
+
+性能对比（基准测试，仅供参考）：
+- 纯 asyncio：1x
+- uvloop：2-4x（接近 Node.js、Go）
+
+但 uvloop 只在 Mac/Linux 可用（依赖 libuv）。Windows 上 Uvicorn 自动回退到标准 asyncio，性能没那么夸张。
+
+\`\`\`bash
+# 检查是否启用了 uvloop
+uvicorn main:app --log-level debug
+# 启动日志里会看到 "Uvicorn running on ..." 和 loop 类型
+\`\`\`
+
+## Uvicorn vs Gunicorn
+
+两者不是完全竞争关系，而是互补：
+
+| 维度 | Uvicorn | Gunicorn |
+|------|---------|----------|
+| 定位 | ASGI 服务器 | WSGI 服务器（也能跑 ASGI worker） |
+| 异步原生 | 是 | 否（靠 worker-class） |
+| 进程管理 | 弱 | 强（成熟的 master-worker） |
+| 热重载 | 有（--reload） | 无 |
+| 适合 | 开发、轻量生产 | 重型生产部署 |
+
+## 生产部署组合：Gunicorn + Uvicorn Worker
+
+生产环境最佳实践是**用 Gunicorn 管进程，用 Uvicorn 跑 ASGI**：
+
+\`\`\`bash
+# Gunicorn 做进程管理，worker 类型用 Uvicorn
+gunicorn main:app \\
+  --workers 4 \\
+  --worker-class uvicorn.workers.UvicornWorker \\
+  --bind 0.0.0.0:8000 \\
+  --timeout 120
+\`\`\`
+
+这样组合的好处：
+- Gunicorn 成熟的 master-worker 进程管理（崩溃重启、信号处理、优雅停机）。
+- Uvicorn 的异步能力（每个 worker 是一个 ASGI 事件循环）。
+- 一套配置文件管所有。
+
+FastAPI 官方推荐的就是这套组合。
+
+## 配置示例
+
+Uvicorn 的配置可以放配置文件里：
 
 \`\`\`python
-from database import async_session_factory
-
-
-async def get_home_data_safe() -> dict:
-    """每个并发任务用独立 Session，避免并发冲突。"""
-    async def with_session(coro_func):
-        async with async_session_factory() as session:
-            return await coro_func(session)
-
-    posts, tags, count = await asyncio.gather(
-        with_session(fetch_recent_posts),
-        with_session(fetch_popular_tags),
-        with_session(fetch_weekly_comment_count),
-    )
-    return {"posts": posts, "tags": tags, "count": count}
+# uvicorn_config.py 或在代码里用 uvicorn.run() 传参
 \`\`\`
 
-## 批量插入
-
-插入大量数据时，逐条 \`add + flush\` 性能很差——每条都触发一次 SQL 往返。批量插入有几种方式：
-
-\`\`\`python filename="bulk_insert.py"
-from sqlalchemy import insert
-from sqlalchemy.ext.asyncio import AsyncSession
-from models import Post
-
-
-async def bulk_insert_loop(db: AsyncSession, posts: list[dict]) -> None:
-    """❌ 慢：逐条 add，N 次 SQL 往返。"""
-    for p in posts:
-        db.add(Post(**p))
-    await db.flush()
-
-
-async def bulk_insert_add_all(db: AsyncSession, posts: list[dict]) -> None:
-    """✅ 较快：add_all 仍走 ORM，但一次 flush。"""
-    db.add_all([Post(**p) for p in posts])
-    await db.flush()
-
-
-async def bulk_insert_core(db: AsyncSession, posts: list[dict]) -> None:
-    """✅ 最快：Core insert + executemany，绕过 ORM 实例化开销。"""
-    stmt = insert(Post).values(posts)
-    await db.execute(stmt)
-    await db.flush()
-
-
-async def bulk_insert_returning(db: AsyncSession, posts: list[dict]) -> list[int]:
-    """✅ 批量插入并拿回自增 id（PostgreSQL 支持 RETURNING）。"""
-    stmt = insert(Post).values(posts).returning(Post.id)
-    result = await db.execute(stmt)
-    return [row[0] for row in result.all()]
-\`\`\`
-
-| 方式 | SQL 往返 | ORM 开销 | 能拿 id | 速度 |
-| --- | --- | --- | --- | --- |
-| 逐条 add | N 次 | 高 | ✅ | 慢 |
-| add_all | 1 次 | 中 | ✅ | 较快 |
-| Core insert | 1 次 | 低 | ❌ | 快 |
-| insert+RETURNING | 1 次 | 低 | ✅ | 快（限 PG） |
-
-## 性能对比：同步 vs 异步
-
-下面用一个可运行的对比脚本直观感受差异。模拟"并发查 20 次单条文章"，看同步和异步的总耗时：
-
-\`\`\`python filename="perf_compare.py"
-import asyncio
-import time
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-from sqlalchemy.ext.asyncio import AsyncSession
-from database import engine, async_session_factory, init_db
-from models import Post
-
-
-async def setup_data():
-    """先造一些测试数据。"""
-    await init_db()
-    async with async_session_factory() as db:
-        for i in range(100):
-            db.add(Post(title=f"标题{i}", content=f"内容{i}", author_id=1))
-        await db.commit()
-
-
-async def async_query_one(db: AsyncSession, pid: int) -> Post | None:
-    stmt = select(Post).where(Post.id == pid)
-    result = await db.execute(stmt)
-    return result.scalar_one_or_none()
-
-
-async def async_benchmark(n: int = 20) -> float:
-    """异步并发查 n 次。"""
-    start = time.perf_counter()
-    # 每个查询独立 session，避免并发冲突
-    async def one_query(pid: int):
-        async with async_session_factory() as db:
-            await async_query_one(db, pid)
-    await asyncio.gather(*[one_query(i + 1) for i in range(n)])
-    return time.perf_counter() - start
-
-
-def sync_benchmark(n: int = 20) -> float:
-    """同步串行查 n 次（用同步引擎）。"""
-    from sqlalchemy import create_engine
-    sync_engine = create_engine("sqlite:///./blog.db")
-    start = time.perf_counter()
-    with Session(sync_engine) as db:
-        for i in range(n):
-            stmt = select(Post).where(Post.id == i + 1)
-            db.scalars(stmt).first()
-    elapsed = time.perf_counter() - start
-    sync_engine.dispose()
-    return elapsed
-
-
-async def main():
-    await setup_data()
-    t_async = await async_benchmark(20)
-    t_sync = sync_benchmark(20)
-    print(f"异步并发 20 次查询: {t_async:.3f}s")
-    print(f"同步串行 20 次查询: {t_sync:.3f}s")
-    print(f"加速比: {t_sync / t_async:.1f}x")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-\`\`\`
-
-注意：SQLite 由于写锁是全局的，读并发收益有限；真正的异步收益在 PostgreSQL/MySQL 这类支持多连接并发的数据库上更明显。且异步的优势在"I/O 等待时间占比高"的场景——如果查询本身极快（如本地 SQLite 命中缓存），异步的协程调度开销可能反而让它略慢。**异步不是银弹，要结合具体场景测了再下结论。**
-
-## 连接池与并发控制
-
-异步场景下连接池配置更关键——并发请求多，连接消耗也快。要避免两个极端：池太小，请求排队等连接；池太大，数据库端连接数被打满。
+更常见的是直接在代码里启动（适合容器化）：
 
 \`\`\`python
-from sqlalchemy.ext.asyncio import create_async_engine
-
-# PostgreSQL 生产配置示例
-engine = create_async_engine(
-    "postgresql+asyncpg://user:pass@localhost/blog",
-    pool_size=20,        # 常驻 20 连接
-    max_overflow=10,     # 峰值 30
-    pool_timeout=60,     # 等 60 秒
-    pool_recycle=1800,   # 30 分钟回收
-    pool_pre_ping=True,
-)
-
-# 限制并发查询数，防止数据库被打垮
-import asyncio
-semaphore = asyncio.Semaphore(50)  # 最多 50 个并发查询
-
-async def limited_query(db: AsyncSession, stmt):
-    async with semaphore:
-        return await db.execute(stmt)
-\`\`\`
-
-## 小结
-
-异步数据库把"等 I/O"的时间用来处理别的请求，单进程能扛更多并发。\`aiosqlite\`/\`asyncpg\` 提供非阻塞驱动，\`AsyncSession\` + \`await\` 让代码读起来像同步却获得并发收益。\`asyncio.gather\` 是并发查询的利器，但要记住 \`AsyncSession\` 不并发安全——并发任务要开独立 Session。批量插入用 Core \`insert().values(list)\` 性能最佳。异步不是万能——本地 SQLite、CPU 密集场景可能反而更慢，要测了再选。下一章我们把前面学的一切组织进一个分层的、可维护的项目结构。
-`
-  },
-
-  // =========================================================
-  // 第五章：项目结构与分层架构
-  // =========================================================
-  {
-    id: "pyweb-structure",
-    group: "数据库",
-    icon: "🏗️",
-    title: "项目结构与分层架构",
-    content: `
-## 为什么需要分层
-
-初学时把所有代码塞进一个 \`main.py\` 很爽——一个文件搞定路由、查库、返回。但项目一旦长大，这种"意大利面"结构会迅速失控：**改一个字段要在十处搜索替换**，因为 SQL 散落在各个路由里；**测试难写**，路由函数直接连着数据库，没法单独测；**职责模糊**，路由里既有 HTTP 参数解析又有业务规则又有 SQL，每段都长几十行；**多人协作冲突**，大家都在改同一个文件。
-
-分层架构的核心思想是**关注点分离**：把不同职责的代码放到不同层级，每层只与相邻层对话。这样改动的影响面可控，每层可独立测试，新人理解一块就能改一块。
-
-| 层 | 职责 | 知道什么 | 不知道什么 |
-| --- | --- | --- | --- |
-| **Router 路由层** | HTTP 参数解析、响应序列化 | 请求/响应、Service 接口 | 数据库、SQL |
-| **Service 业务层** | 业务规则、事务编排 | 业务逻辑、CRUD 接口 | HTTP、框架 |
-| **Model/CRUD 数据层** | 数据存取、SQL | 表结构、SQL | 业务规则 |
-
-## 经典三层架构
-
-博客项目采用 **Router → Service → Model/CRUD** 三层结构：
-
-- **Router 层**：只做"接收请求 → 调 Service → 返回响应"，不含任何业务规则和 SQL。用 Pydantic Schema 校验入参、序列化出参。
-- **Service 层**：编排业务逻辑，如"创建文章时先校验作者存在、再插入文章、再发通知"。它调 CRUD 做数据操作，但不知道 HTTP 的存在。
-- **CRUD/Model 层**：纯粹的数据库操作，封装单表的增删改查。Model 定义表结构，CRUD 函数操作 Model。
-
-调用方向永远是 **Router → Service → CRUD**，绝不反向。Service 不 import FastAPI，CRUD 不 import Service——这样依赖关系是单向的、可测的。
-
-## 完整目录结构
-
-\`\`\`
-blog-api/
-├── alembic/                  # 数据库迁移
-│   ├── versions/
-│   └── env.py
-├── alembic.ini
-├── app/
-│   ├── __init__.py
-│   ├── main.py               # FastAPI 应用入口
-│   ├── config.py             # 配置管理（pydantic-settings）
-│   ├── database.py           # 引擎、会话工厂、Base
-│   ├── deps.py               # 公共依赖（get_db 等）
-│   ├── models/               # ORM 模型（数据层）
-│   │   ├── __init__.py
-│   │   ├── user.py
-│   │   ├── post.py
-│   │   └── comment.py
-│   ├── schemas/              # Pydantic Schema（DTO）
-│   │   ├── __init__.py
-│   │   ├── user.py
-│   │   ├── post.py
-│   │   └── comment.py
-│   ├── crud/                 # 数据库操作（数据层）
-│   │   ├── __init__.py
-│   │   ├── base.py           # CRUDBase 通用基类
-│   │   ├── user.py
-│   │   └── post.py
-│   ├── services/             # 业务逻辑（业务层）
-│   │   ├── __init__.py
-│   │   ├── user_service.py
-│   │   └── post_service.py
-│   └── routers/              # 路由分组（路由层）
-│       ├── __init__.py
-│       ├── user.py
-│       └── post.py
-├── tests/
-│   ├── conftest.py
-│   ├── test_post_service.py
-│   └── test_post_router.py
-├── .env                      # 环境变量（不进版本库）
-├── .env.example              # 环境变量样例
-├── requirements.txt
-└── README.md
-\`\`\`
-
-## Schema（Pydantic）vs Model（ORM）分离
-
-一个常见困惑：为什么既要 ORM Model 又要 Pydantic Schema？因为它们职责不同：
-
-| 维度 | ORM Model | Pydantic Schema |
-| --- | --- | --- |
-| **职责** | 映射数据库表 | 定义 API 入参/出参 |
-| **基类** | DeclarativeBase | BaseModel |
-| **位置** | models/ | schemas/ |
-| **例子** | User（含密码哈希） | UserCreate / UserRead / UserUpdate |
-| **生命周期** | 与表共存亡 | 随 API 演进 |
-
-同一张表通常对应**多个 Schema**：\`UserCreate\`（注册时入参，含密码）、\`UserRead\`（响应出参，**不含密码**）、\`UserUpdate\`（改资料，所有字段可选）。这种"一表多 Schema"能精确控制每个接口暴露哪些字段，避免把密码哈希等敏感字段序列化出去。
-
-\`\`\`python filename="app/schemas/post.py"
-from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict
-
-
-# ---- 入参 Schema ----
-class PostCreate(BaseModel):
-    """创建文章的入参。客户端不传 id、created_at（服务端生成）。"""
-    title: str = Field(..., min_length=1, max_length=200)
-    content: str = Field(..., min_length=1)
-    published: bool = False
-
-
-class PostUpdate(BaseModel):
-    """更新文章的入参。所有字段可选，只更新传入的字段。"""
-    title: str | None = Field(None, max_length=200)
-    content: str | None = None
-    published: bool | None = None
-
-
-# ---- 出参 Schema ----
-class PostRead(BaseModel):
-    """文章响应出参。用 from_attributes 把 ORM 对象转成 Schema。"""
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    title: str
-    content: str
-    published: bool
-    created_at: datetime
-    author_id: int
-
-
-class PostListResponse(BaseModel):
-    """列表响应，带分页元信息。"""
-    items: list[PostRead]
-    total: int
-    page: int
-    size: int
-\`\`\`
-
-\`model_config = ConfigDict(from_attributes=True)\` 让 Pydantic v2 能直接从 ORM 对象的属性读值（v1 是 \`class Config: orm_mode = True\`）。这样路由层可以 \`PostRead.model_validate(post_orm_obj)\` 一行完成"ORM → Schema"转换。
-
-## 通用 CRUD 基类
-
-每张表的 CRUD 都长得差不多（增删改查 + 分页），抽象成一个泛型基类避免重复：
-
-\`\`\`python filename="app/crud/base.py"
-from typing import Generic, TypeVar, Type, Any
-from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import DeclarativeBase
-
-ModelT = TypeVar("ModelT", bound=DeclarativeBase)
-
-
-class CRUDBase(Generic[ModelT]):
-    """通用 CRUD 基类，子类指定 model 即可复用增删改查。"""
-
-    def __init__(self, model: Type[ModelT]):
-        self.model = model
-
-    async def get(self, db: AsyncSession, id: int) -> ModelT | None:
-        """按主键查单条。"""
-        return await db.get(self.model, id)
-
-    async def list(
-        self, db: AsyncSession, skip: int = 0, limit: int = 20
-    ) -> list[ModelT]:
-        """分页列表。"""
-        stmt = select(self.model).offset(skip).limit(limit)
-        result = await db.execute(stmt)
-        return list(result.scalars().all())
-
-    async def create(self, db: AsyncSession, obj_in: dict) -> ModelT:
-        """新增。"""
-        db_obj = self.model(**obj_in)
-        db.add(db_obj)
-        await db.flush()
-        await db.refresh(db_obj)
-        return db_obj
-
-    async def update(
-        self, db: AsyncSession, db_obj: ModelT, obj_in: dict
-    ) -> ModelT:
-        """按字段更新。"""
-        for key, value in obj_in.items():
-            if hasattr(db_obj, key) and value is not None:
-                setattr(db_obj, key, value)
-        await db.flush()
-        return db_obj
-
-    async def remove(self, db: AsyncSession, id: int) -> bool:
-        """按主键删除。"""
-        obj = await self.get(db, id)
-        if obj is None:
-            return False
-        await db.delete(obj)
-        await db.flush()
-        return True
-
-    async def count(self, db: AsyncSession) -> int:
-        """总数。"""
-        stmt = select(func.count()).select_from(self.model)
-        result = await db.execute(stmt)
-        return result.scalar_one()
-\`\`\`
-
-子类只需声明 model，必要时覆写或追加专属方法：
-
-\`\`\`python filename="app/crud/post.py"
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-from app.crud.base import CRUDBase
-from app.models.post import Post
-
-
-class CRUDPost(CRUDBase[Post]):
-    """文章 CRUD，继承通用基类后追加文章专属查询。"""
-
-    async def get_with_author(
-        self, db: AsyncSession, post_id: int
-    ) -> Post | None:
-        """查文章并预加载作者，避免 N+1。"""
-        stmt = (
-            select(Post)
-            .where(Post.id == post_id)
-            .options(selectinload(Post.author))
-        )
-        result = await db.execute(stmt)
-        return result.scalar_one_or_none()
-
-    async def search_by_title(
-        self, db: AsyncSession, keyword: str, limit: int = 10
-    ) -> list[Post]:
-        """按标题模糊搜索。"""
-        stmt = (
-            select(Post)
-            .where(Post.title.like(f"%{keyword}%"))
-            .limit(limit)
-        )
-        result = await db.execute(stmt)
-        return list(result.scalars().all())
-
-
-post_crud = CRUDPost(Post)  # 单例，到处复用
-\`\`\`
-
-## Service 业务层
-
-Service 编排业务规则。它调 CRUD，但不知道 HTTP；它管事务边界，处理跨表操作：
-
-\`\`\`python filename="app/services/post_service.py"
-from fastapi import HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.crud.post import post_crud
-from app.crud.user import user_crud
-from app.schemas.post import PostCreate, PostUpdate
-
-
-async def create_post(
-    db: AsyncSession, post_in: PostCreate, author_id: int
-):
-    """创建文章的业务流程：先校验作者存在，再创建。"""
-    author = await user_crud.get(db, author_id)
-    if author is None:
-        raise HTTPException(404, "作者不存在")
-    post = await post_crud.create(
-        db, {
-            "title": post_in.title,
-            "content": post_in.content,
-            "published": post_in.published,
-            "author_id": author_id,
-        }
-    )
-    return post
-
-
-async def update_post(
-    db: AsyncSession, post_id: int, post_in: PostUpdate
-):
-    """更新文章：先查存在，再按非空字段更新。"""
-    post = await post_crud.get(db, post_id)
-    if post is None:
-        raise HTTPException(404, "文章不存在")
-    # 只把客户端实际传入的字段传给 update
-    update_data = post_in.model_dump(exclude_unset=True)
-    updated = await post_crud.update(db, post, update_data)
-    return updated
-
-
-async def get_post_detail(db: AsyncSession, post_id: int):
-    """获取文章详情（含作者）。"""
-    post = await post_crud.get_with_author(db, post_id)
-    if post is None:
-        raise HTTPException(404, "文章不存在")
-    return post
-\`\`\`
-
-\`model_dump(exclude_unset=True)\` 是 Pydantic v2 的关键方法：只返回客户端**实际传入**的字段，没传的不在内。这样 \`PUT\` 接口才能正确实现"部分更新"——客户端只传 title 就只改 title，不会把 content 误置为 None。
-
-## Router 路由层
-
-Router 极薄，只做"参数 → 调 Service → 响应"：
-
-\`\`\`python filename="app/routers/post.py"
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.deps import get_db
-from app.schemas.post import (
-    PostCreate, PostUpdate, PostRead, PostListResponse,
-)
-from app.services import post_service
-
-router = APIRouter(prefix="/posts", tags=["文章"])
-
-
-@router.post(
-    "/",
-    response_model=PostRead,
-    status_code=status.HTTP_201_CREATED,
-)
-async def create_post(
-    post_in: PostCreate,
-    author_id: int = Query(...),
-    db: AsyncSession = Depends(get_db),
-):
-    """创建文章。"""
-    post = await post_service.create_post(db, post_in, author_id)
-    return post  # response_model=PostRead 自动用 Schema 序列化
-
-
-@router.get("/", response_model=PostListResponse)
-async def list_posts(
-    page: int = Query(1, ge=1),
-    size: int = Query(20, ge=1, le=100),
-    db: AsyncSession = Depends(get_db),
-):
-    """文章列表（分页）。"""
-    skip = (page - 1) * size
-    items = await post_service.list_posts(db, skip=skip, limit=size)
-    total = await post_service.count_posts(db)
-    return {"items": items, "total": total, "page": page, "size": size}
-
-
-@router.get("/{post_id}", response_model=PostRead)
-async def get_post(post_id: int, db: AsyncSession = Depends(get_db)):
-    """文章详情。"""
-    return await post_service.get_post_detail(db, post_id)
-
-
-@router.put("/{post_id}", response_model=PostRead)
-async def update_post(
-    post_id: int,
-    post_in: PostUpdate,
-    db: AsyncSession = Depends(get_db),
-):
-    """更新文章。"""
-    return await post_service.update_post(db, post_id, post_in)
-
-
-@router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_post(post_id: int, db: AsyncSession = Depends(get_db)):
-    """删除文章。"""
-    ok = await post_service.delete_post(db, post_id)
-    if not ok:
-        raise HTTPException(404, "文章不存在")
-    return None
-\`\`\`
-
-\`response_model=PostRead\` 让 FastAPI 自动把返回的 ORM 对象按 Schema 序列化，**自动剔除 Schema 里没有的字段**（如密码哈希），还自动生成 OpenAPI 文档。
-
-## 配置管理：pydantic-settings
-
-把所有配置（数据库 URL、密钥、调试开关）集中到一个 Settings 类，从环境变量读取，类型安全：
-
-\`\`\`python filename="app/config.py"
-from functools import lru_cache
-from pydantic_settings import BaseSettings, SettingsConfigDict
-
-
-class Settings(BaseSettings):
-    """应用配置，从 .env 文件和环境变量读取。"""
-
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-    )
-
-    # 应用
-    APP_NAME: str = "博客 API"
-    DEBUG: bool = False
-
-    # 数据库
-    DATABASE_URL: str = "sqlite+aiosqlite:///./blog.db"
-    DB_POOL_SIZE: int = 10
-    DB_MAX_OVERFLOW: int = 20
-
-    # 安全
-    SECRET_KEY: str = "change-me-in-production"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
-
-
-@lru_cache  # 单例：整个进程只读一次 .env
-def get_settings() -> Settings:
-    return Settings()
-\`\`\`
-
-\`.env\` 文件（不进版本库，每人本地维护）：
-
-\`\`\`
-DATABASE_URL=sqlite+aiosqlite:///./blog.db
-DEBUG=True
-SECRET_KEY=dev-secret-please-change
-\`\`\`
-
-\`.env.example\`（进版本库，作为模板）：
-
-\`\`\`
-DATABASE_URL=postgresql+asyncpg://user:pass@localhost/blog
-DEBUG=False
-SECRET_KEY=please-generate-a-strong-key
-\`\`\`
-
-\`@lru_cache\` 让 Settings 只初始化一次，避免反复读文件。在依赖注入里用 \`Depends(get_settings)\` 注入，方便测试时覆写。
-
-## APIRouter 分组与主应用
-
-每个资源一个 Router 文件，在 \`main.py\` 里统一挂载：
-
-\`\`\`python filename="app/main.py"
-from contextlib import asynccontextmanager
+# main.py
 from fastapi import FastAPI
-from app.config import get_settings
-from app.database import engine, init_db
-from app.routers import post, user
+import uvicorn
 
+app = FastAPI()
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # 启动：建表（演示用，生产用 Alembic）
-    await init_db()
-    yield
-    # 关闭：释放连接池
-    await engine.dispose()
+@app.get("/")
+def index():
+    return {"msg": "Hello"}
 
-
-settings = get_settings()
-app = FastAPI(
-    title=settings.APP_NAME,
-    debug=settings.DEBUG,
-    lifespan=lifespan,
-)
-
-# 挂载路由分组
-app.include_router(user.router, prefix="/api/v1")
-app.include_router(post.router, prefix="/api/v1")
-
-
-@app.get("/health", tags=["运维"])
-async def health():
-    """健康检查。"""
-    return {"status": "ok"}
+# 直接运行这个文件就启动
+if __name__ == "__main__":
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,        # 开发热重载
+        log_level="info",
+        # workers=4,        # reload 时不能用 workers
+    )
 \`\`\`
 
-\`prefix="/api/v1"\` 给所有路由加版本前缀，方便未来发布 v2 不影响 v1。\`lifespan\` 取代了旧的 \`on_event\`，把启动和关闭逻辑写在一起更清晰。
+\`\`\`bash
+# 然后
+python main.py
+# 或者
+uvicorn main:app --reload
+\`\`\`
 
-## 小结
+## 部署示例：FastAPI + Uvicorn
 
-分层让项目可维护、可测试、可协作。Router 层薄、Service 层厚、CRUD 层纯；Pydantic Schema 与 ORM Model 分离，精确控制 API 暴露的字段；\`CRUDBase\` 泛型基类消除单表 CRUD 的重复；\`pydantic-settings\` 让配置类型安全地从环境变量加载；\`APIRouter\` 让路由按资源分组、按版本挂载。这套结构是几乎所有现代 FastAPI 项目的骨架——掌握它，你写的就是"工程"而非"脚本"。至此，数据库篇五章完毕，你已经具备用 SQLAlchemy 2.0 + Alembic + FastAPI 搭建一个结构清晰、可演进、可维护的博客后端的能力。
-`
+\`\`\`python
+# main.py —— FastAPI 应用
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/")
+def index():
+    return {"msg": "Hello from Uvicorn + FastAPI"}
+
+@app.get("/async")
+async def async_demo():
+    # 异步视图，能发挥 ASGI 优势
+    import asyncio
+    await asyncio.sleep(0.1)  # 模拟 I/O 等待
+    return {"msg": "异步处理完成"}
+\`\`\`
+
+开发：
+
+\`\`\`bash
+pip install fastapi uvicorn[standard]
+uvicorn main:app --reload
+# 访问 http://localhost:8000
+# 自动文档 http://localhost:8000/docs
+\`\`\`
+
+生产：
+
+\`\`\`bash
+pip install gunicorn uvicorn[standard] fastapi
+gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
+\`\`\`
+
+## 易错点小结
+
+| 易错点 | 错误做法 | 正确做法 |
+|--------|----------|----------|
+| 生产开 reload | --reload 跑线上 | 生产关 reload，用 --workers |
+| 同步阻塞异步 | async 视图里 time.sleep | 用 asyncio.sleep |
+| Windows 期待 uvloop | Windows 上找 uvloop | Windows 自动回退标准 asyncio |
+| 单 worker 扛高并发 | 生产只开 1 个 | 用 --workers 或 Gunicorn 多进程 |
+| reload + workers 同用 | --reload --workers 4 | 二者互斥，二选一 |
+| Uvicorn 直接对外 | Uvicorn 监听 80 | 前面放 Nginx 处理 TLS |
+
+下一批我们进入 Flask，从零开始写第一个 Web 应用。`
   },
 ];
