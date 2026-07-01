@@ -182,22 +182,36 @@ body {
   color: var(--accent-green);
 }
 
-/* 下拉面板：从顶部展开，覆盖在章节列表之上 */
+/* 全屏遮罩：半透明黑色覆盖整个视口 */
+.sidebar-book-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 999;
+  animation: sidebarOverlayIn 0.15s ease-out;
+}
+
+@keyframes sidebarOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 全屏宽度面板：fixed 定位脱离侧边栏宽度限制，铺满视口 */
 .sidebar-book-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 14px;
-  right: 14px;
-  max-height: 75vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  max-height: 90vh;
   background: var(--bg-sidebar);
-  border: 1px solid var(--border-dark);
-  border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  border-bottom: 1px solid var(--border-dark);
+  border-radius: 0 0 16px 16px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
   z-index: 1000;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  animation: sidebarDropdownIn 0.15s ease-out;
+  animation: sidebarDropdownIn 0.2s ease-out;
 }
 
 @keyframes sidebarDropdownIn {
@@ -212,17 +226,42 @@ body {
 }
 
 .sidebar-book-dropdown-header {
-  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
   border-bottom: 1px solid var(--border-dark);
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-on-dark);
   background: rgba(255, 255, 255, 0.04);
   flex-shrink: 0;
 }
 
+.sidebar-book-dropdown-close {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: var(--text-on-dark);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s;
+}
+.sidebar-book-dropdown-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 .sidebar-book-dropdown-body {
-  padding: 6px;
+  /* 内容居中，限制最大宽度保证可读性 */
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 12px 24px 20px;
   overflow-y: auto;
   flex: 1;
   min-height: 0;
@@ -255,13 +294,13 @@ body {
 }
 
 /* ===== 书籍平铺网格布局 ===== */
-/* 一行放多个书籍卡片，自动换行，比垂直列表更易选择 */
+/* 一行放多个书籍卡片，自动换行，铺满整个面板宽度 */
 .sidebar-book-grid {
   display: grid;
-  /* 自动填充：每列最小 92px，最大 1fr，侧边栏宽度内尽可能多放 */
-  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
-  gap: 6px;
-  padding: 2px 8px 8px;
+  /* 自动填充：每列最小 110px，大屏一行可放 8-10 个 */
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+  padding: 2px 0 4px;
 }
 
 /* 单个书籍卡片：图标 + 名称纵向排列，紧凑美观 */

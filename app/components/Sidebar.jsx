@@ -312,36 +312,52 @@ export default function Sidebar({
               <span className={`sidebar-book-arrow ${bookDropdownOpen ? "open" : ""}`}>▾</span>
             </button>
             {bookDropdownOpen && (
-              <div className="sidebar-book-dropdown">
-                <div className="sidebar-book-dropdown-header">
-                  📚 全部书籍（{ALL_BOOKS.length} 本）
-                </div>
-                <div className="sidebar-book-dropdown-body">
-                  {BOOK_CATEGORIES.map((category) => (
-                    <div key={category.name} className="sidebar-book-category">
-                      <div className="sidebar-book-category-title">
-                        <span>{category.icon}</span>
-                        <span>{category.name}</span>
+              <>
+                {/* 全屏遮罩：点击关闭面板 */}
+                <div
+                  className="sidebar-book-overlay"
+                  onClick={() => setBookDropdownOpen(false)}
+                />
+                {/* 全屏宽度面板：fixed 定位脱离侧边栏宽度限制 */}
+                <div className="sidebar-book-dropdown">
+                  <div className="sidebar-book-dropdown-header">
+                    <span>📚 全部书籍（{ALL_BOOKS.length} 本）</span>
+                    <button
+                      className="sidebar-book-dropdown-close"
+                      onClick={() => setBookDropdownOpen(false)}
+                      title="关闭"
+                      aria-label="关闭"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="sidebar-book-dropdown-body">
+                    {BOOK_CATEGORIES.map((category) => (
+                      <div key={category.name} className="sidebar-book-category">
+                        <div className="sidebar-book-category-title">
+                          <span>{category.icon}</span>
+                          <span>{category.name}</span>
+                        </div>
+                        {/* 平铺网格：一行多个书籍卡片，自动换行 */}
+                        <div className="sidebar-book-grid">
+                          {category.books.map((book) => (
+                            <a
+                              key={book.path}
+                              href={book.path}
+                              className={`sidebar-book-card ${currentPath === book.path ? "active" : ""}`}
+                              onClick={() => setBookDropdownOpen(false)}
+                              title={book.label}
+                            >
+                              <span className="sidebar-book-card-icon">{book.icon}</span>
+                              <span className="sidebar-book-card-label">{book.label}</span>
+                            </a>
+                          ))}
+                        </div>
                       </div>
-                      {/* 平铺网格：一行多个书籍卡片，自动换行 */}
-                      <div className="sidebar-book-grid">
-                        {category.books.map((book) => (
-                          <a
-                            key={book.path}
-                            href={book.path}
-                            className={`sidebar-book-card ${currentPath === book.path ? "active" : ""}`}
-                            onClick={() => setBookDropdownOpen(false)}
-                            title={book.label}
-                          >
-                            <span className="sidebar-book-card-icon">{book.icon}</span>
-                            <span className="sidebar-book-card-label">{book.label}</span>
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
 
