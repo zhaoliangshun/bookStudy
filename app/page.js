@@ -26,6 +26,7 @@ import { chapters, chapterGroups } from "./tutorial-data";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { highlightJavaScript } from "./highlight";
 import Sidebar from "./components/Sidebar";
+import ExternalRunDropdown from "./components/ExternalRunDropdown";
 
 export default function Home() {
   // ---------- 状态管理 ----------
@@ -232,6 +233,7 @@ export default function Home() {
                 <span className="editor-filename">example.js</span>
               </div>
               <div className="editor-actions">
+                <ExternalRunDropdown code={code} langLower="js" disabled={isRunning} />
                 <button
                   className="btn btn-secondary"
                   onClick={resetCode}

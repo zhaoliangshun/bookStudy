@@ -5,6 +5,7 @@ import { py4Chapters, py4ChapterGroups } from "../py4-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightPython } from "../py-highlight";
 import Sidebar from "../components/Sidebar";
+import ExternalRunDropdown from "../components/ExternalRunDropdown";
 
 export default function Python4Tutorial() {
   const [activeId, setActiveId] = useState(py4Chapters[0].id);

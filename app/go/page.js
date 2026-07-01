@@ -16,6 +16,7 @@ import { goChapters, goChapterGroups } from "../go-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightGo } from "../go-highlight";
 import Sidebar from "../components/Sidebar";
+import ExternalRunDropdown from "../components/ExternalRunDropdown";
 
 // 默认代码示例：用户首次进入时显示，可自由修改后运行
 const DEFAULT_CODE = `// Go 1.21+ 示例
@@ -228,6 +229,7 @@ export default function GoTutorial() {
                 <span className="editor-filename">main.go</span>
               </div>
               <div className="editor-actions">
+                <ExternalRunDropdown code={code} langLower="go" disabled={isRunning} />
                 <button
                   className="btn btn-secondary"
                   onClick={resetCode}

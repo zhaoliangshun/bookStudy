@@ -15,6 +15,7 @@ import { py8Chapters, py8ChapterGroups } from "../py8-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightPython } from "../py-highlight";
 import Sidebar from "../components/Sidebar";
+import ExternalRunDropdown from "../components/ExternalRunDropdown";
 
 export default function Py8Tutorial() {
   const [activeId, setActiveId] = useState(py8Chapters[0].id);
@@ -173,6 +174,7 @@ export default function Py8Tutorial() {
                 <span className="editor-filename">playground.py</span>
               </div>
               <div className="editor-actions">
+                <ExternalRunDropdown code={code} langLower="py" disabled={isRunning} />
                 <button
                   className="btn btn-secondary"
                   onClick={resetCode}

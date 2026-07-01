@@ -16,6 +16,7 @@ import { pyChapters, pyChapterGroups } from "../py-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightPython } from "../py-highlight";
 import Sidebar from "../components/Sidebar";
+import ExternalRunDropdown from "../components/ExternalRunDropdown";
 
 export default function PythonTutorial() {
   // ---------- 状态管理 ----------
@@ -193,6 +194,7 @@ export default function PythonTutorial() {
                 <span className="editor-filename">example.py</span>
               </div>
               <div className="editor-actions">
+                <ExternalRunDropdown code={code} langLower="py" disabled={isRunning} />
                 <button
                   className="btn btn-secondary"
                   onClick={resetCode}

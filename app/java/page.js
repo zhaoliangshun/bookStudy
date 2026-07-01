@@ -16,6 +16,7 @@ import { javaChapters, javaChapterGroups } from "../java-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightJava } from "../java-highlight";
 import Sidebar from "../components/Sidebar";
+import ExternalRunDropdown from "../components/ExternalRunDropdown";
 
 export default function JavaTutorial() {
   // ---------- 状态管理 ----------
@@ -193,6 +194,7 @@ export default function JavaTutorial() {
                 <span className="editor-filename">Main.java</span>
               </div>
               <div className="editor-actions">
+                <ExternalRunDropdown code={code} langLower="java" disabled={isRunning} />
                 <button
                   className="btn btn-secondary"
                   onClick={resetCode}

@@ -16,6 +16,7 @@ import { sqlChapters, sqlChapterGroups } from "../sql-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightSql } from "../sql-highlight";
 import Sidebar from "../components/Sidebar";
+import ExternalRunDropdown from "../components/ExternalRunDropdown";
 
 export default function SQLTutorial() {
   // ---------- 状态管理 ----------
@@ -180,6 +181,7 @@ export default function SQLTutorial() {
                 <span className="editor-filename">query.sql</span>
               </div>
               <div className="editor-actions">
+                <ExternalRunDropdown code={code} langLower="sql" disabled={isRunning} />
                 <button
                   className="btn btn-secondary"
                   onClick={resetCode}

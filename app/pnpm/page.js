@@ -19,6 +19,7 @@ import { pnpmChapters, pnpmChapterGroups } from "../pnpm-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightShell } from "../shell-highlight";
 import Sidebar from "../components/Sidebar";
+import ExternalRunDropdown from "../components/ExternalRunDropdown";
 
 // 默认代码示例：用户首次进入时显示，可自由修改后运行
 const DEFAULT_CODE = `#!/bin/bash
@@ -205,6 +206,7 @@ export default function PnpmTutorial() {
                 <span className="editor-filename">playground.sh</span>
               </div>
               <div className="editor-actions">
+                <ExternalRunDropdown code={code} langLower="sh" disabled={isRunning} />
                 <button
                   className="btn btn-secondary"
                   onClick={resetCode}

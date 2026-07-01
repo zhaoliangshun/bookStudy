@@ -15,6 +15,7 @@ import { aiChapters, aiChapterGroups } from "../ai-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightJavaScript } from "../highlight";
 import Sidebar from "../components/Sidebar";
+import ExternalRunDropdown from "../components/ExternalRunDropdown";
 
 export default function AITutorial() {
   // ---------- 状态管理 ----------

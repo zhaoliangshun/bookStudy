@@ -51,6 +51,7 @@ const BOOK_CATEGORIES = [
       { path: "/py", label: "Python", icon: "🐍" },
       { path: "/py4", label: "Python 进阶", icon: "🐍" },
       { path: "/py6", label: "Python 全解", icon: "🐍" },
+      { path: "/py8", label: "Python 大全", icon: "🐍" },
       { path: "/net", label: "计算机网络", icon: "🌐" },
       { path: "/blog-tutorial", label: "Blog 系统教程", icon: "📝" },
       { path: "/pyweb", label: "Python Web", icon: "🌐" },

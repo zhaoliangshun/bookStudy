@@ -17,6 +17,7 @@ import { osChapters, osChapterGroups } from "../os-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightShell } from "../shell-highlight";
 import Sidebar from "../components/Sidebar";
+import ExternalRunDropdown from "../components/ExternalRunDropdown";
 
 export default function OSTutorial() {
   const [activeId, setActiveId] = useState(osChapters[0].id);
@@ -195,6 +196,7 @@ export default function OSTutorial() {
                 )}
               </div>
               <div className="editor-actions">
+                <ExternalRunDropdown code={code} langLower="sh" disabled={isRunning} />
                 <button className="btn btn-secondary" onClick={resetCode} disabled={isRunning} title="恢复初始代码">
                   重置
                 </button>

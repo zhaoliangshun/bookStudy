@@ -21,6 +21,7 @@ import { sassChapters, sassChapterGroups } from "../sass-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightScss } from "../sass-highlight";
 import Sidebar from "../components/Sidebar";
+import ExternalRunDropdown from "../components/ExternalRunDropdown";
 
 // 通用 demo HTML：放进 iframe body 里，让用户写的 SCSS 有元素可样式化。
 // 包含常见组件元素：按钮、卡片、列表、网格、表单、徽章、提示框、导航等。

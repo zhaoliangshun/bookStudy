@@ -1021,6 +1021,78 @@ body {
   gap: 10px;
 }
 
+/* ===== 外网运行下拉菜单（教程页面浅色主题） ===== */
+.ext-run-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.ext-run-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 下拉箭头 */
+.ext-caret {
+  font-size: 10px;
+  line-height: 1;
+  opacity: 0.6;
+}
+
+/* 下拉面板：绝对定位，从按钮下方展开，贴左对齐 */
+.ext-run-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 180px;
+  background: var(--bg-elevated, #fff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: var(--radius, 6px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  padding: 5px;
+  z-index: 200;
+  animation: extRunMenuIn 0.14s ease-out;
+}
+
+@keyframes extRunMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 下拉菜单项 */
+.ext-run-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text, #1e293b);
+  font-size: 13px;
+  font-family: var(--mono, monospace);
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-sm, 4px);
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.ext-run-item:hover {
+  background: var(--primary-light, #eff6ff);
+  color: var(--primary, #2563eb);
+}
+.ext-run-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
 .btn {
   padding: 8px 18px;
   border: none;

@@ -17,6 +17,7 @@ import { twChapters, twChapterGroups } from "../tw-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightHtml } from "../html-highlight";
 import Sidebar from "../components/Sidebar";
+import ExternalRunDropdown from "../components/ExternalRunDropdown";
 
 export default function TailwindTutorial() {
   // ---------- 状态管理 ----------

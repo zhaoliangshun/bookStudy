@@ -16,6 +16,7 @@ import { csharpChapters, csharpChapterGroups } from "../csharp-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightCsharp } from "../csharp-highlight";
 import Sidebar from "../components/Sidebar";
+import ExternalRunDropdown from "../components/ExternalRunDropdown";
 
 // 默认代码示例：用户首次进入时显示，可自由修改后运行
 const DEFAULT_CODE = `// C# 12 / .NET 8 顶级语句（Top-level Statements）
@@ -218,6 +219,7 @@ export default function CsharpTutorial() {
                 <span className="editor-filename">Program.cs</span>
               </div>
               <div className="editor-actions">
+                <ExternalRunDropdown code={code} langLower="cs" disabled={isRunning} />
                 <button
                   className="btn btn-secondary"
                   onClick={resetCode}

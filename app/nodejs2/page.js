@@ -5,6 +5,7 @@ import { nodejs2Chapters, nodejs2ChapterGroups } from "../nodejs2-tutorial-data"
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightJavaScript } from "../highlight";
 import Sidebar from "../components/Sidebar";
+import ExternalRunDropdown from "../components/ExternalRunDropdown";
 
 export default function Nodejs2Tutorial() {
   const [activeId, setActiveId] = useState(nodejs2Chapters[0].id);

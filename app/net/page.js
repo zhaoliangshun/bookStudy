@@ -20,6 +20,7 @@ import { netChapters, netChapterGroups } from "../net-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightPython } from "../py-highlight";
 import Sidebar from "../components/Sidebar";
+import ExternalRunDropdown from "../components/ExternalRunDropdown";
 
 // 默认代码示例：用户首次进入时显示，可自由修改后运行
 const DEFAULT_CODE = `# 计算机网络教程示例：用 socket 起一个 TCP server + client
@@ -217,6 +218,7 @@ export default function NetworkTutorial() {
                 <span className="editor-filename">network.py</span>
               </div>
               <div className="editor-actions">
+                <ExternalRunDropdown code={code} langLower="py" disabled={isRunning} />
                 <button
                   className="btn btn-secondary"
                   onClick={resetCode}

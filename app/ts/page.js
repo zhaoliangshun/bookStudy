@@ -15,6 +15,7 @@ import { tsChapters, tsChapterGroups } from "../ts-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightTypeScript } from "../ts-highlight";
 import Sidebar from "../components/Sidebar";
+import ExternalRunDropdown from "../components/ExternalRunDropdown";
 
 export default function TypeScriptTutorial() {
   // ---------- 状态管理 ----------
@@ -191,6 +192,7 @@ export default function TypeScriptTutorial() {
                 <span className="editor-filename">example.ts</span>
               </div>
               <div className="editor-actions">
+                <ExternalRunDropdown code={code} langLower="ts" disabled={isRunning} />
                 <button
                   className="btn btn-secondary"
                   onClick={resetCode}

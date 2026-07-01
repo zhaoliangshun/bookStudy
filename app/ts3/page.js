@@ -15,6 +15,7 @@ import { ts3Chapters, ts3ChapterGroups } from "../ts3-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import { highlightTypeScript } from "../ts-highlight";
 import Sidebar from "../components/Sidebar";
+import ExternalRunDropdown from "../components/ExternalRunDropdown";
 
 export default function TypeScript3Tutorial() {
   const [activeId, setActiveId] = useState(ts3Chapters[0].id);
@@ -173,6 +174,7 @@ export default function TypeScript3Tutorial() {
                 <span className="editor-filename">example.ts</span>
               </div>
               <div className="editor-actions">
+                <ExternalRunDropdown code={code} langLower="ts" disabled={isRunning} />
                 <button
                   className="btn btn-secondary"
                   onClick={resetCode}
