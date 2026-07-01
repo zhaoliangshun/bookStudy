@@ -985,7 +985,7 @@ assert 模块是 Node.js 内置的断言库，是编写测试和防御性编程�
 - \`throws/rejects\` 测试错误路径
 - 断言失败抛出 AssertionError，包含 actual/expected/operator 等信息
 - assert 是单元测试的基础，遵循 AAA 模式编写清晰的测试`,
-    code: `const assert = require('assert/strict');
+    code: `const assert = require('assert').strict;
 
 console.log('========== assert 断言模块演示 ==========\\n');
 

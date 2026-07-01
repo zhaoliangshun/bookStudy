@@ -614,6 +614,7 @@ npm 将下载的包缓存在本地（默认 ~/.npm 目录），下次安装相�
 // ============================================================
 // 从零实现完整的 semver 版本解析器，支持版本解析、
 // 比较、范围匹配（^, ~, >=, <=, || 等）。
+var path = require("path");
 
 // ============================================================
 // 演示 1：版本号解析
@@ -2859,7 +2860,7 @@ EcosystemGenerator.prototype.build = function () {
     if (app.killTimeout !== undefined) lines.push("      kill_timeout: " + app.killTimeout + ",");
     if (app.listenTimeout !== undefined) lines.push("      listen_timeout: " + app.listenTimeout + ",");
     lines.push("    }" + (index < this.apps.length - 1 ? "," : ""));
-  });
+  }, this);
 
   lines.push("  ],");
   lines.push("};");

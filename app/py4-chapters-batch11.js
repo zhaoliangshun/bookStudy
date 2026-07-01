@@ -169,7 +169,7 @@ print("lt:", operator.lt(1, 2), operator.eq(1, 1))
 | 忘记 import operator | 模块需显式导入，不是内建 |
 | 与 lambda 性能差异小 | 简单场景差异不大，优势主要体现在可读性 |
 `,
-    code: `import operator
+    code: `import operator, functools
 
 # itemgetter：取字典/列表元素
 users = [
@@ -199,7 +199,6 @@ print("add:", list(map(operator.add, nums, nums)))
 print("mul:", list(map(operator.mul, nums, nums)))
 print("reduce mul:", functools.reduce(operator.mul, nums, 1))
 
-import functools
 # 比较函数
 print("lt:", operator.lt(1, 2), operator.eq(1, 1))
 `,

@@ -429,10 +429,12 @@ const square = mathMod.default;
 console.log("默认导出 square(5) =", square(5));
 
 // 模拟 import * as Math from 'math'（命名空间导入）
-const Math = moduleRegistry["math"];
-console.log("命名空间导入 Math.add(10,20) =", Math.add(10, 20));
-console.log("命名空间导入 Math.PI =", Math.PI);
-console.log("命名空间导入中的默认导出 Math.default(7) =", Math.default(7));
+// 注意：变量名用 MathNS 而非 Math，避免覆盖全局 Math 对象，
+// 否则下方 distance 函数里的 Math.sqrt 会变成 undefined 而报错
+const MathNS = moduleRegistry["math"];
+console.log("命名空间导入 Math.add(10,20) =", MathNS.add(10, 20));
+console.log("命名空间导入 Math.PI =", MathNS.PI);
+console.log("命名空间导入中的默认导出 Math.default(7) =", MathNS.default(7));
 
 // ---- 演示 export type 概念（类型在运行时被擦除）----
 console.log("\\n--- import type 概念 ---");

@@ -157,8 +157,7 @@ add("1", "2")   # 运行不报错，返回 "12"；只有 mypy 才会警告
 | 泛型类不写 \`\`Generic[T]\`\` | \`\`Stack[int]\`\` 报错 | 类要继承 \`\`Generic[T]\`\`（或 3.12+ 用 \`\`class Stack[T]\`\`） |
 | \`\`Optional[X]\`\` 误以为「不能为 None」 | 实际是「可以为 None」 | 等价于 \`\`X | None\`\`，要在函数内判空 |
 `,
-    code: `from typing import Optional, Protocol, TypeVar, Generic
-from typing_extensions import TypedDict
+    code: `from typing import Optional, Protocol, TypeVar, Generic, TypedDict
 
 # 1) 基础类型注解
 def first[T](xs: list[T]) -> T | None:

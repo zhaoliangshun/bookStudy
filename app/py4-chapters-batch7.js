@@ -997,7 +997,7 @@ print(textwrap.dedent("""
 
 > 这段代码"程序化"地造出了一个完整的包结构，然后立刻 import 它——直观演示了 \`__init__.py\`、相对导入、绝对导入、\`__all__\` 的协作方式。真实项目里这些文件是你手写在磁盘上的，机制完全一致。
 `,
-    code: `import os, tempfile, textwrap
+    code: `import os, sys, tempfile, textwrap
 
 # 模拟包结构
 with tempfile.TemporaryDirectory() as tmp:

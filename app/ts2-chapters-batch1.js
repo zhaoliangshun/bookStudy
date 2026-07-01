@@ -1214,7 +1214,9 @@ console.log("!flag:", negated);
 console.log("\\n假值（Falsy）检查:");
 const falsyValues = [false, 0, -0, "", null, undefined, NaN, 0n];
 falsyValues.forEach((v) => {
-  console.log("  Boolean(" + JSON.stringify(v) + ") =", Boolean(v));
+  // BigInt 无法被 JSON.stringify 序列化（会抛 TypeError），这里转成 "0n" 形式
+  const vStr = typeof v === "bigint" ? v.toString() + "n" : JSON.stringify(v);
+  console.log("  Boolean(" + vStr + ") =", Boolean(v));
 });
 
 console.log("\\n真值（Truthy）示例:");

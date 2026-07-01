@@ -898,13 +898,17 @@ function describe(name: string, fn: () => void): void {
 
 // it: 注册一个测试用例
 function it(name: string, fn: () => void): void {
-  if (currentSuite) {
-    currentSuite.tests.push(function () {
+  // 在注册时捕获当前 suite 的引用。若闭包直接引用可变的 currentSuite，
+  // describe 结束后 currentSuite 会被还原为 null，运行测试时
+  // currentSuite.results 会抛 "Cannot read properties of null"。
+  const suite = currentSuite;
+  if (suite) {
+    suite.tests.push(function () {
       try {
         fn();
-        currentSuite!.results.push({ name: name, passed: true });
+        suite.results.push({ name: name, passed: true });
       } catch (e) {
-        currentSuite!.results.push({
+        suite.results.push({
           name: name,
           passed: false,
           error: e instanceof Error ? e.message : String(e),

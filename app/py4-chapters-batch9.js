@@ -467,13 +467,14 @@ full = ExceptionGroup("outer", [
     ValueError("v1"),
     ExceptionGroup("inner", [ValueError("v2"), TypeError("t1")]),
     TypeError("t2"),
+    KeyError("k1"),
 ])
 val_sub = full.subgroup(ValueError)
 type_sub = full.subgroup(TypeError)
 print("ValueError 子组:", val_sub.exceptions)
 print("TypeError 子组:", type_sub.exceptions)
 # 拆分
-match, rest = full.split(ValueError, TypeError)
+match, rest = full.split((ValueError, TypeError))
 print("匹配:", match.exceptions)
 print("剩余:", rest.exceptions)
 `,

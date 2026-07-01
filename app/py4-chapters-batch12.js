@@ -521,7 +521,7 @@ def auto_repr(cls):
 @auto_repr
 class Point:
     def __init__(self, x, y):
-        self.x, self.y = x
+        self.x, self.y = x, y
 
 p = Point(1, 2)
 print(p)  # Point(x=1, y=2)
