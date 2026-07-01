@@ -323,16 +323,18 @@ export default function Sidebar({
                         <span>{category.icon}</span>
                         <span>{category.name}</span>
                       </div>
-                      <div className="sidebar-book-list">
+                      {/* 平铺网格：一行多个书籍卡片，自动换行 */}
+                      <div className="sidebar-book-grid">
                         {category.books.map((book) => (
                           <a
                             key={book.path}
                             href={book.path}
-                            className={`sidebar-book-item ${currentPath === book.path ? "active" : ""}`}
+                            className={`sidebar-book-card ${currentPath === book.path ? "active" : ""}`}
                             onClick={() => setBookDropdownOpen(false)}
+                            title={book.label}
                           >
-                            <span className="sidebar-book-item-icon">{book.icon}</span>
-                            <span className="sidebar-book-item-label">{book.label}</span>
+                            <span className="sidebar-book-card-icon">{book.icon}</span>
+                            <span className="sidebar-book-card-label">{book.label}</span>
                           </a>
                         ))}
                       </div>
