@@ -614,7 +614,7 @@ Go 团队强调"**不要为了泛型而泛型**"。在以下情况才考虑：
 package main
 
 import (
-    "constraints"
+    "golang.org/x/exp/constraints"
     "fmt"
 )
 

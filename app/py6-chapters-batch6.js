@@ -2551,9 +2551,9 @@ class Vector:
         """向量数乘: v * 3"""
         if isinstance(scalar, (int, float)):
             return Vector(self.x * scalar, self.y * scalar)
-        if isinstance(other, Vector):
+        if isinstance(scalar, Vector):
             # 点积
-            return self.x * other.x + self.y * other.y
+            return self.x * scalar.x + self.y * scalar.y
         return NotImplemented
 
     def __rmul__(self, scalar):

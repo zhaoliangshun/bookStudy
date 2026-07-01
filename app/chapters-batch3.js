@@ -2653,7 +2653,7 @@ async function batchProcessData(items) {
         for (var attempt = 1; attempt <= 2; attempt++) {
           try {
             // 超时控制
-            var taskPromise = new Promise(function (resolve) {
+            var taskPromise = new Promise(function (resolve, reject) {
               var taskDelay = 10 + Math.random() * 50;
               setTimeout(function () {
                 // 10% 概率失败

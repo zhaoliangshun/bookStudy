@@ -194,6 +194,14 @@ export async function runInSandbox(code) {
     TextEncoder,
     TextDecoder,
     performance,
+    AbortController,
+    fetch: (input, init) => {
+      // 沙箱中的 fetch：转发到全局 fetch，失败时返回错误
+      if (typeof fetch === "function") {
+        return fetch(input, init);
+      }
+      return Promise.reject(new TypeError("fetch is not available in this environment"));
+    },
   };
   sandbox.exports = sandbox.module.exports;
 

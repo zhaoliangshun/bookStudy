@@ -549,6 +549,9 @@ function createMockFn() {
     if (mockFn._implementation) {
       return mockFn._implementation.apply(this, args);
     }
+    if (mockFn._returnValuesOnce && mockFn._returnValuesOnce.length > 0) {
+      return mockFn._returnValuesOnce.shift();
+    }
     if (mockFn._returnValues && mockFn._returnValues.length > 0) {
       const idx = Math.min(calls.length - 1, mockFn._returnValues.length - 1);
       return mockFn._returnValues[idx];

@@ -1,0 +1,14 @@
+[
+  {
+    "user_id": 1,
+    "amount": 49.5,
+    "product": "鼠标垫",
+    "id": 2
+  },
+  {
+    "user_id": 2,
+    "amount": 2999,
+    "product": "显示器",
+    "id": 3
+  }
+]

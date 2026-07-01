@@ -698,7 +698,7 @@ steps = [
     ("第1步", "进入项目目录", "cd /path/to/my_project"),
     ("第2步", "创建虚拟环境", "python -m venv venv"),
     ("第3步", "激活虚拟环境 (Mac/Linux)", "source venv/bin/activate"),
-    ("第3步", "激活虚拟环境 (Windows)", "venv\\Scripts\\activate"),
+    ("第3步", "激活虚拟环境 (Windows)", r"venv\\Scripts\\activate"),
     ("第4步", "安装依赖包", "pip install requests flask"),
     ("第5步", "开发项目", "python app.py"),
     ("第6步", "导出依赖（给别人用）", "pip freeze > requirements.txt"),

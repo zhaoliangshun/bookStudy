@@ -502,11 +502,11 @@ print(f"a{{2,3}}: {re.findall(r'a{2,3}', 'a aa aaa aaaa')}")
 
 # ========== 3. 字符类 ==========
 print("\\n" + "=" * 50)
-print("3. 字符类 \\d \\w \\s [...]")
+print(r"3. 字符类 \\d \\w \\s [...]")
 print("=" * 50)
 text = "电话: 138-1234-5678, 邮箱: test@example.com"
-print(f"所有数字(\\d+): {re.findall(r'\\d+', text)}")
-print(f"所有单词(\\w+): {re.findall(r'\\w+', text)}")
+print(rf"所有数字(\\d+): {re.findall(r'\\d+', text)}")
+print(rf"所有单词(\\w+): {re.findall(r'\\w+', text)}")
 print(f"[0-9]+: {re.findall(r'[0-9-]+', text)}")
 print(f"[a-z]+: {re.findall(r'[a-z]+', text)}")
 print(f"[a-zA-Z]+: {re.findall(r'[a-zA-Z]+', text)}")
@@ -2704,7 +2704,8 @@ u1 = uuid.uuid1()
 print(f"UUID1: {u1}")
 print(f"version: {u1.version}")
 # 不暴露MAC地址：用随机node
-u1_random = uuid.uuid1(node=uuid._random_getnode())
+import random
+u1_random = uuid.uuid1(node=random.getrandbits(48))
 print(f"UUID1(随机node): {u1_random}")
 
 # ========== 3. UUID3/5 基于名字 ==========

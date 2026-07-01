@@ -3363,12 +3363,12 @@ class Router {
     this.middlewares = new MiddlewareChain();
   }
 
-  // 注册路由
-  get(path, handler) { this.routes.push({ method: 'GET', path, handler }); }
-  post(path, handler) { this.routes.push({ method: 'POST', path, handler }); }
-  put(path, handler) { this.routes.push({ method: 'PUT', path, handler }); }
-  patch(path, handler) { this.routes.push({ method: 'PATCH', path, handler }); }
-  delete(path, handler) { this.routes.push({ method: 'DELETE', path, handler }); }
+  // 注册路由（支持多个 handler，前 N-1 个作为中间件，最后一个为最终处理）
+  get(path, ...handlers) { this.routes.push({ method: 'GET', path, handlers }); }
+  post(path, ...handlers) { this.routes.push({ method: 'POST', path, handlers }); }
+  put(path, ...handlers) { this.routes.push({ method: 'PUT', path, handlers }); }
+  patch(path, ...handlers) { this.routes.push({ method: 'PATCH', path, handlers }); }
+  delete(path, ...handlers) { this.routes.push({ method: 'DELETE', path, handlers }); }
 
   // 注册中间件
   use(middleware) {
@@ -3389,7 +3389,15 @@ class Router {
     }
 
     try {
-      await this.middlewares.execute(req, res, route.handler);
+      // 链式执行路由级 handler：前 N-1 个可调用 next() 传递，最后一个为最终处理
+      let routeIdx = 0;
+      const routeNext = async () => {
+        if (routeIdx < route.handlers.length) {
+          const h = route.handlers[routeIdx++];
+          await h(req, res, routeNext);
+        }
+      };
+      await this.middlewares.execute(req, res, routeNext);
     } catch (err) {
       this._handleError(err, req, res);
     }

@@ -917,7 +917,8 @@ for pkg in packages:
     try:
         mod = importlib.import_module(pkg)
         version = getattr(mod, "__version__", "内置（无版本号）")
-        print(f"  {pkg:12} -> {version}  [路径: {mod.__file__}]")
+        filepath = getattr(mod, "__file__", "内置模块（无文件路径）")
+        print(f"  {pkg:12} -> {version}  [路径: {filepath}]")
     except ImportError:
         print(f"  {pkg:12} -> 未安装")`
   },

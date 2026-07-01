@@ -545,7 +545,7 @@ WebSocket 提供了浏览器与服务器之间的双向实时通信通道，本�
 ## 十、RxJS 与响应式流类型
 
 对于更复杂的异步事件流处理场景，RxJS（Reactive Extensions for JavaScript）提供了强大的响应式编程模型。RxJS 的 Observable 类型是类型安全的异步数据流，支持丰富的操作符（map、filter、mergeMap、debounceTime、throttleTime、switchMap 等）来转换、过滤、组合、节流数据流。TypeScript 能够正确推断每个操作符链式调用后的数据类型，确保流中数据类型的正确性。虽然 RxJS 学习曲线较陡，但在处理复杂的事件组合（如拖拽、表单输入防抖、WebSocket 消息流、实时数据仪表盘）时，类型安全的响应式编程能够大幅简化代码逻辑。`,
-    code: `console.log("========== 1. TypedEventEmitter ==========\\n");
+    code: `(async()=>{console.log("========== 1. TypedEventEmitter ==========\\n");
 const{EventEmitter}=require('events');
 type EMap=Record<string|symbol,(...a:any[])=>void>;
 class TypedEE<TE extends EMap>{
@@ -625,7 +625,7 @@ await new Promise<void>((res,rej)=>pipeline(src,parser,enrich,agg,(e:any)=>{if(e
 console.log(\`日志统计: 总计\${stats.total}\`);
 console.log(\`  级别: debug=\${stats.byLv.debug||0}, info=\${stats.byLv.info||0}, warn=\${stats.byLv.warn||0}, error=\${stats.byLv.error||0}\`);
 console.log(\`  错误数:\${stats.errs.length}\`);stats.errs.forEach(e=>console.log(\`    [!]\${e.tag} \${e.msg}\`));
-console.log("\\n========== 事件与流演示完成 ==========");`
+console.log("\\n========== 事件与流演示完成 ==========");})();`
   },
   // =========================================================
   // 第5章：CLI 工具开发
@@ -690,7 +690,7 @@ CLI 工具通常需要支持环境变量配置（如 MYAPP_PORT=3000 myapp start
 ## 十二、CLI 框架生态与选型建议
 
 TypeScript 生态中有多个成熟的 CLI 框架：Commander.js 是最经典的选择，API 简洁，支持子命令、选项、自动帮助生成；Yargs 同样功能完善，TypeScript 支持良好；oclif 是 Heroku 开源的企业级 CLI 框架，支持插件、自动补全、命令生成；CAC 是轻量级的选择，API 设计现代 TypeScript 友好。选择框架时考虑：类型支持质量（是否有良好的泛型推断）、包体积、功能需求（是否需要插件系统、自动补全）、社区活跃度。无论选择哪个框架，理解底层的类型安全原理（选项配置→类型推断、命令注册→类型累积）都能帮助你更好地使用和扩展框架。`,
-    code: `console.log("========== 1. CLI解析系统 ==========\\n");
+    code: `(async()=>{console.log("========== 1. CLI解析系统 ==========\\n");
 type OType='string'|'number'|'boolean'|'array';
 interface OCfg{type:OType;short?:string;default?:any;required?:boolean;desc?:string;choices?:string[]}
 interface ACfg{name:string;required?:boolean;desc?:string;variadic?:boolean}
@@ -797,6 +797,6 @@ await test(['build','src/index.ts','-o','build','-m']);
 await test(['serve','-p','8080','--open']);
 await test(['deploy','--env','prod']);
 await test(['build','--help']);
-console.log("========== CLI演示完成 ==========");`
+console.log("========== CLI演示完成 ==========");})();`
   }
 ];
