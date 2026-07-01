@@ -25,7 +25,9 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const EXECUTOR_PATH = path.join(__dirname, "executor.js");
+// 用 new Function 阻断 Turbopack 静态分析：executor.js 是运行时子进程脚本，
+// 不应被 Turbopack 当作模块打包。new Function 使路径在运行时才计算。
+const EXECUTOR_PATH = new Function("p", "d", "return p.join(d, 'executor.js')")(path, __dirname);
 
 /**
  * 从 code 字符串中提取三段内容。
