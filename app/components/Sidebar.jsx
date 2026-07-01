@@ -116,6 +116,10 @@ export default function Sidebar({
   const [width, setWidth] = useState(DEFAULT_SIDEBAR_W);
   const [bookDropdownOpen, setBookDropdownOpen] = useState(false);
   const bookDropdownRef = useRef(null);
+  // 默认折叠的分类（点击标题后展开）
+  const [collapsedCategories, setCollapsedCategories] = useState(
+    () => new Set(["综合知识"])
+  );
 
   // 当前书籍信息
   const currentBook = ALL_BOOKS.find((b) => b.path === currentPath) || ALL_BOOKS[0];
@@ -332,13 +336,30 @@ export default function Sidebar({
                     </button>
                   </div>
                   <div className="sidebar-book-dropdown-body">
-                    {BOOK_CATEGORIES.map((category) => (
+                    {BOOK_CATEGORIES.map((category) => {
+                      const isCollapsed = collapsedCategories.has(category.name);
+                      return (
                       <div key={category.name} className="sidebar-book-category">
-                        <div className="sidebar-book-category-title">
+                        <div
+                          className={`sidebar-book-category-title ${isCollapsed ? "collapsed" : ""}`}
+                          onClick={() =>
+                            setCollapsedCategories((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(category.name)) next.delete(category.name);
+                              else next.add(category.name);
+                              return next;
+                            })
+                          }
+                          title={isCollapsed ? "点击展开" : "点击收起"}
+                        >
+                          <span className="sidebar-book-category-arrow">
+                            {isCollapsed ? "▶" : "▾"}
+                          </span>
                           <span>{category.icon}</span>
                           <span>{category.name}</span>
                         </div>
                         {/* 平铺网格：一行多个书籍卡片，自动换行 */}
+                        {!isCollapsed && (
                         <div className="sidebar-book-grid">
                           {category.books.map((book) => (
                             <a
@@ -353,8 +374,10 @@ export default function Sidebar({
                             </a>
                           ))}
                         </div>
+                        )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </>

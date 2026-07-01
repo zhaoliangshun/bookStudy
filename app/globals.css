@@ -291,6 +291,24 @@ body {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease;
+}
+
+.sidebar-book-category-title:hover {
+  color: var(--text-on-dark);
+}
+
+.sidebar-book-category-title.collapsed {
+  opacity: 0.7;
+}
+
+.sidebar-book-category-arrow {
+  display: inline-block;
+  width: 10px;
+  font-size: 9px;
+  transition: transform 0.15s ease;
 }
 
 /* ===== 书籍平铺网格布局 ===== */
