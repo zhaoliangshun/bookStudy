@@ -26,7 +26,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import CodeEditor from "../components/CodeEditor";
+import dynamic from "next/dynamic";
 import { getExternalPlaygrounds, openExternal } from "../external-playgrounds";
 import { highlightJavaScript } from "../highlight";
 import { highlightTypeScript } from "../ts-highlight";
@@ -42,6 +42,21 @@ import { highlightRuby } from "../ruby-highlight";
 import { highlightSwift } from "../swift-highlight";
 import { highlightShell } from "../shell-highlight";
 import { highlightSql } from "../sql-highlight";
+
+// Monaco Editor 是浏览器端编辑器，依赖 DOM/Worker，必须关 SSR。
+// 用 next/dynamic 在客户端动态加载，避免服务端渲染时崩溃。
+// loading：在 chunk 加载期间显示占位（避免编辑区塌缩到 0 高度）。
+const MonacoEditor = dynamic(
+  () => import("../components/MonacoEditor"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="monaco-loading-placeholder">
+        正在加载编辑器…
+      </div>
+    ),
+  }
+);
 
 // =============================================================
 // 浏览器端 JavaScript 执行器
@@ -1373,15 +1388,11 @@ export default function PlaygroundPage() {
                 </span>
               </div>
               <div className="editor-wrap pg-editor-wrap">
-                <CodeEditor
+                <MonacoEditor
                   value={code}
                   onChange={setCode}
-                  highlight={activeLang.highlight}
-                  comment={activeLang.comment}
+                  language={activeLang.id}
                   onRun={runCode}
-                  placeholder={`在这里编写 ${activeLang.label} 代码...`}
-                  minHeight={200}
-                  maxHeight={9999}
                 />
               </div>
             </section>
