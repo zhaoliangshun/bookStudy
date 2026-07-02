@@ -131,7 +131,6 @@ export default function MonacoEditor({
       style={{
         minHeight: `${minHeight}px`,
         maxHeight: `${maxHeight}px`,
-        height: "100%",
       }}
     >
       <Editor

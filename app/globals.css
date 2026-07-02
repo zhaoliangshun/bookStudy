@@ -743,6 +743,7 @@ body {
 .md-code-editor-container {
   overflow: hidden;
   position: relative;
+  min-height: 80px;
 }
 /* Monaco 编辑器在 markdown 代码块中的样式覆盖 */
 .md-code-editor-container .monaco-editor-wrap {
@@ -1197,7 +1198,7 @@ body {
 
 /* 编辑器容器（浅色模式）—— Monaco 编辑器的外层容器 */
 .editor-wrap {
-  display: flex;
+  position: relative;
   background: var(--editor-bg);
   border-radius: var(--radius);
   overflow: hidden;
@@ -1207,11 +1208,10 @@ body {
   max-height: 520px;
 }
 
-/* Monaco 编辑器容器：撑满 editor-wrap */
+/* Monaco 编辑器容器：绝对定位撑满父容器，避免 height:100% 无法解析 */
 .monaco-editor-wrap {
-  flex: 1;
-  min-width: 0;
-  width: 100%;
+  position: absolute;
+  inset: 0;
 }
 
 /* Monaco 加载占位 */
