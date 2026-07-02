@@ -2126,13 +2126,17 @@ body {
   box-shadow: none;
   /* Monaco Editor 容器需要明确尺寸才能正确布局 */
   position: relative;
-  /* 代码与面板左边框之间留一点白色间隙，视觉更透气 */
-  padding-left: 8px;
-  background: var(--editor-bg, #ffffff);
   /* 关键：不限制子元素宽度，让 Monaco 自己管理 .margin（行号槽）宽度。
      之前用 > div { width: 100% } 会干扰 Monaco 内部 absolute 布局，
      导致行号槽宽度计算异常、行号数字被裁。 */
   overflow: hidden;
+}
+
+/* 彻底隐藏左侧 margin-view-overlays（行号槽）。
+   行号本身已通过 lineNumbers: "off" 关闭，这里再把整个 margin 容器
+   收掉，让代码区贴到面板左边，最大化代码可视宽度。 */
+.pg-editor-wrap .monaco-editor .margin {
+  display: none;
 }
 
 /* 动态加载 Monaco 期间的占位：避免编辑区塌缩到 0 高度 */
