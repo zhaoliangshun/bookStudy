@@ -39,8 +39,8 @@ Python 是一门**高级、解释型、通用**的编程语言，由荷兰程序
 同样输出"Hello, World!"：
 
 \`\`\`python
-# Python
-print("Hello, World!")
+# Python 一行代码即可输出文本，无需类和 main 方法
+print("Hello, World!")  # print() 是内置输出函数，将字符串打印到屏幕
 \`\`\`
 
 \`\`\`java
@@ -94,13 +94,13 @@ print("=" * 50)`
 打开终端（Windows 用命令提示符或 PowerShell，macOS/Linux 用 Terminal），输入：
 
 \`\`\`bash
-python3 --version
+python3 --version  # 查看已安装的 Python 3 版本号，输出形如 Python 3.13.0
 \`\`\`
 
 或者：
 
 \`\`\`bash
-python --version
+python --version  # 部分系统用 python 命令，注意可能指向 Python 2
 \`\`\`
 
 如果显示 Python 3.x.x（比如 Python 3.13.0），说明已经安装好了。
@@ -147,13 +147,13 @@ Hello
 创建文件 \`hello.py\`，写入：
 
 \`\`\`python
-print("Hello, Python!")
+print("Hello, Python!")  # 在 hello.py 中写入此行，运行后会输出该字符串
 \`\`\`
 
 然后在终端运行：
 
 \`\`\`bash
-python3 hello.py
+python3 hello.py  # 用 Python 解释器执行 hello.py 脚本文件
 \`\`\`
 
 你应该会看到输出：\`Hello, Python!\`
@@ -206,15 +206,15 @@ print("*" * 40)
 在 Python 中，用等号 \`=\` 给变量赋值：
 
 \`\`\`python
-变量名 = 值
+变量名 = 值  # 等号左边是变量名，右边是要存储的数据
 \`\`\`
 
 例如：
 
 \`\`\`python
-name = "小明"
-age = 18
-height = 1.75
+name = "小明"      # 字符串：用引号包裹的文本
+age = 18           # 整数：没有小数点的数字
+height = 1.75      # 浮点数：带小数点的数字
 \`\`\`
 
 这里：
@@ -227,22 +227,23 @@ height = 1.75
 1. **变量可以重新赋值**：后面的值会覆盖前面的值
 
 \`\`\`python
+# 定义变量 x 并赋初值 10
 x = 10
-x = 20  # x 现在变成 20 了
+x = 20  # 重新赋值，新值 20 会覆盖旧值 10
 \`\`\`
 
 2. **Python 是动态类型语言**：变量不需要声明类型，可以赋不同类型的值
 
 \`\`\`python
-a = 10      # 整数
-a = "hello" # 现在变成字符串了，这在 Python 中是允许的
+a = 10      # 此时 a 是整数类型
+a = "hello" # 同一变量可重新赋值为字符串，Python 是动态类型语言
 \`\`\`
 
 3. **可以同时给多个变量赋值**
 
 \`\`\`python
-x, y, z = 1, 2, 3
-a = b = c = 0  # 多个变量赋相同的值
+x, y, z = 1, 2, 3     # 元组解包：分别把 1、2、3 赋给 x、y、z
+a = b = c = 0         # 链式赋值：三个变量都赋值为 0
 \`\`\`
 
 ### 变量命名规则
@@ -378,10 +379,10 @@ print("is_student 的类型:", type(is_student))`
 用 \`type()\` 函数：
 
 \`\`\`python
-print(type(10))      # <class 'int'>
-print(type(3.14))    # <class 'float'>
-print(type("hello")) # <class 'str'>
-print(type(True))    # <class 'bool'>
+print(type(10))      # type() 返回数据类型，整数输出 <class 'int'>
+print(type(3.14))    # 浮点数输出 <class 'float'>
+print(type("hello")) # 字符串输出 <class 'str'>
+print(type(True))    # 布尔值输出 <class 'bool'>
 \`\`\`
 
 ### 类型很重要
@@ -467,15 +468,15 @@ Python 中有三种数字类型：**整数（int）**、**浮点数（float）**
 整数就是没有小数部分的数字，可以是正数、负数或零：
 
 \`\`\`python
-age = 25          # 正整数
-temperature = -10 # 负整数
-zero = 0          # 零
+age = 25          # 正整数，不带小数点
+temperature = -10 # 负整数，前面加负号
+zero = 0          # 零也是整数
 \`\`\`
 
 Python 的整数**没有大小限制**，可以处理非常大的数：
 
 \`\`\`python
-big = 999999999999999999999999999999
+big = 999999999999999999999999999999  # Python 整数无上限，不会溢出
 \`\`\`
 
 ### 浮点数（float）
@@ -483,15 +484,17 @@ big = 999999999999999999999999999999
 浮点数就是带小数点的数字：
 
 \`\`\`python
+# 浮点数赋值，圆周率
 pi = 3.14159
+# 浮点数赋值，价格
 price = 9.9
-scientific = 2.5e3  # 科学计数法，等于 2500.0
+scientific = 2.5e3  # 科学计数法：2.5 × 10³ = 2500.0
 \`\`\`
 
 ⚠️ **浮点数精度问题**：由于计算机用二进制存储小数，有些十进制小数无法精确表示：
 
 \`\`\`python
-print(0.1 + 0.2)  # 输出 0.30000000000000004，不是 0.3！
+print(0.1 + 0.2)  # 受二进制存储限制，结果是 0.30000000000000004 而非 0.3
 \`\`\`
 
 这不是 Python 的 bug，而是所有编程语言都有的问题。涉及金钱等精确计算时，用 \`decimal\` 模块。
@@ -501,9 +504,9 @@ print(0.1 + 0.2)  # 输出 0.30000000000000004，不是 0.3！
 复数由实部和虚部组成，用 \`j\` 表示虚数单位：
 
 \`\`\`python
-c = 3 + 4j
-print(c.real)  # 实部 3.0
-print(c.imag)  # 虚部 4.0
+c = 3 + 4j       # 复数：实部 3，虚部 4，j 表示虚数单位
+print(c.real)    # .real 属性获取实部，输出 3.0
+print(c.imag)    # .imag 属性获取虚部，输出 4.0
 \`\`\`
 
 普通开发很少用到，科学计算时才需要。
@@ -535,7 +538,7 @@ print(c.imag)  # 虚部 4.0
 当整数和浮点数运算时，结果自动变成浮点数：
 
 \`\`\`python
-print(3 + 2.0)  # 5.0
+print(3 + 2.0)  # 整数与浮点数运算，结果自动提升为浮点数 5.0
 \`\`\``,
     code: `# 数字类型与算术运算演示
 
@@ -652,10 +655,10 @@ print(total_seconds, "秒 =", hours, "小时", minutes, "分钟", seconds, "秒"
 用 \`bool()\` 函数可以把任意值转换成布尔值：
 
 \`\`\`python
-print(bool(0))       # False
-print(bool(1))       # True
-print(bool(""))      # False
-print(bool("hello")) # True
+print(bool(0))       # 0 是假值，转换结果为 False
+print(bool(1))       # 非零数字是真值，转换结果为 True
+print(bool(""))      # 空字符串是假值，转换结果为 False
+print(bool("hello")) # 非空字符串是真值，转换结果为 True
 \`\`\`
 
 ### 布尔值实际上是整数
@@ -663,8 +666,8 @@ print(bool("hello")) # True
 在 Python 中，True 本质上就是 1，False 本质上就是 0：
 
 \`\`\`python
-print(True + True)   # 2
-print(False * 10)    # 0
+print(True + True)   # True 等价于 1，1+1 结果为 2
+print(False * 10)    # False 等价于 0，0×10 结果为 0
 \`\`\`
 
 但不要依赖这个特性写奇怪的代码，保持代码可读性更重要。
@@ -764,9 +767,9 @@ print("考试及格了吗?", pass_exam)`
 
 \`\`\`python
 # 字符串里有单引号，外面用双引号
-msg = "I'm fine"
+msg = "I'm fine"            # 外层用双引号，内层单引号无需转义
 # 或者用转义字符 \\'
-msg = 'I\\'m fine'
+msg = 'I\\'m fine'           # 反斜杠转义单引号，使其不作为字符串结束符
 \`\`\`
 
 ### 转义字符
@@ -785,6 +788,7 @@ msg = 'I\\'m fine'
 如果不想转义，可以在字符串前加 \`r\`（原始字符串）：
 
 \`\`\`python
+# r 前缀表示原始字符串，反斜杠按字面量处理不转义
 path = r"C:\Users
 ame"  # 不需要写 \\\\n\`\`\`
 
@@ -804,9 +808,9 @@ ame"  # 不需要写 \\\\n\`\`\`
 
 \`\`\`python
 s = "Python"
-print(s[0])   # 'P'
-print(s[1])   # 'y'
-print(s[-1])  # 'n'（最后一个字符）
+print(s[0])   # 索引 0 取第一个字符 'P'
+print(s[1])   # 索引 1 取第二个字符 'y'
+print(s[-1])  # 负索引从末尾数，-1 取最后一个字符 'n'
 \`\`\`
 
 ### 字符串切片
@@ -814,7 +818,7 @@ print(s[-1])  # 'n'（最后一个字符）
 切片用来获取字符串的一部分（子串），语法：
 
 \`\`\`python
-字符串[起始:结束:步长]
+字符串[起始:结束:步长]  # 起始包含、结束不包含，步长默认为 1
 \`\`\`
 
 - **起始**：从哪个索引开始（包含），默认 0
@@ -823,11 +827,11 @@ print(s[-1])  # 'n'（最后一个字符）
 
 \`\`\`python
 s = "Hello, World!"
-print(s[0:5])    # 'Hello'（索引0-4）
-print(s[:5])     # 'Hello'（从开头到5）
-print(s[7:])     # 'World!'（从7到末尾）
-print(s[::2])    # 'Hlo ol!'（每隔一个）
-print(s[::-1])   # '!dlroW ,olleH'（反转字符串！）
+print(s[0:5])    # 取索引 0 到 4 的子串，结果 'Hello'
+print(s[:5])     # 省略起始，从开头取到索引 4，结果 'Hello'
+print(s[7:])     # 省略结束，从索引 7 取到末尾，结果 'World!'
+print(s[::2])    # 步长 2，每隔一个取一个，结果 'Hlo ol!'
+print(s[::-1])  # 步长 -1，从尾到头取，实现字符串反转
 \`\`\`
 
 ### 重要：字符串是不可变的
@@ -836,9 +840,9 @@ print(s[::-1])   # '!dlroW ,olleH'（反转字符串！）
 
 \`\`\`python
 s = "hello"
-# s[0] = 'H'  # 这会报错！
+# s[0] = 'H'  # 直接修改字符会报 TypeError，字符串不可变
 # 正确做法是创建新字符串
-s = "H" + s[1:]  # "Hello"
+s = "H" + s[1:]  # 用拼接生成 "Hello"，原 s 被新对象替换
 \`\`\`
 
 ### 字符串拼接和重复
@@ -847,8 +851,8 @@ s = "H" + s[1:]  # "Hello"
 - \`*\`：重复字符串
 
 \`\`\`python
-print("Hello" + " " + "World")  # Hello World
-print("哈" * 3)  # 哈哈哈
+print("Hello" + " " + "World")  # + 号拼接多个字符串，结果 Hello World
+print("哈" * 3)  # * 号重复字符串 3 次，结果 哈哈哈
 \`\`\``,
     code: `# 字符串基础操作演示
 
@@ -1090,25 +1094,27 @@ f-string 是目前最推荐的方式，**简洁、直观、速度快**：
 在字符串前加 \`f\` 或 \`F\`，用 \`{变量名}\` 插入变量：
 
 \`\`\`python
+# 字符串变量 name
 name = "小明"
+# 整数变量 age
 age = 18
-print(f"我叫{name}，今年{age}岁")
+print(f"我叫{name}，今年{age}岁")  # f 前缀开启 f-string，{变量名} 会被替换为变量值
 \`\`\`
 
 大括号里还可以放表达式、函数调用：
 
 \`\`\`python
-print(f"明年我{age + 1}岁")
-print(f"名字长度：{len(name)}")
+print(f"明年我{age + 1}岁")      # {} 内可写表达式，先计算 age+1 再插入
+print(f"名字长度：{len(name)}")  # {} 内可调用函数，插入返回值
 \`\`\`
 
 f-string 还支持格式控制：
 
 \`\`\`python
 pi = 3.1415926
-print(f"圆周率：{pi:.2f}")  # 保留2位小数
-print(f"右对齐：{42:5d}")    # 占5位宽度
-print(f"左对齐：{42:<5d}|")
+print(f"圆周率：{pi:.2f}")  # :.2f 保留 2 位小数，结果 3.14
+print(f"右对齐：{42:5d}")    # :5d 占 5 位宽度，默认右对齐
+print(f"左对齐：{42:<5d}|")  # :<5d 左对齐，右侧补空格
 \`\`\`
 
 ### 方式二：str.format() 方法
@@ -1116,9 +1122,9 @@ print(f"左对齐：{42:<5d}|")
 f-string 出现之前的主流方式，现在仍广泛使用：
 
 \`\`\`python
-print("我叫{}，今年{}岁".format(name, age))
-print("我叫{0}，{0}今年{1}岁".format(name, age))  # 按位置
-print("我叫{n}，今年{a}岁".format(n=name, a=age))  # 按关键字
+print("我叫{}，今年{}岁".format(name, age))  # {} 按顺序依次填充参数
+print("我叫{0}，{0}今年{1}岁".format(name, age))  # {0} 按位置索引复用参数
+print("我叫{n}，今年{a}岁".format(n=name, a=age))  # 用关键字参数指定填充
 \`\`\`
 
 ### 方式三：% 格式化（老式）
@@ -1126,7 +1132,7 @@ print("我叫{n}，今年{a}岁".format(n=name, a=age))  # 按关键字
 这是 C 语言风格的格式化，老代码中常见，但不推荐在新代码中使用：
 
 \`\`\`python
-print("我叫%s，今年%d岁" % (name, age))
+print("我叫%s，今年%d岁" % (name, age))  # %s 占位字符串，%d 占位整数，% 后给元组
 \`\`\`
 
 | 符号 | 含义 |
@@ -1303,8 +1309,8 @@ for item, price in products:
 | \`not in\` | 不在里面 |
 
 \`\`\`python
-print("a" in "abc")  # True
-print(3 in [1, 2, 3])  # True
+print("a" in "abc")  # in 判断字符是否在字符串中，结果 True
+print(3 in [1, 2, 3])  # in 判断元素是否在列表中，结果 True
 \`\`\`
 
 ### 6. 身份运算符
@@ -1321,8 +1327,8 @@ print(3 in [1, 2, 3])  # True
 \`\`\`python
 a = [1, 2, 3]
 b = [1, 2, 3]
-print(a == b)  # True，值相等
-print(a is b)  # False，不是同一个对象
+print(a == b)  # == 比较值是否相等，结果 True
+print(a is b)  # is 比较是否同一对象（内存地址），结果 False
 \`\`\`
 
 ### 7. 位运算符（了解）
@@ -1471,9 +1477,11 @@ print("(2 + 3) * 4 =", (2 + 3) * 4, "（括号优先）")
 **基本用法**：
 
 \`\`\`python
-print("Hello")          # 打印字符串
-print(123)              # 打印数字
-print("年龄:", 18)      # 打印多个值，逗号分隔
+# 打印字符串字面量
+print("Hello")          # 打印字符串字面量
+# 打印整数
+print(123)              # 打印整数
+print("年龄:", 18)      # 多个值用逗号分隔，输出时默认用空格连接
 \`\`\`
 
 **参数说明**：
@@ -1483,16 +1491,16 @@ print("年龄:", 18)      # 打印多个值，逗号分隔
 \`
 
 \`\`\`python
-print("a", "b", "c", sep="-")  # a-b-c
-print("Hello", end=" ")        # 不换行，用空格结尾
-print("World")                 # 会和上面连在同一行
+print("a", "b", "c", sep="-")  # sep 指定分隔符为短横线，输出 a-b-c
+print("Hello", end=" ")        # end 指定结尾为空格，不换行
+print("World")                 # 因上一行未换行，会接在同一行输出
 \`\`\`
 
 **打印到文件**：
 
 \`\`\`python
-with open("output.txt", "w") as f:
-    print("写入文件", file=f)
+with open("output.txt", "w") as f:   # 以写入模式打开文件，with 自动关闭
+    print("写入文件", file=f)         # file 参数把内容输出到文件而非屏幕
 \`\`\`
 
 ### input() 输入
@@ -1502,17 +1510,17 @@ with open("output.txt", "w") as f:
 **⚠️ 重要：input() 返回的永远是字符串！**
 
 \`\`\`python
-name = input("请输入你的名字：")
-print("你好，" + name)
+name = input("请输入你的名字：")  # input() 暂停等待输入，返回字符串
+print("你好，" + name)          # 字符串拼接后输出
 \`\`\`
 
 如果需要数字，必须手动转换类型：
 
 \`\`\`python
-age_str = input("请输入年龄：")
-age = int(age_str)  # 转成整数
+age_str = input("请输入年龄：")  # input() 返回字符串如 "18"
+age = int(age_str)  # int() 把字符串转成整数
 # 或者一步到位：
-age = int(input("请输入年龄："))
+age = int(input("请输入年龄："))  # 嵌套调用，先取输入再转整数
 \`\`\`
 
 ### 输入输出示例
@@ -1520,9 +1528,9 @@ age = int(input("请输入年龄："))
 写一个简单的交互程序：
 
 \`\`\`python
-name = input("你叫什么名字？")
-age = int(input("你多大了？"))
-print(f"你好{name}，明年你就{age+1}岁了！")
+name = input("你叫什么名字？")            # 获取姓名字符串
+age = int(input("你多大了？"))           # 获取年龄并转成整数
+print(f"你好{name}，明年你就{age+1}岁了！")  # f-string 插值并计算
 \`\`\`
 
 ### 常见问题
@@ -1536,9 +1544,11 @@ print(f"你好{name}，明年你就{age+1}岁了！")
 之前学的 f-string 和 print 配合非常好用：
 
 \`\`\`python
+# 字符串变量 name
 name = "小明"
+# 整数变量 score
 score = 95
-print(f"{name}的成绩是{score}分")
+print(f"{name}的成绩是{score}分")  # f-string 把变量直接插入字符串
 \`\`\``,
     code: `# 输入输出演示
 # 注意：在沙盒环境中 input() 可能无法交互，这里演示语法为主
@@ -1632,8 +1642,8 @@ print("=" * 50)`
 以 \`#\` 开头，这一行后面的内容都是注释：
 
 \`\`\`python
-# 这是一行注释
-print("hello")  # 这也是注释，跟在代码后面
+# 这是一行注释  # 开头的整行都被解释器忽略，仅供阅读
+print("hello")  # 这也是注释，跟在代码后面  # 代码后用 # 添加行尾说明
 \`\`\`
 
 #### 2. 多行注释：三引号
@@ -1641,11 +1651,11 @@ print("hello")  # 这也是注释，跟在代码后面
 用三个单引号或三个双引号包裹，可以写多行注释：
 
 \`\`\`python
-'''这是多行注释
+'''这是多行注释  # 三个单引号开头
 可以写很多行
-Python 不会执行这里面的内容'''
+Python 不会执行这里面的内容'''  # 三个单引号结尾，中间内容不执行
 
-"""双引号三引号也可以
+"""双引号三引号也可以  # 三个双引号同样可做多行注释
 同样可以写多行"""
 \`\`\`
 
@@ -1809,9 +1819,9 @@ Python 提供了内置的类型转换函数。
 可以把浮点数、整数字符串转成整数：
 
 \`\`\`python
-int(3.99)     # 3（直接截断小数部分，不是四舍五入！）
-int("123")    # 123
-int("-45")    # -45
+int(3.99)     # 浮点数转整数：直接截断小数部分，结果 3
+int("123")    # 数字字符串转整数，结果 123
+int("-45")    # 带负号的字符串也能转，结果 -45
 \`\`\`
 
 ⚠️ 注意：
@@ -1822,10 +1832,10 @@ int("-45")    # -45
 ### float() 转浮点数
 
 \`\`\`python
-float(10)       # 10.0
-float("3.14")   # 3.14
-float("-2.5")   # -2.5
-float("1e3")    # 1000.0
+float(10)       # 整数转浮点数，结果 10.0
+float("3.14")   # 小数字符串转浮点数，结果 3.14
+float("-2.5")   # 带负号字符串，结果 -2.5
+float("1e3")    # 科学计数法字符串，结果 1000.0
 \`\`\`
 
 ### str() 转字符串
@@ -1833,18 +1843,19 @@ float("1e3")    # 1000.0
 任何类型都可以转成字符串：
 
 \`\`\`python
-str(123)        # "123"
-str(3.14)       # "3.14"
-str(True)       # "True"
-str([1, 2, 3])  # "[1, 2, 3]"
+str(123)        # 整数转字符串，结果 "123"
+str(3.14)       # 浮点数转字符串，结果 "3.14"
+str(True)       # 布尔值转字符串，结果 "True"
+str([1, 2, 3])  # 列表转字符串，结果 "[1, 2, 3]"
 \`\`\`
 
 字符串拼接时经常需要先转成字符串：
 
 \`\`\`python
+# 整数变量 age
 age = 18
-print("我今年" + str(age) + "岁")  # 必须转，否则报错
-# 或者直接用f-string更方便：print(f"我今年{age}岁")
+print("我今年" + str(age) + "岁")  # str() 转字符串后才能拼接，否则报错
+# 或者直接用f-string更方便：print(f"我今年{age}岁")  # f-string 自动处理类型
 \`\`\`
 
 ### bool() 转布尔值
@@ -1861,14 +1872,14 @@ print("我今年" + str(age) + "岁")  # 必须转，否则报错
 Python 在某些情况下会自动转换类型：
 
 \`\`\`python
-result = 10 + 3.14  # 整数 + 浮点数 → 结果自动转浮点数 13.14
+result = 10 + 3.14  # 整数与浮点数运算，结果自动提升为浮点数 13.14
 \`\`\`
 
 但字符串和数字不会自动转换，必须手动转：
 
 \`\`\`python
-# "18" + 1  # TypeError！不会自动转
-int("18") + 1  # 19，正确
+# "18" + 1  # TypeError！字符串与数字不会自动转换
+int("18") + 1  # 先转整数再运算，结果 19
 \`\`\`
 
 ### 常见错误
@@ -1994,22 +2005,22 @@ print("round(3.14159, 2) =", round(3.14159, 2), "（保留2位小数）")`
 ### 合法标识符示例
 
 \`\`\`python
-name = "小明"
-_age = 18
-user_name = "小红"
-PI = 3.14
-calculate_sum = lambda x, y: x + y
-MyClass = object
+name = "小明"                            # 字母开头，合法
+_age = 18                               # 下划线开头，合法
+user_name = "小红"                      # 蛇形命名，合法
+PI = 3.14                               # 全大写表示常量，合法
+calculate_sum = lambda x, y: x + y      # 函数名小写蛇形，合法
+MyClass = object                        # 大驼峰用于类名，合法
 \`\`\`
 
 ### 非法标识符示例
 
 \`\`\`python
-# 1name = "错"      # 不能数字开头
-# my-name = "错"   # 不能有中划线
-# my name = "错"   # 不能有空格
-# if = 10          # if是关键字
-# class = "错"     # class是关键字
+# 1name = "错"      # 数字开头，非法
+# my-name = "错"   # 含中划线（会被当作减号），非法
+# my name = "错"   # 含空格，非法
+# if = 10          # if 是关键字，不能作变量名
+# class = "错"     # class 是关键字，不能作变量名
 \`\`\`
 
 ### Python 关键字一览
@@ -2247,7 +2258,7 @@ print(f"是否登录: {is_logged_in}")`
 ### 如何查看所有内置函数
 
 \`\`\`python
-print(dir(__builtins__))  # 列出所有内置名字
+print(dir(__builtins__))  # dir() 列出对象属性，__builtins__ 含所有内置名字
 \`\`\`
 
 ### help() 是你的好朋友
@@ -2255,8 +2266,8 @@ print(dir(__builtins__))  # 列出所有内置名字
 遇到不会用的函数，用 \`help(函数名)\` 查看文档：
 
 \`\`\`python
-help(print)      # 查看print函数文档
-help(str.split)  # 查看字符串split方法文档
+help(print)      # help() 显示函数的用法文档
+help(str.split)  # 也可查看类方法的文档
 \`\`\``,
     code: `# 关键字与常用内置函数演示
 

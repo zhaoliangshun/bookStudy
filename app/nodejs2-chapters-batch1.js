@@ -429,8 +429,8 @@ setTimeout(() => {
 这是一个经典面试题：下面代码输出什么？
 
 \`\`\`js
-Promise.resolve().then(() => console.log('promise'));
-process.nextTick(() => console.log('nextTick'));
+Promise.resolve().then(() => console.log('promise'));  // 返回一个已成功的 Promise
+process.nextTick(() => console.log('nextTick'));  // 把回调放入 nextTick 队列（微任务，优先级最高）
 \`\`\`
 
 答案是：先输出 nextTick，再输出 promise。因为 nextTick 队列的优先级永远高于 Promise 微任务队列。
@@ -446,15 +446,15 @@ nextTick 有一个非常重要的坑：**递归调用 process.nextTick 会饿死
 看这个例子：
 
 \`\`\`js
-const fs = require('fs');
+const fs = require('fs');  // 导入模块 fs；require 返回 module.exports
 
-fs.readFile(__filename, () => {
-  console.log('readFile 回调');
+fs.readFile(__filename, () => {  // 异步读取文件（回调形式）
+  console.log('readFile 回调');  // 打印日志到 stdout
 });
 
-function nextTickRecursive(n) {
-  if (n > 1000) return;
-  process.nextTick(() => {
+function nextTickRecursive(n) {  // 声明函数 nextTickRecursive
+  if (n > 1000) return;  // 条件判断
+  process.nextTick(() => {  // 把回调放入 nextTick 队列（微任务，优先级最高）
     // console.log(n); // 注释掉，不然输出太多
     nextTickRecursive(n + 1);
   });
@@ -473,9 +473,9 @@ nextTickRecursive(0);
 会的！Promise.then 递归也会造成 IO 饥饿，因为 Promise 微任务队列也是在阶段之间清空的：
 
 \`\`\`js
-function promiseRecursive(n) {
-  if (n > 1000) return;
-  Promise.resolve().then(() => {
+function promiseRecursive(n) {  // 声明函数 promiseRecursive
+  if (n > 1000) return;  // 条件判断
+  Promise.resolve().then(() => {  // 返回一个已成功的 Promise
     promiseRecursive(n + 1);
   });
 }
@@ -502,18 +502,18 @@ setImmediate 递归**不会**饿死 IO！因为 setImmediate 在 check 阶段执
 比如你写了一个 EventEmitter，在构造函数里 emit 一个事件，但用户可能在构造函数**之后**才监听：
 
 \`\`\`js
-class MyEmitter extends EventEmitter {
-  constructor() {
-    super();
+class MyEmitter extends EventEmitter {  // 定义类 MyEmitter
+  constructor() {  // 构造函数
+    super();  // 调用父类构造函数
     // 如果直接 emit，用户还没机会 on('event')
     // this.emit('event', 'hello');
     // 用 nextTick，用户有机会在同步代码里注册监听器
-    process.nextTick(() => {
+    process.nextTick(() => {  // 把回调放入 nextTick 队列（微任务，优先级最高）
       this.emit('event', 'hello');
     });
   }
 }
-const ee = new MyEmitter();
+const ee = new MyEmitter();  // 创建实例 ee
 ee.on('event', (data) => console.log(data)); // 能监听到
 \`\`\`
 
@@ -522,10 +522,10 @@ ee.on('event', (data) => console.log(data)); // 能监听到
 有些 API 可能同步执行回调，也可能异步执行回调，这会导致不可预期的顺序问题。用 nextTick 可以保证回调永远异步执行：
 
 \`\`\`js
-function maybeAsync(fn, callback) {
-  if (fn === 'sync') {
+function maybeAsync(fn, callback) {  // 声明函数 maybeAsync
+  if (fn === 'sync') {  // 条件判断
     // 为了保证异步，用 nextTick
-    process.nextTick(callback, null, 'result');
+    process.nextTick(callback, null, 'result');  // 把回调放入 nextTick 队列（微任务，优先级最高）
     return;
   }
   // 异步情况...
@@ -678,8 +678,8 @@ function printSummary() {
 先运行最简单的例子：
 
 \`\`\`js
-setTimeout(() => console.log('timeout'), 0);
-setImmediate(() => console.log('immediate'));
+setTimeout(() => console.log('timeout'), 0);  // 延时回调（宏任务，timers 阶段执行）
+setImmediate(() => console.log('immediate'));  // 在 check 阶段执行回调
 \`\`\`
 
 多运行几次，你会发现有时候输出 timeout 在前，有时候 immediate 在前！这不是 bug，这是由事件循环的启动时机和 poll 阶段的行为决定的。
@@ -721,11 +721,11 @@ setImmediate(() => console.log('immediate'));
 这是确定的！如果我们在一个 IO 回调（比如 fs.readFile 的回调）里写：
 
 \`\`\`js
-const fs = require('fs');
+const fs = require('fs');  // 导入模块 fs；require 返回 module.exports
 
-fs.readFile(__filename, () => {
-  setTimeout(() => console.log('timeout'), 0);
-  setImmediate(() => console.log('immediate'));
+fs.readFile(__filename, () => {  // 异步读取文件（回调形式）
+  setTimeout(() => console.log('timeout'), 0);  // 延时回调（宏任务，timers 阶段执行）
+  setImmediate(() => console.log('immediate'));  // 在 check 阶段执行回调
 });
 \`\`\`
 
@@ -775,16 +775,16 @@ IO 回调在 poll 阶段执行完后的流程：
 
 \`\`\`js
 // 用 setImmediate 分批次处理大任务，不阻塞 IO
-function processLargeArray(array, index = 0) {
-  const batchSize = 100;
-  const end = Math.min(index + batchSize, array.length);
+function processLargeArray(array, index = 0) {  // 声明函数 processLargeArray
+  const batchSize = 100;  // 定义常量 batchSize
+  const end = Math.min(index + batchSize, array.length);  // 定义常量 end
   
-  for (let i = index; i < end; i++) {
+  for (let i = index; i < end; i++) {  // for 循环
     // 处理 array[i]
   }
   
-  if (end < array.length) {
-    setImmediate(() => processLargeArray(array, end));
+  if (end < array.length) {  // 条件判断
+    setImmediate(() => processLargeArray(array, end));  // 在 check 阶段执行回调
   }
 }
 \`\`\`
@@ -820,14 +820,14 @@ function processLargeArray(array, index = 0) {
 setTimeout 的延迟时间是**最小延迟**，不是保证延迟。如果事件循环被阻塞（比如有个耗时的同步计算、或者被 microtask 占满），timer 会被推迟执行。
 
 \`\`\`js
-const start = Date.now();
-setTimeout(() => {
+const start = Date.now();  // 定义常量 start
+setTimeout(() => {  // 延时回调（宏任务，timers 阶段执行）
   console.log(\`实际延迟：\${Date.now() - start}ms\`); // 可能远大于 100ms！
 }, 100);
 
 // 阻塞 300ms
-const end = Date.now() + 300;
-while (Date.now() < end) {}
+const end = Date.now() + 300;  // 定义常量 end
+while (Date.now() < end) {}  // while 循环
 \`\`\`
 
 上面的代码，setTimeout 设置了 100ms，但同步代码阻塞了 300ms，timer 只能等同步代码执行完才能执行，实际延迟超过 300ms。
@@ -942,7 +942,7 @@ Promise 有三种状态：pending（等待中）、fulfilled（已成功）、re
 这是一个非常重要的特性，也是 Promise 可靠性的来源：
 
 \`\`\`js
-const p = new Promise((resolve, reject) => {
+const p = new Promise((resolve, reject) => {  // 创建实例 p
   resolve('ok');
   reject(new Error('fail')); // 无效！状态已经是 fulfilled 了
   setTimeout(() => resolve('late'), 100); // 也无效！
@@ -960,10 +960,10 @@ Promise 的 then/catch/finally 都返回一个**新的 Promise**，所以可以�
 
 \`\`\`js
 fetchUser(id)
-  .then(user => fetchOrders(user.id))
-  .then(orders => filterValidOrders(orders))
-  .then(validOrders => console.log(validOrders))
-  .catch(err => console.error(err));
+  .then(user => fetchOrders(user.id))  // 注册 Promise 成功回调
+  .then(orders => filterValidOrders(orders))  // 注册 Promise 成功回调
+  .then(validOrders => console.log(validOrders))  // 注册 Promise 成功回调
+  .catch(err => console.error(err));  // 注册 Promise 失败回调
 \`\`\`
 
 这里有两个关键点：
@@ -973,9 +973,9 @@ fetchUser(id)
 ### 错误穿透现象
 
 \`\`\`js
-Promise.resolve()
-  .then(() => { console.log(1); })
-  .then(() => { console.log(2); throw new Error('出错了'); })
+Promise.resolve()  // 返回一个已成功的 Promise
+  .then(() => { console.log(1); })  // 注册 Promise 成功回调
+  .then(() => { console.log(2); throw new Error('出错了'); })  // 注册 Promise 成功回调
   .then(() => { console.log(3); }) // 跳过！
   .then(() => { console.log(4); }) // 跳过！
   .catch(err => console.log('捕获到:', err.message)) // 在这里捕获
@@ -1000,7 +1000,7 @@ Promise 有几个非常实用的静态方法，用于处理多个并发 Promise�
 - 适合：多个异步任务都需要成功才能继续的场景（如并行加载多个资源）
 
 \`\`\`js
-Promise.all([
+Promise.all([  // 所有都成功才 resolve，任一失败即 reject
   fetchUser(),
   fetchPosts(),
   fetchComments()
@@ -1020,10 +1020,10 @@ Promise.all([
 
 \`\`\`js
 // 超时控制：给 fetch 加 5 秒超时
-Promise.race([
+Promise.race([  // 第一个完成（成功或失败）即决定结果
   fetch(url),
-  new Promise((_, reject) => 
-    setTimeout(() => reject(new Error('timeout')), 5000)
+  new Promise((_, reject) =>  // 创建 Promise 实例
+    setTimeout(() => reject(new Error('timeout')), 5000)  // 延时回调（宏任务，timers 阶段执行）
   )
 ]).then(data => console.log(data)).catch(err => console.error(err));
 \`\`\`
@@ -1233,10 +1233,10 @@ async/await 是 ES2017 引入的语法，它让异步代码写起来像同步代
 无论 async 函数 return 什么，返回值都是 Promise：
 
 \`\`\`js
-async function f1() { return 42; }
+async function f1() { return 42; }  // 声明异步函数，内部可用 await
 f1().then(console.log); // 42（Promise包裹）
 
-async function f2() { throw new Error('oops'); }
+async function f2() { throw new Error('oops'); }  // 声明异步函数，内部可用 await
 f2().catch(console.error); // 错误被 Promise reject
 \`\`\`
 
@@ -1245,10 +1245,10 @@ f2().catch(console.error); // 错误被 Promise reject
 如果 await 后面不是 Promise，JavaScript 会把它转成一个已经 resolve 的 Promise：
 
 \`\`\`js
-async function test() {
+async function test() {  // 声明异步函数，内部可用 await
   const a = await 42; // 相当于 await Promise.resolve(42)
   console.log(a); // 42
-  const b = await 'hello';
+  const b = await 'hello';  // 定义常量 b
   console.log(b); // 'hello'
 }
 \`\`\`
@@ -1256,13 +1256,13 @@ async function test() {
 注意：即使 await 后面是普通值，它也会"异步"一下（经过微任务队列），不会同步执行：
 
 \`\`\`js
-console.log(1);
+console.log(1);  // 打印日志到 stdout
 (async () => {
-  console.log(2);
+  console.log(2);  // 打印日志到 stdout
   await null; // 即使是 null
   console.log(4); // 这行会在微任务中执行
 })();
-console.log(3);
+console.log(3);  // 打印日志到 stdout
 // 输出：1, 2, 3, 4
 \`\`\`
 
@@ -1275,7 +1275,7 @@ console.log(3);
 这是 async/await 最常见的性能陷阱！看这段代码：
 
 \`\`\`js
-async function getSequential() {
+async function getSequential() {  // 声明异步函数，内部可用 await
   const a = await fetchA(); // 等1秒
   const b = await fetchB(); // 等1秒
   const c = await fetchC(); // 等1秒
@@ -1288,7 +1288,7 @@ async function getSequential() {
 正确的写法是用 Promise.all：
 
 \`\`\`js
-async function getParallel() {
+async function getParallel() {  // 声明异步函数，内部可用 await
   const promiseA = fetchA(); // 立刻开始，不等待
   const promiseB = fetchB(); // 立刻开始
   const promiseC = fetchC(); // 立刻开始
@@ -1319,11 +1319,11 @@ const [a, b, c] = await Promise.all([fetchA(), fetchB(), fetchC()]);
 很多人写过这种代码：
 
 \`\`\`js
-async function processItems(items) {
+async function processItems(items) {  // 声明异步函数，内部可用 await
   items.forEach(async (item) => {
     await processItem(item); // forEach 不等待这个 async 回调！
   });
-  console.log('所有项处理完了？不，这里会立即执行！');
+  console.log('所有项处理完了？不，这里会立即执行！');  // 打印日志到 stdout
 }
 \`\`\`
 
@@ -1334,8 +1334,8 @@ async function processItems(items) {
 **需要串行执行**（一个完成再做下一个）：用 for...of
 
 \`\`\`js
-async function processSerial(items) {
-  for (const item of items) {
+async function processSerial(items) {  // 声明异步函数，内部可用 await
+  for (const item of items) {  // for 循环
     await processItem(item); // 一个接一个
   }
 }
@@ -1344,10 +1344,10 @@ async function processSerial(items) {
 **需要并行执行**：用 map + Promise.all
 
 \`\`\`js
-async function processParallel(items) {
-  const promises = items.map(item => processItem(item));
+async function processParallel(items) {  // 声明异步函数，内部可用 await
+  const promises = items.map(item => processItem(item));  // 定义常量 promises
   const results = await Promise.all(promises); // 全部并行
-  return results;
+  return results;  // 返回值
 }
 \`\`\`
 
@@ -1361,8 +1361,8 @@ ES2022 支持在 ES 模块的顶层使用 await，不需要包在 async 函数�
 
 \`\`\`js
 // 在 ES 模块（.mjs 或 package.json type: module）中
-const data = await fetch('./data.json');
-console.log(data);
+const data = await fetch('./data.json');  // 定义常量 data
+console.log(data);  // 打印日志到 stdout
 \`\`\`
 
 顶层 await 会让模块变成"异步模块"，导入它的模块会等待它执行完才开始执行。CommonJS 中不支持顶层 await。
@@ -1557,15 +1557,15 @@ Node.js 的异步错误处理经历了几个阶段：
 - 第二个及之后的参数才是成功结果
 
 \`\`\`js
-const fs = require('fs');
-fs.readFile('some-file.txt', 'utf-8', (err, data) => {
-  if (err) {
+const fs = require('fs');  // 导入模块 fs；require 返回 module.exports
+fs.readFile('some-file.txt', 'utf-8', (err, data) => {  // 异步读取文件（回调形式）
+  if (err) {  // 条件判断
     // 必须处理 error！
-    console.error('读文件失败:', err.message);
+    console.error('读文件失败:', err.message);  // 打印错误到 stderr
     return;
   }
   // 成功，data 是文件内容
-  console.log(data);
+  console.log(data);  // 打印日志到 stdout
 });
 \`\`\`
 
@@ -1587,11 +1587,11 @@ Promise 的错误处理比回调好得多：错误会沿着 Promise 链**向下�
 
 \`\`\`js
 fetchUser()
-  .then(user => fetchOrders(user.id))
-  .then(orders => processOrders(orders))
-  .catch(err => {
+  .then(user => fetchOrders(user.id))  // 注册 Promise 成功回调
+  .then(orders => processOrders(orders))  // 注册 Promise 成功回调
+  .catch(err => {  // 注册 Promise 失败回调
     // 上面任何一个环节出错都能在这里捕获！
-    console.error('出错了:', err);
+    console.error('出错了:', err);  // 打印错误到 stderr
   });
 \`\`\`
 
@@ -1615,15 +1615,15 @@ fetchUser()
 async/await 让我们可以用传统的 try/catch 来处理异步错误，就像同步代码一样：
 
 \`\`\`js
-async function main() {
-  try {
-    const user = await fetchUser();
-    const orders = await fetchOrders(user.id);
-    return orders;
+async function main() {  // 声明异步函数，内部可用 await
+  try {  // 开启 try 块捕获异常
+    const user = await fetchUser();  // 定义常量 user
+    const orders = await fetchOrders(user.id);  // 定义常量 orders
+    return orders;  // 返回值
   } catch (err) {
-    console.error('出错了:', err.message);
+    console.error('出错了:', err.message);  // 打印错误到 stderr
     // 可以恢复：返回默认值
-    return [];
+    return [];  // 返回值
   }
 }
 \`\`\`
@@ -1654,11 +1654,11 @@ async function main() {
 当一个未捕获的 JavaScript 异常一直冒泡到事件循环顶部，就会触发这个事件。如果不监听，进程会直接崩溃退出。
 
 \`\`\`js
-process.on('uncaughtException', (err) => {
-  console.error('未捕获的异常:', err);
+process.on('uncaughtException', (err) => {  // 注册进程级事件监听
+  console.error('未捕获的异常:', err);  // 打印错误到 stderr
   // 记录日志后，应该优雅退出
   // 因为此时进程状态可能已经不稳定了
-  process.exit(1);
+  process.exit(1);  // 退出进程（0 正常，非 0 异常）
 });
 \`\`\`
 
@@ -1669,8 +1669,8 @@ process.on('uncaughtException', (err) => {
 当一个 Promise rejected 但没有 .catch() 处理，也没有 try/catch 包裹 await 时，会触发这个事件。
 
 \`\`\`js
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('未处理的 Promise rejection:', reason);
+process.on('unhandledRejection', (reason, promise) => {  // 注册进程级事件监听
+  console.error('未处理的 Promise rejection:', reason);  // 打印错误到 stderr
   // 建议：记录日志，或者直接抛出让进程退出（推荐）
   // throw reason;
 });
@@ -1685,13 +1685,13 @@ process.on('unhandledRejection', (reason, promise) => {
 所有 EventEmitter 实例（包括 stream、http server 等）都有一个特殊规则：**如果 emit('error') 时没有注册 error 监听器，Node.js 会直接抛出错误，进程崩溃！**
 
 \`\`\`js
-const { EventEmitter } = require('events');
-const ee = new EventEmitter();
+const { EventEmitter } = require('events');  // 导入模块 events；require 返回 module.exports
+const ee = new EventEmitter();  // 创建事件发射器实例
 ee.emit('error', new Error('崩溃！')); // 没有监听器，直接退出！
 
 // 正确做法：永远监听 error
-ee.on('error', (err) => console.error('错误:', err));
-ee.emit('error', new Error('不会崩溃'));
+ee.on('error', (err) => console.error('错误:', err));  // 注册事件监听器
+ee.emit('error', new Error('不会崩溃'));  // 触发事件并传参给监听器
 \`\`\`
 
 这是一个强制的设计——错误不能被静默忽略。记住：**只要你用 EventEmitter，必须监听 error 事件！**
@@ -1867,11 +1867,11 @@ EventEmitter 本质上是**发布订阅模式**的实现。它有三个核心概
 ### 基本用法
 
 \`\`\`js
-const { EventEmitter } = require('events');
-const ee = new EventEmitter();
+const { EventEmitter } = require('events');  // 导入模块 events；require 返回 module.exports
+const ee = new EventEmitter();  // 创建事件发射器实例
 
-ee.on('data', (data) => {
-  console.log('收到数据:', data);
+ee.on('data', (data) => {  // 注册事件监听器
+  console.log('收到数据:', data);  // 打印日志到 stdout
 });
 
 ee.emit('data', 'hello'); // 同步触发所有监听器
@@ -1900,10 +1900,10 @@ ee.emit('data', 'hello'); // 同步触发所有监听器
 \`off(eventName, listener)\` 移除指定的监听器。注意：你必须传入**和 on 时完全相同的函数引用**，匿名函数无法移除！
 
 \`\`\`js
-const handler = (data) => console.log(data);
-ee.on('data', handler);
+const handler = (data) => console.log(data);  // 箭头函数 handler
+ee.on('data', handler);  // 注册事件监听器
 ee.off('data', handler); // 正确
-ee.on('data', (data) => console.log(data));
+ee.on('data', (data) => console.log(data));  // 注册事件监听器
 ee.off('data', (data) => console.log(data)); // 错误！新的匿名函数不是同一个引用
 \`\`\`
 
@@ -1922,7 +1922,7 @@ ee.off('data', (data) => console.log(data)); // 错误！新的匿名函数不�
 这是 EventEmitter 最重要的规则！**如果 EventEmitter 触发了 'error' 事件，但没有注册任何 error 监听器，Node.js 会直接抛出错误，导致进程崩溃！**
 
 \`\`\`js
-const ee = new EventEmitter();
+const ee = new EventEmitter();  // 创建事件发射器实例
 ee.emit('error', new Error('崩溃了！')); // 没有监听 error，进程直接退出！
 \`\`\`
 
@@ -1935,9 +1935,9 @@ ee.emit('error', new Error('崩溃了！')); // 没有监听 error，进程直�
 除了字符串，事件名也可以是 Symbol，这对于"内部事件"很有用：
 
 \`\`\`js
-const START = Symbol('start');
-ee.on(START, () => console.log('start'));
-ee.emit(START);
+const START = Symbol('start');  // 定义常量 START
+ee.on(START, () => console.log('start'));  // 注册事件监听器
+ee.emit(START);  // 触发事件并传参给监听器
 \`\`\`
 
 ---

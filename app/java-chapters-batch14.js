@@ -24,9 +24,9 @@ Java 8+ 的 HashMap 由 **数组 + 链表 + 红黑树** 三种结构组合而成
 ## hash 计算与桶定位
 
 \`\`\`java
-static final int hash(Object key) {
-    int h;
-    return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
+static final int hash(Object key) {  // 静态方法 hash，返回 int，参数：Object key
+    int h;  // 声明变量 h（int 类型）
+    return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);  // 返回值：(key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16)
 }
 \`\`\`
 
@@ -170,8 +170,8 @@ class SimpleHashMap<K, V> {
 ## 默认值
 
 \`\`\`java
-static final int DEFAULT_INITIAL_CAPACITY = 16;
-static final float DEFAULT_LOAD_FACTOR = 0.75f;
+static final int DEFAULT_INITIAL_CAPACITY = 16;  // 声明静态常量变量 DEFAULT_INITIAL_CAPACITY（int），初始值为 16
+static final float DEFAULT_LOAD_FACTOR = 0.75f;  // 声明静态常量变量 DEFAULT_LOAD_FACTOR（float），初始值为 0.75f
 \`\`\`
 
 默认容量 16，默认负载因子 0.75。当 \`size > capacity * loadFactor\` 时触发扩容。
@@ -192,8 +192,8 @@ static final float DEFAULT_LOAD_FACTOR = 0.75f;
 \`\`\`java
 // 预计放 100 个元素，0.75 负载因子
 // 为避免触发扩容，容量应满足 capacity * 0.75 >= 100
-int cap = (int) (100 / 0.75f) + 1;
-Map<String, String> map = new HashMap<>(cap);
+int cap = (int) (100 / 0.75f) + 1;  // 声明变量 cap（int），初始值为 (int) (100 / 0.75f) + 1
+Map<String, String> map = new HashMap<>(cap);  // 声明变量 map（Map<String, String>），初始值为 new HashMap<>(cap)
 \`\`\`
 
 注意：HashMap 构造器接收的 initialCapacity 不一定是最终的容量，内部会调整为 2 的幂。
@@ -423,13 +423,13 @@ public class Main {
 - **写操作加锁 + 复制**：每次写（add/set/remove）都先获取锁，复制一份新数组，在新数组上修改，最后把内部引用指向新数组。
 
 \`\`\`java
-public boolean add(E e) {
-    synchronized (lock) {
-        Object[] elements = getArray();
-        Object[] newElements = Arrays.copyOf(elements, elements.length + 1);
-        newElements[elements.length] = e;
-        setArray(newElements);
-        return true;
+public boolean add(E e) {  // 方法 add，返回 boolean，参数：E e
+    synchronized (lock) {  // 同步块：对 lock 加锁，保证线程安全
+        Object[] elements = getArray();  // 声明变量 elements（Object[]），初始值为 getArray()
+        Object[] newElements = Arrays.copyOf(elements, elements.length + 1);  // 声明变量 newElements（Object[]），初始值为 Arrays.copyOf(elements, elements.length + 1)
+        newElements[elements.length] = e;  // 为数组 newElements 的某元素赋值：e
+        setArray(newElements);  // 调用方法 setArray
+        return true;  // 返回值：true
     }
 }
 \`\`\`
@@ -695,9 +695,9 @@ PriorityQueue 内部是一个**二叉小顶堆**，用数组存储：
 
 \`\`\`java
 // 小顶堆：队头是最小值
-PriorityQueue<Integer> minHeap = new PriorityQueue<>();
+PriorityQueue<Integer> minHeap = new PriorityQueue<>();  // 声明变量 minHeap（PriorityQueue<Integer>），初始值为 new PriorityQueue<>()
 // 大顶堆：队头是最大值
-PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Comparator.reverseOrder());
+PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Comparator.reverseOrder());  // 声明变量 maxHeap（PriorityQueue<Integer>），初始值为 new PriorityQueue<>(Comparator.reverseOrder())
 \`\`\`
 
 ## 出队顺序
@@ -948,9 +948,9 @@ public class Main {
 - **没有 hash 计算、没有冲突、没有扩容**。
 
 \`\`\`java
-enum Color { RED, GREEN, BLUE }
-EnumMap<Color, String> map = new EnumMap<>(Color.class);
-map.put(Color.RED, "红");
+enum Color { RED, GREEN, BLUE }  // 定义枚举 Color
+EnumMap<Color, String> map = new EnumMap<>(Color.class);  // 声明变量 map（EnumMap<Color, String>），初始值为 new EnumMap<>(Color.class)
+map.put(Color.RED, "红");  // 调用 map 的 put 方法
 \`\`\`
 
 构造时必须传入枚举的 Class 对象，以便确定数组大小。
@@ -964,9 +964,9 @@ map.put(Color.RED, "红");
 - \`add\`/\`remove\`/\`contains\` 都是位运算，极快。
 
 \`\`\`java
-EnumSet<Color> set = EnumSet.of(Color.RED, Color.GREEN);
-EnumSet<Color> all = EnumSet.allOf(Color.class);
-EnumSet<Color> none = EnumSet.noneOf(Color.class);
+EnumSet<Color> set = EnumSet.of(Color.RED, Color.GREEN);  // 声明变量 set（EnumSet<Color>），初始值为 EnumSet.of(Color.RED, Color.GREEN)
+EnumSet<Color> all = EnumSet.allOf(Color.class);  // 声明变量 all（EnumSet<Color>），初始值为 EnumSet.allOf(Color.class)
+EnumSet<Color> none = EnumSet.noneOf(Color.class);  // 声明变量 none（EnumSet<Color>），初始值为 EnumSet.noneOf(Color.class)
 \`\`\`
 
 ## 性能优势
@@ -1083,8 +1083,8 @@ public class Main {
 ### 1. Collections.unmodifiableXXX（包装视图）
 
 \`\`\`java
-List<String> mutable = new ArrayList<>(...);
-List<String> view = Collections.unmodifiableList(mutable);
+List<String> mutable = new ArrayList<>(...);  // 声明变量 mutable（List<String>），初始值为 new ArrayList<>(...)
+List<String> view = Collections.unmodifiableList(mutable);  // 声明变量 view（List<String>），初始值为 Collections.unmodifiableList(mutable)
 \`\`\`
 
 返回的是原集合的**只读视图**：通过 view 不能修改，但通过原 mutable 仍可修改，且 view 会反映这些变化。这不是真正的不可变。
@@ -1092,9 +1092,9 @@ List<String> view = Collections.unmodifiableList(mutable);
 ### 2. List.of / Set.of / Map.of（Java 9+，真正不可变）
 
 \`\`\`java
-List<String> list = List.of("a", "b", "c");
-Set<Integer> set = Set.of(1, 2, 3);
-Map<String, Integer> map = Map.of("a", 1, "b", 2);
+List<String> list = List.of("a", "b", "c");  // 声明变量 list（List<String>），初始值为 List.of("a", "b", "c")
+Set<Integer> set = Set.of(1, 2, 3);  // 声明变量 set（Set<Integer>），初始值为 Set.of(1, 2, 3)
+Map<String, Integer> map = Map.of("a", 1, "b", 2);  // 声明变量 map（Map<String, Integer>），初始值为 Map.of("a", 1, "b", 2)
 \`\`\`
 
 这些方法返回**真正不可变**的集合，背后没有可变原集合，是定长、紧凑的实现。
@@ -1410,7 +1410,7 @@ Comparator<T> nullsLast(Comparator<T> real)
 ## comparing：按属性提取排序
 
 \`\`\`java
-Comparator<Person> byAge = Comparator.comparing(Person::getAge);
+Comparator<Person> byAge = Comparator.comparing(Person::getAge);  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 \`comparing\` 接收一个函数，提取排序键，要求键类型实现 \`Comparable\`。基本类型有 \`comparingInt\`、\`comparingLong\`、\`comparingDouble\`，避免装箱。
@@ -1419,8 +1419,8 @@ Comparator<Person> byAge = Comparator.comparing(Person::getAge);
 
 \`\`\`java
 Comparator<Person> c = Comparator
-    .comparing(Person::getAge)
-    .thenComparing(Person::getName);
+    .comparing(Person::getAge)  // 方法引用：复用已有方法作为函数式接口实例
+    .thenComparing(Person::getName);  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 先按 age 排，age 相同时按 name 排。可以链式拼接多个 \`thenComparing\`。
@@ -1428,7 +1428,7 @@ Comparator<Person> c = Comparator
 ## reversed：逆序
 
 \`\`\`java
-Comparator<Person> descAge = Comparator.comparing(Person::getAge).reversed();
+Comparator<Person> descAge = Comparator.comparing(Person::getAge).reversed();  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 注意 \`reversed\` 反转**前面整个**比较器链。
@@ -1443,7 +1443,7 @@ Comparator<String> rev = Comparator.reverseOrder();   // 自然降序
 ## nullsFirst / nullsLast：处理 null
 
 \`\`\`java
-Comparator<String> safe = Comparator.nullsFirst(Comparator.naturalOrder());
+Comparator<String> safe = Comparator.nullsFirst(Comparator.naturalOrder());  // 声明变量 safe（Comparator<String>），初始值为 Comparator.nullsFirst(Comparator.naturalOrder())
 \`\`\`
 
 将 null 排在最前/最后，避免排序时抛 NPE。内部比较器处理非 null 元素。
@@ -1453,7 +1453,7 @@ Comparator<String> safe = Comparator.nullsFirst(Comparator.naturalOrder());
 Comparator 是函数式接口，可用 lambda 直接实现：
 
 \`\`\`java
-Comparator<Person> c = (a, b) -> a.age - b.age;
+Comparator<Person> c = (a, b) -> a.age - b.age;  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 但 \`comparing\` 方法链更可读，推荐优先使用方法引用风格。
@@ -1565,8 +1565,8 @@ Collections.sort(list, comparator);     // 指定 Comparator
 ### 2. list.sort(comparator)（Java 8+）
 
 \`\`\`java
-list.sort(Comparator.naturalOrder());
-list.sort(Comparator.comparing(Person::getAge));
+list.sort(Comparator.naturalOrder());  // 调用 list 的 sort 方法
+list.sort(Comparator.comparing(Person::getAge));  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 \`List.sort\` 是接口默认方法，更面向对象。两者底层都调用 \`Arrays.sort\`，性能一致。
@@ -1576,8 +1576,8 @@ list.sort(Comparator.comparing(Person::getAge));
 元素需实现 \`Comparable<T>\` 接口，重写 \`compareTo\`：
 
 \`\`\`java
-class Person implements Comparable<Person> {
-    public int compareTo(Person o) { return Integer.compare(age, o.age); }
+class Person implements Comparable<Person> {  // 定义类 Person
+    public int compareTo(Person o) { return Integer.compare(age, o.age); }  // 方法 compareTo（返回 int，参数：Person o）：返回 Integer.compare(age, o.age)
 }
 \`\`\`
 
@@ -1592,7 +1592,7 @@ class Person implements Comparable<Person> {
 临时或多种排序规则用 Comparator：
 
 \`\`\`java
-list.sort(Comparator.comparing(Person::getName).reversed());
+list.sort(Comparator.comparing(Person::getName).reversed());  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 ## 逆序
@@ -1605,8 +1605,8 @@ list.sort(Comparator.comparing(Person::getAge).reversed()); // 按字段逆序
 ## 多字段排序
 
 \`\`\`java
-list.sort(Comparator.comparing(Person::getDept)
-        .thenComparing(Person::getSalary, Comparator.reverseOrder()));
+list.sort(Comparator.comparing(Person::getDept)  // 方法引用：复用已有方法作为函数式接口实例
+        .thenComparing(Person::getSalary, Comparator.reverseOrder()));  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 先按部门升序，部门相同按薪资降序。
@@ -1624,8 +1624,8 @@ Java 的 \`List.sort\` 内部将 List 转为数组，调用 \`Arrays.sort\`：
 
 \`\`\`java
 List<Person> sorted = list.stream()
-    .sorted(Comparator.comparing(Person::getAge))
-    .collect(Collectors.toList());
+    .sorted(Comparator.comparing(Person::getAge))  // 方法引用：复用已有方法作为函数式接口实例
+    .collect(Collectors.toList());  // 调用 .collect(Collectors 的 toList 方法
 \`\`\`
 
 ## 注意事项
@@ -1739,7 +1739,7 @@ public class Main {
 ## 二分查找：Collections.binarySearch
 
 \`\`\`java
-int idx = Collections.binarySearch(sortedList, key);
+int idx = Collections.binarySearch(sortedList, key);  // 声明变量 idx（int），初始值为 Collections.binarySearch(sortedList, key)
 \`\`\`
 
 **前提：列表必须已按升序排序**（自然序或 Comparator 序）。
@@ -1751,14 +1751,14 @@ int idx = Collections.binarySearch(sortedList, key);
 使用 Comparator 时需传入与排序相同的 Comparator：
 
 \`\`\`java
-int idx = Collections.binarySearch(list, key, comparator);
+int idx = Collections.binarySearch(list, key, comparator);  // 声明变量 idx（int），初始值为 Collections.binarySearch(list, key, comparator)
 \`\`\`
 
 ## Stream 查找
 
 \`\`\`java
-boolean found = list.stream().anyMatch(x -> x > 10);
-Optional<Integer> first = list.stream().filter(x -> x > 10).findFirst();
+boolean found = list.stream().anyMatch(x -> x > 10);  // Lambda 表达式赋值给函数式接口变量
+Optional<Integer> first = list.stream().filter(x -> x > 10).findFirst();  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 Stream 查找是线性扫描，但表达力强、可链式操作。
@@ -1883,12 +1883,12 @@ public class Main {
 
 \`\`\`java
 // List 转 Set（去重）
-Set<String> set = new HashSet<>(list);
+Set<String> set = new HashSet<>(list);  // 声明变量 set（Set<String>），初始值为 new HashSet<>(list)
 Set<String> linked = new LinkedHashSet<>(list); // 保留顺序
 Set<String> sorted = new TreeSet<>(list);        // 排序
 
 // Set 转 List
-List<String> list = new ArrayList<>(set);
+List<String> list = new ArrayList<>(set);  // 声明变量 list（List<String>），初始值为 new ArrayList<>(set)
 \`\`\`
 
 构造器接收 Collection 是最通用的转换方式。
@@ -1897,9 +1897,9 @@ List<String> list = new ArrayList<>(set);
 
 \`\`\`java
 // Map 的 key/value/entry 转 List
-List<K> keys = new ArrayList<>(map.keySet());
-List<V> values = new ArrayList<>(map.values());
-List<Map.Entry<K, V>> entries = new ArrayList<>(map.entrySet());
+List<K> keys = new ArrayList<>(map.keySet());  // 声明变量 keys（List<K>），初始值为 new ArrayList<>(map.keySet())
+List<V> values = new ArrayList<>(map.values());  // 声明变量 values（List<V>），初始值为 new ArrayList<>(map.values())
+List<Map.Entry<K, V>> entries = new ArrayList<>(map.entrySet());  // 声明变量 entries（List<Map.Entry<K, V>>），初始值为 new ArrayList<>(map.entrySet())
 \`\`\`
 
 ## 数组 ↔ 集合
@@ -1924,20 +1924,20 @@ Stream 是灵活的转换工具：
 \`\`\`java
 // List 转 Map
 Map<String, Integer> map = list.stream()
-    .collect(Collectors.toMap(Person::getName, Person::getAge));
+    .collect(Collectors.toMap(Person::getName, Person::getAge));  // 方法引用：复用已有方法作为函数式接口实例
 
 // List 分组
 Map<String, List<Person>> grouped = list.stream()
-    .collect(Collectors.groupingBy(Person::getDept));
+    .collect(Collectors.groupingBy(Person::getDept));  // 方法引用：复用已有方法作为函数式接口实例
 
 // List 转 Map（处理重复 key）
 Map<String, Integer> map = list.stream()
-    .collect(Collectors.toMap(Person::getName, Person::getAge, (a, b) -> a));
+    .collect(Collectors.toMap(Person::getName, Person::getAge, (a, b) -> a));  // Lambda 表达式：实现函数式接口
 
 // Map 转 List
 List<Person> people = map.entrySet().stream()
-    .map(e -> new Person(e.getKey(), e.getValue()))
-    .collect(Collectors.toList());
+    .map(e -> new Person(e.getKey(), e.getValue()))  // Lambda 表达式：实现函数式接口
+    .collect(Collectors.toList());  // 调用 .collect(Collectors 的 toList 方法
 \`\`\`
 
 ## 常用模式
@@ -1945,14 +1945,14 @@ List<Person> people = map.entrySet().stream()
 ### 去重保序
 
 \`\`\`java
-List<String> unique = new ArrayList<>(new LinkedHashSet<>(list));
+List<String> unique = new ArrayList<>(new LinkedHashSet<>(list));  // 声明变量 unique（List<String>），初始值为 new ArrayList<>(new LinkedHashSet<>(list))
 \`\`\`
 
 ### List 转以某字段为 key 的 Map
 
 \`\`\`java
 Map<Integer, Person> byId = list.stream()
-    .collect(Collectors.toMap(Person::getId, p -> p));
+    .collect(Collectors.toMap(Person::getId, p -> p));  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 ### Map 按 value 排序
@@ -1961,8 +1961,8 @@ Map<Integer, Person> byId = list.stream()
 Map<String, Integer> sorted = map.entrySet().stream()
     .sorted(Map.Entry.comparingByValue())
     .collect(Collectors.toMap(
-        Map.Entry::getKey, Map.Entry::getValue,
-        (a, b) -> a, LinkedHashMap::new));
+        Map.Entry::getKey, Map.Entry::getValue,  // 方法引用：复用已有方法作为函数式接口实例
+        (a, b) -> a, LinkedHashMap::new));  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 ## 注意事项
@@ -2088,8 +2088,8 @@ public class Main {
 | contains | O(n) | O(n) | O(n) | O(1) | O(log n) | - | - |
 | get/put key | - | - | - | - | - | O(1) | O(log n) |
 
-\* ArrayList 的 add 末尾为均摊 O(1)，扩容时为 O(n)。
-\** LinkedList 的 add/remove 在已知 Node 时为 O(1)，但按索引访问是 O(n)。
+\\* ArrayList 的 add 末尾为均摊 O(1)，扩容时为 O(n)。
+\\** LinkedList 的 add/remove 在已知 Node 时为 O(1)，但按索引访问是 O(n)。
 
 ## 选择指南
 
@@ -2124,7 +2124,7 @@ public class Main {
 ### 1. 设置初始容量
 
 \`\`\`java
-List<String> list = new ArrayList<>(10000);
+List<String> list = new ArrayList<>(10000);  // 声明变量 list（List<String>），初始值为 new ArrayList<>(10000)
 Map<String, String> map = new HashMap<>(16384); // 10000/0.75+1
 \`\`\`
 
@@ -2134,8 +2134,8 @@ Map<String, String> map = new HashMap<>(16384); // 10000/0.75+1
 
 \`\`\`java
 // 慢：每次 put 都装箱
-Map<Integer, String> map = new HashMap<>();
-for (int i = 0; i < 1000000; i++) map.put(i, "v");
+Map<Integer, String> map = new HashMap<>();  // 声明变量 map（Map<Integer, String>），初始值为 new HashMap<>()
+for (int i = 0; i < 1000000; i++) map.put(i, "v");  // 调用 for (int i = 0; i < 1000000; i++) map 的 put 方法
 
 // 快：使用专门库（如 Eclipse Collections、Trove）的 IntObjectHashMap
 \`\`\`

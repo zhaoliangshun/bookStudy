@@ -49,11 +49,11 @@ Object o = new A();    // 任何对象都可赋给 Object 引用
 构造方法虽然不继承，但子类构造方法必须通过 \`super()\` 调用父类构造方法完成父类部分初始化。如果子类构造方法首行没有显式 \`super()\`，编译器会自动插入无参 \`super()\`。这意味着父类必须有无参构造，否则子类构造必须显式调用父类的有参构造：
 
 \`\`\`java
-class Animal {
+class Animal {  // 定义类 Animal
     public Animal(String name) { }  // 只有有参构造
 }
-class Dog extends Animal {
-    public Dog() {
+class Dog extends Animal {  // 定义类 Dog
+    public Dog() {  // 方法 Dog，返回 public，无参数
         super("无名"); // 必须显式调用，否则编译错误
     }
 }
@@ -144,10 +144,10 @@ class Dog extends Animal {
 当子类定义了与父类同名的字段（字段隐藏）时，用 \`super.字段\` 访问父类字段：
 
 \`\`\`java
-class Parent { String name = "父"; }
-class Child extends Parent {
-    String name = "子";
-    void show() {
+class Parent { String name = "父"; }  // 定义类 Parent
+class Child extends Parent {  // 定义类 Child
+    String name = "子";  // 声明变量 name（String），初始值为 "子"
+    void show() {  // 方法 show，返回 void，无参数
         System.out.println(name);        // 子
         System.out.println(super.name);  // 父
     }
@@ -163,8 +163,8 @@ class Child extends Parent {
 在子类构造方法中，可以用 \`super(参数)\` 调用父类的构造方法。**必须放在构造方法的第一行**。如果子类构造方法没有显式调用 \`super()\`，编译器会自动插入无参的 \`super()\`（前提是父类有无参构造）。
 
 \`\`\`java
-class Child extends Parent {
-    public Child() {
+class Child extends Parent {  // 定义类 Child
+    public Child() {  // 方法 Child，返回 public，无参数
         super();        // 显式调用父类无参构造，必须第一行
         // 其他初始化
     }
@@ -313,15 +313,15 @@ class Child extends Parent {
 - **静态方法隐藏（Hide）**：基于编译时类型静态绑定，不体现多态
 
 \`\`\`java
-class Parent {
-    static void s() { System.out.println("父静态"); }
-    void i() { System.out.println("父实例"); }
+class Parent {  // 定义类 Parent
+    static void s() { System.out.println("父静态"); }  // 打印一行到标准输出（自动换行）
+    void i() { System.out.println("父实例"); }  // 打印一行到标准输出（自动换行）
 }
-class Child extends Parent {
+class Child extends Parent {  // 定义类 Child
     static void s() { System.out.println("子静态"); } // 隐藏
     void i() { System.out.println("子实例"); }        // 重写
 }
-Parent p = new Child();
+Parent p = new Child();  // 声明变量 p（Parent），初始值为 new Child()
 p.s(); // 父静态（隐藏，看编译类型）
 p.i(); // 子实例（重写，看运行类型）
 \`\`\`
@@ -333,11 +333,11 @@ p.i(); // 子实例（重写，看运行类型）
 检查异常只能**收窄**不能放宽：父类声明 \`throws IOException\`，子类可声明 \`throws FileNotFoundException\`（更窄）或抛更少异常，但不能声明 \`throws Exception\`（更宽）。RuntimeException 不受此限制，因为它是非检查异常。
 
 \`\`\`java
-class Parent {
+class Parent {  // 定义类 Parent
     protected void work() throws IOException { }
 }
-class Child extends Parent {
-    @Override
+class Child extends Parent {  // 定义类 Child
+    @Override  // 注解：Override
     public void work() throws FileNotFoundException { } // 放宽可见 + 收窄异常
 }
 \`\`\`
@@ -435,7 +435,7 @@ class Sub extends Base {
 在 Java 中，实例方法默认是"虚方法"（除非是 final 或 private）。当通过父类引用调用一个被重写的方法时，JVM 在运行时根据对象的**实际类型**查找并调用对应的方法实现，这就是动态分派。
 
 \`\`\`java
-Animal a = new Dog();
+Animal a = new Dog();  // 声明变量 a（Animal），初始值为 new Dog()
 a.speak(); // 运行时调用 Dog.speak()，而非 Animal.speak()
 \`\`\`
 
@@ -459,7 +459,7 @@ a.speak(); // 运行时调用 Dog.speak()，而非 Animal.speak()
 - **集合统一处理**：可把不同子类放入 \`List<Parent>\` 统一遍历
 
 \`\`\`java
-List<Shape> shapes = List.of(new Circle(), new Square());
+List<Shape> shapes = List.of(new Circle(), new Square());  // 声明变量 shapes（List<Shape>），初始值为 List.of(new Circle(), new Square())
 shapes.forEach(Shape::draw); // 各自画出，体现多态
 \`\`\`
 
@@ -468,7 +468,7 @@ shapes.forEach(Shape::draw); // 各自画出，体现多态
 JVM 为每个类维护一张**虚方法表（vtable）**，记录该类各虚方法实际指向的字节码。当通过引用调用虚方法时，JVM 先根据对象的运行时类型找到对应的 vtable，再查表确定实际执行的方法。这种查表机制让多态的运行开销很小（通常只是几次数组访问）。
 
 \`\`\`java
-Animal a = new Dog();
+Animal a = new Dog();  // 声明变量 a（Animal），初始值为 new Dog()
 a.speak(); // JVM 查 Dog 的 vtable，定位到 Dog.speak
 \`\`\`
 
@@ -591,7 +591,7 @@ Object o = "hello";     // String 向上转型为 Object
 - 不可访问：子类新增的字段和方法
 
 \`\`\`java
-Animal a = new Dog();
+Animal a = new Dog();  // 声明变量 a（Animal），初始值为 new Dog()
 a.eat();     // 可访问（父类定义）
 // a.bark(); // 编译错误：父类没有 bark()
 \`\`\`
@@ -601,9 +601,9 @@ a.eat();     // 可访问（父类定义）
 向上转型是多态的前提。只有把子类对象当作父类类型使用，再通过动态绑定调用被子类重写的方法，才能体现多态。设计模式中大量使用向上转型，让调用方依赖抽象而非具体。
 
 \`\`\`java
-List<Animal> zoo = new ArrayList<>();
+List<Animal> zoo = new ArrayList<>();  // 声明变量 zoo（List<Animal>），初始值为 new ArrayList<>()
 zoo.add(new Dog());   // 向上转型
-zoo.add(new Cat());
+zoo.add(new Cat());  // 调用 zoo 的 add 方法
 zoo.forEach(Animal::eat); // 多态调用
 \`\`\`
 
@@ -612,8 +612,8 @@ zoo.forEach(Animal::eat); // 多态调用
 子类实现接口后，也可向上转型为接口类型。这是面向接口编程的基础，调用方依赖接口而非实现类：
 
 \`\`\`java
-interface Runnable { void run(); }
-class Task implements Runnable { public void run() { } }
+interface Runnable { void run(); }  // 定义接口 Runnable
+class Task implements Runnable { public void run() { } }  // 定义类 Task
 Runnable r = new Task();   // 向上转型为接口
 \`\`\`
 
@@ -752,7 +752,7 @@ d.bark();              // 现在可访问子类特有方法
 如果对象的**实际运行时类型**与目标类型不匹配，向下转型会抛出 \`ClassCastException\`：
 
 \`\`\`java
-Animal a = new Cat();
+Animal a = new Cat();  // 声明变量 a（Animal），初始值为 new Cat()
 Dog d = (Dog) a;   // 运行时抛出 ClassCastException
 \`\`\`
 
@@ -779,9 +779,9 @@ Dog d = (Dog) obj; // 若 obj 不是 Dog，运行时崩溃
 向下转型前应使用 \`instanceof\` 检查对象真实类型，避免异常：
 
 \`\`\`java
-if (a instanceof Dog) {
-    Dog d = (Dog) a;
-    d.bark();
+if (a instanceof Dog) {  // 条件判断：满足 a instanceof Dog 时执行
+    Dog d = (Dog) a;  // 声明变量 d（Dog），初始值为 (Dog) a
+    d.bark();  // 调用 d 的 bark 方法
 }
 \`\`\`
 
@@ -809,9 +809,9 @@ if (a instanceof Dog d) {   // d 已自动绑定且类型为 Dog
 
 \`\`\`java
 // 反模式：依赖转型调用子类方法
-for (Animal a : zoo) {
-    if (a instanceof Dog d) d.bark();
-    else if (a instanceof Cat c) c.meow();
+for (Animal a : zoo) {  // 增强 for：遍历 zoo，每次取一个元素 a
+    if (a instanceof Dog d) d.bark();  // 调用 if (a instanceof Dog d) d 的 bark 方法
+    else if (a instanceof Cat c) c.meow();  // 调用 else if (a instanceof Cat c) c 的 meow 方法
 }
 // 更好：在父类定义 speak()，子类各自实现
 for (Animal a : zoo) { a.speak(); } // 多态，无需转型
@@ -880,9 +880,9 @@ class Cat extends Animal {
 传统写法需要先判断类型，再显式转型：
 
 \`\`\`java
-if (obj instanceof String) {
+if (obj instanceof String) {  // 条件判断：满足 obj instanceof String 时执行
     String s = (String) obj;   // 重复写 String
-    System.out.println(s.length());
+    System.out.println(s.length());  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -893,7 +893,7 @@ if (obj instanceof String) {
 模式匹配把类型判断与变量绑定合并：
 
 \`\`\`java
-if (obj instanceof String s) {
+if (obj instanceof String s) {  // 条件判断：满足 obj instanceof String s 时执行
     System.out.println(s.length());  // s 已是 String 类型
 }
 \`\`\`
@@ -907,7 +907,7 @@ if (obj instanceof String s) {
 绑定变量的作用域由**流敏感分析**决定，只在能确保匹配成功的代码路径中有效：
 
 \`\`\`java
-if (!(obj instanceof String s)) {
+if (!(obj instanceof String s)) {  // 条件判断：满足 !(obj instanceof String s) 时执行
     return;   // 此处 s 不可用
 }
 // 此处 s 可用，因为上面 return 保证匹配成功
@@ -918,8 +918,8 @@ if (!(obj instanceof String s)) {
 模式匹配可与 \`&&\`、\`||\` 结合，实现简洁的类型处理逻辑：
 
 \`\`\`java
-if (obj instanceof String s && s.length() > 5) {
-    System.out.println("长字符串: " + s);
+if (obj instanceof String s && s.length() > 5) {  // 条件判断：满足 obj instanceof String s && s.length() > 5 时执行
+    System.out.println("长字符串: " + s);  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -928,12 +928,12 @@ if (obj instanceof String s && s.length() > 5) {
 绑定变量的作用域由编译器**流敏感分析**决定。编译器只在能确定匹配成功的路径上才让变量可用：
 
 \`\`\`java
-if (!(obj instanceof String s)) {
+if (!(obj instanceof String s)) {  // 条件判断：满足 !(obj instanceof String s) 时执行
     // s 不可用
-    return;
+    return;  // 直接返回（无返回值）
 }
 // s 可用：上面 return 保证了匹配成功
-System.out.println(s.length());
+System.out.println(s.length());  // 打印一行到标准输出（自动换行）
 \`\`\`
 
 ## null 处理
@@ -941,7 +941,7 @@ System.out.println(s.length());
 \`instanceof\` 对 \`null\` 总是返回 \`false\`，模式匹配也不例外。因此模式匹配天然是空安全的——不需要额外判空：
 
 \`\`\`java
-String s = null;
+String s = null;  // 声明变量 s（String），初始值为 null
 if (s instanceof String str) {  // false，str 不绑定
     // 不会进入
 }
@@ -953,9 +953,9 @@ Java 21 将模式匹配扩展到 \`switch\`，配合密封类可实现穷举式�
 
 \`\`\`java
 String desc = switch (shape) {
-    case Circle c    -> "圆";
-    case Square s    -> "方";
-    case Triangle t  -> "三角";
+    case Circle c    -> "圆";  // Lambda 表达式：实现函数式接口
+    case Square s    -> "方";  // Lambda 表达式：实现函数式接口
+    case Triangle t  -> "三角";  // Lambda 表达式：实现函数式接口
     // 无需 default
 };
 \`\`\`
@@ -1046,7 +1046,7 @@ public class Main {
 - \`Math\`、\`Scanner\` 等
 
 \`\`\`java
-final class Config { }
+final class Config { }  // 定义最终（不可继承）类 Config
 // class SubConfig extends Config { } // 编译错误
 \`\`\`
 
@@ -1055,10 +1055,10 @@ final class Config { }
 被 \`final\` 修饰的实例方法**不能被子类重写**，但可以重载。常用于保护核心逻辑、保证行为一致性：
 
 \`\`\`java
-class Base {
+class Base {  // 定义类 Base
     public final void validate() { /* 核心校验逻辑 */ }
 }
-class Sub extends Base {
+class Sub extends Base {  // 定义类 Sub
     // public void validate() { } // 编译错误：不能重写 final 方法
 }
 \`\`\`
@@ -1086,10 +1086,10 @@ final 类是构建**不可变对象**的关键一环。不可变对象天然线�
 4. 若字段是可变对象引用，构造时防御性拷贝
 
 \`\`\`java
-public final class Complex {
+public final class Complex {  // 定义最终（不可继承）类 Complex
     private final double re, im;
     public Complex(double re, double im) { this.re = re; this.im = im; }
-    public Complex add(Complex o) { return new Complex(re + o.re, im + o.im); }
+    public Complex add(Complex o) { return new Complex(re + o.re, im + o.im); }  // 方法 add（返回 Complex，参数：Complex o）：返回 new Complex(re + o.re, im + o.im)
 }
 \`\`\`
 
@@ -1222,15 +1222,15 @@ class SavingsAccount extends Account {
 equals 契约：自反性、对称性、传递性、一致性、非空性。
 
 \`\`\`java
-@Override
-public boolean equals(Object o) {
+@Override  // 注解：Override
+public boolean equals(Object o) {  // 方法 equals，返回 boolean，参数：Object o
     if (this == o) return true;
     if (!(o instanceof MyClass)) return false;
-    MyClass that = (MyClass) o;
-    return Objects.equals(field, that.field);
+    MyClass that = (MyClass) o;  // 声明变量 that（MyClass），初始值为 (MyClass) o
+    return Objects.equals(field, that.field);  // 返回值：Objects.equals(field, that.field)
 }
-@Override
-public int hashCode() { return Objects.hash(field); }
+@Override  // 注解：Override
+public int hashCode() { return Objects.hash(field); }  // 方法 hashCode（返回 int，无参数）：返回 Objects.hash(field)
 \`\`\`
 
 ## getClass()
@@ -1254,7 +1254,7 @@ public int hashCode() { return Objects.hash(field); }
 \`wait()\`、\`notify()\`、\`notifyAll()\` 是线程间通信的基础，**必须在 synchronized 块中调用**，否则抛 \`IllegalMonitorStateException\`。它们是 final 方法，不可重写。典型用于生产者-消费者模式。
 
 \`\`\`java
-synchronized (lock) {
+synchronized (lock) {  // 同步块：对 lock 加锁，保证线程安全
     while (!condition) lock.wait();   // 释放锁并等待
     // 条件满足，执行操作
     lock.notifyAll();                  // 唤醒等待线程
@@ -1345,7 +1345,7 @@ class Point {
 - **抽象方法**：只有声明没有实现，由子类提供实现
 
 \`\`\`java
-abstract class Shape {
+abstract class Shape {  // 定义抽象类 Shape
     abstract double area();   // 抽象方法：无方法体
     void info() { ... }       // 具体方法：有实现
 }
@@ -1403,10 +1403,10 @@ Java 8 后接口也可有默认方法，两者界限模糊，但仍有区别：
 虽然抽象类不能实例化，但**可以有构造方法**，且子类构造时会通过 \`super()\` 调用它。构造方法通常声明为 \`protected\`，表明仅供子类使用。构造方法中应避免调用可被子类重写的方法（多态陷阱）：
 
 \`\`\`java
-abstract class Shape {
-    protected String name;
+abstract class Shape {  // 定义抽象类 Shape
+    protected String name;  // 声明变量 name（String 类型）
     protected Shape(String name) { this.name = name; } // 供子类调用
-    abstract double area();
+    abstract double area();  // 抽象方法 area，返回 double，无参数
 }
 \`\`\`
 
@@ -1519,15 +1519,15 @@ class Bicycle extends Vehicle {
 父类用一个**模板方法**（通常是 final 方法）定义算法的执行流程，按顺序调用若干"步骤方法"。这些步骤中，固定的部分直接实现，可变的部分声明为抽象方法。
 
 \`\`\`java
-abstract class Game {
+abstract class Game {  // 定义抽象类 Game
     final void play() {        // 模板方法
-        init();
-        startPlay();
-        endPlay();
+        init();  // 调用方法 init
+        startPlay();  // 调用方法 startPlay
+        endPlay();  // 调用方法 endPlay
     }
-    abstract void init();
-    abstract void startPlay();
-    void endPlay() { System.out.println("结束"); }
+    abstract void init();  // 抽象方法 init，返回 void，无参数
+    abstract void startPlay();  // 抽象方法 startPlay，返回 void，无参数
+    void endPlay() { System.out.println("结束"); }  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -1540,13 +1540,13 @@ abstract class Game {
 钩子方法是模板方法模式的重要扩展：父类提供一个**默认空实现**的方法，子类可选择重写来影响模板流程。模板方法在关键点调用钩子，由子类决定是否"挂钩"：
 
 \`\`\`java
-abstract class Workflow {
-    final void run() {
-        prepare();
+abstract class Workflow {  // 定义抽象类 Workflow
+    final void run() {  // 方法 run，返回 void，无参数
+        prepare();  // 调用方法 prepare
         if (shouldCache()) {   // 钩子：子类可覆盖决定是否缓存
-            cache();
+            cache();  // 调用方法 cache
         }
-        execute();
+        execute();  // 调用方法 execute
     }
     boolean shouldCache() { return false; }  // 默认钩子
     ...
@@ -1704,11 +1704,11 @@ class SecureJsonExporter extends DataExporter {
 在父类构造方法中调用可被子类重写的方法是**危险**的：此时子类构造方法尚未执行，子类字段尚未初始化，但动态分派会调用子类的方法，导致方法访问到未初始化的字段。
 
 \`\`\`java
-class Base {
+class Base {  // 定义类 Base
     public Base() { init(); }          // 陷阱：调用可重写方法
 }
-class Sub extends Base {
-    int x = 10;
+class Sub extends Base {  // 定义类 Sub
+    int x = 10;  // 声明变量 x（int），初始值为 10
     void init() { System.out.println(x); } // 输出 0，而非 10！
 }
 \`\`\`
@@ -1720,7 +1720,7 @@ class Sub extends Base {
 静态方法基于**编译时类型**绑定（静态绑定），不参与动态分派：
 
 \`\`\`java
-Base b = new Sub();
+Base b = new Sub();  // 声明变量 b（Base），初始值为 new Sub()
 b.staticMethod(); // 调用 Base 的静态方法，而非 Sub
 \`\`\`
 
@@ -1729,9 +1729,9 @@ b.staticMethod(); // 调用 Base 的静态方法，而非 Sub
 字段访问也是**静态绑定**的，基于编译时类型。子类若定义同名字段（字段隐藏），通过父类引用访问的是父类字段：
 
 \`\`\`java
-class Base { String name = "父"; }
-class Sub extends Base { String name = "子"; }
-Base b = new Sub();
+class Base { String name = "父"; }  // 定义类 Base
+class Sub extends Base { String name = "子"; }  // 定义类 Sub
+Base b = new Sub();  // 声明变量 b（Base），初始值为 new Sub()
 System.out.println(b.name); // 输出 "父"！
 \`\`\`
 
@@ -1760,11 +1760,11 @@ System.out.println(b.name); // 输出 "父"！
 字段隐藏是最隐蔽的陷阱：同名字段在不同引用类型下返回不同值，极易引发难以排查的 bug：
 
 \`\`\`java
-class Base { int val = 1; }
-class Sub extends Base { int val = 2; }
-Sub s = new Sub();
+class Base { int val = 1; }  // 定义类 Base
+class Sub extends Base { int val = 2; }  // 定义类 Sub
+Sub s = new Sub();  // 声明变量 s（Sub），初始值为 new Sub()
 System.out.println(s.val);       // 2（子类字段）
-Base b = s;
+Base b = s;  // 声明变量 b（Base），初始值为 s
 System.out.println(b.val);       // 1（父类字段）！同一对象不同值
 \`\`\`
 
@@ -1866,11 +1866,11 @@ class SafeDerived extends SafeBase {
 - 子类可能误用受保护的字段
 
 \`\`\`java
-class InstrumentedHashSet<E> extends HashSet<E> {
-    private int addCount = 0;
+class InstrumentedHashSet<E> extends HashSet<E> {  // 定义类 InstrumentedHashSet
+    private int addCount = 0;  // 声明私有变量 addCount（int），初始值为 0
     @Override public boolean add(E e) { addCount++; return super.add(e); }
     @Override public boolean addAll(Collection<E> c) {
-        addCount += c.size();
+        addCount += c.size();  // addCount += c.size()（复合赋值）
         return super.addAll(c);  // 陷阱：HashSet.addAll 内部会调用 add，导致重复计数
     }
 }
@@ -1887,13 +1887,13 @@ class InstrumentedHashSet<E> extends HashSet<E> {
 
 \`\`\`java
 // 组合：转发实现计数
-class InstrumentedSet<E> {
+class InstrumentedSet<E> {  // 定义类 InstrumentedSet
     private final Set<E> set;        // 组合
-    private int addCount = 0;
+    private int addCount = 0;  // 声明私有变量 addCount（int），初始值为 0
     public InstrumentedSet(Set<E> s) { this.set = s; }
     public boolean add(E e) { addCount++; return set.add(e); }
-    public boolean addAll(Collection<E> c) {
-        addCount += c.size();
+    public boolean addAll(Collection<E> c) {  // 方法 addAll，返回 boolean，参数：Collection<E> c
+        addCount += c.size();  // addCount += c.size()（复合赋值）
         return set.addAll(c);  // 转发，不重复计数
     }
 }
@@ -1905,7 +1905,7 @@ class InstrumentedSet<E> {
 
 \`\`\`java
 // 装饰器：组合而非继承
-InputStream in = new BufferedInputStream(new FileInputStream("f.txt"));
+InputStream in = new BufferedInputStream(new FileInputStream("f.txt"));  // 声明变量 in（InputStream），初始值为 new BufferedInputStream(new FileInputStream("f.txt"))
 \`\`\`
 
 每个装饰器持有一个被装饰对象（组合），实现同一接口，在调用前后添加逻辑。相比继承，装饰器可在运行时灵活叠加，不受单继承限制。
@@ -1915,7 +1915,7 @@ InputStream in = new BufferedInputStream(new FileInputStream("f.txt"));
 组合常配合转发实现：包装类实现接口，将调用转发给内部对象。这隔离了实现变化，符合"针对接口编程"：
 
 \`\`\`java
-class ForwardingSet<E> implements Set<E> {
+class ForwardingSet<E> implements Set<E> {  // 定义类 ForwardingSet
     private final Set<E> s;           // 组合
     public ForwardingSet(Set<E> s) { this.s = s; }
     public boolean add(E e) { return s.add(e); }  // 转发
@@ -2169,7 +2169,7 @@ class SquareShape extends Shape {
 用 \`sealed\` 修饰类，并通过 \`permits\` 子句显式列出允许继承的子类：
 
 \`\`\`java
-public sealed class Shape permits Circle, Square, Triangle { }
+public sealed class Shape permits Circle, Square, Triangle { }  // 定义类 Shape
 \`\`\`
 
 \`Shape\` 只能被 \`Circle\`、\`Square\`、\`Triangle\` 继承，其他类试图继承会编译错误。
@@ -2189,10 +2189,10 @@ public sealed class Shape permits Circle, Square, Triangle { }
 - \`non-sealed\`：开放继承，任意类可继承（恢复普通行为）
 
 \`\`\`java
-sealed class Shape permits Circle, Square, Triangle {}
+sealed class Shape permits Circle, Square, Triangle {}  // 定义类 Shape
 final class Circle extends Shape {}        // 终止
 non-sealed class Square extends Shape {}   // 开放，可被任意继承
-sealed class Triangle extends Shape permits EquilateralTriangle {}
+sealed class Triangle extends Shape permits EquilateralTriangle {}  // 定义类 Triangle
 \`\`\`
 
 ## 密封类的用途：穷举模式匹配
@@ -2201,9 +2201,9 @@ sealed class Triangle extends Shape permits EquilateralTriangle {}
 
 \`\`\`java
 double area = switch (shape) {
-    case Circle c    -> Math.PI * c.r() * c.r();
-    case Square s    -> s.side() * s.side();
-    case Triangle t  -> 0.5 * t.base() * t.height();
+    case Circle c    -> Math.PI * c.r() * c.r();  // Lambda 表达式：实现函数式接口
+    case Square s    -> s.side() * s.side();  // Lambda 表达式：实现函数式接口
+    case Triangle t  -> 0.5 * t.base() * t.height();  // Lambda 表达式：实现函数式接口
     // 无需 default，编译器保证穷举
 };
 \`\`\`
@@ -2215,7 +2215,7 @@ double area = switch (shape) {
 密封类让 Java 能够表达**代数数据类型**：一组封闭的类型，每个类型有固定的结构。这是函数式编程的核心概念。例如"形状要么是圆、要么是方、要么是三角"，用密封类可精确表达这种"或"关系：
 
 \`\`\`java
-sealed interface Shape permits Circle, Square, Triangle {}
+sealed interface Shape permits Circle, Square, Triangle {}  // 定义接口 Shape
 \`\`\`
 
 ## 密封接口

@@ -45,9 +45,9 @@ export const chapters = [
 \`if\` 是条件判断的起点。它的语法非常简洁：**关键字 if + 条件表达式 + 冒号 + 缩进的语句块**。注意 Python 不像 C/Java 那样用花括号 \`{}\` 划分代码块，而是用**缩进**（通常是 4 个空格）。缩进不一致会直接报错。
 
 \`\`\`py
-age = 20
-if age >= 18:
-    print("你已成年")
+age = 20                          # 定义变量 age 并赋值
+if age >= 18:           # 条件为 True 才执行下面的语句块
+    print("你已成年")    # 缩进 4 空格表示属于 if 的语句块
 \`\`\`
 
 要点：
@@ -60,11 +60,11 @@ if age >= 18:
 当条件不成立时，我们往往想走另一条路，这时用 \`else\`：
 
 \`\`\`py
-age = 15
-if age >= 18:
-    print("成年")
-else:
-    print("未成年")
+age = 15                          # 定义变量 age 并赋值
+if age >= 18:        # 条件不成立
+    print("成年")                    # 输出 "成年"
+else:                # 走 else 分支
+    print("未成年")   # 打印「未成年」
 \`\`\`
 
 \`else\` 后面也必须跟冒号，且不写条件——它表示「所有其他情况」。
@@ -74,15 +74,15 @@ else:
 如果有多个互斥的条件，用 \`elif\`（else if 的缩写，Python 独有的关键字，比写 \`else if\` 两个单词更省事）。**elif 会按顺序判断，一旦某个条件成立就执行对应语句块，后面的 elif / else 都不再判断**。
 
 \`\`\`py
-score = 82
-if score >= 90:
-    print("优秀")
-elif score >= 80:
+score = 82                         # 将整数 82 赋给 score
+if score >= 90:                 # 90 分及以上
+    print("优秀")      # 82 < 90，跳过
+elif score >= 80:               # elif 仅在前一条件不成立时判断
     print("良好")      # 命中这里，后面不再判断
-elif score >= 60:
-    print("及格")
-else:
-    print("不及格")
+elif score >= 60:                  # 否则如果 score >= 60 成立
+    print("及格")      # 不会执行到这里
+else:                              # 否则
+    print("不及格")    # 不会执行到这里
 \`\`\`
 
 输出「良好」。注意 82 既 >= 80 也 >= 60，但因为 elif 是顺序短路求值，命中第一个就停。
@@ -90,12 +90,12 @@ else:
 > **常见陷阱**：把多个 if 写成并列的 if，而不是 elif 链，会导致多个分支都被执行。例如：
 
 \`\`\`py
-score = 82
-if score >= 90:
-    print("优秀")
-if score >= 80:
+score = 82                         # 将整数 82 赋给 score
+if score >= 90:          # 多个独立 if，彼此都会判断
+    print("优秀")                    # 输出 "优秀"
+if score >= 80:                    # 如果 score >= 80 成立
     print("良好")   # 会执行
-if score >= 60:
+if score >= 60:                    # 如果 score >= 60 成立
     print("及格")   # 也会执行！
 \`\`\`
 
@@ -106,8 +106,8 @@ if score >= 60:
 Python 的三元表达式写作 \`值A if 条件 else 值B\`，注意顺序和 C 的 \`条件 ? A : B\` 不同：
 
 \`\`\`py
-age = 20
-status = "成年" if age >= 18 else "未成年"
+age = 20                         # 定义变量 age
+status = "成年" if age >= 18 else "未成年"   # 条件为真取"成年"，否则取"未成年"
 print(status)   # 成年
 \`\`\`
 
@@ -115,7 +115,7 @@ print(status)   # 成年
 
 \`\`\`py
 # 不推荐：嵌套三元，难以阅读
-level = "A" if s >= 90 else "B" if s >= 80 else "C" if s >= 60 else "D"
+level = "A" if s >= 90 else "B" if s >= 80 else "C" if s >= 60 else "D"   # 嵌套从右向左结合，可读性差
 \`\`\`
 
 这种情况用 if-elif 更清晰。
@@ -141,8 +141,8 @@ level = "A" if s >= 90 else "B" if s >= 80 else "C" if s >= 60 else "D"
 - \`is\` 比较**身份**（内存地址）是否相同。
 
 \`\`\`py
-a = [1, 2, 3]
-b = [1, 2, 3]
+a = [1, 2, 3]           # 值相同的两个独立列表
+b = [1, 2, 3]                      # 创建列表并赋给 b
 print(a == b)   # True，值相等
 print(a is b)   # False，是两个不同的列表对象
 \`\`\`
@@ -154,7 +154,7 @@ print(a is b)   # False，是两个不同的列表对象
 Python 支持数学式的链式比较，非常优雅：
 
 \`\`\`py
-x = 5
+x = 5                       # 链式比较
 print(1 < x < 10)   # True，等价于 1 < x and x < 10
 print(1 < x > 3)    # True
 \`\`\`
@@ -198,10 +198,10 @@ print("存在" or "默认") # "存在"，左边为真，直接返回
 所以判断一个列表是否非空，**推荐写** \`if my_list:\`，而**不是** \`if len(my_list) > 0:\`——前者更 Pythonic。
 
 \`\`\`py
-data = []
-if data:
-    print("有数据")
-else:
+data = []                  # 空列表为假
+if data:                   # 空列表为假
+    print("有数据")                   # 输出 "有数据"
+else:                              # 否则
     print("空")     # 打印「空」
 \`\`\`
 
@@ -212,11 +212,11 @@ else:
 \`while\` 是「**当条件成立时，反复执行**」的循环。语法：\`while 条件:\` + 缩进语句块。
 
 \`\`\`py
-n = 5
-while n > 0:
-    print(n)
+n = 5                              # 将整数 5 赋给 n
+while n > 0:        # 当 n 大于 0 时反复执行
+    print(n)                # 输出当前 n
     n -= 1          # 别忘了更新条件变量，否则死循环！
-print("发射")
+print("发射")       # 循环结束后执行
 \`\`\`
 
 输出 5 4 3 2 1 发射。
@@ -224,12 +224,12 @@ print("发射")
 **死循环**：如果条件永远为真且不 break，循环不会停。\`while True:\` 是常见的「无限循环 + break 退出」模式，用于菜单、读取输入等场景：
 
 \`\`\`py
-count = 0
-while True:
-    count += 1
-    if count >= 3:
+count = 0                          # 将整数 0 赋给 count
+while True:          # 无限循环
+    count += 1       # 每次加 1
+    if count >= 3:                 # 如果 count >= 3 成立
         break       # 达到条件就跳出
-print("count =", count)
+print("count =", count)    # break 后跳出循环，执行此处
 \`\`\`
 
 ---
@@ -239,13 +239,13 @@ print("count =", count)
 Python 的 \`for\` 和 C/Java 的 for 完全不同：它是**遍历（迭代）**循环，依次从一个「可迭代对象」里取出元素，而不是用计数器。语法：\`for 元素 in 可迭代对象:\`。
 
 \`\`\`py
-for fruit in ["苹果", "香蕉", "橘子"]:
-    print(fruit)
+for fruit in ["苹果", "香蕉", "橘子"]:   # 遍历列表
+    print(fruit)              # 输出当前元素
 
-for ch in "Python":
+for ch in "Python":              # 遍历字符串
     print(ch)       # 逐字符遍历字符串
 
-for key in {"a": 1, "b": 2}:
+for key in {"a": 1, "b": 2}:    # 遍历字典
     print(key)      # 遍历字典默认得到键
 \`\`\`
 
@@ -264,17 +264,17 @@ for key in {"a": 1, "b": 2}:
 | \`range(start, stop, step)\` | 带步长 | range(0,10,2) → 0,2,4,6,8 |
 
 \`\`\`py
-for i in range(3):
+for i in range(3):              # range(3) 生成 0,1,2
     print(i)            # 0 1 2
 
-for i in range(2, 6):
+for i in range(2, 6):          # range(start, stop)，含 start 不含 stop
     print(i)            # 2 3 4 5
 
-for i in range(0, 10, 2):
+for i in range(0, 10, 2):      # range(start, stop, step)
     print(i)            # 0 2 4 6 8
 
 # 步长可以是负数（倒数）
-for i in range(5, 0, -1):
+for i in range(5, 0, -1):      # 负步长从大到小
     print(i)            # 5 4 3 2 1
 \`\`\`
 
@@ -292,8 +292,8 @@ for i in range(5, 0, -1):
 ### 7.1 break：立即跳出整个循环
 
 \`\`\`py
-for i in range(10):
-    if i == 5:
+for i in range(10):            # 遍历 0~9
+    if i == 5:                     # 如果 i == 5 成立
         break      # i 到 5 就跳出，不再继续
     print(i)       # 打印 0 1 2 3 4
 \`\`\`
@@ -303,8 +303,8 @@ for i in range(10):
 ### 7.2 continue：跳过本次，进入下一次
 
 \`\`\`py
-for i in range(6):
-    if i % 2 == 0:
+for i in range(6):             # 遍历 0~5
+    if i % 2 == 0:                 # 如果 i % 2 == 0 成立
         continue   # 偶数跳过，不执行下面的 print
     print(i)       # 只打印 1 3 5
 \`\`\`
@@ -316,13 +316,13 @@ continue 是「这次不干了，直接下一次」。
 \`pass\` 是一个**空操作语句**，它不执行任何动作。Python 的语法要求 if / for / def 等后面必须有语句块，当你暂时还不想写实现时，用 pass 占位，避免语法错误：
 
 \`\`\`py
-if age < 0:
+if age < 0:                 # 占位，逻辑待补
     pass          # TODO: 以后再处理负数情况
 
-class Empty:
+class Empty:           # 定义空类
     pass          # 空类
 
-def todo():
+def todo():            # 定义空函数占位
     pass          # 空函数
 \`\`\`
 
@@ -340,12 +340,12 @@ pass 与 continue 的区别：continue 会改变流程（跳过本次循环剩�
 
 \`\`\`py
 # 找一个列表里有没有负数
-nums = [1, 2, 3, 4]
-for n in nums:
-    if n < 0:
-        print("发现负数:", n)
-        break
-else:
+nums = [1, 2, 3, 4]                # 创建列表并赋给 nums
+for n in nums:                  # 遍历每个元素
+    if n < 0:                   # 发现负数
+        print("发现负数:", n)          # 输出 "发现负数:", n
+        break                      # 跳出循环
+else:                           # for-else：循环正常结束（没 break）才执行
     print("没有负数")   # 因为没 break，正常结束，执行这里
 \`\`\`
 
@@ -353,20 +353,20 @@ else:
 
 \`\`\`py
 # 传统写法：用 found 标志
-found = False
-for n in nums:
-    if n < 0:
-        found = True
-        break
-if not found:
-    print("没有负数")
+found = False                   # 标志位记录是否找到
+for n in nums:                  # 遍历列表
+    if n < 0:                      # 如果 n < 0 成立
+        found = True               # 将布尔值 True 赋给 found
+        break                      # 跳出循环
+if not found:                   # 用标志判断是否找到
+    print("没有负数")                  # 输出 "没有负数"
 
 # Pythonic 写法：用 for-else
-for n in nums:
-    if n < 0:
-        break
-else:
-    print("没有负数")
+for n in nums:                   # 同样遍历
+    if n < 0:                      # 如果 n < 0 成立
+        break                      # 跳出循环
+else:                           # 没break即"没有负数"
+    print("没有负数")                  # 输出 "没有负数"
 \`\`\`
 
 while-else 同理：while 条件变假而结束时执行 else，被 break 时不执行。
@@ -381,16 +381,16 @@ while-else 同理：while 条件变假而结束时执行 else，被 break 时不
 
 \`\`\`py
 # 不推荐
-for i in range(len(fruits)):
-    print(i, fruits[i])
+for i in range(len(fruits)):    # 用下标遍历，啰嗦
+    print(i, fruits[i])            # 输出 i, fruits[i]
 \`\`\`
 
 Pythonic 的写法是用 \`enumerate\`，它把可迭代对象包装成「(索引, 元素)」对：
 
 \`\`\`py
-fruits = ["苹果", "香蕉", "橘子"]
-for index, value in enumerate(fruits):
-    print(index, value)
+fruits = ["苹果", "香蕉", "橘子"]           # 待遍历的列表
+for index, value in enumerate(fruits):   # enumerate 同时给出下标和元素
+    print(index, value)            # 输出 index, value
 # 0 苹果
 # 1 香蕉
 # 2 橘子
@@ -405,10 +405,10 @@ for index, value in enumerate(fruits):
 \`zip\` 把多个可迭代对象「拉链式」配对，每次取出各序列的同位元素组成元组：
 
 \`\`\`py
-names = ["Alice", "Bob", "Carol"]
-ages = [25, 30, 28]
-for name, age in zip(names, ages):
-    print(name, age)
+names = ["Alice", "Bob", "Carol"]      # 姓名列表
+ages = [25, 30, 28]                    # 年龄列表，与 names 一一对应
+for name, age in zip(names, ages):   # zip 按位置配对两个列表
+    print(name, age)               # 输出 name, age
 # Alice 25
 # Bob 30
 # Carol 28
@@ -419,17 +419,17 @@ for name, age in zip(names, ages):
 zip 还可以用来**快速构造字典**：
 
 \`\`\`py
-keys = ["a", "b", "c"]
-values = [1, 2, 3]
-d = dict(zip(keys, values))
+keys = ["a", "b", "c"]               # 键列表
+values = [1, 2, 3]                   # 值列表
+d = dict(zip(keys, values))   # zip 配对后用 dict 转为字典
 print(d)   # {'a': 1, 'b': 2, 'c': 3}
 \`\`\`
 
 以及**矩阵转置**（巧用 zip 解包）：
 
 \`\`\`py
-matrix = [[1, 2, 3], [4, 5, 6]]
-transposed = list(zip(*matrix))
+matrix = [[1, 2, 3], [4, 5, 6]]            # 二维列表（2 行 3 列）
+transposed = list(zip(*matrix))   # * 解包 matrix，zip 按列配对
 print(transposed)   # [(1, 4), (2, 5), (3, 6)]
 \`\`\`
 
@@ -441,9 +441,9 @@ print(transposed)   # [(1, 4), (2, 5), (3, 6)]
 
 \`\`\`py
 # 打印九九乘法表
-for i in range(1, 10):
-    for j in range(1, i + 1):
-        print(f"{j}x{i}={i*j}", end="\\t")
+for i in range(1, 10):              # 外层循环控制行
+    for j in range(1, i + 1):      # 内层循环控制列
+        print(f"{j}x{i}={i*j}", end="\\t")   # end 用制表符替代换行
     print()   # 换行
 \`\`\`
 
@@ -471,16 +471,16 @@ Python 3.10 引入了 **结构化模式匹配**（structural pattern matching）
 ### 12.1 基本值匹配
 
 \`\`\`py
-def handle_command(cmd):
-    match cmd:
-        case "quit":
-            print("退出")
-        case "help":
-            print("帮助")
-        case "reset":
-            print("重置")
+def handle_command(cmd):       # 定义命令处理函数
+    match cmd:                 # 匹配 cmd 的值
+        case "quit":           # 值为 "quit"
+            print("退出")      # 输出退出提示
+        case "help":           # 值为 "help"
+            print("帮助")      # 输出帮助提示
+        case "reset":          # 值为 "reset"
+            print("重置")      # 输出重置提示
         case _:                  # _ 是通配符，匹配任意值（类似 default）
-            print("未知命令")
+            print("未知命令")          # 输出 "未知命令"
 \`\`\`
 
 \`_\` 是通配符，表示「其他所有情况」，相当于 switch 的 default。
@@ -488,13 +488,13 @@ def handle_command(cmd):
 ### 12.2 字面量与或模式
 
 \`\`\`py
-match status:
+match status:                  # 匹配 status
     case 200 | 201:        # | 表示「或」，多个值匹配同一分支
-        print("成功")
+        print("成功")      # 2xx 状态码
     case 404:
-        print("未找到")
+        print("未找到")    # 资源不存在
     case 500:
-        print("服务器错误")
+        print("服务器错误")  # 服务端异常
 \`\`\`
 
 ### 12.3 解构序列
@@ -502,26 +502,26 @@ match status:
 match 可以解构列表/元组：
 
 \`\`\`py
-point = (3, 4)
-match point:
-    case (0, 0):
-        print("原点")
+point = (3, 4)                 # 定义一个点
+match point:                   # 对元组做结构化匹配
+    case (0, 0):               # 精确匹配原点
+        print("原点")                # 输出 "原点"
     case (0, y):           # 捕获第二个元素到变量 y
-        print("在 y 轴上", y)
-    case (x, 0):
-        print("在 x 轴上", x)
+        print("在 y 轴上", y)         # 输出 "在 y 轴上", y
+    case (x, 0):           # 捕获第一个元素到 x
+        print("在 x 轴上", x)         # 输出 "在 x 轴上", x
     case (x, y):           # 捕获两个元素
-        print(f"点 ({x}, {y})")
+        print(f"点 ({x}, {y})")     # 输出 f"点 ({x}, {y})"
 \`\`\`
 
 ### 12.4 解构字典与类
 
 \`\`\`py
-match user:
-    case {"name": name, "age": age}:
-        print(f"用户 {name}, {age} 岁")
-    case _:
-        print("未知格式")
+match user:                              # 对字典做结构化匹配
+    case {"name": name, "age": age}:   # 解构字典，提取 name 和 age
+        print(f"用户 {name}, {age} 岁")  # 输出 f"用户 {name}, {age} 岁"
+    case _:                             # 其他格式
+        print("未知格式")              # 输出 "未知格式"
 \`\`\`
 
 模式匹配相比 if-elif 链的优势在于：**它能同时做匹配 + 提取变量**，代码更紧凑、更声明式。但需要 Python 3.10+，老项目可能用不了。
@@ -717,15 +717,15 @@ else:
 用 \`def\` 关键字定义函数，语法：
 
 \`\`\`py
-def 函数名(参数1, 参数2):
-    """文档字符串（可选）"""
-    函数体
+def 函数名(参数1, 参数2):              # 函数定义语法：def 函数名(参数)
+    """文档字符串（可选）"""            # 三引号文档字符串说明用途
+    函数体                             # 缩进的函数体语句
     return 返回值      # 可选
 \`\`\`
 
 \`\`\`py
-def greet(name):
-    return f"你好，{name}！"
+def greet(name):                  # 定义函数 greet，接收参数 name
+    return f"你好，{name}！"      # 返回格式化问候语
 
 print(greet("小明"))   # 你好，小明！
 \`\`\`
@@ -744,8 +744,8 @@ print(greet("小明"))   # 你好，小明！
 最常见：实参按位置一一对应形参。
 
 \`\`\`py
-def add(a, b):
-    return a + b
+def add(a, b):              # 定义加法函数，接收 a、b
+    return a + b            # 返回两数之和
 print(add(2, 3))   # 5，2 给 a，3 给 b
 \`\`\`
 
@@ -754,10 +754,10 @@ print(add(2, 3))   # 5，2 给 a，3 给 b
 调用时用 \`参数名=值\` 指定，**顺序可以随意**：
 
 \`\`\`py
-def describe(name, age, city):
-    return f"{name}，{age} 岁，来自 {city}"
+def describe(name, age, city):              # 三个位置参数
+    return f"{name}，{age} 岁，来自 {city}"  # 返回描述字符串
 
-print(describe(age=30, city="北京", name="Alice"))
+print(describe(age=30, city="北京", name="Alice"))   # 用关键字参数，顺序随意
 \`\`\`
 
 位置参数和关键字参数可以混用，但**位置参数必须在关键字参数前面**。
@@ -767,8 +767,8 @@ print(describe(age=30, city="北京", name="Alice"))
 给参数设默认值，调用时可省略：
 
 \`\`\`py
-def power(base, exp=2):
-    return base ** exp
+def power(base, exp=2):        # exp 带默认值 2
+    return base ** exp          # 返回 base 的 exp 次方
 
 print(power(5))      # 25，exp 用默认值 2
 print(power(5, 3))   # 125，exp 用传入的 3
@@ -778,9 +778,9 @@ print(power(5, 3))   # 125，exp 用传入的 3
 
 \`\`\`py
 # 错误写法！
-def add_item(item, lst=[]):
-    lst.append(item)
-    return lst
+def add_item(item, lst=[]):       # 默认值在函数定义时求值，所有调用共享同一列表
+    lst.append(item)             # 原地追加到默认列表
+    return lst                   # 返回被修改的列表
 
 print(add_item(1))   # [1]
 print(add_item(2))   # [1, 2]  ← 上次的 1 还在！默认列表被共享了
@@ -789,11 +789,11 @@ print(add_item(2))   # [1, 2]  ← 上次的 1 还在！默认列表被共享了
 正确做法是**用 None 做哨兵**，在函数内部创建：
 
 \`\`\`py
-def add_item(item, lst=None):
-    if lst is None:
+def add_item(item, lst=None):        # 用 None 作占位
+    if lst is None:                  # 调用时未传 lst
         lst = []     # 每次调用都是新列表
-    lst.append(item)
-    return lst
+    lst.append(item)                  # 原地追加
+    return lst                        # 返回新列表
 \`\`\`
 
 **规则**：默认参数必须放在**没有默认值的参数后面**。
@@ -803,11 +803,11 @@ def add_item(item, lst=None):
 当不确定要传多少个位置参数时，用 \`*args\` 收集成**元组**：
 
 \`\`\`py
-def sum_all(*args):
-    total = 0
-    for n in args:
-        total += n
-    return total
+def sum_all(*args):           # *args 收集所有位置参数为元组
+    total = 0                 # 累加器初始化
+    for n in args:            # 遍历元组中的每个参数
+        total += n           # 逐个累加
+    return total              # 返回累加结果
 
 print(sum_all(1, 2, 3))       # 6
 print(sum_all(1, 2, 3, 4, 5)) # 15
@@ -820,12 +820,12 @@ print(sum_all(1, 2, 3, 4, 5)) # 15
 收集**多余的关键字参数**成**字典**：
 
 \`\`\`py
-def make_profile(name, **kwargs):
-    print("姓名:", name)
-    for key, value in kwargs.items():
-        print(f"  {key}: {value}")
+def make_profile(name, **kwargs):           # **kwargs 收集多余关键字参数为字典
+    print("姓名:", name)                     # 输出必传的 name
+    for key, value in kwargs.items():       # 遍历字典的键值对
+        print(f"  {key}: {value}") # 输出 f"  {key}: {value}"
 
-make_profile("Alice", age=30, city="北京", job="工程师")
+make_profile("Alice", age=30, city="北京", job="工程师")   # 多余的关键字进 kwargs
 \`\`\`
 
 \`kwargs\` 是字典，key 是字符串。
@@ -840,8 +840,8 @@ make_profile("Alice", age=30, city="北京", job="工程师")
 5. \`\**kwargs\`
 
 \`\`\`py
-def func(a, b=2, *args, c, **kwargs):
-    print(a, b, args, c, kwargs)
+def func(a, b=2, *args, c, **kwargs):   # a 位置参数；b 默认参数；*args 可变位置；c 仅关键字；**kwargs 可变关键字
+    print(a, b, args, c, kwargs)         # 输出各类参数的接收结果
 func(1, 3, 4, 5, c=10, x=100)   # 1 3 (4,5) 10 {'x':100}
 \`\`\`
 
@@ -852,13 +852,13 @@ func(1, 3, 4, 5, c=10, x=100)   # 1 3 (4,5) 10 {'x':100}
 调用时可以用 \`*\` 和 \`**\` 把列表/字典**解包**成参数：
 
 \`\`\`py
-def add(a, b, c):
-    return a + b + c
-nums = [1, 2, 3]
-print(add(*nums))           # 6，等价 add(1,2,3)
+def add(a, b, c):                # 三参数加法
+    return a + b + c             # 返回三数之和
+nums = [1, 2, 3]                 # 待解包的列表
+print(add(*nums))           # 6，* 解包列表，等价 add(1,2,3)
 
-info = {"a": 1, "b": 2, "c": 3}
-print(add(**info))          # 6，等价 add(a=1,b=2,c=3)
+info = {"a": 1, "b": 2, "c": 3}  # 待解包的字典，键名需匹配形参
+print(add(**info))          # 6，** 解包字典，等价 add(a=1,b=2,c=3)
 \`\`\`
 
 ---
@@ -868,10 +868,10 @@ print(add(**info))          # 6，等价 add(a=1,b=2,c=3)
 Python 函数用 \`return\` 返回值。**返回多个值时，实际上是返回一个元组**，调用方可以解包：
 
 \`\`\`py
-def min_max(nums):
+def min_max(nums):              # 接收一个数值序列
     return min(nums), max(nums)   # 返回元组 (min, max)
 
-lo, hi = min_max([3, 1, 4, 1, 5])  # 解包
+lo, hi = min_max([3, 1, 4, 1, 5])  # 元组解包到两个变量
 print(lo, hi)   # 1 5
 \`\`\`
 
@@ -892,13 +892,13 @@ print(lo, hi)   # 1 5
 
 \`\`\`py
 x = "global"          # G
-def outer():
+def outer():          # 外层函数
     x = "enclosing"   # E
-    def inner():
+    def inner():      # 内层函数
         x = "local"   # L
         print(x)      # 找到 L: local
-    inner()
-outer()
+    inner()           # 调用内层函数
+outer()                # 调用外层函数
 \`\`\`
 
 **函数内部读取全局变量没问题，但要想「修改」全局变量，必须用 global 声明**，否则 Python 会创建一个新的局部变量。
@@ -906,11 +906,11 @@ outer()
 ### 4.1 global
 
 \`\`\`py
-counter = 0
-def increment():
+counter = 0                    # 模块级全局变量
+def increment():                   # 定义函数 increment，无参数
     global counter     # 声明我要修改全局的 counter
-    counter += 1
-increment()
+    counter += 1                # 修改全局 counter
+increment()                    # 调用一次
 print(counter)   # 1
 \`\`\`
 
@@ -919,14 +919,14 @@ print(counter)   # 1
 修改**外层嵌套函数**的变量用 \`nonlocal\`（不是全局，也不是当前局部）：
 
 \`\`\`py
-def outer():
-    count = 0
-    def inner():
+def outer():                       # 定义函数 outer，无参数
+    count = 0                # 外层函数的局部变量
+    def inner():                   # 定义函数 inner，无参数
         nonlocal count   # 修改外层函数的 count
-        count += 1
-    inner()
+        count += 1            # 修改外层 count
+    inner()                  # 调用内层
     print(count)   # 1
-outer()
+outer()                       # 调用外层
 \`\`\`
 
 > 经验：global 和 nonlocal 用多了会让状态难以追踪，**能用返回值替代就别用**。
@@ -938,12 +938,12 @@ outer()
 \`lambda\` 创建一个「没有名字的小函数」，语法 \`lambda 参数: 表达式\`。它**只能是单个表达式**，不能有语句块：
 
 \`\`\`py
-square = lambda x: x ** 2
-print(square(5))   # 25
+square = lambda x: x ** 2          # 定义匿名函数，返回 x 的平方
+print(square(5))   # 25           # 调用 lambda
 
 # 常作为排序的 key
-students = [("Alice", 90), ("Bob", 75), ("Carol", 88)]
-students.sort(key=lambda s: s[1])   # 按分数排序
+students = [("Alice", 90), ("Bob", 75), ("Carol", 88)]   # 姓名与分数的列表
+students.sort(key=lambda s: s[1])   # 按元组的第二个元素（分数）排序
 \`\`\`
 
 lambda 适合「临时一次性用」的小逻辑。**逻辑复杂时请用 def**，可读性更好。
@@ -955,10 +955,10 @@ lambda 适合「临时一次性用」的小逻辑。**逻辑复杂时请用 def*
 函数**调用自己**就是递归。两个要素：**基线条件**（停止递归）+ **递归条件**（向基线靠近）。经典例子：阶乘。
 
 \`\`\`py
-def factorial(n):
-    if n <= 1:           # 基线条件
-        return 1
-    return n * factorial(n - 1)   # 递归条件
+def factorial(n):              # 定义阶乘函数
+    if n <= 1:           # 基线条件：n 为 1 或 0 时停止递归
+        return 1                   # 返回 1
+    return n * factorial(n - 1)   # 递归条件：n 乘以 (n-1) 的阶乘
 
 print(factorial(5))   # 120
 \`\`\`
@@ -974,7 +974,7 @@ print(factorial(5))   # 120
 函数、类、模块开头的**第一个字符串**就是 docstring，用三引号。它能被 \`help()\` 和 \`__doc__\` 读取，是 Python 的「自带文档系统」：
 
 \`\`\`py
-def divide(a, b):
+def divide(a, b):              # 定义除法函数
     """计算 a 除以 b。
 
     参数:
@@ -984,10 +984,10 @@ def divide(a, b):
     返回:
         商
     """
-    return a / b
+    return a / b               # 返回 a / b 的商
 
 print(divide.__doc__)   # 打印文档
-help(divide)
+help(divide)                    # 调用 help 查看完整文档
 \`\`\`
 
 规范：第一行是简要说明，空一行后写详细说明。**写 docstring 是好习惯**，IDE 会把它作为提示显示。
@@ -999,10 +999,10 @@ help(divide)
 Python 是动态类型语言，但 3.5+ 支持**类型注解**——给参数和返回值标注期望类型。注解**不影响运行**（不会强制检查），但能被 IDE / mypy 等工具用来静态检查：
 
 \`\`\`py
-def greet(name: str, times: int = 1) -> str:
-    return (f"Hello, {name}! ") * times
+def greet(name: str, times: int = 1) -> str:   # name 标注 str，times 标注 int 默认 1，返回值标注 str
+    return (f"Hello, {name}! ") * times       # 重复 times 次字符串
 
-print(greet("Alice", 2))
+print(greet("Alice", 2))                      # 类型注解不强制，仅作提示
 \`\`\`
 
 常用类型：\`int\`、\`str\`、\`float\`、\`bool\`、\`list\`、\`dict\`、\`tuple\`、\`Optional[int]\`（可为 None）。复杂类型可从 \`typing\` 导入，如 \`List[int]\`、\`Dict[str, int]\`。
@@ -1020,8 +1020,8 @@ print(greet("Alice", 2))
 \`map(函数, 可迭代对象)\` 对每个元素应用函数，返回迭代器：
 
 \`\`\`py
-nums = [1, 2, 3, 4]
-squares = list(map(lambda x: x ** 2, nums))
+nums = [1, 2, 3, 4]                       # 原始列表
+squares = list(map(lambda x: x ** 2, nums))   # map 对每个元素应用函数，list 转为列表
 print(squares)   # [1, 4, 9, 16]
 \`\`\`
 
@@ -1030,8 +1030,8 @@ print(squares)   # [1, 4, 9, 16]
 \`filter(函数, 可迭代对象)\` 保留使函数返回 True 的元素：
 
 \`\`\`py
-nums = [1, 2, 3, 4, 5, 6]
-evens = list(filter(lambda x: x % 2 == 0, nums))
+nums = [1, 2, 3, 4, 5, 6]                          # 原始列表
+evens = list(filter(lambda x: x % 2 == 0, nums))   # filter 保留使函数为真的元素
 print(evens)   # [2, 4, 6]
 \`\`\`
 
@@ -1042,7 +1042,7 @@ print(evens)   # [2, 4, 6]
 \`sorted(可迭代对象, key=函数, reverse=bool)\` 返回**新**的有序列表（不改原数据）。key 函数指定排序依据：
 
 \`\`\`py
-words = ["banana", "apple", "cherry"]
+words = ["banana", "apple", "cherry"]         # 待排序的单词列表
 print(sorted(words))                          # 按字典序
 print(sorted(words, key=len))                 # 按长度
 print(sorted(words, key=len, reverse=True))   # 按长度降序
@@ -1057,10 +1057,10 @@ print(sorted(words, key=len, reverse=True))   # 按长度降序
 **闭包**是「函数 + 它记住的外层变量」的组合。当一个内部函数引用了外层函数的变量，即使外层函数已返回，内部函数仍能访问那些变量：
 
 \`\`\`py
-def make_multiplier(factor):
-    def multiply(x):
-        return x * factor      # 引用了外层的 factor
-    return multiply            # 返回内部函数
+def make_multiplier(factor):       # 外层函数接收 factor
+    def multiply(x):               # 内层函数
+        return x * factor          # 引用了外层的 factor（闭包）
+    return multiply                # 返回内部函数（不调用）
 
 double = make_multiplier(2)    # factor 被记住为 2
 triple = make_multiplier(3)    # factor 被记住为 3
@@ -1094,27 +1094,27 @@ print(triple(5))   # 15
 - 拥有属性（如 \`__name__\`、\`__doc__\`）
 
 \`\`\`py
-def shout(text):
-    return text.upper()
+def shout(text):              # 定义函数 shout
+    return text.upper()      # 返回大写形式
 
 # 1. 赋值给变量
-yell = shout
+yell = shout                 # 函数可赋给变量
 print(yell("hi"))              # HI
 print(yell.__name__)           # shout，函数对象保留原名
 
 # 2. 存进列表，批量调用
-ops = [str.upper, str.lower, str.title]
-for op in ops:
-    print(op("hello world"))
+ops = [str.upper, str.lower, str.title]   # 把方法放进列表
+for op in ops:                     # 遍历 ops，每次取值赋给 op
+    print(op("hello world"))             # 逐个调用
 
 # 3. 作为参数
-def apply(func, value):
-    return func(value)
+def apply(func, value):       # 接收函数作为参数
+    return func(value)        # 调用传入的函数
 print(apply(len, "abc"))       # 3
 print(apply(abs, -5))          # 5
 
 # 4. 作为字典的值，实现「命令分发」
-commands = {
+commands = {                       # 将 { 赋给 commands
     "upper": str.upper,
     "lower": str.lower,
 }
@@ -1130,22 +1130,22 @@ print(commands["upper"]("abc"))   # ABC
 \`functools.partial\` 可以「固定」一个函数的部分参数，生成一个新函数，常用于简化重复调用、配置回调：
 
 \`\`\`py
-from functools import partial
+from functools import partial              # 导入偏函数工具
 
-def power(base, exp):
-    return base ** exp
+def power(base, exp):              # 通用幂函数
+    return base ** exp            # 返回 base 的 exp 次方
 
 square = partial(power, exp=2)   # 固定 exp=2
 cube = partial(power, exp=3)     # 固定 exp=3
-print(square(5))   # 25
+print(square(5))   # 25          # 只需传 base
 print(cube(5))     # 125
 \`\`\`
 
 partial 不创建新逻辑，只是「预先绑定」部分参数，等价于：
 
 \`\`\`py
-def square(base):
-    return power(base, exp=2)
+def square(base):              # 偏函数的手写等价
+    return power(base, exp=2)  # 固定 exp=2 调用 power
 \`\`\`
 
 它在配置回调（如 GUI 按钮的点击处理）、简化带很多默认参数的调用时非常实用。
@@ -1343,7 +1343,7 @@ Python 内置了四种最常用的「容器」类型：**列表（list）**、**
 a = [1, 2, 3]              # 字面量
 b = list("abc")            # ['a','b','c']，从可迭代对象转换
 c = [0] * 5                # [0,0,0,0,0]，重复
-d = list(range(5))         # [0,1,2,3,4]
+d = list(range(5))         # [0,1,2,3,4]，range 转列表
 empty = []                 # 空列表
 \`\`\`
 
@@ -1354,7 +1354,7 @@ empty = []                 # 空列表
 **索引**从 0 开始，支持负数（-1 是最后一个）：
 
 \`\`\`py
-fruits = ["苹果", "香蕉", "橘子", "葡萄"]
+fruits = ["苹果", "香蕉", "橘子", "葡萄"]   # 列表可通过索引取元素
 print(fruits[0])    # 苹果
 print(fruits[-1])   # 葡萄
 \`\`\`
@@ -1362,7 +1362,7 @@ print(fruits[-1])   # 葡萄
 **切片** \`[start:stop:step]\` 取一段子序列，左闭右开：
 
 \`\`\`py
-nums = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+nums = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]   # 列表切片
 print(nums[2:5])     # [2,3,4]
 print(nums[:3])      # [0,1,2]   从头
 print(nums[7:])      # [7,8,9]   到尾
@@ -1375,11 +1375,11 @@ print(nums[::-1])    # [9,8,...,0]  反转
 ### 1.3 增删改查
 
 \`\`\`py
-lst = [1, 2, 3]
+lst = [1, 2, 3]       # 原列表
 lst.append(4)         # 末尾追加 → [1,2,3,4]
 lst.insert(0, 0)      # 指定位置插入 → [0,1,2,3,4]
 lst.extend([5, 6])    # 扩展另一个列表 → [0,1,2,3,4,5,6]
-lst[0] = 100          # 修改元素
+lst[0] = 100          # 修改元素，按索引赋值
 lst.remove(100)       # 按值删除第一个匹配
 del lst[0]            # 按索引删除
 popped = lst.pop()    # 弹出末尾元素并返回
@@ -1402,8 +1402,8 @@ popped = lst.pop()    # 弹出末尾元素并返回
 ### 1.4 列表推导式
 
 \`\`\`py
-squares = [x ** 2 for x in range(5)]        # [0,1,4,9,16]
-evens = [x for x in range(10) if x % 2 == 0]  # 带条件
+squares = [x ** 2 for x in range(5)]        # [0,1,4,9,16]，对每个 x 求平方
+evens = [x for x in range(10) if x % 2 == 0]  # 带条件，只保留偶数
 \`\`\`
 
 推导式是 Python 最具特色的写法之一，下一章会专门深入。
@@ -1411,23 +1411,23 @@ evens = [x for x in range(10) if x % 2 == 0]  # 带条件
 ### 1.5 嵌套列表（二维）
 
 \`\`\`py
-matrix = [
+matrix = [                         # 将 [ 赋给 matrix
     [1, 2, 3],
     [4, 5, 6],
     [7, 8, 9],
-]
-print(matrix[1][2])   # 6，第 2 行第 3 列
+]                      # 二维列表（3 行 3 列）
+print(matrix[1][2])   # 6，第 2 行第 3 列（先用 [1] 取行，再用 [2] 取列）
 \`\`\`
 
 **陷阱**：\`[[0]*3]*3\` 创建的三行会**共享同一个内层列表**（因为是引用复制），改一行会影响全部。正确写法用推导式：
 
 \`\`\`py
 bad = [[0]*3]*3       # 三行指向同一对象
-bad[0][0] = 1
+bad[0][0] = 1                 # 改一行，三行都变（共享内层列表）
 print(bad)            # [[1,0,0],[1,0,0],[1,0,0]] 全变！
 
 good = [[0]*3 for _ in range(3)]   # 每行独立
-good[0][0] = 1
+good[0][0] = 1                 # 只改第一行
 print(good)           # [[1,0,0],[0,0,0],[0,0,0]]
 \`\`\`
 
@@ -1440,9 +1440,9 @@ print(good)           # [[1,0,0],[0,0,0],[0,0,0]]
 元组和列表很像，但**创建后不能修改**（不能增删改元素）：
 
 \`\`\`py
-t = (1, 2, 3)
+t = (1, 2, 3)                      # 创建元组并赋给 t
 print(t[0])       # 1，索引和列表一样
-# t[0] = 10       # 报错！TypeError，元组不可变
+# t[0] = 10       # 报错！TypeError，元组不可变，不能赋值
 \`\`\`
 
 注意**单元素元组**要加逗号：\`(1,)\` 才是元组，\`(1)\` 只是括号里的整数 1。
@@ -1470,7 +1470,7 @@ a, b = b, a           # 经典交换，无需临时变量
 **扩展解包**（3.x）：用 \`*\` 收集剩余元素：
 
 \`\`\`py
-first, *rest = [1, 2, 3, 4]   # first=1, rest=[2,3,4]
+first, *rest = [1, 2, 3, 4]   # first=1, rest=[2,3,4]，* 收集剩余元素
 *a, last = [1, 2, 3, 4]       # a=[1,2,3], last=4
 \`\`\`
 
@@ -1479,9 +1479,9 @@ first, *rest = [1, 2, 3, 4]   # first=1, rest=[2,3,4]
 普通元组只能用索引访问，可读性差。\`collections.namedtuple\` 创建一个「有字段名」的元组子类：
 
 \`\`\`py
-from collections import namedtuple
-Point = namedtuple("Point", ["x", "y"])
-p = Point(3, 4)
+from collections import namedtuple # 从 collections 导入 namedtuple
+Point = namedtuple("Point", ["x", "y"])  # 将 namedtuple("Point", ["x", "y"]) 赋给 Point
+p = Point(3, 4)                    # 将 Point(3, 4) 赋给 p
 print(p.x, p.y)      # 3 4，用名字访问
 print(p[0])          # 3，仍可索引
 \`\`\`
@@ -1498,22 +1498,22 @@ print(p[0])          # 3，仍可索引
 
 \`\`\`py
 s = {1, 2, 3, 3}     # {1, 2, 3}，自动去重
-s2 = set([1, 2, 2, 3])
+s2 = set([1, 2, 2, 3])   # 从列表创建集合，同样去重
 empty = set()        # 空集合，注意不能写 {}（那是空字典）
 \`\`\`
 
 最大用途：**去重**和**成员测试**。集合的 \`in\` 是 O(1) 平均，比列表快得多。
 
 \`\`\`py
-nums = [1, 2, 2, 3, 3, 3]
-unique = list(set(nums))   # 去重
+nums = [1, 2, 2, 3, 3, 3]          # 创建列表并赋给 nums
+unique = list(set(nums))   # set 去重后转回列表
 \`\`\`
 
 ### 3.2 集合运算
 
 \`\`\`py
-a = {1, 2, 3, 4}
-b = {3, 4, 5, 6}
+a = {1, 2, 3, 4}                   # 创建集合并赋给 a
+b = {3, 4, 5, 6}                   # 创建集合并赋给 b
 
 print(a & b)    # 交集 {3, 4}
 print(a | b)    # 并集 {1,2,3,4,5,6}
@@ -1534,7 +1534,7 @@ squares = {x ** 2 for x in range(5)}   # {0,1,4,9,16}
 普通 set 是可变的（不能哈希，不能做集合元素或字典键）。\`frozenset\` 是**不可变集合**，可哈希：
 
 \`\`\`py
-fs = frozenset([1, 2, 3])
+fs = frozenset([1, 2, 3])          # 将 frozenset([1, 2, 3]) 赋给 fs
 # fs.add(4)   # 报错，不可变
 \`\`\`
 
@@ -1548,7 +1548,7 @@ fs = frozenset([1, 2, 3])
 d = {"name": "Alice", "age": 30}    # 字面量
 d2 = dict(name="Bob", age=25)        # 关键字参数
 d3 = dict([("a", 1), ("b", 2)])      # 键值对列表
-d4 = {k: v for k, v in zip(["x","y"], [1,2])}  # 推导式
+d4 = {k: v for k, v in zip(["x","y"], [1,2])}  # 推导式，zip 配对后构建
 \`\`\`
 
 字典是**键值映射**，键必须可哈希（字符串、数字、元组可以；列表、字典不行）。
@@ -1556,7 +1556,7 @@ d4 = {k: v for k, v in zip(["x","y"], [1,2])}  # 推导式
 ### 4.2 访问
 
 \`\`\`py
-d = {"name": "Alice", "age": 30}
+d = {"name": "Alice", "age": 30}   # 创建字典并赋给 d
 print(d["name"])       # Alice
 # print(d["city"])     # KeyError！键不存在会报错
 print(d.get("city"))          # None，键不存在返回 None，不报错
@@ -1568,9 +1568,9 @@ print(d.get("city", "未知"))   # "未知"，指定默认值
 ### 4.3 增删改
 
 \`\`\`py
-d = {"a": 1}
-d["b"] = 2          # 新增
-d["a"] = 10         # 修改
+d = {"a": 1}                       # 创建字典并赋给 d
+d["b"] = 2          # 新增键值对
+d["a"] = 10         # 修改已有键的值
 del d["b"]          # 删除键值对
 d.pop("a")          # 弹出并返回值
 \`\`\`
@@ -1589,7 +1589,7 @@ d.pop("a")          # 弹出并返回值
 | \`in\` | 判断键是否存在 |
 
 \`\`\`py
-d = {"a": 1, "b": 2}
+d = {"a": 1, "b": 2}               # 创建字典并赋给 d
 print(list(d.keys()))    # ['a', 'b']
 print(list(d.values()))  # [1, 2]
 print(list(d.items()))   # [('a',1), ('b',2)]
@@ -1599,7 +1599,7 @@ d.setdefault("c", 3)     # c 不存在，设为 3
 d.setdefault("c", 99)    # c 已存在，返回 3，不改
 
 # update：合并覆盖
-d.update({"a": 100, "d": 4})
+d.update({"a": 100, "d": 4})       # 对 d 调用 更新 方法，参数 {"a": 100, "d": 4}
 print(d)   # {'a':100,'b':2,'c':3,'d':4}
 \`\`\`
 
@@ -1609,18 +1609,18 @@ print(d)   # {'a':100,'b':2,'c':3,'d':4}
 
 \`\`\`py
 # 翻转键值
-d = {"a": 1, "b": 2}
+d = {"a": 1, "b": 2}               # 创建字典并赋给 d
 flipped = {v: k for k, v in d.items()}   # {1:'a', 2:'b'}
 \`\`\`
 
 ### 4.6 遍历字典
 
 \`\`\`py
-d = {"a": 1, "b": 2}
+d = {"a": 1, "b": 2}               # 创建字典并赋给 d
 for key in d:                  # 默认遍历键
-    print(key)
+    print(key)                     # 输出 key
 for key, value in d.items():   # 同时拿键值（推荐）
-    print(key, value)
+    print(key, value)              # 输出 key, value
 \`\`\`
 
 ---
@@ -1640,8 +1640,8 @@ for key, value in d.items():   # 同时拿键值（推荐）
 **浅拷贝陷阱**：列表/字典的拷贝（切片、copy()）是浅拷贝——内层嵌套对象仍是引用共享。要完全独立用 \`copy.deepcopy()\`。
 
 \`\`\`py
-import copy
-a = [[1, 2], [3, 4]]
+import copy                        # 导入 copy 模块
+a = [[1, 2], [3, 4]]               # 创建列表并赋给 a
 b = a.copy()           # 浅拷贝
 b[0][0] = 99
 print(a)               # [[99,2],[3,4]] ← 内层被改了！
@@ -1664,7 +1664,7 @@ c = copy.deepcopy(a)   # 深拷贝，完全独立
 | 适用类型 | 仅 list | list / tuple / str / dict / set 等 |
 
 \`\`\`py
-nums = [3, 1, 4, 1, 5, 9, 2, 6]
+nums = [3, 1, 4, 1, 5, 9, 2, 6]    # 创建列表并赋给 nums
 print(sorted(nums))         # [1, 1, 2, 3, 4, 5, 6, 9]，原列表不变
 print(nums)                 # [3, 1, 4, ...] 原列表还在
 
@@ -1680,7 +1680,7 @@ print(sorted((3, 1, 2)))    # [1, 2, 3]
 
 \`\`\`py
 # 先按年龄排，再按姓名排，最终姓名相同时年龄顺序不变
-people = [("Alice", 30), ("Bob", 25), ("Alice", 25)]
+people = [("Alice", 30), ("Bob", 25), ("Alice", 25)]  # 创建列表并赋给 people
 people.sort(key=lambda p: p[1])     # 先按年龄
 people.sort(key=lambda p: p[0])     # 再按姓名，同龄 Alice 仍在前
 \`\`\`
@@ -1696,8 +1696,8 @@ people.sort(key=lambda p: p[0])     # 再按姓名，同龄 Alice 仍在前
 \`keys()/values()/items()\` 返回的是**视图对象**，会随字典变化实时反映：
 
 \`\`\`py
-d = {"a": 1, "b": 2}
-keys = d.keys()
+d = {"a": 1, "b": 2}               # 创建字典并赋给 d
+keys = d.keys()                    # 将 d.keys() 赋给 keys
 print(keys)            # dict_keys(['a', 'b'])
 d["c"] = 3             # 修改字典
 print(keys)            # dict_keys(['a', 'b', 'c'])，视图自动更新
@@ -1713,8 +1713,8 @@ print("a" in keys)     # True，视图支持 in 测试
 Python 3.9+ 支持用 \`|\` 合并字典，\`|=\` 原地更新：
 
 \`\`\`py
-d1 = {"a": 1, "b": 2}
-d2 = {"b": 20, "c": 3}
+d1 = {"a": 1, "b": 2}              # 创建字典并赋给 d1
+d2 = {"b": 20, "c": 3}             # 创建字典并赋给 d2
 merged = d1 | d2       # {'a':1, 'b':20, 'c':3}，右边覆盖左边同键
 d1 |= d2               # 等价于 d1.update(d2)
 \`\`\`
@@ -1728,10 +1728,10 @@ d1 |= d2               # 等价于 d1.update(d2)
 
 \`\`\`py
 # 词频统计：字典的经典用法
-text = "the cat sat on the mat the cat"
-freq = {}
-for word in text.split():
-    freq[word] = freq.get(word, 0) + 1
+text = "the cat sat on the mat the cat"  # 将字符串 "the cat sat on the mat the cat" 赋给 text
+freq = {}                          # 创建集合并赋给 freq
+for word in text.split():           # 按空白分割成单词列表
+    freq[word] = freq.get(word, 0) + 1   # 不存在时默认 0，再加 1
 print(freq)   # {'the':3, 'cat':2, 'sat':1, 'on':1, 'mat':1}
 \`\`\`
 
@@ -1754,11 +1754,11 @@ print(freq)   # {'the':3, 'cat':2, 'sat':1, 'on':1, 'mat':1}
 
 \`\`\`py
 # 反面教材：用 list 做大量成员判断，慢
-big = list(range(100000))
+big = list(range(100000))          # 将 list(range(100000)) 赋给 big
 # if 99999 in big: ...   # O(n)，要扫十万次
 
 # 正确：转成 set
-big_set = set(big)
+big_set = set(big)                 # 将 set(big) 赋给 big_set
 # if 99999 in big_set: ...  # O(1)，飞快
 \`\`\`
 
@@ -1952,13 +1952,13 @@ print("按频率降序:", sorted_freq)
 它等价于：
 
 \`\`\`py
-result = []
-for 变量 in 可迭代对象:
-    result.append(表达式)
+result = []                        # 创建列表并赋给 result
+for 变量 in 可迭代对象:                   # 遍历 可迭代对象，每次取值赋给 变量
+    result.append(表达式)             # 对 result 调用 追加 方法，参数 表达式
 \`\`\`
 
 \`\`\`py
-squares = [x ** 2 for x in range(5)]
+squares = [x ** 2 for x in range(5)]   # 对 0-4 每个数求平方
 print(squares)   # [0, 1, 4, 9, 16]
 \`\`\`
 
@@ -1969,11 +1969,11 @@ print(squares)   # [0, 1, 4, 9, 16]
 \`\`\`
 
 \`\`\`py
-evens = [x for x in range(10) if x % 2 == 0]
+evens = [x for x in range(10) if x % 2 == 0]  # 创建列表并赋给 evens
 print(evens)   # [0, 2, 4, 6, 8]
 
 # 条件也可以放在表达式里（三元）
-labels = ["偶" if x % 2 == 0 else "奇" for x in range(5)]
+labels = ["偶" if x % 2 == 0 else "奇" for x in range(5)]  # 创建列表并赋给 labels
 print(labels)   # ['偶', '奇', '偶', '奇', '偶']
 \`\`\`
 
@@ -1988,12 +1988,12 @@ print(labels)   # ['偶', '奇', '偶', '奇', '偶']
 用 \`{}\` + \`键:值\` 表达式：
 
 \`\`\`py
-squares = {x: x ** 2 for x in range(5)}
+squares = {x: x ** 2 for x in range(5)}  # 创建字典并赋给 squares
 print(squares)   # {0:0, 1:1, 2:4, 3:9, 4:16}
 
 # 翻转键值
-d = {"a": 1, "b": 2}
-flipped = {v: k for k, v in d.items()}
+d = {"a": 1, "b": 2}               # 创建字典并赋给 d
+flipped = {v: k for k, v in d.items()}  # 创建字典并赋给 flipped
 \`\`\`
 
 字典推导式常用于「从一组数据构建映射」或「变换字典」。
@@ -2005,8 +2005,8 @@ flipped = {v: k for k, v in d.items()}
 用 \`{}\` 但表达式不是 \`键:值\`：
 
 \`\`\`py
-nums = [1, -2, 3, -4, 5]
-abs_set = {abs(x) for x in nums}
+nums = [1, -2, 3, -4, 5]           # 创建列表并赋给 nums
+abs_set = {abs(x) for x in nums}   # 创建集合并赋给 abs_set
 print(abs_set)   # {1, 2, 3, 4, 5}，自动去重
 \`\`\`
 
@@ -2017,7 +2017,7 @@ print(abs_set)   # {1, 2, 3, 4, 5}，自动去重
 把列表推导式的 \`[]\` 换成 \`()\`，得到一个**生成器**——它**惰性求值**，不一次性生成所有元素，节省内存：
 
 \`\`\`py
-gen = (x ** 2 for x in range(5))
+gen = (x ** 2 for x in range(5))   # 创建元组并赋给 gen
 print(gen)        # <generator object>，还不是列表
 print(list(gen))  # [0, 1, 4, 9, 16]
 \`\`\`
@@ -2026,7 +2026,7 @@ print(list(gen))  # [0, 1, 4, 9, 16]
 
 \`\`\`py
 # 求平方和，用生成器不建中间列表
-total = sum(x ** 2 for x in range(1000000))
+total = sum(x ** 2 for x in range(1000000))  # 将 sum(x ** 2 for x in range(1000000)) 赋给 total
 \`\`\`
 
 这里 \`sum(...)\` 直接消费生成器，内存占用是 O(1) 而非 O(n)。
@@ -2039,25 +2039,25 @@ total = sum(x ** 2 for x in range(1000000))
 
 \`\`\`py
 # 把二维列表展平
-matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
-flat = [num for row in matrix for num in row]
+matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]  # 创建列表并赋给 matrix
+flat = [num for row in matrix for num in row]  # 创建列表并赋给 flat
 print(flat)   # [1,2,3,4,5,6,7,8,9]
 \`\`\`
 
 读法：**从左到右就是嵌套 for 的顺序**。等价于：
 
 \`\`\`py
-flat = []
-for row in matrix:
-    for num in row:
-        flat.append(num)
+flat = []                          # 创建列表并赋给 flat
+for row in matrix:                 # 遍历 matrix，每次取值赋给 row
+    for num in row:                # 遍历 row，每次取值赋给 num
+        flat.append(num)           # 对 flat 调用 追加 方法，参数 num
 \`\`\`
 
 ### 5.2 嵌套表达式（生成二维）
 
 \`\`\`py
 # 3x4 的零矩阵
-grid = [[0 for _ in range(4)] for _ in range(3)]
+grid = [[0 for _ in range(4)] for _ in range(3)]  # 创建列表并赋给 grid
 \`\`\`
 
 注意外层是 \`[]\`（列表推导式），生成的是「列表的列表」。
@@ -2070,9 +2070,9 @@ grid = [[0 for _ in range(4)] for _ in range(3)]
 
 \`\`\`py
 # 同时带过滤条件和三元表达式
-data = [1, -2, 3, -4, 5, -6]
+data = [1, -2, 3, -4, 5, -6]       # 创建列表并赋给 data
 # 只取正数，并把它们标记
-result = [x if x > 2 else 0 for x in data if x > 0]
+result = [x if x > 2 else 0 for x in data if x > 0]  # 创建列表并赋给 result
 print(result)   # [1, 0, 3, 5]  ← 过滤掉负数，>2 的保留原值，其余为 0
 \`\`\`
 
@@ -2087,8 +2087,8 @@ print(result)   # [1, 0, 3, 5]  ← 过滤掉负数，>2 的保留原值，其�
 \`map(函数, 可迭代对象)\`：对每个元素应用函数，返回迭代器。
 
 \`\`\`py
-nums = [1, 2, 3, 4]
-squares = list(map(lambda x: x ** 2, nums))
+nums = [1, 2, 3, 4]                # 创建列表并赋给 nums
+squares = list(map(lambda x: x ** 2, nums))  # 将 list(map(lambda x: x ** 2, nums)) 赋给 squares
 # 等价推导式: [x**2 for x in nums]
 \`\`\`
 
@@ -2099,8 +2099,8 @@ map 可以接受多个可迭代对象：\`map(lambda a,b: a+b, [1,2,3], [10,20,3
 \`filter(函数, 可迭代对象)\`：保留使函数返回真的元素。
 
 \`\`\`py
-nums = [1, 2, 3, 4, 5, 6]
-evens = list(filter(lambda x: x % 2 == 0, nums))
+nums = [1, 2, 3, 4, 5, 6]          # 创建列表并赋给 nums
+evens = list(filter(lambda x: x % 2 == 0, nums))  # 将 list(filter(lambda x: x % 2 == 0, nums)) 赋给 evens
 # 等价推导式: [x for x in nums if x%2==0]
 \`\`\`
 
@@ -2109,10 +2109,10 @@ evens = list(filter(lambda x: x % 2 == 0, nums))
 \`reduce\` 在 \`functools\` 模块，它把一个二元函数**累积**地作用到序列上，最终归约成一个值：
 
 \`\`\`py
-from functools import reduce
-nums = [1, 2, 3, 4]
-product = reduce(lambda a, b: a * b, nums)   # 1*2*3*4 = 24
-total = reduce(lambda a, b: a + b, nums)     # 10
+from functools import reduce       # 从 functools 导入 reduce
+nums = [1, 2, 3, 4]                # 创建列表并赋给 nums
+product = reduce(lambda a, b: a * b, nums)   # 1*2*3*4 = 24，累积相乘
+total = reduce(lambda a, b: a + b, nums)     # 10，累积相加
 \`\`\`
 
 执行过程：\`((1*2)*3)*4\`。reduce 适合「连乘、连加、找最值」等需要「把序列压成一个值」的场景。但很多情况下 \`sum()\`、\`max()\` 等内置函数更直接。
@@ -2126,11 +2126,11 @@ total = reduce(lambda a, b: a + b, nums)     # 10
 \`sorted(可迭代对象, key=函数, reverse=bool)\` 返回新列表，\`key\` 指定「按什么排序」：
 
 \`\`\`py
-words = ["banana", "apple", "cherry", "fig"]
+words = ["banana", "apple", "cherry", "fig"]  # 创建列表并赋给 words
 print(sorted(words, key=len))               # 按长度
 print(sorted(words, key=len, reverse=True)) # 按长度降序
 
-students = [("Alice", 90), ("Bob", 75), ("Carol", 88)]
+students = [("Alice", 90), ("Bob", 75), ("Carol", 88)]  # 创建列表并赋给 students
 print(sorted(students, key=lambda s: s[1])) # 按分数
 \`\`\`
 
@@ -2139,9 +2139,9 @@ key 函数对每个元素调用一次，返回用于比较的值。**复杂排�
 多关键字排序：用元组作 key。
 
 \`\`\`py
-data = [("Alice", 90, 18), ("Bob", 90, 20), ("Carol", 88, 19)]
+data = [("Alice", 90, 18), ("Bob", 90, 20), ("Carol", 88, 19)]  # 创建列表并赋给 data
 # 先按分数降序，分数相同按年龄升序
-print(sorted(data, key=lambda s: (-s[1], s[2])))
+print(sorted(data, key=lambda s: (-s[1], s[2])))   # -s[1] 取负实现降序，s[2] 升序
 \`\`\`
 
 ---
@@ -2152,7 +2152,7 @@ print(sorted(data, key=lambda s: (-s[1], s[2])))
 - \`all(可迭代对象)\`：**全部为真**才返回 True（空可迭代返回 True）。
 
 \`\`\`py
-nums = [0, 1, 2, 3]
+nums = [0, 1, 2, 3]                # 创建列表并赋给 nums
 print(any(nums))   # True，有非零
 print(all(nums))   # False，有 0
 
@@ -2172,11 +2172,11 @@ any / all 都是**短路**的：any 遇到真就停，all 遇到假就停。配�
 
 \`\`\`py
 # 推导式（更快）
-squares = [x ** 2 for x in range(1000000)]
+squares = [x ** 2 for x in range(1000000)]  # 创建列表并赋给 squares
 # 循环（较慢）
-squares = []
-for x in range(1000000):
-    squares.append(x ** 2)
+squares = []                       # 创建列表并赋给 squares
+for x in range(1000000):           # 遍历 range(1000000)，每次取值赋给 x
+    squares.append(x ** 2)         # 对 squares 调用 追加 方法，参数 x ** 2
 \`\`\`
 
 但**不要为了微小的性能牺牲可读性**。绝大多数场景，可读性比那点性能差异重要得多。
@@ -2196,7 +2196,7 @@ for x in range(1000000):
 
 \`\`\`py
 # 推导式：清晰
-evens = [x for x in nums if x % 2 == 0]
+evens = [x for x in nums if x % 2 == 0]  # 创建列表并赋给 evens
 
 # 这种就该用循环：太复杂
 # result = [transform(x) for x in data if condition(x) if other(x) for y in ...]
@@ -2219,13 +2219,13 @@ evens = [x for x in nums if x % 2 == 0]
 
 \`\`\`py
 # 列表：占内存，但可重复使用
-sq_list = [x ** 2 for x in range(5)]
+sq_list = [x ** 2 for x in range(5)]  # 创建列表并赋给 sq_list
 print(sq_list)        # [0,1,4,9,16]
 print(sq_list[2])     # 4，可索引
 print(len(sq_list))   # 5，可取长度
 
 # 生成器：省内存，但一次性
-sq_gen = (x ** 2 for x in range(5))
+sq_gen = (x ** 2 for x in range(5))  # 创建元组并赋给 sq_gen
 print(sq_gen)         # <generator object>
 # print(sq_gen[2])    # 报错！生成器不能索引
 print(sum(sq_gen))    # 30，聚合时消费
@@ -2249,7 +2249,7 @@ Python 3 中，**推导式有自己的局部作用域**，循环变量不会「�
 
 \`\`\`py
 # Python 3：i 只在推导式内有效
-squares = [i ** 2 for i in range(3)]
+squares = [i ** 2 for i in range(3)]  # 创建列表并赋给 squares
 print(squares)   # [0, 1, 4]
 # print(i)       # NameError！i 不存在于外部作用域
 \`\`\`
@@ -2265,16 +2265,16 @@ print(squares)   # [0, 1, 4]
 ### 13.1 展平嵌套
 
 \`\`\`py
-nested = [[1, 2], [3, 4], [5, 6]]
-flat = [x for row in nested for x in row]
+nested = [[1, 2], [3, 4], [5, 6]]  # 创建列表并赋给 nested
+flat = [x for row in nested for x in row]  # 创建列表并赋给 flat
 print(flat)   # [1,2,3,4,5,6]
 \`\`\`
 
 ### 13.2 矩阵转置
 
 \`\`\`py
-matrix = [[1, 2, 3], [4, 5, 6]]
-transposed = [[row[i] for row in matrix] for i in range(len(matrix[0]))]
+matrix = [[1, 2, 3], [4, 5, 6]]    # 创建列表并赋给 matrix
+transposed = [[row[i] for row in matrix] for i in range(len(matrix[0]))]  # 创建列表并赋给 transposed
 print(transposed)   # [[1,4],[2,5],[3,6]]
 # 更简洁：zip 解包
 print(list(zip(*matrix)))   # [(1,4),(2,5),(3,6)]
@@ -2283,11 +2283,11 @@ print(list(zip(*matrix)))   # [(1,4),(2,5),(3,6)]
 ### 13.3 用字典做分组（推导式思路）
 
 \`\`\`py
-people = [("Alice", 30), ("Bob", 25), ("Carol", 30)]
+people = [("Alice", 30), ("Bob", 25), ("Carol", 30)]  # 创建列表并赋给 people
 # 按年龄分组
-groups = {}
-for name, age in people:
-    groups.setdefault(age, []).append(name)
+groups = {}                        # 创建集合并赋给 groups
+for name, age in people:           # 遍历 people，每次取值赋给 name, age
+    groups.setdefault(age, []).append(name)  # 对 groups 调用 设置默认值 方法，参数 age, []).append(name
 print(groups)   # {30:['Alice','Carol'], 25:['Bob']}
 \`\`\`
 
@@ -2295,8 +2295,8 @@ print(groups)   # {30:['Alice','Carol'], 25:['Bob']}
 
 \`\`\`py
 # 取偶数的平方
-nums = range(10)
-result = [x ** 2 for x in nums if x % 2 == 0]
+nums = range(10)                   # 将 range(10) 赋给 nums
+result = [x ** 2 for x in nums if x % 2 == 0]  # 创建列表并赋给 result
 print(result)   # [0, 4, 16, 36, 64]
 \`\`\`
 
@@ -2304,13 +2304,13 @@ print(result)   # [0, 4, 16, 36, 64]
 
 \`\`\`py
 # 提取所有单词的首字母
-sentence = "the quick brown fox"
-initials = [w[0] for w in sentence.split()]
+sentence = "the quick brown fox"   # 将字符串 "the quick brown fox" 赋给 sentence
+initials = [w[0] for w in sentence.split()]  # 创建列表并赋给 initials
 print(initials)   # ['t','q','b','f']
 
 # 去除空字符串
-words = ["a", "", "b", "", "c"]
-clean = [w for w in words if w]
+words = ["a", "", "b", "", "c"]    # 创建列表并赋给 words
+clean = [w for w in words if w]    # 创建列表并赋给 clean
 print(clean)   # ['a','b','c']
 \`\`\`
 
@@ -2321,20 +2321,20 @@ print(clean)   # ['a','b','c']
 \`itertools\` 模块提供一堆高效迭代工具，常和生成器/推导式搭配：
 
 \`\`\`py
-from itertools import chain, islice, count
+from itertools import chain, islice, count  # 从 itertools 导入 chain, islice, count
 
 # chain：把多个可迭代对象串起来
-for x in chain([1, 2], [3, 4]):
+for x in chain([1, 2], [3, 4]):    # 遍历 chain([1, 2], [3, 4])，每次取值赋给 x
     print(x)        # 1 2 3 4
 
 # islice：切片生成器（生成器不支持切片，用 islice）
-gen = (x ** 2 for x in range(100))
+gen = (x ** 2 for x in range(100)) # 创建元组并赋给 gen
 print(list(islice(gen, 5)))   # [0,1,4,9,16]，只取前 5 个
 
 # count：无限计数
-for i in count(1):
-    if i > 5:
-        break
+for i in count(1):                 # 遍历 count(1)，每次取值赋给 i
+    if i > 5:                      # 如果 i > 5 成立
+        break                      # 跳出循环
     print(i)        # 1 2 3 4 5
 \`\`\`
 
@@ -2351,13 +2351,13 @@ itertools 的函数都是惰性的，处理大数据流时几乎不占额外内�
 
 \`\`\`py
 # 难调试
-result = [transform(x) for x in data if validate(x)]
+result = [transform(x) for x in data if validate(x)]  # 创建列表并赋给 result
 
 # 改用函数，可单独测试
-def should_keep(x):
-    return validate(x)
+def should_keep(x):                # 定义函数 should_keep，参数：x
+    return validate(x)             # 返回 validate(x)
 
-result = [transform(x) for x in data if should_keep(x)]
+result = [transform(x) for x in data if should_keep(x)]  # 创建列表并赋给 result
 \`\`\`
 
 记住：**推导式是写给人看的**。如果一行推导式需要读三遍才懂，那就该拆成循环或函数。

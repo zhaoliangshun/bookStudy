@@ -64,6 +64,7 @@ export const chapters = [
 
 \`\`\`bash filename="安装 SQLAlchemy"
 # 装核心库
+# 安装 Python 包: sqlalchemy
 pip install sqlalchemy
 
 # 装数据库驱动（按你用的数据库选一个）
@@ -73,22 +74,27 @@ pip install pymysql            # MySQL
 \`\`\`
 
 \`\`\`python filename="创建 engine - 数据库连接入口"
+# 从 sqlalchemy 导入 create_engine
 from sqlalchemy import create_engine
 
 # engine 是数据库连接的"工厂"，所有操作都从它开始
 # URL 格式：方言+驱动://用户:密码@主机:端口/数据库名
 
 # SQLite（开发最方便，单文件）
+# 定义变量 engine，赋值为 create_engine("sqlite:///blog.db", echo=True)
 engine = create_engine("sqlite:///blog.db", echo=True)
 # echo=True 会打印生成的 SQL，学习阶段强烈推荐
 
 # PostgreSQL
+# 定义变量 engine，赋值为 create_engine("postgresql+psycopg2://user:pas...
 engine = create_engine("postgresql+psycopg2://user:pass@localhost:5432/blog")
 
 # MySQL
+# 定义变量 engine，赋值为 create_engine("mysql+pymysql://user:pass@loca...
 engine = create_engine("mysql+pymysql://user:pass@localhost:3306/blog")
 
 # 内存 SQLite（测试用，进程结束就没了）
+# 定义变量 engine，赋值为 create_engine("sqlite:///:memory:")
 engine = create_engine("sqlite:///:memory:")
 \`\`\`
 
@@ -107,13 +113,16 @@ MySQL       mysql+pymysql://user:pwd@host:3306/db
 engine 不是单个连接，而是**连接池**：预先建好一批连接复用，避免每次请求都握手建连。
 
 \`\`\`python filename="连接池参数"
+# 定义变量 engine，赋值为 create_engine(
 engine = create_engine(
+    # "postgresql+psycopg2://user:pass@localhost/blog",
     "postgresql+psycopg2://user:pass@localhost/blog",
     pool_size=5,          # 池里常驻连接数（默认 5）
     max_overflow=10,      # 超出 pool_size 还能临时建多少（默认 10）
     pool_timeout=30,       # 等连接超时秒数（默认 30）
     pool_recycle=3600,    # 连接多久回收（防数据库踢掉闲置连接）
     pool_pre_ping=True,    # 用前先 ping 一下，失效的连接重建
+# )
 )
 \`\`\`
 
@@ -124,36 +133,54 @@ engine = create_engine(
 Core 用 \`Table\` 对象描述表结构，所有 \`Table\` 收集在 \`MetaData\` 里。
 
 \`\`\`python filename="用 Core 定义表"
+# 从 sqlalchemy 导入（多行）
 from sqlalchemy import (
+    # MetaData, Table, Column,
     MetaData, Table, Column,
+    # Integer, String, DateTime, Text, Boolean,
     Integer, String, DateTime, Text, Boolean,
+    # ForeignKey,
     ForeignKey,
+# )
 )
+# 从 datetime 导入 datetime
 from datetime import datetime
 
 # 1. 创建 MetaData 容器（收集所有表定义）
+# 定义变量 metadata，赋值为 MetaData()
 metadata = MetaData()
 
 # 2. 定义 users 表
+# 定义变量 users，赋值为 Table(
 users = Table(
+    # "users", metadata,
     "users", metadata,
     Column("id", Integer, primary_key=True),       # 主键自增
     Column("name", String(50), nullable=False),    # 不允许 NULL
     Column("email", String(120), unique=True),     # 唯一约束
     Column("created_at", DateTime, default=datetime.now),  # 插入时默认值
+# )
 )
 
 # 3. 定义 posts 表
+# 定义变量 posts，赋值为 Table(
 posts = Table(
+    # "posts", metadata,
     "posts", metadata,
+    # 调用 Column()
     Column("id", Integer, primary_key=True),
+    # 调用 Column()
     Column("title", String(200), nullable=False),
+    # 调用 Column()
     Column("body", Text),
+    # 调用 Column()
     Column("published", Boolean, default=False),
     Column("author_id", Integer, ForeignKey("users.id")),  # 外键指向 users.id
+# )
 )
 
 # 4. 在数据库里真正建表（用 engine 执行 DDL）
+# 调用 metadata.create_all()
 metadata.create_all(engine)
 # 生成 SQL：CREATE TABLE users (...); CREATE TABLE posts (...);
 \`\`\`
@@ -187,56 +214,77 @@ LargeBinary        BLOB                         bytes
 ## 六、插入数据：insert
 
 \`\`\`python filename="用 Core 插入数据"
+# 从 sqlalchemy 导入 insert
 from sqlalchemy import insert
 
 # 1. 构造 insert 语句
+# 定义变量 stmt，赋值为 insert(users).values(name="小明", email="xm@exa...
 stmt = insert(users).values(name="小明", email="xm@example.com")
 # 对应 SQL：INSERT INTO users (name, email) VALUES (?, ?)
 
 # 2. 用 engine.connect() 拿连接，执行
+# 使用上下文管理器 engine.connect()，赋值为 conn
 with engine.connect() as conn:
+    # 定义变量 result，赋值为 conn.execute(stmt)
     result = conn.execute(stmt)
     conn.commit()  # ★ 写操作必须 commit 才真正写入
     print("新用户 id：", result.lastrowid)  # 拿到自增 id
 
 # 3. 批量插入
+# 使用上下文管理器 engine.connect()，赋值为 conn
 with engine.connect() as conn:
+    # 调用 conn.execute()
     conn.execute(insert(users), [
+        # {"name": "小红", "email": "xh@example.com"},
         {"name": "小红", "email": "xh@example.com"},
+        # {"name": "小刚", "email": "xg@example.com"},
         {"name": "小刚", "email": "xg@example.com"},
+    # ])
     ])
+    # 调用 conn.commit()
     conn.commit()
 \`\`\`
 
 ## 七、查询数据：select
 
 \`\`\`python filename="用 Core 查询数据"
+# 从 sqlalchemy 导入 select
 from sqlalchemy import select
 
 # 1. 查所有列
+# 定义变量 stmt，赋值为 select(users)
 stmt = select(users)
 # SQL：SELECT * FROM users
 
 # 2. 查指定列
+# 定义变量 stmt，赋值为 select(users.c.name, users.c.email)
 stmt = select(users.c.name, users.c.email)
 # SQL：SELECT name, email FROM users
 # users.c 是列的访问入口
 
 # 3. where 过滤
+# 定义变量 stmt，赋值为 select(users).where(users.c.name == "小明")
 stmt = select(users).where(users.c.name == "小明")
 # SQL：SELECT * FROM users WHERE name = ?
 
 # 4. 多条件
+# 定义变量 stmt，赋值为 select(users).where(
 stmt = select(users).where(
+    # users.c.name == "小明",
     users.c.name == "小明",
+    # 调用 users.c.email.like()
     users.c.email.like("%@example.com"),
+# )
 )
 # SQL：WHERE name = ? AND email LIKE ?
 
 # 5. 执行并取结果
+# 使用上下文管理器 engine.connect()，赋值为 conn
 with engine.connect() as conn:
+    # 定义变量 result，赋值为 conn.execute(stmt)
     result = conn.execute(stmt)
     # 方式一：取所有行，每行是 Row 对象（可像字典/元组访问）
+    # 遍历 result，取 row
     for row in result:
         print(row.name, row["email"])   # 两种访问方式都行
     # 方式二：取一行
@@ -248,19 +296,28 @@ with engine.connect() as conn:
 ## 八、更新和删除
 
 \`\`\`python filename="用 Core 更新和删除"
+# 从 sqlalchemy 导入 update, delete
 from sqlalchemy import update, delete
 
 # 更新
+# 使用上下文管理器 engine.connect()，赋值为 conn
 with engine.connect() as conn:
+    # 定义变量 stmt，赋值为 update(users).where(users.c.name == "小明").val...
     stmt = update(users).where(users.c.name == "小明").values(name="小明改")
+    # 调用 conn.execute()
     conn.execute(stmt)
+    # 调用 conn.commit()
     conn.commit()
 # SQL：UPDATE users SET name=? WHERE name=?
 
 # 删除
+# 使用上下文管理器 engine.connect()，赋值为 conn
 with engine.connect() as conn:
+    # 定义变量 stmt，赋值为 delete(users).where(users.c.id == 5)
     stmt = delete(users).where(users.c.id == 5)
+    # 调用 conn.execute()
     conn.execute(stmt)
+    # 调用 conn.commit()
     conn.commit()
 # SQL：DELETE FROM users WHERE id=?
 \`\`\`
@@ -272,39 +329,61 @@ with engine.connect() as conn:
 数据库操作要么"提交生效"，要么"回滚撤销"。事务保证一组操作的原子性。
 
 \`\`\`python filename="用 Core 控制事务"
+# 从 sqlalchemy.exc 导入 IntegrityError
 from sqlalchemy.exc import IntegrityError
 
 # 方式一：用 with 自动提交/回滚
+# 使用上下文管理器 engine.begin()，赋值为 conn
 with engine.begin() as conn:
     # 这个块里所有操作要么全成功（自动 commit），要么全回滚（异常）
+    # 调用 conn.execute()
     conn.execute(insert(users).values(name="小华", email="xh2@example.com"))
+    # 调用 conn.execute()
     conn.execute(insert(posts).values(title="第一篇", author_id=1))
     # 抛异常会自动 rollback
 
 # 方式二：手动控制
+# 定义变量 conn，赋值为 engine.connect()
 conn = engine.connect()
+# 定义变量 trans，赋值为 conn.begin()
 trans = conn.begin()
+# 尝试执行，捕获异常
 try:
+    # 调用 conn.execute()
     conn.execute(update(users).where(...).values(...))
+    # 调用 conn.execute()
     conn.execute(delete(posts).where(...))
     trans.commit()   # 提交
+# 捕获 Exception 异常
 except Exception:
     trans.rollback()  # 回滚
+    # raise
     raise
+# 无论是否异常都执行
 finally:
+    # 调用 conn.close()
     conn.close()
 \`\`\`
 
 \`\`\`python filename="事务的典型场景：转账"
 # 转账：A 扣钱 + B 加钱，必须同时成功或同时失败
+# 定义函数 transfer，参数: conn, from_id, to_id, amount
 def transfer(conn, from_id, to_id, amount):
+    # conn.execute(
     conn.execute(
+        # 调用 update()
         update(accounts).where(accounts.c.id == from_id)
+        # .values(balance=accounts.c.balance - amount)
         .values(balance=accounts.c.balance - amount)
+    # )
     )
+    # conn.execute(
     conn.execute(
+        # 调用 update()
         update(accounts).where(accounts.c.id == to_id)
+        # .values(balance=accounts.c.balance + amount)
         .values(balance=accounts.c.balance + amount)
+    # )
     )
     # 如果中间抛异常，外层 with engine.begin() 会自动回滚
 \`\`\`
@@ -312,48 +391,80 @@ def transfer(conn, from_id, to_id, amount):
 ## 十、完整示例：Core 建表与查询
 
 \`\`\`python filename="core_demo.py - 完整 Core 演示"
+# 从 sqlalchemy 导入（多行）
 from sqlalchemy import (
+    # create_engine, MetaData, Table, Column,
     create_engine, MetaData, Table, Column,
+    # Integer, String, Text, ForeignKey, select, insert,
     Integer, String, Text, ForeignKey, select, insert,
+# )
 )
 
 # 1. 连接（开发用内存 SQLite，echo 看生成的 SQL）
+# 定义变量 engine，赋值为 create_engine("sqlite:///:memory:", echo=True...
 engine = create_engine("sqlite:///:memory:", echo=True)
 
 # 2. 定义表
+# 定义变量 metadata，赋值为 MetaData()
 metadata = MetaData()
+# 定义变量 users，赋值为 Table("users", metadata,
 users = Table("users", metadata,
+    # 调用 Column()
     Column("id", Integer, primary_key=True),
+    # 调用 Column()
     Column("name", String(50), nullable=False),
+# )
 )
+# 定义变量 posts，赋值为 Table("posts", metadata,
 posts = Table("posts", metadata,
+    # 调用 Column()
     Column("id", Integer, primary_key=True),
+    # 调用 Column()
     Column("title", String(200)),
+    # 调用 Column()
     Column("author_id", ForeignKey("users.id")),
+# )
 )
 
 # 3. 建表
+# 调用 metadata.create_all()
 metadata.create_all(engine)
 
 # 4. 插入数据
 with engine.begin() as conn:  # begin 自动提交
+    # 调用 conn.execute()
     conn.execute(insert(users), [
+        # {"name": "小明"}, {"name": "小红"},
         {"name": "小明"}, {"name": "小红"},
+    # ])
     ])
+    # 调用 conn.execute()
     conn.execute(insert(posts), [
+        # {"title": "Core 入门", "author_id": 1},
         {"title": "Core 入门", "author_id": 1},
+        # {"title": "ORM 进阶", "author_id": 1},
         {"title": "ORM 进阶", "author_id": 1},
+        # {"title": "查询技巧", "author_id": 2},
         {"title": "查询技巧", "author_id": 2},
+    # ])
     ])
 
 # 5. 查询：小明写的所有文章
+# 使用上下文管理器 engine.connect()，赋值为 conn
 with engine.connect() as conn:
+    # 定义变量 stmt，赋值为 (
     stmt = (
+        # 调用 select()
         select(posts.c.title, users.c.name)
+        # .select_from(posts.join(users, posts.c.author_id =
         .select_from(posts.join(users, posts.c.author_id == users.c.id))
+        # .where(users.c.name == "小明")
         .where(users.c.name == "小明")
+    # )
     )
+    # 遍历 conn.execute(stmt)，取 row
     for row in conn.execute(stmt):
+        # 调用 print()
         print(f"{row.name} 写了《{row.title}》")
 # SQL：SELECT posts.title, users.name FROM posts JOIN users ON ... WHERE users.name = ?
 \`\`\`
@@ -427,17 +538,25 @@ SQLAlchemy 2.0 在 2023 年发布，是重大升级。如果你看的教程还�
 ## 三、声明式基类与模型定义
 
 \`\`\`python filename="models.py - 2.0 风格模型定义"
+# 从 datetime 导入 datetime
 from datetime import datetime
+# 从 typing 导入 Optional, List
 from typing import Optional, List
+# 从 sqlalchemy 导入 String, ForeignKey, func
 from sqlalchemy import String, ForeignKey, func
+# 从 sqlalchemy.orm 导入 DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 # 1. 所有模型的基类：自定义一个 Base
+# 定义类 Base，继承 DeclarativeBase
 class Base(DeclarativeBase):
+    # """所有模型的根基类，被 Session 和迁移工具共享。"""
     """所有模型的根基类，被 Session 和迁移工具共享。"""
+    # 空操作占位
     pass
 
 # 2. User 模型 → 对应 users 表
+# 定义类 User，继承 Base
 class User(Base):
     __tablename__ = "users"  # 显式指定表名
 
@@ -449,24 +568,35 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())  # 数据库端默认值
 
     # relationship：声明关联对象，不是表字段
+    # 字段 posts，类型: Mapped[List["Post"]]，默认值: relationship(back_populates="author", cascade="all, delete-orphan")
     posts: Mapped[List["Post"]] = relationship(back_populates="author", cascade="all, delete-orphan")
 
+    # 定义函数 __repr__，返回: str
     def __repr__(self) -> str:
+        # 返回 f"<User id={self.id} name={self.name!r}>"
         return f"<User id={self.id} name={self.name!r}>"
 
 # 3. Post 模型 → 对应 posts 表
+# 定义类 Post，继承 Base
 class Post(Base):
+    # 定义变量 __tablename__，赋值为 "posts"
     __tablename__ = "posts"
 
+    # 字段 id，类型: Mapped[int]，默认值: mapped_column(primary_key=True)
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 字段 title，类型: Mapped[str]，默认值: mapped_column(String(200))
     title: Mapped[str] = mapped_column(String(200))
+    # 字段 body，类型: Mapped[str]，默认值: mapped_column(String(5000))
     body: Mapped[str] = mapped_column(String(5000))
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))  # 外键
     published: Mapped[bool] = mapped_column(default=False)  # Python 端默认值
 
+    # 字段 author，类型: Mapped["User"]，默认值: relationship(back_populates="posts")
     author: Mapped["User"] = relationship(back_populates="posts")
 
+    # 定义函数 __repr__，返回: str
     def __repr__(self) -> str:
+        # 返回 f"<Post id={self.id} title={self.title!r}>"
         return f"<Post id={self.id} title={self.title!r}>"
 \`\`\`
 
@@ -505,13 +635,17 @@ Mapped[bytes]             → BLOB
 ## 四、engine 与建表
 
 \`\`\`python filename="创建 engine 并建表"
+# 从 sqlalchemy 导入 create_engine
 from sqlalchemy import create_engine
+# 从 models 导入 Base, User, Post
 from models import Base, User, Post
 
 # 开发用 SQLite
+# 定义变量 engine，赋值为 create_engine("sqlite:///blog.db", echo=True)
 engine = create_engine("sqlite:///blog.db", echo=True)
 
 # 用 Base.metadata 一次性建所有表
+# 调用 Base.metadata.create_all()
 Base.metadata.create_all(engine)
 # 生成 SQL：
 # CREATE TABLE users (...);
@@ -526,40 +660,56 @@ Base.metadata.create_all(engine)
 ORM 通过 **Session** 操作数据库。Session 是"工作区"：你创建对象、修改对象，Session 跟踪这些变化，\`commit()\` 时统一写入数据库。
 
 \`\`\`python filename="创建 Session"
+# 从 sqlalchemy.orm 导入 sessionmaker, Session
 from sqlalchemy.orm import sessionmaker, Session
 
 # 方式一：sessionmaker 工厂（推荐）
+# 定义变量 SessionLocal，赋值为 sessionmaker(bind=engine, expire_on_commit=Fa...
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
 # 用时创建一个 session
+# 定义变量 session，赋值为 SessionLocal()
 session = SessionLocal()
 
 # 方式二：直接用 Session
+# 定义变量 session，赋值为 Session(engine)
 session = Session(engine)
 \`\`\`
 
 \`\`\`python filename="Session 的基本工作流"
+# 从 models 导入 User, Post
 from models import User, Post
 
 # 创建 session
+# 定义变量 session，赋值为 SessionLocal()
 session = SessionLocal()
 
+# 尝试执行，捕获异常
 try:
     # 1. 创建对象（还没入库）
+    # 定义变量 user，赋值为 User(name="小明", email="xm@example.com")
     user = User(name="小明", email="xm@example.com")
     # 2. add 到 session（进入"待写入"区）
+    # 调用 session.add()
     session.add(user)
     # 3. flush：把 INSERT 发到数据库（拿到 user.id），但未提交
+    # 调用 session.flush()
     session.flush()
     print(user.id)  # 现在有值了
     # 4. 创建关联对象
+    # 定义变量 post，赋值为 Post(title="第一篇", body="...", author_id=user....
     post = Post(title="第一篇", body="...", author_id=user.id)
+    # 调用 session.add()
     session.add(post)
     # 5. commit：真正写入，事务结束
+    # 调用 session.commit()
     session.commit()
+# 捕获 Exception 异常
 except Exception:
     session.rollback()  # 出错回滚
+    # raise
     raise
+# 无论是否异常都执行
 finally:
     session.close()     # 用完关掉
 \`\`\`
@@ -579,51 +729,80 @@ close()    关闭 session，释放连接
 Web 应用每个请求用一个独立 Session，请求结束关闭。用依赖注入或上下文管理。
 
 \`\`\`python filename="Flask 里管理 Session"
+# 从 flask 导入 Flask, g
 from flask import Flask, g
+# 从 sqlalchemy 导入 create_engine
 from sqlalchemy import create_engine
+# 从 sqlalchemy.orm 导入 sessionmaker, declarative_base
 from sqlalchemy.orm import sessionmaker, declarative_base
 
+# 定义变量 engine，赋值为 create_engine("sqlite:///blog.db")
 engine = create_engine("sqlite:///blog.db")
+# 定义变量 SessionLocal，赋值为 sessionmaker(bind=engine, expire_on_commit=Fa...
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 Base = declarative_base()  # 等价 DeclarativeBase 的旧式快捷写法
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
 
 # 每个请求前建 session
+# 装饰器：app.before_request
 @app.before_request
+# 定义函数 before_request，参数: 
 def before_request():
+    # g.db = SessionLocal()
     g.db = SessionLocal()
 
 # 请求结束关闭
+# 装饰器：app.teardown_request
 @app.teardown_request
+# 定义函数 teardown_request，参数: exc
 def teardown_request(exc):
+    # 定义变量 db，赋值为 g.pop("db", None)
     db = g.pop("db", None)
+    # 条件判断：如果 db is not None
     if db is not None:
+        # 调用 db.close()
         db.close()
 
 # 视图里用 g.db
+# 装饰器：app.route
 @app.route("/users")
+# 定义函数 list_users，参数: 
 def list_users():
     users = g.db.query(User).all()  # 1.x 风格；2.0 用 select
+    # 返回 {"users": [{"id": u.id, "name": u.name} for u in users]}
     return {"users": [{"id": u.id, "name": u.name} for u in users]}
 \`\`\`
 
 \`\`\`python filename="Flask-SQLAlchemy 扩展（更省心）"
+# 从 flask 导入 Flask
 from flask import Flask
+# 从 flask_sqlalchemy 导入 SQLAlchemy
 from flask_sqlalchemy import SQLAlchemy
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
+# app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite://
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///blog.db"
+# app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = Fal
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)  # db.session 自动管理，请求结束自动关
 
+# 定义类 User，继承 db.Model
 class User(db.Model):
+    # 定义变量 id，赋值为 db.Column(db.Integer, primary_key=True)
     id = db.Column(db.Integer, primary_key=True)
+    # 定义变量 name，赋值为 db.Column(db.String(50))
     name = db.Column(db.String(50))
 
+# 装饰器：app.route
 @app.route("/users")
+# 定义函数 list_users，参数: 
 def list_users():
+    # 定义变量 users，赋值为 db.session.execute(db.select(User)).scalars()...
     users = db.session.execute(db.select(User)).scalars().all()
+    # 返回 {"users": [{"id": u.id, "name": u.name} for u in users]}
     return {"users": [{"id": u.id, "name": u.name} for u in users]}
 \`\`\`
 
@@ -664,13 +843,17 @@ ORM 用 \`DeclarativeBase\` + \`Mapped[T]\` + \`mapped_column()\` 声明模型�
 2.0 风格用 \`select()\` 构造查询语句，\`session.execute()\` 执行。这是和 1.x \`session.query()\` 最大的区别。
 
 \`\`\`python filename="select 基本用法"
+# 从 sqlalchemy 导入 select
 from sqlalchemy import select
+# 从 sqlalchemy.orm 导入 Session
 from sqlalchemy.orm import Session
+# 从 models 导入 User, Post
 from models import User, Post
 
 session = SessionLocal()  # 假设已建好
 
 # 1. 查所有 User
+# 定义变量 stmt，赋值为 select(User)
 stmt = select(User)
 result = session.execute(stmt)         # 执行，返回 Result 对象
 users = result.scalars().all()         # scalars() 取出每行的第一个元素（User 对象）
@@ -681,12 +864,16 @@ user = session.get(User, 1)            # 最快的方式，直接按主键查
 # 等价 select(User).where(User.id == 1)
 
 # 3. 查指定列
+# 定义变量 stmt，赋值为 select(User.name, User.email)
 stmt = select(User.name, User.email)
 rows = session.execute(stmt).all()    # 每行是 Row，不是 User 对象
+# 遍历 rows，取 row
 for row in rows:
+    # 调用 print()
     print(row.name, row.email)
 
 # 4. 取一条
+# 定义变量 stmt，赋值为 select(User).where(User.name == "小明")
 stmt = select(User).where(User.name == "小明")
 user = session.execute(stmt).scalar_one_or_none()  # 没有返回 None，多个报错
 # 或 .first() 取第一条（多个不报错）
@@ -707,47 +894,71 @@ user = session.execute(stmt).scalar_one_or_none()  # 没有返回 None，多个�
 
 \`\`\`python filename="where 条件"
 # 1. 等值
+# 调用 select()
 select(User).where(User.name == "小明")
 # WHERE name = ?
 
 # 2. 不等
+# 调用 select()
 select(User).where(User.age != 18)
+# 调用 select()
 select(User).where(User.age > 18)
 
 # 3. 多条件（默认 AND）
+# 调用 select()
 select(User).where(
+    # User.age > 18,
     User.age > 18,
+    # 调用 User.name.like()
     User.name.like("%明%"),
+# )
 )
 # WHERE age > ? AND name LIKE ?
 
 # 4. 显式 and_ / or_
+# 从 sqlalchemy 导入 and_, or_
 from sqlalchemy import and_, or_
+# 调用 select()
 select(User).where(
+    # or_(
     or_(
+        # User.name == "小明",
         User.name == "小明",
+        # 调用 User.email.like()
         User.email.like("%example%"),
+    # )
     )
+# )
 )
 
 # 5. in / not in
+# 调用 select()
 select(User).where(User.id.in_([1, 2, 3]))
+# 调用 select()
 select(User).where(User.name.notin_(["admin", "root"]))
 
 # 6. like / ilike（大小写不敏感）
+# 调用 select()
 select(Post).where(Post.title.like("%Jinja%"))
+# 调用 select()
 select(Post).where(Post.title.ilike("%jinja%"))
 
 # 7. is null / is not null
+# 调用 select()
 select(User).where(User.email.is_(None))
+# 调用 select()
 select(User).where(User.email.is_not(None))
 
 # 8. between
+# 调用 select()
 select(User).where(User.age.between(18, 60))
 
 # 9. 字符串方法
+# 调用 select()
 select(User).where(User.name.startswith("小"))
+# 调用 select()
 select(User).where(User.name.endswith("明"))
+# 调用 select()
 select(User).where(User.name.contains("明"))
 \`\`\`
 
@@ -755,16 +966,23 @@ select(User).where(User.name.contains("明"))
 
 \`\`\`python filename="排序与分页"
 # 升序
+# 调用 select()
 select(User).order_by(User.name)
 # 降序
+# 从 sqlalchemy 导入 desc
 from sqlalchemy import desc
+# 调用 select()
 select(User).order_by(desc(User.created_at))
 # 多字段
+# 调用 select()
 select(User).order_by(User.age.desc(), User.name.asc())
 
 # 分页：limit + offset
+# 定义变量 page，赋值为 2
 page = 2
+# 定义变量 per_page，赋值为 10
 per_page = 10
+# 调用 select()
 select(User).offset((page - 1) * per_page).limit(per_page)
 # SQL：LIMIT 10 OFFSET 10
 \`\`\`
@@ -774,31 +992,48 @@ select(User).offset((page - 1) * per_page).limit(per_page)
 ## 四、聚合：func.count / sum / avg
 
 \`\`\`python filename="聚合查询"
+# 从 sqlalchemy 导入 func
 from sqlalchemy import func
 
 # 1. 计数
+# 定义变量 stmt，赋值为 select(func.count()).select_from(User)
 stmt = select(func.count()).select_from(User)
 total = session.execute(stmt).scalar()  # 返回整数
 
 # 2. 按字段分组聚合
+# 定义变量 stmt，赋值为 (
 stmt = (
+    # 调用 select()
     select(Post.author_id, func.count().label("post_count"))
+    # .group_by(Post.author_id)
     .group_by(Post.author_id)
+# )
 )
+# 遍历 session.execute(stmt)，取 row
 for row in session.execute(stmt):
+    # 调用 print()
     print(f"作者 {row.author_id} 有 {row.post_count} 篇")
 # SQL：SELECT author_id, COUNT(*) AS post_count FROM posts GROUP BY author_id
 
 # 3. 多聚合
+# 定义变量 stmt，赋值为 (
 stmt = (
+    # select(
     select(
+        # Post.author_id,
         Post.author_id,
+        # 调用 func.count()
         func.count().label("count"),
+        # 调用 func.max()
         func.max(Post.id).label("max_id"),
+        # 调用 func.avg()
         func.avg(func.char_length(Post.title)).label("avg_title_len"),
+    # )
     )
+    # .group_by(Post.author_id)
     .group_by(Post.author_id)
     .having(func.count() > 5)   # having 过滤分组
+# )
 )
 \`\`\`
 
@@ -817,20 +1052,31 @@ func.min(User.age)  MIN(age)
 
 \`\`\`python filename="join 查询"
 # 查所有发布了文章的用户
+# 定义变量 stmt，赋值为 (
 stmt = (
+    # 调用 select()
     select(User)
     .join(Post, Post.author_id == User.id)  # join 条件
+    # .where(Post.published == True)
     .where(Post.published == True)
     .distinct()  # 去重，一个用户多篇文章别重复
+# )
 )
+# 定义变量 users，赋值为 session.execute(stmt).scalars().all()
 users = session.execute(stmt).scalars().all()
 
 # 查文章同时带作者名
+# 定义变量 stmt，赋值为 (
 stmt = (
+    # 调用 select()
     select(Post, User.name)
+    # .join(User, Post.author_id == User.id)
     .join(User, Post.author_id == User.id)
+# )
 )
+# 遍历 session.execute(stmt)，取 post, author_name
 for post, author_name in session.execute(stmt):
+    # 调用 print()
     print(f"{author_name} 写了《{post.title}》")
 \`\`\`
 
@@ -843,21 +1089,28 @@ for post, author_name in session.execute(stmt):
 \`\`\`
 
 \`\`\`python filename="lazy vs eager 加载"
+# 从 sqlalchemy.orm 导入 selectinload, joinedload
 from sqlalchemy.orm import selectinload, joinedload
 
 # ❌ N+1：先查所有文章，循环里访问 author 触发逐条查
+# 定义变量 posts，赋值为 session.execute(select(Post)).scalars().all()
 posts = session.execute(select(Post)).scalars().all()
+# 遍历 posts，取 p
 for p in posts:
     print(p.author.name)  # 每次都发一次 SQL 查 author
 
 # ✅ selectinload：用第二条 IN 查询一次性加载所有关联
+# 定义变量 stmt，赋值为 select(Post).options(selectinload(Post.author...
 stmt = select(Post).options(selectinload(Post.author))
+# 定义变量 posts，赋值为 session.execute(stmt).scalars().all()
 posts = session.execute(stmt).scalars().all()
+# 遍历 posts，取 p
 for p in posts:
     print(p.author.name)  # 不再发 SQL，已预加载
 # SQL：SELECT * FROM posts; SELECT * FROM users WHERE id IN (1,2,3...)
 
 # ✅ joinedload：用 JOIN 一次查回
+# 定义变量 stmt，赋值为 select(Post).options(joinedload(Post.author))
 stmt = select(Post).options(joinedload(Post.author))
 # SQL：SELECT posts.*, users.* FROM posts JOIN users ON ...
 \`\`\`
@@ -873,24 +1126,36 @@ joinedload    一条 JOIN 搞定，适合多对一/一对一
 ORM 也能直接写语句（批量操作时比循环 \`add\` 高效）：
 
 \`\`\`python filename="用 ORM 批量写"
+# 从 sqlalchemy 导入 insert, update, delete
 from sqlalchemy import insert, update, delete
 
 # 批量插入
+# 调用 session.execute()
 session.execute(insert(User), [
+    # {"name": "小华", "email": "xh@example.com"},
     {"name": "小华", "email": "xh@example.com"},
+    # {"name": "小强", "email": "xq@example.com"},
     {"name": "小强", "email": "xq@example.com"},
+# ])
 ])
 
 # 批量更新
+# session.execute(
 session.execute(
+    # 调用 update()
     update(User)
+    # .where(User.name == "小华")
     .where(User.name == "小华")
+    # .values(name="小华改")
     .values(name="小华改")
+# )
 )
 
 # 批量删除
+# 调用 session.execute()
 session.execute(delete(Post).where(Post.published == False))
 
+# 调用 session.commit()
 session.commit()
 \`\`\`
 
@@ -899,26 +1164,40 @@ session.commit()
 ## 七、事务与回滚
 
 \`\`\`python filename="ORM 事务控制"
+# 定义变量 session，赋值为 SessionLocal()
 session = SessionLocal()
+# 尝试执行，捕获异常
 try:
+    # 定义变量 user，赋值为 User(name="小测试", email="test@example.com")
     user = User(name="小测试", email="test@example.com")
+    # 调用 session.add()
     session.add(user)
     session.flush()       # 发 INSERT，拿到 id，但未提交
     # 这里如果出错
+    # 抛出 ValueError 异常: "故意出错"
     raise ValueError("故意出错")
+    # 调用 session.commit()
     session.commit()
+# 捕获 Exception 异常
 except Exception:
     session.rollback()    # 回滚，user 不会入库
+    # raise
     raise
+# 无论是否异常都执行
 finally:
+    # 调用 session.close()
     session.close()
 \`\`\`
 
 \`\`\`python filename="用 session 当上下文管理器"
 # 自动提交/回滚（2.0 推荐写法）
+# 使用上下文管理器 SessionLocal()，赋值为 session
 with SessionLocal() as session:
+    # 定义变量 user，赋值为 User(name="小测试", email="test@example.com")
     user = User(name="小测试", email="test@example.com")
+    # 调用 session.add()
     session.add(user)
+    # 调用 session.commit()
     session.commit()
 # 出异常自动 rollback，结束自动 close
 \`\`\`
@@ -926,61 +1205,101 @@ with SessionLocal() as session:
 ## 八、完整 CRUD 示例
 
 \`\`\`python filename="完整 CRUD 演示"
+# 从 sqlalchemy 导入 create_engine, select, func, desc
 from sqlalchemy import create_engine, select, func, desc
+# 从 sqlalchemy.orm 导入 Session, sessionmaker
 from sqlalchemy.orm import Session, sessionmaker
+# 从 models 导入 Base, User, Post
 from models import Base, User, Post
 
+# 定义变量 engine，赋值为 create_engine("sqlite:///blog.db", echo=True)
 engine = create_engine("sqlite:///blog.db", echo=True)
+# 调用 Base.metadata.create_all()
 Base.metadata.create_all(engine)
+# 定义变量 SessionLocal，赋值为 sessionmaker(bind=engine, expire_on_commit=Fa...
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
 # === Create ===
+# 使用上下文管理器 SessionLocal()，赋值为 session
 with SessionLocal() as session:
+    # 定义变量 alice，赋值为 User(name="Alice", email="alice@x.com")
     alice = User(name="Alice", email="alice@x.com")
+    # 定义变量 bob，赋值为 User(name="Bob", email="bob@x.com")
     bob = User(name="Bob", email="bob@x.com")
+    # 调用 session.add_all()
     session.add_all([alice, bob])
     session.flush()  # 拿到 id
+    # session.add_all([
     session.add_all([
+        # 调用 Post()
         Post(title="Py 入门", body="...", author_id=alice.id, published=True),
+        # 调用 Post()
         Post(title="Web 实战", body="...", author_id=alice.id, published=True),
+        # 调用 Post()
         Post(title="草稿", body="...", author_id=bob.id, published=False),
+    # ])
     ])
+    # 调用 session.commit()
     session.commit()
 
 # === Read ===
+# 使用上下文管理器 SessionLocal()，赋值为 session
 with SessionLocal() as session:
     # 1. 查 Alice 的已发布文章（按时间降序）
+    # 定义变量 stmt，赋值为 (
     stmt = (
+        # 调用 select()
         select(Post)
+        # .join(User)
         .join(User)
+        # .where(User.name == "Alice", Post.published == Tru
         .where(User.name == "Alice", Post.published == True)
+        # .order_by(desc(Post.id))
         .order_by(desc(Post.id))
+    # )
     )
+    # 定义变量 posts，赋值为 session.execute(stmt).scalars().all()
     posts = session.execute(stmt).scalars().all()
 
     # 2. 每个作者的文章数（防 N+1）
+    # 定义变量 stmt，赋值为 (
     stmt = (
+        # 调用 select()
         select(User)
+        # .options(selectinload(User.posts))
         .options(selectinload(User.posts))
+    # )
     )
+    # 定义变量 users，赋值为 session.execute(stmt).scalars().all()
     users = session.execute(stmt).scalars().all()
+    # 遍历 users，取 u
     for u in users:
+        # 调用 print()
         print(f"{u.name} 有 {len(u.posts)} 篇")
 
     # 3. 文章总数
+    # 定义变量 total，赋值为 session.execute(select(func.count()).select_f...
     total = session.execute(select(func.count()).select_from(Post)).scalar()
 
 # === Update ===
+# 使用上下文管理器 SessionLocal()，赋值为 session
 with SessionLocal() as session:
+    # 定义变量 post，赋值为 session.execute(select(Post).where(Post.id ==...
     post = session.execute(select(Post).where(Post.id == 1)).scalar_one()
+    # post.title = "Python 入门（更新版）"
     post.title = "Python 入门（更新版）"
+    # post.published = True
     post.published = True
     session.commit()  # 自动 UPDATE
 
 # === Delete ===
+# 使用上下文管理器 SessionLocal()，赋值为 session
 with SessionLocal() as session:
+    # 定义变量 post，赋值为 session.get(Post, 3)
     post = session.get(Post, 3)
+    # 调用 session.delete()
     session.delete(post)
+    # 调用 session.commit()
     session.commit()
 \`\`\`
 
@@ -1032,49 +1351,76 @@ with SessionLocal() as session:
 最常见的关系：一个 User 有多个 Post。外键 \`author_id\` 在"多"的一方（posts 表）。
 
 \`\`\`python filename="一对多关系定义"
+# 从 sqlalchemy 导入 String, ForeignKey
 from sqlalchemy import String, ForeignKey
+# 从 sqlalchemy.orm 导入 Mapped, mapped_column, relationship, DeclarativeBase
 from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
+# 从 typing 导入 List, Optional
 from typing import List, Optional
 
+# 定义类 Base，继承 DeclarativeBase
 class Base(DeclarativeBase):
+    # 空操作占位
     pass
 
+# 定义类 User，继承 Base
 class User(Base):
+    # 定义变量 __tablename__，赋值为 "users"
     __tablename__ = "users"
+    # 字段 id，类型: Mapped[int]，默认值: mapped_column(primary_key=True)
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 字段 name，类型: Mapped[str]，默认值: mapped_column(String(50))
     name: Mapped[str] = mapped_column(String(50))
 
     # "一"方：声明拥有的多个 Post
     # back_populates 让双向同步：user.posts 和 post.author 互相引用
+    # 字段 posts，类型: Mapped[List["Post"]]，默认值: relationship(back_populates="author")
     posts: Mapped[List["Post"]] = relationship(back_populates="author")
 
+# 定义类 Post，继承 Base
 class Post(Base):
+    # 定义变量 __tablename__，赋值为 "posts"
     __tablename__ = "posts"
+    # 字段 id，类型: Mapped[int]，默认值: mapped_column(primary_key=True)
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 字段 title，类型: Mapped[str]，默认值: mapped_column(String(200))
     title: Mapped[str] = mapped_column(String(200))
     # 外键指向 users.id
+    # 字段 author_id，类型: Mapped[int]，默认值: mapped_column(ForeignKey("users.id"))
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
 
     # "多"方：声明属于哪个 User
+    # 字段 author，类型: Mapped["User"]，默认值: relationship(back_populates="posts")
     author: Mapped["User"] = relationship(back_populates="posts")
 \`\`\`
 
 \`\`\`python filename="一对多关系使用"
+# 使用上下文管理器 SessionLocal()，赋值为 session
 with SessionLocal() as session:
+    # 定义变量 alice，赋值为 User(name="Alice")
     alice = User(name="Alice")
     alice.posts = [  # 直接赋值关联对象，外键自动设
+        # 调用 Post()
         Post(title="第一篇"),
+        # 调用 Post()
         Post(title="第二篇"),
+    # ]
     ]
+    # 调用 session.add()
     session.add(alice)
     session.commit()  # 用户和两篇文章一起入库，author_id 自动填
 
     # 访问：user.posts 直接拿到列表
+    # 定义变量 user，赋值为 session.get(User, 1)
     user = session.get(User, 1)
+    # 遍历 user.posts，取 p
     for p in user.posts:
+        # 调用 print()
         print(p.title)
     # 反向：post.author 拿到作者
+    # 定义变量 post，赋值为 session.get(Post, 1)
     post = session.get(Post, 1)
+    # 调用 print()
     print(post.author.name)
 \`\`\`
 
@@ -1085,24 +1431,38 @@ with SessionLocal() as session:
 在一对多的"多"方加 \`uselist=False\`，就变成一对一。
 
 \`\`\`python filename="一对一关系"
+# 定义类 User，继承 Base
 class User(Base):
+    # 定义变量 __tablename__，赋值为 "users"
     __tablename__ = "users"
+    # 字段 id，类型: Mapped[int]，默认值: mapped_column(primary_key=True)
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 字段 name，类型: Mapped[str]，默认值: mapped_column(String(50))
     name: Mapped[str] = mapped_column(String(50))
     # uselist=False：返回单个对象而非列表
+    # 字段 profile，类型: Mapped["Profile"]，默认值: relationship(back_populates="user", uselist=False)
     profile: Mapped["Profile"] = relationship(back_populates="user", uselist=False)
 
+# 定义类 Profile，继承 Base
 class Profile(Base):
+    # 定义变量 __tablename__，赋值为 "profiles"
     __tablename__ = "profiles"
+    # 字段 id，类型: Mapped[int]，默认值: mapped_column(primary_key=True)
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 字段 bio，类型: Mapped[str]，默认值: mapped_column(String(200))
     bio: Mapped[str] = mapped_column(String(200))
     # 外键 + 唯一约束保证一对一
+    # 字段 user_id，类型: Mapped[int]，默认值: mapped_column(ForeignKey("users.id"), unique=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True)
+    # 字段 user，类型: Mapped["User"]，默认值: relationship(back_populates="profile")
     user: Mapped["User"] = relationship(back_populates="profile")
 
 # 使用
+# 定义变量 user，赋值为 User(name="Alice", profile=Profile(bio="爱编程")...
 user = User(name="Alice", profile=Profile(bio="爱编程"))
+# 调用 session.add()
 session.add(user)
+# 调用 session.commit()
 session.commit()
 print(user.profile.bio)  # 单个对象，不是列表
 \`\`\`
@@ -1112,40 +1472,65 @@ print(user.profile.bio)  # 单个对象，不是列表
 文章和标签：一篇文章有多个标签，一个标签属于多篇文章。需要**中间关联表**。
 
 \`\`\`python filename="多对多关系"
+# 从 sqlalchemy 导入 Table, Column
 from sqlalchemy import Table, Column
 
 # 1. 中间表（用 Core 的 Table 定义，不是 ORM 类）
+# 定义变量 post_tags，赋值为 Table(
 post_tags = Table(
+    # "post_tags", Base.metadata,
     "post_tags", Base.metadata,
+    # 调用 Column()
     Column("post_id", ForeignKey("posts.id"), primary_key=True),
+    # 调用 Column()
     Column("tag_id", ForeignKey("tags.id"), primary_key=True),
+# )
 )
 
+# 定义类 Tag，继承 Base
 class Tag(Base):
+    # 定义变量 __tablename__，赋值为 "tags"
     __tablename__ = "tags"
+    # 字段 id，类型: Mapped[int]，默认值: mapped_column(primary_key=True)
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 字段 name，类型: Mapped[str]，默认值: mapped_column(String(30), unique=True)
     name: Mapped[str] = mapped_column(String(30), unique=True)
     # secondary 指向中间表
+    # 字段 posts，类型: Mapped[List["Post"]]，默认值: relationship(secondary=post_tags, back_populates="tags")
     posts: Mapped[List["Post"]] = relationship(secondary=post_tags, back_populates="tags")
 
+# 定义类 Post，继承 Base
 class Post(Base):
+    # 定义变量 __tablename__，赋值为 "posts"
     __tablename__ = "posts"
+    # 字段 id，类型: Mapped[int]，默认值: mapped_column(primary_key=True)
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 字段 title，类型: Mapped[str]，默认值: mapped_column(String(200))
     title: Mapped[str] = mapped_column(String(200))
+    # 字段 tags，类型: Mapped[List["Tag"]]，默认值: relationship(secondary=post_tags, back_populates="posts")
     tags: Mapped[List["Tag"]] = relationship(secondary=post_tags, back_populates="posts")
 
 # 使用
+# 定义变量 py_tag，赋值为 Tag(name="Python")
 py_tag = Tag(name="Python")
+# 定义变量 web_tag，赋值为 Tag(name="Web")
 web_tag = Tag(name="Web")
+# 定义变量 post，赋值为 Post(title="Flask 入门", tags=[py_tag, web_tag]...
 post = Post(title="Flask 入门", tags=[py_tag, web_tag])
+# 调用 session.add_all()
 session.add_all([py_tag, web_tag, post])
+# 调用 session.commit()
 session.commit()
 
 # 查文章的所有标签
+# 遍历 post.tags，取 t
 for t in post.tags:
+    # 调用 print()
     print(t.name)
 # 反向：查标签下的所有文章
+# 遍历 py_tag.posts，取 p
 for p in py_tag.posts:
+    # 调用 print()
     print(p.title)
 \`\`\`
 
@@ -1161,11 +1546,15 @@ for p in py_tag.posts:
 删一个用户时，他的文章怎么办？\`cascade\` 控制级联行为。
 
 \`\`\`python filename="cascade 配置"
+# 定义类 User，继承 Base
 class User(Base):
     # ...
+    # 字段 posts，类型: Mapped[List["Post"]]，默认值: relationship(
     posts: Mapped[List["Post"]] = relationship(
+        # 定义变量 back_populates，赋值为 "author",
         back_populates="author",
         cascade="all, delete-orphan",  # ★ 关键配置
+    # )
     )
 
 # cascade 选项：
@@ -1179,10 +1568,12 @@ class User(Base):
 \`\`\`python filename="cascade 效果"
 # cascade="all, delete-orphan"
 session.delete(alice)  # 删 alice，她的所有 post 自动删
+# 调用 session.commit()
 session.commit()
 
 # 解除关联也删孤儿
 alice.posts.remove(post1)  # post1 不再属于 alice → 自动删 post1
+# 调用 session.commit()
 session.commit()
 \`\`\`
 
@@ -1194,20 +1585,25 @@ session.commit()
 
 \`\`\`python filename="加载策略对比"
 # 1. lazy="select"（默认）：访问时才发一条 SQL
+# 字段 posts，类型: Mapped[...]，默认值: relationship(lazy="select")
 posts: Mapped[...] = relationship(lazy="select")
 
 # 2. lazy="joined"：JOIN 一次性查回（eager）
+# 字段 posts，类型: Mapped[...]，默认值: relationship(lazy="joined")
 posts: Mapped[...] = relationship(lazy="joined")
 
 # 3. lazy="selectin"：发第二条 IN 查询（eager，推荐一对多）
+# 字段 posts，类型: Mapped[...]，默认值: relationship(lazy="selectin")
 posts: Mapped[...] = relationship(lazy="selectin")
 
 # 4. lazy="subquery"：子查询（少用）
 
 # 5. lazy="raise"：访问就报错（强制你显式预加载，防 N+1）
+# 字段 posts，类型: Mapped[...]，默认值: relationship(lazy="raise")
 posts: Mapped[...] = relationship(lazy="raise")
 
 # 6. lazy="noload"：永远返回空（权限控制）
+# 字段 posts，类型: Mapped[...]，默认值: relationship(lazy="noload")
 posts: Mapped[...] = relationship(lazy="noload")
 \`\`\`
 
@@ -1219,15 +1615,19 @@ lazy="raise"          开发期强制显式预加载，杜绝 N+1
 \`\`\`
 
 \`\`\`python filename="运行时按需切换加载策略"
+# 从 sqlalchemy.orm 导入 selectinload, joinedload, raiseload
 from sqlalchemy.orm import selectinload, joinedload, raiseload
 
 # 这次查询要预加载 posts
+# 定义变量 stmt，赋值为 select(User).options(selectinload(User.posts)...
 stmt = select(User).options(selectinload(User.posts))
 
 # 这次查询不要 posts（提速）
+# 定义变量 stmt，赋值为 select(User).options(raiseload(User.posts))
 stmt = select(User).options(raiseload(User.posts))
 
 # 同时预加载 posts 和 posts 的 tags（多层）
+# 定义变量 stmt，赋值为 select(User).options(selectinload(User.posts)...
 stmt = select(User).options(selectinload(User.posts).selectinload(Post.tags))
 \`\`\`
 
@@ -1244,19 +1644,26 @@ stmt = select(User).options(selectinload(User.posts).selectinload(Post.tags))
 
 \`\`\`python filename="解决 N+1 的几种方式"
 # 方式一：joinedload（多对一推荐）
+# 定义变量 posts，赋值为 session.execute(
 posts = session.execute(
+    # 调用 select()
     select(Post).options(joinedload(Post.author))
+# ).scalars().all()
 ).scalars().all()
 # SQL：SELECT posts.*, users.* FROM posts JOIN users ON ...
 
 # 方式二：selectinload（一对多推荐，避免笛卡尔积）
+# 定义变量 users，赋值为 session.execute(
 users = session.execute(
+    # 调用 select()
     select(User).options(selectinload(User.posts))
+# ).scalars().all()
 ).scalars().all()
 # SQL：SELECT * FROM users; SELECT * FROM posts WHERE user_id IN (1,2,3...)
 
 # 方式三：开发期强制暴露 N+1
 # 把 lazy 设成 "raise"，访问关系就报错，逼你显式预加载
+# 字段 posts，类型: Mapped[...]，默认值: relationship(lazy="raise")
 posts: Mapped[...] = relationship(lazy="raise")
 \`\`\`
 
@@ -1269,111 +1676,185 @@ SQLAlchemy 有个 SQL 日志统计工具，能数出每次请求的查询数
 ## 八、完整示例：博客三表关系
 
 \`\`\`python filename="博客三表模型 - User / Post / Tag"
+# 从 datetime 导入 datetime
 from datetime import datetime
+# 从 typing 导入 List, Optional
 from typing import List, Optional
+# 从 sqlalchemy 导入 String, Text, DateTime, ForeignKey, Table, Column, func
 from sqlalchemy import String, Text, DateTime, ForeignKey, Table, Column, func
+# 从 sqlalchemy.orm 导入 DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+# 定义类 Base，继承 DeclarativeBase
 class Base(DeclarativeBase):
+    # 空操作占位
     pass
 
 # 多对多中间表
+# 定义变量 post_tags，赋值为 Table(
 post_tags = Table(
+    # "post_tags", Base.metadata,
     "post_tags", Base.metadata,
+    # 调用 Column()
     Column("post_id", ForeignKey("posts.id"), primary_key=True),
+    # 调用 Column()
     Column("tag_id", ForeignKey("tags.id"), primary_key=True),
+# )
 )
 
+# 定义类 User，继承 Base
 class User(Base):
+    # 定义变量 __tablename__，赋值为 "users"
     __tablename__ = "users"
+    # 字段 id，类型: Mapped[int]，默认值: mapped_column(primary_key=True)
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 字段 name，类型: Mapped[str]，默认值: mapped_column(String(50))
     name: Mapped[str] = mapped_column(String(50))
+    # 字段 email，类型: Mapped[str]，默认值: mapped_column(String(120), unique=True)
     email: Mapped[str] = mapped_column(String(120), unique=True)
+    # 字段 created_at，类型: Mapped[datetime]，默认值: mapped_column(server_default=func.now())
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     # 一对多：用户拥有多篇文章
+    # 字段 posts，类型: Mapped[List["Post"]]，默认值: relationship(
     posts: Mapped[List["Post"]] = relationship(
+        # 定义变量 back_populates，赋值为 "author",
         back_populates="author",
         cascade="all, delete-orphan",  # 删用户连文章一起删
+    # )
     )
 
+    # 定义函数 __repr__，参数: self
     def __repr__(self):
+        # 返回 f"<User {self.name}>"
         return f"<User {self.name}>"
 
+# 定义类 Post，继承 Base
 class Post(Base):
+    # 定义变量 __tablename__，赋值为 "posts"
     __tablename__ = "posts"
+    # 字段 id，类型: Mapped[int]，默认值: mapped_column(primary_key=True)
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 字段 title，类型: Mapped[str]，默认值: mapped_column(String(200))
     title: Mapped[str] = mapped_column(String(200))
+    # 字段 body，类型: Mapped[Optional[str]]，默认值: mapped_column(Text)
     body: Mapped[Optional[str]] = mapped_column(Text)
+    # 字段 published，类型: Mapped[bool]，默认值: mapped_column(default=False)
     published: Mapped[bool] = mapped_column(default=False)
+    # 字段 created_at，类型: Mapped[datetime]，默认值: mapped_column(server_default=func.now())
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    # 字段 author_id，类型: Mapped[int]，默认值: mapped_column(ForeignKey("users.id"))
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
 
     # 多对一：文章属于一个作者
+    # 字段 author，类型: Mapped["User"]，默认值: relationship(back_populates="posts")
     author: Mapped["User"] = relationship(back_populates="posts")
     # 多对多：文章有多个标签
+    # 字段 tags，类型: Mapped[List["Tag"]]，默认值: relationship(
     tags: Mapped[List["Tag"]] = relationship(
+        # 定义变量 secondary，赋值为 post_tags, back_populates="posts"
         secondary=post_tags, back_populates="posts"
+    # )
     )
 
+    # 定义函数 __repr__，参数: self
     def __repr__(self):
+        # 返回 f"<Post {self.title}>"
         return f"<Post {self.title}>"
 
+# 定义类 Tag，继承 Base
 class Tag(Base):
+    # 定义变量 __tablename__，赋值为 "tags"
     __tablename__ = "tags"
+    # 字段 id，类型: Mapped[int]，默认值: mapped_column(primary_key=True)
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 字段 name，类型: Mapped[str]，默认值: mapped_column(String(30), unique=True)
     name: Mapped[str] = mapped_column(String(30), unique=True)
     # 多对多的另一端
+    # 字段 posts，类型: Mapped[List["Post"]]，默认值: relationship(
     posts: Mapped[List["Post"]] = relationship(
+        # 定义变量 secondary，赋值为 post_tags, back_populates="tags"
         secondary=post_tags, back_populates="tags"
+    # )
     )
 
+    # 定义函数 __repr__，参数: self
     def __repr__(self):
+        # 返回 f"<Tag {self.name}>"
         return f"<Tag {self.name}>"
 \`\`\`
 
 \`\`\`python filename="使用三表关系"
+# 从 sqlalchemy 导入 create_engine, select
 from sqlalchemy import create_engine, select
+# 从 sqlalchemy.orm 导入 sessionmaker, selectinload, joinedload
 from sqlalchemy.orm import sessionmaker, selectinload, joinedload
 
+# 定义变量 engine，赋值为 create_engine("sqlite:///blog.db", echo=True)
 engine = create_engine("sqlite:///blog.db", echo=True)
+# 调用 Base.metadata.create_all()
 Base.metadata.create_all(engine)
+# 定义变量 SessionLocal，赋值为 sessionmaker(bind=engine, expire_on_commit=Fa...
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
+# 使用上下文管理器 SessionLocal()，赋值为 session
 with SessionLocal() as session:
     # 建数据
+    # 定义变量 alice，赋值为 User(name="Alice", email="a@x.com")
     alice = User(name="Alice", email="a@x.com")
+    # 定义变量 py，赋值为 Tag(name="Python")
     py = Tag(name="Python")
+    # 定义变量 web，赋值为 Tag(name="Web")
     web = Tag(name="Web")
+    # alice.posts = [
     alice.posts = [
+        # 调用 Post()
         Post(title="Jinja2", tags=[py, web], published=True),
+        # 调用 Post()
         Post(title="ORM", tags=[py], published=False),
+    # ]
     ]
+    # 调用 session.add()
     session.add(alice)
+    # 调用 session.commit()
     session.commit()
 
     # 查询：列表页要显示作者和标签（防 N+1）
+    # 定义变量 stmt，赋值为 (
     stmt = (
+        # 调用 select()
         select(Post)
+        # .where(Post.published == True)
         .where(Post.published == True)
+        # .options(
         .options(
             joinedload(Post.author),        # 多对一用 joined
             selectinload(Post.tags),         # 多对多用 selectin
+        # )
         )
+        # .order_by(Post.created_at.desc())
         .order_by(Post.created_at.desc())
+    # )
     )
+    # 定义变量 posts，赋值为 session.execute(stmt).scalars().all()
     posts = session.execute(stmt).scalars().all()
+    # 遍历 posts，取 p
     for p in posts:
+        # 调用 print()
         print(f"{p.title} by {p.author.name}")
+        # 调用 print()
         print("  标签：", ", ".join(t.name for t in p.tags))
     # 只发 2 条 SQL：一条 JOIN 查 post+user，一条 IN 查 tags
 
     # 查 Alice 的所有文章（通过关系访问）
+    # 定义变量 alice，赋值为 session.get(User, 1)
     alice = session.get(User, 1)
     print(f"{alice.name} 有 {len(alice.posts)} 篇")  # 触发查询
 
     # 删 Alice：cascade 连文章一起删
+    # 调用 session.delete()
     session.delete(alice)
+    # 调用 session.commit()
     session.commit()
 \`\`\`
 

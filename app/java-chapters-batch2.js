@@ -36,17 +36,17 @@ export const chapters = [
 
 \`\`\`java
 // 定义一个类
-class Student {
+class Student {  // 定义类 Student
     String name;   // 属性
-    int age;
+    int age;  // 声明变量 age（int 类型）
     void study() { // 方法
-        System.out.println(name + "正在学习");
+        System.out.println(name + "正在学习");  // 打印一行到标准输出（自动换行）
     }
 }
 // 创建并使用对象
-Student s = new Student();
-s.name = "张三";
-s.study();
+Student s = new Student();  // 声明变量 s（Student），初始值为 new Student()
+s.name = "张三";  // 为 s.name 赋值："张三"
+s.study();  // 调用 s 的 study 方法
 \`\`\`
 
 ### 二、属性与方法
@@ -55,13 +55,13 @@ s.study();
 - **方法**：描述对象的**行为**。由方法签名（名称 + 参数列表）和方法体组成。
 
 \`\`\`java
-class Student {
+class Student {  // 定义类 Student
     String name;          // 实例属性
-    int score;
+    int score;  // 声明变量 score（int 类型）
     // 实例方法：访问实例属性
-    int addScore(int n) {
-        score += n;
-        return score;
+    int addScore(int n) {  // 方法 addScore，返回 int，参数：int n
+        score += n;  // score += n（复合赋值）
+        return score;  // 返回值：score
     }
 }
 \`\`\`
@@ -105,12 +105,12 @@ Java 提供四种访问修饰符，控制成员的**可见范围**，是实现�
 封装就是**隐藏对象内部的实现细节，对外提供统一的访问接口**。好处是：外部不能随意修改内部状态，可以在 setter 中加入校验逻辑，保证数据的合法性。
 
 \`\`\`java
-class Student {
+class Student {  // 定义类 Student
     private int age; // 私有属性，外部不可直接访问
     public int getAge() { return age; }       // getter
     public void setAge(int age) {             // setter 带校验
         if (age < 0 || age > 150) return;     // 非法值被拒绝
-        this.age = age;
+        this.age = age;  // 为 this.age 赋值：age
     }
 }
 \`\`\`
@@ -124,14 +124,14 @@ class Student {
 - **静态常量**：\`public static final\` 组合，常用于定义全局常量。
 
 \`\`\`java
-class Student {
+class Student {  // 定义类 Student
     static int total = 0;             // 静态变量：统计总人数
     public static final String SCHOOL = "编程大学"; // 静态常量
     public Student() { total++; }     // 每创建一个对象，总数加 1
     public static int getTotal() { return total; } // 静态方法
 }
 // 通过类名访问静态成员
-System.out.println(Student.getTotal());
+System.out.println(Student.getTotal());  // 打印一行到标准输出（自动换行）
 \`\`\`
 
 ### 八、方法重载（Overloading）
@@ -144,8 +144,8 @@ System.out.println(Student.getTotal());
 - **与返回值类型无关**（仅返回值不同不算重载）。
 
 \`\`\`java
-class Calculator {
-    int add(int a, int b) { return a + b; }
+class Calculator {  // 定义类 Calculator
+    int add(int a, int b) { return a + b; }  // 方法 add（返回 int，参数：int a, int b）：返回 a + b
     double add(double a, double b) { return a + b; } // 参数类型不同
     int add(int a, int b, int c) { return a + b + c; } // 参数个数不同
 }
@@ -259,11 +259,11 @@ Java 使用 \`extends\` 关键字表示继承。子类自动获得父类**非 pr
 
 \`\`\`java
 class Animal {           // 父类
-    String name;
-    void eat() { System.out.println(name + "吃东西"); }
+    String name;  // 声明变量 name（String 类型）
+    void eat() { System.out.println(name + "吃东西"); }  // 打印一行到标准输出（自动换行）
 }
 class Dog extends Animal { // 子类继承父类
-    void fetch() { System.out.println(name + "捡飞盘"); }
+    void fetch() { System.out.println(name + "捡飞盘"); }  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -466,12 +466,12 @@ class Cat extends Animal {
 - **抽象方法**（\`abstract\` 修饰，只有声明没有方法体），子类必须实现（除非子类也是抽象类）。
 
 \`\`\`java
-abstract class Shape {
-    String name;
+abstract class Shape {  // 定义抽象类 Shape
+    String name;  // 声明变量 name（String 类型）
     // 抽象方法：只有声明，没有方法体
-    abstract double area();
+    abstract double area();  // 抽象方法 area，返回 double，无参数
     // 普通方法：子类可直接继承
-    void show() { System.out.println(name + ":" + area()); }
+    void show() { System.out.println(name + ":" + area()); }  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -480,7 +480,7 @@ abstract class Shape {
 接口是一组行为规范的集合，使用 \`interface\` 定义。传统接口中的方法默认是 \`public abstract\`（即抽象方法），字段默认是 \`public static final\`（即常量）。
 
 \`\`\`java
-interface Comparable {
+interface Comparable {  // 定义接口 Comparable
     int compareTo(Object other); // 隐式 public abstract
     int MAX = 100;               // 隐式 public static final
 }
@@ -509,11 +509,11 @@ interface Comparable {
 Java 8 允许在接口中用 \`default\` 修饰方法并提供默认实现。它的主要目的是**向后兼容**——为已有接口添加方法时，不必强迫所有实现类都修改。
 
 \`\`\`java
-interface Comparable {
-    int compareTo(Object other);
+interface Comparable {  // 定义接口 Comparable
+    int compareTo(Object other);  // 方法 compareTo，返回 int，参数：Object other
     // default 方法：有方法体，实现类可直接使用或覆盖
-    default void describe() {
-        System.out.println("可比较对象");
+    default void describe() {  // 方法 describe，返回 void，无参数
+        System.out.println("可比较对象");  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -525,8 +525,8 @@ interface Comparable {
 接口也可以定义 \`static\` 方法，属于接口本身，通过**接口名**调用，常用于放置工具方法。
 
 \`\`\`java
-interface Comparable {
-    static void printVersion() { System.out.println("v1.0"); }
+interface Comparable {  // 定义接口 Comparable
+    static void printVersion() { System.out.println("v1.0"); }  // 打印一行到标准输出（自动换行）
 }
 Comparable.printVersion(); // 通过接口名调用
 \`\`\`
@@ -536,7 +536,7 @@ Comparable.printVersion(); // 通过接口名调用
 Java 虽然单继承类，但可以**实现多个接口**，这是 Java 解决"多重继承"问题的方式，既获得多继承的灵活性又避免了"菱形继承"带来的复杂度。
 
 \`\`\`java
-class Circle extends Shape implements Comparable, Drawable {
+class Circle extends Shape implements Comparable, Drawable {  // 定义类 Circle
     // 同时继承抽象类并实现两个接口
 }
 \`\`\`
@@ -546,12 +546,12 @@ class Circle extends Shape implements Comparable, Drawable {
 **函数式接口**指**有且仅有一个抽象方法**的接口（default、static 方法不计）。它可以用 \`@FunctionalInterface\` 注解标注，是 Lambda 表达式的基础。
 
 \`\`\`java
-@FunctionalInterface
-interface Runnable {
-    void run();
+@FunctionalInterface  // 注解：FunctionalInterface
+interface Runnable {  // 定义接口 Runnable
+    void run();  // 方法 run，返回 void，无参数
 }
 // 用 Lambda 创建实例
-Runnable r = () -> System.out.println("运行");
+Runnable r = () -> System.out.println("运行");  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 \`@FunctionalInterface\` 让编译器强制校验"只有一个抽象方法"，防止后续误添加方法破坏函数式语义。JDK 中常见的函数式接口有 \`Runnable\`、\`Comparator\`、\`Callable\` 以及 \`java.util.function\` 包下的 \`Function\`、\`Predicate\`、\`Consumer\`、\`Supplier\` 等。
@@ -744,13 +744,13 @@ Java 所有异常的根类是 \`java.lang.Throwable\`，它有两个重要分支
 异常处理的基本结构：
 
 \`\`\`java
-try {
+try {  // try 块：包裹可能抛出异常的代码
     // 可能抛出异常的代码
-} catch (SpecificException e) {
+} catch (SpecificException e) {  // 捕获异常 SpecificException e
     // 捕获并处理特定异常
-} catch (Exception e) {
+} catch (Exception e) {  // 捕获异常 Exception e
     // 捕获更通用的异常（必须放在后面）
-} finally {
+} finally {  // finally 块：无论是否异常都执行
     // 无论是否异常都会执行（常用于释放资源）
 }
 \`\`\`
@@ -773,7 +773,7 @@ try {
 // throws 声明可能抛出的受检异常
 public void readFile(String path) throws IOException { ... }
 // throw 主动抛出
-if (age < 0) throw new IllegalArgumentException("年龄非法");
+if (age < 0) throw new IllegalArgumentException("年龄非法");  // 调用方法 if
 \`\`\`
 
 ### 五、自定义异常
@@ -781,8 +781,8 @@ if (age < 0) throw new IllegalArgumentException("年龄非法");
 业务中常通过继承 \`Exception\`（受检）或 \`RuntimeException\`（非受检）来定义自己的异常类，让错误信息更贴合业务语义。
 
 \`\`\`java
-class InvalidAgeException extends Exception {
-    public InvalidAgeException(String msg) { super(msg); }
+class InvalidAgeException extends Exception {  // 定义类 InvalidAgeException
+    public InvalidAgeException(String msg) { super(msg); }  // 构造方法 InvalidAgeException，参数：String msg
 }
 \`\`\`
 
@@ -792,7 +792,7 @@ class InvalidAgeException extends Exception {
 
 \`\`\`java
 try { ... }
-catch (NullPointerException | ArithmeticException e) {
+catch (NullPointerException | ArithmeticException e) {  // 捕获多种异常：NullPointerException | ArithmeticException e
     // e 隐式为 final，不可重新赋值
 }
 \`\`\`
@@ -802,8 +802,8 @@ catch (NullPointerException | ArithmeticException e) {
 对于实现了 \`AutoCloseable\` 接口的资源（文件、数据库连接、Socket 等），可以使用 **try-with-resources** 语法，**自动调用 close()**，无论是否发生异常都会关闭，比手写 finally 更安全简洁。
 
 \`\`\`java
-try (MyResource res = new MyResource("文件.txt")) {
-    res.doWork();
+try (MyResource res = new MyResource("文件.txt")) {  // try-with-resources：声明资源 MyResource res = new MyResource("文件.txt")，结束自动关闭
+    res.doWork();  // 调用 res 的 doWork 方法
 } // 此处自动调用 res.close()
 \`\`\`
 
@@ -942,7 +942,7 @@ class MyResource implements AutoCloseable {
 | **LinkedList** | 双向链表 | 插入删除快 O(1)，随机访问慢 O(n) | 频繁增删 |
 
 \`\`\`java
-List<String> list = new ArrayList<>();
+List<String> list = new ArrayList<>();  // 声明变量 list（List<String>），初始值为 new ArrayList<>()
 list.add("Java");          // 末尾添加
 list.add(0, "Go");         // 指定位置插入
 list.set(1, "Python3");    // 修改元素
@@ -974,7 +974,7 @@ int size = list.size();    // 元素个数
 | **LinkedHashMap** | 保留插入顺序（或访问顺序） |
 
 \`\`\`java
-Map<String, Integer> map = new HashMap<>();
+Map<String, Integer> map = new HashMap<>();  // 声明变量 map（Map<String, Integer>），初始值为 new HashMap<>()
 map.put("Java", 1995);          // 添加/覆盖键值对
 int year = map.get("Java");     // 按 key 取值
 map.remove("Java");             // 删除
@@ -988,7 +988,7 @@ map.values();                   // 所有值
 \`Iterator\` 是遍历集合的统一工具，比索引遍历更通用，且支持**安全删除**元素。所有 \`Collection\` 都可通过 \`iterator()\` 获取迭代器。
 
 \`\`\`java
-Iterator<String> it = list.iterator();
+Iterator<String> it = list.iterator();  // 声明变量 it（Iterator<String>），初始值为 list.iterator()
 while (it.hasNext()) {        // 是否还有下一个
     String s = it.next();     // 取下一个
     if (s.isEmpty()) it.remove(); // 安全删除当前元素
@@ -1018,13 +1018,13 @@ while (it.hasNext()) {        // 是否还有下一个
 
 \`\`\`java
 // 不用泛型（不推荐）
-List list = new ArrayList();
-list.add("abc");
+List list = new ArrayList();  // 声明变量 list（List），初始值为 new ArrayList()
+list.add("abc");  // 调用 list 的 add 方法
 Integer n = (Integer) list.get(0); // 运行时 ClassCastException
 
 // 使用泛型（推荐）
-List<String> list2 = new ArrayList<>();
-list2.add("abc");
+List<String> list2 = new ArrayList<>();  // 声明变量 list2（List<String>），初始值为 new ArrayList<>()
+list2.add("abc");  // 调用 list2 的 add 方法
 // list2.add(123); // 编译报错，类型安全
 String s = list2.get(0); // 无需强转
 \`\`\`

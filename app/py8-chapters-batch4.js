@@ -18,7 +18,7 @@ export const chapters = [
 
 \`\`\`python
 # 1. 直接用方括号
-nums = [1, 2, 3, 4, 5]
+nums = [1, 2, 3, 4, 5]  # 定义列表 nums
 mixed = [1, "hello", True, 3.14]   # 可以混合类型
 
 # 2. 用 list() 转换其他可迭代对象
@@ -26,8 +26,8 @@ chars = list("abc")      # ['a', 'b', 'c']
 nums2 = list(range(5))   # [0, 1, 2, 3, 4]
 
 # 3. 空列表
-empty1 = []
-empty2 = list()
+empty1 = []  # 定义列表 empty1
+empty2 = list()  # 赋值变量 empty2
 \`\`\`
 
 ### 索引访问
@@ -35,7 +35,7 @@ empty2 = list()
 列表元素从 \`0\` 开始编号，也支持负索引（从末尾倒数）：
 
 \`\`\`python
-fruits = ["apple", "banana", "cherry"]
+fruits = ["apple", "banana", "cherry"]  # 定义列表 fruits
 fruits[0]    # 'apple'  正向索引
 fruits[-1]   # 'cherry' 负索引（最后一个）
 \`\`\`
@@ -60,10 +60,10 @@ fruits[-1]   # 'cherry' 负索引（最后一个）
 
 \`\`\`python
 # sorted()：内置函数，返回新列表，不改原列表
-new = sorted([3, 1, 2])
+new = sorted([3, 1, 2])  # 赋值变量 new
 
 # list.sort()：列表方法，原地排序，返回 None
-lst = [3, 1, 2]
+lst = [3, 1, 2]  # 定义列表 lst
 lst.sort()      # lst 变成 [1, 2, 3]
 \`\`\`
 
@@ -231,7 +231,7 @@ print(f"对比  extend([4,5]): {lst}")`
 切片（slice）让你**取出列表的一段**，语法：
 
 \`\`\`python
-lst[start:stop:step]
+lst[start:stop:step]  # 执行操作
 \`\`\`
 
 - \`start\`：起始索引（包含），默认 0
@@ -241,7 +241,7 @@ lst[start:stop:step]
 ### 基本切片
 
 \`\`\`python
-nums = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+nums = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]  # 定义列表 nums
 
 nums[2:5]    # [2, 3, 4]      从索引 2 到 4
 nums[:3]     # [0, 1, 2]      从开头到 2
@@ -269,14 +269,14 @@ nums[::-1]   # [9, 8, 7, ..., 0]  反转
 切片还可以作为**左值**被赋值，会原地修改：
 
 \`\`\`python
-lst = [1, 2, 3, 4, 5]
+lst = [1, 2, 3, 4, 5]  # 定义列表 lst
 lst[1:3] = [20, 30, 40]    # [1, 20, 30, 40, 4, 5]
 \`\`\`
 
 ### del 删除切片
 
 \`\`\`python
-lst = [1, 2, 3, 4, 5]
+lst = [1, 2, 3, 4, 5]  # 定义列表 lst
 del lst[1:3]    # [1, 4, 5]
 \`\`\`
 
@@ -292,20 +292,20 @@ new = lst[:]    # 等价于 lst.copy()
 
 \`\`\`python
 # 基本形式
-[表达式 for 变量 in 可迭代对象]
+[表达式 for 变量 in 可迭代对象]  # 列表推导式
 
 # 带条件
-[表达式 for 变量 in 可迭代对象 if 条件]
+[表达式 for 变量 in 可迭代对象 if 条件]  # 列表推导式
 
 # 示例
 squares = [x*x for x in range(5)]          # [0, 1, 4, 9, 16]
-evens = [x for x in range(10) if x % 2 == 0]
+evens = [x for x in range(10) if x % 2 == 0]  # 定义列表 evens
 \`\`\`
 
 ### 二维列表
 
 \`\`\`python
-matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]  # 定义列表 matrix
 matrix[1][2]    # 6
 \`\`\`
 
@@ -313,9 +313,9 @@ matrix[1][2]    # 6
 
 \`\`\`python
 # 错误！默认值在函数定义时只创建一次，所有调用共享
-def add_item(item, lst=[]):
-    lst.append(item)
-    return lst
+def add_item(item, lst=[]):  # 定义函数 add_item，参数：item, lst=[]
+    lst.append(item)  # 调用 lst.append()：向列表末尾添加元素
+    return lst  # 返回 lst
 
 add_item(1)    # [1]
 add_item(2)    # [1, 2]  不是 [2]！lst 一直是同一个
@@ -324,11 +324,11 @@ add_item(2)    # [1, 2]  不是 [2]！lst 一直是同一个
 正确写法用 \`None\`：
 
 \`\`\`python
-def add_item(item, lst=None):
-    if lst is None:
-        lst = []
-    lst.append(item)
-    return lst
+def add_item(item, lst=None):  # 定义函数 add_item，参数：item, lst=None
+    if lst is None:  # 如果 lst is None
+        lst = []  # 定义列表 lst
+    lst.append(item)  # 调用 lst.append()：向列表末尾添加元素
+    return lst  # 返回 lst
 \`\`\`
 
 下面的 demo 完整演示切片、推导式和陷阱。`,
@@ -478,7 +478,7 @@ print("三行都被改了！因为是同一行对象")`
 \`tuple\` 是**不可变、有序**的序列，用圆括号 \`()\` 表示。一旦创建，**不能增删改**元素。
 
 \`\`\`python
-t = (1, 2, 3)
+t = (1, 2, 3)  # 定义元组 t
 t[0] = 99    # 报错！元组不可变
 \`\`\`
 
@@ -505,7 +505,7 @@ y = (5,)       # 这才是单元素元组，注意那个逗号
 元组本身不可变，但**里面的可变对象可以改**：
 
 \`\`\`python
-t = (1, [2, 3], 4)
+t = (1, [2, 3], 4)  # 定义元组 t
 t[1].append(99)    # 合法！改的是列表，不是元组
 # t[1] = [9]       # 报错！不能替换元组的元素
 \`\`\`
@@ -514,10 +514,10 @@ t[1].append(99)    # 合法！改的是列表，不是元组
 
 \`\`\`python
 # 打包：多个值装进一个元组
-point = 3, 4
+point = 3, 4  # 定义数值 point
 
 # 解包：把元组拆开赋给多个变量
-x, y = point
+x, y = point  # 多重赋值：x, y
 \`\`\`
 
 ### 多变量交换
@@ -525,17 +525,17 @@ x, y = point
 Python 的交换本质就是元组打包解包：
 
 \`\`\`python
-a, b = 1, 2
+a, b = 1, 2  # 多重赋值：a, b
 a, b = b, a      # 等价于先打包成 (b, a) 再解包给 a, b
 \`\`\`
 
 ### 函数返回多值
 
 \`\`\`python
-def min_max(nums):
+def min_max(nums):  # 定义函数 min_max，参数：nums
     return min(nums), max(nums)   # 实际返回元组
 
-lo, hi = min_max([3, 1, 4, 1, 5])
+lo, hi = min_max([3, 1, 4, 1, 5])  # 多重赋值：lo, hi
 \`\`\`
 
 ### namedtuple 具名元组
@@ -543,10 +543,10 @@ lo, hi = min_max([3, 1, 4, 1, 5])
 普通元组只能用索引 \`t[0]\`、\`t[1]\` 访问，可读性差。\`namedtuple\` 给每个位置起名字：
 
 \`\`\`python
-from collections import namedtuple
+from collections import namedtuple  # 从 collections 导入 namedtuple
 
-Point = namedtuple("Point", ["x", "y"])
-p = Point(3, 4)
+Point = namedtuple("Point", ["x", "y"])  # 赋值变量 Point
+p = Point(3, 4)  # 赋值变量 p
 p.x       # 3，按名字访问
 p.y       # 4
 p[0]      # 3，仍然可以按索引
@@ -724,7 +724,7 @@ print("元组更省内存，因为不需要为可变性预留空间")`
 \`dict\` 是 **键值对（key-value）** 的可变容器，用花括号 \`{}\` 表示。通过键快速查找值，查找速度几乎与大小无关。
 
 \`\`\`python
-person = {"name": "小明", "age": 18}
+person = {"name": "小明", "age": 18}  # 定义字典 person
 person["name"]    # '小明'
 \`\`\`
 
@@ -732,24 +732,24 @@ person["name"]    # '小明'
 
 \`\`\`python
 # 1. 花括号
-d1 = {"a": 1, "b": 2}
+d1 = {"a": 1, "b": 2}  # 定义字典 d1
 
 # 2. dict() 构造函数
 d2 = dict(a=1, b=2)            # 关键字参数
 d3 = dict([("a", 1), ("b", 2)])  # 列表对
-d4 = dict(zip(["a", "b"], [1, 2]))
+d4 = dict(zip(["a", "b"], [1, 2]))  # 赋值变量 d4
 
 # 3. 空字典
-empty = {}
-empty2 = dict()
+empty = {}  # 定义字典 empty
+empty2 = dict()  # 赋值变量 empty2
 \`\`\`
 
 ### 增改查删
 
 \`\`\`python
-d = {}
+d = {}  # 定义字典 d
 d["name"] = "小明"      # 增：键不存在则新增
-d["age"] = 18
+d["age"] = 18  # 执行操作
 d["age"] = 20           # 改：键存在则覆盖
 d["name"]               # 查
 del d["age"]            # 删
@@ -765,7 +765,7 @@ del d["age"]            # 删
 | 列表、字典、集合 | ❌ 不行 |
 
 \`\`\`python
-d = {}
+d = {}  # 定义字典 d
 d[[1, 2]] = "x"     # 报错！列表不可哈希
 d[(1, 2)] = "x"     # 可以，元组可哈希
 \`\`\`
@@ -781,7 +781,7 @@ d[(1, 2)] = "x"     # 可以，元组可哈希
 ### keys / values / items 视图
 
 \`\`\`python
-d = {"a": 1, "b": 2}
+d = {"a": 1, "b": 2}  # 定义字典 d
 d.keys()     # dict_keys(['a', 'b'])
 d.values()   # dict_values([1, 2])
 d.items()    # dict_items([('a', 1), ('b', 2)])
@@ -793,12 +793,12 @@ d.items()    # dict_items([('a', 1), ('b', 2)])
 
 \`\`\`python
 # 遍历键
-for k in d:
-    print(k)
+for k in d:  # 遍历 d，取值给 k
+    print(k)  # 打印输出到屏幕
 
 # 遍历键值对（最常用）
-for k, v in d.items():
-    print(k, v)
+for k, v in d.items():  # 遍历 d.items()，取值给 k, v
+    print(k, v)  # 打印输出到屏幕
 \`\`\`
 
 ### 字典保持插入顺序
@@ -808,9 +808,9 @@ Python 3.7+ 起，字典**保证按插入顺序**输出。早期版本（3.6 前
 ### 嵌套字典
 
 \`\`\`python
-school = {
-    "class1": {"teacher": "张老师", "students": 30},
-    "class2": {"teacher": "李老师", "students": 25},
+school = {  # 定义字典 school
+    "class1": {"teacher": "张老师", "students": 30},  # 执行操作
+    "class2": {"teacher": "李老师", "students": 25},  # 执行操作
 }
 school["class1"]["teacher"]    # '张老师'
 \`\`\`
@@ -971,7 +971,7 @@ print(f"  正确做法后: {d}")`
 直接用 \`d[key]\` 取值，键不存在会抛 \`KeyError\`。\`get()\` 更安全：
 
 \`\`\`python
-d = {"a": 1}
+d = {"a": 1}  # 定义字典 d
 d.get("a")         # 1
 d.get("b")          # None（不报错）
 d.get("b", 0)       # 0（指定默认值）
@@ -986,14 +986,14 @@ d.get("b", 0)       # 0（指定默认值）
 ### setdefault：取值或设置默认
 
 \`\`\`python
-d.setdefault(key, default)
+d.setdefault(key, default)  # 调用 d.setdefault()：设置默认值
 \`\`\`
 
 - 键存在：返回对应值，**不改字典**
 - 键不存在：插入 \`key:default\`，返回 \`default\`
 
 \`\`\`python
-d = {"a": 1}
+d = {"a": 1}  # 定义字典 d
 d.setdefault("a", 99)    # 返回 1，字典不变
 d.setdefault("b", 99)     # 返回 99，字典变成 {"a":1, "b":99}
 \`\`\`
@@ -1009,8 +1009,8 @@ d.popitem()          # 弹出最后一个键值对（3.7+ 是插入顺序最后�
 ### update：合并字典
 
 \`\`\`python
-d1 = {"a": 1}
-d2 = {"b": 2, "a": 99}
+d1 = {"a": 1}  # 定义字典 d1
+d2 = {"b": 2, "a": 99}  # 定义字典 d2
 d1.update(d2)         # d1 变成 {"a": 99, "b": 2}
 \`\`\`
 
@@ -1019,7 +1019,7 @@ d1.update(d2)         # d1 变成 {"a": 99, "b": 2}
 ### fromkeys：批量创建
 
 \`\`\`python
-keys = ["a", "b", "c"]
+keys = ["a", "b", "c"]  # 定义列表 keys
 d = dict.fromkeys(keys, 0)    # {"a": 0, "b": 0, "c": 0}
 \`\`\`
 
@@ -1028,20 +1028,20 @@ d = dict.fromkeys(keys, 0)    # {"a": 0, "b": 0, "c": 0}
 ### 字典推导式
 
 \`\`\`python
-{键: 值 for 变量 in 可迭代对象 if 条件}
+{键: 值 for 变量 in 可迭代对象 if 条件}  # 字典推导式
 
 # 示例：平方映射
 squares = {x: x*x for x in range(4)}    # {0:0, 1:1, 2:4, 3:9}
 
 # 反转字典
-inv = {v: k for k, v in d.items()}
+inv = {v: k for k, v in d.items()}  # 定义字典 inv
 \`\`\`
 
 ### 合并运算符 | （3.9+）
 
 \`\`\`python
-d1 = {"a": 1}
-d2 = {"b": 2}
+d1 = {"a": 1}  # 定义字典 d1
+d2 = {"b": 2}  # 定义字典 d2
 merged = d1 | d2           # {"a": 1, "b": 2}
 d1 |= d2                   # 原地合并，等价于 d1.update(d2)
 \`\`\`
@@ -1051,7 +1051,7 @@ d1 |= d2                   # 原地合并，等价于 d1.update(d2)
 把"键值"对调，注意值要可哈希且唯一：
 
 \`\`\`python
-d = {"a": 1, "b": 2}
+d = {"a": 1, "b": 2}  # 定义字典 d
 inv = {v: k for k, v in d.items()}    # {1: 'a', 2: 'b'}
 \`\`\`
 
@@ -1217,12 +1217,12 @@ Python 标准库 \`collections\` 提供了几个增强版字典，解决常见�
 普通字典访问不存在的键会 \`KeyError\`，\`defaultdict\` 通过**工厂函数**自动创建：
 
 \`\`\`python
-from collections import defaultdict
+from collections import defaultdict  # 从 collections 导入 defaultdict
 
 # 工厂函数：list / int / str / set / dict
 d = defaultdict(list)        # 默认值是空列表
 d["a"].append(1)             # 键不存在自动建空列表
-d["a"].append(2)
+d["a"].append(2)  # 执行操作
 # {"a": [1, 2]}
 
 d = defaultdict(int)         # 默认值是 0
@@ -1241,10 +1241,10 @@ d["count"] += 1              # 不存在自动建 0 再加
 ### 经典应用：分组
 
 \`\`\`python
-students = [("一班", "小明"), ("二班", "小红"), ("一班", "小刚")]
-groups = defaultdict(list)
-for cls, name in students:
-    groups[cls].append(name)
+students = [("一班", "小明"), ("二班", "小红"), ("一班", "小刚")]  # 定义列表 students
+groups = defaultdict(list)  # 定义函数 groups
+for cls, name in students:  # 遍历 students，取值给 cls, name
+    groups[cls].append(name)  # 执行操作
 # {"一班": ["小明", "小刚"], "二班": ["小红"]}
 \`\`\`
 
@@ -1253,7 +1253,7 @@ for cls, name in students:
 专门用于统计元素出现次数：
 
 \`\`\`python
-from collections import Counter
+from collections import Counter  # 从 collections 导入 Counter
 
 c = Counter("abracadabra")     # 从可迭代对象统计
 c["a"]                        # 5
@@ -1274,8 +1274,8 @@ c.subtract(...)      # 减去统计
 ### Counter 算术
 
 \`\`\`python
-c1 = Counter(a=3, b=1)
-c2 = Counter(a=1, b=2)
+c1 = Counter(a=3, b=1)  # 赋值变量 c1
+c2 = Counter(a=1, b=2)  # 赋值变量 c2
 c1 + c2    # Counter({'a': 4, 'b': 3})  加
 c1 - c2    # Counter({'a': 2})          减（结果只保留正数）
 c1 & c2    # 交集（取最小）
@@ -1290,10 +1290,10 @@ Python 3.7+ 普通字典已保持插入顺序，\`OrderedDict\` 主要用于：
 - 需要 \`move_to_end\` / \`popitem(last=False)\` 等额外方法
 
 \`\`\`python
-from collections import OrderedDict
-od = OrderedDict()
-od["a"] = 1
-od["b"] = 2
+from collections import OrderedDict  # 从 collections 导入 OrderedDict
+od = OrderedDict()  # 赋值变量 od
+od["a"] = 1  # 执行操作
+od["b"] = 2  # 执行操作
 od.move_to_end("a")    # 把 a 移到末尾
 \`\`\`
 
@@ -1302,11 +1302,11 @@ od.move_to_end("a")    # 把 a 移到末尾
 把多个字典"串"起来，查找时按顺序找：
 
 \`\`\`python
-from collections import ChainMap
+from collections import ChainMap  # 从 collections 导入 ChainMap
 
-defaults = {"theme": "light", "lang": "en"}
+defaults = {"theme": "light", "lang": "en"}  # 定义字典 defaults
 user = {"lang": "zh"}                    # 用户覆盖
-config = ChainMap(user, defaults)
+config = ChainMap(user, defaults)  # 赋值变量 config
 config["theme"]    # 'light'（user 没有则查 defaults）
 config["lang"]     # 'zh'（user 优先）
 \`\`\`
@@ -1316,8 +1316,8 @@ config["lang"]     # 'zh'（user 优先）
 \`deque\` 是双向队列，两端增删都是 O(1)，比列表头插快：
 
 \`\`\`python
-from collections import deque
-dq = deque([1, 2, 3])
+from collections import deque  # 从 collections 导入 deque
+dq = deque([1, 2, 3])  # 赋值变量 dq
 dq.appendleft(0)     # 左端追加
 dq.append(4)         # 右端追加
 dq.popleft()         # 左端弹出
@@ -1478,7 +1478,7 @@ s = {1, 2, 3, 2, 1}    # {1, 2, 3}，重复自动去
 
 \`\`\`python
 # 1. 花括号
-s1 = {1, 2, 3}
+s1 = {1, 2, 3}  # 定义字典 s1
 
 # 2. set() 函数（空集合只能用 set()，{} 是空字典）
 s2 = set([1, 2, 2, 3])   # {1, 2, 3}
@@ -1502,8 +1502,8 @@ empty = set()             # 不能用 {}！
 | 对称差 | \`^\` | \`symmetric_difference\` | 不同时有的 |
 
 \`\`\`python
-a = {1, 2, 3}
-b = {2, 3, 4}
+a = {1, 2, 3}  # 定义字典 a
+b = {2, 3, 4}  # 定义字典 b
 a & b    # {2, 3}     交集
 a | b    # {1, 2, 3, 4} 并集
 a - b    # {1}        差集
@@ -1530,7 +1530,7 @@ a ^ b    # {1, 4}     对称差
 ### 增删元素
 
 \`\`\`python
-s = {1, 2, 3}
+s = {1, 2, 3}  # 定义字典 s
 s.add(4)            # 添加
 s.remove(2)         # 删除，不存在报错
 s.discard(99)       # 删除，不存在不报错
@@ -1549,7 +1549,7 @@ s.clear()           # 清空
 \`frozenset\` 是不可变的集合，可以作为字典的键：
 
 \`\`\`python
-fs = frozenset([1, 2, 3])
+fs = frozenset([1, 2, 3])  # 赋值变量 fs
 fs.add(4)           # 报错！不可变
 d = {fs: "value"}   # 可以做字典键
 \`\`\`
@@ -1731,9 +1731,9 @@ Python 复制对象有三种层次，理解它们能避开 90% 的可变对象�
 ### 1. 赋值 \`=\`：共享引用
 
 \`\`\`python
-a = [1, 2, 3]
+a = [1, 2, 3]  # 定义列表 a
 b = a            # b 和 a 指向同一个对象
-b.append(4)
+b.append(4)  # 调用 b.append()：向列表末尾添加元素
 print(a)         # [1, 2, 3, 4]  a 也变了！
 \`\`\`
 
@@ -1744,10 +1744,10 @@ print(a)         # [1, 2, 3, 4]  a 也变了！
 复制外层容器，但**内部元素仍是共享引用**：
 
 \`\`\`python
-import copy
-a = [[1, 2], [3, 4]]
+import copy  # 导入模块 copy
+a = [[1, 2], [3, 4]]  # 定义列表 a
 b = copy.copy(a)        # 外层新列表
-b[0][0] = 99
+b[0][0] = 99  # 执行操作
 print(a)                 # [[99, 2], [3, 4]]  内层共享！
 \`\`\`
 
@@ -1755,14 +1755,14 @@ print(a)                 # [[99, 2], [3, 4]]  内层共享！
 
 \`\`\`python
 # 列表
-new = lst.copy()
-new = lst[:]
-new = list(lst)
-new = copy.copy(lst)
+new = lst.copy()  # 赋值变量 new
+new = lst[:]  # 赋值变量 new
+new = list(lst)  # 赋值变量 new
+new = copy.copy(lst)  # 赋值变量 new
 
 # 字典
-new = d.copy()
-new = dict(d)
+new = d.copy()  # 赋值变量 new
+new = dict(d)  # 赋值变量 new
 \`\`\`
 
 ### 3. 深拷贝 \`copy.deepcopy\`
@@ -1770,10 +1770,10 @@ new = dict(d)
 递归复制所有层级，完全独立：
 
 \`\`\`python
-import copy
-a = [[1, 2], [3, 4]]
-b = copy.deepcopy(a)
-b[0][0] = 99
+import copy  # 导入模块 copy
+a = [[1, 2], [3, 4]]  # 定义列表 a
+b = copy.deepcopy(a)  # 赋值变量 b
+b[0][0] = 99  # 执行操作
 print(a)    # [[1, 2], [3, 4]]  完全不受影响
 \`\`\`
 
@@ -1788,11 +1788,11 @@ print(a)    # [[1, 2], [3, 4]]  完全不受影响
 ### 用 id() 验证
 
 \`\`\`python
-a = [1, 2]
-b = a
+a = [1, 2]  # 定义列表 a
+b = a  # 赋值变量 b
 print(id(a) == id(b))    # True，同一对象
 
-b = a.copy()
+b = a.copy()  # 赋值变量 b
 print(id(a) == id(b))    # False，外层独立
 print(id(a[0]) == id(b[0]))   # True，内层共享
 \`\`\`
@@ -1808,20 +1808,20 @@ print(id(a[0]) == id(b[0]))   # True，内层共享
 让自定义类支持拷贝：
 
 \`\`\`python
-class MyClass:
-    def __init__(self, data):
-        self.data = data
+class MyClass:  # 定义类 MyClass
+    def __init__(self, data):  # 定义函数 __init__，参数：self, data
+        self.data = data  # 执行操作
 
-    def __copy__(self):
+    def __copy__(self):  # 定义函数 __copy__，参数：self
         # 浅拷贝：新对象，但 data 共享
-        new = MyClass(self.data)
-        return new
+        new = MyClass(self.data)  # 赋值变量 new
+        return new  # 返回 new
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo):  # 定义函数 __deepcopy__，参数：self, memo
         # 深拷贝：连 data 也复制
-        import copy
-        new = MyClass(copy.deepcopy(self.data, memo))
-        return new
+        import copy  # 导入模块 copy
+        new = MyClass(copy.deepcopy(self.data, memo))  # 赋值变量 new
+        return new  # 返回 new
 \`\`\`
 
 ### 常见陷阱
@@ -2000,8 +2000,8 @@ print("选择原则：嵌套可变结构用 deepcopy，一维用 copy")`
 \`collections.deque\` 是**双向队列**，两端增删都是 O(1)。列表在头部插入是 O(n)，所以频繁头插时用 \`deque\`。
 
 \`\`\`python
-from collections import deque
-dq = deque([1, 2, 3])
+from collections import deque  # 从 collections 导入 deque
+dq = deque([1, 2, 3])  # 赋值变量 dq
 dq.appendleft(0)      # 左端追加
 dq.append(4)          # 右端追加
 dq.popleft()          # 左端弹出
@@ -2039,8 +2039,8 @@ dq.clear()            # 清空
 设置 \`maxlen\` 后，超长会自动丢弃另一端：
 
 \`\`\`python
-dq = deque(maxlen=3)
-dq.append(1); dq.append(2); dq.append(3)
+dq = deque(maxlen=3)  # 赋值变量 dq
+dq.append(1); dq.append(2); dq.append(3)  # 调用 dq.append()：向列表末尾添加元素
 dq.append(4)          # 自动丢弃 1，变成 [2, 3, 4]
 \`\`\`
 
@@ -2049,7 +2049,7 @@ dq.append(4)          # 自动丢弃 1，变成 [2, 3, 4]
 ### rotate 旋转
 
 \`\`\`python
-dq = deque([1, 2, 3, 4, 5])
+dq = deque([1, 2, 3, 4, 5])  # 赋值变量 dq
 dq.rotate(2)          # 右转 2 位：[4, 5, 1, 2, 3]
 dq.rotate(-1)         # 左转 1 位
 \`\`\`
@@ -2059,8 +2059,8 @@ dq.rotate(-1)         # 左转 1 位
 \`Counter\` 是计数器，专门统计元素频次。
 
 \`\`\`python
-from collections import Counter
-c = Counter("abracadabra")
+from collections import Counter  # 从 collections 导入 Counter
+c = Counter("abracadabra")  # 赋值变量 c
 c.most_common(2)      # [('a', 5), ('b', 2)]
 \`\`\`
 
@@ -2264,8 +2264,8 @@ print(f"数据 {data} 的众数: {mode[0]}（出现 {mode[1]} 次）")`
 \`heapq\` 是 Python 标准库的**最小堆**模块。堆是一种特殊的二叉树，**堆顶永远是最小值**。
 
 \`\`\`python
-import heapq
-nums = [3, 1, 4, 1, 5, 9, 2, 6]
+import heapq  # 导入模块 heapq
+nums = [3, 1, 4, 1, 5, 9, 2, 6]  # 定义列表 nums
 heapq.heapify(nums)    # 原地把列表变堆
 heapq.heappop(nums)    # 弹出最小值 1
 heapq.heappush(nums, 0)  # 插入新元素
@@ -2286,11 +2286,11 @@ heapq.heappush(nums, 0)  # 插入新元素
 ### 最小堆特性
 
 \`\`\`python
-import heapq
-h = []
-heapq.heappush(h, 3)
-heapq.heappush(h, 1)
-heapq.heappush(h, 4)
+import heapq  # 导入模块 heapq
+h = []  # 定义列表 h
+heapq.heappush(h, 3)  # 调用 heapq.heappush()
+heapq.heappush(h, 1)  # 调用 heapq.heappush()
+heapq.heappush(h, 4)  # 调用 heapq.heappush()
 heapq.heappop(h)    # 1（永远弹最小）
 \`\`\`
 
@@ -2299,9 +2299,9 @@ heapq.heappop(h)    # 1（永远弹最小）
 Python 的堆是最小堆，要做最大堆就把元素**取负**：
 
 \`\`\`python
-h = []
-for x in [3, 1, 4, 1, 5]:
-    heapq.heappush(h, -x)
+h = []  # 定义列表 h
+for x in [3, 1, 4, 1, 5]:  # 遍历 [3, 1, 4, 1, 5]，取值给 x
+    heapq.heappush(h, -x)  # 调用 heapq.heappush()
 max_val = -heapq.heappop(h)    # 5（最大值）
 \`\`\`
 
@@ -2310,10 +2310,10 @@ max_val = -heapq.heappop(h)    # 5（最大值）
 ### 优先队列应用
 
 \`\`\`python
-import heapq
-pq = []
-heapq.heappush(pq, (2, "低优先级"))
-heapq.heappush(pq, (1, "高优先级"))
+import heapq  # 导入模块 heapq
+pq = []  # 定义列表 pq
+heapq.heappush(pq, (2, "低优先级"))  # 调用 heapq.heappush()
+heapq.heappush(pq, (1, "高优先级"))  # 调用 heapq.heappush()
 heapq.heappop(pq)    # (1, "高优先级")，优先级数字小的先出
 \`\`\`
 
@@ -2322,8 +2322,8 @@ heapq.heappop(pq)    # (1, "高优先级")，优先级数字小的先出
 \`bisect\` 模块在**有序列表**上做二分查找，复杂度 O(log n)。
 
 \`\`\`python
-import bisect
-lst = [1, 3, 3, 5, 7, 9]
+import bisect  # 导入模块 bisect
+lst = [1, 3, 3, 5, 7, 9]  # 定义列表 lst
 bisect.bisect_left(lst, 3)    # 1，左侧插入位置
 bisect.bisect_right(lst, 3)   # 3，右侧插入位置
 bisect.insort(lst, 4)         # 插入 4 保持有序
@@ -2334,7 +2334,7 @@ bisect.insort(lst, 4)         # 插入 4 保持有序
 对有重复元素的列表：
 
 \`\`\`python
-lst = [1, 3, 3, 3, 5]
+lst = [1, 3, 3, 3, 5]  # 定义列表 lst
 bisect.bisect_left(lst, 3)    # 1，第一个 3 的位置
 bisect.bisect_right(lst, 3)   # 4，最后一个 3 之后
 \`\`\`
@@ -2349,9 +2349,9 @@ bisect.bisect_right(lst, 3)   # 4，最后一个 3 之后
 ### 有序列表维护
 
 \`\`\`python
-import bisect
-scores = []
-for s in [85, 92, 78, 90, 88]:
+import bisect  # 导入模块 bisect
+scores = []  # 定义列表 scores
+for s in [85, 92, 78, 90, 88]:  # 遍历 [85, 92, 78, 90, 88]，取值给 s
     bisect.insort(scores, s)    # 每次插入都保持有序
 # [78, 85, 88, 90, 92]
 \`\`\`
@@ -2361,10 +2361,10 @@ for s in [85, 92, 78, 90, 88]:
 ### 应用：成绩分级
 
 \`\`\`python
-breakpoints = [60, 80, 90]
-grades = "FDCBA"
-score = 85
-i = bisect.bisect(breakpoints, score)
+breakpoints = [60, 80, 90]  # 定义列表 breakpoints
+grades = "FDCBA"  # 定义字符串 grades
+score = 85  # 定义数值 score
+i = bisect.bisect(breakpoints, score)  # 赋值变量 i
 grade = grades[i]    # 'B'
 \`\`\`
 

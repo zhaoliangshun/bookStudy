@@ -59,10 +59,10 @@ print(type(42))        # <class 'int'>
 print(type("hello"))   # <class 'str'>
 print(type([1,2,3]))   # <class 'list'>
 
-class Foo:
-    pass
+class Foo:                         # 定义类 Foo
+    pass                           # 空操作，占位
 
-f = Foo()
+f = Foo()                          # 将 Foo() 赋给 f
 print(type(f))    # <class '__main__.Foo'>
 print(type(Foo))  # <class 'type'>   ← 注意这一行
 \`\`\`
@@ -81,14 +81,14 @@ print(type(Foo))  # <class 'type'>   ← 注意这一行
 所以 \`type\` 是「类的类」，即**元类**。所有用 \`class\` 关键字定义的类，默认都是由 \`type\` 实例化而来的。
 
 \`\`\`python
-class Bar:
-    x = 1
+class Bar:                         # 定义类 Bar
+    x = 1                          # 将整数 1 赋给 x
 
 # Bar 这个类对象，是 type 的一个实例
 print(isinstance(Bar, type))   # True
 
 # 而 Bar 的实例 b，是 Bar 的实例，不是 type 的实例
-b = Bar()
+b = Bar()                          # 将 Bar() 赋给 b
 print(isinstance(b, type))     # False
 print(isinstance(b, Bar))      # True
 \`\`\`
@@ -123,13 +123,13 @@ print(type.__class__) # type
 
 \`\`\`python
 # 用 class 关键字定义
-class Dog1:
-    species = "Canis lupus"
-    def bark(self):
-        return "Woof!"
+class Dog1:                        # 定义类 Dog1
+    species = "Canis lupus"        # 将字符串 "Canis lupus" 赋给 species
+    def bark(self):                # 定义函数 bark，参数：self
+        return "Woof!"             # 返回 "Woof!"
 
 # 用 type 动态创建一个完全等价的类
-Dog2 = type(
+Dog2 = type(                       # 将 type( 赋给 Dog2
     "Dog2",
     (object,),                # 父类元组
     {
@@ -138,8 +138,8 @@ Dog2 = type(
     },
 )
 
-d1 = Dog1()
-d2 = Dog2()
+d1 = Dog1()                        # 将 Dog1() 赋给 d1
+d2 = Dog2()                        # 将 Dog2() 赋给 d2
 print(d1.bark(), d1.species)   # Woof! Canis lupus
 print(d2.bark(), d2.species)   # Woof! Canis lupus
 print(type(Dog2))              # <class 'type'>
@@ -157,23 +157,23 @@ print(d2.__class__.__name__)   # Dog2
 - **元编程框架**：Django、SQLAlchemy、dataclasses 等都大量用到。
 
 \`\`\`python
-def make_counter_class(start=0):
+def make_counter_class(start=0):   # 定义函数 make_counter_class，参数：start=0
     # 根据参数动态生成一个计数器类
-    def init(self):
+    def init(self):                # 定义函数 init，参数：self
         self.value = start
-    def inc(self):
+    def inc(self):                 # 定义函数 inc，参数：self
         self.value += 1
-        return self.value
-    def get(self):
-        return self.value
-    return type("Counter", (object,), {
+        return self.value          # 返回 self.value
+    def get(self):                 # 定义函数 get，参数：self
+        return self.value          # 返回 self.value
+    return type("Counter", (object,), {  # 返回 type("Counter", (object,), {
         "__init__": init,
         "increment": inc,
         "value_of": get,
     })
 
-CounterFrom10 = make_counter_class(10)
-c = CounterFrom10()
+CounterFrom10 = make_counter_class(10)  # 将 make_counter_class(10) 赋给 CounterFrom10
+c = CounterFrom10()                # 将 CounterFrom10() 赋给 c
 print(c.value_of())    # 10
 print(c.increment())   # 11
 print(c.increment())   # 12
@@ -184,8 +184,8 @@ print(c.increment())   # 12
 当你写：
 
 \`\`\`python
-class MyClass(Base):
-    x = 1
+class MyClass(Base):               # 定义类 MyClass，继承自 Base
+    x = 1                          # 将整数 1 赋给 x
     def f(self): pass
 \`\`\`
 
@@ -193,16 +193,16 @@ Python 解释器大致做了这样的事（伪代码）：
 
 \`\`\`python
 # 1. 确定元类（默认是 type，可由 metaclass= 指定，或继承自父类的元类）
-metaclass = type
+metaclass = type                   # 将 type 赋给 metaclass
 
 # 2. 收集类的命名空间（执行类体，把 x、f 放进一个字典）
-namespace = {}
+namespace = {}                     # 创建集合并赋给 namespace
 # ... 执行类体，填充 namespace ...
 namespace["x"] = 1
 namespace["f"] = ...
 
 # 3. 调用元类来创建类对象
-MyClass = metaclass("MyClass", (Base,), namespace)
+MyClass = metaclass("MyClass", (Base,), namespace)  # 将 metaclass("MyClass", (Base,), namespace) 赋给 MyClass
 \`\`\`
 
 所以**「定义类」=「调用元类」**。元类就是那个被调用来生产类对象的「可调用对象」。这也意味着，如果你替换了元类，你就能拦截、修改整个类的创建过程。
@@ -235,21 +235,21 @@ MyClass = metaclass("MyClass", (Base,), namespace)
 \`__init_subclass__\` 是一个在**父类**上定义的类方法，每当有子类被创建时，Python 会自动调用它，把子类的命名空间传给它。这是一个「轻量级元类替代方案」。
 
 \`\`\`python
-class PluginBase:
-    registry = []
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
+class PluginBase:                  # 定义类 PluginBase
+    registry = []                  # 创建列表并赋给 registry
+    def __init_subclass__(cls, **kwargs):  # 定义函数 __init_subclass__，参数：cls, **kwargs
+        super().__init_subclass__(**kwargs)  # 调用 super，参数 ).__init_subclass__(**kwargs
         # 每当有人继承 PluginBase，就自动注册
         PluginBase.registry.append(cls.__name__)
-        print("注册插件:", cls.__name__)
+        print("注册插件:", cls.__name__)  # 输出 "注册插件:", cls.__name__
 
-class AuthPlugin(PluginBase):
-    pass
+class AuthPlugin(PluginBase):      # 定义类 AuthPlugin，继承自 PluginBase
+    pass                           # 空操作，占位
 
-class CachePlugin(PluginBase):
-    pass
+class CachePlugin(PluginBase):     # 定义类 CachePlugin，继承自 PluginBase
+    pass                           # 空操作，占位
 
-print("已注册:", PluginBase.registry)
+print("已注册:", PluginBase.registry) # 输出 "已注册:", PluginBase.registry
 # 输出：
 # 注册插件: AuthPlugin
 # 注册插件: CachePlugin
@@ -261,16 +261,16 @@ print("已注册:", PluginBase.registry)
 \`__init_subclass__\` 还能接收「类关键字参数」，让你在继承时传配置：
 
 \`\`\`python
-class Tagged:
-    def __init_subclass__(cls, tag=None, **kwargs):
-        super().__init_subclass__(**kwargs)
+class Tagged:                      # 定义类 Tagged
+    def __init_subclass__(cls, tag=None, **kwargs):  # 定义函数 __init_subclass__，参数：cls, tag=None, **kwargs
+        super().__init_subclass__(**kwargs)  # 调用 super，参数 ).__init_subclass__(**kwargs
         cls.tag = tag
 
-class RedItem(Tagged, tag="red"):
-    pass
+class RedItem(Tagged, tag="red"):  # 定义类 RedItem，继承自 Tagged, tag="red"
+    pass                           # 空操作，占位
 
-class BlueItem(Tagged, tag="blue"):
-    pass
+class BlueItem(Tagged, tag="blue"):  # 定义类 BlueItem，继承自 Tagged, tag="blue"
+    pass                           # 空操作，占位
 
 print(RedItem.tag)    # red
 print(BlueItem.tag)   # blue
@@ -288,22 +288,22 @@ print(BlueItem.tag)   # blue
 通常重写 \`__new__\` 就够了。\`__init__\` 用得较少，因为多数修改在 \`__new__\` 里就能完成。
 
 \`\`\`python
-class Meta(type):
-    def __new__(mcs, name, bases, namespace, **kwargs):
-        print("Meta.__new__ 被调用，正在创建类:", name)
-        print("  命名空间里的名字:", list(namespace.keys()))
+class Meta(type):                  # 定义类 Meta，继承自 type
+    def __new__(mcs, name, bases, namespace, **kwargs):  # 定义函数 __new__，参数：mcs, name, bases, namespace, **kwargs
+        print("Meta.__new__ 被调用，正在创建类:", name)  # 输出 "Meta.__new__ 被调用，正在创建类:", name
+        print("  命名空间里的名字:", list(namespace.keys()))  # 输出 "  命名空间里的名字:", list(namespace.keys())
         # 可以在这里修改 namespace，比如强制所有方法名小写
-        cls = super().__new__(mcs, name, bases, namespace, **kwargs)
-        return cls
+        cls = super().__new__(mcs, name, bases, namespace, **kwargs)  # 将 super().__new__(mcs, name, bases, namespace, **kwargs) 赋给 cls
+        return cls                 # 返回 cls
 
-    def __init__(cls, name, bases, namespace, **kwargs):
-        print("Meta.__init__ 被调用，类", name, "已创建")
-        super().__init__(name, bases, namespace, **kwargs)
+    def __init__(cls, name, bases, namespace, **kwargs):  # 定义函数 __init__，参数：cls, name, bases, namespace, **kwargs
+        print("Meta.__init__ 被调用，类", name, "已创建")  # 输出 "Meta.__init__ 被调用，类", name, "已创建"
+        super().__init__(name, bases, namespace, **kwargs)  # 调用 super，参数 ).__init__(name, bases, namespace, **kwargs
 
-class MyClass(metaclass=Meta):
-    x = 1
-    def hello(self):
-        return "hi"
+class MyClass(metaclass=Meta):     # 定义类 MyClass，继承自 metaclass=Meta
+    x = 1                          # 将整数 1 赋给 x
+    def hello(self):               # 定义函数 hello，参数：self
+        return "hi"                # 返回 "hi"
 
 # 输出：
 # Meta.__new__ 被调用，正在创建类: MyClass
@@ -321,14 +321,14 @@ class MyClass(metaclass=Meta):
 一个常见误区：在元类的 \`__init__\` 里修改 \`namespace\` 是没用的，因为类已经创建好了。要修改属性必须在 \`__new__\` 里改 \`namespace\`，或者在 \`__init__\` 里直接 \`setattr(cls, ...)\`。
 
 \`\`\`python
-class Meta2(type):
-    def __new__(mcs, name, bases, namespace, **kwargs):
+class Meta2(type):                 # 定义类 Meta2，继承自 type
+    def __new__(mcs, name, bases, namespace, **kwargs):  # 定义函数 __new__，参数：mcs, name, bases, namespace, **kwargs
         # 在创建前注入一个属性
         namespace["injected"] = "来自元类"
-        return super().__new__(mcs, name, bases, namespace, **kwargs)
+        return super().__new__(mcs, name, bases, namespace, **kwargs)  # 返回 super().__new__(mcs, name, bases, namespace, **kwargs)
 
-class C(metaclass=Meta2):
-    pass
+class C(metaclass=Meta2):          # 定义类 C，继承自 metaclass=Meta2
+    pass                           # 空操作，占位
 
 print(C.injected)   # 来自元类
 \`\`\`
@@ -342,11 +342,11 @@ print(C.injected)   # 来自元类
 自定义元类就是继承 \`type\`：
 
 \`\`\`python
-class MyMeta(type):
-    pass
+class MyMeta(type):                # 定义类 MyMeta，继承自 type
+    pass                           # 空操作，占位
 
-class Something(metaclass=MyMeta):
-    pass
+class Something(metaclass=MyMeta): # 定义类 Something，继承自 metaclass=MyMeta
+    pass                           # 空操作，占位
 
 print(type(Something))   # <class '__main__.MyMeta'>
 print(isinstance(Something, type))   # True
@@ -359,26 +359,26 @@ print(isinstance(Something, type))   # True
 在 \`class\` 语句里用 \`metaclass=XXX\` 指定元类：
 
 \`\`\`python
-class LoggedMeta(type):
-    def __new__(mcs, name, bases, namespace):
-        print(f"[metaclass] 正在创建类 {name}")
-        return super().__new__(mcs, name, bases, namespace)
+class LoggedMeta(type):            # 定义类 LoggedMeta，继承自 type
+    def __new__(mcs, name, bases, namespace):  # 定义函数 __new__，参数：mcs, name, bases, namespace
+        print(f"[metaclass] 正在创建类 {name}")  # 输出 f"[metaclass] 正在创建类 {name}"
+        return super().__new__(mcs, name, bases, namespace)  # 返回 super().__new__(mcs, name, bases, namespace)
 
-class ServiceA(metaclass=LoggedMeta):
-    pass
+class ServiceA(metaclass=LoggedMeta):  # 定义类 ServiceA，继承自 metaclass=LoggedMeta
+    pass                           # 空操作，占位
 
-class ServiceB(metaclass=LoggedMeta):
-    pass
+class ServiceB(metaclass=LoggedMeta):  # 定义类 ServiceB，继承自 metaclass=LoggedMeta
+    pass                           # 空操作，占位
 \`\`\`
 
 注意：元类的选择有继承规则。如果父类用了自定义元类，子类会自动继承这个元类（只要不冲突）。
 
 \`\`\`python
-class Base(metaclass=LoggedMeta):
-    pass
+class Base(metaclass=LoggedMeta):  # 定义类 Base，继承自 metaclass=LoggedMeta
+    pass                           # 空操作，占位
 
 class Child(Base):   # 不用再写 metaclass=，自动继承 LoggedMeta
-    pass
+    pass                           # 空操作，占位
 # 依然会打印 [metaclass] 正在创建类 Child
 \`\`\`
 
@@ -387,34 +387,34 @@ class Child(Base):   # 不用再写 metaclass=，自动继承 LoggedMeta
 元类最常见的用途之一是「插件自动注册」。每当有人定义一个继承基类的子类，就自动把它登记到注册表里，无需手动调用注册函数。
 
 \`\`\`python
-class PluginMeta(type):
-    registry = {}
-    def __new__(mcs, name, bases, namespace):
-        cls = super().__new__(mcs, name, bases, namespace)
+class PluginMeta(type):            # 定义类 PluginMeta，继承自 type
+    registry = {}                  # 创建集合并赋给 registry
+    def __new__(mcs, name, bases, namespace):  # 定义函数 __new__，参数：mcs, name, bases, namespace
+        cls = super().__new__(mcs, name, bases, namespace)  # 将 super().__new__(mcs, name, bases, namespace) 赋给 cls
         # 跳过基类本身（没有实质父类时）
         if bases:   # 有父类，说明是个具体插件
             PluginMeta.registry[name] = cls
-        return cls
+        return cls                 # 返回 cls
 
-class Plugin(metaclass=PluginMeta):
+class Plugin(metaclass=PluginMeta):  # 定义类 Plugin，继承自 metaclass=PluginMeta
     """所有插件的基类"""
-    def run(self):
-        raise NotImplementedError
+    def run(self):                 # 定义函数 run，参数：self
+        raise NotImplementedError  # 抛出异常：NotImplementedError
 
-class HelloPlugin(Plugin):
-    def run(self):
-        return "hello"
+class HelloPlugin(Plugin):         # 定义类 HelloPlugin，继承自 Plugin
+    def run(self):                 # 定义函数 run，参数：self
+        return "hello"             # 返回 "hello"
 
-class ByePlugin(Plugin):
-    def run(self):
-        return "bye"
+class ByePlugin(Plugin):           # 定义类 ByePlugin，继承自 Plugin
+    def run(self):                 # 定义函数 run，参数：self
+        return "bye"               # 返回 "bye"
 
-print("注册表:", list(PluginMeta.registry.keys()))
+print("注册表:", list(PluginMeta.registry.keys()))  # 输出 "注册表:", list(PluginMeta.registry.keys())
 # 注册表: ['HelloPlugin', 'ByePlugin']
 
 # 按名字取出并调用
-for name, cls in PluginMeta.registry.items():
-    print(name, "->", cls().run())
+for name, cls in PluginMeta.registry.items():  # 遍历 PluginMeta.registry.items()，每次取值赋给 name, cls
+    print(name, "->", cls().run()) # 输出 name, "->", cls().run()
 \`\`\`
 
 这种模式在 Django 的 Model、Flask 的视图、各种插件系统里非常常见。优点是「定义即注册」，使用者完全不用记得调用注册函数。
@@ -424,26 +424,26 @@ for name, cls in PluginMeta.registry.items():
 元类可以在类创建时校验「子类是否实现了必需的方法」，把运行时错误提前到「类定义时」。
 
 \`\`\`python
-class InterfaceMeta(type):
-    required_methods = []
-    def __new__(mcs, name, bases, namespace):
-        cls = super().__new__(mcs, name, bases, namespace)
+class InterfaceMeta(type):         # 定义类 InterfaceMeta，继承自 type
+    required_methods = []          # 创建列表并赋给 required_methods
+    def __new__(mcs, name, bases, namespace):  # 定义函数 __new__，参数：mcs, name, bases, namespace
+        cls = super().__new__(mcs, name, bases, namespace)  # 将 super().__new__(mcs, name, bases, namespace) 赋给 cls
         # 基类自己不校验
-        if not bases:
-            return cls
+        if not bases:              # 如果 not bases 成立
+            return cls             # 返回 cls
         # 检查必需方法是否都已实现
-        missing = [m for m in mcs.required_methods if m not in namespace]
-        if missing:
-            raise TypeError(
+        missing = [m for m in mcs.required_methods if m not in namespace]  # 创建列表并赋给 missing
+        if missing:                # 如果 missing 成立
+            raise TypeError(       # 抛出异常：TypeError(
                 f"类 {name} 必须实现这些方法: {missing}"
             )
-        return cls
+        return cls                 # 返回 cls
 
-class Storage(metaclass=InterfaceMeta):
-    required_methods = ["save", "load"]
+class Storage(metaclass=InterfaceMeta):  # 定义类 Storage，继承自 metaclass=InterfaceMeta
+    required_methods = ["save", "load"]  # 创建列表并赋给 required_methods
     # 基类，不实现
 
-class FileStorage(Storage):
+class FileStorage(Storage):        # 定义类 FileStorage，继承自 Storage
     def save(self, data): return "saved to file"
     def load(self): return "loaded from file"
 
@@ -460,25 +460,25 @@ class FileStorage(Storage):
 元类可以扫描类的命名空间，对特定属性做改写。比如把所有大写常量收集起来，或给所有方法自动加日志。
 
 \`\`\`python
-class ConstCollectorMeta(type):
-    def __new__(mcs, name, bases, namespace):
-        consts = {}
+class ConstCollectorMeta(type):    # 定义类 ConstCollectorMeta，继承自 type
+    def __new__(mcs, name, bases, namespace):  # 定义函数 __new__，参数：mcs, name, bases, namespace
+        consts = {}                # 创建集合并赋给 consts
         # 找出所有全大写的属性
-        for key, val in list(namespace.items()):
-            if key.isupper() and isinstance(val, (int, float, str)):
+        for key, val in list(namespace.items()):  # 遍历 list(namespace.items())，每次取值赋给 key, val
+            if key.isupper() and isinstance(val, (int, float, str)):  # 如果 key.isupper() and isinstance(val, (int, float, str)) 成立
                 consts[key] = val
-        cls = super().__new__(mcs, name, bases, namespace)
+        cls = super().__new__(mcs, name, bases, namespace)  # 将 super().__new__(mcs, name, bases, namespace) 赋给 cls
         cls._consts = consts
-        return cls
+        return cls                 # 返回 cls
 
-class Config(metaclass=ConstCollectorMeta):
-    MAX_RETRIES = 5
-    TIMEOUT = 30
-    APP_NAME = "MyApp"
-    def helper(self):
-        pass
+class Config(metaclass=ConstCollectorMeta):  # 定义类 Config，继承自 metaclass=ConstCollectorMeta
+    MAX_RETRIES = 5                # 将整数 5 赋给 MAX_RETRIES
+    TIMEOUT = 30                   # 将整数 30 赋给 TIMEOUT
+    APP_NAME = "MyApp"             # 将字符串 "MyApp" 赋给 APP_NAME
+    def helper(self):              # 定义函数 helper，参数：self
+        pass                       # 空操作，占位
 
-print(Config._consts)
+print(Config._consts)              # 输出 Config._consts
 # {'MAX_RETRIES': 5, 'TIMEOUT': 30, 'APP_NAME': 'MyApp'}
 \`\`\`
 
@@ -503,10 +503,10 @@ ORM 框架就是这样工作的：你在 Model 类里声明一堆 \`Field\` 对�
 
 \`\`\`python
 # 用 __init_subclass__ 实现自动注册（对比上面的元类版本）
-class Plugin:
-    registry = []
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
+class Plugin:                      # 定义类 Plugin
+    registry = []                  # 创建列表并赋给 registry
+    def __init_subclass__(cls, **kwargs):  # 定义函数 __init_subclass__，参数：cls, **kwargs
+        super().__init_subclass__(**kwargs)  # 调用 super，参数 ).__init_subclass__(**kwargs
         Plugin.registry.append(cls.__name__)
 
 class A(Plugin): pass
@@ -535,25 +535,25 @@ print(Plugin.registry)   # ['A', 'B']
 抽象基类（Abstract Base Class，ABC）是一种「不能被实例化、要求子类必须实现某些方法」的类。它用来定义「接口契约」。\`abc\` 模块提供了对 ABC 的支持，而 \`ABC\` / \`ABCMeta\` 的底层正是基于元类实现的。
 
 \`\`\`python
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod  # 从 abc 导入 ABC, abstractmethod
 
-class Shape(ABC):
+class Shape(ABC):                  # 定义类 Shape，继承自 ABC
     @abstractmethod
-    def area(self):
+    def area(self):                # 定义函数 area，参数：self
         ...
 
     @abstractmethod
-    def perimeter(self):
+    def perimeter(self):           # 定义函数 perimeter，参数：self
         ...
 
 # Shape()  # 会报错：Can't instantiate abstract class
-class Circle(Shape):
+class Circle(Shape):               # 定义类 Circle，继承自 Shape
     def __init__(self, r): self.r = r
     def area(self): return 3.14 * self.r * self.r
     def perimeter(self): return 2 * 3.14 * self.r
 
-c = Circle(2)
-print(c.area(), c.perimeter())
+c = Circle(2)                      # 将 Circle(2) 赋给 c
+print(c.area(), c.perimeter())     # 输出 c.area(), c.perimeter()
 \`\`\`
 
 如果子类没实现某个 \`@abstractmethod\` 方法，实例化时会报错。
@@ -563,14 +563,14 @@ print(c.area(), c.perimeter())
 \`ABC\` 其实就是 \`class ABC(metaclass=ABCMeta)\`。如果你想让自己的基类同时有自定义元类和 ABC 功能，可以直接用 \`ABCMeta\`：
 
 \`\`\`python
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta, abstractmethod  # 从 abc 导入 ABCMeta, abstractmethod
 
-class Animal(metaclass=ABCMeta):
+class Animal(metaclass=ABCMeta):   # 定义类 Animal，继承自 metaclass=ABCMeta
     @abstractmethod
-    def sound(self):
-        pass
+    def sound(self):               # 定义函数 sound，参数：self
+        pass                       # 空操作，占位
 
-class Dog(Animal):
+class Dog(Animal):                 # 定义类 Dog，继承自 Animal
     def sound(self): return "汪汪"
 
 print(Dog().sound())   # 汪汪
@@ -581,22 +581,22 @@ print(Dog().sound())   # 汪汪
 \`@abstractmethod\` 标记的方法必须被子类实现。\`@abstractproperty\`（或 \`@property + @abstractmethod\`）标记的属性同理。
 
 \`\`\`python
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod  # 从 abc 导入 ABC, abstractmethod
 
-class ConfigSource(ABC):
+class ConfigSource(ABC):           # 定义类 ConfigSource，继承自 ABC
     @property
     @abstractmethod
-    def data(self):
+    def data(self):                # 定义函数 data，参数：self
         """子类必须提供一个 data 属性"""
 
-class DictConfig(ConfigSource):
-    def __init__(self, d):
+class DictConfig(ConfigSource):    # 定义类 DictConfig，继承自 ConfigSource
+    def __init__(self, d):         # 定义函数 __init__，参数：self, d
         self._d = d
     @property
-    def data(self):
-        return self._d
+    def data(self):                # 定义函数 data，参数：self
+        return self._d             # 返回 self._d
 
-cfg = DictConfig({"x": 1})
+cfg = DictConfig({"x": 1})         # 将 DictConfig({"x": 1}) 赋给 cfg
 print(cfg.data)   # {'x': 1}
 \`\`\`
 
@@ -607,13 +607,13 @@ print(cfg.data)   # {'x': 1}
 ABC 有个强大的功能：\`register\`。它能让一个类「声明自己是某个 ABC 的虚拟子类」，而不需要真正继承。这样 \`isinstance\` 检查会通过，但 ABC 不会要求它实现任何方法。
 
 \`\`\`python
-from abc import ABC
+from abc import ABC                # 从 abc 导入 ABC
 
-class MyList(ABC):
-    pass
+class MyList(ABC):                 # 定义类 MyList，继承自 ABC
+    pass                           # 空操作，占位
 
 # list 没有继承 MyList，但我们声明它是 MyList 的虚拟子类
-MyList.register(list)
+MyList.register(list)              # 对 MyList 调用 register 方法，参数 list
 
 print(isinstance([1,2,3], MyList))   # True
 print(issubclass(list, MyList))      # True
@@ -622,7 +622,7 @@ print(issubclass(list, MyList))      # True
 标准库里大量用了这个：\`collections.abc\` 里，\`list\` 是 \`Sequence\` 的虚拟子类，\`dict\` 是 \`Mapping\` 的虚拟子类，等等。这让「鸭子类型」和「类型检查」能共存——只要行为像序列，\`isinstance(x, Sequence)\` 就为 True，哪怕没继承。
 
 \`\`\`python
-from collections.abc import Sequence, Mapping
+from collections.abc import Sequence, Mapping  # 从 collections.abc 导入 Sequence, Mapping
 
 print(isinstance([1,2], Sequence))   # True
 print(isinstance({"a":1}, Mapping))  # True
@@ -640,13 +640,13 @@ print(isinstance("abc", Sequence))   # True（str 也是序列）
 类装饰器是「类定义完后，把类传给一个函数」。它能修改类、返回新类、甚至返回完全不同的对象。
 
 \`\`\`python
-def add_version(cls):
+def add_version(cls):              # 定义函数 add_version，参数：cls
     cls.version = "1.0"
-    return cls
+    return cls                     # 返回 cls
 
 @add_version
-class App:
-    pass
+class App:                         # 定义类 App
+    pass                           # 空操作，占位
 
 print(App.version)   # 1.0
 \`\`\`
@@ -676,39 +676,39 @@ Python 之禅说「元类是 99% 用户永远不需要深究的魔法」。能�
 # 同一个「自动注册」需求的三种实现对比
 
 # 方案 A：类装饰器（子类不自动注册，需手动装饰）
-_registered = []
-def register(cls):
-    _registered.append(cls.__name__)
-    return cls
+_registered = []                   # 创建列表并赋给 _registered
+def register(cls):                 # 定义函数 register，参数：cls
+    _registered.append(cls.__name__)  # 对 _registered 调用 追加 方法，参数 cls.__name__
+    return cls                     # 返回 cls
 
 @register
 class PluginA: pass
 # PluginA 的子类不会自动注册
 
 # 方案 B：__init_subclass__（推荐，子类自动注册）
-class PluginB:
-    subs = []
-    def __init_subclass__(cls, **kw):
-        super().__init_subclass__(**kw)
+class PluginB:                     # 定义类 PluginB
+    subs = []                      # 创建列表并赋给 subs
+    def __init_subclass__(cls, **kw):  # 定义函数 __init_subclass__，参数：cls, **kw
+        super().__init_subclass__(**kw)  # 调用 super，参数 ).__init_subclass__(**kw
         PluginB.subs.append(cls.__name__)
 
 class Sub1(PluginB): pass
 class Sub2(PluginB): pass
 
 # 方案 C：元类（子类自动注册，但更重）
-class PluginCMeta(type):
-    subs = []
-    def __new__(mcs, name, bases, ns):
-        cls = super().__new__(mcs, name, bases, ns)
-        if bases:
+class PluginCMeta(type):           # 定义类 PluginCMeta，继承自 type
+    subs = []                      # 创建列表并赋给 subs
+    def __new__(mcs, name, bases, ns):  # 定义函数 __new__，参数：mcs, name, bases, ns
+        cls = super().__new__(mcs, name, bases, ns)  # 将 super().__new__(mcs, name, bases, ns) 赋给 cls
+        if bases:                  # 如果 bases 成立
             PluginCMeta.subs.append(name)
-        return cls
+        return cls                 # 返回 cls
 
 class PluginC(metaclass=PluginCMeta): pass
 class Sub3(PluginC): pass
 
-print("B 方案子类:", PluginB.subs)
-print("C 方案子类:", PluginCMeta.subs)
+print("B 方案子类:", PluginB.subs)     # 输出 "B 方案子类:", PluginB.subs
+print("C 方案子类:", PluginCMeta.subs) # 输出 "C 方案子类:", PluginCMeta.subs
 \`\`\`
 
 ---
@@ -734,21 +734,21 @@ class B(metaclass=MetaB): pass
 元类的 \`__prepare__\` 方法返回类体的命名空间容器。默认是 \`dict\`，但你可以返回任意 Mapping，比如用 \`collections.OrderedDict\`（3.7+ dict 本身有序，但自定义映射能支持更多功能）。
 
 \`\`\`python
-class AttrDict(dict):
+class AttrDict(dict):              # 定义类 AttrDict，继承自 dict
     """支持用属性访问的命名空间"""
-    def __getattr__(self, name):
-        return self[name]
+    def __getattr__(self, name):   # 定义函数 __getattr__，参数：self, name
+        return self[name]          # 返回 self[name]
 
-class MyMeta(type):
+class MyMeta(type):                # 定义类 MyMeta，继承自 type
     @classmethod
-    def __prepare__(mcs, name, bases, **kwargs):
-        return AttrDict()
-    def __new__(mcs, name, bases, namespace, **kwargs):
-        return super().__new__(mcs, name, bases, dict(namespace))
+    def __prepare__(mcs, name, bases, **kwargs):  # 定义函数 __prepare__，参数：mcs, name, bases, **kwargs
+        return AttrDict()          # 返回 AttrDict()
+    def __new__(mcs, name, bases, namespace, **kwargs):  # 定义函数 __new__，参数：mcs, name, bases, namespace, **kwargs
+        return super().__new__(mcs, name, bases, dict(namespace))  # 返回 super().__new__(mcs, name, bases, dict(namespace))
 
-class X(metaclass=MyMeta):
-    a = 1
-    b = 2
+class X(metaclass=MyMeta):         # 定义类 X，继承自 metaclass=MyMeta
+    a = 1                          # 将整数 1 赋给 a
+    b = 2                          # 将整数 2 赋给 b
 \`\`\`
 
 ### 8.3 不要滥用元类
@@ -1397,19 +1397,19 @@ print("=" * 60)
 - \`__delete__(self, obj)\`：删除属性时调用。
 
 \`\`\`python
-class MyDescriptor:
-    def __get__(self, obj, objtype=None):
-        print("__get__ 被调用")
-        return 42
-    def __set__(self, obj, value):
-        print("__set__ 被调用, value =", value)
-    def __delete__(self, obj):
-        print("__delete__ 被调用")
+class MyDescriptor:                # 定义类 MyDescriptor
+    def __get__(self, obj, objtype=None):  # 定义函数 __get__，参数：self, obj, objtype=None
+        print("__get__ 被调用")       # 输出 "__get__ 被调用"
+        return 42                  # 返回 42
+    def __set__(self, obj, value): # 定义函数 __set__，参数：self, obj, value
+        print("__set__ 被调用, value =", value)  # 输出 "__set__ 被调用, value =", value
+    def __delete__(self, obj):     # 定义函数 __delete__，参数：self, obj
+        print("__delete__ 被调用")    # 输出 "__delete__ 被调用"
 
-class C:
+class C:                           # 定义类 C
     x = MyDescriptor()   # 描述符必须作为类属性
 
-c = C()
+c = C()                            # 将 C() 赋给 c
 print(c.x)      # 触发 __get__，返回 42
 c.x = 100       # 触发 __set__（但这里不会存到实例）
 del c.x         # 触发 __delete__
@@ -1442,22 +1442,22 @@ del c.x         # 触发 __delete__
 
 \`\`\`python
 # 数据描述符
-class DataDesc:
-    def __get__(self, obj, objtype=None):
-        return "data desc"
-    def __set__(self, obj, value):
-        pass
+class DataDesc:                    # 定义类 DataDesc
+    def __get__(self, obj, objtype=None):  # 定义函数 __get__，参数：self, obj, objtype=None
+        return "data desc"         # 返回 "data desc"
+    def __set__(self, obj, value): # 定义函数 __set__，参数：self, obj, value
+        pass                       # 空操作，占位
 
 # 非数据描述符
-class NonDataDesc:
-    def __get__(self, obj, objtype=None):
-        return "non-data desc"
+class NonDataDesc:                 # 定义类 NonDataDesc
+    def __get__(self, obj, objtype=None):  # 定义函数 __get__，参数：self, obj, objtype=None
+        return "non-data desc"     # 返回 "non-data desc"
 
-class C:
-    d = DataDesc()
-    n = NonDataDesc()
+class C:                           # 定义类 C
+    d = DataDesc()                 # 将 DataDesc() 赋给 d
+    n = NonDataDesc()              # 将 NonDataDesc() 赋给 n
 
-c = C()
+c = C()                            # 将 C() 赋给 c
 # 试图用实例字典覆盖
 c.__dict__['d'] = "instance d"
 c.__dict__['n'] = "instance n"
@@ -1471,14 +1471,14 @@ print(c.n)   # instance n   ← 非数据描述符被实例字典覆盖
 ### 2.2 优先级实验
 
 \`\`\`python
-class Trace:
-    def __get__(self, obj, objtype=None):
-        return "来自描述符"
+class Trace:                       # 定义类 Trace
+    def __get__(self, obj, objtype=None):  # 定义函数 __get__，参数：self, obj, objtype=None
+        return "来自描述符"             # 返回 "来自描述符"
 
-class C:
-    x = Trace()
+class C:                           # 定义类 C
+    x = Trace()                    # 将 Trace() 赋给 x
 
-c = C()
+c = C()                            # 将 C() 赋给 c
 print(c.x)              # 来自描述符（非数据描述符，但实例字典里还没有 x）
 c.x = "实例属性"
 print(c.x)              # 实例属性（非数据描述符优先级低于实例属性）
@@ -1487,16 +1487,16 @@ print(c.x)              # 实例属性（非数据描述符优先级低于实例
 如果给 \`Trace\` 加上 \`__set__\`，它就变成数据描述符，\`c.x = "实例属性"\` 会被拦截：
 
 \`\`\`python
-class Trace2:
-    def __get__(self, obj, objtype=None):
-        return "来自描述符"
-    def __set__(self, obj, value):
-        print("拦截赋值:", value)
+class Trace2:                      # 定义类 Trace2
+    def __get__(self, obj, objtype=None):  # 定义函数 __get__，参数：self, obj, objtype=None
+        return "来自描述符"             # 返回 "来自描述符"
+    def __set__(self, obj, value): # 定义函数 __set__，参数：self, obj, value
+        print("拦截赋值:", value)      # 输出 "拦截赋值:", value
 
-class D:
-    x = Trace2()
+class D:                           # 定义类 D
+    x = Trace2()                   # 将 Trace2() 赋给 x
 
-d = D()
+d = D()                            # 将 D() 赋给 d
 d.x = "实例属性"   # 拦截赋值: 实例属性
 print(d.x)          # 来自描述符
 \`\`\`
@@ -1510,33 +1510,33 @@ print(d.x)          # 来自描述符
 \`property\` 是一个内置类型，它本质上就是一个「帮你实现描述符协议」的便利工具。当你写：
 
 \`\`\`python
-class C:
+class C:                           # 定义类 C
     @property
-    def x(self):
-        return self._x
+    def x(self):                   # 定义函数 x，参数：self
+        return self._x             # 返回 self._x
     @x.setter
-    def x(self, value):
+    def x(self, value):            # 定义函数 x，参数：self, value
         self._x = value
 \`\`\`
 
 等价于：
 
 \`\`\`python
-class C:
-    def get_x(self):
-        return self._x
-    def set_x(self, value):
+class C:                           # 定义类 C
+    def get_x(self):               # 定义函数 get_x，参数：self
+        return self._x             # 返回 self._x
+    def set_x(self, value):        # 定义函数 set_x，参数：self, value
         self._x = value
-    x = property(get_x, set_x)
+    x = property(get_x, set_x)     # 将 property(get_x, set_x) 赋给 x
 \`\`\`
 
 而 \`property\` 实例本身就是一个数据描述符，它的 \`__get__\` 调用你提供的 \`fget\`，\`__set__\` 调用你提供的 \`fset\`。
 
 \`\`\`python
-class C:
-    x = property(lambda self: self._x, lambda self, v: setattr(self, '_x', v))
+class C:                           # 定义类 C
+    x = property(lambda self: self._x, lambda self, v: setattr(self, '_x', v))  # 将 property(lambda self: self._x, lambda self, v: setattr(self, '_x', v)) 赋给 x
 
-c = C()
+c = C()                            # 将 C() 赋给 c
 c.x = 5
 print(c.x)   # 5
 print(type(C.x))   # <class 'property'>
@@ -1548,39 +1548,39 @@ print(isinstance(C.x, property))   # True
 理解了这点，你完全可以手写一个 \`property\`：
 
 \`\`\`python
-class MyProperty:
-    def __init__(self, fget=None, fset=None, fdel=None):
+class MyProperty:                  # 定义类 MyProperty
+    def __init__(self, fget=None, fset=None, fdel=None):  # 定义函数 __init__，参数：self, fget=None, fset=None, fdel=None
         self.fget = fget
         self.fset = fset
         self.fdel = fdel
-    def __get__(self, obj, objtype=None):
-        if obj is None:
-            return self
-        if self.fget is None:
-            raise AttributeError("不可读")
-        return self.fget(obj)
-    def __set__(self, obj, value):
-        if self.fset is None:
-            raise AttributeError("不可写")
-        self.fset(obj, value)
-    def __delete__(self, obj):
-        if self.fdel is None:
-            raise AttributeError("不可删")
-        self.fdel(obj)
-    def setter(self, fset):
-        return MyProperty(self.fget, fset, self.fdel)
+    def __get__(self, obj, objtype=None):  # 定义函数 __get__，参数：self, obj, objtype=None
+        if obj is None:            # 如果 obj is None 成立
+            return self            # 返回 self
+        if self.fget is None:      # 如果 self.fget is None 成立
+            raise AttributeError("不可读")  # 抛出异常：AttributeError("不可读")
+        return self.fget(obj)      # 返回 self.fget(obj)
+    def __set__(self, obj, value): # 定义函数 __set__，参数：self, obj, value
+        if self.fset is None:      # 如果 self.fset is None 成立
+            raise AttributeError("不可写")  # 抛出异常：AttributeError("不可写")
+        self.fset(obj, value)      # 对 self 调用 fset 方法，参数 obj, value
+    def __delete__(self, obj):     # 定义函数 __delete__，参数：self, obj
+        if self.fdel is None:      # 如果 self.fdel is None 成立
+            raise AttributeError("不可删")  # 抛出异常：AttributeError("不可删")
+        self.fdel(obj)             # 对 self 调用 fdel 方法，参数 obj
+    def setter(self, fset):        # 定义函数 setter，参数：self, fset
+        return MyProperty(self.fget, fset, self.fdel)  # 返回 MyProperty(self.fget, fset, self.fdel)
 
-class Person:
-    def __init__(self, name):
+class Person:                      # 定义类 Person
+    def __init__(self, name):      # 定义函数 __init__，参数：self, name
         self._name = name
     @MyProperty
-    def name(self):
-        return self._name
+    def name(self):                # 定义函数 name，参数：self
+        return self._name          # 返回 self._name
     @name.setter
-    def name(self, value):
+    def name(self, value):         # 定义函数 name，参数：self, value
         self._name = value
 
-p = Person("Alice")
+p = Person("Alice")                # 将 Person("Alice") 赋给 p
 print(p.name)   # Alice
 p.name = "Bob"
 print(p.name)   # Bob
@@ -1597,31 +1597,31 @@ print(p.name)   # Bob
 描述符最常见的用途是「带验证的属性」。我们写一个只接受特定类型的描述符：
 
 \`\`\`python
-class TypedField:
-    def __init__(self, expected_type):
+class TypedField:                  # 定义类 TypedField
+    def __init__(self, expected_type):  # 定义函数 __init__，参数：self, expected_type
         self.expected_type = expected_type
-    def __set_name__(self, owner, name):
+    def __set_name__(self, owner, name):  # 定义函数 __set_name__，参数：self, owner, name
         self.name = name
-    def __get__(self, obj, objtype=None):
-        if obj is None:
-            return self
-        return obj.__dict__.get(self.name)
-    def __set__(self, obj, value):
-        if not isinstance(value, self.expected_type):
-            raise TypeError(
+    def __get__(self, obj, objtype=None):  # 定义函数 __get__，参数：self, obj, objtype=None
+        if obj is None:            # 如果 obj is None 成立
+            return self            # 返回 self
+        return obj.__dict__.get(self.name)  # 返回 obj.__dict__.get(self.name)
+    def __set__(self, obj, value): # 定义函数 __set__，参数：self, obj, value
+        if not isinstance(value, self.expected_type):  # 如果 not isinstance(value, self.expected_type) 成立
+            raise TypeError(       # 抛出异常：TypeError(
                 self.name + " 必须是 " + self.expected_type.__name__
                 + "，收到 " + type(value).__name__
             )
         obj.__dict__[self.name] = value
 
-class User:
-    name = TypedField(str)
-    age = TypedField(int)
+class User:                        # 定义类 User
+    name = TypedField(str)         # 将 TypedField(str) 赋给 name
+    age = TypedField(int)          # 将 TypedField(int) 赋给 age
 
-u = User()
+u = User()                         # 将 User() 赋给 u
 u.name = "Alice"
 u.age = 30
-print(u.name, u.age)
+print(u.name, u.age)               # 输出 u.name, u.age
 # u.age = "30"   # TypeError: age 必须是 int，收到 str
 \`\`\`
 
@@ -1630,31 +1630,31 @@ print(u.name, u.age)
 ### 4.2 范围检查描述符
 
 \`\`\`python
-class RangeField:
-    def __init__(self, low, high):
+class RangeField:                  # 定义类 RangeField
+    def __init__(self, low, high): # 定义函数 __init__，参数：self, low, high
         self.low = low
         self.high = high
-    def __set_name__(self, owner, name):
+    def __set_name__(self, owner, name):  # 定义函数 __set_name__，参数：self, owner, name
         self.name = name
-    def __get__(self, obj, objtype=None):
-        if obj is None:
-            return self
-        return obj.__dict__.get(self.name)
-    def __set__(self, obj, value):
-        if not (self.low <= value <= self.high):
-            raise ValueError(
+    def __get__(self, obj, objtype=None):  # 定义函数 __get__，参数：self, obj, objtype=None
+        if obj is None:            # 如果 obj is None 成立
+            return self            # 返回 self
+        return obj.__dict__.get(self.name)  # 返回 obj.__dict__.get(self.name)
+    def __set__(self, obj, value): # 定义函数 __set__，参数：self, obj, value
+        if not (self.low <= value <= self.high):  # 如果 not (self.low <= value <= self.high) 成立
+            raise ValueError(      # 抛出异常：ValueError(
                 self.name + " 必须在 " + str(self.low) + " 到 " + str(self.high) + " 之间"
             )
         obj.__dict__[self.name] = value
 
-class Product:
-    price = RangeField(0, 10000)
-    stock = RangeField(0, 9999)
+class Product:                     # 定义类 Product
+    price = RangeField(0, 10000)   # 将 RangeField(0, 10000) 赋给 price
+    stock = RangeField(0, 9999)    # 将 RangeField(0, 9999) 赋给 stock
 
-p = Product()
+p = Product()                      # 将 Product() 赋给 p
 p.price = 99.9
 p.stock = 100
-print(p.price, p.stock)
+print(p.price, p.stock)            # 输出 p.price, p.stock
 # p.price = -1   # ValueError
 # p.stock = 99999 # ValueError
 \`\`\`
@@ -1664,40 +1664,40 @@ print(p.price, p.stock)
 可以组合多个验证规则：
 
 \`\`\`python
-class Validated:
-    def __init__(self, *validators):
+class Validated:                   # 定义类 Validated
+    def __init__(self, *validators):  # 定义函数 __init__，参数：self, *validators
         self.validators = validators
-    def __set_name__(self, owner, name):
+    def __set_name__(self, owner, name):  # 定义函数 __set_name__，参数：self, owner, name
         self.name = name
-    def __get__(self, obj, objtype=None):
-        if obj is None:
-            return self
-        return obj.__dict__.get(self.name)
-    def __set__(self, obj, value):
-        for v in self.validators:
-            v(self.name, value)
+    def __get__(self, obj, objtype=None):  # 定义函数 __get__，参数：self, obj, objtype=None
+        if obj is None:            # 如果 obj is None 成立
+            return self            # 返回 self
+        return obj.__dict__.get(self.name)  # 返回 obj.__dict__.get(self.name)
+    def __set__(self, obj, value): # 定义函数 __set__，参数：self, obj, value
+        for v in self.validators:  # 遍历 self.validators，每次取值赋给 v
+            v(self.name, value)    # 调用 v，参数 self.name, value
         obj.__dict__[self.name] = value
 
-def type_check(t):
-    def check(name, value):
-        if not isinstance(value, t):
-            raise TypeError(name + " 类型错误")
-    return check
+def type_check(t):                 # 定义函数 type_check，参数：t
+    def check(name, value):        # 定义函数 check，参数：name, value
+        if not isinstance(value, t):  # 如果 not isinstance(value, t) 成立
+            raise TypeError(name + " 类型错误")  # 抛出异常：TypeError(name + " 类型错误")
+    return check                   # 返回 check
 
-def range_check(low, high):
-    def check(name, value):
-        if not (low <= value <= high):
-            raise ValueError(name + " 超出范围")
-    return check
+def range_check(low, high):        # 定义函数 range_check，参数：low, high
+    def check(name, value):        # 定义函数 check，参数：name, value
+        if not (low <= value <= high):  # 如果 not (low <= value <= high) 成立
+            raise ValueError(name + " 超出范围")  # 抛出异常：ValueError(name + " 超出范围")
+    return check                   # 返回 check
 
-class Config:
-    port = Validated(type_check(int), range_check(0, 65535))
-    host = Validated(type_check(str))
+class Config:                      # 定义类 Config
+    port = Validated(type_check(int), range_check(0, 65535))  # 将 Validated(type_check(int), range_check(0, 65535)) 赋给 port
+    host = Validated(type_check(str))  # 将 Validated(type_check(str)) 赋给 host
 
-cfg = Config()
+cfg = Config()                     # 将 Config() 赋给 cfg
 cfg.port = 8080
 cfg.host = "localhost"
-print(cfg.host, cfg.port)
+print(cfg.host, cfg.port)          # 输出 cfg.host, cfg.port
 \`\`\`
 
 ---
@@ -1709,19 +1709,19 @@ print(cfg.host, cfg.port)
 描述符作为类属性，是**所有实例共享**的。如果你把属性值存在描述符自己身上，所有实例就会共享同一个值——这是常见 bug。
 
 \`\`\`python
-class BadField:
-    def __init__(self):
+class BadField:                    # 定义类 BadField
+    def __init__(self):            # 定义函数 __init__，参数：self
         self.value = None    # 存在描述符自己身上，所有实例共享！
-    def __get__(self, obj, objtype=None):
-        return self.value
-    def __set__(self, obj, value):
+    def __get__(self, obj, objtype=None):  # 定义函数 __get__，参数：self, obj, objtype=None
+        return self.value          # 返回 self.value
+    def __set__(self, obj, value): # 定义函数 __set__，参数：self, obj, value
         self.value = value
 
-class C:
-    x = BadField()
+class C:                           # 定义类 C
+    x = BadField()                 # 将 BadField() 赋给 x
 
-a = C()
-b = C()
+a = C()                            # 将 C() 赋给 a
+b = C()                            # 将 C() 赋给 b
 a.x = 1
 print(b.x)   # 1 ← 串了！b 也变成了 1
 \`\`\`
@@ -1729,21 +1729,21 @@ print(b.x)   # 1 ← 串了！b 也变成了 1
 正确做法是把值存在**实例的 \`__dict__\`** 里，用属性名作为 key：
 
 \`\`\`python
-class GoodField:
-    def __set_name__(self, owner, name):
+class GoodField:                   # 定义类 GoodField
+    def __set_name__(self, owner, name):  # 定义函数 __set_name__，参数：self, owner, name
         self.name = name
-    def __get__(self, obj, objtype=None):
-        if obj is None:
-            return self
-        return obj.__dict__.get(self.name)
-    def __set__(self, obj, value):
+    def __get__(self, obj, objtype=None):  # 定义函数 __get__，参数：self, obj, objtype=None
+        if obj is None:            # 如果 obj is None 成立
+            return self            # 返回 self
+        return obj.__dict__.get(self.name)  # 返回 obj.__dict__.get(self.name)
+    def __set__(self, obj, value): # 定义函数 __set__，参数：self, obj, value
         obj.__dict__[self.name] = value
 
-class D:
-    x = GoodField()
+class D:                           # 定义类 D
+    x = GoodField()                # 将 GoodField() 赋给 x
 
-a = D()
-b = D()
+a = D()                            # 将 D() 赋给 a
+b = D()                            # 将 D() 赋给 b
 a.x = 1
 b.x = 2
 print(a.x, b.x)   # 1 2 ← 正确，各存各的
@@ -1757,15 +1757,15 @@ print(a.x, b.x)   # 1 2 ← 正确，各存各的
 - **实例变量**：存在 \`实例.__dict__\`，每个实例独有。
 
 \`\`\`python
-class C:
+class C:                           # 定义类 C
     class_var = 0   # 类变量
-    def __init__(self):
+    def __init__(self):            # 定义函数 __init__，参数：self
         self.instance_var = 0   # 实例变量
 
-print("class_var 在 C.__dict__:", "class_var" in C.__dict__)
-print("instance_var 在 C.__dict__:", "instance_var" in C.__dict__)
-c = C()
-print("instance_var 在 c.__dict__:", "instance_var" in c.__dict__)
+print("class_var 在 C.__dict__:", "class_var" in C.__dict__)  # 输出 "class_var 在 C.__dict__:", "class_var" in C.__dict__
+print("instance_var 在 C.__dict__:", "instance_var" in C.__dict__)  # 输出 "instance_var 在 C.__dict__:", "instance_var" in C.__dict__
+c = C()                            # 将 C() 赋给 c
+print("instance_var 在 c.__dict__:", "instance_var" in c.__dict__)  # 输出 "instance_var 在 c.__dict__:", "instance_var" in c.__dict__
 \`\`\`
 
 描述符是类变量，但它「代理」的是实例变量——把值存到实例字典里，从而做到每个实例独立。
@@ -1775,25 +1775,25 @@ print("instance_var 在 c.__dict__:", "instance_var" in c.__dict__)
 有时实例的 \`__dict__\` 不方便用（比如用了 \`__slots__\`），或者你想避免污染实例字典。可以在描述符里维护一个「实例 → 值」的字典：
 
 \`\`\`python
-class SlotField:
-    def __init__(self):
+class SlotField:                   # 定义类 SlotField
+    def __init__(self):            # 定义函数 __init__，参数：self
         self.data = {}   # 用 id(实例) 做 key
-    def __set_name__(self, owner, name):
+    def __set_name__(self, owner, name):  # 定义函数 __set_name__，参数：self, owner, name
         self.name = name
-    def __get__(self, obj, objtype=None):
-        if obj is None:
-            return self
-        return self.data.get(id(obj))
-    def __set__(self, obj, value):
+    def __get__(self, obj, objtype=None):  # 定义函数 __get__，参数：self, obj, objtype=None
+        if obj is None:            # 如果 obj is None 成立
+            return self            # 返回 self
+        return self.data.get(id(obj))  # 返回 self.data.get(id(obj))
+    def __set__(self, obj, value): # 定义函数 __set__，参数：self, obj, value
         self.data[id(obj)] = value
-    def __delete__(self, obj):
+    def __delete__(self, obj):     # 定义函数 __delete__，参数：self, obj
         self.data.pop(id(obj), None)
 
-class C:
-    x = SlotField()
+class C:                           # 定义类 C
+    x = SlotField()                # 将 SlotField() 赋给 x
 
-a = C()
-b = C()
+a = C()                            # 将 C() 赋给 a
+b = C()                            # 将 C() 赋给 b
 a.x = 1
 b.x = 2
 print(a.x, b.x)   # 1 2
@@ -1810,18 +1810,18 @@ print(a.x, b.x)   # 1 2
 \`__set_name__(self, owner, name)\` 在「类创建时」被调用，\`owner\` 是定义该描述符的类，\`name\` 是描述符被赋给的属性名。它让描述符「知道自己的名字」，从而能正确地在实例字典里存取。
 
 \`\`\`python
-class Field:
-    def __set_name__(self, owner, name):
-        print(f"我被赋给了 {owner.__name__}.{name}")
+class Field:                       # 定义类 Field
+    def __set_name__(self, owner, name):  # 定义函数 __set_name__，参数：self, owner, name
+        print(f"我被赋给了 {owner.__name__}.{name}")  # 输出 f"我被赋给了 {owner.__name__}.{name}"
         self.name = name
-    def __get__(self, obj, objtype=None):
-        if obj is None:
-            return self
-        return obj.__dict__.get(self.name)
-    def __set__(self, obj, value):
+    def __get__(self, obj, objtype=None):  # 定义函数 __get__，参数：self, obj, objtype=None
+        if obj is None:            # 如果 obj is None 成立
+            return self            # 返回 self
+        return obj.__dict__.get(self.name)  # 返回 obj.__dict__.get(self.name)
+    def __set__(self, obj, value): # 定义函数 __set__，参数：self, obj, value
         obj.__dict__[self.name] = value
 
-class C:
+class C:                           # 定义类 C
     a = Field()   # 打印：我被赋给了 C.a
     b = Field()   # 打印：我被赋给了 C.b
 \`\`\`
@@ -1831,12 +1831,12 @@ class C:
 Python 3.6 之前没有 \`__set_name__\`，描述符要在 \`__init__\` 里手动传名字：
 
 \`\`\`python
-class OldField:
-    def __init__(self, name):
+class OldField:                    # 定义类 OldField
+    def __init__(self, name):      # 定义函数 __init__，参数：self, name
         self.name = name   # 必须手动传
     # ...
 
-class C:
+class C:                           # 定义类 C
     x = OldField("x")   # 重复写 x，容易出错
 \`\`\`
 
@@ -1851,32 +1851,32 @@ class C:
 把验证器和 \`__set_name__\` 结合，就能做出 ORM 风格的字段：
 
 \`\`\`python
-class Column:
-    def __init__(self, col_type, primary_key=False):
+class Column:                      # 定义类 Column
+    def __init__(self, col_type, primary_key=False):  # 定义函数 __init__，参数：self, col_type, primary_key=False
         self.col_type = col_type
         self.primary_key = primary_key
-    def __set_name__(self, owner, name):
+    def __set_name__(self, owner, name):  # 定义函数 __set_name__，参数：self, owner, name
         self.name = name
         self.attr = "_" + name
-    def __get__(self, obj, objtype=None):
-        if obj is None:
-            return self
-        return getattr(obj, self.attr, None)
-    def __set__(self, obj, value):
-        if value is not None and not isinstance(value, self.col_type):
-            raise TypeError(self.name + " 类型错误")
-        setattr(obj, self.attr, value)
+    def __get__(self, obj, objtype=None):  # 定义函数 __get__，参数：self, obj, objtype=None
+        if obj is None:            # 如果 obj is None 成立
+            return self            # 返回 self
+        return getattr(obj, self.attr, None)  # 返回 getattr(obj, self.attr, None)
+    def __set__(self, obj, value): # 定义函数 __set__，参数：self, obj, value
+        if value is not None and not isinstance(value, self.col_type):  # 如果 value is not None and not isinstance(value, self.col_type) 成立
+            raise TypeError(self.name + " 类型错误")  # 抛出异常：TypeError(self.name + " 类型错误")
+        setattr(obj, self.attr, value)  # 调用 setattr，参数 obj, self.attr, value
 
-class User:
-    id = Column(int, primary_key=True)
-    name = Column(str)
-    email = Column(str)
+class User:                        # 定义类 User
+    id = Column(int, primary_key=True)  # 将 Column(int, primary_key=True) 赋给 id
+    name = Column(str)             # 将 Column(str) 赋给 name
+    email = Column(str)            # 将 Column(str) 赋给 email
 
-u = User()
+u = User()                         # 将 User() 赋给 u
 u.id = 1
 u.name = "Alice"
 u.email = "alice@example.com"
-print(u.id, u.name, u.email)
+print(u.id, u.name, u.email)       # 输出 u.id, u.name, u.email
 \`\`\`
 
 ### 7.2 用元类收集字段
@@ -1884,22 +1884,22 @@ print(u.id, u.name, u.email)
 真正的 ORM 还会用元类把所有 \`Column\` 收集起来，生成表结构：
 
 \`\`\`python
-class ModelMeta(type):
-    def __new__(mcs, name, bases, namespace):
-        columns = {}
-        for key, val in list(namespace.items()):
-            if isinstance(val, Column):
+class ModelMeta(type):             # 定义类 ModelMeta，继承自 type
+    def __new__(mcs, name, bases, namespace):  # 定义函数 __new__，参数：mcs, name, bases, namespace
+        columns = {}               # 创建集合并赋给 columns
+        for key, val in list(namespace.items()):  # 遍历 list(namespace.items())，每次取值赋给 key, val
+            if isinstance(val, Column):  # 如果 isinstance(val, Column) 成立
                 columns[key] = val
-        cls = super().__new__(mcs, name, bases, namespace)
+        cls = super().__new__(mcs, name, bases, namespace)  # 将 super().__new__(mcs, name, bases, namespace) 赋给 cls
         cls._columns = columns
-        return cls
+        return cls                 # 返回 cls
 
-class Model(metaclass=ModelMeta):
-    pass
+class Model(metaclass=ModelMeta):  # 定义类 Model，继承自 metaclass=ModelMeta
+    pass                           # 空操作，占位
 
-class User(Model):
-    id = Column(int, primary_key=True)
-    name = Column(str)
+class User(Model):                 # 定义类 User，继承自 Model
+    id = Column(int, primary_key=True)  # 将 Column(int, primary_key=True) 赋给 id
+    name = Column(str)             # 将 Column(str) 赋给 name
 
 print(User._columns)   # {'id': Column(...), 'name': Column(...)}
 \`\`\`
@@ -1915,25 +1915,25 @@ print(User._columns)   # {'id': Column(...), 'name': Column(...)}
 \`functools.cached_property\` 是一个「只计算一次，结果缓存到实例字典」的描述符。它的原理非常优雅：
 
 \`\`\`python
-class cached_property:
-    def __init__(self, func):
+class cached_property:             # 定义类 cached_property
+    def __init__(self, func):      # 定义函数 __init__，参数：self, func
         self.func = func
         self.name = func.__name__
-    def __get__(self, obj, objtype=None):
-        if obj is None:
-            return self
+    def __get__(self, obj, objtype=None):  # 定义函数 __get__，参数：self, obj, objtype=None
+        if obj is None:            # 如果 obj is None 成立
+            return self            # 返回 self
         # 计算并存入实例字典
-        value = self.func(obj)
+        value = self.func(obj)     # 将 self.func(obj) 赋给 value
         obj.__dict__[self.name] = value
-        return value
+        return value               # 返回 value
 
-class Data:
+class Data:                        # 定义类 Data
     @cached_property
-    def expensive(self):
-        print("  正在计算...")
-        return sum(range(1000000))
+    def expensive(self):           # 定义函数 expensive，参数：self
+        print("  正在计算...")         # 输出 "  正在计算..."
+        return sum(range(1000000)) # 返回 sum(range(1000000))
 
-d = Data()
+d = Data()                         # 将 Data() 赋给 d
 print(d.expensive)   # 计算并打印
 print(d.expensive)   # 直接返回缓存，不再计算
 \`\`\`
@@ -1945,31 +1945,31 @@ print(d.expensive)   # 直接返回缓存，不再计算
 结合描述符和类型注解，可以做出类型安全的属性：
 
 \`\`\`python
-class TypeSafe:
-    def __init__(self, annotation):
+class TypeSafe:                    # 定义类 TypeSafe
+    def __init__(self, annotation):  # 定义函数 __init__，参数：self, annotation
         self.annotation = annotation
-    def __set_name__(self, owner, name):
+    def __set_name__(self, owner, name):  # 定义函数 __set_name__，参数：self, owner, name
         self.name = name
-    def __get__(self, obj, objtype=None):
-        if obj is None:
-            return self
-        return obj.__dict__.get(self.name)
-    def __set__(self, obj, value):
-        if not isinstance(value, self.annotation):
-            raise TypeError(self.name + " 需要 " + str(self.annotation))
+    def __get__(self, obj, objtype=None):  # 定义函数 __get__，参数：self, obj, objtype=None
+        if obj is None:            # 如果 obj is None 成立
+            return self            # 返回 self
+        return obj.__dict__.get(self.name)  # 返回 obj.__dict__.get(self.name)
+    def __set__(self, obj, value): # 定义函数 __set__，参数：self, obj, value
+        if not isinstance(value, self.annotation):  # 如果 not isinstance(value, self.annotation) 成立
+            raise TypeError(self.name + " 需要 " + str(self.annotation))  # 抛出异常：TypeError(self.name + " 需要 " + str(self.annotation))
         obj.__dict__[self.name] = value
 
-class Point:
-    x = TypeSafe(int)
-    y = TypeSafe(int)
-    def __init__(self, x, y):
+class Point:                       # 定义类 Point
+    x = TypeSafe(int)              # 将 TypeSafe(int) 赋给 x
+    y = TypeSafe(int)              # 将 TypeSafe(int) 赋给 y
+    def __init__(self, x, y):      # 定义函数 __init__，参数：self, x, y
         self.x = x
         self.y = y
-    def distance(self):
-        return (self.x ** 2 + self.y ** 2) ** 0.5
+    def distance(self):            # 定义函数 distance，参数：self
+        return (self.x ** 2 + self.y ** 2) ** 0.5  # 返回 (self.x ** 2 + self.y ** 2) ** 0.5
 
-p = Point(3, 4)
-print(p.distance())
+p = Point(3, 4)                    # 将 Point(3, 4) 赋给 p
+print(p.distance())                # 输出 p.distance()
 \`\`\`
 
 ---
@@ -1981,13 +1981,13 @@ print(p.distance())
 一个有趣的真相：**普通方法就是非数据描述符**。函数对象有 \`__get__\` 方法，当你访问 \`obj.method\` 时，\`__get__\` 把函数包装成「绑定方法」，自动把 \`obj\` 作为第一个参数（\`self\`）。
 
 \`\`\`python
-class C:
-    def method(self):
-        return self
+class C:                           # 定义类 C
+    def method(self):              # 定义函数 method，参数：self
+        return self                # 返回 self
 
 print(hasattr(C.method, '__get__'))   # True，函数是描述符
 
-c = C()
+c = C()                            # 将 C() 赋给 c
 bound = c.method     # 触发 __get__，返回绑定方法
 print(bound() is c)  # True，self 被自动绑定
 \`\`\`
@@ -2002,13 +2002,13 @@ print(bound() is c)  # True，self 被自动绑定
 - \`staticmethod\` 的 \`__get__\` 返回原函数（不做绑定）。
 
 \`\`\`python
-class C:
+class C:                           # 定义类 C
     @classmethod
-    def cls_method(cls):
-        return cls
+    def cls_method(cls):           # 定义函数 cls_method，参数：cls
+        return cls                 # 返回 cls
     @staticmethod
-    def static_method():
-        return "static"
+    def static_method():           # 定义函数 static_method，无参数
+        return "static"            # 返回 "static"
 
 print(C.cls_method() is C)   # True
 print(C.static_method())     # static
@@ -2025,12 +2025,12 @@ print(C.static_method())     # static
 描述符的 \`__get__\` 在「类访问」时 \`obj\` 是 \`None\`。如果不处理，\`类.属性\` 会出错：
 
 \`\`\`python
-class Bad:
-    def __get__(self, obj, objtype=None):
+class Bad:                         # 定义类 Bad
+    def __get__(self, obj, objtype=None):  # 定义函数 __get__，参数：self, obj, objtype=None
         return obj.x   # 类访问时 obj 是 None，会报错
 
-class C:
-    b = Bad()
+class C:                           # 定义类 C
+    b = Bad()                      # 将 Bad() 赋给 b
 # C.b   # AttributeError
 \`\`\`
 
@@ -2738,18 +2738,18 @@ print("=" * 60)
 先看一个「不用 with」的文件操作：
 
 \`\`\`python
-f = open("data.txt")
-try:
-    data = f.read()
-finally:
+f = open("data.txt")               # 将 open("data.txt") 赋给 f
+try:                               # 尝试执行以下代码块
+    data = f.read()                # 将 f.read() 赋给 data
+finally:                           # 无论是否异常都执行
     f.close()   # 必须手动关闭，否则资源泄漏
 \`\`\`
 
 问题在于：很容易忘记 \`finally\`，或者在 \`try\` 和 \`finally\` 之间出了异常导致 \`close\` 没执行。\`with\` 语句就是为了消除这种「样板代码」而生的：
 
 \`\`\`python
-with open("data.txt") as f:
-    data = f.read()
+with open("data.txt") as f:        # 使用上下文管理器 open("data.txt")，绑定到 f
+    data = f.read()                # 将 f.read() 赋给 data
 # 离开 with 块，f 自动关闭，即使 read 抛异常
 \`\`\`
 
@@ -2766,17 +2766,17 @@ with open("data.txt") as f:
    - 如果异常退出，三个参数是异常的类型、值、traceback。
 
 \`\`\`python
-class MyCtx:
-    def __enter__(self):
-        print("__enter__")
-        return "资源"
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        print("__exit__", "exc_type =", exc_type)
-        return False
+class MyCtx:                       # 定义类 MyCtx
+    def __enter__(self):           # 定义函数 __enter__，参数：self
+        print("__enter__")         # 输出 "__enter__"
+        return "资源"                # 返回 "资源"
+    def __exit__(self, exc_type, exc_val, exc_tb):  # 定义函数 __exit__，参数：self, exc_type, exc_val, exc_tb
+        print("__exit__", "exc_type =", exc_type)  # 输出 "__exit__", "exc_type =", exc_type
+        return False               # 返回 False
 
-with MyCtx() as r:
-    print("with 块里，r =", r)
-print("with 结束")
+with MyCtx() as r:                 # 使用上下文管理器 MyCtx()，绑定到 r
+    print("with 块里，r =", r)        # 输出 "with 块里，r =", r
+print("with 结束")                   # 输出 "with 结束"
 \`\`\`
 
 ---
@@ -2788,15 +2788,15 @@ print("with 结束")
 \`__enter__\` 在进入 with 块时调用，它的返回值会被赋给 \`as\` 后面的变量。你可以返回 \`self\`（最常见），也可以返回任意对象。
 
 \`\`\`python
-class Resource:
-    def __enter__(self):
-        print("获取资源")
+class Resource:                    # 定义类 Resource
+    def __enter__(self):           # 定义函数 __enter__，参数：self
+        print("获取资源")              # 输出 "获取资源"
         return self   # 返回自己，这样 as r 拿到的就是 Resource 实例
-    def __exit__(self, *args):
-        print("释放资源")
+    def __exit__(self, *args):     # 定义函数 __exit__，参数：self, *args
+        print("释放资源")              # 输出 "释放资源"
 
-with Resource() as r:
-    print("使用", r)
+with Resource() as r:              # 使用上下文管理器 Resource()，绑定到 r
+    print("使用", r)                 # 输出 "使用", r
 \`\`\`
 
 ### 2.2 __exit__ 的返回值与异常抑制
@@ -2807,18 +2807,18 @@ with Resource() as r:
 - 返回 **False（或 None）**：异常正常向上传播。
 
 \`\`\`python
-class SuppressError:
-    def __enter__(self):
-        return self
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is ValueError:
-            print("捕获并吞掉 ValueError")
+class SuppressError:               # 定义类 SuppressError
+    def __enter__(self):           # 定义函数 __enter__，参数：self
+        return self                # 返回 self
+    def __exit__(self, exc_type, exc_val, exc_tb):  # 定义函数 __exit__，参数：self, exc_type, exc_val, exc_tb
+        if exc_type is ValueError: # 如果 exc_type is ValueError 成立
+            print("捕获并吞掉 ValueError")  # 输出 "捕获并吞掉 ValueError"
             return True   # 抑制 ValueError
         return False      # 其他异常照常抛出
 
-with SuppressError():
-    raise ValueError("一个错误")
-print("继续执行，ValueError 被吞了")
+with SuppressError():              # 使用上下文管理器 SuppressError()
+    raise ValueError("一个错误")       # 抛出异常：ValueError("一个错误")
+print("继续执行，ValueError 被吞了")       # 输出 "继续执行，ValueError 被吞了"
 \`\`\`
 
 谨慎使用异常抑制——它会让 bug 难以发现。通常只在「你确实知道这个异常可以忽略」时才用，比如清理临时文件时的 \`FileNotFoundError\`。
@@ -2832,22 +2832,22 @@ print("继续执行，ValueError 被吞了")
 - \`exc_tb\`：traceback 对象
 
 \`\`\`python
-import traceback
+import traceback                   # 导入 traceback 模块
 
-class DebugCtx:
-    def __enter__(self):
-        return self
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type:
-            print("捕获到异常:")
-            print("  类型:", exc_type.__name__)
-            print("  值:", exc_val)
-            print("  traceback:")
-            traceback.print_exception(exc_type, exc_val, exc_tb)
-        return False
+class DebugCtx:                    # 定义类 DebugCtx
+    def __enter__(self):           # 定义函数 __enter__，参数：self
+        return self                # 返回 self
+    def __exit__(self, exc_type, exc_val, exc_tb):  # 定义函数 __exit__，参数：self, exc_type, exc_val, exc_tb
+        if exc_type:               # 如果 exc_type 成立
+            print("捕获到异常:")        # 输出 "捕获到异常:"
+            print("  类型:", exc_type.__name__)  # 输出 "  类型:", exc_type.__name__
+            print("  值:", exc_val) # 输出 "  值:", exc_val
+            print("  traceback:")  # 输出 "  traceback:"
+            traceback.print_exception(exc_type, exc_val, exc_tb)  # 对 traceback 调用 print_exception 方法，参数 exc_type, exc_val, exc_tb
+        return False               # 返回 False
 
-with DebugCtx():
-    raise RuntimeError("出错了")
+with DebugCtx():                   # 使用上下文管理器 DebugCtx()
+    raise RuntimeError("出错了")      # 抛出异常：RuntimeError("出错了")
 \`\`\`
 
 ---
@@ -2857,71 +2857,71 @@ with DebugCtx():
 ### 3.1 数据库连接示例
 
 \`\`\`python
-class FakeDB:
-    def __init__(self, dsn):
+class FakeDB:                      # 定义类 FakeDB
+    def __init__(self, dsn):       # 定义函数 __init__，参数：self, dsn
         self.dsn = dsn
         self.conn = None
-    def __enter__(self):
-        print("连接数据库:", self.dsn)
+    def __enter__(self):           # 定义函数 __enter__，参数：self
+        print("连接数据库:", self.dsn)  # 输出 "连接数据库:", self.dsn
         self.conn = "Connection(" + self.dsn + ")"
-        return self.conn
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        print("关闭数据库连接")
+        return self.conn           # 返回 self.conn
+    def __exit__(self, exc_type, exc_val, exc_tb):  # 定义函数 __exit__，参数：self, exc_type, exc_val, exc_tb
+        print("关闭数据库连接")           # 输出 "关闭数据库连接"
         self.conn = None
-        if exc_type:
-            print("  有异常，执行回滚")
-        else:
-            print("  正常，执行提交")
-        return False
+        if exc_type:               # 如果 exc_type 成立
+            print("  有异常，执行回滚")    # 输出 "  有异常，执行回滚"
+        else:                      # 否则
+            print("  正常，执行提交")     # 输出 "  正常，执行提交"
+        return False               # 返回 False
 
-with FakeDB("postgres://localhost") as db:
-    print("使用", db)
+with FakeDB("postgres://localhost") as db:  # 使用上下文管理器 FakeDB("postgres://localhost")，绑定到 db
+    print("使用", db)                # 输出 "使用", db
     # 模拟操作
 \`\`\`
 
 ### 3.2 计时器
 
 \`\`\`python
-import time
+import time                        # 导入 time 模块
 
-class Timer:
-    def __enter__(self):
+class Timer:                       # 定义类 Timer
+    def __enter__(self):           # 定义函数 __enter__，参数：self
         self.start = time.perf_counter()
-        return self
-    def __exit__(self, *args):
+        return self                # 返回 self
+    def __exit__(self, *args):     # 定义函数 __exit__，参数：self, *args
         self.elapsed = time.perf_counter() - self.start
-        print("耗时 %.4f 秒" % self.elapsed)
+        print("耗时 %.4f 秒" % self.elapsed)  # 输出 "耗时 %.4f 秒" % self.elapsed
 
-with Timer():
-    sum(range(1000000))
+with Timer():                      # 使用上下文管理器 Timer()
+    sum(range(1000000))            # 调用 求和，参数 range(1000000)
 \`\`\`
 
 ### 3.3 临时切换状态
 
 \`\`\`python
-class TempAttr:
-    def __init__(self, obj, **changes):
+class TempAttr:                    # 定义类 TempAttr
+    def __init__(self, obj, **changes):  # 定义函数 __init__，参数：self, obj, **changes
         self.obj = obj
         self.changes = changes
         self.original = {}
-    def __enter__(self):
-        for k in self.changes:
+    def __enter__(self):           # 定义函数 __enter__，参数：self
+        for k in self.changes:     # 遍历 self.changes，每次取值赋给 k
             self.original[k] = getattr(self.obj, k)
-            setattr(self.obj, k, self.changes[k])
-        return self.obj
-    def __exit__(self, *args):
-        for k, v in self.original.items():
-            setattr(self.obj, k, v)
+            setattr(self.obj, k, self.changes[k])  # 调用 setattr，参数 self.obj, k, self.changes[k]
+        return self.obj            # 返回 self.obj
+    def __exit__(self, *args):     # 定义函数 __exit__，参数：self, *args
+        for k, v in self.original.items():  # 遍历 self.original.items()，每次取值赋给 k, v
+            setattr(self.obj, k, v)  # 调用 setattr，参数 self.obj, k, v
 
-class Config:
-    debug = False
-    level = 1
+class Config:                      # 定义类 Config
+    debug = False                  # 将布尔值 False 赋给 debug
+    level = 1                      # 将整数 1 赋给 level
 
-cfg = Config()
-print("before: debug =", cfg.debug)
-with TempAttr(cfg, debug=True, level=5):
-    print("inside: debug =", cfg.debug, "level =", cfg.level)
-print("after: debug =", cfg.debug, "level =", cfg.level)
+cfg = Config()                     # 将 Config() 赋给 cfg
+print("before: debug =", cfg.debug)  # 输出 "before: debug =", cfg.debug
+with TempAttr(cfg, debug=True, level=5):  # 使用上下文管理器 TempAttr(cfg, debug=True, level=5)
+    print("inside: debug =", cfg.debug, "level =", cfg.level)  # 输出 "inside: debug =", cfg.debug, "level =", cfg.level
+print("after: debug =", cfg.debug, "level =", cfg.level)  # 输出 "after: debug =", cfg.debug, "level =", cfg.level
 \`\`\`
 
 这种「临时改状态、退出后恢复」的模式在测试和临时配置里非常有用。
@@ -2935,16 +2935,16 @@ print("after: debug =", cfg.debug, "level =", cfg.level)
 写一个完整的类（\`__enter__\` + \`__exit__\`）有点啰嗦。\`contextlib.contextmanager\` 让你用一个「带 \`yield\` 的生成器函数」来定义上下文管理器，更简洁：
 
 \`\`\`python
-from contextlib import contextmanager
+from contextlib import contextmanager  # 从 contextlib 导入 contextmanager
 
 @contextmanager
-def my_ctx():
-    print("进入（相当于 __enter__）")
-    yield "资源"
-    print("退出（相当于 __exit__）")
+def my_ctx():                      # 定义函数 my_ctx，无参数
+    print("进入（相当于 __enter__）")     # 输出 "进入（相当于 __enter__）"
+    yield "资源"                     # 产出值 "资源"（生成器）
+    print("退出（相当于 __exit__）")      # 输出 "退出（相当于 __exit__）"
 
-with my_ctx() as r:
-    print("使用", r)
+with my_ctx() as r:                # 使用上下文管理器 my_ctx()，绑定到 r
+    print("使用", r)                 # 输出 "使用", r
 \`\`\`
 
 \`yield\` 之前的代码对应 \`__enter__\`，\`yield\` 的值对应 \`__enter__\` 的返回值，\`yield\` 之后的代码对应 \`__exit__\`。
@@ -2955,19 +2955,19 @@ with my_ctx() as r:
 
 \`\`\`python
 @contextmanager
-def safe_ctx():
-    print("进入")
-    try:
-        yield "资源"
-    except ValueError as e:
-        print("捕获到 ValueError:", e)
-    finally:
-        print("清理")
+def safe_ctx():                    # 定义函数 safe_ctx，无参数
+    print("进入")                    # 输出 "进入"
+    try:                           # 尝试执行以下代码块
+        yield "资源"                 # 产出值 "资源"（生成器）
+    except ValueError as e:        # 捕获 ValueError 异常并绑定到 e
+        print("捕获到 ValueError:", e)  # 输出 "捕获到 ValueError:", e
+    finally:                       # 无论是否异常都执行
+        print("清理")                # 输出 "清理"
 
-with safe_ctx() as r:
-    print("使用", r)
-    raise ValueError("出错了")
-print("继续")
+with safe_ctx() as r:              # 使用上下文管理器 safe_ctx()，绑定到 r
+    print("使用", r)                 # 输出 "使用", r
+    raise ValueError("出错了")        # 抛出异常：ValueError("出错了")
+print("继续")                        # 输出 "继续"
 \`\`\`
 
 如果不 catch，异常会向上传播，但 \`finally\` 块的清理代码仍会执行。
@@ -2975,33 +2975,33 @@ print("继续")
 ### 4.3 计时器（生成器版）
 
 \`\`\`python
-import time
+import time                        # 导入 time 模块
 
 @contextmanager
-def timer(name="block"):
-    start = time.perf_counter()
-    try:
-        yield
-    finally:
-        print(name, "耗时 %.4f 秒" % (time.perf_counter() - start))
+def timer(name="block"):           # 定义函数 timer，参数：name="block"
+    start = time.perf_counter()    # 将 time.perf_counter() 赋给 start
+    try:                           # 尝试执行以下代码块
+        yield                      # 产出值（生成器）
+    finally:                       # 无论是否异常都执行
+        print(name, "耗时 %.4f 秒" % (time.perf_counter() - start))  # 输出 name, "耗时 %.4f 秒" % (time.perf_counter() - start)
 
-with timer("计算"):
-    sum(range(1000000))
+with timer("计算"):                  # 使用上下文管理器 timer("计算")
+    sum(range(1000000))            # 调用 求和，参数 range(1000000)
 \`\`\`
 
 ### 4.4 临时切换状态（生成器版）
 
 \`\`\`python
 @contextmanager
-def temp_attr(obj, **changes):
-    original = {k: getattr(obj, k) for k in changes}
-    for k, v in changes.items():
-        setattr(obj, k, v)
-    try:
-        yield obj
-    finally:
-        for k, v in original.items():
-            setattr(obj, k, v)
+def temp_attr(obj, **changes):     # 定义函数 temp_attr，参数：obj, **changes
+    original = {k: getattr(obj, k) for k in changes}  # 创建字典并赋给 original
+    for k, v in changes.items():   # 遍历 changes.items()，每次取值赋给 k, v
+        setattr(obj, k, v)         # 调用 setattr，参数 obj, k, v
+    try:                           # 尝试执行以下代码块
+        yield obj                  # 产出值 obj（生成器）
+    finally:                       # 无论是否异常都执行
+        for k, v in original.items():  # 遍历 original.items()，每次取值赋给 k, v
+            setattr(obj, k, v)     # 调用 setattr，参数 obj, k, v
 \`\`\`
 
 \`contextmanager\` 是绝大多数场景的首选，比写类简洁得多。
@@ -3015,20 +3015,20 @@ def temp_attr(obj, **changes):
 \`suppress(*exceptions)\` 上下文管理器：忽略指定的异常。比 \`try/except: pass\` 更清晰。
 
 \`\`\`python
-from contextlib import suppress
+from contextlib import suppress    # 从 contextlib 导入 suppress
 
-with suppress(FileNotFoundError):
-    os.remove("不存在的文件.txt")
-print("继续执行，异常被忽略")
+with suppress(FileNotFoundError):  # 使用上下文管理器 suppress(FileNotFoundError)
+    os.remove("不存在的文件.txt")        # 对 os 调用 移除 方法，参数 "不存在的文件.txt"
+print("继续执行，异常被忽略")                # 输出 "继续执行，异常被忽略"
 \`\`\`
 
 等价于：
 
 \`\`\`python
-try:
-    os.remove("不存在的文件.txt")
-except FileNotFoundError:
-    pass
+try:                               # 尝试执行以下代码块
+    os.remove("不存在的文件.txt")        # 对 os 调用 移除 方法，参数 "不存在的文件.txt"
+except FileNotFoundError:          # 捕获 FileNotFoundError 异常
+    pass                           # 空操作，占位
 \`\`\`
 
 ### 5.2 contextlib.redirect_stdout / redirect_stderr
@@ -3036,14 +3036,14 @@ except FileNotFoundError:
 重定向标准输出/错误输出到另一个文件对象。常用于「捕获 print 输出」或「静默第三方库的输出」。
 
 \`\`\`python
-from contextlib import redirect_stdout
-import io
+from contextlib import redirect_stdout  # 从 contextlib 导入 redirect_stdout
+import io                          # 导入 io 模块
 
-buffer = io.StringIO()
-with redirect_stdout(buffer):
-    print("这行不会显示在屏幕上")
-    print("而是进了 buffer")
-print("捕获到的内容:", buffer.getvalue())
+buffer = io.StringIO()             # 将 io.StringIO() 赋给 buffer
+with redirect_stdout(buffer):      # 使用上下文管理器 redirect_stdout(buffer)
+    print("这行不会显示在屏幕上")            # 输出 "这行不会显示在屏幕上"
+    print("而是进了 buffer")           # 输出 "而是进了 buffer"
+print("捕获到的内容:", buffer.getvalue())  # 输出 "捕获到的内容:", buffer.getvalue()
 \`\`\`
 
 ### 5.3 contextlib.redirect_stderr
@@ -3051,13 +3051,13 @@ print("捕获到的内容:", buffer.getvalue())
 同理，重定向 stderr：
 
 \`\`\`python
-import sys
-from contextlib import redirect_stderr
+import sys                         # 导入 sys 模块
+from contextlib import redirect_stderr  # 从 contextlib 导入 redirect_stderr
 
-buffer = io.StringIO()
-with redirect_stderr(buffer):
+buffer = io.StringIO()             # 将 io.StringIO() 赋给 buffer
+with redirect_stderr(buffer):      # 使用上下文管理器 redirect_stderr(buffer)
     sys.stderr.write("错误信息")
-print("捕获 stderr:", buffer.getvalue())
+print("捕获 stderr:", buffer.getvalue())  # 输出 "捕获 stderr:", buffer.getvalue()
 \`\`\`
 
 ### 5.4 contextlib.closing
@@ -3065,11 +3065,11 @@ print("捕获 stderr:", buffer.getvalue())
 \`closing(thing)\` 给一个「有 \`close\` 方法但不是上下文管理器」的对象包装成上下文管理器，退出时调用 \`close\`。
 
 \`\`\`python
-from contextlib import closing
-from urllib.request import urlopen
+from contextlib import closing     # 从 contextlib 导入 closing
+from urllib.request import urlopen # 从 urllib.request 导入 urlopen
 
-with closing(urlopen("http://example.com")) as page:
-    html = page.read()
+with closing(urlopen("http://example.com")) as page:  # 使用上下文管理器 closing(urlopen("http://example.com"))，绑定到 page
+    html = page.read()             # 将 page.read() 赋给 html
 # page.close() 自动调用
 \`\`\`
 
@@ -3078,11 +3078,11 @@ with closing(urlopen("http://example.com")) as page:
 \`nullcontext()\` 是一个「什么都不做」的上下文管理器，作为「可选上下文」的占位符很有用：
 
 \`\`\`python
-from contextlib import nullcontext
+from contextlib import nullcontext # 从 contextlib 导入 nullcontext
 
-def process(lock=None):
-    with (lock or nullcontext()):
-        print("处理中")
+def process(lock=None):            # 定义函数 process，参数：lock=None
+    with (lock or nullcontext()):  # 使用上下文管理器 (lock or nullcontext())
+        print("处理中")               # 输出 "处理中"
 
 process()           # 无锁
 process(threading.Lock())   # 有锁
@@ -3097,15 +3097,15 @@ process(threading.Lock())   # 有锁
 当你需要「动态地、数量不定地」管理多个上下文时，\`ExitStack\` 是利器。它维护一个「上下文栈」，退出时按 LIFO 顺序逐个清理。
 
 \`\`\`python
-from contextlib import ExitStack
+from contextlib import ExitStack   # 从 contextlib 导入 ExitStack
 
-files = []
-filenames = ["a.txt", "b.txt", "c.txt"]
-with ExitStack() as stack:
-    for name in filenames:
-        f = stack.enter_context(open(name, "w"))
-        files.append(f)
-        f.write("hello " + name)
+files = []                         # 创建列表并赋给 files
+filenames = ["a.txt", "b.txt", "c.txt"]  # 创建列表并赋给 filenames
+with ExitStack() as stack:         # 使用上下文管理器 ExitStack()，绑定到 stack
+    for name in filenames:         # 遍历 filenames，每次取值赋给 name
+        f = stack.enter_context(open(name, "w"))  # 将 stack.enter_context(open(name, "w")) 赋给 f
+        files.append(f)            # 对 files 调用 追加 方法，参数 f
+        f.write("hello " + name)   # 对 f 调用 write 方法，参数 "hello " + name
     # 离开 with 块时，所有文件按 LIFO 顺序关闭
 \`\`\`
 
@@ -3116,16 +3116,16 @@ with ExitStack() as stack:
 \`ExitStack.callback(func, *args)\` 注册一个「退出时调用的函数」，相当于一个简化的清理回调。
 
 \`\`\`python
-from contextlib import ExitStack
+from contextlib import ExitStack   # 从 contextlib 导入 ExitStack
 
-def cleanup(name):
-    print("清理", name)
+def cleanup(name):                 # 定义函数 cleanup，参数：name
+    print("清理", name)              # 输出 "清理", name
 
-with ExitStack() as stack:
-    stack.callback(cleanup, "资源1")
-    stack.callback(cleanup, "资源2")
-    stack.callback(cleanup, "资源3")
-    print("工作中...")
+with ExitStack() as stack:         # 使用上下文管理器 ExitStack()，绑定到 stack
+    stack.callback(cleanup, "资源1") # 对 stack 调用 callback 方法，参数 cleanup, "资源1"
+    stack.callback(cleanup, "资源2") # 对 stack 调用 callback 方法，参数 cleanup, "资源2"
+    stack.callback(cleanup, "资源3") # 对 stack 调用 callback 方法，参数 cleanup, "资源3"
+    print("工作中...")                # 输出 "工作中..."
 # 退出时按 LIFO 调用：资源3、资源2、资源1
 \`\`\`
 
@@ -3134,11 +3134,11 @@ with ExitStack() as stack:
 \`ExitStack\` 可以混合 \`enter_context\` 和 \`callback\`：
 
 \`\`\`python
-with ExitStack() as stack:
-    f = stack.enter_context(open("data.txt", "w"))
-    stack.callback(print, "文件已关闭")
-    stack.callback(lambda: print("其他清理"))
-    f.write("data")
+with ExitStack() as stack:         # 使用上下文管理器 ExitStack()，绑定到 stack
+    f = stack.enter_context(open("data.txt", "w"))  # 将 stack.enter_context(open("data.txt", "w")) 赋给 f
+    stack.callback(print, "文件已关闭") # 对 stack 调用 callback 方法，参数 print, "文件已关闭"
+    stack.callback(lambda: print("其他清理"))  # 对 stack 调用 callback 方法，参数 lambda: print("其他清理")
+    f.write("data")                # 对 f 调用 write 方法，参数 "data"
 \`\`\`
 
 ### 6.4 条件性进入上下文
@@ -3146,10 +3146,10 @@ with ExitStack() as stack:
 \`ExitStack\` 适合「根据条件决定要不要进入某个上下文」：
 
 \`\`\`python
-def process(use_cache, use_db):
-    with ExitStack() as stack:
-        cache = stack.enter_context(get_cache()) if use_cache else None
-        db = stack.enter_context(get_db()) if use_db else None
+def process(use_cache, use_db):    # 定义函数 process，参数：use_cache, use_db
+    with ExitStack() as stack:     # 使用上下文管理器 ExitStack()，绑定到 stack
+        cache = stack.enter_context(get_cache()) if use_cache else None  # 将 stack.enter_context(get_cache()) if use_cache else None 赋给 cache
+        db = stack.enter_context(get_db()) if use_db else None  # 将 stack.enter_context(get_db()) if use_db else None 赋给 db
         # ... 使用 cache 和 db ...
 \`\`\`
 
@@ -3162,20 +3162,20 @@ def process(use_cache, use_db):
 异步上下文管理器用 \`__aenter__\` 和 \`__aexit__\`（注意是 \`a\` 开头），配合 \`async with\` 使用。它们是协程，要 \`await\`。
 
 \`\`\`python
-class AsyncResource:
-    async def __aenter__(self):
-        print("异步获取资源")
-        return self
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        print("异步释放资源")
-        return False
+class AsyncResource:               # 定义类 AsyncResource
+    async def __aenter__(self):    # 定义异步函数 __aenter__，参数：self
+        print("异步获取资源")            # 输出 "异步获取资源"
+        return self                # 返回 self
+    async def __aexit__(self, exc_type, exc_val, exc_tb):  # 定义异步函数 __aexit__，参数：self, exc_type, exc_val, exc_tb
+        print("异步释放资源")            # 输出 "异步释放资源"
+        return False               # 返回 False
 
-async def main():
+async def main():                  # 定义异步函数 main
     async with AsyncResource() as r:
-        print("使用资源")
+        print("使用资源")              # 输出 "使用资源"
 
-import asyncio
-asyncio.run(main())
+import asyncio                     # 导入 asyncio 模块
+asyncio.run(main())                # 对 asyncio 调用 run 方法，参数 main()
 \`\`\`
 
 ### 7.2 contextlib.asynccontextmanager
@@ -3183,22 +3183,22 @@ asyncio.run(main())
 和同步版对应，\`asynccontextmanager\` 用「带 \`yield\` 的异步生成器」定义异步上下文管理器：
 
 \`\`\`python
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager  # 从 contextlib 导入 asynccontextmanager
 
 @asynccontextmanager
-async def async_db():
-    print("异步连接数据库")
-    conn = "AsyncConnection"
-    try:
-        yield conn
-    finally:
-        print("异步关闭数据库")
+async def async_db():              # 定义异步函数 async_db
+    print("异步连接数据库")               # 输出 "异步连接数据库"
+    conn = "AsyncConnection"       # 将字符串 "AsyncConnection" 赋给 conn
+    try:                           # 尝试执行以下代码块
+        yield conn                 # 产出值 conn（生成器）
+    finally:                       # 无论是否异常都执行
+        print("异步关闭数据库")           # 输出 "异步关闭数据库"
 
-async def main():
+async def main():                  # 定义异步函数 main
     async with async_db() as db:
-        print("使用", db)
+        print("使用", db)            # 输出 "使用", db
 
-asyncio.run(main())
+asyncio.run(main())                # 对 asyncio 调用 run 方法，参数 main()
 \`\`\`
 
 ### 7.3 AsyncExitStack
@@ -3206,13 +3206,13 @@ asyncio.run(main())
 \`contextlib.AsyncExitStack\` 是 \`ExitStack\` 的异步版本，用 \`enter_async_context\` 管理异步上下文。
 
 \`\`\`python
-from contextlib import AsyncExitStack
+from contextlib import AsyncExitStack  # 从 contextlib 导入 AsyncExitStack
 
-async def main():
+async def main():                  # 定义异步函数 main
     async with AsyncExitStack() as stack:
-        r1 = await stack.enter_async_context(AsyncResource())
-        r2 = await stack.enter_async_context(AsyncResource())
-        print("使用", r1, r2)
+        r1 = await stack.enter_async_context(AsyncResource())  # 将 await stack.enter_async_context(AsyncResource()) 赋给 r1
+        r2 = await stack.enter_async_context(AsyncResource())  # 将 await stack.enter_async_context(AsyncResource()) 赋给 r2
+        print("使用", r1, r2)        # 输出 "使用", r1, r2
 \`\`\`
 
 ---
@@ -3223,62 +3223,62 @@ async def main():
 
 \`\`\`python
 @contextmanager
-def transaction(db):
-    db.begin()
-    try:
-        yield db
-        db.commit()
-    except:
-        db.rollback()
-        raise
+def transaction(db):               # 定义函数 transaction，参数：db
+    db.begin()                     # 对 db 调用 begin 方法
+    try:                           # 尝试执行以下代码块
+        yield db                   # 产出值 db（生成器）
+        db.commit()                # 对 db 调用 commit 方法
+    except:                        # 捕获所有异常
+        db.rollback()              # 对 db 调用 rollback 方法
+        raise                      # 抛出异常
 
-with transaction(db) as tx:
-    tx.execute("INSERT ...")
-    tx.execute("UPDATE ...")
+with transaction(db) as tx:        # 使用上下文管理器 transaction(db)，绑定到 tx
+    tx.execute("INSERT ...")       # 对 tx 调用 execute 方法，参数 "INSERT ..."
+    tx.execute("UPDATE ...")       # 对 tx 调用 execute 方法，参数 "UPDATE ..."
 # 全部成功才 commit，任何一个失败就 rollback
 \`\`\`
 
 ### 8.2 锁
 
 \`\`\`python
-import threading
+import threading                   # 导入 threading 模块
 
-lock = threading.Lock()
-with lock:
+lock = threading.Lock()            # 将 threading.Lock() 赋给 lock
+with lock:                         # 使用上下文管理器 lock
     # 临界区，同一时刻只有一个线程能进入
-    pass
+    pass                           # 空操作，占位
 # 离开自动释放锁
 \`\`\`
 
 ### 8.3 临时切换工作目录
 
 \`\`\`python
-import os
+import os                          # 导入 os 模块
 
 @contextmanager
-def cd(path):
-    old = os.getcwd()
-    os.chdir(path)
-    try:
-        yield
-    finally:
-        os.chdir(old)
+def cd(path):                      # 定义函数 cd，参数：path
+    old = os.getcwd()              # 将 os.getcwd() 赋给 old
+    os.chdir(path)                 # 对 os 调用 chdir 方法，参数 path
+    try:                           # 尝试执行以下代码块
+        yield                      # 产出值（生成器）
+    finally:                       # 无论是否异常都执行
+        os.chdir(old)              # 对 os 调用 chdir 方法，参数 old
 
-with cd("/tmp"):
-    print("当前目录:", os.getcwd())
-print("回到:", os.getcwd())
+with cd("/tmp"):                   # 使用上下文管理器 cd("/tmp")
+    print("当前目录:", os.getcwd())    # 输出 "当前目录:", os.getcwd()
+print("回到:", os.getcwd())          # 输出 "回到:", os.getcwd()
 \`\`\`
 
 ### 8.4 资源清理
 
 \`\`\`python
 @contextmanager
-def managed_file(path):
-    f = open(path, "w")
-    try:
-        yield f
-    finally:
-        f.close()
+def managed_file(path):            # 定义函数 managed_file，参数：path
+    f = open(path, "w")            # 将 open(path, "w") 赋给 f
+    try:                           # 尝试执行以下代码块
+        yield f                    # 产出值 f（生成器）
+    finally:                       # 无论是否异常都执行
+        f.close()                  # 对 f 调用 close 方法
         # 可选：删除临时文件
 \`\`\`
 
@@ -3304,16 +3304,16 @@ def managed_file(path):
 
 \`\`\`python
 # 嵌套写法
-with open("a") as fa:
-    with open("b") as fb:
-        with open("c") as fc:
-            pass
+with open("a") as fa:              # 使用上下文管理器 open("a")，绑定到 fa
+    with open("b") as fb:          # 使用上下文管理器 open("b")，绑定到 fb
+        with open("c") as fc:      # 使用上下文管理器 open("c")，绑定到 fc
+            pass                   # 空操作，占位
 
 # ExitStack 扁平化
-with ExitStack() as stack:
-    fa = stack.enter_context(open("a"))
-    fb = stack.enter_context(open("b"))
-    fc = stack.enter_context(open("c"))
+with ExitStack() as stack:         # 使用上下文管理器 ExitStack()，绑定到 stack
+    fa = stack.enter_context(open("a"))  # 将 stack.enter_context(open("a")) 赋给 fa
+    fb = stack.enter_context(open("b"))  # 将 stack.enter_context(open("b")) 赋给 fb
+    fc = stack.enter_context(open("c"))  # 将 stack.enter_context(open("c")) 赋给 fc
 \`\`\`
 
 ---
@@ -3941,14 +3941,14 @@ data: bytes = b"hello"
 函数注解标注「参数类型」和「返回类型」：
 
 \`\`\`python
-def greet(name: str) -> str:
-    return "hello, " + name
+def greet(name: str) -> str:       # 定义函数 greet，参数：name: str，返回 str
+    return "hello, " + name        # 返回 "hello, " + name
 
-def add(a: int, b: int) -> int:
-    return a + b
+def add(a: int, b: int) -> int:    # 定义函数 add，参数：a: int, b: int，返回 int
+    return a + b                   # 返回 a + b
 
-def nothing() -> None:
-    print("无返回值")
+def nothing() -> None:             # 定义函数 nothing，无参数，返回 None
+    print("无返回值")                  # 输出 "无返回值"
 \`\`\`
 
 \`-> None\` 表示函数没有有意义的返回值。\`-> str\` 表示返回字符串。
@@ -3958,10 +3958,10 @@ def nothing() -> None:
 注解存放在函数/类的 \`__annotations__\` 属性里，是个字典：
 
 \`\`\`python
-def f(a: int, b: str) -> bool:
-    return True
+def f(a: int, b: str) -> bool:     # 定义函数 f，参数：a: int, b: str，返回 bool
+    return True                    # 返回 True
 
-print(f.__annotations__)
+print(f.__annotations__)           # 输出 f.__annotations__
 # {'a': <class 'int'>, 'b': <class 'str'>, 'return': <class 'bool'>}
 \`\`\`
 
@@ -3976,14 +3976,14 @@ print(f.__annotations__)
 Python 3.9 起，内置容器类型可以直接用作泛型，无需从 \`typing\` 导入：
 
 \`\`\`python
-def average(nums: list[int]) -> float:
-    return sum(nums) / len(nums)
+def average(nums: list[int]) -> float:  # 定义函数 average，参数：nums: list[int]，返回 float
+    return sum(nums) / len(nums)   # 返回 sum(nums) / len(nums)
 
-def count_words(text: str) -> dict[str, int]:
+def count_words(text: str) -> dict[str, int]:  # 定义函数 count_words，参数：text: str，返回 dict[str, int]
     ...
 
-def first_pair(pairs: list[tuple[str, int]]) -> tuple[str, int]:
-    return pairs[0]
+def first_pair(pairs: list[tuple[str, int]]) -> tuple[str, int]:  # 定义函数 first_pair，参数：pairs: list[tuple[str, int]]，返回 tuple[str, int]
+    return pairs[0]                # 返回 pairs[0]
 \`\`\`
 
 ### 2.2 tuple 的特殊语法
@@ -3994,12 +3994,12 @@ def first_pair(pairs: list[tuple[str, int]]) -> tuple[str, int]:
 - **变长元组**：\`tuple[int, ...]\` 表示「全是 int 的变长元组」（\`...\` 是字面省略号）。
 
 \`\`\`python
-def process(point: tuple[int, int]) -> float:
+def process(point: tuple[int, int]) -> float:  # 定义函数 process，参数：point: tuple[int, int]，返回 float
     x, y = point
-    return (x ** 2 + y ** 2) ** 0.5
+    return (x ** 2 + y ** 2) ** 0.5  # 返回 (x ** 2 + y ** 2) ** 0.5
 
-def sum_all(values: tuple[int, ...]) -> int:
-    return sum(values)
+def sum_all(values: tuple[int, ...]) -> int:  # 定义函数 sum_all，参数：values: tuple[int, ...]，返回 int
+    return sum(values)             # 返回 sum(values)
 \`\`\`
 
 ### 2.3 旧式写法（3.9 之前）
@@ -4007,7 +4007,7 @@ def sum_all(values: tuple[int, ...]) -> int:
 Python 3.9 之前要用 \`typing.List\`、\`typing.Dict\`、\`typing.Tuple\`（大写首字母）：
 
 \`\`\`python
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple  # 从 typing 导入 List, Dict, Tuple
 
 def average(nums: List[int]) -> float: ...
 def count(text: str) -> Dict[str, int]: ...
@@ -4025,11 +4025,11 @@ def first(pairs: List[Tuple[str, int]]) -> Tuple[str, int]: ...
 \`Optional[X]\` 等价于 \`X | None\`，表示「可以是 X，也可以是 None」：
 
 \`\`\`python
-from typing import Optional
+from typing import Optional        # 从 typing 导入 Optional
 
-def find_user(uid: int) -> Optional[str]:
-    if uid == 1:
-        return "Alice"
+def find_user(uid: int) -> Optional[str]:  # 定义函数 find_user，参数：uid: int，返回 Optional[str]
+    if uid == 1:                   # 如果 uid == 1 成立
+        return "Alice"             # 返回 "Alice"
     return None   # 找不到返回 None
 \`\`\`
 
@@ -4040,12 +4040,12 @@ Python 3.10+ 可以用 \`str | None\` 代替 \`Optional[str]\`。
 \`Union[X, Y]\` 表示「可以是 X 或 Y」：
 
 \`\`\`python
-from typing import Union
+from typing import Union           # 从 typing 导入 Union
 
-def process(value: Union[int, str]) -> str:
-    if isinstance(value, int):
-        return str(value)
-    return value.upper()
+def process(value: Union[int, str]) -> str:  # 定义函数 process，参数：value: Union[int, str]，返回 str
+    if isinstance(value, int):     # 如果 isinstance(value, int) 成立
+        return str(value)          # 返回 str(value)
+    return value.upper()           # 返回 value.upper()
 \`\`\`
 
 Python 3.10+ 用 \`int | str\` 代替 \`Union[int, str]\`，更简洁。
@@ -4055,9 +4055,9 @@ Python 3.10+ 用 \`int | str\` 代替 \`Union[int, str]\`，更简洁。
 \`Any\` 表示「任意类型」，相当于「不检查」。它是渐进式类型化的「逃生舱」：
 
 \`\`\`python
-from typing import Any
+from typing import Any             # 从 typing 导入 Any
 
-def log(data: Any) -> None:
+def log(data: Any) -> None:        # 定义函数 log，参数：data: Any，返回 None
     print(data)   # 接受任何类型
 \`\`\`
 
@@ -4070,12 +4070,12 @@ def log(data: Any) -> None:
 \`Callable\` 标注「可调用对象」（函数、lambda、实现了 \`__call__\` 的类）：
 
 \`\`\`python
-from typing import Callable
+from typing import Callable        # 从 typing 导入 Callable
 
-def apply(func: Callable[[int, int], int], a: int, b: int) -> int:
-    return func(a, b)
+def apply(func: Callable[[int, int], int], a: int, b: int) -> int:  # 定义函数 apply，参数：func: Callable[[int, int], int], a: int, b: int，返回 int
+    return func(a, b)              # 返回 func(a, b)
 
-print(apply(lambda x, y: x + y, 3, 4))
+print(apply(lambda x, y: x + y, 3, 4))  # 输出 apply(lambda x, y: x + y, 3, 4)
 \`\`\`
 
 \`Callable[[int, int], int]\` 表示「参数是 (int, int)，返回 int」的可调用对象。
@@ -4084,8 +4084,8 @@ Python 3.9+ 也可以用 \`Callable[..., int]\` 表示「参数任意，返回 i
 
 \`\`\`python
 # 不带参数注解的 Callable
-def run(fn: Callable[..., None]) -> None:
-    fn()
+def run(fn: Callable[..., None]) -> None:  # 定义函数 run，参数：fn: Callable[..., None]，返回 None
+    fn()                           # 调用 fn
 \`\`\`
 
 ---
@@ -4097,11 +4097,11 @@ def run(fn: Callable[..., None]) -> None:
 直接赋值就能创建类型别名：
 
 \`\`\`python
-Vector = list[float]
+Vector = list[float]               # 将 list[float] 赋给 Vector
 Matrix = list[Vector]   # list[list[float]]
 
-def dot(a: Vector, b: Vector) -> float:
-    return sum(x * y for x, y in zip(a, b))
+def dot(a: Vector, b: Vector) -> float:  # 定义函数 dot，参数：a: Vector, b: Vector，返回 float
+    return sum(x * y for x, y in zip(a, b))  # 返回 sum(x * y for x, y in zip(a, b))
 \`\`\`
 
 ### 5.2 TypeAlias（3.10+）
@@ -4109,7 +4109,7 @@ def dot(a: Vector, b: Vector) -> float:
 \`TypeAlias\` 显式声明「这是类型别名，不是普通变量」：
 
 \`\`\`python
-from typing import TypeAlias
+from typing import TypeAlias       # 从 typing 导入 TypeAlias
 
 Vector: TypeAlias = list[float]
 UserId: TypeAlias = int
@@ -4126,12 +4126,12 @@ UserId: TypeAlias = int
 \`TypeVar\` 定义一个「类型变量」，让函数的「参数类型」和「返回类型」保持一致：
 
 \`\`\`python
-from typing import TypeVar
+from typing import TypeVar         # 从 typing 导入 TypeVar
 
-T = TypeVar("T")
+T = TypeVar("T")                   # 将 TypeVar("T") 赋给 T
 
-def first(items: list[T]) -> T:
-    return items[0]
+def first(items: list[T]) -> T:    # 定义函数 first，参数：items: list[T]，返回 T
+    return items[0]                # 返回 items[0]
 
 # 调用 first([1,2,3]) 时，T 被推断为 int，返回 int
 # 调用 first(["a","b"]) 时，T 被推断为 str，返回 str
@@ -4148,15 +4148,15 @@ def first(items: list[T]) -> T:
 class Animal: ...
 class Dog(Animal): ...
 
-T = TypeVar("T", bound=Animal)
+T = TypeVar("T", bound=Animal)     # 将 TypeVar("T", bound=Animal) 赋给 T
 
-def clone(a: T) -> T:
-    return a
+def clone(a: T) -> T:              # 定义函数 clone，参数：a: T，返回 T
+    return a                       # 返回 a
 
 # constrained: T 只能是 int 或 str
-N = TypeVar("N", int, str)
-def double(x: N) -> N:
-    return x + x
+N = TypeVar("N", int, str)         # 将 TypeVar("N", int, str) 赋给 N
+def double(x: N) -> N:             # 定义函数 double，参数：x: N，返回 N
+    return x + x                   # 返回 x + x
 \`\`\`
 
 ---
@@ -4166,21 +4166,21 @@ def double(x: N) -> N:
 \`Generic\` 让你定义「泛型类」——一个类能适配多种类型：
 
 \`\`\`python
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar  # 从 typing 导入 Generic, TypeVar
 
-T = TypeVar("T")
+T = TypeVar("T")                   # 将 TypeVar("T") 赋给 T
 
-class Stack(Generic[T]):
-    def __init__(self) -> None:
+class Stack(Generic[T]):           # 定义类 Stack，继承自 Generic[T]
+    def __init__(self) -> None:    # 定义函数 __init__，参数：self，返回 None
         self._items: list[T] = []
-    def push(self, item: T) -> None:
+    def push(self, item: T) -> None:  # 定义函数 push，参数：self, item: T，返回 None
         self._items.append(item)
-    def pop(self) -> T:
-        return self._items.pop()
+    def pop(self) -> T:            # 定义函数 pop，参数：self，返回 T
+        return self._items.pop()   # 返回 self._items.pop()
 
 s: Stack[int] = Stack()
-s.push(1)
-s.push(2)
+s.push(1)                          # 对 s 调用 push 方法，参数 1
+s.push(2)                          # 对 s 调用 push 方法，参数 2
 print(s.pop())   # 2
 \`\`\`
 
@@ -4191,11 +4191,11 @@ print(s.pop())   # 2
 ### 7.1 多类型参数
 
 \`\`\`python
-K = TypeVar("K")
-V = TypeVar("V")
+K = TypeVar("K")                   # 将 TypeVar("K") 赋给 K
+V = TypeVar("V")                   # 将 TypeVar("V") 赋给 V
 
-class Pair(Generic[K, V]):
-    def __init__(self, key: K, value: V) -> None:
+class Pair(Generic[K, V]):         # 定义类 Pair，继承自 Generic[K, V]
+    def __init__(self, key: K, value: V) -> None:  # 定义函数 __init__，参数：self, key: K, value: V，返回 None
         self.key = key
         self.value = value
 
@@ -4209,14 +4209,14 @@ p: Pair[str, int] = Pair("age", 30)
 \`Type[T]\`（3.10+ 也叫 \`type[T]\`）标注「类本身」而非实例。常用于工厂函数：
 
 \`\`\`python
-from typing import Type, TypeVar
+from typing import Type, TypeVar   # 从 typing 导入 Type, TypeVar
 
-T = TypeVar("T", bound="Animal")
+T = TypeVar("T", bound="Animal")   # 将 TypeVar("T", bound="Animal") 赋给 T
 
-class Animal:
+class Animal:                      # 定义类 Animal
     @classmethod
-    def create(cls: Type[T]) -> T:
-        return cls()
+    def create(cls: Type[T]) -> T: # 定义函数 create，参数：cls: Type[T]，返回 T
+        return cls()               # 返回 cls()
 
 class Dog(Animal): pass
 
@@ -4232,17 +4232,17 @@ d = Dog.create()   # 返回 Dog 实例
 \`@overload\` 让你为「同一个函数的不同参数类型」定义不同的返回类型签名，帮助类型检查器推断：
 
 \`\`\`python
-from typing import overload
+from typing import overload        # 从 typing 导入 overload
 
 @overload
 def parse(value: int) -> str: ...
 @overload
 def parse(value: str) -> int: ...
 
-def parse(value):
-    if isinstance(value, int):
-        return str(value)
-    return int(value)
+def parse(value):                  # 定义函数 parse，参数：value
+    if isinstance(value, int):     # 如果 isinstance(value, int) 成立
+        return str(value)          # 返回 str(value)
+    return int(value)              # 返回 int(value)
 \`\`\`
 
 注意：\`@overload\` 的版本只是「签名」，用 \`...\` 占位（或者 \`pass\`），真正实现只有最后一个无装饰器的版本。mypy 会根据参数类型选择对应的签名。
@@ -4254,10 +4254,10 @@ def parse(value):
 \`Literal\` 表示「字面量类型」，常用于「限定参数只能是某几个具体值」：
 
 \`\`\`python
-from typing import Literal
+from typing import Literal         # 从 typing 导入 Literal
 
-def set_mode(mode: Literal["r", "w", "a"]) -> None:
-    print("模式:", mode)
+def set_mode(mode: Literal["r", "w", "a"]) -> None:  # 定义函数 set_mode，参数：mode: Literal["r", "w", "a"]，返回 None
+    print("模式:", mode)             # 输出 "模式:", mode
 
 set_mode("r")   # OK
 # set_mode("x")   # mypy 报错：Argument has incompatible type "x"
@@ -4270,15 +4270,15 @@ set_mode("r")   # OK
 \`TypedDict\` 给「字典」加上结构化类型约束，标注每个 key 的 value 类型：
 
 \`\`\`python
-from typing import TypedDict
+from typing import TypedDict       # 从 typing 导入 TypedDict
 
-class UserInfo(TypedDict):
+class UserInfo(TypedDict):         # 定义类 UserInfo，继承自 TypedDict
     name: str
     age: int
     email: str
 
 u: UserInfo = {"name": "Alice", "age": 30, "email": "a@b.com"}
-print(u["name"])
+print(u["name"])                   # 输出 u["name"]
 \`\`\`
 
 mypy 会检查 key 是否齐全、value 类型是否匹配。\`TypedDict\` 是处理 JSON、API 响应等「类对象字典」的利器。
@@ -4286,7 +4286,7 @@ mypy 会检查 key 是否齐全、value 类型是否匹配。\`TypedDict\` 是�
 ### 11.1 total=False 可选 key
 
 \`\`\`python
-class PartialUser(TypedDict, total=False):
+class PartialUser(TypedDict, total=False):  # 定义类 PartialUser，继承自 TypedDict, total=False
     name: str
     age: int
 
@@ -4301,17 +4301,17 @@ u: PartialUser = {}
 \`Protocol\`（3.8+）定义「结构化类型」——只要对象有这些方法/属性，就算符合协议，不需要继承。这就是「鸭子类型」的静态检查版。
 
 \`\`\`python
-from typing import Protocol
+from typing import Protocol        # 从 typing 导入 Protocol
 
-class Drawable(Protocol):
+class Drawable(Protocol):          # 定义类 Drawable，继承自 Protocol
     def draw(self) -> None: ...
 
-def render(obj: Drawable) -> None:
-    obj.draw()
+def render(obj: Drawable) -> None: # 定义函数 render，参数：obj: Drawable，返回 None
+    obj.draw()                     # 对 obj 调用 draw 方法
 
-class Circle:
-    def draw(self) -> None:
-        print("画圆")
+class Circle:                      # 定义类 Circle
+    def draw(self) -> None:        # 定义函数 draw，参数：self，返回 None
+        print("画圆")                # 输出 "画圆"
 
 render(Circle())   # OK，Circle 有 draw 方法，符合 Drawable 协议
 \`\`\`
@@ -4323,10 +4323,10 @@ render(Circle())   # OK，Circle 有 draw 方法，符合 Drawable 协议
 \`@runtime_checkable\` 让 Protocol 支持 \`isinstance\` 检查（只检查方法是否存在，不检查签名）：
 
 \`\`\`python
-from typing import Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable  # 从 typing 导入 Protocol, runtime_checkable
 
 @runtime_checkable
-class Sized(Protocol):
+class Sized(Protocol):             # 定义类 Sized，继承自 Protocol
     def __len__(self) -> int: ...
 
 print(isinstance([1,2,3], Sized))   # True
@@ -4341,7 +4341,7 @@ print(isinstance(42, Sized))        # False
 \`Final\` 标注「不可重新赋值」的变量（常量）：
 
 \`\`\`python
-from typing import Final
+from typing import Final           # 从 typing 导入 Final
 
 MAX_SIZE: Final[int] = 100
 
@@ -4356,13 +4356,13 @@ MAX_SIZE: Final[int] = 100
 \`ClassVar\` 标注「类变量」而非实例变量：
 
 \`\`\`python
-from typing import ClassVar
+from typing import ClassVar        # 从 typing 导入 ClassVar
 
-class Config:
+class Config:                      # 定义类 Config
     instances: ClassVar[int] = 0   # 类变量
     name: str                       # 实例变量
 
-    def __init__(self, name: str):
+    def __init__(self, name: str): # 定义函数 __init__，参数：self, name: str
         self.name = name
         Config.instances += 1
 \`\`\`
@@ -4374,22 +4374,22 @@ mypy 会阻止你通过实例访问 \`ClassVar\` 后赋值（应该通过类访�
 \`ParamSpec\` 捕获「函数的参数签名」，常用于装饰器的类型保持：
 
 \`\`\`python
-from typing import ParamSpec, TypeVar, Callable
-from functools import wraps
+from typing import ParamSpec, TypeVar, Callable  # 从 typing 导入 ParamSpec, TypeVar, Callable
+from functools import wraps        # 从 functools 导入 wraps
 
-P = ParamSpec("P")
-R = TypeVar("R")
+P = ParamSpec("P")                 # 将 ParamSpec("P") 赋给 P
+R = TypeVar("R")                   # 将 TypeVar("R") 赋给 R
 
-def log(fn: Callable[P, R]) -> Callable[P, R]:
+def log(fn: Callable[P, R]) -> Callable[P, R]:  # 定义函数 log，参数：fn: Callable[P, R]，返回 Callable[P, R]
     @wraps(fn)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        print("调用", fn.__name__)
-        return fn(*args, **kwargs)
-    return wrapper
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:  # 定义函数 wrapper，参数：*args: P.args, **kwargs: P.kwargs，返回 R
+        print("调用", fn.__name__)   # 输出 "调用", fn.__name__
+        return fn(*args, **kwargs) # 返回 fn(*args, **kwargs)
+    return wrapper                 # 返回 wrapper
 
 @log
-def add(a: int, b: int) -> int:
-    return a + b
+def add(a: int, b: int) -> int:    # 定义函数 add，参数：a: int, b: int，返回 int
+    return a + b                   # 返回 a + b
 \`\`\`
 
 \`ParamSpec\` 让装饰器保留原函数的参数签名，mypy 能正确检查被装饰后的函数。3.10 之前这是很难做到的。
@@ -4411,8 +4411,8 @@ mypy myscript.py
 mypy 会扫描脚本的类型注解，报告类型错误。例如：
 
 \`\`\`python
-def add(a: int, b: int) -> int:
-    return a + b
+def add(a: int, b: int) -> int:    # 定义函数 add，参数：a: int, b: int，返回 int
+    return a + b                   # 返回 a + b
 
 add(1, "2")   # mypy 报错：Argument 2 has incompatible type "str"
 \`\`\`
@@ -4450,20 +4450,20 @@ ignore_errors = true   # 老代码忽略错误
 mypy 能根据 \`isinstance\`、\`if x is None\` 等条件「收窄」类型推断：
 
 \`\`\`python
-def process(x: int | str) -> int:
-    if isinstance(x, int):
+def process(x: int | str) -> int:  # 定义函数 process，参数：x: int | str，返回 int
+    if isinstance(x, int):         # 如果 isinstance(x, int) 成立
         return x + 1   # 这里 x 被推断为 int
-    else:
+    else:                          # 否则
         return len(x)  # 这里 x 被推断为 str
 \`\`\`
 
 \`isinstance\` 分支后，mypy 知道 \`x\` 在不同分支里是不同类型，从而正确检查。这叫「类型收窄（narrowing）」。
 
 \`\`\`python
-def first(items: list[int | None]) -> int:
-    x = items[0]
-    if x is None:
-        return 0
+def first(items: list[int | None]) -> int:  # 定义函数 first，参数：items: list[int | None]，返回 int
+    x = items[0]                   # 将 items[0] 赋给 x
+    if x is None:                  # 如果 x is None 成立
+        return 0                   # 返回 0
     return x + 1   # 这里 x 被 narrowed 为 int
 \`\`\`
 
@@ -4472,11 +4472,11 @@ def first(items: list[int | None]) -> int:
 类型注解是「静态」的，运行时不生效。如果你需要「运行时」检查类型，仍要用 \`isinstance\`：
 
 \`\`\`python
-def add(a: int, b: int) -> int:
+def add(a: int, b: int) -> int:    # 定义函数 add，参数：a: int, b: int，返回 int
     # 注解只是给 mypy 看，运行时 a、b 可以是任何类型
-    if not isinstance(a, int) or not isinstance(b, int):
-        raise TypeError("需要 int")
-    return a + b
+    if not isinstance(a, int) or not isinstance(b, int):  # 如果 not isinstance(a, int) or not isinstance(b, int) 成立
+        raise TypeError("需要 int")  # 抛出异常：TypeError("需要 int")
+    return a + b                   # 返回 a + b
 \`\`\`
 
 也有第三方库（如 \`pydantic\`、\`typeguard\`）能在运行时根据注解自动检查，但那是额外功能，不属于标准库。
@@ -5123,26 +5123,26 @@ print("=" * 60)
 ### 1.1 第一个 TestCase
 
 \`\`\`python
-import unittest
+import unittest                    # 导入 unittest 模块
 
-def add(a, b):
-    return a + b
+def add(a, b):                     # 定义函数 add，参数：a, b
+    return a + b                   # 返回 a + b
 
-class TestAdd(unittest.TestCase):
-    def test_add_integers(self):
-        self.assertEqual(add(1, 2), 3)
+class TestAdd(unittest.TestCase):  # 定义类 TestAdd，继承自 unittest.TestCase
+    def test_add_integers(self):   # 定义函数 test_add_integers，参数：self
+        self.assertEqual(add(1, 2), 3)  # 对 self 调用 assertEqual 方法，参数 add(1, 2), 3
 
-    def test_add_floats(self):
-        self.assertAlmostEqual(add(0.1, 0.2), 0.3, places=7)
+    def test_add_floats(self):     # 定义函数 test_add_floats，参数：self
+        self.assertAlmostEqual(add(0.1, 0.2), 0.3, places=7)  # 对 self 调用 assertAlmostEqual 方法，参数 add(0.1, 0.2), 0.3, places=7
 
-    def test_add_strings(self):
-        self.assertEqual(add("a", "b"), "ab")
+    def test_add_strings(self):    # 定义函数 test_add_strings，参数：self
+        self.assertEqual(add("a", "b"), "ab")  # 对 self 调用 assertEqual 方法，参数 add("a", "b"), "ab"
 
-    def test_add_negative(self):
-        self.assertEqual(add(-1, -2), -3)
+    def test_add_negative(self):   # 定义函数 test_add_negative，参数：self
+        self.assertEqual(add(-1, -2), -3)  # 对 self 调用 assertEqual 方法，参数 add(-1, -2), -3
 
-if __name__ == "__main__":
-    unittest.main()
+if __name__ == "__main__":         # 如果 __name__ == "__main__" 成立
+    unittest.main()                # 对 unittest 调用 main 方法
 \`\`\`
 
 每个以 \`test_\` 开头的方法是一个测试用例。\`unittest\` 会自动发现并运行它们。运行 \`python test_xxx.py\` 就会执行所有测试。
@@ -5152,36 +5152,36 @@ if __name__ == "__main__":
 \`setUp\` 在每个测试方法**之前**运行，\`tearDown\` 在每个测试方法**之后**运行。它们用来准备和清理测试环境，保证每个测试互不影响。
 
 \`\`\`python
-class TestDatabase(unittest.TestCase):
-    def setUp(self):
+class TestDatabase(unittest.TestCase):  # 定义类 TestDatabase，继承自 unittest.TestCase
+    def setUp(self):               # 定义函数 setUp，参数：self
         # 每个测试前连接数据库
         self.db = FakeDB()
         self.db.connect()
 
-    def tearDown(self):
+    def tearDown(self):            # 定义函数 tearDown，参数：self
         # 每个测试后断开
         self.db.disconnect()
 
-    def test_insert(self):
+    def test_insert(self):         # 定义函数 test_insert，参数：self
         self.db.insert("users", {"name": "Alice"})
-        self.assertEqual(self.db.count("users"), 1)
+        self.assertEqual(self.db.count("users"), 1)  # 对 self 调用 assertEqual 方法，参数 self.db.count("users"), 1
 
-    def test_delete(self):
+    def test_delete(self):         # 定义函数 test_delete，参数：self
         self.db.insert("users", {"name": "Bob"})
         self.db.delete("users", "Bob")
-        self.assertEqual(self.db.count("users"), 0)
+        self.assertEqual(self.db.count("users"), 0)  # 对 self 调用 assertEqual 方法，参数 self.db.count("users"), 0
 \`\`\`
 
 注意：\`setUp\`/\`tearDown\` 对**每个测试方法**都执行一次。如果想要「整个类只执行一次」的前后置，用 \`setUpClass\`/\`tearDownClass\`（类方法）。
 
 \`\`\`python
-class TestSuite(unittest.TestCase):
+class TestSuite(unittest.TestCase):  # 定义类 TestSuite，继承自 unittest.TestCase
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls):           # 定义函数 setUpClass，参数：cls
         cls.shared_resource = create_expensive_resource()
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls):        # 定义函数 tearDownClass，参数：cls
         cls.shared_resource.close()
 \`\`\`
 
@@ -5205,19 +5205,19 @@ class TestSuite(unittest.TestCase):
 | \`assertLess(a, b)\` | a < b |
 
 \`\`\`python
-class TestAsserts(unittest.TestCase):
-    def test_various(self):
-        self.assertEqual(1 + 1, 2)
-        self.assertIn(2, [1, 2, 3])
-        self.assertIsInstance("hello", str)
-        self.assertIsNone(None)
-        self.assertGreater(5, 3)
+class TestAsserts(unittest.TestCase):  # 定义类 TestAsserts，继承自 unittest.TestCase
+    def test_various(self):        # 定义函数 test_various，参数：self
+        self.assertEqual(1 + 1, 2) # 对 self 调用 assertEqual 方法，参数 1 + 1, 2
+        self.assertIn(2, [1, 2, 3])  # 对 self 调用 assertIn 方法，参数 2, [1, 2, 3]
+        self.assertIsInstance("hello", str)  # 对 self 调用 assertIsInstance 方法，参数 "hello", str
+        self.assertIsNone(None)    # 对 self 调用 assertIsNone 方法，参数 None
+        self.assertGreater(5, 3)   # 对 self 调用 assertGreater 方法，参数 5, 3
 
-    def test_raises(self):
-        with self.assertRaises(ZeroDivisionError):
+    def test_raises(self):         # 定义函数 test_raises，参数：self
+        with self.assertRaises(ZeroDivisionError):  # 使用上下文管理器 self.assertRaises(ZeroDivisionError)
             1 / 0
-        with self.assertRaises(ValueError):
-            int("abc")
+        with self.assertRaises(ValueError):  # 使用上下文管理器 self.assertRaises(ValueError)
+            int("abc")             # 调用 转为整数，参数 "abc"
 \`\`\`
 
 \`assertRaises\` 有两种用法：上下文管理器形式（推荐）和直接调用形式。
@@ -5252,15 +5252,15 @@ pip install pytest
 pytest 不需要继承 \`TestCase\`，直接写函数即可：
 
 \`\`\`python
-def add(a, b):
-    return a + b
+def add(a, b):                     # 定义函数 add，参数：a, b
+    return a + b                   # 返回 a + b
 
-def test_add():
+def test_add():                    # 定义函数 test_add，无参数
     assert add(1, 2) == 3
     assert add("a", "b") == "ab"
     assert add(-1, 1) == 0
 
-def test_add_floats():
+def test_add_floats():             # 定义函数 test_add_floats，无参数
     assert add(0.1, 0.2) == 0.3   # 这个会失败！浮点精度
 \`\`\`
 
@@ -5281,24 +5281,24 @@ pytest --tb=short         # 简短 traceback
 \`fixture\` 是 pytest 最强大的特性——它让你「声明测试依赖」，pytest 自动注入。fixture 可以复用、可以设置作用域、可以参数化。
 
 \`\`\`python
-import pytest
+import pytest                      # 导入 pytest 模块
 
 @pytest.fixture
-def db():
+def db():                          # 定义函数 db，无参数
     # setup
-    database = FakeDB()
-    database.connect()
+    database = FakeDB()            # 将 FakeDB() 赋给 database
+    database.connect()             # 对 database 调用 connect 方法
     yield database   # yield 之前是 setup，yield 的值注入测试，yield 之后是 teardown
     # teardown
-    database.disconnect()
+    database.disconnect()          # 对 database 调用 disconnect 方法
 
-def test_insert(db):
-    db.insert("users", {"name": "Alice"})
+def test_insert(db):               # 定义函数 test_insert，参数：db
+    db.insert("users", {"name": "Alice"})  # 对 db 调用 插入 方法，参数 "users", {"name": "Alice"}
     assert db.count("users") == 1
 
-def test_delete(db):
-    db.insert("users", {"name": "Bob"})
-    db.delete("users", "Bob")
+def test_delete(db):               # 定义函数 test_delete，参数：db
+    db.insert("users", {"name": "Bob"})  # 对 db 调用 插入 方法，参数 "users", {"name": "Bob"}
+    db.delete("users", "Bob")      # 对 db 调用 delete 方法，参数 "users", "Bob"
     assert db.count("users") == 0
 \`\`\`
 
@@ -5310,17 +5310,17 @@ def test_delete(db):
 
 \`\`\`python
 # tests/conftest.py
-import pytest
+import pytest                      # 导入 pytest 模块
 
 @pytest.fixture
-def sample_data():
-    return [1, 2, 3, 4, 5]
+def sample_data():                 # 定义函数 sample_data，无参数
+    return [1, 2, 3, 4, 5]         # 返回 [1, 2, 3, 4, 5]
 
 @pytest.fixture
-def temp_file(tmp_path):
-    f = tmp_path / "test.txt"
-    f.write_text("hello")
-    return f
+def temp_file(tmp_path):           # 定义函数 temp_file，参数：tmp_path
+    f = tmp_path / "test.txt"      # 将 tmp_path / "test.txt" 赋给 f
+    f.write_text("hello")          # 对 f 调用 write_text 方法，参数 "hello"
+    return f                       # 返回 f
 \`\`\`
 
 \`tmp_path\` 是 pytest 内置 fixture，提供唯一的临时目录，测试结束自动清理。
@@ -5336,13 +5336,13 @@ fixture 的 \`scope\` 决定它「多久初始化一次」：
 
 \`\`\`python
 @pytest.fixture(scope="module")
-def expensive_resource():
-    print("初始化（每个模块一次）")
-    return create_expensive()
+def expensive_resource():          # 定义函数 expensive_resource，无参数
+    print("初始化（每个模块一次）")           # 输出 "初始化（每个模块一次）"
+    return create_expensive()      # 返回 create_expensive()
 
 @pytest.fixture(scope="session")
-def global_config():
-    return load_config()
+def global_config():               # 定义函数 global_config，无参数
+    return load_config()           # 返回 load_config()
 \`\`\`
 
 scope 越大，初始化越少，但要注意「状态污染」——如果 fixture 返回的对象被测试修改了，后面的测试会受影响。
@@ -5353,10 +5353,10 @@ fixture 可以参数化，对每组参数运行一遍测试：
 
 \`\`\`python
 @pytest.fixture(params=[1, 2, 3])
-def number(request):
-    return request.param
+def number(request):               # 定义函数 number，参数：request
+    return request.param           # 返回 request.param
 
-def test_square(number):
+def test_square(number):           # 定义函数 test_square，参数：number
     assert number * number >= number
 \`\`\`
 
@@ -5375,7 +5375,7 @@ def test_square(number):
     (0, 0, 0),
     (100, 200, 300),
 ])
-def test_add(a, b, expected):
+def test_add(a, b, expected):      # 定义函数 test_add，参数：a, b, expected
     assert add(a, b) == expected
 \`\`\`
 
@@ -5393,14 +5393,14 @@ def test_add(a, b, expected):
 
 \`\`\`python
 @pytest.mark.slow
-def test_large_dataset():
+def test_large_dataset():          # 定义函数 test_large_dataset，无参数
     # 耗时测试
-    pass
+    pass                           # 空操作，占位
 
 @pytest.mark.integration
-def test_database():
+def test_database():               # 定义函数 test_database，无参数
     # 集成测试
-    pass
+    pass                           # 空操作，占位
 \`\`\`
 
 运行时筛选：
@@ -5416,18 +5416,18 @@ pytest -m "slow or integration"
 \`skip\` 跳过测试（不运行），\`xfail\` 标记「预期失败」（运行但不算失败）：
 
 \`\`\`python
-import sys
+import sys                         # 导入 sys 模块
 
 @pytest.mark.skip(reason="暂时禁用")
-def test_todo():
-    pass
+def test_todo():                   # 定义函数 test_todo，无参数
+    pass                           # 空操作，占位
 
 @pytest.mark.skipif(sys.platform == "win32", reason="不支持 Windows")
-def test_unix_only():
-    pass
+def test_unix_only():              # 定义函数 test_unix_only，无参数
+    pass                           # 空操作，占位
 
 @pytest.mark.xfail(reason="已知 bug，待修复")
-def test_known_bug():
+def test_known_bug():              # 定义函数 test_known_bug，无参数
     assert broken_function() == "fixed"
 \`\`\`
 
@@ -5446,12 +5446,12 @@ def test_known_bug():
 \`Mock\` 是一个「万能对象」——访问它的任何属性都返回一个新的 Mock，调用它返回一个 Mock，并记录调用信息。
 
 \`\`\`python
-from unittest.mock import Mock
+from unittest.mock import Mock     # 从 unittest.mock 导入 Mock
 
-m = Mock()
+m = Mock()                         # 将 Mock() 赋给 m
 m.anything            # 返回一个 Mock
 m(1, 2, key="val")    # 调用，返回 Mock
-m.assert_called_once_with(1, 2, key="val")
+m.assert_called_once_with(1, 2, key="val")  # 对 m 调用 assert_called_once_with 方法，参数 1, 2, key="val"
 print(m.call_count)   # 1
 \`\`\`
 
@@ -5463,7 +5463,7 @@ print(m.call_count)   # 1
 - \`side_effect\`：调用 mock 时的「副作用」——可以是一个值（返回它）、一个可迭代对象（每次返回下一个）、一个函数（调用它）、或一个异常（抛出它）。
 
 \`\`\`python
-m = Mock()
+m = Mock()                         # 将 Mock() 赋给 m
 m.return_value = 42
 print(m())   # 42
 
@@ -5473,8 +5473,8 @@ print(m(), m(), m())   # 1 2 3
 m.side_effect = ValueError("出错")   # 抛异常
 m()   # raises ValueError
 
-def side_func(x):
-    return x * 10
+def side_func(x):                  # 定义函数 side_func，参数：x
+    return x * 10                  # 返回 x * 10
 m.side_effect = side_func   # 调用时执行函数
 print(m(5))   # 50
 \`\`\`
@@ -5484,23 +5484,23 @@ print(m(5))   # 50
 \`patch\` 是最常用的 mock 工具——它「临时替换」一个对象，测试后恢复。常用于替换网络请求、文件 IO、外部服务。
 
 \`\`\`python
-from unittest.mock import patch
+from unittest.mock import patch    # 从 unittest.mock 导入 patch
 
-def get_username(user_id):
+def get_username(user_id):         # 定义函数 get_username，参数：user_id
     # 调用外部 API
-    import requests
-    resp = requests.get("https://api.example.com/users/" + str(user_id))
-    return resp.json()["name"]
+    import requests                # 导入 requests 模块
+    resp = requests.get("https://api.example.com/users/" + str(user_id))  # 将 requests.get("https://api.example.com/users/" + str(user_id)) 赋给 resp
+    return resp.json()["name"]     # 返回 resp.json()["name"]
 
-class TestGetUsername(unittest.TestCase):
+class TestGetUsername(unittest.TestCase):  # 定义类 TestGetUsername，继承自 unittest.TestCase
     @patch("requests.get")
-    def test_get_username(self, mock_get):
+    def test_get_username(self, mock_get):  # 定义函数 test_get_username，参数：self, mock_get
         # 配置 mock 返回值
         mock_get.return_value.json.return_value = {"name": "Alice"}
-        name = get_username(1)
-        self.assertEqual(name, "Alice")
+        name = get_username(1)     # 将 get_username(1) 赋给 name
+        self.assertEqual(name, "Alice")  # 对 self 调用 assertEqual 方法，参数 name, "Alice"
         # 验证 mock 被正确调用
-        mock_get.assert_called_once_with("https://api.example.com/users/1")
+        mock_get.assert_called_once_with("https://api.example.com/users/1")  # 对 mock_get 调用 assert_called_once_with 方法，参数 "https://api.example.com/users/1"
 \`\`\`
 
 \`patch("requests.get")\` 临时把 \`requests.get\` 替换成 Mock，测试结束自动恢复。被 patch 的对象作为参数注入测试方法。
@@ -5508,7 +5508,7 @@ class TestGetUsername(unittest.TestCase):
 \`patch\` 可以作为装饰器，也可以作为上下文管理器：
 
 \`\`\`python
-with patch("requests.get") as mock_get:
+with patch("requests.get") as mock_get:  # 使用上下文管理器 patch("requests.get")，绑定到 mock_get
     mock_get.return_value.json.return_value = {"name": "Bob"}
     ...
 \`\`\`
@@ -5518,14 +5518,14 @@ with patch("requests.get") as mock_get:
 \`patch.object\` patch 一个对象的特定属性：
 
 \`\`\`python
-with patch.object(SomeClass, "method", return_value=42):
+with patch.object(SomeClass, "method", return_value=42):  # 使用上下文管理器 patch.object(SomeClass, "method", return_value=42)
     ...
 \`\`\`
 
 \`patch.multiple\` 一次 patch 多个：
 
 \`\`\`python
-with patch.multiple("mymodule", func1=Mock(), func2=Mock()):
+with patch.multiple("mymodule", func1=Mock(), func2=Mock()):  # 使用上下文管理器 patch.multiple("mymodule", func1=Mock(), func2=Mock())
     ...
 \`\`\`
 
@@ -5536,7 +5536,7 @@ with patch.multiple("mymodule", func1=Mock(), func2=Mock()):
 \`doctest\` 把「文档字符串里的示例代码」当测试跑。它强制文档和代码保持一致——文档里的例子必须真的能运行。
 
 \`\`\`python
-def factorial(n):
+def factorial(n):                  # 定义函数 factorial，参数：n
     """计算阶乘
 
     >>> factorial(0)
@@ -5548,13 +5548,13 @@ def factorial(n):
     >>> factorial(3)
     6
     """
-    if n <= 1:
-        return 1
-    return n * factorial(n - 1)
+    if n <= 1:                     # 如果 n <= 1 成立
+        return 1                   # 返回 1
+    return n * factorial(n - 1)    # 返回 n * factorial(n - 1)
 
-if __name__ == "__main__":
-    import doctest
-    doctest.testmod()
+if __name__ == "__main__":         # 如果 __name__ == "__main__" 成立
+    import doctest                 # 导入 doctest 模块
+    doctest.testmod()              # 对 doctest 调用 testmod 方法
 \`\`\`
 
 \`>>> \` 后面是输入，下一行是预期输出。\`doctest.testmod()\` 会执行所有示例，对比输出是否匹配。如果不匹配，报告错误。
@@ -5599,21 +5599,21 @@ TDD（Test-Driven Development，测试驱动开发）的流程是「红-绿-重�
 
 \`\`\`python
 # 红：先写测试
-def test_fizzbuzz():
+def test_fizzbuzz():               # 定义函数 test_fizzbuzz，无参数
     assert fizzbuzz(1) == "1"
     assert fizzbuzz(3) == "Fizz"
     assert fizzbuzz(5) == "Buzz"
     assert fizzbuzz(15) == "FizzBuzz"
 
 # 绿：写实现
-def fizzbuzz(n):
-    if n % 15 == 0:
-        return "FizzBuzz"
-    if n % 3 == 0:
-        return "Fizz"
-    if n % 5 == 0:
-        return "Buzz"
-    return str(n)
+def fizzbuzz(n):                   # 定义函数 fizzbuzz，参数：n
+    if n % 15 == 0:                # 如果 n % 15 == 0 成立
+        return "FizzBuzz"          # 返回 "FizzBuzz"
+    if n % 3 == 0:                 # 如果 n % 3 == 0 成立
+        return "Fizz"              # 返回 "Fizz"
+    if n % 5 == 0:                 # 如果 n % 5 == 0 成立
+        return "Buzz"              # 返回 "Buzz"
+    return str(n)                  # 返回 str(n)
 
 # 重构：可以优化但不改行为
 \`\`\`
@@ -5627,12 +5627,12 @@ TDD 的好处：测试先行，天然 100% 覆盖；强迫你先想清楚「接�
 \`pdb\` 是 Python 内置的交互式调试器。在代码里插入 \`breakpoint()\`（Python 3.7+）或 \`pdb.set_trace()\`，程序会停在那里，进入交互式调试。
 
 \`\`\`python
-def buggy(items):
-    total = 0
-    for i, x in enumerate(items):
+def buggy(items):                  # 定义函数 buggy，参数：items
+    total = 0                      # 将整数 0 赋给 total
+    for i, x in enumerate(items):  # 遍历 enumerate(items)，每次取值赋给 i, x
         breakpoint()   # 程序停在这里
-        total += x
-    return total / len(items)
+        total += x                 # total 加 x
+    return total / len(items)      # 返回 total / len(items)
 \`\`\`
 
 ### 10.1 常用 pdb 命令
@@ -5660,12 +5660,12 @@ def buggy(items):
 
 \`\`\`python
 # unittest
-with self.assertRaises(ValueError):
-    parse("invalid")
+with self.assertRaises(ValueError):  # 使用上下文管理器 self.assertRaises(ValueError)
+    parse("invalid")               # 调用 parse，参数 "invalid"
 
 # pytest
-with pytest.raises(ValueError, match="invalid"):
-    parse("invalid")
+with pytest.raises(ValueError, match="invalid"):  # 使用上下文管理器 pytest.raises(ValueError, match="invalid")
+    parse("invalid")               # 调用 parse，参数 "invalid"
 \`\`\`
 
 \`match\` 参数可以用正则匹配异常消息。
@@ -5674,7 +5674,7 @@ with pytest.raises(ValueError, match="invalid"):
 
 \`\`\`python
 # unittest
-self.assertAlmostEqual(0.1 + 0.2, 0.3, places=7)
+self.assertAlmostEqual(0.1 + 0.2, 0.3, places=7)  # 对 self 调用 assertAlmostEqual 方法，参数 0.1 + 0.2, 0.3, places=7
 
 # pytest
 assert abs(0.1 + 0.2 - 0.3) < 1e-9
@@ -5683,11 +5683,11 @@ assert abs(0.1 + 0.2 - 0.3) < 1e-9
 ### 11.3 捕获警告
 
 \`\`\`python
-import warnings
+import warnings                    # 导入 warnings 模块
 
-with warnings.catch_warnings(record=True) as w:
-    warnings.simplefilter("always")
-    deprecated_function()
+with warnings.catch_warnings(record=True) as w:  # 使用上下文管理器 warnings.catch_warnings(record=True)，绑定到 w
+    warnings.simplefilter("always")  # 对 warnings 调用 simplefilter 方法，参数 "always"
+    deprecated_function()          # 调用 deprecated_function
     assert len(w) == 1
     assert "deprecated" in str(w[0].message)
 \`\`\`
@@ -6352,11 +6352,11 @@ my_project/
 
 \`\`\`python
 # my_package/__init__.py
-from my_package.core import main_function
-from my_package.utils import helper
+from my_package.core import main_function  # 从 my_package.core 导入 main_function
+from my_package.utils import helper  # 从 my_package.utils 导入 helper
 
-__version__ = "1.0.0"
-__all__ = ["main_function", "helper"]
+__version__ = "1.0.0"              # 将字符串 "1.0.0" 赋给 __version__
+__all__ = ["main_function", "helper"]  # 创建列表并赋给 __all__
 \`\`\`
 
 \`__all__\` 控制 \`from my_package import *\` 导出哪些名字。
@@ -6666,23 +6666,23 @@ wordcount/
 
 \`\`\`python
 # src/wordcount/__init__.py
-__version__ = "1.0.0"
+__version__ = "1.0.0"              # 将字符串 "1.0.0" 赋给 __version__
 
 # src/wordcount/cli.py
-import sys
+import sys                         # 导入 sys 模块
 
-def count_words(text):
-    return len(text.split())
+def count_words(text):             # 定义函数 count_words，参数：text
+    return len(text.split())       # 返回 len(text.split())
 
-def main():
-    if len(sys.argv) < 2:
-        print("用法: wordcount <文本>")
-        sys.exit(1)
-    text = " ".join(sys.argv[1:])
-    print("词数:", count_words(text))
+def main():                        # 定义函数 main，无参数
+    if len(sys.argv) < 2:          # 如果 len(sys.argv) < 2 成立
+        print("用法: wordcount <文本>")  # 输出 "用法: wordcount <文本>"
+        sys.exit(1)                # 对 sys 调用 exit 方法，参数 1
+    text = " ".join(sys.argv[1:])  # 将字符串 " ".join(sys.argv[1:]) 赋给 text
+    print("词数:", count_words(text))  # 输出 "词数:", count_words(text)
 
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__":         # 如果 __name__ == "__main__" 成立
+    main()                         # 调用 main
 \`\`\`
 
 ### 12.3 pyproject.toml

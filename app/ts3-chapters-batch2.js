@@ -37,13 +37,13 @@ export const chapters = [
 最推荐的方式是直接为组件的 props 定义接口，然后将组件声明为接收 props 并返回 JSX.Element 的普通函数。这种方式更加透明，类型检查也更加严格。在 TypeScript 中，你可以这样写：
 
 \`\`\`tsx
-interface GreetingProps {
+interface GreetingProps {  // 定义接口 GreetingProps
   name: string;
   age?: number;
 }
 
-function Greeting(props: GreetingProps) {
-  return <div>Hello {props.name}</div>;
+function Greeting(props: GreetingProps) {  // 定义函数 Greeting，参数: props: GreetingProps
+  return <div>Hello {props.name}</div>;  // 返回 <div>Hello {props.name}</div>
 }
 \`\`\`
 
@@ -2869,16 +2869,16 @@ console.log('- 运行时验证(zod)补充编译时类型检查');
 在 TypeScript 中，复合组件需要精确的类型设计。父组件应该是一个组件函数，同时它的属性（静态属性）是子组件。每个子组件的 props 类型应该独立定义。例如：
 
 \`\`\`tsx
-interface TabsProps { defaultValue?: string; children: ReactNode }
-interface TabsComponent extends FC<TabsProps> {
+interface TabsProps { defaultValue?: string; children: ReactNode }  // 定义接口 TabsProps
+interface TabsComponent extends FC<TabsProps> {  // 定义接口 TabsComponent，extends FC<TabsProps>
   List: FC<TabsListProps>;
   Tab: FC<TabsTabProps>;
   Panels: FC<TabsPanelsProps>;
   Panel: FC<TabsPanelProps>;
 }
-const Tabs = TabsBase as TabsComponent;
-Tabs.List = TabsList;
-Tabs.Tab = TabsTab;
+const Tabs = TabsBase as TabsComponent;  // 声明常量 Tabs（注意：类型断言会绕过类型检查）
+Tabs.List = TabsList;  // 赋值 Tabs.List
+Tabs.Tab = TabsTab;  // 赋值 Tabs.Tab
 // ...
 \`\`\`
 

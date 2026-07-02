@@ -116,9 +116,9 @@ Java 异常最核心的设计就是区分 **Checked** 和 **Unchecked** 两种�
 继承自 \`Exception\`（但不是 \`RuntimeException\`）的异常是 Checked 异常。编译器在**编译期**检查调用者是否处理了它们：
 
 \`\`\`java
-public void readFile(String path) throws IOException {
+public void readFile(String path) throws IOException {  // 方法 readFile，返回 void，参数：String path
     // 必须声明 throws 或在方法内 try-catch
-    FileInputStream fis = new FileInputStream(path);
+    FileInputStream fis = new FileInputStream(path);  // 声明变量 fis（FileInputStream），初始值为 new FileInputStream(path)
 }
 \`\`\`
 
@@ -131,9 +131,9 @@ public void readFile(String path) throws IOException {
 继承自 \`RuntimeException\` 的异常是 Unchecked 异常，编译器**不强制**处理：
 
 \`\`\`java
-public int divide(int a, int b) {
+public int divide(int a, int b) {  // 方法 divide，返回 int，参数：int a, int b
     if (b == 0) throw new ArithmeticException("除数为零"); // 无需声明 throws
-    return a / b;
+    return a / b;  // 返回值：a / b
 }
 \`\`\`
 
@@ -223,11 +223,11 @@ public class Main {
 ## 基本结构
 
 \`\`\`java
-try {
+try {  // try 块：包裹可能抛出异常的代码
     // 可能抛出异常的代码
-} catch (SomeException e) {
+} catch (SomeException e) {  // 捕获异常 SomeException e
     // 处理异常
-} finally {
+} finally {  // finally 块：无论是否异常都执行
     // 无论是否发生异常都会执行
 }
 \`\`\`
@@ -246,10 +246,10 @@ try {
 **不要在 finally 中 return**！它会吞掉 try 中的异常，并覆盖 try 的返回值：
 
 \`\`\`java
-public int demo() {
-    try {
-        throw new RuntimeException("出错了");
-    } finally {
+public int demo() {  // 方法 demo，返回 int，无参数
+    try {  // try 块：包裹可能抛出异常的代码
+        throw new RuntimeException("出错了");  // 抛出 RuntimeException 异常："出错了"
+    } finally {  // finally 块：无论是否异常都执行
         return 100; // 异常被吞，方法返回 100
     }
 }
@@ -361,11 +361,11 @@ public class Main {
 \`throw\` 用于在方法体内**主动抛出**一个异常实例：
 
 \`\`\`java
-public void setAge(int age) {
-    if (age < 0) {
-        throw new IllegalArgumentException("年龄不能为负: " + age);
+public void setAge(int age) {  // 方法 setAge，返回 void，参数：int age
+    if (age < 0) {  // 条件判断：满足 age < 0 时执行
+        throw new IllegalArgumentException("年龄不能为负: " + age);  // 抛出 IllegalArgumentException 异常："年龄不能为负: " + age
     }
-    this.age = age;
+    this.age = age;  // 为 this.age 赋值：age
 }
 \`\`\`
 
@@ -376,7 +376,7 @@ throw 后必须跟一个 \`Throwable\` 实例（异常对象），一次只能�
 \`throws\` 用于方法签名上**声明**该方法可能抛出的异常，通知调用者处理：
 
 \`\`\`java
-public void readFile(String path) throws IOException {
+public void readFile(String path) throws IOException {  // 方法 readFile，返回 void，参数：String path
     // 方法体
 }
 \`\`\`
@@ -405,9 +405,9 @@ public void readFile(String path) throws IOException {
 catch 块中可以重新抛出当前异常，或包装后抛出：
 
 \`\`\`java
-try {
+try {  // try 块：包裹可能抛出异常的代码
     // ...
-} catch (IOException e) {
+} catch (IOException e) {  // 捕获异常 IOException e
     throw e; // 重新抛出
 }
 \`\`\`
@@ -424,11 +424,11 @@ try {
 这是为了保证多态调用时的异常安全。Unchecked 异常不受此限制。
 
 \`\`\`java
-class Parent {
+class Parent {  // 定义类 Parent
     void doWork() throws IOException { }
 }
-class Child extends Parent {
-    @Override
+class Child extends Parent {  // 定义类 Child
+    @Override  // 注解：Override
     void doWork() throws FileNotFoundException { } // 合法：子类异常
     // void doWork() throws Exception { } // 编译错误：更宽
 }
@@ -516,12 +516,12 @@ Java 内置异常类覆盖了通用场景，但业务中常需要**自定义异�
 ## 基本结构
 
 \`\`\`java
-public class BusinessException extends RuntimeException {
-    public BusinessException(String message) {
-        super(message);
+public class BusinessException extends RuntimeException {  // 定义类 BusinessException
+    public BusinessException(String message) {  // 方法 BusinessException，返回 public，参数：String message
+        super(message);  // 调用方法 super
     }
-    public BusinessException(String message, Throwable cause) {
-        super(message, cause);
+    public BusinessException(String message, Throwable cause) {  // 方法 BusinessException，返回 public，参数：String message, Throwable cause
+        super(message, cause);  // 调用方法 super
     }
 }
 \`\`\`
@@ -533,10 +533,10 @@ public class BusinessException extends RuntimeException {
 自定义异常可以携带业务相关字段，便于上层处理：
 
 \`\`\`java
-public class InsufficientBalanceException extends RuntimeException {
-    private final long userId;
-    private final double balance;
-    private final double amount;
+public class InsufficientBalanceException extends RuntimeException {  // 定义类 InsufficientBalanceException
+    private final long userId;  // 声明常量私有变量 userId（long 类型）
+    private final double balance;  // 声明常量私有变量 balance（double 类型）
+    private final double amount;  // 声明常量私有变量 amount（double 类型）
     // ...
 }
 \`\`\`
@@ -557,8 +557,8 @@ public class InsufficientBalanceException extends RuntimeException {
 自定义异常通常间接实现 \`Serializable\`（因为 Throwable 实现了），建议显式声明 \`serialVersionUID\`，避免序列化/反序列化时因版本不一致而失败：
 
 \`\`\`java
-public class BusinessException extends RuntimeException {
-    private static final long serialVersionUID = 1L;
+public class BusinessException extends RuntimeException {  // 定义类 BusinessException
+    private static final long serialVersionUID = 1L;  // 声明静态常量私有变量 serialVersionUID（long），初始值为 1L
     // ...
 }
 \`\`\`
@@ -660,8 +660,8 @@ class UserNotFoundException extends RuntimeException {
 ## 基本语法
 
 \`\`\`java
-try (BufferedReader br = new BufferedReader(new FileReader("file.txt"))) {
-    System.out.println(br.readLine());
+try (BufferedReader br = new BufferedReader(new FileReader("file.txt"))) {  // try-with-resources：声明资源 BufferedReader br = new BufferedReader(new FileReader("file.txt"))，结束自动关闭
+    System.out.println(br.readLine());  // 打印一行到标准输出（自动换行）
 } // br 自动关闭，无需 finally
 \`\`\`
 
@@ -672,9 +672,9 @@ try (BufferedReader br = new BufferedReader(new FileReader("file.txt"))) {
 任何实现 \`java.lang.AutoCloseable\`（或 \`Closeable\`）的类都能用作 try-with-resources 资源：
 
 \`\`\`java
-public class MyResource implements AutoCloseable {
-    @Override
-    public void close() throws Exception {
+public class MyResource implements AutoCloseable {  // 定义类 MyResource
+    @Override  // 注解：Override
+    public void close() throws Exception {  // 方法 close，返回 void，无参数
         // 清理逻辑
     }
 }
@@ -685,7 +685,7 @@ public class MyResource implements AutoCloseable {
 可以在一个 try 中声明多个资源，用分号分隔。关闭顺序与声明顺序**相反**（后声明的先关闭）：
 
 \`\`\`java
-try (ResourceA a = new ResourceA();
+try (ResourceA a = new ResourceA();  // 调用方法 try
      ResourceB b = new ResourceB()) {
     // 使用资源
 } // 关闭顺序: b -> a
@@ -700,7 +700,7 @@ try (ResourceA a = new ResourceA();
 Java 9 起，如果资源变量是 effectively final 的，可以直接引用已有变量，无需在 try 中重新声明：
 
 \`\`\`java
-BufferedReader br = new BufferedReader(new FileReader("f.txt"));
+BufferedReader br = new BufferedReader(new FileReader("f.txt"));  // 声明变量 br（BufferedReader），初始值为 new BufferedReader(new FileReader("f.txt"))
 try (br) { // Java 9+ 直接使用
     // ...
 }
@@ -712,11 +712,11 @@ try (br) { // Java 9+ 直接使用
 
 \`\`\`java
 // 旧写法：冗长且 close 的异常会掩盖 try 的异常
-BufferedReader br = null;
-try {
-    br = new BufferedReader(new FileReader("f.txt"));
+BufferedReader br = null;  // 声明变量 br（BufferedReader），初始值为 null
+try {  // try 块：包裹可能抛出异常的代码
+    br = new BufferedReader(new FileReader("f.txt"));  // 为 br 赋值：new BufferedReader(new FileReader("f.txt"))
     // 使用 br
-} finally {
+} finally {  // finally 块：无论是否异常都执行
     if (br != null) try { br.close(); } catch (IOException ignored) {}
 }
 \`\`\`
@@ -798,11 +798,11 @@ class MyResource implements AutoCloseable {
 ## 基本语法
 
 \`\`\`java
-try {
+try {  // try 块：包裹可能抛出异常的代码
     // ...
-} catch (IOException | SQLException e) {
+} catch (IOException | SQLException e) {  // 捕获异常 IOException | SQLException e
     // 同时处理两种异常
-    logger.error("IO 或 SQL 错误", e);
+    logger.error("IO 或 SQL 错误", e);  // 调用 logger 的 error 方法
 }
 \`\`\`
 
@@ -824,7 +824,7 @@ catch (IOException | Exception e) { }
 multi-catch 中异常变量 \`e\` 的类型是这些异常的**最近公共父类**，且被视为 \`final\`，不能在 catch 块内重新赋值：
 
 \`\`\`java
-catch (IOException | SQLException e) {
+catch (IOException | SQLException e) {  // 捕获多种异常：IOException | SQLException e
     e = new IOException(); // 编译错误：final
 }
 \`\`\`
@@ -856,11 +856,11 @@ multi-catch 在字节码层面并非真正的"多类型捕获"，编译器会生
 multi-catch 可以和 finally 一起使用，组成完整的异常处理结构：
 
 \`\`\`java
-try {
+try {  // try 块：包裹可能抛出异常的代码
     // 可能抛 IOException 或 SQLException
-} catch (IOException | SQLException e) {
+} catch (IOException | SQLException e) {  // 捕获异常 IOException | SQLException e
     // 统一处理
-} finally {
+} finally {  // finally 块：无论是否异常都执行
     // 资源清理
 }
 \`\`\`
@@ -940,7 +940,7 @@ class SQLException extends Exception {
 **1. 构造方法传递**
 
 \`\`\`java
-public ServiceException(String message, Throwable cause) {
+public ServiceException(String message, Throwable cause) {  // 方法 ServiceException，返回 public，参数：String message, Throwable cause
     super(message, cause); // 把底层异常作为 cause
 }
 \`\`\`
@@ -948,9 +948,9 @@ public ServiceException(String message, Throwable cause) {
 **2. initCause 方法**
 
 \`\`\`java
-ServiceException e = new ServiceException("服务异常");
-e.initCause(originalException);
-throw e;
+ServiceException e = new ServiceException("服务异常");  // 声明变量 e（ServiceException），初始值为 new ServiceException("服务异常")
+e.initCause(originalException);  // 调用 e 的 initCause 方法
+throw e;  // 抛出异常：e
 \`\`\`
 
 推荐用构造方法，更简洁。
@@ -960,9 +960,9 @@ throw e;
 异常链本质是"包装"：用新异常包装旧异常，新异常决定对外语义，旧异常保留细节。
 
 \`\`\`java
-try {
+try {  // try 块：包裹可能抛出异常的代码
     userDao.findById(id); // 抛 SQLException
-} catch (SQLException e) {
+} catch (SQLException e) {  // 捕获异常 SQLException e
     throw new UserNotFoundException("用户不存在", e); // 包装
 }
 \`\`\`
@@ -991,11 +991,11 @@ Caused by: java.sql.SQLException: 连接失败
 异常链可以多层嵌套：A caused by B caused by C。\`getCause()\` 只返回直接原因，要拿到根因需要循环遍历：
 
 \`\`\`java
-Throwable root = e;
-while (root.getCause() != null) {
-    root = root.getCause();
+Throwable root = e;  // 声明变量 root（Throwable），初始值为 e
+while (root.getCause() != null) {  // while 循环：当 root.getCause() != null 为真时重复执行
+    root = root.getCause();  // 为 root 赋值：root.getCause()
 }
-System.out.println("根因: " + root);
+System.out.println("根因: " + root);  // 打印一行到标准输出（自动换行）
 \`\`\`
 
 ## 何时使用异常链
@@ -1102,17 +1102,17 @@ class DataAccessException extends Exception {
 **1. 异常包装（推荐）**：用异常链把底层异常作为 cause
 
 \`\`\`java
-try {
-    userDao.findById(id);
-} catch (SQLException e) {
-    throw new UserNotFoundException("用户不存在: " + id, e);
+try {  // try 块：包裹可能抛出异常的代码
+    userDao.findById(id);  // 调用 userDao 的 findById 方法
+} catch (SQLException e) {  // 捕获异常 SQLException e
+    throw new UserNotFoundException("用户不存在: " + id, e);  // 抛出 UserNotFoundException 异常："用户不存在: " + id, e
 }
 \`\`\`
 
 **2. 重新抛出无 cause**：丢弃底层异常（不推荐，丢失根因）
 
 \`\`\`java
-} catch (SQLException e) {
+} catch (SQLException e) {  // 捕获异常 SQLException e
     throw new UserNotFoundException("用户不存在"); // 丢失根因
 }
 \`\`\`
@@ -1261,9 +1261,9 @@ class UserNotFoundException extends BusinessException {
 **反例**：
 
 \`\`\`java
-try {
+try {  // try 块：包裹可能抛出异常的代码
     // ...
-} catch (SomeException e) {
+} catch (SomeException e) {  // 捕获异常 SomeException e
     // 空的 catch 块，异常被吞
 }
 \`\`\`
@@ -1293,9 +1293,9 @@ catch (Throwable t) { ... } // 反例
 参数校验应在方法入口尽早失败，避免错误传播：
 
 \`\`\`java
-public void transfer(long from, long to, double amount) {
-    if (amount <= 0) throw new IllegalArgumentException("金额必须为正");
-    if (from == to) throw new IllegalArgumentException("转账双方相同");
+public void transfer(long from, long to, double amount) {  // 方法 transfer，返回 void，参数：long from, long to, double amount
+    if (amount <= 0) throw new IllegalArgumentException("金额必须为正");  // 调用方法 if
+    if (from == to) throw new IllegalArgumentException("转账双方相同");  // 调用方法 if
     // ...
 }
 \`\`\`
@@ -1321,7 +1321,7 @@ public void transfer(long from, long to, double amount) {
 
 \`\`\`java
 // 反例：丢失原始异常类型和堆栈
-} catch (IOException e) {
+} catch (IOException e) {  // 捕获异常 IOException e
     throw new Exception("IO 失败"); // cause 丢失
 }
 \`\`\`
@@ -1424,7 +1424,7 @@ Java 运行时常见异常多为 \`RuntimeException\` 子类，理解它们的�
 最常见异常。访问 \`null\` 引用的成员时抛出：
 
 \`\`\`java
-String s = null;
+String s = null;  // 声明变量 s（String），初始值为 null
 s.length(); // NPE
 \`\`\`
 
@@ -1435,7 +1435,7 @@ s.length(); // NPE
 数组下标越界：
 
 \`\`\`java
-int[] arr = new int[3];
+int[] arr = new int[3];  // 声明变量 arr（int[]），初始值为 new int[3]
 arr[3] = 1; // 越界
 \`\`\`
 
@@ -1446,7 +1446,7 @@ arr[3] = 1; // 越界
 类型转换失败：
 
 \`\`\`java
-Object o = "hello";
+Object o = "hello";  // 声明变量 o（Object），初始值为 "hello"
 Integer i = (Integer) o; // ClassCastException
 \`\`\`
 
@@ -1491,7 +1491,7 @@ Integer.parseInt("abc"); // NumberFormatException
 在用 foreach 遍历集合时直接修改集合会抛此异常：
 
 \`\`\`java
-for (String s : list) {
+for (String s : list) {  // 增强 for：遍历 list，每次取一个元素 s
     if (s.equals("x")) list.remove(s); // 抛异常
 }
 \`\`\`
@@ -1503,7 +1503,7 @@ for (String s : list) {
 对不支持的操作调用时抛出，如对 \`Collections.unmodifiableList\` 返回的列表调用 \`add\`：
 
 \`\`\`java
-List<String> list = Collections.unmodifiableList(new ArrayList<>());
+List<String> list = Collections.unmodifiableList(new ArrayList<>());  // 声明变量 list（List<String>），初始值为 Collections.unmodifiableList(new ArrayList<>())
 list.add("x"); // UnsupportedOperationException
 \`\`\`
 
@@ -1590,9 +1590,9 @@ public class Main {
 **反例**：用异常结束循环
 
 \`\`\`java
-try {
-    int i = 0;
-    while (true) {
+try {  // try 块：包裹可能抛出异常的代码
+    int i = 0;  // 声明变量 i（int），初始值为 0
+    while (true) {  // while 循环：当 true 为真时重复执行
         process(arr[i++]); // 靠 ArrayIndexOutOfBounds 退出
     }
 } catch (ArrayIndexOutOfBoundsException e) { }
@@ -1605,9 +1605,9 @@ try {
 如果不需要堆栈信息（如用于流程控制的高频异常），可重写 \`fillInStackTrace\` 返回空堆栈：
 
 \`\`\`java
-public class FastException extends RuntimeException {
-    @Override
-    public synchronized Throwable fillInStackTrace() {
+public class FastException extends RuntimeException {  // 定义类 FastException
+    @Override  // 注解：Override
+    public synchronized Throwable fillInStackTrace() {  // 同步方法 fillInStackTrace，返回 Throwable，无参数
         return this; // 跳过堆栈填充
     }
 }
@@ -1731,15 +1731,15 @@ class FastException extends RuntimeException {
 ## 基本语法
 
 \`\`\`java
-assert 条件;
-assert 条件 : 详细信息;
+assert 条件;  // 断言：条件 必须为 true，否则抛 AssertionError
+assert 条件 : 详细信息;  // 断言：条件 : 详细信息 必须为 true，否则抛 AssertionError
 \`\`\`
 
 - 形式一：条件为 false 时抛 \`AssertionError\`
 - 形式二：附带详细信息，便于排查
 
 \`\`\`java
-assert x >= 0 : "x 不能为负, 实际: " + x;
+assert x >= 0 : "x 不能为负, 实际: " + x;  // 断言：x >= 0 : "x 不能为负, 实际: " + x 必须为 true，否则抛 AssertionError
 \`\`\`
 
 ## 默认关闭
@@ -1747,7 +1747,7 @@ assert x >= 0 : "x 不能为负, 实际: " + x;
 断言**默认是关闭的**，需要在运行时用 \`-ea\`（enable assertions）开启：
 
 \`\`\`bash
-java -ea MyApp
+java -ea MyApp  # 运行 Java 类（启动 JVM）
 java -ea:com.example... MyApp  # 只对某包开启
 \`\`\`
 
@@ -1786,9 +1786,9 @@ assert 是关键字，编译器会生成对应的字节码。运行时若未启�
 ## 断言参数校验的反例
 
 \`\`\`java
-public void setAge(int age) {
+public void setAge(int age) {  // 方法 setAge，返回 void，参数：int age
     assert age >= 0 : "年龄不能为负"; // 反例：公共 API 不应用断言
-    this.age = age;
+    this.age = age;  // 为 this.age 赋值：age
 }
 \`\`\`
 
@@ -1877,10 +1877,10 @@ public class Main {
 
 \`\`\`java
 // 反例：直接打印
-e.printStackTrace();
+e.printStackTrace();  // 调用 e 的 printStackTrace 方法
 
 // 正例：用日志框架
-logger.error("操作失败, userId={}", userId, e);
+logger.error("操作失败, userId={}", userId, e);  // 调用 logger 的 error 方法
 \`\`\`
 
 \`printStackTrace\` 输出到 stderr，不受日志级别控制，生产环境不推荐。
@@ -1904,7 +1904,7 @@ logger.error("查询用户失败, id={}", id, e); // e 自动记录堆栈
 - **完整堆栈**：异常对象
 
 \`\`\`java
-logger.error("查询用户失败, userId={}, requestId={}", userId, reqId, e);
+logger.error("查询用户失败, userId={}, requestId={}", userId, reqId, e);  // 调用 logger 的 error 方法
 \`\`\`
 
 ## 不要重复记录
@@ -1913,9 +1913,9 @@ logger.error("查询用户失败, userId={}, requestId={}", userId, reqId, e);
 
 \`\`\`java
 // 错误：每层都记录
-} catch (Exception e) {
-    logger.error("DAO 层错误", e);
-    throw e;
+} catch (Exception e) {  // 捕获异常 Exception e
+    logger.error("DAO 层错误", e);  // 调用 logger 的 error 方法
+    throw e;  // 抛出异常：e
 }
 // ... 上层又记录一次
 \`\`\`
@@ -1925,7 +1925,7 @@ logger.error("查询用户失败, userId={}, requestId={}", userId, reqId, e);
 异常发生时的上下文（用户、请求、参数）对排查至关重要。用 MDC（Mapped Diagnostic Context）关联请求链路：
 
 \`\`\`java
-MDC.put("requestId", uuid);
+MDC.put("requestId", uuid);  // 调用 MDC 的 put 方法
 try { ... } finally { MDC.clear(); }
 \`\`\`
 
@@ -2024,9 +2024,9 @@ class UserNotFoundException extends Exception {
 \`\`\`java
 IllegalArgumentException e = assertThrows(
     IllegalArgumentException.class,
-    () -> service.setAge(-1)
+    () -> service.setAge(-1)  // Lambda 表达式：实现函数式接口
 );
-assertEquals("年龄不能为负", e.getMessage());
+assertEquals("年龄不能为负", e.getMessage());  // 调用 assertEquals("年龄不能为负", e 的 getMessage 方法
 \`\`\`
 
 \`assertThrows\` 返回抛出的异常，便于验证消息和字段。
@@ -2036,11 +2036,11 @@ assertEquals("年龄不能为负", e.getMessage());
 JUnit 4 时代常用，较啰嗦：
 
 \`\`\`java
-try {
-    service.setAge(-1);
-    fail("应抛出异常");
-} catch (IllegalArgumentException e) {
-    assertEquals("年龄不能为负", e.getMessage());
+try {  // try 块：包裹可能抛出异常的代码
+    service.setAge(-1);  // 调用 service 的 setAge 方法
+    fail("应抛出异常");  // 调用方法 fail
+} catch (IllegalArgumentException e) {  // 捕获异常 IllegalArgumentException e
+    assertEquals("年龄不能为负", e.getMessage());  // 调用 assertEquals("年龄不能为负", e 的 getMessage 方法
 }
 \`\`\`
 
@@ -2051,7 +2051,7 @@ try {
 只验证异常类型不够，还应验证消息：
 
 \`\`\`java
-assertTrue(e.getMessage().contains("年龄"));
+assertTrue(e.getMessage().contains("年龄"));  // 调用 assertTrue(e 的 getMessage 方法
 \`\`\`
 
 消息验证能确保异常携带了正确上下文。
@@ -2063,9 +2063,9 @@ assertTrue(e.getMessage().contains("年龄"));
 \`\`\`java
 InsufficientBalanceException e = assertThrows(
     InsufficientBalanceException.class,
-    () -> account.withdraw(150)
+    () -> account.withdraw(150)  // Lambda 表达式：实现函数式接口
 );
-assertEquals(100.0, e.getBalance(), 0.01);
+assertEquals(100.0, e.getBalance(), 0.01);  // 调用 assertEquals(100.0, e 的 getBalance 方法
 \`\`\`
 
 ## 测试异常链
@@ -2073,9 +2073,9 @@ assertEquals(100.0, e.getBalance(), 0.01);
 验证 cause 是否正确传递：
 
 \`\`\`java
-ServiceException e = assertThrows(ServiceException.class, () -> service.call());
-assertNotNull(e.getCause());
-assertTrue(e.getCause() instanceof SQLException);
+ServiceException e = assertThrows(ServiceException.class, () -> service.call());  // Lambda 表达式赋值给函数式接口变量
+assertNotNull(e.getCause());  // 调用 assertNotNull(e 的 getCause 方法
+assertTrue(e.getCause() instanceof SQLException);  // 调用 assertTrue(e 的 getCause 方法
 \`\`\`
 
 ## 不要测试未抛出
@@ -2087,10 +2087,10 @@ assertTrue(e.getCause() instanceof SQLException);
 抛异常的方法可能已经修改了部分状态。测试时除了验证异常，还应验证副作用是否符合预期（如"转账失败时余额不应变化"）：
 
 \`\`\`java
-try {
-    account.withdraw(200);
-    fail();
-} catch (InsufficientBalanceException e) {
+try {  // try 块：包裹可能抛出异常的代码
+    account.withdraw(200);  // 调用 account 的 withdraw 方法
+    fail();  // 调用方法 fail
+} catch (InsufficientBalanceException e) {  // 捕获异常 InsufficientBalanceException e
     assertEquals(100.0, account.getBalance()); // 余额不变
 }
 \`\`\`

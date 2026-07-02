@@ -27,13 +27,13 @@ Node.js 作为服务端运行时，处理着大量敏感数据。根据 OWASP（
 
 \`\`\`javascript
 // ❌ 危险写法：直接拼接 SQL
-const sql = "SELECT * FROM users WHERE name = '" + username + "'";
+const sql = "SELECT * FROM users WHERE name = '" + username + "'";  // 定义常量 sql
 // 如果 username = "admin' OR '1'='1"，结果变成
 // SELECT * FROM users WHERE name = 'admin' OR '1'='1'
 // 这将返回所有用户！
 
 // ✅ 安全写法：使用参数化查询
-const sql = "SELECT * FROM users WHERE name = ?";
+const sql = "SELECT * FROM users WHERE name = ?";  // 定义常量 sql
 db.query(sql, [username]);
 \`\`\`
 
@@ -55,8 +55,8 @@ db.query(sql, [username]);
 response.send("<h1>" + userComment + "</h1>");
 
 // ✅ 安全：HTML 实体编码
-function htmlEncode(str) {
-  return str.replace(/&/g, '&amp;')
+function htmlEncode(str) {  // 声明函数 htmlEncode
+  return str.replace(/&/g, '&amp;')  // 返回值
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;');
@@ -79,14 +79,14 @@ function htmlEncode(str) {
 
 \`\`\`javascript
 // ❌ 危险：用户控制请求目标
-const url = request.query.url;
+const url = request.query.url;  // 定义常量 url
 fetch(url); // 攻击者可以传入 http://internal-service:8080/admin
 
 // ✅ 安全：URL 白名单验证
-const ALLOWED_HOSTS = ['api.example.com', 'cdn.example.com'];
-const parsed = new URL(url);
-if (!ALLOWED_HOSTS.includes(parsed.hostname)) {
-  throw new Error('不允许的请求目标');
+const ALLOWED_HOSTS = ['api.example.com', 'cdn.example.com'];  // 定义数组 ALLOWED_HOSTS
+const parsed = new URL(url);  // 创建实例 parsed
+if (!ALLOWED_HOSTS.includes(parsed.hostname)) {  // 条件判断
+  throw new Error('不允许的请求目标');  // 抛出错误中断执行
 }
 \`\`\`
 
@@ -96,14 +96,14 @@ if (!ALLOWED_HOSTS.includes(parsed.hostname)) {
 
 \`\`\`javascript
 // ❌ 危险：用户控制文件路径
-fs.readFile('/data/' + filename);
+fs.readFile('/data/' + filename);  // 异步读取文件（回调形式）
 
 // 如果 filename = "../../etc/passwd"，会读取系统敏感文件
 
 // ✅ 安全：路径规范化 + 基础目录验证
-const safePath = path.resolve('/data', filename);
-if (!safePath.startsWith('/data')) {
-  throw new Error('路径遍历攻击！');
+const safePath = path.resolve('/data', filename);  // 定义常量 safePath
+if (!safePath.startsWith('/data')) {  // 条件判断
+  throw new Error('路径遍历攻击！');  // 抛出错误中断执行
 }
 \`\`\`
 
@@ -139,16 +139,16 @@ if (!safePath.startsWith('/data')) {
 
 \`\`\`javascript
 // ❌ 危险：硬编码密钥
-const API_KEY = 'sk-abc123xyz';
+const API_KEY = 'sk-abc123xyz';  // 定义常量 API_KEY
 
 // ✅ 安全：使用环境变量
-const API_KEY = process.env.API_KEY;
+const API_KEY = process.env.API_KEY;  // 从环境变量读取配置
 
 // ❌ 危险：在错误中暴露敏感信息
-throw new Error('数据库连接失败: ' + connectionString);
+throw new Error('数据库连接失败: ' + connectionString);  // 抛出错误中断执行
 
 // ✅ 安全：脱敏后记录
-throw new Error('数据库连接失败: ' + maskConnectionString(connectionString));
+throw new Error('数据库连接失败: ' + maskConnectionString(connectionString));  // 抛出错误中断执行
 \`\`\`
 
 ### 安全头（Security Headers）
@@ -1131,10 +1131,10 @@ hash(password + salt) = 存储的哈希值
 PBKDF2（Password-Based Key Derivation Function 2）是 Node.js 内置支持的密码哈希算法。它通过对密码进行多次迭代哈希来增加暴力破解的难度。
 
 \`\`\`javascript
-const crypto = require('crypto');
+const crypto = require('crypto');  // 导入模块 crypto；require 返回 module.exports
 
 // PBKDF2 参数
-crypto.pbkdf2(password, salt, iterations, keylen, digest, callback);
+crypto.pbkdf2(password, salt, iterations, keylen, digest, callback);  // PBKDF2 派生密钥
 // password  : 原始密码
 // salt      : 随机盐值
 // iterations: 迭代次数（推荐 100000+）
@@ -2537,10 +2537,10 @@ SQL 注入是最危险的注入攻击之一。防御的核心是**参数化查�
 
 \`\`\`javascript
 // ❌ 危险：字符串拼接
-const sql = "SELECT * FROM users WHERE id = " + userId;
+const sql = "SELECT * FROM users WHERE id = " + userId;  // 定义常量 sql
 
 // ✅ 安全：参数化查询
-const sql = "SELECT * FROM users WHERE id = ?";
+const sql = "SELECT * FROM users WHERE id = ?";  // 定义常量 sql
 db.query(sql, [userId]);
 \`\`\`
 
@@ -2552,11 +2552,11 @@ db.query(sql, [userId]);
 
 \`\`\`javascript
 // ❌ 危险：用户输入直接拼接到命令中
-const { exec } = require('child_process');
-exec('ls ' + userInput);
+const { exec } = require('child_process');  // 导入模块 child_process；require 返回 module.exports
+exec('ls ' + userInput);  // 执行 shell 命令（带回调）
 
 // ✅ 安全：使用 execFile 并显式传参
-const { execFile } = require('child_process');
+const { execFile } = require('child_process');  // 导入模块 child_process；require 返回 module.exports
 execFile('ls', [userInput], { shell: false });
 \`\`\`
 
@@ -2619,15 +2619,15 @@ JSON.parse 本身是安全的，但解析后的数据仍需验证：
 
 \`\`\`javascript
 // ❌ 假设 JSON 数据是安全的
-const data = JSON.parse(request.body);
+const data = JSON.parse(request.body);  // 解析 JSON 为对象 data
 db.query("INSERT INTO users SET ?", data); // 可能包含额外字段
 
 // ✅ 验证 JSON 数据的结构和类型
-const schema = {
+const schema = {  // 定义对象 schema
   username: { type: 'string', required: true, maxLength: 20 },
   email: { type: 'string', required: true, pattern: /^[^\\s@]+@[^\\s@]+$/ },
 };
-const validated = validate(data, schema);
+const validated = validate(data, schema);  // 定义常量 validated
 \`\`\`
 
 ### 文件上传安全
@@ -2646,7 +2646,7 @@ const validated = validate(data, schema);
 一个好的输入验证模块应该具备以下特性：
 
 \`\`\`javascript
-const InputValidator = {
+const InputValidator = {  // 定义对象 InputValidator
   // 链式验证 API
   string().min(3).max(20).alphanumeric().required(),
   

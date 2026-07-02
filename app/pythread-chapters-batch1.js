@@ -172,16 +172,16 @@ print("所以总耗时接近最长的一个任务，而不是三个任务之和�
 
 \`\`\`python
 # 线程共享内存示例
-import threading
+import threading  # 导入模块 threading
 
 count = 0                    # 全局变量，所有线程都能访问
-def add():
-    global count
+def add():  # 定义函数 add
+    global count  # 声明全局变量 count
     count += 1               # 多个线程同时修改 → 可能出错！
 
-threads = [threading.Thread(target=add) for _ in range(1000)]
-for t in threads: t.start()
-for t in threads: t.join()
+threads = [threading.Thread(target=add) for _ in range(1000)]  # 定义列表 threads
+for t in threads: t.start()  # 遍历 threads，取值给 t
+for t in threads: t.join()  # 遍历 threads，取值给 t
 print(count)                 # 理论上是 1000，实际可能小于 1000！
 \`\`\`
 
@@ -189,15 +189,15 @@ print(count)                 # 理论上是 1000，实际可能小于 1000！
 
 \`\`\`python
 # 进程内存独立示例
-import multiprocessing as mp
+import multiprocessing as mp  # 导入模块 multiprocessing
 
-count = 0
-def add():
-    global count
+count = 0  # 定义数值 count
+def add():  # 定义函数 add
+    global count  # 声明全局变量 count
     count += 1               # 改的是子进程自己的副本，主进程看不到
 
-p = mp.Process(target=add)
-p.start(); p.join()
+p = mp.Process(target=add)  # 赋值变量 p
+p.start(); p.join()  # 调用 p.start()：启动
 print(count)                 # 还是 0！子进程的修改不会影响主进程
 \`\`\`
 
@@ -543,13 +543,13 @@ print("• asyncio ：主线程自由且不空转（事件循环调度，本教�
 把一个普通函数传给 \`Thread\` 的 \`target\` 参数：
 
 \`\`\`python
-import threading
+import threading  # 导入模块 threading
 
-def my_task(name):
-    print(f"hello {name}")
+def my_task(name):  # 定义函数 my_task，参数：name
+    print(f"hello {name}")  # 打印输出到屏幕
 
-t = threading.Thread(target=my_task, args=("Alice",))
-t.start()
+t = threading.Thread(target=my_task, args=("Alice",))  # 赋值变量 t
+t.start()  # 调用 t.start()：启动
 \`\`\`
 
 - \`target\`：线程要执行的函数
@@ -561,16 +561,16 @@ t.start()
 继承 \`threading.Thread\`，重写 \`run()\` 方法：
 
 \`\`\`python
-import threading
+import threading  # 导入模块 threading
 
-class MyThread(threading.Thread):
-    def __init__(self, name):
-        super().__init__()
-        self.name = name
+class MyThread(threading.Thread):  # 定义类 MyThread
+    def __init__(self, name):  # 定义函数 __init__，参数：self, name
+        super().__init__()  # 调用父类
+        self.name = name  # 执行操作
     def run(self):           # 重写 run，线程启动后执行的就是这个方法
-        print(f"hello {self.name}")
+        print(f"hello {self.name}")  # 打印输出到屏幕
 
-t = MyThread("Alice")
+t = MyThread("Alice")  # 赋值变量 t
 t.start()                    # start() 会自动调用 run()
 \`\`\`
 
@@ -748,8 +748,8 @@ t.join()        # 主线程在这里等 t 结束，结束后才往下走
 
 \`\`\`python
 t.join(timeout=2)    # 最多等2秒，2秒后不管 t 有没有结束都继续
-if t.is_alive():
-    print("子线程还没结束，但我不等了")
+if t.is_alive():  # 如果 t.is_alive()
+    print("子线程还没结束，但我不等了")  # 打印输出到屏幕
 \`\`\`
 
 ### join() 的常见误区
@@ -759,8 +759,8 @@ if t.is_alive():
 
 \`\`\`python
 # 这两种写法效果一样（都是等两个都结束）
-t1.join(); t2.join()
-t2.join(); t1.join()
+t1.join(); t2.join()  # 调用 t1.join()：等待所有任务完成
+t2.join(); t1.join()  # 调用 t2.join()：等待所有任务完成
 \`\`\`
 
 ## 不调用 join 会怎样？
@@ -898,21 +898,21 @@ print("• 非守护线程即使不 join，程序也会等它结束")`,
 
 ### 方法一：构造时设置
 \`\`\`python
-t = threading.Thread(target=task, daemon=True)
+t = threading.Thread(target=task, daemon=True)  # 赋值变量 t
 \`\`\`
 
 ### 方法二：start 前设置
 \`\`\`python
-t = threading.Thread(target=task)
-t.daemon = True
-t.start()
+t = threading.Thread(target=task)  # 赋值变量 t
+t.daemon = True  # 执行操作
+t.start()  # 调用 t.start()：启动
 \`\`\`
 
 ### 方法三：类继承时设置
 \`\`\`python
-class MyThread(threading.Thread):
-    def __init__(self):
-        super().__init__()
+class MyThread(threading.Thread):  # 定义类 MyThread
+    def __init__(self):  # 定义函数 __init__，参数：self
+        super().__init__()  # 调用父类
         self.daemon = True    # 必须在 start 前设置
 \`\`\`
 
@@ -1033,11 +1033,11 @@ print("• 不要在守护线程里做关键操作（可能来不及完成）")`
 
 \`\`\`python
 # 问题演示：所有线程共享同一个全局变量
-import threading, time
+import threading, time  # 导入模块 threading,
 
-data = None
-def worker():
-    global data
+data = None  # 赋值变量 data
+def worker():  # 定义函数 worker
+    global data  # 声明全局变量 data
     data = threading.current_thread().name   # 各线程都改 data
     time.sleep(0.1)                            # 让其他线程也来改
     print(data)   # 可能打印的是别人的名字！data 被覆盖了
@@ -1048,13 +1048,13 @@ def worker():
 \`threading.local()\` 创建一个"线程局部存储"对象，**每个线程对它属性的读写都是独立的**，互不可见。
 
 \`\`\`python
-import threading
+import threading  # 导入模块 threading
 
 local_data = threading.local()    # 创建线程局部对象
 
-def worker():
+def worker():  # 定义函数 worker
     # 每个线程看到的 local_data.name 都是自己的那份
-    local_data.name = threading.current_thread().name
+    local_data.name = threading.current_thread().name  # 执行操作
     print(local_data.name)        # 各线程打印各自的名字，互不干扰
 \`\`\`
 
@@ -1064,28 +1064,28 @@ def worker():
 
 ### 场景1：每个线程独立的数据库连接
 \`\`\`python
-import threading, sqlite3
+import threading, sqlite3  # 导入模块 threading,
 
-local = threading.local()
+local = threading.local()  # 赋值变量 local
 
-def get_conn():
+def get_conn():  # 定义函数 get_conn
     if not hasattr(local, "conn"):       # 当前线程还没建连接
-        local.conn = sqlite3.connect("db.sqlite")
+        local.conn = sqlite3.connect("db.sqlite")  # 执行操作
     return local.conn                    # 返回当前线程专属的连接
 \`\`\`
 
 ### 场景2：Web 请求上下文
 \`\`\`python
-import threading
+import threading  # 导入模块 threading
 
-ctx = threading.local()
+ctx = threading.local()  # 赋值变量 ctx
 
-def handle_request(user_id):
+def handle_request(user_id):  # 定义函数 handle_request，参数：user_id
     ctx.user_id = user_id     # 当前线程设置用户
     # 后续调用任何函数都能从 ctx.user_id 取到，无需层层传参
-    process()
+    process()  # 调用 process()
 
-def process():
+def process():  # 定义函数 process
     print(f"处理用户 {ctx.user_id}")   # 自动取当前线程的 user_id
 \`\`\`
 

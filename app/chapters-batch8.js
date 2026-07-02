@@ -452,14 +452,14 @@ runner.run().then((results) => {
 
 \`\`\`javascript
 // ❌ 难以测试：依赖在函数内部创建
-function getUserOrders(userId) {
+function getUserOrders(userId) {  // 声明函数 getUserOrders
   const db = new Database();  // 硬编码依赖
-  return db.query('SELECT * FROM orders WHERE user_id = ?', [userId]);
+  return db.query('SELECT * FROM orders WHERE user_id = ?', [userId]);  // 返回值
 }
 
 // ✅ 易于测试：依赖从外部注入
-function getUserOrders(userId, db) {
-  return db.query('SELECT * FROM orders WHERE user_id = ?', [userId]);
+function getUserOrders(userId, db) {  // 声明函数 getUserOrders
+  return db.query('SELECT * FROM orders WHERE user_id = ?', [userId]);  // 返回值
 }
 // 测试时传入 mock 数据库，生产时传入真实数据库
 \`\`\`
@@ -477,14 +477,14 @@ Node.js 中大量操作是异步的，测试异步代码需要特别注意：
 \`\`\`javascript
 // Promise 方式
 it('should fetch user data', () => {
-  return fetchUser(1).then(user => {
+  return fetchUser(1).then(user => {  // 返回值
     assert.strictEqual(user.name, '张三');
   });
 });
 
 // async/await 方式（推荐）
 it('should fetch user data', async () => {
-  const user = await fetchUser(1);
+  const user = await fetchUser(1);  // 定义常量 user
   assert.strictEqual(user.name, '张三');
 });
 \`\`\`
@@ -518,8 +518,8 @@ it('should fetch user data', async () => {
 
 \`\`\`javascript
 // 测试数据工厂
-function createUser(overrides = {}) {
-  return {
+function createUser(overrides = {}) {  // 声明函数 createUser
+  return {  // 返回值
     id: Math.random().toString(36).slice(2),
     name: '测试用户',
     email: 'test@example.com',
@@ -926,10 +926,10 @@ Node.js 内置了基于 Chrome DevTools Protocol 的调试器。启动方式：
 
 \`\`\`bash
 # 启动调试器，等待调试器连接
-node --inspect-brk app.js
+node --inspect-brk app.js  # 用 Node.js 执行脚本 --inspect-brk
 
 # 启动调试器，不等待（后台运行）
-node --inspect app.js
+node --inspect app.js  # 用 Node.js 执行脚本 --inspect
 \`\`\`
 
 然后在 Chrome 浏览器中打开 \`chrome://inspect\`，即可看到调试目标。
@@ -989,7 +989,7 @@ node --inspect app.js
 \`debug\` 是一个轻量级的调试日志库，通过环境变量控制哪些模块输出调试日志。
 
 \`\`\`javascript
-const debug = require('debug')('app:auth');
+const debug = require('debug')('app:auth');  // 导入模块 debug；require 返回 module.exports
 debug('用户登录成功: %s', username);
 \`\`\`
 
@@ -1002,10 +1002,10 @@ debug('用户登录成功: %s', username);
 \`util.inspect()\` 是 Node.js 内置的深度对象检查工具，比 \`console.log\` 更强大：
 
 \`\`\`javascript
-const util = require('util');
+const util = require('util');  // 导入模块 util；require 返回 module.exports
 
-const obj = { a: 1, b: { c: 2, d: [3, 4] } };
-console.log(util.inspect(obj, {
+const obj = { a: 1, b: { c: 2, d: [3, 4] } };  // 定义对象 obj
+console.log(util.inspect(obj, {  // 打印日志到 stdout
   showHidden: false,  // 是否显示隐藏属性
   depth: null,         // 递归深度（null = 无限）
   colors: true,        // 是否使用颜色
@@ -1388,7 +1388,7 @@ tips.forEach((tip) => console.log("  " + tip));`,
 
 \`\`\`javascript
 // 每个请求生成唯一的 requestId
-const requestId = crypto.randomUUID();
+const requestId = crypto.randomUUID();  // 定义常量 requestId
 
 // 所有日志都带上 requestId
 logger.info('处理请求', { requestId, path: '/api/users' });
@@ -1404,12 +1404,12 @@ logger.info('返回响应', { requestId, status: 200 });
 
 \`\`\`javascript
 // 敏感信息脱敏函数
-function sanitize(data) {
-  const sanitized = { ...data };
-  if (sanitized.password) sanitized.password = '***';
-  if (sanitized.token) sanitized.token = sanitized.token.slice(0, 8) + '...';
-  if (sanitized.phone) sanitized.phone = sanitized.phone.slice(0, 3) + '****' + sanitized.phone.slice(-4);
-  return sanitized;
+function sanitize(data) {  // 声明函数 sanitize
+  const sanitized = { ...data };  // 定义对象 sanitized
+  if (sanitized.password) sanitized.password = '***';  // 条件判断
+  if (sanitized.token) sanitized.token = sanitized.token.slice(0, 8) + '...';  // 条件判断
+  if (sanitized.phone) sanitized.phone = sanitized.phone.slice(0, 3) + '****' + sanitized.phone.slice(-4);  // 条件判断
+  return sanitized;  // 返回值
 }
 \`\`\`
 
@@ -1801,7 +1801,7 @@ Node.js 提供了多种 CPU 性能分析工具：
 
 \`\`\`bash
 # 使用 --inspect 启动，在 Chrome DevTools Memory 面板拍摄快照
-node --inspect app.js
+node --inspect app.js  # 用 Node.js 执行脚本 --inspect
 \`\`\`
 
 ---
@@ -1812,12 +1812,12 @@ node --inspect app.js
 
 \`\`\`javascript
 // 检测事件循环延迟
-let lastCheck = performance.now();
-setInterval(() => {
-  const now = performance.now();
+let lastCheck = performance.now();  // 定义变量 lastCheck（可变）
+setInterval(() => {  // 周期回调
+  const now = performance.now();  // 定义常量 now
   const delay = now - lastCheck - 1000; // 期望 1000ms 间隔
-  if (delay > 50) {
-    console.warn('事件循环延迟: ' + delay.toFixed(2) + 'ms');
+  if (delay > 50) {  // 条件判断
+    console.warn('事件循环延迟: ' + delay.toFixed(2) + 'ms');  // 打印警告到 stderr
   }
   lastCheck = now;
 }, 1000);
@@ -2192,7 +2192,7 @@ const checkInterval = setInterval(() => {
 
 \`\`\`javascript
 // ❌ 无意中创建全局变量
-function processData() {
+function processData() {  // 声明函数 processData
   data = fetchData(); // 忘记 var/let/const，data 变成全局变量
 }
 
@@ -2206,8 +2206,8 @@ global.cache = new Map(); // 永远不清理，持续增长
 
 \`\`\`javascript
 // ❌ 闭包泄漏：持有整个大数组
-function createHandler() {
-  const largeData = new Array(1000000).fill('x');
+function createHandler() {  // 声明函数 createHandler
+  const largeData = new Array(1000000).fill('x');  // 创建实例 largeData
   return () => console.log(largeData[0]); // 整个 largeData 无法被回收
 }
 \`\`\`
@@ -2247,7 +2247,7 @@ this.timer = setInterval(() => {
 
 \`\`\`bash
 # 使用 --inspect 启动应用
-node --inspect app.js
+node --inspect app.js  # 用 Node.js 执行脚本 --inspect
 
 # 在 Chrome DevTools → Memory → Heap Snapshot
 # 拍摄快照1 → 执行操作 → 拍摄快照2 → 对比差异
@@ -2260,7 +2260,7 @@ node --inspect app.js
 \`heapdump\` 模块可以在程序运行时生成堆快照文件：
 
 \`\`\`javascript
-const heapdump = require('heapdump');
+const heapdump = require('heapdump');  // 导入模块 heapdump；require 返回 module.exports
 heapdump.writeSnapshot('/tmp/heap-' + Date.now() + '.heapsnapshot');
 \`\`\`
 
@@ -2276,10 +2276,10 @@ heapdump.writeSnapshot('/tmp/heap-' + Date.now() + '.heapsnapshot');
 
 \`\`\`javascript
 // WeakMap 缓存：对象被回收后缓存自动清理
-const cache = new WeakMap();
-function processObj(obj) {
-  if (cache.has(obj)) return cache.get(obj);
-  const result = compute(obj);
+const cache = new WeakMap();  // 创建实例 cache
+function processObj(obj) {  // 声明函数 processObj
+  if (cache.has(obj)) return cache.get(obj);  // 条件判断
+  const result = compute(obj);  // 定义常量 result
   cache.set(obj, result);
   return result; // 当 obj 被回收时，缓存条目自动清理
 }

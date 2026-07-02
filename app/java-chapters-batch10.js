@@ -17,7 +17,7 @@ export const chapters = [
 使用 \`interface\` 声明一个接口，接口中的方法默认是 \`public abstract\` 的：
 
 \`\`\`java
-public interface Flyable {
+public interface Flyable {  // 定义接口 Flyable
     void fly(); // 隐式 public abstract
 }
 \`\`\`
@@ -36,7 +36,7 @@ Java 8 之后，接口可以包含四种方法：
 接口中的字段**隐式**为 \`public static final\`，即常量。无论是否显式写出这些修饰符，编译器都会自动加上：
 
 \`\`\`java
-public interface Constants {
+public interface Constants {  // 定义接口 Constants
     int MAX = 100; // 等价于 public static final int MAX = 100;
 }
 \`\`\`
@@ -48,8 +48,8 @@ public interface Constants {
 类使用 \`implements\` 关键字实现接口，必须实现所有抽象方法（除非该类是抽象类）：
 
 \`\`\`java
-public class Bird implements Flyable {
-    public void fly() { System.out.println("鸟儿飞翔"); }
+public class Bird implements Flyable {  // 定义类 Bird
+    public void fly() { System.out.println("鸟儿飞翔"); }  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -115,9 +115,9 @@ Java 8 引入了 \`default\` 方法，允许接口提供方法的默认实现。
 在方法返回类型前加 \`default\` 关键字，并提供方法体：
 
 \`\`\`java
-public interface Vehicle {
-    default void start() {
-        System.out.println("启动引擎");
+public interface Vehicle {  // 定义接口 Vehicle
+    default void start() {  // 方法 start，返回 void，无参数
+        System.out.println("启动引擎");  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -133,10 +133,10 @@ public interface Vehicle {
 当一个类同时实现两个接口，且两个接口有**相同签名**的 default 方法时，会产生冲突。Java 强制要求实现类必须重写该方法来解决冲突：
 
 \`\`\`java
-interface A { default void hi() { System.out.println("A"); } }
-interface B { default void hi() { System.out.println("B"); } }
-class C implements A, B {
-    public void hi() {
+interface A { default void hi() { System.out.println("A"); } }  // 定义接口 A
+interface B { default void hi() { System.out.println("B"); } }  // 定义接口 B
+class C implements A, B {  // 定义类 C
+    public void hi() {  // 方法 hi，返回 void，无参数
         A.super.hi(); // 显式选择调用哪个接口的默认方法
     }
 }
@@ -209,9 +209,9 @@ Java 8 允许在接口中定义 \`static\` 方法。静态方法属于接口本�
 使用 \`static\` 关键字定义，必须有方法体：
 
 \`\`\`java
-public interface StringUtil {
-    static boolean isEmpty(String s) {
-        return s == null || s.length() == 0;
+public interface StringUtil {  // 定义接口 StringUtil
+    static boolean isEmpty(String s) {  // 静态方法 isEmpty，返回 boolean，参数：String s
+        return s == null || s.length() == 0;  // 返回值：s == null || s.length() == 0
     }
 }
 \`\`\`
@@ -230,8 +230,8 @@ StringUtil.isEmpty(""); // 正确
 接口静态方法常用于工厂方法，封装对象创建逻辑：
 
 \`\`\`java
-public interface Point {
-    static Point of(int x, int y) { return new PointImpl(x, y); }
+public interface Point {  // 定义接口 Point
+    static Point of(int x, int y) { return new PointImpl(x, y); }  // 方法 of（返回 Point，参数：int x, int y）：返回 new PointImpl(x, y)
 }
 \`\`\`
 
@@ -330,7 +330,7 @@ Java 9 引入了接口的 \`private\` 方法，用于在接口内部复用代码
 普通的 private 方法只能被**同一个接口的 default 方法**调用，不能被实现类或子接口继承：
 
 \`\`\`java
-public interface Logger {
+public interface Logger {  // 定义接口 Logger
     default void logInfo(String msg) { write("INFO", msg); }
     default void logError(String msg) { write("ERROR", msg); }
     private void write(String level, String msg) { /* 共享逻辑 */ }
@@ -342,9 +342,9 @@ public interface Logger {
 \`private static\` 方法可以被接口的 static 方法和其他 private static 方法调用，用于 static 方法之间的代码复用：
 
 \`\`\`java
-public interface Calculator {
-    static int square(int n) { return times(n, n); }
-    private static int times(int a, int b) { return a * b; }
+public interface Calculator {  // 定义接口 Calculator
+    static int square(int n) { return times(n, n); }  // 方法 square（返回 int，参数：int n）：返回 times(n, n)
+    private static int times(int a, int b) { return a * b; }  // 方法 times（返回 int，参数：int a, int b）：返回 a * b
 }
 \`\`\`
 
@@ -434,7 +434,7 @@ Java 不支持类的多继承（一个类只能有一个父类），但允许一
 使用逗号分隔多个接口：
 
 \`\`\`java
-public class SmartPhone implements Callable, Photoable, Webable {
+public class SmartPhone implements Callable, Photoable, Webable {  // 定义类 SmartPhone
     // 必须实现所有接口的抽象方法
 }
 \`\`\`
@@ -446,7 +446,7 @@ public class SmartPhone implements Callable, Photoable, Webable {
 接口之间用 \`extends\` 继承，且可以**继承多个**父接口：
 
 \`\`\`java
-interface Worker extends Readable, Writable { }
+interface Worker extends Readable, Writable { }  // 定义接口 Worker
 \`\`\`
 
 子接口继承所有父接口的抽象方法和 default 方法。
@@ -544,7 +544,7 @@ class SmartPhone implements Callable, Photoable, Webable, Chargeable {
 接口的 \`extends\` 可以列出多个父接口，用逗号分隔：
 
 \`\`\`java
-interface ReadWrite extends Readable, Writable { }
+interface ReadWrite extends Readable, Writable { }  // 定义接口 ReadWrite
 \`\`\`
 
 这与类不同——类的 \`extends\` 只能有一个父类。
@@ -554,8 +554,8 @@ interface ReadWrite extends Readable, Writable { }
 接口继承形成层次结构。实现类必须实现**整条继承链**上的所有抽象方法：
 
 \`\`\`java
-interface Reader { void open(); void read(); }
-interface Writer { void write(String s); }
+interface Reader { void open(); void read(); }  // 定义接口 Reader
+interface Writer { void write(String s); }  // 定义接口 Writer
 interface ReadWriter extends Reader, Writer { } // 组合接口
 \`\`\`
 
@@ -566,9 +566,9 @@ interface ReadWriter extends Reader, Writer { } // 组合接口
 子接口可以重新声明父接口的方法（例如改变文档或加注解），但这不会"覆盖"——它仍然是同一个抽象方法：
 
 \`\`\`java
-interface Base { void doWork(); }
-interface Sub extends Base {
-    @Override
+interface Base { void doWork(); }  // 定义接口 Base
+interface Sub extends Base {  // 定义接口 Sub
+    @Override  // 注解：Override
     void doWork(); // 重新声明，仍然是抽象方法
 }
 \`\`\`
@@ -674,10 +674,10 @@ public interface Serializable { } // 没有任何方法
 例如 \`ObjectOutputStream\` 检查对象是否是 \`Serializable\`：
 
 \`\`\`java
-if (obj instanceof Serializable) {
+if (obj instanceof Serializable) {  // 条件判断：满足 obj instanceof Serializable 时执行
     // 序列化
-} else {
-    throw new NotSerializableException();
+} else {  // 否则分支
+    throw new NotSerializableException();  // 抛出 NotSerializableException 异常：
 }
 \`\`\`
 
@@ -779,9 +779,9 @@ class Product {
 使用 \`@FunctionalInterface\` 注解标记函数式接口，编译器会检查是否符合规范：
 
 \`\`\`java
-@FunctionalInterface
-public interface Runnable {
-    void run();
+@FunctionalInterface  // 注解：FunctionalInterface
+public interface Runnable {  // 定义接口 Runnable
+    void run();  // 方法 run，返回 void，无参数
 }
 \`\`\`
 
@@ -801,9 +801,9 @@ public interface Runnable {
 下面这个接口仍是函数式接口，因为只有 \`apply\` 一个抽象方法：
 
 \`\`\`java
-@FunctionalInterface
-interface Function<T, R> {
-    R apply(T t);
+@FunctionalInterface  // 注解：FunctionalInterface
+interface Function<T, R> {  // 定义接口 Function
+    R apply(T t);  // 方法 apply，返回 R，参数：T t
     default <V> Function<V, R> compose(Function<V, T> before) { ... }
 }
 \`\`\`
@@ -813,8 +813,8 @@ interface Function<T, R> {
 函数式接口的实例可以用 lambda 表达式创建：
 
 \`\`\`java
-Runnable r = () -> System.out.println("hi");
-Comparator<Integer> c = (a, b) -> a - b;
+Runnable r = () -> System.out.println("hi");  // Lambda 表达式赋值给函数式接口变量
+Comparator<Integer> c = (a, b) -> a - b;  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 lambda 的参数类型和返回类型必须与接口的抽象方法签名匹配。
@@ -1003,12 +1003,12 @@ class Dog extends Animal implements Swimmable {
 
 \`\`\`java
 // 不好：胖接口
-interface Worker { void read(); void write(); void delete(); }
+interface Worker { void read(); void write(); void delete(); }  // 定义接口 Worker
 
 // 好：拆分
-interface Reader { void read(); }
-interface Writer { void write(); }
-interface Deleter { void delete(); }
+interface Reader { void read(); }  // 定义接口 Reader
+interface Writer { void write(); }  // 定义接口 Writer
+interface Deleter { void delete(); }  // 定义接口 Deleter
 \`\`\`
 
 只读类实现 \`Reader\` 即可，不会被强迫实现 \`write\` 和 \`delete\`。
@@ -1032,7 +1032,7 @@ List<String> list = new ArrayList<>(); // 接口类型引用实现类
 依赖倒置原则（DIP）：高层模块不应依赖低层模块，二者都应依赖抽象。通过接口实现解耦：
 
 \`\`\`java
-class OrderService {
+class OrderService {  // 定义类 OrderService
     private final Payment payment; // 依赖接口而非具体类
     public OrderService(Payment payment) { this.payment = payment; }
 }
@@ -1135,8 +1135,8 @@ class SimpleList<T> implements MutableList<T> {
 ## 两个接口相同 default 方法
 
 \`\`\`java
-interface A { default void hi() { System.out.println("A"); } }
-interface B { default void hi() { System.out.println("B"); } }
+interface A { default void hi() { System.out.println("A"); } }  // 定义接口 A
+interface B { default void hi() { System.out.println("B"); } }  // 定义接口 B
 \`\`\`
 
 直接 \`class C implements A, B\` 会编译错误，因为编译器不知道用哪个 \`hi()\`。
@@ -1146,10 +1146,10 @@ interface B { default void hi() { System.out.println("B"); } }
 实现类重写冲突方法：
 
 \`\`\`java
-class C implements A, B {
-    @Override
-    public void hi() {
-        System.out.println("C 自己的实现");
+class C implements A, B {  // 定义类 C
+    @Override  // 注解：Override
+    public void hi() {  // 方法 hi，返回 void，无参数
+        System.out.println("C 自己的实现");  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -1159,9 +1159,9 @@ class C implements A, B {
 使用 \`接口名.super.方法名()\` 调用某个接口的默认实现：
 
 \`\`\`java
-class C implements A, B {
-    @Override
-    public void hi() {
+class C implements A, B {  // 定义类 C
+    @Override  // 注解：Override
+    public void hi() {  // 方法 hi，返回 void，无参数
         A.super.hi(); // 选择 A 的版本
     }
 }
@@ -1172,8 +1172,8 @@ class C implements A, B {
 如果**类**（父类）的实例方法和接口的 default 方法同名，**类方法优先**（"类赢"规则）：
 
 \`\`\`java
-class P { public void hi() { System.out.println("P"); } }
-interface I { default void hi() { System.out.println("I"); } }
+class P { public void hi() { System.out.println("P"); } }  // 定义类 P
+interface I { default void hi() { System.out.println("I"); } }  // 定义接口 I
 class C extends P implements I { } // 调用 hi() 输出 "P"
 \`\`\`
 
@@ -1259,7 +1259,7 @@ class ChildClass extends Parent implements A {
 ## sealed 接口
 
 \`\`\`java
-public sealed interface Shape permits Circle, Square, Triangle { }
+public sealed interface Shape permits Circle, Square, Triangle { }  // 定义接口 Shape
 \`\`\`
 
 \`permits\` 子句列出所有允许的实现类。任何不在列表中的类都无法实现该接口。
@@ -1272,8 +1272,8 @@ public sealed interface Shape permits Circle, Square, Triangle { }
 - \`non-sealed\`：开放继承（回到普通类）
 
 \`\`\`java
-public final class Circle implements Shape { }
-public sealed class Square implements Shape permits BigSquare, SmallSquare { }
+public final class Circle implements Shape { }  // 定义最终（不可继承）类 Circle
+public sealed class Square implements Shape permits BigSquare, SmallSquare { }  // 定义类 Square
 public non-sealed class Triangle implements Shape { } // 任意类可继承
 \`\`\`
 
@@ -1282,9 +1282,9 @@ public non-sealed class Triangle implements Shape { } // 任意类可继承
 \`record\` 隐式 final，非常适合作为密封接口的实现，简洁地表达代数数据类型：
 
 \`\`\`java
-sealed interface Shape permits Circle, Square {}
-record Circle(double r) implements Shape {}
-record Square(double side) implements Shape {}
+sealed interface Shape permits Circle, Square {}  // 定义接口 Shape
+record Circle(double r) implements Shape {}  // 定义记录类 Circle
+record Square(double side) implements Shape {}  // 定义记录类 Square
 \`\`\`
 
 ## 穷举 switch
@@ -1293,8 +1293,8 @@ record Square(double side) implements Shape {}
 
 \`\`\`java
 double area = switch (shape) {
-    case Circle c -> Math.PI * c.r() * c.r();
-    case Square s -> s.side() * s.side();
+    case Circle c -> Math.PI * c.r() * c.r();  // Lambda 表达式：实现函数式接口
+    case Square s -> s.side() * s.side();  // Lambda 表达式：实现函数式接口
     // 无需 default，编译器知道已穷举
 };
 \`\`\`
@@ -1374,7 +1374,7 @@ record Rectangle(double width, double height) implements Shape {
 通过**多重继承**实现（Java 中通过继承类 + 实现接口）。适配器继承被适配类，同时实现目标接口：
 
 \`\`\`java
-class Adapter extends Adaptee implements Target { }
+class Adapter extends Adaptee implements Target { }  // 定义类 Adapter
 \`\`\`
 
 Java 中较少用，因为要求被适配类可继承且不希望覆盖其行为。
@@ -1384,8 +1384,8 @@ Java 中较少用，因为要求被适配类可继承且不希望覆盖其行为
 通过**组合**实现，更灵活。适配器持有一个被适配对象的引用，把目标接口的方法委托给它：
 
 \`\`\`java
-class Adapter implements Target {
-    private final Adaptee adaptee;
+class Adapter implements Target {  // 定义类 Adapter
+    private final Adaptee adaptee;  // 声明常量私有变量 adaptee（Adaptee 类型）
     public void request() { adaptee.specificRequest(); }
 }
 \`\`\`
@@ -1397,7 +1397,7 @@ class Adapter implements Target {
 当一个接口有**很多方法**，但实现类只关心其中几个时，可以提供一个**抽象适配器类**，提供所有方法的空实现。实现类继承它，只重写需要的方法：
 
 \`\`\`java
-abstract class MouseAdapter implements MouseListener {
+abstract class MouseAdapter implements MouseListener {  // 定义抽象类 MouseAdapter
     public void mouseClicked(MouseEvent e) { }
     public void mousePressed(MouseEvent e) { }
     // ... 其他空实现
@@ -1497,8 +1497,8 @@ class SimpleMouseListener extends MouseAdapter {
 定义一个统一的策略接口：
 
 \`\`\`java
-interface SortStrategy {
-    void sort(int[] arr);
+interface SortStrategy {  // 定义接口 SortStrategy
+    void sort(int[] arr);  // 方法 sort，返回 void，参数：int[] arr
 }
 \`\`\`
 
@@ -1507,8 +1507,8 @@ interface SortStrategy {
 每个算法实现策略接口，成为可替换的策略：
 
 \`\`\`java
-class BubbleSort implements SortStrategy { ... }
-class QuickSort implements SortStrategy { ... }
+class BubbleSort implements SortStrategy { ... }  // 定义类 BubbleSort
+class QuickSort implements SortStrategy { ... }  // 定义类 QuickSort
 \`\`\`
 
 ## 上下文
@@ -1516,8 +1516,8 @@ class QuickSort implements SortStrategy { ... }
 上下文持有策略引用，把工作委托给策略：
 
 \`\`\`java
-class Sorter {
-    private SortStrategy strategy;
+class Sorter {  // 定义类 Sorter
+    private SortStrategy strategy;  // 声明私有变量 strategy（SortStrategy 类型）
     public void setStrategy(SortStrategy s) { this.strategy = s; }
     public void sort(int[] arr) { strategy.sort(arr); }
 }
@@ -1530,7 +1530,7 @@ class Sorter {
 Java 8 之前，每个策略需要一个类。有了 lambda，单方法策略接口可以**直接用 lambda 传入**，大大简化：
 
 \`\`\`java
-sorter.setStrategy(arr -> { /* 排序逻辑 */ });
+sorter.setStrategy(arr -> { /* 排序逻辑 */ });  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 策略模式本质上是函数式接口的应用，所以 Java 中很多策略场景直接用 \`Comparator\`、\`Function\` 等标准接口。

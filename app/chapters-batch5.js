@@ -84,7 +84,7 @@ RESTful API 遵循资源导向的设计原则，使用标准的 HTTP 方法来�
 
 \`\`\`javascript
 // 路由分组示例
-const router = new Router();
+const router = new Router();  // 创建实例 router
 
 // 用户模块路由组
 router.group('/users', (userRouter) => {
@@ -106,9 +106,9 @@ router.group('/orders', (orderRouter) => {
 
 \`\`\`javascript
 // 所有路由定义之后
-router.use((req, res) => {
+router.use((req, res) => {  // 注册路由级中间件
   res.statusCode = 404;
-  res.end(JSON.stringify({
+  res.end(JSON.stringify({  // 结束响应并发送数据
     error: 'Not Found',
     path: req.path,
     method: req.method,
@@ -451,15 +451,15 @@ console.log("\\n===== 路由设计演示完成 =====");`,
 
 \`\`\`javascript
 // Express 风格中间件
-function middleware(req, res, next) {
+function middleware(req, res, next) {  // 声明函数 middleware
   // 1. 处理请求前逻辑
-  console.log(\`\${req.method} \${req.path}\`);
+  console.log(\`\${req.method} \${req.path}\`);  // 打印日志到 stdout
 
   // 2. 调用下一个中间件
-  next();
+  next();  // 调用下一个中间件（不放行则请求被挂起）
 
   // 3. 处理响应后逻辑（洋葱模型的下半部分）
-  console.log(\`响应状态码: \${res.statusCode}\`);
+  console.log(\`响应状态码: \${res.statusCode}\`);  // 打印日志到 stdout
 }
 \`\`\`
 
@@ -475,22 +475,22 @@ function middleware(req, res, next) {
 
 \`\`\`javascript
 // 洋葱模型示例
-app.use(async (ctx, next) => {
-  console.log('1. 进入中间件1');
-  await next();
-  console.log('6. 离开中间件1');
+app.use(async (ctx, next) => {  // 注册 Express 中间件（每个请求依次经过）
+  console.log('1. 进入中间件1');  // 打印日志到 stdout
+  await next();  // 等待 Promise 完成后再继续
+  console.log('6. 离开中间件1');  // 打印日志到 stdout
 });
 
-app.use(async (ctx, next) => {
-  console.log('2. 进入中间件2');
-  await next();
-  console.log('5. 离开中间件2');
+app.use(async (ctx, next) => {  // 注册 Express 中间件（每个请求依次经过）
+  console.log('2. 进入中间件2');  // 打印日志到 stdout
+  await next();  // 等待 Promise 完成后再继续
+  console.log('5. 离开中间件2');  // 打印日志到 stdout
 });
 
-app.use(async (ctx, next) => {
-  console.log('3. 进入中间件3');
-  await next();
-  console.log('4. 离开中间件3');
+app.use(async (ctx, next) => {  // 注册 Express 中间件（每个请求依次经过）
+  console.log('3. 进入中间件3');  // 打印日志到 stdout
+  await next();  // 等待 Promise 完成后再继续
+  console.log('4. 离开中间件3');  // 打印日志到 stdout
 });
 
 // 输出顺序：1 → 2 → 3 → 4 → 5 → 6
@@ -891,14 +891,14 @@ console.log("\\n===== 中间件模式演示完成 =====");`,
 **Node.js 内置解析方式**：
 
 \`\`\`javascript
-const url = require('url');
+const url = require('url');  // 导入模块 url；require 返回 module.exports
 
 // 完整 URL 解析
-const parsed = url.parse('/users?page=1&limit=10&sort=name', true);
+const parsed = url.parse('/users?page=1&limit=10&sort=name', true);  // 定义常量 parsed
 console.log(parsed.query); // { page: '1', limit: '10', sort: 'name' }
 
 // URLSearchParams 方式（推荐）
-const params = new URLSearchParams('page=1&limit=10&sort=name');
+const params = new URLSearchParams('page=1&limit=10&sort=name');  // 创建实例 params
 params.get('page');  // '1'
 params.has('sort');  // true
 params.getAll('tag'); // 获取同名参数的所有值
@@ -909,10 +909,10 @@ params.getAll('tag'); // 获取同名参数的所有值
 查询参数的值始终是字符串，需要手动转换：
 
 \`\`\`javascript
-const page = parseInt(req.query.page) || 1;
-const limit = Math.min(parseInt(req.query.limit) || 10, 100);
-const isActive = req.query.active === 'true';
-const date = req.query.date ? new Date(req.query.date) : null;
+const page = parseInt(req.query.page) || 1;  // 定义常量 page
+const limit = Math.min(parseInt(req.query.limit) || 10, 100);  // 定义常量 limit
+const isActive = req.query.active === 'true';  // 定义常量 isActive
+const date = req.query.date ? new Date(req.query.date) : null;  // 定义常量 date
 \`\`\`
 
 ### 请求体解析
@@ -925,11 +925,11 @@ const date = req.query.date ? new Date(req.query.date) : null;
 // Content-Type: application/json
 // Body: {"name": "张三", "age": 30}
 
-function parseJsonBody(body) {
-  try {
-    return JSON.parse(body);
+function parseJsonBody(body) {  // 声明函数 parseJsonBody
+  try {  // 开启 try 块捕获异常
+    return JSON.parse(body);  // 返回值
   } catch (err) {
-    throw new Error('无效的 JSON 格式');
+    throw new Error('无效的 JSON 格式');  // 抛出错误中断执行
   }
 }
 \`\`\`
@@ -937,13 +937,13 @@ function parseJsonBody(body) {
 **URL 编码格式（application/x-www-form-urlencoded）**：
 
 \`\`\`javascript
-const querystring = require('querystring');
+const querystring = require('querystring');  // 导入模块 querystring；require 返回 module.exports
 
 // Content-Type: application/x-www-form-urlencoded
 // Body: name=%E5%BC%A0%E4%B8%89&age=30
 
-function parseUrlEncodedBody(body) {
-  return querystring.parse(body);
+function parseUrlEncodedBody(body) {  // 声明函数 parseUrlEncodedBody
+  return querystring.parse(body);  // 返回值
 }
 // 结果: { name: '张三', age: '30' }
 \`\`\`
@@ -1388,22 +1388,22 @@ console.log("\\n===== 请求参数解析演示完成 =====");`,
 
 \`\`\`javascript
 // 自定义验证：检查用户名是否唯一
-const uniqueUsername = async (value) => {
-  const exists = await db.users.findOne({ username: value });
-  if (exists) throw new Error('用户名已被使用');
-  return true;
+const uniqueUsername = async (value) => {  // 声明异步箭头函数 uniqueUsername
+  const exists = await db.users.findOne({ username: value });  // 定义常量 exists
+  if (exists) throw new Error('用户名已被使用');  // 条件判断
+  return true;  // 返回值
 };
 
 // 自定义验证：密码强度检查
-const strongPassword = (value) => {
-  const hasUpper = /[A-Z]/.test(value);
-  const hasLower = /[a-z]/.test(value);
-  const hasNumber = /[0-9]/.test(value);
-  const hasSpecial = /[!@#$%^&*]/.test(value);
-  if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
-    throw new Error('密码必须包含大小写字母、数字和特殊字符');
+const strongPassword = (value) => {  // 箭头函数 strongPassword
+  const hasUpper = /[A-Z]/.test(value);  // 定义常量 hasUpper
+  const hasLower = /[a-z]/.test(value);  // 定义常量 hasLower
+  const hasNumber = /[0-9]/.test(value);  // 定义常量 hasNumber
+  const hasSpecial = /[!@#$%^&*]/.test(value);  // 定义常量 hasSpecial
+  if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {  // 条件判断
+    throw new Error('密码必须包含大小写字母、数字和特殊字符');  // 抛出错误中断执行
   }
-  return true;
+  return true;  // 返回值
 };
 \`\`\`
 
@@ -1424,7 +1424,7 @@ const strongPassword = (value) => {
 
 \`\`\`javascript
 // 当 type 为 'company' 时，companyName 必填
-const schema = {
+const schema = {  // 定义对象 schema
   type: { required: true, enum: ['individual', 'company'] },
   companyName: {
     required: (data) => data.type === 'company',
@@ -1439,11 +1439,11 @@ const schema = {
 
 \`\`\`javascript
 // ✅ 好的做法：收集所有错误
-const errors = [];
-for (const [field, rules] of Object.entries(schema)) {
-  for (const rule of rules) {
-    try {
-      await rule.validate(data[field]);
+const errors = [];  // 定义数组 errors
+for (const [field, rules] of Object.entries(schema)) {  // for 循环
+  for (const rule of rules) {  // for 循环
+    try {  // 开启 try 块捕获异常
+      await rule.validate(data[field]);  // 等待 Promise 完成后再继续
     } catch (err) {
       errors.push({ field, message: err.message });
     }
@@ -2959,23 +2959,23 @@ Content-Type: image/png\\r\\n
 使用以下策略避免文件名冲突：
 
 \`\`\`javascript
-const crypto = require('crypto');
-const path = require('path');
+const crypto = require('crypto');  // 导入模块 crypto；require 返回 module.exports
+const path = require('path');  // 导入模块 path；require 返回 module.exports
 
 // 策略 1：时间戳 + 随机数
-const name1 = Date.now() + '_' + Math.random().toString(36).slice(2);
+const name1 = Date.now() + '_' + Math.random().toString(36).slice(2);  // 定义常量 name1
 
 // 策略 2：内容哈希（推荐）
-const name2 = crypto.createHash('md5')
+const name2 = crypto.createHash('md5')  // 定义常量 name2
   .update(fileBuffer)
   .digest('hex');
 
 // 策略 3：UUID
-const name3 = crypto.randomUUID();
+const name3 = crypto.randomUUID();  // 定义常量 name3
 
 // 保留原始扩展名
-const ext = path.extname(originalName);
-const finalName = name3 + ext;
+const ext = path.extname(originalName);  // 定义常量 ext
+const finalName = name3 + ext;  // 定义常量 finalName
 \`\`\`
 
 下面这段代码使用 Buffer 和 fs 模拟文件上传处理流程，包括 multipart 数据解析、文件保存和校验。`,
@@ -3588,7 +3588,7 @@ v1.2.3
 通过版本路由器实现版本分组管理：
 
 \`\`\`javascript
-const router = new VersionRouter();
+const router = new VersionRouter();  // 创建实例 router
 
 // v1 版本路由
 router.version('v1', (v1) => {

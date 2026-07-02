@@ -12,17 +12,18 @@ export const chapters = [
 
 使用方括号 \`[]\` 创建列表，元素之间用逗号分隔：
 
-\`\`\`python
+\`\`\`python# 用方括号 [] 创建空列表
 # 空列表
 empty_list = []
-
+# 列表中可存放一组数字
 # 包含数字的列表
 numbers = [1, 2, 3, 4, 5]
-
+# 列表元素类型可以不同
 # 包含不同类型元素的列表
 mixed = [1, "hello", 3.14, True]
-
+# list() 把可迭代对象转换为列表
 # 使用 list() 函数创建
+# 字符串被按字符拆分成列表
 chars = list("Python")  # ['P', 'y', 't', 'h', 'o', 'n']
 \`\`\`
 
@@ -30,10 +31,13 @@ chars = list("Python")  # ['P', 'y', 't', 'h', 'o', 'n']
 
 列表使用**索引**访问元素，索引从 0 开始：
 
-\`\`\`python
+\`\`\`python# 创建水果列表
 fruits = ["苹果", "香蕉", "橙子"]
+# 索引 0 表示第一个元素
 print(fruits[0])  # 苹果（第一个元素）
+# 索引 2 表示第三个元素
 print(fruits[2])  # 橙子（第三个元素）
+# 负数索引从末尾倒数，-1 为最后一个元素
 print(fruits[-1]) # 橙子（负数索引表示从末尾数）
 \`\`\`
 
@@ -223,7 +227,7 @@ print("原列表未受影响:", original)`
 
 ### 基本语法
 
-\`\`\`python
+\`\`\`python# 切片语法：start 起始、stop 结束（不含）、step 步长，三者均可省略
 list[start:stop:step]
 \`\`\`
 
@@ -319,13 +323,13 @@ Python 提供了两种排序方式：
 
 \`key\` 参数接收一个函数，该函数作用于每个元素，返回值作为排序的依据：
 
-\`\`\`python
+\`\`\`python# key 指定排序依据函数：len 取字符串长度
 # 按字符串长度排序
 words.sort(key=len)
-
+# abs 取绝对值后再排序
 # 按绝对值排序
 numbers.sort(key=abs)
-
+# lambda 定义临时函数，返回元组第二项作为排序依据
 # 按元组的第二个元素排序
 pairs.sort(key=lambda x: x[1])
 \`\`\`
@@ -417,16 +421,16 @@ for name, score in sorted_students:
 
 ### 创建元组
 
-\`\`\`python
+\`\`\`python# 用括号定义元组，元素不可修改
 # 普通方式
 point = (3, 4)
-
+# 单元素元组必须加逗号，否则被当作普通括号表达式
 # 单个元素的元组必须加逗号！
 single = (5,)  # 注意逗号
-
+# 不写括号也会自动打包成元组
 # 省略括号（打包）
 coords = 1, 2, 3
-
+# tuple() 把可迭代对象转为元组
 # tuple() 转换
 chars = tuple("abc")
 \`\`\`
@@ -538,19 +542,21 @@ print("坐标字典:", locations[(39.9, 116.4)])`
 
 ### 创建字典
 
-\`\`\`python
+\`\`\`python# 用花括号直接书写字面量键值对
 # 花括号创建
 person = {"name": "张三", "age": 25}
-
+# dict() 用关键字参数构造字典
 # dict() 构造函数
 d = dict(name="李四", age=30)
-
+# 空 {} 即空字典
 # 空字典
 empty = {}
+# dict() 不传参也得到空字典
 empty2 = dict()
-
+# 用键值对列表构造字典
 # 从键值对序列创建
 pairs = [("a", 1), ("b", 2)]
+# dict 把序列转为字典
 d2 = dict(pairs)
 \`\`\`
 
@@ -894,10 +900,10 @@ Python 提供了多种合并字典的方式，不同方式有不同的行为。
 
 ### 多个字典合并
 
-\`\`\`python
+\`\`\`python# 用 ** 解包多个字典到新字典中合并
 # 解包多个
 merged = {**d1, **d2, **d3}
-
+# | 运算符合并字典，右侧覆盖左侧同键
 # | 链式合并
 merged = d1 | d2 | d3
 \`\`\`
@@ -983,13 +989,15 @@ print("(info里的name和age丢失了！)")`
 
 ### 创建集合
 
-\`\`\`python
+\`\`\`python# 花括号创建集合，元素自动去重
 # 花括号创建（注意：空集合不能用{}，那是空字典）
 s = {1, 2, 3}
-
+# set() 创建空集合，或从可迭代对象生成集合
 # set()构造函数（可从任意可迭代对象创建）
 empty_set = set()
+# 列表中重复元素会被去除
 from_list = set([1, 2, 2, 3, 3, 3])  # 自动去重
+# 字符串按字符去重生成集合
 from_str = set("hello")  # {'h', 'e', 'l', 'o'}
 \`\`\`
 
@@ -1246,10 +1254,10 @@ print("共同用户:", old_set & new_set)`
 
 一层一层用方括号访问即可：
 
-\`\`\`python
+\`\`\`python# students[0] 取列表第一项（字典），再按 "name" 取值
 # 获取第一个学生的姓名
 students[0]["name"]
-
+# 先取学生字典，再取其 scores 字典中的 math 键
 # 获取数学成绩
 students[0]["scores"]["math"]
 \`\`\`
@@ -1389,12 +1397,14 @@ Python 中赋值、浅拷贝、深拷贝是三个不同的概念，理解它们�
 
 ### 浅拷贝的几种写法
 
-\`\`\`python
+\`\`\`python# 三种等价的列表浅拷贝方式，仅复制外层容器
 # 列表浅拷贝
 new_list = old_list.copy()
+# list() 转换也会产生新列表
 new_list = list(old_list)
+# 切片 [:] 同样返回浅拷贝
 new_list = old_list[:]
-
+# 字典也有 copy 方法做浅拷贝
 # 字典浅拷贝
 new_dict = old_dict.copy()
 \`\`\`
@@ -1513,23 +1523,26 @@ print(f"s4 = {s4}")`
 
 ### 基本语法
 
-\`\`\`python
+\`\`\`python# 列表推导式语法：对每个元素求表达式，收集成新列表
 [表达式 for 变量 in 可迭代对象]
 # 等价于：
+# 创建空列表存放结果
 result = []
+# 遍历可迭代对象的每个元素
 for 变量 in 可迭代对象:
+    # 把表达式结果追加到结果列表
     result.append(表达式)
 \`\`\`
 
 ### 带条件筛选
 
-\`\`\`python
+\`\`\`python# 带条件的列表推导式：仅对满足条件的元素求表达式
 [表达式 for 变量 in 可迭代对象 if 条件]
 \`\`\`
 
 ### 嵌套循环
 
-\`\`\`python
+\`\`\`python# 嵌套循环的列表推导式：外层循环在前，内层循环在后
 [表达式 for 变量1 in 可迭代对象1 for 变量2 in 可迭代对象2]
 \`\`\`
 
@@ -1638,15 +1651,17 @@ print("保序去重:", unique)  # 不过更推荐dict.fromkeys方式`
 
 ### 字典推导式
 
-\`\`\`python
+\`\`\`python# 字典推导式：用键值表达式为每个元素生成键值对
 {键表达式: 值表达式 for 变量 in 可迭代对象}
+# 可加 if 过滤元素
 {键表达式: 值表达式 for 变量 in 可迭代对象 if 条件}
 \`\`\`
 
 ### 集合推导式
 
-\`\`\`python
+\`\`\`python# 集合推导式：对元素求表达式并自动去重
 {表达式 for 变量 in 可迭代对象}
+# 可加 if 条件过滤元素
 {表达式 for 变量 in 可迭代对象 if 条件}
 \`\`\`
 
@@ -1759,18 +1774,20 @@ print("元组结果:", tuple_result)`
 
 ### 基础解包
 
-\`\`\`python
+\`\`\`python# 把列表元素依次赋给多个变量
 a, b, c = [1, 2, 3]  # 列表解包
+# 元组同样可以解包
 x, y, z = (4, 5, 6)  # 元组解包
+# 注意：变量数量必须和元素数量一致，否则会抛出 ValueError
 # 注意：变量数量必须和元素数量一致
 \`\`\`
 
 ### * 号解包（收集多余元素）
 
-\`\`\`python
+\`\`\`python# 星号把剩余元素收集为列表赋给 rest
 first, *rest = [1, 2, 3, 4, 5]
 # first=1, rest=[2,3,4,5]
-
+# 星号也可放在中间，收集中间部分
 first, *middle, last = [1, 2, 3, 4, 5]
 # first=1, middle=[2,3,4], last=5
 \`\`\`
@@ -1898,15 +1915,18 @@ for i, (fruit, price) in enumerate(pairs, 1):
 
 ### 基本用法
 
-\`\`\`python
+\`\`\`python# 从 collections 导入 Counter 计数器类
 from collections import Counter
-
+# 传入可迭代对象，自动统计每个元素出现次数
 # 从可迭代对象创建
+# 统计字符串中每个字符的出现次数
 cnt = Counter("hello world")  # 字符计数
+# 统计列表中每个元素的出现次数
 cnt = Counter([1, 2, 2, 3])   # 列表元素计数
-
+# 也可直接传入字典或关键字参数指定计数
 # 手动创建
 cnt = Counter({"apple": 3, "banana": 2})
+# 关键字参数形式等价
 cnt = Counter(apple=3, banana=2)
 \`\`\`
 
@@ -2027,15 +2047,17 @@ print("共同元素列表:", list(common.elements()))`
 
 \`defaultdict\` 是字典的子类，它可以为不存在的键提供默认值，避免 KeyError。
 
-\`\`\`python
+\`\`\`python# 导入 defaultdict，访问不存在的键时自动生成默认值
 from collections import defaultdict
-
+# 传入 list 作为默认工厂，新键默认值为空列表
 # 默认值是list（每个键对应一个列表）
 d = defaultdict(list)
+# 访问新键时自动创建空列表，可直接 append
 d["fruits"].append("apple")  # 不需要先初始化！
-
+# 传入 int 作为默认工厂，新键默认值为 0，便于计数
 # 默认值是int（用于计数）
 d = defaultdict(int)
+# 计数时无需先判断键是否存在
 d["apple"] += 1
 \`\`\`
 
@@ -2043,11 +2065,13 @@ d["apple"] += 1
 
 命名元组让元组的字段有名字，访问更清晰：
 
-\`\`\`python
+\`\`\`python# 导入 namedtuple，用于创建具名元组
 from collections import namedtuple
-
+# 创建名为 Point 的具名元组类型，字段为 x、y
 Point = namedtuple("Point", ["x", "y"])
+# 按位置传参创建实例
 p = Point(1, 2)
+# 可用字段名访问，比下标更清晰
 print(p.x, p.y)  # 比p[0], p[1]清晰
 \`\`\`
 

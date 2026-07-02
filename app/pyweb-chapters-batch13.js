@@ -161,97 +161,158 @@ HATEOAS(Hypermedia As The Engine Of Application State)是"统一接口"里最严
 下面是一个用 Flask 实现的最小 RESTful 博客 API,严格遵守 REST 风格:
 
 \`\`\`python
+# 从 flask 导入 Flask, request, jsonify, abort
 from flask import Flask, request, jsonify, abort
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
 
 # 用内存列表模拟数据库
+# 定义列表 posts
 posts = [
+    # {"id": 1, "title": "REST 入门", "content": "REST 是资源
     {"id": 1, "title": "REST 入门", "content": "REST 是资源状态转移"},
+# ]
 ]
 next_id = 2  # 下一个文章的 id
 
 
 # 列出所有文章 —— GET /posts
+# 定义 GET 路由：访问 /posts 时触发
 @app.get("/posts")
+# 定义函数 list_posts，参数: 
 def list_posts():
     # 直接返回资源集合,200 OK
+    # 返回 jsonify(posts), 200
     return jsonify(posts), 200
 
 
 # 获取单篇文章 —— GET /posts/<id>
+# 定义 GET 路由：访问 /posts/<int:post_id> 时触发
 @app.get("/posts/<int:post_id>")
+# 定义函数 get_post，参数: post_id
 def get_post(post_id):
+    # 定义变量 post，赋值为 next((p for p in posts if p["id"] == post_id)...
     post = next((p for p in posts if p["id"] == post_id), None)
+    # 条件判断：如果 post is None
     if post is None:
         # 资源不存在,返回 404,并给一个错误体
+        # 返回 jsonify({"error": "post not found"}), 404
         return jsonify({"error": "post not found"}), 404
+    # 返回 jsonify(post), 200
     return jsonify(post), 200
 
 
 # 新建文章 —— POST /posts
+# 定义 POST 路由：访问 /posts 时触发
 @app.post("/posts")
+# 定义函数 create_post，参数: 
 def create_post():
+    # global next_id
     global next_id
+    # 定义变量 data，赋值为 request.get_json()
     data = request.get_json()
     # 参数校验:缺字段返回 400
+    # 条件判断：如果 not data or not data.get("title")
     if not data or not data.get("title"):
+        # 返回 jsonify({"error": "title is required"}), 400
         return jsonify({"error": "title is required"}), 400
+    # 定义字典 post
     post = {
+        # "id": next_id,
         "id": next_id,
+        # "title": data["title"],
         "title": data["title"],
+        # "content": data.get("content", ""),
         "content": data.get("content", ""),
+    # }
     }
+    # 调用 posts.append()
     posts.append(post)
+    # next_id += 1
     next_id += 1
     # 创建成功返回 201,Location 头指向新资源
+    # 定义变量 resp，赋值为 jsonify(post)
     resp = jsonify(post)
+    # resp.status_code = 201
     resp.status_code = 201
+    # resp.headers["Location"] = f"/posts/{post['id']}"
     resp.headers["Location"] = f"/posts/{post['id']}"
+    # 返回 resp
     return resp
 
 
 # 整体更新 —— PUT /posts/<id>(客户端要提供完整资源)
+# 定义 PUT 路由：访问 /posts/<int:post_id> 时触发
 @app.put("/posts/<int:post_id>")
+# 定义函数 update_post，参数: post_id
 def update_post(post_id):
+    # 定义变量 data，赋值为 request.get_json()
     data = request.get_json()
+    # 定义变量 post，赋值为 next((p for p in posts if p["id"] == post_id)...
     post = next((p for p in posts if p["id"] == post_id), None)
+    # 条件判断：如果 post is None
     if post is None:
+        # 返回 jsonify({"error": "post not found"}), 404
         return jsonify({"error": "post not found"}), 404
     # PUT 要求客户端提供完整字段
+    # post["title"] = data["title"]
     post["title"] = data["title"]
+    # post["content"] = data["content"]
     post["content"] = data["content"]
+    # 返回 jsonify(post), 200
     return jsonify(post), 200
 
 
 # 部分更新 —— PATCH /posts/<id>(只改传过来的字段)
+# 定义 PATCH 路由：访问 /posts/<int:post_id> 时触发
 @app.patch("/posts/<int:post_id>")
+# 定义函数 patch_post，参数: post_id
 def patch_post(post_id):
+    # 定义变量 data，赋值为 request.get_json()
     data = request.get_json()
+    # 定义变量 post，赋值为 next((p for p in posts if p["id"] == post_id)...
     post = next((p for p in posts if p["id"] == post_id), None)
+    # 条件判断：如果 post is None
     if post is None:
+        # 返回 jsonify({"error": "post not found"}), 404
         return jsonify({"error": "post not found"}), 404
     # 只更新客户端传了的字段
+    # 条件判断：如果 "title" in data
     if "title" in data:
+        # post["title"] = data["title"]
         post["title"] = data["title"]
+    # 条件判断：如果 "content" in data
     if "content" in data:
+        # post["content"] = data["content"]
         post["content"] = data["content"]
+    # 返回 jsonify(post), 200
     return jsonify(post), 200
 
 
 # 删除文章 —— DELETE /posts/<id>
+# 定义 DELETE 路由：访问 /posts/<int:post_id> 时触发
 @app.delete("/posts/<int:post_id>")
+# 定义函数 delete_post，参数: post_id
 def delete_post(post_id):
+    # global posts
     global posts
+    # 定义变量 post，赋值为 next((p for p in posts if p["id"] == post_id)...
     post = next((p for p in posts if p["id"] == post_id), None)
+    # 条件判断：如果 post is None
     if post is None:
+        # 返回 jsonify({"error": "post not found"}), 404
         return jsonify({"error": "post not found"}), 404
+    # 定义列表 posts
     posts = [p for p in posts if p["id"] != post_id]
     # 删除成功返回 204,无内容
+    # 返回 "", 204
     return "", 204
 
 
+# 判断是否直接运行此脚本
 if __name__ == "__main__":
+    # 调用 app.run()
     app.run(debug=True)
 \`\`\`
 
@@ -348,18 +409,26 @@ API 一定要有版本号,因为业务演进难免有破坏性变更。常见三
 > 实际项目最常用的是 **URL 路径版本**(\`/v1/users\`),最直观,前端好调试。
 
 \`\`\`python
+# 从 flask 导入 Flask, jsonify
 from flask import Flask, jsonify
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
 
 # v1:用户只返回 id 和 name
+# 定义 GET 路由：访问 /v1/users/<int:user_id> 时触发
 @app.get("/v1/users/<int:user_id>")
+# 定义函数 get_user_v1，参数: user_id
 def get_user_v1(user_id):
+    # 返回 jsonify({"id": user_id, "name": "老王"})
     return jsonify({"id": user_id, "name": "老王"})
 
 # v2:用户多了 email 字段,但保留 v1 不变(老客户端不受影响)
+# 定义 GET 路由：访问 /v2/users/<int:user_id> 时触发
 @app.get("/v2/users/<int:user_id>")
+# 定义函数 get_user_v2，参数: user_id
 def get_user_v2(user_id):
+    # 返回 jsonify({"id": user_id, "name": "老王", "email": "laowang@x.com"})
     return jsonify({"id": user_id, "name": "老王", "email": "laowang@x.com"})
 \`\`\`
 
@@ -374,24 +443,37 @@ GET /posts?page=1&per_page=20
 \`\`\`
 
 \`\`\`python
+# 从 flask 导入 Flask, request, jsonify
 from flask import Flask, request, jsonify
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
 posts = [{"id": i, "title": f"文章{i}"} for i in range(1, 101)]  # 100 篇文章
 
+# 定义 GET 路由：访问 /posts 时触发
 @app.get("/posts")
+# 定义函数 list_posts，参数: 
 def list_posts():
     page = int(request.args.get("page", 1))         # 默认第 1 页
+    # 定义变量 per_page，赋值为 int(request.args.get("per_page", 20)) # 默认每页 ...
     per_page = int(request.args.get("per_page", 20)) # 默认每页 20 条
     # 计算起始偏移
+    # 定义变量 start，赋值为 (page - 1) * per_page
     start = (page - 1) * per_page
+    # 定义变量 end，赋值为 start + per_page
     end = start + per_page
+    # 定义变量 items，赋值为 posts[start:end]
     items = posts[start:end]
+    # 返回 jsonify({
     return jsonify({
+        # "data": items,
         "data": items,
+        # "page": page,
         "page": page,
+        # "per_page": per_page,
         "per_page": per_page,
         "total": len(posts),                          # 总数,前端用来算总页数
+    # })
     })
 \`\`\`
 
@@ -422,23 +504,38 @@ GET /posts?fields=id,title
 \`\`\`
 
 \`\`\`python
+# 定义 GET 路由：访问 /posts 时触发
 @app.get("/posts")
+# 定义函数 list_posts，参数: 
 def list_posts():
     # 过滤
+    # 定义变量 status，赋值为 request.args.get("status")
     status = request.args.get("status")
+    # 定义列表 items
     items = [p for p in posts]
+    # 条件判断：如果 status
     if status:
+        # 定义列表 items
         items = [p for p in items if p.get("status") == status]
     # 排序
+    # 定义变量 sort，赋值为 request.args.get("sort", "-created_at")
     sort = request.args.get("sort", "-created_at")
+    # 定义变量 reverse，赋值为 sort.startswith("-")
     reverse = sort.startswith("-")
+    # 定义变量 key，赋值为 sort.lstrip("-")
     key = sort.lstrip("-")
+    # 调用 items.sort()
     items.sort(key=lambda p: p.get(key, ""), reverse=reverse)
     # 字段选择
+    # 定义变量 fields，赋值为 request.args.get("fields")
     fields = request.args.get("fields")
+    # 条件判断：如果 fields
     if fields:
+        # 定义变量 fields，赋值为 fields.split(",")
         fields = fields.split(",")
+        # 定义列表 items
         items = [{f: p[f] for f in fields if f in p} for p in items]
+    # 返回 jsonify(items)
     return jsonify(items)
 \`\`\`
 
@@ -455,23 +552,38 @@ def list_posts():
 \`\`\`
 
 \`\`\`python
+# 定义函数 ok，参数: data, message="ok"
 def ok(data, message="ok"):
+    # """统一成功响应"""
     """统一成功响应"""
+    # 返回 jsonify({"code": 0, "message": message, "data": data}), 200
     return jsonify({"code": 0, "message": message, "data": data}), 200
 
+# 定义函数 fail，参数: code, message, status=400, details=None
 def fail(code, message, status=400, details=None):
+    # """统一错误响应"""
     """统一错误响应"""
+    # 定义字典 body
     body = {"code": code, "message": message}
+    # 条件判断：如果 details
     if details:
+        # body["details"] = details
         body["details"] = details
+    # 返回 jsonify(body), status
     return jsonify(body), status
 
+# 定义 GET 路由：访问 /users/<int:user_id> 时触发
 @app.get("/users/<int:user_id>")
+# 定义函数 get_user，参数: user_id
 def get_user(user_id):
+    # 定义变量 user，赋值为 find_user(user_id)
     user = find_user(user_id)
+    # 条件判断：如果 not user
     if not user:
         # 业务错误码 1001,HTTP 状态码 404
+        # 返回 fail(1001, "用户不存在", status=404)
         return fail(1001, "用户不存在", status=404)
+    # 返回 ok(user)
     return ok(user)
 \`\`\`
 
@@ -592,59 +704,101 @@ POST   /auth/logout
 Flask 自带 \`jsonify\`(把字典转 JSON 响应)和 \`request.get_json()\`(解析请求体 JSON),已经足够实现 RESTful API:
 
 \`\`\`python
+# 从 flask 导入 Flask, request, jsonify
 from flask import Flask, request, jsonify
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
 
+# 定义列表 users
 users = [
+    # {"id": 1, "name": "老王", "email": "laowang@x.com"},
     {"id": 1, "name": "老王", "email": "laowang@x.com"},
+# ]
 ]
+# 定义变量 next_id，赋值为 2
 next_id = 2
 
 # 列表
+# 定义 GET 路由：访问 /api/users 时触发
 @app.get("/api/users")
+# 定义函数 list_users，参数: 
 def list_users():
+    # 返回 jsonify(users)
     return jsonify(users)
 
 # 详情
+# 定义 GET 路由：访问 /api/users/<int:user_id> 时触发
 @app.get("/api/users/<int:user_id>")
+# 定义函数 get_user，参数: user_id
 def get_user(user_id):
+    # 定义变量 user，赋值为 next((u for u in users if u["id"] == user_id)...
     user = next((u for u in users if u["id"] == user_id), None)
+    # 条件判断：如果 not user
     if not user:
+        # 返回 jsonify({"error": "not found"}), 404
         return jsonify({"error": "not found"}), 404
+    # 返回 jsonify(user)
     return jsonify(user)
 
 # 新建
+# 定义 POST 路由：访问 /api/users 时触发
 @app.post("/api/users")
+# 定义函数 create_user，参数: 
 def create_user():
+    # global next_id
     global next_id
+    # 定义变量 data，赋值为 request.get_json()
     data = request.get_json()
+    # 条件判断：如果 not data or not data.get("name")
     if not data or not data.get("name"):
+        # 返回 jsonify({"error": "name 必填"}), 400
         return jsonify({"error": "name 必填"}), 400
+    # 定义字典 user
     user = {"id": next_id, "name": data["name"], "email": data.get("email", "")}
+    # 调用 users.append()
     users.append(user)
+    # next_id += 1
     next_id += 1
+    # 返回 jsonify(user), 201
     return jsonify(user), 201
 
 # 更新(整体)
+# 定义 PUT 路由：访问 /api/users/<int:user_id> 时触发
 @app.put("/api/users/<int:user_id>")
+# 定义函数 update_user，参数: user_id
 def update_user(user_id):
+    # 定义变量 data，赋值为 request.get_json()
     data = request.get_json()
+    # 定义变量 user，赋值为 next((u for u in users if u["id"] == user_id)...
     user = next((u for u in users if u["id"] == user_id), None)
+    # 条件判断：如果 not user
     if not user:
+        # 返回 jsonify({"error": "not found"}), 404
         return jsonify({"error": "not found"}), 404
+    # user["name"] = data["name"]
     user["name"] = data["name"]
+    # user["email"] = data["email"]
     user["email"] = data["email"]
+    # 返回 jsonify(user)
     return jsonify(user)
 
 # 删除
+# 定义 DELETE 路由：访问 /api/users/<int:user_id> 时触发
 @app.delete("/api/users/<int:user_id>")
+# 定义函数 delete_user，参数: user_id
 def delete_user(user_id):
+    # global users
     global users
+    # 定义变量 user，赋值为 next((u for u in users if u["id"] == user_id)...
     user = next((u for u in users if u["id"] == user_id), None)
+    # 条件判断：如果 not user
     if not user:
+        # 返回 jsonify({"error": "not found"}), 404
         return jsonify({"error": "not found"}), 404
+    # 定义列表 users
     users = [u for u in users if u["id"] != user_id]
+    # 返回 "", 204
     return "", 204
 \`\`\`
 
@@ -655,55 +809,90 @@ def delete_user(user_id):
 Flask-RESTful 把"一个资源"封装成一个 \`Resource\` 类,把不同 HTTP 方法映射成类方法,代码组织更清晰:
 
 \`\`\`bash
+# 安装 Python 包: flask-restful
 pip install flask-restful
 \`\`\`
 
 \`\`\`python
+# 从 flask 导入 Flask, request
 from flask import Flask, request
+# 从 flask_restful 导入 Resource, Api, reqparse
 from flask_restful import Resource, Api, reqparse
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
+# 定义变量 api，赋值为 Api(app)
 api = Api(app)
 
+# 定义列表 users
 users = []
+# 定义变量 next_id，赋值为 1
 next_id = 1
 
 # 用 reqparse 自动校验参数(类似 WTForms)
+# 定义变量 parser，赋值为 reqparse.RequestParser()
 parser = reqparse.RequestParser()
+# 调用 parser.add_argument()
 parser.add_argument("name",  type=str, required=True, help="name 必填")
+# 调用 parser.add_argument()
 parser.add_argument("email", type=str, default="")
 
+# 定义类 UserList，继承 Resource
 class UserList(Resource):
+    # """用户集合:/api/users"""
     """用户集合:/api/users"""
+    # 定义函数 get，参数: self
     def get(self):
+        # 返回 users
         return users
 
+    # 定义函数 post，参数: self
     def post(self):
+        # global next_id
         global next_id
         args = parser.parse_args()  # 自动校验,失败直接返回 400
+        # 定义字典 user
         user = {"id": next_id, "name": args["name"], "email": args["email"]}
+        # 调用 users.append()
         users.append(user)
+        # next_id += 1
         next_id += 1
+        # 返回 user, 201
         return user, 201
 
+# 定义类 User，继承 Resource
 class User(Resource):
+    # """单个用户:/api/users/<id>"""
     """单个用户:/api/users/<id>"""
+    # 定义函数 get，参数: self, user_id
     def get(self, user_id):
+        # 定义变量 user，赋值为 next((u for u in users if u["id"] == user_id)...
         user = next((u for u in users if u["id"] == user_id), None)
+        # 条件判断：如果 not user
         if not user:
+            # 返回 {"error": "not found"}, 404
             return {"error": "not found"}, 404
+        # 返回 user
         return user
 
+    # 定义函数 delete，参数: self, user_id
     def delete(self, user_id):
+        # global users
         global users
+        # 定义列表 users
         users = [u for u in users if u["id"] != user_id]
+        # 返回 "", 204
         return "", 204
 
 # 把 Resource 类注册到 URL
+# 调用 api.add_resource()
 api.add_resource(UserList, "/api/users")
+# 调用 api.add_resource()
 api.add_resource(User, "/api/users/<int:user_id>")
 
+# 判断是否直接运行此脚本
 if __name__ == "__main__":
+    # 调用 app.run()
     app.run(debug=True)
 \`\`\`
 
@@ -714,15 +903,19 @@ if __name__ == "__main__":
 DRF 是 Django 生态最强大的 API 框架,封装了序列化、视图、路由、认证、权限、分页、过滤、文档全套。安装:
 
 \`\`\`bash
+# 安装 Python 包: djangorestframework
 pip install djangorestframework
 \`\`\`
 
 \`settings.py\` 注册:
 
 \`\`\`python
+# 定义列表 INSTALLED_APPS
 INSTALLED_APPS = [
     # ...
+    # "rest_framework",
     "rest_framework",
+# ]
 ]
 \`\`\`
 
@@ -736,28 +929,45 @@ Serializer 干两件事:
 
 \`\`\`python
 # serializers.py
+# 从 rest_framework 导入 serializers
 from rest_framework import serializers
+# 从 .models 导入 User
 from .models import User
 
+# 定义类 UserSerializer，继承 serializers.ModelSerializer
 class UserSerializer(serializers.ModelSerializer):
+    # """用户序列化器:声明模型字段 + 自动校验"""
     """用户序列化器:声明模型字段 + 自动校验"""
+    # 定义类 Meta
     class Meta:
+        # 定义变量 model，赋值为 User
         model = User
         fields = ["id", "name", "email"]  # 只暴露这三个字段
         # 不暴露 password,即便数据库有也不传出去
 
+    # 定义函数 validate_email，参数: self, value
     def validate_email(self, value):
+        # """单个字段的自定义校验"""
         """单个字段的自定义校验"""
+        # 条件判断：如果 not value.endswith("@x.com")
         if not value.endswith("@x.com"):
+            # 抛出 serializers 异常
             raise serializers.ValidationError("必须是 @x.com 邮箱")
+        # 返回 value
         return value
 
+    # 定义函数 validate，参数: self, attrs
     def validate(self, attrs):
+        # """多字段联合校验"""
         """多字段联合校验"""
         # 比如:邮箱不能和名字重复(演示)
+        # 条件判断：如果 attrs.get("name") and attrs.get("email")
         if attrs.get("name") and attrs.get("email"):
+            # 条件判断：如果 attrs["name"] in attrs["email"]
             if attrs["name"] in attrs["email"]:
+                # 抛出 serializers 异常
                 raise serializers.ValidationError("名字不能出现在邮箱里")
+        # 返回 attrs
         return attrs
 \`\`\`
 
@@ -767,13 +977,20 @@ ViewSet 把一个资源的全套 CRUD 封装成一个类,DRF 自动把方法映�
 
 \`\`\`python
 # views.py
+# 从 rest_framework 导入 viewsets
 from rest_framework import viewsets
+# 从 .models 导入 User
 from .models import User
+# 从 .serializers 导入 UserSerializer
 from .serializers import UserSerializer
 
+# 定义类 UserViewSet，继承 viewsets.ModelViewSet
 class UserViewSet(viewsets.ModelViewSet):
+    # """ModelViewSet 自动提供 list/create/retrieve/update/d
     """ModelViewSet 自动提供 list/create/retrieve/update/destroy 五个动作"""
+    # 定义变量 queryset，赋值为 User.objects.all()
     queryset = User.objects.all()
+    # 定义变量 serializer_class，赋值为 UserSerializer
     serializer_class = UserSerializer
 \`\`\`
 
@@ -785,15 +1002,22 @@ Router 把 ViewSet 自动注册成 URL,不用手写一堆 \`path()\`:
 
 \`\`\`python
 # urls.py
+# 从 django.urls 导入 path, include
 from django.urls import path, include
+# 从 rest_framework.routers 导入 DefaultRouter
 from rest_framework.routers import DefaultRouter
+# 从 .views 导入 UserViewSet
 from .views import UserViewSet
 
+# 定义变量 router，赋值为 DefaultRouter()
 router = DefaultRouter()
 router.register("users", UserViewSet)  # 自动生成 /users/ 和 /users/{id}/
 
+# 定义列表 urlpatterns
 urlpatterns = [
+    # 调用 path()
     path("api/", include(router.urls)),
+# ]
 ]
 \`\`\`
 
@@ -803,34 +1027,53 @@ DRF 把这些通用能力都做成了可插拔配置,改 \`settings.py\` 就能�
 
 \`\`\`python
 # settings.py
+# 定义字典 REST_FRAMEWORK
 REST_FRAMEWORK = {
     # 分页:每页 20 条
+    # "DEFAULT_PAGINATION_CLASS": "rest_framework.pagina
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    # "PAGE_SIZE": 20,
     "PAGE_SIZE": 20,
     # 默认认证:JWT + Session
+    # "DEFAULT_AUTHENTICATION_CLASSES": [
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        # "rest_framework_simplejwt.authentication.JWTAuthen
         "rest_framework_simplejwt.authentication.JWTAuthentication",
+        # "rest_framework.authentication.SessionAuthenticati
         "rest_framework.authentication.SessionAuthentication",
+    # ],
     ],
     # 默认权限:登录才能访问
+    # "DEFAULT_PERMISSION_CLASSES": [
     "DEFAULT_PERMISSION_CLASSES": [
+        # "rest_framework.permissions.IsAuthenticated",
         "rest_framework.permissions.IsAuthenticated",
+    # ],
     ],
     # 过滤后端:支持 ?search=xxx
+    # "DEFAULT_FILTER_BACKENDS": [
     "DEFAULT_FILTER_BACKENDS": [
+        # "rest_framework.filters.SearchFilter",
         "rest_framework.filters.SearchFilter",
+        # "rest_framework.filters.OrderingFilter",
         "rest_framework.filters.OrderingFilter",
+    # ],
     ],
+# }
 }
 \`\`\`
 
 视图里也可以单独覆盖:
 
 \`\`\`python
+# 从 rest_framework 导入 viewsets, permissions
 from rest_framework import viewsets, permissions
 
+# 定义类 PostViewSet，继承 viewsets.ModelViewSet
 class PostViewSet(viewsets.ModelViewSet):
+    # 定义变量 queryset，赋值为 Post.objects.all()
     queryset = Post.objects.all()
+    # 定义变量 serializer_class，赋值为 PostSerializer
     serializer_class = PostSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]  # 未登录可看,登录才能改
     search_fields = ["title", "content"]   # ?search=xxx 搜这两个字段
@@ -857,21 +1100,35 @@ class PostViewSet(viewsets.ModelViewSet):
 **Flask 版本**(简洁直接,但要自己处理细节):
 
 \`\`\`python
+# 从 flask 导入 Flask, request, jsonify
 from flask import Flask, request, jsonify
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
+# 定义列表 users
 users = []
 
+# 定义 GET 路由：访问 /users 时触发
 @app.get("/users")
+# 定义函数 list_users，参数: 
 def list_users():
+    # 返回 jsonify(users)
     return jsonify(users)
 
+# 定义 POST 路由：访问 /users 时触发
 @app.post("/users")
+# 定义函数 create_user，参数: 
 def create_user():
+    # 定义变量 data，赋值为 request.get_json()
     data = request.get_json()
+    # 条件判断：如果 not data.get("name")
     if not data.get("name"):
+        # 返回 jsonify({"error": "name 必填"}), 400
         return jsonify({"error": "name 必填"}), 400
+    # 定义字典 user
     user = {"id": len(users) + 1, "name": data["name"]}
+    # 调用 users.append()
     users.append(user)
+    # 返回 jsonify(user), 201
     return jsonify(user), 201
 \`\`\`
 
@@ -879,17 +1136,25 @@ def create_user():
 
 \`\`\`python
 # serializers.py
+# 定义类 UserSerializer，继承 serializers.ModelSerializer
 class UserSerializer(serializers.ModelSerializer):
+    # 定义类 Meta
     class Meta:
+        # 定义变量 model，赋值为 User
         model = User
+        # 定义列表 fields
         fields = ["id", "name", "email"]
 
 # views.py
+# 定义类 UserViewSet，继承 viewsets.ModelViewSet
 class UserViewSet(viewsets.ModelViewSet):
+    # 定义变量 queryset，赋值为 User.objects.all()
     queryset = User.objects.all()
+    # 定义变量 serializer_class，赋值为 UserSerializer
     serializer_class = UserSerializer
 
 # urls.py
+# 调用 router.register()
 router.register("users", UserViewSet)
 # 自动得到 list/create/retrieve/update/destroy + 分页 + 过滤 + 认证
 \`\`\`
@@ -935,27 +1200,49 @@ API 写完了,谁来用?
 一个最小的 OpenAPI 文档长这样(YAML):
 
 \`\`\`yaml
+# openapi: 3.0.0
 openapi: 3.0.0
+# info 配置段
 info:
+  # title: 博客 API
   title: 博客 API
+  # version: 1.0.0
   version: 1.0.0
+# paths 配置段
 paths:
+  # /posts:
   /posts:
+    # get 配置段
     get:
+      # summary: 获取文章列表
       summary: 获取文章列表
+      # parameters 配置段
       parameters:
+        # 列表项: name: page
         - name: page
+          # in: query
           in: query
+          # schema 配置段
           schema:
+            # type: integer
             type: integer
+      # responses 配置段
       responses:
+        # '200':
         '200':
+          # description: 成功
           description: 成功
+          # content 配置段
           content:
+            # application/json:
             application/json:
+              # schema 配置段
               schema:
+                # type: array
                 type: array
+                # items 配置段
                 items:
+                  # type: object
                   type: object
 \`\`\`
 
@@ -977,41 +1264,65 @@ Swagger UI 长这样:左边是接口列表,点开一个接口能看到参数、�
 Flask-RESTX 是 Flask-RESTful 的 fork,自带 Swagger UI,你只要声明接口的输入输出模型,文档自动生成:
 
 \`\`\`bash
+# 安装 Python 包: flask-restx
 pip install flask-restx
 \`\`\`
 
 \`\`\`python
+# 从 flask 导入 Flask
 from flask import Flask
+# 从 flask_restx 导入 Api, Resource, fields
 from flask_restx import Api, Resource, fields
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
+# 定义变量 api，赋值为 Api(app, version="1.0", title="博客 API", descr...
 api = Api(app, version="1.0", title="博客 API", description="博客系统接口文档")
 
 # 定义数据模型(文档里展示的字段结构)
+# 定义变量 user_model，赋值为 api.model("User", {
 user_model = api.model("User", {
+    # "id": fields.Integer(description="用户 ID"),
     "id": fields.Integer(description="用户 ID"),
+    # "name": fields.String(required=True, description="
     "name": fields.String(required=True, description="用户名"),
+    # "email": fields.String(description="邮箱"),
     "email": fields.String(description="邮箱"),
+# })
 })
 
+# 定义变量 ns，赋值为 api.namespace("users", description="用户相关接口")
 ns = api.namespace("users", description="用户相关接口")
 
+# 装饰器：ns.route
 @ns.route("/")
+# 定义类 UserList，继承 Resource
 class UserList(Resource):
+    # 装饰器：ns.doc
     @ns.doc("list_users")
     @ns.marshal_list_with(user_model)  # 响应按 user_model 序列化
+    # 定义函数 get，参数: self
     def get(self):
+        # """获取所有用户"""
         """获取所有用户"""
+        # 返回 [{"id": 1, "name": "老王", "email": "w@x.com"}]
         return [{"id": 1, "name": "老王", "email": "w@x.com"}]
 
+    # 装饰器：ns.doc
     @ns.doc("create_user")
     @ns.expect(user_model)             # 期望请求体是 user_model
+    # 装饰器：ns.marshal_with
     @ns.marshal_with(user_model, code=201)
+    # 定义函数 post，参数: self
     def post(self):
+        # """新建用户"""
         """新建用户"""
+        # 返回 {"id": 2, "name": "小李", "email": "l@x.com"}, 201
         return {"id": 2, "name": "小李", "email": "l@x.com"}, 201
 
+# 判断是否直接运行此脚本
 if __name__ == "__main__":
+    # 调用 app.run()
     app.run(debug=True)
 \`\`\`
 
@@ -1025,40 +1336,58 @@ Django REST Framework 配 Swagger 文档,主流两个库:
 - **drf-spectacular**:新一代,支持 OpenAPI 3,DRF 官方推荐。
 
 \`\`\`bash
+# 安装 Python 包: drf-spectacular
 pip install drf-spectacular
 \`\`\`
 
 \`settings.py\` 配置:
 
 \`\`\`python
+# 定义列表 INSTALLED_APPS
 INSTALLED_APPS = [
     # ...
+    # "drf_spectacular",
     "drf_spectacular",
+# ]
 ]
 
+# 定义字典 REST_FRAMEWORK
 REST_FRAMEWORK = {
     # ...
+    # "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.A
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+# }
 }
 
+# 定义字典 SPECTACULAR_SETTINGS
 SPECTACULAR_SETTINGS = {
+    # "TITLE": "博客 API",
     "TITLE": "博客 API",
+    # "DESCRIPTION": "博客系统接口文档",
     "DESCRIPTION": "博客系统接口文档",
+    # "VERSION": "1.0.0",
     "VERSION": "1.0.0",
+# }
 }
 \`\`\`
 
 \`urls.py\` 暴露文档端点:
 
 \`\`\`python
+# 从 django.urls 导入 path
 from django.urls import path
+# 从 drf_spectacular.views 导入 SpectacularAPIView, SpectacularSwaggerView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+# 定义列表 urlpatterns
 urlpatterns = [
     # OpenAPI schema(JSON)
+    # 调用 path()
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     # Swagger UI(交互式)
+    # 调用 path()
     path("api/docs/", SpectacularSwaggerView.as_view(url="api/schema/"), name="swagger"),
+# ]
 ]
 \`\`\`
 
@@ -1069,32 +1398,53 @@ urlpatterns = [
 光靠代码自动生成还不够,要补充"人话"描述让文档可读:
 
 \`\`\`python
+# 从 drf_spectacular.utils 导入 extend_schema, OpenApiExample
 from drf_spectacular.utils import extend_schema, OpenApiExample
+# 从 rest_framework 导入 serializers
 from rest_framework import serializers
 
+# 定义类 UserSerializer，继承 serializers.ModelSerializer
 class UserSerializer(serializers.ModelSerializer):
+    # 定义类 Meta
     class Meta:
+        # 定义变量 model，赋值为 User
         model = User
+        # 定义列表 fields
         fields = ["id", "name", "email"]
 
+# 定义类 UserViewSet，继承 viewsets.ModelViewSet
 class UserViewSet(viewsets.ModelViewSet):
+    # 定义变量 queryset，赋值为 User.objects.all()
     queryset = User.objects.all()
+    # 定义变量 serializer_class，赋值为 UserSerializer
     serializer_class = UserSerializer
 
+    # 装饰器：extend_schema
     @extend_schema(
         summary="创建用户",                        # 接口标题
         description="注册一个新用户,邮箱必须唯一",  # 详细描述
+        # 定义变量 request，赋值为 UserSerializer,
         request=UserSerializer,
+        # 定义字典 responses
         responses={201: UserSerializer, 400: None}, # 标注响应
         examples=[                                    # 给个示例
+            # OpenApiExample(
             OpenApiExample(
+                # "成功示例",
                 "成功示例",
+                # 定义字典 value
                 value={"id": 1, "name": "老王", "email": "w@x.com"},
+                # 定义变量 response_only，赋值为 True,
                 response_only=True,
+            # )
             )
+        # ],
         ],
+    # )
     )
+    # 定义函数 create，参数: self, request, *args, **kwargs
     def create(self, request, *args, **kwargs):
+        # 返回 super().create(request, *args, **kwargs)
         return super().create(request, *args, **kwargs)
 \`\`\`
 
@@ -1120,11 +1470,15 @@ OpenAPI 不是唯一选择,还有几种:
 
 \`\`\`bash
 # 用 curl 测试一个用户接口
+# 发送 HTTP 请求
 curl -X GET http://localhost:5000/users/1
 
 # 带 JSON 请求体创建用户
+# 发送 POST 请求
 curl -X POST http://localhost:5000/users \\
+  # -H "Content-Type: application/json" \\
   -H "Content-Type: application/json" \\
+  # -d '{"name": "老王", "email": "w@x.com"}'
   -d '{"name": "老王", "email": "w@x.com"}'
 \`\`\`
 
@@ -1135,63 +1489,111 @@ curl -X POST http://localhost:5000/users \\
 下面是一个完整的 Flask-RESTX 项目,带 Swagger 文档:
 
 \`\`\`python
+# 从 flask 导入 Flask, request
 from flask import Flask, request
+# 从 flask_restx 导入 Api, Resource, fields
 from flask_restx import Api, Resource, fields
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
+# 定义变量 api，赋值为 Api(
 api = Api(
+    # app,
     app,
+    # 定义变量 version，赋值为 "1.0",
     version="1.0",
+    # 定义变量 title，赋值为 "博客 API",
     title="博客 API",
+    # 定义变量 description，赋值为 "博客系统的完整接口文档,可在线测试",
     description="博客系统的完整接口文档,可在线测试",
     doc="/docs/",  # Swagger UI 路径
+# )
 )
 
 # ===== 定义模型(同时用于校验和文档)=====
+# 定义变量 post_model，赋值为 api.model("Post", {
 post_model = api.model("Post", {
+    # "id":      fields.Integer(readOnly=True, descripti
     "id":      fields.Integer(readOnly=True, description="文章 ID"),
+    # "title":   fields.String(required=True, descriptio
     "title":   fields.String(required=True, description="标题"),
+    # "content": fields.String(description="正文"),
     "content": fields.String(description="正文"),
+    # "status":  fields.String(default="draft", descript
     "status":  fields.String(default="draft", description="状态:draft/published"),
+# })
 })
 
+# 定义列表 posts
 posts = []
+# 定义变量 next_id，赋值为 1
 next_id = 1
 
 # ===== 定义接口 =====
+# 装饰器：api.route
 @api.route("/posts")
+# 定义类 PostList，继承 Resource
 class PostList(Resource):
+    # 装饰器：api.doc
     @api.doc("list_posts")
+    # 装饰器：api.param
     @api.param("page", "页码", _default="1", type=int)
+    # 定义函数 get，参数: self
     def get(self):
+        # """获取文章列表"""
         """获取文章列表"""
+        # 返回 posts
         return posts
 
+    # 装饰器：api.doc
     @api.doc("create_post")
+    # 装饰器：api.expect
     @api.expect(post_model)
+    # 装饰器：api.marshal_with
     @api.marshal_with(post_model, code=201)
+    # 定义函数 post，参数: self
     def post(self):
+        # """新建文章"""
         """新建文章"""
+        # global next_id
         global next_id
+        # 定义变量 data，赋值为 api.payload
         data = api.payload
+        # 定义字典 post
         post = {"id": next_id, "title": data["title"], "content": data.get("content", "")}
+        # 调用 posts.append()
         posts.append(post)
+        # next_id += 1
         next_id += 1
+        # 返回 post, 201
         return post, 201
 
+# 装饰器：api.route
 @api.route("/posts/<int:post_id>")
+# 装饰器：api.response
 @api.response(404, "文章不存在")
+# 定义类 Post，继承 Resource
 class Post(Resource):
+    # 装饰器：api.doc
     @api.doc("get_post")
+    # 装饰器：api.marshal_with
     @api.marshal_with(post_model)
+    # 定义函数 get，参数: self, post_id
     def get(self, post_id):
+        # """获取单篇文章"""
         """获取单篇文章"""
+        # 定义变量 post，赋值为 next((p for p in posts if p["id"] == post_id)...
         post = next((p for p in posts if p["id"] == post_id), None)
+        # 条件判断：如果 not post
         if not post:
+            # 调用 api.abort()
             api.abort(404, "文章不存在")
+        # 返回 post
         return post
 
+# 判断是否直接运行此脚本
 if __name__ == "__main__":
+    # 调用 app.run()
     app.run(debug=True)
 \`\`\`
 

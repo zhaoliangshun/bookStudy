@@ -66,10 +66,10 @@ WebSocket 协议内置了 ping/pong 帧用于保活检测：
 
 \`\`\`javascript
 // 简单的重连策略示例
-function connect() {
+function connect() {  // 声明函数 connect
   const ws = new WebSocket('ws://localhost:3000');
   ws.onclose = () => {
-    setTimeout(connect, Math.min(1000 * Math.pow(2, retries), 30000));
+    setTimeout(connect, Math.min(1000 * Math.pow(2, retries), 30000));  // 延时回调（宏任务，timers 阶段执行）
   };
 }
 \`\`\`
@@ -397,10 +397,10 @@ data: {"status": "ok"}
 客户端通过浏览器内置的 \`EventSource\` 对象连接 SSE：
 
 \`\`\`javascript
-const es = new EventSource('/events');
+const es = new EventSource('/events');  // 创建实例 es
 es.onmessage = (e) => console.log(e.data);
 es.addEventListener('custom-event', (e) => {
-  console.log('Custom:', e.data);
+  console.log('Custom:', e.data);  // 打印日志到 stdout
 });
 \`\`\`
 
@@ -2495,10 +2495,10 @@ Webhook 的核心是事件-回调的注册机制：
 Webhook 安全性的核心是签名验证，确保请求确实来自可信源：
 
 \`\`\`javascript
-const crypto = require('crypto');
+const crypto = require('crypto');  // 导入模块 crypto；require 返回 module.exports
 
 // 生成签名
-const signature = crypto
+const signature = crypto  // 定义常量 signature
   .createHmac('sha256', secret)
   .update(JSON.stringify(payload))
   .digest('hex');
@@ -2520,12 +2520,12 @@ headers['X-Webhook-Signature'] = signature;
 
 \`\`\`javascript
 // 接收方处理
-const webhookId = req.headers['x-webhook-id'];
-if (await alreadyProcessed(webhookId)) {
+const webhookId = req.headers['x-webhook-id'];  // 定义常量 webhookId
+if (await alreadyProcessed(webhookId)) {  // 条件判断
   return res.status(200).send('OK'); // 已处理，直接返回成功
 }
-await processEvent(payload);
-await markAsProcessed(webhookId);
+await processEvent(payload);  // 等待 Promise 完成后再继续
+await markAsProcessed(webhookId);  // 等待 Promise 完成后再继续
 \`\`\`
 
 ## Webhook 安全性最佳实践
@@ -3787,12 +3787,12 @@ src/
 
 \`\`\`javascript
 // 全局错误处理中间件
-app.use((err, req, res, next) => {
-  if (err instanceof ValidationError) {
-    return res.status(422).json({ error: err.message });
+app.use((err, req, res, next) => {  // 注册 Express 中间件（每个请求依次经过）
+  if (err instanceof ValidationError) {  // 条件判断
+    return res.status(422).json({ error: err.message });  // 返回值
   }
   logger.error('Unexpected error', err);
-  res.status(500).json({ error: 'Internal Server Error' });
+  res.status(500).json({ error: 'Internal Server Error' });  // 设置响应状态码
 });
 \`\`\`
 

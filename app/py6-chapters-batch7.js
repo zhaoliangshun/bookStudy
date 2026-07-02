@@ -255,8 +255,9 @@ with语句通过上下文管理器协议工作：
 
 ### 语法格式
 
-\`\`\`python
+\`\`\`python# 使用 with 语句打开文件，'r' 表示只读模式，f 为文件对象别名
 with open('file.txt', 'r') as f:
+    # 一次性读取文件全部内容为字符串
     content = f.read()
 # 离开with块后f自动关闭，即使内部出错
 \`\`\``,
@@ -854,9 +855,10 @@ finally:
 
 ### try/except 基本语法
 
-\`\`\`python
+\`\`\`python# try 块包裹可能抛出异常的代码，便于统一捕获处理
 try:
     可能出错的代码
+# except 捕获指定类型的异常，并执行下方处理代码
 except 异常类型:
     出错时执行的代码
 \`\`\`
@@ -997,13 +999,16 @@ print("✅ 应该指定具体异常类型，如 except ValueError:")
 
 ### 语法
 
-\`\`\`python
+\`\`\`python# try 块放置需要监控异常的代码
 try:
     代码
+# 捕获类型1异常并做对应处理
 except 类型1:
     处理类型1
+# 用元组形式同时捕获多种异常类型，命中其一即进入该分支
 except (类型2, 类型3):
     处理类型2或3
+# as e 把捕获到的异常对象绑定到变量 e，便于查看错误详情
 except 类型4 as e:
     处理类型4，e是异常对象
 \`\`\`
@@ -1149,13 +1154,16 @@ for a, b in test_cases:
 
 ### 完整结构
 
-\`\`\`python
+\`\`\`python# try 块放置可能出错的代码
 try:
     可能出错的代码
+# 捕获指定类型异常并处理
 except 异常类型:
     异常处理代码
+# else 块仅在 try 未抛出任何异常时执行，常用于依赖成功的后续操作
 else:
     没有异常时执行
+# finally 块无论是否发生异常都会执行，通常用于资源清理
 finally:
     无论是否异常都执行（清理）
 \`\`\`
@@ -1455,10 +1463,13 @@ except ValueError as e:
 
 ### 如何定义
 
-\`\`\`python
+\`\`\`python# 自定义异常类，继承内置 Exception，使其可被 raise 抛出、except 捕获
 class 自定义异常名(Exception):
+    # 构造方法，self 指向实例本身，参数用于携带异常信息
     def __init__(self, 参数):
+        # 把参数保存为实例属性，便于后续取出
         self.参数 = 参数
+        # 调用父类构造并传入错误消息，保证异常对象行为正常
         super().__init__(错误消息)
 \`\`\`
 
@@ -1791,11 +1802,14 @@ print("   - 原始异常包含敏感信息不希望暴露")
 
 #### 方式一：类实现（__enter__ + __exit__）
 
-\`\`\`python
+\`\`\`python# 定义上下文管理器类，实现 __enter__ 与 __exit__ 即可用于 with 语句
 class MyContext:
+    # 进入 with 块时调用，self 是管理器实例
     def __enter__(self):
         # 获取资源
+        # 返回的对象会赋值给 with ... as 变量
         return 资源对象  # 赋值给as变量
+    # 离开 with 块时调用，三个参数为异常类型、异常值、回溯信息
     def __exit__(self, exc_type, exc_val, exc_tb):
         # 释放资源
         # 返回True表示吞掉异常，False/None继续抛出
@@ -1810,11 +1824,15 @@ class MyContext:
 
 用生成器语法更简洁：
 
-\`\`\`python
+\`\`\`python# 用 contextmanager 装饰器把生成器函数转为上下文管理器，免去定义类
 @contextmanager
+# 定义上下文管理器函数
 def my_context():
+    # yield 之前的代码相当于 __enter__：获取资源
     # __enter__代码：获取资源
+    # yield 暂停函数并把资源交给 with 块使用
     yield 资源  # 这里暂停，执行with块
+    # yield 之后的代码相当于 __exit__：释放资源
     # __exit__代码：释放资源
 \`\`\`
 

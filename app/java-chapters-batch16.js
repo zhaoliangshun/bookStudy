@@ -138,8 +138,8 @@ public class Main {
 ## 顶层抽象类
 
 \`\`\`java
-public abstract class InputStream  { abstract int read(); ... }
-public abstract class OutputStream { abstract void write(int b); ... }
+public abstract class InputStream  { abstract int read(); ... }  // 定义抽象类 InputStream
+public abstract class OutputStream { abstract void write(int b); ... }  // 定义抽象类 OutputStream
 \`\`\`
 
 \`read()\` 返回 0~255 的 int（读到末尾返回 -1）；\`write(int b)\` 写入参数的低 8 位。
@@ -170,12 +170,12 @@ void close();                 // 关闭流
 
 ## 批量读取 vs 单字节读取
 
-单字节 \`read()\` 每次调用都触发一次底层 I/O，性能极差。**批量读取**（传入 byte\[\]）可显著减少 I/O 次数：
+单字节 \`read()\` 每次调用都触发一次底层 I/O，性能极差。**批量读取**（传入 byte\\[\\]）可显著减少 I/O 次数：
 
 \`\`\`java
-byte[] buf = new byte[1024];
-int n;
-while ((n = in.read(buf)) != -1) {
+byte[] buf = new byte[1024];  // 声明变量 buf（byte[]），初始值为 new byte[1024]
+int n;  // 声明变量 n（int 类型）
+while ((n = in.read(buf)) != -1) {  // while 循环：当 (n = in.read(buf)) != -1 为真时重复执行
     out.write(buf, 0, n); // 只写实际读到的字节数
 }
 \`\`\`
@@ -191,7 +191,7 @@ while ((n = in.read(buf)) != -1) {
 字节流读文本时不会自动解码，需手动指定字符集：
 
 \`\`\`java
-String s = new String(bytes, "UTF-8");
+String s = new String(bytes, "UTF-8");  // 声明变量 s（String），初始值为 new String(bytes, "UTF-8")
 \`\`\`
 
 否则会使用平台默认编码，导致乱码。处理文本优先用字符流。
@@ -273,8 +273,8 @@ public class Main {
 ## 顶层抽象类
 
 \`\`\`java
-public abstract class Reader  { abstract int read(); ... }
-public abstract class Writer { abstract void write(char[] c, int off, int len); ... }
+public abstract class Reader  { abstract int read(); ... }  // 定义抽象类 Reader
+public abstract class Writer { abstract void write(char[] c, int off, int len); ... }  // 定义抽象类 Writer
 \`\`\`
 
 \`read()\` 返回 0~65535 的 int（读到末尾返回 -1）。
@@ -295,7 +295,7 @@ public abstract class Writer { abstract void write(char[] c, int off, int len); 
 
 \`\`\`java
 Reader r = new InputStreamReader(
-    new FileInputStream("a.txt"), StandardCharsets.UTF_8);
+    new FileInputStream("a.txt"), StandardCharsets.UTF_8);  // 创建 FileInputStream 对象
 \`\`\`
 
 \`FileReader\` 本质上是 \`InputStreamReader\` 的子类，但 JDK 11 前不支持指定编码，容易导致乱码。**推荐显式使用 \`InputStreamReader\`**。
@@ -425,10 +425,10 @@ public class Main {
 \`readLine()\` 一次读一行文本，返回不含换行符的 \`String\`，读到末尾返回 \`null\`：
 
 \`\`\`java
-BufferedReader br = new BufferedReader(new FileReader("a.txt"));
-String line;
-while ((line = br.readLine()) != null) {
-    System.out.println(line);
+BufferedReader br = new BufferedReader(new FileReader("a.txt"));  // 声明变量 br（BufferedReader），初始值为 new BufferedReader(new FileReader("a.txt"))
+String line;  // 声明变量 line（String 类型）
+while ((line = br.readLine()) != null) {  // while 循环：当 (line = br.readLine()) != null 为真时重复执行
+    System.out.println(line);  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -589,7 +589,7 @@ void flush();              // 刷新
 \`System.out\` 和 \`System.err\` 都是 \`PrintStream\`：
 
 \`\`\`java
-System.out.println("标准输出");
+System.out.println("标准输出");  // 打印一行到标准输出（自动换行）
 System.err.println("错误输出"); // 通常显示为红色
 \`\`\`
 
@@ -610,8 +610,8 @@ new PrintWriter(new FileWriter("log.txt"), true); // true 开启自动刷新
 打印流**不抛出 IOException**，内部错误通过 \`checkError()\` 检查：
 
 \`\`\`java
-PrintWriter pw = new PrintWriter(...);
-pw.println(data);
+PrintWriter pw = new PrintWriter(...);  // 声明变量 pw（PrintWriter），初始值为 new PrintWriter(...)
+pw.println(data);  // 调用 pw 的 println 方法
 if (pw.checkError()) { // 返回是否发生过错误
     // 处理错误
 }
@@ -722,10 +722,10 @@ public class Main {
 \`Serializable\` 是一个**标记接口**（无方法），实现它表示该类可被序列化：
 
 \`\`\`java
-public class User implements Serializable {
-    private static final long serialVersionUID = 1L;
-    private String name;
-    private int age;
+public class User implements Serializable {  // 定义类 User
+    private static final long serialVersionUID = 1L;  // 声明静态常量私有变量 serialVersionUID（long），初始值为 1L
+    private String name;  // 声明私有变量 name（String 类型）
+    private int age;  // 声明私有变量 age（int 类型）
 }
 \`\`\`
 
@@ -742,12 +742,12 @@ public class User implements Serializable {
 
 \`\`\`java
 // 序列化
-ObjectOutputStream oos = new ObjectOutputStream(out);
-oos.writeObject(user);
+ObjectOutputStream oos = new ObjectOutputStream(out);  // 声明变量 oos（ObjectOutputStream），初始值为 new ObjectOutputStream(out)
+oos.writeObject(user);  // 调用 oos 的 writeObject 方法
 
 // 反序列化
-ObjectInputStream ois = new ObjectInputStream(in);
-User u = (User) ois.readObject();
+ObjectInputStream ois = new ObjectInputStream(in);  // 声明变量 ois（ObjectInputStream），初始值为 new ObjectInputStream(in)
+User u = (User) ois.readObject();  // 声明变量 u（User），初始值为 (User) ois.readObject()
 \`\`\`
 
 ## transient 关键字
@@ -773,7 +773,7 @@ transient String password; // 不会被保存
 实现 \`writeObject\` / \`readObject\` 私有方法可自定义序列化逻辑，或实现 \`Externalizable\` 接口完全控制：
 
 \`\`\`java
-private void writeObject(ObjectOutputStream oos) throws IOException {
+private void writeObject(ObjectOutputStream oos) throws IOException {  // 方法 writeObject，返回 void，参数：ObjectOutputStream oos
     oos.defaultWriteObject(); // 默认逻辑
     oos.writeObject(encrypt(password)); // 自定义加密
 }
@@ -914,11 +914,11 @@ void writeFloat(float v);    // 4 字节
 void writeUTF(String s);     // 变长 UTF-8 编码
 
 // DataInputStream 读取（必须与写入顺序一致）
-int readInt();
-long readLong();
-double readDouble();
-boolean readBoolean();
-String readUTF();
+int readInt();  // 方法 readInt，返回 int，无参数
+long readLong();  // 方法 readLong，返回 long，无参数
+double readDouble();  // 方法 readDouble，返回 double，无参数
+boolean readBoolean();  // 方法 readBoolean，返回 boolean，无参数
+String readUTF();  // 方法 readUTF，返回 String，无参数
 \`\`\`
 
 ## writeUTF 不是标准 UTF-8
@@ -930,9 +930,9 @@ String readUTF();
 Data 流是**顺序读写**，读取顺序必须与写入顺序完全一致，否则数据错乱：
 
 \`\`\`java
-dos.writeInt(100);
-dos.writeUTF("hello");
-dos.writeDouble(3.14);
+dos.writeInt(100);  // 调用 dos 的 writeInt 方法
+dos.writeUTF("hello");  // 调用 dos 的 writeUTF 方法
+dos.writeDouble(3.14);  // 调用 dos 的 writeDouble 方法
 // 读取时必须：readInt → readUTF → readDouble
 \`\`\`
 
@@ -946,7 +946,7 @@ Data 流通常包装在缓冲流外：
 
 \`\`\`java
 DataOutputStream dos = new DataOutputStream(
-    new BufferedOutputStream(new FileOutputStream("data.bin")));
+    new BufferedOutputStream(new FileOutputStream("data.bin")));  // 创建 BufferedOutputStream 对象
 \`\`\`
 
 ## 读取到末尾
@@ -954,11 +954,11 @@ DataOutputStream dos = new DataOutputStream(
 \`readInt()\` 等方法在读到流末尾时抛出 \`EOFException\`（而非返回 -1），可用此异常判断结束：
 
 \`\`\`java
-try {
-    while (true) {
-        int v = dis.readInt();
+try {  // try 块：包裹可能抛出异常的代码
+    while (true) {  // while 循环：当 true 为真时重复执行
+        int v = dis.readInt();  // 声明变量 v（int），初始值为 dis.readInt()
     }
-} catch (EOFException e) {
+} catch (EOFException e) {  // 捕获异常 EOFException e
     // 读完了
 }
 \`\`\`
@@ -1070,7 +1070,7 @@ public class Main {
 ## 构造与模式
 
 \`\`\`java
-RandomAccessFile raf = new RandomAccessFile("data.dat", "rw");
+RandomAccessFile raf = new RandomAccessFile("data.dat", "rw");  // 声明变量 raf（RandomAccessFile），初始值为 new RandomAccessFile("data.dat", "rw")
 \`\`\`
 
 模式参数：
@@ -1102,8 +1102,8 @@ int skipBytes(int n);   // 向前跳 n 字节
 \`\`\`java
 int readInt();          // 读 4 字节 int
 void writeInt(int v);   // 写 4 字节 int
-String readUTF();
-void writeUTF(String s);
+String readUTF();  // 方法 readUTF，返回 String，无参数
+void writeUTF(String s);  // 方法 writeUTF，返回 void，参数：String s
 // ... readLong/writeLong/readDouble 等
 \`\`\`
 
@@ -1240,7 +1240,7 @@ public class Main {
 \`\`\`java
 new File("a.txt");              // 相对路径
 new File("/tmp", "a.txt");      // 父目录 + 子路径
-new File(new File("/tmp"), "a.txt");
+new File(new File("/tmp"), "a.txt");  // 创建 File 对象
 \`\`\`
 
 路径分隔符跨平台不同，建议用 \`File.separator\`（Windows 是 \`\\\`，Linux 是 \`/\`）。
@@ -1301,12 +1301,12 @@ File[] listFiles(FileFilter);    // 过滤
 遍历目录树是常见操作：
 
 \`\`\`java
-void listAll(File dir) {
-    File[] files = dir.listFiles();
-    if (files != null) {
-        for (File f : files) {
+void listAll(File dir) {  // 方法 listAll，返回 void，参数：File dir
+    File[] files = dir.listFiles();  // 声明变量 files（File[]），初始值为 dir.listFiles()
+    if (files != null) {  // 条件判断：满足 files != null 时执行
+        for (File f : files) {  // 增强 for：遍历 files，每次取一个元素 f
             if (f.isDirectory()) listAll(f); // 递归
-            else System.out.println(f);
+            else System.out.println(f);  // 打印一行到标准输出（自动换行）
         }
     }
 }
@@ -1428,12 +1428,12 @@ public class Main {
 ## 创建 Path
 
 \`\`\`java
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.Path;  // 导入类 java.nio.file.Path
+import java.nio.file.Paths;  // 导入类 java.nio.file.Paths
 
-Path p1 = Paths.get("a.txt");
+Path p1 = Paths.get("a.txt");  // 声明变量 p1（Path），初始值为 Paths.get("a.txt")
 Path p2 = Paths.get("/home", "user", "file.txt"); // 可变参数拼接
-Path p3 = FileSystems.getDefault().getPath("/tmp/x");
+Path p3 = FileSystems.getDefault().getPath("/tmp/x");  // 声明变量 p3（Path），初始值为 FileSystems.getDefault().getPath("/tmp/x")
 \`\`\`
 
 \`Paths.get()\` 是 \`FileSystems.getDefault().getPath()\` 的快捷方式。
@@ -1452,7 +1452,7 @@ Path p3 = FileSystems.getDefault().getPath("/tmp/x");
 ## 路径信息查询
 
 \`\`\`java
-Path p = Paths.get("/home/user/docs/file.txt");
+Path p = Paths.get("/home/user/docs/file.txt");  // 声明变量 p（Path），初始值为 Paths.get("/home/user/docs/file.txt")
 
 p.getFileName();     // file.txt
 p.getParent();       // /home/user/docs
@@ -1470,7 +1470,7 @@ p.toUri();           // file:///home/user/docs/file.txt
 \`resolve\` 拼接路径，相当于 \`new File(parent, child)\`：
 
 \`\`\`java
-Path base = Paths.get("/home/user");
+Path base = Paths.get("/home/user");  // 声明变量 base（Path），初始值为 Paths.get("/home/user")
 Path full = base.resolve("docs/file.txt"); // /home/user/docs/file.txt
 \`\`\`
 
@@ -1485,8 +1485,8 @@ base.resolve("/etc"); // 返回 /etc（覆盖 base）
 \`relativize\` 计算从一条路径到另一条路径的相对路径：
 
 \`\`\`java
-Path a = Paths.get("/home/user/docs");
-Path b = Paths.get("/home/user/images");
+Path a = Paths.get("/home/user/docs");  // 声明变量 a（Path），初始值为 Paths.get("/home/user/docs")
+Path b = Paths.get("/home/user/images");  // 声明变量 b（Path），初始值为 Paths.get("/home/user/images")
 a.relativize(b); // ../images
 \`\`\`
 
@@ -1505,7 +1505,7 @@ Paths.get("/a/b/../c/./d").normalize(); // /a/c/d
 \`resolveSibling\` 替换文件名，常用于改后缀：
 
 \`\`\`java
-Path p = Paths.get("/data/file.txt");
+Path p = Paths.get("/data/file.txt");  // 声明变量 p（Path），初始值为 Paths.get("/data/file.txt")
 p.resolveSibling("file.bak"); // /data/file.bak
 \`\`\`
 
@@ -1610,16 +1610,16 @@ public class Main {
 
 \`\`\`java
 // 读取所有行（返回 List<String>）
-List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
+List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);  // 声明变量 lines（List<String>），初始值为 Files.readAllLines(path, StandardCharsets.UTF_8)
 
 // 读取所有字节
-byte[] bytes = Files.readAllBytes(path);
+byte[] bytes = Files.readAllBytes(path);  // 声明变量 bytes（byte[]），初始值为 Files.readAllBytes(path)
 
 // 写入字符串
-Files.write(path, "内容".getBytes(StandardCharsets.UTF_8));
+Files.write(path, "内容".getBytes(StandardCharsets.UTF_8));  // 调用 Files 的 write 方法
 
 // 写入行（自动加换行）
-Files.write(path, lines, StandardCharsets.UTF_8);
+Files.write(path, lines, StandardCharsets.UTF_8);  // 调用 Files 的 write 方法
 \`\`\`
 
 注意：\`readAllLines\` 会把整个文件读入内存，**大文件用 \`Files.lines()\`** 返回 Stream 按行流式处理。
@@ -1651,24 +1651,24 @@ Files.copy(src, dst, StandardCopyOption.COPY_ATTRIBUTES); // 复制属性
 \`\`\`java
 Files.size(path);                // 大小
 Files.getLastModifiedTime(path); // 修改时间
-Files.isReadable(path);
-Files.isWritable(path);
-Files.isHidden(path);
-Files.isDirectory(path);
-Files.isRegularFile(path);
+Files.isReadable(path);  // 调用 Files 的 isReadable 方法
+Files.isWritable(path);  // 调用 Files 的 isWritable 方法
+Files.isHidden(path);  // 调用 Files 的 isHidden 方法
+Files.isDirectory(path);  // 调用 Files 的 isDirectory 方法
+Files.isRegularFile(path);  // 调用 Files 的 isRegularFile 方法
 \`\`\`
 
 ## 遍历目录
 
 \`\`\`java
 // list：列出一层（不递归）
-try (Stream<Path> s = Files.list(dir)) {
-    s.forEach(System.out::println);
+try (Stream<Path> s = Files.list(dir)) {  // try-with-resources：声明资源 Stream<Path> s = Files.list(dir)，结束自动关闭
+    s.forEach(System.out::println);  // 方法引用：复用已有方法作为函数式接口实例
 }
 
 // walk：递归遍历
-try (Stream<Path> s = Files.walk(dir, maxDepth)) {
-    s.filter(Files::isRegularFile).forEach(...);
+try (Stream<Path> s = Files.walk(dir, maxDepth)) {  // try-with-resources：声明资源 Stream<Path> s = Files.walk(dir, maxDepth)，结束自动关闭
+    s.filter(Files::isRegularFile).forEach(...);  // 方法引用：复用已有方法作为函数式接口实例
 }
 \`\`\`
 
@@ -2040,18 +2040,18 @@ class Arrays2 {
 
 \`\`\`java
 // 从流获取
-FileChannel ch = new FileInputStream("a.txt").getChannel();
-FileChannel ch = new RandomAccessFile("a.txt", "rw").getChannel();
+FileChannel ch = new FileInputStream("a.txt").getChannel();  // 声明变量 ch（FileChannel），初始值为 new FileInputStream("a.txt").getChannel()
+FileChannel ch = new RandomAccessFile("a.txt", "rw").getChannel();  // 声明变量 ch（FileChannel），初始值为 new RandomAccessFile("a.txt", "rw").getChannel()
 // JDK 7+ 直接打开
-FileChannel ch = FileChannel.open(path, StandardOpenOption.READ);
+FileChannel ch = FileChannel.open(path, StandardOpenOption.READ);  // 声明变量 ch（FileChannel），初始值为 FileChannel.open(path, StandardOpenOption.READ)
 \`\`\`
 
 ## 读写：必须用 Buffer
 
 \`\`\`java
-ByteBuffer buf = ByteBuffer.allocate(1024);
+ByteBuffer buf = ByteBuffer.allocate(1024);  // 声明变量 buf（ByteBuffer），初始值为 ByteBuffer.allocate(1024)
 int n = channel.read(buf);  // 读到 Buffer
-buf.flip();
+buf.flip();  // 调用 buf 的 flip 方法
 channel.write(buf);         // 从 Buffer 写
 \`\`\`
 
@@ -2062,9 +2062,9 @@ channel.write(buf);         // 从 Buffer 写
 \`transferTo\` 直接在两个 Channel 间传输数据，可能不经过用户空间（操作系统直接复制），性能极高：
 
 \`\`\`java
-srcChannel.transferTo(0, srcChannel.size(), dstChannel);
+srcChannel.transferTo(0, srcChannel.size(), dstChannel);  // 调用 srcChannel 的 transferTo 方法
 // 等价于
-dstChannel.transferFrom(srcChannel, 0, srcChannel.size());
+dstChannel.transferFrom(srcChannel, 0, srcChannel.size());  // 调用 dstChannel 的 transferFrom 方法
 \`\`\`
 
 这是大文件复制的**最佳方式**。
@@ -2243,8 +2243,8 @@ ASCII 字符在 UTF-8 中仍是 1 字节，因此英文文本 UTF-8 节省空间
 Java \`char\` 是 16 位，内部用 UTF-16 存储。字符串与字节互转时必须指定编码：
 
 \`\`\`java
-byte[] bytes = "中文".getBytes(StandardCharsets.UTF_8);
-String s = new String(bytes, StandardCharsets.UTF_8);
+byte[] bytes = "中文".getBytes(StandardCharsets.UTF_8);  // 声明变量 bytes（byte[]），初始值为 "中文".getBytes(StandardCharsets.UTF_8)
+String s = new String(bytes, StandardCharsets.UTF_8);  // 声明变量 s（String），初始值为 new String(bytes, StandardCharsets.UTF_8)
 \`\`\`
 
 ## StandardCharsets
@@ -2272,9 +2272,9 @@ StandardCharsets.US_ASCII
 
 \`\`\`java
 // 假设原本是 UTF-8，被错误用 ISO-8859-1 解码
-String wrong = new String(utf8Bytes, "ISO-8859-1");
+String wrong = new String(utf8Bytes, "ISO-8859-1");  // 声明变量 wrong（String），初始值为 new String(utf8Bytes, "ISO-8859-1")
 // 修复：先按 ISO-8859-1 还原字节，再用 UTF-8 解码
-String right = new String(wrong.getBytes("ISO-8859-1"), "UTF-8");
+String right = new String(wrong.getBytes("ISO-8859-1"), "UTF-8");  // 声明变量 right（String），初始值为 new String(wrong.getBytes("ISO-8859-1"), "UTF-8")
 \`\`\`
 
 ## Charset 类
@@ -2397,16 +2397,16 @@ I/O 是程序性能瓶颈的高发区。掌握 I/O 调优技巧，能让程序�
 
 \`\`\`java
 // 慢：每字节一次系统调用
-int b;
+int b;  // 声明变量 b（int 类型）
 while ((b = in.read()) != -1) { ... }
 
 // 快：批量读取
-byte[] buf = new byte[8192];
-int n;
+byte[] buf = new byte[8192];  // 声明变量 buf（byte[]），初始值为 new byte[8192]
+int n;  // 声明变量 n（int 类型）
 while ((n = in.read(buf)) != -1) { ... }
 
 // 最简洁：直接用 BufferedInputStream 包装
-BufferedInputStream bis = new BufferedInputStream(in);
+BufferedInputStream bis = new BufferedInputStream(in);  // 声明变量 bis（BufferedInputStream），初始值为 new BufferedInputStream(in)
 \`\`\`
 
 默认缓冲区 8KB，大文件可适当增大到 64KB，但收益递减。
@@ -2431,11 +2431,11 @@ BufferedInputStream bis = new BufferedInputStream(in);
 
 \`\`\`java
 // 零拷贝
-src.transferTo(0, src.size(), dst);
+src.transferTo(0, src.size(), dst);  // 调用 src 的 transferTo 方法
 
 // 内存映射
 MappedByteBuffer mbb = fileChannel.map(
-    FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());
+    FileChannel.MapMode.READ_ONLY, 0, fileChannel.size());  // 调用 FileChannel.MapMode.READ_ONLY, 0, fileChannel 的 size 方法
 \`\`\`
 
 ## 4. 内存映射文件
@@ -2463,12 +2463,12 @@ MappedByteBuffer mbb = fileChannel.map(
 
 \`\`\`java
 // 大文件行处理
-try (Stream<String> s = Files.lines(path)) {
-    s.filter(...).forEach(...);
+try (Stream<String> s = Files.lines(path)) {  // try-with-resources：声明资源 Stream<String> s = Files.lines(path)，结束自动关闭
+    s.filter(...).forEach(...);  // 调用 s 的 filter 方法
 }
 
 // Buffer 循环读
-ByteBuffer buf = ByteBuffer.allocate(8192);
+ByteBuffer buf = ByteBuffer.allocate(8192);  // 声明变量 buf（ByteBuffer），初始值为 ByteBuffer.allocate(8192)
 while (channel.read(buf) != -1) { ... }
 \`\`\`
 

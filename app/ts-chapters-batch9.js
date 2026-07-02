@@ -55,27 +55,27 @@ export const chapters = [
 #### 类实现
 
 \`\`\`ts
-class Logger {
+class Logger {  // 定义类 Logger
   private static instance: Logger;
-  private logs: string[] = [];
+  private logs: string[] = [];  // 类属性 logs: string[]
 
   private constructor() {} // 私有构造，禁止外部 new
 
-  static getInstance(): Logger {
-    if (!Logger.instance) {
-      Logger.instance = new Logger();
+  static getInstance(): Logger {  // get 方法 Instance() 返回 Logger
+    if (!Logger.instance) {  // 条件判断
+      Logger.instance = new Logger();  // 赋值 Logger.instance
     }
-    return Logger.instance;
+    return Logger.instance;  // 返回 Logger.instance
   }
 
-  log(msg: string): void {
-    this.logs.push(msg);
-    console.log("[LOG]", msg);
+  log(msg: string): void {  // 方法声明 log(msg: string)，返回 void
+    this.logs.push(msg);  // 调用 this.logs.push
+    console.log("[LOG]", msg);  // 控制台输出
   }
 }
 
-const a = Logger.getInstance();
-const b = Logger.getInstance();
+const a = Logger.getInstance();  // 声明常量 a
+const b = Logger.getInstance();  // 声明常量 b
 console.log(a === b); // true，同一实例
 \`\`\`
 
@@ -85,9 +85,9 @@ ES Module 本身就是单例——一个模块只会被求值一次，导出的�
 
 \`\`\`ts
 // logger.ts
-class Logger {
-  private logs: string[] = [];
-  log(msg: string) { this.logs.push(msg); console.log(msg); }
+class Logger {  // 定义类 Logger
+  private logs: string[] = [];  // 类属性 logs: string[]
+  log(msg: string) { this.logs.push(msg); console.log(msg); }  // 调用 log
 }
 export const logger = new Logger(); // 模块级单例
 \`\`\`
@@ -120,28 +120,28 @@ JavaScript 单线程，无需考虑多线程下的双重检查锁。但在异步
 用一个函数根据参数返回不同子类。**不是 GoF 模式**，但最常用。
 
 \`\`\`ts
-type AnimalKind = "dog" | "cat" | "bird";
+type AnimalKind = "dog" | "cat" | "bird";  // 定义类型别名 AnimalKind
 
-interface Animal {
+interface Animal {  // 定义接口 Animal
   kind: AnimalKind;
-  speak(): string;
+  speak(): string;  // 方法声明 speak()，返回 string
 }
 
-class Dog implements Animal {
-  kind = "dog" as const;
-  speak() { return "汪汪"; }
+class Dog implements Animal {  // 定义类 Dog，implements Animal
+  kind = "dog" as const;  // 赋值 kind（注意：类型断言会绕过类型检查）
+  speak() { return "汪汪"; }  // 调用 speak
 }
 
-class Cat implements Animal {
-  kind = "cat" as const;
-  speak() { return "喵喵"; }
+class Cat implements Animal {  // 定义类 Cat，implements Animal
+  kind = "cat" as const;  // 赋值 kind（注意：类型断言会绕过类型检查）
+  speak() { return "喵喵"; }  // 调用 speak
 }
 
-function createAnimal(kind: AnimalKind): Animal {
-  switch (kind) {
-    case "dog": return new Dog();
-    case "cat": return new Cat();
-    case "bird": return new Bird();
+function createAnimal(kind: AnimalKind): Animal {  // 定义函数 createAnimal，参数: kind: AnimalKind，返回 Animal
+  switch (kind) {  // switch 分支选择
+    case "dog": return new Dog();  // case 匹配分支
+    case "cat": return new Cat();  // case 匹配分支
+    case "bird": return new Bird();  // case 匹配分支
   }
 }
 \`\`\`
@@ -151,15 +151,15 @@ function createAnimal(kind: AnimalKind): Animal {
 定义创建对象的接口，由子类决定实例化哪个类。把"用什么"和"怎么造"解耦。
 
 \`\`\`ts
-abstract class Logistics {
+abstract class Logistics {  // 定义抽象类 Logistics
   abstract createTransport(): Transport;
-  deliver(): string {
-    const t = this.createTransport();
-    return "用 " + t.name + " 配送";
+  deliver(): string {  // 方法声明 deliver()，返回 string
+    const t = this.createTransport();  // 声明常量 t
+    return "用 " + t.name + " 配送";  // 返回 "用 " + t.name + " 配送"
   }
 }
-class TruckLogistics extends Logistics {
-  createTransport() { return new Truck(); }
+class TruckLogistics extends Logistics {  // 定义类 TruckLogistics，extends Logistics
+  createTransport() { return new Truck(); }  // 调用 createTransport
 }
 \`\`\`
 
@@ -168,12 +168,12 @@ class TruckLogistics extends Logistics {
 创建一系列相关对象（产品族）。如 UI 主题工厂同时创建 Button + Input + Modal。
 
 \`\`\`ts
-interface UIFactory {
-  createButton(): Button;
-  createInput(): Input;
+interface UIFactory {  // 定义接口 UIFactory
+  createButton(): Button;  // 方法声明 createButton()，返回 Button
+  createInput(): Input;  // 方法声明 createInput()，返回 Input
 }
-class DarkUIFactory implements UIFactory { /* 暗色系 */ }
-class LightUIFactory implements UIFactory { /* 亮色系 */ }
+class DarkUIFactory implements UIFactory { /* 暗色系 */ }  // 定义类 DarkUIFactory，implements UIFactory
+class LightUIFactory implements UIFactory { /* 亮色系 */ }  // 定义类 LightUIFactory，implements UIFactory
 \`\`\`
 
 #### 三种工厂对比
@@ -196,35 +196,35 @@ class LightUIFactory implements UIFactory { /* 亮色系 */ }
 - **发布订阅**：发布者与订阅者通过中间 Broker 解耦，互不感知。EventEmitter 介于两者之间。
 
 \`\`\`ts
-type Listener<T> = (payload: T) => void;
+type Listener<T> = (payload: T) => void;  // 定义类型别名 Listener，泛型参数 T
 
-class EventBus<EventMap extends Record<string, unknown>> {
-  private listeners: { [K in keyof EventMap]?: Listener<EventMap[K]>[] } = {};
+class EventBus<EventMap extends Record<string, unknown>> {  // 定义类 EventBus，泛型参数 EventMap extends Record<string, unknown
+  private listeners: { [K in keyof EventMap]?: Listener<EventMap[K]>[] } = {};  // 类属性 listeners: { [K in keyof EventMap]?: Listener<EventMap[K]>[] }
 
-  on<K extends keyof EventMap>(event: K, fn: Listener<EventMap[K]>): void {
+  on<K extends keyof EventMap>(event: K, fn: Listener<EventMap[K]>): void {  // 调用 on（显式指定泛型参数）
     (this.listeners[event] ??= []).push(fn);
   }
 
-  emit<K extends keyof EventMap>(event: K, payload: EventMap[K]): void {
-    (this.listeners[event] ?? []).forEach((fn) => fn(payload));
+  emit<K extends keyof EventMap>(event: K, payload: EventMap[K]): void {  // 调用 emit（显式指定泛型参数）
+    (this.listeners[event] ?? []).forEach((fn) => fn(payload));  // 箭头函数
   }
 
-  off<K extends keyof EventMap>(event: K, fn: Listener<EventMap[K]>): void {
-    const arr = this.listeners[event] ?? [];
-    const i = arr.indexOf(fn);
-    if (i >= 0) arr.splice(i, 1);
+  off<K extends keyof EventMap>(event: K, fn: Listener<EventMap[K]>): void {  // 调用 off（显式指定泛型参数）
+    const arr = this.listeners[event] ?? [];  // 声明常量 arr
+    const i = arr.indexOf(fn);  // 声明常量 i
+    if (i >= 0) arr.splice(i, 1);  // 条件判断
   }
 }
 
-interface AppEvents {
+interface AppEvents {  // 定义接口 AppEvents
   login: { userId: string };
   logout: void;
   error: { code: number; msg: string };
 }
 
-const bus = new EventBus<AppEvents>();
-bus.on("login", (p) => console.log("登录:", p.userId));
-bus.emit("login", { userId: "u1" });
+const bus = new EventBus<AppEvents>();  // 声明常量 bus
+bus.on("login", (p) => console.log("登录:", p.userId));  // 箭头函数
+bus.emit("login", { userId: "u1" });  // 调用 bus.emit
 \`\`\`
 
 注意这里的 **EventMap 限定 K** 让 \`emit("login", 123)\` 类型错误——payload 必须匹配。
@@ -236,24 +236,24 @@ bus.emit("login", { userId: "u1" });
 消除庞大的 \`switch/if-else\`。把每种"策略"封装成独立对象，运行时切换。如：支付方式、排序算法、折扣计算。
 
 \`\`\`ts
-interface DiscountStrategy {
-  calculate(price: number): number;
+interface DiscountStrategy {  // 定义接口 DiscountStrategy
+  calculate(price: number): number;  // 方法声明 calculate(price: number)，返回 number
 }
-class FullDiscount implements DiscountStrategy {
-  constructor(private threshold: number, private reduce: number) {}
-  calculate(price: number) {
-    return price >= this.threshold ? price - this.reduce : price;
+class FullDiscount implements DiscountStrategy {  // 定义类 FullDiscount，implements DiscountStrategy
+  constructor(private threshold: number, private reduce: number) {}  // 调用 constructor
+  calculate(price: number) {  // 调用 calculate
+    return price >= this.threshold ? price - this.reduce : price;  // 返回 price >= this.threshold ? price - this.reduce : price
   }
 }
-class PercentDiscount implements DiscountStrategy {
-  constructor(private percent: number) {}
-  calculate(price: number) { return price * this.percent; }
+class PercentDiscount implements DiscountStrategy {  // 定义类 PercentDiscount，implements DiscountStrategy
+  constructor(private percent: number) {}  // 调用 constructor
+  calculate(price: number) { return price * this.percent; }  // 调用 calculate
 }
 
-class Order {
-  constructor(private price: number, private strategy: DiscountStrategy) {}
-  setStrategy(s: DiscountStrategy) { this.strategy = s; }
-  finalPrice() { return this.strategy.calculate(this.price); }
+class Order {  // 定义类 Order
+  constructor(private price: number, private strategy: DiscountStrategy) {}  // 调用 constructor
+  setStrategy(s: DiscountStrategy) { this.strategy = s; }  // 调用 setStrategy
+  finalPrice() { return this.strategy.calculate(this.price); }  // 调用 finalPrice
 }
 \`\`\`
 
@@ -261,12 +261,12 @@ class Order {
 
 \`\`\`ts
 // ❌ 丑陋且难扩展
-function calc(price: number, type: string): number {
-  switch (type) {
-    case "full": return price >= 300 ? price - 50 : price;
-    case "percent": return price * 0.8;
-    case "newUser": return price - 20;
-    default: return price;
+function calc(price: number, type: string): number {  // 定义函数 calc，参数: price: number, type: string，返回 number
+  switch (type) {  // switch 分支选择
+    case "full": return price >= 300 ? price - 50 : price;  // case 匹配分支
+    case "percent": return price * 0.8;  // case 匹配分支
+    case "newUser": return price - 20;  // case 匹配分支
+    default: return price;  // 默认分支
   }
 }
 // ✅ 策略模式：新增策略不用改原代码（开闭原则）
@@ -288,17 +288,17 @@ function calc(price: number, type: string): number {
 | 关系 | 概念相关但不同 | 概念相关但不同 |
 
 \`\`\`ts
-interface Coffee { cost(): number; desc(): string; }
-class SimpleCoffee implements Coffee {
-  cost() { return 10; }
-  desc() { return "咖啡"; }
+interface Coffee { cost(): number; desc(): string; }  // 定义接口 Coffee
+class SimpleCoffee implements Coffee {  // 定义类 SimpleCoffee，implements Coffee
+  cost() { return 10; }  // 调用 cost
+  desc() { return "咖啡"; }  // 调用 desc
 }
-class MilkDecorator implements Coffee {
-  constructor(private inner: Coffee) {}
-  cost() { return this.inner.cost() + 2; }
-  desc() { return this.inner.desc() + " +牛奶"; }
+class MilkDecorator implements Coffee {  // 定义类 MilkDecorator，implements Coffee
+  constructor(private inner: Coffee) {}  // 调用 constructor
+  cost() { return this.inner.cost() + 2; }  // 调用 cost
+  desc() { return this.inner.desc() + " +牛奶"; }  // 调用 desc
 }
-const c = new MilkDecorator(new SimpleCoffee());
+const c = new MilkDecorator(new SimpleCoffee());  // 声明常量 c
 console.log(c.cost(), c.desc()); // 12 咖啡 +牛奶
 \`\`\`
 
@@ -310,13 +310,13 @@ console.log(c.cost(), c.desc()); // 12 咖啡 +牛奶
 
 \`\`\`ts
 // 旧系统返回 { full_name: "Alice" }
-interface OldUser { full_name: string; }
+interface OldUser { full_name: string; }  // 定义接口 OldUser
 // 新系统期望 { name: string }
-interface NewUser { name: string; }
+interface NewUser { name: string; }  // 定义接口 NewUser
 
-class UserAdapter implements NewUser {
-  constructor(private old: OldUser) {}
-  get name() { return this.old.full_name; }
+class UserAdapter implements NewUser {  // 定义类 UserAdapter，implements NewUser
+  constructor(private old: OldUser) {}  // 调用 constructor
+  get name() { return this.old.full_name; }  // get 访问器 name
 }
 \`\`\`
 
@@ -327,11 +327,11 @@ class UserAdapter implements NewUser {
 把"请求"封装成对象，支持撤销、队列、日志。如：编辑器操作、事务、宏。
 
 \`\`\`ts
-interface Command { execute(): void; undo(): void; }
-class AddTextCmd implements Command {
-  constructor(private doc: string[], private text: string) {}
-  execute() { this.doc.push(this.text); }
-  undo() { this.doc.pop(); }
+interface Command { execute(): void; undo(): void; }  // 定义接口 Command
+class AddTextCmd implements Command {  // 定义类 AddTextCmd，implements Command
+  constructor(private doc: string[], private text: string) {}  // 调用 constructor
+  execute() { this.doc.push(this.text); }  // 调用 execute
+  undo() { this.doc.pop(); }  // 调用 undo
 }
 \`\`\`
 
@@ -342,14 +342,14 @@ class AddTextCmd implements Command {
 构造复杂对象（参数多、可选多、需分步）。比构造函数/工厂更清晰。TS 里常用**链式调用 + 类型递进**确保必填项先填。
 
 \`\`\`ts
-class QueryBuilder {
-  private parts: string[] = [];
-  select(cols: string) { this.parts.push("SELECT " + cols); return this; }
-  from(t: string) { this.parts.push("FROM " + t); return this; }
-  where(cond: string) { this.parts.push("WHERE " + cond); return this; }
-  build() { return this.parts.join(" "); }
+class QueryBuilder {  // 定义类 QueryBuilder
+  private parts: string[] = [];  // 类属性 parts: string[]
+  select(cols: string) { this.parts.push("SELECT " + cols); return this; }  // 调用 select
+  from(t: string) { this.parts.push("FROM " + t); return this; }  // 调用 from
+  where(cond: string) { this.parts.push("WHERE " + cond); return this; }  // 调用 where
+  build() { return this.parts.join(" "); }  // 调用 build
 }
-const sql = new QueryBuilder().select("*").from("users").where("age > 18").build();
+const sql = new QueryBuilder().select("*").from("users").where("age > 18").build();  // 声明常量 sql
 \`\`\`
 
 ### 9. 设计模式核心原则（SOLID）
@@ -990,36 +990,36 @@ type OrderEvent =
   | { type: "CANCEL"; reason: string };
 
 // 转换函数：纯函数 (state, event) -> state
-function reduceOrder(state: OrderState, event: OrderEvent): OrderState {
-  switch (state.status) {
-    case "pending":
-      if (event.type === "PAY") {
-        return { status: "paid", amount: state.amount, paidAt: new Date().toISOString() };
+function reduceOrder(state: OrderState, event: OrderEvent): OrderState {  // 定义函数 reduceOrder，参数: state: OrderState, event: OrderEvent，返回 OrderState
+  switch (state.status) {  // switch 分支选择
+    case "pending":  // case 匹配分支
+      if (event.type === "PAY") {  // 条件判断
+        return { status: "paid", amount: state.amount, paidAt: new Date().toISOString() };  // 返回 { status: "paid", amount: state.amount, paidAt: new Date().toISOString() }
       }
-      if (event.type === "CANCEL") {
-        return { status: "cancelled", reason: event.reason };
+      if (event.type === "CANCEL") {  // 条件判断
+        return { status: "cancelled", reason: event.reason };  // 返回 { status: "cancelled", reason: event.reason }
       }
-      break;
-    case "paid":
-      if (event.type === "SHIP") {
-        return { status: "shipped", amount: state.amount, trackingNo: event.trackingNo };
+      break;  // 跳出循环
+    case "paid":  // case 匹配分支
+      if (event.type === "SHIP") {  // 条件判断
+        return { status: "shipped", amount: state.amount, trackingNo: event.trackingNo };  // 返回 { status: "shipped", amount: state.amount, trackingNo: event.trackingNo }
       }
-      if (event.type === "CANCEL") {
-        return { status: "cancelled", reason: event.reason };
+      if (event.type === "CANCEL") {  // 条件判断
+        return { status: "cancelled", reason: event.reason };  // 返回 { status: "cancelled", reason: event.reason }
       }
-      break;
-    case "shipped":
-      if (event.type === "RECEIVE") {
-        return { status: "received" };
+      break;  // 跳出循环
+    case "shipped":  // case 匹配分支
+      if (event.type === "RECEIVE") {  // 条件判断
+        return { status: "received" };  // 返回 { status: "received" }
       }
-      break;
-    case "received":
-    case "cancelled":
+      break;  // 跳出循环
+    case "received":  // case 匹配分支
+    case "cancelled":  // case 匹配分支
       // 终态，不处理任何事件
-      break;
+      break;  // 跳出循环
   }
   // 非法转换：返回原状态（或抛错）
-  return state;
+  return state;  // 返回 state
 }
 \`\`\`
 
@@ -1030,14 +1030,14 @@ function reduceOrder(state: OrderState, event: OrderEvent): OrderState {
 状态机的转换函数 \`(state, event) -> state\` 正是 Redux 的 reducer 形态。Redux 本质就是一个巨大的状态机。
 
 \`\`\`ts
-type Action = { type: "INCREMENT" } | { type: "DECREMENT" } | { type: "RESET"; to: number };
-type CounterState = { count: number };
+type Action = { type: "INCREMENT" } | { type: "DECREMENT" } | { type: "RESET"; to: number };  // 定义类型别名 Action，联合类型
+type CounterState = { count: number };  // 定义类型别名 CounterState
 
-function counterReducer(state: CounterState, action: Action): CounterState {
-  switch (action.type) {
-    case "INCREMENT": return { count: state.count + 1 };
-    case "DECREMENT": return { count: state.count - 1 };
-    case "RESET": return { count: action.to };
+function counterReducer(state: CounterState, action: Action): CounterState {  // 定义函数 counterReducer，参数: state: CounterState, action: Action，返回 CounterState
+  switch (action.type) {  // switch 分支选择
+    case "INCREMENT": return { count: state.count + 1 };  // case 匹配分支
+    case "DECREMENT": return { count: state.count - 1 };  // case 匹配分支
+    case "RESET": return { count: action.to };  // case 匹配分支
   }
 }
 \`\`\`
@@ -1487,7 +1487,7 @@ type ApiResponse<T> =
   | { success: false; error: { code: string; message: string } };
 
 // 分页响应
-type PaginatedResponse<T> = ApiResponse<{
+type PaginatedResponse<T> = ApiResponse<{  // 定义类型别名 PaginatedResponse，泛型参数 T
   items: T[];
   total: number;
   page: number;
@@ -1499,8 +1499,8 @@ type PaginatedResponse<T> = ApiResponse<{
 调用方：
 
 \`\`\`ts
-const res: ApiResponse<User> = await fetchUser();
-if (res.success) {
+const res: ApiResponse<User> = await fetchUser();  // 声明常量 res，类型 ApiResponse<User>
+if (res.success) {  // 条件判断
   console.log(res.data.name); // 收窄到 success 分支
 } else {
   console.log(res.error.message); // 收窄到 error 分支
@@ -1524,7 +1524,7 @@ if (res.success) {
 
 \`\`\`ts
 // 完整实体（数据库行）
-interface UserEntity {
+interface UserEntity {  // 定义接口 UserEntity
   id: number;
   name: string;
   email: string;
@@ -1533,13 +1533,13 @@ interface UserEntity {
 }
 
 // 创建 DTO：没有 id/createdAt/updatedAt（DB 生成）
-type UserCreateDTO = Omit<UserEntity, "id" | "createdAt" | "updatedAt">;
+type UserCreateDTO = Omit<UserEntity, "id" | "createdAt" | "updatedAt">;  // 定义类型别名 UserCreateDTO，联合类型
 
 // 更新 DTO：所有字段可选（部分更新）
-type UserUpdateDTO = Partial<UserCreateDTO>;
+type UserUpdateDTO = Partial<UserCreateDTO>;  // 定义类型别名 UserUpdateDTO
 
 // 查询条件：组合查询
-type UserQuery = Partial<Pick<UserEntity, "id" | "name" | "email">> & {
+type UserQuery = Partial<Pick<UserEntity, "id" | "name" | "email">> & {  // 定义类型别名 UserQuery，联合类型
   createdAtAfter?: string;
   createdAtBefore?: string;
 };
@@ -1555,21 +1555,21 @@ type UserQuery = Partial<Pick<UserEntity, "id" | "name" | "email">> & {
 
 \`\`\`ts
 // 原始输入：全 string（HTML input 都返回 string）
-interface LoginFormInput {
+interface LoginFormInput {  // 定义接口 LoginFormInput
   email: string;
   password: string;
   remember: string; // "on" | undefined
 }
 
 // 验证后：类型已转换
-interface LoginFormValidated {
+interface LoginFormValidated {  // 定义接口 LoginFormValidated
   email: string; // 已校验格式
   password: string; // 已校验长度
   remember: boolean;
 }
 
 // 提交 DTO：可能加密密码
-interface LoginFormSubmit {
+interface LoginFormSubmit {  // 定义接口 LoginFormSubmit
   email: string;
   passwordHash: string;
   remember: boolean;
@@ -1581,10 +1581,10 @@ interface LoginFormSubmit {
 \`\`\`ts
 type Validator<T> = (value: T) => string | null; // 返回错误信息或 null
 
-const emailValidator: Validator<string> = (v) =>
+const emailValidator: Validator<string> = (v) =>  // 声明常量 emailValidator，类型 Validator<string>
   /\\S+@\\S+\\.\\S+/.test(v) ? null : "邮箱格式错误";
 
-interface FieldConfig<T> {
+interface FieldConfig<T> {  // 定义接口 FieldConfig，泛型参数 T
   initial: T;
   validate: Validator<T>;
 }
@@ -1597,7 +1597,7 @@ interface FieldConfig<T> {
 环境变量都是 \`string | undefined\`，直接用要到处判空。最佳实践：**在启动时校验并解析成强类型 Config**。
 
 \`\`\`ts
-interface AppConfig {
+interface AppConfig {  // 定义接口 AppConfig
   port: number;
   databaseUrl: string;
   jwtSecret: string;
@@ -1608,20 +1608,20 @@ interface AppConfig {
   };
 }
 
-function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
-  const port = Number(env.PORT);
-  if (!Number.isFinite(port)) throw new Error("PORT 必须是数字");
-  if (!env.DATABASE_URL) throw new Error("DATABASE_URL 必填");
+function loadConfig(env: NodeJS.ProcessEnv): AppConfig {  // 定义函数 loadConfig，参数: env: NodeJS.ProcessEnv，返回 AppConfig
+  const port = Number(env.PORT);  // 声明常量 port
+  if (!Number.isFinite(port)) throw new Error("PORT 必须是数字");  // 条件判断
+  if (!env.DATABASE_URL) throw new Error("DATABASE_URL 必填");  // 条件判断
   // ...
-  return { port, databaseUrl: env.DATABASE_URL, /* ... */ };
+  return { port, databaseUrl: env.DATABASE_URL, /* ... */ };  // 返回 { port, databaseUrl: env.DATABASE_URL, /* ... */ }
 }
 \`\`\`
 
 #### 特性开关（Feature Flags）
 
 \`\`\`ts
-type FeatureFlag = "newDashboard" | "betaApi" | "darkMode";
-type FeatureConfig = Record<FeatureFlag, boolean>;
+type FeatureFlag = "newDashboard" | "betaApi" | "darkMode";  // 定义类型别名 FeatureFlag
+type FeatureConfig = Record<FeatureFlag, boolean>;  // 定义类型别名 FeatureConfig
 \`\`\`
 
 ### 5. 事件系统类型设计
@@ -1629,15 +1629,15 @@ type FeatureConfig = Record<FeatureFlag, boolean>;
 事件系统的难点是"事件名与 payload 类型对应"。用**映射类型 + 泛型约束**解决：
 
 \`\`\`ts
-interface EventMap {
+interface EventMap {  // 定义接口 EventMap
   "user:login": { userId: string; at: string };
   "user:logout": { userId: string };
   "order:created": { orderId: string; amount: number };
 }
 
-class TypedEmitter<E extends Record<string, unknown>> {
-  on<K extends keyof E>(event: K, fn: (payload: E[K]) => void): void { /* ... */ }
-  emit<K extends keyof E>(event: K, payload: E[K]): void { /* ... */ }
+class TypedEmitter<E extends Record<string, unknown>> {  // 定义类 TypedEmitter，泛型参数 E extends Record<string, unknown
+  on<K extends keyof E>(event: K, fn: (payload: E[K]) => void): void { /* ... */ }  // 箭头函数
+  emit<K extends keyof E>(event: K, payload: E[K]): void { /* ... */ }  // 调用 emit（显式指定泛型参数）
 }
 \`\`\`
 
@@ -1649,7 +1649,7 @@ class TypedEmitter<E extends Record<string, unknown>> {
 
 \`\`\`ts
 // 插件接口
-interface EditorPlugin {
+interface EditorPlugin {  // 定义接口 EditorPlugin
   name: string;
   // 钩子：可选实现
   onInit?(editor: Editor): void;
@@ -1658,14 +1658,14 @@ interface EditorPlugin {
 }
 
 // 插件宿主
-class Editor {
-  private plugins: EditorPlugin[] = [];
-  use(plugin: EditorPlugin) { this.plugins.push(plugin); plugin.onInit?.(this); }
+class Editor {  // 定义类 Editor
+  private plugins: EditorPlugin[] = [];  // 类属性 plugins: EditorPlugin[]
+  use(plugin: EditorPlugin) { this.plugins.push(plugin); plugin.onInit?.(this); }  // 调用 use
 
-  paste(text: string) {
+  paste(text: string) {  // 调用 paste
     // 链式调用所有 onPaste，每个可改 text
-    let t = text;
-    for (const p of this.plugins) if (p.onPaste) t = p.onPaste(t);
+    let t = text;  // 声明变量 t
+    for (const p of this.plugins) if (p.onPaste) t = p.onPaste(t);  // 循环
     // ...
   }
 }
@@ -1676,12 +1676,12 @@ class Editor {
 Express/Koa 的路由 \`req.params: any\` 是类型黑洞。设计类型安全路由：
 
 \`\`\`ts
-interface RouteParams {
+interface RouteParams {  // 定义接口 RouteParams
   "/users/:id": { id: string };
   "/posts/:postId/comments/:commentId": { postId: string; commentId: string };
 }
 
-function getParam<P extends keyof RouteParams>(path: P): RouteParams[P] { /* ... */ }
+function getParam<P extends keyof RouteParams>(path: P): RouteParams[P] { /* ... */ }  // 定义函数 getParam，泛型 P extends keyof RouteParams，参数: path: P，返回 RouteParams[P]
 \`\`\`
 
 ### 8. DTO 与 Entity 转换
@@ -1689,8 +1689,8 @@ function getParam<P extends keyof RouteParams>(path: P): RouteParams[P] { /* ...
 DTO 与 Entity 字段名常不同（DB 下划线、JS 驼峰），转换函数需要类型约束：
 
 \`\`\`ts
-function toDTO<E, D>(entity: E, mapper: (e: E) => D): D {
-  return mapper(entity);
+function toDTO<E, D>(entity: E, mapper: (e: E) => D): D {  // 定义函数 toDTO，泛型 E, D，参数: entity: E, mapper: (e: E
+  return mapper(entity);  // 返回 mapper(entity)
 }
 \`\`\`
 
@@ -2247,7 +2247,7 @@ tsc 是纯 TS 实现的单线程编译器，慢在：
 
 \`\`\`ts
 // ❌ 慢：50 层递归
-type DeepFlatten<T> = T extends Array<infer U> ? DeepFlatten<U> : T;
+type DeepFlatten<T> = T extends Array<infer U> ? DeepFlatten<U> : T;  // 定义类型别名 DeepFlatten，泛型参数 T，使用 infer 在条件类型中提取类型
 
 // ❌ 慢：巨型联合
 type AllKeys = keyof SomeHugeObject; // 几千个 key
@@ -2282,9 +2282,9 @@ TS 编译后所有类型注解被擦除，运行时是纯 JS，**类型本身零
 
 \`\`\`ts
 // 编译前
-function add(a: number, b: number): number { return a + b; }
+function add(a: number, b: number): number { return a + b; }  // 定义函数 add，参数: a: number, b: number，返回 number
 // 编译后（ES2020）
-function add(a, b) { return a + b; }
+function add(a, b) { return a + b; }  // 定义函数 add，参数: a, b
 \`\`\`
 
 所以"TS 比 JS 慢"是误解。运行时性能取决于生成的 JS 代码质量，与类型无关。
@@ -2303,7 +2303,7 @@ function add(a, b) { return a + b; }
 
 \`\`\`ts
 // ❌ 普通 enum 生成对象
-enum Color { Red, Green, Blue }
+enum Color { Red, Green, Blue }  // 定义枚举 Color
 // 编译为: var Color; (function(Color){ Color[Color.Red=0]="Red"; ... })(Color||{});
 
 // ✅ const enum 内联
@@ -2771,17 +2771,17 @@ console.log("\\n性能优化章节演示完成！");`,
 
 \`\`\`ts
 // ❌ 宽泛：任何字符串都行
-function setAge(age: number) { /* age 可能是负数、小数 */ }
+function setAge(age: number) { /* age 可能是负数、小数 */ }  // 定义函数 setAge，参数: age: number
 
 // ✅ 精确：限定范围
 type Age = number & { __brand: "Age" }; // 品牌类型
-function setAge(age: Age) { /* 编译期保证是合法年龄 */ }
+function setAge(age: Age) { /* 编译期保证是合法年龄 */ }  // 定义函数 setAge，参数: age: Age
 
 // ❌ 宽泛：status 是任意 string
-interface Order { status: string }
+interface Order { status: string }  // 定义接口 Order
 
 // ✅ 精确：联合字面量
-interface Order { status: "pending" | "paid" | "shipped" | "received" | "cancelled" }
+interface Order { status: "pending" | "paid" | "shipped" | "received" | "cancelled" }  // 定义接口 Order
 \`\`\`
 
 #### 1.2 组合而非继承
@@ -2790,14 +2790,14 @@ interface Order { status: "pending" | "paid" | "shipped" | "received" | "cancell
 
 \`\`\`ts
 // ❌ 深继承
-class Animal { }
-class Dog extends Animal { }
-class ServiceDog extends Dog { }
+class Animal { }  // 定义类 Animal
+class Dog extends Animal { }  // 定义类 Dog，extends Animal
+class ServiceDog extends Dog { }  // 定义类 ServiceDog，extends Dog
 
 // ✅ 组合
-interface Barker { bark(): void }
-interface Walker { walk(): void }
-type ServiceDog = Barker & Walker & { assist(): void };
+interface Barker { bark(): void }  // 定义接口 Barker
+interface Walker { walk(): void }  // 定义接口 Walker
+type ServiceDog = Barker & Walker & { assist(): void };  // 定义类型别名 ServiceDog，交叉类型
 \`\`\`
 
 #### 1.3 让非法状态不可表达
@@ -2806,15 +2806,15 @@ type ServiceDog = Barker & Walker & { assist(): void };
 
 \`\`\`ts
 // ❌ 合法但无意义的状态可能存在
-interface Meeting {
+interface Meeting {  // 定义接口 Meeting
   start: Date;
   end: Date;
 } // start > end 也合法
 
 // ✅ 构造函数校验
-class Meeting {
-  constructor(readonly start: Date, readonly end: Date) {
-    if (start >= end) throw new Error("start 必须早于 end");
+class Meeting {  // 定义类 Meeting
+  constructor(readonly start: Date, readonly end: Date) {  // 调用 constructor
+    if (start >= end) throw new Error("start 必须早于 end");  // 条件判断
   }
 }
 \`\`\`
@@ -2834,15 +2834,15 @@ class Meeting {
 
 \`\`\`ts
 // ❌ any：随便用，编译过但运行时崩
-function parse1(s: string): any { return JSON.parse(s); }
-const r1 = parse1('{"a":1}');
+function parse1(s: string): any { return JSON.parse(s); }  // 定义函数 parse1，参数: s: string，返回 any（注意：any 关闭了类型检查）
+const r1 = parse1('{"a":1}');  // 声明常量 r1
 r1.b.c; // 编译过，运行时 TypeError
 
 // ✅ unknown：必须先收窄
-function parse2(s: string): unknown { return JSON.parse(s); }
-const r2 = parse2('{"a":1}');
+function parse2(s: string): unknown { return JSON.parse(s); }  // 定义函数 parse2，参数: s: string，返回 unknown
+const r2 = parse2('{"a":1}');  // 声明常量 r2
 // r2.b; // ❌ 编译错误：r2 是 unknown
-if (typeof r2 === "object" && r2 && "a" in r2) {
+if (typeof r2 === "object" && r2 && "a" in r2) {  // 条件判断
   console.log(r2.a); // ✅ 收窄后可用
 }
 \`\`\`
@@ -2859,7 +2859,7 @@ let x: number = null; // 不报错
 x.toFixed(); // 运行时 TypeError
 
 // 开启后：必须显式包含 null
-let x: number | null = null;
+let x: number | null = null;  // 声明变量 x，类型 number | null
 x.toFixed(); // ❌ 编译错误：x 可能是 null
 if (x !== null) x.toFixed(); // ✅ 收窄后可用
 \`\`\`
@@ -2871,7 +2871,7 @@ if (x !== null) x.toFixed(); // ✅ 收窄后可用
 try { } catch (e) { e.code; } // 编译过但 e 可能没 code
 
 // 新（strict）：e 是 unknown
-try { } catch (e) {
+try { } catch (e) {  // 异常捕获
   // e.code; // ❌ 编译错误
   if (e instanceof Error) e.message; // ✅ 收窄
 }
@@ -2913,13 +2913,13 @@ try { } catch (e) {
 
 \`\`\`ts
 // ❌ 普通导入类型：isolatedModules 下不安全
-import { User } from "./types";
+import { User } from "./types";  // 导入 { User }
 
 // ✅ type 导入：明确是类型，编译时擦除
-import type { User } from "./types";
+import type { User } from "./types";  // 导入 type { User }
 
 // ✅ 内联 type
-import { fetchUser, type User } from "./api";
+import { fetchUser, type User } from "./api";  // 导入 { fetchUser, type User }
 \`\`\`
 
 #### 5.2 为什么用 import type
@@ -2937,7 +2937,7 @@ import { fetchUser, type User } from "./api";
 type ParseSQL<S extends string> = ... // 200 行条件类型
 
 // 务实：用函数 + 简单类型
-function query<T>(sql: string, mapper: (row: Row) => T): T[] { /* ... */ }
+function query<T>(sql: string, mapper: (row: Row) => T): T[] { /* ... */ }  // 定义函数 query，泛型 T，参数: sql: string, mapper: (row: Row
 \`\`\`
 
 #### 何时该用类型体操
@@ -2989,16 +2989,16 @@ review 时关注：
 TS 是结构化类型（鸭子类型），不是名义类型。只要结构匹配就算同类型：
 
 \`\`\`ts
-interface User { name: string }
-interface Admin { name: string }
+interface User { name: string }  // 定义接口 User
+interface Admin { name: string }  // 定义接口 Admin
 const a: User = { name: "x" }; // Admin 类型的也能赋给 User
 \`\`\`
 
 陷阱：想区分两个结构相同的概念，需用**品牌类型**：
 
 \`\`\`ts
-type UserId = string & { __brand: "UserId" };
-type OrderId = string & { __brand: "OrderId" };
+type UserId = string & { __brand: "UserId" };  // 定义类型别名 UserId，交叉类型
+type OrderId = string & { __brand: "OrderId" };  // 定义类型别名 OrderId，交叉类型
 // UserId 和 OrderId 不能互相赋值
 \`\`\`
 
@@ -3018,8 +3018,8 @@ const y = "hello" as unknown as number; // 双重断言更危险
 函数参数是**逆变**的（子类型函数的参数要是父类型），返回值是**协变**的。TS 对函数参数默认双变（\`strictFunctionTypes\` 开启后逆变），容易踩坑：
 
 \`\`\`ts
-declare let f1: (x: Animal) => void;
-declare let f2: (x: Dog) => void;
+declare let f1: (x: Animal) => void;  // 箭头函数
+declare let f2: (x: Dog) => void;  // 箭头函数
 f1 = f2; // strictFunctionTypes 下报错：Dog 比 Animal 窄
 \`\`\`
 
@@ -3027,10 +3027,10 @@ f1 = f2; // strictFunctionTypes 下报错：Dog 比 Animal 窄
 
 \`\`\`ts
 // ❌ 误判：0、""、false 都被当成 falsy
-if (x) { }
+if (x) { }  // 条件判断
 
 // ✅ 显式判断
-if (x !== null && x !== undefined) { }
+if (x !== null && x !== undefined) { }  // 条件判断
 // 或
 if (x != null) { } // 同时排除 null 和 undefined
 \`\`\`
@@ -3039,11 +3039,11 @@ if (x != null) { } // 同时排除 null 和 undefined
 
 \`\`\`ts
 // enum：运行时有对象，可反向映射
-enum Color { Red, Green }
+enum Color { Red, Green }  // 定义枚举 Color
 // 但 isolatedModules 下 const enum 不可用，普通 enum 有运行时开销
 
 // 联合字面量：编译期擦除，更轻
-type Color = "red" | "green" | "blue";
+type Color = "red" | "green" | "blue";  // 定义类型别名 Color
 \`\`\`
 
 **推荐**：新项目优先联合字面量；需要反向映射或一组数值常量时用 enum。

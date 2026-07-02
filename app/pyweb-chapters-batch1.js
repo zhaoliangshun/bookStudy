@@ -306,61 +306,98 @@ Session（会话）的思路是：**敏感数据存服务器，只给客户端�
 用 Flask 演示（先不用完全看懂，重点看 cookie/session 的流转）：
 
 \`\`\`python
+# 从 flask 导入 Flask, request, session, redirect, url_for, make_response
 from flask import Flask, request, session, redirect, url_for, make_response
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
 # session 需要密钥来加密签名（防篡改）
+# app.secret_key = "一个很长的随机字符串"
 app.secret_key = "一个很长的随机字符串"
 
 # 模拟用户数据库
+# 定义字典 USERS
 USERS = {"tom": "123456"}
 
+# 装饰器：app.route
 @app.route("/login", methods=["GET", "POST"])
+# 定义函数 login，参数: 
 def login():
+    # 条件判断：如果 request.method == "POST"
     if request.method == "POST":
+        # 定义变量 username，赋值为 request.form.get("username")
         username = request.form.get("username")
+        # 定义变量 password，赋值为 request.form.get("password")
         password = request.form.get("password")
         # 验证用户名密码
+        # 条件判断：如果 USERS.get(username) == password
         if USERS.get(username) == password:
             # 登录成功，把用户名存进 session
             # Flask 会自动生成 session_id 并通过 cookie 发给浏览器
+            # session["username"] = username
             session["username"] = username
+            # 返回 "登录成功"
             return "登录成功"
+        # 返回 "用户名或密码错误", 401
         return "用户名或密码错误", 401
     # GET 请求返回登录表单
+    # 返回 '''<form method="post">
     return '''<form method="post">
+        # <input name="username">
         <input name="username">
+        # <input name="password" type="password">
         <input name="password" type="password">
+        # <button>登录</button>
         <button>登录</button>
+    # </form>'''
     </form>'''
 
+# 装饰器：app.route
 @app.route("/profile")
+# 定义函数 profile，参数: 
 def profile():
     # 从 session 取用户名（服务器端查 session 存储）
+    # 定义变量 username，赋值为 session.get("username")
     username = session.get("username")
+    # 条件判断：如果 not username
     if not username:
         # 没登录，跳转登录页
+        # 返回 redirect(url_for("login"))
         return redirect(url_for("login"))
+    # 返回 f"欢迎回来，{username}"
     return f"欢迎回来，{username}"
 
+# 装饰器：app.route
 @app.route("/logout")
+# 定义函数 logout，参数: 
 def logout():
     # 清除 session 里的用户信息
+    # 调用 session.pop()
     session.pop("username", None)
+    # 返回 "已退出"
     return "已退出"
 
 # 手动设置 cookie 的例子
+# 装饰器：app.route
 @app.route("/set-theme/<theme>")
+# 定义函数 set_theme，参数: theme
 def set_theme(theme):
+    # 定义变量 resp，赋值为 make_response("主题已设置")
     resp = make_response("主题已设置")
     # 设置 cookie，加 7 天过期
+    # 调用 resp.set_cookie()
     resp.set_cookie("theme", theme, max_age=7 * 24 * 3600, httponly=True)
+    # 返回 resp
     return resp
 
+# 装饰器：app.route
 @app.route("/get-theme")
+# 定义函数 get_theme，参数: 
 def get_theme():
     # 读取请求里的 cookie
+    # 定义变量 theme，赋值为 request.cookies.get("theme", "light")
     theme = request.cookies.get("theme", "light")
+    # 返回 f"当前主题: {theme}"
     return f"当前主题: {theme}"
 \`\`\`
 
@@ -474,9 +511,13 @@ Content-Type: image/jpeg
 HTML 表单这样设置：
 
 \`\`\`html
+# <form method="post" enctype="multipart/form-data">
 <form method="post" enctype="multipart/form-data">
+  # <input type="text" name="title">
   <input type="text" name="title">
+  # <input type="file" name="file">
   <input type="file" name="file">
+# </form>
 </form>
 \`\`\`
 
@@ -507,45 +548,63 @@ Accept 还能设优先级：\`Accept: application/json, text/html;q=0.9\` 表示
 ## 代码示例：用 requests 发不同类型请求
 
 \`\`\`python
+# 导入 requests 模块
 import requests
 
 # 1. 发 JSON 请求（最常用）
 # 关键：json= 参数会自动设 Content-Type: application/json
+# 定义变量 response，赋值为 requests.post(
 response = requests.post(
+    # "https://api.example.com/users",
     "https://api.example.com/users",
     json={"name": "Tom", "age": 25},  # 自动序列化成 JSON
+# )
 )
 print(response.status_code)  # 201
 
 # 2. 发表单请求
 # 模拟 HTML 表单提交，Content-Type 自动设为 application/x-www-form-urlencoded
+# 定义变量 response，赋值为 requests.post(
 response = requests.post(
+    # "https://api.example.com/login",
     "https://api.example.com/login",
     data={"username": "tom", "password": "123"},  # data= 发表单
+# )
 )
 
 # 3. 上传文件
 # 用 files= 参数，自动用 multipart/form-data
+# 定义变量 response，赋值为 requests.post(
 response = requests.post(
+    # "https://api.example.com/upload",
     "https://api.example.com/upload",
+    # 定义字典 files
     files={"file": ("photo.jpg", open("photo.jpg", "rb"), "image/jpeg")},
     data={"title": "我的照片"},  # 同时带普通字段
+# )
 )
 
 # 4. 指定想要的响应格式
+# 定义变量 response，赋值为 requests.get(
 response = requests.get(
+    # "https://api.example.com/users/1",
     "https://api.example.com/users/1",
     headers={"Accept": "application/json"},  # 告诉服务器我要 JSON
+# )
 )
 # requests 会根据响应的 Content-Type 自动解析
 user = response.json()  # 如果响应是 JSON，直接解析成字典
+# 调用 print()
 print(user["name"])
 
 # 5. 手动设 Content-Type（特殊场景）
+# 定义变量 response，赋值为 requests.post(
 response = requests.post(
+    # "https://api.example.com/raw",
     "https://api.example.com/raw",
     data="纯文本内容",  # 原始字节
     headers={"Content-Type": "text/plain"},  # 手动指定
+# )
 )
 \`\`\`
 
@@ -602,29 +661,44 @@ Python 标准库里和 Web 相关的几个模块：
 最简单的 Hello World：
 
 \`\`\`python
+# 从 http.server 导入 BaseHTTPRequestHandler, HTTPServer
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
+# 定义类 MyHandler，继承 BaseHTTPRequestHandler
 class MyHandler(BaseHTTPRequestHandler):
     # 处理 GET 请求
+    # 定义函数 do_GET，参数: self
     def do_GET(self):
         # self.path 是请求的路径，比如 "/" 或 "/about"
+        # 条件判断：如果 self.path == "/"
         if self.path == "/":
             # 1. 发送响应状态行：200 OK
+            # 调用 self.send_response()
             self.send_response(200)
             # 2. 发送头部
+            # 调用 self.send_header()
             self.send_header("Content-Type", "text/html; charset=utf-8")
+            # 调用 self.end_headers()
             self.end_headers()
             # 3. 发送正文（必须用 wfile.write，字节类型）
+            # 调用 self.wfile.write()
             self.wfile.write("Hello, World!".encode("utf-8"))
+        # 否则执行
         else:
             # 找不到路径，返回 404
+            # 调用 self.send_response()
             self.send_response(404)
+            # 调用 self.end_headers()
             self.end_headers()
+            # 调用 self.wfile.write()
             self.wfile.write("Not Found".encode("utf-8"))
 
 # 启动服务器，监听 8000 端口
+# 定义变量 server，赋值为 HTTPServer(("0.0.0.0", 8000), MyHandler)
 server = HTTPServer(("0.0.0.0", 8000), MyHandler)
+# 调用 print()
 print("服务器启动在 http://localhost:8000")
+# 调用 server.serve_forever()
 server.serve_forever()
 \`\`\`
 
@@ -647,22 +721,32 @@ server.serve_forever()
 ### 处理 POST 请求
 
 \`\`\`python
+# 定义类 MyHandler，继承 BaseHTTPRequestHandler
 class MyHandler(BaseHTTPRequestHandler):
+    # 定义函数 do_POST，参数: self
     def do_POST(self):
         # 1. 从 Content-Length 头读正文长度
+        # 定义变量 content_length，赋值为 int(self.headers.get("Content-Length", 0))
         content_length = int(self.headers.get("Content-Length", 0))
         # 2. 读取正文（字节）
+        # 定义变量 body，赋值为 self.rfile.read(content_length)
         body = self.rfile.read(content_length)
         # 3. 解析表单数据
+        # 从 urllib.parse 导入 parse_qs
         from urllib.parse import parse_qs
         # body 是 b"name=tom&age=25"，parse_qs 解析成字典
+        # 定义变量 data，赋值为 parse_qs(body.decode("utf-8"))
         data = parse_qs(body.decode("utf-8"))
         # data = {"name": ["tom"], "age": ["25"]}
         
         # 4. 返回响应
+        # 调用 self.send_response()
         self.send_response(200)
+        # 调用 self.send_header()
         self.send_header("Content-Type", "text/plain; charset=utf-8")
+        # 调用 self.end_headers()
         self.end_headers()
+        # 调用 self.wfile.write()
         self.wfile.write(f"收到: {data}".encode("utf-8"))
 \`\`\`
 
@@ -673,34 +757,50 @@ class MyHandler(BaseHTTPRequestHandler):
 标准库发 HTTP 请求用 \`urllib.request\`。功能够用但写起来啰嗦（生产环境大家都用第三方库 requests）。
 
 \`\`\`python
+# 从 urllib.request 导入 urlopen, Request
 from urllib.request import urlopen, Request
+# 从 urllib.parse 导入 urlencode
 from urllib.parse import urlencode
 
 # 1. 最简单的 GET 请求
+# 定义变量 response，赋值为 urlopen("https://httpbin.org/get")
 response = urlopen("https://httpbin.org/get")
 # 读取正文（字节），decode 成字符串
+# 调用 print()
 print(response.read().decode("utf-8"))
 # 状态码
+# 调用 print()
 print(response.status)
 
 # 2. 带查询参数的 GET
 # urlencode 把字典转成 "key=value&key2=value2"
+# 定义变量 params，赋值为 urlencode({"name": "Tom", "age": 25})
 params = urlencode({"name": "Tom", "age": 25})
+# 定义变量 url，赋值为 f"https://httpbin.org/get?{params}"
 url = f"https://httpbin.org/get?{params}"
+# 定义变量 response，赋值为 urlopen(url)
 response = urlopen(url)
+# 调用 print()
 print(response.read().decode("utf-8"))
 
 # 3. POST 请求
 # urlopen 默认只发 GET，要 POST 得用 Request 对象
 data = urlencode({"name": "Tom"}).encode("utf-8")  # 编码成字节
+# 定义变量 request，赋值为 Request("https://httpbin.org/post", data=data...
 request = Request("https://httpbin.org/post", data=data, method="POST")
+# 调用 request.add_header()
 request.add_header("Content-Type", "application/x-www-form-urlencoded")
+# 定义变量 response，赋值为 urlopen(request)
 response = urlopen(request)
+# 调用 print()
 print(response.read().decode("utf-8"))
 
 # 4. 设请求头（比如带认证 Token）
+# 定义变量 request，赋值为 Request("https://api.example.com/data")
 request = Request("https://api.example.com/data")
+# 调用 request.add_header()
 request.add_header("Authorization", "Bearer my-token")
+# 定义变量 response，赋值为 urlopen(request)
 response = urlopen(request)
 \`\`\`
 
@@ -711,10 +811,13 @@ response = urlopen(request)
 这个模块是真正常用的工具函数，即使生产项目也会用到。
 
 \`\`\`python
+# 从 urllib.parse 导入 urlparse, urlencode, parse_qs, quote, unquote
 from urllib.parse import urlparse, urlencode, parse_qs, quote, unquote
 
 # 1. 解析 URL
+# 定义变量 url，赋值为 "https://example.com/api/users?role=admin&pag...
 url = "https://example.com/api/users?role=admin&page=2#section"
+# 定义变量 parts，赋值为 urlparse(url)
 parts = urlparse(url)
 # parts.scheme = "https"
 # parts.netloc = "example.com"
@@ -723,18 +826,22 @@ parts = urlparse(url)
 # parts.fragment = "section"
 
 # 2. 解析查询串成字典
+# 定义变量 params，赋值为 parse_qs(parts.query)
 params = parse_qs(parts.query)
 # {"role": ["admin"], "page": ["2"]}
 # 注意值是列表（同名参数可多个）
 
 # 3. 字典转查询串
+# 定义变量 query，赋值为 urlencode({"role": "admin", "page": 2})
 query = urlencode({"role": "admin", "page": 2})
 # "role=admin&page=2"
 
 # 4. URL 编码（特殊字符转义）
 # 比如中文、空格在 URL 里要编码
+# 定义变量 encoded，赋值为 quote("Hello World & 你好")
 encoded = quote("Hello World & 你好")
 # "Hello%20World%20%26%20%E4%BD%A0%E5%A5%BD"
+# 定义变量 decoded，赋值为 unquote(encoded)
 decoded = unquote(encoded)
 # "Hello World & 你好"
 \`\`\`
@@ -746,22 +853,31 @@ decoded = unquote(encoded)
 标准库也能解析和生成 Cookie：
 
 \`\`\`python
+# 从 http.cookies 导入 SimpleCookie
 from http.cookies import SimpleCookie
 
 # 解析请求里的 Cookie 头
+# 定义变量 c，赋值为 SimpleCookie()
 c = SimpleCookie()
+# 调用 c.load()
 c.load("session_id=abc123; theme=dark")
 # 像字典一样访问
 session = c["session_id"].value  # "abc123"
 theme = c["theme"].value  # "dark"
 
 # 生成 Set-Cookie 响应头
+# 定义变量 c，赋值为 SimpleCookie()
 c = SimpleCookie()
+# c["session_id"] = "abc123"
 c["session_id"] = "abc123"
+# c["session_id"]["httponly"] = True
 c["session_id"]["httponly"] = True
+# c["session_id"]["path"] = "/"
 c["session_id"]["path"] = "/"
+# c["session_id"]["max-age"] = 3600
 c["session_id"]["max-age"] = 3600
 # 输出 Set-Cookie 头字符串
+# 调用 print()
 print(c.output())
 # Set-Cookie: session_id=abc123; HttpOnly; Path=/; Max-Age=3600
 \`\`\`
@@ -771,51 +887,86 @@ print(c.output())
 标准库没有路由，得自己写。下面是个迷你路由器：
 
 \`\`\`python
+# 从 http.server 导入 BaseHTTPRequestHandler, HTTPServer
 from http.server import BaseHTTPRequestHandler, HTTPServer
+# 从 urllib.parse 导入 urlparse, parse_qs
 from urllib.parse import urlparse, parse_qs
 
 # 路由表：路径 -> 处理函数
+# 定义字典 ROUTES
 ROUTES = {}
 
+# 定义函数 route，参数: path
 def route(path):
+    # """装饰器：注册路由"""
     """装饰器：注册路由"""
+    # 定义函数 decorator，参数: func
     def decorator(func):
+        # ROUTES[path] = func
         ROUTES[path] = func
+        # 返回 func
         return func
+    # 返回 decorator
     return decorator
 
+# 装饰器：route
 @route("/")
+# 定义函数 index，参数: handler
 def index(handler):
+    # 调用 handler.send_response()
     handler.send_response(200)
+    # 调用 handler.send_header()
     handler.send_header("Content-Type", "text/html; charset=utf-8")
+    # 调用 handler.end_headers()
     handler.end_headers()
+    # 调用 handler.wfile.write()
     handler.wfile.write("<h1>首页</h1>".encode("utf-8"))
 
+# 装饰器：route
 @route("/api/users")
+# 定义函数 users，参数: handler
 def users(handler):
     # 解析查询参数
+    # 定义变量 query，赋值为 parse_qs(urlparse(handler.path).query)
     query = parse_qs(urlparse(handler.path).query)
+    # 定义变量 page，赋值为 query.get("page", ["1"])[0]
     page = query.get("page", ["1"])[0]
+    # 调用 handler.send_response()
     handler.send_response(200)
+    # 调用 handler.send_header()
     handler.send_header("Content-Type", "application/json; charset=utf-8")
+    # 调用 handler.end_headers()
     handler.end_headers()
     # 返回 JSON
+    # 调用 handler.wfile.write()
     handler.wfile.write(f'{{"page": {page}}}'.encode("utf-8"))
 
+# 定义类 RouterHandler，继承 BaseHTTPRequestHandler
 class RouterHandler(BaseHTTPRequestHandler):
+    # 定义函数 do_GET，参数: self
     def do_GET(self):
         # 取路径部分（去掉查询串）
+        # 定义变量 path，赋值为 urlparse(self.path).path
         path = urlparse(self.path).path
         # 查路由表
+        # 定义变量 handler_func，赋值为 ROUTES.get(path)
         handler_func = ROUTES.get(path)
+        # 条件判断：如果 handler_func
         if handler_func:
+            # 调用 handler_func()
             handler_func(self)
+        # 否则执行
         else:
+            # 调用 self.send_response()
             self.send_response(404)
+            # 调用 self.end_headers()
             self.end_headers()
+            # 调用 self.wfile.write()
             self.wfile.write("404 Not Found".encode("utf-8"))
 
+# 定义变量 server，赋值为 HTTPServer(("0.0.0.0", 8000), RouterHandler)
 server = HTTPServer(("0.0.0.0", 8000), RouterHandler)
+# 调用 server.serve_forever()
 server.serve_forever()
 \`\`\`
 

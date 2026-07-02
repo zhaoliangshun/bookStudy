@@ -43,8 +43,10 @@ FastAPI 是一个现代、快速（高性能）的 Web 框架，用于基于标�
 FastAPI 用类型注解把这三件事统一了。你声明一次，框架自动帮你做另外两件：
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # item_id: int 这一处声明，同时驱动了：
@@ -52,8 +54,11 @@ app = FastAPI()
 # 2. 类型转换（字符串转 int）
 # 3. 类型校验（非 int 报 422）
 # 4. 文档生成（/docs 里自动显示 int 类型）
+# 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}")
+# 定义函数 read_item，参数: item_id: int
 def read_item(item_id: int):
+    # 返回 {"item_id": item_id}
     return {"item_id": item_id}
 \`\`\`
 
@@ -198,6 +203,7 @@ FastAPI 要求 Python 3.8 及以上（建议 3.10+，能用上新语法）。第
 
 \`\`\`bash
 # 查看 Python 版本
+# python --version
 python --version
 # Python 3.11.6
 \`\`\`
@@ -206,12 +212,15 @@ python --version
 
 \`\`\`bash
 # 创建虚拟环境（在项目目录下）
+# 以模块方式运行 venv
 python -m venv .venv
 
 # 激活虚拟环境（macOS / Linux）
+# 加载配置: .venv/bin/activate
 source .venv/bin/activate
 
 # 激活虚拟环境（Windows PowerShell）
+# .venv\\Scripts\\Activate.ps1
 .venv\\Scripts\\Activate.ps1
 
 # 激活后提示符会变成 (.venv) $，表示当前在虚拟环境中
@@ -224,6 +233,7 @@ source .venv/bin/activate
 只需要两个包：
 
 \`\`\`bash
+# 安装 Python 包: fastapi "uvicorn[standard]"
 pip install fastapi "uvicorn[standard]"
 \`\`\`
 
@@ -237,6 +247,7 @@ pip install fastapi "uvicorn[standard]"
 验证安装：
 
 \`\`\`bash
+# 执行内联 Python 代码
 python -c "import fastapi; print(fastapi.__version__)"
 # 0.110.0（或你装的版本）
 \`\`\`
@@ -247,18 +258,23 @@ python -c "import fastapi; print(fastapi.__version__)"
 
 \`\`\`python
 # main.py
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
 
 # 创建应用实例，这是整个 FastAPI 应用的入口
 # 参数 title 会出现在自动文档的页面标题上
+# 创建 FastAPI 应用实例
 app = FastAPI(title="我的第一个 FastAPI")
 
 
 # 定义一个路由：当访问根路径 / 时，执行这个函数
 # @app.get 是装饰器，表示用 GET 方法访问 "/" 路径
+# 定义 GET 路由：访问 / 时触发
 @app.get("/")
+# 定义函数 root，参数: 
 def root():
     # 返回一个 dict，FastAPI 会自动把它转成 JSON 响应
+    # 返回 {"message": "Hello, FastAPI!"}
     return {"message": "Hello, FastAPI!"}
 \`\`\`
 
@@ -277,6 +293,7 @@ def root():
 \`\`\`bash
 # 格式：uvicorn 模块名:应用变量名
 # main.py 文件里的 app 变量，所以是 main:app
+# uvicorn main:app
 uvicorn main:app
 \`\`\`
 
@@ -293,6 +310,7 @@ INFO:     Application startup complete.
 现在用浏览器或 curl 访问：
 
 \`\`\`bash
+# 发送 HTTP 请求
 curl http://127.0.0.1:8000/
 # {"message":"Hello, FastAPI!"}
 \`\`\`
@@ -315,6 +333,7 @@ curl http://127.0.0.1:8000/
 开发时每改一行代码就要重启服务很烦。uvicorn 提供 \`--reload\` 参数，文件一保存就自动重载：
 
 \`\`\`bash
+# uvicorn main:app --reload
 uvicorn main:app --reload
 \`\`\`
 
@@ -337,17 +356,25 @@ uvicorn main:app --reload
 
 \`\`\`python
 # main.py
+# 导入 uvicorn 模块
 import uvicorn
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 / 时触发
 @app.get("/")
+# 定义函数 root，参数: 
 def root():
+    # 返回 {"message": "Hello"}
     return {"message": "Hello"}
 
 # 加上这段，就能直接 python main.py 启动
+# 判断是否直接运行此脚本
 if __name__ == "__main__":
+    # 使用 uvicorn 启动 ASGI 服务器
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
 \`\`\`
 
@@ -365,6 +392,7 @@ if __name__ == "__main__":
 
 \`\`\`bash
 # macOS / Linux
+# 列出目录内容
 lsof -i :8000
 \`\`\`
 
@@ -382,9 +410,11 @@ lsof -i :8000
 
 \`\`\`bash
 # 导出当前依赖
+# pip freeze > requirements.txt
 pip freeze > requirements.txt
 
 # 别人拿到项目后安装
+# 安装 Python 包: -r requirements.txt
 pip install -r requirements.txt
 \`\`\`
 
@@ -429,8 +459,11 @@ WSGI 的函数签名（同步，处理完才返回）：
 
 \`\`\`python
 # WSGI 应用：接收 environ（请求信息）和 start_response（开始响应的回调）
+# 定义函数 app，参数: environ, start_response
 def app(environ, start_response):
+    # 调用 start_response()
     start_response("200 OK", [("Content-Type", "text/plain")])
+    # 返回 [b"Hello"]
     return [b"Hello"]
 \`\`\`
 
@@ -438,8 +471,11 @@ ASGI 的函数签名（异步，可await）：
 
 \`\`\`python
 # ASGI 应用：接收 scope（连接信息）、receive（接收请求的协程）、send（发送响应的协程）
+# 定义异步函数 app，参数: scope, receive, send
 async def app(scope, receive, send):
+    # await send({"type": "http.response.start", "status
     await send({"type": "http.response.start", "status": 200})
+    # await send({"type": "http.response.body", "body": 
     await send({"type": "http.response.body", "body": b"Hello"})
 \`\`\`
 
@@ -480,6 +516,7 @@ FastAPI 本身不监听端口，需要 ASGI 服务器来跑它。主流有三个
 
 \`\`\`bash
 # gunicorn 管理多进程，每个进程跑一个 uvicorn worker 处理异步
+# gunicorn main:app -w 4 -k uvicorn.workers.UvicornW
 gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker
 \`\`\`
 
@@ -490,21 +527,30 @@ gunicorn 负责进程管理（master-worker 模式、平滑重启、信号处理
 FastAPI 允许你两种路由混用：
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 导入 time 模块
 import time
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 同步路由：用普通 def
+# 定义 GET 路由：访问 /sync 时触发
 @app.get("/sync")
+# 定义函数 sync_endpoint，参数: 
 def sync_endpoint():
     time.sleep(1)  # 阻塞 1 秒
+    # 返回 {"type": "sync"}
     return {"type": "sync"}
 
 # 异步路由：用 async def
+# 定义 GET 路由：访问 /async 时触发
 @app.get("/async")
+# 定义异步函数 async_endpoint，参数: 
 async def async_endpoint():
     await asyncio.sleep(1)  # 异步等待 1 秒，不阻塞事件循环
+    # 返回 {"type": "async"}
     return {"type": "async"}
 \`\`\`
 
@@ -525,21 +571,31 @@ FastAPI 直接在**事件循环**里 await 这个协程。如果协程里调用�
 看一个反面教材：
 
 \`\`\`python
+# 导入 asyncio 模块
 import asyncio
+# 导入 time 模块
 import time
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 反面教材：async 路由里用同步阻塞 time.sleep
+# 定义 GET 路由：访问 /bad 时触发
 @app.get("/bad")
+# 定义异步函数 bad，参数: 
 async def bad():
     time.sleep(5)  # 阻塞事件循环 5 秒！
+    # 返回 {"msg": "done"}
     return {"msg": "done"}
 
 # 一个正常接口
+# 定义 GET 路由：访问 /ping 时触发
 @app.get("/ping")
+# 定义异步函数 ping，参数: 
 async def ping():
+    # 返回 {"msg": "pong"}
     return {"msg": "pong"}
 \`\`\`
 
@@ -554,23 +610,33 @@ async def ping():
 \`\`\`python
 import httpx  # 异步 HTTP 客户端
 
+# 定义 GET 路由：访问 /weather 时触发
 @app.get("/weather")
+# 定义异步函数 get_weather，参数: 
 async def get_weather():
     # 异步 HTTP 请求，等待期间不阻塞，能处理别的请求
+    # async with httpx.AsyncClient() as client:
     async with httpx.AsyncClient() as client:
+        # 定义变量 resp，赋值为 await client.get("https://api.weather.com/now...
         resp = await client.get("https://api.weather.com/now")
+        # 返回 resp.json()
         return resp.json()
 \`\`\`
 
 ### 场景 2：CPU 密集（计算、压缩）—— 用 def 或 run_in_executor
 
 \`\`\`python
+# 导入 time 模块
 import time
 
 # CPU 密集用 def，FastAPI 会放线程池跑，不阻塞事件循环
+# 定义 GET 路由：访问 /compute 时触发
 @app.get("/compute")
+# 定义函数 compute，参数: 
 def compute():
+    # 定义变量 total，赋值为 sum(i * i for i in range(10_000_000))
     total = sum(i * i for i in range(10_000_000))
+    # 返回 {"total": total}
     return {"total": total}
 \`\`\`
 
@@ -579,12 +645,17 @@ def compute():
 如果非得在 async 路由里调用同步阻塞库（比如老数据库驱动），用 \`run_in_threadpool\` 包一层：
 
 \`\`\`python
+# 从 fastapi.concurrency 导入 run_in_threadpool
 from fastapi.concurrency import run_in_threadpool
 
+# 定义 GET 路由：访问 /legacy 时触发
 @app.get("/legacy")
+# 定义异步函数 legacy，参数: 
 async def legacy():
     # 把同步阻塞函数丢到线程池，async 等待结果，不卡事件循环
+    # 定义变量 result，赋值为 await run_in_threadpool(blocking_db_call, arg...
     result = await run_in_threadpool(blocking_db_call, arg1)
+    # 返回 {"result": result}
     return {"result": result}
 \`\`\`
 
@@ -606,25 +677,39 @@ async def legacy():
 
 \`\`\`python
 # ❌ 串行同步：3 个请求各 1 秒，总共 3 秒
+# 定义 GET 路由：访问 /serial 时触发
 @app.get("/serial")
+# 定义函数 serial，参数: 
 def serial():
+    # 导入 requests 模块
     import requests
     a = requests.get("https://api.a.com").json()  # 1s
     b = requests.get("https://api.b.com").json()  # 1s
     c = requests.get("https://api.c.com").json()  # 1s
+    # 返回 {"a": a, "b": b, "c": c}
     return {"a": a, "b": b, "c": c}
 
 # ✅ 并发异步：3 个请求同时发，总共 1 秒
+# 定义 GET 路由：访问 /concurrent 时触发
 @app.get("/concurrent")
+# 定义异步函数 concurrent，参数: 
 async def concurrent():
+    # 导入 httpx 模块
     import httpx
+    # async with httpx.AsyncClient() as client:
     async with httpx.AsyncClient() as client:
         # asyncio.gather 并发执行多个协程
+        # a, b, c = await asyncio.gather(
         a, b, c = await asyncio.gather(
+            # 调用 client.get()
             client.get("https://api.a.com"),
+            # 调用 client.get()
             client.get("https://api.b.com"),
+            # 调用 client.get()
             client.get("https://api.c.com"),
+        # )
         )
+    # 返回 {"a": a.json(), "b": b.json(), "c": c.json()}
     return {"a": a.json(), "b": b.json(), "c": c.json()}
 \`\`\`
 
@@ -702,8 +787,11 @@ async def concurrent():
 FastAPI 之所以能自动出文档，关键在于它把"类型注解"作为单一数据源。当你写下：
 
 \`\`\`python
+# 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}")
+# 定义函数 read_item，参数: item_id: int, q: str | None = None
 def read_item(item_id: int, q: str | None = None):
+    # 返回 {"item_id": item_id, "q": q}
     return {"item_id": item_id, "q": q}
 \`\`\`
 
@@ -751,22 +839,33 @@ ReDoc 是另一套开源前端，更偏"文档展示"：
 ### 应用级定制
 
 \`\`\`python
+# 创建 FastAPI 应用实例
 app = FastAPI(
+    # 定义变量 title，赋值为 "电商订单 API",
     title="电商订单 API",
+    # 定义变量 description，赋值为 """
     description="""
+# 订单服务对外接口文档。
 订单服务对外接口文档。
 
 ## 功能模块
+# - **订单**：创建、查询、取消
 - **订单**：创建、查询、取消
+# - **支付**：发起、回调
 - **支付**：发起、回调
 
+# 联系方式：api-team@company.com
 联系方式：api-team@company.com
+# """,
 """,
+    # 定义变量 version，赋值为 "2.1.0",
     version="2.1.0",
     # 关掉某个文档端点（生产可能想关 docs）
     docs_url="/my-docs",       # 默认 /docs
     redoc_url=None,            # None 表示禁用
+    # 定义变量 openapi_url，赋值为 "/openapi.json"
     openapi_url="/openapi.json"
+# )
 )
 \`\`\`
 
@@ -775,14 +874,20 @@ app = FastAPI(
 ### 路由级定制：tags、summary、description
 
 \`\`\`python
+# 装饰器：app.get
 @app.get(
+    # "/items/{item_id}",
     "/items/{item_id}",
     tags=["商品"],           # 分组标签，文档里按 tag 分类展示
     summary="查询单个商品",   # 简短一行说明
     description="根据商品 ID 查询详情。如果商品不存在返回 404。",  # 详细说明
+    # 定义变量 response_description，赋值为 "商品详情对象"
     response_description="商品详情对象"
+# )
 )
+# 定义函数 read_item，参数: item_id: int
 def read_item(item_id: int):
+    # 返回 {"item_id": item_id}
     return {"item_id": item_id}
 \`\`\`
 
@@ -793,16 +898,25 @@ def read_item(item_id: int):
 更优雅的写法：把详细说明写在 docstring 里，FastAPI 会自动用上：
 
 \`\`\`python
+# 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}", tags=["商品"])
+# 定义函数 read_item，参数: item_id: int
 def read_item(item_id: int):
+    # """
     """
+    # 查询单个商品详情。
     查询单个商品详情。
 
+    # - **item_id**：商品 ID，整数
     - **item_id**：商品 ID，整数
+    # - 返回：商品对象，含名称、价格、库存
     - 返回：商品对象，含名称、价格、库存
 
+    # 商品不存在时返回 404。
     商品不存在时返回 404。
+    # """
     """
+    # 返回 {"item_id": item_id}
     return {"item_id": item_id}
 \`\`\`
 
@@ -811,31 +925,54 @@ docstring 里的 Markdown 会被渲染到 description，比单独传参数整洁
 ### 响应示例定制
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 pydantic 导入 BaseModel
 from pydantic import BaseModel
 
+# 定义 Pydantic 数据模型 Item，继承 BaseModel
 class Item(BaseModel):
+    # 字段 id，类型: int
     id: int
+    # 字段 name，类型: str
     name: str
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 装饰器：app.get
 @app.get(
+    # "/items/{item_id}",
     "/items/{item_id}",
+    # 定义变量 response_model，赋值为 Item,
     response_model=Item,
+    # 定义字典 responses
     responses={
+        # 字段 200，类型: {
         200: {
+            # "description": "商品详情",
             "description": "商品详情",
+            # "content": {
             "content": {
+                # "application/json": {
                 "application/json": {
+                    # "example": {"id": 42, "name": "苹果手机"}
                     "example": {"id": 42, "name": "苹果手机"}
+                # }
                 }
+            # }
             }
+        # },
         },
+        # 字段 404，类型: {"description": "商品不存在"}
         404: {"description": "商品不存在"}
+    # }
     }
+# )
 )
+# 定义函数 read_item，参数: item_id: int
 def read_item(item_id: int):
+    # 返回 {"id": item_id, "name": "苹果手机"}
     return {"id": item_id, "name": "苹果手机"}
 \`\`\`
 
@@ -866,39 +1003,68 @@ OpenAPI 是标准，生态工具丰富：
 把前面的知识串起来，写一个文档齐全的接口：
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Path, Query
 from fastapi import FastAPI, Path, Query
+# 从 pydantic 导入 BaseModel
 from pydantic import BaseModel
 
+# 创建 FastAPI 应用实例
 app = FastAPI(title="图书管理 API", version="1.0.0")
 
+# 定义 Pydantic 数据模型 Book，继承 BaseModel
 class Book(BaseModel):
+    # 字段 id，类型: int
     id: int
+    # 字段 title，类型: str
     title: str
+    # 字段 author，类型: str
     author: str
+    # 字段 price，类型: float
     price: float
 
+# 装饰器：app.get
 @app.get(
+    # "/books/{book_id}",
     "/books/{book_id}",
+    # 定义列表 tags
     tags=["图书"],
+    # 定义变量 response_model，赋值为 Book,
     response_model=Book,
+    # 定义变量 summary，赋值为 "查询图书详情",
     summary="查询图书详情",
+    # 定义字典 responses
     responses={
+        # 字段 200，类型: {"description": "图书详情", "content": {"application/json": {"example": {"id": 1, "title": "三体", "author": "刘慈欣", "price": 45.0}}}},
         200: {"description": "图书详情", "content": {"application/json": {"example": {"id": 1, "title": "三体", "author": "刘慈欣", "price": 45.0}}}},
+        # 字段 404，类型: {"description": "图书不存在"}
         404: {"description": "图书不存在"}
+    # }
     }
+# )
 )
+# def get_book(
 def get_book(
+    # 字段 book_id，类型: int，默认值: Path(..., description="图书 ID，正整数", ge=1),
     book_id: int = Path(..., description="图书 ID，正整数", ge=1),
+    # 字段 detail，类型: bool，默认值: Query(False, description="是否返回详细信息")
     detail: bool = Query(False, description="是否返回详细信息")
+# ):
 ):
+    # """
     """
+    # 根据 ID 查询图书。
     根据 ID 查询图书。
 
+    # - **book_id**：图书唯一标识
     - **book_id**：图书唯一标识
+    # - **detail**：传 true 返回完整信息，false 只返回基本信息
     - **detail**：传 true 返回完整信息，false 只返回基本信息
 
+    # 若图书不存在，返回 404。
     若图书不存在，返回 404。
+    # """
     """
+    # 返回 {"id": book_id, "title": "三体", "author": "刘慈欣", "price": 45.0}
     return {"id": book_id, "title": "三体", "author": "刘慈欣", "price": 45.0}
 \`\`\`
 
@@ -909,16 +1075,22 @@ def get_book(
 生产环境有时想关掉文档端点（避免暴露接口结构）：
 
 \`\`\`python
+# 创建 FastAPI 应用实例
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 \`\`\`
 
 设为 \`None\` 就禁用对应端点。更精细的做法是按环境变量控制：
 
 \`\`\`python
+# 导入 os 模块
 import os
+# 创建 FastAPI 应用实例
 app = FastAPI(
+    # 定义变量 docs_url，赋值为 "/docs" if os.getenv("ENV") != "prod" else No...
     docs_url="/docs" if os.getenv("ENV") != "prod" else None,
+    # 定义变量 redoc_url，赋值为 None
     redoc_url=None
+# )
 )
 \`\`\`
 

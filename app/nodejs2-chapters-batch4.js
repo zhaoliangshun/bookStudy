@@ -42,9 +42,9 @@ ES2022 引入了 \`cause\` 属性，这是一个非常重要的改进。它允�
 自定义错误类型的标准做法是继承 Error 类：
 
 \`\`\`javascript
-class AppError extends Error {
-  constructor(message, options = {}) {
-    super(message, options);
+class AppError extends Error {  // 定义类 AppError
+  constructor(message, options = {}) {  // 构造函数
+    super(message, options);  // 调用父类构造函数
     this.name = this.constructor.name;
     this.statusCode = options.statusCode || 500;
     this.isOperational = options.isOperational !== false;
@@ -138,7 +138,7 @@ Node.js 官方文档将错误分为两大类，理解这个分类至关重要：
 
 \`\`\`javascript
 // 反模式1：空的 catch 块
-try {
+try {  // 开启 try 块捕获异常
   riskyOperation();
 } catch (e) {
   // 什么都不做！
@@ -152,9 +152,9 @@ somePromise.then(result => {
 });
 
 // 反模式3：在回调中忽略错误
-fs.readFile('file.txt', (err, data) => {
+fs.readFile('file.txt', (err, data) => {  // 异步读取文件（回调形式）
   // 不检查 err！
-  console.log(data);
+  console.log(data);  // 打印日志到 stdout
 });
 \`\`\`
 
@@ -165,10 +165,10 @@ fs.readFile('file.txt', (err, data) => {
 当 Promise 被 reject 但没有 catch 处理时，会触发 \`unhandledRejection\` 事件。在 Node.js 未来的版本中，未处理的 Promise rejection 会直接导致进程退出。
 
 \`\`\`javascript
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('未处理的 Promise Rejection:', reason);
+process.on('unhandledRejection', (reason, promise) => {  // 注册进程级事件监听
+  console.error('未处理的 Promise Rejection:', reason);  // 打印错误到 stderr
   // 记录日志后退出，和 uncaughtException 一样处理
-  process.exit(1);
+  process.exit(1);  // 退出进程（0 正常，非 0 异常）
 });
 \`\`\`
 
@@ -177,12 +177,12 @@ process.on('unhandledRejection', (reason, promise) => {
 当同步代码抛出异常但没有被任何 try/catch 捕获时，会触发 \`uncaughtException\` 事件。这是进程崩溃前的最后机会。
 
 \`\`\`javascript
-process.on('uncaughtException', (err) => {
-  console.error('未捕获的异常:', err);
+process.on('uncaughtException', (err) => {  // 注册进程级事件监听
+  console.error('未捕获的异常:', err);  // 打印错误到 stderr
   // 注意：此时不能安全地继续运行，应该记录日志后退出
   // 先尝试清理资源，然后退出
-  setTimeout(() => {
-    process.exit(1);
+  setTimeout(() => {  // 延时回调（宏任务，timers 阶段执行）
+    process.exit(1);  // 退出进程（0 正常，非 0 异常）
   }, 1000);
 });
 \`\`\`
@@ -213,11 +213,11 @@ Node.js 核心团队已经明确表示不会修复 domain 的问题，新代码�
 
 \`\`\`javascript
 // Repository 层
-async function findUserById(id) {
-  try {
-    return await db.query('SELECT * FROM users WHERE id = ?', [id]);
+async function findUserById(id) {  // 声明异步函数，内部可用 await
+  try {  // 开启 try 块捕获异常
+    return await db.query('SELECT * FROM users WHERE id = ?', [id]);  // 返回值
   } catch (err) {
-    throw new AppError('查询用户失败', {
+    throw new AppError('查询用户失败', {  // 抛出异常
       cause: err,
       statusCode: 500
     });
@@ -225,18 +225,18 @@ async function findUserById(id) {
 }
 
 // Service 层
-async function getUser(id) {
-  try {
-    const user = await findUserById(id);
-    if (!user) {
-      throw new NotFoundError(\`用户 \${id} 不存在\`);
+async function getUser(id) {  // 声明异步函数，内部可用 await
+  try {  // 开启 try 块捕获异常
+    const user = await findUserById(id);  // 定义常量 user
+    if (!user) {  // 条件判断
+      throw new NotFoundError(\`用户 \${id} 不存在\`);  // 抛出异常
     }
-    return user;
+    return user;  // 返回值
   } catch (err) {
-    if (err instanceof AppError) {
+    if (err instanceof AppError) {  // 条件判断
       throw err; // 已经是业务错误，直接重新抛出
     }
-    throw new AppError('获取用户信息失败', { cause: err });
+    throw new AppError('获取用户信息失败', { cause: err });  // 抛出异常
   }
 }
 \`\`\`
@@ -473,7 +473,7 @@ main();
 很多初学者习惯打印纯文本日志：
 
 \`\`\`javascript
-console.log(\`[\${new Date().toISOString()}] 用户登录成功，用户ID是\${userId}，IP地址是\${ip}\`);
+console.log(\`[\${new Date().toISOString()}] 用户登录成功，用户ID是\${userId}，IP地址是\${ip}\`);  // 打印日志到 stdout
 \`\`\`
 
 这种方式在开发时看起来没问题，但在生产环境中有致命缺陷：
@@ -807,10 +807,10 @@ main();
 
 \`\`\`javascript
 // 反模式
-const dbHost = 'localhost';
-const dbPort = 3306;
-const dbPassword = 'my-secret-password';
-const apiKey = 'sk-1234567890abcdef';
+const dbHost = 'localhost';  // 定义常量 dbHost
+const dbPort = 3306;  // 定义常量 dbPort
+const dbPassword = 'my-secret-password';  // 定义常量 dbPassword
+const apiKey = 'sk-1234567890abcdef';  // 定义常量 apiKey
 \`\`\`
 
 硬编码配置的问题非常严重：
@@ -830,7 +830,7 @@ const apiKey = 'sk-1234567890abcdef';
 优先级最高。启动应用时通过命令行传递的参数，例如：
 
 \`\`\`bash
-node server.js --port=8080 --db-host=10.0.0.1
+node server.js --port=8080 --db-host=10.0.0.1  # 用 Node.js 执行脚本 server.js
 \`\`\`
 
 命令行参数适合临时覆盖配置，或者在容器环境中传递配置。
@@ -840,10 +840,10 @@ node server.js --port=8080 --db-host=10.0.0.1
 优先级第二。环境变量是操作系统级别的变量，应用在启动时读取。例如：
 
 \`\`\`bash
-export NODE_ENV=production
-export DB_HOST=10.0.0.1
-export DB_PASSWORD=xxx
-node server.js
+export NODE_ENV=production  # 设置环境变量
+export DB_HOST=10.0.0.1  # 设置环境变量
+export DB_PASSWORD=xxx  # 设置环境变量
+node server.js  # 用 Node.js 执行脚本 server.js
 \`\`\`
 
 环境变量是"十二要素应用"推荐的配置方式，它的优点是：
@@ -1276,21 +1276,21 @@ Koa 框架最著名的就是它的"洋葱模型"。理解洋葱模型是理解�
 用代码来表示就是：
 
 \`\`\`javascript
-async function middleware1(ctx, next) {
-  console.log('1 - 进入');
-  await next();
-  console.log('1 - 退出');
+async function middleware1(ctx, next) {  // 声明异步函数，内部可用 await
+  console.log('1 - 进入');  // 打印日志到 stdout
+  await next();  // 等待 Promise 完成后再继续
+  console.log('1 - 退出');  // 打印日志到 stdout
 }
 
-async function middleware2(ctx, next) {
-  console.log('2 - 进入');
-  await next();
-  console.log('2 - 退出');
+async function middleware2(ctx, next) {  // 声明异步函数，内部可用 await
+  console.log('2 - 进入');  // 打印日志到 stdout
+  await next();  // 等待 Promise 完成后再继续
+  console.log('2 - 退出');  // 打印日志到 stdout
 }
 
-async function middleware3(ctx, next) {
-  console.log('3 - 业务处理');
-  ctx.body = 'Hello';
+async function middleware3(ctx, next) {  // 声明异步函数，内部可用 await
+  console.log('3 - 业务处理');  // 打印日志到 stdout
+  ctx.body = 'Hello';  // 设置 Koa 响应体
 }
 
 // 执行顺序是：
@@ -1614,8 +1614,8 @@ main();
 我们先来看不使用 DI 时典型的紧耦合代码是什么样的：
 
 \`\`\`javascript
-class UserService {
-  constructor() {
+class UserService {  // 定义类 UserService
+  constructor() {  // 构造函数
     this.database = new MySQLDatabase();
     this.logger = new FileLogger();
     this.cache = new RedisCache();
@@ -1623,12 +1623,12 @@ class UserService {
   
   async getUser(id) {
     this.logger.log('查询用户: ' + id);
-    let user = await this.cache.get(id);
-    if (!user) {
+    let user = await this.cache.get(id);  // 定义变量 user（可变）
+    if (!user) {  // 条件判断
       user = await this.database.query('SELECT * FROM users WHERE id = ?', [id]);
-      await this.cache.set(id, user);
+      await this.cache.set(id, user);  // 等待 Promise 完成后再继续
     }
-    return user;
+    return user;  // 返回值
   }
 }
 \`\`\`
@@ -1657,8 +1657,8 @@ IoC 是一个比较宽泛的概念，依赖注入（DI）是实现 IoC 最常见
 把上面的例子改写成依赖注入的方式：
 
 \`\`\`javascript
-class UserService {
-  constructor(database, logger, cache) {
+class UserService {  // 定义类 UserService
+  constructor(database, logger, cache) {  // 构造函数
     this.database = database;
     this.logger = logger;
     this.cache = cache;
@@ -1691,7 +1691,7 @@ class UserService {
 依赖通过构造函数参数传入，这是**最推荐**的注入方式：
 
 \`\`\`javascript
-constructor(database, logger) {
+constructor(database, logger) {  // 构造函数
   this.database = database;
   this.logger = logger;
 }
@@ -1746,10 +1746,10 @@ async getUser(id, logger) {
 当只有两三个类的时候，手动注入依赖很简单：
 
 \`\`\`javascript
-const logger = new Logger();
-const db = new Database(logger);
-const cache = new Cache(logger);
-const userService = new UserService(db, logger, cache);
+const logger = new Logger();  // 创建实例 logger
+const db = new Database(logger);  // 创建实例 db
+const cache = new Cache(logger);  // 创建实例 cache
+const userService = new UserService(db, logger, cache);  // 创建实例 userService
 \`\`\`
 
 但当项目变大，有几十上百个服务，依赖关系复杂时，手动维护这些初始化代码会变成噩梦——你必须自己处理初始化顺序、循环依赖、单例管理。这时候就需要**DI 容器**（也叫 IoC 容器）来帮我们管理这一切。
@@ -1765,8 +1765,8 @@ DI 容器的核心职责：
 服务定位器（Service Locator）是另一种实现 IoC 的方式：对象不自己创建依赖，而是从一个全局的 locator 中"找"依赖：
 
 \`\`\`javascript
-class UserService {
-  constructor(locator) {
+class UserService {  // 定义类 UserService
+  constructor(locator) {  // 构造函数
     this.database = locator.get('Database');
     this.logger = locator.get('Logger');
   }
@@ -2103,7 +2103,7 @@ hooks.beforeCompile.call();
 插件是异步函数，一个接一个执行，前一个执行完才执行下一个。适合有先后依赖的异步操作，比如"文件转换"——每个插件依次处理文件内容。
 
 \`\`\`javascript
-await hooks.beforeCompile.promise();
+await hooks.beforeCompile.promise();  // 等待 Promise 完成后再继续
 \`\`\`
 
 #### 2.3 异步并行钩子（AsyncParallelHook）
@@ -2111,7 +2111,7 @@ await hooks.beforeCompile.promise();
 多个插件的异步操作并行执行，全部完成后才继续。适合互相独立的异步任务，比如"加载配置"、"初始化插件"。
 
 \`\`\`javascript
-await Promise.all(hooks.initialize.taps.map(tap => tap.fn()));
+await Promise.all(hooks.initialize.taps.map(tap => tap.fn()));  // 等待 Promise 完成后再继续
 \`\`\`
 
 #### 2.4 瀑布钩子（WaterfallHook）
@@ -2121,8 +2121,8 @@ await Promise.all(hooks.initialize.taps.map(tap => tap.fn()));
 比如Webpack编译模块时，就是用瀑布钩子：源文件经过一个又一个loader（本质就是插件）转换，每个loader接收上一个的输出，处理后传给下一个。
 
 \`\`\`javascript
-let result = initialValue;
-for (const tap of taps) {
+let result = initialValue;  // 定义变量 result（可变）
+for (const tap of taps) {  // for 循环
   result = await tap.fn(result);
 }
 // result是经过所有插件处理后的最终结果
@@ -2980,13 +2980,13 @@ SIGTERM 是请求进程终止的信号。这是生产环境中最常见的退出
 在Node.js中，通过process.on()监听信号：
 
 \`\`\`javascript
-process.on('SIGTERM', () => {
-  console.log('收到SIGTERM信号，开始优雅退出');
+process.on('SIGTERM', () => {  // 注册进程级事件监听
+  console.log('收到SIGTERM信号，开始优雅退出');  // 打印日志到 stdout
   gracefulShutdown('SIGTERM');
 });
 
-process.on('SIGINT', () => {
-  console.log('收到SIGINT信号(Ctrl+C)，开始优雅退出');
+process.on('SIGINT', () => {  // 注册进程级事件监听
+  console.log('收到SIGINT信号(Ctrl+C)，开始优雅退出');  // 打印日志到 stdout
   gracefulShutdown('SIGINT');
 });
 \`\`\`
@@ -3071,11 +3071,11 @@ process对象上有一个exit事件，在进程即将退出时触发。很多人
 为什么？因为exit事件触发时，事件循环已经停止了，任何异步操作（setTimeout、Promise、文件IO、网络IO）都不会再执行。所以如果你在exit处理函数里写：
 
 \`\`\`javascript
-process.on('exit', () => {
+process.on('exit', () => {  // 注册进程级事件监听
   // 这行能执行
-  console.log('进程退出');
+  console.log('进程退出');  // 打印日志到 stdout
   // 下面这些不会执行！
-  setTimeout(() => console.log('异步'), 100);
+  setTimeout(() => console.log('异步'), 100);  // 延时回调（宏任务，timers 阶段执行）
   fs.writeFileSync('/tmp/log.txt', 'exit'); // 这个是同步的，可以
   server.close(); // 异步，不会执行
 });
@@ -3088,12 +3088,12 @@ process.on('exit', () => {
 在实际运行中，信号可能会被发送多次（比如用户等不及又按了一次Ctrl+C，或者编排系统发了SIGTERM又发SIGINT）。所以我们需要一个标志位，确保优雅退出流程只执行一次：
 
 \`\`\`javascript
-let isShuttingDown = false;
+let isShuttingDown = false;  // 定义变量 isShuttingDown（可变）
 
-function gracefulShutdown(signal) {
-  if (isShuttingDown) {
-    console.log('已经在退出中，强制退出');
-    process.exit(1);
+function gracefulShutdown(signal) {  // 声明函数 gracefulShutdown
+  if (isShuttingDown) {  // 条件判断
+    console.log('已经在退出中，强制退出');  // 打印日志到 stdout
+    process.exit(1);  // 退出进程（0 正常，非 0 异常）
     return;
   }
   isShuttingDown = true;

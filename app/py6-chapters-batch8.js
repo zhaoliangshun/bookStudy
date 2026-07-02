@@ -607,8 +607,9 @@ print(f"匹配月份: {re.findall(r'Jan|Feb|Mar|Apr|May|Jun', 'Jan Feb Mar Apr M
 ### re.compile 编译
 
 重复使用同一模式时，先\`re.compile()\`编译可提高性能：
-\`\`\`python
+\`\`\`python# 使用 re.compile 预编译正则表达式 r'\d+'，预编译可在多次匹配时提升效率
 pattern = re.compile(r'\\d+')
+# 调用 findall 在文本 text 中查找全部匹配项，返回匹配字符串列表
 pattern.findall(text)
 \`\`\`
 

@@ -20,8 +20,8 @@ export const chapters = [
 在没有依赖注入的代码中，一个类通常会直接在内部实例化它所依赖的其他类：
 
 \`\`\`javascript
-class OrderService {
-  constructor() {
+class OrderService {  // 定义类 OrderService
+  constructor() {  // 构造函数
     // 硬编码依赖——OrderService 与 MySQL 数据库强耦合
     this.db = new MySQLDatabase('localhost', 3306, 'orders');
     this.email = new EmailService('smtp.company.com');
@@ -38,8 +38,8 @@ class OrderService {
 最推荐的方式，依赖在构造时一次性传入，对象创建后立即可用，且依赖关系不可变：
 
 \`\`\`javascript
-class OrderService {
-  constructor(db, emailService) {
+class OrderService {  // 定义类 OrderService
+  constructor(db, emailService) {  // 构造函数
     this.db = db;               // 通过构造函数注入
     this.emailService = emailService;
   }
@@ -51,7 +51,7 @@ class OrderService {
 通过 setter 方法或直接赋值来注入依赖，灵活但依赖可能在对象生命周期中变化：
 
 \`\`\`javascript
-class OrderService {
+class OrderService {  // 定义类 OrderService
   setDatabase(db) { this.db = db; }
   setEmailService(email) { this.emailService = email; }
 }
@@ -451,10 +451,10 @@ Repository 模式是企业应用架构中最经典的模式之一，它通过在
 
 \`\`\`javascript
 // 业务逻辑中混入了数据访问细节——这是反模式
-function getActiveUsers() {
-  const db = new MySQLConnection();
-  const rows = db.query("SELECT * FROM users WHERE status = 'active' ORDER BY created_at DESC");
-  return rows.map(r => new User(r));
+function getActiveUsers() {  // 声明函数 getActiveUsers
+  const db = new MySQLConnection();  // 创建实例 db
+  const rows = db.query("SELECT * FROM users WHERE status = 'active' ORDER BY created_at DESC");  // 定义常量 rows
+  return rows.map(r => new User(r));  // 返回值
 }
 \`\`\`
 
@@ -491,13 +491,13 @@ interface Repository<T> {
 
 \`\`\`javascript
 // 查询条件对象——类型安全、可组合
-const criteria = {
+const criteria = {  // 定义对象 criteria
   where: { status: 'active', age: { gte: 18 } },
   orderBy: { field: 'createdAt', direction: 'desc' },
   limit: 20,
   offset: 0
 };
-const users = userRepo.findAll(criteria);
+const users = userRepo.findAll(criteria);  // 定义常量 users
 \`\`\`
 
 ### Repository 与 Service 层配合
@@ -1018,7 +1018,7 @@ console.log("\\n===== Repository 模式演示完成 =====");
 Service 层是分层架构的"中枢"。它不应该只是一个"数据传递者"，而应该包含真正的业务逻辑：
 
 \`\`\`javascript
-class OrderService {
+class OrderService {  // 定义类 OrderService
   // 好的 Service——包含业务逻辑
   async placeOrder(userId, items) {
     const user = await this.userRepo.findById(userId);      // 1. 获取用户
@@ -1028,7 +1028,7 @@ class OrderService {
     const order = await this.orderRepo.save({...});          // 5. 保存订单
     await this.inventoryRepo.deduct(items);                  // 6. 扣减库存
     await this.notificationService.send(order);              // 7. 发送通知
-    return order;
+    return order;  // 返回值
   }
 }
 \`\`\`

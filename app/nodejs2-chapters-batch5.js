@@ -1241,9 +1241,9 @@ Repository（仓储）模式是数据访问层最常用的设计模式之一。�
 
 \`\`\`javascript
 // 业务代码不需要知道 SQL，只调用 Repository 方法
-const user = await userRepository.findById(1);
-const users = await userRepository.findByAge(18, 30);
-await userRepository.update(1, { name: '新名字' });
+const user = await userRepository.findById(1);  // 定义常量 user
+const users = await userRepository.findByAge(18, 30);  // 定义常量 users
+await userRepository.update(1, { name: '新名字' });  // 等待 Promise 完成后再继续
 \`\`\`
 
 每个实体（表）对应一个 Repository，封装了该表的所有 CRUD（增删改查）操作。这让业务代码变得非常清晰，而且 Repository 内部可以自由替换实现（比如从内存实现换成真实数据库实现，业务代码不需要改一行）。
@@ -1274,7 +1274,7 @@ SQL 注入是最经典、最危险的 Web 安全漏洞之一。假设你写了�
 
 \`\`\`javascript
 // ❌ 危险！SQL 注入漏洞
-const sql = \`SELECT * FROM users WHERE name = '\${userName}'\`;
+const sql = \`SELECT * FROM users WHERE name = '\${userName}'\`;  // 定义常量 sql
 // 如果 userName 输入: ' OR '1'='1
 // 最终 SQL: SELECT * FROM users WHERE name = '' OR '1'='1'
 // 这会返回所有用户数据！更严重的可以删表、提权
@@ -1284,7 +1284,7 @@ const sql = \`SELECT * FROM users WHERE name = '\${userName}'\`;
 
 \`\`\`javascript
 // ✅ 安全的参数化查询
-const sql = 'SELECT * FROM users WHERE name = ?';
+const sql = 'SELECT * FROM users WHERE name = ?';  // 定义常量 sql
 db.query(sql, [userName]);
 \`\`\`
 

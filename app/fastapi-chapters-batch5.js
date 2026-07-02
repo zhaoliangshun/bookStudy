@@ -39,32 +39,46 @@ export const chapters = [
 最经典的场景:接收 UserIn(含密码),处理后返回 UserOut(不含密码)。
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 pydantic 导入 BaseModel
 from pydantic import BaseModel
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 输入模型:包含密码(创建用户需要)
+# 定义 Pydantic 数据模型 UserIn，继承 BaseModel
 class UserIn(BaseModel):
+    # 字段 username，类型: str
     username: str
     password: str  # 前端传过来,我们要存,但不能返回
+    # 字段 email，类型: str
     email: str
 
 # 输出模型:不含密码,对外安全
+# 定义 Pydantic 数据模型 UserOut，继承 BaseModel
 class UserOut(BaseModel):
+    # 字段 username，类型: str
     username: str
+    # 字段 email，类型: str
     email: str
     # 没有 password 字段 —— response_model 会自动把它过滤掉
 
 # 模拟数据库
+# 定义字典 fake_db
 fake_db = {}
 
 # response_model=UserOut:即使函数 return 了完整 dict,FastAPI 也只输出 UserOut 的字段
+# 定义 POST 路由：访问 /users 时触发
 @app.post("/users", response_model=UserOut)
+# 定义函数 create_user，参数: user: UserIn
 def create_user(user: UserIn):
     # 实际项目这里会 hash 密码再存
+    # fake_db[user.username] = user
     fake_db[user.username] = user
     # 返回的是 UserIn 的所有字段(含 password),但 response_model 会过滤
+    # 返回 user
     return user
 \`\`\`
 
@@ -94,11 +108,15 @@ def create_user(user: UserIn):
 返回多个对象时用 \`List[Model]\`:
 
 \`\`\`python
+# 从 typing 导入 List
 from typing import List
 
+# 定义 GET 路由：访问 /users 时触发
 @app.get("/users", response_model=List[UserOut])
+# 定义函数 list_users，参数: 
 def list_users():
     # 数据库里是 UserIn 列表,但返回时会被过滤成 UserOut
+    # 返回 list(fake_db.values())
     return list(fake_db.values())
 \`\`\`
 
@@ -118,31 +136,53 @@ def list_users():
 一个典型的用户资源会有这几个模型:
 
 \`\`\`python
+# 定义 Pydantic 数据模型 UserCreate，继承 BaseModel
 class UserCreate(BaseModel):
+    # """创建用户的输入"""
     """创建用户的输入"""
+    # 字段 username，类型: str
     username: str
+    # 字段 password，类型: str
     password: str
+    # 字段 email，类型: str
     email: str
 
+# 定义 Pydantic 数据模型 UserUpdate，继承 BaseModel
 class UserUpdate(BaseModel):
+    # """更新用户的输入,所有字段可选"""
     """更新用户的输入,所有字段可选"""
+    # 字段 username，类型: str | None，默认值: None
     username: str | None = None
+    # 字段 email，类型: str | None，默认值: None
     email: str | None = None
     # 不允许通过更新接口改密码
 
+# 定义 Pydantic 数据模型 UserOut，继承 BaseModel
 class UserOut(BaseModel):
+    # """对外输出"""
     """对外输出"""
+    # 字段 id，类型: int
     id: int
+    # 字段 username，类型: str
     username: str
+    # 字段 email，类型: str
     email: str
+    # 字段 is_active，类型: bool
     is_active: bool
 
+# 定义 Pydantic 数据模型 UserInDB，继承 BaseModel
 class UserInDB(BaseModel):
+    # """内部使用,含密码哈希"""
     """内部使用,含密码哈希"""
+    # 字段 id，类型: int
     id: int
+    # 字段 username，类型: str
     username: str
+    # 字段 email，类型: str
     email: str
+    # 字段 hashed_password，类型: str
     hashed_password: str
+    # 字段 is_active，类型: bool
     is_active: bool
 \`\`\`
 
@@ -153,20 +193,31 @@ class UserInDB(BaseModel):
 如果不想为每种情况都建模型,可以用 include/exclude 临时控制返回字段:
 
 \`\`\`python
+# 定义 Pydantic 数据模型 User，继承 BaseModel
 class User(BaseModel):
+    # 字段 id，类型: int
     id: int
+    # 字段 username，类型: str
     username: str
+    # 字段 email，类型: str
     email: str
+    # 字段 is_admin，类型: bool
     is_admin: bool
 
 # 只返回 id 和 username
+# 定义 GET 路由：访问 /users/{uid} 时触发
 @app.get("/users/{uid}", response_model=User, response_model_include={"id", "username"})
+# 定义函数 get_user，参数: uid: int
 def get_user(uid: int):
+    # 返回 users[uid]
     return users[uid]
 
 # 排除 is_admin
+# 定义 GET 路由：访问 /users/{uid}/public 时触发
 @app.get("/users/{uid}/public", response_model=User, response_model_exclude={"is_admin"})
+# 定义函数 get_public_user，参数: uid: int
 def get_public_user(uid: int):
+    # 返回 users[uid]
     return users[uid]
 \`\`\`
 
@@ -181,14 +232,20 @@ def get_public_user(uid: int):
 Pydantic 模型字段可以有默认值。如果用户没传某字段,返回时是否要带上默认值?
 
 \`\`\`python
+# 定义 Pydantic 数据模型 Item，继承 BaseModel
 class Item(BaseModel):
+    # 字段 name，类型: str
     name: str
     description: str | None = None  # 可选,默认 None
+    # 字段 price，类型: float
     price: float
     tax: float = 0.1               # 默认 0.1
 
+# 定义 POST 路由：访问 /items 时触发
 @app.post("/items", response_model=Item, response_model_exclude_unset=True)
+# 定义函数 create，参数: item: Item
 def create(item: Item):
+    # 返回 item
     return item
 \`\`\`
 
@@ -262,17 +319,24 @@ REST API 设计中,正确使用状态码很重要,它是 HTTP 协议层面的「
 在路由装饰器上传 \`status_code\`:
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, status
 from fastapi import FastAPI, status
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 创建资源返回 201 Created
+# 定义 POST 路由：访问 /items 时触发
 @app.post("/items", status_code=status.HTTP_201_CREATED)
+# 定义函数 create_item，参数: item: dict
 def create_item(item: dict):
+    # 返回 item
     return item
 
 # 删除资源返回 204 No Content(无响应体)
+# 定义 DELETE 路由：访问 /items/{item_id} 时触发
 @app.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+# 定义函数 delete_item，参数: item_id: int
 def delete_item(item_id: int):
     # 删除逻辑
     return None  # 204 通常没有响应体
@@ -316,17 +380,25 @@ def delete_item(item_id: int):
 ### 5.1 注入 Response 参数
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Response
 from fastapi import FastAPI, Response
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 POST 路由：访问 /items 时触发
 @app.post("/items", status_code=201)
+# 定义函数 create_item，参数: item: dict, response: Response
 def create_item(item: dict, response: Response):
+    # 定义变量 new_id，赋值为 42
     new_id = 42
     # 设置 Location 头,指向新创建的资源
+    # response.headers["Location"] = f"/items/{new_id}"
     response.headers["Location"] = f"/items/{new_id}"
     # 自定义头(非标准头习惯加 X- 前缀)
+    # response.headers["X-Custom-Header"] = "hello"
     response.headers["X-Custom-Header"] = "hello"
+    # 返回 {"id": new_id, **item}
     return {"id": new_id, **item}
 \`\`\`
 
@@ -337,20 +409,33 @@ def create_item(item: dict, response: Response):
 也可以构造一个完整的 Response 对象 return:
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 fastapi.responses 导入 JSONResponse
 from fastapi.responses import JSONResponse
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 /custom 时触发
 @app.get("/custom")
+# 定义函数 custom，参数: 
 def custom():
+    # 返回 JSONResponse(
     return JSONResponse(
+        # 定义变量 status_code，赋值为 200,
         status_code=200,
+        # 定义字典 content
         content={"msg": "ok"},
+        # 定义字典 headers
         headers={
+            # "X-Custom-Header": "value",
             "X-Custom-Header": "value",
+            # "Cache-Control": "no-store",
             "Cache-Control": "no-store",
+        # },
         },
+    # )
     )
 \`\`\`
 
@@ -361,21 +446,30 @@ def custom():
 通过 Response 对象设置 Cookie:
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Response
 from fastapi import FastAPI, Response
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 POST 路由：访问 /login 时触发
 @app.post("/login")
+# 定义函数 login，参数: response: Response
 def login(response: Response):
     # 设置 Cookie
+    # response.set_cookie(
     response.set_cookie(
+        # 定义变量 key，赋值为 "session_id",
         key="session_id",
+        # 定义变量 value，赋值为 "abc123",
         value="abc123",
         httponly=True,   # JS 不能读,防 XSS
         secure=True,     # 只走 HTTPS
         samesite="lax",  # 防 CSRF
         max_age=3600,    # 1 小时后过期(秒)
+    # )
     )
+    # 返回 {"msg": "登录成功"}
     return {"msg": "登录成功"}
 \`\`\`
 
@@ -386,17 +480,26 @@ def login(response: Response):
 返回非 JSON 内容时要指定 content_type:
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 fastapi.responses 导入 PlainTextResponse, HTMLResponse
 from fastapi.responses import PlainTextResponse, HTMLResponse
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 /text 时触发
 @app.get("/text", response_class=PlainTextResponse)
+# 定义函数 text，参数: 
 def text():
+    # 返回 "纯文本内容"
     return "纯文本内容"
 
+# 定义 GET 路由：访问 /html 时触发
 @app.get("/html", response_class=HTMLResponse)
+# 定义函数 html，参数: 
 def html():
+    # 返回 "<h1>标题</h1><p>HTML 内容</p>"
     return "<h1>标题</h1><p>HTML 内容</p>"
 \`\`\`
 
@@ -405,19 +508,28 @@ def html():
 ## 八、RedirectResponse 重定向
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 fastapi.responses 导入 RedirectResponse
 from fastapi.responses import RedirectResponse
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 /old 时触发
 @app.get("/old")
+# 定义函数 old，参数: 
 def old():
     # 临时重定向(307)
+    # 返回 RedirectResponse(url="/new")
     return RedirectResponse(url="/new")
 
+# 定义 GET 路由：访问 /old2 时触发
 @app.get("/old2")
+# 定义函数 old2，参数: 
 def old2():
     # 永久重定向(301)
+    # 返回 RedirectResponse(url="/new", status_code=301)
     return RedirectResponse(url="/new", status_code=301)
 \`\`\`
 
@@ -430,42 +542,70 @@ def old2():
 REST 规范里,创建资源应该返回 201 状态码和 Location 头指向新资源:
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Response, status
 from fastapi import FastAPI, Response, status
+# 从 pydantic 导入 BaseModel
 from pydantic import BaseModel
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 Pydantic 数据模型 ItemIn，继承 BaseModel
 class ItemIn(BaseModel):
+    # 字段 name，类型: str
     name: str
+    # 字段 price，类型: float
     price: float
 
+# 定义 Pydantic 数据模型 ItemOut，继承 BaseModel
 class ItemOut(BaseModel):
+    # 字段 id，类型: int
     id: int
+    # 字段 name，类型: str
     name: str
+    # 字段 price，类型: float
     price: float
 
+# 定义字典 db
 db = {}
+# 定义变量 next_id，赋值为 1
 next_id = 1
 
+# 装饰器：app.post
 @app.post(
+    # "/items",
     "/items",
+    # 定义变量 response_model，赋值为 ItemOut,
     response_model=ItemOut,
+    # 定义变量 status_code，赋值为 status.HTTP_201_CREATED,
     status_code=status.HTTP_201_CREATED,
+# )
 )
+# 定义函数 create_item，参数: item: ItemIn, response: Response
 def create_item(item: ItemIn, response: Response):
+    # global next_id
     global next_id
     # 1. 存储新资源
+    # 定义变量 saved，赋值为 ItemOut(id=next_id, **item.model_dump())
     saved = ItemOut(id=next_id, **item.model_dump())
+    # db[next_id] = saved
     db[next_id] = saved
+    # 定义变量 new_id，赋值为 next_id
     new_id = next_id
+    # next_id += 1
     next_id += 1
     # 2. 设置 Location 头,指向刚创建的资源
+    # response.headers["Location"] = f"/items/{new_id}"
     response.headers["Location"] = f"/items/{new_id}"
     # 3. 返回资源表示(会被 response_model 过滤)
+    # 返回 saved
     return saved
 
+# 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}", response_model=ItemOut)
+# 定义函数 get_item，参数: item_id: int
 def get_item(item_id: int):
+    # 返回 db[item_id]
     return db[item_id]
 \`\`\`
 
@@ -512,13 +652,18 @@ Cookie 是 HTTP 协议层面的机制,是「无状态 HTTP」变「有状态会�
 ## 二、设置 Cookie
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Response
 from fastapi import FastAPI, Response
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 POST 路由：访问 /login 时触发
 @app.post("/login")
+# 定义函数 login，参数: response: Response
 def login(response: Response):
     # 通过 Response 对象设置 Cookie
+    # response.set_cookie(
     response.set_cookie(
         key="user_id",        # Cookie 名
         value="42",           # Cookie 值
@@ -526,7 +671,9 @@ def login(response: Response):
         httponly=True,        # JS 读不到,防 XSS 偷 Cookie
         secure=True,          # 只走 HTTPS 传输
         samesite="lax",       # 跨站策略,防 CSRF
+    # )
     )
+    # 返回 {"msg": "登录成功"}
     return {"msg": "登录成功"}
 \`\`\`
 
@@ -545,14 +692,21 @@ Cookie: user_id=42
 用 \`Cookie()\` 声明 Cookie 参数:
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Cookie
 from fastapi import FastAPI, Cookie
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 /me 时触发
 @app.get("/me")
+# 定义函数 me，参数: user_id: str | None = Cookie(default=None)
 def me(user_id: str | None = Cookie(default=None)):
+    # 条件判断：如果 user_id is None
     if user_id is None:
+        # 返回 {"msg": "未登录"}
         return {"msg": "未登录"}
+    # 返回 {"user_id": user_id}
     return {"user_id": user_id}
 \`\`\`
 
@@ -590,9 +744,13 @@ def me(user_id: str | None = Cookie(default=None)):
 ## 五、删除 Cookie
 
 \`\`\`python
+# 定义 POST 路由：访问 /logout 时触发
 @app.post("/logout")
+# 定义函数 logout，参数: response: Response
 def logout(response: Response):
+    # 调用 response.delete_cookie()
     response.delete_cookie(key="user_id")
+    # 返回 {"msg": "已退出"}
     return {"msg": "已退出"}
 \`\`\`
 
@@ -616,30 +774,49 @@ Session 是「服务器端会话」的抽象,核心思路:
 Starlette 自带 \`SessionMiddleware\`,基于 Cookie 实现,用 \`itsdangerous\` 签名防篡改:
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
+# 从 starlette.middleware.sessions 导入 SessionMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 # secret_key 用来签名,泄漏则可被伪造,务必保密
+# 添加中间件: SessionMiddleware, secret_key="your-secret-key-change-me"
 app.add_middleware(SessionMiddleware, secret_key="your-secret-key-change-me")
 
+# 定义 POST 路由：访问 /login 时触发
 @app.post("/login")
+# 定义函数 login，参数: request: Request
 def login(request: Request):
     # 把用户信息存到 session(实际存在签名后的 Cookie 里)
+    # request.session["user_id"] = 42
     request.session["user_id"] = 42
+    # request.session["role"] = "admin"
     request.session["role"] = "admin"
+    # 返回 {"msg": "登录成功"}
     return {"msg": "登录成功"}
 
+# 定义 GET 路由：访问 /me 时触发
 @app.get("/me")
+# 定义函数 me，参数: request: Request
 def me(request: Request):
+    # 定义变量 user_id，赋值为 request.session.get("user_id")
     user_id = request.session.get("user_id")
+    # 条件判断：如果 user_id is None
     if user_id is None:
+        # 返回 {"msg": "未登录"}
         return {"msg": "未登录"}
+    # 返回 {"user_id": user_id, "role": request.session.get("role")}
     return {"user_id": user_id, "role": request.session.get("role")}
 
+# 定义 POST 路由：访问 /logout 时触发
 @app.post("/logout")
+# 定义函数 logout，参数: request: Request
 def logout(request: Request):
+    # 调用 request.session.clear()
     request.session.clear()
+    # 返回 {"msg": "已退出"}
     return {"msg": "已退出"}
 \`\`\`
 
@@ -679,46 +856,76 @@ Cookie 自动携带的特性带来 CSRF(跨站请求伪造)风险:用户在 a.co
 ## 十、完整示例:登录设置 Cookie
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Response, Cookie, HTTPException
 from fastapi import FastAPI, Response, Cookie, HTTPException
+# 从 pydantic 导入 BaseModel
 from pydantic import BaseModel
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 模拟用户库
+# 定义字典 USERS
 USERS = {"alice": {"id": 1, "password": "123456", "role": "admin"}}
 
+# 定义 Pydantic 数据模型 LoginIn，继承 BaseModel
 class LoginIn(BaseModel):
+    # 字段 username，类型: str
     username: str
+    # 字段 password，类型: str
     password: str
 
+# 定义 POST 路由：访问 /login 时触发
 @app.post("/login")
+# 定义函数 login，参数: data: LoginIn, response: Response
 def login(data: LoginIn, response: Response):
+    # 定义变量 user，赋值为 USERS.get(data.username)
     user = USERS.get(data.username)
     # 1. 校验账号密码
+    # 条件判断：如果 not user or user["password"] != data.password
     if not user or user["password"] != data.password:
+        # 抛出 HTTPException 异常: status_code=401, detail="账号或密码错误"
         raise HTTPException(status_code=401, detail="账号或密码错误")
     # 2. 设置会话 Cookie(实际项目存 session_id,这里简化)
+    # response.set_cookie(
     response.set_cookie(
+        # 定义变量 key，赋值为 "session_id",
         key="session_id",
+        # 定义变量 value，赋值为 f"session-{user['id']}",
         value=f"session-{user['id']}",
+        # 定义变量 max_age，赋值为 3600,
         max_age=3600,
+        # 定义变量 httponly，赋值为 True,
         httponly=True,
         secure=False,      # 开发环境,生产要 True
+        # 定义变量 samesite，赋值为 "lax",
         samesite="lax",
+    # )
     )
+    # 返回 {"msg": "登录成功", "user_id": user["id"]}
     return {"msg": "登录成功", "user_id": user["id"]}
 
+# 定义 GET 路由：访问 /me 时触发
 @app.get("/me")
+# 定义函数 me，参数: session_id: str | None = Cookie(default=None)
 def me(session_id: str | None = Cookie(default=None)):
     # 3. 校验 Cookie
+    # 条件判断：如果 not session_id or not session_id.startswith("session-")
     if not session_id or not session_id.startswith("session-"):
+        # 抛出 HTTPException 异常: status_code=401, detail="未登录"
         raise HTTPException(status_code=401, detail="未登录")
+    # 定义变量 user_id，赋值为 int(session_id.split("-")[1])
     user_id = int(session_id.split("-")[1])
+    # 返回 {"user_id": user_id, "role": USERS[[u for u in USERS if USERS[u]["id"]==user_id][0]]["role"]}
     return {"user_id": user_id, "role": USERS[[u for u in USERS if USERS[u]["id"]==user_id][0]]["role"]}
 
+# 定义 POST 路由：访问 /logout 时触发
 @app.post("/logout")
+# 定义函数 logout，参数: response: Response
 def logout(response: Response):
+    # 调用 response.delete_cookie()
     response.delete_cookie("session_id")
+    # 返回 {"msg": "已退出"}
     return {"msg": "已退出"}
 \`\`\`
 
@@ -761,19 +968,28 @@ Cookie 和 Session 是 Web 有状态化的基石。理解它们的本质:Cookie 
 \`StreamingResponse\` 接收一个**迭代器**(生成器/列表),逐块产出内容:
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 fastapi.responses 导入 StreamingResponse
 from fastapi.responses import StreamingResponse
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 /stream 时触发
 @app.get("/stream")
+# 定义函数 stream，参数: 
 def stream():
     # 生成器函数:逐块产出
+    # 定义函数 gen，参数: 
     def gen():
+        # 遍历 range(5)，取 i
         for i in range(5):
             # yield 一块数据
+            # 生成值: f"chunk-{i}\\n"
             yield f"chunk-{i}\\n"
     # media_type 决定 Content-Type
+    # 返回 StreamingResponse(gen(), media_type="text/plain")
     return StreamingResponse(gen(), media_type="text/plain")
 \`\`\`
 
@@ -786,13 +1002,19 @@ def stream():
 直接 \`return file\` 会把整个文件读进内存。用流式响应分块读取:
 
 \`\`\`python
+# 定义 GET 路由：访问 /download/{filename} 时触发
 @app.get("/download/{filename}")
+# 定义函数 download，参数: filename: str
 def download(filename: str):
+    # 定义函数 iterfile，参数: 
     def iterfile():
         # 8KB 一块读取,避免一次性读全文件
+        # 使用上下文管理器 open(f"/data/{filename}", "rb")，赋值为 f
         with open(f"/data/{filename}", "rb") as f:
             while chunk := f.read(8192):  # 海象运算符,3.8+
+                # 生成值: chunk
                 yield chunk
+    # 返回 StreamingResponse(iterfile(), media_type="application/octet-stream")
     return StreamingResponse(iterfile(), media_type="application/octet-stream")
 \`\`\`
 
@@ -805,22 +1027,30 @@ def download(filename: str):
 \`FileResponse\` 专门处理文件,自动设置 content-type、支持断点续传:
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 fastapi.responses 导入 FileResponse
 from fastapi.responses import FileResponse
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 /file/{filename} 时触发
 @app.get("/file/{filename}")
+# 定义函数 get_file，参数: filename: str
 def get_file(filename: str):
     # FileResponse 自动处理:
     # 1. 设置 Content-Type(根据扩展名)
     # 2. 设置 Content-Length
     # 3. 支持 Range 请求(断点续传)
     # 4. 流式读取,不占内存
+    # 返回 FileResponse(
     return FileResponse(
+        # 定义变量 path，赋值为 f"/data/{filename}",
         path=f"/data/{filename}",
         filename=filename,        # 触发浏览器下载(而不是预览)
         media_type="application/pdf",  # 可选,不传会自动推断
+    # )
     )
 \`\`\`
 
@@ -862,14 +1092,21 @@ FileResponse 的 \`filename\` 参数会自动处理这个编码。
 最底层的 \`Response\` 直接构造:
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 fastapi.responses 导入 Response
 from fastapi.responses import Response
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 /xml 时触发
 @app.get("/xml")
+# 定义函数 xml，参数: 
 def xml():
+    # 定义变量 content，赋值为 "<book><title>Python</title></book>"
     content = "<book><title>Python</title></book>"
+    # 返回 Response(content=content, media_type="application/xml")
     return Response(content=content, media_type="application/xml")
 \`\`\`
 
@@ -880,19 +1117,29 @@ def xml():
 SSE 是服务器单向推送(服务器→客户端),用 \`text/event-stream\`:
 
 \`\`\`python
+# 导入 asyncio 模块
 import asyncio
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 fastapi.responses 导入 StreamingResponse
 from fastapi.responses import StreamingResponse
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 /sse 时触发
 @app.get("/sse")
+# 定义异步函数 sse，参数: 
 async def sse():
+    # 定义异步函数 event_stream，参数: 
     async def event_stream():
+        # 遍历 range(5)，取 i
         for i in range(5):
             # SSE 格式:每条消息以 "data: " 开头,\\n\\n 结尾
+            # 生成值: f"data: 消息 {i}\\n\\n"
             yield f"data: 消息 {i}\\n\\n"
             await asyncio.sleep(1)  # 模拟异步等待
+    # 返回 StreamingResponse(event_stream(), media_type="text/event-stream")
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 \`\`\`
 
@@ -923,49 +1170,81 @@ Content-Length: 9437184
 ## 十、完整示例:文件下载接口
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, HTTPException
 from fastapi import FastAPI, HTTPException
+# 从 fastapi.responses 导入 FileResponse, StreamingResponse
 from fastapi.responses import FileResponse, StreamingResponse
+# 导入 os 模块
 import os
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义变量 DATA_DIR，赋值为 "/data"
 DATA_DIR = "/data"
 
+# 定义 GET 路由：访问 /download/{filename} 时触发
 @app.get("/download/{filename}")
+# 定义函数 download，参数: filename: str
 def download(filename: str):
+    # 定义变量 filepath，赋值为 os.path.join(DATA_DIR, filename)
     filepath = os.path.join(DATA_DIR, filename)
     # 1. 校验文件存在
+    # 条件判断：如果 not os.path.exists(filepath)
     if not os.path.exists(filepath):
+        # 抛出 HTTPException 异常: status_code=404, detail="文件不存在"
         raise HTTPException(status_code=404, detail="文件不存在")
     # 2. 防止路径穿越(如 ../../etc/passwd)
+    # 条件判断：如果 not os.path.abspath(filepath).startswith(os.path.abspath(DATA_DIR))
     if not os.path.abspath(filepath).startswith(os.path.abspath(DATA_DIR)):
+        # 抛出 HTTPException 异常: status_code=403, detail="禁止访问"
         raise HTTPException(status_code=403, detail="禁止访问")
     # 3. 用 FileResponse 返回
     # filename 参数触发下载并设置建议文件名
+    # 返回 FileResponse(
     return FileResponse(
+        # 定义变量 path，赋值为 filepath,
         path=filepath,
+        # 定义变量 filename，赋值为 filename,
         filename=filename,
+    # )
     )
 
 # 流式版本(自定义控制更多)
+# 定义 GET 路由：访问 /stream/{filename} 时触发
 @app.get("/stream/{filename}")
+# 定义函数 stream，参数: filename: str
 def stream(filename: str):
+    # 定义变量 filepath，赋值为 os.path.join(DATA_DIR, filename)
     filepath = os.path.join(DATA_DIR, filename)
+    # 条件判断：如果 not os.path.exists(filepath)
     if not os.path.exists(filepath):
+        # 抛出 HTTPException 异常: status_code=404, detail="文件不存在"
         raise HTTPException(status_code=404, detail="文件不存在")
 
+    # 定义函数 iterfile，参数: 
     def iterfile():
+        # 使用上下文管理器 open(filepath, "rb")，赋值为 f
         with open(filepath, "rb") as f:
+            # 当 chunk := f.read(8192) 为真时循环
             while chunk := f.read(8192):
+                # 生成值: chunk
                 yield chunk
 
+    # 返回 StreamingResponse(
     return StreamingResponse(
+        # 调用 iterfile()
         iterfile(),
+        # 定义变量 media_type，赋值为 "application/octet-stream",
         media_type="application/octet-stream",
+        # 定义字典 headers
         headers={
             # 手动设置下载文件名
+            # "Content-Disposition": f'attachment; filename="{fi
             "Content-Disposition": f'attachment; filename="{filename}"',
+        # },
         },
+    # )
     )
 \`\`\`
 

@@ -27,13 +27,13 @@ export const chapters = [
 打个比方：列表方法像在白板上擦掉重写（白板还是那块白板），字符串方法像把白板上的内容抄到一张新纸上（原来的纸不变）。
 
 \`\`\`python
-nums = [3, 1, 2]
-result = nums.sort()
+nums = [3, 1, 2]  # 定义列表 nums
+result = nums.sort()  # 赋值变量 result
 print(result)    # None！不是排好序的列表
 print(nums)      # [1, 2, 3]，原列表已经变了
 
-s = "hello"
-result = s.upper()
+s = "hello"  # 定义字符串 s
+result = s.upper()  # 赋值变量 result
 print(result)    # "HELLO"
 print(s)         # "hello"，原字符串不变
 \`\`\`
@@ -61,7 +61,7 @@ lst.extend(其他列表) # 把另一个列表的元素全加进来
 这是最容易混淆的一对。看代码：
 
 \`\`\`python
-a = [1, 2]
+a = [1, 2]  # 定义列表 a
 a.append([3, 4])   # a = [1, 2, [3, 4]]  ← 把列表当一个整体塞进去
 a.extend([3, 4])   # a = [1, 2, 3, 4]    ← 把元素拆开一个个加
 \`\`\`
@@ -91,7 +91,7 @@ lst.clear()      # 清空整个列表
 **clear** 是"全倒掉"，列表变空但列表本身还在。
 
 \`\`\`python
-nums = [10, 20, 30, 40]
+nums = [10, 20, 30, 40]  # 定义列表 nums
 removed = nums.pop()    # 删40，removed=40
 nums.remove(20)         # 删第一个20
 del nums[0]             # 删下标0
@@ -109,7 +109,7 @@ lst[i:j] = [新列表]    # 改一段（切片赋值）
 切片赋值很灵活：可以用 3 个替换 2 个，甚至可以用来插入或删除。但新手用得少，知道就行：
 
 \`\`\`python
-nums = [1, 2, 3, 4, 5]
+nums = [1, 2, 3, 4, 5]  # 定义列表 nums
 nums[0] = 99              # [99, 2, 3, 4, 5]
 nums[1:3] = [20, 30, 40]  # 长度可以变
 \`\`\`
@@ -140,7 +140,7 @@ sorted(lst)      # 返回新排序列表，不改原列表
 #### sort 的高级用法：按规则排序
 
 \`\`\`python
-students = [("小明", 90), ("小红", 85)]
+students = [("小明", 90), ("小红", 85)]  # 定义列表 students
 students.sort(key=lambda x: x[1])           # 按分数排
 students.sort(key=lambda x: x[1], reverse=True)  # 降序
 \`\`\`
@@ -152,7 +152,7 @@ key 接一个函数，告诉 sort"用什么作为比较依据"。lambda 是临�
 这是新手必踩的坑。先看代码：
 
 \`\`\`python
-a = [1, 2, 3]
+a = [1, 2, 3]  # 定义列表 a
 b = a               # 这不是拷贝！b 和 a 是同一份
 b.append(4)         # a 也变了！
 print(a)            # [1, 2, 3, 4]
@@ -170,8 +170,8 @@ c.append(5)         # a 不变
 ⚠️ 注意这是"浅拷贝"——只复制了第一层。如果列表里嵌套了列表，内层还是共享的：
 
 \`\`\`python
-a = [[1, 2], [3, 4]]
-b = a.copy()
+a = [[1, 2], [3, 4]]  # 定义列表 a
+b = a.copy()  # 赋值变量 b
 b[0].append(99)     # 改的是内层列表
 print(a)            # a 也变了！
 \`\`\`
@@ -325,7 +325,7 @@ Python 提供了"不可变的列表"来满足这种需求，它叫**元组（tup
 元组和列表几乎一样，**唯一区别：元组不可变**。创建后不能增删改元素。
 
 \`\`\`python
-t = (1, 2, 3)
+t = (1, 2, 3)  # 定义元组 t
 t = 1, 2, 3        # 括号可省略
 one = (1,)         # 单元素元组，逗号必须有！
 \`\`\`
@@ -350,7 +350,7 @@ print(type(()))     # <class 'tuple'> ← 空元组没问题
 
 \`\`\`python
 # 元组能当 key
-cities = {(39, 116): "北京", (31, 121): "上海"}
+cities = {(39, 116): "北京", (31, 121): "上海"}  # 定义字典 cities
 
 # 列表不行
 # cities = {[39, 116]: "北京"}  # TypeError!
@@ -363,14 +363,14 @@ cities = {(39, 116): "北京", (31, 121): "上海"}
 索引、切片、遍历、\`len\`、\`in\`、\`count\`、\`index\`、\`max/min/sum\` 都和列表一样。只是不能改：
 
 \`\`\`python
-t = (1, 2, 3)
+t = (1, 2, 3)  # 定义元组 t
 t[0] = 9    # 报错！TypeError: 'tuple' object does not support item assignment
 \`\`\`
 
 ⚠️ 注意：元组的"不可变"指的是元素不能增删改，但如果元素本身是可变的（比如列表），那个元素内部还能改：
 
 \`\`\`python
-t = (1, [2, 3], 4)
+t = (1, [2, 3], 4)  # 定义元组 t
 t[1].append(99)    # 这个能行！改的是里面的列表，不是元组本身
 print(t)           # (1, [2, 3, 99], 4)
 t[1] = [9]         # 这个不行！这是改元组的元素
@@ -381,7 +381,7 @@ t[1] = [9]         # 这个不行！这是改元组的元素
 元组（和列表）可以"拆开"赋值给多个变量，这叫**解包**：
 
 \`\`\`python
-point = (3, 4)
+point = (3, 4)  # 定义元组 point
 x, y = point       # x=3, y=4
 a, b, c = 1, 2, 3  # 其实右边是元组
 \`\`\`
@@ -402,19 +402,19 @@ a, *b, c = [1, 2, 3, 4, 5]   # a=1, b=[2,3,4], c=5
 还记得这个神奇写法吗？
 
 \`\`\`python
-a, b = b, a
+a, b = b, a   # 元组解包交换：右边先组成 (b,a)，再赋给左边的 a,b
 \`\`\`
 
 这就是元组解包！右边 \`b, a\` 先组成元组 \`(b, a)\`，再解包给左边的 \`a, b\`。整个过程不需要临时变量，Python 内部帮你搞定。在其他语言里交换两个变量得用 temp：
 
 \`\`\`python
 # 其他语言的写法
-temp = a
-a = b
-b = temp
+temp = a  # 赋值变量 temp
+a = b  # 赋值变量 a
+b = temp  # 赋值变量 b
 
 # Python 利用元组解包，一行搞定
-a, b = b, a
+a, b = b, a  # 多重赋值：a, b
 \`\`\`
 
 ### 元组 vs 列表 对比
@@ -432,18 +432,18 @@ a, b = b, a
 
 \`\`\`python
 # 1. 多返回值
-def min_max(nums):
+def min_max(nums):  # 定义函数 min_max，参数：nums
     return min(nums), max(nums)   # 返回元组
-low, high = min_max([3, 1, 4, 1, 5])
+low, high = min_max([3, 1, 4, 1, 5])  # 多重赋值：low, high
 
 # 2. 同时遍历键值对
-students = [("小明", 90), ("小红", 85)]
+students = [("小明", 90), ("小红", 85)]  # 定义列表 students
 for name, score in students:    # 直接解包
-    print(name, score)
+    print(name, score)  # 打印输出到屏幕
 
 # 3. 坐标、颜色等不可变数据
-RGB_RED = (255, 0, 0)
-BEIJING = (39.9, 116.4)
+RGB_RED = (255, 0, 0)  # 定义元组 RGB_RED
+BEIJING = (39.9, 116.4)  # 定义元组 BEIJING
 \`\`\`
 
 ### 小结
@@ -564,7 +564,7 @@ for name, score in students:    # 直接解包
 字典存的是**键值对**，像一本真正的词典——用"词"查"解释"。
 
 \`\`\`python
-person = {"name": "小明", "age": 18, "city": "北京"}
+person = {"name": "小明", "age": 18, "city": "北京"}   # 键值对，用花括号创建
 person["name"]    # '小明'，用键查值
 \`\`\`
 
@@ -585,9 +585,9 @@ d = {"a": 1, "a": 2}   # d = {"a": 2}，前面那个被覆盖
 ### 增删改查
 
 \`\`\`python
-d = {}
+d = {}  # 定义字典 d
 d["name"] = "小明"      # 增：键不存在就是新增
-d["age"] = 18
+d["age"] = 18  # 执行操作
 d["age"] = 20           # 改：键存在就是修改
 del d["age"]            # 删
 d.get("name")           # 查（推荐）
@@ -621,9 +621,9 @@ for key, value in d.items():     # 遍历键值对（最常用）
 最常用的是 \`d.items()\`——一次拿到键和值，写起来最爽：
 
 \`\`\`python
-scores = {"语文": 90, "数学": 85}
-for subject, score in scores.items():
-    print(f"{subject}: {score}分")
+scores = {"语文": 90, "数学": 85}  # 定义字典 scores
+for subject, score in scores.items():   # items() 同时取键和值
+    print(f"{subject}: {score}分")  # 打印输出到屏幕
 \`\`\`
 
 ⚠️ 新手常犯的错：想取值却遍历键，写成 \`for key in d: print(d[key])\`。能用 items 就别这么绕。
@@ -643,8 +643,8 @@ d.pop(key)      # 删除并返回
 \`update\` 是合并字典，相同键会被新字典的覆盖：
 
 \`\`\`python
-d1 = {"a": 1, "b": 2}
-d2 = {"b": 3, "c": 4}
+d1 = {"a": 1, "b": 2}  # 定义字典 d1
+d2 = {"b": 3, "c": 4}  # 定义字典 d2
 d1.update(d2)   # d1 = {"a": 1, "b": 3, "c": 4}，b 被覆盖
 \`\`\`
 
@@ -665,11 +665,11 @@ d1.update(d2)   # d1 = {"a": 1, "b": 3, "c": 4}，b 被覆盖
 字典的值可以是任何类型，包括另一个字典。这就让你能表示复杂的数据：
 
 \`\`\`python
-students = {
-    "小明": {"age": 18, "scores": [90, 85, 88]},
-    "小红": {"age": 19, "scores": [95, 92, 90]},
+students = {  # 定义字典 students
+    "小明": {"age": 18, "scores": [90, 85, 88]},   # 值又是字典
+    "小红": {"age": 19, "scores": [95, 92, 90]},  # 执行操作
 }
-students["小明"]["scores"][1]   # 小明的第二个分数：85
+students["小明"]["scores"][1]   # 逐层取值：先取小明的字典，再取 scores 列表，再取下标1
 \`\`\`
 
 这种"字典套字典套列表"的结构在处理 JSON、配置文件时非常常见。逐层往下取就行，像剥洋葱。
@@ -679,9 +679,9 @@ students["小明"]["scores"][1]   # 小明的第二个分数：85
 字典最经典的用法是"计数"。统计一串东西里每个出现了几次：
 
 \`\`\`python
-words = ["apple", "banana", "apple", "cherry", "banana", "apple"]
-count = {}
-for w in words:
+words = ["apple", "banana", "apple", "cherry", "banana", "apple"]  # 定义列表 words
+count = {}  # 定义字典 count
+for w in words:  # 遍历 words，取值给 w
     count[w] = count.get(w, 0) + 1    # 不存在当0，+1
 # count = {"apple": 3, "banana": 2, "cherry": 1}
 \`\`\`
@@ -832,7 +832,7 @@ print(f"apple 出现 {count['apple']} 次")`
 集合像字典的"键的集合"——**元素唯一、无序**。你可以把它理解成"只存键不存值的字典"。
 
 \`\`\`python
-s = {1, 2, 3}
+s = {1, 2, 3}                  # 花括号创建集合
 s = set([1, 2, 2, 3])   # 从列表建，自动去重 → {1, 2, 3}
 \`\`\`
 
@@ -856,7 +856,7 @@ empty_dict = {}        # 这是空字典，不是空集合！
 **1. 去重**：把列表变集合再变回来，重复就没了
 
 \`\`\`python
-nums = [1, 2, 2, 3, 3, 3, 4]
+nums = [1, 2, 2, 3, 3, 3, 4]  # 定义列表 nums
 unique = list(set(nums))   # [1, 2, 3, 4]
 \`\`\`
 
@@ -891,8 +891,8 @@ s.pop()        # 随机删一个
 这是集合最强大的功能。回忆一下小学数学的集合运算，Python 全支持：
 
 \`\`\`python
-a = {1, 2, 3}
-b = {3, 4, 5}
+a = {1, 2, 3}  # 定义字典 a
+b = {3, 4, 5}  # 定义字典 b
 a | b    # 并集 {1,2,3,4,5}   ← 两边合起来
 a & b    # 交集 {3}           ← 两边都有的
 a - b    # 差集 {1,2}         ← a有b没有
@@ -910,8 +910,8 @@ a ^ b    # 对称差 {1,2,4,5}   ← 只在一边的
 #### 子集和超集
 
 \`\`\`python
-big = {1, 2, 3, 4, 5}
-small = {1, 2, 3}
+big = {1, 2, 3, 4, 5}  # 定义字典 big
+small = {1, 2, 3}  # 定义字典 small
 small <= big    # True，small 是 big 的子集
 big >= small    # True，big 是 small 的超集
 small < big     # True，真子集（不等于）
@@ -922,8 +922,8 @@ small < big     # True，真子集（不等于）
 **找两个列表的共同元素：**
 
 \`\`\`python
-list_a = ["apple", "banana", "cherry"]
-list_b = ["banana", "cherry", "date"]
+list_a = ["apple", "banana", "cherry"]  # 定义列表 list_a
+list_b = ["banana", "cherry", "date"]  # 定义列表 list_b
 common = set(list_a) & set(list_b)   # {"banana", "cherry"}
 \`\`\`
 
@@ -940,7 +940,7 @@ only_a = set(list_a) - set(list_b)   # {"apple"}
 普通 set 可变，不能当字典 key（原理和列表一样：可变对象哈希值会变）。\`frozenset\` 不可变，可以。
 
 \`\`\`python
-fs = frozenset([1, 2, 3])
+fs = frozenset([1, 2, 3])   # 创建不可变集合
 d = {fs: "value"}   # frozenset 能当 key
 \`\`\`
 
@@ -1077,9 +1077,9 @@ print(f"只在a里: {only_a}")`
 ### if 的基本语法
 
 \`\`\`python
-age = 20
-if age >= 18:
-    print("成年")
+age = 20  # 定义数值 age
+if age >= 18:        # 条件为 True 时执行下面缩进的代码
+    print("成年")    # 缩进 4 空格，属于 if
 \`\`\`
 
 \`if\` 后面跟一个**条件**（结果是布尔值 True/False），条件为真就执行缩进的代码块。
@@ -1093,15 +1093,15 @@ Python 用**缩进**（4 个空格）表示代码块，不用大括号 \`{}\`。
 很多时候不止两种情况。比如成绩分级：优秀、良好、及格、不及格。这时用 \`elif\`：
 
 \`\`\`python
-score = 85
-if score >= 90:
-    print("优秀")
-elif score >= 80:
-    print("良好")
-elif score >= 60:
-    print("及格")
-else:
-    print("不及格")
+score = 85  # 定义数值 score
+if score >= 90:       # 从上往下判断，命中一个就停
+    print("优秀")  # 打印输出到屏幕
+elif score >= 80:     # 85 >= 80，命中这里
+    print("良好")  # 打印输出到屏幕
+elif score >= 60:      # 后面不再判断
+    print("及格")  # 打印输出到屏幕
+else:                  # 以上都不满足时执行
+    print("不及格")  # 打印输出到屏幕
 \`\`\`
 
 要点：
@@ -1115,11 +1115,11 @@ else:
 为什么顺序重要？看这个反面教材：
 
 \`\`\`python
-score = 85
+score = 85  # 定义数值 score
 if score >= 60:        # 85 命中了"及格"
     print("及格")      # 输出"及格"，后面都不看了
 elif score >= 80:      # 这行根本不会执行
-    print("良好")
+    print("良好")  # 打印输出到屏幕
 \`\`\`
 
 所以要把"高门槛"放前面：\`>= 90\` 在 \`>= 80\` 前，\`>= 80\` 在 \`>= 60\` 前。
@@ -1129,11 +1129,11 @@ elif score >= 80:      # 这行根本不会执行
 if 里还能再套 if，表示"满足 A 的前提下，再判断 B"：
 
 \`\`\`python
-if age >= 18:
-    if has_id:
-        print("可以进")
-    else:
-        print("没带身份证")
+if age >= 18:              # 外层判断：成年吗
+    if has_id:             # 内层判断：带身份证了吗
+        print("可以进")  # 打印输出到屏幕
+    else:  # 否则
+        print("没带身份证")  # 打印输出到屏幕
 \`\`\`
 
 ⚠️ 但**别嵌套太深**，超过 3 层就该重构了。嵌套太深代码会变成"楔形"，难读难改。很多嵌套可以用 \`and\` 或者提前 return 来扁平化。
@@ -1142,11 +1142,11 @@ if age >= 18:
 
 \`\`\`python
 if age >= 18 and has_ticket:    # 两个都满足
-    print("可以入场")
+    print("可以入场")  # 打印输出到屏幕
 if has_car or has_bike:         # 满足一个就行
-    print("有交通工具")
+    print("有交通工具")  # 打印输出到屏幕
 if not is_vip:                  # 取反
-    print("不是会员")
+    print("不是会员")  # 打印输出到屏幕
 \`\`\`
 
 生活类比：
@@ -1160,7 +1160,7 @@ if not is_vip:                  # 取反
 
 \`\`\`python
 if 0 <= score <= 100:    # 正确，像数学写法
-    print("合法分数")
+    print("合法分数")  # 打印输出到屏幕
 \`\`\`
 
 ⚠️ 别写成 \`if 0 <= score and <= 100\`——这是语法错误！\`and\` 两边都要是完整的条件。
@@ -1170,7 +1170,7 @@ if 0 <= score <= 100:    # 正确，像数学写法
 简单的二选一可以写成一行：
 
 \`\`\`python
-result = "及格" if score >= 60 else "不及格"
+result = "及格" if score >= 60 else "不及格"   # 三元：条件真取前者，假取后者
 \`\`\`
 
 读起来像英语："result 是'及格' 如果 分数>=60 否则 '不及格'"。
@@ -1180,8 +1180,8 @@ result = "及格" if score >= 60 else "不及格"
 还能用在 f-string 里：
 
 \`\`\`python
-n = 7
-print(f"{n} 是{'偶数' if n % 2 == 0 else '奇数'}")
+n = 7  # 定义数值 n
+print(f"{n} 是{'偶数' if n % 2 == 0 else '奇数'}")   # 三元表达式嵌在 f-string 里
 \`\`\`
 
 ### 判断"空"：Python 的真值规则
@@ -1192,9 +1192,9 @@ Python 里很多值会被当作"假"：\`False\`、\`0\`、\`""\`（空字符串
 
 \`\`\`python
 if items:        # 列表非空就是真
-    print("有东西")
-else:
-    print("空")
+    print("有东西")  # 打印输出到屏幕
+else:  # 否则
+    print("空")  # 打印输出到屏幕
 \`\`\`
 
 这种写法叫"Pythonic"，是社区推荐的风格。
@@ -1346,10 +1346,10 @@ if name:                       # 字符串非空
 ### while 的基本语法
 
 \`\`\`python
-count = 0
-while count < 3:
-    print(count)
-    count += 1
+count = 0  # 定义数值 count
+while count < 3:      # 条件为真就执行循环体
+    print(count)  # 打印输出到屏幕
+    count += 1        # 关键：让条件能变假，否则死循环
 \`\`\`
 
 \`while 条件:\` —— 条件为真就**一直执行**缩进块，条件变假就停。
@@ -1376,9 +1376,9 @@ while True:          # 永远真
 新手最常犯的死循环：忘了 \`count += 1\`。
 
 \`\`\`python
-count = 0
-while count < 3:
-    print(count)
+count = 0  # 定义数值 count
+while count < 3:  # 当 count < 3 时循环
+    print(count)  # 打印输出到屏幕
     # 忘了 count += 1，count 永远是 0，永远 < 3
 \`\`\`
 
@@ -1389,11 +1389,11 @@ while count < 3:
 有时候你想在循环中间"提前退出"或"跳过这一次"，就需要 \`break\` 和 \`continue\`。
 
 \`\`\`python
-while True:
-    n = 某个值
-    if n == 0:
+while True:  # 当 True 时循环
+    n = 某个值  # 赋值变量 n
+    if n == 0:  # 如果 n == 0
         break       # 直接跳出整个循环
-    if n < 0:
+    if n < 0:  # 如果 n < 0
         continue    # 跳过本次，进入下一次
 \`\`\`
 
@@ -1418,12 +1418,12 @@ while 适合"不确定次数"或"基于条件"的循环：
 
 \`\`\`python
 # 适合 while：不确定次数
-while user_input != "quit":
-    user_input = input("请输入：")
+while user_input != "quit":  # 当 user_input != "quit" 时循环
+    user_input = input("请输入：")  # 赋值变量 user_input
 
 # 适合 for：确定次数
-for i in range(10):
-    print(i)
+for i in range(10):  # 遍历 range(10)，取值给 i
+    print(i)  # 打印输出到屏幕
 \`\`\`
 
 ### while 的经典用法
@@ -1431,20 +1431,20 @@ for i in range(10):
 #### 1. 计数循环
 
 \`\`\`python
-count = 0
-while count < 5:
-    print(count)
-    count += 1
+count = 0  # 定义数值 count
+while count < 5:      # 重复 5 次
+    print(count)  # 打印输出到屏幕
+    count += 1        # 计数器自增
 \`\`\`
 
 #### 2. 累加
 
 \`\`\`python
-total = 0
-i = 1
-while i <= 100:
-    total += i
-    i += 1
+total = 0  # 定义数值 total
+i = 1  # 定义数值 i
+while i <= 100:       # 从 1 加到 100
+    total += i        # 把 i 累加到 total
+    i += 1            # i 自增
 # total = 5050
 \`\`\`
 
@@ -1453,11 +1453,11 @@ while i <= 100:
 不确定什么时候停，就用 \`while True\` 开头，里面用 \`break\` 退出：
 
 \`\`\`python
-while True:
-    cmd = input("输入命令：")
-    if cmd == "quit":
-        break
-    print(f"执行：{cmd}")
+while True:                       # 看似死循环，靠 break 退出
+    cmd = input("输入命令：")  # 赋值变量 cmd
+    if cmd == "quit":  # 如果 cmd == "quit"
+        break                    # 输入 quit 时跳出循环
+    print(f"执行：{cmd}")  # 打印输出到屏幕
 \`\`\`
 
 这种写法很常见，比"先读一次再循环"简洁。
@@ -1467,10 +1467,10 @@ while True:
 while 适合"不断操作直到某条件"的场景。比如把一个数的各位数字拆出来：
 
 \`\`\`python
-num = 12345
-while num > 0:
+num = 12345  # 定义数值 num
+while num > 0:  # 当 num > 0 时循环
     digit = num % 10    # 取个位
-    print(digit)
+    print(digit)  # 打印输出到屏幕
     num = num // 10     # 去掉个位
 # 输出 5 4 3 2 1
 \`\`\`
@@ -1482,14 +1482,14 @@ while 里还能套 while，比如打印九九乘法表。外层控制行，内�
 ⚠️ 嵌套循环时，内层循环的条件变量每次都要重置，否则第二次外层循环时内层条件已经不满足了。
 
 \`\`\`python
-i = 1
-while i <= 9:
+i = 1  # 定义数值 i
+while i <= 9:  # 当 i <= 9 时循环
     j = 1                # 每次外层循环开始，j 都要重置！
-    while j <= i:
-        print(f"{j}×{i}={i*j}", end=" ")
-        j += 1
-    print()
-    i += 1
+    while j <= i:  # 当 j <= i 时循环
+        print(f"{j}×{i}={i*j}", end=" ")  # 打印输出到屏幕
+        j += 1  # j 累加
+    print()  # 打印输出到屏幕
+    i += 1  # i 累加
 \`\`\`
 
 ### while vs for 对比
@@ -1641,11 +1641,11 @@ print("（从个位开始）")`
 \`for\` 用来**遍历**一个"可迭代对象"（列表、字符串、字典、range 等），把每个元素拿出来一次。
 
 \`\`\`python
-for x in [1, 2, 3]:
-    print(x)
+for x in [1, 2, 3]:       # 遍历列表，x 依次取每个元素
+    print(x)              # 打印当前元素
 
-for ch in "hello":
-    print(ch)
+for ch in "hello":        # 遍历字符串，ch 依次取每个字符
+    print(ch)             # 打印当前字符
 \`\`\`
 
 生活类比：\`for\` 像老师发卷子——把一摞卷子（列表）一张张发给同学，每张发完发下一张，发完为止。你不用数有几张，发完自动停。
@@ -1657,16 +1657,16 @@ for ch in "hello":
 很多时候我们想"重复 n 次"或者"从 1 数到 10"，这时候用 \`range\`：
 
 \`\`\`python
-range(5)        # 0,1,2,3,4
-range(2, 8)     # 2,3,4,5,6,7
-range(0, 10, 2) # 0,2,4,6,8（步长2）
+range(5)        # 0,1,2,3,4  ← 只给一个参数，从 0 开始，不含 5
+range(2, 8)     # 2,3,4,5,6,7  ← 给起止，左闭右开，不含 8
+range(0, 10, 2) # 0,2,4,6,8（步长2）← 第三个参数是步长，每次加 2
 \`\`\`
 
 注意 \`range(5)\` 是 0 到 4，**不包含 5**，和切片规则一致。这是 Python 的统一约定："左闭右开"。
 
 \`\`\`python
-for i in range(5):
-    print(i)    # 0 1 2 3 4
+for i in range(5):    # i 从 0 取到 4
+    print(i)    # 0 1 2 3 4，依次打印
 \`\`\`
 
 range 的三种用法：
@@ -1685,8 +1685,8 @@ range 的三种用法：
 #### 姿势一：只遍历元素
 
 \`\`\`python
-for x in lst:
-    print(x)
+for x in lst:       # x 直接是列表里的元素，不取下标
+    print(x)        # 打印每个元素
 \`\`\`
 
 不需要下标时用这个，最简洁。
@@ -1694,8 +1694,8 @@ for x in lst:
 #### 姿势二：要下标（不推荐）
 
 \`\`\`python
-for i in range(len(lst)):
-    print(i, lst[i])
+for i in range(len(lst)):    # i 是下标，从 0 到 len(lst)-1
+    print(i, lst[i])         # 用下标再取元素，麻烦
 \`\`\`
 
 ⚠️ 这种写法啰嗦又容易出错（下标算错）。除非真的需要下标，否则别这么写。
@@ -1703,8 +1703,8 @@ for i in range(len(lst)):
 #### 姿势三：要下标+元素（推荐 enumerate）
 
 \`\`\`python
-for i, x in enumerate(lst):
-    print(i, x)
+for i, x in enumerate(lst):   # enumerate 同时给下标 i 和元素 x
+    print(i, x)               # 打印下标和元素
 \`\`\`
 
 \`enumerate\` 同时给你下标和元素，干净利落。这是 Python 推荐的写法。
@@ -1714,8 +1714,8 @@ for i, x in enumerate(lst):
 #### 姿势四：同时遍历两个（用 zip）
 
 \`\`\`python
-for a, b in zip(list1, list2):
-    print(a, b)
+for a, b in zip(list1, list2):    # zip 把两个序列元素一对一配对
+    print(a, b)                    # 同时拿到两个序列的元素
 \`\`\`
 
 ### zip：拉链
@@ -1723,10 +1723,10 @@ for a, b in zip(list1, list2):
 \`zip\` 像"拉拉链"——把两个序列的元素一对一配对：
 
 \`\`\`python
-names = ["小明", "小红"]
-ages = [18, 19]
-for name, age in zip(names, ages):
-    print(name, age)
+names = ["小明", "小红"]          # 姓名列表
+ages = [18, 19]                  # 年龄列表
+for name, age in zip(names, ages):    # zip 把两个列表对应位置配对
+    print(name, age)              # 同时打印配对的名字和年龄
 # 小明 18
 # 小红 19
 \`\`\`
@@ -1740,19 +1740,19 @@ for name, age in zip(names, ages):
 字典有几种遍历方式：
 
 \`\`\`python
-scores = {"语文": 90, "数学": 85}
+scores = {"语文": 90, "数学": 85}    # 字典，键是科目，值是分数
 
 # 遍历键（默认）
-for subject in scores:
-    print(subject)
+for subject in scores:               # 直接遍历字典，默认遍历键
+    print(subject)                   # 打印科目名
 
 # 遍历值
-for score in scores.values():
-    print(score)
+for score in scores.values():        # values() 只取值
+    print(score)                     # 打印分数
 
 # 遍历键值对（最常用）
-for subject, score in scores.items():
-    print(f"{subject}: {score}")
+for subject, score in scores.items():    # items() 同时取键和值
+    print(f"{subject}: {score}")         # 打印科目和分数
 \`\`\`
 
 最常用的是 \`d.items()\`——一次拿到键和值，写起来最爽。
@@ -1763,16 +1763,16 @@ for subject, score in scores.items():
 
 \`\`\`python
 # 找第一个大于 85 的
-for s in [78, 92, 85, 95]:
-    if s > 85:
-        print(f"找到: {s}")
-        break
+for s in [78, 92, 85, 95]:       # 遍历分数列表
+    if s > 85:                   # 找到第一个大于 85 的
+        print(f"找到: {s}")      # 打印它
+        break                    # 找到就退出循环，不再继续找
 
 # 跳过偶数
-for i in range(10):
-    if i % 2 == 0:
-        continue
-    print(i)   # 只打印奇数
+for i in range(10):              # i 从 0 到 9
+    if i % 2 == 0:               # i 是偶数
+        continue                 # 跳过本次，进入下一个 i
+    print(i)   # 只打印奇数       # 这里只打印奇数 1 3 5 7 9
 \`\`\`
 
 ### 嵌套循环
@@ -1780,10 +1780,10 @@ for i in range(10):
 for 里套 for，最经典的是九九乘法表：
 
 \`\`\`python
-for i in range(1, 10):          # 外层：行
-    for j in range(1, i + 1):   # 内层：列
-        print(f"{j}×{i}={i*j}", end="\\t")
-    print()                     # 换行
+for i in range(1, 10):          # 外层：行，i 从 1 到 9
+    for j in range(1, i + 1):   # 内层：列，j 从 1 到 i（第 i 行有 i 个式子）
+        print(f"{j}×{i}={i*j}", end="\\t")    # 打印一个式子，end 用制表符对齐
+    print()                     # 每行结束换行
 \`\`\`
 
 外层每跑一次，内层跑一整轮。所以嵌套循环的总次数是"外层次数 × 内层次数"。
@@ -1795,14 +1795,14 @@ for i in range(1, 10):          # 外层：行
 判断一个数是不是素数：从 2 试到它的平方根，找到因子就不是素数，break 退出。
 
 \`\`\`python
-for n in range(2, 100):
-    is_prime = True
-    for i in range(2, int(n**0.5) + 1):
-        if n % i == 0:
-            is_prime = False
-            break
-    if is_prime:
-        print(n)
+for n in range(2, 100):                    # n 从 2 试到 99
+    is_prime = True                        # 先假设 n 是素数
+    for i in range(2, int(n**0.5) + 1):    # i 从 2 试到 √n，找因子
+        if n % i == 0:                     # 能整除说明 i 是因子
+            is_prime = False               # 不是素数
+            break                           # 找到一个因子就够了，跳出内层循环
+    if is_prime:                           # 没找到因子，是素数
+        print(n)                           # 打印这个素数
 \`\`\`
 
 为什么只试到平方根？因为如果 n 有因子 a，那 n = a × b，a 和 b 至少有一个 ≤ √n。试到平方根就够了，省一半时间。
@@ -1952,14 +1952,14 @@ print(primes)`
 - \`continue\`：**跳过本次**剩下的代码，进入下一次循环
 
 \`\`\`python
-for i in range(10):
-    if i == 5:
-        break       # 到5就停，5不打印
+for i in range(10):       # i 从 0 到 9
+    if i == 5:            # i 等于 5 时
+        break       # 到5就停，5不打印  ← 直接跳出整个循环
     print(i)        # 打印 0 1 2 3 4
 
-for i in range(10):
-    if i == 5:
-        continue    # 跳过5
+for i in range(10):       # i 从 0 到 9
+    if i == 5:            # i 等于 5 时
+        continue    # 跳过5  ← 跳过本次，继续下一个
     print(i)        # 打印 0 1 2 3 4 6 7 8 9
 \`\`\`
 
@@ -1983,10 +1983,10 @@ for i in range(10):
 
 \`\`\`python
 # 找第一个能被7整除且个位是7的数
-for n in range(10, 100):
-    if n % 7 == 0 and n % 10 == 7:
-        print(f"找到: {n}")
-        break
+for n in range(10, 100):                  # n 从 10 找到 99
+    if n % 7 == 0 and n % 10 == 7:        # 同时满足：被7整除 且 个位是7
+        print(f"找到: {n}")               # 打印找到的数
+        break                             # 找到第一个就够了，跳出循环
 \`\`\`
 
 没有 break 的话，即使找到了也会继续遍历完整个范围，浪费。break 让你"见好就收"。
@@ -1997,10 +1997,10 @@ for n in range(10, 100):
 
 \`\`\`python
 # 只处理奇数
-for i in range(10):
-    if i % 2 == 0:
-        continue    # 偶数跳过
-    print(i)        # 只打印奇数
+for i in range(10):       # i 从 0 到 9
+    if i % 2 == 0:        # i 是偶数
+        continue    # 偶数跳过  ← 跳过本次，进入下一个
+    print(i)        # 只打印奇数  ← 这里只打印奇数 1 3 5 7 9
 \`\`\`
 
 ⚠️ 用 continue 时要小心：如果 continue 在自增语句之前，那这次自增就跳过了，可能死循环（在 while 里）。
@@ -2010,12 +2010,12 @@ for i in range(10):
 这是 Python 一个比较反直觉的语法。\`for\` / \`while\` 后面可以接 \`else\`，**循环正常结束（没 break）才执行**：
 
 \`\`\`python
-for n in range(2, 100):
-    for i in range(2, n):
-        if n % i == 0:
-            break          # 找到因子，break
-    else:
-        print(n, "是素数")  # 内层没break，说明没因子
+for n in range(2, 100):           # n 从 2 到 99
+    for i in range(2, n):         # i 从 2 试到 n-1，找因子
+        if n % i == 0:            # 能整除，i 是因子
+            break          # 找到因子，break  ← 跳出内层循环
+    else:                          # 内层循环正常结束（没 break）才执行
+        print(n, "是素数")  # 内层没break，说明没因子  ← 没 break 说明没找到因子，是素数
 \`\`\`
 
 这个 \`else\` 属于 \`for\`，不是 \`if\`。意思是"循环没被打断就执行"。
@@ -2027,25 +2027,25 @@ for n in range(2, 100):
 判断素数的逻辑是"试遍所有可能的因子，都没找到能整除的"。如果用普通写法得加个标志位：
 
 \`\`\`python
-for n in range(2, 20):
-    is_prime = True
-    for i in range(2, n):
-        if n % i == 0:
-            is_prime = False
-            break
-    if is_prime:
-        print(f"{n} 是素数")
+for n in range(2, 20):            # n 从 2 到 19
+    is_prime = True                # 先假设 n 是素数
+    for i in range(2, n):          # i 从 2 试到 n-1
+        if n % i == 0:             # 能整除
+            is_prime = False       # 不是素数
+            break                  # 跳出内层循环
+    if is_prime:                   # 没找到因子
+        print(f"{n} 是素数")       # 打印素数
 \`\`\`
 
 用循环 else 省掉标志位：
 
 \`\`\`python
-for n in range(2, 20):
-    for i in range(2, n):
-        if n % i == 0:
-            break
-    else:
-        print(f"{n} 是素数")   # 没 break 才执行
+for n in range(2, 20):           # n 从 2 到 19
+    for i in range(2, n):         # i 从 2 试到 n-1
+        if n % i == 0:            # 找到因子
+            break                  # 跳出内层循环
+    else:                          # 内层没 break 才执行
+        print(f"{n} 是素数")   # 没 break 才执行  ← 没找到因子，是素数
 \`\`\`
 
 ⚠️ 这个语法很多人觉得反直觉——"else"这个词让人以为是"否则"，其实是"循环正常结束"。所以实际代码用得少，但读懂老代码需要。
@@ -2055,24 +2055,24 @@ for n in range(2, 20):
 while 也有 else，规则一样：没 break 才执行。
 
 \`\`\`python
-n = 0
-while n < 5:
-    print(n)
-    n += 1
-else:
-    print("正常结束")   # 会执行，因为没 break
+n = 0                     # 初始化 n
+while n < 5:              # n < 5 时执行循环
+    print(n)              # 打印 n
+    n += 1                # n 自增
+else:                     # 循环正常结束（没 break）才执行
+    print("正常结束")   # 会执行，因为没 break  ← 这里会打印
 \`\`\`
 
 加了 break 就不执行 else：
 
 \`\`\`python
-n = 0
-while n < 5:
-    if n == 3:
-        break
-    n += 1
-else:
-    print("这行不执行")   # break 了，else 不执行
+n = 0                       # 初始化 n
+while n < 5:                # n < 5 时执行循环
+    if n == 3:              # n 等于 3 时
+        break               # 跳出循环
+    n += 1                  # n 自增
+else:                       # 循环被 break 中断，else 不执行
+    print("这行不执行")   # break 了，else 不执行  ← 这里不会打印
 \`\`\`
 
 ### 嵌套循环的 break：只跳一层
@@ -2080,12 +2080,12 @@ else:
 ⚠️ 这是新手常踩的坑：break 只跳出**最内层**循环，外层继续。
 
 \`\`\`python
-for i in range(3):
-    for j in range(3):
-        if j == 2:
-            break           # 只跳出内层
-        print(f"i={i},j={j}")
-    print(f"外层 i={i} 继续")  # 外层照常
+for i in range(3):                # 外层 i 从 0 到 2
+    for j in range(3):            # 内层 j 从 0 到 2
+        if j == 2:                # j 等于 2 时
+            break           # 只跳出内层  ← break 只跳最内层
+        print(f"i={i},j={j}")  # 打印输出到屏幕
+    print(f"外层 i={i} 继续")  # 外层照常  ← 外层循环不受影响，继续
 \`\`\`
 
 #### 要跳多层怎么办？
@@ -2093,24 +2093,24 @@ for i in range(3):
 **方法一：用标志位**
 
 \`\`\`python
-found = False
-for i in range(5):
-    for j in range(5):
-        if i == 2 and j == 2:
-            found = True
-            break       # 跳内层
-    if found:
-        break           # 跳外层
+found = False                       # 标志位，记录是否找到
+for i in range(5):                  # 外层 i 从 0 到 4
+    for j in range(5):              # 内层 j 从 0 到 4
+        if i == 2 and j == 2:       # 找到目标位置 (2,2)
+            found = True            # 标记为已找到
+            break       # 跳内层  ← 先跳内层
+    if found:                      # 外层检查标志位
+        break           # 跳外层  ← 再跳外层
 \`\`\`
 
 **方法二：包成函数，用 return**
 
 \`\`\`python
-def search():
-    for i in range(5):
-        for j in range(5):
-            if i == 2 and j == 2:
-                return (i, j)   # 直接退出函数，跳出所有循环
+def search():                           # 把搜索逻辑包成函数
+    for i in range(5):                  # 外层 i 从 0 到 4
+        for j in range(5):              # 内层 j 从 0 到 4
+            if i == 2 and j == 2:       # 找到目标位置 (2,2)
+                return (i, j)   # 直接退出函数，跳出所有循环  ← return 直接结束函数
 \`\`\`
 
 函数法更干净，推荐。
@@ -2120,12 +2120,12 @@ def search():
 Python 语法要求代码块不能为空（if、for、def、class 后面必须有内容）。但有时候你还没想好写啥，或者这个分支暂时不需要做事，就用 \`pass\` 占位：
 
 \`\`\`python
-if x > 0:
-    pass        # 先占位，以后再写
-elif x < 0:
-    pass
-else:
-    print("x是0")
+if x > 0:           # x 大于 0
+    pass        # 先占位，以后再写  ← pass 啥也不做，让语法合法
+elif x < 0:         # x 小于 0
+    pass            # 同样占位
+else:               # x 等于 0
+    print("x是0")   # 打印 x 是 0
 \`\`\`
 
 \`pass\` 啥也不做，纯粹让语法合法。生活类比：pass 像填空题先写个"略"，等会儿再补上。
@@ -2276,15 +2276,15 @@ Python 有个让其他语言羡慕的特色——**推导式（comprehension）*
 先看对比。传统写法生成平方数列表：
 
 \`\`\`python
-squares = []
-for i in range(10):
-    squares.append(i ** 2)
+squares = []                      # 先建空列表
+for i in range(10):               # i 从 0 到 9
+    squares.append(i ** 2)        # 把 i 的平方追加到列表
 \`\`\`
 
 推导式写法：
 
 \`\`\`python
-squares = [i ** 2 for i in range(10)]
+squares = [i ** 2 for i in range(10)]    # 一行：表达式 i**2，循环 for i in range(10)
 \`\`\`
 
 一行搞定，效果完全一样。
@@ -2296,9 +2296,9 @@ squares = [i ** 2 for i in range(10)]
 格式：\`[表达式 for 变量 in 可迭代 if 条件]\`
 
 \`\`\`python
-[i**2 for i in range(10)]              # 0,1,4,9,...81
-[x for x in nums if x > 0]            # 过滤：只要正数
-[x.upper() for x in words]            # 处理每个元素
+[i**2 for i in range(10)]              # 0,1,4,9,...81  ← 表达式 + 循环
+[x for x in nums if x > 0]            # 过滤：只要正数  ← 循环 + 过滤条件
+[x.upper() for x in words]            # 处理每个元素  ← 表达式把元素转大写
 \`\`\`
 
 推导式分三部分，对应三种操作：
@@ -2311,21 +2311,21 @@ squares = [i ** 2 for i in range(10)]
 **1. 变换：对每个元素做处理**
 
 \`\`\`python
-[x * 2 for x in [1, 2, 3]]         # [2, 4, 6]
-[w.upper() for w in ["hi", "yo"]]  # ["HI", "YO"]
+[x * 2 for x in [1, 2, 3]]         # [2, 4, 6]  ← 每个元素乘 2
+[w.upper() for w in ["hi", "yo"]]  # ["HI", "YO"]  ← 每个字符串转大写
 \`\`\`
 
 **2. 过滤：只留符合条件的**
 
 \`\`\`python
-[x for x in nums if x > 0]         # 只要正数
-[x for x in range(20) if x % 2 == 0]  # 只要偶数
+[x for x in nums if x > 0]         # 只要正数  ← if 在 for 后，是过滤
+[x for x in range(20) if x % 2 == 0]  # 只要偶数  ← 遍历 0-19，只留偶数
 \`\`\`
 
 **3. 变换 + 过滤**
 
 \`\`\`python
-[x**2 for x in nums if x > 0]      # 正数的平方
+[x**2 for x in nums if x > 0]      # 正数的平方  ← 先过滤正数，再算平方
 \`\`\`
 
 ### 带条件的三元表达式
@@ -2333,8 +2333,8 @@ squares = [i ** 2 for i in range(10)]
 推导式里还能用三元表达式，对每个元素"二选一"：
 
 \`\`\`python
-["偶" if x%2==0 else "奇" for x in range(5)]
-# ["偶", "奇", "偶", "奇", "偶"]
+["偶" if x%2==0 else "奇" for x in range(5)]    # 三元 if 在 for 前，每个元素二选一
+# ["偶", "奇", "偶", "奇", "偶"]  ← 0偶 1奇 2偶 3奇 4偶
 \`\`\`
 
 注意这里的 if 是"三元表达式的 if"（每个元素二选一），不是"过滤的 if"。区别：
@@ -2345,7 +2345,8 @@ squares = [i ** 2 for i in range(10)]
 
 \`\`\`python
 # 取绝对值
-[x if x >= 0 else -x for x in [1, -2, 3, -4]]   # [1, 2, 3, 4]
+[x if x >= 0 else -x for x in [1, -2, 3, -4]]   # 正数保留，负数取相反数
+# [1, 2, 3, 4]  ← 1保持 2取反 3保持 4取反
 \`\`\`
 
 ### 字典推导式
@@ -2353,23 +2354,23 @@ squares = [i ** 2 for i in range(10)]
 把 \`[]\` 换成 \`{}\`，再加个冒号，就是字典推导式：
 
 \`\`\`python
-{k: v for k, v in pairs}
-{s: len(s) for s in words}     # 单词到长度的映射
+{k: v for k, v in pairs}                  # 从键值对序列建字典
+{s: len(s) for s in words}     # 单词到长度的映射  ← 键是单词，值是单词长度
 \`\`\`
 
 经典应用——翻转字典的键值：
 
 \`\`\`python
-pairs = {"a": 1, "b": 2, "c": 3}
-flipped = {v: k for k, v in pairs.items()}   # {1: "a", 2: "b", 3: "c"}
+pairs = {"a": 1, "b": 2, "c": 3}                   # 原字典：字母→数字
+flipped = {v: k for k, v in pairs.items()}   # {1: "a", 2: "b", 3: "c"}  ← 值变键、键变值
 \`\`\`
 
 从列表建字典：
 
 \`\`\`python
-students = [("小明", 90), ("小红", 85)]
-score_dict = {name: score for name, score in students}
-# {"小明": 90, "小红": 85}
+students = [("小明", 90), ("小红", 85)]               # 元组列表
+score_dict = {name: score for name, score in students}    # 解包元组建字典
+# {"小明": 90, "小红": 85}  ← 名字做键，分数做值
 \`\`\`
 
 ### 集合推导式
@@ -2377,8 +2378,8 @@ score_dict = {name: score for name, score in students}
 把 \`[]\` 换成 \`{}\`（不带冒号），就是集合推导式，自动去重：
 
 \`\`\`python
-{x % 3 for x in [1, 2, 3, 4, 5]}   # {0, 1, 2}
-{x**2 for x in [1, 2, 2, 3]}       # {1, 4, 9}  ← 去重了
+{x % 3 for x in [1, 2, 3, 4, 5]}   # {0, 1, 2}  ← 求余数，自动去重
+{x**2 for x in [1, 2, 2, 3]}       # {1, 4, 9}  ← 去重了  ← 2 重复，平方后只剩一个 4
 \`\`\`
 
 ### 嵌套循环推导式
@@ -2387,16 +2388,16 @@ score_dict = {name: score for name, score in students}
 
 \`\`\`python
 # 笛卡尔积
-pairs = [(i, j) for i in range(2) for j in range(3)]
-# [(0,0), (0,1), (0,2), (1,0), (1,1), (1,2)]
+pairs = [(i, j) for i in range(2) for j in range(3)]    # 两个 for 嵌套，外层 i 内层 j
+# [(0,0), (0,1), (0,2), (1,0), (1,1), (1,2)]  ← i=0 配 j=0,1,2；i=1 配 j=0,1,2
 \`\`\`
 
 展平二维列表：
 
 \`\`\`python
-matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
-flat = [x for row in matrix for x in row]
-# [1, 2, 3, 4, 5, 6, 7, 8, 9]
+matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]       # 二维列表（3行3列）
+flat = [x for row in matrix for x in row]        # 外层遍历每行，内层遍历行里每个元素
+# [1, 2, 3, 4, 5, 6, 7, 8, 9]  ← 把二维拍扁成一维
 \`\`\`
 
 ⚠️ 嵌套推导式读起来有点绕，顺序是"从左到右对应从外到内"。太复杂的嵌套建议改用普通 for 循环，可读性更重要。
@@ -2406,8 +2407,8 @@ flat = [x for row in matrix for x in row]
 把 \`[]\` 换成 \`()\`，得到**生成器**——不立即生成所有数据，按需产生，省内存：
 
 \`\`\`python
-gen = (i**2 for i in range(1000000))   # 不占内存
-sum(gen)                                # 用时才算
+gen = (i**2 for i in range(1000000))   # 不占内存  ← 用 () 包起来，按需生成
+sum(gen)                                # 用时才算  ← 求 100 万个平方和，sum 逐个取值
 \`\`\`
 
 列表推导式会立即生成所有元素占内存，生成器表达式是"懒"的——你要一个我算一个，不提前算。
@@ -2422,9 +2423,9 @@ sum(gen)                                # 用时才算
 ⚠️ 生成器只能遍历一次，遍历完就空了。要重复用得重新生成，或者转成列表。
 
 \`\`\`python
-gen = (i**2 for i in range(5))
-print(list(gen))   # [0, 1, 4, 9, 16]
-print(list(gen))   # [] ← 空了！用完了
+gen = (i**2 for i in range(5))    # 创建生成器
+print(list(gen))   # [0, 1, 4, 9, 16]  ← 第一次转列表，把生成器取空
+print(list(gen))   # [] ← 空了！用完了  ← 第二次再转，已经空了
 \`\`\`
 
 ### 什么时候用推导式
@@ -2445,10 +2446,10 @@ print(list(gen))   # [] ← 空了！用完了
 
 \`\`\`python
 # 好：简单清晰
-[x**2 for x in range(10) if x % 2 == 0]
+[x**2 for x in range(10) if x % 2 == 0]    # 遍历 0-9，只留偶数，算平方
 
 # 坏：太复杂，别这么写
-result = [transform(x) for x in data if check(x) for y in related(x) if valid(y)]
+result = [transform(x) for x in data if check(x) for y in related(x) if valid(y)]    # 嵌套+多个 if，难懂
 \`\`\`
 
 ### 小结
@@ -2599,18 +2600,18 @@ print(f"优秀: {excellent}")`
 - 找最高 → 循环比较，记录最大值
 
 \`\`\`python
-students = [
-    {"name": "小明", "scores": [90, 85, 88]},
-    {"name": "小红", "scores": [95, 92, 90]},
+students = [  # 定义列表 students
+    {"name": "小明", "scores": [90, 85, 88]},  # 执行操作
+    {"name": "小红", "scores": [95, 92, 90]},  # 执行操作
 ]
-best = None
-best_avg = 0
-for s in students:
-    avg = sum(s["scores"]) / len(s["scores"])
+best = None  # 赋值变量 best
+best_avg = 0  # 定义数值 best_avg
+for s in students:  # 遍历 students，取值给 s
+    avg = sum(s["scores"]) / len(s["scores"])  # 赋值变量 avg
     s["avg"] = round(avg, 1)        # 存进字典
-    if avg > best_avg:
-        best_avg = avg
-        best = s["name"]
+    if avg > best_avg:  # 如果 avg > best_avg
+        best_avg = avg  # 赋值变量 best_avg
+        best = s["name"]  # 赋值变量 best
 \`\`\`
 
 这个例子综合用了：字典（存学生）、列表（存成绩）、for 循环（遍历）、if 判断（找最大）、动态添加键值对（\`s["avg"] = ...\`）。
@@ -2624,17 +2625,17 @@ for s in students:
 - 要处理除零错误 → 单独判断
 
 \`\`\`python
-for op, a, b in [("+", 10, 5), ("/", 10, 0)]:
-    if op == "+":
-        r = a + b
-    elif op == "-":
-        r = a - b
-    elif op == "/":
-        if b == 0:
-            print("除零错误")
-            continue
-        r = a / b
-    print(f"{a} {op} {b} = {r}")
+for op, a, b in [("+", 10, 5), ("/", 10, 0)]:  # 遍历 [("+", 10, 5), ("/", 10, 0)]，取值给 op, a, b
+    if op == "+":  # 如果 op == "+"
+        r = a + b  # 赋值变量 r
+    elif op == "-":  # 否则如果 op == "-"
+        r = a - b  # 赋值变量 r
+    elif op == "/":  # 否则如果 op == "/"
+        if b == 0:  # 如果 b == 0
+            print("除零错误")  # 打印输出到屏幕
+            continue  # 跳过本次循环
+        r = a / b  # 赋值变量 r
+    print(f"{a} {op} {b} = {r}")  # 打印输出到屏幕
 \`\`\`
 
 ⚠️ 注意除零错误的处理：在除之前先判断 b 是不是 0，是 0 就 continue 跳过。这种"先检查再操作"的模式很常见，能避免程序崩溃。
@@ -2650,12 +2651,12 @@ for op, a, b in [("+", 10, 5), ("/", 10, 0)]:
 - 排序 → \`sorted\` + lambda
 
 \`\`\`python
-text = "the cat sat on the mat the cat ate the rat"
-words = text.split()
-count = {}
-for w in words:
-    count[w] = count.get(w, 0) + 1
-sorted_words = sorted(count.items(), key=lambda x: x[1], reverse=True)
+text = "the cat sat on the mat the cat ate the rat"  # 定义字符串 text
+words = text.split()  # 赋值变量 words
+count = {}  # 定义字典 count
+for w in words:  # 遍历 words，取值给 w
+    count[w] = count.get(w, 0) + 1  # 执行操作
+sorted_words = sorted(count.items(), key=lambda x: x[1], reverse=True)  # 赋值变量 sorted_words
 \`\`\`
 
 这是字典的经典应用。词频统计在文本分析、搜索引擎、数据分析里到处都是。\`count.get(w, 0) + 1\` 这个写法要刻在脑子里。
@@ -2670,14 +2671,14 @@ sorted_words = sorted(count.items(), key=lambda x: x[1], reverse=True)
 
 \`\`\`python
 # 直角三角形
-for i in range(1, 6):
-    print("*" * i)
+for i in range(1, 6):  # 遍历 range(1, 6)，取值给 i
+    print("*" * i)  # 打印输出到屏幕
 
 # 等腰三角形
-for i in range(1, 6):
-    spaces = " " * (5 - i)
-    stars = "*" * (2 * i - 1)
-    print(spaces + stars)
+for i in range(1, 6):  # 遍历 range(1, 6)，取值给 i
+    spaces = " " * (5 - i)  # 定义字符串 spaces
+    stars = "*" * (2 * i - 1)  # 定义字符串 stars
+    print(spaces + stars)  # 打印输出到屏幕
 \`\`\`
 
 打印图形是练嵌套循环的经典题。关键想清楚"第 i 行要几个空格、几个星"。
@@ -2691,12 +2692,12 @@ for i in range(1, 6):
 - 避免重复配对 → 内层从外层的下一个开始
 
 \`\`\`python
-nums = [1, 3, 5, 7, 8, 2, 9]
-pairs = []
-for i in range(len(nums)):
-    for j in range(i + 1, len(nums)):
-        if nums[i] + nums[j] == 10:
-            pairs.append((nums[i], nums[j]))
+nums = [1, 3, 5, 7, 8, 2, 9]  # 定义列表 nums
+pairs = []  # 定义列表 pairs
+for i in range(len(nums)):  # 遍历 range(len(nums))，取值给 i
+    for j in range(i + 1, len(nums)):  # 遍历 range(i + 1, len(nums))，取值给 j
+        if nums[i] + nums[j] == 10:  # 如果 nums[i] + nums[j] == 10
+            pairs.append((nums[i], nums[j]))  # 调用 pairs.append()：向列表末尾添加元素
 \`\`\`
 
 \`range(i + 1, len(nums))\` 是关键——内层从 i+1 开始，避免重复配对（比如 (3,7) 和 (7,3) 只算一次）。
@@ -2712,16 +2713,16 @@ for i in range(len(nums)):
 - 格式化输出 → f-string 对齐
 
 \`\`\`python
-cart = [
-    {"name": "苹果", "price": 5, "qty": 2},
-    {"name": "香蕉", "price": 3, "qty": 5},
+cart = [  # 定义列表 cart
+    {"name": "苹果", "price": 5, "qty": 2},  # 执行操作
+    {"name": "香蕉", "price": 3, "qty": 5},  # 执行操作
 ]
-total = 0
-for item in cart:
-    subtotal = item["price"] * item["qty"]
-    total += subtotal
-    print(f"{item['name']:<8}{item['price']:<6}{subtotal}")
-print(f"总计: {total}元")
+total = 0  # 定义数值 total
+for item in cart:  # 遍历 cart，取值给 item
+    subtotal = item["price"] * item["qty"]  # 赋值变量 subtotal
+    total += subtotal  # total 累加
+    print(f"{item['name']:<8}{item['price']:<6}{subtotal}")  # 打印输出到屏幕
+print(f"总计: {total}元")  # 打印输出到屏幕
 \`\`\`
 
 \`{name:<8}\` 是 f-string 的对齐语法：左对齐，占 8 个字符宽度。打印表格时很有用。

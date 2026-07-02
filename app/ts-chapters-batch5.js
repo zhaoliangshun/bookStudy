@@ -66,11 +66,11 @@ TypeScript 本身是一个 npm 包（\`typescript\`），它包含编译器 \`ts
 #### 全局安装
 
 \`\`\`bash
-npm install -g typescript
+npm install -g typescript  # 全局安装依赖
 # 或
-yarn global add typescript
+yarn global add typescript  # yarn 命令
 # 或
-pnpm add -g typescript
+pnpm add -g typescript  # pnpm 命令
 \`\`\`
 
 安装后可以在任意目录使用 \`tsc\` 命令：
@@ -86,11 +86,11 @@ tsc hello.ts           # 编译单个文件
 #### 项目本地安装（推荐）
 
 \`\`\`bash
-npm install --save-dev typescript
+npm install --save-dev typescript  # 安装依赖
 # 或
-yarn add --dev typescript
+yarn add --dev typescript  # yarn 命令
 # 或
-pnpm add -D typescript
+pnpm add -D typescript  # pnpm 命令
 \`\`\`
 
 安装后 \`tsc\` 位于 \`node_modules/.bin/tsc\`，需要通过 \`npx tsc\`、\`yarn tsc\` 或在 \`package.json\` 的 scripts 中调用：
@@ -179,7 +179,7 @@ tsc --help                 # 查看所有参数
 tsc --version              # 查看版本
 tsc --showConfig           # 打印展开后的 tsconfig（含继承）
 tsc --listFiles            # 列出编译涉及的所有文件
-tsc --listFilesOnly        | 只列文件不编译
+tsc --listFilesOnly        | 只列文件不编译  # 运行 TypeScript 编译器
 \`\`\`
 
 **重要**：命令行参数会**覆盖** tsconfig.json 中的同名字段。例如 \`tsc --target ES5\` 会覆盖 tsconfig 里的 \`target\`。但如果你直接 \`tsc 文件名\`，tsc 会**忽略 tsconfig.json**——这是一个常见陷阱。
@@ -189,7 +189,7 @@ tsc --listFilesOnly        | 只列文件不编译
 \`ts-node\` 是一个让 Node.js 直接执行 \`.ts\` 文件的工具。它内部调用 TypeScript 编译器**在内存中编译**（不写磁盘），然后交给 Node 运行。
 
 \`\`\`bash
-npm install -D ts-node typescript
+npm install -D ts-node typescript  # 安装开发依赖
 npx ts-node hello.ts       # 直接运行
 npx ts-node                # 进入 REPL
 \`\`\`
@@ -222,8 +222,8 @@ ts-node 的配置可以写在 tsconfig.json 的 \`ts-node\` 字段或单独配�
 \`tsx\` 是基于 \`esbuild\` 的 TS 运行时，比 ts-node 快一个数量级。它用 Go 编写的 esbuild 做转译，速度极快：
 
 \`\`\`bash
-npm install -D tsx
-npx tsx hello.ts
+npm install -D tsx  # 安装开发依赖
+npx tsx hello.ts  # 通过 npx 执行命令
 \`\`\`
 
 \`tsx\` 同样是内存编译 + Node 执行，但转译用 esbuild（不做类型检查，只做语法转译），所以快。它正在逐渐取代 ts-node 成为开发期首选。
@@ -233,7 +233,7 @@ npx tsx hello.ts
 \`Deno\` 是 Node.js 之父 Ryan Dahl 创建的新一代运行时，**原生支持 TypeScript**——不需要任何编译步骤，直接运行 \`.ts\` 文件：
 
 \`\`\`bash
-deno run hello.ts
+deno run hello.ts  # 执行命令 deno
 \`\`\`
 
 Deno 内部用 V8 引擎 + Rust 编写的 \`swc\` 做转译。它会缓存编译结果，第二次运行很快。Deno 默认安全（需 \`--allow-read\` 等权限）、支持 URL 导入、内置测试与格式化工具。
@@ -243,8 +243,8 @@ Deno 内部用 V8 引擎 + Rust 编写的 \`swc\` 做转译。它会缓存编译
 \`Bun\` 是另一个新生代运行时（Zig 编写），同样**原生支持 TS**：
 
 \`\`\`bash
-bun run hello.ts
-bun hello.ts
+bun run hello.ts  # 执行命令 bun
+bun hello.ts  # 执行命令 bun
 \`\`\`
 
 Bun 的卖点是极致速度（启动快、运行快）、内置打包器、测试运行器、包管理器，目标是"一个工具搞定一切"。它内部用 \`zig\` + JavaScriptCore 引擎。
@@ -610,8 +610,8 @@ AST 是源码的树形结构表示，每个节点是一个 \`Node\` 对象，有
 绑定的核心任务：**建立"声明"与"引用"之间的联系**。当你写：
 
 \`\`\`ts
-const x = 1;
-console.log(x);
+const x = 1;  // 声明常量 x
+console.log(x);  // 控制台输出
 \`\`\`
 
 解析阶段会生成两个节点：一个 \`VariableDeclaration(x)\` 和一个 \`Identifier(x)\`（在 \`console.log(x)\` 里）。但解析阶段不知道这两个 \`x\` 是同一个东西——它只看到字符串 "x"。
@@ -709,13 +709,13 @@ TypeScript 的类型推断遵循几个核心规则：
 
 \`\`\`ts
 // TS 源码
-interface Person { name: string; }
-function greet(p: Person): string { return p.name; }
+interface Person { name: string; }  // 定义接口 Person
+function greet(p: Person): string { return p.name; }  // 定义函数 greet，参数: p: Person，返回 string
 const enum Color { Red, Green }
-let c = Color.Red;
+let c = Color.Red;  // 声明变量 c
 
 // 擦除类型后（ES2020 target）
-function greet(p) { return p.name; }
+function greet(p) { return p.name; }  // 定义函数 greet，参数: p
 let Color = { Red: 0, Green: 1, 0: "Red", 1: "Green" }; // enum 保留为对象
 let c = 0; // const enum 被内联（但 isolatedModules 下当普通 enum）
 \`\`\`
@@ -732,10 +732,10 @@ let c = 0; // const enum 被内联（但 isolatedModules 下当普通 enum）
 
 \`\`\`ts
 // add.ts
-export function add(a: number, b: number): number { return a + b; }
+export function add(a: number, b: number): number { return a + b; }  // 导出函数 add
 
 // 生成的 add.d.ts
-export declare function add(a: number, b: number): number;
+export declare function add(a: number, b: number): number;  // 导出 declare function
 \`\`\`
 
 \`.d.ts\` 让下游项目能获得类型提示，而不需要看 \`.ts\` 源码。发布 npm 包时通常同时发布 \`.js\` 和 \`.d.ts\`。
@@ -1111,9 +1111,9 @@ let b: true = true;         // b 只能是布尔 true
 单独使用字面量类型意义不大（一个变量只能取一个值，那直接用 const 就行了），它的威力在于**联合**——把多个字面量组合成"取值集合"：
 
 \`\`\`ts
-type Direction = "up" | "down" | "left" | "right";
-type Dice = 1 | 2 | 3 | 4 | 5 | 6;
-type Answer = true | false;
+type Direction = "up" | "down" | "left" | "right";  // 定义类型别名 Direction
+type Dice = 1 | 2 | 3 | 4 | 5 | 6;  // 定义类型别名 Dice，联合类型
+type Answer = true | false;  // 定义类型别名 Answer，联合类型
 \`\`\`
 
 这样 \`Direction\` 类型的变量只能是这四个字符串之一，传别的值会编译报错。这就是字面量联合类型的核心价值——**用类型系统约束取值范围**。
@@ -1123,11 +1123,11 @@ type Answer = true | false;
 最常用的字面量类型。用字符串字面量的联合约束取值：
 
 \`\`\`ts
-type Theme = "light" | "dark" | "auto";
-type HttpStatus = "OK" | "Not Found" | "Server Error";
-type ButtonSize = "small" | "medium" | "large";
+type Theme = "light" | "dark" | "auto";  // 定义类型别名 Theme
+type HttpStatus = "OK" | "Not Found" | "Server Error";  // 定义类型别名 HttpStatus
+type ButtonSize = "small" | "medium" | "large";  // 定义类型别名 ButtonSize
 
-function setTheme(t: Theme) { /* ... */ }
+function setTheme(t: Theme) { /* ... */ }  // 定义函数 setTheme，参数: t: Theme
 setTheme("dark");     // ✅
 // setTheme("blue");  // ❌ "blue" 不在 Theme 中
 \`\`\`
@@ -1144,11 +1144,11 @@ setTheme("dark");     // ✅
 数字也能作为字面量类型，常用于约束特定数值集合：
 
 \`\`\`ts
-type Dice = 1 | 2 | 3 | 4 | 5 | 6;
-type Port = 80 | 443 | 8080 | 8443;
-type ExitCode = 0 | 1 | 2;
+type Dice = 1 | 2 | 3 | 4 | 5 | 6;  // 定义类型别名 Dice，联合类型
+type Port = 80 | 443 | 8080 | 8443;  // 定义类型别名 Port，联合类型
+type ExitCode = 0 | 1 | 2;  // 定义类型别名 ExitCode，联合类型
 
-function roll(): Dice {
+function roll(): Dice {  // 定义函数 roll，返回 Dice
   return Math.ceil(Math.random() * 6) as Dice; // 注意需断言
 }
 \`\`\`
@@ -1160,7 +1160,7 @@ function roll(): Dice {
 \`true\` 和 \`false\` 本身也是类型。布尔字面量类型用得少，因为 \`boolean\` 就是 \`true | false\` 的别名。但在某些场景下精确区分有意义：
 
 \`\`\`ts
-interface Config {
+interface Config {  // 定义接口 Config
   debug: true;   // 强制为 true
   production: false;
 }
@@ -1173,14 +1173,14 @@ interface Config {
 字面量类型最常见的用法是与联合类型 \`|\` 结合：
 
 \`\`\`ts
-type Status = "idle" | "loading" | "success" | "error";
+type Status = "idle" | "loading" | "success" | "error";  // 定义类型别名 Status
 
-function render(s: Status): string {
-  switch (s) {
-    case "idle": return "等待开始";
-    case "loading": return "加载中...";
-    case "success": return "完成";
-    case "error": return "出错";
+function render(s: Status): string {  // 定义函数 render，参数: s: Status，返回 string
+  switch (s) {  // switch 分支选择
+    case "idle": return "等待开始";  // case 匹配分支
+    case "loading": return "加载中...";  // case 匹配分支
+    case "success": return "完成";  // case 匹配分支
+    case "error": return "出错";  // case 匹配分支
   }
 }
 \`\`\`
@@ -1211,8 +1211,8 @@ TypeScript 会根据赋值和控制流自动收窄字面量类型：
 const x = "hello";   // x 的类型是 "hello"（字面量）
 let y = "hello";     // y 的类型是 string（let 可变，宽化）
 
-function f(s: "a" | "b") {
-  if (s === "a") {
+function f(s: "a" | "b") {  // 定义函数 f，参数: s: "a" | "b"
+  if (s === "a") {  // 条件判断
     // 这里 s 被收窄为 "a"
   } else {
     // 这里 s 被收窄为 "b"
@@ -1233,11 +1233,11 @@ function f(s: "a" | "b") {
 
 \`\`\`ts
 // 不用 as const
-const config = { host: "localhost", port: 3000, ssl: false };
+const config = { host: "localhost", port: 3000, ssl: false };  // 声明常量 config
 // config 类型: { host: string; port: number; ssl: boolean }
 
 // 用 as const
-const config2 = { host: "localhost", port: 3000, ssl: false } as const;
+const config2 = { host: "localhost", port: 3000, ssl: false } as const;  // 声明常量 config2（注意：类型断言会绕过类型检查）
 // config2 类型: { readonly host: "localhost"; readonly port: 3000; readonly ssl: false }
 \`\`\`
 
@@ -1248,7 +1248,7 @@ const config2 = { host: "localhost", port: 3000, ssl: false } as const;
 3. **生成字面量联合**：从一个数组推导字面量联合类型：
 
 \`\`\`ts
-const DIRECTIONS = ["up", "down", "left", "right"] as const;
+const DIRECTIONS = ["up", "down", "left", "right"] as const;  // 声明常量 DIRECTIONS（注意：类型断言会绕过类型检查）
 type Direction = typeof DIRECTIONS[number]; // "up" | "down" | "left" | "right"
 \`\`\`
 
@@ -1261,14 +1261,14 @@ type Direction = typeof DIRECTIONS[number]; // "up" | "down" | "left" | "right"
 字面量联合天然适合描述状态机的状态：
 
 \`\`\`ts
-type State = "idle" | "loading" | "success" | "error";
-type Action = { type: "START" } | { type: "SUCCESS"; data: string } | { type: "FAIL"; error: string };
+type State = "idle" | "loading" | "success" | "error";  // 定义类型别名 State
+type Action = { type: "START" } | { type: "SUCCESS"; data: string } | { type: "FAIL"; error: string };  // 定义类型别名 Action，联合类型
 
-function reducer(state: State, action: Action): State {
-  switch (action.type) {
-    case "START": return state === "idle" ? "loading" : state;
-    case "SUCCESS": return state === "loading" ? "success" : state;
-    case "FAIL": return state === "loading" ? "error" : state;
+function reducer(state: State, action: Action): State {  // 定义函数 reducer，参数: state: State, action: Action，返回 State
+  switch (action.type) {  // switch 分支选择
+    case "START": return state === "idle" ? "loading" : state;  // case 匹配分支
+    case "SUCCESS": return state === "loading" ? "success" : state;  // case 匹配分支
+    case "FAIL": return state === "loading" ? "error" : state;  // case 匹配分支
   }
 }
 \`\`\`
@@ -1278,10 +1278,10 @@ function reducer(state: State, action: Action): State {
 前端路由的路径、HTTP 方法都是固定的字面量集合：
 
 \`\`\`ts
-type Method = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
-type Route = "/home" | "/about" | "/users/:id" | "/api/*";
+type Method = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";  // 定义类型别名 Method
+type Route = "/home" | "/about" | "/users/:id" | "/api/*";  // 定义类型别名 Route
 
-function request(method: Method, route: Route) { /* ... */ }
+function request(method: Method, route: Route) { /* ... */ }  // 定义函数 request，参数: method: Method, route: Route
 request("GET", "/home"); // ✅
 // request("GET", "/unknown"); // ❌
 \`\`\`
@@ -1291,10 +1291,10 @@ request("GET", "/home"); // ✅
 配置项的取值往往是有限集合：
 
 \`\`\`ts
-type LogLevel = "debug" | "info" | "warn" | "error" | "off";
-type Env = "development" | "staging" | "production";
+type LogLevel = "debug" | "info" | "warn" | "error" | "off";  // 定义类型别名 LogLevel
+type Env = "development" | "staging" | "production";  // 定义类型别名 Env
 
-interface AppConfig {
+interface AppConfig {  // 定义接口 AppConfig
   env: Env;
   logLevel: LogLevel;
   port: 3000 | 8080 | 9090;
@@ -1308,21 +1308,21 @@ interface AppConfig {
 结合 \`never\` 类型，可以确保所有字面量分支都被处理，避免遗漏：
 
 \`\`\`ts
-type Status = "idle" | "loading" | "success" | "error";
+type Status = "idle" | "loading" | "success" | "error";  // 定义类型别名 Status
 
-function assertNever(x: never): never {
-  throw new Error("未处理的状态: " + x);
+function assertNever(x: never): never {  // 定义函数 assertNever，参数: x: never，返回 never
+  throw new Error("未处理的状态: " + x);  // 抛出 Error 异常
 }
 
-function handle(s: Status): string {
-  switch (s) {
-    case "idle": return "等待";
-    case "loading": return "加载";
-    case "success": return "成功";
-    case "error": return "失败";
-    default:
+function handle(s: Status): string {  // 定义函数 handle，参数: s: Status，返回 string
+  switch (s) {  // switch 分支选择
+    case "idle": return "等待";  // case 匹配分支
+    case "loading": return "加载";  // case 匹配分支
+    case "success": return "成功";  // case 匹配分支
+    case "error": return "失败";  // case 匹配分支
+    default:  // 默认分支
       // 如果未来新增状态但忘了处理，这里 s 不是 never，编译报错
-      return assertNever(s);
+      return assertNever(s);  // 返回 assertNever(s)
   }
 }
 \`\`\`
@@ -1334,19 +1334,19 @@ function handle(s: Status): string {
 TypeScript 4.1 引入了**模板字面量类型**，用反引号语法构造字符串类型：
 
 \`\`\`ts
-type Greeting = \`hello \${string}\`;
+type Greeting = \`hello \${string}\`;  // 定义类型别名 Greeting
 let g: Greeting = "hello world"; // ✅
 // let g2: Greeting = "hi world"; // ❌
 
-type HttpMethod = "GET" | "POST";
-type Endpoint = \`/api/\${string}\`;
+type HttpMethod = "GET" | "POST";  // 定义类型别名 HttpMethod
+type Endpoint = \`/api/\${string}\`;  // 定义类型别名 Endpoint
 type Route = \`\${HttpMethod} \${Endpoint}\`; // "GET /api/..." | "POST /api/..."
 \`\`\`
 
 模板字面量类型能做非常强大的事，比如把对象类型的所有 key 转成大写：
 
 \`\`\`ts
-type UppercaseKeys<T> = { [K in keyof T as Uppercase<string & K>]: T[K] };
+type UppercaseKeys<T> = { [K in keyof T as Uppercase<string & K>]: T[K] };  // 定义类型别名 UppercaseKeys，泛型参数 T，使用 keyof 取键的联合，映射类型（注意：类型断言会绕过类型检查）
 \`\`\`
 
 这是构建类型安全 DSL 的核心工具，本章只点到为止。
@@ -1662,7 +1662,7 @@ console.log("\\n字面量类型演示完成！它是构建精确类型系统的�
 最常见的枚举形式。成员是数字，默认从 0 开始自动递增：
 
 \`\`\`ts
-enum Direction {
+enum Direction {  // 定义枚举 Direction
   Up,      // 0
   Down,    // 1
   Left,    // 2
@@ -1673,11 +1673,11 @@ enum Direction {
 #### 指定起始值
 
 \`\`\`ts
-enum HttpStatus {
-  OK = 200,
-  Created = 201,
-  NotFound = 404,
-  ServerError = 500,
+enum HttpStatus {  // 定义枚举 HttpStatus
+  OK = 200,  // 赋值 OK
+  Created = 201,  // 赋值 Created
+  NotFound = 404,  // 赋值 NotFound
+  ServerError = 500,  // 赋值 ServerError
 }
 \`\`\`
 
@@ -1686,11 +1686,11 @@ enum HttpStatus {
 指定了一个值后，后面的成员会从该值 +1 递增：
 
 \`\`\`ts
-enum E {
-  A = 10,
+enum E {  // 定义枚举 E
+  A = 10,  // 赋值 A
   B,    // 11
   C,    // 12
-  D = 100,
+  D = 100,  // 赋值 D
   E,    // 101
 }
 \`\`\`
@@ -1700,9 +1700,9 @@ enum E {
 数值枚举在运行时会生成一个**双向映射**的对象：
 
 \`\`\`ts
-enum Direction { Up, Down }
+enum Direction { Up, Down }  // 定义枚举 Direction
 // 运行时生成：
-const Direction = {
+const Direction = {  // 声明常量 Direction
   Up: 0,
   Down: 1,
   0: "Up",
@@ -1719,17 +1719,17 @@ const Direction = {
 成员是字符串字面量：
 
 \`\`\`ts
-enum Color {
-  Red = "RED",
-  Green = "GREEN",
-  Blue = "BLUE",
+enum Color {  // 定义枚举 Color
+  Red = "RED",  // 赋值 Red
+  Green = "GREEN",  // 赋值 Green
+  Blue = "BLUE",  // 赋值 Blue
 }
 \`\`\`
 
 字符串枚举**没有反向映射**——\`Color["RED"]\` 是 \`undefined\`，不能从值取回名字。运行时生成的对象只有"名字→值"单方向：
 
 \`\`\`ts
-const Color = { Red: "RED", Green: "GREEN", Blue: "BLUE" };
+const Color = { Red: "RED", Green: "GREEN", Blue: "BLUE" };  // 声明常量 Color
 \`\`\`
 
 字符串枚举的优势：
@@ -1745,9 +1745,9 @@ const Color = { Red: "RED", Green: "GREEN", Blue: "BLUE" };
 数值和字符串混用：
 
 \`\`\`ts
-enum Mixed {
-  No = 0,
-  Yes = "YES",
+enum Mixed {  // 定义枚举 Mixed
+  No = 0,  // 赋值 No
+  Yes = "YES",  // 赋值 Yes
 }
 \`\`\`
 
@@ -1759,7 +1759,7 @@ enum Mixed {
 
 \`\`\`ts
 const enum Direction { Up, Down }
-const d = Direction.Up;
+const d = Direction.Up;  // 声明常量 d
 // 编译后直接变成：
 // const d = 0;
 \`\`\`
@@ -1774,8 +1774,8 @@ const d = Direction.Up;
 枚举成员的值可以是**计算表达式**：
 
 \`\`\`ts
-enum FileAccess {
-  None = 0,
+enum FileAccess {  // 定义枚举 FileAccess
+  None = 0,  // 赋值 None
   Read = 1 << 1,        // 2，位运算
   Write = 1 << 2,       // 4
   Execute = 1 << 3,     // 8
@@ -1813,8 +1813,8 @@ enum FileAccess {
 这是数值枚举的经典应用。原理：每个权限对应一个**独立的二进制位**，用位运算组合/检查：
 
 \`\`\`ts
-enum Permission {
-  None = 0,
+enum Permission {  // 定义枚举 Permission
+  None = 0,  // 赋值 None
   Read = 1 << 0,      // 0001 = 1
   Write = 1 << 1,     // 0010 = 2
   Delete = 1 << 2,    // 0100 = 4
@@ -1838,7 +1838,7 @@ enum Permission {
 
 \`\`\`ts
 // 数值枚举
-enum Num { A, B }
+enum Num { A, B }  // 定义枚举 Num
 // →
 var Num;
 (function (Num) {
@@ -1847,7 +1847,7 @@ var Num;
 })(Num || (Num = {}));
 
 // 字符串枚举
-enum Str { A = "a", B = "b" }
+enum Str { A = "a", B = "b" }  // 定义枚举 Str
 // →
 var Str;
 (function (Str) {
@@ -1857,7 +1857,7 @@ var Str;
 
 // const enum（非 isolatedModules）
 const enum CE { A, B }
-const x = CE.A;
+const x = CE.A;  // 声明常量 x
 // → const x = 0;  （完全内联，无对象）
 \`\`\`
 
@@ -2165,8 +2165,8 @@ console.log("\\n枚举演示完成！理解每种枚举的运行时行为是关�
 元组用 \`[Type1, Type2, ...]\` 语法定义：
 
 \`\`\`ts
-let pair: [string, number] = ["张三", 28];
-let triple: [string, number, boolean] = ["李四", 30, true];
+let pair: [string, number] = ["张三", 28];  // 声明变量 pair，类型 [string, number]
+let triple: [string, number, boolean] = ["李四", 30, true];  // 声明变量 triple，类型 [string, number, boolean]
 \`\`\`
 
 元组本质是数组，但 TypeScript 在编译期会检查：
@@ -2206,7 +2206,7 @@ t = ["a", 1];      // ✅ 长度 2，类型匹配
 访问越界元素在严格模式下会报错：
 
 \`\`\`ts
-let t: [string, number] = ["a", 1];
+let t: [string, number] = ["a", 1];  // 声明变量 t，类型 [string, number]
 t[0];  // string
 t[1];  // number
 // t[2]; // ❌ 严格模式下：没有索引 2 的元素
@@ -2218,11 +2218,11 @@ TypeScript 4.0 引入了**标签元组**——给每个位置起个名字，提�
 
 \`\`\`ts
 // 无标签：看不出每个位置代表什么
-function f(): [string, number, boolean] { /* ... */ }
+function f(): [string, number, boolean] { /* ... */ }  // 定义函数 f，返回 [string, number, boolean]
 
 // 有标签：清晰知道每个位置的含义
-function getUserInfo(): [name: string, age: number, isActive: boolean] {
-  return ["张三", 28, true];
+function getUserInfo(): [name: string, age: number, isActive: boolean] {  // 定义函数 getUserInfo，返回 [name: string, age: number, isActive: boolean]
+  return ["张三", 28, true];  // 返回 ["张三", 28, true]
 }
 \`\`\`
 
@@ -2233,7 +2233,7 @@ function getUserInfo(): [name: string, age: number, isActive: boolean] {
 元组可以用 \`...\` 展开，展开后还是元组：
 
 \`\`\`ts
-type A = [string, number];
+type A = [string, number];  // 定义类型别名 A
 type B = [boolean, ...A]; // [boolean, string, number]
 type C = [...A, ...B];    // [string, number, boolean, string, number]
 \`\`\`
@@ -2243,7 +2243,7 @@ type C = [...A, ...B];    // [string, number, boolean, string, number]
 ### 只读元组
 
 \`\`\`ts
-let ro: readonly [string, number] = ["a", 1];
+let ro: readonly [string, number] = ["a", 1];  // 声明变量 ro，类型 readonly [string, number]
 // ro[0] = "b"; // ❌ 只读
 // ro.push("c"); // ❌ 只读
 \`\`\`
@@ -2261,7 +2261,7 @@ const t = [1, "a"] as const; // readonly [1, "a"]
 元组与函数的 rest 参数天然契合。用元组类型约束 rest 参数，能让"可变参数函数"获得精确类型：
 
 \`\`\`ts
-function f(...args: [string, number]): void {
+function f(...args: [string, number]): void {  // 定义函数 f，参数: ...args: [string, number]，返回 void
   args[0]; // string
   args[1]; // number
 }
@@ -2277,8 +2277,8 @@ f("a", 1);     // ✅
 ### 元组在函数参数中的应用：\`call\` 类型安全
 
 \`\`\`ts
-function call<T extends unknown[], R>(fn: (...args: T) => R, ...args: T): R {
-  return fn(...args);
+function call<T extends unknown[], R>(fn: (...args: T) => R, ...args: T): R {  // 定义函数 call，泛型 T extends unknown[], R，参数: fn: (...args: T
+  return fn(...args);  // 返回 fn(...args)
 }
 call((a: string, b: number) => a + b, "x", 1); // ✅
 // call((a: string, b: number) => a + b, "x");  // ❌ 参数不够
@@ -2292,7 +2292,7 @@ call((a: string, b: number) => a + b, "x", 1); // ✅
 元组解构按位置取值，每个变量的类型对应元组位置的类型：
 
 \`\`\`ts
-const t: [name: string, age: number] = ["张三", 28];
+const t: [name: string, age: number] = ["张三", 28];  // 声明常量 t，类型 [name: string, age: number]
 const [name, age] = t; // name: string, age: number
 \`\`\`
 
@@ -2303,10 +2303,10 @@ const [name, age] = t; // name: string, age: number
 TypeScript 4.0 引入变长元组——允许用泛型 \`...\` 展开未知元组：
 
 \`\`\`ts
-type Tail<T extends unknown[]> = T extends [unknown, ...infer Rest] ? Rest : never;
+type Tail<T extends unknown[]> = T extends [unknown, ...infer Rest] ? Rest : never;  // 定义类型别名 Tail，泛型参数 T extends unknown[]，使用 infer 在条件类型中提取类型
 type R = Tail<[string, number, boolean]>; // [number, boolean]
 
-type Concat<A extends unknown[], B extends unknown[]> = [...A, ...B];
+type Concat<A extends unknown[], B extends unknown[]> = [...A, ...B];  // 定义类型别名 Concat，泛型参数 A extends unknown[], B extends unknown[]
 type C = Concat<[string], [number, boolean]>; // [string, number, boolean]
 \`\`\`
 
@@ -2318,7 +2318,7 @@ type C = Concat<[string], [number, boolean]>; // [string, number, boolean]
 
 \`\`\`ts
 // 把元组每个位置变成可选
-type PartialTuple<T extends unknown[]> = {
+type PartialTuple<T extends unknown[]> = {  // 定义类型别名 PartialTuple，泛型参数 T extends unknown[]
   [K in keyof T]: T[K] | undefined;
 };
 
@@ -2334,7 +2334,7 @@ type Reverse<T extends unknown[]> =
 元组在运行时**就是普通数组**——TypeScript 不生成任何特殊代码。类型检查只在编译期：
 
 \`\`\`ts
-let t: [string, number] = ["a", 1];
+let t: [string, number] = ["a", 1];  // 声明变量 t，类型 [string, number]
 // 运行时 t 就是 ["a", 1]，一个普通数组
 t.length; // 2
 t[0];     // "a"
@@ -2633,11 +2633,11 @@ console.log("\\n元组演示完成！它是固定结构数据的最佳容器。"
 \`readonly\` 用在**对象属性**上，表示该属性只能在对象创建时赋值，之后不可修改：
 
 \`\`\`ts
-interface Point {
-  readonly x: number;
-  readonly y: number;
+interface Point {  // 定义接口 Point
+  readonly x: number;  // 类属性 x: number
+  readonly y: number;  // 类属性 y: number
 }
-const p: Point = { x: 10, y: 20 };
+const p: Point = { x: 10, y: 20 };  // 声明常量 p，类型 Point
 // p.x = 5; // ❌ 编译错误：只读属性
 \`\`\`
 
@@ -2655,11 +2655,11 @@ const p: Point = { x: 10, y: 20 };
 | **运行时** | 无影响 | 无影响（变量声明） |
 
 \`\`\`ts
-const arr = [1, 2, 3];
+const arr = [1, 2, 3];  // 声明常量 arr
 arr = [4, 5, 6];   // ❌ const：变量不能重新赋值
 arr.push(4);        // ✅ 但内容可以改！const 不保护内容
 
-const roArr: readonly number[] = [1, 2, 3];
+const roArr: readonly number[] = [1, 2, 3];  // 声明常量 roArr，类型 readonly number[]
 // roArr.push(4);   // ❌ readonly：内容也不能改
 \`\`\`
 
@@ -2668,7 +2668,7 @@ const roArr: readonly number[] = [1, 2, 3];
 ### ReadonlyArray\<T\>
 
 \`\`\`ts
-let arr: ReadonlyArray<number> = [1, 2, 3];
+let arr: ReadonlyArray<number> = [1, 2, 3];  // 声明变量 arr，类型 ReadonlyArray<number>
 // arr.push(4);    // ❌ 没有 push
 // arr[0] = 10;    // ❌ 没有索引赋值
 // arr.length = 0; // ❌ 不能改 length
@@ -2684,11 +2684,11 @@ arr = [4, 5, 6];   // ✅ 但变量本身可以重新赋值（如果不是 const
 类似地，Map 和 Set 有只读版本：
 
 \`\`\`ts
-const roMap: ReadonlyMap<string, number> = new Map([["a", 1]]);
+const roMap: ReadonlyMap<string, number> = new Map([["a", 1]]);  // 声明常量 roMap，类型 ReadonlyMap<string, number>
 // roMap.set("b", 2);  // ❌ 没有 set
 roMap.get("a");        // ✅ 可以读
 
-const roSet: ReadonlySet<number> = new Set([1, 2, 3]);
+const roSet: ReadonlySet<number> = new Set([1, 2, 3]);  // 声明常量 roSet，类型 ReadonlySet<number>
 // roSet.add(4);  // ❌ 没有 add
 roSet.has(1);     // ✅ 可以查
 \`\`\`
@@ -2700,18 +2700,18 @@ roSet.has(1);     // ✅ 可以查
 \`Readonly<T>\` 是内置工具类型，把对象类型 \`T\` 的所有属性变成 \`readonly\`：
 
 \`\`\`ts
-interface Todo {
+interface Todo {  // 定义接口 Todo
   title: string;
   done: boolean;
 }
-type ReadonlyTodo = Readonly<Todo>;
+type ReadonlyTodo = Readonly<Todo>;  // 定义类型别名 ReadonlyTodo
 // 等价于 { readonly title: string; readonly done: boolean }
 \`\`\`
 
 \`Readonly<T>\` 的实现是映射类型：
 
 \`\`\`ts
-type Readonly<T> = {
+type Readonly<T> = {  // 定义类型别名 Readonly，泛型参数 T
   readonly [P in keyof T]: T[P];
 };
 \`\`\`
@@ -2729,14 +2729,14 @@ type Readonly<T> = {
 - 严格模式下违反会抛错；非严格模式静默失败。
 
 \`\`\`ts
-const obj = Object.freeze({ x: 1, y: 2 });
+const obj = Object.freeze({ x: 1, y: 2 });  // 声明常量 obj
 // obj.x = 10; // 严格模式抛错；非严格模式静默失败，obj.x 仍是 1
 \`\`\`
 
 \`Object.freeze\` 的返回值类型在 TS 中是 \`Readonly<T>\`——它同时提供运行时冻结和编译期只读类型。但注意 \`Object.freeze\` 是**浅冻结**——嵌套对象的属性仍可修改：
 
 \`\`\`ts
-const obj = Object.freeze({ nested: { x: 1 } });
+const obj = Object.freeze({ nested: { x: 1 } });  // 声明常量 obj
 obj.nested.x = 10; // ✅ 仍可改！因为只冻结了第一层
 \`\`\`
 
@@ -2747,12 +2747,12 @@ obj.nested.x = 10; // ✅ 仍可改！因为只冻结了第一层
 函数参数加 \`readonly\` 能向调用者保证"我不会修改你的数据"：
 
 \`\`\`ts
-function sum(arr: readonly number[]): number {
+function sum(arr: readonly number[]): number {  // 定义函数 sum，参数: arr: readonly number[]，返回 number
   // arr.push(0); // ❌ 编译错误，无法修改
-  return arr.reduce((a, b) => a + b, 0);
+  return arr.reduce((a, b) => a + b, 0);  // 返回 arr.reduce((a, b) => a + b, 0)
 }
 
-const myArr = [1, 2, 3];
+const myArr = [1, 2, 3];  // 声明常量 myArr
 sum(myArr); // 调用者确信 myArr 不会被改
 \`\`\`
 
@@ -2764,11 +2764,11 @@ sum(myArr); // 调用者确信 myArr 不会被改
 
 \`\`\`ts
 // 可变更新（修改原对象）
-const obj = { count: 1 };
+const obj = { count: 1 };  // 声明常量 obj
 obj.count = 2; // 原对象被改
 
 // 不可变更新（返回新对象）
-const obj2 = { count: 1 };
+const obj2 = { count: 1 };  // 声明常量 obj2
 const obj3 = { ...obj2, count: 2 }; // obj2 不变，obj3 是新对象
 \`\`\`
 
@@ -2798,16 +2798,16 @@ const obj3 = { ...obj2, count: 2 }; // obj2 不变，obj3 是新对象
 \`Readonly<T>\` 是浅只读——只把第一层属性变 readonly，嵌套对象的属性仍可改：
 
 \`\`\`ts
-interface Nested { a: { b: number } }
-type R = Readonly<Nested>;
-const r: R = { a: { b: 1 } };
+interface Nested { a: { b: number } }  // 定义接口 Nested
+type R = Readonly<Nested>;  // 定义类型别名 R
+const r: R = { a: { b: 1 } };  // 声明常量 r，类型 R
 r.a.b = 2; // ✅ 仍可改！因为只 readonly 了第一层
 \`\`\`
 
 要实现**深只读**（所有层都 readonly），需自定义 \`DeepReadonly\` 工具类型：
 
 \`\`\`ts
-type DeepReadonly<T> = {
+type DeepReadonly<T> = {  // 定义类型别名 DeepReadonly，泛型参数 T
   readonly [P in keyof T]: T[P] extends object ? DeepReadonly<T[P]> : T[P];
 };
 \`\`\`

@@ -294,12 +294,12 @@ print("所有运算符重载测试通过！")`
 ### 基本语法
 
 \`\`\`python
-class Point:
+class Point:  # 定义类 Point
     __slots__ = ('x', 'y')  # 元组声明允许的属性名
 
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
+    def __init__(self, x, y):  # 定义函数 __init__，参数：self, x, y
+        self.x = x  # 执行操作
+        self.y = y  # 执行操作
 \`\`\`
 
 ### \`__slots__\` 的继承规则
@@ -475,26 +475,26 @@ print("__slots__ 所有测试完成！")`
 
 **传统写法**（需要手写很多代码）：
 \`\`\`python
-class Student:
-    def __init__(self, name, age, score):
-        self.name = name
-        self.age = age
-        self.score = score
-    def __repr__(self):
-        return f"Student(name={self.name!r}, age={self.age}, score={self.score})"
-    def __eq__(self, other):
-        return (self.name, self.age, self.score) == (other.name, other.age, other.score)
+class Student:  # 定义类 Student
+    def __init__(self, name, age, score):  # 定义函数 __init__，参数：self, name, age, score
+        self.name = name  # 执行操作
+        self.age = age  # 执行操作
+        self.score = score  # 执行操作
+    def __repr__(self):  # 定义函数 __repr__，参数：self
+        return f"Student(name={self.name!r}, age={self.age}, score={self.score})"  # 返回 f"Student(name={self.name!r}, age={self.age}, score={self.score})"
+    def __eq__(self, other):  # 定义函数 __eq__，参数：self, other
+        return (self.name, self.age, self.score) == (other.name, other.age, other.score)  # 返回 (self.name, self.age, self.score) == (other.name, other.age, other.score)
 \`\`\`
 
 **dataclass 写法**（一行装饰器搞定）：
 \`\`\`python
-from dataclasses import dataclass
+from dataclasses import dataclass  # 从 dataclasses 导入 dataclass
 
-@dataclass
-class Student:
-    name: str
-    age: int
-    score: float
+@dataclass  # 应用装饰器 dataclass
+class Student:  # 定义类 Student
+    name: str  # 执行操作
+    age: int  # 执行操作
+    score: float  # 执行操作
 \`\`\`
 
 ### \`@dataclass\` 装饰器参数
@@ -527,14 +527,14 @@ class Student:
 在 \`__init__\` 执行完后自动调用，用于**初始化后的校验或计算**：
 
 \`\`\`python
-@dataclass
-class Rectangle:
-    width: float
-    height: float
+@dataclass  # 应用装饰器 dataclass
+class Rectangle:  # 定义类 Rectangle
+    width: float  # 执行操作
+    height: float  # 执行操作
     area: float = field(init=False)  # 不作为 init 参数
 
-    def __post_init__(self):
-        self.area = self.width * self.height
+    def __post_init__(self):  # 定义函数 __post_init__，参数：self
+        self.area = self.width * self.height  # 执行操作
 \`\`\`
 
 ### 与 namedtuple 的对比
@@ -738,12 +738,12 @@ print("dataclass 所有测试完成！")`
 ### 定义抽象基类
 
 \`\`\`python
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod  # 从 abc 导入 ABC, abstractmethod
 
 class Animal(ABC):          # 继承 ABC，成为抽象基类
-    @abstractmethod
+    @abstractmethod  # 应用装饰器 abstractmethod
     def speak(self):        # 抽象方法：子类必须实现
-        pass
+        pass  # 空操作，占位符
 \`\`\`
 
 ### 抽象方法装饰器类型
@@ -1043,15 +1043,15 @@ print("ABC 抽象基类所有测试完成！")`
 \`\`\`python
 # ❌ 不好的写法：魔法数字
 if status == 1:  # 1 是什么意思？
-    print("活跃")
+    print("活跃")  # 打印输出到屏幕
 
 # ✅ 好的写法：枚举
-class Status(Enum):
-    ACTIVE = 1
-    INACTIVE = 2
+class Status(Enum):  # 定义类 Status
+    ACTIVE = 1  # 定义数值 ACTIVE
+    INACTIVE = 2  # 定义数值 INACTIVE
 
-if status == Status.ACTIVE:
-    print("活跃")
+if status == Status.ACTIVE:  # 如果 status == Status.ACTIVE
+    print("活跃")  # 打印输出到屏幕
 \`\`\`
 
 > 💡 枚举成员是不可变的，且枚举本身也不能被继承（除非没有成员）。
@@ -1237,12 +1237,12 @@ print("枚举 enum 所有测试完成！")`
 ### 基本语法
 
 \`\`\`python
-try:
+try:  # 尝试执行可能出错的代码
     # 可能出错的代码
-    result = 10 / 0
-except ZeroDivisionError:
+    result = 10 / 0  # 定义数值 result
+except ZeroDivisionError:  # 捕获异常 ZeroDivisionError:
     # 如果发生 ZeroDivisionError，执行这里
-    print("除数不能为零！")
+    print("除数不能为零！")  # 打印输出到屏幕
 \`\`\`
 
 ### except 的多种写法
@@ -1304,12 +1304,12 @@ BaseException
 
 \`\`\`python
 # ✅ 正确的顺序
-try:
-    x = int("abc")
+try:  # 尝试执行可能出错的代码
+    x = int("abc")  # 赋值变量 x
 except ValueError:      # 先匹配具体异常
-    print("值错误")
+    print("值错误")  # 打印输出到屏幕
 except Exception:       # 再匹配宽泛异常
-    print("其他错误")
+    print("其他错误")  # 打印输出到屏幕
 \`\`\`
 
 > 💡 \`except:\` 和 \`except Exception:\` 的区别：前者会捕获 \`SystemExit\`、\`KeyboardInterrupt\` 等系统级异常，可能导致程序无法正常退出。永远用 \`except Exception\` 作为全捕获。
@@ -1472,13 +1472,13 @@ print("异常处理 try except 所有测试完成！")`
 \`try\` 语句的完整结构有 4 个部分：
 
 \`\`\`python
-try:
+try:  # 尝试执行可能出错的代码
     # 可能出错的代码
-except SomeError:
+except SomeError:  # 捕获异常 SomeError:
     # 出错时执行
-else:
+else:  # 否则
     # 没出错时执行
-finally:
+finally:  # 无论是否异常都执行
     # 无论出错与否，一定执行
 \`\`\`
 
@@ -1510,13 +1510,13 @@ finally:
 
 \`\`\`python
 # 不用 with：需要手动关闭
-f = open("test.txt", "r")
-content = f.read()
+f = open("test.txt", "r")  # 赋值变量 f
+content = f.read()  # 赋值变量 content
 f.close()  # 容易忘记！
 
 # 用 with：自动关闭
-with open("test.txt", "r") as f:
-    content = f.read()
+with open("test.txt", "r") as f:  # 使用上下文管理器：open("test.txt", "r") as f
+    content = f.read()  # 赋值变量 content
 # 离开 with 块时，f.close() 自动调用
 \`\`\`
 
@@ -1531,13 +1531,13 @@ with open("test.txt", "r") as f:
 不想写 \`__enter__\`/\`__exit__\`？用 \`@contextmanager\` 装饰器把生成器函数变成上下文管理器：
 
 \`\`\`python
-from contextlib import contextmanager
+from contextlib import contextmanager  # 从 contextlib 导入 contextmanager
 
-@contextmanager
-def timer(name):
-    print(f"{name} 开始")
+@contextmanager  # 应用装饰器 contextmanager
+def timer(name):  # 定义函数 timer，参数：name
+    print(f"{name} 开始")  # 打印输出到屏幕
     yield  # 进入 with 块
-    print(f"{name} 结束")
+    print(f"{name} 结束")  # 打印输出到屏幕
 \`\`\`
 
 > 💡 对于文件、数据库连接、网络 socket 等需要"打开-关闭"配对的资源，永远用 \`with\` 语句。
@@ -1735,8 +1735,8 @@ print("else finally 与上下文管理器所有测试完成！")`
 ### 基本语法
 
 \`\`\`python
-raise ValueError("年龄不能为负数")
-raise TypeError("期望 int 类型")
+raise ValueError("年龄不能为负数")  # 抛出异常：ValueError("年龄不能为负数")
+raise TypeError("期望 int 类型")  # 抛出异常：TypeError("期望 int 类型")
 \`\`\`
 
 ### raise 的三种形式
@@ -1752,16 +1752,16 @@ raise TypeError("期望 int 类型")
 继承 \`Exception\`（或更具体的异常类），给异常起一个有意义的名字：
 
 \`\`\`python
-class InvalidAgeError(Exception):
-    """年龄不合法异常"""
-    pass
+class InvalidAgeError(Exception):  # 定义类 InvalidAgeError
+    """年龄不合法异常"""  # 执行操作
+    pass  # 空操作，占位符
 
-class InsufficientBalanceError(Exception):
-    """余额不足异常"""
-    def __init__(self, balance, amount):
-        self.balance = balance
-        self.amount = amount
-        super().__init__(f"余额 {balance} 不足，需要 {amount}")
+class InsufficientBalanceError(Exception):  # 定义类 InsufficientBalanceError
+    """余额不足异常"""  # 执行操作
+    def __init__(self, balance, amount):  # 定义函数 __init__，参数：self, balance, amount
+        self.balance = balance  # 执行操作
+        self.amount = amount  # 执行操作
+        super().__init__(f"余额 {balance} 不足，需要 {amount}")  # 调用父类
 \`\`\`
 
 ### assert 断言
@@ -1769,7 +1769,7 @@ class InsufficientBalanceError(Exception):
 \`assert\` 是调试工具，用于检查"不应该发生的情况"：
 
 \`\`\`python
-assert condition, "错误信息"
+assert condition, "错误信息"  # 断言：condition, "错误信息"
 # 等价于：
 # if not condition:
 #     raise AssertionError("错误信息")
@@ -2064,9 +2064,9 @@ OriginalError: 原始异常信息
 当需要同时报告多个异常时（如并行任务），用 \`ExceptionGroup\`：
 
 \`\`\`python
-raise ExceptionGroup("多个任务失败", [
-    ValueError("任务1失败"),
-    TypeError("任务2失败"),
+raise ExceptionGroup("多个任务失败", [  # 抛出异常：ExceptionGroup("多个任务失败", [
+    ValueError("任务1失败"),  # 调用 ValueError()
+    TypeError("任务2失败"),  # 调用 TypeError()
 ])
 \`\`\`
 
@@ -2075,12 +2075,12 @@ raise ExceptionGroup("多个任务失败", [
 \`except*\` 用于从 ExceptionGroup 中提取特定类型的异常：
 
 \`\`\`python
-try:
-    raise ExceptionGroup("group", [ValueError("a"), TypeError("b")])
-except* ValueError as e:
-    print("值错误:", e.exceptions)
-except* TypeError as e:
-    print("类型错误:", e.exceptions)
+try:  # 尝试执行可能出错的代码
+    raise ExceptionGroup("group", [ValueError("a"), TypeError("b")])  # 抛出异常：ExceptionGroup("group", [ValueError("a"), TypeError("b")])
+except* ValueError as e:  # 捕获异常
+    print("值错误:", e.exceptions)  # 打印输出到屏幕
+except* TypeError as e:  # 捕获异常
+    print("类型错误:", e.exceptions)  # 打印输出到屏幕
 \`\`\`
 
 ### 自定义异常设计原则
@@ -2392,12 +2392,12 @@ Warning
 ### 典型配置
 
 \`\`\`python
-import logging
+import logging  # 导入模块 logging
 
-logging.basicConfig(
+logging.basicConfig(  # 调用 logging.basicConfig()
     level=logging.INFO,           # 最低级别
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',  # 定义字符串 format
+    handlers=[  # 定义列表 handlers
         logging.FileHandler("app.log"),  # 输出到文件
         logging.StreamHandler(),         # 也输出到控制台
     ]

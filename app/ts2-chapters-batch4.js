@@ -72,14 +72,14 @@ export const chapters = [
 
 \`\`\`js
 // counter.js (CommonJS)
-let count = 0;
-function increment() { count++; }
-module.exports = { count, increment };
+let count = 0;  // 声明变量 count
+function increment() { count++; }  // 定义函数 increment
+module.exports = { count, increment };  // 赋值 module.exports
 
 // main.js
-const { count, increment } = require('./counter');
+const { count, increment } = require('./counter');  // 对象解构声明：从 require('./counter'); 取 count, increment
 console.log(count);    // 0
-increment();
+increment();  // 调用 increment
 console.log(count);    // 仍然是 0！因为 count 是值拷贝，不会跟着变
 \`\`\`
 
@@ -89,13 +89,13 @@ console.log(count);    // 仍然是 0！因为 count 是值拷贝，不会跟着
 
 \`\`\`js
 // counter.mjs (ESM)
-export let count = 0;
-export function increment() { count++; }
+export let count = 0;  // 导出 let count
+export function increment() { count++; }  // 导出函数 increment
 
 // main.mjs
-import { count, increment } from './counter.mjs';
+import { count, increment } from './counter.mjs';  // 导入 { count, increment }
 console.log(count);    // 0
-increment();
+increment();  // 调用 increment
 console.log(count);    // 1！因为 count 是实时引用，指向原模块的变量
 \`\`\`
 
@@ -119,13 +119,13 @@ console.log(count);    // 1！因为 count 是实时引用，指向原模块的�
 
 \`\`\`ts
 // 写法一：直接导出值（匿名）
-export default function () { return 'hello'; }
+export default function () { return 'hello'; }  // 导出 default function
 // 写法二：导出表达式
-const fn = function () { return 'hello'; };
-export default fn;
+const fn = function () { return 'hello'; };  // 声明常量 fn
+export default fn;  // 导出 default fn
 // 写法三：先声明再导出
-function fn() { return 'hello'; }
-export default fn;
+function fn() { return 'hello'; }  // 定义函数 fn
+export default fn;  // 导出 default fn
 \`\`\`
 
 差异在于：写法一在 TS 的类型系统中，导入方拿到的类型是 \`() => string\` 但**没有函数名**；写法三中，导入方虽然起任意名字，但 TS 知道这个函数叫 \`fn\`（用于类型推断和 .d.ts 生成）。
@@ -141,8 +141,8 @@ export default fn;
 
 \`\`\`ts
 // barrel 文件：统一导出入口
-export { add, multiply } from './math';
-export { default as Calculator } from './calculator';
+export { add, multiply } from './math';  // 导出成员
+export { default as Calculator } from './calculator';  // 导出成员（注意：类型断言会绕过类型检查）
 export * from './types';           // 重导出所有命名导出
 export * as Utils from './utils';  // 重导出为命名空间
 
@@ -162,17 +162,17 @@ export * as Utils from './utils';  // 重导出为命名空间
 
 \`\`\`ts
 // ✅ 明确告诉转译器：这是纯类型，擦除就行
-import type { User } from './user';
+import type { User } from './user';  // 导入 type { User }
 export type { User, Admin } from './models';
 
 // ✅ 混合导入：inline type 修饰符（TS 4.5+）
-import { add, type MathFunc } from './math';
+import { add, type MathFunc } from './math';  // 导入 { add, type MathFunc }
 \`\`\`
 
 #### 编译后 import type 被完全擦除
 
 \`\`\`ts
-import type { User } from './user';
+import type { User } from './user';  // 导入 type { User }
 // 编译后：这一行消失了，不产生任何 require 调用
 // 这意味着 import type 不会在运行时引入任何依赖
 \`\`\`
@@ -266,11 +266,11 @@ TS 5.0 引入，专为打包器场景设计。它结合了 node10 的便利性�
 \`\`\`ts
 // types/my-lib.d.ts
 declare module 'my-lib' {
-  export function doSomething(x: number): string;
-  export const version: string;
-  export default class MyLib {
-    constructor(config: object);
-    run(): void;
+  export function doSomething(x: number): string;  // 导出函数 doSomething
+  export const version: string;  // 导出 const version
+  export default class MyLib {  // 导出类 MyLib
+    constructor(config: object);  // 调用 constructor
+    run(): void;  // 方法声明 run()，返回 void
   }
 }
 \`\`\`
@@ -282,11 +282,11 @@ declare module 'my-lib' {
 \`\`\`ts
 declare module '*.css' {
   const content: Record<string, string>;
-  export default content;
+  export default content;  // 导出 default content
 }
 declare module '*.png' {
   const src: string;
-  export default src;
+  export default src;  // 导出 default src
 }
 \`\`\`
 
@@ -317,7 +317,7 @@ declare function track(event: string, data?: object): void;
 // types/global.d.ts
 export {}; // 使文件成为模块
 declare global {
-  interface Window {
+  interface Window {  // 定义接口 Window
     __CUSTOM_CONFIG__: { env: string };
   }
   const __VERSION__: string;
@@ -333,7 +333,7 @@ declare global {
 \`\`\`ts
 // 原始模块 types/original.d.ts
 declare module 'original' {
-  export interface User {
+  export interface User {  // 导出接口 User
     name: string;
     age: number;
   }
@@ -341,7 +341,7 @@ declare module 'original' {
 
 // 你的增强 types/augment.d.ts
 declare module 'original' {
-  export interface User {
+  export interface User {  // 导出接口 User
     // 新增字段，会和原始 User 合并
     email: string;
     role: 'admin' | 'user';
@@ -355,7 +355,7 @@ declare module 'original' {
 \`\`\`ts
 // 增强 Express 的 Request 对象
 declare module 'express' {
-  interface Request {
+  interface Request {  // 定义接口 Request
     userId?: string;
     sessionData?: Record<string, unknown>;
   }
@@ -366,9 +366,9 @@ declare module 'express' {
 
 \`\`\`ts
 declare global {
-  interface Array<T> {
+  interface Array<T> {  // 定义接口 Array，泛型参数 T
     // 给 Array 原型添加自定义方法
-    customFirst(): T | undefined;
+    customFirst(): T | undefined;  // 方法声明 customFirst()，返回 T | undefined
   }
 }
 \`\`\`
@@ -705,7 +705,7 @@ TypeScript 内置了一套强大的**工具类型（Utility Types）**，它们�
 假设你有一个用户类型：
 
 \`\`\`ts
-interface User {
+interface User {  // 定义接口 User
   id: number;
   name: string;
   email: string;
@@ -729,7 +729,7 @@ interface User {
 源码实现：
 
 \`\`\`ts
-type Partial<T> = {
+type Partial<T> = {  // 定义类型别名 Partial，泛型参数 T
   [P in keyof T]?: T[P];
 };
 \`\`\`
@@ -737,8 +737,8 @@ type Partial<T> = {
 它遍历 T 的所有键（\`keyof T\`），为每个属性添加 \`?\` 使其变为可选。
 
 \`\`\`ts
-interface User { name: string; age: number; }
-type PartialUser = Partial<User>;
+interface User { name: string; age: number; }  // 定义接口 User
+type PartialUser = Partial<User>;  // 定义类型别名 PartialUser
 // 等价于 { name?: string; age?: number; }
 \`\`\`
 
@@ -751,7 +751,7 @@ type PartialUser = Partial<User>;
 与 Partial 相反，去掉所有可选标记：
 
 \`\`\`ts
-type Required<T> = {
+type Required<T> = {  // 定义类型别名 Required，泛型参数 T
   [P in keyof T]-?: T[P];
 };
 \`\`\`
@@ -759,8 +759,8 @@ type Required<T> = {
 \`-?\` 移除可选修饰符。注意这个负号操作符也可以用于 \`readonly\`：\`-readonly\` 移除只读。
 
 \`\`\`ts
-interface Config { host?: string; port?: number; }
-type FullConfig = Required<Config>;
+interface Config { host?: string; port?: number; }  // 定义接口 Config
+type FullConfig = Required<Config>;  // 定义类型别名 FullConfig
 // 等价于 { host: string; port: number; }
 \`\`\`
 
@@ -771,7 +771,7 @@ type FullConfig = Required<Config>;
 #### Readonly<T>
 
 \`\`\`ts
-type Readonly<T> = {
+type Readonly<T> = {  // 定义类型别名 Readonly，泛型参数 T
   readonly [P in keyof T]: T[P];
 };
 \`\`\`
@@ -779,7 +779,7 @@ type Readonly<T> = {
 典型的不可变数据场景：
 
 \`\`\`ts
-const config: Readonly<{ host: string; port: number }> = { host: 'localhost', port: 3000 };
+const config: Readonly<{ host: string; port: number }> = { host: 'localhost', port: 3000 };  // 声明常量 config，类型 Readonly<{ host: string; port: number }>
 // config.host = 'other'; // ❌ 类型错误
 \`\`\`
 
@@ -792,14 +792,14 @@ const config: Readonly<{ host: string; port: number }> = { host: 'localhost', po
 从 T 中选取一组属性 K 组成新类型。
 
 \`\`\`ts
-type Pick<T, K extends keyof T> = {
+type Pick<T, K extends keyof T> = {  // 定义类型别名 Pick，泛型参数 T, K extends keyof T
   [P in K]: T[P];
 };
 \`\`\`
 
 \`\`\`ts
-interface User { id: number; name: string; email: string; password: string; }
-type UserPreview = Pick<User, 'id' | 'name'>;
+interface User { id: number; name: string; email: string; password: string; }  // 定义接口 User
+type UserPreview = Pick<User, 'id' | 'name'>;  // 定义类型别名 UserPreview，联合类型
 // 等价于 { id: number; name: string; }
 \`\`\`
 
@@ -808,13 +808,13 @@ type UserPreview = Pick<User, 'id' | 'name'>;
 从 T 中排除一组属性 K，剩余的属性组成新类型。
 
 \`\`\`ts
-type Omit<T, K extends keyof any> = Pick<T, Exclude<keyof T, K>>;
+type Omit<T, K extends keyof any> = Pick<T, Exclude<keyof T, K>>;  // 定义类型别名 Omit，泛型参数 T, K extends keyof any，使用 keyof 取键的联合（注意：any 关闭了类型检查）
 \`\`\`
 
 \`\`\`ts
-type UserWithoutPassword = Omit<User, 'password'>;
+type UserWithoutPassword = Omit<User, 'password'>;  // 定义类型别名 UserWithoutPassword
 // 等价于 { id: number; name: string; email: string; }
-type UserPublic = Omit<User, 'password' | 'email'>;
+type UserPublic = Omit<User, 'password' | 'email'>;  // 定义类型别名 UserPublic，联合类型
 // 等价于 { id: number; name: string; }
 \`\`\`
 
@@ -825,13 +825,13 @@ type UserPublic = Omit<User, 'password' | 'email'>;
 把一个联合类型 K 的每个成员作为键，V 作为值类型，构造出一个对象类型。
 
 \`\`\`ts
-type Record<K extends keyof any, T> = {
+type Record<K extends keyof any, T> = {  // 定义类型别名 Record，泛型参数 K extends keyof any, T（注意：any 关闭了类型检查）
   [P in K]: T;
 };
 \`\`\`
 
 \`\`\`ts
-type PageInfo = Record<'home' | 'about' | 'contact', { title: string; url: string }>;
+type PageInfo = Record<'home' | 'about' | 'contact', { title: string; url: string }>;  // 定义类型别名 PageInfo，联合类型
 // 等价于 {
 //   home: { title: string; url: string };
 //   about: { title: string; url: string };
@@ -849,7 +849,7 @@ type PageInfo = Record<'home' | 'about' | 'contact', { title: string; url: strin
 #### Exclude<T, U>：从 T 中排除可分配给 U 的类型
 
 \`\`\`ts
-type Exclude<T, U> = T extends U ? never : T;
+type Exclude<T, U> = T extends U ? never : T;  // 定义类型别名 Exclude，泛型参数 T, U，条件类型
 \`\`\`
 
 这是**条件类型**的分布式（distributive）用法：当 T 是联合类型时，条件类型会分布到联合的每个成员上。
@@ -866,7 +866,7 @@ type T3 = Exclude<1 | 2 | 3 | null | undefined, null | undefined>; // 1 | 2 | 3
 与 Exclude 相反：
 
 \`\`\`ts
-type Extract<T, U> = T extends U ? T : never;
+type Extract<T, U> = T extends U ? T : never;  // 定义类型别名 Extract，泛型参数 T, U，条件类型
 \`\`\`
 
 \`\`\`ts
@@ -878,7 +878,7 @@ type T2 = Extract<1 | 'a' | true, string | number>; // 1 | 'a'
 #### NonNullable<T>：从 T 中排除 null 和 undefined
 
 \`\`\`ts
-type NonNullable<T> = T extends null | undefined ? never : T;
+type NonNullable<T> = T extends null | undefined ? never : T;  // 定义类型别名 NonNullable，泛型参数 T，联合类型，条件类型
 // 等价于 Exclude<T, null | undefined>
 \`\`\`
 
@@ -893,16 +893,16 @@ type T2 = NonNullable<null | undefined>;              // never
 #### ReturnType<T>：获取函数返回类型
 
 \`\`\`ts
-type ReturnType<T extends (...args: any) => any> = T extends (...args: any) => infer R ? R : any;
+type ReturnType<T extends (...args: any) => any> = T extends (...args: any) => infer R ? R : any;  // 箭头函数（注意：any 关闭了类型检查）
 \`\`\`
 
 这是条件类型 + \`infer\` 的经典用法：
 
 \`\`\`ts
-function createUser(name: string, age: number) {
-  return { name, age, id: Math.random() };
+function createUser(name: string, age: number) {  // 定义函数 createUser，参数: name: string, age: number
+  return { name, age, id: Math.random() };  // 返回 { name, age, id: Math.random() }
 }
-type User = ReturnType<typeof createUser>;
+type User = ReturnType<typeof createUser>;  // 定义类型别名 User
 // User = { name: string; age: number; id: number; }
 \`\`\`
 
@@ -911,14 +911,14 @@ type User = ReturnType<typeof createUser>;
 #### Parameters<T>：获取函数参数类型（元组）
 
 \`\`\`ts
-type Parameters<T extends (...args: any) => any> = T extends (...args: infer P) => any ? P : never;
+type Parameters<T extends (...args: any) => any> = T extends (...args: infer P) => any ? P : never;  // 箭头函数（注意：any 关闭了类型检查）
 \`\`\`
 
 \`\`\`ts
-function greet(name: string, age: number): string {
-  return \`\${name} is \${age}\`;
+function greet(name: string, age: number): string {  // 定义函数 greet，参数: name: string, age: number，返回 string
+  return \`\${name} is \${age}\`;  // 返回 \`\${name} is \${age}\`
 }
-type GreetParams = Parameters<typeof greet>;
+type GreetParams = Parameters<typeof greet>;  // 定义类型别名 GreetParams
 // [name: string, age: number]
 type FirstParam = GreetParams[0]; // string
 type SecondParam = GreetParams[1]; // number
@@ -929,30 +929,30 @@ type SecondParam = GreetParams[1]; // number
 #### ConstructorParameters<T>：获取构造函数参数类型
 
 \`\`\`ts
-type ConstructorParameters<T extends abstract new (...args: any) => any> =
-  T extends abstract new (...args: infer P) => any ? P : never;
+type ConstructorParameters<T extends abstract new (...args: any) => any> =  // 箭头函数（注意：any 关闭了类型检查）
+  T extends abstract new (...args: infer P) => any ? P : never;  // 箭头函数（注意：any 关闭了类型检查）
 \`\`\`
 
 \`\`\`ts
-class Person {
-  constructor(public name: string, public age: number) {}
+class Person {  // 定义类 Person
+  constructor(public name: string, public age: number) {}  // 调用 constructor
 }
-type PersonParams = ConstructorParameters<typeof Person>;
+type PersonParams = ConstructorParameters<typeof Person>;  // 定义类型别名 PersonParams
 // [name: string, age: number]
 \`\`\`
 
 #### InstanceType<T>：获取类实例类型
 
 \`\`\`ts
-type InstanceType<T extends abstract new (...args: any) => any> =
-  T extends abstract new (...args: any) => infer R ? R : any;
+type InstanceType<T extends abstract new (...args: any) => any> =  // 箭头函数（注意：any 关闭了类型检查）
+  T extends abstract new (...args: any) => infer R ? R : any;  // 箭头函数（注意：any 关闭了类型检查）
 \`\`\`
 
 \`\`\`ts
-class Person {
-  constructor(public name: string, public age: number) {}
+class Person {  // 定义类 Person
+  constructor(public name: string, public age: number) {}  // 调用 constructor
 }
-type PersonInstance = InstanceType<typeof Person>;
+type PersonInstance = InstanceType<typeof Person>;  // 定义类型别名 PersonInstance
 // Person（即 { name: string; age: number; }）
 \`\`\`
 
@@ -961,9 +961,9 @@ type PersonInstance = InstanceType<typeof Person>;
 #### Awaited<T>：递归解包 Promise
 
 \`\`\`ts
-type Awaited<T> = T extends null | undefined ? T
-  : T extends object & { then(onfulfilled: infer F, ...args: any): any }
-    ? F extends (value: infer V, ...args: any) => any ? Awaited<V> : never
+type Awaited<T> = T extends null | undefined ? T  // 定义类型别名 Awaited，泛型参数 T，联合类型
+  : T extends object & { then(onfulfilled: infer F, ...args: any): any }  // 注意：any 关闭了类型检查
+    ? F extends (value: infer V, ...args: any) => any ? Awaited<V> : never  // 箭头函数（注意：any 关闭了类型检查）
     : T;
 \`\`\`
 
@@ -983,12 +983,12 @@ Awaited 的强大之处在于：
 #### ThisParameterType<T>：提取函数的 this 参数类型
 
 \`\`\`ts
-type ThisParameterType<T> = T extends (this: infer U, ...args: any[]) => any ? U : unknown;
+type ThisParameterType<T> = T extends (this: infer U, ...args: any[]) => any ? U : unknown;  // 定义类型别名 ThisParameterType，泛型参数 T，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 \`\`\`
 
 \`\`\`ts
-function greet(this: { name: string }, msg: string) {
-  return \`\${this.name}: \${msg}\`;
+function greet(this: { name: string }, msg: string) {  // 定义函数 greet，参数: this: { name: string }, msg: string
+  return \`\${this.name}: \${msg}\`;  // 返回 \`\${this.name}: \${msg}\`
 }
 type ThisType = ThisParameterType<typeof greet>; // { name: string }
 \`\`\`
@@ -996,18 +996,18 @@ type ThisType = ThisParameterType<typeof greet>; // { name: string }
 #### OmitThisParameter<T>：移除函数的 this 参数类型
 
 \`\`\`ts
-type OmitThisParameter<T> = unknown extends ThisParameterType<T>
+type OmitThisParameter<T> = unknown extends ThisParameterType<T>  // 定义类型别名 OmitThisParameter，泛型参数 T
   ? T
-  : T extends (...args: infer A) => infer R
-    ? (...args: A) => R
+  : T extends (...args: infer A) => infer R  // 箭头函数
+    ? (...args: A) => R  // 箭头函数
     : T;
 \`\`\`
 
 \`\`\`ts
-function greet(this: { name: string }, msg: string): string {
-  return \`\${this.name}: \${msg}\`;
+function greet(this: { name: string }, msg: string): string {  // 定义函数 greet，参数: this: { name: string }, msg: string，返回 string
+  return \`\${this.name}: \${msg}\`;  // 返回 \`\${this.name}: \${msg}\`
 }
-type NoThisFn = OmitThisParameter<typeof greet>;
+type NoThisFn = OmitThisParameter<typeof greet>;  // 定义类型别名 NoThisFn
 // (msg: string) => string
 \`\`\`
 
@@ -1016,14 +1016,14 @@ type NoThisFn = OmitThisParameter<typeof greet>;
 TS 4.1+ 引入的模板字符串字面量类型工具：
 
 \`\`\`ts
-type Uppercase<S extends string> = intrinsic;
-type Lowercase<S extends string> = intrinsic;
-type Capitalize<S extends string> = intrinsic;
-type Uncapitalize<S extends string> = intrinsic;
+type Uppercase<S extends string> = intrinsic;  // 定义类型别名 Uppercase，泛型参数 S extends string
+type Lowercase<S extends string> = intrinsic;  // 定义类型别名 Lowercase，泛型参数 S extends string
+type Capitalize<S extends string> = intrinsic;  // 定义类型别名 Capitalize，泛型参数 S extends string
+type Uncapitalize<S extends string> = intrinsic;  // 定义类型别名 Uncapitalize，泛型参数 S extends string
 \`\`\`
 
 \`\`\`ts
-type Greeting = "hello";
+type Greeting = "hello";  // 定义类型别名 Greeting
 type Shout = Uppercase<Greeting>;    // "HELLO"
 type Whisper = Lowercase<"HELLO">;   // "hello"
 type Title = Capitalize<"hello">;    // "Hello"
@@ -1036,29 +1036,29 @@ type UnTitle = Uncapitalize<"Hello">; // "hello"
 
 \`\`\`ts
 // 深层 Partial
-type DeepPartial<T> = {
+type DeepPartial<T> = {  // 定义类型别名 DeepPartial，泛型参数 T
   [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
 };
 
 // 深层 Readonly
-type DeepReadonly<T> = {
+type DeepReadonly<T> = {  // 定义类型别名 DeepReadonly，泛型参数 T
   readonly [P in keyof T]: T[P] extends object ? DeepReadonly<T[P]> : T[P];
 };
 
 // 让某些属性必填
-type WithRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;
+type WithRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;  // 定义类型别名 WithRequired，泛型参数 T, K extends keyof T，交叉类型
 
 // 让某些属性可选
-type WithOptional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+type WithOptional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;  // 定义类型别名 WithOptional，泛型参数 T, K extends keyof T，交叉类型
 
 // 不可为空的 Partial
-type NonNullablePartial<T> = { [P in keyof T]?: NonNullable<T[P]> };
+type NonNullablePartial<T> = { [P in keyof T]?: NonNullable<T[P]> };  // 定义类型别名 NonNullablePartial，泛型参数 T，使用 keyof 取键的联合，映射类型
 
 // 提取函数类型的第一个参数
-type FirstParameter<T extends (...args: any) => any> = Parameters<T>[0];
+type FirstParameter<T extends (...args: any) => any> = Parameters<T>[0];  // 箭头函数（注意：any 关闭了类型检查）
 
 // 提取 Promise 的值类型（非递归）
-type PromiseValue<T> = T extends Promise<infer V> ? V : T;
+type PromiseValue<T> = T extends Promise<infer V> ? V : T;  // 定义类型别名 PromiseValue，泛型参数 T，使用 infer 在条件类型中提取类型
 \`\`\`
 
 ### 陷阱与最佳实践
@@ -1558,7 +1558,7 @@ T extends U ? X : Y
 读作：如果类型 T 可以赋值给类型 U，那么结果是 X，否则结果是 Y。这类似于 JavaScript 的三元运算符 \`condition ? a : b\`，但发生在类型层面。
 
 \`\`\`ts
-type IsString<T> = T extends string ? true : false;
+type IsString<T> = T extends string ? true : false;  // 定义类型别名 IsString，泛型参数 T，条件类型
 type A = IsString<string>;  // true
 type B = IsString<number>;  // false
 type C = IsString<'hello'>;  // true（字面量类型也是 string 的子类型）
@@ -1569,7 +1569,7 @@ type C = IsString<'hello'>;  // true（字面量类型也是 string 的子类型
 这是条件类型最强大也最容易被误解的特性。当条件类型作用于**裸类型参数**（naked type parameter）且该参数是**联合类型**时，条件类型会**分布（distribute）到联合的每个成员上**。
 
 \`\`\`ts
-type ToArray<T> = T extends any ? T[] : never;
+type ToArray<T> = T extends any ? T[] : never;  // 定义类型别名 ToArray，泛型参数 T，条件类型（注意：any 关闭了类型检查）
 // 如果 T 是 string | number：
 // 1. 分布：string extends any ? string[] : never → string[]
 // 2. 分布：number extends any ? number[] : never → number[]
@@ -1580,7 +1580,7 @@ type Result = ToArray<string | number>; // string[] | number[]
 注意：分布式条件类型要求 T 是**裸类型参数**。如果 T 被包裹在数组、元组或其他结构中，分布就不会发生：
 
 \`\`\`ts
-type ToArrayWrapped<T> = [T] extends [any] ? T[] : never;
+type ToArrayWrapped<T> = [T] extends [any] ? T[] : never;  // 定义类型别名 ToArrayWrapped，泛型参数 T，条件类型（注意：any 关闭了类型检查）
 // T 被包裹在 [T] 中，不再是裸类型参数，不分布
 type Result = ToArrayWrapped<string | number>; // (string | number)[]
 \`\`\`
@@ -1591,7 +1591,7 @@ type Result = ToArrayWrapped<string | number>; // (string | number)[]
 
 \`\`\`ts
 // Exclude 的实现就是靠分布式条件类型
-type Exclude<T, U> = T extends U ? never : T;
+type Exclude<T, U> = T extends U ? never : T;  // 定义类型别名 Exclude，泛型参数 T, U，条件类型
 // 当 T = 'a' | 'b' | 'c', U = 'a'
 // 分布：'a' extends 'a' ? never : 'a' → never
 // 分布：'b' extends 'a' ? never : 'b' → 'b'
@@ -1607,7 +1607,7 @@ type Exclude<T, U> = T extends U ? never : T;
 
 \`\`\`ts
 // 提取数组的元素类型
-type Flatten<T> = T extends (infer U)[] ? U : T;
+type Flatten<T> = T extends (infer U)[] ? U : T;  // 定义类型别名 Flatten，泛型参数 T，使用 infer 在条件类型中提取类型
 type A = Flatten<string[]>;    // string
 type B = Flatten<number>;      // number（不匹配数组，返回原类型）
 type C = Flatten<string[][]>;  // string[]（只解一层）
@@ -1617,31 +1617,31 @@ type C = Flatten<string[][]>;  // string[]（只解一层）
 
 \`\`\`ts
 // 提取函数返回类型
-type ReturnType<T> = T extends (...args: any[]) => infer R ? R : any;
+type ReturnType<T> = T extends (...args: any[]) => infer R ? R : any;  // 定义类型别名 ReturnType，泛型参数 T，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 
 // 提取函数参数类型
-type Parameters<T> = T extends (...args: infer P) => any ? P : never;
+type Parameters<T> = T extends (...args: infer P) => any ? P : never;  // 定义类型别名 Parameters，泛型参数 T，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 
 // 提取 Promise 的值类型
-type Unwrap<T> = T extends Promise<infer U> ? U : T;
+type Unwrap<T> = T extends Promise<infer U> ? U : T;  // 定义类型别名 Unwrap，泛型参数 T，使用 infer 在条件类型中提取类型
 
 // 提取构造函数的实例类型
-type InstanceType<T> = T extends new (...args: any[]) => infer R ? R : any;
+type InstanceType<T> = T extends new (...args: any[]) => infer R ? R : any;  // 定义类型别名 InstanceType，泛型参数 T，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 
 // 提取构造函数的参数类型
-type ConstructorParameters<T> = T extends new (...args: infer P) => any ? P : never;
+type ConstructorParameters<T> = T extends new (...args: infer P) => any ? P : never;  // 定义类型别名 ConstructorParameters，泛型参数 T，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 \`\`\`
 
 #### 多个 infer 和多位置推断
 
 \`\`\`ts
 // 提取函数第一个参数和返回类型
-type FirstArgAndReturn<T> = T extends (first: infer F, ...rest: any[]) => infer R
+type FirstArgAndReturn<T> = T extends (first: infer F, ...rest: any[]) => infer R  // 定义类型别名 FirstArgAndReturn，泛型参数 T，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
   ? { first: F; return: R }
   : never;
 
 // 提取 Promise 链的值类型（递归）
-type Awaited<T> = T extends Promise<infer U> ? Awaited<U> : T;
+type Awaited<T> = T extends Promise<infer U> ? Awaited<U> : T;  // 定义类型别名 Awaited，泛型参数 T，使用 infer 在条件类型中提取类型
 // 可以递归解包 Promise<Promise<Promise<number>>> → number
 \`\`\`
 
@@ -1649,11 +1649,11 @@ type Awaited<T> = T extends Promise<infer U> ? Awaited<U> : T;
 
 \`\`\`ts
 // 协变位置：推断出联合类型
-type Covariant<T> = T extends { a: infer U; b: infer U } ? U : never;
+type Covariant<T> = T extends { a: infer U; b: infer U } ? U : never;  // 定义类型别名 Covariant，泛型参数 T，使用 infer 在条件类型中提取类型
 type Test1 = Covariant<{ a: string; b: number }>; // string | number
 
 // 逆变位置：推断出交叉类型
-type Contravariant<T> = T extends { a: (x: infer U) => void; b: (x: infer U) => void } ? U : never;
+type Contravariant<T> = T extends { a: (x: infer U) => void; b: (x: infer U) => void } ? U : never;  // 定义类型别名 Contravariant，泛型参数 T，使用 infer 在条件类型中提取类型
 type Test2 = Contravariant<{ a: (x: string) => void; b: (x: number) => void }>; // string & number → never
 \`\`\`
 
@@ -1664,7 +1664,7 @@ type Test2 = Contravariant<{ a: (x: string) => void; b: (x: number) => void }>; 
 #### 基本语法
 
 \`\`\`ts
-type Mapped<T> = {
+type Mapped<T> = {  // 定义类型别名 Mapped，泛型参数 T
   [K in keyof T]: T[K]; // 遍历 T 的所有键，原样保留值类型
 };
 \`\`\`
@@ -1674,13 +1674,13 @@ type Mapped<T> = {
 同态映射类型的特征是 \`[K in keyof T]\`——它保留了原类型的结构信息（修饰符）。TS 内置的 Partial、Required、Readonly、Pick 都是同态映射类型。
 
 \`\`\`ts
-type Partial<T> = { [K in keyof T]?: T[K] };
+type Partial<T> = { [K in keyof T]?: T[K] };  // 定义类型别名 Partial，泛型参数 T，使用 keyof 取键的联合，映射类型
 // 同态：保留了原类型中每个属性的可选性信息（然后加了 ?）
 
-type Required<T> = { [K in keyof T]-?: T[K] };
+type Required<T> = { [K in keyof T]-?: T[K] };  // 定义类型别名 Required，泛型参数 T，使用 keyof 取键的联合，映射类型
 // 同态：-? 移除可选修饰符
 
-type Readonly<T> = { readonly [K in keyof T]: T[K] };
+type Readonly<T> = { readonly [K in keyof T]: T[K] };  // 定义类型别名 Readonly，泛型参数 T，使用 keyof 取键的联合，映射类型
 // 同态：添加 readonly 修饰符
 \`\`\`
 
@@ -1694,7 +1694,7 @@ type Readonly<T> = { readonly [K in keyof T]: T[K] };
 当映射类型不使用 \`in keyof T\` 而是用 \`in SomeUnion\` 时，就是非同态映射：
 
 \`\`\`ts
-type NonHomomorphic = {
+type NonHomomorphic = {  // 定义类型别名 NonHomomorphic
   [K in "a" | "b" | "c"]: string;
 };
 // 非同态：直接定义了三个属性，不保留任何原类型信息
@@ -1703,7 +1703,7 @@ type NonHomomorphic = {
 Record 是非同态映射类型的典型：
 
 \`\`\`ts
-type Record<K extends keyof any, T> = {
+type Record<K extends keyof any, T> = {  // 定义类型别名 Record，泛型参数 K extends keyof any, T（注意：any 关闭了类型检查）
   [P in K]: T;
 };
 \`\`\`
@@ -1715,8 +1715,8 @@ type Record<K extends keyof any, T> = {
 TS 4.1+ 引入了映射类型的 \`as\` 子句，允许你在映射过程中**重命名键**：
 
 \`\`\`ts
-type MappedWithRemap<T> = {
-  [K in keyof T as NewKey]: T[K];
+type MappedWithRemap<T> = {  // 定义类型别名 MappedWithRemap，泛型参数 T
+  [K in keyof T as NewKey]: T[K];  // 注意：类型断言会绕过类型检查
 };
 \`\`\`
 
@@ -1724,15 +1724,15 @@ type MappedWithRemap<T> = {
 
 \`\`\`ts
 // 给所有属性名加 get 前缀
-type Getters<T> = {
-  [K in keyof T as \`get\${Capitalize<string & K>}\`]: () => T[K];
+type Getters<T> = {  // 定义类型别名 Getters，泛型参数 T
+  [K in keyof T as \`get\${Capitalize<string & K>}\`]: () => T[K];  // 箭头函数（注意：类型断言会绕过类型检查）
 };
 
-interface Person {
+interface Person {  // 定义接口 Person
   name: string;
   age: number;
 }
-type PersonGetters = Getters<Person>;
+type PersonGetters = Getters<Person>;  // 定义类型别名 PersonGetters
 // { getName: () => string; getAge: () => number; }
 \`\`\`
 
@@ -1742,17 +1742,17 @@ type PersonGetters = Getters<Person>;
 
 \`\`\`ts
 // 只保留字符串类型的属性
-type PickStringValues<T> = {
-  [K in keyof T as T[K] extends string ? K : never]: T[K];
+type PickStringValues<T> = {  // 定义类型别名 PickStringValues，泛型参数 T
+  [K in keyof T as T[K] extends string ? K : never]: T[K];  // 注意：类型断言会绕过类型检查
 };
 
-interface Mixed {
+interface Mixed {  // 定义接口 Mixed
   name: string;
   age: number;
   email: string;
   active: boolean;
 }
-type StringFields = PickStringValues<Mixed>;
+type StringFields = PickStringValues<Mixed>;  // 定义类型别名 StringFields
 // { name: string; email: string; }
 \`\`\`
 
@@ -1760,8 +1760,8 @@ type StringFields = PickStringValues<Mixed>;
 
 \`\`\`ts
 // 提取所有函数类型的属性，并加 on 前缀
-type EventHandlers<T> = {
-  [K in keyof T as T[K] extends (...args: any[]) => any
+type EventHandlers<T> = {  // 定义类型别名 EventHandlers，泛型参数 T
+  [K in keyof T as T[K] extends (...args: any[]) => any  // 箭头函数（注意：any 关闭了类型检查；注意：类型断言会绕过类型检查）
     ? \`on\${Capitalize<string & K>}\`
     : never]: T[K];
 };
@@ -1775,28 +1775,28 @@ TS 4.1+ 引入模板字面量类型后，与映射类型的结合产生了强大
 
 \`\`\`ts
 // 给属性名加前缀
-type WithPrefix<T, Prefix extends string> = {
-  [K in keyof T as \`\${Prefix}\${Capitalize<string & K>}\`]: T[K];
+type WithPrefix<T, Prefix extends string> = {  // 定义类型别名 WithPrefix，泛型参数 T, Prefix extends string
+  [K in keyof T as \`\${Prefix}\${Capitalize<string & K>}\`]: T[K];  // 注意：类型断言会绕过类型检查
 };
 
 // 给属性名加后缀
-type WithSuffix<T, Suffix extends string> = {
-  [K in keyof T as \`\${string & K}\${Suffix}\`]: T[K];
+type WithSuffix<T, Suffix extends string> = {  // 定义类型别名 WithSuffix，泛型参数 T, Suffix extends string
+  [K in keyof T as \`\${string & K}\${Suffix}\`]: T[K];  // 注意：类型断言会绕过类型检查
 };
 \`\`\`
 
 #### 事件系统的类型定义
 
 \`\`\`ts
-type EventMap = {
+type EventMap = {  // 定义类型别名 EventMap
   click: { x: number; y: number };
   focus: { element: string };
   blur: { element: string };
 };
 
 // 自动生成事件处理器类型
-type EventHandlers = {
-  [K in keyof EventMap as \`on\${Capitalize<string & K>}\`]: (event: EventMap[K]) => void;
+type EventHandlers = {  // 定义类型别名 EventHandlers
+  [K in keyof EventMap as \`on\${Capitalize<string & K>}\`]: (event: EventMap[K]) => void;  // 箭头函数（注意：类型断言会绕过类型检查）
 };
 // { onClick: (event: {x: number; y: number}) => void; onFocus: ...; onBlur: ... }
 \`\`\`
@@ -1809,14 +1809,14 @@ type EventHandlers = {
 
 \`\`\`ts
 // 深层 Partial
-type DeepPartial<T> = {
+type DeepPartial<T> = {  // 定义类型别名 DeepPartial，泛型参数 T
   [K in keyof T]?: T[K] extends object
     ? DeepPartial<T[K]>
     : T[K];
 };
 
 // 深层 Readonly
-type DeepReadonly<T> = {
+type DeepReadonly<T> = {  // 定义类型别名 DeepReadonly，泛型参数 T
   readonly [K in keyof T]: T[K] extends object
     ? DeepReadonly<T[K]>
     : T[K];
@@ -1827,12 +1827,12 @@ type DeepReadonly<T> = {
 
 \`\`\`ts
 // 只保留可选的属性
-type OptionalKeys<T> = {
+type OptionalKeys<T> = {  // 定义类型别名 OptionalKeys，泛型参数 T
   [K in keyof T]-?: {} extends Pick<T, K> ? K : never;
 }[keyof T];
 
 // 只保留必填的属性
-type RequiredKeys<T> = {
+type RequiredKeys<T> = {  // 定义类型别名 RequiredKeys，泛型参数 T
   [K in keyof T]-?: {} extends Pick<T, K> ? never : K;
 }[keyof T];
 \`\`\`
@@ -1841,7 +1841,7 @@ type RequiredKeys<T> = {
 
 \`\`\`ts
 // 将嵌套对象的所有属性路径展开为联合类型
-type Paths<T> = T extends object
+type Paths<T> = T extends object  // 定义类型别名 Paths，泛型参数 T
   ? { [K in keyof T]: K extends string
       ? \`\${K}\` | \`\${K}.\${Paths<T[K]>}\`
       : never
@@ -1855,12 +1855,12 @@ type Paths<T> = T extends object
 
 \`\`\`ts
 // 为 API 响应的 data 字段自动推导类型
-type ApiResponse<T> = {
+type ApiResponse<T> = {  // 定义类型别名 ApiResponse，泛型参数 T
   code: number;
   message: string;
   data: T;
 };
-type PaginatedResponse<T> = ApiResponse<{
+type PaginatedResponse<T> = ApiResponse<{  // 定义类型别名 PaginatedResponse，泛型参数 T
   list: T[];
   total: number;
   page: number;
@@ -1871,12 +1871,12 @@ type PaginatedResponse<T> = ApiResponse<{
 
 \`\`\`ts
 // 将规则的字段类型变为表单字段类型
-type FormField<T> = {
+type FormField<T> = {  // 定义类型别名 FormField，泛型参数 T
   value: T;
   error: string | null;
   touched: boolean;
 };
-type FormState<T> = {
+type FormState<T> = {  // 定义类型别名 FormState，泛型参数 T
   [K in keyof T]: FormField<T[K]>;
 };
 \`\`\`
@@ -1885,8 +1885,8 @@ type FormState<T> = {
 
 \`\`\`ts
 // 确保某个类型的所有属性都被设置
-type Builder<T> = {
-  [K in keyof T]-?: (value: T[K]) => Builder<T>;
+type Builder<T> = {  // 定义类型别名 Builder，泛型参数 T
+  [K in keyof T]-?: (value: T[K]) => Builder<T>;  // 箭头函数
 } & { build(): T };
 \`\`\`
 
@@ -2324,7 +2324,7 @@ console.log("\\n条件类型与映射类型章节演示完成！");`,
 declare function myFunction(x: number): string;
 declare const VERSION: string;
 declare module 'my-module' {
-  export function doStuff(): void;
+  export function doStuff(): void;  // 导出函数 doStuff
 }
 \`\`\`
 
@@ -2372,7 +2372,7 @@ declare const VERSION: "1.0.0";  // 可以声明为字面量类型
 \`\`\`ts
 declare function greet(name: string): string;
 declare function assert(condition: boolean, message?: string): asserts condition;
-declare function require(moduleName: string): any;
+declare function require(moduleName: string): any;  // 注意：any 关闭了类型检查
 
 // 函数重载
 declare function getValue(key: string): string;
@@ -2385,9 +2385,9 @@ declare function getValue(key: number): number;
 
 \`\`\`ts
 declare class Animal {
-  constructor(name: string);
+  constructor(name: string);  // 调用 constructor
   name: string;
-  move(distance: number): void;
+  move(distance: number): void;  // 方法声明 move(distance: number)，返回 void
   static create(name: string): Animal;
 }
 \`\`\`
@@ -2398,10 +2398,10 @@ declare class Animal {
 
 \`\`\`ts
 declare enum Direction {
-  Up = "UP",
-  Down = "DOWN",
-  Left = "LEFT",
-  Right = "RIGHT"
+  Up = "UP",  // 赋值 Up
+  Down = "DOWN",  // 赋值 Down
+  Left = "LEFT",  // 赋值 Left
+  Right = "RIGHT"  // 赋值 Right
 }
 \`\`\`
 
@@ -2414,22 +2414,22 @@ declare enum Direction {
 \`\`\`ts
 declare namespace MyLib {
   const version: string;
-  function init(config: Config): void;
-  interface Config {
+  function init(config: Config): void;  // 定义函数 init，参数: config: Config
+  interface Config {  // 定义接口 Config
     apiKey: string;
     timeout?: number;
   }
-  namespace Utils {
-    function formatDate(date: Date): string;
+  namespace Utils {  // 定义命名空间 Utils
+    function formatDate(date: Date): string;  // 定义函数 formatDate，参数: date: Date
   }
 }
 \`\`\`
 
 使用方式：
 \`\`\`ts
-MyLib.init({ apiKey: "abc" });
-MyLib.Utils.formatDate(new Date());
-const cfg: MyLib.Config = { apiKey: "xyz" };
+MyLib.init({ apiKey: "abc" });  // 调用 MyLib.init
+MyLib.Utils.formatDate(new Date());  // 调用 MyLib.Utils.formatDate
+const cfg: MyLib.Config = { apiKey: "xyz" };  // 声明常量 cfg，类型 MyLib.Config
 \`\`\`
 
 ### declare module：模块声明
@@ -2441,16 +2441,16 @@ const cfg: MyLib.Config = { apiKey: "xyz" };
 \`\`\`ts
 declare module 'my-awesome-lib' {
   // 命名导出
-  export function doSomething(input: string): number;
-  export const version: string;
-  export interface Options {
+  export function doSomething(input: string): number;  // 导出函数 doSomething
+  export const version: string;  // 导出 const version
+  export interface Options {  // 导出接口 Options
     debug: boolean;
     retries: number;
   }
 
   // 默认导出
-  const main: (config: Options) => void;
-  export default main;
+  const main: (config: Options) => void;  // 声明常量 main，类型 (config: Options)
+  export default main;  // 导出 default main
 }
 \`\`\`
 
@@ -2471,36 +2471,36 @@ declare module 'untyped-lib';
 // 为 CSS 模块声明类型
 declare module '*.css' {
   const classes: { readonly [key: string]: string };
-  export default classes;
+  export default classes;  // 导出 default classes
 }
 
 // 为 SCSS 模块声明类型
 declare module '*.scss' {
   const classes: { readonly [key: string]: string };
-  export default classes;
+  export default classes;  // 导出 default classes
 }
 
 // 为图片声明类型
 declare module '*.png' {
   const src: string;
-  export default src;
+  export default src;  // 导出 default src
 }
 
 declare module '*.jpg' {
   const src: string;
-  export default src;
+  export default src;  // 导出 default src
 }
 
 declare module '*.svg' {
-  import React from 'react';
+  import React from 'react';  // 导入 React
   const SVGComponent: React.FC<React.SVGProps<SVGSVGElement>>;
-  export default SVGComponent;
+  export default SVGComponent;  // 导出 default SVGComponent
 }
 
 // 为 JSON 声明类型
 declare module '*.json' {
-  const value: any;
-  export default value;
+  const value: any;  // 注意：any 关闭了类型检查
+  export default value;  // 导出 default value
 }
 \`\`\`
 
@@ -2510,23 +2510,23 @@ declare module '*.json' {
 
 \`\`\`ts
 declare module 'express' {
-  import { Server } from 'http';
+  import { Server } from 'http';  // 导入 { Server }
 
   // Express 本身是一个函数，又有很多方法
-  function express(): Express;
+  function express(): Express;  // 定义函数 express
 
-  namespace express {
-    interface Express {
-      get(path: string, handler: RequestHandler): void;
-      listen(port: number, callback?: () => void): Server;
+  namespace express {  // 定义命名空间 express
+    interface Express {  // 定义接口 Express
+      get(path: string, handler: RequestHandler): void;  // 方法声明 get(path: string, handler: RequestHandler)，返回 void
+      listen(port: number, callback?: () => void): Server;  // 箭头函数
     }
-    interface RequestHandler {
+    interface RequestHandler {  // 定义接口 RequestHandler
       (req: Request, res: Response, next: NextFunction): void;
     }
     // ... 更多类型
   }
 
-  export = express;
+  export = express;  // 赋值 export
 }
 \`\`\`
 
@@ -2540,10 +2540,10 @@ export {}; // 这个 export 让文件成为模块
 
 declare global {
   // 给 Window 添加自定义属性
-  interface Window {
+  interface Window {  // 定义接口 Window
     __INITIAL_STATE__: Record<string, unknown>;
     analytics: {
-      track(event: string, data?: object): void;
+      track(event: string, data?: object): void;  // 方法声明 track(event: string, data?: object)，返回 void
     };
   }
 
@@ -2552,14 +2552,14 @@ declare global {
   var __DEV__: boolean;
 
   // 给已有的全局类型添加属性
-  interface String {
-    customMethod(): string;
+  interface String {  // 定义接口 String
+    customMethod(): string;  // 方法声明 customMethod()，返回 string
   }
 
   // 给 Array 添加方法
-  interface Array<T> {
-    first(): T | undefined;
-    last(): T | undefined;
+  interface Array<T> {  // 定义接口 Array，泛型参数 T
+    first(): T | undefined;  // 方法声明 first()，返回 T | undefined
+    last(): T | undefined;  // 方法声明 last()，返回 T | undefined
   }
 }
 \`\`\`
@@ -2568,8 +2568,8 @@ declare global {
 \`\`\`ts
 // 现在这些全局类型随处可用
 window.__INITIAL_STATE__;
-window.analytics.track('page_view');
-console.log(__VERSION__);
+window.analytics.track('page_view');  // 调用 window.analytics.track
+console.log(__VERSION__);  // 控制台输出
 [1, 2, 3].first(); // 类型安全
 \`\`\`
 
@@ -2581,23 +2581,23 @@ TypeScript 允许同名的 interface、namespace 合并。这是声明文件中�
 
 \`\`\`ts
 // 原始定义
-interface User {
+interface User {  // 定义接口 User
   name: string;
   age: number;
 }
 
 // 扩展定义（合并）
-interface User {
+interface User {  // 定义接口 User
   email: string; // 合并后 User 有三个字段
 }
 
 // 函数与 namespace 合并
-function buildURL(path: string): string {
-  return buildURL.base + path;
+function buildURL(path: string): string {  // 定义函数 buildURL，参数: path: string，返回 string
+  return buildURL.base + path;  // 返回 buildURL.base + path
 }
-namespace buildURL {
-  export let base = "https://api.example.com";
-  export function setBase(url: string) { base = url; }
+namespace buildURL {  // 定义命名空间 buildURL
+  export let base = "https://api.example.com";  // 导出 let base
+  export function setBase(url: string) { base = url; }  // 导出函数 setBase
 }
 // buildURL 既是函数，又有 base 属性和 setBase 方法
 \`\`\`
@@ -2609,14 +2609,14 @@ namespace buildURL {
 \`\`\`ts
 // 原始模块类型
 declare module 'vue' {
-  interface ComponentOptions {
+  interface ComponentOptions {  // 定义接口 ComponentOptions
     // Vue 原始定义...
   }
 }
 
 // 你的增强
 declare module 'vue' {
-  interface ComponentOptions {
+  interface ComponentOptions {  // 定义接口 ComponentOptions
     // 添加你的自定义属性
     myCustomOption?: string;
   }
@@ -2668,13 +2668,13 @@ declare module 'vue' {
 
 \`\`\`bash
 # 安装 Node.js 类型
-npm install --save-dev @types/node
+npm install --save-dev @types/node  # 安装依赖
 
 # 安装测试框架类型
-npm install --save-dev @types/jest @types/mocha
+npm install --save-dev @types/jest @types/mocha  # 安装依赖
 
 # 安装库的类型
-npm install --save-dev @types/lodash @types/express
+npm install --save-dev @types/lodash @types/express  # 安装依赖
 \`\`\`
 
 #### 如何为 @types 做贡献
@@ -2740,7 +2740,7 @@ npm install --save-dev @types/lodash @types/express
 
 \`\`\`ts
 // ❌ 不好
-declare function doSomething(...args: any[]): any;
+declare function doSomething(...args: any[]): any;  // 注意：any 关闭了类型检查
 
 // ✅ 好
 declare function doSomething(input: string, options?: { timeout: number }): Promise<Result>;
@@ -2765,8 +2765,8 @@ interface 支持声明合并，更适合声明文件；type 用于需要联合�
 
 \`\`\`ts
 declare const config: {
-  readonly apiUrl: string;
-  readonly timeout: number;
+  readonly apiUrl: string;  // 类属性 apiUrl: string
+  readonly timeout: number;  // 类属性 timeout: number
 };
 \`\`\`
 
@@ -2775,7 +2775,7 @@ declare const config: {
 \`\`\`ts
 declare function onClick(
   element: HTMLElement,
-  callback: (this: HTMLElement, event: MouseEvent) => void
+  callback: (this: HTMLElement, event: MouseEvent) => void  // 箭头函数
 ): void;
 \`\`\`
 

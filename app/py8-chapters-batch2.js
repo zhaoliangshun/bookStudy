@@ -73,15 +73,15 @@ Python 的 float 是 **双精度浮点数**（64位），遵循 IEEE 754 标准�
 当需要精确小数（如金钱计算）时，用 \`decimal.Decimal\`：
 
 \`\`\`python
-from decimal import Decimal
-Decimal('0.1') + Decimal('0.2')  # 精确等于 0.3
+from decimal import Decimal                          # 从 decimal 模块导入 Decimal 类
+Decimal('0.1') + Decimal('0.2')  # 精确等于 0.3       # 用字符串构造，避免浮点误差
 \`\`\`
 
 ### 分数：fractions 模块
 
 \`\`\`python
-from fractions import Fraction
-Fraction(1, 3)   # 1/3，精确分数
+from fractions import Fraction                 # 从 fractions 模块导入 Fraction 类
+Fraction(1, 3)   # 1/3，精确分数               # 参数：分子, 分母，自动约分
 \`\`\`
 
 下面的 demo 全面演示整数、浮点数、进制转换、math 模块、decimal 和 fractions。`,
@@ -261,13 +261,13 @@ None == False   # False
 ### 判断 None 必须用 is
 
 \`\`\`python
-x = None
+x = None  # 赋值变量 x
 # 正确做法
-if x is None:
-    print("x 是 None")
+if x is None:          # 用 is 判断 None，比较内存身份（None 是单例）
+    print("x 是 None")  # 打印输出到屏幕
 # 错误做法（不要用 ==）
-if x == None:    # 虽然能工作，但不推荐
-    pass
+if x == None:    # 虽然能工作，但不推荐   # == 比较值，语义不如 is 明确
+    pass  # 空操作，占位符
 \`\`\`
 
 ### None 的常见用途
@@ -500,10 +500,10 @@ Python 支持链式比较，这在大多数语言中不支持：
 
 \`\`\`python
 # 等价于 a < b and b < c
-a < b < c
+a < b < c          # 链式比较：先比 a<b，再比 b<c，两者都真才真
 
 # 验证数字在范围内
-1 <= x <= 10
+1 <= x <= 10       # 等价于 1 <= x and x <= 10
 \`\`\`
 
 下面的 demo 全面演示所有运算符，包括位运算、链式比较、is vs == 的区别。`,
@@ -644,17 +644,17 @@ print("=" * 50)`
 
 \`\`\`python
 # 单引号
-s1 = 'hello'
+s1 = 'hello'                # 最常用的字符串写法
 
 # 双引号（和单引号完全等价）
-s2 = "hello"
+s2 = "hello"                # 与单引号效果完全相同
 
 # 三引号：可以跨行，保留换行
 s3 = """第一行
-第二行"""
+第二行"""                    # 三引号可跨行，换行符会被保留
 
 # 三单引号同理
-s4 = '''也是多行'''
+s4 = '''也是多行'''          # 三单引号功能与三双引号相同
 \`\`\`
 
 ### 单引号 vs 双引号
@@ -691,17 +691,17 @@ print(r"C:\\Users\\name")   # 输出 C:\\Users\\name（\ 不会转义）
 字符串一旦创建，**不能修改**其中的字符：
 
 \`\`\`python
-s = "hello"
-s[0] = "H"   # TypeError! 字符串不可变
+s = "hello"  # 定义字符串 s
+s[0] = "H"   # TypeError! 字符串是不可变对象，不能通过索引修改
 \`\`\`
 
 ## 索引：从 0 开始
 
 \`\`\`python
-s = "Python"
-s[0]    # 'P'（第一个字符）
+s = "Python"  # 定义字符串 s
+s[0]    # 'P'（第一个字符），正向索引从 0 开始
 s[1]    # 'y'
-s[-1]   # 'n'（倒数第一个字符）
+s[-1]   # 'n'（倒数第一个字符），负向索引从 -1 开始
 s[-2]   # 'o'（倒数第二个）
 \`\`\`
 
@@ -1085,9 +1085,9 @@ print("=" * 50)`
     content: `## 方式一：% 占位符（传统方式）
 
 \`\`\`python
-name = "小明"
-age = 18
-"我叫%s，今年%d岁" % (name, age)
+name = "小明"  # 定义字符串 name
+age = 18  # 定义数值 age
+"我叫%s，今年%d岁" % (name, age)   # %s 字符串占位，%d 整数占位，% 后接元组传值
 \`\`\`
 
 ### 常用占位符
@@ -1106,13 +1106,13 @@ age = 18
 
 \`\`\`python
 # 位置占位
-"我叫{}，今年{}岁".format("小明", 18)
+"我叫{}，今年{}岁".format("小明", 18)                          # {} 按顺序填入 format 参数
 
 # 索引
-"{0} 喜欢 {1}，{0} 也喜欢 {2}".format("小明", "Python", "数学")
+"{0} 喜欢 {1}，{0} 也喜欢 {2}".format("小明", "Python", "数学")  # {0} 可重复使用同一个参数
 
 # 命名
-"{name} 今年 {age} 岁".format(name="小明", age=18)
+"{name} 今年 {age} 岁".format(name="小明", age=18)              # 用关键字参数填命名占位符
 \`\`\`
 
 ### format 格式说明符
@@ -1131,9 +1131,9 @@ age = 18
 ## 方式三：f-string（推荐，Python 3.6+）
 
 \`\`\`python
-name = "小明"
-age = 18
-f"我叫{name}，今年{age}岁"
+name = "小明"  # 定义字符串 name
+age = 18  # 定义数值 age
+f"我叫{name}，今年{age}岁"   # f 前缀开启 f-string，{} 里直接写变量名
 \`\`\`
 
 ## 三种方式对比
@@ -1273,10 +1273,10 @@ f-string（格式化字符串字面值）是 Python 3.6 引入的，写法是 \`
 ### 基本用法
 
 \`\`\`python
-name = "小明"
+name = "小明"  # 定义字符串 name
 f"我叫{name}"   # 直接嵌入变量
-f"1 + 1 = {1 + 1}"   # 嵌入表达式
-f"长度：{len(name)}"  # 调用函数
+f"1 + 1 = {1 + 1}"   # 嵌入表达式，{} 里可以写任意表达式
+f"长度：{len(name)}"  # 调用函数，{} 里可以调用函数
 \`\`\`
 
 ### 格式说明符
@@ -1298,16 +1298,16 @@ f"长度：{len(name)}"  # 调用函数
 Python 3.8+ 支持 \`{x=}\`，自动输出变量名和值，调试利器：
 
 \`\`\`python
-name = "小明"
-age = 18
-f"{name=} {age=}"   # "name='小明' age=18"
+name = "小明"  # 定义字符串 name
+age = 18  # 定义数值 age
+f"{name=} {age=}"   # {x=} 自动显示变量名和值，输出 "name='小明' age=18"
 \`\`\`
 
 ### 嵌套字段宽度
 
 \`\`\`python
-width = 10
-f"{'hello':>{width}}"   # 宽度可以是变量，等价于 {:>10}
+width = 10  # 定义数值 width
+f"{'hello':>{width}}"   # 宽度可以是变量，{} 里可嵌套变量，等价于 {:>10}
 \`\`\`
 
 ### 转换标志 !r !s !a
@@ -1319,8 +1319,8 @@ f"{'hello':>{width}}"   # 宽度可以是变量，等价于 {:>10}
 | \`!a\` | ASCII 形式 | ascii() |
 
 \`\`\`python
-from datetime import datetime
-now = datetime.now()
+from datetime import datetime        # 导入日期时间类
+now = datetime.now()                # 获取当前时间
 
 f"{now!s}"   # 人类可读：2024-01-01 12:00:00
 f"{now!r}"   # 机器可读：datetime.datetime(2024, 1, 1, 12, 0, 0)
@@ -1728,26 +1728,26 @@ print("=" * 50)`
 
 \`\`\`python
 # 字面量
-b1 = b"hello"         # 只能包含 ASCII 字符
+b1 = b"hello"         # b 前缀创建字节字面量，只能包含 ASCII 字符
 
 # 从字符串编码
-b2 = "你好".encode("utf-8")
+b2 = "你好".encode("utf-8")                            # 把字符串按 UTF-8 编码成字节
 
 # 从整数列表
-b3 = bytes([65, 66, 67])   # b'ABC'
+b3 = bytes([65, 66, 67])   # 每个整数是一个字节，结果为 b'ABC'
 
 # 从十六进制字符串
-b4 = bytes.fromhex("48656c6c6f")   # b'Hello'
+b4 = bytes.fromhex("48656c6c6f")   # 十六进制转字节，结果为 b'Hello'
 \`\`\`
 
 ### bytes 与 str 的互转
 
 \`\`\`python
 # str -> bytes
-data = "你好".encode("utf-8")
+data = "你好".encode("utf-8")   # 编码：字符串变字节序列
 
 # bytes -> str
-text = data.decode("utf-8")
+text = data.decode("utf-8")     # 解码：字节序列变字符串
 \`\`\`
 
 ### bytes 支持的操作
@@ -1761,8 +1761,8 @@ text = data.decode("utf-8")
 \`bytearray\` 和 \`bytes\` 几乎一样，但**可以修改**：
 
 \`\`\`python
-ba = bytearray(b"hello")
-ba[0] = 72   # 改成 'H' 的 ASCII 码
+ba = bytearray(b"hello")   # 创建可变字节序列
+ba[0] = 72   # 72 是 'H' 的 ASCII 码，可修改元素
 print(ba)    # bytearray(b'Hello')
 \`\`\`
 
@@ -1781,8 +1781,8 @@ bytes.fromhex("68656c6c6f")       # b'hello'
 \`memoryview\` 让你在不复制数据的情况下操作字节序列，性能极高：
 
 \`\`\`python
-mv = memoryview(b"hello")
-mv[0]   # 104
+mv = memoryview(b"hello")   # 创建内存视图，零拷贝访问字节
+mv[0]   # 104，索引返回整数，104 是 'h' 的 ASCII 码
 \`\`\`
 
 ## 二进制数据处理
@@ -2036,11 +2036,11 @@ Python 3.5+ 引入了类型提示，**不强制检查**，但可以让 IDE 和�
 ### 基本语法
 
 \`\`\`python
-def greet(name: str) -> str:
-    return "Hello, " + name
+def greet(name: str) -> str:              # name 参数标注为 str，返回值标注为 str
+    return "Hello, " + name  # 返回 "Hello, " + name
 
-x: int = 10
-names: list[str] = ["alice", "bob"]
+x: int = 10                                # 变量类型注释：x 应为 int
+names: list[str] = ["alice", "bob"]        # names 应为字符串列表
 \`\`\`
 
 ### typing 模块常用类型

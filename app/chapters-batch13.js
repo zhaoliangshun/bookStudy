@@ -37,16 +37,16 @@ Node.js 的异步任务分两类：
 #### 经典面试题：执行顺序
 
 \`\`\`javascript
-console.log('1 script start');
+console.log('1 script start');  // 打印日志到 stdout
 
-setTimeout(() => console.log('2 timeout'), 0);
-setImmediate(() => console.log('3 immediate'));
+setTimeout(() => console.log('2 timeout'), 0);  // 延时回调（宏任务，timers 阶段执行）
+setImmediate(() => console.log('3 immediate'));  // 在 check 阶段执行回调
 
-Promise.resolve().then(() => console.log('4 promise'));
+Promise.resolve().then(() => console.log('4 promise'));  // 返回一个已成功的 Promise
 queueMicrotask(() => console.log('5 microtask'));
-process.nextTick(() => console.log('6 nextTick'));
+process.nextTick(() => console.log('6 nextTick'));  // 把回调放入 nextTick 队列（微任务，优先级最高）
 
-console.log('7 script end');
+console.log('7 script end');  // 打印日志到 stdout
 \`\`\`
 
 **输出顺序**：1 → 7 → 6 → 4 → 5 → 2/3（2 和 3 顺序不定）
@@ -62,11 +62,11 @@ console.log('7 script end');
 
 \`\`\`javascript
 // ❌ 危险：I/O 永远得不到执行
-function recursiveTick() {
-  process.nextTick(recursiveTick);
+function recursiveTick() {  // 声明函数 recursiveTick
+  process.nextTick(recursiveTick);  // 把回调放入 nextTick 队列（微任务，优先级最高）
 }
 recursiveTick();
-setTimeout(() => console.log('我永远执行不到'), 0);
+setTimeout(() => console.log('我永远执行不到'), 0);  // 延时回调（宏任务，timers 阶段执行）
 // I/O 回调也永远执行不到，因为 nextTick 队列永远清不空
 \`\`\`
 
@@ -74,8 +74,8 @@ setTimeout(() => console.log('我永远执行不到'), 0);
 
 \`\`\`javascript
 // ✅ 正确：用 setImmediate 做大量同步任务的分片
-function chunked(i) {
-  if (i < 1000000) {
+function chunked(i) {  // 声明函数 chunked
+  if (i < 1000000) {  // 条件判断
     // 处理一小块
     doWork(i);
     setImmediate(() => chunked(i + 1)); // 让出 CPU 给 I/O
@@ -89,13 +89,13 @@ chunked(0);
 \`setTimeout(fn, 0)\` 在 Node.js 中**不是 0ms 执行**，而是被 clamp 到 **1ms**。而且如果事件循环繁忙，延迟会更大：
 
 \`\`\`javascript
-const start = Date.now();
-setTimeout(() => {
+const start = Date.now();  // 定义常量 start
+setTimeout(() => {  // 延时回调（宏任务，timers 阶段执行）
   console.log('实际延迟:', Date.now() - start, 'ms'); // 经常是 1-7ms，繁忙时几十 ms
 }, 0);
 
 // 用一个耗时同步任务阻塞事件循环
-for (let i = 0; i < 1e8; i++) {}
+for (let i = 0; i < 1e8; i++) {}  // for 循环
 \`\`\`
 
 **实战影响**：
@@ -108,11 +108,11 @@ for (let i = 0; i < 1e8; i++) {}
 在主模块（顶层代码）中两者顺序不定，但在 **I/O 回调中 setImmediate 必先于 setTimeout**：
 
 \`\`\`javascript
-const fs = require('fs');
+const fs = require('fs');  // 导入模块 fs；require 返回 module.exports
 
-fs.readFile('package.json', () => {
+fs.readFile('package.json', () => {  // 异步读取文件（回调形式）
   // 在 I/O 回调里
-  setTimeout(() => console.log('timeout'), 0);
+  setTimeout(() => console.log('timeout'), 0);  // 延时回调（宏任务，timers 阶段执行）
   setImmediate(() => console.log('immediate')); // 一定先打印
 });
 \`\`\`
@@ -123,7 +123,7 @@ fs.readFile('package.json', () => {
 
 \`\`\`javascript
 // 默认：定时器会阻止进程退出
-const timer = setInterval(() => console.log('心跳'), 1000);
+const timer = setInterval(() => console.log('心跳'), 1000);  // 定义常量 timer
 
 // 标记为 unref：如果没有其他事件，进程可以退出
 timer.unref();
@@ -175,13 +175,13 @@ UV_THREADPOOL_SIZE=8 node server.js
 
 \`\`\`javascript
 // 监测事件循环的 lag（延迟）
-let lastCheck = process.hrtime.bigint();
+let lastCheck = process.hrtime.bigint();  // 定义变量 lastCheck（可变）
 
-setInterval(() => {
-  const now = process.hrtime.bigint();
+setInterval(() => {  // 周期回调
+  const now = process.hrtime.bigint();  // 定义常量 now
   const lagMs = Number(now - lastCheck) / 1e6 - 100; // 期望 100ms
-  if (lagMs > 50) {
-    console.warn('事件循环延迟:', lagMs.toFixed(1), 'ms');
+  if (lagMs > 50) {  // 条件判断
+    console.warn('事件循环延迟:', lagMs.toFixed(1), 'ms');  // 打印警告到 stderr
   }
   lastCheck = now;
 }, 100);
@@ -287,7 +287,7 @@ V8 的堆（Heap）分为两部分：
 
 \`\`\`javascript
 // 进程内存使用情况
-console.log(process.memoryUsage());
+console.log(process.memoryUsage());  // 打印日志到 stdout
 // {
 //   rss: 35512320,          // 常驻集大小（包含堆+ C++ 对象+栈）
 //   heapTotal: 6947968,     // V8 堆总大小（已分配）
@@ -297,7 +297,7 @@ console.log(process.memoryUsage());
 // }
 
 // 操作系统视角的内存
-console.log(process.resourceUsage());
+console.log(process.resourceUsage());  // 打印日志到 stdout
 \`\`\`
 
 **关键指标**：
@@ -311,7 +311,7 @@ console.log(process.resourceUsage());
 
 \`\`\`bash
 # 设置老生代最大 4GB
-node --max-old-space-size=4096 server.js
+node --max-old-space-size=4096 server.js  # 用 Node.js 执行脚本 --max-old-space-size=4096
 \`\`\`
 
 **注意**：设置过大不一定是好事——堆越大，Full GC 耗时越长，STW 时间越长。一般 2-4GB 是平衡点，超过后建议拆分进程或用 worker。
@@ -322,7 +322,7 @@ node --max-old-space-size=4096 server.js
 
 \`\`\`javascript
 // ❌ 忘记 const/let，变成全局变量
-function handler(req, res) {
+function handler(req, res) {  // 声明函数 handler
   cache = {}; // 等价于 global.cache = {}
   cache[req.id] = req.body; // 永远不会被回收
 }
@@ -334,9 +334,9 @@ function handler(req, res) {
 
 \`\`\`javascript
 // ❌ 闭包意外持有大对象
-function outer() {
-  const hugeData = new Array(1e6).fill('x');
-  return function inner() {
+function outer() {  // 声明函数 outer
+  const hugeData = new Array(1e6).fill('x');  // 创建实例 hugeData
+  return function inner() {  // 返回值
     console.log('do something'); // hugeData 没被使用，但 V8 可能仍保留它
   };
 }
@@ -347,12 +347,12 @@ const fn = outer(); // hugeData 被泄漏
 
 \`\`\`javascript
 // ❌ 经典泄漏：长连接+定时器
-function createClient() {
-  const client = new BigClient();
-  setInterval(() => {
+function createClient() {  // 声明函数 createClient
+  const client = new BigClient();  // 创建实例 client
+  setInterval(() => {  // 周期回调
     client.heartbeat(); // client 永远无法被回收
   }, 1000);
-  return client;
+  return client;  // 返回值
 }
 // 用完后没 clearInterval，client 泄漏
 \`\`\`
@@ -361,12 +361,12 @@ function createClient() {
 
 \`\`\`javascript
 // ❌ 无限增长的缓存
-const cache = new Map();
-app.get('/data/:id', (req, res) => {
-  if (!cache.has(req.params.id)) {
+const cache = new Map();  // 创建实例 cache
+app.get('/data/:id', (req, res) => {  // 注册 GET 路由处理
+  if (!cache.has(req.params.id)) {  // 条件判断
     cache.set(req.params.id, fetchData(req.params.id));
   }
-  res.json(cache.get(req.params.id));
+  res.json(cache.get(req.params.id));  // 发送 JSON 响应
 });
 // cache 永远增长
 \`\`\`
@@ -378,22 +378,22 @@ app.get('/data/:id', (req, res) => {
 抓取堆快照是排查泄漏的核心手段：
 
 \`\`\`javascript
-const v8 = require('v8');
-const fs = require('fs');
+const v8 = require('v8');  // 导入模块 v8；require 返回 module.exports
+const fs = require('fs');  // 导入模块 fs；require 返回 module.exports
 
 // 写入堆快照到文件
-function dumpHeap(name) {
-  const fileName = \`heap-\${name || 'snapshot'}-\${Date.now()}.heapsnapshot\`;
-  const data = v8.writeHeapSnapshot(fileName);
-  console.log('堆快照已保存:', data);
+function dumpHeap(name) {  // 声明函数 dumpHeap
+  const fileName = \`heap-\${name || 'snapshot'}-\${Date.now()}.heapsnapshot\`;  // 定义常量 fileName
+  const data = v8.writeHeapSnapshot(fileName);  // 定义常量 data
+  console.log('堆快照已保存:', data);  // 打印日志到 stdout
 }
 
 // 监听信号，方便线上抓取
-process.on('SIGUSR2', () => dumpHeap('signal'));
+process.on('SIGUSR2', () => dumpHeap('signal'));  // 注册进程级事件监听
 
 // 内存超阈值自动抓
-setInterval(() => {
-  const used = process.memoryUsage().heapUsed / 1024 / 1024;
+setInterval(() => {  // 周期回调
+  const used = process.memoryUsage().heapUsed / 1024 / 1024;  // 定义常量 used
   if (used > 500) { // 超过 500MB
     dumpHeap('leak');
   }
@@ -411,8 +411,8 @@ setInterval(() => {
 
 \`\`\`javascript
 // WeakRef：不阻止对象被回收
-let hugeObj = { data: new Array(1e6).fill('x') };
-const weakRef = new WeakRef(hugeObj);
+let hugeObj = { data: new Array(1e6).fill('x') };  // 定义变量 hugeObj（可变）
+const weakRef = new WeakRef(hugeObj);  // 创建实例 weakRef
 
 console.log(weakRef.deref()); // 仍能访问
 hugeObj = null; // 解除强引用
@@ -420,8 +420,8 @@ global.gc && global.gc(); // 手动 GC（需 --expose-gc）
 console.log(weakRef.deref()); // 可能是 undefined（已被回收）
 
 // FinalizationRegistry：对象被回收时回调
-const registry = new FinalizationRegistry((value) => {
-  console.log('对象被回收了:', value);
+const registry = new FinalizationRegistry((value) => {  // 创建实例 registry
+  console.log('对象被回收了:', value);  // 打印日志到 stdout
 });
 registry.register(hugeObj, 'hugeObj 标记');
 \`\`\`
@@ -434,8 +434,8 @@ registry.register(hugeObj, 'hugeObj 标记');
 
 \`\`\`javascript
 const buf = Buffer.alloc(100 * 1024 * 1024); // 100MB
-const m = process.memoryUsage();
-console.log('heapUsed:', (m.heapUsed / 1024 / 1024).toFixed(1), 'MB');
+const m = process.memoryUsage();  // 定义常量 m
+console.log('heapUsed:', (m.heapUsed / 1024 / 1024).toFixed(1), 'MB');  // 打印日志到 stdout
 console.log('external:', (m.external / 1024 / 1024).toFixed(1), 'MB'); // ~100MB
 \`\`\`
 
@@ -445,10 +445,10 @@ console.log('external:', (m.external / 1024 / 1024).toFixed(1), 'MB'); // ~100MB
 
 \`\`\`bash
 # 打印 GC 日志
-node --trace-gc server.js
+node --trace-gc server.js  # 用 Node.js 执行脚本 --trace-gc
 
 # 只打印重大 GC（>50ms）
-node --trace-gc-verbose server.js | grep "Mark-Compact"
+node --trace-gc-verbose server.js | grep "Mark-Compact"  # 用 Node.js 执行脚本 --trace-gc-verbose
 
 # 调整 GC 触发策略
 node --gc-interval=100          # 每 100 次分配触发一次 GC
@@ -549,15 +549,15 @@ readable.pipe(transform).pipe(writable);
 **正确做法**：用 \`stream.pipeline\`（Node 10+），它自动处理错误传播和资源清理：
 
 \`\`\`javascript
-const { pipeline } = require('stream/promises');
+const { pipeline } = require('stream/promises');  // 导入模块 stream/promises；require 返回 module.exports
 
-async function copyFile() {
-  await pipeline(
-    fs.createReadStream('input.txt'),
+async function copyFile() {  // 声明异步函数，内部可用 await
+  await pipeline(  // 等待 Promise 完成后再继续
+    fs.createReadStream('input.txt'),  // 创建可读流（分块读取大文件）
     zlib.createGzip(),        // 压缩
-    fs.createWriteStream('output.txt.gz')
+    fs.createWriteStream('output.txt.gz')  // 创建可写流（分块写入大文件）
   );
-  console.log('完成');
+  console.log('完成');  // 打印日志到 stdout
 }
 copyFile().catch(console.error);
 \`\`\`
@@ -574,8 +574,8 @@ copyFile().catch(console.error);
 
 \`\`\`javascript
 // ❌ 背压问题：读得快写得慢
-const readable = fs.createReadStream('huge.dat');
-const writable = fs.createWriteStream('slow-disk.dat');
+const readable = fs.createReadStream('huge.dat');  // 文件操作结果 readable
+const writable = fs.createWriteStream('slow-disk.dat');  // 文件操作结果 writable
 readable.on('data', (chunk) => {
   writable.write(chunk); // 忽略返回值！
 });
@@ -586,8 +586,8 @@ readable.on('data', (chunk) => {
 
 \`\`\`javascript
 readable.on('data', (chunk) => {
-  const ok = writable.write(chunk);
-  if (!ok) {
+  const ok = writable.write(chunk);  // 定义常量 ok
+  if (!ok) {  // 条件判断
     // 返回 false 说明缓冲区满了，暂停读取
     readable.pause();
   }
@@ -675,8 +675,8 @@ fs.createReadStream('big.log')
 **对象模式**：处理对象而不是 Buffer 时，设 \`objectMode: true\`：
 
 \`\`\`javascript
-class JSONParser extends Transform {
-  constructor() {
+class JSONParser extends Transform {  // 定义类 JSONParser
+  constructor() {  // 构造函数
     super({ objectMode: true }); // 接收对象，输出对象
   }
   _transform(obj, enc, cb) {
@@ -692,24 +692,24 @@ class JSONParser extends Transform {
 处理几个 GB 的大文件，绝不能 \`readFileSync\` 一次读完：
 
 \`\`\`javascript
-const { createReadStream } = require('fs');
-const { createInterface } = require('readline');
+const { createReadStream } = require('fs');  // 导入模块 fs；require 返回 module.exports
+const { createInterface } = require('readline');  // 导入模块 readline；require 返回 module.exports
 
 // 逐行处理大文件，内存占用恒定
-async function processLargeFile(path) {
-  const rl = createInterface({
+async function processLargeFile(path) {  // 声明异步函数，内部可用 await
+  const rl = createInterface({  // 定义常量 rl
     input: createReadStream(path),
     crlfDelay: Infinity,
   });
 
-  let count = 0;
+  let count = 0;  // 定义变量 count（可变）
   for await (const line of rl) {
     count++;
-    if (line.includes('ERROR')) {
-      console.log(\`Line \${count}: \${line}\`);
+    if (line.includes('ERROR')) {  // 条件判断
+      console.log(\`Line \${count}: \${line}\`);  // 打印日志到 stdout
     }
   }
-  console.log('总行数:', count);
+  console.log('总行数:', count);  // 打印日志到 stdout
 }
 \`\`\
 
@@ -766,25 +766,25 @@ readable.on('end', () => {});
 
 // 方式 2：async 迭代器（推荐，代码最简洁）
 for await (const chunk of readable) {
-  console.log(chunk);
+  console.log(chunk);  // 打印日志到 stdout
 }
 
 // 方式 3：消费为字符串/Buffer（Node 17+）
-const chunks = [];
+const chunks = [];  // 定义数组 chunks
 for await (const chunk of readable) chunks.push(chunk);
-const result = Buffer.concat(chunks).toString();
+const result = Buffer.concat(chunks).toString();  // 定义常量 result
 \`\`\`
 
 ### 九、实战：HTTP 流式响应
 
 \`\`\`javascript
-const http = require('http');
-const { createGzip } = require('zlib');
+const http = require('http');  // 导入模块 http；require 返回 module.exports
+const { createGzip } = require('zlib');  // 导入模块 zlib；require 返回 module.exports
 
-http.createServer((req, res) => {
-  res.setHeader('Content-Encoding', 'gzip');
-  fs.createReadStream('big.json')
-    .pipe(createGzip())
+http.createServer((req, res) => {  // 创建 HTTP 服务器，回调接收 req/res
+  res.setHeader('Content-Encoding', 'gzip');  // 设置响应头
+  fs.createReadStream('big.json')  // 创建可读流（分块读取大文件）
+    .pipe(createGzip())  // 管道：把可读流接到可写流
     .pipe(res); // 直接 pipe 到 HTTP 响应
 }).listen(3000);
 \`\`\
@@ -802,46 +802,46 @@ http.createServer((req, res) => {
 // Stream 高级实战演示
 // ============================================================
 
-const { Readable, Transform, Writable, pipeline: pipelineCb } = require("stream");
-const { promisify } = require("util");
+const { Readable, Transform, Writable, pipeline: pipelineCb } = require("stream");  // 导入模块 stream；require 返回 module.exports
+const { promisify } = require("util");  // 导入模块 util；require 返回 module.exports
 // 注：沙箱未开放 stream/promises 子模块，用 util.promisify 包装 callback 版本
-const pipeline = promisify(pipelineCb);
-const { createReadStream } = require("fs");
+const pipeline = promisify(pipelineCb);  // 定义常量 pipeline
+const { createReadStream } = require("fs");  // 导入模块 fs；require 返回 module.exports
 
-console.log("===== 1. 自定义 Readable：生成斐波那契数列 =====");
-class FibonacciStream extends Readable {
-  constructor(opts) {
-    super(opts);
+console.log("===== 1. 自定义 Readable：生成斐波那契数列 =====");  // 打印日志到 stdout
+class FibonacciStream extends Readable {  // 定义类 FibonacciStream
+  constructor(opts) {  // 构造函数
+    super(opts);  // 调用父类构造函数
     this.a = 0;
     this.b = 1;
     this.n = 0;
     this.max = opts.max || 8;
   }
   _read() {
-    if (this.n >= this.max) {
+    if (this.n >= this.max) {  // 条件判断
       this.push(null);
       return;
     }
-    const next = this.a + this.b;
+    const next = this.a + this.b;  // 定义常量 next
     this.a = this.b;
     this.b = next;
     this.n++;
     this.push("Fib(" + this.n + ") = " + next + "\\n");
   }
 }
-const fib = new FibonacciStream({ max: 8 });
+const fib = new FibonacciStream({ max: 8 });  // 创建实例 fib
 fib.on("data", (c) => process.stdout.write("  " + c));
 fib.on("end", () => console.log("  --- 流结束 ---"));
 
 // ---- 2. Transform 流：行计数器 ----
-console.log("\\n===== 2. Transform 流：统计行数 + 原样输出 =====");
-class LineCounter extends Transform {
-  constructor(opts) {
-    super(opts);
+console.log("\\n===== 2. Transform 流：统计行数 + 原样输出 =====");  // 打印日志到 stdout
+class LineCounter extends Transform {  // 定义类 LineCounter
+  constructor(opts) {  // 构造函数
+    super(opts);  // 调用父类构造函数
     this.count = 0;
   }
   _transform(chunk, enc, cb) {
-    const text = chunk.toString();
+    const text = chunk.toString();  // 定义常量 text
     this.count += text.split("\\n").length - 1;
     this.push(chunk);
     cb();
@@ -854,50 +854,50 @@ class LineCounter extends Transform {
 
 // 用内置文本做演示（避免文件依赖）
 // 注：沙箱 process.stdout 不是真正的 Writable 流，用自定义 Writable 替代
-const consoleWritable = new Writable({
+const consoleWritable = new Writable({  // 创建实例 consoleWritable
   write(chunk, enc, cb) {
-    process.stdout.write(chunk.toString());
+    process.stdout.write(chunk.toString());  // 直接写到 stdout（不加换行）
     cb();
   },
 });
-const sampleText = "line1\\nline2\\nline3\\nline4\\nline5\\n";
-const src = Readable.from([sampleText]);
+const sampleText = "line1\\nline2\\nline3\\nline4\\nline5\\n";  // 定义常量 sampleText
+const src = Readable.from([sampleText]);  // 定义常量 src
 src.pipe(new LineCounter()).pipe(consoleWritable);
 
 // ---- 3. pipeline 错误处理演示 ----
-console.log("\\n===== 3. pipeline 自动错误传播 =====");
-const brokenReadable = Readable.from((async function* () {
+console.log("\\n===== 3. pipeline 自动错误传播 =====");  // 打印日志到 stdout
+const brokenReadable = Readable.from((async function* () {  // 定义常量 brokenReadable
   yield "chunk1\\n";
   yield "chunk2\\n";
-  throw new Error("模拟流中错误");
+  throw new Error("模拟流中错误");  // 抛出错误中断执行
 })());
 
-const loggingWritable = new Writable({
+const loggingWritable = new Writable({  // 创建实例 loggingWritable
   write(chunk, enc, cb) {
-    console.log("  收到:", chunk.toString().trim());
+    console.log("  收到:", chunk.toString().trim());  // 打印日志到 stdout
     cb();
   },
 });
 
 pipeline(brokenReadable, loggingWritable)
-  .then(() => console.log("  pipeline 完成"))
-  .catch((err) => console.log("  pipeline 捕获错误:", err.message));
+  .then(() => console.log("  pipeline 完成"))  // 注册 Promise 成功回调
+  .catch((err) => console.log("  pipeline 捕获错误:", err.message));  // 注册 Promise 失败回调
 
 // ---- 4. for await 消费流（推荐方式）----
-console.log("\\n===== 4. for await...of 消费流 =====");
+console.log("\\n===== 4. for await...of 消费流 =====");  // 打印日志到 stdout
 (async () => {
-  const data = Readable.from(["a", "b", "c", "d"]);
+  const data = Readable.from(["a", "b", "c", "d"]);  // 定义常量 data
   for await (const item of data) {
-    console.log("  迭代到:", item);
+    console.log("  迭代到:", item);  // 打印日志到 stdout
   }
-  console.log("  迭代结束");
+  console.log("  迭代结束");  // 打印日志到 stdout
 })();
 
 // ---- 5. 对象模式流 ----
-console.log("\\n===== 5. 对象模式 Transform =====");
-class UppercaseKey extends Transform {
-  constructor() {
-    super({ objectMode: true });
+console.log("\\n===== 5. 对象模式 Transform =====");  // 打印日志到 stdout
+class UppercaseKey extends Transform {  // 定义类 UppercaseKey
+  constructor() {  // 构造函数
+    super({ objectMode: true });  // 调用父类构造函数
   }
   _transform(obj, enc, cb) {
     obj.processed = true;
@@ -905,10 +905,10 @@ class UppercaseKey extends Transform {
     cb();
   }
 }
-const objStream = Readable.from([{ id: 1 }, { id: 2 }, { id: 3 }]);
+const objStream = Readable.from([{ id: 1 }, { id: 2 }, { id: 3 }]);  // 定义常量 objStream
 objStream.pipe(new UppercaseKey()).on("data", (o) => console.log("  对象:", o));
 
-console.log("\\n  → Stream 高级用法演示启动完毕\\n");`,
+console.log("\\n  → Stream 高级用法演示启动完毕\\n");`,  // 打印日志到 stdout
   },
 
   // =========================================================
@@ -1085,16 +1085,16 @@ worker_threads 启动需要 ~50-100ms，**不适合超短任务**：
 
 \`\`\`javascript
 // ❌ 每次请求都 new Worker，启动开销远大于计算
-app.get('/compute', (req, res) => {
-  const worker = new Worker('./compute.js', { workerData: req.body });
+app.get('/compute', (req, res) => {  // 注册 GET 路由处理
+  const worker = new Worker('./compute.js', { workerData: req.body });  // 创建实例 worker
   // 启动 100ms + 计算 10ms = 110ms，纯计算本应 10ms
 });
 
 // ✅ 用 worker pool 复用
-const pool = new WorkerPool('./compute.js', 4);
-app.get('/compute', async (req, res) => {
-  const result = await pool.run(req.body);
-  res.json(result);
+const pool = new WorkerPool('./compute.js', 4);  // 创建实例 pool
+app.get('/compute', async (req, res) => {  // 注册 GET 路由处理
+  const result = await pool.run(req.body);  // 定义常量 result
+  res.json(result);  // 发送 JSON 响应
 });
 \`\`\
 
@@ -1150,36 +1150,36 @@ PM2 的优势：自动重启、日志切割、零停机 reload、监控面板。
 // 生产环境请用真实模块（代码见 content 字段）。
 // ============================================================
 
-const os = require("os");
+const os = require("os");  // 导入模块 os；require 返回 module.exports
 
-console.log("===== 1. 进程信息 =====");
-console.log("  主进程 PID:", process.pid);
-console.log("  CPU 核心数:", os.availableParallelism?.() || os.cpus().length);
-console.log("  平台:", process.platform, "/", process.arch);
+console.log("===== 1. 进程信息 =====");  // 打印日志到 stdout
+console.log("  主进程 PID:", process.pid);  // 打印日志到 stdout
+console.log("  CPU 核心数:", os.availableParallelism?.() || os.cpus().length);  // 打印日志到 stdout
+console.log("  平台:", process.platform, "/", process.arch);  // 打印日志到 stdout
 
 // ---- 2. 模拟 child_process：execSync 概念演示 ----
-console.log("\\n===== 2. child_process 概念（沙箱模拟）=====");
+console.log("\\n===== 2. child_process 概念（沙箱模拟）=====");  // 打印日志到 stdout
 // 沙箱不能 spawn 真实子进程，这里模拟 execSync 的语义
-function mockExecSync(cmd) {
+function mockExecSync(cmd) {  // 声明函数 mockExecSync
   // 真实环境: require('child_process').execSync(cmd).toString()
-  if (cmd.startsWith("echo ")) return cmd.slice(5);
-  if (cmd === "node --version") return process.version;
-  return "[mock output for: " + cmd + "]";
+  if (cmd.startsWith("echo ")) return cmd.slice(5);  // 条件判断
+  if (cmd === "node --version") return process.version;  // 条件判断
+  return "[mock output for: " + cmd + "]";  // 返回值
 }
-console.log("  execSync(\\"echo 'hello'\\"):", mockExecSync("echo 'hello'"));
-console.log("  execSync('node --version'):", mockExecSync("node --version"));
-console.log("  说明: spawn=流式 / exec=shell / execFile=无 shell / fork=Node+IPC");
+console.log("  execSync(\\"echo 'hello'\\"):", mockExecSync("echo 'hello'"));  // 打印日志到 stdout
+console.log("  execSync('node --version'):", mockExecSync("node --version"));  // 打印日志到 stdout
+console.log("  说明: spawn=流式 / exec=shell / execFile=无 shell / fork=Node+IPC");  // 打印日志到 stdout
 
 // ---- 3. 模拟 worker_threads：CPU 密集任务 ----
-console.log("\\n===== 3. worker_threads 概念（沙箱用 setImmediate 模拟）=====");
+console.log("\\n===== 3. worker_threads 概念（沙箱用 setImmediate 模拟）=====");  // 打印日志到 stdout
 // 模拟 worker 的核心: 把 CPU 密集任务放到独立上下文执行
-function createMockWorker(task) {
+function createMockWorker(task) {  // 声明函数 createMockWorker
   // 真实环境: new Worker(code, { eval: true, workerData })
   // 沙箱模拟: 用 setImmediate 把任务放到下一个事件循环，不阻塞主线程
-  const listeners = { message: [], error: [], exit: [] };
-  setImmediate(() => {
-    try {
-      const result = task();
+  const listeners = { message: [], error: [], exit: [] };  // 定义对象 listeners
+  setImmediate(() => {  // 在 check 阶段执行回调
+    try {  // 开启 try 块捕获异常
+      const result = task();  // 定义常量 result
       listeners.message.forEach((fn) => fn(result));
       listeners.exit.forEach((fn) => fn(0));
     } catch (err) {
@@ -1187,64 +1187,64 @@ function createMockWorker(task) {
       listeners.exit.forEach((fn) => fn(1));
     }
   });
-  return {
+  return {  // 返回值
     on(event, cb) { listeners[event] && listeners[event].push(cb); },
   };
 }
 
-function fib(n) { return n < 2 ? n : fib(n - 1) + fib(n - 2); }
-const worker = createMockWorker(() => ({ input: 30, result: fib(30) }));
-console.log("  主线程: 已派发 fib(30) 到 mock worker...");
-worker.on("message", (msg) => {
-  console.log("  worker 返回: fib(" + msg.input + ") =", msg.result);
+function fib(n) { return n < 2 ? n : fib(n - 1) + fib(n - 2); }  // 声明函数 fib
+const worker = createMockWorker(() => ({ input: 30, result: fib(30) }));  // 定义常量 worker
+console.log("  主线程: 已派发 fib(30) 到 mock worker...");  // 打印日志到 stdout
+worker.on("message", (msg) => {  // 监听工作线程消息
+  console.log("  worker 返回: fib(" + msg.input + ") =", msg.result);  // 打印日志到 stdout
 });
-worker.on("exit", (code) => console.log("  worker 退出，码:", code));
+worker.on("exit", (code) => console.log("  worker 退出，码:", code));  // 监听工作线程消息
 
 // ---- 4. cluster 概念演示（不实际监听端口）----
-console.log("\\n===== 4. cluster 模式概念 =====");
+console.log("\\n===== 4. cluster 模式概念 =====");  // 打印日志到 stdout
 // 沙箱无 cluster 模块，这里演示其设计模式
-const cpuCount = os.availableParallelism?.() || os.cpus().length;
-console.log("  cluster.isPrimary: true (模拟)");
-console.log("  可 fork worker 数:", cpuCount);
-console.log("  生产用法: PM2 start server.js -i " + cpuCount);
-console.log("  优势: 多进程共享端口，主进程做负载均衡");
-console.log("  调度: SCHED_RR (轮询，Node 16+ 默认)");
+const cpuCount = os.availableParallelism?.() || os.cpus().length;  // 定义常量 cpuCount
+console.log("  cluster.isPrimary: true (模拟)");  // 打印日志到 stdout
+console.log("  可 fork worker 数:", cpuCount);  // 打印日志到 stdout
+console.log("  生产用法: PM2 start server.js -i " + cpuCount);  // 打印日志到 stdout
+console.log("  优势: 多进程共享端口，主进程做负载均衡");  // 打印日志到 stdout
+console.log("  调度: SCHED_RR (轮询，Node 16+ 默认)");  // 打印日志到 stdout
 
 // ---- 5. fork + IPC 通信概念 ----
-console.log("\\n===== 5. fork + IPC 通信概念 =====");
+console.log("\\n===== 5. fork + IPC 通信概念 =====");  // 打印日志到 stdout
 // 模拟 fork 的 IPC 通信
-const mockChild = {
+const mockChild = {  // 定义对象 mockChild
   _handlers: { message: [], exit: [] },
   on(event, cb) { this._handlers[event].push(cb); },
   send(msg) {
     // 模拟子进程收到消息后返回
-    setImmediate(() => {
+    setImmediate(() => {  // 在 check 阶段执行回调
       this._handlers.message.forEach((fn) => fn({ pong: msg }));
       this._handlers.exit.forEach((fn) => fn(0));
     });
   },
 };
 mockChild.on("message", (msg) => {
-  console.log("  收到子进程 pong:", msg.pong);
+  console.log("  收到子进程 pong:", msg.pong);  // 打印日志到 stdout
 });
 mockChild.on("exit", () => console.log("  子进程已退出"));
-console.log("  发送 ping 给子进程...");
+console.log("  发送 ping 给子进程...");  // 打印日志到 stdout
 mockChild.send("ping");
 
 // ---- 6. SharedArrayBuffer 零拷贝概念 ----
-console.log("\\n===== 6. SharedArrayBuffer 概念 =====");
+console.log("\\n===== 6. SharedArrayBuffer 概念 =====");  // 打印日志到 stdout
 // SharedArrayBuffer 在沙箱中可用（V8 全局对象）
-const sab = new SharedArrayBuffer(4);
-const view = new Int32Array(sab);
+const sab = new SharedArrayBuffer(4);  // 创建实例 sab
+const view = new Int32Array(sab);  // 创建实例 view
 view[0] = 0;
 // 模拟多线程原子操作
-for (let i = 0; i < 1000; i++) {
+for (let i = 0; i < 1000; i++) {  // for 循环
   Atomics.add(view, 0, 1);
 }
-console.log("  SharedArrayBuffer + Atomics.add 1000 次:", view[0]);
-console.log("  说明: worker_threads 可共享此内存，零拷贝传递");
+console.log("  SharedArrayBuffer + Atomics.add 1000 次:", view[0]);  // 打印日志到 stdout
+console.log("  说明: worker_threads 可共享此内存，零拷贝传递");  // 打印日志到 stdout
 
-console.log("\\n  → 进程模型演示已派发，等待异步回调...\\n");`,
+console.log("\\n  → 进程模型演示已派发，等待异步回调...\\n");`,  // 打印日志到 stdout
   },
 
   // =========================================================
@@ -1313,7 +1313,7 @@ console.log(c2.get()); // 2，不是 0
 **清除缓存**：
 
 \`\`\`javascript
-delete require.cache[require.resolve('./counter')];
+delete require.cache[require.resolve('./counter')];  // 清除模块缓存（实现热更新）
 const fresh = require('./counter'); // 重新执行模块
 console.log(fresh.get()); // 0
 \`\`\
@@ -1351,16 +1351,16 @@ A require B，B 又 require A，会怎样？
 
 \`\`\`javascript
 // a.js
-console.log('a 开始');
-const b = require('./b');
-console.log('a 拿到 b:', b);
-module.exports = { fromA: 'A 的导出' };
+console.log('a 开始');  // 打印日志到 stdout
+const b = require('./b');  // 导入模块 ./b；require 返回 module.exports
+console.log('a 拿到 b:', b);  // 打印日志到 stdout
+module.exports = { fromA: 'A 的导出' };  // 设置模块导出对象（require 返回的就是它）
 
 // b.js
-console.log('b 开始');
-const a = require('./a');
+console.log('b 开始');  // 打印日志到 stdout
+const a = require('./a');  // 导入模块 ./a；require 返回 module.exports
 console.log('b 拿到 a:', a); // ⚠️ 此时是 {}
-module.exports = { fromB: 'B 的导出' };
+module.exports = { fromB: 'B 的导出' };  // 设置模块导出对象（require 返回的就是它）
 
 // 执行 require('./a')
 // 输出：
@@ -1408,11 +1408,11 @@ exports.foo = 1; // 等价于 module.exports.foo = 1
 \`\`\`javascript
 // ESM：导出的是绑定，不是快照
 // counter.mjs
-export let count = 0;
-export function incr() { count++; }
+export let count = 0;  // 命名导出 count
+export function incr() { count++; }  // 命名导出 incr
 
 // main.mjs
-import { count, incr } from './counter.mjs';
+import { count, incr } from './counter.mjs';  // 从 ./counter.mjs 导入：{ count, incr }
 console.log(count); // 0
 incr();
 console.log(count); // 1 ← ESM 的导出是活的绑定
@@ -1451,14 +1451,14 @@ function myRequire(modulePath) {
 ### 八、实战：热重载实现
 
 \`\`\`javascript
-function hotRequire(modulePath) {
-  const fullPath = require.resolve(modulePath);
-  delete require.cache[fullPath];
+function hotRequire(modulePath) {  // 声明函数 hotRequire
+  const fullPath = require.resolve(modulePath);  // 定义常量 fullPath
+  delete require.cache[fullPath];  // 清除模块缓存（实现热更新）
   // 同时删除子模块缓存
-  Object.keys(require.cache)
+  Object.keys(require.cache)  // 获取对象所有键组成的数组
     .filter(k => k.startsWith(require('path').dirname(fullPath)))
     .forEach(k => delete require.cache[k]);
-  return require(modulePath);
+  return require(modulePath);  // 返回值
 }
 
 // 开发时热重载配置
@@ -1632,19 +1632,19 @@ app.use(async (req, res, next) => {
 ### 三、堆快照抓取（代码触发）
 
 \`\`\`javascript
-const v8 = require('v8');
+const v8 = require('v8');  // 导入模块 v8；require 返回 module.exports
 
 // 信号触发抓取
-process.on('SIGUSR2', () => {
-  const file = \`heap-\${Date.now()}.heapsnapshot\`;
+process.on('SIGUSR2', () => {  // 注册进程级事件监听
+  const file = \`heap-\${Date.now()}.heapsnapshot\`;  // 定义常量 file
   v8.writeHeapSnapshot(file);
-  console.log('堆快照:', file);
+  console.log('堆快照:', file);  // 打印日志到 stdout
 });
 
 // 内存超阈值自动抓
-setInterval(() => {
-  const used = process.memoryUsage().heapUsed / 1024 / 1024;
-  if (used > 800) {
+setInterval(() => {  // 周期回调
+  const used = process.memoryUsage().heapUsed / 1024 / 1024;  // 定义常量 used
+  if (used > 800) {  // 条件判断
     v8.writeHeapSnapshot(\`auto-\${Date.now()}.heapsnapshot\`);
     process.exit(1); // 抓完重启，避免继续恶化
   }
@@ -1685,11 +1685,11 @@ heavyFunc(1e6);
 **测量 async 函数**：
 
 \`\`\`javascript
-async function measureAsync(fn, label) {
-  const start = performance.now();
-  const result = await fn();
-  console.log(\`\${label}: \${(performance.now() - start).toFixed(2)}ms\`);
-  return result;
+async function measureAsync(fn, label) {  // 声明异步函数，内部可用 await
+  const start = performance.now();  // 定义常量 start
+  const result = await fn();  // 定义常量 result
+  console.log(\`\${label}: \${(performance.now() - start).toFixed(2)}ms\`);  // 打印日志到 stdout
+  return result;  // 返回值
 }
 \`\`\
 
@@ -1708,13 +1708,13 @@ console.log(\`耗时: \${ns}ns = \${Number(ns) / 1e6}ms\`);
 ### 六、事件循环延迟监测
 
 \`\`\`javascript
-const { monitorEventLoopDelay } = require('perf_hooks');
+const { monitorEventLoopDelay } = require('perf_hooks');  // 导入模块 perf_hooks；require 返回 module.exports
 
-const h = monitorEventLoopDelay();
+const h = monitorEventLoopDelay();  // 定义常量 h
 h.enable();
 
-setInterval(() => {
-  console.log({
+setInterval(() => {  // 周期回调
+  console.log({  // 打印日志到 stdout
     min: h.min.toFixed(2) + 'ms',
     max: h.max.toFixed(2) + 'ms',
     mean: h.mean.toFixed(2) + 'ms',
@@ -1748,7 +1748,7 @@ clinic bubbleprof -- node server.js  # 异步分析
 专门做 V8 CPU 火焰图：
 
 \`\`\`bash
-npx 0x server.js
+npx 0x server.js  # 临时执行本地未安装的包
 # 生成 flamegraph.html，浏览器打开
 \`\`\
 
@@ -1932,9 +1932,9 @@ Node.js 默认行为：
 ### 二、uncaughtException：最后一道防线
 
 \`\`\`javascript
-process.on('uncaughtException', (err, origin) => {
+process.on('uncaughtException', (err, origin) => {  // 注册进程级事件监听
   // ⚠️ 这是最后机会，进程即将退出
-  console.error('未捕获异常:', err.stack);
+  console.error('未捕获异常:', err.stack);  // 打印错误到 stderr
   console.error('来源:', origin); // 'uncaughtException' 或 'unhandledRejection'
   
   // 1. 记录到日志系统
@@ -1947,8 +1947,8 @@ process.on('uncaughtException', (err, origin) => {
   gracefulShutdown().then(() => process.exit(1));
 });
 
-function gracefulShutdown() {
-  return Promise.all([
+function gracefulShutdown() {  // 声明函数 gracefulShutdown
+  return Promise.all([  // 返回值
     server.close(),         // 停止接受新连接
     db.disconnect(),        // 关闭数据库
     flushLogs(),            // 刷日志
@@ -1984,16 +1984,16 @@ process.on('unhandledRejection', (reason, promise) => {
 有时候 rejection 后又被 catch 了：
 
 \`\`\`javascript
-const p = Promise.reject(new Error('oops'));
+const p = Promise.reject(new Error('oops'));  // 定义常量 p
 // 此时触发 unhandledRejection
 
-setTimeout(() => {
+setTimeout(() => {  // 延时回调（宏任务，timers 阶段执行）
   p.catch(() => console.log('later caught'));
   // 触发 rejectionhandled
 }, 100);
 
-process.on('rejectionhandled', (promise) => {
-  console.log('rejection 后来被处理了');
+process.on('rejectionhandled', (promise) => {  // 注册进程级事件监听
+  console.log('rejection 后来被处理了');  // 打印日志到 stdout
 });
 \`\`\
 
@@ -2087,16 +2087,16 @@ async function gracefulShutdown(signal) {
 
 \`\`\`javascript
 // ❌ try/catch 抓不到 setTimeout 里的错误
-try {
-  setTimeout(() => {
+try {  // 开启 try 块捕获异常
+  setTimeout(() => {  // 延时回调（宏任务，timers 阶段执行）
     throw new Error('boom'); // 这个错误会到 uncaughtException
   }, 100);
 } catch (e) {
-  console.log('抓不到');
+  console.log('抓不到');  // 打印日志到 stdout
 }
 
 // ❌ Promise 错误如果没 catch，会到 unhandledRejection
-Promise.reject('oops');
+Promise.reject('oops');  // 返回一个已失败的 Promise
 \`\`\
 
 **正确做法**：

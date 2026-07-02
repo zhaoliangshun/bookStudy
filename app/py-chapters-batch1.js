@@ -101,11 +101,11 @@ Python 的语法设计极为注重可读性。它用**缩进**代替花括号来
 
 \`\`\`python
 # Python：简洁清晰
-def is_adult(age):
-    if age >= 18:
-        return True
-    else:
-        return False
+def is_adult(age):       # 定义函数 is_adult，接收参数 age
+    if age >= 18:        # 判断年龄是否大于等于 18 岁
+        return True      # 成年，返回 True
+    else:                # 否则
+        return False     # 未成年，返回 False
 
 # 对比 Java 同样的代码要写更多样板
 # public boolean isAdult(int age) {
@@ -279,8 +279,8 @@ python --version    # 应输出 Python 3.x.x
 macOS 自带 Python 2（较老系统）或没有 Python。推荐用 Homebrew 安装：
 
 \`\`\`bash
-brew install python3
-python3 --version
+brew install python3     # 用 Homebrew 安装 Python 3
+python3 --version        # 验证安装的 Python 版本
 \`\`\`
 
 #### Linux
@@ -289,13 +289,13 @@ python3 --version
 
 \`\`\`bash
 # Ubuntu / Debian
-sudo apt update && sudo apt install python3
+sudo apt update && sudo apt install python3   # 更新源并安装 Python 3
 
 # CentOS / RHEL
-sudo yum install python3
+sudo yum install python3   # 用 yum 安装 Python 3
 
 # 验证
-python3 --version
+python3 --version          # 检查安装是否成功
 \`\`\`
 
 #### 多版本管理
@@ -313,20 +313,20 @@ python3 --version
 
 \`\`\`python
 # hello.py
-print("Hello, World!")
+print("Hello, World!")    # 打印字符串到标准输出
 \`\`\`
 
 在终端运行：
 
 \`\`\`bash
-python3 hello.py
+python3 hello.py          # 运行脚本文件 hello.py
 # 输出: Hello, World!
 \`\`\`
 
 #### 方式二：一行命令
 
 \`\`\`bash
-python3 -c "print('Hello, World!')"
+python3 -c "print('Hello, World!')"   # -c 选项直接执行字符串中的 Python 代码
 \`\`\`
 
 #### Hello World 的含义
@@ -372,23 +372,23 @@ REPL 的用途：
 
 \`\`\`python
 # ✅ 正确
-def func():
-    if True:
-        print("4 个空格缩进")
+def func():                  # 定义函数 func
+    if True:                 # 用 4 个空格缩进表示代码块
+        print("4 个空格缩进")  # 输出提示文字
 
 # ❌ 错误（用 Tab）
-def func():
-	if True:
-		print("不要用 Tab")
+def func():                 # 同名函数（仅作错误示范）
+	if True:                # 用 Tab 缩进，PEP 8 不允许
+		print("不要用 Tab")  # 与上面 4 空格混用会导致 IndentationError
 \`\`\`
 
 **2. 行长度：每行不超过 79 字符（文档/注释不超过 72）**
 
 \`\`\`python
 # ✅ 过长时用括号换行
-result = (first_variable
-          + second_variable
-          + third_variable)
+result = (first_variable      # 用括号包裹实现跨行书写
+          + second_variable   # 每行放一个操作数并对齐
+          + third_variable)   # 最后一行闭合括号
 \`\`\`
 
 **3. 命名规范**
@@ -406,36 +406,36 @@ result = (first_variable
 
 \`\`\`python
 # ✅ 正确
-x = a + b
-y = x * 2
+x = a + b    # 运算符两侧各加一个空格
+y = x * 2    # 提高可读性
 
 # ❌ 错误
-x=a+b
+x=a+b        # 没有空格，可读性差
 \`\`\`
 
 **5. 逗号后加空格**
 
 \`\`\`python
 # ✅ 正确
-nums = [1, 2, 3, 4]
-func(a, b, c)
+nums = [1, 2, 3, 4]   # 逗号后加空格
+func(a, b, c)         # 参数间逗号后加空格
 
 # ❌ 错误
-nums = [1,2,3,4]
+nums = [1,2,3,4]      # 逗号后无空格，可读性差
 \`\`\`
 
 **6. 导入规范**
 
 \`\`\`python
 # ✅ 每个导入单独一行
-import os
-import sys
+import os      # 导入 os 模块
+import sys     # 导入 sys 模块
 
 # ✅ 从同一模块导入多个可以写一行
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional   # 从 typing 导入多个类型
 
 # ❌ 不要这样
-import os, sys
+import os, sys  # 不要在一行导入多个模块
 \`\`\`
 
 导入顺序建议：标准库 → 第三方库 → 本地模块，每组之间空一行。
@@ -443,12 +443,12 @@ import os, sys
 **7. 函数和类之间空两行**
 
 \`\`\`python
-class MyClass:
-    pass
+class MyClass:           # 定义类 MyClass
+    pass                 # pass 是空语句占位
 
 
-def my_function():
-    pass
+def my_function():       # 定义函数，与类之间空两行
+    pass                 # 函数体占位
 \`\`\`
 
 **8. 字符串引号：单引号和双引号均可，但项目内要统一**
@@ -714,9 +714,9 @@ print("你可以修改代码中的任何内容，然后重新运行查看效果�
 
 \`\`\`python
 # Python：变量是标签，指向对象
-a = [1, 2, 3]
+a = [1, 2, 3]              # 创建列表对象 [1,2,3]，让名字 a 指向它
 b = a          # b 和 a 指向同一个列表对象
-b.append(4)
+b.append(4)               # 通过名字 b 原地追加元素 4
 print(a)       # [1, 2, 3, 4] —— a 也变了！因为 a 和 b 是同一个对象
 
 # C 语言：变量是盒子，赋值是拷贝
@@ -746,11 +746,11 @@ Python 变量命名有严格的规则：
 
 \`\`\`python
 # ✅ 合法的变量名
-user_name = "张三"
-age2 = 25
-_private = "私有"
-MAX_VALUE = 100
-myVar = "驼峰也可以但不推荐"
+user_name = "张三"        # 小写+下划线，PEP 8 推荐写法
+age2 = 25                 # 数字可在非开头位置
+_private = "私有"         # 下划线开头表示私有
+MAX_VALUE = 100           # 全大写表示常量
+myVar = "驼峰也可以但不推荐"  # 驼峰命名合法但 Python 不推荐
 
 # ❌ 非法的变量名
 # 2age = 25        # 不能以数字开头
@@ -765,8 +765,8 @@ myVar = "驼峰也可以但不推荐"
 不能用作变量名的关键字：
 
 \`\`\`python
-import keyword
-print(keyword.kwlist)
+import keyword              # 导入 keyword 模块
+print(keyword.kwlist)      # 打印所有 Python 关键字列表
 # ['False', 'None', 'True', 'and', 'as', 'assert', 'async', 'await',
 #  'break', 'class', 'continue', 'def', 'del', 'elif', 'else', 'except',
 #  'finally', 'for', 'from', 'global', 'if', 'import', 'in', 'is',
@@ -799,10 +799,10 @@ x = "hello";  // 编译错误
 
 \`\`\`python
 # 类型注解（可选，不影响运行）
-def greet(name: str) -> str:
-    return f"Hello, {name}"
+def greet(name: str) -> str:      # name 标注为 str 类型，返回值标注为 str
+    return f"Hello, {name}"        # 返回格式化字符串
 
-age: int = 28  # 变量注解
+age: int = 28  # 变量注解：标注 age 为 int 类型
 \`\`\`
 
 ### Python 的基本数据类型
@@ -831,8 +831,8 @@ Python 的整数最特别的一点是**任意精度**——它不会溢出！不
 
 \`\`\`python
 # Python 的 int 不会溢出
-big = 2 ** 100
-print(big)
+big = 2 ** 100            # 计算 2 的 100 次方，结果自动扩展为任意精度整数
+print(big)                # 输出 big 的值
 # 1267650600228229401496703205376
 
 # 超大整数运算毫无压力
@@ -859,9 +859,9 @@ population = 1_400_000_000   # 14 亿，下划线会被忽略
 Python 的 float 是 **IEEE 754 双精度浮点数**（64 位），与 C/Java 的 \`double\` 相同，有效数字约 15-17 位。
 
 \`\`\`python
-pi = 3.141592653589793
+pi = 3.141592653589793          # 圆周率，双精度浮点数
 scientific = 6.022e23    # 科学计数法，阿伏伽德罗常数
-negative = -273.15
+negative = -273.15              # 绝对零度（摄氏度）
 \`\`\`
 
 **浮点数精度陷阱**：由于二进制无法精确表示某些十进制小数，浮点运算会产生误差：
@@ -874,14 +874,14 @@ print(0.1 + 0.2 == 0.3) # False
 这是所有使用 IEEE 754 的语言的通病（JavaScript、Java、C 都一样），不是 Python 的 bug。涉及精确计算（如金额）时，用 \`decimal\` 模块：
 
 \`\`\`python
-from decimal import Decimal
+from decimal import Decimal              # 从标准库 decimal 导入 Decimal，用于精确十进制运算
 print(Decimal("0.1") + Decimal("0.2"))  # 0.3，精确
 \`\`\`
 
 特殊浮点值：
 
 \`\`\`python
-import math
+import math                          # 导入标准库 math，提供数学常量与函数
 print(math.inf)     # inf，正无穷
 print(-math.inf)    # -inf，负无穷
 print(math.nan)     # nan，非数字（Not a Number）
@@ -894,8 +894,8 @@ print(math.nan == math.nan)  # False（nan 不等于任何值，包括自己）
 布尔类型只有两个值：\`True\`（真）和 \`False\`（假）。注意**首字母大写**。
 
 \`\`\`python
-is_active = True
-is_deleted = False
+is_active = True       # 布尔类型，表示是否激活
+is_deleted = False     # 布尔类型，表示是否已删除
 \`\`\`
 
 **重要细节**：\`bool\` 是 \`int\` 的子类！\`True\` 本质上是 1，\`False\` 本质上是 0：
@@ -919,17 +919,17 @@ print(isinstance(True, int))  # True，bool 是 int 的子类
 | 自定义对象 \`__bool__()\` 返回 False | 自定义假值 |
 
 \`\`\`python
-if 0:
+if 0:                               # 注意：0 在布尔判断中为 False
     print("0 是真")
 else:
     print("0 是假")        # 输出这个
 
-if []:
+if []:                              # 注意：空容器在布尔判断中为 False
     print("空列表是真")
 else:
     print("空列表是假")    # 输出这个
 
-if "hello":
+if "hello":                         # 注意：非空字符串在布尔判断中为 True
     print("非空字符串是真")  # 输出这个
 \`\`\`
 
@@ -1013,7 +1013,7 @@ print(type([1, 2]))     # <class 'list'>
 可以用 \`type()\` 做类型比较：
 
 \`\`\`python
-if type(x) == int:
+if type(x) == int:        # 注意：type() 不认子类，判断类型推荐用 isinstance(x, int)
     print("x 是整数")
 \`\`\`
 
@@ -1049,7 +1049,7 @@ Python 中变量存储的是对象的**引用（地址）**，而非对象本身
 \`\`\`python
 a = [1, 2, 3]
 b = a           # b 和 a 指向同一个列表对象
-b[0] = 99
+b[0] = 99       # 通过 b 修改索引 0 的元素，原地变更，影响 a
 print(a)        # [99, 2, 3] —— a 也变了！
 \`\`\`
 
@@ -1057,7 +1057,7 @@ print(a)        # [99, 2, 3] —— a 也变了！
 
 \`\`\`python
 a = [1, 2, 3]
-b = a
+b = a                       # b 与 a 绑定到同一个列表对象
 print(id(a))    # 比如 4318561232
 print(id(b))    # 同样的地址 4318561232
 print(a is b)   # True，是同一个对象
@@ -1068,20 +1068,20 @@ print(a is b)   # True，是同一个对象
 如果不想让两个变量共享同一个对象，需要做拷贝：
 
 \`\`\`python
-import copy
+import copy                       # 导入 copy 模块，提供浅拷贝与深拷贝工具
 
-a = [1, 2, [3, 4]]
+a = [1, 2, [3, 4]]               # 外层列表中嵌套了一个内层列表
 
 # 浅拷贝：只拷贝外层，内层仍共享
 b = a.copy()             # 或 list(a) 或 a[:]
-b[0] = 99
-b[2][0] = 99
+b[0] = 99                # 替换外层元素，不影响 a
+b[2][0] = 99             # 修改内层列表，a 的内层也跟着变（共享同一对象）
 print(a)  # [1, 2, [99, 4]] —— 内层列表被影响了！
 
 # 深拷贝：递归拷贝所有层级
 a = [1, 2, [3, 4]]
-c = copy.deepcopy(a)
-c[2][0] = 99
+c = copy.deepcopy(a)    # 递归复制所有层级，c 与 a 完全独立
+c[2][0] = 99            # 修改 c 的内层，不影响 a
 print(a)  # [1, 2, [3, 4]] —— 不受影响
 \`\`\`
 
@@ -1094,11 +1094,11 @@ print(a)  # [1, 2, [3, 4]] —— 不受影响
 
 \`\`\`python
 a = [1, 2, 3]
-b = [1, 2, 3]
+b = [1, 2, 3]          # 值相同，但是独立创建的新对象
 print(a == b)   # True，值相等
 print(a is b)   # False，不是同一个对象
 
-c = a
+c = a                  # c 与 a 绑定同一对象
 print(a is c)   # True，是同一个对象
 \`\`\`
 
@@ -1106,7 +1106,7 @@ print(a is c)   # True，是同一个对象
 
 \`\`\`python
 x = None
-if x is None:     # ✅ 推荐
+if x is None:     # ✅ 推荐：用 is 判断身份，不会被自定义 __eq__ 影响
     print("x 是 None")
 if x == None:     # ❌ 不推荐（可能被自定义 __eq__ 欺骗）
     print("x 是 None")
@@ -1117,11 +1117,11 @@ if x == None:     # ❌ 不推荐（可能被自定义 __eq__ 欺骗）
 CPython 对 **-5 到 256** 之间的整数做了缓存优化：这些整数对象在解释器启动时就预先创建好，所有引用这些值的变量都指向同一个对象。
 
 \`\`\`python
-a = 256
+a = 256                  # 注意：-5~256 的小整数被解释器缓存复用
 b = 256
 print(a is b)   # True！同一个缓存对象
 
-a = 257
+a = 257                  # 注意：超出缓存范围，每次新建独立对象
 b = 257
 print(a is b)   # False！超出缓存范围，创建了不同对象
 \`\`\`
@@ -1154,7 +1154,7 @@ x = x + 1       # x 指向了新的整数对象 11
 print(id(x))    # 地址 B（不同了！）
 
 # 字符串也是不可变的
-s = "hello"
+s = "hello"     # 创建字符串对象，s 指向它
 # s[0] = "H"    # ❌ TypeError：字符串不支持修改
 s = "Hello"     # ✅ 这是让 s 指向新字符串，不是修改原字符串
 \`\`\`
@@ -1174,12 +1174,12 @@ s = "Hello"     # ✅ 这是让 s 指向新字符串，不是修改原字符串
 # 可变类型：原地修改，id 不变
 lst = [1, 2, 3]
 print(id(lst))    # 地址 A
-lst.append(4)
+lst.append(4)     # 原地追加元素，对象身份不变
 print(id(lst))    # 还是地址 A（同一个对象）
 
-d = {"a": 1}
-print(id(d))
-d["b"] = 2
+d = {"a": 1}      # 创建字典对象
+print(id(d))      # 输出字典 d 的内存地址
+d["b"] = 2        # 原地新增键值对
 print(id(d))      # id 不变
 \`\`\`
 
@@ -1189,7 +1189,7 @@ print(id(d))      # id 不变
 
 \`\`\`python
 # 元组本身不可变，但其元素如果是可变对象，仍可修改
-t = (1, 2, [3, 4])
+t = (1, 2, [3, 4])     # 元组第 2 个元素是列表（可变）
 # t[0] = 99    # ❌ TypeError：元组不可变
 t[2].append(5)  # ✅ 列表是可变的
 print(t)        # (1, 2, [3, 4, 5])
@@ -1201,18 +1201,18 @@ print(t)        # (1, 2, [3, 4, 5])
 
 \`\`\`python
 # 不可变类型：函数内修改不影响外部
-def add_one(n):
-    n = n + 1
-    print("函数内:", n)
+def add_one(n):              # 参数 n 按值传递（整数不可变）
+    n = n + 1                # 局部作用域创建新整数，不影响外部变量
+    print("函数内:", n)       # 输出函数内的 n 值
 
 x = 10
 add_one(x)
 print("函数外:", x)    # 还是 10
 
 # 可变类型：函数内修改影响外部
-def append_item(lst):
-    lst.append(99)
-    print("函数内:", lst)
+def append_item(lst):        # lst 接收列表对象的引用
+    lst.append(99)            # 原地修改，影响调用方的列表
+    print("函数内:", lst)     # 输出函数内的列表
 
 my_list = [1, 2, 3]
 append_item(my_list)
@@ -1225,28 +1225,28 @@ Python 支持非常灵活的赋值语法：
 
 \`\`\`python
 # 多重赋值
-a, b, c = 1, 2, 3
+a, b, c = 1, 2, 3            # 右侧按位置依次赋给 a、b、c
 print(a, b, c)   # 1 2 3
 
 # 交换变量（不需要临时变量！）
-a, b = b, a
+a, b = b, a                  # 右侧先打包成元组，再解包给左侧
 print(a, b)      # 2 1
 
 # 解包列表/元组
-nums = [10, 20, 30]
+nums = [10, 20, 30]          # 元素个数须与左侧变量数一致
 x, y, z = nums
 print(x, y, z)   # 10 20 30
 
 # 扩展解包（Python 3）
-first, *rest = [1, 2, 3, 4, 5]
+first, *rest = [1, 2, 3, 4, 5]   # * 收集剩余元素为列表
 print(first)     # 1
 print(rest)      # [2, 3, 4, 5]
 
-*init, last = [1, 2, 3, 4, 5]
+*init, last = [1, 2, 3, 4, 5]    # * 收集开头部分
 print(init)      # [1, 2, 3, 4]
 print(last)      # 5
 
-first, *middle, last = [1, 2, 3, 4, 5]
+first, *middle, last = [1, 2, 3, 4, 5]   # 两端固定，中间收集
 print(middle)    # [2, 3, 4]
 \`\`\`
 
@@ -1256,7 +1256,7 @@ print(middle)    # [2, 3, 4]
 
 \`\`\`python
 x = 42
-del x
+del x                  # 删除变量 x 的绑定
 # print(x)  # NameError: x 已被删除
 
 lst = [1, 2, 3, 4, 5]
@@ -1264,7 +1264,7 @@ del lst[1]      # 删除索引 1 的元素
 print(lst)      # [1, 3, 4, 5]
 
 d = {"a": 1, "b": 2}
-del d["a"]
+del d["a"]      # 删除字典中键为 "a" 的项
 print(d)        # {'b': 2}
 \`\`\`
 
@@ -1546,10 +1546,10 @@ s2 = "hello"      # 双引号
 
 \`\`\`python
 # 字符串中包含单引号，用双引号包裹
-msg1 = "It's a beautiful day"
+msg1 = "It's a beautiful day"        # 外层双引号，内层单引号无需转义
 
 # 字符串中包含双引号，用单引号包裹
-msg2 = 'He said "hello"'
+msg2 = 'He said "hello"'             # 外层单引号，内层双引号无需转义
 
 # 也可以用转义字符处理
 msg3 = 'It\\'s a beautiful day'   # 用 \\' 转义单引号
@@ -1561,18 +1561,18 @@ msg4 = "He said \\"hello\\""      # 用 \\" 转义双引号
 三个单引号或三个双引号可以创建**多行字符串**，内容中的换行会被保留：
 
 \`\`\`python
-multi = '''这是第一行
+multi = '''这是第一行       # 三个单引号开始多行字符串
 这是第二行
-这是第三行'''
+这是第三行'''                 # 三个单引号结束
 
-multi2 = """也可以用三个双引号
+multi2 = """也可以用三个双引号   # 三个双引号效果相同
 效果一样"""
 
 # 三引号常用于文档字符串（docstring）
-def my_func():
+def my_func():                   # 定义函数 my_func
     """这是一个函数的文档字符串。
     可以跨多行说明函数的用途。"""
-    pass
+    pass                     # pass 占位，函数体为空
 \`\`\`
 
 ### 字符串的不可变性
@@ -1600,7 +1600,7 @@ s = s + " World"      # 拼接产生新字符串
 #### 索引
 
 \`\`\`python
-s = "Python"
+s = "Python"          # 字符串可通过索引访问单个字符
 #    P  y  t  h  o  n
 #    0  1  2  3  4  5    正向索引
 #   -6 -5 -4 -3 -2 -1    负向索引
@@ -1625,7 +1625,7 @@ print(s[-2])   # 'o'，倒数第二个
 - \`step\`：步长，默认 1
 
 \`\`\`python
-s = "Python"
+s = "Python"     # 切片语法 s[start:stop:step]，左闭右开
 
 print(s[0:3])    # 'Pyt'，索引 0、1、2
 print(s[:3])     # 'Pyt'，省略 start 默认 0
@@ -1640,7 +1640,7 @@ print(s[-3:])    # 'hon'，最后 3 个字符
 切片不会越界报错，超出部分自动截断：
 
 \`\`\`python
-s = "abc"
+s = "abc"         # 注意：切片越界不会报错，而是自动截断
 print(s[0:100])   # 'abc'，不报错
 print(s[10:20])   # ''，空字符串
 \`\`\`
@@ -1650,7 +1650,7 @@ print(s[10:20])   # ''，空字符串
 #### 使用 + 运算符
 
 \`\`\`python
-s1 = "Hello"
+s1 = "Hello"             # 字符串可用 + 拼接
 s2 = "World"
 result = s1 + " " + s2   # "Hello World"
 \`\`\`
@@ -1660,10 +1660,10 @@ result = s1 + " " + s2   # "Hello World"
 #### 使用 join() 方法（推荐）
 
 \`\`\`python
-words = ["Hello", "World", "Python"]
+words = ["Hello", "World", "Python"]   # join 用分隔符连接可迭代对象
 result = " ".join(words)   # "Hello World Python"
-result = "-".join(words)   # "Hello-World-Python"
-result = "".join(words)    # "HelloWorldPython"
+result = "-".join(words)   # "Hello-World-Python"   用 - 连接
+result = "".join(words)    # "HelloWorldPython"     无分隔符连接
 \`\`\`
 
 \`join()\` 只需分配一次内存，效率远高于 \`+\`。
@@ -1682,7 +1682,7 @@ print("-" * 20)   # "--------------------"
 \`\`\`python
 s = "Hello" "World"   # 等价于 "HelloWorld"
 # 常用于长字符串换行
-url = ("https://www.example.com"
+url = ("https://www.example.com"      # 相邻字符串字面量自动拼接
        "/api/v1/users"
        "/list")
 \`\`\`
@@ -1694,7 +1694,7 @@ Python 有三种字符串格式化方式，从老到新：
 #### 1. % 格式化（C 风格，老式）
 
 \`\`\`python
-name = "张三"
+name = "张三"            # %s 占位字符串，%d 占位整数
 age = 28
 print("我叫%s，今年%d岁" % (name, age))
 # 我叫张三，今年28岁
@@ -1716,16 +1716,16 @@ print("我叫%s，今年%d岁" % (name, age))
 #### 2. str.format() 方法
 
 \`\`\`python
-name = "张三"
+name = "张三"                       # str.format 用 {} 占位
 age = 28
 print("我叫{}，今年{}岁".format(name, age))
 # 我叫张三，今年28岁
 
 # 通过位置索引
-print("{0}说：{1}，{0}又说：{1}".format("我", "你好"))
+print("{0}说：{1}，{0}又说：{1}".format("我", "你好"))   # {0}、{1} 按位置取参数
 
 # 通过关键字参数
-print("我叫{name}，今年{age}岁".format(name="李四", age=30))
+print("我叫{name}，今年{age}岁".format(name="李四", age=30))   # 按名字匹配参数
 
 # 格式化数字
 print("{:.2f}".format(3.14159))    # 3.14
@@ -1741,17 +1741,17 @@ print("{:0>5}".format(42))         # 00042，补零
 f-string 是最新、最简洁、最快的格式化方式：
 
 \`\`\`python
-name = "张三"
+name = "张三"                          # f-string：字符串前加 f，{} 内可直接写变量/表达式
 age = 28
 print(f"我叫{name}，今年{age}岁")
 # 我叫张三，今年28岁
 
 # 在 {} 中可以直接写表达式
 print(f"明年我{age + 1}岁")
-print(f"{'Python'.upper()}")
+print(f"{'Python'.upper()}")          # {} 内调用方法
 
 # 格式化说明符（在 : 后面）
-pi = 3.14159265
+pi = 3.14159265                       # : 后跟格式说明符
 print(f"圆周率: {pi:.2f}")         # 3.14
 print(f"百分比: {0.85:.1%}")       # 85.0%
 print(f"千分位: {1000000:,}")      # 1,000,000
@@ -1761,7 +1761,7 @@ print(f"右对齐: {42:>10}")         # 右对齐宽度10
 print(f"补零: {42:0>5}")           # 00042
 
 # Python 3.8+：调试模式，变量名=值
-x = 42
+x = 42                               # 调试模式：f"{x = }" 同时输出变量名和值
 print(f"{x = }")                   # x = 42
 print(f"{x + 1 = }")               # x + 1 = 43
 \`\`\`
@@ -1783,7 +1783,7 @@ Python 字符串有非常丰富的方法，下面逐一讲解。
 #### 大小写转换
 
 \`\`\`python
-s = "Hello World"
+s = "Hello World"      # 字符串大小写转换方法，均返回新字符串不改变原串
 
 print(s.upper())        # "HELLO WORLD"，全大写
 print(s.lower())        # "hello world"，全小写
@@ -1795,21 +1795,21 @@ print(s.swapcase())     # "hELLO wORLD"，大小写互换
 #### 去除空白字符
 
 \`\`\`python
-s = "  Hello World  "
+s = "  Hello World  "   # strip 系列方法去除两端字符，默认去空白
 
 print(s.strip())    # "Hello World"，去除两端空白
 print(s.lstrip())   # "Hello World  "，去除左端空白
 print(s.rstrip())   # "  Hello World"，去除右端空白
 
 # 也可以指定要去除的字符
-s2 = "###Hello###"
+s2 = "###Hello###"      # 传入参数则去除指定字符
 print(s2.strip("#"))   # "Hello"
 \`\`\`
 
 #### 查找与替换
 
 \`\`\`python
-s = "Hello, World, Hello Python"
+s = "Hello, World, Hello Python"   # 查找与替换系列方法
 
 # find：查找子串，返回第一个匹配的索引，找不到返回 -1
 print(s.find("World"))    # 7
@@ -1835,20 +1835,20 @@ print(s.replace("Hello", "Hi", 1))          # 只替换第一个
 
 \`\`\`python
 # split：按分隔符分割，返回列表
-s = "苹果,香蕉,橘子,葡萄"
+s = "苹果,香蕉,橘子,葡萄"      # split 返回列表，原串不变
 print(s.split(","))        # ['苹果', '香蕉', '橘子', '葡萄']
 print(s.split(",", 2))     # ['苹果', '香蕉', '橘子,葡萄']，最多分2次
 
 # 按空白分割（不传参数）
-s2 = "Hello   World   Python"
+s2 = "Hello   World   Python"   # 不传参时按任意空白分割并去空
 print(s2.split())          # ['Hello', 'World', 'Python']
 
 # splitlines：按行分割
-s3 = "第一行\\n第二行\\n第三行"
+s3 = "第一行\\n第二行\\n第三行"   # 按换行符分割，返回各行列表
 print(s3.splitlines())     # ['第一行', '第二行', '第三行']
 
 # join：用字符串连接列表中的元素
-words = ["Hello", "World", "Python"]
+words = ["Hello", "World", "Python"]   # join 是 split 的逆操作
 print(" ".join(words))     # "Hello World Python"
 print("-".join(words))     # "Hello-World-Python"
 print("".join(words))      # "HelloWorldPython"
@@ -1870,7 +1870,7 @@ print("hello".islower())       # True
 #### 前缀与后缀判断
 
 \`\`\`python
-s = "Hello World"
+s = "Hello World"             # startswith/endswith 判断首尾子串
 
 print(s.startswith("Hello"))    # True
 print(s.startswith("World", 6)) # True，从索引 6 开始判断
@@ -1938,11 +1938,11 @@ print("C:\\\\Users\\\\Admin")   # C:\\Users\\Admin
 print(r"C:\\Users\\\\Admin")  # C:\\Users\\\\Admin
 
 # 原始字符串在正则表达式中极其有用
-import re
+import re                            # 导入正则模块
 # 不用 r：要写 "\\\\\\\\d" 来匹配 \\d
 # 用 r：直接写 r"\\d"
-pattern = r"\\d{3}-\\d{4}"
-print(re.findall(pattern, "电话: 123-4567"))
+pattern = r"\\d{3}-\\d{4}"           # 原始字符串让反斜杠按字面解释，便于写正则
+print(re.findall(pattern, "电话: 123-4567"))   # 在文本中查找所有匹配
 \`\`\`
 
 **注意**：原始字符串中反斜杠仍然不能出现在末尾（即 \`r"abc\\\\" \` 中最后的 \\\\ 会被认为转义了引号）。
@@ -1952,25 +1952,25 @@ print(re.findall(pattern, "电话: 123-4567"))
 三引号创建的多行字符串会保留其中的换行和缩进：
 
 \`\`\`python
-poem = '''
+poem = '''              # 用三单引号创建多行字符串，保留其中的换行和缩进
 静夜思
 床前明月光，
 疑是地上霜。
 举头望明月，
 低头思故乡。
-'''
-print(poem)
+'''                         # 三单引号闭合多行字符串
+print(poem)                 # 打印多行字符串，原样输出包含换行的内容
 \`\`\`
 
 如果想去掉多行字符串开头的换行和缩进，可以用 \`textwrap.dedent()\`：
 
 \`\`\`python
-import textwrap
-text = textwrap.dedent("""
+import textwrap                                   # 导入 textwrap，用于处理文本缩进
+text = textwrap.dedent("""                         # dedent 去除多行字符串的公共前导空白
     第一行
     第二行
     第三行
-""").strip()
+""").strip()                                       # strip 去除首尾空白行
 \`\`\`
 
 ### encode() 与 decode()：str 与 bytes
@@ -1992,7 +1992,7 @@ print(type(b))     # <class 'bytes'>
 \`str.encode(encoding)\` 把 Unicode 字符串编码为字节序列：
 
 \`\`\`python
-s = "你好"
+s = "你好"                          # encode 将字符串按指定编码转为字节串
 b_utf8 = s.encode("utf-8")      # UTF-8 编码
 b_gbk = s.encode("gbk")         # GBK 编码
 print(b_utf8)    # b'\\xe4\\xbd\\xa0\\xe5\\xa5\\xbd'（6 字节）
@@ -2005,8 +2005,8 @@ print(len(b_utf8))  # 6
 \`bytes.decode(encoding)\` 把字节序列解码为 Unicode 字符串：
 
 \`\`\`python
-b = b'\\xe4\\xbd\\xa0\\xe5\\xa5\\xbd'
-s = b.decode("utf-8")
+b = b'\\xe4\\xbd\\xa0\\xe5\\xa5\\xbd'   # 字节串字面量，前缀 b 表示 bytes
+s = b.decode("utf-8")                   # decode 将字节串按编码解码为字符串
 print(s)    # 你好
 \`\`\`
 
@@ -2021,7 +2021,7 @@ str  --encode()-->  bytes  --decode()-->  str
 编码和解码必须用**同一种编码**，否则会出现乱码或报错：
 
 \`\`\`python
-s = "你好"
+s = "你好"                          # 注意：编解码必须用同一编码，否则乱码或报错
 b = s.encode("utf-8")
 # s2 = b.decode("gbk")  # ❌ 可能乱码或 UnicodeDecodeError
 s2 = b.decode("utf-8")  # ✅ 正确
@@ -2040,11 +2040,11 @@ s2 = b.decode("utf-8")  # ✅ 正确
 
 \`\`\`python
 # 遍历字符串的每个字符
-for char in "Python":
+for char in "Python":            # for 循环逐个取出字符
     print(char)
 
 # enumerate 获取索引和字符
-for i, char in enumerate("Python"):
+for i, char in enumerate("Python"):   # enumerate 同时给出索引和元素
     print(f"索引 {i}: {char}")
 \`\`\`
 
@@ -2052,16 +2052,16 @@ for i, char in enumerate("Python"):
 
 \`\`\`python
 # 反转字符串
-s = "Hello"
+s = "Hello"                    # 切片 [::-1] 反转序列
 print(s[::-1])        # "olleH"
 
 # 判断回文
-def is_palindrome(s):
+def is_palindrome(s):        # 定义回文判断函数
     return s == s[::-1]
 print(is_palindrome("level"))   # True
 
 # 统计字符出现次数
-s = "mississippi"
+s = "mississippi"             # count 方法统计子串出现次数
 print(s.count("s"))   # 4
 
 # 去除字符串中所有空白
@@ -2069,11 +2069,11 @@ s = "  a b  c  "
 print("".join(s.split()))   # "abc"
 
 # 字符串填充对齐
-for i in range(1, 4):
+for i in range(1, 4):                  # ljust/rjust/center 指定宽度与填充符
     print(f"第{i}行".ljust(10, "."))
 
 # 多行字符串去缩进
-import textwrap
+import textwrap                              # dedent 去除公共缩进
 code = textwrap.dedent("""
     def hello():
         print("hi")
@@ -2432,14 +2432,14 @@ print(5 <= 4)     # False
 Python 支持**链式比较**，这是其他语言没有的便捷特性：
 
 \`\`\`python
-x = 5
+x = 5                          # Python 支持链式比较
 # 等价于 0 < x and x < 10
 print(0 < x < 10)    # True
 print(0 < x > 3)     # True，等价于 0 < x and x > 3
 
 # 判断范围
 age = 25
-if 18 <= age <= 60:
+if 18 <= age <= 60:    # 链式比较：等价于 18 <= age and age <= 60
     print("适龄劳动力")
 \`\`\`
 
@@ -2494,7 +2494,7 @@ print(None or 0)     # 0
 
 \`\`\`python
 # 利用 or 设置默认值
-name = input_name or "匿名"
+name = input_name or "匿名"      # input_name 为假值时回退到 "匿名"
 # 等价于：
 # if input_name:
 #     name = input_name
@@ -2508,9 +2508,9 @@ name = input_name or "匿名"
 
 \`\`\`python
 # and 短路：第一个为假，不计算第二个
-def expensive_func():
-    print("函数被调用了")
-    return True
+def expensive_func():              # 定义一个开销大的函数
+    print("函数被调用了")           # 打印调用标记
+    return True                    # 返回 True
 
 result = False and expensive_func()   # 不会打印"函数被调用了"
 # 因为 False and ... 一定是 False，不需要计算右边
@@ -2524,11 +2524,11 @@ result = True or expensive_func()     # 不会打印"函数被调用了"
 
 \`\`\`python
 # 避免 None 上的属性访问错误
-if user is not None and user.is_active:
+if user is not None and user.is_active:   # 先判空再访问属性，防止 AttributeError
     print("用户活跃")
 
 # 避免除零错误
-if denominator != 0 and numerator / denominator > 1:
+if denominator != 0 and numerator / denominator > 1:   # 先判非零再做除法
     print("分子大于分母")
 \`\`\`
 
@@ -2556,7 +2556,7 @@ x, y = y, x   # 交换变量
 | \`**=\` | \`x = x ** y\` | \`x **= 2\` |
 
 \`\`\`python
-x = 10
+x = 10                    # 复合赋值运算符：op= 等价于 x = x op y
 x += 5      # x = 15
 x -= 3      # x = 12
 x *= 2      # x = 24
@@ -2569,7 +2569,7 @@ x **= 2     # x = 9.0
 
 \`\`\`python
 a = [1, 2]
-b = a
+b = a                  # b 与 a 同一对象
 a += [3]       # 原地修改，b 也变了
 print(b)       # [1, 2, 3]
 
@@ -2608,15 +2608,15 @@ print(20 >> 2)  # 5   (101，右移2位 = 20 // 4)
 \`\`\`python
 # 判断奇偶（比 n % 2 更快）
 n = 7
-if n & 1:
+if n & 1:                  # 与运算：最低位为 1 即奇数
     print("奇数")
 else:
     print("偶数")
 
 # 交换两个数（不用临时变量）
 a, b = 3, 5
-a = a ^ b
-b = a ^ b
+a = a ^ b                  # 异或
+b = a ^ b                  # 利用异或可逆性恢复
 a = a ^ b
 print(a, b)  # 5 3
 
@@ -2624,7 +2624,7 @@ print(a, b)  # 5 3
 READ = 4      # 100
 WRITE = 2     # 010
 EXECUTE = 1   # 001
-permission = READ | WRITE   # 110 = 6
+permission = READ | WRITE   # 110 = 6   按位或组合权限
 print(permission & READ)    # 4，有读权限
 print(permission & EXECUTE) # 0，无执行权限
 \`\`\`
@@ -2661,7 +2661,7 @@ print(2 in {1, 2, 3})        # True
 # if item in large_list: ...
 
 # 快：集合查找 O(1)
-large_set = set(large_list)
+large_set = set(large_list)      # 预先转为集合，查找复杂度降为 O(1)
 # if item in large_set: ...
 \`\`\`
 
@@ -2674,8 +2674,8 @@ large_set = set(large_list)
 
 \`\`\`python
 a = [1, 2]
-b = [1, 2]
-c = a
+b = [1, 2]            # 值相同但不同对象
+c = a                 # c 与 a 同一对象
 
 print(a is c)         # True，a 和 c 是同一个对象
 print(a is b)         # False，a 和 b 不是同一个对象
@@ -2690,7 +2690,7 @@ print(a is not b)     # True
 **None 判断用 is**：
 
 \`\`\`python
-x = None
+x = None                # None 是单例，判断身份用 is
 if x is None:       # ✅ 推荐
     print("x 是 None")
 # 不要用 x == None
@@ -2737,10 +2737,10 @@ print(not True or False)  # False，not 优先级高于 or
 
 \`\`\`python
 # 不清晰
-result = a + b * c & d
+result = a + b * c & d        # 依赖默认优先级，可读性差
 
 # 清晰
-result = a + (b * c) & d
+result = a + (b * c) & d       # 用括号明确意图，避免歧义
 \`\`\`
 
 ### 海象运算符 := （Python 3.8+）
@@ -2751,12 +2751,12 @@ result = a + (b * c) & d
 
 \`\`\`python
 # 传统写法
-n = 10
-if n > 5:
+n = 10                # 先赋值
+if n > 5:             # 再判断
     print(f"n={n}，大于5")
 
 # 海象运算符
-if (n := 10) > 5:
+if (n := 10) > 5:     # := 在表达式内部赋值并返回值，n 被赋为 10
     print(f"n={n}，大于5")
 \`\`\`
 
@@ -2823,11 +2823,11 @@ Python 的条件表达式语法：
 # 条件为真返回值1，否则返回值2
 
 age = 20
-status = "成年" if age >= 18 else "未成年"
+status = "成年" if age >= 18 else "未成年"   # 三元表达式，单行条件赋值
 print(status)   # "成年"
 
 # 等价于
-if age >= 18:
+if age >= 18:                 # 普通 if/else 写法
     status = "成年"
 else:
     status = "未成年"
@@ -2837,7 +2837,7 @@ else:
 
 \`\`\`python
 score = 85
-grade = "优秀" if score >= 90 else ("良好" if score >= 80 else "及格")
+grade = "优秀" if score >= 90 else ("良好" if score >= 80 else "及格")   # 嵌套三元，慎用以免可读性下降
 print(grade)  # "良好"
 \`\`\`
 
@@ -2847,13 +2847,13 @@ print(grade)  # "良好"
 
 \`\`\`python
 # 设置默认值
-name = input_name if input_name else "匿名"
+name = input_name if input_name else "匿名"   # input_name 为真用原值，否则用"匿名"
 
 # 选择较大的值
-max_val = a if a > b else b
+max_val = a if a > b else b                    # a 大返回 a，否则返回 b
 
 # 格式化输出
-status = "✅" if success else "❌"
+status = "✅" if success else "❌"              # success 为真显示对号，否则显示叉号
 \`\`\`
 
 ### 运算符重载（简介）
@@ -2862,23 +2862,23 @@ Python 允许自定义类通过**魔术方法**重载运算符：
 
 \`\`\`python
 class Vector:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
+    def __init__(self, x, y):       # 构造方法，初始化向量
+        self.x = x                  # 设置 x 坐标
+        self.y = y                  # 设置 y 坐标
 
     # 重载 + 运算符
-    def __add__(self, other):
-        return Vector(self.x + other.x, self.y + other.y)
+    def __add__(self, other):       # 定义 + 的行为
+        return Vector(self.x + other.x, self.y + other.y)   # 返回新向量
 
     # 重载 == 运算符
-    def __eq__(self, other):
-        return self.x == other.x and self.y == other.y
+    def __eq__(self, other):        # 定义 == 的行为
+        return self.x == other.x and self.y == other.y       # 比较两个向量的坐标
 
-    def __repr__(self):
+    def __repr__(self):             # 定义对象的字符串表示
         return f"Vector({self.x}, {self.y})"
 
-v1 = Vector(1, 2)
-v2 = Vector(3, 4)
+v1 = Vector(1, 2)                   # 创建向量 v1
+v2 = Vector(3, 4)                   # 创建向量 v2
 print(v1 + v2)        # Vector(4, 6)
 print(v1 == Vector(1, 2))  # True
 \`\`\`

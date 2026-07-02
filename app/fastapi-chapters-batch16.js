@@ -86,71 +86,119 @@ blog/
 
 \`\`\`python
 # app/models/base.py
+# 从 sqlalchemy.orm 导入 DeclarativeBase
 from sqlalchemy.orm import DeclarativeBase
 
+# 定义类 Base，继承 DeclarativeBase
 class Base(DeclarativeBase):
+    # 空操作占位
     pass
 
 # app/models/user.py
+# 从 sqlalchemy 导入 String, Boolean
 from sqlalchemy import String, Boolean
+# 从 sqlalchemy.orm 导入 Mapped, mapped_column, relationship
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+# 从 app.models.base 导入 Base
 from app.models.base import Base
 
+# 定义类 User，继承 Base
 class User(Base):
+    # 定义变量 __tablename__，赋值为 "users"
     __tablename__ = "users"
 
+    # 字段 id，类型: Mapped[int]，默认值: mapped_column(primary_key=True)
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 字段 email，类型: Mapped[str]，默认值: mapped_column(String(255), unique=True, index=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    # 字段 hashed_password，类型: Mapped[str]，默认值: mapped_column(String(255))
     hashed_password: Mapped[str] = mapped_column(String(255))
+    # 字段 nickname，类型: Mapped[str]，默认值: mapped_column(String(50))
     nickname: Mapped[str] = mapped_column(String(50))
+    # 字段 is_admin，类型: Mapped[bool]，默认值: mapped_column(default=False)
     is_admin: Mapped[bool] = mapped_column(default=False)
 
     # 关系:一个用户有多篇文章、多条评论
+    # 字段 posts，类型: Mapped[list["Post"]]，默认值: relationship(back_populates="author", cascade="all, delete-orphan")
     posts: Mapped[list["Post"]] = relationship(back_populates="author", cascade="all, delete-orphan")
+    # 字段 comments，类型: Mapped[list["Comment"]]，默认值: relationship(back_populates="author", cascade="all, delete-orphan")
     comments: Mapped[list["Comment"]] = relationship(back_populates="author", cascade="all, delete-orphan")
 
 # app/models/post.py
+# 从 sqlalchemy 导入 String, Text, ForeignKey, func
 from sqlalchemy import String, Text, ForeignKey, func
+# 从 sqlalchemy.orm 导入 Mapped, mapped_column, relationship
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+# 从 app.models.base 导入 Base
 from app.models.base import Base
+# 从 sqlalchemy 导入 DateTime
 from sqlalchemy import DateTime
+# 导入 datetime 模块
 import datetime
 
 # 文章和标签是多对多,需要中间表
+# 定义变量 post_tags，赋值为 Table(
 post_tags = Table(
+    # "post_tags", Base.metadata,
     "post_tags", Base.metadata,
+    # 调用 Column()
     Column("post_id", ForeignKey("posts.id", ondelete="CASCADE"), primary_key=True),
+    # 调用 Column()
     Column("tag_id", ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True),
+# )
 )
 
+# 定义类 Post，继承 Base
 class Post(Base):
+    # 定义变量 __tablename__，赋值为 "posts"
     __tablename__ = "posts"
 
+    # 字段 id，类型: Mapped[int]，默认值: mapped_column(primary_key=True)
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 字段 title，类型: Mapped[str]，默认值: mapped_column(String(200))
     title: Mapped[str] = mapped_column(String(200))
+    # 字段 content，类型: Mapped[str]，默认值: mapped_column(Text)
     content: Mapped[str] = mapped_column(Text)
+    # 字段 author_id，类型: Mapped[int]，默认值: mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    # 字段 created_at，类型: Mapped[datetime.datetime]，默认值: mapped_column(DateTime, server_default=func.now())
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
+    # 字段 updated_at，类型: Mapped[datetime.datetime]，默认值: mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
+    # 字段 author，类型: Mapped["User"]，默认值: relationship(back_populates="posts")
     author: Mapped["User"] = relationship(back_populates="posts")
+    # 字段 comments，类型: Mapped[list["Comment"]]，默认值: relationship(back_populates="post", cascade="all, delete-orphan")
     comments: Mapped[list["Comment"]] = relationship(back_populates="post", cascade="all, delete-orphan")
+    # 字段 tags，类型: Mapped[list["Tag"]]，默认值: relationship(secondary=post_tags, back_populates="posts")
     tags: Mapped[list["Tag"]] = relationship(secondary=post_tags, back_populates="posts")
 
 # app/models/comment.py
+# 定义类 Comment，继承 Base
 class Comment(Base):
+    # 定义变量 __tablename__，赋值为 "comments"
     __tablename__ = "comments"
 
+    # 字段 id，类型: Mapped[int]，默认值: mapped_column(primary_key=True)
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 字段 content，类型: Mapped[str]，默认值: mapped_column(Text)
     content: Mapped[str] = mapped_column(Text)
+    # 字段 post_id，类型: Mapped[int]，默认值: mapped_column(ForeignKey("posts.id", ondelete="CASCADE"))
     post_id: Mapped[int] = mapped_column(ForeignKey("posts.id", ondelete="CASCADE"))
+    # 字段 author_id，类型: Mapped[int]，默认值: mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    # 字段 parent_id，类型: Mapped[int | None]，默认值: mapped_column(ForeignKey("comments.id", ondelete="CASCADE"), nullable=True)
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("comments.id", ondelete="CASCADE"), nullable=True)
+    # 字段 created_at，类型: Mapped[datetime.datetime]，默认值: mapped_column(DateTime, server_default=func.now())
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
 
+    # 字段 post，类型: Mapped["Post"]，默认值: relationship(back_populates="comments")
     post: Mapped["Post"] = relationship(back_populates="comments")
+    # 字段 author，类型: Mapped["User"]，默认值: relationship(back_populates="comments")
     author: Mapped["User"] = relationship(back_populates="comments")
+    # 字段 parent，类型: Mapped["Comment | None"]，默认值: relationship(remote_side=[id], back_populates="replies")
     parent: Mapped["Comment | None"] = relationship(remote_side=[id], back_populates="replies")
+    # 字段 replies，类型: Mapped[list["Comment"]]，默认值: relationship(back_populates="parent")
     replies: Mapped[list["Comment"]] = relationship(back_populates="parent")
 \`\`\`
 
@@ -165,42 +213,72 @@ class Comment(Base):
 
 \`\`\`python
 # app/schemas/user.py
+# 从 pydantic 导入 BaseModel, EmailStr
 from pydantic import BaseModel, EmailStr
 
+# 定义 Pydantic 数据模型 UserCreate，继承 BaseModel
 class UserCreate(BaseModel):
+    # 字段 email，类型: EmailStr
     email: EmailStr
+    # 字段 password，类型: str
     password: str
+    # 字段 nickname，类型: str
     nickname: str
 
+# 定义 Pydantic 数据模型 UserOut，继承 BaseModel
 class UserOut(BaseModel):
+    # 字段 id，类型: int
     id: int
+    # 字段 email，类型: EmailStr
     email: EmailStr
+    # 字段 nickname，类型: str
     nickname: str
+    # 字段 is_admin，类型: bool
     is_admin: bool
+    # 定义类 Config
     class Config:
+        # 定义变量 from_attributes，赋值为 True
         from_attributes = True
 
+# 定义 Pydantic 数据模型 UserUpdate，继承 BaseModel
 class UserUpdate(BaseModel):
+    # 字段 nickname，类型: str | None，默认值: None
     nickname: str | None = None
+    # 字段 password，类型: str | None，默认值: None
     password: str | None = None
 
 # app/schemas/post.py
+# 定义 Pydantic 数据模型 PostCreate，继承 BaseModel
 class PostCreate(BaseModel):
+    # 字段 title，类型: str
     title: str
+    # 字段 content，类型: str
     content: str
+    # 字段 tag_ids，类型: list[int]，默认值: []
     tag_ids: list[int] = []
 
+# 定义 Pydantic 数据模型 PostUpdate，继承 BaseModel
 class PostUpdate(BaseModel):
+    # 字段 title，类型: str | None，默认值: None
     title: str | None = None
+    # 字段 content，类型: str | None，默认值: None
     content: str | None = None
 
+# 定义 Pydantic 数据模型 PostOut，继承 BaseModel
 class PostOut(BaseModel):
+    # 字段 id，类型: int
     id: int
+    # 字段 title，类型: str
     title: str
+    # 字段 content，类型: str
     content: str
+    # 字段 author_id，类型: int
     author_id: int
+    # 字段 created_at，类型: datetime
     created_at: datetime
+    # 定义类 Config
     class Config:
+        # 定义变量 from_attributes，赋值为 True
         from_attributes = True
 \`\`\`
 
@@ -208,35 +286,60 @@ class PostOut(BaseModel):
 
 \`\`\`python
 # app/core/security.py
+# 从 datetime 导入 datetime, timedelta, timezone
 from datetime import datetime, timedelta, timezone
+# 从 jose 导入 jwt, JWTError
 from jose import jwt, JWTError
+# 从 passlib.context 导入 CryptContext
 from passlib.context import CryptContext
+# 从 app.core.config 导入 settings
 from app.core.config import settings
 
+# 定义变量 pwd_ctx，赋值为 CryptContext(schemes=["bcrypt"], deprecated="...
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# 定义函数 hash_password，返回: str
 def hash_password(password: str) -> str:
+    # """密码哈希(存数据库)。"""
     """密码哈希(存数据库)。"""
+    # 返回 pwd_ctx.hash(password)
     return pwd_ctx.hash(password)
 
+# 定义函数 verify_password，返回: bool
 def verify_password(plain: str, hashed: str) -> bool:
+    # """校验密码。"""
     """校验密码。"""
+    # 返回 pwd_ctx.verify(plain, hashed)
     return pwd_ctx.verify(plain, hashed)
 
+# 定义函数 create_access_token，返回: str
 def create_access_token(subject: str, expires_minutes: int | None = None) -> str:
+    # """生成 JWT。"""
     """生成 JWT。"""
+    # 定义变量 expire，赋值为 datetime.now(timezone.utc) + timedelta(
     expire = datetime.now(timezone.utc) + timedelta(
+        # 定义变量 minutes，赋值为 expires_minutes or settings.ACCESS_TOKEN_EXPI...
         minutes=expires_minutes or settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    # )
     )
+    # 定义字典 payload
     payload = {"sub": subject, "exp": expire}
+    # 返回 jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
+# 定义函数 decode_token，返回: str | None
 def decode_token(token: str) -> str | None:
+    # """解析 JWT,返回 subject(用户 id)。"""
     """解析 JWT,返回 subject(用户 id)。"""
+    # 尝试执行，捕获异常
     try:
+        # 定义变量 payload，赋值为 jwt.decode(token, settings.SECRET_KEY, algori...
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        # 返回 payload.get("sub")
         return payload.get("sub")
+    # 捕获 JWTError 异常
     except JWTError:
+        # 返回 None
         return None
 \`\`\`
 
@@ -244,42 +347,75 @@ def decode_token(token: str) -> str | None:
 
 \`\`\`python
 # app/core/deps.py
+# 从 fastapi 导入 Depends, HTTPException, status
 from fastapi import Depends, HTTPException, status
+# 从 fastapi.security 导入 OAuth2PasswordBearer
 from fastapi.security import OAuth2PasswordBearer
+# 从 sqlalchemy.orm 导入 Session
 from sqlalchemy.orm import Session
+# 从 app.core.security 导入 decode_token, verify_password
 from app.core.security import decode_token, verify_password
+# 从 app.crud.user 导入 get_user_by_email
 from app.crud.user import get_user_by_email
+# 从 app.models.user 导入 User
 from app.models.user import User
 
+# 定义变量 oauth2_scheme，赋值为 OAuth2PasswordBearer(tokenUrl="/api/v1/auth/l...
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
+# 定义函数 get_db，参数: 
 def get_db():
+    # """数据库 session 依赖。"""
     """数据库 session 依赖。"""
+    # 定义变量 db，赋值为 SessionLocal()
     db = SessionLocal()
+    # 尝试执行，捕获异常
     try:
+        # 生成值: db
         yield db
+    # 无论是否异常都执行
     finally:
+        # 调用 db.close()
         db.close()
 
+# 定义函数 get_current_user，返回: User
 def get_current_user(token: str = Depends(oauth2_scheme), db = Depends(get_db)) -> User:
+    # """从 token 解出当前用户。"""
     """从 token 解出当前用户。"""
+    # 定义变量 credentials_error，赋值为 HTTPException(
     credentials_error = HTTPException(
+        # 定义变量 status_code，赋值为 status.HTTP_401_UNAUTHORIZED,
         status_code=status.HTTP_401_UNAUTHORIZED,
+        # 定义变量 detail，赋值为 "无效的认证凭据",
         detail="无效的认证凭据",
+        # 定义字典 headers
         headers={"WWW-Authenticate": "Bearer"},
+    # )
     )
+    # 定义变量 user_id，赋值为 decode_token(token)
     user_id = decode_token(token)
+    # 条件判断：如果 not user_id
     if not user_id:
+        # 抛出 credentials_error 异常
         raise credentials_error
+    # 定义变量 user，赋值为 db.get(User, int(user_id))
     user = db.get(User, int(user_id))
+    # 条件判断：如果 not user
     if not user:
+        # 抛出 credentials_error 异常
         raise credentials_error
+    # 返回 user
     return user
 
+# 定义函数 get_current_admin，返回: User
 def get_current_admin(user: User = Depends(get_current_user)) -> User:
+    # """要求当前用户是管理员。"""
     """要求当前用户是管理员。"""
+    # 条件判断：如果 not user.is_admin
     if not user.is_admin:
+        # 抛出 HTTPException 异常: 403, "需要管理员权限"
         raise HTTPException(403, "需要管理员权限")
+    # 返回 user
     return user
 \`\`\`
 
@@ -287,72 +423,133 @@ def get_current_admin(user: User = Depends(get_current_user)) -> User:
 
 \`\`\`python
 # app/api/v1/posts.py
+# 从 fastapi 导入 APIRouter, Depends, HTTPException, Query
 from fastapi import APIRouter, Depends, HTTPException, Query
+# 从 app.core.deps 导入 get_db, get_current_user
 from app.core.deps import get_db, get_current_user
+# 从 app.models.user 导入 User
 from app.models.user import User
+# 从 app.schemas.post 导入 PostCreate, PostUpdate, PostOut
 from app.schemas.post import PostCreate, PostUpdate, PostOut
+# 从 app.services.post_service 导入 PostService
 from app.services.post_service import PostService
 
+# 创建 APIRouter 实例，设置路由前缀
 router = APIRouter(prefix="/posts", tags=["文章"])
 
+# 定义 GET 路由：访问 / 时触发
 @router.get("/", response_model=list[PostOut])
+# def list_posts(
 def list_posts(
+    # 字段 skip，类型: int，默认值: Query(0, ge=0),
     skip: int = Query(0, ge=0),
+    # 字段 limit，类型: int，默认值: Query(20, ge=1, le=100),
     limit: int = Query(20, ge=1, le=100),
+    # 字段 tag，类型: str | None，默认值: None,
     tag: str | None = None,
+    # 定义变量 db，赋值为 Depends(get_db),
     db = Depends(get_db),
+# ):
 ):
+    # """文章列表,支持分页和按标签筛选。"""
     """文章列表,支持分页和按标签筛选。"""
+    # 定义变量 service，赋值为 PostService(db)
     service = PostService(db)
+    # 返回 service.list_posts(skip, limit, tag)
     return service.list_posts(skip, limit, tag)
 
+# 定义 GET 路由：访问 /{post_id} 时触发
 @router.get("/{post_id}", response_model=PostOut)
+# 定义函数 get_post，参数: post_id: int, db = Depends(get_db)
 def get_post(post_id: int, db = Depends(get_db)):
+    # 定义变量 service，赋值为 PostService(db)
     service = PostService(db)
+    # 定义变量 post，赋值为 service.get_post(post_id)
     post = service.get_post(post_id)
+    # 条件判断：如果 not post
     if not post:
+        # 抛出 HTTPException 异常: 404, "文章不存在"
         raise HTTPException(404, "文章不存在")
+    # 返回 post
     return post
 
+# 定义 POST 路由：访问 / 时触发
 @router.post("/", response_model=PostOut, status_code=201)
+# def create_post(
 def create_post(
+    # 字段 post_in，类型: PostCreate,
     post_in: PostCreate,
+    # 字段 current_user，类型: User，默认值: Depends(get_current_user),
     current_user: User = Depends(get_current_user),
+    # 定义变量 db，赋值为 Depends(get_db),
     db = Depends(get_db),
+# ):
 ):
+    # """发布文章,需要登录。"""
     """发布文章,需要登录。"""
+    # 定义变量 service，赋值为 PostService(db)
     service = PostService(db)
+    # 返回 service.create_post(post_in, current_user.id)
     return service.create_post(post_in, current_user.id)
 
+# 定义 PUT 路由：访问 /{post_id} 时触发
 @router.put("/{post_id}", response_model=PostOut)
+# def update_post(
 def update_post(
+    # 字段 post_id，类型: int,
     post_id: int,
+    # 字段 post_in，类型: PostUpdate,
     post_in: PostUpdate,
+    # 字段 current_user，类型: User，默认值: Depends(get_current_user),
     current_user: User = Depends(get_current_user),
+    # 定义变量 db，赋值为 Depends(get_db),
     db = Depends(get_db),
+# ):
 ):
+    # """编辑文章,只有作者本人能改。"""
     """编辑文章,只有作者本人能改。"""
+    # 定义变量 service，赋值为 PostService(db)
     service = PostService(db)
+    # 定义变量 post，赋值为 service.get_post(post_id)
     post = service.get_post(post_id)
+    # 条件判断：如果 not post
     if not post:
+        # 抛出 HTTPException 异常: 404, "文章不存在"
         raise HTTPException(404, "文章不存在")
+    # 条件判断：如果 post.author_id != current_user.id
     if post.author_id != current_user.id:
+        # 抛出 HTTPException 异常: 403, "只能编辑自己的文章"
         raise HTTPException(403, "只能编辑自己的文章")
+    # 返回 service.update_post(post, post_in)
     return service.update_post(post, post_in)
 
+# 定义 DELETE 路由：访问 /{post_id} 时触发
 @router.delete("/{post_id}", status_code=204)
+# def delete_post(
 def delete_post(
+    # 字段 post_id，类型: int,
     post_id: int,
+    # 字段 current_user，类型: User，默认值: Depends(get_current_user),
     current_user: User = Depends(get_current_user),
+    # 定义变量 db，赋值为 Depends(get_db),
     db = Depends(get_db),
+# ):
 ):
+    # """删除文章,作者或管理员可以。"""
     """删除文章,作者或管理员可以。"""
+    # 定义变量 service，赋值为 PostService(db)
     service = PostService(db)
+    # 定义变量 post，赋值为 service.get_post(post_id)
     post = service.get_post(post_id)
+    # 条件判断：如果 not post
     if not post:
+        # 抛出 HTTPException 异常: 404, "文章不存在"
         raise HTTPException(404, "文章不存在")
+    # 条件判断：如果 post.author_id != current_user.id and not current_user.is_admin
     if post.author_id != current_user.id and not current_user.is_admin:
+        # 抛出 HTTPException 异常: 403, "无权删除"
         raise HTTPException(403, "无权删除")
+    # 调用 service.delete_post()
     service.delete_post(post)
 \`\`\`
 
@@ -360,48 +557,84 @@ def delete_post(
 
 \`\`\`python
 # app/services/post_service.py
+# 从 sqlalchemy.orm 导入 Session
 from sqlalchemy.orm import Session
+# 从 app.models.post 导入 Post
 from app.models.post import Post
+# 从 app.models.tag 导入 Tag
 from app.models.tag import Tag
+# 从 app.schemas.post 导入 PostCreate, PostUpdate
 from app.schemas.post import PostCreate, PostUpdate
 
+# 定义类 PostService
 class PostService:
+    # 定义函数 __init__，参数: self, db: Session
     def __init__(self, db: Session):
+        # self.db = db
         self.db = db
 
+    # 定义函数 list_posts，参数: self, skip: int, limit: int, tag: str | None
     def list_posts(self, skip: int, limit: int, tag: str | None):
+        # 定义变量 query，赋值为 self.db.query(Post)
         query = self.db.query(Post)
+        # 条件判断：如果 tag
         if tag:
+            # 定义变量 query，赋值为 query.join(Post.tags).where(Tag.name == tag)
             query = query.join(Post.tags).where(Tag.name == tag)
+        # 返回 query.offset(skip).limit(limit).all()
         return query.offset(skip).limit(limit).all()
 
+    # 定义函数 get_post，参数: self, post_id: int
     def get_post(self, post_id: int):
+        # 返回 self.db.get(Post, post_id)
         return self.db.get(Post, post_id)
 
+    # 定义函数 create_post，返回: Post
     def create_post(self, post_in: PostCreate, author_id: int) -> Post:
+        # 定义变量 post，赋值为 Post(
         post = Post(
+            # 定义变量 title，赋值为 post_in.title,
             title=post_in.title,
+            # 定义变量 content，赋值为 post_in.content,
             content=post_in.content,
+            # 定义变量 author_id，赋值为 author_id,
             author_id=author_id,
+        # )
         )
         # 关联标签
+        # 条件判断：如果 post_in.tag_ids
         if post_in.tag_ids:
+            # 定义变量 tags，赋值为 self.db.query(Tag).filter(Tag.id.in_(post_in....
             tags = self.db.query(Tag).filter(Tag.id.in_(post_in.tag_ids)).all()
+            # post.tags = tags
             post.tags = tags
+        # 调用 self.db.add()
         self.db.add(post)
+        # 调用 self.db.commit()
         self.db.commit()
+        # 调用 self.db.refresh()
         self.db.refresh(post)
+        # 返回 post
         return post
 
+    # 定义函数 update_post，参数: self, post: Post, post_in: PostUpdate
     def update_post(self, post: Post, post_in: PostUpdate):
+        # 遍历 post_in.model_dump(exclude_unset=True).items()，取 field, value
         for field, value in post_in.model_dump(exclude_unset=True).items():
+            # 调用 setattr()
             setattr(post, field, value)
+        # 调用 self.db.commit()
         self.db.commit()
+        # 调用 self.db.refresh()
         self.db.refresh(post)
+        # 返回 post
         return post
 
+    # 定义函数 delete_post，参数: self, post: Post
     def delete_post(self, post: Post):
+        # 调用 self.db.delete()
         self.db.delete(post)
+        # 调用 self.db.commit()
         self.db.commit()
 \`\`\`
 
@@ -409,22 +642,36 @@ class PostService:
 
 \`\`\`python
 # app/api/v1/auth.py
+# 从 fastapi 导入 APIRouter, Depends, HTTPException
 from fastapi import APIRouter, Depends, HTTPException
+# 从 fastapi.security 导入 OAuth2PasswordRequestForm
 from fastapi.security import OAuth2PasswordRequestForm
+# 从 app.core.deps 导入 get_db
 from app.core.deps import get_db
+# 从 app.core.security 导入 verify_password, create_access_token
 from app.core.security import verify_password, create_access_token
+# 从 app.crud.user 导入 get_user_by_email
 from app.crud.user import get_user_by_email
 
+# 创建 APIRouter 实例，设置路由前缀
 router = APIRouter(prefix="/auth", tags=["认证"])
 
+# 定义 POST 路由：访问 /login 时触发
 @router.post("/login")
+# 定义函数 login，参数: form: OAuth2PasswordRequestForm = Depends(), db = ...
 def login(form: OAuth2PasswordRequestForm = Depends(), db = Depends(get_db)):
+    # """用 OAuth2PasswordRequestForm,字段是 username/passwo
     """用 OAuth2PasswordRequestForm,字段是 username/password。"""
     # username 字段实际存的是 email
+    # 定义变量 user，赋值为 get_user_by_email(db, form.username)
     user = get_user_by_email(db, form.username)
+    # 条件判断：如果 not user or not verify_password(form.password, user.hashed_password)
     if not user or not verify_password(form.password, user.hashed_password):
+        # 抛出 HTTPException 异常: 401, "邮箱或密码错误"
         raise HTTPException(401, "邮箱或密码错误")
+    # 定义变量 token，赋值为 create_access_token(subject=str(user.id))
     token = create_access_token(subject=str(user.id))
+    # 返回 {"access_token": token, "token_type": "bearer"}
     return {"access_token": token, "token_type": "bearer"}
 \`\`\`
 
@@ -434,21 +681,33 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db = Depends(get_db)):
 
 \`\`\`python
 # app/api/v1/router.py
+# 从 fastapi 导入 APIRouter
 from fastapi import APIRouter
+# 从 app.api.v1 导入 auth, users, posts, comments
 from app.api.v1 import auth, users, posts, comments
 
+# 创建路由器实例
 api_router = APIRouter(prefix="/api/v1")
+# 注册路由器 auth.router
 api_router.include_router(auth.router)
+# 注册路由器 users.router
 api_router.include_router(users.router)
+# 注册路由器 posts.router
 api_router.include_router(posts.router)
+# 注册路由器 comments.router
 api_router.include_router(comments.router)
 
 # app/main.py
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 app.api.v1.router 导入 api_router
 from app.api.v1.router import api_router
+# 从 app.core.config 导入 settings
 from app.core.config import settings
 
+# 创建 FastAPI 应用实例
 app = FastAPI(title=settings.APP_NAME)
+# 注册路由器 api_router
 app.include_router(api_router)
 \`\`\`
 
@@ -456,13 +715,20 @@ app.include_router(api_router)
 
 \`\`\`python
 # 全局异常处理
+# 从 fastapi 导入 Request
 from fastapi import Request
+# 从 fastapi.responses 导入 JSONResponse
 from fastapi.responses import JSONResponse
 
+# 装饰器：app.exception_handler
 @app.exception_handler(Exception)
+# 定义异步函数 global_exception_handler，参数: request: Request, exc: Exception
 async def global_exception_handler(request: Request, exc: Exception):
+    # """兜底未捕获异常,返回 500。"""
     """兜底未捕获异常,返回 500。"""
+    # 调用 logger.exception()
     logger.exception("未处理异常")
+    # 返回 JSONResponse(status_code=500, content={"detail": "服务器内部错误"})
     return JSONResponse(status_code=500, content={"detail": "服务器内部错误"})
 
 # 启动后访问 /docs 看 Swagger 文档
@@ -515,19 +781,33 @@ REST 和 GraphQL 的根本区别:
 
 \`\`\`graphql
 # 客户端想要什么字段,自己写
+# query {
 query {
+  # 调用 post()
   post(id: 1) {
+    # title
     title
+    # author {
     author {
+      # nickname
       nickname
+    # }
     }
+    # comments {
     comments {
+      # content
       content
+      # author {
       author {
+        # nickname
         nickname
+      # }
       }
+    # }
     }
+  # }
   }
+# }
 }
 \`\`\`
 
@@ -555,6 +835,7 @@ query {
 Python 生态有几个 GraphQL 库,\`strawberry-graphql\` 最现代(类型注解风格,和 FastAPI 哲学一致):
 
 \`\`\`bash
+# 安装 Python 包: strawberry-graphql[fastapi]
 pip install strawberry-graphql[fastapi]
 \`\`\`
 
@@ -564,36 +845,60 @@ Schema 是 GraphQL 的"数据合同",定义有哪些类型和字段:
 
 \`\`\`python
 # app/graphql/schema.py
+# 导入 strawberry 模块
 import strawberry
+# 从 typing 导入 Optional
 from typing import Optional
 
 # 类型定义,类似 Pydantic 但用 @strawberry.type
+# 装饰器：strawberry.type
 @strawberry.type
+# 定义类 User
 class User:
+    # 字段 id，类型: int
     id: int
+    # 字段 email，类型: str
     email: str
+    # 字段 nickname，类型: str
     nickname: str
 
+# 装饰器：strawberry.type
 @strawberry.type
+# 定义类 Comment
 class Comment:
+    # 字段 id，类型: int
     id: int
+    # 字段 content，类型: str
     content: str
+    # 字段 author，类型: "User"
     author: "User"
 
+# 装饰器：strawberry.type
 @strawberry.type
+# 定义类 Post
 class Post:
+    # 字段 id，类型: int
     id: int
+    # 字段 title，类型: str
     title: str
+    # 字段 content，类型: str
     content: str
+    # 字段 author，类型: "User"
     author: "User"
+    # 字段 comments，类型: list["Comment"]
     comments: list["Comment"]
 
     # resolver:关联字段怎么取
+    # 装饰器：strawberry.field
     @strawberry.field
+    # 定义函数 comments，返回: list["Comment"]
     def comments(self) -> list["Comment"]:
         # 这里查数据库,返回评论列表
+        # 从 app.crud.comment 导入 get_comments_by_post
         from app.crud.comment import get_comments_by_post
+        # 定义变量 db_comments，赋值为 get_comments_by_post(self.id)
         db_comments = get_comments_by_post(self.id)
+        # 返回 [Comment(id=c.id, content=c.content, author=User(...)) for c in db_comments]
         return [Comment(id=c.id, content=c.content, author=User(...)) for c in db_comments]
 \`\`\`
 
@@ -601,30 +906,53 @@ class Post:
 
 \`\`\`python
 # app/graphql/queries.py
+# 导入 strawberry 模块
 import strawberry
+# 从 app.graphql.schema 导入 User, Post
 from app.graphql.schema import User, Post
+# 从 app.crud.user 导入 get_user as crud_get_user
 from app.crud.user import get_user as crud_get_user
+# 从 app.crud.post 导入 get_post as crud_get_post
 from app.crud.post import get_post as crud_get_post
+# 从 app.core.deps 导入 get_db
 from app.core.deps import get_db
 
+# 装饰器：strawberry.type
 @strawberry.type
+# 定义类 Query
 class Query:
+    # 装饰器：strawberry.field
     @strawberry.field
+    # 定义函数 user，返回: User | None
     def user(self, id: int) -> User | None:
+        # """查单个用户。"""
         """查单个用户。"""
+        # 定义变量 db，赋值为 next(get_db())
         db = next(get_db())
+        # 定义变量 u，赋值为 crud_get_user(db, id)
         u = crud_get_user(db, id)
+        # 条件判断：如果 not u
         if not u:
+            # 返回 None
             return None
+        # 返回 User(id=u.id, email=u.email, nickname=u.nickname)
         return User(id=u.id, email=u.email, nickname=u.nickname)
 
+    # 装饰器：strawberry.field
     @strawberry.field
+    # 定义函数 post，返回: Post | None
     def post(self, id: int) -> Post | None:
+        # """查单个文章。"""
         """查单个文章。"""
+        # 定义变量 db，赋值为 next(get_db())
         db = next(get_db())
+        # 定义变量 p，赋值为 crud_get_post(db, id)
         p = crud_get_post(db, id)
+        # 条件判断：如果 not p
         if not p:
+            # 返回 None
             return None
+        # 返回 Post(id=p.id, title=p.title, content=p.content)
         return Post(id=p.id, title=p.title, content=p.content)
 \`\`\`
 
@@ -634,22 +962,37 @@ class Query:
 
 \`\`\`python
 # app/graphql/mutations.py
+# 导入 strawberry 模块
 import strawberry
+# 从 app.graphql.schema 导入 Post
 from app.graphql.schema import Post
+# 从 app.services.post_service 导入 PostService
 from app.services.post_service import PostService
 
+# 装饰器：strawberry.type
 @strawberry.type
+# 定义类 Mutation
 class Mutation:
+    # 装饰器：strawberry.mutation
     @strawberry.mutation
+    # 定义函数 create_post，返回: Post
     def create_post(self, title: str, content: str, token: str) -> Post:
+        # """发布文章。"""
         """发布文章。"""
         # 验证 token,拿用户(简化)
+        # 定义变量 user，赋值为 verify_token(token)
         user = verify_token(token)
+        # 条件判断：如果 not user
         if not user:
+            # 抛出 Exception 异常: "未登录"
             raise Exception("未登录")
+        # 定义变量 db，赋值为 next(get_db())
         db = next(get_db())
+        # 定义变量 service，赋值为 PostService(db)
         service = PostService(db)
+        # 定义变量 post，赋值为 service.create_post(PostCreate(title=title, c...
         post = service.create_post(PostCreate(title=title, content=content), user.id)
+        # 返回 Post(id=post.id, title=post.title, content=post.content)
         return Post(id=post.id, title=post.title, content=post.content)
 \`\`\`
 
@@ -657,18 +1000,27 @@ class Mutation:
 
 \`\`\`python
 # app/graphql/schema.py(完整)
+# 导入 strawberry 模块
 import strawberry
+# 从 app.graphql.queries 导入 Query
 from app.graphql.queries import Query
+# 从 app.graphql.mutations 导入 Mutation
 from app.graphql.mutations import Mutation
 
+# 定义变量 schema，赋值为 strawberry.Schema(query=Query, mutation=Mutat...
 schema = strawberry.Schema(query=Query, mutation=Mutation)
 
 # app/main.py
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 strawberry.fastapi 导入 GraphQLRouter
 from strawberry.fastapi import GraphQLRouter
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
+# 定义变量 graphql_app，赋值为 GraphQLRouter(schema)
 graphql_app = GraphQLRouter(schema)
+# 注册路由器 graphql_app, prefix="/graphql"
 app.include_router(graphql_app, prefix="/graphql")
 \`\`\`
 
@@ -678,13 +1030,21 @@ app.include_router(graphql_app, prefix="/graphql")
 
 \`\`\`graphql
 # 查文章详情(只要标题和作者昵称)
+# query {
 query {
+  # 调用 post()
   post(id: 1) {
+    # title
     title
+    # author {
     author {
+      # nickname
       nickname
+    # }
     }
+  # }
   }
+# }
 }
 \`\`\`
 
@@ -710,25 +1070,41 @@ query {
 GraphQL 通常用 HTTP header 传 token,在 resolver 里读 context:
 
 \`\`\`python
+# 从 strawberry.fastapi 导入 GraphQLRouter
 from strawberry.fastapi import GraphQLRouter
+# 从 fastapi 导入 Request
 from fastapi import Request
 
+# 定义异步函数 get_context，参数: request: Request
 async def get_context(request: Request):
+    # """从请求里取出 token,放进 context。"""
     """从请求里取出 token,放进 context。"""
+    # 定义变量 token，赋值为 request.headers.get("Authorization", "").repl...
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    # 返回 {"token": token, "user": verify_token(token)}
     return {"token": token, "user": verify_token(token)}
 
+# 定义变量 graphql_app，赋值为 GraphQLRouter(schema, context_getter=get_cont...
 graphql_app = GraphQLRouter(schema, context_getter=get_context)
+# 注册路由器 graphql_app, prefix="/graphql"
 app.include_router(graphql_app, prefix="/graphql")
 
 # resolver 里用 info.context 拿
+# 装饰器：strawberry.type
 @strawberry.type
+# 定义类 Query
 class Query:
+    # 装饰器：strawberry.field
     @strawberry.field
+    # 定义函数 me，返回: User | None
     def me(self, info) -> User | None:
+        # 定义变量 user，赋值为 info.context.get("user")
         user = info.context.get("user")
+        # 条件判断：如果 not user
         if not user:
+            # 抛出 Exception 异常: "未登录"
             raise Exception("未登录")
+        # 返回 User(id=user.id, ...)
         return User(id=user.id, ...)
 \`\`\`
 
@@ -738,31 +1114,47 @@ GraphQL 的杀手锏"按需取关联数据"也带来坑:**N+1 查询**。
 
 \`\`\`python
 # 危险:列表查 10 篇文章,每篇又查一次作者,共 11 次 SQL
+# 装饰器：strawberry.field
 @strawberry.field
+# 定义函数 author，返回: "User"
 def author(self) -> "User":
+    # 定义变量 db，赋值为 next(get_db())
     db = next(get_db())
     a = db.get(User, self.author_id)   # 每篇文章查一次!
+    # 返回 User(...)
     return User(...)
 \`\`\`
 
 **解法**:用 \`DataLoader\` 批量取:
 
 \`\`\`python
+# 从 strawberry.dataloader 导入 DataLoader
 from strawberry.dataloader import DataLoader
 
+# 定义异步函数 load_users，返回: list[User]
 async def load_users(user_ids: list[int]) -> list[User]:
+    # """一次查所有用户,而不是一个个查。"""
     """一次查所有用户,而不是一个个查。"""
+    # 定义变量 db，赋值为 next(get_db())
     db = next(get_db())
+    # 定义变量 users，赋值为 db.query(User).filter(User.id.in_(user_ids))....
     users = db.query(User).filter(User.id.in_(user_ids)).all()
+    # 定义字典 user_map
     user_map = {u.id: u for u in users}
+    # 返回 [user_map.get(uid) for uid in user_ids]
     return [user_map.get(uid) for uid in user_ids]
 
 # 用时
+# 定义变量 user_loader，赋值为 DataLoader(load_fn=load_users)
 user_loader = DataLoader(load_fn=load_users)
 
+# 装饰器：strawberry.field
 @strawberry.field
+# 定义异步函数 author，返回: "User"
 async def author(self) -> "User":
+    # 定义变量 user，赋值为 await user_loader.load(self.author_id)
     user = await user_loader.load(self.author_id)
+    # 返回 User(id=user.id, ...)
     return User(id=user.id, ...)
 \`\`\`
 
@@ -886,30 +1278,45 @@ async def author(self) -> "User":
 
 \`\`\`python
 # user_service/app/main.py(用户服务)
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
 
+# 创建 FastAPI 应用实例
 app = FastAPI(title="用户服务")
 
+# 定义 GET 路由：访问 /users/{user_id} 时触发
 @app.get("/users/{user_id}")
+# 定义函数 get_user，参数: user_id: int
 def get_user(user_id: int):
+    # 返回 {"id": user_id, "nickname": "小明", "email": "xm@example.com"}
     return {"id": user_id, "nickname": "小明", "email": "xm@example.com"}
 
 # order_service/app/main.py(订单服务)
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 导入 httpx 模块
 import httpx
 
+# 创建 FastAPI 应用实例
 app = FastAPI(title="订单服务")
 
 USER_SERVICE_URL = "http://user-service:8001"   # 用户服务地址
 
+# 定义 GET 路由：访问 /orders/{order_id} 时触发
 @app.get("/orders/{order_id}")
+# 定义异步函数 get_order，参数: order_id: int
 async def get_order(order_id: int):
     # 先查订单(模拟)
+    # 定义字典 order
     order = {"id": order_id, "user_id": 1, "amount": 99.9}
     # 再调用户服务查用户信息
+    # async with httpx.AsyncClient() as client:
     async with httpx.AsyncClient() as client:
+        # 定义变量 r，赋值为 await client.get(f"{USER_SERVICE_URL}/users/{...
         r = await client.get(f"{USER_SERVICE_URL}/users/{order['user_id']}")
+        # 定义变量 user，赋值为 r.json()
         user = r.json()
+    # 返回 {"order": order, "user": user}
     return {"order": order, "user": user}
 \`\`\`
 
@@ -935,30 +1342,50 @@ async def get_order(order_id: int):
 
 \`\`\`python
 # gateway/app/main.py(用 FastAPI 当网关,简单场景可行)
+# 从 fastapi 导入 FastAPI, Request, HTTPException
 from fastapi import FastAPI, Request, HTTPException
+# 从 fastapi.responses 导入 JSONResponse
 from fastapi.responses import JSONResponse
+# 导入 httpx 模块
 import httpx
 
+# 创建 FastAPI 应用实例
 app = FastAPI(title="API 网关")
 
+# 定义字典 SERVICES
 SERVICES = {
+    # "users": "http://user-service:8001",
     "users": "http://user-service:8001",
+    # "orders": "http://order-service:8002",
     "orders": "http://order-service:8002",
+    # "products": "http://product-service:8003",
     "products": "http://product-service:8003",
+# }
 }
 
+# 装饰器：app.api_route
 @app.api_route("/{service}/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+# 定义异步函数 gateway，参数: service: str, path: str, request: Request
 async def gateway(service: str, path: str, request: Request):
+    # 条件判断：如果 service not in SERVICES
     if service not in SERVICES:
+        # 抛出 HTTPException 异常: 404, "未知服务"
         raise HTTPException(404, "未知服务")
     # 这里省略 token 校验
+    # 定义变量 target，赋值为 f"{SERVICES[service]}/{path}"
     target = f"{SERVICES[service]}/{path}"
+    # async with httpx.AsyncClient() as client:
     async with httpx.AsyncClient() as client:
+        # 定义变量 r，赋值为 await client.request(
         r = await client.request(
+            # request.method, target,
             request.method, target,
+            # 定义变量 params，赋值为 request.query_params,
             params=request.query_params,
             headers={"X-User-Id": "1"},   # 传给后端
+        # )
         )
+        # 返回 JSONResponse(content=r.json(), status_code=r.status_code)
         return JSONResponse(content=r.json(), status_code=r.status_code)
 \`\`\`
 
@@ -974,19 +1401,29 @@ async def gateway(service: str, path: str, request: Request):
 
 \`\`\`python
 # 简化:用 Consul
+# 导入 consul 模块
 import consul
+# 定义变量 c，赋值为 consul.Consul()
 c = consul.Consul()
 
 # 注册
+# c.agent.service.register(
 c.agent.service.register(
+    # 定义变量 name，赋值为 "user-service",
     name="user-service",
+    # 定义变量 address，赋值为 "10.0.0.5",
     address="10.0.0.5",
+    # 定义变量 port，赋值为 8001,
     port=8001,
+    # 定义变量 check，赋值为 consul.Check.http("http://10.0.0.5:8001/healt...
     check=consul.Check.http("http://10.0.0.5:8001/health", "10s")
+# )
 )
 
 # 发现
+# _, services = c.health.service("user-service", pas
 _, services = c.health.service("user-service", passing=True)
+# 定义列表 addresses
 addresses = [(s["Service"]["Address"], s["Service"]["Port"]) for s in services]
 # 挑一个调用
 \`\`\`
@@ -1022,21 +1459,33 @@ addresses = [(s["Service"]["Address"], s["Service"]["Port"]) for s in services]
 
 \`\`\`python
 # 每个 FastAPI 服务装
+# pip install opentelemetry-instrumentation-fastapi
 pip install opentelemetry-instrumentation-fastapi
 
 # 启动时初始化
+# 从 opentelemetry 导入 trace
 from opentelemetry import trace
+# 从 opentelemetry.sdk.trace 导入 TracerProvider
 from opentelemetry.sdk.trace import TracerProvider
+# 从 opentelemetry.exporter.jaeger.thrift 导入 JaegerExporter
 from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+# 从 opentelemetry.sdk.trace.export 导入 BatchSpanProcessor
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+# 从 opentelemetry.instrumentation.fastapi 导入 FastAPIInstrumentor
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
+# 调用 trace.set_tracer_provider()
 trace.set_tracer_provider(TracerProvider())
+# 定义变量 jaeger_exporter，赋值为 JaegerExporter(agent_host_name="jaeger", agen...
 jaeger_exporter = JaegerExporter(agent_host_name="jaeger", agent_port=6831)
+# 调用 trace.get_tracer_provider()
 trace.get_tracer_provider().add_span_processor(
+    # 调用 BatchSpanProcessor()
     BatchSpanProcessor(jaeger_exporter)
+# )
 )
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 FastAPIInstrumentor.instrument_app(app)   # 自动追踪每个请求
 \`\`\`
@@ -1120,17 +1569,25 @@ order_service/
 
 \`\`\`python
 # ❌ 入参模型带了无关字段
+# 定义 Pydantic 数据模型 UserCreate，继承 BaseModel
 class UserCreate(BaseModel):
+    # 字段 email，类型: str
     email: str
+    # 字段 password，类型: str
     password: str
+    # 字段 nickname，类型: str
     nickname: str
     created_at: datetime   # 不该让客户端传!
     is_admin: bool        # 不该让客户端传!
 
 # ✅ 入参只要必要的
+# 定义 Pydantic 数据模型 UserCreate，继承 BaseModel
 class UserCreate(BaseModel):
+    # 字段 email，类型: EmailStr
     email: EmailStr
+    # 字段 password，类型: str
     password: str
+    # 字段 nickname，类型: str
     nickname: str
 \`\`\`
 
@@ -1138,11 +1595,15 @@ class UserCreate(BaseModel):
 
 \`\`\`python
 # ❌ 返回所有字段(含 hashed_password)
+# 定义 GET 路由：访问 /users 时触发
 @app.get("/users", response_model=list[User])
+# 定义函数 list_users，参数: 
 def list_users(): ...
 
 # ✅ 只返回该给前端的字段
+# 定义 GET 路由：访问 /users 时触发
 @app.get("/users", response_model=list[UserOut])
+# 定义函数 list_users，参数: 
 def list_users(): ...
 \`\`\`
 
@@ -1154,16 +1615,22 @@ def list_users(): ...
 
 \`\`\`python
 # ❌ 没索引,查 email 要全表扫描
+# 字段 email，类型: Mapped[str]，默认值: mapped_column(String(255))
 email: Mapped[str] = mapped_column(String(255))
 
 # ✅ 加索引,查询走 B+ 树
+# 字段 email，类型: Mapped[str]，默认值: mapped_column(String(255), index=True)
 email: Mapped[str] = mapped_column(String(255), index=True)
 # 唯一索引(也带索引功能)
+# 字段 email，类型: Mapped[str]，默认值: mapped_column(String(255), unique=True)
 email: Mapped[str] = mapped_column(String(255), unique=True)
 
 # 组合索引(常用查询条件组合)
+# 定义变量 __table_args__，赋值为 (
 __table_args__ = (
+    # 调用 Index()
     Index("idx_user_status", "user_id", "status"),
+# )
 )
 \`\`\`
 
@@ -1179,13 +1646,18 @@ __table_args__ = (
 
 \`\`\`python
 # ❌ N+1:查 10 篇文章,每篇查一次作者,共 11 次 SQL
+# 定义变量 posts，赋值为 db.query(Post).limit(10).all()
 posts = db.query(Post).limit(10).all()
+# 遍历 posts，取 post
 for post in posts:
     print(post.author.nickname)   # 每次访问 author 都查一次!
 
 # ✅ eager loading:1 次查文章 + 1 次查作者,共 2 次
+# 从 sqlalchemy.orm 导入 selectinload
 from sqlalchemy.orm import selectinload
+# 定义变量 posts，赋值为 db.query(Post).options(selectinload(Post.auth...
 posts = db.query(Post).options(selectinload(Post.author)).limit(10).all()
+# 遍历 posts，取 post
 for post in posts:
     print(post.author.nickname)   # 不再查数据库
 \`\`\`
@@ -1205,29 +1677,47 @@ for post in posts:
 热点数据(首页文章、热门商品)每次查数据库太浪费,缓存起来:
 
 \`\`\`python
+# 导入 redis.asyncio 并重命名为 redis
 import redis.asyncio as redis
+# 导入 json 模块
 import json
+# 从 functools 导入 wraps
 from functools import wraps
 
+# 定义变量 redis_client，赋值为 redis.from_url("redis://localhost:6379")
 redis_client = redis.from_url("redis://localhost:6379")
 
+# 定义异步函数 get_or_set，参数: key: str, ttl: int, fetch_func
 async def get_or_set(key: str, ttl: int, fetch_func):
+    # """缓存模式:先查 Redis,没有再查数据库,查完写回。"""
     """缓存模式:先查 Redis,没有再查数据库,查完写回。"""
+    # 定义变量 cached，赋值为 await redis_client.get(key)
     cached = await redis_client.get(key)
+    # 条件判断：如果 cached
     if cached:
+        # 返回 json.loads(cached)
         return json.loads(cached)
     # 缓存没有,查数据库
+    # 定义变量 data，赋值为 await fetch_func()
     data = await fetch_func()
     # 写回缓存,TTL 秒后过期
+    # await redis_client.setex(key, ttl, json.dumps(data
     await redis_client.setex(key, ttl, json.dumps(data))
+    # 返回 data
     return data
 
+# 定义 GET 路由：访问 /posts/hot 时触发
 @app.get("/posts/hot")
+# 定义异步函数 hot_posts，参数: 
 async def hot_posts():
+    # 定义异步函数 fetch，参数: 
     async def fetch():
         # 查数据库
+        # 定义变量 db，赋值为 next(get_db())
         db = next(get_db())
+        # 返回 [p.title for p in db.query(Post).order_by(Post.views.desc()).limit(10).all()]
         return [p.title for p in db.query(Post).order_by(Post.views.desc()).limit(10).all()]
+    # 返回 await get_or_set("hot_posts", ttl=300, fetch_func=fetch)
     return await get_or_set("hot_posts", ttl=300, fetch_func=fetch)
 \`\`\`
 
@@ -1245,6 +1735,7 @@ I/O 密集型(调外部 API、查数据库)用 async 大幅提升吞吐:
 
 \`\`\`python
 # ❌ 同步:三个请求串行,3 秒
+# 定义函数 fetch_all，参数: 
 def fetch_all():
     a = requests.get("https://api.a.com").json()  # 1 秒
     b = requests.get("https://api.b.com").json()  # 1 秒
@@ -1252,16 +1743,26 @@ def fetch_all():
     return [a, b, c]  # 总共 3 秒
 
 # ✅ 异步:三个请求并发,1 秒
+# 导入 asyncio 模块
 import asyncio
+# 导入 httpx 模块
 import httpx
 
+# 定义异步函数 fetch_all，参数: 
 async def fetch_all():
+    # async with httpx.AsyncClient() as client:
     async with httpx.AsyncClient() as client:
+        # 定义列表 tasks
         tasks = [
+            # 调用 client.get()
             client.get("https://api.a.com"),
+            # 调用 client.get()
             client.get("https://api.b.com"),
+            # 调用 client.get()
             client.get("https://api.c.com"),
+        # ]
         ]
+        # 定义变量 responses，赋值为 await asyncio.gather(*tasks)
         responses = await asyncio.gather(*tasks)
         return [r.json() for r in responses]  # 总共 1 秒
 \`\`\`
@@ -1273,14 +1774,18 @@ async def fetch_all():
 每次请求都建数据库连接很慢(握手开销),用连接池复用:
 
 \`\`\`python
+# 从 sqlalchemy 导入 create_engine
 from sqlalchemy import create_engine
 
+# 定义变量 engine，赋值为 create_engine(
 engine = create_engine(
+    # "mysql://...",
     "mysql://...",
     pool_size=10,        # 常驻连接数
     max_overflow=20,     # 突发可多开
     pool_pre_ping=True,   # 用前 ping 一下,避免拿到断的连接
     pool_recycle=3600,    # 连接每小时回收,防数据库踢
+# )
 )
 \`\`\`
 
@@ -1291,6 +1796,7 @@ engine = create_engine(
 响应体大时开 GZip 压缩,减少传输:
 
 \`\`\`python
+# 从 fastapi.middleware.gzip 导入 GZipMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)   # 大于 1KB 才压
@@ -1304,32 +1810,51 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)   # 大于 1KB 才压
 
 \`\`\`python
 # 简化版令牌桶限流(生产用 slowapi 库)
+# 导入 time 模块
 import time
 
+# 定义类 TokenBucket
 class TokenBucket:
+    # 定义函数 __init__，参数: self, rate: int, capacity: int
     def __init__(self, rate: int, capacity: int):
         self.rate = rate          # 每秒生成令牌数
         self.capacity = capacity  # 桶容量
+        # self.tokens = capacity
         self.tokens = capacity
+        # self.last_time = time.monotonic()
         self.last_time = time.monotonic()
 
+    # 定义函数 allow，返回: bool
     def allow(self) -> bool:
+        # 定义变量 now，赋值为 time.monotonic()
         now = time.monotonic()
+        # 定义变量 elapsed，赋值为 now - self.last_time
         elapsed = now - self.last_time
         # 按时间补令牌
+        # self.tokens = min(self.capacity, self.tokens + ela
         self.tokens = min(self.capacity, self.tokens + elapsed * self.rate)
+        # self.last_time = now
         self.last_time = now
+        # 条件判断：如果 self.tokens >= 1
         if self.tokens >= 1:
+            # self.tokens -= 1
             self.tokens -= 1
+            # 返回 True
             return True
+        # 返回 False
         return False
 
 bucket = TokenBucket(rate=100, capacity=200)   # 100 QPS,突发 200
 
+# 定义 GET 路由：访问 /api 时触发
 @app.get("/api")
+# 定义函数 api，参数: 
 def api():
+    # 条件判断：如果 not bucket.allow()
     if not bucket.allow():
+        # 抛出 HTTPException 异常: 429, "请求太频繁"
         raise HTTPException(429, "请求太频繁")
+    # 返回 {"msg": "ok"}
     return {"msg": "ok"}
 \`\`\`
 
@@ -1343,7 +1868,9 @@ def api():
 
 \`\`\`sql
 -- MySQL 开启慢查询日志,超过 1 秒的 SQL 记下来
+-- SET GLOBAL slow_query_log = ON;
 SET GLOBAL slow_query_log = ON;
+-- SET GLOBAL long_query_time = 1;
 SET GLOBAL long_query_time = 1;
 \`\`\`
 
@@ -1352,27 +1879,42 @@ SET GLOBAL long_query_time = 1;
 \`\`\`python
 # 用 Sentry / New Relic / Datadog
 # 自动记录每个请求耗时,慢的标红
+# 导入 sentry_sdk 模块
 import sentry_sdk
+# 调用 sentry_sdk.init()
 sentry_sdk.init(dsn="...", traces_sample_rate=0.1)
 \`\`\`
 
 **3. 自定义计时**
 
 \`\`\`python
+# 导入 time 模块
 import time
+# 导入 logging 模块
 import logging
 
+# 定义变量 logger，赋值为 logging.getLogger("perf")
 logger = logging.getLogger("perf")
 
+# 定义 GET 路由：访问 /slow 时触发
 @app.get("/slow")
+# 定义函数 slow_api，参数: 
 def slow_api():
+    # 定义变量 t0，赋值为 time.perf_counter()
     t0 = time.perf_counter()
+    # 定义变量 db_result，赋值为 query_db()
     db_result = query_db()
+    # 定义变量 t1，赋值为 time.perf_counter()
     t1 = time.perf_counter()
+    # 调用 logger.info()
     logger.info(f"DB 查询耗时 {(t1-t0)*1000:.1f}ms")
+    # 定义变量 process_result，赋值为 process(db_result)
     process_result = process(db_result)
+    # 定义变量 t2，赋值为 time.perf_counter()
     t2 = time.perf_counter()
+    # 调用 logger.info()
     logger.info(f"处理耗时 {(t2-t1)*1000:.1f}ms")
+    # 返回 process_result
     return process_result
 \`\`\`
 
@@ -1384,21 +1926,29 @@ def slow_api():
 
 \`\`\`python
 # locustfile.py
+# 从 locust 导入 HttpUser, task, between
 from locust import HttpUser, task, between
 
+# 定义类 ApiUser，继承 HttpUser
 class ApiUser(HttpUser):
     wait_time = between(1, 3)   # 每个用户每 1-3 秒发一次
 
+    # 装饰器：task
     @task
+    # 定义函数 get_posts，参数: self
     def get_posts(self):
+        # 调用 self.client.get()
         self.client.get("/api/v1/posts/")
 
     @task(2)   # 权重 2,发两倍频率
+    # 定义函数 get_users，参数: self
     def get_users(self):
+        # 调用 self.client.get()
         self.client.get("/api/v1/users/")
 \`\`\`
 
 \`\`\`bash
+# locust -f locustfile.py
 locust -f locustfile.py
 # 打开 http://localhost:8089,设并发数,开始压测
 \`\`\`
@@ -1407,6 +1957,7 @@ locust -f locustfile.py
 
 \`\`\`bash
 # 100 并发,持续 30 秒
+# wrk -t4 -c100 -d30s http://localhost:8000/api/v1/p
 wrk -t4 -c100 -d30s http://localhost:8000/api/v1/posts/
 \`\`\`
 

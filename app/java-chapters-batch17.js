@@ -17,27 +17,27 @@ export const chapters = [
 ### 方式一：继承 \`Thread\` 类
 
 \`\`\`java
-class MyThread extends Thread {
-    @Override
-    public void run() {
-        System.out.println("线程执行中: " + Thread.currentThread().getName());
+class MyThread extends Thread {  // 定义类 MyThread
+    @Override  // 注解：Override
+    public void run() {  // 方法 run，返回 void，无参数
+        System.out.println("线程执行中: " + Thread.currentThread().getName());  // 打印一行到标准输出（自动换行）
     }
 }
-MyThread t = new MyThread();
+MyThread t = new MyThread();  // 声明变量 t（MyThread），初始值为 new MyThread()
 t.start(); // 启动线程
 \`\`\`
 
 ### 方式二：实现 \`Runnable\` 接口
 
 \`\`\`java
-class MyTask implements Runnable {
-    @Override
-    public void run() {
-        System.out.println("任务执行中");
+class MyTask implements Runnable {  // 定义类 MyTask
+    @Override  // 注解：Override
+    public void run() {  // 方法 run，返回 void，无参数
+        System.out.println("任务执行中");  // 打印一行到标准输出（自动换行）
     }
 }
-Thread t = new Thread(new MyTask());
-t.start();
+Thread t = new Thread(new MyTask());  // 声明变量 t（Thread），初始值为 new Thread(new MyTask())
+t.start();  // 调用 t 的 start 方法
 \`\`\`
 
 推荐使用 \`Runnable\`：Java 单继承，继承 Thread 后无法再继承其他类；Runnable 是接口，更灵活，且可与线程池配合。
@@ -54,13 +54,13 @@ t.start();
 每个线程都有名字，便于调试。可通过构造器或 \`setName()\` 设置：
 
 \`\`\`java
-Thread t = new Thread(runnable, "worker-1");
+Thread t = new Thread(runnable, "worker-1");  // 声明变量 t（Thread），初始值为 new Thread(runnable, "worker-1")
 \`\`\`
 
 ## 获取当前线程
 
 \`\`\`java
-Thread current = Thread.currentThread();
+Thread current = Thread.currentThread();  // 声明变量 current（Thread），初始值为 Thread.currentThread()
 \`\`\`
 
 ## 线程优先级
@@ -161,8 +161,8 @@ public class Main {
 ## Runnable
 
 \`\`\`java
-@FunctionalInterface
-public interface Runnable {
+@FunctionalInterface  // 注解：FunctionalInterface
+public interface Runnable {  // 定义接口 Runnable
     void run(); // 无返回值，不能抛出受检异常
 }
 \`\`\`
@@ -175,8 +175,8 @@ public interface Runnable {
 ## Callable
 
 \`\`\`java
-@FunctionalInterface
-public interface Callable<V> {
+@FunctionalInterface  // 注解：FunctionalInterface
+public interface Callable<V> {  // 定义接口 Callable
     V call() throws Exception; // 有返回值，可抛出异常
 }
 \`\`\`
@@ -191,9 +191,9 @@ public interface Callable<V> {
 \`Future\` 表示异步计算的结果：
 
 \`\`\`java
-boolean cancel(boolean mayInterrupt);
-boolean isCancelled();
-boolean isDone();
+boolean cancel(boolean mayInterrupt);  // 方法 cancel，返回 boolean，参数：boolean mayInterrupt
+boolean isCancelled();  // 方法 isCancelled，返回 boolean，无参数
+boolean isDone();  // 方法 isDone，返回 boolean，无参数
 V get() throws InterruptedException, ExecutionException; // 阻塞获取结果
 V get(long timeout, TimeUnit unit); // 带超时的获取
 \`\`\`
@@ -205,8 +205,8 @@ V get(long timeout, TimeUnit unit); // 带超时的获取
 \`FutureTask\` 是 Future 的实现类，同时实现了 Runnable，因此可被 Thread 直接执行：
 
 \`\`\`java
-FutureTask<Integer> ft = new FutureTask<>(callable);
-new Thread(ft).start();
+FutureTask<Integer> ft = new FutureTask<>(callable);  // 声明变量 ft（FutureTask<Integer>），初始值为 new FutureTask<>(callable)
+new Thread(ft).start();  // 调用 new Thread(ft) 的 start 方法
 Integer result = ft.get(); // 阻塞获取
 \`\`\`
 
@@ -324,7 +324,7 @@ Java 线程从创建到销毁，会经历多个状态。理解生命周期是掌
 \`Thread.State\` 枚举定义了 6 种状态：
 
 \`\`\`java
-public enum State {
+public enum State {  // 定义枚举 State
     NEW,           // 新建
     RUNNABLE,      // 可运行
     BLOCKED,       // 阻塞
@@ -500,7 +500,7 @@ Java 没有强制停止线程的安全 API（已废弃的 \`stop()\` 会导致�
 ### 1. 检查标志主动退出
 
 \`\`\`java
-while (!Thread.currentThread().isInterrupted()) {
+while (!Thread.currentThread().isInterrupted()) {  // while 循环：当 !Thread.currentThread().isInterrupted() 为真时重复执行
     // 执行任务
 }
 \`\`\`
@@ -510,12 +510,12 @@ while (!Thread.currentThread().isInterrupted()) {
 当线程在 \`sleep\`、\`wait\`、\`join\` 等阻塞时被中断，JVM 会**清除中断标志**并抛出 \`InterruptedException\`：
 
 \`\`\`java
-try {
-    Thread.sleep(1000);
-} catch (InterruptedException e) {
+try {  // try 块：包裹可能抛出异常的代码
+    Thread.sleep(1000);  // 当前线程休眠 1000 毫秒
+} catch (InterruptedException e) {  // 捕获异常 InterruptedException e
     // 中断标志已被清除！
     // 若想向上传播中断，需重新设置：
-    Thread.currentThread().interrupt();
+    Thread.currentThread().interrupt();  // 调用 Thread 的 currentThread 方法
 }
 \`\`\`
 
@@ -531,17 +531,17 @@ try {
 ## 停止线程的正确方式
 
 \`\`\`java
-Thread t = new Thread(() -> {
-    while (!Thread.currentThread().isInterrupted()) {
-        try {
-            Thread.sleep(50);
+Thread t = new Thread(() -> {  // Lambda 表达式赋值给函数式接口变量
+    while (!Thread.currentThread().isInterrupted()) {  // while 循环：当 !Thread.currentThread().isInterrupted() 为真时重复执行
+        try {  // try 块：包裹可能抛出异常的代码
+            Thread.sleep(50);  // 当前线程休眠 50 毫秒
             // 工作...
-        } catch (InterruptedException e) {
+        } catch (InterruptedException e) {  // 捕获异常 InterruptedException e
             break; // 或 interrupt() 后 break
         }
     }
 });
-t.start();
+t.start();  // 调用 t 的 start 方法
 t.interrupt(); // 请求停止
 \`\`\`
 
@@ -660,7 +660,7 @@ public class Main {
 ### 1. 同步实例方法
 
 \`\`\`java
-public synchronized void method() {
+public synchronized void method() {  // 同步方法 method，返回 void，无参数
     // 锁的是 this（当前实例）
 }
 \`\`\`
@@ -670,7 +670,7 @@ public synchronized void method() {
 ### 2. 同步静态方法
 
 \`\`\`java
-public static synchronized void method() {
+public static synchronized void method() {  // 静态同步方法 method，返回 void，无参数
     // 锁的是 Class 对象
 }
 \`\`\`
@@ -680,7 +680,7 @@ public static synchronized void method() {
 ### 3. 同步代码块
 
 \`\`\`java
-synchronized (obj) {
+synchronized (obj) {  // 同步块：对 obj 加锁，保证线程安全
     // 锁的是 obj
 }
 \`\`\`
@@ -698,7 +698,7 @@ synchronized (obj) {
 synchronized 是**可重入锁**：同一线程可多次获取同一把锁，不会死锁：
 
 \`\`\`java
-synchronized (lock) {
+synchronized (lock) {  // 同步块：对 lock 加锁，保证线程安全
     synchronized (lock) { // 同一线程可再次进入
         // ...
     }
@@ -874,7 +874,7 @@ Java 内存模型（JMM）中，每个线程有自己的工作内存（CPU 缓�
 - **读**：强制从主内存读取最新值
 
 \`\`\`java
-private volatile boolean running = true;
+private volatile boolean running = true;  // 声明私有变量 running（boolean），初始值为 true
 
 // 线程A
 while (running) { ... }  // 能感知到其他线程对 running 的修改
@@ -890,17 +890,17 @@ running = false; // 立即对线程A可见
 经典案例：双重检查单例
 
 \`\`\`java
-class Singleton {
+class Singleton {  // 定义类 Singleton
     private static volatile Singleton instance; // volatile 必须！
-    public static Singleton getInstance() {
-        if (instance == null) {
-            synchronized (Singleton.class) {
-                if (instance == null) {
+    public static Singleton getInstance() {  // 静态方法 getInstance，返回 Singleton，无参数
+        if (instance == null) {  // 条件判断：满足 instance == null 时执行
+            synchronized (Singleton.class) {  // 同步块：对 Singleton.class 加锁，保证线程安全
+                if (instance == null) {  // 条件判断：满足 instance == null 时执行
                     instance = new Singleton(); // 非原子：分配→初始化→赋值
                 }
             }
         }
-        return instance;
+        return instance;  // 返回值：instance
     }
 }
 \`\`\`
@@ -1079,14 +1079,14 @@ class Singleton {
 wait/notify **必须**在持有对象监视器锁时调用，否则抛 \`IllegalMonitorStateException\`：
 
 \`\`\`java
-synchronized (lock) {
-    while (!condition) {
+synchronized (lock) {  // 同步块：对 lock 加锁，保证线程安全
+    while (!condition) {  // while 循环：当 !condition 为真时重复执行
         lock.wait(); // 释放 lock 的锁，进入等待
     }
     // 条件满足，执行操作
 }
 
-synchronized (lock) {
+synchronized (lock) {  // 同步块：对 lock 加锁，保证线程安全
     // 改变条件
     lock.notifyAll(); // 唤醒等待者
 }
@@ -1104,13 +1104,13 @@ synchronized (lock) {
 
 \`\`\`java
 // 错误：if
-synchronized (lock) {
+synchronized (lock) {  // 同步块：对 lock 加锁，保证线程安全
     if (!condition) lock.wait(); // 被唤醒后不再检查，可能条件已变
     // ...
 }
 
 // 正确：while
-synchronized (lock) {
+synchronized (lock) {  // 同步块：对 lock 加锁，保证线程安全
     while (!condition) lock.wait(); // 被唤醒后重新检查
     // ...
 }
@@ -1130,19 +1130,19 @@ synchronized (lock) {
 经典应用：
 
 \`\`\`java
-class Buffer {
-    private Queue<Integer> queue = new LinkedList<>();
-    private int capacity;
-    public synchronized void put(int x) throws InterruptedException {
+class Buffer {  // 定义类 Buffer
+    private Queue<Integer> queue = new LinkedList<>();  // 声明私有变量 queue（Queue<Integer>），初始值为 new LinkedList<>()
+    private int capacity;  // 声明私有变量 capacity（int 类型）
+    public synchronized void put(int x) throws InterruptedException {  // 同步方法 put，返回 void，参数：int x
         while (queue.size() == capacity) wait(); // 满了等
-        queue.offer(x);
+        queue.offer(x);  // 调用 queue 的 offer 方法
         notifyAll(); // 通知消费者
     }
-    public synchronized int take() throws InterruptedException {
+    public synchronized int take() throws InterruptedException {  // 同步方法 take，返回 int，无参数
         while (queue.isEmpty()) wait(); // 空了等
-        int x = queue.poll();
+        int x = queue.poll();  // 声明变量 x（int），初始值为 queue.poll()
         notifyAll(); // 通知生产者
-        return x;
+        return x;  // 返回值：x
     }
 }
 \`\`\`
@@ -1324,7 +1324,7 @@ class Buffer {
 固定大小线程池，核心线程数 = 最大线程数 = n，无界队列：
 
 \`\`\`java
-ExecutorService pool = Executors.newFixedThreadPool(4);
+ExecutorService pool = Executors.newFixedThreadPool(4);  // 声明变量 pool（ExecutorService），初始值为 Executors.newFixedThreadPool(4)
 \`\`\`
 
 适合任务量稳定、CPU 密集型场景。
@@ -1334,7 +1334,7 @@ ExecutorService pool = Executors.newFixedThreadPool(4);
 可缓存线程池，核心线程数为 0，最大线程数为 Integer.MAX_VALUE，60 秒空闲回收：
 
 \`\`\`java
-ExecutorService pool = Executors.newCachedThreadPool();
+ExecutorService pool = Executors.newCachedThreadPool();  // 声明变量 pool（ExecutorService），初始值为 Executors.newCachedThreadPool()
 \`\`\`
 
 适合大量短任务、I/O 密集型场景。注意：可能创建大量线程导致 OOM。
@@ -1344,7 +1344,7 @@ ExecutorService pool = Executors.newCachedThreadPool();
 单线程池，只有一个线程工作，保证任务按顺序执行：
 
 \`\`\`java
-ExecutorService pool = Executors.newSingleThreadExecutor();
+ExecutorService pool = Executors.newSingleThreadExecutor();  // 声明变量 pool（ExecutorService），初始值为 Executors.newSingleThreadExecutor()
 \`\`\`
 
 适合需要顺序执行任务的场景。
@@ -1354,7 +1354,7 @@ ExecutorService pool = Executors.newSingleThreadExecutor();
 定时/周期任务线程池：
 
 \`\`\`java
-ScheduledExecutorService pool = Executors.newScheduledThreadPool(2);
+ScheduledExecutorService pool = Executors.newScheduledThreadPool(2);  // 声明变量 pool（ScheduledExecutorService），初始值为 Executors.newScheduledThreadPool(2)
 pool.schedule(task, 1, TimeUnit.SECONDS);          // 延迟执行
 pool.scheduleAtFixedRate(task, 0, 1, TimeUnit.SECONDS); // 固定频率
 pool.scheduleWithFixedDelay(task, 0, 1, TimeUnit.SECONDS); // 固定延迟
@@ -1384,9 +1384,9 @@ pool.awaitTermination(60, TimeUnit.SECONDS); // 等待终止
 推荐关闭模式：
 
 \`\`\`java
-pool.shutdown();
-if (!pool.awaitTermination(60, TimeUnit.SECONDS)) {
-    pool.shutdownNow();
+pool.shutdown();  // 调用 pool 的 shutdown 方法
+if (!pool.awaitTermination(60, TimeUnit.SECONDS)) {  // 条件判断：满足 !pool.awaitTermination(60, TimeUnit.SECONDS) 时执行
+    pool.shutdownNow();  // 调用 pool 的 shutdownNow 方法
 }
 \`\`\`
 
@@ -1546,8 +1546,8 @@ submit 总是返回 Future，即使 Runnable 也会包装为 FutureTask。
 批量提交 Callable，**等待全部完成**，返回 Future 列表：
 
 \`\`\`java
-List<Future<Integer>> futures = pool.invokeAll(callableList);
-for (Future<Integer> f : futures) {
+List<Future<Integer>> futures = pool.invokeAll(callableList);  // 声明变量 futures（List<Future<Integer>>），初始值为 pool.invokeAll(callableList)
+for (Future<Integer> f : futures) {  // 增强 for：遍历 futures，每次取一个元素 f
     System.out.println(f.get()); // 阻塞直到所有完成
 }
 \`\`\`
@@ -1559,7 +1559,7 @@ for (Future<Integer> f : futures) {
 批量提交 Callable，**返回最先成功完成的那个结果**，其余任务被取消：
 
 \`\`\`java
-Integer result = pool.invokeAny(callableList);
+Integer result = pool.invokeAny(callableList);  // 声明变量 result（Integer），初始值为 pool.invokeAny(callableList)
 \`\`\`
 
 适合"多个方案谁先成功用谁"的场景，如多节点查询。
@@ -1584,9 +1584,9 @@ Integer result = pool.invokeAny(callableList);
 阻塞等待线程池终止，常与 shutdown 配合：
 
 \`\`\`java
-pool.shutdown();
-if (!pool.awaitTermination(60, TimeUnit.SECONDS)) {
-    pool.shutdownNow();
+pool.shutdown();  // 调用 pool 的 shutdown 方法
+if (!pool.awaitTermination(60, TimeUnit.SECONDS)) {  // 条件判断：满足 !pool.awaitTermination(60, TimeUnit.SECONDS) 时执行
+    pool.shutdownNow();  // 调用 pool 的 shutdownNow 方法
 }
 \`\`\`
 
@@ -1616,11 +1616,11 @@ future.get(timeout, unit); // 带超时获取
 \`CompletionService\` 按**完成顺序**获取结果，而非提交顺序：
 
 \`\`\`java
-ExecutorCompletionService<Integer> cs = new ExecutorCompletionService<>(pool);
-for (Callable<Integer> c : tasks) cs.submit(c);
-for (int i = 0; i < n; i++) {
+ExecutorCompletionService<Integer> cs = new ExecutorCompletionService<>(pool);  // 声明变量 cs（ExecutorCompletionService<Integer>），初始值为 new ExecutorCompletionService<>(pool)
+for (Callable<Integer> c : tasks) cs.submit(c);  // 调用 for (Callable<Integer> c : tasks) cs 的 submit 方法
+for (int i = 0; i < n; i++) {  // for 循环：初始化 int i = 0；条件 i < n；更新 i++
     Future<Integer> f = cs.take(); // 阻塞直到有任务完成
-    System.out.println(f.get());
+    System.out.println(f.get());  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -1821,7 +1821,7 @@ public ThreadPoolExecutor(
 - **混合型**：根据 CPU 和 I/O 占比估算
 
 \`\`\`java
-int cpu = Runtime.getRuntime().availableProcessors();
+int cpu = Runtime.getRuntime().availableProcessors();  // 声明变量 cpu（int），初始值为 Runtime.getRuntime().availableProcessors()
 \`\`\`
 
 队列建议**有界**，防止 OOM。拒绝策略常用 \`CallerRunsPolicy\` 实现背压。
@@ -1829,11 +1829,11 @@ int cpu = Runtime.getRuntime().availableProcessors();
 ## 自定义线程工厂
 
 \`\`\`java
-ThreadFactory factory = r -> {
-    Thread t = new Thread(r);
-    t.setName("biz-pool-" + t.getId());
-    t.setDaemon(false);
-    return t;
+ThreadFactory factory = r -> {  // Lambda 表达式赋值给函数式接口变量
+    Thread t = new Thread(r);  // 声明变量 t（Thread），初始值为 new Thread(r)
+    t.setName("biz-pool-" + t.getId());  // 调用 t 的 setName 方法
+    t.setDaemon(false);  // 调用 t 的 setDaemon 方法
+    return t;  // 返回值：t
 };
 \`\`\`
 
@@ -1977,13 +1977,13 @@ public class Main {
 
 \`\`\`java
 // 有返回值
-CompletableFuture<String> f1 = CompletableFuture.supplyAsync(() -> "结果");
+CompletableFuture<String> f1 = CompletableFuture.supplyAsync(() -> "结果");  // Lambda 表达式赋值给函数式接口变量
 
 // 无返回值
-CompletableFuture<Void> f2 = CompletableFuture.runAsync(() -> System.out.println("执行"));
+CompletableFuture<Void> f2 = CompletableFuture.runAsync(() -> System.out.println("执行"));  // Lambda 表达式赋值给函数式接口变量
 
 // 指定线程池
-CompletableFuture<String> f3 = CompletableFuture.supplyAsync(() -> "x", executor);
+CompletableFuture<String> f3 = CompletableFuture.supplyAsync(() -> "x", executor);  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 默认使用 \`ForkJoinPool.commonPool()\`，CPU 密集型任务可接受；I/O 任务建议传自定义线程池。
@@ -1998,7 +1998,7 @@ thenRun(run)        // 不关心结果，执行动作
 
 \`\`\`java
 CompletableFuture<Integer> f = CompletableFuture
-    .supplyAsync(() -> "42")
+    .supplyAsync(() -> "42")  // Lambda 表达式：实现函数式接口
     .thenApply(Integer::parseInt)        // String → Integer
     .thenApply(x -> x * 2);              // 42 → 84
 \`\`\`
@@ -2013,7 +2013,7 @@ thenCombine(other, biFn) // 合并：两个任务都完成后合并结果
 \`thenCompose\` 类似 \`flatMap\`，避免 \`CompletableFuture<CompletableFuture<T>>\` 嵌套：
 
 \`\`\`java
-f.thenCompose(x -> CompletableFuture.supplyAsync(() -> x + 1))
+f.thenCompose(x -> CompletableFuture.supplyAsync(() -> x + 1))  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 ## 多任务协调
@@ -2043,7 +2043,7 @@ whenComplete(biCon) // 完成后触发，不能修改结果（仅副作用）
 
 \`\`\`java
 CompletableFuture<Integer> f = CompletableFuture
-    .supplyAsync(() -> { throw new RuntimeException("失败"); })
+    .supplyAsync(() -> { throw new RuntimeException("失败"); })  // Lambda 表达式：实现函数式接口
     .exceptionally(ex -> -1); // 异常时返回 -1
 \`\`\`
 
@@ -2208,12 +2208,12 @@ Condition newCondition(); // 创建条件变量
 可重入互斥锁，功能与 synchronized 类似，但更灵活：
 
 \`\`\`java
-private final ReentrantLock lock = new ReentrantLock();
-public void method() {
-    lock.lock();
-    try {
+private final ReentrantLock lock = new ReentrantLock();  // 声明常量私有变量 lock（ReentrantLock），初始值为 new ReentrantLock()
+public void method() {  // 方法 method，返回 void，无参数
+    lock.lock();  // 调用 lock 的 lock 方法
+    try {  // try 块：包裹可能抛出异常的代码
         // 临界区
-    } finally {
+    } finally {  // finally 块：无论是否异常都执行
         lock.unlock(); // 必须在 finally 释放！
     }
 }
@@ -2236,9 +2236,9 @@ synchronized 是非公平的。
 ## tryLock 非阻塞获取
 
 \`\`\`java
-if (lock.tryLock()) {
+if (lock.tryLock()) {  // 条件判断：满足 lock.tryLock() 时执行
     try { /* 获得锁 */ } finally { lock.unlock(); }
-} else {
+} else {  // 否则分支
     /* 未获得锁，做其他事 */
 }
 \`\`\`
@@ -2250,15 +2250,15 @@ if (lock.tryLock()) {
 \`Condition\` 替代 \`Object.wait/notify\`，一个 Lock 可创建多个 Condition，实现精细的等待/通知：
 
 \`\`\`java
-Lock lock = new ReentrantLock();
-Condition notFull = lock.newCondition();
-Condition notEmpty = lock.newCondition();
+Lock lock = new ReentrantLock();  // 声明变量 lock（Lock），初始值为 new ReentrantLock()
+Condition notFull = lock.newCondition();  // 声明变量 notFull（Condition），初始值为 lock.newCondition()
+Condition notEmpty = lock.newCondition();  // 声明变量 notEmpty（Condition），初始值为 lock.newCondition()
 
 // 生产者
-lock.lock();
-try {
+lock.lock();  // 调用 lock 的 lock 方法
+try {  // try 块：包裹可能抛出异常的代码
     while (queue.isFull()) notFull.await(); // 等待非满
-    queue.add(x);
+    queue.add(x);  // 调用 queue 的 add 方法
     notEmpty.signal(); // 通知消费者
 } finally { lock.unlock(); }
 \`\`\`
@@ -2279,7 +2279,7 @@ try {
 读写锁：读读共享，读写互斥，写写互斥。适合读多写少场景：
 
 \`\`\`java
-ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
+ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();  // 声明变量 rwLock（ReentrantReadWriteLock），初始值为 new ReentrantReadWriteLock()
 rwLock.readLock().lock();  // 读锁，多线程可同时持有
 rwLock.writeLock().lock(); // 写锁，独占
 \`\`\`
@@ -2509,7 +2509,7 @@ return false;
 整个过程不可中断。Java 通过 \`Unsafe.compareAndSwapXxx\` 调用 native 实现。
 
 \`\`\`java
-AtomicInteger ai = new AtomicInteger(0);
+AtomicInteger ai = new AtomicInteger(0);  // 声明变量 ai（AtomicInteger），初始值为 new AtomicInteger(0)
 boolean success = ai.compareAndSet(0, 1); // 期望0，设为1，返回 true
 boolean fail = ai.compareAndSet(0, 2);    // 当前是1≠0，返回 false
 \`\`\`
@@ -2550,12 +2550,12 @@ compareAndSet(expect, update) // CAS
 \`AtomicIntegerFieldUpdater\`、\`AtomicLongFieldUpdater\`、\`AtomicReferenceFieldUpdater\`：对类的 volatile 字段做原子更新，避免每个对象都创建 Atomic 对象的开销。
 
 \`\`\`java
-class Person {
-    volatile int age;
+class Person {  // 定义类 Person
+    volatile int age;  // 声明变量 age（int 类型）
 }
 AtomicIntegerFieldUpdater<Person> u =
-    AtomicIntegerFieldUpdater.newUpdater(Person.class, "age");
-u.incrementAndGet(person);
+    AtomicIntegerFieldUpdater.newUpdater(Person.class, "age");  // 调用 AtomicIntegerFieldUpdater 的 newUpdater 方法
+u.incrementAndGet(person);  // 调用 u 的 incrementAndGet 方法
 \`\`\`
 
 ## 累加器（JDK 8+）
@@ -2733,7 +2733,7 @@ public class Main {
 
 \`\`\`java
 ThreadLocal<SimpleDateFormat> fmt = ThreadLocal.withInitial(
-    () -> new SimpleDateFormat("yyyy-MM-dd"));
+    () -> new SimpleDateFormat("yyyy-MM-dd"));  // Lambda 表达式：实现函数式接口
 
 String s = fmt.get().format(new Date()); // 每个线程独立实例
 fmt.set(new SimpleDateFormat("HH:mm"));   // 替换当前线程的副本
@@ -2754,8 +2754,8 @@ fmt.remove();                              // 清除当前线程的副本
 每个 \`Thread\` 对象内部有一个 \`ThreadLocalMap\` 字段：
 
 \`\`\`java
-class Thread {
-    ThreadLocal.ThreadLocalMap threadLocals;
+class Thread {  // 定义类 Thread
+    ThreadLocal.ThreadLocalMap threadLocals;  // 声明变量 threadLocals（ThreadLocal.ThreadLocalMap 类型）
 }
 \`\`\`
 
@@ -2776,7 +2776,7 @@ ThreadLocal<Integer> tl = new ThreadLocal<>() {
 };
 
 // 方式二：lambda（推荐）
-ThreadLocal<Integer> tl2 = ThreadLocal.withInitial(() -> 0);
+ThreadLocal<Integer> tl2 = ThreadLocal.withInitial(() -> 0);  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 首次调用 get() 时若不存在，会调用 initialValue 初始化。
@@ -2789,11 +2789,11 @@ SimpleDateFormat 非线程安全，多线程共享会出错：
 
 \`\`\`java
 // 错误：共享实例
-private static final SimpleDateFormat FMT = new SimpleDateFormat("yyyy-MM-dd");
+private static final SimpleDateFormat FMT = new SimpleDateFormat("yyyy-MM-dd");  // 声明静态常量私有变量 FMT（SimpleDateFormat），初始值为 new SimpleDateFormat("yyyy-MM-dd")
 
 // 正确：每线程独立实例
 private static final ThreadLocal<SimpleDateFormat> FMT =
-    ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd"));
+    ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd"));  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 ### 2. 用户上下文传递
@@ -2801,9 +2801,9 @@ private static final ThreadLocal<SimpleDateFormat> FMT =
 Web 请求处理中，过滤器解析用户信息存入 ThreadLocal，后续 Service 直接取用，避免参数层层传递：
 
 \`\`\`java
-public class UserContext {
-    private static final ThreadLocal<User> CURRENT = new ThreadLocal<>();
-    public static User get() { return CURRENT.get(); }
+public class UserContext {  // 定义类 UserContext
+    private static final ThreadLocal<User> CURRENT = new ThreadLocal<>();  // 声明静态常量私有变量 CURRENT（ThreadLocal<User>），初始值为 new ThreadLocal<>()
+    public static User get() { return CURRENT.get(); }  // 方法 get（返回 User，无参数）：返回 CURRENT.get()
     public static void set(User u) { CURRENT.set(u); }
     public static void clear() { CURRENT.remove(); }
 }
@@ -2824,10 +2824,10 @@ ThreadLocalMap 的 Key 是弱引用，Value 是强引用：
 **解决**：使用完毕**务必调用 remove()**！
 
 \`\`\`java
-try {
-    threadLocal.set(value);
+try {  // try 块：包裹可能抛出异常的代码
+    threadLocal.set(value);  // 调用 threadLocal 的 set 方法
     // 业务逻辑
-} finally {
+} finally {  // finally 块：无论是否异常都执行
     threadLocal.remove(); // 关键！
 }
 \`\`\`
@@ -2837,8 +2837,8 @@ try {
 子线程可继承父线程的值：
 
 \`\`\`java
-InheritableThreadLocal<String> itl = new InheritableThreadLocal<>();
-itl.set("父线程值");
+InheritableThreadLocal<String> itl = new InheritableThreadLocal<>();  // 声明变量 itl（InheritableThreadLocal<String>），初始值为 new InheritableThreadLocal<>()
+itl.set("父线程值");  // 调用 itl 的 set 方法
 new Thread(() -> System.out.println(itl.get())).start(); // "父线程值"
 \`\`\`
 
@@ -2986,19 +2986,19 @@ public class Main {
 
 \`\`\`java
 // 方式一：直接启动
-Thread vt = Thread.startVirtualThread(() -> {
-    System.out.println("虚拟线程: " + Thread.currentThread());
+Thread vt = Thread.startVirtualThread(() -> {  // Lambda 表达式赋值给函数式接口变量
+    System.out.println("虚拟线程: " + Thread.currentThread());  // 打印一行到标准输出（自动换行）
 });
 
 // 方式二：Builder
-Thread vt2 = Thread.ofVirtual().name("my-vt").start(() -> { ... });
+Thread vt2 = Thread.ofVirtual().name("my-vt").start(() -> { ... });  // Lambda 表达式赋值给函数式接口变量
 
 // 方式三：未启动
-Thread vt3 = Thread.ofVirtual().unstarted(() -> { ... });
-vt3.start();
+Thread vt3 = Thread.ofVirtual().unstarted(() -> { ... });  // Lambda 表达式赋值给函数式接口变量
+vt3.start();  // 调用 vt3 的 start 方法
 
 // 判断是否虚拟线程
-boolean isVirtual = Thread.currentThread().isVirtual();
+boolean isVirtual = Thread.currentThread().isVirtual();  // 声明变量 isVirtual（boolean），初始值为 Thread.currentThread().isVirtual()
 \`\`\`
 
 ## 虚拟线程执行机制
@@ -3012,13 +3012,13 @@ boolean isVirtual = Thread.currentThread().isVirtual();
 传统线程池模式下，线程数受限（如 200），高并发时请求排队。虚拟线程下可"每请求一虚拟线程"，代码写法像同步阻塞，性能接近异步回调：
 
 \`\`\`java
-try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {  // try-with-resources：声明资源 var executor = Executors.newVirtualThreadPerTaskExecutor()，结束自动关闭
     // 提交 10000 个任务，每个一个虚拟线程
-    IntStream.range(0, 10000).forEach(i ->
-        executor.submit(() -> {
+    IntStream.range(0, 10000).forEach(i ->  // Lambda 表达式：实现函数式接口
+        executor.submit(() -> {  // Lambda 表达式：实现函数式接口
             fetchUser(i);    // 阻塞 I/O，虚拟线程自动让出
             fetchOrder(i);   // 阻塞 I/O
-            return null;
+            return null;  // 返回值：null
         })
     );
 }
@@ -3041,9 +3041,9 @@ try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 ## 结构化并发（预览特性）
 
 \`\`\`java
-try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
-    var u = scope.fork(() -> fetchUser());
-    var o = scope.fork(() -> fetchOrder());
+try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {  // try-with-resources：声明资源 var scope = new StructuredTaskScope.ShutdownOnFailure()，结束自动关闭
+    var u = scope.fork(() -> fetchUser());  // Lambda 表达式赋值给函数式接口变量
+    var o = scope.fork(() -> fetchOrder());  // Lambda 表达式赋值给函数式接口变量
     scope.join();              // 等待全部
     scope.throwIfFailed();     // 任一失败则抛异常
     // 全部成功，使用结果

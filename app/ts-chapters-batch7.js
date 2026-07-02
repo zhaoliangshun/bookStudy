@@ -61,7 +61,7 @@ T extends U ? X : Y
 #### 最简单的例子
 
 \`\`\`ts
-type IsString<T> = T extends string ? "是字符串" : "非字符串";
+type IsString<T> = T extends string ? "是字符串" : "非字符串";  // 定义类型别名 IsString，泛型参数 T，条件类型
 
 type A = IsString<"hello">;  // "是字符串"
 type B = IsString<42>;       // "非字符串"
@@ -147,7 +147,7 @@ type T6 = TypeName<{ a: 1 }>;    // "object"
 #### 分布的演示
 
 \`\`\`ts
-type ToArray<T> = T extends unknown ? T[] : never;
+type ToArray<T> = T extends unknown ? T[] : never;  // 定义类型别名 ToArray，泛型参数 T，条件类型
 
 // T 是裸类型参数，传入联合 "a" | "b" 会分发：
 //   ToArray<"a"> = "a"[]
@@ -157,7 +157,7 @@ type R1 = ToArray<"a" | "b">;        // ("a" | "b")[] —— 等价写法
 type R2 = ToArray<string | number>;  // string[] | number[]
 
 // 对比：如果不分发，直接对整个联合判断
-type R3 = (string | number) extends unknown ? (string | number)[] : never;
+type R3 = (string | number) extends unknown ? (string | number)[] : never;  // 定义类型别名 R3，联合类型，条件类型
 // R3 = (string | number)[]
 \`\`\`
 
@@ -177,7 +177,7 @@ type R3 = (string | number) extends unknown ? (string | number)[] : never;
 
 \`\`\`ts
 // Exclude<T, U>：从 T 中排除可赋值给 U 的成员
-type MyExclude<T, U> = T extends U ? never : T;
+type MyExclude<T, U> = T extends U ? never : T;  // 定义类型别名 MyExclude，泛型参数 T, U，条件类型
 type R = MyExclude<"a" | "b" | "c", "a">;  // "b" | "c"
 
 // 内部过程：
@@ -187,11 +187,11 @@ type R = MyExclude<"a" | "b" | "c", "a">;  // "b" | "c"
 //   结果：never | "b" | "c" → "b" | "c"（never 自动被吸收）
 
 // Extract<T, U>：从 T 中提取可赋值给 U 的成员
-type MyExtract<T, U> = T extends U ? T : never;
+type MyExtract<T, U> = T extends U ? T : never;  // 定义类型别名 MyExtract，泛型参数 T, U，条件类型
 type R2 = MyExtract<"a" | "b" | "c", "a" | "b">;  // "a" | "b"
 
 // NonNullable<T>：排除 null 和 undefined
-type MyNonNullable<T> = T extends null | undefined ? never : T;
+type MyNonNullable<T> = T extends null | undefined ? never : T;  // 定义类型别名 MyNonNullable，泛型参数 T，联合类型，条件类型
 type R3 = MyNonNullable<string | null | number | undefined>;  // string | number
 \`\`\`
 
@@ -203,11 +203,11 @@ type R3 = MyNonNullable<string | null | number | undefined>;  // string | number
 
 \`\`\`ts
 // 裸类型参数：会分布
-type ToArrayNaked<T> = T extends unknown ? T[] : never;
+type ToArrayNaked<T> = T extends unknown ? T[] : never;  // 定义类型别名 ToArrayNaked，泛型参数 T，条件类型
 type N1 = ToArrayNaked<string | number>;  // string[] | number[]
 
 // 包裹在元组里：不分布
-type ToArrayWrapped<T> = [T] extends [unknown] ? T[] : never;
+type ToArrayWrapped<T> = [T] extends [unknown] ? T[] : never;  // 定义类型别名 ToArrayWrapped，泛型参数 T，条件类型
 type N2 = ToArrayWrapped<string | number>;  // (string | number)[]
 \`\`\`
 
@@ -221,11 +221,11 @@ type N2 = ToArrayWrapped<string | number>;  // (string | number)[]
 
 \`\`\`ts
 // 判断 T 是否是联合类型（需要阻止分布，否则永远返回 false）
-type IsUnion<T> = [T] extends [UnionToTuple<T>] ? false : true;
+type IsUnion<T> = [T] extends [UnionToTuple<T>] ? false : true;  // 定义类型别名 IsUnion，泛型参数 T，条件类型
 // （上面是个简化概念，实际 IsUnion 实现更复杂）
 
 // 判断 T 是否是 never（必须阻止分布！因为 never 的特殊性）
-type IsNever<T> = [T] extends [never] ? true : false;
+type IsNever<T> = [T] extends [never] ? true : false;  // 定义类型别名 IsNever，泛型参数 T，条件类型
 type X1 = IsNever<never>;      // true
 type X2 = IsNever<string>;     // false
 // 如果不阻止分布：never extends never ? true : false → 直接返回 never（不会进入分支）
@@ -240,7 +240,7 @@ type X2 = IsNever<string>;     // false
 当 \`U\` 是联合类型时，\`T extends U\` 检查的是 \`T\` 是否能赋值给联合中的**任意一个**成员。
 
 \`\`\`ts
-type IsStringOrNumber<T> = T extends string | number ? true : false;
+type IsStringOrNumber<T> = T extends string | number ? true : false;  // 定义类型别名 IsStringOrNumber，泛型参数 T，联合类型，条件类型
 type R = IsStringOrNumber<"a" | 42 | true>;  // 分布后：true | true | false → true | false → boolean
 \`\`\`
 
@@ -251,8 +251,8 @@ type R = IsStringOrNumber<"a" | 42 | true>;  // 分布后：true | true | false 
 条件类型的两个分支 \`X\` 和 \`Y\` 可以是任意类型，包括联合：
 
 \`\`\`ts
-type Box<T> = T extends string ? { value: string } : { value: number; extra: T };
-type R = Box<"a" | 42>;
+type Box<T> = T extends string ? { value: string } : { value: number; extra: T };  // 定义类型别名 Box，泛型参数 T，条件类型
+type R = Box<"a" | 42>;  // 定义类型别名 R，联合类型
 // 分布后：
 //   Box<"a"> = { value: string }
 //   Box<42>  = { value: number; extra: 42 }
@@ -265,12 +265,12 @@ TypeScript 4.1+ 支持条件类型递归——条件类型可以引用自身，�
 
 \`\`\`ts
 // 深度 Partial：把对象所有属性（包括嵌套）都变成可选
-type DeepPartial<T> = {
+type DeepPartial<T> = {  // 定义类型别名 DeepPartial，泛型参数 T
   [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
 };
 
 // 解包 Promise：递归取出最内层的类型
-type Unwrap<T> = T extends Promise<infer U> ? Unwrap<U> : T;
+type Unwrap<T> = T extends Promise<infer U> ? Unwrap<U> : T;  // 定义类型别名 Unwrap，泛型参数 T，使用 infer 在条件类型中提取类型
 type R = Unwrap<Promise<Promise<Promise<number>>>>;  // number
 \`\`\`
 
@@ -293,12 +293,12 @@ type Repeat<T, N extends number, Acc extends T[] = []> =
 
 \`\`\`ts
 // 提取函数返回类型
-type MyReturnType<T> = T extends (...args: any[]) => infer R ? R : never;
+type MyReturnType<T> = T extends (...args: any[]) => infer R ? R : never;  // 定义类型别名 MyReturnType，泛型参数 T，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 
 // 提取函数参数类型（元组）
-type MyParameters<T> = T extends (...args: infer P) => any ? P : never;
+type MyParameters<T> = T extends (...args: infer P) => any ? P : never;  // 定义类型别名 MyParameters，泛型参数 T，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 
-type F = (a: string, b: number) => boolean;
+type F = (a: string, b: number) => boolean;  // 定义类型别名 F
 type R1 = MyReturnType<F>;    // boolean
 type R2 = MyParameters<F>;     // [string, number]
 \`\`\`
@@ -312,11 +312,11 @@ type R2 = MyParameters<F>;     // [string, number]
 多个条件类型可以串联使用，形成类型层面的"管道"：
 
 \`\`\`ts
-type NonNullable<T> = T extends null | undefined ? never : T;
-type UnwrapPromise<T> = T extends Promise<infer U> ? U : T;
+type NonNullable<T> = T extends null | undefined ? never : T;  // 定义类型别名 NonNullable，泛型参数 T，联合类型，条件类型
+type UnwrapPromise<T> = T extends Promise<infer U> ? U : T;  // 定义类型别名 UnwrapPromise，泛型参数 T，使用 infer 在条件类型中提取类型
 
 // 链式：先解包 Promise，再排除 null/undefined
-type Clean<T> = NonNullable<UnwrapPromise<T>>;
+type Clean<T> = NonNullable<UnwrapPromise<T>>;  // 定义类型别名 Clean，泛型参数 T
 type R = Clean<Promise<string | null>>;  // string
 \`\`\`
 
@@ -328,19 +328,19 @@ type R = Clean<Promise<string | null>>;  // string
 
 \`\`\`ts
 // 模拟 API 响应：成功或失败
-interface Success<T> { status: "success"; data: T; }
-interface Failure { status: "error"; error: string; }
-type ApiResponse<T> = Success<T> | Failure;
+interface Success<T> { status: "success"; data: T; }  // 定义接口 Success，泛型参数 T
+interface Failure { status: "error"; error: string; }  // 定义接口 Failure
+type ApiResponse<T> = Success<T> | Failure;  // 定义类型别名 ApiResponse，泛型参数 T，联合类型
 
 // 根据状态提取 data 类型
-type ExtractData<T> = T extends { data: infer D } ? D : never;
+type ExtractData<T> = T extends { data: infer D } ? D : never;  // 定义类型别名 ExtractData，泛型参数 T，使用 infer 在条件类型中提取类型
 type R = ExtractData<ApiResponse<User>>;  // User
 \`\`\`
 
 #### 2. 深度 Partial（递归条件类型 + 映射类型）
 
 \`\`\`ts
-type DeepPartial<T> = T extends object
+type DeepPartial<T> = T extends object  // 定义类型别名 DeepPartial，泛型参数 T
   ? { [K in keyof T]?: DeepPartial<T[K]> }
   : T;
 \`\`\`
@@ -349,7 +349,7 @@ type DeepPartial<T> = T extends object
 
 \`\`\`ts
 // TypeScript 的 Parameters/ReturnType 对重载函数只取最后一个签名
-type LastOverload<T> = T extends {
+type LastOverload<T> = T extends {  // 定义类型别名 LastOverload，泛型参数 T
   (...a: infer A1): infer R1;
   (...a: infer A2): infer R2;
 } ? A2 : never;
@@ -358,7 +358,7 @@ type LastOverload<T> = T extends {
 #### 4. 根据输入类型选择输出类型
 
 \`\`\`ts
-type Result<T> = T extends Error
+type Result<T> = T extends Error  // 定义类型别名 Result，泛型参数 T
   ? { ok: false; error: T }
   : { ok: true; value: T };
 \`\`\`
@@ -670,7 +670,7 @@ console.log("\\n条件类型深入章节演示完成！");`,
 映射类型的基本语法是：
 
 \`\`\`ts
-type MappedType = {
+type MappedType = {  // 定义类型别名 MappedType
   [K in SomeUnion]: ValueType;
 };
 \`\`\
@@ -932,7 +932,7 @@ type BadDeepReadonly = DeepReadonly<Config>;
 更健壮的实现要排除函数：
 
 \`\`\`ts
-type DeepReadonly<T> = T extends Function
+type DeepReadonly<T> = T extends Function  // 定义类型别名 DeepReadonly，泛型参数 T
   ? T
   : T extends object
   ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
@@ -945,7 +945,7 @@ type DeepReadonly<T> = T extends Function
 
 \`\`\`ts
 // 基于索引签名
-interface StringMap { [key: string]: number; }
+interface StringMap { [key: string]: number; }  // 定义接口 StringMap
 type Mapped = { [K in keyof StringMap]: string }; // 仍是索引签名
 
 // 生成索引签名（用 string 作为键联合）
@@ -1318,7 +1318,7 @@ console.log("\\n映射类型深入章节演示完成！");`,
 模板字面量类型的语法和 JavaScript 的模板字符串几乎一样，只是用在类型位置：
 
 \`\`\`ts
-type Greeting = \`Hello \${string}\`;
+type Greeting = \`Hello \${string}\`;  // 定义类型别名 Greeting
 \`\`\
 
 \`Greeting\` 是一个**字符串字面量类型族**——它表示所有以 \`"Hello "\` 开头、后面跟任意字符串的字符串。比如 \`"Hello World"\`、\`"Hello TypeScript"\` 都属于 \`Greeting\` 类型。
@@ -1343,8 +1343,8 @@ type Id = \`id-\${N}\`;  // \`id-\${number}\`（如 "id-1"、"id-42"）
 这是模板字面量类型最强大的特性之一：当插值位置是**联合类型**时，模板会自动展开成所有组合的联合。
 
 \`\`\`ts
-type Side = "left" | "right";
-type Direction = \`top-\${Side}\` | \`bottom-\${Side}\`;
+type Side = "left" | "right";  // 定义类型别名 Side
+type Direction = \`top-\${Side}\` | \`bottom-\${Side}\`;  // 定义类型别名 Direction，联合类型
 // 等价于：
 // "top-left" | "top-right" | "bottom-left" | "bottom-right"
 \`\`\
@@ -1365,7 +1365,7 @@ type ClassName = \`\${Color}-\${Size}\`;
 模板字面量类型可以嵌套使用：
 
 \`\`\`ts
-type T1 = \`\${"a" | "b"}-\${"x" | "y"}-\${1 | 2}\`;
+type T1 = \`\${"a" | "b"}-\${"x" | "y"}-\${1 | 2}\`;  // 定义类型别名 T1，联合类型
 // "a-x-1" | "a-x-2" | "a-y-1" | ... 共 8 种
 \`\`\
 
@@ -1397,8 +1397,8 @@ type HandlerName = \`on\${Capitalize<EventName>}\`;
 模板字面量类型常和 \`keyof\` 一起用，基于对象类型的键构造新的字符串类型：
 
 \`\`\`ts
-interface Person { name: string; age: number; }
-type Getter = \`get\${Capitalize<keyof Person & string>}\`;
+interface Person { name: string; age: number; }  // 定义接口 Person
+type Getter = \`get\${Capitalize<keyof Person & string>}\`;  // 定义类型别名 Getter，使用 keyof 取键的联合
 // "getName" | "getAge"
 \`\`\
 
@@ -1429,7 +1429,7 @@ type R3 = Split<"top-left">;  // ["top", "left"]
 这是模板字面量类型最经典的应用——构造类型安全的路由路径：
 
 \`\`\`ts
-type Routes = "/users" | "/users/:id" | "/posts" | "/posts/:id/comments";
+type Routes = "/users" | "/users/:id" | "/posts" | "/posts/:id/comments";  // 定义类型别名 Routes
 
 // 提取路径参数
 type GetParams<T extends string> =
@@ -1455,12 +1455,12 @@ type RouteParams<T extends string> = {
 ### 实际应用 2：事件监听器类型
 
 \`\`\`ts
-type Events = "click" | "change" | "submit";
-type Listener = \`on\${Capitalize<Events>}\`;
+type Events = "click" | "change" | "submit";  // 定义类型别名 Events
+type Listener = \`on\${Capitalize<Events>}\`;  // 定义类型别名 Listener
 // "onClick" | "onChange" | "onSubmit"
 
-interface EventEmitter {
-  on<E extends Events>(event: E, cb: (payload: EventPayload<E>) => void): void;
+interface EventEmitter {  // 定义接口 EventEmitter
+  on<E extends Events>(event: E, cb: (payload: EventPayload<E>) => void): void;  // 箭头函数
 }
 \`\`\
 
@@ -1476,7 +1476,7 @@ type SpacingProperty = \`\${CSSProperty}\${CSSDirection}\`;
 ### 实际应用 4：SQL 类型
 
 \`\`\`ts
-type SelectClause = \`SELECT \${string} FROM \${string}\`;
+type SelectClause = \`SELECT \${string} FROM \${string}\`;  // 定义类型别名 SelectClause
 type Query = SelectClause;  // 匹配所有 SELECT ... FROM ... 字符串
 \`\`\
 
@@ -1501,10 +1501,10 @@ type Query = SelectClause;  // 匹配所有 SELECT ... FROM ... 字符串
 // 模板字面量类型纯编译期，转译后擦除。我们用变量声明 +
 // 注释展示编译期类型计算，用运行时对象模拟效果。
 
-console.log("========== 模板字面量类型深入 ==========");
+console.log("========== 模板字面量类型深入 ==========");  // 控制台输出
 
 // ---- 1. 模板字面量类型基础 ----
-console.log("\\n---- 1. 模板字面量类型基础 ----");
+console.log("\\n---- 1. 模板字面量类型基础 ----");  // 控制台输出
 
 // 编译期：
 // type Greeting = \`Hello \${string}\`;  // 匹配 "Hello xxx"
@@ -1512,51 +1512,51 @@ console.log("\\n---- 1. 模板字面量类型基础 ----");
 // type Fixed = \`Hello \${"world"}\`;     // "Hello world"（确定字面量）
 
 // 用变量声明验证编译期类型
-type Greeting = \`Hello \${string}\`;
+type Greeting = \`Hello \${string}\`;  // 定义类型别名 Greeting
 const g1: Greeting = "Hello World"; // ✅ 匹配模式
 const g2: Greeting = "Hello TypeScript"; // ✅
-console.log("Greeting 类型值:", g1, "|", g2);
+console.log("Greeting 类型值:", g1, "|", g2);  // 控制台输出
 
-type Id = \`id-\${number}\`;
+type Id = \`id-\${number}\`;  // 定义类型别名 Id
 const id1: Id = "id-1"; // ✅
 const id2: Id = "id-42"; // ✅
-console.log("Id 类型值:", id1, "|", id2);
+console.log("Id 类型值:", id1, "|", id2);  // 控制台输出
 
-type FixedGreeting = \`Hello \${"world"}\`;
+type FixedGreeting = \`Hello \${"world"}\`;  // 定义类型别名 FixedGreeting
 const fg: FixedGreeting = "Hello world"; // ✅ 只能是这个确切字符串
-console.log("FixedGreeting 类型值:", fg);
+console.log("FixedGreeting 类型值:", fg);  // 控制台输出
 
 // ---- 2. 与联合类型自动展开 ----
-console.log("\\n---- 2. 与联合类型自动展开 ----");
+console.log("\\n---- 2. 与联合类型自动展开 ----");  // 控制台输出
 
-type Side = "left" | "right";
-type Direction = \`top-\${Side}\` | \`bottom-\${Side}\`;
+type Side = "left" | "right";  // 定义类型别名 Side
+type Direction = \`top-\${Side}\` | \`bottom-\${Side}\`;  // 定义类型别名 Direction，联合类型
 // 编译期："top-left" | "top-right" | "bottom-left" | "bottom-right"
 
 const d1: Direction = "top-left"; // ✅
 const d2: Direction = "bottom-right"; // ✅
-console.log("Direction 类型值:", d1, "|", d2);
+console.log("Direction 类型值:", d1, "|", d2);  // 控制台输出
 
-type Color = "red" | "green" | "blue";
-type Size = "sm" | "md" | "lg";
-type ClassName = \`\${Color}-\${Size}\`;
+type Color = "red" | "green" | "blue";  // 定义类型别名 Color
+type Size = "sm" | "md" | "lg";  // 定义类型别名 Size
+type ClassName = \`\${Color}-\${Size}\`;  // 定义类型别名 ClassName
 // 编译期：9 种组合
-const cn1: ClassName = "red-sm";
-const cn2: ClassName = "blue-lg";
-console.log("ClassName 类型值:", cn1, "|", cn2);
+const cn1: ClassName = "red-sm";  // 声明常量 cn1，类型 ClassName
+const cn2: ClassName = "blue-lg";  // 声明常量 cn2，类型 ClassName
+console.log("ClassName 类型值:", cn1, "|", cn2);  // 控制台输出
 
 // 运行时模拟：生成所有组合
-function combinations(arr1: string[], arr2: string[]): string[] {
-  const result: string[] = [];
-  arr1.forEach(function (a) {
-    arr2.forEach(function (b) { result.push(a + "-" + b); });
+function combinations(arr1: string[], arr2: string[]): string[] {  // 定义函数 combinations，参数: arr1: string[], arr2: string[]，返回 string[]
+  const result: string[] = [];  // 声明常量 result，类型 string[]
+  arr1.forEach(function (a) {  // 调用 arr1.forEach
+    arr2.forEach(function (b) { result.push(a + "-" + b); });  // 调用 arr2.forEach
   });
-  return result;
+  return result;  // 返回 result
 }
-console.log("运行时组合 red|green|blue × sm|md|lg:", combinations(["red", "green", "blue"], ["sm", "md", "lg"]));
+console.log("运行时组合 red|green|blue × sm|md|lg:", combinations(["red", "green", "blue"], ["sm", "md", "lg"]));  // 控制台输出
 
 // ---- 3. 内置字符串操作工具 ----
-console.log("\\n---- 3. 内置字符串操作工具 ----");
+console.log("\\n---- 3. 内置字符串操作工具 ----");  // 控制台输出
 
 // Uppercase / Lowercase / Capitalize / Uncapitalize
 type Up = Uppercase<"hello">;       // "HELLO"
@@ -1564,74 +1564,74 @@ type Low = Lowercase<"HELLO">;      // "hello"
 type Cap = Capitalize<"hello">;     // "Hello"
 type Uncap = Uncapitalize<"Hello">; // "hello"
 
-const up: Up = "HELLO";
-const low: Low = "hello";
-const cap: Cap = "Hello";
-const uncap: Uncap = "hello";
-console.log("Uppercase<'hello'>:", up);
-console.log("Lowercase<'HELLO'>:", low);
-console.log("Capitalize<'hello'>:", cap);
-console.log("Uncapitalize<'Hello'>:", uncap);
+const up: Up = "HELLO";  // 声明常量 up，类型 Up
+const low: Low = "hello";  // 声明常量 low，类型 Low
+const cap: Cap = "Hello";  // 声明常量 cap，类型 Cap
+const uncap: Uncap = "hello";  // 声明常量 uncap，类型 Uncap
+console.log("Uppercase<'hello'>:", up);  // 控制台输出
+console.log("Lowercase<'HELLO'>:", low);  // 控制台输出
+console.log("Capitalize<'hello'>:", cap);  // 控制台输出
+console.log("Uncapitalize<'Hello'>:", uncap);  // 控制台输出
 
 // 运行时对应
-const str = "hello";
-console.log("运行时 toUpperCase:", str.toUpperCase());
-console.log("运行时 toLowerCase:", "HELLO".toLowerCase());
-console.log("运行时 首字母大写:", str.charAt(0).toUpperCase() + str.slice(1));
-console.log("运行时 首字母小写:", "Hello".charAt(0).toLowerCase() + "Hello".slice(1));
+const str = "hello";  // 声明常量 str
+console.log("运行时 toUpperCase:", str.toUpperCase());  // 控制台输出
+console.log("运行时 toLowerCase:", "HELLO".toLowerCase());  // 控制台输出
+console.log("运行时 首字母大写:", str.charAt(0).toUpperCase() + str.slice(1));  // 控制台输出
+console.log("运行时 首字母小写:", "Hello".charAt(0).toLowerCase() + "Hello".slice(1));  // 控制台输出
 
 // ---- 4. 模板字面量 + keyof ----
-console.log("\\n---- 4. 模板字面量 + keyof ----");
+console.log("\\n---- 4. 模板字面量 + keyof ----");  // 控制台输出
 
-interface Person {
+interface Person {  // 定义接口 Person
   name: string;
   age: number;
   email: string;
 }
 
 // 构造 get{Name} 形式的方法名
-type Getters = \`get\${Capitalize<keyof Person & string>}\`;
+type Getters = \`get\${Capitalize<keyof Person & string>}\`;  // 定义类型别名 Getters，使用 keyof 取键的联合
 // 编译期："getName" | "getAge" | "getEmail"
 
-const getterName: Getters = "getName";
-const getterAge: Getters = "getAge";
-const getterEmail: Getters = "getEmail";
-console.log("Getters 类型值:", getterName, "|", getterAge, "|", getterEmail);
+const getterName: Getters = "getName";  // 声明常量 getterName，类型 Getters
+const getterAge: Getters = "getAge";  // 声明常量 getterAge，类型 Getters
+const getterEmail: Getters = "getEmail";  // 声明常量 getterEmail，类型 Getters
+console.log("Getters 类型值:", getterName, "|", getterAge, "|", getterEmail);  // 控制台输出
 
 // ---- 5. 模板字面量 + infer（模式匹配） ----
-console.log("\\n---- 5. 模板字面量 + infer ----");
+console.log("\\n---- 5. 模板字面量 + infer ----");  // 控制台输出
 
 // GetPrefix：提取 - 前面的部分
-type GetPrefix<S> = S extends \`\${infer P}-\${string}\` ? P : never;
+type GetPrefix<S> = S extends \`\${infer P}-\${string}\` ? P : never;  // 定义类型别名 GetPrefix，泛型参数 S，使用 infer 在条件类型中提取类型
 // 编译期：GetPrefix<"top-left"> = "top"
-type Prefix = GetPrefix<"top-left">;
-const prefix: Prefix = "top";
-console.log("GetPrefix<'top-left'>:", prefix);
+type Prefix = GetPrefix<"top-left">;  // 定义类型别名 Prefix
+const prefix: Prefix = "top";  // 声明常量 prefix，类型 Prefix
+console.log("GetPrefix<'top-left'>:", prefix);  // 控制台输出
 
 // GetSuffix：提取 - 后面的部分
-type GetSuffix<S> = S extends \`\${string}-\${infer Suf}\` ? Suf : never;
+type GetSuffix<S> = S extends \`\${string}-\${infer Suf}\` ? Suf : never;  // 定义类型别名 GetSuffix，泛型参数 S，使用 infer 在条件类型中提取类型
 // 编译期：GetSuffix<"top-left"> = "left"
-type Suffix = GetSuffix<"top-left">;
-const suffix: Suffix = "left";
-console.log("GetSuffix<'top-left'>:", suffix);
+type Suffix = GetSuffix<"top-left">;  // 定义类型别名 Suffix
+const suffix: Suffix = "left";  // 声明常量 suffix，类型 Suffix
+console.log("GetSuffix<'top-left'>:", suffix);  // 控制台输出
 
 // Split：分割字符串（递归）
 type Split<S, D extends string> =
   S extends \`\${infer A}\${D}\${infer B}\` ? [A, ...Split<B, D>] : [S];
 // 编译期：Split<"a,b,c", ","> = ["a", "b", "c"]
-type Parts = Split<"a,b,c", ",">;
-const parts: Parts = ["a", "b", "c"];
-console.log("Split<'a,b,c', ','>:", JSON.stringify(parts));
+type Parts = Split<"a,b,c", ",">;  // 定义类型别名 Parts
+const parts: Parts = ["a", "b", "c"];  // 声明常量 parts，类型 Parts
+console.log("Split<'a,b,c', ','>:", JSON.stringify(parts));  // 控制台输出
 
 // 运行时对应
-console.log("运行时 split:", "a,b,c".split(","));
-console.log("运行时提取前缀:", "top-left".split("-")[0]);
-console.log("运行时提取后缀:", "top-left".split("-")[1]);
+console.log("运行时 split:", "a,b,c".split(","));  // 控制台输出
+console.log("运行时提取前缀:", "top-left".split("-")[0]);  // 控制台输出
+console.log("运行时提取后缀:", "top-left".split("-")[1]);  // 控制台输出
 
 // ---- 6. 类型安全的路由系统 ----
-console.log("\\n---- 6. 类型安全的路由系统 ----");
+console.log("\\n---- 6. 类型安全的路由系统 ----");  // 控制台输出
 
-type Routes = "/users" | "/users/:id" | "/posts" | "/posts/:id/comments";
+type Routes = "/users" | "/users/:id" | "/posts" | "/posts/:id/comments";  // 定义类型别名 Routes
 
 // 提取路径参数名（递归处理多参数）
 type GetRouteParams<T extends string> =
@@ -1643,50 +1643,50 @@ type GetRouteParams<T extends string> =
 
 // 编译期：GetRouteParams<"/users/:id"> = "id"
 // 编译期：GetRouteParams<"/posts/:id/comments"> = "id"
-type Params1 = GetRouteParams<"/users/:id">;
-type Params2 = GetRouteParams<"/posts/:id/comments">;
-const p1: Params1 = "id";
-const p2: Params2 = "id";
-console.log("GetRouteParams<'/users/:id'>:", p1);
-console.log("GetRouteParams<'/posts/:id/comments'>:", p2);
+type Params1 = GetRouteParams<"/users/:id">;  // 定义类型别名 Params1
+type Params2 = GetRouteParams<"/posts/:id/comments">;  // 定义类型别名 Params2
+const p1: Params1 = "id";  // 声明常量 p1，类型 Params1
+const p2: Params2 = "id";  // 声明常量 p2，类型 Params2
+console.log("GetRouteParams<'/users/:id'>:", p1);  // 控制台输出
+console.log("GetRouteParams<'/posts/:id/comments'>:", p2);  // 控制台输出
 
 // 构造参数对象类型
-type RouteParams<T extends string> = {
+type RouteParams<T extends string> = {  // 定义类型别名 RouteParams，泛型参数 T extends string
   [K in GetRouteParams<T>]: string;
 };
 // 编译期：RouteParams<"/users/:id"> = { id: string }
-type UsersParams = RouteParams<"/users/:id">;
+type UsersParams = RouteParams<"/users/:id">;  // 定义类型别名 UsersParams
 const up2: UsersParams = { id: "123" }; // ✅
-console.log("RouteParams<'/users/:id'>:", JSON.stringify(up2));
+console.log("RouteParams<'/users/:id'>:", JSON.stringify(up2));  // 控制台输出
 
 // 运行时模拟：路由匹配 + 参数提取
 function matchRoute(
   pattern: string, path: string
 ): Record<string, string> | null {
-  const patternParts = pattern.split("/");
-  const pathParts = path.split("/");
-  if (patternParts.length !== pathParts.length) return null;
-  const params: Record<string, string> = {};
-  for (let i = 0; i < patternParts.length; i++) {
-    const pp = patternParts[i];
-    const actual = pathParts[i];
-    if (pp.startsWith(":")) {
+  const patternParts = pattern.split("/");  // 声明常量 patternParts
+  const pathParts = path.split("/");  // 声明常量 pathParts
+  if (patternParts.length !== pathParts.length) return null;  // 条件判断
+  const params: Record<string, string> = {};  // 声明常量 params，类型 Record<string, string>
+  for (let i = 0; i < patternParts.length; i++) {  // 循环
+    const pp = patternParts[i];  // 声明常量 pp
+    const actual = pathParts[i];  // 声明常量 actual
+    if (pp.startsWith(":")) {  // 条件判断
       params[pp.slice(1)] = actual;
     } else if (pp !== actual) {
-      return null;
+      return null;  // 返回 null
     }
   }
-  return params;
+  return params;  // 返回 params
 }
-console.log("运行时 matchRoute('/users/:id', '/users/123'):", matchRoute("/users/:id", "/users/123"));
-console.log("运行时 matchRoute('/posts/:id/comments', '/posts/42/comments'):", matchRoute("/posts/:id/comments", "/posts/42/comments"));
-console.log("运行时 matchRoute('/users', '/posts'):", matchRoute("/users", "/posts"));
+console.log("运行时 matchRoute('/users/:id', '/users/123'):", matchRoute("/users/:id", "/users/123"));  // 控制台输出
+console.log("运行时 matchRoute('/posts/:id/comments', '/posts/42/comments'):", matchRoute("/posts/:id/comments", "/posts/42/comments"));  // 控制台输出
+console.log("运行时 matchRoute('/users', '/posts'):", matchRoute("/users", "/posts"));  // 控制台输出
 
 // ---- 7. 类型安全的事件系统 ----
-console.log("\\n---- 7. 类型安全的事件系统 ----");
+console.log("\\n---- 7. 类型安全的事件系统 ----");  // 控制台输出
 
-type EventNames = "click" | "change" | "submit";
-type HandlerNames = \`on\${Capitalize<EventNames>}\`;
+type EventNames = "click" | "change" | "submit";  // 定义类型别名 EventNames
+type HandlerNames = \`on\${Capitalize<EventNames>}\`;  // 定义类型别名 HandlerNames
 // 编译期："onClick" | "onChange" | "onSubmit"
 
 type EventPayload<E extends EventNames> =
@@ -1696,8 +1696,8 @@ type EventPayload<E extends EventNames> =
   never;
 
 // 构造事件处理器对象类型
-type EventListenerMap = {
-  [K in EventNames as \`on\${Capitalize<K>}\`]: (payload: EventPayload<K>) => void;
+type EventListenerMap = {  // 定义类型别名 EventListenerMap
+  [K in EventNames as \`on\${Capitalize<K>}\`]: (payload: EventPayload<K>) => void;  // 箭头函数（注意：类型断言会绕过类型检查）
 };
 // 编译期：{
 //   onClick: (p: { x: number; y: number }) => void;
@@ -1705,55 +1705,55 @@ type EventListenerMap = {
 //   onSubmit: (p: { formData: Record<string, string> }) => void;
 // }
 
-const listeners: EventListenerMap = {
+const listeners: EventListenerMap = {  // 声明常量 listeners，类型 EventListenerMap
   onClick: function (p) { console.log("  点击事件:", p.x, p.y); },
   onChange: function (p) { console.log("  变更事件:", p.value); },
   onSubmit: function (p) { console.log("  提交事件:", JSON.stringify(p.formData)); },
 };
-console.log("事件系统调用:");
-listeners.onClick({ x: 100, y: 200 });
-listeners.onChange({ value: "新值" });
-listeners.onSubmit({ formData: { name: "张三" } });
+console.log("事件系统调用:");  // 控制台输出
+listeners.onClick({ x: 100, y: 200 });  // 调用 listeners.onClick
+listeners.onChange({ value: "新值" });  // 调用 listeners.onChange
+listeners.onSubmit({ formData: { name: "张三" } });  // 调用 listeners.onSubmit
 
 // 运行时模拟事件总线
-class SimpleEventBus {
-  private handlers: Record<string, Function[]> = {};
-  on(event: string, cb: Function): void {
-    if (!this.handlers[event]) this.handlers[event] = [];
+class SimpleEventBus {  // 定义类 SimpleEventBus
+  private handlers: Record<string, Function[]> = {};  // 类属性 handlers: Record<string, Function[]>
+  on(event: string, cb: Function): void {  // 方法声明 on(event: string, cb: Function)，返回 void
+    if (!this.handlers[event]) this.handlers[event] = [];  // 条件判断
     this.handlers[event].push(cb);
   }
-  emit(event: string, payload: unknown): void {
+  emit(event: string, payload: unknown): void {  // 方法声明 emit(event: string, payload: unknown)，返回 void
     (this.handlers[event] || []).forEach(function (cb) { cb(payload); });
   }
 }
-const bus = new SimpleEventBus();
-bus.on("click", function (p: any) { console.log("  总线 click:", p.x, p.y); });
-bus.emit("click", { x: 10, y: 20 });
+const bus = new SimpleEventBus();  // 声明常量 bus
+bus.on("click", function (p: any) { console.log("  总线 click:", p.x, p.y); });  // 调用 bus.on（注意：any 关闭了类型检查）
+bus.emit("click", { x: 10, y: 20 });  // 调用 bus.emit
 
 // ---- 8. CSS 属性类型 ----
-console.log("\\n---- 8. CSS 属性类型 ----");
+console.log("\\n---- 8. CSS 属性类型 ----");  // 控制台输出
 
-type CSSProperty = "margin" | "padding" | "border";
-type CSSDirection = "Top" | "Right" | "Bottom" | "Left";
-type SpacingProperty = \`\${CSSProperty}\${CSSDirection}\`;
+type CSSProperty = "margin" | "padding" | "border";  // 定义类型别名 CSSProperty
+type CSSDirection = "Top" | "Right" | "Bottom" | "Left";  // 定义类型别名 CSSDirection
+type SpacingProperty = \`\${CSSProperty}\${CSSDirection}\`;  // 定义类型别名 SpacingProperty
 // 编译期：12 种组合 "marginTop" | "marginRight" | ... | "borderLeft"
 
-const css1: SpacingProperty = "marginTop";
-const css2: SpacingProperty = "paddingBottom";
-const css3: SpacingProperty = "borderLeft";
-console.log("SpacingProperty 类型值:", css1, "|", css2, "|", css3);
+const css1: SpacingProperty = "marginTop";  // 声明常量 css1，类型 SpacingProperty
+const css2: SpacingProperty = "paddingBottom";  // 声明常量 css2，类型 SpacingProperty
+const css3: SpacingProperty = "borderLeft";  // 声明常量 css3，类型 SpacingProperty
+console.log("SpacingProperty 类型值:", css1, "|", css2, "|", css3);  // 控制台输出
 
 // 运行时模拟：CSS 属性应用
-function applyStyle(el: Record<string, any>, prop: string, value: string): void {
+function applyStyle(el: Record<string, any>, prop: string, value: string): void {  // 定义函数 applyStyle，参数: el: Record<string, any>, prop: string, value: string，返回 void（注意：any 关闭了类型检查）
   el[prop] = value;
 }
-const fakeEl: Record<string, any> = {};
-applyStyle(fakeEl, "marginTop", "10px");
-applyStyle(fakeEl, "paddingLeft", "5px");
-console.log("运行时 applyStyle:", JSON.stringify(fakeEl));
+const fakeEl: Record<string, any> = {};  // 声明常量 fakeEl，类型 Record<string, any>（注意：any 关闭了类型检查）
+applyStyle(fakeEl, "marginTop", "10px");  // 调用 applyStyle
+applyStyle(fakeEl, "paddingLeft", "5px");  // 调用 applyStyle
+console.log("运行时 applyStyle:", JSON.stringify(fakeEl));  // 控制台输出
 
 // ---- 9. 字符串操作类型体操 ----
-console.log("\\n---- 9. 字符串操作类型体操 ----");
+console.log("\\n---- 9. 字符串操作类型体操 ----");  // 控制台输出
 
 // Join：用分隔符连接字符串元组
 type Join<T extends string[], D extends string> =
@@ -1763,23 +1763,23 @@ type Join<T extends string[], D extends string> =
       : \`\${F}\${D}\${Join<R, D>}\`
     : "";
 // 编译期：Join<["a", "b", "c"], "-"> = "a-b-c"
-type Joined = Join<["a", "b", "c"], "-">;
-const joined: Joined = "a-b-c";
-console.log("Join<['a','b','c'], '-'>:", joined);
+type Joined = Join<["a", "b", "c"], "-">;  // 定义类型别名 Joined
+const joined: Joined = "a-b-c";  // 声明常量 joined，类型 Joined
+console.log("Join<['a','b','c'], '-'>:", joined);  // 控制台输出
 
 // Repeat：重复字符串 N 次
 type Repeat<S extends string, N extends number, Acc extends string[] = []> =
   Acc["length"] extends N ? "" : \`\${S}\${Repeat<S, N, [...Acc, ""]>}\`;
 // 编译期：Repeat<"ab", 3> = "ababab"
-type Repeated = Repeat<"ab", 3>;
-const repeated: Repeated = "ababab";
-console.log("Repeat<'ab', 3>:", repeated);
+type Repeated = Repeat<"ab", 3>;  // 定义类型别名 Repeated
+const repeated: Repeated = "ababab";  // 声明常量 repeated，类型 Repeated
+console.log("Repeat<'ab', 3>:", repeated);  // 控制台输出
 
 // 运行时对应
-console.log("运行时 join:", ["a", "b", "c"].join("-"));
-console.log("运行时 repeat:", "ab".repeat(3));
+console.log("运行时 join:", ["a", "b", "c"].join("-"));  // 控制台输出
+console.log("运行时 repeat:", "ab".repeat(3));  // 控制台输出
 
-console.log("\\n模板字面量类型深入章节演示完成！");`,
+console.log("\\n模板字面量类型深入章节演示完成！");`,  // 控制台输出
   },
 
   // =========================================================
@@ -1809,13 +1809,13 @@ type F<T> = T extends SomePatternWithInfer ? ExtractedType : OtherType;
 #### 最简单的例子：提取函数返回类型
 
 \`\`\`ts
-type MyReturnType<T> = T extends (...args: any[]) => infer R ? R : never;
+type MyReturnType<T> = T extends (...args: any[]) => infer R ? R : never;  // 定义类型别名 MyReturnType，泛型参数 T，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 
-type F = (a: string, b: number) => boolean;
+type F = (a: string, b: number) => boolean;  // 定义类型别名 F
 type R = MyReturnType<F>;  // boolean
 \`\`\
 
-\`(...args: any[]) => infer R\` 是一个"函数模式"——它匹配任何函数，并把返回类型绑定到 \`R\`。当 \`T\` 是函数时，条件为真，返回 \`R\`（即 \`T\` 的返回类型）；当 \`T\` 不是函数时，条件为假，返回 \`never\`。
+\`(...args: any[]) => infer R\` 是一个"函数模式"——它匹配任何函数，并把返回类型绑定到 \`R\`。当 \`T\` 是函数时，条件为真，返回 \`R\`（即 \`T\` 的返回类型）；当 \`T\` 不是函数时，条件为假，返回 \`never\`。  // 箭头函数（注意：any 关闭了类型检查）
 
 ### 在函数参数中 infer
 
@@ -1831,9 +1831,9 @@ type P = MyParameters<F>;  // [string, number]
 #### 提取第一个参数
 
 \`\`\`ts
-type FirstParameter<T> = T extends (first: infer F, ...rest: any[]) => any ? F : never;
+type FirstParameter<T> = T extends (first: infer F, ...rest: any[]) => any ? F : never;  // 定义类型别名 FirstParameter，泛型参数 T，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 
-type F = (name: string, age: number) => void;
+type F = (name: string, age: number) => void;  // 定义类型别名 F
 type First = FirstParameter<F>;  // string
 \`\`\
 
@@ -1853,7 +1853,7 @@ type R = MyReturnType<F>;  // Promise<string>
 ### 在数组中 infer（ElementOf）
 
 \`\`\`ts
-type ElementOf<T> = T extends (infer E)[] ? E : never;
+type ElementOf<T> = T extends (infer E)[] ? E : never;  // 定义类型别名 ElementOf，泛型参数 T，使用 infer 在条件类型中提取类型
 
 type R1 = ElementOf<string[]>;     // string
 type R2 = ElementOf<number[]>;     // number
@@ -1875,7 +1875,7 @@ type R3 = Unwrap<string>;           // string（不是 Promise，原样返回）
 \`Unwrap\` 只解包一层 Promise。要解包多层嵌套的 Promise，需要递归：
 
 \`\`\`ts
-type DeepUnwrap<T> = T extends Promise<infer U> ? DeepUnwrap<U> : T;
+type DeepUnwrap<T> = T extends Promise<infer U> ? DeepUnwrap<U> : T;  // 定义类型别名 DeepUnwrap，泛型参数 T，使用 infer 在条件类型中提取类型
 
 type R = DeepUnwrap<Promise<Promise<Promise<number>>>>;  // number
 \`\`\
@@ -1904,8 +1904,8 @@ type L = Last<Tuple>;    // boolean
 一个条件类型可以有多个 \`infer\`：
 
 \`\`\`ts
-type FirstAndLast<T extends any[]> =
-  T extends [infer F, ...any[], infer L] ? [F, L] : never;
+type FirstAndLast<T extends any[]> =  // 注意：any 关闭了类型检查
+  T extends [infer F, ...any[], infer L] ? [F, L] : never;  // 注意：any 关闭了类型检查
 
 type R = FirstAndLast<[1, 2, 3, 4]>;  // [1, 4]
 \`\`\
@@ -1924,13 +1924,13 @@ type AllReturns<T> = T extends (...args: any[]) => (infer R | infer R) ? R : nev
 \`\`\`ts
 // DeepReturnType：递归提取最内层函数的返回类型
 type DeepReturnType<T> =
-  T extends (...args: any[]) => infer R
-    ? R extends (...args: any[]) => any
+  T extends (...args: any[]) => infer R  // 箭头函数（注意：any 关闭了类型检查）
+    ? R extends (...args: any[]) => any  // 箭头函数（注意：any 关闭了类型检查）
       ? DeepReturnType<R>
       : R
     : never;
 
-type F = () => () => () => number;
+type F = () => () => () => number;  // 定义类型别名 F
 type R = DeepReturnType<F>;  // number
 \`\`\
 
@@ -1953,12 +1953,12 @@ type R2 = FirstString<[1, 2, 3]>;        // never（第一个不是 string）
 ### 实际应用 1：提取 API 响应类型
 
 \`\`\`ts
-interface ApiSpec {
+interface ApiSpec {  // 定义接口 ApiSpec
   "/users": { response: { id: number; name: string } };
   "/posts": { response: { title: string; content: string } };
 }
 
-type ApiResponse<E extends keyof ApiSpec> = ApiSpec[E]["response"];
+type ApiResponse<E extends keyof ApiSpec> = ApiSpec[E]["response"];  // 定义类型别名 ApiResponse，泛型参数 E extends keyof ApiSpec
 type UsersResponse = ApiResponse<"/users">;  // { id: number; name: string }
 \`\`\
 
@@ -1974,7 +1974,7 @@ type P = PropsOf<MyComponent>;  // { name: string; age: number }
 ### 实际应用 3：提取 Promise 链的结果
 
 \`\`\`ts
-async function fetchUser(): Promise<User> { /* ... */ }
+async function fetchUser(): Promise<User> { /* ... */ }  // 定义函数 fetchUser，返回 Promise<User>
 type User2 = Awaited<ReturnType<typeof fetchUser>>;  // User
 \`\`\
 
@@ -2000,270 +2000,270 @@ type User2 = Awaited<ReturnType<typeof fetchUser>>;  // User
 // infer 纯编译期，转译后擦除。用变量声明 + 注释展示编译期
 // 类型计算，用运行时函数模拟 infer 的"提取"效果。
 
-console.log("========== infer 关键字深入 ==========");
+console.log("========== infer 关键字深入 ==========");  // 控制台输出
 
 // ---- 1. infer 基础：提取函数返回类型 ----
-console.log("\\n---- 1. infer 基础：ReturnType ----");
+console.log("\\n---- 1. infer 基础：ReturnType ----");  // 控制台输出
 
 // MyReturnType<T>：提取函数返回类型
-type MyReturnType<T> = T extends (...args: any[]) => infer R ? R : never;
+type MyReturnType<T> = T extends (...args: any[]) => infer R ? R : never;  // 定义类型别名 MyReturnType，泛型参数 T，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 // 编译期：MyReturnType<(a: string) => number> = number
 
-type SampleFn = (name: string, age: number) => boolean;
+type SampleFn = (name: string, age: number) => boolean;  // 定义类型别名 SampleFn
 type RetType = MyReturnType<SampleFn>; // boolean
 const rt: RetType = true; // ✅ boolean
-console.log("MyReturnType<SampleFn> 赋值 true:", rt);
+console.log("MyReturnType<SampleFn> 赋值 true:", rt);  // 控制台输出
 
 // 运行时模拟：调用函数看返回值类型
-function getReturnTypeRuntime<T extends (...args: any[]) => any>(fn: T): ReturnType<T> {
+function getReturnTypeRuntime<T extends (...args: any[]) => any>(fn: T): ReturnType<T> {  // 箭头函数（注意：any 关闭了类型检查）
   // 注意：这只是演示思路，运行时无法真正"提取类型"
   // 这里返回 undefined 占位，真实场景需要调用 fn
-  return undefined as any;
+  return undefined as any;  // 返回 undefined as any（注意：any 关闭了类型检查；注意：类型断言会绕过类型检查）
 }
-const sampleFn: SampleFn = function (name, age) { return age >= 18; };
-console.log("运行时调用 sampleFn('张三', 30):", sampleFn("张三", 30));
+const sampleFn: SampleFn = function (name, age) { return age >= 18; };  // 声明常量 sampleFn，类型 SampleFn
+console.log("运行时调用 sampleFn('张三', 30):", sampleFn("张三", 30));  // 控制台输出
 
 // ---- 2. 提取函数参数类型：Parameters ----
-console.log("\\n---- 2. 提取参数类型：Parameters ----");
+console.log("\\n---- 2. 提取参数类型：Parameters ----");  // 控制台输出
 
 // MyParameters<T>：提取函数参数类型（元组）
-type MyParameters<T> = T extends (...args: infer P) => any ? P : never;
+type MyParameters<T> = T extends (...args: infer P) => any ? P : never;  // 定义类型别名 MyParameters，泛型参数 T，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 // 编译期：MyParameters<SampleFn> = [string, number]
 
 type Params = MyParameters<SampleFn>; // [string, number]
 const params: Params = ["张三", 30]; // ✅
-console.log("MyParameters<SampleFn> 赋值:", JSON.stringify(params));
+console.log("MyParameters<SampleFn> 赋值:", JSON.stringify(params));  // 控制台输出
 
 // 提取第一个参数
-type FirstParameter<T> = T extends (first: infer F, ...rest: any[]) => any ? F : never;
+type FirstParameter<T> = T extends (first: infer F, ...rest: any[]) => any ? F : never;  // 定义类型别名 FirstParameter，泛型参数 T，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 // 编译期：FirstParameter<SampleFn> = string
-type FirstParam = FirstParameter<SampleFn>;
+type FirstParam = FirstParameter<SampleFn>;  // 定义类型别名 FirstParam
 const fp: FirstParam = "李四"; // ✅ string
-console.log("FirstParameter<SampleFn>:", fp);
+console.log("FirstParameter<SampleFn>:", fp);  // 控制台输出
 
 // 运行时模拟：获取函数参数数量
-function getParamCount(fn: Function): number {
-  return fn.length;
+function getParamCount(fn: Function): number {  // 定义函数 getParamCount，参数: fn: Function，返回 number
+  return fn.length;  // 返回 fn.length
 }
-console.log("运行时 sampleFn.length（参数数量）:", getParamCount(sampleFn));
+console.log("运行时 sampleFn.length（参数数量）:", getParamCount(sampleFn));  // 控制台输出
 
 // ---- 3. 在数组中 infer：ElementOf ----
-console.log("\\n---- 3. 在数组中 infer：ElementOf ----");
+console.log("\\n---- 3. 在数组中 infer：ElementOf ----");  // 控制台输出
 
 // ElementOf<T>：提取数组元素类型
-type ElementOf<T> = T extends (infer E)[] ? E : never;
+type ElementOf<T> = T extends (infer E)[] ? E : never;  // 定义类型别名 ElementOf，泛型参数 T，使用 infer 在条件类型中提取类型
 // 编译期：ElementOf<string[]> = string
 // 编译期：ElementOf<(string|number)[]> = string | number
 
-type Elem1 = ElementOf<string[]>;
-type Elem2 = ElementOf<number[]>;
-type Elem3 = ElementOf<(string | number)[]>;
+type Elem1 = ElementOf<string[]>;  // 定义类型别名 Elem1
+type Elem2 = ElementOf<number[]>;  // 定义类型别名 Elem2
+type Elem3 = ElementOf<(string | number)[]>;  // 定义类型别名 Elem3，联合类型
 
-const e1: Elem1 = "hello";
-const e2: Elem2 = 42;
+const e1: Elem1 = "hello";  // 声明常量 e1，类型 Elem1
+const e2: Elem2 = 42;  // 声明常量 e2，类型 Elem2
 const e3: Elem3 = "test"; // ✅ string | number
-console.log("ElementOf<string[]>:", e1);
-console.log("ElementOf<number[]>:", e2);
-console.log("ElementOf<(string|number)[]>:", e3);
+console.log("ElementOf<string[]>:", e1);  // 控制台输出
+console.log("ElementOf<number[]>:", e2);  // 控制台输出
+console.log("ElementOf<(string|number)[]>:", e3);  // 控制台输出
 
 // 运行时模拟：取数组第一个元素看类型
-function firstElement<T>(arr: T[]): T {
-  return arr[0];
+function firstElement<T>(arr: T[]): T {  // 定义函数 firstElement，泛型 T，参数: arr: T[]，返回 T
+  return arr[0];  // 返回 arr[0]
 }
-console.log("运行时 firstElement([1,2,3]):", firstElement([1, 2, 3]));
-console.log("运行时 firstElement(['a','b']):", firstElement(["a", "b"]));
+console.log("运行时 firstElement([1,2,3]):", firstElement([1, 2, 3]));  // 控制台输出
+console.log("运行时 firstElement(['a','b']):", firstElement(["a", "b"]));  // 控制台输出
 
 // ---- 4. 在 Promise 中 infer：Unwrap / Awaited ----
-console.log("\\n---- 4. 在 Promise 中 infer：Unwrap ----");
+console.log("\\n---- 4. 在 Promise 中 infer：Unwrap ----");  // 控制台输出
 
 // Unwrap<T>：解包一层 Promise
-type Unwrap<T> = T extends Promise<infer U> ? U : T;
+type Unwrap<T> = T extends Promise<infer U> ? U : T;  // 定义类型别名 Unwrap，泛型参数 T，使用 infer 在条件类型中提取类型
 // 编译期：Unwrap<Promise<string>> = string
 // 编译期：Unwrap<string> = string（不是 Promise，原样返回）
 
-type Unwrapped1 = Unwrap<Promise<string>>;
-type Unwrapped2 = Unwrap<Promise<number>>;
-type Unwrapped3 = Unwrap<boolean>;
-const uw1: Unwrapped1 = "hello";
-const uw2: Unwrapped2 = 42;
-const uw3: Unwrapped3 = true;
-console.log("Unwrap<Promise<string>>:", uw1);
-console.log("Unwrap<Promise<number>>:", uw2);
-console.log("Unwrap<boolean>:", uw3);
+type Unwrapped1 = Unwrap<Promise<string>>;  // 定义类型别名 Unwrapped1
+type Unwrapped2 = Unwrap<Promise<number>>;  // 定义类型别名 Unwrapped2
+type Unwrapped3 = Unwrap<boolean>;  // 定义类型别名 Unwrapped3
+const uw1: Unwrapped1 = "hello";  // 声明常量 uw1，类型 Unwrapped1
+const uw2: Unwrapped2 = 42;  // 声明常量 uw2，类型 Unwrapped2
+const uw3: Unwrapped3 = true;  // 声明常量 uw3，类型 Unwrapped3
+console.log("Unwrap<Promise<string>>:", uw1);  // 控制台输出
+console.log("Unwrap<Promise<number>>:", uw2);  // 控制台输出
+console.log("Unwrap<boolean>:", uw3);  // 控制台输出
 
 // DeepUnwrap<T>：递归解包多层 Promise
-type DeepUnwrap<T> = T extends Promise<infer U> ? DeepUnwrap<U> : T;
+type DeepUnwrap<T> = T extends Promise<infer U> ? DeepUnwrap<U> : T;  // 定义类型别名 DeepUnwrap，泛型参数 T，使用 infer 在条件类型中提取类型
 // 编译期：DeepUnwrap<Promise<Promise<Promise<number>>>> = number
-type Deep = DeepUnwrap<Promise<Promise<Promise<number>>>>;
-const deep: Deep = 999;
-console.log("DeepUnwrap<Promise^3<number>>:", deep);
+type Deep = DeepUnwrap<Promise<Promise<Promise<number>>>>;  // 定义类型别名 Deep
+const deep: Deep = 999;  // 声明常量 deep，类型 Deep
+console.log("DeepUnwrap<Promise^3<number>>:", deep);  // 控制台输出
 
 // 运行时模拟：递归 await 解包
-async function deepUnwrapRuntime(p: Promise<unknown>): Promise<unknown> {
-  let v = await p;
-  while (v instanceof Promise) {
-    v = await v;
+async function deepUnwrapRuntime(p: Promise<unknown>): Promise<unknown> {  // 定义函数 deepUnwrapRuntime，参数: p: Promise<unknown>，返回 Promise<unknown>
+  let v = await p;  // 声明变量 v
+  while (v instanceof Promise) {  // 类型守卫：instanceof 判断实例类型
+    v = await v;  // 赋值 v
   }
-  return v;
+  return v;  // 返回 v
 }
 // 注意：沙箱中 async/await 可用
-deepUnwrapRuntime(Promise.resolve(Promise.resolve(Promise.resolve(42)))).then(function (v) {
-  console.log("运行时 deepUnwrapRuntime(Promise^3(42)):", v);
+deepUnwrapRuntime(Promise.resolve(Promise.resolve(Promise.resolve(42)))).then(function (v) {  // 调用 deepUnwrapRuntime
+  console.log("运行时 deepUnwrapRuntime(Promise^3(42)):", v);  // 控制台输出
 });
 
 // ---- 5. 在元组中 infer ----
-console.log("\\n---- 5. 在元组中 infer ----");
+console.log("\\n---- 5. 在元组中 infer ----");  // 控制台输出
 
-type Tuple = [string, number, boolean];
+type Tuple = [string, number, boolean];  // 定义类型别名 Tuple
 
 // First：提取第一个元素
-type First<T extends any[]> = T extends [infer F, ...any[]] ? F : never;
+type First<T extends any[]> = T extends [infer F, ...any[]] ? F : never;  // 定义类型别名 First，泛型参数 T extends any[]，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 type F1 = First<Tuple>; // string
 
 // Second：提取第二个元素
-type Second<T extends any[]> = T extends [any, infer S, ...any[]] ? S : never;
+type Second<T extends any[]> = T extends [any, infer S, ...any[]] ? S : never;  // 定义类型别名 Second，泛型参数 T extends any[]，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 type S1 = Second<Tuple>; // number
 
 // Last：提取最后一个元素（TypeScript 4.0+ 元组展开）
-type Last<T extends any[]> = T extends [...any[], infer L] ? L : never;
+type Last<T extends any[]> = T extends [...any[], infer L] ? L : never;  // 定义类型别名 Last，泛型参数 T extends any[]，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 type L1 = Last<Tuple>; // boolean
 
-const f1: F1 = "hello";
-const s1: S1 = 42;
-const l1: L1 = true;
-console.log("First<Tuple>:", f1);
-console.log("Second<Tuple>:", s1);
-console.log("Last<Tuple>:", l1);
+const f1: F1 = "hello";  // 声明常量 f1，类型 F1
+const s1: S1 = 42;  // 声明常量 s1，类型 S1
+const l1: L1 = true;  // 声明常量 l1，类型 L1
+console.log("First<Tuple>:", f1);  // 控制台输出
+console.log("Second<Tuple>:", s1);  // 控制台输出
+console.log("Last<Tuple>:", l1);  // 控制台输出
 
 // 运行时对应
-const tuple: Tuple = ["hello", 42, true];
-console.log("运行时 tuple[0]:", tuple[0], "| tuple[1]:", tuple[1], "| tuple[tuple.length-1]:", tuple[tuple.length - 1]);
+const tuple: Tuple = ["hello", 42, true];  // 声明常量 tuple，类型 Tuple
+console.log("运行时 tuple[0]:", tuple[0], "| tuple[1]:", tuple[1], "| tuple[tuple.length-1]:", tuple[tuple.length - 1]);  // 控制台输出
 
 // ---- 6. 多重 infer ----
-console.log("\\n---- 6. 多重 infer ----");
+console.log("\\n---- 6. 多重 infer ----");  // 控制台输出
 
 // FirstAndLast：同时提取第一个和最后一个
-type FirstAndLast<T extends any[]> =
-  T extends [infer F, ...any[], infer L] ? [F, L] : never;
+type FirstAndLast<T extends any[]> =  // 注意：any 关闭了类型检查
+  T extends [infer F, ...any[], infer L] ? [F, L] : never;  // 注意：any 关闭了类型检查
 // 编译期：FirstAndLast<[1, 2, 3, 4]> = [1, 4]
-type FL = FirstAndLast<[1, 2, 3, 4]>;
-const fl: FL = [1, 4];
-console.log("FirstAndLast<[1,2,3,4]>:", JSON.stringify(fl));
+type FL = FirstAndLast<[1, 2, 3, 4]>;  // 定义类型别名 FL
+const fl: FL = [1, 4];  // 声明常量 fl，类型 FL
+console.log("FirstAndLast<[1,2,3,4]>:", JSON.stringify(fl));  // 控制台输出
 
 // 构造函数类型提取
 type ConstructorParameters<T> =
-  T extends new (...args: infer P) => any ? P : never;
+  T extends new (...args: infer P) => any ? P : never;  // 箭头函数（注意：any 关闭了类型检查）
 // 编译期：ConstructorParameters<typeof Date> = []
 
-class Animal {
-  constructor(public name: string, public age: number) {}
+class Animal {  // 定义类 Animal
+  constructor(public name: string, public age: number) {}  // 调用 constructor
 }
-type AnimalCtorParams = ConstructorParameters<typeof Animal>;
-const acp: AnimalCtorParams = ["旺财", 3];
-console.log("ConstructorParameters<typeof Animal>:", JSON.stringify(acp));
-const animal = new Animal(acp[0], acp[1]);
-console.log("用提取的参数构造 Animal:", animal.name, animal.age);
+type AnimalCtorParams = ConstructorParameters<typeof Animal>;  // 定义类型别名 AnimalCtorParams
+const acp: AnimalCtorParams = ["旺财", 3];  // 声明常量 acp，类型 AnimalCtorParams
+console.log("ConstructorParameters<typeof Animal>:", JSON.stringify(acp));  // 控制台输出
+const animal = new Animal(acp[0], acp[1]);  // 声明常量 animal
+console.log("用提取的参数构造 Animal:", animal.name, animal.age);  // 控制台输出
 
 // InstanceType：提取构造函数的实例类型
-type MyInstanceType<T> = T extends new (...args: any[]) => infer I ? I : never;
+type MyInstanceType<T> = T extends new (...args: any[]) => infer I ? I : never;  // 定义类型别名 MyInstanceType，泛型参数 T，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 // 编译期：MyInstanceType<typeof Animal> = Animal
-type AnimalInstance = MyInstanceType<typeof Animal>;
-const inst: AnimalInstance = new Animal("小黑", 5);
-console.log("MyInstanceType<typeof Animal>:", inst.name, inst.age);
+type AnimalInstance = MyInstanceType<typeof Animal>;  // 定义类型别名 AnimalInstance
+const inst: AnimalInstance = new Animal("小黑", 5);  // 声明常量 inst，类型 AnimalInstance
+console.log("MyInstanceType<typeof Animal>:", inst.name, inst.age);  // 控制台输出
 
 // ---- 7. 递归 infer：DeepReturnType ----
-console.log("\\n---- 7. 递归 infer：DeepReturnType ----");
+console.log("\\n---- 7. 递归 infer：DeepReturnType ----");  // 控制台输出
 
 // DeepReturnType：递归提取最内层函数的返回类型
 type DeepReturnType<T> =
-  T extends (...args: any[]) => infer R
-    ? R extends (...args: any[]) => any
+  T extends (...args: any[]) => infer R  // 箭头函数（注意：any 关闭了类型检查）
+    ? R extends (...args: any[]) => any  // 箭头函数（注意：any 关闭了类型检查）
       ? DeepReturnType<R>
       : R
     : never;
 // 编译期：DeepReturnType<() => () => () => number> = number
 
-type NestedFn = () => () => () => number;
+type NestedFn = () => () => () => number;  // 定义类型别名 NestedFn
 type DeepRet = DeepReturnType<NestedFn>; // number
-const dr: DeepRet = 42;
-console.log("DeepReturnType<()=>()=>()=>number>:", dr);
+const dr: DeepRet = 42;  // 声明常量 dr，类型 DeepRet
+console.log("DeepReturnType<()=>()=>()=>number>:", dr);  // 箭头函数
 
 // 运行时模拟：递归调用嵌套函数
-function nestedFn(): () => () => number {
-  return function () {
-    return function () { return 42; };
+function nestedFn(): () => () => number {  // 定义函数 nestedFn，返回 ()
+  return function () {  // 返回 function () {
+    return function () { return 42; };  // 返回 function () { return 42; }
   };
 }
-const result = nestedFn()()();
-console.log("运行时 nestedFn()()():", result);
+const result = nestedFn()()();  // 声明常量 result
+console.log("运行时 nestedFn()()():", result);  // 控制台输出
 
 // ---- 8. infer 的约束（infer T extends U） ----
-console.log("\\n---- 8. infer 的约束 ----");
+console.log("\\n---- 8. infer 的约束 ----");  // 控制台输出
 
 // FirstString：提取第一个 string 类型的元素
-type FirstString<T extends any[]> =
-  T extends [infer F extends string, ...any[]] ? F : never;
+type FirstString<T extends any[]> =  // 注意：any 关闭了类型检查
+  T extends [infer F extends string, ...any[]] ? F : never;  // 注意：any 关闭了类型检查
 // 编译期：FirstString<["hello", 1, 2]> = "hello"
 // 编译期：FirstString<[1, 2, 3]> = never（第一个不是 string）
 
-type FS1 = FirstString<["hello", 1, 2]>;
-type FS2 = FirstString<[1, 2, 3]>;
-const fs1: FS1 = "hello";
-console.log("FirstString<['hello',1,2]>:", fs1);
+type FS1 = FirstString<["hello", 1, 2]>;  // 定义类型别名 FS1
+type FS2 = FirstString<[1, 2, 3]>;  // 定义类型别名 FS2
+const fs1: FS1 = "hello";  // 声明常量 fs1，类型 FS1
+console.log("FirstString<['hello',1,2]>:", fs1);  // 控制台输出
 // FS2 是 never，不能赋值任何非 never 的值
-console.log("FirstString<[1,2,3]> 类型:", "never（第一个元素不是 string）");
+console.log("FirstString<[1,2,3]> 类型:", "never（第一个元素不是 string）");  // 控制台输出
 
 // ---- 9. 实际应用：提取 API 响应类型 ----
-console.log("\\n---- 9. 实际应用：提取 API 响应类型 ----");
+console.log("\\n---- 9. 实际应用：提取 API 响应类型 ----");  // 控制台输出
 
-interface ApiSpec {
+interface ApiSpec {  // 定义接口 ApiSpec
   "/users": { response: { id: number; name: string } };
   "/posts": { response: { title: string; content: string } };
 }
 
 // 提取某个端点的响应类型
-type ApiResponse<E extends keyof ApiSpec> = ApiSpec[E]["response"];
+type ApiResponse<E extends keyof ApiSpec> = ApiSpec[E]["response"];  // 定义类型别名 ApiResponse，泛型参数 E extends keyof ApiSpec
 // 编译期：ApiResponse<"/users"> = { id: number; name: string }
-type UsersResponse = ApiResponse<"/users">;
-type PostsResponse = ApiResponse<"/posts">;
+type UsersResponse = ApiResponse<"/users">;  // 定义类型别名 UsersResponse
+type PostsResponse = ApiResponse<"/posts">;  // 定义类型别名 PostsResponse
 
-const ur: UsersResponse = { id: 1, name: "张三" };
-const pr: PostsResponse = { title: "标题", content: "内容" };
-console.log("ApiResponse<'/users'>:", JSON.stringify(ur));
-console.log("ApiResponse<'/posts'>:", JSON.stringify(pr));
+const ur: UsersResponse = { id: 1, name: "张三" };  // 声明常量 ur，类型 UsersResponse
+const pr: PostsResponse = { title: "标题", content: "内容" };  // 声明常量 pr，类型 PostsResponse
+console.log("ApiResponse<'/users'>:", JSON.stringify(ur));  // 控制台输出
+console.log("ApiResponse<'/posts'>:", JSON.stringify(pr));  // 控制台输出
 
 // 运行时模拟：路由分发
-function fetchApi<E extends keyof ApiSpec>(endpoint: E): ApiResponse<E> {
-  const db: Record<string, any> = {
+function fetchApi<E extends keyof ApiSpec>(endpoint: E): ApiResponse<E> {  // 定义函数 fetchApi，泛型 E extends keyof ApiSpec，参数: endpoint: E，返回 ApiResponse<E>
+  const db: Record<string, any> = {  // 声明常量 db，类型 Record<string, any>（注意：any 关闭了类型检查）
     "/users": { id: 1, name: "张三" },
     "/posts": { title: "标题", content: "内容" },
   };
-  return db[endpoint];
+  return db[endpoint];  // 返回 db[endpoint]
 }
-console.log("运行时 fetchApi('/users'):", JSON.stringify(fetchApi("/users")));
-console.log("运行时 fetchApi('/posts'):", JSON.stringify(fetchApi("/posts")));
+console.log("运行时 fetchApi('/users'):", JSON.stringify(fetchApi("/users")));  // 控制台输出
+console.log("运行时 fetchApi('/posts'):", JSON.stringify(fetchApi("/posts")));  // 控制台输出
 
 // ---- 10. 提取 async 函数的结果类型 ----
-console.log("\\n---- 10. 提取 async 函数结果类型 ----");
+console.log("\\n---- 10. 提取 async 函数结果类型 ----");  // 控制台输出
 
-async function fetchUser(): Promise<{ id: number; name: string }> {
-  return { id: 1, name: "张三" };
+async function fetchUser(): Promise<{ id: number; name: string }> {  // 定义函数 fetchUser，返回 Promise<
+  return { id: 1, name: "张三" };  // 返回 { id: 1, name: "张三" }
 }
 
 // Awaited<ReturnType<typeof fetchUser>> 解包 Promise
-type FetchUserResult = Awaited<ReturnType<typeof fetchUser>>;
+type FetchUserResult = Awaited<ReturnType<typeof fetchUser>>;  // 定义类型别名 FetchUserResult
 // 编译期：FetchUserResult = { id: number; name: string }
-const fur: FetchUserResult = { id: 1, name: "张三" };
-console.log("Awaited<ReturnType<typeof fetchUser>>:", JSON.stringify(fur));
+const fur: FetchUserResult = { id: 1, name: "张三" };  // 声明常量 fur，类型 FetchUserResult
+console.log("Awaited<ReturnType<typeof fetchUser>>:", JSON.stringify(fur));  // 控制台输出
 
 // 运行时：真正调用 async 函数
-fetchUser().then(function (user) {
-  console.log("运行时 fetchUser().then:", JSON.stringify(user));
+fetchUser().then(function (user) {  // 调用 fetchUser
+  console.log("运行时 fetchUser().then:", JSON.stringify(user));  // 控制台输出
 });
 
 // 等待异步操作完成
-setTimeout(function () {
-  console.log("\\ninfer 关键字深入章节演示完成！");
+setTimeout(function () {  // 调用 setTimeout（注意：定时器需及时清理）
+  console.log("\\ninfer 关键字深入章节演示完成！");  // 控制台输出
 }, 100);`,
   },
 
@@ -2335,9 +2335,9 @@ type Replace<S extends string, F extends string, T extends string> =
 ### 经典题目 1：TupleToUnion
 
 \`\`\`ts
-type TupleToUnion<T extends any[]> = T[number];
+type TupleToUnion<T extends any[]> = T[number];  // 定义类型别名 TupleToUnion，泛型参数 T extends any[]（注意：any 关闭了类型检查）
 // 或者
-type TupleToUnion2<T extends any[]> = T extends Array<infer E> ? E : never;
+type TupleToUnion2<T extends any[]> = T extends Array<infer E> ? E : never;  // 定义类型别名 TupleToUnion2，泛型参数 T extends any[]，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 
 type R = TupleToUnion<[1, 2, 3]>;  // 1 | 2 | 3
 \`\`\
@@ -2372,18 +2372,18 @@ type DeepMutable<T> = T extends Function
 
 \`\`\`ts
 // IsAny：判断 T 是否是 any
-type IsAny<T> = 0 extends 1 & T ? true : false;
+type IsAny<T> = 0 extends 1 & T ? true : false;  // 定义类型别名 IsAny，泛型参数 T，交叉类型，条件类型
 // 原理：1 & any = any，0 extends any = true；1 & 其他类型 ≠ any
 
 // IsNever：判断 T 是否是 never（必须用 [T] extends [never] 阻止分布）
-type IsNever<T> = [T] extends [never] ? true : false;
+type IsNever<T> = [T] extends [never] ? true : false;  // 定义类型别名 IsNever，泛型参数 T，条件类型
 
 // IsEqual：判断两个类型是否相等（处理 any 和 never 的边界情况）
 type IsEqual<A, B> =
-  (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
+  (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;  // 箭头函数
 \`\`\
 
-\`IsEqual\` 的实现很巧妙——用函数类型的兼容性判断两个类型是否严格相等，能正确处理 \`any\` 和 \`never\`。
+\`IsEqual\` 的实现很巧妙——用函数类型的兼容性判断两个类型是否严格相等，能正确处理 \`any\` 和 \`never\`。  // 注意：any 关闭了类型检查
 
 ### 经典题目 4：IsUnion / IsTuple
 
@@ -2406,7 +2406,7 @@ type IsTuple<T> =
 
 \`\`\`ts
 // 概念性实现（依赖联合类型的内部顺序，不保证稳定）
-type LastOfUnion<T> = UnionToTuple<T> extends [...any[], infer L] ? L : never;
+type LastOfUnion<T> = UnionToTuple<T> extends [...any[], infer L] ? L : never;  // 定义类型别名 LastOfUnion，泛型参数 T，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 // 完整实现很长且依赖内部行为，这里只展示概念
 \`\`\
 
@@ -2733,10 +2733,10 @@ TypeScript 默认采用**结构化类型系统**（Structural Type System）—�
 #### 结构化类型（TypeScript 默认）
 
 \`\`\`ts
-interface UserA { id: number; name: string; }
-interface UserB { id: number; name: string; }
+interface UserA { id: number; name: string; }  // 定义接口 UserA
+interface UserB { id: number; name: string; }  // 定义接口 UserB
 
-const a: UserA = { id: 1, name: "张三" };
+const a: UserA = { id: 1, name: "张三" };  // 声明常量 a，类型 UserA
 const b: UserB = a; // ✅ 结构相同，可以赋值
 \`\`\
 
@@ -2757,13 +2757,13 @@ UserB b = a; // ❌ 编译错误：类型不兼容
 #### 结构化类型的问题
 
 \`\`\`ts
-type UserId = number;
-type OrderId = number;
+type UserId = number;  // 定义类型别名 UserId
+type OrderId = number;  // 定义类型别名 OrderId
 
-function getUser(id: UserId): string { return "用户 " + id; }
-function getOrder(id: OrderId): string { return "订单 " + id; }
+function getUser(id: UserId): string { return "用户 " + id; }  // 定义函数 getUser，参数: id: UserId，返回 string
+function getOrder(id: OrderId): string { return "订单 " + id; }  // 定义函数 getOrder，参数: id: OrderId，返回 string
 
-const userId: UserId = 1001;
+const userId: UserId = 1001;  // 声明常量 userId，类型 UserId
 getOrder(userId); // ✅ 不报错！但语义上是 bug——把用户 ID 当订单 ID
 \`\`\
 
@@ -2790,13 +2790,13 @@ getOrder(userId); // ❌ 编译错误！不能把 UserId 当 OrderId
 ### Brand 工具的实现
 
 \`\`\`ts
-type Brand<T, B extends string> = T & { readonly __brand: B };
+type Brand<T, B extends string> = T & { readonly __brand: B };  // 定义类型别名 Brand，泛型参数 T, B extends string，交叉类型
 \`\`\
 
 这是最简单的实现。更完善的版本会：
 
 1. **用 unique symbol 防止伪造**：用 \`unique symbol\` 作为品牌属性，避免他人构造同结构的对象。
-2. **提供构造函数**：用函数封装 \`as Brand\` 断言，集中管理"创建"逻辑。
+2. **提供构造函数**：用函数封装 \`as Brand\` 断言，集中管理"创建"逻辑。  // 注意：类型断言会绕过类型检查
 3. **提供验证函数**：在创建品牌类型时做运行时验证。
 
 #### 用 unique symbol 的品牌
@@ -2813,14 +2813,14 @@ type Branded<T> = T & { readonly [brandSymbol]: true };
 #### 应用 1：防止 ID 混淆
 
 \`\`\`ts
-type UserId = Brand<number, "UserId">;
-type OrderId = Brand<number, "OrderId">;
-type ProductId = Brand<number, "ProductId">;
+type UserId = Brand<number, "UserId">;  // 定义类型别名 UserId
+type OrderId = Brand<number, "OrderId">;  // 定义类型别名 OrderId
+type ProductId = Brand<number, "ProductId">;  // 定义类型别名 ProductId
 
-function getUser(id: UserId) { /* ... */ }
-function getOrder(id: OrderId) { /* ... */ }
+function getUser(id: UserId) { /* ... */ }  // 定义函数 getUser，参数: id: UserId
+function getOrder(id: OrderId) { /* ... */ }  // 定义函数 getOrder，参数: id: OrderId
 
-const uid = 1 as UserId;
+const uid = 1 as UserId;  // 声明常量 uid（注意：类型断言会绕过类型检查）
 // getOrder(uid); // ❌ 编译错误，防止混淆
 getUser(uid); // ✅ 正确
 \`\`\

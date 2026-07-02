@@ -51,30 +51,30 @@ export const chapters = [
 
 \`\`\`python
 # 1. 赋值给变量
-def shout(text):
-    return text.upper()
+def shout(text):                   # 定义函数 shout，参数：text
+    return text.upper()            # 返回 text.upper()
 
 speak = shout          # speak 现在指向同一个函数对象
 print(speak("hello"))  # HELLO
 
 # 2. 作为参数传递
-def apply(func, value):
-    return func(value)
+def apply(func, value):            # 定义函数 apply，参数：func, value
+    return func(value)             # 返回 func(value)
 
 print(apply(shout, "hi"))         # HI
 print(apply(str.lower, "WORLD"))  # world
 
 # 3. 作为返回值
-def make_multiplier(n):
-    def multiply(x):
-        return x * n
-    return multiply
+def make_multiplier(n):            # 定义函数 make_multiplier，参数：n
+    def multiply(x):               # 定义函数 multiply，参数：x
+        return x * n               # 返回 x * n
+    return multiply                # 返回 multiply
 
-times3 = make_multiplier(3)
+times3 = make_multiplier(3)        # 将 make_multiplier(3) 赋给 times3
 print(times3(10))  # 30
 
 # 4. 存储在数据结构中
-operations = {
+operations = {                     # 将 { 赋给 operations
     "add": lambda a, b: a + b,
     "sub": lambda a, b: a - b,
     "mul": lambda a, b: a * b,
@@ -85,8 +85,8 @@ print(operations["add"](3, 4))  # 7
 函数在 Python 中本质上是 \`function\` 类型的对象，和 \`int\`、\`str\` 没有本质区别：
 
 \`\`\`python
-def foo():
-    pass
+def foo():                         # 定义函数 foo，无参数
+    pass                           # 空操作，占位
 
 print(type(foo))      # <class 'function'>
 print(isinstance(foo, object))  # True，函数是对象
@@ -104,18 +104,18 @@ print(foo.__name__)   # foo，函数对象有属性
 \`map(func, iterable)\` 把 \`func\` 依次应用到可迭代对象的每个元素，返回一个迭代器。
 
 \`\`\`python
-nums = [1, 2, 3, 4, 5]
-squares = list(map(lambda x: x ** 2, nums))
+nums = [1, 2, 3, 4, 5]             # 创建列表并赋给 nums
+squares = list(map(lambda x: x ** 2, nums))  # 将 list(map(lambda x: x ** 2, nums)) 赋给 squares
 print(squares)  # [1, 4, 9, 16, 25]
 
 # 等价的列表推导式（更 Pythonic）
-squares2 = [x ** 2 for x in nums]
+squares2 = [x ** 2 for x in nums]  # 创建列表并赋给 squares2
 \`\`\`
 
 \`map\` 可以接收多个可迭代对象，函数接收对应位置的参数：
 
 \`\`\`python
-result = list(map(lambda a, b: a + b, [1, 2, 3], [10, 20, 30]))
+result = list(map(lambda a, b: a + b, [1, 2, 3], [10, 20, 30]))  # 将 list(map(lambda a, b: a + b, [1, 2, 3], [10, 20, 30])) 赋给 result
 print(result)  # [11, 22, 33]
 \`\`\`
 
@@ -124,12 +124,12 @@ print(result)  # [11, 22, 33]
 \`filter(func, iterable)\` 保留 \`func(x)\` 为真的元素：
 
 \`\`\`python
-nums = [1, 2, 3, 4, 5, 6]
-evens = list(filter(lambda x: x % 2 == 0, nums))
+nums = [1, 2, 3, 4, 5, 6]          # 创建列表并赋给 nums
+evens = list(filter(lambda x: x % 2 == 0, nums))  # 将 list(filter(lambda x: x % 2 == 0, nums)) 赋给 evens
 print(evens)  # [2, 4, 6]
 
 # None 作为函数时，保留真值元素
-truthy = list(filter(None, [0, 1, "", "a", None, [], [1]]))
+truthy = list(filter(None, [0, 1, "", "a", None, [], [1]]))  # 将 list(filter(None, [0, 1, "", "a", None, [], [1]])) 赋给 truthy
 print(truthy)  # [1, 'a', [1]]
 \`\`\`
 
@@ -138,12 +138,12 @@ print(truthy)  # [1, 'a', [1]]
 \`sorted\` 接收一个 \`key\` 函数，根据该函数的返回值排序：
 
 \`\`\`python
-words = ["banana", "apple", "cherry"]
+words = ["banana", "apple", "cherry"]  # 创建列表并赋给 words
 print(sorted(words, key=len))              # 按长度
 print(sorted(words, key=str.lower))        # 忽略大小写
 
-students = [("张三", 88), ("李四", 95), ("王五", 72)]
-print(sorted(students, key=lambda s: s[1], reverse=True))
+students = [("张三", 88), ("李四", 95), ("王五", 72)]  # 创建列表并赋给 students
+print(sorted(students, key=lambda s: s[1], reverse=True))  # 输出 sorted(students, key=lambda s: s[1], reverse=True)
 # 按分数降序：[('李四', 95), ('张三', 88), ('王五', 72)]
 \`\`\`
 
@@ -156,15 +156,15 @@ print(sorted(students, key=lambda s: s[1], reverse=True))
 #### 变量捕获与自由变量
 
 \`\`\`python
-def make_counter():
+def make_counter():                # 定义函数 make_counter，无参数
     count = 0           # 外部变量
-    def counter():
+    def counter():                 # 定义函数 counter，无参数
         nonlocal count  # 声明 count 是外部变量
-        count += 1
-        return count
-    return counter
+        count += 1                 # count 加 1
+        return count               # 返回 count
+    return counter                 # 返回 counter
 
-c = make_counter()
+c = make_counter()                 # 将 make_counter() 赋给 c
 print(c())  # 1
 print(c())  # 2
 print(c())  # 3
@@ -183,9 +183,9 @@ print(c.__code__.co_freevars)  # ('count',)
 经典陷阱——在循环中创建闭包，所有闭包捕获的是同一个变量：
 
 \`\`\`python
-funcs = []
-for i in range(3):
-    funcs.append(lambda: i)
+funcs = []                         # 创建列表并赋给 funcs
+for i in range(3):                 # 遍历 range(3)，每次取值赋给 i
+    funcs.append(lambda: i)        # 对 funcs 调用 追加 方法，参数 lambda: i
 
 print([f() for f in funcs])  # [2, 2, 2]，不是 [0, 1, 2]！
 \`\`\`
@@ -193,13 +193,13 @@ print([f() for f in funcs])  # [2, 2, 2]，不是 [0, 1, 2]！
 原因：所有 lambda 共享同一个 \`i\`，循环结束时 \`i = 2\`。解决方法是用**默认参数**或 \`functools.partial\` 立即绑定当前值：
 
 \`\`\`python
-funcs = [lambda i=i: i for i in range(3)]
+funcs = [lambda i=i: i for i in range(3)]  # 创建列表并赋给 funcs
 print([f() for f in funcs])  # [0, 1, 2]
 
 # 或者用默认参数
-funcs = []
-for i in range(3):
-    funcs.append(lambda i=i: i)
+funcs = []                         # 创建列表并赋给 funcs
+for i in range(3):                 # 遍历 range(3)，每次取值赋给 i
+    funcs.append(lambda i=i: i)    # 对 funcs 调用 追加 方法，参数 lambda i=i: i
 \`\`\`
 
 #### 闭包 vs 类
@@ -208,27 +208,27 @@ for i in range(3):
 
 \`\`\`python
 # 闭包实现
-def make_accumulator():
-    total = 0
-    def add(x):
+def make_accumulator():            # 定义函数 make_accumulator，无参数
+    total = 0                      # 将整数 0 赋给 total
+    def add(x):                    # 定义函数 add，参数：x
         nonlocal total
-        total += x
-        return total
-    return add
+        total += x                 # total 加 x
+        return total               # 返回 total
+    return add                     # 返回 add
 
-acc = make_accumulator()
+acc = make_accumulator()           # 将 make_accumulator() 赋给 acc
 print(acc(10))  # 10
 print(acc(20))  # 30
 
 # 类实现（等价）
-class Accumulator:
-    def __init__(self):
+class Accumulator:                 # 定义类 Accumulator
+    def __init__(self):            # 定义函数 __init__，参数：self
         self.total = 0
-    def add(self, x):
+    def add(self, x):              # 定义函数 add，参数：self, x
         self.total += x
-        return self.total
+        return self.total          # 返回 self.total
 
-acc2 = Accumulator()
+acc2 = Accumulator()               # 将 Accumulator() 赋给 acc2
 print(acc2.add(10))  # 10
 print(acc2.add(20))  # 30
 \`\`\`
@@ -244,21 +244,21 @@ print(acc2.add(20))  # 30
 \`functools.partial(func, *args, **kwargs)\` 固定一个函数的部分参数，返回一个新函数。这是**偏应用（Partial Application）** 的实现。
 
 \`\`\`python
-from functools import partial
+from functools import partial      # 从 functools 导入 partial
 
-def power(base, exponent):
-    return base ** exponent
+def power(base, exponent):         # 定义函数 power，参数：base, exponent
+    return base ** exponent        # 返回 base ** exponent
 
 # 固定 exponent=2，得到「平方」函数
-square = partial(power, exponent=2)
+square = partial(power, exponent=2)  # 将 partial(power, exponent=2) 赋给 square
 print(square(5))  # 25
 
 # 固定 exponent=3，得到「立方」函数
-cube = partial(power, exponent=3)
+cube = partial(power, exponent=3)  # 将 partial(power, exponent=3) 赋给 cube
 print(cube(3))    # 27
 
 # 固定 base=2，得到「2 的 n 次方」
-pow2 = partial(power, 2)
+pow2 = partial(power, 2)           # 将 partial(power, 2) 赋给 pow2
 print(pow2(10))   # 1024
 \`\`\`
 
@@ -267,8 +267,8 @@ print(pow2(10))   # 1024
 \`\`\`python
 import int as _  # 假设场景
 # 把字符串转成 int 并指定进制
-from functools import partial
-basetwo = partial(int, base=2)
+from functools import partial      # 从 functools 导入 partial
+basetwo = partial(int, base=2)     # 将 partial(int, base=2) 赋给 basetwo
 print(basetwo("1010"))  # 10，二进制 1010 = 十进制 10
 \`\`\`
 
@@ -277,13 +277,13 @@ print(basetwo("1010"))  # 10，二进制 1010 = 十进制 10
 \`functools.lru_cache(maxsize=128, typed=False)\` 是装饰器，用 LRU（Least Recently Used）算法缓存函数结果，避免重复计算。
 
 \`\`\`python
-from functools import lru_cache
+from functools import lru_cache    # 从 functools 导入 lru_cache
 
 @lru_cache(maxsize=128)
-def fib(n):
-    if n < 2:
-        return n
-    return fib(n-1) + fib(n-2)
+def fib(n):                        # 定义函数 fib，参数：n
+    if n < 2:                      # 如果 n < 2 成立
+        return n                   # 返回 n
+    return fib(n-1) + fib(n-2)     # 返回 fib(n-1) + fib(n-2)
 
 print(fib(100))  # 瞬间算出，无缓存时会指数级慢
 \`\`\`
@@ -293,7 +293,7 @@ print(fib(100))  # 瞬间算出，无缓存时会指数级慢
 查看缓存信息：
 
 \`\`\`python
-print(fib.cache_info())
+print(fib.cache_info())            # 输出 fib.cache_info()
 # CacheInfo(hits=98, misses=101, maxsize=128, currsize=101)
 \`\`\`
 
@@ -313,13 +313,13 @@ print(fib.cache_info())
 Python 3.9+ 提供了 \`functools.cache\`，等价于 \`lru_cache(maxsize=None)\`（无上限缓存）：
 
 \`\`\`python
-from functools import cache
+from functools import cache        # 从 functools 导入 cache
 
 @cache
-def factorial(n):
-    return 1 if n < 2 else n * factorial(n-1)
+def factorial(n):                  # 定义函数 factorial，参数：n
+    return 1 if n < 2 else n * factorial(n-1)  # 返回 1 if n < 2 else n * factorial(n-1)
 
-print(factorial(50))
+print(factorial(50))               # 输出 factorial(50)
 \`\`\`
 
 #### cmp_to_key —— 旧式比较函数转 key
@@ -327,16 +327,16 @@ print(factorial(50))
 在 Python 2 中，排序用「比较函数」\`cmp(a, b)\`（返回负数/0/正数）。Python 3 改用 \`key\` 函数。如果手头只有旧的 \`cmp\` 函数，可以用 \`cmp_to_key\` 转换：
 
 \`\`\`python
-from functools import cmp_to_key
+from functools import cmp_to_key   # 从 functools 导入 cmp_to_key
 
 # 比较函数：按「奇偶性优先，再按大小」
-def compare(a, b):
-    if a % 2 != b % 2:
+def compare(a, b):                 # 定义函数 compare，参数：a, b
+    if a % 2 != b % 2:             # 如果 a % 2 != b % 2 成立
         return -1 if a % 2 == 1 else 1   # 奇数排前
-    return a - b
+    return a - b                   # 返回 a - b
 
-nums = [5, 2, 8, 1, 6, 3]
-print(sorted(nums, key=cmp_to_key(compare)))
+nums = [5, 2, 8, 1, 6, 3]          # 创建列表并赋给 nums
+print(sorted(nums, key=cmp_to_key(compare)))  # 输出 sorted(nums, key=cmp_to_key(compare))
 # [1, 3, 5, 2, 6, 8]  奇数升序在前，偶数升序在后
 \`\`\`
 
@@ -345,23 +345,23 @@ print(sorted(nums, key=cmp_to_key(compare)))
 \`functools.reduce(func, iterable, initializer)\` 把一个二元函数累积地应用到可迭代对象上，最终归约为一个值。
 
 \`\`\`python
-from functools import reduce
+from functools import reduce       # 从 functools 导入 reduce
 
 # 求和
-nums = [1, 2, 3, 4, 5]
-total = reduce(lambda a, b: a + b, nums)
+nums = [1, 2, 3, 4, 5]             # 创建列表并赋给 nums
+total = reduce(lambda a, b: a + b, nums)  # 将 reduce(lambda a, b: a + b, nums) 赋给 total
 print(total)  # 15
 
 # 求阶乘
-factorial = reduce(lambda a, b: a * b, range(1, 6))
+factorial = reduce(lambda a, b: a * b, range(1, 6))  # 将 reduce(lambda a, b: a * b, range(1, 6)) 赋给 factorial
 print(factorial)  # 120
 
 # 找最大值
-maximum = reduce(lambda a, b: a if a > b else b, nums)
+maximum = reduce(lambda a, b: a if a > b else b, nums)  # 将 reduce(lambda a, b: a if a > b else b, nums) 赋给 maximum
 print(maximum)  # 5
 
 # 带 initializer
-total = reduce(lambda a, b: a + b, nums, 100)
+total = reduce(lambda a, b: a + b, nums, 100)  # 将 reduce(lambda a, b: a + b, nums, 100) 赋给 total
 print(total)  # 115
 \`\`\`
 
@@ -374,23 +374,23 @@ reduce 的执行过程：\`reduce(f, [a, b, c, d])\` 等价于 \`f(f(f(a, b), c)
 \`functools.singledispatch\` 实现**基于第一个参数类型的函数重载**。Python 不支持传统重载，singledispatch 是替代方案。
 
 \`\`\`python
-from functools import singledispatch
+from functools import singledispatch  # 从 functools 导入 singledispatch
 
 @singledispatch
-def to_json(obj):
-    raise TypeError(f"不支持类型: {type(obj)}")
+def to_json(obj):                  # 定义函数 to_json，参数：obj
+    raise TypeError(f"不支持类型: {type(obj)}")  # 抛出异常：TypeError(f"不支持类型: {type(obj)}")
 
 @to_json.register
-def _(obj: str):
-    return f'"{obj}"'
+def _(obj: str):                   # 定义函数 _，参数：obj: str
+    return f'"{obj}"'              # 返回 f'"{obj}"'
 
 @to_json.register
-def _(obj: int):
-    return str(obj)
+def _(obj: int):                   # 定义函数 _，参数：obj: int
+    return str(obj)                # 返回 str(obj)
 
 @to_json.register
-def _(obj: list):
-    return "[" + ", ".join(to_json(x) for x in obj) + "]"
+def _(obj: list):                  # 定义函数 _，参数：obj: list
+    return "[" + ", ".join(to_json(x) for x in obj) + "]"  # 返回 "[" + ", ".join(to_json(x) for x in obj) + "]"
 
 print(to_json("hello"))      # "hello"
 print(to_json(42))           # 42
@@ -404,18 +404,18 @@ print(to_json([1, "a", 2]))  # [1, "a", 2]
 理解 reduce 的本质，自己实现一个：
 
 \`\`\`python
-def my_reduce(func, iterable, initializer=None):
-    it = iter(iterable)
-    if initializer is None:
-        try:
-            accumulator = next(it)
-        except StopIteration:
-            raise TypeError("reduce() of empty seq with no initial value")
-    else:
-        accumulator = initializer
-    for item in it:
-        accumulator = func(accumulator, item)
-    return accumulator
+def my_reduce(func, iterable, initializer=None):  # 定义函数 my_reduce，参数：func, iterable, initializer=None
+    it = iter(iterable)            # 将 iter(iterable) 赋给 it
+    if initializer is None:        # 如果 initializer is None 成立
+        try:                       # 尝试执行以下代码块
+            accumulator = next(it) # 将 next(it) 赋给 accumulator
+        except StopIteration:      # 捕获 StopIteration 异常
+            raise TypeError("reduce() of empty seq with no initial value")  # 抛出异常：TypeError("reduce() of empty seq with no initial value")
+    else:                          # 否则
+        accumulator = initializer  # 将 initializer 赋给 accumulator
+    for item in it:                # 遍历 it，每次取值赋给 item
+        accumulator = func(accumulator, item)  # 将 func(accumulator, item) 赋给 accumulator
+    return accumulator             # 返回 accumulator
 
 print(my_reduce(lambda a, b: a + b, [1, 2, 3, 4]))  # 10
 \`\`\`
@@ -426,22 +426,22 @@ print(my_reduce(lambda a, b: a + b, [1, 2, 3, 4]))  # 10
 
 \`\`\`python
 # 原始：三参数函数
-def add3(a, b, c):
-    return a + b + c
+def add3(a, b, c):                 # 定义函数 add3，参数：a, b, c
+    return a + b + c               # 返回 a + b + c
 
 # 柯里化版本：每次只接收一个参数
-def curry_add3(a):
-    def inner1(b):
-        def inner2(c):
-            return a + b + c
-        return inner2
-    return inner1
+def curry_add3(a):                 # 定义函数 curry_add3，参数：a
+    def inner1(b):                 # 定义函数 inner1，参数：b
+        def inner2(c):             # 定义函数 inner2，参数：c
+            return a + b + c       # 返回 a + b + c
+        return inner2              # 返回 inner2
+    return inner1                  # 返回 inner1
 
 print(curry_add3(1)(2)(3))  # 6
 
 # 偏应用：固定部分参数
-from functools import partial
-add_1_2 = partial(add3, 1, 2)
+from functools import partial      # 从 functools 导入 partial
+add_1_2 = partial(add3, 1, 2)      # 将 partial(add3, 1, 2) 赋给 add_1_2
 print(add_1_2(3))  # 6
 \`\`\`
 
@@ -453,26 +453,26 @@ Python 没有内置柯里化，但可以写一个通用的柯里化装饰器（�
 
 \`\`\`python
 # 可变思维（命令式）
-def add_one_mut(nums):
-    result = []
-    for n in nums:
-        result.append(n + 1)
-    return result
+def add_one_mut(nums):             # 定义函数 add_one_mut，参数：nums
+    result = []                    # 创建列表并赋给 result
+    for n in nums:                 # 遍历 nums，每次取值赋给 n
+        result.append(n + 1)       # 对 result 调用 追加 方法，参数 n + 1
+    return result                  # 返回 result
 
 # 不可变思维（函数式）
-def add_one_imm(nums):
+def add_one_imm(nums):             # 定义函数 add_one_imm，参数：nums
     return tuple(n + 1 for n in nums)  # 返回不可变的 tuple
 
 # 不可变更新字典
-def update(d, key, value):
+def update(d, key, value):         # 定义函数 update，参数：d, key, value
     new = dict(d)        # 拷贝
     new[key] = value     # 修改副本
-    return new
+    return new                     # 返回 new
 
-config = {"host": "localhost", "port": 8080}
-new_config = update(config, "port", 9000)
+config = {"host": "localhost", "port": 8080}  # 创建字典并赋给 config
+new_config = update(config, "port", 9000)  # 将 update(config, "port", 9000) 赋给 new_config
 print(config)      # 原字典不变
-print(new_config)
+print(new_config)                  # 输出 new_config
 \`\`\`
 
 Python 的 \`tuple\`、\`frozenset\`、\`str\`、\`bytes\` 是内置的不可变类型。第三方库 \`dataclasses\`（frozen=True）和 \`pyrsistent\` 提供更强大的不可变数据结构。
@@ -485,20 +485,20 @@ Python 的 \`tuple\`、\`frozenset\`、\`str\`、\`bytes\` 是内置的不可变
 
 \`\`\`python
 # 纯函数
-def add(a, b):
-    return a + b
+def add(a, b):                     # 定义函数 add，参数：a, b
+    return a + b                   # 返回 a + b
 
 # 非纯函数：依赖外部状态
-total = 0
-def add_to_total(x):
+total = 0                          # 将整数 0 赋给 total
+def add_to_total(x):               # 定义函数 add_to_total，参数：x
     global total
-    total += x
-    return total
+    total += x                     # total 加 x
+    return total                   # 返回 total
 
 # 非纯函数：有副作用
-def greet(name):
+def greet(name):                   # 定义函数 greet，参数：name
     print(f"Hello, {name}")  # 打印是副作用
-    return name
+    return name                    # 返回 name
 \`\`\`
 
 纯函数的好处：
@@ -512,31 +512,31 @@ def greet(name):
 **函数组合（Function Composition）** 是把多个函数串联起来，前一个的输出作为后一个的输入，形成新函数。这是函数式编程组织逻辑的核心方式。
 
 \`\`\`python
-def compose(*funcs):
+def compose(*funcs):               # 定义函数 compose，参数：*funcs
     """从右向左组合函数：compose(f, g, h)(x) = f(g(h(x)))"""
-    def composed(x):
-        for f in reversed(funcs):
-            x = f(x)
-        return x
-    return composed
+    def composed(x):               # 定义函数 composed，参数：x
+        for f in reversed(funcs):  # 遍历 reversed(funcs)，每次取值赋给 f
+            x = f(x)               # 将 f(x) 赋给 x
+        return x                   # 返回 x
+    return composed                # 返回 composed
 
 # 组合：先 +1，再 *2，再转字符串
-pipeline = compose(str, lambda x: x * 2, lambda x: x + 1)
+pipeline = compose(str, lambda x: x * 2, lambda x: x + 1)  # 将 compose(str, lambda x: x * 2, lambda x: x + 1) 赋给 pipeline
 print(pipeline(3))  # str((3+1)*2) = "8"
 \`\`\`
 
 也可以做从左向右的管道（pipe）：
 
 \`\`\`python
-def pipe(*funcs):
+def pipe(*funcs):                  # 定义函数 pipe，参数：*funcs
     """从左向右组合：pipe(f, g, h)(x) = h(g(f(x)))"""
-    def piped(x):
-        for f in funcs:
-            x = f(x)
-        return x
-    return piped
+    def piped(x):                  # 定义函数 piped，参数：x
+        for f in funcs:            # 遍历 funcs，每次取值赋给 f
+            x = f(x)               # 将 f(x) 赋给 x
+        return x                   # 返回 x
+    return piped                   # 返回 piped
 
-pipeline = pipe(lambda x: x + 1, lambda x: x * 2, str)
+pipeline = pipe(lambda x: x + 1, lambda x: x * 2, str)  # 将 pipe(lambda x: x + 1, lambda x: x * 2, str) 赋给 pipeline
 print(pipeline(3))  # "8"
 \`\`\`
 
@@ -547,24 +547,24 @@ print(pipeline(3))  # "8"
 **问题：给定一个数字列表，取出所有偶数，每个平方，再求和。**
 
 \`\`\`python
-nums = range(1, 11)
+nums = range(1, 11)                # 将 range(1, 11) 赋给 nums
 
 # 命令式：一步步描述怎么做
-result = 0
-for n in nums:
-    if n % 2 == 0:
-        result += n ** 2
+result = 0                         # 将整数 0 赋给 result
+for n in nums:                     # 遍历 nums，每次取值赋给 n
+    if n % 2 == 0:                 # 如果 n % 2 == 0 成立
+        result += n ** 2           # result 加 n ** 2
 print(result)  # 220
 
 # 函数式：描述「是什么」
-from functools import reduce
-result = sum(n ** 2 for n in nums if n % 2 == 0)
+from functools import reduce       # 从 functools 导入 reduce
+result = sum(n ** 2 for n in nums if n % 2 == 0)  # 将 sum(n ** 2 for n in nums if n % 2 == 0) 赋给 result
 print(result)  # 220
 
 # 纯函数式链式
-result = reduce(
+result = reduce(                   # 将 reduce( 赋给 result
     lambda a, b: a + b,
-    map(lambda x: x ** 2, filter(lambda x: x % 2 == 0, nums))
+    map(lambda x: x ** 2, filter(lambda x: x % 2 == 0, nums))  # 调用 映射，参数 lambda x: x ** 2, filter(lambda x: x % 2 == 0, nums)
 )
 print(result)  # 220
 \`\`\`
@@ -584,70 +584,70 @@ print(result)  # 220
 #### itemgetter —— 按索引/键取值
 
 \`\`\`python
-from operator import itemgetter
+from operator import itemgetter    # 从 operator 导入 itemgetter
 
-students = [("张三", 88), ("李四", 95), ("王五", 72)]
+students = [("张三", 88), ("李四", 95), ("王五", 72)]  # 创建列表并赋给 students
 # 取第二个元素（分数）
-get_score = itemgetter(1)
+get_score = itemgetter(1)          # 将 itemgetter(1) 赋给 get_score
 print(get_score(students[0]))  # 88
 
 # 排序
-print(sorted(students, key=itemgetter(1)))
+print(sorted(students, key=itemgetter(1)))  # 输出 sorted(students, key=itemgetter(1))
 # 等价于 key=lambda s: s[1]
 
 # 多级排序
-data = [("a", 2), ("b", 1), ("a", 1)]
-print(sorted(data, key=itemgetter(0, 1)))
+data = [("a", 2), ("b", 1), ("a", 1)]  # 创建列表并赋给 data
+print(sorted(data, key=itemgetter(0, 1)))  # 输出 sorted(data, key=itemgetter(0, 1))
 # [('a', 1), ('a', 2), ('b', 1)]
 \`\`\`
 
 #### attrgetter —— 按属性取值
 
 \`\`\`python
-from operator import attrgetter
+from operator import attrgetter    # 从 operator 导入 attrgetter
 
-class Point:
-    def __init__(self, x, y):
+class Point:                       # 定义类 Point
+    def __init__(self, x, y):      # 定义函数 __init__，参数：self, x, y
         self.x = x
         self.y = y
-    def __repr__(self):
-        return f"Point({self.x}, {self.y})"
+    def __repr__(self):            # 定义函数 __repr__，参数：self
+        return f"Point({self.x}, {self.y})"  # 返回 f"Point({self.x}, {self.y})"
 
-points = [Point(3, 4), Point(1, 9), Point(2, 1)]
-print(sorted(points, key=attrgetter("x")))
+points = [Point(3, 4), Point(1, 9), Point(2, 1)]  # 创建列表并赋给 points
+print(sorted(points, key=attrgetter("x")))  # 输出 sorted(points, key=attrgetter("x"))
 # [Point(1, 9), Point(2, 1), Point(3, 4)]
 
 # 多属性
-print(sorted(points, key=attrgetter("x", "y")))
+print(sorted(points, key=attrgetter("x", "y")))  # 输出 sorted(points, key=attrgetter("x", "y"))
 \`\`\`
 
 #### methodcaller —— 调用方法
 
 \`\`\`python
-from operator import methodcaller
+from operator import methodcaller  # 从 operator 导入 methodcaller
 
-words = ["Hello", "WORLD", "Python"]
+words = ["Hello", "WORLD", "Python"]  # 创建列表并赋给 words
 # 等价于 lambda s: s.lower()
-lowers = list(map(methodcaller("lower"), words))
+lowers = list(map(methodcaller("lower"), words))  # 将 list(map(methodcaller("lower"), words)) 赋给 lowers
 print(lowers)  # ['hello', 'world', 'python']
 
 # 带参数
-s = "hello world"
-f = methodcaller("replace", "world", "python")
+s = "hello world"                  # 将字符串 "hello world" 赋给 s
+f = methodcaller("replace", "world", "python")  # 将 methodcaller("replace", "world", "python") 赋给 f
 print(f(s))  # hello python
 
 # 用于排序：按 split 后的第一段
-paths = ["a/b/c", "x/y", "m/n/o"]
-print(sorted(paths, key=methodcaller("split", "/")))
+paths = ["a/b/c", "x/y", "m/n/o"]  # 创建列表并赋给 paths
+print(sorted(paths, key=methodcaller("split", "/")))  # 输出 sorted(paths, key=methodcaller("split", "/"))
 \`\`\`
 
 #### 其他常用运算符函数
 
 \`\`\`python
-from operator import add, mul, sub, truediv, mod, pow
-from operator import eq, ne, lt, le, gt, ge
-from operator import and_, or_, xor, not_
-from operator import contains
+from operator import add, mul, sub, truediv, mod, pow  # 从 operator 导入 add, mul, sub, truediv, mod, pow
+from operator import eq, ne, lt, le, gt, ge  # 从 operator 导入 eq, ne, lt, le, gt, ge
+from operator import and_, or_, xor, not_  # 从 operator 导入 and_, or_, xor, not_
+from operator import contains      # 从 operator 导入 contains
 
 print(add(2, 3))      # 5，等价 2 + 3
 print(mul(4, 5))      # 20
@@ -656,7 +656,7 @@ print(gt(3, 2))       # True
 print(contains([1,2,3], 2))  # True，等价 2 in [1,2,3]
 
 # 配合 reduce
-from functools import reduce
+from functools import reduce       # 从 functools 导入 reduce
 print(reduce(add, [1, 2, 3, 4]))   # 10
 print(reduce(mul, [1, 2, 3, 4]))   # 24
 \`\`\`
@@ -1218,34 +1218,34 @@ print("=" * 60)
 #### 创建线程的三种方式
 
 \`\`\`python
-import threading
-import time
+import threading                   # 导入 threading 模块
+import time                        # 导入 time 模块
 
 # 方式一：函数 + Thread
-def worker(name, delay):
-    for i in range(3):
-        time.sleep(delay)
-        print(f"[{name}] 第 {i+1} 次")
+def worker(name, delay):           # 定义函数 worker，参数：name, delay
+    for i in range(3):             # 遍历 range(3)，每次取值赋给 i
+        time.sleep(delay)          # 对 time 调用 sleep 方法，参数 delay
+        print(f"[{name}] 第 {i+1} 次")  # 输出 f"[{name}] 第 {i+1} 次"
 
-t = threading.Thread(target=worker, args=("A", 0.1))
-t.start()
-t.join()
+t = threading.Thread(target=worker, args=("A", 0.1))  # 将 threading.Thread(target=worker, args=("A", 0.1)) 赋给 t
+t.start()                          # 对 t 调用 start 方法
+t.join()                           # 对 t 调用 连接 方法
 
 # 方式二：继承 Thread 类
-class MyThread(threading.Thread):
-    def __init__(self, name):
-        super().__init__(name=name)
-    def run(self):
-        print(f"线程 {self.name} 运行中")
+class MyThread(threading.Thread):  # 定义类 MyThread，继承自 threading.Thread
+    def __init__(self, name):      # 定义函数 __init__，参数：self, name
+        super().__init__(name=name)  # 调用 super，参数 ).__init__(name=name
+    def run(self):                 # 定义函数 run，参数：self
+        print(f"线程 {self.name} 运行中")  # 输出 f"线程 {self.name} 运行中"
 
-t2 = MyThread("自定义线程")
-t2.start()
-t2.join()
+t2 = MyThread("自定义线程")             # 将 MyThread("自定义线程") 赋给 t2
+t2.start()                         # 对 t2 调用 start 方法
+t2.join()                          # 对 t2 调用 连接 方法
 
 # 方式三：lambda
-t3 = threading.Thread(target=lambda: print("lambda 线程"))
-t3.start()
-t3.join()
+t3 = threading.Thread(target=lambda: print("lambda 线程"))  # 将 threading.Thread(target=lambda: print("lambda 线程")) 赋给 t3
+t3.start()                         # 对 t3 调用 start 方法
+t3.join()                          # 对 t3 调用 连接 方法
 \`\`\`
 
 #### Thread 的常用参数
@@ -1264,9 +1264,9 @@ threading.Thread(
 #### start / join / is_alive
 
 \`\`\`python
-t = threading.Thread(target=time.sleep, args=(0.5,))
+t = threading.Thread(target=time.sleep, args=(0.5,))  # 将 threading.Thread(target=time.sleep, args=(0.5,)) 赋给 t
 print("启动前 is_alive:", t.is_alive())  # False
-t.start()
+t.start()                          # 对 t 调用 start 方法
 print("启动后 is_alive:", t.is_alive())  # True
 t.join()  # 等待线程结束
 print("join 后 is_alive:", t.is_alive())  # False
@@ -1282,13 +1282,13 @@ print("join 后 is_alive:", t.is_alive())  # False
 
 \`\`\`python
 # 守护线程
-def background():
-    while True:
-        print("后台运行...")
-        time.sleep(1)
+def background():                  # 定义函数 background，无参数
+    while True:                    # 当 True 为真时重复执行
+        print("后台运行...")           # 输出 "后台运行..."
+        time.sleep(1)              # 对 time 调用 sleep 方法，参数 1
 
-t = threading.Thread(target=background, daemon=True)
-t.start()
+t = threading.Thread(target=background, daemon=True)  # 将 threading.Thread(target=background, daemon=True) 赋给 t
+t.start()                          # 对 t 调用 start 方法
 # 主线程结束时，t 被立即终止
 \`\`\`
 
@@ -1302,13 +1302,13 @@ t.start()
 
 \`\`\`python
 # 经典竞态条件：自增
-counter = 0
-def increment():
+counter = 0                        # 将整数 0 赋给 counter
+def increment():                   # 定义函数 increment，无参数
     global counter
-    for _ in range(100000):
+    for _ in range(100000):        # 遍历 range(100000)，每次取值赋给 _
         counter += 1   # 非原子操作！
 
-threads = [threading.Thread(target=increment) for _ in range(5)]
+threads = [threading.Thread(target=increment) for _ in range(5)]  # 创建列表并赋给 threads
 for t in threads: t.start()
 for t in threads: t.join()
 print(counter)  # 预期 500000，实际可能远小于（数据竞争）
@@ -1323,27 +1323,27 @@ print(counter)  # 预期 500000，实际可能远小于（数据竞争）
 \`threading.Lock\` 是最基础的同步原语，保证同一时刻只有一个线程进入临界区：
 
 \`\`\`python
-lock = threading.Lock()
-counter = 0
+lock = threading.Lock()            # 将 threading.Lock() 赋给 lock
+counter = 0                        # 将整数 0 赋给 counter
 
-def safe_increment():
+def safe_increment():              # 定义函数 safe_increment，无参数
     global counter
-    for _ in range(100000):
+    for _ in range(100000):        # 遍历 range(100000)，每次取值赋给 _
         lock.acquire()   # 获取锁
-        try:
-            counter += 1
-        finally:
+        try:                       # 尝试执行以下代码块
+            counter += 1           # counter 加 1
+        finally:                   # 无论是否异常都执行
             lock.release()  # 释放锁（必须放在 finally）
 \`\`\`
 
 更推荐用 \`with\` 上下文管理器，自动释放锁：
 
 \`\`\`python
-def safe_increment():
+def safe_increment():              # 定义函数 safe_increment，无参数
     global counter
-    for _ in range(100000):
-        with lock:
-            counter += 1
+    for _ in range(100000):        # 遍历 range(100000)，每次取值赋给 _
+        with lock:                 # 使用上下文管理器 lock
+            counter += 1           # counter 加 1
 \`\`\`
 
 ### RLock 可重入锁
@@ -1351,18 +1351,18 @@ def safe_increment():
 \`threading.RLock\`（Reentrant Lock）允许**同一个线程多次获取同一把锁**。普通 Lock 如果同一线程重复 acquire 会死锁，RLock 不会。
 
 \`\`\`python
-rlock = threading.RLock()
+rlock = threading.RLock()          # 将 threading.RLock() 赋给 rlock
 
-def outer():
-    with rlock:
-        print("outer 获取锁")
+def outer():                       # 定义函数 outer，无参数
+    with rlock:                    # 使用上下文管理器 rlock
+        print("outer 获取锁")         # 输出 "outer 获取锁"
         inner()  # inner 也需要锁，RLock 允许
 
-def inner():
+def inner():                       # 定义函数 inner，无参数
     with rlock:  # 同一线程再次获取，OK
-        print("inner 再次获取锁")
+        print("inner 再次获取锁")       # 输出 "inner 再次获取锁"
 
-outer()
+outer()                            # 调用 outer
 \`\`\`
 
 **适用场景**：递归函数、可重入的方法调用链。
@@ -1373,15 +1373,15 @@ outer()
 
 \`\`\`python
 # 限制同时只有 3 个线程访问
-sem = threading.Semaphore(3)
+sem = threading.Semaphore(3)       # 将 threading.Semaphore(3) 赋给 sem
 
-def access_resource(tid):
-    with sem:
-        print(f"线程 {tid} 正在访问")
-        time.sleep(0.5)
-        print(f"线程 {tid} 完成")
+def access_resource(tid):          # 定义函数 access_resource，参数：tid
+    with sem:                      # 使用上下文管理器 sem
+        print(f"线程 {tid} 正在访问")    # 输出 f"线程 {tid} 正在访问"
+        time.sleep(0.5)            # 对 time 调用 sleep 方法，参数 0.5
+        print(f"线程 {tid} 完成")      # 输出 f"线程 {tid} 完成"
 
-threads = [threading.Thread(target=access_resource, args=(i,)) for i in range(10)]
+threads = [threading.Thread(target=access_resource, args=(i,)) for i in range(10)]  # 创建列表并赋给 threads
 for t in threads: t.start()
 for t in threads: t.join()
 \`\`\`
@@ -1394,22 +1394,22 @@ for t in threads: t.join()
 \`threading.Event\` 用于线程间简单的事件通知。Event 内部有一个标志位，\`set()\` 置为真，\`clear()\` 置为假，\`wait()\` 阻塞直到为真。
 
 \`\`\`python
-event = threading.Event()
+event = threading.Event()          # 将 threading.Event() 赋给 event
 
-def waiter():
-    print("等待事件...")
+def waiter():                      # 定义函数 waiter，无参数
+    print("等待事件...")               # 输出 "等待事件..."
     event.wait()          # 阻塞直到 event 被 set
-    print("事件已触发！")
+    print("事件已触发！")                # 输出 "事件已触发！"
 
-def setter():
-    time.sleep(1)
-    print("触发事件")
-    event.set()
+def setter():                      # 定义函数 setter，无参数
+    time.sleep(1)                  # 对 time 调用 sleep 方法，参数 1
+    print("触发事件")                  # 输出 "触发事件"
+    event.set()                    # 对 event 调用 set 方法
 
-t1 = threading.Thread(target=waiter)
-t2 = threading.Thread(target=setter)
-t1.start(); t2.start()
-t1.join(); t2.join()
+t1 = threading.Thread(target=waiter)  # 将 threading.Thread(target=waiter) 赋给 t1
+t2 = threading.Thread(target=setter)  # 将 threading.Thread(target=setter) 赋给 t2
+t1.start(); t2.start()             # 对 t1 调用 start 方法，参数 ); t2.start(
+t1.join(); t2.join()               # 对 t1 调用 连接 方法，参数 ); t2.join(
 \`\`\`
 
 \`wait(timeout)\` 可设超时，返回值表示是否等到（True/False）。
@@ -1419,20 +1419,20 @@ t1.join(); t2.join()
 \`threading.Condition\` 比 Event 更强大，结合了锁和通知机制，适合**生产者-消费者**等场景。
 
 \`\`\`python
-cond = threading.Condition()
-items = []
+cond = threading.Condition()       # 将 threading.Condition() 赋给 cond
+items = []                         # 创建列表并赋给 items
 
-def producer():
-    with cond:
-        items.append("商品")
+def producer():                    # 定义函数 producer，无参数
+    with cond:                     # 使用上下文管理器 cond
+        items.append("商品")         # 对 items 调用 追加 方法，参数 "商品"
         cond.notify()  # 通知一个等待的线程
         # cond.notify_all()  通知所有
 
-def consumer():
-    with cond:
+def consumer():                    # 定义函数 consumer，无参数
+    with cond:                     # 使用上下文管理器 cond
         while not items:  # 必须用 while 防止虚假唤醒
             cond.wait()   # 释放锁并等待，被唤醒后重新获取锁
-        print("消费:", items.pop())
+        print("消费:", items.pop())  # 输出 "消费:", items.pop()
 \`\`\`
 
 经典三步：①获取锁 ②检查条件不满足则 \`wait()\` ③满足则处理并 \`notify()\`。
@@ -1442,9 +1442,9 @@ def consumer():
 \`queue.Queue\` 是**线程安全**的 FIFO 队列，内部已用锁保护，是多线程通信的推荐方式（比手动加锁更安全）。
 
 \`\`\`python
-from queue import Queue
+from queue import Queue            # 从 queue 导入 Queue
 
-q = Queue(maxsize=10)
+q = Queue(maxsize=10)              # 将 Queue(maxsize=10) 赋给 q
 
 # 生产者
 q.put("任务")      # 满了会阻塞
@@ -1471,12 +1471,12 @@ q.get(timeout=2)               # 最多等 2 秒，超时抛 queue.Empty
 当多个线程需要各自的「私有」变量副本时，用 \`threading.local()\`：
 
 \`\`\`python
-local_data = threading.local()
+local_data = threading.local()     # 将 threading.local() 赋给 local_data
 
-def worker():
+def worker():                      # 定义函数 worker，无参数
     local_data.value = threading.current_thread().name
-    time.sleep(0.1)
-    print(f"{threading.current_thread().name}: {local_data.value}")
+    time.sleep(0.1)                # 对 time 调用 sleep 方法，参数 0.1
+    print(f"{threading.current_thread().name}: {local_data.value}")  # 输出 f"{threading.current_thread().name}: {local_data.value}"
 
 # 每个线程看到的 local_data.value 都是自己的，互不干扰
 \`\`\`
@@ -1488,21 +1488,21 @@ def worker():
 手动管理线程麻烦且低效（频繁创建销毁开销大）。\`concurrent.futures.ThreadPoolExecutor\` 提供线程池，复用线程。
 
 \`\`\`python
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor  # 从 concurrent.futures 导入 ThreadPoolExecutor
 
-def fetch(url):
+def fetch(url):                    # 定义函数 fetch，参数：url
     time.sleep(0.5)  # 模拟网络请求
-    return f"{url} 的内容"
+    return f"{url} 的内容"            # 返回 f"{url} 的内容"
 
-with ThreadPoolExecutor(max_workers=5) as executor:
+with ThreadPoolExecutor(max_workers=5) as executor:  # 使用上下文管理器 ThreadPoolExecutor(max_workers=5)，绑定到 executor
     # submit：提交单个任务，返回 Future
-    future = executor.submit(fetch, "http://a.com")
+    future = executor.submit(fetch, "http://a.com")  # 将 executor.submit(fetch, "http://a.com") 赋给 future
     print(future.result())  # 阻塞获取结果
 
     # map：批量提交，按顺序返回结果
-    urls = ["http://a.com", "http://b.com", "http://c.com"]
-    for result in executor.map(fetch, urls):
-        print(result)
+    urls = ["http://a.com", "http://b.com", "http://c.com"]  # 创建列表并赋给 urls
+    for result in executor.map(fetch, urls):  # 遍历 executor.map(fetch, urls)，每次取值赋给 result
+        print(result)              # 输出 result
 \`\`\`
 
 #### submit + as_completed
@@ -1510,16 +1510,16 @@ with ThreadPoolExecutor(max_workers=5) as executor:
 \`as_completed\` 返回一个迭代器，**哪个任务先完成就先返回哪个**：
 
 \`\`\`python
-from concurrent.futures import as_completed
+from concurrent.futures import as_completed  # 从 concurrent.futures 导入 as_completed
 
-with ThreadPoolExecutor(max_workers=5) as executor:
-    futures = {executor.submit(fetch, url): url for url in urls}
-    for future in as_completed(futures):
-        url = futures[future]
-        try:
-            print(future.result())
-        except Exception as e:
-            print(f"{url} 出错: {e}")
+with ThreadPoolExecutor(max_workers=5) as executor:  # 使用上下文管理器 ThreadPoolExecutor(max_workers=5)，绑定到 executor
+    futures = {executor.submit(fetch, url): url for url in urls}  # 创建字典并赋给 futures
+    for future in as_completed(futures):  # 遍历 as_completed(futures)，每次取值赋给 future
+        url = futures[future]      # 将 futures[future] 赋给 url
+        try:                       # 尝试执行以下代码块
+            print(future.result()) # 输出 future.result()
+        except Exception as e:     # 捕获 Exception 异常并绑定到 e
+            print(f"{url} 出错: {e}")  # 输出 f"{url} 出错: {e}"
 \`\`\`
 
 #### Future 对象
@@ -1546,11 +1546,11 @@ CPython 的内存管理（引用计数）不是线程安全的。为了简化实
 
 \`\`\`python
 # CPU 密集：多线程不快
-def cpu_task(n):
-    total = 0
-    for i in range(n):
-        total += i * i
-    return total
+def cpu_task(n):                   # 定义函数 cpu_task，参数：n
+    total = 0                      # 将整数 0 赋给 total
+    for i in range(n):             # 遍历 range(n)，每次取值赋给 i
+        total += i * i             # total 加 i * i
+    return total                   # 返回 total
 
 # 单线程
 # 多线程：由于 GIL，两个线程串行执行 CPU 代码，反而更慢
@@ -1587,20 +1587,20 @@ Python 3.13 引入了实验性的 **PEP 703 自由线程（Free-threaded / No-GI
 
 \`\`\`python
 # 经典死锁：两个锁互相等待
-lock1 = threading.Lock()
-lock2 = threading.Lock()
+lock1 = threading.Lock()           # 将 threading.Lock() 赋给 lock1
+lock2 = threading.Lock()           # 将 threading.Lock() 赋给 lock2
 
-def task_a():
-    with lock1:
-        time.sleep(0.1)
+def task_a():                      # 定义函数 task_a，无参数
+    with lock1:                    # 使用上下文管理器 lock1
+        time.sleep(0.1)            # 对 time 调用 sleep 方法，参数 0.1
         with lock2:  # 等 lock2，但 task_b 持有它
-            print("A")
+            print("A")             # 输出 "A"
 
-def task_b():
-    with lock2:
-        time.sleep(0.1)
+def task_b():                      # 定义函数 task_b，无参数
+    with lock2:                    # 使用上下文管理器 lock2
+        time.sleep(0.1)            # 对 time 调用 sleep 方法，参数 0.1
         with lock1:  # 等 lock1，但 task_a 持有它
-            print("B")
+            print("B")             # 输出 "B"
 # 死锁！
 \`\`\`
 
@@ -2092,11 +2092,11 @@ print("=" * 60)
 
 \`\`\`python
 # CPU 密集任务：多线程 vs 多进程
-def cpu_heavy(n):
-    total = 0
-    for i in range(n):
-        total += i * i
-    return total
+def cpu_heavy(n):                  # 定义函数 cpu_heavy，参数：n
+    total = 0                      # 将整数 0 赋给 total
+    for i in range(n):             # 遍历 range(n)，每次取值赋给 i
+        total += i * i             # total 加 i * i
+    return total                   # 返回 total
 
 # 多线程：GIL 导致串行，2 个线程 ≈ 2 倍单线程时间
 # 多进程：真正并行，2 个进程 ≈ 单线程时间（理想情况）
@@ -2109,19 +2109,19 @@ def cpu_heavy(n):
 \`multiprocessing.Process\` 和 \`threading.Thread\` API 几乎一致：
 
 \`\`\`python
-import multiprocessing
-import time
+import multiprocessing             # 导入 multiprocessing 模块
+import time                        # 导入 time 模块
 
-def worker(name):
-    print(f"进程 {name}，PID={multiprocessing.current_process().pid}")
-    time.sleep(0.5)
-    print(f"进程 {name} 结束")
+def worker(name):                  # 定义函数 worker，参数：name
+    print(f"进程 {name}，PID={multiprocessing.current_process().pid}")  # 输出 f"进程 {name}，PID={multiprocessing.current_process().pid}"
+    time.sleep(0.5)                # 对 time 调用 sleep 方法，参数 0.5
+    print(f"进程 {name} 结束")         # 输出 f"进程 {name} 结束"
 
-if __name__ == "__main__":
-    p = multiprocessing.Process(target=worker, args=("A",))
-    p.start()
-    p.join()
-    print("主进程 PID:", multiprocessing.current_process().pid)
+if __name__ == "__main__":         # 如果 __name__ == "__main__" 成立
+    p = multiprocessing.Process(target=worker, args=("A",))  # 将 multiprocessing.Process(target=worker, args=("A",)) 赋给 p
+    p.start()                      # 对 p 调用 start 方法
+    p.join()                       # 对 p 调用 连接 方法
+    print("主进程 PID:", multiprocessing.current_process().pid)  # 输出 "主进程 PID:", multiprocessing.current_process().pid
 \`\`\`
 
 > **重要**：多进程代码必须放在 \`if __name__ == "__main__":\` 下（尤其在 Windows / macOS spawn 模式下）。否则子进程导入主模块时会重复执行，导致无限递归创建进程。
@@ -2136,7 +2136,7 @@ if __name__ == "__main__":
 #### Process 的常用属性
 
 \`\`\`python
-p = multiprocessing.Process(target=worker, args=("A",), name="MyProcess")
+p = multiprocessing.Process(target=worker, args=("A",), name="MyProcess")  # 将 multiprocessing.Process(target=worker, args=("A",), name="MyProcess") 赋给 p
 print(p.pid)      # 进程 ID（start 前为 None）
 print(p.name)     # 进程名
 print(p.daemon)   # 是否守护进程
@@ -2148,16 +2148,16 @@ p.daemon = True   # 设为守护进程（主进程退出时被终止）
 手动创建进程开销大，实际多用 \`multiprocessing.Pool\` 进程池：
 
 \`\`\`python
-from multiprocessing import Pool
+from multiprocessing import Pool   # 从 multiprocessing 导入 Pool
 
-def square(x):
-    return x * x
+def square(x):                     # 定义函数 square，参数：x
+    return x * x                   # 返回 x * x
 
-if __name__ == "__main__":
-    with Pool(processes=4) as pool:
+if __name__ == "__main__":         # 如果 __name__ == "__main__" 成立
+    with Pool(processes=4) as pool:  # 使用上下文管理器 Pool(processes=4)，绑定到 pool
         # map：批量并行，按顺序返回
-        results = pool.map(square, range(10))
-        print(results)
+        results = pool.map(square, range(10))  # 将 pool.map(square, range(10)) 赋给 results
+        print(results)             # 输出 results
 \`\`\`
 
 #### Pool 的几种方法
@@ -2174,18 +2174,18 @@ if __name__ == "__main__":
 
 \`\`\`python
 # apply_async 异步
-with Pool(4) as pool:
-    result = pool.apply_async(square, (5,))
+with Pool(4) as pool:              # 使用上下文管理器 Pool(4)，绑定到 pool
+    result = pool.apply_async(square, (5,))  # 将 pool.apply_async(square, (5,)) 赋给 result
     print(result.get(timeout=5))  # 25
 
 # starmap：参数解包
-def add(a, b):
-    return a + b
-pairs = [(1, 2), (3, 4), (5, 6)]
+def add(a, b):                     # 定义函数 add，参数：a, b
+    return a + b                   # 返回 a + b
+pairs = [(1, 2), (3, 4), (5, 6)]   # 创建列表并赋给 pairs
 print(pool.starmap(add, pairs))  # [3, 7, 11]
 
 # imap_unordered：无序
-for r in pool.imap_unordered(square, range(10)):
+for r in pool.imap_unordered(square, range(10)):  # 遍历 pool.imap_unordered(square, range(10))，每次取值赋给 r
     print(r)  # 顺序不定
 \`\`\`
 
@@ -2206,18 +2206,18 @@ for r in pool.imap_unordered(square, range(10)):
 \`multiprocessing.Queue\` 是进程安全的队列（和 \`queue.Queue\` 不同，内部用管道和锁实现）：
 
 \`\`\`python
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue  # 从 multiprocessing 导入 Process, Queue
 
-def producer(q):
-    q.put("hello from child")
+def producer(q):                   # 定义函数 producer，参数：q
+    q.put("hello from child")      # 对 q 调用 put 方法，参数 "hello from child"
     q.put(None)  # 结束信号
 
-if __name__ == "__main__":
-    q = Queue()
-    p = Process(target=producer, args=(q,))
-    p.start()
+if __name__ == "__main__":         # 如果 __name__ == "__main__" 成立
+    q = Queue()                    # 将 Queue() 赋给 q
+    p = Process(target=producer, args=(q,))  # 将 Process(target=producer, args=(q,)) 赋给 p
+    p.start()                      # 对 p 调用 start 方法
     print(q.get())  # hello from child
-    p.join()
+    p.join()                       # 对 p 调用 连接 方法
 \`\`\`
 
 #### Pipe 管道
@@ -2225,21 +2225,21 @@ if __name__ == "__main__":
 \`Pipe()\` 返回两个连接对象，分别给两端进程：
 
 \`\`\`python
-from multiprocessing import Process, Pipe
+from multiprocessing import Process, Pipe  # 从 multiprocessing 导入 Process, Pipe
 
-def child(conn):
-    conn.send("来自子进程")
-    msg = conn.recv()
-    print("子进程收到:", msg)
-    conn.close()
+def child(conn):                   # 定义函数 child，参数：conn
+    conn.send("来自子进程")             # 对 conn 调用 send 方法，参数 "来自子进程"
+    msg = conn.recv()              # 将 conn.recv() 赋给 msg
+    print("子进程收到:", msg)           # 输出 "子进程收到:", msg
+    conn.close()                   # 对 conn 调用 close 方法
 
-if __name__ == "__main__":
+if __name__ == "__main__":         # 如果 __name__ == "__main__" 成立
     parent_conn, child_conn = Pipe()
-    p = Process(target=child, args=(child_conn,))
-    p.start()
-    print("父进程收到:", parent_conn.recv())
-    parent_conn.send("来自父进程")
-    p.join()
+    p = Process(target=child, args=(child_conn,))  # 将 Process(target=child, args=(child_conn,)) 赋给 p
+    p.start()                      # 对 p 调用 start 方法
+    print("父进程收到:", parent_conn.recv())  # 输出 "父进程收到:", parent_conn.recv()
+    parent_conn.send("来自父进程")      # 对 parent_conn 调用 send 方法，参数 "来自父进程"
+    p.join()                       # 对 p 调用 连接 方法
 \`\`\`
 
 - \`Pipe(duplex=True)\`：双向（默认）
@@ -2250,20 +2250,20 @@ if __name__ == "__main__":
 \`multiprocessing.Value\` 和 \`Array\` 创建**真正共享**的内存（用 C 类型），性能比 Queue 高：
 
 \`\`\`python
-from multiprocessing import Process, Value, Array
+from multiprocessing import Process, Value, Array  # 从 multiprocessing 导入 Process, Value, Array
 
-def worker(n, arr):
+def worker(n, arr):                # 定义函数 worker，参数：n, arr
     n.value += 1
-    for i in range(len(arr)):
+    for i in range(len(arr)):      # 遍历 range(len(arr))，每次取值赋给 i
         arr[i] *= 2
 
-if __name__ == "__main__":
+if __name__ == "__main__":         # 如果 __name__ == "__main__" 成立
     num = Value("i", 0)       # 整数，初始 0
     arr = Array("i", [1, 2, 3, 4])  # 整数数组
 
-    p = Process(target=worker, args=(num, arr))
-    p.start()
-    p.join()
+    p = Process(target=worker, args=(num, arr))  # 将 Process(target=worker, args=(num, arr)) 赋给 p
+    p.start()                      # 对 p 调用 start 方法
+    p.join()                       # 对 p 调用 连接 方法
     print(num.value)     # 1
     print(arr[:])        # [2, 4, 6, 8]
 \`\`\`
@@ -2277,19 +2277,19 @@ if __name__ == "__main__":
 \`Manager\` 创建一个**服务进程**，代理 list、dict、Namespace 等对象，让多个进程能共享访问：
 
 \`\`\`python
-from multiprocessing import Process, Manager
+from multiprocessing import Process, Manager  # 从 multiprocessing 导入 Process, Manager
 
-def worker(d, l):
+def worker(d, l):                  # 定义函数 worker，参数：d, l
     d["key"] = "value"
-    l.append(42)
+    l.append(42)                   # 对 l 调用 追加 方法，参数 42
 
-if __name__ == "__main__":
-    with Manager() as manager:
-        shared_dict = manager.dict()
-        shared_list = manager.list()
-        p = Process(target=worker, args=(shared_dict, shared_list))
-        p.start()
-        p.join()
+if __name__ == "__main__":         # 如果 __name__ == "__main__" 成立
+    with Manager() as manager:     # 使用上下文管理器 Manager()，绑定到 manager
+        shared_dict = manager.dict()  # 将 manager.dict() 赋给 shared_dict
+        shared_list = manager.list()  # 将 manager.list() 赋给 shared_list
+        p = Process(target=worker, args=(shared_dict, shared_list))  # 将 Process(target=worker, args=(shared_dict, shared_list)) 赋给 p
+        p.start()                  # 对 p 调用 start 方法
+        p.join()                   # 对 p 调用 连接 方法
         print(shared_dict)  # {'key': 'value'}
         print(shared_list)  # [42]
 \`\`\`
@@ -2304,16 +2304,16 @@ Manager 支持的对象：\`dict\`、\`list\`、\`Namespace\`、\`Value\`、\`Ar
 进程间也需要同步（虽然内存隔离，但共享资源如文件、Manager 对象仍需保护）。multiprocessing 提供了和 threading 类似的同步原语：
 
 \`\`\`python
-from multiprocessing import Process, Lock
+from multiprocessing import Process, Lock  # 从 multiprocessing 导入 Process, Lock
 
-def worker(lock, f):
+def worker(lock, f):               # 定义函数 worker，参数：lock, f
     with lock:  # 互斥访问文件
-        with open(f, "a") as fp:
-            fp.write("进程写入\\n")
+        with open(f, "a") as fp:   # 使用上下文管理器 open(f, "a")，绑定到 fp
+            fp.write("进程写入\\n")    # 对 fp 调用 write 方法，参数 "进程写入\\n"
 
-if __name__ == "__main__":
-    lock = Lock()
-    ps = [Process(target=worker, args=(lock, "log.txt")) for _ in range(3)]
+if __name__ == "__main__":         # 如果 __name__ == "__main__" 成立
+    lock = Lock()                  # 将 Lock() 赋给 lock
+    ps = [Process(target=worker, args=(lock, "log.txt")) for _ in range(3)]  # 创建列表并赋给 ps
     for p in ps: p.start()
     for p in ps: p.join()
 \`\`\`
@@ -2331,9 +2331,9 @@ multiprocessing 启动子进程有三种方式：
 | \`forkserver\` | 启动一个服务进程，按需 fork | Unix |
 
 \`\`\`python
-import multiprocessing as mp
+import multiprocessing as mp       # 导入 multiprocessing 模块并取别名 mp
 # 设置启动方式（必须在创建任何 Process 之前）
-mp.set_start_method("spawn")
+mp.set_start_method("spawn")       # 对 mp 调用 set_start_method 方法，参数 "spawn"
 \`\`\`
 
 **为什么 macOS 默认改用 spawn？** fork 在多线程程序中不安全（子进程只有调用 fork 的线程，其他线程状态丢失，可能导致死锁）。
@@ -2349,8 +2349,8 @@ mp.set_start_method("spawn")
 
 \`\`\`python
 # 不 join 会导致僵尸进程
-p = Process(target=worker)
-p.start()
+p = Process(target=worker)         # 将 Process(target=worker) 赋给 p
+p.start()                          # 对 p 调用 start 方法
 # 忘记 p.join()  -> p 变成僵尸
 \`\`\`
 
@@ -2379,16 +2379,16 @@ p.start()
 
 \`\`\`python
 # 子进程修改全局变量不影响父进程
-g_var = 0
-def child():
+g_var = 0                          # 将整数 0 赋给 g_var
+def child():                       # 定义函数 child，无参数
     global g_var
-    g_var = 100
+    g_var = 100                    # 将整数 100 赋给 g_var
     print("子进程 g_var =", g_var)  # 100
 
-if __name__ == "__main__":
-    p = Process(target=child)
-    p.start()
-    p.join()
+if __name__ == "__main__":         # 如果 __name__ == "__main__" 成立
+    p = Process(target=child)      # 将 Process(target=child) 赋给 p
+    p.start()                      # 对 p 调用 start 方法
+    p.join()                       # 对 p 调用 连接 方法
     print("父进程 g_var =", g_var)  # 0，不受影响
 \`\`\`
 
@@ -2397,16 +2397,16 @@ if __name__ == "__main__":
 经典例子：并行计算大量数字的平方和：
 
 \`\`\`python
-from multiprocessing import Pool
+from multiprocessing import Pool   # 从 multiprocessing 导入 Pool
 
-def heavy(n):
-    return sum(i * i for i in range(n))
+def heavy(n):                      # 定义函数 heavy，参数：n
+    return sum(i * i for i in range(n))  # 返回 sum(i * i for i in range(n))
 
-if __name__ == "__main__":
-    tasks = [10_000_000] * 4
-    with Pool(4) as pool:
-        results = pool.map(heavy, tasks)
-    print(results)
+if __name__ == "__main__":         # 如果 __name__ == "__main__" 成立
+    tasks = [10_000_000] * 4       # 将 [10_000_000] * 4 赋给 tasks
+    with Pool(4) as pool:          # 使用上下文管理器 Pool(4)，绑定到 pool
+        results = pool.map(heavy, tasks)  # 将 pool.map(heavy, tasks) 赋给 results
+    print(results)                 # 输出 results
 \`\`\`
 
 4 个进程并行，理想情况下接近单进程的 1/4 时间。
@@ -2814,13 +2814,13 @@ print("=" * 60)
 
 \`\`\`python
 # 同步：3 个请求各 1 秒，总共 3 秒
-import time
-def fetch(url):
+import time                        # 导入 time 模块
+def fetch(url):                    # 定义函数 fetch，参数：url
     time.sleep(1)  # 模拟网络
-    return url
+    return url                     # 返回 url
 
-t0 = time.time()
-fetch("a"); fetch("b"); fetch("c")
+t0 = time.time()                   # 将 time.time() 赋给 t0
+fetch("a"); fetch("b"); fetch("c") # 调用 fetch，参数 "a"); fetch("b"); fetch("c"
 print(time.time() - t0)  # ~3 秒
 \`\`\`
 
@@ -2828,12 +2828,12 @@ print(time.time() - t0)  # ~3 秒
 
 \`\`\`python
 # 异步：3 个请求并发，总共约 1 秒
-import asyncio
-async def fetch(url):
+import asyncio                     # 导入 asyncio 模块
+async def fetch(url):              # 定义异步函数 fetch，参数：url
     await asyncio.sleep(1)
-    return url
+    return url                     # 返回 url
 
-async def main():
+async def main():                  # 定义异步函数 main
     await asyncio.gather(fetch("a"), fetch("b"), fetch("c"))
 \`\`\`
 
@@ -2848,8 +2848,8 @@ async def main():
 \`async def\` 定义一个**协程函数**，调用它返回一个**协程对象**（不立即执行）：
 
 \`\`\`python
-async def hello():
-    return "hello"
+async def hello():                 # 定义异步函数 hello
+    return "hello"                 # 返回 "hello"
 
 coro = hello()      # 创建协程对象，未执行
 print(coro)         # <coroutine object hello at 0x...>
@@ -2863,13 +2863,13 @@ print(coro)         # <coroutine object hello at 0x...>
 \`await\` 暂停当前协程，等待一个**可等待对象（Awaitable）**完成，期间事件循环可以运行其他协程：
 
 \`\`\`python
-async def fetch(url):
+async def fetch(url):              # 定义异步函数 fetch，参数：url
     await asyncio.sleep(1)   # await 一个协程
-    return url
+    return url                     # 返回 url
 
-async def main():
+async def main():                  # 定义异步函数 main
     result = await fetch("http://x")  # await 等待结果
-    print(result)
+    print(result)                  # 输出 result
 \`\`\`
 
 可等待对象包括：协程、Task、Future。
@@ -2882,10 +2882,10 @@ async def main():
 3. 关闭事件循环
 
 \`\`\`python
-async def main():
-    print("hello")
+async def main():                  # 定义异步函数 main
+    print("hello")                 # 输出 "hello"
 
-asyncio.run(main())
+asyncio.run(main())                # 对 asyncio 调用 run 方法，参数 main()
 \`\`\`
 
 注意：
@@ -2899,9 +2899,9 @@ asyncio.run(main())
 
 \`\`\`python
 # 一般不直接操作事件循环，asyncio.run 已封装
-loop = asyncio.new_event_loop()
-loop.run_until_complete(main())
-loop.close()
+loop = asyncio.new_event_loop()    # 将 asyncio.new_event_loop() 赋给 loop
+loop.run_until_complete(main())    # 对 loop 调用 run_until_complete 方法，参数 main()
+loop.close()                       # 对 loop 调用 close 方法
 \`\`\`
 
 可以用 \`asyncio.get_running_loop()\` 获取当前运行的事件循环。
@@ -2911,7 +2911,7 @@ loop.close()
 \`asyncio.create_task(coro)\` 把协程包装成 **Task**，立即调度执行（不等待）：
 
 \`\`\`python
-async def main():
+async def main():                  # 定义异步函数 main
     task = asyncio.create_task(fetch("http://x"))  # 立即开始调度
     # 这里可以干别的事
     result = await task  # 需要结果时再 await
@@ -2927,9 +2927,9 @@ await fetch("b")  # 等 1 秒
 await fetch("c")  # 等 1 秒
 
 # 并发：约 1 秒
-t1 = asyncio.create_task(fetch("a"))
-t2 = asyncio.create_task(fetch("b"))
-t3 = asyncio.create_task(fetch("c"))
+t1 = asyncio.create_task(fetch("a"))  # 将 asyncio.create_task(fetch("a")) 赋给 t1
+t2 = asyncio.create_task(fetch("b"))  # 将 asyncio.create_task(fetch("b")) 赋给 t2
+t3 = asyncio.create_task(fetch("c"))  # 将 asyncio.create_task(fetch("c")) 赋给 t3
 await t1; await t2; await t3
 \`\`\`
 
@@ -2938,7 +2938,7 @@ await t1; await t2; await t3
 \`Future\` 是一个**低层**对象，表示「将来会有结果」的占位。Task 是 Future 的子类。日常编程很少直接用 Future，但理解它有助于理解 asyncio 内部。
 
 \`\`\`python
-future = asyncio.Future()
+future = asyncio.Future()          # 将 asyncio.Future() 赋给 future
 # future.set_result(42)  设置结果
 # future.result()        获取结果
 # await future           等待结果
@@ -2949,8 +2949,8 @@ future = asyncio.Future()
 \`asyncio.gather(*aws)\` 并发运行多个可等待对象，按**输入顺序**返回结果列表：
 
 \`\`\`python
-async def main():
-    results = await asyncio.gather(
+async def main():                  # 定义异步函数 main
+    results = await asyncio.gather(  # 将 await asyncio.gather( 赋给 results
         fetch("a"),
         fetch("b"),
         fetch("c"),
@@ -2984,14 +2984,14 @@ done, pending = await asyncio.wait(
 \`asyncio.wait_for(aw, timeout)\` 等待可等待对象，超时抛 \`asyncio.TimeoutError\`：
 
 \`\`\`python
-async def slow():
+async def slow():                  # 定义异步函数 slow
     await asyncio.sleep(10)
 
-async def main():
-    try:
+async def main():                  # 定义异步函数 main
+    try:                           # 尝试执行以下代码块
         await asyncio.wait_for(slow(), timeout=1)
     except asyncio.TimeoutError:
-        print("超时！")
+        print("超时！")               # 输出 "超时！"
 \`\`\`
 
 超时会**取消**被等待的协程。
@@ -3001,10 +3001,10 @@ async def main():
 \`asyncio.as_completed(aws)\` 返回一个迭代器，**谁先完成谁先返回**：
 
 \`\`\`python
-async def main():
-    tasks = [fetch(url) for url in urls]
-    for coro in asyncio.as_completed(tasks):
-        result = await coro
+async def main():                  # 定义异步函数 main
+    tasks = [fetch(url) for url in urls]  # 创建列表并赋给 tasks
+    for coro in asyncio.as_completed(tasks):  # 遍历 asyncio.as_completed(tasks)，每次取值赋给 coro
+        result = await coro        # 将 await coro 赋给 result
         print("完成:", result)  # 顺序不定
 \`\`\`
 
@@ -3013,16 +3013,16 @@ async def main():
 \`async with\` 用于支持异步 \`__aenter__\` / \`__aexit__\` 的对象，如异步锁、异步 HTTP 连接：
 
 \`\`\`python
-class AsyncResource:
-    async def __aenter__(self):
+class AsyncResource:               # 定义类 AsyncResource
+    async def __aenter__(self):    # 定义异步函数 __aenter__，参数：self
         await asyncio.sleep(0.1)  # 异步获取
-        return self
-    async def __aexit__(self, *exc):
+        return self                # 返回 self
+    async def __aexit__(self, *exc):  # 定义异步函数 __aexit__，参数：self, *exc
         await asyncio.sleep(0.1)  # 异步释放
 
-async def main():
+async def main():                  # 定义异步函数 main
     async with AsyncResource() as r:
-        print("使用资源")
+        print("使用资源")              # 输出 "使用资源"
 \`\`\`
 
 ### async for 异步迭代
@@ -3030,14 +3030,14 @@ async def main():
 \`async for\` 遍历**异步迭代器**（实现 \`__aiter__\` / \`__anext__\`）：
 
 \`\`\`python
-async def async_range(n):
-    for i in range(n):
+async def async_range(n):          # 定义异步函数 async_range，参数：n
+    for i in range(n):             # 遍历 range(n)，每次取值赋给 i
         await asyncio.sleep(0.1)
-        yield i
+        yield i                    # 产出值 i（生成器）
 
-async def main():
+async def main():                  # 定义异步函数 main
     async for i in async_range(3):
-        print(i)
+        print(i)                   # 输出 i
 \`\`\`
 
 支持 \`yield\` 的协程称为**异步生成器**。
@@ -3047,21 +3047,21 @@ async def main():
 \`asyncio.Queue\` 是协程版的生产者-消费者队列：
 
 \`\`\`python
-async def producer(q):
-    for i in range(3):
+async def producer(q):             # 定义异步函数 producer，参数：q
+    for i in range(3):             # 遍历 range(3)，每次取值赋给 i
         await q.put(i)
         await asyncio.sleep(0.1)
 
-async def consumer(q):
-    while True:
-        item = await q.get()
-        print("消费:", item)
-        q.task_done()
+async def consumer(q):             # 定义异步函数 consumer，参数：q
+    while True:                    # 当 True 为真时重复执行
+        item = await q.get()       # 将 await q.get() 赋给 item
+        print("消费:", item)         # 输出 "消费:", item
+        q.task_done()              # 对 q 调用 task_done 方法
 
-async def main():
-    q = asyncio.Queue()
-    p = asyncio.create_task(producer(q))
-    c = asyncio.create_task(consumer(q))
+async def main():                  # 定义异步函数 main
+    q = asyncio.Queue()            # 将 asyncio.Queue() 赋给 q
+    p = asyncio.create_task(producer(q))  # 将 asyncio.create_task(producer(q)) 赋给 p
+    c = asyncio.create_task(consumer(q))  # 将 asyncio.create_task(consumer(q)) 赋给 c
     await q.join()  # 等所有任务处理完
     c.cancel()      # 取消消费者
 \`\`\`
@@ -3071,7 +3071,7 @@ async def main():
 asyncio 提供协程版的同步原语（用法类似 threading，但用 \`async with\`）：
 
 \`\`\`python
-lock = asyncio.Lock()
+lock = asyncio.Lock()              # 将 asyncio.Lock() 赋给 lock
 async with lock:
     # 临界区
 
@@ -3079,9 +3079,9 @@ sem = asyncio.Semaphore(3)  # 最多 3 个并发
 async with sem:
     # 限流
 
-event = asyncio.Event()
+event = asyncio.Event()            # 将 asyncio.Event() 赋给 event
 await event.wait()
-event.set()
+event.set()                        # 对 event 调用 set 方法
 \`\`\`
 
 ### sleep
@@ -3102,9 +3102,9 @@ await asyncio.sleep(1)   # 非阻塞
 
 \`\`\`python
 # 推荐
-task = asyncio.create_task(coro)
+task = asyncio.create_task(coro)   # 将 asyncio.create_task(coro) 赋给 task
 # 旧
-task = asyncio.ensure_future(coro)
+task = asyncio.ensure_future(coro) # 将 asyncio.ensure_future(coro) 赋给 task
 \`\`\`
 
 ### 协程 vs 线程
@@ -3141,21 +3141,21 @@ asyncio 的「传染性」：一旦用了 async，调用链上的函数都得是
 ### 异步爬虫示例
 
 \`\`\`python
-async def fetch(url):
+async def fetch(url):              # 定义异步函数 fetch，参数：url
     await asyncio.sleep(0.5)  # 模拟网络
-    return "%s 的内容" % url
+    return "%s 的内容" % url          # 返回 "%s 的内容" % url
 
-async def crawl(urls):
-    tasks = [asyncio.create_task(fetch(url)) for url in urls]
-    results = await asyncio.gather(*tasks)
-    return results
+async def crawl(urls):             # 定义异步函数 crawl，参数：urls
+    tasks = [asyncio.create_task(fetch(url)) for url in urls]  # 创建列表并赋给 tasks
+    results = await asyncio.gather(*tasks)  # 将 await asyncio.gather(*tasks) 赋给 results
+    return results                 # 返回 results
 
-async def main():
-    urls = ["http://%d.com" % i for i in range(10)]
-    results = await crawl(urls)
-    print(results)
+async def main():                  # 定义异步函数 main
+    urls = ["http://%d.com" % i for i in range(10)]  # 创建列表并赋给 urls
+    results = await crawl(urls)    # 将 await crawl(urls) 赋给 results
+    print(results)                 # 输出 results
 
-asyncio.run(main())
+asyncio.run(main())                # 对 asyncio 调用 run 方法，参数 main()
 \`\`\`
 
 ### 取消 cancellation
@@ -3163,37 +3163,37 @@ asyncio.run(main())
 Task 可以被取消，被取消的协程会收到 \`asyncio.CancelledError\`：
 
 \`\`\`python
-async def long_running():
-    try:
+async def long_running():          # 定义异步函数 long_running
+    try:                           # 尝试执行以下代码块
         await asyncio.sleep(100)
     except asyncio.CancelledError:
-        print("被取消，清理资源")
+        print("被取消，清理资源")          # 输出 "被取消，清理资源"
         raise  # 建议重新抛出
 
-task = asyncio.create_task(long_running())
+task = asyncio.create_task(long_running())  # 将 asyncio.create_task(long_running()) 赋给 task
 await asyncio.sleep(0.1)
-task.cancel()
-try:
+task.cancel()                      # 对 task 调用 cancel 方法
+try:                               # 尝试执行以下代码块
     await task
 except asyncio.CancelledError:
-    print("任务已取消")
+    print("任务已取消")                 # 输出 "任务已取消"
 \`\`\`
 
 ### 异常处理
 
 \`\`\`python
-async def main():
+async def main():                  # 定义异步函数 main
     # gather 默认任一异常即抛
-    results = await asyncio.gather(
+    results = await asyncio.gather(  # 将 await asyncio.gather( 赋给 results
         fetch("a"),
         fetch("b"),
         return_exceptions=True,  # 异常作为结果
     )
-    for r in results:
-        if isinstance(r, Exception):
-            print("出错的:", r)
-        else:
-            print("成功:", r)
+    for r in results:              # 遍历 results，每次取值赋给 r
+        if isinstance(r, Exception):  # 如果 isinstance(r, Exception) 成立
+            print("出错的:", r)       # 输出 "出错的:", r
+        else:                      # 否则
+            print("成功:", r)        # 输出 "成功:", r
 \`\`\`
 
 ### 本章小结
@@ -3642,27 +3642,27 @@ print("=" * 60)
 #### Queue 实现（多线程）
 
 \`\`\`python
-import threading
-from queue import Queue
+import threading                   # 导入 threading 模块
+from queue import Queue            # 从 queue 导入 Queue
 
-def producer(q):
-    for i in range(10):
+def producer(q):                   # 定义函数 producer，参数：q
+    for i in range(10):            # 遍历 range(10)，每次取值赋给 i
         q.put(i)        # 生产
     q.put(None)         # 哨兵表示结束
 
-def consumer(q):
-    while True:
-        item = q.get()
-        if item is None:
-            break
-        print("处理:", item)
-        q.task_done()
+def consumer(q):                   # 定义函数 consumer，参数：q
+    while True:                    # 当 True 为真时重复执行
+        item = q.get()             # 将 q.get() 赋给 item
+        if item is None:           # 如果 item is None 成立
+            break                  # 跳出循环
+        print("处理:", item)         # 输出 "处理:", item
+        q.task_done()              # 对 q 调用 task_done 方法
 
-q = Queue()
-pt = threading.Thread(target=producer, args=(q,))
-ct = threading.Thread(target=consumer, args=(q,))
-pt.start(); ct.start()
-pt.join(); ct.join()
+q = Queue()                        # 将 Queue() 赋给 q
+pt = threading.Thread(target=producer, args=(q,))  # 将 threading.Thread(target=producer, args=(q,)) 赋给 pt
+ct = threading.Thread(target=consumer, args=(q,))  # 将 threading.Thread(target=consumer, args=(q,)) 赋给 ct
+pt.start(); ct.start()             # 对 pt 调用 start 方法，参数 ); ct.start(
+pt.join(); ct.join()               # 对 pt 调用 连接 方法，参数 ); ct.join(
 \`\`\`
 
 优点：
@@ -3673,26 +3673,26 @@ pt.join(); ct.join()
 #### asyncio 实现
 
 \`\`\`python
-import asyncio
+import asyncio                     # 导入 asyncio 模块
 
-async def producer(q):
-    for i in range(10):
+async def producer(q):             # 定义异步函数 producer，参数：q
+    for i in range(10):            # 遍历 range(10)，每次取值赋给 i
         await q.put(i)
     await q.put(None)
 
-async def consumer(q):
-    while True:
-        item = await q.get()
-        if item is None:
-            break
-        print("处理:", item)
-        q.task_done()
+async def consumer(q):             # 定义异步函数 consumer，参数：q
+    while True:                    # 当 True 为真时重复执行
+        item = await q.get()       # 将 await q.get() 赋给 item
+        if item is None:           # 如果 item is None 成立
+            break                  # 跳出循环
+        print("处理:", item)         # 输出 "处理:", item
+        q.task_done()              # 对 q 调用 task_done 方法
 
-async def main():
-    q = asyncio.Queue()
+async def main():                  # 定义异步函数 main
+    q = asyncio.Queue()            # 将 asyncio.Queue() 赋给 q
     await asyncio.gather(producer(q), consumer(q))
 
-asyncio.run(main())
+asyncio.run(main())                # 对 asyncio 调用 run 方法，参数 main()
 \`\`\`
 
 ### 读写锁思想
@@ -3705,30 +3705,30 @@ asyncio.run(main())
 Python 没有内置读写锁，但可以用 \`threading\` 实现。一个简化思路：
 
 \`\`\`python
-import threading
+import threading                   # 导入 threading 模块
 
-class ReadWriteLock:
-    def __init__(self):
+class ReadWriteLock:               # 定义类 ReadWriteLock
+    def __init__(self):            # 定义函数 __init__，参数：self
         self._read_lock = threading.Lock()
         self._write_lock = threading.Lock()
         self._readers = 0
 
-    def acquire_read(self):
-        with self._read_lock:
+    def acquire_read(self):        # 定义函数 acquire_read，参数：self
+        with self._read_lock:      # 使用上下文管理器 self._read_lock
             self._readers += 1
-            if self._readers == 1:
+            if self._readers == 1: # 如果 self._readers == 1 成立
                 self._write_lock.acquire()  # 第一个读者锁住写
 
-    def release_read(self):
-        with self._read_lock:
+    def release_read(self):        # 定义函数 release_read，参数：self
+        with self._read_lock:      # 使用上下文管理器 self._read_lock
             self._readers -= 1
-            if self._readers == 0:
+            if self._readers == 0: # 如果 self._readers == 0 成立
                 self._write_lock.release()  # 最后一个读者释放写
 
-    def acquire_write(self):
+    def acquire_write(self):       # 定义函数 acquire_write，参数：self
         self._write_lock.acquire()
 
-    def release_write(self):
+    def release_write(self):       # 定义函数 release_write，参数：self
         self._write_lock.release()
 \`\`\`
 
@@ -3739,28 +3739,28 @@ class ReadWriteLock:
 用 \`Semaphore\` 限制并发数，保护下游资源：
 
 \`\`\`python
-import threading
+import threading                   # 导入 threading 模块
 
 sem = threading.Semaphore(5)  # 最多 5 个并发
 
-def fetch(url):
-    with sem:
+def fetch(url):                    # 定义函数 fetch，参数：url
+    with sem:                      # 使用上下文管理器 sem
         # 实际请求
-        pass
+        pass                       # 空操作，占位
 \`\`\`
 
 协程版：
 
 \`\`\`python
-import asyncio
+import asyncio                     # 导入 asyncio 模块
 
-async def limited_fetch(urls, max_concurrent=5):
-    sem = asyncio.Semaphore(max_concurrent)
-    async def fetch(url):
+async def limited_fetch(urls, max_concurrent=5):  # 定义异步函数 limited_fetch，参数：urls, max_concurrent=5
+    sem = asyncio.Semaphore(max_concurrent)  # 将 asyncio.Semaphore(max_concurrent) 赋给 sem
+    async def fetch(url):          # 定义异步函数 fetch，参数：url
         async with sem:
             await asyncio.sleep(0.1)
-            return url
-    return await asyncio.gather(*[fetch(u) for u in urls])
+            return url             # 返回 url
+    return await asyncio.gather(*[fetch(u) for u in urls])  # 返回 await asyncio.gather(*[fetch(u) for u in urls])
 \`\`\`
 
 ### 超时控制
@@ -3769,15 +3769,15 @@ async def limited_fetch(urls, max_concurrent=5):
 
 \`\`\`python
 # 线程：join timeout
-t.join(timeout=5)
-if t.is_alive():
+t.join(timeout=5)                  # 对 t 调用 连接 方法，参数 timeout=5
+if t.is_alive():                   # 如果 t.is_alive() 成立
     print("超时，线程还在跑")  # 但无法强制停止 Python 线程！
 
 # asyncio：wait_for
-try:
+try:                               # 尝试执行以下代码块
     await asyncio.wait_for(coro, timeout=5)
 except asyncio.TimeoutError:
-    print("超时")
+    print("超时")                    # 输出 "超时"
 
 # concurrent.futures：result timeout
 future.result(timeout=5)  # 超时抛 TimeoutError
@@ -3790,18 +3790,18 @@ future.result(timeout=5)  # 超时抛 TimeoutError
 单例模式在多线程下要小心——多个线程同时首次访问可能创建多个实例。用锁保证：
 
 \`\`\`python
-import threading
+import threading                   # 导入 threading 模块
 
-class Singleton:
-    _instance = None
-    _lock = threading.Lock()
+class Singleton:                   # 定义类 Singleton
+    _instance = None               # 将 None 赋给 _instance
+    _lock = threading.Lock()       # 将 threading.Lock() 赋给 _lock
 
-    def __new__(cls):
+    def __new__(cls):              # 定义函数 __new__，参数：cls
         if cls._instance is None:          # 双重检查
-            with cls._lock:
+            with cls._lock:        # 使用上下文管理器 cls._lock
                 if cls._instance is None:  # 再次检查
                     cls._instance = super().__new__(cls)
-        return cls._instance
+        return cls._instance       # 返回 cls._instance
 \`\`\`
 
 **双重检查锁（Double-Checked Locking）**：先无锁检查，没有再上锁创建，避免每次都加锁。
@@ -3809,17 +3809,17 @@ class Singleton:
 ### 并行下载示例
 
 \`\`\`python
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor  # 从 concurrent.futures 导入 ThreadPoolExecutor
 
-def download(url):
+def download(url):                 # 定义函数 download，参数：url
     # 模拟下载
-    import time
-    time.sleep(0.5)
-    return "%s done" % url
+    import time                    # 导入 time 模块
+    time.sleep(0.5)                # 对 time 调用 sleep 方法，参数 0.5
+    return "%s done" % url         # 返回 "%s done" % url
 
-urls = ["http://a", "http://b", "http://c"]
-with ThreadPoolExecutor(max_workers=3) as executor:
-    results = list(executor.map(download, urls))
+urls = ["http://a", "http://b", "http://c"]  # 创建列表并赋给 urls
+with ThreadPoolExecutor(max_workers=3) as executor:  # 使用上下文管理器 ThreadPoolExecutor(max_workers=3)，绑定到 executor
+    results = list(executor.map(download, urls))  # 将 list(executor.map(download, urls)) 赋给 results
 \`\`\`
 
 ### 流水线模式
@@ -3828,15 +3828,15 @@ with ThreadPoolExecutor(max_workers=3) as executor:
 
 \`\`\`python
 # 下载 -> 解析 -> 存储
-def stage(in_q, out_q, transform):
-    while True:
-        item = in_q.get()
-        if item is None:
-            out_q.put(None)
-            break
-        out_q.put(transform(item))
+def stage(in_q, out_q, transform): # 定义函数 stage，参数：in_q, out_q, transform
+    while True:                    # 当 True 为真时重复执行
+        item = in_q.get()          # 将 in_q.get() 赋给 item
+        if item is None:           # 如果 item is None 成立
+            out_q.put(None)        # 对 out_q 调用 put 方法，参数 None
+            break                  # 跳出循环
+        out_q.put(transform(item)) # 对 out_q 调用 put 方法，参数 transform(item)
 
-q1 = Queue(); q2 = Queue(); q3 = Queue()
+q1 = Queue(); q2 = Queue(); q3 = Queue()  # 将 Queue(); q2 = Queue(); q3 = Queue() 赋给 q1
 # 阶段1：下载 -> q1
 # 阶段2：q1 -> 解析 -> q2
 # 阶段3：q2 -> 存储 -> q3
@@ -3850,37 +3850,37 @@ q1 = Queue(); q2 = Queue(); q3 = Queue()
 - **扇入（Fan-in）**：多个 worker 的结果汇集到一个消费者
 
 \`\`\`python
-import asyncio
+import asyncio                     # 导入 asyncio 模块
 
-async def worker(q_in, q_out, wid):
-    while True:
-        item = await q_in.get()
-        if item is None:
-            break
+async def worker(q_in, q_out, wid):  # 定义异步函数 worker，参数：q_in, q_out, wid
+    while True:                    # 当 True 为真时重复执行
+        item = await q_in.get()    # 将 await q_in.get() 赋给 item
+        if item is None:           # 如果 item is None 成立
+            break                  # 跳出循环
         result = item * 2  # 处理
         await q_out.put((wid, result))
-        q_in.task_done()
+        q_in.task_done()           # 对 q_in 调用 task_done 方法
 
-async def fan_out_fan_in():
-    q_in = asyncio.Queue()
-    q_out = asyncio.Queue()
+async def fan_out_fan_in():        # 定义异步函数 fan_out_fan_in
+    q_in = asyncio.Queue()         # 将 asyncio.Queue() 赋给 q_in
+    q_out = asyncio.Queue()        # 将 asyncio.Queue() 赋给 q_out
 
     # 扇出：3 个 worker
-    workers = [asyncio.create_task(worker(q_in, q_out, i)) for i in range(3)]
+    workers = [asyncio.create_task(worker(q_in, q_out, i)) for i in range(3)]  # 创建列表并赋给 workers
 
     # 投入任务
-    for i in range(9):
+    for i in range(9):             # 遍历 range(9)，每次取值赋给 i
         await q_in.put(i)
-    for _ in workers:
+    for _ in workers:              # 遍历 workers，每次取值赋给 _
         await q_in.put(None)  # 结束信号
 
     # 扇入：收集结果
-    results = []
-    for _ in range(9):
-        results.append(await q_out.get())
+    results = []                   # 创建列表并赋给 results
+    for _ in range(9):             # 遍历 range(9)，每次取值赋给 _
+        results.append(await q_out.get())  # 对 results 调用 追加 方法，参数 await q_out.get()
 
     await asyncio.gather(*workers)
-    return results
+    return results                 # 返回 results
 \`\`\`
 
 ### Future 结果回调
@@ -3888,17 +3888,17 @@ async def fan_out_fan_in():
 \`concurrent.futures\` 的 Future 支持完成回调：
 
 \`\`\`python
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor  # 从 concurrent.futures 导入 ThreadPoolExecutor
 
-def on_done(future):
-    try:
-        print("完成:", future.result())
-    except Exception as e:
-        print("出错:", e)
+def on_done(future):               # 定义函数 on_done，参数：future
+    try:                           # 尝试执行以下代码块
+        print("完成:", future.result())  # 输出 "完成:", future.result()
+    except Exception as e:         # 捕获 Exception 异常并绑定到 e
+        print("出错:", e)            # 输出 "出错:", e
 
-with ThreadPoolExecutor() as executor:
-    fut = executor.submit(lambda: 42)
-    fut.add_done_callback(on_done)
+with ThreadPoolExecutor() as executor:  # 使用上下文管理器 ThreadPoolExecutor()，绑定到 executor
+    fut = executor.submit(lambda: 42)  # 将 executor.submit(lambda: 42) 赋给 fut
+    fut.add_done_callback(on_done) # 对 fut 调用 add_done_callback 方法，参数 on_done
 \`\`\`
 
 回调在**提交任务的线程**还是**执行任务的线程**？在 CPython 中，回调由持有 Future 的线程调用（通常是工作线程）。asyncio 的 Task 回调则在事件循环线程。
@@ -3908,14 +3908,14 @@ with ThreadPoolExecutor() as executor:
 \`concurrent.futures\` 提供了线程池和进程池的**统一接口**：
 
 \`\`\`python
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor  # 从 concurrent.futures 导入 ThreadPoolExecutor, ProcessPoolExecutor
 
 # 线程池（IO 密集）
-with ThreadPoolExecutor() as executor:
+with ThreadPoolExecutor() as executor:  # 使用上下文管理器 ThreadPoolExecutor()，绑定到 executor
     ...
 
 # 进程池（CPU 密集）—— 只需换类名！
-with ProcessPoolExecutor() as executor:
+with ProcessPoolExecutor() as executor:  # 使用上下文管理器 ProcessPoolExecutor()，绑定到 executor
     ...
 \`\`\`
 
@@ -3947,21 +3947,21 @@ with ProcessPoolExecutor() as executor:
 asyncio 可以用 \`run_in_executor\` 把阻塞任务（CPU 密集或同步 IO）丢到线程池/进程池：
 
 \`\`\`python
-import asyncio
-from concurrent.futures import ProcessPoolExecutor
+import asyncio                     # 导入 asyncio 模块
+from concurrent.futures import ProcessPoolExecutor  # 从 concurrent.futures 导入 ProcessPoolExecutor
 
-def cpu_heavy(n):
-    return sum(i * i for i in range(n))
+def cpu_heavy(n):                  # 定义函数 cpu_heavy，参数：n
+    return sum(i * i for i in range(n))  # 返回 sum(i * i for i in range(n))
 
-async def main():
-    loop = asyncio.get_running_loop()
+async def main():                  # 定义异步函数 main
+    loop = asyncio.get_running_loop()  # 将 asyncio.get_running_loop() 赋给 loop
     # 丢到进程池执行，不阻塞事件循环
-    result = await loop.run_in_executor(
+    result = await loop.run_in_executor(  # 将 await loop.run_in_executor( 赋给 result
         ProcessPoolExecutor(), cpu_heavy, 10_000_000
     )
-    print(result)
+    print(result)                  # 输出 result
 
-asyncio.run(main())
+asyncio.run(main())                # 对 asyncio 调用 run 方法，参数 main()
 \`\`\`
 
 这是「协程 + 进程」混合并发的标准做法。
@@ -3971,28 +3971,28 @@ asyncio.run(main())
 #### 案例 1：并发请求（限流 + 超时）
 
 \`\`\`python
-async def fetch_all(urls, max_concurrent=10, timeout=5):
-    sem = asyncio.Semaphore(max_concurrent)
-    async def one(url):
+async def fetch_all(urls, max_concurrent=10, timeout=5):  # 定义异步函数 fetch_all，参数：urls, max_concurrent=10, timeout=5
+    sem = asyncio.Semaphore(max_concurrent)  # 将 asyncio.Semaphore(max_concurrent) 赋给 sem
+    async def one(url):            # 定义异步函数 one，参数：url
         async with sem:
-            try:
-                return await asyncio.wait_for(do_fetch(url), timeout)
+            try:                   # 尝试执行以下代码块
+                return await asyncio.wait_for(do_fetch(url), timeout)  # 返回 await asyncio.wait_for(do_fetch(url), timeout)
             except asyncio.TimeoutError:
-                return None
-    return await asyncio.gather(*[one(u) for u in urls])
+                return None        # 返回 None
+    return await asyncio.gather(*[one(u) for u in urls])  # 返回 await asyncio.gather(*[one(u) for u in urls])
 \`\`\`
 
 #### 案例 2：并行计算（CPU 密集）
 
 \`\`\`python
-from multiprocessing import Pool
-def chunk_process(chunk):
-    return sum(x * x for x in chunk)
+from multiprocessing import Pool   # 从 multiprocessing 导入 Pool
+def chunk_process(chunk):          # 定义函数 chunk_process，参数：chunk
+    return sum(x * x for x in chunk)  # 返回 sum(x * x for x in chunk)
 
-with Pool(4) as pool:
-    chunks = [range(0, 2500000), range(2500000, 5000000), ...]
-    results = pool.map(chunk_process, chunks)
-    total = sum(results)
+with Pool(4) as pool:              # 使用上下文管理器 Pool(4)，绑定到 pool
+    chunks = [range(0, 2500000), range(2500000, 5000000), ...]  # 创建列表并赋给 chunks
+    results = pool.map(chunk_process, chunks)  # 将 pool.map(chunk_process, chunks) 赋给 results
+    total = sum(results)           # 将 sum(results) 赋给 total
 \`\`\`
 
 #### 案例 3：任务队列（生产者消费者）
@@ -4542,8 +4542,8 @@ print("=" * 60)
 
 \`\`\`python
 # 在 Python 中执行 shell 命令
-import subprocess
-result = subprocess.run(["echo", "hello"], capture_output=True, text=True)
+import subprocess                  # 导入 subprocess 模块
+result = subprocess.run(["echo", "hello"], capture_output=True, text=True)  # 将 subprocess.run(["echo", "hello"], capture_output=True, text=True) 赋给 result
 print(result.stdout)  # hello
 \`\`\`
 
@@ -4568,19 +4568,19 @@ subprocess.run(
 #### 基本示例
 
 \`\`\`python
-import subprocess
+import subprocess                  # 导入 subprocess 模块
 
 # 最简单的调用
-result = subprocess.run(["echo", "hello"], capture_output=True, text=True)
+result = subprocess.run(["echo", "hello"], capture_output=True, text=True)  # 将 subprocess.run(["echo", "hello"], capture_output=True, text=True) 赋给 result
 print(result.stdout)        # hello
 print(result.returncode)    # 0
 print(result.args)          # ['echo', 'hello']
 
 # check=True：非零退出码抛异常
-try:
-    subprocess.run(["false"], check=True)
+try:                               # 尝试执行以下代码块
+    subprocess.run(["false"], check=True)  # 对 subprocess 调用 run 方法，参数 ["false"], check=True
 except subprocess.CalledProcessError as e:
-    print("命令失败，退出码:", e.returncode)
+    print("命令失败，退出码:", e.returncode)  # 输出 "命令失败，退出码:", e.returncode
 \`\`\`
 
 #### capture_output 与 text
@@ -4590,12 +4590,12 @@ except subprocess.CalledProcessError as e:
 
 \`\`\`python
 # 字节模式（默认）
-r1 = subprocess.run(["echo", "hi"], capture_output=True)
+r1 = subprocess.run(["echo", "hi"], capture_output=True)  # 将 subprocess.run(["echo", "hi"], capture_output=True) 赋给 r1
 print(type(r1.stdout))  # <class 'bytes'>
 print(r1.stdout)        # b'hi\\n'
 
 # 文本模式
-r2 = subprocess.run(["echo", "hi"], capture_output=True, text=True)
+r2 = subprocess.run(["echo", "hi"], capture_output=True, text=True)  # 将 subprocess.run(["echo", "hi"], capture_output=True, text=True) 赋给 r2
 print(type(r2.stdout))  # <class 'str'>
 print(r2.stdout)        # hi\\n
 \`\`\`
@@ -4603,10 +4603,10 @@ print(r2.stdout)        # hi\\n
 #### timeout 超时
 
 \`\`\`python
-try:
-    subprocess.run(["sleep", "10"], timeout=2)
+try:                               # 尝试执行以下代码块
+    subprocess.run(["sleep", "10"], timeout=2)  # 对 subprocess 调用 run 方法，参数 ["sleep", "10"], timeout=2
 except subprocess.TimeoutExpired as e:
-    print("超时:", e)
+    print("超时:", e)                # 输出 "超时:", e
 \`\`\`
 
 超时后子进程会被杀死。
@@ -4617,10 +4617,10 @@ subprocess 的 \`args\` 可以是**列表**或**字符串**：
 
 \`\`\`python
 # 列表（推荐，安全）
-subprocess.run(["ls", "-l", "/tmp"])
+subprocess.run(["ls", "-l", "/tmp"])  # 对 subprocess 调用 run 方法，参数 ["ls", "-l", "/tmp"]
 
 # 字符串 + shell=True
-subprocess.run("ls -l /tmp", shell=True)
+subprocess.run("ls -l /tmp", shell=True)  # 对 subprocess 调用 run 方法，参数 "ls -l /tmp", shell=True
 \`\`\`
 
 **强烈推荐用列表**：避免 shell 注入风险。
@@ -4630,17 +4630,17 @@ subprocess.run("ls -l /tmp", shell=True)
 \`run()\` 是同步的（等子进程结束才返回）。需要更细粒度控制（如边运行边读取输出、与子进程交互）时，用 \`Popen\`。
 
 \`\`\`python
-import subprocess
+import subprocess                  # 导入 subprocess 模块
 
-p = subprocess.Popen(
+p = subprocess.Popen(              # 将 subprocess.Popen( 赋给 p
     ["python", "-c", "print(1)"],
-    stdout=subprocess.PIPE,
-    stderr=subprocess.PIPE,
-    text=True,
+    stdout=subprocess.PIPE,        # 将 subprocess.PIPE, 赋给 stdout
+    stderr=subprocess.PIPE,        # 将 subprocess.PIPE, 赋给 stderr
+    text=True,                     # 将 True, 赋给 text
 )
 stdout, stderr = p.communicate()  # 等待结束，获取输出
-print("输出:", stdout)
-print("退出码:", p.returncode)
+print("输出:", stdout)               # 输出 "输出:", stdout
+print("退出码:", p.returncode)        # 输出 "退出码:", p.returncode
 \`\`\`
 
 #### communicate 方法
@@ -4652,11 +4652,11 @@ print("退出码:", p.returncode)
 
 \`\`\`python
 # 向子进程 stdin 传数据
-p = subprocess.Popen(
+p = subprocess.Popen(              # 将 subprocess.Popen( 赋给 p
     ["python", "-c", "x = input(); print('got', x)"],
-    stdin=subprocess.PIPE,
-    stdout=subprocess.PIPE,
-    text=True,
+    stdin=subprocess.PIPE,         # 将 subprocess.PIPE, 赋给 stdin
+    stdout=subprocess.PIPE,        # 将 subprocess.PIPE, 赋给 stdout
+    text=True,                     # 将 True, 赋给 text
 )
 out, err = p.communicate(input="hello")
 print(out)  # got hello
@@ -4669,12 +4669,12 @@ print(out)  # got hello
 \`Popen\` 的管道参数：
 
 \`\`\`python
-p = subprocess.Popen(
+p = subprocess.Popen(              # 将 subprocess.Popen( 赋给 p
     ["cat"],
     stdin=subprocess.PIPE,   # 管道，可写入
     stdout=subprocess.PIPE,  # 管道，可读取
     stderr=subprocess.DEVNULL,  # 丢弃
-    text=True,
+    text=True,                     # 将 True, 赋给 text
 )
 \`\`\`
 
@@ -4689,7 +4689,7 @@ p = subprocess.Popen(
 子进程的退出码：0 通常表示成功，非 0 表示失败。
 
 \`\`\`python
-r = subprocess.run(["ls", "/nonexistent"], capture_output=True, text=True)
+r = subprocess.run(["ls", "/nonexistent"], capture_output=True, text=True)  # 将 subprocess.run(["ls", "/nonexistent"], capture_output=True, text=True) 赋给 r
 print(r.returncode)  # 非 0
 print(r.stderr)      # 错误信息
 \`\`\`
@@ -4719,7 +4719,7 @@ out = subprocess.check_output(["echo", "hi"], text=True)  # 返回 "hi\\n"
 
 \`\`\`python
 # 危险！如果 filename 来自用户输入
-filename = "a.txt; rm -rf /"
+filename = "a.txt; rm -rf /"       # 将字符串 "a.txt; rm -rf /" 赋给 filename
 subprocess.run("cat " + filename, shell=True)  # 灾难性！
 \`\`\`
 
@@ -4728,7 +4728,7 @@ subprocess.run("cat " + filename, shell=True)  # 灾难性！
 **安全做法**：用列表 + \`shell=False\`（默认）：
 
 \`\`\`python
-filename = "a.txt; rm -rf /"
+filename = "a.txt; rm -rf /"       # 将字符串 "a.txt; rm -rf /" 赋给 filename
 subprocess.run(["cat", filename])  # filename 作为单个参数，安全
 # cat 会尝试打开名为 "a.txt; rm -rf /" 的文件（报错），不会执行 rm
 \`\`\`
@@ -4738,10 +4738,10 @@ subprocess.run(["cat", filename])  # filename 作为单个参数，安全
 ### 环境变量 env
 
 \`\`\`python
-import os
-env = os.environ.copy()
+import os                          # 导入 os 模块
+env = os.environ.copy()            # 将 os.environ.copy() 赋给 env
 env["MY_VAR"] = "custom"
-subprocess.run(["env"], env=env, capture_output=True, text=True)
+subprocess.run(["env"], env=env, capture_output=True, text=True)  # 对 subprocess 调用 run 方法，参数 ["env"], env=env, capture_output=True, text=True
 \`\`\`
 
 - \`env=None\`：继承父进程环境
@@ -4750,7 +4750,7 @@ subprocess.run(["env"], env=env, capture_output=True, text=True)
 ### cwd 工作目录
 
 \`\`\`python
-subprocess.run(["ls"], cwd="/tmp", capture_output=True, text=True)
+subprocess.run(["ls"], cwd="/tmp", capture_output=True, text=True)  # 对 subprocess 调用 run 方法，参数 ["ls"], cwd="/tmp", capture_output=True, text=True
 \`\`\`
 
 子进程会在 \`/tmp\` 下执行 \`ls\`。
@@ -4760,7 +4760,7 @@ subprocess.run(["ls"], cwd="/tmp", capture_output=True, text=True)
 \`Popen\` 对象可以发送信号：
 
 \`\`\`python
-p = subprocess.Popen(["sleep", "100"])
+p = subprocess.Popen(["sleep", "100"])  # 将 subprocess.Popen(["sleep", "100"]) 赋给 p
 p.terminate()  # 发送 SIGTERM（优雅终止）
 p.kill()       # 发送 SIGKILL（强制杀死）
 p.send_signal(signal.SIGTERM)  # 发送指定信号
@@ -4776,10 +4776,10 @@ p.send_signal(signal.SIGTERM)  # 发送指定信号
 
 \`\`\`python
 # 等价于：echo "hello world" | tr a-z A-Z
-p1 = subprocess.Popen(["echo", "hello world"], stdout=subprocess.PIPE, text=True)
-p2 = subprocess.Popen(["tr", "a-z", "A-Z"], stdin=p1.stdout, stdout=subprocess.PIPE, text=True)
+p1 = subprocess.Popen(["echo", "hello world"], stdout=subprocess.PIPE, text=True)  # 将 subprocess.Popen(["echo", "hello world"], stdout=subprocess.PIPE, text=True) 赋给 p1
+p2 = subprocess.Popen(["tr", "a-z", "A-Z"], stdin=p1.stdout, stdout=subprocess.PIPE, text=True)  # 将 subprocess.Popen(["tr", "a-z", "A-Z"], stdin=p1.stdout, stdout=subprocess.PIPE, text=True) 赋给 p2
 p1.stdout.close()  # 让 p1 在写完后收到 SIGPIPE
-output = p2.communicate()[0]
+output = p2.communicate()[0]       # 将 p2.communicate()[0] 赋给 output
 print(output)  # HELLO WORLD
 \`\`\`
 
@@ -4791,7 +4791,7 @@ print(output)  # HELLO WORLD
 - 无法捕获输出
 
 \`\`\`python
-import os
+import os                          # 导入 os 模块
 os.system("echo hello")  # 直接打印到终端，返回 0
 # 不推荐，新代码用 subprocess.run
 \`\`\`
@@ -4801,7 +4801,7 @@ os.system("echo hello")  # 直接打印到终端，返回 0
 \`os.popen(cmd)\` 返回一个文件对象，可读取输出：
 
 \`\`\`python
-output = os.popen("echo hello").read()
+output = os.popen("echo hello").read()  # 将 os.popen("echo hello").read() 赋给 output
 print(output)  # hello
 # 也不推荐，用 subprocess
 \`\`\`
@@ -4811,7 +4811,7 @@ print(output)  # hello
 \`platform\` 模块提供系统信息，编写跨平台代码时有用：
 
 \`\`\`python
-import platform
+import platform                    # 导入 platform 模块
 print(platform.system())    # Darwin / Linux / Windows
 print(platform.platform())  # macOS-10.15-x86_64-i386-64bit
 print(platform.machine())   # x86_64 / arm64
@@ -4820,11 +4820,11 @@ print(platform.python_version())  # 3.13.0
 
 \`\`\`python
 # 跨平台：根据系统选命令
-if platform.system() == "Windows":
-    cmd = ["cmd", "/c", "dir"]
-else:
-    cmd = ["ls", "-la"]
-subprocess.run(cmd)
+if platform.system() == "Windows": # 如果 platform.system() == "Windows" 成立
+    cmd = ["cmd", "/c", "dir"]     # 创建列表并赋给 cmd
+else:                              # 否则
+    cmd = ["ls", "-la"]            # 创建列表并赋给 cmd
+subprocess.run(cmd)                # 对 subprocess 调用 run 方法，参数 cmd
 \`\`\`
 
 ### 实际案例
@@ -4832,19 +4832,19 @@ subprocess.run(cmd)
 #### 案例 1：调用 git 获取版本
 
 \`\`\`python
-r = subprocess.run(
+r = subprocess.run(                # 将 subprocess.run( 赋给 r
     ["git", "--version"], capture_output=True, text=True
 )
-print(r.stdout.strip())
+print(r.stdout.strip())            # 输出 r.stdout.strip()
 \`\`\`
 
 #### 案例 2：调用 Python 子进程
 
 \`\`\`python
-import sys
-r = subprocess.run(
+import sys                         # 导入 sys 模块
+r = subprocess.run(                # 将 subprocess.run( 赋给 r
     [sys.executable, "-c", "print(1 + 2)"],
-    capture_output=True, text=True,
+    capture_output=True, text=True,  # 将 True, text=True, 赋给 capture_output
 )
 print(r.stdout)  # 3
 \`\`\`
@@ -4854,10 +4854,10 @@ print(r.stdout)  # 3
 #### 案例 3：获取命令输出并处理
 
 \`\`\`python
-r = subprocess.run(["echo", "hello world"], capture_output=True, text=True)
-lines = r.stdout.strip().split("\\n")
-for line in lines:
-    print("行:", line)
+r = subprocess.run(["echo", "hello world"], capture_output=True, text=True)  # 将 subprocess.run(["echo", "hello world"], capture_output=True, text=True) 赋给 r
+lines = r.stdout.strip().split("\\n")  # 将 r.stdout.strip().split("\\n") 赋给 lines
+for line in lines:                 # 遍历 lines，每次取值赋给 line
+    print("行:", line)              # 输出 "行:", line
 \`\`\`
 
 ### 安全最佳实践

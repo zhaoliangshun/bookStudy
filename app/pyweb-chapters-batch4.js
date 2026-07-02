@@ -31,15 +31,22 @@ Blueprint（蓝图）是 Flask 用来**模块化组织路由**的机制。它把
 项目小的时候，所有路由写一个文件没问题：
 
 \`\`\`python
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
 
+# 装饰器：app.route
 @app.route("/users")
+# 定义函数 users，参数: 
 def users(): ...
 
+# 装饰器：app.route
 @app.route("/posts")
+# 定义函数 posts，参数: 
 def posts(): ...
 
+# 装饰器：app.route
 @app.route("/comments")
+# 定义函数 comments，参数: 
 def comments(): ...
 
 # ...几十上百个路由全挤在这里
@@ -59,25 +66,37 @@ def comments(): ...
 
 \`\`\`python
 # users.py —— 用户模块
+# 从 flask 导入 Blueprint, request, jsonify
 from flask import Blueprint, request, jsonify
 
 # 创建蓝图对象
 # 第一个参数是蓝图名（用于 url_for）
 # __name__ 帮助定位模块（找模板、静态文件）
+# 定义变量 users_bp，赋值为 Blueprint("users", __name__)
 users_bp = Blueprint("users", __name__)
 
 # 在蓝图上注册路由，语法和 @app.route 一样
+# 装饰器：users_bp.route
 @users_bp.route("/users")
+# 定义函数 list_users，参数: 
 def list_users():
+    # 返回 jsonify([{"id": 1, "name": "Tom"}])
     return jsonify([{"id": 1, "name": "Tom"}])
 
+# 装饰器：users_bp.route
 @users_bp.route("/users/<int:user_id>")
+# 定义函数 get_user，参数: user_id
 def get_user(user_id):
+    # 返回 jsonify({"id": user_id, "name": "Tom"})
     return jsonify({"id": user_id, "name": "Tom"})
 
+# 装饰器：users_bp.route
 @users_bp.route("/users", methods=["POST"])
+# 定义函数 create_user，参数: 
 def create_user():
+    # 定义变量 data，赋值为 request.get_json()
     data = request.get_json()
+    # 返回 jsonify({"id": 2, "name": data["name"]}), 201
     return jsonify({"id": 2, "name": data["name"]}), 201
 \`\`\`
 
@@ -89,17 +108,24 @@ def create_user():
 
 \`\`\`python
 # app.py —— 主应用
+# 从 flask 导入 Flask
 from flask import Flask
+# 从 users 导入 users_bp
 from users import users_bp
 from posts import posts_bp  # 文章蓝图
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
 
 # 注册蓝图
+# 调用 app.register_blueprint()
 app.register_blueprint(users_bp)
+# 调用 app.register_blueprint()
 app.register_blueprint(posts_bp)
 
+# 判断是否直接运行此脚本
 if __name__ == "__main__":
+    # 调用 app.run()
     app.run(debug=True)
 \`\`\`
 
@@ -111,9 +137,11 @@ if __name__ == "__main__":
 
 \`\`\`python
 # 在创建时指定
+# 定义变量 users_bp，赋值为 Blueprint("users", __name__, url_prefix="/api...
 users_bp = Blueprint("users", __name__, url_prefix="/api/v1")
 
 # 或在注册时指定
+# 调用 app.register_blueprint()
 app.register_blueprint(users_bp, url_prefix="/api/v1")
 \`\`\`
 
@@ -126,12 +154,16 @@ app.register_blueprint(users_bp, url_prefix="/api/v1")
 蓝图也能有自己的静态文件和模板目录：
 
 \`\`\`python
+# 定义变量 admin_bp，赋值为 Blueprint(
 admin_bp = Blueprint(
+    # "admin",
     "admin",
+    # __name__,
     __name__,
     static_folder="static",      # 蓝图的静态文件目录
     static_url_path="/admin/static",  # 静态文件 URL 前缀
     template_folder="templates",     # 蓝图的模板目录
+# )
 )
 \`\`\`
 
@@ -143,17 +175,24 @@ admin_bp = Blueprint(
 
 \`\`\`python
 # admin.py —— 管理员蓝图
+# 定义变量 admin_bp，赋值为 Blueprint("admin", __name__, url_prefix="/adm...
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 # 这个钩子只对 /admin 下的路由生效
+# 装饰器：admin_bp.before_request
 @admin_bp.before_request
+# 定义函数 require_admin，参数: 
 def require_admin():
+    # 从 flask 导入 session, abort
     from flask import session, abort
     # 检查是否是管理员
+    # 条件判断：如果 not session.get("is_admin")
     if not session.get("is_admin"):
         abort(403)  # 不是管理员，禁止访问
 
+# 装饰器：admin_bp.route
 @admin_bp.route("/dashboard")
+# 定义函数 dashboard，参数: 
 def dashboard():
     return "管理后台"  # 访问前会先经过 require_admin 检查
 \`\`\`
@@ -178,95 +217,157 @@ myapp/
 \`blueprints/auth.py\`：
 
 \`\`\`python
+# 从 flask 导入 Blueprint, request, session, jsonify
 from flask import Blueprint, request, session, jsonify
 
+# 定义变量 auth_bp，赋值为 Blueprint("auth", __name__, url_prefix="/auth...
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
+# 装饰器：auth_bp.route
 @auth_bp.route("/login", methods=["POST"])
+# 定义函数 login，参数: 
 def login():
+    # 定义变量 data，赋值为 request.get_json()
     data = request.get_json()
     # 模拟验证（实际要查数据库、哈希密码）
+    # 条件判断：如果 data["username"] == "admin" and data["password"] == "123"
     if data["username"] == "admin" and data["password"] == "123":
+        # session["user_id"] = 1
         session["user_id"] = 1
+        # 返回 jsonify({"msg": "登录成功"})
         return jsonify({"msg": "登录成功"})
+    # 返回 jsonify({"error": "密码错误"}), 401
     return jsonify({"error": "密码错误"}), 401
 
+# 装饰器：auth_bp.route
 @auth_bp.route("/logout")
+# 定义函数 logout，参数: 
 def logout():
+    # 调用 session.clear()
     session.clear()
+    # 返回 jsonify({"msg": "已退出"})
     return jsonify({"msg": "已退出"})
 
+# 装饰器：auth_bp.route
 @auth_bp.route("/me")
+# 定义函数 me，参数: 
 def me():
+    # 定义变量 uid，赋值为 session.get("user_id")
     uid = session.get("user_id")
+    # 条件判断：如果 not uid
     if not uid:
+        # 返回 jsonify({"error": "未登录"}), 401
         return jsonify({"error": "未登录"}), 401
+    # 返回 jsonify({"id": uid, "name": "admin"})
     return jsonify({"id": uid, "name": "admin"})
 \`\`\`
 
 \`blueprints/posts.py\`：
 
 \`\`\`python
+# 从 flask 导入 Blueprint, request, session, jsonify, abort, url_for
 from flask import Blueprint, request, session, jsonify, abort, url_for
 
+# 定义变量 posts_bp，赋值为 Blueprint("posts", __name__, url_prefix="/pos...
 posts_bp = Blueprint("posts", __name__, url_prefix="/posts")
 
 # 模拟数据库
+# 定义字典 POSTS
 POSTS = {}
+# 定义变量 next_id，赋值为 1
 next_id = 1
 
 # 文章蓝图自己的钩子：要求登录才能操作
+# 装饰器：posts_bp.before_request
 @posts_bp.before_request
+# 定义函数 require_login，参数: 
 def require_login():
+    # 条件判断：如果 not session.get("user_id")
     if not session.get("user_id"):
+        # 调用 abort()
         abort(401, "请先登录")
 
+# 装饰器：posts_bp.route
 @posts_bp.route("/", methods=["GET"])
+# 定义函数 list_posts，参数: 
 def list_posts():
+    # 返回 jsonify(list(POSTS.values()))
     return jsonify(list(POSTS.values()))
 
+# 装饰器：posts_bp.route
 @posts_bp.route("/", methods=["POST"])
+# 定义函数 create_post，参数: 
 def create_post():
+    # global next_id
     global next_id
+    # 定义变量 data，赋值为 request.get_json()
     data = request.get_json()
+    # 定义字典 post
     post = {
+        # "id": next_id,
         "id": next_id,
+        # "title": data["title"],
         "title": data["title"],
+        # "content": data["content"],
         "content": data["content"],
+        # "author": session["user_id"],
         "author": session["user_id"],
+    # }
     }
+    # POSTS[next_id] = post
     POSTS[next_id] = post
+    # next_id += 1
     next_id += 1
     # 用 url_for 生成新文章 URL（注意要加蓝图名前缀）
+    # 定义变量 location，赋值为 url_for("posts.get_post", post_id=post["id"])
     location = url_for("posts.get_post", post_id=post["id"])
+    # 定义变量 response，赋值为 jsonify(post)
     response = jsonify(post)
+    # response.status_code = 201
     response.status_code = 201
+    # response.headers["Location"] = location
     response.headers["Location"] = location
+    # 返回 response
     return response
 
+# 装饰器：posts_bp.route
 @posts_bp.route("/<int:post_id>")
+# 定义函数 get_post，参数: post_id
 def get_post(post_id):
+    # 定义变量 post，赋值为 POSTS.get(post_id)
     post = POSTS.get(post_id)
+    # 条件判断：如果 not post
     if not post:
+        # 调用 abort()
         abort(404)
+    # 返回 jsonify(post)
     return jsonify(post)
 \`\`\`
 
 \`app.py\`：
 
 \`\`\`python
+# 从 flask 导入 Flask
 from flask import Flask
+# 从 blueprints.auth 导入 auth_bp
 from blueprints.auth import auth_bp
+# 从 blueprints.posts 导入 posts_bp
 from blueprints.posts import posts_bp
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
+# app.secret_key = "dev-secret-please-change"
 app.secret_key = "dev-secret-please-change"
 
 # 注册蓝图
+# 调用 app.register_blueprint()
 app.register_blueprint(auth_bp)
+# 调用 app.register_blueprint()
 app.register_blueprint(posts_bp)
 
+# 判断是否直接运行此脚本
 if __name__ == "__main__":
+    # 调用 app.run()
     app.run(debug=True)
 \`\`\`
 
@@ -317,17 +418,21 @@ Flask-SQLAlchemy 是 Flask 的 SQLAlchemy 扩展。SQLAlchemy 是 Python 最强�
 
 \`\`\`python
 # 不用 ORM：手写 SQL
+# 调用 cursor.execute()
 cursor.execute("SELECT * FROM users WHERE id = %s", (1,))
+# 定义变量 row，赋值为 cursor.fetchone()
 row = cursor.fetchone()
 
 # 用 ORM：操作对象
 user = db.session.query(User).get(1)  # 或 User.query.get(1)
+# 调用 print()
 print(user.name)
 \`\`\`
 
 ## 安装
 
 \`\`\`bash
+# 安装 Python 包: flask flask-sqlalchemy
 pip install flask flask-sqlalchemy
 \`\`\`
 
@@ -336,9 +441,12 @@ pip install flask flask-sqlalchemy
 通过 Flask 配置项指定数据库连接：
 
 \`\`\`python
+# 从 flask 导入 Flask
 from flask import Flask
+# 从 flask_sqlalchemy 导入 SQLAlchemy
 from flask_sqlalchemy import SQLAlchemy
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
 
 # 配置数据库 URI
@@ -348,6 +456,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///app.db"  # SQLite
 # app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://user:pass@localhost/mydb"  # PostgreSQL
 
 # 关闭修改追踪（节省内存，生产建议关）
+# app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = Fal
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)  # 初始化扩展
@@ -363,28 +472,40 @@ db = SQLAlchemy(app)  # 初始化扩展
 模型就是 Python 类，继承 \`db.Model\`，属性对应数据库列：
 
 \`\`\`python
+# 定义类 User，继承 db.Model
 class User(db.Model):
     # __tablename__ 指定表名（不写默认用类名小写）
+    # 定义变量 __tablename__，赋值为 "users"
     __tablename__ = "users"
     
     # db.Column 定义列
     id = db.Column(db.Integer, primary_key=True)  # 主键
     username = db.Column(db.String(80), unique=True, nullable=False)  # 唯一、非空
+    # 定义变量 email，赋值为 db.Column(db.String(120), unique=True)
     email = db.Column(db.String(120), unique=True)
     age = db.Column(db.Integer, default=0)  # 默认值
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 默认函数
     
+    # 定义函数 __repr__，参数: self
     def __repr__(self):
+        # 返回 f"<User {self.username}>"
         return f"<User {self.username}>"
 
+# 定义类 Post，继承 db.Model
 class Post(db.Model):
+    # 定义变量 __tablename__，赋值为 "posts"
     __tablename__ = "posts"
+    # 定义变量 id，赋值为 db.Column(db.Integer, primary_key=True)
     id = db.Column(db.Integer, primary_key=True)
+    # 定义变量 title，赋值为 db.Column(db.String(200), nullable=False)
     title = db.Column(db.String(200), nullable=False)
+    # 定义变量 content，赋值为 db.Column(db.Text)
     content = db.Column(db.Text)
     # 外键：关联 users 表的 id
+    # 定义变量 author_id，赋值为 db.Column(db.Integer, db.ForeignKey("users.id...
     author_id = db.Column(db.Integer, db.ForeignKey("users.id"))
     # 关系：反向引用（通过 user.posts 访问该用户的所有文章）
+    # 定义变量 author，赋值为 db.relationship("User", backref="posts")
     author = db.relationship("User", backref="posts")
 \`\`\`
 
@@ -413,6 +534,7 @@ class Post(db.Model):
 
 \`\`\`python
 # 在 Flask shell 或代码里
+# 使用上下文管理器 app.app_context()
 with app.app_context():
     db.create_all()  # 根据所有模型建表
 \`\`\`
@@ -420,6 +542,7 @@ with app.app_context():
 注意：\`create_all\` 只建不存在的表，**不会修改已存在的表结构**。改了模型后要更新表，得用迁移工具（Flask-Migrate，基于 Alembic）：
 
 \`\`\`bash
+# 安装 Python 包: flask-migrate
 pip install flask-migrate
 flask db init      # 初始化迁移
 flask db migrate   # 生成迁移脚本
@@ -432,17 +555,23 @@ flask db upgrade   # 执行迁移
 
 \`\`\`python
 # 创建对象（还没入库）
+# 定义变量 user，赋值为 User(username="tom", email="tom@example.com",...
 user = User(username="tom", email="tom@example.com", age=25)
 # 加入会话
+# 调用 db.session.add()
 db.session.add(user)
 # 提交事务（真正写入数据库）
+# 调用 db.session.commit()
 db.session.commit()
 # 提交后 user.id 才有值（自增主键）
 print(user.id)  # 1
 
 # 批量创建
+# 定义列表 users
 users = [User(username="a"), User(username="b")]
+# 调用 db.session.add_all()
 db.session.add_all(users)
+# 调用 db.session.commit()
 db.session.commit()
 \`\`\`
 
@@ -453,6 +582,7 @@ db.session.commit()
 user = User.query.get(1)  # 返回 None 或对象
 
 # 查所有
+# 定义变量 users，赋值为 User.query.all()
 users = User.query.all()
 
 # 按条件过滤（filter_by 用关键字，filter 用表达式）
@@ -460,25 +590,36 @@ user = User.query.filter_by(username="tom").first()  # 取第一个
 users = User.query.filter(User.age >= 18).all()  # 表达式过滤
 
 # 复杂条件
+# 从 sqlalchemy 导入 or_, and_
 from sqlalchemy import or_, and_
+# 定义变量 users，赋值为 User.query.filter(
 users = User.query.filter(
+    # 调用 and_()
     and_(User.age >= 18, User.age <= 30)
+# ).all()
 ).all()
+# 定义变量 users，赋值为 User.query.filter(
 users = User.query.filter(
+    # 调用 or_()
     or_(User.username == "tom", User.username == "jerry")
+# ).all()
 ).all()
 
 # 排序
 users = User.query.order_by(User.age.desc()).all()  # 降序
 
 # 限制数量
+# 定义变量 users，赋值为 User.query.limit(10).all()
 users = User.query.limit(10).all()
 
 # 组合：分页查询
+# 定义变量 page，赋值为 2
 page = 2
+# 定义变量 users，赋值为 User.query.order_by(User.id).offset((page-1)*...
 users = User.query.order_by(User.id).offset((page-1)*10).limit(10).all()
 
 # count
+# 定义变量 count，赋值为 User.query.filter_by(active=True).count()
 count = User.query.filter_by(active=True).count()
 \`\`\`
 
@@ -486,20 +627,27 @@ count = User.query.filter_by(active=True).count()
 
 \`\`\`python
 # 方式一：取出再改
+# 定义变量 user，赋值为 User.query.get(1)
 user = User.query.get(1)
+# user.email = "new@example.com"
 user.email = "new@example.com"
 db.session.commit()  # 提交后才更新
 
 # 方式二：批量更新
+# 调用 User.query.filter_by()
 User.query.filter_by(active=False).update({"active": True})
+# 调用 db.session.commit()
 db.session.commit()
 \`\`\`
 
 ### Delete 删除
 
 \`\`\`python
+# 定义变量 user，赋值为 User.query.get(1)
 user = User.query.get(1)
+# 调用 db.session.delete()
 db.session.delete(user)
+# 调用 db.session.commit()
 db.session.commit()
 \`\`\`
 
@@ -508,15 +656,23 @@ db.session.commit()
 模型间的关联用 \`relationship\` 表达：
 
 \`\`\`python
+# 定义类 User，继承 db.Model
 class User(db.Model):
+    # 定义变量 id，赋值为 db.Column(db.Integer, primary_key=True)
     id = db.Column(db.Integer, primary_key=True)
+    # 定义变量 username，赋值为 db.Column(db.String(80))
     username = db.Column(db.String(80))
     # 一对多：一个用户有多篇文章
+    # 定义变量 posts，赋值为 db.relationship("Post", backref="author", laz...
     posts = db.relationship("Post", backref="author", lazy=True)
 
+# 定义类 Post，继承 db.Model
 class Post(db.Model):
+    # 定义变量 id，赋值为 db.Column(db.Integer, primary_key=True)
     id = db.Column(db.Integer, primary_key=True)
+    # 定义变量 title，赋值为 db.Column(db.String(200))
     title = db.Column(db.String(200))
+    # 定义变量 author_id，赋值为 db.Column(db.Integer, db.ForeignKey("users.id...
     author_id = db.Column(db.Integer, db.ForeignKey("users.id"))
 \`\`\`
 
@@ -527,11 +683,14 @@ class Post(db.Model):
 
 \`\`\`python
 # 正向：用户 -> 文章
+# 定义变量 user，赋值为 User.query.get(1)
 user = User.query.get(1)
 for post in user.posts:  # 访问时触发查询
+    # 调用 print()
     print(post.title)
 
 # 反向：文章 -> 作者
+# 定义变量 post，赋值为 Post.query.get(1)
 post = Post.query.get(1)
 print(post.author.username)  # 通过 backref
 \`\`\`
@@ -541,12 +700,17 @@ print(post.author.username)  # 通过 backref
 Flask-SQLAlchemy 内置分页：
 
 \`\`\`python
+# 装饰器：app.route
 @app.route("/users")
+# 定义函数 list_users，参数: 
 def list_users():
+    # 定义变量 page，赋值为 request.args.get("page", 1, type=int)
     page = request.args.get("page", 1, type=int)
     # per_page 每页条数，error_out 超界是否报错
+    # 定义变量 pagination，赋值为 User.query.paginate(page=page, per_page=10, e...
     pagination = User.query.paginate(page=page, per_page=10, error_out=False)
     
+    # 返回 jsonify({
     return jsonify({
         "items": [u.to_dict() for u in pagination.items],  # 当前页数据
         "page": pagination.page,          # 当前页码
@@ -554,6 +718,7 @@ def list_users():
         "total": pagination.total,        # 总记录数
         "has_next": pagination.has_next,  # 有没有下一页
         "has_prev": pagination.has_prev,  # 有没有上一页
+    # })
     })
 \`\`\`
 
@@ -572,94 +737,162 @@ def list_users():
 ## 代码示例：用户和文章模型 + CRUD
 
 \`\`\`python
+# 从 flask 导入 Flask, request, jsonify
 from flask import Flask, request, jsonify
+# 从 flask_sqlalchemy 导入 SQLAlchemy
 from flask_sqlalchemy import SQLAlchemy
+# 从 datetime 导入 datetime
 from datetime import datetime
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
+# app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite://
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///blog.db"
+# app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = Fal
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+# 定义变量 db，赋值为 SQLAlchemy(app)
 db = SQLAlchemy(app)
 
 # 用户模型
+# 定义类 User，继承 db.Model
 class User(db.Model):
+    # 定义变量 __tablename__，赋值为 "users"
     __tablename__ = "users"
+    # 定义变量 id，赋值为 db.Column(db.Integer, primary_key=True)
     id = db.Column(db.Integer, primary_key=True)
+    # 定义变量 username，赋值为 db.Column(db.String(80), unique=True, nullabl...
     username = db.Column(db.String(80), unique=True, nullable=False)
+    # 定义变量 email，赋值为 db.Column(db.String(120))
     email = db.Column(db.String(120))
     # 关系：用户有多篇文章
+    # 定义变量 posts，赋值为 db.relationship("Post", backref="author", laz...
     posts = db.relationship("Post", backref="author", lazy=True)
     
+    # 定义函数 to_dict，参数: self
     def to_dict(self):
+        # 返回 {"id": self.id, "username": self.username, "email": self.email}
         return {"id": self.id, "username": self.username, "email": self.email}
 
 # 文章模型
+# 定义类 Post，继承 db.Model
 class Post(db.Model):
+    # 定义变量 __tablename__，赋值为 "posts"
     __tablename__ = "posts"
+    # 定义变量 id，赋值为 db.Column(db.Integer, primary_key=True)
     id = db.Column(db.Integer, primary_key=True)
+    # 定义变量 title，赋值为 db.Column(db.String(200), nullable=False)
     title = db.Column(db.String(200), nullable=False)
+    # 定义变量 content，赋值为 db.Column(db.Text)
     content = db.Column(db.Text)
+    # 定义变量 author_id，赋值为 db.Column(db.Integer, db.ForeignKey("users.id...
     author_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    # 定义变量 created_at，赋值为 db.Column(db.DateTime, default=datetime.utcno...
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # 定义函数 to_dict，参数: self
     def to_dict(self):
+        # 返回 {
         return {
+            # "id": self.id,
             "id": self.id,
+            # "title": self.title,
             "title": self.title,
+            # "content": self.content,
             "content": self.content,
+            # "author_id": self.author_id,
             "author_id": self.author_id,
+            # "created_at": self.created_at.isoformat(),
             "created_at": self.created_at.isoformat(),
+        # }
         }
 
 # 建表（开发用，生产用 Flask-Migrate）
+# 使用上下文管理器 app.app_context()
 with app.app_context():
+    # 调用 db.create_all()
     db.create_all()
 
 # 创建用户
+# 装饰器：app.route
 @app.route("/api/users", methods=["POST"])
+# 定义函数 create_user，参数: 
 def create_user():
+    # 定义变量 data，赋值为 request.get_json()
     data = request.get_json()
+    # 定义变量 user，赋值为 User(username=data["username"], email=data.ge...
     user = User(username=data["username"], email=data.get("email"))
+    # 调用 db.session.add()
     db.session.add(user)
+    # 调用 db.session.commit()
     db.session.commit()
+    # 返回 jsonify(user.to_dict()), 201
     return jsonify(user.to_dict()), 201
 
 # 用户列表（分页）
+# 装饰器：app.route
 @app.route("/api/users", methods=["GET"])
+# 定义函数 list_users，参数: 
 def list_users():
+    # 定义变量 page，赋值为 request.args.get("page", 1, type=int)
     page = request.args.get("page", 1, type=int)
+    # 定义变量 pagination，赋值为 User.query.paginate(page=page, per_page=10, e...
     pagination = User.query.paginate(page=page, per_page=10, error_out=False)
+    # 返回 jsonify({
     return jsonify({
+        # "items": [u.to_dict() for u in pagination.items],
         "items": [u.to_dict() for u in pagination.items],
+        # "total": pagination.total,
         "total": pagination.total,
+        # "pages": pagination.pages,
         "pages": pagination.pages,
+    # })
     })
 
 # 创建文章
+# 装饰器：app.route
 @app.route("/api/posts", methods=["POST"])
+# 定义函数 create_post，参数: 
 def create_post():
+    # 定义变量 data，赋值为 request.get_json()
     data = request.get_json()
     # 检查作者存在
+    # 定义变量 user，赋值为 User.query.get(data["author_id"])
     user = User.query.get(data["author_id"])
+    # 条件判断：如果 not user
     if not user:
+        # 返回 jsonify({"error": "作者不存在"}), 404
         return jsonify({"error": "作者不存在"}), 404
+    # 定义变量 post，赋值为 Post(title=data["title"], content=data.get("c...
     post = Post(title=data["title"], content=data.get("content", ""), 
+                # 定义变量 author_id，赋值为 data["author_id"])
                 author_id=data["author_id"])
+    # 调用 db.session.add()
     db.session.add(post)
+    # 调用 db.session.commit()
     db.session.commit()
+    # 返回 jsonify(post.to_dict()), 201
     return jsonify(post.to_dict()), 201
 
 # 查文章（带作者信息）
+# 装饰器：app.route
 @app.route("/api/posts/<int:post_id>")
+# 定义函数 get_post，参数: post_id
 def get_post(post_id):
+    # 定义变量 post，赋值为 Post.query.get(post_id)
     post = Post.query.get(post_id)
+    # 条件判断：如果 not post
     if not post:
+        # 返回 jsonify({"error": "文章不存在"}), 404
         return jsonify({"error": "文章不存在"}), 404
+    # 定义变量 data，赋值为 post.to_dict()
     data = post.to_dict()
     data["author"] = post.author.to_dict()  # 通过关系访问作者
+    # 返回 jsonify(data)
     return jsonify(data)
 
+# 判断是否直接运行此脚本
 if __name__ == "__main__":
+    # 调用 app.run()
     app.run(debug=True)
 \`\`\`
 
@@ -696,20 +929,27 @@ Flask 提供了一系列「钩子（hook）」，让你在请求的不同阶段�
 在**每个请求到达视图函数之前**执行。适合做认证检查、权限校验、日志记录：
 
 \`\`\`python
+# 从 flask 导入 request, session, redirect, url_for, g
 from flask import request, session, redirect, url_for, g
 
+# 装饰器：app.before_request
 @app.before_request
+# 定义函数 check_login，参数: 
 def check_login():
     # 白名单：不需要登录的路径
+    # 条件判断：如果 request.path in ["/login", "/register", "/static"]
     if request.path in ["/login", "/register", "/static"]:
         return None  # 返回 None 表示继续往下走
     
     # 检查是否登录
+    # 条件判断：如果 not session.get("user_id")
     if not session.get("user_id"):
         # 返回非 None 会中断请求，直接返回给客户端
+        # 返回 redirect(url_for("login"))
         return redirect(url_for("login"))
     
     # 把当前用户存到 g，视图里能用
+    # g.user = get_user_by_id(session["user_id"])
     g.user = get_user_by_id(session["user_id"])
 \`\`\`
 
@@ -723,12 +963,17 @@ def check_login():
 在**每个请求处理完之后**（视图返回后）执行。适合加响应头、记录响应日志：
 
 \`\`\`python
+# 装饰器：app.after_request
 @app.after_request
+# 定义函数 add_headers，参数: response
 def add_headers(response):
     # 给所有响应加 CORS 头（简化版跨域）
+    # response.headers["Access-Control-Allow-Origin"] = 
     response.headers["Access-Control-Allow-Origin"] = "*"
+    # response.headers["Access-Control-Allow-Headers"] =
     response.headers["Access-Control-Allow-Headers"] = "Content-Type"
     # 加安全头
+    # response.headers["X-Content-Type-Options"] = "nosn
     response.headers["X-Content-Type-Options"] = "nosniff"
     return response  # 必须返回 response 对象
 \`\`\`
@@ -743,12 +988,17 @@ def add_headers(response):
 在**请求结束后**执行，**即使发生了异常也会执行**。适合资源清理：
 
 \`\`\`python
+# 装饰器：app.teardown_request
 @app.teardown_request
+# 定义函数 cleanup，参数: exception
 def cleanup(exception):
     # exception 不为 None 说明请求处理出错了
     # 无论成功失败，都要关闭数据库连接
+    # 定义变量 db，赋值为 getattr(g, "db", None)
     db = getattr(g, "db", None)
+    # 条件判断：如果 db is not None
     if db is not None:
+        # 调用 db.close()
         db.close()
 \`\`\`
 
@@ -764,32 +1014,49 @@ def cleanup(exception):
 
 \`\`\`python
 # 处理 404
+# 装饰器：app.errorhandler
 @app.errorhandler(404)
+# 定义函数 not_found，参数: error
 def not_found(error):
     # 返回自定义 404 页面
+    # 返回 render_template("404.html"), 404
     return render_template("404.html"), 404
 
 # 处理 500
+# 装饰器：app.errorhandler
 @app.errorhandler(500)
+# 定义函数 server_error，参数: error
 def server_error(error):
     # 记录错误日志
+    # 调用 app.logger.error()
     app.logger.error(f"服务器错误: {error}")
+    # 返回 render_template("500.html"), 500
     return render_template("500.html"), 500
 
 # 处理 403
+# 装饰器：app.errorhandler
 @app.errorhandler(403)
+# 定义函数 forbidden，参数: error
 def forbidden(error):
+    # 返回 "禁止访问", 403
     return "禁止访问", 403
 
 # 处理特定异常
+# 装饰器：app.errorhandler
 @app.errorhandler(ValueError)
+# 定义函数 handle_value_error，参数: error
 def handle_value_error(error):
+    # 返回 jsonify({"error": str(error)}), 400
     return jsonify({"error": str(error)}), 400
 
 # 处理所有未捕获的异常
+# 装饰器：app.errorhandler
 @app.errorhandler(Exception)
+# 定义函数 handle_all，参数: error
 def handle_all(error):
+    # 调用 app.logger.exception()
     app.logger.exception("未处理异常")
+    # 返回 jsonify({"error": "服务器内部错误"}), 500
     return jsonify({"error": "服务器内部错误"}), 500
 \`\`\`
 
@@ -803,6 +1070,7 @@ def handle_all(error):
 
 \`\`\`python
 # 替代方案：创建 app 后直接初始化
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
 init_database()  # 在这里做初始化，而不是 before_first_request
 \`\`\`
@@ -812,17 +1080,26 @@ init_database()  # 在这里做初始化，而不是 before_first_request
 \`g\` 是一个请求级的命名空间，在**同一个请求内**共享数据：
 
 \`\`\`python
+# 装饰器：app.before_request
 @app.before_request
+# 定义函数 load_user，参数: 
 def load_user():
     # 在请求开始时加载当前用户
+    # 条件判断：如果 session.get("user_id")
     if session.get("user_id"):
+        # g.user = User.query.get(session["user_id"])
         g.user = User.query.get(session["user_id"])
 
+# 装饰器：app.route
 @app.route("/profile")
+# 定义函数 profile，参数: 
 def profile():
     # 视图里直接取，不用再查一次
+    # 条件判断：如果 hasattr(g, "user")
     if hasattr(g, "user"):
+        # 返回 f"欢迎，{g.user.username}"
         return f"欢迎，{g.user.username}"
+    # 返回 "请登录"
     return "请登录"
 \`\`\`
 
@@ -841,9 +1118,12 @@ Flask 有两种上下文：
 - \`session\`：当前会话。
 
 \`\`\`python
+# 从 flask 导入 current_app, request, session, g
 from flask import current_app, request, session, g
 
+# 装饰器：app.route
 @app.route("/")
+# 定义函数 index，参数: 
 def index():
     # 应用上下文
     print(current_app.config["DEBUG"])  # 读配置
@@ -853,6 +1133,7 @@ def index():
     print(request.method)  # 请求方法
     session["visited"] = True  # 会话数据
     
+    # 返回 "hello"
     return "hello"
 \`\`\`
 
@@ -862,12 +1143,16 @@ def index():
 
 \`\`\`python
 # 在 Flask shell 或脚本里
+# 使用上下文管理器 app.app_context()
 with app.app_context():
     # 这里能用 current_app 和 g
+    # 调用 print()
     print(current_app.config)
 
+# 使用上下文管理器 app.test_request_context("/")
 with app.test_request_context("/"):
     # 这里能用 request（模拟一个请求）
+    # 调用 print()
     print(request.path)
 \`\`\`
 
@@ -905,93 +1190,150 @@ with app.test_request_context("/"):
 一个完整的钩子使用示例：
 
 \`\`\`python
+# 从 flask 导入（多行）
 from flask import (Flask, request, session, g, jsonify, 
+                   # redirect, url_for, render_template)
                    redirect, url_for, render_template)
+# 导入 time 模块
 import time
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
+# app.secret_key = "dev-secret"
 app.secret_key = "dev-secret"
 
 # 白名单：不需要登录的路径
+# 定义字典 PUBLIC_PATHS
 PUBLIC_PATHS = {"/login", "/register", "/api/health"}
 
 # 1. 请求前：认证 + 计时
+# 装饰器：app.before_request
 @app.before_request
+# 定义函数 before，参数: 
 def before():
     # 记录开始时间
+    # g.start_time = time.time()
     g.start_time = time.time()
     
     # 健康检查和静态文件跳过
+    # 条件判断：如果 request.path.startswith("/static") or request.path in PUBLIC_PATHS
     if request.path.startswith("/static") or request.path in PUBLIC_PATHS:
+        # 返回 None
         return None
     
     # 认证检查
+    # 定义变量 uid，赋值为 session.get("user_id")
     uid = session.get("user_id")
+    # 条件判断：如果 not uid
     if not uid:
         # API 返回 JSON，页面跳转登录
+        # 条件判断：如果 request.path.startswith("/api/")
         if request.path.startswith("/api/"):
+            # 返回 jsonify({"error": "未登录"}), 401
             return jsonify({"error": "未登录"}), 401
+        # 返回 redirect(url_for("login"))
         return redirect(url_for("login"))
     
     # 模拟加载用户
+    # g.current_user = {"id": uid, "name": "tom"}
     g.current_user = {"id": uid, "name": "tom"}
 
 # 2. 请求后：加响应头 + 记录耗时
+# 装饰器：app.after_request
 @app.after_request
+# 定义函数 after，参数: response
 def after(response):
     # 计算耗时
+    # 定义变量 elapsed，赋值为 time.time() - getattr(g, "start_time", time.t...
     elapsed = time.time() - getattr(g, "start_time", time.time())
+    # response.headers["X-Response-Time"] = f"{elapsed:.
     response.headers["X-Response-Time"] = f"{elapsed:.4f}s"
     # 加安全头
+    # response.headers["X-Content-Type-Options"] = "nosn
     response.headers["X-Content-Type-Options"] = "nosniff"
     # 记录访问日志
+    # 调用 app.logger.info()
     app.logger.info(f"{request.method} {request.path} {response.status_code} {elapsed:.4f}s")
+    # 返回 response
     return response
 
 # 3. 请求结束：清理资源
+# 装饰器：app.teardown_request
 @app.teardown_request
+# 定义函数 teardown，参数: exception
 def teardown(exception):
+    # 条件判断：如果 exception
     if exception:
+        # 调用 app.logger.error()
         app.logger.error(f"请求异常: {exception}")
     # 关闭数据库连接（模拟）
+    # 定义变量 db，赋值为 getattr(g, "db", None)
     db = getattr(g, "db", None)
+    # 条件判断：如果 db
     if db:
+        # 调用 db.close()
         db.close()
 
 # 4. 错误处理
+# 装饰器：app.errorhandler
 @app.errorhandler(404)
+# 定义函数 not_found，参数: error
 def not_found(error):
+    # 条件判断：如果 request.path.startswith("/api/")
     if request.path.startswith("/api/"):
+        # 返回 jsonify({"error": "资源不存在"}), 404
         return jsonify({"error": "资源不存在"}), 404
+    # 返回 render_template("404.html"), 404
     return render_template("404.html"), 404
 
+# 装饰器：app.errorhandler
 @app.errorhandler(500)
+# 定义函数 server_error，参数: error
 def server_error(error):
+    # 调用 app.logger.exception()
     app.logger.exception("服务器错误")
+    # 返回 jsonify({"error": "服务器内部错误"}), 500
     return jsonify({"error": "服务器内部错误"}), 500
 
 # 视图
+# 装饰器：app.route
 @app.route("/api/health")
+# 定义函数 health，参数: 
 def health():
+    # 返回 jsonify({"status": "ok"})
     return jsonify({"status": "ok"})
 
+# 装饰器：app.route
 @app.route("/api/me")
+# 定义函数 me，参数: 
 def me():
+    # 返回 jsonify(g.current_user)
     return jsonify(g.current_user)
 
+# 装饰器：app.route
 @app.route("/login", methods=["GET", "POST"])
+# 定义函数 login，参数: 
 def login():
+    # 条件判断：如果 request.method == "POST"
     if request.method == "POST":
         # 模拟登录
+        # session["user_id"] = 1
         session["user_id"] = 1
+        # 返回 redirect(url_for("me"))
         return redirect(url_for("me"))
+    # 返回 '<form method="post"><button>登录</button></form>'
     return '<form method="post"><button>登录</button></form>'
 
+# 装饰器：app.route
 @app.route("/me")
+# 定义函数 me_page，参数: 
 def me_page():
+    # 返回 f"你好，{g.current_user['name']}"
     return f"你好，{g.current_user['name']}"
 
+# 判断是否直接运行此脚本
 if __name__ == "__main__":
+    # 调用 app.run()
     app.run(debug=True)
 \`\`\`
 
@@ -1061,27 +1403,41 @@ blog/
 
 \`\`\`python
 # config.py
+# 导入 os 模块
 import os
 
+# 定义类 Config
 class Config:
     # 密钥（生产要从环境变量读，别硬编码）
+    # 定义变量 SECRET_KEY，赋值为 os.environ.get("SECRET_KEY", "dev-secret-chan...
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-change-me")
     # 数据库
+    # 定义变量 SQLALCHEMY_DATABASE_URI，赋值为 os.environ.get("DATABASE_URL", "sqlite:///blo...
     SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", "sqlite:///blog.db")
+    # 定义变量 SQLALCHEMY_TRACK_MODIFICATIONS，赋值为 False
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+# 定义类 DevelopmentConfig，继承 Config
 class DevelopmentConfig(Config):
+    # 定义变量 DEBUG，赋值为 True
     DEBUG = True
 
+# 定义类 ProductionConfig，继承 Config
 class ProductionConfig(Config):
+    # 定义变量 DEBUG，赋值为 False
     DEBUG = False
     # 生产用 MySQL/PostgreSQL
+    # 定义变量 SQLALCHEMY_DATABASE_URI，赋值为 os.environ.get("DATABASE_URL")
     SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL")
 
 # 按环境变量选择配置
+# 定义字典 config
 config = {
+    # "development": DevelopmentConfig,
     "development": DevelopmentConfig,
+    # "production": ProductionConfig,
     "production": ProductionConfig,
+# }
 }
 \`\`\`
 
@@ -1093,36 +1449,55 @@ config = {
 
 \`\`\`python
 # app.py
+# 从 flask 导入 Flask
 from flask import Flask
+# 从 flask_sqlalchemy 导入 SQLAlchemy
 from flask_sqlalchemy import SQLAlchemy
+# 从 config 导入 config
 from config import config
 
+# 定义变量 db，赋值为 SQLAlchemy()
 db = SQLAlchemy()
 
+# 定义函数 create_app，参数: config_name="development"
 def create_app(config_name="development"):
+    # 定义变量 app，赋值为 Flask(__name__)
     app = Flask(__name__)
+    # 调用 app.config.from_object()
     app.config.from_object(config[config_name])
     
     # 初始化扩展
+    # 调用 db.init_app()
     db.init_app(app)
     
     # 注册蓝图
+    # 从 blueprints.auth 导入 auth_bp
     from blueprints.auth import auth_bp
+    # 从 blueprints.posts 导入 posts_bp
     from blueprints.posts import posts_bp
+    # 调用 app.register_blueprint()
     app.register_blueprint(auth_bp)
+    # 调用 app.register_blueprint()
     app.register_blueprint(posts_bp)
     
     # 建表
+    # 使用上下文管理器 app.app_context()
     with app.app_context():
+        # 从 models 导入 User, Post, Comment
         from models import User, Post, Comment
+        # 调用 db.create_all()
         db.create_all()
     
+    # 返回 app
     return app
 
 # 创建应用实例
+# 定义变量 app，赋值为 create_app()
 app = create_app()
 
+# 判断是否直接运行此脚本
 if __name__ == "__main__":
+    # 调用 app.run()
     app.run(debug=True)
 \`\`\`
 
@@ -1134,44 +1509,73 @@ if __name__ == "__main__":
 
 \`\`\`python
 # models.py
+# 从 app 导入 db
 from app import db
+# 从 datetime 导入 datetime
 from datetime import datetime
+# 从 werkzeug.security 导入 generate_password_hash, check_password_hash
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# 定义类 User，继承 db.Model
 class User(db.Model):
+    # 定义变量 __tablename__，赋值为 "users"
     __tablename__ = "users"
+    # 定义变量 id，赋值为 db.Column(db.Integer, primary_key=True)
     id = db.Column(db.Integer, primary_key=True)
+    # 定义变量 username，赋值为 db.Column(db.String(80), unique=True, nullabl...
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(255))  # 存哈希，不存明文
+    # 定义变量 created_at，赋值为 db.Column(db.DateTime, default=datetime.utcno...
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # 关系：用户有多篇文章、多条评论
+    # 定义变量 posts，赋值为 db.relationship("Post", backref="author", laz...
     posts = db.relationship("Post", backref="author", lazy=True)
+    # 定义变量 comments，赋值为 db.relationship("Comment", backref="author", ...
     comments = db.relationship("Comment", backref="author", lazy=True)
     
     # 密码哈希：set 时存哈希，check 时验证
+    # 定义函数 set_password，参数: self, password
     def set_password(self, password):
+        # self.password_hash = generate_password_hash(passwo
         self.password_hash = generate_password_hash(password)
     
+    # 定义函数 check_password，参数: self, password
     def check_password(self, password):
+        # 返回 check_password_hash(self.password_hash, password)
         return check_password_hash(self.password_hash, password)
 
+# 定义类 Post，继承 db.Model
 class Post(db.Model):
+    # 定义变量 __tablename__，赋值为 "posts"
     __tablename__ = "posts"
+    # 定义变量 id，赋值为 db.Column(db.Integer, primary_key=True)
     id = db.Column(db.Integer, primary_key=True)
+    # 定义变量 title，赋值为 db.Column(db.String(200), nullable=False)
     title = db.Column(db.String(200), nullable=False)
+    # 定义变量 content，赋值为 db.Column(db.Text)
     content = db.Column(db.Text)
+    # 定义变量 author_id，赋值为 db.Column(db.Integer, db.ForeignKey("users.id...
     author_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    # 定义变量 created_at，赋值为 db.Column(db.DateTime, default=datetime.utcno...
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     # 关系：文章有多条评论
+    # 定义变量 comments，赋值为 db.relationship("Comment", backref="post", la...
     comments = db.relationship("Comment", backref="post", lazy=True)
 
+# 定义类 Comment，继承 db.Model
 class Comment(db.Model):
+    # 定义变量 __tablename__，赋值为 "comments"
     __tablename__ = "comments"
+    # 定义变量 id，赋值为 db.Column(db.Integer, primary_key=True)
     id = db.Column(db.Integer, primary_key=True)
+    # 定义变量 content，赋值为 db.Column(db.Text, nullable=False)
     content = db.Column(db.Text, nullable=False)
+    # 定义变量 post_id，赋值为 db.Column(db.Integer, db.ForeignKey("posts.id...
     post_id = db.Column(db.Integer, db.ForeignKey("posts.id"))
+    # 定义变量 author_id，赋值为 db.Column(db.Integer, db.ForeignKey("users.id...
     author_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    # 定义变量 created_at，赋值为 db.Column(db.DateTime, default=datetime.utcno...
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 \`\`\`
 
@@ -1188,43 +1592,79 @@ class Comment(db.Model):
 基础模板，所有页面共享：
 
 \`\`\`html
+# <!-- templates/base.html -->
 <!-- templates/base.html -->
+# <!DOCTYPE html>
 <!DOCTYPE html>
+# <html lang="zh">
 <html lang="zh">
+# <head>
 <head>
+    # <meta charset="UTF-8">
     <meta charset="UTF-8">
+    # <title>{% block title %}我的博客{% endblock %}</title>
     <title>{% block title %}我的博客{% endblock %}</title>
+    # <style>
     <style>
+        # body { font-family: sans-serif; max-width: 800px; 
         body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        # nav { padding: 10px; background: #f0f0f0; margin-b
         nav { padding: 10px; background: #f0f0f0; margin-bottom: 20px; }
+        # nav a { margin-right: 15px; }
         nav a { margin-right: 15px; }
+        # .flash { background: #d4edda; padding: 10px; margi
         .flash { background: #d4edda; padding: 10px; margin: 10px 0; }
+        # .post { border-bottom: 1px solid #eee; padding: 15
         .post { border-bottom: 1px solid #eee; padding: 15px 0; }
+    # </style>
     </style>
+# </head>
 </head>
+# <body>
 <body>
+    # <nav>
     <nav>
+        # <a href="{{ url_for('posts.index') }}">首页</a>
         <a href="{{ url_for('posts.index') }}">首页</a>
+        # {% if session.get('user_id') %}
         {% if session.get('user_id') %}
+            # <a href="{{ url_for('posts.create') }}">写文章</a>
             <a href="{{ url_for('posts.create') }}">写文章</a>
+            # <a href="{{ url_for('auth.logout') }}">退出</a>
             <a href="{{ url_for('auth.logout') }}">退出</a>
+        # {% else %}
         {% else %}
+            # <a href="{{ url_for('auth.login') }}">登录</a>
             <a href="{{ url_for('auth.login') }}">登录</a>
+            # <a href="{{ url_for('auth.register') }}">注册</a>
             <a href="{{ url_for('auth.register') }}">注册</a>
+        # {% endif %}
         {% endif %}
+    # </nav>
     </nav>
     
+    # <!-- flash 消息 -->
     <!-- flash 消息 -->
+    # {% with messages = get_flashed_messages() %}
     {% with messages = get_flashed_messages() %}
+        # {% if messages %}
         {% if messages %}
+            # {% for m in messages %}
             {% for m in messages %}
+                # <div class="flash">{{ m }}</div>
                 <div class="flash">{{ m }}</div>
+            # {% endfor %}
             {% endfor %}
+        # {% endif %}
         {% endif %}
+    # {% endwith %}
     {% endwith %}
     
+    # {% block content %}{% endblock %}
     {% block content %}{% endblock %}
+# </body>
 </body>
+# </html>
 </html>
 \`\`\`
 
@@ -1232,50 +1672,87 @@ class Comment(db.Model):
 
 \`\`\`python
 # blueprints/auth.py
+# 从 flask 导入（多行）
 from flask import (Blueprint, render_template, request, 
+                   # redirect, url_for, session, flash)
                    redirect, url_for, session, flash)
+# 从 models 导入 User
 from models import User
+# 从 app 导入 db
 from app import db
 
+# 定义变量 auth_bp，赋值为 Blueprint("auth", __name__, url_prefix="/auth...
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
+# 装饰器：auth_bp.route
 @auth_bp.route("/register", methods=["GET", "POST"])
+# 定义函数 register，参数: 
 def register():
+    # 条件判断：如果 request.method == "POST"
     if request.method == "POST":
+        # 定义变量 username，赋值为 request.form.get("username")
         username = request.form.get("username")
+        # 定义变量 password，赋值为 request.form.get("password")
         password = request.form.get("password")
         # 检查用户名是否已存在
+        # 条件判断：如果 User.query.filter_by(username=username).first()
         if User.query.filter_by(username=username).first():
+            # 调用 flash()
             flash("用户名已存在")
+            # 返回 redirect(url_for("auth.register"))
             return redirect(url_for("auth.register"))
         # 创建用户（密码哈希存储）
+        # 定义变量 user，赋值为 User(username=username)
         user = User(username=username)
+        # 调用 user.set_password()
         user.set_password(password)
+        # 调用 db.session.add()
         db.session.add(user)
+        # 调用 db.session.commit()
         db.session.commit()
+        # 调用 flash()
         flash("注册成功，请登录")
+        # 返回 redirect(url_for("auth.login"))
         return redirect(url_for("auth.login"))
+    # 返回 render_template("register.html")
     return render_template("register.html")
 
+# 装饰器：auth_bp.route
 @auth_bp.route("/login", methods=["GET", "POST"])
+# 定义函数 login，参数: 
 def login():
+    # 条件判断：如果 request.method == "POST"
     if request.method == "POST":
+        # 定义变量 username，赋值为 request.form.get("username")
         username = request.form.get("username")
+        # 定义变量 password，赋值为 request.form.get("password")
         password = request.form.get("password")
         # 查用户并验证密码
+        # 定义变量 user，赋值为 User.query.filter_by(username=username).first...
         user = User.query.filter_by(username=username).first()
+        # 条件判断：如果 user and user.check_password(password)
         if user and user.check_password(password):
             # 登录成功，把 user_id 存 session
+            # session["user_id"] = user.id
             session["user_id"] = user.id
+            # 调用 flash()
             flash("登录成功")
+            # 返回 redirect(url_for("posts.index"))
             return redirect(url_for("posts.index"))
+        # 调用 flash()
         flash("用户名或密码错误")
+    # 返回 render_template("login.html")
     return render_template("login.html")
 
+# 装饰器：auth_bp.route
 @auth_bp.route("/logout")
+# 定义函数 logout，参数: 
 def logout():
+    # 调用 session.clear()
     session.clear()
+    # 调用 flash()
     flash("已退出登录")
+    # 返回 redirect(url_for("posts.index"))
     return redirect(url_for("posts.index"))
 \`\`\`
 
@@ -1283,74 +1760,126 @@ def logout():
 
 \`\`\`python
 # blueprints/posts.py
+# 从 flask 导入（多行）
 from flask import (Blueprint, render_template, request, 
+                   # redirect, url_for, session, flash, abort, g)
                    redirect, url_for, session, flash, abort, g)
+# 从 models 导入 User, Post, Comment
 from models import User, Post, Comment
+# 从 app 导入 db
 from app import db
+# 从 functools 导入 wraps
 from functools import wraps
 
+# 定义变量 posts_bp，赋值为 Blueprint("posts", __name__)
 posts_bp = Blueprint("posts", __name__)
 
 # 登录验证装饰器
+# 定义函数 login_required，参数: f
 def login_required(f):
+    # 装饰器：wraps
     @wraps(f)
+    # 定义函数 decorated，参数: *args, **kwargs
     def decorated(*args, **kwargs):
+        # 条件判断：如果 not session.get("user_id")
         if not session.get("user_id"):
+            # 调用 flash()
             flash("请先登录")
+            # 返回 redirect(url_for("auth.login"))
             return redirect(url_for("auth.login"))
         # 加载当前用户到 g
+        # g.current_user = User.query.get(session["user_id"]
         g.current_user = User.query.get(session["user_id"])
+        # 返回 f(*args, **kwargs)
         return f(*args, **kwargs)
+    # 返回 decorated
     return decorated
 
 # 首页：文章列表
+# 装饰器：posts_bp.route
 @posts_bp.route("/")
+# 定义函数 index，参数: 
 def index():
     # 查所有文章，按时间倒序
+    # 定义变量 posts，赋值为 Post.query.order_by(Post.created_at.desc()).a...
     posts = Post.query.order_by(Post.created_at.desc()).all()
+    # 返回 render_template("index.html", posts=posts)
     return render_template("index.html", posts=posts)
 
 # 文章详情
+# 装饰器：posts_bp.route
 @posts_bp.route("/post/<int:post_id>")
+# 定义函数 detail，参数: post_id
 def detail(post_id):
     post = Post.query.get_or_404(post_id)  # 不存在直接 404
+    # 返回 render_template("post.html", post=post)
     return render_template("post.html", post=post)
 
 # 写文章（需登录）
+# 装饰器：posts_bp.route
 @posts_bp.route("/post/new", methods=["GET", "POST"])
+# 装饰器：login_required
 @login_required
+# 定义函数 create，参数: 
 def create():
+    # 条件判断：如果 request.method == "POST"
     if request.method == "POST":
+        # 定义变量 title，赋值为 request.form.get("title")
         title = request.form.get("title")
+        # 定义变量 content，赋值为 request.form.get("content")
         content = request.form.get("content")
+        # 定义变量 post，赋值为 Post(title=title, content=content, author_id=...
         post = Post(title=title, content=content, author_id=g.current_user.id)
+        # 调用 db.session.add()
         db.session.add(post)
+        # 调用 db.session.commit()
         db.session.commit()
+        # 调用 flash()
         flash("文章发布成功")
+        # 返回 redirect(url_for("posts.detail", post_id=post.id))
         return redirect(url_for("posts.detail", post_id=post.id))
+    # 返回 render_template("create.html")
     return render_template("create.html")
 
 # 发表评论（需登录）
+# 装饰器：posts_bp.route
 @posts_bp.route("/post/<int:post_id>/comment", methods=["POST"])
+# 装饰器：login_required
 @login_required
+# 定义函数 comment，参数: post_id
 def comment(post_id):
+    # 定义变量 content，赋值为 request.form.get("content")
     content = request.form.get("content")
+    # 定义变量 c，赋值为 Comment(content=content, post_id=post_id, aut...
     c = Comment(content=content, post_id=post_id, author_id=g.current_user.id)
+    # 调用 db.session.add()
     db.session.add(c)
+    # 调用 db.session.commit()
     db.session.commit()
+    # 返回 redirect(url_for("posts.detail", post_id=post_id))
     return redirect(url_for("posts.detail", post_id=post_id))
 
 # 删除文章（作者才能删）
+# 装饰器：posts_bp.route
 @posts_bp.route("/post/<int:post_id>/delete", methods=["POST"])
+# 装饰器：login_required
 @login_required
+# 定义函数 delete，参数: post_id
 def delete(post_id):
+    # 定义变量 post，赋值为 Post.query.get_or_404(post_id)
     post = Post.query.get_or_404(post_id)
     # 权限检查：只有作者能删
+    # 条件判断：如果 post.author_id != g.current_user.id
     if post.author_id != g.current_user.id:
+        # 调用 abort()
         abort(403)
+    # 调用 db.session.delete()
     db.session.delete(post)
+    # 调用 db.session.commit()
     db.session.commit()
+    # 调用 flash()
     flash("文章已删除")
+    # 返回 redirect(url_for("posts.index"))
     return redirect(url_for("posts.index"))
 \`\`\`
 
@@ -1359,49 +1888,86 @@ def delete(post_id):
 \`templates/index.html\`：
 
 \`\`\`html
+# {% extends "base.html" %}
 {% extends "base.html" %}
+# {% block title %}首页 - 我的博客{% endblock %}
 {% block title %}首页 - 我的博客{% endblock %}
+# {% block content %}
 {% block content %}
+# <h1>最新文章</h1>
 <h1>最新文章</h1>
+# {% for post in posts %}
 {% for post in posts %}
+# <div class="post">
 <div class="post">
+    # <h2><a href="{{ url_for('posts.detail', post_id=po
     <h2><a href="{{ url_for('posts.detail', post_id=post.id) }}">{{ post.title }}</a></h2>
+    # <p>{{ post.content[:100] }}...</p>
     <p>{{ post.content[:100] }}...</p>
+    # <small>作者：{{ post.author.username }} | {{ post.cre
     <small>作者：{{ post.author.username }} | {{ post.created_at.strftime('%Y-%m-%d') }}</small>
+# </div>
 </div>
+# {% else %}
 {% else %}
+# <p>还没有文章，<a href="{{ url_for('posts.create') }}">写
 <p>还没有文章，<a href="{{ url_for('posts.create') }}">写第一篇</a></p>
+# {% endfor %}
 {% endfor %}
+# {% endblock %}
 {% endblock %}
 \`\`\`
 
 \`templates/post.html\`：
 
 \`\`\`html
+# {% extends "base.html" %}
 {% extends "base.html" %}
+# {% block title %}{{ post.title }}{% endblock %}
 {% block title %}{{ post.title }}{% endblock %}
+# {% block content %}
 {% block content %}
+# <h1>{{ post.title }}</h1>
 <h1>{{ post.title }}</h1>
+# <p>作者：{{ post.author.username }} | {{ post.created
 <p>作者：{{ post.author.username }} | {{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+# <div>{{ post.content }}</div>
 <div>{{ post.content }}</div>
 
+# <h3>评论</h3>
 <h3>评论</h3>
+# {% for c in post.comments %}
 {% for c in post.comments %}
+# <div>
 <div>
+    # <strong>{{ c.author.username }}</strong>: {{ c.con
     <strong>{{ c.author.username }}</strong>: {{ c.content }}
+# </div>
 </div>
+# {% else %}
 {% else %}
+# <p>暂无评论</p>
 <p>暂无评论</p>
+# {% endfor %}
 {% endfor %}
 
+# {% if session.get('user_id') %}
 {% if session.get('user_id') %}
+# <form method="post" action="{{ url_for('posts.comm
 <form method="post" action="{{ url_for('posts.comment', post_id=post.id) }}">
+    # <textarea name="content" placeholder="写评论"></texta
     <textarea name="content" placeholder="写评论"></textarea>
+    # <button>发表评论</button>
     <button>发表评论</button>
+# </form>
 </form>
+# {% else %}
 {% else %}
+# <p><a href="{{ url_for('auth.login') }}">登录</a>后评论
 <p><a href="{{ url_for('auth.login') }}">登录</a>后评论</p>
+# {% endif %}
 {% endif %}
+# {% endblock %}
 {% endblock %}
 \`\`\`
 

@@ -11,7 +11,8 @@ export const chapters = [
 ### 基本 if 语句
 
 \`\`\`python
-if 条件:
+if 条件:  # 条件为 True 时执行下方缩进块，注意行尾冒号
+    # 条件为真时要执行的具体语句，必须缩进
     条件为真时执行的代码块
 \`\`\`
 
@@ -23,22 +24,28 @@ if 条件:
 ### if-else 语句
 
 \`\`\`python
-if 条件:
+if 条件:  # 条件成立走这里
+    # 条件成立时执行的语句
     条件为真时执行
-else:
+else:  # 否则走这里
+    # 条件不成立时执行的语句
     条件为假时执行
 \`\`\`
 
 ### if-elif-else 多条件
 
 \`\`\`python
-if 条件1:
+if 条件1:  # 先判断条件1
+    # 条件1成立时执行
     条件1成立
-elif 条件2:
+elif 条件2:  # 条件1不成立才判断条件2
+    # 条件1不成立、条件2成立时执行
     条件1不成立，但条件2成立
-elif 条件3:
+elif 条件3:  # 前面都不成立才判断条件3
+    # 条件1、2都不成立、条件3成立时执行
     条件1、2都不成立，条件3成立
-else:
+else:  # 以上都不成立时执行
+    # 所有条件都不成立时执行
     以上条件都不成立
 \`\`\`
 
@@ -51,10 +58,10 @@ else:
 Python 用缩进（而不是大括号）表示代码块，这是 Python 最显著的特点：
 
 \`\`\`python
-if True:
-    print("这行缩进了，属于if块")
-    print("这行也缩进了，也属于if块")
-print("这行没缩进，无论条件如何都执行")
+if True:  # 条件恒为真，进入缩进块
+    print("这行缩进了，属于if块")  # 缩进4空格表示属于 if
+    print("这行也缩进了，也属于if块")  # 同属一个代码块
+print("这行没缩进，无论条件如何都执行")  # 无缩进，已脱离 if 块
 \`\`\`
 
 ⚠️ 同一个代码块的缩进量必须一致（建议用4个空格），不要混用 Tab 和空格！
@@ -71,12 +78,15 @@ if 后面的条件本质上是一个布尔值：
 if 语句里面可以再放 if 语句：
 
 \`\`\`python
-if age >= 18:
-    if has_id:
+if age >= 18:  # 外层判断年龄
+    if has_id:  # 内层再判断是否有身份证
+        # 满足年龄且有身份证，允许进入
         print("可以进入")
     else:
+        # 年龄够但没有身份证
         print("需要身份证")
-else:
+else:  # 年龄不足
+    # 未成年，禁止进入
     print("未成年人不得进入")
 \`\`\`
 
@@ -207,7 +217,7 @@ else:
 ### 基本语法
 
 \`\`\`python
-while 条件:
+while 条件:  # 条件为 True 时重复执行循环体
     循环体（重复执行的代码）
 \`\`\`
 
@@ -221,16 +231,17 @@ while 条件:
 
 \`\`\`python
 i = 1
-while i <= 5:
+while i <= 5:  # 当 i 不超过 5 时继续
+    # 打印当前 i 的值
     print(i)
-    i = i + 1  # 别忘了改变条件，否则会死循环！
+    i = i + 1  # 别忘了改变条件，否则会死循环！  # 更新计数器，使条件最终变 False
 \`\`\`
 
 ⚠️ **死循环警告**：如果循环条件一直是 True，循环永远不会停止！
 
 \`\`\`python
-# 这是死循环！永远不会停止（按Ctrl+C中断）
-while True:
+# 这是死循环！永远不会停止（按Ctrl+C中断）  # 注释说明
+while True:  # 条件恒为真，循环永不退出
     print("无限循环...")
 \`\`\`
 
@@ -255,12 +266,13 @@ while True:
 
 \`\`\`python
 # 计算1+2+3+...+100
-sum = 0
+sum = 0  # 累加器初始化为 0
+# 计数器 i 从 1 开始
 i = 1
-while i <= 100:
-    sum += i
-    i += 1
-print(sum)  # 5050
+while i <= 100:  # 从 1 加到 100
+    sum += i  # 等价于 sum = sum + i
+    i += 1  # 计数器加 1
+print(sum)  # 5050  # 输出累加结果
 \`\`\`
 
 ### 循环控制
@@ -360,23 +372,24 @@ print("所以写while循环一定要记得：更新条件变量！")`
 ### 基本语法
 
 \`\`\`python
-for 变量 in 可迭代对象:
+for 变量 in 可迭代对象:  # 每次循环变量取序列中一个元素
     循环体
 \`\`\`
 
 ### 遍历字符串
 
 \`\`\`python
-for ch in "Python":
-    print(ch)
+for ch in "Python":  # 逐个取出字符串中的字符
+    print(ch)  # 依次输出 P y t h o n
 \`\`\`
 
 ### 遍历列表
 
 \`\`\`python
+# 定义水果列表
 fruits = ["苹果", "香蕉", "橙子"]
-for fruit in fruits:
-    print(f"我喜欢吃{fruit}")
+for fruit in fruits:  # 遍历列表每个元素
+    print(f"我喜欢吃{fruit}")  # f-string 插入当前元素
 \`\`\`
 
 ### range() 函数
@@ -393,15 +406,18 @@ for fruit in fruits:
 
 \`\`\`python
 # 打印0到4
-for i in range(5):
+for i in range(5):  # range(5) 生成 0,1,2,3,4
+    # 打印当前数字
     print(i)
 
 # 打印1到10
-for i in range(1, 11):
+for i in range(1, 11):  # 从 1 到 10（不含 11）
+    # 打印当前数字
     print(i)
 
 # 打印10以内偶数
-for i in range(0, 11, 2):
+for i in range(0, 11, 2):  # 步长 2，取 0,2,4,6,8,10
+    # 打印当前偶数
     print(i)
 \`\`\`
 
@@ -416,7 +432,7 @@ for i in range(0, 11, 2):
 每次循环，变量会依次取到可迭代对象中的每个元素：
 
 \`\`\`python
-for i in range(3):
+for i in range(3):  # i 依次取 0、1、2
     print(i)  # 依次是 0, 1, 2
 \`\`\`
 
@@ -529,9 +545,11 @@ print("大多数情况下 for 更简洁好用！")`
 当遇到 \`break\` 时，循环立即结束，程序跳到循环后面继续执行：
 
 \`\`\`python
-for i in range(1, 10):
+for i in range(1, 10):  # i 取 1 到 9
+    # 判断 i 是否等于 5
     if i == 5:
-        break  # 当i等于5时，直接退出整个循环
+        break  # 当i等于5时，直接退出整个循环  # break 立即终止循环
+    # 打印未触发 break 的数字
     print(i)
 # 输出：1 2 3 4
 \`\`\`
@@ -545,9 +563,11 @@ break 常用于：
 \`continue\` 跳过本次循环剩余的代码，直接进入下一轮循环：
 
 \`\`\`python
-for i in range(1, 6):
+for i in range(1, 6):  # i 取 1 到 5
+    # 命中需要跳过的值
     if i == 3:
-        continue  # 跳过i=3这次
+        continue  # 跳过i=3这次  # 跳过本次剩余代码，进入下一轮
+    # 打印未被跳过的数字
     print(i)
 # 输出：1 2 4 5（注意没有3）
 \`\`\`
@@ -568,9 +588,10 @@ continue: 循环1 循环2 [跳过3] 循环4 循环5 → 继续后面的循环
 \`pass\` 是一个空语句，什么都不做，纯粹是为了语法需要占位：
 
 \`\`\`python
-if x > 0:
-    pass  # 还没想好这里写什么，先用pass占位
-else:
+if x > 0:  # x 为正数时
+    pass  # 还没想好这里写什么，先用pass占位  # pass 空语句，保证语法合法
+else:  # 否则
+    # 条件不成立时执行
     print("x<=0")
 \`\`\`
 
@@ -582,10 +603,11 @@ Python 的代码块不能为空（if/for/def/class后面必须有内容），
 \`break\` 只能跳出**它所在的那一层**循环，不会跳出外层：
 
 \`\`\`python
-for i in range(3):
-    for j in range(3):
+for i in range(3):  # 外层循环
+    for j in range(3):  # 内层循环
         if j == 1:
-            break  # 只跳出内层j循环，外层i循环继续
+            break  # 只跳出内层j循环，外层i循环继续  # break 仅作用于所在层
+        # 打印满足条件的下标组合
         print(i, j)
 \`\`\`
 
@@ -594,10 +616,10 @@ for i in range(3):
 for/while 可以带 else，在循环**正常结束**（没有被break打断）时执行：
 
 \`\`\`python
-for i in range(5):
-    if i == 10:  # 永远不满足
+for i in range(5):  # i 取 0 到 4
+    if i == 10:  # 永远不满足  # 条件永不成立
         break
-else:
+else:  # 循环未被 break 打断，执行 else
     print("循环正常结束，没有被break")  # 会执行
 \`\`\`
 
@@ -719,12 +741,12 @@ print()`
 ### 基本语法
 
 \`\`\`python
-match 变量:
-    case 值1:
+match 变量:  # 对变量进行模式匹配
+    case 值1:  # 值等于值1时
         匹配值1时执行
     case 值2:
         匹配值2时执行
-    case _:
+    case _:  # 下划线通配符，匹配所有其他情况
         都不匹配时执行（默认分支）
 \`\`\`
 
@@ -736,16 +758,22 @@ match 变量:
 ### 简单例子：星期几
 
 \`\`\`python
+# 假设今天是星期三
 day = 3
-match day:
+match day:  # 匹配 day 的值
+    # 匹配星期一
     case 1:
+        # 输出星期一
         print("星期一")
+    # 匹配星期二
     case 2:
+        # 输出星期二
         print("星期二")
+    # 匹配星期三
     case 3:
-        print("星期三")
+        print("星期三")  # day=3 命中此分支
     case _:
-        print("其他")
+        print("其他")  # 其余值走默认分支
 \`\`\`
 
 ### 多值匹配
@@ -753,10 +781,13 @@ match day:
 一个 case 可以匹配多个值，用 \`|\` 分隔：
 
 \`\`\`python
+# 对 day 进行模式匹配
 match day:
-    case 1 | 2 | 3 | 4 | 5:
+    case 1 | 2 | 3 | 4 | 5:  # | 表示或，匹配任一值
+        # 命中工作日分支
         print("工作日")
     case 6 | 7:
+        # 命中周末分支
         print("周末")
 \`\`\`
 
@@ -765,14 +796,18 @@ match day:
 case 中可以用变量捕获匹配的值：
 
 \`\`\`python
-match point:
-    case (0, 0):
+match point:  # point 是二元组
+    case (0, 0):  # 精确匹配原点
+        # 打印在 X 轴上的点
         print("原点")
-    case (x, 0):
+    case (x, 0):  # 捕获 x 坐标，y 为 0
+        # 打印在 Y 轴上的点
         print(f"在X轴上，x={x}")
-    case (0, y):
+    case (0, y):  # x 为 0，捕获 y
+        # 打印一般点
         print(f"在Y轴上，y={y}")
-    case (x, y):
+    case (x, y):  # 捕获两个坐标
+        # 打印点坐标
         print(f"点坐标({x}, {y})")
 \`\`\`
 
@@ -781,22 +816,24 @@ match point:
 可以匹配序列的结构：
 
 \`\`\`python
-match lst:
-    case []:
+match lst:  # 按列表结构匹配
+    case []:  # 空列表
         print("空列表")
-    case [x]:
+    case [x]:  # 仅一个元素，捕获为 x
         print(f"只有一个元素: {x}")
-    case [x, y]:
+    case [x, y]:  # 恰好两个元素
         print(f"两个元素: {x}, {y}")
-    case [x, y, *rest]:
+    case [x, y, *rest]:  # *rest 收集剩余元素
+        # 打印前两个元素及剩余部分
         print(f"前两个是{x},{y}，后面还有{rest}")
 \`\`\`
 
 ### 字典模式
 
 \`\`\`python
-match data:
-    case {"name": name, "age": age}:
+match data:  # data 是字典
+    case {"name": name, "age": age}:  # 按键解构并捕获值
+        # 打印解构出的姓名和年龄
         print(f"姓名{name}，年龄{age}")
 \`\`\`
 
@@ -805,12 +842,12 @@ match data:
 可以加 \`if\` 条件进一步筛选：
 
 \`\`\`python
-match score:
-    case s if s >= 90:
+match score:  # 匹配分数
+    case s if s >= 90:  # 捕获为 s 并加 if 守卫条件
         print("优秀")
     case s if s >= 60:
         print("及格")
-    case _:
+    case _:  # 其余情况
         print("不及格")
 \`\`\`
 
@@ -958,6 +995,7 @@ print("- 简单条件判断 → 两者皆可，看哪个更易读")`
 ### 语法
 
 \`\`\`python
+# 三元表达式：条件为真取值1，否则取值2
 值1 if 条件 else 值2
 \`\`\`
 
@@ -966,7 +1004,9 @@ print("- 简单条件判断 → 两者皆可，看哪个更易读")`
 ### 基本例子
 
 \`\`\`python
+# 定义年龄变量
 age = 20
+# 三元表达式根据年龄赋值状态
 status = "成年" if age >= 18 else "未成年"
 print(status)  # 成年
 \`\`\`
@@ -974,9 +1014,12 @@ print(status)  # 成年
 等价于：
 
 \`\`\`python
+# 条件分支写法
 if age >= 18:
+    # 成年赋值
     status = "成年"
 else:
+    # 未成年赋值
     status = "未成年"
 \`\`\`
 
@@ -1000,6 +1043,7 @@ else:
 
 \`\`\`python
 # 能运行但难读
+# 嵌套三元表达式，可读性差
 result = "优秀" if score >= 90 else "良好" if score >= 80 else "及格" if score >= 60 else "不及格"
 \`\`\`
 
@@ -1010,18 +1054,21 @@ result = "优秀" if score >= 90 else "良好" if score >= 80 else "及格" if s
 #### 1. 赋值
 
 \`\`\`python
+# 三元表达式取两数较大值
 max_val = a if a > b else b
 \`\`\`
 
 #### 2. 在 print 中
 
 \`\`\`python
+# 三元表达式直接用于打印
 print("及格" if score >= 60 else "不及格")
 \`\`\`
 
 #### 3. 在列表推导式中
 
 \`\`\`python
+# 列表推导式中嵌入三元表达式，正数保留否则置 0
 [x if x > 0 else 0 for x in numbers]
 \`\`\`
 
@@ -1160,6 +1207,7 @@ for i in range(3):       # 外层循环
 # 打印矩形
 for i in range(5):        # 行
     for j in range(5):    # 列
+        # 打印星号不换行
         print("*", end="")
     print()  # 换行
 \`\`\`
@@ -1169,9 +1217,13 @@ for i in range(5):        # 行
 九九乘法表是嵌套循环的经典例子：
 
 \`\`\`python
+# 外层控制行（被乘数）
 for i in range(1, 10):
+    # 内层控制列（乘数）
     for j in range(1, i+1):
+        # 打印一个乘法项
         print(f"{j}×{i}={i*j}", end=" ")
+    # 一行结束后换行
     print()
 \`\`\`
 
@@ -1180,23 +1232,35 @@ for i in range(1, 10):
 break 只跳出**当前那一层**循环：
 
 \`\`\`python
+# 外层循环 i
 for i in range(3):
+    # 内层循环 j
     for j in range(3):
+        # 判断是否需要跳出
         if j == 1:
             break  # 只跳出内层j循环，外层i继续
+        # 打印未跳出时的组合
         print(i, j)
 \`\`\`
 
 要跳出多层循环，可以用标志变量：
 
 \`\`\`python
+# 标记是否找到
 found = False
+# 外层遍历 i
 for i in range(10):
+    # 内层遍历 j
     for j in range(10):
+        # 满足查找条件
         if some_condition:
+            # 标记已找到
             found = True
+            # 跳出内层循环
             break
+    # 若已找到
     if found:
+        # 跳出外层循环
         break
 \`\`\`
 
@@ -1334,15 +1398,22 @@ else 子句在循环**正常执行完毕**（没有被 break 打断）时执行�
 循环的 else 最常见的用途是**判断循环中有没有找到目标**：
 
 \`\`\`python
+# 定义判断质数的函数，参数 n
 def is_prime(n):
+    # 小于 2 的数不是质数
     if n < 2:
+        # 直接返回 False
         return False
+    # 遍历 2 到 n-1 寻找因子
     for i in range(2, n):
+        # 若能整除说明有因子
         if n % i == 0:
             # 找到因子了，不是质数，break跳出
+            # 找到因子，不是质数
             return False
     else:
         # 循环正常结束，说明没有找到因子
+        # 无因子，是质数
         return True
 \`\`\`
 
@@ -1350,18 +1421,26 @@ def is_prime(n):
 
 \`\`\`python
 # 例子1：没有break，else会执行
+# 遍历 0、1、2
 for i in range(3):
+    # 打印当前 i
     print(i)
 else:
+    # 打印正常结束提示
     print("循环正常结束")
 # 输出 0 1 2 循环正常结束
 
 # 例子2：有break，else不执行
+# 遍历 0、1、2
 for i in range(3):
+    # 打印当前 i
     print(i)
+    # i 等于 1 时
     if i == 1:
+        # 跳出循环
         break
 else:
+    # 因 break 触发，此处不执行
     print("循环正常结束")
 # 输出 0 1（没有"循环正常结束"）
 \`\`\`
@@ -1372,11 +1451,16 @@ while 的 else 也是一样：正常结束才执行：
 
 \`\`\`python
 # 正常结束
+# 计数器从 0 开始
 n = 0
+# 当 n 小于 3 时继续
 while n < 3:
+    # 打印当前 n
     print(n)
+    # 计数器自增
     n += 1
 else:
+    # 打印正常结束提示
     print("while正常结束")
 \`\`\`
 
@@ -1391,12 +1475,19 @@ else:
 其实 else 能做的事，用一个标志变量也能做：
 
 \`\`\`python
+# 标记是否找到目标
 found = False
+# 遍历每个元素
 for item in items:
+    # 判断是否为目标
     if item == target:
+        # 标记已找到
         found = True
+        # 跳出循环
         break
+# 若未找到
 if not found:
+    # 提示没找到
     print("没找到")
 \`\`\`
 
@@ -1527,8 +1618,11 @@ print("- 用不用看个人习惯，标志变量写法也能实现同样功能")
 没有 enumerate 的写法：
 
 \`\`\`python
+# 水果列表
 fruits = ["苹果", "香蕉", "橙子"]
+# 用 range(len) 取下标遍历
 for i in range(len(fruits)):
+    # 同时打印下标和元素
     print(i, fruits[i])
 \`\`\`
 
@@ -1538,14 +1632,18 @@ for i in range(len(fruits)):
 
 \`\`\`python
 for 索引, 值 in enumerate(序列):
+    # 循环体，使用索引和值
     ...
 \`\`\`
 
 例子：
 
 \`\`\`python
+# 水果列表
 fruits = ["苹果", "香蕉", "橙子"]
+# enumerate 同时取下标和元素
 for i, fruit in enumerate(fruits):
+    # 打印序号和水果名
     print(f"第{i+1}个水果是{fruit}")
 \`\`\`
 
@@ -1554,7 +1652,9 @@ for i, fruit in enumerate(fruits):
 enumerate 默认从 0 开始计数，可以通过 \`start\` 参数指定起始值：
 
 \`\`\`python
+# start=1 让序号从 1 开始
 for i, fruit in enumerate(fruits, start=1):
+    # 打印序号和水果
     print(f"{i}. {fruit}")
 # 输出：
 # 1. 苹果
@@ -1567,6 +1667,7 @@ for i, fruit in enumerate(fruits, start=1):
 enumerate 返回一个 enumerate 对象（迭代器），每次产出 \`(索引, 值)\` 的元组：
 
 \`\`\`python
+# enumerate 把序列转成 (下标, 元素) 列表
 list(enumerate(["a", "b", "c"]))
 # [(0, 'a'), (1, 'b'), (2, 'c')]
 \`\`\`\`
@@ -1686,9 +1787,13 @@ print("- 任何可迭代对象都能用 enumerate")`
 没有 zip 的写法（需要用索引）：
 
 \`\`\`python
+# 姓名列表
 names = ["小明", "小红"]
+# 分数列表
 scores = [95, 88]
+# 用下标同时访问两个列表
 for i in range(len(names)):
+    # 打印姓名和对应分数
     print(names[i], scores[i])
 \`\`\`
 
@@ -1698,15 +1803,20 @@ for i in range(len(names)):
 
 \`\`\`python
 for item1, item2, ... in zip(序列1, 序列2, ...):
+    # 循环体，使用多个序列的元素
     ...
 \`\`\`
 
 例子：
 
 \`\`\`python
+# 姓名列表
 names = ["小明", "小红", "小刚"]
+# 分数列表
 scores = [95, 88, 76]
+# zip 配对同时遍历两个列表
 for name, score in zip(names, scores):
+    # 打印姓名和分数
     print(f"{name}: {score}分")
 \`\`\`
 
@@ -1728,7 +1838,9 @@ zip:   ("小明",95) ("小红",88) ("小刚",76)
 zip 以**最短的**序列为准，长的部分会被截断：
 
 \`\`\`python
+# 较长的列表
 a = [1, 2, 3]
+# 较短的列表
 b = ["a", "b"]
 list(zip(a, b))  # [(1, 'a'), (2, 'b')] —— 3被丢弃了
 \`\`\`
@@ -1740,8 +1852,11 @@ list(zip(a, b))  # [(1, 'a'), (2, 'b')] —— 3被丢弃了
 zip 可以方便地从两个列表创建字典：
 
 \`\`\`python
+# 键列表
 keys = ["name", "age", "city"]
+# 值列表
 values = ["小明", 18, "北京"]
+# zip 配对后用 dict 转字典
 d = dict(zip(keys, values))
 # {'name': '小明', 'age': 18, 'city': '北京'}
 \`\`\`
@@ -1751,7 +1866,9 @@ d = dict(zip(keys, values))
 用 \`zip(*zipped)\` 可以把配对的数据"解压"回来：
 
 \`\`\`python
+# 键值对列表
 pairs = [("小明", 95), ("小红", 88)]
+# zip(*...) 解包并转置，分离姓名和分数
 names, scores = zip(*pairs)
 # names = ("小明", "小红"), scores = (95, 88)
 \`\`\`
@@ -1764,7 +1881,9 @@ names, scores = zip(*pairs)
 两者也可以结合使用！
 
 \`\`\`python
+# 同时取下标和配对值
 for i, (name, score) in enumerate(zip(names, scores)):
+    # 打印三者
     print(i, name, score)
 \`\`\``,
     code: `# zip 并行迭代演示
@@ -1868,6 +1987,7 @@ print("- 可以和enumerate组合使用")`
 #### 方法1：reversed()
 
 \`\`\`python
+# reversed 倒序遍历 range
 for i in reversed(range(1, 6)):
     print(i)  # 5, 4, 3, 2, 1
 \`\`\`
@@ -1875,6 +1995,7 @@ for i in reversed(range(1, 6)):
 #### 方法2：range 负步长
 
 \`\`\`python
+# 用负步长倒序遍历
 for i in range(5, 0, -1):
     print(i)  # 5, 4, 3, 2, 1
 \`\`\`
@@ -1886,7 +2007,9 @@ reversed() 不修改原序列，返回一个反向迭代器。
 #### sorted() 返回排序后的新列表
 
 \`\`\`python
+# 水果列表（无序）
 fruits = ["banana", "apple", "cherry"]
+# sorted 返回排序后的新列表
 for fruit in sorted(fruits):
     print(fruit)  # apple, banana, cherry
 \`\`\`
@@ -1904,6 +2027,7 @@ for fruit in sorted(fruits):
 #### 方法1：转 set
 
 \`\`\`python
+# 遍历去重后的集合
 for item in set([1, 2, 2, 3, 3, 3]):
     print(item)  # 顺序可能变
 \`\`\`
@@ -1913,10 +2037,15 @@ for item in set([1, 2, 2, 3, 3, 3]):
 #### 方法2：保持顺序去重
 
 \`\`\`python
+# 用集合记录已见过的元素
 seen = set()
+# 遍历原始列表
 for item in original_list:
+    # 若元素未见过
     if item not in seen:
+        # 记录到集合
         seen.add(item)
+        # 打印（实现去重）
         print(item)
 \`\`\`
 
@@ -1943,8 +2072,11 @@ for key, value in d.items():  # 遍历键值对
 
 \`\`\`python
 # 危险！可能跳过元素或出错
+# 遍历列表
 for item in lst:
+    # 满足条件
     if some_condition:
+        # 边遍历边删除，易出错
         lst.remove(item)
 \`\`\`
 
@@ -1958,6 +2090,7 @@ for item in lst:
 循环生成新列表的简洁写法：
 
 \`\`\`python
+# 列表推导式生成 0-9 的平方数列表
 squares = [i**2 for i in range(10)]
 # [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
 \`\`\`
@@ -2168,6 +2301,7 @@ if items:
 #### 3. 判断数字是否为0
 
 \`\`\`python
+# 把 count 当布尔值判断
 if count:
     # count不为0时
 else:
@@ -2178,8 +2312,10 @@ else:
 
 \`\`\`python
 # 可能有歧义（None和0都是假值）
+# 隐式判断，None 和 0 都被视为假
 if data:
 # 明确判断是否为None
+# 明确判断非 None
 if data is not None:
 \`\`\`
 
@@ -2188,6 +2324,7 @@ if data is not None:
 利用真值可以给变量设置默认值：
 
 \`\`\`python
+# 用 or 提供默认值
 name = user_input or "匿名"
 # 如果user_input是假值（空字符串、None等），使用"匿名"
 \`\`\`
@@ -2198,7 +2335,9 @@ name = user_input or "匿名"
 - \`all(iterable)\`：所有都为True才返回True
 
 \`\`\`python
+# any 任一为真即返回真
 any([0, 0, 1, 0])  # True
+# all 全部为真才返回真
 all([1, 1, 1, 0])  # False
 \`\`\``,
     code: `# 真值与假值深入演示
@@ -2381,9 +2520,11 @@ else:
 
 \`\`\`python
 # 先检查分母不为0，再做除法（避免ZeroDivisionError）
+# 短路：分母非 0 才计算除法
 denominator != 0 and numerator / denominator
 
 # 先判断对象不是None，再访问属性
+# 短路：对象非 None 才访问属性
 obj is not None and obj.value
 \`\`\`
 
@@ -2392,6 +2533,7 @@ obj is not None and obj.value
 ### 经典用法：设置默认值
 
 \`\`\`python
+# 用 or 给空输入提供默认值
 name = user_input or "匿名"
 # user_input为空时，用"匿名"作为默认值
 \`\`\`
@@ -2401,10 +2543,15 @@ name = user_input or "匿名"
 Python 的 and/or **返回的是实际的操作数**，不是布尔值 True/False：
 
 \`\`\`python
+# and 返回后一个真值 5
 3 and 5      # 返回5（不是True）
+# and 遇假即返回 0
 0 and 5      # 返回0（不是False）
+# or 返回第一个真值 3
 3 or 5       # 返回3（不是True）
+# or 遇假返回后一个 5
 0 or 5       # 返回5（不是True）
+# or 返回非空字符串
 "" or "默认" # 返回"默认"
 \`\`\`
 
@@ -2416,8 +2563,10 @@ Python 的 and/or **返回的是实际的操作数**，不是布尔值 True/Fals
 
 \`\`\`python
 # 有一个假值就停
+# and 链：遇到假值即停止
 a and b and c and d
 # 找到第一个真值就停
+# or 链：遇到真值即停止
 a or b or c or d
 \`\`\`
 
@@ -2427,10 +2576,13 @@ a or b or c or d
 
 \`\`\`python
 # 危险：如果condition是False，函数不会被调用
+# 用 and 触发函数调用，可读性差
 condition and do_something()
 
 # 更清晰的写法
+# 条件成立
 if condition:
+    # 调用函数，更清晰
     do_something()
 \`\`\`
 
@@ -2560,21 +2712,27 @@ print("- 复杂逻辑用if比短路技巧更清晰")`
 ### 基本语法
 
 \`\`\`python
+# assert 语法：条件为假时抛 AssertionError
 assert 条件, 错误信息（可选）
 \`\`\`
 
 等价于：
 
 \`\`\`python
+# assert 仅在调试模式生效
 if __debug__:
+    # 条件取反
     if not 条件:
+        # 抛出断言异常
         raise AssertionError(错误信息)
 \`\`\`
 
 ### 简单例子
 
 \`\`\`python
+# 年龄变量
 age = 15
+# 断言年龄不小于 18，否则报错
 assert age >= 18, "必须年满18岁"
 # AssertionError: 必须年满18岁
 \`\`\`
@@ -2606,7 +2764,9 @@ assert user_input.is_valid(), "输入无效"  # 优化模式下这个检查没�
 
 ✅ 正确用法：
 \`\`\`python
+# 判断输入是否有效
 if not user_input.is_valid():
+    # 用 raise 抛异常，不会被优化掉
     raise ValueError("输入无效")  # 永远不会被优化掉
 \`\`\`
 
@@ -2615,8 +2775,11 @@ if not user_input.is_valid():
 #### 1. 函数参数前置检查
 
 \`\`\`python
+# 定义开方函数
 def calculate_square_root(x):
+    # 断言参数非负
     assert x >= 0, "x不能是负数"
+    # 返回平方根
     return x ** 0.5
 \`\`\`
 
@@ -2625,7 +2788,9 @@ def calculate_square_root(x):
 #### 2. 验证函数返回值
 
 \`\`\`python
+# 调用复杂计算
 result = some_complex_calculation()
+# 断言结果非 None
 assert result is not None, "计算结果不应该是None"
 \`\`\`
 
@@ -2634,7 +2799,9 @@ assert result is not None, "计算结果不应该是None"
 assert 在单元测试中大量使用：
 
 \`\`\`python
+# 断言加法结果为 3
 assert add(1, 2) == 3
+# 断言列表长度为 3
 assert len([1,2,3]) == 3
 \`\`\`
 
@@ -2643,6 +2810,7 @@ assert len([1,2,3]) == 3
 总是给 assert 加错误消息，方便定位问题：
 
 \`\`\`python
+# 断言用户列表非空，提示检查数据加载
 assert len(users) > 0, "用户列表不应该为空，检查数据加载逻辑"
 \`\`\``,
     code: `# assert 断言演示
@@ -2772,19 +2940,26 @@ print("✅ 应该用来：开发时快速验证假设")`
 用一个整数的不同二进制位表示不同权限，非常节省空间：
 
 \`\`\`python
+# 读权限位 1
 READ = 1 << 0    # 0001 = 1
+# 写权限位 2
 WRITE = 1 << 1   # 0010 = 2
+# 执行权限位 4
 EXEC = 1 << 2    # 0100 = 4
+# 删除权限位 8
 DELETE = 1 << 3  # 1000 = 8
 
 # 给用户读+写权限
+# 用按位或组合读和写权限
 user_perm = READ | WRITE  # 0011 = 3
 
 # 检查是否有某权限（用&）
 if user_perm & READ:  # 有读权限
 # 添加权限（用|）
+# 用按位或添加执行权限
 user_perm = user_perm | EXEC
 # 移除权限（用&~）
+# 用按位与取反移除写权限
 user_perm = user_perm & ~WRITE
 \`\`\`
 
@@ -2795,9 +2970,12 @@ Linux文件权限（rwx=4+2+1=7）就是这个原理！
 \`x & 1\` 等于0是偶数，等于1是奇数（比 \`x%2 == 0\` 略快）：
 
 \`\`\`python
+# 用 x & 1 判断奇偶
 if x & 1:
+    # 打印奇数
     print("奇数")
 else:
+    # 打印偶数
     print("偶数")
 \`\`\`
 
@@ -2807,16 +2985,22 @@ else:
 - \`x >> n\` 等于 \`x // 2^n\`
 
 \`\`\`python
+# 左移 1 位相当于乘 2
 5 << 1   # 10（=5*2）
+# 左移 2 位相当于乘 4
 5 << 2   # 20（=5*4）
+# 右移 2 位相当于除 4
 20 >> 2  # 5（=20//4）
 \`\`\`
 
 ### 应用4：交换两个数（不用临时变量）
 
 \`\`\`python
+# 三次异或交换 a、b 第一步
 a ^= b
+# 第二步
 b ^= a
+# 第三步，完成交换
 a ^= b
 \`\`\`
 
@@ -2827,8 +3011,11 @@ a ^= b
 数组中其他数都出现两次，只有一个出现一次，用异或：
 
 \`\`\`python
+# 累加器初始化为 0
 result = 0
+# 遍历所有数
 for num in nums:
+    # 异或：成对抵消，留下唯一值
     result ^= num
 # result就是那个唯一的数
 \`\`\`
@@ -2840,7 +3027,9 @@ for num in nums:
 \`x & (x-1) == 0\` 则x是2的幂：
 
 \`\`\`python
+# 8 与 7 按位与为 0，说明 8 是 2 的幂
 8 & 7 == 0   # True, 8是2^3
+# 6 与 5 按位与为 4，非 2 的幂
 6 & 5 == 4   # False, 6不是2的幂
 \`\`\``,
     code: `# 位运算实际应用演示
@@ -2998,6 +3187,7 @@ if 0 <= x <= 100:
 甚至：
 
 \`\`\`python
+# 连续比较，等价于 a<b 且 b<c 且 c<d
 if a < b < c < d:
 if x == y == z:  # 三个值相等
 \`\`\`
@@ -3062,6 +3252,7 @@ value = d.get('key', default)
 ### 技巧8：条件表达式（三元）
 
 \`\`\`python
+# 三元表达式结果赋值
 result = A if cond else B
 \`\`\`
 
@@ -3077,21 +3268,32 @@ result = A if cond else B
 
 \`\`\`python
 # 不好：嵌套深
+# 定义处理函数（嵌套写法）
 def process(x):
+    # 第一层：非空判断
     if x is not None:
+        # 第二层：正数判断
         if x > 0:
+            # 第三层：上限判断
             if x < 100:
+                # 满足条件返回双倍值
                 return x * 2
+    # 默认返回 None
     return None
 
 # 好：早返回（guard clause）
+# 定义处理函数（早返回写法）
 def process(x):
+    # 为空直接返回 None
     if x is None:
         return None
+    # 非正数直接返回 None
     if x <= 0:
         return None
+    # 超过上限直接返回 None
     if x >= 100:
         return None
+    # 满足全部条件返回双倍值
     return x * 2
 \`\`\``,
     code: `# 布尔判断常用技巧演示

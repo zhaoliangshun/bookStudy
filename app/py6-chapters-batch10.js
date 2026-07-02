@@ -426,18 +426,23 @@ print("6. 类型提示让大型项目更可维护，强烈建议使用")
 2. **\`__next__()\`**：返回下一个元素，没有则抛 StopIteration
 
 ### for 循环的本质
-\`\`\`python
+\`\`\`python# for 循环遍历可迭代对象 iterable，每次取一个元素赋值给变量 item
 for item in iterable:
+    # 打印当前遍历到的元素
     print(item)
 \`\`\`
 等价于：
-\`\`\`python
+\`\`\`python# 用 iter() 获取可迭代对象的迭代器，内部会调用对象的 __iter__() 方法
 iterator = iter(iterable)       # 调用 __iter__()
+# 无限循环，依靠循环体内的 break 来退出
 while True:
     try:
+        # 调用 next() 取下一个元素，内部调用 __next__()；元素耗尽时抛出 StopIteration
         item = next(iterator)   # 调用 __next__()
+        # 打印当前取到的元素
         print(item)
     except StopIteration:
+        # 捕获迭代结束异常，结束循环
         break
 \`\`\`
 

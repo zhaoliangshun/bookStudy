@@ -31,14 +31,19 @@ RESTful API 里，经常把资源的标识放在 URL 路径里，比如：
 ## 基本语法
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # {item_id} 是路径参数占位符
+# 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}")
+# 定义函数 read_item，参数: item_id
 def read_item(item_id):
     # item_id 默认是字符串，因为没声明类型
+    # 返回 {"item_id": item_id}
     return {"item_id": item_id}
 \`\`\`
 
@@ -51,11 +56,14 @@ def read_item(item_id):
 光传字符串还不够，实际接口里我们通常要数字、UUID。在参数后加类型注解，FastAPI 会做类型校验和转换：
 
 \`\`\`python
+# 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}")
+# 定义函数 read_item，参数: item_id: int
 def read_item(item_id: int):
     # 声明 int 后：
     # 1. 访问 /items/42 → item_id 自动转成 int 42
     # 2. 访问 /items/abc → 类型不匹配，返回 422 错误
+    # 返回 {"item_id": item_id, "type": type(item_id).__name__}
     return {"item_id": item_id, "type": type(item_id).__name__}
 \`\`\`
 
@@ -95,24 +103,35 @@ def read_item(item_id: int):
 | \`path\` 转换器 | 匹配含斜杠 | \`/files/{file_path:path}\` |
 
 \`\`\`python
+# 从 uuid 导入 UUID
 from uuid import UUID
+# 从 enum 导入 Enum
 from enum import Enum
 
+# 定义类 ModelName，继承 str, Enum
 class ModelName(str, Enum):
+    # 定义变量 alexnet，赋值为 "alexnet"
     alexnet = "alexnet"
+    # 定义变量 resnet，赋值为 "resnet"
     resnet = "resnet"
 
+# 定义 GET 路由：访问 /models/{model_name} 时触发
 @app.get("/models/{model_name}")
+# 定义函数 get_model，参数: model_name: ModelName
 def get_model(model_name: ModelName):
     # 枚举类型：访问 /models/alexnet → model_name == ModelName.alexnet
     # 访问 /models/foo → 不在枚举里，422
+    # 返回 {"model": model_name, "value": model_name.value}
     return {"model": model_name, "value": model_name.value}
 
+# 定义 GET 路由：访问 /orders/{order_id} 时触发
 @app.get("/orders/{order_id}")
+# 定义函数 get_order，参数: order_id: UUID
 def get_order(order_id: UUID):
     # UUID 类型校验
     # /orders/3fa85f64-5717-4562-b3fc-2c963f66afa6 → 合法
     # /orders/not-a-uuid → 422
+    # 返回 {"order_id": order_id}
     return {"order_id": order_id}
 \`\`\`
 
@@ -122,12 +141,18 @@ def get_order(order_id: UUID):
 
 \`\`\`python
 # ✅ 正确顺序：固定路径在前
+# 定义 GET 路由：访问 /users/me 时触发
 @app.get("/users/me")
+# 定义函数 read_me，参数: 
 def read_me():
+    # 返回 {"user": "当前登录用户"}
     return {"user": "当前登录用户"}
 
+# 定义 GET 路由：访问 /users/{user_id} 时触发
 @app.get("/users/{user_id}")
+# 定义函数 read_user，参数: user_id: int
 def read_user(user_id: int):
+    # 返回 {"user_id": user_id}
     return {"user_id": user_id}
 \`\`\`
 
@@ -135,12 +160,17 @@ def read_user(user_id: int):
 
 \`\`\`python
 # ❌ 错误顺序：动态路径会先匹配上 /users/me
+# 定义 GET 路由：访问 /users/{user_id} 时触发
 @app.get("/users/{user_id}")
+# 定义函数 read_user，参数: user_id: int
 def read_user(user_id: int):
+    # 返回 {"user_id": user_id}
     return {"user_id": user_id}
 
 @app.get("/users/me")  # 永远到不了这里！
+# 定义函数 read_me，参数: 
 def read_me():
+    # 返回 {"user": "当前登录用户"}
     return {"user": "当前登录用户"}
 \`\`\`
 
@@ -155,10 +185,13 @@ def read_me():
 用 Starlette 的 path 转换器 \`{file_path:path}\` 可以匹配含斜杠的部分：
 
 \`\`\`python
+# 定义 GET 路由：访问 /files/{file_path:path} 时触发
 @app.get("/files/{file_path:path}")
+# 定义函数 read_file，参数: file_path: str
 def read_file(file_path: str):
     # /files/a/b/c.txt → file_path == "a/b/c.txt"
     # /files/report.pdf → file_path == "report.pdf"
+    # 返回 {"file_path": file_path}
     return {"file_path": file_path}
 \`\`\`
 
@@ -169,9 +202,12 @@ def read_file(file_path: str):
 一个路径可以有多个路径参数：
 
 \`\`\`python
+# 定义 GET 路由：访问 /users/{user_id}/items/{item_id} 时触发
 @app.get("/users/{user_id}/items/{item_id}")
+# 定义函数 read_user_item，参数: user_id: int, item_id: int
 def read_user_item(user_id: int, item_id: int):
     # /users/42/items/100 → user_id=42, item_id=100
+    # 返回 {"user_id": user_id, "item_id": item_id}
     return {"user_id": user_id, "item_id": item_id}
 \`\`\`
 
@@ -180,11 +216,15 @@ def read_user_item(user_id: int, item_id: int):
 如果路径参数只想接受几个预设值，用 Enum（见上）或 Literal：
 
 \`\`\`python
+# 从 typing 导入 Literal
 from typing import Literal
 
+# 定义 GET 路由：访问 /colors/{color} 时触发
 @app.get("/colors/{color}")
+# 定义函数 get_color，参数: color: Literal["red", "green", "blue"]
 def get_color(color: Literal["red", "green", "blue"]):
     # 只接受 red/green/blue，其他值 422
+    # 返回 {"color": color}
     return {"color": color}
 \`\`\`
 
@@ -197,9 +237,11 @@ FastAPI 区分路径参数和查询参数的规则很简单：
 
 \`\`\`python
 @app.get("/items/{item_id}")  # 路径里有 {item_id}
+# 定义函数 read_item，参数: item_id: int, q: str | None = None
 def read_item(item_id: int, q: str | None = None):
     # item_id 是路径参数（路径里声明了）
     # q 是查询参数（路径里没有，靠 URL ?q=xxx 传）
+    # 返回 {"item_id": item_id, "q": q}
     return {"item_id": item_id, "q": q}
 \`\`\`
 
@@ -255,19 +297,25 @@ def read_item(item_id: int, q: str | None = None):
 ## 基本语法
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 假数据
+# 定义列表 items
 items = [{"name": f"商品{i}"} for i in range(100)]
 
 # skip 和 limit 不在路径里，自动当成查询参数
+# 定义 GET 路由：访问 /items 时触发
 @app.get("/items")
+# 定义函数 list_items，参数: skip: int = 0, limit: int = 10
 def list_items(skip: int = 0, limit: int = 10):
     # /items → skip=0, limit=10（用默认值）
     # /items?skip=20 → skip=20, limit=10
     # /items?skip=20&limit=5 → skip=20, limit=5
+    # 返回 items[skip : skip + limit]
     return items[skip : skip + limit]
 \`\`\`
 
@@ -280,12 +328,15 @@ def list_items(skip: int = 0, limit: int = 10):
 ## 必选 vs 可选
 
 \`\`\`python
+# 定义 GET 路由：访问 /search 时触发
 @app.get("/search")
+# 定义函数 search，参数: keyword: str, category: str = "all"
 def search(keyword: str, category: str = "all"):
     # keyword 没默认值 → 必填
     # category 有默认值 → 可选
     # /search → 422（缺 keyword）
     # /search?keyword=phone → keyword="phone", category="all"
+    # 返回 {"keyword": keyword, "category": category}
     return {"keyword": keyword, "category": category}
 \`\`\`
 
@@ -309,19 +360,28 @@ def search(keyword: str, category: str = "all"):
 有两种写法表达"可选参数"：
 
 \`\`\`python
+# 从 typing 导入 Optional
 from typing import Optional
 
 # 写法一：默认值 None（推荐，简洁）
+# 定义 GET 路由：访问 /items 时触发
 @app.get("/items")
+# 定义函数 list_items，参数: q: str | None = None
 def list_items(q: str | None = None):
     # q 可不传，不传时 q 是 None
+    # 条件判断：如果 q
     if q:
+        # 返回 {"q": q}
         return {"q": q}
+    # 返回 {"msg": "无搜索词"}
     return {"msg": "无搜索词"}
 
 # 写法二：Optional（老写法，3.9 以下用）
+# 定义 GET 路由：访问 /items2 时触发
 @app.get("/items2")
+# 定义函数 list_items2，参数: q: Optional[str] = None
 def list_items2(q: Optional[str] = None):
+    # 返回 {"q": q}
     return {"q": q}
 \`\`\`
 
@@ -332,9 +392,12 @@ def list_items2(q: Optional[str] = None):
 ## 默认值
 
 \`\`\`python
+# 定义 GET 路由：访问 /items 时触发
 @app.get("/items")
+# 定义函数 list_items，参数: skip: int = 0, limit: int = 10, q: str | None = No...
 def list_items(skip: int = 0, limit: int = 10, q: str | None = None):
     # 分页查询的典型用法
+    # 返回 {"skip": skip, "limit": limit, "q": q}
     return {"skip": skip, "limit": limit, "q": q}
 \`\`\`
 
@@ -353,8 +416,11 @@ def list_items(skip: int = 0, limit: int = 10, q: str | None = None):
 bool 类型查询参数，FastAPI 会把多种形式都转成 bool：
 
 \`\`\`python
+# 定义 GET 路由：访问 /items 时触发
 @app.get("/items")
+# 定义函数 list_items，参数: active: bool = False
 def list_items(active: bool = False):
+    # 返回 {"active": active}
     return {"active": active}
 \`\`\`
 
@@ -376,13 +442,19 @@ Python 函数参数有个规则：**有默认值的参数不能放在无默认�
 
 \`\`\`python
 # ✅ 正确：无默认值（路径参数 item_id）在前，有默认值（查询参数 q）在后
+# 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}")
+# 定义函数 read_item，参数: item_id: int, q: str | None = None
 def read_item(item_id: int, q: str | None = None):
+    # 返回 {"item_id": item_id, "q": q}
     return {"item_id": item_id, "q": q}
 
 # ❌ 错误：有默认值的 q 放在无默认值的 item_id 前，Python 直接报语法错
+# 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}")
+# 定义函数 read_item，参数: q: str | None = None, item_id: int
 def read_item(q: str | None = None, item_id: int):
+    # ...
     ...
 \`\`\`
 
@@ -393,10 +465,13 @@ def read_item(q: str | None = None, item_id: int):
 多个必填查询参数无顺序要求（因为都无默认值）：
 
 \`\`\`python
+# 定义 GET 路由：访问 /search 时触发
 @app.get("/search")
+# 定义函数 search，参数: keyword: str, city: str
 def search(keyword: str, city: str):
     # keyword 和 city 都必填，顺序无所谓
     # /search?keyword=x&city=y 或 /search?city=y&keyword=x 都行
+    # 返回 {"keyword": keyword, "city": city}
     return {"keyword": keyword, "city": city}
 \`\`\`
 
@@ -407,33 +482,50 @@ URL 里参数顺序不影响，FastAPI 按名字匹配，不是按位置。
 把前面知识点串起来，写一个带分页和过滤的列表接口：
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 typing 导入 Optional
 from typing import Optional
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 模拟数据
+# 定义列表 products
 products = [
+    # {"id": i, "name": f"商品{i}", "price": i * 10, "cate
     {"id": i, "name": f"商品{i}", "price": i * 10, "category": "电子" if i % 2 == 0 else "服装"}
+    # for i in range(1, 101)
     for i in range(1, 101)
+# ]
 ]
 
+# 定义 GET 路由：访问 /products 时触发
 @app.get("/products")
+# def list_products(
 def list_products(
     skip: int = 0,            # 跳过多少条，默认 0
     limit: int = 10,         # 取多少条，默认 10
     category: Optional[str] = None,  # 按类目过滤，默认不过滤
     min_price: float = 0.0,  # 最低价
     max_price: float = 9999.0  # 最高价
+# ):
 ):
     # 先过滤
+    # 定义变量 result，赋值为 products
     result = products
+    # 条件判断：如果 category
     if category:
+        # 定义列表 result
         result = [p for p in result if p["category"] == category]
+    # 定义列表 result
     result = [p for p in result if min_price <= p["price"] <= max_price]
     # 再分页
+    # 定义变量 total，赋值为 len(result)
     total = len(result)
+    # 定义变量 page，赋值为 result[skip : skip + limit]
     page = result[skip : skip + limit]
+    # 返回 {"total": total, "items": page}
     return {"total": total, "items": page}
 \`\`\`
 
@@ -444,14 +536,21 @@ def list_products(
 光给默认值还不够：你可能想限制 \`limit\` 不能超过 100、\`q\` 至少 2 个字符。这要靠下一章的 \`Query()\`，这里先看个预告：
 
 \`\`\`python
+# 从 fastapi 导入 Query
 from fastapi import Query
 
+# 定义 GET 路由：访问 /items 时触发
 @app.get("/items")
+# def list_items(
 def list_items(
+    # 字段 q，类型: str | None，默认值: Query(None, min_length=2, max_length=50),
     q: str | None = Query(None, min_length=2, max_length=50),
+    # 字段 limit，类型: int，默认值: Query(10, ge=1, le=100)
     limit: int = Query(10, ge=1, le=100)
+# ):
 ):
     # q 长度 2~50，limit 在 1~100 之间
+    # 返回 {"q": q, "limit": limit}
     return {"q": q, "limit": limit}
 \`\`\`
 
@@ -508,19 +607,28 @@ def list_items(
 \`Query()\` 用作参数的默认值，传入校验规则和元数据：
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Query
 from fastapi import FastAPI, Query
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 /items 时触发
 @app.get("/items")
+# def list_items(
 def list_items(
     # q 是可选字符串，长度 3~50
+    # 字段 q，类型: str | None，默认值: Query(None, min_length=3, max_length=50),
     q: str | None = Query(None, min_length=3, max_length=50),
     # limit 必填，范围 1~100
+    # 字段 limit，类型: int，默认值: Query(..., ge=1, le=100),
     limit: int = Query(..., ge=1, le=100),
     # skip 默认 0，≥ 0
+    # 字段 skip，类型: int，默认值: Query(0, ge=0)
     skip: int = Query(0, ge=0)
+# ):
 ):
+    # 返回 {"q": q, "limit": limit, "skip": skip}
     return {"q": q, "limit": limit, "skip": skip}
 \`\`\`
 
@@ -541,6 +649,7 @@ def list_items(
 
 \`\`\`python
 # 用户名：3~20 字符，只能字母数字下划线
+# 字段 username，类型: str，默认值: Query(..., min_length=3, max_length=20, pattern="^[a-zA-Z0-9_]+$")
 username: str = Query(..., min_length=3, max_length=20, pattern="^[a-zA-Z0-9_]+$")
 \`\`\`
 
@@ -556,10 +665,13 @@ username: str = Query(..., min_length=3, max_length=20, pattern="^[a-zA-Z0-9_]+$
 
 \`\`\`python
 # 年龄 18~120
+# 字段 age，类型: int，默认值: Query(..., ge=18, le=120)
 age: int = Query(..., ge=18, le=120)
 # 价格 > 0
+# 字段 price，类型: float，默认值: Query(..., gt=0)
 price: float = Query(..., gt=0)
 # 数量必须是 5 的倍数
+# 字段 count，类型: int，默认值: Query(..., multiple_of=5)
 count: int = Query(..., multiple_of=5)
 \`\`\`
 
@@ -570,17 +682,25 @@ count: int = Query(..., multiple_of=5)
 路径参数用 \`Path()\`，用法和 \`Query()\` 几乎一样。区别是路径参数**总是必填**（URL 里必须有），所以不需要 \`...\` 表示必填：
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Path
 from fastapi import FastAPI, Path
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}")
+# def read_item(
 def read_item(
     # 路径参数 item_id，必须 ≥ 1
+    # 字段 item_id，类型: int，默认值: Path(..., ge=1, description="商品 ID，正整数"),
     item_id: int = Path(..., ge=1, description="商品 ID，正整数"),
     # 查询参数 q
+    # 字段 q，类型: str | None，默认值: Query(None, max_length=20)
     q: str | None = Query(None, max_length=20)
+# ):
 ):
+    # 返回 {"item_id": item_id, "q": q}
     return {"item_id": item_id, "q": q}
 \`\`\`
 
@@ -588,14 +708,20 @@ def read_item(
 
 \`\`\`python
 # ❌ 报错：item_id 有 Path() 默认值，q 无默认值
+# 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}")
+# 定义函数 read_item，参数: item_id: int = Path(..., ge=1), q: str
 def read_item(item_id: int = Path(..., ge=1), q: str):
+    # ...
     ...
 
 # ✅ 用 * 把后续参数都标记为关键字参数，绕过顺序限制
+# 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}")
+# 定义函数 read_item，参数: *, item_id: int = Path(..., ge=1), q: str
 def read_item(*, item_id: int = Path(..., ge=1), q: str):
     # * 之后全是关键字参数，顺序无关紧要
+    # 返回 {"item_id": item_id, "q": q}
     return {"item_id": item_id, "q": q}
 \`\`\`
 
@@ -606,10 +732,13 @@ def read_item(*, item_id: int = Path(..., ge=1), q: str):
 有时一个查询参数要传多个值，比如 \`?q=a&q=b&q=c\`。用 \`list\` 类型 + \`Query()\`：
 
 \`\`\`python
+# 定义 GET 路由：访问 /items 时触发
 @app.get("/items")
+# 定义函数 list_items，参数: q: list[str] | None = Query(None)
 def list_items(q: list[str] | None = Query(None)):
     # /items?q=a&q=b&q=c → q == ["a", "b", "c"]
     # /items → q == None
+    # 返回 {"q": q}
     return {"q": q}
 \`\`\`
 
@@ -623,6 +752,7 @@ def list_items(q: list[str] | None = Query(None)):
 
 \`\`\`python
 # 默认 ["default"]
+# 字段 tags，类型: list[str]，默认值: Query(default=["default"])
 tags: list[str] = Query(default=["default"])
 \`\`\`
 
@@ -633,11 +763,16 @@ tags: list[str] = Query(default=["default"])
 URL 查询参数名和 Python 变量名不想一样时用 \`alias\`。典型场景：URL 用连字符风格 \`user-id\`，但 Python 变量不能用连字符（语法非法），用 \`user_id\`：
 
 \`\`\`python
+# 定义 GET 路由：访问 /items 时触发
 @app.get("/items")
+# def list_items(
 def list_items(
     # URL 里是 ?user-id=42，Python 里用 user_id
+    # 字段 user_id，类型: int，默认值: Query(..., alias="user-id")
     user_id: int = Query(..., alias="user-id")
+# ):
 ):
+    # 返回 {"user_id": user_id}
     return {"user_id": user_id}
 # 访问 /items?user-id=42 → user_id=42
 \`\`\`
@@ -649,11 +784,17 @@ def list_items(
 接口演进中，有些参数想标注"已废弃但还能用"，提示调用方迁移。用 \`deprecated=True\`：
 
 \`\`\`python
+# 定义 GET 路由：访问 /items 时触发
 @app.get("/items")
+# def list_items(
 def list_items(
+    # 字段 q，类型: str | None，默认值: Query(None, deprecated=True, description="已废弃，请用 search 代替"),
     q: str | None = Query(None, deprecated=True, description="已废弃，请用 search 代替"),
+    # 字段 search，类型: str | None，默认值: None
     search: str | None = None
+# ):
 ):
+    # 返回 {"q": q, "search": search}
     return {"q": q, "search": search}
 \`\`\`
 
@@ -664,17 +805,29 @@ Swagger 文档里 \`q\` 会显示删除线和"deprecated"标记，提醒别再�
 给参数加文档和示例，让自动文档更丰富：
 
 \`\`\`python
+# 定义 GET 路由：访问 /items 时触发
 @app.get("/items")
+# def list_items(
 def list_items(
+    # 字段 limit，类型: int，默认值: Query(
     limit: int = Query(
+        # 10,
         10,
+        # 定义变量 title，赋值为 "每页数量",
         title="每页数量",
+        # 定义变量 description，赋值为 "分页大小，最大 100。超过 100 按 100 算。",
         description="分页大小，最大 100。超过 100 按 100 算。",
+        # 定义变量 ge，赋值为 1,
         ge=1,
+        # 定义变量 le，赋值为 100,
         le=100,
+        # 定义变量 example，赋值为 20
         example=20
+    # )
     )
+# ):
 ):
+    # 返回 {"limit": limit}
     return {"limit": limit}
 \`\`\`
 
@@ -687,32 +840,57 @@ def list_items(
 把校验、别名、元数据全用上：
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Query, Path
 from fastapi import FastAPI, Query, Path
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 /users/{user_id}/orders 时触发
 @app.get("/users/{user_id}/orders")
+# def list_user_orders(
 def list_user_orders(
+    # 字段 user_id，类型: int，默认值: Path(..., ge=1, description="用户 ID"),
     user_id: int = Path(..., ge=1, description="用户 ID"),
+    # *,
     *,
+    # 字段 status，类型: str | None，默认值: Query(
     status: str | None = Query(
+        # None,
         None,
+        # 定义变量 pattern，赋值为 "^(pending|paid|shipped|done)$",
         pattern="^(pending|paid|shipped|done)$",
+        # 定义变量 description，赋值为 "订单状态过滤"
         description="订单状态过滤"
+    # ),
     ),
+    # 字段 min_amount，类型: float，默认值: Query(0, ge=0, description="最低金额"),
     min_amount: float = Query(0, ge=0, description="最低金额"),
+    # 字段 max_amount，类型: float，默认值: Query(99999, gt=0, description="最高金额"),
     max_amount: float = Query(99999, gt=0, description="最高金额"),
+    # 字段 sort_by，类型: str，默认值: Query("created_at", alias="sort-by"),
     sort_by: str = Query("created_at", alias="sort-by"),
+    # 字段 page，类型: int，默认值: Query(1, ge=1),
     page: int = Query(1, ge=1),
+    # 字段 page_size，类型: int，默认值: Query(20, ge=1, le=100, alias="page-size", deprecated=False)
     page_size: int = Query(20, ge=1, le=100, alias="page-size", deprecated=False)
+# ):
 ):
+    # 返回 {
     return {
+        # "user_id": user_id,
         "user_id": user_id,
+        # "status": status,
         "status": status,
+        # "amount_range": [min_amount, max_amount],
         "amount_range": [min_amount, max_amount],
+        # "sort_by": sort_by,
         "sort_by": sort_by,
+        # "page": page,
         "page": page,
+        # "page_size": page_size
         "page_size": page_size
+    # }
     }
 \`\`\`
 
@@ -785,16 +963,22 @@ def list_user_orders(
 FastAPI 基于 Starlette，提供了 \`Request\` 对象。在函数参数里声明 \`request: Request\`，FastAPI 会注入当前请求对象：
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 /info 时触发
 @app.get("/info")
+# 定义函数 get_info，参数: request: Request
 def get_info(request: Request):
+    # 返回 {
     return {
         "client_host": request.client.host,  # 客户端 IP
         "method": request.method,           # HTTP 方法
         "url": str(request.url)             # 完整 URL
+    # }
     }
 \`\`\`
 
@@ -807,12 +991,17 @@ def get_info(request: Request):
 请求头是大小写不敏感的字典（\`Headers\` 对象）：
 
 \`\`\`python
+# 定义 GET 路由：访问 /headers 时触发
 @app.get("/headers")
+# 定义函数 get_headers，参数: request: Request
 def get_headers(request: Request):
     # 大小写不敏感，都行
+    # 定义变量 user_agent，赋值为 request.headers.get("user-agent")
     user_agent = request.headers.get("user-agent")
+    # 定义变量 auth，赋值为 request.headers.get("Authorization")
     auth = request.headers.get("Authorization")
     content_type = request.headers["content-type"]  # 直接取，没有会 KeyError
+    # 返回 {"ua": user_agent, "auth": auth}
     return {"ua": user_agent, "auth": auth}
 \`\`\`
 
@@ -823,11 +1012,16 @@ def get_headers(request: Request):
 返回不可变的多值字典（\`QueryParams\`）：
 
 \`\`\`python
+# 定义 GET 路由：访问 / 时触发
 @app.get("/")
+# 定义函数 root，参数: request: Request
 def root(request: Request):
     # ?skip=0&limit=10
+    # 定义变量 skip，赋值为 request.query_params.get("skip", "0")
     skip = request.query_params.get("skip", "0")
+    # 定义变量 limit，赋值为 request.query_params.get("limit", "10")
     limit = request.query_params.get("limit", "10")
+    # 返回 {"skip": skip, "limit": limit}
     return {"skip": skip, "limit": limit}
 \`\`\`
 
@@ -836,10 +1030,13 @@ def root(request: Request):
 ### 3. request.path_params —— 路径参数
 
 \`\`\`python
+# 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}")
+# 定义函数 read_item，参数: item_id: int, request: Request
 def read_item(item_id: int, request: Request):
     # request.path_params == {"item_id": "42"}
     # 注意：是字符串形式，类型转换是 FastAPI 在传给 item_id 时做的
+    # 返回 {"item_id": item_id, "raw_path_params": request.path_params}
     return {"item_id": item_id, "raw_path_params": request.path_params}
 \`\`\`
 
@@ -848,37 +1045,54 @@ def read_item(item_id: int, request: Request):
 \`request.client\` 是一个 \`HostPort\` 命名元组，含 \`.host\`（IP）和 \`.port\`：
 
 \`\`\`python
+# 定义 GET 路由：访问 /ip 时触发
 @app.get("/ip")
+# 定义函数 get_client_ip，参数: request: Request
 def get_client_ip(request: Request):
     # request.client.host 是客户端 IP
     # 但注意：如果有反向代理（nginx），这里拿到的是代理的 IP
+    # 返回 {"client_ip": request.client.host if request.client else None}
     return {"client_ip": request.client.host if request.client else None}
 \`\`\`
 
 ⚠️ 生产环境通常前面有 nginx/CDN，\`request.client.host\` 拿到的是代理 IP 不是真实用户 IP。真实 IP 在 \`X-Forwarded-For\` 头里：
 
 \`\`\`python
+# 定义 GET 路由：访问 /real-ip 时触发
 @app.get("/real-ip")
+# 定义函数 get_real_ip，参数: request: Request
 def get_real_ip(request: Request):
     # 优先从 X-Forwarded-For 取真实 IP
+    # 定义变量 xff，赋值为 request.headers.get("x-forwarded-for")
     xff = request.headers.get("x-forwarded-for")
+    # 条件判断：如果 xff
     if xff:
         # X-Forwarded-For: client, proxy1, proxy2 → 取第一个
+        # 定义变量 real_ip，赋值为 xff.split(",")[0].strip()
         real_ip = xff.split(",")[0].strip()
+    # 否则执行
     else:
+        # 定义变量 real_ip，赋值为 request.client.host if request.client else No...
         real_ip = request.client.host if request.client else None
+    # 返回 {"real_ip": real_ip}
     return {"real_ip": real_ip}
 \`\`\`
 
 ### 5. request.method —— HTTP 方法
 
 \`\`\`python
+# 装饰器：app.api_route
 @app.api_route("/items", methods=["GET", "POST"])
+# 定义函数 handle_items，参数: request: Request
 def handle_items(request: Request):
     # 同一路由处理多种方法
+    # 条件判断：如果 request.method == "GET"
     if request.method == "GET":
+        # 返回 {"action": "list"}
         return {"action": "list"}
+    # 否则如果 request.method == "POST"
     elif request.method == "POST":
+        # 返回 {"action": "create"}
         return {"action": "create"}
 \`\`\`
 
@@ -889,9 +1103,12 @@ def handle_items(request: Request):
 \`request.url\` 是 \`URL\` 对象，支持各种分解：
 
 \`\`\`python
+# 定义 GET 路由：访问 /url-info 时触发
 @app.get("/url-info")
+# 定义函数 url_info，参数: request: Request
 def url_info(request: Request):
     # 假设访问 http://localhost:8000/url-info?x=1
+    # 返回 {
     return {
         "full": str(request.url),          # http://localhost:8000/url-info?x=1
         "scheme": request.url.scheme,      # http
@@ -899,19 +1116,27 @@ def url_info(request: Request):
         "port": request.url.port,          # 8000
         "path": request.url.path,          # /url-info
         "query": request.url.query,        # x=1
+        # "is_secure": request.url.is_secure # False（非 https
         "is_secure": request.url.is_secure # False（非 https）
+    # }
     }
 \`\`\`
 
 ### 7. request.cookies —— Cookie
 
 \`\`\`python
+# 定义 GET 路由：访问 /profile 时触发
 @app.get("/profile")
+# 定义函数 profile，参数: request: Request
 def profile(request: Request):
     # 读 Cookie
+    # 定义变量 session，赋值为 request.cookies.get("session_id")
     session = request.cookies.get("session_id")
+    # 条件判断：如果 not session
     if not session:
+        # 返回 {"error": "未登录"}
         return {"error": "未登录"}
+    # 返回 {"session": session}
     return {"session": session}
 \`\`\`
 
@@ -922,26 +1147,41 @@ FastAPI 也有专门的 \`Cookie()\` 参数声明方式做校验，但直接读 
 \`request.state\` 是一个可以挂任意属性的"口袋"，在中间件和路由之间传值：
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
+# 导入 time 模块
 import time
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 装饰器：app.middleware
 @app.middleware("http")
+# 定义异步函数 add_process_time，参数: request: Request, call_next
 async def add_process_time(request: Request, call_next):
+    # 定义变量 start，赋值为 time.time()
     start = time.time()
     # 中间件里往 state 写值
+    # request.state.request_id = f"req-{int(start*1000)}
     request.state.request_id = f"req-{int(start*1000)}"
+    # 定义变量 response，赋值为 await call_next(request)
     response = await call_next(request)
+    # 定义变量 duration，赋值为 time.time() - start
     duration = time.time() - start
     # 响应头里带上请求 ID 和耗时
+    # response.headers["X-Request-Id"] = request.state.r
     response.headers["X-Request-Id"] = request.state.request_id
+    # response.headers["X-Process-Time"] = f"{duration:.
     response.headers["X-Process-Time"] = f"{duration:.3f}s"
+    # 返回 response
     return response
 
+# 定义 GET 路由：访问 /items 时触发
 @app.get("/items")
+# 定义函数 list_items，参数: request: Request
 def list_items(request: Request):
     # 路由里读中间件写的值
+    # 返回 {"request_id": request.state.request_id}
     return {"request_id": request.state.request_id}
 \`\`\`
 
@@ -952,12 +1192,17 @@ def list_items(request: Request):
 \`Request\` 对象的方法大多是异步的（要 await），因为读 body 涉及 I/O：
 
 \`\`\`python
+# 定义 POST 路由：访问 /raw 时触发
 @app.post("/raw")
+# 定义异步函数 read_raw，参数: request: Request
 async def read_raw(request: Request):
     # 读原始 body 字节（不解析 JSON）
+    # 定义变量 body，赋值为 await request.body()
     body = await request.body()
     # 读 JSON
+    # 定义变量 data，赋值为 await request.json()
     data = await request.json()
+    # 返回 {"body_size": len(body), "data": data}
     return {"body_size": len(body), "data": data}
 \`\`\`
 
@@ -983,24 +1228,37 @@ async def read_raw(request: Request):
 可以同时声明 \`request: Request\` 和其他参数：
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Request, Query
 from fastapi import FastAPI, Request, Query
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}")
+# def read_item(
 def read_item(
     item_id: int,                         # 路径参数（声明式）
     q: str | None = Query(None),          # 查询参数（声明式）
     request: Request = None               # 原始请求对象
+# ):
 ):
     # 既有声明式参数的校验，又能拿原始请求
+    # 定义变量 client_ip，赋值为 request.client.host if request.client else No...
     client_ip = request.client.host if request.client else None
+    # 定义变量 user_agent，赋值为 request.headers.get("user-agent")
     user_agent = request.headers.get("user-agent")
+    # 返回 {
     return {
+        # "item_id": item_id,
         "item_id": item_id,
+        # "q": q,
         "q": q,
+        # "client_ip": client_ip,
         "client_ip": client_ip,
+        # "user_agent": user_agent
         "user_agent": user_agent
+    # }
     }
 \`\`\`
 
@@ -1013,12 +1271,17 @@ FastAPI 会自动识别 \`Request\` 类型并注入，不会把它当查询参�
 普通返回（返回 dict）时，FastAPI 不过滤字段，你返回啥前端拿啥：
 
 \`\`\`python
+# 定义 Pydantic 数据模型 User，继承 BaseModel
 class User(BaseModel):
+    # 字段 id，类型: int
     id: int
+    # 字段 name，类型: str
     name: str
     password: str  # 敏感字段！
 
+# 定义 GET 路由：访问 /users/{id} 时触发
 @app.get("/users/{id}", response_model=UserOut)
+# 定义函数 get_user，参数: id: int
 def get_user(id: int):
     user = get_from_db(id)  # 含 password
     return user  # 没有 response_model 时，password 会被返回！
@@ -1027,12 +1290,17 @@ def get_user(id: int):
 用 \`response_model\` 指定输出模型，FastAPI 会按模型过滤字段：
 
 \`\`\`python
+# 定义 Pydantic 数据模型 UserOut，继承 BaseModel
 class UserOut(BaseModel):
+    # 字段 id，类型: int
     id: int
+    # 字段 name，类型: str
     name: str
     # 没有 password，输出时会被过滤掉
 
+# 定义 GET 路由：访问 /users/{id} 时触发
 @app.get("/users/{id}", response_model=UserOut)
+# 定义函数 get_user，参数: id: int
 def get_user(id: int):
     user = get_from_db(id)  # 含 password
     return user  # 实际返回前会被 UserOut 过滤，password 不会泄漏

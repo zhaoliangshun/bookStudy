@@ -46,13 +46,13 @@ Python 内置 \`open()\` 函数用于打开文件，返回一个**文件对象�
 \`\`\`python
 open(
     file,
-    mode='r',
-    buffering=-1,
-    encoding=None,
-    errors=None,
-    newline=None,
-    closefd=True,
-    opener=None,
+    mode='r',                      # 将字符串 'r', 赋给 mode
+    buffering=-1,                  # 将 -1, 赋给 buffering
+    encoding=None,                 # 将 None, 赋给 encoding
+    errors=None,                   # 将 None, 赋给 errors
+    newline=None,                  # 将 None, 赋给 newline
+    closefd=True,                  # 将 True, 赋给 closefd
+    opener=None,                   # 将 None, 赋给 opener
 )
 \`\`\`
 
@@ -114,10 +114,10 @@ open("a.txt", "rb+")     # 二进制读写
 
 \`\`\`python
 # 错误示范（依赖平台默认编码）
-f = open("data.txt", "r")
+f = open("data.txt", "r")          # 将 open("data.txt", "r") 赋给 f
 
 # 正确做法
-f = open("data.txt", "r", encoding="utf-8")
+f = open("data.txt", "r", encoding="utf-8")  # 将 open("data.txt", "r", encoding="utf-8") 赋给 f
 \`\`\`
 
 二进制模式（\`'b'\`）下 \`encoding\` 参数无效，因为读写的就是原始字节，不涉及编码转换。
@@ -131,11 +131,11 @@ f = open("data.txt", "r", encoding="utf-8")
 一次性读取整个文件（或前 \`size\` 个字符/字节）。返回 \`str\`（文本模式）或 \`bytes\`（二进制模式）。
 
 \`\`\`python
-with open("note.txt", encoding="utf-8") as f:
+with open("note.txt", encoding="utf-8") as f:  # 使用上下文管理器 open("note.txt", encoding="utf-8")，绑定到 f
     text = f.read()        # 一次读完
-    print(text)
+    print(text)                    # 输出 text
 
-with open("note.txt", encoding="utf-8") as f:
+with open("note.txt", encoding="utf-8") as f:  # 使用上下文管理器 open("note.txt", encoding="utf-8")，绑定到 f
     chunk = f.read(10)     # 只读前 10 个字符
 \`\`\`
 
@@ -146,9 +146,9 @@ with open("note.txt", encoding="utf-8") as f:
 读取一行（包含行尾的 \`\\n\`，最后一行可能没有）。读到文件末尾返回空字符串 \`""\`。
 
 \`\`\`python
-with open("note.txt", encoding="utf-8") as f:
-    first = f.readline()
-    second = f.readline()
+with open("note.txt", encoding="utf-8") as f:  # 使用上下文管理器 open("note.txt", encoding="utf-8")，绑定到 f
+    first = f.readline()           # 将 f.readline() 赋给 first
+    second = f.readline()          # 将 f.readline() 赋给 second
 \`\`\`
 
 ### 3.3 f.readlines()
@@ -156,7 +156,7 @@ with open("note.txt", encoding="utf-8") as f:
 读取所有行，返回一个**列表**，每个元素是一行（含 \`\\n\`）。同样会把整个文件读进内存，只适合小文件。
 
 \`\`\`python
-with open("note.txt", encoding="utf-8") as f:
+with open("note.txt", encoding="utf-8") as f:  # 使用上下文管理器 open("note.txt", encoding="utf-8")，绑定到 f
     lines = f.readlines()   # ['第一行\\n', '第二行\\n', ...]
 \`\`\`
 
@@ -165,9 +165,9 @@ with open("note.txt", encoding="utf-8") as f:
 文件对象本身是可迭代的，每次迭代产生一行。这是**处理大文件最优雅、最省内存**的方式，因为一次只在内存里保留一行：
 
 \`\`\`python
-with open("huge.log", encoding="utf-8") as f:
+with open("huge.log", encoding="utf-8") as f:  # 使用上下文管理器 open("huge.log", encoding="utf-8")，绑定到 f
     for line in f:           # 一行一行读，不占内存
-        process(line)
+        process(line)              # 调用 process，参数 line
 \`\`\`
 
 这种写法在内部使用了缓冲读取，效率比 \`readline()\` 循环更高，代码也更短，是 Python 处理大文件的事实标准。
@@ -176,18 +176,18 @@ with open("huge.log", encoding="utf-8") as f:
 
 \`\`\`python
 # 方式 A：readlines，小文件 OK
-lines = f.readlines()
+lines = f.readlines()              # 将 f.readlines() 赋给 lines
 
 # 方式 B：readline 循环，啰嗦
-while True:
-    line = f.readline()
-    if not line:
-        break
-    process(line)
+while True:                        # 当 True 为真时重复执行
+    line = f.readline()            # 将 f.readline() 赋给 line
+    if not line:                   # 如果 not line 成立
+        break                      # 跳出循环
+    process(line)                  # 调用 process，参数 line
 
 # 方式 C：直接迭代，最佳
-for line in f:
-    process(line)
+for line in f:                     # 遍历 f，每次取值赋给 line
+    process(line)                  # 调用 process，参数 line
 \`\`\`
 
 ## 四、写入文件
@@ -197,9 +197,9 @@ for line in f:
 把字符串 \`s\` 写入文件，返回写入的字符数。**不会自动加换行**，需要自己加 \`\\n\`。
 
 \`\`\`python
-with open("out.txt", "w", encoding="utf-8") as f:
-    f.write("hello\\n")
-    f.write("world\\n")
+with open("out.txt", "w", encoding="utf-8") as f:  # 使用上下文管理器 open("out.txt", "w", encoding="utf-8")，绑定到 f
+    f.write("hello\\n")            # 对 f 调用 write 方法，参数 "hello\\n"
+    f.write("world\\n")            # 对 f 调用 write 方法，参数 "world\\n"
 \`\`\`
 
 ### 4.2 f.writelines(seq)
@@ -207,17 +207,17 @@ with open("out.txt", "w", encoding="utf-8") as f:
 把一个可迭代对象里的每个字符串依次写入。同样**不会自动加换行**，名字很容易误导人——它不是"writes lines with newline"，而是"writes a sequence of strings"。
 
 \`\`\`python
-lines = ["苹果\\n", "香蕉\\n", "橙子\\n"]
-with open("out.txt", "w", encoding="utf-8") as f:
-    f.writelines(lines)
+lines = ["苹果\\n", "香蕉\\n", "橙子\\n"]  # 创建列表并赋给 lines
+with open("out.txt", "w", encoding="utf-8") as f:  # 使用上下文管理器 open("out.txt", "w", encoding="utf-8")，绑定到 f
+    f.writelines(lines)            # 对 f 调用 writelines 方法，参数 lines
 \`\`\`
 
 如果原始数据没有 \`\\n\`，可以这样做：
 
 \`\`\`python
-items = ["苹果", "香蕉", "橙子"]
-with open("out.txt", "w", encoding="utf-8") as f:
-    f.writelines(x + "\\n" for x in items)
+items = ["苹果", "香蕉", "橙子"]         # 创建列表并赋给 items
+with open("out.txt", "w", encoding="utf-8") as f:  # 使用上下文管理器 open("out.txt", "w", encoding="utf-8")，绑定到 f
+    f.writelines(x + "\\n" for x in items)  # 对 f 调用 writelines 方法，参数 x + "\\n" for x in items
 \`\`\`
 
 ### 4.3 print 到文件
@@ -225,9 +225,9 @@ with open("out.txt", "w", encoding="utf-8") as f:
 \`print()\` 函数有个 \`file=\` 参数，可以直接把内容写到文件对象里，并且**自动加换行**，比 \`write\` 方便：
 
 \`\`\`python
-with open("out.txt", "w", encoding="utf-8") as f:
-    print("hello", file=f)
-    print("world", file=f)
+with open("out.txt", "w", encoding="utf-8") as f:  # 使用上下文管理器 open("out.txt", "w", encoding="utf-8")，绑定到 f
+    print("hello", file=f)         # 输出 "hello", file=f
+    print("world", file=f)         # 输出 "world", file=f
     print("a", "b", "c", sep=",", file=f)   # a,b,c
 \`\`\`
 
@@ -236,18 +236,18 @@ with open("out.txt", "w", encoding="utf-8") as f:
 文件用完必须关闭，否则会**占用文件描述符**，长期不关会导致操作系统"文件句柄耗尽"（Linux 默认每进程 1024 个）。传统写法：
 
 \`\`\`python
-f = open("data.txt", encoding="utf-8")
-try:
-    text = f.read()
-finally:
+f = open("data.txt", encoding="utf-8")  # 将 open("data.txt", encoding="utf-8") 赋给 f
+try:                               # 尝试执行以下代码块
+    text = f.read()                # 将 f.read() 赋给 text
+finally:                           # 无论是否异常都执行
     f.close()    # 必须在 finally 里保证关闭
 \`\`\`
 
 但这样太啰嗦，而且容易忘 \`finally\`。Python 的 \`with\` 语句可以在代码块结束时**自动调用 \`f.close()\`**，即使中间抛了异常也会关闭：
 
 \`\`\`python
-with open("data.txt", encoding="utf-8") as f:
-    text = f.read()
+with open("data.txt", encoding="utf-8") as f:  # 使用上下文管理器 open("data.txt", encoding="utf-8")，绑定到 f
+    text = f.read()                # 将 f.read() 赋给 text
 # 离开 with 块，f 自动关闭
 \`\`\`
 
@@ -258,14 +258,14 @@ with open("data.txt", encoding="utf-8") as f:
 \`with\` 实际上调用了文件对象的 \`__enter__()\` 和 \`__exit__()\` 方法：
 
 \`\`\`python
-with open("data.txt") as f:
+with open("data.txt") as f:        # 使用上下文管理器 open("data.txt")，绑定到 f
     ...
 # 等价于
-f = open("data.txt")
-f.__enter__()
-try:
+f = open("data.txt")               # 将 open("data.txt") 赋给 f
+f.__enter__()                      # 对 f 调用 __enter__ 方法
+try:                               # 尝试执行以下代码块
     ...
-finally:
+finally:                           # 无论是否异常都执行
     f.__exit__(None, None, None)   # 内部调用 f.close()
 \`\`\`
 
@@ -274,9 +274,9 @@ finally:
 ### 同时打开多个文件
 
 \`\`\`python
-with open("in.txt", encoding="utf-8") as fin, open("out.txt", "w", encoding="utf-8") as fout:
-    for line in fin:
-        fout.write(line.upper())
+with open("in.txt", encoding="utf-8") as fin, open("out.txt", "w", encoding="utf-8") as fout:  # 使用上下文管理器 open("in.txt", encoding="utf-8") as fin, open("out.txt", "w", encoding="utf-8")，绑定到 fout
+    for line in fin:               # 遍历 fin，每次取值赋给 line
+        fout.write(line.upper())   # 对 fout 调用 write 方法，参数 line.upper()
 \`\`\`
 
 Python 3.10+ 还支持用括号换行：
@@ -295,27 +295,27 @@ with (
 
 \`\`\`python
 # 复制一张图片（用二进制模式）
-with open("a.png", "rb") as src, open("a_copy.png", "wb") as dst:
-    dst.write(src.read())
+with open("a.png", "rb") as src, open("a_copy.png", "wb") as dst:  # 使用上下文管理器 open("a.png", "rb") as src, open("a_copy.png", "wb")，绑定到 dst
+    dst.write(src.read())          # 对 dst 调用 write 方法，参数 src.read()
 \`\`\`
 
 二进制模式下读写的是 \`bytes\` 对象，不是 \`str\`：
 
 \`\`\`python
-with open("data.bin", "wb") as f:
+with open("data.bin", "wb") as f:  # 使用上下文管理器 open("data.bin", "wb")，绑定到 f
     f.write(b"\\x00\\x01\\x02\\xff")    # bytes 字面量
 
-with open("data.bin", "rb") as f:
+with open("data.bin", "rb") as f:  # 使用上下文管理器 open("data.bin", "rb")，绑定到 f
     data = f.read()      # b'\\x00\\x01\\x02\\xff'
 \`\`\`
 
 \`io.BytesIO\` 是二进制版的 \`StringIO\`，在内存里模拟二进制文件，常用于测试和序列化：
 
 \`\`\`python
-import io
-buf = io.BytesIO()
-buf.write(b"hello")
-buf.write(b" world")
+import io                          # 导入 io 模块
+buf = io.BytesIO()                 # 将 io.BytesIO() 赋给 buf
+buf.write(b"hello")                # 对 buf 调用 write 方法，参数 b"hello"
+buf.write(b" world")               # 对 buf 调用 write 方法，参数 b" world"
 print(buf.getvalue())    # b'hello world'
 \`\`\`
 
@@ -330,8 +330,8 @@ print(buf.getvalue())    # b'hello world'
   - \`2\`（\`os.SEEK_END\`）：从文件末尾算。
 
 \`\`\`python
-with open("data.txt", "w+", encoding="utf-8") as f:
-    f.write("hello world")
+with open("data.txt", "w+", encoding="utf-8") as f:  # 使用上下文管理器 open("data.txt", "w+", encoding="utf-8")，绑定到 f
+    f.write("hello world")         # 对 f 调用 write 方法，参数 "hello world"
     f.seek(0)            # 回到开头
     print(f.read())      # hello world
     f.seek(6)            # 跳到 'w' 的位置
@@ -346,12 +346,12 @@ with open("data.txt", "w+", encoding="utf-8") as f:
 
 \`\`\`python
 # 统计一个 10GB 日志里 ERROR 出现的次数
-count = 0
-with open("huge.log", encoding="utf-8", errors="replace") as f:
-    for line in f:
-        if "ERROR" in line:
-            count += 1
-print(count)
+count = 0                          # 将整数 0 赋给 count
+with open("huge.log", encoding="utf-8", errors="replace") as f:  # 使用上下文管理器 open("huge.log", encoding="utf-8", errors="replace")，绑定到 f
+    for line in f:                 # 遍历 f，每次取值赋给 line
+        if "ERROR" in line:        # 如果 "ERROR" in line 成立
+            count += 1             # count 加 1
+print(count)                       # 输出 count
 \`\`\`
 
 \`errors="replace"\` 表示遇到解码错误时用占位符替代，避免一行坏数据让整个任务崩溃。
@@ -359,16 +359,16 @@ print(count)
 如果要按块读取二进制大文件：
 
 \`\`\`python
-def read_in_chunks(f, chunk_size=8192):
-    while True:
-        chunk = f.read(chunk_size)
-        if not chunk:
-            break
-        yield chunk
+def read_in_chunks(f, chunk_size=8192):  # 定义函数 read_in_chunks，参数：f, chunk_size=8192
+    while True:                    # 当 True 为真时重复执行
+        chunk = f.read(chunk_size) # 将 f.read(chunk_size) 赋给 chunk
+        if not chunk:              # 如果 not chunk 成立
+            break                  # 跳出循环
+        yield chunk                # 产出值 chunk（生成器）
 
-with open("big.bin", "rb") as f:
-    for chunk in read_in_chunks(f):
-        process(chunk)
+with open("big.bin", "rb") as f:   # 使用上下文管理器 open("big.bin", "rb")，绑定到 f
+    for chunk in read_in_chunks(f):  # 遍历 read_in_chunks(f)，每次取值赋给 chunk
+        process(chunk)             # 调用 process，参数 chunk
 \`\`\`
 
 ## 九、CSV 文件读写
@@ -378,17 +378,17 @@ CSV（Comma-Separated Values，逗号分隔值）是表格数据最常见的纯�
 ### 9.1 写 CSV
 
 \`\`\`python
-import csv
+import csv                         # 导入 csv 模块
 
-rows = [
+rows = [                           # 将 [ 赋给 rows
     ["姓名", "年龄", "城市"],
     ["张三", 28, "北京"],
     ["李四", 35, "上海"],
     ["王五", "逗号,在,里面", "广州"],
 ]
-with open("users.csv", "w", encoding="utf-8", newline="") as f:
-    writer = csv.writer(f)
-    writer.writerows(rows)
+with open("users.csv", "w", encoding="utf-8", newline="") as f:  # 使用上下文管理器 open("users.csv", "w", encoding="utf-8", newline="")，绑定到 f
+    writer = csv.writer(f)         # 将 csv.writer(f) 赋给 writer
+    writer.writerows(rows)         # 对 writer 调用 writerows 方法，参数 rows
 \`\`\`
 
 注意 \`newline=""\` 是 CSV 写入的关键——它关闭 Python 的"通用换行符转换"，让 \`csv\` 模块自己处理换行，否则在 Windows 上会出现空行。
@@ -398,29 +398,29 @@ with open("users.csv", "w", encoding="utf-8", newline="") as f:
 ### 9.2 读 CSV
 
 \`\`\`python
-import csv
+import csv                         # 导入 csv 模块
 
-with open("users.csv", encoding="utf-8", newline="") as f:
-    reader = csv.reader(f)
-    for row in reader:
+with open("users.csv", encoding="utf-8", newline="") as f:  # 使用上下文管理器 open("users.csv", encoding="utf-8", newline="")，绑定到 f
+    reader = csv.reader(f)         # 将 csv.reader(f) 赋给 reader
+    for row in reader:             # 遍历 reader，每次取值赋给 row
         print(row)        # ['姓名', '年龄', '城市']  ...
 \`\`\`
 
 ### 9.3 DictReader / DictWriter：把每行变成字典
 
 \`\`\`python
-import csv
+import csv                         # 导入 csv 模块
 
-with open("users.csv", encoding="utf-8", newline="") as f:
+with open("users.csv", encoding="utf-8", newline="") as f:  # 使用上下文管理器 open("users.csv", encoding="utf-8", newline="")，绑定到 f
     reader = csv.DictReader(f)        # 第一行作为字段名
-    for row in reader:
+    for row in reader:             # 遍历 reader，每次取值赋给 row
         print(row["姓名"], row["年龄"])   # 字典访问
 
 # 写
-with open("out.csv", "w", encoding="utf-8", newline="") as f:
-    writer = csv.DictWriter(f, fieldnames=["name", "age"])
-    writer.writeheader()
-    writer.writerow({"name": "Alice", "age": 30})
+with open("out.csv", "w", encoding="utf-8", newline="") as f:  # 使用上下文管理器 open("out.csv", "w", encoding="utf-8", newline="")，绑定到 f
+    writer = csv.DictWriter(f, fieldnames=["name", "age"])  # 将 csv.DictWriter(f, fieldnames=["name", "age"]) 赋给 writer
+    writer.writeheader()           # 对 writer 调用 writeheader 方法
+    writer.writerow({"name": "Alice", "age": 30})  # 对 writer 调用 writerow 方法，参数 {"name": "Alice", "age": 30}
 \`\`\`
 
 \`DictReader\` / \`DictWriter\` 让代码可读性大幅提升，是处理有表头的 CSV 的首选。
@@ -432,17 +432,17 @@ JSON（JavaScript Object Notation）是现代 Web API、配置文件的事实标
 ### 10.1 序列化（Python → JSON）
 
 \`\`\`python
-import json
+import json                        # 导入 json 模块
 
-data = {"name": "Alice", "age": 30, "scores": [90, 85, 95]}
+data = {"name": "Alice", "age": 30, "scores": [90, 85, 95]}  # 创建字典并赋给 data
 
 # 转成字符串
-s = json.dumps(data, ensure_ascii=False, indent=2)
-print(s)
+s = json.dumps(data, ensure_ascii=False, indent=2)  # 将 json.dumps(data, ensure_ascii=False, indent=2) 赋给 s
+print(s)                           # 输出 s
 
 # 直接写文件
-with open("data.json", "w", encoding="utf-8") as f:
-    json.dump(data, f, ensure_ascii=False, indent=2)
+with open("data.json", "w", encoding="utf-8") as f:  # 使用上下文管理器 open("data.json", "w", encoding="utf-8")，绑定到 f
+    json.dump(data, f, ensure_ascii=False, indent=2)  # 对 json 调用 dump 方法，参数 data, f, ensure_ascii=False, indent=2
 \`\`\`
 
 关键参数：
@@ -453,14 +453,14 @@ with open("data.json", "w", encoding="utf-8") as f:
 ### 10.2 反序列化（JSON → Python）
 
 \`\`\`python
-import json
+import json                        # 导入 json 模块
 
 # 从字符串
-data = json.loads('{"name": "Alice", "age": 30}')
+data = json.loads('{"name": "Alice", "age": 30}')  # 将 json.loads('{"name": "Alice", "age": 30}') 赋给 data
 
 # 从文件
-with open("data.json", encoding="utf-8") as f:
-    data = json.load(f)
+with open("data.json", encoding="utf-8") as f:  # 使用上下文管理器 open("data.json", encoding="utf-8")，绑定到 f
+    data = json.load(f)            # 将 json.load(f) 赋给 data
 \`\`\`
 
 ### 10.3 类型对应关系
@@ -479,19 +479,19 @@ with open("data.json", encoding="utf-8") as f:
 ### 10.4 处理自定义对象
 
 \`\`\`python
-import json
-from datetime import datetime
+import json                        # 导入 json 模块
+from datetime import datetime      # 从 datetime 导入 datetime
 
-class Person:
-    def __init__(self, name, birthday):
+class Person:                      # 定义类 Person
+    def __init__(self, name, birthday):  # 定义函数 __init__，参数：self, name, birthday
         self.name = name
         self.birthday = birthday
 
-def person_to_dict(p):
-    return {"name": p.name, "birthday": p.birthday.isoformat()}
+def person_to_dict(p):             # 定义函数 person_to_dict，参数：p
+    return {"name": p.name, "birthday": p.birthday.isoformat()}  # 返回 {"name": p.name, "birthday": p.birthday.isoformat()}
 
-p = Person("Alice", datetime(1995, 5, 1))
-s = json.dumps(p, default=person_to_dict, ensure_ascii=False)
+p = Person("Alice", datetime(1995, 5, 1))  # 将 Person("Alice", datetime(1995, 5, 1)) 赋给 p
+s = json.dumps(p, default=person_to_dict, ensure_ascii=False)  # 将 json.dumps(p, default=person_to_dict, ensure_ascii=False) 赋给 s
 \`\`\`
 
 \`default=\` 回调会在遇到不知道怎么序列化的对象时被调用。
@@ -503,10 +503,10 @@ s = json.dumps(p, default=person_to_dict, ensure_ascii=False)
 ### 11.1 创建 Path 对象
 
 \`\`\`python
-from pathlib import Path
+from pathlib import Path           # 从 pathlib 导入 Path
 
 p = Path("data") / "users.csv"     # 用 / 拼接路径，跨平台
-p = Path("/home/alice/data.txt")
+p = Path("/home/alice/data.txt")   # 将 Path("/home/alice/data.txt") 赋给 p
 p = Path.cwd()                      # 当前工作目录
 p = Path.home()                     # 用户家目录
 \`\`\`
@@ -516,7 +516,7 @@ p = Path.home()                     # 用户家目录
 ### 11.2 路径组成部分
 
 \`\`\`python
-p = Path("/home/alice/data/users.csv")
+p = Path("/home/alice/data/users.csv")  # 将 Path("/home/alice/data/users.csv") 赋给 p
 p.parent        # Path('/home/alice/data')   父目录
 p.name          # 'users.csv'                文件名
 p.stem          # 'users'                    不带扩展名的文件名
@@ -529,7 +529,7 @@ p.anchor        # '/'                        盘符或根目录
 ### 11.3 路径查询
 
 \`\`\`python
-p = Path("data.txt")
+p = Path("data.txt")               # 将 Path("data.txt") 赋给 p
 p.exists()        # 是否存在
 p.is_file()       # 是否是文件
 p.is_dir()        # 是否是目录
@@ -540,7 +540,7 @@ p.stat().st_mtime # 修改时间戳
 ### 11.4 创建 / 删除
 
 \`\`\`python
-p = Path("output")
+p = Path("output")                 # 将 Path("output") 赋给 p
 p.mkdir(exist_ok=True)        # 创建目录，已存在不报错
 p.mkdir(parents=True)         # 递归创建（类似 mkdir -p）
 
@@ -552,7 +552,7 @@ p.rmdir()                     # 删除空目录
 ### 11.5 遍历与匹配
 
 \`\`\`python
-p = Path(".")
+p = Path(".")                      # 将 Path(".") 赋给 p
 list(p.iterdir())                       # 列出当前目录所有条目
 list(p.glob("*.py"))                    # 匹配当前目录下 .py 文件
 list(p.rglob("*.py"))                   # 递归匹配所有子目录
@@ -563,11 +563,11 @@ list(p.rglob("*.py"))                   # 递归匹配所有子目录
 \`Path\` 对象直接提供了 \`read_text\` / \`read_bytes\` / \`write_text\` / \`write_bytes\`，省去 \`open\` 的样板代码：
 
 \`\`\`python
-p = Path("data.txt")
+p = Path("data.txt")               # 将 Path("data.txt") 赋给 p
 text = p.read_text(encoding="utf-8")        # 一行读完
 p.write_text("hello", encoding="utf-8")     # 一行写入（会覆盖）
-data = p.read_bytes()
-p.write_bytes(b"\\x00\\x01")
+data = p.read_bytes()              # 将 p.read_bytes() 赋给 data
+p.write_bytes(b"\\x00\\x01")       # 对 p 调用 write_bytes 方法，参数 b"\\x00\\x01"
 \`\`\`
 
 ## 十二、os.path 常用函数
@@ -575,7 +575,7 @@ p.write_bytes(b"\\x00\\x01")
 老代码里大量使用 \`os.path\`，新代码可以用 \`pathlib\` 替代，但读老代码必须看得懂：
 
 \`\`\`python
-import os.path as op
+import os.path as op               # 导入 os.path 模块并取别名 op
 
 op.join("a", "b", "c.txt")    # 跨平台拼接：'a/b/c.txt' 或 'a\\\\b\\\\c.txt'
 op.exists("a.txt")            # 是否存在
@@ -597,7 +597,7 @@ op.commonpath(["/a/b/c", "/a/b/d"])   # '/a/b'
 \`shutil\`（shell utility）模块提供"复制、移动、删除整棵目录树"等高级操作，相当于在 Python 里调用 \`cp\` / \`mv\` / \`rm -r\`。
 
 \`\`\`python
-import shutil
+import shutil                      # 导入 shutil 模块
 
 shutil.copy("a.txt", "b.txt")                # 复制文件（不含权限）
 shutil.copy2("a.txt", "b.txt")               # 复制文件 + 元数据（mtime 等）
@@ -616,20 +616,20 @@ shutil.unpack_archive("backup.zip", "out")   # 解包
 写测试或缓存中间结果时，经常需要临时文件。\`tempfile\` 模块能安全地创建临时文件/目录，名字随机，用完自动清理：
 
 \`\`\`python
-import tempfile
+import tempfile                    # 导入 tempfile 模块
 
 # 临时文件，with 块结束自动删除
-with tempfile.NamedTemporaryFile(mode="w+", suffix=".txt", delete=True) as f:
-    f.write("hello")
-    f.seek(0)
-    print(f.read())
+with tempfile.NamedTemporaryFile(mode="w+", suffix=".txt", delete=True) as f:  # 使用上下文管理器 tempfile.NamedTemporaryFile(mode="w+", suffix=".txt", delete=True)，绑定到 f
+    f.write("hello")               # 对 f 调用 write 方法，参数 "hello"
+    f.seek(0)                      # 对 f 调用 seek 方法，参数 0
+    print(f.read())                # 输出 f.read()
 # 离开 with，文件被删除
 
 # 临时目录
-with tempfile.TemporaryDirectory() as d:
-    path = d + "/data.txt"
-    with open(path, "w") as f:
-        f.write("hi")
+with tempfile.TemporaryDirectory() as d:  # 使用上下文管理器 tempfile.TemporaryDirectory()，绑定到 d
+    path = d + "/data.txt"         # 将 d + "/data.txt" 赋给 path
+    with open(path, "w") as f:     # 使用上下文管理器 open(path, "w")，绑定到 f
+        f.write("hi")              # 对 f 调用 write 方法，参数 "hi"
 # 离开 with，整个目录被删除
 \`\`\`
 
@@ -913,13 +913,13 @@ ZeroDivisionError: division by zero
 \`try/except\` 是异常处理的核心结构：把可能出错的代码放进 \`try\` 块，发生异常时跳到 \`except\` 块处理。
 
 \`\`\`python
-try:
-    n = int(input("输入一个数字: "))
-    print(10 / n)
-except ZeroDivisionError:
-    print("不能除以 0")
-except ValueError:
-    print("不是合法的数字")
+try:                               # 尝试执行以下代码块
+    n = int(input("输入一个数字: "))     # 将 int(input("输入一个数字: ")) 赋给 n
+    print(10 / n)                  # 输出 10 / n
+except ZeroDivisionError:          # 捕获 ZeroDivisionError 异常
+    print("不能除以 0")                # 输出 "不能除以 0"
+except ValueError:                 # 捕获 ValueError 异常
+    print("不是合法的数字")               # 输出 "不是合法的数字"
 \`\`\`
 
 ### 2.1 捕获多种异常
@@ -927,11 +927,11 @@ except ValueError:
 可以写多个 \`except\` 分支，按顺序匹配：
 
 \`\`\`python
-try:
-    risky()
-except ZeroDivisionError:
+try:                               # 尝试执行以下代码块
+    risky()                        # 调用 risky
+except ZeroDivisionError:          # 捕获 ZeroDivisionError 异常
     ...
-except ValueError:
+except ValueError:                 # 捕获 ValueError 异常
     ...
 except (KeyError, IndexError):
     ...   # 用元组一次捕获多种
@@ -942,21 +942,21 @@ except (KeyError, IndexError):
 \`except ... as e\` 可以拿到异常对象，访问其消息或属性：
 
 \`\`\`python
-try:
+try:                               # 尝试执行以下代码块
     1 / 0
-except ZeroDivisionError as e:
-    print("类型:", type(e).__name__)
-    print("消息:", e)
-    print("args:", e.args)
+except ZeroDivisionError as e:     # 捕获 ZeroDivisionError 异常并绑定到 e
+    print("类型:", type(e).__name__) # 输出 "类型:", type(e).__name__
+    print("消息:", e)                # 输出 "消息:", e
+    print("args:", e.args)         # 输出 "args:", e.args
 \`\`\`
 
 ### 2.3 不要裸 except
 
 \`\`\`python
-try:
-    risky()
+try:                               # 尝试执行以下代码块
+    risky()                        # 调用 risky
 except:        # 极度不推荐！
-    pass
+    pass                           # 空操作，占位
 \`\`\`
 
 裸 \`except\` 会捕获**所有异常**，包括 \`KeyboardInterrupt\`（Ctrl+C）、\`SystemExit\`、\`MemoryError\`……这会掩盖真正的 bug，让程序"看起来没出错"但其实在错误地继续运行。**永远写明具体异常类型**，最多用 \`except Exception:\`（排除掉系统级退出异常）。
@@ -1002,12 +1002,12 @@ BaseException
 捕获父类异常会同时捕获所有子类。所以 \`except OSError:\` 会同时捕获 \`FileNotFoundError\` / \`PermissionError\` 等。但**捕获顺序要从具体到宽泛**，否则宽泛的分支永远会先匹配：
 
 \`\`\`python
-try:
-    open("missing.txt")
+try:                               # 尝试执行以下代码块
+    open("missing.txt")            # 调用 打开文件，参数 "missing.txt"
 except FileNotFoundError:        # 先具体
-    print("文件不存在")
+    print("文件不存在")                 # 输出 "文件不存在"
 except OSError:                  # 后宽泛
-    print("其他 OS 错误")
+    print("其他 OS 错误")              # 输出 "其他 OS 错误"
 \`\`\`
 
 ## 三、else 与 finally
@@ -1017,16 +1017,16 @@ except OSError:                  # 后宽泛
 ### 3.1 else：没异常时才执行
 
 \`\`\`python
-try:
-    f = open("data.txt", encoding="utf-8")
-except FileNotFoundError:
-    print("文件不存在")
-else:
+try:                               # 尝试执行以下代码块
+    f = open("data.txt", encoding="utf-8")  # 将 open("data.txt", encoding="utf-8") 赋给 f
+except FileNotFoundError:          # 捕获 FileNotFoundError 异常
+    print("文件不存在")                 # 输出 "文件不存在"
+else:                              # 否则
     # 只有 try 块没抛异常时才执行
     # 把"使用 f 的代码"放这里，避免被 except 误捕获
-    data = f.read()
-    f.close()
-    print(data)
+    data = f.read()                # 将 f.read() 赋给 data
+    f.close()                      # 对 f 调用 close 方法
+    print(data)                    # 输出 data
 \`\`\`
 
 \`else\` 的价值：把"可能出错的代码"和"使用结果的代码"分开，让 \`try\` 块尽量小，避免意外捕获了不该捕获的异常。
@@ -1034,10 +1034,10 @@ else:
 ### 3.2 finally：无论如何都执行
 
 \`\`\`python
-try:
-    f = open("data.txt", encoding="utf-8")
-    data = f.read()
-finally:
+try:                               # 尝试执行以下代码块
+    f = open("data.txt", encoding="utf-8")  # 将 open("data.txt", encoding="utf-8") 赋给 f
+    data = f.read()                # 将 f.read() 赋给 data
+finally:                           # 无论是否异常都执行
     f.close()   # 不管有没有异常，都会关闭
 \`\`\`
 
@@ -1048,15 +1048,15 @@ finally:
 ### 3.3 完整结构
 
 \`\`\`python
-try:
+try:                               # 尝试执行以下代码块
     # 可能出错的代码
-except SomeError as e:
+except SomeError as e:             # 捕获 SomeError 异常并绑定到 e
     # 处理某类异常
-except OtherError:
+except OtherError:                 # 捕获 OtherError 异常
     # 处理另一类
-else:
+else:                              # 否则
     # 没异常时执行
-finally:
+finally:                           # 无论是否异常都执行
     # 无论如何都执行
 \`\`\`
 
@@ -1071,14 +1071,14 @@ finally:
 不只是被动捕获，你也可以主动 \`raise\` 异常，用于"输入不合法、前置条件不满足"等情况。
 
 \`\`\`python
-def divide(a, b):
-    if b == 0:
-        raise ValueError("除数不能为 0")
-    return a / b
+def divide(a, b):                  # 定义函数 divide，参数：a, b
+    if b == 0:                     # 如果 b == 0 成立
+        raise ValueError("除数不能为 0")  # 抛出异常：ValueError("除数不能为 0")
+    return a / b                   # 返回 a / b
 
-try:
-    divide(10, 0)
-except ValueError as e:
+try:                               # 尝试执行以下代码块
+    divide(10, 0)                  # 调用 divide，参数 10, 0
+except ValueError as e:            # 捕获 ValueError 异常并绑定到 e
     print(e)   # 除数不能为 0
 \`\`\`
 
@@ -1087,10 +1087,10 @@ except ValueError as e:
 在 except 块里 \`raise\` 不带参数，会把当前捕获的异常原样抛出，常用于"记录日志后继续往上抛"：
 
 \`\`\`python
-try:
-    risky()
-except Exception as e:
-    log(e)
+try:                               # 尝试执行以下代码块
+    risky()                        # 调用 risky
+except Exception as e:             # 捕获 Exception 异常并绑定到 e
+    log(e)                         # 调用 log，参数 e
     raise    # 重新抛出，让上层处理
 \`\`\`
 
@@ -1099,16 +1099,16 @@ except Exception as e:
 有时你捕获了一个低层异常，想抛出一个更语义化的高层异常，但又不想丢失原始信息。这时用 \`raise ... from ...\` 建立"异常链"：
 
 \`\`\`python
-def load_config(path):
-    try:
-        with open(path, encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError as e:
-        raise RuntimeError("配置文件丢失，请检查安装") from e
+def load_config(path):             # 定义函数 load_config，参数：path
+    try:                           # 尝试执行以下代码块
+        with open(path, encoding="utf-8") as f:  # 使用上下文管理器 open(path, encoding="utf-8")，绑定到 f
+            return f.read()        # 返回 f.read()
+    except FileNotFoundError as e: # 捕获 FileNotFoundError 异常并绑定到 e
+        raise RuntimeError("配置文件丢失，请检查安装") from e  # 抛出异常：RuntimeError("配置文件丢失，请检查安装") from e
 
-try:
-    load_config("missing.conf")
-except RuntimeError as e:
+try:                               # 尝试执行以下代码块
+    load_config("missing.conf")    # 调用 load_config，参数 "missing.conf"
+except RuntimeError as e:          # 捕获 RuntimeError 异常并绑定到 e
     print(e)               # 配置文件丢失...
     print(e.__cause__)     # 原始异常 FileNotFoundError
 \`\`\`
@@ -1120,9 +1120,9 @@ except RuntimeError as e:
 有时你不想暴露原始异常（比如安全考虑），用 \`raise X from None\` 显式抑制：
 
 \`\`\`python
-try:
+try:                               # 尝试执行以下代码块
     ...
-except SomeError:
+except SomeError:                  # 捕获 SomeError 异常
     raise MyError("出错了") from None   # 不带原始链
 \`\`\`
 
@@ -1131,26 +1131,26 @@ except SomeError:
 业务代码里，定义自己的异常类可以让错误处理更精确、更具语义。约定：**自定义异常继承 \`Exception\`（不是 \`BaseException\`）**，类名以 \`Error\` / \`Exception\` 结尾。
 
 \`\`\`python
-class InventoryError(Exception):
+class InventoryError(Exception):   # 定义类 InventoryError，继承自 Exception
     """库存相关异常的基类"""
-    pass
+    pass                           # 空操作，占位
 
-class OutOfStockError(InventoryError):
-    def __init__(self, item, available, requested):
-        super().__init__(f"{item} 库存不足: 现有 {available}, 需要 {requested}")
+class OutOfStockError(InventoryError):  # 定义类 OutOfStockError，继承自 InventoryError
+    def __init__(self, item, available, requested):  # 定义函数 __init__，参数：self, item, available, requested
+        super().__init__(f"{item} 库存不足: 现有 {available}, 需要 {requested}")  # 调用 super，参数 ).__init__(f"{item} 库存不足: 现有 {available}, 需要 {requested}"
         self.item = item
         self.available = available
         self.requested = requested
 
-def deduct(item, qty, stock):
-    if qty > stock:
-        raise OutOfStockError(item, stock, qty)
-    return stock - qty
+def deduct(item, qty, stock):      # 定义函数 deduct，参数：item, qty, stock
+    if qty > stock:                # 如果 qty > stock 成立
+        raise OutOfStockError(item, stock, qty)  # 抛出异常：OutOfStockError(item, stock, qty)
+    return stock - qty             # 返回 stock - qty
 
-try:
-    deduct("iPhone", 5, 2)
-except OutOfStockError as e:
-    print(e.item, "缺货，差", e.requested - e.available, "件")
+try:                               # 尝试执行以下代码块
+    deduct("iPhone", 5, 2)         # 调用 deduct，参数 "iPhone", 5, 2
+except OutOfStockError as e:       # 捕获 OutOfStockError 异常并绑定到 e
+    print(e.item, "缺货，差", e.requested - e.available, "件")  # 输出 e.item, "缺货，差", e.requested - e.available, "件"
 \`\`\`
 
 自定义异常类的好处：
@@ -1164,16 +1164,16 @@ except OutOfStockError as e:
 \`assert\` 用于"声明某个条件必须成立"，主要用于**调试和测试**，不满足时抛 \`AssertionError\`。
 
 \`\`\`python
-def sqrt(x):
+def sqrt(x):                       # 定义函数 sqrt，参数：x
     assert x >= 0, f"sqrt 要求非负数，得到 {x}"
-    return x ** 0.5
+    return x ** 0.5                # 返回 x ** 0.5
 \`\`\`
 
 等价于：
 
 \`\`\`python
-if not condition:
-    raise AssertionError(message)
+if not condition:                  # 如果 not condition 成立
+    raise AssertionError(message)  # 抛出异常：AssertionError(message)
 \`\`\`
 
 ### 6.1 assert 的陷阱：优化模式下被禁用
@@ -1183,11 +1183,11 @@ Python 启动时加 \`-O\` 选项（\`python -O script.py\`）会**移除所有 
 \`\`\`python
 # 错误示范：用 -O 启动后这行就没了！
 assert user.is_admin, "无权限"
-delete_database()
+delete_database()                  # 调用 delete_database
 
 # 正确做法
-if not user.is_admin:
-    raise PermissionError("无权限")
+if not user.is_admin:              # 如果 not user.is_admin 成立
+    raise PermissionError("无权限")   # 抛出异常：PermissionError("无权限")
 \`\`\`
 
 经验：\`assert\` 用来表达"我（开发者）确信这里一定成立，如果不成立那是我的 bug"。用户输入校验、权限检查、业务规则验证，统统用 \`if + raise\`。
@@ -1224,14 +1224,14 @@ if not user.is_admin:
 \`traceback\` 模块可以程序化地获取、格式化、打印异常的调用栈，常用于日志系统。
 
 \`\`\`python
-import traceback
+import traceback                   # 导入 traceback 模块
 
-try:
+try:                               # 尝试执行以下代码块
     1 / 0
-except ZeroDivisionError:
+except ZeroDivisionError:          # 捕获 ZeroDivisionError 异常
     # 把完整 traceback 格式化成字符串
-    tb_str = traceback.format_exc()
-    print(tb_str)
+    tb_str = traceback.format_exc()  # 将 traceback.format_exc() 赋给 tb_str
+    print(tb_str)                  # 输出 tb_str
     # 也可以写入日志文件
     # with open("error.log", "a") as f: f.write(tb_str)
 \`\`\`
@@ -1244,12 +1244,12 @@ except ZeroDivisionError:
 \`sys.exc_info()\` 返回当前异常的三元组 \`(type, value, traceback)\`：
 
 \`\`\`python
-import sys
-try:
+import sys                         # 导入 sys 模块
+try:                               # 尝试执行以下代码块
     1 / 0
-except ZeroDivisionError:
+except ZeroDivisionError:          # 捕获 ZeroDivisionError 异常
     exc_type, exc_val, exc_tb = sys.exc_info()
-    print(exc_type, exc_val)
+    print(exc_type, exc_val)       # 输出 exc_type, exc_val
 \`\`\`
 
 ## 九、上下文管理器与 __enter__ / __exit__
@@ -1259,36 +1259,36 @@ except ZeroDivisionError:
 ### 9.1 协议定义
 
 \`\`\`python
-class MyResource:
-    def __enter__(self):
-        print("进入 with 块，获取资源")
+class MyResource:                  # 定义类 MyResource
+    def __enter__(self):           # 定义函数 __enter__，参数：self
+        print("进入 with 块，获取资源")    # 输出 "进入 with 块，获取资源"
         return self            # as 变量拿到的是这个返回值
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        print("离开 with 块，释放资源")
+    def __exit__(self, exc_type, exc_val, exc_tb):  # 定义函数 __exit__，参数：self, exc_type, exc_val, exc_tb
+        print("离开 with 块，释放资源")    # 输出 "离开 with 块，释放资源"
         # exc_type / exc_val / exc_tb：如果 with 块里抛了异常，三者不为 None
         # 返回 True 表示"异常已被处理"，不再向上抛
         # 返回 False / None 表示"异常继续向上抛"
-        return False
+        return False               # 返回 False
 \`\`\`
 
 ### 9.2 自定义上下文管理器示例
 
 \`\`\`python
-class Timer:
-    def __enter__(self):
-        import time
+class Timer:                       # 定义类 Timer
+    def __enter__(self):           # 定义函数 __enter__，参数：self
+        import time                # 导入 time 模块
         self.start = time.time()
-        return self
+        return self                # 返回 self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        import time
+    def __exit__(self, exc_type, exc_val, exc_tb):  # 定义函数 __exit__，参数：self, exc_type, exc_val, exc_tb
+        import time                # 导入 time 模块
         self.elapsed = time.time() - self.start
-        print(f"耗时 {self.elapsed:.4f} 秒")
-        return False
+        print(f"耗时 {self.elapsed:.4f} 秒")  # 输出 f"耗时 {self.elapsed:.4f} 秒"
+        return False               # 返回 False
 
-with Timer() as t:
-    sum(range(1000000))
+with Timer() as t:                 # 使用上下文管理器 Timer()，绑定到 t
+    sum(range(1000000))            # 调用 求和，参数 range(1000000)
 \`\`\`
 
 ### 9.3 __exit__ 处理异常
@@ -1296,18 +1296,18 @@ with Timer() as t:
 \`__exit__\` 的三个参数在 with 块没异常时全为 \`None\`，有异常时分别是异常类型、值、traceback。返回 \`True\` 会"吞掉"异常：
 
 \`\`\`python
-class SuppressError:
-    def __enter__(self):
-        return self
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is ValueError:
-            print(f"吞掉了 ValueError: {exc_val}")
+class SuppressError:               # 定义类 SuppressError
+    def __enter__(self):           # 定义函数 __enter__，参数：self
+        return self                # 返回 self
+    def __exit__(self, exc_type, exc_val, exc_tb):  # 定义函数 __exit__，参数：self, exc_type, exc_val, exc_tb
+        if exc_type is ValueError: # 如果 exc_type is ValueError 成立
+            print(f"吞掉了 ValueError: {exc_val}")  # 输出 f"吞掉了 ValueError: {exc_val}"
             return True     # 不再向上抛
-        return False
+        return False               # 返回 False
 
-with SuppressError():
+with SuppressError():              # 使用上下文管理器 SuppressError()
     raise ValueError("test")   # 会被 __exit__ 吞掉
-print("继续运行")
+print("继续运行")                      # 输出 "继续运行"
 \`\`\`
 
 ### 9.4 contextlib：更简便的写法
@@ -1315,19 +1315,19 @@ print("继续运行")
 标准库 \`contextlib\` 提供 \`@contextmanager\` 装饰器，让你用一个生成器函数代替写类：
 
 \`\`\`python
-from contextlib import contextmanager
+from contextlib import contextmanager  # 从 contextlib 导入 contextmanager
 
 @contextmanager
-def timer():
-    import time
-    start = time.time()
-    try:
+def timer():                       # 定义函数 timer，无参数
+    import time                    # 导入 time 模块
+    start = time.time()            # 将 time.time() 赋给 start
+    try:                           # 尝试执行以下代码块
         yield          # with 块的代码在这里执行
-    finally:
-        print(f"耗时 {time.time() - start:.4f} 秒")
+    finally:                       # 无论是否异常都执行
+        print(f"耗时 {time.time() - start:.4f} 秒")  # 输出 f"耗时 {time.time() - start:.4f} 秒"
 
-with timer():
-    sum(range(1000000))
+with timer():                      # 使用上下文管理器 timer()
+    sum(range(1000000))            # 调用 求和，参数 range(1000000)
 \`\`\`
 
 \`yield\` 之前的部分相当于 \`__enter__\`，\`yield\` 之后相当于 \`__exit__\`。配合 \`try/finally\` 能优雅地保证资源释放。
@@ -1335,8 +1335,8 @@ with timer():
 \`contextlib.suppress(SomeError)\` 是个现成的"吞掉特定异常"的上下文管理器：
 
 \`\`\`python
-from contextlib import suppress
-with suppress(FileNotFoundError):
+from contextlib import suppress    # 从 contextlib 导入 suppress
+with suppress(FileNotFoundError):  # 使用上下文管理器 suppress(FileNotFoundError)
     os.remove("maybe_missing.txt")   # 文件不存在也不报错
 \`\`\`
 
@@ -1641,9 +1641,9 @@ print("全部演示完成。")
 ### 2.1 最基本的 import
 
 \`\`\`python
-import math
-print(math.pi)
-print(math.sqrt(2))
+import math                        # 导入 math 模块
+print(math.pi)                     # 输出 math.pi
+print(math.sqrt(2))                # 输出 math.sqrt(2)
 \`\`\`
 
 \`import math\` 把整个 \`math\` 模块加载进来，绑定到当前命名空间的 \`math\` 这个名字上。使用其内部成员时必须加 \`math.\` 前缀。
@@ -1651,9 +1651,9 @@ print(math.sqrt(2))
 ### 2.2 from import：只拿需要的
 
 \`\`\`python
-from math import pi, sqrt
-print(pi)
-print(sqrt(2))
+from math import pi, sqrt          # 从 math 导入 pi, sqrt
+print(pi)                          # 输出 pi
+print(sqrt(2))                     # 输出 sqrt(2)
 \`\`\`
 
 \`from math import pi\` 只把 \`pi\` 这个名字引入当前命名空间，调用时不用前缀。好处是简洁，坏处是**可能污染命名空间**——如果你 \`from math import log\`，又 \`from logging import log\`，后一个会覆盖前一个。
@@ -1673,7 +1673,7 @@ from math import *    # 把 math 里所有公开名字都导入
 \`\`\`python
 import numpy as np                  # 给模块起短别名
 from math import sqrt as square_root # 给成员起别名
-import django.conf as conf
+import django.conf as conf         # 导入 django.conf 模块并取别名 conf
 \`\`\`
 
 社区有一些约定俗成的别名（\`numpy as np\`、\`pandas as pd\`、\`matplotlib.pyplot as plt\`），跟随习惯即可。
@@ -1683,16 +1683,16 @@ import django.conf as conf
 \`import\` 是普通语句，可以出现在任何位置，包括 \`if\` / \`try\` 里：
 
 \`\`\`python
-try:
-    import cjson as json
-except ImportError:
-    import json
+try:                               # 尝试执行以下代码块
+    import cjson as json           # 导入 cjson 模块并取别名 json
+except ImportError:                # 捕获 ImportError 异常
+    import json                    # 导入 json 模块
 \`\`\`
 
 也可以在函数里 import（懒加载），减少启动时间：
 
 \`\`\`python
-def parse_pdf(path):
+def parse_pdf(path):               # 定义函数 parse_pdf，参数：path
     import pdfplumber   # 只在用的时候才加载
     ...
 \`\`\`
@@ -1707,15 +1707,15 @@ def parse_pdf(path):
 
 \`\`\`python
 # mymath.py
-def add(a, b):
-    return a + b
+def add(a, b):                     # 定义函数 add，参数：a, b
+    return a + b                   # 返回 a + b
 
-def _test():
+def _test():                       # 定义函数 _test，无参数
     assert add(1, 2) == 3
-    print("所有测试通过")
+    print("所有测试通过")                # 输出 "所有测试通过"
 
-if __name__ == "__main__":
-    _test()
+if __name__ == "__main__":         # 如果 __name__ == "__main__" 成立
+    _test()                        # 调用 _test
 \`\`\`
 
 \`python mymath.py\` 会跑测试；\`import mymath\` 不会。这是 Python 写"既能当库又能当脚本"的惯用手法。
@@ -1730,7 +1730,7 @@ if __name__ == "__main__":
 4. **第三方库目录**（\`site-packages\`）。
 
 \`\`\`python
-import sys
+import sys                         # 导入 sys 模块
 print(sys.path)   # 看看实际搜索路径
 \`\`\`
 
@@ -1758,9 +1758,9 @@ myproject/
 
 \`\`\`python
 # models/__init__.py
-from .user import User
-from .order import Order
-__all__ = ["User", "Order"]
+from .user import User             # 从 .user 导入 User
+from .order import Order           # 从 .order 导入 Order
+__all__ = ["User", "Order"]        # 创建列表并赋给 __all__
 \`\`\`
 
 这样外部就能 \`from models import User\`，不用写 \`from models.user import User\`。
@@ -1788,7 +1788,7 @@ Python 最大的卖点之一就是"自带电池（batteries included）"——�
 ### 7.1 math：数学函数
 
 \`\`\`python
-import math
+import math                        # 导入 math 模块
 math.pi, math.e          # 常数
 math.sqrt(16)            # 4.0   平方根
 math.pow(2, 10)          # 1024.0
@@ -1805,7 +1805,7 @@ math.isnan(float("nan")) # True
 ### 7.2 random：随机数
 
 \`\`\`python
-import random
+import random                      # 导入 random 模块
 random.random()                  # [0, 1) 浮点
 random.randint(1, 100)           # [1, 100] 整数（含两端）
 random.choice(["a", "b", "c"])   # 随机选一个
@@ -1821,21 +1821,21 @@ random.gauss(0, 1)               # 高斯分布
 ### 7.3 datetime：日期时间
 
 \`\`\`python
-from datetime import datetime, date, timedelta, timezone
+from datetime import datetime, date, timedelta, timezone  # 从 datetime 导入 datetime, date, timedelta, timezone
 
 now = datetime.now()                  # 当前本地时间
 utc = datetime.now(timezone.utc)      # UTC 时间
-today = date.today()
+today = date.today()               # 将 date.today() 赋给 today
 
-dt = datetime(2024, 6, 15, 10, 30)
+dt = datetime(2024, 6, 15, 10, 30) # 将 datetime(2024, 6, 15, 10, 30) 赋给 dt
 dt.year, dt.month, dt.day
 dt.strftime("%Y-%m-%d %H:%M")         # 格式化为字符串
 datetime.strptime("2024-06-15", "%Y-%m-%d")  # 字符串解析
 
-delta = timedelta(days=7)
+delta = timedelta(days=7)          # 将 timedelta(days=7) 赋给 delta
 next_week = now + delta               # 日期加减
 
-diff = datetime(2024, 12, 31) - datetime(2024, 1, 1)
+diff = datetime(2024, 12, 31) - datetime(2024, 1, 1)  # 将 datetime(2024, 12, 31) - datetime(2024, 1, 1) 赋给 diff
 diff.days                             # 365
 \`\`\`
 
@@ -1844,41 +1844,41 @@ diff.days                             # 365
 ### 7.4 collections：高级容器
 
 \`\`\`python
-from collections import Counter, defaultdict, deque, OrderedDict, namedtuple
+from collections import Counter, defaultdict, deque, OrderedDict, namedtuple  # 从 collections 导入 Counter, defaultdict, deque, OrderedDict, namedtuple
 
 # Counter：计数器
-c = Counter("abracadabra")
+c = Counter("abracadabra")         # 将 Counter("abracadabra") 赋给 c
 print(c)                  # Counter({'a': 5, 'b': 2, 'r': 2, 'c': 1, 'd': 1})
 c.most_common(2)          # [('a', 5), ('b', 2)]
 
 # defaultdict：带默认值的 dict
-dd = defaultdict(list)
+dd = defaultdict(list)             # 将 defaultdict(list) 赋给 dd
 dd["a"].append(1)         # 不用先 setdefault
 dd["a"].append(2)
 
 # deque：双端队列，头尾都 O(1)
-dq = deque([1, 2, 3])
-dq.appendleft(0)
+dq = deque([1, 2, 3])              # 将 deque([1, 2, 3]) 赋给 dq
+dq.appendleft(0)                   # 对 dq 调用 appendleft 方法，参数 0
 dq.pop()                  # 3
 dq.popleft()              # 0
 
 # namedtuple：具名元组，轻量级不可变对象
-Point = namedtuple("Point", ["x", "y"])
-p = Point(3, 4)
+Point = namedtuple("Point", ["x", "y"])  # 将 namedtuple("Point", ["x", "y"]) 赋给 Point
+p = Point(3, 4)                    # 将 Point(3, 4) 赋给 p
 p.x, p.y                  # 3, 4
 \`\`\`
 
 ### 7.5 itertools：迭代器工具
 
 \`\`\`python
-from itertools import chain, product, combinations, permutations, groupby, islice, count, cycle, repeat
+from itertools import chain, product, combinations, permutations, groupby, islice, count, cycle, repeat  # 从 itertools 导入 chain, product, combinations, permutations, groupby, islice, count, cycle, repeat
 
 list(chain([1,2], [3,4]))                 # [1, 2, 3, 4]  串接
 list(product("AB", "12"))                 # 笛卡尔积
 list(combinations("ABC", 2))              # 组合
 list(permutations("ABC", 2))              # 排列
 list(islice(count(10), 5))                # [10,11,12,13,14]  切片无限迭代器
-for k, g in groupby(sorted(data, key=...), key=...):
+for k, g in groupby(sorted(data, key=...), key=...):  # 遍历 groupby(sorted(data, key=...), key=...)，每次取值赋给 k, g
     ...
 \`\`\`
 
@@ -1887,11 +1887,11 @@ for k, g in groupby(sorted(data, key=...), key=...):
 ### 7.6 functools：函数工具
 
 \`\`\`python
-from functools import lru_cache, partial, reduce, wraps
+from functools import lru_cache, partial, reduce, wraps  # 从 functools 导入 lru_cache, partial, reduce, wraps
 
 @lru_cache(maxsize=None)
-def fib(n):
-    return n if n < 2 else fib(n-1) + fib(n-2)
+def fib(n):                        # 定义函数 fib，参数：n
+    return n if n < 2 else fib(n-1) + fib(n-2)  # 返回 n if n < 2 else fib(n-1) + fib(n-2)
 # 缓存递归结果，性能从指数级降到线性
 
 add3 = partial(lambda a, b, c: a+b+c, 1, 2)   # 预填参数
@@ -1907,7 +1907,7 @@ reduce(lambda x, y: x+y, [1,2,3,4], 0)        # 10 抇积
 \`os\` 提供"操作系统"相关功能：路径、环境变量、进程。
 
 \`\`\`python
-import os
+import os                          # 导入 os 模块
 os.getcwd()              # 当前工作目录
 os.environ["HOME"]       # 环境变量
 os.listdir(".")          # 列出目录
@@ -1918,7 +1918,7 @@ os.system("ls")          # 执行 shell 命令（简单用法）
 \`sys\` 提供"解释器自身"相关功能：
 
 \`\`\`python
-import sys
+import sys                         # 导入 sys 模块
 sys.argv             # 命令行参数列表
 sys.path             # 模块搜索路径
 sys.exit(0)          # 退出程序
@@ -1990,13 +1990,13 @@ Python 没有真正的 \`private\` / \`protected\` 关键字，靠**约定**控�
 - \`__name\`：**名称改写（name mangling）**，类内定义的 \`__x\` 会被改写成 \`_ClassName__x\`，主要用来避免**多继承时同名属性冲突**，不是真正的访问控制。
 
 \`\`\`python
-class A:
-    def __init__(self):
+class A:                           # 定义类 A
+    def __init__(self):            # 定义函数 __init__，参数：self
         self.public = 1
         self._internal = 2
         self.__mangled = 3
 
-a = A()
+a = A()                            # 将 A() 赋给 a
 print(a.public)        # 1
 print(a._internal)     # 2  能访问，但约定不要
 # print(a.__mangled)   # AttributeError
@@ -2214,16 +2214,16 @@ print("全部演示完成。")
 假设你要管理一群学生：姓名、年龄、成绩、选课。用过程式写：
 
 \`\`\`python
-names = ["Alice", "Bob"]
-ages = [20, 21]
-scores = [85, 92]
+names = ["Alice", "Bob"]           # 创建列表并赋给 names
+ages = [20, 21]                    # 创建列表并赋给 ages
+scores = [85, 92]                  # 创建列表并赋给 scores
 # 加一个学生要在三个列表里同步 append，容易漏
 \`\`\`
 
 或者用字典：
 
 \`\`\`python
-students = [
+students = [                       # 将 [ 赋给 students
     {"name": "Alice", "age": 20, "score": 85},
     {"name": "Bob", "age": 21, "score": 92},
 ]
@@ -2233,20 +2233,20 @@ students = [
 用类：
 
 \`\`\`python
-class Student:
-    def __init__(self, name, age, score):
+class Student:                     # 定义类 Student
+    def __init__(self, name, age, score):  # 定义函数 __init__，参数：self, name, age, score
         self.name = name
         self.age = age
         self.score = score
 
-    def grade(self):
+    def grade(self):               # 定义函数 grade，参数：self
         if self.score >= 90: return "A"
         if self.score >= 80: return "B"
-        return "C"
+        return "C"                 # 返回 "C"
 
-students = [Student("Alice", 20, 85), Student("Bob", 21, 92)]
-for s in students:
-    print(s.name, s.grade())
+students = [Student("Alice", 20, 85), Student("Bob", 21, 92)]  # 创建列表并赋给 students
+for s in students:                 # 遍历 students，每次取值赋给 s
+    print(s.name, s.grade())       # 输出 s.name, s.grade()
 \`\`\`
 
 OOP 的好处：
@@ -2260,13 +2260,13 @@ OOP 的好处：
 \`class\` 关键字定义一个类。\`__init__\` 是**初始化方法**，在创建实例时自动调用，用来设置实例属性。
 
 \`\`\`python
-class Dog:
-    def __init__(self, name, age):
+class Dog:                         # 定义类 Dog
+    def __init__(self, name, age): # 定义函数 __init__，参数：self, name, age
         self.name = name      # 实例属性
         self.age = age
 
     def bark(self):           # 实例方法
-        print(f"{self.name} 汪汪！")
+        print(f"{self.name} 汪汪！")  # 输出 f"{self.name} 汪汪！"
 \`\`\`
 
 ### 2.1 self 是什么
@@ -2274,7 +2274,7 @@ class Dog:
 \`self\` 是**实例本身的引用**。调用 \`d.bark()\` 时，Python 自动把 \`d\` 作为第一个参数传给 \`bark\`，所以方法第一个参数永远是 \`self\`（名字可以改但社区约定用 \`self\`）。
 
 \`\`\`python
-d = Dog("旺财", 3)
+d = Dog("旺财", 3)                   # 将 Dog("旺财", 3) 赋给 d
 d.bark()         # 等价于 Dog.bark(d)
 \`\`\`
 
@@ -2283,15 +2283,15 @@ d.bark()         # 等价于 Dog.bark(d)
 类属性定义在类体里、所有方法外，被所有实例**共享**：
 
 \`\`\`python
-class Dog:
+class Dog:                         # 定义类 Dog
     species = "Canis lupus"   # 类属性
-    count = 0
+    count = 0                      # 将整数 0 赋给 count
 
-    def __init__(self, name):
+    def __init__(self, name):      # 定义函数 __init__，参数：self, name
         self.name = name      # 实例属性
         Dog.count += 1        # 修改类属性要用类名
 
-d1 = Dog("A"); d2 = Dog("B")
+d1 = Dog("A"); d2 = Dog("B")       # 将 Dog("A"); d2 = Dog("B") 赋给 d1
 print(Dog.count)              # 2
 \`\`\`
 
@@ -2306,10 +2306,10 @@ print(Dog.count)              # 2
 第一个参数是 \`self\`，能访问实例属性。最常见。
 
 \`\`\`python
-class Counter:
-    def __init__(self):
+class Counter:                     # 定义类 Counter
+    def __init__(self):            # 定义函数 __init__，参数：self
         self.value = 0
-    def inc(self):
+    def inc(self):                 # 定义函数 inc，参数：self
         self.value += 1
 \`\`\`
 
@@ -2318,16 +2318,16 @@ class Counter:
 第一个参数是**类本身**（约定叫 \`cls\`），常用于"工厂方法"——以不同方式构造实例：
 
 \`\`\`python
-class Date:
-    def __init__(self, year, month, day):
+class Date:                        # 定义类 Date
+    def __init__(self, year, month, day):  # 定义函数 __init__，参数：self, year, month, day
         self.year, self.month, self.day = year, month, day
 
     @classmethod
-    def from_string(cls, s):
+    def from_string(cls, s):       # 定义函数 from_string，参数：cls, s
         y, m, d = map(int, s.split("-"))
         return cls(y, m, d)      # cls 就是 Date（或子类）
 
-d = Date.from_string("2024-06-15")
+d = Date.from_string("2024-06-15") # 将 Date.from_string("2024-06-15") 赋给 d
 \`\`\`
 
 \`cls\` 在被继承时会自动变成子类，所以工厂方法对子类也友好。
@@ -2337,10 +2337,10 @@ d = Date.from_string("2024-06-15")
 没有 \`self\` 也没有 \`cls\`，本质上就是一个**放在类命名空间里的普通函数**。用来表达"这个函数逻辑上属于这个类，但不依赖实例或类状态"：
 
 \`\`\`python
-class MathUtils:
+class MathUtils:                   # 定义类 MathUtils
     @staticmethod
-    def is_even(n):
-        return n % 2 == 0
+    def is_even(n):                # 定义函数 is_even，参数：n
+        return n % 2 == 0          # 返回 n % 2 == 0
 
 MathUtils.is_even(4)   # True
 \`\`\`
@@ -2352,25 +2352,25 @@ MathUtils.is_even(4)   # True
 \`@property\` 装饰器让一个方法**像属性一样访问**，常用于"计算属性"或"受控读写"：
 
 \`\`\`python
-class Circle:
-    def __init__(self, radius):
+class Circle:                      # 定义类 Circle
+    def __init__(self, radius):    # 定义函数 __init__，参数：self, radius
         self._radius = radius
 
     @property
-    def area(self):
-        return 3.14159 * self._radius ** 2
+    def area(self):                # 定义函数 area，参数：self
+        return 3.14159 * self._radius ** 2  # 返回 3.14159 * self._radius ** 2
 
     @property
-    def radius(self):
-        return self._radius
+    def radius(self):              # 定义函数 radius，参数：self
+        return self._radius        # 返回 self._radius
 
     @radius.setter
-    def radius(self, value):
-        if value <= 0:
-            raise ValueError("半径必须为正")
+    def radius(self, value):       # 定义函数 radius，参数：self, value
+        if value <= 0:             # 如果 value <= 0 成立
+            raise ValueError("半径必须为正")  # 抛出异常：ValueError("半径必须为正")
         self._radius = value
 
-c = Circle(5)
+c = Circle(5)                      # 将 Circle(5) 赋给 c
 print(c.area)        # 78.5...  像属性一样访问
 c.radius = 10        # 走 setter，会校验
 \`\`\`
@@ -2384,21 +2384,21 @@ c.radius = 10        # 走 setter，会校验
 继承让子类**复用**父类的属性和方法，并可以扩展或修改：
 
 \`\`\`python
-class Animal:
-    def __init__(self, name):
+class Animal:                      # 定义类 Animal
+    def __init__(self, name):      # 定义函数 __init__，参数：self, name
         self.name = name
-    def speak(self):
-        print(f"{self.name} 发出声音")
+    def speak(self):               # 定义函数 speak，参数：self
+        print(f"{self.name} 发出声音") # 输出 f"{self.name} 发出声音"
 
-class Dog(Animal):
+class Dog(Animal):                 # 定义类 Dog，继承自 Animal
     def speak(self):       # 重写父类方法
-        print(f"{self.name} 汪汪！")
+        print(f"{self.name} 汪汪！")  # 输出 f"{self.name} 汪汪！"
 
-class Cat(Animal):
-    def speak(self):
-        print(f"{self.name} 喵～")
+class Cat(Animal):                 # 定义类 Cat，继承自 Animal
+    def speak(self):               # 定义函数 speak，参数：self
+        print(f"{self.name} 喵～")   # 输出 f"{self.name} 喵～"
 
-for a in [Dog("旺财"), Cat("咪咪")]:
+for a in [Dog("旺财"), Cat("咪咪")]:   # 遍历 [Dog("旺财"), Cat("咪咪")]，每次取值赋给 a
     a.speak()              # 多态：同一个接口，不同行为
 \`\`\`
 
@@ -2407,12 +2407,12 @@ for a in [Dog("旺财"), Cat("咪咪")]:
 \`super()\` 返回父类的"代理对象"，可以调用父类的方法。常用于子类 \`__init__\` 里复用父类初始化逻辑：
 
 \`\`\`python
-class Animal:
-    def __init__(self, name):
+class Animal:                      # 定义类 Animal
+    def __init__(self, name):      # 定义函数 __init__，参数：self, name
         self.name = name
 
-class Dog(Animal):
-    def __init__(self, name, breed):
+class Dog(Animal):                 # 定义类 Dog，继承自 Animal
+    def __init__(self, name, breed):  # 定义函数 __init__，参数：self, name, breed
         super().__init__(name)   # 调用 Animal.__init__
         self.breed = breed
 \`\`\`
@@ -2422,13 +2422,13 @@ class Dog(Animal):
 子类定义与父类同名的方法，调用时优先用子类的——这就是"重写"。子类方法可以通过 \`super().method()\` 复用父类逻辑后追加。
 
 \`\`\`python
-class Animal:
-    def describe(self):
-        return "一只动物"
+class Animal:                      # 定义类 Animal
+    def describe(self):            # 定义函数 describe，参数：self
+        return "一只动物"              # 返回 "一只动物"
 
-class Dog(Animal):
-    def describe(self):
-        return super().describe() + "，是狗"
+class Dog(Animal):                 # 定义类 Dog，继承自 Animal
+    def describe(self):            # 定义函数 describe，参数：self
+        return super().describe() + "，是狗"  # 返回 super().describe() + "，是狗"
 \`\`\`
 
 ### 5.3 isinstance 与 issubclass
@@ -2447,17 +2447,17 @@ type(d) is Dog             # True  严格类型判断，不考虑继承
 Python 支持**多继承**——一个类可以继承多个父类：
 
 \`\`\`python
-class Flyable:
+class Flyable:                     # 定义类 Flyable
     def fly(self): print("飞")
 
-class Swimmable:
+class Swimmable:                   # 定义类 Swimmable
     def swim(self): print("游")
 
-class Duck(Flyable, Swimmable):
-    pass
+class Duck(Flyable, Swimmable):    # 定义类 Duck，继承自 Flyable, Swimmable
+    pass                           # 空操作，占位
 
-d = Duck()
-d.fly(); d.swim()
+d = Duck()                         # 将 Duck() 赋给 d
+d.fly(); d.swim()                  # 对 d 调用 fly 方法，参数 ); d.swim(
 \`\`\`
 
 但多继承有个经典难题：**菱形继承**——A 是 B 和 C 的父类，B、C 都重写了 A 的方法，D 继承 B 和 C，那 D 调用 A 的方法时走 B 还是 C？
@@ -2469,7 +2469,7 @@ class A: pass
 class B(A): pass
 class C(A): pass
 class D(B, C): pass
-print(D.__mro__)
+print(D.__mro__)                   # 输出 D.__mro__
 # (<class 'D'>, <class 'B'>, <class 'C'>, <class 'A'>, <class 'object'>)
 \`\`\`
 
@@ -2485,13 +2485,13 @@ Python 通过一系列 \`__xxx__\` 双下划线方法（dunder = double undersco
 - \`__repr__\`：给开发者看的"官方"字符串，\`repr(obj)\` 调用；交互式终端直接显示对象时也用这个。理想情况下 \`repr\` 输出的字符串能 \`eval\` 回原对象。
 
 \`\`\`python
-class Point:
-    def __init__(self, x, y):
+class Point:                       # 定义类 Point
+    def __init__(self, x, y):      # 定义函数 __init__，参数：self, x, y
         self.x, self.y = x, y
-    def __repr__(self):
-        return f"Point({self.x!r}, {self.y!r})"
-    def __str__(self):
-        return f"({self.x}, {self.y})"
+    def __repr__(self):            # 定义函数 __repr__，参数：self
+        return f"Point({self.x!r}, {self.y!r})"  # 返回 f"Point({self.x!r}, {self.y!r})"
+    def __str__(self):             # 定义函数 __str__，参数：self
+        return f"({self.x}, {self.y})"  # 返回 f"({self.x}, {self.y})"
 \`\`\`
 
 如果只实现一个，实现 \`__repr__\`——因为 \`__str__\` 缺失时会回退到 \`__repr__\`。
@@ -2499,13 +2499,13 @@ class Point:
 ### 7.2 __eq__ 与 __lt__：比较
 
 \`\`\`python
-class Point:
+class Point:                       # 定义类 Point
     def __init__(self, x, y): self.x, self.y = x, y
-    def __eq__(self, other):
+    def __eq__(self, other):       # 定义函数 __eq__，参数：self, other
         if not isinstance(other, Point): return NotImplemented
-        return self.x == other.x and self.y == other.y
-    def __lt__(self, other):
-        return (self.x, self.y) < (other.x, other.y)
+        return self.x == other.x and self.y == other.y  # 返回 self.x == other.x and self.y == other.y
+    def __lt__(self, other):       # 定义函数 __lt__，参数：self, other
+        return (self.x, self.y) < (other.x, other.y)  # 返回 (self.x, self.y) < (other.x, other.y)
 \`\`\`
 
 实现了 \`__eq__\` 和 \`__lt__\` 后，\`==\` / \`<\` 可用，再用 \`functools.total_ordering\` 装饰器能自动补齐 \`<=\` / \`>\` / \`>=\`。
@@ -2513,7 +2513,7 @@ class Point:
 ### 7.3 __len__、__getitem__、__contains__
 
 \`\`\`python
-class Stack:
+class Stack:                       # 定义类 Stack
     def __init__(self): self._data = []
     def __len__(self): return len(self._data)
     def __getitem__(self, i): return self._data[i]
@@ -2525,13 +2525,13 @@ class Stack:
 ### 7.4 __iter__ 与 __next__：迭代
 
 \`\`\`python
-class Range2:
+class Range2:                      # 定义类 Range2
     def __init__(self, n): self.n = n; self.i = 0
     def __iter__(self): return self
-    def __next__(self):
+    def __next__(self):            # 定义函数 __next__，参数：self
         if self.i >= self.n: raise StopIteration
-        v = self.i; self.i += 1
-        return v
+        v = self.i; self.i += 1    # 将 self.i; self.i += 1 赋给 v
+        return v                   # 返回 v
 
 for x in Range2(3): print(x)   # 0 1 2
 \`\`\`
@@ -2541,11 +2541,11 @@ for x in Range2(3): print(x)   # 0 1 2
 ### 7.5 __call__：实例像函数一样调用
 
 \`\`\`python
-class Adder:
+class Adder:                       # 定义类 Adder
     def __init__(self, n): self.n = n
     def __call__(self, x): return self.n + x
 
-add5 = Adder(5)
+add5 = Adder(5)                    # 将 Adder(5) 赋给 add5
 add5(3)   # 8
 \`\`\`
 
@@ -2578,15 +2578,15 @@ Python 没有真正的访问控制关键字，靠约定：
 - \`__private\`：双下划线开头（且不以双下划线结尾），触发 **name mangling**，改写为 \`_ClassName__private\`，避免多继承同名冲突。
 
 \`\`\`python
-class Account:
-    def __init__(self, owner, balance):
+class Account:                     # 定义类 Account
+    def __init__(self, owner, balance):  # 定义函数 __init__，参数：self, owner, balance
         self.owner = owner         # 公开
         self._balance = balance    # 内部约定
         self.__pin = "1234"        # name mangling
 
     @property
-    def balance(self):
-        return self._balance
+    def balance(self):             # 定义函数 balance，参数：self
+        return self._balance       # 返回 self._balance
 \`\`\`
 
 > Python 哲学："We are all consenting adults here"（大家都是成年人）。任何"私有"都能强行访问，约定胜过强制。真正的封装靠**清晰的接口设计 + property 控制读写**，而不是访问修饰符。
@@ -2596,17 +2596,17 @@ class Account:
 Python 3.7 引入 \`@dataclass\` 装饰器，自动生成 \`__init__\` / \`__repr__\` / \`__eq__\` 等样板代码，写"数据载体"类极其简洁：
 
 \`\`\`python
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field  # 从 dataclasses 导入 dataclass, field
 
 @dataclass
-class Student:
+class Student:                     # 定义类 Student
     name: str
     age: int
     score: float = 0.0
     tags: list = field(default_factory=list)
 
-s1 = Student("Alice", 20, 85.5)
-s2 = Student("Alice", 20, 85.5)
+s1 = Student("Alice", 20, 85.5)    # 将 Student("Alice", 20, 85.5) 赋给 s1
+s2 = Student("Alice", 20, 85.5)    # 将 Student("Alice", 20, 85.5) 赋给 s2
 print(s1)            # 自动生成的 __repr__
 print(s1 == s2)      # True  自动生成的 __eq__
 \`\`\`
@@ -2618,11 +2618,11 @@ print(s1 == s2)      # True  自动生成的 __eq__
 
 \`\`\`python
 @dataclass(frozen=True, order=True)
-class Point:
+class Point:                       # 定义类 Point
     x: float
     y: float
 
-points = [Point(3, 4), Point(1, 2), Point(1, 1)]
+points = [Point(3, 4), Point(1, 2), Point(1, 1)]  # 创建列表并赋给 points
 sorted(points)    # 自动按 x 再按 y 排序
 \`\`\`
 

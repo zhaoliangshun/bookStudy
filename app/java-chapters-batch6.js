@@ -62,7 +62,7 @@ String[] names = new String[]{"Alice", "Bob"}; // 也可以显式 new
 每个数组对象都有一个 \`length\` 字段（注意是**属性不是方法**），表示元素个数。索引从 \`0\` 开始，到 \`length - 1\` 结束。访问越界索引会抛出 **\`ArrayIndexOutOfBoundsException\`**：
 
 \`\`\`java
-int[] a = new int[3];
+int[] a = new int[3];  // 声明变量 a（int[]），初始值为 new int[3]
 a[0] = 100;          // 合法
 a[3] = 100;          // 运行时异常！有效索引是 0、1、2
 \`\`\`
@@ -88,7 +88,7 @@ a[3] = 100;          // 运行时异常！有效索引是 0、1、2
 3. 可以用 \`instanceof\` 判断数组类型，也可以调用 \`Object\` 的方法。
 
 \`\`\`java
-int[] a = {1, 2, 3};
+int[] a = {1, 2, 3};  // 声明变量 a（int[]），初始值为 {1, 2, 3}
 int[] b = a;          // b 和 a 指向同一个数组对象
 b[0] = 99;            // 修改 b 也影响 a
 System.out.println(a[0]); // 输出 99
@@ -178,9 +178,9 @@ int[][] m2 = {{1, 2}, {3, 4, 5}, {6}}; // 静态初始化，不规则
 
 \`\`\`java
 int[][] grid = new int[3][];      // 先给 3 行的"外壳"
-grid[0] = new int[]{1, 2};
-grid[1] = new int[]{3, 4, 5};
-grid[2] = new int[]{6};
+grid[0] = new int[]{1, 2};  // 为数组 grid 的某元素赋值：new int[]{1, 2}
+grid[1] = new int[]{3, 4, 5};  // 为数组 grid 的某元素赋值：new int[]{3, 4, 5}
+grid[2] = new int[]{6};  // 为数组 grid 的某元素赋值：new int[]{6}
 \`\`\`
 
 ### 不规则数组（Ragged Array）
@@ -189,9 +189,9 @@ grid[2] = new int[]{6};
 
 \`\`\`java
 // 杨辉三角：第 i 行有 i+1 个元素
-int[][] tri = new int[5][];
-for (int i = 0; i < tri.length; i++) {
-    tri[i] = new int[i + 1];
+int[][] tri = new int[5][];  // 声明变量 tri（int[][]），初始值为 new int[5][]
+for (int i = 0; i < tri.length; i++) {  // for 循环：初始化 int i = 0；条件 i < tri.length；更新 i++
+    tri[i] = new int[i + 1];  // 为数组 tri 的某元素赋值：new int[i + 1]
 }
 \`\`\`
 
@@ -202,18 +202,18 @@ for (int i = 0; i < tri.length; i++) {
 \`\`\`java
 for (int i = 0; i < grid.length; i++) {        // 行
     for (int j = 0; j < grid[i].length; j++) { // 当行列数
-        System.out.print(grid[i][j] + " ");
+        System.out.print(grid[i][j] + " ");  // 打印到标准输出（不换行）
     }
-    System.out.println();
+    System.out.println();  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
 也可以用增强 for 更简洁：
 
 \`\`\`java
-for (int[] row : grid) {
-    for (int v : row) { System.out.print(v + " "); }
-    System.out.println();
+for (int[] row : grid) {  // 增强 for：遍历 grid，每次取一个元素 row
+    for (int v : row) { System.out.print(v + " "); }  // 打印到标准输出（不换行）
+    System.out.println();  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -230,7 +230,7 @@ int[][][] cube = new int[2][3][4];   // 2 层、3 行、4 列
 理解内存布局能解释"为什么多维数组可以不规则"：\`int[3][4]\` 在堆上先创建一个长度为 3 的一维数组，每个槽位存放的是一个**引用**，指向另一个长度为 4 的一维数组。这些内层数组**彼此独立分配**，因此可以让某些行更长、某些行更短。
 
 \`\`\`java
-int[][] m = new int[3][4];
+int[][] m = new int[3][4];  // 声明变量 m（int[][]），初始值为 new int[3][4]
 // m[0]、m[1]、m[2] 是三个独立的 int[4] 数组对象
 // m 本身是一个 int[][] 引用，指向长度为 3 的"引用数组"
 \`\`\`
@@ -326,13 +326,13 @@ public class Main {
 
 \`\`\`java
 // 方式一：System.arraycopy —— 最底层、最高效，原生方法
-System.arraycopy(src, srcPos, dest, destPos, length);
+System.arraycopy(src, srcPos, dest, destPos, length);  // 调用 System 的 arraycopy 方法
 
 // 方式二：Arrays.copyOf —— 复制从头开始，可指定新长度（截断或补默认值）
-int[] copy = Arrays.copyOf(original, newLength);
+int[] copy = Arrays.copyOf(original, newLength);  // 声明变量 copy（int[]），初始值为 Arrays.copyOf(original, newLength)
 
 // 方式三：Arrays.copyOfRange —— 复制指定区间 [from, to)
-int[] sub = Arrays.copyOfRange(original, from, to);
+int[] sub = Arrays.copyOfRange(original, from, to);  // 声明变量 sub（int[]），初始值为 Arrays.copyOfRange(original, from, to)
 \`\`\`
 
 | 方法 | 特点 | 适用场景 |
@@ -348,8 +348,8 @@ int[] sub = Arrays.copyOfRange(original, from, to);
 \`Arrays.equals(a, b)\` 逐元素比较**一维数组**是否相等。对于**多维数组**，要用 \`Arrays.deepEquals\`，否则比较的是引用地址：
 
 \`\`\`java
-int[][] x = {{1, 2}, {3, 4}};
-int[][] y = {{1, 2}, {3, 4}};
+int[][] x = {{1, 2}, {3, 4}};  // 声明变量 x（int[][]），初始值为 {{1, 2}, {3, 4}}
+int[][] y = {{1, 2}, {3, 4}};  // 声明变量 y（int[][]），初始值为 {{1, 2}, {3, 4}}
 Arrays.equals(x, y);      // false！比较的是引用
 Arrays.deepEquals(x, y);  // true，逐层比较内容
 \`\`\`
@@ -359,7 +359,7 @@ Arrays.deepEquals(x, y);  // true，逐层比较内容
 \`Arrays.fill(arr, value)\` 把整个数组填为同一值；\`Arrays.fill(arr, from, to, value)\` 填充指定区间：
 
 \`\`\`java
-int[] a = new int[5];
+int[] a = new int[5];  // 声明变量 a（int[]），初始值为 new int[5]
 Arrays.fill(a, -1);              // [-1, -1, -1, -1, -1]
 Arrays.fill(a, 1, 3, 0);         // [-1, 0, 0, -1, -1]
 \`\`\`
@@ -369,7 +369,7 @@ Arrays.fill(a, 1, 3, 0);         // [-1, 0, 0, -1, -1]
 \`Arrays.binarySearch\` 使用**二分查找**，要求**数组已排序**，返回找到的索引；未找到返回 \`-(插入点+1)\`：
 
 \`\`\`java
-int[] a = {10, 20, 30, 40, 50};
+int[] a = {10, 20, 30, 40, 50};  // 声明变量 a（int[]），初始值为 {10, 20, 30, 40, 50}
 int idx = Arrays.binarySearch(a, 30);  // 返回 2
 int notFound = Arrays.binarySearch(a, 25); // 返回 -3（应在索引 2 插入）
 \`\`\`
@@ -472,9 +472,9 @@ public class Main {
 直接 \`System.out.println(arr)\` 只会打印 \`[I@hashcode\`，毫无意义。用 \`Arrays.toString\` 才能看清内容；多维数组用 \`deepToString\`：
 
 \`\`\`java
-int[] a = {1, 2, 3};
+int[] a = {1, 2, 3};  // 声明变量 a（int[]），初始值为 {1, 2, 3}
 System.out.println(Arrays.toString(a));       // [1, 2, 3]
-int[][] m = {{1, 2}, {3, 4}};
+int[][] m = {{1, 2}, {3, 4}};  // 声明变量 m（int[][]），初始值为 {{1, 2}, {3, 4}}
 System.out.println(Arrays.deepToString(m));   // [[1, 2], [3, 4]]
 \`\`\`
 
@@ -483,8 +483,8 @@ System.out.println(Arrays.deepToString(m));   // [[1, 2], [3, 4]]
 \`asList\` 返回的 \`List\` 是**固定大小**的——它内部直接引用原数组，**不支持 add/remove**（会抛 \`UnsupportedOperationException\`），但可以 \`set\` 修改元素，且修改会**同步影响原数组**：
 
 \`\`\`java
-String[] arr = {"a", "b", "c"};
-List<String> list = Arrays.asList(arr);
+String[] arr = {"a", "b", "c"};  // 声明变量 arr（String[]），初始值为 {"a", "b", "c"}
+List<String> list = Arrays.asList(arr);  // 声明变量 list（List<String>），初始值为 Arrays.asList(arr)
 list.set(0, "X");      // 合法，arr[0] 也变成 "X"
 list.add("d");          // 抛异常！
 \`\`\`
@@ -497,7 +497,7 @@ list.add("d");          // 抛异常！
 
 \`\`\`java
 int sum = Arrays.stream(new int[]{1, 2, 3, 4, 5})
-               .filter(x -> x % 2 == 1)
+               .filter(x -> x % 2 == 1)  // Lambda 表达式：实现函数式接口
                .sum();   // 1 + 3 + 5 = 9
 \`\`\`
 
@@ -506,8 +506,8 @@ int sum = Arrays.stream(new int[]{1, 2, 3, 4, 5})
 \`parallelSort\` 在数据量大（约 > 8192）时，利用 \`ForkJoinPool\` 多线程排序，能显著提升速度；小数组则退化为普通 \`sort\`：
 
 \`\`\`java
-int[] big = new int[1000000];
-Arrays.parallelSort(big);
+int[] big = new int[1000000];  // 声明变量 big（int[]），初始值为 new int[1000000]
+Arrays.parallelSort(big);  // 调用 Arrays 的 parallelSort 方法
 \`\`\`
 
 ### 小结
@@ -601,17 +601,17 @@ public class Main {
 
 \`\`\`java
 // 形式一：单 if
-if (score >= 60) { System.out.println("及格"); }
+if (score >= 60) { System.out.println("及格"); }  // 打印一行到标准输出（自动换行）
 
 // 形式二：if-else 二选一
-if (score >= 60) { System.out.println("及格"); }
-else { System.out.println("不及格"); }
+if (score >= 60) { System.out.println("及格"); }  // 打印一行到标准输出（自动换行）
+else { System.out.println("不及格"); }  // 打印一行到标准输出（自动换行）
 
 // 形式三：if-else if-else 多选一
-if (score >= 90) { System.out.println("优秀"); }
-else if (score >= 80) { System.out.println("良好"); }
-else if (score >= 60) { System.out.println("及格"); }
-else { System.out.println("不及格"); }
+if (score >= 90) { System.out.println("优秀"); }  // 打印一行到标准输出（自动换行）
+else if (score >= 80) { System.out.println("良好"); }  // 打印一行到标准输出（自动换行）
+else if (score >= 60) { System.out.println("及格"); }  // 打印一行到标准输出（自动换行）
+else { System.out.println("不及格"); }  // 打印一行到标准输出（自动换行）
 \`\`\`
 
 \`else if\` 不是独立关键字，而是 \`else { if(...) }\` 的简写。条件按顺序判断，**一旦某个分支命中，后续分支不再判断**。
@@ -621,7 +621,7 @@ else { System.out.println("不及格"); }
 条件必须是 \`boolean\` 类型。Java **不会**把 \`0\` / 非 \`0\` 当作 false / true（这与 C/C++ 不同）：
 
 \`\`\`java
-int x = 0;
+int x = 0;  // 声明变量 x（int），初始值为 0
 if (x) { }       // 编译错误！Java 要求严格的 boolean
 if (x == 0) { }  // 正确
 \`\`\`
@@ -631,9 +631,9 @@ if (x == 0) { }  // 正确
 \`if\` 可以嵌套，但层数过多会降低可读性，建议用**提前 return**或**提取方法**重构：
 
 \`\`\`java
-if (user != null) {
-    if (user.isActive()) {
-        if (user.hasPermission("admin")) {
+if (user != null) {  // 条件判断：满足 user != null 时执行
+    if (user.isActive()) {  // 条件判断：满足 user.isActive() 时执行
+        if (user.hasPermission("admin")) {  // 条件判断：满足 user.hasPermission("admin") 时执行
             // 嵌套太深，难维护
         }
     }
@@ -643,8 +643,8 @@ if (user != null) {
 ### 陷阱一：悬挂 else（Dangling else）
 
 \`\`\`java
-if (a > 0)
-    if (b > 0) System.out.println("a,b > 0");
+if (a > 0)  // 条件判断：满足 a > 0 时执行
+    if (b > 0) System.out.println("a,b > 0");  // 打印一行到标准输出（自动换行）
 else System.out.println("a <= 0");   // 这个 else 其实属于内层 if！
 \`\`\`
 
@@ -655,7 +655,7 @@ Java 遵循"就近匹配"原则：\`else\` 总是与**最近的未配对 if** �
 \`\`\`java
 if (x = 5) { }     // 编译错误：x=5 是赋值，结果是 int 不是 boolean
 if (x == 5) { }    // 正确：比较
-boolean flag = false;
+boolean flag = false;  // 声明变量 flag（boolean），初始值为 false
 if (flag = true) { }  // 危险！这是赋值，结果恒为 true
 \`\`\`
 
@@ -666,7 +666,7 @@ if (flag = true) { }  // 危险！这是赋值，结果恒为 true
 简单二选一可用 \`条件 ? 值1 : 值2\`，本质是 if-else 的表达式形式：
 
 \`\`\`java
-String result = score >= 60 ? "及格" : "不及格";
+String result = score >= 60 ? "及格" : "不及格";  // 声明变量 result（String），初始值为 score >= 60 ? "及格" : "不及格"
 \`\`\`
 
 ### 小结
@@ -762,15 +762,15 @@ public class Main {
 ### 传统 switch 语句
 
 \`\`\`java
-switch (day) {
-    case 1:
-        System.out.println("周一");
+switch (day) {  // switch 分支：根据 day 的值跳转
+    case 1:  // 匹配 case 1
+        System.out.println("周一");  // 打印一行到标准输出（自动换行）
         break;          // 必须 break，否则会"贯穿"
-    case 2:
-        System.out.println("周二");
-        break;
-    default:
-        System.out.println("其他");
+    case 2:  // 匹配 case 2
+        System.out.println("周二");  // 打印一行到标准输出（自动换行）
+        break;  // 跳出当前循环或 switch
+    default:  // 默认分支（所有 case 都不匹配时执行）
+        System.out.println("其他");  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -782,10 +782,10 @@ switch (day) {
 
 \`\`\`java
 String name = switch (day) {
-    case 1 -> "周一";
-    case 2 -> "周二";
+    case 1 -> "周一";  // Lambda 表达式：实现函数式接口
+    case 2 -> "周二";  // Lambda 表达式：实现函数式接口
     case 6, 7 -> "周末";      // 多值合并
-    default -> "其他";
+    default -> "其他";  // Lambda 表达式：实现函数式接口
 };
 \`\`\`
 
@@ -793,9 +793,9 @@ String name = switch (day) {
 
 \`\`\`java
 int len = switch (s) {
-    case null -> 0;
-    default -> {
-        int n = s.length();
+    case null -> 0;  // Lambda 表达式：实现函数式接口
+    default -> {  // Lambda 表达式：实现函数式接口
+        int n = s.length();  // 声明变量 n（int），初始值为 s.length()
         yield n * 2;     // 块内用 yield 返回
     }
 };
@@ -815,12 +815,12 @@ int len = switch (s) {
 switch 是处理枚举的绝佳场景，编译器会**检查是否覆盖所有枚举值**，遗漏会警告：
 
 \`\`\`java
-enum Color { RED, GREEN, BLUE }
-Color c = Color.RED;
+enum Color { RED, GREEN, BLUE }  // 定义枚举 Color
+Color c = Color.RED;  // 声明变量 c（Color），初始值为 Color.RED
 String desc = switch (c) {
-    case RED -> "红色";
-    case GREEN -> "绿色";
-    case BLUE -> "蓝色";
+    case RED -> "红色";  // Lambda 表达式：实现函数式接口
+    case GREEN -> "绿色";  // Lambda 表达式：实现函数式接口
+    case BLUE -> "蓝色";  // Lambda 表达式：实现函数式接口
     // 无需 default：枚举值已穷举
 };
 \`\`\`
@@ -937,7 +937,7 @@ public class Main {
 ### 基本语法
 
 \`\`\`java
-for (初始化; 条件; 更新) {
+for (初始化; 条件; 更新) {  // for 循环：初始化 初始化；条件 条件；更新 更新
     循环体;
 }
 \`\`\`
@@ -945,7 +945,7 @@ for (初始化; 条件; 更新) {
 执行顺序：**初始化 → 条件判断 → 循环体 → 更新 → 条件判断 → ...**，直到条件为 false。
 
 \`\`\`java
-for (int i = 0; i < 5; i++) {
+for (int i = 0; i < 5; i++) {  // for 循环：初始化 int i = 0；条件 i < 5；更新 i++
     System.out.println(i);   // 输出 0 1 2 3 4
 }
 \`\`\`
@@ -956,17 +956,17 @@ for (int i = 0; i < 5; i++) {
 
 \`\`\`java
 // 省略初始化（变量在外部声明）
-int i = 0;
+int i = 0;  // 声明变量 i（int），初始值为 0
 for (; i < 5; i++) { ... }
 
 // 省略更新（在循环体内手动更新）
-for (int j = 0; j < 5;) {
-    System.out.println(j);
-    j += 2;
+for (int j = 0; j < 5;) {  // for 循环：初始化 int j = 0；条件 j < 5；更新 
+    System.out.println(j);  // 打印一行到标准输出（自动换行）
+    j += 2;  // j += 2（复合赋值）
 }
 
 // 省略条件 = 永远 true（需用 break 退出）
-for (int k = 0;; k++) {
+for (int k = 0;; k++) {  // for 循环：初始化 int k = 0；条件 ；更新 k++
     if (k >= 3) break;
 }
 
@@ -977,8 +977,8 @@ for (;;) { ... }
 初始化和更新部分还支持**多个表达式**（用逗号分隔）：
 
 \`\`\`java
-for (int i = 0, j = 10; i < j; i++, j--) {
-    System.out.println(i + " " + j);
+for (int i = 0, j = 10; i < j; i++, j--) {  // for 循环：初始化 int i = 0, j = 10；条件 i < j；更新 i++, j--
+    System.out.println(i + " " + j);  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -994,7 +994,7 @@ System.out.println(i);  // 编译错误：i 已超出作用域
 如果需要在循环后使用循环变量，必须在循环外声明：
 
 \`\`\`java
-int i;
+int i;  // 声明变量 i（int 类型）
 for (i = 0; i < 3; i++) { }
 System.out.println("循环结束 i = " + i);  // 3
 \`\`\`
@@ -1004,11 +1004,11 @@ System.out.println("循环结束 i = " + i);  // 3
 \`for\` 可以嵌套，外层每执行一次，内层执行一轮。嵌套循环时间复杂度是**乘积关系**，常用于二维遍历、打印图形：
 
 \`\`\`java
-for (int i = 1; i <= 9; i++) {
-    for (int j = 1; j <= i; j++) {
-        System.out.print(j + "x" + i + "=" + (i * j) + " ");
+for (int i = 1; i <= 9; i++) {  // for 循环：初始化 int i = 1；条件 i <= 9；更新 i++
+    for (int j = 1; j <= i; j++) {  // for 循环：初始化 int j = 1；条件 j <= i；更新 j++
+        System.out.print(j + "x" + i + "=" + (i * j) + " ");  // 打印到标准输出（不换行）
     }
-    System.out.println();
+    System.out.println();  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -1109,7 +1109,7 @@ public class Main {
 ### while 循环
 
 \`\`\`java
-while (条件) {
+while (条件) {  // while 循环：当 条件 为真时重复执行
     循环体;
 }
 \`\`\`
@@ -1117,17 +1117,17 @@ while (条件) {
 **先判断后执行**：每次循环开始前判断条件，为 true 才执行循环体。若初始条件就为 false，循环体**一次都不执行**：
 
 \`\`\`java
-int i = 0;
-while (i < 5) {
-    System.out.println(i);
-    i++;
+int i = 0;  // 声明变量 i（int），初始值为 0
+while (i < 5) {  // while 循环：当 i < 5 为真时重复执行
+    System.out.println(i);  // 打印一行到标准输出（自动换行）
+    i++;  // i 自增 1
 }
 \`\`\`
 
 ### do-while 循环
 
 \`\`\`java
-do {
+do {  // do-while 循环开始（先执行一次再判断条件）
     循环体;
 } while (条件);   // 注意分号！
 \`\`\`
@@ -1135,8 +1135,8 @@ do {
 **先执行后判断**：循环体至少执行一次，然后再判断是否继续。这适合"先做一次，再决定要不要继续"的场景，比如**菜单交互**、**至少询问一次**的逻辑：
 
 \`\`\`java
-int choice;
-do {
+int choice;  // 声明变量 choice（int 类型）
+do {  // do-while 循环开始（先执行一次再判断条件）
     choice = showMenu();   // 至少显示一次菜单
 } while (choice != 0);     // 选 0 才退出
 \`\`\`
@@ -1157,10 +1157,10 @@ do {
 \`while (true)\` 是最常见的无限循环写法，配合 \`break\` 退出：
 
 \`\`\`java
-while (true) {
-    String line = readLine();
+while (true) {  // while 循环：当 true 为真时重复执行
+    String line = readLine();  // 声明变量 line（String），初始值为 readLine()
     if (line == null) break;
-    process(line);
+    process(line);  // 调用方法 process
 }
 \`\`\`
 
@@ -1169,9 +1169,9 @@ while (true) {
 **陷阱一：忘记更新循环变量**，导致死循环：
 
 \`\`\`java
-int i = 0;
-while (i < 10) {
-    System.out.println(i);
+int i = 0;  // 声明变量 i（int），初始值为 0
+while (i < 10) {  // while 循环：当 i < 10 为真时重复执行
+    System.out.println(i);  // 打印一行到标准输出（自动换行）
     // 忘记 i++，永远输出 0
 }
 \`\`\`
@@ -1179,9 +1179,9 @@ while (i < 10) {
 **陷阱二：浮点数比较**，由于精度问题可能死循环：
 
 \`\`\`java
-double d = 0.0;
+double d = 0.0;  // 声明变量 d（double），初始值为 0.0
 while (d != 1.0) {   // 0.1 累加可能永远到不了精确的 1.0
-    d += 0.1;
+    d += 0.1;  // d += 0.1（复合赋值）
 }
 \`\`\`
 
@@ -1300,7 +1300,7 @@ public class Main {
 \`break\` 立即终止**当前所在循环**，执行循环之后的语句。在 \`switch\` 中也用于结束一个 case：
 
 \`\`\`java
-for (int i = 0; i < 10; i++) {
+for (int i = 0; i < 10; i++) {  // for 循环：初始化 int i = 0；条件 i < 10；更新 i++
     if (i == 5) break;       // i=5 时整个循环结束
     System.out.println(i);   // 输出 0 1 2 3 4
 }
@@ -1311,7 +1311,7 @@ for (int i = 0; i < 10; i++) {
 \`continue\` 跳过循环体剩余部分，直接进入**下一次迭代**（for 会先执行更新部分）：
 
 \`\`\`java
-for (int i = 0; i < 10; i++) {
+for (int i = 0; i < 10; i++) {  // for 循环：初始化 int i = 0；条件 i < 10；更新 i++
     if (i % 2 == 0) continue;  // 跳过偶数
     System.out.println(i);     // 输出 1 3 5 7 9
 }
@@ -1323,10 +1323,10 @@ Java 支持**带标签的 break/continue**，可以跳出或跳过多层嵌套�
 
 \`\`\`java
 outer:                          // 定义标签
-for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 3; j++) {
+for (int i = 0; i < 3; i++) {  // for 循环：初始化 int i = 0；条件 i < 3；更新 i++
+    for (int j = 0; j < 3; j++) {  // for 循环：初始化 int j = 0；条件 j < 3；更新 j++
         if (i == 1 && j == 1) break outer;  // 跳出外层循环
-        System.out.println(i + "," + j);
+        System.out.println(i + "," + j);  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -1458,20 +1458,20 @@ Java 5 引入了**增强 for 循环**（又称 for-each），让遍历数组和�
 ### 语法
 
 \`\`\`java
-for (元素类型 变量 : 可迭代对象) {
+for (元素类型 变量 : 可迭代对象) {  // 增强 for：遍历 可迭代对象，每次取一个元素 变量
     // 对变量操作
 }
 \`\`\`
 
 \`\`\`java
-int[] nums = {1, 2, 3, 4, 5};
-for (int n : nums) {
-    System.out.println(n);
+int[] nums = {1, 2, 3, 4, 5};  // 声明变量 nums（int[]），初始值为 {1, 2, 3, 4, 5}
+for (int n : nums) {  // 增强 for：遍历 nums，每次取一个元素 n
+    System.out.println(n);  // 打印一行到标准输出（自动换行）
 }
 
-List<String> list = List.of("A", "B", "C");
-for (String s : list) {
-    System.out.println(s);
+List<String> list = List.of("A", "B", "C");  // 声明变量 list（List<String>），初始值为 List.of("A", "B", "C")
+for (String s : list) {  // 增强 for：遍历 list，每次取一个元素 s
+    System.out.println(s);  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -1484,9 +1484,9 @@ for-each 可用于：
 遍历 \`Map\` 时要遍历 \`entrySet()\`、\`keySet()\` 或 \`values()\`：
 
 \`\`\`java
-Map<String, Integer> map = Map.of("a", 1, "b", 2);
+Map<String, Integer> map = Map.of("a", 1, "b", 2);  // 声明变量 map（Map<String, Integer>），初始值为 Map.of("a", 1, "b", 2)
 for (Map.Entry<String, Integer> e : map.entrySet()) {
-    System.out.println(e.getKey() + "=" + e.getValue());
+    System.out.println(e.getKey() + "=" + e.getValue());  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -1496,12 +1496,12 @@ for (Map.Entry<String, Integer> e : map.entrySet()) {
 
 \`\`\`java
 // for-each 形式
-for (String s : list) { System.out.println(s); }
+for (String s : list) { System.out.println(s); }  // 打印一行到标准输出（自动换行）
 
 // 等价的迭代器形式
-for (Iterator<String> it = list.iterator(); it.hasNext(); ) {
-    String s = it.next();
-    System.out.println(s);
+for (Iterator<String> it = list.iterator(); it.hasNext(); ) {  // for 循环：初始化 Iterator<String> it = list.iterator()；条件 it.hasNext()；更新 
+    String s = it.next();  // 声明变量 s（String），初始值为 it.next()
+    System.out.println(s);  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -1516,8 +1516,8 @@ for-each 虽然简洁，但有三大限制：
 3. **变量是值的拷贝**：对基本类型数组，循环变量是元素的**副本**，修改它不影响原数组：
 
 \`\`\`java
-int[] a = {1, 2, 3};
-for (int x : a) {
+int[] a = {1, 2, 3};  // 声明变量 a（int[]），初始值为 {1, 2, 3}
+for (int x : a) {  // 增强 for：遍历 a，每次取一个元素 x
     x = 0;   // 只修改了局部变量 x，原数组不变！
 }
 System.out.println(Arrays.toString(a));  // 仍是 [1, 2, 3]
@@ -1642,11 +1642,11 @@ for (int i = 0; i < n; i++) {       // n 次
 ### 经典案例一：九九乘法表
 
 \`\`\`java
-for (int i = 1; i <= 9; i++) {
-    for (int j = 1; j <= i; j++) {
-        System.out.printf("%dx%d=%-4d", j, i, i * j);
+for (int i = 1; i <= 9; i++) {  // for 循环：初始化 int i = 1；条件 i <= 9；更新 i++
+    for (int j = 1; j <= i; j++) {  // for 循环：初始化 int j = 1；条件 j <= i；更新 j++
+        System.out.printf("%dx%d=%-4d", j, i, i * j);  // 按格式串打印到标准输出
     }
-    System.out.println();
+    System.out.println();  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -1659,8 +1659,8 @@ for (int i = 1; i <= 9; i++) {
 \`\`\`java
 for (int i = 0; i < n - 1; i++) {           // n-1 轮
     for (int j = 0; j < n - 1 - i; j++) {   // 每轮比较范围递减
-        if (a[j] > a[j + 1]) {
-            int t = a[j]; a[j] = a[j + 1]; a[j + 1] = t;
+        if (a[j] > a[j + 1]) {  // 条件判断：满足 a[j] > a[j + 1] 时执行
+            int t = a[j]; a[j] = a[j + 1]; a[j + 1] = t;  // 声明变量 t（int），初始值为 a[j]; a[j] = a[j + 1]; a[j + 1] = t
         }
     }
 }
@@ -1673,8 +1673,8 @@ for (int i = 0; i < n - 1; i++) {           // n-1 轮
 \`\`\`java
 int[][] m = {{1, 2, 3}, {4, 5, 6}};     // 2 行 3 列
 int[][] t = new int[3][2];              // 转置后 3 行 2 列
-for (int i = 0; i < m.length; i++) {
-    for (int j = 0; j < m[i].length; j++) {
+for (int i = 0; i < m.length; i++) {  // for 循环：初始化 int i = 0；条件 i < m.length；更新 i++
+    for (int j = 0; j < m[i].length; j++) {  // for 循环：初始化 int j = 0；条件 j < m[i].length；更新 j++
         t[j][i] = m[i][j];              // 行列互换
     }
 }
@@ -1683,10 +1683,10 @@ for (int i = 0; i < m.length; i++) {
 ### 经典案例四：二维遍历与求和
 
 \`\`\`java
-int sum = 0;
-for (int[] row : matrix) {
-    for (int v : row) {
-        sum += v;
+int sum = 0;  // 声明变量 sum（int），初始值为 0
+for (int[] row : matrix) {  // 增强 for：遍历 matrix，每次取一个元素 row
+    for (int v : row) {  // 增强 for：遍历 row，每次取一个元素 v
+        sum += v;  // sum += v（复合赋值）
     }
 }
 \`\`\`
@@ -1807,7 +1807,7 @@ public class Main {
 for (int i = 0; i < list.size(); i++) { ... }
 
 // 优化：缓存 size
-int len = list.size();
+int len = list.size();  // 声明变量 len（int），初始值为 list.size()
 for (int i = 0; i < len; i++) { ... }
 \`\`\`
 
@@ -1818,9 +1818,9 @@ for (int i = 0; i < len; i++) { ... }
 找到目标就立刻 \`break\`，避免无谓迭代：
 
 \`\`\`java
-for (int x : arr) {
-    if (x == target) {
-        found = true;
+for (int x : arr) {  // 增强 for：遍历 arr，每次取一个元素 x
+    if (x == target) {  // 条件判断：满足 x == target 时执行
+        found = true;  // 为 found 赋值：true
         break;   // 找到即停
     }
 }
@@ -1835,10 +1835,10 @@ for (int x : arr) {
 for (int i = 0; i < n; i++) { sum += a[i]; }
 
 // 展开 4 倍
-int i = 0;
-int limit = n - 3;
-for (; i < limit; i += 4) {
-    sum += a[i] + a[i+1] + a[i+2] + a[i+3];
+int i = 0;  // 声明变量 i（int），初始值为 0
+int limit = n - 3;  // 声明变量 limit（int），初始值为 n - 3
+for (; i < limit; i += 4) {  // for 循环：初始化 ；条件 i < limit；更新 i += 4
+    sum += a[i] + a[i+1] + a[i+2] + a[i+3];  // sum += a[i] + a[i+1] + a[i+2] + a[i+3]（复合赋值）
 }
 for (; i < n; i++) { sum += a[i]; }   // 处理剩余
 \`\`\`
@@ -1851,18 +1851,18 @@ for (; i < n; i++) { sum += a[i]; }   // 处理剩余
 
 \`\`\`java
 // 反例：每次创建新对象
-for (String s : list) {
-    StringBuilder sb = new StringBuilder();
-    sb.append(s).append("!");
-    process(sb.toString());
+for (String s : list) {  // 增强 for：遍历 list，每次取一个元素 s
+    StringBuilder sb = new StringBuilder();  // 声明变量 sb（StringBuilder），初始值为 new StringBuilder()
+    sb.append(s).append("!");  // 调用 sb 的 append 方法
+    process(sb.toString());  // 调用 process(sb 的 toString 方法
 }
 
 // 优化：复用同一个对象
-StringBuilder sb = new StringBuilder();
-for (String s : list) {
+StringBuilder sb = new StringBuilder();  // 声明变量 sb（StringBuilder），初始值为 new StringBuilder()
+for (String s : list) {  // 增强 for：遍历 list，每次取一个元素 s
     sb.setLength(0);          // 清空而非 new
-    sb.append(s).append("!");
-    process(sb.toString());
+    sb.append(s).append("!");  // 调用 sb 的 append 方法
+    process(sb.toString());  // 调用 process(sb 的 toString 方法
 }
 \`\`\`
 
@@ -1993,7 +1993,7 @@ public class Main {
 - **对象类型**：TimSort（归并排序的改进），稳定排序，O(n log n)。
 
 \`\`\`java
-int[] a = {5, 2, 8, 1, 9};
+int[] a = {5, 2, 8, 1, 9};  // 声明变量 a（int[]），初始值为 {5, 2, 8, 1, 9}
 Arrays.sort(a);   // [1, 2, 5, 8, 9]
 \`\`\`
 
@@ -2008,7 +2008,7 @@ Arrays.sort(a, 1, 4);   // 只排索引 1、2、3
 对象数组的"自然排序"依赖元素实现 \`Comparable<T>\` 接口的 \`compareTo\` 方法。\`String\`、\`Integer\` 等内置类都已实现：
 
 \`\`\`java
-String[] names = {"Charlie", "Alice", "Bob"};
+String[] names = {"Charlie", "Alice", "Bob"};  // 声明变量 names（String[]），初始值为 {"Charlie", "Alice", "Bob"}
 Arrays.sort(names);   // 按字典序：[Alice, Bob, Charlie]
 \`\`\`
 
@@ -2026,10 +2026,10 @@ Arrays.sort(names, Collections.reverseOrder());  // [Charlie, Bob, Alice]
 
 \`\`\`java
 // 按字符串长度排序
-Arrays.sort(names, Comparator.comparingInt(String::length));
+Arrays.sort(names, Comparator.comparingInt(String::length));  // 方法引用：复用已有方法作为函数式接口实例
 
 // 按年龄排序
-Arrays.sort(people, Comparator.comparingInt(p -> p.age));
+Arrays.sort(people, Comparator.comparingInt(p -> p.age));  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 \`Comparator\` 支持链式组合：\`comparing(...).thenComparing(...)\` 实现多级排序。
@@ -2042,9 +2042,9 @@ Arrays.sort(people, Comparator.comparingInt(p -> p.age));
 2. **传入 \`Comparator\`**：定义"临时顺序"，灵活可切换。
 
 \`\`\`java
-class Person implements Comparable<Person> {
+class Person implements Comparable<Person> {  // 定义类 Person
     String name; int age;
-    public int compareTo(Person o) { return Integer.compare(age, o.age); }
+    public int compareTo(Person o) { return Integer.compare(age, o.age); }  // 方法 compareTo（返回 int，参数：Person o）：返回 Integer.compare(age, o.age)
 }
 Arrays.sort(people);   // 用自然序（按 age）
 Arrays.sort(people, Comparator.comparing(p -> p.name));  // 临时按 name
@@ -2055,8 +2055,8 @@ Arrays.sort(people, Comparator.comparing(p -> p.name));  // 临时按 name
 \`Arrays.parallelSort\` 利用 ForkJoinPool 多线程排序，**数据量大时**（约 > 8192 元素）比 \`sort\` 更快；小数据则退化为单线程：
 
 \`\`\`java
-int[] big = new int[1_000_000];
-Arrays.parallelSort(big);
+int[] big = new int[1_000_000];  // 声明变量 big（int[]），初始值为 new int[1_000_000]
+Arrays.parallelSort(big);  // 调用 Arrays 的 parallelSort 方法
 \`\`\`
 
 ### 排序稳定性
@@ -2179,8 +2179,8 @@ public class Main {
 从头到尾逐个比较，**无需数组有序**，时间复杂度 **O(n)**：
 
 \`\`\`java
-int indexOf(int[] a, int target) {
-    for (int i = 0; i < a.length; i++) {
+int indexOf(int[] a, int target) {  // 方法 indexOf，返回 int，参数：int[] a, int target
+    for (int i = 0; i < a.length; i++) {  // for 循环：初始化 int i = 0；条件 i < a.length；更新 i++
         if (a[i] == target) return i;
     }
     return -1;   // 未找到
@@ -2194,7 +2194,7 @@ int indexOf(int[] a, int target) {
 要求数组**必须有序**，每次比较中点将范围减半，时间复杂度 **O(log n)**，在大数据量下远胜线性查找：
 
 \`\`\`java
-int idx = Arrays.binarySearch(sortedArr, target);
+int idx = Arrays.binarySearch(sortedArr, target);  // 声明变量 idx（int），初始值为 Arrays.binarySearch(sortedArr, target)
 \`\`\`
 
 \`Arrays.binarySearch\` 的返回值含义：
@@ -2202,7 +2202,7 @@ int idx = Arrays.binarySearch(sortedArr, target);
 - **未找到**：返回 \`-(插入点 + 1)\`，其中"插入点"是保持有序时应插入的位置。
 
 \`\`\`java
-int[] a = {10, 20, 30, 40, 50};
+int[] a = {10, 20, 30, 40, 50};  // 声明变量 a（int[]），初始值为 {10, 20, 30, 40, 50}
 Arrays.binarySearch(a, 30);   // 2
 Arrays.binarySearch(a, 25);   // -3（应在索引 2 插入）
 Arrays.binarySearch(a, 60);   // -6（应在索引 5 插入）
@@ -2213,14 +2213,14 @@ Arrays.binarySearch(a, 60);   // -6（应在索引 5 插入）
 手动实现二分查找要注意**边界**和**中点计算**：
 
 \`\`\`java
-int lo = 0, hi = a.length - 1;
-while (lo <= hi) {
+int lo = 0, hi = a.length - 1;  // 声明变量 lo（int），初始值为 0, hi = a.length - 1
+while (lo <= hi) {  // while 循环：当 lo <= hi 为真时重复执行
     int mid = lo + (hi - lo) / 2;   // 防溢出，不要写 (lo + hi) / 2
     if (a[mid] == target) return mid;
     else if (a[mid] < target) lo = mid + 1;
-    else hi = mid - 1;
+    else hi = mid - 1;  // 声明变量 hi（else），初始值为 mid - 1
 }
-return -1;
+return -1;  // 返回值：-1
 \`\`\`
 
 ### 判断是否存在
@@ -2228,7 +2228,7 @@ return -1;
 \`binarySearch\` 返回值 \`>= 0\` 即表示存在：
 
 \`\`\`java
-boolean contains = Arrays.binarySearch(a, target) >= 0;
+boolean contains = Arrays.binarySearch(a, target) >= 0;  // 声明变量 contains（boolean），初始值为 Arrays.binarySearch(a, target) >= 0
 \`\`\`
 
 ### 查找多次出现
@@ -2240,14 +2240,14 @@ boolean contains = Arrays.binarySearch(a, target) >= 0;
 
 \`\`\`java
 // 统计 target 出现次数
-int idx = Arrays.binarySearch(a, target);
-int count = 0;
-if (idx >= 0) {
-    int l = idx;
+int idx = Arrays.binarySearch(a, target);  // 声明变量 idx（int），初始值为 Arrays.binarySearch(a, target)
+int count = 0;  // 声明变量 count（int），初始值为 0
+if (idx >= 0) {  // 条件判断：满足 idx >= 0 时执行
+    int l = idx;  // 声明变量 l（int），初始值为 idx
     while (l > 0 && a[l - 1] == target) l--;   // 左扩
-    int r = idx;
+    int r = idx;  // 声明变量 r（int），初始值为 idx
     while (r < a.length - 1 && a[r + 1] == target) r++;  // 右扩
-    count = r - l + 1;
+    count = r - l + 1;  // 为 count 赋值：r - l + 1
 }
 \`\`\`
 
@@ -2399,8 +2399,8 @@ public class Main {
 最经典、最灵活，可获取下标、可修改元素、可反向遍历、可跳跃：
 
 \`\`\`java
-for (int i = 0; i < arr.length; i++) {
-    System.out.println(arr[i]);
+for (int i = 0; i < arr.length; i++) {  // for 循环：初始化 int i = 0；条件 i < arr.length；更新 i++
+    System.out.println(arr[i]);  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -2411,8 +2411,8 @@ for (int i = 0; i < arr.length; i++) {
 最简洁，只读遍历，无法获取索引：
 
 \`\`\`java
-for (int v : arr) {
-    System.out.println(v);
+for (int v : arr) {  // 增强 for：遍历 arr，每次取一个元素 v
+    System.out.println(v);  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -2423,7 +2423,7 @@ for (int v : arr) {
 把数组转为 \`[a, b, c]\` 形式字符串，**调试和快速查看**首选，不适合逐元素处理：
 
 \`\`\`java
-System.out.println(Arrays.toString(arr));
+System.out.println(Arrays.toString(arr));  // 打印一行到标准输出（自动换行）
 \`\`\`
 
 多维数组用 \`Arrays.deepToString\`。
@@ -2433,9 +2433,9 @@ System.out.println(Arrays.toString(arr));
 \`Arrays.stream\` 把数组转为 \`Stream\`，支持函数式操作（过滤、映射、聚合），代码声明式、可链式：
 
 \`\`\`java
-Arrays.stream(arr).forEach(System.out::println);
+Arrays.stream(arr).forEach(System.out::println);  // 方法引用：复用已有方法作为函数式接口实例
 
-int sum = Arrays.stream(arr).filter(x -> x > 0).sum();
+int sum = Arrays.stream(arr).filter(x -> x > 0).sum();  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 适用：需要链式数据处理、并行流、聚合计算。注意基本类型数组有专门的 \`IntStream\`/\`LongStream\`/\`DoubleStream\`，避免装箱开销。
@@ -2445,9 +2445,9 @@ int sum = Arrays.stream(arr).filter(x -> x > 0).sum();
 \`Arrays.asList\` 把对象数组转为 \`List\`，再用迭代器或 for-each 遍历。**注意**：基本类型数组不能直接用（\`asList(int[])\` 会得到 \`List<int[]>\`，需 boxed）：
 
 \`\`\`java
-String[] arr = {"a", "b", "c"};
-Iterator<String> it = Arrays.asList(arr).iterator();
-while (it.hasNext()) { System.out.println(it.next()); }
+String[] arr = {"a", "b", "c"};  // 声明变量 arr（String[]），初始值为 {"a", "b", "c"}
+Iterator<String> it = Arrays.asList(arr).iterator();  // 声明变量 it（Iterator<String>），初始值为 Arrays.asList(arr).iterator()
+while (it.hasNext()) { System.out.println(it.next()); }  // 打印一行到标准输出（自动换行）
 \`\`\`
 
 ### 性能对比

@@ -26,13 +26,13 @@ Python 不是纯函数式语言，但支持函数式风格。核心思想：
 
 \`\`\`python
 # 纯函数：只依赖输入，不改外部
-def add(a, b):
-    return a + b
+def add(a, b):  # 定义函数 add，参数：a, b
+    return a + b  # 返回 a + b
 
 # 有副作用：改了全局变量
-total = 0
-def add_to_total(x):
-    global total
+total = 0  # 定义数值 total
+def add_to_total(x):  # 定义函数 add_to_total，参数：x
+    global total  # 声明全局变量 total
     total += x    # 改外部状态，有副作用
 \`\`\`
 
@@ -42,7 +42,7 @@ def add_to_total(x):
 
 \`\`\`python
 # 不可变风格：不改原列表，返回新的
-nums = [3, 1, 4, 1, 5]
+nums = [3, 1, 4, 1, 5]  # 定义列表 nums
 new_nums = sorted(nums)    # sorted 返回新的，不改原的
 # nums 还是 [3, 1, 4, 1, 5]
 
@@ -57,13 +57,13 @@ nums.sort()                # 改原列表
 把小函数组合成大函数：
 
 \`\`\`python
-def compose(f, g):
-    """f(g(x))"""
-    return lambda x: f(g(x))
+def compose(f, g):  # 定义函数 compose，参数：f, g
+    """f(g(x))"""  # 执行操作
+    return lambda x: f(g(x))  # 返回 lambda x: f(g(x))
 
-add_one = lambda x: x + 1
-double = lambda x: x * 2
-add_one_then_double = compose(double, add_one)
+add_one = lambda x: x + 1  # 定义 lambda 函数，赋给 add_one
+double = lambda x: x * 2  # 定义 lambda 函数，赋给 double
+add_one_then_double = compose(double, add_one)  # 赋值变量 add_one_then_double
 add_one_then_double(3)    # 8 = (3+1)*2
 \`\`\`
 
@@ -72,7 +72,7 @@ add_one_then_double(3)    # 8 = (3+1)*2
 固定部分参数，造个新函数：
 
 \`\`\`python
-from functools import partial
+from functools import partial  # 从 functools 导入 partial
 int2 = partial(int, base=2)      # 固定 base=2
 int2("1010")                     # 10
 \`\`\`
@@ -85,16 +85,16 @@ int2("1010")                     # 10
 
 \`\`\`python
 # 命令式：怎么做
-result = []
-for x in nums:
-    if x > 0:
-        result.append(x ** 2)
+result = []  # 定义列表 result
+for x in nums:  # 遍历 nums，取值给 x
+    if x > 0:  # 如果 x > 0
+        result.append(x ** 2)  # 调用 result.append()：向列表末尾添加元素
 
 # 函数式：要什么
-result = list(map(lambda x: x**2, filter(lambda x: x > 0, nums)))
+result = list(map(lambda x: x**2, filter(lambda x: x > 0, nums)))  # 赋值变量 result
 
 # Pythonic：推导式（融合两者）
-result = [x**2 for x in nums if x > 0]
+result = [x**2 for x in nums if x > 0]  # 定义列表 result
 \`\`\`
 
 Python 推荐**推导式**，既有函数式的简洁，又好读。
@@ -282,18 +282,18 @@ print(f"  pipe: [-3,1,-5,2,-1,4] → 正数 → 平方 → 求和 → 翻倍 = {
 用类实现装饰器，\`__init__\` 接收被装饰函数，\`__call__\` 实现 wrapper：
 
 \`\`\`python
-class CallCount:
-    def __init__(self, func):
-        self.func = func
-        self.count = 0
-    def __call__(self, *args, **kwargs):
-        self.count += 1
-        print(f"第 {self.count} 次调用")
-        return self.func(*args, **kwargs)
+class CallCount:  # 定义类 CallCount
+    def __init__(self, func):  # 定义函数 __init__，参数：self, func
+        self.func = func  # 执行操作
+        self.count = 0  # 执行操作
+    def __call__(self, *args, **kwargs):  # 定义函数 __call__，参数：self, *args, **kwargs
+        self.count += 1  # 执行操作
+        print(f"第 {self.count} 次调用")  # 打印输出到屏幕
+        return self.func(*args, **kwargs)  # 返回 self.func(*args, **kwargs)
 
-@CallCount
-def hello():
-    print("hi")
+@CallCount  # 应用装饰器 CallCount
+def hello():  # 定义函数 hello
+    print("hi")  # 打印输出到屏幕
 \`\`\`
 
 类装饰器好处：能存状态（\`self.count\`）。
@@ -303,16 +303,16 @@ def hello():
 装饰器也能装饰类：
 
 \`\`\`python
-def add_repr(cls):
-    def __repr__(self):
-        return f"{cls.__name__}({vars(self)})"
-    cls.__repr__ = __repr__
-    return cls
+def add_repr(cls):  # 定义函数 add_repr，参数：cls
+    def __repr__(self):  # 定义函数 __repr__，参数：self
+        return f"{cls.__name__}({vars(self)})"  # 返回 f"{cls.__name__}({vars(self)})"
+    cls.__repr__ = __repr__  # 执行操作
+    return cls  # 返回 cls
 
-@add_repr
-class Point:
-    def __init__(self, x, y):
-        self.x, self.y = x, y
+@add_repr  # 应用装饰器 add_repr
+class Point:  # 定义类 Point
+    def __init__(self, x, y):  # 定义函数 __init__，参数：self, x, y
+        self.x, self.y = x, y  # 执行操作
 \`\`\`
 
 ## 带参数的装饰器（回顾+深入）
@@ -323,22 +323,22 @@ class Point:
 def repeat(n):              # 第1层：接收参数
     def decorator(func):    # 第2层：接收函数
         def wrapper(*a, **kw):  # 第3层：实际包装
-            for _ in range(n):
-                func(*a, **kw)
-        return wrapper
-    return decorator
+            for _ in range(n):  # 遍历 range(n)，取值给 _
+                func(*a, **kw)  # 调用 func()
+        return wrapper  # 返回 wrapper
+    return decorator  # 返回 decorator
 
-@repeat(3)
-def hi(): print("hi")
+@repeat(3)  # 应用装饰器 repeat
+def hi(): print("hi")  # 定义函数 hi
 \`\`\`
 
 ## 装饰器堆叠顺序
 
 \`\`\`python
-@A
-@B
-@C
-def f(): pass
+@A  # 应用装饰器 A
+@B  # 应用装饰器 B
+@C  # 应用装饰器 C
+def f(): pass  # 定义函数 f
 
 # 等价于：f = A(B(C(f)))
 \`\`\`
@@ -350,41 +350,41 @@ def f(): pass
 ### 1. 重试
 
 \`\`\`python
-def retry(times):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*a, **kw):
-            for i in range(times):
-                try:
-                    return func(*a, **kw)
-                except Exception:
-                    if i == times - 1:
-                        raise
-        return wrapper
-    return decorator
+def retry(times):  # 定义函数 retry，参数：times
+    def decorator(func):  # 定义函数 decorator，参数：func
+        @wraps(func)  # 应用装饰器 wraps
+        def wrapper(*a, **kw):  # 定义函数 wrapper，参数：*a, **kw
+            for i in range(times):  # 遍历 range(times)，取值给 i
+                try:  # 尝试执行可能出错的代码
+                    return func(*a, **kw)  # 返回 func(*a, **kw)
+                except Exception:  # 捕获异常 Exception:
+                    if i == times - 1:  # 如果 i == times - 1
+                        raise  # 重新抛出异常
+        return wrapper  # 返回 wrapper
+    return decorator  # 返回 decorator
 \`\`\`
 
 ### 2. 限流
 
 \`\`\`python
-def rate_limit(calls, period):
-    """每 period 秒最多 calls 次"""
-    ...
+def rate_limit(calls, period):  # 定义函数 rate_limit，参数：calls, period
+    """每 period 秒最多 calls 次"""  # 执行操作
+    ...  # 执行操作
 \`\`\`
 
 ### 3. 类型检查
 
 \`\`\`python
-def type_check(**types):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*a, **kw):
-            for (name, val), (_, typ) in zip(zip(func.__code__.co_varnames, a), types.items()):
-                if not isinstance(val, typ):
-                    raise TypeError(f"{name} 必须是 {typ}")
-            return func(*a, **kw)
-        return wrapper
-    return decorator
+def type_check(**types):  # 定义函数 type_check，参数：**types
+    def decorator(func):  # 定义函数 decorator，参数：func
+        @wraps(func)  # 应用装饰器 wraps
+        def wrapper(*a, **kw):  # 定义函数 wrapper，参数：*a, **kw
+            for (name, val), (_, typ) in zip(zip(func.__code__.co_varnames, a), types.items()):  # 调用 for()
+                if not isinstance(val, typ):  # 如果 not isinstance(val, typ)
+                    raise TypeError(f"{name} 必须是 {typ}")  # 抛出异常：TypeError(f"{name} 必须是 {typ}")
+            return func(*a, **kw)  # 返回 func(*a, **kw)
+        return wrapper  # 返回 wrapper
+    return decorator  # 返回 decorator
 \`\`\`
 
 ## 本章 demo
@@ -640,8 +640,8 @@ print(f"  用 wraps:   __name__={func2.__name__}, __doc__={func2.__doc__}")`
 \`with\` 语句保证"进入"和"退出"时各做一件事，**即使出错也会做退出操作**。最常见是文件：
 
 \`\`\`python
-with open("file.txt") as f:
-    data = f.read()
+with open("file.txt") as f:  # 使用上下文管理器：open("file.txt") as f
+    data = f.read()  # 赋值变量 data
 # 即使 read 出错，文件也会关闭
 \`\`\`
 
@@ -650,16 +650,16 @@ with open("file.txt") as f:
 ## 协议
 
 \`\`\`python
-class MyContext:
-    def __enter__(self):
-        print("进入")
+class MyContext:  # 定义类 MyContext
+    def __enter__(self):  # 定义函数 __enter__，参数：self
+        print("进入")  # 打印输出到屏幕
         return self           # as 变量接到的值
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        print("退出")
+    def __exit__(self, exc_type, exc_val, exc_tb):  # 定义函数 __exit__，参数：self, exc_type, exc_val, exc_tb
+        print("退出")  # 打印输出到屏幕
         return False          # 不吞异常
 
-with MyContext() as x:
-    print("块内")
+with MyContext() as x:  # 使用上下文管理器：MyContext() as x
+    print("块内")  # 打印输出到屏幕
 \`\`\`
 
 输出：
@@ -672,7 +672,7 @@ with MyContext() as x:
 ## __exit__ 的参数
 
 \`\`\`python
-def __exit__(self, exc_type, exc_val, exc_tb):
+def __exit__(self, exc_type, exc_val, exc_tb):  # 定义函数 __exit__，参数：self, exc_type, exc_val, exc_tb
     # exc_type: 异常类型（None 表示没异常）
     # exc_val: 异常对象
     # exc_tb: traceback
@@ -686,18 +686,18 @@ def __exit__(self, exc_type, exc_val, exc_tb):
 不用写类，用 \`@contextmanager\` 装饰器：
 
 \`\`\`python
-from contextlib import contextmanager
+from contextlib import contextmanager  # 从 contextlib 导入 contextmanager
 
-@contextmanager
-def my_context():
-    print("进入")
-    try:
+@contextmanager  # 应用装饰器 contextmanager
+def my_context():  # 定义函数 my_context
+    print("进入")  # 打印输出到屏幕
+    try:  # 尝试执行可能出错的代码
         yield "资源"        # yield 前是 __enter__，后是 __exit__
-    finally:
-        print("退出")
+    finally:  # 无论是否异常都执行
+        print("退出")  # 打印输出到屏幕
 
-with my_context() as x:
-    print(f"拿到 {x}")
+with my_context() as x:  # 使用上下文管理器：my_context() as x
+    print(f"拿到 {x}")  # 打印输出到屏幕
 \`\`\`
 
 简单场景用 \`contextmanager\` 更方便。
@@ -711,23 +711,23 @@ with my_context() as x:
 5. **计时**
 
 \`\`\`python
-@contextmanager
-def timer(name):
-    start = time.time()
-    try:
-        yield
-    finally:
-        print(f"{name} 耗时 {time.time()-start:.3f}s")
+@contextmanager  # 应用装饰器 contextmanager
+def timer(name):  # 定义函数 timer，参数：name
+    start = time.time()  # 赋值变量 start
+    try:  # 尝试执行可能出错的代码
+        yield  # 生成器
+    finally:  # 无论是否异常都执行
+        print(f"{name} 耗时 {time.time()-start:.3f}s")  # 打印输出到屏幕
 
-with timer("处理"):
-    time.sleep(0.5)
+with timer("处理"):  # 使用上下文管理器：timer("处理")
+    time.sleep(0.5)  # 调用 time.sleep()：休眠
 \`\`\`
 
 ## 嵌套 with
 
 \`\`\`python
-with open("in") as fin, open("out", "w") as fout:
-    fout.write(fin.read())
+with open("in") as fin, open("out", "w") as fout:  # 使用上下文管理器：open("in") as fin, open("out", "w") as fout
+    fout.write(fin.read())  # 调用 fout.write()：写入
 \`\`\`
 
 等价于两个嵌套 \`with\`。
@@ -965,20 +965,20 @@ print("    退出后所有文件已关闭")`
 \`property\` 的底层就是描述符。**描述符**是一个类，实现 \`__get__\`、\`__set__\`、\`__delete__\` 中的至少一个，作为**类属性**使用时能控制访问。
 
 \`\`\`python
-class Validated:
-    def __set_name__(self, owner, name):
-        self.name = name
-    def __get__(self, obj, objtype):
-        return obj.__dict__.get(self.name)
-    def __set__(self, obj, value):
-        if value < 0:
-            raise ValueError("不能为负")
-        obj.__dict__[self.name] = value
+class Validated:  # 定义类 Validated
+    def __set_name__(self, owner, name):  # 定义函数 __set_name__，参数：self, owner, name
+        self.name = name  # 执行操作
+    def __get__(self, obj, objtype):  # 定义函数 __get__，参数：self, obj, objtype
+        return obj.__dict__.get(self.name)  # 返回 obj.__dict__.get(self.name)
+    def __set__(self, obj, value):  # 定义函数 __set__，参数：self, obj, value
+        if value < 0:  # 如果 value < 0
+            raise ValueError("不能为负")  # 抛出异常：ValueError("不能为负")
+        obj.__dict__[self.name] = value  # 执行操作
 
-class Student:
+class Student:  # 定义类 Student
     score = Validated()    # 描述符作为类属性
 
-s = Student()
+s = Student()  # 赋值变量 s
 s.score = 90              # 调 __set__
 s.score                   # 调 __get__
 s.score = -1              # 抛 ValueError
@@ -987,13 +987,13 @@ s.score = -1              # 抛 ValueError
 ## 协议方法
 
 \`\`\`python
-class Descriptor:
-    def __get__(self, obj, objtype=None):
+class Descriptor:  # 定义类 Descriptor
+    def __get__(self, obj, objtype=None):  # 定义函数 __get__，参数：self, obj, objtype=None
         # 访问 obj.attr 时调用
         # obj 是实例（None 表示通过类访问）
-    def __set__(self, obj, value):
+    def __set__(self, obj, value):  # 定义函数 __set__，参数：self, obj, value
         # obj.attr = value 时调用
-    def __delete__(self, obj):
+    def __delete__(self, obj):  # 定义函数 __delete__，参数：self, obj
         # del obj.attr 时调用
 \`\`\`
 
@@ -1009,18 +1009,18 @@ class Descriptor:
 ## property 等价的描述符
 
 \`\`\`python
-class Property:
-    def __init__(self, fget=None, fset=None):
-        self.fget = fget
-        self.fset = fset
-    def __get__(self, obj, objtype=None):
-        if obj is None:
-            return self
-        return self.fget(obj)
-    def __set__(self, obj, value):
-        if self.fset is None:
-            raise AttributeError("不可设置")
-        self.fset(obj, value)
+class Property:  # 定义类 Property
+    def __init__(self, fget=None, fset=None):  # 定义函数 __init__，参数：self, fget=None, fset=None
+        self.fget = fget  # 执行操作
+        self.fset = fset  # 执行操作
+    def __get__(self, obj, objtype=None):  # 定义函数 __get__，参数：self, obj, objtype=None
+        if obj is None:  # 如果 obj is None
+            return self  # 返回 self
+        return self.fget(obj)  # 返回 self.fget(obj)
+    def __set__(self, obj, value):  # 定义函数 __set__，参数：self, obj, value
+        if self.fset is None:  # 如果 self.fset is None
+            raise AttributeError("不可设置")  # 抛出异常：AttributeError("不可设置")
+        self.fset(obj, value)  # 调用 self.fset()
 \`\`\`
 
 ## __set_name__
@@ -1253,7 +1253,7 @@ print(f"  第一次 avg: {dp.avg}")`
 在 Python 里，**类本身也是对象**——是 \`type\` 的实例。\`type\` 是"元类"，用来创建类。
 
 \`\`\`python
-class Foo: pass
+class Foo: pass  # 定义类 Foo
 type(Foo)         # <class 'type'>
 type(Foo())       # <class '__main__.Foo'>
 \`\`\`
@@ -1264,10 +1264,10 @@ type(Foo())       # <class '__main__.Foo'>
 
 \`\`\`python
 # 1. 查看类型
-type(obj)
+type(obj)  # 获取类型
 
 # 2. 动态创建类
-type("类名", (父类,), {属性字典})
+type("类名", (父类,), {属性字典})  # 获取类型
 
 # 等价于：
 # class 类名(父类):
@@ -1276,8 +1276,8 @@ type("类名", (父类,), {属性字典})
 
 \`\`\`python
 # 动态创建
-Dog = type("Dog", (), {"bark": lambda self: print("汪")})
-d = Dog()
+Dog = type("Dog", (), {"bark": lambda self: print("汪")})  # 赋值变量 Dog
+d = Dog()  # 赋值变量 d
 d.bark()    # 汪
 \`\`\`
 
@@ -1286,14 +1286,14 @@ d.bark()    # 汪
 继承 \`type\`，控制类的创建：
 
 \`\`\`python
-class MyMeta(type):
-    def __new__(mcs, name, bases, namespace):
+class MyMeta(type):  # 定义类 MyMeta
+    def __new__(mcs, name, bases, namespace):  # 定义函数 __new__，参数：mcs, name, bases, namespace
         # 创建类时调用
-        print(f"创建类 {name}")
-        return super().__new__(mcs, name, bases, namespace)
+        print(f"创建类 {name}")  # 打印输出到屏幕
+        return super().__new__(mcs, name, bases, namespace)  # 返回 super().__new__(mcs, name, bases, namespace)
 
-class Foo(metaclass=MyMeta):
-    pass
+class Foo(metaclass=MyMeta):  # 定义类 Foo
+    pass  # 空操作，占位符
 # 打印"创建类 Foo"
 \`\`\`
 
@@ -1309,10 +1309,10 @@ class Foo(metaclass=MyMeta):
 Python 3.6+ 的 \`__init_subclass__\` 能做很多元类的事，更简单：
 
 \`\`\`python
-class Base:
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        print(f"{cls.__name__} 被创建")
+class Base:  # 定义类 Base
+    def __init_subclass__(cls, **kwargs):  # 定义函数 __init_subclass__，参数：cls, **kwargs
+        super().__init_subclass__(**kwargs)  # 调用父类
+        print(f"{cls.__name__} 被创建")  # 打印输出到屏幕
 
 class Child(Base): pass    # 打印"Child 被创建"
 \`\`\`
@@ -1524,33 +1524,33 @@ print("  99% 场景不需要元类")`
 第 4 章说过"变量是标签"。赋值 \`b = a\` 不是复制数据，是让 \`b\` 也指向同一份数据。
 
 \`\`\`python
-a = [1, 2, 3]
+a = [1, 2, 3]  # 定义列表 a
 b = a            # b 和 a 指向同一份
-b.append(4)
+b.append(4)  # 调用 b.append()：向列表末尾添加元素
 print(a)         # [1, 2, 3, 4]  ← a 也变了！
 \`\`\`
 
 ## 三种"复制"
 
 \`\`\`python
-import copy
+import copy  # 导入模块 copy
 
-a = [1, 2, [3, 4]]
+a = [1, 2, [3, 4]]  # 定义列表 a
 
 # 1. 赋值（不复制）
-b = a
+b = a  # 赋值变量 b
 
 # 2. 浅拷贝（复制外层，内层共享）
 c = a.copy()           # 或 list(a) 或 copy.copy(a)
 
 # 3. 深拷贝（完全独立）
-d = copy.deepcopy(a)
+d = copy.deepcopy(a)  # 赋值变量 d
 \`\`\`
 
 ## 浅拷贝的坑
 
 \`\`\`python
-a = [1, 2, [3, 4]]
+a = [1, 2, [3, 4]]  # 定义列表 a
 c = a.copy()           # 浅拷贝
 c[0] = 100             # 改外层
 c[2].append(5)         # 改内层（嵌套列表）
@@ -1562,8 +1562,8 @@ print(a)               # [1, 2, [3, 4, 5]]  ← 内层被改了！
 ## 深拷贝
 
 \`\`\`python
-d = copy.deepcopy(a)
-d[2].append(6)
+d = copy.deepcopy(a)  # 赋值变量 d
+d[2].append(6)  # 执行操作
 print(a)    # [1, 2, [3, 4]]  ← 完全独立
 \`\`\`
 
@@ -1586,10 +1586,10 @@ set(s).copy()        # 集合
 实现 \`__copy__\` 和 \`__deepcopy__\` 控制拷贝行为：
 
 \`\`\`python
-class MyClass:
-    def __copy__(self):
+class MyClass:  # 定义类 MyClass
+    def __copy__(self):  # 定义函数 __copy__，参数：self
         # 浅拷贝逻辑
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo):  # 定义函数 __deepcopy__，参数：self, memo
         # 深拷贝逻辑
 \`\`\`
 
@@ -1815,10 +1815,10 @@ hash((1, [2]))       # ❌ 内部有列表
 默认情况，自定义对象按 \`id\`（内存地址）哈希：
 
 \`\`\`python
-class Point:
-    def __init__(self, x, y): ...
-p1 = Point(1, 2)
-p2 = Point(1, 2)
+class Point:  # 定义类 Point
+    def __init__(self, x, y): ...  # 定义函数 __init__，参数：self, x, y
+p1 = Point(1, 2)  # 赋值变量 p1
+p2 = Point(1, 2)  # 赋值变量 p2
 p1 == p2          # False（默认比 id）
 {p1, p2}          # 两个元素（按 id 区分）
 \`\`\`
@@ -1826,12 +1826,12 @@ p1 == p2          # False（默认比 id）
 想让"值相同就相等"，重写 \`__eq__\` 和 \`__hash__\`：
 
 \`\`\`python
-class Point:
-    def __init__(self, x, y): self.x, self.y = x, y
-    def __eq__(self, other):
-        return self.x == other.x and self.y == other.y
-    def __hash__(self):
-        return hash((self.x, self.y))
+class Point:  # 定义类 Point
+    def __init__(self, x, y): self.x, self.y = x, y  # 定义函数 __init__，参数：self, x, y
+    def __eq__(self, other):  # 定义函数 __eq__，参数：self, other
+        return self.x == other.x and self.y == other.y  # 返回 self.x == other.x and self.y == other.y
+    def __hash__(self):  # 定义函数 __hash__，参数：self
+        return hash((self.x, self.y))  # 返回 hash((self.x, self.y))
 \`\`\`
 
 ## 重要规则
@@ -1839,8 +1839,8 @@ class Point:
 **重写 \`__eq__\` 会导致 \`__hash__\` 变 None**（不可哈希），除非同时重写 \`__hash__\`：
 
 \`\`\`python
-class A:
-    def __eq__(self, other): return True
+class A:  # 定义类 A
+    def __eq__(self, other): return True  # 定义函数 __eq__，参数：self, other
 
 hash(A())    # ❌ TypeError，因为只重写了 __eq__
 \`\`\`
@@ -2070,15 +2070,15 @@ callable(obj)          # 能不能调用
 ## getattr / setattr / hasattr
 
 \`\`\`python
-class User:
-    def __init__(self):
-        self.name = "小明"
+class User:  # 定义类 User
+    def __init__(self):  # 定义函数 __init__，参数：self
+        self.name = "小明"  # 执行操作
 
-u = User()
+u = User()  # 赋值变量 u
 hasattr(u, "name")       # True
 getattr(u, "name")       # "小明"
 getattr(u, "age", 0)     # 0，不存在用默认
-setattr(u, "age", 18)
+setattr(u, "age", 18)  # 设置属性
 getattr(u, "age")        # 18
 \`\`\`
 
@@ -2087,7 +2087,7 @@ getattr(u, "age")        # 18
 ## 动态调用方法
 
 \`\`\`python
-method_name = "upper"
+method_name = "upper"  # 定义字符串 method_name
 getattr("abc", method_name)()    # "ABC"
 \`\`\`
 
@@ -2096,7 +2096,7 @@ getattr("abc", method_name)()    # "ABC"
 ## inspect 模块
 
 \`\`\`python
-import inspect
+import inspect  # 导入模块 inspect
 inspect.signature(func)     # 函数签名
 inspect.getmembers(obj)     # 所有成员
 inspect.isfunction(obj)     # 是不是函数
@@ -2112,7 +2112,7 @@ obj.__dict__    # 对象的所有实例属性（字典）
 \`__slots__\` 限制能有哪些属性，省内存：
 
 \`\`\`python
-class Point:
+class Point:  # 定义类 Point
     __slots__ = ("x", "y")    # 只能有 x 和 y
 \`\`\`
 
@@ -2391,8 +2391,8 @@ open("f.bin", "wb")    # 写字节
 
 \`\`\`python
 # 用 UTF-8 编码，用 GBK 解码 → 乱码
-s = "你好"
-b = s.encode("utf-8")
+s = "你好"  # 定义字符串 s
+b = s.encode("utf-8")  # 赋值变量 b
 b.decode("gbk")    # 乱码或 UnicodeDecodeError
 \`\`\`
 

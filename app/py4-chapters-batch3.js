@@ -20,10 +20,10 @@ export const chapters = [
 基本语法：
 
 \`\`\`python
-def 函数名(参数列表):
-    """docstring(可选)"""
-    函数体
-    return 返回值(可选)
+def 函数名(参数列表):        # def 关键字定义函数，冒号不能省
+    """docstring(可选)"""    # 三引号文档字符串，描述函数用途，help() 可读取
+    函数体                   # 4 空格缩进，包含函数的具体逻辑
+    return 返回值(可选)      # return 返回结果；无 return 则隐式返回 None
 \`\`\`
 
 - **return 返回值**：\`return\` 把对象返回给调用方；执行后函数立即结束。
@@ -49,52 +49,61 @@ def 函数名(参数列表):
 ## 代码逐行讲解
 
 \`\`\`python
+# 定义问候函数：name 必填，greeting 给默认值 "Hello"（默认参数必须排在必填参数之后）
 def greet(name, greeting="Hello"):
-    """返回问候语。这是 docstring，help(greet) 会显示。"""
-    return f"{greeting}, {name}!"
+    """返回问候语。这是 docstring，help(greet) 会显示。"""   # 三引号文档字符串，help() 会显示它
+    return f"{greeting}, {name}!"   # f-string 把变量插入字符串，返回拼接后的问候语
 \`\`\`
 - \`def greet(name, greeting="Hello"):\` 定义函数 \`greet\`，\`name\` 是位置参数，\`greeting\` 有默认值 \`"Hello"\`。
 - 紧贴函数体第一行的三引号字符串是 **docstring**，存入 \`greet.__doc__\`，\`help(greet)\` 会显示。
 - \`return f"{greeting}, {name}!"\` 用 f-string 拼接并返回；执行 return 后函数立即结束。
 
 \`\`\`python
+# 位置参数：按位置传，"Alice" 赋给 name
 print(greet("Alice"))
+# 混合调用：位置参数 + 关键字参数（关键字参数可读性更好，且顺序无关）
 print(greet("Bob", greeting="Hi"))
 \`\`\`
 - 第一行只传位置参数，\`greeting\` 取默认值。
 - 第二行用关键字方式给 \`greeting\` 赋值，与位置无关。
 
 \`\`\`python
+# 返回多个值：逗号分隔，实际打包成 tuple 返回
 def min_max(nums):
-    return min(nums), max(nums)
+    return min(nums), max(nums)   # min/max 是内置函数，返回 (最小值, 最大值) 元组
 
+# 元组解包：把返回的 tuple 按位置拆给 lo、hi
 lo, hi = min_max([3, 1, 4, 1, 5, 9, 2, 6])
 \`\`\`
 - \`return min(nums), max(nums)\` 实际返回**一个 tuple** \`(min, max)\`。
 - \`lo, hi = ...\` 是 **tuple 解包**，把 tuple 两个元素分别赋给 lo、hi，本质是"返回 tuple + 解包"的语法糖。
 
 \`\`\`python
+# 函数是一等对象：可赋值给变量、可作参数传递、可作返回值
 def add(a, b):
     return a + b
-fn = add
-print(fn(3, 5), fn.__name__)    # 8 add
+fn = add                         # 把函数对象赋给 fn（注意没加括号，是引用而非调用）
+print(fn(3, 5), fn.__name__)    # 8 add；fn(3,5) 调用，__name__ 取函数名字符串
 \`\`\`
 - \`fn = add\` 把函数对象赋给新变量 \`fn\`，**没有调用**函数(无括号)。
 - \`fn(3, 5)\` 通过新名字调用同一个函数对象。
 - \`fn.__name__\` 仍是 \`"add"\`，函数对象本身没变，只是多了一个引用。
 
 \`\`\`python
+# 类型注解：a、b 标注为 int，-> str 标注返回值为 str
+# 注意：注解只是提示，运行时不强制校验，需配合 mypy 静态检查
 def combine(a: int, b: int) -> str:
-    return str(a + b)
+    return str(a + b)   # str() 把整数和转成字符串后返回
 \`\`\`
 - \`a: int\` 标注参数 a 期望为 int；\`-> str\` 标注返回值期望为 str。
 - 注解**只是元信息**，运行时 Python **不检查**类型，\`combine("a", "b")\` 不会报错。
 - 注解存于 \`combine.__annotations__\`，供 mypy/pyright 等静态检查工具使用。
 
 \`\`\`python
+# pass 是空语句占位符：函数体不能为空，用 pass 填充
 def noop():
     pass
-print(noop())                    # None
+print(noop())                    # None；函数没有 return 时默认返回 None
 \`\`\`
 - \`pass\` 是空语句，函数体执行完没有 return，Python 自动 \`return None\`。
 - 调用结果为 \`None\`，print 打印 \`None\`。
@@ -198,17 +207,20 @@ def f(位置参数, 默认参数, *args, 仅关键字参数(可带默认), **kwa
 ## 代码逐行讲解
 
 \`\`\`python
+# 默认参数：greeting 不传时用 "Hello"
 def greet(name, greeting="Hello"):
-    return f"{greeting}, {name}!"
-print(greet("Alice"), greet("Bob", greeting="Hi"))
+    return f"{greeting}, {name}!"   # f-string 拼接问候语
+print(greet("Alice"), greet("Bob", greeting="Hi"))   # 一个用默认值，一个用关键字参数覆盖
 \`\`\`
 - \`greeting="Hello"\` 是默认参数，必须放在非默认参数 \`name\` **之后**。
 - \`greet("Alice")\` 省略 greeting 取默认值；\`greet("Bob", greeting="Hi")\` 用关键字覆盖。
 
 \`\`\`python
+# *args 收集多余位置参数为 tuple；**kwargs 收集多余关键字参数为 dict
+# prefix 在 *args 之后，属于仅关键字参数，必须用关键字传
 def log(*args, prefix="[LOG]", **kwargs):
-    print(prefix, args, kwargs)
-log("a", "b", prefix="[INFO]", level=2, user="alice")
+    print(prefix, args, kwargs)   # args 是 tuple，kwargs 是 dict
+log("a", "b", prefix="[INFO]", level=2, user="alice")   # "a","b" 进 args；level/user 进 kwargs
 \`\`\`
 - \`*args\` 收集所有"多余位置参数"为 tuple \`("a", "b")\`。
 - \`prefix="[INFO]"\` 是 keyword-only 默认参数(在 \`*args\` 之后)，必须用关键字传。
@@ -216,9 +228,10 @@ log("a", "b", prefix="[INFO]", level=2, user="alice")
 - 输出：\`[INFO] ('a', 'b') {'level': 2, 'user': 'alice'}\`。
 
 \`\`\`python
+# 裸 * 强制后续参数为仅关键字参数：age、role 必须用关键字传递
 def create_user(name, *, age, role="user"):
-    return {"name": name, "age": age, "role": role}
-print(create_user("alice", age=30))
+    return {"name": name, "age": age, "role": role}   # 组装成 dict 返回
+print(create_user("alice", age=30))   # age 必须关键字传；create_user("alice", 30) 会报错
 \`\`\`
 - \`*\` 之后的是仅关键字参数，\`age\`、\`role\` 必须用关键字传。
 - \`create_user("alice", 30)\` 会报 \`TypeError\`——强制 API 清晰，避免 30 被误当 role。
@@ -227,16 +240,18 @@ print(create_user("alice", age=30))
 \`\`\`python
 def add3(a, b, c):
     return a + b + c
+# * 解包列表/元组为位置参数
 print(add3(*[1, 2, 3]))                   # 等价 add3(1, 2, 3)
+# ** 解包字典为关键字参数
 print(add3(**{"a": 1, "b": 2, "c": 3}))   # 等价 add3(a=1, b=2, c=3)
 \`\`\`
 - \`*list\` 把列表元素展开为位置参数；\`**dict\` 把字典展开为关键字参数。
 - 键名必须与形参名匹配，否则 \`TypeError\`。
 
 \`\`\`python
-# 可变默认值的陷阱
+# 注意：可变默认值陷阱——默认参数只在 def 执行时求值一次，多次调用共享同一对象
 def bad(x, items=[]):
-    items.append(x)
+    items.append(x)   # 修改的是默认 list（默认值在函数定义时创建，全局只此一份）
     return items
 print(bad(1), bad(2))               # [1] [1, 2] ← 共享同一个列表！
 \`\`\`
@@ -245,13 +260,13 @@ print(bad(1), bad(2))               # [1] [1, 2] ← 共享同一个列表！
 - 这是 Python 最经典的坑之一。
 
 \`\`\`python
-# 正确写法：用 None 哨兵
+# 正确写法：用 None 作哨兵，每次调用内部新建 list
 def good(x, items=None):
-    if items is None:
-        items = []
+    if items is None:           # 没传 items 时为 None（每次调用独立判断）
+        items = []             # 函数体内新建，避免共享
     items.append(x)
     return items
-print(good(1), good(2))             # [1] [2]
+print(good(1), good(2))             # [1] [2]；两次调用互不影响
 \`\`\`
 - 默认值用 \`None\`(不可变，所有调用共享同一个 None 无副作用)。
 - 函数体内判断 \`items is None\` 时**新建**空 list，每次调用独立。
@@ -354,33 +369,37 @@ lambda 参数列表: 表达式
 ## 代码逐行讲解
 
 \`\`\`python
-square = lambda x: x * x
-add = lambda a, b: a + b
-print(square(7), add(3, 5))    # 49 8
+# lambda 是匿名函数，只能写单个表达式，不能含语句（如 if/for）
+square = lambda x: x * x        # 单参数 lambda，返回平方
+add = lambda a, b: a + b         # 两参数 lambda，返回和
+print(square(7), add(3, 5))    # 49 8；调用方式和普通函数一样
 \`\`\`
 - \`lambda x: x * x\` 定义匿名函数并赋给 \`square\`，之后可像普通函数调用。
 - 也可直接传给高阶函数而不命名：\`sorted(lst, key=lambda x: -x)\`。
 - 注意：给 lambda 起名(\`square = lambda...\`)通常不如 \`def square(x): return x*x\`，后者有名字和 docstring。
 
 \`\`\`python
+# 数据列表：每个元素是一个 dict
 users = [
     {"name": "bob", "age": 30},
     {"name": "alice", "age": 25},
     {"name": "carol", "age": 28},
 ]
-by_age = sorted(users, key=lambda u: u["age"])
-by_name = sorted(users, key=lambda u: u["name"])
+# sorted 的 key 参数指定排序依据；lambda 取每个 dict 的 "age" 字段做比较
+by_age = sorted(users, key=lambda u: u["age"])    # 按年龄升序
+by_name = sorted(users, key=lambda u: u["name"])   # 按名字字典序
 \`\`\`
 - \`sorted\` 是高阶函数，\`key\` 参数接收一个函数，对每个元素调用得到"排序键"。
 - \`lambda u: u["age"]\` 从每个用户字典取出 age 作为排序依据。
 - 不用 lambda 的话要单独 \`def get_age(u): return u["age"]\`，对一次性逻辑偏重。
 
 \`\`\`python
+# 闭包：内层 lambda 捕获外层的 n，每次调用 make_multiplier 生成不同乘数的函数
 def make_multiplier(n):
-    return lambda x: x * n
+    return lambda x: x * n      # n 是自由变量，来自外层作用域
 
-double = make_multiplier(2)
-triple = make_multiplier(3)
+double = make_multiplier(2)     # n=2 的乘法器
+triple = make_multiplier(3)     # n=3 的乘法器
 print(double(5), triple(5))    # 10 15
 \`\`\`
 - \`make_multiplier\` 是高阶函数：**返回一个函数**。
@@ -388,16 +407,17 @@ print(double(5), triple(5))    # 10 15
 - \`double(5)\` 调用时 \`x=5, n=2\`(从闭包环境取)，返回 10。
 
 \`\`\`python
+# 闭包计数器：inc 捕获外层 count，每次调用累加
 def counter():
-    count = 0
+    count = 0                   # 外层局部变量，被内层函数捕获
     def inc():
-        nonlocal count
-        count += 1
+        nonlocal count          # 声明 count 来自外层（非全局），允许修改它
+        count += 1              # 修改外层变量
         return count
-    return inc
+    return inc                  # 返回内层函数对象（闭包）
 
-c = counter()
-print(c(), c(), c())           # 1 2 3
+c = counter()                   # c 现在是 inc 函数，持有自己的 count
+print(c(), c(), c())           # 1 2 3；每次调用在原值上 +1
 \`\`\`
 - \`counter()\` 执行后返回内层 \`inc\`，但 \`inc\` 仍持有对外层 \`count\` 的引用(闭包)。
 - \`nonlocal count\` 声明：内层要**修改**外层 \`count\`(不是新建局部变量)。没有这句会 \`UnboundLocalError\`。
@@ -406,7 +426,8 @@ print(c(), c(), c())           # 1 2 3
 ## 闭包陷阱：延迟绑定
 
 \`\`\`python
-fs = [lambda: i for i in range(3)]
+# 注意：闭包延迟绑定陷阱——lambda 捕获的是变量 i 的引用，而非当时的值
+fs = [lambda: i for i in range(3)]   # 三个 lambda 共享同一个 i，循环结束 i=2
 print([f() for f in fs])   # [2, 2, 2] 不是 [0, 1, 2]！
 \`\`\`
 - lambda 捕获的是变量 \`i\` 的**引用**，不是值。
@@ -513,13 +534,13 @@ print(c(), c(), c())           # 1 2 3
 ## 代码逐行讲解
 
 \`\`\`python
-x = "global"
+x = "global"   # 模块级全局变量
 
 def outer():
-    x = "outer"
+    x = "outer"   # outer 的局部变量，遮蔽全局 x
     def inner():
-        # 只读：可以访问外层 x，不需要 nonlocal
-        print("inner read:", x)
+        # 只读：可以访问外层 x，不需要 nonlocal（读取会沿 LEGB 向外查找）
+        print("inner read:", x)   # 找到 outer 的 x="outer"
     inner()
 
 outer()
@@ -590,13 +611,14 @@ print("global x:", x)              # 找 global
 闭包 = 函数 + 它引用的外层变量环境。
 
 \`\`\`python
+# 闭包：内层 add 捕获外层参数 n
 def make_adder(n):
     def add(x):
-        return x + n      # n 是自由变量，来自外层
-    return add
+        return x + n      # n 是自由变量，来自外层（无需传参即可访问）
+    return add             # 返回内层函数，n 被闭包保存
 
-add5 = make_adder(5)
-print(add5(10))           # 15
+add5 = make_adder(5)        # 生成「加 5」的函数
+print(add5(10))           # 15；add5(10) = 10 + 5
 \`\`\`
 - \`add\` 引用了外层 \`n\`，即使 \`make_adder\` 已返回，\`n\` 仍存活。
 - \`add5.__closure__\` 是一个 cell 元组，\`add5.__closure__[0].cell_contents == 5\`。

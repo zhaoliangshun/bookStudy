@@ -24,10 +24,10 @@ export const chapters = [
 在类加载时即创建实例，基于类加载机制保证线程安全：
 
 \`\`\`java
-public class Singleton {
-    private static final Singleton INSTANCE = new Singleton();
+public class Singleton {  // 定义类 Singleton
+    private static final Singleton INSTANCE = new Singleton();  // 声明静态常量私有变量 INSTANCE（Singleton），初始值为 new Singleton()
     private Singleton() {}
-    public static Singleton getInstance() { return INSTANCE; }
+    public static Singleton getInstance() { return INSTANCE; }  // 方法 getInstance（返回 Singleton，无参数）：返回 INSTANCE
 }
 \`\`\`
 
@@ -38,9 +38,9 @@ public class Singleton {
 延迟初始化，首次调用时创建。但需处理线程安全：
 
 \`\`\`java
-public static synchronized Singleton getInstance() {
-    if (instance == null) instance = new Singleton();
-    return instance;
+public static synchronized Singleton getInstance() {  // 静态同步方法 getInstance，返回 Singleton，无参数
+    if (instance == null) instance = new Singleton();  // 调用方法 if
+    return instance;  // 返回值：instance
 }
 \`\`\`
 
@@ -51,9 +51,9 @@ public static synchronized Singleton getInstance() {
 经典写法，结合两次检查与 \`volatile\`：
 
 \`\`\`java
-if (instance == null) {
-    synchronized (Singleton.class) {
-        if (instance == null) instance = new Singleton();
+if (instance == null) {  // 条件判断：满足 instance == null 时执行
+    synchronized (Singleton.class) {  // 同步块：对 Singleton.class 加锁，保证线程安全
+        if (instance == null) instance = new Singleton();  // 调用方法 if
     }
 }
 \`\`\`
@@ -65,10 +65,10 @@ if (instance == null) {
 利用类加载机制实现惰性初始化与线程安全，推荐写法：
 
 \`\`\`java
-public class Singleton {
+public class Singleton {  // 定义类 Singleton
     private Singleton() {}
-    private static class Holder { static final Singleton INSTANCE = new Singleton(); }
-    public static Singleton getInstance() { return Holder.INSTANCE; }
+    private static class Holder { static final Singleton INSTANCE = new Singleton(); }  // 定义类 Holder
+    public static Singleton getInstance() { return Holder.INSTANCE; }  // 方法 getInstance（返回 Singleton，无参数）：返回 Holder.INSTANCE
 }
 \`\`\`
 
@@ -79,7 +79,7 @@ public class Singleton {
 最简洁、最安全的实现，Effective Java 推荐：
 
 \`\`\`java
-public enum Singleton { INSTANCE; }
+public enum Singleton { INSTANCE; }  // 定义枚举 Singleton
 \`\`\`
 
 枚举天然单例，且**自动防御反射攻击与序列化问题**。
@@ -89,7 +89,7 @@ public enum Singleton { INSTANCE; }
 实现 \`Serializable\` 的单例需重写 \`readResolve\`，否则反序列化会创建新对象破坏单例：
 
 \`\`\`java
-private Object readResolve() { return getInstance(); }
+private Object readResolve() { return getInstance(); }  // 方法 readResolve（返回 Object，无参数）：返回 getInstance()
 \`\`\`
 
 枚举单例天然无此问题。
@@ -215,11 +215,11 @@ enum EnumSingleton implements Serializable {
 又称静态工厂方法。一个工厂类根据参数返回不同实例：
 
 \`\`\`java
-class ShapeFactory {
-    static Shape create(String type) {
-        if ("circle".equals(type)) return new Circle();
-        if ("square".equals(type)) return new Square();
-        throw new IllegalArgumentException("未知类型");
+class ShapeFactory {  // 定义类 ShapeFactory
+    static Shape create(String type) {  // 静态方法 create，返回 Shape，参数：String type
+        if ("circle".equals(type)) return new Circle();  // 调用 if ("circle" 的 equals 方法
+        if ("square".equals(type)) return new Square();  // 调用 if ("square" 的 equals 方法
+        throw new IllegalArgumentException("未知类型");  // 抛出 IllegalArgumentException 异常："未知类型"
     }
 }
 \`\`\`
@@ -231,9 +231,9 @@ class ShapeFactory {
 定义创建对象的接口，由子类决定实例化哪个类。每个产品对应一个工厂：
 
 \`\`\`java
-interface ShapeFactory { Shape create(); }
-class CircleFactory implements ShapeFactory { public Shape create() { return new Circle(); } }
-class SquareFactory implements ShapeFactory { public Shape create() { return new Square(); } }
+interface ShapeFactory { Shape create(); }  // 定义接口 ShapeFactory
+class CircleFactory implements ShapeFactory { public Shape create() { return new Circle(); } }  // 定义类 CircleFactory
+class SquareFactory implements ShapeFactory { public Shape create() { return new Square(); } }  // 定义类 SquareFactory
 \`\`\`
 
 符合开闭原则——新增产品只需新增工厂类，无需修改现有代码。但类数量增加。
@@ -243,12 +243,12 @@ class SquareFactory implements ShapeFactory { public Shape create() { return new
 创建**一系列相关**产品。接口定义多个创建方法，每个具体工厂生产一套产品族：
 
 \`\`\`java
-interface GUIFactory {
-    Button createButton();
-    TextField createTextField();
+interface GUIFactory {  // 定义接口 GUIFactory
+    Button createButton();  // 方法 createButton，返回 Button，无参数
+    TextField createTextField();  // 方法 createTextField，返回 TextField，无参数
 }
-class WindowsFactory implements GUIFactory { ... }
-class MacFactory implements GUIFactory { ... }
+class WindowsFactory implements GUIFactory { ... }  // 定义类 WindowsFactory
+class MacFactory implements GUIFactory { ... }  // 定义类 MacFactory
 }
 \`\`\`
 
@@ -393,7 +393,7 @@ class Application {
 当一个类有很多可选参数时，构造器组合爆炸：
 
 \`\`\`java
-new User("张三", 25, "北京", null, null, "13800000000", null);
+new User("张三", 25, "北京", null, null, "13800000000", null);  // 方法 User，返回 new，参数："张三", 25, "北京", null, null, "13800000000", null
 \`\`\`
 
 难以记忆参数顺序，可读性差。常见替代是 JavaBean 风格 setter，但允许对象在构建过程中处于不完整状态。
@@ -422,15 +422,15 @@ Builder 模式常配合不可变对象——所有字段 \`final\`，构造后�
 ## 经典实现
 
 \`\`\`java
-public class User {
-    private final String name;
-    private final int age;
+public class User {  // 定义类 User
+    private final String name;  // 声明常量私有变量 name（String 类型）
+    private final int age;  // 声明常量私有变量 age（int 类型）
     private User(Builder b) { this.name = b.name; this.age = b.age; }
-    public static class Builder {
+    public static class Builder {  // 定义类 Builder
         private String name; private int age;
         public Builder(String name, int age) { this.name = name; this.age = age; }
-        public Builder city(String c) { return this; }
-        public User build() { return new User(this); }
+        public Builder city(String c) { return this; }  // 方法 city（返回 Builder，参数：String c）：返回 this
+        public User build() { return new User(this); }  // 方法 build（返回 User，无参数）：返回 new User(this)
     }
 }
 \`\`\`
@@ -448,8 +448,8 @@ public class User {
 Lombok 自动生成 Builder：
 
 \`\`\`java
-@Builder
-public class User { private String name; private int age; }
+@Builder  // 注解：Builder
+public class User { private String name; private int age; }  // 定义类 User
 \`\`\`
 
 一行注解即可使用 \`User.builder().name("张三").age(25).build()\`，大幅减少样板代码。
@@ -619,10 +619,10 @@ class Pizza {
 Java 提供 \`Cloneable\` 标记接口与 \`Object.clone()\` 方法：
 
 \`\`\`java
-class Person implements Cloneable {
-    String name;
-    protected Person clone() throws CloneNotSupportedException {
-        return (Person) super.clone();
+class Person implements Cloneable {  // 定义类 Person
+    String name;  // 声明变量 name（String 类型）
+    protected Person clone() throws CloneNotSupportedException {  // 方法 clone，返回 Person，无参数
+        return (Person) super.clone();  // 返回值：(Person) super.clone()
     }
 }
 \`\`\`
@@ -654,7 +654,7 @@ Person p3 = p1.deepClone(); // p1.address != p3.address
 更推荐的复制方式：
 
 \`\`\`java
-class Person {
+class Person {  // 定义类 Person
     Person(Person other) { this.name = other.name; this.address = new Address(other.address); }
 }
 \`\`\`
@@ -666,9 +666,9 @@ class Person {
 将对象序列化为字节再反序列化，得到完全独立的深拷贝：
 
 \`\`\`java
-ByteArrayOutputStream bos = new ByteArrayOutputStream();
-new ObjectOutputStream(bos).writeObject(original);
-Object copy = new ObjectInputStream(new ByteArrayInputStream(bos.toByteArray())).readObject();
+ByteArrayOutputStream bos = new ByteArrayOutputStream();  // 声明变量 bos（ByteArrayOutputStream），初始值为 new ByteArrayOutputStream()
+new ObjectOutputStream(bos).writeObject(original);  // 调用 new ObjectOutputStream(bos) 的 writeObject 方法
+Object copy = new ObjectInputStream(new ByteArrayInputStream(bos.toByteArray())).readObject();  // 声明变量 copy（Object），初始值为 new ObjectInputStream(new ByteArrayInputStream(bos.toByteArray())).readObject()
 \`\`\`
 
 简单通用，但性能较差，要求所有字段实现 \`Serializable\`。
@@ -821,7 +821,7 @@ class Address implements Serializable {
 通过**多重继承**（Java 中即继承被适配类 + 实现目标接口）实现。Java 不支持多继承，所以被适配类通常是需要适配的现有类：
 
 \`\`\`java
-class Adapter extends Adaptee implements Target {
+class Adapter extends Adaptee implements Target {  // 定义类 Adapter
     public void request() { specificRequest(); }
 }
 \`\`\`
@@ -833,8 +833,8 @@ class Adapter extends Adaptee implements Target {
 通过**组合**持有被适配对象，实现目标接口。更灵活，推荐使用：
 
 \`\`\`java
-class Adapter implements Target {
-    private Adaptee adaptee;
+class Adapter implements Target {  // 定义类 Adapter
+    private Adaptee adaptee;  // 声明私有变量 adaptee（Adaptee 类型）
     public void request() { adaptee.specificRequest(); }
 }
 \`\`\`
@@ -846,7 +846,7 @@ class Adapter implements Target {
 当接口有多个方法，但只需实现部分时，用一个**抽象空实现类**作为中间层，子类按需重写：
 
 \`\`\`java
-abstract class EmptyListener implements MouseListener {
+abstract class EmptyListener implements MouseListener {  // 定义抽象类 EmptyListener
     public void mouseClicked(MouseEvent e) {}
     public void mousePressed(MouseEvent e) {}
     // ... 其他空实现
@@ -991,11 +991,11 @@ abstract class SimpleMouseListener implements MouseListener {
 - **ConcreteDecorator**：具体装饰器，添加新行为
 
 \`\`\`java
-interface Coffee { double cost(); }
-class SimpleCoffee implements Coffee { public double cost() { return 10; } }
-abstract class CoffeeDecorator implements Coffee { protected Coffee coffee; }
-class MilkDecorator extends CoffeeDecorator {
-    public double cost() { return coffee.cost() + 2; }
+interface Coffee { double cost(); }  // 定义接口 Coffee
+class SimpleCoffee implements Coffee { public double cost() { return 10; } }  // 定义类 SimpleCoffee
+abstract class CoffeeDecorator implements Coffee { protected Coffee coffee; }  // 定义抽象类 CoffeeDecorator
+class MilkDecorator extends CoffeeDecorator {  // 定义类 MilkDecorator
+    public double cost() { return coffee.cost() + 2; }  // 方法 cost（返回 double，无参数）：返回 coffee.cost() + 2
 }
 \`\`\`
 
@@ -1004,7 +1004,7 @@ class MilkDecorator extends CoffeeDecorator {
 装饰器可层层包装，形成链：
 
 \`\`\`java
-Coffee c = new MilkDecorator(new SugarDecorator(new SimpleCoffee()));
+Coffee c = new MilkDecorator(new SugarDecorator(new SimpleCoffee()));  // 声明变量 c（Coffee），初始值为 new MilkDecorator(new SugarDecorator(new SimpleCoffee()))
 \`\`\`
 
 每层装饰器在调用 \`coffee.cost()\` 前后增加自己的逻辑。
@@ -1025,9 +1025,9 @@ Coffee c = new MilkDecorator(new SugarDecorator(new SimpleCoffee()));
 \`java.io\` 包是装饰器的经典应用：
 
 \`\`\`java
-InputStream in = new BufferedInputStream(new FileInputStream("a.txt"));
-Reader r = new InputStreamReader(new FileInputStream("a.txt"), "UTF-8");
-BufferedReader br = new BufferedReader(new FileReader("a.txt"));
+InputStream in = new BufferedInputStream(new FileInputStream("a.txt"));  // 声明变量 in（InputStream），初始值为 new BufferedInputStream(new FileInputStream("a.txt"))
+Reader r = new InputStreamReader(new FileInputStream("a.txt"), "UTF-8");  // 声明变量 r（Reader），初始值为 new InputStreamReader(new FileInputStream("a.txt"), "UTF-8")
+BufferedReader br = new BufferedReader(new FileReader("a.txt"));  // 声明变量 br（BufferedReader），初始值为 new BufferedReader(new FileReader("a.txt"))
 \`\`\`
 
 - \`FileInputStream\`：具体组件，读字节
@@ -1189,12 +1189,12 @@ class UpperCaseDecorator extends TextDecorator {
 手动编写代理类，编译期确定：
 
 \`\`\`java
-class ServiceProxy implements Service {
-    private Service real;
-    public void doWork() {
-        logBefore();
+class ServiceProxy implements Service {  // 定义类 ServiceProxy
+    private Service real;  // 声明私有变量 real（Service 类型）
+    public void doWork() {  // 方法 doWork，返回 void，无参数
+        logBefore();  // 调用方法 logBefore
         real.doWork();    // 委托
-        logAfter();
+        logAfter();  // 调用方法 logAfter
     }
 }
 \`\`\`
@@ -1212,9 +1212,9 @@ class ServiceProxy implements Service {
 \`\`\`java
 Service proxy = (Service) Proxy.newProxyInstance(
     loader, new Class[]{Service.class},
-    (p, method, args) -> {
+    (p, method, args) -> {  // Lambda 表达式：实现函数式接口
         // 增强逻辑
-        return method.invoke(real, args);
+        return method.invoke(real, args);  // 返回值：method.invoke(real, args)
     });
 \`\`\`
 
@@ -1417,9 +1417,9 @@ class ImageProxy implements Image {
 - **ConcreteSubject / ConcreteObserver**：具体实现
 
 \`\`\`java
-interface Observer { void update(String event); }
-class Subject {
-    List<Observer> observers = new ArrayList<>();
+interface Observer { void update(String event); }  // 定义接口 Observer
+class Subject {  // 定义类 Subject
+    List<Observer> observers = new ArrayList<>();  // 声明变量 observers（List<Observer>），初始值为 new ArrayList<>()
     void attach(Observer o) { observers.add(o); }
     void notify(String e) { for (Observer o : observers) o.update(e); }
 }
@@ -1443,8 +1443,8 @@ class Subject {
 ## PropertyChangeListener
 
 \`\`\`java
-bean.addPropertyChangeListener(evt -> {
-    System.out.println("属性 " + evt.getPropertyName() + " 变化");
+bean.addPropertyChangeListener(evt -> {  // Lambda 表达式：实现函数式接口
+    System.out.println("属性 " + evt.getPropertyName() + " 变化");  // 打印一行到标准输出（自动换行）
 });
 \`\`\`
 
@@ -1627,11 +1627,11 @@ class EventBus {
 - **Context**：上下文，持有策略引用，委托执行
 
 \`\`\`java
-interface SortStrategy { void sort(int[] arr); }
-class BubbleSort implements SortStrategy { ... }
-class QuickSort implements SortStrategy { ... }
-class Sorter {
-    private SortStrategy strategy;
+interface SortStrategy { void sort(int[] arr); }  // 定义接口 SortStrategy
+class BubbleSort implements SortStrategy { ... }  // 定义类 BubbleSort
+class QuickSort implements SortStrategy { ... }  // 定义类 QuickSort
+class Sorter {  // 定义类 Sorter
+    private SortStrategy strategy;  // 声明私有变量 strategy（SortStrategy 类型）
     void setStrategy(SortStrategy s) { this.strategy = s; }
     void sort(int[] arr) { strategy.sort(arr); }
 }
@@ -1643,13 +1643,13 @@ class Sorter {
 
 \`\`\`java
 // 反例
-if (type.equals("A")) doA();
-else if (type.equals("B")) doB();
-else if (type.equals("C")) doC();
+if (type.equals("A")) doA();  // 调用 if (type 的 equals 方法
+else if (type.equals("B")) doB();  // 调用 else if (type 的 equals 方法
+else if (type.equals("C")) doC();  // 调用 else if (type 的 equals 方法
 
 // 策略模式
-Map<String, Strategy> map = Map.of("A", new StrategyA(), "B", new StrategyB());
-map.get(type).execute();
+Map<String, Strategy> map = Map.of("A", new StrategyA(), "B", new StrategyB());  // 声明变量 map（Map<String, Strategy>），初始值为 Map.of("A", new StrategyA(), "B", new StrategyB())
+map.get(type).execute();  // 调用 map 的 get 方法
 \`\`\`
 
 将分支逻辑转化为**策略表**，新增策略只需加表项，符合开闭原则。
@@ -1659,7 +1659,7 @@ map.get(type).execute();
 当策略接口是函数式接口时，无需写策略类，直接用 lambda：
 
 \`\`\`java
-sorter.setStrategy(arr -> { /* 快排实现 */ });
+sorter.setStrategy(arr -> { /* 快排实现 */ });  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 Java 8 后许多策略模式场景被 lambda + 方法引用取代，更简洁。
@@ -1836,15 +1836,15 @@ class PaymentContext {
 - **ConcreteClass**：子类，实现具体步骤
 
 \`\`\`java
-abstract class Game {
+abstract class Game {  // 定义抽象类 Game
     // 模板方法：定义流程，final 防止子类修改结构
-    public final void play() {
-        initialize();
-        startPlay();
-        endPlay();
+    public final void play() {  // 方法 play，返回 void，无参数
+        initialize();  // 调用方法 initialize
+        startPlay();  // 调用方法 startPlay
+        endPlay();  // 调用方法 endPlay
     }
-    protected abstract void initialize();
-    protected abstract void startPlay();
+    protected abstract void initialize();  // 抽象方法 initialize，返回 void，无参数
+    protected abstract void startPlay();  // 抽象方法 startPlay，返回 void，无参数
     protected void endPlay() { System.out.println("结束游戏"); }  // 可选重写
 }
 \`\`\`
@@ -1860,11 +1860,11 @@ abstract class Game {
 抽象类提供默认实现的空方法，子类**可选**重写以影响流程：
 
 \`\`\`java
-abstract class Workflow {
-    public final void run() {
-        step1();
+abstract class Workflow {  // 定义抽象类 Workflow
+    public final void run() {  // 方法 run，返回 void，无参数
+        step1();  // 调用方法 step1
         if (needStep2()) step2();  // 钩子控制是否执行
-        step3();
+        step3();  // 调用方法 step3
     }
     protected boolean needStep2() { return true; }  // 默认 true，子类可改
 }
@@ -2067,10 +2067,10 @@ class DbMigrator extends DataMigrator {
 - **ConcreteHandler**：具体处理者，决定处理或转发
 
 \`\`\`java
-abstract class Handler {
-    protected Handler next;
+abstract class Handler {  // 定义抽象类 Handler
+    protected Handler next;  // 声明变量 next（Handler 类型）
     Handler setNext(Handler n) { this.next = n; return n; }
-    abstract void handle(Request req);
+    abstract void handle(Request req);  // 抽象方法 handle，返回 void，参数：Request req
 }
 \`\`\`
 
@@ -2083,12 +2083,12 @@ abstract class Handler {
 2. 不能则传给下一个
 
 \`\`\`java
-void handle(Request req) {
-    if (canHandle(req)) {
-        doHandle(req);
-    } else if (next != null) {
-        next.handle(req);
-    } else {
+void handle(Request req) {  // 方法 handle，返回 void，参数：Request req
+    if (canHandle(req)) {  // 条件判断：满足 canHandle(req) 时执行
+        doHandle(req);  // 调用方法 doHandle
+    } else if (next != null) {  // 否则若满足 next != null 则执行
+        next.handle(req);  // 调用 next 的 handle 方法
+    } else {  // 否则分支
         // 链末尾无人处理
     }
 }
@@ -2322,13 +2322,13 @@ class ConsoleLogger extends Logger {
 - **Client**：创建命令并组装
 
 \`\`\`java
-interface Command { void execute(); }
-class LightOnCommand implements Command {
-    private Light light;
+interface Command { void execute(); }  // 定义接口 Command
+class LightOnCommand implements Command {  // 定义类 LightOnCommand
+    private Light light;  // 声明私有变量 light（Light 类型）
     public void execute() { light.on(); }
 }
-class RemoteControl {
-    private Command command;
+class RemoteControl {  // 定义类 RemoteControl
+    private Command command;  // 声明私有变量 command（Command 类型）
     void setCommand(Command c) { this.command = c; }
     void press() { command.execute(); }
 }
@@ -2343,13 +2343,13 @@ class RemoteControl {
 为 Command 增加 \`undo()\` 方法，调用者记录历史命令栈：
 
 \`\`\`java
-interface Command {
-    void execute();
-    void undo();
+interface Command {  // 定义接口 Command
+    void execute();  // 方法 execute，返回 void，无参数
+    void undo();  // 方法 undo，返回 void，无参数
 }
 
 // 撤销栈
-Stack<Command> history;
+Stack<Command> history;  // 声明变量 history（Stack<Command> 类型）
 void undo() { history.pop().undo(); }
 \`\`\`
 
@@ -2360,8 +2360,8 @@ void undo() { history.pop().undo(); }
 组合多个命令一次性执行：
 
 \`\`\`java
-class MacroCommand implements Command {
-    List<Command> commands;
+class MacroCommand implements Command {  // 定义类 MacroCommand
+    List<Command> commands;  // 声明变量 commands（List<Command> 类型）
     void execute() { for (Command c : commands) c.execute(); }
 }
 \`\`\`
@@ -2606,10 +2606,10 @@ class InsertCommand implements Command {
 - **ConcreteState**：具体状态，实现特定状态下的行为
 
 \`\`\`java
-interface State { void handle(Context ctx); }
+interface State { void handle(Context ctx); }  // 定义接口 State
 
-class Context {
-    private State state;
+class Context {  // 定义类 Context
+    private State state;  // 声明私有变量 state（State 类型）
     void setState(State s) { this.state = s; }
     void request() { state.handle(this); }  // 委托给状态
 }
@@ -2620,9 +2620,9 @@ class Context {
 状态对象在处理请求时可**改变上下文的状态**，从而切换行为：
 
 \`\`\`java
-class ConcreteStateA implements State {
-    public void handle(Context ctx) {
-        System.out.println("状态A处理");
+class ConcreteStateA implements State {  // 定义类 ConcreteStateA
+    public void handle(Context ctx) {  // 方法 handle，返回 void，参数：Context ctx
+        System.out.println("状态A处理");  // 打印一行到标准输出（自动换行）
         ctx.setState(new ConcreteStateB());  // 转换到B
     }
 }
@@ -2647,7 +2647,7 @@ class ConcreteStateA implements State {
 
 \`\`\`java
 // 反例
-void handle() {
+void handle() {  // 方法 handle，返回 void，无参数
     if (state == OPEN) { ... }
     else if (state == CLOSED) { ... }
     else if (state == LOCKED) { ... }
@@ -2910,14 +2910,14 @@ class ArchivedState implements DocState {
 - **Aggregate**：聚合接口
 
 \`\`\`java
-interface Iterator<E> {
-    boolean hasNext();
-    E next();
+interface Iterator<E> {  // 定义接口 Iterator
+    boolean hasNext();  // 方法 hasNext，返回 boolean，无参数
+    E next();  // 方法 next，返回 E，无参数
     default void remove() { throw new UnsupportedOperationException(); }
 }
 
-interface Iterable<E> {
-    Iterator<E> iterator();
+interface Iterable<E> {  // 定义接口 Iterable
+    Iterator<E> iterator();  // 方法 iterator，返回 Iterator<E>，无参数
 }
 \`\`\`
 
@@ -2940,7 +2940,7 @@ for (Item item : myCollection) { ... }
 Java 编译器将其转为：
 
 \`\`\`java
-Iterator<Item> it = myCollection.iterator();
+Iterator<Item> it = myCollection.iterator();  // 声明变量 it（Iterator<Item>），初始值为 myCollection.iterator()
 while (it.hasNext()) { Item item = it.next(); ... }
 \`\`\`
 
@@ -2949,8 +2949,8 @@ while (it.hasNext()) { Item item = it.next(); ... }
 为自定义数据结构实现迭代器，封装遍历细节：
 
 \`\`\`java
-class MyList<T> implements Iterable<T> {
-    public Iterator<T> iterator() {
+class MyList<T> implements Iterable<T> {  // 定义类 MyList
+    public Iterator<T> iterator() {  // 方法 iterator，返回 Iterator<T>，无参数
         return new Iterator<T>() {
             public boolean hasNext() { ... }
             public T next() { ... }
@@ -2964,8 +2964,8 @@ class MyList<T> implements Iterable<T> {
 Java 集合迭代器多为 fail-fast——检测到结构性修改（增删）时立即抛 \`ConcurrentModificationException\`，通过 \`modCount\` 实现：
 
 \`\`\`java
-List<String> list = new ArrayList<>(...);
-for (String s : list) {
+List<String> list = new ArrayList<>(...);  // 声明变量 list（List<String>），初始值为 new ArrayList<>(...)
+for (String s : list) {  // 增强 for：遍历 list，每次取一个元素 s
     list.remove(s);  // 抛 ConcurrentModificationException
 }
 \`\`\`
@@ -2981,7 +2981,7 @@ for (String s : list) {
 Java 8 起 \`Iterable\` 提供 \`forEach(Consumer)\`：
 
 \`\`\`java
-list.forEach(s -> System.out.println(s));
+list.forEach(s -> System.out.println(s));  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 更简洁，但无法在遍历中删除元素。
@@ -3240,16 +3240,16 @@ class FilterIterator<T> implements Iterator<T> {
 - **ObjectStructure**：对象结构，枚举元素
 
 \`\`\`java
-interface Visitor {
-    void visit(Book book);
-    void visit(Fruit fruit);
+interface Visitor {  // 定义接口 Visitor
+    void visit(Book book);  // 方法 visit，返回 void，参数：Book book
+    void visit(Fruit fruit);  // 方法 visit，返回 void，参数：Fruit fruit
 }
 
-interface Item {
-    void accept(Visitor v);
+interface Item {  // 定义接口 Item
+    void accept(Visitor v);  // 方法 accept，返回 void，参数：Visitor v
 }
 
-class Book implements Item {
+class Book implements Item {  // 定义类 Book
     public void accept(Visitor v) { v.visit(this); }  // 双重分派
 }
 \`\`\`

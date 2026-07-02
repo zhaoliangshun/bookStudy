@@ -33,7 +33,7 @@ export const chapters = [
 ### class 定义
 
 \`\`\`python
-class Car:
+class Car:  # 定义类 Car
     pass    # pass 是占位符，类体不能为空
 \`\`\`
 
@@ -47,8 +47,8 @@ PEP 8 规范：类名用**大驼峰**（每个单词首字母大写），不使�
 
 \`\`\`python
 # 类名加括号 = 创建实例
-car1 = Car()
-car2 = Car()
+car1 = Car()  # 赋值变量 car1
+car2 = Car()  # 赋值变量 car2
 # car1 和 car2 是两个独立的对象
 \`\`\`
 
@@ -75,12 +75,12 @@ print(car1.color)     # 读取属性
 \`self\` 是方法里的"**当前实例**"引用，让方法能访问到调用它的对象：
 
 \`\`\`python
-class Dog:
+class Dog:  # 定义类 Dog
     def bark(self):       # self 必须是第一个参数
-        print("汪汪！我是", self.name)
+        print("汪汪！我是", self.name)  # 打印输出到屏幕
 
-dog = Dog()
-dog.name = "旺财"
+dog = Dog()  # 赋值变量 dog
+dog.name = "旺财"  # 执行操作
 dog.bark()   # 调用方法，self 自动传入 dog
 \`\`\`
 
@@ -237,11 +237,11 @@ print(f"最终账户信息：户主={acc.owner}，余额={acc.balance}")`
 | 类属性 | 类体内直接定义 | 所有实例共享 | \`count = 0\` |
 
 \`\`\`python
-class Student:
+class Student:  # 定义类 Student
     school = "清华"   # 类属性，所有学生共享
     count = 0          # 类属性，记录学生数
     
-    def __init__(self, name):
+    def __init__(self, name):  # 定义函数 __init__，参数：self, name
         self.name = name   # 实例属性，每个学生独有
 \`\`\`
 
@@ -250,13 +250,13 @@ class Student:
 \`__init__\` 在创建对象时**自动调用**，用来初始化实例属性：
 
 \`\`\`python
-class Student:
-    def __init__(self, name, age):
-        self.name = name
-        self.age = age
+class Student:  # 定义类 Student
+    def __init__(self, name, age):  # 定义函数 __init__，参数：self, name, age
+        self.name = name  # 执行操作
+        self.age = age  # 执行操作
 
 # 创建时传参，自动调用 __init__
-s = Student("小明", 18)
+s = Student("小明", 18)  # 赋值变量 s
 \`\`\`
 
 ### 实例方法
@@ -264,9 +264,9 @@ s = Student("小明", 18)
 实例方法的第一个参数必须是 \`self\`，表示当前实例：
 
 \`\`\`python
-class Student:
+class Student:  # 定义类 Student
     def greet(self):       # self 必填
-        print(f"我是 {self.name}")
+        print(f"我是 {self.name}")  # 打印输出到屏幕
 \`\`\`
 
 ### 类属性 vs 实例属性优先级
@@ -274,12 +274,12 @@ class Student:
 **同名时，实例属性优先**：
 
 \`\`\`python
-class Foo:
-    x = "类属性"
+class Foo:  # 定义类 Foo
+    x = "类属性"  # 定义字符串 x
 
-obj = Foo()
+obj = Foo()  # 赋值变量 obj
 print(obj.x)      # "类属性"（实例没有，找类的）
-obj.x = "实例属性"
+obj.x = "实例属性"  # 执行操作
 print(obj.x)      # "实例属性"（实例有了，优先用）
 \`\`\`
 
@@ -288,14 +288,14 @@ print(obj.x)      # "实例属性"（实例有了，优先用）
 Python 允许**运行时**给对象加属性：
 
 \`\`\`python
-obj = Student("小明", 18)
+obj = Student("小明", 18)  # 赋值变量 obj
 obj.grade = "高一"    # 动态添加
 \`\`\`
 
 ### 类属性的坑：可变对象
 
 \`\`\`python
-class Bad:
+class Bad:  # 定义类 Bad
     items = []    # 危险！所有实例共享同一个列表
 \`\`\`
 
@@ -460,9 +460,9 @@ print("是同一个列表吗？", a.items is b.items)   # False，独立`
 \`__init__\` 是 Python 的**特殊方法**（双下划线），在创建对象时**自动调用**，用来初始化实例属性。
 
 \`\`\`python
-class Cat:
+class Cat:  # 定义类 Cat
     def __init__(self, name):    # 创建时自动调用
-        self.name = name
+        self.name = name  # 执行操作
 
 cat = Cat("咪咪")    # 实际上调用 __init__(self, "咪咪")
 \`\`\`
@@ -472,7 +472,7 @@ cat = Cat("咪咪")    # 实际上调用 __init__(self, "咪咪")
 \`self\` 是**当前实例的引用**。当方法被调用时，Python 自动把调用对象传给 \`self\`：
 
 \`\`\`python
-cat = Cat("咪咪")
+cat = Cat("咪咪")  # 赋值变量 cat
 cat.speak()    # 等价于 Cat.speak(cat)，self=cat
 \`\`\`
 
@@ -481,11 +481,11 @@ cat.speak()    # 等价于 Cat.speak(cat)，self=cat
 Python 的 self 是**显式写出**的（不像 Java/JS 的 this 隐藏）：
 
 \`\`\`python
-class Dog:
-    def bark(self):
-        print(self.name)
+class Dog:  # 定义类 Dog
+    def bark(self):  # 定义函数 bark，参数：self
+        print(self.name)  # 打印输出到屏幕
 
-dog = Dog()
+dog = Dog()  # 赋值变量 dog
 dog.bark()        # 自动传 self
 Dog.bark(dog)     # 手动传 self，等价写法
 \`\`\`
@@ -506,11 +506,11 @@ Dog.bark(dog)     # 手动传 self，等价写法
 \`__init__\` 可以有任意参数和默认值：
 
 \`\`\`python
-class User:
-    def __init__(self, name, age=18, city="北京"):
-        self.name = name
-        self.age = age
-        self.city = city
+class User:  # 定义类 User
+    def __init__(self, name, age=18, city="北京"):  # 定义函数 __init__，参数：self, name, age=18, city="北京"
+        self.name = name  # 执行操作
+        self.age = age  # 执行操作
+        self.city = city  # 执行操作
 
 u1 = User("小明")                # 用默认值
 u2 = User("小红", 20)            # 部分用默认值
@@ -522,9 +522,9 @@ u3 = User("小刚", 22, "上海")    # 全部自定义
 \`self\` 只是约定俗成的名字，技术上可以改成别的，但**强烈建议不要改**：
 
 \`\`\`python
-class Foo:
+class Foo:  # 定义类 Foo
     def __init__(this, name):   # 技术上可行，但别这么写
-        this.name = name
+        this.name = name  # 执行操作
 \`\`\`
 
 下面的 demo 详细演示构造过程和 self 的本质。`,
@@ -677,8 +677,8 @@ Python 类里有三种方法：
 最常见的，第一个参数是 \`self\`：
 
 \`\`\`python
-class MyClass:
-    def instance_method(self):
+class MyClass:  # 定义类 MyClass
+    def instance_method(self):  # 定义函数 instance_method，参数：self
         print(self)    # 能访问实例
 \`\`\`
 
@@ -687,9 +687,9 @@ class MyClass:
 第一个参数是 \`cls\`，代表**类本身**：
 
 \`\`\`python
-class MyClass:
-    @classmethod
-    def class_method(cls):
+class MyClass:  # 定义类 MyClass
+    @classmethod  # 应用装饰器 classmethod
+    def class_method(cls):  # 定义函数 class_method，参数：cls
         print(cls)    # 是 MyClass 这个类
 \`\`\`
 
@@ -698,10 +698,10 @@ class MyClass:
 没有 \`self\` 也没有 \`cls\`，和普通函数一样：
 
 \`\`\`python
-class MyClass:
-    @staticmethod
-    def static_method():
-        print("我和类没什么关系，只是放在类里")
+class MyClass:  # 定义类 MyClass
+    @staticmethod  # 应用装饰器 staticmethod
+    def static_method():  # 定义函数 static_method
+        print("我和类没什么关系，只是放在类里")  # 打印输出到屏幕
 \`\`\`
 
 ### 工厂方法模式（@classmethod 的经典用途）
@@ -709,17 +709,17 @@ class MyClass:
 用类方法创建**不同形态的实例**：
 
 \`\`\`python
-class Date:
-    def __init__(self, year, month, day):
-        self.year, self.month, self.day = year, month, day
+class Date:  # 定义类 Date
+    def __init__(self, year, month, day):  # 定义函数 __init__，参数：self, year, month, day
+        self.year, self.month, self.day = year, month, day  # 执行操作
     
-    @classmethod
-    def from_string(cls, s):
+    @classmethod  # 应用装饰器 classmethod
+    def from_string(cls, s):  # 定义函数 from_string，参数：cls, s
         # cls() 等价于 Date()，但子类继承时会用子类
-        y, m, d = map(int, s.split("-"))
-        return cls(y, m, d)
+        y, m, d = map(int, s.split("-"))  # 多重赋值：y, m, d
+        return cls(y, m, d)  # 返回 cls(y, m, d)
 
-d = Date.from_string("2024-06-30")
+d = Date.from_string("2024-06-30")  # 赋值变量 d
 \`\`\`
 
 ### 替代构造器 cls()
@@ -952,11 +952,11 @@ print(f"李四工资高吗？{Employee.is_high_salary(e2.salary)}")`
 只是约定，表示"**这是内部用的，别从外面访问**"，但 Python 不阻止访问：
 
 \`\`\`python
-class Foo:
-    def __init__(self):
-        self._secret = "内部数据"
+class Foo:  # 定义类 Foo
+    def __init__(self):  # 定义函数 __init__，参数：self
+        self._secret = "内部数据"  # 执行操作
 
-f = Foo()
+f = Foo()  # 赋值变量 f
 print(f._secret)   # 技术上能访问，但你不应该这么做
 \`\`\`
 
@@ -965,11 +965,11 @@ print(f._secret)   # 技术上能访问，但你不应该这么做
 Python 会把它改名为 \`_ClassName__name\`，避免被子类覆盖：
 
 \`\`\`python
-class Foo:
-    def __init__(self):
-        self.__secret = "改写后变 _Foo__secret"
+class Foo:  # 定义类 Foo
+    def __init__(self):  # 定义函数 __init__，参数：self
+        self.__secret = "改写后变 _Foo__secret"  # 执行操作
 
-f = Foo()
+f = Foo()  # 赋值变量 f
 # print(f.__secret)    # 报错！找不到
 print(f._Foo__secret)  # 仍然能访问（但很丑）
 \`\`\`
@@ -979,19 +979,19 @@ print(f._Foo__secret)  # 仍然能访问（但很丑）
 用 \`@property\` 把方法变成属性访问，可以加校验：
 
 \`\`\`python
-class Account:
-    def __init__(self):
-        self._balance = 0
+class Account:  # 定义类 Account
+    def __init__(self):  # 定义函数 __init__，参数：self
+        self._balance = 0  # 执行操作
     
-    @property
+    @property  # 应用装饰器 property
     def balance(self):       # 读取：acc.balance
-        return self._balance
+        return self._balance  # 返回 self._balance
     
-    @balance.setter
+    @balance.setter  # 应用装饰器 balance
     def balance(self, value):  # 赋值：acc.balance = 100
-        if value < 0:
-            raise ValueError("余额不能为负")
-        self._balance = value
+        if value < 0:  # 如果 value < 0
+            raise ValueError("余额不能为负")  # 抛出异常：ValueError("余额不能为负")
+        self._balance = value  # 执行操作
 \`\`\`
 
 ### 只读属性
@@ -999,15 +999,15 @@ class Account:
 只定义 getter，不定义 setter，就是只读：
 
 \`\`\`python
-class Circle:
-    def __init__(self, r):
-        self._r = r
+class Circle:  # 定义类 Circle
+    def __init__(self, r):  # 定义函数 __init__，参数：self, r
+        self._r = r  # 执行操作
     
-    @property
-    def area(self):
+    @property  # 应用装饰器 property
+    def area(self):  # 定义函数 area，参数：self
         return 3.14 * self._r ** 2   # 派生属性
 
-c = Circle(5)
+c = Circle(5)  # 赋值变量 c
 print(c.area)    # 78.5
 # c.area = 100   # 报错！只读
 \`\`\`
@@ -1222,20 +1222,20 @@ for name, age, reason in [("A", 18, "名字太短"), ("张三", "十八", "年�
 
 \`\`\`python
 class Animal:        # 父类（基类）
-    def eat(self):
-        print("吃东西")
+    def eat(self):  # 定义函数 eat，参数：self
+        print("吃东西")  # 打印输出到屏幕
 
 class Dog(Animal):   # 子类（派生类）
-    def bark(self):
-        print("汪汪")
+    def bark(self):  # 定义函数 bark，参数：self
+        print("汪汪")  # 打印输出到屏幕
 \`\`\`
 
 ### 继承语法
 
 \`\`\`python
-class Child(Parent):
+class Child(Parent):  # 定义类 Child
     # 子类体
-    pass
+    pass  # 空操作，占位符
 \`\`\`
 
 括号里的就是父类。子类拥有父类的所有属性和方法。
@@ -1243,7 +1243,7 @@ class Child(Parent):
 ### 子类拥有父类能力
 
 \`\`\`python
-dog = Dog()
+dog = Dog()  # 赋值变量 dog
 dog.eat()     # 继承自 Animal
 dog.bark()    # 自己的
 \`\`\`
@@ -1260,9 +1260,9 @@ dog.bark()    # 自己的
 Python 3 中所有类**都隐式继承 \`object\`**：
 
 \`\`\`python
-class Foo: pass
+class Foo: pass  # 定义类 Foo
 # 等价于
-class Foo(object): pass
+class Foo(object): pass  # 定义类 Foo
 
 # Foo 自动获得 __str__、__eq__ 等方法
 \`\`\`
@@ -1483,13 +1483,13 @@ print('（汽车"有"引擎和轮子 → 用组合，不是"是"引擎）')`
 子类可以**重新定义**父类的方法，叫**重写**：
 
 \`\`\`python
-class Animal:
-    def speak(self):
-        return "..."
+class Animal:  # 定义类 Animal
+    def speak(self):  # 定义函数 speak，参数：self
+        return "..."  # 返回 "..."
 
-class Dog(Animal):
+class Dog(Animal):  # 定义类 Dog
     def speak(self):       # 重写父类方法
-        return "汪汪"
+        return "汪汪"  # 返回 "汪汪"
 \`\`\`
 
 ### super() 调用父类方法
@@ -1497,10 +1497,10 @@ class Dog(Animal):
 用 \`super()\` 在子类里调用父类被重写的方法：
 
 \`\`\`python
-class Dog(Animal):
-    def speak(self):
+class Dog(Animal):  # 定义类 Dog
+    def speak(self):  # 定义函数 speak，参数：self
         sound = super().speak()   # 调用父类的 speak
-        return sound + " 汪汪"
+        return sound + " 汪汪"  # 返回 sound + " 汪汪"
 \`\`\`
 
 ### super().__init__() 初始化父类
@@ -1508,8 +1508,8 @@ class Dog(Animal):
 子类的 \`__init__\` 默认**不会**调用父类的 \`__init__\`，需要手动调用：
 
 \`\`\`python
-class Child(Parent):
-    def __init__(self, parent_arg, child_arg):
+class Child(Parent):  # 定义类 Child
+    def __init__(self, parent_arg, child_arg):  # 定义函数 __init__，参数：self, parent_arg, child_arg
         super().__init__(parent_arg)    # 先初始化父类部分
         self.child_arg = child_arg     # 再初始化子类部分
 \`\`\`
@@ -1728,18 +1728,18 @@ print(f"删除后：{vl}")`
 Python 允许一个类继承**多个父类**：
 
 \`\`\`python
-class Flyable:
-    def fly(self):
-        print("飞")
+class Flyable:  # 定义类 Flyable
+    def fly(self):  # 定义函数 fly，参数：self
+        print("飞")  # 打印输出到屏幕
 
-class Swimmer:
-    def swim(self):
-        print("游")
+class Swimmer:  # 定义类 Swimmer
+    def swim(self):  # 定义函数 swim，参数：self
+        print("游")  # 打印输出到屏幕
 
 class Duck(Flyable, Swimmer):    # 多继承
-    pass
+    pass  # 空操作，占位符
 
-d = Duck()
+d = Duck()  # 赋值变量 d
 d.fly()    # 来自 Flyable
 d.swim()   # 来自 Swimmer
 \`\`\`
@@ -1780,8 +1780,8 @@ C3 算法的核心思想：**保证单调性**——子类的方法总在父类�
 \`super()\` 不一定是"父类"，而是 **MRO 中的下一个类**：
 
 \`\`\`python
-class D(B, C):
-    def method(self):
+class D(B, C):  # 定义类 D
+    def method(self):  # 定义函数 method，参数：self
         super().method()    # 调用 MRO 中 D 的下一个，可能是 B 也可能是 C
 \`\`\`
 
@@ -1790,15 +1790,15 @@ class D(B, C):
 **Mixin** 是小工具类，专门给其他类添加功能，不单独使用：
 
 \`\`\`python
-class JsonMixin:
-    """给类加 JSON 序列化能力"""
-    def to_json(self):
-        import json
-        return json.dumps(self.__dict__)
+class JsonMixin:  # 定义类 JsonMixin
+    """给类加 JSON 序列化能力"""  # 执行操作
+    def to_json(self):  # 定义函数 to_json，参数：self
+        import json  # 导入模块 json
+        return json.dumps(self.__dict__)  # 返回 json.dumps(self.__dict__)
 
 class User(JsonMixin):    # 混入 JSON 能力
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, name):  # 定义函数 __init__，参数：self, name
+        self.name = name  # 执行操作
 \`\`\`
 
 ### 多继承使用建议
@@ -2029,13 +2029,13 @@ print("检查：用 __mro__ 看清方法顺序")`
 **多态**：同一个方法调用，不同对象表现出**不同行为**。
 
 \`\`\`python
-class Dog:
-    def speak(self): return "汪汪"
+class Dog:  # 定义类 Dog
+    def speak(self): return "汪汪"  # 定义函数 speak，参数：self
 
-class Cat:
-    def speak(self): return "喵喵"
+class Cat:  # 定义类 Cat
+    def speak(self): return "喵喵"  # 定义函数 speak，参数：self
 
-def make_sound(animal):
+def make_sound(animal):  # 定义函数 make_sound，参数：animal
     animal.speak()    # 不关心类型，只要有 speak 方法
 
 make_sound(Dog())    # 汪汪
@@ -2047,14 +2047,14 @@ make_sound(Cat())    # 喵喵
 子类重写父类方法，调用时表现不同：
 
 \`\`\`python
-class Animal:
-    def speak(self): return "..."
+class Animal:  # 定义类 Animal
+    def speak(self): return "..."  # 定义函数 speak，参数：self
 
-class Dog(Animal):
+class Dog(Animal):  # 定义类 Dog
     def speak(self): return "汪汪"    # 重写
 
-animals = [Animal(), Dog()]
-for a in animals:
+animals = [Animal(), Dog()]  # 定义列表 animals
+for a in animals:  # 遍历 animals，取值给 a
     print(a.speak())    # 多态
 \`\`\`
 
@@ -2065,13 +2065,13 @@ for a in animals:
 Python 不关心**类型**，只关心**有没有需要的方法**：
 
 \`\`\`python
-class Duck:
-    def quack(self): print("嘎嘎")
+class Duck:  # 定义类 Duck
+    def quack(self): print("嘎嘎")  # 定义函数 quack，参数：self
 
-class Person:
-    def quack(self): print("我学鸭子叫")
+class Person:  # 定义类 Person
+    def quack(self): print("我学鸭子叫")  # 定义函数 quack，参数：self
 
-def make_quack(x):
+def make_quack(x):  # 定义函数 make_quack，参数：x
     x.quack()    # 不管 x 是什么类型
 
 make_quack(Duck())    # 嘎嘎
@@ -2089,13 +2089,13 @@ Python 用"协议"代替接口：**只关心有无方法**，不关心继承关�
 用 \`typing.Protocol\` 定义结构化类型：
 
 \`\`\`python
-from typing import Protocol
+from typing import Protocol  # 从 typing 导入 Protocol
 
-class Speaker(Protocol):
-    def speak(self) -> str: ...
+class Speaker(Protocol):  # 定义类 Speaker
+    def speak(self) -> str: ...  # 定义函数 speak，参数：self
 
-def make_sound(s: Speaker):
-    s.speak()
+def make_sound(s: Speaker):  # 定义函数 make_sound，参数：s: Speaker
+    s.speak()  # 调用 s.speak()
 \`\`\`
 
 ### 内置多态
@@ -2113,11 +2113,11 @@ len({"a": 1})    # 字典
 \`abc\` 模块定义"必须实现"的方法：
 
 \`\`\`python
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod  # 从 abc 导入 ABC, abstractmethod
 
-class Animal(ABC):
-    @abstractmethod
-    def speak(self): pass
+class Animal(ABC):  # 定义类 Animal
+    @abstractmethod  # 应用装饰器 abstractmethod
+    def speak(self): pass  # 定义函数 speak，参数：self
 
 # Animal()    # 报错！不能实例化抽象类
 \`\`\`
@@ -2392,7 +2392,7 @@ except ImportError:
 **魔术方法**是 Python 中以双下划线开头和结尾的特殊方法，又叫 **dunder methods**（double underscore）：
 
 \`\`\`python
-class Foo:
+class Foo:  # 定义类 Foo
     def __init__(self): ...      # 构造
     def __str__(self): ...       # 字符串表示
     def __len__(self): ...       # len() 支持
@@ -2408,14 +2408,14 @@ class Foo:
 | \`__repr__\` | 开发者调试用，明确无歧义 | \`repr(obj)\`、交互模式直接显示 |
 
 \`\`\`python
-class Point:
-    def __init__(self, x, y):
-        self.x, self.y = x, y
+class Point:  # 定义类 Point
+    def __init__(self, x, y):  # 定义函数 __init__，参数：self, x, y
+        self.x, self.y = x, y  # 执行操作
     
-    def __str__(self):
+    def __str__(self):  # 定义函数 __str__，参数：self
         return f"({self.x}, {self.y})"           # 用户看
     
-    def __repr__(self):
+    def __repr__(self):  # 定义函数 __repr__，参数：self
         return f"Point({self.x}, {self.y})"      # 开发者看
 \`\`\`
 
@@ -2428,12 +2428,12 @@ class Point:
 ### __len__ 和 __bool__
 
 \`\`\`python
-class Stack:
+class Stack:  # 定义类 Stack
     def __len__(self):       # 支持 len(stack)
-        return len(self.items)
+        return len(self.items)  # 返回 len(self.items)
     
     def __bool__(self):      # 支持 if stack:
-        return len(self.items) > 0
+        return len(self.items) > 0  # 返回 len(self.items) > 0
 \`\`\`
 
 ### 常用魔术方法一览

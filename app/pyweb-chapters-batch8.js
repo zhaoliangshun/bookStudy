@@ -40,8 +40,10 @@ Django 内置一套完整的用户认证系统(\`django.contrib.auth\`),开箱�
 Django 自带的 \`User\` 模型(\`django.contrib.auth.models.User\`)字段:
 
 \`\`\`python
+# 从 django.contrib.auth.models 导入 User
 from django.contrib.auth.models import User
 
+# 定义变量 user，赋值为 User.objects.get(username="admin")
 user = User.objects.get(username="admin")
 user.username        # 用户名(唯一)
 user.password        # 哈希后的密码(不是明文!)
@@ -68,15 +70,21 @@ user.date_joined    # 注册时间
 \`authenticate\` 函数校验「用户名密码是否正确」,返回 User 对象或 None:
 
 \`\`\`python
+# 从 django.contrib.auth 导入 authenticate
 from django.contrib.auth import authenticate
 
 # 校验用户名密码
+# 定义变量 user，赋值为 authenticate(request, username="admin", passw...
 user = authenticate(request, username="admin", password="secret123")
+# 条件判断：如果 user is not None
 if user is not None:
     # 校验通过(密码正确 且 账户 active)
+    # 调用 print()
     print("OK", user)
+# 否则执行
 else:
     # 用户名不存在 或 密码错 或 账户被禁用
+    # 调用 print()
     print("失败")
 \`\`\`
 
@@ -91,23 +99,37 @@ else:
 \`authenticate\` 通过后,调 \`login\` 把用户「写入 Session」:
 
 \`\`\`python
+# 从 django.contrib.auth 导入 authenticate, login
 from django.contrib.auth import authenticate, login
+# 从 django.shortcuts 导入 render, redirect
 from django.shortcuts import render, redirect
 
+# 定义函数 login_view，参数: request
 def login_view(request):
+    # 条件判断：如果 request.method == "POST"
     if request.method == "POST":
+        # 定义变量 username，赋值为 request.POST.get("username")
         username = request.POST.get("username")
+        # 定义变量 password，赋值为 request.POST.get("password")
         password = request.POST.get("password")
+        # 定义变量 user，赋值为 authenticate(request, username=username, pass...
         user = authenticate(request, username=username, password=password)
+        # 条件判断：如果 user is not None
         if user is not None:
             # 登录:把 user.id 写入 session
+            # 调用 login()
             login(request, user)
             # 跳到 ?next= 指定的页面,或首页
+            # 定义变量 next_url，赋值为 request.GET.get("next", "/")
             next_url = request.GET.get("next", "/")
+            # 返回 redirect(next_url)
             return redirect(next_url)
+        # 否则执行
         else:
             # 登录失败
+            # 返回 render(request, "login.html", {"error": "用户名或密码错误"})
             return render(request, "login.html", {"error": "用户名或密码错误"})
+    # 返回 render(request, "login.html")
     return render(request, "login.html")
 \`\`\`
 
@@ -120,11 +142,15 @@ def login_view(request):
 ## logout():登出(清空 Session)
 
 \`\`\`python
+# 从 django.contrib.auth 导入 logout
 from django.contrib.auth import logout
+# 从 django.shortcuts 导入 redirect
 from django.shortcuts import redirect
 
+# 定义函数 logout_view，参数: request
 def logout_view(request):
     logout(request)  # 清空 session,把 user 设为 AnonymousUser
+    # 返回 redirect("/")
     return redirect("/")
 \`\`\`
 
@@ -134,11 +160,15 @@ def logout_view(request):
 
 \`\`\`python
 # 视图里
+# 条件判断：如果 request.user.is_authenticated
 if request.user.is_authenticated:
     # 已登录
+    # 调用 print()
     print("当前用户:", request.user.username)
+# 否则执行
 else:
     # 未登录(AnonymousUser)
+    # 调用 print()
     print("匿名用户")
 \`\`\`
 
@@ -154,25 +184,38 @@ else:
 - 未登录 → \`AnonymousUser\` 对象(只有 \`id=None\`、\`is_authenticated=False\`)。
 
 \`\`\`python
+# 定义函数 profile，参数: request
 def profile(request):
+    # 条件判断：如果 not request.user.is_authenticated
     if not request.user.is_authenticated:
+        # 返回 redirect("login")
         return redirect("login")
 
     # 已登录,可以直接用
+    # 定义变量 username，赋值为 request.user.username
     username = request.user.username
+    # 定义变量 email，赋值为 request.user.email
     email = request.user.email
+    # 定义变量 is_staff，赋值为 request.user.is_staff
     is_staff = request.user.is_staff
+    # 返回 render(request, "profile.html", {"user": request.user})
     return render(request, "profile.html", {"user": request.user})
 \`\`\`
 
 模板里 \`{{ user }}\` 由上下文处理器自动注入,不用视图传:
 
 \`\`\`html
+# {% if user.is_authenticated %}
 {% if user.is_authenticated %}
+    # <p>欢迎,{{ user.username }}</p>
     <p>欢迎,{{ user.username }}</p>
+    # <a href="{% url 'logout' %}">退出</a>
     <a href="{% url 'logout' %}">退出</a>
+# {% else %}
 {% else %}
+    # <a href="{% url 'login' %}">登录</a>
     <a href="{% url 'login' %}">登录</a>
+# {% endif %}
 {% endif %}
 \`\`\`
 
@@ -181,21 +224,28 @@ def profile(request):
 最常用的权限装饰器,未登录跳转到 \`LOGIN_URL\`:
 
 \`\`\`python
+# 从 django.contrib.auth.decorators 导入 login_required
 from django.contrib.auth.decorators import login_required
 
+# 装饰器：login_required
 @login_required
+# 定义函数 dashboard，参数: request
 def dashboard(request):
     # 未登录用户访问会跳到 /accounts/login/?next=/dashboard/
+    # 返回 render(request, "dashboard.html")
     return render(request, "dashboard.html")
 \`\`\`
 
 类视图用 \`LoginRequiredMixin\`:
 
 \`\`\`python
+# 从 django.contrib.auth.mixins 导入 LoginRequiredMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
 
+# 定义类 DashboardView，继承 LoginRequiredMixin, View
 class DashboardView(LoginRequiredMixin, View):
     # 未登录跳登录页
+    # ...
     ...
 \`\`\`
 
@@ -207,11 +257,14 @@ Django 默认用 \`PBKDF2\`(Python 自带,无需额外依赖),也可切换更强
 
 \`\`\`python
 # settings.py
+# 定义列表 PASSWORD_HASHERS
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.Argon2PasswordHasher",  # 首选 Argon2(需 pip install argon2-cffi)
     "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",  # 备选 bcrypt(需 pip install bcrypt)
     "django.contrib.auth.hashers.PBKDF2PasswordHasher",  # Django 默认
+    # "django.contrib.auth.hashers.PBKDF2SHA1PasswordHas
     "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+# ]
 ]
 \`\`\`
 
@@ -220,20 +273,28 @@ Django 按列表顺序选第一个可用的算法。换算法时,旧密码在下
 创建用户用 \`create_user\`(自动哈希密码):
 
 \`\`\`python
+# 从 django.contrib.auth.models 导入 User
 from django.contrib.auth.models import User
 
 # 创建用户(密码自动哈希)
+# 定义变量 user，赋值为 User.objects.create_user(
 user = User.objects.create_user(
+    # 定义变量 username，赋值为 "alice",
     username="alice",
+    # 定义变量 email，赋值为 "alice@example.com",
     email="alice@example.com",
+    # 定义变量 password，赋值为 "secret123",
     password="secret123",
+# )
 )
 
 # ⚠️ 绝不能用 create,密码不会哈希!
 # user = User.objects.create(username="bob", password="plain")  # ❌ 危险
 
 # 改密码:用 set_password
+# 调用 user.set_password()
 user.set_password("newpass456")
+# 调用 user.save()
 user.save()
 \`\`\`
 
@@ -242,16 +303,20 @@ user.save()
 ## check_password:手动校验密码
 
 \`\`\`python
+# 从 django.contrib.auth.hashers 导入 check_password
 from django.contrib.auth.hashers import check_password
 
 # 校验明文密码是否匹配哈希(用于改密码时验证旧密码)
+# 条件判断：如果 check_password("oldpass", user.password)
 if check_password("oldpass", user.password):
+    # 调用 print()
     print("旧密码正确")
 \`\`\`
 
 \`make_password\` 哈希明文:
 
 \`\`\`python
+# 从 django.contrib.auth.hashers 导入 make_password
 from django.contrib.auth.hashers import make_password
 
 hashed = make_password("mypassword")  # 返回哈希字符串
@@ -261,114 +326,195 @@ hashed = make_password("mypassword")  # 返回哈希字符串
 
 \`\`\`python
 # accounts/views.py
+# 从 django.contrib.auth 导入 authenticate, login, logout
 from django.contrib.auth import authenticate, login, logout
+# 从 django.contrib.auth.decorators 导入 login_required
 from django.contrib.auth.decorators import login_required
+# 从 django.shortcuts 导入 render, redirect
 from django.shortcuts import render, redirect
+# 从 django.views.decorators.http 导入 require_GET
 from django.views.decorators.http import require_GET
 
+# 定义函数 login_view，参数: request
 def login_view(request):
+    # """登录"""
     """登录"""
+    # 条件判断：如果 request.user.is_authenticated
     if request.user.is_authenticated:
         return redirect("/")  # 已登录别再来
 
+    # 条件判断：如果 request.method == "POST"
     if request.method == "POST":
+        # 定义变量 username，赋值为 request.POST.get("username", "").strip()
         username = request.POST.get("username", "").strip()
+        # 定义变量 password，赋值为 request.POST.get("password", "")
         password = request.POST.get("password", "")
 
+        # 定义变量 user，赋值为 authenticate(request, username=username, pass...
         user = authenticate(request, username=username, password=password)
+        # 条件判断：如果 user is not None
         if user is not None:
+            # 调用 login()
             login(request, user)
             # 登录成功,跳到 next 或首页
+            # 定义变量 next_url，赋值为 request.GET.get("next") or request.POST.get("...
             next_url = request.GET.get("next") or request.POST.get("next") or "/"
+            # 返回 redirect(next_url)
             return redirect(next_url)
+        # 否则执行
         else:
+            # 返回 render(request, "registration/login.html", {
             return render(request, "registration/login.html", {
+                # "error": "用户名或密码错误",
                 "error": "用户名或密码错误",
+                # "username": username,
                 "username": username,
+            # })
             })
+    # 返回 render(request, "registration/login.html")
     return render(request, "registration/login.html")
 
+# 装饰器：require_GET
 @require_GET
+# 定义函数 logout_view，参数: request
 def logout_view(request):
+    # """登出(GET 触发,带 next 跳转)"""
     """登出(GET 触发,带 next 跳转)"""
+    # 调用 logout()
     logout(request)
+    # 返回 redirect("/")
     return redirect("/")
 
+# 装饰器：login_required
 @login_required
+# 定义函数 change_password_view，参数: request
 def change_password_view(request):
+    # """修改密码:验证旧密码后设新密码"""
     """修改密码:验证旧密码后设新密码"""
+    # 条件判断：如果 request.method == "POST"
     if request.method == "POST":
+        # 定义变量 old_password，赋值为 request.POST.get("old_password")
         old_password = request.POST.get("old_password")
+        # 定义变量 new_password，赋值为 request.POST.get("new_password")
         new_password = request.POST.get("new_password")
+        # 定义变量 confirm，赋值为 request.POST.get("confirm_password")
         confirm = request.POST.get("confirm_password")
 
         # 1. 校验旧密码
+        # 条件判断：如果 not request.user.check_password(old_password)
         if not request.user.check_password(old_password):
+            # 返回 render(request, "registration/change_password.html", {
             return render(request, "registration/change_password.html", {
+                # "error": "旧密码错误",
                 "error": "旧密码错误",
+            # })
             })
         # 2. 校验新密码一致
+        # 条件判断：如果 new_password != confirm
         if new_password != confirm:
+            # 返回 render(request, "registration/change_password.html", {
             return render(request, "registration/change_password.html", {
+                # "error": "两次新密码不一致",
                 "error": "两次新密码不一致",
+            # })
             })
         # 3. 设置新密码
+        # 调用 request.user.set_password()
         request.user.set_password(new_password)
+        # 调用 request.user.save()
         request.user.save()
         # 改密码后 session 失效,需要重新登录
+        # 从 django.contrib.auth 导入 update_session_auth_hash
         from django.contrib.auth import update_session_auth_hash
         update_session_auth_hash(request, request.user)  # 保持登录
+        # 返回 redirect("profile")
         return redirect("profile")
+    # 返回 render(request, "registration/change_password.html")
     return render(request, "registration/change_password.html")
 \`\`\`
 
 \`\`\`python
 # accounts/urls.py
+# 从 django.urls 导入 path
 from django.urls import path
+# 从 django.contrib.auth 导入 views as auth_views
 from django.contrib.auth import views as auth_views
+# 从 . 导入 views
 from . import views
 
+# 定义列表 urlpatterns
 urlpatterns = [
+    # 调用 path()
     path("login/", views.login_view, name="login"),
+    # 调用 path()
     path("logout/", views.logout_view, name="logout"),
+    # 调用 path()
     path("change-password/", views.change_password_view, name="change_password"),
     # 用 Django 内置的密码重置/找回视图
+    # 调用 path()
     path("password-reset/", auth_views.PasswordResetView.as_view(), name="password_reset"),
+    # 调用 path()
     path("password-reset/done/", auth_views.PasswordResetDoneView.as_view(), name="password_reset_done"),
+    # 调用 path()
     path("reset/<uidb64>/<token>/", auth_views.PasswordResetConfirmView.as_view(), name="password_reset_confirm"),
+    # 调用 path()
     path("reset/done/", auth_views.PasswordResetCompleteView.as_view(), name="password_reset_complete"),
+# ]
 ]
 \`\`\`
 
 \`\`\`html
+# <!-- templates/registration/login.html -->
 <!-- templates/registration/login.html -->
+# {% extends "base.html" %}
 {% extends "base.html" %}
+# {% block title %}登录{% endblock %}
 {% block title %}登录{% endblock %}
 
+# {% block content %}
 {% block content %}
+# <h1>登录</h1>
 <h1>登录</h1>
 
+# {% if error %}
 {% if error %}
+    # <div class="alert alert-danger">{{ error }}</div>
     <div class="alert alert-danger">{{ error }}</div>
+# {% endif %}
 {% endif %}
 
+# <form method="post">
 <form method="post">
+    # {% csrf_token %}
     {% csrf_token %}
+    # <input type="hidden" name="next" value="{{ request
     <input type="hidden" name="next" value="{{ request.GET.next }}">
 
+    # <div class="form-group">
     <div class="form-group">
+        # <label>用户名</label>
         <label>用户名</label>
+        # <input type="text" name="username" value="{{ usern
         <input type="text" name="username" value="{{ username }}" required autofocus>
+    # </div>
     </div>
 
+    # <div class="form-group">
     <div class="form-group">
+        # <label>密码</label>
         <label>密码</label>
+        # <input type="password" name="password" required>
         <input type="password" name="password" required>
+    # </div>
     </div>
 
+    # <button type="submit">登录</button>
     <button type="submit">登录</button>
+    # <a href="{% url 'password_reset' %}">忘记密码?</a>
     <a href="{% url 'password_reset' %}">忘记密码?</a>
+# </form>
 </form>
+# {% endblock %}
 {% endblock %}
 \`\`\`
 
@@ -438,21 +584,34 @@ Django 提供两条路:
 
 \`\`\`python
 # users/models.py
+# 从 django.contrib.auth.models 导入 AbstractUser
 from django.contrib.auth.models import AbstractUser
+# 从 django.db 导入 models
 from django.db import models
 
+# 定义类 User，继承 AbstractUser
 class User(AbstractUser):
+    # """自定义用户:在默认基础上加字段"""
     """自定义用户:在默认基础上加字段"""
+    # 定义变量 phone，赋值为 models.CharField(max_length=20, blank=True, v...
     phone = models.CharField(max_length=20, blank=True, verbose_name="手机号")
+    # 定义变量 avatar，赋值为 models.ImageField(upload_to="avatars/", blank...
     avatar = models.ImageField(upload_to="avatars/", blank=True, verbose_name="头像")
+    # 定义变量 bio，赋值为 models.TextField(blank=True, verbose_name="个人...
     bio = models.TextField(blank=True, verbose_name="个人简介")
+    # 定义变量 birthday，赋值为 models.DateField(null=True, blank=True, verbo...
     birthday = models.DateField(null=True, blank=True, verbose_name="生日")
 
+    # 定义类 Meta
     class Meta:
+        # 定义变量 verbose_name，赋值为 "用户"
         verbose_name = "用户"
+        # 定义变量 verbose_name_plural，赋值为 "用户"
         verbose_name_plural = "用户"
 
+    # 定义函数 __str__，参数: self
     def __str__(self):
+        # 返回 self.username
         return self.username
 \`\`\`
 
@@ -461,6 +620,7 @@ class User(AbstractUser):
 \`\`\`python
 # settings.py
 # 必须配置!否则 Django 还是认默认 User
+# 定义变量 AUTH_USER_MODEL，赋值为 "users.User"
 AUTH_USER_MODEL = "users.User"
 \`\`\`
 
@@ -474,19 +634,27 @@ AUTH_USER_MODEL = "users.User"
 
 \`\`\`python
 # blog/models.py
+# 从 django.conf 导入 settings
 from django.conf import settings
+# 从 django.db 导入 models
 from django.db import models
 
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
     # ❌ 不要直接 import User
     # from django.contrib.auth.models import User
     # author = models.ForeignKey(User, ...)
 
     # ✅ 用 settings.AUTH_USER_MODEL(字符串)
+    # 定义变量 author，赋值为 models.ForeignKey(
     author = models.ForeignKey(
+        # settings.AUTH_USER_MODEL,
         settings.AUTH_USER_MODEL,
+        # 定义变量 on_delete，赋值为 models.CASCADE,
         on_delete=models.CASCADE,
+        # 定义变量 related_name，赋值为 "posts",
         related_name="posts",
+    # )
     )
 \`\`\`
 
@@ -498,56 +666,92 @@ class Post(models.Model):
 
 \`\`\`python
 # users/models.py
+# 从 django.contrib.auth.models 导入 AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+# 从 django.db 导入 models
 from django.db import models
 
 # 第 1 步:自定义 Manager(管理用户创建)
+# 定义类 UserManager，继承 BaseUserManager
 class UserManager(BaseUserManager):
+    # """用邮箱登录的 User Manager"""
     """用邮箱登录的 User Manager"""
 
+    # 定义函数 create_user，参数: self, email, password=None, **extra_fields
     def create_user(self, email, password=None, **extra_fields):
+        # 条件判断：如果 not email
         if not email:
+            # 抛出 ValueError 异常: "必须填邮箱"
             raise ValueError("必须填邮箱")
+        # 定义变量 email，赋值为 self.normalize_email(email)
         email = self.normalize_email(email)
+        # 定义变量 user，赋值为 self.model(email=email, **extra_fields)
         user = self.model(email=email, **extra_fields)
         user.set_password(password)  # 哈希密码
+        # 调用 user.save()
         user.save(using=self._db)
+        # 返回 user
         return user
 
+    # 定义函数 create_superuser，参数: self, email, password=None, **extra_fields
     def create_superuser(self, email, password=None, **extra_fields):
+        # 调用 extra_fields.setdefault()
         extra_fields.setdefault("is_staff", True)
+        # 调用 extra_fields.setdefault()
         extra_fields.setdefault("is_superuser", True)
+        # 条件判断：如果 extra_fields.get("is_staff") is not True
         if extra_fields.get("is_staff") is not True:
+            # 抛出 ValueError 异常: "超级用户必须 is_staff=True"
             raise ValueError("超级用户必须 is_staff=True")
+        # 条件判断：如果 extra_fields.get("is_superuser") is not True
         if extra_fields.get("is_superuser") is not True:
+            # 抛出 ValueError 异常: "超级用户必须 is_superuser=True"
             raise ValueError("超级用户必须 is_superuser=True")
+        # 返回 self.create_user(email, password, **extra_fields)
         return self.create_user(email, password, **extra_fields)
 
 # 第 2 步:自定义 User
+# 定义类 User，继承 AbstractBaseUser, PermissionsMixin
 class User(AbstractBaseUser, PermissionsMixin):
+    # """用邮箱登录的用户模型"""
     """用邮箱登录的用户模型"""
 
+    # 定义变量 email，赋值为 models.EmailField(unique=True, verbose_name="...
     email = models.EmailField(unique=True, verbose_name="邮箱")
+    # 定义变量 nickname，赋值为 models.CharField(max_length=30, verbose_name=...
     nickname = models.CharField(max_length=30, verbose_name="昵称")
+    # 定义变量 avatar，赋值为 models.ImageField(upload_to="avatars/", blank...
     avatar = models.ImageField(upload_to="avatars/", blank=True)
+    # 定义变量 phone，赋值为 models.CharField(max_length=20, blank=True)
     phone = models.CharField(max_length=20, blank=True)
+    # 定义变量 is_active，赋值为 models.BooleanField(default=True, verbose_nam...
     is_active = models.BooleanField(default=True, verbose_name="启用")
+    # 定义变量 is_staff，赋值为 models.BooleanField(default=False, verbose_na...
     is_staff = models.BooleanField(default=False, verbose_name="管理员")
+    # 定义变量 date_joined，赋值为 models.DateTimeField(auto_now_add=True)
     date_joined = models.DateTimeField(auto_now_add=True)
 
     # 关键:指定用哪个字段登录
+    # 定义变量 USERNAME_FIELD，赋值为 "email"
     USERNAME_FIELD = "email"
     # createsuperuser 时额外必填的字段
+    # 定义列表 REQUIRED_FIELDS
     REQUIRED_FIELDS = ["nickname"]
 
     # 指定 Manager
+    # 定义变量 objects，赋值为 UserManager()
     objects = UserManager()
 
+    # 定义类 Meta
     class Meta:
+        # 定义变量 verbose_name，赋值为 "用户"
         verbose_name = "用户"
+        # 定义变量 verbose_name_plural，赋值为 "用户"
         verbose_name_plural = "用户"
 
+    # 定义函数 __str__，参数: self
     def __str__(self):
+        # 返回 self.email
         return self.email
 \`\`\`
 
@@ -560,11 +764,13 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 \`\`\`python
 # settings.py
+# 定义变量 AUTH_USER_MODEL，赋值为 "users.User"
 AUTH_USER_MODEL = "users.User"
 \`\`\`
 
 \`\`\`bash
 # 创建超级用户(交互会问 email、nickname、password)
+# 运行 Python 脚本 manage.py
 python manage.py createsuperuser
 # Email: admin@example.com
 # Nickname: 管理员
@@ -577,35 +783,58 @@ python manage.py createsuperuser
 
 \`\`\`python
 # users/models.py
+# 定义类 User，继承 AbstractUser
 class User(AbstractUser):
+    # """核心:认证必需"""
     """核心:认证必需"""
+    # 定义变量 phone，赋值为 models.CharField(max_length=20, blank=True)
     phone = models.CharField(max_length=20, blank=True)
 
     # 添加时返回 signal 自动创建 Profile
+    # 空操作占位
     pass
 
+# 定义类 Profile，继承 models.Model
 class Profile(models.Model):
+    # """扩展:非核心资料"""
     """扩展:非核心资料"""
+    # 定义变量 user，赋值为 models.OneToOneField(
     user = models.OneToOneField(
+        # settings.AUTH_USER_MODEL,
         settings.AUTH_USER_MODEL,
+        # 定义变量 on_delete，赋值为 models.CASCADE,
         on_delete=models.CASCADE,
+        # 定义变量 related_name，赋值为 "profile",
         related_name="profile",
+    # )
     )
+    # 定义变量 avatar，赋值为 models.ImageField(upload_to="avatars/", blank...
     avatar = models.ImageField(upload_to="avatars/", blank=True)
+    # 定义变量 bio，赋值为 models.TextField(blank=True)
     bio = models.TextField(blank=True)
+    # 定义变量 website，赋值为 models.URLField(blank=True)
     website = models.URLField(blank=True)
 
 # 用 signal 自动建 Profile
+# 从 django.db.models.signals 导入 post_save
 from django.db.models.signals import post_save
+# 从 django.dispatch 导入 receiver
 from django.dispatch import receiver
 
+# 装饰器：receiver
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
+# 定义函数 create_profile，参数: sender, instance, created, **kwargs
 def create_profile(sender, instance, created, **kwargs):
+    # 条件判断：如果 created
     if created:
+        # 调用 Profile.objects.create()
         Profile.objects.create(user=instance)
 
+# 装饰器：receiver
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
+# 定义函数 save_profile，参数: sender, instance, **kwargs
 def save_profile(sender, instance, **kwargs):
+    # 调用 instance.profile.save()
     instance.profile.save()
 \`\`\`
 
@@ -616,21 +845,28 @@ def save_profile(sender, instance, **kwargs):
 引用用户模型的最佳方式:
 
 \`\`\`python
+# 从 django.conf 导入 settings
 from django.conf import settings
 
 # 1. Model 外键
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
+    # 定义变量 author，赋值为 models.ForeignKey(settings.AUTH_USER_MODEL, o...
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
 # 2. 拿到 User 类(运行时)
 User = settings.AUTH_USER_MODEL  # ❌ 这是字符串,不是类!
 # 正确:用 get_user_model
+# 从 django.contrib.auth 导入 get_user_model
 from django.contrib.auth import get_user_model
 User = get_user_model()  # ✅ 返回 User 类
 
 # 3. 在 Form/Serializer 里
+# 定义类 PostForm，继承 forms.ModelForm
 class PostForm(forms.ModelForm):
+    # 定义类 Meta
     class Meta:
+        # 定义变量 model，赋值为 Post
         model = Post
         fields = ["title", "author"]  # author 自动是 AUTH_USER_MODEL
 \`\`\`
@@ -655,116 +891,197 @@ class PostForm(forms.ModelForm):
 
 \`\`\`python
 # users/models.py
+# 从 django.contrib.auth.models 导入 AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+# 从 django.db 导入 models
 from django.db import models
+# 从 django.utils 导入 timezone
 from django.utils import timezone
 
+# 定义类 UserManager，继承 BaseUserManager
 class UserManager(BaseUserManager):
+    # 定义函数 create_user，参数: self, email, password=None, **extra
     def create_user(self, email, password=None, **extra):
+        # 条件判断：如果 not email
         if not email:
+            # 抛出 ValueError 异常: "邮箱必填"
             raise ValueError("邮箱必填")
+        # 定义变量 email，赋值为 self.normalize_email(email)
         email = self.normalize_email(email)
+        # 定义变量 user，赋值为 self.model(email=email, **extra)
         user = self.model(email=email, **extra)
+        # 调用 user.set_password()
         user.set_password(password)
+        # 调用 user.save()
         user.save(using=self._db)
+        # 返回 user
         return user
 
+    # 定义函数 create_superuser，参数: self, email, password=None, **extra
     def create_superuser(self, email, password=None, **extra):
+        # 调用 extra.setdefault()
         extra.setdefault("is_staff", True)
+        # 调用 extra.setdefault()
         extra.setdefault("is_superuser", True)
+        # 返回 self.create_user(email, password, **extra)
         return self.create_user(email, password, **extra)
 
+# 定义类 User，继承 AbstractBaseUser, PermissionsMixin
 class User(AbstractBaseUser, PermissionsMixin):
+    # 定义变量 email，赋值为 models.EmailField(unique=True, verbose_name="...
     email = models.EmailField(unique=True, verbose_name="邮箱")
+    # 定义变量 nickname，赋值为 models.CharField(max_length=30, verbose_name=...
     nickname = models.CharField(max_length=30, verbose_name="昵称")
+    # 定义变量 avatar，赋值为 models.ImageField(upload_to="avatars/", blank...
     avatar = models.ImageField(upload_to="avatars/", blank=True, default="")
+    # 定义变量 is_active，赋值为 models.BooleanField(default=True)
     is_active = models.BooleanField(default=True)
+    # 定义变量 is_staff，赋值为 models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
+    # 定义变量 date_joined，赋值为 models.DateTimeField(default=timezone.now)
     date_joined = models.DateTimeField(default=timezone.now)
 
+    # 定义变量 USERNAME_FIELD，赋值为 "email"
     USERNAME_FIELD = "email"
+    # 定义列表 REQUIRED_FIELDS
     REQUIRED_FIELDS = ["nickname"]
+    # 定义变量 objects，赋值为 UserManager()
     objects = UserManager()
 
+    # 定义类 Meta
     class Meta:
+        # 定义变量 verbose_name，赋值为 "用户"
         verbose_name = "用户"
+        # 定义变量 verbose_name_plural，赋值为 "用户"
         verbose_name_plural = "用户"
 
+    # 定义函数 __str__，参数: self
     def __str__(self):
+        # 返回 f"{self.nickname} <{self.email}>"
         return f"{self.nickname} <{self.email}>"
 \`\`\`
 
 \`\`\`python
 # users/admin.py
+# 从 django.contrib 导入 admin
 from django.contrib import admin
+# 从 django.contrib.auth.admin 导入 UserAdmin as BaseUserAdmin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+# 从 .models 导入 User
 from .models import User
 
+# 装饰器：admin.register
 @admin.register(User)
+# 定义类 UserAdmin，继承 BaseUserAdmin
 class UserAdmin(BaseUserAdmin):
     # 因为用 email 登录,要调整 Admin 的字段
+    # 定义变量 list_display，赋值为 ("email", "nickname", "is_staff", "is_active"...
     list_display = ("email", "nickname", "is_staff", "is_active")
+    # 定义变量 list_filter，赋值为 ("is_staff", "is_active")
     list_filter = ("is_staff", "is_active")
+    # 定义变量 search_fields，赋值为 ("email", "nickname")
     search_fields = ("email", "nickname")
+    # 定义变量 ordering，赋值为 ("email",)
     ordering = ("email",)
 
     # 编辑页字段布局
+    # 定义变量 fieldsets，赋值为 (
     fieldsets = (
+        # (None, {"fields": ("email", "password")}),
         (None, {"fields": ("email", "password")}),
+        # ("个人信息", {"fields": ("nickname", "avatar")}),
         ("个人信息", {"fields": ("nickname", "avatar")}),
+        # ("权限", {"fields": ("is_active", "is_staff", "is_su
         ("权限", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
+        # ("重要日期", {"fields": ("last_login", "date_joined")}
         ("重要日期", {"fields": ("last_login", "date_joined")}),
+    # )
     )
 
     # 创建用户页字段
+    # 定义变量 add_fieldsets，赋值为 (
     add_fieldsets = (
+        # (None, {
         (None, {
+            # "classes": ("wide",),
             "classes": ("wide",),
+            # "fields": ("email", "nickname", "password1", "pass
             "fields": ("email", "nickname", "password1", "password2"),
+        # }),
         }),
+    # )
     )
 \`\`\`
 
 \`\`\`python
 # settings.py
+# 定义列表 INSTALLED_APPS
 INSTALLED_APPS = [
     # ...
     "users",  # 注册 users 应用
+# ]
 ]
+# 定义变量 AUTH_USER_MODEL，赋值为 "users.User"
 AUTH_USER_MODEL = "users.User"
 \`\`\`
 
 \`\`\`python
 # 注册/登录视图(用 email)
+# 从 django.contrib.auth 导入 authenticate, login
 from django.contrib.auth import authenticate, login
+# 从 django.shortcuts 导入 render, redirect
 from django.shortcuts import render, redirect
 
+# 定义函数 register_view，参数: request
 def register_view(request):
+    # 条件判断：如果 request.method == "POST"
     if request.method == "POST":
+        # 定义变量 email，赋值为 request.POST.get("email")
         email = request.POST.get("email")
+        # 定义变量 nickname，赋值为 request.POST.get("nickname")
         nickname = request.POST.get("nickname")
+        # 定义变量 password，赋值为 request.POST.get("password")
         password = request.POST.get("password")
 
+        # 从 .models 导入 User
         from .models import User
+        # 条件判断：如果 User.objects.filter(email=email).exists()
         if User.objects.filter(email=email).exists():
+            # 返回 render(request, "register.html", {"error": "邮箱已注册"})
             return render(request, "register.html", {"error": "邮箱已注册"})
+        # 定义变量 user，赋值为 User.objects.create_user(
         user = User.objects.create_user(
+            # 定义变量 email，赋值为 email, password=password, nickname=nickname
             email=email, password=password, nickname=nickname
+        # )
         )
+        # 调用 login()
         login(request, user)
+        # 返回 redirect("/")
         return redirect("/")
+    # 返回 render(request, "register.html")
     return render(request, "register.html")
 
+# 定义函数 login_view，参数: request
 def login_view(request):
+    # 条件判断：如果 request.method == "POST"
     if request.method == "POST":
+        # 定义变量 email，赋值为 request.POST.get("email")
         email = request.POST.get("email")
+        # 定义变量 password，赋值为 request.POST.get("password")
         password = request.POST.get("password")
+        # 定义变量 user，赋值为 authenticate(request, username=email, passwor...
         user = authenticate(request, username=email, password=password)
         # 注意:authenticate 的 username 参数还是叫 username,但值传 email
+        # 条件判断：如果 user is not None
         if user is not None:
+            # 调用 login()
             login(request, user)
+            # 返回 redirect(request.GET.get("next", "/"))
             return redirect(request.GET.get("next", "/"))
+        # 返回 render(request, "login.html", {"error": "邮箱或密码错误"})
         return render(request, "login.html", {"error": "邮箱或密码错误"})
+    # 返回 render(request, "login.html")
     return render(request, "login.html")
 \`\`\`
 
@@ -817,24 +1134,37 @@ Django 内置一套「**RBAC(Role-Based Access Control,基于角色的访问控�
 Group 是「权限的集合」,本质是把多个 Permission 打包,方便批量授权:
 
 \`\`\`python
+# 从 django.contrib.auth.models 导入 Group, Permission, User
 from django.contrib.auth.models import Group, Permission, User
 
 # 创建分组(角色)
+# editors, _ = Group.objects.get_or_create(name="edi
 editors, _ = Group.objects.get_or_create(name="editors")
+# authors, _ = Group.objects.get_or_create(name="aut
 authors, _ = Group.objects.get_or_create(name="authors")
 
 # 给分组加权限
+# editors.permissions.add(
 editors.permissions.add(
+    # 调用 Permission.objects.get()
     Permission.objects.get(codename="add_post"),
+    # 调用 Permission.objects.get()
     Permission.objects.get(codename="change_post"),
+    # 调用 Permission.objects.get()
     Permission.objects.get(codename="delete_post"),
+# )
 )
+# authors.permissions.add(
 authors.permissions.add(
+    # 调用 Permission.objects.get()
     Permission.objects.get(codename="add_post"),
+    # 调用 Permission.objects.get()
     Permission.objects.get(codename="change_post"),
+# )
 )
 
 # 用户加入分组
+# 定义变量 user，赋值为 User.objects.get(username="alice")
 user = User.objects.get(username="alice")
 user.groups.add(editors)  # alice 现在是 editors 组,自动拥有该组所有权限
 \`\`\`
@@ -858,7 +1188,9 @@ user.groups.add(editors)  # alice 现在是 editors 组,自动拥有该组所有
 
 \`\`\`python
 # 查看所有权限
+# 从 django.contrib.auth.models 导入 Permission
 from django.contrib.auth.models import Permission
+# 调用 Permission.objects.filter()
 Permission.objects.filter(content_type__app_label="blog")
 \`\`\`
 
@@ -867,15 +1199,23 @@ Permission.objects.filter(content_type__app_label="blog")
 在 Model 的 \`Meta.permissions\` 里定义:
 
 \`\`\`python
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
+    # 定义变量 title，赋值为 models.CharField(max_length=200)
     title = models.CharField(max_length=200)
     # ...
 
+    # 定义类 Meta
     class Meta:
+        # 定义列表 permissions
         permissions = [
+            # ("publish_post", "可以发布文章"),
             ("publish_post", "可以发布文章"),
+            # ("unpublish_post", "可以下架文章"),
             ("unpublish_post", "可以下架文章"),
+            # ("moderate_comments", "可以审核评论"),
             ("moderate_comments", "可以审核评论"),
+        # ]
         ]
 \`\`\`
 
@@ -885,26 +1225,39 @@ class Post(models.Model):
 
 \`\`\`python
 # 视图里
+# 定义变量 user，赋值为 request.user
 user = request.user
 
 # 检查是否有某权限
+# 条件判断：如果 user.has_perm("blog.add_post")
 if user.has_perm("blog.add_post"):
+    # 调用 print()
     print("可以新增文章")
 
 # 检查多个权限(任一)
+# 条件判断：如果 user.has_perms(["blog.add_post", "blog.change_post"])
 if user.has_perms(["blog.add_post", "blog.change_post"]):
+    # 调用 print()
     print("可以新增或修改")
 
 # 检查某 Model 的所有权限
+# 条件判断：如果 user.has_module_perms("blog")
 if user.has_module_perms("blog"):
+    # 调用 print()
     print("对 blog 应用有某种权限")
 
 # 模板里
+# {% if perms.blog.add_post %}
 {% if perms.blog.add_post %}
+    # <a href="{% url 'blog:post_new' %}">写文章</a>
     <a href="{% url 'blog:post_new' %}">写文章</a>
+# {% endif %}
 {% endif %}
+# {% if perms.blog.delete_post %}
 {% if perms.blog.delete_post %}
+    # <button onclick="deletePost()">删除</button>
     <button onclick="deletePost()">删除</button>
+# {% endif %}
 {% endif %}
 \`\`\`
 
@@ -913,24 +1266,36 @@ if user.has_module_perms("blog"):
 装饰器强制视图需要某权限:
 
 \`\`\`python
+# 从 django.contrib.auth.decorators 导入 permission_required
 from django.contrib.auth.decorators import permission_required
 
+# 装饰器：permission_required
 @permission_required("blog.add_post", raise_exception=True)
+# 定义函数 post_new，参数: request
 def post_new(request):
     # 无权限直接 403(raise_exception=True)
+    # ...
     ...
 
 # 多个权限(默认 AND)
+# 装饰器：permission_required
 @permission_required(["blog.add_post", "blog.change_post"])
+# 定义函数 post_edit，参数: request, pk
 def post_edit(request, pk):
+    # ...
     ...
 
 # 类视图用 PermissionRequiredMixin
+# 从 django.contrib.auth.mixins 导入 PermissionRequiredMixin
 from django.contrib.auth.mixins import PermissionRequiredMixin
 
+# 定义类 PostCreateView，继承 PermissionRequiredMixin, CreateView
 class PostCreateView(PermissionRequiredMixin, CreateView):
+    # 定义变量 model，赋值为 Post
     model = Post
+    # 定义变量 permission_required，赋值为 "blog.add_post"
     permission_required = "blog.add_post"
+    # 定义变量 raise_exception，赋值为 True
     raise_exception = True
 \`\`\`
 
@@ -940,39 +1305,61 @@ class PostCreateView(PermissionRequiredMixin, CreateView):
 
 \`\`\`python
 # 初始化角色(用 data migration 或 shell 一次性建)
+# 从 django.contrib.auth.models 导入 Group, Permission
 from django.contrib.auth.models import Group, Permission
 
+# 定义函数 init_groups，参数: 
 def init_groups():
+    # """初始化角色分组(在 data migration 里调用)"""
     """初始化角色分组(在 data migration 里调用)"""
 
     # 编辑:能增删改所有文章
+    # 定义变量 editor_perms，赋值为 Permission.objects.filter(
     editor_perms = Permission.objects.filter(
+        # 定义列表 codename__in
         codename__in=["add_post", "change_post", "delete_post",
+                       # "publish_post", "moderate_comments"]
                        "publish_post", "moderate_comments"]
+    # )
     )
+    # editors, _ = Group.objects.get_or_create(name="edi
     editors, _ = Group.objects.get_or_create(name="editors")
+    # 调用 editors.permissions.set()
     editors.permissions.set(editor_perms)
 
     # 作者:能增改自己的文章
+    # 定义变量 author_perms，赋值为 Permission.objects.filter(
     author_perms = Permission.objects.filter(
+        # 定义列表 codename__in
         codename__in=["add_post", "change_post"]
+    # )
     )
+    # authors, _ = Group.objects.get_or_create(name="aut
     authors, _ = Group.objects.get_or_create(name="authors")
+    # 调用 authors.permissions.set()
     authors.permissions.set(author_perms)
 
     # 审核员:能审核评论
+    # 定义变量 moderator_perms，赋值为 Permission.objects.filter(
     moderator_perms = Permission.objects.filter(
+        # 定义列表 codename__in
         codename__in=["moderate_comments"]
+    # )
     )
+    # moderators, _ = Group.objects.get_or_create(name="
     moderators, _ = Group.objects.get_or_create(name="moderators")
+    # 调用 moderators.permissions.set()
     moderators.permissions.set(moderator_perms)
 
 # 给用户分配角色
+# 定义变量 user，赋值为 User.objects.get(username="alice")
 user = User.objects.get(username="alice")
 user.groups.add(authors)  # 成为作者
 
 # 检查用户是否在某组
+# 条件判断：如果 user.groups.filter(name="editors").exists()
 if user.groups.filter(name="editors").exists():
+    # 调用 print()
     print("是编辑")
 
 # 用户所有权限(自身 + 所有组)
@@ -990,8 +1377,11 @@ Django 默认权限是「模型级」(对整类 Model),不是「对象级」(对
 ### 1. 视图里手动判断(简单场景)
 
 \`\`\`python
+# 定义函数 post_edit，参数: request, pk
 def post_edit(request, pk):
+    # 定义变量 post，赋值为 get_object_or_404(Post, pk=pk)
     post = get_object_or_404(Post, pk=pk)
+    # 条件判断：如果 post.author != request.user
     if post.author != request.user:
         raise PermissionDenied  # 不是作者,拒绝
     # ...
@@ -1000,36 +1390,48 @@ def post_edit(request, pk):
 ### 2. django-guardian(对象级权限库)
 
 \`\`\`bash
+# 安装 Python 包: django-guardian
 pip install django-guardian
 \`\`\`
 
 \`\`\`python
 # settings.py
+# 定义列表 INSTALLED_APPS
 INSTALLED_APPS = [
     # ...
+    # "guardian",
     "guardian",
+# ]
 ]
+# 定义变量 AUTHENTICATION_BACKENDS，赋值为 (
 AUTHENTICATION_BACKENDS = (
     "django.contrib.auth.backends.ModelBackend",  # 默认
     "guardian.backends.ObjectPermissionBackend",  # 加对象级
+# )
 )
 
 # 给用户对某对象的权限
+# 从 guardian.shortcuts 导入 assign_perm, remove_perm, get_objects_for_user
 from guardian.shortcuts import assign_perm, remove_perm, get_objects_for_user
 
+# 定义变量 post，赋值为 Post.objects.get(pk=1)
 post = Post.objects.get(pk=1)
+# 定义变量 user，赋值为 request.user
 user = request.user
 
 # 赋权:alice 能改 post 1
+# 调用 assign_perm()
 assign_perm("change_post", user, post)
 
 # 检查
 user.has_perm("change_post", post)  # True
 
 # 查询 alice 能改的所有 post
+# 定义变量 editable，赋值为 get_objects_for_user(user, "blog.change_post"...
 editable = get_objects_for_user(user, "blog.change_post")
 
 # 移除权限
+# 调用 remove_perm()
 remove_perm("change_post", user, post)
 \`\`\`
 
@@ -1053,9 +1455,11 @@ remove_perm("change_post", user, post)
 
 \`\`\`python
 # 直接给用户授权(不通过组)
+# 调用 user.user_permissions.add()
 user.user_permissions.add(Permission.objects.get(codename="delete_post"))
 
 # 用户最终权限 = 自身权限 ∪ 所有组权限
+# 调用 user.get_all_permissions()
 user.get_all_permissions()
 \`\`\`
 
@@ -1069,98 +1473,169 @@ user.get_all_permissions()
 
 \`\`\`python
 # blog/decorators.py
+# 从 functools 导入 wraps
 from functools import wraps
+# 从 django.core.exceptions 导入 PermissionDenied
 from django.core.exceptions import PermissionDenied
 
+# 定义函数 can_edit_post，参数: view_func
 def can_edit_post(view_func):
+    # """只有文章作者 或 editors 组成员能编辑"""
     """只有文章作者 或 editors 组成员能编辑"""
+    # 装饰器：wraps
     @wraps(view_func)
+    # 定义函数 _wrapped，参数: request, *args, **kwargs
     def _wrapped(request, *args, **kwargs):
+        # 定义变量 pk，赋值为 kwargs.get("pk")
         pk = kwargs.get("pk")
+        # 从 blog.models 导入 Post
         from blog.models import Post
+        # 从 django.shortcuts 导入 get_object_or_404
         from django.shortcuts import get_object_or_404
+        # 定义变量 post，赋值为 get_object_or_404(Post, pk=pk)
         post = get_object_or_404(Post, pk=pk)
 
+        # 定义变量 is_author，赋值为 post.author == request.user
         is_author = post.author == request.user
+        # 定义变量 is_editor，赋值为 request.user.groups.filter(name="editors").ex...
         is_editor = request.user.groups.filter(name="editors").exists()
+        # 定义变量 is_superuser，赋值为 request.user.is_superuser
         is_superuser = request.user.is_superuser
 
+        # 条件判断：如果 not (is_author or is_editor or is_superuser)
         if not (is_author or is_editor or is_superuser):
+            # 抛出 PermissionDenied 异常: "只有作者或编辑能修改"
             raise PermissionDenied("只有作者或编辑能修改")
 
+        # 返回 view_func(request, *args, **kwargs)
         return view_func(request, *args, **kwargs)
+    # 返回 _wrapped
     return _wrapped
 
+# 定义函数 can_publish_post，参数: view_func
 def can_publish_post(view_func):
+    # """只有 editors 组能发布"""
     """只有 editors 组能发布"""
+    # 装饰器：wraps
     @wraps(view_func)
+    # 定义函数 _wrapped，参数: request, *args, **kwargs
     def _wrapped(request, *args, **kwargs):
+        # if not (request.user.groups.filter(name="editors")
         if not (request.user.groups.filter(name="editors").exists()
+                # or request.user.is_superuser):
                 or request.user.is_superuser):
+            # 抛出 PermissionDenied 异常: "需要编辑权限才能发布"
             raise PermissionDenied("需要编辑权限才能发布")
+        # 返回 view_func(request, *args, **kwargs)
         return view_func(request, *args, **kwargs)
+    # 返回 _wrapped
     return _wrapped
 \`\`\`
 
 \`\`\`python
 # blog/views.py
+# 从 django.contrib.auth.decorators 导入 login_required, permission_required
 from django.contrib.auth.decorators import login_required, permission_required
+# 从 django.views.decorators.http 导入 require_POST
 from django.views.decorators.http import require_POST
+# 从 .decorators 导入 can_edit_post, can_publish_post
 from .decorators import can_edit_post, can_publish_post
 
+# 装饰器：login_required
 @login_required
+# 装饰器：permission_required
 @permission_required("blog.add_post", raise_exception=True)
+# 定义函数 post_new，参数: request
 def post_new(request):
     # 需登录 + 有 add_post 权限
+    # ...
     ...
 
+# 装饰器：login_required
 @login_required
+# 装饰器：can_edit_post
 @can_edit_post
+# 定义函数 post_edit，参数: request, pk
 def post_edit(request, pk):
     # 需登录 + 是作者或编辑组成员
+    # ...
     ...
 
+# 装饰器：login_required
 @login_required
+# 装饰器：can_edit_post
 @can_edit_post
+# 装饰器：require_POST
 @require_POST
+# 定义函数 post_delete，参数: request, pk
 def post_delete(request, pk):
     # 删除:作者或编辑,且必须是 POST
+    # ...
     ...
 
+# 装饰器：login_required
 @login_required
+# 装饰器：can_publish_post
 @can_publish_post
+# 装饰器：require_POST
 @require_POST
+# 定义函数 post_publish，参数: request, pk
 def post_publish(request, pk):
     # 发布:只有编辑组
+    # 定义变量 post，赋值为 get_object_or_404(Post, pk=pk)
     post = get_object_or_404(Post, pk=pk)
+    # post.status = "published"
     post.status = "published"
+    # 调用 post.save()
     post.save()
+    # 返回 redirect("blog:post_detail", pk=post.pk)
     return redirect("blog:post_detail", pk=post.pk)
 \`\`\`
 
 \`\`\`python
 # 模板里按权限显示按钮
+# {% extends "base.html" %}
 {% extends "base.html" %}
+# {% block content %}
 {% block content %}
+# <article>
 <article>
+    # <h1>{{ post.title }}</h1>
     <h1>{{ post.title }}</h1>
+    # <div>{{ post.content }}</div>
     <div>{{ post.content }}</div>
 
+    # {% if user.is_authenticated %}
     {% if user.is_authenticated %}
+        # {% if perms.blog.change_post and post.author == us
         {% if perms.blog.change_post and post.author == user %}
+            # <a href="{% url 'blog:post_edit' post.pk %}">编辑</a
             <a href="{% url 'blog:post_edit' post.pk %}">编辑</a>
+        # {% endif %}
         {% endif %}
+        # {% if perms.blog.delete_post and post.author == us
         {% if perms.blog.delete_post and post.author == user %}
+            # <a href="{% url 'blog:post_delete' post.pk %}">删除<
             <a href="{% url 'blog:post_delete' post.pk %}">删除</a>
+        # {% endif %}
         {% endif %}
+        # {% if perms.blog.publish_post %}
         {% if perms.blog.publish_post %}
+            # <form method="post" action="{% url 'blog:post_publ
             <form method="post" action="{% url 'blog:post_publish' post.pk %}">
+                # {% csrf_token %}
                 {% csrf_token %}
+                # <button type="submit">发布</button>
                 <button type="submit">发布</button>
+            # </form>
             </form>
+        # {% endif %}
         {% endif %}
+    # {% endif %}
     {% endif %}
+# </article>
 </article>
+# {% endblock %}
 {% endblock %}
 \`\`\`
 
@@ -1238,12 +1713,19 @@ SESSION_ENGINE = "django.contrib.sessions.backends.db"  # 默认:存数据库
 
 \`\`\`python
 # 生产环境用 redis(需 django-redis)
+# 定义变量 SESSION_ENGINE，赋值为 "django.contrib.sessions.backends.cache"
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+# 定义字典 CACHES
 CACHES = {
+    # "default": {
     "default": {
+        # "BACKEND": "django_redis.cache.RedisCache",
         "BACKEND": "django_redis.cache.RedisCache",
+        # "LOCATION": "redis://127.0.0.1:6379/1",
         "LOCATION": "redis://127.0.0.1:6379/1",
+    # }
     }
+# }
 }
 \`\`\`
 
@@ -1254,10 +1736,14 @@ CACHES = {
 Session 通过 \`request.session\` 访问,行为像字典:
 
 \`\`\`python
+# 定义函数 view，参数: request
 def view(request):
     # 设置
+    # request.session["key"] = "value"
     request.session["key"] = "value"
+    # request.session["user_id"] = 42
     request.session["user_id"] = 42
+    # request.session["cart"] = [{"id": 1, "qty": 2}]
     request.session["cart"] = [{"id": 1, "qty": 2}]
 
     # 读取(带默认值)
@@ -1265,18 +1751,24 @@ def view(request):
     val = request.session["user_id"]              # 不存在抛 KeyError
 
     # 删除
+    # del request.session["key"]
     del request.session["key"]
     request.session.pop("key", None)  # 安全删除
 
     # 判断存在
+    # 条件判断：如果 "user_id" in request.session
     if "user_id" in request.session:
+        # ...
         ...
 
     # 清空所有
+    # 调用 request.session.clear()
     request.session.clear()
 
     # 键值遍历
+    # 遍历 request.session.keys()，取 key
     for key in request.session.keys():
+        # ...
         ...
 \`\`\`
 
@@ -1287,11 +1779,14 @@ def view(request):
 
 \`\`\`python
 # ❌ 修改嵌套对象可能不保存
+# 定义变量 cart，赋值为 request.session.get("cart", [])
 cart = request.session.get("cart", [])
+# 调用 cart.append()
 cart.append({"id": 2, "qty": 1})
 request.session["cart"] = cart  # 重新赋值才保存
 
 # 或显式标记
+# request.session.modified = True
 request.session.modified = True
 \`\`\`
 
@@ -1303,9 +1798,11 @@ request.session.modified = True
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 14  # 14 天
 
 # 浏览器关闭时是否过期(False = 浏览器关就过期)
+# 定义变量 SESSION_EXPIRE_AT_BROWSER_CLOSE，赋值为 False
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 
 # Cookie 的域名(None = 当前域)
+# 定义变量 SESSION_COOKIE_DOMAIN，赋值为 None
 SESSION_COOKIE_DOMAIN = None
 
 # 是否仅 HTTPS 传输(False 开发用,生产 True)
@@ -1315,9 +1812,11 @@ SESSION_COOKIE_SECURE = False  # 生产改 True
 SESSION_COOKIE_HTTPONLY = True  # 默认 True,建议保持
 
 # Cookie 名(默认 sessionid)
+# 定义变量 SESSION_COOKIE_NAME，赋值为 "sessionid"
 SESSION_COOKIE_NAME = "sessionid"
 
 # 同站策略(Lax/Strict/None),防 CSRF
+# 定义变量 SESSION_COOKIE_SAMESITE，赋值为 "Lax"
 SESSION_COOKIE_SAMESITE = "Lax"
 \`\`\`
 
@@ -1326,12 +1825,15 @@ SESSION_COOKIE_SAMESITE = "Lax"
 \`clear()\` 只清数据,\`flush()\` 清数据 + 重新生成 session id(防 session 固定攻击):
 
 \`\`\`python
+# 从 django.contrib.auth 导入 logout
 from django.contrib.auth import logout
 
+# 定义函数 logout_view，参数: request
 def logout_view(request):
     logout(request)  # 内部调 flush
     # 或手动:
     # request.session.flush()
+    # 返回 redirect("/")
     return redirect("/")
 \`\`\`
 
@@ -1342,18 +1844,27 @@ def logout_view(request):
 Cookie 可能被用户禁用。Django 提供「测试 cookie」机制:设一个测试 cookie,下次请求检查是否带回来:
 
 \`\`\`python
+# 定义函数 login_view，参数: request
 def login_view(request):
+    # 条件判断：如果 request.method == "POST"
     if request.method == "POST":
         # 检查上一步设的测试 cookie
+        # 条件判断：如果 request.session.test_cookie_worked()
         if request.session.test_cookie_worked():
             request.session.delete_test_cookie()  # 用完删掉
             # 正常登录逻辑...
+            # 返回 redirect("/")
             return redirect("/")
+        # 否则执行
         else:
+            # 返回 render(request, "login.html", {"error": "请启用 Cookie"})
             return render(request, "login.html", {"error": "请启用 Cookie"})
+    # 否则执行
     else:
         # 设测试 cookie
+        # 调用 request.session.set_test_cookie()
         request.session.set_test_cookie()
+        # 返回 render(request, "login.html")
         return render(request, "login.html")
 \`\`\`
 
@@ -1363,6 +1874,7 @@ Session 数据要存到 db/cache/cookie,必须序列化。Django 默认用 JSON 
 
 \`\`\`python
 # settings.py
+# 定义变量 SESSION_SERIALIZER，赋值为 "django.contrib.sessions.serializers.JSONSeri...
 SESSION_SERIALIZER = "django.contrib.sessions.serializers.JSONSerializer"
 \`\`\`
 
@@ -1378,10 +1890,13 @@ JSON 序列化的限制:
 # request.session["login_time"] = timezone.now()
 
 # ✅ 转 ISO 字符串
+# request.session["login_time"] = timezone.now().iso
 request.session["login_time"] = timezone.now().isoformat()
 
 # 取出转回
+# 从 datetime 导入 datetime
 from datetime import datetime
+# 定义变量 login_time，赋值为 datetime.fromisoformat(request.session["login...
 login_time = datetime.fromisoformat(request.session["login_time"])
 \`\`\`
 
@@ -1389,156 +1904,279 @@ login_time = datetime.fromisoformat(request.session["login_time"])
 
 \`\`\`python
 # cart/cart.py
+# 定义类 Cart
 class Cart:
+    # """购物车:基于 Session 封装"""
     """购物车:基于 Session 封装"""
 
+    # 定义函数 __init__，参数: self, request
     def __init__(self, request):
+        # """从 request.session 初始化"""
         """从 request.session 初始化"""
+        # self.session = request.session
         self.session = request.session
+        # 定义变量 cart，赋值为 self.session.get("cart")
         cart = self.session.get("cart")
+        # 条件判断：如果 not cart
         if not cart:
             # 没购物车,建空的
+            # 定义变量 cart，赋值为 self.session["cart"] = {}
             cart = self.session["cart"] = {}
+        # self.cart = cart
         self.cart = cart
 
+    # 定义函数 add，参数: self, product, quantity=1, override_quantity=False
     def add(self, product, quantity=1, override_quantity=False):
+        # """添加商品到购物车"""
         """添加商品到购物车"""
         product_id = str(product.id)  # session 的 key 必须是字符串
+        # 条件判断：如果 product_id not in self.cart
         if product_id not in self.cart:
+            # self.cart[product_id] = {"quantity": 0, "price": s
             self.cart[product_id] = {"quantity": 0, "price": str(product.price)}
+        # 条件判断：如果 override_quantity
         if override_quantity:
+            # self.cart[product_id]["quantity"] = quantity
             self.cart[product_id]["quantity"] = quantity
+        # 否则执行
         else:
+            # self.cart[product_id]["quantity"] += quantity
             self.cart[product_id]["quantity"] += quantity
         self.save()  # 标记修改
 
+    # 定义函数 save，参数: self
     def save(self):
+        # """标记 session 已修改,确保保存"""
         """标记 session 已修改,确保保存"""
+        # self.session.modified = True
         self.session.modified = True
 
+    # 定义函数 remove，参数: self, product
     def remove(self, product):
+        # """移除商品"""
         """移除商品"""
+        # 定义变量 product_id，赋值为 str(product.id)
         product_id = str(product.id)
+        # 条件判断：如果 product_id in self.cart
         if product_id in self.cart:
+            # del self.cart[product_id]
             del self.cart[product_id]
+            # 调用 self.save()
             self.save()
 
+    # 定义函数 __iter__，参数: self
     def __iter__(self):
+        # """迭代:把 id 换成 product 对象"""
         """迭代:把 id 换成 product 对象"""
+        # 从 shop.models 导入 Product
         from shop.models import Product
+        # 定义变量 product_ids，赋值为 self.cart.keys()
         product_ids = self.cart.keys()
+        # 定义变量 products，赋值为 Product.objects.filter(id__in=product_ids)
         products = Product.objects.filter(id__in=product_ids)
+        # 定义变量 cart，赋值为 self.cart.copy()
         cart = self.cart.copy()
+        # 遍历 products，取 product
         for product in products:
+            # cart[str(product.id)]["product"] = product
             cart[str(product.id)]["product"] = product
+        # 遍历 cart.values()，取 item
         for item in cart.values():
+            # item["price"] = float(item["price"])
             item["price"] = float(item["price"])
+            # item["total_price"] = item["price"] * item["quanti
             item["total_price"] = item["price"] * item["quantity"]
+            # 生成值: item
             yield item
 
+    # 定义函数 __len__，参数: self
     def __len__(self):
+        # """商品总数(每种数量相加)"""
         """商品总数(每种数量相加)"""
+        # 返回 sum(item["quantity"] for item in self.cart.values())
         return sum(item["quantity"] for item in self.cart.values())
 
+    # 定义函数 get_total_price，参数: self
     def get_total_price(self):
+        # """总价"""
         """总价"""
+        # 返回 sum(
         return sum(
+            # 调用 float()
             float(item["price"]) * item["quantity"]
+            # for item in self.cart.values()
             for item in self.cart.values()
+        # )
         )
 
+    # 定义函数 clear，参数: self
     def clear(self):
+        # """清空购物车"""
         """清空购物车"""
+        # del self.session["cart"]
         del self.session["cart"]
+        # 调用 self.save()
         self.save()
 \`\`\`
 
 \`\`\`python
 # cart/views.py
+# 从 django.shortcuts 导入 render, redirect, get_object_or_404
 from django.shortcuts import render, redirect, get_object_or_404
+# 从 django.views.decorators.http 导入 require_POST
 from django.views.decorators.http import require_POST
+# 从 shop.models 导入 Product
 from shop.models import Product
+# 从 .cart 导入 Cart
 from .cart import Cart
+# 从 .forms 导入 CartAddForm
 from .forms import CartAddForm
 
+# 装饰器：require_POST
 @require_POST
+# 定义函数 cart_add，参数: request, product_id
 def cart_add(request, product_id):
+    # """加入购物车"""
     """加入购物车"""
+    # 定义变量 cart，赋值为 Cart(request)
     cart = Cart(request)
+    # 定义变量 product，赋值为 get_object_or_404(Product, id=product_id)
     product = get_object_or_404(Product, id=product_id)
+    # 定义变量 form，赋值为 CartAddForm(request.POST)
     form = CartAddForm(request.POST)
+    # 条件判断：如果 form.is_valid()
     if form.is_valid():
+        # 定义变量 cd，赋值为 form.cleaned_data
         cd = form.cleaned_data
+        # 调用 cart.add()
         cart.add(product, quantity=cd["quantity"], override_quantity=cd["override"])
+    # 返回 redirect("cart_detail")
     return redirect("cart_detail")
 
+# 装饰器：require_POST
 @require_POST
+# 定义函数 cart_remove，参数: request, product_id
 def cart_remove(request, product_id):
+    # """从购物车移除"""
     """从购物车移除"""
+    # 定义变量 cart，赋值为 Cart(request)
     cart = Cart(request)
+    # 定义变量 product，赋值为 get_object_or_404(Product, id=product_id)
     product = get_object_or_404(Product, id=product_id)
+    # 调用 cart.remove()
     cart.remove(product)
+    # 返回 redirect("cart_detail")
     return redirect("cart_detail")
 
+# 定义函数 cart_detail，参数: request
 def cart_detail(request):
+    # """购物车详情"""
     """购物车详情"""
+    # 定义变量 cart，赋值为 Cart(request)
     cart = Cart(request)
+    # 返回 render(request, "cart/detail.html", {"cart": cart})
     return render(request, "cart/detail.html", {"cart": cart})
 \`\`\`
 
 \`\`\`python
 # cart/urls.py
+# 从 django.urls 导入 path
 from django.urls import path
+# 从 . 导入 views
 from . import views
 
+# 定义变量 app_name，赋值为 "cart"
 app_name = "cart"
+# 定义列表 urlpatterns
 urlpatterns = [
+    # 调用 path()
     path("add/<int:product_id>/", views.cart_add, name="cart_add"),
+    # 调用 path()
     path("remove/<int:product_id>/", views.cart_remove, name="cart_remove"),
+    # 调用 path()
     path("", views.cart_detail, name="cart_detail"),
+# ]
 ]
 \`\`\`
 
 \`\`\`html
+# <!-- templates/cart/detail.html -->
 <!-- templates/cart/detail.html -->
+# {% extends "base.html" %}
 {% extends "base.html" %}
+# {% block title %}购物车{% endblock %}
 {% block title %}购物车{% endblock %}
 
+# {% block content %}
 {% block content %}
+# <h1>购物车</h1>
 <h1>购物车</h1>
 
+# {% if cart|length > 0 %}
 {% if cart|length > 0 %}
+    # <table>
     <table>
+        # <tr>
         <tr>
+            # <th>商品</th>
             <th>商品</th>
+            # <th>数量</th>
             <th>数量</th>
+            # <th>单价</th>
             <th>单价</th>
+            # <th>小计</th>
             <th>小计</th>
+            # <th>操作</th>
             <th>操作</th>
+        # </tr>
         </tr>
+        # {% for item in cart %}
         {% for item in cart %}
+        # <tr>
         <tr>
+            # <td>{{ item.product.name }}</td>
             <td>{{ item.product.name }}</td>
+            # <td>{{ item.quantity }}</td>
             <td>{{ item.quantity }}</td>
+            # <td>¥{{ item.price }}</td>
             <td>¥{{ item.price }}</td>
+            # <td>¥{{ item.total_price }}</td>
             <td>¥{{ item.total_price }}</td>
+            # <td>
             <td>
+                # <form method="post" action="{% url 'cart:cart_remo
                 <form method="post" action="{% url 'cart:cart_remove' item.product.id %}">
+                    # {% csrf_token %}
                     {% csrf_token %}
+                    # <button type="submit">移除</button>
                     <button type="submit">移除</button>
+                # </form>
                 </form>
+            # </td>
             </td>
+        # </tr>
         </tr>
+        # {% endfor %}
         {% endfor %}
+        # <tr>
         <tr>
+            # <td colspan="3" align="right"><b>合计:</b></td>
             <td colspan="3" align="right"><b>合计:</b></td>
+            # <td colspan="2"><b>¥{{ cart.get_total_price }}</b>
             <td colspan="2"><b>¥{{ cart.get_total_price }}</b></td>
+        # </tr>
         </tr>
+    # </table>
     </table>
+    # <a href="/checkout/">去结算</a>
     <a href="/checkout/">去结算</a>
+# {% else %}
 {% else %}
+    # <p>购物车是空的,<a href="{% url 'shop:product_list' %}">
     <p>购物车是空的,<a href="{% url 'shop:product_list' %}">去逛逛</a></p>
+# {% endif %}
 {% endif %}
+# {% endblock %}
 {% endblock %}
 \`\`\`
 

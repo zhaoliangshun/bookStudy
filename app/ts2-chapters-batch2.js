@@ -53,17 +53,17 @@ export const chapters = [
 
 \`\`\`ts
 // interface 可以多次声明同名接口，TypeScript 会自动合并
-interface User {
+interface User {  // 定义接口 User
   name: string;
 }
-interface User {
+interface User {  // 定义接口 User
   age: number;
 }
 // 最终 User 接口同时拥有 name 和 age 两个属性
 const user: User = { name: "张三", age: 25 }; // ✅ 合法
 
 // type 则不行，同名 type 会报错
-type Product = { name: string };
+type Product = { name: string };  // 定义类型别名 Product
 // type Product = { price: number }; // ❌ 报错：Duplicate identifier
 \`\`\`
 
@@ -74,8 +74,8 @@ type Product = { name: string };
 \`\`\`ts
 // 全局扩展 Express 的 Request 接口
 declare global {
-  namespace Express {
-    interface Request {
+  namespace Express {  // 定义命名空间 Express
+    interface Request {  // 定义接口 Request
       user?: { id: number; role: string };
     }
   }
@@ -89,12 +89,12 @@ interface 使用 \`extends\` 关键字实现继承，type 使用 \`&\` 交叉运
 
 \`\`\`ts
 // interface 继承：如果同名属性类型冲突，编译器会报错
-interface A { x: string; }
+interface A { x: string; }  // 定义接口 A
 // interface B extends A { x: number; } // ❌ 报错：类型不兼容
 
 // type 交叉：冲突的属性会被解析为 never 类型
-type C = { x: string; };
-type D = { x: number; };
+type C = { x: string; };  // 定义类型别名 C
+type D = { x: number; };  // 定义类型别名 D
 type E = C & D; // E 的 x 属性类型为 string & number，即 never（无法赋值）
 \`\`\`
 
@@ -142,21 +142,21 @@ type 可以表达的类型范围比 interface 更广。interface 只能描述**�
 interface 支持通过 \`extends\` 关键字继承其他接口，可以同时继承多个接口：
 
 \`\`\`ts
-interface Shape {
+interface Shape {  // 定义接口 Shape
   color: string;
 }
 
-interface PenStroke {
+interface PenStroke {  // 定义接口 PenStroke
   penWidth: number;
 }
 
 // 同时继承多个接口
-interface Square extends Shape, PenStroke {
+interface Square extends Shape, PenStroke {  // 定义接口 Square，extends Shape, PenStroke
   sideLength: number;
 }
 
 // Square 现在拥有 color、penWidth、sideLength 三个属性
-const square: Square = {
+const square: Square = {  // 声明常量 square，类型 Square
   color: "blue",
   penWidth: 2,
   sideLength: 10,
@@ -166,11 +166,11 @@ const square: Square = {
 接口继承还支持**覆盖父接口的属性类型**，但只能将类型收窄（更具体），不能放宽（更宽泛）：
 
 \`\`\`ts
-interface Animal {
+interface Animal {  // 定义接口 Animal
   name: string;
 }
 
-interface Dog extends Animal {
+interface Dog extends Animal {  // 定义接口 Dog，extends Animal
   name: "旺财" | "大黄" | "小黑"; // ✅ 收窄为字面量联合类型，合法
   breed: string;
 }
@@ -182,25 +182,25 @@ interface Dog extends Animal {
 
 \`\`\`ts
 // 定义一个计数器接口，它本身是可调用的，同时有 interval 属性和 reset 方法
-interface Counter {
+interface Counter {  // 定义接口 Counter
   (start: number): string;       // 调用签名
   interval: number;               // 属性
   reset(): void;                  // 方法
 }
 
 // 实现这个混合类型
-function createCounter(): Counter {
-  const counter = function (start: number) {
-    return "计数从 " + start + " 开始";
-  } as Counter;
-  counter.interval = 5;
-  counter.reset = function () {
-    console.log("计数器已重置");
+function createCounter(): Counter {  // 定义函数 createCounter，返回 Counter
+  const counter = function (start: number) {  // 声明常量 counter
+    return "计数从 " + start + " 开始";  // 返回 "计数从 " + start + " 开始"
+  } as Counter;  // 注意：类型断言会绕过类型检查
+  counter.interval = 5;  // 赋值 counter.interval
+  counter.reset = function () {  // 赋值 counter.reset
+    console.log("计数器已重置");  // 控制台输出
   };
-  return counter;
+  return counter;  // 返回 counter
 }
 
-const c = createCounter();
+const c = createCounter();  // 声明常量 c
 console.log(c(10));    // 作为函数调用
 console.log(c.interval); // 访问属性
 c.reset();             // 调用方法
@@ -214,29 +214,29 @@ c.reset();             // 调用方法
 
 \`\`\`ts
 // 用 interface 描述函数类型
-interface SearchFunc {
+interface SearchFunc {  // 定义接口 SearchFunc
   (source: string, subString: string): boolean;
 }
 
 // 实现该接口的函数
-const mySearch: SearchFunc = function (source: string, subString: string): boolean {
-  return source.includes(subString);
+const mySearch: SearchFunc = function (source: string, subString: string): boolean {  // 声明常量 mySearch，类型 SearchFunc
+  return source.includes(subString);  // 返回 source.includes(subString)
 };
 \`\`\`
 
 interface 的函数签名写法比 type 更加灵活，你可以在同一个 interface 中定义**多个重载签名**：
 
 \`\`\`ts
-interface OverloadedFunc {
+interface OverloadedFunc {  // 定义接口 OverloadedFunc
   (x: number): number;
   (x: string): string;
   (x: number, y: number): number;
 }
 
-const fn: OverloadedFunc = (x: number | string, y?: number): any => {
-  if (typeof x === "number" && typeof y === "number") return x + y;
-  if (typeof x === "number") return x * 2;
-  return x.toUpperCase();
+const fn: OverloadedFunc = (x: number | string, y?: number): any => {  // 声明常量 fn，类型 OverloadedFunc（注意：any 关闭了类型检查）
+  if (typeof x === "number" && typeof y === "number") return x + y;  // 类型守卫：判断是否为 number
+  if (typeof x === "number") return x * 2;  // 类型守卫：判断是否为 number
+  return x.toUpperCase();  // 返回 x.toUpperCase()
 };
 \`\`\`
 
@@ -245,21 +245,21 @@ const fn: OverloadedFunc = (x: number | string, y?: number): any => {
 TypeScript 的 class 可以使用 \`implements\` 关键字来强制实现某个接口的约束。与 \`extends\` 继承不同，\`implements\` 表示"实现契约"——类必须按照接口的定义来提供属性和方法：
 
 \`\`\`ts
-interface ClockInterface {
+interface ClockInterface {  // 定义接口 ClockInterface
   currentTime: Date;
-  setTime(d: Date): void;
+  setTime(d: Date): void;  // 方法声明 setTime(d: Date)，返回 void
 }
 
-class Clock implements ClockInterface {
+class Clock implements ClockInterface {  // 定义类 Clock，implements ClockInterface
   currentTime: Date = new Date();
 
-  setTime(d: Date): void {
-    this.currentTime = d;
+  setTime(d: Date): void {  // 方法声明 setTime(d: Date)，返回 void
+    this.currentTime = d;  // 赋值 this.currentTime
   }
 
   // 类可以有自己的额外方法，接口并不限制
-  getTime(): string {
-    return this.currentTime.toISOString();
+  getTime(): string {  // 方法声明 getTime()，返回 string
+    return this.currentTime.toISOString();  // 返回 this.currentTime.toISOString()
   }
 }
 \`\`\`
@@ -267,12 +267,12 @@ class Clock implements ClockInterface {
 一个类可以实现**多个接口**：
 
 \`\`\`ts
-interface Runnable { run(): void; }
-interface Stoppable { stop(): void; }
+interface Runnable { run(): void; }  // 定义接口 Runnable
+interface Stoppable { stop(): void; }  // 定义接口 Stoppable
 
-class Engine implements Runnable, Stoppable {
-  run() { console.log("引擎启动"); }
-  stop() { console.log("引擎停止"); }
+class Engine implements Runnable, Stoppable {  // 定义类 Engine，implements Runnable, Stoppable
+  run() { console.log("引擎启动"); }  // 调用 run
+  stop() { console.log("引擎停止"); }  // 调用 stop
 }
 \`\`\`
 
@@ -283,33 +283,33 @@ class Engine implements Runnable, Stoppable {
 接口也可以接受泛型参数，让接口更加灵活和可复用：
 
 \`\`\`ts
-interface Repository<T> {
-  getById(id: number): T;
-  getAll(): T[];
-  create(item: T): T;
-  update(id: number, item: Partial<T>): T;
-  delete(id: number): boolean;
+interface Repository<T> {  // 定义接口 Repository，泛型参数 T
+  getById(id: number): T;  // 方法声明 getById(id: number)，返回 T
+  getAll(): T[];  // 方法声明 getAll()，返回 T[]
+  create(item: T): T;  // 方法声明 create(item: T)，返回 T
+  update(id: number, item: Partial<T>): T;  // 方法声明 update(id: number, item: Partial<T>)，返回 T
+  delete(id: number): boolean;  // 方法声明 delete(id: number)，返回 boolean
 }
 
 // 使用泛型接口定义用户仓库
-interface User {
+interface User {  // 定义接口 User
   id: number;
   name: string;
   email: string;
 }
 
-const userRepo: Repository<User> = {
-  getById(id: number) {
-    return { id, name: "张三", email: "zhangsan@example.com" };
+const userRepo: Repository<User> = {  // 声明常量 userRepo，类型 Repository<User>
+  getById(id: number) {  // 调用 getById
+    return { id, name: "张三", email: "zhangsan@example.com" };  // 返回 { id, name: "张三", email: "zhangsan@example.com" }
   },
-  getAll() {
-    return [{ id: 1, name: "张三", email: "zhangsan@example.com" }];
+  getAll() {  // 调用 getAll
+    return [{ id: 1, name: "张三", email: "zhangsan@example.com" }];  // 返回 [{ id: 1, name: "张三", email: "zhangsan@example.com" }]
   },
-  create(item) { return item; },
-  update(id, item) {
-    return { id, name: "李四", email: "lisi@example.com", ...item };
+  create(item) { return item; },  // 调用 create
+  update(id, item) {  // 调用 update
+    return { id, name: "李四", email: "lisi@example.com", ...item };  // 返回 { id, name: "李四", email: "lisi@example.com", ...item }
   },
-  delete(id) { return true; },
+  delete(id) { return true; },  // 调用 delete
 };
 \`\`\`
 
@@ -320,11 +320,11 @@ const userRepo: Repository<User> = {
 当你不知道对象的具体属性名，但知道属性值的类型时，可以使用索引签名：
 
 \`\`\`ts
-interface StringDictionary {
+interface StringDictionary {  // 定义接口 StringDictionary
   [key: string]: string;  // 任意字符串属性名，值必须是 string
 }
 
-const dict: StringDictionary = {
+const dict: StringDictionary = {  // 声明常量 dict，类型 StringDictionary
   hello: "你好",
   world: "世界",
   // num: 123, // ❌ 值必须是 string
@@ -338,13 +338,13 @@ const dict: StringDictionary = {
 interface 支持 \`readonly\` 修饰符和 \`?\` 可选标记：
 
 \`\`\`ts
-interface Config {
+interface Config {  // 定义接口 Config
   readonly apiUrl: string;      // 只读，初始化后不能修改
   timeout?: number;              // 可选，可以有也可以没有
   retryCount?: number;
 }
 
-const config: Config = { apiUrl: "https://api.example.com" };
+const config: Config = { apiUrl: "https://api.example.com" };  // 声明常量 config，类型 Config
 // config.apiUrl = "new-url"; // ❌ 只读属性不能赋值
 \`\`\`
 
@@ -598,8 +598,8 @@ type 的"表达能力"远大于 interface。interface 本质上只能描述"对�
 当类型检查失败时，TypeScript 在错误信息中会显示类型名称。interface 通常显示为接口名称，而 type 的显示取决于类型定义：
 
 \`\`\`ts
-interface User { name: string; age: number; }
-type Product = { name: string; price: number; };
+interface User { name: string; age: number; }  // 定义接口 User
+type Product = { name: string; price: number; };  // 定义类型别名 Product
 
 // 错误信息中会显示 "User" 和 "Product"（对于简单类型别名）
 // 但对于复杂的联合/交叉类型，type 的错误信息可能很长很难读
@@ -627,13 +627,13 @@ interface 在 TypeScript 编译器内部是**按名称缓存**的，而 type 别
 
 \`\`\`ts
 // 用 type 定义树形节点（递归类型）
-type TreeNode = {
+type TreeNode = {  // 定义类型别名 TreeNode
   value: string;
   children?: TreeNode[];  // 引用自身
 };
 
 // 等价地，interface 需要更复杂的写法
-interface TreeNodeInterface {
+interface TreeNodeInterface {  // 定义接口 TreeNodeInterface
   value: string;
   children?: TreeNodeInterface[];
 }
@@ -643,7 +643,7 @@ interface TreeNodeInterface {
 
 \`\`\`ts
 // 递归条件类型：将一个嵌套对象的所有属性变为可选
-type DeepPartial<T> = {
+type DeepPartial<T> = {  // 定义类型别名 DeepPartial，泛型参数 T
   [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
 };
 
@@ -654,7 +654,7 @@ type DeepPartial<T> = {
 
 \`\`\`ts
 // 将嵌套路径展开为联合类型
-type NestedPaths<T> = T extends object
+type NestedPaths<T> = T extends object  // 定义类型别名 NestedPaths，泛型参数 T
   ? { [K in keyof T]: K extends string
       ? T[K] extends object
         ? K | \`\${K}.\${NestedPaths<T[K]>}\`
@@ -670,21 +670,21 @@ type NestedPaths<T> = T extends object
 
 \`\`\`ts
 // 定义三种形状，每种都有一个 kind 字段作为"判别标签"
-type Circle = { kind: "circle"; radius: number };
-type Rectangle = { kind: "rectangle"; width: number; height: number };
-type Triangle = { kind: "triangle"; base: number; height: number };
+type Circle = { kind: "circle"; radius: number };  // 定义类型别名 Circle
+type Rectangle = { kind: "rectangle"; width: number; height: number };  // 定义类型别名 Rectangle
+type Triangle = { kind: "triangle"; base: number; height: number };  // 定义类型别名 Triangle
 
 // 联合为一个 Shape 类型
-type Shape = Circle | Rectangle | Triangle;
+type Shape = Circle | Rectangle | Triangle;  // 定义类型别名 Shape，联合类型
 
 // 根据 kind 字段精确计算面积
-function area(shape: Shape): number {
-  switch (shape.kind) {
-    case "circle":
+function area(shape: Shape): number {  // 定义函数 area，参数: shape: Shape，返回 number
+  switch (shape.kind) {  // switch 分支选择
+    case "circle":  // case 匹配分支
       return Math.PI * shape.radius ** 2;   // shape 被收窄为 Circle
-    case "rectangle":
+    case "rectangle":  // case 匹配分支
       return shape.width * shape.height;     // shape 被收窄为 Rectangle
-    case "triangle":
+    case "triangle":  // case 匹配分支
       return (shape.base * shape.height) / 2; // shape 被收窄为 Triangle
   }
 }
@@ -702,12 +702,12 @@ function area(shape: Shape): number {
 TypeScript 4.1 引入的模板字面量类型是 type 独有的能力，interface 无法表达。它允许你像字符串模板一样拼接类型：
 
 \`\`\`ts
-type Direction = "top" | "bottom" | "left" | "right";
-type Margin = \`margin\${Capitalize<Direction>}\`;
+type Direction = "top" | "bottom" | "left" | "right";  // 定义类型别名 Direction
+type Margin = \`margin\${Capitalize<Direction>}\`;  // 定义类型别名 Margin
 // 展开为: "marginTop" | "marginBottom" | "marginLeft" | "marginRight"
 
-type EventName = "click" | "focus" | "blur";
-type HandlerName = \`on\${Capitalize<EventName>}\`;
+type EventName = "click" | "focus" | "blur";  // 定义类型别名 EventName
+type HandlerName = \`on\${Capitalize<EventName>}\`;  // 定义类型别名 HandlerName
 // 展开为: "onClick" | "onFocus" | "onBlur"
 \`\`\`
 
@@ -719,23 +719,23 @@ type HandlerName = \`on\${Capitalize<EventName>}\`;
 
 \`\`\`ts
 // 将一个类型的所有属性变为只读
-type Readonly<T> = {
+type Readonly<T> = {  // 定义类型别名 Readonly，泛型参数 T
   readonly [K in keyof T]: T[K];
 };
 
 // 将一个类型的所有属性变为可选
-type Partial<T> = {
+type Partial<T> = {  // 定义类型别名 Partial，泛型参数 T
   [K in keyof T]?: T[K];
 };
 
 // 挑选特定属性
-type Pick<T, K extends keyof T> = {
+type Pick<T, K extends keyof T> = {  // 定义类型别名 Pick，泛型参数 T, K extends keyof T
   [P in K]: T[P];
 };
 
 // 条件映射：只保留函数类型的属性
-type FunctionProperties<T> = {
-  [K in keyof T as T[K] extends (...args: any[]) => any ? K : never]: T[K];
+type FunctionProperties<T> = {  // 定义类型别名 FunctionProperties，泛型参数 T
+  [K in keyof T as T[K] extends (...args: any[]) => any ? K : never]: T[K];  // 箭头函数（注意：any 关闭了类型检查；注意：类型断言会绕过类型检查）
 };
 \`\`\`
 
@@ -970,7 +970,7 @@ console.log("\\n✅ 类型别名进阶全部演示完成！");`,
 联合类型用竖线 \`|\` 表示，表示一个值可以是**多种类型中的任意一种**。从集合论的角度看，联合类型是这些类型的**并集**：
 
 \`\`\`ts
-type StringOrNumber = string | number;
+type StringOrNumber = string | number;  // 定义类型别名 StringOrNumber，联合类型
 // 这个类型的值可以是 string 或 number
 
 let value: StringOrNumber;
@@ -984,17 +984,17 @@ value = 42;       // ✅ 合法
 当你有一个联合类型的值时，你只能访问**所有成员类型都共有的属性**。这是因为 TypeScript 不知道运行时这个值到底是哪种类型，只能保证访问共有属性是安全的：
 
 \`\`\`ts
-type Bird = { fly(): void; layEggs(): void };
-type Fish = { swim(): void; layEggs(): void };
-type Pet = Bird | Fish;
+type Bird = { fly(): void; layEggs(): void };  // 定义类型别名 Bird
+type Fish = { swim(): void; layEggs(): void };  // 定义类型别名 Fish
+type Pet = Bird | Fish;  // 定义类型别名 Pet，联合类型
 
-function getPet(): Pet {
-  return Math.random() > 0.5
+function getPet(): Pet {  // 定义函数 getPet，返回 Pet
+  return Math.random() > 0.5  // 返回 Math.random() > 0.5
     ? { fly() {}, layEggs() {} }
     : { swim() {}, layEggs() {} };
 }
 
-const pet = getPet();
+const pet = getPet();  // 声明常量 pet
 pet.layEggs();  // ✅ 合法，Bird 和 Fish 都有 layEggs
 // pet.fly();   // ❌ 不合法，Fish 没有 fly 方法
 // pet.swim();  // ❌ 不合法，Bird 没有 swim 方法
@@ -1005,8 +1005,8 @@ pet.layEggs();  // ✅ 合法，Bird 和 Fish 都有 layEggs
 要访问联合类型中特定成员的方法，必须先进行**类型收窄（Type Narrowing）**。TypeScript 会根据你的检查逻辑自动缩小类型范围：
 
 \`\`\`ts
-function interact(pet: Bird | Fish) {
-  if ("fly" in pet) {
+function interact(pet: Bird | Fish) {  // 定义函数 interact，参数: pet: Bird | Fish
+  if ("fly" in pet) {  // 条件判断
     pet.fly();  // ✅ pet 被收窄为 Bird
   } else {
     pet.swim(); // ✅ pet 被收窄为 Fish
@@ -1019,8 +1019,8 @@ function interact(pet: Bird | Fish) {
 联合类型在条件类型中遵循**分配律（Distributive Law）**：当条件类型的检查目标是裸类型参数（naked type parameter）时，条件类型会"分发"到联合类型的每个成员上：
 
 \`\`\`ts
-type ToArray<T> = T extends any ? T[] : never;
-type Result = ToArray<string | number>;
+type ToArray<T> = T extends any ? T[] : never;  // 定义类型别名 ToArray，泛型参数 T，条件类型（注意：any 关闭了类型检查）
+type Result = ToArray<string | number>;  // 定义类型别名 Result，联合类型
 // 展开为: ToArray<string> | ToArray<number>
 // 即: string[] | number[]
 // 而不是: (string | number)[]
@@ -1049,23 +1049,23 @@ type Result = ToArray<string | number>;
 当使用 switch 处理可辨识联合时，TypeScript 可以帮你检查是否覆盖了所有情况。使用 \`never\` 类型作为兜底分支：
 
 \`\`\`ts
-function assertNever(x: never): never {
-  throw new Error("Unexpected value: " + x);
+function assertNever(x: never): never {  // 定义函数 assertNever，参数: x: never，返回 never
+  throw new Error("Unexpected value: " + x);  // 抛出 Error 异常
 }
 
-function handleShape(shape: Shape): string {
-  switch (shape.kind) {
-    case "circle":
-      return "圆形";
-    case "rectangle":
-      return "矩形";
-    case "triangle":
-      return "三角形";
-    default:
+function handleShape(shape: Shape): string {  // 定义函数 handleShape，参数: shape: Shape，返回 string
+  switch (shape.kind) {  // switch 分支选择
+    case "circle":  // case 匹配分支
+      return "圆形";  // 返回 "圆形"
+    case "rectangle":  // case 匹配分支
+      return "矩形";  // 返回 "矩形"
+    case "triangle":  // case 匹配分支
+      return "三角形";  // 返回 "三角形"
+    default:  // 默认分支
       // 如果未来新增了 Shape 变体但没有处理，
       // 这里 shape 会被推断为那个新类型（不是 never），
       // 导致编译错误，从而提醒你更新代码
-      return assertNever(shape);
+      return assertNever(shape);  // 返回 assertNever(shape)
   }
 }
 \`\`\`
@@ -1079,12 +1079,12 @@ function handleShape(shape: Shape): string {
 交叉类型用 \`&\` 表示，表示一个值**同时满足多个类型的约束**。从集合论的角度看，交叉类型是这些类型的**交集**：
 
 \`\`\`ts
-type Person = { name: string; age: number };
-type Employee = { employeeId: number; department: string };
-type Staff = Person & Employee;
+type Person = { name: string; age: number };  // 定义类型别名 Person
+type Employee = { employeeId: number; department: string };  // 定义类型别名 Employee
+type Staff = Person & Employee;  // 定义类型别名 Staff，交叉类型
 
 // Staff 类型的对象必须同时拥有 Person 和 Employee 的所有属性
-const staff: Staff = {
+const staff: Staff = {  // 声明常量 staff，类型 Staff
   name: "张三",
   age: 30,
   employeeId: 1001,
@@ -1097,9 +1097,9 @@ const staff: Staff = {
 当交叉类型的多个成员中存在同名属性，但类型不同时，TypeScript 会如何处理？答案是：**交叉后的属性类型是各成员属性类型的交集**：
 
 \`\`\`ts
-type A = { x: string | number };
-type B = { x: number };
-type C = A & B;
+type A = { x: string | number };  // 定义类型别名 A，联合类型
+type B = { x: number };  // 定义类型别名 B
+type C = A & B;  // 定义类型别名 C，交叉类型
 // C 的 x 属性类型为: (string | number) & number
 // 即 number（因为 number 是 string | number 的子集）
 \`\`\`
@@ -1107,9 +1107,9 @@ type C = A & B;
 如果类型无法兼容（比如 \`string & number\`），结果就是 \`never\` 类型，意味着该属性**永远无法赋值**：
 
 \`\`\`ts
-type X = { value: string };
-type Y = { value: number };
-type Z = X & Y;
+type X = { value: string };  // 定义类型别名 X
+type Y = { value: number };  // 定义类型别名 Y
+type Z = X & Y;  // 定义类型别名 Z，交叉类型
 // Z 的 value 属性类型为 string & number，即 never
 // 这意味着 Z 类型的对象无法被创建（除非 value 是 never 类型，但 never 没有值）
 \`\`\`
@@ -1119,14 +1119,14 @@ type Z = X & Y;
 当交叉类型用于函数类型时，交叉后的结果是**函数重载**：
 
 \`\`\`ts
-type Fn1 = (x: string) => string;
-type Fn2 = (x: number) => number;
-type CombinedFn = Fn1 & Fn2;
+type Fn1 = (x: string) => string;  // 定义类型别名 Fn1
+type Fn2 = (x: number) => number;  // 定义类型别名 Fn2
+type CombinedFn = Fn1 & Fn2;  // 定义类型别名 CombinedFn，交叉类型
 
 // CombinedFn 等价于一个同时接受 string 和 number 的重载函数
-const fn: CombinedFn = (x: any): any => {
-  if (typeof x === "string") return x.toUpperCase();
-  return x * 2;
+const fn: CombinedFn = (x: any): any => {  // 声明常量 fn，类型 CombinedFn（注意：any 关闭了类型检查）
+  if (typeof x === "string") return x.toUpperCase();  // 类型守卫：判断是否为 string
+  return x * 2;  // 返回 x * 2
 };
 \`\`\`
 
@@ -1135,9 +1135,9 @@ const fn: CombinedFn = (x: any): any => {
 联合和交叉可以组合使用，但需要注意优先级。交叉类型 \`&\` 的优先级高于联合类型 \`|\`（类似于乘除高于加减）：
 
 \`\`\`ts
-type A = { a: string };
-type B = { b: number };
-type C = { c: boolean };
+type A = { a: string };  // 定义类型别名 A
+type B = { b: number };  // 定义类型别名 B
+type C = { c: boolean };  // 定义类型别名 C
 
 // 交叉优先级高于联合
 type Result1 = A & B | C;     // 等价于 (A & B) | C
@@ -1149,8 +1149,8 @@ type Result2 = A | B & C;     // 等价于 A | (B & C)
 在 TypeScript 的类型系统中，交叉对联合具有分配律（类似于乘法对加法的分配律）：
 
 \`\`\`ts
-type A = { a: string };
-type Result = A & (string | number);
+type A = { a: string };  // 定义类型别名 A
+type Result = A & (string | number);  // 定义类型别名 Result，联合类型
 // 等价于: (A & string) | (A & number)
 // 展开后: (string & { a: string }) | (number & { a: string })
 // 最终: string | never = string
@@ -1163,21 +1163,21 @@ type Result = A & (string | number);
 #### 场景一：Redux Action 类型
 
 \`\`\`ts
-type AddTodoAction = { type: "ADD_TODO"; text: string };
-type ToggleTodoAction = { type: "TOGGLE_TODO"; id: number };
-type DeleteTodoAction = { type: "DELETE_TODO"; id: number };
-type TodoAction = AddTodoAction | ToggleTodoAction | DeleteTodoAction;
+type AddTodoAction = { type: "ADD_TODO"; text: string };  // 定义类型别名 AddTodoAction
+type ToggleTodoAction = { type: "TOGGLE_TODO"; id: number };  // 定义类型别名 ToggleTodoAction
+type DeleteTodoAction = { type: "DELETE_TODO"; id: number };  // 定义类型别名 DeleteTodoAction
+type TodoAction = AddTodoAction | ToggleTodoAction | DeleteTodoAction;  // 定义类型别名 TodoAction，联合类型
 
-function todoReducer(state: any, action: TodoAction) {
-  switch (action.type) {
-    case "ADD_TODO":
-      return [...state, { text: action.text, completed: false }];
-    case "TOGGLE_TODO":
-      return state.map((todo: any, i: number) =>
-        i === action.id ? { ...todo, completed: !todo.completed } : todo
+function todoReducer(state: any, action: TodoAction) {  // 定义函数 todoReducer，参数: state: any, action: TodoAction（注意：any 关闭了类型检查）
+  switch (action.type) {  // switch 分支选择
+    case "ADD_TODO":  // case 匹配分支
+      return [...state, { text: action.text, completed: false }];  // 返回 [...state, { text: action.text, completed: false }]
+    case "TOGGLE_TODO":  // case 匹配分支
+      return state.map((todo: any, i: number) =>  // 返回 state.map((todo: any, i: number) =>（注意：any 关闭了类型检查）
+        i === action.id ? { ...todo, completed: !todo.completed } : todo  // 赋值 i
       );
-    case "DELETE_TODO":
-      return state.filter((_: any, i: number) => i !== action.id);
+    case "DELETE_TODO":  // case 匹配分支
+      return state.filter((_: any, i: number) => i !== action.id);  // 返回 state.filter((_: any, i: number) => i !== action.id)（注意：any 关闭了类型检查）
   }
 }
 \`\`\`
@@ -1185,17 +1185,17 @@ function todoReducer(state: any, action: TodoAction) {
 #### 场景二：API 响应类型
 
 \`\`\`ts
-type ApiSuccess<T> = { status: "ok"; data: T; message?: string };
-type ApiError = { status: "error"; error: string; code: number };
-type ApiResult<T> = ApiSuccess<T> | ApiError;
+type ApiSuccess<T> = { status: "ok"; data: T; message?: string };  // 定义类型别名 ApiSuccess，泛型参数 T
+type ApiError = { status: "error"; error: string; code: number };  // 定义类型别名 ApiError
+type ApiResult<T> = ApiSuccess<T> | ApiError;  // 定义类型别名 ApiResult，泛型参数 T，联合类型
 \`\`\`
 
 #### 场景三：权限系统
 
 \`\`\`ts
-type BasicUser = { name: string; email: string } & { role: "user" };
-type AdminUser = { name: string; email: string } & { role: "admin"; permissions: string[] };
-type AppUser = BasicUser | AdminUser;
+type BasicUser = { name: string; email: string } & { role: "user" };  // 定义类型别名 BasicUser，交叉类型
+type AdminUser = { name: string; email: string } & { role: "admin"; permissions: string[] };  // 定义类型别名 AdminUser，交叉类型
+type AppUser = BasicUser | AdminUser;  // 定义类型别名 AppUser，联合类型
 \`\`\`
 
 ### 常见陷阱与注意事项
@@ -1413,7 +1413,7 @@ console.log("\\n✅ 联合与交叉类型深入全部演示完成！");`,
 数值枚举是最基本的枚举形式，成员默认从 0 开始自动递增：
 
 \`\`\`ts
-enum Direction {
+enum Direction {  // 定义枚举 Direction
   Up,      // 0
   Down,    // 1
   Left,    // 2
@@ -1439,13 +1439,13 @@ var Direction;
 你也可以手动指定起始值，后续成员会自动递增：
 
 \`\`\`ts
-enum StatusCode {
-  OK = 200,
-  Created = 201,
-  BadRequest = 400,
-  Unauthorized = 401,
-  NotFound = 404,
-  InternalServerError = 500,
+enum StatusCode {  // 定义枚举 StatusCode
+  OK = 200,  // 赋值 OK
+  Created = 201,  // 赋值 Created
+  BadRequest = 400,  // 赋值 BadRequest
+  Unauthorized = 401,  // 赋值 Unauthorized
+  NotFound = 404,  // 赋值 NotFound
+  InternalServerError = 500,  // 赋值 InternalServerError
 }
 \`\`\`
 
@@ -1454,10 +1454,10 @@ enum StatusCode {
 字符串枚举的每个成员必须用字符串字面量显式初始化，没有自动递增机制：
 
 \`\`\`ts
-enum Color {
-  Red = "RED",
-  Green = "GREEN",
-  Blue = "BLUE",
+enum Color {  // 定义枚举 Color
+  Red = "RED",  // 赋值 Red
+  Green = "GREEN",  // 赋值 Green
+  Blue = "BLUE",  // 赋值 Blue
 }
 
 console.log(Color.Red);  // "RED"
@@ -1477,12 +1477,12 @@ console.log(Color.Red);  // "RED"
 
 \`\`\`ts
 const enum Size {
-  Small = 10,
-  Medium = 20,
-  Large = 30,
+  Small = 10,  // 赋值 Small
+  Medium = 20,  // 赋值 Medium
+  Large = 30,  // 赋值 Large
 }
 
-const mySize = Size.Medium;
+const mySize = Size.Medium;  // 声明常量 mySize
 // 编译后：const mySize = 20;  ← 直接内联，没有 Size 对象
 \`\`\`
 
@@ -1502,12 +1502,12 @@ const mySize = Size.Medium;
 数值枚举有一个令人意外的问题：**任何数字都可以赋值给数值枚举类型**：
 
 \`\`\`ts
-enum Direction {
-  Up = 0,
-  Down = 1,
+enum Direction {  // 定义枚举 Direction
+  Up = 0,  // 赋值 Up
+  Down = 1,  // 赋值 Down
 }
 
-let dir: Direction = Direction.Up;
+let dir: Direction = Direction.Up;  // 声明变量 dir，类型 Direction
 dir = 999;  // ✅ 这居然合法！TypeScript 不会报错
 \`\`\`
 
@@ -1519,7 +1519,7 @@ dir = 999;  // ✅ 这居然合法！TypeScript 不会报错
 
 \`\`\`ts
 // 这个枚举编译后会生成一个几十行的 IIFE
-enum LargeEnum {
+enum LargeEnum {  // 定义枚举 LargeEnum
   A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
 }
 \`\`\`
@@ -1533,13 +1533,13 @@ enum LargeEnum {
 枚举的值和枚举的类型是不同的概念：
 
 \`\`\`ts
-enum Status {
-  Active = "active",
-  Inactive = "inactive",
+enum Status {  // 定义枚举 Status
+  Active = "active",  // 赋值 Active
+  Inactive = "inactive",  // 赋值 Inactive
 }
 
 // 这里的类型是 Status（枚举类型），不是 "active" | "inactive"
-let s: Status = Status.Active;
+let s: Status = Status.Active;  // 声明变量 s，类型 Status
 
 // 如果你想用字面量联合类型，枚举帮不了你
 // 你需要另外定义 type StatusValue = "active" | "inactive"
@@ -1555,9 +1555,9 @@ TypeScript 社区中有相当一部分人主张**完全避免使用枚举**，�
 
 \`\`\`ts
 // 代替枚举
-type Direction = "up" | "down" | "left" | "right";
+type Direction = "up" | "down" | "left" | "right";  // 定义类型别名 Direction
 
-function move(dir: Direction) {
+function move(dir: Direction) {  // 定义函数 move，参数: dir: Direction
   // dir 只能是这四个值之一
 }
 move("up");   // ✅
@@ -1572,21 +1572,21 @@ move("up");   // ✅
 这是最接近枚举功能但更加安全的替代方案：
 
 \`\`\`ts
-const Direction = {
+const Direction = {  // 声明常量 Direction
   Up: "UP",
   Down: "DOWN",
   Left: "LEFT",
   Right: "RIGHT",
-} as const;
+} as const;  // 注意：类型断言会绕过类型检查
 
 // 提取值类型
-type Direction = typeof Direction[keyof typeof Direction];
+type Direction = typeof Direction[keyof typeof Direction];  // 定义类型别名 Direction，使用 keyof 取键的联合
 // 等价于 "UP" | "DOWN" | "LEFT" | "RIGHT"
 
 // 使用
 const dir: Direction = Direction.Up;  // "UP"
 // 可以遍历所有值
-Object.values(Direction).forEach(v => console.log(v));
+Object.values(Direction).forEach(v => console.log(v));  // 箭头函数
 \`\`\`
 
 优点：
@@ -1602,8 +1602,8 @@ Object.values(Direction).forEach(v => console.log(v));
 #### 方案三：字符串联合类型 + 辅助数组
 
 \`\`\`ts
-const DIRECTIONS = ["up", "down", "left", "right"] as const;
-type Direction = typeof DIRECTIONS[number];
+const DIRECTIONS = ["up", "down", "left", "right"] as const;  // 声明常量 DIRECTIONS（注意：类型断言会绕过类型检查）
+type Direction = typeof DIRECTIONS[number];  // 定义类型别名 Direction
 // 等价于 "up" | "down" | "left" | "right"
 \`\`\`
 
@@ -1628,9 +1628,9 @@ type Direction = typeof DIRECTIONS[number];
 
 \`\`\`ts
 // 不推荐！容易造成混淆
-enum Mixed {
-  No = 0,
-  Yes = "YES",
+enum Mixed {  // 定义枚举 Mixed
+  No = 0,  // 赋值 No
+  Yes = "YES",  // 赋值 Yes
 }
 \`\`\`
 
@@ -1639,7 +1639,7 @@ enum Mixed {
 枚举成员可以是常量表达式（编译期确定），也可以是计算表达式：
 
 \`\`\`ts
-enum FileAccess {
+enum FileAccess {  // 定义枚举 FileAccess
   None,                    // 常量成员
   Read = 1 << 1,          // 常量成员（编译期可计算）
   Write = 1 << 2,         // 常量成员
@@ -1859,15 +1859,15 @@ TypeScript 的类型系统不仅包含 \`string\`、\`number\`、\`boolean\` 这
 
 \`\`\`ts
 // 字符串字面量类型
-let greeting: "hello" = "hello";
+let greeting: "hello" = "hello";  // 声明变量 greeting，类型 "hello"
 // greeting = "hi";  // ❌ 类型 "hi" 不能赋给类型 "hello"
 
 // 数字字面量类型
-let answer: 42 = 42;
+let answer: 42 = 42;  // 声明变量 answer，类型 42
 // answer = 43;  // ❌
 
 // 布尔字面量类型
-let flag: true = true;
+let flag: true = true;  // 声明变量 flag，类型 true
 // flag = false;  // ❌
 \`\`\`
 
@@ -1877,12 +1877,12 @@ let flag: true = true;
 
 \`\`\`ts
 // 用字面量联合类型限制参数的取值范围
-type Alignment = "left" | "center" | "right";
-type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+type Alignment = "left" | "center" | "right";  // 定义类型别名 Alignment
+type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";  // 定义类型别名 HttpMethod
 
-function alignText(text: string, alignment: Alignment): string {
+function alignText(text: string, alignment: Alignment): string {  // 定义函数 alignText，参数: text: string, alignment: Alignment，返回 string
   // alignment 只能是 "left"、"center" 或 "right"
-  return text + " (对齐方式: " + alignment + ")";
+  return text + " (对齐方式: " + alignment + ")";  // 返回 text + " (对齐方式: " + alignment + ")"
 }
 
 alignText("标题", "center");  // ✅
@@ -1900,13 +1900,13 @@ alignText("标题", "center");  // ✅
 数字字面量类型常用于限制取值范围：
 
 \`\`\`ts
-type DiceRoll = 1 | 2 | 3 | 4 | 5 | 6;
-type HttpStatusSuccess = 200 | 201 | 204;
-type Port = 80 | 443 | 3000 | 8080;
-type Rating = 1 | 2 | 3 | 4 | 5;
+type DiceRoll = 1 | 2 | 3 | 4 | 5 | 6;  // 定义类型别名 DiceRoll，联合类型
+type HttpStatusSuccess = 200 | 201 | 204;  // 定义类型别名 HttpStatusSuccess，联合类型
+type Port = 80 | 443 | 3000 | 8080;  // 定义类型别名 Port，联合类型
+type Rating = 1 | 2 | 3 | 4 | 5;  // 定义类型别名 Rating，联合类型
 
-function rollDice(): DiceRoll {
-  return Math.ceil(Math.random() * 6) as DiceRoll;
+function rollDice(): DiceRoll {  // 定义函数 rollDice，返回 DiceRoll
+  return Math.ceil(Math.random() * 6) as DiceRoll;  // 返回 Math.ceil(Math.random() * 6) as DiceRoll（注意：类型断言会绕过类型检查）
 }
 \`\`\`
 
@@ -1916,7 +1916,7 @@ function rollDice(): DiceRoll {
 
 \`\`\`ts
 // 条件类型中根据布尔字面量分发
-type IsString<T> = T extends string ? true : false;
+type IsString<T> = T extends string ? true : false;  // 定义类型别名 IsString，泛型参数 T，条件类型
 type Result1 = IsString<"hello">;  // true
 type Result2 = IsString<42>;       // false
 \`\`\`
@@ -1926,8 +1926,8 @@ type Result2 = IsString<42>;       // false
 TypeScript 4.1 引入的模板字面量类型是字面量类型的"超级加强版"。它允许你像 JavaScript 的模板字符串一样，在类型层面拼接字符串：
 
 \`\`\`ts
-type World = "world";
-type Greeting = \`hello \${World}\`;
+type World = "world";  // 定义类型别名 World
+type Greeting = \`hello \${World}\`;  // 定义类型别名 Greeting
 // 类型为: "hello world"
 \`\`\`
 
@@ -1936,21 +1936,21 @@ type Greeting = \`hello \${World}\`;
 这是模板字面量类型最强大的用法——当插值位置是联合类型时，会产生**笛卡尔积**展开：
 
 \`\`\`ts
-type Direction = "top" | "bottom" | "left" | "right";
-type CssMargin = \`margin-\${Direction}\`;
+type Direction = "top" | "bottom" | "left" | "right";  // 定义类型别名 Direction
+type CssMargin = \`margin-\${Direction}\`;  // 定义类型别名 CssMargin
 // 展开为: "margin-top" | "margin-bottom" | "margin-left" | "margin-right"
 
-type Event = "click" | "focus" | "blur";
-type Handler = \`on\${Capitalize<Event>}\`;
+type Event = "click" | "focus" | "blur";  // 定义类型别名 Event
+type Handler = \`on\${Capitalize<Event>}\`;  // 定义类型别名 Handler
 // 展开为: "onClick" | "onFocus" | "onBlur"
 \`\`\`
 
 当多个插值位置都是联合类型时，会产生所有组合：
 
 \`\`\`ts
-type Vertical = "top" | "bottom";
-type Horizontal = "left" | "right";
-type Corner = \`\${Vertical}-\${Horizontal}\`;
+type Vertical = "top" | "bottom";  // 定义类型别名 Vertical
+type Horizontal = "left" | "right";  // 定义类型别名 Horizontal
+type Corner = \`\${Vertical}-\${Horizontal}\`;  // 定义类型别名 Corner
 // 展开为: "top-left" | "top-right" | "bottom-left" | "bottom-right"
 \`\`\`
 
@@ -1960,13 +1960,13 @@ type Corner = \`\${Vertical}-\${Horizontal}\`;
 
 \`\`\`ts
 // 给对象类型的所有属性添加 getter 和 setter 方法名
-type Accessors<T> = {
-  [K in keyof T & string as \`get\${Capitalize<K>}\`]: () => T[K];
+type Accessors<T> = {  // 定义类型别名 Accessors，泛型参数 T
+  [K in keyof T & string as \`get\${Capitalize<K>}\`]: () => T[K];  // 箭头函数（注意：类型断言会绕过类型检查）
 } & {
-  [K in keyof T & string as \`set\${Capitalize<K>}\`]: (value: T[K]) => void;
+  [K in keyof T & string as \`set\${Capitalize<K>}\`]: (value: T[K]) => void;  // 箭头函数（注意：类型断言会绕过类型检查）
 };
 
-interface Person {
+interface Person {  // 定义接口 Person
   name: string;
   age: number;
 }
@@ -1989,7 +1989,7 @@ TypeScript 提供了四个内置的字符串操作类型，用于在模板字面
 将字符串字面量类型中的所有字符转为大写：
 
 \`\`\`ts
-type Shout = Uppercase<"hello">;
+type Shout = Uppercase<"hello">;  // 定义类型别名 Shout
 // 类型为: "HELLO"
 \`\`\`
 
@@ -1998,7 +1998,7 @@ type Shout = Uppercase<"hello">;
 将字符串字面量类型中的所有字符转为小写：
 
 \`\`\`ts
-type Whisper = Lowercase<"HELLO">;
+type Whisper = Lowercase<"HELLO">;  // 定义类型别名 Whisper
 // 类型为: "hello"
 \`\`\`
 
@@ -2007,7 +2007,7 @@ type Whisper = Lowercase<"HELLO">;
 将字符串字面量类型中的首字母转为大写：
 
 \`\`\`ts
-type Proper = Capitalize<"hello">;
+type Proper = Capitalize<"hello">;  // 定义类型别名 Proper
 // 类型为: "Hello"
 \`\`\`
 
@@ -2016,7 +2016,7 @@ type Proper = Capitalize<"hello">;
 将字符串字面量类型中的首字母转为小写：
 
 \`\`\`ts
-type Unproper = Uncapitalize<"Hello">;
+type Unproper = Uncapitalize<"Hello">;  // 定义类型别名 Unproper
 // 类型为: "hello"
 \`\`\`
 
@@ -2027,40 +2027,40 @@ type Unproper = Uncapitalize<"Hello">;
 #### 应用一：类型安全的事件系统
 
 \`\`\`ts
-type EventMap = {
+type EventMap = {  // 定义类型别名 EventMap
   click: { x: number; y: number };
   focus: { element: string };
   input: { value: string };
 };
 
-type EventNames = keyof EventMap;
-type EventHandler<K extends EventNames> = (event: EventMap[K]) => void;
-type ListenerMap = {
-  [K in EventNames as \\\`on\\\${Capitalize<K>}\\\`]: EventHandler<K>;
+type EventNames = keyof EventMap;  // 定义类型别名 EventNames，使用 keyof 取键的联合
+type EventHandler<K extends EventNames> = (event: EventMap[K]) => void;  // 定义类型别名 EventHandler，泛型参数 K extends EventNames
+type ListenerMap = {  // 定义类型别名 ListenerMap
+  [K in EventNames as \\\`on\\\${Capitalize<K>}\\\`]: EventHandler<K>;  // 注意：类型断言会绕过类型检查
 };
 \`\`\`
 
 #### 应用二：类型安全的路由系统
 
 \`\`\`ts
-type Route = "users" | "products" | "orders";
-type RouteWithId = \\\`/\\\${Route}/:id\\\`;
+type Route = "users" | "products" | "orders";  // 定义类型别名 Route
+type RouteWithId = \\\`/\\\${Route}/:id\\\`;  // 定义类型别名 RouteWithId
 // "/users/:id" | "/products/:id" | "/orders/:id"
 
-type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
-type RouteHandler = \\\`\\\${HttpMethod} \\\${RouteWithId}\\\`;
+type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";  // 定义类型别名 HttpMethod
+type RouteHandler = \\\`\\\${HttpMethod} \\\${RouteWithId}\\\`;  // 定义类型别名 RouteHandler
 // "GET /users/:id" | "POST /users/:id" | ... 共 12 种组合
 \`\`\`
 
 #### 应用三：CSS 属性类型
 
 \`\`\`ts
-type CssUnit = "px" | "em" | "rem" | "%" | "vh" | "vw";
-type CssValue = \\\`\\\${number}\\\${CssUnit}\\\`;
+type CssUnit = "px" | "em" | "rem" | "%" | "vh" | "vw";  // 定义类型别名 CssUnit
+type CssValue = \\\`\\\${number}\\\${CssUnit}\\\`;  // 定义类型别名 CssValue
 // "\${number}px" | "\${number}em" | ...
 
 // 更精确的边距定义
-type MarginProp = \\\`margin\\\${"" | \\\`-\\\${"top" | "bottom" | "left" | "right"}\\\`}\\\`;
+type MarginProp = \\\`margin\\\${"" | \\\`-\\\${"top" | "bottom" | "left" | "right"}\\\`}\\\`;  // 定义类型别名 MarginProp，联合类型
 // "margin" | "margin-top" | "margin-bottom" | "margin-left" | "margin-right"
 \`\`\`
 
@@ -2086,7 +2086,7 @@ type Split<S extends string, Sep extends string> =
     ? Head | Split<Tail, Sep>
     : S;
 
-type Parts = Split<"a,b,c,d", ",">;
+type Parts = Split<"a,b,c,d", ",">;  // 定义类型别名 Parts
 // 类型为: "a" | "b" | "c" | "d"
 \`\`\`
 
@@ -2272,8 +2272,8 @@ console.log("\\n✅ 字面量与模板字面量类型全部演示完成！");`,
 假设你有一个联合类型的变量 \`string | number\`，在你使用它之前，TypeScript 只知道它可能是字符串或数字。但如果你先用 \`typeof\` 检查它是字符串，那么在检查通过之后的代码块中，TypeScript 就知道它**一定是字符串**——这就是类型收窄。
 
 \`\`\`ts
-function padLeft(value: string | number, padding: number) {
-  if (typeof value === "string") {
+function padLeft(value: string | number, padding: number) {  // 定义函数 padLeft，参数: value: string | number, padding: number
+  if (typeof value === "string") {  // 类型守卫：判断是否为 string
     // 在这个代码块中，value 的类型被收窄为 string
     return value.padStart(padding);  // ✅ string 的方法
   }
@@ -2298,15 +2298,15 @@ function padLeft(value: string | number, padding: number) {
 - \`typeof x === "symbol"\` → 收窄为 \`symbol\`
 
 \`\`\`ts
-function printValue(value: string | number | boolean | undefined) {
-  if (typeof value === "string") {
-    console.log("字符串:", value.toUpperCase());
-  } else if (typeof value === "number") {
-    console.log("数字:", value.toFixed(2));
-  } else if (typeof value === "boolean") {
-    console.log("布尔:", value ? "是" : "否");
+function printValue(value: string | number | boolean | undefined) {  // 定义函数 printValue，参数: value: string | number | boolean | undefined
+  if (typeof value === "string") {  // 类型守卫：判断是否为 string
+    console.log("字符串:", value.toUpperCase());  // 控制台输出
+  } else if (typeof value === "number") {  // 类型守卫：判断是否为 number
+    console.log("数字:", value.toFixed(2));  // 控制台输出
+  } else if (typeof value === "boolean") {  // 类型守卫：判断是否为 boolean
+    console.log("布尔:", value ? "是" : "否");  // 控制台输出
   } else {
-    console.log("未定义");
+    console.log("未定义");  // 控制台输出
   }
 }
 \`\`\`
@@ -2320,14 +2320,14 @@ function printValue(value: string | number | boolean | undefined) {
 \`instanceof\` 用于检查一个对象是否是某个类的实例。TypeScript 也理解它的语义：
 
 \`\`\`ts
-function handleError(error: Error | string) {
-  if (error instanceof Error) {
+function handleError(error: Error | string) {  // 定义函数 handleError，参数: error: Error | string
+  if (error instanceof Error) {  // 类型守卫：instanceof 判断实例类型
     // 收窄为 Error 类型
-    console.log(error.message);
-    console.log(error.stack);
+    console.log(error.message);  // 控制台输出
+    console.log(error.stack);  // 控制台输出
   } else {
     // 收窄为 string 类型
-    console.log("错误信息: " + error);
+    console.log("错误信息: " + error);  // 控制台输出
   }
 }
 \`\`\`
@@ -2339,16 +2339,16 @@ function handleError(error: Error | string) {
 \`in\` 操作符检查对象是否具有某个属性，TypeScript 可以据此收窄联合类型：
 
 \`\`\`ts
-type Bird = { fly(): void; wingspan: number };
-type Fish = { swim(): void; gills: boolean };
+type Bird = { fly(): void; wingspan: number };  // 定义类型别名 Bird
+type Fish = { swim(): void; gills: boolean };  // 定义类型别名 Fish
 
-function move(animal: Bird | Fish) {
-  if ("swim" in animal) {
+function move(animal: Bird | Fish) {  // 定义函数 move，参数: animal: Bird | Fish
+  if ("swim" in animal) {  // 条件判断
     // animal 被收窄为 Fish
-    animal.swim();
+    animal.swim();  // 调用 animal.swim
   } else {
     // animal 被收窄为 Bird
-    animal.fly();
+    animal.fly();  // 调用 animal.fly
   }
 }
 \`\`\`
@@ -2360,17 +2360,17 @@ function move(animal: Bird | Fish) {
 TypeScript 也理解 \`===\`、\`!==\`、\`==\`、\`!=\` 等比较操作符，能据此收窄类型：
 
 \`\`\`ts
-function process(value: string | number | null | undefined) {
-  if (value === null) {
+function process(value: string | number | null | undefined) {  // 定义函数 process，参数: value: string | number | null | undefined
+  if (value === null) {  // 条件判断
     // 收窄为 null
-    return "值为 null";
+    return "值为 null";  // 返回 "值为 null"
   }
-  if (value === undefined) {
+  if (value === undefined) {  // 条件判断
     // 收窄为 undefined
-    return "值为 undefined";
+    return "值为 undefined";  // 返回 "值为 undefined"
   }
   // 此时 value 被收窄为 string | number
-  return "值: " + value;
+  return "值: " + value;  // 返回 "值: " + value
 }
 \`\`\`
 
@@ -2381,13 +2381,13 @@ function process(value: string | number | null | undefined) {
 JavaScript 中的"假值（falsy）"包括：\`false\`、\`0\`、\`""\`、\`null\`、\`undefined\`、\`NaN\`。TypeScript 理解 \`if (value)\` 这样的真值检查，会过滤掉假值类型：
 
 \`\`\`ts
-function printAll(strs: string | string[] | null) {
-  if (strs) {
+function printAll(strs: string | string[] | null) {  // 定义函数 printAll，参数: strs: string | string[] | null
+  if (strs) {  // 条件判断
     // strs 被收窄为 string | string[]（排除了 null）
-    if (typeof strs === "string") {
-      console.log(strs);
+    if (typeof strs === "string") {  // 类型守卫：判断是否为 string
+      console.log(strs);  // 控制台输出
     } else {
-      strs.forEach(console.log);
+      strs.forEach(console.log);  // 调用 strs.forEach
     }
   }
 }
@@ -2396,10 +2396,10 @@ function printAll(strs: string | string[] | null) {
 但要注意一个陷阱：对于数字类型，\`0\` 和 \`NaN\` 是假值，所以真值收窄会把 \`0\` 也过滤掉：
 
 \`\`\`ts
-function processNumber(num?: number) {
-  if (num) {
+function processNumber(num?: number) {  // 定义函数 processNumber，参数: num?: number
+  if (num) {  // 条件判断
     // num 被收窄为 number，但 num = 0 不会进入这个分支！
-    console.log(num.toFixed(2));
+    console.log(num.toFixed(2));  // 控制台输出
   }
 }
 \`\`\`
@@ -2409,15 +2409,15 @@ function processNumber(num?: number) {
 TypeScript 的类型收窄不仅仅是简单的条件判断，它还会进行**跨代码块的控制流分析**。这意味着 TypeScript 会追踪变量在整个函数中的类型变化：
 
 \`\`\`ts
-function example() {
-  let x: string | number = Math.random() > 0.5 ? "hello" : 42;
+function example() {  // 定义函数 example
+  let x: string | number = Math.random() > 0.5 ? "hello" : 42;  // 声明变量 x，类型 string | number
 
   // 第一次赋值后，x 的类型是 string | number
-  x = "world";
+  x = "world";  // 赋值 x
   // 赋值后，x 的类型收窄为 string（因为赋了一个 string 值）
   console.log(x.toUpperCase()); // ✅
 
-  x = 100;
+  x = 100;  // 赋值 x
   // 再次赋值后，x 的类型收窄为 number
   console.log(x.toFixed(2)); // ✅
 }
@@ -2426,7 +2426,7 @@ function example() {
 控制流分析也适用于**提前返回（early return）** 模式：
 
 \`\`\`ts
-function process(value: string | null) {
+function process(value: string | null) {  // 定义函数 process，参数: value: string | null
   if (value === null) return;  // 提前返回，后面代码中 value 自动收窄为 string
   console.log(value.toUpperCase()); // ✅ value 是 string
 }
@@ -2437,23 +2437,23 @@ function process(value: string | null) {
 类型谓词是 TypeScript 最强大的类型收窄工具之一。它是一个返回布尔值的函数，但返回值类型使用 \`parameterName is Type\` 语法，告诉 TypeScript 编译器"如果这个函数返回 true，那么参数就是指定的类型"：
 
 \`\`\`ts
-interface Cat {
-  meow(): void;
+interface Cat {  // 定义接口 Cat
+  meow(): void;  // 方法声明 meow()，返回 void
   name: string;
 }
 
-interface Dog {
-  bark(): void;
+interface Dog {  // 定义接口 Dog
+  bark(): void;  // 方法声明 bark()，返回 void
   name: string;
 }
 
 // 类型谓词：animal is Cat
-function isCat(animal: Cat | Dog): animal is Cat {
-  return "meow" in animal;
+function isCat(animal: Cat | Dog): animal is Cat {  // 自定义类型守卫（返回 x is T）
+  return "meow" in animal;  // 返回 "meow" in animal
 }
 
-function handleAnimal(animal: Cat | Dog) {
-  if (isCat(animal)) {
+function handleAnimal(animal: Cat | Dog) {  // 定义函数 handleAnimal，参数: animal: Cat | Dog
+  if (isCat(animal)) {  // 条件判断
     animal.meow();  // ✅ 收窄为 Cat
   } else {
     animal.bark();  // ✅ 收窄为 Dog
@@ -2469,7 +2469,7 @@ function handleAnimal(animal: Cat | Dog) {
 
 \`\`\`ts
 // 危险：类型谓词承诺了但实现错误
-function isNumber(value: unknown): value is number {
+function isNumber(value: unknown): value is number {  // 自定义类型守卫（返回 x is T）
   return typeof value === "string";  // 实现错误！但 TypeScript 不会报错
 }
 \`\`\`
@@ -2481,16 +2481,16 @@ function isNumber(value: unknown): value is number {
 TypeScript 3.7 引入了断言函数，这是类型谓词的"断言版本"。断言函数不返回布尔值，而是在条件不满足时抛出异常：
 
 \`\`\`ts
-function assertIsString(value: unknown): asserts value is string {
-  if (typeof value !== "string") {
-    throw new Error("期望字符串，但得到了 " + typeof value);
+function assertIsString(value: unknown): asserts value is string {  // 定义函数 assertIsString，参数: value: unknown，返回 asserts value is string
+  if (typeof value !== "string") {  // 条件判断
+    throw new Error("期望字符串，但得到了 " + typeof value);  // 抛出 Error 异常
   }
 }
 
-function process(value: unknown) {
-  assertIsString(value);
+function process(value: unknown) {  // 定义函数 process，参数: value: unknown
+  assertIsString(value);  // 调用 assertIsString
   // 断言通过后，value 被收窄为 string
-  console.log(value.toUpperCase());
+  console.log(value.toUpperCase());  // 控制台输出
 }
 \`\`\`
 
@@ -2509,13 +2509,13 @@ type Shape =
   | { kind: "rectangle"; width: number; height: number }
   | { kind: "triangle"; base: number; height: number };
 
-function area(shape: Shape): number {
-  switch (shape.kind) {
-    case "circle":
+function area(shape: Shape): number {  // 定义函数 area，参数: shape: Shape，返回 number
+  switch (shape.kind) {  // switch 分支选择
+    case "circle":  // case 匹配分支
       return Math.PI * shape.radius ** 2;    // shape: Circle
-    case "rectangle":
+    case "rectangle":  // case 匹配分支
       return shape.width * shape.height;      // shape: Rectangle
-    case "triangle":
+    case "triangle":  // case 匹配分支
       return (shape.base * shape.height) / 2; // shape: Triangle
   }
 }

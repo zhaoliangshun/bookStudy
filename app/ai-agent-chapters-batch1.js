@@ -119,27 +119,40 @@ Agent 这个概念并不新，它经历了漫长的演进：
 \`\`\`python
 # 一个最小化的 Agent 循环伪代码，帮你建立直观感受
 # 真实框架（LangChain 等）封装得更复杂，但核心就是这个循环
+# 这是 Agent 的核心范式：循环执行"决策→行动→观察"直到完成
 
 def agent_loop(user_goal, llm, tools, memory, max_steps=10):
+# 入参：user_goal 目标，llm 大脑，tools 工具集，memory 记忆，max_steps 防死循环
     """Agent 主循环：感知-决策-行动-观察，直到任务完成"""
     messages = [{"role": "user", "content": user_goal}]
+    # 初始化消息列表，把用户目标作为第一条 user 消息
 
     for step in range(max_steps):
+    # 限制最大步数，防止 Agent 陷入死循环无法收敛
         # 1. 决策：让 LLM 大脑决定下一步做什么
+    # 第1步 决策：让 LLM 综合历史和工具决定下一步
         decision = llm.decide(messages, tools=tools, memory=memory)
+    # decision 含 is_final、tool_name、tool_input、answer 等字段
 
         # 2. 判断是否已完成任务
+        # 第2步：检查 LLM 是否认为任务已完成
         if decision.is_final:
             return decision.answer  # 任务完成，返回最终结果
+        # 已完成则直接返回最终答案，跳出循环
 
         # 3. 行动：调用 LLM 选中的工具
+        # 第3步 行动：根据 LLM 的选择执行对应工具
         tool_result = tools[decision.tool_name].run(decision.tool_input)
+        # tools 是字典，按 tool_name 取工具并 run；tool_input 由 LLM 决定
 
         # 4. 观察并记忆：把工具结果存入记忆，供下一轮决策
+        # 第4步 观察：把工具结果回写记忆与消息，供下一轮决策参考
         memory.append({"role": "tool", "content": tool_result})
         messages.append({"role": "assistant", "content": f"调用了 {decision.tool_name}，结果是：{tool_result}"})
+        # 注意：tool 结果必须回灌进 messages，否则 LLM 看不到执行反馈
 
     return "达到最大步数，任务未完成"
+    # 达到步数上限仍未完成，返回兜底提示
 \`\`\`
 
 这段伪代码揭示了 Agent 的本质——一个**有目标的循环**。理解了这个循环，后面学任何框架都是在学"如何把这个循环做得更稳、更快、更可控"。
@@ -245,17 +258,23 @@ LLM 具备做 Agent 大脑的三个关键能力：
 \`\`\`python
 # 演示 LLM 作为"大脑"做一次简单决策
 # 这里用伪代码展示思路，后续章节会换成真实 SDK 调用
+# 通过 prompt 让 LLM 输出结构化 JSON 决策（调工具 or 给最终答案）
 
 def llm_decide(goal, available_tools, history):
+# 入参：goal 目标，available_tools 可用工具字典，history 历史记录
     """让 LLM 决定下一步调用哪个工具"""
+    # 下方 prompt 用 f-string 把目标/工具/历史拼进去，要求只输出 JSON
     prompt = f"""你是一个任务助手，目标：{goal}
     可用工具：{list(available_tools.keys())}
     历史记录：{history}
     请决定下一步：要么调用某个工具，要么给出最终答案。
     只输出 JSON：{{"action": "工具名或final", "input": "...", "answer": "..."}}"""
     # 调用 LLM 生成决策
+    # 调用 LLM 生成决策文本
     response = llm.chat(prompt)
+    # llm.chat 返回原始文本，理论上是 JSON 字符串
     return parse_json(response)  # 解析成结构化决策
+    # parse_json 把文本解析为结构化决策对象，含 action/input/answer 字段
 \`\`\`
 
 ### 六、模型能力边界：幻觉、上下文、时效性
@@ -324,19 +343,27 @@ LLM 做复杂计算容易出错（它不是计算器）。**对策**：让 Agent
 
 \`\`\`python
 # 用 tiktoken 库数 token（OpenAI 模型）
+# tiktoken 是 OpenAI 开源的 BPE 分词器，可精确预估 token 消耗与费用
 # 安装: pip install tiktoken
 import tiktoken
+# 导入 tiktoken
 
 # 选择编码方式（gpt-4o 用 o200k_base）
+# 不同模型用不同编码；gpt-4o 系列用 o200k_base
 enc = tiktoken.encoding_for_model("gpt-4o")
+ # encoding_for_model 自动选对应编码器
 
 text_zh = "你好，世界"          # 中文
+# 准备中英文对照样本
 text_en = "Hello, world"        # 英文
 
 tokens_zh = enc.encode(text_zh)
+# encode 把文本切成 token id 列表
 tokens_en = enc.encode(text_en)
+# 注意：中文一个字往往不止 1 个 token，比英文更费额度
 
 print(f"中文 '{text_zh}' 的 token 数: {len(tokens_zh)}")  # 中文通常更费 token
+# len(tokens) 即 token 数，直接决定计费
 print(f"英文 '{text_en}' 的 token 数: {len(tokens_en)}")
 print(f"中文 token 列表: {tokens_zh}")
 \`\`\`
@@ -418,14 +445,22 @@ print(f"中文 token 列表: {tokens_zh}")
 
 \`\`\`python
 # 策略2：滑动窗口示例
+# 滑动窗口记忆策略：只保留最近几轮对话，丢弃更早的历史
 def build_messages(history, current_input, max_rounds=5):
+# 入参：history 全部历史，current_input 本次输入，max_rounds 保留轮数
     """只保留最近 max_rounds 轮历史，控制上下文长度"""
+    # 目的：控制上下文长度，避免超出模型窗口
     # 截取最近的对话
     recent = history[-(max_rounds * 2):]  # 每轮一问一答，乘2
+    # 切片取最近 max_rounds*2 条（一轮=一问一答=2条）
     messages = [{"role": "system", "content": "你是一个助手"}]
+    # system 放最前，设定模型身份
     messages.extend(recent)
+    # 用 extend 把历史拼接到 system 之后
     messages.append({"role": "user", "content": current_input})
+    # 当前用户输入放最后，作为模型要处理的对象
     return messages
+    # 注意：滑动窗口会丢失早期上下文，长任务需配合摘要/向量记忆
 \`\`\`
 
 ### 六、token 计数管理：用 tiktoken
@@ -434,28 +469,45 @@ def build_messages(history, current_input, max_rounds=5):
 
 \`\`\`python
 import tiktoken
+# 导入 tiktoken，用于精确计数 token
 
 enc = tiktoken.encoding_for_model("gpt-4o")
+ # gpt-4o 编码器
 
 def count_tokens(messages, model="gpt-4o"):
+# 入参：messages 消息列表；返回总 token 数（含角色等固定开销）
     """计算一组消息的总 token 数（含角色开销）"""
+    # 注意：API 计费不只算正文，每条消息的角色/分隔也有固定开销
     # 不同模型每条消息的额外开销不同，gpt-4o 约每条消息 +3 token
     total = 3  # 起始开销
+    # 起始开销约 3 token（系统占位）
     for msg in messages:
+    # 遍历每条消息累加
         total += 3  # 每条消息的固定开销
+    # 每条消息固定开销约 3 token
         total += len(enc.encode(msg["content"]))
+    # 正文 content 的 token 数
         total += len(enc.encode(msg["role"]))
+    # role 字段也有 token
     total += 3  # 结尾开销
+    # 结尾开销约 3 token
     return total
+    # 返回总和
 
 # 实战：发请求前先检查会不会超限
+# 发请求前先估算，避免超限报错
 def safe_chat(messages, max_tokens=4096, context_limit=128000):
+# 入参：max_tokens 预留输出，context_limit 模型窗口上限
     """发请求前检查 token 是否超限"""
     input_tokens = count_tokens(messages)
+    # 先算输入 token
     if input_tokens + max_tokens > context_limit:
+    # 输入+预期输出 vs 窗口上限
         # 超限了，需要压缩历史
         raise ValueError(f"上下文超限：{input_tokens}+{max_tokens}>{context_limit}")
+        # 超限直接抛错，提示压缩历史
     # ... 正常调用 API
+    # 未超限才继续调用 API
 \`\`\`
 
 ### 七、本章小结与易错点
@@ -487,14 +539,18 @@ LLM 开发主流语言是 Python（生态最全）。推荐 Python 3.10+，原�
 
 \`\`\`bash
 # 检查 Python 版本（建议 3.10+）
+# 先确认 Python 版本，Agent 开发建议 3.10+（类型注解、新语法支持更好）
 python3 --version
 
 # 在项目目录创建虚拟环境（名为 .venv）
+# venv 创建隔离环境，避免污染系统 Python
 python3 -m venv .venv
+# 在当前目录生成 .venv 文件夹（含独立解释器和依赖）
 
 # 激活虚拟环境
 # macOS / Linux:
 source .venv/bin/activate
+# source 激活：把 .venv 的解释器加到 PATH 最前
 # Windows (PowerShell):
 # .venv\\Scripts\\Activate.ps1
 
@@ -503,16 +559,21 @@ source .venv/bin/activate
 
 # 退出虚拟环境（用完再退）
 deactivate
+# deactivate 退出虚拟环境，恢复系统默认解释器
 \`\`\`
 
 **最佳实践**：把依赖列表存成 requirements.txt，别人或未来的你能一键复现环境。
 
 \`\`\`bash
 # 导出当前依赖
+# 把当前虚拟环境已装的包及版本写入 requirements.txt，保证可复现
 pip freeze > requirements.txt
+# pip freeze 列出所有依赖，重定向到文件
 
 # 在新环境一键安装
+# 新机器/同事一键复现相同环境
 pip install -r requirements.txt
+# -r 表示按文件安装，版本完全对齐
 \`\`\`
 
 ### 二、安装核心 SDK：openai 与 anthropic
@@ -521,27 +582,36 @@ pip install -r requirements.txt
 
 \`\`\`bash
 # 先激活虚拟环境
+# 装包前先激活虚拟环境，避免装到全局
 source .venv/bin/activate
 
 # OpenAI 官方 SDK（调用 GPT 系列）
 pip install openai
+# openai SDK：调用 GPT-4o/GPT-4 等模型的统一接口
 
 # Anthropic 官方 SDK（调用 Claude 系列）
 pip install anthropic
+# anthropic SDK：调用 Claude 系列模型
 
 # 安装后会带上版本号，建议固定版本避免 API 变动
 # pip install "openai>=1.0" "anthropic>=0.20"
+# 注意：生产环境建议固定版本号，防止上游 API 变动导致线上故障
 \`\`\`
 
 验证安装：
 
 \`\`\`python
 # 验证 SDK 能正常导入
+# 装完后先验证能否导入，确认环境就绪
 import openai
+# 导入 openai 包
 import anthropic
+# 导入 anthropic 包
 
 print(f"openai 版本: {openai.__version__}")
+# 打印版本号，便于排查兼容性问题
 print(f"anthropic 版本: {anthropic.__version__}")
+# 若报 ImportError，多半是装到了别的环境
 \`\`\`
 
 ### 三、安装常用库：langchain / llama-index / 向量库
@@ -550,20 +620,27 @@ print(f"anthropic 版本: {anthropic.__version__}")
 
 \`\`\`bash
 # LangChain：编排 LLM + 工具 + 记忆的框架，最流行
+# LangChain 是 Agent 开发主流框架，把 LLM/工具/记忆串成链
 pip install langchain langchain-openai langchain-community
+# 拆三个包：核心 + openai 集成 + 社区工具集成
 
 # LlamaIndex：专注 RAG（检索增强生成）的框架
+# LlamaIndex 擅长 RAG：把私有知识检索后喂给 LLM
 pip install llama-index
 
 # 向量数据库（存记忆/做 RAG）
 pip install chromadb   # 轻量本地向量库，适合开发
+# chromadb 轻量、零配置，适合本地开发与原型
 pip install faiss-cpu  # Facebook 出品，高性能相似度检索
+# faiss 高性能，适合大规模向量检索
 
 # tiktoken：OpenAI 的 token 计数工具
 pip install tiktoken
+# tiktoken 精确计数 token，用于预算与截断
 
 # python-dotenv：管理 .env 环境变量
 pip install python-dotenv
+# python-dotenv 从 .env 读环境变量，密钥不进代码
 \`\`\`
 
 | 库 | 作用 | 何时用 |
@@ -583,50 +660,69 @@ pip install python-dotenv
 
 \`\`\`bash
 # 在项目根目录创建 .env 文件（注意：这个文件绝不能提交到 Git！）
+# 用 .env 存密钥，代码通过 os.getenv 读取，避免硬编码
 # .env 内容如下：
 # OPENAI_API_KEY=sk-你的真实key
+# 注意：.env 必须加入 .gitignore，密钥一旦提交 Git 要立即吊销重置
 # ANTHROPIC_API_KEY=sk-ant-你的真实key
+# 不同厂商 key 前缀不同（sk- / sk-ant-），便于识别来源
 \`\`\`
 
 **步骤 2：在 .gitignore 里忽略 .env**
 
 \`\`\`bash
 # .gitignore 文件必须包含这行，防止密钥被提交
+# .gitignore 告诉 Git 忽略哪些文件，防止敏感/临时文件入库
 .env
+# .env 含密钥，必须忽略
 .venv/
+# .venv 是虚拟环境，体积大且每个机器不同，忽略
 __pycache__/
+# __pycache__ 是 Python 字节码缓存，无需版本管理
 \`\`\`
 
 **步骤 3：代码里用 python-dotenv 读取**
 
 \`\`\`python
 # config.py —— 统一管理配置
+# 集中管理配置，其他模块从此处 import 密钥与参数
 import os
+# os 用于读取环境变量
 from dotenv import load_dotenv
+# python-dotenv 提供加载 .env 的能力
 
 # 加载 .env 文件里的环境变量
 load_dotenv()
+ # load_dotenv 把 .env 的键值对注入环境变量
 
 # 读取密钥（代码里不出现真实 key）
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# 从环境变量取 key，代码里不出现明文密钥
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+# 同理取 Anthropic 密钥
 
 # 启动时检查密钥是否配置
 if not OPENAI_API_KEY:
+# 启动期校验：缺 key 立即报错，避免运行到一半才失败
     raise RuntimeError("请在 .env 中配置 OPENAI_API_KEY")
+    # 注意：key 缺失直接抛错，fail fast 比静默失败更易排查
 \`\`\`
 
 **步骤 4：用代码时通过环境变量初始化 SDK**
 
 \`\`\`python
 from openai import OpenAI
+# 从 SDK 导入 OpenAI 客户端类
 import os
+# os 用于读环境变量（显式传 key 时用）
 
 # SDK 会自动读取环境变量 OPENAI_API_KEY
 # 也可以显式传入：client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 client = OpenAI()
+ # 不传参时 SDK 自动读 OPENAI_API_KEY 环境变量
 
 # 现在可以安全地调用，密钥不会出现在任何业务代码里
+# 这样密钥只在 .env/环境变量中，业务代码零泄露风险
 \`\`\`
 
 ### 五、Jupyter Notebook：适合实验探索
@@ -635,10 +731,13 @@ client = OpenAI()
 
 \`\`\`bash
 # 安装 Jupyter
+# Jupyter 用于交互式实验，调 API 试 prompt 很方便
 pip install jupyter
+# 安装 Jupyter Notebook
 
 # 启动（会打开浏览器）
 jupyter notebook
+# 启动后会开本地服务并打开浏览器，建议只在本地用
 \`\`\`
 
 **使用建议**：
@@ -691,27 +790,38 @@ my-agent-project/
 
 \`\`\`python
 # hello_ai.py —— 验证开发环境是否就绪
+# 第一个程序：跑通最小调用链，确认 SDK/密钥/网络都正常
 import os
 from dotenv import load_dotenv
+# python-dotenv 加载 .env
 from openai import OpenAI
+# 导入 OpenAI 客户端
 
 # 1. 加载环境变量（从 .env 读取密钥）
 load_dotenv()
+ # 把 .env 的密钥注入环境变量
 
 # 2. 初始化客户端（自动用环境变量里的 key）
 client = OpenAI()
+ # 初始化客户端，自动读取 OPENAI_API_KEY
 
 # 3. 发一个最简单的请求
 response = client.chat.completions.create(
+ # 调用 chat completions 接口，这是对话的核心入口
     model="gpt-4o-mini",  # 便宜的小模型，适合验证
+    # 验证用 gpt-4o-mini，成本极低
     messages=[
+    # messages 是对话列表
         {"role": "user", "content": "用一句话介绍 AI Agent"}
+    # 一条 user 消息触发模型回答
     ]
 )
 
 # 4. 打印结果
 print("模型回答：", response.choices[0].message.content)
+ # choices[0] 取首条候选回复，message.content 是正文
 print("消耗 token：", response.usage.total_tokens)
+ # usage.total_tokens 是本次消耗，用于核对费用
 \`\`\`
 
 如果能看到模型回答和 token 统计，说明环境完全就绪，可以开始正式开发 Agent 了。

@@ -16,7 +16,7 @@ Record 是 Java 16 正式引入的语法糖，用于声明**不可变的数据�
 ## 1. 基本语法
 
 \`\`\`java
-public record Point(int x, int y) {}
+public record Point(int x, int y) {}  // 定义记录类 Point
 \`\`\`
 
 这一行等价于传统 Java 中几十行的 POJO：私有 final 字段、全参构造器、getter（注意是 \`x()\` 而不是 \`getX()\`）、equals/hashCode/toString。
@@ -26,10 +26,10 @@ public record Point(int x, int y) {}
 当需要在构造时做参数校验，可以使用**紧凑构造器**，无需再次列出参数列表：
 
 \`\`\`java
-public record Range(int start, int end) {
+public record Range(int start, int end) {  // 定义记录类 Range
     public Range {
-        if (start > end) {
-            throw new IllegalArgumentException("start 不能大于 end");
+        if (start > end) {  // 条件判断：满足 start > end 时执行
+            throw new IllegalArgumentException("start 不能大于 end");  // 抛出 IllegalArgumentException 异常："start 不能大于 end"
         }
     }
 }
@@ -42,12 +42,12 @@ public record Range(int start, int end) {
 Record 可以添加额外的方法、静态字段、静态方法，但**不能添加实例字段**（否则破坏不可变性）：
 
 \`\`\`java
-public record Point(int x, int y) {
-    public double distanceToOrigin() {
-        return Math.sqrt(x * x + y * y);
+public record Point(int x, int y) {  // 定义记录类 Point
+    public double distanceToOrigin() {  // 方法 distanceToOrigin，返回 double，无参数
+        return Math.sqrt(x * x + y * y);  // 返回值：Math.sqrt(x * x + y * y)
     }
-    public static Point origin() {
-        return new Point(0, 0);
+    public static Point origin() {  // 静态方法 origin，返回 Point，无参数
+        return new Point(0, 0);  // 返回值：new Point(0, 0)
     }
 }
 \`\`\`
@@ -57,10 +57,10 @@ public record Point(int x, int y) {
 Record 可以实现接口，常用于策略模式或领域建模：
 
 \`\`\`java
-public record Point(int x, int y) implements Comparable<Point> {
-    @Override
-    public int compareTo(Point other) {
-        return Integer.compare(this.x, other.x);
+public record Point(int x, int y) implements Comparable<Point> {  // 定义记录类 Point
+    @Override  // 注解：Override
+    public int compareTo(Point other) {  // 方法 compareTo，返回 int，参数：Point other
+        return Integer.compare(this.x, other.x);  // 返回值：Integer.compare(this.x, other.x)
     }
 }
 \`\`\`
@@ -191,7 +191,7 @@ record Line(Point start, Point end) {
 - \`final\`：彻底封闭（不能再被继承）
 
 \`\`\`java
-public sealed interface Shape permits Circle, Square, Triangle {}
+public sealed interface Shape permits Circle, Square, Triangle {}  // 定义接口 Shape
 \`\`\`
 
 ## 2. 子类规则
@@ -201,9 +201,9 @@ public sealed interface Shape permits Circle, Square, Triangle {}
 - 没有继承关系的类不能 extends 密封类
 
 \`\`\`java
-final class Circle implements Shape {}
-sealed class Square implements Shape permits ColoredSquare {}
-non-sealed class Triangle implements Shape {}
+final class Circle implements Shape {}  // 定义最终（不可继承）类 Circle
+sealed class Square implements Shape permits ColoredSquare {}  // 定义类 Square
+non-sealed class Triangle implements Shape {}  // 定义类 Triangle
 \`\`\`
 
 ## 3. 穷举 switch
@@ -212,9 +212,9 @@ non-sealed class Triangle implements Shape {}
 
 \`\`\`java
 double area = switch (shape) {
-    case Circle c -> Math.PI * c.r() * c.r();
-    case Square s -> s.side() * s.side();
-    case Triangle t -> 0.5 * t.base() * t.height();
+    case Circle c -> Math.PI * c.r() * c.r();  // Lambda 表达式：实现函数式接口
+    case Square s -> s.side() * s.side();  // Lambda 表达式：实现函数式接口
+    case Triangle t -> 0.5 * t.base() * t.height();  // Lambda 表达式：实现函数式接口
 };
 \`\`\`
 
@@ -223,9 +223,9 @@ double area = switch (shape) {
 密封类 + record 是 Java 代数数据类型（ADT）的核心组合：
 
 \`\`\`java
-sealed interface Shape permits Circle, Square {}
-record Circle(double r) implements Shape {}
-record Square(double side) implements Shape {}
+sealed interface Shape permits Circle, Square {}  // 定义接口 Shape
+record Circle(double r) implements Shape {}  // 定义记录类 Circle
+record Square(double side) implements Shape {}  // 定义记录类 Square
 \`\`\`
 
 这种方式让数据建模清晰、安全，编译器能保证所有情况都被处理。
@@ -358,14 +358,14 @@ non-sealed class Triangle implements Shape {
 
 \`\`\`java
 // 旧写法
-if (obj instanceof String) {
-    String s = (String) obj;
-    System.out.println(s.length());
+if (obj instanceof String) {  // 条件判断：满足 obj instanceof String 时执行
+    String s = (String) obj;  // 声明变量 s（String），初始值为 (String) obj
+    System.out.println(s.length());  // 打印一行到标准输出（自动换行）
 }
 
 // 新写法：模式匹配
-if (obj instanceof String s) {
-    System.out.println(s.length());
+if (obj instanceof String s) {  // 条件判断：满足 obj instanceof String s 时执行
+    System.out.println(s.length());  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -377,10 +377,10 @@ switch 不再局限于基本类型和枚举，可以匹配任意类型：
 
 \`\`\`java
 String result = switch (obj) {
-    case Integer i -> "整数：" + i;
-    case String s -> "字符串：" + s;
-    case null -> "空值";
-    default -> "其他";
+    case Integer i -> "整数：" + i;  // Lambda 表达式：实现函数式接口
+    case String s -> "字符串：" + s;  // Lambda 表达式：实现函数式接口
+    case null -> "空值";  // Lambda 表达式：实现函数式接口
+    default -> "其他";  // Lambda 表达式：实现函数式接口
 };
 \`\`\`
 
@@ -389,8 +389,8 @@ String result = switch (obj) {
 直接匹配类型并绑定变量：
 
 \`\`\`java
-case Integer i -> ...
-case List<?> l -> ...
+case Integer i -> ...  // Lambda 表达式：实现函数式接口
+case List<?> l -> ...  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 ## 4. 守卫（Guard，when 子句）
@@ -398,9 +398,9 @@ case List<?> l -> ...
 在模式后追加条件，实现更精确的匹配：
 
 \`\`\`java
-case Integer i when i > 0 -> "正整数";
-case Integer i when i < 0 -> "负整数";
-case Integer i -> "零";
+case Integer i when i > 0 -> "正整数";  // Lambda 表达式：实现函数式接口
+case Integer i when i < 0 -> "负整数";  // Lambda 表达式：实现函数式接口
+case Integer i -> "零";  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 ## 5. 记录模式（Record Pattern）
@@ -408,17 +408,17 @@ case Integer i -> "零";
 解构 record 的组件：
 
 \`\`\`java
-record Point(int x, int y) {}
+record Point(int x, int y) {}  // 定义记录类 Point
 
-switch (p) {
-    case Point(int x, int y) -> "x=" + x + ", y=" + y;
+switch (p) {  // switch 分支：根据 p 的值跳转
+    case Point(int x, int y) -> "x=" + x + ", y=" + y;  // Lambda 表达式：实现函数式接口
 }
 \`\`\`
 
 支持嵌套解构：
 
 \`\`\`java
-case Line(Point(int x1, int y1), Point(int x2, int y2)) -> ...
+case Line(Point(int x1, int y1), Point(int x2, int y2)) -> ...  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 ## 6. null 处理
@@ -426,7 +426,7 @@ case Line(Point(int x1, int y1), Point(int x2, int y2)) -> ...
 switch 模式匹配可以显式处理 null：
 
 \`\`\`java
-case null -> "传入的是 null";
+case null -> "传入的是 null";  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 这避免了 NPE，让 null 处理更显式。
@@ -600,7 +600,7 @@ String s = """
 String template = """
         用户：%s
         年龄：%d
-        """.formatted("张三", 18);
+        """.formatted("张三", 18);  // 调用 """ 的 formatted 方法
 \`\`\`
 
 ## 7. 字符串模板预览（Java 21 STR）
@@ -608,8 +608,8 @@ String template = """
 Java 21 引入字符串模板预览特性（STR 处理器），让插值更直观：
 
 \`\`\`java
-String name = "Java";
-String msg = STR."欢迎使用 \{name} 21";
+String name = "Java";  // 声明变量 name（String），初始值为 "Java"
+String msg = STR."欢迎使用 \\{name} 21";  // 声明变量 msg（String），初始值为 STR."欢迎使用 \\{name} 21"
 \`\`\`
 
 注：字符串模板仍在演进，使用前需确认当前 JDK 状态。
@@ -729,9 +729,9 @@ switch 模式匹配是 Java 21 的核心特性，让 switch 从"值匹配"升级
 
 \`\`\`java
 String s = switch (obj) {
-    case Integer i -> "整数：" + i;
-    case String str -> "字符串：" + str;
-    default -> "其他";
+    case Integer i -> "整数：" + i;  // Lambda 表达式：实现函数式接口
+    case String str -> "字符串：" + str;  // Lambda 表达式：实现函数式接口
+    default -> "其他";  // Lambda 表达式：实现函数式接口
 };
 \`\`\`
 
@@ -740,10 +740,10 @@ String s = switch (obj) {
 传统 switch 遇到 null 会抛 NPE，新模式可以显式处理：
 
 \`\`\`java
-switch (obj) {
-    case null -> System.out.println("空值");
-    case String s -> System.out.println(s);
-    default -> System.out.println("其他");
+switch (obj) {  // switch 分支：根据 obj 的值跳转
+    case null -> System.out.println("空值");  // Lambda 表达式：实现函数式接口
+    case String s -> System.out.println(s);  // Lambda 表达式：实现函数式接口
+    default -> System.out.println("其他");  // Lambda 表达式：实现函数式接口
 }
 \`\`\`
 
@@ -752,9 +752,9 @@ switch (obj) {
 在模式后用 \`when\` 添加条件：
 
 \`\`\`java
-case Integer i when i > 0 -> "正整数";
-case Integer i when i < 0 -> "负整数";
-case Integer i -> "零";
+case Integer i when i > 0 -> "正整数";  // Lambda 表达式：实现函数式接口
+case Integer i when i < 0 -> "负整数";  // Lambda 表达式：实现函数式接口
+case Integer i -> "零";  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 注意：相同类型的多个 case 必须用 \`when\` 区分，否则编译器无法判断顺序。
@@ -764,18 +764,18 @@ case Integer i -> "零";
 switch 可以直接解构 record 组件：
 
 \`\`\`java
-record Point(int x, int y) {}
+record Point(int x, int y) {}  // 定义记录类 Point
 
-switch (p) {
-    case Point(int x, int y) -> "x=" + x + ", y=" + y;
+switch (p) {  // switch 分支：根据 p 的值跳转
+    case Point(int x, int y) -> "x=" + x + ", y=" + y;  // Lambda 表达式：实现函数式接口
 }
 \`\`\`
 
 支持嵌套解构和守卫结合：
 
 \`\`\`java
-case Point(int x, int y) when x == y -> "对角点";
-case Point(int x, int y) -> "普通点";
+case Point(int x, int y) when x == y -> "对角点";  // Lambda 表达式：实现函数式接口
+case Point(int x, int y) -> "普通点";  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 ## 5. 穷举检查（Exhaustiveness）
@@ -783,11 +783,11 @@ case Point(int x, int y) -> "普通点";
 配合密封类，编译器能验证所有情况都被覆盖，无需 default：
 
 \`\`\`java
-sealed interface Shape permits Circle, Square {}
+sealed interface Shape permits Circle, Square {}  // 定义接口 Shape
 // 编译器知道只有 Circle 和 Square 两种
 double area = switch (shape) {
-    case Circle c -> Math.PI * c.r() * c.r();
-    case Square s -> s.side() * s.side();
+    case Circle c -> Math.PI * c.r() * c.r();  // Lambda 表达式：实现函数式接口
+    case Square s -> s.side() * s.side();  // Lambda 表达式：实现函数式接口
 }; // 无需 default，已穷举
 \`\`\`
 
@@ -798,8 +798,8 @@ double area = switch (shape) {
 - 块内使用 \`yield\` 返回值
 
 \`\`\`java
-case Integer i -> {
-    log(i);
+case Integer i -> {  // Lambda 表达式：实现函数式接口
+    log(i);  // 调用方法 log
     yield i * 2;
 }
 \`\`\`
@@ -918,9 +918,9 @@ record Point(int x, int y) {}
 
 \`\`\`java
 var list = new ArrayList<String>();   // 推断为 ArrayList<String>
-var map = new HashMap<String, Integer>();
-var name = "Java";
-var count = 42;
+var map = new HashMap<String, Integer>();  // 声明变量 map（var），初始值为 new HashMap<String, Integer>()
+var name = "Java";  // 声明变量 name（var），初始值为 "Java"
+var count = 42;  // 声明变量 count（var），初始值为 42
 \`\`\`
 
 注意：\`var\` 只能用于**局部变量**，不能用于字段、方法参数、返回值。
@@ -944,13 +944,13 @@ var list = new ArrayList<>();  // 推断为 ArrayList<Object>，可能不是你�
 \`var\` 可以用于 lambda 参数（Java 11+）：
 
 \`\`\`java
-Function<String, Integer> f = (var s) -> s.length();
+Function<String, Integer> f = (var s) -> s.length();  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 配合注解时尤其有用：
 
 \`\`\`java
-Function<String, Integer> f = (@Nonnull var s) -> s.length();
+Function<String, Integer> f = (@Nonnull var s) -> s.length();  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 但**不能**用 \`var\` 声明 lambda 的返回类型推断变量。
@@ -993,7 +993,7 @@ List<String> list = getList();  // 推荐：清晰
 可以组合使用：
 
 \`\`\`java
-final var PI = 3.14159;
+final var PI = 3.14159;  // 声明常量变量 PI（var），初始值为 3.14159
 \`\`\`
 
 ## 7. var 在 for 循环中
@@ -1105,18 +1105,18 @@ JUnit 是 Java 生态最流行的单元测试框架。本节以 JUnit 5（Jupite
 - \`@Disabled\`：禁用测试
 
 \`\`\`java
-class CalculatorTest {
-    private Calculator calc;
+class CalculatorTest {  // 定义类 CalculatorTest
+    private Calculator calc;  // 声明私有变量 calc（Calculator 类型）
 
-    @BeforeEach
-    void setUp() {
-        calc = new Calculator();
+    @BeforeEach  // 注解：BeforeEach
+    void setUp() {  // 方法 setUp，返回 void，无参数
+        calc = new Calculator();  // 为 calc 赋值：new Calculator()
     }
 
-    @Test
-    @DisplayName("加法测试")
-    void testAdd() {
-        assertEquals(5, calc.add(2, 3));
+    @Test  // 注解：Test
+    @DisplayName("加法测试")  // 注解：DisplayName
+    void testAdd() {  // 方法 testAdd，返回 void，无参数
+        assertEquals(5, calc.add(2, 3));  // 调用 assertEquals(5, calc 的 add 方法
     }
 }
 \`\`\`
@@ -1136,17 +1136,17 @@ JUnit 提供丰富的断言方法：
 - \`assertLinesMatch\`
 
 \`\`\`java
-@Test
-void testDivideByZero() {
-    assertThrows(ArithmeticException.class, () -> calc.divide(1, 0));
+@Test  // 注解：Test
+void testDivideByZero() {  // 方法 testDivideByZero，返回 void，无参数
+    assertThrows(ArithmeticException.class, () -> calc.divide(1, 0));  // Lambda 表达式：实现函数式接口
 }
 \`\`\`
 
 ## 3. 测试生命周期
 
 \`\`\`java
-@BeforeAll  ->  @BeforeEach  ->  @Test1  ->  @AfterEach
-                              ->  @Test2  ->  @AfterEach  ->  @AfterAll
+@BeforeAll  ->  @BeforeEach  ->  @Test1  ->  @AfterEach  // Lambda 表达式：实现函数式接口
+                              ->  @Test2  ->  @AfterEach  ->  @AfterAll  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 - \`@BeforeAll\`/\`@AfterAll\` 用于昂贵的共享资源初始化（如数据库连接）
@@ -1157,16 +1157,16 @@ void testDivideByZero() {
 \`@ParameterizedTest\` 配合数据源，让一个测试方法跑多组数据：
 
 \`\`\`java
-@ParameterizedTest
-@ValueSource(ints = {1, 2, 3, 4})
-void testPositive(int n) {
-    assertTrue(n > 0);
+@ParameterizedTest  // 注解：ParameterizedTest
+@ValueSource(ints = {1, 2, 3, 4})  // 注解：ValueSource
+void testPositive(int n) {  // 方法 testPositive，返回 void，参数：int n
+    assertTrue(n > 0);  // 调用方法 assertTrue
 }
 
-@ParameterizedTest
-@CsvSource({"1,2,3", "4,5,9"})
-void testAdd(int a, int b, int expected) {
-    assertEquals(expected, calc.add(a, b));
+@ParameterizedTest  // 注解：ParameterizedTest
+@CsvSource({"1,2,3", "4,5,9"})  // 注解：CsvSource
+void testAdd(int a, int b, int expected) {  // 方法 testAdd，返回 void，参数：int a, int b, int expected
+    assertEquals(expected, calc.add(a, b));  // 调用 assertEquals(expected, calc 的 add 方法
 }
 \`\`\`
 
@@ -1181,14 +1181,14 @@ void testAdd(int a, int b, int expected) {
 测试遵循 **Arrange-Act-Assert**：
 
 \`\`\`java
-@Test
-void testAdd() {
+@Test  // 注解：Test
+void testAdd() {  // 方法 testAdd，返回 void，无参数
     // Arrange（准备）
-    Calculator calc = new Calculator();
+    Calculator calc = new Calculator();  // 声明变量 calc（Calculator），初始值为 new Calculator()
     // Act（执行）
-    int result = calc.add(2, 3);
+    int result = calc.add(2, 3);  // 声明变量 result（int），初始值为 calc.add(2, 3)
     // Assert（断言）
-    assertEquals(5, result);
+    assertEquals(5, result);  // 调用方法 assertEquals
 }
 \`\`\`
 
@@ -1406,23 +1406,23 @@ Mock 对象提供"替身"，模拟依赖行为。
 - **spy**：包装真实对象，默认调用真实方法，可选择性打桩
 
 \`\`\`java
-List<String> mockList = mock(List.class);
+List<String> mockList = mock(List.class);  // 声明变量 mockList（List<String>），初始值为 mock(List.class)
 mockList.add("a");                          // 不真正添加
-when(mockList.size()).thenReturn(10);
-assertEquals(10, mockList.size());
+when(mockList.size()).thenReturn(10);  // 调用 when(mockList 的 size 方法
+assertEquals(10, mockList.size());  // 调用 assertEquals(10, mockList 的 size 方法
 
-List<String> realList = new ArrayList<>();
-List<String> spyList = spy(realList);
+List<String> realList = new ArrayList<>();  // 声明变量 realList（List<String>），初始值为 new ArrayList<>()
+List<String> spyList = spy(realList);  // 声明变量 spyList（List<String>），初始值为 spy(realList)
 spyList.add("real");                        // 真实添加
-assertEquals(1, spyList.size());
+assertEquals(1, spyList.size());  // 调用 assertEquals(1, spyList 的 size 方法
 \`\`\`
 
 ## 4. 打桩（Stubbing）
 
 \`\`\`java
-when(repo.findById(1L)).thenReturn(new User(1, "Alice"));
-when(repo.findById(2L)).thenThrow(new RuntimeException("不存在"));
-when(repo.save(any(User.class))).thenReturn(true);
+when(repo.findById(1L)).thenReturn(new User(1, "Alice"));  // 调用 when(repo 的 findById 方法
+when(repo.findById(2L)).thenThrow(new RuntimeException("不存在"));  // 调用 when(repo 的 findById 方法
+when(repo.save(any(User.class))).thenReturn(true);  // 调用 when(repo 的 save 方法
 \`\`\`
 
 参数匹配器：
@@ -1452,9 +1452,9 @@ verify(repo, timeout(100)).asyncMethod();   // 100ms 内调用
 捕获方法调用的参数，便于断言：
 
 \`\`\`java
-ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
-verify(repo).save(captor.capture());
-assertEquals("Alice", captor.getValue().getName());
+ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);  // 声明变量 captor（ArgumentCaptor<User>），初始值为 ArgumentCaptor.forClass(User.class)
+verify(repo).save(captor.capture());  // 调用 verify(repo) 的 save 方法
+assertEquals("Alice", captor.getValue().getName());  // 调用 assertEquals("Alice", captor 的 getValue 方法
 \`\`\`
 
 ## 8. 常见误区
@@ -1692,29 +1692,29 @@ my-app/
 ## 2. pom.xml 结构
 
 \`\`\`xml
-<project>
-    <groupId>com.example</groupId>
-    <artifactId>my-app</artifactId>
-    <version>1.0.0</version>
-    <packaging>jar</packaging>
+<project>  <!-- 项目根元素 开始 -->
+    <groupId>com.example</groupId>  <!-- 组 ID：com.example -->
+    <artifactId>my-app</artifactId>  <!-- 构件 ID：my-app -->
+    <version>1.0.0</version>  <!-- 版本号：1.0.0 -->
+    <packaging>jar</packaging>  <!-- 打包类型：jar -->
 
-    <dependencies>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>5.10.0</version>
-            <scope>test</scope>
+    <dependencies>  <!-- 依赖声明 开始 -->
+        <dependency>  <!-- 单个依赖 开始 -->
+            <groupId>junit</groupId>  <!-- 组 ID：junit -->
+            <artifactId>junit</artifactId>  <!-- 构件 ID：junit -->
+            <version>5.10.0</version>  <!-- 版本号：5.10.0 -->
+            <scope>test</scope>  <!-- 依赖范围：test -->
         </dependency>
     </dependencies>
 
-    <build>
-        <plugins>
-            <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
-                <configuration>
-                    <source>21</source>
-                    <target>21</target>
+    <build>  <!-- 构建设置 开始 -->
+        <plugins>  <!-- 插件配置 开始 -->
+            <plugin>  <!-- 插件 开始 -->
+                <artifactId>maven-compiler-plugin</artifactId>  <!-- 构件 ID：maven-compiler-plugin -->
+                <version>3.11.0</version>  <!-- 版本号：3.11.0 -->
+                <configuration>  <!-- 插件配置 开始 -->
+                    <source>21</source>  <!-- 源码兼容版本：21 -->
+                    <target>21</target>  <!-- 目标字节码版本：21 -->
                 </configuration>
             </plugin>
         </plugins>
@@ -1753,31 +1753,31 @@ my-app/
 ## 5. build.gradle 示例
 
 \`\`\`groovy
-plugins {
-    id 'java'
-    id 'application'
+plugins {  // plugins 块：声明要应用的 Gradle 插件
+    id 'java'  // 应用 java 插件
+    id 'application'  // 应用 application 插件
 }
 
-group = 'com.example'
-version = '1.0.0'
+group = 'com.example'  // 设置组 ID：com.example
+version = '1.0.0'  // 设置版本号：1.0.0
 
-repositories {
-    mavenCentral()
+repositories {  // repositories 块：声明依赖来源仓库
+    mavenCentral()  // 使用 Maven 中央仓库
 }
 
-dependencies {
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
-    implementation 'com.google.guava:guava:32.1.3-jre'
+dependencies {  // dependencies 块：声明项目依赖
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'  // 测试范围依赖：org.junit.jupiter:junit-jupiter:5.10.0
+    implementation 'com.google.guava:guava:32.1.3-jre'  // 编译与运行时依赖：com.google.guava:guava:32.1.3-jre
 }
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+java {  // java 块：配置 Java 工具链等
+    toolchain {  // toolchain 块：指定 JDK 工具链
+        languageVersion = JavaLanguageVersion.of(21)  // 设置 Java 语言版本：JavaLanguageVersion.of(21)
     }
 }
 
 application {
-    mainClass = 'com.example.Main'
+    mainClass = 'com.example.Main'  // 设置应用主类：com.example.Main
 }
 \`\`\`
 
@@ -1978,10 +1978,10 @@ class Project {
 - 即使单行语句也加大括号（避免 Apple goto fail 漏洞）
 
 \`\`\`java
-if (condition) {
-    doSomething();
-} else {
-    doOther();
+if (condition) {  // 条件判断：满足 condition 时执行
+    doSomething();  // 调用方法 doSomething
+} else {  // 否则分支
+    doOther();  // 调用方法 doOther
 }
 \`\`\`
 
@@ -2052,11 +2052,11 @@ public User findById(Long id) { ... }
 - 资源用 try-with-resources
 
 \`\`\`java
-try (var reader = Files.newBufferedReader(path)) {
+try (var reader = Files.newBufferedReader(path)) {  // try-with-resources：声明资源 var reader = Files.newBufferedReader(path)，结束自动关闭
     ...
-} catch (IOException e) {
-    log.error("读取失败", e);
-    throw new ServiceException(e);
+} catch (IOException e) {  // 捕获异常 IOException e
+    log.error("读取失败", e);  // 调用 log 的 error 方法
+    throw new ServiceException(e);  // 抛出 ServiceException 异常：e
 }
 \`\`\`
 
@@ -2065,10 +2065,10 @@ try (var reader = Files.newBufferedReader(path)) {
 Checkstyle 是静态检查工具，强制执行规范：
 
 \`\`\`xml
-<plugin>
-    <artifactId>maven-checkstyle-plugin</artifactId>
-    <configuration>
-        <configLocation>google_checks.xml</configLocation>
+<plugin>  <!-- 插件 开始 -->
+    <artifactId>maven-checkstyle-plugin</artifactId>  <!-- 构件 ID：maven-checkstyle-plugin -->
+    <configuration>  <!-- 插件配置 开始 -->
+        <configLocation>google_checks.xml</configLocation>  <!-- 配置文件路径：google_checks.xml -->
     </configuration>
 </plugin>
 \`\`\`
@@ -2223,7 +2223,7 @@ $ jshell
 |  欢迎使用 JShell -- 版本 21
 |  要大致了解该版本, 请键入: /help intro
 
-jshell>
+jshell>  # 启动 Java 交互式 REPL
 \`\`\`
 
 ## 2. 表达式求值
@@ -2463,19 +2463,19 @@ JMH 专门解决这些问题，是测量 Java 性能的标准工具。
 ## 3. 基本示例
 
 \`\`\`java
-@State(Scope.Benchmark)
-@BenchmarkMode(Mode.AverageTime)
-@OutputTimeUnit(TimeUnit.NANOSECONDS)
-public class StringBenchmark {
+@State(Scope.Benchmark)  // 注解：State
+@BenchmarkMode(Mode.AverageTime)  // 注解：BenchmarkMode
+@OutputTimeUnit(TimeUnit.NANOSECONDS)  // 注解：OutputTimeUnit
+public class StringBenchmark {  // 定义类 StringBenchmark
 
-    @Benchmark
-    public String stringConcat() {
-        return "Hello" + ", " + "World";
+    @Benchmark  // 注解：Benchmark
+    public String stringConcat() {  // 方法 stringConcat，返回 String，无参数
+        return "Hello" + ", " + "World";  // 返回值："Hello" + ", " + "World"
     }
 
-    @Benchmark
-    public String stringBuilder() {
-        return new StringBuilder().append("Hello").append(", ").append("World").toString();
+    @Benchmark  // 注解：Benchmark
+    public String stringBuilder() {  // 方法 stringBuilder，返回 String，无参数
+        return new StringBuilder().append("Hello").append(", ").append("World").toString();  // 返回值：new StringBuilder().append("Hello").append(", ").append("World").toString()
     }
 }
 \`\`\`
@@ -2491,9 +2491,9 @@ public class StringBenchmark {
 ## 5. 预热与测量
 
 \`\`\`java
-@Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
-@Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
-@Fork(1)
+@Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)  // 注解：Warmup
+@Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)  // 注解：Measurement
+@Fork(1)  // 注解：Fork
 \`\`\`
 
 预热让 JIT 编译稳定，测量阶段才统计。
@@ -2512,12 +2512,12 @@ public class StringBenchmark {
 
 \`\`\`java
 // 错误示例：手写基准
-long start = System.nanoTime();
-for (int i = 0; i < 1000000; i++) {
+long start = System.nanoTime();  // 声明变量 start（long），初始值为 System.nanoTime()
+for (int i = 0; i < 1000000; i++) {  // for 循环：初始化 int i = 0；条件 i < 1000000；更新 i++
     doSomething();  // JIT 可能消除整个循环！
 }
-long end = System.nanoTime();
-System.out.println((end - start) / 1000000.0);
+long end = System.nanoTime();  // 声明变量 end（long），初始值为 System.nanoTime()
+System.out.println((end - start) / 1000000.0);  // 打印一行到标准输出（自动换行）
 \`\`\`
 
 问题：
@@ -2531,13 +2531,13 @@ System.out.println((end - start) / 1000000.0);
 ### 死代码消除
 
 \`\`\`java
-@Benchmark
-public void wrong() {
+@Benchmark  // 注解：Benchmark
+public void wrong() {  // 方法 wrong，返回 void，无参数
     Math.log(42);  // 结果未使用，JIT 可能消除
 }
 
-@Benchmark
-public double right() {
+@Benchmark  // 注解：Benchmark
+public double right() {  // 方法 right，返回 double，无参数
     return Math.log(42);  // 返回值阻止消除
 }
 \`\`\`
@@ -2545,18 +2545,18 @@ public double right() {
 JMH 提供 \`Blackhole\` 消费结果：
 
 \`\`\`java
-@Benchmark
-public void consume(Blackhole bh) {
-    bh.consume(Math.log(42));
+@Benchmark  // 注解：Benchmark
+public void consume(Blackhole bh) {  // 方法 consume，返回 void，参数：Blackhole bh
+    bh.consume(Math.log(42));  // 调用 bh 的 consume 方法
 }
 \`\`\`
 
 ### 循环内常量折叠
 
 \`\`\`java
-@Benchmark
-public int wrong() {
-    int x = 0;
+@Benchmark  // 注解：Benchmark
+public int wrong() {  // 方法 wrong，返回 int，无参数
+    int x = 0;  // 声明变量 x（int），初始值为 0
     for (int i = 0; i < 1000; i++) x += i;
     return x;  // JIT 可能常量折叠
 }
@@ -2754,7 +2754,7 @@ user.getOrders().stream().mapToDouble(Order::getAmount).sum()
 ### 启动远程 JVM 调试
 
 \`\`\`bash
-java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005 -jar app.jar
+java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005 -jar app.jar  # 运行 Java 类（启动 JVM）
 \`\`\`
 
 参数说明：
@@ -2813,7 +2813,7 @@ Found one Java-level deadlock:
 合适的日志胜过无数次断点：
 
 \`\`\`java
-log.debug("处理用户 {}，订单数 {}", userId, orderCount);
+log.debug("处理用户 {}，订单数 {}", userId, orderCount);  // 调用 log 的 debug 方法
 \`\`\`
 
 - 生产可关闭（DEBUG 级别）
@@ -2987,10 +2987,10 @@ Java 有 GC，但仍会发生**内存泄漏**——对象不再使用却无法�
 ### 1.1 集合持有对象引用
 
 \`\`\`java
-public class Cache {
-    private static final Map<String, Object> CACHE = new HashMap<>();
+public class Cache {  // 定义类 Cache
+    private static final Map<String, Object> CACHE = new HashMap<>();  // 声明静态常量私有变量 CACHE（Map<String, Object>），初始值为 new HashMap<>()
 
-    public static void put(String key, Object value) {
+    public static void put(String key, Object value) {  // 静态方法 put，返回 void，参数：String key, Object value
         CACHE.put(key, value);  // 永不移除 → 泄漏
     }
 }
@@ -3001,8 +3001,8 @@ public class Cache {
 ### 1.2 ThreadLocal 未清理
 
 \`\`\`java
-ThreadLocal<UserContext> ctx = new ThreadLocal<>();
-ctx.set(new UserContext());
+ThreadLocal<UserContext> ctx = new ThreadLocal<>();  // 声明变量 ctx（ThreadLocal<UserContext>），初始值为 new ThreadLocal<>()
+ctx.set(new UserContext());  // 调用 ctx 的 set 方法
 // 忘记 ctx.remove()，线程池中的线程长期存活 → 泄漏
 \`\`\`
 
@@ -3011,7 +3011,7 @@ ctx.set(new UserContext());
 ### 1.3 监听器/回调未注销
 
 \`\`\`java
-button.addListener(myListener);
+button.addListener(myListener);  // 调用 button 的 addListener 方法
 // 对象销毁时忘记 removeListener
 \`\`\`
 
@@ -3020,8 +3020,8 @@ button.addListener(myListener);
 ### 1.4 静态集合累积
 
 \`\`\`java
-public class Stats {
-    private static final List<LogEntry> LOG = new ArrayList<>();
+public class Stats {  // 定义类 Stats
+    private static final List<LogEntry> LOG = new ArrayList<>();  // 声明静态常量私有变量 LOG（List<LogEntry>），初始值为 new ArrayList<>()
     public static void add(LogEntry e) { LOG.add(e); }  // 只增不减
 }
 \`\`\`
@@ -3031,7 +3031,7 @@ public class Stats {
 ### 1.5 资源未关闭
 
 \`\`\`java
-InputStream is = new FileInputStream("file");
+InputStream is = new FileInputStream("file");  // 声明变量 is（InputStream），初始值为 new FileInputStream("file")
 // 异常或忘记 is.close() → 文件描述符泄漏
 \`\`\`
 
@@ -3042,7 +3042,7 @@ InputStream is = new FileInputStream("file");
 非静态内部类隐式持有外部类引用：
 
 \`\`\`java
-class Outer {
+class Outer {  // 定义类 Outer
     class Inner { }  // 持有 Outer 引用
 }
 \`\`\`
@@ -3060,7 +3060,7 @@ class Outer {
 ### 2.2 jstat 观察 GC
 
 \`\`\`bash
-jstat -gcutil <pid> 1000
+jstat -gcutil <pid> 1000  # 查看 JVM 统计信息
 \`\`\`
 
 观察 OU（Old 区使用率）是否持续增长。
@@ -3068,7 +3068,7 @@ jstat -gcutil <pid> 1000
 ### 2.3 jmap 堆 dump
 
 \`\`\`bash
-jmap -dump:format=b,file=heap.hprof <pid>
+jmap -dump:format=b,file=heap.hprof <pid>  # 导出/查看 JVM 堆信息
 \`\`\`
 
 或设置 JVM 参数自动 dump：
@@ -3098,7 +3098,7 @@ Eclipse MAT（Memory Analyzer Tool）分析 hprof：
 ### 3.1 弱引用/软引用
 
 \`\`\`java
-Map<String, WeakReference<Cache>> cache = new HashMap<>();
+Map<String, WeakReference<Cache>> cache = new HashMap<>();  // 声明变量 cache（Map<String, WeakReference<Cache>>），初始值为 new HashMap<>()
 \`\`\`
 
 \`WeakReference\` 在 GC 时（无强引用）被回收，适合缓存。
@@ -3301,14 +3301,14 @@ class MyListener {}
 
 \`\`\`java
 // 推荐：不可变 record
-public record Point(int x, int y) {
-    public Point translate(int dx, int dy) {
+public record Point(int x, int y) {  // 定义记录类 Point
+    public Point translate(int dx, int dy) {  // 方法 translate，返回 Point，参数：int dx, int dy
         return new Point(x + dx, y + dy);  // 返回新实例
     }
 }
 
 // 不推荐：可变类
-public class MutablePoint {
+public class MutablePoint {  // 定义类 MutablePoint
     private int x, y;
     public void setX(int x) { this.x = x; }  // 可变 → 难维护
 }
@@ -3322,13 +3322,13 @@ Optional 用于**方法返回类型**，表达"可能无值"：
 
 \`\`\`java
 // 推荐
-public Optional<User> findById(Long id) {
-    return Optional.ofNullable(map.get(id));
+public Optional<User> findById(Long id) {  // 方法 findById，返回 Optional<User>，参数：Long id
+    return Optional.ofNullable(map.get(id));  // 返回值：Optional.ofNullable(map.get(id))
 }
 
 // 调用方
-User u = findById(1L).orElseThrow(() -> new NotFoundException());
-String name = findById(1L).map(User::getName).orElse("unknown");
+User u = findById(1L).orElseThrow(() -> new NotFoundException());  // Lambda 表达式赋值给函数式接口变量
+String name = findById(1L).map(User::getName).orElse("unknown");  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 **反模式**：
@@ -3342,10 +3342,10 @@ String name = findById(1L).map(User::getName).orElse("unknown");
 
 \`\`\`java
 List<String> empty = List.of();              // 空不可变
-List<String> one = List.of("a");
-List<String> multi = List.of("a", "b", "c");
-Set<Integer> set = Set.of(1, 2, 3);
-Map<String, Integer> map = Map.of("a", 1, "b", 2);
+List<String> one = List.of("a");  // 声明变量 one（List<String>），初始值为 List.of("a")
+List<String> multi = List.of("a", "b", "c");  // 声明变量 multi（List<String>），初始值为 List.of("a", "b", "c")
+Set<Integer> set = Set.of(1, 2, 3);  // 声明变量 set（Set<Integer>），初始值为 Set.of(1, 2, 3)
+Map<String, Integer> map = Map.of("a", 1, "b", 2);  // 声明变量 map（Map<String, Integer>），初始值为 Map.of("a", 1, "b", 2)
 Map<String, Integer> big = Map.ofEntries(
     Map.entry("k1", 1), Map.entry("k2", 2)
 );
@@ -3374,7 +3374,7 @@ catch (IOException e) { ... }
 
 \`\`\`java
 try { ... }
-catch (LowLevelException e) {
+catch (LowLevelException e) {  // 捕获异常 LowLevelException e
     throw new ServiceException("业务异常", e);  // 保留原因
 }
 \`\`\`
@@ -3386,9 +3386,9 @@ catch (LowLevelException e) {
 catch (Exception e) { }  // 静默吞掉
 
 // 正确
-catch (Exception e) {
-    log.error("处理失败", e);
-    throw new ServiceException(e);
+catch (Exception e) {  // 捕获异常 Exception e
+    log.error("处理失败", e);  // 调用 log 的 error 方法
+    throw new ServiceException(e);  // 抛出 ServiceException 异常：e
 }
 \`\`\`
 
@@ -3402,9 +3402,9 @@ catch (Exception e) {
 
 \`\`\`java
 // 推荐
-ExecutorService pool = Executors.newFixedThreadPool(8);
-Future<Integer> f = pool.submit(() -> compute());
-ConcurrentHashMap<String, Integer> map = new ConcurrentHashMap<>();
+ExecutorService pool = Executors.newFixedThreadPool(8);  // 声明变量 pool（ExecutorService），初始值为 Executors.newFixedThreadPool(8)
+Future<Integer> f = pool.submit(() -> compute());  // Lambda 表达式赋值给函数式接口变量
+ConcurrentHashMap<String, Integer> map = new ConcurrentHashMap<>();  // 声明变量 map（ConcurrentHashMap<String, Integer>），初始值为 new ConcurrentHashMap<>()
 
 // 谨慎：synchronized / wait-notify
 \`\`\`
@@ -3414,9 +3414,9 @@ ConcurrentHashMap<String, Integer> map = new ConcurrentHashMap<>();
 虚拟线程简化高并发：
 
 \`\`\`java
-try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
-    IntStream.range(0, 10000).forEach(i ->
-        executor.submit(() -> handleRequest(i))
+try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {  // try-with-resources：声明资源 var executor = Executors.newVirtualThreadPerTaskExecutor()，结束自动关闭
+    IntStream.range(0, 10000).forEach(i ->  // Lambda 表达式：实现函数式接口
+        executor.submit(() -> handleRequest(i))  // Lambda 表达式：实现函数式接口
     );
 }
 \`\`\`
@@ -3433,11 +3433,11 @@ try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 
 \`\`\`java
 // 不推荐
-class Stack<E> extends ArrayList<E> { ... }
+class Stack<E> extends ArrayList<E> { ... }  // 定义类 Stack
 
 // 推荐
-class Stack<E> {
-    private final List<E> items = new ArrayList<>();
+class Stack<E> {  // 定义类 Stack
+    private final List<E> items = new ArrayList<>();  // 声明常量私有变量 items（List<E>），初始值为 new ArrayList<>()
     ...
 }
 \`\`\`

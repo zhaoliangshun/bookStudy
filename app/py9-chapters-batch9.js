@@ -38,12 +38,12 @@ export const chapters = [
 
 \`\`\`python
 # 慢
-total = 0
-for x in nums:
-    total += x
+total = 0  # 定义数值 total
+for x in nums:  # 遍历 nums，取值给 x
+    total += x  # total 累加
 
 # 快
-total = sum(nums)
+total = sum(nums)  # 赋值变量 total
 \`\`\`
 
 内置函数用 C 实现，比 Python 循环快得多。
@@ -52,58 +52,58 @@ total = sum(nums)
 
 \`\`\`python
 # 慢 O(n)
-if x in big_list:
+if x in big_list:  # 如果 x in big_list
 
 # 快 O(1)
-if x in big_set:
+if x in big_set:  # 如果 x in big_set
 \`\`\`
 
 ### 3. 推导式比循环快
 
 \`\`\`python
 # 慢
-result = []
-for x in range(n):
-    result.append(x ** 2)
+result = []  # 定义列表 result
+for x in range(n):  # 遍历 range(n)，取值给 x
+    result.append(x ** 2)  # 调用 result.append()：向列表末尾添加元素
 
 # 快
-result = [x ** 2 for x in range(n)]
+result = [x ** 2 for x in range(n)]  # 定义列表 result
 \`\`\`
 
 ### 4. 字符串用 join
 
 \`\`\`python
 # 慢
-s = ""
-for w in words:
-    s += w
+s = ""  # 定义字符串 s
+for w in words:  # 遍历 words，取值给 w
+    s += w  # s 累加
 
 # 快
-s = "".join(words)
+s = "".join(words)  # 定义字符串 s
 \`\`\`
 
 ### 5. 缓存
 
 \`\`\`python
-from functools import lru_cache
+from functools import lru_cache  # 从 functools 导入 lru_cache
 
-@lru_cache
-def expensive(x): ...
+@lru_cache  # 应用装饰器 lru_cache
+def expensive(x): ...  # 定义函数 expensive，参数：x
 \`\`\`
 
 ### 6. 局部变量更快
 
 \`\`\`python
 # 慢
-def f():
-    for i in range(n):
+def f():  # 定义函数 f
+    for i in range(n):  # 遍历 range(n)，取值给 i
         global_var[i]  # 全局查找慢
 
 # 快
-def f():
+def f():  # 定义函数 f
     local = global_var  # 先局部化
-    for i in range(n):
-        local[i]
+    for i in range(n):  # 遍历 range(n)，取值给 i
+        local[i]  # 执行操作
 \`\`\`
 
 ## 何时优化
@@ -419,16 +419,16 @@ del b            # 引用计数 = 0 → 回收
 \`\`\`
 
 \`\`\`python
-import sys
+import sys  # 导入模块 sys
 sys.getrefcount(obj)    # 查引用计数（注意：传参会 +1）
 \`\`\`
 
 ## 引用计数的问题：循环引用
 
 \`\`\`python
-a = []
-b = [a]
-a.append(b)
+a = []  # 定义列表 a
+b = [a]  # 定义列表 b
+a.append(b)  # 调用 a.append()：向列表末尾添加元素
 del a, b    # 引用计数都不为 0，但已无外部引用
 \`\`\`
 
@@ -444,7 +444,7 @@ Python 的 GC 用**分代回收**：
 老对象检查频率低，提升性能。
 
 \`\`\`python
-import gc
+import gc  # 导入模块 gc
 gc.collect()       # 手动触发
 gc.get_stats()     # GC 统计
 gc.disable()       # 禁用（谨慎）
@@ -453,10 +453,10 @@ gc.disable()       # 禁用（谨慎）
 ## __del__ 析构
 
 \`\`\`python
-class Resource:
-    def __del__(self):
+class Resource:  # 定义类 Resource
+    def __del__(self):  # 定义函数 __del__，参数：self
         # 对象被回收时调用
-        self.close()
+        self.close()  # 调用 self.close()：关闭
 \`\`\`
 
 ⚠️ \`__del__\` 不可靠（循环引用时不一定调用），用 \`with\` 更安全。
@@ -464,8 +464,8 @@ class Resource:
 ## weakref 弱引用
 
 \`\`\`python
-import weakref
-ref = weakref.ref(obj)
+import weakref  # 导入模块 weakref
+ref = weakref.ref(obj)  # 赋值变量 ref
 ref()    # 返回对象，被回收了返回 None
 \`\`\`
 
@@ -767,15 +767,15 @@ CPython 的 GIL 让同一时刻只有一个线程执行 Python 字节码。所�
 ## concurrent.futures
 
 \`\`\`python
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor  # 从 concurrent.futures 导入 ThreadPoolExecutor, ProcessPoolExecutor
 
 # 线程池
-with ThreadPoolExecutor(max_workers=4) as executor:
-    results = list(executor.map(func, items))
+with ThreadPoolExecutor(max_workers=4) as executor:  # 使用上下文管理器：ThreadPoolExecutor(max_workers=4) as executor
+    results = list(executor.map(func, items))  # 赋值变量 results
 
 # 进程池
-with ProcessPoolExecutor() as executor:
-    results = list(executor.map(func, items))
+with ProcessPoolExecutor() as executor:  # 使用上下文管理器：ProcessPoolExecutor() as executor
+    results = list(executor.map(func, items))  # 赋值变量 results
 \`\`\`
 
 ## 本章 demo
@@ -993,13 +993,13 @@ print("  原则：先测量找瓶颈，再选方案")`
     content: `## threading 模块
 
 \`\`\`python
-import threading
+import threading  # 导入模块 threading
 \`\`\`
 
 ## Thread 对象
 
 \`\`\`python
-t = threading.Thread(target=func, args=(1, 2))
+t = threading.Thread(target=func, args=(1, 2))  # 赋值变量 t
 t.start()    # 启动
 t.join()     # 等待完成
 t.daemon = True    # 守护线程（主线程退出时自动结束）
@@ -1010,10 +1010,10 @@ t.daemon = True    # 守护线程（主线程退出时自动结束）
 多线程共享内存，操作共享数据需要同步：
 
 \`\`\`python
-lock = threading.Lock()
-with lock:
+lock = threading.Lock()  # 赋值变量 lock
+with lock:  # 使用上下文管理器：lock
     # 临界区
-    balance += amount
+    balance += amount  # balance 累加
 \`\`\`
 
 ## 各种锁
@@ -1027,14 +1027,14 @@ with lock:
 ## Condition 条件变量
 
 \`\`\`python
-cond = threading.Condition()
+cond = threading.Condition()  # 赋值变量 cond
 
 # 等待方
-with cond:
+with cond:  # 使用上下文管理器：cond
     cond.wait()    # 释放锁，等待通知
 
 # 通知方
-with cond:
+with cond:  # 使用上下文管理器：cond
     cond.notify()    # 唤醒一个
     cond.notify_all()    # 唤醒所有
 \`\`\`
@@ -1042,9 +1042,9 @@ with cond:
 ## Queue：线程安全队列
 
 \`\`\`python
-from queue import Queue
+from queue import Queue  # 从 queue 导入 Queue
 
-q = Queue()
+q = Queue()  # 赋值变量 q
 q.put(item)    # 入队（阻塞）
 q.get()        # 出队（阻塞）
 \`\`\`
@@ -1054,17 +1054,17 @@ Queue 内部有锁，多线程安全。
 ## 生产者-消费者
 
 \`\`\`python
-def producer(q):
-    for i in range(10):
-        q.put(i)
+def producer(q):  # 定义函数 producer，参数：q
+    for i in range(10):  # 遍历 range(10)，取值给 i
+        q.put(i)  # 调用 q.put()：入队
 
-def consumer(q):
-    while True:
-        item = q.get()
-        process(item)
-        q.task_done()
+def consumer(q):  # 定义函数 consumer，参数：q
+    while True:  # 当 True 时循环
+        item = q.get()  # 赋值变量 item
+        process(item)  # 调用 process()
+        q.task_done()  # 调用 q.task_done()：标记任务完成
 
-q = Queue()
+q = Queue()  # 赋值变量 q
 # 启动生产者消费者线程
 \`\`\`
 
@@ -1382,7 +1382,7 @@ for r in results:
     content: `## multiprocessing 模块
 
 \`\`\`python
-import multiprocessing
+import multiprocessing  # 导入模块 multiprocessing
 \`\`\`
 
 多进程是 Python 实现 CPU 并行的唯一方式（因为 GIL）。
@@ -1390,18 +1390,18 @@ import multiprocessing
 ## Process 对象
 
 \`\`\`python
-p = multiprocessing.Process(target=func, args=(1, 2))
-p.start()
-p.join()
+p = multiprocessing.Process(target=func, args=(1, 2))  # 赋值变量 p
+p.start()  # 调用 p.start()：启动
+p.join()  # 调用 p.join()：等待所有任务完成
 \`\`\`
 
 ## Pool 进程池
 
 \`\`\`python
-with multiprocessing.Pool(processes=4) as pool:
-    results = pool.map(func, items)
+with multiprocessing.Pool(processes=4) as pool:  # 使用上下文管理器：multiprocessing.Pool(processes=4) as pool
+    results = pool.map(func, items)  # 赋值变量 results
     # 或
-    results = pool.starmap(func, [(1, 2), (3, 4)])
+    results = pool.starmap(func, [(1, 2), (3, 4)])  # 赋值变量 results
 \`\`\`
 
 ## 进程间通信
@@ -1414,14 +1414,14 @@ with multiprocessing.Pool(processes=4) as pool:
 
 \`\`\`python
 # Queue
-q = multiprocessing.Queue()
-q.put(item)
-q.get()
+q = multiprocessing.Queue()  # 赋值变量 q
+q.put(item)  # 调用 q.put()：入队
+q.get()  # 调用 q.get()：出队
 
 # Pipe
-parent_conn, child_conn = multiprocessing.Pipe()
-parent_conn.send(x)
-child_conn.recv()
+parent_conn, child_conn = multiprocessing.Pipe()  # 多重赋值：parent_conn, child_conn
+parent_conn.send(x)  # 调用 parent_conn.send()：发送
+child_conn.recv()  # 调用 child_conn.recv()：接收
 \`\`\`
 
 ## 进程 vs 线程
@@ -1765,25 +1765,25 @@ if __name__ == "__main__":
 ## Flask 示例
 
 \`\`\`python
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify  # 从 flask 导入 Flask, request, jsonify
 
-app = Flask(__name__)
+app = Flask(__name__)  # 赋值变量 app
 
-@app.route("/")
-def home():
-    return "Hello"
+@app.route("/")  # 应用装饰器 app
+def home():  # 定义函数 home
+    return "Hello"  # 返回 "Hello"
 
-@app.route("/api/users/<int:user_id>")
-def get_user(user_id):
-    return jsonify({"id": user_id, "name": "小明"})
+@app.route("/api/users/<int:user_id>")  # 应用装饰器 app
+def get_user(user_id):  # 定义函数 get_user，参数：user_id
+    return jsonify({"id": user_id, "name": "小明"})  # 返回 jsonify({"id": user_id, "name": "小明"})
 
-@app.route("/api/users", methods=["POST"])
-def create_user():
-    data = request.get_json()
-    return jsonify(data), 201
+@app.route("/api/users", methods=["POST"])  # 应用装饰器 app
+def create_user():  # 定义函数 create_user
+    data = request.get_json()  # 赋值变量 data
+    return jsonify(data), 201  # 返回 jsonify(data), 201
 
-if __name__ == "__main__":
-    app.run(debug=True)
+if __name__ == "__main__":  # 如果 __name__ == "__main__"
+    app.run(debug=True)  # 调用 app.run()：运行
 \`\`\`
 
 ## WSGI 与 ASGI
@@ -2055,12 +2055,12 @@ print("\\n  服务器已关闭")`
     content: `## SQLite：Python 自带
 
 \`\`\`python
-import sqlite3
-conn = sqlite3.connect("test.db")
-cursor = conn.cursor()
-cursor.execute("CREATE TABLE ...")
-conn.commit()
-conn.close()
+import sqlite3  # 导入模块 sqlite3
+conn = sqlite3.connect("test.db")  # 赋值变量 conn
+cursor = conn.cursor()  # 赋值变量 cursor
+cursor.execute("CREATE TABLE ...")  # 调用 cursor.execute()
+conn.commit()  # 调用 conn.commit()
+conn.close()  # 调用 conn.close()：关闭
 \`\`\`
 
 SQLite 是文件型数据库，无需安装服务，适合小项目和学习。
@@ -2078,17 +2078,17 @@ cursor.execute("""
 """)
 
 # 插入
-cursor.execute("INSERT INTO users (name, age) VALUES (?, ?)", ("小明", 18))
+cursor.execute("INSERT INTO users (name, age) VALUES (?, ?)", ("小明", 18))  # 调用 cursor.execute()
 
 # 查询
-cursor.execute("SELECT * FROM users")
-rows = cursor.fetchall()
+cursor.execute("SELECT * FROM users")  # 调用 cursor.execute()
+rows = cursor.fetchall()  # 赋值变量 rows
 
 # 更新
-cursor.execute("UPDATE users SET age = ? WHERE id = ?", (20, 1))
+cursor.execute("UPDATE users SET age = ? WHERE id = ?", (20, 1))  # 调用 cursor.execute()
 
 # 删除
-cursor.execute("DELETE FROM users WHERE id = ?", (1,))
+cursor.execute("DELETE FROM users WHERE id = ?", (1,))  # 调用 cursor.execute()
 \`\`\`
 
 ⚠️ 用参数化查询 \`?\` 防止 SQL 注入，不要用字符串拼接。
@@ -2096,49 +2096,49 @@ cursor.execute("DELETE FROM users WHERE id = ?", (1,))
 ## 上下文管理器
 
 \`\`\`python
-with sqlite3.connect("test.db") as conn:
+with sqlite3.connect("test.db") as conn:  # 使用上下文管理器：sqlite3.connect("test.db") as conn
     # 自动 commit / rollback
-    conn.execute("...")
+    conn.execute("...")  # 调用 conn.execute()
 \`\`\`
 
 ## Row 对象
 
 \`\`\`python
-conn.row_factory = sqlite3.Row
-row = cursor.fetchone()
+conn.row_factory = sqlite3.Row  # 执行操作
+row = cursor.fetchone()  # 赋值变量 row
 row["name"]    # 像字典一样访问
 \`\`\`
 
 ## 事务
 
 \`\`\`python
-try:
-    cursor.execute(...)
-    conn.commit()
-except:
-    conn.rollback()
+try:  # 尝试执行可能出错的代码
+    cursor.execute(...)  # 调用 cursor.execute()
+    conn.commit()  # 调用 conn.commit()
+except:  # 捕获异常
+    conn.rollback()  # 调用 conn.rollback()
 \`\`\`
 
 ## ORM：SQLAlchemy
 
 \`\`\`python
-from sqlalchemy import create_engine, Column, Integer, String
-from sqlalchemy.orm import declarative_base, Session
+from sqlalchemy import create_engine, Column, Integer, String  # 从 sqlalchemy 导入 create_engine, Column, Integer, String
+from sqlalchemy.orm import declarative_base, Session  # 从 sqlalchemy.orm 导入 declarative_base, Session
 
-Base = declarative_base()
+Base = declarative_base()  # 赋值变量 Base
 
-class User(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
+class User(Base):  # 定义类 User
+    __tablename__ = "users"  # 定义字符串 __tablename__
+    id = Column(Integer, primary_key=True)  # 赋值变量 id
+    name = Column(String)  # 赋值变量 name
 
-engine = create_engine("sqlite:///test.db")
-Base.metadata.create_all(engine)
+engine = create_engine("sqlite:///test.db")  # 赋值变量 engine
+Base.metadata.create_all(engine)  # 执行操作
 
-with Session(engine) as session:
-    user = User(name="小明")
-    session.add(user)
-    session.commit()
+with Session(engine) as session:  # 使用上下文管理器：Session(engine) as session
+    user = User(name="小明")  # 赋值变量 user
+    session.add(user)  # 调用 session.add()：添加元素
+    session.commit()  # 调用 session.commit()
 \`\`\`
 
 ## 本章 demo
@@ -2510,21 +2510,21 @@ GET /api/users?page=1&page_size=20
 ### 函数 API
 
 \`\`\`python
-def sort(items, key=None, reverse=False):
-    """参数顺序：必填在前，可选在后"""
-    ...
+def sort(items, key=None, reverse=False):  # 定义函数 sort，参数：items, key=None, reverse=False
+    """参数顺序：必填在前，可选在后"""  # 执行操作
+    ...  # 执行操作
 \`\`\`
 
 ### 类 API
 
 \`\`\`python
-class DataFrame:
-    def __init__(self, data):
-        ...
-    def head(self, n=5):
-        ...
-    def filter(self, condition):
-        ...
+class DataFrame:  # 定义类 DataFrame
+    def __init__(self, data):  # 定义函数 __init__，参数：self, data
+        ...  # 执行操作
+    def head(self, n=5):  # 定义函数 head，参数：self, n=5
+        ...  # 执行操作
+    def filter(self, condition):  # 定义函数 filter，参数：self, condition
+        ...  # 执行操作
 \`\`\`
 
 ## 本章 demo

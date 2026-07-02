@@ -205,13 +205,13 @@ def withdraw(balance, amount):
 \`\`\`python
 def parse_age(s):
     try:
-        n = int(s)
+        n = int(s)                          # 尝试把字符串转成整数，非数字会抛 ValueError
         if n < 0:
-            raise ValueError("age 不能为负")
-        return n
+            raise ValueError("age 不能为负")  # 主动抛出 ValueError，业务规则校验
+        return n                            # 正常返回解析后的整数
     except ValueError as e:
-        # from e 把 e 作为新异常的"原因"
-        raise RuntimeError(f"解析 age 失败: {s!r}") from e
+        # from e 把 e 作为新异常的"原因"，异常链 __cause__ 被设置
+        raise RuntimeError(f"解析 age 失败: {s!r}") from e   # 抛出新异常并链接原始异常，便于追溯
 \`\`\`
 
 \`raise X from Y\` 设置 \`X.__cause__ = Y\`，调试时 traceback 会显示 "The above exception was the direct cause of..."：
@@ -346,9 +346,9 @@ except ValueError:
 
 \`assert cond, msg\` 等价于：
 \`\`\`python
-if __debug__:
-    if not cond:
-        raise AssertionError(msg)
+if __debug__:                    # __debug__ 在非 -O 模式下为 True（默认开启）
+    if not cond:                 # 条件为 False 时触发断言失败
+        raise AssertionError(msg)  # assert cond, msg 等价于这三行展开
 \`\`\`
 
 用 \`python -O\` 运行时 \`__debug__ = False\`，所有 assert 被编译器跳过。所以 assert 只用于开发期不变式检查，**不能**做生产数据校验。

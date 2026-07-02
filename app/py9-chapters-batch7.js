@@ -22,7 +22,7 @@ export const chapters = [
 ## os 常用：路径与文件
 
 \`\`\`python
-import os
+import os  # 导入模块 os
 os.getcwd()              # 当前工作目录
 os.chdir(path)           # 切换目录
 os.listdir(path)         # 列目录
@@ -50,7 +50,7 @@ os.environ["MY_VAR"] = "x"   # 设
 ## sys 常用
 
 \`\`\`python
-import sys
+import sys  # 导入模块 sys
 sys.argv              # 命令行参数列表
 sys.version           # Python 版本
 sys.platform          # 平台（'darwin' / 'win32' / 'linux'）
@@ -63,7 +63,7 @@ sys.stdin / stdout / stderr   # 标准输入输出
 
 \`\`\`python
 # script.py
-import sys
+import sys  # 导入模块 sys
 print(sys.argv)    # ['script.py', 'arg1', 'arg2']
 \`\`\`
 
@@ -234,9 +234,9 @@ print("  临时目录已清理")`
 \`os.path\` 是字符串操作，\`pathlib\` 把路径封装成对象，更优雅。
 
 \`\`\`python
-from pathlib import Path
-p = Path(".")
-p = Path("/usr/local/bin")
+from pathlib import Path  # 从 pathlib 导入 Path
+p = Path(".")  # 赋值变量 p
+p = Path("/usr/local/bin")  # 赋值变量 p
 p = Path.home()        # 用户主目录
 p = Path.cwd()         # 当前目录
 \`\`\`
@@ -246,7 +246,7 @@ p = Path.cwd()         # 当前目录
 pathlib 用 \`/\` 运算符拼接，比 \`os.path.join\` 直观：
 
 \`\`\`python
-p = Path.home() / "Documents" / "notes.txt"
+p = Path.home() / "Documents" / "notes.txt"  # 赋值变量 p
 \`\`\`
 
 ## 常用属性
@@ -300,7 +300,7 @@ p.glob("**/*.txt")       # 同 rglob
 
 \`\`\`python
 for f in p.iterdir():     # 列出所有
-    print(f)
+    print(f)  # 打印输出到屏幕
 \`\`\`
 
 ## 本章 demo
@@ -464,7 +464,7 @@ print("\\n  临时目录已清理")`
 - **timedelta**：时间差
 
 \`\`\`python
-from datetime import date, time, datetime, timedelta
+from datetime import date, time, datetime, timedelta  # 从 datetime 导入 date, time, datetime, timedelta
 \`\`\`
 
 ## 创建
@@ -502,8 +502,8 @@ datetime.strptime("2024-01-15", "%Y-%m-%d")    # 字符串 → datetime
 ## 时间差 timedelta
 
 \`\`\`python
-from datetime import timedelta
-delta = timedelta(days=7)
+from datetime import timedelta  # 从 datetime 导入 timedelta
+delta = timedelta(days=7)  # 赋值变量 delta
 now + delta            # 一周后
 now - delta            # 一周前
 \`\`\`
@@ -517,7 +517,7 @@ now - delta            # 一周前
 ## 时间戳
 
 \`\`\`python
-import time
+import time  # 导入模块 time
 time.time()                       # 当前时间戳（秒）
 datetime.fromtimestamp(ts)        # 时间戳 → datetime
 datetime.now().timestamp()        # datetime → 时间戳
@@ -722,7 +722,7 @@ print(f"  距离 {new_year}: {countdown(new_year)} 天")`
 JSON（JavaScript Object Notation）是通用的数据交换格式。Python 用 \`json\` 模块处理。
 
 \`\`\`python
-import json
+import json  # 导入模块 json
 \`\`\`
 
 ## Python 类型与 JSON 对应
@@ -739,7 +739,7 @@ import json
 ## 序列化：dumps
 
 \`\`\`python
-data = {"name": "小明", "age": 18}
+data = {"name": "小明", "age": 18}  # 定义字典 data
 s = json.dumps(data)              # 字典 → JSON 字符串
 s = json.dumps(data, ensure_ascii=False)  # 中文不转义
 s = json.dumps(data, indent=2)    # 美化缩进
@@ -754,11 +754,11 @@ data = json.loads(s)              # JSON 字符串 → 字典
 ## 文件读写
 
 \`\`\`python
-with open("data.json", "w") as f:
-    json.dump(data, f, ensure_ascii=False, indent=2)
+with open("data.json", "w") as f:  # 使用上下文管理器：open("data.json", "w") as f
+    json.dump(data, f, ensure_ascii=False, indent=2)  # 调用 json.dump()
 
-with open("data.json") as f:
-    data = json.load(f)
+with open("data.json") as f:  # 使用上下文管理器：open("data.json") as f
+    data = json.load(f)  # 赋值变量 data
 \`\`\`
 
 ## 处理自定义对象
@@ -766,10 +766,10 @@ with open("data.json") as f:
 JSON 默认只认基本类型。要序列化对象，需提供转换函数：
 
 \`\`\`python
-class Point:
-    def __init__(self, x, y): ...
+class Point:  # 定义类 Point
+    def __init__(self, x, y): ...  # 定义函数 __init__，参数：self, x, y
 
-json.dumps(p, default=lambda o: o.__dict__)
+json.dumps(p, default=lambda o: o.__dict__)  # 调用 json.dumps()
 \`\`\`
 
 ## 常见错误
@@ -1042,7 +1042,7 @@ print(f"  往返一致: {back == big_data}")`
 - \`[a-z]+@\\w+\\.com\` 匹配简单邮箱
 
 \`\`\`python
-import re
+import re  # 导入模块 re
 \`\`\`
 
 ## 基本函数
@@ -1089,7 +1089,7 @@ re.split(pattern, string)     # 分割
 ## 分组与捕获
 
 \`\`\`python
-m = re.match(r"(\\d+)-(\\d+)", "123-456")
+m = re.match(r"(\\d+)-(\\d+)", "123-456")  # 赋值变量 m
 m.group(0)    # "123-456" 整个匹配
 m.group(1)    # "123" 第1组
 m.group(2)    # "456" 第2组
@@ -1098,14 +1098,14 @@ m.group(2)    # "456" 第2组
 ## 命名分组
 
 \`\`\`python
-m = re.match(r"(?P<year>\\d+)-(?P<month>\\d+)", "2024-01")
+m = re.match(r"(?P<year>\\d+)-(?P<month>\\d+)", "2024-01")  # 赋值变量 m
 m.group("year")    # "2024"
 \`\`\`
 
 ## 预编译
 
 \`\`\`python
-pattern = re.compile(r"\\d+")
+pattern = re.compile(r"\\d+")  # 赋值变量 pattern
 pattern.findall("a1b22c333")    # ['1', '22', '333']
 \`\`\`
 
@@ -1305,14 +1305,14 @@ print(f"  数字: {re.findall(num_re, text)}")`
     content: `## collections 提供更强容器
 
 \`\`\`python
-from collections import Counter, defaultdict, deque, OrderedDict, namedtuple, ChainMap
+from collections import Counter, defaultdict, deque, OrderedDict, namedtuple, ChainMap  # 从 collections 导入 Counter, defaultdict, deque, OrderedDict, namedtuple, ChainMap
 \`\`\`
 
 ## Counter：计数器
 
 \`\`\`python
-from collections import Counter
-c = Counter("aabbbcccc")
+from collections import Counter  # 从 collections 导入 Counter
+c = Counter("aabbbcccc")  # 赋值变量 c
 c                # Counter({'c': 4, 'b': 3, 'a': 2})
 c.most_common(2) # [('c', 4), ('b', 3)]
 c['a']           # 2
@@ -1321,10 +1321,10 @@ c['a']           # 2
 ## defaultdict：默认值字典
 
 \`\`\`python
-from collections import defaultdict
+from collections import defaultdict  # 从 collections 导入 defaultdict
 d = defaultdict(list)    # 默认值是空列表
 d['a'].append(1)         # 'a' 不存在自动建 []
-d['a'].append(2)
+d['a'].append(2)  # 执行操作
 d['a']                   # [1, 2]
 \`\`\`
 
@@ -1333,8 +1333,8 @@ d['a']                   # [1, 2]
 ## deque：双端队列
 
 \`\`\`python
-from collections import deque
-dq = deque([1, 2, 3])
+from collections import deque  # 从 collections 导入 deque
+dq = deque([1, 2, 3])  # 赋值变量 dq
 dq.appendleft(0)     # 左边加
 dq.append(4)         # 右边加
 dq.popleft()         # 左边删
@@ -1346,9 +1346,9 @@ dq.pop()             # 右边删
 ## namedtuple：具名元组
 
 \`\`\`python
-from collections import namedtuple
-Point = namedtuple("Point", ["x", "y"])
-p = Point(3, 4)
+from collections import namedtuple  # 从 collections 导入 namedtuple
+Point = namedtuple("Point", ["x", "y"])  # 赋值变量 Point
+p = Point(3, 4)  # 赋值变量 p
 p.x    # 3
 p.y    # 4
 p[0]   # 3（也能用下标）
@@ -1365,10 +1365,10 @@ Python 3.7+ 普通 dict 已经有序，OrderedDict 用得少了。它额外支�
 ## ChainMap：串联字典
 
 \`\`\`python
-from collections import ChainMap
-defaults = {"color": "black", "size": "M"}
-user = {"color": "red"}
-cm = ChainMap(user, defaults)
+from collections import ChainMap  # 从 collections 导入 ChainMap
+defaults = {"color": "black", "size": "M"}  # 定义字典 defaults
+user = {"color": "red"}  # 定义字典 user
+cm = ChainMap(user, defaults)  # 赋值变量 cm
 cm["color"]    # "red"（先查 user）
 cm["size"]     # "M"（user 没有，查 defaults）
 \`\`\`
@@ -1599,7 +1599,7 @@ print(f"  最近命令(最多3): {list(history)}")`
     content: `## math：数学函数
 
 \`\`\`python
-import math
+import math  # 导入模块 math
 \`\`\`
 
 ### 常用函数
@@ -1648,8 +1648,8 @@ math.radians(180)      # 3.14... 角度→弧度
 ## statistics：统计函数
 
 \`\`\`python
-import statistics
-data = [1, 2, 3, 4, 5]
+import statistics  # 导入模块 statistics
+data = [1, 2, 3, 4, 5]  # 定义列表 data
 statistics.mean(data)       # 平均
 statistics.median(data)     # 中位数
 statistics.mode(data)       # 众数
@@ -1823,7 +1823,7 @@ for x in data:
     content: `## random 模块
 
 \`\`\`python
-import random
+import random  # 导入模块 random
 \`\`\`
 
 ⚠️ random 是**伪随机**，基于种子。**不能用于安全场景**（密码、token），用 \`secrets\` 模块。
@@ -1857,7 +1857,7 @@ random.seed(42)    # 固定种子，结果可复现
 ## 加权随机
 
 \`\`\`python
-random.choices(["A", "B", "C"], weights=[1, 2, 3], k=5)
+random.choices(["A", "B", "C"], weights=[1, 2, 3], k=5)  # 调用 random.choices()
 # A 概率 1/6, B 2/6, C 3/6
 \`\`\`
 
@@ -2044,8 +2044,8 @@ print(f"  5 个随机浮点: {nums}")`
 Python 是动态类型，但可以用类型提示（type hint）标注变量/函数的类型。**运行时不强制**，但能被 IDE/mypy 检查。
 
 \`\`\`python
-def add(a: int, b: int) -> int:
-    return a + b
+def add(a: int, b: int) -> int:  # 定义函数 add，参数：a: int, b: int
+    return a + b  # 返回 a + b
 \`\`\`
 
 \`a: int\` 表示参数 a 应是 int，\`-> int\` 表示返回 int。
@@ -2053,21 +2053,21 @@ def add(a: int, b: int) -> int:
 ## 基本类型
 
 \`\`\`python
-x: int = 1
-y: float = 1.5
-s: str = "hi"
-b: bool = True
+x: int = 1  # 执行操作
+y: float = 1.5  # 执行操作
+s: str = "hi"  # 执行操作
+b: bool = True  # 执行操作
 \`\`\`
 
 ## 容器类型
 
 \`\`\`python
-from typing import List, Dict, Tuple, Set
+from typing import List, Dict, Tuple, Set  # 从 typing 导入 List, Dict, Tuple, Set
 
-names: List[str] = ["a", "b"]
-scores: Dict[str, int] = {"a": 1}
-point: Tuple[int, int] = (3, 4)
-nums: Set[int] = {1, 2, 3}
+names: List[str] = ["a", "b"]  # 执行操作
+scores: Dict[str, int] = {"a": 1}  # 执行操作
+point: Tuple[int, int] = (3, 4)  # 执行操作
+nums: Set[int] = {1, 2, 3}  # 执行操作
 \`\`\`
 
 Python 3.9+ 可以直接用 \`list[str]\`、\`dict[str, int]\`，不用 import typing。
@@ -2075,15 +2075,15 @@ Python 3.9+ 可以直接用 \`list[str]\`、\`dict[str, int]\`，不用 import t
 ## Optional 与 Union
 
 \`\`\`python
-from typing import Optional, Union
+from typing import Optional, Union  # 从 typing 导入 Optional, Union
 
 # 可能是 int 或 None
-def find(x) -> Optional[int]:
-    ...
+def find(x) -> Optional[int]:  # 定义函数 find，参数：x
+    ...  # 执行操作
 
 # 多种类型之一
-def parse(x) -> Union[int, str]:
-    ...
+def parse(x) -> Union[int, str]:  # 定义函数 parse，参数：x
+    ...  # 执行操作
 \`\`\`
 
 Python 3.10+ 可以用 \`int | None\` 代替 \`Optional[int]\`。
@@ -2091,45 +2091,45 @@ Python 3.10+ 可以用 \`int | None\` 代替 \`Optional[int]\`。
 ## Any 与 NoReturn
 
 \`\`\`python
-from typing import Any, NoReturn
+from typing import Any, NoReturn  # 从 typing 导入 Any, NoReturn
 
 def log(msg: Any) -> None:    # 接受任何类型
-    print(msg)
+    print(msg)  # 打印输出到屏幕
 
 def fatal() -> NoReturn:      # 不返回（抛异常/退出）
-    raise SystemExit
+    raise SystemExit  # 抛出异常：SystemExit
 \`\`\`
 
 ## Callable
 
 \`\`\`python
-from typing import Callable
+from typing import Callable  # 从 typing 导入 Callable
 
 # 接受两个 int，返回 int 的函数
-def apply(f: Callable[[int, int], int], a, b):
-    return f(a, b)
+def apply(f: Callable[[int, int], int], a, b):  # 定义函数 apply，参数：f: Callable[[int, int], int], a, b
+    return f(a, b)  # 返回 f(a, b)
 \`\`\`
 
 ## TypeVar：泛型
 
 \`\`\`python
-from typing import TypeVar
+from typing import TypeVar  # 从 typing 导入 TypeVar
 
-T = TypeVar("T")
-def first(items: List[T]) -> T:
-    return items[0]
+T = TypeVar("T")  # 赋值变量 T
+def first(items: List[T]) -> T:  # 定义函数 first，参数：items: List[T]
+    return items[0]  # 返回 items[0]
 \`\`\`
 
 ## TypedDict：类型化字典
 
 \`\`\`python
-from typing import TypedDict
+from typing import TypedDict  # 从 typing 导入 TypedDict
 
-class User(TypedDict):
-    name: str
-    age: int
+class User(TypedDict):  # 定义类 User
+    name: str  # 执行操作
+    age: int  # 执行操作
 
-u: User = {"name": "小明", "age": 18}
+u: User = {"name": "小明", "age": 18}  # 执行操作
 \`\`\`
 
 ## 本章 demo
@@ -2381,12 +2381,12 @@ close_all([FakeFile(), FakeConn()])    # 鸭子类型`
 写类时常常只是存数据，要手写 \`__init__\`、\`__repr__\`、\`__eq__\` 等很烦。\`dataclass\` 装饰器自动生成。
 
 \`\`\`python
-from dataclasses import dataclass
+from dataclasses import dataclass  # 从 dataclasses 导入 dataclass
 
-@dataclass
-class Point:
-    x: int
-    y: int
+@dataclass  # 应用装饰器 dataclass
+class Point:  # 定义类 Point
+    x: int  # 执行操作
+    y: int  # 执行操作
 \`\`\`
 
 自动生成：
@@ -2397,11 +2397,11 @@ class Point:
 ## 默认值
 
 \`\`\`python
-@dataclass
-class User:
-    name: str
+@dataclass  # 应用装饰器 dataclass
+class User:  # 定义类 User
+    name: str  # 执行操作
     age: int = 18              # 默认值
-    active: bool = True
+    active: bool = True  # 执行操作
 \`\`\`
 
 ⚠️ 默认值必须放在没默认值的后面（同函数参数）。
@@ -2409,11 +2409,11 @@ class User:
 ## 可变默认值用 field
 
 \`\`\`python
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field  # 从 dataclasses 导入 dataclass, field
 
-@dataclass
-class Student:
-    name: str
+@dataclass  # 应用装饰器 dataclass
+class Student:  # 定义类 Student
+    name: str  # 执行操作
     scores: list = field(default_factory=list)    # 不能直接写 []
 \`\`\`
 
@@ -2432,12 +2432,12 @@ field(compare=False)            # 不参与比较
 ## frozen 不可变
 
 \`\`\`python
-@dataclass(frozen=True)
-class Point:
-    x: int
-    y: int
+@dataclass(frozen=True)  # 应用装饰器 dataclass
+class Point:  # 定义类 Point
+    x: int  # 执行操作
+    y: int  # 执行操作
 
-p = Point(1, 2)
+p = Point(1, 2)  # 赋值变量 p
 p.x = 10    # ❌ FrozenInstanceError
 \`\`\`
 
@@ -2448,17 +2448,17 @@ frozen 后可哈希，能当字典 key。
 dataclass 还是类，能加方法：
 
 \`\`\`python
-@dataclass
-class Circle:
-    r: float
-    def area(self) -> float:
-        return 3.14 * self.r ** 2
+@dataclass  # 应用装饰器 dataclass
+class Circle:  # 定义类 Circle
+    r: float  # 执行操作
+    def area(self) -> float:  # 定义函数 area，参数：self
+        return 3.14 * self.r ** 2  # 返回 3.14 * self.r ** 2
 \`\`\`
 
 ## asdict / astuple
 
 \`\`\`python
-from dataclasses import asdict, astuple
+from dataclasses import asdict, astuple  # 从 dataclasses 导入 asdict, astuple
 asdict(obj)    # 转字典
 astuple(obj)   # 转元组
 \`\`\`
@@ -2697,13 +2697,13 @@ print("    → dataclass 一行搞定，少写很多样板代码")`
 ## 简单用法
 
 \`\`\`python
-import logging
-logging.basicConfig(level=logging.INFO)
-logging.debug("调试信息")
-logging.info("普通信息")
-logging.warning("警告")
-logging.error("错误")
-logging.critical("严重")
+import logging  # 导入模块 logging
+logging.basicConfig(level=logging.INFO)  # 调用 logging.basicConfig()
+logging.debug("调试信息")  # 调用 logging.debug()
+logging.info("普通信息")  # 调用 logging.info()
+logging.warning("警告")  # 调用 logging.warning()
+logging.error("错误")  # 调用 logging.error()
+logging.critical("严重")  # 调用 logging.critical()
 \`\`\`
 
 ## 日志级别
@@ -2721,10 +2721,10 @@ logging.critical("严重")
 ## basicConfig 配置
 
 \`\`\`python
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    filename="app.log",
+logging.basicConfig(  # 调用 logging.basicConfig()
+    level=logging.DEBUG,  # 赋值变量 level
+    format="%(asctime)s [%(levelname)s] %(message)s",  # 定义字符串 format
+    filename="app.log",  # 定义字符串 filename
 )
 \`\`\`
 
@@ -2741,8 +2741,8 @@ logging.basicConfig(
 ## Logger 对象
 
 \`\`\`python
-logger = logging.getLogger("my_app")
-logger.info("...")
+logger = logging.getLogger("my_app")  # 赋值变量 logger
+logger.info("...")  # 调用 logger.info()
 \`\`\`
 
 不同模块用不同 logger 名，便于区分。
@@ -2750,12 +2750,12 @@ logger.info("...")
 ## Handler：输出到不同地方
 
 \`\`\`python
-from logging import StreamHandler, FileHandler
+from logging import StreamHandler, FileHandler  # 从 logging 导入 StreamHandler, FileHandler
 
 console = StreamHandler()       # 输出到控制台
 file_h = FileHandler("app.log") # 输出到文件
-logger.addHandler(console)
-logger.addHandler(file_h)
+logger.addHandler(console)  # 调用 logger.addHandler()
+logger.addHandler(file_h)  # 调用 logger.addHandler()
 \`\`\`
 
 ## 本章 demo
@@ -3036,13 +3036,13 @@ print("  → 不同级别记录不同重要性的信息")`
 \`subprocess\` 用来在 Python 里启动其他程序、命令。
 
 \`\`\`python
-import subprocess
+import subprocess  # 导入模块 subprocess
 \`\`\`
 
 ## run：最常用
 
 \`\`\`python
-result = subprocess.run(["echo", "hello"], capture_output=True, text=True)
+result = subprocess.run(["echo", "hello"], capture_output=True, text=True)  # 赋值变量 result
 result.stdout      # "hello\\n"
 result.returncode  # 0（成功）
 \`\`\`
@@ -3074,7 +3074,7 @@ subprocess.run(["false"], check=True)    # 抛 CalledProcessError
 ## Popen：更细控制
 
 \`\`\`python
-p = subprocess.Popen(["cmd"], stdout=subprocess.PIPE)
+p = subprocess.Popen(["cmd"], stdout=subprocess.PIPE)  # 赋值变量 p
 out, err = p.communicate()    # 等待完成
 \`\`\`
 
@@ -3087,7 +3087,7 @@ Popen 适合：
 
 \`\`\`python
 # 用 shell 管道
-subprocess.run("ls | grep .py", shell=True, capture_output=True, text=True)
+subprocess.run("ls | grep .py", shell=True, capture_output=True, text=True)  # 调用 subprocess.run()：运行
 \`\`\`
 
 ## 实用场景

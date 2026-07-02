@@ -29,7 +29,7 @@ String 的 \`hashCode\` 在首次计算后被缓存，因为内容不变所以�
 ## 实现原理
 
 \`\`\`java
-public final class String implements java.io.Serializable, Comparable<String>, CharSequence {
+public final class String implements java.io.Serializable, Comparable<String>, CharSequence {  // 定义最终（不可继承）类 String
     private final char[] value;  // Java 8
     // private final byte[] value; // Java 9+ 使用 byte[] + coder
 }
@@ -44,7 +44,7 @@ public final class String implements java.io.Serializable, Comparable<String>, C
 所有看起来修改字符串的操作（\`concat\`、\`replace\`、\`substring\`、\`toUpperCase\`、\`+\`）实际上都是创建新的 String 对象：
 
 \`\`\`java
-String s = "hello";
+String s = "hello";  // 声明变量 s（String），初始值为 "hello"
 s = s + " world";  // s 指向新对象，原对象不变
 \`\`\`
 
@@ -262,7 +262,7 @@ public class Main {
 ## 常用方法
 
 \`\`\`java
-StringBuilder sb = new StringBuilder();
+StringBuilder sb = new StringBuilder();  // 声明变量 sb（StringBuilder），初始值为 new StringBuilder()
 sb.append("hello");       // 追加
 sb.insert(0, "say ");     // 在指定位置插入
 sb.delete(0, 4);          // 删除 [start, end)
@@ -284,7 +284,7 @@ sb.appendCodePoint(0x1F600); // 追加码点（处理 emoji）
 大多数方法返回 \`this\`，支持链式调用：
 
 \`\`\`java
-sb.append("a").append("b").append("c");
+sb.append("a").append("b").append("c");  // 调用 sb 的 append 方法
 \`\`\`
 
 ## 容量与扩容
@@ -378,7 +378,7 @@ Java 提供了强大的字符串格式化能力，主要依托 \`String.format\`
 ## String.format 基本用法
 
 \`\`\`java
-String s = String.format("姓名: %s, 年龄: %d", "张三", 18);
+String s = String.format("姓名: %s, 年龄: %d", "张三", 18);  // 声明变量 s（String），初始值为 String.format("姓名: %s, 年龄: %d", "张三", 18)
 \`\`\`
 
 ## 格式说明符
@@ -525,9 +525,9 @@ public class Main {
 - \`equals()\` 比较的是**内容**，即字符序列是否相同
 
 \`\`\`java
-String a = "hello";
-String b = "hello";
-String c = new String("hello");
+String a = "hello";  // 声明变量 a（String），初始值为 "hello"
+String b = "hello";  // 声明变量 b（String），初始值为 "hello"
+String c = new String("hello");  // 声明变量 c（String），初始值为 new String("hello")
 
 a == b        // true  常量池复用
 a == c        // false 不同对象
@@ -581,8 +581,8 @@ JVM 维护一个字符串常量池（String Pool）：
 - 如果池中不存在，将当前字符串加入池中并返回
 
 \`\`\`java
-String c = new String("hello");
-String d = c.intern();
+String c = new String("hello");  // 声明变量 c（String），初始值为 new String("hello")
+String d = c.intern();  // 声明变量 d（String），初始值为 c.intern()
 c == d       // false
 a == d       // true
 \`\`\`
@@ -711,7 +711,7 @@ String json = """
 String template = """
         姓名: %s
         年龄: %d
-        """.formatted("张三", 18);
+        """.formatted("张三", 18);  // 调用 """ 的 formatted 方法
 \`\`\`
 
 \`formatted\` 等价于 \`String.format(this, args)\`。
@@ -747,7 +747,7 @@ String old = "{\\n" +
 
 - Python 的三引号字符串类似但不处理缩进
 - Kotlin 也有文本块，语法一致
-- Groovy 的 \`"""\` 字符串支持插值（\`$\{var}\`），Java 不支持原生插值，需配合 \`formatted\`
+- Groovy 的 \`"""\` 字符串支持插值（\`$\\{var}\`），Java 不支持原生插值，需配合 \`formatted\`
 
 ## 嵌套引号
 
@@ -853,8 +853,8 @@ Java 通过 \`java.util.regex\` 包提供正则表达式支持，核心类是 \`
 ## 基本匹配流程
 
 \`\`\`java
-Pattern p = Pattern.compile("\\\\d+");
-Matcher m = p.matcher("12345");
+Pattern p = Pattern.compile("\\\\d+");  // 声明变量 p（Pattern），初始值为 Pattern.compile("\\\\d+")
+Matcher m = p.matcher("12345");  // 声明变量 m（Matcher），初始值为 p.matcher("12345")
 boolean found = m.matches();  // 整体匹配
 \`\`\`
 
@@ -1240,13 +1240,13 @@ public class Main {
 ### String → byte[]
 
 \`\`\`java
-byte[] bytes = "中文".getBytes(StandardCharsets.UTF_8);
+byte[] bytes = "中文".getBytes(StandardCharsets.UTF_8);  // 声明变量 bytes（byte[]），初始值为 "中文".getBytes(StandardCharsets.UTF_8)
 \`\`\`
 
 ### byte[] → String
 
 \`\`\`java
-String s = new String(bytes, StandardCharsets.UTF_8);
+String s = new String(bytes, StandardCharsets.UTF_8);  // 声明变量 s（String），初始值为 new String(bytes, StandardCharsets.UTF_8)
 \`\`\`
 
 \`StandardCharsets\` 提供常用字符集常量：\`UTF_8\`、\`UTF_16\`、\`ISO_8859_1\`、\`US_ASCII\`，可避免抛 checked exception。
@@ -1264,7 +1264,7 @@ String s = new String(bytes, StandardCharsets.UTF_8);
 如果知道原始编码，可以"先按错误编码解码回字节，再用正确编码重新解码"：
 
 \`\`\`java
-String fixed = new String(garbled.getBytes("ISO-8859-1"), "UTF-8");
+String fixed = new String(garbled.getBytes("ISO-8859-1"), "UTF-8");  // 声明变量 fixed（String），初始值为 new String(garbled.getBytes("ISO-8859-1"), "UTF-8")
 \`\`\`
 
 但前提是中转编码（如 ISO-8859-1）能无损保留字节。如果用 GBK 错误解码 UTF-8 字节后，再转回字节可能已经不可逆。
@@ -1378,9 +1378,9 @@ public class Main {
 - 可隐式转为 int（值为 Unicode 码点）
 
 \`\`\`java
-char c = 'A';
-char n = '\\n';
-char chinese = '中';
+char c = 'A';  // 声明变量 c（char），初始值为 'A'
+char n = '\\n';  // 声明变量 n（char），初始值为 '\\n'
+char chinese = '中';  // 声明变量 chinese（char），初始值为 '中'
 int code = c;  // char 可隐式转为 int，值为 65
 \`\`\`
 
@@ -1414,7 +1414,7 @@ int code = c;  // char 可隐式转为 int，值为 65
 char 本质是整数，可以参与算术运算：
 
 \`\`\`java
-char c = 'A';
+char c = 'A';  // 声明变量 c（char），初始值为 'A'
 c = (char)(c + 1);  // 'B'
 \`\`\`
 
@@ -1524,10 +1524,10 @@ public class Main {
 
 \`\`\`java
 // 仅分隔符
-StringJoiner sj = new StringJoiner(",");
+StringJoiner sj = new StringJoiner(",");  // 声明变量 sj（StringJoiner），初始值为 new StringJoiner(",")
 
 // 分隔符 + 前缀 + 后缀
-StringJoiner sj2 = new StringJoiner(",", "[", "]");
+StringJoiner sj2 = new StringJoiner(",", "[", "]");  // 声明变量 sj2（StringJoiner），初始值为 new StringJoiner(",", "[", "]")
 \`\`\`
 
 ## 常用方法
@@ -1544,8 +1544,8 @@ StringJoiner sj2 = new StringJoiner(",", "[", "]");
 ## 基本用法
 
 \`\`\`java
-StringJoiner sj = new StringJoiner(", ", "[", "]");
-sj.add("apple").add("banana").add("cherry");
+StringJoiner sj = new StringJoiner(", ", "[", "]");  // 声明变量 sj（StringJoiner），初始值为 new StringJoiner(", ", "[", "]")
+sj.add("apple").add("banana").add("cherry");  // 调用 sj 的 add 方法
 // [apple, banana, cherry]
 \`\`\`
 
@@ -1556,8 +1556,8 @@ sj.add("apple").add("banana").add("cherry");
 当 StringJoiner 没有添加任何元素时，默认返回空字符串（或仅前缀后缀 \`"[]"\`）。可以用 \`setEmptyValue\` 自定义：
 
 \`\`\`java
-StringJoiner sj = new StringJoiner(",");
-sj.setEmptyValue("none");
+StringJoiner sj = new StringJoiner(",");  // 声明变量 sj（StringJoiner），初始值为 new StringJoiner(",")
+sj.setEmptyValue("none");  // 调用 sj 的 setEmptyValue 方法
 // 输出 "none"
 \`\`\`
 
@@ -1568,7 +1568,7 @@ sj.setEmptyValue("none");
 合并两个 StringJoiner，被合并者的前缀后缀会被忽略，只取其内容：
 
 \`\`\`java
-sj1.merge(sj2);
+sj1.merge(sj2);  // 调用 sj1 的 merge 方法
 \`\`\`
 
 适合分批拼接后合并。
@@ -1589,7 +1589,7 @@ String.join("-", Arrays.asList("a","b")); // "a-b"
 \`Collectors.joining\` 是流式拼接的利器，内部也基于 StringJoiner：
 
 \`\`\`java
-list.stream().collect(Collectors.joining(", ", "[", "]"));
+list.stream().collect(Collectors.joining(", ", "[", "]"));  // 调用 list 的 stream 方法
 \`\`\`
 
 三种重载：
@@ -1692,8 +1692,8 @@ public class Main {
 ## 字面量创建
 
 \`\`\`java
-String s1 = "hello";
-String s2 = "hello";
+String s1 = "hello";  // 声明变量 s1（String），初始值为 "hello"
+String s2 = "hello";  // 声明变量 s2（String），初始值为 "hello"
 \`\`\`
 
 JVM 在常量池中查找 \`"hello"\`：
@@ -1705,7 +1705,7 @@ JVM 在常量池中查找 \`"hello"\`：
 ## new String("...")
 
 \`\`\`java
-String s = new String("hello");
+String s = new String("hello");  // 声明变量 s（String），初始值为 new String("hello")
 \`\`\`
 
 这一行**至少创建一个对象**（堆上的新对象），**最多创建两个**（如果池中没有 \`"hello"\`，会先在池中创建，再在堆上创建）。
@@ -1717,7 +1717,7 @@ String s = new String("hello");
 \`intern()\` 主动将字符串放入池（如果不存在）并返回池中引用：
 
 \`\`\`java
-String s = new String("hello").intern();
+String s = new String("hello").intern();  // 声明变量 s（String），初始值为 new String("hello").intern()
 \`\`\`
 
 之后 \`s == "hello"\` 为 \`true\`。Java 7+ intern 不复制字符串，只存堆引用。
@@ -1733,14 +1733,14 @@ String s = "a" + "b";  // 编译为 "ab"，在池中
 \`final\` 修饰的变量也参与编译期折叠：
 
 \`\`\`java
-final String a = "a";
+final String a = "a";  // 声明常量变量 a（String），初始值为 "a"
 String s = a + "b";  // 等价于 "ab"，在池中
 \`\`\`
 
 但运行期变量拼接不会进入池：
 
 \`\`\`java
-String a = "a";
+String a = "a";  // 声明变量 a（String），初始值为 "a"
 String s = a + "b";    // 不在池中，用 StringBuilder
 \`\`\`
 
@@ -1859,9 +1859,9 @@ Java 7+ 的优化避免了 PermGen OOM，且让 intern 更高效——池中存�
 ## intern 后的 == 比较
 
 \`\`\`java
-String s1 = new String("hello");
-String s2 = s1.intern();
-String s3 = "hello";
+String s1 = new String("hello");  // 声明变量 s1（String），初始值为 new String("hello")
+String s2 = s1.intern();  // 声明变量 s2（String），初始值为 s1.intern()
+String s3 = "hello";  // 声明变量 s3（String），初始值为 "hello"
 System.out.println(s2 == s3);  // true
 System.out.println(s1 == s2);  // false（除非池中本来就引用 s1）
 \`\`\`
@@ -1869,11 +1869,11 @@ System.out.println(s1 == s2);  // false（除非池中本来就引用 s1）
 ## 经典面试题
 
 \`\`\`java
-String s1 = new String("a") + new String("b");
+String s1 = new String("a") + new String("b");  // 声明变量 s1（String），初始值为 new String("a") + new String("b")
 // s1 指向堆上 "ab"，但池中没有 "ab"（拼接结果不进池）
-String s2 = s1.intern();
+String s2 = s1.intern();  // 声明变量 s2（String），初始值为 s1.intern()
 // Java 7+ 池中存 s1 的引用
-String s3 = "ab";
+String s3 = "ab";  // 声明变量 s3（String），初始值为 "ab"
 // "ab" 字面量复用池中已存在的 s1 引用
 System.out.println(s1 == s2);  // true（Java 7+）
 System.out.println(s2 == s3);  // true
@@ -2012,12 +2012,12 @@ public class Main {
 
 \`\`\`java
 // 差：每次循环创建新 StringBuilder
-String s = "";
+String s = "";  // 声明变量 s（String），初始值为 ""
 for (...) s += x;
 
 // 好：复用同一个 StringBuilder
-StringBuilder sb = new StringBuilder();
-for (...) sb.append(x);
+StringBuilder sb = new StringBuilder();  // 声明变量 sb（StringBuilder），初始值为 new StringBuilder()
+for (...) sb.append(x);  // 调用 for (...) sb 的 append 方法
 \`\`\`
 
 ## 2. 预估容量
@@ -2025,7 +2025,7 @@ for (...) sb.append(x);
 StringBuilder 默认容量 16，扩容会复制数组。预估大小可避免多次扩容：
 
 \`\`\`java
-StringBuilder sb = new StringBuilder(1024);
+StringBuilder sb = new StringBuilder(1024);  // 声明变量 sb（StringBuilder），初始值为 new StringBuilder(1024)
 \`\`\`
 
 \`ensureCapacity\` 也可在运行时调整。
@@ -2034,10 +2034,10 @@ StringBuilder sb = new StringBuilder(1024);
 
 \`\`\`java
 // 差：每次调用都创建新对象
-return new String("constant");
+return new String("constant");  // 返回值：new String("constant")
 
 // 好：用字面量，复用池中对象
-return "constant";
+return "constant";  // 返回值："constant"
 \`\`\`
 
 ## 4. 正则预编译
@@ -2046,11 +2046,11 @@ return "constant";
 
 \`\`\`java
 // 差：每次编译
-str.replaceAll("\\\\d+", "");
+str.replaceAll("\\\\d+", "");  // 调用 str 的 replaceAll 方法
 
 // 好：编译一次，复用
-private static final Pattern DIGITS = Pattern.compile("\\\\d+");
-DIGITS.matcher(str).replaceAll("");
+private static final Pattern DIGITS = Pattern.compile("\\\\d+");  // 声明静态常量私有变量 DIGITS（Pattern），初始值为 Pattern.compile("\\\\d+")
+DIGITS.matcher(str).replaceAll("");  // 调用 DIGITS 的 matcher 方法
 \`\`\`
 
 预编译可带来数倍性能提升。
@@ -2061,7 +2061,7 @@ DIGITS.matcher(str).replaceAll("");
 
 \`\`\`java
 // 编译期就是 "abc"
-String s = "a" + "b" + "c";
+String s = "a" + "b" + "c";  // 声明变量 s（String），初始值为 "a" + "b" + "c"
 \`\`\`
 
 用 \`final\` 修饰的变量也会参与折叠。把不变的字符串声明为 \`static final\` 可触发折叠。
@@ -2206,7 +2206,7 @@ public class Main {
 三种方式：
 
 \`\`\`java
-int n = 42;
+int n = 42;  // 声明变量 n（int），初始值为 42
 String s1 = String.valueOf(n);  // 推荐，null 安全
 String s2 = Integer.toString(n);// 直接
 String s3 = "" + n;             // 简洁但略慢（编译为 StringBuilder）
@@ -2240,8 +2240,8 @@ String s = String.valueOf(arr); // 等价
 通过字符集编解码：
 
 \`\`\`java
-byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
-String s = new String(bytes, StandardCharsets.UTF_8);
+byte[] bytes = s.getBytes(StandardCharsets.UTF_8);  // 声明变量 bytes（byte[]），初始值为 s.getBytes(StandardCharsets.UTF_8)
+String s = new String(bytes, StandardCharsets.UTF_8);  // 声明变量 s（String），初始值为 new String(bytes, StandardCharsets.UTF_8)
 \`\`\`
 
 务必显式指定字符集，避免依赖平台默认导致乱码。
@@ -2258,9 +2258,9 @@ String s = new String(bytes, StandardCharsets.UTF_8);
 建议重写 \`toString\` 提供有意义的描述，便于调试日志：
 
 \`\`\`java
-@Override
-public String toString() {
-    return "User{name='" + name + "', age=" + age + "}";
+@Override  // 注解：Override
+public String toString() {  // 方法 toString，返回 String，无参数
+    return "User{name='" + name + "', age=" + age + "}";  // 返回值："User{name='" + name + "', age=" + age + "}"
 }
 \`\`\`
 

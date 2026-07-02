@@ -16,8 +16,10 @@ export const chapters = [
 用 \`class\` 关键字定义类，类名通常用**大驼峰命名法**（每个单词首字母大写）：
 
 \`\`\`python
+# 用 class 关键字定义类 Dog，类名习惯首字母大写
 class Dog:
     # 类的内容
+    # pass 为占位语句，类体暂无内容时使用
     pass
 \`\`\`
 
@@ -26,7 +28,9 @@ class Dog:
 类名加括号就像函数调用一样，创建一个实例：
 
 \`\`\`python
+# 像调用函数一样创建 Dog 的实例对象 dog1
 dog1 = Dog()  # 创建了一只狗
+# 再创建一个独立的实例 dog2，两实例互不影响
 dog2 = Dog()  # 创建了另一只狗
 \`\`\`
 
@@ -38,8 +42,11 @@ dog2 = Dog()  # 创建了另一只狗
 ### 给对象添加属性
 
 \`\`\`python
+# 给实例动态添加属性 name
 dog1.name = "旺财"
+# 给实例动态添加属性 age
 dog1.age = 3
+# 给实例动态添加属性 breed
 dog1.breed = "柴犬"
 \`\`\`
 
@@ -166,15 +173,21 @@ print(f"isinstance(dog1, Cat) = {isinstance(dog1, Cat)}")
 \`__init__\` 是一个特殊方法（前后双下划线叫"魔术方法"），它在创建对象时**自动调用**，用来初始化对象的属性。
 
 \`\`\`python
+# 定义类 Dog
 class Dog:
+    # __init__ 是构造方法，self 代表实例本身，创建对象时自动调用
     def __init__(self, name, age):
+        # 把参数 name 赋值给实例属性 self.name
         self.name = name   # 创建name属性，赋值为传入的name参数
+        # 把参数 age 赋值给实例属性 self.age
         self.age = age     # 创建age属性
 \`\`\`
 
 创建对象时传入参数：
 \`\`\`python
+# 创建实例时传入参数，自动调用 __init__ 完成初始化
 dog = Dog("旺财", 3)  # 自动调用 __init__(self, "旺财", 3)
+# 通过 实例.属性 的方式访问实例属性
 print(dog.name)  # "旺财"
 \`\`\`
 
@@ -203,9 +216,13 @@ print(dog.name)  # "旺财"
 和普通函数一样，__init__ 也可以有默认值：
 
 \`\`\`python
+# 构造方法支持默认参数：age 默认 1，breed 默认 "土狗"
 def __init__(self, name, age=1, breed="土狗"):
+    # 必传参数 name 直接赋给实例属性
     self.name = name
+    # 可选参数 age 赋给实例属性
     self.age = age
+    # 可选参数 breed 赋给实例属性
     self.breed = breed
 \`\`\`
 `,
@@ -350,10 +367,14 @@ Python 类中有两种属性：
 类属性直接定义在类里面（方法外面），所有实例共享：
 
 \`\`\`python
+# 定义类 Dog
 class Dog:
+    # 直接写在类体中的是类属性，所有实例共享同一份
     species = "犬科动物"   # 类属性：所有狗都是犬科
 
+    # 实例方法，第一个参数 self 代表实例
     def __init__(self, name):
+        # self.name 是实例属性，每个实例各自独立
         self.name = name  # 实例属性：每只狗名字不同
 \`\`\`
 
@@ -374,8 +395,11 @@ class Dog:
 ### 注意！通过对象修改类属性的陷阱
 
 \`\`\`python
+# 创建实例 dog1
 dog1 = Dog("旺财")
+# 给实例赋同名属性，并不会修改类属性
 dog1.species = "猫科"  # ❌ 这不会修改类属性！
+# 而是给实例新增了同名实例属性，遮蔽了类属性
 # 而是给 dog1 新增了一个同名实例属性，遮住了类属性
 \`\`\`
 
@@ -517,7 +541,9 @@ Python 类中有三种方法：实例方法、类方法、静态方法。
 - 定义时不加装饰器
 
 \`\`\`python
+# 定义类 MyClass
 class MyClass:
+    # 普通实例方法，第一个参数 self 是实例本身
     def instance_method(self, x):
         print(self, x)
 \`\`\`
@@ -531,11 +557,16 @@ class MyClass:
 - 常用于：工厂方法、修改类属性
 
 \`\`\`python
+# 定义类 MyClass
 class MyClass:
+    # 类属性 count，所有实例共享
     count = 0
+    # classmethod 装饰器声明类方法
     @classmethod
+    # 类方法第一个参数是类本身，约定写 cls
     def class_method(cls, x):
         print(cls, x)
+        # 通过 cls 修改类属性，会影响所有实例
         cls.count += 1
 \`\`\`
 
@@ -548,9 +579,13 @@ class MyClass:
 - 适合：和类相关但不需要访问类/实例数据的工具函数
 
 \`\`\`python
+# 定义类 MyClass
 class MyClass:
+    # staticmethod 装饰器声明静态方法
     @staticmethod
+    # 静态方法不接收 self 或 cls，和普通函数类似
     def static_method(x, y):
+        # 计算并打印两数之和
         print(x + y)
 \`\`\`
 
@@ -570,13 +605,20 @@ class MyClass:
 类方法常用于提供**多种创建对象的方式**：
 
 \`\`\`python
+# 定义类 Date
 class Date:
+    # 构造方法，初始化年月日
     def __init__(self, year, month, day):
+        # 多重赋值同时设置三个实例属性
         self.year, self.month, self.day = year, month, day
 
+    # classmethod 定义替代构造器
     @classmethod
+    # from_string 从字符串解析创建 Date 对象
     def from_string(cls, s):  # 从字符串创建
+        # split('-') 拆分，map(int,...) 转整数，再解包给 y,m,d
         y, m, d = map(int, s.split('-'))
+        # 用 cls 调用构造方法返回新实例
         return cls(y, m, d)
 \`\`\`
 `,
@@ -777,9 +819,13 @@ print(f"    55分 → {Student.score_to_level(55)}")
 
 当你调用 \`dog.bark()\` 时，Python 自动做了一件事：
 \`\`\`python
+# 你写的调用方式
 # 你写的
+# 通过实例调用方法 bark
 dog.bark()
+# Python 实际执行的等价形式
 # Python 实际执行的是
+# 自动把实例 dog 作为第一个参数 self 传入
 Dog.bark(dog)  # 自动把 dog 作为第一个参数传入！
 \`\`\`
 
@@ -990,14 +1036,22 @@ print("  ⚠️ 虽然可以用其他名字，但请始终使用 self！这是Py
 ### 基本语法
 
 \`\`\`python
+# 定义父类 Animal
 class Animal:          # 父类
+    # 父类构造方法
     def __init__(self, name):
+        # 初始化 name 属性
         self.name = name
+    # 父类方法 speak
     def speak(self):
+        # 父类的通用行为
         print(f"{self.name}发出声音")
 
+# 子类 Dog 继承自 Animal
 class Dog(Animal):     # 子类继承Animal
+    # 子类重写 speak，覆盖父类行为
     def speak(self):   # 重写父类方法
+        # 子类特有的实现
         print(f"{self.name}: 汪汪！")
 \`\`\`
 
@@ -1006,9 +1060,13 @@ class Dog(Animal):     # 子类继承Animal
 在子类中用 \`super()\` 调用父类的方法，特别是 \`__init__\`：
 
 \`\`\`python
+# 子类 Dog 继承父类 Animal
 class Dog(Animal):
+    # 子类构造方法，新增 breed 参数
     def __init__(self, name, breed):
+        # super() 调用父类构造方法，初始化继承来的属性
         super().__init__(name)  # 调用父类的__init__
+        # 初始化子类特有的属性 breed
         self.breed = breed       # 子类自己的属性
 \`\`\`
 
@@ -1216,12 +1274,17 @@ Python 支持**多继承**——一个类可以同时继承多个父类。这很
 ### 多继承语法
 
 \`\`\`python
+# 定义类 A
 class A:
+    # A 的方法
     def method_a(self): print("A")
 
+# 定义类 B
 class B:
+    # B 的方法
     def method_b(self): print("B")
 
+# C 同时继承 A 和 B，即多继承
 class C(A, B):  # 同时继承A和B
     pass
 \`\`\`
@@ -1249,7 +1312,9 @@ Python 通过 **MRO（Method Resolution Order）** 解决这个问题，使用 *
 可以用 \`类名.__mro__\` 或 \`类名.mro()\` 查看顺序：
 
 \`\`\`python
+# 查看 D 的方法解析顺序 (MRO)
 print(D.__mro__)
+# MRO 决定 Python 查找方法与属性的顺序
 # 顺序决定了当调用方法时，Python按什么顺序查找
 \`\`\`
 
@@ -1625,8 +1690,11 @@ Python 没有真正的私有属性，通过**命名约定**实现：
 ### 公有属性（无下划线）
 
 \`\`\`python
+# 定义类 Dog
 class Dog:
+    # 构造方法
     def __init__(self, name):
+        # name 为公有属性，外部可直接读写
         self.name = name  # 公有，外部可以直接读/写
 \`\`\`
 
@@ -1810,32 +1878,51 @@ print("  - 配合 property（下一节）实现优雅的属性访问控制")
 ### 三种装饰器
 
 \`\`\`python
+# 定义类 Student
 class Student:
+    # 构造方法
     def __init__(self):
+        # _score 以下划线开头表示内部使用，约定不直接访问
         self._score = 0
 
+    # property 装饰器把方法变成属性读取
     @property                    # getter：读属性
+    # getter：读取 score 时调用
     def score(self):
+        # 返回内部存储的 _score
         return self._score
 
+    # setter 装饰器：设置 score 时调用
     @score.setter               # setter：写属性
+    # 设置方法定义
     def score(self, value):
+        # 校验分数范围是否合法
         if 0 <= value <= 100:
+            # 合法则存入内部属性
             self._score = value
+        # 否则
         else:
+            # 抛出异常提示
             raise ValueError("分数必须0-100")
 
+    # deleter 装饰器：删除 score 时调用
     @score.deleter              # deleter：删除属性
+    # 删除方法定义
     def score(self):
+        # 删除内部属性 _score
         del self._score
 \`\`\`
 
 ### 使用方式
 
 \`\`\`python
+# 创建 Student 实例
 s = Student()
+# 给 score 赋值，自动触发 setter 校验
 s.score = 95       # 自动调用setter
+# 读取 score，自动触发 getter
 print(s.score)     # 自动调用getter
+# 删除 score，自动触发 deleter
 del s.score        # 自动调用deleter
 \`\`\`
 
@@ -1844,8 +1931,11 @@ del s.score        # 自动调用deleter
 只写 @property 不写 @xxx.setter，这个属性就只能读不能改：
 
 \`\`\`python
+# property 把方法包装为只读属性
 @property
+# area 方法名
 def area(self):
+    # 返回圆面积 πr²
     return math.pi * self.radius ** 2
 \`\`\`
 
@@ -1854,8 +1944,11 @@ def area(self):
 属性值不是存储的，而是实时计算出来的：
 
 \`\`\`python
+# property 把方法包装为只读属性
 @property
+# full_name 由其他属性计算得到
 def full_name(self):
+    # 返回拼接的全名
     return f"{self.first_name} {self.last_name}"
 \`\`\`
 `,
@@ -2241,17 +2334,26 @@ print("  最佳实践：两个都写，至少写__repr__")
 ### 示例：自定义列表类
 
 \`\`\`python
+# 自定义列表类 MyList
 class MyList:
+    # 构造方法，保存传入数据
     def __init__(self, data):
+        # 把数据转为列表存到内部属性
         self._data = list(data)
 
+    # 实现 __len__ 使 len(实例) 可用
     def __len__(self):
+        # 返回数据长度
         return len(self._data)
 
+    # 实现 __getitem__ 支持下标访问 obj[i]
     def __getitem__(self, index):
+        # 返回指定下标的元素
         return self._data[index]
 
+    # 实现 __setitem__ 支持下标赋值 obj[i]=v
     def __setitem__(self, index, value):
+        # 设置指定下标的值
         self._data[index] = value
 \`\`\`
 
@@ -2761,13 +2863,20 @@ print("  5. __iadd__等实现就地操作（+=），返回self")
 如果类实现了 \`__call__\` 方法，那么实例可以像函数一样被调用：
 
 \`\`\`python
+# 定义类 Adder
 class Adder:
+    # 构造方法保存加数 n
     def __init__(self, n):
+        # 存到实例属性
         self.n = n
+    # 实现 __call__ 使实例可像函数一样被调用
     def __call__(self, x):
+        # 返回 n 加 x 的结果
         return self.n + x
 
+# 创建加数为 5 的实例
 add5 = Adder(5)
+# 实例加括号即调用 __call__
 print(add5(3))  # 8，对象像函数一样调用！
 \`\`\`
 
@@ -2783,16 +2892,22 @@ print(add5(3))  # 8，对象像函数一样调用！
 上下文管理器让你可以用 \`with\` 语句自动管理资源（如文件、锁、连接）：
 
 \`\`\`python
+# with 语句打开文件，自动管理资源
 with open('file.txt') as f:
+    # 读取文件全部内容
     data = f.read()
+# 离开 with 块后文件自动关闭
 # 离开with块后文件自动关闭
 \`\`\`
 
 #### with 语句的原理
 
 \`\`\`python
+# with 语句：先调用 __enter__，返回值赋给 obj
 with MyContext() as obj:  # ① 调用 __enter__，返回值给obj
+    # 执行 with 块内的代码
     ...                  # ② 执行with块里的代码
+                         # 无论是否发生异常，都会调用 __exit__
                          # ③ 无论是否异常，都调用 __exit__
 \`\`\`
 
@@ -3006,13 +3121,21 @@ print("  contextmanager装饰器: 用生成器函数简化上下文管理器")
 以前定义一个数据类要写很多重复代码：
 
 \`\`\`python
+# 定义类 Point
 class Point:
+    # 构造方法
     def __init__(self, x, y):
+        # 设置 x
         self.x = x
+        # 设置 y
         self.y = y
+    # 实现 __repr__ 定义对象的官方字符串表示
     def __repr__(self):
+        # 返回可读的表示形式
         return f"Point(x={self.x}, y={self.y})"
+    # 实现 __eq__ 定义相等比较规则
     def __eq__(self, other):
+        # 比较逻辑省略
         ...
 \`\`\`
 
@@ -3021,11 +3144,16 @@ class Point:
 ### 基本用法
 
 \`\`\`python
+# 导入 dataclass 装饰器，自动生成构造等常用方法
 from dataclasses import dataclass
 
+# @dataclass 装饰该类
 @dataclass
+# 声明字段 x 为 float 类型
 class Point:
+    # 声明字段 y 为 float 类型
     x: float
+    # 声明带默认值的字段 name
     y: float
     name: str = "原点"
 \`\`\`
@@ -3039,12 +3167,18 @@ class Point:
 ### field 高级配置
 
 \`\`\`python
+# 导入 field，用于指定复杂默认值
 from dataclasses import field
 
+# 装饰为数据类
 @dataclass
+# 数据类 Student
 class Student:
+    # 必填字段 name
     name: str
+    # 可变默认值必须用 default_factory 提供，避免实例间共享
     scores: list = field(default_factory=list)  # 可变默认值用default_factory
+    # 带默认值的字段 age
     age: int = 0
 \`\`\`
 
@@ -3245,7 +3379,9 @@ print("  ⚠️  注意：可变默认参数(list/dict)必须用 default_factory
 - Car **是** Vehicle（汽车是一种交通工具）
 
 \`\`\`python
+# 定义父类 Animal
 class Animal: ...
+# Dog 继承 Animal，体现 is-a 关系
 class Dog(Animal): ...  # Dog is a Animal
 \`\`\`
 
@@ -3257,13 +3393,20 @@ class Dog(Animal): ...  # Dog is a Animal
 - Person **有一个** Address（人有地址）
 
 \`\`\`python
+# 定义类 Engine
 class Engine:
+    # 引擎的启动方法
     def start(self): print("引擎启动")
 
+# 定义类 Car
 class Car:
+    # Car 的构造方法
     def __init__(self):
+        # 组合：Car 内部持有 Engine 实例，体现 has-a 关系
         self.engine = Engine()  # 组合：Car has an Engine
+    # Car 的启动方法
     def start(self):
+        # 把启动操作委托给内部的 engine
         self.engine.start()    # 委托给engine
 \`\`\`
 
@@ -3297,14 +3440,19 @@ GoF（《设计模式》四人帮）名言：**"优先使用组合而非继承"*
 
 **用继承**（不灵活）：
 \`\`\`python
+# 多继承可能引入不需要的行为，耦合度高
 class Duck(Animal, Flyable, Swimmable): ...  # 如果有的鸭子不会飞？
 \`\`\`
 
 **用组合**（灵活）：
 \`\`\`python
+# 定义类 Duck
 class Duck:
+    # 构造方法接收行为参数，实现策略模式
     def __init__(self, fly_behavior, swim_behavior):
+        # 把飞行行为注入并保存为属性
         self.fly = fly_behavior    # 注入飞行行为
+        # 把游泳行为注入并保存为属性
         self.swim = swim_behavior  # 注入游泳行为
 \`\`\`
 `,
@@ -3479,15 +3627,21 @@ print("  💡 经验法则：is-a用继承，has-a用组合，优先组合")
 
 **LBYL (Look Before You Leap) —— 先看再跳**
 \`\`\`python
+# hasattr 检查对象是否具有 fly 属性
 if hasattr(obj, 'fly'):
+    # 有则调用该方法
     obj.fly()
 \`\`\`
 
 **EAFP (Easier to Ask for Forgiveness than Permission) —— 请求原谅比许可容易**
 \`\`\`python
+# try 监控可能出错的调用
 try:
+    # 调用 fly 方法
     obj.fly()
+# 捕获对象没有该方法时的 AttributeError
 except AttributeError:
+    # 静默忽略
     pass
 \`\`\`
 
@@ -3641,10 +3795,15 @@ print("  实现协议方法就具有相应能力")
 默认对象用 \`__dict__\` 存属性，字典占内存。创建**大量**对象时，用 \`__slots__\` 声明固定属性可节省内存。
 
 \`\`\`python
+# 定义类 Point
 class Point:
+    # __slots__ 限定实例只能有这些属性，节省内存并防止误加属性
     __slots__ = ('x', 'y')
+    # 构造方法
     def __init__(self, x, y):
+        # 设置 x
         self.x = x
+        # 设置 y
         self.y = y
 \`\`\`
 
@@ -3660,10 +3819,15 @@ class Point:
 和函数装饰器类似，接收类返回修改后的类：
 
 \`\`\`python
+# 定义类装饰器 add_repr，接收类作为参数
 def add_repr(cls):
+    # 定义要注入的 __repr__ 方法
     def __repr__(self):
+        # 返回类的简洁表示字符串
         return f"{cls.__name__}(...)"
+    # 把方法挂到类上
     cls.__repr__ = __repr__
+    # 返回修改后的类
     return cls
 \`\`\`
 

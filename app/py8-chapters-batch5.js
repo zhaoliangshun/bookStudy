@@ -17,10 +17,10 @@ export const chapters = [
 ### def 定义函数
 
 \`\`\`python
-def 函数名(参数1, 参数2):
-    """文档字符串（可选）"""
+def 函数名(参数1, 参数2):  # 定义函数 函数名，参数：参数1, 参数2
+    """文档字符串（可选）"""  # 执行操作
     函数体
-    return 返回值
+    return 返回值  # 返回 返回值
 \`\`\`
 
 ### 形参与实参
@@ -33,8 +33,8 @@ def 函数名(参数1, 参数2):
 ### 四种参数形式
 
 \`\`\`python
-def greet(name, msg="你好"):
-    print(f"{msg}，{name}！")
+def greet(name, msg="你好"):  # 定义函数 greet，参数：name, msg="你好"
+    print(f"{msg}，{name}！")  # 打印输出到屏幕
 
 greet("小明")              # 位置参数
 greet("小红", "早上好")     # 位置参数覆盖默认值
@@ -60,8 +60,8 @@ greet(name="小刚", msg="嗨") # 关键字参数
 ### return 无值返回 None
 
 \`\`\`python
-def say():
-    print("hi")
+def say():  # 定义函数 say
+    print("hi")  # 打印输出到屏幕
 
 result = say()   # result 是 None
 print(result)     # None
@@ -79,8 +79,8 @@ Python 的函数是**一等对象**（first-class object），意味着：
 - 可以放进容器（列表、字典）
 
 \`\`\`python
-def square(x):
-    return x * x
+def square(x):  # 定义函数 square，参数：x
+    return x * x  # 返回 x * x
 
 f = square          # 赋值给变量
 print(f(5))         # 25
@@ -90,7 +90,7 @@ funcs = [square, len]  # 放进列表
 ### 文档字符串 docstring
 
 \`\`\`python
-def add(a, b):
+def add(a, b):  # 定义函数 add，参数：a, b
     """两数相加
     
     参数：
@@ -99,7 +99,7 @@ def add(a, b):
     返回：
         两数之和
     """
-    return a + b
+    return a + b  # 返回 a + b
 
 print(add.__doc__)   # 查看文档
 help(add)            # 交互式查看
@@ -110,8 +110,8 @@ help(add)            # 交互式查看
 Python 是动态类型，但可以用**类型提示**（type hints）让代码更清晰：
 
 \`\`\`python
-def multiply(x: int, y: int) -> int:
-    return x * y
+def multiply(x: int, y: int) -> int:  # 定义函数 multiply，参数：x: int, y: int
+    return x * y  # 返回 x * y
 \`\`\`
 
 类型提示**不强制**，只是给人和工具看。运行时传字符串也不会报错。
@@ -224,12 +224,12 @@ help(calc_bmi)`
 在形参前加 \`*\`，会把**多余的位置参数**收集成一个元组：
 
 \`\`\`python
-def sum_all(*args):
+def sum_all(*args):  # 定义函数 sum_all，参数：*args
     print(args)      # (1, 2, 3) 元组
-    total = 0
-    for n in args:
-        total += n
-    return total
+    total = 0  # 定义数值 total
+    for n in args:  # 遍历 args，取值给 n
+        total += n  # total 累加
+    return total  # 返回 total
 
 sum_all(1, 2, 3, 4)   # args = (1, 2, 3, 4)
 \`\`\`
@@ -241,10 +241,10 @@ sum_all(1, 2, 3, 4)   # args = (1, 2, 3, 4)
 在形参前加 \`**\`，会把**多余的关键字参数**收集成一个字典：
 
 \`\`\`python
-def show_info(**kwargs):
+def show_info(**kwargs):  # 定义函数 show_info，参数：**kwargs
     print(kwargs)    # {'name': '小明', 'age': 18}
 
-show_info(name="小明", age=18)
+show_info(name="小明", age=18)  # 调用 show_info()
 \`\`\`
 
 ## 参数解包 * 和 **
@@ -252,13 +252,13 @@ show_info(name="小明", age=18)
 调用时用 \`*\` 解包列表/元组，用 \`**\` 解包字典：
 
 \`\`\`python
-def add4(a, b, c, d):
-    return a + b + c + d
+def add4(a, b, c, d):  # 定义函数 add4，参数：a, b, c, d
+    return a + b + c + d  # 返回 a + b + c + d
 
-nums = [1, 2, 3, 4]
+nums = [1, 2, 3, 4]  # 定义列表 nums
 add4(*nums)          # 等价 add4(1, 2, 3, 4)
 
-config = {"a": 1, "b": 2, "c": 3, "d": 4}
+config = {"a": 1, "b": 2, "c": 3, "d": 4}  # 定义字典 config
 add4(**config)       # 等价 add4(a=1, b=2, c=3, d=4)
 \`\`\`
 
@@ -278,8 +278,8 @@ def func(普通, 默认=值, *args, 强制关键字, **kwargs)
 ## 强制关键字参数 *
 
 \`\`\`python
-def connect(host, port, *, timeout=10):
-    ...
+def connect(host, port, *, timeout=10):  # 定义函数 connect，参数：host, port, *, timeout=10
+    ...  # 执行操作
 
 connect("localhost", 8080, timeout=5)   # 正确
 connect("localhost", 8080, 5)            # 报错：timeout 必须用关键字
@@ -290,8 +290,8 @@ connect("localhost", 8080, 5)            # 报错：timeout 必须用关键字
 ## 仅位置参数 / (Python 3.8+)
 
 \`\`\`python
-def power(base, exp, /):
-    return base ** exp
+def power(base, exp, /):  # 定义函数 power，参数：base, exp, /
+    return base ** exp  # 返回 base ** exp
 
 power(2, 10)           # 正确
 power(base=2, exp=10)   # 报错：只能按位置传
@@ -419,8 +419,8 @@ make_request(**settings)`
     content: `## return 单值
 
 \`\`\`python
-def square(x):
-    return x * x
+def square(x):  # 定义函数 square，参数：x
+    return x * x  # 返回 x * x
 
 r = square(5)   # r = 25
 \`\`\`
@@ -432,7 +432,7 @@ r = square(5)   # r = 25
 Python 没有"多返回值"，但可以**返回元组**并自动解包：
 
 \`\`\`python
-def min_max(nums):
+def min_max(nums):  # 定义函数 min_max，参数：nums
     return min(nums), max(nums)   # 返回 (min, max) 元组
 
 mn, mx = min_max([3, 1, 4])      # 解包接收
@@ -443,10 +443,10 @@ mn, mx = min_max([3, 1, 4])      # 解包接收
 ## 无 return 返回 None
 
 \`\`\`python
-def greet(name):
-    print(f"你好，{name}")
+def greet(name):  # 定义函数 greet，参数：name
+    print(f"你好，{name}")  # 打印输出到屏幕
 
-r = greet("小明")
+r = greet("小明")  # 赋值变量 r
 print(r)   # None
 \`\`\`
 
@@ -460,10 +460,10 @@ print(r)   # None
 ## 解包接收多返回值
 
 \`\`\`python
-def stats(nums):
-    return sum(nums), len(nums), sum(nums)/len(nums)
+def stats(nums):  # 定义函数 stats，参数：nums
+    return sum(nums), len(nums), sum(nums)/len(nums)  # 返回 sum(nums), len(nums), sum(nums)/len(nums)
 
-total, count, avg = stats([1, 2, 3])
+total, count, avg = stats([1, 2, 3])  # 多重赋值：total, count, avg
 \`\`\`
 
 返回值的数量必须与接收变量一致，否则报错。
@@ -471,12 +471,12 @@ total, count, avg = stats([1, 2, 3])
 ## 提前 return
 
 \`\`\`python
-def check_age(age):
-    if age < 0:
+def check_age(age):  # 定义函数 check_age，参数：age
+    if age < 0:  # 如果 age < 0
         return "年龄不能为负"   # 提前返回，后面不执行
-    if age > 150:
-        return "年龄不真实"
-    return "年龄正常"
+    if age > 150:  # 如果 age > 150
+        return "年龄不真实"  # 返回 "年龄不真实"
+    return "年龄正常"  # 返回 "年龄正常"
 \`\`\`
 
 提前 \`return\` 常用于**参数校验**和**提前退出**，减少嵌套。
@@ -490,7 +490,7 @@ def check_age(age):
 | 调用者拿到 | 返回值 | \`None\` |
 
 \`\`\`python
-def add_return(a, b):
+def add_return(a, b):  # 定义函数 add_return，参数：a, b
     return a + b    # 返回值，可继续计算
 
 print(add_return(2, 3) * 10)   # 50
@@ -501,8 +501,8 @@ print(add_return(2, 3) * 10)   # 50
 \`yield\` 用于**生成器**，让函数"暂停"并产出一个值，下次调用从暂停处继续：
 
 \`\`\`python
-def count_up(n):
-    for i in range(1, n+1):
+def count_up(n):  # 定义函数 count_up，参数：n
+    for i in range(1, n+1):  # 遍历 range(1, n+1)，取值给 i
         yield i      # 产出 i 并暂停
 
 list(count_up(3))     # [1, 2, 3]
@@ -651,74 +651,74 @@ for k, v in p.items():
 ## Local 局部作用域
 
 \`\`\`python
-def func():
+def func():  # 定义函数 func
     x = 100       # 局部变量，函数外访问不到
-    print(x)
+    print(x)  # 打印输出到屏幕
 
-func()
+func()  # 调用 func()
 print(x)   # 报错：x 未定义
 \`\`\`
 
 ## Enclosing 嵌套作用域
 
 \`\`\`python
-def outer():
-    msg = "外层变量"
-    def inner():
+def outer():  # 定义函数 outer
+    msg = "外层变量"  # 定义字符串 msg
+    def inner():  # 定义函数 inner
         print(msg)   # 找不到局部，找外层（enclosing）
-    inner()
+    inner()  # 调用 inner()
 \`\`\`
 
 ## Global 全局作用域
 
 \`\`\`python
-g = "全局变量"
+g = "全局变量"  # 定义字符串 g
 
-def read_global():
+def read_global():  # 定义函数 read_global
     print(g)   # 函数内可以读取全局
 \`\`\`
 
 ## Built-in 内置作用域
 
 \`\`\`python
-def use_builtin():
+def use_builtin():  # 定义函数 use_builtin
     print(len([1, 2, 3]))   # len 是内置
 \`\`\`
 
 ## LEGB 查找顺序演示
 
 \`\`\`python
-x = "global x"
+x = "global x"  # 定义字符串 x
 
-def outer():
-    x = "enclosing x"
-    def inner():
-        x = "local x"
+def outer():  # 定义函数 outer
+    x = "enclosing x"  # 定义字符串 x
+    def inner():  # 定义函数 inner
+        x = "local x"  # 定义字符串 x
         print(x)   # 找到 local x
-    inner()
+    inner()  # 调用 inner()
     print(x)       # 找到 outer 的 local x
 \`\`\`
 
 ## locals() 与 globals()
 
 \`\`\`python
-def demo():
-    a = 1
-    b = 2
+def demo():  # 定义函数 demo
+    a = 1  # 定义数值 a
+    b = 2  # 定义数值 b
     print(locals())    # {'a': 1, 'b': 2}
 
-g = 10
+g = 10  # 定义数值 g
 print(globals())   # 全局变量字典
 \`\`\`
 
 ## 不可变对象在函数内修改
 
 \`\`\`python
-def try_change(n):
+def try_change(n):  # 定义函数 try_change，参数：n
     n = 999        # 重新赋值，外部不变
 
-num = 10
-try_change(num)
+num = 10  # 定义数值 num
+try_change(num)  # 调用 try_change()
 print(num)   # 还是 10
 \`\`\`
 
@@ -727,11 +727,11 @@ print(num)   # 还是 10
 ## 可变对象在函数内修改
 
 \`\`\`python
-def append_item(lst):
+def append_item(lst):  # 定义函数 append_item，参数：lst
     lst.append(99)   # 修改对象内容
 
-my_list = [1, 2, 3]
-append_item(my_list)
+my_list = [1, 2, 3]  # 定义列表 my_list
+append_item(my_list)  # 调用 append_item()
 print(my_list)   # [1, 2, 3, 99]  也变了
 \`\`\`
 
@@ -871,22 +871,22 @@ print("  带初始:", add_item(3, [0]))`
 函数内**读取**全局变量无需声明，但**修改**（重新赋值）不可变全局变量需要 \`global\`：
 
 \`\`\`python
-counter = 0
+counter = 0  # 定义数值 counter
 
-def increment():
+def increment():  # 定义函数 increment
     global counter   # 声明使用全局 counter
     counter += 1     # 修改全局变量
 
-increment()
+increment()  # 调用 increment()
 print(counter)   # 1
 \`\`\`
 
 ### 不用 global 会怎样
 
 \`\`\`python
-counter = 0
+counter = 0  # 定义数值 counter
 
-def bad():
+def bad():  # 定义函数 bad
     counter = counter + 1   # 报错 UnboundLocalError
 \`\`\`
 
@@ -897,15 +897,15 @@ Python 看到 \`counter =\` 就认为 \`counter\` 是局部变量，但还没赋
 \`nonlocal\` 用于**嵌套函数**中修改外层函数的变量：
 
 \`\`\`python
-def make_counter():
-    count = 0
-    def inc():
+def make_counter():  # 定义函数 make_counter
+    count = 0  # 定义数值 count
+    def inc():  # 定义函数 inc
         nonlocal count   # 声明使用外层 count
-        count += 1
-        return count
-    return inc
+        count += 1  # count 累加
+        return count  # 返回 count
+    return inc  # 返回 inc
 
-c = make_counter()
+c = make_counter()  # 赋值变量 c
 c()   # 1
 c()   # 2
 \`\`\`
@@ -929,12 +929,12 @@ c()   # 2
 ## 可变对象无需 global
 
 \`\`\`python
-scores = []
+scores = []  # 定义列表 scores
 
-def add_score(s):
+def add_score(s):  # 定义函数 add_score，参数：s
     scores.append(s)   # 修改内容，不需要 global
 
-add_score(90)
+add_score(90)  # 调用 add_score()
 print(scores)   # [90]
 \`\`\`
 
@@ -943,10 +943,10 @@ print(scores)   # [90]
 \`nonlocal\` 是闭包修改状态的关键：
 
 \`\`\`python
-def make_multiplier(factor):
-    def multiply(x):
+def make_multiplier(factor):  # 定义函数 make_multiplier，参数：factor
+    def multiply(x):  # 定义函数 multiply，参数：x
         return x * factor   # factor 是 enclosing 变量
-    return multiply
+    return multiply  # 返回 multiply
 \`\`\`
 
 ## 避免滥用
@@ -954,12 +954,12 @@ def make_multiplier(factor):
 \`global\` 让函数依赖外部状态，难以测试和维护。**能用类封装就用类**：
 
 \`\`\`python
-class Counter:
-    def __init__(self):
-        self.count = 0
-    def inc(self):
-        self.count += 1
-        return self.count
+class Counter:  # 定义类 Counter
+    def __init__(self):  # 定义函数 __init__，参数：self
+        self.count = 0  # 执行操作
+    def inc(self):  # 定义函数 inc，参数：self
+        self.count += 1  # 执行操作
+        return self.count  # 返回 self.count
 \`\`\`
 
 下面的 demo 演示 global 和 nonlocal 的各种用法。`,
@@ -1103,12 +1103,12 @@ level1()`
 闭包 = **函数 + 它引用的环境变量**。当一个内层函数引用了外层函数的变量，且被返回出去，就形成了闭包。
 
 \`\`\`python
-def make_adder(x):
-    def adder(y):
+def make_adder(x):  # 定义函数 make_adder，参数：x
+    def adder(y):  # 定义函数 adder，参数：y
         return x + y   # x 是自由变量，引用外层
-    return adder
+    return adder  # 返回 adder
 
-add5 = make_adder(5)
+add5 = make_adder(5)  # 赋值变量 add5
 add5(3)   # 8，x 被记住
 \`\`\`
 
@@ -1121,7 +1121,7 @@ add5(3)   # 8，x 被记住
 ## __closure__ 查看闭包
 
 \`\`\`python
-add5 = make_adder(5)
+add5 = make_adder(5)  # 赋值变量 add5
 print(add5.__closure__)              # 显示 cell 对象
 print(add5.__closure__[0].cell_contents)   # 5
 \`\`\`
@@ -1129,8 +1129,8 @@ print(add5.__closure__[0].cell_contents)   # 5
 ## 闭包陷阱：循环变量延迟绑定
 
 \`\`\`python
-funcs = []
-for i in range(3):
+funcs = []  # 定义列表 funcs
+for i in range(3):  # 遍历 range(3)，取值给 i
     funcs.append(lambda: i)   # 都引用同一个 i
 
 print([f() for f in funcs])   # [2, 2, 2] 不是 [0,1,2]！
@@ -1141,8 +1141,8 @@ print([f() for f in funcs])   # [2, 2, 2] 不是 [0,1,2]！
 ### 修复方法：用默认参数固定
 
 \`\`\`python
-funcs = []
-for i in range(3):
+funcs = []  # 定义列表 funcs
+for i in range(3):  # 遍历 range(3)，取值给 i
     funcs.append(lambda i=i: i)   # 默认参数在定义时求值
 
 print([f() for f in funcs])   # [0, 1, 2]
@@ -1153,36 +1153,36 @@ print([f() for f in funcs])   # [0, 1, 2]
 ### 计数器
 
 \`\`\`python
-def make_counter():
-    count = 0
-    def counter():
-        nonlocal count
-        count += 1
-        return count
-    return counter
+def make_counter():  # 定义函数 make_counter
+    count = 0  # 定义数值 count
+    def counter():  # 定义函数 counter
+        nonlocal count  # 声明非局部变量 count
+        count += 1  # count 累加
+        return count  # 返回 count
+    return counter  # 返回 counter
 \`\`\`
 
 ### 缓存
 
 \`\`\`python
-def memoize(fn):
-    cache = {}
-    def wrapper(n):
-        if n not in cache:
-            cache[n] = fn(n)
-        return cache[n]
-    return wrapper
+def memoize(fn):  # 定义函数 memoize，参数：fn
+    cache = {}  # 定义字典 cache
+    def wrapper(n):  # 定义函数 wrapper，参数：n
+        if n not in cache:  # 如果 n not in cache
+            cache[n] = fn(n)  # 执行操作
+        return cache[n]  # 返回 cache[n]
+    return wrapper  # 返回 wrapper
 \`\`\`
 
 ### 配置工厂
 
 \`\`\`python
-def make_greeter(greeting):
-    def greeter(name):
-        return f"{greeting}，{name}！"
-    return greeter
+def make_greeter(greeting):  # 定义函数 make_greeter，参数：greeting
+    def greeter(name):  # 定义函数 greeter，参数：name
+        return f"{greeting}，{name}！"  # 返回 f"{greeting}，{name}！"
+    return greeter  # 返回 greeter
 
-hello = make_greeter("你好")
+hello = make_greeter("你好")  # 赋值变量 hello
 \`\`\`
 
 ## 闭包 vs global 对比
@@ -1325,11 +1325,11 @@ print("  累加 5:", acc(5))`
 Python 函数是一等对象，可以**作为参数**传递：
 
 \`\`\`python
-def shout(text):
-    return text.upper()
+def shout(text):  # 定义函数 shout，参数：text
+    return text.upper()  # 返回 text.upper()
 
 def greet(func):           # 接收函数作为参数
-    return func("Hello")
+    return func("Hello")  # 返回 func("Hello")
 
 greet(shout)               # HELLO
 \`\`\`
@@ -1337,18 +1337,18 @@ greet(shout)               # HELLO
 ## 函数返回函数
 
 \`\`\`python
-def make_bold(func):
-    def wrapper():
-        return "<b>" + func() + "</b>"
+def make_bold(func):  # 定义函数 make_bold，参数：func
+    def wrapper():  # 定义函数 wrapper
+        return "<b>" + func() + "</b>"  # 返回 "<b>" + func() + "</b>"
     return wrapper         # 返回内部函数
 \`\`\`
 
 ## 装饰器 @ 语法糖
 
 \`\`\`python
-@make_bold
-def hello():
-    return "hello"
+@make_bold  # 应用装饰器 make_bold
+def hello():  # 定义函数 hello
+    return "hello"  # 返回 "hello"
 
 # 等价于：hello = make_bold(hello)
 hello()   # <b>hello</b>
@@ -1367,17 +1367,17 @@ hello()   # <b>hello</b>
 ## 简单日志装饰器
 
 \`\`\`python
-def log(func):
-    def wrapper(*args, **kwargs):
-        print(f"调用 {func.__name__}")
-        result = func(*args, **kwargs)
-        print(f"返回 {result}")
-        return result
-    return wrapper
+def log(func):  # 定义函数 log，参数：func
+    def wrapper(*args, **kwargs):  # 定义函数 wrapper，参数：*args, **kwargs
+        print(f"调用 {func.__name__}")  # 打印输出到屏幕
+        result = func(*args, **kwargs)  # 赋值变量 result
+        print(f"返回 {result}")  # 打印输出到屏幕
+        return result  # 返回 result
+    return wrapper  # 返回 wrapper
 
-@log
-def add(a, b):
-    return a + b
+@log  # 应用装饰器 log
+def add(a, b):  # 定义函数 add，参数：a, b
+    return a + b  # 返回 a + b
 \`\`\`
 
 \`wrapper(*args, **kwargs)\` 让装饰器能接受任意参数。
@@ -1385,15 +1385,15 @@ def add(a, b):
 ## 计时装饰器
 
 \`\`\`python
-import time
+import time  # 导入模块 time
 
-def timer(func):
-    def wrapper(*args, **kwargs):
-        start = time.time()
-        result = func(*args, **kwargs)
-        print(f"耗时 {time.time()-start:.6f}s")
-        return result
-    return wrapper
+def timer(func):  # 定义函数 timer，参数：func
+    def wrapper(*args, **kwargs):  # 定义函数 wrapper，参数：*args, **kwargs
+        start = time.time()  # 赋值变量 start
+        result = func(*args, **kwargs)  # 赋值变量 result
+        print(f"耗时 {time.time()-start:.6f}s")  # 打印输出到屏幕
+        return result  # 返回 result
+    return wrapper  # 返回 wrapper
 \`\`\`
 
 ## functools.wraps 保留元信息
@@ -1401,13 +1401,13 @@ def timer(func):
 装饰后函数的 \`__name__\`、\`__doc__\` 会变成 \`wrapper\` 的。用 \`functools.wraps\` 修复：
 
 \`\`\`python
-from functools import wraps
+from functools import wraps  # 从 functools 导入 wraps
 
-def log(func):
+def log(func):  # 定义函数 log，参数：func
     @wraps(func)            # 保留原函数元信息
-    def wrapper(*args, **kwargs):
-        return func(*args, **kwargs)
-    return wrapper
+    def wrapper(*args, **kwargs):  # 定义函数 wrapper，参数：*args, **kwargs
+        return func(*args, **kwargs)  # 返回 func(*args, **kwargs)
+    return wrapper  # 返回 wrapper
 \`\`\`
 
 | 不用 wraps | 用 wraps |
@@ -1418,10 +1418,10 @@ def log(func):
 ## 多个装饰器叠加
 
 \`\`\`python
-@decor_a
-@decor_b
-def speak():
-    pass
+@decor_a  # 应用装饰器 decor_a
+@decor_b  # 应用装饰器 decor_b
+def speak():  # 定义函数 speak
+    pass  # 空操作，占位符
 
 # 等价于：speak = decor_a(decor_b(speak))
 \`\`\`
@@ -1600,14 +1600,14 @@ print("  ", introduce("小红", 18, city="上海"))`
 def repeat(n):              # 第1层：接收参数
     def decorator(func):     # 第2层：接收函数
         def wrapper(*args):  # 第3层：接收调用参数
-            for _ in range(n):
-                func(*args)
-        return wrapper
-    return decorator
+            for _ in range(n):  # 遍历 range(n)，取值给 _
+                func(*args)  # 调用 func()
+        return wrapper  # 返回 wrapper
+    return decorator  # 返回 decorator
 
-@repeat(3)
-def say(msg):
-    print(msg)
+@repeat(3)  # 应用装饰器 repeat
+def say(msg):  # 定义函数 say，参数：msg
+    print(msg)  # 打印输出到屏幕
 \`\`\`
 
 \`@repeat(3)\` 先调用 \`repeat(3)\` 得到真正的装饰器，再装饰 \`say\`。
@@ -1617,13 +1617,13 @@ def say(msg):
 类实现 \`__call__\` 方法就能像函数一样调用，可以做装饰器：
 
 \`\`\`python
-class CountCalls:
-    def __init__(self, func):
-        self.func = func
-        self.count = 0
-    def __call__(self, *args, **kwargs):
-        self.count += 1
-        return self.func(*args, **kwargs)
+class CountCalls:  # 定义类 CountCalls
+    def __init__(self, func):  # 定义函数 __init__，参数：self, func
+        self.func = func  # 执行操作
+        self.count = 0  # 执行操作
+    def __call__(self, *args, **kwargs):  # 定义函数 __call__，参数：self, *args, **kwargs
+        self.count += 1  # 执行操作
+        return self.func(*args, **kwargs)  # 返回 self.func(*args, **kwargs)
 \`\`\`
 
 类装饰器适合**需要维护状态**的场景。
@@ -1631,10 +1631,10 @@ class CountCalls:
 ## 装饰类方法
 
 \`\`\`python
-class Calculator:
-    @log_method
-    def add(self, a, b):
-        return a + b
+class Calculator:  # 定义类 Calculator
+    @log_method  # 应用装饰器 log_method
+    def add(self, a, b):  # 定义函数 add，参数：self, a, b
+        return a + b  # 返回 a + b
 \`\`\`
 
 注意 wrapper 的第一个参数是 \`self\`。
@@ -1644,13 +1644,13 @@ class Calculator:
 \`lru_cache\` 自动缓存函数结果，相同参数不重复计算：
 
 \`\`\`python
-from functools import lru_cache
+from functools import lru_cache  # 从 functools 导入 lru_cache
 
-@lru_cache(maxsize=128)
-def fib(n):
-    if n < 2:
-        return n
-    return fib(n-1) + fib(n-2)
+@lru_cache(maxsize=128)  # 应用装饰器 lru_cache
+def fib(n):  # 定义函数 fib，参数：n
+    if n < 2:  # 如果 n < 2
+        return n  # 返回 n
+    return fib(n-1) + fib(n-2)  # 返回 fib(n-1) + fib(n-2)
 
 fib(100)   # 飞快，因为有缓存
 \`\`\`
@@ -1665,10 +1665,10 @@ fib(100)   # 飞快，因为有缓存
 固定部分参数，生成新函数：
 
 \`\`\`python
-from functools import partial
+from functools import partial  # 从 functools 导入 partial
 
-def power(base, exp):
-    return base ** exp
+def power(base, exp):  # 定义函数 power，参数：base, exp
+    return base ** exp  # 返回 base ** exp
 
 square = partial(power, exp=2)   # 固定 exp=2
 square(5)   # 25
@@ -1683,31 +1683,31 @@ square(5)   # 25
 ### 重试装饰器
 
 \`\`\`python
-def retry(times=3):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            for i in range(times):
-                try:
-                    return func(*args, **kwargs)
-                except Exception:
-                    pass
-        return wrapper
-    return decorator
+def retry(times=3):  # 定义函数 retry，参数：times=3
+    def decorator(func):  # 定义函数 decorator，参数：func
+        @wraps(func)  # 应用装饰器 wraps
+        def wrapper(*args, **kwargs):  # 定义函数 wrapper，参数：*args, **kwargs
+            for i in range(times):  # 遍历 range(times)，取值给 i
+                try:  # 尝试执行可能出错的代码
+                    return func(*args, **kwargs)  # 返回 func(*args, **kwargs)
+                except Exception:  # 捕获异常 Exception:
+                    pass  # 空操作，占位符
+        return wrapper  # 返回 wrapper
+    return decorator  # 返回 decorator
 \`\`\`
 
 ### 权限检查
 
 \`\`\`python
-def require_role(role):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(user, *args, **kwargs):
-            if user.get("role") != role:
-                raise PermissionError
-            return func(user, *args, **kwargs)
-        return wrapper
-    return decorator
+def require_role(role):  # 定义函数 require_role，参数：role
+    def decorator(func):  # 定义函数 decorator，参数：func
+        @wraps(func)  # 应用装饰器 wraps
+        def wrapper(user, *args, **kwargs):  # 定义函数 wrapper，参数：user, *args, **kwargs
+            if user.get("role") != role:  # 如果 user.get("role") != role
+                raise PermissionError  # 抛出异常：PermissionError
+            return func(user, *args, **kwargs)  # 返回 func(user, *args, **kwargs)
+        return wrapper  # 返回 wrapper
+    return decorator  # 返回 decorator
 \`\`\`
 
 下面的 demo 演示所有进阶用法。`,
@@ -1901,20 +1901,20 @@ except PermissionError as e:
 2. **递归调用**：向终止条件靠近
 
 \`\`\`python
-def countdown(n):
+def countdown(n):  # 定义函数 countdown，参数：n
     if n <= 0:           # 终止条件
-        print("发射！")
-        return
-    print(n)
+        print("发射！")  # 打印输出到屏幕
+        return  # 返回 None
+    print(n)  # 打印输出到屏幕
     countdown(n - 1)     # 递归调用
 \`\`\`
 
 ## 阶乘
 
 \`\`\`python
-def factorial(n):
+def factorial(n):  # 定义函数 factorial，参数：n
     if n <= 1:            # 终止：1! = 1
-        return 1
+        return 1  # 返回 1
     return n * factorial(n - 1)   # n! = n * (n-1)!
 
 factorial(5)   # 120
@@ -1923,10 +1923,10 @@ factorial(5)   # 120
 ## 斐波那契
 
 \`\`\`python
-def fib(n):
+def fib(n):  # 定义函数 fib，参数：n
     if n < 2:             # 终止
-        return n
-    return fib(n-1) + fib(n-2)
+        return n  # 返回 n
+    return fib(n-1) + fib(n-2)  # 返回 fib(n-1) + fib(n-2)
 \`\`\`
 
 ## 递归深度限制
@@ -1934,7 +1934,7 @@ def fib(n):
 Python 默认递归深度 **1000**，超过会报 \`RecursionError\`：
 
 \`\`\`python
-import sys
+import sys  # 导入模块 sys
 print(sys.getrecursionlimit())   # 1000
 sys.setrecursionlimit(2000)      # 可调高（谨慎）
 \`\`\`
@@ -1951,7 +1951,7 @@ sys.setrecursionlimit(2000)      # 可调高（谨慎）
 ## lambda 匿名函数
 
 \`\`\`python
-lambda 参数: 表达式
+lambda 参数: 表达式  # 执行操作
 \`\`\`
 
 - **匿名**：不需要 \`def\` 起名
@@ -1959,32 +1959,32 @@ lambda 参数: 表达式
 - **返回值**：表达式的结果
 
 \`\`\`python
-square = lambda x: x * x
+square = lambda x: x * x  # 定义 lambda 函数，赋给 square
 square(5)   # 25
 
 # 等价于
-def square(x):
-    return x * x
+def square(x):  # 定义函数 square，参数：x
+    return x * x  # 返回 x * x
 \`\`\`
 
 ## lambda 与 map
 
 \`\`\`python
-nums = [1, 2, 3]
+nums = [1, 2, 3]  # 定义列表 nums
 squared = list(map(lambda x: x*x, nums))   # [1, 4, 9]
 \`\`\`
 
 ## lambda 与 filter
 
 \`\`\`python
-nums = [1, 2, 3, 4]
+nums = [1, 2, 3, 4]  # 定义列表 nums
 evens = list(filter(lambda x: x%2==0, nums))   # [2, 4]
 \`\`\`
 
 ## lambda 与 sorted key
 
 \`\`\`python
-students = [("小明", 90), ("小红", 85)]
+students = [("小明", 90), ("小红", 85)]  # 定义列表 students
 sorted(students, key=lambda s: s[1])   # 按分数排序
 \`\`\`
 
@@ -1994,7 +1994,7 @@ sorted(students, key=lambda s: s[1])   # 按分数排序
 
 \`\`\`python
 # 合法
-f = lambda x: x + 1
+f = lambda x: x + 1  # 定义 lambda 函数，赋给 f
 
 # 非法（多语句）
 # f = lambda x: x += 1; return x
@@ -2154,8 +2154,8 @@ print("  固定结果:", [f() for f in funcs])`
 \`map\` 把函数应用到**每个元素**，返回新迭代器：
 
 \`\`\`python
-nums = [1, 2, 3]
-squared = list(map(lambda x: x*x, nums))
+nums = [1, 2, 3]  # 定义列表 nums
+squared = list(map(lambda x: x*x, nums))  # 赋值变量 squared
 # [1, 4, 9]
 \`\`\`
 
@@ -2164,7 +2164,7 @@ squared = list(map(lambda x: x*x, nums))
 ### map 多个序列
 
 \`\`\`python
-list(map(lambda a, b: a+b, [1,2,3], [10,20,30]))
+list(map(lambda a, b: a+b, [1,2,3], [10,20,30]))  # 转为列表
 # [11, 22, 33]
 \`\`\`
 
@@ -2173,8 +2173,8 @@ list(map(lambda a, b: a+b, [1,2,3], [10,20,30]))
 \`filter\` 保留**返回 True** 的元素：
 
 \`\`\`python
-nums = [1, 2, 3, 4]
-evens = list(filter(lambda x: x%2==0, nums))
+nums = [1, 2, 3, 4]  # 定义列表 nums
+evens = list(filter(lambda x: x%2==0, nums))  # 赋值变量 evens
 # [2, 4]
 \`\`\`
 
@@ -2183,9 +2183,9 @@ evens = list(filter(lambda x: x%2==0, nums))
 \`reduce\` 把列表**逐步合并**成一个值，在 \`functools\` 模块：
 
 \`\`\`python
-from functools import reduce
+from functools import reduce  # 从 functools 导入 reduce
 
-reduce(lambda a, b: a + b, [1, 2, 3, 4])
+reduce(lambda a, b: a + b, [1, 2, 3, 4])  # 调用 reduce()
 # ((1+2)+3)+4 = 10
 \`\`\`
 
@@ -2200,9 +2200,9 @@ reduce(lambda a, b: a + b, [1, 2, 3, 4])
 \`map\` / \`filter\` / \`reduce\` 常配合 \`lambda\` 写简洁代码：
 
 \`\`\`python
-nums = [1, 2, 3, 4, 5]
-sum_of_squares = reduce(lambda a, b: a + b,
-                        map(lambda x: x*x, nums))
+nums = [1, 2, 3, 4, 5]  # 定义列表 nums
+sum_of_squares = reduce(lambda a, b: a + b,  # 赋值变量 sum_of_squares
+                        map(lambda x: x*x, nums))  # 映射
 # 55
 \`\`\`
 
@@ -2212,10 +2212,10 @@ sum_of_squares = reduce(lambda a, b: a + b,
 
 \`\`\`python
 # map + filter
-list(map(lambda x: x*x, filter(lambda x: x%2==0, nums)))
+list(map(lambda x: x*x, filter(lambda x: x%2==0, nums)))  # 转为列表
 
 # 推导式（推荐）
-[x*x for x in nums if x%2==0]
+[x*x for x in nums if x%2==0]  # 列表推导式
 \`\`\`
 
 | 写法 | 可读性 | 性能 |
@@ -2243,7 +2243,7 @@ sorted(students, key=lambda s: s[1])    # 按某字段
 \`operator\` 提供运算符的函数形式，可替代 lambda：
 
 \`\`\`python
-import operator
+import operator  # 导入模块 operator
 list(map(operator.add, [1,2], [3,4]))   # [4, 6]
 operator.itemgetter(1)(("a", 100))      # 100
 \`\`\`

@@ -358,7 +358,7 @@ for i in range(5):
 \`\`\`python
 @auto_repr                  # 等价于 Point = auto_repr(Point)
 class Point:
-    def __init__(self, x, y): self.x, self.y = x, y
+    def __init__(self, x, y): self.x, self.y = x, y   # 实例属性 x、y
 \`\`\`
 
 类装饰器与函数装饰器的区别在于"被装饰对象"不同：
@@ -379,14 +379,14 @@ class Point:
 类装饰器也可以用 **类本身** 来实现：定义一个类，在 \`__init__(self, cls)\` 里接收被装饰类，在 \`__call__(self, *args, **kwargs)\` 里控制实例化过程。这样能用实例属性保存状态（如缓存、注册表）。
 
 \`\`\`python
-class Singleton:
+class Singleton:                       # 类装饰器：实现单例模式
     def __init__(self, cls):
-        self.cls = cls
-        self.instance = None
-    def __call__(self, *args, **kwargs):
+        self.cls = cls                 # 保存被装饰的类
+        self.instance = None           # 缓存唯一实例
+    def __call__(self, *args, **kwargs):   # Config() 实际触发 __call__
         if self.instance is None:
-            self.instance = self.cls(*args, **kwargs)
-        return self.instance
+            self.instance = self.cls(*args, **kwargs)   # 首次：创建实例
+        return self.instance           # 后续：返回缓存的同一实例
 
 @Singleton              # Config = Singleton(Config)；Config() 实际调用 Singleton.__call__
 class Config: ...
@@ -725,33 +725,33 @@ class Circle:
 \`\`\`python
 class Temperature:
     @property
-    def celsius(self):
+    def celsius(self):          # 读：返回内部 _c
         return self._c
     @celsius.setter
-    def celsius(self, value):
+    def celsius(self, value):   # 写：进入校验
         if value < -273.15:
-            raise ValueError("低于绝对零度")
+            raise ValueError("低于绝对零度")   # 物理上不可能，校验拦截
         self._c = value
 \`\`\`
 
 ## 七、@singledispatch 按类型分发
 
 \`\`\`python
-@functools.singledispatch
+@functools.singledispatch        # 按第一参数类型分发的泛型函数
 def serialize(obj):
-    raise TypeError(f"不支持的类型: {type(obj)}")
+    raise TypeError(f"不支持的类型: {type(obj)}")   # 默认实现：未注册类型报错
 
-@serialize.register(int)
+@serialize.register(int)         # 注册 int 类型的专用实现
 def _(obj):
-    return str(obj)
+    return str(obj)              # int → 字符串
 
-@serialize.register(list)
+@serialize.register(list)        # 注册 list 类型
 def _(obj):
-    return "[" + ",".join(serialize(x) for x in obj) + "]"
+    return "[" + ",".join(serialize(x) for x in obj) + "]"   # 递归序列化每个元素
 
-@serialize.register(dict)
+@serialize.register(dict)        # 注册 dict 类型
 def _(obj):
-    return "{" + ",".join(f'"{k}":{serialize(v)}' for k, v in obj.items()) + "}"
+    return "{" + ",".join(f'"{k}":{serialize(v)}' for k, v in obj.items()) + "}"   # 递归序列化每个值
 \`\`\`
 
 新增类型只需 \`@serialize.register(类型)\`，无需修改原函数，符合"开放—封闭原则"。

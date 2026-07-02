@@ -201,10 +201,10 @@ ClassLoader cl = String.class.getClassLoader(); // null（Bootstrap）
 继承 \`ClassLoader\`，重写 \`findClass\`：
 
 \`\`\`java
-class MyClassLoader extends ClassLoader {
-    protected Class<?> findClass(String name) throws ClassNotFoundException {
-        byte[] data = loadClassData(name);
-        return defineClass(name, data, 0, data.length);
+class MyClassLoader extends ClassLoader {  // 定义类 MyClassLoader
+    protected Class<?> findClass(String name) throws ClassNotFoundException {  // 方法 findClass，返回 Class<?>，参数：String name
+        byte[] data = loadClassData(name);  // 声明变量 data（byte[]），初始值为 loadClassData(name)
+        return defineClass(name, data, 0, data.length);  // 方法 defineClass，返回 return，参数：name, data, 0, data.length
     }
 }
 \`\`\`
@@ -509,8 +509,8 @@ GC Roots
 | 虚引用（Phantom） | 随时可回收，仅跟踪回收 | 跟踪对象销毁 |
 
 \`\`\`java
-SoftReference<byte[]> cache = new SoftReference<>(new byte[1024]);
-WeakReference<Object> weak = new WeakReference<>(new Object());
+SoftReference<byte[]> cache = new SoftReference<>(new byte[1024]);  // 声明变量 cache（SoftReference<byte[]>），初始值为 new SoftReference<>(new byte[1024])
+WeakReference<Object> weak = new WeakReference<>(new Object());  // 声明变量 weak（WeakReference<Object>），初始值为 new WeakReference<>(new Object())
 \`\`\`
 
 ## GC 算法
@@ -988,7 +988,7 @@ JDK 自带丰富的诊断工具，配合可视化工具（JConsole、VisualVM、
 列出运行中的 Java 进程及其主类与参数：
 
 \`\`\`bash
-jps -lvm
+jps -lvm  # 列出运行中的 Java 进程
 # 12345 com.example.Main -Xmx2g
 \`\`\`
 
@@ -1018,7 +1018,7 @@ jmap -dump:format=b,file=heap.hprof <pid>  # 导出堆 dump
 线程栈快照，排查死锁、阻塞：
 
 \`\`\`bash
-jstack <pid>
+jstack <pid>  # 打印线程栈信息
 jstack -l <pid>   # 包含锁信息
 \`\`\`
 
@@ -1033,8 +1033,8 @@ jcmd <pid> VM.flags           # 查看 JVM 参数
 jcmd <pid> Thread.print       # 等价 jstack
 jcmd <pid> GC.heap_info       # 堆信息
 jcmd <pid> GC.class_histogram # 对象统计
-jcmd <pid> GC.heap_dump dump.hprof
-jcmd <pid> VM.system_properties
+jcmd <pid> GC.heap_dump dump.hprof  # 向 JVM 发送诊断命令
+jcmd <pid> VM.system_properties  # 向 JVM 发送诊断命令
 \`\`\`
 
 ## 可视化工具
@@ -1210,8 +1210,8 @@ Java 网络编程核心位于 \`java.net\` 包，提供 IP 地址、URL、Socket
 表示 IP 地址，封装主机名与 IP：
 
 \`\`\`java
-InetAddress addr = InetAddress.getByName("www.example.com");
-String ip = addr.getHostAddress();
+InetAddress addr = InetAddress.getByName("www.example.com");  // 声明变量 addr（InetAddress），初始值为 InetAddress.getByName("www.example.com")
+String ip = addr.getHostAddress();  // 声明变量 ip（String），初始值为 addr.getHostAddress()
 \`\`\`
 
 - \`InetAddress.getByName(host)\`：根据主机名查找
@@ -1226,12 +1226,12 @@ String ip = addr.getHostAddress();
 - **URL**：统一资源定位符，URI 子集，包含访问协议
 
 \`\`\`java
-URL url = new URL("https://example.com/path?q=1");
+URL url = new URL("https://example.com/path?q=1");  // 声明变量 url（URL），初始值为 new URL("https://example.com/path?q=1")
 String protocol = url.getProtocol(); // https
-String host = url.getHost();
+String host = url.getHost();  // 声明变量 host（String），初始值为 url.getHost()
 int port = url.getPort();           // -1 表示默认端口
-String path = url.getPath();
-String query = url.getQuery();
+String path = url.getPath();  // 声明变量 path（String），初始值为 url.getPath()
+String query = url.getQuery();  // 声明变量 query（String），初始值为 url.getQuery()
 \`\`\`
 
 ## URLConnection
@@ -1239,10 +1239,10 @@ String query = url.getQuery();
 URL 的通用连接抽象，支持 HTTP、FTP 等：
 
 \`\`\`java
-URLConnection conn = url.openConnection();
-conn.setConnectTimeout(5000);
-conn.setReadTimeout(10000);
-InputStream in = conn.getInputStream();
+URLConnection conn = url.openConnection();  // 声明变量 conn（URLConnection），初始值为 url.openConnection()
+conn.setConnectTimeout(5000);  // 调用 conn 的 setConnectTimeout 方法
+conn.setReadTimeout(10000);  // 调用 conn 的 setReadTimeout 方法
+InputStream in = conn.getInputStream();  // 声明变量 in（InputStream），初始值为 conn.getInputStream()
 \`\`\`
 
 \`HttpURLConnection\` 是 HTTP 专用子类，支持方法、Header、状态码。
@@ -1263,20 +1263,20 @@ ServerSocket(8080)              Socket(host, 8080)
 服务器端：
 
 \`\`\`java
-try (ServerSocket server = new ServerSocket(8080);
+try (ServerSocket server = new ServerSocket(8080);  // 调用方法 try
      Socket client = server.accept()) {
     BufferedReader in = new BufferedReader(
-        new InputStreamReader(client.getInputStream()));
-    String line = in.readLine();
+        new InputStreamReader(client.getInputStream()));  // 调用 new InputStreamReader(client 的 getInputStream 方法
+    String line = in.readLine();  // 声明变量 line（String），初始值为 in.readLine()
 }
 \`\`\`
 
 客户端：
 
 \`\`\`java
-try (Socket socket = new Socket("localhost", 8080)) {
-    PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-    out.println("Hello");
+try (Socket socket = new Socket("localhost", 8080)) {  // try-with-resources：声明资源 Socket socket = new Socket("localhost", 8080)，结束自动关闭
+    PrintWriter out = new PrintWriter(socket.getOutputStream(), true);  // 声明变量 out（PrintWriter），初始值为 new PrintWriter(socket.getOutputStream(), true)
+    out.println("Hello");  // 调用 out 的 println 方法
 }
 \`\`\`
 
@@ -1285,11 +1285,11 @@ try (Socket socket = new Socket("localhost", 8080)) {
 使用 \`DatagramSocket\` 与 \`DatagramPacket\`：
 
 \`\`\`java
-DatagramSocket socket = new DatagramSocket();
-byte[] data = "Hello".getBytes();
+DatagramSocket socket = new DatagramSocket();  // 声明变量 socket（DatagramSocket），初始值为 new DatagramSocket()
+byte[] data = "Hello".getBytes();  // 声明变量 data（byte[]），初始值为 "Hello".getBytes()
 DatagramPacket packet = new DatagramPacket(data, data.length,
-    InetAddress.getByName("localhost"), 9090);
-socket.send(packet);
+    InetAddress.getByName("localhost"), 9090);  // 调用 InetAddress 的 getByName 方法
+socket.send(packet);  // 调用 socket 的 send 方法
 \`\`\`
 
 ## 多客户端服务器
@@ -1297,10 +1297,10 @@ socket.send(packet);
 为每个连接创建线程或使用线程池：
 
 \`\`\`java
-ExecutorService pool = Executors.newFixedThreadPool(10);
-while (true) {
-    Socket client = server.accept();
-    pool.submit(() -> handle(client));
+ExecutorService pool = Executors.newFixedThreadPool(10);  // 声明变量 pool（ExecutorService），初始值为 Executors.newFixedThreadPool(10)
+while (true) {  // while 循环：当 true 为真时重复执行
+    Socket client = server.accept();  // 声明变量 client（Socket），初始值为 server.accept()
+    pool.submit(() -> handle(client));  // Lambda 表达式：实现函数式接口
 }
 \`\`\`
 
@@ -1471,9 +1471,9 @@ BodyPublisher 提供请求体：
 响应封装，包含状态码、Header、Body：
 
 \`\`\`java
-HttpResponse<String> resp = client.send(req, BodyHandlers.ofString());
-int status = resp.statusCode();
-String body = resp.body();
+HttpResponse<String> resp = client.send(req, BodyHandlers.ofString());  // 声明变量 resp（HttpResponse<String>），初始值为 client.send(req, BodyHandlers.ofString())
+int status = resp.statusCode();  // 声明变量 status（int），初始值为 resp.statusCode()
+String body = resp.body();  // 声明变量 body（String），初始值为 resp.body()
 \`\`\`
 
 BodyHandler 决定如何处理响应体：
@@ -1488,7 +1488,7 @@ BodyHandler 决定如何处理响应体：
 \`send\` 阻塞直到响应返回：
 
 \`\`\`java
-HttpResponse<String> resp = client.send(req, BodyHandlers.ofString());
+HttpResponse<String> resp = client.send(req, BodyHandlers.ofString());  // 声明变量 resp（HttpResponse<String>），初始值为 client.send(req, BodyHandlers.ofString())
 \`\`\`
 
 ## 异步请求
@@ -1497,8 +1497,8 @@ HttpResponse<String> resp = client.send(req, BodyHandlers.ofString());
 
 \`\`\`java
 client.sendAsync(req, BodyHandlers.ofString())
-      .thenApply(HttpResponse::body)
-      .thenAccept(System.out::println);
+      .thenApply(HttpResponse::body)  // 方法引用：复用已有方法作为函数式接口实例
+      .thenAccept(System.out::println);  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 可链式组合多个异步请求，提升吞吐。
@@ -1508,14 +1508,14 @@ client.sendAsync(req, BodyHandlers.ofString())
 \`\`\`java
 HttpRequest req = HttpRequest.newBuilder()
     .uri(URI.create("https://httpbin.org/get"))
-    .GET().build();
-HttpResponse<String> resp = client.send(req, BodyHandlers.ofString());
+    .GET().build();  // 调用 .GET() 的 build 方法
+HttpResponse<String> resp = client.send(req, BodyHandlers.ofString());  // 声明变量 resp（HttpResponse<String>），初始值为 client.send(req, BodyHandlers.ofString())
 \`\`\`
 
 ## 示例：POST JSON
 
 \`\`\`java
-String json = "{\\"name\\":\\"Tom\\"}";
+String json = "{\\"name\\":\\"Tom\\"}";  // 声明变量 json（String），初始值为 "{\\"name\\":\\"Tom\\"}"
 HttpRequest req = HttpRequest.newBuilder()
     .uri(URI.create("https://httpbin.org/post"))
     .header("Content-Type", "application/json")
@@ -1668,26 +1668,26 @@ JDBC（Java Database Connectivity）是 Java 访问关系数据库的标准 API�
 
 \`\`\`java
 // 1. 加载驱动（JDBC 4.0+ 自动加载，可省略）
-Class.forName("com.mysql.cj.jdbc.Driver");
+Class.forName("com.mysql.cj.jdbc.Driver");  // 调用 Class 的 forName 方法
 
 // 2. 获取连接
 Connection conn = DriverManager.getConnection(
     "jdbc:mysql://localhost:3306/db?useSSL=false", "user", "pwd");
 
 // 3. 创建 Statement
-Statement stmt = conn.createStatement();
+Statement stmt = conn.createStatement();  // 声明变量 stmt（Statement），初始值为 conn.createStatement()
 
 // 4. 执行 SQL
-ResultSet rs = stmt.executeQuery("SELECT * FROM users");
+ResultSet rs = stmt.executeQuery("SELECT * FROM users");  // 声明变量 rs（ResultSet），初始值为 stmt.executeQuery("SELECT * FROM users")
 
 // 5. 处理结果
-while (rs.next()) {
-    int id = rs.getInt("id");
-    String name = rs.getString("name");
+while (rs.next()) {  // while 循环：当 rs.next() 为真时重复执行
+    int id = rs.getInt("id");  // 声明变量 id（int），初始值为 rs.getInt("id")
+    String name = rs.getString("name");  // 声明变量 name（String），初始值为 rs.getString("name")
 }
 
 // 6. 释放资源
-rs.close(); stmt.close(); conn.close();
+rs.close(); stmt.close(); conn.close();  // 调用 rs 的 close 方法
 \`\`\`
 
 ## URL 格式
@@ -1707,8 +1707,8 @@ jdbc:<驱动>:<子协议>//<host>:<port>/<database>?<参数>
 ### 查询（Read）
 
 \`\`\`java
-Statement stmt = conn.createStatement();
-ResultSet rs = stmt.executeQuery("SELECT * FROM users");
+Statement stmt = conn.createStatement();  // 声明变量 stmt（Statement），初始值为 conn.createStatement()
+ResultSet rs = stmt.executeQuery("SELECT * FROM users");  // 声明变量 rs（ResultSet），初始值为 stmt.executeQuery("SELECT * FROM users")
 \`\`\`
 
 ### 插入（Create）
@@ -1723,8 +1723,8 @@ int rows = stmt.executeUpdate(
 ### 更新与删除
 
 \`\`\`java
-stmt.executeUpdate("UPDATE users SET age=20 WHERE id=1");
-stmt.executeUpdate("DELETE FROM users WHERE id=1");
+stmt.executeUpdate("UPDATE users SET age=20 WHERE id=1");  // 调用 stmt 的 executeUpdate 方法
+stmt.executeUpdate("DELETE FROM users WHERE id=1");  // 调用 stmt 的 executeUpdate 方法
 \`\`\`
 
 ## PreparedStatement（推荐）
@@ -1735,15 +1735,15 @@ stmt.executeUpdate("DELETE FROM users WHERE id=1");
 PreparedStatement ps = conn.prepareStatement(
     "SELECT * FROM users WHERE name = ? AND age > ?");
 ps.setString(1, name);   // 索引从 1 开始
-ps.setInt(2, 18);
-ResultSet rs = ps.executeQuery();
+ps.setInt(2, 18);  // 调用 ps 的 setInt 方法
+ResultSet rs = ps.executeQuery();  // 声明变量 rs（ResultSet），初始值为 ps.executeQuery()
 \`\`\`
 
 **永远不要用字符串拼接 SQL**——会导致注入漏洞：
 
 \`\`\`java
 // 危险！SQL 注入
-String sql = "SELECT * FROM users WHERE name='" + userInput + "'";
+String sql = "SELECT * FROM users WHERE name='" + userInput + "'";  // 声明变量 sql（String），初始值为 "SELECT * FROM users WHERE name='" + userInput + "'"
 \`\`\`
 
 ## 事务管理
@@ -1751,14 +1751,14 @@ String sql = "SELECT * FROM users WHERE name='" + userInput + "'";
 默认自动提交。手动事务：
 
 \`\`\`java
-conn.setAutoCommit(false);
-try {
+conn.setAutoCommit(false);  // 调用 conn 的 setAutoCommit 方法
+try {  // try 块：包裹可能抛出异常的代码
     // 多条 SQL
-    stmt1.executeUpdate();
-    stmt2.executeUpdate();
-    conn.commit();
-} catch (SQLException e) {
-    conn.rollback();
+    stmt1.executeUpdate();  // 调用 stmt1 的 executeUpdate 方法
+    stmt2.executeUpdate();  // 调用 stmt2 的 executeUpdate 方法
+    conn.commit();  // 调用 conn 的 commit 方法
+} catch (SQLException e) {  // 捕获异常 SQLException e
+    conn.rollback();  // 调用 conn 的 rollback 方法
 }
 \`\`\`
 
@@ -1778,7 +1778,7 @@ try-with-resources 自动关闭：
 
 \`\`\`java
 try (Connection c = ...;
-     PreparedStatement ps = ...;
+     PreparedStatement ps = ...;  // 声明变量 ps（PreparedStatement），初始值为 ...
      ResultSet rs = ...) {
     // 使用
 }
@@ -1953,9 +1953,9 @@ Java 8 引入 \`java.time\` 包，取代老旧的 \`Date\`、\`Calendar\`。新 
 ## LocalDate
 
 \`\`\`java
-LocalDate today = LocalDate.now();
-LocalDate birthday = LocalDate.of(1990, 5, 20);
-LocalDate parsed = LocalDate.parse("2024-01-15");
+LocalDate today = LocalDate.now();  // 声明变量 today（LocalDate），初始值为 LocalDate.now()
+LocalDate birthday = LocalDate.of(1990, 5, 20);  // 声明变量 birthday（LocalDate），初始值为 LocalDate.of(1990, 5, 20)
+LocalDate parsed = LocalDate.parse("2024-01-15");  // 声明变量 parsed（LocalDate），初始值为 LocalDate.parse("2024-01-15")
 \`\`\`
 
 操作：
@@ -1968,15 +1968,15 @@ LocalDate parsed = LocalDate.parse("2024-01-15");
 ## LocalTime
 
 \`\`\`java
-LocalTime now = LocalTime.now();
-LocalTime time = LocalTime.of(14, 30, 0);
+LocalTime now = LocalTime.now();  // 声明变量 now（LocalTime），初始值为 LocalTime.now()
+LocalTime time = LocalTime.of(14, 30, 0);  // 声明变量 time（LocalTime），初始值为 LocalTime.of(14, 30, 0)
 \`\`\`
 
 ## LocalDateTime
 
 \`\`\`java
-LocalDateTime dt = LocalDateTime.of(2024, 1, 15, 14, 30);
-LocalDateTime now = LocalDateTime.now();
+LocalDateTime dt = LocalDateTime.of(2024, 1, 15, 14, 30);  // 声明变量 dt（LocalDateTime），初始值为 LocalDateTime.of(2024, 1, 15, 14, 30)
+LocalDateTime now = LocalDateTime.now();  // 声明变量 now（LocalDateTime），初始值为 LocalDateTime.now()
 \`\`\`
 
 ## Instant
@@ -1984,15 +1984,15 @@ LocalDateTime now = LocalDateTime.now();
 时间线上的瞬时点（UTC），适合**时间戳**：
 
 \`\`\`java
-Instant now = Instant.now();
-long epochSec = now.getEpochSecond();
-long epochMilli = now.toEpochMilli();
+Instant now = Instant.now();  // 声明变量 now（Instant），初始值为 Instant.now()
+long epochSec = now.getEpochSecond();  // 声明变量 epochSec（long），初始值为 now.getEpochSecond()
+long epochMilli = now.toEpochMilli();  // 声明变量 epochMilli（long），初始值为 now.toEpochMilli()
 \`\`\`
 
 与 \`Date\` 互转：
 \`\`\`java
-Date d = Date.from(instant);
-Instant i = d.toInstant();
+Date d = Date.from(instant);  // 声明变量 d（Date），初始值为 Date.from(instant)
+Instant i = d.toInstant();  // 声明变量 i（Instant），初始值为 d.toInstant()
 \`\`\`
 
 ## Duration 与 Period
@@ -2000,15 +2000,15 @@ Instant i = d.toInstant();
 **Duration**：基于时间（小时/分/秒/纳秒）
 
 \`\`\`java
-Duration d = Duration.between(t1, t2);
-long minutes = d.toMinutes();
+Duration d = Duration.between(t1, t2);  // 声明变量 d（Duration），初始值为 Duration.between(t1, t2)
+long minutes = d.toMinutes();  // 声明变量 minutes（long），初始值为 d.toMinutes()
 \`\`\`
 
 **Period**：基于日期（年/月/日）
 
 \`\`\`java
-Period p = Period.between(birthday, today);
-int years = p.getYears();
+Period p = Period.between(birthday, today);  // 声明变量 p（Period），初始值为 Period.between(birthday, today)
+int years = p.getYears();  // 声明变量 years（int），初始值为 p.getYears()
 \`\`\`
 
 ## DateTimeFormatter
@@ -2016,9 +2016,9 @@ int years = p.getYears();
 线程安全（不同于 \`SimpleDateFormat\`）：
 
 \`\`\`java
-DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy年MM月dd日 HH:mm:ss");
-String s = dt.format(fmt);
-LocalDateTime parsed = LocalDateTime.parse(s, fmt);
+DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy年MM月dd日 HH:mm:ss");  // 声明变量 fmt（DateTimeFormatter），初始值为 DateTimeFormatter.ofPattern("yyyy年MM月dd日 HH:mm:ss")
+String s = dt.format(fmt);  // 声明变量 s（String），初始值为 dt.format(fmt)
+LocalDateTime parsed = LocalDateTime.parse(s, fmt);  // 声明变量 parsed（LocalDateTime），初始值为 LocalDateTime.parse(s, fmt)
 \`\`\`
 
 内置格式：\`ISO_LOCAL_DATE\`、\`ISO_DATE_TIME\` 等。
@@ -2026,8 +2026,8 @@ LocalDateTime parsed = LocalDateTime.parse(s, fmt);
 ## ZonedDateTime
 
 \`\`\`java
-ZonedDateTime shanghai = ZonedDateTime.now(ZoneId.of("Asia/Shanghai"));
-ZonedDateTime ny = shanghai.withZoneSameInstant(ZoneId.of("America/New_York"));
+ZonedDateTime shanghai = ZonedDateTime.now(ZoneId.of("Asia/Shanghai"));  // 声明变量 shanghai（ZonedDateTime），初始值为 ZonedDateTime.now(ZoneId.of("Asia/Shanghai"))
+ZonedDateTime ny = shanghai.withZoneSameInstant(ZoneId.of("America/New_York"));  // 声明变量 ny（ZonedDateTime），初始值为 shanghai.withZoneSameInstant(ZoneId.of("America/New_York"))
 \`\`\`
 
 时区转换、夏令时处理由 \`ZoneId\` 完成。
@@ -2046,12 +2046,12 @@ LocalDate tomorrow = today.plusDays(1); // today 不变
 
 \`\`\`java
 // Date ↔ Instant
-Date d = Date.from(Instant.now());
-Instant i = d.toInstant();
+Date d = Date.from(Instant.now());  // 声明变量 d（Date），初始值为 Date.from(Instant.now())
+Instant i = d.toInstant();  // 声明变量 i（Instant），初始值为 d.toInstant()
 
 // Calendar ↔ Instant
-Calendar c = Calendar.getInstance();
-Instant ci = c.toInstant();
+Calendar c = Calendar.getInstance();  // 声明变量 c（Calendar），初始值为 Calendar.getInstance()
+Instant ci = c.toInstant();  // 声明变量 ci（Instant），初始值为 c.toInstant()
 \`\`\`
 
 ## 常用模式
@@ -2219,16 +2219,16 @@ messages_en_US.properties   # 英文-美国
 加载时按"最具体→最通用"查找：
 
 \`\`\`java
-ResourceBundle bundle = ResourceBundle.getBundle("messages", locale);
-String greeting = bundle.getString("greeting");
+ResourceBundle bundle = ResourceBundle.getBundle("messages", locale);  // 声明变量 bundle（ResourceBundle），初始值为 ResourceBundle.getBundle("messages", locale)
+String greeting = bundle.getString("greeting");  // 声明变量 greeting（String），初始值为 bundle.getString("greeting")
 \`\`\`
 
 资源文件内容：
 
 \`\`\`properties
 # messages_zh_CN.properties
-greeting=你好
-farewell=再见
+greeting=你好  # 配置项 greeting
+farewell=再见  # 配置项 farewell
 \`\`\`
 
 ## MessageFormat
@@ -2236,12 +2236,12 @@ farewell=再见
 动态参数化消息：
 
 \`\`\`properties
-welcome=欢迎，{0}！您有 {1} 条新消息。
+welcome=欢迎，{0}！您有 {1} 条新消息。  # 配置项 welcome
 \`\`\`
 
 \`\`\`java
-String pattern = bundle.getString("welcome");
-String msg = MessageFormat.format(pattern, "张三", 5);
+String pattern = bundle.getString("welcome");  // 声明变量 pattern（String），初始值为 bundle.getString("welcome")
+String msg = MessageFormat.format(pattern, "张三", 5);  // 声明变量 msg（String），初始值为 MessageFormat.format(pattern, "张三", 5)
 // 欢迎，张三！您有 5 条新消息。
 \`\`\`
 
@@ -2255,10 +2255,10 @@ String msg = MessageFormat.format(pattern, "张三", 5);
 按地区格式化数字、货币、百分比：
 
 \`\`\`java
-NumberFormat nf = NumberFormat.getCurrencyInstance(Locale.US);
+NumberFormat nf = NumberFormat.getCurrencyInstance(Locale.US);  // 声明变量 nf（NumberFormat），初始值为 NumberFormat.getCurrencyInstance(Locale.US)
 String s = nf.format(1234.56); // $1,234.56
 
-NumberFormat cnCurrency = NumberFormat.getCurrencyInstance(Locale.CHINA);
+NumberFormat cnCurrency = NumberFormat.getCurrencyInstance(Locale.CHINA);  // 声明变量 cnCurrency（NumberFormat），初始值为 NumberFormat.getCurrencyInstance(Locale.CHINA)
 cnCurrency.format(1234.56); // ￥1,234.56
 \`\`\`
 
@@ -2271,7 +2271,7 @@ cnCurrency.format(1234.56); // ￥1,234.56
 按地区格式化日期：
 
 \`\`\`java
-DateFormat df = DateFormat.getDateInstance(DateFormat.LONG, Locale.US);
+DateFormat df = DateFormat.getDateInstance(DateFormat.LONG, Locale.US);  // 声明变量 df（DateFormat），初始值为 DateFormat.getDateInstance(DateFormat.LONG, Locale.US)
 df.format(new Date()); // January 15, 2024
 \`\`\`
 
@@ -2292,14 +2292,14 @@ DateTimeFormatter f = DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)
 ## 默认 Locale
 
 \`\`\`java
-Locale.setDefault(Locale.US);
-Locale current = Locale.getDefault();
+Locale.setDefault(Locale.US);  // 调用 Locale 的 setDefault 方法
+Locale current = Locale.getDefault();  // 声明变量 current（Locale），初始值为 Locale.getDefault()
 \`\`\`
 
 Web 应用应从 \`Accept-Language\` 头解析：
 
 \`\`\`java
-Locale userLocale = request.getLocale();
+Locale userLocale = request.getLocale();  // 声明变量 userLocale（Locale），初始值为 request.getLocale()
 \`\`\`
 
 ## 资源文件编码
@@ -2549,19 +2549,19 @@ opens com.example.app.model to com.fasterxml.jackson.databind;
 编译：
 
 \`\`\`bash
-javac -d out --module-source-path src $(find src -name "*.java")
+javac -d out --module-source-path src $(find src -name "*.java")  # 编译 Java 源文件为字节码 .class
 \`\`\`
 
 运行：
 
 \`\`\`bash
-java --module-path out -m com.example.app/com.example.app.Main
+java --module-path out -m com.example.app/com.example.app.Main  # 运行 Java 类（启动 JVM）
 \`\`\`
 
 打包：
 
 \`\`\`bash
-jar --create --file app.jar --main-class com.example.app.Main -C out .
+jar --create --file app.jar --main-class com.example.app.Main -C out .  # 打包/查看 jar 包
 \`\`\`
 
 ## jlink
@@ -2569,7 +2569,7 @@ jar --create --file app.jar --main-class com.example.app.Main -C out .
 创建包含模块的**定制 JRE**：
 
 \`\`\`bash
-jlink --module-path out --add-modules com.example.app --output myjre
+jlink --module-path out --add-modules com.example.app --output myjre  # 构建自定义运行时镜像
 \`\`\`
 
 生成的 JRE 仅含所需模块，体积小，适合容器部署。
@@ -2709,7 +2709,7 @@ JDK 内置日志框架，无需额外依赖。
 获取日志器：
 
 \`\`\`java
-Logger logger = Logger.getLogger("com.example.Main");
+Logger logger = Logger.getLogger("com.example.Main");  // 声明变量 logger（Logger），初始值为 Logger.getLogger("com.example.Main")
 \`\`\`
 
 命名层级化，父级配置影响子级。
@@ -2726,9 +2726,9 @@ SEVERE (1000) > WARNING (900) > INFO (800)
 低于设定级别的日志被丢弃。使用：
 
 \`\`\`java
-logger.severe("严重错误");
-logger.warning("警告");
-logger.info("信息");
+logger.severe("严重错误");  // 调用 logger 的 severe 方法
+logger.warning("警告");  // 调用 logger 的 warning 方法
+logger.info("信息");  // 调用 logger 的 info 方法
 logger.fine("调试");  // 需设置 level=FINE 才输出
 \`\`\`
 
@@ -2741,8 +2741,8 @@ logger.fine("调试");  // 需设置 level=FINE 才输出
 - \`SocketHandler\`：网络
 
 \`\`\`java
-Logger logger = Logger.getLogger("demo");
-logger.addHandler(new FileHandler("app.log"));
+Logger logger = Logger.getLogger("demo");  // 声明变量 logger（Logger），初始值为 Logger.getLogger("demo")
+logger.addHandler(new FileHandler("app.log"));  // 调用 logger 的 addHandler 方法
 logger.setUseParentHandlers(false); // 关闭父 handler
 \`\`\`
 
@@ -2755,9 +2755,9 @@ logger.setUseParentHandlers(false); // 关闭父 handler
 自定义 Formatter：
 
 \`\`\`java
-class MyFormatter extends Formatter {
-    public String format(LogRecord record) {
-        return record.getLevel() + ": " + record.getMessage() + "\\n";
+class MyFormatter extends Formatter {  // 定义类 MyFormatter
+    public String format(LogRecord record) {  // 方法 format，返回 String，参数：LogRecord record
+        return record.getLevel() + ": " + record.getMessage() + "\\n";  // 返回值：record.getLevel() + ": " + record.getMessage() + "\\n"
     }
 }
 \`\`\`
@@ -2771,11 +2771,11 @@ class MyFormatter extends Formatter {
 \`logging.properties\`：
 
 \`\`\`properties
-handlers=java.util.logging.ConsoleHandler
-.level=INFO
-java.util.logging.ConsoleHandler.level=INFO
-java.util.logging.ConsoleHandler.formatter=java.util.logging.SimpleFormatter
-java.util.logging.SimpleFormatter.format=%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS %4$s %2$s %5$s%6$s%n
+handlers=java.util.logging.ConsoleHandler  # 配置项 handlers
+.level=INFO  # 配置项 .level
+java.util.logging.ConsoleHandler.level=INFO  # 配置项 java.util.logging.ConsoleHandler.level
+java.util.logging.ConsoleHandler.formatter=java.util.logging.SimpleFormatter  # 配置项 java.util.logging.ConsoleHandler.formatter
+java.util.logging.SimpleFormatter.format=%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS %4$s %2$s %5$s%6$s%n  # 配置项 java.util.logging.SimpleFormatter.format
 \`\`\`
 
 启动加载：\`java -Djava.util.logging.config.file=logging.properties\`
@@ -2786,18 +2786,18 @@ java.util.logging.SimpleFormatter.format=%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS %4$
 
 \`\`\`java
 // 字符串拼接（即使不输出也拼接）
-logger.info("用户 " + name + " 登录");
+logger.info("用户 " + name + " 登录");  // 调用 logger 的 info 方法
 
 // 参数化（仅需要输出时才格式化）
-logger.log(Level.INFO, "用户 {0} 登录", name);
+logger.log(Level.INFO, "用户 {0} 登录", name);  // 调用 logger 的 log 方法
 \`\`\`
 
 ## 异常日志
 
 \`\`\`java
-try {
+try {  // try 块：包裹可能抛出异常的代码
     // ...
-} catch (IOException e) {
+} catch (IOException e) {  // 捕获异常 IOException e
     logger.log(Level.SEVERE, "读取失败", e); // 第二参数为异常
 }
 \`\`\`
@@ -2818,11 +2818,11 @@ try {
 ## SLF4J 示例
 
 \`\`\`java
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;  // 导入类 org.slf4j.Logger
+import org.slf4j.LoggerFactory;  // 导入类 org.slf4j.LoggerFactory
 
-Logger logger = LoggerFactory.getLogger(Main.class);
-logger.info("用户 {} 登录", name);
+Logger logger = LoggerFactory.getLogger(Main.class);  // 声明变量 logger（Logger），初始值为 LoggerFactory.getLogger(Main.class)
+logger.info("用户 {} 登录", name);  // 调用 logger 的 info 方法
 \`\`\`
 
 SLF4J 是**门面**，绑定不同实现（Logback、Log4j2、JUL）。
@@ -2842,9 +2842,9 @@ SLF4J 是**门面**，绑定不同实现（Logback、Log4j2、JUL）。
 SLF4J MDC（Mapped Diagnostic Context）支持线程上下文日志：
 
 \`\`\`java
-MDC.put("userId", "123");
+MDC.put("userId", "123");  // 调用 MDC 的 put 方法
 logger.info("操作"); // 输出含 userId
-MDC.remove("userId");
+MDC.remove("userId");  // 调用 MDC 的 remove 方法
 \`\`\`
 
 下面通过代码演示 JUL 日志：`,
@@ -2993,16 +2993,16 @@ UUID fromStr = UUID.fromString("...");  // 从字符串解析
 ## Random / ThreadLocalRandom
 
 \`\`\`java
-Random r = new Random();
+Random r = new Random();  // 声明变量 r（Random），初始值为 new Random()
 r.nextInt(100);    // [0, 100)
-r.nextDouble();
-r.nextBoolean();
+r.nextDouble();  // 调用 r 的 nextDouble 方法
+r.nextBoolean();  // 调用 r 的 nextBoolean 方法
 \`\`\`
 
 \`ThreadLocalRandom\` 多线程下更高效：
 
 \`\`\`java
-ThreadLocalRandom.current().nextInt(0, 100);
+ThreadLocalRandom.current().nextInt(0, 100);  // 调用 ThreadLocalRandom 的 current 方法
 \`\`\`
 
 \`SecureRandom\` 用于安全场景（密码、token）。
@@ -3012,7 +3012,7 @@ ThreadLocalRandom.current().nextInt(0, 100);
 定时任务：
 
 \`\`\`java
-Timer timer = new Timer();
+Timer timer = new Timer();  // 声明变量 timer（Timer），初始值为 new Timer()
 timer.schedule(task, delay);            // 延迟执行
 timer.scheduleAtFixedRate(task, d, p);  // 固定频率
 \`\`\`
@@ -3020,8 +3020,8 @@ timer.scheduleAtFixedRate(task, d, p);  // 固定频率
 推荐 \`ScheduledExecutorService\`（更灵活、异常处理更好）：
 
 \`\`\`java
-ScheduledExecutorService ses = Executors.newScheduledThreadPool(2);
-ses.scheduleAtFixedRate(task, 0, 1, TimeUnit.SECONDS);
+ScheduledExecutorService ses = Executors.newScheduledThreadPool(2);  // 声明变量 ses（ScheduledExecutorService），初始值为 Executors.newScheduledThreadPool(2)
+ses.scheduleAtFixedRate(task, 0, 1, TimeUnit.SECONDS);  // 调用 ses 的 scheduleAtFixedRate 方法
 \`\`\`
 
 ## Formatter
@@ -3029,7 +3029,7 @@ ses.scheduleAtFixedRate(task, 0, 1, TimeUnit.SECONDS);
 \`String.format\` / \`Formatter\` 提供类似 C 的格式化：
 
 \`\`\`java
-String s = String.format("姓名: %s, 年龄: %d, 体重: %.2f", "Tom", 18, 65.5);
+String s = String.format("姓名: %s, 年龄: %d, 体重: %.2f", "Tom", 18, 65.5);  // 声明变量 s（String），初始值为 String.format("姓名: %s, 年龄: %d, 体重: %.2f", "Tom", 18, 65.5)
 \`\`\`
 
 常用转换符：
@@ -3046,25 +3046,25 @@ String s = String.format("姓名: %s, 年龄: %d, 体重: %.2f", "Tom", 18, 65.5
 \`java.util.Base64\`（Java 8+）：
 
 \`\`\`java
-String encoded = Base64.getEncoder().encodeToString("hello".getBytes());
-byte[] decoded = Base64.getDecoder().decode(encoded);
+String encoded = Base64.getEncoder().encodeToString("hello".getBytes());  // 声明变量 encoded（String），初始值为 Base64.getEncoder().encodeToString("hello".getBytes())
+byte[] decoded = Base64.getDecoder().decode(encoded);  // 声明变量 decoded（byte[]），初始值为 Base64.getDecoder().decode(encoded)
 
 // URL 安全（替换 +/）
-Base64.getUrlEncoder().encodeToString(data);
+Base64.getUrlEncoder().encodeToString(data);  // 调用 Base64 的 getUrlEncoder 方法
 // MIME（每 76 字符换行）
-Base64.getMimeEncoder().encodeToString(data);
+Base64.getMimeEncoder().encodeToString(data);  // 调用 Base64 的 getMimeEncoder 方法
 \`\`\`
 
 ## Arrays
 
 \`\`\`java
-Arrays.sort(arr);
-Arrays.binarySearch(arr, key);
-Arrays.copyOf(arr, n);
-Arrays.fill(arr, val);
-Arrays.equals(a, b);
+Arrays.sort(arr);  // 调用 Arrays 的 sort 方法
+Arrays.binarySearch(arr, key);  // 调用 Arrays 的 binarySearch 方法
+Arrays.copyOf(arr, n);  // 调用 Arrays 的 copyOf 方法
+Arrays.fill(arr, val);  // 调用 Arrays 的 fill 方法
+Arrays.equals(a, b);  // 调用 Arrays 的 equals 方法
 Arrays.asList(1, 2, 3);   // 固定大小 List
-Arrays.toString(arr);
+Arrays.toString(arr);  // 调用 Arrays 的 toString 方法
 \`\`\`
 
 \`Arrays.stream(arr)\` 转流。
@@ -3072,12 +3072,12 @@ Arrays.toString(arr);
 ## Collections
 
 \`\`\`java
-Collections.sort(list);
-Collections.reverse(list);
-Collections.shuffle(list);
-Collections.max(list);
-Collections.frequency(list, obj);
-Collections.emptyList();
+Collections.sort(list);  // 调用 Collections 的 sort 方法
+Collections.reverse(list);  // 调用 Collections 的 reverse 方法
+Collections.shuffle(list);  // 调用 Collections 的 shuffle 方法
+Collections.max(list);  // 调用 Collections 的 max 方法
+Collections.frequency(list, obj);  // 调用 Collections 的 frequency 方法
+Collections.emptyList();  // 调用 Collections 的 emptyList 方法
 Collections.synchronizedList(list);  // 同步包装
 Collections.unmodifiableList(list);  // 不可变
 \`\`\`
@@ -3085,8 +3085,8 @@ Collections.unmodifiableList(list);  // 不可变
 ## StringJoiner
 
 \`\`\`java
-StringJoiner sj = new StringJoiner(", ", "[", "]");
-sj.add("a").add("b").add("c");
+StringJoiner sj = new StringJoiner(", ", "[", "]");  // 声明变量 sj（StringJoiner），初始值为 new StringJoiner(", ", "[", "]")
+sj.add("a").add("b").add("c");  // 调用 sj 的 add 方法
 // [a, b, c]
 \`\`\`
 
@@ -3095,8 +3095,8 @@ sj.add("a").add("b").add("c");
 按分隔符切分字符串（比 \`split\` 更高效，但功能弱）：
 
 \`\`\`java
-StringTokenizer st = new StringTokenizer("a,b,c", ",");
-while (st.hasMoreTokens()) st.nextToken();
+StringTokenizer st = new StringTokenizer("a,b,c", ",");  // 声明变量 st（StringTokenizer），初始值为 new StringTokenizer("a,b,c", ",")
+while (st.hasMoreTokens()) st.nextToken();  // 调用 while (st 的 hasMoreTokens 方法
 \`\`\`
 
 ## HexFormat（Java 17+）
@@ -3104,9 +3104,9 @@ while (st.hasMoreTokens()) st.nextToken();
 十六进制与字节互转：
 
 \`\`\`java
-HexFormat hex = HexFormat.of();
+HexFormat hex = HexFormat.of();  // 声明变量 hex（HexFormat），初始值为 HexFormat.of()
 String s = hex.formatHex(new byte[]{1, 2, 255}); // "0102ff"
-byte[] b = hex.parseHex("0102ff");
+byte[] b = hex.parseHex("0102ff");  // 声明变量 b（byte[]），初始值为 hex.parseHex("0102ff")
 \`\`\`
 
 ## Optional
@@ -3116,9 +3116,9 @@ byte[] b = hex.parseHex("0102ff");
 ## Comparator
 
 \`\`\`java
-Comparator<Person> byAge = Comparator.comparingInt(Person::getAge);
-Comparator<Person> byName = Comparator.comparing(Person::getName);
-Comparator<Person> combined = byAge.thenComparing(byName);
+Comparator<Person> byAge = Comparator.comparingInt(Person::getAge);  // 方法引用：复用已有方法作为函数式接口实例
+Comparator<Person> byName = Comparator.comparing(Person::getName);  // 方法引用：复用已有方法作为函数式接口实例
+Comparator<Person> combined = byAge.thenComparing(byName);  // 声明变量 combined（Comparator<Person>），初始值为 byAge.thenComparing(byName)
 \`\`\`
 
 下面通过代码演示各种工具类：`,

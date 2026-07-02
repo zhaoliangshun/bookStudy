@@ -107,35 +107,35 @@ Node.js 采用**双轨发版策略**：
 
 \`\`\`bash
 # 安装 nvm（macOS / Linux）
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash  # 下载网络资源
 
 # 安装最新 LTS
-nvm install --lts
+nvm install --lts  # 安装 Node.js 版本
 
 # 安装指定版本
-nvm install 20.10.0
+nvm install 20.10.0  # 安装 Node.js 版本
 
 # 切换版本
-nvm use 20
+nvm use 20  # 切换当前 Node.js 版本
 
 # 查看已安装版本
-nvm ls
+nvm ls  # 列出已安装的版本
 
 # 设置默认版本
-nvm alias default 20
+nvm alias default 20  # 设置默认版本
 \`\`\`
 
 #### volta —— 新一代工具，更快更安全
 
 \`\`\`bash
 # 安装 volta
-curl https://get.volta.sh | bash
+curl https://get.volta.sh | bash  # 下载网络资源
 
 # 安装 Node.js
-volta install node@20
+volta install node@20  # 用 volta 安装 Node.js
 
 # 项目级别锁定版本（写入 package.json）
-volta pin node@20
+volta pin node@20  # 锁定项目 Node 版本
 \`\`\`
 
 #### 安装验证
@@ -328,14 +328,14 @@ console.log("已注册 exit 事件监听器，程序结束后自动触发");`,
 
 \`\`\`bash
 # 创建项目目录
-mkdir my-first-app
-cd my-first-app
+mkdir my-first-app  # 创建目录
+cd my-first-app  # 切换目录
 
 # 初始化 package.json（交互式回答）
-npm init
+npm init  # 初始化 package.json
 
 # 或者使用 -y 跳过所有问题，使用默认值
-npm init -y
+npm init -y  # 初始化 package.json
 \`\`\`
 
 初始化后得到的 \`package.json\` 基本结构：
@@ -361,17 +361,17 @@ npm init -y
 
 \`\`\`bash
 # 方式一：直接执行文件
-node index.js
+node index.js  # 用 Node.js 执行脚本 index.js
 
 # 方式二：使用 npm scripts（在 package.json 中定义）
 # "scripts": { "start": "node index.js" }
-npm start
+npm start  # 启动项目（默认执行 start 脚本）
 
 # 方式三：使用 -e 执行单行代码
-node -e "console.log('Hello')"
+node -e "console.log('Hello')"  # 用 Node.js 执行脚本 -e
 
 # 方式四：REPL 交互式环境
-node
+node  # 进入 REPL 交互环境
 # > 1 + 2
 # 3
 \`\`\`
@@ -405,7 +405,7 @@ node
 | \`%%\` | 百分号本身 |
 
 \`\`\`javascript
-console.log("用户 %s 的年龄是 %d 岁", "小明", 20);
+console.log("用户 %s 的年龄是 %d 岁", "小明", 20);  // 打印日志到 stdout
 // 输出：用户 小明 的年龄是 20 岁
 \`\`\`
 
@@ -414,11 +414,11 @@ console.log("用户 %s 的年龄是 %d 岁", "小明", 20);
 对于数组或对象，\`console.table\` 以表格形式展示数据，非常直观：
 
 \`\`\`javascript
-const users = [
+const users = [  // 定义数组 users
   { name: "小明", age: 20, score: 92 },
   { name: "小红", age: 22, score: 88 },
 ];
-console.table(users);
+console.table(users);  // 以表格形式打印数组/对象
 \`\`\`
 
 #### 计时器：console.time / console.timeEnd
@@ -426,10 +426,10 @@ console.table(users);
 测量代码执行时间：
 
 \`\`\`javascript
-console.time("运算耗时");
+console.time("运算耗时");  // 启动计时器（与 timeEnd 配对）
 // 执行一些耗时操作
-for (let i = 0; i < 1000000; i++) {}
-console.timeEnd("运算耗时");
+for (let i = 0; i < 1000000; i++) {}  // for 循环
+console.timeEnd("运算耗时");  // 结束计时器并打印耗时
 // 输出：运算耗时: 2.345ms
 \`\`\`
 
@@ -438,13 +438,13 @@ console.timeEnd("运算耗时");
 将相关输出组织在一起，形成缩进层次：
 
 \`\`\`javascript
-console.group("用户信息");
-console.log("姓名: 小明");
-console.group("详细信息");
-console.log("年龄: 20");
-console.log("城市: 北京");
-console.groupEnd();
-console.groupEnd();
+console.group("用户信息");  // 开启分组输出（缩进展示）
+console.log("姓名: 小明");  // 打印日志到 stdout
+console.group("详细信息");  // 开启分组输出（缩进展示）
+console.log("年龄: 20");  // 打印日志到 stdout
+console.log("城市: 北京");  // 打印日志到 stdout
+console.groupEnd();  // 结束当前分组
+console.groupEnd();  // 结束当前分组
 \`\`\`
 
 #### 调用栈追踪：console.trace
@@ -452,9 +452,9 @@ console.groupEnd();
 输出当前位置的调用栈，常用于调试：
 
 \`\`\`javascript
-function a() { b(); }
-function b() { c(); }
-function c() { console.trace("追踪调用栈"); }
+function a() { b(); }  // 声明函数 a
+function b() { c(); }  // 声明函数 b
+function c() { console.trace("追踪调用栈"); }  // 声明函数 c
 a();
 \`\`\`
 
@@ -463,7 +463,7 @@ a();
 当条件为 false 时输出错误信息：
 
 \`\`\`javascript
-console.assert(1 === 2, "1 不等于 2？这不可能！");
+console.assert(1 === 2, "1 不等于 2？这不可能！");  // 断言失败时打印信息
 // 输出：Assertion failed: 1 不等于 2？这不可能！
 \`\`\`
 
@@ -508,13 +508,13 @@ console.count("循环");  // 循环: 1
 
 \`\`\`javascript
 // 正常退出（退出码 0）
-process.exit(0);
+process.exit(0);  // 退出进程（0 正常，非 0 异常）
 
 // 异常退出（退出码 1，表示错误）
-process.exit(1);
+process.exit(1);  // 退出进程（0 正常，非 0 异常）
 
 // 不传参数等同于 process.exit(0)
-process.exit();
+process.exit();  // 退出进程（0 正常，非 0 异常）
 \`\`\`
 
 退出码约定：
@@ -541,8 +541,8 @@ process.exit();
 
 \`\`\`javascript
 // 读取环境变量
-const env = process.env.NODE_ENV || "development";
-const port = process.env.PORT || 3000;
+const env = process.env.NODE_ENV || "development";  // 从环境变量读取配置
+const port = process.env.PORT || 3000;  // 从环境变量读取配置
 \`\`\``,
     code: `// ============================================================
 // 第二章代码演示：第一个 Node.js 应用
@@ -805,13 +805,13 @@ Node.js 读取文件后，**不会直接执行**，而是将代码包裹在模�
 
 \`\`\`javascript
 // 你的原始代码
-function add(a, b) { return a + b; }
-module.exports = { add };
+function add(a, b) { return a + b; }  // 声明函数 add
+module.exports = { add };  // 设置模块导出对象（require 返回的就是它）
 
 // Node.js 实际执行的代码
 (function(exports, require, module, __filename, __dirname) {
-  function add(a, b) { return a + b; }
-  module.exports = { add };
+  function add(a, b) { return a + b; }  // 声明函数 add
+  module.exports = { add };  // 设置模块导出对象（require 返回的就是它）
 });
 \`\`\`
 
@@ -830,9 +830,9 @@ module.exports = { add };
 
 \`\`\`javascript
 // 第一次 require → 执行模块代码，缓存结果
-const config1 = require('./config');
+const config1 = require('./config');  // 导入模块 ./config；require 返回 module.exports
 // 第二次 require → 命中缓存，直接返回
-const config2 = require('./config');
+const config2 = require('./config');  // 导入模块 ./config；require 返回 module.exports
 console.log(config1 === config2); // true（同一个对象）
 \`\`\`
 
@@ -850,12 +850,12 @@ console.log(config1 === config2); // true（同一个对象）
 
 \`\`\`javascript
 // ✅ 场景 1：给 exports 添加属性（正确）
-exports.add = function(a, b) { return a + b; };
-exports.PI = 3.14;
+exports.add = function(a, b) { return a + b; };  // 给 exports 添加属性（等价于 module.exports.x = ...）
+exports.PI = 3.14;  // 给 exports 添加属性（等价于 module.exports.x = ...）
 // module.exports 和 exports 指向同一个对象，对象内容变了
 
 // ✅ 场景 2：给 module.exports 赋新值（正确）
-module.exports = function Calculator() { /* ... */ };
+module.exports = function Calculator() { /* ... */ };  // 设置模块导出对象（require 返回的就是它）
 // module.exports 指向新对象，exports 还指向旧对象（没关系）
 
 // ❌ 场景 3：给 exports 赋新值（错误！）
@@ -864,7 +864,7 @@ exports = { add: function(a, b) { return a + b; } };
 // require 返回的是 module.exports，所以拿到的是空对象！
 
 // ✅ 场景 4：混合使用（正确）
-module.exports = function main() { /* ... */ };
+module.exports = function main() { /* ... */ };  // 设置模块导出对象（require 返回的就是它）
 module.exports.version = '1.0.0';
 \`\`\`
 
@@ -878,10 +878,10 @@ module.exports.version = '1.0.0';
 
 \`\`\`javascript
 // 热更新实现
-function reloadModule(moduleName) {
-  const modulePath = require.resolve(moduleName);
-  delete require.cache[modulePath];
-  return require(moduleName);
+function reloadModule(moduleName) {  // 声明函数 reloadModule
+  const modulePath = require.resolve(moduleName);  // 定义常量 modulePath
+  delete require.cache[modulePath];  // 清除模块缓存（实现热更新）
+  return require(moduleName);  // 返回值
 }
 \`\`\`
 
@@ -898,15 +898,15 @@ function reloadModule(moduleName) {
 
 \`\`\`javascript
 // require.cache：查看所有已缓存模块
-console.log(Object.keys(require.cache));
+console.log(Object.keys(require.cache));  // 打印日志到 stdout
 
 // require.resolve：只解析路径，不执行模块
-const path = require.resolve('fs');
+const path = require.resolve('fs');  // 定义常量 path
 console.log(path); // 内置模块 fs 的路径
 
 // 检查模块是否存在
-try {
-  require.resolve('some-module');
+try {  // 开启 try 块捕获异常
+  require.resolve('some-module');  // 解析模块路径但不执行模块
 } catch (e) {
   console.log('模块不存在:', e.code); // MODULE_NOT_FOUND
 }
@@ -1255,49 +1255,49 @@ ES Modules（ESM）是 ECMAScript 官方标准化的模块系统，从 ES2015（
 
 \`\`\`javascript
 // ===== 命名导出（边定义边导出）=====
-export const PI = 3.14159;
-export function add(a, b) { return a + b; }
-export class Calculator { /* ... */ }
+export const PI = 3.14159;  // 命名导出 PI
+export function add(a, b) { return a + b; }  // 命名导出 add
+export class Calculator { /* ... */ }  // 命名导出 Calculator
 
 // ===== 导出列表（统一导出）=====
-const version = '1.0.0';
-const name = 'my-lib';
-export { version, name };
+const version = '1.0.0';  // 定义常量 version
+const name = 'my-lib';  // 定义常量 name
+export { version, name };  // 导出指定的命名成员
 
 // ===== 重命名导出 =====
-export { version as libVersion, name as libName };
+export { version as libVersion, name as libName };  // 导出指定的命名成员
 
 // ===== 默认导出（每个模块只能有一个）=====
-export default function main() { /* ... */ }
+export default function main() { /* ... */ }  // 默认导出（每个模块只能有一个）
 // 或
-export default class App { /* ... */ }
+export default class App { /* ... */ }  // 默认导出（每个模块只能有一个）
 
 // ===== 重新导出（从其他模块转发）=====
-export { default as App } from './App.js';
-export * from './utils.js';
+export { default as App } from './App.js';  // 导出指定的命名成员
+export * from './utils.js';  // 重新导出其他模块的全部内容
 \`\`\`
 
 ### ESM 导入语法
 
 \`\`\`javascript
 // 1. 命名导入
-import { PI, add } from './math.js';
+import { PI, add } from './math.js';  // 从 ./math.js 导入：{ PI, add }
 
 // 2. 默认导入
-import Calculator from './math.js';
+import Calculator from './math.js';  // 从 ./math.js 导入：Calculator
 
 // 3. 混合导入
-import Calculator, { PI, add } from './math.js';
+import Calculator, { PI, add } from './math.js';  // 从 ./math.js 导入：Calculator, { PI, add }
 
 // 4. 命名空间导入（全量导入）
-import * as math from './math.js';
-console.log(math.PI, math.add(1, 2));
+import * as math from './math.js';  // 从 ./math.js 导入：* as math
+console.log(math.PI, math.add(1, 2));  // 打印日志到 stdout
 
 // 5. 仅执行副作用（不导入任何内容）
-import './init.js';
+import './init.js';  // 仅执行 ./init.js 的副作用，不导入绑定
 
 // 6. 动态导入（返回 Promise，可在任何地方使用）
-const module = await import('./math.js');
+const module = await import('./math.js');  // 定义常量 module
 \`\`\`
 
 ### ESM vs CommonJS 对比
@@ -1321,11 +1321,11 @@ const module = await import('./math.js');
 
 \`\`\`javascript
 // counter.mjs
-export let count = 0;
-export function increment() { count++; }
+export let count = 0;  // 命名导出 count
+export function increment() { count++; }  // 命名导出 increment
 
 // app.mjs
-import { count, increment } from './counter.mjs';
+import { count, increment } from './counter.mjs';  // 从 ./counter.mjs 导入：{ count, increment }
 console.log(count); // 0
 increment();
 console.log(count); // 1（活绑定，看到了变化！）
@@ -1335,8 +1335,8 @@ console.log(count); // 1（活绑定，看到了变化！）
 
 \`\`\`javascript
 // counter.js
-let count = 0;
-module.exports = {
+let count = 0;  // 定义变量 count（可变）
+module.exports = {  // 设置模块导出对象（require 返回的就是它）
   get count() { return count; },  // 需要用 getter 才能实现类似效果
   increment() { count++; }
 };
@@ -1348,14 +1348,14 @@ ESM 中没有 \`__dirname\` 和 \`__filename\`，用 \`import.meta\` 代替：
 
 \`\`\`javascript
 // import.meta.url 是当前模块的 URL（file:// 协议）
-console.log(import.meta.url);
+console.log(import.meta.url);  // 打印日志到 stdout
 // 输出: file:///home/user/project/app.mjs
 
 // 替代 __dirname 和 __filename
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { fileURLToPath } from 'url';  // 从 url 导入：{ fileURLToPath }
+import { dirname } from 'path';  // 从 path 导入：{ dirname }
+const __filename = fileURLToPath(import.meta.url);  // 定义常量 __filename
+const __dirname = dirname(__filename);  // 定义常量 __dirname
 \`\`\`
 
 ### 动态 import()
@@ -1364,22 +1364,22 @@ ESM 支持动态导入，返回 Promise。这在按需加载、条件加载等�
 
 \`\`\`javascript
 // 条件加载
-if (condition) {
-  const module = await import('./special-module.js');
+if (condition) {  // 条件判断
+  const module = await import('./special-module.js');  // 定义常量 module
   module.doSomething();
 }
 
 // 按需加载（懒加载）
 button.addEventListener('click', async () => {
-  const { default: Chart } = await import('./chart.js');
+  const { default: Chart } = await import('./chart.js');  // 解构赋值： default: Chart 
   new Chart().render();
 });
 
 // 错误处理
-try {
-  const module = await import('./might-not-exist.js');
+try {  // 开启 try 块捕获异常
+  const module = await import('./might-not-exist.js');  // 定义常量 module
 } catch (err) {
-  console.log('模块加载失败:', err.message);
+  console.log('模块加载失败:', err.message);  // 打印日志到 stdout
 }
 \`\`\`
 
@@ -1416,9 +1416,9 @@ ESM 模块支持在模块顶层直接使用 await（不需要 async 函数包裹
 
 \`\`\`javascript
 // config.mjs
-import fs from 'fs/promises';
-const configData = await fs.readFile('./config.json', 'utf8');
-export const config = JSON.parse(configData);
+import fs from 'fs/promises';  // 从 fs/promises 导入：fs
+const configData = await fs.readFile('./config.json', 'utf8');  // 定义常量 configData
+export const config = JSON.parse(configData);  // 命名导出 config
 \`\`\`
 
 这大大简化了需要在模块初始化时进行异步操作的场景。但注意：**导入顶层 await 模块的模块，会等待它完成后再执行**。`,

@@ -28,26 +28,39 @@ export const chapters = [
 最简单的中间件写法:
 
 \`\`\`python
+# 导入 time 模块
 import time
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 装饰器：app.middleware
 @app.middleware("http")
+# 定义异步函数 timing_middleware，参数: request: Request, call_next
 async def timing_middleware(request: Request, call_next):
     # 1. 请求前:记录开始时间
+    # 定义变量 start，赋值为 time.time()
     start = time.time()
 
     # 2. 调用下一个中间件/路由
+    # 定义变量 response，赋值为 await call_next(request)
     response = await call_next(request)
 
     # 3. 响应后:计算耗时,加到响应头
+    # 定义变量 duration，赋值为 time.time() - start
     duration = time.time() - start
+    # response.headers["X-Process-Time"] = f"{duration:.
     response.headers["X-Process-Time"] = f"{duration:.4f}s"
+    # 返回 response
     return response
 
+# 定义 GET 路由：访问 / 时触发
 @app.get("/")
+# 定义函数 root，参数: 
 def root():
+    # 返回 {"msg": "hello"}
     return {"msg": "hello"}
 \`\`\`
 
@@ -69,18 +82,30 @@ def root():
 注册顺序决定包裹层级:**后注册的在更外层**。
 
 \`\`\`python
+# 装饰器：app.middleware
 @app.middleware("http")
+# 定义异步函数 mw_a，参数: request, call_next
 async def mw_a(request, call_next):
+    # 调用 print()
     print("A before")
+    # 定义变量 response，赋值为 await call_next(request)
     response = await call_next(request)
+    # 调用 print()
     print("A after")
+    # 返回 response
     return response
 
+# 装饰器：app.middleware
 @app.middleware("http")
+# 定义异步函数 mw_b，参数: request, call_next
 async def mw_b(request, call_next):
+    # 调用 print()
     print("B before")
+    # 定义变量 response，赋值为 await call_next(request)
     response = await call_next(request)
+    # 调用 print()
     print("B after")
+    # 返回 response
     return response
 \`\`\`
 
@@ -100,18 +125,27 @@ B after
 中间件之间、中间件和路由之间,可以通过 \`request.state\` 共享数据:
 
 \`\`\`python
+# 装饰器：app.middleware
 @app.middleware("http")
+# 定义异步函数 add_request_id，参数: request: Request, call_next
 async def add_request_id(request: Request, call_next):
     # 生成请求 ID,存到 state
+    # request.state.request_id = str(uuid.uuid4())
     request.state.request_id = str(uuid.uuid4())
+    # 定义变量 response，赋值为 await call_next(request)
     response = await call_next(request)
     # 响应头带上
+    # response.headers["X-Request-ID"] = request.state.r
     response.headers["X-Request-ID"] = request.state.request_id
+    # 返回 response
     return response
 
+# 定义 GET 路由：访问 /me 时触发
 @app.get("/me")
+# 定义函数 me，参数: request: Request
 def me(request: Request):
     # 路由里能读到中间件设的 state
+    # 返回 {"request_id": request.state.request_id}
     return {"request_id": request.state.request_id}
 \`\`\`
 
@@ -137,17 +171,25 @@ def me(request: Request):
 除了装饰器,还能用 \`add_middleware\`:
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义异步函数 timing_middleware，参数: request: Request, call_next
 async def timing_middleware(request: Request, call_next):
+    # 定义变量 start，赋值为 time.time()
     start = time.time()
+    # 定义变量 response，赋值为 await call_next(request)
     response = await call_next(request)
+    # response.headers["X-Process-Time"] = str(time.time
     response.headers["X-Process-Time"] = str(time.time() - start)
+    # 返回 response
     return response
 
 # 用 add_middleware 添加
+# 添加中间件: timing_middleware
 app.add_middleware(timing_middleware)
 \`\`\`
 
@@ -158,15 +200,23 @@ app.add_middleware(timing_middleware)
 更规范的写法是继承 \`BaseHTTPMiddleware\`:
 
 \`\`\`python
+# 从 starlette.middleware.base 导入 BaseHTTPMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
+# 定义类 TimingMiddleware，继承 BaseHTTPMiddleware
 class TimingMiddleware(BaseHTTPMiddleware):
+    # 定义异步函数 dispatch，参数: self, request: Request, call_next
     async def dispatch(self, request: Request, call_next):
+        # 定义变量 start，赋值为 time.time()
         start = time.time()
+        # 定义变量 response，赋值为 await call_next(request)
         response = await call_next(request)
+        # response.headers["X-Process-Time"] = f"{time.time(
         response.headers["X-Process-Time"] = f"{time.time() - start:.4f}"
+        # 返回 response
         return response
 
+# 添加中间件: TimingMiddleware
 app.add_middleware(TimingMiddleware)
 \`\`\`
 
@@ -178,52 +228,83 @@ app.add_middleware(TimingMiddleware)
 ## 八、完整示例:请求计时日志中间件
 
 \`\`\`python
+# 导入 time 模块
 import time
+# 导入 logging 模块
 import logging
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
+# 从 starlette.middleware.base 导入 BaseHTTPMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 # 配置日志
+# 调用 logging.basicConfig()
 logging.basicConfig(level=logging.INFO)
+# 定义变量 logger，赋值为 logging.getLogger("api")
 logger = logging.getLogger("api")
 
+# 定义类 RequestLoggingMiddleware，继承 BaseHTTPMiddleware
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    # """记录每个请求的方法、路径、状态码、耗时"""
     """记录每个请求的方法、路径、状态码、耗时"""
 
+    # 定义异步函数 dispatch，参数: self, request: Request, call_next
     async def dispatch(self, request: Request, call_next):
         # 1. 请求前:记录开始
+        # 定义变量 start，赋值为 time.time()
         start = time.time()
+        # 定义变量 method，赋值为 request.method
         method = request.method
+        # 定义变量 path，赋值为 request.url.path
         path = request.url.path
 
         # 2. 调用下游
+        # 尝试执行，捕获异常
         try:
+            # 定义变量 response，赋值为 await call_next(request)
             response = await call_next(request)
+            # 定义变量 status，赋值为 response.status_code
             status = response.status_code
+        # 捕获 Exception 异常，赋值为 e
         except Exception as e:
             # 下游抛异常,记录错误
+            # 定义变量 duration，赋值为 time.time() - start
             duration = time.time() - start
+            # 调用 logger.error()
             logger.error(f"{method} {path} 500 {duration:.4f}s ERROR: {e}")
+            # raise
             raise
 
         # 3. 响应后:记录
+        # 定义变量 duration，赋值为 time.time() - start
         duration = time.time() - start
+        # 调用 logger.info()
         logger.info(f"{method} {path} {status} {duration:.4f}s")
 
         # 4. 响应头加耗时
+        # response.headers["X-Process-Time"] = f"{duration:.
         response.headers["X-Process-Time"] = f"{duration:.4f}"
+        # 返回 response
         return response
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
+# 添加中间件: RequestLoggingMiddleware
 app.add_middleware(RequestLoggingMiddleware)
 
+# 定义 GET 路由：访问 / 时触发
 @app.get("/")
+# 定义函数 root，参数: 
 def root():
+    # 返回 {"msg": "hello"}
     return {"msg": "hello"}
 
+# 定义 GET 路由：访问 /slow 时触发
 @app.get("/slow")
+# 定义函数 slow，参数: 
 def slow():
     time.sleep(0.5)  # 模拟慢请求
+    # 返回 {"msg": "slow"}
     return {"msg": "slow"}
 \`\`\`
 
@@ -318,20 +399,28 @@ Access-Control-Allow-Headers: Authorization, Content-Type
 FastAPI/Starlette 内置 CORS 中间件:
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 fastapi.middleware.cors 导入 CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# app.add_middleware(
 app.add_middleware(
+    # CORSMiddleware,
     CORSMiddleware,
+    # 定义列表 allow_origins
     allow_origins=[
         "http://localhost:3000",   # 前端开发地址
         "https://myapp.com",       # 生产前端
+    # ],
     ],
     allow_credentials=True,        # 允许带 Cookie
     allow_methods=["*"],           # 允许所有方法
     allow_headers=["*"],           # 允许所有头
+# )
 )
 \`\`\`
 
@@ -350,12 +439,17 @@ app.add_middleware(
 
 \`\`\`python
 # ❌ 不安全:任何来源都能跨域
+# 添加中间件: CORSMiddleware, allow_origins=["*"]
 app.add_middleware(CORSMiddleware, allow_origins=["*"])
 
 # ✅ 明确指定来源
+# app.add_middleware(
 app.add_middleware(
+    # CORSMiddleware,
     CORSMiddleware,
+    # 定义列表 allow_origins
     allow_origins=["http://localhost:3000", "https://myapp.com"],
+# )
 )
 \`\`\`
 
@@ -369,17 +463,27 @@ app.add_middleware(
 
 \`\`\`python
 # ❌ 浏览器拒绝:credentials 和 * 冲突
+# app.add_middleware(
 app.add_middleware(
+    # CORSMiddleware,
     CORSMiddleware,
+    # 定义列表 allow_origins
     allow_origins=["*"],
+    # 定义变量 allow_credentials，赋值为 True,
     allow_credentials=True,
+# )
 )
 
 # ✅ 明确来源 + credentials
+# app.add_middleware(
 app.add_middleware(
+    # CORSMiddleware,
     CORSMiddleware,
+    # 定义列表 allow_origins
     allow_origins=["http://localhost:3000"],
+    # 定义变量 allow_credentials，赋值为 True,
     allow_credentials=True,
+# )
 )
 \`\`\`
 
@@ -389,15 +493,21 @@ app.add_middleware(
 
 \`\`\`python
 # 前端
+# fetch("http://api.example.com/me", {
 fetch("http://api.example.com/me", {
     credentials: "include",  # 带 Cookie 跨域
+# })
 })
 
 # 后端必须
+# app.add_middleware(
 app.add_middleware(
+    # CORSMiddleware,
     CORSMiddleware,
+    # 定义列表 allow_origins
     allow_origins=["http://localhost:3000"],
     allow_credentials=True,  # 必须,否则浏览器不发送 Cookie
+# )
 )
 \`\`\`
 
@@ -408,10 +518,15 @@ app.add_middleware(
 默认前端 JS 只能读「安全」的响应头(Content-Type、Content-Length 等)。自定义头(如 \`X-Request-ID\`)需要 expose:
 
 \`\`\`python
+# app.add_middleware(
 app.add_middleware(
+    # CORSMiddleware,
     CORSMiddleware,
+    # 定义列表 allow_origins
     allow_origins=["http://localhost:3000"],
+    # 定义列表 expose_headers
     expose_headers=["X-Request-ID", "X-Total-Count"],
+# )
 )
 \`\`\`
 
@@ -420,38 +535,57 @@ app.add_middleware(
 ## 九、完整示例:配置 CORS 允许前端跨域
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 fastapi.middleware.cors 导入 CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # CORS 配置:集中在一处,便于管理
+# app.add_middleware(
 app.add_middleware(
+    # CORSMiddleware,
     CORSMiddleware,
     # 1. 允许的前端来源(开发 + 生产)
+    # 定义列表 allow_origins
     allow_origins=[
         "http://localhost:3000",        # 本地开发
         "http://127.0.0.1:3000",        # 本地开发(IP)
         "https://app.mycompany.com",    # 生产
+    # ],
     ],
     # 2. 允许带 Cookie
+    # 定义变量 allow_credentials，赋值为 True,
     allow_credentials=True,
     # 3. 允许的方法(显式比 * 清晰)
+    # 定义列表 allow_methods
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     # 4. 允许的头
+    # 定义列表 allow_headers
     allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
     # 5. 暴露给前端读的响应头
+    # 定义列表 expose_headers
     expose_headers=["X-Request-ID", "X-Total-Count"],
     # 6. 预检结果缓存 10 分钟(减少 OPTIONS 请求)
+    # 定义变量 max_age，赋值为 600,
     max_age=600,
+# )
 )
 
+# 定义 GET 路由：访问 /api/users 时触发
 @app.get("/api/users")
+# 定义函数 users，参数: 
 def users():
+    # 返回 [{"id": 1, "name": "alice"}]
     return [{"id": 1, "name": "alice"}]
 
+# 定义 GET 路由：访问 /api/me 时触发
 @app.get("/api/me")
+# 定义函数 me，参数: 
 def me():
+    # 返回 {"name": "alice"}
     return {"name": "alice"}
 \`\`\`
 
@@ -491,16 +625,23 @@ CORS 是浏览器安全策略,服务器通过响应头「授权」跨域。理�
 GZip 把响应体压缩后传输,显著减少传输量。文本类响应(JSON/HTML)压缩率高,通常能压到原来的 10%-30%。
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 fastapi.middleware.gzip 导入 GZipMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 # minimum_size=1000:小于 1000 字节不压缩(压缩小文件反而开销大)
+# 添加中间件: GZipMiddleware, minimum_size=1000
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+# 定义 GET 路由：访问 /big 时触发
 @app.get("/big")
+# 定义函数 big，参数: 
 def big():
     # 大 JSON 响应会被自动 GZip
+    # 返回 {"data": ["item"] * 1000}
     return {"data": ["item"] * 1000}
 \`\`\`
 
@@ -516,13 +657,20 @@ def big():
 Host 头攻击:攻击者伪造 Host 头(如 \`Host: evil.com\`),如果你的代码用 Host 生成 URL(如密码重置链接),会被诱导到恶意网站。
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 starlette.middleware.trustedhost 导入 TrustedHostMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
+# app.add_middleware(
 app.add_middleware(
+    # TrustedHostMiddleware,
     TrustedHostMiddleware,
+    # 定义列表 allowed_hosts
     allowed_hosts=["example.com", "www.example.com", ".example.com"],
+# )
 )
 \`\`\`
 
@@ -535,21 +683,31 @@ app.add_middleware(
 用 itsdangerous 签名的 Cookie Session:
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
+# 从 starlette.middleware.sessions 导入 SessionMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 # secret_key 用来签名,泄漏则可伪造
+# 添加中间件: SessionMiddleware, secret_key="your-very-secret-key"
 app.add_middleware(SessionMiddleware, secret_key="your-very-secret-key")
 
+# 定义 POST 路由：访问 /login 时触发
 @app.post("/login")
+# 定义函数 login，参数: request: Request
 def login(request: Request):
     request.session["user_id"] = 42  # 存到 session
+    # 返回 {"msg": "登录"}
     return {"msg": "登录"}
 
+# 定义 GET 路由：访问 /me 时触发
 @app.get("/me")
+# 定义函数 me，参数: request: Request
 def me(request: Request):
     uid = request.session.get("user_id")  # 读 session
+    # 返回 {"user_id": uid}
     return {"user_id": uid}
 \`\`\`
 
@@ -564,10 +722,14 @@ def me(request: Request):
 把所有 HTTP 请求重定向到 HTTPS:
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 starlette.middleware.httpsredirect 导入 HTTPSRedirectMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
+# 添加中间件: HTTPSRedirectMiddleware
 app.add_middleware(HTTPSRedirectMiddleware)
 \`\`\`
 
@@ -578,23 +740,35 @@ app.add_middleware(HTTPSRedirectMiddleware)
 更清晰的中间件写法:
 
 \`\`\`python
+# 从 starlette.middleware.base 导入 BaseHTTPMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
 
+# 定义类 MyMiddleware，继承 BaseHTTPMiddleware
 class MyMiddleware(BaseHTTPMiddleware):
+    # 定义函数 __init__，参数: self, app, some_config: str
     def __init__(self, app, some_config: str):
+        # 调用 super()
         super().__init__(app)
         self.config = some_config  # 接收配置
 
+    # 定义异步函数 dispatch，参数: self, request: Request, call_next
     async def dispatch(self, request: Request, call_next):
         # 用 self.config 访问配置
+        # request.state.config = self.config
         request.state.config = self.config
+        # 定义变量 response，赋值为 await call_next(request)
         response = await call_next(request)
+        # response.headers["X-Config"] = self.config
         response.headers["X-Config"] = self.config
+        # 返回 response
         return response
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 # add_middleware 传额外参数给 __init__
+# 添加中间件: MyMiddleware, some_config="my-value"
 app.add_middleware(MyMiddleware, some_config="my-value")
 \`\`\`
 
@@ -606,33 +780,52 @@ app.add_middleware(MyMiddleware, some_config="my-value")
 ## 六、完整示例:启用 GZip 压缩
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 fastapi.middleware.gzip 导入 GZipMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+# 从 fastapi.middleware.cors 导入 CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
+# 从 starlette.middleware.trustedhost 导入 TrustedHostMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 1. GZip 压缩(放最外层,压缩最终响应)
+# 添加中间件: GZipMiddleware, minimum_size=1000
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # 2. CORS(在 GZip 内层)
+# app.add_middleware(
 app.add_middleware(
+    # CORSMiddleware,
     CORSMiddleware,
+    # 定义列表 allow_origins
     allow_origins=["http://localhost:3000"],
+    # 定义列表 allow_methods
     allow_methods=["*"],
+    # 定义列表 allow_headers
     allow_headers=["*"],
+# )
 )
 
 # 3. TrustedHost(最内层,先校验 Host)
+# app.add_middleware(
 app.add_middleware(
+    # TrustedHostMiddleware,
     TrustedHostMiddleware,
+    # 定义列表 allowed_hosts
     allowed_hosts=["localhost", "127.0.0.1", "myapp.com"],
+# )
 )
 
+# 定义 GET 路由：访问 /big-data 时触发
 @app.get("/big-data")
+# 定义函数 big_data，参数: 
 def big_data():
     # 这个响应会被 GZip 压缩
+    # 返回 {"items": [{"id": i, "name": f"item-{i}"} for i in range(100)]}
     return {"items": [{"id": i, "name": f"item-{i}"} for i in range(100)]}
 \`\`\`
 
@@ -642,12 +835,16 @@ def big_data():
 
 \`\`\`python
 # 顺序 A:GZip 在外,压缩加过 CORS 头的响应
+# 添加中间件: GZipMiddleware
 app.add_middleware(GZipMiddleware)
+# 添加中间件: CORSMiddleware
 app.add_middleware(CORSMiddleware)
 # 执行:TrustedHost → CORS 加头 → GZip 压缩
 
 # 顺序 B:CORS 在外,先加头再压缩(效果一样,但逻辑不同)
+# 添加中间件: CORSMiddleware
 app.add_middleware(CORSMiddleware)
+# 添加中间件: GZipMiddleware
 app.add_middleware(GZipMiddleware)
 \`\`\`
 
@@ -685,18 +882,26 @@ app.add_middleware(GZipMiddleware)
 最轻量的写法:
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 装饰器：app.middleware
 @app.middleware("http")
+# 定义异步函数 simple_mw，参数: request: Request, call_next
 async def simple_mw(request: Request, call_next):
     # 请求前
+    # request.state.touched = True
     request.state.touched = True
     # 调用下游
+    # 定义变量 response，赋值为 await call_next(request)
     response = await call_next(request)
     # 响应后
+    # response.headers["X-Custom"] = "yes"
     response.headers["X-Custom"] = "yes"
+    # 返回 response
     return response
 \`\`\`
 
@@ -707,29 +912,46 @@ async def simple_mw(request: Request, call_next):
 适合复杂、可配置、可复用的中间件:
 
 \`\`\`python
+# 从 starlette.middleware.base 导入 BaseHTTPMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
 
+# 定义类 RateLimitMiddleware，继承 BaseHTTPMiddleware
 class RateLimitMiddleware(BaseHTTPMiddleware):
+    # 定义函数 __init__，参数: self, app, rate: int = 100
     def __init__(self, app, rate: int = 100):
+        # 调用 super()
         super().__init__(app)
         self.rate = rate  # 配置:每秒允许请求数
 
+    # 定义异步函数 dispatch，参数: self, request: Request, call_next
     async def dispatch(self, request: Request, call_next):
         # 在这里实现限流逻辑
+        # 条件判断：如果 self.is_rate_limited(request)
         if self.is_rate_limited(request):
+            # 从 fastapi.responses 导入 JSONResponse
             from fastapi.responses import JSONResponse
+            # 返回 JSONResponse(
             return JSONResponse(
+                # 定义变量 status_code，赋值为 429,
                 status_code=429,
+                # 定义字典 content
                 content={"detail": "请求过于频繁"},
+            # )
             )
+        # 返回 await call_next(request)
         return await call_next(request)
 
+    # 定义函数 is_rate_limited，返回: bool
     def is_rate_limited(self, request: Request) -> bool:
         # 简化实现,实际用 Redis
+        # 返回 False
         return False
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
+# 添加中间件: RateLimitMiddleware, rate=100
 app.add_middleware(RateLimitMiddleware, rate=100)
 \`\`\`
 
@@ -738,46 +960,72 @@ app.add_middleware(RateLimitMiddleware, rate=100)
 把 JWT 校验放中间件,所有接口都生效:
 
 \`\`\`python
+# 导入 jwt 模块
 import jwt
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
+# 从 fastapi.responses 导入 JSONResponse
 from fastapi.responses import JSONResponse
+# 从 starlette.middleware.base 导入 BaseHTTPMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
+# 定义变量 SECRET，赋值为 "your-secret"
 SECRET = "your-secret"
 
+# 定义类 JWTAuthMiddleware，继承 BaseHTTPMiddleware
 class JWTAuthMiddleware(BaseHTTPMiddleware):
     # 不需要认证的路径
+    # 定义字典 EXEMPT_PATHS
     EXEMPT_PATHS = {"/login", "/docs", "/openapi.json", "/redoc"}
 
+    # 定义异步函数 dispatch，参数: self, request: Request, call_next
     async def dispatch(self, request: Request, call_next):
         # 1. 白名单直接放行
+        # 条件判断：如果 request.url.path in self.EXEMPT_PATHS
         if request.url.path in self.EXEMPT_PATHS:
+            # 返回 await call_next(request)
             return await call_next(request)
 
         # 2. 取 Authorization 头
+        # 定义变量 auth，赋值为 request.headers.get("Authorization")
         auth = request.headers.get("Authorization")
+        # 条件判断：如果 not auth or not auth.startswith("Bearer ")
         if not auth or not auth.startswith("Bearer "):
+            # 返回 JSONResponse(status_code=401, content={"detail": "未提供 token"})
             return JSONResponse(status_code=401, content={"detail": "未提供 token"})
 
+        # 定义变量 token，赋值为 auth[7:]
         token = auth[7:]
+        # 尝试执行，捕获异常
         try:
             # 3. 校验 token
+            # 定义变量 payload，赋值为 jwt.decode(token, SECRET, algorithms=["HS256"...
             payload = jwt.decode(token, SECRET, algorithms=["HS256"])
             request.state.user = payload  # 存到 state 给路由用
+        # except jwt.ExpiredSignatureError:
         except jwt.ExpiredSignatureError:
+            # 返回 JSONResponse(status_code=401, content={"detail": "token 过期"})
             return JSONResponse(status_code=401, content={"detail": "token 过期"})
+        # except jwt.InvalidTokenError:
         except jwt.InvalidTokenError:
+            # 返回 JSONResponse(status_code=401, content={"detail": "token 无效"})
             return JSONResponse(status_code=401, content={"detail": "token 无效"})
 
         # 4. 放行
+        # 返回 await call_next(request)
         return await call_next(request)
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
+# 添加中间件: JWTAuthMiddleware
 app.add_middleware(JWTAuthMiddleware)
 
+# 定义 GET 路由：访问 /me 时触发
 @app.get("/me")
+# 定义函数 me，参数: request: Request
 def me(request: Request):
     # 路由里能用中间件存的 user
+    # 返回 request.state.user
     return request.state.user
 \`\`\`
 
@@ -788,52 +1036,87 @@ def me(request: Request):
 令牌桶算法:固定速率往桶里加令牌,请求消耗令牌,没令牌就拒绝。
 
 \`\`\`python
+# 导入 time 模块
 import time
+# 从 collections 导入 defaultdict
 from collections import defaultdict
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
+# 从 fastapi.responses 导入 JSONResponse
 from fastapi.responses import JSONResponse
+# 从 starlette.middleware.base 导入 BaseHTTPMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
+# 定义类 TokenBucket
 class TokenBucket:
+    # 定义函数 __init__，参数: self, capacity: int, refill_rate: float
     def __init__(self, capacity: int, refill_rate: float):
         self.capacity = capacity        # 桶容量
         self.refill_rate = refill_rate  # 每秒补充令牌数
         self.tokens = capacity          # 当前令牌
+        # self.last_refill = time.time()
         self.last_refill = time.time()
 
+    # 定义函数 consume，返回: bool
     def consume(self, n: int = 1) -> bool:
         # 补充令牌
+        # 定义变量 now，赋值为 time.time()
         now = time.time()
+        # 定义变量 elapsed，赋值为 now - self.last_refill
         elapsed = now - self.last_refill
+        # self.tokens = min(self.capacity, self.tokens + ela
         self.tokens = min(self.capacity, self.tokens + elapsed * self.refill_rate)
+        # self.last_refill = now
         self.last_refill = now
         # 消耗
+        # 条件判断：如果 self.tokens >= n
         if self.tokens >= n:
+            # self.tokens -= n
             self.tokens -= n
+            # 返回 True
             return True
+        # 返回 False
         return False
 
+# 定义类 RateLimitMiddleware，继承 BaseHTTPMiddleware
 class RateLimitMiddleware(BaseHTTPMiddleware):
+    # 定义函数 __init__，参数: self, app, capacity: int = 100, refill_rate: float...
     def __init__(self, app, capacity: int = 100, refill_rate: float = 10):
+        # 调用 super()
         super().__init__(app)
+        # self.capacity = capacity
         self.capacity = capacity
+        # self.refill_rate = refill_rate
         self.refill_rate = refill_rate
+        # self.buckets = defaultdict(lambda: TokenBucket(cap
         self.buckets = defaultdict(lambda: TokenBucket(capacity, refill_rate))
 
+    # 定义异步函数 dispatch，参数: self, request: Request, call_next
     async def dispatch(self, request: Request, call_next):
         # 按 IP 限流(实际可用 user_id)
+        # 定义变量 client_ip，赋值为 request.client.host
         client_ip = request.client.host
+        # 定义变量 bucket，赋值为 self.buckets[client_ip]
         bucket = self.buckets[client_ip]
+        # 条件判断：如果 not bucket.consume()
         if not bucket.consume():
+            # 返回 JSONResponse(
             return JSONResponse(
+                # 定义变量 status_code，赋值为 429,
                 status_code=429,
+                # 定义字典 content
                 content={"detail": "请求过于频繁"},
+                # 定义字典 headers
                 headers={"Retry-After": "1"},
+            # )
             )
+        # 返回 await call_next(request)
         return await call_next(request)
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 # 每个 IP 桶容量 100,每秒补充 10 个
+# 添加中间件: RateLimitMiddleware, capacity=100, refill_rate=10
 app.add_middleware(RateLimitMiddleware, capacity=100, refill_rate=10)
 \`\`\`
 
@@ -844,29 +1127,46 @@ app.add_middleware(RateLimitMiddleware, capacity=100, refill_rate=10)
 另一种算法:统计时间窗口内的请求数。
 
 \`\`\`python
+# 导入 time 模块
 import time
+# 从 collections 导入 deque, defaultdict
 from collections import deque, defaultdict
+# 从 starlette.middleware.base 导入 BaseHTTPMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
+# 定义类 SlidingWindowMiddleware，继承 BaseHTTPMiddleware
 class SlidingWindowMiddleware(BaseHTTPMiddleware):
+    # 定义函数 __init__，参数: self, app, window: int = 60, max_requests: int = 1...
     def __init__(self, app, window: int = 60, max_requests: int = 100):
+        # 调用 super()
         super().__init__(app)
         self.window = window          # 窗口大小(秒)
+        # self.max_requests = max_requests
         self.max_requests = max_requests
         self.requests = defaultdict(deque)  # ip -> 时间戳队列
 
+    # 定义异步函数 dispatch，参数: self, request, call_next
     async def dispatch(self, request, call_next):
+        # 定义变量 ip，赋值为 request.client.host
         ip = request.client.host
+        # 定义变量 now，赋值为 time.time()
         now = time.time()
         # 清理过期时间戳
+        # 当 self.requests[ip] and now - self.requests[ip][0] > self.window 为真时循环
         while self.requests[ip] and now - self.requests[ip][0] > self.window:
+            # self.requests[ip].popleft()
             self.requests[ip].popleft()
         # 检查是否超限
+        # 条件判断：如果 len(self.requests[ip]) >= self.max_requests
         if len(self.requests[ip]) >= self.max_requests:
+            # 从 fastapi.responses 导入 JSONResponse
             from fastapi.responses import JSONResponse
+            # 返回 JSONResponse(status_code=429, content={"detail": "限流"})
             return JSONResponse(status_code=429, content={"detail": "限流"})
         # 记录本次请求
+        # self.requests[ip].append(now)
         self.requests[ip].append(now)
+        # 返回 await call_next(request)
         return await call_next(request)
 \`\`\`
 
@@ -875,23 +1175,35 @@ class SlidingWindowMiddleware(BaseHTTPMiddleware):
 给每个请求分配唯一 ID,贯穿日志、响应、下游调用:
 
 \`\`\`python
+# 导入 uuid 模块
 import uuid
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
+# 从 starlette.middleware.base 导入 BaseHTTPMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
+# 定义类 RequestIDMiddleware，继承 BaseHTTPMiddleware
 class RequestIDMiddleware(BaseHTTPMiddleware):
+    # 定义异步函数 dispatch，参数: self, request: Request, call_next
     async def dispatch(self, request: Request, call_next):
         # 1. 优先用上游传的 ID(链路追踪),没有就生成
+        # 定义变量 request_id，赋值为 request.headers.get("X-Request-ID") or str(uu...
         request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
         # 2. 存到 state,日志和路由都能用
+        # request.state.request_id = request_id
         request.state.request_id = request_id
         # 3. 调用下游
+        # 定义变量 response，赋值为 await call_next(request)
         response = await call_next(request)
         # 4. 响应头带上,前端能关联
+        # response.headers["X-Request-ID"] = request_id
         response.headers["X-Request-ID"] = request_id
+        # 返回 response
         return response
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
+# 添加中间件: RequestIDMiddleware
 app.add_middleware(RequestIDMiddleware)
 \`\`\`
 
@@ -902,17 +1214,27 @@ app.add_middleware(RequestIDMiddleware)
 中间件里下游抛异常的处理:
 
 \`\`\`python
+# 定义类 SafeMiddleware，继承 BaseHTTPMiddleware
 class SafeMiddleware(BaseHTTPMiddleware):
+    # 定义异步函数 dispatch，参数: self, request, call_next
     async def dispatch(self, request, call_next):
+        # 尝试执行，捕获异常
         try:
+            # 返回 await call_next(request)
             return await call_next(request)
+        # 捕获 Exception 异常，赋值为 e
         except Exception as e:
             # 记录异常
+            # 调用 logger.exception()
             logger.exception("请求处理失败")
             # 返回统一错误响应
+            # 返回 JSONResponse(
             return JSONResponse(
+                # 定义变量 status_code，赋值为 500,
                 status_code=500,
+                # 定义字典 content
                 content={"code": 500, "message": "服务器内部错误"},
+            # )
             )
 \`\`\`
 
@@ -921,81 +1243,143 @@ class SafeMiddleware(BaseHTTPMiddleware):
 ## 八、完整示例:请求日志 + 限流中间件
 
 \`\`\`python
+# 导入 time 模块
 import time
+# 导入 logging 模块
 import logging
+# 导入 uuid 模块
 import uuid
+# 从 collections 导入 defaultdict, deque
 from collections import defaultdict, deque
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
+# 从 fastapi.responses 导入 JSONResponse
 from fastapi.responses import JSONResponse
+# 从 starlette.middleware.base 导入 BaseHTTPMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
+# 调用 logging.basicConfig()
 logging.basicConfig(level=logging.INFO)
+# 定义变量 logger，赋值为 logging.getLogger("api")
 logger = logging.getLogger("api")
 
 # 1. 请求 ID 中间件(最外层,给所有请求分配 ID)
+# 定义类 RequestIDMiddleware，继承 BaseHTTPMiddleware
 class RequestIDMiddleware(BaseHTTPMiddleware):
+    # 定义异步函数 dispatch，参数: self, request, call_next
     async def dispatch(self, request, call_next):
+        # 定义变量 rid，赋值为 request.headers.get("X-Request-ID") or str(uu...
         rid = request.headers.get("X-Request-ID") or str(uuid.uuid4())[:8]
+        # request.state.request_id = rid
         request.state.request_id = rid
+        # 定义变量 response，赋值为 await call_next(request)
         response = await call_next(request)
+        # response.headers["X-Request-ID"] = rid
         response.headers["X-Request-ID"] = rid
+        # 返回 response
         return response
 
 # 2. 限流中间件
+# 定义类 RateLimitMiddleware，继承 BaseHTTPMiddleware
 class RateLimitMiddleware(BaseHTTPMiddleware):
+    # 定义函数 __init__，参数: self, app, window=60, max_req=100
     def __init__(self, app, window=60, max_req=100):
+        # 调用 super()
         super().__init__(app)
+        # self.window = window
         self.window = window
+        # self.max_req = max_req
         self.max_req = max_req
+        # self.req_log = defaultdict(deque)
         self.req_log = defaultdict(deque)
 
+    # 定义异步函数 dispatch，参数: self, request, call_next
     async def dispatch(self, request, call_next):
+        # 定义变量 ip，赋值为 request.client.host
         ip = request.client.host
+        # 定义变量 now，赋值为 time.time()
         now = time.time()
         # 清理过期
+        # 当 self.req_log[ip] and now - self.req_log[ip][0] > self.window 为真时循环
         while self.req_log[ip] and now - self.req_log[ip][0] > self.window:
+            # self.req_log[ip].popleft()
             self.req_log[ip].popleft()
+        # 条件判断：如果 len(self.req_log[ip]) >= self.max_req
         if len(self.req_log[ip]) >= self.max_req:
+            # 定义变量 rid，赋值为 getattr(request.state, "request_id", "?")
             rid = getattr(request.state, "request_id", "?")
+            # 调用 logger.warning()
             logger.warning(f"[{rid}] 限流: {ip}")
+            # 返回 JSONResponse(
             return JSONResponse(
+                # 定义变量 status_code，赋值为 429,
                 status_code=429,
+                # 定义字典 content
                 content={"detail": "请求过于频繁"},
+                # 定义字典 headers
                 headers={"Retry-After": str(self.window)},
+            # )
             )
+        # self.req_log[ip].append(now)
         self.req_log[ip].append(now)
+        # 返回 await call_next(request)
         return await call_next(request)
 
 # 3. 日志中间件
+# 定义类 LoggingMiddleware，继承 BaseHTTPMiddleware
 class LoggingMiddleware(BaseHTTPMiddleware):
+    # 定义异步函数 dispatch，参数: self, request, call_next
     async def dispatch(self, request, call_next):
+        # 定义变量 rid，赋值为 getattr(request.state, "request_id", "?")
         rid = getattr(request.state, "request_id", "?")
+        # 定义变量 start，赋值为 time.time()
         start = time.time()
+        # 定义变量 method，赋值为 request.method
         method = request.method
+        # 定义变量 path，赋值为 request.url.path
         path = request.url.path
+        # 尝试执行，捕获异常
         try:
+            # 定义变量 response，赋值为 await call_next(request)
             response = await call_next(request)
+            # 定义变量 dur，赋值为 time.time() - start
             dur = time.time() - start
+            # 调用 logger.info()
             logger.info(f"[{rid}] {method} {path} {response.status_code} {dur:.3f}s")
+            # 返回 response
             return response
+        # 捕获 Exception 异常，赋值为 e
         except Exception as e:
+            # 定义变量 dur，赋值为 time.time() - start
             dur = time.time() - start
+            # 调用 logger.error()
             logger.error(f"[{rid}] {method} {path} 500 {dur:.3f}s {e}")
+            # raise
             raise
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 # 添加顺序(后加的在最外层):
 # 实际执行:RequestID(最外) → Logging → RateLimit → 路由
+# 添加中间件: LoggingMiddleware
 app.add_middleware(LoggingMiddleware)
+# 添加中间件: RateLimitMiddleware, window=60, max_req=100
 app.add_middleware(RateLimitMiddleware, window=60, max_req=100)
+# 添加中间件: RequestIDMiddleware
 app.add_middleware(RequestIDMiddleware)
 
+# 定义 GET 路由：访问 / 时触发
 @app.get("/")
+# 定义函数 root，参数: 
 def root():
+    # 返回 {"msg": "hello"}
     return {"msg": "hello"}
 
+# 定义 GET 路由：访问 /error 时触发
 @app.get("/error")
+# 定义函数 error，参数: 
 def error():
+    # 抛出 ValueError 异常: "模拟错误"
     raise ValueError("模拟错误")
 \`\`\`
 

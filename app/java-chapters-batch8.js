@@ -17,7 +17,7 @@ export const chapters = [
 如果一个类**没有显式定义**任何构造方法，编译器会自动生成一个无参的默认构造方法：
 
 \`\`\`java
-public class Animal {
+public class Animal {  // 定义类 Animal
     // 编译器自动生成: public Animal() { super(); }
 }
 \`\`\`
@@ -29,10 +29,10 @@ public class Animal {
 通过参数为字段赋初值，使对象创建即处于合法状态：
 
 \`\`\`java
-public class Animal {
-    private String name;
-    public Animal(String name) {
-        this.name = name;
+public class Animal {  // 定义类 Animal
+    private String name;  // 声明私有变量 name（String 类型）
+    public Animal(String name) {  // 方法 Animal，返回 public，参数：String name
+        this.name = name;  // 为 this.name 赋值：name
     }
 }
 \`\`\`
@@ -46,15 +46,15 @@ public class Animal {
 使用 \`this()\` 调用本类的其他构造方法，**必须放在第一行**，避免初始化逻辑重复：
 
 \`\`\`java
-public class Animal {
-    private String name;
-    private int age;
-    public Animal() {
+public class Animal {  // 定义类 Animal
+    private String name;  // 声明私有变量 name（String 类型）
+    private int age;  // 声明私有变量 age（int 类型）
+    public Animal() {  // 方法 Animal，返回 public，无参数
         this("无名", 0); // 链式调用两参构造
     }
-    public Animal(String name, int age) {
-        this.name = name;
-        this.age = age;
+    public Animal(String name, int age) {  // 方法 Animal，返回 public，参数：String name, int age
+        this.name = name;  // 为 this.name 赋值：name
+        this.age = age;  // 为 this.age 赋值：age
     }
 }
 \`\`\`
@@ -134,7 +134,7 @@ class Person {
 每个对象都有自己的 \`this\`，通过 \`this\` 可以访问当前对象的字段和方法：
 
 \`\`\`java
-public void show() {
+public void show() {  // 方法 show，返回 void，无参数
     System.out.println(this.name); // this 指向调用 show 的对象
 }
 \`\`\`
@@ -144,7 +144,7 @@ public void show() {
 当方法参数或局部变量与字段同名时，局部变量会**遮蔽**字段。此时必须用 \`this.字段\` 来访问字段：
 
 \`\`\`java
-public void setName(String name) {
+public void setName(String name) {  // 方法 setName，返回 void，参数：String name
     this.name = name; // this.name 是字段，name 是参数
 }
 \`\`\`
@@ -164,7 +164,7 @@ public void setName(String name) {
 将当前对象作为参数传递给其他方法：
 
 \`\`\`java
-public void register() {
+public void register() {  // 方法 register，返回 void，无参数
     Manager.add(this); // 把自己交给管理器
 }
 \`\`\`
@@ -174,8 +174,8 @@ public void register() {
 实现链式调用（Builder 模式的基础）：
 
 \`\`\`java
-public Builder setName(String n) {
-    this.name = n;
+public Builder setName(String n) {  // 方法 setName，返回 Builder，参数：String n
+    this.name = n;  // 为 this.name 赋值：n
     return this; // 返回当前对象
 }
 \`\`\`
@@ -392,12 +392,12 @@ class Account {
 将字段设为 \`private\`，通过 public 的 getter/setter 访问：
 
 \`\`\`java
-public class User {
-    private int age;
-    public int getAge() { return age; }
-    public void setAge(int age) {
-        if (age < 0) throw new IllegalArgumentException();
-        this.age = age;
+public class User {  // 定义类 User
+    private int age;  // 声明私有变量 age（int 类型）
+    public int getAge() { return age; }  // 方法 getAge（返回 int，无参数）：返回 age
+    public void setAge(int age) {  // 方法 setAge，返回 void，参数：int age
+        if (age < 0) throw new IllegalArgumentException();  // 调用方法 if
+        this.age = age;  // 为 this.age 赋值：age
     }
 }
 \`\`\`
@@ -417,10 +417,10 @@ public class User {
 - 若字段是可变对象，返回副本
 
 \`\`\`java
-public final class Money {
-    private final int amount;
+public final class Money {  // 定义最终（不可继承）类 Money
+    private final int amount;  // 声明常量私有变量 amount（int 类型）
     public Money(int amount) { this.amount = amount; }
-    public int getAmount() { return amount; }
+    public int getAmount() { return amount; }  // 方法 getAmount（返回 int，无参数）：返回 amount
 }
 \`\`\`
 
@@ -542,7 +542,7 @@ class Circle {
 所有对象共享同一份内存，常用于计数器、配置、常量：
 
 \`\`\`java
-public class Counter {
+public class Counter {  // 定义类 Counter
     private static int total = 0; // 所有实例共享
     public Counter() { total++; }
 }
@@ -662,10 +662,10 @@ class Counter {
 每次创建对象时执行，位于字段初始化之后、构造方法体之前：
 
 \`\`\`java
-public class Demo {
+public class Demo {  // 定义类 Demo
     {
         // 实例初始化块
-        System.out.println("实例块执行");
+        System.out.println("实例块执行");  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -680,10 +680,10 @@ public class Demo {
 类加载时执行一次，用 \`static {}\` 标识：
 
 \`\`\`java
-public class Demo {
+public class Demo {  // 定义类 Demo
     static {
         // 静态初始化块
-        System.out.println("静态块执行");
+        System.out.println("静态块执行");  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -798,8 +798,8 @@ class Child extends Parent {
 - 构造方法中初始化
 
 \`\`\`java
-public class Config {
-    private final int timeout;
+public class Config {  // 定义类 Config
+    private final int timeout;  // 声明常量私有变量 timeout（int 类型）
     public Config(int t) { this.timeout = t; } // 构造方法初始化
 }
 \`\`\`
@@ -934,8 +934,8 @@ class Dog extends Animal {
 每个 Java 文件的**第一行**（除注释外）声明所属包：
 
 \`\`\`java
-package com.example.service;
-public class UserService { }
+package com.example.service;  // 声明包名为 com.example.service
+public class UserService { }  // 定义类 UserService
 \`\`\`
 
 包名对应目录结构：\`com/example/service/UserService.java\`。
@@ -1096,8 +1096,8 @@ Java 提供四种引用强度，影响回收时机：
 | **Phantom**（虚引用） | 不影响对象生命周期，仅跟踪回收 | 资源清理跟踪 |
 
 \`\`\`java
-SoftReference<byte[]> cache = new SoftReference<>(new byte[1024]);
-WeakReference<Object> weak = new WeakReference<>(new Object());
+SoftReference<byte[]> cache = new SoftReference<>(new byte[1024]);  // 声明变量 cache（SoftReference<byte[]>），初始值为 new SoftReference<>(new byte[1024])
+WeakReference<Object> weak = new WeakReference<>(new Object());  // 声明变量 weak（WeakReference<Object>），初始值为 new WeakReference<>(new Object())
 \`\`\`
 
 下面通过代码演示对象创建与引用类型：`,
@@ -1204,17 +1204,17 @@ class OldResource {
 \`java.util.Objects\` 提供安全工具方法：
 
 \`\`\`java
-@Override
-public boolean equals(Object o) {
+@Override  // 注解：Override
+public boolean equals(Object o) {  // 方法 equals，返回 boolean，参数：Object o
     if (this == o) return true;
     if (!(o instanceof Person)) return false;
-    Person p = (Person) o;
-    return age == p.age && Objects.equals(name, p.name);
+    Person p = (Person) o;  // 声明变量 p（Person），初始值为 (Person) o
+    return age == p.age && Objects.equals(name, p.name);  // 返回值：age == p.age && Objects.equals(name, p.name)
 }
 
-@Override
-public int hashCode() {
-    return Objects.hash(name, age);
+@Override  // 注解：Override
+public int hashCode() {  // 方法 hashCode，返回 int，无参数
+    return Objects.hash(name, age);  // 返回值：Objects.hash(name, age)
 }
 \`\`\`
 
@@ -1299,8 +1299,8 @@ class Employee {
 默认返回 \`类名@十六进制哈希码\`：
 
 \`\`\`java
-public String toString() {
-    return getClass().getName() + "@" + Integer.toHexString(hashCode());
+public String toString() {  // 方法 toString，返回 String，无参数
+    return getClass().getName() + "@" + Integer.toHexString(hashCode());  // 返回值：getClass().getName() + "@" + Integer.toHexString(hashCode())
 }
 // 输出: com.example.Person@1b6d3586
 \`\`\`
@@ -1312,9 +1312,9 @@ public String toString() {
 重写时应返回对象的关键字段信息，便于阅读：
 
 \`\`\`java
-@Override
-public String toString() {
-    return "Person{name='" + name + "', age=" + age + "}";
+@Override  // 注解：Override
+public String toString() {  // 方法 toString，返回 String，无参数
+    return "Person{name='" + name + "', age=" + age + "}";  // 返回值："Person{name='" + name + "', age=" + age + "}"
 }
 \`\`\`
 
@@ -1335,12 +1335,12 @@ public String toString() {
 
 \`\`\`java
 // 简单场景
-String s = "User: " + name + ", age: " + age;
+String s = "User: " + name + ", age: " + age;  // 声明变量 s（String），初始值为 "User: " + name + ", age: " + age
 
 // 循环场景
-StringBuilder sb = new StringBuilder();
-for (String item : list) {
-    sb.append(item).append(", ");
+StringBuilder sb = new StringBuilder();  // 声明变量 sb（StringBuilder），初始值为 new StringBuilder()
+for (String item : list) {  // 增强 for：遍历 list，每次取一个元素 item
+    sb.append(item).append(", ");  // 调用 sb 的 append 方法
 }
 \`\`\`
 
@@ -1437,10 +1437,10 @@ class Library {
 \`Cloneable\` 是标记接口（无方法），实现它表示对象允许被克隆。配合 \`Object.clone()\` 使用：
 
 \`\`\`java
-public class Demo implements Cloneable {
-    @Override
-    protected Demo clone() throws CloneNotSupportedException {
-        return (Demo) super.clone();
+public class Demo implements Cloneable {  // 定义类 Demo
+    @Override  // 注解：Override
+    protected Demo clone() throws CloneNotSupportedException {  // 方法 clone，返回 Demo，无参数
+        return (Demo) super.clone();  // 返回值：(Demo) super.clone()
     }
 }
 \`\`\`
@@ -1477,8 +1477,8 @@ public class Demo implements Cloneable {
 更推荐的拷贝方式，类型安全且清晰：
 
 \`\`\`java
-public Person(Person other) {
-    this.name = other.name;
+public Person(Person other) {  // 方法 Person，返回 public，参数：Person other
+    this.name = other.name;  // 为 this.name 赋值：other.name
     this.address = new Address(other.address); // 深拷贝
 }
 \`\`\`
@@ -1612,7 +1612,7 @@ class PersonDeep {
 \`Comparable\` 只有一个方法 \`compareTo\`：
 
 \`\`\`java
-public int compareTo(T o);
+public int compareTo(T o);  // 方法 compareTo，返回 int，参数：T o
 \`\`\`
 
 返回值含义：
@@ -1630,7 +1630,7 @@ public int compareTo(T o);
 推荐用基本类型比较，避免溢出：
 
 \`\`\`java
-public int compareTo(Person o) {
+public int compareTo(Person o) {  // 方法 compareTo，返回 int，参数：Person o
     return Integer.compare(this.age, o.age); // 推荐
     // return this.age - o.age; // 不推荐：可能溢出
 }
@@ -1639,7 +1639,7 @@ public int compareTo(Person o) {
 多字段比较时，按优先级逐个比较：
 
 \`\`\`java
-public int compareTo(Person o) {
+public int compareTo(Person o) {  // 方法 compareTo，返回 int，参数：Person o
     int r = this.name.compareTo(o.name); // 先按名字
     if (r != 0) return r;
     return Integer.compare(this.age, o.age); // 名字相同再按年龄
@@ -1752,7 +1752,7 @@ SOLID 是面向对象设计的五大原则，指导写出可维护、可扩展�
 
 \`\`\`java
 // 反例：一个类既处理数据又负责打印
-class Report {
+class Report {  // 定义类 Report
     void calculate() { }
     void print() { }   // 应拆分到 ReportPrinter
 }
@@ -1765,9 +1765,9 @@ class Report {
 软件实体应对扩展开放，对修改关闭。通过抽象（接口/抽象类）实现，新增功能时加新类而非改老类。
 
 \`\`\`java
-interface Shape { double area(); }
+interface Shape { double area(); }  // 定义接口 Shape
 class Circle implements Shape { ... }   // 新增形状不改现有代码
-class Square implements Shape { ... }
+class Square implements Shape { ... }  // 定义类 Square
 \`\`\`
 
 ## L - 里氏替换原则（LSP）
@@ -1782,12 +1782,12 @@ class Square implements Shape { ... }
 
 \`\`\`java
 // 反例：一个接口含太多方法
-interface Worker { void work(); void eat(); void sleep(); }
+interface Worker { void work(); void eat(); void sleep(); }  // 定义接口 Worker
 // 机器人实现 Worker 被迫实现 eat/sleep
 
 // 正确：拆分为小接口
-interface Workable { void work(); }
-interface Eatable { void eat(); }
+interface Workable { void work(); }  // 定义接口 Workable
+interface Eatable { void eat(); }  // 定义接口 Eatable
 \`\`\`
 
 ## D - 依赖倒置原则（DIP）
@@ -1797,7 +1797,7 @@ interface Eatable { void eat(); }
 \`\`\`java
 // 反例：Service 直接依赖 MySQLDao
 // 正确：Service 依赖 Dao 接口，MySQLDao 实现接口
-class OrderService {
+class OrderService {  // 定义类 OrderService
     private Dao dao; // 依赖抽象
 }
 \`\`\`
@@ -1899,7 +1899,7 @@ class AreaCalculator {
 ## record 语法
 
 \`\`\`java
-public record Point(int x, int y) {}
+public record Point(int x, int y) {}  // 定义记录类 Point
 \`\`\`
 
 这一行等价于传统写法的：
@@ -1923,9 +1923,9 @@ record 自动生成：
 用于参数校验，无需显式赋值：
 
 \`\`\`java
-public record Range(int start, int end) {
+public record Range(int start, int end) {  // 定义记录类 Range
     public Range {  // 紧凑构造器
-        if (start > end) throw new IllegalArgumentException();
+        if (start > end) throw new IllegalArgumentException();  // 调用方法 if
     }
 }
 \`\`\`
@@ -1935,9 +1935,9 @@ public record Range(int start, int end) {
 record 可以添加自定义方法，但不能再定义实例字段（record 隐式 final）：
 
 \`\`\`java
-public record Point(int x, int y) {
-    public double distanceFromOrigin() {
-        return Math.sqrt(x * x + y * y);
+public record Point(int x, int y) {  // 定义记录类 Point
+    public double distanceFromOrigin() {  // 方法 distanceFromOrigin，返回 double，无参数
+        return Math.sqrt(x * x + y * y);  // 返回值：Math.sqrt(x * x + y * y)
     }
 }
 \`\`\`

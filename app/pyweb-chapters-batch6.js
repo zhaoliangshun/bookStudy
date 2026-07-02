@@ -36,9 +36,13 @@ Django 的 Model 是「数据模型」,本质是一个继承 \`models.Model\` �
 
 \`\`\`python
 # 你写的 Python 类
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
+    # 定义变量 title，赋值为 models.CharField(max_length=200)
     title = models.CharField(max_length=200)
+    # 定义变量 content，赋值为 models.TextField()
     content = models.TextField()
+    # 定义变量 created_at，赋值为 models.DateTimeField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 # Django 自动生成的建表 SQL(简化版)
@@ -56,23 +60,33 @@ ORM 的好处是「数据库无关」:同一份 Model 代码,开发用 SQLite,�
 
 \`\`\`python
 # blog/models.py
+# 从 django.db 导入 models
 from django.db import models
 
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
     # 字段 = 字段类型(属性)
+    # 定义变量 title，赋值为 models.CharField(max_length=200, verbose_name...
     title = models.CharField(max_length=200, verbose_name="标题")
+    # 定义变量 content，赋值为 models.TextField(verbose_name="正文")
     content = models.TextField(verbose_name="正文")
+    # 定义变量 created_at，赋值为 models.DateTimeField(auto_now_add=True, verbo...
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
+    # 定义变量 updated_at，赋值为 models.DateTimeField(auto_now=True, verbose_n...
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
 
     # __str__ 定义对象在后台/打印时的显示
+    # 定义函数 __str__，参数: self
     def __str__(self):
+        # 返回 self.title
         return self.title
 
     # Meta 内部类:模型元数据
+    # 定义类 Meta
     class Meta:
         ordering = ["-created_at"]   # 默认按创建时间倒序
         verbose_name = "文章"        # 单数名
+        # 定义变量 verbose_name_plural，赋值为 "文章" # 复数名(中文通常相同)
         verbose_name_plural = "文章" # 复数名(中文通常相同)
         db_table = "blog_post"       # 自定义表名(默认 blog_post)
 \`\`\`
@@ -110,9 +124,12 @@ Django 提供几十种字段类型,常用如下:
 | \`DecimalField\` | DECIMAL | 定点数(金额等) | \`max_digits\` \`decimal_places\` |
 
 \`\`\`python
+# 定义类 Product，继承 models.Model
 class Product(models.Model):
+    # 定义变量 name，赋值为 models.CharField(max_length=100)
     name = models.CharField(max_length=100)
     price = models.DecimalField(max_digits=10, decimal_places=2)  # 最多 8 位整数 + 2 位小数
+    # 定义变量 stock，赋值为 models.PositiveIntegerField(default=0)
     stock = models.PositiveIntegerField(default=0)
 \`\`\`
 
@@ -126,12 +143,16 @@ class Product(models.Model):
 | \`DurationField\` | 时间间隔(timedelta) |
 
 \`\`\`python
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
     # auto_now_add=True: 创建对象时自动设为当前时间(只一次)
+    # 定义变量 created_at，赋值为 models.DateTimeField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
     # auto_now=True: 每次 save() 都更新为当前时间
+    # 定义变量 updated_at，赋值为 models.DateTimeField(auto_now=True)
     updated_at = models.DateTimeField(auto_now=True)
     # 手动指定的日期
+    # 定义变量 published_at，赋值为 models.DateTimeField(null=True, blank=True)
     published_at = models.DateTimeField(null=True, blank=True)
 \`\`\`
 
@@ -161,17 +182,26 @@ class Post(models.Model):
 | \`choices\` | 枚举值(不是字段类型,是 CharField 的属性) |
 
 \`\`\`python
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
     # 用 choices 限制取值范围
+    # 定义变量 STATUS_DRAFT，赋值为 "draft"
     STATUS_DRAFT = "draft"
+    # 定义变量 STATUS_PUBLISHED，赋值为 "published"
     STATUS_PUBLISHED = "published"
+    # 定义列表 STATUS_CHOICES
     STATUS_CHOICES = [
+        # (STATUS_DRAFT, "草稿"),
         (STATUS_DRAFT, "草稿"),
+        # (STATUS_PUBLISHED, "已发布"),
         (STATUS_PUBLISHED, "已发布"),
+    # ]
     ]
+    # 定义变量 status，赋值为 models.CharField(max_length=10, choices=STATU...
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_DRAFT)
 
 # 使用时
+# 定义变量 post，赋值为 Post.objects.get(pk=1)
 post = Post.objects.get(pk=1)
 post.status                # "published"
 post.get_status_display()  # "已发布"(自动生成的方法)
@@ -180,17 +210,27 @@ post.get_status_display()  # "已发布"(自动生成的方法)
 Django 3.x 后推荐用 \`TextChoices\`/\`IntegerChoices\` 写得更优雅:
 
 \`\`\`python
+# 从 django.db 导入 models
 from django.db import models
 
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
+    # 定义类 Status，继承 models.TextChoices
     class Status(models.TextChoices):
+        # 定义变量 DRAFT，赋值为 "draft", "草稿"
         DRAFT = "draft", "草稿"
+        # 定义变量 PUBLISHED，赋值为 "published", "已发布"
         PUBLISHED = "published", "已发布"
 
+    # 定义变量 status，赋值为 models.CharField(
     status = models.CharField(
+        # 定义变量 max_length，赋值为 10,
         max_length=10,
+        # 定义变量 choices，赋值为 Status.choices,
         choices=Status.choices,
+        # 定义变量 default，赋值为 Status.DRAFT,
         default=Status.DRAFT,
+    # )
     )
 \`\`\`
 
@@ -217,12 +257,16 @@ class Post(models.Model):
 - \`blank=True\`:**表单校验层面**允许提交空值(不影响数据库)。
 
 \`\`\`python
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
     # 标题:必填,数据库 NOT NULL
+    # 定义变量 title，赋值为 models.CharField(max_length=200)
     title = models.CharField(max_length=200)
     # 副标题:可空,数据库允许 NULL,表单也可留空
+    # 定义变量 subtitle，赋值为 models.CharField(max_length=200, null=True, b...
     subtitle = models.CharField(max_length=200, null=True, blank=True)
     # 摘要:表单可留空,但数据库存空字符串(CharField 不推荐 null=True)
+    # 定义变量 summary，赋值为 models.CharField(max_length=500, blank=True, ...
     summary = models.CharField(max_length=500, blank=True, default="")
 \`\`\`
 
@@ -236,19 +280,29 @@ class Post(models.Model):
 \`__str__\` 决定对象在 Admin、shell、日志里怎么显示,**强烈建议每个 Model 都写**:
 
 \`\`\`python
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
+    # 定义变量 title，赋值为 models.CharField(max_length=200)
     title = models.CharField(max_length=200)
 
+    # 定义函数 __str__，参数: self
     def __str__(self):
+        # 返回 f"{self.title} (#{self.id})"
         return f"{self.title} (#{self.id})"
         # 必须返回 str,f-string 是最佳选择
 
+# 定义类 Comment，继承 models.Model
 class Comment(models.Model):
+    # 定义变量 post，赋值为 models.ForeignKey(Post, on_delete=models.CASC...
     post = models.ForeignKey(Post, on_delete=models.CASCADE)
+    # 定义变量 author，赋值为 models.CharField(max_length=50)
     author = models.CharField(max_length=50)
+    # 定义变量 content，赋值为 models.TextField()
     content = models.TextField()
 
+    # 定义函数 __str__，参数: self
     def __str__(self):
+        # 返回 f"{self.author} 评论了 {self.post.title}"
         return f"{self.author} 评论了 {self.post.title}"
 \`\`\`
 
@@ -259,34 +313,50 @@ class Comment(models.Model):
 \`Meta\` 类放模型的「元数据」(不是字段的配置):
 
 \`\`\`python
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
     # ... 字段 ...
 
+    # 定义类 Meta
     class Meta:
         # 默认排序:created_at 倒序(最新在前)
+        # 定义列表 ordering
         ordering = ["-created_at"]
         # 多字段排序:先按 published_at,再按 id
         # ordering = ["-published_at", "id"]
 
         # 自定义表名
+        # 定义变量 db_table，赋值为 "blog_posts"
         db_table = "blog_posts"
 
         # 后台显示名
+        # 定义变量 verbose_name，赋值为 "文章"
         verbose_name = "文章"
+        # 定义变量 verbose_name_plural，赋值为 "文章列表"
         verbose_name_plural = "文章列表"
 
         # 复合唯一约束:同一作者标题不能重复
+        # 定义列表 constraints
         constraints = [
+            # models.UniqueConstraint(
             models.UniqueConstraint(
+                # 定义列表 fields
                 fields=["author", "title"],
+                # 定义变量 name，赋值为 "unique_author_title",
                 name="unique_author_title",
+            # ),
             ),
+        # ]
         ]
 
         # 联合索引(查询优化)
+        # 定义列表 indexes
         indexes = [
+            # 调用 models.Index()
             models.Index(fields=["-created_at"], name="idx_created_at"),
+            # 调用 models.Index()
             models.Index(fields=["status", "-created_at"], name="idx_status_created"),
+        # ]
         ]
 \`\`\`
 
@@ -298,6 +368,7 @@ Model 改了之后,要让数据库跟上变化,需要两步:
 
 \`\`\`bash
 # 第 1 步:生成迁移文件(对比当前 Model 和上次迁移的差异,生成 Python 文件)
+# 运行 Python 脚本 manage.py
 python manage.py makemigrations
 
 # 输出:
@@ -306,6 +377,7 @@ python manage.py makemigrations
 #     - Create model Post
 
 # 第 2 步:应用迁移(执行迁移文件里的 SQL)
+# 运行 Python 脚本 manage.py
 python manage.py migrate
 
 # 输出:
@@ -322,15 +394,19 @@ python manage.py migrate
 
 \`\`\`bash
 # 查看迁移状态(哪些已应用,哪些未应用)
+# 运行 Python 脚本 manage.py
 python manage.py showmigrations
 
 # 看迁移会执行什么 SQL(不真的执行)
+# 运行 Python 脚本 manage.py
 python manage.py sqlmigrate blog 0001
 
 # 回滚到某个迁移
+# 运行 Python 脚本 manage.py
 python manage.py migrate blog 0002
 
 # 假装执行(更新迁移记录但不真改库,慎用)
+# 运行 Python 脚本 manage.py
 python manage.py migrate --fake blog 0001
 \`\`\`
 
@@ -338,95 +414,164 @@ python manage.py migrate --fake blog 0001
 
 \`\`\`python
 # blog/models.py
+# 从 django.db 导入 models
 from django.db import models
+# 从 django.contrib.auth.models 导入 User
 from django.contrib.auth.models import User
 
+# 定义类 Tag，继承 models.Model
 class Tag(models.Model):
+    # """标签:多对多关联文章"""
     """标签:多对多关联文章"""
+    # 定义变量 name，赋值为 models.CharField(max_length=30, unique=True, ...
     name = models.CharField(max_length=30, unique=True, verbose_name="标签名")
+    # 定义变量 slug，赋值为 models.SlugField(max_length=30, unique=True, ...
     slug = models.SlugField(max_length=30, unique=True, verbose_name="URL别名")
 
+    # 定义类 Meta
     class Meta:
+        # 定义列表 ordering
         ordering = ["name"]
+        # 定义变量 verbose_name，赋值为 "标签"
         verbose_name = "标签"
+        # 定义变量 verbose_name_plural，赋值为 "标签"
         verbose_name_plural = "标签"
 
+    # 定义函数 __str__，参数: self
     def __str__(self):
+        # 返回 self.name
         return self.name
 
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
+    # """文章"""
     """文章"""
+    # 定义类 Status，继承 models.TextChoices
     class Status(models.TextChoices):
+        # 定义变量 DRAFT，赋值为 "draft", "草稿"
         DRAFT = "draft", "草稿"
+        # 定义变量 PUBLISHED，赋值为 "published", "已发布"
         PUBLISHED = "published", "已发布"
 
+    # 定义变量 title，赋值为 models.CharField(max_length=200, verbose_name...
     title = models.CharField(max_length=200, verbose_name="标题")
+    # 定义变量 slug，赋值为 models.SlugField(max_length=200, unique=True,...
     slug = models.SlugField(max_length=200, unique=True, verbose_name="URL别名")
+    # 定义变量 content，赋值为 models.TextField(verbose_name="正文")
     content = models.TextField(verbose_name="正文")
+    # 定义变量 status，赋值为 models.CharField(
     status = models.CharField(
+        # 定义变量 max_length，赋值为 10,
         max_length=10,
+        # 定义变量 choices，赋值为 Status.choices,
         choices=Status.choices,
+        # 定义变量 default，赋值为 Status.DRAFT,
         default=Status.DRAFT,
+        # 定义变量 verbose_name，赋值为 "状态",
         verbose_name="状态",
+    # )
     )
+    # 定义变量 views，赋值为 models.PositiveIntegerField(default=0, verbos...
     views = models.PositiveIntegerField(default=0, verbose_name="浏览量")
 
     # 关系字段
+    # 定义变量 author，赋值为 models.ForeignKey(
     author = models.ForeignKey(
+        # User,
         User,
+        # 定义变量 on_delete，赋值为 models.CASCADE,
         on_delete=models.CASCADE,
+        # 定义变量 related_name，赋值为 "posts",
         related_name="posts",
+        # 定义变量 verbose_name，赋值为 "作者",
         verbose_name="作者",
+    # )
     )
+    # 定义变量 tags，赋值为 models.ManyToManyField(Tag, blank=True, relat...
     tags = models.ManyToManyField(Tag, blank=True, related_name="posts", verbose_name="标签")
 
     # 时间字段
+    # 定义变量 created_at，赋值为 models.DateTimeField(auto_now_add=True, verbo...
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
+    # 定义变量 updated_at，赋值为 models.DateTimeField(auto_now=True, verbose_n...
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
+    # 定义变量 published_at，赋值为 models.DateTimeField(null=True, blank=True, v...
     published_at = models.DateTimeField(null=True, blank=True, verbose_name="发布时间")
 
+    # 定义类 Meta
     class Meta:
+        # 定义列表 ordering
         ordering = ["-published_at", "-created_at"]
+        # 定义变量 verbose_name，赋值为 "文章"
         verbose_name = "文章"
+        # 定义变量 verbose_name_plural，赋值为 "文章"
         verbose_name_plural = "文章"
+        # 定义列表 indexes
         indexes = [
+            # 调用 models.Index()
             models.Index(fields=["-published_at"], name="idx_published"),
+            # 调用 models.Index()
             models.Index(fields=["status", "-published_at"], name="idx_status_pub"),
+        # ]
         ]
 
+    # 定义函数 __str__，参数: self
     def __str__(self):
+        # 返回 self.title
         return self.title
 
     # 自定义方法:增加浏览量
+    # 定义函数 increase_views，参数: self
     def increase_views(self):
+        # self.views += 1
         self.views += 1
         self.save(update_fields=["views"])  # 只更新 views 字段,避免并发覆盖
 
+# 定义类 Comment，继承 models.Model
 class Comment(models.Model):
+    # """评论:外键关联文章"""
     """评论:外键关联文章"""
+    # 定义变量 post，赋值为 models.ForeignKey(
     post = models.ForeignKey(
+        # Post,
         Post,
+        # 定义变量 on_delete，赋值为 models.CASCADE,
         on_delete=models.CASCADE,
+        # 定义变量 related_name，赋值为 "comments",
         related_name="comments",
+        # 定义变量 verbose_name，赋值为 "文章",
         verbose_name="文章",
+    # )
     )
+    # 定义变量 author，赋值为 models.CharField(max_length=50, verbose_name=...
     author = models.CharField(max_length=50, verbose_name="评论者")
+    # 定义变量 content，赋值为 models.TextField(verbose_name="评论内容")
     content = models.TextField(verbose_name="评论内容")
+    # 定义变量 created_at，赋值为 models.DateTimeField(auto_now_add=True, verbo...
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="评论时间")
+    # 定义变量 active，赋值为 models.BooleanField(default=True, verbose_nam...
     active = models.BooleanField(default=True, verbose_name="是否显示")
 
+    # 定义类 Meta
     class Meta:
+        # 定义列表 ordering
         ordering = ["-created_at"]
+        # 定义变量 verbose_name，赋值为 "评论"
         verbose_name = "评论"
+        # 定义变量 verbose_name_plural，赋值为 "评论"
         verbose_name_plural = "评论"
 
+    # 定义函数 __str__，参数: self
     def __str__(self):
+        # 返回 f"{self.author} 评论 {self.post.title}"
         return f"{self.author} 评论 {self.post.title}"
 \`\`\`
 
 \`\`\`bash
 # 生成并应用迁移
+# 运行 Python 脚本 manage.py
 python manage.py makemigrations
+# 运行 Python 脚本 manage.py
 python manage.py migrate
 \`\`\`
 
@@ -471,10 +616,12 @@ Django ORM 的设计思想是「**用 Python 类描述数据结构,让数据库�
 
 \`\`\`python
 # 这一行不会查数据库!只是构建查询
+# 定义变量 qs，赋值为 Post.objects.filter(status="published").order...
 qs = Post.objects.filter(status="published").order_by("-created_at")
 
 # 这时才真正查
 for post in qs:        # 触发查询
+    # 调用 print()
     print(post.title)
 
 # 或者
@@ -497,11 +644,15 @@ Post.objects.get(pk=1)  # Post 实例(不是 QuerySet)
 可以自定义 Manager 加业务方法:
 
 \`\`\`python
+# 定义类 PublishedManager，继承 models.Manager
 class PublishedManager(models.Manager):
+    # 定义函数 get_queryset，参数: self
     def get_queryset(self):
         # 默认只返回已发布文章
+        # 返回 super().get_queryset().filter(status="published")
         return super().get_queryset().filter(status="published")
 
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
     # ... 字段 ...
     objects = models.Manager()         # 默认 manager(重命名)
@@ -534,9 +685,11 @@ post = Post.objects.get(title="测试")     # 按 title
 更安全的写法用 \`get_object_or_404\`:
 
 \`\`\`python
+# 从 django.shortcuts 导入 get_object_or_404
 from django.shortcuts import get_object_or_404
 
 # 找不到返回 404,而不是抛异常
+# 定义变量 post，赋值为 get_object_or_404(Post, pk=pk)
 post = get_object_or_404(Post, pk=pk)
 \`\`\`
 
@@ -544,12 +697,15 @@ post = get_object_or_404(Post, pk=pk)
 
 \`\`\`python
 # 等于
+# 调用 Post.objects.filter()
 Post.objects.filter(status="published")
 
 # 多条件 AND
+# 调用 Post.objects.filter()
 Post.objects.filter(status="published", author=user)
 
 # 链式(等价于上面的 AND)
+# 调用 Post.objects.filter()
 Post.objects.filter(status="published").filter(author=user)
 \`\`\`
 
@@ -557,9 +713,11 @@ Post.objects.filter(status="published").filter(author=user)
 
 \`\`\`python
 # 排除草稿
+# 调用 Post.objects.exclude()
 Post.objects.exclude(status="draft")
 
 # 已发布且不是某个作者
+# 调用 Post.objects.filter()
 Post.objects.filter(status="published").exclude(author=bad_user)
 \`\`\`
 
@@ -581,7 +739,9 @@ Post.objects.filter(status="published").count()  # 已发布数
 ### 7. exists():是否存在
 
 \`\`\`python
+# 条件判断：如果 Post.objects.filter(title="测试").exists()
 if Post.objects.filter(title="测试").exists():
+    # 调用 print()
     print("已存在")
 # 比 if Post.objects.filter(...).count() > 0 高效
 \`\`\`
@@ -592,15 +752,20 @@ if Post.objects.filter(title="测试").exists():
 
 \`\`\`python
 # 精确等于(默认)
+# 调用 Post.objects.filter()
 Post.objects.filter(title="Hello")
 
 # 大小写敏感包含
+# 调用 Post.objects.filter()
 Post.objects.filter(title__contains="Hello")
 Post.objects.filter(title__icontains="hello")  # i = ignore case
 
 # 开头/结尾
+# 调用 Post.objects.filter()
 Post.objects.filter(title__startswith="Hello")
+# 调用 Post.objects.filter()
 Post.objects.filter(title__istartswith="hello")
+# 调用 Post.objects.filter()
 Post.objects.filter(title__endswith="world")
 
 # 大于/小于
@@ -610,15 +775,22 @@ Post.objects.filter(views__lt=100)        # < 100
 Post.objects.filter(views__lte=100)       # <= 100
 
 # 在范围内
+# 调用 Post.objects.filter()
 Post.objects.filter(id__in=[1, 2, 3, 5, 8])
 
 # 时间范围
+# 从 django.utils 导入 timezone
 from django.utils import timezone
+# 从 datetime 导入 timedelta
 from datetime import timedelta
+# 定义变量 now，赋值为 timezone.now()
 now = timezone.now()
 Post.objects.filter(created_at__gte=now - timedelta(days=7))  # 最近 7 天
+# 调用 Post.objects.filter()
 Post.objects.filter(created_at__year=2024)
+# 调用 Post.objects.filter()
 Post.objects.filter(created_at__month=6)
+# 调用 Post.objects.filter()
 Post.objects.filter(created_at__date__gte="2024-06-01")
 
 # 是否为空
@@ -626,7 +798,9 @@ Post.objects.filter(published_at__isnull=True)   # NULL
 Post.objects.filter(published_at__isnull=False)  # 非 NULL
 
 # 精确时间
+# 调用 Post.objects.filter()
 Post.objects.filter(created_at__date="2024-06-15")
+# 调用 Post.objects.filter()
 Post.objects.filter(created_at__date__range=["2024-06-01", "2024-06-30"])
 \`\`\`
 
@@ -658,6 +832,7 @@ Post.objects.all()[:1][0]      # 第一条(等价 .first())
 
 \`\`\`python
 # 有评论的文章作者(去重)
+# 调用 Post.objects.filter()
 Post.objects.filter(comments__isnull=False).distinct().values_list("author", flat=True)
 \`\`\`
 
@@ -666,18 +841,26 @@ Post.objects.filter(comments__isnull=False).distinct().values_list("author", fla
 ### aggregate():聚合(返回字典)
 
 \`\`\`python
+# 从 django.db.models 导入 Count, Sum, Avg, Max, Min
 from django.db.models import Count, Sum, Avg, Max, Min
 
 # 单个聚合
+# 调用 Post.objects.aggregate()
 Post.objects.aggregate(total=Count("id"))
 # {'total': 42}
 
 # 多个聚合
+# Post.objects.aggregate(
 Post.objects.aggregate(
+    # 定义变量 total，赋值为 Count("id"),
     total=Count("id"),
+    # 定义变量 avg_views，赋值为 Avg("views"),
     avg_views=Avg("views"),
+    # 定义变量 max_views，赋值为 Max("views"),
     max_views=Max("views"),
+    # 定义变量 min_views，赋值为 Min("views"),
     min_views=Min("views"),
+# )
 )
 # {'total': 42, 'avg_views': 123.4, 'max_views': 9999, 'min_views': 0}
 \`\`\`
@@ -685,17 +868,24 @@ Post.objects.aggregate(
 ### annotate():分组(给每条记录附加聚合值)
 
 \`\`\`python
+# 从 django.db.models 导入 Count
 from django.db.models import Count
 
 # 每篇文章的评论数
+# 定义变量 posts，赋值为 Post.objects.annotate(comment_count=Count("co...
 posts = Post.objects.annotate(comment_count=Count("comments"))
+# 遍历 posts，取 post
 for post in posts:
     print(post.title, post.comment_count)  # 直接读附加字段
 
 # 按作者分组,统计每人写了多少篇
+# 从 django.contrib.auth.models 导入 User
 from django.contrib.auth.models import User
+# 定义变量 authors，赋值为 User.objects.annotate(post_count=Count("posts...
 authors = User.objects.annotate(post_count=Count("posts"))
+# 遍历 authors，取 author
 for author in authors:
+    # 调用 print()
     print(author.username, author.post_count)
 \`\`\`
 
@@ -709,6 +899,7 @@ for author in authors:
 ### 正向查询(从有外键的一方)
 
 \`\`\`python
+# 定义变量 post，赋值为 Post.objects.get(pk=1)
 post = Post.objects.get(pk=1)
 post.author             # 作者对象(User)
 post.author.username    # 跨表取字段
@@ -722,28 +913,35 @@ post.comments.count()   # 评论数
 
 \`\`\`python
 # 查「作者是 admin 的文章」(双下划线跨表)
+# 调用 Post.objects.filter()
 Post.objects.filter(author__username="admin")
 
 # 查「标签包含 python 的文章」
+# 调用 Post.objects.filter()
 Post.objects.filter(tags__name="python")
 
 # 查「有评论的文章」
+# 调用 Post.objects.filter()
 Post.objects.filter(comments__isnull=False).distinct()
 
 # 查「评论内容包含 "好" 的文章」
+# 调用 Post.objects.filter()
 Post.objects.filter(comments__content__contains="好")
 \`\`\`
 
 ### 反向查询
 
 \`\`\`python
+# 定义变量 user，赋值为 User.objects.get(username="admin")
 user = User.objects.get(username="admin")
 # 反向查询用 <model>_set(没指定 related_name 时)
 user.post_set.all()        # 该用户所有文章
+# 调用 user.post_set.filter()
 user.post_set.filter(status="published")
 
 # 如果 ForeignKey 指定了 related_name="posts"
 user.posts.all()           # 用 related_name
+# 调用 user.posts.filter()
 user.posts.filter(status="published")
 \`\`\`
 
@@ -752,18 +950,23 @@ user.posts.filter(status="published")
 \`F()\` 引用字段值,用于「字段和字段比较」或「原子自增」:
 
 \`\`\`python
+# 从 django.db.models 导入 F
 from django.db.models import F
 
 # 字段间比较:库存大于销量的商品
+# 调用 Product.objects.filter()
 Product.objects.filter(stock__gt=F("sales"))
 
 # 原子自增(避免并发覆盖)
+# 定义变量 post，赋值为 Post.objects.get(pk=1)
 post = Post.objects.get(pk=1)
 post.views = F("views") + 1   # SQL 层面 +1,不是 Python 层面
+# 调用 post.save()
 post.save()
 # 等价 UPDATE blog_post SET views = views + 1 WHERE id = 1
 
 # 批量更新
+# 调用 Post.objects.filter()
 Post.objects.filter(status="draft").update(status="archived")
 \`\`\`
 
@@ -772,20 +975,29 @@ Post.objects.filter(status="draft").update(status="archived")
 \`filter\` 默认是 AND。要 OR、NOT 用 \`Q\`:
 
 \`\`\`python
+# 从 django.db.models 导入 Q
 from django.db.models import Q
 
 # OR:标题或正文包含 python
+# Post.objects.filter(
 Post.objects.filter(
+    # 调用 Q()
     Q(title__icontains="python") | Q(content__icontains="python")
+# )
 )
 
 # NOT:不是草稿
+# 调用 Post.objects.filter()
 Post.objects.filter(~Q(status="draft"))
 
 # 组合:(已发布 OR 作者 admin) 且 不含某标签
+# Post.objects.filter(
 Post.objects.filter(
+    # (Q(status="published") | Q(author__username="admin
     (Q(status="published") | Q(author__username="admin"))
+    # & ~Q(tags__name="广告")
     & ~Q(tags__name="广告")
+# )
 )
 \`\`\`
 
@@ -798,6 +1010,7 @@ Post.objects.filter(
 \`\`\`python
 # ❌ N+1 问题:查 N 篇文章,会发 1+N 条 SQL
 posts = Post.objects.all()[:10]      # 1 条 SQL:查 10 篇文章
+# 遍历 posts，取 post
 for post in posts:
     print(post.author.username)       # 每次循环 1 条 SQL:查作者 → 共 10 条
 
@@ -809,10 +1022,12 @@ for post in posts:
 \`\`\`python
 # ✅ 用 select_related 一次性 JOIN 查出
 posts = Post.objects.select_related("author")[:10]  # 1 条 SQL(JOIN user 表)
+# 遍历 posts，取 post
 for post in posts:
     print(post.author.username)        # 不再查库
 
 # 多层:select_related("author__profile")
+# 定义变量 posts，赋值为 Post.objects.select_related("author", "catego...
 posts = Post.objects.select_related("author", "category")
 \`\`\`
 
@@ -822,13 +1037,18 @@ posts = Post.objects.select_related("author", "category")
 
 \`\`\`python
 # ✅ 多对多用 prefetch_related(分两次查,再在 Python 里关联)
+# 定义变量 posts，赋值为 Post.objects.prefetch_related("tags")[:10]
 posts = Post.objects.prefetch_related("tags")[:10]
+# 遍历 posts，取 post
 for post in posts:
     print(post.tags.all())            # 不再查库
 
 # 反向一对多也用 prefetch_related
+# 定义变量 users，赋值为 User.objects.prefetch_related("posts")
 users = User.objects.prefetch_related("posts")
+# 遍历 users，取 user
 for user in users:
+    # 调用 print()
     print(user.posts.count())
 \`\`\`
 
@@ -838,11 +1058,17 @@ for user in users:
 
 \`\`\`python
 # 同时优化外键和多对多
+# 定义变量 posts，赋值为 (
 posts = (
+    # Post.objects
     Post.objects
+    # .select_related("author", "category")
     .select_related("author", "category")
+    # .prefetch_related("tags", "comments")
     .prefetch_related("tags", "comments")
+    # .filter(status="published")[:20]
     .filter(status="published")[:20]
+# )
 )
 \`\`\`
 
@@ -850,21 +1076,30 @@ posts = (
 
 \`\`\`python
 # 创建
+# 定义变量 post，赋值为 Post.objects.create(
 post = Post.objects.create(
+    # 定义变量 title，赋值为 "Hello",
     title="Hello",
+    # 定义变量 content，赋值为 "...",
     content="...",
+    # 定义变量 author，赋值为 user,
     author=user,
+# )
 )
 # 或
+# 定义变量 post，赋值为 Post(title="...", author=user)
 post = Post(title="...", author=user)
+# 调用 post.save()
 post.save()
 
 # 更新
+# post.title = "New Title"
 post.title = "New Title"
 post.save()  # 更新所有字段
 post.save(update_fields=["title"])  # 只更新 title(性能好)
 
 # 批量更新
+# 调用 Post.objects.filter()
 Post.objects.filter(status="draft").update(status="archived")
 
 # 删除
@@ -872,111 +1107,192 @@ post.delete()                              # 删单条
 Post.objects.filter(views=0).delete()      # 批量删
 
 # 批量创建(比循环 create 快)
+# Post.objects.bulk_create([
 Post.objects.bulk_create([
+    # 调用 Post()
     Post(title="A", author=user),
+    # 调用 Post()
     Post(title="B", author=user),
+    # 调用 Post()
     Post(title="C", author=user),
+# ])
 ])
 \`\`\`
 
 ## 完整示例:博客查询
 
 \`\`\`python
+# 从 django.db.models 导入 Count, Q, F
 from django.db.models import Count, Q, F
+# 从 django.shortcuts 导入 get_object_or_404
 from django.shortcuts import get_object_or_404
+# 从 .models 导入 Post, Tag
 from .models import Post, Tag
 
 # 1. 首页:最新 10 篇已发布文章(带作者和标签)
+# 定义函数 get_recent_posts，参数: 
 def get_recent_posts():
+    # 返回 (
     return (
+        # Post.objects
         Post.objects
+        # .select_related("author")
         .select_related("author")
+        # .prefetch_related("tags")
         .prefetch_related("tags")
+        # .filter(status="published")
         .filter(status="published")
+        # .order_by("-published_at")[:10]
         .order_by("-published_at")[:10]
+    # )
     )
 
 # 2. 热门文章:浏览量前 5
+# 定义函数 get_hot_posts，参数: 
 def get_hot_posts():
+    # 返回 (
     return (
+        # Post.objects
         Post.objects
+        # .filter(status="published", views__gte=100)
         .filter(status="published", views__gte=100)
+        # .order_by("-views")[:5]
         .order_by("-views")[:5]
+    # )
     )
 
 # 3. 搜索:标题或正文包含关键词
+# 定义函数 search_posts，参数: keyword
 def search_posts(keyword):
+    # 返回 (
     return (
+        # Post.objects
         Post.objects
+        # .filter(
         .filter(
+            # 调用 Q()
             Q(title__icontains=keyword) |
+            # 调用 Q()
             Q(content__icontains=keyword)
+        # )
         )
+        # .filter(status="published")
         .filter(status="published")
+        # .distinct()
         .distinct()
+    # )
     )
 
 # 4. 按标签筛选
+# 定义函数 posts_by_tag，参数: slug
 def posts_by_tag(slug):
+    # 返回 (
     return (
+        # Post.objects
         Post.objects
+        # .filter(tags__slug=slug, status="published")
         .filter(tags__slug=slug, status="published")
+        # .select_related("author")
         .select_related("author")
+        # .order_by("-published_at")
         .order_by("-published_at")
+    # )
     )
 
 # 5. 每个作者的发文数(分组)
+# 定义函数 authors_with_count，参数: 
 def authors_with_count():
+    # 从 django.contrib.auth.models 导入 User
     from django.contrib.auth.models import User
+    # 返回 (
     return (
+        # User.objects
         User.objects
+        # .annotate(post_count=Count("posts"))
         .annotate(post_count=Count("posts"))
+        # .filter(post_count__gt=0)
         .filter(post_count__gt=0)
+        # .order_by("-post_count")
         .order_by("-post_count")
+    # )
     )
 
 # 6. 每篇文章带评论数(annotate)
+# 定义函数 posts_with_comment_count，参数: 
 def posts_with_comment_count():
+    # 返回 (
     return (
+        # Post.objects
         Post.objects
+        # .filter(status="published")
         .filter(status="published")
+        # .annotate(comment_count=Count("comments"))
         .annotate(comment_count=Count("comments"))
+        # .order_by("-comment_count")[:20]
         .order_by("-comment_count")[:20]
+    # )
     )
 
 # 7. 浏览量原子自增
+# 定义函数 increase_views，参数: post_id
 def increase_views(post_id):
+    # 调用 Post.objects.filter()
     Post.objects.filter(pk=post_id).update(views=F("views") + 1)
 
 # 8. 统计:总文章数、总浏览量、平均浏览量
+# 定义函数 get_stats，参数: 
 def get_stats():
+    # 从 django.db.models 导入 Sum, Avg
     from django.db.models import Sum, Avg
+    # 返回 Post.objects.filter(status="published").aggregate(
     return Post.objects.filter(status="published").aggregate(
+        # 定义变量 total，赋值为 Count("id"),
         total=Count("id"),
+        # 定义变量 total_views，赋值为 Sum("views"),
         total_views=Sum("views"),
+        # 定义变量 avg_views，赋值为 Avg("views"),
         avg_views=Avg("views"),
+    # )
     )
 
 # 9. 归档:按年月分组
+# 定义函数 archive_by_month，参数: 
 def archive_by_month():
+    # 从 django.db.models.functions 导入 TruncMonth
     from django.db.models.functions import TruncMonth
+    # 返回 (
     return (
+        # Post.objects
         Post.objects
+        # .filter(status="published")
         .filter(status="published")
+        # .annotate(month=TruncMonth("published_at"))
         .annotate(month=TruncMonth("published_at"))
+        # .values("month")
         .values("month")
+        # .annotate(count=Count("id"))
         .annotate(count=Count("id"))
+        # .order_by("-month")
         .order_by("-month")
+    # )
     )
 
 # 10. 相关文章:共享标签的其他文章
+# 定义函数 related_posts，参数: post, limit=5
 def related_posts(post, limit=5):
+    # 定义变量 tag_ids，赋值为 post.tags.values_list("id", flat=True)
     tag_ids = post.tags.values_list("id", flat=True)
+    # 返回 (
     return (
+        # Post.objects
         Post.objects
+        # .filter(tags__in=tag_ids, status="published")
         .filter(tags__in=tag_ids, status="published")
+        # .exclude(pk=post.pk)
         .exclude(pk=post.pk)
+        # .distinct()[:limit]
         .distinct()[:limit]
+    # )
     )
 \`\`\`
 
@@ -1028,17 +1344,24 @@ QuerySet 的「惰性」是 Django ORM 最优雅的设计:它让你能像写函�
 ## 一对多:ForeignKey
 
 \`\`\`python
+# 从 django.db 导入 models
 from django.db import models
+# 从 django.contrib.auth.models 导入 User
 from django.contrib.auth.models import User
 
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
+    # 定义变量 title，赋值为 models.CharField(max_length=200)
     title = models.CharField(max_length=200)
     # ForeignKey:外键,定义在「多」的一方
+    # 定义变量 author，赋值为 models.ForeignKey(
     author = models.ForeignKey(
         User,                          # 关联的模型
         on_delete=models.CASCADE,      # 被关联对象删除时的行为
         related_name="posts",          # 反向查询的属性名
+        # 定义变量 verbose_name，赋值为 "作者",
         verbose_name="作者",
+    # )
     )
 \`\`\`
 
@@ -1056,26 +1379,37 @@ class Post(models.Model):
 | \`DO_NOTHING\` | 什么都不做(会破坏数据完整性,慎用) | 不推荐 |
 
 \`\`\`python
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
     # 作者删了,文章保留,author 设为 NULL
+    # 定义变量 author，赋值为 models.ForeignKey(
     author = models.ForeignKey(
+        # User, on_delete=models.SET_NULL, null=True, relate
         User, on_delete=models.SET_NULL, null=True, related_name="posts"
+    # )
     )
 
     # 分类删了,文章归到默认分类
+    # 定义变量 category，赋值为 models.ForeignKey(
     category = models.ForeignKey(
+        # Category, on_delete=models.SET_DEFAULT, default=1,
         Category, on_delete=models.SET_DEFAULT, default=1, related_name="posts"
+    # )
     )
 
     # 用户删了,禁止删除(先处理文章)
+    # 定义变量 author，赋值为 models.ForeignKey(
     author = models.ForeignKey(
+        # User, on_delete=models.PROTECT, related_name="post
         User, on_delete=models.PROTECT, related_name="posts"
+    # )
     )
 \`\`\`
 
 ### 正向查询(有外键的一方)
 
 \`\`\`python
+# 定义变量 post，赋值为 Post.objects.get(pk=1)
 post = Post.objects.get(pk=1)
 post.author              # User 对象(直接访问)
 post.author.username     # 跨表取字段
@@ -1085,16 +1419,21 @@ post.author.email        # 跨表取字段
 ### 反向查询(被关联的一方)
 
 \`\`\`python
+# 定义变量 user，赋值为 User.objects.get(pk=1)
 user = User.objects.get(pk=1)
 
 # 没指定 related_name 时:用 <model>_set
 user.post_set.all()           # 该用户所有文章
+# 调用 user.post_set.filter()
 user.post_set.filter(status="published")
+# 调用 user.post_set.count()
 user.post_set.count()
 
 # 指定 related_name="posts" 后:用 related_name
 user.posts.all()              # 更直观
+# 调用 user.posts.filter()
 user.posts.filter(status="published")
+# 调用 user.posts.count()
 user.posts.count()
 \`\`\`
 
@@ -1106,9 +1445,12 @@ user.posts.count()
 - 一个模型有多个外键指向同一模型时,必须用 \`related_name\` 区分。
 
 \`\`\`python
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
     # 一个 Post 有两个 User 外键:作者和编辑
+    # 定义变量 author，赋值为 models.ForeignKey(User, on_delete=models.CASC...
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="authored_posts")
+    # 定义变量 editor，赋值为 models.ForeignKey(User, on_delete=models.SET_...
     editor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="edited_posts")
 
 # 用法
@@ -1119,12 +1461,17 @@ user.edited_posts.all()     # 他编辑过的文章
 ## 多对多:ManyToManyField
 
 \`\`\`python
+# 定义类 Tag，继承 models.Model
 class Tag(models.Model):
+    # 定义变量 name，赋值为 models.CharField(max_length=30, unique=True)
     name = models.CharField(max_length=30, unique=True)
 
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
+    # 定义变量 title，赋值为 models.CharField(max_length=200)
     title = models.CharField(max_length=200)
     # 多对多:可以定义在任意一方
+    # 定义变量 tags，赋值为 models.ManyToManyField(Tag, related_name="pos...
     tags = models.ManyToManyField(Tag, related_name="posts", blank=True)
 \`\`\`
 
@@ -1133,18 +1480,24 @@ Django 自动创建中间表(名字默认 \`app_post_tags\`),你不用管。
 ### 操作
 
 \`\`\`python
+# 定义变量 post，赋值为 Post.objects.get(pk=1)
 post = Post.objects.get(pk=1)
+# 定义变量 tag_python，赋值为 Tag.objects.get(name="python")
 tag_python = Tag.objects.get(name="python")
 
 # 添加(单个/多个)
+# 调用 post.tags.add()
 post.tags.add(tag_python)
+# 调用 post.tags.add()
 post.tags.add(tag1, tag2, tag3)
 post.tags.add(*[tag1, tag2])  # 解包列表
 
 # 移除
+# 调用 post.tags.remove()
 post.tags.remove(tag_python)
 
 # 清空所有
+# 调用 post.tags.clear()
 post.tags.clear()
 
 # 赋值(覆盖)
@@ -1152,12 +1505,16 @@ post.tags.set([tag1, tag2])  # 等价 clear + add
 
 # 查询
 post.tags.all()              # 该文章所有标签
+# 调用 post.tags.count()
 post.tags.count()
+# 调用 post.tags.filter()
 post.tags.filter(name__startswith="py")
 
 # 反向查询(Tag → Posts)
+# 定义变量 tag，赋值为 Tag.objects.get(name="python")
 tag = Tag.objects.get(name="python")
 tag.posts.all()              # 该标签所有文章(用 related_name)
+# 调用 tag.posts.count()
 tag.posts.count()
 \`\`\`
 
@@ -1165,19 +1522,27 @@ tag.posts.count()
 
 \`\`\`python
 # 查「带 python 标签的文章」
+# 调用 Post.objects.filter()
 Post.objects.filter(tags__name="python")
 
 # 查「同时带 python 和 django 标签的文章」
+# 从 django.db.models 导入 Q
 from django.db.models import Q
+# Post.objects.filter(
 Post.objects.filter(
+    # 定义变量 tags__name，赋值为 "python"
     tags__name="python"
+# ).filter(
 ).filter(
+    # 定义变量 tags__name，赋值为 "django"
     tags__name="django"
+# )
 )
 # ⚠️ 不能写 filter(tags__name="python", tags__name="django")
 # 因为同一字段的两个条件会被当成「同一个 tag 既叫 python 又叫 django」,无解
 
 # 查「带任一标签的文章」
+# 调用 Post.objects.filter()
 Post.objects.filter(Q(tags__name="python") | Q(tags__name="django"))
 \`\`\`
 
@@ -1186,19 +1551,29 @@ Post.objects.filter(Q(tags__name="python") | Q(tags__name="django"))
 默认中间表只有两个外键(\`post_id\`、\`tag_id\`)。如果中间表要存额外信息(如「文章加标签的时间」「加标签的人」),用 \`through\` 自定义中间模型:
 
 \`\`\`python
+# 定义类 PostTag，继承 models.Model
 class PostTag(models.Model):
+    # """自定义的中间表:带额外信息"""
     """自定义的中间表:带额外信息"""
+    # 定义变量 post，赋值为 models.ForeignKey(Post, on_delete=models.CASC...
     post = models.ForeignKey(Post, on_delete=models.CASCADE)
+    # 定义变量 tag，赋值为 models.ForeignKey(Tag, on_delete=models.CASCA...
     tag = models.ForeignKey(Tag, on_delete=models.CASCADE)
+    # 定义变量 added_by，赋值为 models.ForeignKey(User, on_delete=models.SET_...
     added_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    # 定义变量 added_at，赋值为 models.DateTimeField(auto_now_add=True)
     added_at = models.DateTimeField(auto_now_add=True)
 
+    # 定义类 Meta
     class Meta:
         # 同一篇文章同一标签只能有一条
+        # 定义列表 unique_together
         unique_together = [("post", "tag")]
 
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
     # through 指定中间模型
+    # 定义变量 tags，赋值为 models.ManyToManyField(Tag, through=PostTag, ...
     tags = models.ManyToManyField(Tag, through=PostTag, related_name="posts")
 \`\`\`
 
@@ -1209,31 +1584,45 @@ class Post(models.Model):
 # post.tags.add(tag)
 
 # ✅ 要操作中间模型
+# 调用 PostTag.objects.create()
 PostTag.objects.create(post=post, tag=tag, added_by=user)
 
 # 查询仍可用
 post.tags.all()           # 照常工作
+# 调用 post.tags.filter()
 post.tags.filter(name="python")
 \`\`\`
 
 ## 一对一:OneToOneField
 
 \`\`\`python
+# 定义类 Profile，继承 models.Model
 class Profile(models.Model):
+    # 定义变量 user，赋值为 models.OneToOneField(
     user = models.OneToOneField(
+        # User,
         User,
+        # 定义变量 on_delete，赋值为 models.CASCADE,
         on_delete=models.CASCADE,
+        # 定义变量 related_name，赋值为 "profile",
         related_name="profile",
+    # )
     )
+    # 定义变量 bio，赋值为 models.TextField(blank=True)
     bio = models.TextField(blank=True)
+    # 定义变量 avatar，赋值为 models.ImageField(upload_to="avatars/", blank...
     avatar = models.ImageField(upload_to="avatars/", blank=True)
+    # 定义变量 website，赋值为 models.URLField(blank=True)
     website = models.URLField(blank=True)
 
 # 用法
+# 定义变量 user，赋值为 User.objects.get(pk=1)
 user = User.objects.get(pk=1)
 user.profile          # Profile 对象(一对一,直接取)
+# user.profile.bio
 user.profile.bio
 
+# 定义变量 profile，赋值为 Profile.objects.get(pk=1)
 profile = Profile.objects.get(pk=1)
 profile.user          # 反向也直接取(不是 _set,因为一对一)
 \`\`\`
@@ -1249,19 +1638,29 @@ profile.user          # 反向也直接取(不是 _set,因为一对一)
 
 \`\`\`python
 # 假设有这样的关系
+# 定义类 Author，继承 models.Model
 class Author(models.Model):
+    # 定义变量 name，赋值为 models.CharField(max_length=50)
     name = models.CharField(max_length=50)
 
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
+    # 定义变量 title，赋值为 models.CharField(max_length=200)
     title = models.CharField(max_length=200)
+    # 定义变量 author，赋值为 models.ForeignKey(Author, on_delete=models.CA...
     author = models.ForeignKey(Author, on_delete=models.CASCADE, related_name="posts")
 
+# 定义类 Comment，继承 models.Model
 class Comment(models.Model):
+    # 定义变量 post，赋值为 models.ForeignKey(Post, on_delete=models.CASC...
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
+    # 定义变量 content，赋值为 models.TextField()
     content = models.TextField()
 
 # 删作者 → 级联删文章 → 级联删评论
+# 定义变量 author，赋值为 Author.objects.get(pk=1)
 author = Author.objects.get(pk=1)
+# 调用 author.delete()
 author.delete()
 # 一条 SQL 删了:1 个作者 + N 篇文章 + M 条评论
 \`\`\`
@@ -1275,92 +1674,157 @@ author.delete()
 
 \`\`\`python
 # blog/models.py
+# 从 django.db 导入 models
 from django.db import models
+# 从 django.contrib.auth.models 导入 User
 from django.contrib.auth.models import User
 
+# 定义类 Category，继承 models.Model
 class Category(models.Model):
+    # """分类:一对多关联文章(一篇文章一个分类)"""
     """分类:一对多关联文章(一篇文章一个分类)"""
+    # 定义变量 name，赋值为 models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=50, unique=True)
+    # 定义变量 slug，赋值为 models.SlugField(max_length=50, unique=True)
     slug = models.SlugField(max_length=50, unique=True)
+    # 定义变量 description，赋值为 models.TextField(blank=True)
     description = models.TextField(blank=True)
 
+    # 定义类 Meta
     class Meta:
+        # 定义变量 verbose_name，赋值为 "分类"
         verbose_name = "分类"
+        # 定义变量 verbose_name_plural，赋值为 "分类"
         verbose_name_plural = "分类"
 
+    # 定义函数 __str__，参数: self
     def __str__(self):
+        # 返回 self.name
         return self.name
 
+# 定义类 Tag，继承 models.Model
 class Tag(models.Model):
+    # """标签:多对多关联文章"""
     """标签:多对多关联文章"""
+    # 定义变量 name，赋值为 models.CharField(max_length=30, unique=True)
     name = models.CharField(max_length=30, unique=True)
+    # 定义变量 slug，赋值为 models.SlugField(max_length=30, unique=True)
     slug = models.SlugField(max_length=30, unique=True)
 
+    # 定义类 Meta
     class Meta:
+        # 定义变量 verbose_name，赋值为 "标签"
         verbose_name = "标签"
+        # 定义变量 verbose_name_plural，赋值为 "标签"
         verbose_name_plural = "标签"
 
+    # 定义函数 __str__，参数: self
     def __str__(self):
+        # 返回 self.name
         return self.name
 
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
+    # """文章"""
     """文章"""
+    # 定义变量 title，赋值为 models.CharField(max_length=200)
     title = models.CharField(max_length=200)
+    # 定义变量 slug，赋值为 models.SlugField(max_length=200, unique=True)
     slug = models.SlugField(max_length=200, unique=True)
+    # 定义变量 content，赋值为 models.TextField()
     content = models.TextField()
+    # 定义变量 status，赋值为 models.CharField(max_length=10, default="draf...
     status = models.CharField(max_length=10, default="draft")
 
     # 一对多:文章属于一个分类
+    # 定义变量 category，赋值为 models.ForeignKey(
     category = models.ForeignKey(
+        # Category,
         Category,
         on_delete=models.SET_NULL,    # 分类删了,文章保留,分类设空
+        # 定义变量 null，赋值为 True, blank=True,
         null=True, blank=True,
+        # 定义变量 related_name，赋值为 "posts",
         related_name="posts",
+        # 定义变量 verbose_name，赋值为 "分类",
         verbose_name="分类",
+    # )
     )
 
     # 一对多:文章有一个作者
+    # 定义变量 author，赋值为 models.ForeignKey(
     author = models.ForeignKey(
+        # User,
         User,
         on_delete=models.CASCADE,      # 作者删了,文章也删
+        # 定义变量 related_name，赋值为 "posts",
         related_name="posts",
+        # 定义变量 verbose_name，赋值为 "作者",
         verbose_name="作者",
+    # )
     )
 
     # 多对多:文章有多个标签
+    # 定义变量 tags，赋值为 models.ManyToManyField(
     tags = models.ManyToManyField(
+        # Tag,
         Tag,
+        # 定义变量 blank，赋值为 True,
         blank=True,
+        # 定义变量 related_name，赋值为 "posts",
         related_name="posts",
+        # 定义变量 verbose_name，赋值为 "标签",
         verbose_name="标签",
+    # )
     )
 
+    # 定义变量 created_at，赋值为 models.DateTimeField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # 定义类 Meta
     class Meta:
+        # 定义列表 ordering
         ordering = ["-created_at"]
 
+    # 定义函数 __str__，参数: self
     def __str__(self):
+        # 返回 self.title
         return self.title
 
+# 定义类 Comment，继承 models.Model
 class Comment(models.Model):
+    # """评论:一对多关联文章"""
     """评论:一对多关联文章"""
+    # 定义变量 post，赋值为 models.ForeignKey(
     post = models.ForeignKey(
+        # Post,
         Post,
         on_delete=models.CASCADE,      # 文章删了,评论也删
+        # 定义变量 related_name，赋值为 "comments",
         related_name="comments",
+    # )
     )
+    # 定义变量 author，赋值为 models.CharField(max_length=50)
     author = models.CharField(max_length=50)
+    # 定义变量 content，赋值为 models.TextField()
     content = models.TextField()
+    # 定义变量 created_at，赋值为 models.DateTimeField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
     parent = models.ForeignKey(       # 自引用:评论的父评论(树形)
+        # "self",
         "self",
+        # 定义变量 on_delete，赋值为 models.CASCADE,
         on_delete=models.CASCADE,
+        # 定义变量 null，赋值为 True, blank=True,
         null=True, blank=True,
+        # 定义变量 related_name，赋值为 "replies",
         related_name="replies",
+    # )
     )
 
+    # 定义函数 __str__，参数: self
     def __str__(self):
+        # 返回 f"{self.author} → {self.post.title}"
         return f"{self.author} → {self.post.title}"
 \`\`\`
 
@@ -1368,20 +1832,26 @@ class Comment(models.Model):
 
 \`\`\`python
 # 1. 某分类下的所有文章
+# 定义变量 category，赋值为 Category.objects.get(slug="python")
 category = Category.objects.get(slug="python")
 category.posts.all()                         # 反向一对多
+# 调用 category.posts.count()
 category.posts.count()
+# 调用 category.posts.filter()
 category.posts.filter(status="published")
 
 # 2. 某标签的所有文章
+# 定义变量 tag，赋值为 Tag.objects.get(slug="django")
 tag = Tag.objects.get(slug="django")
 tag.posts.all()                              # 反向多对多
 
 # 3. 某作者的所有文章
 user.posts.all()                             # 反向(用 related_name)
+# 调用 user.posts.filter()
 user.posts.filter(status="published").count()
 
 # 4. 某文章的所有评论
+# 调用 post.comments.all()
 post.comments.all()
 post.comments.filter(parent__isnull=True)   # 只取顶层评论
 
@@ -1389,31 +1859,49 @@ post.comments.filter(parent__isnull=True)   # 只取顶层评论
 comment.replies.all()                        # 自引用反向
 
 # 6. 跨多表:某作者在「python」分类下、带「django」标签的文章
+# Post.objects.filter(
 Post.objects.filter(
+    # 定义变量 author，赋值为 user,
     author=user,
+    # 定义变量 category__slug，赋值为 "python",
     category__slug="python",
+    # 定义变量 tags__slug，赋值为 "django",
     tags__slug="django",
+# ).distinct()
 ).distinct()
 
 # 7. 每个分类的文章数(分组)
+# 从 django.db.models 导入 Count
 from django.db.models import Count
+# 调用 Category.objects.annotate()
 Category.objects.annotate(post_count=Count("posts")).order_by("-post_count")
 
 # 8. 没有标签的文章
+# 调用 Post.objects.filter()
 Post.objects.filter(tags__isnull=True)
 
 # 9. 评论最多的文章
+# 调用 Post.objects.annotate()
 Post.objects.annotate(c=Count("comments")).order_by("-c").first()
 
 # 10. 优化 N+1:取 10 篇文章带分类、作者、标签、评论数
+# 定义变量 posts，赋值为 (
 posts = (
+    # Post.objects
     Post.objects
+    # .select_related("category", "author")
     .select_related("category", "author")
+    # .prefetch_related("tags")
     .prefetch_related("tags")
+    # .annotate(comment_count=Count("comments"))
     .annotate(comment_count=Count("comments"))
+    # .filter(status="published")[:10]
     .filter(status="published")[:10]
+# )
 )
+# 遍历 posts，取 post
 for post in posts:
+    # 调用 print()
     print(post.title, post.category, post.author, post.comment_count, list(post.tags.all()))
 \`\`\`
 
@@ -1462,10 +1950,13 @@ Django Admin 是 Django 内置的**自动生成的后台管理系统**。你只�
 
 \`\`\`python
 # blog/admin.py
+# 从 django.contrib 导入 admin
 from django.contrib import admin
+# 从 .models 导入 Post
 from .models import Post
 
 # 一行注册,后台立刻能用
+# 调用 admin.site.register()
 admin.site.register(Post)
 \`\`\`
 
@@ -1476,6 +1967,7 @@ admin.site.register(Post)
 Admin 需要登录,默认只有「超级用户」能访问。创建超级用户:
 
 \`\`\`bash
+# 运行 Python 脚本 manage.py
 python manage.py createsuperuser
 
 # 交互式输入:
@@ -1494,11 +1986,16 @@ python manage.py createsuperuser
 
 \`\`\`python
 # blog/admin.py
+# 从 django.contrib 导入 admin
 from django.contrib import admin
+# 从 .models 导入 Post, Comment, Tag
 from .models import Post, Comment, Tag
 
+# 调用 admin.site.register()
 admin.site.register(Post)
+# 调用 admin.site.register()
 admin.site.register(Comment)
+# 调用 admin.site.register()
 admin.site.register(Tag)
 \`\`\`
 
@@ -1508,29 +2005,38 @@ admin.site.register(Tag)
 
 \`\`\`python
 @admin.register(Post)   # 装饰器注册(等价 admin.site.register(Post, PostAdmin))
+# 定义类 PostAdmin，继承 admin.ModelAdmin
 class PostAdmin(admin.ModelAdmin):
     # 列表页显示的字段
+    # 定义变量 list_display，赋值为 ("title", "author", "status", "created_at", "...
     list_display = ("title", "author", "status", "created_at", "views")
 
     # 侧边栏过滤器(按这些字段筛选)
+    # 定义变量 list_filter，赋值为 ("status", "created_at", "author")
     list_filter = ("status", "created_at", "author")
 
     # 搜索框(按这些字段搜索)
+    # 定义变量 search_fields，赋值为 ("title", "content")
     search_fields = ("title", "content")
 
     # 按日期分层过滤(顶部出现年月导航)
+    # 定义变量 date_hierarchy，赋值为 "created_at"
     date_hierarchy = "created_at"
 
     # 默认排序
+    # 定义变量 ordering，赋值为 ("-created_at",)
     ordering = ("-created_at",)
 
     # 每页显示条数
+    # 定义变量 list_per_page，赋值为 25
     list_per_page = 25
 
     # 列表页可编辑(双击直接改)
+    # 定义变量 list_editable，赋值为 ("status",)
     list_editable = ("status",)
 
     # 列表页显示的链接字段(点击进详情)
+    # 定义变量 list_display_links，赋值为 ("title",)
     list_display_links = ("title",)
 \`\`\`
 
@@ -1541,62 +2047,91 @@ class PostAdmin(admin.ModelAdmin):
 ### 1. list_display:列表显示字段
 
 \`\`\`python
+# 定义类 PostAdmin，继承 admin.ModelAdmin
 class PostAdmin(admin.ModelAdmin):
+    # 定义变量 list_display，赋值为 ("title", "author", "status", "created_at")
     list_display = ("title", "author", "status", "created_at")
 
     # 可以显示外键关联字段(用方法)
+    # 定义函数 author_name，参数: self, obj
     def author_name(self, obj):
+        # 返回 obj.author.username
         return obj.author.username
+    # author_name.short_description = "作者"
     author_name.short_description = "作者"
 
     # 可以显示计算字段
+    # 定义函数 comment_count，参数: self, obj
     def comment_count(self, obj):
+        # 返回 obj.comments.count()
         return obj.comments.count()
+    # comment_count.short_description = "评论数"
     comment_count.short_description = "评论数"
 
+    # 定义变量 list_display，赋值为 ("title", "author_name", "comment_count", "st...
     list_display = ("title", "author_name", "comment_count", "status")
 \`\`\`
 
 ### 2. list_filter:过滤器
 
 \`\`\`python
+# 定义类 PostAdmin，继承 admin.ModelAdmin
 class PostAdmin(admin.ModelAdmin):
+    # 定义变量 list_filter，赋值为 ("status", "author", "created_at")
     list_filter = ("status", "author", "created_at")
 
     # 自定义过滤器(按是否已发布)
+    # 定义类 PublishedFilter，继承 admin.SimpleListFilter
     class PublishedFilter(admin.SimpleListFilter):
+        # 定义变量 title，赋值为 "发布状态"
         title = "发布状态"
+        # 定义变量 parameter_name，赋值为 "published"
         parameter_name = "published"
 
+        # 定义函数 lookups，参数: self, request, model_admin
         def lookups(self, request, model_admin):
+            # 返回 (
             return (
+                # ("yes", "已发布"),
                 ("yes", "已发布"),
+                # ("no", "未发布"),
                 ("no", "未发布"),
+            # )
             )
 
+        # 定义函数 queryset，参数: self, request, queryset
         def queryset(self, request, queryset):
+            # 条件判断：如果 self.value() == "yes"
             if self.value() == "yes":
+                # 返回 queryset.filter(status="published")
                 return queryset.filter(status="published")
+            # 条件判断：如果 self.value() == "no"
             if self.value() == "no":
+                # 返回 queryset.exclude(status="published")
                 return queryset.exclude(status="published")
 
+    # 定义变量 list_filter，赋值为 (PublishedFilter, "author")
     list_filter = (PublishedFilter, "author")
 \`\`\`
 
 ### 3. search_fields:搜索
 
 \`\`\`python
+# 定义类 PostAdmin，继承 admin.ModelAdmin
 class PostAdmin(admin.ModelAdmin):
     # 在 title 和 content 里搜(支持 LIKE)
+    # 定义变量 search_fields，赋值为 ("title", "content")
     search_fields = ("title", "content")
 
     # 外键字段(双下划线)
+    # 定义变量 search_fields，赋值为 ("title", "author__username")
     search_fields = ("title", "author__username")
 \`\`\`
 
 ### 4. date_hierarchy:日期导航
 
 \`\`\`python
+# 定义类 PostAdmin，继承 admin.ModelAdmin
 class PostAdmin(admin.ModelAdmin):
     date_hierarchy = "created_at"  # 顶部出现「2024 年 6 月」可点击导航
 \`\`\`
@@ -1604,11 +2139,14 @@ class PostAdmin(admin.ModelAdmin):
 ### 5. raw_id_fields / readonly_fields
 
 \`\`\`python
+# 定义类 PostAdmin，继承 admin.ModelAdmin
 class PostAdmin(admin.ModelAdmin):
     # 外键默认是下拉框(选项多时很慢),改成搜索框
+    # 定义变量 raw_id_fields，赋值为 ("author", "category")
     raw_id_fields = ("author", "category")
 
     # 只读字段(详情页不可编辑)
+    # 定义变量 readonly_fields，赋值为 ("views", "created_at", "updated_at")
     readonly_fields = ("views", "created_at", "updated_at")
 \`\`\`
 
@@ -1619,12 +2157,16 @@ class PostAdmin(admin.ModelAdmin):
 ### 1. StackedInline:垂直堆叠
 
 \`\`\`python
+# 定义类 CommentInline，继承 admin.StackedInline
 class CommentInline(admin.StackedInline):
     model = Comment          # 关联的模型
     extra = 1                # 默认显示几个空行
+    # 定义变量 readonly_fields，赋值为 ("created_at",)
     readonly_fields = ("created_at",)
 
+# 装饰器：admin.register
 @admin.register(Post)
+# 定义类 PostAdmin，继承 admin.ModelAdmin
 class PostAdmin(admin.ModelAdmin):
     inlines = [CommentInline]   # 在 Post 详情页内联编辑评论
 \`\`\`
@@ -1634,14 +2176,22 @@ class PostAdmin(admin.ModelAdmin):
 ### 2. TabularInline:表格形式
 
 \`\`\`python
+# 定义类 CommentInline，继承 admin.TabularInline
 class CommentInline(admin.TabularInline):
+    # 定义变量 model，赋值为 Comment
     model = Comment
+    # 定义变量 extra，赋值为 3
     extra = 3
+    # 定义变量 fields，赋值为 ("author", "content", "created_at")
     fields = ("author", "content", "created_at")
+    # 定义变量 readonly_fields，赋值为 ("created_at",)
     readonly_fields = ("created_at",)
 
+# 装饰器：admin.register
 @admin.register(Post)
+# 定义类 PostAdmin，继承 admin.ModelAdmin
 class PostAdmin(admin.ModelAdmin):
+    # 定义列表 inlines
     inlines = [CommentInline]
 \`\`\`
 
@@ -1655,19 +2205,30 @@ class PostAdmin(admin.ModelAdmin):
 列表页顶部有「动作」下拉框,可以对勾选的多条记录批量操作。默认有「删除选中」。可以自定义:
 
 \`\`\`python
+# 装饰器：admin.register
 @admin.register(Post)
+# 定义类 PostAdmin，继承 admin.ModelAdmin
 class PostAdmin(admin.ModelAdmin):
+    # 定义列表 actions
     actions = ["make_published", "make_draft"]
 
+    # 装饰器：admin.action
     @admin.action(description="标记为已发布")
+    # 定义函数 make_published，参数: self, request, queryset
     def make_published(self, request, queryset):
         # queryset 是勾选的对象集合
+        # 定义变量 updated，赋值为 queryset.update(status="published")
         updated = queryset.update(status="published")
+        # 调用 self.message_user()
         self.message_user(request, f"成功发布 {updated} 篇文章")
 
+    # 装饰器：admin.action
     @admin.action(description="标记为草稿")
+    # 定义函数 make_draft，参数: self, request, queryset
     def make_draft(self, request, queryset):
+        # 定义变量 updated，赋值为 queryset.update(status="draft")
         updated = queryset.update(status="draft")
+        # 调用 self.message_user()
         self.message_user(request, f"成功转草稿 {updated} 篇")
 \`\`\`
 
@@ -1679,6 +2240,7 @@ class PostAdmin(admin.ModelAdmin):
 
 \`\`\`python
 # 在任意 admin.py 顶部
+# 从 django.contrib 导入 admin
 from django.contrib import admin
 
 admin.site.site_header = "我的博客后台"      # 浏览器标签 + 顶部标题
@@ -1690,31 +2252,50 @@ admin.site.index_title = "欢迎使用"          # 首页标题
 
 \`\`\`python
 # 覆盖默认模板:templates/admin/index.html
+# {% extends "admin/index.html" %}
 {% extends "admin/index.html" %}
+# {% block content %}
 {% block content %}
+# {{ block.super }}  {# 保留默认内容 #}
 {{ block.super }}  {# 保留默认内容 #}
+# <div>
 <div>
+    # <h3>运营提示</h3>
     <h3>运营提示</h3>
+    # <p>本周新增文章:{{ stats.weekly_posts }}</p>
     <p>本周新增文章:{{ stats.weekly_posts }}</p>
+# </div>
 </div>
+# {% endblock %}
 {% endblock %}
 \`\`\`
 
 ### 3. 自定义字段显示样式
 
 \`\`\`python
+# 从 django.utils.html 导入 format_html
 from django.utils.html import format_html
 
+# 装饰器：admin.register
 @admin.register(Post)
+# 定义类 PostAdmin，继承 admin.ModelAdmin
 class PostAdmin(admin.ModelAdmin):
+    # 定义变量 list_display，赋值为 ("title", "colored_status", "created_at")
     list_display = ("title", "colored_status", "created_at")
 
+    # 定义函数 colored_status，参数: self, obj
     def colored_status(self, obj):
+        # 定义变量 color，赋值为 "green" if obj.status == "published" else "gr...
         color = "green" if obj.status == "published" else "gray"
+        # 返回 format_html(
         return format_html(
+            # '<b style="color: {};">{}</b>',
             '<b style="color: {};">{}</b>',
+            # color, obj.get_status_display(),
             color, obj.get_status_display(),
+        # )
         )
+    # colored_status.short_description = "状态"
     colored_status.short_description = "状态"
 \`\`\`
 
@@ -1725,30 +2306,47 @@ class PostAdmin(admin.ModelAdmin):
 Admin 自带权限:每个 Model 自动生成「增/改/删」三种权限。用户没有权限就看不到对应模块。
 
 \`\`\`python
+# 定义类 PostAdmin，继承 admin.ModelAdmin
 class PostAdmin(admin.ModelAdmin):
     # 限制用户只能看/改自己的文章
+    # 定义函数 get_queryset，参数: self, request
     def get_queryset(self, request):
+        # 定义变量 qs，赋值为 super().get_queryset(request)
         qs = super().get_queryset(request)
+        # 条件判断：如果 request.user.is_superuser
         if request.user.is_superuser:
+            # 返回 qs
             return qs
+        # 返回 qs.filter(author=request.user)
         return qs.filter(author=request.user)
 
     # 没权限的字段不显示
+    # 定义函数 get_list_display，参数: self, request
     def get_list_display(self, request):
+        # 条件判断：如果 request.user.is_superuser
         if request.user.is_superuser:
+            # 返回 ("title", "author", "status")
             return ("title", "author", "status")
+        # 返回 ("title", "status")
         return ("title", "status")
 
     # 保存时自动填作者
+    # 定义函数 save_model，参数: self, request, obj, form, change
     def save_model(self, request, obj, form, change):
         if not change:  # 新建时
+            # obj.author = request.user
             obj.author = request.user
+        # 调用 super()
         super().save_model(request, obj, form, change)
 
     # 只有作者能删自己的文章
+    # 定义函数 has_delete_permission，参数: self, request, obj=None
     def has_delete_permission(self, request, obj=None):
+        # 条件判断：如果 obj is None
         if obj is None:
+            # 返回 True
             return True
+        # 返回 obj.author == request.user or request.user.is_superuser
         return obj.author == request.user or request.user.is_superuser
 \`\`\`
 
@@ -1756,125 +2354,209 @@ class PostAdmin(admin.ModelAdmin):
 
 \`\`\`python
 # blog/admin.py
+# 从 django.contrib 导入 admin
 from django.contrib import admin
+# 从 django.utils.html 导入 format_html
 from django.utils.html import format_html
+# 从 .models 导入 Post, Comment, Tag, Category
 from .models import Post, Comment, Tag, Category
 
 # ========== 标签 ==========
+# 装饰器：admin.register
 @admin.register(Tag)
+# 定义类 TagAdmin，继承 admin.ModelAdmin
 class TagAdmin(admin.ModelAdmin):
+    # 定义变量 list_display，赋值为 ("name", "slug", "post_count")
     list_display = ("name", "slug", "post_count")
+    # 定义变量 search_fields，赋值为 ("name",)
     search_fields = ("name",)
     prepopulated_fields = {"slug": ("name",)}  # 自动填 slug
 
+    # 定义函数 post_count，参数: self, obj
     def post_count(self, obj):
+        # 返回 obj.posts.count()
         return obj.posts.count()
+    # post_count.short_description = "文章数"
     post_count.short_description = "文章数"
 
 # ========== 分类 ==========
+# 装饰器：admin.register
 @admin.register(Category)
+# 定义类 CategoryAdmin，继承 admin.ModelAdmin
 class CategoryAdmin(admin.ModelAdmin):
+    # 定义变量 list_display，赋值为 ("name", "slug", "description", "post_count")
     list_display = ("name", "slug", "description", "post_count")
+    # 定义变量 search_fields，赋值为 ("name",)
     search_fields = ("name",)
+    # 定义字典 prepopulated_fields
     prepopulated_fields = {"slug": ("name",)}
 
+    # 定义函数 post_count，参数: self, obj
     def post_count(self, obj):
+        # 返回 obj.posts.count()
         return obj.posts.count()
+    # post_count.short_description = "文章数"
     post_count.short_description = "文章数"
 
 # ========== 评论(内联用) ==========
+# 定义类 CommentInline，继承 admin.TabularInline
 class CommentInline(admin.TabularInline):
+    # 定义变量 model，赋值为 Comment
     model = Comment
+    # 定义变量 extra，赋值为 1
     extra = 1
+    # 定义变量 readonly_fields，赋值为 ("author", "content", "created_at")
     readonly_fields = ("author", "content", "created_at")
+    # 定义变量 can_delete，赋值为 True
     can_delete = True
+    # 定义变量 verbose_name，赋值为 "评论"
     verbose_name = "评论"
+    # 定义变量 verbose_name_plural，赋值为 "评论"
     verbose_name_plural = "评论"
 
 # ========== 文章 ==========
+# 装饰器：admin.register
 @admin.register(Post)
+# 定义类 PostAdmin，继承 admin.ModelAdmin
 class PostAdmin(admin.ModelAdmin):
     # 列表显示
+    # 定义变量 list_display，赋值为 ("title", "colored_status", "author", "catego...
     list_display = ("title", "colored_status", "author", "category",
+                    # "tag_list", "views", "comment_count", "created_at"
                     "tag_list", "views", "comment_count", "created_at")
     # 过滤器
+    # 定义变量 list_filter，赋值为 ("status", "category", "author", "tags", "cre...
     list_filter = ("status", "category", "author", "tags", "created_at")
     # 搜索
+    # 定义变量 search_fields，赋值为 ("title", "content", "author__username")
     search_fields = ("title", "content", "author__username")
     # 日期导航
+    # 定义变量 date_hierarchy，赋值为 "created_at"
     date_hierarchy = "created_at"
     # 排序
+    # 定义变量 ordering，赋值为 ("-created_at",)
     ordering = ("-created_at",)
     # 分页
+    # 定义变量 list_per_page，赋值为 20
     list_per_page = 20
     # 可编辑字段(双击改)
+    # 定义变量 list_editable，赋值为 ("category",)
     list_editable = ("category",)
     # 预填 slug
+    # 定义字典 prepopulated_fields
     prepopulated_fields = {"slug": ("title",)}
     # 外键搜索框
+    # 定义变量 raw_id_fields，赋值为 ("author",)
     raw_id_fields = ("author",)
     # 只读字段
+    # 定义变量 readonly_fields，赋值为 ("views", "created_at", "updated_at")
     readonly_fields = ("views", "created_at", "updated_at")
     # 字段分组(详情页布局)
+    # 定义变量 fieldsets，赋值为 (
     fieldsets = (
+        # ("基本信息", {
         ("基本信息", {
+            # "fields": ("title", "slug", "author", "category")
             "fields": ("title", "slug", "author", "category")
+        # }),
         }),
+        # ("内容", {
         ("内容", {
+            # "fields": ("content", "tags")
             "fields": ("content", "tags")
+        # }),
         }),
+        # ("状态", {
         ("状态", {
+            # "fields": ("status", "views", "published_at")
             "fields": ("status", "views", "published_at")
+        # }),
         }),
+        # ("时间", {
         ("时间", {
+            # "fields": ("created_at", "updated_at"),
             "fields": ("created_at", "updated_at"),
             "classes": ("collapse",),  # 默认折叠
+        # }),
         }),
+    # )
     )
     # 内联评论
+    # 定义列表 inlines
     inlines = [CommentInline]
     # 动作
+    # 定义列表 actions
     actions = ["make_published", "make_draft"]
 
     # 自定义显示方法
+    # 定义函数 colored_status，参数: self, obj
     def colored_status(self, obj):
+        # 定义变量 color，赋值为 "green" if obj.status == "published" else "or...
         color = "green" if obj.status == "published" else "orange"
+        # 返回 format_html(
         return format_html(
+            # '<b style="color: {};">{}</b>',
             '<b style="color: {};">{}</b>',
+            # color, obj.get_status_display(),
             color, obj.get_status_display(),
+        # )
         )
+    # colored_status.short_description = "状态"
     colored_status.short_description = "状态"
 
+    # 定义函数 tag_list，参数: self, obj
     def tag_list(self, obj):
+        # 返回 ", ".join(t.name for t in obj.tags.all())
         return ", ".join(t.name for t in obj.tags.all())
+    # tag_list.short_description = "标签"
     tag_list.short_description = "标签"
 
+    # 定义函数 comment_count，参数: self, obj
     def comment_count(self, obj):
+        # 返回 obj.comments.count()
         return obj.comments.count()
+    # comment_count.short_description = "评论数"
     comment_count.short_description = "评论数"
 
     # 自定义动作
+    # 装饰器：admin.action
     @admin.action(description="批量发布")
+    # 定义函数 make_published，参数: self, request, queryset
     def make_published(self, request, queryset):
+        # 定义变量 count，赋值为 queryset.update(status="published")
         count = queryset.update(status="published")
+        # 调用 self.message_user()
         self.message_user(request, f"已发布 {count} 篇文章", level="success")
 
+    # 装饰器：admin.action
     @admin.action(description="批量转草稿")
+    # 定义函数 make_draft，参数: self, request, queryset
     def make_draft(self, request, queryset):
+        # 定义变量 count，赋值为 queryset.update(status="draft")
         count = queryset.update(status="draft")
+        # 调用 self.message_user()
         self.message_user(request, f"已转草稿 {count} 篇文章")
 
     # 权限:非超级用户只能看自己的
+    # 定义函数 get_queryset，参数: self, request
     def get_queryset(self, request):
+        # 定义变量 qs，赋值为 super().get_queryset(request)
         qs = super().get_queryset(request)
+        # 条件判断：如果 request.user.is_superuser
         if request.user.is_superuser:
+            # 返回 qs
             return qs
+        # 返回 qs.filter(author=request.user)
         return qs.filter(author=request.user)
 
     # 保存时自动填作者
+    # 定义函数 save_model，参数: self, request, obj, form, change
     def save_model(self, request, obj, form, change):
+        # 条件判断：如果 not change
         if not change:
+            # obj.author = request.user
             obj.author = request.user
+        # 调用 super()
         super().save_model(request, obj, form, change)
 \`\`\`
 

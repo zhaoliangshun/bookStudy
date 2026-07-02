@@ -15,8 +15,8 @@ export const chapters = [
 ## 基本语法
 
 \`\`\`java
-class Outer {
-    class Inner {
+class Outer {  // 定义类 Outer
+    class Inner {  // 定义类 Inner
         // 内部类可以访问外部类的所有成员，包括 private
     }
 }
@@ -27,10 +27,10 @@ class Outer {
 每个非静态内部类实例都**隐式持有**一个外部类实例的引用，可通过 \`Outer.this\` 显式访问：
 
 \`\`\`java
-class Outer {
-    String name;
-    class Inner {
-        void show() {
+class Outer {  // 定义类 Outer
+    String name;  // 声明变量 name（String 类型）
+    class Inner {  // 定义类 Inner
+        void show() {  // 方法 show，返回 void，无参数
             System.out.println(Outer.this.name); // 访问外部类字段
         }
     }
@@ -42,8 +42,8 @@ class Outer {
 必须先有外部类实例，再用 \`outer.new Inner()\` 创建：
 
 \`\`\`java
-Outer outer = new Outer();
-Outer.Inner inner = outer.new Inner();
+Outer outer = new Outer();  // 声明变量 outer（Outer），初始值为 new Outer()
+Outer.Inner inner = outer.new Inner();  // 声明变量 inner（Outer.Inner），初始值为 outer.new Inner()
 \`\`\`
 
 ## 访问外部类私有成员
@@ -119,12 +119,12 @@ class Outer {
 ## 基本语法
 
 \`\`\`java
-class Outer {
-    void method() {
-        class Local {
+class Outer {  // 定义类 Outer
+    void method() {  // 方法 method，返回 void，无参数
+        class Local {  // 定义类 Local
             // 仅在该方法内可见
         }
-        Local local = new Local();
+        Local local = new Local();  // 声明变量 local（Local），初始值为 new Local()
     }
 }
 \`\`\`
@@ -134,9 +134,9 @@ class Outer {
 局部内部类可以访问所在方法的局部变量，但该变量必须是 **effectively final**（事实上的 final，即赋值后不再改变）：
 
 \`\`\`java
-void method() {
+void method() {  // 方法 method，返回 void，无参数
     int base = 10; // effectively final
-    class Local {
+    class Local {  // 定义类 Local
         int get() { return base; } // 合法
     }
     // base = 20; // 若取消注释，上面将编译错误
@@ -215,11 +215,11 @@ interface Counter {
 ## 语法
 
 \`\`\`java
-new 接口名() {
+new 接口名() {  // 方法 接口名，返回 new，无参数
     // 实现方法
 };
 
-new 父类名(参数) {
+new 父类名(参数) {  // 方法 父类名，返回 new，参数：参数
     // 重写方法
 };
 \`\`\`
@@ -232,9 +232,9 @@ new 父类名(参数) {
 
 \`\`\`java
 button.setOnClickListener(new OnClickListener() {
-    @Override
-    public void onClick(String source) {
-        System.out.println("被点击: " + source);
+    @Override  // 注解：Override
+    public void onClick(String source) {  // 方法 onClick，返回 void，参数：String source
+        System.out.println("被点击: " + source);  // 打印一行到标准输出（自动换行）
     }
 });
 \`\`\`
@@ -245,8 +245,8 @@ button.setOnClickListener(new OnClickListener() {
 
 \`\`\`java
 Animal dog = new Animal("小狗") {
-    @Override
-    public String sound() { return "汪汪"; }
+    @Override  // 注解：Override
+    public String sound() { return "汪汪"; }  // 方法 sound（返回 String，无参数）：返回 "汪汪"
 };
 \`\`\`
 
@@ -355,8 +355,8 @@ class Animal {
 ## 基本语法
 
 \`\`\`java
-class Outer {
-    static class Nested {
+class Outer {  // 定义类 Outer
+    static class Nested {  // 定义类 Nested
         // 不持有 Outer 实例引用
     }
 }
@@ -367,7 +367,7 @@ class Outer {
 不需要外部类实例，直接用 \`new Outer.Nested()\` 创建：
 
 \`\`\`java
-Outer.Nested nested = new Outer.Nested();
+Outer.Nested nested = new Outer.Nested();  // 声明变量 nested（Outer.Nested），初始值为 new Outer.Nested()
 \`\`\`
 
 ## 与非静态内部类的区别
@@ -390,9 +390,9 @@ Outer.Nested nested = new Outer.Nested();
 Builder 需要在 \`build()\` 时构造外部类，但 Builder 本身不持有外部实例，因此通常声明为静态嵌套类：
 
 \`\`\`java
-class Pizza {
+class Pizza {  // 定义类 Pizza
     private Pizza(Builder b) { ... }
-    static class Builder { Pizza build() { return new Pizza(this); } }
+    static class Builder { Pizza build() { return new Pizza(this); } }  // 定义类 Builder
 }
 \`\`\`
 
@@ -505,12 +505,12 @@ GUI/Android 中，监听器常以匿名内部类或成员内部类形式存在�
 集合框架大量使用内部类实现 \`Iterator\`，因为迭代器需要直接访问集合的内部数据结构：
 
 \`\`\`java
-class IntList {
-    private int[] data;
-    public Iterator<Integer> iterator() {
+class IntList {  // 定义类 IntList
+    private int[] data;  // 声明私有变量 data（int[] 类型）
+    public Iterator<Integer> iterator() {  // 方法 iterator，返回 Iterator<Integer>，无参数
         return new IntIterator(); // 内部类，直接访问 data
     }
-    private class IntIterator implements Iterator<Integer> { ... }
+    private class IntIterator implements Iterator<Integer> { ... }  // 定义类 IntIterator
 }
 \`\`\`
 
@@ -644,7 +644,7 @@ class Calculator {
 ## 定义枚举
 
 \`\`\`java
-enum Day {
+enum Day {  // 定义枚举 Day
     MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY
 }
 \`\`\`
@@ -664,8 +664,8 @@ Java 的枚举本质上是继承自 \`java.lang.Enum\` 的**最终类**。每个
 \`values()\` 返回所有常量数组（顺序为声明顺序）：
 
 \`\`\`java
-for (Day d : Day.values()) {
-    System.out.println(d);
+for (Day d : Day.values()) {  // 增强 for：遍历 Day.values()，每次取一个元素 d
+    System.out.println(d);  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -674,7 +674,7 @@ for (Day d : Day.values()) {
 按名称字符串反查枚举常量，找不到会抛 \`IllegalArgumentException\`：
 
 \`\`\`java
-Day d = Day.valueOf("FRIDAY");
+Day d = Day.valueOf("FRIDAY");  // 声明变量 d（Day），初始值为 Day.valueOf("FRIDAY")
 \`\`\`
 
 ## ordinal() 与 name()
@@ -763,11 +763,11 @@ enum Season {
 ## 自定义方法
 
 \`\`\`java
-enum HttpStatus {
-    OK(200);
-    private final int code;
+enum HttpStatus {  // 定义枚举 HttpStatus
+    OK(200);  // 调用方法 OK
+    private final int code;  // 声明常量私有变量 code（int 类型）
     HttpStatus(int code) { this.code = code; }
-    public int getCode() { return code; }
+    public int getCode() { return code; }  // 方法 getCode（返回 int，无参数）：返回 code
 }
 \`\`\`
 
@@ -780,10 +780,10 @@ enum HttpStatus {
 枚举可定义抽象方法，**每个常量必须各自实现**。这是实现"常量相关行为"的强大手段：
 
 \`\`\`java
-enum Operation {
+enum Operation {  // 定义枚举 Operation
     PLUS { public double apply(double a, double b) { return a + b; } },
     MINUS { public double apply(double a, double b) { return a - b; } };
-    public abstract double apply(double a, double b);
+    public abstract double apply(double a, double b);  // 抽象方法 apply，返回 double，参数：double a, double b
 }
 \`\`\`
 
@@ -794,9 +794,9 @@ enum Operation {
 默认 \`toString()\` 返回常量名，可重写为更友好的描述：
 
 \`\`\`java
-@Override
-public String toString() {
-    return code + " " + name();
+@Override  // 注解：Override
+public String toString() {  // 方法 toString，返回 String，无参数
+    return code + " " + name();  // 返回值：code + " " + name()
 }
 \`\`\`
 
@@ -903,13 +903,13 @@ enum HttpStatus {
 枚举构造器**默认且只能**是 private（显式写 public/protected 会编译错误）。这保证枚举常量只能由枚举自身创建，无法外部 new。
 
 \`\`\`java
-enum Planet {
-    EARTH(5.976e+24, 6.37814e6);
-    private final double mass;
-    private final double radius;
+enum Planet {  // 定义枚举 Planet
+    EARTH(5.976e+24, 6.37814e6);  // 调用方法 EARTH
+    private final double mass;  // 声明常量私有变量 mass（double 类型）
+    private final double radius;  // 声明常量私有变量 radius（double 类型）
     Planet(double mass, double radius) { // 隐式 private
-        this.mass = mass;
-        this.radius = radius;
+        this.mass = mass;  // 为 this.mass 赋值：mass
+        this.radius = radius;  // 为 this.radius 赋值：radius
     }
 }
 \`\`\`
@@ -1016,7 +1016,7 @@ enum Planet {
 ## 基本 switch 语句
 
 \`\`\`java
-switch (light) {
+switch (light) {  // switch 分支：根据 light 的值跳转
     case RED: return "停";
     case YELLOW: return "注意";
     case GREEN: return "行";
@@ -1035,9 +1035,9 @@ switch 可作为表达式返回值，并用箭头语法 \`->\` 避免忘记 brea
 
 \`\`\`java
 String action = switch (light) {
-    case RED -> "停";
-    case YELLOW -> "注意";
-    case GREEN -> "行";
+    case RED -> "停";  // Lambda 表达式：实现函数式接口
+    case YELLOW -> "注意";  // Lambda 表达式：实现函数式接口
+    case GREEN -> "行";  // Lambda 表达式：实现函数式接口
 };
 \`\`\`
 
@@ -1250,8 +1250,8 @@ EnumMap 内部用一个**与枚举常量同长度的数组**存储值，键的 o
 ## 基本用法
 
 \`\`\`java
-EnumMap<Day, String> schedule = new EnumMap<>(Day.class);
-schedule.put(Day.MONDAY, "开周会");
+EnumMap<Day, String> schedule = new EnumMap<>(Day.class);  // 声明变量 schedule（EnumMap<Day, String>），初始值为 new EnumMap<>(Day.class)
+schedule.put(Day.MONDAY, "开周会");  // 调用 schedule 的 put 方法
 schedule.get(Day.MONDAY); // "开周会"
 \`\`\`
 
@@ -1359,7 +1359,7 @@ enum Season2 {
 ## 基本形式
 
 \`\`\`java
-public enum Singleton {
+public enum Singleton {  // 定义枚举 Singleton
     INSTANCE;
     public void doSomething() { ... }
 }
@@ -1480,7 +1480,7 @@ enum Counter {
 
 \`\`\`java
 // 反例：一堆 if-else，扩展需修改此处
-double discount(CustomerType type, double price) {
+double discount(CustomerType type, double price) {  // 方法 discount，返回 double，参数：CustomerType type, double price
     if (type == VIP) return price * 0.9;
     else if (type == SVIP) return price * 0.75;
     else return price;
@@ -1494,11 +1494,11 @@ double discount(CustomerType type, double price) {
 把行为放进枚举，每个常量实现抽象方法：
 
 \`\`\`java
-enum CustomerType {
+enum CustomerType {  // 定义枚举 CustomerType
     NORMAL { public double apply(double p) { return p; } },
     VIP    { public double apply(double p) { return p * 0.9; } },
     SVIP   { public double apply(double p) { return p * 0.75; } };
-    public abstract double apply(double price);
+    public abstract double apply(double price);  // 抽象方法 apply，返回 double，参数：double price
 }
 \`\`\`
 
@@ -1509,7 +1509,7 @@ enum CustomerType {
 枚举策略的另一种形态是状态机：每个状态常量定义 \`next()\` 返回下一状态，把状态流转逻辑分散到各状态自身：
 
 \`\`\`java
-enum OrderState {
+enum OrderState {  // 定义枚举 OrderState
     PENDING { OrderState next() { return PAID; } },
     PAID    { OrderState next() { return SHIPPED; } },
     ...
@@ -1624,9 +1624,9 @@ class Order {
 ## 枚举实现接口
 
 \`\`\`java
-interface Shape { double area(double p); }
+interface Shape { double area(double p); }  // 定义接口 Shape
 
-enum ShapeType implements Shape {
+enum ShapeType implements Shape {  // 定义枚举 ShapeType
     CIRCLE { public double area(double r) { return Math.PI * r * r; } },
     SQUARE { public double area(double s) { return s * s; } };
 }
@@ -1637,8 +1637,8 @@ enum ShapeType implements Shape {
 实现接口后，可把枚举常量当作接口类型使用，实现统一处理：
 
 \`\`\`java
-Shape s = ShapeType.CIRCLE;
-s.area(3);
+Shape s = ShapeType.CIRCLE;  // 声明变量 s（Shape），初始值为 ShapeType.CIRCLE
+s.area(3);  // 调用 s 的 area 方法
 \`\`\`
 
 ## 多枚举实现同一接口
@@ -1761,9 +1761,9 @@ enum ColorCategory implements Describable {
 
 \`\`\`java
 // 反例
-public static final int STATUS_PAID = 1;
+public static final int STATUS_PAID = 1;  // 声明静态常量公共变量 STATUS_PAID（int），初始值为 1
 // 正例
-enum OrderStatus { PAID, SHIPPED, COMPLETED }
+enum OrderStatus { PAID, SHIPPED, COMPLETED }  // 定义枚举 OrderStatus
 \`\`\`
 
 枚举提供类型安全、命名空间、可读性，且能携带字段与方法。
@@ -1773,9 +1773,9 @@ enum OrderStatus { PAID, SHIPPED, COMPLETED }
 为枚举附加 code、label 等字段，便于与数据库、前端对接。并提供 \`fromCode()\` 反查方法，处理非法值返回 null 或抛异常。
 
 \`\`\`java
-enum OrderStatus {
-    PAID(2, "已支付");
-    private final int code;
+enum OrderStatus {  // 定义枚举 OrderStatus
+    PAID(2, "已支付");  // 调用方法 PAID
+    private final int code;  // 声明常量私有变量 code（int 类型）
     static OrderStatus fromCode(int c) { ... }
 }
 \`\`\`

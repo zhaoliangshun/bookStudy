@@ -20,9 +20,9 @@ export const chapters = [
 **面向对象**（OOP）把"数据"和"行为"打包在一起，叫**类**（class）。从类造出来的具体实例叫**对象**。
 
 \`\`\`python
-class Dog:
+class Dog:  # 定义类 Dog
     def bark(self):       # 方法（类里的函数）
-        print("汪汪！")
+        print("汪汪！")  # 打印输出到屏幕
 
 d = Dog()                 # 造一个对象（实例化）
 d.bark()                  # 调用方法
@@ -42,10 +42,10 @@ d.bark()                  # 调用方法
 \`__init__\` 是个特殊方法，**造对象时自动调用**，用来初始化属性：
 
 \`\`\`python
-class Dog:
-    def __init__(self, name, age):
+class Dog:  # 定义类 Dog
+    def __init__(self, name, age):  # 定义函数 __init__，参数：self, name, age
         self.name = name       # 给对象加属性
-        self.age = age
+        self.age = age  # 执行操作
 
 d = Dog("旺财", 3)             # 自动调 __init__，self=d
 print(d.name)                  # 旺财
@@ -56,7 +56,7 @@ print(d.name)                  # 旺财
 \`self\` 是**对象自己**的引用。调用 \`d.bark()\` 时，Python 自动把 \`d\` 传给 \`self\`，所以方法里 \`self.name\` 就是 \`d.name\`。
 
 \`\`\`python
-d = Dog("旺财", 3)
+d = Dog("旺财", 3)  # 赋值变量 d
 d.bark()       # 等价于 Dog.bark(d)，self 拿到 d
 \`\`\`
 
@@ -68,13 +68,13 @@ d.bark()       # 等价于 Dog.bark(d)，self 拿到 d
 ## 类属性 vs 实例属性
 
 \`\`\`python
-class Dog:
+class Dog:  # 定义类 Dog
     species = "犬科"           # 类属性，所有 Dog 共享
-    def __init__(self, name):
+    def __init__(self, name):  # 定义函数 __init__，参数：self, name
         self.name = name       # 实例属性，每个对象独立
 
 Dog.species     # "犬科"，通过类访问
-d = Dog("旺财")
+d = Dog("旺财")  # 赋值变量 d
 d.species       # 也能通过对象访问
 \`\`\`
 
@@ -196,15 +196,15 @@ s2.info()`
 已有 \`Dog\` 类，现在要写 \`GuideDog\`（导盲犬）。它和普通狗 90% 一样，多了"导盲"功能。难道重写一遍？不用——**继承**让子类直接拿到父类的所有属性和方法，再加自己的东西。
 
 \`\`\`python
-class Dog:
-    def bark(self):
-        print("汪汪")
+class Dog:  # 定义类 Dog
+    def bark(self):  # 定义函数 bark，参数：self
+        print("汪汪")  # 打印输出到屏幕
 
 class GuideDog(Dog):           # GuideDog 继承 Dog
-    def guide(self):
-        print("导盲中...")
+    def guide(self):  # 定义函数 guide，参数：self
+        print("导盲中...")  # 打印输出到屏幕
 
-g = GuideDog()
+g = GuideDog()  # 赋值变量 g
 g.bark()                       # 继承来的方法
 g.guide()                      # 自己的方法
 \`\`\`
@@ -221,13 +221,13 @@ g.guide()                      # 自己的方法
 子类同名方法会"覆盖"父类的：
 
 \`\`\`python
-class Animal:
-    def speak(self):
-        print("...")
+class Animal:  # 定义类 Animal
+    def speak(self):  # 定义函数 speak，参数：self
+        print("...")  # 打印输出到屏幕
 
-class Cat(Animal):
+class Cat(Animal):  # 定义类 Cat
     def speak(self):           # 重写
-        print("喵")
+        print("喵")  # 打印输出到屏幕
 
 Cat().speak()    # 喵，不是 ...
 \`\`\`
@@ -237,12 +237,12 @@ Cat().speak()    # 喵，不是 ...
 重写后还想用父类的逻辑，用 \`super()\`：
 
 \`\`\`python
-class Animal:
-    def __init__(self, name):
-        self.name = name
+class Animal:  # 定义类 Animal
+    def __init__(self, name):  # 定义函数 __init__，参数：self, name
+        self.name = name  # 执行操作
 
-class Dog(Animal):
-    def __init__(self, name, breed):
+class Dog(Animal):  # 定义类 Dog
+    def __init__(self, name, breed):  # 定义函数 __init__，参数：self, name, breed
         super().__init__(name)    # 调父类 __init__
         self.breed = breed       # 再加自己的
 \`\`\`
@@ -252,8 +252,8 @@ class Dog(Animal):
 Python 支持多继承（一个类有多个父类）：
 
 \`\`\`python
-class A: pass
-class B: pass
+class A: pass  # 定义类 A
+class B: pass  # 定义类 B
 class C(A, B): pass             # C 同时继承 A 和 B
 \`\`\`
 
@@ -450,12 +450,12 @@ for e in emps:
 **多态**：不同对象调用同一方法，表现出不同行为。
 
 \`\`\`python
-class Dog:
-    def speak(self): print("汪")
-class Cat:
-    def speak(self): print("喵")
+class Dog:  # 定义类 Dog
+    def speak(self): print("汪")  # 定义函数 speak，参数：self
+class Cat:  # 定义类 Cat
+    def speak(self): print("喵")  # 定义函数 speak，参数：self
 
-def make_speak(animal):
+def make_speak(animal):  # 定义函数 make_speak，参数：animal
     animal.speak()      # 不关心是什么动物，只要有 speak
 
 make_speak(Dog())    # 汪
@@ -471,10 +471,10 @@ make_speak(Cat())    # 喵
 Python 不关心对象的**类型**，只关心它**有没有需要的方法**：
 
 \`\`\`python
-def make_sound(x):
+def make_sound(x):  # 定义函数 make_sound，参数：x
     x.speak()       # x 是什么都行，只要有 speak 方法
 
-class Car:
+class Car:  # 定义类 Car
     def speak(self): print("嘀嘀")    # 车也能 speak
 
 make_sound(Dog())    # 汪
@@ -499,34 +499,34 @@ len({"a": 1})     # 字典
 实现 \`__iter__\` 和 \`__next__\`，你的对象就能用 \`for\` 遍历：
 
 \`\`\`python
-class Counter:
-    def __init__(self, n):
-        self.n = n
-        self.i = 0
-    def __iter__(self):
-        return self
-    def __next__(self):
-        if self.i >= self.n:
-            raise StopIteration
-        x = self.i
-        self.i += 1
-        return x
+class Counter:  # 定义类 Counter
+    def __init__(self, n):  # 定义函数 __init__，参数：self, n
+        self.n = n  # 执行操作
+        self.i = 0  # 执行操作
+    def __iter__(self):  # 定义函数 __iter__，参数：self
+        return self  # 返回 self
+    def __next__(self):  # 定义函数 __next__，参数：self
+        if self.i >= self.n:  # 如果 self.i >= self.n
+            raise StopIteration  # 抛出异常：StopIteration
+        x = self.i  # 赋值变量 x
+        self.i += 1  # 执行操作
+        return x  # 返回 x
 
 for x in Counter(5):    # 像 range 一样用
-    print(x)
+    print(x)  # 打印输出到屏幕
 \`\`\`
 
 ## isinstance vs 鸭子类型
 
 \`\`\`python
 if isinstance(x, Dog):    # 严格判断类型
-    ...
+    ...  # 执行操作
 
 # 鸭子类型：不判断，直接试
-try:
-    x.speak()
-except AttributeError:
-    print("x 不会 speak")
+try:  # 尝试执行可能出错的代码
+    x.speak()  # 调用 x.speak()
+except AttributeError:  # 捕获异常 AttributeError:
+    print("x 不会 speak")  # 打印输出到屏幕
 \`\`\`
 
 Python 风格倾向于鸭子类型——"原谅比许可容易"（EAFP）。
@@ -689,17 +689,17 @@ print_data(data, CSVFormatter())`
 以 \`__\` 开头和结尾的方法，比如 \`__init__\`、\`__str__\`、\`__len__\`。它们是 Python 给的"钩子"——你重写它们，你的对象就能用 \`len()\`、\`print()\`、\`+\`、\`==\` 等内置操作。
 
 \`\`\`python
-class Vector:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
+class Vector:  # 定义类 Vector
+    def __init__(self, x, y):  # 定义函数 __init__，参数：self, x, y
+        self.x = x  # 执行操作
+        self.y = y  # 执行操作
     def __add__(self, other):       # 重写 +
-        return Vector(self.x + other.x, self.y + other.y)
+        return Vector(self.x + other.x, self.y + other.y)  # 返回 Vector(self.x + other.x, self.y + other.y)
     def __str__(self):              # 重写 print/str
-        return f"Vector({self.x}, {self.y})"
+        return f"Vector({self.x}, {self.y})"  # 返回 f"Vector({self.x}, {self.y})"
 
-v1 = Vector(1, 2)
-v2 = Vector(3, 4)
+v1 = Vector(1, 2)  # 赋值变量 v1
+v2 = Vector(3, 4)  # 赋值变量 v2
 print(v1 + v2)    # Vector(4, 6)
 \`\`\`
 
@@ -725,12 +725,12 @@ print(v1 + v2)    # Vector(4, 6)
 - \`__repr__\`：给开发者看，理想情况能"复制粘贴就是合法代码"
 
 \`\`\`python
-class Point:
-    def __init__(self, x, y): self.x, self.y = x, y
-    def __str__(self): return f"({self.x}, {self.y})"
-    def __repr__(self): return f"Point({self.x}, {self.y})"
+class Point:  # 定义类 Point
+    def __init__(self, x, y): self.x, self.y = x, y  # 定义函数 __init__，参数：self, x, y
+    def __str__(self): return f"({self.x}, {self.y})"  # 定义函数 __str__，参数：self
+    def __repr__(self): return f"Point({self.x}, {self.y})"  # 定义函数 __repr__，参数：self
 
-p = Point(1, 2)
+p = Point(1, 2)  # 赋值变量 p
 print(p)        # (1, 2)        ← __str__
 p               # Point(1, 2)   ← __repr__
 \`\`\`
@@ -738,17 +738,17 @@ p               # Point(1, 2)   ← __repr__
 ## 比较方法
 
 \`\`\`python
-class Student:
-    def __init__(self, name, score):
-        self.name = name
-        self.score = score
-    def __eq__(self, other):
-        return self.score == other.score
-    def __lt__(self, other):
-        return self.score < other.score
+class Student:  # 定义类 Student
+    def __init__(self, name, score):  # 定义函数 __init__，参数：self, name, score
+        self.name = name  # 执行操作
+        self.score = score  # 执行操作
+    def __eq__(self, other):  # 定义函数 __eq__，参数：self, other
+        return self.score == other.score  # 返回 self.score == other.score
+    def __lt__(self, other):  # 定义函数 __lt__，参数：self, other
+        return self.score < other.score  # 返回 self.score < other.score
 
-s1 = Student("小明", 90)
-s2 = Student("小红", 85)
+s1 = Student("小明", 90)  # 赋值变量 s1
+s2 = Student("小红", 85)  # 赋值变量 s2
 s1 > s2    # True（自动用 __lt__ 反过来）
 \`\`\`
 
@@ -932,16 +932,16 @@ print()`
     content: `## @property：把方法当属性用
 
 \`\`\`python
-class Circle:
-    def __init__(self, radius):
-        self.radius = radius
+class Circle:  # 定义类 Circle
+    def __init__(self, radius):  # 定义函数 __init__，参数：self, radius
+        self.radius = radius  # 执行操作
 
-    @property
-    def area(self):
-        """面积，像属性一样访问"""
-        return 3.14 * self.radius ** 2
+    @property  # 应用装饰器 property
+    def area(self):  # 定义函数 area，参数：self
+        """面积，像属性一样访问"""  # 执行操作
+        return 3.14 * self.radius ** 2  # 返回 3.14 * self.radius ** 2
 
-c = Circle(5)
+c = Circle(5)  # 赋值变量 c
 c.area      # 不加 ()，像属性一样
 \`\`\`
 
@@ -952,21 +952,21 @@ c.area      # 不加 ()，像属性一样
 控制赋值：
 
 \`\`\`python
-class Circle:
-    def __init__(self, r):
+class Circle:  # 定义类 Circle
+    def __init__(self, r):  # 定义函数 __init__，参数：self, r
         self.radius = r        # 会调 setter
 
-    @property
-    def radius(self):
-        return self._radius
+    @property  # 应用装饰器 property
+    def radius(self):  # 定义函数 radius，参数：self
+        return self._radius  # 返回 self._radius
 
-    @radius.setter
-    def radius(self, value):
-        if value < 0:
-            raise ValueError("半径不能为负")
-        self._radius = value
+    @radius.setter  # 应用装饰器 radius
+    def radius(self, value):  # 定义函数 radius，参数：self, value
+        if value < 0:  # 如果 value < 0
+            raise ValueError("半径不能为负")  # 抛出异常：ValueError("半径不能为负")
+        self._radius = value  # 执行操作
 
-c = Circle(5)
+c = Circle(5)  # 赋值变量 c
 c.radius = 10        # 调 setter
 c.radius = -1        # 抛 ValueError
 \`\`\`
@@ -976,10 +976,10 @@ c.radius = -1        # 抛 ValueError
 不需要 \`self\` 也不需要 \`cls\`，就是放在类里的普通函数：
 
 \`\`\`python
-class MathUtils:
-    @staticmethod
-    def add(a, b):
-        return a + b
+class MathUtils:  # 定义类 MathUtils
+    @staticmethod  # 应用装饰器 staticmethod
+    def add(a, b):  # 定义函数 add，参数：a, b
+        return a + b  # 返回 a + b
 
 MathUtils.add(3, 5)    # 不用实例化
 \`\`\`
@@ -989,17 +989,17 @@ MathUtils.add(3, 5)    # 不用实例化
 第一个参数是**类本身**（\`cls\`），不是实例。常用于"工厂方法"：
 
 \`\`\`python
-class Date:
-    def __init__(self, year, month, day):
-        self.year, self.month, self.day = year, month, day
+class Date:  # 定义类 Date
+    def __init__(self, year, month, day):  # 定义函数 __init__，参数：self, year, month, day
+        self.year, self.month, self.day = year, month, day  # 执行操作
 
-    @classmethod
-    def from_string(cls, s):
-        """从字符串 '2024-01-01' 创建 Date"""
-        year, month, day = map(int, s.split("-"))
+    @classmethod  # 应用装饰器 classmethod
+    def from_string(cls, s):  # 定义函数 from_string，参数：cls, s
+        """从字符串 '2024-01-01' 创建 Date"""  # 执行操作
+        year, month, day = map(int, s.split("-"))  # 多重赋值：year, month, day
         return cls(year, month, day)    # cls 就是 Date
 
-d = Date.from_string("2024-01-15")
+d = Date.from_string("2024-01-15")  # 赋值变量 d
 \`\`\`
 
 \`cls\` 是类本身，所以子类继承时 \`cls\` 会是子类，这是工厂方法的优势。
@@ -1022,13 +1022,13 @@ Python 没有真正的私有，靠**约定**：
 - \`__name__\`：魔法方法，别自己发明
 
 \`\`\`python
-class A:
-    def __init__(self):
-        self.pub = "公开"
-        self._priv = "内部"
-        self.__secret = "秘密"
+class A:  # 定义类 A
+    def __init__(self):  # 定义函数 __init__，参数：self
+        self.pub = "公开"  # 执行操作
+        self._priv = "内部"  # 执行操作
+        self.__secret = "秘密"  # 执行操作
 
-a = A()
+a = A()  # 赋值变量 a
 a.pub        # 公开
 a._priv      # 内部（能访问，但约定别这么干）
 a.__secret   # 报错！
@@ -1537,21 +1537,21 @@ print(f"  《算法导论》在馆吗: {Book('算法导论', 'Cormen', 'ISBN003'
 写代码不可能不出错。除以 0、读不存在的文件、网络断了……这些"异常"会让程序崩溃。**异常处理**让你"预见到错误，并优雅地处理"，而不是直接崩。
 
 \`\`\`python
-try:
-    x = 10 / 0
-except ZeroDivisionError:
-    print("不能除以 0")
+try:  # 尝试执行可能出错的代码
+    x = 10 / 0  # 定义数值 x
+except ZeroDivisionError:  # 捕获异常 ZeroDivisionError:
+    print("不能除以 0")  # 打印输出到屏幕
 \`\`\`
 
 ## try / except
 
 \`\`\`python
-try:
+try:  # 尝试执行可能出错的代码
     # 可能出错的代码
-    result = 10 / 0
-except ZeroDivisionError:
+    result = 10 / 0  # 定义数值 result
+except ZeroDivisionError:  # 捕获异常 ZeroDivisionError:
     # 出错时怎么办
-    print("出错了")
+    print("出错了")  # 打印输出到屏幕
 \`\`\`
 
 - \`try\` 里放可能出错的代码
@@ -1561,22 +1561,22 @@ except ZeroDivisionError:
 ## 捕获多种异常
 
 \`\`\`python
-try:
-    num = int(input("输入数字: "))
-    result = 10 / num
-except ValueError:
-    print("不是数字")
-except ZeroDivisionError:
-    print("不能是 0")
+try:  # 尝试执行可能出错的代码
+    num = int(input("输入数字: "))  # 赋值变量 num
+    result = 10 / num  # 定义数值 result
+except ValueError:  # 捕获异常 ValueError:
+    print("不是数字")  # 打印输出到屏幕
+except ZeroDivisionError:  # 捕获异常 ZeroDivisionError:
+    print("不能是 0")  # 打印输出到屏幕
 \`\`\`
 
 ## 一个 except 接多种
 
 \`\`\`python
-try:
-    ...
-except (ValueError, ZeroDivisionError) as e:
-    print(f"出错: {e}")
+try:  # 尝试执行可能出错的代码
+    ...  # 执行操作
+except (ValueError, ZeroDivisionError) as e:  # 捕获异常 (ValueError,
+    print(f"出错: {e}")  # 打印输出到屏幕
 \`\`\`
 
 \`as e\` 把异常对象赋给 \`e\`，能拿到错误信息。
@@ -1584,13 +1584,13 @@ except (ValueError, ZeroDivisionError) as e:
 ## else 和 finally
 
 \`\`\`python
-try:
-    result = 10 / 2
-except ZeroDivisionError:
-    print("出错")
-else:
+try:  # 尝试执行可能出错的代码
+    result = 10 / 2  # 定义数值 result
+except ZeroDivisionError:  # 捕获异常 ZeroDivisionError:
+    print("出错")  # 打印输出到屏幕
+else:  # 否则
     print(f"结果是 {result}")    # 没出错才执行
-finally:
+finally:  # 无论是否异常都执行
     print("无论如何都执行")      # 总执行（清理资源）
 \`\`\`
 
@@ -1600,10 +1600,10 @@ finally:
 ## 抛出异常 raise
 
 \`\`\`python
-def set_age(age):
-    if age < 0:
-        raise ValueError("年龄不能为负")
-    return age
+def set_age(age):  # 定义函数 set_age，参数：age
+    if age < 0:  # 如果 age < 0
+        raise ValueError("年龄不能为负")  # 抛出异常：ValueError("年龄不能为负")
+    return age  # 返回 age
 
 set_age(-5)    # 抛 ValueError
 \`\`\`
@@ -1613,10 +1613,10 @@ set_age(-5)    # 抛 ValueError
 ## 自定义异常
 
 \`\`\`python
-class MyError(Exception):
-    pass
+class MyError(Exception):  # 定义类 MyError
+    pass  # 空操作，占位符
 
-raise MyError("自定义错误")
+raise MyError("自定义错误")  # 抛出异常：MyError("自定义错误")
 \`\`\`
 
 继承 \`Exception\` 就行。第 36 章的图书管理系统就用过自定义异常。
@@ -1626,15 +1626,15 @@ raise MyError("自定义错误")
 异常会沿调用栈"向上传播"，直到被 except 接住：
 
 \`\`\`python
-def a():
+def a():  # 定义函数 a
     raise ValueError("错了")    # 抛
-def b():
+def b():  # 定义函数 b
     a()                          # 没接，继续传
-def c():
-    try:
+def c():  # 定义函数 c
+    try:  # 尝试执行可能出错的代码
         b()                      # 这里接住
-    except ValueError as e:
-        print(e)
+    except ValueError as e:  # 捕获异常 ValueError
+        print(e)  # 打印输出到屏幕
 \`\`\`
 
 ## 常见异常类型
@@ -1831,7 +1831,7 @@ for s in inputs:
 ## open 函数
 
 \`\`\`python
-f = open("文件名", "模式")
+f = open("文件名", "模式")  # 赋值变量 f
 # 操作 f
 f.close()       # 必须关闭！
 \`\`\`
@@ -1845,8 +1845,8 @@ f.close()       # 必须关闭！
 ## with 语句（推荐）
 
 \`\`\`python
-with open("file.txt", "r") as f:
-    content = f.read()
+with open("file.txt", "r") as f:  # 使用上下文管理器：open("file.txt", "r") as f
+    content = f.read()  # 赋值变量 content
 # 出 with 块自动 close，就算出错也会关
 \`\`\`
 
@@ -1855,14 +1855,14 @@ with open("file.txt", "r") as f:
 ## 读文件
 
 \`\`\`python
-with open("file.txt", "r") as f:
+with open("file.txt", "r") as f:  # 使用上下文管理器：open("file.txt", "r") as f
     content = f.read()       # 一次读完，返回字符串
 \`\`\`
 
 ### 逐行读
 
 \`\`\`python
-with open("file.txt") as f:
+with open("file.txt") as f:  # 使用上下文管理器：open("file.txt") as f
     for line in f:           # 一行一行读，省内存
         print(line.strip())  # strip 去掉换行符
 \`\`\`
@@ -1870,16 +1870,16 @@ with open("file.txt") as f:
 ### readlines
 
 \`\`\`python
-with open("file.txt") as f:
+with open("file.txt") as f:  # 使用上下文管理器：open("file.txt") as f
     lines = f.readlines()    # 返回行列表，每行带换行符
 \`\`\`
 
 ## 写文件
 
 \`\`\`python
-with open("file.txt", "w") as f:
+with open("file.txt", "w") as f:  # 使用上下文管理器：open("file.txt", "w") as f
     f.write("第一行\\n")      # 不会自动加换行，要自己写 \\n
-    f.write("第二行\\n")
+    f.write("第二行\\n")  # 调用 f.write()：写入
 \`\`\`
 
 \`"w"\` 模式会清空原文件！要接着写用 \`"a"\`。
@@ -1889,8 +1889,8 @@ with open("file.txt", "w") as f:
 读中文文件常报 \`UnicodeDecodeError\`。指定编码：
 
 \`\`\`python
-with open("file.txt", "r", encoding="utf-8") as f:
-    ...
+with open("file.txt", "r", encoding="utf-8") as f:  # 使用上下文管理器：open("file.txt", "r", encoding="utf-8") as f
+    ...  # 执行操作
 \`\`\`
 
 **永远写 \`encoding="utf-8"\`**，避免乱码。
@@ -1899,30 +1899,30 @@ with open("file.txt", "r", encoding="utf-8") as f:
 
 \`\`\`python
 # 绝对路径
-open("/Users/name/file.txt")
+open("/Users/name/file.txt")  # 打开文件
 # 相对路径（相对于当前工作目录）
-open("data/file.txt")
+open("data/file.txt")  # 打开文件
 \`\`\`
 
 跨平台用 \`os.path\` 或 \`pathlib\`：
 
 \`\`\`python
-from pathlib import Path
+from pathlib import Path  # 从 pathlib 导入 Path
 p = Path("data") / "file.txt"    # 自动处理路径分隔符
 \`\`\`
 
 ## JSON 文件
 
 \`\`\`python
-import json
+import json  # 导入模块 json
 
 # 写
-with open("data.json", "w", encoding="utf-8") as f:
-    json.dump({"name": "小明"}, f, ensure_ascii=False, indent=2)
+with open("data.json", "w", encoding="utf-8") as f:  # 使用上下文管理器：open("data.json", "w", encoding="utf-8") as f
+    json.dump({"name": "小明"}, f, ensure_ascii=False, indent=2)  # 调用 json.dump()
 
 # 读
-with open("data.json", encoding="utf-8") as f:
-    data = json.load(f)
+with open("data.json", encoding="utf-8") as f:  # 使用上下文管理器：open("data.json", encoding="utf-8") as f
+    data = json.load(f)  # 赋值变量 data
 \`\`\`
 
 JSON 是配置文件、API 数据交换的常用格式。
@@ -1930,7 +1930,7 @@ JSON 是配置文件、API 数据交换的常用格式。
 ## os 模块
 
 \`\`\`python
-import os
+import os  # 导入模块 os
 os.listdir("dir")           # 列目录
 os.path.exists("file")      # 是否存在
 os.path.isfile("file")      # 是文件吗
@@ -2103,7 +2103,7 @@ from math import *      # 导入所有（不推荐，会污染命名空间）
 
 \`\`\`python
 import numpy as np      # 太长，起个短名
-np.array([1, 2, 3])
+np.array([1, 2, 3])  # 调用 np.array()
 \`\`\`
 
 \`import pandas as pd\`、\`import matplotlib.pyplot as plt\` 是惯例。
@@ -2114,32 +2114,32 @@ np.array([1, 2, 3])
 
 \`\`\`python
 # utils.py
-def greet(name):
-    return f"你好，{name}"
+def greet(name):  # 定义函数 greet，参数：name
+    return f"你好，{name}"  # 返回 f"你好，{name}"
 
-PI = 3.14159
+PI = 3.14159  # 定义数值 PI
 \`\`\`
 
 在同目录另一个文件里：
 
 \`\`\`python
-import utils
-print(utils.greet("小明"))
+import utils  # 导入模块 utils
+print(utils.greet("小明"))  # 打印输出到屏幕
 
-from utils import greet, PI
+from utils import greet, PI  # 从 utils 导入 greet, PI
 \`\`\`
 
 ## \`\_\_name\_\_\` 与 \`if __name__ == "__main__"\`
 
 \`\`\`python
 # mymodule.py
-def foo():
-    print("foo")
+def foo():  # 定义函数 foo
+    print("foo")  # 打印输出到屏幕
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # 如果 __name__ == "__main__"
     # 这部分只在"直接运行 mymodule.py"时执行
     # 被 import 时不执行
-    foo()
+    foo()  # 调用 foo()
 \`\`\`
 
 这让一个文件既能当模块被导入，又能当脚本运行。
@@ -2176,8 +2176,8 @@ myproject/
 \`\`\`
 
 \`\`\`python
-from mypackage import module1
-from mypackage.subpackage import module2
+from mypackage import module1  # 从 mypackage 导入 module1
+from mypackage.subpackage import module2  # 从 mypackage.subpackage 导入 module2
 \`\`\`
 
 ## 安装第三方包

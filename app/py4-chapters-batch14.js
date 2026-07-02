@@ -18,8 +18,9 @@ export const chapters = [
 **类型注解（Type Hint）** 是给变量、函数参数、返回值标注类型的一种语法。它**只在静态检查阶段生效**，运行时 Python 解释器**不会强制校验**类型，需要配合 \`\`mypy\`\` / \`\`pyright\`\` 等静态类型检查工具才能真正发挥作用。
 
 \`\`\`python
+# 类型注解：name 是 str，times 默认 1 是 int，-> str 表示返回 str
 def greet(name: str, times: int = 1) -> str:
-    return (f"hi, {name}! ") * times
+    return (f"hi, {name}! ") * times   # 字符串乘法重复 times 次
 
 age: int = 18           # 变量注解
 names: list[str] = []   # 容器注解
@@ -84,20 +85,20 @@ u: UserDict = {"name": "alice", "age": 30, "email": None}
 \`\`\`python
 from typing import Protocol
 
-class SupportsClose(Protocol):
-    def close(self) -> None: ...
+class SupportsClose(Protocol):       # Protocol 定义结构化类型（鸭子类型的形式化）
+    def close(self) -> None: ...     # 只要有 close 方法的对象都算 SupportsClose
 
 def close_all(things: list[SupportsClose]) -> None:
     for t in things:
-        t.close()
+        t.close()                    # 调用每个对象的 close
 
 class File:               # 没有继承 SupportsClose
-    def close(self) -> None: print("File.close()")
+    def close(self) -> None: print("File.close()")   # 但结构匹配 Protocol
 
 class Connection:         # 也没有继承
     def close(self) -> None: print("Connection.close()")
 
-close_all([File(), Connection()])   # mypy 认为合法
+close_all([File(), Connection()])   # mypy 认为合法（结构子类型）
 \`\`\`
 
 对比 \`\`ABC\`\`（抽象基类）：ABC 是「**名义子类型（nominal subtyping）**」，必须显式继承才被认可；Protocol 只看「形状」是否匹配，更灵活，尤其适合对接第三方库的类型。
@@ -109,17 +110,17 @@ close_all([File(), Connection()])   # mypy 认为合法
 \`\`\`python
 from typing import TypeVar, Generic
 
-T = TypeVar("T")
+T = TypeVar("T")           # 声明类型变量 T（占位符）
 
-class Stack(Generic[T]):
+class Stack(Generic[T]):   # 泛型类：以 T 参数化元素类型
     def __init__(self) -> None:
-        self._items: list[T] = []
+        self._items: list[T] = []   # 内部用 list[T] 存储
     def push(self, x: T) -> None:
-        self._items.append(x)
+        self._items.append(x)       # 推入的元素类型必须匹配 T
     def pop(self) -> T:
-        return self._items.pop()
+        return self._items.pop()    # 取出类型也是 T
 
-s: Stack[int] = Stack()
+s: Stack[int] = Stack()   # 实例化时把 T 绑定为 int
 s.push(1)            # 推入 int
 n: int = s.pop()     # 取出仍是 int，mypy 能推出
 \`\`\`
@@ -243,7 +244,7 @@ class Stack(Generic[T]):      # 第二步：再继承 Generic[T]
 PEP 695 把类型参数**直接写在类名后的方括号里**：
 
 \`\`\`python
-class Stack[T]:               # 无需 import
+class Stack[T]:               # PEP 695：无需 import，直接在类名后声明类型参数
     def push(self, x: T) -> None: ...
     def pop(self) -> T: ...
 \`\`\`
@@ -260,8 +261,8 @@ class Stack[T]:               # 无需 import
 泛型**函数**同样支持：
 
 \`\`\`python
-def first[T](xs: list[T]) -> T | None:
-    return xs[0] if xs else None
+def first[T](xs: list[T]) -> T | None:   # 泛型函数：T 从参数推断
+    return xs[0] if xs else None          # 空列表返回 None，否则返回首元素
 \`\`\`
 
 逐行讲解：
@@ -312,11 +313,11 @@ type UserId = int
 多个类型参数用逗号分隔：
 
 \`\`\`python
-class Pair[K, V]:
+class Pair[K, V]:                          # 多类型参数 K、V
     def __init__(self, key: K, value: V):
         self.key, self.value = key, value
 
-p: Pair[str, int] = Pair("age", 30)
+p: Pair[str, int] = Pair("age", 30)       # K=str, V=int
 \`\`\`
 
 同样适用于函数和 \`\`type\`\` 别名：\`type Dict_[K, V] = dict[K, V]\`。
@@ -425,20 +426,20 @@ print(Pair[str, int]("score", 95))
 import unittest
 
 def add(a, b):
-    return a + b
+    return a + b                          # 被测函数：返回两数之和
 
-class TestAdd(unittest.TestCase):
+class TestAdd(unittest.TestCase):         # 继承 TestCase，每个 test_ 开头的方法自动运行
     def test_add_positive(self):
-        self.assertEqual(add(2, 3), 5)         # 断言相等
+        self.assertEqual(add(2, 3), 5)    # 断言 add(2,3) 等于 5
 
     def test_add_zero(self):
-        self.assertEqual(add(0, 0), 0)
+        self.assertEqual(add(0, 0), 0)    # 边界值测试：零加零
 
     def test_add_negative(self):
-        self.assertEqual(add(-1, -2), -3)
+        self.assertEqual(add(-1, -2), -3)  # 负数测试
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main()                       # 自动发现并运行所有 test_ 开头的方法
 \`\`\`
 
 逐行讲解：
@@ -506,15 +507,15 @@ with patch("__main__.fetch_user", return_value={"name": "alice", "id": 7}):
 \`\`\`python
 import pytest
 
-@pytest.fixture
+@pytest.fixture                            # fixture 装饰器：定义测试前置数据，支持依赖注入
 def sample_users():
-    return [{"name": "alice"}, {"name": "bob"}]
+    return [{"name": "alice"}, {"name": "bob"}]  # 返回测试数据，每个测试函数独立获取
 
-def test_count(sample_users):
-    assert len(sample_users) == 2
+def test_count(sample_users):              # 参数名匹配 fixture 名，pytest 自动注入
+    assert len(sample_users) == 2          # pytest 用原生 assert，无需 self.assertEqual
 
-def test_first(sample_users):
-    assert sample_users[0]["name"] == "alice"
+def test_first(sample_users):              # 同一 fixture 可被多个测试复用
+    assert sample_users[0]["name"] == "alice"  # 断言第一个用户名是 alice
 \`\`\`
 
 执行时 pytest 自动调用 \`sample_users()\`，把返回值传给两个测试函数。fixture 还可加 \`scope="session"\`/\`"module"\`/\`"function"\` 控制生命周期，避免重复构造。
@@ -526,14 +527,14 @@ def test_first(sample_users):
 \`\`\`python
 import pytest
 
-@pytest.mark.parametrize("a, b, expected", [
+@pytest.mark.parametrize("a, b, expected", [   # 参数化：每组数据生成一个测试用例
     (2, 3, 5),
     (0, 0, 0),
     (-1, -2, -3),
     (100, 200, 300),
 ])
 def test_add(a, b, expected):
-    assert add(a, b) == expected
+    assert add(a, b) == expected   # 自动用 4 组数据各跑一次
 \`\`\`
 
 效果：等价于写了 4 个独立测试函数，pytest 会分别报告每个用例的通过/失败，比手写循环 + 一个 assert 强得多。
@@ -560,12 +561,12 @@ def add(a, b):
     """
     返回两数之和。
 
-    >>> add(2, 3)
+    >>> add(2, 3)      # doctest：以 >>> 开头表示测试用例，下一行是期望输出
     5
-    >>> add(-1, 1)
+    >>> add(-1, 1)    # 多个测试用例验证不同分支
     0
     """
-    return a + b
+    return a + b                          # 被测函数体，doctest 会执行 docstring 中的 >>> 行并比对输出
 \`\`\`
 
 运行 \`\`python -m doctest -v module.py\`\` 或在 pytest 里启用 \`\`--doctest-modules\`\`。优点：示例和代码在一起，永远不过期；适合工具函数、教学代码。不适合复杂场景。

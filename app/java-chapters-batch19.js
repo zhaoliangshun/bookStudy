@@ -17,25 +17,25 @@ export const chapters = [
 每个被加载的类在 JVM 中都有一个唯一的 \`Class\` 对象，它是反射的入口。基本类型和关键字 \`void\` 也有对应的 \`Class\` 对象（如 \`int.class\`）。
 
 \`\`\`java
-Class<?> clazz = String.class;
+Class<?> clazz = String.class;  // 声明变量 clazz（Class<?>），初始值为 String.class
 \`\`\`
 
 ## 获取 Class 的三种方式
 
 1. **类字面常量**：编译期已知，最安全高效
 \`\`\`java
-Class<?> c1 = String.class;
+Class<?> c1 = String.class;  // 声明变量 c1（Class<?>），初始值为 String.class
 \`\`\`
 
 2. **对象 getClass()**：运行时已知实例
 \`\`\`java
-String s = "hello";
-Class<?> c2 = s.getClass();
+String s = "hello";  // 声明变量 s（String），初始值为 "hello"
+Class<?> c2 = s.getClass();  // 声明变量 c2（Class<?>），初始值为 s.getClass()
 \`\`\`
 
 3. **Class.forName()**：通过全限定名字符串动态加载
 \`\`\`java
-Class<?> c3 = Class.forName("java.lang.String");
+Class<?> c3 = Class.forName("java.lang.String");  // 声明变量 c3（Class<?>），初始值为 Class.forName("java.lang.String")
 \`\`\`
 
 三种方式获取的是同一个 Class 对象（类在 JVM 中只加载一次）。
@@ -166,8 +166,8 @@ public class Main {
 - \`getDeclaredFields()\`：返回本类**声明的所有**字段（含 private、protected），不包括继承的
 
 \`\`\`java
-Field[] publicFields = clazz.getFields();
-Field[] allFields = clazz.getDeclaredFields();
+Field[] publicFields = clazz.getFields();  // 声明变量 publicFields（Field[]），初始值为 clazz.getFields()
+Field[] allFields = clazz.getDeclaredFields();  // 声明变量 allFields（Field[]），初始值为 clazz.getDeclaredFields()
 \`\`\`
 
 类似地有 \`getField(String)\` 和 \`getDeclaredField(String)\` 按名获取。
@@ -175,7 +175,7 @@ Field[] allFields = clazz.getDeclaredFields();
 ## 读取与设置字段值
 
 \`\`\`java
-Field f = clazz.getDeclaredField("name");
+Field f = clazz.getDeclaredField("name");  // 声明变量 f（Field），初始值为 clazz.getDeclaredField("name")
 Object value = f.get(instance);   // 读取
 f.set(instance, newValue);        // 设置
 \`\`\`
@@ -187,9 +187,9 @@ f.set(instance, newValue);        // 设置
 访问 private 字段需先调用 \`setAccessible(true)\` 取消访问检查，否则抛 \`IllegalAccessException\`：
 
 \`\`\`java
-Field privateField = clazz.getDeclaredField("secret");
-privateField.setAccessible(true);
-Object secretValue = privateField.get(instance);
+Field privateField = clazz.getDeclaredField("secret");  // 声明变量 privateField（Field），初始值为 clazz.getDeclaredField("secret")
+privateField.setAccessible(true);  // 调用 privateField 的 setAccessible 方法
+Object secretValue = privateField.get(instance);  // 声明变量 secretValue（Object），初始值为 privateField.get(instance)
 \`\`\`
 
 ## 修改字段值
@@ -220,7 +220,7 @@ Object secretValue = privateField.get(instance);
 \`getDeclaredFields\` 不返回继承字段。若需遍历所有字段（含父类），需沿 \`getSuperclass()\` 递归向上收集：
 
 \`\`\`java
-for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {  // for 循环：初始化 Class<?> c = clazz；条件 c != null；更新 c = c.getSuperclass()
     for (Field f : c.getDeclaredFields()) { ... }
 }
 \`\`\`
@@ -339,8 +339,8 @@ Method m = clazz.getDeclaredMethod("setName", String.class); // 指定参数类�
 - 返回值装箱为 Object，void 返回 null
 
 \`\`\`java
-Method greet = clazz.getDeclaredMethod("greet");
-String result = (String) greet.invoke(instance);
+Method greet = clazz.getDeclaredMethod("greet");  // 声明变量 greet（Method），初始值为 clazz.getDeclaredMethod("greet")
+String result = (String) greet.invoke(instance);  // 声明变量 result（String），初始值为 (String) greet.invoke(instance)
 \`\`\`
 
 ## 参数类型
@@ -348,8 +348,8 @@ String result = (String) greet.invoke(instance);
 通过 \`getMethod(name, parameterTypes...)\` 精确匹配重载方法，参数类型必须严格匹配：
 
 \`\`\`java
-Method setAge = clazz.getDeclaredMethod("setAge", int.class);
-setAge.invoke(p, 20);
+Method setAge = clazz.getDeclaredMethod("setAge", int.class);  // 声明变量 setAge（Method），初始值为 clazz.getDeclaredMethod("setAge", int.class)
+setAge.invoke(p, 20);  // 调用 setAge 的 invoke 方法
 \`\`\`
 
 ## 动态调用
@@ -361,9 +361,9 @@ setAge.invoke(p, 20);
 调用 private 方法需 \`setAccessible(true)\`：
 
 \`\`\`java
-Method privateMethod = clazz.getDeclaredMethod("secret");
-privateMethod.setAccessible(true);
-privateMethod.invoke(instance);
+Method privateMethod = clazz.getDeclaredMethod("secret");  // 声明变量 privateMethod（Method），初始值为 clazz.getDeclaredMethod("secret")
+privateMethod.setAccessible(true);  // 调用 privateMethod 的 setAccessible 方法
+privateMethod.invoke(instance);  // 调用 privateMethod 的 invoke 方法
 \`\`\`
 
 ## 异常处理
@@ -372,7 +372,7 @@ privateMethod.invoke(instance);
 
 \`\`\`java
 try { method.invoke(obj); }
-catch (InvocationTargetException e) {
+catch (InvocationTargetException e) {  // 捕获异常 InvocationTargetException e
     Throwable real = e.getCause(); // 真实业务异常
 }
 \`\`\`
@@ -390,8 +390,8 @@ catch (InvocationTargetException e) {
 可变参数在反射中以**数组类型**出现。例如 \`sum(int... nums)\` 的参数类型是 \`int[].class\`，调用时需包装：
 
 \`\`\`java
-Method sum = clazz.getMethod("sum", int[].class);
-sum.invoke(obj, new Object[]{ new int[]{1, 2, 3} });
+Method sum = clazz.getMethod("sum", int[].class);  // 声明变量 sum（Method），初始值为 clazz.getMethod("sum", int[].class)
+sum.invoke(obj, new Object[]{ new int[]{1, 2, 3} });  // 调用 sum 的 invoke 方法
 \`\`\`
 
 外层 \`Object[]\` 是 invoke 的可变参数容器，内层 \`int[]\` 才是实际参数。
@@ -505,13 +505,13 @@ public class Main {
 返回本类**所有声明**的构造器（含 private）：
 
 \`\`\`java
-Constructor<?>[] ctors = clazz.getDeclaredConstructors();
+Constructor<?>[] ctors = clazz.getDeclaredConstructors();  // 声明变量 ctors（Constructor<?>[]），初始值为 clazz.getDeclaredConstructors()
 \`\`\`
 
 \`getConstructors()\` 仅返回 public 构造器。按参数类型获取：
 
 \`\`\`java
-Constructor<?> c = clazz.getDeclaredConstructor(String.class, int.class);
+Constructor<?> c = clazz.getDeclaredConstructor(String.class, int.class);  // 声明变量 c（Constructor<?>），初始值为 clazz.getDeclaredConstructor(String.class, int.class)
 \`\`\`
 
 ## Constructor.newInstance
@@ -519,8 +519,8 @@ Constructor<?> c = clazz.getDeclaredConstructor(String.class, int.class);
 通过构造器创建实例：
 
 \`\`\`java
-Constructor<?> c = clazz.getDeclaredConstructor(String.class);
-Object obj = c.newInstance("hello");
+Constructor<?> c = clazz.getDeclaredConstructor(String.class);  // 声明变量 c（Constructor<?>），初始值为 clazz.getDeclaredConstructor(String.class)
+Object obj = c.newInstance("hello");  // 声明变量 obj（Object），初始值为 c.newInstance("hello")
 \`\`\`
 
 相比 \`Class.newInstance()\`（已废弃），\`Constructor.newInstance\` 优势：支持带参构造器、支持调用 private 构造器（配合 setAccessible）、正确处理构造器异常。
@@ -528,8 +528,8 @@ Object obj = c.newInstance("hello");
 ## 动态创建对象
 
 \`\`\`java
-Class<?> clazz = Class.forName("com.example.User");
-Object user = clazz.getDeclaredConstructor(String.class).newInstance("Alice");
+Class<?> clazz = Class.forName("com.example.User");  // 声明变量 clazz（Class<?>），初始值为 Class.forName("com.example.User")
+Object user = clazz.getDeclaredConstructor(String.class).newInstance("Alice");  // 声明变量 user（Object），初始值为 clazz.getDeclaredConstructor(String.class).newInstance("Alice")
 \`\`\`
 
 框架根据配置的类名创建对象，无需在编译期依赖具体类。
@@ -539,9 +539,9 @@ Object user = clazz.getDeclaredConstructor(String.class).newInstance("Alice");
 单例模式常把构造器设为 private，反射可绕过：
 
 \`\`\`java
-Constructor<?> c = Singleton.class.getDeclaredConstructor();
-c.setAccessible(true);
-Singleton instance = c.newInstance();
+Constructor<?> c = Singleton.class.getDeclaredConstructor();  // 声明变量 c（Constructor<?>），初始值为 Singleton.class.getDeclaredConstructor()
+c.setAccessible(true);  // 调用 c 的 setAccessible 方法
+Singleton instance = c.newInstance();  // 声明变量 instance（Singleton），初始值为 c.newInstance()
 \`\`\`
 
 这也是为什么单例要防范反射攻击（枚举单例天然安全）。
@@ -711,19 +711,19 @@ Object proxy = Proxy.newProxyInstance(
 调用处理器，所有方法调用都会进入 \`invoke\`：
 
 \`\`\`java
-interface InvocationHandler {
-    Object invoke(Object proxy, Method method, Object[] args) throws Throwable;
+interface InvocationHandler {  // 定义接口 InvocationHandler
+    Object invoke(Object proxy, Method method, Object[] args) throws Throwable;  // 方法 invoke，返回 Object，参数：Object proxy, Method method, Object[] args
 }
 \`\`\`
 
 在 \`invoke\` 中可做前置/后置处理：
 
 \`\`\`java
-public Object invoke(Object proxy, Method method, Object[] args) {
+public Object invoke(Object proxy, Method method, Object[] args) {  // 方法 invoke，返回 Object，参数：Object proxy, Method method, Object[] args
     // 前置增强（日志、权限检查）
     Object result = method.invoke(target, args); // 委托真实对象
     // 后置增强（日志、事务提交）
-    return result;
+    return result;  // 返回值：result
 }
 \`\`\`
 
@@ -762,7 +762,7 @@ Spring AOP、MyBatis Mapper、RPC Stub 都基于动态代理。
 \`Proxy.newProxyInstance\` 可同时实现多个接口：
 
 \`\`\`java
-Proxy.newProxyInstance(loader, new Class[]{A.class, B.class}, handler);
+Proxy.newProxyInstance(loader, new Class[]{A.class, B.class}, handler);  // 调用 Proxy 的 newProxyInstance 方法
 \`\`\`
 
 代理对象可强转为任一接口。Spring 的 Bean 代理常组合多个接口（业务接口 + Advised）。
@@ -884,8 +884,8 @@ public class Main {
 标注方法重写父类（或实现接口）方法。编译器检查方法签名是否真的覆盖，避免笔误：
 
 \`\`\`java
-@Override
-public String toString() { return "..."; }
+@Override  // 注解：Override
+public String toString() { return "..."; }  // 方法 toString（返回 String，无参数）：返回 "..."
 \`\`\`
 
 若方法名拼错（如 \`tostring\`），编译器报错。这是最常用的编译期注解。
@@ -895,7 +895,7 @@ public String toString() { return "..."; }
 标记已过时元素，调用方会收到编译警告。可附带说明（Java 9+）：
 
 \`\`\`java
-@Deprecated(since = "9", forRemoval = true)
+@Deprecated(since = "9", forRemoval = true)  // 注解：Deprecated
 public void oldMethod() { }
 \`\`\`
 
@@ -906,8 +906,8 @@ public void oldMethod() { }
 抑制编译警告：
 
 \`\`\`java
-@SuppressWarnings("unchecked")
-List list = new ArrayList();
+@SuppressWarnings("unchecked")  // 注解：SuppressWarnings
+List list = new ArrayList();  // 声明变量 list（List），初始值为 new ArrayList()
 \`\`\`
 
 常用 key：\`unchecked\`（泛型未检查）、\`deprecation\`（过时）、\`rawtypes\`、\`unused\`、\`all\`。
@@ -1035,10 +1035,10 @@ public class Main {
 ## @interface 定义
 
 \`\`\`java
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)  // 注解：Retention
+@Target(ElementType.METHOD)  // 注解：Target
 public @interface MyAnnotation {
-    String value();
+    String value();  // 方法 value，返回 String，无参数
 }
 \`\`\`
 
@@ -1056,7 +1056,7 @@ public @interface MyAnnotation {
 
 \`\`\`java
 @interface Test {
-    String name();
+    String name();  // 方法 name，返回 String，无参数
     int timeout() default 0;        // 默认值
     String[] tags() default {};     // 数组属性
 }
@@ -1080,7 +1080,7 @@ public @interface MyAnnotation {
 ## 使用示例
 
 \`\`\`java
-@Cache(ttl = 120)
+@Cache(ttl = 120)  // 注解：Cache
 public User getUser(int id) { ... }
 \`\`\`
 
@@ -1104,9 +1104,9 @@ public User getUser(int id) { ... }
 定义 \`@Retention(RUNTIME)\` 后，可通过反射读取：
 
 \`\`\`java
-if (method.isAnnotationPresent(MyAnno.class)) {
-    MyAnno a = method.getAnnotation(MyAnno.class);
-    String v = a.value();
+if (method.isAnnotationPresent(MyAnno.class)) {  // 条件判断：满足 method.isAnnotationPresent(MyAnno.class) 时执行
+    MyAnno a = method.getAnnotation(MyAnno.class);  // 声明变量 a（MyAnno），初始值为 method.getAnnotation(MyAnno.class)
+    String v = a.value();  // 声明变量 v（String），初始值为 a.value()
 }
 \`\`\`
 
@@ -1227,9 +1227,9 @@ public class Main {
 仅 \`@Retention(RUNTIME)\` 的注解可被反射读取：
 
 \`\`\`java
-if (method.isAnnotationPresent(MyAnno.class)) {
-    MyAnno a = method.getAnnotation(MyAnno.class);
-    String value = a.value();
+if (method.isAnnotationPresent(MyAnno.class)) {  // 条件判断：满足 method.isAnnotationPresent(MyAnno.class) 时执行
+    MyAnno a = method.getAnnotation(MyAnno.class);  // 声明变量 a（MyAnno），初始值为 method.getAnnotation(MyAnno.class)
+    String value = a.value();  // 声明变量 value（String），初始值为 a.value()
 }
 \`\`\`
 
@@ -1245,12 +1245,12 @@ if (method.isAnnotationPresent(MyAnno.class)) {
 Annotation Processing Tool 在**编译期**扫描注解，生成新代码或检查约束。Java 6 起内置 \`javax.annotation.processing.Processor\`：
 
 \`\`\`java
-@SupportedAnnotationTypes("com.example.MyAnno")
-public class MyProcessor extends AbstractProcessor {
-    @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment env) {
+@SupportedAnnotationTypes("com.example.MyAnno")  // 注解：SupportedAnnotationTypes
+public class MyProcessor extends AbstractProcessor {  // 定义类 MyProcessor
+    @Override  // 注解：Override
+    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment env) {  // 方法 process，返回 boolean，参数：Set<? extends TypeElement> annotations, RoundEnvironment env
         // 生成代码、检查约束
-        return true;
+        return true;  // 返回值：true
     }
 }
 \`\`\`
@@ -1284,7 +1284,7 @@ APT 需在 \`META-INF/services/javax.annotation.processing.Processor\` 中注册
 生成代码用 \`Filer\`（\`processingEnv.getFiler()\`）创建源文件、类文件或资源文件：
 
 \`\`\`java
-JavaFileObject file = filer.createSourceFile("com.example.Generated");
+JavaFileObject file = filer.createSourceFile("com.example.Generated");  // 声明变量 file（JavaFileObject），初始值为 filer.createSourceFile("com.example.Generated")
 try (Writer w = file.openWriter()) { w.write("package com.example; class Generated {}"); }
 \`\`\`
 
@@ -1459,7 +1459,7 @@ public class Main {
 标记注解会出现在 Javadoc 中。默认注解不出现在文档里：
 
 \`\`\`java
-@Documented
+@Documented  // 注解：Documented
 public @interface ApiStatus { }
 \`\`\`
 
@@ -1482,14 +1482,14 @@ class Child extends Parent {}  // Child 自动有 @Entity
 允许同一位置重复标注同一注解，需配套容器注解：
 
 \`\`\`java
-@Repeatable(Schedules.class)
+@Repeatable(Schedules.class)  // 注解：Repeatable
 public @interface Schedule { String cron(); }
 
 public @interface Schedules { Schedule[] value(); }
 
-@Schedule(cron = "0 0 * * *")
-@Schedule(cron = "0 * * * *")
-class Task {}
+@Schedule(cron = "0 0 * * *")  // 注解：Schedule
+@Schedule(cron = "0 * * * *")  // 注解：Schedule
+class Task {}  // 定义类 Task
 \`\`\`
 
 反射读取时用 \`getAnnotationsByType(Schedule.class)\` 直接获取数组，容器注解被自动展开。
@@ -1499,9 +1499,9 @@ class Task {}
 自定义注解通常组合多个元注解：
 
 \`\`\`java
-@Target(ElementType.METHOD)
-@Retention(RetentionPolicy.RUNTIME)
-@Documented
+@Target(ElementType.METHOD)  // 注解：Target
+@Retention(RetentionPolicy.RUNTIME)  // 注解：Retention
+@Documented  // 注解：Documented
 public @interface Transactional { }
 \`\`\`
 
@@ -1631,7 +1631,7 @@ public class Main {
 \`setAccessible(true)\` 跳过访问检查，提升约 20-30% 性能：
 
 \`\`\`java
-Method m = clazz.getMethod("foo");
+Method m = clazz.getMethod("foo");  // 声明变量 m（Method），初始值为 clazz.getMethod("foo")
 m.setAccessible(true);  // 跳过权限检查
 \`\`\`
 
@@ -1649,9 +1649,9 @@ private static final Method FOO = initMethod();  // 类加载时查找一次
 
 \`\`\`java
 // 直接调用
-obj.doSomething();
+obj.doSomething();  // 调用 obj 的 doSomething 方法
 // 反射调用
-method.invoke(obj);
+method.invoke(obj);  // 调用 method 的 invoke 方法
 \`\`\`
 
 反射通常慢数倍到数十倍（看场景），但**绝对值**往往可接受。对于高频热点路径才需优化。
@@ -1666,8 +1666,8 @@ method.invoke(obj);
 ## MethodHandle 简介
 
 \`\`\`java
-MethodHandles.Lookup lookup = MethodHandles.lookup();
-MethodHandle mh = lookup.findVirtual(clazz, "foo", MethodType.methodType(void.class));
+MethodHandles.Lookup lookup = MethodHandles.lookup();  // 声明变量 lookup（MethodHandles.Lookup），初始值为 MethodHandles.lookup()
+MethodHandle mh = lookup.findVirtual(clazz, "foo", MethodType.methodType(void.class));  // 声明变量 mh（MethodHandle），初始值为 lookup.findVirtual(clazz, "foo", MethodType.methodType(void.class))
 mh.invoke(obj);  // 可被 JIT 内联
 \`\`\`
 
@@ -1688,8 +1688,8 @@ Java 8 引入 \`LambdaMetafactory\` 可将 \`MethodHandle\` 转为函数式接�
 \`\`\`java
 CallSite site = LambdaMetafactory.metafactory(
     lookup, "apply", MethodType.methodType(Function.class),
-    MethodType.methodType(Object.class, Object.class), handle, MethodType.methodType(int.class, int.class));
-Function<Integer, Integer> fn = (Function<Integer, Integer>) site.getTarget().invoke();
+    MethodType.methodType(Object.class, Object.class), handle, MethodType.methodType(int.class, int.class));  // 调用 MethodType 的 methodType 方法
+Function<Integer, Integer> fn = (Function<Integer, Integer>) site.getTarget().invoke();  // 声明变量 fn（Function<Integer, Integer>），初始值为 (Function<Integer, Integer>) site.getTarget().invoke()
 \`\`\`
 
 Spring 在反射频繁的热点路径上也用类似机制提速。使用门槛较高，仅在性能瓶颈明确时引入。
@@ -1802,8 +1802,8 @@ public class Main {
 Java 9 之前，SecurityManager 控制反射权限。访问 private 需 \`ReflectPermission("suppressAccessChecks")\`：
 
 \`\`\`java
-System.setSecurityManager(new SecurityManager());
-Field f = clazz.getDeclaredField("secret");
+System.setSecurityManager(new SecurityManager());  // 调用 System 的 setSecurityManager 方法
+Field f = clazz.getDeclaredField("secret");  // 声明变量 f（Field），初始值为 clazz.getDeclaredField("secret")
 f.setAccessible(true);  // 无权限时抛 SecurityException
 \`\`\`
 
@@ -1958,8 +1958,8 @@ public class Main {
 根据类名/类型动态创建对象，避免硬编码 if-else：
 
 \`\`\`java
-Object create(String className) throws Exception {
-    return Class.forName(className).getDeclaredConstructor().newInstance();
+Object create(String className) throws Exception {  // 方法 create，返回 Object，参数：String className
+    return Class.forName(className).getDeclaredConstructor().newInstance();  // 返回值：Class.forName(className).getDeclaredConstructor().newInstance()
 }
 \`\`\`
 
@@ -1970,10 +1970,10 @@ Object create(String className) throws Exception {
 容器扫描字段/构造器的 @Autowired，反射注入实例：
 
 \`\`\`java
-for (Field f : clazz.getDeclaredFields()) {
-    if (f.isAnnotationPresent(Autowired.class)) {
-        f.setAccessible(true);
-        f.set(instance, container.get(f.getType()));
+for (Field f : clazz.getDeclaredFields()) {  // 增强 for：遍历 clazz.getDeclaredFields()，每次取一个元素 f
+    if (f.isAnnotationPresent(Autowired.class)) {  // 条件判断：满足 f.isAnnotationPresent(Autowired.class) 时执行
+        f.setAccessible(true);  // 调用 f 的 setAccessible 方法
+        f.set(instance, container.get(f.getType()));  // 调用 f 的 set 方法
     }
 }
 \`\`\`
@@ -1985,11 +1985,11 @@ Spring 的 @Autowired、@Resource 都基于此机制。
 将数据库行映射到对象：根据 @Column 注解读取字段名，反射设置属性：
 
 \`\`\`java
-while (rs.next()) {
-    Object entity = clazz.getDeclaredConstructor().newInstance();
-    for (Field f : clazz.getDeclaredFields()) {
-        Column col = f.getAnnotation(Column.class);
-        f.set(entity, rs.getObject(col.name()));
+while (rs.next()) {  // while 循环：当 rs.next() 为真时重复执行
+    Object entity = clazz.getDeclaredConstructor().newInstance();  // 声明变量 entity（Object），初始值为 clazz.getDeclaredConstructor().newInstance()
+    for (Field f : clazz.getDeclaredFields()) {  // 增强 for：遍历 clazz.getDeclaredFields()，每次取一个元素 f
+        Column col = f.getAnnotation(Column.class);  // 声明变量 col（Column），初始值为 f.getAnnotation(Column.class)
+        f.set(entity, rs.getObject(col.name()));  // 调用 f 的 set 方法
     }
 }
 \`\`\`
@@ -2001,9 +2001,9 @@ Hibernate、MyBatis 都这么做。
 遍历字段，反射读取值并输出为 JSON 字符串：
 
 \`\`\`java
-for (Field f : clazz.getDeclaredFields()) {
-    f.setAccessible(true);
-    json.put(f.getName(), f.get(obj));
+for (Field f : clazz.getDeclaredFields()) {  // 增强 for：遍历 clazz.getDeclaredFields()，每次取一个元素 f
+    f.setAccessible(true);  // 调用 f 的 setAccessible 方法
+    json.put(f.getName(), f.get(obj));  // 调用 json 的 put 方法
 }
 \`\`\`
 
@@ -2014,8 +2014,8 @@ Gson、Jackson 内部用反射（也用代码生成提速）。
 从 properties/yaml 读取类名和方法名，反射加载执行：
 
 \`\`\`java
-String handler = props.getProperty("request.handler");
-Object obj = Class.forName(handler).getDeclaredConstructor().newInstance();
+String handler = props.getProperty("request.handler");  // 声明变量 handler（String），初始值为 props.getProperty("request.handler")
+Object obj = Class.forName(handler).getDeclaredConstructor().newInstance();  // 声明变量 obj（Object），初始值为 Class.forName(handler).getDeclaredConstructor().newInstance()
 \`\`\`
 
 实现"配置即行为"，无需改代码即可切换实现。
@@ -2170,10 +2170,10 @@ public class Main {
 Lombok 实现了 \`javax.annotation.processing.Processor\`，在编译期扫描 \`@Data\`、\`@Getter\` 等注解，**直接修改 AST** 注入方法节点：
 
 \`\`\`java
-@Data
-public class User {
-    private String name;
-    private int age;
+@Data  // 注解：Data
+public class User {  // 定义类 User
+    private String name;  // 声明私有变量 name（String 类型）
+    private int age;  // 声明私有变量 age（int 类型）
 }
 \`\`\`
 
@@ -2203,13 +2203,13 @@ public class User {
 ## @Builder 示例
 
 \`\`\`java
-@Builder
-public class User {
-    private String name;
-    private int age;
+@Builder  // 注解：Builder
+public class User {  // 定义类 User
+    private String name;  // 声明私有变量 name（String 类型）
+    private int age;  // 声明私有变量 age（int 类型）
 }
 // 使用
-User u = User.builder().name("Alice").age(30).build();
+User u = User.builder().name("Alice").age(30).build();  // 声明变量 u（User），初始值为 User.builder().name("Alice").age(30).build()
 \`\`\`
 
 ## 优缺点
@@ -2349,7 +2349,7 @@ public class Main {
 \`java.util.ServiceLoader\` 是 SPI 核心入口：
 
 \`\`\`java
-ServiceLoader<Driver> loaders = ServiceLoader.load(Driver.class);
+ServiceLoader<Driver> loaders = ServiceLoader.load(Driver.class);  // 声明变量 loaders（ServiceLoader<Driver>），初始值为 ServiceLoader.load(Driver.class)
 for (Driver d : loaders) { ... }
 \`\`\`
 
@@ -2377,7 +2377,7 @@ com.mysql.cj.jdbc.Driver
 
 \`\`\`java
 // 调用方代码不出现具体驱动类名
-Connection conn = DriverManager.getConnection("jdbc:mysql://localhost/db", "user", "pwd");
+Connection conn = DriverManager.getConnection("jdbc:mysql://localhost/db", "user", "pwd");  // 声明变量 conn（Connection），初始值为 DriverManager.getConnection("jdbc:mysql://localhost/db", "user", "pwd")
 \`\`\`
 
 \`DriverManager\` 初始化时通过 ServiceLoader 加载所有 \`java.sql.Driver\` 实现。引入 mysql-connector jar 即自动注册，无需 \`Class.forName("com.mysql.cj.jdbc.Driver")\`（JDBC 4.0+）。
@@ -2516,12 +2516,12 @@ public class Main {
 手动编写代理类，实现与目标相同的接口：
 
 \`\`\`java
-class UserServiceProxy implements UserService {
-    private UserService target;
-    public void save(User u) {
-        log("before");
-        target.save(u);
-        log("after");
+class UserServiceProxy implements UserService {  // 定义类 UserServiceProxy
+    private UserService target;  // 声明私有变量 target（UserService 类型）
+    public void save(User u) {  // 方法 save，返回 void，参数：User u
+        log("before");  // 调用方法 log
+        target.save(u);  // 调用 target 的 save 方法
+        log("after");  // 调用方法 log
     }
 }
 \`\`\`
@@ -2544,10 +2544,10 @@ UserService proxy = (UserService) Proxy.newProxyInstance(
 通过**生成子类**实现代理，无需接口：
 
 \`\`\`java
-Enhancer e = new Enhancer();
-e.setSuperclass(UserService.class);
-e.setCallback(methodInterceptor);
-UserService proxy = (UserService) e.create();
+Enhancer e = new Enhancer();  // 声明变量 e（Enhancer），初始值为 new Enhancer()
+e.setSuperclass(UserService.class);  // 调用 e 的 setSuperclass 方法
+e.setCallback(methodInterceptor);  // 调用 e 的 setCallback 方法
+UserService proxy = (UserService) e.create();  // 声明变量 proxy（UserService），初始值为 (UserService) e.create()
 \`\`\`
 
 CGLib 用 ASM 生成字节码，性能优秀。Spring AOP 对类默认用 CGLib。限制：final 类、private 方法无法代理。

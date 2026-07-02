@@ -70,7 +70,7 @@ ESLint 早期对 TS 支持不好，需要 \`typescript-eslint-parser\`。2019 �
 #### 安装依赖
 
 \`\`\`bash
-npm install --save-dev eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin
+npm install --save-dev eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin  # 安装依赖
 \`\`\`
 
 - \`@typescript-eslint/parser\`：把 TS 代码解析成 ESLint 能理解的 AST。
@@ -82,7 +82,7 @@ ESLint 9 推荐用扁平配置（\`eslint.config.js\`），但传统 \`.eslintrc
 
 \`\`\`js
 // .eslintrc.js —— 传统配置
-module.exports = {
+module.exports = {  // 赋值 module.exports
   root: true,            // 防止 ESLint 继续向上查找配置
   parser: '@typescript-eslint/parser',  // 用 TS 解析器
   parserOptions: {
@@ -110,11 +110,11 @@ module.exports = {
 
 \`\`\`js
 // eslint.config.js —— 扁平配置
-import js from '@eslint/js';
-import tseslint from 'typescript-eslint';
-import prettier from 'eslint-config-prettier';
+import js from '@eslint/js';  // 导入 js
+import tseslint from 'typescript-eslint';  // 导入 tseslint
+import prettier from 'eslint-config-prettier';  // 导入 prettier
 
-export default tseslint.config(
+export default tseslint.config(  // 导出 default tseslint
   js.configs.recommended,
   ...tseslint.configs.recommended,
   prettier, // 放最后，关闭冲突规则
@@ -134,10 +134,10 @@ export default tseslint.config(
 
 \`\`\`ts
 // ❌ no-explicit-any
-function process(data: any) { return data.x; }
+function process(data: any) { return data.x; }  // 定义函数 process，参数: data: any（注意：any 关闭了类型检查）
 // ✅ 用 unknown + 类型守卫
-function process(data: unknown) {
-  if (typeof data === 'object' && data && 'x' in data) return data.x;
+function process(data: unknown) {  // 定义函数 process，参数: data: unknown
+  if (typeof data === 'object' && data && 'x' in data) return data.x;  // 条件判断
 }
 \`\`\`
 
@@ -160,9 +160,9 @@ function add(a, _b) { return a; } // _b 显式表示不用
 // ❌
 import { Foo, Bar } from './types'; // Foo/Bar 都是类型，但用普通 import
 // ✅
-import type { Foo, Bar } from './types';
+import type { Foo, Bar } from './types';  // 导入 type { Foo, Bar }
 // ✅ 也可以混合
-import { value, type Foo } from './mod';
+import { value, type Foo } from './mod';  // 导入 { value, type Foo }
 \`\`\`
 
 #### 其他高频规则
@@ -218,7 +218,7 @@ ESLint 和 Prettier 有些规则会冲突（如 \`quotes\`、\`semi\`）。集�
 husky 管理 git hooks，让你在 \`pre-commit\`、\`commit-msg\` 等钩子执行脚本。
 
 \`\`\`bash
-npx husky init
+npx husky init  # 通过 npx 执行命令
 # 生成 .husky/pre-commit
 \`\`\`
 
@@ -238,7 +238,7 @@ npx husky init
 
 \`\`\`sh
 # .husky/pre-commit
-npx lint-staged
+npx lint-staged  # 通过 npx 执行命令
 \`\`\`
 
 这样每次 \`git commit\` 前会自动对改动的文件跑 ESLint + Prettier，失败则阻止提交。
@@ -260,7 +260,7 @@ commitlint 检查 commit message 是否符合规范（如 Conventional Commits�
 
 \`\`\`sh
 # .husky/commit-msg
-npx --no -- commitlint --edit "$1"
+npx --no -- commitlint --edit "$1"  # 通过 npx 执行命令
 \`\`\`
 
 \`\`\`
@@ -633,13 +633,13 @@ console.log("\\nESLint 与 Prettier 章节演示完成！");`,
 ts-jest 用 TypeScript 编译器转译代码，最经典。
 
 \`\`\`bash
-npm install --save-dev jest ts-jest @types/jest
-npx ts-jest config:init
+npm install --save-dev jest ts-jest @types/jest  # 安装依赖
+npx ts-jest config:init  # 通过 npx 执行命令
 \`\`\`
 
 \`\`\`js
 // jest.config.js
-module.exports = {
+module.exports = {  // 赋值 module.exports
   preset: 'ts-jest',
   testEnvironment: 'node',
   testMatch: ['**/__tests__/**/*.test.ts'],
@@ -654,7 +654,7 @@ swc 是 Rust 写的转译器，比 ts-jest 快 10-50 倍，适合大型项目。
 
 \`\`\`js
 // jest.config.js
-module.exports = {
+module.exports = {  // 赋值 module.exports
   transform: { '^.+\\\\.tsx?$': '@swc/jest' },
   testEnvironment: 'node',
 };
@@ -678,8 +678,8 @@ Vitest 是 Vite 原生的测试框架，API 与 Jest 兼容，但更快（用 Vi
 
 \`\`\`ts
 // vitest.config.ts
-import { defineConfig } from 'vitest/config';
-export default defineConfig({
+import { defineConfig } from 'vitest/config';  // 导入 { defineConfig }
+export default defineConfig({  // 导出 default defineConfig
   test: {
     environment: 'node',
     coverage: { provider: 'v8', reporter: ['text', 'html'] },
@@ -699,17 +699,17 @@ export default defineConfig({
 ### 4. 测试结构 describe / it / expect
 
 \`\`\`ts
-import { add } from './math';
+import { add } from './math';  // 导入 { add }
 
-describe('add 函数', () => {
-  it('两数相加返回和', () => {
-    expect(add(1, 2)).toBe(3);
+describe('add 函数', () => {  // 箭头函数
+  it('两数相加返回和', () => {  // 箭头函数
+    expect(add(1, 2)).toBe(3);  // 调用 expect
   });
-  it('处理负数', () => {
-    expect(add(-1, -2)).toBe(-3);
+  it('处理负数', () => {  // 箭头函数
+    expect(add(-1, -2)).toBe(-3);  // 调用 expect
   });
-  it('不发生浮点误差', () => {
-    expect(add(0.1, 0.2)).toBeCloseTo(0.3);
+  it('不发生浮点误差', () => {  // 箭头函数
+    expect(add(0.1, 0.2)).toBeCloseTo(0.3);  // 调用 expect
   });
 });
 \`\`\`
@@ -736,10 +736,10 @@ describe('add 函数', () => {
 #### before/after 钩子
 
 \`\`\`ts
-beforeAll(() => { /* 所有测试前执行一次 */ });
-afterAll(() => { /* 所有测试后执行一次 */ });
-beforeEach(() => { /* 每个测试前执行 */ });
-afterEach(() => { /* 每个测试后执行 */ });
+beforeAll(() => { /* 所有测试前执行一次 */ });  // 箭头函数
+afterAll(() => { /* 所有测试后执行一次 */ });  // 箭头函数
+beforeEach(() => { /* 每个测试前执行 */ });  // 箭头函数
+afterEach(() => { /* 每个测试后执行 */ });  // 箭头函数
 \`\`\`
 
 ### 5. Mock 与 Spy
@@ -747,25 +747,25 @@ afterEach(() => { /* 每个测试后执行 */ });
 #### jest.fn() 创建 mock 函数
 
 \`\`\`ts
-const mockCallback = jest.fn();
+const mockCallback = jest.fn();  // 声明常量 mockCallback
 [1, 2, 3].forEach(mockCallback);
-expect(mockCallback).toHaveBeenCalledTimes(3);
-expect(mockCallback).toHaveBeenCalledWith(2, 1, [1,2,3]);
+expect(mockCallback).toHaveBeenCalledTimes(3);  // 调用 expect
+expect(mockCallback).toHaveBeenCalledWith(2, 1, [1,2,3]);  // 调用 expect
 \`\`\`
 
 #### jest.spyOn 监视对象方法
 
 \`\`\`ts
-const spy = jest.spyOn(console, 'log');
-doSomething();
-expect(spy).toHaveBeenCalledWith('hello');
+const spy = jest.spyOn(console, 'log');  // 声明常量 spy
+doSomething();  // 调用 doSomething
+expect(spy).toHaveBeenCalledWith('hello');  // 调用 expect
 spy.mockRestore(); // 恢复
 \`\`\`
 
 #### jest.mock 模块 mock
 
 \`\`\`ts
-jest.mock('./api', () => ({
+jest.mock('./api', () => ({  // 箭头函数
   fetchUser: jest.fn().mockResolvedValue({ id: 1, name: 'Tom' }),
 }));
 \`\`\`
@@ -777,12 +777,12 @@ jest.mock('./api', () => ({
 #### expectTypeOf (vitest)
 
 \`\`\`ts
-import { expectTypeOf } from 'vitest';
-import { add } from './math';
+import { expectTypeOf } from 'vitest';  // 导入 { expectTypeOf }
+import { add } from './math';  // 导入 { add }
 
-expectTypeOf(add).parameter(0).toMatchTypeOf<number>();
-expectTypeOf(add).returns.toMatchTypeOf<number>();
-expectTypeOf(add(1, 2)).toEqualTypeOf<number>();
+expectTypeOf(add).parameter(0).toMatchTypeOf<number>();  // 调用 expectTypeOf
+expectTypeOf(add).returns.toMatchTypeOf<number>();  // 调用 expectTypeOf
+expectTypeOf(add(1, 2)).toEqualTypeOf<number>();  // 调用 expectTypeOf
 \`\`\`
 
 #### tsd
@@ -790,10 +790,10 @@ expectTypeOf(add(1, 2)).toEqualTypeOf<number>();
 tsd 是专门的类型测试工具，在 \`.test-d.ts\` 文件里写类型断言：
 
 \`\`\`ts
-import { expectType } from 'tsd';
-import { add } from './math';
+import { expectType } from 'tsd';  // 导入 { expectType }
+import { add } from './math';  // 导入 { add }
 
-expectType<number>(add(1, 2));
+expectType<number>(add(1, 2));  // 调用 expectType（显式指定泛型参数）
 expectError(add('a', 'b')); // 期望这里类型错误
 \`\`\`
 
@@ -809,8 +809,8 @@ expectType<never>(add('a', 'b' as never)); // 不应该能传入 string
 ### 7. 快照测试
 
 \`\`\`ts
-it('配置快照', () => {
-  expect(generateConfig()).toMatchInlineSnapshot(\`
+it('配置快照', () => {  // 箭头函数
+  expect(generateConfig()).toMatchInlineSnapshot(\`  // 调用 expect
     Object {
       "port": 3000,
       "host": "localhost",
@@ -824,7 +824,7 @@ it('配置快照', () => {
 ### 8. 覆盖率
 
 \`\`\`bash
-jest --coverage
+jest --coverage  # 执行命令 jest
 \`\`\`
 
 覆盖率指标：
@@ -1331,9 +1331,9 @@ app.ts (源码)  →  编译  →  app.js (运行) + app.js.map (映射)
 不用 VS Code，直接命令行调试：
 
 \`\`\`bash
-node --inspect-brk dist/app.js
+node --inspect-brk dist/app.js  # 用 Node.js 运行脚本
 # 或调试 TS 源码
-node --inspect-brk -r ts-node/register src/app.ts
+node --inspect-brk -r ts-node/register src/app.ts  # 用 Node.js 运行脚本
 \`\`\`
 
 然后打开 Chrome \`chrome://inspect\`，点击 "inspect" 连接。 \`--inspect-brk\` 在第一行断住，\`--inspect\` 等断点。
@@ -1353,7 +1353,7 @@ node --inspect-brk -r ts-node/register src/app.ts
 调试循环时，只在 \`i === 50\` 时停下来：
 
 \`\`\`ts
-for (let i = 0; i < 1000; i++) {
+for (let i = 0; i < 1000; i++) {  // 循环
   process(i); // 条件断点: i === 50
 }
 \`\`\`
@@ -1363,7 +1363,7 @@ for (let i = 0; i < 1000; i++) {
 #### tsc --noEmit 只检查不输出
 
 \`\`\`bash
-npx tsc --noEmit
+npx tsc --noEmit  # 通过 npx 执行命令
 \`\`\`
 
 只做类型检查，不生成 JS。CI 中常用。配合 \`--pretty\` 输出彩色错误。
@@ -1377,15 +1377,15 @@ npx tsc --noEmit
 不确定推导出的类型时，用"类型断言错误"强制查看：
 
 \`\`\`ts
-const x = someComplexExpression;
+const x = someComplexExpression;  // 声明常量 x
 // 故意断言成 never，IDE 会报错并显示真实类型
-const _check: never = x;
+const _check: never = x;  // 声明常量 _check，类型 never
 \`\`\`
 
 #### satisfies 关键字
 
 \`\`\`ts
-const config = {
+const config = {  // 声明常量 config
   port: 3000,
 } satisfies { port: number }; // 既验证类型，又保留字面量类型推导
 \`\`\`
@@ -1397,9 +1397,9 @@ TS 类型在运行时被擦除，无法在运行时校验外部数据（如 API 
 #### zod
 
 \`\`\`ts
-import { z } from 'zod';
+import { z } from 'zod';  // 导入 { z }
 
-const UserSchema = z.object({
+const UserSchema = z.object({  // 声明常量 UserSchema
   id: z.number(),
   name: z.string(),
   email: z.string().email(),
@@ -1409,8 +1409,8 @@ type User = z.infer<typeof UserSchema>; // 从 schema 推导类型
 
 const result = UserSchema.parse(unknownData); // 运行时校验，失败抛错
 // 或 safeParse 不抛错
-const safe = UserSchema.safeParse(unknownData);
-if (safe.success) {
+const safe = UserSchema.safeParse(unknownData);  // 声明常量 safe
+if (safe.success) {  // 条件判断
   safe.data; // 类型安全
 } else {
   safe.error; // 错误详情
@@ -1422,16 +1422,16 @@ zod 的核心价值：**一处定义，类型与校验同源**，避免类型和
 #### io-ts
 
 \`\`\`ts
-import * as t from 'io-ts';
-import { isRight } from 'fp-ts/Either';
+import * as t from 'io-ts';  // 导入 * as t（注意：类型断言会绕过类型检查）
+import { isRight } from 'fp-ts/Either';  // 导入 { isRight }
 
-const UserCodec = t.type({
+const UserCodec = t.type({  // 声明常量 UserCodec
   id: t.number,
   name: t.string,
 });
 
-const result = UserCodec.decode(unknownData);
-if (isRight(result)) {
+const result = UserCodec.decode(unknownData);  // 声明常量 result
+if (isRight(result)) {  // 条件判断
   result.right; // 类型安全
 }
 \`\`\`
@@ -1441,9 +1441,9 @@ if (isRight(result)) {
 编译期生成校验代码，无运行时依赖：
 
 \`\`\`ts
-import { Assert } from 'ts-runtime-checks';
+import { Assert } from 'ts-runtime-checks';  // 导入 { Assert }
 
-function process(@Assert data: User) {
+function process(@Assert data: User) {  // 定义函数 process，参数: @Assert data: User
   // 编译期自动插入校验代码
 }
 \`\`\`
@@ -1463,7 +1463,7 @@ function process(@Assert data: User) {
 最常见的错误。仔细读错误信息，它会显示两个类型的结构差异。
 
 \`\`\`ts
-let x: number = "string";
+let x: number = "string";  // 声明变量 x，类型 number
 // TS2322: Type 'string' is not assignable to type 'number'.
 \`\`\`
 
@@ -1472,13 +1472,13 @@ let x: number = "string";
 访问了类型上不存在的属性。常见于联合类型未收窄：
 
 \`\`\`ts
-interface Cat { meow(): void }
-interface Dog { bark(): void }
-function speak(animal: Cat | Dog) {
+interface Cat { meow(): void }  // 定义接口 Cat
+interface Dog { bark(): void }  // 定义接口 Dog
+function speak(animal: Cat | Dog) {  // 定义函数 speak，参数: animal: Cat | Dog
   animal.meow(); // TS2339: Dog 没有 meow
 }
 // 解决: 用类型守卫收窄
-if ('meow' in animal) animal.meow();
+if ('meow' in animal) animal.meow();  // 条件判断
 \`\`\`
 
 #### TS2345: Argument of type 'X' is not assignable to parameter of type 'Y'
@@ -1917,7 +1917,7 @@ console.log("\\n调试技巧章节演示完成！");`,
 为第三方库安装类型声明：
 
 \`\`\`bash
-npm install --save-dev @types/lodash @types/express @types/jest
+npm install --save-dev @types/lodash @types/express @types/jest  # 安装依赖
 \`\`\`
 
 如果一个库自带类型（package.json 有 \`"types"\` 字段），无需装 @types。
@@ -1957,9 +1957,9 @@ npm install --save-dev @types/lodash @types/express @types/jest
 
 \`\`\`js
 // 原始 JS
-function calculate(data, options) {
-  const result = data.value * options.factor;
-  return result;
+function calculate(data, options) {  // 定义函数 calculate，参数: data, options
+  const result = data.value * options.factor;  // 声明常量 result
+  return result;  // 返回 result
 }
 \`\`\`
 
@@ -1969,8 +1969,8 @@ function calculate(
   data: { value: number },           // 参数
   options: { factor: number }        // 参数
 ) {
-  const result = data.value * options.factor;
-  return result;
+  const result = data.value * options.factor;  // 声明常量 result
+  return result;  // 返回 result
 }
 
 // 第二步：返回值类型
@@ -1978,16 +1978,16 @@ function calculate(
   data: { value: number },
   options: { factor: number }
 ): number {                          // 返回值
-  const result = data.value * options.factor;
-  return result;
+  const result = data.value * options.factor;  // 声明常量 result
+  return result;  // 返回 result
 }
 
 // 第三步：提取重复类型为接口
-interface Data { value: number }
-interface Options { factor: number }
-function calculate(data: Data, options: Options): number {
+interface Data { value: number }  // 定义接口 Data
+interface Options { factor: number }  // 定义接口 Options
+function calculate(data: Data, options: Options): number {  // 定义函数 calculate，参数: data: Data, options: Options，返回 number
   const result = data.value * options.factor;  // 局部变量类型由推导得出，无需显式
-  return result;
+  return result;  // 返回 result
 }
 \`\`\`
 
@@ -2012,7 +2012,7 @@ function calculate(data: Data, options: Options): number {
 老库（如 lodash、express）自身没类型，需要安装 \`@types/xxx\`：
 
 \`\`\`bash
-npm install --save-dev @types/lodash @types/express
+npm install --save-dev @types/lodash @types/express  # 安装依赖
 \`\`\`
 
 \`@types\` 包来自 DefinitelyTyped 社区维护。
@@ -2024,16 +2024,16 @@ npm install --save-dev @types/lodash @types/express
 \`\`\`ts
 // types/legacy-lib.d.ts
 declare module 'legacy-lib' {
-  export function doSomething(input: string): number;
+  export function doSomething(input: string): number;  // 导出函数 doSomething
   const _default: { doSomething: typeof doSomething };
-  export default _default;
+  export default _default;  // 导出 default _default
 }
 \`\`\`
 
 #### 检查类型是否安装成功
 
 \`\`\`bash
-npx tsc --noEmit
+npx tsc --noEmit  # 通过 npx 执行命令
 \`\`\`
 
 如果报 "Cannot find module 'xxx' or its corresponding type declarations"，说明类型没装好。
@@ -2051,12 +2051,12 @@ JSDoc 是 JS 的类型注释方式，TS 的 \`checkJs\` 能识别它。迁移时
  * @param {number} b 第二个数
  * @returns {number} 和
  */
-function add(a, b) {
-  return a + b;
+function add(a, b) {  // 定义函数 add，参数: a, b
+  return a + b;  // 返回 a + b
 }
 
 /** @type {{ name: string, age: number }} */
-const user = { name: 'Tom', age: 18 };
+const user = { name: 'Tom', age: 18 };  // 声明常量 user
 \`\`\`
 
 #### 转成 TS 注解
@@ -2065,12 +2065,12 @@ const user = { name: 'Tom', age: 18 };
 /**
  * 计算两数之和
  */
-function add(a: number, b: number): number {
-  return a + b;
+function add(a: number, b: number): number {  // 定义函数 add，参数: a: number, b: number，返回 number
+  return a + b;  // 返回 a + b
 }
 
-interface User { name: string; age: number }
-const user: User = { name: 'Tom', age: 18 };
+interface User { name: string; age: number }  // 定义接口 User
+const user: User = { name: 'Tom', age: 18 };  // 声明常量 user，类型 User
 \`\`\`
 
 #### JSDoc 到 TS 对照表
@@ -2097,10 +2097,10 @@ const user: User = { name: 'Tom', age: 18 };
 
 \`\`\`ts
 // 业务逻辑依赖隐式类型转换
-function pad(n) { return n < 10 ? '0' + n : '' + n; }
+function pad(n) { return n < 10 ? '0' + n : '' + n; }  // 定义函数 pad，参数: n
 // 迁移成：
-function pad(n: number): string {
-  return n < 10 ? '0' + n : '' + n;
+function pad(n: number): string {  // 定义函数 pad，参数: n: number，返回 string
+  return n < 10 ? '0' + n : '' + n;  // 返回 n < 10 ? '0' + n : '' + n
 }
 // 看似没问题，但如果调用方传了字符串 '5'，运行时仍工作（JS 隐式转换）
 // 但 TS 类型检查会报错 —— 需要审查所有调用方
@@ -2124,7 +2124,7 @@ JS 里循环依赖靠运行时"懒加载"勉强工作，TS 严格检查下可能
 
 \`\`\`js
 // JS
-const obj = {
+const obj = {  // 声明常量 obj
   count: 0,
   inc() { this.count++; }  // this 隐式
 };
@@ -2132,7 +2132,7 @@ const obj = {
 
 \`\`\`ts
 // TS
-const obj = {
+const obj = {  // 声明常量 obj
   count: 0,
   inc(this: { count: number }) { this.count++; }  // 显式 this 类型
 };
@@ -2142,16 +2142,16 @@ const obj = {
 
 \`\`\`js
 // JS
-window.myGlobal = 123;
+window.myGlobal = 123;  // 赋值 window.myGlobal
 \`\`\`
 
 \`\`\`ts
 // TS 报错：Property 'myGlobal' does not exist on 'Window'
 // 解决: 扩展 Window 接口
 declare global {
-  interface Window { myGlobal: number }
+  interface Window { myGlobal: number }  // 定义接口 Window
 }
-window.myGlobal = 123;
+window.myGlobal = 123;  // 赋值 window.myGlobal
 \`\`\`
 
 ### 7. Monorepo 迁移
@@ -2570,19 +2570,19 @@ React 与 TypeScript 是前端最流行的组合。TS 让 React 组件的 Props�
 
 \`\`\`tsx
 // 定义 Props 接口
-interface ButtonProps {
+interface ButtonProps {  // 定义接口 ButtonProps
   label: string;
-  onClick: () => void;
+  onClick: () => void;  // 箭头函数
   disabled?: boolean;        // 可选
   variant: 'primary' | 'secondary';  // 字面量联合
 }
 
 // 解构 Props
-function Button({ label, onClick, disabled, variant }: ButtonProps) {
-  return (
-    <button onClick={onClick} disabled={disabled} className={variant}>
+function Button({ label, onClick, disabled, variant }: ButtonProps) {  // 定义函数 Button，参数: { label, onClick, disabled, variant }: ButtonProps
+  return (  // 返回 (
+    <button onClick={onClick} disabled={disabled} className={variant}>  // JSX 元素
       {label}
-    </button>
+    </button>  // JSX 结束标签
   );
 }
 \`\`\`
@@ -2590,13 +2590,13 @@ function Button({ label, onClick, disabled, variant }: ButtonProps) {
 #### 带 children 的 Props
 
 \`\`\`tsx
-interface CardProps {
+interface CardProps {  // 定义接口 CardProps
   title: string;
   children: React.ReactNode;  // children 类型用 React.ReactNode
 }
 
-function Card({ title, children }: CardProps) {
-  return <div><h2>{title}</h2>{children}</div>;
+function Card({ title, children }: CardProps) {  // 定义函数 Card，参数: { title, children }: CardProps
+  return <div><h2>{title}</h2>{children}</div>;  // 返回 <div><h2>{title}</h2>{children}</div>
 }
 \`\`\`
 
@@ -2605,14 +2605,14 @@ function Card({ title, children }: CardProps) {
 #### 带默认 Props
 
 \`\`\`tsx
-interface AlertProps {
+interface AlertProps {  // 定义接口 AlertProps
   type?: 'info' | 'warning' | 'error';
   message: string;
 }
 
 // 默认值用解构默认值
-function Alert({ type = 'info', message }: AlertProps) {
-  return <div className={type}>{message}</div>;
+function Alert({ type = 'info', message }: AlertProps) {  // 定义函数 Alert，参数: { type = 'info', message }: AlertProps
+  return <div className={type}>{message}</div>;  // 返回 <div className={type}>{message}</div>
 }
 \`\`\`
 
@@ -2620,31 +2620,31 @@ function Alert({ type = 'info', message }: AlertProps) {
 
 \`\`\`tsx
 // 泛型组件：列表组件，items 类型可变
-interface ListProps<T> {
+interface ListProps<T> {  // 定义接口 ListProps，泛型参数 T
   items: T[];
-  renderItem: (item: T) => React.ReactNode;
-  keyExtractor: (item: T) => string;
+  renderItem: (item: T) => React.ReactNode;  // 箭头函数
+  keyExtractor: (item: T) => string;  // 箭头函数
 }
 
-function List<T>({ items, renderItem, keyExtractor }: ListProps<T>) {
-  return <ul>{items.map(function (item) { return <li key={keyExtractor(item)}>{renderItem(item)}</li>; })}</ul>;
+function List<T>({ items, renderItem, keyExtractor }: ListProps<T>) {  // 定义函数 List，泛型 T，参数: { items, renderItem, keyExtractor }: ListProps<T>
+  return <ul>{items.map(function (item) { return <li key={keyExtractor(item)}>{renderItem(item)}</li>; })}</ul>;  // 返回 <ul>{items.map(function (item) { return <li key={keyExtractor(item)}>{renderItem(item)}</li>; })}</ul>
 }
 
 // 使用时泛型自动推导
-<List items={[{ id: 1, name: 'Tom' }]} renderItem={function (x) { return <span>{x.name}</span>; }} keyExtractor={function (x) { return String(x.id); }} />
+<List items={[{ id: 1, name: 'Tom' }]} renderItem={function (x) { return <span>{x.name}</span>; }} keyExtractor={function (x) { return String(x.id); }} />  // JSX 组件
 \`\`\`
 
 ### 2. React.FC vs 直接函数组件
 
 \`\`\`tsx
 // 写法一: React.FC
-const Button: React.FC<ButtonProps> = function (props) {
-  return <button>{props.label}</button>;
+const Button: React.FC<ButtonProps> = function (props) {  // 声明常量 Button，类型 React.FC<ButtonProps>
+  return <button>{props.label}</button>;  // 返回 <button>{props.label}</button>
 };
 
 // 写法二: 直接函数（推荐）
-function Button(props: ButtonProps) {
-  return <button>{props.label}</button>;
+function Button(props: ButtonProps) {  // 定义函数 Button，参数: props: ButtonProps
+  return <button>{props.label}</button>;  // 返回 <button>{props.label}</button>
 }
 \`\`\`
 
@@ -2674,30 +2674,30 @@ function Button(props: ButtonProps) {
 #### 使用示例
 
 \`\`\`tsx
-function Form() {
-  const [value, setValue] = useState('');
+function Form() {  // 定义函数 Form
+  const [value, setValue] = useState('');  // 数组解构声明：从 useState(''); 取 value, setValue
 
   // onChange 事件类型
-  const handleChange = function (e: React.ChangeEvent<HTMLInputElement>) {
+  const handleChange = function (e: React.ChangeEvent<HTMLInputElement>) {  // 声明常量 handleChange
     setValue(e.target.value);  // e.target 是 HTMLInputElement
   };
 
   // onClick 事件类型
-  const handleClick = function (e: React.MouseEvent<HTMLButtonElement>) {
-    e.preventDefault();
+  const handleClick = function (e: React.MouseEvent<HTMLButtonElement>) {  // 声明常量 handleClick
+    e.preventDefault();  // 调用 e.preventDefault
   };
 
   // onSubmit 事件类型
-  const handleSubmit = function (e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    console.log('submit', value);
+  const handleSubmit = function (e: React.FormEvent<HTMLFormElement>) {  // 声明常量 handleSubmit
+    e.preventDefault();  // 调用 e.preventDefault
+    console.log('submit', value);  // 控制台输出
   };
 
-  return (
-    <form onSubmit={handleSubmit}>
-      <input value={value} onChange={handleChange} />
-      <button onClick={handleClick}>提交</button>
-    </form>
+  return (  // 返回 (
+    <form onSubmit={handleSubmit}>  // JSX 元素
+      <input value={value} onChange={handleChange} />  // JSX 元素
+      <button onClick={handleClick}>提交</button>  // JSX 元素
+    </form>  // JSX 结束标签
   );
 }
 \`\`\`
@@ -2716,29 +2716,29 @@ const [count, setCount] = useState(0);          // number
 const [name, setName] = useState('Tom');        // string
 
 // 显式指定（初始值 null 时必须）
-const [user, setUser] = useState<User | null>(null);
+const [user, setUser] = useState<User | null>(null);  // 数组解构声明：从 useState<User | null>(null); 取 user, setUser
 
 // 复杂状态
-const [state, setState] = useState<{ loading: boolean; data?: User }>({ loading: true });
+const [state, setState] = useState<{ loading: boolean; data?: User }>({ loading: true });  // 数组解构声明：从 useState<{ loading: boolean; data?: User }>({ loading: true }); 取 state, setState
 \`\`\`
 
 #### useReducer
 
 \`\`\`tsx
-interface State { count: number }
-type Action = { type: 'inc' } | { type: 'dec' } | { type: 'set'; payload: number };
+interface State { count: number }  // 定义接口 State
+type Action = { type: 'inc' } | { type: 'dec' } | { type: 'set'; payload: number };  // 定义类型别名 Action，联合类型
 
-function reducer(state: State, action: Action): State {
-  switch (action.type) {
-    case 'inc': return { count: state.count + 1 };
-    case 'dec': return { count: state.count - 1 };
-    case 'set': return { count: action.payload };
+function reducer(state: State, action: Action): State {  // 定义函数 reducer，参数: state: State, action: Action，返回 State
+  switch (action.type) {  // switch 分支选择
+    case 'inc': return { count: state.count + 1 };  // case 匹配分支
+    case 'dec': return { count: state.count - 1 };  // case 匹配分支
+    case 'set': return { count: action.payload };  // case 匹配分支
   }
 }
 
-const [state, dispatch] = useReducer(reducer, { count: 0 });
-dispatch({ type: 'inc' });
-dispatch({ type: 'set', payload: 10 });
+const [state, dispatch] = useReducer(reducer, { count: 0 });  // 数组解构声明：从 useReducer(reducer, { count: 0 }); 取 state, dispatch
+dispatch({ type: 'inc' });  // 调用 dispatch
+dispatch({ type: 'set', payload: 10 });  // 调用 dispatch
 // dispatch({ type: 'invalid' });  // ❌ 类型错误
 \`\`\`
 
@@ -2748,11 +2748,11 @@ useReducer 的 Action 用 discriminated union（判别联合），\`type\` 字�
 
 \`\`\`tsx
 // 1. 引用 DOM 元素
-const inputRef = useRef<HTMLInputElement>(null);
+const inputRef = useRef<HTMLInputElement>(null);  // 声明常量 inputRef
 // 使用: inputRef.current?.focus()
 
 // 2. 存可变值（不触发重渲染）
-const timerRef = useRef<number | null>(null);
+const timerRef = useRef<number | null>(null);  // 声明常量 timerRef
 // 使用: timerRef.current = setTimeout(...)
 \`\`\`
 
@@ -2761,34 +2761,34 @@ const timerRef = useRef<number | null>(null);
 ### 5. useContext 类型
 
 \`\`\`tsx
-interface ThemeContextValue {
+interface ThemeContextValue {  // 定义接口 ThemeContextValue
   theme: 'light' | 'dark';
-  toggle: () => void;
+  toggle: () => void;  // 箭头函数
 }
 
 // createContext 带类型，初始值 null 时用 | null
-const ThemeContext = createContext<ThemeContextValue | null>(null);
+const ThemeContext = createContext<ThemeContextValue | null>(null);  // 声明常量 ThemeContext
 
 // Provider
-function App() {
-  return <ThemeContext.Provider value={{ theme: 'light', toggle: function () {} }}><Child /></ThemeContext.Provider>;
+function App() {  // 定义函数 App
+  return <ThemeContext.Provider value={{ theme: 'light', toggle: function () {} }}><Child /></ThemeContext.Provider>;  // 返回 <ThemeContext.Provider value={{ theme: 'light', toggle: function () {} }}><Child /></ThemeContext.Provider>
 }
 
 // 消费时收窄 null
-function Child() {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) throw new Error('ThemeContext Provider 缺失');
-  return <div>{ctx.theme}</div>;
+function Child() {  // 定义函数 Child
+  const ctx = useContext(ThemeContext);  // 声明常量 ctx
+  if (!ctx) throw new Error('ThemeContext Provider 缺失');  // 条件判断
+  return <div>{ctx.theme}</div>;  // 返回 <div>{ctx.theme}</div>
 }
 \`\`\`
 
 #### 自定义 useThemeContext（推荐模式）
 
 \`\`\`tsx
-function useThemeContext(): ThemeContextValue {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) throw new Error('useThemeContext 必须在 ThemeProvider 内使用');
-  return ctx;
+function useThemeContext(): ThemeContextValue {  // 定义函数 useThemeContext，返回 ThemeContextValue
+  const ctx = useContext(ThemeContext);  // 声明常量 ctx
+  if (!ctx) throw new Error('useThemeContext 必须在 ThemeProvider 内使用');  // 条件判断
+  return ctx;  // 返回 ctx
 }
 \`\`\`
 
@@ -2797,19 +2797,19 @@ function useThemeContext(): ThemeContextValue {
 ### 6. forwardRef 类型
 
 \`\`\`tsx
-interface InputProps {
+interface InputProps {  // 定义接口 InputProps
   label: string;
 }
 // forwardRef<RefType, PropsType>
-const FancyInput = forwardRef<HTMLInputElement, InputProps>(
-  function (props, ref) {
-    return <label>{props.label}<input ref={ref} /></label>;
+const FancyInput = forwardRef<HTMLInputElement, InputProps>(  // 声明常量 FancyInput
+  function (props, ref) {  // 调用 function
+    return <label>{props.label}<input ref={ref} /></label>;  // 返回 <label>{props.label}<input ref={ref} /></label>
   }
 );
 
 // 使用
-const ref = useRef<HTMLInputElement>(null);
-<FancyInput ref={ref} label="用户名" />;
+const ref = useRef<HTMLInputElement>(null);  // 声明常量 ref
+<FancyInput ref={ref} label="用户名" />;  // JSX 组件
 \`\`\`
 
 forwardRef 的两个泛型：第一个是 ref 的类型，第二个是 Props 类型。
@@ -2821,18 +2821,18 @@ forwardRef 的两个泛型：第一个是 ref 的类型，第二个是 Props 类
 function withLoading<P extends object>(
   Component: React.ComponentType<P>
 ): React.FC<P & { loading: boolean }> {
-  return function (props) {
-    const { loading, ...rest } = props as { loading: boolean } & P;
-    if (loading) return <div>Loading...</div>;
-    return <Component {...rest as P} />;
+  return function (props) {  // 返回 function (props) {
+    const { loading, ...rest } = props as { loading: boolean } & P;  // 对象解构声明：从 props as { loading: boolean } & P; 取 loading, ...rest（注意：类型断言会绕过类型检查）
+    if (loading) return <div>Loading...</div>;  // 条件判断
+    return <Component {...rest as P} />;  // 返回 <Component {...rest as P} />（注意：类型断言会绕过类型检查）
   };
 }
 
 // 使用
-const MyComponent: React.FC<{ data: string }> = function (props) {
-  return <div>{props.data}</div>;
+const MyComponent: React.FC<{ data: string }> = function (props) {  // 声明常量 MyComponent，类型 React.FC<{ data: string }>
+  return <div>{props.data}</div>;  // 返回 <div>{props.data}</div>
 };
-const MyComponentWithLoading = withLoading(MyComponent);
+const MyComponentWithLoading = withLoading(MyComponent);  // 声明常量 MyComponentWithLoading
 // Props 类型: { data: string; loading: boolean }
 \`\`\`
 
@@ -2842,14 +2842,14 @@ HOC 的泛型 \`<P extends object>\` 保留原组件 Props，叠加新 Props。
 
 \`\`\`tsx
 // 自定义 Hook 返回值带类型
-function useCounter(initial: number): {
+function useCounter(initial: number): {  // 定义函数 useCounter，参数: initial: number，返回 
   count: number;
-  inc: () => void;
-  dec: () => void;
-  reset: () => void;
+  inc: () => void;  // 箭头函数
+  dec: () => void;  // 箭头函数
+  reset: () => void;  // 箭头函数
 } {
-  const [count, setCount] = useState(initial);
-  return {
+  const [count, setCount] = useState(initial);  // 数组解构声明：从 useState(initial); 取 count, setCount
+  return {  // 返回 {
     count,
     inc: function () { setCount(function (c) { return c + 1; }); },
     dec: function () { setCount(function (c) { return c - 1; }); },
@@ -2858,9 +2858,9 @@ function useCounter(initial: number): {
 }
 
 // 使用
-function Counter() {
-  const { count, inc } = useCounter(0);
-  return <button onClick={inc}>{count}</button>;
+function Counter() {  // 定义函数 Counter
+  const { count, inc } = useCounter(0);  // 对象解构声明：从 useCounter(0); 取 count, inc
+  return <button onClick={inc}>{count}</button>;  // 返回 <button onClick={inc}>{count}</button>
 }
 \`\`\`
 
@@ -2871,12 +2871,12 @@ function Counter() {
 #### inline style
 
 \`\`\`tsx
-const style: React.CSSProperties = {
+const style: React.CSSProperties = {  // 声明常量 style，类型 React.CSSProperties
   color: 'red',
   padding: 10,        // number 自动加 px
   margin: '8px',
 };
-<div style={style} />
+<div style={style} />  // JSX 元素
 \`\`\`
 
 \`React.CSSProperties\` 是所有合法 CSS 属性的类型。
@@ -2884,8 +2884,8 @@ const style: React.CSSProperties = {
 #### className
 
 \`\`\`tsx
-interface Props { className?: string }
-<div className={props.className} />
+interface Props { className?: string }  // 定义接口 Props
+<div className={props.className} />  // JSX 元素
 \`\`\`
 
 ### 10. React 18+ 类型变化
@@ -2905,13 +2905,13 @@ React 18 自动批量更新，类型无变化。
 const id = useId();  // string
 
 // useSyncExternalStore: 订阅外部 store
-const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot?);
+const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot?);  // 声明常量 snapshot
 \`\`\`
 
 #### useTransition
 
 \`\`\`tsx
-const [isPending, startTransition] = useTransition();
+const [isPending, startTransition] = useTransition();  // 数组解构声明：从 useTransition(); 取 isPending, startTransition
 // startTransition: (callback: () => void) => void
 \`\`\`
 
@@ -3383,14 +3383,14 @@ Node.js 是 TS 最常见的运行时之一（后端服务、CLI 工具、脚本�
 process.env.NODE_ENV;          // string | undefined
 process.argv;                  // string[]
 process.exit(0);               // 退出
-process.on('exit', (code) => {});
-process.stdout.write('hello');
+process.on('exit', (code) => {});  // 箭头函数
+process.stdout.write('hello');  // 调用 process.stdout.write
 \`\`\`
 
 #### Buffer
 
 \`\`\`ts
-const buf: Buffer = Buffer.from('hello', 'utf8');
+const buf: Buffer = Buffer.from('hello', 'utf8');  // 声明常量 buf，类型 Buffer
 buf.length;                    // number
 buf.toString('hex');           // string
 Buffer.concat([buf1, buf2]);   // Buffer
@@ -3399,35 +3399,35 @@ Buffer.concat([buf1, buf2]);   // Buffer
 #### Stream
 
 \`\`\`ts
-import { Readable, Writable, Transform } from 'stream';
+import { Readable, Writable, Transform } from 'stream';  // 导入 { Readable, Writable, Transform }
 
-const readable: Readable = new Readable();
-const writable: Writable = new Writable({
-  write(chunk: Buffer, encoding: string, callback: () => void) { callback(); },
+const readable: Readable = new Readable();  // 声明常量 readable，类型 Readable
+const writable: Writable = new Writable({  // 声明常量 writable，类型 Writable
+  write(chunk: Buffer, encoding: string, callback: () => void) { callback(); },  // 箭头函数
 });
 \`\`\`
 
 #### EventEmitter
 
 \`\`\`ts
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'events';  // 导入 { EventEmitter }
 
-const ee: EventEmitter = new EventEmitter();
-ee.on('data', (payload: unknown) => {});
-ee.emit('data', { foo: 'bar' });
+const ee: EventEmitter = new EventEmitter();  // 声明常量 ee，类型 EventEmitter
+ee.on('data', (payload: unknown) => {});  // 箭头函数
+ee.emit('data', { foo: 'bar' });  // 调用 ee.emit
 \`\`\`
 
 #### http
 
 \`\`\`ts
-import http from 'http';
+import http from 'http';  // 导入 http
 
-const server: http.Server = http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
-  res.writeHead(200, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({ ok: true }));
+const server: http.Server = http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {  // 声明常量 server，类型 http.Server
+  res.writeHead(200, { 'Content-Type': 'application/json' });  // 调用 res.writeHead
+  res.end(JSON.stringify({ ok: true }));  // 调用 res.end
 });
 
-server.listen(3000);
+server.listen(3000);  // 调用 server.listen
 \`\`\`
 
 ### 3. Express 类型
@@ -3435,31 +3435,31 @@ server.listen(3000);
 #### 安装
 
 \`\`\`bash
-npm install express @types/express
+npm install express @types/express  # 安装依赖
 \`\`\`
 
 #### 基本类型
 
 \`\`\`ts
-import express, { Request, Response, NextFunction, RequestHandler, Application } from 'express';
+import express, { Request, Response, NextFunction, RequestHandler, Application } from 'express';  // 导入 express, { Request, Response, NextFunction, RequestHandler, Application }
 
-const app: Application = express();
+const app: Application = express();  // 声明常量 app，类型 Application
 
 // RequestHandler 类型
-const logger: RequestHandler = (req: Request, res: Response, next: NextFunction) => {
-  console.log(req.method, req.url);
-  next();
+const logger: RequestHandler = (req: Request, res: Response, next: NextFunction) => {  // 声明常量 logger，类型 RequestHandler
+  console.log(req.method, req.url);  // 控制台输出
+  next();  // 调用 next
 };
 
-app.use(logger);
+app.use(logger);  // 调用 app.use
 
-app.get('/users/:id', (req: Request, res: Response) => {
+app.get('/users/:id', (req: Request, res: Response) => {  // 箭头函数
   const id: string = req.params.id;        // 路径参数
   const q: string | undefined = req.query.q as string | undefined;  // 查询参数
-  res.json({ id, q });
+  res.json({ id, q });  // 调用 res.json
 });
 
-app.listen(3000);
+app.listen(3000);  // 调用 app.listen
 \`\`\`
 
 #### 自定义 Request 类型（扩展 req）
@@ -3467,15 +3467,15 @@ app.listen(3000);
 \`\`\`ts
 // 扩展 Request，添加 user 字段
 declare module 'express-serve-static-core' {
-  interface Request {
+  interface Request {  // 定义接口 Request
     user?: { id: string; name: string };
   }
 }
 
 // 中间件注入 user
-const authMiddleware: RequestHandler = (req, res, next) => {
+const authMiddleware: RequestHandler = (req, res, next) => {  // 声明常量 authMiddleware，类型 RequestHandler
   req.user = { id: '1', name: 'Tom' };  // 类型安全
-  next();
+  next();  // 调用 next
 };
 \`\`\`
 
@@ -3484,22 +3484,22 @@ const authMiddleware: RequestHandler = (req, res, next) => {
 #### RequestHandler
 
 \`\`\`ts
-type RequestHandler = (req: Request, res: Response, next: NextFunction) => void | Promise<void>;
+type RequestHandler = (req: Request, res: Response, next: NextFunction) => void | Promise<void>;  // 定义类型别名 RequestHandler，联合类型
 \`\`\`
 
 #### 错误处理中间件
 
 \`\`\`ts
-const errorHandler: ErrorRequestHandler = (
+const errorHandler: ErrorRequestHandler = (  // 声明常量 errorHandler，类型 ErrorRequestHandler
   err: Error,
   req: Request,
   res: Response,
   next: NextFunction
-) => {
-  res.status(500).json({ error: err.message });
+) => {  // 箭头函数
+  res.status(500).json({ error: err.message });  // 调用 res.status
 };
 
-app.use(errorHandler);
+app.use(errorHandler);  // 调用 app.use
 \`\`\`
 
 错误处理中间件有 4 个参数（带 err），Express 据此识别。
@@ -3509,12 +3509,12 @@ app.use(errorHandler);
 Fastify 自带类型，无需 @types。
 
 \`\`\`ts
-import Fastify, { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import Fastify, { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';  // 导入 Fastify, { FastifyInstance, FastifyRequest, FastifyReply }
 
-const app: FastifyInstance = Fastify();
+const app: FastifyInstance = Fastify();  // 声明常量 app，类型 FastifyInstance
 
 // 路由 schema（JSON Schema，运行时校验 + 类型推导）
-app.get('/users/:id', {
+app.get('/users/:id', {  // 调用 app.get
   schema: {
     params: {
       type: 'object',
@@ -3528,9 +3528,9 @@ app.get('/users/:id', {
       },
     },
   },
-}, async (req: FastifyRequest, reply: FastifyReply) => {
-  const { id } = req.params as { id: string };
-  return { id };
+}, async (req: FastifyRequest, reply: FastifyReply) => {  // 箭头函数
+  const { id } = req.params as { id: string };  // 对象解构声明：从 req.params as { id: string }; 取 id（注意：类型断言会绕过类型检查）
+  return { id };  // 返回 { id }
 });
 \`\`\`
 
@@ -3550,16 +3550,16 @@ Prisma 根据 schema.prisma 自动生成类型：
 //   email String @unique
 // }
 
-import { PrismaClient, User } from '@prisma/client';
+import { PrismaClient, User } from '@prisma/client';  // 导入 { PrismaClient, User }
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient();  // 声明常量 prisma
 
 // User 类型自动生成，完全类型安全
-const user: User = await prisma.user.create({
+const user: User = await prisma.user.create({  // 声明常量 user，类型 User
   data: { name: 'Tom', email: 'tom@example.com' },
 });
 
-const users: User[] = await prisma.user.findMany({
+const users: User[] = await prisma.user.findMany({  // 声明常量 users，类型 User[]
   where: { name: { contains: 'Tom' } },
 });
 \`\`\`
@@ -3567,43 +3567,43 @@ const users: User[] = await prisma.user.findMany({
 #### TypeORM
 
 \`\`\`ts
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';  // 导入 { Entity, PrimaryGeneratedColumn, Column }
 
-@Entity()
-class User {
-  @PrimaryGeneratedColumn()
+@Entity()  // 装饰器 Entity
+class User {  // 定义类 User
+  @PrimaryGeneratedColumn()  // 装饰器 PrimaryGeneratedColumn
   id: number;
 
-  @Column()
+  @Column()  // 装饰器 Column
   name: string;
 
-  @Column({ unique: true })
+  @Column({ unique: true })  // 装饰器 Column
   email: string;
 }
 
-const repo = dataSource.getRepository(User);
-const users: User[] = await repo.find({ where: { name: 'Tom' } });
+const repo = dataSource.getRepository(User);  // 声明常量 repo
+const users: User[] = await repo.find({ where: { name: 'Tom' } });  // 声明常量 users，类型 User[]
 \`\`\`
 
 #### Mongoose
 
 \`\`\`ts
-import { Schema, model, Document } from 'mongoose';
+import { Schema, model, Document } from 'mongoose';  // 导入 { Schema, model, Document }
 
-interface IUser extends Document {
+interface IUser extends Document {  // 定义接口 IUser，extends Document
   name: string;
   email: string;
 }
 
-const userSchema = new Schema<IUser>({
+const userSchema = new Schema<IUser>({  // 声明常量 userSchema
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
 });
 
-const User = model<IUser>('User', userSchema);
+const User = model<IUser>('User', userSchema);  // 声明常量 User
 
-const user: IUser = new User({ name: 'Tom', email: 'tom@example.com' });
-await user.save();
+const user: IUser = new User({ name: 'Tom', email: 'tom@example.com' });  // 声明常量 user，类型 IUser
+await user.save();  // 等待 Promise 完成
 \`\`\`
 
 #### 对比
@@ -3619,16 +3619,16 @@ await user.save();
 环境变量 \`process.env\` 默认是 \`Record<string, string | undefined>\`，缺乏类型安全。用校验库确保必需变量存在：
 
 \`\`\`ts
-import { z } from 'zod';
+import { z } from 'zod';  // 导入 { z }
 
-const envSchema = z.object({
+const envSchema = z.object({  // 声明常量 envSchema
   NODE_ENV: z.enum(['development', 'production', 'test']),
   PORT: z.string().transform(Number).default(3000),
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(32),
 });
 
-const env = envSchema.parse(process.env);
+const env = envSchema.parse(process.env);  // 声明常量 env
 // env.NODE_ENV: 'development' | 'production' | 'test'
 // env.PORT: number
 // env.DATABASE_URL: string
@@ -3641,9 +3641,9 @@ const env = envSchema.parse(process.env);
 #### commander 类型
 
 \`\`\`ts
-import { Command } from 'commander';
+import { Command } from 'commander';  // 导入 { Command }
 
-const program = new Command();
+const program = new Command();  // 声明常量 program
 
 program
   .name('mycli')
@@ -3653,20 +3653,20 @@ program
 program
   .command('greet <name>')
   .option('-u, --upper', '大写输出')
-  .action((name: string, options: { upper?: boolean }) => {
-    const msg = options.upper ? name.toUpperCase() : name;
-    console.log('Hello, ' + msg);
+  .action((name: string, options: { upper?: boolean }) => {  // 箭头函数
+    const msg = options.upper ? name.toUpperCase() : name;  // 声明常量 msg
+    console.log('Hello, ' + msg);  // 控制台输出
   });
 
-program.parse();
+program.parse();  // 调用 program.parse
 \`\`\`
 
 #### inquirer 类型
 
 \`\`\`ts
-import inquirer from 'inquirer';
+import inquirer from 'inquirer';  // 导入 inquirer
 
-const answers = await inquirer.prompt<{ name: string; confirm: boolean }>([
+const answers = await inquirer.prompt<{ name: string; confirm: boolean }>([  // 声明常量 answers
   {
     type: 'input',
     name: 'name',
@@ -3676,12 +3676,12 @@ const answers = await inquirer.prompt<{ name: string; confirm: boolean }>([
     type: 'confirm',
     name: 'confirm',
     message: '确认继续?',
-    default: true,
+    default: true,  // 默认分支
   },
 ]);
 
 console.log(answers.name);  // 类型安全
-console.log(answers.confirm);
+console.log(answers.confirm);  // 控制台输出
 \`\`\`
 
 inquirer 的 \`prompt<T>\` 泛型决定 answers 的类型，让访问 answers.name 类型安全。

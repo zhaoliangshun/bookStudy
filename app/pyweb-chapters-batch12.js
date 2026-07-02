@@ -55,26 +55,39 @@ Session   存在服务器端，安全，通过 session id 关联浏览器
 Flask 自带一个轻量 session 机制：**把 session 数据加密后整个塞进 cookie**，不在服务器存。适合小型应用，无需额外组件。
 
 \`\`\`python filename="Flask 默认 Session"
+# 从 flask 导入 Flask, session
 from flask import Flask, session
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
 app.secret_key = "a-very-secret-key-keep-safe"  # ★ 必须，用于加密 cookie
 
+# 装饰器：app.route
 @app.route("/login")
+# 定义函数 login，参数: 
 def login():
     session["user_id"] = 1            # 设置：写入 session
+    # session["username"] = "alice"
     session["username"] = "alice"
+    # 返回 "登录成功"
     return "登录成功"
 
+# 装饰器：app.route
 @app.route("/me")
+# 定义函数 me，参数: 
 def me():
     if "user_id" not in session:        # 读取
+        # 返回 "未登录", 401
         return "未登录", 401
+    # 返回 f"你好 {session['username']}"
     return f"你好 {session['username']}"
 
+# 装饰器：app.route
 @app.route("/logout")
+# 定义函数 logout，参数: 
 def logout():
     session.clear()                    # 清空：登出
+    # 返回 "已登出"
     return "已登出"
 \`\`\`
 
@@ -89,7 +102,9 @@ def logout():
 > **\`secret_key\` 是 Session 安全的命根子**：泄露了攻击者能伪造任意 session（伪造登录态）。生产必须用强随机值，从环境变量读，绝不硬编码进代码提交到 Git。
 
 \`\`\`python filename="生产 secret_key 配置"
+# 导入 os 模块
 import os
+# app.secret_key = os.environ["SECRET_KEY"]
 app.secret_key = os.environ["SECRET_KEY"]
 # 或随机生成
 # import secrets; app.secret_key = secrets.token_hex(32)
@@ -98,10 +113,13 @@ app.secret_key = os.environ["SECRET_KEY"]
 ## 三、session 对象操作
 
 \`\`\`python filename="session 操作速查"
+# 从 flask 导入 session
 from flask import session
 
 # 设置
+# session["user_id"] = 1
 session["user_id"] = 1
+# session["cart"] = [1, 2, 3]
 session["cart"] = [1, 2, 3]
 
 # 读取
@@ -109,16 +127,21 @@ uid = session.get("user_id")       # 没有返回 None
 uid = session["user_id"]           # 没有会 KeyError
 
 # 判断存在
+# 条件判断：如果 "user_id" in session
 if "user_id" in session:
+    # ...
     ...
 
 # 删除单个
+# 调用 session.pop()
 session.pop("cart", None)
 
 # 清空所有
+# 调用 session.clear()
 session.clear()
 
 # 修改（直接赋值会标记修改）
+# session["username"] = "new_name"
 session["username"] = "new_name"
 \`\`\`
 
@@ -128,7 +151,9 @@ session["cart"].append(4)        # 不会触发保存！
 session.modified = True          # 手动标记
 
 # 或重新赋值
+# 定义变量 cart，赋值为 session.get("cart", [])
 cart = session.get("cart", [])
+# 调用 cart.append()
 cart.append(4)
 session["cart"] = cart           # 整体替换会保存
 \`\`\`
@@ -138,32 +163,45 @@ session["cart"] = cart           # 整体替换会保存
 Flask 默认把 session 放 cookie，但生产环境通常用服务端 session：数据存 Redis/数据库/文件，cookie 只放 session id。优点：容量大、可主动失效、多机共享。
 
 \`\`\`bash filename="安装 flask-session"
+# 安装 Python 包: flask-session
 pip install flask-session
 \`\`\`
 
 \`\`\`python filename="用 Redis 存 Session"
+# 从 flask 导入 Flask
 from flask import Flask
+# 从 flask_session 导入 Session
 from flask_session import Session
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
+# app.secret_key = "dev-secret"
 app.secret_key = "dev-secret"
 
 # 配置 Session 后端
 app.config["SESSION_TYPE"] = "redis"              # 用 Redis
+# app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_USE_SIGNER"] = True          # 给 session id 签名防伪造
 app.config["PERMANENT_SESSION_LIFETIME"] = 3600  # 1 小时
 # Redis 连接（也可用 SESSION_REDIS 显式配置）
+# app.config["SESSION_REDIS"] = redis.StrictRedis(
 app.config["SESSION_REDIS"] = redis.StrictRedis(
+    # 定义变量 host，赋值为 "localhost", port=6379, db=0,
     host="localhost", port=6379, db=0,
+# )
 )
 
 Session(app)  # 初始化扩展
 
 # 用法和默认 session 一样
+# 装饰器：app.route
 @app.route("/login")
+# 定义函数 login，参数: 
 def login():
+    # session["user_id"] = 1
     session["user_id"] = 1
+    # 返回 "OK"
     return "OK"
 \`\`\`
 
@@ -178,6 +216,7 @@ SESSION_TYPE       存储位置
 \`\`\`
 
 \`\`\`python filename="文件系统 Session（无需 Redis）"
+# app.config["SESSION_TYPE"] = "filesystem"
 app.config["SESSION_TYPE"] = "filesystem"
 app.config["SESSION_FILE_DIR"] = "/tmp/flask_session"  # 存储目录
 \`\`\`
@@ -185,17 +224,24 @@ app.config["SESSION_FILE_DIR"] = "/tmp/flask_session"  # 存储目录
 ## 五、Session 过期与持久化
 
 \`\`\`python filename="Session 生命周期控制"
+# 从 datetime 导入 timedelta
 from datetime import timedelta
 
 # 全局过期时间
+# app.config["PERMANENT_SESSION_LIFETIME"] = timedel
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=7)
 
+# 装饰器：app.route
 @app.route("/login")
+# 定义函数 login，参数: 
 def login():
+    # session["user_id"] = 1
     session["user_id"] = 1
     # permanent=True：使用 PERMANENT_SESSION_LIFETIME
     # 不设则关闭浏览器就失效
+    # session.permanent = True
     session.permanent = True
+    # 返回 "登录成功"
     return "登录成功"
 \`\`\`
 
@@ -206,64 +252,105 @@ permanent=True    到 PERMANENT_SESSION_LIFETIME 才失效（cookie 有过期时
 \`\`\`
 
 \`\`\`python filename="记住我功能"
+# 装饰器：app.route
 @app.route("/login", methods=["POST"])
+# 定义函数 login，参数: 
 def login():
+    # 定义变量 user，赋值为 authenticate(request.form)
     user = authenticate(request.form)
+    # 条件判断：如果 user
     if user:
+        # session["user_id"] = user.id
         session["user_id"] = user.id
+        # 条件判断：如果 request.form.get("remember")
         if request.form.get("remember"):
             session.permanent = True  # 长期有效
+        # 否则执行
         else:
             session.permanent = False  # 关浏览器失效
+        # 返回 redirect(url_for("index"))
         return redirect(url_for("index"))
 \`\`\`
 
 ## 六、登录状态管理
 
 \`\`\`python filename="完整登录登出流程"
+# 从 flask 导入 Flask, session, request, redirect, url_for, render_template, g, abort
 from flask import Flask, session, request, redirect, url_for, render_template, g, abort
+# 导入 os 模块
 import os
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
+# app.secret_key = os.environ["SECRET_KEY"]
 app.secret_key = os.environ["SECRET_KEY"]
 
 # 模拟用户库
+# 定义字典 USERS
 USERS = {"alice": {"id": 1, "password": "secret", "name": "Alice"}}
 
+# 装饰器：app.before_request
 @app.before_request
+# 定义函数 load_user，参数: 
 def load_user():
+    # """每个请求前加载当前用户（如果有）"""
     """每个请求前加载当前用户（如果有）"""
+    # 定义变量 uid，赋值为 session.get("user_id")
     uid = session.get("user_id")
+    # g.current_user = None
     g.current_user = None
+    # 条件判断：如果 uid
     if uid:
+        # 遍历 USERS.values()，取 u
         for u in USERS.values():
+            # 条件判断：如果 u["id"] == uid
             if u["id"] == uid:
+                # g.current_user = u
                 g.current_user = u
+                # 跳出循环
                 break
 
+# 装饰器：app.route
 @app.route("/login", methods=["GET", "POST"])
+# 定义函数 login，参数: 
 def login():
+    # 条件判断：如果 request.method == "POST"
     if request.method == "POST":
+        # 定义变量 username，赋值为 request.form.get("username")
         username = request.form.get("username")
+        # 定义变量 password，赋值为 request.form.get("password")
         password = request.form.get("password")
+        # 定义变量 user，赋值为 USERS.get(username)
         user = USERS.get(username)
         if user and user["password"] == password:  # 生产用哈希比对
             session.clear()                       # 防 session fixation
             session["user_id"] = user["id"]        # 登录态
+            # session.permanent = True
             session.permanent = True
+            # 返回 redirect(url_for("dashboard"))
             return redirect(url_for("dashboard"))
+        # 返回 render_template("login.html", error="用户名或密码错"), 401
         return render_template("login.html", error="用户名或密码错"), 401
+    # 返回 render_template("login.html")
     return render_template("login.html")
 
+# 装饰器：app.route
 @app.route("/dashboard")
+# 定义函数 dashboard，参数: 
 def dashboard():
+    # 条件判断：如果 not g.current_user
     if not g.current_user:
+        # 返回 redirect(url_for("login"))
         return redirect(url_for("login"))
+    # 返回 f"欢迎 {g.current_user['name']}"
     return f"欢迎 {g.current_user['name']}"
 
+# 装饰器：app.route
 @app.route("/logout")
+# 定义函数 logout，参数: 
 def logout():
     session.clear()   # 清空 session = 登出
+    # 返回 redirect(url_for("login"))
     return redirect(url_for("login"))
 \`\`\`
 
@@ -272,28 +359,47 @@ def logout():
 ## 七、用装饰器统一登录校验
 
 \`\`\`python filename="login_required 装饰器"
+# 从 functools 导入 wraps
 from functools import wraps
+# 从 flask 导入 g, redirect, url_for, request, abort
 from flask import g, redirect, url_for, request, abort
 
+# 定义函数 login_required，参数: f
 def login_required(f):
+    # 装饰器：wraps
     @wraps(f)
+    # 定义函数 decorated，参数: *args, **kwargs
     def decorated(*args, **kwargs):
+        # 条件判断：如果 not g.current_user
         if not g.current_user:
             # API 返回 401，页面重定向到登录
+            # 条件判断：如果 request.path.startswith("/api/")
             if request.path.startswith("/api/"):
+                # 调用 abort()
                 abort(401)
+            # 返回 redirect(url_for("login", next=request.path))
             return redirect(url_for("login", next=request.path))
+        # 返回 f(*args, **kwargs)
         return f(*args, **kwargs)
+    # 返回 decorated
     return decorated
 
+# 装饰器：app.route
 @app.route("/posts/new")
+# 装饰器：login_required
 @login_required
+# 定义函数 post_new，参数: 
 def post_new():
+    # 返回 f"{g.current_user['name']} 写文章"
     return f"{g.current_user['name']} 写文章"
 
+# 装饰器：app.route
 @app.route("/api/me")
+# 装饰器：login_required
 @login_required
+# 定义函数 api_me，参数: 
 def api_me():
+    # 返回 {"user": g.current_user}
     return {"user": g.current_user}
 \`\`\`
 
@@ -357,38 +463,54 @@ signature 签名：用密钥对前两段签名，防伪造
 ## 二、PyJWT 库
 
 \`\`\`bash filename="安装 PyJWT"
+# 安装 Python 包: pyjwt
 pip install pyjwt
 \`\`\`
 
 \`\`\`python filename="创建和验证 token"
+# 导入 jwt 模块
 import jwt
+# 从 datetime 导入 datetime, timedelta, timezone
 from datetime import datetime, timedelta, timezone
 
+# 定义变量 SECRET，赋值为 "my-secret-key-keep-safe"
 SECRET = "my-secret-key-keep-safe"
 
 # 1. 创建 token
+# 定义函数 create_token，参数: user_id
 def create_token(user_id):
+    # 定义字典 payload
     payload = {
         "user_id": user_id,                          # 用户标识
         "exp": datetime.now(timezone.utc) + timedelta(hours=1),  # 过期时间
         "iat": datetime.now(timezone.utc),           # 签发时间
+    # }
     }
+    # 定义变量 token，赋值为 jwt.encode(payload, SECRET, algorithm="HS256"...
     token = jwt.encode(payload, SECRET, algorithm="HS256")
     return token  # 字符串
 
 # 2. 验证 token
+# 定义函数 verify_token，参数: token
 def verify_token(token):
+    # 尝试执行，捕获异常
     try:
+        # 定义变量 payload，赋值为 jwt.decode(token, SECRET, algorithms=["HS256"...
         payload = jwt.decode(token, SECRET, algorithms=["HS256"])
         return payload   # 验证通过，返回载荷
+    # except jwt.ExpiredSignatureError:
     except jwt.ExpiredSignatureError:
         return None  # 过期
+    # except jwt.InvalidTokenError:
     except jwt.InvalidTokenError:
         return None  # 无效
 
 # 使用
+# 定义变量 token，赋值为 create_token(1)
 token = create_token(1)
+# 调用 print()
 print(token)
+# 定义变量 data，赋值为 verify_token(token)
 data = verify_token(token)
 print(data)  # {'user_id': 1, 'exp': ..., 'iat': ...}
 \`\`\`
@@ -418,20 +540,34 @@ user_id, role, username 等业务数据
 \`\`\`
 
 \`\`\`html filename="前端发送 token"
+# <script>
 <script>
+# // 登录拿到 token 存起来
 // 登录拿到 token 存起来
+# 调用 fetch()
 fetch("/api/login", {method: "POST", body: ...})
+  # .then(r => r.json())
   .then(r => r.json())
+  # .then(data => {
   .then(data => {
+    # 调用 localStorage.setItem()
     localStorage.setItem("token", data.token);  // 存 localStorage
+  # });
   });
 
+# // 后续请求带上 token
 // 后续请求带上 token
+# fetch("/api/me", {
 fetch("/api/me", {
+  # 字段 headers，类型: {
   headers: {
+    # "Authorization": "Bearer " + localStorage.getItem(
     "Authorization": "Bearer " + localStorage.getItem("token")
+  # }
   }
+# });
 });
+# </script>
 </script>
 \`\`\`
 
@@ -444,89 +580,157 @@ cookie         自动带请求；但 CSRF 能利用；HttpOnly 防 XSS 读
 ## 四、Flask 装饰器校验 token
 
 \`\`\`python filename="Flask JWT 中间件"
+# 从 functools 导入 wraps
 from functools import wraps
+# 从 flask 导入 Flask, request, jsonify, g
 from flask import Flask, request, jsonify, g
+# 导入 jwt 模块
 import jwt
+# 从 datetime 导入 datetime, timedelta, timezone
 from datetime import datetime, timedelta, timezone
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
+# app.config["JWT_SECRET"] = "dev-secret-keep-safe"
 app.config["JWT_SECRET"] = "dev-secret-keep-safe"
+# app.config["JWT_EXP_HOURS"] = 1
 app.config["JWT_EXP_HOURS"] = 1
 
+# 定义函数 create_token，参数: user_id, role="user"
 def create_token(user_id, role="user"):
+    # 定义字典 payload
     payload = {
+        # "user_id": user_id,
         "user_id": user_id,
+        # "role": role,
         "role": role,
+        # "exp": datetime.now(timezone.utc) + timedelta(hour
         "exp": datetime.now(timezone.utc) + timedelta(hours=app.config["JWT_EXP_HOURS"]),
+        # "iat": datetime.now(timezone.utc),
         "iat": datetime.now(timezone.utc),
+    # }
     }
+    # 返回 jwt.encode(payload, app.config["JWT_SECRET"], algorithm="HS256")
     return jwt.encode(payload, app.config["JWT_SECRET"], algorithm="HS256")
 
+# 定义函数 decode_token，参数: token
 def decode_token(token):
+    # 尝试执行，捕获异常
     try:
+        # 返回 jwt.decode(token, app.config["JWT_SECRET"], algorithms=["HS256"])
         return jwt.decode(token, app.config["JWT_SECRET"], algorithms=["HS256"])
+    # except jwt.ExpiredSignatureError:
     except jwt.ExpiredSignatureError:
+        # 返回 None, "token 过期"
         return None, "token 过期"
+    # except jwt.InvalidTokenError:
     except jwt.InvalidTokenError:
+        # 返回 None, "token 无效"
         return None, "token 无效"
 
+# 定义函数 jwt_required，参数: f
 def jwt_required(f):
+    # 装饰器：wraps
     @wraps(f)
+    # 定义函数 decorated，参数: *args, **kwargs
     def decorated(*args, **kwargs):
+        # 定义变量 auth，赋值为 request.headers.get("Authorization", "")
         auth = request.headers.get("Authorization", "")
+        # 条件判断：如果 not auth.startswith("Bearer ")
         if not auth.startswith("Bearer "):
+            # 返回 jsonify({"error": "缺少 token"}), 401
             return jsonify({"error": "缺少 token"}), 401
         token = auth[7:]  # 去掉 "Bearer "
+        # 定义变量 payload，赋值为 decode_token(token)
         payload = decode_token(token)
         if isinstance(payload, tuple):  # 出错
+            # 返回 jsonify({"error": payload[1]}), 401
             return jsonify({"error": payload[1]}), 401
+        # g.current_user_id = payload["user_id"]
         g.current_user_id = payload["user_id"]
+        # g.current_role = payload.get("role", "user")
         g.current_role = payload.get("role", "user")
+        # 返回 f(*args, **kwargs)
         return f(*args, **kwargs)
+    # 返回 decorated
     return decorated
 
+# 装饰器：app.route
 @app.route("/api/login", methods=["POST"])
+# 定义函数 login，参数: 
 def login():
     # 校验用户名密码...
+    # 定义变量 user，赋值为 authenticate(request.json)
     user = authenticate(request.json)
+    # 条件判断：如果 not user
     if not user:
+        # 返回 jsonify({"error": "用户名或密码错"}), 401
         return jsonify({"error": "用户名或密码错"}), 401
+    # 定义变量 token，赋值为 create_token(user.id, user.role)
     token = create_token(user.id, user.role)
+    # 返回 jsonify({"token": token})
     return jsonify({"token": token})
 
+# 装饰器：app.route
 @app.route("/api/me")
+# 装饰器：jwt_required
 @jwt_required
+# 定义函数 me，参数: 
 def me():
+    # 返回 jsonify({"user_id": g.current_user_id, "role": g.current_role})
     return jsonify({"user_id": g.current_user_id, "role": g.current_role})
 \`\`\`
 
 ## 五、Django 装饰器校验 token
 
 \`\`\`python filename="Django JWT 装饰器"
+# 从 functools 导入 wraps
 from functools import wraps
+# 从 django.http 导入 JsonResponse
 from django.http import JsonResponse
+# 导入 jwt 模块
 import jwt
+# 从 django.conf 导入 settings
 from django.conf import settings
 
+# 定义函数 jwt_required，参数: view_func
 def jwt_required(view_func):
+    # 装饰器：wraps
     @wraps(view_func)
+    # 定义函数 wrapper，参数: request, *args, **kwargs
     def wrapper(request, *args, **kwargs):
+        # 定义变量 auth，赋值为 request.META.get("HTTP_AUTHORIZATION", "")
         auth = request.META.get("HTTP_AUTHORIZATION", "")
+        # 条件判断：如果 not auth.startswith("Bearer ")
         if not auth.startswith("Bearer "):
+            # 返回 JsonResponse({"error": "未登录"}, status=401)
             return JsonResponse({"error": "未登录"}, status=401)
+        # 定义变量 token，赋值为 auth[7:]
         token = auth[7:]
+        # 尝试执行，捕获异常
         try:
+            # 定义变量 payload，赋值为 jwt.decode(token, settings.JWT_SECRET, algori...
             payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
+        # except jwt.ExpiredSignatureError:
         except jwt.ExpiredSignatureError:
+            # 返回 JsonResponse({"error": "token 过期"}, status=401)
             return JsonResponse({"error": "token 过期"}, status=401)
+        # except jwt.InvalidTokenError:
         except jwt.InvalidTokenError:
+            # 返回 JsonResponse({"error": "token 无效"}, status=401)
             return JsonResponse({"error": "token 无效"}, status=401)
+        # request.user_id = payload["user_id"]
         request.user_id = payload["user_id"]
+        # 返回 view_func(request, *args, **kwargs)
         return view_func(request, *args, **kwargs)
+    # 返回 wrapper
     return wrapper
 
+# 装饰器：jwt_required
 @jwt_required
+# 定义函数 me，参数: request
 def me(request):
+    # 返回 JsonResponse({"user_id": request.user_id})
     return JsonResponse({"user_id": request.user_id})
 \`\`\`
 
@@ -537,20 +741,33 @@ def me(request):
 # access token 短期（如 15 分钟），refresh token 长期（如 7 天）
 # access 过期后用 refresh 换新的 access
 
+# 定义函数 create_tokens，参数: user_id
 def create_tokens(user_id):
+    # 返回 {
     return {
+        # "access_token": create_token(user_id, expires_minu
         "access_token": create_token(user_id, expires_minutes=15),
+        # "refresh_token": create_token(user_id, expires_day
         "refresh_token": create_token(user_id, expires_days=7, type="refresh"),
+    # }
     }
 
+# 装饰器：app.route
 @app.route("/api/refresh", methods=["POST"])
+# 定义函数 refresh，参数: 
 def refresh():
+    # 定义变量 refresh_tok，赋值为 request.json.get("refresh_token")
     refresh_tok = request.json.get("refresh_token")
+    # 定义变量 payload，赋值为 decode_token(refresh_tok)
     payload = decode_token(refresh_tok)
+    # 条件判断：如果 not payload or payload.get("type") != "refresh"
     if not payload or payload.get("type") != "refresh":
+        # 返回 jsonify({"error": "refresh token 无效"}), 401
         return jsonify({"error": "refresh token 无效"}), 401
     # 发新的 access token
+    # 定义变量 new_access，赋值为 create_token(payload["user_id"], expires_minu...
     new_access = create_token(payload["user_id"], expires_minutes=15)
+    # 返回 jsonify({"access_token": new_access})
     return jsonify({"access_token": new_access})
 \`\`\`
 
@@ -575,102 +792,181 @@ JWT 无状态，签发后到过期前都有效，没法"删除"。要主动失�
 \`\`\`
 
 \`\`\`python filename="黑名单方案"
+# 导入 redis 模块
 import redis
+# 定义变量 r，赋值为 redis.StrictRedis()
 r = redis.StrictRedis()
 
+# 定义函数 logout，参数: token
 def logout(token):
     # 把 token 加入黑名单，过期时间和 token 剩余一致
+    # 定义变量 payload，赋值为 jwt.decode(token, SECRET, algorithms=["HS256"...
     payload = jwt.decode(token, SECRET, algorithms=["HS256"])
+    # 定义变量 exp，赋值为 payload["exp"]
     exp = payload["exp"]
+    # 定义变量 now，赋值为 datetime.now(timezone.utc).timestamp()
     now = datetime.now(timezone.utc).timestamp()
+    # 调用 r.setex()
     r.setex(f"blacklist:{token}", int(exp - now), "1")
 
+# 定义函数 verify_token，参数: token
 def verify_token(token):
+    # 条件判断：如果 r.exists(f"blacklist:{token}")
     if r.exists(f"blacklist:{token}"):
+        # 返回 None, "已登出"
         return None, "已登出"
     # 再校验签名和过期
+    # ...
     ...
 \`\`\`
 
 ## 八、完整示例：JWT 登录中间件
 
 \`\`\`python filename="完整 JWT 认证"
+# 从 functools 导入 wraps
 from functools import wraps
+# 从 flask 导入 Flask, request, jsonify, g
 from flask import Flask, request, jsonify, g
+# 导入 jwt 模块
 import jwt
+# 从 datetime 导入 datetime, timedelta, timezone
 from datetime import datetime, timedelta, timezone
+# 导入 os 模块
 import os
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
+# app.config["JWT_SECRET"] = os.environ.get("JWT_SEC
 app.config["JWT_SECRET"] = os.environ.get("JWT_SECRET", "dev-secret")
+# app.config["ACCESS_EXP_MIN"] = 15
 app.config["ACCESS_EXP_MIN"] = 15
+# app.config["REFRESH_EXP_DAY"] = 7
 app.config["REFRESH_EXP_DAY"] = 7
 
+# 定义字典 USERS
 USERS = {"alice": {"id": 1, "password": "$2b$hashed", "role": "admin"}}
 
+# 定义函数 make_token，参数: user_id, role, type, **extra
 def make_token(user_id, role, type, **extra):
+    # 条件判断：如果 type == "access"
     if type == "access":
+        # 定义变量 exp，赋值为 timedelta(minutes=app.config["ACCESS_EXP_MIN"...
         exp = timedelta(minutes=app.config["ACCESS_EXP_MIN"])
+    # 否则执行
     else:
+        # 定义变量 exp，赋值为 timedelta(days=app.config["REFRESH_EXP_DAY"])
         exp = timedelta(days=app.config["REFRESH_EXP_DAY"])
+    # 定义字典 payload
     payload = {
+        # "user_id": user_id,
         "user_id": user_id,
+        # "role": role,
         "role": role,
+        # "type": type,
         "type": type,
+        # "exp": datetime.now(timezone.utc) + exp,
         "exp": datetime.now(timezone.utc) + exp,
+        # "iat": datetime.now(timezone.utc),
         "iat": datetime.now(timezone.utc),
+        # **extra,
         **extra,
+    # }
     }
+    # 返回 jwt.encode(payload, app.config["JWT_SECRET"], algorithm="HS256")
     return jwt.encode(payload, app.config["JWT_SECRET"], algorithm="HS256")
 
+# 定义函数 decode，参数: token
 def decode(token):
+    # 尝试执行，捕获异常
     try:
+        # 返回 jwt.decode(token, app.config["JWT_SECRET"], algorithms=["HS256"]), None
         return jwt.decode(token, app.config["JWT_SECRET"], algorithms=["HS256"]), None
+    # except jwt.ExpiredSignatureError:
     except jwt.ExpiredSignatureError:
+        # 返回 None, "token 过期"
         return None, "token 过期"
+    # except jwt.InvalidTokenError:
     except jwt.InvalidTokenError:
+        # 返回 None, "token 无效"
         return None, "token 无效"
 
+# 定义函数 auth_required，参数: f
 def auth_required(f):
+    # 装饰器：wraps
     @wraps(f)
+    # 定义函数 wrapper，参数: *args, **kwargs
     def wrapper(*args, **kwargs):
+        # 定义变量 auth，赋值为 request.headers.get("Authorization", "")
         auth = request.headers.get("Authorization", "")
+        # 条件判断：如果 not auth.startswith("Bearer ")
         if not auth.startswith("Bearer "):
+            # 返回 jsonify({"error": "未认证"}), 401
             return jsonify({"error": "未认证"}), 401
+        # payload, err = decode(auth[7:])
         payload, err = decode(auth[7:])
+        # 条件判断：如果 err
         if err:
+            # 返回 jsonify({"error": err}), 401
             return jsonify({"error": err}), 401
+        # 条件判断：如果 payload.get("type") != "access"
         if payload.get("type") != "access":
+            # 返回 jsonify({"error": "token 类型错"}), 401
             return jsonify({"error": "token 类型错"}), 401
+        # g.user_id = payload["user_id"]
         g.user_id = payload["user_id"]
+        # g.role = payload["role"]
         g.role = payload["role"]
+        # 返回 f(*args, **kwargs)
         return f(*args, **kwargs)
+    # 返回 wrapper
     return wrapper
 
+# 装饰器：app.route
 @app.route("/api/login", methods=["POST"])
+# 定义函数 login，参数: 
 def login():
+    # 定义变量 data，赋值为 request.json or {}
     data = request.json or {}
+    # 定义变量 user，赋值为 USERS.get(data.get("username"))
     user = USERS.get(data.get("username"))
     if not user:  # 生产：用 check_password_hash
+        # 返回 jsonify({"error": "账号或密码错"}), 401
         return jsonify({"error": "账号或密码错"}), 401
+    # 返回 jsonify({
     return jsonify({
+        # "access_token": make_token(user["id"], user["role"
         "access_token": make_token(user["id"], user["role"], "access"),
+        # "refresh_token": make_token(user["id"], user["role
         "refresh_token": make_token(user["id"], user["role"], "refresh"),
+    # })
     })
 
+# 装饰器：app.route
 @app.route("/api/refresh", methods=["POST"])
+# 定义函数 refresh，参数: 
 def refresh():
+    # 定义变量 tok，赋值为 (request.json or {}).get("refresh_token")
     tok = (request.json or {}).get("refresh_token")
+    # payload, err = decode(tok)
     payload, err = decode(tok)
+    # 条件判断：如果 err or payload.get("type") != "refresh"
     if err or payload.get("type") != "refresh":
+        # 返回 jsonify({"error": "refresh token 无效"}), 401
         return jsonify({"error": "refresh token 无效"}), 401
+    # 返回 jsonify({
     return jsonify({
+        # "access_token": make_token(payload["user_id"], pay
         "access_token": make_token(payload["user_id"], payload["role"], "access")
+    # })
     })
 
+# 装饰器：app.route
 @app.route("/api/me")
+# 装饰器：auth_required
 @auth_required
+# 定义函数 me，参数: 
 def me():
+    # 返回 jsonify({"user_id": g.user_id, "role": g.role})
     return jsonify({"user_id": g.user_id, "role": g.role})
 \`\`\`
 
@@ -764,17 +1060,25 @@ cost=12 → 约 0.4 秒
 **加盐**（Salt）：哈希时混入一段随机字符串，让相同密码哈希出不同结果，彩虹表失效。
 
 \`\`\`python filename="加盐原理"
+# 导入 hashlib, 模块
 import hashlib, os
 
+# 定义函数 hash_password，参数: password
 def hash_password(password):
     salt = os.urandom(16)  # 随机盐
+    # 定义变量 h，赋值为 hashlib.pbkdf2_hmac("sha256", password.encode...
     h = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 100000)
     return salt + h  # 盐和哈希一起存
 
+# 定义函数 verify，参数: password, stored
 def verify(password, stored):
+    # 定义变量 salt，赋值为 stored[:16]
     salt = stored[:16]
+    # 定义变量 h，赋值为 stored[16:]
     h = stored[16:]
+    # 定义变量 new_h，赋值为 hashlib.pbkdf2_hmac("sha256", password.encode...
     new_h = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 100000)
+    # 返回 new_h == h
     return new_h == h
 \`\`\`
 
@@ -785,15 +1089,19 @@ def verify(password, stored):
 Flask 依赖 werkzeug，自带 \`generate_password_hash\` 和 \`check_password_hash\`，最简单易用。
 
 \`\`\`python filename="werkzeug 密码哈希"
+# 从 werkzeug.security 导入 generate_password_hash, check_password_hash
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # 1. 注册时：生成哈希存库
+# 定义变量 password，赋值为 "user_input_password"
 password = "user_input_password"
+# 定义变量 hashed，赋值为 generate_password_hash(password, method="scry...
 hashed = generate_password_hash(password, method="scrypt", scrypt_n=16384)
 # 返回类似：scrypt:16384:8:1$abcd...$efgh...
 # 包含算法、参数、盐、哈希，存一个字符串就够
 
 # 2. 登录时：校验
+# 定义变量 is_correct，赋值为 check_password_hash(hashed, password)
 is_correct = check_password_hash(hashed, password)
 print(is_correct)  # True / False
 \`\`\`
@@ -809,15 +1117,18 @@ method 参数：
 ## 六、Django 密码哈希
 
 \`\`\`python filename="Django 自带密码工具"
+# 从 django.contrib.auth.hashers 导入 make_password, check_password
 from django.contrib.auth.hashers import make_password, check_password
 
 # 注册
 hashed = make_password("user_input")  # 默认用 PBKDF2
 
 # 校验
+# 定义变量 is_correct，赋值为 check_password("user_input", hashed)
 is_correct = check_password("user_input", hashed)
 
 # 识别是否需要升级算法（哈希方法变了）
+# 从 django.contrib.auth.hashers 导入 identify_hasher
 from django.contrib.auth.hashers import identify_hasher
 # settings.PASSWORD_HASHERS 配置算法优先级
 \`\`\`
@@ -835,28 +1146,38 @@ PASSWORD_HASHERS = [
 ## 七、passlib 库（统一接口）
 
 \`\`\`bash filename="安装 passlib"
+# 安装 Python 包: passlib
 pip install passlib
 pip install passlib[bcrypt]   # 用 bcrypt 后端
 \`\`\`
 
 \`\`\`python filename="passlib 统一接口"
+# 从 passlib.context 导入 CryptContext
 from passlib.context import CryptContext
 
 # 配置算法上下文（支持多算法 + 自动升级）
+# 定义变量 pwd_ctx，赋值为 CryptContext(
 pwd_ctx = CryptContext(
+    # 定义列表 schemes
     schemes=["argon2", "bcrypt", "pbkdf2_sha256"],
+    # 定义变量 default，赋值为 "argon2",
     default="argon2",
     deprecated="auto",  # 旧算法哈希在验证后自动升级
+# )
 )
 
 # 注册：哈希
+# 定义变量 hashed，赋值为 pwd_ctx.hash("user_password")
 hashed = pwd_ctx.hash("user_password")
 
 # 登录：校验
+# 定义变量 is_correct，赋值为 pwd_ctx.verify("user_password", hashed)
 is_correct = pwd_ctx.verify("user_password", hashed)
 
 # 升级：校验时识别旧算法自动 rehash
+# 条件判断：如果 pwd_ctx.needs_update(hashed)
 if pwd_ctx.needs_update(hashed):
+    # 定义变量 new_hashed，赋值为 pwd_ctx.hash("user_password")
     new_hashed = pwd_ctx.hash("user_password")
 \`\`\`
 
@@ -865,33 +1186,54 @@ if pwd_ctx.needs_update(hashed):
 哈希只能防泄露，挡不住弱密码。注册时要校验强度。
 
 \`\`\`python filename="密码强度校验"
+# 导入 re 模块
 import re
 
+# 定义函数 check_password_strength，参数: password
 def check_password_strength(password):
+    # """返回错误列表，空表示通过"""
     """返回错误列表，空表示通过"""
+    # 定义列表 errors
     errors = []
+    # 条件判断：如果 len(password) < 8
     if len(password) < 8:
+        # 调用 errors.append()
         errors.append("至少 8 位")
+    # 条件判断：如果 len(password) > 64
     if len(password) > 64:
+        # 调用 errors.append()
         errors.append("最多 64 位")
+    # 条件判断：如果 not re.search(r"[a-z]", password)
     if not re.search(r"[a-z]", password):
+        # 调用 errors.append()
         errors.append("需含小写字母")
+    # 条件判断：如果 not re.search(r"[A-Z]", password)
     if not re.search(r"[A-Z]", password):
+        # 调用 errors.append()
         errors.append("需含大写字母")
+    # 条件判断：如果 not re.search(r"\d", password)
     if not re.search(r"\d", password):
+        # 调用 errors.append()
         errors.append("需含数字")
+    # 条件判断：如果 not re.search(r"[!@#$%^&*]", password)
     if not re.search(r"[!@#$%^&*]", password):
+        # 调用 errors.append()
         errors.append("需含特殊字符")
     # 常见弱密码黑名单
+    # 条件判断：如果 password.lower() in {"password", "12345678", "qwerty123"}
     if password.lower() in {"password", "12345678", "qwerty123"}:
+        # 调用 errors.append()
         errors.append("密码太常见")
+    # 返回 errors
     return errors
 \`\`\`
 
 \`\`\`python filename="用 zxcvbn 评估真实强度"
 # pip install zxcvbn
+# 从 zxcvbn 导入 zxcvbn
 from zxcvbn import zxcvbn
 
+# 定义变量 result，赋值为 zxcvbn("Tr0ub4dour&3")
 result = zxcvbn("Tr0ub4dour&3")
 print(result["score"])  # 0-4，4 最强
 print(result["feedback"]["warning"])  # 如 "这是常见密码"
@@ -908,49 +1250,88 @@ print(result["feedback"]["warning"])  # 如 "这是常见密码"
 \`\`\`
 
 \`\`\`python filename="密码重置实现"
+# 导入 jwt 模块
 import jwt
+# 从 datetime 导入 datetime, timedelta, timezone
 from datetime import datetime, timedelta, timezone
+# 从 flask 导入 Flask, request, redirect, url_for, flash, render_template
 from flask import Flask, request, redirect, url_for, flash, render_template
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
+# app.config["SECRET_KEY"] = "dev"
 app.config["SECRET_KEY"] = "dev"
 
+# 定义函数 make_reset_token，参数: user_id
 def make_reset_token(user_id):
+    # 返回 jwt.encode({
     return jwt.encode({
+        # "user_id": user_id,
         "user_id": user_id,
+        # "type": "reset",
         "type": "reset",
+        # "exp": datetime.now(timezone.utc) + timedelta(minu
         "exp": datetime.now(timezone.utc) + timedelta(minutes=30),
+    # }, app.config["SECRET_KEY"], algorithm="HS256")
     }, app.config["SECRET_KEY"], algorithm="HS256")
 
+# 装饰器：app.route
 @app.route("/forgot", methods=["GET", "POST"])
+# 定义函数 forgot，参数: 
 def forgot():
+    # 条件判断：如果 request.method == "POST"
     if request.method == "POST":
+        # 定义变量 email，赋值为 request.form.get("email")
         email = request.form.get("email")
+        # 定义变量 user，赋值为 find_user_by_email(email)
         user = find_user_by_email(email)
+        # 条件判断：如果 user
         if user:
+            # 定义变量 token，赋值为 make_reset_token(user.id)
             token = make_reset_token(user.id)
+            # 调用 send_email()
             send_email(email, f"重置链接：/reset?token={token}")
         # 不管用户是否存在都提示"已发送"，防邮箱枚举
+        # 调用 flash()
         flash("若邮箱存在，重置链接已发送")
+        # 返回 redirect(url_for("login"))
         return redirect(url_for("login"))
+    # 返回 render_template("forgot.html")
     return render_template("forgot.html")
 
+# 装饰器：app.route
 @app.route("/reset", methods=["GET", "POST"])
+# 定义函数 reset，参数: 
 def reset():
+    # 定义变量 token，赋值为 request.args.get("token", "")
     token = request.args.get("token", "")
+    # 尝试执行，捕获异常
     try:
+        # 定义变量 payload，赋值为 jwt.decode(token, app.config["SECRET_KEY"], a...
         payload = jwt.decode(token, app.config["SECRET_KEY"], algorithms=["HS256"])
+        # 条件判断：如果 payload.get("type") != "reset"
         if payload.get("type") != "reset":
+            # 抛出 jwt 异常
             raise jwt.InvalidTokenError()
+    # except jwt.InvalidTokenError:
     except jwt.InvalidTokenError:
+        # 返回 "链接无效或已过期", 400
         return "链接无效或已过期", 400
+    # 条件判断：如果 request.method == "POST"
     if request.method == "POST":
+        # 定义变量 new_pwd，赋值为 request.form.get("password")
         new_pwd = request.form.get("password")
+        # 定义变量 user，赋值为 get_user(payload["user_id"])
         user = get_user(payload["user_id"])
+        # user.password_hash = generate_password_hash(new_pw
         user.password_hash = generate_password_hash(new_pwd)
+        # 调用 db.session.commit()
         db.session.commit()
+        # 调用 flash()
         flash("密码已重置，请登录")
+        # 返回 redirect(url_for("login"))
         return redirect(url_for("login"))
+    # 返回 render_template("reset.html", token=token)
     return render_template("reset.html", token=token)
 \`\`\`
 
@@ -963,14 +1344,19 @@ def reset():
 \`\`\`
 
 \`\`\`python filename="用恒定时间比较防时序攻击"
+# 从 hmac 导入 compare_digest
 from hmac import compare_digest
 
 # ❌ 普通 == 有时序泄露
+# 条件判断：如果 user_token == stored_token
 if user_token == stored_token:
+    # ...
     ...
 
 # ✅ 恒定时间比较，无论对错耗时一样
+# 条件判断：如果 compare_digest(user_token, stored_token)
 if compare_digest(user_token, stored_token):
+    # ...
     ...
 \`\`\`
 
@@ -979,67 +1365,112 @@ if compare_digest(user_token, stored_token):
 ## 十一、完整示例：用户注册和登录密码处理
 
 \`\`\`python filename="完整密码处理"
+# 从 flask 导入 Flask, request, session, redirect, url_for, flash, render_template
 from flask import Flask, request, session, redirect, url_for, flash, render_template
+# 从 werkzeug.security 导入 generate_password_hash, check_password_hash
 from werkzeug.security import generate_password_hash, check_password_hash
+# 从 models 导入 db, User
 from models import db, User
+# 导入 re 模块
 import re
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
+# app.secret_key = "dev-secret"
 app.secret_key = "dev-secret"
 
+# 定义函数 check_password_strength，参数: pwd
 def check_password_strength(pwd):
+    # 条件判断：如果 len(pwd) < 8
     if len(pwd) < 8: return "至少 8 位"
+    # 条件判断：如果 not re.search(r"[a-zA-Z]", pwd) or not re.search(r"\d", pwd)
     if not re.search(r"[a-zA-Z]", pwd) or not re.search(r"\d", pwd):
+        # 返回 "需同时含字母和数字"
         return "需同时含字母和数字"
+    # 返回 None
     return None
 
+# 装饰器：app.route
 @app.route("/register", methods=["GET", "POST"])
+# 定义函数 register，参数: 
 def register():
+    # 条件判断：如果 request.method == "POST"
     if request.method == "POST":
+        # 定义变量 username，赋值为 request.form.get("username", "").strip()
         username = request.form.get("username", "").strip()
+        # 定义变量 password，赋值为 request.form.get("password", "")
         password = request.form.get("password", "")
+        # 定义变量 email，赋值为 request.form.get("email", "").strip()
         email = request.form.get("email", "").strip()
 
         # 1. 校验密码强度
+        # 定义变量 err，赋值为 check_password_strength(password)
         err = check_password_strength(password)
+        # 条件判断：如果 err
         if err:
+            # 调用 flash()
             flash(err)
+            # 返回 render_template("register.html"), 400
             return render_template("register.html"), 400
 
         # 2. 查重
+        # 条件判断：如果 User.query.filter_by(username=username).first()
         if User.query.filter_by(username=username).first():
+            # 调用 flash()
             flash("用户名已存在")
+            # 返回 render_template("register.html"), 400
             return render_template("register.html"), 400
 
         # 3. ★ 哈希存储（绝不存明文）
+        # 定义变量 hashed，赋值为 generate_password_hash(password, method="scry...
         hashed = generate_password_hash(password, method="scrypt")
 
         # 4. 存库
+        # 定义变量 user，赋值为 User(username=username, email=email, password...
         user = User(username=username, email=email, password_hash=hashed)
+        # 调用 db.session.add()
         db.session.add(user)
+        # 调用 db.session.commit()
         db.session.commit()
 
+        # 调用 flash()
         flash("注册成功，请登录")
+        # 返回 redirect(url_for("login"))
         return redirect(url_for("login"))
+    # 返回 render_template("register.html")
     return render_template("register.html")
 
+# 装饰器：app.route
 @app.route("/login", methods=["GET", "POST"])
+# 定义函数 login，参数: 
 def login():
+    # 条件判断：如果 request.method == "POST"
     if request.method == "POST":
+        # 定义变量 username，赋值为 request.form.get("username", "")
         username = request.form.get("username", "")
+        # 定义变量 password，赋值为 request.form.get("password", "")
         password = request.form.get("password", "")
+        # 定义变量 user，赋值为 User.query.filter_by(username=username).first...
         user = User.query.filter_by(username=username).first()
 
         # ★ check_password_hash 恒定时间比较
+        # 条件判断：如果 user and check_password_hash(user.password_hash, password)
         if user and check_password_hash(user.password_hash, password):
+            # 调用 session.clear()
             session.clear()
+            # session["user_id"] = user.id
             session["user_id"] = user.id
+            # session.permanent = True
             session.permanent = True
+            # 返回 redirect(url_for("dashboard"))
             return redirect(url_for("dashboard"))
 
         # 不管用户不存在还是密码错，统一提示（防用户名枚举）
+        # 调用 flash()
         flash("用户名或密码错误")
+        # 返回 render_template("login.html"), 401
         return render_template("login.html"), 401
+    # 返回 render_template("login.html")
     return render_template("login.html")
 \`\`\`
 
@@ -1127,35 +1558,58 @@ guest    匿名：只能看公开内容
 ## 四、Flask 实现装饰器
 
 \`\`\`python filename="role_required 装饰器"
+# 从 functools 导入 wraps
 from functools import wraps
+# 从 flask 导入 g, abort
 from flask import g, abort
 
 # 假设 g.current_user 有 role 属性
+# 定义函数 role_required，参数: *roles
 def role_required(*roles):
+    # """检查当前用户角色是否在允许列表里"""
     """检查当前用户角色是否在允许列表里"""
+    # 定义函数 decorator，参数: f
     def decorator(f):
+        # 装饰器：wraps
         @wraps(f)
+        # 定义函数 wrapper，参数: *args, **kwargs
         def wrapper(*args, **kwargs):
+            # 定义变量 user，赋值为 getattr(g, "current_user", None)
             user = getattr(g, "current_user", None)
+            # 条件判断：如果 not user
             if not user:
                 abort(401)  # 未登录
+            # 条件判断：如果 user.role not in roles
             if user.role not in roles:
                 abort(403)  # 无权限
+            # 返回 f(*args, **kwargs)
             return f(*args, **kwargs)
+        # 返回 wrapper
         return wrapper
+    # 返回 decorator
     return decorator
 
 # 用法
+# 装饰器：app.route
 @app.route("/admin/users")
+# 装饰器：login_required
 @login_required
+# 装饰器：role_required
 @role_required("admin")
+# 定义函数 admin_users，参数: 
 def admin_users():
+    # 返回 "用户管理"
     return "用户管理"
 
+# 装饰器：app.route
 @app.route("/posts/<int:pid>/edit", methods=["POST"])
+# 装饰器：login_required
 @login_required
+# 装饰器：role_required
 @role_required("admin", "editor", "author")
+# 定义函数 post_edit，参数: pid
 def post_edit(pid):
+    # ...
     ...
 \`\`\`
 
@@ -1164,51 +1618,83 @@ def post_edit(pid):
 光有角色不够：作者能改文章，但只能改**自己的**文章。这是"所有权检查"。
 
 \`\`\`python filename="资源所有权检查"
+# 装饰器：app.route
 @app.route("/posts/<int:pid>/edit", methods=["GET", "POST"])
+# 装饰器：login_required
 @login_required
+# 装饰器：role_required
 @role_required("admin", "editor", "author")
+# 定义函数 post_edit，参数: pid
 def post_edit(pid):
+    # 定义变量 post，赋值为 Post.query.get_or_404(pid)
     post = Post.query.get_or_404(pid)
     # 所有权检查
+    # 条件判断：如果 not can_edit_post(g.current_user, post)
     if not can_edit_post(g.current_user, post):
+        # 调用 abort()
         abort(403)
     # ...
 
+# 定义函数 can_edit_post，参数: user, post
 def can_edit_post(user, post):
+    # """判断用户能否编辑这篇文章"""
     """判断用户能否编辑这篇文章"""
+    # 条件判断：如果 user.role == "admin"
     if user.role == "admin":
         return True                          # 管理员：任意
+    # 条件判断：如果 user.role == "editor"
     if user.role == "editor":
         return True                          # 编辑：任意
+    # 条件判断：如果 user.role == "author"
     if user.role == "author":
         return post.author_id == user.id     # 作者：仅自己
+    # 返回 False
     return False
 \`\`\`
 
 \`\`\`python filename="权限检查函数集中管理"
 # permissions.py - 统一权限判断逻辑
+# 定义函数 can_view_post，参数: user, post
 def can_view_post(user, post):
+    # 条件判断：如果 post.published
     if post.published:
         return True  # 已发布的任何人能看
+    # 返回 user and (user.role in ("admin", "editor") or post.author_id == user.id)
     return user and (user.role in ("admin", "editor") or post.author_id == user.id)
 
+# 定义函数 can_edit_post，参数: user, post
 def can_edit_post(user, post):
+    # 条件判断：如果 not user
     if not user:
+        # 返回 False
         return False
+    # 条件判断：如果 user.role in ("admin", "editor")
     if user.role in ("admin", "editor"):
+        # 返回 True
         return True
+    # 返回 post.author_id == user.id
     return post.author_id == user.id
 
+# 定义函数 can_delete_post，参数: user, post
 def can_delete_post(user, post):
+    # 条件判断：如果 not user
     if not user:
+        # 返回 False
         return False
+    # 条件判断：如果 user.role == "admin"
     if user.role == "admin":
+        # 返回 True
         return True
+    # 条件判断：如果 user.role == "editor"
     if user.role == "editor":
+        # 返回 True
         return True
+    # 返回 post.author_id == user.id
     return post.author_id == user.id
 
+# 定义函数 can_manage_users，参数: user
 def can_manage_users(user):
+    # 返回 user and user.role == "admin"
     return user and user.role == "admin"
 \`\`\`
 
@@ -1221,24 +1707,39 @@ def can_manage_users(user):
 \`\`\`
 
 \`\`\`jinja filename="模板里按权限渲染按钮"
+# {% if current_user and can_edit_post(current_user,
 {% if current_user and can_edit_post(current_user, post) %}
+  # <a href="/posts/{{ post.id }}/edit" class="btn">编辑
   <a href="/posts/{{ post.id }}/edit" class="btn">编辑</a>
+# {% endif %}
 {% endif %}
+# {% if current_user and can_delete_post(current_use
 {% if current_user and can_delete_post(current_user, post) %}
+  # <a href="/posts/{{ post.id }}/delete" class="btn-d
   <a href="/posts/{{ post.id }}/delete" class="btn-danger">删除</a>
+# {% endif %}
 {% endif %}
+# {% if current_user and current_user.role == "admin
 {% if current_user and current_user.role == "admin" %}
+  # <a href="/admin" class="btn-admin">管理后台</a>
   <a href="/admin" class="btn-admin">管理后台</a>
+# {% endif %}
 {% endif %}
 \`\`\`
 
 \`\`\`javascript filename="前端 API 拦截（仅体验）"
 // 拦截器：无权限就别发请求
+// axios.interceptors.request.use(config => {
 axios.interceptors.request.use(config => {
+// if (config.url.startsWith("/admin") && userRole !=
   if (config.url.startsWith("/admin") && userRole !== "admin") {
+    // 返回值
     return Promise.reject(new Error("无权限"));
+// }
   }
+  // 返回值
   return config;
+// });
 });
 // 注意：这只是体验优化，后端必须再校验一次
 \`\`\`
@@ -1256,52 +1757,90 @@ GET    /admin/users    用户管理：仅 admin
 \`\`\`
 
 \`\`\`python filename="API 权限装饰器（结合 JWT）"
+# 定义函数 permission_required，参数: action
 def permission_required(action):
+    # """按操作名检查权限"""
     """按操作名检查权限"""
+    # 定义函数 decorator，参数: f
     def decorator(f):
+        # 装饰器：wraps
         @wraps(f)
+        # 定义函数 wrapper，参数: *args, **kwargs
         def wrapper(*args, **kwargs):
+            # 定义变量 user，赋值为 g.current_user
             user = g.current_user
+            # 条件判断：如果 not user
             if not user:
+                # 返回 jsonify({"error": "未登录"}), 401
                 return jsonify({"error": "未登录"}), 401
             # 权限映射表
+            # 定义字典 permission_map
             permission_map = {
+                # "post:create":  {"admin", "editor", "author"},
                 "post:create":  {"admin", "editor", "author"},
+                # "post:edit_any": {"admin", "editor"},
                 "post:edit_any": {"admin", "editor"},
+                # "post:delete_any": {"admin", "editor"},
                 "post:delete_any": {"admin", "editor"},
+                # "user:manage": {"admin"},
                 "user:manage": {"admin"},
+            # }
             }
+            # 定义变量 allowed_roles，赋值为 permission_map.get(action, set())
             allowed_roles = permission_map.get(action, set())
+            # 条件判断：如果 user.role not in allowed_roles
             if user.role not in allowed_roles:
+                # 返回 jsonify({"error": "无权限"}), 403
                 return jsonify({"error": "无权限"}), 403
+            # 返回 f(*args, **kwargs)
             return f(*args, **kwargs)
+        # 返回 wrapper
         return wrapper
+    # 返回 decorator
     return decorator
 
+# 装饰器：app.route
 @app.route("/api/posts", methods=["POST"])
 @jwt_required                # 认证：解 token 拿用户
 @permission_required("post:create")  # 授权：检查角色
+# 定义函数 create_post，参数: 
 def create_post():
+    # ...
     ...
 
+# 装饰器：app.route
 @app.route("/api/posts/<int:pid>", methods=["DELETE"])
+# 装饰器：jwt_required
 @jwt_required
+# 装饰器：permission_required
 @permission_required("post:delete_any")
+# 定义函数 delete_any_post，参数: pid
 def delete_any_post(pid):
+    # ...
     ...
 \`\`\`
 
 \`\`\`python filename="API 所有权校验"
+# 装饰器：app.route
 @app.route("/api/posts/<int:pid>", methods=["DELETE"])
+# 装饰器：jwt_required
 @jwt_required
+# 定义函数 delete_post，参数: pid
 def delete_post(pid):
+    # 定义变量 post，赋值为 Post.query.get_or_404(pid)
     post = Post.query.get_or_404(pid)
+    # 定义变量 user，赋值为 g.current_user
     user = g.current_user
     # 所有权：作者只能删自己的，admin/editor 可删任意
+    # 条件判断：如果 not can_delete_post(user, post)
     if not can_delete_post(user, post):
+        # 返回 jsonify({"error": "无权删除"}), 403
         return jsonify({"error": "无权删除"}), 403
+    # 调用 db.session.delete()
     db.session.delete(post)
+    # 调用 db.session.commit()
     db.session.commit()
+    # 返回 "", 204
     return "", 204
 \`\`\`
 
@@ -1310,28 +1849,41 @@ def delete_post(pid):
 Django 自带成熟的权限系统：\`Group\`（角色）+ \`Permission\`（权限）+ 模型级权限。
 
 \`\`\`python filename="Django 内置权限"
+# 从 django.contrib.auth.models 导入 User, Group, Permission
 from django.contrib.auth.models import User, Group, Permission
+# 从 django.contrib.auth.decorators 导入 permission_required, login_required
 from django.contrib.auth.decorators import permission_required, login_required
 
 # 1. 创建角色（Group）
+# editors, _ = Group.objects.get_or_create(name="edi
 editors, _ = Group.objects.get_or_create(name="editors")
 
 # 2. 给角色加权限（Django 自动为每个模型生成 add/change/delete/view 权限）
+# 定义变量 perm，赋值为 Permission.objects.get(codename="change_post"...
 perm = Permission.objects.get(codename="change_post")
+# 调用 editors.permissions.add()
 editors.permissions.add(perm)
 
 # 3. 用户加入角色
+# 调用 user.groups.add()
 user.groups.add(editors)
 
 # 4. 装饰器校验
+# 装饰器：permission_required
 @permission_required("app.change_post", raise_exception=True)
+# 定义函数 edit_post，参数: request, pid
 def edit_post(request, pid):
+    # ...
     ...
 
 # 5. 代码里检查
+# 条件判断：如果 user.has_perm("app.change_post")
 if user.has_perm("app.change_post"):
+    # ...
     ...
+# 条件判断：如果 user.has_perms(["app.add_post", "app.change_post"])
 if user.has_perms(["app.add_post", "app.change_post"]):
+    # ...
     ...
 \`\`\`
 
@@ -1345,15 +1897,23 @@ app.view_model       查看
 \`\`\`
 
 \`\`\`python filename="Django 自定义权限"
+# 从 django.db 导入 models
 from django.db import models
 
+# 定义类 Post，继承 models.Model
 class Post(models.Model):
+    # 定义变量 title，赋值为 models.CharField(max_length=200)
     title = models.CharField(max_length=200)
 
+    # 定义类 Meta
     class Meta:
+        # 定义列表 permissions
         permissions = [
+            # ("publish_post", "可以发布文章"),
             ("publish_post", "可以发布文章"),
+            # ("feature_post", "可以推荐文章"),
             ("feature_post", "可以推荐文章"),
+        # ]
         ]
 # 迁移后自动生成这些自定义权限
 \`\`\`
@@ -1361,91 +1921,161 @@ class Post(models.Model):
 ## 九、完整示例：博客权限系统
 
 \`\`\`python filename="博客权限完整实现"
+# 从 functools 导入 wraps
 from functools import wraps
+# 从 flask 导入 Flask, g, abort, jsonify
 from flask import Flask, g, abort, jsonify
+# 从 models 导入 db, User, Post
 from models import db, User, Post
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
 
 # 1. 权限检查函数（单一真相源）
+# 定义函数 can_view_post，参数: user, post
 def can_view_post(user, post):
+    # 条件判断：如果 post.published
     if post.published:
+        # 返回 True
         return True
+    # 条件判断：如果 not user
     if not user:
+        # 返回 False
         return False
+    # 条件判断：如果 user.role in ("admin", "editor")
     if user.role in ("admin", "editor"):
+        # 返回 True
         return True
+    # 返回 post.author_id == user.id
     return post.author_id == user.id
 
+# 定义函数 can_edit_post，参数: user, post
 def can_edit_post(user, post):
+    # 条件判断：如果 not user
     if not user:
+        # 返回 False
         return False
+    # 条件判断：如果 user.role in ("admin", "editor")
     if user.role in ("admin", "editor"):
+        # 返回 True
         return True
+    # 条件判断：如果 user.role == "author"
     if user.role == "author":
+        # 返回 post.author_id == user.id
         return post.author_id == user.id
+    # 返回 False
     return False
 
+# 定义函数 can_delete_post，参数: user, post
 def can_delete_post(user, post):
     return can_edit_post(user, post)  # 谁能改谁就能删
 
 # 2. 装饰器
+# 定义函数 role_required，参数: *roles
 def role_required(*roles):
+    # 定义函数 deco，参数: f
     def deco(f):
+        # 装饰器：wraps
         @wraps(f)
+        # 定义函数 wrapper，参数: *args, **kwargs
         def wrapper(*args, **kwargs):
+            # 定义变量 user，赋值为 getattr(g, "current_user", None)
             user = getattr(g, "current_user", None)
+            # 条件判断：如果 not user
             if not user:
+                # 调用 abort()
                 abort(401)
+            # 条件判断：如果 user.role not in roles
             if user.role not in roles:
+                # 调用 abort()
                 abort(403)
+            # 返回 f(*args, **kwargs)
             return f(*args, **kwargs)
+        # 返回 wrapper
         return wrapper
+    # 返回 deco
     return deco
 
+# 定义函数 owner_or_role_required，参数: *roles, get_resource=None
 def owner_or_role_required(*roles, get_resource=None):
+    # """允许角色或资源所有者"""
     """允许角色或资源所有者"""
+    # 定义函数 deco，参数: f
     def deco(f):
+        # 装饰器：wraps
         @wraps(f)
+        # 定义函数 wrapper，参数: *args, **kwargs
         def wrapper(*args, **kwargs):
+            # 定义变量 user，赋值为 g.current_user
             user = g.current_user
+            # 条件判断：如果 not user
             if not user:
+                # 调用 abort()
                 abort(401)
+            # 定义变量 resource，赋值为 get_resource(*args, **kwargs) if get_resource...
             resource = get_resource(*args, **kwargs) if get_resource else None
+            # 条件判断：如果 user.role in roles
             if user.role in roles:
+                # 返回 f(*args, **kwargs)
                 return f(*args, **kwargs)
+            # 条件判断：如果 resource and getattr(resource, "author_id", None) == user.id
             if resource and getattr(resource, "author_id", None) == user.id:
+                # 返回 f(*args, **kwargs)
                 return f(*args, **kwargs)
+            # 调用 abort()
             abort(403)
+        # 返回 wrapper
         return wrapper
+    # 返回 deco
     return deco
 
 # 3. 视图
+# 定义函数 get_post，参数: pid
 def get_post(pid):
+    # 返回 Post.query.get_or_404(pid)
     return Post.query.get_or_404(pid)
 
+# 装饰器：app.route
 @app.route("/posts/<int:pid>/edit", methods=["GET", "POST"])
+# 装饰器：login_required
 @login_required
+# 装饰器：owner_or_role_required
 @owner_or_role_required("admin", "editor", get_resource=get_post)
+# 定义函数 edit_post，参数: pid
 def edit_post(pid):
+    # 定义变量 post，赋值为 get_post(pid)
     post = get_post(pid)
     # ...
 
+# 装饰器：app.route
 @app.route("/admin/users")
+# 装饰器：login_required
 @login_required
+# 装饰器：role_required
 @role_required("admin")
+# 定义函数 admin_users，参数: 
 def admin_users():
+    # 定义变量 users，赋值为 User.query.all()
     users = User.query.all()
     # ...
 
+# 装饰器：app.route
 @app.route("/api/posts/<int:pid>", methods=["DELETE"])
+# 装饰器：login_required
 @login_required
+# 定义函数 api_delete_post，参数: pid
 def api_delete_post(pid):
+    # 定义变量 post，赋值为 get_post(pid)
     post = get_post(pid)
+    # 条件判断：如果 not can_delete_post(g.current_user, post)
     if not can_delete_post(g.current_user, post):
+        # 返回 jsonify({"error": "无权删除"}), 403
         return jsonify({"error": "无权删除"}), 403
+    # 调用 db.session.delete()
     db.session.delete(post)
+    # 调用 db.session.commit()
     db.session.commit()
+    # 返回 "", 204
     return "", 204
 \`\`\`
 

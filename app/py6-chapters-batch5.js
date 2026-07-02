@@ -15,29 +15,33 @@ Python 提供了多种导入模块的方式：
 
 #### 1. import 模块名 —— 导入整个模块
 
-\`\`\`python
+\`\`\`python# 导入标准库 math 模块，提供数学函数和常量
 import math
+# 通过 模块名.属性 访问模块内容，pi 是圆周率常量
 print(math.pi)  # 必须用 模块名.属性 的方式访问
 \`\`\`
 
 #### 2. import 模块名 as 别名 —— 导入模块并起别名
 
-\`\`\`python
+\`\`\`python# import 模块 as 别名：给模块起短别名，调用时用别名代替模块名
 import numpy as np  # 常用库都有约定俗成的别名
+# 也可给 math 起别名 m，之后写 m.sqrt 即可
 # import math as m
 \`\`\`
 
 #### 3. from 模块名 import 成员 —— 导入指定成员
 
-\`\`\`python
+\`\`\`python# 从 math 模块直接导入 pi 和 sqrt，使用时无需模块名前缀
 from math import pi, sqrt
+# 直接引用 pi，无需写 math.pi
 print(pi)        # 直接使用，无需模块名前缀
+# 调用 sqrt 计算 16 的平方根，结果为 4.0
 print(sqrt(16))
 \`\`\`
 
 #### 4. from 模块名 import * —— 导入所有公开成员（不推荐）
 
-\`\`\`python
+\`\`\`python# 星号导入会把模块所有公开名字引入当前命名空间，不推荐使用
 from math import *  # 会污染命名空间，容易产生名字冲突
 \`\`\`
 
@@ -125,8 +129,9 @@ Python 导入模块后，会把模块对象存在 \`sys.modules\` 字典中。�
 
 如果你在程序运行期间修改了模块文件，可以用 \`importlib.reload()\` 强制重新加载：
 
-\`\`\`python
+\`\`\`python# 导入 importlib 模块，提供运行时重新加载模块的能力
 import importlib
+# reload 重新加载已导入的模块，常用于调试时让模块修改立即生效
 importlib.reload(模块名)
 \`\`\`
 
@@ -219,9 +224,11 @@ Python 找到第一个匹配的模块就停止搜索。如果你的当前目录�
 
 ### 查看 sys.path
 
-\`\`\`python
+\`\`\`python# 导入 sys 模块，提供与解释器相关的变量和函数
 import sys
+# 遍历 sys.path 列表，其中存放 Python 查找模块的搜索路径
 for p in sys.path:
+    # 打印每一条搜索路径
     print(p)
 \`\`\`
 
@@ -229,8 +236,9 @@ for p in sys.path:
 
 如果你有自己的模块放在其他目录，可以临时添加：
 
-\`\`\`python
+\`\`\`python# 导入 sys 模块以操作模块搜索路径
 import sys
+# 向搜索路径列表追加自定义目录，之后即可导入该目录下的模块
 sys.path.append('/path/to/my/modules')
 \`\`\`
 
@@ -329,15 +337,18 @@ my_package/          # 包目录
 ### 绝对导入 vs 相对导入
 
 **绝对导入**（推荐）：从项目根目录开始写完整路径
-\`\`\`python
+\`\`\`python# 从包的子包中导入 module3，包之间用点号分层
 from my_package.sub_package import module3
+# 直接导入包内 module1，调用时需写完整路径 my_package.module1.xxx
 import my_package.module1
 \`\`\`
 
 **相对导入**：用 . 表示当前目录，.. 表示上级目录
-\`\`\`python
+\`\`\`python# 相对导入：. 表示当前包，导入同目录的 module1
 from . import module1           # 同目录的 module1
+# .. 表示上一级包，导入上级目录的 module2
 from .. import module2          # 上级目录的 module2
+# 从当前包的子包 sub_package 导入 module3
 from .sub_package import module3  # 子目录
 \`\`\`
 
@@ -764,8 +775,9 @@ print("numpy>=1.24.0")
 
 你可能经常在 Python 文件末尾看到这段神秘代码：
 
-\`\`\`python
+\`\`\`python# 直接运行本文件时 __name__ 等于 '__main__'，被导入时不执行下方代码
 if __name__ == '__main__':
+    # 此处放仅用于本文件直接运行时的测试代码
     # 测试代码...
 \`\`\`
 
@@ -798,20 +810,27 @@ if __name__ == '__main__':
 
 ### 典型结构
 
-\`\`\`python
+\`\`\`python# shebang 行，指定用 python3 解释器运行本脚本
 #!/usr/bin/env python3
+# 模块开头的三引号字符串为模块文档，可用 __doc__ 访问
 """模块文档字符串"""
 
+# 定义问候函数，name 为参数，返回问候字符串
 def greet(name):
+    # 用 f-string 把 name 插入字符串
     return f"Hello, {name}!"
 
+# 定义加法函数，a、b 为参数，返回两数之和
 def add(a, b):
     return a + b
 
 # 文件末尾
+# 仅在直接运行本文件时执行，被 import 时不执行
 if __name__ == '__main__':
     # 这里的代码只有直接运行时才会执行
+    # 调用 greet 并打印结果
     print(greet("World"))
+    # 调用 add 并打印结果
     print(add(3, 5))
 \`\`\`
 `,
@@ -872,10 +891,13 @@ print("  4. __name__ 的值是 'this_module'（模块名）")
 
 \`dir()\` 返回一个列表，包含对象的所有属性和方法名。
 
-\`\`\`python
+\`\`\`python# 导入 math 模块
 import math
+# dir() 返回对象的所有属性和方法名列表
 print(dir(math))       # 查看 math 模块有什么
+# 传入字符串实例，查看 str 类型提供的方法
 print(dir("hello"))    # 查看字符串有什么方法
+# 传入空列表实例，查看 list 类型提供的方法
 print(dir([]))         # 查看列表有什么方法
 \`\`\`
 
@@ -888,11 +910,15 @@ print(dir([]))         # 查看列表有什么方法
 - 参数信息
 - 使用示例
 
-\`\`\`python
+\`\`\`python# 导入 math 模块
 import math
+# help() 打印对象的帮助文档，比 dir 更详细
 help(math)        # 查看 math 模块完整帮助
+# 查看具体函数 sqrt 的用法说明
 help(math.sqrt)   # 查看 sqrt 函数的帮助
+# 查看 str 字符串类的帮助
 help(str)         # 查看字符串类的帮助
+# 查看 split 方法的帮助
 help(str.split)   # 查看 split 方法的帮助
 \`\`\`
 
@@ -1504,12 +1530,12 @@ macOS/Linux 路径用正斜杠 \`/home/user/file.txt\`
 ### 路径拼接的正确方式
 
 ❌ 错误写法（不跨平台）：
-\`\`\`python
+\`\`\`python# 字符串拼接路径分隔符固定为 /，在 Windows 上可能不兼容
 path = dir + "/" + filename  # Windows上可能出错
 \`\`\`
 
 ✅ 正确写法：
-\`\`\`python
+\`\`\`python# 用 os.path.join 拼接路径，自动适配当前系统的路径分隔符
 path = os.path.join(dir, filename)  # 自动处理分隔符
 \`\`\`
 
@@ -1657,55 +1683,78 @@ Python 3.4 引入了 \`pathlib\` 模块，用**面向对象**的方式处理路�
 
 ### Path 对象的基本用法
 
-\`\`\`python
+\`\`\`python# 从 pathlib 导入 Path 类，提供面向对象的路径操作
 from pathlib import Path
 
 # 创建 Path 对象
+# 用字符串构造一个指定路径对象
 p = Path('/home/user/docs')       # 指定路径
+# 返回当前用户主目录的 Path 对象
 p = Path.home()                    # 用户主目录
+# 返回当前工作目录的 Path 对象
 p = Path.cwd()                     # 当前工作目录
+# __file__ 是当前文件路径，.parent 取其所在目录
 p = Path(__file__).parent          # 当前文件所在目录
 
 # 用 / 运算符拼接路径（核心亮点！）
+# Path 重载了 / 运算符，可像字符串一样直观地拼接路径
 file_path = Path.cwd() / 'data' / 'readme.txt'
 
 # 判断和属性
+# exists 判断路径是否存在，返回布尔值
 file_path.exists()      # 是否存在
+# is_file 判断是否为普通文件
 file_path.is_file()     # 是否是文件
+# is_dir 判断是否为目录
 file_path.is_dir()      # 是否是目录
+# name 属性返回完整文件名（含扩展名）
 file_path.name          # 文件名 'readme.txt'
+# stem 属性返回不含扩展名的主文件名
 file_path.stem          # 主名 'readme'
+# suffix 属性返回扩展名（含点）
 file_path.suffix        # 扩展名 '.txt'
+# parent 属性返回父目录的 Path 对象
 file_path.parent        # 父目录 Path 对象
+# absolute 方法返回对应绝对路径的 Path 对象
 file_path.absolute()    # 绝对路径
 \`\`\`
 
 ### 读写文件（pathlib 自带！）
 
-\`\`\`python
+\`\`\`python# 用文件名构造 Path 对象
 p = Path('hello.txt')
+# write_text 把字符串写入文件，encoding 指定编码
 p.write_text('Hello!', encoding='utf-8')  # 写文件
+# read_text 读取文件全部内容为字符串
 content = p.read_text(encoding='utf-8')   # 读文件
 \`\`\`
 
 ### 遍历目录
 
-\`\`\`python
+\`\`\`python# 构造当前目录的 Path 对象
 p = Path('.')
+# iterdir 返回目录下所有条目（不递归）
 for f in p.iterdir():         # 遍历当前目录
+    # 打印每个条目的文件名
     print(f.name)
+# glob 按模式匹配当前目录下的条目
 for f in p.glob('*.py'):      # 匹配所有 .py 文件
+    # 打印匹配到的 Path 对象
     print(f)
+# rglob 递归匹配所有子目录中的条目
 for f in p.rglob('*.py'):     # 递归匹配所有子目录的 .py 文件
     print(f)
 \`\`\`
 
 ### 创建/删除
 
-\`\`\`python
+\`\`\`python# mkdir 创建目录，exist_ok=True 表示目录已存在时不报错
 Path('new_dir').mkdir(exist_ok=True)       # 创建目录
+# parents=True 表示递归创建缺失的父目录
 Path('new_dir').mkdir(parents=True, exist_ok=True)  # 递归创建
+# unlink 删除指定文件
 Path('file.txt').unlink()                  # 删除文件
+# rmdir 删除空目录，目录非空会报错
 Path('empty_dir').rmdir()                  # 删除空目录
 \`\`\`
 `,

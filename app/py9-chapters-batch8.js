@@ -20,20 +20,20 @@ export const chapters = [
 ## Generic：泛型类
 
 \`\`\`python
-from typing import TypeVar, Generic
+from typing import TypeVar, Generic  # 从 typing 导入 TypeVar, Generic
 
-T = TypeVar("T")
+T = TypeVar("T")  # 赋值变量 T
 
-class Stack(Generic[T]):
-    def __init__(self):
-        self.items: list[T] = []
-    def push(self, x: T) -> None:
-        self.items.append(x)
-    def pop(self) -> T:
-        return self.items.pop()
+class Stack(Generic[T]):  # 定义类 Stack
+    def __init__(self):  # 定义函数 __init__，参数：self
+        self.items: list[T] = []  # 执行操作
+    def push(self, x: T) -> None:  # 定义函数 push，参数：self, x: T
+        self.items.append(x)  # 执行操作
+    def pop(self) -> T:  # 定义函数 pop，参数：self
+        return self.items.pop()  # 返回 self.items.pop()
 
-s: Stack[int] = Stack()
-s.push(1)
+s: Stack[int] = Stack()  # 执行操作
+s.push(1)  # 调用 s.push()
 \`\`\`
 
 \`Stack[int]\` 表示"装 int 的栈"。类型检查器能验证只放 int。
@@ -41,9 +41,9 @@ s.push(1)
 ## Literal：字面量类型
 
 \`\`\`python
-from typing import Literal
+from typing import Literal  # 从 typing 导入 Literal
 
-def set_mode(mode: Literal["r", "w", "a"]) -> None: ...
+def set_mode(mode: Literal["r", "w", "a"]) -> None: ...  # 定义函数 set_mode，参数：mode: Literal["r", "w", "a"]
 \`\`\`
 
 参数只能是 "r"、"w"、"a" 之一，传别的字符串类型检查会报错。
@@ -51,7 +51,7 @@ def set_mode(mode: Literal["r", "w", "a"]) -> None: ...
 ## Final：不可变
 
 \`\`\`python
-from typing import Final
+from typing import Final  # 从 typing 导入 Final
 
 MAX_SIZE: Final[int] = 100    # 不应被修改
 \`\`\`
@@ -59,7 +59,7 @@ MAX_SIZE: Final[int] = 100    # 不应被修改
 ## ClassVar：类变量
 
 \`\`\`python
-class User:
+class User:  # 定义类 User
     count: ClassVar[int] = 0    # 类变量，不是实例变量
     name: str                   # 实例变量
 \`\`\`
@@ -67,16 +67,16 @@ class User:
 ## 函数重载
 
 \`\`\`python
-from typing import overload
+from typing import overload  # 从 typing 导入 overload
 
-@overload
-def parse(x: int) -> int: ...
-@overload
-def parse(x: str) -> str: ...
-def parse(x):
-    if isinstance(x, int):
-        return x * 2
-    return x.upper()
+@overload  # 应用装饰器 overload
+def parse(x: int) -> int: ...  # 定义函数 parse，参数：x: int
+@overload  # 应用装饰器 overload
+def parse(x: str) -> str: ...  # 定义函数 parse，参数：x: str
+def parse(x):  # 定义函数 parse，参数：x
+    if isinstance(x, int):  # 如果 isinstance(x, int)
+        return x * 2  # 返回 x * 2
+    return x.upper()  # 返回 x.upper()
 \`\`\`
 
 让类型检查器知道不同输入对应不同输出。
@@ -84,10 +84,10 @@ def parse(x):
 ## Protocol：结构子类型
 
 \`\`\`python
-from typing import Protocol
+from typing import Protocol  # 从 typing 导入 Protocol
 
-class Closeable(Protocol):
-    def close(self) -> None: ...
+class Closeable(Protocol):  # 定义类 Closeable
+    def close(self) -> None: ...  # 定义函数 close，参数：self
 \`\`\`
 
 不继承，只要有 \`close\` 方法就算 \`Closeable\`。鸭子类型的类型化。
@@ -376,14 +376,14 @@ print(f"  长度>5大写: {result}")`
 ## asyncio 基础
 
 \`\`\`python
-import asyncio
+import asyncio  # 导入模块 asyncio
 
-async def hello():
-    print("hello")
+async def hello():  # 定义异步函数 hello
+    print("hello")  # 打印输出到屏幕
     await asyncio.sleep(1)    # 模拟耗时
-    print("world")
+    print("world")  # 打印输出到屏幕
 
-asyncio.run(hello())
+asyncio.run(hello())  # 调用 asyncio.run()：运行
 \`\`\`
 
 ## async def 与 await
@@ -392,10 +392,10 @@ asyncio.run(hello())
 - \`await\`：等待另一个协程完成
 
 \`\`\`python
-async def task():
+async def task():  # 定义异步函数 task
     await asyncio.sleep(1)    # 等待
 
-asyncio.run(task())
+asyncio.run(task())  # 调用 asyncio.run()：运行
 \`\`\`
 
 ⚠️ 协程不会自动执行，必须 \`await\` 或用 \`asyncio.run\`。
@@ -403,21 +403,21 @@ asyncio.run(task())
 ## 并发执行：gather
 
 \`\`\`python
-async def t1(): await asyncio.sleep(1)
-async def t2(): await asyncio.sleep(1)
+async def t1(): await asyncio.sleep(1)  # 定义异步函数 t1
+async def t2(): await asyncio.sleep(1)  # 定义异步函数 t2
 
 # 串行：2秒
-await t1()
-await t2()
+await t1()  # 执行操作
+await t2()  # 执行操作
 
 # 并发：1秒
-await asyncio.gather(t1(), t2())
+await asyncio.gather(t1(), t2())  # 执行操作
 \`\`\`
 
 ## 创建任务：create_task
 
 \`\`\`python
-task = asyncio.create_task(t1())
+task = asyncio.create_task(t1())  # 赋值变量 task
 # 做别的事
 await task    # 等待完成
 \`\`\`
@@ -657,20 +657,20 @@ asyncio.run(main9())`
 ## 异步队列：asyncio.Queue
 
 \`\`\`python
-import asyncio
+import asyncio  # 导入模块 asyncio
 
-async def producer(q):
-    for i in range(5):
-        await q.put(i)
-        await asyncio.sleep(0.1)
+async def producer(q):  # 定义异步函数 producer，参数：q
+    for i in range(5):  # 遍历 range(5)，取值给 i
+        await q.put(i)  # 执行操作
+        await asyncio.sleep(0.1)  # 执行操作
 
-async def consumer(q):
-    while True:
-        item = await q.get()
-        print(item)
-        q.task_done()
+async def consumer(q):  # 定义异步函数 consumer，参数：q
+    while True:  # 当 True 时循环
+        item = await q.get()  # 赋值变量 item
+        print(item)  # 打印输出到屏幕
+        q.task_done()  # 调用 q.task_done()：标记任务完成
 
-q = asyncio.Queue()
+q = asyncio.Queue()  # 赋值变量 q
 \`\`\`
 
 生产者-消费者模式，解耦生产与消费。
@@ -678,16 +678,16 @@ q = asyncio.Queue()
 ## 异步锁：asyncio.Lock
 
 \`\`\`python
-lock = asyncio.Lock()
-async with lock:
+lock = asyncio.Lock()  # 赋值变量 lock
+async with lock:  # 执行操作
     # 临界区，同时只有一个协程
-    ...
+    ...  # 执行操作
 \`\`\`
 
 ## 异步事件：asyncio.Event
 
 \`\`\`python
-event = asyncio.Event()
+event = asyncio.Event()  # 赋值变量 event
 await event.wait()    # 等待事件
 event.set()           # 触发事件
 \`\`\`
@@ -695,44 +695,44 @@ event.set()           # 触发事件
 ## 异步上下文管理器
 
 \`\`\`python
-class AsyncResource:
-    async def __aenter__(self):
-        await self.connect()
-        return self
-    async def __aexit__(self, *args):
-        await self.close()
+class AsyncResource:  # 定义类 AsyncResource
+    async def __aenter__(self):  # 定义异步函数 __aenter__，参数：self
+        await self.connect()  # 执行操作
+        return self  # 返回 self
+    async def __aexit__(self, *args):  # 定义异步函数 __aexit__，参数：self, *args
+        await self.close()  # 执行操作
 
-async with AsyncResource() as r:
-    ...
+async with AsyncResource() as r:  # 执行操作
+    ...  # 执行操作
 \`\`\`
 
 ## 异步生成器
 
 \`\`\`python
-async def agen():
-    for i in range(5):
-        await asyncio.sleep(0.1)
-        yield i
+async def agen():  # 定义异步函数 agen
+    for i in range(5):  # 遍历 range(5)，取值给 i
+        await asyncio.sleep(0.1)  # 执行操作
+        yield i  # 生成值：i
 
-async for x in agen():
-    print(x)
+async for x in agen():  # 执行操作
+    print(x)  # 打印输出到屏幕
 \`\`\`
 
 ## 异步迭代器类
 
 \`\`\`python
-class AsyncCounter:
-    def __init__(self, n):
-        self.n = n
-    def __aiter__(self):
-        self.i = 0
-        return self
-    async def __anext__(self):
-        if self.i >= self.n:
-            raise StopAsyncIteration
-        await asyncio.sleep(0.1)
-        self.i += 1
-        return self.i
+class AsyncCounter:  # 定义类 AsyncCounter
+    def __init__(self, n):  # 定义函数 __init__，参数：self, n
+        self.n = n  # 执行操作
+    def __aiter__(self):  # 定义函数 __aiter__，参数：self
+        self.i = 0  # 执行操作
+        return self  # 返回 self
+    async def __anext__(self):  # 定义异步函数 __anext__，参数：self
+        if self.i >= self.n:  # 如果 self.i >= self.n
+            raise StopAsyncIteration  # 抛出异常：StopAsyncIteration
+        await asyncio.sleep(0.1)  # 执行操作
+        self.i += 1  # 执行操作
+        return self.i  # 返回 self.i
 \`\`\`
 
 ## 本章 demo
@@ -1058,12 +1058,12 @@ asyncio.run(main10())`
 
 \`\`\`python
 # math_utils.py
-def add(a, b):
-    return a + b
+def add(a, b):  # 定义函数 add，参数：a, b
+    return a + b  # 返回 a + b
 
 # main.py
-import math_utils
-math_utils.add(1, 2)
+import math_utils  # 导入模块 math_utils
+math_utils.add(1, 2)  # 调用 math_utils.add()：添加元素
 \`\`\`
 
 ## 导入方式
@@ -1090,8 +1090,8 @@ myproject/
 \`\`\`
 
 \`\`\`python
-from utils.math_tools import add
-from utils.string_tools import capitalize
+from utils.math_tools import add  # 从 utils.math_tools 导入 add
+from utils.string_tools import capitalize  # 从 utils.string_tools 导入 capitalize
 \`\`\`
 
 ## __init__.py 的作用
@@ -1106,11 +1106,11 @@ Python 3.3+ 有"命名空间包"，可以没有 \`__init__.py\`。
 
 \`\`\`python
 # mymodule.py
-def main():
-    print("运行")
+def main():  # 定义函数 main
+    print("运行")  # 打印输出到屏幕
 
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__":  # 如果 __name__ == "__main__"
+    main()  # 调用 main()
 \`\`\`
 
 - 直接运行：\`__name__\` 是 \`"__main__"\`，会执行
@@ -1125,8 +1125,8 @@ Python 找模块的顺序：
 4. 第三方库（site-packages）
 
 \`\`\`python
-import sys
-print(sys.path)
+import sys  # 导入模块 sys
+print(sys.path)  # 打印输出到屏幕
 \`\`\`
 
 ## 相对导入
@@ -1416,19 +1416,19 @@ BaseException
 ## 自定义异常
 
 \`\`\`python
-class AppError(Exception):
-    """应用基础异常"""
-    pass
+class AppError(Exception):  # 定义类 AppError
+    """应用基础异常"""  # 执行操作
+    pass  # 空操作，占位符
 
-class NotFoundError(AppError):
-    """找不到"""
-    pass
+class NotFoundError(AppError):  # 定义类 NotFoundError
+    """找不到"""  # 执行操作
+    pass  # 空操作，占位符
 
-class DatabaseError(AppError):
-    """数据库错误"""
-    def __init__(self, message, query=None):
-        super().__init__(message)
-        self.query = query
+class DatabaseError(AppError):  # 定义类 DatabaseError
+    """数据库错误"""  # 执行操作
+    def __init__(self, message, query=None):  # 定义函数 __init__，参数：self, message, query=None
+        super().__init__(message)  # 调用父类
+        self.query = query  # 执行操作
 \`\`\`
 
 自定义异常让错误处理更清晰、更有针对性。
@@ -1436,9 +1436,9 @@ class DatabaseError(AppError):
 ## 异常链：raise from
 
 \`\`\`python
-try:
-    int("abc")
-except ValueError as e:
+try:  # 尝试执行可能出错的代码
+    int("abc")  # 转为整数
+except ValueError as e:  # 捕获异常 ValueError
     raise AppError("解析失败") from e    # 保留原因
 \`\`\`
 
@@ -1447,13 +1447,13 @@ except ValueError as e:
 ## 异常组（Python 3.11+）
 
 \`\`\`python
-try:
-    raise ExceptionGroup("多个错误", [
-        ValueError("值错"),
-        TypeError("类型错"),
+try:  # 尝试执行可能出错的代码
+    raise ExceptionGroup("多个错误", [  # 抛出异常：ExceptionGroup("多个错误", [
+        ValueError("值错"),  # 调用 ValueError()
+        TypeError("类型错"),  # 调用 TypeError()
     ])
-except* ValueError: ...
-except* TypeError: ...
+except* ValueError: ...  # 捕获异常
+except* TypeError: ...  # 捕获异常
 \`\`\`
 
 \`except*\` 同时处理多种异常。
@@ -1461,17 +1461,17 @@ except* TypeError: ...
 ## finally 与资源清理
 
 \`\`\`python
-try:
-    f = open("f.txt")
+try:  # 尝试执行可能出错的代码
+    f = open("f.txt")  # 赋值变量 f
     # ...
-finally:
+finally:  # 无论是否异常都执行
     f.close()    # 无论是否异常都执行
 \`\`\`
 
 更推荐用 \`with\`：
 
 \`\`\`python
-with open("f.txt") as f:
+with open("f.txt") as f:  # 使用上下文管理器：open("f.txt") as f
     # ...
 # 自动 close
 \`\`\`
@@ -1481,10 +1481,10 @@ with open("f.txt") as f:
 \`__exit__\` 返回 True 会抑制异常：
 
 \`\`\`python
-class Suppressor:
-    def __enter__(self):
-        return self
-    def __exit__(self, exc_type, exc, tb):
+class Suppressor:  # 定义类 Suppressor
+    def __enter__(self):  # 定义函数 __enter__，参数：self
+        return self  # 返回 self
+    def __exit__(self, exc_type, exc, tb):  # 定义函数 __exit__，参数：self, exc_type, exc, tb
         return True    # 吞掉异常
 \`\`\`
 
@@ -2148,18 +2148,18 @@ print("• 工具：poetry / uv / pip-tools")`
 ## 基本结构
 
 \`\`\`python
-import unittest
+import unittest  # 导入模块 unittest
 
-class TestStringMethods(unittest.TestCase):
-    def test_upper(self):
-        self.assertEqual("hello".upper(), "HELLO")
+class TestStringMethods(unittest.TestCase):  # 定义类 TestStringMethods
+    def test_upper(self):  # 定义函数 test_upper，参数：self
+        self.assertEqual("hello".upper(), "HELLO")  # 调用 self.assertEqual()
     
-    def test_split(self):
-        s = "hello world"
-        self.assertEqual(s.split(), ["hello", "world"])
+    def test_split(self):  # 定义函数 test_split，参数：self
+        s = "hello world"  # 定义字符串 s
+        self.assertEqual(s.split(), ["hello", "world"])  # 调用 self.assertEqual()
 
-if __name__ == "__main__":
-    unittest.main()
+if __name__ == "__main__":  # 如果 __name__ == "__main__"
+    unittest.main()  # 调用 unittest.main()
 \`\`\`
 
 ## 测试类规则
@@ -2187,14 +2187,14 @@ self.assertRaises(ValueError)  # 期望抛异常
 ## setUp / tearDown
 
 \`\`\`python
-class TestXxx(unittest.TestCase):
-    def setUp(self):
+class TestXxx(unittest.TestCase):  # 定义类 TestXxx
+    def setUp(self):  # 定义函数 setUp，参数：self
         # 每个测试前执行
-        self.data = []
+        self.data = []  # 执行操作
     
-    def tearDown(self):
+    def tearDown(self):  # 定义函数 tearDown，参数：self
         # 每个测试后执行
-        pass
+        pass  # 空操作，占位符
 \`\`\`
 
 ## setUpClass / tearDownClass
@@ -2202,16 +2202,16 @@ class TestXxx(unittest.TestCase):
 类级别，所有测试共享一次：
 
 \`\`\`python
-@classmethod
-def setUpClass(cls):
-    cls.db = connect()
+@classmethod  # 应用装饰器 classmethod
+def setUpClass(cls):  # 定义函数 setUpClass，参数：cls
+    cls.db = connect()  # 执行操作
 \`\`\`
 
 ## 异常测试
 
 \`\`\`python
-with self.assertRaises(ValueError):
-    int("abc")
+with self.assertRaises(ValueError):  # 使用上下文管理器：self.assertRaises(ValueError)
+    int("abc")  # 转为整数
 \`\`\`
 
 ## 测试发现
@@ -2464,11 +2464,11 @@ pip install pytest
 
 \`\`\`python
 # test_xxx.py
-def test_add():
-    assert add(1, 2) == 3
+def test_add():  # 定义函数 test_add
+    assert add(1, 2) == 3  # 断言：add(1, 2) == 3
 
-def test_divide():
-    assert divide(10, 2) == 5
+def test_divide():  # 定义函数 test_divide
+    assert divide(10, 2) == 5  # 断言：divide(10, 2) == 5
 \`\`\`
 
 运行：\`pytest\` 或 \`pytest test_xxx.py\`
@@ -2478,8 +2478,8 @@ def test_divide():
 pytest 重写 \`assert\`，失败时显示详细对比：
 
 \`\`\`python
-def test_list():
-    assert [1, 2, 3] == [1, 2, 4]
+def test_list():  # 定义函数 test_list
+    assert [1, 2, 3] == [1, 2, 4]  # 断言：[1, 2, 3] == [1, 2, 4]
 \`\`\`
 
 失败会显示哪个元素不同。
@@ -2487,15 +2487,15 @@ def test_list():
 ## 断言异常：raises
 
 \`\`\`python
-import pytest
+import pytest  # 导入模块 pytest
 
-def test_zero_division():
-    with pytest.raises(ZeroDivisionError):
-        1 / 0
+def test_zero_division():  # 定义函数 test_zero_division
+    with pytest.raises(ZeroDivisionError):  # 使用上下文管理器：pytest.raises(ZeroDivisionError)
+        1 / 0  # 执行操作
 
-def test_value_error():
-    with pytest.raises(ValueError, match="invalid"):
-        int("abc")
+def test_value_error():  # 定义函数 test_value_error
+    with pytest.raises(ValueError, match="invalid"):  # 使用上下文管理器：pytest.raises(ValueError, match="invalid")
+        int("abc")  # 转为整数
 \`\`\`
 
 \`match\` 用正则匹配异常消息。
@@ -2503,12 +2503,12 @@ def test_value_error():
 ## fixture：测试夹具
 
 \`\`\`python
-@pytest.fixture
-def sample_data():
-    return [1, 2, 3, 4, 5]
+@pytest.fixture  # 应用装饰器 pytest
+def sample_data():  # 定义函数 sample_data
+    return [1, 2, 3, 4, 5]  # 返回 [1, 2, 3, 4, 5]
 
-def test_sum(sample_data):
-    assert sum(sample_data) == 15
+def test_sum(sample_data):  # 定义函数 test_sum，参数：sample_data
+    assert sum(sample_data) == 15  # 断言：sum(sample_data) == 15
 \`\`\`
 
 fixture 是测试的"准备工作"，自动注入。
@@ -2525,9 +2525,9 @@ fixture 是测试的"准备工作"，自动注入。
 ## yield fixture（带清理）
 
 \`\`\`python
-@pytest.fixture
-def db():
-    conn = connect()
+@pytest.fixture  # 应用装饰器 pytest
+def db():  # 定义函数 db
+    conn = connect()  # 赋值变量 conn
     yield conn    # 测试用
     conn.close()  # 测试后清理
 \`\`\`
@@ -2535,13 +2535,13 @@ def db():
 ## 参数化测试
 
 \`\`\`python
-@pytest.mark.parametrize("a,b,expected", [
-    (1, 2, 3),
-    (10, 20, 30),
-    (-1, 1, 0),
+@pytest.mark.parametrize("a,b,expected", [  # 应用装饰器 pytest
+    (1, 2, 3),  # 执行操作
+    (10, 20, 30),  # 执行操作
+    (-1, 1, 0),  # 执行操作
 ])
-def test_add(a, b, expected):
-    assert add(a, b) == expected
+def test_add(a, b, expected):  # 定义函数 test_add，参数：a, b, expected
+    assert add(a, b) == expected  # 断言：add(a, b) == expected
 \`\`\`
 
 一个测试函数测多组数据。
@@ -2549,13 +2549,13 @@ def test_add(a, b, expected):
 ## mark 标记
 
 \`\`\`python
-@pytest.mark.slow
-def test_big():
-    ...
+@pytest.mark.slow  # 应用装饰器 pytest
+def test_big():  # 定义函数 test_big
+    ...  # 执行操作
 
-@pytest.mark.skip(reason="还没实现")
-def test_todo():
-    ...
+@pytest.mark.skip(reason="还没实现")  # 应用装饰器 pytest
+def test_todo():  # 定义函数 test_todo
+    ...  # 执行操作
 
 # 运行：pytest -m "not slow"
 \`\`\`
@@ -2896,11 +2896,11 @@ print(commands)`
 ## print 调试
 
 \`\`\`python
-def buggy(x):
-    print(f"DEBUG: x = {x}, type = {type(x)}")
-    result = x * 2
-    print(f"DEBUG: result = {result}")
-    return result
+def buggy(x):  # 定义函数 buggy，参数：x
+    print(f"DEBUG: x = {x}, type = {type(x)}")  # 打印输出到屏幕
+    result = x * 2  # 赋值变量 result
+    print(f"DEBUG: result = {result}")  # 打印输出到屏幕
+    return result  # 返回 result
 \`\`\`
 
 简单有效，但要记得调试完删掉。
@@ -2908,13 +2908,13 @@ def buggy(x):
 ## logging 调试
 
 \`\`\`python
-import logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+import logging  # 导入模块 logging
+logging.basicConfig(level=logging.DEBUG)  # 调用 logging.basicConfig()
+logger = logging.getLogger(__name__)  # 赋值变量 logger
 
-def buggy(x):
-    logger.debug(f"x = {x}")
-    ...
+def buggy(x):  # 定义函数 buggy，参数：x
+    logger.debug(f"x = {x}")  # 调用 logger.debug()
+    ...  # 执行操作
 \`\`\`
 
 比 print 好：可控制级别、可写到文件。
@@ -2947,11 +2947,11 @@ breakpoint()    # 自动调用 pdb
 ## 异常堆栈分析
 
 \`\`\`python
-import traceback
-try:
-    ...
-except:
-    traceback.print_exc()
+import traceback  # 导入模块 traceback
+try:  # 尝试执行可能出错的代码
+    ...  # 执行操作
+except:  # 捕获异常
+    traceback.print_exc()  # 调用 traceback.print_exc()
 \`\`\`
 
 看堆栈定位问题。
@@ -3243,10 +3243,10 @@ for nums, expected in test_cases:
 ## 简单计时
 
 \`\`\`python
-import time
-start = time.time()
+import time  # 导入模块 time
+start = time.time()  # 赋值变量 start
 # 代码
-elapsed = time.time() - start
+elapsed = time.time() - start  # 赋值变量 elapsed
 \`\`\`
 
 \`time.perf_counter()\` 更精确（纳秒级）。
@@ -3254,9 +3254,9 @@ elapsed = time.time() - start
 ## timeit
 
 \`\`\`python
-import timeit
-timeit.timeit("sum(range(100))", number=10000)
-timeit.timeit("[i**2 for i in range(100)]", number=10000)
+import timeit  # 导入模块 timeit
+timeit.timeit("sum(range(100))", number=10000)  # 调用 timeit.timeit()
+timeit.timeit("[i**2 for i in range(100)]", number=10000)  # 调用 timeit.timeit()
 \`\`\`
 
 测试小代码片段，自动重复。
@@ -3264,8 +3264,8 @@ timeit.timeit("[i**2 for i in range(100)]", number=10000)
 ## cProfile
 
 \`\`\`python
-import cProfile
-cProfile.run("my_function()")
+import cProfile  # 导入模块 cProfile
+cProfile.run("my_function()")  # 调用 cProfile.run()：运行
 \`\`\`
 
 输出每个函数的调用次数、耗时。
@@ -3277,17 +3277,17 @@ python -m cProfile -s cumtime my_script.py
 ## 装饰器计时
 
 \`\`\`python
-import time
-from functools import wraps
+import time  # 导入模块 time
+from functools import wraps  # 从 functools 导入 wraps
 
-def timed(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        start = time.time()
-        result = func(*args, **kwargs)
-        print(f"{func.__name__}: {time.time()-start:.4f}s")
-        return result
-    return wrapper
+def timed(func):  # 定义函数 timed，参数：func
+    @wraps(func)  # 应用装饰器 wraps
+    def wrapper(*args, **kwargs):  # 定义函数 wrapper，参数：*args, **kwargs
+        start = time.time()  # 赋值变量 start
+        result = func(*args, **kwargs)  # 赋值变量 result
+        print(f"{func.__name__}: {time.time()-start:.4f}s")  # 打印输出到屏幕
+        return result  # 返回 result
+    return wrapper  # 返回 wrapper
 \`\`\`
 
 ## 性能优化思路
@@ -3302,12 +3302,12 @@ def timed(func):
 ## lru_cache 缓存
 
 \`\`\`python
-from functools import lru_cache
+from functools import lru_cache  # 从 functools 导入 lru_cache
 
-@lru_cache(maxsize=128)
-def fib(n):
-    if n < 2: return n
-    return fib(n-1) + fib(n-2)
+@lru_cache(maxsize=128)  # 应用装饰器 lru_cache
+def fib(n):  # 定义函数 fib，参数：n
+    if n < 2: return n  # 如果 n < 2
+    return fib(n-1) + fib(n-2)  # 返回 fib(n-1) + fib(n-2)
 \`\`\`
 
 重复调用同一参数直接返回缓存结果。
@@ -3655,21 +3655,21 @@ print(f"  结果一致: {r1 == r2 == r3}")`
 \`with\` 调用对象的 \`__enter__\` 和 \`__exit__\`：
 
 \`\`\`python
-with obj as x:
+with obj as x:  # 使用上下文管理器：obj as x
     # __enter__ 已调用，x 是返回值
-    ...
+    ...  # 执行操作
 # __exit__ 自动调用，即使异常
 \`\`\`
 
 ## 自定义上下文管理器
 
 \`\`\`python
-class MyContext:
-    def __enter__(self):
-        print("进入")
+class MyContext:  # 定义类 MyContext
+    def __enter__(self):  # 定义函数 __enter__，参数：self
+        print("进入")  # 打印输出到屏幕
         return self    # as 变量接收的值
-    def __exit__(self, exc_type, exc, tb):
-        print("退出")
+    def __exit__(self, exc_type, exc, tb):  # 定义函数 __exit__，参数：self, exc_type, exc, tb
+        print("退出")  # 打印输出到屏幕
         return False    # 不抑制异常
 \`\`\`
 
@@ -3678,10 +3678,10 @@ class MyContext:
 \`__exit__\` 接收异常信息：
 
 \`\`\`python
-def __exit__(self, exc_type, exc, tb):
-    if exc_type is not None:
+def __exit__(self, exc_type, exc, tb):  # 定义函数 __exit__，参数：self, exc_type, exc, tb
+    if exc_type is not None:  # 如果 exc_type is not None
         # 有异常
-        print(f"异常: {exc}")
+        print(f"异常: {exc}")  # 打印输出到屏幕
     return False    # False: 不抑制；True: 抑制
 \`\`\`
 
@@ -3690,15 +3690,15 @@ def __exit__(self, exc_type, exc, tb):
 用生成器简化：
 
 \`\`\`python
-from contextlib import contextmanager
+from contextlib import contextmanager  # 从 contextlib 导入 contextmanager
 
-@contextmanager
-def my_context():
-    print("进入")
-    try:
+@contextmanager  # 应用装饰器 contextmanager
+def my_context():  # 定义函数 my_context
+    print("进入")  # 打印输出到屏幕
+    try:  # 尝试执行可能出错的代码
         yield "value"    # with 块执行
-    finally:
-        print("退出")
+    finally:  # 无论是否异常都执行
+        print("退出")  # 打印输出到屏幕
 \`\`\`
 
 yield 的值是 \`as\` 接收的。
@@ -3713,24 +3713,24 @@ yield 的值是 \`as\` 接收的。
 ## 多个 with
 
 \`\`\`python
-with open("a") as a, open("b") as b:
-    ...
+with open("a") as a, open("b") as b:  # 使用上下文管理器：open("a") as a, open("b") as b
+    ...  # 执行操作
 
 # 等价
-with ExitStack() as stack:
-    a = stack.enter_context(open("a"))
-    b = stack.enter_context(open("b"))
+with ExitStack() as stack:  # 使用上下文管理器：ExitStack() as stack
+    a = stack.enter_context(open("a"))  # 赋值变量 a
+    b = stack.enter_context(open("b"))  # 赋值变量 b
 \`\`\`
 
 ## 异步上下文管理器
 
 \`\`\`python
-class AsyncCtx:
-    async def __aenter__(self): ...
-    async def __aexit__(self, *args): ...
+class AsyncCtx:  # 定义类 AsyncCtx
+    async def __aenter__(self): ...  # 定义异步函数 __aenter__，参数：self
+    async def __aexit__(self, *args): ...  # 定义异步函数 __aexit__，参数：self, *args
 
-async with AsyncCtx() as x:
-    ...
+async with AsyncCtx() as x:  # 执行操作
+    ...  # 执行操作
 \`\`\`
 
 ## 本章 demo

@@ -57,16 +57,16 @@ Python 选择显式的原因：
 
 \`\`\`python
 class Foo:
-    def __new__(cls, *args, **kwargs):
-        print("1. __new__: 创建实例")
-        instance = super().__new__(cls)
-        return instance
+    def __new__(cls, *args, **kwargs):       # __new__ 是类方法，负责创建并返回实例对象
+        print("1. __new__: 创建实例")          # 先执行：分配内存、创建空对象
+        instance = super().__new__(cls)        # 调用父类 __new__ 真正创建对象，必须返回实例
+        return instance                        # 返回的实例会作为 __init__ 的 self 传入
 
-    def __init__(self, x):
-        print("2. __init__: 初始化")
-        self.x = x
+    def __init__(self, x):                    # __init__ 在 __new__ 之后执行，负责初始化属性
+        print("2. __init__: 初始化")           # 后执行：给已创建的实例绑定属性
+        self.x = x                             # self 是 __new__ 返回的实例对象
 
-Foo(10)  # 先 __new__ 再 __init__
+Foo(10)  # 先 __new__ 再 __init__              # 调用 Foo(10) 时自动依次触发 __new__ → __init__
 \`\`\`
 
 > 99% 的场景只需写 \`__init__\`；只在单例、不可变类型（如 tuple 子类）、元类等特殊场景才重写 \`__new__\`。
@@ -116,14 +116,14 @@ print(b.items)   # [1]  ← b 也看到了！
 
 \`\`\`python
 class Person:
-    def __init__(self, name, age):
-        self.name, self.age = name, age
+    def __init__(self, name, age):           # 实例方法：通过 self 访问实例属性
+        self.name, self.age = name, age       # 元组解包赋值，等价于两行分别赋值
 
-    @classmethod
-    def from_birth_year(cls, name, year):
-        return cls(name, 2026 - year)   # 用 cls 而非 Person
+    @classmethod                              # 类方法装饰器：第一个参数是类本身（cls）而非实例
+    def from_birth_year(cls, name, year):     # cls 接收当前类 Person，用于工厂方法模式
+        return cls(name, 2026 - year)        # 用 cls 而非 Person，子类调用时自动适配子类
 
-p = Person.from_birth_year("bob", 1996)
+p = Person.from_birth_year("bob", 1996)       # 不需实例即可调用，等价于 Person("bob", 30)
 \`\`\`
 
 > 关键：用 \`cls\` 而不是写死 \`Person\`，子类继承后 \`SubPerson.from_birth_year(...)\` 仍返回子类实例。
@@ -146,46 +146,46 @@ p.is_adult(30)        # 实例也能调用
 
 \`\`\`python
 class Person:
-    species = "Homo sapiens"
+    species = "Homo sapiens"   # 类属性：所有实例共享，定义在方法之外
 \`\`\`
 - 定义类 \`Person\`；\`species\` 是类属性，所有实例共享。
 
 \`\`\`python
-    def __init__(self, name, age):
-        self.name = name
+    def __init__(self, name, age):   # 构造方法：实例化时自动调用，self 指向新实例
+        self.name = name              # 实例属性：每个实例独有
         self.age = age
 \`\`\`
 - 构造函数：\`Person("alice", 30)\` 时自动调用；\`self\` 指向新建实例；为实例绑定 \`name\`/\`age\` 两个属性。
 
 \`\`\`python
-    def greet(self):
-        return f"Hi, I'm {self.name}, {self.age} years old."
+    def greet(self):                 # 实例方法：第一个参数永远是 self
+        return f"Hi, I'm {self.name}, {self.age} years old."   # 通过 self 访问实例属性
 \`\`\`
 - 实例方法：通过 \`self.name\` 读取实例属性。
 
 \`\`\`python
-    @classmethod
+    @classmethod                     # 类方法装饰器：第一个参数是类本身（cls）
     def from_birth_year(cls, name, year):
-        return cls(name, 2026 - year)
+        return cls(name, 2026 - year)   # 用 cls 而非 Person，子类调用时自动用子类
 \`\`\`
 - 类方法：\`cls\` 是 \`Person\`（或其子类）；「替代构造器」，通过出生年份算年龄。
 
 \`\`\`python
-    @staticmethod
+    @staticmethod                    # 静态方法：不需要 self/cls，和普通函数一样
     def is_adult(age):
-        return age >= 18
+        return age >= 18             # 逻辑与类相关但不访问实例/类数据
 \`\`\`
 - 静态方法：与类相关但无需 \`self\`/\`cls\`。
 
 \`\`\`python
-p1 = Person("alice", 30)
-p2 = Person.from_birth_year("bob", 1996)
+p1 = Person("alice", 30)            # 调用 __init__ 创建实例
+p2 = Person.from_birth_year("bob", 1996)   # 调用类方法（替代构造器模式）
 \`\`\`
 - \`p1\`：走 \`__init__\`；\`p2\`：走类方法工厂。
 
 \`\`\`python
-print(Person.species)
-print(Person.is_adult(17), Person.is_adult(30))
+print(Person.species)                          # 通过类访问类属性
+print(Person.is_adult(17), Person.is_adult(30))   # 通过类调用静态方法
 \`\`\`
 - 直接通过类名访问类属性、调用静态方法，无需实例。
 
@@ -297,14 +297,14 @@ print(D.__mro__)
 ### 2.4 super() 按 MRO 传递
 \`\`\`python
 class A:
-    def fn(self): return "A"
+    def fn(self): return "A"                       # 基类方法
 class B(A):
-    def fn(self): return "B" + super().fn()
+    def fn(self): return "B" + super().fn()        # super() 按 MRO 调用下一个
 class C(A):
     def fn(self): return "C" + super().fn()
-class D(B, C): pass
+class D(B, C): pass                                # 多继承，MRO 为 D→B→C→A
 
-D().fn()  # "BCA"
+D().fn()  # "BCA"   # B 调 super→C，C 调 super→A，串成 "BCA"
 \`\`\`
 执行 \`D().fn()\`：
 1. D 没有 \`fn\`，按 MRO 找到 B → 输出 "B"，再 \`super().fn()\`；
@@ -376,32 +376,33 @@ class User(LogMixin, SaveMixin):
 ## 六、代码逐行讲解（对应右侧 code）
 
 \`\`\`python
-class Animal(ABC):
+class Animal(ABC):                       # 继承 ABC 才能用 @abstractmethod
     def __init__(self, name):
         self.name = name
     @abstractmethod
-    def speak(self): pass
+    def speak(self): pass                # 抽象方法：子类必须实现，否则不能实例化
     def __repr__(self):
-        return f"{self.__class__.__name__}({self.name!r})"
+        return f"{self.__class__.__name__}({self.name!r})"   # !r 用 repr 格式化
 \`\`\`
 - 继承 \`ABC\` → 抽象类；\`@abstractmethod\` 标记 \`speak\` 必须由子类实现；\`__repr__\` 让 \`print(a)\` 显示 \`Dog('Rex')\`；\`!r\` 调用 \`repr(self.name)\` 加引号。
 
 \`\`\`python
 class Dog(Animal):
-    def speak(self): return f"{self.name}: woof!"
+    def speak(self): return f"{self.name}: woof!"   # 实现抽象方法，Dog 才能实例化
 \`\`\`
 - 继承 Animal 并实现 \`speak\`，方可实例化。
 
 \`\`\`python
+# 多态：不同子类都有 speak，循环里统一调用
 animals = [Dog("Rex"), Cat("Mimi")]
 for a in animals:
-    print(a, "->", a.speak())
+    print(a, "->", a.speak())   # 运行时按实际类型调对应方法
 \`\`\`
 - 多态：同一个循环对不同子类调用 \`speak\`，行为不同。
 
 \`\`\`python
-print(isinstance(animals[0], Dog), isinstance(animals[0], Animal))
-print(issubclass(Dog, Animal), issubclass(Dog, Cat))
+print(isinstance(animals[0], Dog), isinstance(animals[0], Animal))   # True True；子类实例也是父类
+print(issubclass(Dog, Animal), issubclass(Dog, Cat))   # True False
 \`\`\`
 - 验证类型关系：Dog 既是 Dog 也是 Animal 的实例。
 
@@ -597,39 +598,40 @@ add(1, 2)   # → add.__call__(1, 2)
 \`\`\`python
 class Vector:
     def __init__(self, *values):
-        self._values = list(values)
+        self._values = list(values)   # 收集可变参数为 list，_ 前缀约定为内部使用
 \`\`\`
 - 用 \`*values\` 收集任意个参数为 tuple，转成 list 存内部；下划线前缀表示「内部使用」。
 
 \`\`\`python
-    def __repr__(self):
-        return f"Vector({', '.join(map(str, self._values))})"
+    def __repr__(self):               # 定义 repr，print/交互式显示时调用
+        return f"Vector({', '.join(map(str, self._values))})"   # map 把每个值转 str 再用逗号拼
 \`\`\`
 - 返回 \`Vector(1, 2, 3)\` 形式，理论上 \`eval\` 可重建。
 
 \`\`\`python
-    def __getitem__(self, i): return self._values[i]
-    def __setitem__(self, i, v): self._values[i] = v
+    def __getitem__(self, i): return self._values[i]    # 支持 v[i]：取值
+    def __setitem__(self, i, v): self._values[i] = v    # 支持 v[i]=x：赋值
 \`\`\`
 - 委托给内部 list，自动获得索引和切片能力。
 
 \`\`\`python
-    def __iter__(self): return iter(self._values)
-    def __contains__(self, x): return x in self._values
+    def __iter__(self): return iter(self._values)       # 支持 for x in v 迭代
+    def __contains__(self, x): return x in self._values  # 支持 x in v 判断
 \`\`\`
 - 迭代与 \`in\` 判断。
 
 \`\`\`python
-    def __eq__(self, other):
+    def __eq__(self, other):           # 定义 ==，支持 v1 == v2
         if isinstance(other, Vector):
-            return self._values == other._values
-        return NotImplemented
+            return self._values == other._values   # 同为 Vector 则比较内部值
+        return NotImplemented         # 返回 NotImplemented 让对方类型尝试比较
 \`\`\`
 - 仅与 Vector 比较；其他类型返回 \`NotImplemented\` 让 Python 尝试反射。
 
 \`\`\`python
-    def __add__(self, other):
+    def __add__(self, other):         # 定义 +，支持 v1 + v2
         if isinstance(other, Vector):
+            # zip 配对两向量元素，逐位相加，* 解包传给 Vector 构造
             return Vector(*(a + b for a, b in zip(self._values, other._values)))
         return NotImplemented
 \`\`\`
@@ -637,8 +639,8 @@ class Vector:
 
 \`\`\`python
 v = Vector(1, 2, 3)
-v[1] = 99
-print(v == v2, v + v2)
+v[1] = 99                  # 走 __setitem__，把第二个元素改成 99
+print(v == v2, v + v2)     # == 走 __eq__，+ 走 __add__
 \`\`\`
 - 演示索引赋值、相等比较、加法运算。
 
@@ -783,23 +785,23 @@ class Item:
 把方法伪装成属性，访问时不加括号：
 \`\`\`python
 class Circle:
-    def __init__(self, radius): self._radius = radius
-    @property
-    def area(self):
-        return 3.14159 * self._radius ** 2
+    def __init__(self, radius): self._radius = radius   # _radius 约定为"受保护"属性（仅靠惯例）
+    @property                                  # property 装饰器：把方法变为只读属性访问
+    def area(self):                            # 像访问属性一样调用，不需加括号 c.area()
+        return 3.14159 * self._radius ** 2     # 计算面积 πr²，每次访问时实时求值
 
 c = Circle(2)
-c.area   # 不写 c.area()，像属性一样访问
+c.area   # 不写 c.area()，像属性一样访问      # 返回 12.56636；property 让"计算"伪装成"属性"
 \`\`\`
 
 ### 3.2 setter 与校验
 \`\`\`python
     @property
-    def radius(self): return self._radius
+    def radius(self): return self._radius   # 读：c.radius 触发，像属性一样访问
 
-    @radius.setter
+    @radius.setter                           # 写：c.radius = x 触发，可加校验
     def radius(self, value):
-        if value < 0: raise ValueError("radius 不能为负")
+        if value < 0: raise ValueError("radius 不能为负")   # 负值校验
         self._radius = value
 \`\`\`
 设置 \`c.radius = -1\` 会触发 setter 抛错，把校验收敛到一处。
@@ -821,14 +823,14 @@ dataclass 自动生成的 \`__init__\` 会给每个字段赋值。要让 propert
 @dataclass
 class User:
     name: str
-    _age: int = field(repr=False)   # 私有字段，repr 不显示
+    _age: int = field(repr=False)   # repr=False：repr 输出时不显示该字段
 
     @property
-    def age(self): return self._age
+    def age(self): return self._age   # 对外只读属性 age，内部用 _age 存储
 
     @age.setter
     def age(self, value):
-        if value < 0: raise ValueError("age 不能为负")
+        if value < 0: raise ValueError("age 不能为负")   # 写入时校验非负
         self._age = value
 \`\`\`
 
@@ -861,37 +863,37 @@ class User:
 class Point:
     x: float
     y: float
-    tags: list[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)   # 可变默认值用 default_factory 每次新建
 \`\`\`
 - 三个字段：\`x\`、\`y\` 必填，\`tags\` 可选且每次新建空 list（避免共享）。
 
 \`\`\`python
-p1 = Point(1, 2)
-p2 = Point(1, 2, ["a"])
-print(p1, p2, p1 == Point(1, 2))
+p1 = Point(1, 2)                  # tags 用默认空 list
+p2 = Point(1, 2, ["a"])           # 显式传 tags
+print(p1, p2, p1 == Point(1, 2))  # == 由 dataclass 自动生成，按字段比较
 \`\`\`
 - 自动 \`__init__\`、\`__repr__\`、\`__eq__\`：\`p1 == Point(1,2)\` 为 True（按字段比较）。
 
 \`\`\`python
-@dataclass(frozen=True)
+@dataclass(frozen=True)            # frozen=True：实例不可变，可 hash
 class Color:
     r: int; g: int; b: int
 red = Color(255, 0, 0)
-print(red, hash(red))
+print(red, hash(red))             # 不可变所以能 hash，可作 dict key / set 元素
 \`\`\`
 - frozen 不可变，自动生成 \`__hash__\`，可哈希。
 
 \`\`\`python
 class Circle:
-    def __init__(self, radius): self._radius = radius
+    def __init__(self, radius): self._radius = radius   # 半径存为私有 _radius
     @property
-    def radius(self): return self._radius
+    def radius(self): return self._radius        # 读 radius
     @radius.setter
     def radius(self, value):
-        if value < 0: raise ValueError("radius 不能为负")
+        if value < 0: raise ValueError("radius 不能为负")   # 写入校验非负
         self._radius = value
     @property
-    def area(self): return 3.14159 * self._radius ** 2
+    def area(self): return 3.14159 * self._radius ** 2   # 派生属性：由 radius 计算面积，只读
 \`\`\`
 - \`_radius\` 私有存储；\`radius\` property 带校验；\`area\` 计算属性只读。
 
@@ -907,15 +909,15 @@ print("new area:", c.area)
 @dataclass
 class User:
     name: str
-    _age: int = field(repr=False)
+    _age: int = field(repr=False)         # repr 不显示，保护隐私
     @property
-    def age(self): return self._age
+    def age(self): return self._age       # 对外暴露 age（只读）
     @age.setter
     def age(self, value):
-        if value < 0: raise ValueError("age 不能为负")
+        if value < 0: raise ValueError("age 不能为负")   # 写入校验
         self._age = value
 u = User("alice", 30)
-print(u, u.age)
+print(u, u.age)                           # u 走 repr（不含 _age），u.age 走 property
 \`\`\`
 - dataclass + property：构造写 \`_age\`，外部用 \`u.age\` 受校验控制。
 

@@ -1554,11 +1554,11 @@ content: `# 策略模式（Strategy）
 在日常开发中，我们经常遇到大量 if-else 或 switch 语句来处理不同情况的问题。例如：
 
 \`\`\`javascript
-function calculatePrice(type, price) {
-  if (type === 'normal') return price;
-  else if (type === 'vip') return price * 0.8;
-  else if (type === 'svip') return price * 0.6;
-  else if (type === 'promotion') return price * 0.5;
+function calculatePrice(type, price) {  // 声明函数 calculatePrice
+  if (type === 'normal') return price;  // 条件判断
+  else if (type === 'vip') return price * 0.8;  // 否则如果
+  else if (type === 'svip') return price * 0.6;  // 否则如果
+  else if (type === 'promotion') return price * 0.5;  // 否则如果
   // 每增加一种折扣，就要加一个else-if
 }
 \`\`\`

@@ -266,12 +266,13 @@ print(list(flatten([1, [2, [3, 4]], 5])))  # [1, 2, 3, 4, 5]
 
 \`\`\`python
 def infinite_counter(start=0):
-    while True:
-        yield start
-        start += 1
+    while True:                  # 无限循环，生成器永不结束
+        yield start              # yield 暂停并产出值，next() 调用时恢复执行
+        start += 1               # 每次恢复后递增，实现无限序列
 
 from itertools import islice
 print("first 5:", list(islice(infinite_counter(100), 5)))
+# islice 限制取前 5 个，list() 强制求值；无限生成器必须用 islice 截断
 # [100, 101, 102, 103, 104]
 \`\`\`
 
@@ -289,9 +290,9 @@ print("first 3:", list(islice(gen, 3)))  # [0, 1, 4]
 
 \`\`\`python
 def _gen():
-    for x in range(10_000_000):
-        yield x * x
-gen = _gen()
+    for x in range(10_000_000):  # 1000 万次循环，若用 list 会占用大量内存
+        yield x * x             # 每次 yield 一个平方值，不预存全部结果
+gen = _gen()                    # 创建生成器对象，几乎不占内存，惰性求值
 \`\`\`
 
 \`[expr for x in ...]\` 是列表推导(立即生成全部),\`(expr for x in ...)\` 是生成器(惰性)。一千万个元素,列表推导要数百 MB,生成器只占几十字节。

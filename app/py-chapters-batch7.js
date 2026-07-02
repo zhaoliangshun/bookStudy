@@ -48,7 +48,7 @@ Python 通过标准库 \`re\` 提供正则支持。本章会从最基础的字�
 如果只是判断一个字符串是否「包含」某个子串，\`str.find\` / \`in\` 就够了：
 
 \`\`\`python
-text = "我的邮箱是 tom@example.com"
+text = "我的邮箱是 tom@example.com"     # 将字符串 "我的邮箱是 tom@example.com" 赋给 text
 print("tom" in text)            # True
 print(text.find("@") != -1)     # True
 \`\`\`
@@ -56,9 +56,9 @@ print(text.find("@") != -1)     # True
 但需求一旦变成「从一段文本里找出所有形如 xxx@xxx.xxx 的邮箱」，字符串方法就力不从心了——你不知道邮箱的具体内容，只知道它的「形状」。正则表达式就是用来描述这种「形状」的。
 
 \`\`\`python
-import re
-text = "联系我：tom@example.com 或者 jerry@demo.org"
-emails = re.findall(r"[\\w.]+@[\\w.]+", text)
+import re                          # 导入 re 模块
+text = "联系我：tom@example.com 或者 jerry@demo.org"  # 将字符串 "联系我：tom@example.com 或者 jerry@demo.org" 赋给 text
+emails = re.findall(r"[\\w.]+@[\\w.]+", text)  # 将 re.findall(r"[\\w.]+@[\\w.]+", text) 赋给 emails
 print(emails)  # ['tom@example.com', 'jerry@demo.org']
 \`\`\`
 
@@ -93,9 +93,9 @@ Python 的 \`re\` 模块提供了一组顶层函数，日常使用频率最高�
 这三者最容易混淆，区别在于「匹配的位置要求」：
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 
-s = "hello world"
+s = "hello world"                  # 将字符串 "hello world" 赋给 s
 
 # match 从开头匹配，不要求匹配到末尾
 print(re.match(r"hello", s))        # <Match object>
@@ -120,7 +120,7 @@ print(re.fullmatch(r"hello", s))        # None（后面还有 world）
 \`match\` / \`search\` / \`fullmatch\` 返回的是 \`Match\` 对象（没匹配到返回 \`None\`）。Match 对象常用方法：
 
 \`\`\`python
-m = re.search(r"(\\w+)@(\\w+)", "联系 tom@example.com")
+m = re.search(r"(\\w+)@(\\w+)", "联系 tom@example.com")  # 将 re.search(r"(\\w+)@(\\w+)", "联系 tom@example.com") 赋给 m
 print(m.group(0))   # tom@example —— 整个匹配
 print(m.group(1))   # tom —— 第 1 个分组
 print(m.group(2))   # example —— 第 2 个分组
@@ -133,11 +133,11 @@ print(m.span())     # (3, 15) —— (start, end)
 ⚠️ 注意：用 \`match\` / \`search\` 时，**一定要先判断是否为 None 再调用 \`.group()\`**，否则没匹配到会抛 \`AttributeError\`。
 
 \`\`\`python
-m = re.search(r"xyz", "hello")
-if m:
-    print(m.group())
-else:
-    print("没匹配到")
+m = re.search(r"xyz", "hello")     # 将 re.search(r"xyz", "hello") 赋给 m
+if m:                              # 如果 m 成立
+    print(m.group())               # 输出 m.group()
+else:                              # 否则
+    print("没匹配到")                  # 输出 "没匹配到"
 \`\`\`
 
 ### 2.3 findall 与 finditer
@@ -145,8 +145,8 @@ else:
 \`findall\` 返回所有匹配的**字符串**（或元组），\`finditer\` 返回 Match 对象的迭代器。
 
 \`\`\`python
-import re
-text = "电话：13800138000，备选：13900139000"
+import re                          # 导入 re 模块
+text = "电话：13800138000，备选：13900139000"  # 将字符串 "电话：13800138000，备选：13900139000" 赋给 text
 
 # 无分组：返回匹配的字符串列表
 print(re.findall(r"\\d{11}", text))  # ['13800138000', '13900139000']
@@ -155,15 +155,15 @@ print(re.findall(r"\\d{11}", text))  # ['13800138000', '13900139000']
 print(re.findall(r"(\\d{3})\\d{8}", text))  # ['138', '139']
 
 # 有多个分组：返回元组列表
-print(re.findall(r"(\\d{3})-(\\d{4})", "010-1234, 021-5678"))
+print(re.findall(r"(\\d{3})-(\\d{4})", "010-1234, 021-5678"))  # 输出 re.findall(r"(\\d{3})-(\\d{4})", "010-1234, 021-5678")
 # [('010', '1234'), ('021', '5678')]
 \`\`\`
 
 \`finditer\` 在匹配结果很多、字符串很大时更省内存，因为它「惰性」地一个一个 yield：
 
 \`\`\`python
-for m in re.finditer(r"\\d+", "a1 b22 c333"):
-    print(m.group(), m.span())
+for m in re.finditer(r"\\d+", "a1 b22 c333"):  # 遍历 re.finditer(r"\\d+", "a1 b22 c333")，每次取值赋给 m
+    print(m.group(), m.span())     # 输出 m.group(), m.span()
 # 1 (1, 2)
 # 22 (4, 6)
 # 333 (8, 12)
@@ -174,7 +174,7 @@ for m in re.finditer(r"\\d+", "a1 b22 c333"):
 \`re.sub(pattern, repl, string, count=0)\` 把匹配到的部分替换成 \`repl\`。\`repl\` 可以是字符串，也可以是函数。
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 
 # 字符串替换
 print(re.sub(r"\\d+", "#", "a1 b22 c333"))       # a# b# c#
@@ -189,13 +189,13 @@ print(new, n)  # a# b# c# 3
 
 \`\`\`python
 # 把所有数字加 1
-def add_one(m):
-    return str(int(m.group()) + 1)
+def add_one(m):                    # 定义函数 add_one，参数：m
+    return str(int(m.group()) + 1) # 返回 str(int(m.group()) + 1)
 
 print(re.sub(r"\\d+", add_one, "a1 b22 c333"))  # a2 b23 c334
 
 # 用 lambda 隐藏手机号中间 4 位
-print(re.sub(r"(\\d{3})\\d{4}(\\d{4})", r"\\1****\\2", "13812345678"))
+print(re.sub(r"(\\d{3})\\d{4}(\\d{4})", r"\\1****\\2", "13812345678"))  # 输出 re.sub(r"(\\d{3})\\d{4}(\\d{4})", r"\\1****\\2", "13812345678")
 # 138****5678
 \`\`\`
 
@@ -206,18 +206,18 @@ print(re.sub(r"(\\d{3})\\d{4}(\\d{4})", r"\\1****\\2", "13812345678"))
 \`re.split\` 比 \`str.split\` 强大，能按「模式」分割：
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 
 # 按任意空白/逗号分割
-print(re.split(r"[\\s,]+", "a, b ,  c ,d"))
+print(re.split(r"[\\s,]+", "a, b ,  c ,d"))  # 输出 re.split(r"[\\s,]+", "a, b ,  c ,d")
 # ['a', 'b', 'c', 'd']
 
 # 保留分隔符（用捕获分组）
-print(re.split(r"(\\s,)+", "a, b ,  c"))
+print(re.split(r"(\\s,)+", "a, b ,  c"))  # 输出 re.split(r"(\\s,)+", "a, b ,  c")
 # ['a', ', ', 'b', ', ', 'c']
 
 # 限制分割次数
-print(re.split(r"\\d+", "a1b2c3d", maxsplit=2))
+print(re.split(r"\\d+", "a1b2c3d", maxsplit=2))  # 输出 re.split(r"\\d+", "a1b2c3d", maxsplit=2)
 # ['a', 'b', 'c3d']
 \`\`\`
 
@@ -232,15 +232,15 @@ print(re.split(r"\\d+", "a1b2c3d", maxsplit=2))
 如果你**反复用同一个模式**匹配很多字符串，预编译能提升性能——模式只需解析一次：
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 
 # 预编译一次
-phone_re = re.compile(r"1[3-9]\\d{9}")
+phone_re = re.compile(r"1[3-9]\\d{9}")  # 将 re.compile(r"1[3-9]\\d{9}") 赋给 phone_re
 
 # 反复使用
-for s in ["13800138000", "12345", "19900001111"]:
-    if phone_re.fullmatch(s):
-        print(s, "是合法手机号")
+for s in ["13800138000", "12345", "19900001111"]:  # 遍历 ["13800138000", "12345", "19900001111"]，每次取值赋给 s
+    if phone_re.fullmatch(s):      # 如果 phone_re.fullmatch(s) 成立
+        print(s, "是合法手机号")         # 输出 s, "是合法手机号"
 \`\`\`
 
 预编译对象拥有和 \`re\` 模块一样的方法：\`pattern.match()\`、\`pattern.search()\`、\`pattern.findall()\` 等等。
@@ -248,7 +248,7 @@ for s in ["13800138000", "12345", "19900001111"]:
 \`pattern.pattern\` 和 \`pattern.flags\` 可以查看模式和标志：
 
 \`\`\`python
-p = re.compile(r"abc", re.IGNORECASE)
+p = re.compile(r"abc", re.IGNORECASE)  # 将 re.compile(r"abc", re.IGNORECASE) 赋给 p
 print(p.pattern)  # abc
 print(p.flags)    # 34（IGNORECASE=2 + UNICODE=32 等）
 \`\`\`
@@ -265,25 +265,25 @@ print(p.flags)    # 34（IGNORECASE=2 + UNICODE=32 等）
 | \`re.UNICODE\` | \`re.U\` | （默认）\`\\w\` 匹配 Unicode 字符 |
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 
 # IGNORECASE
-print(re.findall(r"python", "Python PYTHON pyTHON", re.I))
+print(re.findall(r"python", "Python PYTHON pyTHON", re.I))  # 输出 re.findall(r"python", "Python PYTHON pyTHON", re.I)
 # ['Python', 'PYTHON', 'pyTHON']
 
 # MULTILINE：^ $ 匹配每行
-text = "line1\\nline2\\nline3"
-print(re.findall(r"^line\\w+", text, re.M))
+text = "line1\\nline2\\nline3"     # 将字符串 "line1\\nline2\\nline3" 赋给 text
+print(re.findall(r"^line\\w+", text, re.M))  # 输出 re.findall(r"^line\\w+", text, re.M)
 # ['line1', 'line2', 'line3']
 # 不加 re.M 的话，^ 只匹配整个字符串开头，只能找到 line1
 
 # DOTALL：. 匹配换行
-html = "<div>hello\\nworld</div>"
-print(re.search(r"<div>(.*?)</div>", html, re.S).group(1))
+html = "<div>hello\\nworld</div>"  # 将字符串 "<div>hello\\nworld</div>" 赋给 html
+print(re.search(r"<div>(.*?)</div>", html, re.S).group(1))  # 输出 re.search(r"<div>(.*?)</div>", html, re.S).group(1)
 # hello\\nworld（不加 re.S 则 .* 碰到换行就停，匹配不到）
 
 # VERBOSE：写注释，忽略模式中的空白
-phone = re.compile(r"""
+phone = re.compile(r"""            # 将 re.compile(r""" 赋给 phone
     1            # 手机号第 1 位固定是 1
     [3-9]        # 第 2 位 3~9
     \\d{9}       # 后面 9 位数字
@@ -298,7 +298,7 @@ print(phone.fullmatch("13812345678"))  # <Match object>
 多个标志用 \`|\` 叠加：
 
 \`\`\`python
-re.findall(r"hello", "HELLO\\nworld\\nHELLO", re.I | re.M)
+re.findall(r"hello", "HELLO\\nworld\\nHELLO", re.I | re.M)  # 对 re 调用 findall 方法，参数 r"hello", "HELLO\\nworld\\nHELLO", re.I | re.M
 \`\`\`
 
 也可以在模式开头用内联标志 \`(?i)\`、\`(?m)\`、\`(?s)\`、\`(?x)\`，只对局部生效：
@@ -342,7 +342,7 @@ print(re.findall(r"(?i)python", "Python PYTHON"))  # ['Python', 'PYTHON']
 | \`.\` | （除换行） | 任意字符（DOTALL 下含换行） |
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 print(re.findall(r"\\w+", "hello 你好 world_1"))  # ['hello', '你好', 'world_1']
 print(re.findall(r"\\d+", "a12b3"))                # ['12', '3']
 print(re.findall(r"\\s+", "a b  c"))               # [' ', '  ']
@@ -362,7 +362,7 @@ print(re.findall(r"\\s+", "a b  c"))               # [' ', '  ']
 | \`\\B\` | 非单词边界 |
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 
 # 单词边界：精确匹配 cat，不匹配 category
 print(re.findall(r"\\bcat\\b", "a cat category cat."))  # ['cat', 'cat']
@@ -389,9 +389,9 @@ print(re.findall(r"^\\w+", "hello\\nworld", re.M))  # ['hello', 'world']
 | \`{n,m}\` | n 到 m 次 |
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 print(re.findall(r"\\d{3}", "12 123 1234 12345"))  # ['123', '123', '123']
-print(re.findall(r"\\d{2,4}", "1 12 123 1234 12345"))
+print(re.findall(r"\\d{2,4}", "1 12 123 1234 12345"))  # 输出 re.findall(r"\\d{2,4}", "1 12 123 1234 12345")
 # ['12', '123', '1234', '1234']
 \`\`\`
 
@@ -400,8 +400,8 @@ print(re.findall(r"\\d{2,4}", "1 12 123 1234 12345"))
 默认量词是**贪婪**的——会尽可能多地匹配。在量词后加 \`?\` 变成**非贪婪**（lazy / 懒惰）——尽可能少地匹配：
 
 \`\`\`python
-import re
-html = "<b>bold</b><i>italic</i>"
+import re                          # 导入 re 模块
+html = "<b>bold</b><i>italic</i>"  # 将字符串 "<b>bold</b><i>italic</i>" 赋给 html
 
 # 贪婪：.* 会一直匹配到最后一个 >
 print(re.findall(r"<.*>", html))      # ['<b>bold</b><i>italic</i>']
@@ -419,7 +419,7 @@ Python 3.11 引入了**占有量词**（possessive）：\`*+\`、\`++\`、\`?+\`
 \`\`\`python
 # 贪婪会回溯，占有量词不会
 # 下面这个例子：占有版本在匹配失败时更快
-import re
+import re                          # 导入 re 模块
 print(re.match(r"\\d++", "12345").group())  # 12345
 \`\`\`
 
@@ -432,10 +432,10 @@ print(re.match(r"\\d++", "12345").group())  # 12345
 用括号 \`( )\` 括起来的部分是**分组**，会被「捕获」，可以用 \`group(1)\`、\`\\1\` 等引用：
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 
-date = "2024-03-15"
-m = re.match(r"(\\d{4})-(\\d{2})-(\\d{2})", date)
+date = "2024-03-15"                # 将字符串 "2024-03-15" 赋给 date
+m = re.match(r"(\\d{4})-(\\d{2})-(\\d{2})", date)  # 将 re.match(r"(\\d{4})-(\\d{2})-(\\d{2})", date) 赋给 m
 print(m.group(1))  # 2024
 print(m.group(2))  # 03
 print(m.group(3))  # 15
@@ -450,9 +450,9 @@ print("-".join(reversed(m.groups())))  # 15-03-2024
 数字编号容易混淆，命名分组可读性更好：
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 
-m = re.match(r"(?P<year>\\d{4})-(?P<month>\\d{2})-(?P<day>\\d{2})", "2024-03-15")
+m = re.match(r"(?P<year>\\d{4})-(?P<month>\\d{2})-(?P<day>\\d{2})", "2024-03-15")  # 将 re.match(r"(?P<year>\\d{4})-(?P<month>\\d{2})-(?P<day>\\d{2})", "2024-03-15") 赋给 m
 print(m.group("year"))   # 2024
 print(m.group("month"))  # 03
 print(m.groupdict())     # {'year': '2024', 'month': '03', 'day': '15'}
@@ -462,11 +462,11 @@ print(m.groupdict())     # {'year': '2024', 'month': '03', 'day': '15'}
 
 \`\`\`python
 # 匹配重复的单词
-print(re.search(r"\\b(\\w+)\\s+(?P=\\1)\\b", "the the cat").group())
+print(re.search(r"\\b(\\w+)\\s+(?P=\\1)\\b", "the the cat").group())  # 输出 re.search(r"\\b(\\w+)\\s+(?P=\\1)\\b", "the the cat").group()
 # the the
 
 # 替换时用命名引用
-print(re.sub(r"(?P<word>\\w+)", r"[\\g<word>]", "hi cat"))
+print(re.sub(r"(?P<word>\\w+)", r"[\\g<word>]", "hi cat"))  # 输出 re.sub(r"(?P<word>\\w+)", r"[\\g<word>]", "hi cat")
 # [hi] [cat]
 \`\`\`
 
@@ -475,14 +475,14 @@ print(re.sub(r"(?P<word>\\w+)", r"[\\g<word>]", "hi cat"))
 如果分组只是用来「分组」（比如应用量词），不需要捕获，用 \`(?:...)\` 非捕获分组，性能更好且不占用分组编号：
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 
 # 捕获分组
-m1 = re.match(r"(https?)://(\\w+)", "https://abc")
+m1 = re.match(r"(https?)://(\\w+)", "https://abc")  # 将 re.match(r"(https?)://(\\w+)", "https://abc") 赋给 m1
 print(m1.groups())  # ('https', 'abc')
 
 # 非捕获分组：http 后的 s 不被捕获
-m2 = re.match(r"https?://(\\w+)", "https://abc")
+m2 = re.match(r"https?://(\\w+)", "https://abc")  # 将 re.match(r"https?://(\\w+)", "https://abc") 赋给 m2
 print(m2.groups())  # ('abc')
 \`\`\`
 
@@ -493,9 +493,9 @@ print(m2.groups())  # ('abc')
 分组按**左括号**出现的先后顺序编号。嵌套分组也按左括号顺序：
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 # (a(b)c(d)e) -> 1=abcde, 2=b, 3=d
-m = re.match(r"(a(b)c(d)e)", "abcde")
+m = re.match(r"(a(b)c(d)e)", "abcde")  # 将 re.match(r"(a(b)c(d)e)", "abcde") 赋给 m
 print(m.group(1), m.group(2), m.group(3))  # abcde b d
 \`\`\`
 
@@ -517,9 +517,9 @@ print(m.group(1), m.group(2), m.group(3))  # abcde b d
 「后面跟着 ...」但不包含在结果里。经典用法：给数字加千分位逗号：
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 # 匹配「后面还有 3 的倍数个数字」的位置，插入逗号
-s = "1234567"
+s = "1234567"                      # 将字符串 "1234567" 赋给 s
 print(re.sub(r"(?<=\\d)(?=(\\d{3})+$)", ",", s))  # 1,234,567
 \`\`\`
 
@@ -527,7 +527,7 @@ print(re.sub(r"(?<=\\d)(?=(\\d{3})+$)", ",", s))  # 1,234,567
 
 \`\`\`python
 # 找出 ¥ 后面的数字，但不包含 ¥
-print(re.findall(r"(?<=￥)\\d+", "￥100 和 ￥200"))
+print(re.findall(r"(?<=￥)\\d+", "￥100 和 ￥200"))  # 输出 re.findall(r"(?<=￥)\\d+", "￥100 和 ￥200")
 # ['100', '200']
 \`\`\`
 
@@ -536,9 +536,9 @@ print(re.findall(r"(?<=￥)\\d+", "￥100 和 ￥200"))
 「后面不是 ...」。比如匹配 foo 但后面不能是 bar：
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 # 匹配 Windows 后面不是 95/98 的
-print(re.findall(r"Windows(?!95|98)", "Windows95 Windows7 Windows10"))
+print(re.findall(r"Windows(?!95|98)", "Windows95 Windows7 Windows10"))  # 输出 re.findall(r"Windows(?!95|98)", "Windows95 Windows7 Windows10")
 # ['Windows', 'Windows']（匹配 Windows7、Windows10 的 Windows）
 \`\`\`
 
@@ -547,8 +547,8 @@ print(re.findall(r"Windows(?!95|98)", "Windows95 Windows7 Windows10"))
 「前面是 ...」。提取书名号里的内容：
 
 \`\`\`python
-import re
-print(re.findall(r"(?<=《)[^》]+", "我看《三体》和《活着》"))
+import re                          # 导入 re 模块
+print(re.findall(r"(?<=《)[^》]+", "我看《三体》和《活着》"))  # 输出 re.findall(r"(?<=《)[^》]+", "我看《三体》和《活着》")
 # ['三体', '活着']
 \`\`\`
 
@@ -557,7 +557,7 @@ print(re.findall(r"(?<=《)[^》]+", "我看《三体》和《活着》"))
 「前面不是 ...」。比如匹配不以 0 开头的数字：
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 print(re.findall(r"(?<!\\d)\\d+", "a01 b2"))  # 不行，这是看前面不是数字
 \`\`\`
 
@@ -572,19 +572,19 @@ print(re.findall(r"(?<!\\d)\\d+", "a01 b2"))  # 不行，这是看前面不是�
 ### 8.1 用 \\1 引用
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 
 # 匹配连续重复的单词
-m = re.search(r"\\b(\\w+)\\s+\\1\\b", "I love love you")
+m = re.search(r"\\b(\\w+)\\s+\\1\\b", "I love love you")  # 将 re.search(r"\\b(\\w+)\\s+\\1\\b", "I love love you") 赋给 m
 print(m.group())  # love love
 
 # 匹配成对引号（单引号或双引号）
-print(re.findall(r"(['\\\"])(.*?)\\1", "say 'hi' and \\"bye\\""))
+print(re.findall(r"(['\\\"])(.*?)\\1", "say 'hi' and \\"bye\\""))  # 输出 re.findall(r"(['\\\"])(.*?)\\1", "say 'hi' and \\"bye\\"")
 # [("'", 'hi'), ('"', 'bye')]
 
 # 匹配对称的 HTML 标签
-html = "<b>bold</b> <i>italic</i>"
-print(re.findall(r"<(\\w+)>(.*?)</\\1>", html))
+html = "<b>bold</b> <i>italic</i>" # 将字符串 "<b>bold</b> <i>italic</i>" 赋给 html
+print(re.findall(r"<(\\w+)>(.*?)</\\1>", html))  # 输出 re.findall(r"<(\\w+)>(.*?)</\\1>", html)
 # [('b', 'bold'), ('i', 'italic')]
 \`\`\`
 
@@ -593,7 +593,7 @@ print(re.findall(r"<(\\w+)>(.*?)</\\1>", html))
 ### 8.2 命名反向引用
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 # 用命名分组 + 命名引用
 print(re.search(r"(?P<tag>\\w+)=(?P=tag)", "x=x y=y").group())  # x=x
 \`\`\`
@@ -607,36 +607,36 @@ print(re.search(r"(?P<tag>\\w+)=(?P=tag)", "x=x y=y").group())  # x=x
 ### 9.1 邮箱
 
 \`\`\`python
-import re
-email_re = r"[\\w.+-]+@[\\w-]+\\.[\\w.-]+"
-print(re.findall(email_re, "联系 tom@example.com 或 a.b+test@demo.org"))
+import re                          # 导入 re 模块
+email_re = r"[\\w.+-]+@[\\w-]+\\.[\\w.-]+"  # 将 r"[\\w.+-]+@[\\w-]+\\.[\\w.-]+" 赋给 email_re
+print(re.findall(email_re, "联系 tom@example.com 或 a.b+test@demo.org"))  # 输出 re.findall(email_re, "联系 tom@example.com 或 a.b+test@demo.org")
 # ['tom@example.com', 'a.b+test@demo.org']
 \`\`\`
 
 ### 9.2 手机号（中国大陆）
 
 \`\`\`python
-import re
-phone_re = r"1[3-9]\\d{9}"
-print(re.findall(phone_re, "电话13800138000，备选19900001111"))
+import re                          # 导入 re 模块
+phone_re = r"1[3-9]\\d{9}"         # 将 r"1[3-9]\\d{9}" 赋给 phone_re
+print(re.findall(phone_re, "电话13800138000，备选19900001111"))  # 输出 re.findall(phone_re, "电话13800138000，备选19900001111")
 # ['13800138000', '19900001111']
 \`\`\`
 
 ### 9.3 URL
 
 \`\`\`python
-import re
-url_re = r"https?://[\\w.-]+(?:/[\\w./?=&%-]*)?"
-print(re.findall(url_re, "访问 http://abc.com/x?a=1 或 https://demo.org"))
+import re                          # 导入 re 模块
+url_re = r"https?://[\\w.-]+(?:/[\\w./?=&%-]*)?"  # 将 r"https?://[\\w.-]+(?:/[\\w./?=&%-]*)?" 赋给 url_re
+print(re.findall(url_re, "访问 http://abc.com/x?a=1 或 https://demo.org"))  # 输出 re.findall(url_re, "访问 http://abc.com/x?a=1 或 https://demo.org")
 # ['http://abc.com/x?a=1', 'https://demo.org']
 \`\`\`
 
 ### 9.4 IPv4
 
 \`\`\`python
-import re
-ip_re = r"(?:\\d{1,3}\\.){3}\\d{1,3}"
-print(re.findall(ip_re, "服务器 192.168.1.1 和 10.0.0.1"))
+import re                          # 导入 re 模块
+ip_re = r"(?:\\d{1,3}\\.){3}\\d{1,3}"  # 将 r"(?:\\d{1,3}\\.){3}\\d{1,3}" 赋给 ip_re
+print(re.findall(ip_re, "服务器 192.168.1.1 和 10.0.0.1"))  # 输出 re.findall(ip_re, "服务器 192.168.1.1 和 10.0.0.1")
 # ['192.168.1.1', '10.0.0.1']
 # 注意：这只校验格式，不校验范围（255.999.1.1 也能匹配）
 \`\`\`
@@ -644,9 +644,9 @@ print(re.findall(ip_re, "服务器 192.168.1.1 和 10.0.0.1"))
 严格校验每段 0-255：
 
 \`\`\`python
-import re
-seg = r"(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)"
-ip_strict = re.compile(rf"^{seg}\\.{seg}\\.{seg}\\.{seg}$")
+import re                          # 导入 re 模块
+seg = r"(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)"  # 将 r"(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)" 赋给 seg
+ip_strict = re.compile(rf"^{seg}\\.{seg}\\.{seg}\\.{seg}$")  # 将 re.compile(rf"^{seg}\\.{seg}\\.{seg}\\.{seg}$") 赋给 ip_strict
 print(bool(ip_strict.fullmatch("192.168.1.1")))   # True
 print(bool(ip_strict.fullmatch("999.1.1.1")))     # False
 \`\`\`
@@ -654,9 +654,9 @@ print(bool(ip_strict.fullmatch("999.1.1.1")))     # False
 ### 9.5 身份证号（18 位）
 
 \`\`\`python
-import re
-id_re = r"[1-9]\\d{5}(?:19|20)\\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\\d|3[01])\\d{3}[\\dXx]"
-print(re.findall(id_re, "身份证 11010119900307391X 不可用"))
+import re                          # 导入 re 模块
+id_re = r"[1-9]\\d{5}(?:19|20)\\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\\d|3[01])\\d{3}[\\dXx]"  # 将 r"[1-9]\\d{5}(?:19|20)\\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\\d|3[01])\\d{3}[\\dXx]" 赋给 id_re
+print(re.findall(id_re, "身份证 11010119900307391X 不可用"))  # 输出 re.findall(id_re, "身份证 11010119900307391X 不可用")
 # ['11010119900307391X']
 \`\`\`
 
@@ -667,12 +667,12 @@ print(re.findall(id_re, "身份证 11010119900307391X 不可用"))
 当模式里需要包含「来自用户输入的字符串」时，那些字符串里可能含有正则元字符，必须转义。\`re.escape\` 自动帮你转义所有特殊字符：
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 
 user_input = "price is $5.00 each"  # 用户搜的关键字
-pattern = re.escape(user_input)
+pattern = re.escape(user_input)    # 将 re.escape(user_input) 赋给 pattern
 print(pattern)  # price\\ is\\ \\$5\\.00\\ each
-print(re.findall(pattern, "the price is $5.00 each today"))
+print(re.findall(pattern, "the price is $5.00 each today"))  # 输出 re.findall(pattern, "the price is $5.00 each today")
 # ['price is $5.00 each']
 \`\`\`
 
@@ -709,9 +709,9 @@ ReDoS（Regular Expression Denial of Service）是指某些正则在遇到特定
 
 \`\`\`python
 # 不推荐：.* 回溯空间大
-re.search(r"<b>(.*?)</b>", html)
+re.search(r"<b>(.*?)</b>", html)   # 对 re 调用 search 方法，参数 r"<b>(.*?)</b>", html
 # 推荐：明确「不是 <」的字符
-re.search(r"<b>([^<]*)</b>", html)
+re.search(r"<b>([^<]*)</b>", html) # 对 re 调用 search 方法，参数 r"<b>([^<]*)</b>", html
 \`\`\`
 
 ### 11.4 锚定位置
@@ -720,9 +720,9 @@ re.search(r"<b>([^<]*)</b>", html)
 
 \`\`\`python
 # 不加锚，每个位置都尝试匹配
-re.search(r"\\d{11}", text)
+re.search(r"\\d{11}", text)        # 对 re 调用 search 方法，参数 r"\\d{11}", text
 # 加锚定，只在边界处尝试
-re.search(r"\\b\\d{11}\\b", text)
+re.search(r"\\b\\d{11}\\b", text)  # 对 re 调用 search 方法，参数 r"\\b\\d{11}\\b", text
 \`\`\`
 
 ---
@@ -732,9 +732,9 @@ re.search(r"\\b\\d{11}\\b", text)
 ### 12.1 贪婪导致「吃太多」
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 # 想提取两个引号之间的内容
-s = 'a "hi" b "bye" c'
+s = 'a "hi" b "bye" c'             # 将字符串 'a "hi" b "bye" c' 赋给 s
 print(re.findall(r'".*"', s))     # ['"hi" b "bye"'] —— 贪婪吃到最后
 print(re.findall(r'".*?"', s))    # ['"hi"', '"bye"'] —— 非贪婪正确
 \`\`\`
@@ -742,7 +742,7 @@ print(re.findall(r'".*?"', s))    # ['"hi"', '"bye"'] —— 非贪婪正确
 ### 12.2 findall 返回值随分组变化
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 # 无分组：返回整个匹配
 print(re.findall(r"\\d+", "a1 b2"))   # ['1', '2']
 # 有 1 个分组：返回分组
@@ -756,8 +756,8 @@ print(re.findall(r"(\\w)(\\d)", "a1 b2"))  # [('a', '1'), ('b', '2')]
 ### 12.3 点号不匹配换行
 
 \`\`\`python
-import re
-text = "start\\nend"
+import re                          # 导入 re 模块
+text = "start\\nend"               # 将字符串 "start\\nend" 赋给 text
 print(re.search(r"start.*end", text))        # None —— . 不匹配换行
 print(re.search(r"start.*end", text, re.S))  # 匹配 —— DOTALL 让 . 匹配换行
 \`\`\`
@@ -777,7 +777,7 @@ re.findall(r"\\d+", "a1")   # ['1']
 ### 12.5 字符集里的特殊字符
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 # [.] 里的 . 是字面点，不需要转义
 print(re.findall(r"[.]", "a.b"))   # ['.', '.'] —— 等价 [\\.]
 # [-a] 把 - 放开头，匹配 - 或 a
@@ -1213,16 +1213,16 @@ JSON（JavaScript Object Notation）用「键值对」和「数组」描述数�
 \`json.dumps(obj)\` 把 Python 对象**序列化成 JSON 字符串**，\`json.loads(s)\` 把 JSON 字符串**反序列化回 Python 对象**。\`s\` 是 string 的缩写。
 
 \`\`\`python
-import json
+import json                        # 导入 json 模块
 
 # 对象 -> JSON 字符串
-data = {"name": "tom", "age": 18, "scores": [90, 85, 88]}
-s = json.dumps(data)
+data = {"name": "tom", "age": 18, "scores": [90, 85, 88]}  # 创建字典并赋给 data
+s = json.dumps(data)               # 将 json.dumps(data) 赋给 s
 print(s)  # {"name": "tom", "age": 18, "scores": [90, 85, 88]}
 print(type(s))  # <class 'str'>
 
 # JSON 字符串 -> 对象
-obj = json.loads(s)
+obj = json.loads(s)                # 将 json.loads(s) 赋给 obj
 print(obj["name"])   # tom
 print(obj["scores"]) # [90, 85, 88]
 \`\`\`
@@ -1232,16 +1232,16 @@ print(obj["scores"]) # [90, 85, 88]
 \`json.dump(obj, f)\` 把对象写进文件，\`json.load(f)\` 从文件读出来。省去你自己 \`open\` + \`read\` 再 \`loads\` 的步骤。
 
 \`\`\`python
-import json
+import json                        # 导入 json 模块
 
-data = {"name": "tom", "age": 18}
+data = {"name": "tom", "age": 18}  # 创建字典并赋给 data
 # 写文件
-with open("data.json", "w", encoding="utf-8") as f:
-    json.dump(data, f)
+with open("data.json", "w", encoding="utf-8") as f:  # 使用上下文管理器 open("data.json", "w", encoding="utf-8")，绑定到 f
+    json.dump(data, f)             # 对 json 调用 dump 方法，参数 data, f
 
 # 读文件
-with open("data.json", encoding="utf-8") as f:
-    obj = json.load(f)
+with open("data.json", encoding="utf-8") as f:  # 使用上下文管理器 open("data.json", encoding="utf-8")，绑定到 f
+    obj = json.load(f)             # 将 json.load(f) 赋给 obj
 print(obj)  # {'name': 'tom', 'age': 18}
 \`\`\`
 
@@ -1256,7 +1256,7 @@ print(obj)  # {'name': 'tom', 'age': 18}
 默认 \`ensure_ascii=True\`，所有非 ASCII 字符（中文等）会被转成 \`\\uXXXX\` 转义序列。这在只给机器看时没问题，但人读不了：
 
 \`\`\`python
-import json
+import json                        # 导入 json 模块
 print(json.dumps({"名": "张三"}))                    # {"\\u540d": "\\u5f20\\u4e09"}
 print(json.dumps({"名": "张三"}, ensure_ascii=False)) # {"名": "张三"}
 \`\`\`
@@ -1268,9 +1268,9 @@ print(json.dumps({"名": "张三"}, ensure_ascii=False)) # {"名": "张三"}
 默认 \`dumps\` 输出单行紧凑 JSON。加 \`indent=2\` 会带缩进，方便人读：
 
 \`\`\`python
-import json
-data = {"name": "tom", "scores": [90, 85]}
-print(json.dumps(data, indent=2, ensure_ascii=False))
+import json                        # 导入 json 模块
+data = {"name": "tom", "scores": [90, 85]}  # 创建字典并赋给 data
+print(json.dumps(data, indent=2, ensure_ascii=False))  # 输出 json.dumps(data, indent=2, ensure_ascii=False)
 # {
 #   "name": "tom",
 #   "scores": [
@@ -1287,8 +1287,8 @@ print(json.dumps(data, indent=2, ensure_ascii=False))
 \`sort_keys=True\` 会按 key 排序输出。在「生成配置文件、做缓存对比」时有用——保证同样数据生成同样字符串（确定性输出）：
 
 \`\`\`python
-import json
-data = {"b": 1, "a": 2, "c": 3}
+import json                        # 导入 json 模块
+data = {"b": 1, "a": 2, "c": 3}    # 创建字典并赋给 data
 print(json.dumps(data, sort_keys=True))  # {"a": 2, "b": 1, "c": 3}
 \`\`\`
 
@@ -1297,8 +1297,8 @@ print(json.dumps(data, sort_keys=True))  # {"a": 2, "b": 1, "c": 3}
 \`separators=(item_sep, key_sep)\` 控制分隔符。默认在紧凑模式下是 \`(', ', ': ')\`。要更紧凑可以去掉空格：
 
 \`\`\`python
-import json
-data = {"a": 1, "b": 2}
+import json                        # 导入 json 模块
+data = {"a": 1, "b": 2}            # 创建字典并赋给 data
 print(json.dumps(data, separators=(",", ":")))  # {"a":1,"b":2}
 \`\`\`
 
@@ -1313,9 +1313,9 @@ print(json.dumps(data, separators=(",", ":")))  # {"a":1,"b":2}
 JSON 只认 dict/list/str/number/bool/None。遇到日期、集合、自定义对象会抛 \`TypeError\`：
 
 \`\`\`python
-import json
-from datetime import datetime
-data = {"now": datetime.now(), "tags": {1, 2}}
+import json                        # 导入 json 模块
+from datetime import datetime      # 从 datetime 导入 datetime
+data = {"now": datetime.now(), "tags": {1, 2}}  # 创建字典并赋给 data
 # json.dumps(data)  # TypeError: Object of type datetime is not JSON serializable
 \`\`\`
 
@@ -1324,18 +1324,18 @@ data = {"now": datetime.now(), "tags": {1, 2}}
 \`dumps\` 接受 \`default\` 参数，遇到不能序列化的对象时调用它。返回一个可序列化的值即可：
 
 \`\`\`python
-import json
-from datetime import datetime, date
+import json                        # 导入 json 模块
+from datetime import datetime, date  # 从 datetime 导入 datetime, date
 
-def default(o):
-    if isinstance(o, (datetime, date)):
-        return o.isoformat()
-    if isinstance(o, set):
-        return list(o)
-    raise TypeError("不会处理: " + repr(o))
+def default(o):                    # 定义函数 default，参数：o
+    if isinstance(o, (datetime, date)):  # 如果 isinstance(o, (datetime, date)) 成立
+        return o.isoformat()       # 返回 o.isoformat()
+    if isinstance(o, set):         # 如果 isinstance(o, set) 成立
+        return list(o)             # 返回 list(o)
+    raise TypeError("不会处理: " + repr(o))  # 抛出异常：TypeError("不会处理: " + repr(o))
 
-data = {"now": datetime(2024, 3, 15, 10, 0), "tags": {1, 2}}
-print(json.dumps(data, default=default, ensure_ascii=False))
+data = {"now": datetime(2024, 3, 15, 10, 0), "tags": {1, 2}}  # 创建字典并赋给 data
+print(json.dumps(data, default=default, ensure_ascii=False))  # 输出 json.dumps(data, default=default, ensure_ascii=False)
 # {"now": "2024-03-15T10:00:00", "tags": [1, 2]}
 \`\`\`
 
@@ -1344,19 +1344,19 @@ print(json.dumps(data, default=default, ensure_ascii=False))
 继承 \`json.JSONEncoder\` 重写 \`default\` 方法，传给 \`cls\` 参数。适合复用：
 
 \`\`\`python
-import json
-from datetime import datetime, date
+import json                        # 导入 json 模块
+from datetime import datetime, date  # 从 datetime 导入 datetime, date
 
-class MyEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, (datetime, date)):
-            return o.isoformat()
-        if isinstance(o, set):
-            return sorted(o)
-        return super().default(o)
+class MyEncoder(json.JSONEncoder): # 定义类 MyEncoder，继承自 json.JSONEncoder
+    def default(self, o):          # 定义函数 default，参数：self, o
+        if isinstance(o, (datetime, date)):  # 如果 isinstance(o, (datetime, date)) 成立
+            return o.isoformat()   # 返回 o.isoformat()
+        if isinstance(o, set):     # 如果 isinstance(o, set) 成立
+            return sorted(o)       # 返回 sorted(o)
+        return super().default(o)  # 返回 super().default(o)
 
-data = {"now": datetime(2024, 3, 15), "tags": {3, 1, 2}}
-print(json.dumps(data, cls=MyEncoder, ensure_ascii=False))
+data = {"now": datetime(2024, 3, 15), "tags": {3, 1, 2}}  # 创建字典并赋给 data
+print(json.dumps(data, cls=MyEncoder, ensure_ascii=False))  # 输出 json.dumps(data, cls=MyEncoder, ensure_ascii=False)
 \`\`\`
 
 ### 3.4 反序列化：object_hook
@@ -1364,22 +1364,22 @@ print(json.dumps(data, cls=MyEncoder, ensure_ascii=False))
 \`loads\` 接受 \`object_hook\` 参数，每解析到一个 dict 就传给它，可以转换成自定义对象。常用来「把 ISO 日期字符串还原成 datetime」：
 
 \`\`\`python
-import json
-from datetime import datetime
+import json                        # 导入 json 模块
+from datetime import datetime      # 从 datetime 导入 datetime
 
-def as_date(d):
-    for k, v in d.items():
-        if isinstance(v, str) and "T" in v:
-            try:
+def as_date(d):                    # 定义函数 as_date，参数：d
+    for k, v in d.items():         # 遍历 d.items()，每次取值赋给 k, v
+        if isinstance(v, str) and "T" in v:  # 如果 isinstance(v, str) and "T" in v 成立
+            try:                   # 尝试执行以下代码块
                 d[k] = datetime.fromisoformat(v)
-            except ValueError:
-                pass
-    return d
+            except ValueError:     # 捕获 ValueError 异常
+                pass               # 空操作，占位
+    return d                       # 返回 d
 
-s = '{"now": "2024-03-15T10:00:00"}'
-obj = json.loads(s, object_hook=as_date)
+s = '{"now": "2024-03-15T10:00:00"}'  # 将字符串 '{"now": "2024-03-15T10:00:00"}' 赋给 s
+obj = json.loads(s, object_hook=as_date)  # 将 json.loads(s, object_hook=as_date) 赋给 obj
 print(obj)            # {'now': datetime.datetime(2024, 3, 15, 10, 0)}
-print(type(obj["now"]))
+print(type(obj["now"]))            # 输出 type(obj["now"])
 \`\`\`
 
 ### 3.5 自定义对象的序列化套路
@@ -1387,17 +1387,17 @@ print(type(obj["now"]))
 让自定义类支持 \`__\`json\`\` 或在 default 里判断类型：
 
 \`\`\`python
-import json
+import json                        # 导入 json 模块
 
-class User:
-    def __init__(self, name, age):
+class User:                        # 定义类 User
+    def __init__(self, name, age): # 定义函数 __init__，参数：self, name, age
         self.name = name
         self.age = age
-    def to_dict(self):
-        return {"name": self.name, "age": self.age}
+    def to_dict(self):             # 定义函数 to_dict，参数：self
+        return {"name": self.name, "age": self.age}  # 返回 {"name": self.name, "age": self.age}
 
-u = User("tom", 18)
-print(json.dumps(u, default=lambda o: o.to_dict() if isinstance(o, User) else None))
+u = User("tom", 18)                # 将 User("tom", 18) 赋给 u
+print(json.dumps(u, default=lambda o: o.to_dict() if isinstance(o, User) else None))  # 输出 json.dumps(u, default=lambda o: o.to_dict() if isinstance(o, User) else None)
 # {"name": "tom", "age": 18}
 \`\`\`
 
@@ -1412,8 +1412,8 @@ print(json.dumps(u, default=lambda o: o.to_dict() if isinstance(o, User) else No
 JSON 可以任意嵌套，Python 的 dict/list 也能对应：
 
 \`\`\`python
-import json
-api = {
+import json                        # 导入 json 模块
+api = {                            # 将 { 赋给 api
     "code": 0,
     "data": {
         "users": [
@@ -1423,8 +1423,8 @@ api = {
         "total": 2
     }
 }
-s = json.dumps(api, ensure_ascii=False, indent=2)
-obj = json.loads(s)
+s = json.dumps(api, ensure_ascii=False, indent=2)  # 将 json.dumps(api, ensure_ascii=False, indent=2) 赋给 s
+obj = json.loads(s)                # 将 json.loads(s) 赋给 obj
 print(obj["data"]["users"][0]["name"])  # tom
 \`\`\`
 
@@ -1433,11 +1433,11 @@ print(obj["data"]["users"][0]["name"])  # tom
 解析非法 JSON 会抛 \`json.JSONDecodeError\`，它是 \`ValueError\` 的子类。处理外部数据时务必 try：
 
 \`\`\`python
-import json
-try:
-    obj = json.loads("{bad json")
+import json                        # 导入 json 模块
+try:                               # 尝试执行以下代码块
+    obj = json.loads("{bad json")  # 将 json.loads("{bad json") 赋给 obj
 except json.JSONDecodeError as e:
-    print("JSON 解析失败:", e.msg, "位置", e.pos)
+    print("JSON 解析失败:", e.msg, "位置", e.pos)  # 输出 "JSON 解析失败:", e.msg, "位置", e.pos
 \`\`\`
 
 ### 4.3 流式解析：大文件
@@ -1476,15 +1476,15 @@ XML 用标签描述结构，比 JSON 啰嗦但更「文档化」。Python 标准
 ### 5.2 解析：fromstring / parse
 
 \`\`\`python
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET # 导入 xml.etree.ElementTree 模块并取别名 ET
 
-xml_str = """
+xml_str = """                      # 将字符串 """ 赋给 xml_str
 <users>
     <user id="1"><name>tom</name><age>18</age></user>
     <user id="2"><name>jerry</name><age>20</age></user>
 </users>
 """
-root = ET.fromstring(xml_str)
+root = ET.fromstring(xml_str)      # 将 ET.fromstring(xml_str) 赋给 root
 print(root.tag)  # users
 
 # 从文件解析
@@ -1499,20 +1499,20 @@ print(root.tag)  # users
 - \`iter(tag)\`：递归找所有后代节点
 
 \`\`\`python
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET # 导入 xml.etree.ElementTree 模块并取别名 ET
 
-root = ET.fromstring("""
+root = ET.fromstring("""           # 将 ET.fromstring(""" 赋给 root
 <users>
     <user id="1"><name>tom</name><age>18</age></user>
     <user id="2"><name>jerry</name><age>20</age></user>
 </users>
 """)
 
-for user in root.findall("user"):
+for user in root.findall("user"):  # 遍历 root.findall("user")，每次取值赋给 user
     uid = user.get("id")            # 属性
     name = user.find("name").text   # 子节点文本
-    age = user.find("age").text
-    print(uid, name, age)
+    age = user.find("age").text    # 将 user.find("age").text 赋给 age
+    print(uid, name, age)          # 输出 uid, name, age
 # 1 tom 18
 # 2 jerry 20
 \`\`\`
@@ -1522,7 +1522,7 @@ for user in root.findall("user"):
 ### 5.4 Element 的属性与文本
 
 \`\`\`python
-elem = root.find("user")
+elem = root.find("user")           # 将 root.find("user") 赋给 elem
 print(elem.get("id"))     # 1 —— 取属性
 print(elem.attrib)        # {'id': '1'} —— 所有属性字典
 print(elem.find("name").text)  # tom —— 取文本
@@ -1535,17 +1535,17 @@ print(elem.find("name").text)  # tom —— 取文本
 ### 6.1 构建树
 
 \`\`\`python
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET # 导入 xml.etree.ElementTree 模块并取别名 ET
 
-root = ET.Element("users")
+root = ET.Element("users")         # 将 ET.Element("users") 赋给 root
 for u in [{"id": "1", "name": "tom", "age": "18"},
           {"id": "2", "name": "jerry", "age": "20"}]:
-    user = ET.SubElement(root, "user", id=u["id"])
+    user = ET.SubElement(root, "user", id=u["id"])  # 将 ET.SubElement(root, "user", id=u["id"]) 赋给 user
     ET.SubElement(user, "name").text = u["name"]
     ET.SubElement(user, "age").text = u["age"]
 
-xml_bytes = ET.tostring(root, encoding="unicode")
-print(xml_bytes)
+xml_bytes = ET.tostring(root, encoding="unicode")  # 将 ET.tostring(root, encoding="unicode") 赋给 xml_bytes
+print(xml_bytes)                   # 输出 xml_bytes
 \`\`\`
 
 ### 6.2 缩进美化 (3.9+)
@@ -1553,11 +1553,11 @@ print(xml_bytes)
 \`ET.indent(tree, space="  ")\` 给 XML 加缩进：
 
 \`\`\`python
-import xml.etree.ElementTree as ET
-root = ET.Element("a")
+import xml.etree.ElementTree as ET # 导入 xml.etree.ElementTree 模块并取别名 ET
+root = ET.Element("a")             # 将 ET.Element("a") 赋给 root
 ET.SubElement(root, "b").text = "1"
-ET.indent(root, space="  ")
-print(ET.tostring(root, encoding="unicode"))
+ET.indent(root, space="  ")        # 对 ET 调用 indent 方法，参数 root, space="  "
+print(ET.tostring(root, encoding="unicode"))  # 输出 ET.tostring(root, encoding="unicode")
 # <a>
 #   <b>1</b>
 # </a>
@@ -1566,8 +1566,8 @@ print(ET.tostring(root, encoding="unicode"))
 ### 6.3 写文件
 
 \`\`\`python
-tree = ET.ElementTree(root)
-tree.write("data.xml", encoding="utf-8", xml_declaration=True)
+tree = ET.ElementTree(root)        # 将 ET.ElementTree(root) 赋给 tree
+tree.write("data.xml", encoding="utf-8", xml_declaration=True)  # 对 tree 调用 write 方法，参数 "data.xml", encoding="utf-8", xml_declaration=True
 \`\`\`
 
 ⚠️ XML 生成要注意**转义**：\`<\` \`>\` \`&\` 等字符，\`tostring\` 会自动处理。但如果手工拼接 XML 字符串（不推荐），要自己转义，否则会产生非法 XML。**永远用 ElementTree 构建树，别手工拼字符串**。
@@ -1581,7 +1581,7 @@ CSV（Comma-Separated Values）是最简单的表格格式，每行一条记录�
 ### 7.1 reader 读取
 
 \`\`\`python
-import csv
+import csv                         # 导入 csv 模块
 # 假设 data.csv 内容：
 # name,age
 # tom,18
@@ -1598,7 +1598,7 @@ import csv
 ### 7.2 writer 写入
 
 \`\`\`python
-import csv
+import csv                         # 导入 csv 模块
 # with open("out.csv", "w", newline="", encoding="utf-8") as f:
 #     writer = csv.writer(f)
 #     writer.writerow(["name", "age"])
@@ -1612,7 +1612,7 @@ import csv
 用字典方式读写，每行是 \`{字段: 值}\`，可读性更好：
 
 \`\`\`python
-import csv
+import csv                         # 导入 csv 模块
 # 读
 # with open("data.csv", encoding="utf-8") as f:
 #     reader = csv.DictReader(f)
@@ -1668,7 +1668,7 @@ port = 5432
 \`\`\`
 
 \`\`\`python
-import tomllib
+import tomllib                     # 导入 tomllib 模块
 # with open("config.toml", "rb") as f:
 #     config = tomllib.load(f)
 #     print(config["database"]["host"])
@@ -2137,16 +2137,16 @@ SQLite 适合：单机应用、配置存储、原型开发、移动端、测试�
 \`sqlite3.connect(database)\` 建立连接。\`database\` 是文件路径，特殊值 \`":memory:"\` 表示内存数据库（程序结束就消失，适合测试和 demo）：
 
 \`\`\`python
-import sqlite3
+import sqlite3                     # 导入 sqlite3 模块
 
 # 连接到文件（不存在会创建）
 # conn = sqlite3.connect("app.db")
 
 # 内存数据库（每次连接都是全新的）
-conn = sqlite3.connect(":memory:")
+conn = sqlite3.connect(":memory:") # 将 sqlite3.connect(":memory:") 赋给 conn
 
 # 用完关闭
-conn.close()
+conn.close()                       # 对 conn 调用 close 方法
 \`\`\`
 
 \`conn\` 是连接对象，负责事务提交、关闭、创建游标。
@@ -2156,22 +2156,22 @@ conn.close()
 \`conn.cursor()\` 创建游标，游标负责执行 SQL、获取结果：
 
 \`\`\`python
-import sqlite3
-conn = sqlite3.connect(":memory:")
-cur = conn.cursor()
+import sqlite3                     # 导入 sqlite3 模块
+conn = sqlite3.connect(":memory:") # 将 sqlite3.connect(":memory:") 赋给 conn
+cur = conn.cursor()                # 将 conn.cursor() 赋给 cur
 
 # 执行建表
-cur.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)")
+cur.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)")  # 对 cur 调用 execute 方法，参数 "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)"
 
 # 插入
-cur.execute("INSERT INTO users (name, age) VALUES ('tom', 18)")
+cur.execute("INSERT INTO users (name, age) VALUES ('tom', 18)")  # 对 cur 调用 execute 方法，参数 "INSERT INTO users (name, age) VALUES ('tom', 18)"
 
 # 查询
-cur.execute("SELECT * FROM users")
+cur.execute("SELECT * FROM users") # 对 cur 调用 execute 方法，参数 "SELECT * FROM users"
 print(cur.fetchall())  # [(1, 'tom', 18)]
 
 conn.commit()  # 提交事务
-conn.close()
+conn.close()                       # 对 conn 调用 close 方法
 \`\`\`
 
 ### 1.3 execute / executemany / executescript
@@ -2181,21 +2181,21 @@ conn.close()
 - \`executescript(sql_script)\`：一次执行多条语句（用分号分隔）
 
 \`\`\`python
-import sqlite3
-conn = sqlite3.connect(":memory:")
-cur = conn.cursor()
-cur.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)")
+import sqlite3                     # 导入 sqlite3 模块
+conn = sqlite3.connect(":memory:") # 将 sqlite3.connect(":memory:") 赋给 conn
+cur = conn.cursor()                # 将 conn.cursor() 赋给 cur
+cur.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)")  # 对 cur 调用 execute 方法，参数 "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)"
 
 # executemany 批量插入
-data = [("tom", 18), ("jerry", 20), ("spike", 22)]
-cur.executemany("INSERT INTO users (name, age) VALUES (?, ?)", data)
+data = [("tom", 18), ("jerry", 20), ("spike", 22)]  # 创建列表并赋给 data
+cur.executemany("INSERT INTO users (name, age) VALUES (?, ?)", data)  # 对 cur 调用 executemany 方法，参数 "INSERT INTO users (name, age) VALUES (?, ?)", data
 
 # executescript 执行多条
 cur.executescript("""
     INSERT INTO users (name, age) VALUES ('tyke', 5);
     UPDATE users SET age = age + 1 WHERE name = 'tom';
 """)
-conn.commit()
+conn.commit()                      # 对 conn 调用 commit 方法
 \`\`\`
 
 ---
@@ -2208,8 +2208,8 @@ conn.commit()
 
 \`\`\`python
 # 危险！SQL 注入漏洞
-name = input("名字: ")
-cur.execute("SELECT * FROM users WHERE name = '" + name + "'")
+name = input("名字: ")               # 将 input("名字: ") 赋给 name
+cur.execute("SELECT * FROM users WHERE name = '" + name + "'")  # 对 cur 调用 execute 方法，参数 "SELECT * FROM users WHERE name = '" + name + "'"
 # 如果输入: tom'; DROP TABLE users; --
 # 整个表就没了
 \`\`\`
@@ -2219,8 +2219,8 @@ cur.execute("SELECT * FROM users WHERE name = '" + name + "'")
 ### 2.2 问号占位符 ?
 
 \`\`\`python
-cur.execute("SELECT * FROM users WHERE name = ?", ("tom",))
-cur.execute("SELECT * FROM users WHERE age > ? AND age < ?", (15, 25))
+cur.execute("SELECT * FROM users WHERE name = ?", ("tom",))  # 对 cur 调用 execute 方法，参数 "SELECT * FROM users WHERE name = ?", ("tom",)
+cur.execute("SELECT * FROM users WHERE age > ? AND age < ?", (15, 25))  # 对 cur 调用 execute 方法，参数 "SELECT * FROM users WHERE age > ? AND age < ?", (15, 25)
 \`\`\`
 
 参数必须是**元组**（单个参数要写成 \`(value,)\`，那个逗号不能少）。
@@ -2237,8 +2237,8 @@ cur.execute("SELECT * FROM users WHERE name = :name AND age > :age",
 ### 2.4 executemany 批量
 
 \`\`\`python
-data = [("tom", 18), ("jerry", 20)]
-cur.executemany("INSERT INTO users (name, age) VALUES (?, ?)", data)
+data = [("tom", 18), ("jerry", 20)]  # 创建列表并赋给 data
+cur.executemany("INSERT INTO users (name, age) VALUES (?, ?)", data)  # 对 cur 调用 executemany 方法，参数 "INSERT INTO users (name, age) VALUES (?, ?)", data
 \`\`\`
 
 批量插入比循环 \`execute\` 快得多——因为只解析一次 SQL。
@@ -2274,29 +2274,29 @@ print(cur.lastrowid)  # 插入行的 id
 ### 3.3 查询 SELECT
 
 \`\`\`python
-cur.execute("SELECT id, name, age FROM users WHERE age >= ?", (18,))
+cur.execute("SELECT id, name, age FROM users WHERE age >= ?", (18,))  # 对 cur 调用 execute 方法，参数 "SELECT id, name, age FROM users WHERE age >= ?", (18,)
 
 # fetchone 取一条
 print(cur.fetchone())       # (1, 'tom', 18)
 
 # fetchall 取全部
-cur.execute("SELECT * FROM users")
+cur.execute("SELECT * FROM users") # 对 cur 调用 execute 方法，参数 "SELECT * FROM users"
 print(cur.fetchall())       # [(...), (...)]
 
 # 遍历（推荐，省内存）
-cur.execute("SELECT * FROM users")
-for row in cur:
-    print(row)
+cur.execute("SELECT * FROM users") # 对 cur 调用 execute 方法，参数 "SELECT * FROM users"
+for row in cur:                    # 遍历 cur，每次取值赋给 row
+    print(row)                     # 输出 row
 \`\`\`
 
 ### 3.4 更新 UPDATE / 删除 DELETE
 
 \`\`\`python
-cur.execute("UPDATE users SET age = ? WHERE name = ?", (19, "tom"))
+cur.execute("UPDATE users SET age = ? WHERE name = ?", (19, "tom"))  # 对 cur 调用 execute 方法，参数 "UPDATE users SET age = ? WHERE name = ?", (19, "tom")
 print(cur.rowcount)  # 影响的行数
 
-cur.execute("DELETE FROM users WHERE age < ?", (10,))
-print(cur.rowcount)
+cur.execute("DELETE FROM users WHERE age < ?", (10,))  # 对 cur 调用 execute 方法，参数 "DELETE FROM users WHERE age < ?", (10,)
+print(cur.rowcount)                # 输出 cur.rowcount
 \`\`\`
 
 ⚠️ UPDATE/DELETE 一定要带 WHERE，否则会改/删全表！\`cur.rowcount\` 返回受影响行数。
@@ -2312,20 +2312,20 @@ print(cur.rowcount)
 SQLite 默认在**自动提交**关闭时，每条写操作会隐式开启事务，需要手动 \`commit\` 才真正写入；出错时可以 \`rollback\` 回滚到之前状态。
 
 \`\`\`python
-import sqlite3
-conn = sqlite3.connect(":memory:")
-cur = conn.cursor()
-cur.execute("CREATE TABLE account (id INTEGER PRIMARY KEY, balance INTEGER)")
-cur.execute("INSERT INTO account (balance) VALUES (100), (100)")
-conn.commit()
+import sqlite3                     # 导入 sqlite3 模块
+conn = sqlite3.connect(":memory:") # 将 sqlite3.connect(":memory:") 赋给 conn
+cur = conn.cursor()                # 将 conn.cursor() 赋给 cur
+cur.execute("CREATE TABLE account (id INTEGER PRIMARY KEY, balance INTEGER)")  # 对 cur 调用 execute 方法，参数 "CREATE TABLE account (id INTEGER PRIMARY KEY, balance INTEGER)"
+cur.execute("INSERT INTO account (balance) VALUES (100), (100)")  # 对 cur 调用 execute 方法，参数 "INSERT INTO account (balance) VALUES (100), (100)"
+conn.commit()                      # 对 conn 调用 commit 方法
 
-try:
-    cur.execute("UPDATE account SET balance = balance - 30 WHERE id = 1")
-    cur.execute("UPDATE account SET balance = balance + 30 WHERE id = 2")
+try:                               # 尝试执行以下代码块
+    cur.execute("UPDATE account SET balance = balance - 30 WHERE id = 1")  # 对 cur 调用 execute 方法，参数 "UPDATE account SET balance = balance - 30 WHERE id = 1"
+    cur.execute("UPDATE account SET balance = balance + 30 WHERE id = 2")  # 对 cur 调用 execute 方法，参数 "UPDATE account SET balance = balance + 30 WHERE id = 2"
     conn.commit()  # 两条都成功才提交
-except Exception as e:
+except Exception as e:             # 捕获 Exception 异常并绑定到 e
     conn.rollback()  # 出错回滚，两条都不生效
-    raise
+    raise                          # 抛出异常
 \`\`\`
 
 ### 4.2 自动提交模式
@@ -2333,7 +2333,7 @@ except Exception as e:
 \`sqlite3.connect(db, isolation_level=None)\` 开启自动提交，每条语句立即生效，无需手动 commit。适合简单场景：
 
 \`\`\`python
-conn = sqlite3.connect(":memory:", isolation_level=None)
+conn = sqlite3.connect(":memory:", isolation_level=None)  # 将 sqlite3.connect(":memory:", isolation_level=None) 赋给 conn
 \`\`\`
 
 ### 4.3 with 上下文管理器
@@ -2341,22 +2341,22 @@ conn = sqlite3.connect(":memory:", isolation_level=None)
 \`with conn\` 是一个**事务上下文**——退出 with 块时，如果没有异常就自动 commit，有异常就自动 rollback：
 
 \`\`\`python
-import sqlite3
-conn = sqlite3.connect(":memory:")
-cur = conn.cursor()
-cur.execute("CREATE TABLE t (x INTEGER)")
+import sqlite3                     # 导入 sqlite3 模块
+conn = sqlite3.connect(":memory:") # 将 sqlite3.connect(":memory:") 赋给 conn
+cur = conn.cursor()                # 将 conn.cursor() 赋给 cur
+cur.execute("CREATE TABLE t (x INTEGER)")  # 对 cur 调用 execute 方法，参数 "CREATE TABLE t (x INTEGER)"
 
-try:
-    with conn:
-        cur.execute("INSERT INTO t VALUES (1)")
-        cur.execute("INSERT INTO t VALUES (2)")
+try:                               # 尝试执行以下代码块
+    with conn:                     # 使用上下文管理器 conn
+        cur.execute("INSERT INTO t VALUES (1)")  # 对 cur 调用 execute 方法，参数 "INSERT INTO t VALUES (1)"
+        cur.execute("INSERT INTO t VALUES (2)")  # 对 cur 调用 execute 方法，参数 "INSERT INTO t VALUES (2)"
         # 正常退出 -> 自动 commit
-except Exception:
+except Exception:                  # 捕获 Exception 异常
     # 异常 -> 自动 rollback
-    pass
+    pass                           # 空操作，占位
 
-cur.execute("SELECT * FROM t")
-print(cur.fetchall())
+cur.execute("SELECT * FROM t")     # 对 cur 调用 execute 方法，参数 "SELECT * FROM t"
+print(cur.fetchall())              # 输出 cur.fetchall()
 \`\`\`
 
 ⚠️ 注意 \`with conn\` 提交的是**事务**，不是「关闭连接」。连接还是要手动 \`conn.close()\`。
@@ -2372,16 +2372,16 @@ print(cur.fetchall())
 默认查询返回的是**元组**，靠位置取值不直观。\`conn.row_factory = sqlite3.Row\` 后返回 \`Row\` 对象，可以按列名取值：
 
 \`\`\`python
-import sqlite3
-conn = sqlite3.connect(":memory:")
+import sqlite3                     # 导入 sqlite3 模块
+conn = sqlite3.connect(":memory:") # 将 sqlite3.connect(":memory:") 赋给 conn
 conn.row_factory = sqlite3.Row
-cur = conn.cursor()
-cur.execute("CREATE TABLE users (id INTEGER, name TEXT, age INTEGER)")
-cur.execute("INSERT INTO users VALUES (1, 'tom', 18)")
-conn.commit()
+cur = conn.cursor()                # 将 conn.cursor() 赋给 cur
+cur.execute("CREATE TABLE users (id INTEGER, name TEXT, age INTEGER)")  # 对 cur 调用 execute 方法，参数 "CREATE TABLE users (id INTEGER, name TEXT, age INTEGER)"
+cur.execute("INSERT INTO users VALUES (1, 'tom', 18)")  # 对 cur 调用 execute 方法，参数 "INSERT INTO users VALUES (1, 'tom', 18)"
+conn.commit()                      # 对 conn 调用 commit 方法
 
-cur.execute("SELECT * FROM users")
-row = cur.fetchone()
+cur.execute("SELECT * FROM users") # 对 cur 调用 execute 方法，参数 "SELECT * FROM users"
+row = cur.fetchone()               # 将 cur.fetchone() 赋给 row
 print(row["name"])       # tom —— 按列名
 print(row["age"])        # 18
 print(dict(row))         # {'id': 1, 'name': 'tom', 'age': 18} —— 转字典
@@ -2398,10 +2398,10 @@ PRAGMA 是 SQLite 的配置命令，用来调整数据库行为：
 
 \`\`\`python
 # 开启外键约束（默认关闭！）
-conn.execute("PRAGMA foreign_keys = ON")
+conn.execute("PRAGMA foreign_keys = ON")  # 对 conn 调用 execute 方法，参数 "PRAGMA foreign_keys = ON"
 
 # 查看 SQLite 版本
-print(conn.execute("PRAGMA database_list").fetchall())
+print(conn.execute("PRAGMA database_list").fetchall())  # 输出 conn.execute("PRAGMA database_list").fetchall()
 
 # 设置页大小、缓存等（建库时设）
 conn.execute("PRAGMA journal_mode = WAL")  # 写时更少锁
@@ -2416,10 +2416,10 @@ conn.execute("PRAGMA journal_mode = WAL")  # 写时更少锁
 ### 7.1 外键
 
 \`\`\`python
-import sqlite3
-conn = sqlite3.connect(":memory:")
-conn.execute("PRAGMA foreign_keys = ON")
-cur = conn.cursor()
+import sqlite3                     # 导入 sqlite3 模块
+conn = sqlite3.connect(":memory:") # 将 sqlite3.connect(":memory:") 赋给 conn
+conn.execute("PRAGMA foreign_keys = ON")  # 对 conn 调用 execute 方法，参数 "PRAGMA foreign_keys = ON"
+cur = conn.cursor()                # 将 conn.cursor() 赋给 cur
 
 cur.executescript("""
     CREATE TABLE classes (
@@ -2433,10 +2433,10 @@ cur.executescript("""
         FOREIGN KEY (class_id) REFERENCES classes(id)
     );
 """)
-cur.execute("INSERT INTO classes VALUES (1, '一班')")
-cur.execute("INSERT INTO students VALUES (1, 'tom', 1)")
-cur.execute("INSERT INTO students VALUES (2, 'jerry', 1)")
-conn.commit()
+cur.execute("INSERT INTO classes VALUES (1, '一班')")  # 对 cur 调用 execute 方法，参数 "INSERT INTO classes VALUES (1, '一班')"
+cur.execute("INSERT INTO students VALUES (1, 'tom', 1)")  # 对 cur 调用 execute 方法，参数 "INSERT INTO students VALUES (1, 'tom', 1)"
+cur.execute("INSERT INTO students VALUES (2, 'jerry', 1)")  # 对 cur 调用 execute 方法，参数 "INSERT INTO students VALUES (2, 'jerry', 1)"
+conn.commit()                      # 对 conn 调用 commit 方法
 \`\`\`
 
 外键保证 students.class_id 必须指向一个真实存在的 classes.id，插入非法 class_id 会被拒绝。
@@ -2450,7 +2450,7 @@ cur.execute("""
     FROM students s
     JOIN classes c ON s.class_id = c.id
 """)
-for row in cur:
+for row in cur:                    # 遍历 cur，每次取值赋给 row
     print(row)  # ('tom', '一班'), ('jerry', '一班')
 
 # LEFT JOIN：左表全保留，右表没有则 NULL
@@ -2467,8 +2467,8 @@ JOIN 类型：\`INNER JOIN\`（交集）、\`LEFT JOIN\`（左全保留）、\`R
 ### 7.3 聚合与分组
 
 \`\`\`python
-cur.execute("SELECT class_id, COUNT(*) FROM students GROUP BY class_id")
-cur.execute("SELECT class_id, AVG(age) FROM students GROUP BY class_id HAVING COUNT(*) > 2")
+cur.execute("SELECT class_id, COUNT(*) FROM students GROUP BY class_id")  # 对 cur 调用 execute 方法，参数 "SELECT class_id, COUNT(*) FROM students GROUP BY class_id"
+cur.execute("SELECT class_id, AVG(age) FROM students GROUP BY class_id HAVING COUNT(*) > 2")  # 对 cur 调用 execute 方法，参数 "SELECT class_id, AVG(age) FROM students GROUP BY class_id HAVING COUNT(*) > 2"
 \`\`\`
 
 常用聚合函数：\`COUNT\` \`SUM\` \`AVG\` \`MIN\` \`MAX\`。\`GROUP BY\` 分组，\`HAVING\` 过滤分组后的结果（WHERE 过滤的是行）。
@@ -2480,8 +2480,8 @@ cur.execute("SELECT class_id, AVG(age) FROM students GROUP BY class_id HAVING CO
 索引能加速查询，但会拖慢写入、占空间。给「经常作为查询条件」的列建索引：
 
 \`\`\`python
-cur.execute("CREATE INDEX idx_users_name ON users(name)")
-cur.execute("CREATE INDEX idx_users_email ON users(email)")
+cur.execute("CREATE INDEX idx_users_name ON users(name)")  # 对 cur 调用 execute 方法，参数 "CREATE INDEX idx_users_name ON users(name)"
+cur.execute("CREATE INDEX idx_users_email ON users(email)")  # 对 cur 调用 execute 方法，参数 "CREATE INDEX idx_users_email ON users(email)"
 \`\`\`
 
 查看查询是否用上索引：\`EXPLAIN QUERY PLAN SELECT ...\`：
@@ -2503,16 +2503,16 @@ print(conn.execute("EXPLAIN QUERY PLAN SELECT * FROM users WHERE name = ?",
 
 \`\`\`python
 # 字符串
-cur.execute("SELECT UPPER(name), LENGTH(name) FROM users")
+cur.execute("SELECT UPPER(name), LENGTH(name) FROM users")  # 对 cur 调用 execute 方法，参数 "SELECT UPPER(name), LENGTH(name) FROM users"
 # 日期
-cur.execute("SELECT date('now'), datetime('now')")
+cur.execute("SELECT date('now'), datetime('now')")  # 对 cur 调用 execute 方法，参数 "SELECT date('now'), datetime('now')"
 cur.execute("SELECT date('now', '-1 month')")  # 一个月前
 # 数学
-cur.execute("SELECT ROUND(AVG(age), 2) FROM users")
+cur.execute("SELECT ROUND(AVG(age), 2) FROM users")  # 对 cur 调用 execute 方法，参数 "SELECT ROUND(AVG(age), 2) FROM users"
 # NULL 处理
 cur.execute("SELECT COALESCE(email, '无') FROM users")  # email 为 NULL 返回 '无'
 # 条件
-cur.execute("SELECT name, CASE WHEN age >= 18 THEN '成年' ELSE '未成年' END FROM users")
+cur.execute("SELECT name, CASE WHEN age >= 18 THEN '成年' ELSE '未成年' END FROM users")  # 对 cur 调用 execute 方法，参数 "SELECT name, CASE WHEN age >= 18 THEN '成年' ELSE '未成年' END FROM users"
 \`\`\`
 
 ---
@@ -2523,7 +2523,7 @@ cur.execute("SELECT name, CASE WHEN age >= 18 THEN '成年' ELSE '未成年' END
 
 \`\`\`python
 # 原生 SQL
-cur.execute("SELECT * FROM users WHERE id = ?", (1,))
+cur.execute("SELECT * FROM users WHERE id = ?", (1,))  # 对 cur 调用 execute 方法，参数 "SELECT * FROM users WHERE id = ?", (1,)
 
 # ORM（如 SQLAlchemy / Django ORM，伪代码）
 # user = session.query(User).filter_by(id=1).first()
@@ -2542,8 +2542,8 @@ ORM 优点：面向对象、防注入、可换数据库。缺点：性能略低�
 
 \`\`\`python
 # 共享内存库（可被多个连接访问）
-conn1 = sqlite3.connect("file::memory:?cache=shared", uri=True)
-conn2 = sqlite3.connect("file::memory:?cache=shared", uri=True)
+conn1 = sqlite3.connect("file::memory:?cache=shared", uri=True)  # 将 sqlite3.connect("file::memory:?cache=shared", uri=True) 赋给 conn1
+conn2 = sqlite3.connect("file::memory:?cache=shared", uri=True)  # 将 sqlite3.connect("file::memory:?cache=shared", uri=True) 赋给 conn2
 \`\`\`
 
 ---
@@ -2553,16 +2553,16 @@ conn2 = sqlite3.connect("file::memory:?cache=shared", uri=True)
 下面是一个完整的「用户管理」CRUD 封装：
 
 \`\`\`python
-import sqlite3
+import sqlite3                     # 导入 sqlite3 模块
 
-class UserDB:
-    def __init__(self, conn):
+class UserDB:                      # 定义类 UserDB
+    def __init__(self, conn):      # 定义函数 __init__，参数：self, conn
         self.conn = conn
         self.conn.row_factory = sqlite3.Row
-        self._init()
+        self._init()               # 对 self 调用 _init 方法
 
-    def _init(self):
-        with self.conn:
+    def _init(self):               # 定义函数 _init，参数：self
+        with self.conn:            # 使用上下文管理器 self.conn
             self.conn.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2572,31 +2572,31 @@ class UserDB:
                 )
             """)
 
-    def add(self, name, age, email):
-        with self.conn:
-            cur = self.conn.execute(
+    def add(self, name, age, email):  # 定义函数 add，参数：self, name, age, email
+        with self.conn:            # 使用上下文管理器 self.conn
+            cur = self.conn.execute(  # 将 self.conn.execute( 赋给 cur
                 "INSERT INTO users (name, age, email) VALUES (?, ?, ?)",
                 (name, age, email))
-            return cur.lastrowid
+            return cur.lastrowid   # 返回 cur.lastrowid
 
-    def get(self, uid):
-        cur = self.conn.execute("SELECT * FROM users WHERE id = ?", (uid,))
-        return dict(cur.fetchone()) if cur.fetchone() else None
+    def get(self, uid):            # 定义函数 get，参数：self, uid
+        cur = self.conn.execute("SELECT * FROM users WHERE id = ?", (uid,))  # 将 self.conn.execute("SELECT * FROM users WHERE id = ?", (uid,)) 赋给 cur
+        return dict(cur.fetchone()) if cur.fetchone() else None  # 返回 dict(cur.fetchone()) if cur.fetchone() else None
 
-    def list_all(self):
-        cur = self.conn.execute("SELECT * FROM users ORDER BY id")
-        return [dict(r) for r in cur]
+    def list_all(self):            # 定义函数 list_all，参数：self
+        cur = self.conn.execute("SELECT * FROM users ORDER BY id")  # 将 self.conn.execute("SELECT * FROM users ORDER BY id") 赋给 cur
+        return [dict(r) for r in cur]  # 返回 [dict(r) for r in cur]
 
-    def update_age(self, uid, age):
-        with self.conn:
-            cur = self.conn.execute(
+    def update_age(self, uid, age):  # 定义函数 update_age，参数：self, uid, age
+        with self.conn:            # 使用上下文管理器 self.conn
+            cur = self.conn.execute(  # 将 self.conn.execute( 赋给 cur
                 "UPDATE users SET age = ? WHERE id = ?", (age, uid))
-            return cur.rowcount
+            return cur.rowcount    # 返回 cur.rowcount
 
-    def delete(self, uid):
-        with self.conn:
-            cur = self.conn.execute("DELETE FROM users WHERE id = ?", (uid,))
-            return cur.rowcount
+    def delete(self, uid):         # 定义函数 delete，参数：self, uid
+        with self.conn:            # 使用上下文管理器 self.conn
+            cur = self.conn.execute("DELETE FROM users WHERE id = ?", (uid,))  # 将 self.conn.execute("DELETE FROM users WHERE id = ?", (uid,)) 赋给 cur
+            return cur.rowcount    # 返回 cur.rowcount
 \`\`\`
 
 用 \`with self.conn\` 保证事务安全，用参数化防注入，用 \`row_factory\` 让结果可按列名取。
@@ -3072,10 +3072,10 @@ print("SQLite 演示全部完成！")
 ### 1.1 创建 Path 对象
 
 \`\`\`python
-from pathlib import Path
+from pathlib import Path           # 从 pathlib 导入 Path
 
-p = Path("/home/user/demo.txt")
-p = Path("a/b/c.py")
+p = Path("/home/user/demo.txt")    # 将 Path("/home/user/demo.txt") 赋给 p
+p = Path("a/b/c.py")               # 将 Path("a/b/c.py") 赋给 p
 p = Path.cwd()        # 当前工作目录
 p = Path.home()       # 用户主目录
 \`\`\`
@@ -3087,13 +3087,13 @@ Path 会自动处理路径分隔符——在 Windows 上用 \`\\\`，在 Linux/M
 Path 重载了 \`/\` 运算符，让路径拼接像拼字符串一样直观：
 
 \`\`\`python
-from pathlib import Path
-base = Path("/home/user")
-config = base / "config" / "app.json"
+from pathlib import Path           # 从 pathlib 导入 Path
+base = Path("/home/user")          # 将 Path("/home/user") 赋给 base
+config = base / "config" / "app.json"  # 将 base / "config" / "app.json" 赋给 config
 print(config)  # /home/user/config/app.json
 
 # 也能和字符串拼
-p = base / "data" / "file.txt"
+p = base / "data" / "file.txt"     # 将 base / "data" / "file.txt" 赋给 p
 \`\`\`
 
 ⚠️ \`/\` 两边至少有一个是 Path 对象，\`"a" / "b"\` 会报错（字符串不支持 /）。第一个用 Path，后面可以接字符串。
@@ -3101,8 +3101,8 @@ p = base / "data" / "file.txt"
 ### 1.3 路径组成部分
 
 \`\`\`python
-from pathlib import Path
-p = Path("/home/user/docs/report.tar.gz")
+from pathlib import Path           # 从 pathlib 导入 Path
+p = Path("/home/user/docs/report.tar.gz")  # 将 Path("/home/user/docs/report.tar.gz") 赋给 p
 
 print(p.name)      # report.tar.gz —— 文件名
 print(p.stem)      # report —— 不含后缀的文件名
@@ -3116,7 +3116,7 @@ print(p.parts)     # ('/', 'home', 'user', 'docs', 'report.tar.gz')
 \`with_suffix(new)\` 改后缀，\`with_name(new)\` 改文件名，返回新 Path（不改原对象）：
 
 \`\`\`python
-p = Path("report.tar.gz")
+p = Path("report.tar.gz")          # 将 Path("report.tar.gz") 赋给 p
 print(p.with_suffix(".zip"))    # report.tar.zip
 print(p.with_name("data.csv"))  # data.csv
 \`\`\`
@@ -3132,9 +3132,9 @@ print(p.with_name("data.csv"))  # data.csv
 Path 对象直接提供读写方法，省去 \`open\`：
 
 \`\`\`python
-from pathlib import Path
-p = Path("note.txt")
-p.write_text("hello\\nworld", encoding="utf-8")
+from pathlib import Path           # 从 pathlib 导入 Path
+p = Path("note.txt")               # 将 Path("note.txt") 赋给 p
+p.write_text("hello\\nworld", encoding="utf-8")  # 对 p 调用 write_text 方法，参数 "hello\\nworld", encoding="utf-8"
 print(p.read_text(encoding="utf-8"))   # hello\\nworld
 print(p.read_bytes())                   # b'hello\\nworld'
 \`\`\`
@@ -3144,9 +3144,9 @@ print(p.read_bytes())                   # b'hello\\nworld'
 ### 2.2 write_text / write_bytes
 
 \`\`\`python
-from pathlib import Path
-Path("out.txt").write_text("内容", encoding="utf-8")
-Path("data.bin").write_bytes(b"\\x00\\x01\\x02")
+from pathlib import Path           # 从 pathlib 导入 Path
+Path("out.txt").write_text("内容", encoding="utf-8")  # 调用 Path，参数 "out.txt").write_text("内容", encoding="utf-8"
+Path("data.bin").write_bytes(b"\\x00\\x01\\x02")  # 调用 Path，参数 "data.bin").write_bytes(b"\\x00\\x01\\x02"
 \`\`\`
 
 ⚠️ \`write_text\` 是**覆盖写**（truncate），每次调用都会覆盖原内容。要追加用 \`open(p, "a")\`。
@@ -3158,23 +3158,23 @@ Path("data.bin").write_bytes(b"\\x00\\x01\\x02")
 ### 3.1 mkdir / rmdir / unlink / rename
 
 \`\`\`python
-from pathlib import Path
+from pathlib import Path           # 从 pathlib 导入 Path
 
 # 建目录
-p = Path("newdir")
+p = Path("newdir")                 # 将 Path("newdir") 赋给 p
 p.mkdir()                    # 目录已存在会报错
 p.mkdir(exist_ok=True)       # 存在也不报错
 p.mkdir(parents=True)        # 递归创建父目录（类似 mkdir -p）
 
 # 删目录（必须为空）
-p.rmdir()
+p.rmdir()                          # 对 p 调用 rmdir 方法
 
 # 删文件
 Path("a.txt").unlink()       # 不存在会报错
 Path("a.txt").unlink(missing_ok=True)  # 不存在也不报错
 
 # 重命名/移动
-Path("old.txt").rename("new.txt")
+Path("old.txt").rename("new.txt")  # 调用 Path，参数 "old.txt").rename("new.txt"
 \`\`\`
 
 ### 3.2 touch 创建空文件
@@ -3186,9 +3186,9 @@ Path("flag.txt").touch()  # 已存在则更新修改时间，不报错
 ### 3.3 iterdir 遍历目录
 
 \`\`\`python
-from pathlib import Path
-for child in Path("/tmp").iterdir():
-    print(child.name, child.is_dir(), child.is_file())
+from pathlib import Path           # 从 pathlib 导入 Path
+for child in Path("/tmp").iterdir():  # 遍历 Path("/tmp").iterdir()，每次取值赋给 child
+    print(child.name, child.is_dir(), child.is_file())  # 输出 child.name, child.is_dir(), child.is_file()
 \`\`\`
 
 \`iterdir\` 只列直接子项，不递归。
@@ -3200,15 +3200,15 @@ for child in Path("/tmp").iterdir():
 ### 4.1 glob / rglob
 
 \`\`\`python
-from pathlib import Path
+from pathlib import Path           # 从 pathlib 导入 Path
 
 # 当前目录下所有 .py
-for p in Path(".").glob("*.py"):
-    print(p)
+for p in Path(".").glob("*.py"):   # 遍历 Path(".").glob("*.py")，每次取值赋给 p
+    print(p)                       # 输出 p
 
 # 递归所有 .py（rglob 等价于 glob("**/*.py")）
-for p in Path(".").rglob("*.py"):
-    print(p)
+for p in Path(".").rglob("*.py"):  # 遍历 Path(".").rglob("*.py")，每次取值赋给 p
+    print(p)                       # 输出 p
 
 # 通配符
 Path(".").glob("data*")     # 以 data 开头
@@ -3235,8 +3235,8 @@ Path(".").glob("**/*.csv")  # 递归所有 .csv
 ### 5.1 exists / is_file / is_dir
 
 \`\`\`python
-from pathlib import Path
-p = Path("note.txt")
+from pathlib import Path           # 从 pathlib 导入 Path
+p = Path("note.txt")               # 将 Path("note.txt") 赋给 p
 print(p.exists())    # 是否存在
 print(p.is_file())   # 是否是文件
 print(p.is_dir())    # 是否是目录
@@ -3245,10 +3245,10 @@ print(p.is_dir())    # 是否是目录
 ### 5.2 stat 文件信息
 
 \`\`\`python
-from pathlib import Path
-import datetime
-p = Path("note.txt")
-st = p.stat()
+from pathlib import Path           # 从 pathlib 导入 Path
+import datetime                    # 导入 datetime 模块
+p = Path("note.txt")               # 将 Path("note.txt") 赋给 p
+st = p.stat()                      # 将 p.stat() 赋给 st
 print(st.st_size)              # 字节数
 print(st.st_mtime)             # 修改时间戳
 print(datetime.datetime.fromtimestamp(st.st_mtime))  # 转可读时间
@@ -3260,7 +3260,7 @@ print(st.st_mode)              # 权限模式
 ### 5.3 权限 chmod
 
 \`\`\`python
-from pathlib import Path
+from pathlib import Path           # 从 pathlib 导入 Path
 Path("script.sh").chmod(0o755)  # rwxr-xr-x
 \`\`\`
 
@@ -3275,7 +3275,7 @@ Path("script.sh").chmod(0o755)  # rwxr-xr-x
 ### 6.1 os.path 常用
 
 \`\`\`python
-import os.path as op
+import os.path as op               # 导入 os.path 模块并取别名 op
 
 op.join("a", "b", "c.py")   # a/b/c.py —— 拼接（跨平台）
 op.exists("a.txt")          # 是否存在
@@ -3293,7 +3293,7 @@ op.getsize("a.txt")         # 字节数
 ### 6.2 os 模块
 
 \`\`\`python
-import os
+import os                          # 导入 os 模块
 
 os.getcwd()              # 当前工作目录
 os.listdir(".")          # 列出目录（返回文件名列表）
@@ -3316,7 +3316,7 @@ os.system("ls")          # 执行系统命令（返回退出码）
 ### 7.1 copy / copy2 / copyfile
 
 \`\`\`python
-import shutil
+import shutil                      # 导入 shutil 模块
 
 shutil.copy("a.txt", "b.txt")        # 复制文件内容+权限
 shutil.copy2("a.txt", "b.txt")       # 复制内容+权限+元数据（修改时间等）
@@ -3328,19 +3328,19 @@ shutil.copyfile("a.txt", "b.txt")    # 只复制内容
 ### 7.2 copytree / rmtree
 
 \`\`\`python
-import shutil
+import shutil                      # 导入 shutil 模块
 
 # 复制整棵目录树
-shutil.copytree("src", "dst")
+shutil.copytree("src", "dst")      # 对 shutil 调用 copytree 方法，参数 "src", "dst"
 
 # 删除整棵目录树（含内容）
-shutil.rmtree("dst")
+shutil.rmtree("dst")               # 对 shutil 调用 rmtree 方法，参数 "dst"
 \`\`\`
 
 ### 7.3 move
 
 \`\`\`python
-import shutil
+import shutil                      # 导入 shutil 模块
 shutil.move("a.txt", "b.txt")   # 移动/重命名
 shutil.move("file.txt", "/other/dir/")  # 移到别的目录
 \`\`\`
@@ -3348,11 +3348,11 @@ shutil.move("file.txt", "/other/dir/")  # 移到别的目录
 ### 7.4 disk_usage
 
 \`\`\`python
-import shutil
+import shutil                      # 导入 shutil 模块
 total, used, free = shutil.disk_usage("/")
-print("总:", total // (1024**3), "GB")
-print("已用:", used // (1024**3), "GB")
-print("可用:", free // (1024**3), "GB")
+print("总:", total // (1024**3), "GB")  # 输出 "总:", total // (1024**3), "GB"
+print("已用:", used // (1024**3), "GB")  # 输出 "已用:", used // (1024**3), "GB"
+print("可用:", free // (1024**3), "GB")  # 输出 "可用:", free // (1024**3), "GB"
 \`\`\`
 
 ---
@@ -3364,12 +3364,12 @@ print("可用:", free // (1024**3), "GB")
 ### 8.1 NamedTemporaryFile
 
 \`\`\`python
-import tempfile
+import tempfile                    # 导入 tempfile 模块
 
 # 创建有名字的临时文件，关闭后自动删除
-with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=True) as f:
-    f.write("hello")
-    f.flush()
+with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=True) as f:  # 使用上下文管理器 tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=True)，绑定到 f
+    f.write("hello")               # 对 f 调用 write 方法，参数 "hello"
+    f.flush()                      # 对 f 调用 flush 方法
     print(f.name)  # 临时文件路径
 # with 退出后文件被删除
 \`\`\`
@@ -3377,12 +3377,12 @@ with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=True) as f:
 ### 8.2 TemporaryDirectory
 
 \`\`\`python
-import tempfile
+import tempfile                    # 导入 tempfile 模块
 
-with tempfile.TemporaryDirectory() as d:
+with tempfile.TemporaryDirectory() as d:  # 使用上下文管理器 tempfile.TemporaryDirectory()，绑定到 d
     print(d)  # 临时目录路径
     # 在 d 里干活
-    Path(d, "a.txt").write_text("x")
+    Path(d, "a.txt").write_text("x")  # 调用 Path，参数 d, "a.txt").write_text("x"
 # with 退出后目录及内容被删除
 \`\`\`
 
@@ -3391,7 +3391,7 @@ with tempfile.TemporaryDirectory() as d:
 低层级 API，返回文件描述符和路径，需要自己关闭、删除：
 
 \`\`\`python
-import tempfile
+import tempfile                    # 导入 tempfile 模块
 fd, path = tempfile.mkstemp(suffix=".log")
 # 用 fd 操作后，os.close(fd) + os.remove(path)
 \`\`\`
@@ -3403,13 +3403,13 @@ fd, path = tempfile.mkstemp(suffix=".log")
 \`fnmatch\` 用 shell 风格通配符匹配文件名（不是正则）：
 
 \`\`\`python
-import fnmatch
+import fnmatch                     # 导入 fnmatch 模块
 print(fnmatch.fnmatch("report.csv", "*.csv"))   # True
 print(fnmatch.fnmatch("data2024.txt", "data????.txt"))  # True
 
 # 过滤目录
-import os
-csvs = [f for f in os.listdir(".") if fnmatch.fnmatch(f, "*.csv")]
+import os                          # 导入 os 模块
+csvs = [f for f in os.listdir(".") if fnmatch.fnmatch(f, "*.csv")]  # 创建列表并赋给 csvs
 \`\`\`
 
 通配符：\`*\` 任意字符、\`?\` 单字符、\`[seq]\` 字符集、\`[!seq]\` 取反。
@@ -3421,45 +3421,45 @@ csvs = [f for f in os.listdir(".") if fnmatch.fnmatch(f, "*.csv")]
 ### 10.1 递归找最大文件
 
 \`\`\`python
-from pathlib import Path
+from pathlib import Path           # 从 pathlib 导入 Path
 
-def find_largest(root, pattern="*"):
-    largest = None
-    size = 0
-    for p in Path(root).rglob(pattern):
-        if p.is_file():
-            s = p.stat().st_size
-            if s > size:
+def find_largest(root, pattern="*"):  # 定义函数 find_largest，参数：root, pattern="*"
+    largest = None                 # 将 None 赋给 largest
+    size = 0                       # 将整数 0 赋给 size
+    for p in Path(root).rglob(pattern):  # 遍历 Path(root).rglob(pattern)，每次取值赋给 p
+        if p.is_file():            # 如果 p.is_file() 成立
+            s = p.stat().st_size   # 将 p.stat().st_size 赋给 s
+            if s > size:           # 如果 s > size 成立
                 size, largest = s, p
-    return largest, size
+    return largest, size           # 返回 largest, size
 \`\`\`
 
 ### 10.2 统计各类型文件数量
 
 \`\`\`python
-from pathlib import Path
-from collections import Counter
+from pathlib import Path           # 从 pathlib 导入 Path
+from collections import Counter    # 从 collections 导入 Counter
 
-def count_types(root):
-    c = Counter()
-    for p in Path(root).rglob("*"):
-        if p.is_file():
+def count_types(root):             # 定义函数 count_types，参数：root
+    c = Counter()                  # 将 Counter() 赋给 c
+    for p in Path(root).rglob("*"):  # 遍历 Path(root).rglob("*")，每次取值赋给 p
+        if p.is_file():            # 如果 p.is_file() 成立
             c[p.suffix or "(无后缀)"] += 1
-    return c
+    return c                       # 返回 c
 \`\`\`
 
 ### 10.3 安全拼接用户输入路径
 
 \`\`\`python
-from pathlib import Path
+from pathlib import Path           # 从 pathlib 导入 Path
 
-def safe_path(base, user_input):
-    base = Path(base).resolve()
-    target = (base / user_input).resolve()
+def safe_path(base, user_input):   # 定义函数 safe_path，参数：base, user_input
+    base = Path(base).resolve()    # 将 Path(base).resolve() 赋给 base
+    target = (base / user_input).resolve()  # 创建元组并赋给 target
     # 防目录穿越：target 必须在 base 下
-    if not str(target).startswith(str(base)):
-        raise ValueError("非法路径")
-    return target
+    if not str(target).startswith(str(base)):  # 如果 not str(target).startswith(str(base)) 成立
+        raise ValueError("非法路径")   # 抛出异常：ValueError("非法路径")
+    return target                  # 返回 target
 \`\`\`
 
 ⚠️ 处理用户提供的路径要防**目录穿越攻击**——用户传 \`../../etc/passwd\` 可能读到不该读的文件。用 \`resolve()\` 解析后检查是否在允许的根目录下。
@@ -3919,17 +3919,17 @@ JSON 能做一部分，但它只认 dict/list/str/number/bool/None。如果你�
 \`pickle.dumps(obj)\` 把对象序列化成 \`bytes\`，\`pickle.loads(data)\` 把 \`bytes\` 还原成对象：
 
 \`\`\`python
-import pickle
+import pickle                      # 导入 pickle 模块
 
-data = {"name": "tom", "scores": [90, 85], "vip": True}
+data = {"name": "tom", "scores": [90, 85], "vip": True}  # 创建字典并赋给 data
 
 # 序列化
-b = pickle.dumps(data)
+b = pickle.dumps(data)             # 将 pickle.dumps(data) 赋给 b
 print(type(b))  # <class 'bytes'>
 print(b)        # b'\\x80\\x05...' 一串字节
 
 # 反序列化
-obj = pickle.loads(b)
+obj = pickle.loads(b)              # 将 pickle.loads(b) 赋给 obj
 print(obj)            # {'name': 'tom', 'scores': [90, 85], 'vip': True}
 print(obj == data)    # True（值相等）
 print(obj is data)    # False（不是同一个对象）
@@ -3942,14 +3942,14 @@ print(obj is data)    # False（不是同一个对象）
 \`pickle.dump(obj, file)\` 写入文件对象（必须二进制模式），\`pickle.load(file)\` 从文件读出：
 
 \`\`\`python
-import pickle
+import pickle                      # 导入 pickle 模块
 
-data = {"name": "tom"}
+data = {"name": "tom"}             # 创建字典并赋给 data
 with open("data.pkl", "wb") as f:   # 注意是 wb 二进制写
-    pickle.dump(data, f)
+    pickle.dump(data, f)           # 对 pickle 调用 dump 方法，参数 data, f
 
 with open("data.pkl", "rb") as f:   # rb 二进制读
-    obj = pickle.load(f)
+    obj = pickle.load(f)           # 将 pickle.load(f) 赋给 obj
 print(obj)  # {'name': 'tom'}
 \`\`\`
 
@@ -3960,21 +3960,21 @@ print(obj)  # {'name': 'tom'}
 pickle 支持在同一个文件里**连续 dump 多个对象**，再用循环 load 读出：
 
 \`\`\`python
-import pickle
-import io
+import pickle                      # 导入 pickle 模块
+import io                          # 导入 io 模块
 
-buf = io.BytesIO()
-pickle.dump({"a": 1}, buf)
-pickle.dump({"b": 2}, buf)
-pickle.dump({"c": 3}, buf)
+buf = io.BytesIO()                 # 将 io.BytesIO() 赋给 buf
+pickle.dump({"a": 1}, buf)         # 对 pickle 调用 dump 方法，参数 {"a": 1}, buf
+pickle.dump({"b": 2}, buf)         # 对 pickle 调用 dump 方法，参数 {"b": 2}, buf
+pickle.dump({"c": 3}, buf)         # 对 pickle 调用 dump 方法，参数 {"c": 3}, buf
 
-buf.seek(0)
-while True:
-    try:
-        obj = pickle.load(buf)
-        print(obj)
-    except EOFError:
-        break
+buf.seek(0)                        # 对 buf 调用 seek 方法，参数 0
+while True:                        # 当 True 为真时重复执行
+    try:                           # 尝试执行以下代码块
+        obj = pickle.load(buf)     # 将 pickle.load(buf) 赋给 obj
+        print(obj)                 # 输出 obj
+    except EOFError:               # 捕获 EOFError 异常
+        break                      # 跳出循环
 # {'a': 1}
 # {'b': 2}
 # {'c': 3}
@@ -3989,7 +3989,7 @@ while True:
 pickle 有多个「协议版本」（protocol），版本越高，序列化越紧凑、越快，但只能被相同或更高版本的 Python 读取。
 
 \`\`\`python
-import pickle
+import pickle                      # 导入 pickle 模块
 print(pickle.HIGHEST_PROTOCOL)  # 当前最高版本（如 5）
 print(pickle.DEFAULT_PROTOCOL)  # 默认版本
 \`\`\`
@@ -3997,7 +3997,7 @@ print(pickle.DEFAULT_PROTOCOL)  # 默认版本
 \`dumps\` / \`dump\` 可指定 \`protocol\`：
 
 \`\`\`python
-pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)
+pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)  # 对 pickle 调用 dumps 方法，参数 data, protocol=pickle.HIGHEST_PROTOCOL
 \`\`\`
 
 | 协议 | 引入版本 | 特点 |
@@ -4020,18 +4020,18 @@ pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)
 pickle 默认能序列化自定义类的实例，只要类的定义在反序列化时**还能 import 到**：
 
 \`\`\`python
-import pickle
+import pickle                      # 导入 pickle 模块
 
-class User:
-    def __init__(self, name, age):
+class User:                        # 定义类 User
+    def __init__(self, name, age): # 定义函数 __init__，参数：self, name, age
         self.name = name
         self.age = age
-    def __repr__(self):
-        return "User(%s, %d)" % (self.name, self.age)
+    def __repr__(self):            # 定义函数 __repr__，参数：self
+        return "User(%s, %d)" % (self.name, self.age)  # 返回 "User(%s, %d)" % (self.name, self.age)
 
-u = User("tom", 18)
-b = pickle.dumps(u)
-u2 = pickle.loads(b)
+u = User("tom", 18)                # 将 User("tom", 18) 赋给 u
+b = pickle.dumps(u)                # 将 pickle.dumps(u) 赋给 b
+u2 = pickle.loads(b)               # 将 pickle.loads(b) 赋给 u2
 print(u2)         # User(tom, 18)
 print(type(u2))   # <class 'User'>
 \`\`\`
@@ -4055,23 +4055,23 @@ print(type(u2))   # <class 'User'>
 比如对象里有数据库连接（不可序列化）或密码（不想存），可以在 \`__getstate__\` 里剔除：
 
 \`\`\`python
-import pickle
+import pickle                      # 导入 pickle 模块
 
-class Session:
-    def __init__(self, user, password):
+class Session:                     # 定义类 Session
+    def __init__(self, user, password):  # 定义函数 __init__，参数：self, user, password
         self.user = user
         self.password = password  # 不想被 pickle
-    def __getstate__(self):
-        state = self.__dict__.copy()
+    def __getstate__(self):        # 定义函数 __getstate__，参数：self
+        state = self.__dict__.copy()  # 将 self.__dict__.copy() 赋给 state
         del state["password"]    # 序列化时去掉密码
-        return state
-    def __setstate__(self, state):
+        return state               # 返回 state
+    def __setstate__(self, state): # 定义函数 __setstate__，参数：self, state
         self.__dict__.update(state)
         self.password = None      # 反序列化时设为 None
 
-s = Session("tom", "secret123")
-b = pickle.dumps(s)
-s2 = pickle.loads(b)
+s = Session("tom", "secret123")    # 将 Session("tom", "secret123") 赋给 s
+b = pickle.dumps(s)                # 将 pickle.dumps(s) 赋给 b
+s2 = pickle.loads(b)               # 将 pickle.loads(b) 赋给 s2
 print(s2.user)      # tom
 print(s2.password)  # None —— 密码没被存
 \`\`\`
@@ -4081,20 +4081,20 @@ print(s2.password)  # None —— 密码没被存
 对象里若有文件句柄、锁、网络连接，序列化会失败。在 \`__getstate__\` 里把它们排除，\`__setstate__\` 里重建：
 
 \`\`\`python
-class Worker:
-    def __init__(self, name):
+class Worker:                      # 定义类 Worker
+    def __init__(self, name):      # 定义函数 __init__，参数：self, name
         self.name = name
         self.cache = dict()  # 可序列化
         self.conn = None     # 不可序列化，运行时建立
-    def __getstate__(self):
-        state = self.__dict__.copy()
+    def __getstate__(self):        # 定义函数 __getstate__，参数：self
+        state = self.__dict__.copy()  # 将 self.__dict__.copy() 赋给 state
         state["conn"] = None  # 不存连接
-        return state
-    def __setstate__(self, state):
+        return state               # 返回 state
+    def __setstate__(self, state): # 定义函数 __setstate__，参数：self, state
         self.__dict__.update(state)
         self.conn = self._connect()  # 反序列化时重建
-    def _connect(self):
-        return "连接对象(模拟)"
+    def _connect(self):            # 定义函数 _connect，参数：self
+        return "连接对象(模拟)"          # 返回 "连接对象(模拟)"
 \`\`\`
 
 \`__getstate__\` 返回的可以是任意可序列化对象（不一定是 dict），\`__setstate__\` 接收它做还原。如果只实现 \`__getstate__\` 不实现 \`__setstate__\`，则用返回值直接更新 \`__dict__\`。
@@ -4112,13 +4112,13 @@ pickle 的字节流里可以包含「指令」，反序列化时会**调用**指
 # 下面这段只是说明原理，不要真去构造
 import pickle, os
 
-class Exploit:
-    def __reduce__(self):
+class Exploit:                     # 定义类 Exploit
+    def __reduce__(self):          # 定义函数 __reduce__，参数：self
         # __reduce__ 告诉 pickle 用什么函数重建对象
         # 恶意者会在这里放 os.system("rm -rf /") 之类
-        return (print, ("我被执行了",))
+        return (print, ("我被执行了",)) # 返回 (print, ("我被执行了",))
 
-bad = pickle.dumps(Exploit())
+bad = pickle.dumps(Exploit())      # 将 pickle.dumps(Exploit()) 赋给 bad
 # pickle.loads(bad)  # 会调用 print("我被执行了")
 \`\`\`
 
@@ -4140,10 +4140,10 @@ bad = pickle.dumps(Exploit())
 \`shelve\` 在 pickle 之上封装了一个「像字典一样用，但存在磁盘上」的对象。每个 value 被 pickle 存到一个 dbm 文件：
 
 \`\`\`python
-import shelve
+import shelve                      # 导入 shelve 模块
 
 # 打开（创建）一个 shelf
-with shelve.open("mydb") as db:
+with shelve.open("mydb") as db:    # 使用上下文管理器 shelve.open("mydb")，绑定到 db
     db["user1"] = {"name": "tom", "age": 18}
     db["user2"] = {"name": "jerry", "age": 20}
     print(db["user1"])      # {'name': 'tom', 'age': 18}
@@ -4151,17 +4151,17 @@ with shelve.open("mydb") as db:
     print(list(db.keys()))  # ['user1', 'user2']
 
 # 再次打开，数据还在
-with shelve.open("mydb") as db:
+with shelve.open("mydb") as db:    # 使用上下文管理器 shelve.open("mydb")，绑定到 db
     print(db["user2"]["name"])  # jerry
 \`\`\`
 
 ⚠️ shelve 默认**不会自动写回**修改的可变对象。如果你 \`db["user1"]["age"] = 19\`，修改的是临时取出的副本，没存回去：
 
 \`\`\`python
-with shelve.open("mydb") as db:
+with shelve.open("mydb") as db:    # 使用上下文管理器 shelve.open("mydb")，绑定到 db
     db["user1"]["age"] = 19      # 可能不生效！
     # 正确做法 1：整体替换
-    u = db["user1"]
+    u = db["user1"]                # 将 db["user1"] 赋给 u
     u["age"] = 19
     db["user1"] = u
     # 正确做法 2：开 writeback
@@ -4178,9 +4178,9 @@ shelve 适合「键值对」式持久化，比手动 pickle 多个文件到字�
 \`marshal\` 是更底层的序列化模块，主要给 Python 内部用（存 \`.pyc\` 字节码）。它比 pickle 快，但能处理的类型少，且**不保证跨版本兼容**：
 
 \`\`\`python
-import marshal
-b = marshal.dumps({"a": 1, "b": [2, 3]})
-obj = marshal.loads(b)
+import marshal                     # 导入 marshal 模块
+b = marshal.dumps({"a": 1, "b": [2, 3]})  # 将 marshal.dumps({"a": 1, "b": [2, 3]}) 赋给 b
+obj = marshal.loads(b)             # 将 marshal.loads(b) 赋给 obj
 \`\`\`
 
 ⚠️ 官方文档明确说：marshal **不保证**不同 Python 版本间兼容，不要拿它做持久化或数据交换。一般你不需要直接用 marshal，了解即可。
@@ -4211,22 +4211,22 @@ obj = marshal.loads(b)
 \`copyreg\` 让你为类的 pickle 行为注册一个「构造器」，影响 \`pickle.dumps\` 如何序列化该类。常用于「让旧版本代码能读新数据」或「全局调整某类的序列化」：
 
 \`\`\`python
-import pickle
-import copyreg
+import pickle                      # 导入 pickle 模块
+import copyreg                     # 导入 copyreg 模块
 
-class Point:
-    def __init__(self, x, y):
+class Point:                       # 定义类 Point
+    def __init__(self, x, y):      # 定义函数 __init__，参数：self, x, y
         self.x = x
         self.y = y
 
-def pickle_point(p):
+def pickle_point(p):               # 定义函数 pickle_point，参数：p
     return Point, (p.x, p.y)   # 返回 (构造函数, 参数元组)
 
-copyreg.pickle(Point, pickle_point)
+copyreg.pickle(Point, pickle_point)  # 对 copyreg 调用 pickle 方法，参数 Point, pickle_point
 
-p = Point(1, 2)
-b = pickle.dumps(p)
-p2 = pickle.loads(b)
+p = Point(1, 2)                    # 将 Point(1, 2) 赋给 p
+b = pickle.dumps(p)                # 将 pickle.dumps(p) 赋给 b
+p2 = pickle.loads(b)               # 将 pickle.loads(b) 赋给 p2
 print(p2.x, p2.y)  # 1 2
 \`\`\`
 
@@ -4244,20 +4244,20 @@ pickle 能序列化**模块顶层定义的函数**（存模块名 + 函数名）
 - 内置/C 实现的函数（部分可）
 
 \`\`\`python
-import pickle
+import pickle                      # 导入 pickle 模块
 
 def top_func(x):       # 顶层函数，可序列化
-    return x * 2
+    return x * 2                   # 返回 x * 2
 
 print(pickle.loads(pickle.dumps(top_func))(5))  # 10
 
 # 闭包：不可序列化
-def make_adder(n):
-    def adder(x):
-        return x + n
-    return adder
+def make_adder(n):                 # 定义函数 make_adder，参数：n
+    def adder(x):                  # 定义函数 adder，参数：x
+        return x + n               # 返回 x + n
+    return adder                   # 返回 adder
 
-adder = make_adder(10)
+adder = make_adder(10)             # 将 make_adder(10) 赋给 adder
 # pickle.dumps(adder)  # PicklingError
 \`\`\`
 
@@ -4270,16 +4270,16 @@ adder = make_adder(10)
 \`dataclass\` 定义的类默认支持 pickle（和普通类一样），但要注意 \`field(default_factory=...)\` 等会在反序列化时正确重建：
 
 \`\`\`python
-from dataclasses import dataclass, field
-import pickle
+from dataclasses import dataclass, field  # 从 dataclasses 导入 dataclass, field
+import pickle                      # 导入 pickle 模块
 
 @dataclass
-class Config:
+class Config:                      # 定义类 Config
     name: str
     tags: list = field(default_factory=list)
 
-c = Config("app", ["a", "b"])
-c2 = pickle.loads(pickle.dumps(c))
+c = Config("app", ["a", "b"])      # 将 Config("app", ["a", "b"]) 赋给 c
+c2 = pickle.loads(pickle.dumps(c)) # 将 pickle.loads(pickle.dumps(c)) 赋给 c2
 print(c2)  # Config(name='app', tags=['a', 'b'])
 \`\`\`
 
@@ -4296,13 +4296,13 @@ print(c2)  # Config(name='app', tags=['a', 'b'])
 3. **重命名字段**：\`__setstate__\` 做迁移
 
 \`\`\`python
-class User:
-    def __setstate__(self, state):
+class User:                        # 定义类 User
+    def __setstate__(self, state): # 定义函数 __setstate__，参数：self, state
         # 兼容旧数据：旧版本叫 fullname，新版本叫 name
-        if "fullname" in state and "name" not in state:
+        if "fullname" in state and "name" not in state:  # 如果 "fullname" in state and "name" not in state 成立
             state["name"] = state.pop("fullname")
         # 新增字段给默认值
-        state.setdefault("version", 1)
+        state.setdefault("version", 1)  # 对 state 调用 设置默认值 方法，参数 "version", 1
         self.__dict__.update(state)
 \`\`\`
 
@@ -4313,26 +4313,26 @@ class User:
 下面是一个「计算结果缓存到磁盘」的实用模式：
 
 \`\`\`python
-import pickle
-import os
-from pathlib import Path
+import pickle                      # 导入 pickle 模块
+import os                          # 导入 os 模块
+from pathlib import Path           # 从 pathlib 导入 Path
 
-class DiskCache:
-    def __init__(self, path):
+class DiskCache:                   # 定义类 DiskCache
+    def __init__(self, path):      # 定义函数 __init__，参数：self, path
         self.path = Path(path)
-    def get(self, key):
-        fp = self.path / (key + ".pkl")
-        if fp.exists():
-            with open(fp, "rb") as f:
-                return pickle.load(f)
-        return None
-    def set(self, key, value):
+    def get(self, key):            # 定义函数 get，参数：self, key
+        fp = self.path / (key + ".pkl")  # 将 self.path / (key + ".pkl") 赋给 fp
+        if fp.exists():            # 如果 fp.exists() 成立
+            with open(fp, "rb") as f:  # 使用上下文管理器 open(fp, "rb")，绑定到 f
+                return pickle.load(f)  # 返回 pickle.load(f)
+        return None                # 返回 None
+    def set(self, key, value):     # 定义函数 set，参数：self, key, value
         self.path.mkdir(parents=True, exist_ok=True)
-        fp = self.path / (key + ".pkl")
-        with open(fp, "wb") as f:
-            pickle.dump(value, f, protocol=pickle.HIGHEST_PROTOCOL)
+        fp = self.path / (key + ".pkl")  # 将 self.path / (key + ".pkl") 赋给 fp
+        with open(fp, "wb") as f:  # 使用上下文管理器 open(fp, "wb")，绑定到 f
+            pickle.dump(value, f, protocol=pickle.HIGHEST_PROTOCOL)  # 对 pickle 调用 dump 方法，参数 value, f, protocol=pickle.HIGHEST_PROTOCOL
 
-cache = DiskCache(".cache")
+cache = DiskCache(".cache")        # 将 DiskCache(".cache") 赋给 cache
 # cache.set("result", {"data": [1, 2, 3]})
 # print(cache.get("result"))
 \`\`\`
@@ -4791,17 +4791,17 @@ max_connections = 10
 ### 1.2 读取
 
 \`\`\`python
-import configparser
+import configparser                # 导入 configparser 模块
 
-cfg = configparser.ConfigParser()
-cfg.read("config.ini")
+cfg = configparser.ConfigParser()  # 将 configparser.ConfigParser() 赋给 cfg
+cfg.read("config.ini")             # 对 cfg 调用 read 方法，参数 "config.ini"
 
 # 按 节.键 取值
-host = cfg["database"]["host"]
+host = cfg["database"]["host"]     # 将 cfg["database"]["host"] 赋给 host
 port = cfg.getint("database", "port")      # 转整数
 debug = cfg.getboolean("database", "debug") # 转 bool
 
-print(host, port, debug)
+print(host, port, debug)           # 输出 host, port, debug
 \`\`\`
 
 \`cfg["节"]["键"]\` 返回的是**字符串**，要数字用 \`getint\`，布尔用 \`getboolean\`（识别 true/false/yes/no/1/0），浮点用 \`getfloat\`。
@@ -4848,14 +4848,14 @@ print(cfg["path"]["log"])  # /opt/app/log/app.log
 ### 1.5 写入
 
 \`\`\`python
-import configparser
+import configparser                # 导入 configparser 模块
 
-cfg = configparser.ConfigParser()
+cfg = configparser.ConfigParser()  # 将 configparser.ConfigParser() 赋给 cfg
 cfg["database"] = {"host": "localhost", "port": "5432"}
 cfg["app"] = {"name": "demo"}
 
-with open("config.ini", "w", encoding="utf-8") as f:
-    cfg.write(f)
+with open("config.ini", "w", encoding="utf-8") as f:  # 使用上下文管理器 open("config.ini", "w", encoding="utf-8")，绑定到 f
+    cfg.write(f)                   # 对 cfg 调用 write 方法，参数 f
 \`\`\`
 
 ### 1.6 注意事项
@@ -4872,17 +4872,17 @@ with open("config.ini", "w", encoding="utf-8") as f:
 JSON 也能做配置，优点是支持嵌套、类型丰富，缺点是不支持注释（人写不方便）：
 
 \`\`\`python
-import json
+import json                        # 导入 json 模块
 
 # 读取
-with open("config.json", encoding="utf-8") as f:
-    cfg = json.load(f)
-print(cfg["database"]["host"])
+with open("config.json", encoding="utf-8") as f:  # 使用上下文管理器 open("config.json", encoding="utf-8")，绑定到 f
+    cfg = json.load(f)             # 将 json.load(f) 赋给 cfg
+print(cfg["database"]["host"])     # 输出 cfg["database"]["host"]
 
 # 写入
-cfg = {"database": {"host": "localhost", "port": 5432}}
-with open("config.json", "w", encoding="utf-8") as f:
-    json.dump(cfg, f, ensure_ascii=False, indent=2)
+cfg = {"database": {"host": "localhost", "port": 5432}}  # 创建字典并赋给 cfg
+with open("config.json", "w", encoding="utf-8") as f:  # 使用上下文管理器 open("config.json", "w", encoding="utf-8")，绑定到 f
+    json.dump(cfg, f, ensure_ascii=False, indent=2)  # 对 json 调用 dump 方法，参数 cfg, f, ensure_ascii=False, indent=2
 \`\`\`
 
 JSON 配置适合「程序生成、程序读取」的场景；要给人手写，TOML 和 YAML 更友好。
@@ -4907,9 +4907,9 @@ host = "0.0.0.0"
 \`\`\`
 
 \`\`\`python
-import tomllib
+import tomllib                     # 导入 tomllib 模块
 with open("config.toml", "rb") as f:   # 必须二进制模式
-    cfg = tomllib.load(f)
+    cfg = tomllib.load(f)          # 将 tomllib.load(f) 赋给 cfg
 print(cfg["database"]["port"])   # 5432（int）
 print(cfg["database"]["tags"])   # ['prod', 'cache']
 \`\`\`
@@ -4925,14 +4925,14 @@ TOML 的优势：有类型（int/float/bool/数组/日期）、支持注释、�
 ### 4.1 读取
 
 \`\`\`python
-import os
+import os                          # 导入 os 模块
 
 # 方式一：os.environ（字典）
 host = os.environ.get("DB_HOST", "localhost")  # 带默认值
 # os.environ["DB_HOST"]  # 不存在会 KeyError
 
 # 方式二：os.getenv（等价于 environ.get）
-port = os.getenv("DB_PORT", "5432")
+port = os.getenv("DB_PORT", "5432")  # 将 os.getenv("DB_PORT", "5432") 赋给 port
 \`\`\`
 
 \`os.getenv\` 和 \`os.environ.get\` 等价，都返回字符串（环境变量永远是字符串），要数字自己转 \`int(os.getenv("PORT", "5432"))\`。
@@ -4940,7 +4940,7 @@ port = os.getenv("DB_PORT", "5432")
 ### 4.2 设置
 
 \`\`\`python
-import os
+import os                          # 导入 os 模块
 os.environ["MY_VAR"] = "value"  # 当前进程及子进程可见
 \`\`\`
 
@@ -4973,12 +4973,12 @@ DB_HOST=prod.db.com python app.py
 4. 代码默认值
 
 \`\`\`python
-import os
+import os                          # 导入 os 模块
 
-def get_port(cli_port=None):
-    if cli_port is not None:
+def get_port(cli_port=None):       # 定义函数 get_port，参数：cli_port=None
+    if cli_port is not None:       # 如果 cli_port is not None 成立
         return cli_port           # 命令行最高
-    if os.getenv("APP_PORT"):
+    if os.getenv("APP_PORT"):      # 如果 os.getenv("APP_PORT") 成立
         return int(os.getenv("APP_PORT"))  # 环境变量
     return 8080                   # 默认值
 \`\`\`
@@ -4992,14 +4992,14 @@ def get_port(cli_port=None):
 ### 5.1 最简单的例子
 
 \`\`\`python
-import argparse
+import argparse                    # 导入 argparse 模块
 
-parser = argparse.ArgumentParser(description="示例程序")
+parser = argparse.ArgumentParser(description="示例程序")  # 将 argparse.ArgumentParser(description="示例程序") 赋给 parser
 parser.add_argument("name", help="用户名")           # 位置参数
 parser.add_argument("-a", "--age", type=int, default=18, help="年龄")  # 可选参数
 
-args = parser.parse_args()
-print(args.name, args.age)
+args = parser.parse_args()         # 将 parser.parse_args() 赋给 args
+print(args.name, args.age)         # 输出 args.name, args.age
 \`\`\`
 
 运行：
@@ -5026,15 +5026,15 @@ parser.add_argument("-v", "--verbose", action="store_true")  # 开关，args.ver
 \`type=\` 指定参数类型，argparse 会自动转换并在转换失败时报错：
 
 \`\`\`python
-parser.add_argument("--port", type=int)
-parser.add_argument("--ratio", type=float)
+parser.add_argument("--port", type=int)  # 对 parser 调用 add_argument 方法，参数 "--port", type=int
+parser.add_argument("--ratio", type=float)  # 对 parser 调用 add_argument 方法，参数 "--ratio", type=float
 parser.add_argument("--input", type=argparse.FileType("r"))  # 直接打开文件
 \`\`\`
 
 ### 5.4 choices 限制取值
 
 \`\`\`python
-parser.add_argument("--mode", choices=["dev", "test", "prod"], default="dev")
+parser.add_argument("--mode", choices=["dev", "test", "prod"], default="dev")  # 对 parser 调用 add_argument 方法，参数 "--mode", choices=["dev", "test", "prod"], default="dev"
 \`\`\`
 
 传入不在 choices 里的值会报错。
@@ -5069,20 +5069,20 @@ parser.add_argument("--mode", action="store", default="x")  # 默认动作
 像 \`git add\`、\`git commit\` 这种「主命令 + 子命令」结构，用 \`add_subparsers\`：
 
 \`\`\`python
-parser = argparse.ArgumentParser(prog="mytool")
-sub = parser.add_subparsers(dest="cmd", required=True)
+parser = argparse.ArgumentParser(prog="mytool")  # 将 argparse.ArgumentParser(prog="mytool") 赋给 parser
+sub = parser.add_subparsers(dest="cmd", required=True)  # 将 parser.add_subparsers(dest="cmd", required=True) 赋给 sub
 
-p_add = sub.add_parser("add", help="添加")
-p_add.add_argument("name")
+p_add = sub.add_parser("add", help="添加")  # 将 sub.add_parser("add", help="添加") 赋给 p_add
+p_add.add_argument("name")         # 对 p_add 调用 add_argument 方法，参数 "name"
 
-p_del = sub.add_parser("delete", help="删除")
-p_del.add_argument("name")
+p_del = sub.add_parser("delete", help="删除")  # 将 sub.add_parser("delete", help="删除") 赋给 p_del
+p_del.add_argument("name")         # 对 p_del 调用 add_argument 方法，参数 "name"
 
-args = parser.parse_args()
-if args.cmd == "add":
-    print("添加", args.name)
-elif args.cmd == "delete":
-    print("删除", args.name)
+args = parser.parse_args()         # 将 parser.parse_args() 赋给 args
+if args.cmd == "add":              # 如果 args.cmd == "add" 成立
+    print("添加", args.name)         # 输出 "添加", args.name
+elif args.cmd == "delete":         # 否则如果 args.cmd == "delete" 成立
+    print("删除", args.name)         # 输出 "删除", args.name
 \`\`\`
 
 ### 5.8 互斥参数
@@ -5090,9 +5090,9 @@ elif args.cmd == "delete":
 \`add_mutually_exclusive_group\` 让一组参数只能出现一个：
 
 \`\`\`python
-group = parser.add_mutually_exclusive_group()
-group.add_argument("--verbose", action="store_true")
-group.add_argument("--quiet", action="store_true")
+group = parser.add_mutually_exclusive_group()  # 将 parser.add_mutually_exclusive_group() 赋给 group
+group.add_argument("--verbose", action="store_true")  # 对 group 调用 add_argument 方法，参数 "--verbose", action="store_true"
+group.add_argument("--quiet", action="store_true")  # 对 group 调用 add_argument 方法，参数 "--quiet", action="store_true"
 # --verbose 和 --quiet 不能同时给
 \`\`\`
 
@@ -5101,9 +5101,9 @@ group.add_argument("--quiet", action="store_true")
 \`add_argument_group\` 把参数分到不同组，帮助信息更清晰：
 
 \`\`\`python
-g = parser.add_argument_group("数据库选项")
-g.add_argument("--db-host")
-g.add_argument("--db-port", type=int)
+g = parser.add_argument_group("数据库选项")  # 将 parser.add_argument_group("数据库选项") 赋给 g
+g.add_argument("--db-host")        # 对 g 调用 add_argument 方法，参数 "--db-host"
+g.add_argument("--db-port", type=int)  # 对 g 调用 add_argument 方法，参数 "--db-port", type=int
 \`\`\`
 
 ---
@@ -5128,35 +5128,35 @@ g.add_argument("--db-port", type=int)
 下面是一个整合配置文件 + 环境变量 + 命令行参数的完整示例：
 
 \`\`\`python
-import argparse
-import configparser
-import os
+import argparse                    # 导入 argparse 模块
+import configparser                # 导入 configparser 模块
+import os                          # 导入 os 模块
 
-def load_config():
+def load_config():                 # 定义函数 load_config，无参数
     # 1. 默认值
-    cfg = {"host": "localhost", "port": 8080, "debug": False}
+    cfg = {"host": "localhost", "port": 8080, "debug": False}  # 创建字典并赋给 cfg
     # 2. 配置文件覆盖
-    cp = configparser.ConfigParser()
-    cp.read("app.ini")
-    if "server" in cp:
+    cp = configparser.ConfigParser()  # 将 configparser.ConfigParser() 赋给 cp
+    cp.read("app.ini")             # 对 cp 调用 read 方法，参数 "app.ini"
+    if "server" in cp:             # 如果 "server" in cp 成立
         cfg["host"] = cp["server"].get("host", cfg["host"])
         cfg["port"] = cp["server"].getint("port", cfg["port"])
     # 3. 环境变量覆盖
     cfg["host"] = os.getenv("APP_HOST", cfg["host"])
     cfg["port"] = int(os.getenv("APP_PORT", cfg["port"]))
-    return cfg
+    return cfg                     # 返回 cfg
 
-def main():
-    base = load_config()
-    parser = argparse.ArgumentParser(description="我的应用")
-    parser.add_argument("--host", default=base["host"])
-    parser.add_argument("--port", type=int, default=base["port"])
-    parser.add_argument("--debug", action="store_true", default=base["debug"])
-    args = parser.parse_args()
-    print("最终配置:", args.host, args.port, args.debug)
+def main():                        # 定义函数 main，无参数
+    base = load_config()           # 将 load_config() 赋给 base
+    parser = argparse.ArgumentParser(description="我的应用")  # 将 argparse.ArgumentParser(description="我的应用") 赋给 parser
+    parser.add_argument("--host", default=base["host"])  # 对 parser 调用 add_argument 方法，参数 "--host", default=base["host"]
+    parser.add_argument("--port", type=int, default=base["port"])  # 对 parser 调用 add_argument 方法，参数 "--port", type=int, default=base["port"]
+    parser.add_argument("--debug", action="store_true", default=base["debug"])  # 对 parser 调用 add_argument 方法，参数 "--debug", action="store_true", default=base["debug"]
+    args = parser.parse_args()     # 将 parser.parse_args() 赋给 args
+    print("最终配置:", args.host, args.port, args.debug)  # 输出 "最终配置:", args.host, args.port, args.debug
 
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__":         # 如果 __name__ == "__main__" 成立
+    main()                         # 调用 main
 \`\`\`
 
 这个结构实现了「默认值 → 配置文件 → 环境变量 → 命令行」的优先级覆盖。
@@ -5170,14 +5170,14 @@ if __name__ == "__main__":
 ### 8.1 basicConfig 快速配置
 
 \`\`\`python
-import logging
+import logging                     # 导入 logging 模块
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
+    level=logging.INFO,            # 将 logging.INFO, 赋给 level
+    format="%(asctime)s [%(levelname)s] %(message)s",  # 将字符串 "%(asctime)s [%(levelname)s] %(message)s", 赋给 format
+    datefmt="%Y-%m-%d %H:%M:%S"    # 将字符串 "%Y-%m-%d %H:%M:%S" 赋给 datefmt
 )
-logging.info("启动")
-logging.warning("警告")
+logging.info("启动")                 # 对 logging 调用 info 方法，参数 "启动"
+logging.warning("警告")              # 对 logging 调用 warning 方法，参数 "警告"
 \`\`\`
 
 ### 8.2 getLogger / handler / formatter
@@ -5185,28 +5185,28 @@ logging.warning("警告")
 复杂场景用「日志器 → 处理器 → 格式器」三层结构：
 
 \`\`\`python
-import logging
+import logging                     # 导入 logging 模块
 
-logger = logging.getLogger("myapp")
-logger.setLevel(logging.DEBUG)
+logger = logging.getLogger("myapp")  # 将 logging.getLogger("myapp") 赋给 logger
+logger.setLevel(logging.DEBUG)     # 对 logger 调用 setLevel 方法，参数 logging.DEBUG
 
 # 控制台 handler
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
+ch = logging.StreamHandler()       # 将 logging.StreamHandler() 赋给 ch
+ch.setLevel(logging.INFO)          # 对 ch 调用 setLevel 方法，参数 logging.INFO
 
 # 文件 handler
-fh = logging.FileHandler("app.log", encoding="utf-8")
-fh.setLevel(logging.DEBUG)
+fh = logging.FileHandler("app.log", encoding="utf-8")  # 将 logging.FileHandler("app.log", encoding="utf-8") 赋给 fh
+fh.setLevel(logging.DEBUG)         # 对 fh 调用 setLevel 方法，参数 logging.DEBUG
 
 # 格式
-fmt = logging.Formatter("%(asctime)s [%(name)s] %(levelname)s: %(message)s")
-ch.setFormatter(fmt)
-fh.setFormatter(fmt)
+fmt = logging.Formatter("%(asctime)s [%(name)s] %(levelname)s: %(message)s")  # 将 logging.Formatter("%(asctime)s [%(name)s] %(levelname)s: %(message)s") 赋给 fmt
+ch.setFormatter(fmt)               # 对 ch 调用 setFormatter 方法，参数 fmt
+fh.setFormatter(fmt)               # 对 fh 调用 setFormatter 方法，参数 fmt
 
-logger.addHandler(ch)
-logger.addHandler(fh)
+logger.addHandler(ch)              # 对 logger 调用 addHandler 方法，参数 ch
+logger.addHandler(fh)              # 对 logger 调用 addHandler 方法，参数 fh
 
-logger.info("信息")
+logger.info("信息")                  # 对 logger 调用 info 方法，参数 "信息"
 logger.debug("调试")  # 控制台不显示（INFO 以上），文件显示
 \`\`\`
 

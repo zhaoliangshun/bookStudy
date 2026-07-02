@@ -686,14 +686,14 @@ combos = [(x, y) for x in range(1, 4) for y in range(1, 4) if x != y]
 
 \`\`\`python
 students = {
-    "alice": {"math": 90, "eng": 85},
+    "alice": {"math": 90, "eng": 85},   # 嵌套字典：外层 key 是学生名，value 是成绩字典
     "bob":   {"math": 75, "eng": 95},
 }
 
 all_scores = {
-    f"{name}_{subj}": score
-    for name, scores in students.items()
-    for subj, score in scores.items()
+    f"{name}_{subj}": score              # 键：用 f-string 拼接 "姓名_科目" 作为唯一标识
+    for name, scores in students.items() # 第一层循环：遍历外层字典，解包出 name 和 scores
+    for subj, score in scores.items()    # 第二层循环：遍历内层字典，解包出 subj 和 score
 }
 # {'alice_math': 90, 'alice_eng': 85, 'bob_math': 75, 'bob_eng': 95}
 \`\`\`

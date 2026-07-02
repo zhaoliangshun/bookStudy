@@ -83,12 +83,16 @@ FastAPI 内置了 \`OAuth2PasswordBearer\`，它做两件事：
 2. 提供一个**依赖**，从请求头里把 token 取出来；取不到就返回 401。
 
 \`\`\`python filename="OAuth2 配置"
+# 从 fastapi.security 导入 OAuth2PasswordBearer
 from fastapi.security import OAuth2PasswordBearer
 
 # tokenUrl：客户端获取 token 的登录接口路径（用于 OpenAPI 文档的"Authorize"按钮跳转）
+# 定义变量 oauth2_scheme，赋值为 OAuth2PasswordBearer(tokenUrl="/auth/login")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
+# 定义 GET 路由：访问 /me 时触发
 @app.get("/me")
+# 定义函数 read_me，参数: token: str = Depends(oauth2_scheme)
 def read_me(token: str = Depends(oauth2_scheme)):
     # oauth2_scheme 这个依赖会从请求头取出 token 字符串
     # 取不到（没带 Authorization 头）→ 自动返回 401
@@ -102,25 +106,38 @@ def read_me(token: str = Depends(oauth2_scheme)):
 OAuth2 规范规定，密码模式的登录请求用 **表单格式**（\`application/x-www-form-urlencoded\`），字段是 \`username\`、\`password\`、可选 \`scope\`。FastAPI 提供了 \`OAuth2PasswordRequestForm\` 帮你解析：
 
 \`\`\`python filename="登录路由"
+# 从 fastapi 导入 APIRouter, Depends, HTTPException, status
 from fastapi import APIRouter, Depends, HTTPException, status
+# 从 fastapi.security 导入 OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
+# 创建 APIRouter 实例，设置路由前缀
 router = APIRouter(prefix="/auth", tags=["认证"])
+# 定义变量 oauth2_scheme，赋值为 OAuth2PasswordBearer(tokenUrl="/auth/login")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
+# 定义 POST 路由：访问 /login 时触发
 @router.post("/login")
+# 定义函数 login，参数: form: OAuth2PasswordRequestForm = Depends()
 def login(form: OAuth2PasswordRequestForm = Depends()):
     # form.username / form.password 自动从表单解析
     # 1. 查用户
+    # 定义变量 user，赋值为 fake_users_db.get(form.username)
     user = fake_users_db.get(form.username)
+    # 条件判断：如果 not user
     if not user:
+        # 抛出 HTTPException 异常: status_code=400, detail="用户名或密码错误"
         raise HTTPException(status_code=400, detail="用户名或密码错误")
     # 2. 验密码（下一章详细讲哈希校验）
+    # 条件判断：如果 not verify_password(form.password, user.hashed_password)
     if not verify_password(form.password, user.hashed_password):
+        # 抛出 HTTPException 异常: status_code=400, detail="用户名或密码错误"
         raise HTTPException(status_code=400, detail="用户名或密码错误")
     # 3. 签发 token（下一章详细讲 JWT）
+    # 定义变量 access_token，赋值为 create_access_token({"sub": user.username})
     access_token = create_access_token({"sub": user.username})
     # 4. 返回标准格式：access_token + token_type
+    # 返回 {"access_token": access_token, "token_type": "bearer"}
     return {"access_token": access_token, "token_type": "bearer"}
 \`\`\`
 
@@ -177,38 +194,62 @@ FastAPI 教程默认用 JWT（配合 OAuth2），因为无状态、易扩展。�
 ## 九、完整 OAuth2 登录骨架
 
 \`\`\`python filename="完整登录骨架"
+# 从 fastapi 导入 FastAPI, Depends, HTTPException
 from fastapi import FastAPI, Depends, HTTPException
+# 从 fastapi.security 导入 OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
+# 定义变量 oauth2_scheme，赋值为 OAuth2PasswordBearer(tokenUrl="/auth/login")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 # 假用户库（实际用数据库 + 哈希密码）
+# 定义字典 fake_users_db
 fake_users_db = {
+    # "alice": {"username": "alice", "hashed_password": 
     "alice": {"username": "alice", "hashed_password": "...", "disabled": False},
+# }
 }
 
+# 定义函数 authenticate_user，参数: username: str, password: str
 def authenticate_user(username: str, password: str):
+    # 定义变量 user，赋值为 fake_users_db.get(username)
     user = fake_users_db.get(username)
+    # 条件判断：如果 not user or not verify_password(password, user["hashed_password"])
     if not user or not verify_password(password, user["hashed_password"]):
+        # 返回 None
         return None
+    # 返回 user
     return user
 
+# 定义 POST 路由：访问 /auth/login 时触发
 @app.post("/auth/login")
+# 定义函数 login，参数: form: OAuth2PasswordRequestForm = Depends()
 def login(form: OAuth2PasswordRequestForm = Depends()):
+    # 定义变量 user，赋值为 authenticate_user(form.username, form.passwor...
     user = authenticate_user(form.username, form.password)
+    # 条件判断：如果 not user
     if not user:
         # 注意：不要区分"用户不存在"和"密码错"，防枚举
+        # 抛出 HTTPException 异常: status_code=400, detail="用户名或密码错误"
         raise HTTPException(status_code=400, detail="用户名或密码错误")
+    # 条件判断：如果 user["disabled"]
     if user["disabled"]:
+        # 抛出 HTTPException 异常: status_code=400, detail="用户已被禁用"
         raise HTTPException(status_code=400, detail="用户已被禁用")
+    # 定义变量 token，赋值为 create_access_token({"sub": user["username"]}...
     token = create_access_token({"sub": user["username"]})
+    # 返回 {"access_token": token, "token_type": "bearer"}
     return {"access_token": token, "token_type": "bearer"}
 
 # 受保护接口：依赖 oauth2_scheme 取 token
+# 定义 GET 路由：访问 /me 时触发
 @app.get("/me")
+# 定义函数 me，参数: token: str = Depends(oauth2_scheme)
 def me(token: str = Depends(oauth2_scheme)):
     # 这里只拿到了 token 字符串，下一步要解码验证（下一章 JWT）
+    # 返回 {"token_received": token[:10] + "..."}
     return {"token_received": token[:10] + "..."}
 \`\`\`
 
@@ -278,34 +319,49 @@ JWT 由三段用 \`.\` 连接的 Base64URL 字符串组成：
 ## 三、用 python-jose 创建和验证 token
 
 \`\`\`bash filename="安装"
+# 安装 Python 包: "python-jose[cryptography]"
 pip install "python-jose[cryptography]"
 \`\`\`
 
 \`\`\`python filename="jwt_utils.py - 创建和验证"
+# 从 datetime 导入 datetime, timedelta, timezone
 from datetime import datetime, timedelta, timezone
+# 从 jose 导入 jwt, JWTError
 from jose import jwt, JWTError
 
 # 密钥：生产环境从环境变量读，绝不能硬编码、绝不能进 Git
+# 定义变量 SECRET_KEY，赋值为 "CHANGE_ME_TO_A_LONG_RANDOM_STRING"
 SECRET_KEY = "CHANGE_ME_TO_A_LONG_RANDOM_STRING"
 ALGORITHM = "HS256"          # HS256 = HMAC + SHA-256，对称加密
 ACCESS_TOKEN_EXPIRE_MINUTES = 30   # access token 30 分钟过期
 
+# 定义函数 create_access_token，返回: str
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
+    # """用 data 里的 claims 签发一个 JWT。"""
     """用 data 里的 claims 签发一个 JWT。"""
     to_encode = data.copy()   # 不要改原始 data
     # 1. 设置过期时间（exp claim）
+    # 定义变量 expire，赋值为 datetime.now(timezone.utc) + (expires_delta o...
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})   # exp 是标准 claim，验证时会自动检查
     # 2. 编码签名
+    # 返回 jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
+# 定义函数 decode_token，返回: dict
 def decode_token(token: str) -> dict:
+    # """验证签名并解码 payload。签名错或过期会抛 JWTError。"""
     """验证签名并解码 payload。签名错或过期会抛 JWTError。"""
+    # 尝试执行，捕获异常
     try:
+        # 定义变量 payload，赋值为 jwt.decode(token, SECRET_KEY, algorithms=[ALG...
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        # 返回 payload
         return payload
+    # 捕获 JWTError 异常
     except JWTError:
         # 签名不对 / 已过期 / 格式错 都会到这里
+        # 返回 None
         return None
 \`\`\`
 
@@ -325,8 +381,10 @@ def decode_token(token: str) -> dict:
 \`\`\`
 
 \`\`\`python filename="从环境变量读密钥"
+# 导入 os 模块
 import os
 SECRET_KEY = os.environ["JWT_SECRET_KEY"]   # 没设就崩，强制配置
+# 定义变量 ALGORITHM，赋值为 "HS256"
 ALGORITHM = "HS256"
 \`\`\`
 
@@ -335,51 +393,80 @@ ALGORITHM = "HS256"
 把"从请求头取 token → 解码 → 查用户"封装成一个依赖，所有受保护路由都依赖它：
 
 \`\`\`python filename="认证依赖"
+# 从 fastapi 导入 Depends, HTTPException, status
 from fastapi import Depends, HTTPException, status
+# 从 fastapi.security 导入 OAuth2PasswordBearer
 from fastapi.security import OAuth2PasswordBearer
+# 从 sqlalchemy.orm 导入 Session
 from sqlalchemy.orm import Session
+# 从 sqlalchemy 导入 select
 from sqlalchemy import select
 
+# 定义变量 oauth2_scheme，赋值为 OAuth2PasswordBearer(tokenUrl="/auth/login")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 # 凭据异常：WWW-Authenticate 头告诉客户端用 Bearer
+# 定义变量 credentials_exception，赋值为 HTTPException(
 credentials_exception = HTTPException(
+    # 定义变量 status_code，赋值为 status.HTTP_401_UNAUTHORIZED,
     status_code=status.HTTP_401_UNAUTHORIZED,
+    # 定义变量 detail，赋值为 "无法验证凭据",
     detail="无法验证凭据",
     headers={"WWW-Authenticate": "Bearer"},   # 浏览器看到会触发登录框
+# )
 )
 
+# def get_current_user(
 def get_current_user(
     token: str = Depends(oauth2_scheme),   # 取 token
     db: Session = Depends(get_db),          # 取数据库
+# ) -> User:
 ) -> User:
     # 1. 解码 token
+    # 定义变量 payload，赋值为 decode_token(token)
     payload = decode_token(token)
+    # 条件判断：如果 payload is None
     if payload is None:
+        # 抛出 credentials_exception 异常
         raise credentials_exception
     # 2. 取出 subject（用户标识，约定用 sub claim）
+    # 字段 username，类型: str，默认值: payload.get("sub")
     username: str = payload.get("sub")
+    # 条件判断：如果 username is None
     if username is None:
+        # 抛出 credentials_exception 异常
         raise credentials_exception
     # 3. 查用户（token 合法但用户可能已被删除）
+    # 定义变量 user，赋值为 db.execute(select(User).where(User.name == us...
     user = db.execute(select(User).where(User.name == username)).scalar_one_or_none()
+    # 条件判断：如果 user is None
     if user is None:
+        # 抛出 credentials_exception 异常
         raise credentials_exception
+    # 条件判断：如果 user.disabled
     if user.disabled:
+        # 抛出 HTTPException 异常: status_code=403, detail="用户已被禁用"
         raise HTTPException(status_code=403, detail="用户已被禁用")
+    # 返回 user
     return user
 \`\`\`
 
 \`\`\`python filename="受保护路由"
+# 定义 GET 路由：访问 /me 时触发
 @app.get("/me", response_model=UserRead)
+# 定义函数 read_current_user，参数: current_user: User = Depends(get_current_user)
 def read_current_user(current_user: User = Depends(get_current_user)):
     # 依赖链：oauth2_scheme → decode → 查库 → 返回 user
     # 走到这里，current_user 一定是已认证的有效用户
+    # 返回 current_user
     return current_user
 
+# 定义 GET 路由：访问 /admin 时触发
 @app.get("/admin")
+# 定义函数 admin_only，参数: current_user: User = Depends(get_current_user)
 def admin_only(current_user: User = Depends(get_current_user)):
     # 这里只认证了身份，没检查权限——下一章讲 RBAC
+    # 返回 {"msg": f"hello {current_user.name}"}
     return {"msg": f"hello {current_user.name}"}
 \`\`\`
 
@@ -387,21 +474,33 @@ def admin_only(current_user: User = Depends(get_current_user)):
 
 \`\`\`python filename="过期时间策略"
 # access token：短期，如 15~30 分钟
+# 定义变量 ACCESS_TOKEN_EXPIRE_MINUTES，赋值为 30
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 # refresh token：长期，如 7 天，用来换新的 access token
+# 定义变量 REFRESH_TOKEN_EXPIRE_DAYS，赋值为 7
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
+# 定义函数 create_access_token，参数: sub: str
 def create_access_token(sub: str):
+    # 返回 jwt.encode(
     return jwt.encode(
+        # {"sub": sub, "exp": datetime.now(timezone.utc) + t
         {"sub": sub, "exp": datetime.now(timezone.utc) + timedelta(minutes=30), "type": "access"},
+        # SECRET_KEY, algorithm=ALGORITHM,
         SECRET_KEY, algorithm=ALGORITHM,
+    # )
     )
 
+# 定义函数 create_refresh_token，参数: sub: str
 def create_refresh_token(sub: str):
+    # 返回 jwt.encode(
     return jwt.encode(
+        # {"sub": sub, "exp": datetime.now(timezone.utc) + t
         {"sub": sub, "exp": datetime.now(timezone.utc) + timedelta(days=7), "type": "refresh"},
+        # SECRET_KEY, algorithm=ALGORITHM,
         SECRET_KEY, algorithm=ALGORITHM,
+    # )
     )
 \`\`\`
 
@@ -422,16 +521,26 @@ access token 短期过期会逼用户频繁登录，体验差。refresh token �
 \`\`\`
 
 \`\`\`python filename="刷新接口"
+# 定义 POST 路由：访问 /refresh 时触发
 @router.post("/refresh")
+# 定义函数 refresh，参数: refresh_token: str = Depends(OAuth2PasswordBearer(...
 def refresh(refresh_token: str = Depends(OAuth2PasswordBearer(tokenUrl="/auth/login"))):
+    # 定义变量 payload，赋值为 decode_token(refresh_token)
     payload = decode_token(refresh_token)
+    # 条件判断：如果 not payload or payload.get("type") != "refresh"
     if not payload or payload.get("type") != "refresh":
+        # 抛出 HTTPException 异常: 401, "refresh token 无效"
         raise HTTPException(401, "refresh token 无效")
     # 检查是否在黑名单（登出过的）
+    # 条件判断：如果 is_token_revoked(refresh_token)
     if is_token_revoked(refresh_token):
+        # 抛出 HTTPException 异常: 401, "token 已吊销"
         raise HTTPException(401, "token 已吊销")
+    # 定义变量 username，赋值为 payload["sub"]
     username = payload["sub"]
+    # 定义变量 new_access，赋值为 create_access_token(username)
     new_access = create_access_token(username)
+    # 返回 {"access_token": new_access, "token_type": "bearer"}
     return {"access_token": new_access, "token_type": "bearer"}
 \`\`\`
 
@@ -452,27 +561,41 @@ def refresh(refresh_token: str = Depends(OAuth2PasswordBearer(tokenUrl="/auth/lo
 
 \`\`\`python filename="token version 方案"
 # User 模型加一列
+# 字段 token_version，类型: Mapped[int]，默认值: mapped_column(default=0)
 token_version: Mapped[int] = mapped_column(default=0)
 
 # 签发时带上 version
+# 定义函数 create_access_token，参数: user: User
 def create_access_token(user: User):
+    # 返回 jwt.encode(
     return jwt.encode(
+        # {"sub": user.name, "ver": user.token_version, "exp
         {"sub": user.name, "ver": user.token_version, "exp": ...},
+        # SECRET_KEY, algorithm=ALGORITHM,
         SECRET_KEY, algorithm=ALGORITHM,
+    # )
     )
 
 # 验证时比对
+# 定义函数 get_current_user，参数: token=Depends(oauth2_scheme), db=Depends(get_db)
 def get_current_user(token=Depends(oauth2_scheme), db=Depends(get_db)):
+    # 定义变量 payload，赋值为 decode_token(token)
     payload = decode_token(token)
     user = ...  # 查库
+    # 条件判断：如果 user.token_version != payload.get("ver")
     if user.token_version != payload.get("ver"):
+        # 抛出 HTTPException 异常: 401, "token 已失效（请重新登录）"
         raise HTTPException(401, "token 已失效（请重新登录）")
+    # 返回 user
     return user
 
 # 改密码时
+# 定义函数 change_password，参数: user, ...
 def change_password(user, ...):
+    # ...
     ...
     user.token_version += 1   # ★ 让所有旧 token 失效
+    # 调用 db.commit()
     db.commit()
 \`\`\`
 
@@ -591,28 +714,41 @@ pip install "passlib[bcrypt]"   # passlib + bcrypt 后端
 \`\`\`
 
 \`\`\`python filename="pwd_utils.py - 哈希与验证"
+# 从 passlib.context 导入 CryptContext
 from passlib.context import CryptContext
 
 # CryptContext 支持多算法，deprecated 标记老算法即将弃用
+# 定义变量 pwd_context，赋值为 CryptContext(schemes=["bcrypt"], deprecated="...
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# 定义函数 hash_password，返回: str
 def hash_password(password: str) -> str:
+    # """把明文密码哈希。每次结果不同（盐随机）。"""
     """把明文密码哈希。每次结果不同（盐随机）。"""
+    # 返回 pwd_context.hash(password)
     return pwd_context.hash(password)
 
+# 定义函数 verify_password，返回: bool
 def verify_password(plain: str, hashed: str) -> bool:
+    # """校验明文密码是否和已存的哈希匹配。"""
     """校验明文密码是否和已存的哈希匹配。"""
+    # 返回 pwd_context.verify(plain, hashed)
     return pwd_context.verify(plain, hashed)
 \`\`\`
 
 \`\`\`python filename="行为演示"
+# >>> hash_password("secret")
 >>> hash_password("secret")
 '$2b$12$abc...xyz'   # 每次调用结果都不同（盐随机）
+# >>> hash_password("secret")
 >>> hash_password("secret")
 '$2b$12$def...uvw'   # 又不同
+# >>> verify_password("secret", '$2b$12$abc...xyz')
 >>> verify_password("secret", '$2b$12$abc...xyz')
 True    # 但 verify 仍能正确校验（盐从哈希里提取）
+# >>> verify_password("wrong", '$2b$12$abc...xyz')
 >>> verify_password("wrong", '$2b$12$abc...xyz')
+# False
 False
 \`\`\`
 
@@ -631,36 +767,61 @@ False
 哈希只能保证"密码不泄露"，挡不住用户用 \`123456\` 这种弱密码。要在注册时做强度校验：
 
 \`\`\`python filename="password_validator.py"
+# 导入 re 模块
 import re
 
+# 定义函数 validate_password_strength，返回: None
 def validate_password_strength(password: str) -> None:
+    # """校验密码强度，不达标抛 ValueError。"""
     """校验密码强度，不达标抛 ValueError。"""
+    # 条件判断：如果 len(password) < 8
     if len(password) < 8:
+        # 抛出 ValueError 异常: "密码至少 8 位"
         raise ValueError("密码至少 8 位")
+    # 条件判断：如果 not re.search(r"[A-Z]", password)
     if not re.search(r"[A-Z]", password):
+        # 抛出 ValueError 异常: "密码需包含大写字母"
         raise ValueError("密码需包含大写字母")
+    # 条件判断：如果 not re.search(r"[a-z]", password)
     if not re.search(r"[a-z]", password):
+        # 抛出 ValueError 异常: "密码需包含小写字母"
         raise ValueError("密码需包含小写字母")
+    # 条件判断：如果 not re.search(r"\d", password)
     if not re.search(r"\d", password):
+        # 抛出 ValueError 异常: "密码需包含数字"
         raise ValueError("密码需包含数字")
+    # 条件判断：如果 not re.search(r"[!@#$%^&*]", password)
     if not re.search(r"[!@#$%^&*]", password):
+        # 抛出 ValueError 异常: "密码需包含特殊字符"
         raise ValueError("密码需包含特殊字符")
     # 常见弱密码黑名单
+    # 条件判断：如果 password.lower() in {"password", "12345678", "qwerty"}
     if password.lower() in {"password", "12345678", "qwerty"}:
+        # 抛出 ValueError 异常: "密码过于常见"
         raise ValueError("密码过于常见")
 
 # 在 Pydantic 模型里用 field_validator 集成
+# 从 pydantic 导入 BaseModel, field_validator
 from pydantic import BaseModel, field_validator
 
+# 定义 Pydantic 数据模型 UserCreate，继承 BaseModel
 class UserCreate(BaseModel):
+    # 字段 name，类型: str
     name: str
+    # 字段 email，类型: str
     email: str
+    # 字段 password，类型: str
     password: str
 
+    # 装饰器：field_validator
     @field_validator("password")
+    # 装饰器：classmethod
     @classmethod
+    # 定义函数 check_strength，返回: str
     def check_strength(cls, v: str) -> str:
+        # 调用 validate_password_strength()
         validate_password_strength(v)
+        # 返回 v
         return v
 \`\`\`
 
@@ -669,36 +830,59 @@ class UserCreate(BaseModel):
 ## 七、完整注册 + 登录密码处理
 
 \`\`\`python filename="auth.py - 注册与登录"
+# 从 fastapi 导入 APIRouter, Depends, HTTPException, status
 from fastapi import APIRouter, Depends, HTTPException, status
+# 从 sqlalchemy.orm 导入 Session
 from sqlalchemy.orm import Session
+# 从 sqlalchemy 导入 select
 from sqlalchemy import select
 
+# 创建 APIRouter 实例，设置路由前缀
 router = APIRouter(prefix="/auth", tags=["认证"])
 
+# 定义 POST 路由：访问 /register 时触发
 @router.post("/register", response_model=UserRead, status_code=201)
+# 定义函数 register，参数: user_in: UserCreate, db: Session = Depends(get_db)
 def register(user_in: UserCreate, db: Session = Depends(get_db)):
     # 1. 查重：邮箱不能重复
+    # 条件判断：如果 db.execute(select(User).where(User.email == user_in.email)).scalar_one_or_none()
     if db.execute(select(User).where(User.email == user_in.email)).scalar_one_or_none():
+        # 抛出 HTTPException 异常: 400, "邮箱已被注册"
         raise HTTPException(400, "邮箱已被注册")
     # 2. 创建用户，密码哈希后存
+    # 定义变量 user，赋值为 User(
     user = User(
+        # 定义变量 name，赋值为 user_in.name,
         name=user_in.name,
+        # 定义变量 email，赋值为 user_in.email,
         email=user_in.email,
         hashed_password=hash_password(user_in.password),   # ★ 哈希
+    # )
     )
+    # 调用 db.add()
     db.add(user)
+    # 调用 db.commit()
     db.commit()
+    # 调用 db.refresh()
     db.refresh(user)
+    # 返回 user
     return user
 
+# 定义 POST 路由：访问 /login 时触发
 @router.post("/login")
+# 定义函数 login，参数: form: OAuth2PasswordRequestForm = Depends(), db: S...
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    # 定义变量 user，赋值为 db.execute(select(User).where(User.name == fo...
     user = db.execute(select(User).where(User.name == form.username)).scalar_one_or_none()
     # ★ 不要区分"用户不存在"和"密码错"，防枚举
+    # 条件判断：如果 not user or not verify_password(form.password, user.hashed_password)
     if not user or not verify_password(form.password, user.hashed_password):
+        # 抛出 HTTPException 异常: status.HTTP_401_UNAUTHORIZED, "用户名或密码错误"
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "用户名或密码错误")
     # 校验通过，签发 token
+    # 定义变量 token，赋值为 create_access_token({"sub": user.name})
     token = create_access_token({"sub": user.name})
+    # 返回 {"access_token": token, "token_type": "bearer"}
     return {"access_token": token, "token_type": "bearer"}
 \`\`\`
 
@@ -707,21 +891,27 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
 \`verify_password\` 看似简单，但如果你自己实现"字符串比较"会掉进 **timing attack（时序攻击）** 陷阱：
 
 \`\`\`python filename="错误：非常量时间比较"
+# 定义函数 bad_verify，参数: plain, hashed
 def bad_verify(plain, hashed):
     computed = hash_password(plain)   # 假设固定盐
     # ❌ == 比较是短路：第一个字符不同就立刻返回 False
     # 攻击者通过比较耗时反推"前几位对不对"，逐字符猜出密码
+    # 返回 computed == hashed
     return computed == hashed
 \`\`\`
 
 攻击原理：\`==\` 比较字符串时，遇到第一个不同的字符就返回，耗时和"前缀匹配长度"成正比。攻击者反复尝试，通过响应时间差异逐字节猜出正确密码。
 
 \`\`\`python filename="正确：常量时间比较"
+# 导入 hmac 模块
 import hmac
 
+# 定义函数 good_verify，参数: plain, hashed
 def good_verify(plain, hashed):
+    # 定义变量 computed，赋值为 hash_with_fixed_salt(plain, hashed)
     computed = hash_with_fixed_salt(plain, hashed)
     # ✅ compare_digest 无论是否相等，比较时间恒定
+    # 返回 hmac.compare_digest(computed, hashed)
     return hmac.compare_digest(computed, hashed)
 \`\`\`
 
@@ -740,28 +930,47 @@ def good_verify(plain, hashed):
 \`\`\`
 
 \`\`\`python filename="重置 token 实现"
+# 定义函数 create_password_reset_token，返回: str
 def create_password_reset_token(email: str) -> str:
+    # """生成短期密码重置 token。"""
     """生成短期密码重置 token。"""
+    # 返回 jwt.encode(
     return jwt.encode(
+        # {"sub": email, "type": "reset", "exp": datetime.no
         {"sub": email, "type": "reset", "exp": datetime.now(timezone.utc) + timedelta(minutes=15)},
+        # SECRET_KEY, algorithm=ALGORITHM,
         SECRET_KEY, algorithm=ALGORITHM,
+    # )
     )
 
+# 定义 POST 路由：访问 /reset-password 时触发
 @router.post("/reset-password")
+# 定义函数 reset_password，参数: token: str, new_password: str, db: Session = Depen...
 def reset_password(token: str, new_password: str, db: Session = Depends(get_db)):
+    # 定义变量 payload，赋值为 decode_token(token)
     payload = decode_token(token)
+    # 条件判断：如果 not payload or payload.get("type") != "reset"
     if not payload or payload.get("type") != "reset":
+        # 抛出 HTTPException 异常: 400, "重置链接无效或已过期"
         raise HTTPException(400, "重置链接无效或已过期")
+    # 定义变量 email，赋值为 payload["sub"]
     email = payload["sub"]
+    # 定义变量 user，赋值为 db.execute(select(User).where(User.email == e...
     user = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
+    # 条件判断：如果 not user
     if not user:
+        # 抛出 HTTPException 异常: 404, "用户不存在"
         raise HTTPException(404, "用户不存在")
     # 校验新密码强度
+    # 调用 validate_password_strength()
     validate_password_strength(new_password)
     # 改密码
+    # user.hashed_password = hash_password(new_password)
     user.hashed_password = hash_password(new_password)
     user.token_version += 1   # 让旧 access/refresh token 全部失效
+    # 调用 db.commit()
     db.commit()
+    # 返回 {"msg": "密码已重置，请用新密码登录"}
     return {"msg": "密码已重置，请用新密码登录"}
 \`\`\`
 
@@ -837,8 +1046,10 @@ carol      →   user        →   post:create(自己的)
 ## 三、角色定义与数据模型
 
 \`\`\`python filename="roles.py - 角色常量"
+# 从 enum 导入 Enum
 from enum import Enum
 
+# 定义类 Role，继承 str, Enum
 class Role(str, Enum):
     ADMIN = "admin"       # 管理员：全部权限
     EDITOR = "editor"     # 编辑：发布/编辑所有文章
@@ -847,12 +1058,18 @@ class Role(str, Enum):
 \`\`\`
 
 \`\`\`python filename="models.py - User 加 role 字段"
+# 定义类 User，继承 Base
 class User(Base):
+    # 定义变量 __tablename__，赋值为 "users"
     __tablename__ = "users"
+    # 字段 id，类型: Mapped[int]，默认值: mapped_column(primary_key=True)
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 字段 name，类型: Mapped[str]，默认值: mapped_column()
     name: Mapped[str] = mapped_column()
+    # 字段 hashed_password，类型: Mapped[str]，默认值: mapped_column()
     hashed_password: Mapped[str] = mapped_column()
     role: Mapped[str] = mapped_column(default="user")   # 角色，字符串便于扩展
+    # 字段 disabled，类型: Mapped[bool]，默认值: mapped_column(default=False)
     disabled: Mapped[bool] = mapped_column(default=False)
 \`\`\`
 
@@ -863,37 +1080,59 @@ class User(Base):
 把"检查角色"封装成依赖，路由声明需要什么角色，依赖自动校验：
 
 \`\`\`python filename="dependencies.py - 角色校验"
+# 从 fastapi 导入 Depends, HTTPException, status
 from fastapi import Depends, HTTPException, status
 
+# 定义函数 require_role，参数: required_role: Role
 def require_role(required_role: Role):
+    # """工厂函数：生成一个检查指定角色的依赖。"""
     """工厂函数：生成一个检查指定角色的依赖。"""
+    # 定义函数 role_checker，返回: User
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
         # 角色优先级：admin > editor > user > guest
+        # 定义字典 role_priority
         role_priority = {Role.GUEST: 0, Role.USER: 1, Role.EDITOR: 2, Role.ADMIN: 3}
+        # 定义变量 user_priority，赋值为 role_priority.get(Role(current_user.role), -1...
         user_priority = role_priority.get(Role(current_user.role), -1)
+        # 定义变量 required_priority，赋值为 role_priority[required_role]
         required_priority = role_priority[required_role]
+        # 条件判断：如果 user_priority < required_priority
         if user_priority < required_priority:
+            # 抛出 HTTPException 异常
             raise HTTPException(
+                # 定义变量 status_code，赋值为 status.HTTP_403_FORBIDDEN,
                 status_code=status.HTTP_403_FORBIDDEN,
+                # 定义变量 detail，赋值为 f"需要 {required_role.value} 及以上权限",
                 detail=f"需要 {required_role.value} 及以上权限",
+            # )
             )
+        # 返回 current_user
         return current_user
+    # 返回 role_checker
     return role_checker
 
 # 便捷别名
+# 定义变量 require_admin，赋值为 require_role(Role.ADMIN)
 require_admin = require_role(Role.ADMIN)
+# 定义变量 require_editor，赋值为 require_role(Role.EDITOR)
 require_editor = require_role(Role.EDITOR)
 \`\`\`
 
 \`\`\`python filename="路由里用角色依赖"
+# 定义 DELETE 路由：访问 /users/{user_id} 时触发
 @router.delete("/users/{user_id}", status_code=204)
+# 定义函数 delete_user，参数: user_id: int, db: Session = Depends(get_db), _: Us...
 def delete_user(user_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin)):
     # 只有 admin 能删用户
+    # ...
     ...
 
+# 定义 POST 路由：访问 /posts/publish 时触发
 @router.post("/posts/publish")
+# 定义函数 publish_post，参数: post_id: int, current_user: User = Depends(require...
 def publish_post(post_id: int, current_user: User = Depends(require_editor)):
     # editor 及以上能发布
+    # ...
     ...
 \`\`\`
 
@@ -916,26 +1155,42 @@ require_role (检查角色) ← 失败就 403
 \`\`\`
 
 \`\`\`python filename="依赖链示意"
+# 定义函数 get_current_user，返回: User
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+    # 定义变量 payload，赋值为 decode_token(token)
     payload = decode_token(token)
+    # 条件判断：如果 not payload
     if not payload:
+        # 抛出 HTTPException 异常: 401, "token 无效"
         raise HTTPException(401, "token 无效")
+    # 定义变量 user，赋值为 db.get(User, ...)
     user = db.get(User, ...)
+    # 条件判断：如果 not user
     if not user:
+        # 抛出 HTTPException 异常: 401, "用户不存在"
         raise HTTPException(401, "用户不存在")
+    # 返回 user
     return user
 
+# 定义函数 require_role，参数: role: Role
 def require_role(role: Role):
     def checker(user: User = Depends(get_current_user)) -> User:   # ★ 依赖 get_current_user
+        # 条件判断：如果 user.role != role.value
         if user.role != role.value:
+            # 抛出 HTTPException 异常: 403, "权限不足"
             raise HTTPException(403, "权限不足")
+        # 返回 user
         return user
+    # 返回 checker
     return checker
 
+# 定义 GET 路由：访问 /admin/dashboard 时触发
 @router.get("/admin/dashboard")
+# 定义函数 admin_dashboard，参数: admin: User = Depends(require_admin)
 def admin_dashboard(admin: User = Depends(require_admin)):
     # require_admin → require_role(ADMIN) → checker → get_current_user → oauth2_scheme
     # 整条链任何一环失败都会抛对应异常
+    # 返回 {"msg": "欢迎管理员"}
     return {"msg": "欢迎管理员"}
 \`\`\`
 
@@ -956,59 +1211,96 @@ Scope：token 级别的属性（这个 token 只能读文章），更细
 FastAPI 用 \`Security\` 函数声明需要的 scope：
 
 \`\`\`python filename="scopes 实现"
+# 从 fastapi 导入 Security
 from fastapi import Security
+# 从 fastapi.security 导入 OAuth2PasswordBearer, SecurityScopes
 from fastapi.security import OAuth2PasswordBearer, SecurityScopes
 
 # 在 OAuth2PasswordBearer 里声明本应用支持的所有 scopes（给 Swagger 展示）
+# 定义变量 oauth2_scheme，赋值为 OAuth2PasswordBearer(
 oauth2_scheme = OAuth2PasswordBearer(
+    # 定义变量 tokenUrl，赋值为 "/auth/login",
     tokenUrl="/auth/login",
+    # 定义字典 scopes
     scopes={
+        # "read:posts": "读取文章",
         "read:posts": "读取文章",
+        # "write:posts": "写入文章",
         "write:posts": "写入文章",
+        # "admin:users": "用户管理（管理员）",
         "admin:users": "用户管理（管理员）",
+    # },
     },
+# )
 )
 
+# def get_current_user(
 def get_current_user(
     security_scopes: SecurityScopes,    # 自动注入：本路由声明的 scopes
+    # 字段 token，类型: str，默认值: Depends(oauth2_scheme),
     token: str = Depends(oauth2_scheme),
+    # 字段 db，类型: Session，默认值: Depends(get_db),
     db: Session = Depends(get_db),
+# ) -> User:
 ) -> User:
+    # 定义变量 payload，赋值为 decode_token(token)
     payload = decode_token(token)
+    # 条件判断：如果 not payload
     if not payload:
+        # 抛出 HTTPException 异常: 401, "token 无效", headers={"WWW-Authenticate": "Bearer"}
         raise HTTPException(401, "token 无效", headers={"WWW-Authenticate": "Bearer"})
     # 取出 token 里声明的 scopes
+    # 定义变量 token_scopes，赋值为 payload.get("scopes", [])
     token_scopes = payload.get("scopes", [])
     # 校验：token 必须包含路由要求的所有 scope
+    # 遍历 security_scopes.scopes，取 scope
     for scope in security_scopes.scopes:
+        # 条件判断：如果 scope not in token_scopes
         if scope not in token_scopes:
+            # 抛出 HTTPException 异常: 403, f"缺少权限：{scope}"
             raise HTTPException(403, f"缺少权限：{scope}")
+    # 定义变量 user，赋值为 db.execute(select(User).where(User.name == pa...
     user = db.execute(select(User).where(User.name == payload.get("sub"))).scalar_one_or_none()
+    # 返回 user
     return user
 
+# 定义函数 require_scopes，参数: *scopes
 def require_scopes(*scopes):
+    # 定义函数 checker，参数: user: User = Security(get_current_user, scopes=lis...
     def checker(user: User = Security(get_current_user, scopes=list(scopes))):
+        # 返回 user
         return user
+    # 返回 checker
     return checker
 
 # 用法：声明这个接口需要 read:posts scope
+# 定义 GET 路由：访问 /posts/ 时触发
 @router.get("/posts/")
+# 定义函数 list_posts，参数: _: User = Depends(require_scopes("read:posts"))
 def list_posts(_: User = Depends(require_scopes("read:posts"))):
+    # ...
     ...
 \`\`\`
 
 签发带 scope 的 token：
 
 \`\`\`python filename="登录时按需签发 scope"
+# 定义 POST 路由：访问 /login 时触发
 @router.post("/login")
+# 定义函数 login，参数: form: OAuth2PasswordRequestForm = Depends(), db: S...
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    # 定义变量 user，赋值为 authenticate_user(form.username, form.passwor...
     user = authenticate_user(form.username, form.password, db)
+    # 条件判断：如果 not user
     if not user:
+        # 抛出 HTTPException 异常: 400, "用户名或密码错误"
         raise HTTPException(400, "用户名或密码错误")
     # 客户端可以请求特定 scope，服务端按用户角色授权
     requested_scopes = form.scopes  # OAuth2PasswordRequestForm 自带 scopes 字段
     granted = grant_scopes(user, requested_scopes)   # admin 可以拿 admin:users，普通用户只能拿 read/write
+    # 定义变量 token，赋值为 create_access_token({"sub": user.name, "scope...
     token = create_access_token({"sub": user.name, "scopes": granted})
+    # 返回 {"access_token": token, "token_type": "bearer"}
     return {"access_token": token, "token_type": "bearer"}
 \`\`\`
 
@@ -1017,20 +1309,33 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
 光有角色/scope 不够，还要校验"资源是不是你的"。比如 alice 编辑文章，得确保这文章是她自己的（或她是 editor/admin）：
 
 \`\`\`python filename="资源所有权校验"
+# 定义 PUT 路由：访问 /posts/{post_id} 时触发
 @router.put("/posts/{post_id}")
+# def update_post(
 def update_post(
+    # 字段 post_id，类型: int,
     post_id: int,
+    # 字段 post_in，类型: PostUpdate,
     post_in: PostUpdate,
+    # 字段 db，类型: Session，默认值: Depends(get_db),
     db: Session = Depends(get_db),
+    # 字段 current_user，类型: User，默认值: Depends(get_current_user),
     current_user: User = Depends(get_current_user),
+# ):
 ):
+    # 定义变量 post，赋值为 db.get(Post, post_id)
     post = db.get(Post, post_id)
+    # 条件判断：如果 not post
     if not post:
+        # 抛出 HTTPException 异常: 404, "文章不存在"
         raise HTTPException(404, "文章不存在")
     # 所有权校验：只能改自己的；editor/admin 可以改任何人的
+    # 条件判断：如果 post.author_id != current_user.id and current_user.role not in ("editor", "admin")
     if post.author_id != current_user.id and current_user.role not in ("editor", "admin"):
+        # 抛出 HTTPException 异常: 403, "只能修改自己的文章"
         raise HTTPException(403, "只能修改自己的文章")
     # 更新逻辑...
+    # 返回 post
     return post
 \`\`\`
 
@@ -1046,40 +1351,67 @@ def update_post(
 
 \`\`\`python filename="完整 RBAC 速览"
 # 1. 角色枚举
+# 定义类 Role，继承 str, Enum
 class Role(str, Enum):
+    # 定义变量 ADMIN，赋值为 "admin"; EDITOR = "editor"; USER = "user"
     ADMIN = "admin"; EDITOR = "editor"; USER = "user"
 
 # 2. 权限矩阵：角色 → 能做的操作
+# 定义字典 PERMISSIONS
 PERMISSIONS = {
+    # Role.ADMIN: {"user:delete", "post:publish", "post:
     Role.ADMIN: {"user:delete", "post:publish", "post:edit:any", "post:delete:any", "post:edit:own"},
+    # Role.EDITOR: {"post:publish", "post:edit:any", "po
     Role.EDITOR: {"post:publish", "post:edit:any", "post:edit:own"},
+    # Role.USER: {"post:edit:own", "post:delete:own"},
     Role.USER: {"post:edit:own", "post:delete:own"},
+# }
 }
 
+# 定义函数 user_can，返回: bool
 def user_can(user: User, permission: str) -> bool:
+    # """检查用户是否拥有某权限。"""
     """检查用户是否拥有某权限。"""
+    # 返回 permission in PERMISSIONS.get(Role(user.role), set())
     return permission in PERMISSIONS.get(Role(user.role), set())
 
 # 3. 依赖封装
+# 定义函数 require_permission，参数: permission: str
 def require_permission(permission: str):
+    # 定义函数 checker，返回: User
     def checker(user: User = Depends(get_current_user)) -> User:
+        # 条件判断：如果 not user_can(user, permission)
         if not user_can(user, permission):
+            # 抛出 HTTPException 异常: 403, f"缺少权限：{permission}"
             raise HTTPException(403, f"缺少权限：{permission}")
+        # 返回 user
         return user
+    # 返回 checker
     return checker
 
 # 4. 路由声明权限
+# 定义 DELETE 路由：访问 /posts/{post_id} 时触发
 @router.delete("/posts/{post_id}")
+# 定义函数 delete_post，参数: post_id: int, db: Session = Depends(get_db), user:...
 def delete_post(post_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    # 定义变量 post，赋值为 db.get(Post, post_id)
     post = db.get(Post, post_id)
     # 资源所有权：能删自己的，或拥有删任何文章的权限
+    # 条件判断：如果 post.author_id == user.id
     if post.author_id == user.id:
+        # 条件判断：如果 not user_can(user, "post:delete:own")
         if not user_can(user, "post:delete:own"):
+            # 抛出 HTTPException 异常: 403, "无权删除"
             raise HTTPException(403, "无权删除")
+    # 否则执行
     else:
+        # 条件判断：如果 not user_can(user, "post:delete:any")
         if not user_can(user, "post:delete:any"):
+            # 抛出 HTTPException 异常: 403, "只能删除自己的文章"
             raise HTTPException(403, "只能删除自己的文章")
+    # 调用 db.delete()
     db.delete(post)
+    # 调用 db.commit()
     db.commit()
 \`\`\`
 

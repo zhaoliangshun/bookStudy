@@ -433,7 +433,7 @@ Java 是强类型语言，不同类型之间不能随意赋值。当类型不一
 把**小范围**类型赋给**大范围**类型时，JVM 自动提升，无需任何语法：
 
 \`\`\`java
-int i = 100;
+int i = 100;  // 声明变量 i（int），初始值为 100
 long l = i;        // int -> long，自动
 double d = l;      // long -> double，自动
 \`\`\`
@@ -450,9 +450,9 @@ double d = l;      // long -> double，自动
 把**大范围**赋给**小范围**时，必须显式写 \`(目标类型)\` 强转，否则编译报错：
 
 \`\`\`java
-double d = 3.99;
+double d = 3.99;  // 声明变量 d（double），初始值为 3.99
 int i = (int) d;   // 强转，i = 3（直接截断小数部分）
-long l = 100000L;
+long l = 100000L;  // 声明变量 l（long），初始值为 100000L
 int j = (int) l;   // 若 l 超出 int 范围，结果不可预期
 \`\`\`
 
@@ -468,7 +468,7 @@ int j = (int) l;   // 若 l 超出 int 范围，结果不可预期
 在算术表达式中，操作数会先提升到 \`int\` 再计算，这是新手常踩的坑：
 
 \`\`\`java
-byte a = 1, b = 2;
+byte a = 1, b = 2;  // 声明变量 a（byte），初始值为 1, b = 2
 byte c = a + b;        // 编译错误！a + b 结果是 int
 byte c = (byte)(a + b); // 必须强转
 \`\`\`
@@ -677,7 +677,7 @@ public class Main {
 
 \`\`\`java
 Integer a = 10;          // 等价于 Integer a = Integer.valueOf(10);
-List<Integer> list = new ArrayList<>();
+List<Integer> list = new ArrayList<>();  // 声明变量 list（List<Integer>），初始值为 new ArrayList<>()
 list.add(5);             // 等价于 list.add(Integer.valueOf(5));
 \`\`\`
 
@@ -686,7 +686,7 @@ list.add(5);             // 等价于 list.add(Integer.valueOf(5));
 把包装类赋给基本类型、或参与算术运算时，编译器自动插入 \`xxxValue\` 调用：
 
 \`\`\`java
-Integer a = 10;
+Integer a = 10;  // 声明变量 a（Integer），初始值为 10
 int b = a;               // 等价于 int b = a.intValue();
 int sum = a + 20;        // 先拆箱 a.intValue() + 20
 \`\`\`
@@ -697,15 +697,15 @@ int sum = a + 20;        // 先拆箱 a.intValue() + 20
 
 \`\`\`java
 // 反例：循环中频繁装箱
-Integer sum = 0;
-for (int i = 0; i < 1000000; i++) {
+Integer sum = 0;  // 声明变量 sum（Integer），初始值为 0
+for (int i = 0; i < 1000000; i++) {  // for 循环：初始化 int i = 0；条件 i < 1000000；更新 i++
     sum += i;   // 每次都拆箱再装箱，产生大量临时对象
 }
 
 // 正解：用基本类型
-int sum2 = 0;
-for (int i = 0; i < 1000000; i++) {
-    sum2 += i;
+int sum2 = 0;  // 声明变量 sum2（int），初始值为 0
+for (int i = 0; i < 1000000; i++) {  // for 循环：初始化 int i = 0；条件 i < 1000000；更新 i++
+    sum2 += i;  // sum2 += i（复合赋值）
 }
 \`\`\`
 
@@ -714,7 +714,7 @@ for (int i = 0; i < 1000000; i++) {
 包装类是对象，可以是 \`null\`。当 \`null\` 的包装类被**自动拆箱**时，会抛出 \`NullPointerException\`：
 
 \`\`\`java
-Integer a = null;
+Integer a = null;  // 声明变量 a（Integer），初始值为 null
 int b = a;   // 运行时 NPE！相当于 a.intValue()，而 a 是 null
 \`\`\`
 
@@ -725,9 +725,9 @@ int b = a;   // 运行时 NPE！相当于 a.intValue()，而 a 是 null
 由于缓存池的存在，\`Integer\` 的 \`==\` 行为不确定（-128~127 内为 true，范围外为 false）。**包装类比较永远用 \`equals\`**：
 
 \`\`\`java
-Integer a = 127, b = 127;
+Integer a = 127, b = 127;  // 声明变量 a（Integer），初始值为 127, b = 127
 a == b;          // true（命中缓存）
-Integer c = 128, d = 128;
+Integer c = 128, d = 128;  // 声明变量 c（Integer），初始值为 128, d = 128
 c == d;          // false（超出缓存）
 c.equals(d);     // true（值比较）
 \`\`\`
@@ -832,8 +832,8 @@ public class Main {
 
 \`\`\`java
 // 之前
-ArrayList<String> list = new ArrayList<String>();
-Map<String, List<Integer>> map = new HashMap<>();
+ArrayList<String> list = new ArrayList<String>();  // 声明变量 list（ArrayList<String>），初始值为 new ArrayList<String>()
+Map<String, List<Integer>> map = new HashMap<>();  // 声明变量 map（Map<String, List<Integer>>），初始值为 new HashMap<>()
 
 // 用 var 后
 var list = new ArrayList<String>();           // 推断为 ArrayList<String>
@@ -959,10 +959,10 @@ public class Main {
 被 \`final\` 修饰的变量**只能赋值一次**，赋值后不可再改：
 
 \`\`\`java
-final int MAX = 100;
+final int MAX = 100;  // 声明常量变量 MAX（int），初始值为 100
 MAX = 200;   // 编译错误！
 
-final double PI;
+final double PI;  // 声明常量变量 PI（double 类型）
 PI = 3.14;   // 允许：声明时未赋，可稍后赋一次
 PI = 3.1415; // 错误：已赋过值
 \`\`\`
@@ -970,7 +970,7 @@ PI = 3.1415; // 错误：已赋过值
 **重要区分**：\`final\` 修饰**引用类型**时，锁定的是"引用"本身，而不是对象内容。即引用不能再指向别的对象，但对象内部仍可修改：
 
 \`\`\`java
-final List<String> list = new ArrayList<>();
+final List<String> list = new ArrayList<>();  // 声明常量变量 list（List<String>），初始值为 new ArrayList<>()
 list.add("a");          // 允许：修改对象内容
 list = new ArrayList<>(); // 错误：引用不能改
 \`\`\`
@@ -980,10 +980,10 @@ list = new ArrayList<>(); // 错误：引用不能改
 \`final\` 方法**不能被子类重写**（override），常用于保护核心逻辑不被篡改，也有助于内联优化：
 
 \`\`\`java
-class Parent {
+class Parent {  // 定义类 Parent
     public final void coreLogic() { /* ... */ }
 }
-class Child extends Parent {
+class Child extends Parent {  // 定义类 Child
     public void coreLogic() { } // 编译错误：不能重写 final 方法
 }
 \`\`\`
@@ -1002,9 +1002,9 @@ class MyString extends String { }   // 编译错误
 \`static final\` 组合定义**类级常量**，属于类而非实例，全局唯一，命名采用**全大写 + 下划线**：
 
 \`\`\`java
-public class Math {
-    public static final double PI = 3.141592653589793;
-    public static final double E = 2.718281828459045;
+public class Math {  // 定义类 Math
+    public static final double PI = 3.141592653589793;  // 声明静态常量公共变量 PI（double），初始值为 3.141592653589793
+    public static final double E = 2.718281828459045;  // 声明静态常量公共变量 E（double），初始值为 2.718281828459045
 }
 \`\`\`
 
@@ -1171,7 +1171,7 @@ public int add(int a, int b) { ... }
 用 \`javadoc\` 命令把源码中的 Javadoc 注释提取成 HTML 文档：
 
 \`\`\`bash
-javadoc -d docs -encoding UTF-8 -charset UTF-8 Main.java
+javadoc -d docs -encoding UTF-8 -charset UTF-8 Main.java  # 生成 API 文档
 \`\`\`
 
 \`-d docs\` 指定输出目录，\`-encoding\` 指定源码编码。生成后打开 \`docs/index.html\` 即可浏览，类似官方 API 文档的样式。
@@ -1309,8 +1309,8 @@ Java 社区几乎统一采用**驼峰命名法**，分两种：
 常量（\`static final\`）用**全大写 + 下划线分隔**（SCREAMING_SNAKE_CASE）：
 
 \`\`\`java
-public static final int MAX_CONNECTIONS = 100;
-public static final String DEFAULT_CHARSET = "UTF-8";
+public static final int MAX_CONNECTIONS = 100;  // 声明静态常量公共变量 MAX_CONNECTIONS（int），初始值为 100
+public static final String DEFAULT_CHARSET = "UTF-8";  // 声明静态常量公共变量 DEFAULT_CHARSET（String），初始值为 "UTF-8"
 \`\`\`
 
 ### 包命名
@@ -1318,7 +1318,7 @@ public static final String DEFAULT_CHARSET = "UTF-8";
 包名**全小写**，不使用下划线，通常用**域名反写**开头，避免冲突：
 
 \`\`\`java
-package com.company.project.module;
+package com.company.project.module;  // 声明包名为 com.company.project.module
 \`\`\`
 
 ### 命名最佳实践
@@ -1448,8 +1448,8 @@ int bin = 0b1100100;  // 二进制：以 0b 开头（Java 7+）
 
 \`\`\`java
 int million = 1_000_000;          // 100 万，清晰
-long creditCard = 1234_5678_9012_3456L;
-double pi = 3.14_15_92_65;
+long creditCard = 1234_5678_9012_3456L;  // 声明变量 creditCard（long），初始值为 1234_5678_9012_3456L
+double pi = 3.14_15_92_65;  // 声明变量 pi（double），初始值为 3.14_15_92_65
 \`\`\`
 
 规则：下划线只能出现在**数字之间**，不能在开头、结尾、紧邻小数点或后缀处。
@@ -1461,7 +1461,7 @@ double d1 = 3.14;       // 默认是 double
 double d2 = 3.14d;      // d 后缀（可选）
 double d3 = 3.14D;      // D 后缀
 float f1 = 3.14f;       // float 必须加 f 或 F
-float f2 = 3.14F;
+float f2 = 3.14F;  // 声明变量 f2（float），初始值为 3.14F
 \`\`\`
 
 ### 科学计数法
@@ -1599,9 +1599,9 @@ long total = (long) a * b * c;  // 正解：先转 long
 | \`toIntExact(long)\` | long 转 int，溢出抛异常 |
 
 \`\`\`java
-try {
-    Math.addExact(Integer.MAX_VALUE, 1);
-} catch (ArithmeticException e) {
+try {  // try 块：包裹可能抛出异常的代码
+    Math.addExact(Integer.MAX_VALUE, 1);  // 调用 Math 的 addExact 方法
+} catch (ArithmeticException e) {  // 捕获异常 ArithmeticException e
     // 捕获溢出
 }
 \`\`\`
@@ -1611,8 +1611,8 @@ try {
 当数值可能超过 \`long\` 范围（约 9.2×10¹⁸），应使用 \`java.math.BigInteger\`。它是**任意精度**的整数，用数组存储各位数字，运算不会溢出，但**速度比基本类型慢得多**：
 
 \`\`\`java
-BigInteger a = new BigInteger("99999999999999999999");
-BigInteger b = new BigInteger("1");
+BigInteger a = new BigInteger("99999999999999999999");  // 声明变量 a（BigInteger），初始值为 new BigInteger("99999999999999999999")
+BigInteger b = new BigInteger("1");  // 声明变量 b（BigInteger），初始值为 new BigInteger("1")
 BigInteger sum = a.add(b);   // 100000000000000000000
 \`\`\`
 
@@ -1792,7 +1792,7 @@ Math.exp(1);         // Math.E（e 的 1 次方）
 \`\`\`java
 Math.random();   // [0.0, 1.0) 的 double
 // 生成 [1, 100] 的整数随机数
-int r = (int)(Math.random() * 100) + 1;
+int r = (int)(Math.random() * 100) + 1;  // 声明变量 r（int），初始值为 (int)(Math.random() * 100) + 1
 \`\`\`
 
 \`Math.random()\` 内部用 \`java.util.Random\`，更灵活的随机数生成推荐 \`ThreadLocalRandom\` 或 Java 17+ 的 \`RandomGenerator\`。
@@ -1934,7 +1934,7 @@ BigDecimal r = a.divide(b, 10, RoundingMode.HALF_UP); // 保留 10 位，四舍�
 \`setScale\` 设置小数位数，需指定 \`RoundingMode\`：
 
 \`\`\`java
-BigDecimal price = new BigDecimal("3.14159");
+BigDecimal price = new BigDecimal("3.14159");  // 声明变量 price（BigDecimal），初始值为 new BigDecimal("3.14159")
 price = price.setScale(2, RoundingMode.HALF_UP); // 3.14
 \`\`\`
 

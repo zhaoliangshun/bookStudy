@@ -80,19 +80,19 @@ TypeScript 5.0 实现了 ECMAScript 的 Stage 3 装饰器提案，这是与旧�
 
 \`\`\`ts
 // 新的标准装饰器——更简洁、更强大
-function logged(target: any, context: ClassMethodDecoratorContext) {
-  const methodName = String(context.name);
-  function replacementMethod(this: any, ...args: any[]) {
-    console.log(\`调用 \${methodName}，参数: \${args}\`);
-    return target.call(this, ...args);
+function logged(target: any, context: ClassMethodDecoratorContext) {  // 定义函数 logged，参数: target: any, context: ClassMethodDecoratorContext（注意：any 关闭了类型检查）
+  const methodName = String(context.name);  // 声明常量 methodName
+  function replacementMethod(this: any, ...args: any[]) {  // 定义函数 replacementMethod，参数: this: any, ...args: any[]（注意：any 关闭了类型检查）
+    console.log(\`调用 \${methodName}，参数: \${args}\`);  // 控制台输出
+    return target.call(this, ...args);  // 返回 target.call(this, ...args)
   }
-  return replacementMethod;
+  return replacementMethod;  // 返回 replacementMethod
 }
 
-class Calculator {
-  @logged
-  add(a: number, b: number): number {
-    return a + b;
+class Calculator {  // 定义类 Calculator
+  @logged  // 装饰器 logged
+  add(a: number, b: number): number {  // 方法声明 add(a: number, b: number)，返回 number
+    return a + b;  // 返回 a + b
   }
 }
 \`\`\`
@@ -101,8 +101,8 @@ class Calculator {
 
 \`\`\`ts
 // 泛型参数前加 const，推断为最窄类型
-function getConfig<const T extends readonly string[]>(keys: T): T {
-  return keys;
+function getConfig<const T extends readonly string[]>(keys: T): T {  // 定义函数 getConfig，泛型 const T extends readonly string[]，参数: keys: T，返回 T
+  return keys;  // 返回 keys
 }
 const config = getConfig(["host", "port"]); // 类型是 readonly ["host", "port"]，而非 string[]
 \`\`\`
@@ -373,15 +373,15 @@ nvm alias default 22  # 设为默认版本
 
 # fnm (Fast Node Manager) — 更快的 Rust 实现
 brew install fnm      # macOS
-fnm install 22
-fnm use 22
+fnm install 22  # 执行命令 fnm
+fnm use 22  # 执行命令 fnm
 \`\`\`
 
 3. **Volta**：一个现代化的 Node.js 版本管理器，项目级别的版本锁定：
 
 \`\`\`bash
 curl https://get.volta.sh | bash
-volta install node@22
+volta install node@22  # 执行命令 volta
 volta pin node@22      # 在项目中锁定版本
 \`\`\`
 
@@ -405,13 +405,13 @@ volta pin node@22      # 在项目中锁定版本
 
 \`\`\`bash
 # 安装 pnpm
-npm install -g pnpm
+npm install -g pnpm  # 全局安装依赖
 
 # 初始化项目
-pnpm init
+pnpm init  # pnpm 命令
 
 # 添加 TypeScript
-pnpm add -D typescript
+pnpm add -D typescript  # pnpm 命令
 \`\`\`
 
 ### 第三步：VS Code 配置
@@ -519,10 +519,10 @@ Visual Studio Code 是 TypeScript 开发的"官方 IDE"——TypeScript 和 VS C
 esbuild 是用 Go 语言编写的极速打包器，它的 TypeScript 转译速度比 tsc 快 10-100 倍。但注意：esbuild **只做转译，不做类型检查**。它直接把 TS 语法转换为 JS 语法，忽略类型注解。
 
 \`\`\`bash
-pnpm add -D esbuild
+pnpm add -D esbuild  # pnpm 命令
 
 # 转译单个文件
-pnpm exec esbuild src/index.ts --bundle --outfile=dist/bundle.js
+pnpm exec esbuild src/index.ts --bundle --outfile=dist/bundle.js  # pnpm 命令
 
 # 构建配置：esbuild.config.js
 \`\`\`
@@ -532,7 +532,7 @@ pnpm exec esbuild src/index.ts --bundle --outfile=dist/bundle.js
 swc 是用 Rust 语言编写的极速编译器，同样支持 TypeScript 转译。它的速度也非常快，常被用于替代 Babel 和 tsc 的转译步骤。
 
 \`\`\`bash
-pnpm add -D @swc/core @swc/cli
+pnpm add -D @swc/core @swc/cli  # pnpm 命令
 \`\`\`
 
 #### 2026年的推荐工作流
@@ -582,10 +582,10 @@ my-project/
 
 \`\`\`bash
 # 安装 ESLint 和 TS 相关插件
-pnpm add -D eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin prettier eslint-config-prettier
+pnpm add -D eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin prettier eslint-config-prettier  # pnpm 命令
 
 # 初始化 ESLint 配置
-pnpm exec eslint --init
+pnpm exec eslint --init  # pnpm 命令
 \`\`\`
 
 推荐配置：
@@ -899,9 +899,9 @@ JavaScript 有7种原始类型（按 ES2020 标准），TypeScript 为每种都�
 string 是 TypeScript 中最常用的类型之一。它支持三种字面量形式和模板字符串：
 
 \`\`\`ts
-let single: string = '单引号';
-let double: string = "双引号";
-let backtick: string = \`反引号（模板字符串）\`;
+let single: string = '单引号';  // 声明变量 single，类型 string
+let double: string = "双引号";  // 声明变量 double，类型 string
+let backtick: string = \`反引号（模板字符串）\`;  // 声明变量 backtick，类型 string
 \`\`\`
 
 #### 字符串的不可变性
@@ -909,7 +909,7 @@ let backtick: string = \`反引号（模板字符串）\`;
 JavaScript 中的字符串是不可变的——任何字符串操作都会返回新字符串，而非修改原字符串。这意味着：
 
 \`\`\`ts
-let s = "hello";
+let s = "hello";  // 声明变量 s
 s.toUpperCase();      // 返回 "HELLO"，但 s 本身不变
 console.log(s);       // 仍然是 "hello"
 s = s.toUpperCase();  // 必须重新赋值
@@ -921,8 +921,8 @@ TypeScript 支持将具体字符串值作为类型（字面量类型），这在
 
 \`\`\`ts
 // 仅接受这三个具体值
-type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
-function request(url: string, method: HttpMethod): void {
+type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";  // 定义类型别名 HttpMethod
+function request(url: string, method: HttpMethod): void {  // 定义函数 request，参数: url: string, method: HttpMethod，返回 void
   // method 只能是这四个值之一
 }
 \`\`\`
@@ -932,7 +932,7 @@ function request(url: string, method: HttpMethod): void {
 TypeScript 4.1 引入了模板字符串字面量类型，这是类型系统的一大突破——你可以在类型层面进行字符串拼接：
 
 \`\`\`ts
-type EventName<T extends string> = \`on\${Capitalize<T>}\`;
+type EventName<T extends string> = \`on\${Capitalize<T>}\`;  // 定义类型别名 EventName，泛型参数 T extends string
 type ClickEvent = EventName<"click">;  // "onClick"
 type ChangeEvent = EventName<"change">; // "onChange"
 \`\`\`
@@ -1011,8 +1011,8 @@ let big3: bigint = BigInt("9007199254740991"); // 从字符串创建
 symbol 是 ES2015 引入的原始类型，每个 symbol 值都是全局唯一的：
 
 \`\`\`ts
-let s1: symbol = Symbol("描述");
-let s2: symbol = Symbol("描述");
+let s1: symbol = Symbol("描述");  // 声明变量 s1，类型 symbol
+let s2: symbol = Symbol("描述");  // 声明变量 s2，类型 symbol
 console.log(s1 === s2); // false——即使描述相同，它们也是不同的
 \`\`\`
 
@@ -1024,7 +1024,7 @@ console.log(s1 === s2); // false——即使描述相同，它们也是不同的
 
 \`\`\`ts
 // 唯一的 symbol 类型：unique symbol
-const mySymbol: unique symbol = Symbol("唯一");
+const mySymbol: unique symbol = Symbol("唯一");  // 声明常量 mySymbol，类型 unique symbol
 // unique symbol 是其自身的类型，只能由自己赋值
 \`\`\`
 
@@ -1041,7 +1041,7 @@ null 和 undefined 是 JavaScript 中两个容易混淆的值：
 **这是 TypeScript 最重要的配置项之一**。当 \`strictNullChecks\` 开启时（强烈推荐）：
 
 \`\`\`ts
-let name: string = "张三";
+let name: string = "张三";  // 声明变量 name，类型 string
 // name = null;    // ❌ 错误：null 不能赋给 string
 // name = undefined; // ❌ 错误：undefined 不能赋给 string
 
@@ -1057,15 +1057,15 @@ nameOrNull = null;  // ✅ 正确
 
 \`\`\`ts
 // 可选链 ?.  —— 安全访问深层属性
-const name = user?.profile?.name;
+const name = user?.profile?.name;  // 声明常量 name
 
 // 空值合并 ?? —— 提供默认值
-const displayName = user?.name ?? "匿名用户";
+const displayName = user?.name ?? "匿名用户";  // 声明常量 displayName
 
 // 类型守卫 —— 主动检查
-if (data !== null && data !== undefined) {
+if (data !== null && data !== undefined) {  // 条件判断
   // data 被收窄为具体类型
-  console.log(data.length);
+  console.log(data.length);  // 控制台输出
 }
 \`\`\`
 
@@ -1092,7 +1092,7 @@ let p: string = "hello";        // 原始类型
 let w: String = new String("x"); // 包装对象类型（不推荐）
 
 // 原始类型可以赋给包装对象类型（反之不行）
-let s: string = "hello";
+let s: string = "hello";  // 声明变量 s，类型 string
 let S: String = s;  // ✅ 原始类型可以赋值给包装对象
 // let p: string = S;  // ❌ 包装对象不能直接赋值给原始类型
 \`\`\`
@@ -1384,12 +1384,12 @@ TypeScript 提供了两种数组声明语法：
 
 \`\`\`ts
 // 方式一：T[] 语法（推荐，更简洁）
-let list1: number[] = [1, 2, 3];
-let list2: string[] = ["a", "b", "c"];
+let list1: number[] = [1, 2, 3];  // 声明变量 list1，类型 number[]
+let list2: string[] = ["a", "b", "c"];  // 声明变量 list2，类型 string[]
 
 // 方式二：Array<T> 泛型语法
-let list3: Array<number> = [1, 2, 3];
-let list4: Array<string> = ["a", "b", "c"];
+let list3: Array<number> = [1, 2, 3];  // 声明变量 list3，类型 Array<number>
+let list4: Array<string> = ["a", "b", "c"];  // 声明变量 list4，类型 Array<string>
 \`\`\`
 
 两种方式完全等价，选择哪种取决于团队约定。但有一个例外：当使用 \`readonly\` 时，只能用 \`T[]\` 语法：
@@ -1405,7 +1405,7 @@ let arr2: ReadonlyArray<number> = [1, 2, 3];  // ✅
 只读数组确保数组内容在创建后不会被修改。这是 TypeScript 为函数式编程和不可变数据提供的重要保障：
 
 \`\`\`ts
-const data: readonly number[] = [1, 2, 3];
+const data: readonly number[] = [1, 2, 3];  // 声明常量 data，类型 readonly number[]
 // data.push(4);     // ❌ push 不存在
 // data[0] = 99;     // ❌ 索引赋值不允许
 // data.pop();       // ❌ pop 不存在
@@ -1433,7 +1433,7 @@ const y = [1, 2, 3] as const;  // 完全不可变，且是元组类型
 TypeScript 对数组方法的类型推断非常智能：
 
 \`\`\`ts
-const nums = [1, 2, 3, 4, 5];
+const nums = [1, 2, 3, 4, 5];  // 声明常量 nums
 
 // map: 根据回调推断返回类型
 const doubled = nums.map((n) => n * 2);         // number[]
@@ -1443,14 +1443,14 @@ const strings = nums.map((n) => \`#\${n}\`);       // string[]
 const evens = nums.filter((n) => n % 2 === 0);   // 仍是 number[]，不是字面量的联合
 
 // 类型守卫 filter：手动收窄
-const filtered: number[] = nums.filter((n): n is number => n > 2);
+const filtered: number[] = nums.filter((n): n is number => n > 2);  // 自定义类型守卫（返回 x is T）
 // 注意：上面的类型守卫实际上对 number 没用，但对于联合类型很有用
 \`\`\`
 
 #### 数组解构与类型
 
 \`\`\`ts
-const [first, second, ...rest] = [1, 2, 3, 4, 5];
+const [first, second, ...rest] = [1, 2, 3, 4, 5];  // 数组解构声明：从 [1, 2, 3, 4, 5]; 取 first, second, ...rest
 // first: number, second: number, rest: number[]
 \`\`\`
 
@@ -1458,13 +1458,13 @@ const [first, second, ...rest] = [1, 2, 3, 4, 5];
 
 \`\`\`ts
 // 二维数组
-let matrix: number[][] = [
+let matrix: number[][] = [  // 声明变量 matrix，类型 number[][]
   [1, 2, 3],
   [4, 5, 6],
 ];
 
 // 三维数组
-let cube: number[][][] = [
+let cube: number[][][] = [  // 声明变量 cube，类型 number[][][]
   [[1, 2], [3, 4]],
   [[5, 6], [7, 8]],
 ];
@@ -1476,10 +1476,10 @@ let cube: number[][][] = [
 
 \`\`\`ts
 // 基本元组：一个 string 后跟一个 number
-let pair: [string, number] = ["张三", 28];
+let pair: [string, number] = ["张三", 28];  // 声明变量 pair，类型 [string, number]
 
 // 三元组
-let triple: [string, number, boolean] = ["李四", 30, true];
+let triple: [string, number, boolean] = ["李四", 30, true];  // 声明变量 triple，类型 [string, number, boolean]
 \`\`\`
 
 #### 元组 vs 数组
@@ -1497,13 +1497,13 @@ TypeScript 4.0 引入了命名元组，允许你为每个位置指定标签—�
 
 \`\`\`ts
 // 普通元组：只能通过索引访问，没有语义
-let point1: [number, number] = [100, 200];
+let point1: [number, number] = [100, 200];  // 声明变量 point1，类型 [number, number]
 
 // 命名元组：每个位置有标签，IDE 提示更友好
-let point2: [x: number, y: number] = [100, 200];
+let point2: [x: number, y: number] = [100, 200];  // 声明变量 point2，类型 [x: number, y: number]
 
 // 复杂命名元组
-let user: [id: number, name: string, isActive: boolean] = [1, "张三", true];
+let user: [id: number, name: string, isActive: boolean] = [1, "张三", true];  // 声明变量 user，类型 [id: number, name: string, isActive: boolean]
 \`\`\`
 
 命名元组不改变运行时行为，但极大地提升了代码可读性和开发体验。在 IDE 中悬停时，你会看到标签名而非匿名类型。
@@ -1514,20 +1514,20 @@ TypeScript 4.0 还引入了可变元组类型，允许在元组中使用展开�
 
 \`\`\`ts
 // 任意数量的 string 后面跟一个 number
-type StringsThenNumber = [...string[], number];
-let data: StringsThenNumber = ["a", "b", "c", 42];
+type StringsThenNumber = [...string[], number];  // 定义类型别名 StringsThenNumber
+let data: StringsThenNumber = ["a", "b", "c", 42];  // 声明变量 data，类型 StringsThenNumber
 
 // 前面固定 + 中间可变 + 后面固定
-type Mixed = [string, ...number[], boolean];
-let m1: Mixed = ["hello", true];
-let m2: Mixed = ["hello", 1, 2, 3, true];
+type Mixed = [string, ...number[], boolean];  // 定义类型别名 Mixed
+let m1: Mixed = ["hello", true];  // 声明变量 m1，类型 Mixed
+let m2: Mixed = ["hello", 1, 2, 3, true];  // 声明变量 m2，类型 Mixed
 \`\`\`
 
 #### 元组拼接
 
 \`\`\`ts
 // 将两个元组拼接成一个新元组类型
-type Concat<T extends unknown[], U extends unknown[]> = [...T, ...U];
+type Concat<T extends unknown[], U extends unknown[]> = [...T, ...U];  // 定义类型别名 Concat，泛型参数 T extends unknown[], U extends unknown[]
 type Result = Concat<[string, number], [boolean]>;  // [string, number, boolean]
 \`\`\`
 
@@ -1535,15 +1535,15 @@ type Result = Concat<[string, number], [boolean]>;  // [string, number, boolean]
 
 \`\`\`ts
 // 至少一个 string，后面可以跟任意数量的 number
-type AtLeastOneString = [string, ...number[]];
-let a: AtLeastOneString = ["hello"];
-let b: AtLeastOneString = ["hello", 1, 2, 3];
+type AtLeastOneString = [string, ...number[]];  // 定义类型别名 AtLeastOneString
+let a: AtLeastOneString = ["hello"];  // 声明变量 a，类型 AtLeastOneString
+let b: AtLeastOneString = ["hello", 1, 2, 3];  // 声明变量 b，类型 AtLeastOneString
 
 // 可选元素在剩余元素之前
-type OptionalThenRest = [string, number?, ...boolean[]];
-let c: OptionalThenRest = ["hello"];
-let d: OptionalThenRest = ["hello", 42];
-let e: OptionalThenRest = ["hello", 42, true, false];
+type OptionalThenRest = [string, number?, ...boolean[]];  // 定义类型别名 OptionalThenRest
+let c: OptionalThenRest = ["hello"];  // 声明变量 c，类型 OptionalThenRest
+let d: OptionalThenRest = ["hello", 42];  // 声明变量 d，类型 OptionalThenRest
+let e: OptionalThenRest = ["hello", 42, true, false];  // 声明变量 e，类型 OptionalThenRest
 \`\`\`
 
 ### 元组的高级用法
@@ -1554,9 +1554,9 @@ let e: OptionalThenRest = ["hello", 42, true, false];
 
 \`\`\`ts
 // 从元组推断函数参数类型
-type Args = [string, number, boolean];
-function myFunc(...args: Args): void {
-  const [a, b, c] = args;
+type Args = [string, number, boolean];  // 定义类型别名 Args
+function myFunc(...args: Args): void {  // 定义函数 myFunc，参数: ...args: Args，返回 void
+  const [a, b, c] = args;  // 数组解构声明：从 args; 取 a, b, c
   // a: string, b: number, c: boolean
 }
 \`\`\`
@@ -1564,7 +1564,7 @@ function myFunc(...args: Args): void {
 #### 使用 as const 创建只读元组
 
 \`\`\`ts
-const colors = ["red", "green", "blue"] as const;
+const colors = ["red", "green", "blue"] as const;  // 声明常量 colors（注意：类型断言会绕过类型检查）
 // 类型：readonly ["red", "green", "blue"]
 // 既是元组，又是只读，还是字面量类型！
 \`\`\`
@@ -1573,11 +1573,11 @@ const colors = ["red", "green", "blue"] as const;
 
 \`\`\`ts
 // 数组 → 元组（需要断言，因为数组长度不确定）
-let arr = [1, "hello"];
+let arr = [1, "hello"];  // 声明变量 arr
 let tup = arr as [number, string];  // 不安全的断言
 
 // 元组 → 数组（自动，因为元组是数组的子类型）
-let tup2: [number, string] = [1, "hello"];
+let tup2: [number, string] = [1, "hello"];  // 声明变量 tup2，类型 [number, string]
 let arr2: (number | string)[] = tup2;  // ✅ 自动
 \`\`\`
 
@@ -1849,16 +1849,16 @@ TypeScript 有三种方式描述对象类型：
 
 \`\`\`ts
 // 1. 匿名对象类型（直接在变量后写）
-let user: { name: string; age: number } = { name: "张三", age: 28 };
+let user: { name: string; age: number } = { name: "张三", age: 28 };  // 声明变量 user，类型 { name: string; age: number }
 
 // 2. interface（推荐用于对象形状）
-interface User {
+interface User {  // 定义接口 User
   name: string;
   age: number;
 }
 
 // 3. type 别名
-type UserType = {
+type UserType = {  // 定义类型别名 UserType
   name: string;
   age: number;
 };
@@ -1871,7 +1871,7 @@ type UserType = {
 在属性名后加 \`?\` 表示该属性可选，对象可以不包含它：
 
 \`\`\`ts
-interface Config {
+interface Config {  // 定义接口 Config
   host: string;
   port: number;
   timeout?: number;  // 可选
@@ -1900,19 +1900,19 @@ const b2: B = { x: undefined };  // ✅ 必须显式提供 x
 \`readonly\` 修饰符让属性在对象创建后不能被修改：
 
 \`\`\`ts
-interface Point {
-  readonly x: number;
-  readonly y: number;
+interface Point {  // 定义接口 Point
+  readonly x: number;  // 类属性 x: number
+  readonly y: number;  // 类属性 y: number
 }
 
-const p: Point = { x: 10, y: 20 };
+const p: Point = { x: 10, y: 20 };  // 声明常量 p，类型 Point
 // p.x = 5;  // ❌ 编译期错误：只读属性不能修改
 \`\`\`
 
 **重要**：\`readonly\` 只是编译期检查，运行时无法阻止修改。如果你把对象传给不接受 \`readonly\` 的函数，该函数可以修改属性：
 
 \`\`\`ts
-function mutate(point: { x: number; y: number }) {
+function mutate(point: { x: number; y: number }) {  // 定义函数 mutate，参数: point: { x: number; y: number }
   point.x = 999;  // 运行时有效！
 }
 mutate(p);  // ✅ 类型兼容（readonly 可以赋给非 readonly）
@@ -1926,11 +1926,11 @@ console.log(p.x);  // 999 —— 运行时被修改了
 TypeScript 内置了 \`Readonly<T>\` 工具类型，可以将所有属性变为只读：
 
 \`\`\`ts
-interface User {
+interface User {  // 定义接口 User
   name: string;
   age: number;
 }
-type ReadonlyUser = Readonly<User>;
+type ReadonlyUser = Readonly<User>;  // 定义类型别名 ReadonlyUser
 // { readonly name: string; readonly age: number; }
 \`\`\`
 
@@ -1940,12 +1940,12 @@ type ReadonlyUser = Readonly<User>;
 
 \`\`\`ts
 // 任意字符串键，值为 string
-interface StringMap {
+interface StringMap {  // 定义接口 StringMap
   [key: string]: string;
 }
 
 // 任意数字键，值为 string
-interface NumberMap {
+interface NumberMap {  // 定义接口 NumberMap
   [index: number]: string;
 }
 \`\`\`
@@ -1955,7 +1955,7 @@ interface NumberMap {
 索引签名的值类型必须是所有声明属性的值类型的超类型：
 
 \`\`\`ts
-interface Example {
+interface Example {  // 定义接口 Example
   name: string;             // name 是 string
   // [key: string]: number; // ❌ 错误！name 是 string 但索引签名要求 number
   [key: string]: string | number; // ✅ 索引签名的值类型包含了 name 的 string 类型
@@ -1965,7 +1965,7 @@ interface Example {
 #### 同时使用字符串和数字索引签名
 
 \`\`\`ts
-interface Dictionary {
+interface Dictionary {  // 定义接口 Dictionary
   [key: string]: string;    // 字符串索引
   [index: number]: string;  // 数字索引——值的类型必须是字符串索引的子类型
 }
@@ -1978,11 +1978,11 @@ interface Dictionary {
 交叉类型用 \`&\` 将多个类型合并为一个，新类型拥有所有类型的所有属性：
 
 \`\`\`ts
-type Person = { name: string; age: number };
-type Employee = { employeeId: number; department: string };
-type EmployeePerson = Person & Employee;
+type Person = { name: string; age: number };  // 定义类型别名 Person
+type Employee = { employeeId: number; department: string };  // 定义类型别名 Employee
+type EmployeePerson = Person & Employee;  // 定义类型别名 EmployeePerson，交叉类型
 
-const emp: EmployeePerson = {
+const emp: EmployeePerson = {  // 声明常量 emp，类型 EmployeePerson
   name: "张三",
   age: 30,
   employeeId: 1001,
@@ -1995,9 +1995,9 @@ const emp: EmployeePerson = {
 如果交叉的两个类型有同名但类型不兼容的属性，结果类型中该属性为 \`never\`：
 
 \`\`\`ts
-type A = { x: string };
-type B = { x: number };
-type C = A & B;
+type A = { x: string };  // 定义类型别名 A
+type B = { x: number };  // 定义类型别名 B
+type C = A & B;  // 定义类型别名 C，交叉类型
 // C 的 x 类型是 string & number，即 never
 // 你无法创建 C 类型的值，因为没有值同时是 string 和 number
 \`\`\`
@@ -2007,11 +2007,11 @@ type C = A & B;
 交叉类型常用于"混入（Mixin）"模式，给对象附加能力：
 
 \`\`\`ts
-type WithTimestamp = { createdAt: Date; updatedAt: Date };
-type WithId = { id: string };
+type WithTimestamp = { createdAt: Date; updatedAt: Date };  // 定义类型别名 WithTimestamp
+type WithId = { id: string };  // 定义类型别名 WithId
 
 // 给任意类型附加时间戳和ID
-type Entity<T> = T & WithId & WithTimestamp;
+type Entity<T> = T & WithId & WithTimestamp;  // 定义类型别名 Entity，泛型参数 T，交叉类型
 \`\`\`
 
 ### 多余属性检查（Excess Property Checking）
@@ -2019,14 +2019,14 @@ type Entity<T> = T & WithId & WithTimestamp;
 这是 TypeScript 中一个容易让人困惑的特性。当你直接将对象字面量赋值给一个有类型的变量时，TypeScript 会检查是否有多余属性：
 
 \`\`\`ts
-interface Point {
+interface Point {  // 定义接口 Point
   x: number;
   y: number;
 }
 
 const p: Point = { x: 10, y: 20, z: 30 }; // ❌ 错误！z 是多余属性
 // 但通过中间变量，可以绕过检查：
-const temp = { x: 10, y: 20, z: 30 };
+const temp = { x: 10, y: 20, z: 30 };  // 声明常量 temp
 const p2: Point = temp;  // ✅ 通过！因为结构化类型
 \`\`\`
 
@@ -2041,10 +2041,10 @@ const p2: Point = temp;  // ✅ 通过！因为结构化类型
 这是 TypeScript 最核心的类型兼容性规则。与 Java/C# 的**名义类型（Nominal Typing）**不同，TypeScript 使用**结构化类型**：只要两个类型的结构（形状）匹配，就认为它们兼容，不管名字是否相同。
 
 \`\`\`ts
-interface Point2D { x: number; y: number; }
-interface Coordinate { x: number; y: number; }
+interface Point2D { x: number; y: number; }  // 定义接口 Point2D
+interface Coordinate { x: number; y: number; }  // 定义接口 Coordinate
 
-const p: Point2D = { x: 1, y: 2 };
+const p: Point2D = { x: 1, y: 2 };  // 声明常量 p，类型 Point2D
 const c: Coordinate = p;  // ✅ 在 TS 中合法！结构相同即可赋值
 // 在 Java/C# 中这会报错，因为类型名不同
 \`\`\`
@@ -2064,16 +2064,16 @@ type UserId = string;   // 语义上是用户ID
 type PostId = string;   // 语义上是帖子ID
 
 // 两者都是 string，可以互相赋值——可能导致 bug
-let userId: UserId = "user-123";
+let userId: UserId = "user-123";  // 声明变量 userId，类型 UserId
 let postId: PostId = userId;  // ✅ 类型安全，但语义错误
 \`\`\`
 
 解决方案是用**品牌类型（Branded Types）**：
 
 \`\`\`ts
-type Brand<T, B> = T & { __brand: B };
-type UserId = Brand<string, "UserId">;
-type PostId = Brand<string, "PostId">;
+type Brand<T, B> = T & { __brand: B };  // 定义类型别名 Brand，泛型参数 T, B，交叉类型
+type UserId = Brand<string, "UserId">;  // 定义类型别名 UserId
+type PostId = Brand<string, "PostId">;  // 定义类型别名 PostId
 \`\`\`
 
 ### 对象类型的常用技巧
@@ -2081,7 +2081,7 @@ type PostId = Brand<string, "PostId">;
 #### 1. 使用 Pick 和 Omit 操作对象类型
 
 \`\`\`ts
-interface User {
+interface User {  // 定义接口 User
   id: number;
   name: string;
   email: string;
@@ -2089,30 +2089,30 @@ interface User {
 }
 
 // 只取部分属性
-type PublicUser = Pick<User, "id" | "name" | "email">;
+type PublicUser = Pick<User, "id" | "name" | "email">;  // 定义类型别名 PublicUser，联合类型
 
 // 排除某些属性
-type UserWithoutPassword = Omit<User, "password">;
+type UserWithoutPassword = Omit<User, "password">;  // 定义类型别名 UserWithoutPassword
 \`\`\`
 
 #### 2. 使用 Partial 和 Required
 
 \`\`\`ts
 // 所有属性变为可选
-type PartialUser = Partial<User>;
+type PartialUser = Partial<User>;  // 定义类型别名 PartialUser
 
 // 所有属性变为必需（去除可选标记）
-type RequiredUser = Required<Partial<User>>;
+type RequiredUser = Required<Partial<User>>;  // 定义类型别名 RequiredUser
 \`\`\`
 
 #### 3. 使用 Record 创建映射类型
 
 \`\`\`ts
 // 键为 string，值为 number
-type ScoreMap = Record<string, number>;
+type ScoreMap = Record<string, number>;  // 定义类型别名 ScoreMap
 
 // 键为固定字符串，值为 User
-type UserMap = Record<"admin" | "editor" | "viewer", User>;
+type UserMap = Record<"admin" | "editor" | "viewer", User>;  // 定义类型别名 UserMap，联合类型
 \`\`\`
 
 ### 本节代码演示

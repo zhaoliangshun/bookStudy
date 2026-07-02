@@ -58,17 +58,22 @@ Java Web 设计遵循几个原理:**分层解耦**(层间通过接口耦合,便�
 \`\`\`xml
 <!-- pom.xml: 声明 Servlet API 依赖(Tomcat 10+ 用 jakarta 命名空间) -->
 <dependency>
+    <!-- groupId: 依赖所属组织/团队,通常用反向域名表示 -->
     <groupId>jakarta.servlet</groupId>
+    <!-- artifactId: 依赖构件的唯一标识,此处即 Servlet API -->
     <artifactId>jakarta.servlet-api</artifactId>
+    <!-- version: 6.0.0 对应 Servlet 6.0 / Jakarta EE 10 规范 -->
     <version>6.0.0</version>
     <!-- provided: 编译期需要,运行期由 Tomcat 提供,不打进 war -->
+    <!-- 注意:若误写成 compile,会与容器自带 jar 冲突导致类加载异常 -->
     <scope>provided</scope>
 </dependency>
 \`\`\`
 
 \`\`\`java
-package com.example;
+package com.example;   // 声明类所在包,对应目录结构 com/example
 
+// 导入 Servlet API 核心类(Tomcat 10+ 使用 jakarta 命名空间)
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -84,9 +89,9 @@ public class HelloServlet extends HttpServlet {
             throws java.io.IOException {
         // 设置响应内容类型与编码,避免中文乱码
         resp.setContentType("text/html;charset=UTF-8");
-        PrintWriter out = resp.getWriter();   // 获取字符输出流
-        out.println("<h1>Hello, Java Web!</h1>");
-        out.println("<p>这是我的第一个 Servlet</p>");
+        PrintWriter out = resp.getWriter();   // 获取字符输出流,向响应体写入内容
+        out.println("<h1>Hello, Java Web!</h1>");  // 输出一级标题
+        out.println("<p>这是我的第一个 Servlet</p>"); // 输出段落
     }
 }
 \`\`\`
@@ -150,13 +155,13 @@ HTTP 演进推动性能提升:HTTP/1.1 引入 keep-alive 复用连接;HTTP/2 改
 下面在 Servlet 中读取请求头与参数,直观感受协议细节:
 
 \`\`\`java
-@WebServlet("/inspect")
+@WebServlet("/inspect")   // 映射到 /inspect,用于查看 HTTP 请求详情
 public class InspectServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws java.io.IOException {
-        resp.setContentType("text/plain;charset=UTF-8");
-        PrintWriter out = resp.getWriter();
+        resp.setContentType("text/plain;charset=UTF-8");  // 纯文本响应,UTF-8 编码
+        PrintWriter out = resp.getWriter();   // 获取字符输出流
 
         // 1. 读取请求行信息
         out.println("方法: " + req.getMethod());        // GET/POST...
@@ -164,22 +169,22 @@ public class InspectServlet extends HttpServlet {
         out.println("查询串: " + req.getQueryString());  // ?后面的内容
 
         // 2. 读取单个参数 ?name=xxx
-        String name = req.getParameter("name");
+        String name = req.getParameter("name");   // 统一获取参数,GET/POST 通用
         out.println("name 参数: " + name);
 
         // 3. 遍历所有请求头
         out.println("--- 请求头 ---");
-        Enumeration<String> headerNames = req.getHeaderNames();
-        while (headerNames.hasMoreElements()) {
-            String h = headerNames.nextElement();
-            out.println(h + ": " + req.getHeader(h));
+        Enumeration<String> headerNames = req.getHeaderNames();  // 获取所有请求头名枚举
+        while (headerNames.hasMoreElements()) {     // 逐个遍历
+            String h = headerNames.nextElement();   // 取出下一个头名
+            out.println(h + ": " + req.getHeader(h));  // 取对应值并打印
         }
 
         // 4. 读取 Cookie
-        Cookie[] cookies = req.getCookies();
-        if (cookies != null) {
+        Cookie[] cookies = req.getCookies();   // 获取请求携带的所有 Cookie
+        if (cookies != null) {                  // 注意:无 Cookie 时返回 null,需判空
             for (Cookie c : cookies) {
-                out.println(c.getName() + "=" + c.getValue());
+                out.println(c.getName() + "=" + c.getValue());  // 打印名=值
             }
         }
     }
@@ -263,7 +268,7 @@ Tomcat 目录结构:\`bin/\` 启动脚本、\`conf/\` 配置(server.xml、web.xm
 \`\`\`xml
 <?xml version="1.0" encoding="UTF-8"?>
 <Server port="8005" shutdown="SHUTDOWN">
-    <!-- port=8005:接收关闭命令的端口 -->
+    <!-- port=8005:接收关闭命令的端口;向该端口发 SHUTDOWN 字符串即可关闭 Tomcat -->
     <Service name="Catalina">
         <!-- HTTP 连接器:监听 8080 -->
         <Connector port="8080" protocol="HTTP/1.1"
@@ -271,11 +276,11 @@ Tomcat 目录结构:\`bin/\` 启动脚本、\`conf/\` 配置(server.xml、web.xm
                    redirectPort="8443"          <!-- HTTPS 时跳转端口 -->
                    maxThreads="200"             <!-- 最大工作线程 -->
                    acceptCount="100"/>          <!-- 接收队列长度 -->
-        <Engine name="Catalina" defaultHost="localhost">
-            <Host name="localhost" appBase="webapps"
-                  unpackWARs="true" autoDeploy="true">
+        <Engine name="Catalina" defaultHost="localhost">  <!-- 引擎:处理所有请求,默认主机 localhost -->
+            <Host name="localhost" appBase="webapps"  <!-- 虚拟主机,应用基目录 webapps -->
+                  unpackWARs="true" autoDeploy="true">  <!-- 自动解压 war,自动部署 -->
                 <!-- 显式配置应用:上下文 /app,磁盘位置 /opt/myapp -->
-                <Context path="/app" docBase="/opt/myapp" reloadable="false"/>
+                <Context path="/app" docBase="/opt/myapp" reloadable="false"/>  <!-- reloadable 生产关掉 -->
             </Host>
         </Engine>
     </Service>
@@ -287,14 +292,14 @@ Tomcat 目录结构:\`bin/\` 启动脚本、\`conf/\` 配置(server.xml、web.xm
 下面用 Java 嵌入式启动 Tomcat(Spring Boot 的简化原理):
 
 \`\`\`java
-import org.apache.catalina.startup.Tomcat;
+import org.apache.catalina.startup.Tomcat;   // 导入 Tomcat 嵌入式启动类
 public class EmbeddedTomcatDemo {
     public static void main(String[] args) throws Exception {
-        Tomcat tomcat = new Tomcat();          // 创建内嵌 Tomcat
-        tomcat.setPort(8080);
+        Tomcat tomcat = new Tomcat();          // 创建内嵌 Tomcat 实例,无需独立安装
+        tomcat.setPort(8080);                  // 设置监听端口
         // 上下文路径为空表示根 /,源码目录 src/main/webapp
         tomcat.addWebapp("", new File("src/main/webapp").getAbsolutePath());
-        tomcat.start();
+        tomcat.start();                        // 启动 Tomcat,开始接收请求
         tomcat.getServer().await();            // 主线程阻塞,等待请求
     }
 }
@@ -377,7 +382,7 @@ public class HelloServlet extends HttpServlet {
     // 容器启动时调用一次,适合做初始化
     @Override
     public void init() throws ServletException {
-        System.out.println("HelloServlet 初始化...");
+        System.out.println("HelloServlet 初始化...");   // 仅做演示日志
     }
 
     // 处理 GET 请求
@@ -391,24 +396,24 @@ public class HelloServlet extends HttpServlet {
 
         // 读取请求参数 ?name=张三
         String name = req.getParameter("name");
-        if (name == null || name.isEmpty()) {
+        if (name == null || name.isEmpty()) {   // 注意:参数可能为 null 或空串
             name = "世界";   // 默认值
         }
 
         // 获取字符输出流,写 HTML
         PrintWriter out = resp.getWriter();
-        out.println("<!DOCTYPE html>");
-        out.println("<html><head><title>首页</title></head><body>");
-        out.println("<h1>你好," + name + "!</h1>");
-        out.println("<p>当前时间: " + new java.util.Date() + "</p>");
-        out.println("</body></html>");
+        out.println("<!DOCTYPE html>");                           // HTML5 文档声明
+        out.println("<html><head><title>首页</title></head><body>"); // 文档头
+        out.println("<h1>你好," + name + "!</h1>");               // 拼接参数输出
+        out.println("<p>当前时间: " + new java.util.Date() + "</p>"); // 显示当前时间
+        out.println("</body></html>");                             // 关闭标签
     }
 
     // 处理 POST 请求:直接复用 doGet 逻辑
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
-        doGet(req, resp);
+        doGet(req, resp);   // 委派给 doGet,使 GET/POST 行为一致
     }
 }
 \`\`\`
@@ -419,14 +424,14 @@ public class HelloServlet extends HttpServlet {
 
 \`\`\`xml
 <project>
-    <modelVersion>4.0.0</modelVersion>
-    <groupId>com.example</groupId>
-    <artifactId>java-web-demo</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <modelVersion>4.0.0</modelVersion>   <!-- POM 模型版本,固定 4.0.0 -->
+    <groupId>com.example</groupId>       <!-- 项目所属组织 -->
+    <artifactId>java-web-demo</artifactId>  <!-- 项目构件名 -->
+    <version>1.0-SNAPSHOT</version>      <!-- SNAPSHOT 表示开发快照版 -->
     <packaging>war</packaging>   <!-- 必须是 war 才能部署到 Tomcat -->
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>  <!-- 编译源码用 JDK 17 -->
+        <maven.compiler.target>17</maven.compiler.target>   <!-- 生成的字节码版本 17 -->
     </properties>
     <dependencies>
         <dependency>

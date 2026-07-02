@@ -17,7 +17,7 @@ Python 中用内置函数 \`open()\` 打开文件，得到**文件对象**，通
 ### open() 函数
 
 \`\`\`python
-open(file, mode='r', encoding=None, ...)
+open(file, mode='r', encoding=None, ...)  # 打开文件
 \`\`\`
 
 | 参数 | 说明 |
@@ -42,13 +42,13 @@ open(file, mode='r', encoding=None, ...)
 
 \`\`\`python
 # 推荐：使用 with 语句，自动关闭
-with open("data.txt", "r", encoding="utf-8") as f:
-    content = f.read()
+with open("data.txt", "r", encoding="utf-8") as f:  # 使用上下文管理器：open("data.txt", "r", encoding="utf-8") as f
+    content = f.read()  # 赋值变量 content
 # 离开 with 块后，f.close() 自动执行
 
 # 不推荐：手动打开关闭
-f = open("data.txt", "r")
-content = f.read()
+f = open("data.txt", "r")  # 赋值变量 f
+content = f.read()  # 赋值变量 content
 f.close()  # 容易忘记！
 \`\`\`
 
@@ -292,9 +292,9 @@ Python 提供两套路径操作方案：
 ### pathlib.Path 对象操作
 
 \`\`\`python
-from pathlib import Path
+from pathlib import Path  # 从 pathlib 导入 Path
 
-p = Path("/home/user/data.txt")
+p = Path("/home/user/data.txt")  # 赋值变量 p
 
 # 属性和方法
 p.name          # "data.txt"   文件名
@@ -313,7 +313,7 @@ p.rglob("*.py")      # 递归匹配（**/*.py）
 p.iterdir()          # 遍历目录内容
 
 # 判断
-p.exists(), p.is_file(), p.is_dir()
+p.exists(), p.is_file(), p.is_dir()  # 调用 p.exists()：判断是否存在
 
 # 操作
 p.mkdir()            # 创建目录
@@ -327,14 +327,14 @@ p.stat()             # 获取文件信息
 
 \`\`\`python
 # os.path 函数式
-import os
-path = os.path.join("a", "b", "c.txt")
-name = os.path.basename(path)
+import os  # 导入模块 os
+path = os.path.join("a", "b", "c.txt")  # 赋值变量 path
+name = os.path.basename(path)  # 赋值变量 name
 
 # pathlib 面向对象
-from pathlib import Path
-path = Path("a") / "b" / "c.txt"
-name = path.name
+from pathlib import Path  # 从 pathlib 导入 Path
+path = Path("a") / "b" / "c.txt"  # 赋值变量 path
+name = path.name  # 赋值变量 name
 \`\`\`
 
 **推荐新代码使用 pathlib**，更直观、更安全。但 os.path 在很多老代码中仍广泛使用，需要了解。
@@ -536,8 +536,8 @@ Python 通过 \`os\` 和 \`shutil\` 模块进行目录和文件的高级操作�
 \`os.walk(top)\` 返回三元组 \`(dirpath, dirnames, filenames)\`：
 
 \`\`\`python
-for root, dirs, files in os.walk("/path"):
-    for f in files:
+for root, dirs, files in os.walk("/path"):  # 遍历 os.walk("/path")，取值给 root, dirs, files
+    for f in files:  # 遍历 files，取值给 f
         print(os.path.join(root, f))  # 每个文件的完整路径
 \`\`\`
 
@@ -555,21 +555,21 @@ for root, dirs, files in os.walk("/path"):
 ### tempfile 临时文件
 
 \`\`\`python
-import tempfile
+import tempfile  # 导入模块 tempfile
 
 # 临时文件（自动删除）
-with tempfile.NamedTemporaryFile() as f:
-    f.write(b"data")
+with tempfile.NamedTemporaryFile() as f:  # 使用上下文管理器：tempfile.NamedTemporaryFile() as f
+    f.write(b"data")  # 调用 f.write()：写入
 
 # 临时目录
-with tempfile.TemporaryDirectory() as d:
+with tempfile.TemporaryDirectory() as d:  # 使用上下文管理器：tempfile.TemporaryDirectory() as d
     pass  # 离开 with 自动删除
 \`\`\`
 
 ### glob 文件模式匹配
 
 \`\`\`python
-import glob
+import glob  # 导入模块 glob
 glob.glob("*.py")          # 当前目录所有 .py
 glob.glob("**/*.py", recursive=True)  # 递归所有 .py
 glob.glob("[abc]*.txt")    # a/b/c 开头的 txt
@@ -763,7 +763,7 @@ JSON（JavaScript Object Notation）是最通用的数据交换格式，**几乎
 ### 常用参数
 
 \`\`\`python
-json.dumps(obj, indent=2, ensure_ascii=False, sort_keys=True)
+json.dumps(obj, indent=2, ensure_ascii=False, sort_keys=True)  # 调用 json.dumps()
 \`\`\`
 
 | 参数 | 作用 |
@@ -780,26 +780,26 @@ json.dumps(obj, indent=2, ensure_ascii=False, sort_keys=True)
 当遇到 \`datetime\`、\`Decimal\` 等 JSON 不支持的类型时：
 
 \`\`\`python
-import json
-from datetime import datetime
+import json  # 导入模块 json
+from datetime import datetime  # 从 datetime 导入 datetime
 
-def custom_encoder(obj):
-    if isinstance(obj, datetime):
-        return obj.isoformat()
-    raise TypeError(f"无法序列化 {type(obj)}")
+def custom_encoder(obj):  # 定义函数 custom_encoder，参数：obj
+    if isinstance(obj, datetime):  # 如果 isinstance(obj, datetime)
+        return obj.isoformat()  # 返回 obj.isoformat()
+    raise TypeError(f"无法序列化 {type(obj)}")  # 抛出异常：TypeError(f"无法序列化 {type(obj)}")
 
-json.dumps({"time": datetime.now()}, default=custom_encoder)
+json.dumps({"time": datetime.now()}, default=custom_encoder)  # 调用 json.dumps()
 \`\`\`
 
 ### 自定义反序列化 object_hook
 
 \`\`\`python
-def as_person(d):
-    if "name" in d and "age" in d:
-        return Person(d["name"], d["age"])
-    return d
+def as_person(d):  # 定义函数 as_person，参数：d
+    if "name" in d and "age" in d:  # 如果 "name" in d and "age" in d
+        return Person(d["name"], d["age"])  # 返回 Person(d["name"], d["age"])
+    return d  # 返回 d
 
-json.loads(s, object_hook=as_person)
+json.loads(s, object_hook=as_person)  # 调用 json.loads()
 \`\`\`
 
 ### JSON Schema 简介
@@ -1045,8 +1045,8 @@ CSV（Comma-Separated Values）是表格数据的纯文本格式，**Excel、数
 ### 关键参数
 
 \`\`\`python
-csv.reader(f, delimiter=',', quotechar='"')
-csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+csv.reader(f, delimiter=',', quotechar='"')  # 调用 csv.reader()
+csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)  # 调用 csv.writer()
 \`\`\`
 
 | 参数 | 说明 |
@@ -1069,29 +1069,29 @@ csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
 \`\`\`python
 # 读取（自动用第一行作为列名）
-with open("data.csv") as f:
-    reader = csv.DictReader(f)
-    for row in reader:
-        print(row["name"], row["age"])
+with open("data.csv") as f:  # 使用上下文管理器：open("data.csv") as f
+    reader = csv.DictReader(f)  # 赋值变量 reader
+    for row in reader:  # 遍历 reader，取值给 row
+        print(row["name"], row["age"])  # 打印输出到屏幕
 
 # 写入
-with open("out.csv", "w", newline="") as f:
-    writer = csv.DictWriter(f, fieldnames=["name", "age"])
-    writer.writeheader()
-    writer.writerow({"name": "小明", "age": 18})
+with open("out.csv", "w", newline="") as f:  # 使用上下文管理器：open("out.csv", "w", newline="") as f
+    writer = csv.DictWriter(f, fieldnames=["name", "age"])  # 赋值变量 writer
+    writer.writeheader()  # 调用 writer.writeheader()
+    writer.writerow({"name": "小明", "age": 18})  # 调用 writer.writerow()
 \`\`\`
 
 ### Sniffer 嗅探格式
 
 \`\`\`python
-dialect = csv.Sniffer().sniff(sample_text)
+dialect = csv.Sniffer().sniff(sample_text)  # 赋值变量 dialect
 # 自动检测分隔符、引号等
 \`\`\`
 
 ### 处理中文 CSV
 
 \`\`\`python
-with open("data.csv", "r", encoding="utf-8-sig") as f:
+with open("data.csv", "r", encoding="utf-8-sig") as f:  # 使用上下文管理器：open("data.csv", "r", encoding="utf-8-sig") as f
     # utf-8-sig 去掉 BOM 头（Excel 导出的 CSV 常有）
 \`\`\`
 
@@ -1318,7 +1318,7 @@ pickle 是 Python 独有的序列化方案，可以序列化**几乎任何 Pytho
 ### protocol 版本
 
 \`\`\`python
-pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)
+pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)  # 调用 pickle.dump()
 \`\`\`
 
 | 协议 | Python 版本 | 特点 |
@@ -1369,14 +1369,14 @@ data = pickle.loads(untrusted_data)  # 可能执行恶意代码
 控制对象的序列化行为：
 
 \`\`\`python
-class MyClass:
-    def __getstate__(self):
+class MyClass:  # 定义类 MyClass
+    def __getstate__(self):  # 定义函数 __getstate__，参数：self
         # 返回要序列化的状态
-        return self.__dict__.copy()
+        return self.__dict__.copy()  # 返回 self.__dict__.copy()
 
-    def __setstate__(self, state):
+    def __setstate__(self, state):  # 定义函数 __setstate__，参数：self, state
         # 从状态恢复对象
-        self.__dict__.update(state)
+        self.__dict__.update(state)  # 执行操作
 \`\`\`
 
 下面的 demo 演示 pickle 序列化、安全警告、协议版本对比和自定义序列化控制。`,
@@ -1595,21 +1595,21 @@ XML（可扩展标记语言）是结构化数据的标记语言，配置、API �
 Python 标准库中最常用的 XML 解析方案，**轻量、Pythonic**。
 
 \`\`\`python
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET  # 导入模块 xml.etree.ElementTree
 \`\`\`
 
 ### 解析 XML 的三种方式
 
 \`\`\`python
 # 1. 从字符串解析
-root = ET.fromstring(xml_string)
+root = ET.fromstring(xml_string)  # 赋值变量 root
 
 # 2. 从文件解析
-tree = ET.parse("file.xml")
-root = tree.getroot()
+tree = ET.parse("file.xml")  # 赋值变量 tree
+root = tree.getroot()  # 赋值变量 root
 
 # 3. 构建 XML
-root = ET.Element("root")
+root = ET.Element("root")  # 赋值变量 root
 \`\`\`
 
 ### Element 核心操作
@@ -1629,10 +1629,10 @@ root = ET.Element("root")
 ### 构建 XML 示例
 
 \`\`\`python
-root = ET.Element("users")
-user = ET.SubElement(root, "user", {"id": "1"})
-name = ET.SubElement(user, "name")
-name.text = "小明"
+root = ET.Element("users")  # 赋值变量 root
+user = ET.SubElement(root, "user", {"id": "1"})  # 赋值变量 user
+name = ET.SubElement(user, "name")  # 赋值变量 name
+name.text = "小明"  # 执行操作
 # 输出：<users><user id="1"><name>小明</name></user></users>
 \`\`\`
 
@@ -1641,13 +1641,13 @@ name.text = "小明"
 标准库 \`html.parser.HTMLParser\` 提供基础的 HTML 解析能力：
 
 \`\`\`python
-from html.parser import HTMLParser
+from html.parser import HTMLParser  # 从 html.parser 导入 HTMLParser
 
-class MyParser(HTMLParser):
-    def handle_starttag(self, tag, attrs):
-        print(f"开始标签: {tag}")
-    def handle_data(self, data):
-        print(f"数据: {data}")
+class MyParser(HTMLParser):  # 定义类 MyParser
+    def handle_starttag(self, tag, attrs):  # 定义函数 handle_starttag，参数：self, tag, attrs
+        print(f"开始标签: {tag}")  # 打印输出到屏幕
+    def handle_data(self, data):  # 定义函数 handle_data，参数：self, data
+        print(f"数据: {data}")  # 打印输出到屏幕
 \`\`\`
 
 ### html 模块工具函数
@@ -1934,7 +1934,7 @@ Python 按以下顺序查找模块：
 4. 第三方库目录（site-packages）
 
 \`\`\`python
-import sys
+import sys  # 导入模块 sys
 print(sys.path)  # 查看搜索路径列表
 \`\`\`
 
@@ -1980,15 +1980,15 @@ __all__ = ["func_a", "ClassA"]  # 只有这些被 import * 导入
 Python 导入模块后会缓存，**重复 import 不会重新执行**：
 
 \`\`\`python
-import sys
+import sys  # 导入模块 sys
 print("math" in sys.modules)  # True（已缓存）
 \`\`\`
 
 ### 重新加载模块
 
 \`\`\`python
-import importlib
-importlib.reload(module_name)
+import importlib  # 导入模块 importlib
+importlib.reload(module_name)  # 调用 importlib.reload()
 \`\`\`
 
 ### 模块的内置属性
@@ -2217,16 +2217,16 @@ my_package/
 ### setup.py（传统方式）
 
 \`\`\`python
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages  # 从 setuptools 导入 setup, find_packages
 
-setup(
-    name="my_package",
-    version="0.1.0",
-    packages=find_packages(),
-    install_requires=["requests>=2.31"],
-    entry_points={
-        "console_scripts": [
-            "mycli=my_package.cli:main",
+setup(  # 调用 setup()
+    name="my_package",  # 定义字符串 name
+    version="0.1.0",  # 定义字符串 version
+    packages=find_packages(),  # 赋值变量 packages
+    install_requires=["requests>=2.31"],  # 定义列表 install_requires
+    entry_points={  # 定义字典 entry_points
+        "console_scripts": [  # 执行操作
+            "mycli=my_package.cli:main",  # 执行操作
         ],
     },
 )
@@ -2614,8 +2614,8 @@ pip install my_package
 ## 使用
 
 \`\`\`python
-from my_package import greet
-print(greet("世界"))
+from my_package import greet  # 从 my_package 导入 greet
+print(greet("世界"))  # 打印输出到屏幕
 \`\`\`
 
 ## 开发
@@ -2664,20 +2664,20 @@ print("✅ 包管理与发布演示完成")`
 ### 基本操作
 
 \`\`\`python
-import os
+import os  # 导入模块 os
 
 # 获取环境变量
 os.environ["HOME"]       # 如果不存在会报 KeyError
 os.environ.get("HOME")   # 不存在返回 None
 os.getenv("HOME")        # 同上，可设默认值
-os.getenv("MY_VAR", "默认值")
+os.getenv("MY_VAR", "默认值")  # 调用 os.getenv()
 
 # 设置环境变量（仅影响当前进程）
-os.environ["MY_VAR"] = "my_value"
+os.environ["MY_VAR"] = "my_value"  # 执行操作
 
 # 列出所有环境变量
-for key, value in os.environ.items():
-    print(f"{key}={value}")
+for key, value in os.environ.items():  # 遍历 os.environ.items()，取值给 key, value
+    print(f"{key}={value}")  # 打印输出到屏幕
 \`\`\`
 
 ### python-dotenv 概念
@@ -2686,9 +2686,9 @@ for key, value in os.environ.items():
 
 \`\`\`python
 # .env 文件内容
-DATABASE_URL=postgres://localhost/mydb
-SECRET_KEY=my-secret-key
-DEBUG=True
+DATABASE_URL=postgres://localhost/mydb  # 赋值变量 DATABASE_URL
+SECRET_KEY=my-secret-key  # 赋值变量 SECRET_KEY
+DEBUG=True  # 赋值变量 DEBUG
 \`\`\`
 
 ### configparser 解析 INI 文件
@@ -2706,9 +2706,9 @@ user = admin
 \`\`\`
 
 \`\`\`python
-import configparser
-config = configparser.ConfigParser()
-config.read("config.ini")
+import configparser  # 导入模块 configparser
+config = configparser.ConfigParser()  # 赋值变量 config
+config.read("config.ini")  # 调用 config.read()：读取
 print(config["database"]["host"])  # localhost
 print(config.getboolean("app", "debug"))  # True
 \`\`\`
@@ -2754,14 +2754,14 @@ port = 5432
 ### 开发/生产环境配置
 
 \`\`\`python
-import os
-ENV = os.getenv("APP_ENV", "development")
+import os  # 导入模块 os
+ENV = os.getenv("APP_ENV", "development")  # 赋值变量 ENV
 
-config = {
-    "development": {"debug": True, "db": "sqlite:///dev.db"},
-    "production": {"debug": False, "db": "postgres://..."},
+config = {  # 定义字典 config
+    "development": {"debug": True, "db": "sqlite:///dev.db"},  # 执行操作
+    "production": {"debug": False, "db": "postgres://..."},  # 执行操作
 }
-current = config[ENV]
+current = config[ENV]  # 赋值变量 current
 \`\`\`
 
 下面的 demo 演示环境变量读写、INI 配置解析、TOML 配置和模拟 .env 加载。`,

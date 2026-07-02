@@ -18,11 +18,11 @@ export const chapters = [
 \`if / elif / else\` 是 Python 的条件分支语句，根据布尔表达式的真假选择执行不同的代码块。三元表达式 \`x if cond else y\` 则是表达式形式的条件判断，有返回值。
 
 \`\`\`python
-if 条件1:
-    执行体1
-elif 条件2:
+if 条件1:           # if 开头，条件为 True 时执行下方代码块
+    执行体1          # 4 空格缩进表示属于 if 分支
+elif 条件2:         # 上一条件为 False 才判断；elif 是独立关键字，不是 else if
     执行体2
-else:
+else:               # 所有条件都不满足时的兜底分支，可省略
     执行体3
 \`\`\`
 
@@ -99,6 +99,7 @@ result = "pass" if score >= 60 else "fail"
 \`\`\`python
 # 嵌套三元（不推荐，但偶尔有用）
 parity = "even" if x % 2 == 0 else ("odd-pos" if x > 0 else "odd-neg")
+# 外层先判奇偶，奇数时再判正负；括号仅辅助可读性
 \`\`\`
 
 外层先判奇偶，奇数时再判正负。括号只是辅助可读性，不影响语义。**嵌套超过一层就别用三元**，改成 if/else 语句更清晰，调试也方便。
@@ -163,10 +164,10 @@ print(parity)
 Python 的循环有两套：\`for\` 遍历可迭代对象（iterable），\`while\` 按条件重复。核心配套工具有 \`range\`（惰性整数序列）、\`enumerate\`（带索引）、\`zip\`（并行遍历）、\`break\` / \`continue\` / \`for...else\`（流程控制）。
 
 \`\`\`python
-for 元素 in 可迭代对象:
-    循环体
-while 条件:
-    循环体
+for 元素 in 可迭代对象:   # for 遍历可迭代对象（list/str/dict 等），每次取一个元素
+    循环体               # 循环体用 4 空格缩进；无下标概念，直接拿元素
+while 条件:               # while 按条件重复，条件为 True 就继续执行循环体
+    循环体               # 注意：需在循环体内改变条件，否则死循环
 \`\`\`
 
 ## 设计原理
@@ -329,12 +330,12 @@ print(sorted([3, 1, 4, 1, 5], reverse=True))
 \`match-case\` 是 Python 3.10（2021 年）引入的**结构模式匹配**（Structural Pattern Matching），PEP 634 提出。它远不止是 switch——它能在匹配的同时**解构**数据，把字面量、序列、映射、类对象、OR 模式都作为匹配目标。
 
 \`\`\`python
-match 主语:
-    case 模式1:
+match 主语:                      # match 后跟要匹配的表达式（3.10+ 新语法）
+    case 模式1:                  # case 尝试匹配模式，命中则执行并跳出（无 fall-through）
         执行体1
-    case 模式2 if 守卫条件:
+    case 模式2 if 守卫条件:       # if 附加守卫条件，模式匹配且条件为真才执行
         执行体2
-    case _:
+    case _:                      # _ 是通配符，匹配任意值（类似 switch 的 default）
         默认执行体
 \`\`\`
 
@@ -388,38 +389,38 @@ class Point:
 # === 3.9 兼容写法：用 if/elif 模拟 match-case（可运行）===
 def describe(shape):
     if isinstance(shape, list) and len(shape) == 2:    # 判断是 list 且长度 2
-        x, y = shape                                    # 解构赋值
+        x, y = shape                                    # 解构赋值，把两元素分别给 x, y
         if x == 0 and y == 0:
-            return "origin"
+            return "origin"                             # 原点
         if y == 0:
-            return f"x-axis at {x}"
+            return f"x-axis at {x}"                     # 在 x 轴上
         if x == 0:
-            return f"y-axis at {y}"
-        return f"point ({x}, {y})"
+            return f"y-axis at {y}"                     # 在 y 轴上
+        return f"point ({x}, {y})"                      # 普通点
     if isinstance(shape, list) and len(shape) == 2 and shape[0] in ("left", "right"):
-        direction, n = shape
+        direction, n = shape                            # 解构出方向和步数
         return f"move {direction} {n}"
-    if isinstance(shape, Point):                        # 类型判断
+    if isinstance(shape, Point):                        # 类型判断：是否 Point 实例
         if shape.x == 0 and shape.y == 0:
             return "Point at origin"
         if shape.x == shape.y:
-            return f"diagonal ({shape.x},{shape.y})"
+            return f"diagonal ({shape.x},{shape.y})"    # 在对角线上
         return f"Point({shape.x},{shape.y})"
-    if isinstance(shape, dict) and shape.get("action") == "echo":   # 字典匹配
+    if isinstance(shape, dict) and shape.get("action") == "echo":   # 字典匹配 action 字段
         return f"echo: {shape.get('msg')}"
-    return "unknown"
+    return "unknown"                                    # 兜底返回
 \`\`\`
 
 这段 if/elif 链模拟了 match-case 的全部能力：序列长度、元素解构、字面量判断、类型分支、字典字段。注意每一步都要手动 \`isinstance\` + 取字段，**啰嗦且易错**——这正是 match-case 要解决的痛点。
 
 \`\`\`python
 tests = [
-    [0, 0], [3, 0], [5, 5],
-    Point(0, 0), Point(2, 3), Point(4, 4),
-    ["left", 10], {"action": "echo", "msg": "hi"},
+    [0, 0], [3, 0], [5, 5],                             # 列表测试用例
+    Point(0, 0), Point(2, 3), Point(4, 4),              # Point 实例用例
+    ["left", 10], {"action": "echo", "msg": "hi"},      # 方向命令、字典用例
 ]
 for t in tests:
-    print(f"{str(t):45} -> {describe(t)}")
+    print(f"{str(t):45} -> {describe(t)}")   # :45 字段宽度，左对齐补空格
 \`\`\`
 
 构造一批测试用例覆盖各种模式：列表、Point、字典。\`:45\` 是 f-string 的字段宽度，对齐输出。
@@ -541,10 +542,10 @@ for t in tests:
 Python 布尔运算三件套：\`and\` / \`or\` / \`not\`（**不是** \`&&\` / \`||\` / \`!\`）。配套有比较运算符 \`==\`、\`!=\`、\`<\`、\`in\`、\`is\` 等，以及内置 \`all()\` / \`any()\`。
 
 \`\`\`python
-a and b    # 两个都真才真
-a or b     # 至少一个真就真
-not a      # 取反
-1 < x < 10 # 链式比较（Python 特色）
+a and b    # 两个都真才真；返回第一个 falsy，没有则返回最后一个
+a or b     # 至少一个真就真；返回第一个 truthy，没有则返回最后一个
+not a      # 取反，返回 True 或 False
+1 < x < 10 # 链式比较（Python 特色），等价 1<x and x<10
 \`\`\`
 
 ## 设计原理
@@ -604,8 +605,8 @@ print(1 or print("不会执行"))        # 1；1 truthy，print 不被执行（�
 
 \`\`\`python
 # in / not in
-print("py" in "python", 1 in [1, 2, 3])   # True True
-print("x" not in "abc")                   # True
+print("py" in "python", 1 in [1, 2, 3])   # True True；in 检查成员关系
+print("x" not in "abc")                   # True；not in 是 in 的取反
 \`\`\`
 
 \`in\` 检查成员关系：字符串子串、列表元素、字典键、集合元素。注意字典 \`in\` 查的是**键**不是值。

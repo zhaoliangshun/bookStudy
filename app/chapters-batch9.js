@@ -78,10 +78,10 @@ npm 的强大之处在于 **pre/post 钩子**。任何脚本都可以有对应�
 
 \`\`\`bash
 # 读取 package.json 版本号
-echo "版本: $npm_package_version"
+echo "版本: $npm_package_version"  # 输出文本
 
 # 读取自定义字段
-echo "作者: $npm_package_author"
+echo "作者: $npm_package_author"  # 输出文本
 \`\`\`
 
 ### npx 使用
@@ -1008,7 +1008,7 @@ ESLint 配置文件（.eslintrc.js / .eslintrc.json / eslint.config.js）的核�
 
 \`\`\`javascript
 // .eslintrc.js 配置示例
-module.exports = {
+module.exports = {  // 设置模块导出对象（require 返回的就是它）
   root: true,          // 停止向上查找配置
   env: {               // 运行环境（预定义全局变量）
     browser: true,
@@ -1067,7 +1067,7 @@ ESLint 和 Prettier 的职责有重叠（如缩进、引号、分号）。为避
 2. **eslint-plugin-prettier**：将 Prettier 作为 ESLint 规则运行
 
 \`\`\`javascript
-module.exports = {
+module.exports = {  // 设置模块导出对象（require 返回的就是它）
   extends: [
     'eslint:recommended',
     'plugin:prettier/recommended',  // 必须放最后
@@ -1515,13 +1515,13 @@ Husky 是 Git Hooks 的管理工具，解决手动维护 \`.git/hooks/\` 的痛�
 
 \`\`\`bash
 # 安装 Husky
-npm install husky --save-dev
-npx husky install
+npm install husky --save-dev  # 安装依赖
+npx husky install  # 临时执行本地未安装的包
 
 # 添加 pre-commit 钩子
-npx husky add .husky/pre-commit "npm run lint-staged"
-npx husky add .husky/commit-msg "npx --no -- commitlint --edit \$1"
-npx husky add .husky/pre-push "npm test"
+npx husky add .husky/pre-commit "npm run lint-staged"  # 临时执行本地未安装的包
+npx husky add .husky/commit-msg "npx --no -- commitlint --edit \$1"  # 临时执行本地未安装的包
+npx husky add .husky/pre-push "npm test"  # 临时执行本地未安装的包
 \`\`\`
 
 ### lint-staged
@@ -2709,7 +2709,7 @@ PM2（Process Manager 2）是 Node.js 应用最流行的**生产级进程管理�
 
 \`\`\`bash
 # 全局安装
-npm install pm2 -g
+npm install pm2 -g  # 安装依赖
 
 # 启动应用
 pm2 start index.js --name "my-app"
@@ -2742,7 +2742,7 @@ pm2 startup
 PM2 的配置文件（ecosystem.config.js）是生产部署的核心，它定义了所有需要管理的进程：
 
 \`\`\`javascript
-module.exports = {
+module.exports = {  // 设置模块导出对象（require 返回的就是它）
   apps: [{
     name: 'my-app',
     script: './dist/index.js',

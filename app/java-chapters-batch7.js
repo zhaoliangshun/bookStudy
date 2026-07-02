@@ -275,7 +275,7 @@ Java 方法只能返回一个值，但有多种"曲线"方式返回多个结果�
 \`return\` 常用于提前返回、分支返回不同值。注意：所有执行路径都必须有返回值（void 除外），否则编译错误。编译器会做确定性分析，无法证明所有路径都 return 就会报错。
 
 \`\`\`java
-String grade(int s) {
+String grade(int s) {  // 方法 grade，返回 String，参数：int s
     if (s >= 90) return "优";
     if (s >= 60) return "及格";
     return "不及格"; // 兜底返回
@@ -287,10 +287,10 @@ String grade(int s) {
 用 return 提前处理异常情况，让主逻辑保持平铺，避免深层嵌套：
 
 \`\`\`java
-int process(int x) {
+int process(int x) {  // 方法 process，返回 int，参数：int x
     if (x < 0) return -1;   // 卫语句
     // 主逻辑
-    return x * 2;
+    return x * 2;  // 返回值：x * 2
 }
 \`\`\`
 
@@ -505,7 +505,7 @@ void log(String... messages) { ... }
 varargs 在编译后会被转换为数组。在方法内部，可变参数就是一个数组，可以用 \`length\` 和下标访问。所以 \`int... nums\` 等价于 \`int[] nums\`，区别只在调用形式。
 
 \`\`\`java
-void log(String... msgs) {
+void log(String... msgs) {  // 方法 log，返回 void，参数：String... msgs
     // msgs 实际是 String[]
     for (String m : msgs) { ... }
 }
@@ -613,7 +613,7 @@ public class Main {
 \`n! = n * (n-1)!\`，其中 \`0! = 1\` 是基线条件。
 
 \`\`\`java
-long factorial(int n) {
+long factorial(int n) {  // 方法 factorial，返回 long，参数：int n
     if (n <= 1) return 1;        // 基线
     return n * factorial(n - 1); // 递归
 }
@@ -712,12 +712,12 @@ public class Main {
 
 \`\`\`java
 {
-    int x = 10;
+    int x = 10;  // 声明变量 x（int），初始值为 10
 }
 // 这里访问不到 x
 \`\`\`
 
-if、for、while 的 \`{\}\` 都是块作用域。即使没有 \`{\}\`，\`if (cond) int x;\` 这样的单语句声明也是非法的——声明必须在一个块内。
+if、for、while 的 \`{\\}\` 都是块作用域。即使没有 \`{\\}\`，\`if (cond) int x;\` 这样的单语句声明也是非法的——声明必须在一个块内。
 
 ## 方法作用域
 
@@ -732,9 +732,9 @@ if、for、while 的 \`{\}\` 都是块作用域。即使没有 \`{\}\`，\`if (c
 当内部作用域声明了与外部作用域同名的变量时，内部变量"遮蔽"了外部变量，外部变量在内部不可见。这是常见的 bug 来源，应避免同名遮蔽。
 
 \`\`\`java
-class C {
-    int x = 1;
-    void m() {
+class C {  // 定义类 C
+    int x = 1;  // 声明变量 x（int），初始值为 1
+    void m() {  // 方法 m，返回 void，无参数
         int x = 2; // 遮蔽了实例变量 x，this.x 仍是 1
     }
 }
@@ -823,9 +823,9 @@ public class Main {
 ## 局部变量声明
 
 \`\`\`java
-int x;
-double pi = 3.14;
-String name = "Tom";
+int x;  // 声明变量 x（int 类型）
+double pi = 3.14;  // 声明变量 pi（double），初始值为 3.14
+String name = "Tom";  // 声明变量 name（String），初始值为 "Tom"
 \`\`\`
 
 可一次声明多个同类型变量：\`int a, b, c;\`。建议声明时即初始化，避免使用未赋值变量。
@@ -835,7 +835,7 @@ String name = "Tom";
 **局部变量没有默认值**，使用前必须显式初始化，否则编译错误。这与成员变量不同（成员变量有默认值）。
 
 \`\`\`java
-int x;
+int x;  // 声明变量 x（int 类型）
 System.out.println(x); // 编译错误：可能尚未初始化
 \`\`\`
 
@@ -857,7 +857,7 @@ System.out.println(x); // 编译错误：可能尚未初始化
 - 防止意外修改，表明"这个值不会变"的意图
 
 \`\`\`java
-final int LIMIT = 100;
+final int LIMIT = 100;  // 声明常量变量 LIMIT（int），初始值为 100
 // LIMIT = 200; // 编译错误
 \`\`\`
 
@@ -937,9 +937,9 @@ public class Main {
 ## 实例变量
 
 \`\`\`java
-class Person {
+class Person {  // 定义类 Person
     String name;  // 实例变量
-    int age;
+    int age;  // 声明变量 age（int 类型）
 }
 \`\`\`
 
@@ -988,8 +988,8 @@ class Person {
 实例变量通常设为 \`private\`，通过 getter/setter 访问，保证数据安全。这遵循"信息隐藏"原则，外部不能直接篡改内部状态，所有修改都经过方法把关，便于校验和维护。
 
 \`\`\`java
-class Person {
-    private int age;
+class Person {  // 定义类 Person
+    private int age;  // 声明私有变量 age（int 类型）
     public void setAge(int a) { if (a >= 0) age = a; } // 校验
 }
 \`\`\`
@@ -1053,7 +1053,7 @@ class Person {
 ## static 变量
 
 \`\`\`java
-class Counter {
+class Counter {  // 定义类 Counter
     static int count = 0; // 类变量，所有实例共享
 }
 \`\`\`
@@ -1081,7 +1081,7 @@ class Counter {
 \`\`\`java
 static {
     // 类加载时执行一次
-    loadConfig();
+    loadConfig();  // 调用方法 loadConfig
 }
 \`\`\`
 
@@ -1090,7 +1090,7 @@ static {
 \`import static\` 可以静态导入类的静态成员，使用时省略类名：
 
 \`\`\`java
-import static java.lang.Math.PI;
+import static java.lang.Math.PI;  // 静态导入 java.lang.Math.PI
 double r = 2 * PI; // 直接用 PI
 \`\`\`
 
@@ -1287,8 +1287,8 @@ public class Main {
 ## 静态方法定义
 
 \`\`\`java
-class MathUtil {
-    static int square(int x) { return x * x; }
+class MathUtil {  // 定义类 MathUtil
+    static int square(int x) { return x * x; }  // 方法 square（返回 int，参数：int x）：返回 x * x
 }
 \`\`\`
 
@@ -1311,10 +1311,10 @@ int r = MathUtil.square(5); // 推荐写法
 静态方法没有 \`this\`，无法知道该访问哪个对象的实例变量。但可以访问其他静态成员（静态变量、静态方法）。
 
 \`\`\`java
-class C {
+class C {  // 定义类 C
     int instanceVar;      // 实例变量
     static int classVar;  // 类变量
-    static void m() {
+    static void m() {  // 静态方法 m，返回 void，无参数
         // instanceVar; // 错误：无 this
         classVar = 1;     // 正确：类变量不依赖 this
     }
@@ -1411,9 +1411,9 @@ class Calculator {
 方法参数加 \`final\` 后，方法内不能重新给该参数赋值：
 
 \`\`\`java
-void process(final int x) {
+void process(final int x) {  // 方法 process，返回 void，参数：final int x
     // x = 10; // 编译错误
-    System.out.println(x);
+    System.out.println(x);  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -1424,7 +1424,7 @@ void process(final int x) {
 局部变量加 \`final\` 后只能赋值一次：
 
 \`\`\`java
-final int LIMIT = 100;
+final int LIMIT = 100;  // 声明常量变量 LIMIT（int），初始值为 100
 // LIMIT = 200; // 编译错误
 \`\`\`
 
@@ -1435,7 +1435,7 @@ final int LIMIT = 100;
 关键区分：final 修饰引用类型时，**引用本身不可变**（不能再指向别的对象），但**对象内容仍可变**。
 
 \`\`\`java
-final int[] arr = {1, 2, 3};
+final int[] arr = {1, 2, 3};  // 声明常量变量 arr（int[]），初始值为 {1, 2, 3}
 arr[0] = 9;       // 合法：改内容
 // arr = new int[5]; // 错误：改引用
 \`\`\`
@@ -1530,8 +1530,8 @@ public class Main {
 ## 方法引用语法 ::
 
 \`\`\`java
-类名::方法名
-对象::方法名
+类名::方法名  // 方法引用：复用已有方法作为函数式接口实例
+对象::方法名  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 当 Lambda 表达式只是调用一个已存在的方法时，可以用方法引用替代，称为"方法引用的等价转换"。这让代码更聚焦于"做什么"而非"怎么做"。
@@ -1549,7 +1549,7 @@ Function<Integer, Integer> f = Math::abs; // 等价 x -> Math.abs(x)
 引用某个对象的实例方法：\`对象::实例方法名\`
 
 \`\`\`java
-String s = "hello";
+String s = "hello";  // 声明变量 s（String），初始值为 "hello"
 Supplier<Integer> len = s::length; // 等价 () -> s.length()
 \`\`\`
 
@@ -1638,13 +1638,13 @@ public class Main {
 ## main 方法 args 参数
 
 \`\`\`java
-public static void main(String[] args) { ... }
+public static void main(String[] args) { ... }  // 程序入口 main 方法，args 接收命令行参数
 \`\`\`
 
 \`args\` 是一个字符串数组，存放启动程序时在命令行中传入的参数。注意：**类名不计入 args**，args 从类名之后的第一个参数开始。
 
 \`\`\`bash
-java Main foo bar 123
+java Main foo bar 123  # 运行 Java 类（启动 JVM）
 # args = ["foo", "bar", "123"]
 \`\`\`
 
@@ -1664,9 +1664,9 @@ java Main foo bar 123
 - 给出友好的用法提示（usage），告诉用户正确的调用方式
 
 \`\`\`java
-if (args.length < 1) {
-    System.out.println("用法：java Main <名字>");
-    return;
+if (args.length < 1) {  // 条件判断：满足 args.length < 1 时执行
+    System.out.println("用法：java Main <名字>");  // 打印一行到标准输出（自动换行）
+    return;  // 直接返回（无返回值）
 }
 \`\`\`
 
@@ -1675,9 +1675,9 @@ if (args.length < 1) {
 处理键值参数时，遍历 args 数组，遇到 \`--key\` 就取下一个元素作为值：
 
 \`\`\`java
-for (int i = 0; i < args.length; i++) {
-    if ("--name".equals(args[i]) && i + 1 < args.length) {
-        name = args[++i];
+for (int i = 0; i < args.length; i++) {  // for 循环：初始化 int i = 0；条件 i < args.length；更新 i++
+    if ("--name".equals(args[i]) && i + 1 < args.length) {  // 条件判断：满足 "--name".equals(args[i]) && i + 1 < args.length 时执行
+        name = args[++i];  // 为 name 赋值：args[++i]
     }
 }
 \`\`\`

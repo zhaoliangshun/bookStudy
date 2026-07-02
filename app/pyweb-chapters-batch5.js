@@ -75,12 +75,15 @@ Django 是纯 Python 包,用 pip 安装即可:
 
 \`\`\`bash
 # 安装最新稳定版
+# 安装 Python 包: django
 pip install django
 
 # 指定版本安装
+# 安装 Python 包: django==4.2
 pip install django==4.2
 
 # 查看版本
+# 以模块方式运行 django
 python -m django --version
 # 输出:4.2.x
 \`\`\`
@@ -93,9 +96,11 @@ Django 是 LTS(长期支持版)策略,每个版本支持约 3 年。生产环境
 
 \`\`\`bash
 # 语法:django-admin startproject 项目名 [目标目录]
+# django-admin startproject mysite
 django-admin startproject mysite
 
 # 进入项目目录
+# 切换到目录 mysite
 cd mysite
 \`\`\`
 
@@ -123,6 +128,7 @@ Django 鼓励把功能拆成多个 App。比如博客站,可以拆成 blog(文�
 
 \`\`\`bash
 # 在项目根目录下执行
+# 运行 Python 脚本 manage.py
 python manage.py startapp blog
 
 # 生成应用目录结构
@@ -140,21 +146,27 @@ python manage.py startapp blog
 
 \`\`\`python
 # mysite/settings.py
+# 定义列表 INSTALLED_APPS
 INSTALLED_APPS = [
     "django.contrib.admin",       # 内置后台
     "django.contrib.auth",        # 内置认证
+    # "django.contrib.contenttypes", # 内容类型
     "django.contrib.contenttypes", # 内容类型
     "django.contrib.sessions",    # Session
     "django.contrib.messages",    # 消息框架
+    # "django.contrib.staticfiles", # 静态文件
     "django.contrib.staticfiles", # 静态文件
     # 注册自己的应用
+    # "blog",
     "blog",
+# ]
 ]
 \`\`\`
 
 ### 3. 启动开发服务器
 
 \`\`\`bash
+# 运行 Python 脚本 manage.py
 python manage.py runserver
 
 # 输出:
@@ -186,8 +198,11 @@ python manage.py runserver
 ### 第一步:创建项目和应用
 
 \`\`\`bash
+# django-admin startproject mysite
 django-admin startproject mysite
+# 切换到目录 mysite
 cd mysite
+# 运行 Python 脚本 manage.py
 python manage.py startapp blog
 \`\`\`
 
@@ -195,9 +210,11 @@ python manage.py startapp blog
 
 \`\`\`python
 # mysite/settings.py
+# 定义列表 INSTALLED_APPS
 INSTALLED_APPS = [
     # ... 默认应用
     "blog",  # 注册 blog 应用
+# ]
 ]
 \`\`\`
 
@@ -205,12 +222,15 @@ INSTALLED_APPS = [
 
 \`\`\`python
 # blog/views.py
+# 从 django.http 导入 HttpResponse
 from django.http import HttpResponse
 
 # 视图函数:接收一个 HttpRequest,返回一个 HttpResponse
+# 定义函数 index，参数: request
 def index(request):
     # request.method 是请求方法,如 "GET"/"POST"
     # request.GET/request.POST 是查询参数
+    # 返回 HttpResponse("<h1>欢迎来到我的博客</h1>")
     return HttpResponse("<h1>欢迎来到我的博客</h1>")
 \`\`\`
 
@@ -220,13 +240,18 @@ def index(request):
 
 \`\`\`python
 # blog/urls.py(新建此文件)
+# 从 django.urls 导入 path
 from django.urls import path
+# 从 . 导入 views
 from . import views
 
 # urlpatterns 是 Django 约定的路由列表
+# 定义列表 urlpatterns
 urlpatterns = [
     # path(路由模式, 视图函数, name=别名)
+    # 调用 path()
     path("", views.index, name="index"),
+# ]
 ]
 \`\`\`
 
@@ -234,12 +259,16 @@ urlpatterns = [
 
 \`\`\`python
 # mysite/urls.py
+# 从 django.contrib 导入 admin
 from django.contrib import admin
+# 从 django.urls 导入 path, include
 from django.urls import path, include
 
+# 定义列表 urlpatterns
 urlpatterns = [
     path("admin/", admin.site.urls),        # 后台路由
     path("blog/", include("blog.urls")),    # 包含 blog 应用的路由
+# ]
 ]
 \`\`\`
 
@@ -249,15 +278,18 @@ urlpatterns = [
 
 \`\`\`bash
 # 生成迁移文件(根据 Model 变化)
+# 运行 Python 脚本 manage.py
 python manage.py makemigrations
 
 # 应用迁移(执行 SQL 建表)
+# 运行 Python 脚本 manage.py
 python manage.py migrate
 \`\`\`
 
 ### 第七步:创建超级用户访问后台
 
 \`\`\`bash
+# 运行 Python 脚本 manage.py
 python manage.py createsuperuser
 # 输入用户名、邮箱、密码
 \`\`\`
@@ -338,10 +370,12 @@ Django 启动时第一件事就是读 \`settings.py\`,根据配置初始化整�
 ### 1. BASE_DIR:项目根目录
 
 \`\`\`python
+# 从 pathlib 导入 Path
 from pathlib import Path
 
 # Path(__file__) 是当前 settings.py 的路径
 # resolve().parent.parent 向上两级 = 项目根目录
+# 定义变量 BASE_DIR，赋值为 Path(__file__).resolve().parent.parent
 BASE_DIR = Path(__file__).resolve().parent.parent
 \`\`\`
 
@@ -352,13 +386,16 @@ Django 4.x 开始用 \`pathlib.Path\`,比老的 \`os.path\` 更现代、更清�
 \`\`\`python
 # 用于加密签名:Session、CSRF token、密码重置 token
 # 必须保密,泄露后可伪造 Session 等敏感数据
+# 定义变量 SECRET_KEY，赋值为 "django-insecure-xxxxxxxxxxxxxxxxxxxx"
 SECRET_KEY = "django-insecure-xxxxxxxxxxxxxxxxxxxx"
 \`\`\`
 
 ⚠️ 生产环境绝对不能硬编码在代码里。应该从环境变量读取:
 
 \`\`\`python
+# 导入 os 模块
 import os
+# 定义变量 SECRET_KEY，赋值为 os.environ.get("DJANGO_SECRET_KEY")
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 \`\`\`
 
@@ -367,6 +404,7 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 \`\`\`python
 # True:开发模式,出错显示详细堆栈,自动服务静态文件
 # False:生产模式,出错只显示 500 页面,静态文件需 nginx 配合
+# 定义变量 DEBUG，赋值为 True
 DEBUG = True
 \`\`\`
 
@@ -378,19 +416,23 @@ DEBUG = True
 # DEBUG=False 时必填,防止 HTTP Host 头攻击
 # 空列表表示不允许任何域名
 # "*" 表示允许所有(不安全,慎用)
+# 定义列表 ALLOWED_HOSTS
 ALLOWED_HOSTS = ["example.com", "www.example.com"]
 
 # 本地开发
+# 定义列表 ALLOWED_HOSTS
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0"]
 \`\`\`
 
 ### 5. INSTALLED_APPS:已安装应用
 
 \`\`\`python
+# 定义列表 INSTALLED_APPS
 INSTALLED_APPS = [
     # Django 内置应用(一般别删)
     "django.contrib.admin",        # 后台管理
     "django.contrib.auth",         # 用户认证
+    # "django.contrib.contenttypes", # 内容类型框架
     "django.contrib.contenttypes", # 内容类型框架
     "django.contrib.sessions",      # Session 框架
     "django.contrib.messages",     # 消息框架
@@ -403,6 +445,7 @@ INSTALLED_APPS = [
     # 自己的应用
     "blog",                        # 博客应用
     "users",                       # 用户应用
+# ]
 ]
 \`\`\`
 
@@ -411,14 +454,19 @@ INSTALLED_APPS = [
 ### 6. MIDDLEWARE:中间件链
 
 \`\`\`python
+# 定义列表 MIDDLEWARE
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",      # 安全相关
+    # "django.contrib.sessions.middleware.SessionMiddlew
     "django.contrib.sessions.middleware.SessionMiddleware", # Session
     "django.middleware.common.CommonMiddleware",           # 通用请求处理
     "django.middleware.csrf.CsrfViewMiddleware",          # CSRF 防护
+    # "django.contrib.auth.middleware.AuthenticationMidd
     "django.contrib.auth.middleware.AuthenticationMiddleware", # 认证
     "django.contrib.messages.middleware.MessageMiddleware",   # 消息
+    # "django.middleware.clickjacking.XFrameOptionsMiddl
     "django.middleware.clickjacking.XFrameOptionsMiddleware", # 防点击劫持
+# ]
 ]
 \`\`\`
 
@@ -429,19 +477,28 @@ MIDDLEWARE = [
 默认用 SQLite,无需安装,适合开发:
 
 \`\`\`python
+# 定义字典 DATABASES
 DATABASES = {
+    # "default": {
     "default": {
+        # "ENGINE": "django.db.backends.sqlite3",
         "ENGINE": "django.db.backends.sqlite3",
+        # "NAME": BASE_DIR / "db.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
+    # }
     }
+# }
 }
 \`\`\`
 
 切换到 MySQL:
 
 \`\`\`python
+# 定义字典 DATABASES
 DATABASES = {
+    # "default": {
     "default": {
+        # "ENGINE": "django.db.backends.mysql",
         "ENGINE": "django.db.backends.mysql",
         "NAME": "mydb",                  # 数据库名
         "USER": "myuser",                # 用户名
@@ -449,26 +506,41 @@ DATABASES = {
         "HOST": "127.0.0.1",             # 主机
         "PORT": "3306",                  # 端口
         # 可选:连接池参数
+        # "OPTIONS": {
         "OPTIONS": {
             "charset": "utf8mb4",        # 支持 emoji 等 4 字节字符
+            # "init_command": "SET sql_mode='STRICT_TRANS_TABLES
             "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+        # },
         },
+    # }
     }
+# }
 }
 \`\`\`
 
 切换到 PostgreSQL:
 
 \`\`\`python
+# 定义字典 DATABASES
 DATABASES = {
+    # "default": {
     "default": {
+        # "ENGINE": "django.db.backends.postgresql",
         "ENGINE": "django.db.backends.postgresql",
+        # "NAME": "mydb",
         "NAME": "mydb",
+        # "USER": "myuser",
         "USER": "myuser",
+        # "PASSWORD": "mypassword",
         "PASSWORD": "mypassword",
+        # "HOST": "localhost",
         "HOST": "localhost",
+        # "PORT": "5432",
         "PORT": "5432",
+    # }
     }
+# }
 }
 \`\`\`
 
@@ -476,29 +548,44 @@ DATABASES = {
 
 \`\`\`bash
 pip install mysqlclient    # MySQL
+# 安装 Python 包: psycopg2-binary # PostgreSQL
 pip install psycopg2-binary # PostgreSQL
 \`\`\`
 
 ### 8. TEMPLATES:模板配置
 
 \`\`\`python
+# 定义列表 TEMPLATES
 TEMPLATES = [
+    # {
     {
+        # "BACKEND": "django.template.backends.django.Django
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         # 模板查找目录(项目级)
+        # "DIRS": [BASE_DIR / "templates"],
         "DIRS": [BASE_DIR / "templates"],
         # 是否到应用内 templates/ 找
+        # "APP_DIRS": True,
         "APP_DIRS": True,
+        # "OPTIONS": {
         "OPTIONS": {
+            # "context_processors": [
             "context_processors": [
                 # 内置上下文处理器(模板里能直接用这些变量)
+                # "django.template.context_processors.debug",
                 "django.template.context_processors.debug",
+                # "django.template.context_processors.request",
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",    # 注入 user
+                # "django.contrib.messages.context_processors.messag
                 "django.contrib.messages.context_processors.messages", # 注入 messages
+            # ],
             ],
+        # },
         },
+    # },
     },
+# ]
 ]
 \`\`\`
 
@@ -508,18 +595,25 @@ TEMPLATES = [
 
 \`\`\`python
 # URL 前缀,如 /static/css/style.css
+# 定义变量 STATIC_URL，赋值为 "/static/"
 STATIC_URL = "/static/"
 
 # 开发时静态文件目录(Django 会从这里服务)
+# 定义列表 STATICFILES_DIRS
 STATICFILES_DIRS = [
+    # BASE_DIR / "static",
     BASE_DIR / "static",
+# ]
 ]
 
 # collectstatic 命令收集到的目录(部署时用 nginx 直接服务)
+# 定义变量 STATIC_ROOT，赋值为 BASE_DIR / "staticfiles"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # 媒体文件(用户上传的)
+# 定义变量 MEDIA_URL，赋值为 "/media/"
 MEDIA_URL = "/media/"
+# 定义变量 MEDIA_ROOT，赋值为 BASE_DIR / "media"
 MEDIA_ROOT = BASE_DIR / "media"
 \`\`\`
 
@@ -545,47 +639,75 @@ mysite/
 
 \`\`\`python
 # settings/base.py —— 公共配置
+# 从 pathlib 导入 Path
 from pathlib import Path
+# 定义变量 BASE_DIR，赋值为 Path(__file__).resolve().parent.parent.parent
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
+# 定义列表 INSTALLED_APPS
 INSTALLED_APPS = [
     # ... 公共应用
+# ]
 ]
 # 其他公共配置...
 \`\`\`
 
 \`\`\`python
 # settings/dev.py —— 开发环境
+# 从 .base 导入 *
 from .base import *
 
+# 定义变量 DEBUG，赋值为 True
 DEBUG = True
+# 定义列表 ALLOWED_HOSTS
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+# 定义字典 DATABASES
 DATABASES = {
+    # "default": {
     "default": {
+        # "ENGINE": "django.db.backends.sqlite3",
         "ENGINE": "django.db.backends.sqlite3",
+        # "NAME": BASE_DIR / "db.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
+    # }
     }
+# }
 }
 \`\`\`
 
 \`\`\`python
 # settings/prod.py —— 生产环境
+# 从 .base 导入 *
 from .base import *
+# 导入 os 模块
 import os
 
+# 定义变量 DEBUG，赋值为 False
 DEBUG = False
+# 定义变量 SECRET_KEY，赋值为 os.environ.get("DJANGO_SECRET_KEY")
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
+# 定义列表 ALLOWED_HOSTS
 ALLOWED_HOSTS = ["example.com"]
 
+# 定义字典 DATABASES
 DATABASES = {
+    # "default": {
     "default": {
+        # "ENGINE": "django.db.backends.postgresql",
         "ENGINE": "django.db.backends.postgresql",
+        # "NAME": os.environ.get("DB_NAME"),
         "NAME": os.environ.get("DB_NAME"),
+        # "USER": os.environ.get("DB_USER"),
         "USER": os.environ.get("DB_USER"),
+        # "PASSWORD": os.environ.get("DB_PASSWORD"),
         "PASSWORD": os.environ.get("DB_PASSWORD"),
+        # "HOST": os.environ.get("DB_HOST", "localhost"),
         "HOST": os.environ.get("DB_HOST", "localhost"),
+        # "PORT": "5432",
         "PORT": "5432",
+    # }
     }
+# }
 }
 \`\`\`
 
@@ -593,17 +715,22 @@ DATABASES = {
 
 \`\`\`bash
 # 开发
+# 设置环境变量 DJANGO_SETTINGS_MODULE=mysite.settings.dev
 export DJANGO_SETTINGS_MODULE=mysite.settings.dev
+# 运行 Python 脚本 manage.py
 python manage.py runserver
 
 # 生产(gunicorn 启动)
+# 设置环境变量 DJANGO_SETTINGS_MODULE=mysite.settings.prod
 export DJANGO_SETTINGS_MODULE=mysite.settings.prod
+# gunicorn mysite.wsgi:application
 gunicorn mysite.wsgi:application
 \`\`\`
 
 或者用命令行参数:
 
 \`\`\`bash
+# 运行 Python 脚本 manage.py
 python manage.py runserver --settings=mysite.settings.dev
 \`\`\`
 
@@ -612,43 +739,64 @@ python manage.py runserver --settings=mysite.settings.dev
 生产环境的敏感信息(密钥、数据库密码)绝不能硬编码,必须从环境变量读。Python 标准做法:
 
 \`\`\`python
+# 导入 os 模块
 import os
 
 # 读取环境变量,带默认值
+# 定义变量 DEBUG，赋值为 os.environ.get("DJANGO_DEBUG", "False") == "T...
 DEBUG = os.environ.get("DJANGO_DEBUG", "False") == "True"
+# 定义变量 SECRET_KEY，赋值为 os.environ.get("DJANGO_SECRET_KEY")
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 
 # 数据库配置
+# 定义字典 DATABASES
 DATABASES = {
+    # "default": {
     "default": {
+        # "ENGINE": "django.db.backends.postgresql",
         "ENGINE": "django.db.backends.postgresql",
+        # "NAME": os.environ.get("DB_NAME", "mydb"),
         "NAME": os.environ.get("DB_NAME", "mydb"),
+        # "USER": os.environ.get("DB_USER", "postgres"),
         "USER": os.environ.get("DB_USER", "postgres"),
+        # "PASSWORD": os.environ.get("DB_PASSWORD"),
         "PASSWORD": os.environ.get("DB_PASSWORD"),
+        # "HOST": os.environ.get("DB_HOST", "localhost"),
         "HOST": os.environ.get("DB_HOST", "localhost"),
+        # "PORT": os.environ.get("DB_PORT", "5432"),
         "PORT": os.environ.get("DB_PORT", "5432"),
+    # }
     }
+# }
 }
 \`\`\`
 
 更优雅的方案是 \`python-dotenv\`,从 \`.env\` 文件读:
 
 \`\`\`bash
+# 安装 Python 包: python-dotenv
 pip install python-dotenv
 \`\`\`
 
 \`\`\`python
 # .env 文件(加入 .gitignore,绝不提交)
+# 定义变量 DJANGO_SECRET_KEY，赋值为 your-secret-key-here
 DJANGO_SECRET_KEY=your-secret-key-here
+# 定义变量 DB_NAME，赋值为 mydb
 DB_NAME=mydb
+# 定义变量 DB_USER，赋值为 postgres
 DB_USER=postgres
+# 定义变量 DB_PASSWORD，赋值为 secret
 DB_PASSWORD=secret
 
 # settings.py
+# 从 dotenv 导入 load_dotenv
 from dotenv import load_dotenv
 load_dotenv()  # 加载 .env 文件
 
+# 导入 os 模块
 import os
+# 定义变量 SECRET_KEY，赋值为 os.environ.get("DJANGO_SECRET_KEY")
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 \`\`\`
 
@@ -697,7 +845,9 @@ mysite/
 注意:把应用放在 \`apps/\` 子目录后,需要在 \`settings.py\` 加路径:
 
 \`\`\`python
+# 导入 sys 模块
 import sys
+# 调用 sys.path.insert()
 sys.path.insert(0, BASE_DIR / "apps")
 \`\`\`
 
@@ -707,57 +857,100 @@ sys.path.insert(0, BASE_DIR / "apps")
 
 \`\`\`python
 # settings/prod.py
+# 导入 os 模块
 import os
+# 从 .base 导入 *
 from .base import *
 
+# 定义变量 DEBUG，赋值为 False
 DEBUG = False
+# 定义变量 SECRET_KEY，赋值为 os.environ.get("DJANGO_SECRET_KEY")
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
+# 定义列表 ALLOWED_HOSTS
 ALLOWED_HOSTS = ["www.example.com", "example.com"]
 
 # MySQL 配置
+# 定义字典 DATABASES
 DATABASES = {
+    # "default": {
     "default": {
+        # "ENGINE": "django.db.backends.mysql",
         "ENGINE": "django.db.backends.mysql",
+        # "NAME": os.environ.get("DB_NAME", "blog_db"),
         "NAME": os.environ.get("DB_NAME", "blog_db"),
+        # "USER": os.environ.get("DB_USER", "blog_user"),
         "USER": os.environ.get("DB_USER", "blog_user"),
+        # "PASSWORD": os.environ.get("DB_PASSWORD"),
         "PASSWORD": os.environ.get("DB_PASSWORD"),
+        # "HOST": os.environ.get("DB_HOST", "127.0.0.1"),
         "HOST": os.environ.get("DB_HOST", "127.0.0.1"),
+        # "PORT": os.environ.get("DB_PORT", "3306"),
         "PORT": os.environ.get("DB_PORT", "3306"),
+        # "OPTIONS": {
         "OPTIONS": {
             "charset": "utf8mb4",  # 支持 emoji 等 4 字节字符
             "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",  # 严格模式
+        # },
         },
         "CONN_MAX_AGE": 60,  # 连接复用 60 秒,避免频繁建连
+    # }
     }
+# }
 }
 
 # 日志配置
+# 定义字典 LOGGING
 LOGGING = {
+    # "version": 1,
     "version": 1,
+    # "disable_existing_loggers": False,
     "disable_existing_loggers": False,
+    # "formatters": {
     "formatters": {
+        # "verbose": {
         "verbose": {
+            # "format": "[{asctime}] {levelname} {name} {message
             "format": "[{asctime}] {levelname} {name} {message}",
+            # "style": "{",
             "style": "{",
+        # },
         },
+    # },
     },
+    # "handlers": {
     "handlers": {
+        # "file": {
         "file": {
+            # "level": "INFO",
             "level": "INFO",
+            # "class": "logging.handlers.RotatingFileHandler",
             "class": "logging.handlers.RotatingFileHandler",
+            # "filename": BASE_DIR / "logs" / "django.log",
             "filename": BASE_DIR / "logs" / "django.log",
             "maxBytes": 1024 * 1024 * 10,  # 10MB
+            # "backupCount": 5,
             "backupCount": 5,
+            # "formatter": "verbose",
             "formatter": "verbose",
+        # },
         },
+    # },
     },
+    # "loggers": {
     "loggers": {
+        # "django": {
         "django": {
+            # "handlers": ["file"],
             "handlers": ["file"],
+            # "level": "INFO",
             "level": "INFO",
+            # "propagate": True,
             "propagate": True,
+        # },
         },
+    # },
     },
+# }
 }
 \`\`\`
 
@@ -796,14 +989,20 @@ Web 框架的核心任务之一是「URL 路由」:把用户访问的 URL 路径
 
 \`\`\`python
 # mysite/urls.py —— 根路由
+# 从 django.contrib 导入 admin
 from django.contrib import admin
+# 从 django.urls 导入 path
 from django.urls import path
+# 从 blog 导入 views
 from blog import views
 
+# 定义列表 urlpatterns
 urlpatterns = [
     path("admin/", admin.site.urls),     # /admin/ → 后台
     path("", views.home, name="home"),    # / → home 视图
+    # 调用 path()
     path("about/", views.about, name="about"), # /about/ → about 视图
+# ]
 ]
 \`\`\`
 
@@ -820,26 +1019,37 @@ urlpatterns = [
 
 \`\`\`python
 # mysite/urls.py —— 根路由
+# 从 django.contrib 导入 admin
 from django.contrib import admin
+# 从 django.urls 导入 path, include
 from django.urls import path, include
 
+# 定义列表 urlpatterns
 urlpatterns = [
+    # 调用 path()
     path("admin/", admin.site.urls),
     path("blog/", include("blog.urls")),       # /blog/* 交给 blog 应用
     path("users/", include("users.urls")),     # /users/* 交给 users 应用
     path("api/", include("api.urls")),         # /api/* 交给 api 应用
+# ]
 ]
 \`\`\`
 
 \`\`\`python
 # blog/urls.py —— 应用级路由
+# 从 django.urls 导入 path
 from django.urls import path
+# 从 . 导入 views
 from . import views
 
+# 定义列表 urlpatterns
 urlpatterns = [
     path("", views.post_list, name="post_list"),       # /blog/
+    # 调用 path()
     path("post/<int:pk>/", views.post_detail, name="post_detail"), # /blog/post/5/
+    # 调用 path()
     path("post/new/", views.post_new, name="post_new"), # /blog/post/new/
+# ]
 ]
 \`\`\`
 
@@ -853,14 +1063,17 @@ URL 里可以「挖坑」捕获变量,传给视图函数:
 
 \`\`\`python
 # 捕获整数
+# 调用 path()
 path("post/<int:pk>/", views.post_detail)
 # 访问 /post/42/ → 调用 post_detail(request, pk=42)
 
 # 捕获字符串(默认,不能含 /)
+# 调用 path()
 path("post/<slug:slug>/", views.post_by_slug)
 # 访问 /post/hello-world/ → post_by_slug(request, slug="hello-world")
 
 # 捕获任意字符串(可含 /)
+# 调用 path()
 path("files/<path:filepath>/", views.serve_file)
 # 访问 /files/a/b/c.txt → serve_file(request, filepath="a/b/c.txt")
 \`\`\`
@@ -882,16 +1095,21 @@ path("files/<path:filepath>/", views.serve_file)
 需要更复杂的匹配时,用 \`re_path()\` 配合正则表达式:
 
 \`\`\`python
+# 从 django.urls 导入 re_path
 from django.urls import re_path
 
+# 定义列表 urlpatterns
 urlpatterns = [
     # 匹配 4 位年份
+    # 调用 re_path()
     re_path(r"^posts/(?P<year>[0-9]{4})/$", views.posts_by_year),
     # 访问 /posts/2024/ → posts_by_year(request, year="2024")
 
     # 匹配 YYYY/MM 格式
+    # 调用 re_path()
     re_path(r"^archive/(?P<year>[0-9]{4})/(?P<month>[0-9]{2})/$", views.archive),
     # 访问 /archive/2024/06/ → archive(request, year="2024", month="06")
+# ]
 ]
 \`\`\`
 
@@ -906,15 +1124,19 @@ urlpatterns = [
 视图是「接收请求、返回响应」的函数(或类)。最简单的视图:
 
 \`\`\`python
+# 从 django.http 导入 HttpResponse, HttpRequest
 from django.http import HttpResponse, HttpRequest
 
+# 定义函数 hello，返回: HttpResponse
 def hello(request: HttpRequest) -> HttpResponse:
+    # 返回 HttpResponse("Hello, Django!")
     return HttpResponse("Hello, Django!")
 \`\`\`
 
 \`request\` 是 Django 封装的 \`HttpRequest\` 对象,包含请求所有信息:
 
 \`\`\`python
+# 定义函数 example，参数: request
 def example(request):
     # 请求方法
     request.method           # "GET" / "POST" / "PUT" / "DELETE"
@@ -924,7 +1146,9 @@ def example(request):
     request.GET.getlist("tags")  # /?tags=python&tags=django → ["python", "django"]
 
     # POST 数据(form 表单)
+    # 调用 request.POST.get()
     request.POST.get("title")
+    # 调用 request.POST.getlist()
     request.POST.getlist("tags")
 
     # 请求头(Django 自动加 HTTP_ 前缀,大写,横线变下划线)
@@ -935,6 +1159,7 @@ def example(request):
 
     # 路径信息
     request.path            # "/blog/post/5/"
+    # 调用 request.get_full_path()
     request.get_full_path() # "/blog/post/5/?from=home"
 
     # Body(原始字节)
@@ -945,6 +1170,7 @@ def example(request):
     request.user.is_authenticated  # 是否已登录
 
     # Session(需 SessionMiddleware)
+    # request.session["cart"] = [...]
     request.session["cart"] = [...]
 \`\`\`
 
@@ -953,25 +1179,34 @@ def example(request):
 ### 1. HttpResponse:返回字符串
 
 \`\`\`python
+# 从 django.http 导入 HttpResponse
 from django.http import HttpResponse
 
+# 定义函数 hello，参数: request
 def hello(request):
     return HttpResponse("Hello")            # 默认 text/html
 
+# 定义函数 download，参数: request
 def download(request):
+    # 定义变量 response，赋值为 HttpResponse(b"file content", content_type="a...
     response = HttpResponse(b"file content", content_type="application/octet-stream")
+    # response["Content-Disposition"] = 'attachment; fil
     response["Content-Disposition"] = 'attachment; filename="data.bin"'
+    # 返回 response
     return response
 \`\`\`
 
 ### 2. render:渲染模板
 
 \`\`\`python
+# 从 django.shortcuts 导入 render
 from django.shortcuts import render
 
+# 定义函数 post_list，参数: request
 def post_list(request):
     posts = Post.objects.all()[:10]  # 查最新 10 篇
     # render(request, 模板路径, 上下文字典)
+    # 返回 render(request, "blog/post_list.html", {"posts": posts})
     return render(request, "blog/post_list.html", {"posts": posts})
 \`\`\`
 
@@ -980,9 +1215,12 @@ def post_list(request):
 ### 3. JsonResponse:返回 JSON
 
 \`\`\`python
+# 从 django.http 导入 JsonResponse
 from django.http import JsonResponse
 
+# 定义函数 api_posts，参数: request
 def api_posts(request):
+    # 定义变量 posts，赋值为 Post.objects.all().values("id", "title", "cre...
     posts = Post.objects.all().values("id", "title", "created_at")
     return JsonResponse(list(posts), safe=False)  # safe=False 允许返回列表
 \`\`\`
@@ -992,8 +1230,10 @@ def api_posts(request):
 ### 4. redirect:重定向
 
 \`\`\`python
+# 从 django.shortcuts 导入 redirect
 from django.shortcuts import redirect
 
+# 定义函数 old_url，参数: request
 def old_url(request):
     # 永久重定向到新 URL
     return redirect("/new-url/")               # 重定向到路径
@@ -1008,26 +1248,38 @@ def old_url(request):
 ### 1. 最基础的类视图
 
 \`\`\`python
+# 从 django.views 导入 View
 from django.views import View
+# 从 django.http 导入 HttpResponse
 from django.http import HttpResponse
 
+# 定义类 HelloView，继承 View
 class HelloView(View):
     # 根据 HTTP 方法自动分发:GET 调 get,POST 调 post
+    # 定义函数 get，参数: self, request
     def get(self, request):
+        # 返回 HttpResponse("Hello, GET!")
         return HttpResponse("Hello, GET!")
 
+    # 定义函数 post，参数: self, request
     def post(self, request):
+        # 返回 HttpResponse("Hello, POST!")
         return HttpResponse("Hello, POST!")
 \`\`\`
 
 类视图要在 \`urls.py\` 里调用 \`as_view()\` 转成可调用对象:
 
 \`\`\`python
+# 从 django.urls 导入 path
 from django.urls import path
+# 从 .views 导入 HelloView
 from .views import HelloView
 
+# 定义列表 urlpatterns
 urlpatterns = [
+    # 调用 path()
     path("hello/", HelloView.as_view(), name="hello"),
+# ]
 ]
 \`\`\`
 
@@ -1048,27 +1300,39 @@ Django 内置一组通用视图,把常见 CRUD 场景封装好:
 | \`FormView\` | 处理表单 | \`get\`/\`post\` |
 
 \`\`\`python
+# 从 django.views.generic 导入 ListView, DetailView
 from django.views.generic import ListView, DetailView
+# 从 .models 导入 Post
 from .models import Post
 
+# 定义类 PostListView，继承 ListView
 class PostListView(ListView):
     model = Post                          # 数据模型
+    # 定义变量 template_name，赋值为 "blog/post_list.html" # 模板路径
     template_name = "blog/post_list.html" # 模板路径
     context_object_name = "posts"         # 模板里的变量名(默认 object_list)
     paginate_by = 10                      # 每页 10 条,自动分页
 
+# 定义类 PostDetailView，继承 DetailView
 class PostDetailView(DetailView):
+    # 定义变量 model，赋值为 Post
     model = Post
+    # 定义变量 template_name，赋值为 "blog/post_detail.html"
     template_name = "blog/post_detail.html"
+    # 定义变量 context_object_name，赋值为 "post"
     context_object_name = "post"
     # 默认从 URL 的 <int:pk> 取主键查对象
 \`\`\`
 
 \`\`\`python
 # urls.py
+# 定义列表 urlpatterns
 urlpatterns = [
+    # 调用 path()
     path("", PostListView.as_view(), name="post_list"),
+    # 调用 path()
     path("post/<int:pk>/", PostDetailView.as_view(), name="post_detail"),
+# ]
 ]
 \`\`\`
 
@@ -1079,15 +1343,20 @@ urlpatterns = [
 「反向解析」是从路由 name 反推 URL,而不是硬编码路径。好处是改路由时不用改代码。
 
 \`\`\`python
+# 从 django.urls 导入 reverse
 from django.urls import reverse
+# 从 django.shortcuts 导入 redirect
 from django.shortcuts import redirect
 
+# 定义函数 go_to_post，参数: request, pk
 def go_to_post(request, pk):
     # 正向:写死字符串,改路由要改代码
     # return redirect(f"/blog/post/{pk}/")  # ❌ 硬编码
 
     # 反向:从 name 推 URL
+    # 定义变量 url，赋值为 reverse("blog:post_detail", kwargs={"pk": pk}...
     url = reverse("blog:post_detail", kwargs={"pk": pk})
+    # 返回 redirect(url)
     return redirect(url)
     # → /blog/post/5/
 \`\`\`
@@ -1095,7 +1364,9 @@ def go_to_post(request, pk):
 在模板里用 \`{% url %}\` 标签:
 
 \`\`\`html
+# <!-- 反向解析,自动生成 /blog/post/5/ -->
 <!-- 反向解析,自动生成 /blog/post/5/ -->
+# <a href="{% url 'blog:post_detail' post.id %}">{{ 
 <a href="{% url 'blog:post_detail' post.id %}">{{ post.title }}</a>
 \`\`\`
 
@@ -1105,8 +1376,11 @@ def go_to_post(request, pk):
 # blog/urls.py
 app_name = "blog"  # 命名空间
 
+# 定义列表 urlpatterns
 urlpatterns = [
+    # 调用 path()
     path("post/<int:pk>/", views.post_detail, name="post_detail"),
+# ]
 ]
 \`\`\`
 
@@ -1118,96 +1392,153 @@ urlpatterns = [
 
 \`\`\`python
 # blog/urls.py
+# 从 django.urls 导入 path
 from django.urls import path
+# 从 . 导入 views
 from . import views
 
+# 定义变量 app_name，赋值为 "blog"
 app_name = "blog"
 
+# 定义列表 urlpatterns
 urlpatterns = [
     # 文章列表
+    # 调用 path()
     path("", views.PostListView.as_view(), name="post_list"),
     # 文章详情
+    # 调用 path()
     path("post/<int:pk>/", views.PostDetailView.as_view(), name="post_detail"),
     # 创建文章
+    # 调用 path()
     path("post/new/", views.PostCreateView.as_view(), name="post_create"),
     # 编辑文章
+    # 调用 path()
     path("post/<int:pk>/edit/", views.PostUpdateView.as_view(), name="post_edit"),
     # 删除文章
+    # 调用 path()
     path("post/<int:pk>/delete/", views.PostDeleteView.as_view(), name="post_delete"),
     # 按标签筛选
+    # 调用 path()
     path("tag/<slug:slug>/", views.posts_by_tag, name="posts_by_tag"),
     # 搜索
+    # 调用 path()
     path("search/", views.search, name="search"),
+# ]
 ]
 \`\`\`
 
 \`\`\`python
 # blog/views.py
+# 从 django.shortcuts 导入 render, get_object_or_404, redirect
 from django.shortcuts import render, get_object_or_404, redirect
+# 从 django.urls 导入 reverse_lazy
 from django.urls import reverse_lazy
+# 从 django.views.generic 导入 ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+# 从 .models 导入 Post, Tag
 from .models import Post, Tag
 
 # 函数视图:按标签筛选
+# 定义函数 posts_by_tag，参数: request, slug
 def posts_by_tag(request, slug):
+    # 定义变量 tag，赋值为 get_object_or_404(Tag, slug=slug)
     tag = get_object_or_404(Tag, slug=slug)
+    # 定义变量 posts，赋值为 tag.posts.all().order_by("-created_at")[:20]
     posts = tag.posts.all().order_by("-created_at")[:20]
+    # 返回 render(request, "blog/post_list.html", {"posts": posts, "tag": tag})
     return render(request, "blog/post_list.html", {"posts": posts, "tag": tag})
 
 # 函数视图:搜索
+# 定义函数 search，参数: request
 def search(request):
+    # 定义变量 q，赋值为 request.GET.get("q", "").strip()
     q = request.GET.get("q", "").strip()
+    # 条件判断：如果 not q
     if not q:
+        # 返回 render(request, "blog/search.html", {"posts": [], "q": q})
         return render(request, "blog/search.html", {"posts": [], "q": q})
+    # 定义变量 posts，赋值为 Post.objects.filter(title__icontains=q)[:20]
     posts = Post.objects.filter(title__icontains=q)[:20]
+    # 返回 render(request, "blog/search.html", {"posts": posts, "q": q})
     return render(request, "blog/search.html", {"posts": posts, "q": q})
 
 # 类视图:文章列表(带分页)
+# 定义类 PostListView，继承 ListView
 class PostListView(ListView):
+    # 定义变量 model，赋值为 Post
     model = Post
+    # 定义变量 template_name，赋值为 "blog/post_list.html"
     template_name = "blog/post_list.html"
+    # 定义变量 context_object_name，赋值为 "posts"
     context_object_name = "posts"
+    # 定义变量 paginate_by，赋值为 10
     paginate_by = 10
+    # 定义列表 ordering
     ordering = ["-created_at"]
 
     # 重写 get_queryset 加自定义过滤
+    # 定义函数 get_queryset，参数: self
     def get_queryset(self):
         # 只返回已发布文章
+        # 返回 Post.objects.filter(status="published").order_by("-created_at")
         return Post.objects.filter(status="published").order_by("-created_at")
 
 # 类视图:文章详情
+# 定义类 PostDetailView，继承 DetailView
 class PostDetailView(DetailView):
+    # 定义变量 model，赋值为 Post
     model = Post
+    # 定义变量 template_name，赋值为 "blog/post_detail.html"
     template_name = "blog/post_detail.html"
+    # 定义变量 context_object_name，赋值为 "post"
     context_object_name = "post"
 
     # 重写 get_context_data 加额外上下文
+    # 定义函数 get_context_data，参数: self, **kwargs
     def get_context_data(self, **kwargs):
+        # 定义变量 context，赋值为 super().get_context_data(**kwargs)
         context = super().get_context_data(**kwargs)
         # 传「上一篇」和「下一篇」给模板
+        # 定义变量 post，赋值为 self.object
         post = self.object
+        # context["prev_post"] = Post.objects.filter(id__lt=
         context["prev_post"] = Post.objects.filter(id__lt=post.id).order_by("-id").first()
+        # context["next_post"] = Post.objects.filter(id__gt=
         context["next_post"] = Post.objects.filter(id__gt=post.id).order_by("id").first()
+        # 返回 context
         return context
 
 # 类视图:创建文章
+# 定义类 PostCreateView，继承 CreateView
 class PostCreateView(CreateView):
+    # 定义变量 model，赋值为 Post
     model = Post
+    # 定义变量 template_name，赋值为 "blog/post_form.html"
     template_name = "blog/post_form.html"
     fields = ["title", "content", "tags"]  # 表单包含哪些字段
+    # 定义变量 success_url，赋值为 reverse_lazy("blog:post_list")
     success_url = reverse_lazy("blog:post_list")
 
 # 类视图:编辑文章
+# 定义类 PostUpdateView，继承 UpdateView
 class PostUpdateView(UpdateView):
+    # 定义变量 model，赋值为 Post
     model = Post
+    # 定义变量 template_name，赋值为 "blog/post_form.html"
     template_name = "blog/post_form.html"
+    # 定义列表 fields
     fields = ["title", "content", "tags"]
+    # 定义变量 success_url，赋值为 reverse_lazy("blog:post_list")
     success_url = reverse_lazy("blog:post_list")
 
 # 类视图:删除文章
+# 定义类 PostDeleteView，继承 DeleteView
 class PostDeleteView(DeleteView):
+    # 定义变量 model，赋值为 Post
     model = Post
+    # 定义变量 template_name，赋值为 "blog/post_confirm_delete.html"
     template_name = "blog/post_confirm_delete.html"
+    # 定义变量 success_url，赋值为 reverse_lazy("blog:post_list")
     success_url = reverse_lazy("blog:post_list")
 \`\`\`
 
@@ -1251,8 +1582,11 @@ Django 自带一套模板语言叫 **Django Template Language(DTL)**,语法类�
 双花括号输出变量:
 
 \`\`\`html
+# <h1>{{ title }}</h1>
 <h1>{{ title }}</h1>
+# <p>作者:{{ post.author.username }}</p>
 <p>作者:{{ post.author.username }}</p>
+# <p>价格:{{ product.price }}</p>
 <p>价格:{{ product.price }}</p>
 \`\`\`
 
@@ -1270,34 +1604,52 @@ Django 自带一套模板语言叫 **Django Template Language(DTL)**,语法类�
 ### 1. if 条件
 
 \`\`\`html
+# {% if user.is_authenticated %}
 {% if user.is_authenticated %}
+    # <p>欢迎回来,{{ user.username }}</p>
     <p>欢迎回来,{{ user.username }}</p>
+# {% elif user.is_staff %}
 {% elif user.is_staff %}
+    # <p>管理员请登录</p>
     <p>管理员请登录</p>
+# {% else %}
 {% else %}
+    # <p><a href="/login/">请登录</a></p>
     <p><a href="/login/">请登录</a></p>
+# {% endif %}
 {% endif %}
 \`\`\`
 
 支持运算符:\`==\` \`!=\` \`>\` \`<\` \`>=\` \`<=\` \`and\` \`or\` \`not\` \`in\` \`not in\`。
 
 \`\`\`html
+# {% if age >= 18 and age < 60 %}
 {% if age >= 18 and age < 60 %}
+    # 成年人
     成年人
+# {% endif %}
 {% endif %}
 
+# {% if "admin" in user.groups %}
 {% if "admin" in user.groups %}
+    # 管理员
     管理员
+# {% endif %}
 {% endif %}
 \`\`\`
 
 ### 2. for 循环
 
 \`\`\`html
+# <ul>
 <ul>
+# {% for post in posts %}
 {% for post in posts %}
+    # <li>{{ forloop.counter }}. {{ post.title }}</li>
     <li>{{ forloop.counter }}. {{ post.title }}</li>
+# {% endfor %}
 {% endfor %}
+# </ul>
 </ul>
 \`\`\`
 
@@ -1312,48 +1664,71 @@ Django 自带一套模板语言叫 **Django Template Language(DTL)**,语法类�
 | \`forloop.revcounter\` | 剩余次数(从 1 开始倒序) |
 
 \`\`\`html
+# {% for post in posts %}
 {% for post in posts %}
+    # <div class="post {% if forloop.first %}first{% end
     <div class="post {% if forloop.first %}first{% endif %}">
+        # {{ forloop.counter }}. {{ post.title }}
         {{ forloop.counter }}. {{ post.title }}
+    # </div>
     </div>
+# {% endfor %}
 {% endfor %}
 \`\`\`
 
 空列表处理用 \`{% empty %}\`:
 
 \`\`\`html
+# {% for post in posts %}
 {% for post in posts %}
+    # <li>{{ post.title }}</li>
     <li>{{ post.title }}</li>
+# {% empty %}
 {% empty %}
+    # <li>暂无文章</li>
     <li>暂无文章</li>
+# {% endfor %}
 {% endfor %}
 \`\`\`
 
 ### 3. block 块(模板继承用)
 
 \`\`\`html
+# {% block content %}
 {% block content %}
+    # 调用 默认内容()
     默认内容(子模板可覆盖)
+# {% endblock %}
 {% endblock %}
 \`\`\`
 
 ### 4. 其他常用标签
 
 \`\`\`html
+# {# 注释,单行 #}
 {# 注释,单行 #}
+# {% comment "说明" %}多行注释{% endcomment %}
 {% comment "说明" %}多行注释{% endcomment %}
 
+# {% now "Y-m-d H:i" %}    {# 当前时间 #}
 {% now "Y-m-d H:i" %}    {# 当前时间 #}
 
+# {% with total=posts|length %}
 {% with total=posts|length %}
+    # 共 {{ total }} 篇文章
     共 {{ total }} 篇文章
+# {% endwith %}
 {% endwith %}
 
+# {% url "blog:post_detail" post.id %}  {# 反向解析 URL 
 {% url "blog:post_detail" post.id %}  {# 反向解析 URL #}
 
+# {% csrf_token %}  {# CSRF token,POST 表单必加 #}
 {% csrf_token %}  {# CSRF token,POST 表单必加 #}
 
+# {% load static %} {# 加载 static 标签库 #}
 {% load static %} {# 加载 static 标签库 #}
+# {% load humanize %} {# 加载第三方标签库 #}
 {% load humanize %} {# 加载第三方标签库 #}
 \`\`\`
 
@@ -1362,33 +1737,54 @@ Django 自带一套模板语言叫 **Django Template Language(DTL)**,语法类�
 管道符 \`|\` 对变量做转换:
 
 \`\`\`html
+# {# 大小写 #}
 {# 大小写 #}
+# {{ name|upper }}        {# HELLO #}
 {{ name|upper }}        {# HELLO #}
+# {{ name|lower }}        {# hello #}
 {{ name|lower }}        {# hello #}
+# {{ name|title }}        {# Hello World #}
 {{ name|title }}        {# Hello World #}
 
+# {# 长度 #}
 {# 长度 #}
+# {{ posts|length }}      {# 10 #}
 {{ posts|length }}      {# 10 #}
+# {{ name|length_is:"5" }} {# True/False #}
 {{ name|length_is:"5" }} {# True/False #}
 
+# {# 默认值 #}
 {# 默认值 #}
+# {{ user.nickname|default:"匿名用户" }}
 {{ user.nickname|default:"匿名用户" }}
 
+# {# 截断 #}
 {# 截断 #}
+# {{ post.content|truncatewords:30 }}  {# 截 30 个词 #}
 {{ post.content|truncatewords:30 }}  {# 截 30 个词 #}
+# {{ post.content|truncatechars:50 }}  {# 截 50 个字符 #
 {{ post.content|truncatechars:50 }}  {# 截 50 个字符 #}
 
+# {# 日期格式化 #}
 {# 日期格式化 #}
+# {{ post.created_at|date:"Y年m月d日 H:i" }}  {# 2024年0
 {{ post.created_at|date:"Y年m月d日 H:i" }}  {# 2024年06月15日 14:30 #}
 
+# {# 数字格式化 #}
 {# 数字格式化 #}
+# {{ price|floatformat:2 }}  {# 3.14159 → 3.14 #}
 {{ price|floatformat:2 }}  {# 3.14159 → 3.14 #}
 
+# {# 字符串 #}
 {# 字符串 #}
+# {{ name|slugify }}     {# "Hello World" → "hello-w
 {{ name|slugify }}     {# "Hello World" → "hello-world" #}
+# {{ content|striptags }} {# 去掉 HTML 标签 #}
 {{ content|striptags }} {# 去掉 HTML 标签 #}
 
+# {# 链式组合 #}
 {# 链式组合 #}
+# {{ post.content|striptags|truncatewords:30 }}
 {{ post.content|striptags|truncatewords:30 }}
 \`\`\`
 
@@ -1410,49 +1806,83 @@ Django 自带一套模板语言叫 **Django Template Language(DTL)**,语法类�
 模板继承是 DTL 最强大的特性。定义一个 \`base.html\` 作为骨架,子模板只填充需要变化的 \`{% block %}\`:
 
 \`\`\`html
+# <!-- templates/base.html -->
 <!-- templates/base.html -->
+# <!DOCTYPE html>
 <!DOCTYPE html>
+# <html>
 <html>
+# <head>
 <head>
+    # <title>{% block title %}我的博客{% endblock %}</title>
     <title>{% block title %}我的博客{% endblock %}</title>
+    # {% block extra_head %}{% endblock %}
     {% block extra_head %}{% endblock %}
+# </head>
 </head>
+# <body>
 <body>
+    # <nav>
     <nav>
+        # <a href="/">首页</a>
         <a href="/">首页</a>
+        # <a href="/about/">关于</a>
         <a href="/about/">关于</a>
+    # </nav>
     </nav>
 
+    # <main>
     <main>
+        # {% block content %}
         {% block content %}
+            # 默认内容
             默认内容
+        # {% endblock %}
         {% endblock %}
+    # </main>
     </main>
 
+    # <footer>© 2024 我的博客</footer>
     <footer>© 2024 我的博客</footer>
 
+    # {% block extra_js %}{% endblock %}
     {% block extra_js %}{% endblock %}
+# </body>
 </body>
+# </html>
 </html>
 \`\`\`
 
 子模板用 \`{% extends %}\` 继承,然后覆盖 block:
 
 \`\`\`html
+# <!-- templates/blog/post_list.html -->
 <!-- templates/blog/post_list.html -->
+# {% extends "base.html" %}
 {% extends "base.html" %}
 
+# {% block title %}文章列表 - {{ block.super }}{% endblo
 {% block title %}文章列表 - {{ block.super }}{% endblock %}
 
+# {% block content %}
 {% block content %}
+    # <h1>文章列表</h1>
     <h1>文章列表</h1>
+    # <ul>
     <ul>
+    # {% for post in posts %}
     {% for post in posts %}
+        # <li>
         <li>
+            # <a href="{% url 'blog:post_detail' post.id %}">{{ 
             <a href="{% url 'blog:post_detail' post.id %}">{{ post.title }}</a>
+            # <small>{{ post.created_at|date:"Y-m-d" }}</small>
             <small>{{ post.created_at|date:"Y-m-d" }}</small>
+        # </li>
         </li>
+    # {% endfor %}
     {% endfor %}
+    # </ul>
     </ul>
 \`\`\`
 
@@ -1465,18 +1895,28 @@ Django 自带一套模板语言叫 **Django Template Language(DTL)**,语法类�
 把重复的小片段抽成独立模板,用 \`{% include %}\` 引入:
 
 \`\`\`html
+# <!-- templates/_post_card.html -->
 <!-- templates/_post_card.html -->
+# <div class="post-card">
 <div class="post-card">
+    # <h3>{{ post.title }}</h3>
     <h3>{{ post.title }}</h3>
+    # <p>{{ post.content|truncatewords:20 }}</p>
     <p>{{ post.content|truncatewords:20 }}</p>
+    # <small>{{ post.author.username }} · {{ post.create
     <small>{{ post.author.username }} · {{ post.created_at|date:"Y-m-d" }}</small>
+# </div>
 </div>
 \`\`\`
 
 \`\`\`html
+# <!-- 在其他模板里引入 -->
 <!-- 在其他模板里引入 -->
+# {% for post in posts %}
 {% for post in posts %}
+    # {% include "_post_card.html" with post=post %}
     {% include "_post_card.html" with post=post %}
+# {% endfor %}
 {% endfor %}
 \`\`\`
 
@@ -1487,17 +1927,28 @@ Django 自带一套模板语言叫 **Django Template Language(DTL)**,语法类�
 CSS/JS/图片等静态文件,用 \`{% static %}\` 标签引用:
 
 \`\`\`html
+# {% load static %}
 {% load static %}
 
+# <!DOCTYPE html>
 <!DOCTYPE html>
+# <html>
 <html>
+# <head>
 <head>
+    # <link rel="stylesheet" href="{% static 'css/style.
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    # <script src="{% static 'js/main.js' %}"></script>
     <script src="{% static 'js/main.js' %}"></script>
+# </head>
 </head>
+# <body>
 <body>
+    # <img src="{% static 'images/logo.png' %}" alt="Log
     <img src="{% static 'images/logo.png' %}" alt="Logo">
+# </body>
 </body>
+# </html>
 </html>
 \`\`\`
 
@@ -1510,16 +1961,25 @@ CSS/JS/图片等静态文件,用 \`{% static %}\` 标签引用:
 视图通过 \`render()\` 传 context 字典给模板:
 
 \`\`\`python
+# 从 django.shortcuts 导入 render
 from django.shortcuts import render
+# 从 .models 导入 Post
 from .models import Post
 
+# 定义函数 post_list，参数: request
 def post_list(request):
     # context 是字典,键是模板里的变量名
+    # 定义字典 context
     context = {
+        # "posts": Post.objects.all()[:10],
         "posts": Post.objects.all()[:10],
+        # "title": "最新文章",
         "title": "最新文章",
+        # "user": request.user,
         "user": request.user,
+    # }
     }
+    # 返回 render(request, "blog/post_list.html", context)
     return render(request, "blog/post_list.html", context)
 \`\`\`
 
@@ -1537,12 +1997,17 @@ context 之外,Django 还会自动注入「上下文处理器」提供的变量(
 
 \`\`\`python
 # render 的等价写法
+# 从 django.template.loader 导入 get_template
 from django.template.loader import get_template
+# 从 django.http 导入 HttpResponse
 from django.http import HttpResponse
 
+# 定义函数 post_list，参数: request
 def post_list(request):
+    # 定义变量 posts，赋值为 Post.objects.all()
     posts = Post.objects.all()
     template = get_template("blog/post_list.html")  # 1. 加载模板
+    # 定义变量 html，赋值为 template.render({"posts": posts}, request) # ...
     html = template.render({"posts": posts}, request) # 2. 渲染(传 context 和 request)
     return HttpResponse(html)                        # 3. 包装成响应
 \`\`\`
@@ -1569,163 +2034,295 @@ Django 也可配 Jinja2 作为模板引擎,但大部分项目用 DTL 就够了�
 ### base.html(共享骨架)
 
 \`\`\`html
+# {% load static %}
 {% load static %}
+# <!DOCTYPE html>
 <!DOCTYPE html>
+# <html lang="zh-CN">
 <html lang="zh-CN">
+# <head>
 <head>
+    # <meta charset="UTF-8">
     <meta charset="UTF-8">
+    # <meta name="viewport" content="width=device-width,
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    # <title>{% block title %}我的博客{% endblock %}</title>
     <title>{% block title %}我的博客{% endblock %}</title>
+    # <link rel="stylesheet" href="{% static 'css/style.
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+# </head>
 </head>
+# <body>
 <body>
+    # <nav class="navbar">
     <nav class="navbar">
+        # <a href="{% url 'blog:post_list' %}" class="logo">
         <a href="{% url 'blog:post_list' %}" class="logo">我的博客</a>
+        # <div class="nav-links">
         <div class="nav-links">
+            # {% if user.is_authenticated %}
             {% if user.is_authenticated %}
+                # <span>欢迎,{{ user.username }}</span>
                 <span>欢迎,{{ user.username }}</span>
+                # <a href="{% url 'logout' %}">退出</a>
                 <a href="{% url 'logout' %}">退出</a>
+            # {% else %}
             {% else %}
+                # <a href="{% url 'login' %}">登录</a>
                 <a href="{% url 'login' %}">登录</a>
+            # {% endif %}
             {% endif %}
+        # </div>
         </div>
+    # </nav>
     </nav>
 
+    # <main class="container">
     <main class="container">
+        # {% if messages %}
         {% if messages %}
+            # {% for message in messages %}
             {% for message in messages %}
+                # <div class="alert alert-{{ message.tags }}">{{ mes
                 <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            # {% endfor %}
             {% endfor %}
+        # {% endif %}
         {% endif %}
 
+        # {% block content %}{% endblock %}
         {% block content %}{% endblock %}
+    # </main>
     </main>
 
+    # <footer class="footer">
     <footer class="footer">
+        # <p>© {% now "Y" %} 我的博客 · 由 Django 驱动</p>
         <p>© {% now "Y" %} 我的博客 · 由 Django 驱动</p>
+    # </footer>
     </footer>
+# </body>
 </body>
+# </html>
 </html>
 \`\`\`
 
 ### post_list.html(列表页)
 
 \`\`\`html
+# {% extends "base.html" %}
 {% extends "base.html" %}
 
+# {% block title %}文章列表 - {{ block.super }}{% endblo
 {% block title %}文章列表 - {{ block.super }}{% endblock %}
 
+# {% block content %}
 {% block content %}
+    # <h1>文章列表</h1>
     <h1>文章列表</h1>
 
+    # {% if posts %}
     {% if posts %}
+        # <div class="post-list">
         <div class="post-list">
+        # {% for post in posts %}
         {% for post in posts %}
+            # <article class="post-item">
             <article class="post-item">
+                # <h2>
                 <h2>
+                    # <a href="{% url 'blog:post_detail' post.id %}">{{ 
                     <a href="{% url 'blog:post_detail' post.id %}">{{ post.title }}</a>
+                # </h2>
                 </h2>
+                # <div class="post-meta">
                 <div class="post-meta">
+                    # 字段 作者，类型: {{ post.author.username }}
                     作者:{{ post.author.username }}
+                    # · 发布于 {{ post.created_at|date:"Y年m月d日" }}
                     · 发布于 {{ post.created_at|date:"Y年m月d日" }}
+                    # · 评论 {{ post.comments.count }} 条
                     · 评论 {{ post.comments.count }} 条
+                # </div>
                 </div>
+                # <p class="post-excerpt">{{ post.content|truncatewo
                 <p class="post-excerpt">{{ post.content|truncatewords:30 }}</p>
 
+                # {% if post.tags.all %}
                 {% if post.tags.all %}
+                    # <div class="post-tags">
                     <div class="post-tags">
+                    # {% for tag in post.tags.all %}
                     {% for tag in post.tags.all %}
+                        # <a href="{% url 'blog:posts_by_tag' tag.slug %}" c
                         <a href="{% url 'blog:posts_by_tag' tag.slug %}" class="tag">#{{ tag.name }}</a>
+                    # {% endfor %}
                     {% endfor %}
+                    # </div>
                     </div>
+                # {% endif %}
                 {% endif %}
+            # </article>
             </article>
+        # {% endfor %}
         {% endfor %}
+        # </div>
         </div>
 
+        # {# 分页 #}
         {# 分页 #}
+        # {% if page_obj.has_other_pages %}
         {% if page_obj.has_other_pages %}
+            # <nav class="pagination">
             <nav class="pagination">
+                # {% if page_obj.has_previous %}
                 {% if page_obj.has_previous %}
+                    # <a href="?page={{ page_obj.previous_page_number }}
                     <a href="?page={{ page_obj.previous_page_number }}">上一页</a>
+                # {% endif %}
                 {% endif %}
+                # <span>第 {{ page_obj.number }} / {{ page_obj.pagina
                 <span>第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页</span>
+                # {% if page_obj.has_next %}
                 {% if page_obj.has_next %}
+                    # <a href="?page={{ page_obj.next_page_number }}">下一
                     <a href="?page={{ page_obj.next_page_number }}">下一页</a>
+                # {% endif %}
                 {% endif %}
+            # </nav>
             </nav>
+        # {% endif %}
         {% endif %}
 
+    # {% else %}
     {% else %}
+        # <p class="empty">暂无文章,敬请期待。</p>
         <p class="empty">暂无文章,敬请期待。</p>
+    # {% endif %}
     {% endif %}
+# {% endblock %}
 {% endblock %}
 \`\`\`
 
 ### post_detail.html(详情页)
 
 \`\`\`html
+# {% extends "base.html" %}
 {% extends "base.html" %}
 
+# {% block title %}{{ post.title }} - {{ block.super
 {% block title %}{{ post.title }} - {{ block.super }}{% endblock %}
 
+# {% block content %}
 {% block content %}
+    # <article class="post-detail">
     <article class="post-detail">
+        # <h1>{{ post.title }}</h1>
         <h1>{{ post.title }}</h1>
+        # <div class="post-meta">
         <div class="post-meta">
+            # 字段 作者，类型: {{ post.author.get_full_name|default:post.author.username }}
             作者:{{ post.author.get_full_name|default:post.author.username }}
+            # · {{ post.created_at|date:"Y年m月d日 H:i" }}
             · {{ post.created_at|date:"Y年m月d日 H:i" }}
+            # · 阅读 {{ post.views }} 次
             · 阅读 {{ post.views }} 次
+        # </div>
         </div>
 
+        # <div class="post-content">
         <div class="post-content">
+            # {{ post.content|linebreaks }}
             {{ post.content|linebreaks }}
+        # </div>
         </div>
 
+        # {% if post.tags.all %}
         {% if post.tags.all %}
+            # <div class="post-tags">
             <div class="post-tags">
+                # 标签:
                 标签:
+                # {% for tag in post.tags.all %}
                 {% for tag in post.tags.all %}
+                    # <a href="{% url 'blog:posts_by_tag' tag.slug %}" c
                     <a href="{% url 'blog:posts_by_tag' tag.slug %}" class="tag">#{{ tag.name }}</a>
+                    # {% if not forloop.last %},{% endif %}
                     {% if not forloop.last %},{% endif %}
+                # {% endfor %}
                 {% endfor %}
+            # </div>
             </div>
+        # {% endif %}
         {% endif %}
 
+        # <div class="post-nav">
         <div class="post-nav">
+            # {% if prev_post %}
             {% if prev_post %}
+                # <a href="{% url 'blog:post_detail' prev_post.id %}
                 <a href="{% url 'blog:post_detail' prev_post.id %}">← {{ prev_post.title|truncatechars:20 }}</a>
+            # {% endif %}
             {% endif %}
+            # {% if next_post %}
             {% if next_post %}
+                # <a href="{% url 'blog:post_detail' next_post.id %}
                 <a href="{% url 'blog:post_detail' next_post.id %}">{{ next_post.title|truncatechars:20 }} →</a>
+            # {% endif %}
             {% endif %}
+        # </div>
         </div>
+    # </article>
     </article>
 
+    # {# 评论区 #}
     {# 评论区 #}
+    # <section class="comments">
     <section class="comments">
+        # <h2>评论 ({{ post.comments.count }})</h2>
         <h2>评论 ({{ post.comments.count }})</h2>
+        # {% for comment in post.comments.all %}
         {% for comment in post.comments.all %}
+            # <div class="comment">
             <div class="comment">
+                # <strong>{{ comment.author.username }}</strong>
                 <strong>{{ comment.author.username }}</strong>
+                # <small>{{ comment.created_at|date:"Y-m-d H:i" }}</
                 <small>{{ comment.created_at|date:"Y-m-d H:i" }}</small>
+                # <p>{{ comment.content|linebreaks }}</p>
                 <p>{{ comment.content|linebreaks }}</p>
+            # </div>
             </div>
+        # {% empty %}
         {% empty %}
+            # <p>暂无评论,快来抢沙发!</p>
             <p>暂无评论,快来抢沙发!</p>
+        # {% endfor %}
         {% endfor %}
 
+        # {# 评论表单 #}
         {# 评论表单 #}
+        # {% if user.is_authenticated %}
         {% if user.is_authenticated %}
+            # <form method="post" action="{% url 'blog:post_deta
             <form method="post" action="{% url 'blog:post_detail' post.id %}">
+                # {% csrf_token %}
                 {% csrf_token %}
+                # <textarea name="content" placeholder="写下你的评论..." r
                 <textarea name="content" placeholder="写下你的评论..." required></textarea>
+                # <button type="submit">发表评论</button>
                 <button type="submit">发表评论</button>
+            # </form>
             </form>
+        # {% else %}
         {% else %}
+            # <p><a href="{% url 'login' %}">登录</a>后才能评论</p>
             <p><a href="{% url 'login' %}">登录</a>后才能评论</p>
+        # {% endif %}
         {% endif %}
+    # </section>
     </section>
+# {% endblock %}
 {% endblock %}
 \`\`\`
 

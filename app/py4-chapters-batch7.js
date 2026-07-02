@@ -836,9 +836,9 @@ __all__ = ["hello", "version"]   # 只暴露这两个，其余即使是 public �
 **绝对导入**：从顶层包名开始，写完整路径。
 
 \`\`\`python
-from mypkg.utils import hello
-from mypkg.sub.helper import greet
-import mypkg.config as cfg
+from mypkg.utils import hello        # 从 mypkg.utils 子模块导入 hello 函数（精确导入）
+from mypkg.sub.helper import greet   # 从更深层子模块 mypkg.sub.helper 导入 greet 函数
+import mypkg.config as cfg           # 导入整个 config 模块并用 as 起别名 cfg
 \`\`\`
 
 优点：

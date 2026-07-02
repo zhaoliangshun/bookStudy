@@ -47,8 +47,8 @@ export const chapters = [
 - **redact**：自动脱敏敏感字段
 
 \`\`\`javascript
-const pino = require("pino");
-const logger = pino({
+const pino = require("pino");  // 导入模块 pino；require 返回 module.exports
+const logger = pino({  // 定义常量 logger
   level: "info",
   redact: ["password", "apiKey", "*.token"],
   formatters: {
@@ -57,7 +57,7 @@ const logger = pino({
 });
 
 // 子 logger 自动带上下文
-const reqLogger = logger.child({ request_id: "abc123", user_id: 42 });
+const reqLogger = logger.child({ request_id: "abc123", user_id: 42 });  // 定义常量 reqLogger
 reqLogger.info({ path: "/login" }, "user login");
 // {"level":"info","time":1700000000000,"request_id":"abc123","user_id":42,"path":"/login","msg":"user login"}
 \`\`\`
@@ -81,7 +81,7 @@ reqLogger.info({ path: "/login" }, "user login");
 #### 4. 开发环境美化
 
 \`\`\`javascript
-const logger = pino({
+const logger = pino({  // 定义常量 logger
   transport: {
     target: "pino-pretty",
     options: { colorize: true, translateTime: "SYS:standard" }
@@ -94,15 +94,15 @@ const logger = pino({
 #### 1. 每条日志带 request_id
 
 \`\`\`javascript
-app.use((req, res, next) => {
+app.use((req, res, next) => {  // 注册 Express 中间件（每个请求依次经过）
   req.id = crypto.randomUUID();
   req.log = logger.child({ request_id: req.id });
-  next();
+  next();  // 调用下一个中间件（不放行则请求被挂起）
 });
 
-app.get("/users", async (req, res) => {
+app.get("/users", async (req, res) => {  // 注册 GET 路由处理
   req.log.info("查询用户列表");
-  const users = await db.getUsers();
+  const users = await db.getUsers();  // 定义常量 users
   req.log.info({ count: users.length }, "查询完成");
 });
 \`\`\`
@@ -135,8 +135,8 @@ logger.info({ size: hugeData.length, status: "ok" }, "收到响应");
 #### 4. 错误日志带 stack
 
 \`\`\`javascript
-try {
-  await risky();
+try {  // 开启 try 块捕获异常
+  await risky();  // 等待 Promise 完成后再继续
 } catch (err) {
   logger.error({ err, stack: err.stack }, "操作失败");
 }
@@ -154,20 +154,20 @@ try {
 | **Summary** | 分位数 | p50/p95/p99 延迟 |
 
 \`\`\`javascript
-const { Counter, Gauge, Histogram, collectDefaultMetrics } = require("prom-client");
+const { Counter, Gauge, Histogram, collectDefaultMetrics } = require("prom-client");  // 导入模块 prom-client；require 返回 module.exports
 
-const httpRequests = new Counter({
+const httpRequests = new Counter({  // 创建实例 httpRequests
   name: "http_requests_total",
   help: "HTTP 请求总数",
   labelNames: ["method", "path", "status"]
 });
 
-const activeConnections = new Gauge({
+const activeConnections = new Gauge({  // 创建实例 activeConnections
   name: "active_connections",
   help: "当前活跃连接数"
 });
 
-const requestDuration = new Histogram({
+const requestDuration = new Histogram({  // 创建实例 requestDuration
   name: "http_request_duration_seconds",
   help: "HTTP 请求延迟",
   labelNames: ["method", "path"],
@@ -184,24 +184,24 @@ collectDefaultMetrics();  // 自动收集 Node.js 指标
 - **D**uration：请求延迟
 
 \`\`\`javascript
-app.use((req, res, next) => {
-  const start = Date.now();
+app.use((req, res, next) => {  // 注册 Express 中间件（每个请求依次经过）
+  const start = Date.now();  // 定义常量 start
   res.on("finish", () => {
-    const duration = (Date.now() - start) / 1000;
-    const labels = { method: req.method, path: req.path, status: res.statusCode };
+    const duration = (Date.now() - start) / 1000;  // 定义常量 duration
+    const labels = { method: req.method, path: req.path, status: res.statusCode };  // 定义对象 labels
     httpRequests.inc(labels);
     requestDuration.observe(labels, duration);
   });
-  next();
+  next();  // 调用下一个中间件（不放行则请求被挂起）
 });
 \`\`\`
 
 #### 3. /metrics 端点
 
 \`\`\`javascript
-app.get("/metrics", async (req, res) => {
+app.get("/metrics", async (req, res) => {  // 注册 GET 路由处理
   res.set("Content-Type", register.contentType);
-  res.end(await register.metrics());
+  res.end(await register.metrics());  // 结束响应并发送数据
 });
 \`\`\`
 
@@ -224,10 +224,10 @@ app.get("/metrics", async (req, res) => {
 #### 2. 自动埋点
 
 \`\`\`javascript
-const { NodeSDK } = require("@opentelemetry/sdk-node");
-const { getNodeAutoInstrumentations } = require("@opentelemetry/auto-instrumentations-node");
+const { NodeSDK } = require("@opentelemetry/sdk-node");  // 导入模块 @opentelemetry/sdk-node；require 返回 module.exports
+const { getNodeAutoInstrumentations } = require("@opentelemetry/auto-instrumentations-node");  // 导入模块 @opentelemetry/auto-instrumentations-node；require 返回 module.exports
 
-const sdk = new NodeSDK({
+const sdk = new NodeSDK({  // 创建实例 sdk
   traceExporter: new OTLPTraceExporter(),
   instrumentations: [getNodeAutoInstrumentations()]
 });
@@ -239,18 +239,18 @@ sdk.start();
 #### 3. 手动埋点
 
 \`\`\`javascript
-const { trace } = require("@opentelemetry/api");
-const tracer = trace.getTracer("myapp");
+const { trace } = require("@opentelemetry/api");  // 导入模块 @opentelemetry/api；require 返回 module.exports
+const tracer = trace.getTracer("myapp");  // 定义常量 tracer
 
-app.get("/users/:id", async (req, res) => {
-  const span = tracer.startSpan("get_user");
-  try {
-    const user = await db.getUser(req.params.id);
+app.get("/users/:id", async (req, res) => {  // 注册 GET 路由处理
+  const span = tracer.startSpan("get_user");  // 定义常量 span
+  try {  // 开启 try 块捕获异常
+    const user = await db.getUser(req.params.id);  // 定义常量 user
     span.setAttribute("user.id", user.id);
-    res.json(user);
+    res.json(user);  // 发送 JSON 响应
   } catch (err) {
     span.recordException(err);
-    throw err;
+    throw err;  // 抛出异常
   } finally {
     span.end();
   }
@@ -260,17 +260,17 @@ app.get("/users/:id", async (req, res) => {
 ### 六、健康检查与就绪探针
 
 \`\`\`javascript
-app.get("/health", (req, res) => {
-  res.json({ status: "ok", uptime: process.uptime() });
+app.get("/health", (req, res) => {  // 注册 GET 路由处理
+  res.json({ status: "ok", uptime: process.uptime() });  // 发送 JSON 响应
 });
 
-app.get("/ready", async (req, res) => {
-  const checks = await Promise.allSettled([
+app.get("/ready", async (req, res) => {  // 注册 GET 路由处理
+  const checks = await Promise.allSettled([  // 定义常量 checks
     db.ping(),
     redis.ping()
   ]);
-  const ready = checks.every(c => c.status === "fulfilled");
-  res.status(ready ? 200 : 503).json({ ready, checks: checks.map(c => c.status) });
+  const ready = checks.every(c => c.status === "fulfilled");  // 定义常量 ready
+  res.status(ready ? 200 : 503).json({ ready, checks: checks.map(c => c.status) });  // 设置响应状态码
 });
 \`\`\`
 
@@ -551,7 +551,7 @@ console.log("  5. /health + /ready 双端点");`,
 
 \`\`\`javascript
 // 用 fetch + 重试 + 超时 + 熔断
-async function callUserService(userId) {
+async function callUserService(userId) {  // 声明异步函数，内部可用 await
   return fetchWithRetry("http://user-service/users/" + userId, {
     method: "GET",
     headers: { "Content-Type": "application/json" }
@@ -592,18 +592,18 @@ message User { int32 id = 1; string name = 2; string email = 3; }
 #### 3. Node.js gRPC 服务端
 
 \`\`\`javascript
-const grpc = require("@grpc/grpc-js");
-const protoLoader = require("@grpc/proto-loader");
-const packageDef = protoLoader.loadSync("user.proto");
-const proto = grpc.loadPackageDefinition(packageDef);
+const grpc = require("@grpc/grpc-js");  // 导入模块 @grpc/grpc-js；require 返回 module.exports
+const protoLoader = require("@grpc/proto-loader");  // 导入模块 @grpc/proto-loader；require 返回 module.exports
+const packageDef = protoLoader.loadSync("user.proto");  // 定义常量 packageDef
+const proto = grpc.loadPackageDefinition(packageDef);  // 定义常量 proto
 
-const server = new grpc.Server();
+const server = new grpc.Server();  // 创建实例 server
 server.addService(proto.myapp.UserService.service, {
   getUser: (call, callback) => {
     callback(null, { id: call.request.id, name: "Alice", email: "a@b.com" });
   },
   listUsers: (call) => {
-    for (const u of users) call.write(u);
+    for (const u of users) call.write(u);  // for 循环
     call.end();
   }
 });
@@ -621,14 +621,14 @@ server.bindAsync("0.0.0.0:50051", grpc.ServerCredentials.createInsecure());
 #### 1. RabbitMQ：传统消息队列
 
 \`\`\`javascript
-const amqp = require("amqplib");
+const amqp = require("amqplib");  // 导入模块 amqplib；require 返回 module.exports
 const conn = await amqp.connect("amqp://localhost");
-const ch = await conn.createChannel();
-await ch.assertQueue("tasks", { durable: true });
+const ch = await conn.createChannel();  // 定义常量 ch
+await ch.assertQueue("tasks", { durable: true });  // 等待 Promise 完成后再继续
 ch.sendToQueue("tasks", Buffer.from("task data"), { persistent: true });
 
-await ch.consume("tasks", (msg) => {
-  console.log("收到:", msg.content.toString());
+await ch.consume("tasks", (msg) => {  // 等待 Promise 完成后再继续
+  console.log("收到:", msg.content.toString());  // 打印日志到 stdout
   ch.ack(msg);
 });
 \`\`\`
@@ -641,22 +641,22 @@ await ch.consume("tasks", (msg) => {
 #### 2. Kafka：高吞吐日志流
 
 \`\`\`javascript
-const { Kafka } = require("kafkajs");
-const kafka = new Kafka({ brokers: ["localhost:9092"] });
+const { Kafka } = require("kafkajs");  // 导入模块 kafkajs；require 返回 module.exports
+const kafka = new Kafka({ brokers: ["localhost:9092"] });  // 创建实例 kafka
 
-const producer = kafka.producer();
-await producer.connect();
-await producer.send({
+const producer = kafka.producer();  // 定义常量 producer
+await producer.connect();  // 等待 Promise 完成后再继续
+await producer.send({  // 等待 Promise 完成后再继续
   topic: "orders",
   messages: [{ value: JSON.stringify({ id: 1, total: 99 }) }]
 });
 
-const consumer = kafka.consumer({ groupId: "order-processor" });
-await consumer.connect();
-await consumer.subscribe({ topic: "orders", fromBeginning: true });
-await consumer.run({
+const consumer = kafka.consumer({ groupId: "order-processor" });  // 定义常量 consumer
+await consumer.connect();  // 等待 Promise 完成后再继续
+await consumer.subscribe({ topic: "orders", fromBeginning: true });  // 等待 Promise 完成后再继续
+await consumer.run({  // 等待 Promise 完成后再继续
   eachMessage: async ({ message }) => {
-    console.log("处理:", message.value.toString());
+    console.log("处理:", message.value.toString());  // 打印日志到 stdout
   }
 });
 \`\`\`
@@ -674,12 +674,12 @@ await consumer.run({
 ### 五、事件驱动架构
 
 \`\`\`javascript
-const EventEmitter = require("events");
-class EventBus extends EventEmitter {}
-const bus = new EventBus();
+const EventEmitter = require("events");  // 导入模块 events；require 返回 module.exports
+class EventBus extends EventEmitter {}  // 定义类 EventBus
+const bus = new EventBus();  // 创建实例 bus
 
 // 订单服务发布事件
-class OrderService {
+class OrderService {  // 定义类 OrderService
   createOrder(data) {
     bus.emit("order.created", { id: 1, ...data });
   }
@@ -699,7 +699,7 @@ bus.on("order.created", (order) => notificationService.send(order));
 #### 1. 静态配置（简单场景）
 
 \`\`\`javascript
-const services = {
+const services = {  // 定义对象 services
   "user-service": "http://user-service:3001",
   "order-service": "http://order-service:3002"
 };
@@ -708,13 +708,13 @@ const services = {
 #### 2. Consul / etcd（动态）
 
 \`\`\`javascript
-const { Consul } = require("consul");
-const consul = new Consul();
+const { Consul } = require("consul");  // 导入模块 consul；require 返回 module.exports
+const consul = new Consul();  // 创建实例 consul
 consul.agent.service.register({
   name: "user-service", address: "10.0.0.5", port: 3000,
   check: { http: "http://10.0.0.5:3000/health", interval: "10s" }
 });
-const services = await consul.catalog.service.nodes("user-service");
+const services = await consul.catalog.service.nodes("user-service");  // 定义常量 services
 \`\`\`
 
 #### 3. K8s Service（推荐）
@@ -724,8 +724,8 @@ K8s 自动 DNS 解析：\`http://user-service\` 即可访问。
 ### 七、熔断器（Circuit Breaker）
 
 \`\`\`javascript
-class CircuitBreaker {
-  constructor(opts) {
+class CircuitBreaker {  // 定义类 CircuitBreaker
+  constructor(opts) {  // 构造函数
     this.failureThreshold = opts.failureThreshold || 5;
     this.resetTimeout = opts.resetTimeout || 30000;
     this.state = "CLOSED";  // CLOSED / OPEN / HALF_OPEN
@@ -733,23 +733,23 @@ class CircuitBreaker {
     this.nextAttempt = Date.now();
   }
   async exec(fn) {
-    if (this.state === "OPEN") {
-      if (Date.now() < this.nextAttempt) throw new Error("Circuit breaker OPEN");
+    if (this.state === "OPEN") {  // 条件判断
+      if (Date.now() < this.nextAttempt) throw new Error("Circuit breaker OPEN");  // 条件判断
       this.state = "HALF_OPEN";
     }
-    try {
-      const result = await fn();
+    try {  // 开启 try 块捕获异常
+      const result = await fn();  // 定义常量 result
       this.onSuccess();
-      return result;
+      return result;  // 返回值
     } catch (err) {
       this.onFailure();
-      throw err;
+      throw err;  // 抛出异常
     }
   }
   onSuccess() { this.failures = 0; this.state = "CLOSED"; }
   onFailure() {
     this.failures++;
-    if (this.failures >= this.failureThreshold) {
+    if (this.failures >= this.failureThreshold) {  // 条件判断
       this.state = "OPEN";
       this.nextAttempt = Date.now() + this.resetTimeout;
     }
@@ -765,9 +765,9 @@ class CircuitBreaker {
 ### 八、超时与重试组合
 
 \`\`\`javascript
-const breaker = new CircuitBreaker({ failureThreshold: 5 });
-async function callWithProtection(url) {
-  return breaker.exec(async () => fetchWithRetry(url, {}, 3));
+const breaker = new CircuitBreaker({ failureThreshold: 5 });  // 创建实例 breaker
+async function callWithProtection(url) {  // 声明异步函数，内部可用 await
+  return breaker.exec(async () => fetchWithRetry(url, {}, 3));  // 返回值
 }
 \`\`\`
 
@@ -782,11 +782,11 @@ async function callWithProtection(url) {
 
 \`\`\`javascript
 // 用唯一 ID + 状态机
-async function processPayment(paymentId) {
-  const existing = await db.getPayment(paymentId);
-  if (existing.status === "completed") return existing;
-  await db.updateStatus(paymentId, "processing");
-  await db.updateStatus(paymentId, "completed");
+async function processPayment(paymentId) {  // 声明异步函数，内部可用 await
+  const existing = await db.getPayment(paymentId);  // 定义常量 existing
+  if (existing.status === "completed") return existing;  // 条件判断
+  await db.updateStatus(paymentId, "processing");  // 等待 Promise 完成后再继续
+  await db.updateStatus(paymentId, "completed");  // 等待 Promise 完成后再继续
 }
 \`\`\`
 
@@ -1064,21 +1064,21 @@ Web 安全是**木桶效应**——最弱的一块决定整体。本章讲透 **
 
 \`\`\`javascript
 // ❌ 危险：直接拼接 HTML
-res.send("<h1>" + req.query.name + "</h1>");
+res.send("<h1>" + req.query.name + "</h1>");  // 发送响应并结束
 
 // ✅ 转义
-function escapeHtml(str) {
-  return String(str)
+function escapeHtml(str) {  // 声明函数 escapeHtml
+  return String(str)  // 返回值
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
 }
-res.send("<h1>" + escapeHtml(req.query.name) + "</h1>");
+res.send("<h1>" + escapeHtml(req.query.name) + "</h1>");  // 发送响应并结束
 \`\`\`
 
 #### 3. Content Security Policy（CSP）
 
 \`\`\`javascript
-app.use(helmet.contentSecurityPolicy({
+app.use(helmet.contentSecurityPolicy({  // 注册 Express 中间件（每个请求依次经过）
   directives: {
     defaultSrc: ["'self'"],
     scriptSrc: ["'self'", "https://cdn.example.com"]
@@ -1093,12 +1093,12 @@ CSP 阻止加载非白名单的脚本，从源头防 XSS。
 #### 防御：CSRF Token + SameSite Cookie
 
 \`\`\`javascript
-const csrf = require("csurf");
-app.use(csrf({ cookie: true }));
+const csrf = require("csurf");  // 导入模块 csurf；require 返回 module.exports
+app.use(csrf({ cookie: true }));  // 注册 Express 中间件（每个请求依次经过）
 // 前端表单带 token: <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
 // SameSite Cookie
-res.cookie("session", token, {
+res.cookie("session", token, {  // 设置 Cookie
   sameSite: "strict",
   secure: true,
   httpOnly: true
@@ -1109,7 +1109,7 @@ res.cookie("session", token, {
 
 \`\`\`javascript
 // ❌ 危险：字符串拼接
-const sql = "SELECT * FROM users WHERE name = '" + req.body.name + "'";
+const sql = "SELECT * FROM users WHERE name = '" + req.body.name + "'";  // 定义常量 sql
 // 输入: ' OR '1'='1
 // SQL: SELECT * FROM users WHERE name = '' OR '1'='1  → 全表
 
@@ -1126,23 +1126,23 @@ db.query("SELECT * FROM users WHERE name = ?", [req.body.name]);
 const response = await fetch(req.query.url);  // 可能访问 http://169.254.169.254
 
 // ✅ 校验 + 白名单
-async function safeFetch(url) {
-  const parsed = new URL(url);
-  if (parsed.protocol !== "https:") throw new Error("仅允许 HTTPS");
-  const blocked = ["127.0.0.1", "169.254.169.254", "10.", "192.168.", "172.16."];
-  const ips = await dns.lookup(parsed.hostname, { all: true });
-  for (const { address } of ips) {
-    if (blocked.some(b => address.startsWith(b))) throw new Error("禁止访问内网");
+async function safeFetch(url) {  // 声明异步函数，内部可用 await
+  const parsed = new URL(url);  // 创建实例 parsed
+  if (parsed.protocol !== "https:") throw new Error("仅允许 HTTPS");  // 条件判断
+  const blocked = ["127.0.0.1", "169.254.169.254", "10.", "192.168.", "172.16."];  // 定义数组 blocked
+  const ips = await dns.lookup(parsed.hostname, { all: true });  // 定义常量 ips
+  for (const { address } of ips) {  // for 循环
+    if (blocked.some(b => address.startsWith(b))) throw new Error("禁止访问内网");  // 条件判断
   }
-  return fetch(url);
+  return fetch(url);  // 返回值
 }
 \`\`\`
 
 ### 六、Helmet：HTTP 安全头
 
 \`\`\`javascript
-const helmet = require("helmet");
-app.use(helmet());
+const helmet = require("helmet");  // 导入模块 helmet；require 返回 module.exports
+app.use(helmet());  // 注册 Express 中间件（每个请求依次经过）
 \`\`\`
 
 | 头 | 作用 |
@@ -1156,8 +1156,8 @@ app.use(helmet());
 ### 七、CORS：跨域资源共享
 
 \`\`\`javascript
-const cors = require("cors");
-app.use(cors({
+const cors = require("cors");  // 导入模块 cors；require 返回 module.exports
+app.use(cors({  // 注册 Express 中间件（每个请求依次经过）
   origin: ["https://app.example.com"],  // 白名单
   methods: ["GET", "POST"],
   credentials: true,
@@ -1165,7 +1165,7 @@ app.use(cors({
 }));
 
 // ❌ 危险：允许所有
-app.use(cors({ origin: "*" }));
+app.use(cors({ origin: "*" }));  // 注册 Express 中间件（每个请求依次经过）
 \`\`\`
 
 ### 八、JWT 安全
@@ -1184,7 +1184,7 @@ jwt.sign({ sub: userId, role: "admin" }, secret, {
   issuer: "myapp"
 });
 
-const payload = jwt.verify(token, secret, { algorithms: ["HS256"] });
+const payload = jwt.verify(token, secret, { algorithms: ["HS256"] });  // 定义常量 payload
 \`\`\`
 
 **Refresh Token 模式**：
@@ -1194,9 +1194,9 @@ const payload = jwt.verify(token, secret, { algorithms: ["HS256"] });
 ### 九、密码存储
 
 \`\`\`javascript
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcrypt");  // 导入模块 bcrypt；require 返回 module.exports
 const hash = await bcrypt.hash(password, 12);  // cost=12，约 250ms
-const ok = await bcrypt.compare(inputPassword, hash);
+const ok = await bcrypt.compare(inputPassword, hash);  // 定义常量 ok
 \`\`\`
 
 **为什么不用 MD5/SHA256**：速度太快，彩虹表能秒破。bcrypt 故意"慢"，让暴力破解成本极高。
@@ -1214,11 +1214,11 @@ npx snyk test       # 更严格
 ### 十一、Rate Limiting
 
 \`\`\`javascript
-const rateLimit = require("express-rate-limit");
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
+const rateLimit = require("express-rate-limit");  // 导入模块 express-rate-limit；require 返回 module.exports
+app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));  // 注册 Express 中间件（每个请求依次经过）
 
 // 登录接口更严格
-app.post("/login", rateLimit({ windowMs: 15 * 60 * 1000, max: 5 }), loginHandler);
+app.post("/login", rateLimit({ windowMs: 15 * 60 * 1000, max: 5 }), loginHandler);  // 注册 POST 路由处理
 \`\`\`
 
 ### 十二、安全检查清单
@@ -1453,7 +1453,7 @@ console.log("  5. npm audit + snyk 查依赖漏洞");`,
 JavaScript 的 \`Date\` 内部存的是**自 1970-01-01 UTC 以来的毫秒数**，没有时区信息：
 
 \`\`\`javascript
-const d = new Date();
+const d = new Date();  // 创建实例 d
 d.getTime();        // 1700000000000（毫秒数，UTC）
 d.toString();       // 本地时区字符串
 d.toISOString();    // UTC 字符串（推荐）
@@ -1489,13 +1489,13 @@ new Date("2024/01/01");              // 本地时区
 
 \`\`\`javascript
 // 存储（UTC）
-const now = new Date();
+const now = new Date();  // 创建实例 now
 db.save({ created_at: now.toISOString() });
 // "2024-01-15T02:30:00.000Z"
 
 // 展示（转用户时区）
-const utcTime = "2024-01-15T02:30:00.000Z";
-const beijingTime = new Date(utcTime).toLocaleString("zh-CN", {
+const utcTime = "2024-01-15T02:30:00.000Z";  // 定义常量 utcTime
+const beijingTime = new Date(utcTime).toLocaleString("zh-CN", {  // 创建实例 beijingTime
   timeZone: "Asia/Shanghai"
 });
 // "2024/1/15 10:30:00"
@@ -1509,7 +1509,7 @@ const beijingTime = new Date(utcTime).toLocaleString("zh-CN", {
 ### 四、Intl API：现代时区处理
 
 \`\`\`javascript
-const date = new Date("2024-01-15T02:30:00Z");
+const date = new Date("2024-01-15T02:30:00Z");  // 创建实例 date
 
 new Intl.DateTimeFormat("zh-CN", {
   timeZone: "Asia/Shanghai",
@@ -1550,14 +1550,14 @@ new Intl.DateTimeFormat("zh-CN", {
 #### 1. 原生 Date（不推荐）
 
 \`\`\`javascript
-const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);  // 创建实例 tomorrow
 // ❌ 坑：没考虑夏令时（25/23 小时）
 \`\`\`
 
 #### 2. 用 dayjs（推荐）
 
 \`\`\`javascript
-const dayjs = require("dayjs");
+const dayjs = require("dayjs");  // 导入模块 dayjs；require 返回 module.exports
 dayjs().add(7, "day").format();
 dayjs().subtract(2, "hour").format();
 dayjs("2024-01-15").diff(dayjs("2024-01-10"), "day");  // 5
@@ -1568,16 +1568,16 @@ dayjs("2024-01-15").diff(dayjs("2024-01-10"), "day");  // 5
 ### 八、相对时间
 
 \`\`\`javascript
-const rtf = new Intl.RelativeTimeFormat("zh-CN", { numeric: "auto" });
+const rtf = new Intl.RelativeTimeFormat("zh-CN", { numeric: "auto" });  // 创建实例 rtf
 rtf.format(-1, "day");   // "昨天"
 rtf.format(2, "hour");   // "2 小时后"
 
-function timeAgo(date) {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return seconds + " 秒前";
-  if (seconds < 3600) return Math.floor(seconds / 60) + " 分钟前";
-  if (seconds < 86400) return Math.floor(seconds / 3600) + " 小时前";
-  return Math.floor(seconds / 86400) + " 天前";
+function timeAgo(date) {  // 声明函数 timeAgo
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);  // 定义常量 seconds
+  if (seconds < 60) return seconds + " 秒前";  // 条件判断
+  if (seconds < 3600) return Math.floor(seconds / 60) + " 分钟前";  // 条件判断
+  if (seconds < 86400) return Math.floor(seconds / 3600) + " 小时前";  // 条件判断
+  return Math.floor(seconds / 86400) + " 天前";  // 返回值
 }
 \`\`\`
 
@@ -1844,7 +1844,7 @@ JavaScript 用的是 **NFA**，会回溯。这是性能问题的根源。
 #### 经典案例：\`(a+)+\`
 
 \`\`\`javascript
-const evil = /(a+)+b/;
+const evil = /(a+)+b/;  // 定义常量 evil
 evil.test("a".repeat(30));  // 1 秒
 evil.test("a".repeat(35));  // 30 秒
 evil.test("a".repeat(40));  // 卡死！
@@ -1868,10 +1868,10 @@ evil.test("a".repeat(40));  // 卡死！
 ### 三、检测灾难性回溯
 
 \`\`\`javascript
-function isEvil(regex, str) {
-  const start = Date.now();
+function isEvil(regex, str) {  // 声明函数 isEvil
+  const start = Date.now();  // 定义常量 start
   regex.test(str);
-  return Date.now() - start > 100;
+  return Date.now() - start > 100;  // 返回值
 }
 console.log(isEvil(/(a+)+b/, "a".repeat(30)));  // true
 \`\`\`
@@ -1940,11 +1940,11 @@ console.log(isEvil(/(a+)+b/, "a".repeat(30)));  // true
 
 \`\`\`javascript
 // ❌ 每次都编译
-function isEmail(s) { return /^\\S+@\\S+$/.test(s); }
+function isEmail(s) { return /^\\S+@\\S+$/.test(s); }  // 声明函数 isEmail
 
 // ✅ 预编译
-const EMAIL_RE = /^\\S+@\\S+$/;
-function isEmail(s) { return EMAIL_RE.test(s); }
+const EMAIL_RE = /^\\S+@\\S+$/;  // 定义常量 EMAIL_RE
+function isEmail(s) { return EMAIL_RE.test(s); }  // 声明函数 isEmail
 \`\`\`
 
 ### 五、复杂正则的替代方案
@@ -1980,7 +1980,7 @@ str.endsWith("foo");
 ### 七、性能对比
 
 \`\`\`javascript
-const str = "Hello, World!";
+const str = "Hello, World!";  // 定义常量 str
 
 // 性能从快到慢
 str.includes("World");         // 最快（C++ 实现）
@@ -2009,8 +2009,8 @@ str.match(/World/);             // 最慢
 #### 2. 命名捕获组（ES2018）
 
 \`\`\`javascript
-const re = /(?<year>\\d{4})-(?<month>\\d{2})-(?<day>\\d{2})/;
-const m = "2024-01-15".match(re);
+const re = /(?<year>\\d{4})-(?<month>\\d{2})-(?<day>\\d{2})/;  // 定义常量 re
+const m = "2024-01-15".match(re);  // 定义常量 m
 console.log(m.groups);  // { year: '2024', month: '01', day: '15' }
 \`\`\`
 
@@ -2250,7 +2250,7 @@ console.log("  5. 简单匹配用 includes/indexOf");`,
 #### 1. 重启丢失
 
 \`\`\`javascript
-setInterval(() => sendDailyReport(), 24 * 60 * 60 * 1000);
+setInterval(() => sendDailyReport(), 24 * 60 * 60 * 1000);  // 周期回调
 // 进程重启后任务消失！
 \`\`\`
 
@@ -2258,26 +2258,26 @@ setInterval(() => sendDailyReport(), 24 * 60 * 60 * 1000);
 
 \`\`\`javascript
 // ❌ setInterval 不准
-setInterval(task, 1000);
+setInterval(task, 1000);  // 周期回调
 // 如果 task 耗时 1.5s，实际间隔变成 2.5s
 \`\`\`
 
 #### 3. 重叠执行
 
 \`\`\`javascript
-let running = false;
-setInterval(async () => {
-  if (running) return;
+let running = false;  // 定义变量 running（可变）
+setInterval(async () => {  // 周期回调
+  if (running) return;  // 条件判断
   running = true;
-  try { await longTask(); }
-  finally { running = false; }
+  try { await longTask(); }  // 开启 try 块捕获异常
+  finally { running = false; }  // 无论是否异常都执行
 }, 60000);
 \`\`\`
 
 ### 三、node-cron 实战
 
 \`\`\`javascript
-const cron = require("node-cron");
+const cron = require("node-cron");  // 导入模块 node-cron；require 返回 module.exports
 
 cron.schedule("0 3 * * *", () => generateReport());  // 每天凌晨 3 点
 cron.schedule("*/5 * * * *", () => checkHealth());    // 每 5 分钟
@@ -2315,12 +2315,12 @@ K8s 部署 3 个 Pod，每个 Pod 都跑 \`node-cron\`，结果每天 3 点执�
 #### 解决方案 1：分布式锁
 
 \`\`\`javascript
-const redis = new Redis();
+const redis = new Redis();  // 创建实例 redis
 cron.schedule("0 3 * * *", async () => {
-  const acquired = await redis.set("lock:daily-report", "1", "EX", 3600, "NX");
-  if (!acquired) return;
-  try { await generateReport(); }
-  finally { await redis.del("lock:daily-report"); }
+  const acquired = await redis.set("lock:daily-report", "1", "EX", 3600, "NX");  // 定义常量 acquired
+  if (!acquired) return;  // 条件判断
+  try { await generateReport(); }  // 开启 try 块捕获异常
+  finally { await redis.del("lock:daily-report"); }  // 无论是否异常都执行
 });
 \`\`\`
 
@@ -2331,16 +2331,16 @@ cron.schedule("0 3 * * *", async () => {
 #### 解决方案 2：BullMQ
 
 \`\`\`javascript
-const { Queue, Worker } = require("bullmq");
-const queue = new Queue("reports", { connection: redis });
+const { Queue, Worker } = require("bullmq");  // 导入模块 bullmq；require 返回 module.exports
+const queue = new Queue("reports", { connection: redis });  // 创建实例 queue
 
 queue.add("daily-report", {}, {
   repeat: { pattern: "0 3 * * *" },
   removeOnComplete: true
 });
 
-const worker = new Worker("reports", async (job) => {
-  await generateReport();
+const worker = new Worker("reports", async (job) => {  // 创建实例 worker
+  await generateReport();  // 等待 Promise 完成后再继续
 }, { connection: redis });
 \`\`\`
 
@@ -2356,21 +2356,21 @@ const worker = new Worker("reports", async (job) => {
 \`node-cron\` 默认会**错过**这次任务。要补跑需自己实现：
 
 \`\`\`javascript
-const lastRunKey = "last-run:daily-report";
-async function runWithCatchup() {
-  const lastRun = await redis.get(lastRunKey);
-  const now = new Date();
-  if (lastRun) {
-    const missed = Math.floor((now - new Date(parseInt(lastRun))) / (24 * 60 * 60 * 1000));
-    if (missed > 0) {
-      for (let i = missed; i > 0; i--) {
-        const targetDate = new Date(now - i * 24 * 60 * 60 * 1000);
-        await generateReport(targetDate);
+const lastRunKey = "last-run:daily-report";  // 定义常量 lastRunKey
+async function runWithCatchup() {  // 声明异步函数，内部可用 await
+  const lastRun = await redis.get(lastRunKey);  // 定义常量 lastRun
+  const now = new Date();  // 创建实例 now
+  if (lastRun) {  // 条件判断
+    const missed = Math.floor((now - new Date(parseInt(lastRun))) / (24 * 60 * 60 * 1000));  // 定义常量 missed
+    if (missed > 0) {  // 条件判断
+      for (let i = missed; i > 0; i--) {  // for 循环
+        const targetDate = new Date(now - i * 24 * 60 * 60 * 1000);  // 创建实例 targetDate
+        await generateReport(targetDate);  // 等待 Promise 完成后再继续
       }
     }
   }
-  await generateReport(now);
-  await redis.set(lastRunKey, now.getTime());
+  await generateReport(now);  // 等待 Promise 完成后再继续
+  await redis.set(lastRunKey, now.getTime());  // 等待 Promise 完成后再继续
 }
 \`\`\`
 
@@ -2381,19 +2381,19 @@ async function runWithCatchup() {
 定时任务可能重复执行（重试、补跑），必须**幂等**：
 
 \`\`\`javascript
-async function generateReport(date) {
-  const reportId = "report:" + date.toISOString().slice(0, 10);
-  const existing = await db.getReport(reportId);
-  if (existing && existing.status === "completed") return existing;
+async function generateReport(date) {  // 声明异步函数，内部可用 await
+  const reportId = "report:" + date.toISOString().slice(0, 10);  // 定义常量 reportId
+  const existing = await db.getReport(reportId);  // 定义常量 existing
+  if (existing && existing.status === "completed") return existing;  // 条件判断
   
-  await db.upsertReport(reportId, { status: "processing" });
-  try {
-    const data = await collectData(date);
-    const pdf = await renderPdf(data);
-    await db.upsertReport(reportId, { status: "completed", pdf_url: pdf.url });
+  await db.upsertReport(reportId, { status: "processing" });  // 等待 Promise 完成后再继续
+  try {  // 开启 try 块捕获异常
+    const data = await collectData(date);  // 定义常量 data
+    const pdf = await renderPdf(data);  // 定义常量 pdf
+    await db.upsertReport(reportId, { status: "completed", pdf_url: pdf.url });  // 等待 Promise 完成后再继续
   } catch (err) {
-    await db.upsertReport(reportId, { status: "failed" });
-    throw err;
+    await db.upsertReport(reportId, { status: "failed" });  // 等待 Promise 完成后再继续
+    throw err;  // 抛出异常
   }
 }
 \`\`\`
@@ -2401,15 +2401,15 @@ async function generateReport(date) {
 ### 七、长任务的进度追踪
 
 \`\`\`javascript
-async function longJob(job) {
-  for (let i = 0; i < 1000; i++) {
-    await processItem(i);
-    await job.updateProgress((i / 1000) * 100);
+async function longJob(job) {  // 声明异步函数，内部可用 await
+  for (let i = 0; i < 1000; i++) {  // for 循环
+    await processItem(i);  // 等待 Promise 完成后再继续
+    await job.updateProgress((i / 1000) * 100);  // 等待 Promise 完成后再继续
   }
 }
 
-worker.on("progress", (job, progress) => {
-  console.log("任务", job.id, "进度:", progress + "%");
+worker.on("progress", (job, progress) => {  // 监听工作线程消息
+  console.log("任务", job.id, "进度:", progress + "%");  // 打印日志到 stdout
 });
 \`\`\`
 
@@ -2418,8 +2418,8 @@ worker.on("progress", (job, progress) => {
 #### FlowProducer（DAG）
 
 \`\`\`javascript
-const flow = new FlowProducer();
-await flow.add({
+const flow = new FlowProducer();  // 创建实例 flow
+await flow.add({  // 等待 Promise 完成后再继续
   name: "final", queueName: "pipeline",
   children: [
     {
@@ -2436,16 +2436,16 @@ await flow.add({
 ### 九、监控与告警
 
 \`\`\`javascript
-worker.on("completed", (job) => {
-  console.log("任务完成:", job.id, "耗时:", job.finishedOn - job.processedOn, "ms");
+worker.on("completed", (job) => {  // 监听工作线程消息
+  console.log("任务完成:", job.id, "耗时:", job.finishedOn - job.processedOn, "ms");  // 打印日志到 stdout
 });
 
-worker.on("failed", (job, err) => {
-  console.error("任务失败:", job.id, err.message);
+worker.on("failed", (job, err) => {  // 监听工作线程消息
+  console.error("任务失败:", job.id, err.message);  // 打印错误到 stderr
   alertOps.send({ job: job.name, error: err.message });
 });
 
-worker.on("stalled", (job) => console.warn("任务卡住:", job.id));
+worker.on("stalled", (job) => console.warn("任务卡住:", job.id));  // 监听工作线程消息
 \`\`\`
 
 ### 十、定时任务清单
@@ -2764,8 +2764,8 @@ src/
 
 \`\`\`javascript
 // shared/config.js
-const env = require("./env");
-module.exports = {
+const env = require("./env");  // 导入模块 ./env；require 返回 module.exports
+module.exports = {  // 设置模块导出对象（require 返回的就是它）
   port: env.PORT,
   db: { url: env.DB_URL, poolSize: 10 },
   redis: { url: env.REDIS_URL }
@@ -2775,9 +2775,9 @@ module.exports = {
 #### 3. 入口文件保持简洁
 
 \`\`\`javascript
-const app = require("./app");
-const config = require("./shared/config");
-app.listen(config.port, () => logger.info("Server started on " + config.port));
+const app = require("./app");  // 导入模块 ./app；require 返回 module.exports
+const config = require("./shared/config");  // 导入模块 ./shared/config；require 返回 module.exports
+app.listen(config.port, () => logger.info("Server started on " + config.port));  // 启动 HTTP 服务器监听端口
 \`\`\`
 
 ### 二、代码风格
@@ -2810,10 +2810,10 @@ app.listen(config.port, () => logger.info("Server started on " + config.port));
 getData().then(d => process(d)).then(r => save(r));
 
 // ✅ async/await
-async function handle() {
-  const data = await getData();
-  const result = process(data);
-  await save(result);
+async function handle() {  // 声明异步函数，内部可用 await
+  const data = await getData();  // 定义常量 data
+  const result = process(data);  // 定义常量 result
+  await save(result);  // 等待 Promise 完成后再继续
 }
 \`\`\`
 
@@ -2821,12 +2821,12 @@ async function handle() {
 
 \`\`\`javascript
 // ✅ 早返回
-async function handler(req, res) {
-  if (!req.user) return res.status(401).send("Unauthorized");
-  if (!req.user.isAdmin) return res.status(403).send("Forbidden");
-  const data = await getData();
-  if (!data) return res.status(404).send("Not found");
-  res.json(data);
+async function handler(req, res) {  // 声明异步函数，内部可用 await
+  if (!req.user) return res.status(401).send("Unauthorized");  // 条件判断
+  if (!req.user.isAdmin) return res.status(403).send("Forbidden");  // 条件判断
+  const data = await getData();  // 定义常量 data
+  if (!data) return res.status(404).send("Not found");  // 条件判断
+  res.json(data);  // 发送 JSON 响应
 }
 \`\`\`
 
@@ -2835,9 +2835,9 @@ async function handler(req, res) {
 #### 1. 统一错误中间件
 
 \`\`\`javascript
-app.use((err, req, res, next) => {
+app.use((err, req, res, next) => {  // 注册 Express 中间件（每个请求依次经过）
   logger.error({ err, request_id: req.id }, "请求失败");
-  if (err instanceof ValidationError) return res.status(400).json({ error: err.message });
+  if (err instanceof ValidationError) return res.status(400).json({ error: err.message });  // 条件判断
   res.status(500).json({ error: "Internal Server Error" });  // 不泄露细节
 });
 \`\`\`
@@ -2845,20 +2845,20 @@ app.use((err, req, res, next) => {
 #### 2. 自定义错误类
 
 \`\`\`javascript
-class AppError extends Error {
-  constructor(message, statusCode = 500) {
-    super(message);
+class AppError extends Error {  // 定义类 AppError
+  constructor(message, statusCode = 500) {  // 构造函数
+    super(message);  // 调用父类构造函数
     this.statusCode = statusCode;
     this.isOperational = true;  // 预期内错误
   }
 }
-class NotFoundError extends AppError {
-  constructor(resource) { super(resource + " not found", 404); }
+class NotFoundError extends AppError {  // 定义类 NotFoundError
+  constructor(resource) { super(resource + " not found", 404); }  // 构造函数
 }
-class ValidationError extends AppError {
-  constructor(message) { super(message, 400); }
+class ValidationError extends AppError {  // 定义类 ValidationError
+  constructor(message) { super(message, 400); }  // 构造函数
 }
-throw new NotFoundError("User");
+throw new NotFoundError("User");  // 抛出异常
 \`\`\`
 
 #### 3. 区分操作性错误和程序错误
@@ -2867,9 +2867,9 @@ throw new NotFoundError("User");
 - **程序错误**（Programmer）：变量未定义、逻辑错误 → 重启进程
 
 \`\`\`javascript
-process.on("unhandledRejection", (err) => {
+process.on("unhandledRejection", (err) => {  // 注册进程级事件监听
   logger.error({ err }, "未处理的 Promise rejection");
-  if (!err.isOperational) process.exit(1);
+  if (!err.isOperational) process.exit(1);  // 条件判断
 });
 \`\`\`
 
@@ -2879,33 +2879,33 @@ process.on("unhandledRejection", (err) => {
 
 \`\`\`javascript
 // ❌ OOM 风险
-const data = fs.readFileSync("10gb.log");
+const data = fs.readFileSync("10gb.log");  // 文件操作结果 data
 // ✅ 流式处理
-fs.createReadStream("10gb.log").pipe(transform).pipe(process.stdout);
+fs.createReadStream("10gb.log").pipe(transform).pipe(process.stdout);  // 创建可读流（分块读取大文件）
 \`\`\`
 
 #### 2. 用缓存减少 DB 查询
 
 \`\`\`javascript
-const cache = new Map();
-async function getUser(id) {
-  if (cache.has(id)) return cache.get(id);
-  const user = await db.getUser(id);
+const cache = new Map();  // 创建实例 cache
+async function getUser(id) {  // 声明异步函数，内部可用 await
+  if (cache.has(id)) return cache.get(id);  // 条件判断
+  const user = await db.getUser(id);  // 定义常量 user
   cache.set(id, user);
   setTimeout(() => cache.delete(id), 60000).unref(); // unref：不阻止进程退出
-  return user;
+  return user;  // 返回值
 }
 \`\`\`
 
 #### 3. 用 worker_threads 处理 CPU 密集
 
 \`\`\`javascript
-const { Worker } = require("worker_threads");
-function cpuHeavy(data) {
-  return new Promise((resolve, reject) => {
-    const worker = new Worker("./worker.js", { workerData: data });
-    worker.on("message", resolve);
-    worker.on("error", reject);
+const { Worker } = require("worker_threads");  // 导入模块 worker_threads；require 返回 module.exports
+function cpuHeavy(data) {  // 声明函数 cpuHeavy
+  return new Promise((resolve, reject) => {  // 返回 Promise 供外部 await
+    const worker = new Worker("./worker.js", { workerData: data });  // 创建实例 worker
+    worker.on("message", resolve);  // 监听工作线程消息
+    worker.on("error", reject);  // 监听工作线程消息
   });
 }
 \`\`\`
@@ -2913,12 +2913,12 @@ function cpuHeavy(data) {
 #### 4. 用 cluster 利用多核
 
 \`\`\`javascript
-const cluster = require("cluster");
-const os = require("os");
-if (cluster.isPrimary) {
-  for (let i = 0; i < os.cpus().length; i++) cluster.fork();
+const cluster = require("cluster");  // 导入模块 cluster；require 返回 module.exports
+const os = require("os");  // 导入模块 os；require 返回 module.exports
+if (cluster.isPrimary) {  // 条件判断
+  for (let i = 0; i < os.cpus().length; i++) cluster.fork();  // for 循环
 } else {
-  require("./app");
+  require("./app");  // 加载并执行模块 ./app（用于副作用）
 }
 \`\`\`
 
@@ -2956,17 +2956,17 @@ if (cluster.isPrimary) {
 // Jest 单元测试
 describe("UserService", () => {
   it("should get user", async () => {
-    const user = await getUser(1);
+    const user = await getUser(1);  // 定义常量 user
     expect(user.id).toBe(1);
   });
 });
 
 // Supertest 集成测试
-const request = require("supertest");
-const app = require("./app");
+const request = require("supertest");  // 导入模块 supertest；require 返回 module.exports
+const app = require("./app");  // 导入模块 ./app；require 返回 module.exports
 describe("GET /users", () => {
   it("returns 200", async () => {
-    const res = await request(app).get("/users");
+    const res = await request(app).get("/users");  // 定义常量 res
     expect(res.status).toBe(200);
   });
 });

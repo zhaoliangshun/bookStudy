@@ -51,7 +51,7 @@ export const chapters = [
 
 \`\`\`ts
 // 想法：定义路由配置，每个路由有自己的精确类型
-const routes = {
+const routes = {  // 声明常量 routes
   home: { path: "/home", auth: false },
   login: { path: "/login", auth: false },
   dashboard: { path: "/dashboard", auth: true },
@@ -64,9 +64,9 @@ const routes = {
 如果不加任何注解，TypeScript 会推导出 \`routes.home.auth\` 的类型是 \`boolean\`（拓宽了），失去了字面量精度。如果想强制约束每个路由的结构：
 
 \`\`\`ts
-type RouteConfig = Record<string, { path: string; auth: boolean }>;
+type RouteConfig = Record<string, { path: string; auth: boolean }>;  // 定义类型别名 RouteConfig
 
-const routes: RouteConfig = {
+const routes: RouteConfig = {  // 声明常量 routes，类型 RouteConfig
   home: { path: "/home", auth: false },
   // ...
 };
@@ -78,7 +78,7 @@ const routes: RouteConfig = {
 \`satisfies\` 让你鱼和熊掌兼得：
 
 \`\`\`ts
-const routes = {
+const routes = {  // 声明常量 routes
   home: { path: "/home", auth: false },
   login: { path: "/login", auth: false },
   dashboard: { path: "/dashboard", auth: true },
@@ -101,9 +101,9 @@ const routes = {
 #### 验证失败会报错
 
 \`\`\`ts
-type RouteConfig = Record<string, { path: string; auth: boolean }>;
+type RouteConfig = Record<string, { path: string; auth: boolean }>;  // 定义类型别名 RouteConfig
 
-const badRoutes = {
+const badRoutes = {  // 声明常量 badRoutes
   home: { path: "/home" }, // ❌ 缺少 auth 属性
 } satisfies RouteConfig;
 // 编译错误：Type '{ path: string; }' is not assignable to type '{ path: string; auth: boolean; }'
@@ -136,16 +136,16 @@ const y = "hello" as unknown as number; // ✅ 双重断言绕过，但运行时
 #### 对比示例
 
 \`\`\`ts
-type RouteConfig = Record<string, { path: string; auth: boolean }>;
+type RouteConfig = Record<string, { path: string; auth: boolean }>;  // 定义类型别名 RouteConfig
 
 // as：绕过检查
-const r1 = {
+const r1 = {  // 声明常量 r1
   home: { path: "/home" }, // 缺少 auth
-} as RouteConfig;
+} as RouteConfig;  // 注意：类型断言会绕过类型检查
 // ✅ 编译通过，但 r1.home.auth 是 undefined（运行时崩溃）
 
 // satisfies：真正检查
-const r2 = {
+const r2 = {  // 声明常量 r2
   home: { path: "/home" }, // 缺少 auth
 } satisfies RouteConfig;
 // ❌ 编译错误：缺少 auth 属性
@@ -158,25 +158,25 @@ const r2 = {
 显式类型注解 \`const x: T = ...\` 会**拓宽**值的类型到 T，丢失字面量精度。
 
 \`\`\`ts
-type Colors = "red" | "green" | "blue";
+type Colors = "red" | "green" | "blue";  // 定义类型别名 Colors
 
 // 注解：类型拓宽成 Colors（联合）
-const c1: Colors = "red";
+const c1: Colors = "red";  // 声明常量 c1，类型 Colors
 // c1 的类型是 Colors，不是 "red"
 // 后续 if (c1 === "red") 中 "red" 仍可用，但 c1 本身是宽类型
 
 // satisfies：保留字面量
-const c2 = "red" satisfies Colors;
+const c2 = "red" satisfies Colors;  // 声明常量 c2
 // c2 的类型是 "red"（字面量），同时验证了 "red" 属于 Colors
 \`\`\`
 
 #### 对象字面量的差异更明显
 
 \`\`\`ts
-type Config = Record<string, string | number>;
+type Config = Record<string, string | number>;  // 定义类型别名 Config，联合类型
 
 // 注解：所有值的类型都拓宽成 string | number
-const config1: Config = {
+const config1: Config = {  // 声明常量 config1，类型 Config
   host: "localhost",
   port: 3000,
 };
@@ -184,7 +184,7 @@ const config1: Config = {
 // config1.port 的类型是 string | number（不是 3000）
 
 // satisfies：保留字面量类型
-const config2 = {
+const config2 = {  // 声明常量 config2
   host: "localhost",
   port: 3000,
 } satisfies Config;
@@ -205,7 +205,7 @@ const config2 = {
 ### 实战场景 1：配置对象验证
 
 \`\`\`ts
-type ServerConfig = {
+type ServerConfig = {  // 定义类型别名 ServerConfig
   host: string;
   port: number;
   env: "development" | "production" | "test";
@@ -216,7 +216,7 @@ type ServerConfig = {
   };
 };
 
-const config = {
+const config = {  // 声明常量 config
   host: "localhost",
   port: 3000,
   env: "development",
@@ -228,30 +228,30 @@ const config = {
 } satisfies ServerConfig;
 
 // 后续代码能享受字面量精度
-if (config.env === "development") {
+if (config.env === "development") {  // 条件判断
   // TS 知道这里 config.env 是 "development"
-  console.log("开发模式");
+  console.log("开发模式");  // 控制台输出
 }
 \`\`\`
 
 ### 实战场景 2：路由表定义
 
 \`\`\`ts
-type RouteMap = Record<string, {
+type RouteMap = Record<string, {  // 定义类型别名 RouteMap
   path: string;
-  component: () => unknown;
-  guard?: (params: unknown) => boolean;
+  component: () => unknown;  // 箭头函数
+  guard?: (params: unknown) => boolean;  // 箭头函数
 }>;
 
-const routes = {
+const routes = {  // 声明常量 routes
   home: {
     path: "/",
-    component: () => "HomePage",
+    component: () => "HomePage",  // 箭头函数
   },
   profile: {
     path: "/profile",
-    component: () => "ProfilePage",
-    guard: (p) => !!p,
+    component: () => "ProfilePage",  // 箭头函数
+    guard: (p) => !!p,  // 箭头函数
   },
 } satisfies RouteMap;
 
@@ -262,10 +262,10 @@ const routes = {
 ### 实战场景 3：状态机转换表
 
 \`\`\`ts
-type States = "idle" | "loading" | "success" | "error";
-type Transitions = Record<States, States[]>;
+type States = "idle" | "loading" | "success" | "error";  // 定义类型别名 States
+type Transitions = Record<States, States[]>;  // 定义类型别名 Transitions
 
-const transitions = {
+const transitions = {  // 声明常量 transitions
   idle: ["loading"],
   loading: ["success", "error"],
   success: ["idle"],
@@ -278,19 +278,19 @@ const transitions = {
 ### 实战场景 4：API 响应校验
 
 \`\`\`ts
-type ApiResponse = {
+type ApiResponse = {  // 定义类型别名 ApiResponse
   status: "success" | "error";
   data?: unknown;
   error?: string;
 };
 
-const mockResponse = {
+const mockResponse = {  // 声明常量 mockResponse
   status: "success",
   data: { id: 1, name: "张三" },
 } satisfies ApiResponse;
 
 // mockResponse.status 是 "success"（字面量），可以做可辨识联合收窄
-if (mockResponse.status === "success") {
+if (mockResponse.status === "success") {  // 条件判断
   console.log(mockResponse.data); // 类型是 { id: number; name: string }
 }
 \`\`\`
@@ -300,12 +300,12 @@ if (mockResponse.status === "success") {
 \`as const\` 让对象的所有属性变成 \`readonly\` 且保留字面量类型，\`satisfies\` 验证约束。两者组合能同时获得"只读 + 字面量 + 约束验证"。
 
 \`\`\`ts
-type RouteConfig = Record<string, { path: string; auth: boolean }>;
+type RouteConfig = Record<string, { path: string; auth: boolean }>;  // 定义类型别名 RouteConfig
 
-const routes = {
+const routes = {  // 声明常量 routes
   home: { path: "/home", auth: false },
   dashboard: { path: "/dashboard", auth: true },
-} as const satisfies RouteConfig;
+} as const satisfies RouteConfig;  // 注意：类型断言会绕过类型检查
 
 // routes.home 的类型是 { readonly path: "/home"; readonly auth: false }
 // 既验证了约束，又保留了只读字面量
@@ -319,9 +319,9 @@ const routes = {
 索引签名（\`[key: string]: T\`）通常会拓宽值的类型，但配合 \`satisfies\` 可以保留精度。
 
 \`\`\`ts
-type StringNumberMap = { [key: string]: string | number };
+type StringNumberMap = { [key: string]: string | number };  // 定义类型别名 StringNumberMap，联合类型
 
-const map = {
+const map = {  // 声明常量 map
   a: "hello",
   b: 42,
   c: true, // ❌ boolean 不在 string | number 里
@@ -695,16 +695,16 @@ TS 5.0 抛弃了实验性装饰器（\`experimentalDecorators\`），转向支�
 
 \`\`\`ts
 // 标准装饰器示例
-function logMethod(target: any, context: ClassMethodDecoratorContext) {
-  return function (this: any, ...args: any[]) {
-    console.log("调用", context.name, "参数", args);
-    return target.apply(this, args);
+function logMethod(target: any, context: ClassMethodDecoratorContext) {  // 定义函数 logMethod，参数: target: any, context: ClassMethodDecoratorContext（注意：any 关闭了类型检查）
+  return function (this: any, ...args: any[]) {  // 返回 function (this: any, ...args: any[]) {（注意：any 关闭了类型检查）
+    console.log("调用", context.name, "参数", args);  // 控制台输出
+    return target.apply(this, args);  // 返回 target.apply(this, args)
   };
 }
 
-class Calculator {
-  @logMethod
-  add(a: number, b: number) { return a + b; }
+class Calculator {  // 定义类 Calculator
+  @logMethod  // 装饰器 logMethod
+  add(a: number, b: number) { return a + b; }  // 调用 add
 }
 \`\`\`
 
@@ -713,11 +713,11 @@ class Calculator {
 泛型类型参数现在可以加 \`const\` 修饰符，让推断结果保留字面量类型，无需调用方写 \`as const\`。
 
 \`\`\`ts
-function asTuple<const T extends readonly string[]>(arr: T): T {
-  return arr;
+function asTuple<const T extends readonly string[]>(arr: T): T {  // 定义函数 asTuple，泛型 const T extends readonly string[]，参数: arr: T，返回 T
+  return arr;  // 返回 arr
 }
 
-const t = asTuple(["a", "b", "c"]);
+const t = asTuple(["a", "b", "c"]);  // 声明常量 t
 // t 的类型是 readonly ["a", "b", "c"]（保留字面量）
 // 没有 const 修饰符的话，t 的类型会是 string[]
 \`\`\`
@@ -743,16 +743,16 @@ TS 5.0 引入了新的 \`--moduleResolution\` 选项：
 TS 5.1 完善了装饰器元数据支持，可以通过 \`context.metadata\` 访问和写入类的元数据。
 
 \`\`\`ts
-function route(path: string) {
-  return function (target: any, context: ClassMethodDecoratorContext) {
+function route(path: string) {  // 定义函数 route，参数: path: string
+  return function (target: any, context: ClassMethodDecoratorContext) {  // 返回 function (target: any, context: ClassMethodDecoratorContext) {（注意：any 关闭了类型检查）
     context.metadata.routes ||= {};
-    context.metadata.routes[context.name as string] = path;
+    context.metadata.routes[context.name as string] = path;  // 注意：类型断言会绕过类型检查
   };
 }
 
-class ApiController {
-  @route("/users")
-  getUsers() {}
+class ApiController {  // 定义类 ApiController
+  @route("/users")  // 装饰器 route
+  getUsers() {}  // 调用 getUsers
 }
 \`\`\`
 
@@ -765,16 +765,16 @@ TS 5.1 大幅优化了类型检查性能，特别是对大型 union 类型和复
 TS 5.2 实现了 TC39 Explicit Resource Management 提案，引入了 \`using\` 声明和 \`Symbol.dispose\` / \`Symbol.asyncDispose\`。
 
 \`\`\`ts
-class FileResource implements Disposable {
-  constructor(public name: string) {}
+class FileResource implements Disposable {  // 定义类 FileResource，implements Disposable
+  constructor(public name: string) {}  // 调用 constructor
   [Symbol.dispose]() {
-    console.log("关闭文件:", this.name);
+    console.log("关闭文件:", this.name);  // 控制台输出
   }
 }
 
 {
   using file = new FileResource("data.txt");
-  console.log("使用文件");
+  console.log("使用文件");  // 控制台输出
 } // 离开作用域时自动调用 file[Symbol.dispose]()
 \`\`\`
 
@@ -785,8 +785,8 @@ class FileResource implements Disposable {
 TS 5.3 支持了 \`import attributes\` 语法（\`with\` 关键字）：
 
 \`\`\`ts
-import data from "./data.json" with { type: "json" };
-import wasm from "./module.wasm" with { type: "webassembly" };
+import data from "./data.json" with { type: "json" };  // 导入 data
+import wasm from "./module.wasm" with { type: "webassembly" };  // 导入 wasm
 \`\`\`
 
 这是对旧的 \`assert\` 语法的替代（\`assert { type: "json" }\` 已废弃）。
@@ -798,8 +798,8 @@ import wasm from "./module.wasm" with { type: "webassembly" };
 \`NoInfer<T>\` 阻止 TS 从某个位置推断类型，常用于避免"推断出过宽的类型导致后续校验失效"。
 
 \`\`\`ts
-function createState<T>(initial: T, fallback: NoInfer<T>): T {
-  return initial ?? fallback;
+function createState<T>(initial: T, fallback: NoInfer<T>): T {  // 定义函数 createState，泛型 T，参数: initial: T, fallback: NoInfer<T>，返回 T
+  return initial ?? fallback;  // 返回 initial ?? fallback
 }
 
 createState("hello", "world"); // ✅ T 推断为 "hello"，fallback 必须匹配
@@ -811,13 +811,13 @@ createState("hello", "world"); // ✅ T 推断为 "hello"，fallback 必须匹�
 TS 5.4 为这两个新 API 提供了类型支持：
 
 \`\`\`ts
-const items = [
+const items = [  // 声明常量 items
   { kind: "fruit", name: "apple" },
   { kind: "fruit", name: "banana" },
   { kind: "veggie", name: "carrot" },
 ];
 
-const grouped = Object.groupBy(items, (item) => item.kind);
+const grouped = Object.groupBy(items, (item) => item.kind);  // 声明常量 grouped
 // grouped.fruit 是 [{ name: "apple" }, { name: "banana" }]
 \`\`\`
 
@@ -827,13 +827,13 @@ const grouped = Object.groupBy(items, (item) => item.kind);
 
 \`\`\`ts
 // 旧：需要手动写类型谓词
-const isString = (x: unknown): x is string => typeof x === "string";
+const isString = (x: unknown): x is string => typeof x === "string";  // 类型守卫：判断是否为 string
 
 // 新：TS 5.5 自动推断
-const isString = (x: unknown) => typeof x === "string";
+const isString = (x: unknown) => typeof x === "string";  // 类型守卫：判断是否为 string
 // TS 自动推断 isString 的返回类型为 (x: unknown) => x is string
 
-const arr: unknown[] = ["a", 1, "b"];
+const arr: unknown[] = ["a", 1, "b"];  // 声明常量 arr，类型 unknown[]
 const strs = arr.filter(isString); // strs: string[]
 \`\`\`
 
@@ -1218,8 +1218,8 @@ console.log("\\nTypeScript 5.x 新特性章节演示完成！");`,
 **T1 是 T2 的子类型**（记作 \`T1 <: T2\`）意味着：任何期望 \`T2\` 类型值的地方，都可以安全地使用 \`T1\` 类型的值。直观上，子类型"更具体"或"更窄"。
 
 \`\`\`ts
-interface Animal { name: string; }
-interface Dog extends Animal { breed: string; }
+interface Animal { name: string; }  // 定义接口 Animal
+interface Dog extends Animal { breed: string; }  // 定义接口 Dog，extends Animal
 
 // Dog <: Animal
 // 任何期望 Animal 的地方都能用 Dog
@@ -1237,10 +1237,10 @@ const a: Animal = { name: "旺财", breed: "柴犬" }; // ✅ Dog 可赋值给 A
 函数的返回类型是协变的——如果 \`Dog <: Animal\`，那么 \`() => Dog <: () => Animal\`。
 
 \`\`\`ts
-interface Animal { name: string; }
-interface Dog extends Animal { breed: string; }
+interface Animal { name: string; }  // 定义接口 Animal
+interface Dog extends Animal { breed: string; }  // 定义接口 Dog，extends Animal
 
-function makeDog(): Dog { return { name: "旺财", breed: "柴犬" }; }
+function makeDog(): Dog { return { name: "旺财", breed: "柴犬" }; }  // 定义函数 makeDog，返回 Dog
 const makeAnimal: () => Animal = makeDog; // ✅ 协变，合法
 \`\`\`
 
@@ -1251,7 +1251,7 @@ const makeAnimal: () => Animal = makeDog; // ✅ 协变，合法
 \`Dog[]\` 可以赋值给 \`Animal[]\`——这是协变。
 
 \`\`\`ts
-const dogs: Dog[] = [{ name: "旺财", breed: "柴犬" }];
+const dogs: Dog[] = [{ name: "旺财", breed: "柴犬" }];  // 声明常量 dogs，类型 Dog[]
 const animals: Animal[] = dogs; // ✅ 数组协变，合法
 \`\`\`
 
@@ -1270,7 +1270,7 @@ const animals: Animal[] = dogs; // ✅ 数组协变，合法
 注意方向反转：\`Animal\` 是更宽的类型，但接收 \`Animal\` 的函数却更"小"（更具体）。直观理解：**接收更宽类型参数的函数更通用，可以被用在期望更窄类型的地方**。
 
 \`\`\`ts
-function handleAnimal(a: Animal): void { console.log(a.name); }
+function handleAnimal(a: Animal): void { console.log(a.name); }  // 定义函数 handleAnimal，参数: a: Animal，返回 void
 const handleDog: (d: Dog) => void = handleAnimal; // ✅ 逆变，合法
 \`\`\`
 
@@ -1279,7 +1279,7 @@ const handleDog: (d: Dog) => void = handleAnimal; // ✅ 逆变，合法
 反过来不合法：
 
 \`\`\`ts
-function handleDog(d: Dog): void { console.log(d.breed); }
+function handleDog(d: Dog): void { console.log(d.breed); }  // 定义函数 handleDog，参数: d: Dog，返回 void
 const handleAnimal: (a: Animal) => void = handleDog; // ❌ 逆变检查失败
 // 原因：调用方可能传一个非 Dog 的 Animal（如 Cat），handleDog 访问 d.breed 会出错
 \`\`\`
@@ -1293,11 +1293,11 @@ const handleAnimal: (a: Animal) => void = handleDog; // ❌ 逆变检查失败
 #### 方法 vs 函数属性
 
 \`\`\`ts
-interface WithMethod {
+interface WithMethod {  // 定义接口 WithMethod
   handler(x: Animal): void; // 方法语法
 }
 
-interface WithFunctionProp {
+interface WithFunctionProp {  // 定义接口 WithFunctionProp
   handler: (x: Animal) => void; // 函数属性语法
 }
 \`\`\`
@@ -1315,18 +1315,18 @@ interface WithFunctionProp {
 
 \`\`\`ts
 // strictFunctionTypes: true
-interface Animal { name: string; }
-interface Dog extends Animal { breed: string; }
+interface Animal { name: string; }  // 定义接口 Animal
+interface Dog extends Animal { breed: string; }  // 定义接口 Dog，extends Animal
 
-function handleAnimal(a: Animal): void {}
+function handleAnimal(a: Animal): void {}  // 定义函数 handleAnimal，参数: a: Animal，返回 void
 const fn1: (d: Dog) => void = handleAnimal; // ✅ 逆变合法
 
-function handleDog(d: Dog): void { d.breed; }
+function handleDog(d: Dog): void { d.breed; }  // 定义函数 handleDog，参数: d: Dog，返回 void
 const fn2: (a: Animal) => void = handleDog; // ❌ 逆变检查失败
 
 // 但如果是方法语法，仍然合法（双变）
-interface WithMethod {
-  handle(d: Dog): void;
+interface WithMethod {  // 定义接口 WithMethod
+  handle(d: Dog): void;  // 方法声明 handle(d: Dog)，返回 void
 }
 const obj: WithMethod = { handle: handleAnimal }; // ✅ 方法双变
 \`\`\`
@@ -1338,7 +1338,7 @@ const obj: WithMethod = { handle: handleAnimal }; // ✅ 方法双变
 数组是协变的，但这其实是**类型不安全**的设计。
 
 \`\`\`ts
-const dogs: Dog[] = [{ name: "旺财", breed: "柴犬" }];
+const dogs: Dog[] = [{ name: "旺财", breed: "柴犬" }];  // 声明常量 dogs，类型 Dog[]
 const animals: Animal[] = dogs; // ✅ 协变合法
 
 // 陷阱：通过 animals 写入一个非 Dog 的 Animal
@@ -1349,7 +1349,7 @@ animals.push({ name: "小喵" } as Animal); // 运行时合法，但 dogs 数组
 TypeScript 允许这种不安全的协变，主要是为了与旧代码（如 \`Animal[] dogs = ...\` 的 Java 风格）兼容。更安全的做法是用**只读数组** \`readonly T[]\`——只读数组没有 \`push\`，避免了写入不安全的问题，但读取仍然是协变的。
 
 \`\`\`ts
-const dogs: readonly Dog[] = [{ name: "旺财", breed: "柴犬" }];
+const dogs: readonly Dog[] = [{ name: "旺财", breed: "柴犬" }];  // 声明常量 dogs，类型 readonly Dog[]
 const animals: readonly Animal[] = dogs; // ✅ 只读数组协变，无写入风险
 \`\`\`
 
@@ -1358,21 +1358,21 @@ const animals: readonly Animal[] = dogs; // ✅ 只读数组协变，无写入�
 这是一个容易混淆的点——同样的"函数"在接口里写成方法 vs 函数属性，类型检查行为不同。
 
 \`\`\`ts
-interface Animal { name: string; }
-interface Dog extends Animal { breed: string; }
-interface Cat extends Animal { meow: boolean; }
+interface Animal { name: string; }  // 定义接口 Animal
+interface Dog extends Animal { breed: string; }  // 定义接口 Dog，extends Animal
+interface Cat extends Animal { meow: boolean; }  // 定义接口 Cat，extends Animal
 
 // 方法语法：双变
-interface ListenerMethod {
-  on(event: Dog): void;
+interface ListenerMethod {  // 定义接口 ListenerMethod
+  on(event: Dog): void;  // 方法声明 on(event: Dog)，返回 void
 }
-const catListener: ListenerMethod = {
+const catListener: ListenerMethod = {  // 声明常量 catListener，类型 ListenerMethod
   on(event: Cat) { console.log(event.meow); }, // ✅ 双变，参数 Cat 替代 Dog
 };
 
 // 函数属性语法（strictFunctionTypes）：逆变
-interface ListenerFunction {
-  on: (event: Dog) => void;
+interface ListenerFunction {  // 定义接口 ListenerFunction
+  on: (event: Dog) => void;  // 箭头函数
 }
 // const bad: ListenerFunction = { on: (event: Cat) => {} }; // ❌ 逆变检查失败
 \`\`\`
@@ -1384,12 +1384,12 @@ interface ListenerFunction {
 #### 1. 事件处理器
 
 \`\`\`ts
-interface Event { type: string; }
-interface ClickEvent extends Event { x: number; y: number; }
+interface Event { type: string; }  // 定义接口 Event
+interface ClickEvent extends Event { x: number; y: number; }  // 定义接口 ClickEvent，extends Event
 
 // 期望接收 ClickEvent 的处理器
-function setupClick(handler: (e: ClickEvent) => void) {
-  document.addEventListener("click", handler as (e: Event) => void);
+function setupClick(handler: (e: ClickEvent) => void) {  // 定义函数 setupClick，参数: handler: (e: ClickEvent
+  document.addEventListener("click", handler as (e: Event) => void);  // 箭头函数（注意：类型断言会绕过类型检查）
 }
 \`\`\`
 
@@ -1399,7 +1399,7 @@ function setupClick(handler: (e: ClickEvent) => void) {
 
 \`\`\`ts
 // Promise.then 的回调
-const p: Promise<Dog> = ...;
+const p: Promise<Dog> = ...;  // 声明常量 p，类型 Promise<Dog>
 p.then((animal: Animal) => animal.name); // ✅ 协变，then 期望 (Dog) => U，传入 (Animal) => U 合法（逆变参数）
 \`\`\`
 
@@ -1408,8 +1408,8 @@ p.then((animal: Animal) => animal.name); // ✅ 协变，then 期望 (Dog) => U�
 #### 3. Promise 链
 
 \`\`\`ts
-async function getDog(): Promise<Dog> { return { name: "旺财", breed: "柴犬" }; }
-async function getAnimal(): Promise<Animal> {
+async function getDog(): Promise<Dog> { return { name: "旺财", breed: "柴犬" }; }  // 定义函数 getDog，返回 Promise<Dog>
+async function getAnimal(): Promise<Animal> {  // 定义函数 getAnimal，返回 Promise<Animal>
   return getDog(); // ✅ Promise 协变，Promise<Dog> 可赋值给 Promise<Animal>
 }
 \`\`\`
@@ -1738,7 +1738,7 @@ console.log("\\n协变、逆变与双变深入章节演示完成！");`,
 \`any\` 类型的语义是"任何类型都行，我也不管了"。它是**双向兼容**的——\`any\` 可以赋值给任何类型，任何类型也可以赋值给 \`any\`。一旦一个值被标记为 \`any\`，TypeScript 就**完全放弃对它的类型检查**。
 
 \`\`\`ts
-let x: any = 10;
+let x: any = 10;  // 声明变量 x，类型 any（注意：any 关闭了类型检查）
 x = "hello";      // ✅ 任何类型赋值给 any
 x = { foo: 1 };   // ✅
 
@@ -1753,7 +1753,7 @@ y.toUpperCase();   // ✅ 编译通过，但运行时崩溃（y 是对象）
 \`unknown\` 是 TS 3.0 引入的"安全顶部类型"。它也是任何类型都可以赋值给它，但**它不能直接使用**——必须先"收窄"（narrow）到一个具体类型后才能操作。
 
 \`\`\`ts
-let x: unknown = 10;
+let x: unknown = 10;  // 声明变量 x，类型 unknown
 x = "hello";      // ✅ 任何类型赋值给 unknown
 x = { foo: 1 };   // ✅
 
@@ -1761,7 +1761,7 @@ let y: number = x; // ❌ 编译错误：unknown 不能赋值给 number
 y.toUpperCase();   // ❌ 编译错误：unknown 上不能调用方法
 
 // 必须先收窄
-if (typeof x === "number") {
+if (typeof x === "number") {  // 类型守卫：判断是否为 number
   console.log(x + 1); // ✅ 这里 x 被收窄为 number
 }
 \`\`\`
@@ -1788,14 +1788,14 @@ if (typeof x === "number") {
 #### 1. typeof 收窄
 
 \`\`\`ts
-function process(v: unknown): string {
-  if (typeof v === "string") {
+function process(v: unknown): string {  // 定义函数 process，参数: v: unknown，返回 string
+  if (typeof v === "string") {  // 类型守卫：判断是否为 string
     return v.toUpperCase(); // ✅ v 收窄为 string
   }
-  if (typeof v === "number") {
+  if (typeof v === "number") {  // 类型守卫：判断是否为 number
     return v.toFixed(2); // ✅ v 收窄为 number
   }
-  return String(v);
+  return String(v);  // 返回 String(v)
 }
 \`\`\`
 
@@ -1804,11 +1804,11 @@ function process(v: unknown): string {
 #### 2. instanceof 收窄
 
 \`\`\`ts
-function handleError(e: unknown): string {
-  if (e instanceof Error) {
+function handleError(e: unknown): string {  // 定义函数 handleError，参数: e: unknown，返回 string
+  if (e instanceof Error) {  // 类型守卫：instanceof 判断实例类型
     return e.message; // ✅ e 收窄为 Error
   }
-  return String(e);
+  return String(e);  // 返回 String(e)
 }
 \`\`\`
 
@@ -1817,17 +1817,17 @@ function handleError(e: unknown): string {
 #### 3. in 操作符收窄
 
 \`\`\`ts
-interface Cat { meow: boolean; }
-interface Dog { bark: boolean; }
+interface Cat { meow: boolean; }  // 定义接口 Cat
+interface Dog { bark: boolean; }  // 定义接口 Dog
 
-function speak(pet: unknown): string {
-  if (typeof pet === "object" && pet !== null && "meow" in pet) {
+function speak(pet: unknown): string {  // 定义函数 speak，参数: pet: unknown，返回 string
+  if (typeof pet === "object" && pet !== null && "meow" in pet) {  // 条件判断
     return "喵"; // pet 收窄为 Cat
   }
-  if (typeof pet === "object" && pet !== null && "bark" in pet) {
+  if (typeof pet === "object" && pet !== null && "bark" in pet) {  // 条件判断
     return "汪"; // pet 收窄为 Dog
   }
-  return "...";
+  return "...";  // 返回 "..."
 }
 \`\`\`
 
@@ -1836,14 +1836,14 @@ function speak(pet: unknown): string {
 #### 4. 自定义类型守卫
 
 \`\`\`ts
-function isUser(v: unknown): v is { id: number; name: string } {
-  return typeof v === "object" && v !== null &&
-    typeof (v as any).id === "number" &&
-    typeof (v as any).name === "string";
+function isUser(v: unknown): v is { id: number; name: string } {  // 定义函数 isUser，参数: v: unknown，返回 v is
+  return typeof v === "object" && v !== null &&  // 返回 typeof v === "object" && v !== null &&
+    typeof (v as any).id === "number" &&  // 调用 typeof（注意：any 关闭了类型检查；注意：类型断言会绕过类型检查）
+    typeof (v as any).name === "string";  // 调用 typeof（注意：any 关闭了类型检查；注意：类型断言会绕过类型检查）
 }
 
-const data: unknown = JSON.parse('{"id":1,"name":"张三"}');
-if (isUser(data)) {
+const data: unknown = JSON.parse('{"id":1,"name":"张三"}');  // 声明常量 data，类型 unknown
+if (isUser(data)) {  // 条件判断
   console.log(data.name); // ✅ data 收窄为 User
 }
 \`\`\`
@@ -1853,9 +1853,9 @@ if (isUser(data)) {
 #### 5. 类型断言
 
 \`\`\`ts
-const data: unknown = "hello";
+const data: unknown = "hello";  // 声明常量 data，类型 unknown
 const str = data as string; // ⚠️ 强制断言，不安全
-console.log(str.toUpperCase());
+console.log(str.toUpperCase());  // 控制台输出
 \`\`\`
 
 类型断言是"最后手段"——它不做运行时检查，只是告诉编译器"我相信它是这个类型"。如果断言错误，运行时会崩溃。**优先用前 4 种，断言只在确信时用**。
@@ -1865,16 +1865,16 @@ console.log(str.toUpperCase());
 \`unknown\` 可以作为泛型的约束上限，表达"任何类型都可以，但调用方必须明确"。
 
 \`\`\`ts
-function safeParse<T>(text: string, validator: (v: unknown) => v is T): T | null {
-  const data: unknown = JSON.parse(text);
-  if (validator(data)) {
-    return data;
+function safeParse<T>(text: string, validator: (v: unknown) => v is T): T | null {  // 定义函数 safeParse，泛型 T，参数: text: string, validator: (v: unknown
+  const data: unknown = JSON.parse(text);  // 声明常量 data，类型 unknown
+  if (validator(data)) {  // 条件判断
+    return data;  // 返回 data
   }
-  return null;
+  return null;  // 返回 null
 }
 
-const user = safeParse('{"id":1}', (v): v is { id: number } =>
-  typeof v === "object" && v !== null && typeof (v as any).id === "number"
+const user = safeParse('{"id":1}', (v): v is { id: number } =>  // 声明常量 user
+  typeof v === "object" && v !== null && typeof (v as any).id === "number"  // 注意：any 关闭了类型检查；注意：类型断言会绕过类型检查
 );
 \`\`\`
 
@@ -1885,7 +1885,7 @@ const user = safeParse('{"id":1}', (v): v is { id: number } =>
 从 TypeScript 5.0 开始（配合 \`useUnknownInCatchVariables\` 等），\`JSON.parse\` 的返回类型在严格模式下是 \`unknown\`（而不是 \`any\`）。这强迫你对解析结果做验证。
 
 \`\`\`ts
-const data = JSON.parse('{"id":1}');
+const data = JSON.parse('{"id":1}');  // 声明常量 data
 // data 的类型是 any（默认）或 unknown（严格）
 // 推荐显式标注：const data: unknown = JSON.parse(...)
 \`\`\`
@@ -1898,12 +1898,12 @@ const data = JSON.parse('{"id":1}');
 
 \`\`\`ts
 // useUnknownInCatchVariables: true
-try {
-  JSON.parse("invalid");
+try {  // 异常捕获
+  JSON.parse("invalid");  // 调用 JSON.parse
 } catch (e) {
   // e 的类型是 unknown（不是 any）
   // console.log(e.message); // ❌ 编译错误
-  if (e instanceof Error) {
+  if (e instanceof Error) {  // 类型守卫：instanceof 判断实例类型
     console.log(e.message); // ✅ 收窄后使用
   }
 }
@@ -2341,7 +2341,7 @@ console.log("\\nunknown vs any 系统对比章节演示完成！");`,
 \`as\` 是类型断言操作符，语义是"我（开发者）知道这个值的类型，编译器你别管了"。它**不做运行时检查**，只是告诉编译器"把这个值当作某个类型"。
 
 \`\`\`ts
-const x: unknown = "hello";
+const x: unknown = "hello";  // 声明常量 x，类型 unknown
 const str = x as string; // 断言 x 是 string
 console.log(str.toUpperCase()); // 编译通过
 \`\`\`
@@ -2353,7 +2353,7 @@ console.log(str.toUpperCase()); // 编译通过
 TypeScript 还支持 \`<Type>value\` 的断言语法（C# 风格）：
 
 \`\`\`ts
-const x: unknown = "hello";
+const x: unknown = "hello";  // 声明常量 x，类型 unknown
 const str = <string>x; // 旧语法
 \`\`\`
 
@@ -2364,14 +2364,14 @@ const str = <string>x; // 旧语法
 当 \`as\` 的源类型和目标类型"不够重叠"时，TS 会报错：
 
 \`\`\`ts
-const x: string = "hello";
+const x: string = "hello";  // 声明常量 x，类型 string
 const num = x as number; // ❌ 编译错误：string 和 number 不够重叠
 \`\`\`
 
 这时开发者常用"双重断言"绕过：
 
 \`\`\`ts
-const x: string = "hello";
+const x: string = "hello";  // 声明常量 x，类型 string
 const num = x as unknown as number; // ✅ 双重断言，绕过检查
 \`\`\`
 
@@ -2383,19 +2383,19 @@ const num = x as unknown as number; // ✅ 双重断言，绕过检查
 
 \`\`\`ts
 // 危险示例 1：断言错误的类型
-const data: unknown = JSON.parse('{"name":"张三"}');
+const data: unknown = JSON.parse('{"name":"张三"}');  // 声明常量 data，类型 unknown
 const user = data as { id: number; name: string }; // 断言有 id
 console.log(user.id); // undefined（实际没有 id 属性）
 console.log(user.id.toFixed(2)); // 运行时崩溃：Cannot read property 'toFixed' of undefined
 
 // 危险示例 2：双重断言
-const str = "hello" as unknown as number;
+const str = "hello" as unknown as number;  // 声明常量 str（注意：类型断言会绕过类型检查）
 str.toFixed(2); // 运行时崩溃：str.toFixed is not a function
 
 // 危险示例 3：断言绕过可辨识联合
-type Result = { ok: true; data: string } | { ok: false; error: string };
-const r: Result = { ok: false, error: "失败" };
-const success = r as { ok: true; data: string };
+type Result = { ok: true; data: string } | { ok: false; error: string };  // 定义类型别名 Result，联合类型
+const r: Result = { ok: false, error: "失败" };  // 声明常量 r，类型 Result
+const success = r as { ok: true; data: string };  // 声明常量 success（注意：类型断言会绕过类型检查）
 console.log(success.data); // undefined（实际是 error 分支）
 \`\`\`
 
@@ -2406,8 +2406,8 @@ console.log(success.data); // undefined（实际是 error 分支）
 类型守卫是"运行时检查 + 编译期收窄"的组合——你用 \`typeof\` / \`instanceof\` / \`in\` / 自定义谓词做运行时验证，TypeScript 根据验证结果收窄类型。
 
 \`\`\`ts
-const data: unknown = "hello";
-if (typeof data === "string") {
+const data: unknown = "hello";  // 声明常量 data，类型 unknown
+if (typeof data === "string") {  // 类型守卫：判断是否为 string
   // 在这个块里，data 被收窄为 string
   console.log(data.toUpperCase()); // ✅ 类型安全
 }
@@ -2420,8 +2420,8 @@ if (typeof data === "string") {
 #### 1. typeof
 
 \`\`\`ts
-function pad(v: string | number): string {
-  if (typeof v === "string") {
+function pad(v: string | number): string {  // 定义函数 pad，参数: v: string | number，返回 string
+  if (typeof v === "string") {  // 类型守卫：判断是否为 string
     return v.padStart(10, "0"); // v 收窄为 string
   }
   return String(v).padStart(10, "0"); // v 收窄为 number
@@ -2433,8 +2433,8 @@ function pad(v: string | number): string {
 #### 2. instanceof
 
 \`\`\`ts
-function logError(e: Error | string): string {
-  if (e instanceof Error) {
+function logError(e: Error | string): string {  // 定义函数 logError，参数: e: Error | string，返回 string
+  if (e instanceof Error) {  // 类型守卫：instanceof 判断实例类型
     return e.message; // e 收窄为 Error
   }
   return e; // e 收窄为 string
@@ -2446,11 +2446,11 @@ function logError(e: Error | string): string {
 #### 3. in 操作符
 
 \`\`\`ts
-interface Cat { meow: () => void; }
-interface Dog { bark: () => void; }
+interface Cat { meow: () => void; }  // 定义接口 Cat
+interface Dog { bark: () => void; }  // 定义接口 Dog
 
-function speak(pet: Cat | Dog): string {
-  if ("meow" in pet) {
+function speak(pet: Cat | Dog): string {  // 定义函数 speak，参数: pet: Cat | Dog，返回 string
+  if ("meow" in pet) {  // 条件判断
     return "喵"; // pet 收窄为 Cat
   }
   return "汪"; // pet 收窄为 Dog
@@ -2462,12 +2462,12 @@ function speak(pet: Cat | Dog): string {
 #### 4. 自定义类型谓词（x is Type）
 
 \`\`\`ts
-function isString(v: unknown): v is string {
-  return typeof v === "string";
+function isString(v: unknown): v is string {  // 自定义类型守卫（返回 x is T）
+  return typeof v === "string";  // 类型守卫：判断是否为 string
 }
 
-const data: unknown = "hello";
-if (isString(data)) {
+const data: unknown = "hello";  // 声明常量 data，类型 unknown
+if (isString(data)) {  // 条件判断
   console.log(data.toUpperCase()); // data 收窄为 string
 }
 \`\`\`
@@ -2494,8 +2494,8 @@ if (isString(data)) {
 
 \`\`\`ts
 // 第三方库返回 any，但你确切知道实际类型
-import { someLib } from "some-lib";
-const result = someLib.doSomething() as { id: number; name: string };
+import { someLib } from "some-lib";  // 导入 { someLib }
+const result = someLib.doSomething() as { id: number; name: string };  // 声明常量 result（注意：类型断言会绕过类型检查）
 \`\`\`
 
 如果库的类型声明不准确（返回 \`any\`），且你确信实际类型，断言是合理的。
@@ -2503,7 +2503,7 @@ const result = someLib.doSomething() as { id: number; name: string };
 #### 2. 确切知道更精确类型
 
 \`\`\`ts
-const el = document.getElementById("app") as HTMLDivElement;
+const el = document.getElementById("app") as HTMLDivElement;  // 声明常量 el（注意：类型断言会绕过类型检查）
 // getElementById 返回 HTMLElement | null
 // 你确信 #app 是 div，可以断言
 \`\`\`
@@ -2511,7 +2511,7 @@ const el = document.getElementById("app") as HTMLDivElement;
 #### 3. DOM 操作
 
 \`\`\`ts
-const input = document.querySelector("input") as HTMLInputElement;
+const input = document.querySelector("input") as HTMLInputElement;  // 声明常量 input（注意：类型断言会绕过类型检查）
 console.log(input.value); // HTMLInputElement 有 value 属性
 \`\`\`
 
@@ -2521,7 +2521,7 @@ DOM API 通常返回 \`Element\` 或 \`HTMLElement\`，但你常知道具体是 
 
 \`\`\`ts
 // TS 推导出联合类型，但你确信是某个具体分支
-const response = JSON.parse('{"status":"success"}') as { status: "success" };
+const response = JSON.parse('{"status":"success"}') as { status: "success" };  // 声明常量 response（注意：类型断言会绕过类型检查）
 \`\`\`
 
 ### 何时必须用守卫
@@ -2530,12 +2530,12 @@ const response = JSON.parse('{"status":"success"}') as { status: "success" };
 
 \`\`\`ts
 // API 响应是不可信的，必须用守卫验证
-fetch("/api/user")
-  .then(r => r.json())
-  .then((data: unknown) => {
-    if (isUser(data)) {
+fetch("/api/user")  // 调用 fetch
+  .then(r => r.json())  // 箭头函数
+  .then((data: unknown) => {  // 箭头函数
+    if (isUser(data)) {  // 条件判断
       // data 收窄为 User，安全使用
-      console.log(data.name);
+      console.log(data.name);  // 控制台输出
     }
   });
 \`\`\`
@@ -2547,9 +2547,9 @@ API 响应可能不符合预期（字段缺失、类型错误），断言会导�
 \`\`\`ts
 const input = prompt("输入数字") as number; // ❌ 危险
 // 应该：
-const text = prompt("输入数字") ?? "";
-const num = Number(text);
-if (!isNaN(num)) {
+const text = prompt("输入数字") ?? "";  // 声明常量 text
+const num = Number(text);  // 声明常量 num
+if (!isNaN(num)) {  // 条件判断
   console.log(num); // 安全
 }
 \`\`\`
@@ -2557,8 +2557,8 @@ if (!isNaN(num)) {
 #### 3. JSON.parse 结果
 
 \`\`\`ts
-const data: unknown = JSON.parse(text);
-if (isUser(data)) {
+const data: unknown = JSON.parse(text);  // 声明常量 data，类型 unknown
+if (isUser(data)) {  // 条件判断
   // 安全
 }
 \`\`\`
@@ -2568,7 +2568,7 @@ if (isUser(data)) {
 \`!\` 是非空断言操作符，告诉编译器"这个值不是 null/undefined"。
 
 \`\`\`ts
-const el = document.getElementById("app")!;
+const el = document.getElementById("app")!;  // 声明常量 el（注意：非空断言，运行时可能为空）
 // el 的类型从 HTMLElement | null 变成 HTMLElement
 \`\`\`
 
@@ -2578,9 +2578,9 @@ const el = document.getElementById("app")!;
 
 \`\`\`ts
 // 滥用：每个可能为空的值都加 !
-const user = getUser()!;
-const name = user.profile!.name!;
-const email = user.profile!.email!.toLowerCase();
+const user = getUser()!;  // 声明常量 user（注意：非空断言，运行时可能为空）
+const name = user.profile!.name!;  // 声明常量 name（注意：非空断言，运行时可能为空）
+const email = user.profile!.email!.toLowerCase();  // 声明常量 email（注意：非空断言，运行时可能为空）
 \`\`\`
 
 这种代码在运行时很容易崩溃——任何一环是 null/undefined 都会出错。
@@ -2590,32 +2590,32 @@ const email = user.profile!.email!.toLowerCase();
 1. **显式检查**：
 
 \`\`\`ts
-const user = getUser();
-if (user) {
-  console.log(user.name);
+const user = getUser();  // 声明常量 user
+if (user) {  // 条件判断
+  console.log(user.name);  // 控制台输出
 } else {
-  console.log("用户不存在");
+  console.log("用户不存在");  // 控制台输出
 }
 \`\`\`
 
 2. **可选链 \`?.\`**：
 
 \`\`\`ts
-const name = user?.profile?.name ?? "默认名";
+const name = user?.profile?.name ?? "默认名";  // 声明常量 name
 \`\`\`
 
 3. **空值合并 \`??\`**：
 
 \`\`\`ts
-const value = maybeNull ?? "默认值";
+const value = maybeNull ?? "默认值";  // 声明常量 value
 \`\`\`
 
 4. **提前返回**：
 
 \`\`\`ts
-function processUser(user?: User): void {
+function processUser(user?: User): void {  // 定义函数 processUser，参数: user?: User，返回 void
   if (!user) return; // 提前返回，后续 user 一定是 User
-  console.log(user.name);
+  console.log(user.name);  // 控制台输出
 }
 \`\`\`
 

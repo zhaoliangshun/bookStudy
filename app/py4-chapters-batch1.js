@@ -48,13 +48,13 @@ Python 的三个核心特点:
 REPL(Read-Eval-Print Loop,读取-求值-打印 循环)是一个交互式命令行,输入一行代码立即执行并显示结果。
 
 \`\`\`
-$ python3
->>> 1 + 2
-3
->>> name = "alice"
->>> print(name)
+$ python3            # 在终端输入 python3 启动 REPL 交互式解释器
+>>> 1 + 2           # >>> 是 REPL 提示符，输入表达式立即求值
+3                    # 解释器打印求值结果
+>>> name = "alice"   # 赋值语句，REPL 中赋值不显示返回值
+>>> print(name)      # print() 输出字符串内容（不带引号）
 alice
->>> exit()
+>>> exit()           # 退出 REPL；也可用 quit() 或 Ctrl+D
 \`\`\`
 
 **REPL 的用途**:
@@ -76,11 +76,11 @@ alice
 
 ### 4.3 __name__ == "__main__" 惯例
 \`\`\`python
-def main():
-    print("hello")
+def main():                       # 定义主函数，封装程序核心逻辑
+    print("hello")                # 函数体，4 空格缩进表示属于 main
 
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__":        # 判断当前模块是否作为主入口直接运行
+    main()                        # 直接运行时调用 main()；被 import 时不执行
 \`\`\`
 - 当直接 \`python3 foo.py\` 运行时,\`__name__\` 等于 \`"__main__"\`,会执行 main()。
 - 当被 \`import foo\` 导入时,\`__name__\` 等于 \`"foo"\`,不会执行 main()。
@@ -109,13 +109,13 @@ if __name__ == "__main__":
 ## 六、本节代码逐行讲解
 
 \`\`\`python
-import sys, platform, os
+import sys, platform, os   # 一次导入多个标准库模块；sys 解释器信息，platform 系统信息，os 文件系统/环境变量
 \`\`\`
 - import 语句导入标准库模块。可以一次导入多个(\`import a, b, c\`)。
 - \`sys\` 提供 Python 解释器相关信息(版本、路径);\`platform\` 提供操作系统信息;\`os\` 提供文件系统、环境变量等接口。
 
 \`\`\`python
-print("Python:", sys.version.split()[0])
+print("Python:", sys.version.split()[0])   # sys.version 是版本字符串，split() 按空白分割，[0] 取纯版本号
 \`\`\`
 - \`sys.version\` 是类似 \`"3.12.0 (main, ...)"\` 的字符串。
 - \`.split()\` 按空白分割成列表 \`["3.12.0", "(main,", ...]\`。
@@ -123,8 +123,8 @@ print("Python:", sys.version.split()[0])
 
 \`\`\`python
 x = [1, 2, 3]
-print("type:", type(x).__name__)          # list
-print("dir 前 5:", dir(x)[:5])            # ['__add__', ...]
+print("type:", type(x).__name__)          # type(x) 取类型，.__name__ 取类型名字符串 "list"
+print("dir 前 5:", dir(x)[:5])            # dir(x) 列出所有属性方法，[:5] 切片取前 5 个
 \`\`\`
 - \`type(x).__name__\` 拿到类型名字符串,比 \`str(type(x))\` 干净(后者是 \`<class 'list'>\`)。
 - \`dir(x)[:5]\` 切片取前 5 个,因为 list 方法很多,全打印太长。
@@ -171,8 +171,8 @@ print(1 + 2 * 3, "hello" + " " + "world", f"1+1={1+1}")
 在 Python 里,**变量是一个「标签」,贴在对象上**。对象有类型,变量没有类型。
 
 \`\`\`python
-x = 10       # 创建 int 对象 10,把标签 x 贴上去
-x = "hello"  # 创建 str 对象 "hello",把标签 x 撕下来贴到新对象上
+x = 10       # 创建 int 对象 10，把标签 x 贴上去
+x = "hello"  # 创建 str 对象 "hello"，把标签 x 撕下来贴到新对象上
 \`\`\`
 这里 x 没有「类型」,它只是一个名字。10 和 "hello" 才有类型(int 和 str)。你可以随时把同一个标签贴到不同类型的对象上 —— 这就是「动态类型」。
 
@@ -221,7 +221,7 @@ float 是 IEEE 754 双精度(64 位),和 C 的 double 一样。\`0.1 + 0.2\` 得
 
 **经典应用:交换两个变量**
 \`\`\`python
-a, b = b, a   # 不需要临时变量!
+a, b = b, a   # 不需要临时变量！右边先求值成元组 (b,a) 再解包给左边的 a,b
 \`\`\`
 原理:右边先求值成元组 \`(b的值, a的值)\`,再解包给左边的 a 和 b。
 
@@ -239,24 +239,24 @@ a, b = b, a   # 不需要临时变量!
 \`int\`、\`float\`、\`bool\`、\`str\`、\`tuple\` 是不可变的。**「不可变」指对象本身的值不能被改变**,任何「修改」操作都是创建新对象:
 \`\`\`python
 s = "hello"
-s2 = s.upper()   # s 没变,s2 是新对象 "HELLO"
+s2 = s.upper()   # str 不可变，upper() 返回新对象 "HELLO"，s 原值不变
 \`\`\`
 
 ### 4.2 可变类型(mutable)
 \`list\`、\`dict\`、\`set\` 是可变的,可以原地增删改:
 \`\`\`python
 lst = [1, 2, 3]
-lst.append(4)   # lst 本身变成 [1, 2, 3, 4],还是同一个对象
+lst.append(4)   # append 原地追加，lst 仍是同一对象，变成 [1, 2, 3, 4]
 \`\`\`
 
 ### 4.3 为什么这很重要 —— 函数参数陷阱
 \`\`\`python
 def add_item(lst, item):
-    lst.append(item)   # 修改传入的 list!
+    lst.append(item)   # 直接修改传入的 list，因为是同一对象（可变类型副作用）
 
 my = [1, 2]
-add_item(my, 3)
-print(my)   # [1, 2, 3] —— my 被改了!
+add_item(my, 3)        # 把外部 list 传进去，函数内修改会影响外部
+print(my)   # [1, 2, 3] —— my 被改了！避免方式：传 my.copy() 副本
 \`\`\`
 因为 list 可变,函数内修改的是外面同一个对象。要避免副作用,传副本(\`add_item(my.copy(), 3)\`)或返回新 list。
 
@@ -280,8 +280,8 @@ print(my)   # [1, 2, 3] —— my 被改了!
 
 \`\`\`python
 x = 10          # int
-x = "hello"     # str，OK
-x = 3.14        # float，OK
+x = "hello"     # str，OK —— 同一变量名可重新绑定到不同类型对象
+x = 3.14        # float，OK —— 这就是动态类型
 \`\`\`
 三次赋值,x 这个标签依次贴到 int 10、str "hello"、float 3.14 上。演示动态类型。
 
@@ -291,12 +291,16 @@ x = 3.14        # float，OK
 被注释掉,因为它会抛 TypeError。强类型不会把 3.14 转成字符串去拼接。
 
 \`\`\`python
-print(2 ** 100)
+print(2 ** 100)   # ** 是幂运算符；2 的 100 次方，int 任意精度不溢出
 \`\`\`
 \`**\` 是幂运算。\`2 ** 100\` 是个 31 位的大整数,Python 精确计算,不溢出。
 
 \`\`\`python
 print(isinstance(True, int), True + True, bool(0), bool(""))
+# isinstance(True, int) → True：bool 是 int 子类
+# True + True → 2：布尔值可当 0/1 参与算术
+# bool(0) → False：0 是假值
+# bool("") → False：空字符串是假值
 \`\`\`
 - \`isinstance(True, int)\` → True,因为 bool 是 int 子类
 - \`True + True\` → 2(True 当 1 用)
@@ -306,6 +310,9 @@ print(isinstance(True, int), True + True, bool(0), bool(""))
 \`\`\`python
 val = None
 print(val is None, val is not None)
+# val is None → True：身份比较，None 是单例
+# val is not None → False：取反判断
+# 永远用 is 判 None，不要用 == （== 可能被重载）
 \`\`\`
 - \`val is None\` → True(身份比较,None 是单例)
 - \`val is not None\` → False(取反)
@@ -397,8 +404,8 @@ Python 的 float 是 64 位双精度浮点数,和 C 的 double、JavaScript 的 
 
 ### 3.2 浮点精度陷阱(必懂)
 \`\`\`python
-0.1 + 0.2 == 0.3   # False!
-0.1 + 0.2          # 0.30000000000000004
+0.1 + 0.2 == 0.3   # False！浮点二进制无法精确表示 0.1，相加产生误差
+0.1 + 0.2          # 0.30000000000000004 —— 微小误差可视化
 \`\`\`
 原因:0.1 在二进制下是无限循环小数 \`0.0001100110011...\`,float 只能存有限位,产生微小误差。累积后会导致明显错误(尤其金融计算)。
 
@@ -469,33 +476,36 @@ float 用二进制存小数,0.1 无法精确表示。decimal 用十进制存储,
 ### 6.2 用法
 \`\`\`python
 from decimal import Decimal
-Decimal("0.1") + Decimal("0.2")   # Decimal("0.3"),精确!
-Decimal("0.1") + Decimal("0.2") == Decimal("0.3")   # True
+Decimal("0.1") + Decimal("0.2")   # Decimal("0.3")，十进制精确，无浮点误差
+Decimal("0.1") + Decimal("0.2") == Decimal("0.3")   # True，可直接比较
 \`\`\`
 **注意**:**必须传字符串** \`Decimal("0.1")\`,不能传 float \`Decimal(0.1)\`。因为 \`0.1\` 这个 float 已经是不精确的 0.1000000000000000055...,传进去 decimal 也救不回来。
 
 ### 6.3 设置精度
 \`\`\`python
 from decimal import Decimal, getcontext
-getcontext().prec = 50   # 50 位有效数字
-Decimal(1) / Decimal(7)  # 50 位精度的 1/7
+getcontext().prec = 50   # 设置全局有效数字位数 50 位
+Decimal(1) / Decimal(7)  # 50 位精度的 1/7，结果完全精确
 \`\`\`
 
 ## 七、代码逐行讲解
 
 \`\`\`python
-print(0.1 + 0.2)                     # 0.30000000000000004
-print(0.1 + 0.2 == 0.3)             # False
+print(0.1 + 0.2)                     # 0.30000000000000004 —— 浮点误差
+print(0.1 + 0.2 == 0.3)             # False —— 不能用 == 比较浮点
 \`\`\`
 浮点精度陷阱的经典演示。0.1 和 0.2 都不能精确表示,相加后产生微小误差。
 
 \`\`\`python
-print(math.isclose(0.1 + 0.2, 0.3)) # True
+print(math.isclose(0.1 + 0.2, 0.3)) # True，isclose 默认相对误差容忍 1e-9
 \`\`\`
 \`isclose\` 默认相对误差容忍 1e-9,0.3 和 0.30000000000000004 的差距远小于此,判定为相等。
 
 \`\`\`python
 print(0b101, 0o755, 0xFF)           # 5 493 255
+# 0b 前缀二进制：1×4+0×2+1×1=5
+# 0o 前缀八进制：7×64+5×8+5×1=493（Unix 文件权限 rwxr-xr-x）
+# 0x 前缀十六进制：15×16+15=255
 \`\`\`
 - \`0b101\` = 1×4 + 0×2 + 1×1 = 5
 - \`0o755\` = 7×64 + 5×8 + 5×1 = 493(Unix 文件权限 rwxr-xr-x)
@@ -503,13 +513,15 @@ print(0b101, 0o755, 0xFF)           # 5 493 255
 
 \`\`\`python
 print(float("inf") > 10**100, math.isnan(float("nan")))
+# float("inf") > 10**100 → True：正无穷大于任何有限数
+# math.isnan(...) → True：必须用 math.isnan 判 NaN，nan != nan
 \`\`\`
 - \`float("inf")\` 是正无穷,比任何有限数都大,包括 10^100
 - \`math.isnan\` 判断 NaN,不能用 \`== float("nan")\`(因为 nan != nan)
 
 \`\`\`python
 d = decimal.Decimal("0.1") + decimal.Decimal("0.2")
-print(d, d == decimal.Decimal("0.3"))  # True
+print(d, d == decimal.Decimal("0.3"))  # True，字符串构造，精确存储可比较
 \`\`\`
 decimal 用字符串构造,精确存储 0.1 和 0.2,相加得精确 0.3,比较结果 True。
 
@@ -568,8 +580,8 @@ Python 的 \`str\` 是 **Unicode 字符序列**,不可变(immutable)。这意味
 ### 1.2 不可变带来的影响
 \`\`\`python
 s = "hello"
-s[0] = "H"   # TypeError! str 不支持 item assignment
-s = "H" + s[1:]   # 正确:创建新字符串
+s[0] = "H"   # TypeError！str 不可变，不支持 item assignment
+s = "H" + s[1:]   # 正确：用切片 + 拼接创建新字符串 "Hello"
 \`\`\`
 - **频繁拼接字符串**不要用 \`+\`(每次都创建新对象,O(n²)),用 \`"".join(list)\`(O(n))。
 - 需要可变字符串用 \`io.StringIO\` 或转 list 再 join。
@@ -593,7 +605,7 @@ s = "H" + s[1:]   # 正确:创建新字符串
 \`\`\`python
 s = """line1
 line2
-line3"""
+line3"""   # 三引号保留换行，常用于多行文本和 docstring
 \`\`\`
 三引号内的换行符会原样保留。常用于:
 - **多行文本**(SQL、HTML 模板)
@@ -607,8 +619,8 @@ line3"""
 **主要用途**:正则表达式、Windows 路径、LaTeX。
 \`\`\`python
 import re
-re.match(r"\\d+", "123")   # 正则用 r,避免 \\\\d 的双重转义
-path = r"C:\\Users\\name"  # Windows 路径
+re.match(r"\\d+", "123")   # 正则用 r 前缀，避免 \\d 的双重转义
+path = r"C:\\Users\\name"   # Windows 路径用 r，反斜杠不转义
 \`\`\`
 **注意**:原始字符串**不能以单个反斜杠结尾**(\`r"\\"\` 会报错),因为反斜杠会转义后面的引号。
 
@@ -620,16 +632,16 @@ f-string 是 Python 3.6 引入的字符串格式化方式,**性能最好、可�
 \`\`\`python
 name = "alice"
 age = 30
-f"Hello, {name}, you are {age}"   # 'Hello, alice, you are 30'
+f"Hello, {name}, you are {age}"   # 'Hello, alice, you are 30'，{...} 内求值后插入
 \`\`\`
 - \`f\` 前缀表示这是 f-string。
 - \`{...}\` 内放任意 Python 表达式,会求值后插入。
 
 ### 3.2 表达式和函数调用
 \`\`\`python
-f"1+1 = {1+1}"                    # '1+1 = 2'
-f"upper: {name.upper()}"          # 'upper: ALICE'
-f"len: {len(name)}"               # 'len: 5'
+f"1+1 = {1+1}"                    # '1+1 = 2'，大括号内可放算术表达式
+f"upper: {name.upper()}"          # 'upper: ALICE'，可调用方法
+f"len: {len(name)}"               # 'len: 5'，可调用函数
 \`\`\`
 大括号内可以是任意表达式,包括函数调用、方法、算术运算。
 
@@ -652,15 +664,15 @@ f"len: {len(name)}"               # 'len: 5'
 \`f"{x=}"\` 会输出 \`x=值\`,调试神器:
 \`\`\`python
 x = 42
-f"{x=}"          # 'x=42'
-f"{x=:.2f}"      # 'x=42.00'(可加格式)
+f"{x=}"          # 'x=42'，3.8+ 调试语法，自动输出变量名=值
+f"{x=:.2f}"      # 'x=42.00'，可加格式说明符
 \`\`\`
 
 ### 3.5 转义和嵌套
 - 大括号里要用大括号,写 \`{{\` 和 \`}}\`:\`f"{{not a var}}"\` → '{not a var}'
 - **3.12 新特性**:f-string 可以嵌套相同引号(3.6-3.11 内层必须用不同引号):
   \`\`\`python
-  f"dict: { {k: len(k) for k in ["a", "bc"]} }"   # 3.12+ 合法
+  f"dict: { {k: len(k) for k in ["a", "bc"]} }"   # 3.12+ 合法：内层可嵌套相同引号
   \`\`\`
 
 ### 3.6 其它格式化方式(了解即可)
@@ -679,12 +691,12 @@ f"{x=:.2f}"      # 'x=42.00'(可加格式)
 
 \`\`\`python
 s = "hello world"
-s[0:5]     # 'hello'(0 到 4)
-s[6:]      # 'world'(6 到末尾)
-s[:5]      # 'hello'(开头到 4)
-s[-5:]     # 'world'(倒数 5 个到末尾)
-s[::-1]    # 'dlrow olleh'(反转!step=-1 从尾到头)
-s[::2]     # 'hlowrd'(每隔一个取一个)
+s[0:5]     # 'hello'（0 到 4）
+s[6:]      # 'world'（6 到末尾）
+s[:5]      # 'hello'（开头到 4）
+s[-5:]     # 'world'（倒数 5 个到末尾）
+s[::-1]    # 'dlrow olleh'（反转！step=-1 从尾到头）
+s[::2]     # 'hlowrd'（每隔一个取一个）
 \`\`\`
 
 ### 4.2 负索引
@@ -728,8 +740,8 @@ s[::2]     # 'hlowrd'(每隔一个取一个)
 
 ### 5.4 split 和 join(互逆操作)
 \`\`\`python
-"a,b,c".split(",")           # ['a', 'b', 'c']
-"-".join(["2024", "01", "01"])  # '2024-01-01'
+"a,b,c".split(",")           # ['a', 'b', 'c']，按分隔符切成 list
+"-".join(["2024", "01", "01"])  # '2024-01-01'，用 sep 拼接 list 为字符串
 \`\`\`
 - \`split\` 不传参时按任意空白分割(且去除空字符串):\`"  a  b  ".split()\` → \`['a', 'b']\`
 - \`join\` 是**字符串方法**,\`"-".join(list)\` 不是 \`list.join("-")\`(list 没这个方法)
@@ -748,12 +760,17 @@ s[::2]     # 'hlowrd'(每隔一个取一个)
 \`\`\`python
 name, age = "alice", 30
 print(f"name={name!r}, age={age}, next={age+1}")
+# !r 用 repr() 格式化（字符串带引号），调试时能看出值类型
+# age+1 是表达式，f-string 支持任意表达式
 \`\`\`
 - \`!r\` 表示用 \`repr()\` 而非 \`str()\` 格式化,字符串会带引号:\`name='alice'\`。调试时很有用,能看出值是字符串还是数字。
 - \`age+1\` 是表达式,f-string 支持任意表达式。
 
 \`\`\`python
 print(f"hex={255:#x}, pi={3.14159:.2f}, pad={42:05d}")
+# #x 输出带 0x 前缀的十六进制：0xff
+# .2f 保留 2 位小数：3.14
+# 05d 补零到 5 位：00042
 \`\`\`
 - \`#x\` 输出带 0x 前缀的十六进制:0xff
 - \`.2f\` 保留 2 位小数:3.14
@@ -762,6 +779,9 @@ print(f"hex={255:#x}, pi={3.14159:.2f}, pad={42:05d}")
 \`\`\`python
 s = "hello world"
 print(s[0:5], s[6:], s[::-1])       # hello world dlrow olleh
+# s[0:5] 索引 0-4：'hello'
+# s[6:] 索引 6 到末尾：'world'
+# s[::-1] step=-1 反转：'dlrow olleh'
 \`\`\`
 - \`s[0:5]\` 索引 0-4:'hello'
 - \`s[6:]\` 索引 6 到末尾:'world'
@@ -770,6 +790,9 @@ print(s[0:5], s[6:], s[::-1])       # hello world dlrow olleh
 \`\`\`python
 msg = "  Hello, World!  "
 print(msg.strip(), msg.lower(), msg.upper())
+# strip() 去掉两端空格：'Hello, World!'
+# lower() 全小写：'hello, world!'
+# upper() 全大写：'HELLO, WORLD!'
 \`\`\`
 - \`strip()\` 去掉两端空格:'Hello, World!'
 - \`lower()\` 全小写:'hello, world!'
@@ -777,12 +800,15 @@ print(msg.strip(), msg.lower(), msg.upper())
 
 \`\`\`python
 print("-".join(["2024", "01", "01"]))
+# 用 "-" 把列表元素拼成字符串：'2024-01-01'
+# 注意是 "-".join(list)，不是 list.join("-")
 \`\`\`
 用 "-" 把列表元素拼成字符串:'2024-01-01'。注意是 \`"-".join(list)\`,不是 \`list.join("-")\`。
 
 \`\`\`python
 d = {k: len(k) for k in ["a", "bc"]}
 print("dict:", d)
+# 字典推导式：遍历列表，以元素为 key、元素长度为 value，生成 {'a': 1, 'bc': 2}
 \`\`\`
 字典推导式(后续章节详讲),生成 \`{'a': 1, 'bc': 2}\`。这里演示 3.12 之前 f-string 嵌套相同引号的限制:不能直接写在 f-string 里,要先用变量存。
 

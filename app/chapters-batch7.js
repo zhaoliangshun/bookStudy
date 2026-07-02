@@ -1082,17 +1082,17 @@ ORM（Object-Relational Mapping，对象关系映射）是一种将数据库表�
 
 **Active Record 示例：**
 \`\`\`javascript
-const user = new User({ name: '张三' });
+const user = new User({ name: '张三' });  // 创建实例 user
 await user.save();  // 对象自己保存自己
-const users = await User.findAll({ where: { age: { $gt: 18 } } });
+const users = await User.findAll({ where: { age: { $gt: 18 } } });  // 定义常量 users
 \`\`\`
 
 **Data Mapper 示例：**
 \`\`\`javascript
-const repository = getRepository(User);
-const user = new User();
+const repository = getRepository(User);  // 定义常量 repository
+const user = new User();  // 创建实例 user
 user.name = '张三';
-await repository.save(user);
+await repository.save(user);  // 等待 Promise 完成后再继续
 \`\`\`
 
 ### 3. 模型定义
@@ -1101,7 +1101,7 @@ ORM 模型定义了数据库表的结构映射：
 
 \`\`\`javascript
 // Sequelize 风格
-const User = sequelize.define('User', {
+const User = sequelize.define('User', {  // 定义常量 User
   name: { type: DataTypes.STRING, allowNull: false },
   email: { type: DataTypes.STRING, unique: true },
   age: { type: DataTypes.INTEGER, defaultValue: 0 },
@@ -1122,7 +1122,7 @@ const User = sequelize.define('User', {
 
 \`\`\`javascript
 // Knex 风格查询构建器
-const users = await db('users')
+const users = await db('users')  // 定义常量 users
   .select('name', 'email')
   .where('age', '>', 18)
   .whereIn('city', ['北京', '上海'])
@@ -1536,10 +1536,10 @@ MySQL 默认隔离级别为 **REPEATABLE READ**。
 
 \`\`\`javascript
 // 使用 Sequelize 事务
-const t = await sequelize.transaction();
-try {
-  const user = await User.create({ name: '张三' }, { transaction: t });
-  await Order.create({ userId: user.id, amount: 100 }, { transaction: t });
+const t = await sequelize.transaction();  // 定义常量 t
+try {  // 开启 try 块捕获异常
+  const user = await User.create({ name: '张三' }, { transaction: t });  // 定义常量 user
+  await Order.create({ userId: user.id, amount: 100 }, { transaction: t });  // 等待 Promise 完成后再继续
   await t.commit();  // 提交事务
 } catch (error) {
   await t.rollback(); // 回滚事务

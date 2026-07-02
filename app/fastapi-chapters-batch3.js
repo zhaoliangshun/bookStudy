@@ -35,35 +35,52 @@ FastAPI 最擅长的是 JSON body。用 Pydantic 的 \`BaseModel\` 定义结构�
 ## 用 Pydantic BaseModel 定义请求体
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 pydantic 导入 BaseModel
 from pydantic import BaseModel
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 定义一个数据模型：用户创建请求
+# 定义 Pydantic 数据模型 UserCreate，继承 BaseModel
 class UserCreate(BaseModel):
     username: str          # 必填，用户名
     email: str             # 必填，邮箱
+    # 字段 age，类型: int | None，默认值: None # 可选，年龄
     age: int | None = None # 可选，年龄
+    # 字段 is_active，类型: bool，默认值: True # 可选，默认 True
     is_active: bool = True # 可选，默认 True
 
+# 定义 POST 路由：访问 /users 时触发
 @app.post("/users")
+# 定义函数 create_user，参数: user: UserCreate
 def create_user(user: UserCreate):
     # user 是 UserCreate 实例，字段已校验过
     # FastAPI 把 JSON body 解析成 UserCreate，自动校验类型
+    # 返回 {
     return {
+        # "username": user.username,
         "username": user.username,
+        # "email": user.email,
         "email": user.email,
+        # "age": user.age,
         "age": user.age,
+        # "is_active": user.is_active
         "is_active": user.is_active
+    # }
     }
 \`\`\`
 
 请求示例：
 
 \`\`\`bash
+# 发送 POST 请求
 curl -X POST http://localhost:8000/users \\
+  # -H "Content-Type: application/json" \\
   -H "Content-Type: application/json" \\
+  # -d '{"username": "alice", "email": "a@x.com", "age
   -d '{"username": "alice", "email": "a@x.com", "age": 30}'
 \`\`\`
 
@@ -79,6 +96,7 @@ curl -X POST http://localhost:8000/users \\
 规则和查询参数一样：**有默认值 = 可选，无默认值 = 必填**。
 
 \`\`\`python
+# 定义 Pydantic 数据模型 UserCreate，继承 BaseModel
 class UserCreate(BaseModel):
     username: str           # 无默认值 → 必填
     email: str              # 无默认值 → 必填
@@ -108,9 +126,13 @@ class UserCreate(BaseModel):
 Pydantic 会尝试做合理的类型转换：
 
 \`\`\`python
+# 定义 Pydantic 数据模型 Product，继承 BaseModel
 class Product(BaseModel):
+    # 字段 name，类型: str
     name: str
+    # 字段 price，类型: float
     price: float
+    # 字段 in_stock，类型: bool
     in_stock: bool
 
 # 提交 {"name": "phone", "price": "199.5", "in_stock": "true"}
@@ -131,18 +153,25 @@ BaseModel 字段支持丰富的类型：
 ### 基础类型
 
 \`\`\`python
+# 定义 Pydantic 数据模型 Item，继承 BaseModel
 class Item(BaseModel):
+    # 字段 name，类型: str
     name: str
+    # 字段 price，类型: float
     price: float
+    # 字段 quantity，类型: int
     quantity: int
+    # 字段 is_available，类型: bool
     is_available: bool
 \`\`\`
 
 ### 集合类型
 
 \`\`\`python
+# 从 typing 导入 List, Dict
 from typing import List, Dict
 
+# 定义 Pydantic 数据模型 Order，继承 BaseModel
 class Order(BaseModel):
     # 列表
     item_ids: list[int]            # Python 3.9+ 推荐
@@ -161,14 +190,21 @@ class Order(BaseModel):
 模型字段可以是另一个模型，形成嵌套结构：
 
 \`\`\`python
+# 定义 Pydantic 数据模型 Address，继承 BaseModel
 class Address(BaseModel):
+    # 字段 city，类型: str
     city: str
+    # 字段 street，类型: str
     street: str
+    # 字段 zip_code，类型: str
     zip_code: str
 
+# 定义 Pydantic 数据模型 User，继承 BaseModel
 class User(BaseModel):
+    # 字段 username，类型: str
     username: str
     address: Address        # 嵌套模型
+    # 字段 addresses，类型: list[Address] # 嵌套列表
     addresses: list[Address] # 嵌套列表
 
 # 提交 JSON：
@@ -187,15 +223,21 @@ class User(BaseModel):
 ### Optional / Union 多类型
 
 \`\`\`python
+# 从 typing 导入 Optional, Union
 from typing import Optional, Union
 
+# 定义 Pydantic 数据模型 Item，继承 BaseModel
 class Item(BaseModel):
     # 可以是 int 或 None
+    # 字段 priority，类型: int | None，默认值: None
     priority: int | None = None
     # 可以是 int 或 str
+    # 字段 id，类型: int | str
     id: int | str
     # 老写法
+    # 字段 tag，类型: Optional[str]，默认值: None
     tag: Optional[str] = None
+    # 字段 raw，类型: Union[int, str, None]，默认值: None
     raw: Union[int, str, None] = None
 \`\`\`
 
@@ -204,48 +246,75 @@ class Item(BaseModel):
 把上面串起来，写一个完整的创建用户接口：
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, HTTPException
 from fastapi import FastAPI, HTTPException
+# 从 pydantic 导入 BaseModel
 from pydantic import BaseModel
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 模拟数据库
+# 定义字典 users_db
 users_db = {}
 
+# 定义 Pydantic 数据模型 Address，继承 BaseModel
 class Address(BaseModel):
+    # 字段 city，类型: str
     city: str
+    # 字段 zip_code，类型: str | None，默认值: None
     zip_code: str | None = None
 
+# 定义 Pydantic 数据模型 UserCreate，继承 BaseModel
 class UserCreate(BaseModel):
+    # 字段 username，类型: str
     username: str
+    # 字段 email，类型: str
     email: str
+    # 字段 age，类型: int | None，默认值: None
     age: int | None = None
+    # 字段 is_active，类型: bool，默认值: True
     is_active: bool = True
     address: Address | None = None   # 嵌套模型可选
     tags: list[str] = []             # 默认空列表
 
+# 定义 POST 路由：访问 /users 时触发
 @app.post("/users", status_code=201)
+# 定义函数 create_user，参数: user: UserCreate
 def create_user(user: UserCreate):
     # 1. 业务校验：用户名不能重复
+    # 条件判断：如果 user.username in users_db
     if user.username in users_db:
+        # 抛出 HTTPException 异常: status_code=400, detail="用户名已存在"
         raise HTTPException(status_code=400, detail="用户名已存在")
     # 2. 存入数据库
+    # users_db[user.username] = user
     users_db[user.username] = user
     # 3. 返回创建结果
+    # 返回 {"username": user.username, "email": user.email, "age": user.age}
     return {"username": user.username, "email": user.email, "age": user.age}
 \`\`\`
 
 请求：
 
 \`\`\`bash
+# 发送 POST 请求
 curl -X POST http://localhost:8000/users \\
+  # -H "Content-Type: application/json" \\
   -H "Content-Type: application/json" \\
+  # -d '{
   -d '{
+    # "username": "alice",
     "username": "alice",
+    # "email": "alice@example.com",
     "email": "alice@example.com",
+    # "age": 28,
     "age": 28,
+    # "address": {"city": "北京", "zip_code": "100000"},
     "address": {"city": "北京", "zip_code": "100000"},
+    # "tags": ["vip", "active"]
     "tags": ["vip", "active"]
+  # }'
   }'
 \`\`\`
 
@@ -261,12 +330,16 @@ curl -X POST http://localhost:8000/users \\
 FastAPI 给路由的 \`user\` 是模型实例，可以直接访问字段。如果想改字段再存：
 
 \`\`\`python
+# 定义 POST 路由：访问 /users 时触发
 @app.post("/users")
+# 定义函数 create_user，参数: user: UserCreate
 def create_user(user: UserCreate):
     # 模型默认可变，可以改字段
     user.is_active = True  # 强制设为 True
     # 用 model_dump() 转成 dict 存库
+    # users_db[user.username] = user.model_dump()
     users_db[user.username] = user.model_dump()
+    # 返回 user
     return user
 \`\`\`
 
@@ -344,26 +417,36 @@ HTML 的 \`<form>\` 标签提交时，默认用 \`application/x-www-form-urlenco
 FastAPI 用 \`Form()\` 接收表单字段，用法类似 \`Query()\`：
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Form
 from fastapi import FastAPI, Form
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 POST 路由：访问 /login 时触发
 @app.post("/login")
+# def login(
 def login(
     username: str = Form(...),     # 必填表单字段
     password: str = Form(...)      # 必填表单字段
+# ):
 ):
     # 提交表单：username=alice&password=123456
     # Content-Type: application/x-www-form-urlencoded
+    # 条件判断：如果 username == "alice" and password == "123456"
     if username == "alice" and password == "123456":
+        # 返回 {"msg": "登录成功", "user": username}
         return {"msg": "登录成功", "user": username}
+    # 返回 {"msg": "用户名或密码错误"}
     return {"msg": "用户名或密码错误"}
 \`\`\`
 
 请求：
 
 \`\`\`bash
+# 发送 POST 请求
 curl -X POST http://localhost:8000/login \\
+  # -d "username=alice&password=123456"
   -d "username=alice&password=123456"
 # curl 默认用 urlencoded，不用手动加 Content-Type
 \`\`\`
@@ -371,10 +454,15 @@ curl -X POST http://localhost:8000/login \\
 或在 HTML 表单：
 
 \`\`\`html
+# <form action="/login" method="post">
 <form action="/login" method="post">
+  # <input name="username" />
   <input name="username" />
+  # <input name="password" type="password" />
   <input name="password" type="password" />
+  # <button>登录</button>
   <button>登录</button>
+# </form>
 </form>
 \`\`\`
 
@@ -386,20 +474,29 @@ curl -X POST http://localhost:8000/login \\
 
 \`\`\`python
 # ❌ 错误：不能同时声明 Pydantic 模型和 Form
+# 定义 POST 路由：访问 /items 时触发
 @app.post("/items")
+# 定义函数 create_item，参数: item: Item, user: str = Form(...)
 def create_item(item: Item, user: str = Form(...)):
     # item 是 JSON body，user 是表单 body
     # 一个请求不能同时是 JSON 和表单，会 422
+    # ...
     ...
 
 # ✅ 正确：要么全 JSON
+# 定义 POST 路由：访问 /items 时触发
 @app.post("/items")
+# 定义函数 create_item，参数: item: Item
 def create_item(item: Item):
+    # ...
     ...
 
 # ✅ 正确：要么全表单
+# 定义 POST 路由：访问 /items 时触发
 @app.post("/items")
+# 定义函数 create_item，参数: name: str = Form(...), price: float = Form(...)
 def create_item(name: str = Form(...), price: float = Form(...)):
+    # ...
     ...
 \`\`\`
 
@@ -425,17 +522,24 @@ Content-Type: image/jpeg
 FastAPI 的 \`File()\` 和 \`UploadFile\` 自动按 multipart 解析。表单字段和文件可以一起用 multipart 提交：
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Form, UploadFile
 from fastapi import FastAPI, Form, UploadFile
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 POST 路由：访问 /upload 时触发
 @app.post("/upload")
+# async def upload(
 async def upload(
     name: str = Form(...),           # 表单字段
     avatar: UploadFile = None         # 文件
+# ):
 ):
     # name 和 avatar 都在 multipart body 里
+    # 定义变量 contents，赋值为 await avatar.read() if avatar else None
     contents = await avatar.read() if avatar else None
+    # 返回 {"name": name, "filename": avatar.filename if avatar else None}
     return {"name": name, "filename": avatar.filename if avatar else None}
 \`\`\`
 
@@ -472,40 +576,63 @@ FastAPI 还有 \`Body()\`，区别：
 写一个完整的登录接口，用表单接收用户名密码：
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Form, HTTPException
 from fastapi import FastAPI, Form, HTTPException
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 模拟用户库
+# 定义字典 fake_users
 fake_users = {
+    # "alice": {"password": "secret123", "role": "admin"
     "alice": {"password": "secret123", "role": "admin"},
+    # "bob": {"password": "bobpass", "role": "user"}
     "bob": {"password": "bobpass", "role": "user"}
+# }
 }
 
+# 定义 POST 路由：访问 /login 时触发
 @app.post("/login")
+# def login(
 def login(
+    # 字段 username，类型: str，默认值: Form(..., min_length=3, description="用户名"),
     username: str = Form(..., min_length=3, description="用户名"),
+    # 字段 password，类型: str，默认值: Form(..., min_length=6, description="密码"),
     password: str = Form(..., min_length=6, description="密码"),
+    # 字段 remember，类型: bool，默认值: Form(False, description="记住我")
     remember: bool = Form(False, description="记住我")
+# ):
 ):
     # 1. 查用户
+    # 定义变量 user，赋值为 fake_users.get(username)
     user = fake_users.get(username)
     # 2. 校验密码
+    # 条件判断：如果 not user or user["password"] != password
     if not user or user["password"] != password:
+        # 抛出 HTTPException 异常: status_code=401, detail="用户名或密码错误"
         raise HTTPException(status_code=401, detail="用户名或密码错误")
     # 3. 返回登录信息（实际应返回 token）
+    # 返回 {
     return {
+        # "msg": "登录成功",
         "msg": "登录成功",
+        # "user": username,
         "user": username,
+        # "role": user["role"],
         "role": user["role"],
+        # "remember": remember
         "remember": remember
+    # }
     }
 \`\`\`
 
 请求：
 
 \`\`\`bash
+# 发送 POST 请求
 curl -X POST http://localhost:8000/login \\
+  # -d "username=alice&password=secret123&remember=tru
   -d "username=alice&password=secret123&remember=true"
 \`\`\`
 
@@ -520,12 +647,16 @@ curl -X POST http://localhost:8000/login \\
 FastAPI 内置了 OAuth2 登录表单模型，省得自己声明 \`username\`/\`password\`：
 
 \`\`\`python
+# 从 fastapi.security 导入 OAuth2PasswordRequestForm
 from fastapi.security import OAuth2PasswordRequestForm
 
+# 定义 POST 路由：访问 /token 时触发
 @app.post("/token")
+# 定义函数 login，参数: form: OAuth2PasswordRequestForm = Depends()
 def login(form: OAuth2PasswordRequestForm = Depends()):
     # form.username, form.password, form.scope, form.grant_type...
     # 这些是 OAuth2 规范要求的字段
+    # 返回 {"access_token": "xxx", "token_type": "bearer"}
     return {"access_token": "xxx", "token_type": "bearer"}
 \`\`\`
 
@@ -583,24 +714,33 @@ FastAPI 接收上传文件有两种方式：
 ## File() 接收小文件
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, File
 from fastapi import FastAPI, File
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 POST 路由：访问 /upload-small 时触发
 @app.post("/upload-small")
+# 定义异步函数 upload_small，参数: file: bytes = File(...)
 async def upload_small(file: bytes = File(...)):
     # file 是 bytes，整个文件内容
     # 适合几 KB ~ 几 MB 的小文件
+    # 返回 {
     return {
+        # "size": len(file),
         "size": len(file),
         "preview": file[:50]  # 前 50 字节预览
+    # }
     }
 \`\`\`
 
 请求（用 -F 上传文件，curl 自动用 multipart）：
 
 \`\`\`bash
+# 发送 POST 请求
 curl -X POST http://localhost:8000/upload-small \\
+  # -F "file=@photo.jpg"
   -F "file=@photo.jpg"
 \`\`\`
 
@@ -611,17 +751,24 @@ curl -X POST http://localhost:8000/upload-small \\
 \`UploadFile\` 是 Starlette 提供的类，文件先写到一个 SpooledTemporaryFile（默认 1MB 以下在内存，超过就转磁盘临时文件），可以流式读取：
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, UploadFile
 from fastapi import FastAPI, UploadFile
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 POST 路由：访问 /upload 时触发
 @app.post("/upload")
+# 定义异步函数 upload，参数: file: UploadFile
 async def upload(file: UploadFile):
     # UploadFile 的属性
+    # 返回 {
     return {
         "filename": file.filename,      # 原始文件名（用户上传的名字）
+        # "content_type": file.content_type, # MIME 类型，如 ima
         "content_type": file.content_type, # MIME 类型，如 image/jpeg
         "size": file.size                # 文件大小（字节）
+    # }
     }
 \`\`\`
 
@@ -630,7 +777,9 @@ async def upload(file: UploadFile):
 ## UploadFile 的属性和方法
 
 \`\`\`python
+# 定义 POST 路由：访问 /upload 时触发
 @app.post("/upload")
+# 定义异步函数 upload，参数: file: UploadFile
 async def upload(file: UploadFile):
     # 属性
     name = file.filename          # 文件名（str | None）
@@ -648,6 +797,7 @@ async def upload(file: UploadFile):
     # file.file  # 底层 SpooledTemporaryFile，可同步操作
 
     await file.close()  # 关闭，释放临时文件
+    # 返回 {"name": name, "size": size, "content_type": ctype}
     return {"name": name, "size": size, "content_type": ctype}
 \`\`\`
 
@@ -660,29 +810,44 @@ async def upload(file: UploadFile):
 上传后通常要存到服务器磁盘或对象存储：
 
 \`\`\`python
+# 导入 shutil 模块
 import shutil
+# 从 pathlib 导入 Path
 from pathlib import Path
+# 从 fastapi 导入 FastAPI, UploadFile
 from fastapi import FastAPI, UploadFile
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
+# 定义变量 UPLOAD_DIR，赋值为 Path("uploads")
 UPLOAD_DIR = Path("uploads")
+# 调用 UPLOAD_DIR.mkdir()
 UPLOAD_DIR.mkdir(exist_ok=True)
 
+# 定义 POST 路由：访问 /upload 时触发
 @app.post("/upload")
+# 定义异步函数 upload，参数: file: UploadFile
 async def upload(file: UploadFile):
     # 1. 校验文件类型
+    # 条件判断：如果 not file.content_type.startswith("image/")
     if not file.content_type.startswith("image/"):
+        # 返回 {"error": "只能上传图片"}
         return {"error": "只能上传图片"}
 
     # 2. 生成存储路径（用原始文件名，实际应重命名防冲突/防注入）
+    # 定义变量 dest，赋值为 UPLOAD_DIR / file.filename
     dest = UPLOAD_DIR / file.filename
 
     # 3. 流式复制到磁盘（不用 read 全进内存）
+    # 使用上下文管理器 dest.open("wb")，赋值为 f
     with dest.open("wb") as f:
         # file.file 是底层文件对象，shutil.copyfileobj 流式复制
+        # 调用 shutil.copyfileobj()
         shutil.copyfileobj(file.file, f)
 
+    # await file.close()
     await file.close()
+    # 返回 {"filename": file.filename, "saved_to": str(dest)}
     return {"filename": file.filename, "saved_to": str(dest)}
 \`\`\`
 
@@ -693,37 +858,56 @@ async def upload(file: UploadFile):
 用 \`list[UploadFile]\` 接收多个文件：
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, UploadFile
 from fastapi import FastAPI, UploadFile
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 POST 路由：访问 /upload-multiple 时触发
 @app.post("/upload-multiple")
+# 定义异步函数 upload_multiple，参数: files: list[UploadFile]
 async def upload_multiple(files: list[UploadFile]):
+    # 定义列表 results
     results = []
+    # 遍历 files，取 f
     for f in files:
         # 逐个处理
+        # 定义变量 contents，赋值为 await f.read()
         contents = await f.read()
+        # results.append({
         results.append({
+            # "filename": f.filename,
             "filename": f.filename,
+            # "size": len(contents),
             "size": len(contents),
+            # "content_type": f.content_type
             "content_type": f.content_type
+        # })
         })
+        # await f.close()
         await f.close()
+    # 返回 {"count": len(files), "files": results}
     return {"count": len(files), "files": results}
 \`\`\`
 
 请求（多个 -F，同名字段）：
 
 \`\`\`bash
+# 发送 POST 请求
 curl -X POST http://localhost:8000/upload-multiple \\
+  # -F "files=@a.jpg" \\
   -F "files=@a.jpg" \\
+  # -F "files=@b.png" \\
   -F "files=@b.png" \\
+  # -F "files=@c.gif"
   -F "files=@c.gif"
 \`\`\`
 
 HTML 表单用 \`multiple\`：
 
 \`\`\`html
+# <input type="file" name="files" multiple />
 <input type="file" name="files" multiple />
 \`\`\`
 
@@ -732,15 +916,22 @@ HTML 表单用 \`multiple\`：
 FastAPI 默认不限制文件大小。生产中要自己加限制，防止超大文件耗尽磁盘/内存：
 
 \`\`\`python
+# 定义 POST 路由：访问 /upload 时触发
 @app.post("/upload")
+# 定义异步函数 upload，参数: file: UploadFile
 async def upload(file: UploadFile):
     # 读内容后判断大小
+    # 定义变量 contents，赋值为 await file.read()
     contents = await file.read()
     MAX_SIZE = 5 * 1024 * 1024  # 5MB
+    # 条件判断：如果 len(contents) > MAX_SIZE
     if len(contents) > MAX_SIZE:
+        # 返回 {"error": "文件超过 5MB 限制"}
         return {"error": "文件超过 5MB 限制"}
     # 处理 ...
+    # await file.close()
     await file.close()
+    # 返回 {"size": len(contents)}
     return {"size": len(contents)}
 \`\`\`
 
@@ -752,13 +943,20 @@ async def upload(file: UploadFile):
 
 \`\`\`python
 # 简单校验扩展名（弱校验，可被绕过）
+# 定义字典 ALLOWED_EXT
 ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".gif"}
 
+# 定义 POST 路由：访问 /upload 时触发
 @app.post("/upload")
+# 定义异步函数 upload，参数: file: UploadFile
 async def upload(file: UploadFile):
+    # 定义变量 ext，赋值为 Path(file.filename).suffix.lower()
     ext = Path(file.filename).suffix.lower()
+    # 条件判断：如果 ext not in ALLOWED_EXT
     if ext not in ALLOWED_EXT:
+        # 返回 {"error": f"不支持的格式 {ext}"}
         return {"error": f"不支持的格式 {ext}"}
+    # ...
     ...
 
 # 严格校验：读文件头判断真实类型（用 python-magic 库）
@@ -771,27 +969,43 @@ async def upload(file: UploadFile):
 除了上传，下载文件时用 \`StreamingResponse\` 流式返回（避免大文件全进内存）：
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 fastapi.responses 导入 StreamingResponse
 from fastapi.responses import StreamingResponse
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 /download/{filename} 时触发
 @app.get("/download/{filename}")
+# 定义函数 download，参数: filename: str
 def download(filename: str):
+    # 定义变量 path，赋值为 Path("uploads") / filename
     path = Path("uploads") / filename
+    # 条件判断：如果 not path.exists()
     if not path.exists():
+        # 返回 {"error": "文件不存在"}
         return {"error": "文件不存在"}
 
+    # 定义函数 iter_file，参数: 
     def iter_file():
         # 分块读取，流式返回
+        # 使用上下文管理器 path.open("rb")，赋值为 f
         with path.open("rb") as f:
             while chunk := f.read(64 * 1024):  # 64KB 一块
+                # 生成值: chunk
                 yield chunk
 
+    # 返回 StreamingResponse(
     return StreamingResponse(
+        # 调用 iter_file()
         iter_file(),
+        # 定义变量 media_type，赋值为 "application/octet-stream",
         media_type="application/octet-stream",
+        # 定义字典 headers
         headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    # )
     )
 \`\`\`
 
@@ -802,42 +1016,67 @@ def download(filename: str):
 完整例子，含校验、重命名、存储：
 
 \`\`\`python
+# 导入 uuid 模块
 import uuid
+# 从 pathlib 导入 Path
 from pathlib import Path
+# 从 fastapi 导入 FastAPI, UploadFile, HTTPException
 from fastapi import FastAPI, UploadFile, HTTPException
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
+# 定义变量 UPLOAD_DIR，赋值为 Path("uploads")
 UPLOAD_DIR = Path("uploads")
+# 调用 UPLOAD_DIR.mkdir()
 UPLOAD_DIR.mkdir(exist_ok=True)
 
+# 定义字典 ALLOWED_TYPES
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/gif"}
 MAX_SIZE = 5 * 1024 * 1024  # 5MB
 
+# 定义 POST 路由：访问 /upload-image 时触发
 @app.post("/upload-image")
+# 定义异步函数 upload_image，参数: file: UploadFile
 async def upload_image(file: UploadFile):
     # 1. 校验类型
+    # 条件判断：如果 file.content_type not in ALLOWED_TYPES
     if file.content_type not in ALLOWED_TYPES:
+        # 抛出 HTTPException 异常: 400, f"不支持的类型: {file.content_type}"
         raise HTTPException(400, f"不支持的类型: {file.content_type}")
 
     # 2. 读内容并校验大小
+    # 定义变量 contents，赋值为 await file.read()
     contents = await file.read()
+    # 条件判断：如果 len(contents) > MAX_SIZE
     if len(contents) > MAX_SIZE:
+        # 抛出 HTTPException 异常: 400, "文件超过 5MB"
         raise HTTPException(400, "文件超过 5MB")
 
     # 3. 生成安全文件名（uuid + 原扩展名）
+    # 定义变量 ext，赋值为 Path(file.filename).suffix.lower()
     ext = Path(file.filename).suffix.lower()
+    # 定义变量 safe_name，赋值为 f"{uuid.uuid4().hex}{ext}"
     safe_name = f"{uuid.uuid4().hex}{ext}"
+    # 定义变量 dest，赋值为 UPLOAD_DIR / safe_name
     dest = UPLOAD_DIR / safe_name
 
     # 4. 写入磁盘
+    # 调用 dest.write_bytes()
     dest.write_bytes(contents)
+    # await file.close()
     await file.close()
 
+    # 返回 {
     return {
+        # "original_name": file.filename,
         "original_name": file.filename,
+        # "saved_name": safe_name,
         "saved_name": safe_name,
+        # "size": len(contents),
         "size": len(contents),
+        # "url": f"/uploads/{safe_name}"
         "url": f"/uploads/{safe_name}"
+    # }
     }
 \`\`\`
 
@@ -896,14 +1135,19 @@ Pydantic 的 \`Field()\` 用来给 BaseModel 字段加这些约束和元数据�
 \`Field()\` 用作字段的默认值（和 \`Query()\` 用作参数默认值类似）：
 
 \`\`\`python
+# 从 pydantic 导入 BaseModel, Field
 from pydantic import BaseModel, Field
 
+# 定义 Pydantic 数据模型 User，继承 BaseModel
 class User(BaseModel):
     # username：必填（用 ... 表示），长度 3~20
+    # 字段 username，类型: str，默认值: Field(..., min_length=3, max_length=20)
     username: str = Field(..., min_length=3, max_length=20)
     # age：可选，默认 None，范围 0~150
+    # 字段 age，类型: int | None，默认值: Field(None, ge=0, le=150)
     age: int | None = Field(None, ge=0, le=150)
     # score：默认 0.0，> 0
+    # 字段 score，类型: float，默认值: Field(0.0, gt=0)
     score: float = Field(0.0, gt=0)
 \`\`\`
 
@@ -924,10 +1168,13 @@ class User(BaseModel):
 | \`pattern\` | 正则（v2，v1 叫 \`regex\`） |
 
 \`\`\`python
+# 定义 Pydantic 数据模型 User，继承 BaseModel
 class User(BaseModel):
     # 用户名 3~20 字符，字母数字下划线
+    # 字段 username，类型: str，默认值: Field(..., min_length=3, max_length=20, pattern="^[a-zA-Z0-9_]+$")
     username: str = Field(..., min_length=3, max_length=20, pattern="^[a-zA-Z0-9_]+$")
     # 手机号 11 位数字
+    # 字段 phone，类型: str，默认值: Field(..., pattern=r"^\\d{11}$")
     phone: str = Field(..., pattern=r"^\\d{11}$")
 \`\`\`
 
@@ -944,9 +1191,13 @@ class User(BaseModel):
 | \`multiple_of\` | 倍数 |
 
 \`\`\`python
+# 定义 Pydantic 数据模型 Product，继承 BaseModel
 class Product(BaseModel):
+    # 字段 price，类型: float，默认值: Field(..., gt=0, description="价格，必须大于 0")
     price: float = Field(..., gt=0, description="价格，必须大于 0")
+    # 字段 stock，类型: int，默认值: Field(0, ge=0, description="库存，非负")
     stock: int = Field(0, ge=0, description="库存，非负")
+    # 字段 discount，类型: float，默认值: Field(0.0, ge=0, le=1, description="折扣 0~1")
     discount: float = Field(0.0, ge=0, le=1, description="折扣 0~1")
 \`\`\`
 
@@ -958,8 +1209,10 @@ class Product(BaseModel):
 | \`max_length\` / \`max_items\` | 最多元素数 |
 
 \`\`\`python
+# 定义 Pydantic 数据模型 Order，继承 BaseModel
 class Order(BaseModel):
     # 至少 1 个商品，最多 50 个
+    # 字段 items，类型: list[str]，默认值: Field(..., min_length=1, max_length=50)
     items: list[str] = Field(..., min_length=1, max_length=50)
 \`\`\`
 
@@ -968,13 +1221,21 @@ class Order(BaseModel):
 给字段加说明，会出现在 Swagger 文档里：
 
 \`\`\`python
+# 定义 Pydantic 数据模型 User，继承 BaseModel
 class User(BaseModel):
+    # 字段 username，类型: str，默认值: Field(
     username: str = Field(
+        # ...,
         ...,
+        # 定义变量 title，赋值为 "用户名",
         title="用户名",
+        # 定义变量 description，赋值为 "登录用户名，3~20 个字符，只能字母数字下划线",
         description="登录用户名，3~20 个字符，只能字母数字下划线",
+        # 定义变量 min_length，赋值为 3,
         min_length=3,
+        # 定义变量 max_length，赋值为 20
         max_length=20
+    # )
     )
 \`\`\`
 
@@ -988,16 +1249,26 @@ Swagger 里这个字段会显示标题和说明，前端一看就懂。
 \`example\` 给字段一个示例值，Swagger 里"Try it out"会预填：
 
 \`\`\`python
+# 定义 Pydantic 数据模型 User，继承 BaseModel
 class User(BaseModel):
+    # 字段 username，类型: str，默认值: Field(
     username: str = Field(
+        # "alice",
         "alice",
+        # 定义变量 description，赋值为 "用户名",
         description="用户名",
+        # 定义变量 example，赋值为 "bob_smith"
         example="bob_smith"
+    # )
     )
+    # 字段 email，类型: str，默认值: Field(
     email: str = Field(
+        # ...,
         ...,
+        # 定义变量 description，赋值为 "邮箱",
         description="邮箱",
         examples=["a@x.com", "b@y.com"]  # 多个示例
+    # )
     )
 \`\`\`
 
@@ -1008,6 +1279,7 @@ class User(BaseModel):
 Pydantic 模型能生成 JSON Schema（OpenAPI 用的格式），Field() 的约束和元数据都体现在 schema 里：
 
 \`\`\`python
+# 调用 print()
 print(User.model_json_schema())
 # {
 #   "type": "object",
@@ -1032,17 +1304,27 @@ FastAPI 拿这个 schema 生成 \`/openapi.json\`，Swagger 据此渲染文档�
 嵌套模型也能加 Field 约束（主要是描述和列表长度）：
 
 \`\`\`python
+# 定义 Pydantic 数据模型 Address，继承 BaseModel
 class Address(BaseModel):
+    # 字段 city，类型: str，默认值: Field(..., min_length=1, description="城市")
     city: str = Field(..., min_length=1, description="城市")
+    # 字段 zip_code，类型: str，默认值: Field(..., pattern=r"^\\d{6}$", description="邮编 6 位")
     zip_code: str = Field(..., pattern=r"^\\d{6}$", description="邮编 6 位")
 
+# 定义 Pydantic 数据模型 User，继承 BaseModel
 class User(BaseModel):
+    # 字段 name，类型: str
     name: str
     # 嵌套模型字段，加描述和列表约束
+    # 字段 addresses，类型: list[Address]，默认值: Field(
     addresses: list[Address] = Field(
+        # 定义变量 default_factory，赋值为 list,
         default_factory=list,
+        # 定义变量 description，赋值为 "用户地址列表，最多 5 个",
         description="用户地址列表，最多 5 个",
+        # 定义变量 max_length，赋值为 5
         max_length=5
+    # )
     )
 \`\`\`
 
@@ -1051,16 +1333,22 @@ class User(BaseModel):
 ## List / Dict 字段
 
 \`\`\`python
+# 从 typing 导入 Dict, Any
 from typing import Dict, Any
 
+# 定义 Pydantic 数据模型 Config，继承 BaseModel
 class Config(BaseModel):
     # 字符串列表
+    # 字段 tags，类型: list[str]，默认值: Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
     # 整数列表，带约束
+    # 字段 scores，类型: list[int]，默认值: Field(default_factory=list, min_length=1)
     scores: list[int] = Field(default_factory=list, min_length=1)
     # 字典：键字符串，值任意
+    # 字段 metadata，类型: dict[str, Any]，默认值: Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
     # 定长元组
+    # 字段 coords，类型: tuple[float, float]，默认值: (0.0, 0.0)
     coords: tuple[float, float] = (0.0, 0.0)
 \`\`\`
 
@@ -1071,13 +1359,17 @@ class Config(BaseModel):
 默认情况下，Pydantic 模型允许请求 body 里多传字段（额外字段会被忽略或保留）。可以配置：
 
 \`\`\`python
+# 从 pydantic 导入 BaseModel, ConfigDict
 from pydantic import BaseModel, ConfigDict
 
+# 定义 Pydantic 数据模型 User，继承 BaseModel
 class User(BaseModel):
     # Pydantic v2 配置
     model_config = ConfigDict(extra="forbid")  # 禁止额外字段
 
+    # 字段 username，类型: str
     username: str
+    # 字段 email，类型: str
     email: str
 
 # 提交 {"username": "a", "email": "b", "foo": "bar"}
@@ -1099,42 +1391,75 @@ class User(BaseModel):
 把 Field 的各种用法串起来：
 
 \`\`\`python
+# 从 pydantic 导入 BaseModel, Field, ConfigDict
 from pydantic import BaseModel, Field, ConfigDict
 
+# 定义 Pydantic 数据模型 ProductCreate，继承 BaseModel
 class ProductCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")  # 禁止额外字段
 
+    # 字段 name，类型: str，默认值: Field(
     name: str = Field(
+        # ...,
         ...,
+        # 定义变量 min_length，赋值为 1,
         min_length=1,
+        # 定义变量 max_length，赋值为 100,
         max_length=100,
+        # 定义变量 title，赋值为 "商品名",
         title="商品名",
+        # 定义变量 description，赋值为 "商品名称，1~100 字符",
         description="商品名称，1~100 字符",
+        # 定义变量 example，赋值为 "苹果手机"
         example="苹果手机"
+    # )
     )
+    # 字段 price，类型: float，默认值: Field(
     price: float = Field(
+        # ...,
         ...,
+        # 定义变量 gt，赋值为 0,
         gt=0,
+        # 定义变量 le，赋值为 99999,
         le=99999,
+        # 定义变量 description，赋值为 "价格，大于 0 且不超过 99999",
         description="价格，大于 0 且不超过 99999",
+        # 定义变量 example，赋值为 5999.00
         example=5999.00
+    # )
     )
+    # 字段 stock，类型: int，默认值: Field(
     stock: int = Field(
+        # 0,
         0,
+        # 定义变量 ge，赋值为 0,
         ge=0,
+        # 定义变量 description，赋值为 "库存，非负整数",
         description="库存，非负整数",
+        # 定义变量 example，赋值为 100
         example=100
+    # )
     )
+    # 字段 tags，类型: list[str]，默认值: Field(
     tags: list[str] = Field(
+        # 定义变量 default_factory，赋值为 list,
         default_factory=list,
+        # 定义变量 max_length，赋值为 10,
         max_length=10,
+        # 定义变量 description，赋值为 "标签，最多 10 个",
         description="标签，最多 10 个",
+        # 定义列表 example
         example=["电子", "新品"]
+    # )
     )
+    # 字段 is_active，类型: bool，默认值: Field(True, description="是否上架")
     is_active: bool = Field(True, description="是否上架")
 
+# 定义 POST 路由：访问 /products 时触发
 @app.post("/products")
+# 定义函数 create_product，参数: product: ProductCreate
 def create_product(product: ProductCreate):
+    # 返回 product.model_dump()
     return product.model_dump()
 \`\`\`
 

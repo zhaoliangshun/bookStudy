@@ -21,8 +21,8 @@ export const chapters = [
 
 \`\`\`javascript
 // 回调函数作为参数传入
-function doAsyncTask(callback) {
-  setTimeout(() => {
+function doAsyncTask(callback) {  // 声明函数 doAsyncTask
+  setTimeout(() => {  // 延时回调（宏任务，timers 阶段执行）
     // 异步操作完成后调用回调
     callback("任务完成");
   }, 1000);
@@ -41,13 +41,13 @@ Node.js 生态中最核心的约定是 **error-first callback**（错误优先�
 \`\`\`javascript
 // 约定：回调的第一个参数是错误对象，第二个是结果
 asyncFunction(arg1, arg2, (err, result) => {
-  if (err) {
+  if (err) {  // 条件判断
     // 处理错误
-    console.error("操作失败:", err.message);
+    console.error("操作失败:", err.message);  // 打印错误到 stderr
     return; // 必须 return，防止继续执行
   }
   // 处理结果
-  console.log("操作成功:", result);
+  console.log("操作成功:", result);  // 打印日志到 stdout
 });
 \`\`\`
 
@@ -59,8 +59,8 @@ asyncFunction(arg1, arg2, (err, result) => {
 
 \`\`\`javascript
 // 符合 error-first 约定的函数定义
-function divide(a, b, callback) {
-  if (b === 0) {
+function divide(a, b, callback) {  // 声明函数 divide
+  if (b === 0) {  // 条件判断
     // 第一个参数是错误
     callback(new Error("除数不能为 0"), null);
   } else {
@@ -70,8 +70,8 @@ function divide(a, b, callback) {
 }
 
 divide(10, 2, (err, result) => {
-  if (err) return console.error(err);
-  console.log("10 / 2 =", result);
+  if (err) return console.error(err);  // 条件判断
+  console.log("10 / 2 =", result);  // 打印日志到 stdout
 });
 \`\`\`
 
@@ -81,14 +81,14 @@ divide(10, 2, (err, result) => {
 
 \`\`\`javascript
 // ❌ 回调地狱：读取三个文件，依次处理
-fs.readFile("a.txt", (err, dataA) => {
-  if (err) return console.error(err);
-  fs.readFile("b.txt", (err, dataB) => {
-    if (err) return console.error(err);
-    fs.readFile("c.txt", (err, dataC) => {
-      if (err) return console.error(err);
+fs.readFile("a.txt", (err, dataA) => {  // 异步读取文件（回调形式）
+  if (err) return console.error(err);  // 条件判断
+  fs.readFile("b.txt", (err, dataB) => {  // 异步读取文件（回调形式）
+    if (err) return console.error(err);  // 条件判断
+    fs.readFile("c.txt", (err, dataC) => {  // 异步读取文件（回调形式）
+      if (err) return console.error(err);  // 条件判断
       // 终于拿到所有数据了
-      console.log(dataA, dataB, dataC);
+      console.log(dataA, dataB, dataC);  // 打印日志到 stdout
     });
   });
 });
@@ -116,7 +116,7 @@ processPayment(order, (err, result) => {
   // - 被调用几次？（可能多次）
   // - 什么时候调用？（可能太早或太晚）
   // - 是否会被调用？（可能永远不会）
-  if (err) {
+  if (err) {  // 条件判断
     // 退款操作可能被调用多次！
     refund(order);
   }
@@ -130,47 +130,47 @@ Promise 正是为了解决回调地狱和控制反转问题而诞生的。
 #### 1. 命名回调函数（减少嵌套）
 
 \`\`\`javascript
-function handleDataA(err, dataA) {
-  if (err) return console.error(err);
-  fs.readFile("b.txt", handleDataB);
+function handleDataA(err, dataA) {  // 声明函数 handleDataA
+  if (err) return console.error(err);  // 条件判断
+  fs.readFile("b.txt", handleDataB);  // 异步读取文件（回调形式）
 }
 
-function handleDataB(err, dataB) {
-  if (err) return console.error(err);
-  console.log(dataB);
+function handleDataB(err, dataB) {  // 声明函数 handleDataB
+  if (err) return console.error(err);  // 条件判断
+  console.log(dataB);  // 打印日志到 stdout
 }
 
-fs.readFile("a.txt", handleDataA);
+fs.readFile("a.txt", handleDataA);  // 异步读取文件（回调形式）
 \`\`\`
 
 #### 2. 用 util.promisify 转换 ⭐
 
 \`\`\`javascript
-const util = require("util");
-const fs = require("fs");
+const util = require("util");  // 导入模块 util；require 返回 module.exports
+const fs = require("fs");  // 导入模块 fs；require 返回 module.exports
 
 // 将回调风格的函数转换为返回 Promise 的函数
-const readFile = util.promisify(fs.readFile);
+const readFile = util.promisify(fs.readFile);  // 定义常量 readFile
 
 // 现在可以用 Promise 链或 async/await 了
 readFile("a.txt")
-  .then(data => readFile("b.txt"))
-  .then(data => console.log(data))
-  .catch(err => console.error(err));
+  .then(data => readFile("b.txt"))  // 注册 Promise 成功回调
+  .then(data => console.log(data))  // 注册 Promise 成功回调
+  .catch(err => console.error(err));  // 注册 Promise 失败回调
 \`\`\`
 
 #### 3. 用 async/await（终极方案）
 
 \`\`\`javascript
-const readFile = util.promisify(fs.readFile);
+const readFile = util.promisify(fs.readFile);  // 定义常量 readFile
 
-async function readAll() {
-  try {
-    const a = await readFile("a.txt");
-    const b = await readFile("b.txt");
-    console.log(a, b);
+async function readAll() {  // 声明异步函数，内部可用 await
+  try {  // 开启 try 块捕获异常
+    const a = await readFile("a.txt");  // 定义常量 a
+    const b = await readFile("b.txt");  // 定义常量 b
+    console.log(a, b);  // 打印日志到 stdout
   } catch (err) {
-    console.error(err);
+    console.error(err);  // 打印错误到 stderr
   }
 }
 readAll();
@@ -184,11 +184,11 @@ readAll();
 
 \`\`\`javascript
 // promisify 的简化实现
-function promisify(fn) {
-  return function (...args) {
-    return new Promise((resolve, reject) => {
+function promisify(fn) {  // 声明函数 promisify
+  return function (...args) {  // 返回值
+    return new Promise((resolve, reject) => {  // 返回 Promise 供外部 await
       fn(...args, (err, result) => {
-        if (err) reject(err);
+        if (err) reject(err);  // 条件判断
         else resolve(result);
       });
     });
@@ -207,14 +207,14 @@ function promisify(fn) {
 如果回调有多个参数，可以通过 \`util.promisify.custom\` 自定义：
 
 \`\`\`javascript
-const fs = require("fs");
-const util = require("util");
+const fs = require("fs");  // 导入模块 fs；require 返回 module.exports
+const util = require("util");  // 导入模块 util；require 返回 module.exports
 
 // fs.read 的回调有三个参数：err, bytesRead, buffer
 fs.read[util.promisify.custom] = (fd, buffer, ...args) => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {  // 返回 Promise 供外部 await
     fs.read(fd, buffer, ...args, (err, bytesRead, buffer) => {
-      if (err) reject(err);
+      if (err) reject(err);  // 条件判断
       else resolve({ bytesRead, buffer });
     });
   });
@@ -529,9 +529,9 @@ Promise 是一个状态机，只有三种状态，且状态变化**不可逆**�
 \`\`\`
 
 \`\`\`javascript
-const p = new Promise((resolve, reject) => {
+const p = new Promise((resolve, reject) => {  // 创建实例 p
   // executor 立即执行
-  setTimeout(() => {
+  setTimeout(() => {  // 延时回调（宏任务，timers 阶段执行）
     resolve("成功"); // 状态: pending → fulfilled
     // 之后再调用 resolve 或 reject 都会被忽略
     reject("失败"); // 被忽略！状态已经确定
@@ -553,25 +553,25 @@ const p = new Promise((resolve, reject) => {
 
 \`\`\`javascript
 // 方式一：new Promise
-const p1 = new Promise((resolve, reject) => {
+const p1 = new Promise((resolve, reject) => {  // 创建实例 p1
   // 异步操作
-  if (成功) resolve(result);
+  if (成功) resolve(result);  // 条件判断
   else reject(error);
 });
 
 // 方式二：Promise.resolve（快速创建已成功的 Promise）
-const p2 = Promise.resolve("立即成功");
+const p2 = Promise.resolve("立即成功");  // 定义常量 p2
 
 // 方式三：Promise.reject（快速创建已失败的 Promise）
-const p3 = Promise.reject(new Error("立即失败"));
+const p3 = Promise.reject(new Error("立即失败"));  // 定义常量 p3
 \`\`\`
 
 #### executor 的注意事项
 
 \`\`\`javascript
 // executor 中的同步错误会被自动捕获
-const p = new Promise((resolve, reject) => {
-  throw new Error("executor 中抛出的错误");
+const p = new Promise((resolve, reject) => {  // 创建实例 p
+  throw new Error("executor 中抛出的错误");  // 抛出错误中断执行
   // 等价于 reject(new Error("executor 中抛出的错误"))
 });
 
@@ -583,11 +583,11 @@ p.catch(err => console.log(err.message)); // "executor 中抛出的错误"
 每个 \`.then()\` 都返回一个新的 Promise，形成链式调用：
 
 \`\`\`javascript
-Promise.resolve(1)
+Promise.resolve(1)  // 返回一个已成功的 Promise
   .then(n => n + 1)        // 返回 2
   .then(n => n * 3)        // 返回 6
   .then(n => console.log(n)) // 输出 6
-  .catch(err => console.error(err))
+  .catch(err => console.error(err))  // 注册 Promise 失败回调
   .finally(() => console.log("完成")); // 无论如何都执行
 \`\`\`
 
@@ -603,7 +603,7 @@ Promise.resolve(1)
 | 抛出错误 | rejected，错误为抛出的值 |
 
 \`\`\`javascript
-Promise.resolve(1)
+Promise.resolve(1)  // 返回一个已成功的 Promise
   .then(n => Promise.resolve(n + 1)) // 返回 Promise
   .then(n => n * 2)                  // 等上一个 Promise resolve
   .then(n => { throw new Error("错"); }) // 转为 rejected
@@ -615,10 +615,10 @@ Promise.resolve(1)
 Promise 链中的错误会**沿链向下传播**，直到遇到第一个 \`.catch()\`：
 
 \`\`\`javascript
-Promise.resolve()
-  .then(() => { throw new Error("A 出错"); })
-  .then(() => console.log("B 不会执行"))
-  .then(() => console.log("C 不会执行"))
+Promise.resolve()  // 返回一个已成功的 Promise
+  .then(() => { throw new Error("A 出错"); })  // 注册 Promise 成功回调
+  .then(() => console.log("B 不会执行"))  // 注册 Promise 成功回调
+  .then(() => console.log("C 不会执行"))  // 注册 Promise 成功回调
   .catch(err => console.log(err.message)); // "A 出错"
 
   // 错误跳过 B 和 C，直接到 catch
@@ -629,12 +629,12 @@ Promise.resolve()
 \`.catch()\` 处理完错误后，链可以继续：
 
 \`\`\`javascript
-Promise.reject("失败")
-  .catch(err => {
-    console.log("处理错误:", err);
+Promise.reject("失败")  // 返回一个已失败的 Promise
+  .catch(err => {  // 注册 Promise 失败回调
+    console.log("处理错误:", err);  // 打印日志到 stdout
     return "默认值"; // 返回默认值，链恢复
   })
-  .then(result => {
+  .then(result => {  // 注册 Promise 成功回调
     console.log("继续执行:", result); // "继续执行: 默认值"
   });
 \`\`\`
@@ -644,13 +644,13 @@ Promise.reject("失败")
 Promise 的 \`.then()\`、\`.catch()\`、\`.finally()\` 回调被放入**微任务队列**（microtask queue），在当前同步代码执行完后、事件循环继续前执行：
 
 \`\`\`javascript
-console.log("1. 同步");
+console.log("1. 同步");  // 打印日志到 stdout
 
-Promise.resolve().then(() => {
-  console.log("3. 微任务 Promise");
+Promise.resolve().then(() => {  // 返回一个已成功的 Promise
+  console.log("3. 微任务 Promise");  // 打印日志到 stdout
 });
 
-console.log("2. 同步");
+console.log("2. 同步");  // 打印日志到 stdout
 
 // 输出: 1 → 2 → 3
 \`\`\`
@@ -683,17 +683,17 @@ const [user, posts, friends] = await Promise.all([
 **等全部完成，不管成功失败**：
 
 \`\`\`javascript
-const results = await Promise.allSettled([
+const results = await Promise.allSettled([  // 定义常量 results
   fetch("/api/a"),
   fetch("/api/b"), // 这个可能失败
   fetch("/api/c"),
 ]);
 
 results.forEach((r, i) => {
-  if (r.status === "fulfilled") {
-    console.log("任务", i, "成功:", r.value);
+  if (r.status === "fulfilled") {  // 条件判断
+    console.log("任务", i, "成功:", r.value);  // 打印日志到 stdout
   } else {
-    console.log("任务", i, "失败:", r.reason);
+    console.log("任务", i, "失败:", r.reason);  // 打印日志到 stdout
   }
 });
 // 每个结果都有 status 字段，失败的结果不会被丢弃
@@ -707,10 +707,10 @@ results.forEach((r, i) => {
 
 \`\`\`javascript
 // 经典用法：超时控制
-const result = await Promise.race([
+const result = await Promise.race([  // 定义常量 result
   fetch("/api/slow"),
-  new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("超时")), 5000)
+  new Promise((_, reject) =>  // 创建 Promise 实例
+    setTimeout(() => reject(new Error("超时")), 5000)  // 延时回调（宏任务，timers 阶段执行）
   ),
 ]);
 \`\`\`
@@ -721,7 +721,7 @@ const result = await Promise.race([
 
 \`\`\`javascript
 // 从多个镜像获取数据，哪个快用哪个
-const data = await Promise.any([
+const data = await Promise.any([  // 定义常量 data
   fetch("https://mirror1.com/data"),
   fetch("https://mirror2.com/data"),
   fetch("https://mirror3.com/data"),
@@ -751,7 +751,7 @@ fetchUser(id).then(user => {
 
 // ✅ 正确：return Promise
 fetchUser(id).then(user => {
-  return fetchPosts(user.id);
+  return fetchPosts(user.id);  // 返回值
 }).then(posts => {
   console.log(posts); // 正确的帖子数据
 });
@@ -761,23 +761,23 @@ fetchUser(id).then(user => {
 
 \`\`\`javascript
 // ❌ 一个失败，其他成功的结果全部丢失
-await Promise.all([fetchA(), fetchB(), fetchC()]);
+await Promise.all([fetchA(), fetchB(), fetchC()]);  // 等待 Promise 完成后再继续
 
 // ✅ 需要容错时用 allSettled
-const results = await Promise.allSettled([fetchA(), fetchB(), fetchC()]);
+const results = await Promise.allSettled([fetchA(), fetchB(), fetchC()]);  // 定义常量 results
 \`\`\`
 
 #### 3. 在非 async 函数中用 await
 
 \`\`\`javascript
 // ❌ 语法错误：await 只能在 async 函数或模块顶层使用
-function getData() {
+function getData() {  // 声明函数 getData
   const data = await fetch("/api"); // SyntaxError
 }
 
 // ✅ 标记为 async
-async function getData() {
-  const data = await fetch("/api");
+async function getData() {  // 声明异步函数，内部可用 await
+  const data = await fetch("/api");  // 定义常量 data
 }
 \`\`\`
 
@@ -1104,13 +1104,13 @@ console.log("  6. 永远不要忘记在 then 中 return Promise");`,
 
 \`\`\`javascript
 // async 函数声明
-async function fetchData() {
+async function fetchData() {  // 声明异步函数，内部可用 await
   return "数据"; // 自动包装为 Promise.resolve("数据")
 }
 
 // 等价于
-function fetchData() {
-  return Promise.resolve("数据");
+function fetchData() {  // 声明函数 fetchData
+  return Promise.resolve("数据");  // 返回值
 }
 
 // async 函数返回的 Promise
@@ -1131,12 +1131,12 @@ fetchData().then(data => console.log(data)); // "数据"
 \`await\` 只能在 async 函数内部使用（或模块顶层）。它**暂停** async 函数的执行，等待 Promise 完成：
 
 \`\`\`javascript
-async function getUser() {
+async function getUser() {  // 声明异步函数，内部可用 await
   // await 等待 Promise resolve，直接获取结果
-  const user = await fetchUser(123);
+  const user = await fetchUser(123);  // 定义常量 user
   // 上一行完成后，才会执行下一行
-  const posts = await fetchPosts(user.id);
-  return { user, posts };
+  const posts = await fetchPosts(user.id);  // 定义常量 posts
+  return { user, posts };  // 返回值
 }
 \`\`\`
 
@@ -1146,12 +1146,12 @@ async function getUser() {
 // 以下两段代码等价：
 
 // async/await 写法
-const result = await somePromise;
-console.log(result);
+const result = await somePromise;  // 定义常量 result
+console.log(result);  // 打印日志到 stdout
 
 // Promise 写法
 somePromise.then(result => {
-  console.log(result);
+  console.log(result);  // 打印日志到 stdout
 });
 \`\`\`
 
@@ -1162,14 +1162,14 @@ somePromise.then(result => {
 async/await 的最大优势之一是可以用 \`try/catch\` 处理异步错误：
 
 \`\`\`javascript
-async function fetchData() {
-  try {
-    const response = await fetch("/api/data");
-    const data = await response.json();
-    return data;
+async function fetchData() {  // 声明异步函数，内部可用 await
+  try {  // 开启 try 块捕获异常
+    const response = await fetch("/api/data");  // 定义常量 response
+    const data = await response.json();  // 定义常量 data
+    return data;  // 返回值
   } catch (error) {
     // 捕获所有 await 表达式的错误
-    console.error("请求失败:", error.message);
+    console.error("请求失败:", error.message);  // 打印错误到 stderr
     return null; // 返回默认值
   }
 }
@@ -1178,24 +1178,24 @@ async function fetchData() {
 #### 细粒度错误处理
 
 \`\`\`javascript
-async function processData() {
+async function processData() {  // 声明异步函数，内部可用 await
   let user, posts;
 
-  try {
+  try {  // 开启 try 块捕获异常
     user = await fetchUser(userId);
   } catch (err) {
-    console.error("获取用户失败:", err.message);
+    console.error("获取用户失败:", err.message);  // 打印错误到 stderr
     return; // 用户都获取不到，停止处理
   }
 
-  try {
+  try {  // 开启 try 块捕获异常
     posts = await fetchPosts(user.id);
   } catch (err) {
-    console.error("获取帖子失败:", err.message);
+    console.error("获取帖子失败:", err.message);  // 打印错误到 stderr
     posts = []; // 帖子获取失败不影响，用空数组代替
   }
 
-  return { user, posts };
+  return { user, posts };  // 返回值
 }
 \`\`\`
 
@@ -1238,9 +1238,9 @@ const [user, posts, friends] = await Promise.all([
 #### 混合策略示例
 
 \`\`\`javascript
-async function loadUserPage(userId) {
+async function loadUserPage(userId) {  // 声明异步函数，内部可用 await
   // 第一步：获取用户信息（必须最先完成）
-  const user = await fetchUser(userId);
+  const user = await fetchUser(userId);  // 定义常量 user
 
   // 第二步：基于用户信息，并行获取帖子和好友
   const [posts, friends] = await Promise.all([
@@ -1248,7 +1248,7 @@ async function loadUserPage(userId) {
     fetchFriends(user.id),
   ]);
 
-  return { user, posts, friends };
+  return { user, posts, friends };  // 返回值
 }
 \`\`\`
 
@@ -1258,10 +1258,10 @@ async function loadUserPage(userId) {
 
 \`\`\`javascript
 // 逐行读取文件（Node.js 18+）
-const readable = fs.createReadStream("large.log");
+const readable = fs.createReadStream("large.log");  // 文件操作结果 readable
 
 for await (const chunk of readable) {
-  console.log("读取到:", chunk.length, "字节");
+  console.log("读取到:", chunk.length, "字节");  // 打印日志到 stdout
 }
 \`\`\`
 
@@ -1269,7 +1269,7 @@ for await (const chunk of readable) {
 
 \`\`\`javascript
 // 同步遍历：遍历同步可迭代对象
-for (const item of [1, 2, 3]) {
+for (const item of [1, 2, 3]) {  // for 循环
   console.log(item); // 同步执行
 }
 
@@ -1285,14 +1285,14 @@ for await (const item of asyncIterable) {
 
 \`\`\`javascript
 // config.mjs (ESM 模块)
-import { readFile } from "fs/promises";
+import { readFile } from "fs/promises";  // 从 fs/promises 导入：{ readFile }
 
 // 顶层 await：模块加载时会等待
-const config = JSON.parse(
-  await readFile("./config.json", "utf8")
+const config = JSON.parse(  // 解析 JSON 为对象 config
+  await readFile("./config.json", "utf8")  // 等待 Promise 完成后再继续
 );
 
-export { config };
+export { config };  // 导出指定的命名成员
 // 其他模块 import 这个文件时会等待 config 读取完成
 \`\`\`
 
@@ -1305,19 +1305,19 @@ export { config };
 \`\`\`javascript
 // ❌ forEach 不会等待 async 回调
 [1, 2, 3].forEach(async (n) => {
-  await delay(1000);
-  console.log(n);
+  await delay(1000);  // 等待 Promise 完成后再继续
+  console.log(n);  // 打印日志到 stdout
 });
 console.log("完成"); // 会立即输出！
 
 // ✅ 用 for...of
-for (const n of [1, 2, 3]) {
-  await delay(1000);
-  console.log(n);
+for (const n of [1, 2, 3]) {  // for 循环
+  await delay(1000);  // 等待 Promise 完成后再继续
+  console.log(n);  // 打印日志到 stdout
 }
 
 // ✅ 或用 Promise.all + map（并行）
-await Promise.all([1, 2, 3].map(n => delay(1000)));
+await Promise.all([1, 2, 3].map(n => delay(1000)));  // 等待 Promise 完成后再继续
 \`\`\`
 
 #### 2. 忘记 await
@@ -1335,9 +1335,9 @@ const data = await fetchData(); // data 是实际数据
 
 \`\`\`javascript
 // ❌ 三个没有依赖关系的请求却串行执行
-const a = await fetchA();
-const b = await fetchB();
-const c = await fetchC();
+const a = await fetchA();  // 定义常量 a
+const b = await fetchB();  // 定义常量 b
+const c = await fetchC();  // 定义常量 c
 
 // ✅ 用 Promise.all 并行
 const [a, b, c] = await Promise.all([
@@ -1746,12 +1746,12 @@ Node.js 事件循环由 libuv 实现，每一轮（tick）包含 6 个阶段：
 \`process.nextTick\` 的优先级**高于** \`Promise.then\`：
 
 \`\`\`javascript
-console.log("1. 同步");
+console.log("1. 同步");  // 打印日志到 stdout
 
-process.nextTick(() => console.log("3. nextTick"));
-Promise.resolve().then(() => console.log("4. Promise"));
+process.nextTick(() => console.log("3. nextTick"));  // 把回调放入 nextTick 队列（微任务，优先级最高）
+Promise.resolve().then(() => console.log("4. Promise"));  // 返回一个已成功的 Promise
 
-console.log("2. 同步");
+console.log("2. 同步");  // 打印日志到 stdout
 
 // 输出: 1 → 2 → 3 → 4
 \`\`\`
@@ -1762,8 +1762,8 @@ console.log("2. 同步");
 
 \`\`\`javascript
 // ❌ 危险：递归 nextTick 会饿死 I/O
-function recursiveTick() {
-  process.nextTick(recursiveTick);
+function recursiveTick() {  // 声明函数 recursiveTick
+  process.nextTick(recursiveTick);  // 把回调放入 nextTick 队列（微任务，优先级最高）
 }
 recursiveTick();
 // setTimeout(() => console.log("永远执行不到"), 0);
@@ -1776,8 +1776,8 @@ recursiveTick();
 在**主模块**中，\`setTimeout(fn, 0)\` 和 \`setImmediate(fn)\` 的执行顺序是**不确定的**：
 
 \`\`\`javascript
-setTimeout(() => console.log("timeout"));
-setImmediate(() => console.log("immediate"));
+setTimeout(() => console.log("timeout"));  // 延时回调（宏任务，timers 阶段执行）
+setImmediate(() => console.log("immediate"));  // 在 check 阶段执行回调
 // 可能: timeout → immediate
 // 也可能: immediate → timeout
 \`\`\`
@@ -1787,7 +1787,7 @@ setImmediate(() => console.log("immediate"));
 但在 **I/O 回调**中，\`setImmediate\` **一定先于** \`setTimeout\`：
 
 \`\`\`javascript
-fs.readFile("file.txt", () => {
+fs.readFile("file.txt", () => {  // 异步读取文件（回调形式）
   setTimeout(() => console.log("timeout"));   // 下一轮 timers
   setImmediate(() => console.log("immediate")); // 当轮 check
   // 输出: immediate → timeout
@@ -1811,23 +1811,23 @@ poll 阶段是事件循环中**最复杂**的阶段：
 ### 完整执行顺序示例
 
 \`\`\`javascript
-console.log("1");
+console.log("1");  // 打印日志到 stdout
 
-setTimeout(() => console.log("6"), 0);
+setTimeout(() => console.log("6"), 0);  // 延时回调（宏任务，timers 阶段执行）
 
-fs.readFile(__filename, () => {
+fs.readFile(__filename, () => {  // 异步读取文件（回调形式）
   console.log("7"); // I/O 回调（poll 阶段）
-  setImmediate(() => console.log("8"));
-  setTimeout(() => console.log("9"), 0);
+  setImmediate(() => console.log("8"));  // 在 check 阶段执行回调
+  setTimeout(() => console.log("9"), 0);  // 延时回调（宏任务，timers 阶段执行）
 });
 
-setImmediate(() => console.log("5"));
+setImmediate(() => console.log("5"));  // 在 check 阶段执行回调
 
-process.nextTick(() => console.log("3"));
+process.nextTick(() => console.log("3"));  // 把回调放入 nextTick 队列（微任务，优先级最高）
 
-Promise.resolve().then(() => console.log("4"));
+Promise.resolve().then(() => console.log("4"));  // 返回一个已成功的 Promise
 
-console.log("2");
+console.log("2");  // 打印日志到 stdout
 
 // 可能的输出: 1→2→3→4→5→6→7→8→9
 // （5 和 6 的顺序可能互换，主模块中不确定）
@@ -1838,12 +1838,12 @@ console.log("2");
 #### 题目：嵌套 setTimeout 中的执行顺序
 
 \`\`\`javascript
-setTimeout(() => {
-  console.log("A");
-  setTimeout(() => console.log("B"), 0);
-  setImmediate(() => console.log("C"));
-  process.nextTick(() => console.log("D"));
-  Promise.resolve().then(() => console.log("E"));
+setTimeout(() => {  // 延时回调（宏任务，timers 阶段执行）
+  console.log("A");  // 打印日志到 stdout
+  setTimeout(() => console.log("B"), 0);  // 延时回调（宏任务，timers 阶段执行）
+  setImmediate(() => console.log("C"));  // 在 check 阶段执行回调
+  process.nextTick(() => console.log("D"));  // 把回调放入 nextTick 队列（微任务，优先级最高）
+  Promise.resolve().then(() => console.log("E"));  // 返回一个已成功的 Promise
 }, 0);
 // 输出: A → D → E → C → B
 // 解释：A 是宏任务，进入宏任务后先清空微任务(D→E)，
@@ -2175,10 +2175,10 @@ Node.js 是单线程的，但通过事件循环实现了**高并发**。多个�
 
 \`\`\`javascript
 // ❌ 危险：无限制并发发送 1000 个请求
-const urls = [...Array(1000)].map((_, i) => "/api/item/" + i);
+const urls = [...Array(1000)].map((_, i) => "/api/item/" + i);  // 定义数组 urls
 
 // 同时发起 1000 个请求！
-await Promise.all(urls.map(url => fetch(url)));
+await Promise.all(urls.map(url => fetch(url)));  // 等待 Promise 完成后再继续
 
 // 问题：
 // 1. 可能耗尽文件描述符（EMFILE 错误）
@@ -2200,20 +2200,20 @@ await Promise.all(urls.map(url => fetch(url)));
 信号量（Semaphore）是并发控制最经典的实现方式：
 
 \`\`\`javascript
-class Semaphore {
-  constructor(limit) {
+class Semaphore {  // 定义类 Semaphore
+  constructor(limit) {  // 构造函数
     this.limit = limit;       // 最大并发数
     this.running = 0;         // 当前运行数
     this.queue = [];          // 等待队列
   }
 
   async acquire() {
-    if (this.running < this.limit) {
+    if (this.running < this.limit) {  // 条件判断
       this.running++;
       return;
     }
     // 达到上限，加入等待队列
-    return new Promise(resolve => {
+    return new Promise(resolve => {  // 返回 Promise 供外部 await
       this.queue.push(resolve);
     });
   }
@@ -2221,7 +2221,7 @@ class Semaphore {
   release() {
     this.running--;
     // 从等待队列中取出下一个
-    if (this.queue.length > 0) {
+    if (this.queue.length > 0) {  // 条件判断
       this.queue.shift()();
     }
   }
@@ -2240,26 +2240,26 @@ class Semaphore {
 #### 核心实现
 
 \`\`\`javascript
-async function asyncPool(limit, items, iteratorFn) {
-  const results = [];
-  const executing = [];
+async function asyncPool(limit, items, iteratorFn) {  // 声明异步函数，内部可用 await
+  const results = [];  // 定义数组 results
+  const executing = [];  // 定义数组 executing
 
-  for (const item of items) {
+  for (const item of items) {  // for 循环
     // 创建任务 Promise
-    const p = Promise.resolve().then(() => iteratorFn(item));
+    const p = Promise.resolve().then(() => iteratorFn(item));  // 定义常量 p
     results.push(p);
 
     // 达到限制时，等待一个完成
-    if (limit <= items.length) {
-      const e = p.then(() => executing.splice(executing.indexOf(e), 1));
+    if (limit <= items.length) {  // 条件判断
+      const e = p.then(() => executing.splice(executing.indexOf(e), 1));  // 定义常量 e
       executing.push(e);
-      if (executing.length >= limit) {
-        await Promise.race(executing);
+      if (executing.length >= limit) {  // 条件判断
+        await Promise.race(executing);  // 等待 Promise 完成后再继续
       }
     }
   }
 
-  return Promise.all(results);
+  return Promise.all(results);  // 返回值
 }
 \`\`\`
 
@@ -2270,17 +2270,17 @@ async function asyncPool(limit, items, iteratorFn) {
 将大量任务分成固定大小的批次，逐批处理：
 
 \`\`\`javascript
-async function batchProcess(items, batchSize, processor) {
-  const results = [];
-  for (let i = 0; i < items.length; i += batchSize) {
-    const batch = items.slice(i, i + batchSize);
-    const batchResults = await Promise.all(
+async function batchProcess(items, batchSize, processor) {  // 声明异步函数，内部可用 await
+  const results = [];  // 定义数组 results
+  for (let i = 0; i < items.length; i += batchSize) {  // for 循环
+    const batch = items.slice(i, i + batchSize);  // 定义常量 batch
+    const batchResults = await Promise.all(  // 定义常量 batchResults
       batch.map(item => processor(item))
     );
     results.push(...batchResults);
-    console.log("完成批次:", i / batchSize + 1);
+    console.log("完成批次:", i / batchSize + 1);  // 打印日志到 stdout
   }
-  return results;
+  return results;  // 返回值
 }
 \`\`\`
 
@@ -2301,7 +2301,7 @@ async function batchProcess(items, batchSize, processor) {
 将并发控制与超时、重试结合，形成一个健壮的任务执行器：
 
 \`\`\`javascript
-async function executeWithLimit(tasks, options = {}) {
+async function executeWithLimit(tasks, options = {}) {  // 声明异步函数，内部可用 await
   const {
     limit = 5,        // 最大并发数
     timeout = 30000,  // 单个任务超时（ms）
@@ -2309,22 +2309,22 @@ async function executeWithLimit(tasks, options = {}) {
     retryDelay = 1000,// 重试间隔
   } = options;
 
-  const results = [];
-  const executing = new Set();
+  const results = [];  // 定义数组 results
+  const executing = new Set();  // 创建实例 executing
 
-  for (const task of tasks) {
-    const p = executeWithRetry(task, timeout, retries, retryDelay)
-      .then(r => { results.push(r); executing.delete(p); });
+  for (const task of tasks) {  // for 循环
+    const p = executeWithRetry(task, timeout, retries, retryDelay)  // 定义常量 p
+      .then(r => { results.push(r); executing.delete(p); });  // 注册 Promise 成功回调
 
     executing.add(p);
 
-    if (executing.size >= limit) {
-      await Promise.race(executing);
+    if (executing.size >= limit) {  // 条件判断
+      await Promise.race(executing);  // 等待 Promise 完成后再继续
     }
   }
 
-  await Promise.all(executing);
-  return results;
+  await Promise.all(executing);  // 等待 Promise 完成后再继续
+  return results;  // 返回值
 }
 \`\`\`
 
@@ -2746,8 +2746,8 @@ console.log("  5. 用 Promise.allSettled 收集结果，避免丢失失败信息
 #### 同步错误可以被 try/catch 捕获
 
 \`\`\`javascript
-try {
-  throw new Error("同步错误");
+try {  // 开启 try 块捕获异常
+  throw new Error("同步错误");  // 抛出错误中断执行
 } catch (err) {
   console.log("捕获:", err.message); // ✅ 能捕获
 }
@@ -2757,19 +2757,19 @@ try {
 
 \`\`\`javascript
 // ❌ try/catch 捕获不到异步回调中的错误
-try {
-  setTimeout(() => {
+try {  // 开启 try 块捕获异常
+  setTimeout(() => {  // 延时回调（宏任务，timers 阶段执行）
     throw new Error("异步错误"); // 不会被下面的 catch 捕获！
   }, 100);
 } catch (err) {
-  console.log("捕获不到:", err.message);
+  console.log("捕获不到:", err.message);  // 打印日志到 stdout
 }
 
 // ❌ try/catch 捕获不到 Promise rejection
-try {
-  Promise.reject(new Error("Promise 错误"));
+try {  // 开启 try 块捕获异常
+  Promise.reject(new Error("Promise 错误"));  // 返回一个已失败的 Promise
 } catch (err) {
-  console.log("捕获不到:", err.message);
+  console.log("捕获不到:", err.message);  // 打印日志到 stdout
 }
 \`\`\`
 
@@ -2780,8 +2780,8 @@ try {
 #### 1. 回调 Error-First
 
 \`\`\`javascript
-function readFile(path, callback) {
-  fs.readFile(path, (err, data) => {
+function readFile(path, callback) {  // 声明函数 readFile
+  fs.readFile(path, (err, data) => {  // 异步读取文件（回调形式）
     if (err) return callback(err); // 传递错误
     callback(null, data);          // 传递结果
   });
@@ -2792,22 +2792,22 @@ function readFile(path, callback) {
 
 \`\`\`javascript
 fetchData()
-  .then(data => processData(data))
-  .then(result => console.log(result))
-  .catch(err => console.error("出错:", err));
+  .then(data => processData(data))  // 注册 Promise 成功回调
+  .then(result => console.log(result))  // 注册 Promise 成功回调
+  .catch(err => console.error("出错:", err));  // 注册 Promise 失败回调
   // catch 捕获链中任何一步的错误
 \`\`\`
 
 #### 3. async/await + try/catch（推荐）
 
 \`\`\`javascript
-async function fetchData() {
-  try {
-    const data = await apiCall();
-    return processData(data);
+async function fetchData() {  // 声明异步函数，内部可用 await
+  try {  // 开启 try 块捕获异常
+    const data = await apiCall();  // 定义常量 data
+    return processData(data);  // 返回值
   } catch (err) {
-    console.error("出错:", err);
-    return null;
+    console.error("出错:", err);  // 打印错误到 stderr
+    return null;  // 返回值
   }
 }
 \`\`\`
@@ -2819,11 +2819,11 @@ async function fetchData() {
 当同步代码或异步回调中抛出未被捕获的异常时触发：
 
 \`\`\`javascript
-process.on("uncaughtException", (err, origin) => {
-  console.error("未捕获异常:", err.message);
-  console.error("来源:", origin);
+process.on("uncaughtException", (err, origin) => {  // 注册进程级事件监听
+  console.error("未捕获异常:", err.message);  // 打印错误到 stderr
+  console.error("来源:", origin);  // 打印错误到 stderr
   // 记录日志后必须退出！
-  process.exit(1);
+  process.exit(1);  // 退出进程（0 正常，非 0 异常）
 });
 \`\`\`
 
@@ -2834,8 +2834,8 @@ process.on("uncaughtException", (err, origin) => {
 当 Promise 被 reject 但没有 .catch() 时触发：
 
 \`\`\`javascript
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("未处理的 Promise 拒绝:", reason);
+process.on("unhandledRejection", (reason, promise) => {  // 注册进程级事件监听
+  console.error("未处理的 Promise 拒绝:", reason);  // 打印错误到 stderr
   // Node.js v15+ 默认会因此退出进程
 });
 \`\`\`
@@ -2849,18 +2849,18 @@ process.on("unhandledRejection", (reason, promise) => {
 #### 使用 cause 属性（ES2022）
 
 \`\`\`javascript
-async function getUserData(userId) {
-  try {
-    const response = await fetch("/api/users/" + userId);
-    return await response.json();
+async function getUserData(userId) {  // 声明异步函数，内部可用 await
+  try {  // 开启 try 块捕获异常
+    const response = await fetch("/api/users/" + userId);  // 定义常量 response
+    return await response.json();  // 返回值
   } catch (err) {
     // 包装错误：添加上下文，保留原始错误
-    throw new Error("获取用户 " + userId + " 失败", { cause: err });
+    throw new Error("获取用户 " + userId + " 失败", { cause: err });  // 抛出错误中断执行
   }
 }
 
-try {
-  await getUserData(123);
+try {  // 开启 try 块捕获异常
+  await getUserData(123);  // 等待 Promise 完成后再继续
 } catch (err) {
   console.log(err.message);       // "获取用户 123 失败"
   console.log(err.cause.message); // 底层错误详情
@@ -2870,16 +2870,16 @@ try {
 #### 自定义错误类
 
 \`\`\`javascript
-class ApiError extends Error {
-  constructor(message, statusCode, cause) {
-    super(message, { cause });
+class ApiError extends Error {  // 定义类 ApiError
+  constructor(message, statusCode, cause) {  // 构造函数
+    super(message, { cause });  // 调用父类构造函数
     this.name = "ApiError";
     this.statusCode = statusCode;
   }
 }
 
 // 使用
-throw new ApiError("请求失败", 500, originalError);
+throw new ApiError("请求失败", 500, originalError);  // 抛出异常
 \`\`\`
 
 ### 防御性编程
@@ -2892,16 +2892,16 @@ promise.then(data => console.log(data));
 
 // ✅ 总是加 .catch() 或 try/catch
 promise
-  .then(data => console.log(data))
-  .catch(err => console.error(err));
+  .then(data => console.log(data))  // 注册 Promise 成功回调
+  .catch(err => console.error(err));  // 注册 Promise 失败回调
 \`\`\`
 
 #### 2. 给 async 函数加 try/catch
 
 \`\`\`javascript
-async function handler() {
-  try {
-    await riskyOperation();
+async function handler() {  // 声明异步函数，内部可用 await
+  try {  // 开启 try 块捕获异常
+    await riskyOperation();  // 等待 Promise 完成后再继续
   } catch (err) {
     // 记录日志、返回默认值、或重新抛出
     logger.error(err);
@@ -2921,10 +2921,10 @@ async function handler() {
 
 \`\`\`javascript
 // ❌ 吞掉错误（最糟糕的做法）
-try { riskyOperation(); } catch (e) {}
+try { riskyOperation(); } catch (e) {}  // 开启 try 块捕获异常
 
 // ✅ 至少记录日志
-try {
+try {  // 开启 try 块捕获异常
   riskyOperation();
 } catch (err) {
   logger.error("操作失败", err);

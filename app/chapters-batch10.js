@@ -48,8 +48,8 @@ Master 和 Worker 之间通过内置的 IPC 通道通信。worker.send() 和 pro
 worker.send({ cmd: 'shutdown', timeout: 5000 });
 
 // Worker 接收消息
-process.on('message', function(msg) {
-  if (msg.cmd === 'shutdown') {
+process.on('message', function(msg) {  // 注册进程级事件监听
+  if (msg.cmd === 'shutdown') {  // 条件判断
     // 执行优雅关闭
   }
 });
@@ -60,10 +60,10 @@ process.on('message', function(msg) {
 当 worker 进程意外退出时（如未捕获的异常），master 应该自动重启它。这是生产环境中的基本要求：
 
 \`\`\`javascript
-cluster.on('exit', function(worker, code, signal) {
-  if (!worker.exitedAfterDisconnect) {
+cluster.on('exit', function(worker, code, signal) {  // 监听 cluster 事件
+  if (!worker.exitedAfterDisconnect) {  // 条件判断
     // 非主动退出，重启 worker
-    cluster.fork();
+    cluster.fork();  // fork 一个工作进程
   }
 });
 \`\`\`
@@ -414,16 +414,16 @@ Accept-Encoding: gzip, deflate, br
 
 \`\`\`javascript
 // 根据 Accept-Encoding 选择压缩方式
-var acceptEncoding = req.headers['accept-encoding'] || '';
-if (acceptEncoding.includes('br')) {
+var acceptEncoding = req.headers['accept-encoding'] || '';  // 定义变量 acceptEncoding（函数作用域）
+if (acceptEncoding.includes('br')) {  // 条件判断
   // 使用 Brotli
-  res.setHeader('Content-Encoding', 'br');
-  var brotli = zlib.createBrotliCompress();
+  res.setHeader('Content-Encoding', 'br');  // 设置响应头
+  var brotli = zlib.createBrotliCompress();  // 定义变量 brotli（函数作用域）
   rawStream.pipe(brotli).pipe(res);
 } else if (acceptEncoding.includes('gzip')) {
   // 使用 Gzip
-  res.setHeader('Content-Encoding', 'gzip');
-  var gzip = zlib.createGzip();
+  res.setHeader('Content-Encoding', 'gzip');  // 设置响应头
+  var gzip = zlib.createGzip();  // 定义变量 gzip（函数作用域）
   rawStream.pipe(gzip).pipe(res);
 }
 \`\`\`
@@ -433,9 +433,9 @@ if (acceptEncoding.includes('br')) {
 对大文件使用流式压缩可以避免将整个文件加载到内存中：
 
 \`\`\`javascript
-fs.createReadStream('large-file.json')
-  .pipe(zlib.createGzip())
-  .pipe(fs.createWriteStream('large-file.json.gz'));
+fs.createReadStream('large-file.json')  // 创建可读流（分块读取大文件）
+  .pipe(zlib.createGzip())  // 管道：把可读流接到可写流
+  .pipe(fs.createWriteStream('large-file.json.gz'));  // 管道：把可读流接到可写流
 \`\`\`
 
 ### 压缩性能数据
@@ -1158,7 +1158,7 @@ HTTP/1.1: 请求1 → 请求2 → 请求3 → 空闲超时 → 关闭连接
 Node.js 的 http.Agent 负责管理 HTTP 客户端的连接复用。每个 Agent 维护一个连接池（socket pool），默认配置：
 
 \`\`\`javascript
-var agent = new http.Agent({
+var agent = new http.Agent({  // 定义变量 agent（函数作用域）
   keepAlive: true,          // 启用 Keep-Alive
   keepAliveMsecs: 1000,     // 空闲连接保留时间
   maxSockets: Infinity,     // 每个主机最大并发连接数
@@ -1605,11 +1605,11 @@ setTimeout(function () {
 管道将多个流串联起来，数据从源头流经多个处理阶段，最终到达目的地：
 
 \`\`\`javascript
-fs.createReadStream('input.csv')
+fs.createReadStream('input.csv')  // 创建可读流（分块读取大文件）
   .pipe(csvParser())        // Transform: 解析 CSV
   .pipe(filterTransform())   // Transform: 过滤数据
   .pipe(aggregateTransform()) // Transform: 聚合统计
-  .pipe(fs.createWriteStream('output.json'));
+  .pipe(fs.createWriteStream('output.json'));  // 管道：把可读流接到可写流
 \`\`\`
 
 ### 背压（Backpressure）处理
@@ -1619,8 +1619,8 @@ fs.createReadStream('input.csv')
 \`\`\`javascript
 // 手动处理背压
 readable.on('data', function(chunk) {
-  var canContinue = writable.write(chunk);
-  if (!canContinue) {
+  var canContinue = writable.write(chunk);  // 定义变量 canContinue（函数作用域）
+  if (!canContinue) {  // 条件判断
     readable.pause(); // 暂停读取
     writable.once('drain', function() {
       readable.resume(); // 恢复读取
@@ -1637,7 +1637,7 @@ Transform 流是处理数据转换的最佳方式。在 \_transform 方法中处
 
 \`\`\`javascript
 var { Transform } = require('stream');
-var upperCaseTransform = new Transform({
+var upperCaseTransform = new Transform({  // 定义变量 upperCaseTransform（函数作用域）
   transform(chunk, encoding, callback) {
     this.push(chunk.toString().toUpperCase());
     callback();
@@ -2036,24 +2036,24 @@ Unix/Linux 系统中，进程间通过信号通信。与进程终止相关的关
 ### 关闭前清理
 
 \`\`\`javascript
-process.on('SIGTERM', async function() {
-  console.log('收到 SIGTERM，开始优雅关闭...');
+process.on('SIGTERM', async function() {  // 注册进程级事件监听
+  console.log('收到 SIGTERM，开始优雅关闭...');  // 打印日志到 stdout
 
   // 1. 停止接收新请求
-  server.close(function() {
-    console.log('HTTP 服务器已关闭');
+  server.close(function() {  // 关闭服务器
+    console.log('HTTP 服务器已关闭');  // 打印日志到 stdout
   });
 
   // 2. 关闭数据库连接
-  await db.disconnect();
+  await db.disconnect();  // 等待 Promise 完成后再继续
 
   // 3. 关闭消息队列连接
-  await mq.close();
+  await mq.close();  // 等待 Promise 完成后再继续
 
   // 4. 清理临时文件
 
   // 5. 退出
-  process.exit(0);
+  process.exit(0);  // 退出进程（0 正常，非 0 异常）
 });
 \`\`\`
 
@@ -2063,9 +2063,9 @@ process.on('SIGTERM', async function() {
 
 \`\`\`javascript
 // 设置强制关闭超时
-setTimeout(function() {
-  console.error('优雅关闭超时，强制退出');
-  process.exit(1);
+setTimeout(function() {  // 延时回调（宏任务，timers 阶段执行）
+  console.error('优雅关闭超时，强制退出');  // 打印错误到 stderr
+  process.exit(1);  // 退出进程（0 正常，非 0 异常）
 }, 30000); // 30 秒超时
 \`\`\`
 
@@ -2074,13 +2074,13 @@ setTimeout(function() {
 在关闭期间，健康检查端点应该返回不健康状态，让负载均衡器将流量从该实例移除：
 
 \`\`\`javascript
-var isShuttingDown = false;
+var isShuttingDown = false;  // 定义变量 isShuttingDown（函数作用域）
 
-app.get('/health', function(req, res) {
-  if (isShuttingDown) {
-    res.status(503).json({ status: 'shutting_down' });
+app.get('/health', function(req, res) {  // 注册 GET 路由处理
+  if (isShuttingDown) {  // 条件判断
+    res.status(503).json({ status: 'shutting_down' });  // 设置响应状态码
   } else {
-    res.json({ status: 'healthy' });
+    res.json({ status: 'healthy' });  // 发送 JSON 响应
   }
 });
 \`\`\`

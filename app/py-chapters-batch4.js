@@ -51,16 +51,16 @@ export const chapters = [
 这是装饰器能够存在的根本前提。来看一个最朴素的例子：
 
 \`\`\`python
-def greet(name):
-    return "hello, " + name
+def greet(name):                   # 定义函数 greet，参数：name
+    return "hello, " + name        # 返回 "hello, " + name
 
 # 函数对象赋值给另一个变量
-say = greet
+say = greet                        # 将 greet 赋给 say
 print(say("world"))   # hello, world
 print(greet("world")) # hello, world
 
 # 函数对象可以放进容器
-funcs = [greet, str.upper, len]
+funcs = [greet, str.upper, len]    # 创建列表并赋给 funcs
 print(funcs[0]("abc"))  # hello, abc
 \`\`\`
 
@@ -71,9 +71,9 @@ print(funcs[0]("abc"))  # hello, abc
 把函数当参数传，是高阶函数的基础：
 
 \`\`\`python
-def apply(func, value):
+def apply(func, value):            # 定义函数 apply，参数：func, value
     """把 func 应用到 value 上"""
-    return func(value)
+    return func(value)             # 返回 func(value)
 
 print(apply(len, "hello"))       # 5
 print(apply(str.upper, "abc"))   # ABC
@@ -83,13 +83,13 @@ print(apply(lambda x: x * 2, 5)) # 10
 把函数当返回值，是闭包和装饰器的基础：
 
 \`\`\`python
-def make_adder(n):
-    def adder(x):
-        return x + n
+def make_adder(n):                 # 定义函数 make_adder，参数：n
+    def adder(x):                  # 定义函数 adder，参数：x
+        return x + n               # 返回 x + n
     return adder   # 返回的是函数对象，没调用它
 
-add5 = make_adder(5)
-add10 = make_adder(10)
+add5 = make_adder(5)               # 将 make_adder(5) 赋给 add5
+add10 = make_adder(10)             # 将 make_adder(10) 赋给 add10
 print(add5(3))   # 8
 print(add10(3))  # 13
 \`\`\`
@@ -101,15 +101,15 @@ print(add10(3))  # 13
 **闭包（Closure）** 的定义：一个内部函数引用了它外层函数的局部变量，即使外层函数已经执行完毕返回了，内部函数依然能访问这些变量。
 
 \`\`\`python
-def make_counter():
+def make_counter():                # 定义函数 make_counter，无参数
     count = 0           # 外层函数的局部变量
-    def inner():
+    def inner():                   # 定义函数 inner，无参数
         nonlocal count  # 声明要修改外层的 count
-        count += 1
-        return count
-    return inner
+        count += 1                 # count 加 1
+        return count               # 返回 count
+    return inner                   # 返回 inner
 
-c = make_counter()
+c = make_counter()                 # 将 make_counter() 赋给 c
 print(c())  # 1
 print(c())  # 2
 print(c())  # 3
@@ -134,19 +134,19 @@ print(c())  # 3
 不使用任何语法糖，纯手工实现「在函数前后加日志」：
 
 \`\`\`python
-def log(func):
-    def wrapper(*args, **kwargs):
-        print("调用前:", func.__name__)
-        result = func(*args, **kwargs)
-        print("调用后:", func.__name__)
-        return result
-    return wrapper
+def log(func):                     # 定义函数 log，参数：func
+    def wrapper(*args, **kwargs):  # 定义函数 wrapper，参数：*args, **kwargs
+        print("调用前:", func.__name__)  # 输出 "调用前:", func.__name__
+        result = func(*args, **kwargs)  # 将 func(*args, **kwargs) 赋给 result
+        print("调用后:", func.__name__)  # 输出 "调用后:", func.__name__
+        return result              # 返回 result
+    return wrapper                 # 返回 wrapper
 
-def hello(name):
-    return "hello, " + name
+def hello(name):                   # 定义函数 hello，参数：name
+    return "hello, " + name        # 返回 "hello, " + name
 
 hello = log(hello)   # 手工装饰：把 hello 换成 log 返回的 wrapper
-print(hello("tom"))
+print(hello("tom"))                # 输出 hello("tom")
 # 输出：
 # 调用前: hello
 # 调用后: hello
@@ -163,8 +163,8 @@ print(hello("tom"))
 
 \`\`\`python
 @log
-def hello(name):
-    return "hello, " + name
+def hello(name):                   # 定义函数 hello，参数：name
+    return "hello, " + name        # 返回 "hello, " + name
 
 # 等价于：
 # def hello(name): ...
@@ -180,21 +180,21 @@ def hello(name):
 \`functools.wraps\` 装饰器的作用就是把原函数的 \`__name__\`、\`__doc__\`、\`__module__\`、\`__qualname__\` 等元信息复制到 wrapper 上：
 
 \`\`\`python
-import functools
+import functools                   # 导入 functools 模块
 
-def log(func):
+def log(func):                     # 定义函数 log，参数：func
     @functools.wraps(func)   # 把 func 的元信息复制到 wrapper
-    def wrapper(*args, **kwargs):
-        print("调用前:", func.__name__)
-        result = func(*args, **kwargs)
-        print("调用后:", func.__name__)
-        return result
-    return wrapper
+    def wrapper(*args, **kwargs):  # 定义函数 wrapper，参数：*args, **kwargs
+        print("调用前:", func.__name__)  # 输出 "调用前:", func.__name__
+        result = func(*args, **kwargs)  # 将 func(*args, **kwargs) 赋给 result
+        print("调用后:", func.__name__)  # 输出 "调用后:", func.__name__
+        return result              # 返回 result
+    return wrapper                 # 返回 wrapper
 
 @log
-def hello(name):
+def hello(name):                   # 定义函数 hello，参数：name
     """say hello to someone"""
-    return "hello, " + name
+    return "hello, " + name        # 返回 "hello, " + name
 
 print(hello.__name__)  # hello（不是 wrapper）
 print(hello.__doc__)   # say hello to someone
@@ -211,25 +211,25 @@ print(hello.__doc__)   # say hello to someone
 有时候我们希望装饰器本身能接收参数，比如「重复调用 N 次」「指定日志级别」。这时需要再包一层：
 
 \`\`\`python
-import functools
+import functools                   # 导入 functools 模块
 
-def repeat(times):
+def repeat(times):                 # 定义函数 repeat，参数：times
     """带参数的装饰器：让函数重复执行 times 次"""
-    def decorator(func):
+    def decorator(func):           # 定义函数 decorator，参数：func
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            result = None
-            for _ in range(times):
-                result = func(*args, **kwargs)
-            return result
-        return wrapper
-    return decorator
+        def wrapper(*args, **kwargs):  # 定义函数 wrapper，参数：*args, **kwargs
+            result = None          # 将 None 赋给 result
+            for _ in range(times): # 遍历 range(times)，每次取值赋给 _
+                result = func(*args, **kwargs)  # 将 func(*args, **kwargs) 赋给 result
+            return result          # 返回 result
+        return wrapper             # 返回 wrapper
+    return decorator               # 返回 decorator
 
 @repeat_decorator(3)
-def say(name):
-    print("hi,", name)
+def say(name):                     # 定义函数 say，参数：name
+    print("hi,", name)             # 输出 "hi,", name
 
-say("tom")
+say("tom")                         # 调用 say，参数 "tom"
 # hi, tom
 # hi, tom
 # hi, tom
@@ -250,38 +250,38 @@ say("tom")
 - **缓存装饰器**：指定缓存大小、过期时间
 
 \`\`\`python
-import functools
-import random
-import time
+import functools                   # 导入 functools 模块
+import random                      # 导入 random 模块
+import time                        # 导入 time 模块
 
-def retry(times=3, delay=0.1):
+def retry(times=3, delay=0.1):     # 定义函数 retry，参数：times=3, delay=0.1
     """失败自动重试"""
-    def decorator(func):
+    def decorator(func):           # 定义函数 decorator，参数：func
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            last_exc = None
-            for i in range(times):
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    last_exc = e
-                    print("第 %d 次失败: %s" % (i + 1, e))
-                    time.sleep(delay)
-            raise last_exc
-        return wrapper
-    return decorator
+        def wrapper(*args, **kwargs):  # 定义函数 wrapper，参数：*args, **kwargs
+            last_exc = None        # 将 None 赋给 last_exc
+            for i in range(times): # 遍历 range(times)，每次取值赋给 i
+                try:               # 尝试执行以下代码块
+                    return func(*args, **kwargs)  # 返回 func(*args, **kwargs)
+                except Exception as e:  # 捕获 Exception 异常并绑定到 e
+                    last_exc = e   # 将 e 赋给 last_exc
+                    print("第 %d 次失败: %s" % (i + 1, e))  # 输出 "第 %d 次失败: %s" % (i + 1, e)
+                    time.sleep(delay)  # 对 time 调用 sleep 方法，参数 delay
+            raise last_exc         # 抛出异常：last_exc
+        return wrapper             # 返回 wrapper
+    return decorator               # 返回 decorator
 
 @retry(times=3, delay=0.01)
-def flaky():
-    if random.random() < 0.7:
-        raise RuntimeError("随机失败")
-    return "success"
+def flaky():                       # 定义函数 flaky，无参数
+    if random.random() < 0.7:      # 如果 random.random() < 0.7 成立
+        raise RuntimeError("随机失败") # 抛出异常：RuntimeError("随机失败")
+    return "success"               # 返回 "success"
 
 # 多半会重试几次后成功（也可能 3 次都失败抛异常）
-try:
-    print(flaky())
-except RuntimeError as e:
-    print("最终失败:", e)
+try:                               # 尝试执行以下代码块
+    print(flaky())                 # 输出 flaky()
+except RuntimeError as e:          # 捕获 RuntimeError 异常并绑定到 e
+    print("最终失败:", e)              # 输出 "最终失败:", e
 \`\`\`
 
 ---
@@ -293,27 +293,27 @@ except RuntimeError as e:
 类只要实现 \`__call__\` 方法，它的实例就是「可调用对象」，可以当装饰器用：
 
 \`\`\`python
-import functools
+import functools                   # 导入 functools 模块
 
-class CallCount:
+class CallCount:                   # 定义类 CallCount
     """统计函数被调用了多少次"""
-    def __init__(self, func):
+    def __init__(self, func):      # 定义函数 __init__，参数：self, func
         self.func = func
         self.count = 0
         functools.update_wrapper(self, func)  # 等价于 @functools.wraps
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs):  # 定义函数 __call__，参数：self, *args, **kwargs
         self.count += 1
-        print("第 %d 次调用 %s" % (self.count, self.func.__name__))
-        return self.func(*args, **kwargs)
+        print("第 %d 次调用 %s" % (self.count, self.func.__name__))  # 输出 "第 %d 次调用 %s" % (self.count, self.func.__name__)
+        return self.func(*args, **kwargs)  # 返回 self.func(*args, **kwargs)
 
 @CallCount
-def greet(name):
-    return "hello, " + name
+def greet(name):                   # 定义函数 greet，参数：name
+    return "hello, " + name        # 返回 "hello, " + name
 
-greet("a")
-greet("b")
-greet("c")
+greet("a")                         # 调用 greet，参数 "a"
+greet("b")                         # 调用 greet，参数 "b"
+greet("c")                         # 调用 greet，参数 "c"
 # 输出：
 # 第 1 次调用 greet
 # 第 2 次调用 greet
@@ -327,21 +327,21 @@ greet("c")
 装饰器不仅能装饰函数，还能装饰类。常见用途：给类自动添加方法、注册类、给类加 mixin：
 
 \`\`\`python
-def add_repr(cls):
+def add_repr(cls):                 # 定义函数 add_repr，参数：cls
     """给类自动加一个 __repr__ 方法"""
-    def __repr__(self):
-        attrs = ", ".join("%s=%r" % (k, v) for k, v in self.__dict__.items())
-        return "%s(%s)" % (cls.__name__, attrs)
+    def __repr__(self):            # 定义函数 __repr__，参数：self
+        attrs = ", ".join("%s=%r" % (k, v) for k, v in self.__dict__.items())  # 将字符串 ", ".join("%s=%r" % (k, v) for k, v in self.__dict__.items()) 赋给 attrs
+        return "%s(%s)" % (cls.__name__, attrs)  # 返回 "%s(%s)" % (cls.__name__, attrs)
     cls.__repr__ = __repr__
-    return cls
+    return cls                     # 返回 cls
 
 @add_repr
-class Point:
-    def __init__(self, x, y):
+class Point:                       # 定义类 Point
+    def __init__(self, x, y):      # 定义函数 __init__，参数：self, x, y
         self.x = x
         self.y = y
 
-p = Point(1, 2)
+p = Point(1, 2)                    # 将 Point(1, 2) 赋给 p
 print(p)  # Point(x=1, y=2)
 \`\`\`
 
@@ -354,25 +354,25 @@ print(p)  # Point(x=1, y=2)
 \`@property\` 把一个 getter 方法变成「像属性一样访问」：
 
 \`\`\`python
-class Circle:
-    def __init__(self, radius):
+class Circle:                      # 定义类 Circle
+    def __init__(self, radius):    # 定义函数 __init__，参数：self, radius
         self._radius = radius   # 约定：下划线开头表示「私有」
 
     @property
-    def radius(self):
-        return self._radius
+    def radius(self):              # 定义函数 radius，参数：self
+        return self._radius        # 返回 self._radius
 
     @radius.setter
-    def radius(self, value):
-        if value <= 0:
-            raise ValueError("半径必须为正")
+    def radius(self, value):       # 定义函数 radius，参数：self, value
+        if value <= 0:             # 如果 value <= 0 成立
+            raise ValueError("半径必须为正")  # 抛出异常：ValueError("半径必须为正")
         self._radius = value
 
     @property
-    def area(self):
-        return 3.14159 * self._radius ** 2
+    def area(self):                # 定义函数 area，参数：self
+        return 3.14159 * self._radius ** 2  # 返回 3.14159 * self._radius ** 2
 
-c = Circle(5)
+c = Circle(5)                      # 将 Circle(5) 赋给 c
 print(c.radius)   # 5 —— 像属性一样访问，实际调用了 getter
 print(c.area)     # 78.5...
 c.radius = 10     # 触发 setter
@@ -384,24 +384,24 @@ c.radius = 10     # 触发 setter
 ### 5.2 classmethod 与 staticmethod
 
 \`\`\`python
-class Date:
-    def __init__(self, year, month, day):
+class Date:                        # 定义类 Date
+    def __init__(self, year, month, day):  # 定义函数 __init__，参数：self, year, month, day
         self.year = year
         self.month = month
         self.day = day
 
     @classmethod
-    def from_string(cls, s):
+    def from_string(cls, s):       # 定义函数 from_string，参数：cls, s
         """替代构造器：从 '2024-01-01' 这种字符串构造"""
         year, month, day = map(int, s.split("-"))
         return cls(year, month, day)   # cls 是当前类
 
     @staticmethod
-    def is_leap(year):
+    def is_leap(year):             # 定义函数 is_leap，参数：year
         """静态方法：不依赖实例也不依赖类，只是逻辑上属于这个类"""
-        return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+        return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)  # 返回 year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
-d = Date.from_string("2024-01-15")
+d = Date.from_string("2024-01-15") # 将 Date.from_string("2024-01-15") 赋给 d
 print(d.year, d.month, d.day)   # 2024 1 15
 print(Date.is_leap(2024))       # True
 print(Date.is_leap(2100))       # False
@@ -416,18 +416,18 @@ print(Date.is_leap(2100))       # False
 \`functools.lru_cache\` 把函数的调用结果缓存起来，相同参数下次直接返回缓存：
 
 \`\`\`python
-import functools
+import functools                   # 导入 functools 模块
 
 @functools.lru_cache(maxsize=128)
-def fib(n):
-    if n < 2:
-        return n
-    return fib(n - 1) + fib(n - 2)
+def fib(n):                        # 定义函数 fib，参数：n
+    if n < 2:                      # 如果 n < 2 成立
+        return n                   # 返回 n
+    return fib(n - 1) + fib(n - 2) # 返回 fib(n - 1) + fib(n - 2)
 
 print(fib(100))   # 瞬间算出，因为缓存了子问题
 
 # 查看缓存统计
-print(fib.cache_info())
+print(fib.cache_info())            # 输出 fib.cache_info()
 # CacheInfo(hits=98, misses=101, maxsize=128, currsize=101)
 \`\`\`
 
@@ -442,13 +442,13 @@ print(fib.cache_info())
 普通函数遇到 \`return\` 返回一个值就结束了。生成器函数用 \`yield\` 关键字，遇到 \`yield\` 会「暂停」并产出一个值，下次被调用时从上次暂停的地方继续：
 
 \`\`\`python
-def count_up_to(n):
-    i = 1
-    while i <= n:
+def count_up_to(n):                # 定义函数 count_up_to，参数：n
+    i = 1                          # 将整数 1 赋给 i
+    while i <= n:                  # 当 i <= n 为真时重复执行
         yield i      # 产出 i 并暂停
         i += 1       # 下次从这里继续
 
-gen = count_up_to(3)
+gen = count_up_to(3)               # 将 count_up_to(3) 赋给 gen
 print(next(gen))  # 1
 print(next(gen))  # 2
 print(next(gen))  # 3
@@ -465,14 +465,14 @@ print(next(gen))  # 抛 StopIteration
 生成器不会一次性把所有值算出来，而是「要一个给一个」。这对处理大序列极其友好：
 
 \`\`\`python
-import sys
+import sys                         # 导入 sys 模块
 
 # 列表：一次性生成 1000 万个数，占大量内存
-big_list = [x for x in range(10000000)]
+big_list = [x for x in range(10000000)]  # 创建列表并赋给 big_list
 print(sys.getsizeof(big_list))   # ~80MB
 
 # 生成器：几乎不占内存，只是个「配方」
-big_gen = (x for x in range(10000000))
+big_gen = (x for x in range(10000000))  # 创建元组并赋给 big_gen
 print(sys.getsizeof(big_gen))    # ~200 字节，固定大小
 \`\`\`
 
@@ -503,12 +503,12 @@ print(sum(x * x for x in range(10)))  # 285
 \`next(gen)\` 是「取一个值」，\`gen.send(value)\` 是「送一个值进去并取一个值出来」。这让生成器变成了**协程**的雏形：
 
 \`\`\`python
-def echo():
-    while True:
+def echo():                        # 定义函数 echo，无参数
+    while True:                    # 当 True 为真时重复执行
         received = yield   # yield 表达式的值 = send 进来的东西
-        print("收到:", received)
+        print("收到:", received)     # 输出 "收到:", received
 
-gen = echo()
+gen = echo()                       # 将 echo() 赋给 gen
 next(gen)            # 必须「启动」生成器，让它运行到第一个 yield
 gen.send("hello")    # 收到: hello
 gen.send("world")    # 收到: world
@@ -522,18 +522,18 @@ gen.send("world")    # 收到: world
 - \`gen.close()\`：关闭生成器，内部抛出 \`GeneratorExit\`
 
 \`\`\`python
-def safe_gen():
-    try:
-        while True:
-            x = yield
-            print("处理:", x)
-    except ValueError as e:
-        print("被外部 throw 了:", e)
-    finally:
-        print("生成器关闭")
+def safe_gen():                    # 定义函数 safe_gen，无参数
+    try:                           # 尝试执行以下代码块
+        while True:                # 当 True 为真时重复执行
+            x = yield              # 将 yield 赋给 x
+            print("处理:", x)        # 输出 "处理:", x
+    except ValueError as e:        # 捕获 ValueError 异常并绑定到 e
+        print("被外部 throw 了:", e)   # 输出 "被外部 throw 了:", e
+    finally:                       # 无论是否异常都执行
+        print("生成器关闭")             # 输出 "生成器关闭"
 
-g = safe_gen()
-next(g)
+g = safe_gen()                     # 将 safe_gen() 赋给 g
+next(g)                            # 调用 next，参数 g
 g.send("a")              # 处理: a
 g.throw(ValueError("bad"))  # 被外部 throw 了: bad / 生成器关闭
 \`\`\`
@@ -543,15 +543,15 @@ g.throw(ValueError("bad"))  # 被外部 throw 了: bad / 生成器关闭
 \`yield from\` 让一个生成器把「产出值」的工作委托给另一个生成器（或任何可迭代对象）：
 
 \`\`\`python
-def inner():
-    yield 1
-    yield 2
-    yield 3
+def inner():                       # 定义函数 inner，无参数
+    yield 1                        # 产出值 1（生成器）
+    yield 2                        # 产出值 2（生成器）
+    yield 3                        # 产出值 3（生成器）
 
-def outer():
-    yield 0
+def outer():                       # 定义函数 outer，无参数
+    yield 0                        # 产出值 0（生成器）
     yield from inner()    # 等价于 for x in inner(): yield x
-    yield 4
+    yield 4                        # 产出值 4（生成器）
 
 print(list(outer()))  # [0, 1, 2, 3, 4]
 \`\`\`
@@ -567,18 +567,18 @@ print(list(outer()))  # [0, 1, 2, 3, 4]
 ### 8.1 无限序列
 
 \`\`\`python
-from itertools import count, cycle, repeat
+from itertools import count, cycle, repeat  # 从 itertools 导入 count, cycle, repeat
 
 # count(10): 10, 11, 12, ... 无限
-for i in count(10):
+for i in count(10):                # 遍历 count(10)，每次取值赋给 i
     if i > 13: break
     print(i)   # 10 11 12 13
 
 # cycle("AB"): A B A B ... 无限循环
-result = []
-for i, c in enumerate(cycle("AB")):
+result = []                        # 创建列表并赋给 result
+for i, c in enumerate(cycle("AB")):  # 遍历 enumerate(cycle("AB"))，每次取值赋给 i, c
     if i >= 5: break
-    result.append(c)
+    result.append(c)               # 对 result 调用 追加 方法，参数 c
 print(result)  # ['A', 'B', 'A', 'B', 'A']
 
 # repeat(7, 3): 7 7 7（重复 3 次）
@@ -588,7 +588,7 @@ print(list(repeat(7, 3)))  # [7, 7, 7]
 ### 8.2 组合与拼接
 
 \`\`\`python
-from itertools import chain, islice, groupby
+from itertools import chain, islice, groupby  # 从 itertools 导入 chain, islice, groupby
 
 # chain: 把多个可迭代对象拼起来
 print(list(chain([1, 2], [3, 4], [5])))  # [1, 2, 3, 4, 5]
@@ -598,9 +598,9 @@ print(list(islice(count(10), 5)))  # [10, 11, 12, 13, 14]
 print(list(islice(range(100), 2, 8, 2)))  # [2, 4, 6]
 
 # groupby: 按 key 分组（必须先排序）
-data = [("a", 1), ("a", 2), ("b", 3), ("b", 4)]
-for key, group in groupby(data, key=lambda x: x[0]):
-    print(key, list(group))
+data = [("a", 1), ("a", 2), ("b", 3), ("b", 4)]  # 创建列表并赋给 data
+for key, group in groupby(data, key=lambda x: x[0]):  # 遍历 groupby(data, key=lambda x: x[0])，每次取值赋给 key, group
+    print(key, list(group))        # 输出 key, list(group)
 # a [('a', 1), ('a', 2)]
 # b [('b', 3), ('b', 4)]
 \`\`\`
@@ -610,31 +610,31 @@ for key, group in groupby(data, key=lambda x: x[0]):
 ### 8.3 实战：用生成器实现惰性流水线
 
 \`\`\`python
-def read_numbers():
+def read_numbers():                # 定义函数 read_numbers，无参数
     """模拟读取一个大数据源"""
-    for i in range(100):
-        yield i
+    for i in range(100):           # 遍历 range(100)，每次取值赋给 i
+        yield i                    # 产出值 i（生成器）
 
-def filter_even(source):
+def filter_even(source):           # 定义函数 filter_even，参数：source
     """过滤偶数"""
-    for x in source:
-        if x % 2 == 0:
-            yield x
+    for x in source:               # 遍历 source，每次取值赋给 x
+        if x % 2 == 0:             # 如果 x % 2 == 0 成立
+            yield x                # 产出值 x（生成器）
 
-def square(source):
+def square(source):                # 定义函数 square，参数：source
     """平方"""
-    for x in source:
-        yield x * x
+    for x in source:               # 遍历 source，每次取值赋给 x
+        yield x * x                # 产出值 x * x（生成器）
 
-def take(source, n):
+def take(source, n):               # 定义函数 take，参数：source, n
     """只取前 n 个"""
-    for i, x in enumerate(source):
-        if i >= n:
-            return
-        yield x
+    for i, x in enumerate(source): # 遍历 enumerate(source)，每次取值赋给 i, x
+        if i >= n:                 # 如果 i >= n 成立
+            return                 # 返回 None（默认）
+        yield x                    # 产出值 x（生成器）
 
 # 流水线：读 -> 过滤偶 -> 平方 -> 取前 5 个
-pipeline = take(square(filter_even(read_numbers())), 5)
+pipeline = take(square(filter_even(read_numbers())), 5)  # 将 take(square(filter_even(read_numbers())), 5) 赋给 pipeline
 print(list(pipeline))  # [0, 4, 16, 36, 64]
 \`\`\`
 
@@ -647,22 +647,22 @@ print(list(pipeline))  # [0, 4, 16, 36, 64]
 生成器配合 \`send\` 已经具备了协程的雏形：「暂停—恢复—接收外部输入」。但用生成器写协程有诸多不便（启动顺序、异常传播、调度），所以 Python 3.5 引入了 \`async\`/\`await\` 语法，3.7 之后 \`asyncio\` 接口大幅简化。
 
 \`\`\`python
-import asyncio
+import asyncio                     # 导入 asyncio 模块
 
-async def fetch(name):
-    print("开始获取", name)
+async def fetch(name):             # 定义异步函数 fetch，参数：name
+    print("开始获取", name)            # 输出 "开始获取", name
     await asyncio.sleep(0.1)   # 模拟 IO 等待
-    print("完成获取", name)
-    return name + "_data"
+    print("完成获取", name)            # 输出 "完成获取", name
+    return name + "_data"          # 返回 name + "_data"
 
-async def main():
+async def main():                  # 定义异步函数 main
     # 并发执行三个协程
-    results = await asyncio.gather(
-        fetch("a"), fetch("b"), fetch("c")
+    results = await asyncio.gather(  # 将 await asyncio.gather( 赋给 results
+        fetch("a"), fetch("b"), fetch("c")  # 调用 fetch，参数 "a"), fetch("b"), fetch("c"
     )
-    print(results)
+    print(results)                 # 输出 results
 
-asyncio.run(main())
+asyncio.run(main())                # 对 asyncio 调用 run 方法，参数 main()
 \`\`\`
 
 \`async def\` 定义协程函数，\`await\` 暂停当前协程把控制权交还事件循环。协程 vs 生成器：
@@ -1050,22 +1050,22 @@ print("全部演示完成！")
 这两个方法合称**迭代器协议（Iterator Protocol）**。任何实现了这两个方法的对象都是迭代器。
 
 \`\`\`python
-class MyIterator:
-    def __init__(self, data):
+class MyIterator:                  # 定义类 MyIterator
+    def __init__(self, data):      # 定义函数 __init__，参数：self, data
         self.data = data
         self.index = 0
 
-    def __iter__(self):
+    def __iter__(self):            # 定义函数 __iter__，参数：self
         return self   # 迭代器返回自己
 
-    def __next__(self):
-        if self.index >= len(self.data):
+    def __next__(self):            # 定义函数 __next__，参数：self
+        if self.index >= len(self.data):  # 如果 self.index >= len(self.data) 成立
             raise StopIteration   # 没有了，告诉 for 循环该停了
-        value = self.data[self.index]
+        value = self.data[self.index]  # 将 self.data[self.index] 赋给 value
         self.index += 1
-        return value
+        return value               # 返回 value
 
-it = MyIterator([10, 20, 30])
+it = MyIterator([10, 20, 30])      # 将 MyIterator([10, 20, 30]) 赋给 it
 print(next(it))  # 10
 print(next(it))  # 20
 print(next(it))  # 30
@@ -1085,13 +1085,13 @@ print(next(it))  # 30
 #     print(x)
 # 等价于：
 
-it = iter([1, 2, 3])
-while True:
-    try:
-        x = next(it)
-    except StopIteration:
-        break
-    print(x)
+it = iter([1, 2, 3])               # 将 iter([1, 2, 3]) 赋给 it
+while True:                        # 当 True 为真时重复执行
+    try:                           # 尝试执行以下代码块
+        x = next(it)               # 将 next(it) 赋给 x
+    except StopIteration:          # 捕获 StopIteration 异常
+        break                      # 跳出循环
+    print(x)                       # 输出 x
 \`\`\`
 
 理解了这一点，你就会明白：\`for\` 循环不关心 \`obj\` 是列表、字典、文件、生成器还是自定义对象，只要它「能产生迭代器」就行。
@@ -1101,13 +1101,13 @@ while True:
 \`StopIteration\` 不是错误，而是「迭代结束」的信号。Python 内部捕获它来终止 \`for\` 循环。在手动用 \`next()\` 时，你需要自己处理：
 
 \`\`\`python
-it = iter([1, 2])
+it = iter([1, 2])                  # 将 iter([1, 2]) 赋给 it
 print(next(it))          # 1
 print(next(it))          # 2
 # print(next(it))        # 抛 StopIteration
 
 # 用默认值避免异常
-it = iter([1, 2])
+it = iter([1, 2])                  # 将 iter([1, 2]) 赋给 it
 print(next(it, "没了"))  # 1
 print(next(it, "没了"))  # 2
 print(next(it, "没了"))  # 没了
@@ -1128,7 +1128,7 @@ print(next(it, "没了"))  # 没了
 用通俗的话说：可迭代对象是「一本书」，迭代器是「一枚书签」。书可以给你一枚书签，但书本身不是书签。
 
 \`\`\`python
-nums = [1, 2, 3]
+nums = [1, 2, 3]                   # 创建列表并赋给 nums
 print(hasattr(nums, "__iter__"))    # True —— 列表是可迭代对象
 print(hasattr(nums, "__next__"))    # False —— 列表本身不是迭代器
 
@@ -1142,9 +1142,9 @@ print(iter(it) is it)               # True —— 迭代器的 __iter__ 返回�
 如果列表自己就是迭代器，那遍历一次之后就「耗尽」了，没法再次遍历。所以 Python 的设计是：**列表是可迭代对象，每次调 \`iter()\` 都生成一个全新的迭代器**。
 
 \`\`\`python
-nums = [1, 2, 3]
-it1 = iter(nums)
-it2 = iter(nums)
+nums = [1, 2, 3]                   # 创建列表并赋给 nums
+it1 = iter(nums)                   # 将 iter(nums) 赋给 it1
+it2 = iter(nums)                   # 将 iter(nums) 赋给 it2
 print(it1 is it2)   # False —— 每次都是新迭代器
 print(next(it1), next(it1))  # 1 2
 print(next(it2))   # 1 —— it2 是独立的，从头开始
@@ -1157,32 +1157,32 @@ print(next(it2))   # 1 —— it2 是独立的，从头开始
 让一个类同时实现 \`__iter__\`（每次返回新迭代器）：
 
 \`\`\`python
-class Range:
+class Range:                       # 定义类 Range
     """自定义的可迭代对象，类似 range"""
-    def __init__(self, start, stop):
+    def __init__(self, start, stop):  # 定义函数 __init__，参数：self, start, stop
         self.start = start
         self.stop = stop
 
-    def __iter__(self):
+    def __iter__(self):            # 定义函数 __iter__，参数：self
         # 每次调用都返回一个新迭代器
-        return RangeIterator(self.start, self.stop)
+        return RangeIterator(self.start, self.stop)  # 返回 RangeIterator(self.start, self.stop)
 
-class RangeIterator:
-    def __init__(self, start, stop):
+class RangeIterator:               # 定义类 RangeIterator
+    def __init__(self, start, stop):  # 定义函数 __init__，参数：self, start, stop
         self.current = start
         self.stop = stop
 
-    def __iter__(self):
-        return self
+    def __iter__(self):            # 定义函数 __iter__，参数：self
+        return self                # 返回 self
 
-    def __next__(self):
-        if self.current >= self.stop:
-            raise StopIteration
-        value = self.current
+    def __next__(self):            # 定义函数 __next__，参数：self
+        if self.current >= self.stop:  # 如果 self.current >= self.stop 成立
+            raise StopIteration    # 抛出异常：StopIteration
+        value = self.current       # 将 self.current 赋给 value
         self.current += 1
-        return value
+        return value               # 返回 value
 
-r = Range(1, 4)
+r = Range(1, 4)                    # 将 Range(1, 4) 赋给 r
 print(list(r))   # [1, 2, 3]
 print(list(r))   # [1, 2, 3] —— 可重复遍历，因为每次 for 都新建迭代器
 \`\`\`
@@ -1198,18 +1198,18 @@ print(list(r))   # [1, 2, 3] —— 可重复遍历，因为每次 for 都新建
 上一章学过生成器函数（含 \`yield\`）。生成器对象**自动**实现了 \`__iter__\` 和 \`__next__\`，所以它就是迭代器：
 
 \`\`\`python
-def gen():
-    yield 1
-    yield 2
+def gen():                         # 定义函数 gen，无参数
+    yield 1                        # 产出值 1（生成器）
+    yield 2                        # 产出值 2（生成器）
 
-g = gen()
+g = gen()                          # 将 gen() 赋给 g
 print(hasattr(g, "__iter__"))   # True
 print(hasattr(g, "__next__"))   # True
 print(iter(g) is g)             # True
 
 # 所以生成器可以直接用 for
-for x in gen():
-    print(x)
+for x in gen():                    # 遍历 gen()，每次取值赋给 x
+    print(x)                       # 输出 x
 \`\`\`
 
 这就是为什么生成器如此强大：你不用手写 \`__iter__\`/\`__next__\`/\`StopIteration\` 这套样板代码，只要写一个含 \`yield\` 的函数，Python 自动给你造出符合协议的迭代器。
@@ -1220,22 +1220,22 @@ for x in gen():
 
 \`\`\`python
 # 写法一：自定义迭代器类（啰嗦）
-class Counter:
-    def __init__(self, start):
+class Counter:                     # 定义类 Counter
+    def __init__(self, start):     # 定义函数 __init__，参数：self, start
         self.cur = start
-    def __iter__(self):
-        return self
-    def __next__(self):
-        v = self.cur
+    def __iter__(self):            # 定义函数 __iter__，参数：self
+        return self                # 返回 self
+    def __next__(self):            # 定义函数 __next__，参数：self
+        v = self.cur               # 将 self.cur 赋给 v
         self.cur += 1
-        return v
+        return v                   # 返回 v
 
 # 写法二：生成器函数（简洁）
-def counter(start):
-    cur = start
-    while True:
-        yield cur
-        cur += 1
+def counter(start):                # 定义函数 counter，参数：start
+    cur = start                    # 将 start 赋给 cur
+    while True:                    # 当 True 为真时重复执行
+        yield cur                  # 产出值 cur（生成器）
+        cur += 1                   # cur 加 1
 \`\`\`
 
 99% 的场景用生成器更清晰。只有在需要复杂状态管理、需要暴露多个方法时，才用类。
@@ -1247,7 +1247,7 @@ def counter(start):
 ### 4.1 迭代器是一次性的
 
 \`\`\`python
-gen = (x * 2 for x in range(3))
+gen = (x * 2 for x in range(3))    # 创建元组并赋给 gen
 print(list(gen))   # [0, 2, 4]
 print(list(gen))   # [] —— 已经耗尽！
 \`\`\`
@@ -1257,7 +1257,7 @@ print(list(gen))   # [] —— 已经耗尽！
 ### 4.2 在迭代时修改容器
 
 \`\`\`python
-nums = [1, 2, 3, 4]
+nums = [1, 2, 3, 4]                # 创建列表并赋给 nums
 # for x in nums:
 #     if x % 2 == 0:
 #         nums.remove(x)   # 危险！会跳过元素
@@ -1266,7 +1266,7 @@ nums = [1, 2, 3, 4]
 迭代时修改正在迭代的容器，行为未定义（可能跳过元素、可能崩溃）。正确做法：先收集要删的，再统一删，或用推导式重建：
 
 \`\`\`python
-nums = [1, 2, 3, 4]
+nums = [1, 2, 3, 4]                # 创建列表并赋给 nums
 nums = [x for x in nums if x % 2 != 0]   # 重建
 \`\`\`
 
@@ -1275,12 +1275,12 @@ nums = [x for x in nums if x % 2 != 0]   # 重建
 \`zip\` 在最短的可迭代对象耗尽时就停：
 
 \`\`\`python
-print(list(zip([1, 2, 3], ["a", "b"])))
+print(list(zip([1, 2, 3], ["a", "b"])))  # 输出 list(zip([1, 2, 3], ["a", "b"]))
 # [(1, 'a'), (2, 'b')] —— 3 被丢了
 
 # 要按最长对齐，用 itertools.zip_longest
-from itertools import zip_longest
-print(list(zip_longest([1, 2, 3], ["a", "b"], fillvalue="?")))
+from itertools import zip_longest  # 从 itertools 导入 zip_longest
+print(list(zip_longest([1, 2, 3], ["a", "b"], fillvalue="?")))  # 输出 list(zip_longest([1, 2, 3], ["a", "b"], fillvalue="?"))
 # [(1, 'a'), (2, 'b'), (3, '?')]
 \`\`\`
 
@@ -1301,20 +1301,20 @@ CPU 速度极快，但 IO（磁盘、网络）很慢。一个网络请求可能�
 \`async def\` 定义协程函数，调用它返回一个「协程对象」（不会立即执行）：
 
 \`\`\`python
-import asyncio
+import asyncio                     # 导入 asyncio 模块
 
-async def hello():
-    print("hello start")
+async def hello():                 # 定义异步函数 hello
+    print("hello start")           # 输出 "hello start"
     await asyncio.sleep(0.1)   # await 暂停，把控制权交还事件循环
-    print("hello end")
-    return "done"
+    print("hello end")             # 输出 "hello end"
+    return "done"                  # 返回 "done"
 
 # 直接调用 hello() 不会执行，只返回协程对象
-coro = hello()
+coro = hello()                     # 将 hello() 赋给 coro
 print(coro)  # <coroutine object hello at ...>
 
 # 必须由事件循环来跑
-asyncio.run(hello())
+asyncio.run(hello())               # 对 asyncio 调用 run 方法，参数 hello()
 \`\`\`
 
 \`await\` 只能在 \`async def\` 函数里用。它的语义是：「等这个可等待对象（awaitable）完成，等待期间把 CPU 让出去」。
@@ -1333,27 +1333,27 @@ asyncio.run(hello())
 \`await coro1; await coro2\` 是「串行」——等 coro1 完成再跑 coro2。\`asyncio.gather\` 是「并发」——同时启动多个协程，等它们全部完成：
 
 \`\`\`python
-import asyncio
-import time
+import asyncio                     # 导入 asyncio 模块
+import time                        # 导入 time 模块
 
-async def task(name, seconds):
-    print("开始", name)
+async def task(name, seconds):     # 定义异步函数 task，参数：name, seconds
+    print("开始", name)              # 输出 "开始", name
     await asyncio.sleep(seconds)
-    print("完成", name)
-    return name
+    print("完成", name)              # 输出 "完成", name
+    return name                    # 返回 name
 
-async def main():
-    start = time.time()
+async def main():                  # 定义异步函数 main
+    start = time.time()            # 将 time.time() 赋给 start
     # 三个任务各睡 0.1 秒，并发执行总共约 0.1 秒
-    results = await asyncio.gather(
+    results = await asyncio.gather(  # 将 await asyncio.gather( 赋给 results
         task("A", 0.1),
         task("B", 0.1),
         task("C", 0.1),
     )
-    print("结果:", results)
-    print("耗时: %.2f 秒" % (time.time() - start))
+    print("结果:", results)          # 输出 "结果:", results
+    print("耗时: %.2f 秒" % (time.time() - start))  # 输出 "耗时: %.2f 秒" % (time.time() - start)
 
-asyncio.run(main())
+asyncio.run(main())                # 对 asyncio 调用 run 方法，参数 main()
 \`\`\`
 
 输出会显示三个「开始」几乎同时打印，然后约 0.1 秒后三个「完成」一起打印，总耗时约 0.1 秒而不是 0.3 秒——这就是并发的威力。
@@ -1374,44 +1374,44 @@ asyncio.run(main())
 （这里用模拟 IO，不真的发网络请求）
 
 \`\`\`python
-import asyncio
-import random
+import asyncio                     # 导入 asyncio 模块
+import random                      # 导入 random 模块
 
-async def fetch(url):
+async def fetch(url):              # 定义异步函数 fetch，参数：url
     """模拟一个耗时的网络请求"""
-    print("请求", url)
-    delay = random.uniform(0.1, 0.3)
+    print("请求", url)               # 输出 "请求", url
+    delay = random.uniform(0.1, 0.3)  # 将 random.uniform(0.1, 0.3) 赋给 delay
     await asyncio.sleep(delay)   # 模拟网络延迟
-    print("完成", url, "耗时 %.2f" % delay)
-    return "内容 of " + url
+    print("完成", url, "耗时 %.2f" % delay)  # 输出 "完成", url, "耗时 %.2f" % delay
+    return "内容 of " + url          # 返回 "内容 of " + url
 
-async def main():
-    urls = ["url1", "url2", "url3", "url4"]
+async def main():                  # 定义异步函数 main
+    urls = ["url1", "url2", "url3", "url4"]  # 创建列表并赋给 urls
     # 并发抓取
-    results = await asyncio.gather(*[fetch(u) for u in urls])
-    print("全部结果:", results)
+    results = await asyncio.gather(*[fetch(u) for u in urls])  # 将 await asyncio.gather(*[fetch(u) for u in urls]) 赋给 results
+    print("全部结果:", results)        # 输出 "全部结果:", results
 
-asyncio.run(main())
+asyncio.run(main())                # 对 asyncio 调用 run 方法，参数 main()
 \`\`\`
 
 ### 6.2 超时控制：asyncio.wait_for
 
 \`\`\`python
-import asyncio
+import asyncio                     # 导入 asyncio 模块
 
-async def slow():
+async def slow():                  # 定义异步函数 slow
     await asyncio.sleep(10)
-    return "finally"
+    return "finally"               # 返回 "finally"
 
-async def main():
-    try:
+async def main():                  # 定义异步函数 main
+    try:                           # 尝试执行以下代码块
         # 最多等 0.2 秒
-        result = await asyncio.wait_for(slow(), timeout=0.2)
-        print(result)
+        result = await asyncio.wait_for(slow(), timeout=0.2)  # 将 await asyncio.wait_for(slow(), timeout=0.2) 赋给 result
+        print(result)              # 输出 result
     except asyncio.TimeoutError:
-        print("超时了！")
+        print("超时了！")              # 输出 "超时了！"
 
-asyncio.run(main())
+asyncio.run(main())                # 对 asyncio 调用 run 方法，参数 main()
 \`\`\`
 
 ### 6.3 创建任务：asyncio.create_task
@@ -1419,24 +1419,24 @@ asyncio.run(main())
 \`gather\` 适合「一批一起等」。如果想「先启动一个后台任务，过会儿再取结果」，用 \`create_task\`：
 
 \`\`\`python
-import asyncio
+import asyncio                     # 导入 asyncio 模块
 
-async def background_work():
-    print("后台任务开始")
+async def background_work():       # 定义异步函数 background_work
+    print("后台任务开始")                # 输出 "后台任务开始"
     await asyncio.sleep(0.1)
-    print("后台任务结束")
-    return 42
+    print("后台任务结束")                # 输出 "后台任务结束"
+    return 42                      # 返回 42
 
-async def main():
+async def main():                  # 定义异步函数 main
     # 启动后台任务（不立即 await）
-    task = asyncio.create_task(background_work())
-    print("主任务做点别的")
+    task = asyncio.create_task(background_work())  # 将 asyncio.create_task(background_work()) 赋给 task
+    print("主任务做点别的")               # 输出 "主任务做点别的"
     await asyncio.sleep(0.05)
-    print("主任务等后台结果")
+    print("主任务等后台结果")              # 输出 "主任务等后台结果"
     result = await task   # 等任务完成取结果
-    print("后台结果:", result)
+    print("后台结果:", result)         # 输出 "后台结果:", result
 
-asyncio.run(main())
+asyncio.run(main())                # 对 asyncio 调用 run 方法，参数 main()
 \`\`\`
 
 \`create_task\` 把协程「包装成 Task」立即交给事件循环调度，你可以晚点再 \`await\` 它。
@@ -1795,28 +1795,28 @@ Python 之所以被誉为「自带电池（batteries included）」，是因为�
 ### 1.1 环境变量与进程
 
 \`\`\`python
-import os
+import os                          # 导入 os 模块
 
 # 读取环境变量
 print(os.environ.get("HOME", "/tmp"))   # 没有时用默认值
-print(os.getenv("PATH"))
+print(os.getenv("PATH"))           # 输出 os.getenv("PATH")
 
 # 设置环境变量（仅当前进程及其子进程可见）
 os.environ["MY_VAR"] = "hello"
 
 # 当前进程 ID
-print(os.getpid())
+print(os.getpid())                 # 输出 os.getpid()
 
 # 当前工作目录
-print(os.getcwd())
+print(os.getcwd())                 # 输出 os.getcwd()
 \`\`\`
 
 ### 1.2 路径操作（os.path）
 
 \`\`\`python
-import os.path
+import os.path                     # 导入 os.path 模块
 
-p = "/home/user/docs/readme.md"
+p = "/home/user/docs/readme.md"    # 将字符串 "/home/user/docs/readme.md" 赋给 p
 print(os.path.dirname(p))    # /home/user/docs —— 目录部分
 print(os.path.basename(p))   # readme.md —— 文件名
 print(os.path.splitext(p))   # ('/home/user/docs/readme', '.md') —— 拆扩展名
@@ -1835,7 +1835,7 @@ print(os.path.isdir(p))      # 是否是目录
 \`sys\` 模块提供 Python 解释器本身的状态信息。
 
 \`\`\`python
-import sys
+import sys                         # 导入 sys 模块
 
 print(sys.version)          # Python 版本字符串
 print(sys.version_info)     # 版本结构化信息（可比较）
@@ -1850,12 +1850,12 @@ print(sys.maxsize)          # 最大整数
 
 \`\`\`python
 # script.py
-import sys
-if len(sys.argv) < 2:
-    print("用法: python script.py <名字>")
-    sys.exit(1)
-name = sys.argv[1]
-print("你好,", name)
+import sys                         # 导入 sys 模块
+if len(sys.argv) < 2:              # 如果 len(sys.argv) < 2 成立
+    print("用法: python script.py <名字>")  # 输出 "用法: python script.py <名字>"
+    sys.exit(1)                    # 对 sys 调用 exit 方法，参数 1
+name = sys.argv[1]                 # 将 sys.argv[1] 赋给 name
+print("你好,", name)                 # 输出 "你好,", name
 \`\`\`
 
 \`sys.exit(code)\` 退出程序，\`code=0\` 表示正常，非 0 表示出错。
@@ -1865,7 +1865,7 @@ print("你好,", name)
 ## 三、math：数学函数
 
 \`\`\`python
-import math
+import math                        # 导入 math 模块
 
 print(math.pi)          # 3.141592653589793
 print(math.e)           # 2.718281828459045
@@ -1887,7 +1887,7 @@ print(math.factorial(5))# 120 —— 阶乘
 ## 四、random：随机数
 
 \`\`\`python
-import random
+import random                      # 导入 random 模块
 
 random.seed(42)              # 设种子，让结果可复现
 
@@ -1898,15 +1898,15 @@ print(random.choice([1,2,3]))# 从序列随机选一个
 print(random.sample([1,2,3,4,5], 3))  # 不重复选 3 个
 print(random.uniform(1.0, 5.0))       # 范围内浮点
 
-lst = [1, 2, 3, 4, 5]
+lst = [1, 2, 3, 4, 5]              # 创建列表并赋给 lst
 random.shuffle(lst)          # 原地打乱
-print(lst)
+print(lst)                         # 输出 lst
 \`\`\`
 
 **安全提醒**：\`random\` 模块生成的是「伪随机数」，不适合做密码、token。涉及安全用 \`secrets\` 模块：
 
 \`\`\`python
-import secrets
+import secrets                     # 导入 secrets 模块
 print(secrets.token_hex(16))   # 32 位十六进制 token
 print(secrets.choice("abcDEF123"))  # 安全随机选择
 \`\`\`
@@ -1916,33 +1916,33 @@ print(secrets.choice("abcDEF123"))  # 安全随机选择
 ## 五、datetime：日期与时间
 
 \`\`\`python
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time, timedelta  # 从 datetime 导入 datetime, date, time, timedelta
 
 # 当前时间
 now = datetime.now()       # 本地时间
 utc = datetime.utcnow()    # UTC 时间（旧 API，推荐 datetime.now(timezone.utc)）
-print(now)
+print(now)                         # 输出 now
 
 # 构造
-d = date(2024, 1, 15)
-t = time(14, 30, 0)
-dt = datetime(2024, 1, 15, 14, 30)
-print(d, t, dt)
+d = date(2024, 1, 15)              # 将 date(2024, 1, 15) 赋给 d
+t = time(14, 30, 0)                # 将 time(14, 30, 0) 赋给 t
+dt = datetime(2024, 1, 15, 14, 30) # 将 datetime(2024, 1, 15, 14, 30) 赋给 dt
+print(d, t, dt)                    # 输出 d, t, dt
 
 # 字符串解析与格式化
 s = dt.strftime("%Y-%m-%d %H:%M:%S")  # 格式化成字符串
 print(s)   # 2024-01-15 14:30:00
 
 parsed = datetime.strptime("2024-01-15", "%Y-%m-%d")  # 字符串解析
-print(parsed)
+print(parsed)                      # 输出 parsed
 
 # 时间差
-delta = timedelta(days=7, hours=3)
-future = now + delta
-print(future)
+delta = timedelta(days=7, hours=3) # 将 timedelta(days=7, hours=3) 赋给 delta
+future = now + delta               # 将 now + delta 赋给 future
+print(future)                      # 输出 future
 
 # 两个日期相减得到 timedelta
-diff = date(2024, 12, 31) - date(2024, 1, 1)
+diff = date(2024, 12, 31) - date(2024, 1, 1)  # 将 date(2024, 12, 31) - date(2024, 1, 1) 赋给 diff
 print(diff.days)   # 365
 \`\`\`
 
@@ -1955,15 +1955,15 @@ print(diff.days)   # 365
 ### 6.1 Counter：计数器
 
 \`\`\`python
-from collections import Counter
+from collections import Counter    # 从 collections 导入 Counter
 
-words = "the cat sat on the mat the cat".split()
-c = Counter(words)
+words = "the cat sat on the mat the cat".split()  # 将字符串 "the cat sat on the mat the cat".split() 赋给 words
+c = Counter(words)                 # 将 Counter(words) 赋给 c
 print(c)                # Counter({'the': 3, 'cat': 2, 'sat': 1, ...})
 print(c["the"])         # 3 —— 不存在的键返回 0
 print(c.most_common(2)) # [('the', 3), ('cat', 2)]
 
-c.update(["dog", "cat"])
+c.update(["dog", "cat"])           # 对 c 调用 更新 方法，参数 ["dog", "cat"]
 print(c["cat"])   # 3
 \`\`\`
 
@@ -1972,19 +1972,19 @@ print(c["cat"])   # 3
 普通 dict 访问不存在的键会 KeyError，\`defaultdict\` 会自动创建：
 
 \`\`\`python
-from collections import defaultdict
+from collections import defaultdict  # 从 collections 导入 defaultdict
 
 # 按首字母分组
-words = ["apple", "ant", "banana", "berry", "cherry"]
-groups = defaultdict(list)
-for w in words:
+words = ["apple", "ant", "banana", "berry", "cherry"]  # 创建列表并赋给 words
+groups = defaultdict(list)         # 将 defaultdict(list) 赋给 groups
+for w in words:                    # 遍历 words，每次取值赋给 w
     groups[w[0]].append(w)   # 不存在的键自动创建空 list
-print(groups)
+print(groups)                      # 输出 groups
 # defaultdict(<class 'list'>, {'a': ['apple', 'ant'], 'b': ['banana', 'berry'], 'c': ['cherry']})
 
 # 计数
-count = defaultdict(int)
-for w in words:
+count = defaultdict(int)           # 将 defaultdict(int) 赋给 count
+for w in words:                    # 遍历 words，每次取值赋给 w
     count[w] += 1
 \`\`\`
 
@@ -1993,9 +1993,9 @@ for w in words:
 Python 3.7+ 普通 dict 已经保证插入顺序，所以 \`OrderedDict\` 用得少了。但它仍有独特功能：\`move_to_end\`、\`popitem\`：
 
 \`\`\`python
-from collections import OrderedDict
+from collections import OrderedDict  # 从 collections 导入 OrderedDict
 
-od = OrderedDict()
+od = OrderedDict()                 # 将 OrderedDict() 赋给 od
 od["a"] = 1
 od["b"] = 2
 od["c"] = 3
@@ -2008,9 +2008,9 @@ print(list(od.keys()))   # ['b', 'c', 'a']
 \`list\` 在头部插入/删除是 O(n)，\`deque\` 在两端都是 O(1)：
 
 \`\`\`python
-from collections import deque
+from collections import deque      # 从 collections 导入 deque
 
-dq = deque([1, 2, 3])
+dq = deque([1, 2, 3])              # 将 deque([1, 2, 3]) 赋给 dq
 dq.appendleft(0)      # 头部加
 dq.append(4)          # 尾部加
 print(dq)             # deque([0, 1, 2, 3, 4])
@@ -2019,9 +2019,9 @@ dq.popleft()          # 头部删
 dq.pop()              # 尾部删
 
 # 固定长度：超出自动丢弃旧的
-recent = deque(maxlen=3)
-for i in range(5):
-    recent.append(i)
+recent = deque(maxlen=3)           # 将 deque(maxlen=3) 赋给 recent
+for i in range(5):                 # 遍历 range(5)，每次取值赋给 i
+    recent.append(i)               # 对 recent 调用 追加 方法，参数 i
 print(recent)   # deque([2, 3, 4], maxlen=3)
 \`\`\`
 
@@ -2032,10 +2032,10 @@ print(recent)   # deque([2, 3, 4], maxlen=3)
 普通元组只能用下标访问，\`namedtuple\` 给字段起名字：
 
 \`\`\`python
-from collections import namedtuple
+from collections import namedtuple # 从 collections 导入 namedtuple
 
-Point = namedtuple("Point", ["x", "y"])
-p = Point(3, 4)
+Point = namedtuple("Point", ["x", "y"])  # 将 namedtuple("Point", ["x", "y"]) 赋给 Point
+p = Point(3, 4)                    # 将 Point(3, 4) 赋给 p
 print(p.x, p.y)       # 3 4 —— 用名字访问
 print(p[0], p[1])     # 3 4 —— 也能用下标
 print(p._asdict())    # {'x': 3, 'y': 4} —— 转字典
@@ -2052,10 +2052,10 @@ print(p._asdict())    # {'x': 3, 'y': 4} —— 转字典
 固定函数的部分参数，生成新函数：
 
 \`\`\`python
-from functools import partial
+from functools import partial      # 从 functools 导入 partial
 
-def power(base, exp):
-    return base ** exp
+def power(base, exp):              # 定义函数 power，参数：base, exp
+    return base ** exp             # 返回 base ** exp
 
 square = partial(power, exp=2)    # 固定 exp=2
 cube = partial(power, exp=3)      # 固定 exp=3
@@ -2063,7 +2063,7 @@ print(square(5))   # 25
 print(cube(2))     # 8
 
 # 实战：把 int(x, 2) 包装成 bin2dec
-bin2dec = partial(int, base=2)
+bin2dec = partial(int, base=2)     # 将 partial(int, base=2) 赋给 bin2dec
 print(bin2dec("1010"))   # 10
 \`\`\`
 
@@ -2072,11 +2072,11 @@ print(bin2dec("1010"))   # 10
 把一个二元函数依次应用到序列上，最终合并成一个值：
 
 \`\`\`python
-from functools import reduce
+from functools import reduce       # 从 functools 导入 reduce
 
-nums = [1, 2, 3, 4, 5]
+nums = [1, 2, 3, 4, 5]             # 创建列表并赋给 nums
 # 等价于 ((((1+2)+3)+4)+5)
-total = reduce(lambda a, b: a + b, nums)
+total = reduce(lambda a, b: a + b, nums)  # 将 reduce(lambda a, b: a + b, nums) 赋给 total
 print(total)   # 15
 
 # 求最大值
@@ -2094,13 +2094,13 @@ print(reduce(lambda a, b: a if a > b else b, nums))   # 5
 ## 八、re：正则表达式
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 
-text = "我的电话是 138-1234-5678，邮箱是 tom@example.com"
+text = "我的电话是 138-1234-5678，邮箱是 tom@example.com"  # 将字符串 "我的电话是 138-1234-5678，邮箱是 tom@example.com" 赋给 text
 
 # 查找
-m = re.search(r"\d{3}-\d{4}-\d{4}", text)
-if m:
+m = re.search(r"\d{3}-\d{4}-\d{4}", text)  # 将 re.search(r"\d{3}-\d{4}-\d{4}", text) 赋给 m
+if m:                              # 如果 m 成立
     print(m.group())   # 138-1234-5678
     print(m.start(), m.end())  # 匹配位置
 
@@ -2114,13 +2114,13 @@ print(re.sub(r"\d", "*", "a1b2c3"))   # a*b*c*
 print(re.split(r"[\s,]+", "a, b , c  d"))   # ['a', 'b', 'c', 'd']
 
 # 预编译（多次使用时更快）
-pattern = re.compile(r"(\w+)@(\w+)\.(\w+)")
-m = pattern.search("contact: tom@example.com")
+pattern = re.compile(r"(\w+)@(\w+)\.(\w+)")  # 将 re.compile(r"(\w+)@(\w+)\.(\w+)") 赋给 pattern
+m = pattern.search("contact: tom@example.com")  # 将 pattern.search("contact: tom@example.com") 赋给 m
 print(m.groups())   # ('tom', 'example', 'com')
 
 # 命名分组
-m = re.search(r"(?P<user>\w+)@(?P<domain>\w+\.\w+)", "tom@example.com")
-print(m.group("user"), m.group("domain"))
+m = re.search(r"(?P<user>\w+)@(?P<domain>\w+\.\w+)", "tom@example.com")  # 将 re.search(r"(?P<user>\w+)@(?P<domain>\w+\.\w+)", "tom@example.com") 赋给 m
+print(m.group("user"), m.group("domain"))  # 输出 m.group("user"), m.group("domain")
 \`\`\`
 
 常用元字符：\`.\` 任意字符、\`\\d\` 数字、\`\\w\` 字母数字下划线、\`\\s\` 空白、\`+\` 一次或多次、\`*\` 零次或多次、\`?\` 零次或一次、\`{n}\` 正好 n 次、\`{n,m}\` n 到 m 次、\`[]\` 字符集、\`^\` 开头、\`$\` 结尾。
@@ -2130,26 +2130,26 @@ print(m.group("user"), m.group("domain"))
 ## 九、json：JSON 序列化
 
 \`\`\`python
-import json
+import json                        # 导入 json 模块
 
-data = {"name": "tom", "age": 18, "scores": [90, 85, 88]}
+data = {"name": "tom", "age": 18, "scores": [90, 85, 88]}  # 创建字典并赋给 data
 
 # 序列化成字符串
-s = json.dumps(data, ensure_ascii=False, indent=2)
-print(s)
+s = json.dumps(data, ensure_ascii=False, indent=2)  # 将 json.dumps(data, ensure_ascii=False, indent=2) 赋给 s
+print(s)                           # 输出 s
 # ensure_ascii=False 让中文正常显示
 # indent=2 让输出带缩进（好看）
 
 # 反序列化
-obj = json.loads(s)
-print(obj["name"])
+obj = json.loads(s)                # 将 json.loads(s) 赋给 obj
+print(obj["name"])                 # 输出 obj["name"]
 
 # 读写文件
-with open("data.json", "w", encoding="utf-8") as f:
-    json.dump(data, f, ensure_ascii=False, indent=2)
+with open("data.json", "w", encoding="utf-8") as f:  # 使用上下文管理器 open("data.json", "w", encoding="utf-8")，绑定到 f
+    json.dump(data, f, ensure_ascii=False, indent=2)  # 对 json 调用 dump 方法，参数 data, f, ensure_ascii=False, indent=2
 
-with open("data.json", encoding="utf-8") as f:
-    loaded = json.load(f)
+with open("data.json", encoding="utf-8") as f:  # 使用上下文管理器 open("data.json", encoding="utf-8")，绑定到 f
+    loaded = json.load(f)          # 将 json.load(f) 赋给 loaded
 \`\`\`
 
 注意：JSON 只支持 str/int/float/bool/None/list/dict，元组会被转成 list，set/datetime 等需要自定义转换。
@@ -2161,9 +2161,9 @@ with open("data.json", encoding="utf-8") as f:
 \`pathlib\` 比 \`os.path\` 更现代、更优雅，强烈推荐：
 
 \`\`\`python
-from pathlib import Path
+from pathlib import Path           # 从 pathlib 导入 Path
 
-p = Path("/home/user/docs/readme.md")
+p = Path("/home/user/docs/readme.md")  # 将 Path("/home/user/docs/readme.md") 赋给 p
 print(p.parent)        # /home/user/docs —— 父目录
 print(p.name)          # readme.md —— 文件名
 print(p.stem)          # readme —— 不含扩展名
@@ -2171,28 +2171,28 @@ print(p.suffix)        # .md —— 扩展名
 print(p.parts)         # ('/', 'home', 'user', 'docs', 'readme.md')
 
 # 拼接（用 / 运算符，很优雅）
-new = Path("/home") / "user" / "file.txt"
-print(new)
+new = Path("/home") / "user" / "file.txt"  # 将 Path("/home") / "user" / "file.txt" 赋给 new
+print(new)                         # 输出 new
 
 # 当前目录、家目录
-print(Path.cwd())
-print(Path.home())
+print(Path.cwd())                  # 输出 Path.cwd()
+print(Path.home())                 # 输出 Path.home()
 
 # 遍历目录
-for f in Path(".").iterdir():
-    print(f)
+for f in Path(".").iterdir():      # 遍历 Path(".").iterdir()，每次取值赋给 f
+    print(f)                       # 输出 f
 
 # 递归找所有 .py 文件
-for f in Path(".").rglob("*.py"):
-    print(f)
+for f in Path(".").rglob("*.py"):  # 遍历 Path(".").rglob("*.py")，每次取值赋给 f
+    print(f)                       # 输出 f
 
 # 读写文件（小文件一把梭）
-p = Path("test.txt")
-p.write_text("hello", encoding="utf-8")
-print(p.read_text(encoding="utf-8"))
+p = Path("test.txt")               # 将 Path("test.txt") 赋给 p
+p.write_text("hello", encoding="utf-8")  # 对 p 调用 write_text 方法，参数 "hello", encoding="utf-8"
+print(p.read_text(encoding="utf-8"))  # 输出 p.read_text(encoding="utf-8")
 
 # 创建/删除
-p = Path("newdir")
+p = Path("newdir")                 # 将 Path("newdir") 赋给 p
 p.mkdir(exist_ok=True)   # 已存在不报错
 # p.rmdir()
 \`\`\`
@@ -2206,24 +2206,24 @@ p.mkdir(exist_ok=True)   # 已存在不报错
 \`subprocess\` 用来执行外部命令。注意安全：不要把用户输入直接拼进命令，优先用列表形式：
 
 \`\`\`python
-import subprocess
-import sys
+import subprocess                  # 导入 subprocess 模块
+import sys                         # 导入 sys 模块
 
 # 安全演示：调用 Python 自己
-result = subprocess.run(
+result = subprocess.run(           # 将 subprocess.run( 赋给 result
     [sys.executable, "-c", "print(1 + 2)"],
     capture_output=True,    # 捕获输出
     text=True,              # 输出用字符串而非 bytes
 )
-print("返回码:", result.returncode)
-print("标准输出:", result.stdout.strip())
-print("标准错误:", result.stderr.strip())
+print("返回码:", result.returncode)   # 输出 "返回码:", result.returncode
+print("标准输出:", result.stdout.strip())  # 输出 "标准输出:", result.stdout.strip()
+print("标准错误:", result.stderr.strip())  # 输出 "标准错误:", result.stderr.strip()
 
 # check=True 时非 0 返回码抛 CalledProcessError
-try:
-    subprocess.run([sys.executable, "-c", "import sys; sys.exit(1)"], check=True)
+try:                               # 尝试执行以下代码块
+    subprocess.run([sys.executable, "-c", "import sys; sys.exit(1)"], check=True)  # 对 subprocess 调用 run 方法，参数 [sys.executable, "-c", "import sys; sys.exit(1)"], check=True
 except subprocess.CalledProcessError as e:
-    print("命令失败:", e)
+    print("命令失败:", e)              # 输出 "命令失败:", e
 \`\`\`
 
 **安全提醒**：\`shell=True\` 配合字符串命令很危险（命令注入），除非必要不要用，且绝不要把用户输入拼进命令字符串。
@@ -2235,21 +2235,21 @@ except subprocess.CalledProcessError as e:
 \`print\` 适合调试，正式程序用 \`logging\`：
 
 \`\`\`python
-import logging
+import logging                     # 导入 logging 模块
 
 # 基础配置
 logging.basicConfig(
     level=logging.DEBUG,    # 最低级别
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",  # 将字符串 "%(asctime)s [%(levelname)s] %(name)s: %(message)s", 赋给 format
 )
 
-log = logging.getLogger("myapp")
+log = logging.getLogger("myapp")   # 将 logging.getLogger("myapp") 赋给 log
 
-log.debug("调试信息")
-log.info("一般信息")
-log.warning("警告")
-log.error("错误")
-log.critical("严重错误")
+log.debug("调试信息")                  # 对 log 调用 debug 方法，参数 "调试信息"
+log.info("一般信息")                   # 对 log 调用 info 方法，参数 "一般信息"
+log.warning("警告")                  # 对 log 调用 warning 方法，参数 "警告"
+log.error("错误")                    # 对 log 调用 error 方法，参数 "错误"
+log.critical("严重错误")               # 对 log 调用 critical 方法，参数 "严重错误"
 \`\`\`
 
 级别从低到高：DEBUG < INFO < WARNING < ERROR < CRITICAL。设了 \`level=logging.INFO\` 则 DEBUG 不输出。
@@ -2263,27 +2263,27 @@ log.critical("严重错误")
 类型注解让代码更易读、IDE 提示更智能、配合 mypy 做静态检查：
 
 \`\`\`python
-from typing import List, Dict, Optional, Tuple, Union, Any, Callable
+from typing import List, Dict, Optional, Tuple, Union, Any, Callable  # 从 typing 导入 List, Dict, Optional, Tuple, Union, Any, Callable
 
-def greet(name: str, times: int = 1) -> str:
+def greet(name: str, times: int = 1) -> str:  # 定义函数 greet，参数：name: str, times: int = 1，返回 str
     """name 是 str，times 默认 1，返回 str"""
-    return ("hello, " + name + "! ") * times
+    return ("hello, " + name + "! ") * times  # 返回 ("hello, " + name + "! ") * times
 
 # 容器类型
-def process(items: List[int]) -> Dict[str, int]:
-    return {str(x): x for x in items}
+def process(items: List[int]) -> Dict[str, int]:  # 定义函数 process，参数：items: List[int]，返回 Dict[str, int]
+    return {str(x): x for x in items}  # 返回 {str(x): x for x in items}
 
 # Optional 表示可能为 None
-def find(x: int, lst: List[int]) -> Optional[int]:
-    return x if x in lst else None
+def find(x: int, lst: List[int]) -> Optional[int]:  # 定义函数 find，参数：x: int, lst: List[int]，返回 Optional[int]
+    return x if x in lst else None # 返回 x if x in lst else None
 
 # Union 多种类型
-def double(x: Union[int, str]) -> Union[int, str]:
-    return x * 2
+def double(x: Union[int, str]) -> Union[int, str]:  # 定义函数 double，参数：x: Union[int, str]，返回 Union[int, str]
+    return x * 2                   # 返回 x * 2
 
 # Callable 函数类型
-def apply(func: Callable[[int], int], x: int) -> int:
-    return func(x)
+def apply(func: Callable[[int], int], x: int) -> int:  # 定义函数 apply，参数：func: Callable[[int], int], x: int，返回 int
+    return func(x)                 # 返回 func(x)
 \`\`\`
 
 Python 3.9+ 可以直接用 \`list[int]\` / \`dict[str, int]\` 不用 import。3.10+ 用 \`int | str\` 替代 \`Union[int, str]\`，\`int | None\` 替代 \`Optional[int]\`。
@@ -2295,19 +2295,19 @@ Python 3.9+ 可以直接用 \`list[int]\` / \`dict[str, int]\` 不用 import。3
 ## 十四、enum：枚举
 
 \`\`\`python
-from enum import Enum, IntEnum, auto
+from enum import Enum, IntEnum, auto  # 从 enum 导入 Enum, IntEnum, auto
 
-class Color(Enum):
-    RED = 1
-    GREEN = 2
-    BLUE = 3
+class Color(Enum):                 # 定义类 Color，继承自 Enum
+    RED = 1                        # 将整数 1 赋给 RED
+    GREEN = 2                      # 将整数 2 赋给 GREEN
+    BLUE = 3                       # 将整数 3 赋给 BLUE
 
 class Status(IntEnum):   # IntEnum 可与 int 比较
     PENDING = auto()     # 自动分配值 1
     RUNNING = auto()     # 2
     DONE = auto()        # 3
 
-c = Color.RED
+c = Color.RED                      # 将 Color.RED 赋给 c
 print(c)            # Color.RED
 print(c.name)       # RED
 print(c.value)      # 1
@@ -2316,8 +2316,8 @@ print(Color["RED"]) # 按名字取
 print(Status.RUNNING == 2)   # True
 
 # 遍历
-for s in Status:
-    print(s)
+for s in Status:                   # 遍历 Status，每次取值赋给 s
+    print(s)                       # 输出 s
 \`\`\`
 
 枚举比「魔法数字常量」更安全可读，\`Status.DONE\` 比 \`3\` 含义清晰得多。
@@ -2329,30 +2329,30 @@ for s in Status:
 \`abc\` 让你定义「必须被子类实现的方法」：
 
 \`\`\`python
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod  # 从 abc 导入 ABC, abstractmethod
 
-class Animal(ABC):
+class Animal(ABC):                 # 定义类 Animal，继承自 ABC
     @abstractmethod
-    def sound(self):
+    def sound(self):               # 定义函数 sound，参数：self
         """子类必须实现"""
-        pass
+        pass                       # 空操作，占位
 
     @abstractmethod
-    def legs(self):
-        pass
+    def legs(self):                # 定义函数 legs，参数：self
+        pass                       # 空操作，占位
 
-    def describe(self):
+    def describe(self):            # 定义函数 describe，参数：self
         # 普通方法，子类可直接用
-        print("我有 %d 条腿，叫声是 %s" % (self.legs(), self.sound()))
+        print("我有 %d 条腿，叫声是 %s" % (self.legs(), self.sound()))  # 输出 "我有 %d 条腿，叫声是 %s" % (self.legs(), self.sound())
 
-class Dog(Animal):
-    def sound(self):
-        return "汪汪"
-    def legs(self):
-        return 4
+class Dog(Animal):                 # 定义类 Dog，继承自 Animal
+    def sound(self):               # 定义函数 sound，参数：self
+        return "汪汪"                # 返回 "汪汪"
+    def legs(self):                # 定义函数 legs，参数：self
+        return 4                   # 返回 4
 
 # Animal()  # 报错：不能实例化抽象类
-d = Dog()
+d = Dog()                          # 将 Dog() 赋给 d
 d.describe()   # 我有 4 条腿，叫声是 汪汪
 \`\`\`
 
@@ -2949,12 +2949,12 @@ uv 兼容 \`pyproject.toml\`，也支持管理 Python 版本本身（\`uv python
 可以用 \`dis\` 模块反汇编查看字节码：
 
 \`\`\`python
-import dis
+import dis                         # 导入 dis 模块
 
-def add(a, b):
-    return a + b
+def add(a, b):                     # 定义函数 add，参数：a, b
+    return a + b                   # 返回 a + b
 
-dis.dis(add)
+dis.dis(add)                       # 对 dis 调用 dis 方法，参数 add
 # 输出类似：
 #   2           0 RESUME                   0
 #   3           2 LOAD_FAST                0 (a)
@@ -2970,7 +2970,7 @@ dis.dis(add)
 激活虚拟环境后，\`sys.prefix\` 指向虚拟环境目录，\`sys.path\` 里虚拟环境的 \`site-packages\` 排在前面。所以 \`import xxx\` 优先找到虚拟环境里的包，而非全局包。
 
 \`\`\`python
-import sys
+import sys                         # 导入 sys 模块
 print(sys.prefix)      # 虚拟环境目录
 print(sys.executable)  # 虚拟环境里的 python
 \`\`\`
@@ -2991,26 +2991,26 @@ PEP 8 是 Python 官方风格指南，核心要点：
 
 \`\`\`python
 # 好
-import os
-import sys
+import os                          # 导入 os 模块
+import sys                         # 导入 sys 模块
 
-def calculate_total(items):
-    total = 0
-    for item in items:
-        total += item.price
-    return total
+def calculate_total(items):        # 定义函数 calculate_total，参数：items
+    total = 0                      # 将整数 0 赋给 total
+    for item in items:             # 遍历 items，每次取值赋给 item
+        total += item.price        # total 加 item.price
+    return total                   # 返回 total
 
-class ShoppingCart:
-    def __init__(self):
+class ShoppingCart:                # 定义类 ShoppingCart
+    def __init__(self):            # 定义函数 __init__，参数：self
         self.items = []
 
 # 不好
 import os,sys
-def calculateTotal(items):
-    total=0
-    for item in items:
-        total+=item.price
-    return total
+def calculateTotal(items):         # 定义函数 calculateTotal，参数：items
+    total=0                        # 将整数 0 赋给 total
+    for item in items:             # 遍历 items，每次取值赋给 item
+        total+=item.price          # total 加 item.price
+    return total                   # 返回 total
 \`\`\`
 
 ### 7.2 自动格式化：black
@@ -3061,8 +3061,8 @@ select = ["E", "F", "I", "UP"]   # 启用哪些规则
 
 \`\`\`python
 # example.py
-def add(a: int, b: int) -> int:
-    return a + b
+def add(a: int, b: int) -> int:    # 定义函数 add，参数：a: int, b: int，返回 int
+    return a + b                   # 返回 a + b
 
 result: str = add(1, 2)   # 类型错误：int 赋给 str
 \`\`\`
@@ -3094,26 +3094,26 @@ strict = true
 \`unittest\` 是标准库自带的测试框架：
 
 \`\`\`python
-import unittest
+import unittest                    # 导入 unittest 模块
 
-def add(a, b):
-    return a + b
+def add(a, b):                     # 定义函数 add，参数：a, b
+    return a + b                   # 返回 a + b
 
-class TestAdd(unittest.TestCase):
-    def test_add_integers(self):
-        self.assertEqual(add(1, 2), 3)
+class TestAdd(unittest.TestCase):  # 定义类 TestAdd，继承自 unittest.TestCase
+    def test_add_integers(self):   # 定义函数 test_add_integers，参数：self
+        self.assertEqual(add(1, 2), 3)  # 对 self 调用 assertEqual 方法，参数 add(1, 2), 3
 
-    def test_add_negative(self):
-        self.assertEqual(add(-1, -2), -3)
+    def test_add_negative(self):   # 定义函数 test_add_negative，参数：self
+        self.assertEqual(add(-1, -2), -3)  # 对 self 调用 assertEqual 方法，参数 add(-1, -2), -3
 
-    def test_add_float(self):
-        self.assertAlmostEqual(add(0.1, 0.2), 0.3, places=7)
+    def test_add_float(self):      # 定义函数 test_add_float，参数：self
+        self.assertAlmostEqual(add(0.1, 0.2), 0.3, places=7)  # 对 self 调用 assertAlmostEqual 方法，参数 add(0.1, 0.2), 0.3, places=7
 
-    def test_add_string(self):
-        self.assertEqual(add("a", "b"), "ab")
+    def test_add_string(self):     # 定义函数 test_add_string，参数：self
+        self.assertEqual(add("a", "b"), "ab")  # 对 self 调用 assertEqual 方法，参数 add("a", "b"), "ab"
 
-if __name__ == "__main__":
-    unittest.main()
+if __name__ == "__main__":         # 如果 __name__ == "__main__" 成立
+    unittest.main()                # 对 unittest 调用 main 方法
 \`\`\`
 
 运行：\`python test_example.py\` 或 \`python -m unittest discover\`。
@@ -3126,19 +3126,19 @@ if __name__ == "__main__":
 
 \`\`\`python
 # test_example.py
-import pytest
+import pytest                      # 导入 pytest 模块
 
-def add(a, b):
-    return a + b
+def add(a, b):                     # 定义函数 add，参数：a, b
+    return a + b                   # 返回 a + b
 
-def test_add_int():
+def test_add_int():                # 定义函数 test_add_int，无参数
     assert add(1, 2) == 3
 
-def test_add_string():
+def test_add_string():             # 定义函数 test_add_string，无参数
     assert add("a", "b") == "ab"
 
-def test_add_raises():
-    with pytest.raises(TypeError):
+def test_add_raises():             # 定义函数 test_add_raises，无参数
+    with pytest.raises(TypeError): # 使用上下文管理器 pytest.raises(TypeError)
         add(1, "a")   # int + str 抛 TypeError
 
 # 参数化测试：一组数据跑多次
@@ -3148,7 +3148,7 @@ def test_add_raises():
     (0, 0, 0),
     (100, 200, 300),
 ])
-def test_add_many(a, b, expected):
+def test_add_many(a, b, expected): # 定义函数 test_add_many，参数：a, b, expected
     assert add(a, b) == expected
 \`\`\`
 
@@ -3165,7 +3165,7 @@ pytest 的优势：
 把测试写在 docstring 里，既能当文档又能当测试：
 
 \`\`\`python
-def factorial(n):
+def factorial(n):                  # 定义函数 factorial，参数：n
     """计算阶乘
 
     >>> factorial(0)
@@ -3175,10 +3175,10 @@ def factorial(n):
     >>> factorial(3)
     6
     """
-    result = 1
-    for i in range(2, n + 1):
-        result *= i
-    return result
+    result = 1                     # 将整数 1 赋给 result
+    for i in range(2, n + 1):      # 遍历 range(2, n + 1)，每次取值赋给 i
+        result *= i                # result 乘 i
+    return result                  # 返回 result
 \`\`\`
 
 运行：\`python -m doctest mymodule.py -v\`。doctest 会执行 docstring 里 \`>>>\` 后的代码，比对输出。适合写「带示例的文档」，一举两得。
@@ -3190,21 +3190,21 @@ def factorial(n):
 \`pdb\` 是 Python 内置调试器。在代码里加一行：
 
 \`\`\`python
-def buggy(x):
-    y = x * 2
+def buggy(x):                      # 定义函数 buggy，参数：x
+    y = x * 2                      # 将 x * 2 赋给 y
     import pdb; pdb.set_trace()   # 程序会停在这里，进入交互式调试
-    z = y + 1
-    return z
+    z = y + 1                      # 将 y + 1 赋给 z
+    return z                       # 返回 z
 \`\`\`
 
 Python 3.7+ 推荐用更短的 \`breakpoint()\`：
 
 \`\`\`python
-def buggy(x):
-    y = x * 2
+def buggy(x):                      # 定义函数 buggy，参数：x
+    y = x * 2                      # 将 x * 2 赋给 y
     breakpoint()   # 等价于 pdb.set_trace()
-    z = y + 1
-    return z
+    z = y + 1                      # 将 y + 1 赋给 z
+    return z                       # 返回 z
 \`\`\`
 
 进入 pdb 后常用命令：
@@ -3227,13 +3227,13 @@ def buggy(x):
 \`timeit\` 测量小代码片段的执行时间，会自动多次运行取平均，避免偶然波动：
 
 \`\`\`python
-import timeit
+import timeit                      # 导入 timeit 模块
 
 # 测字符串拼接两种方式
-t1 = timeit.timeit('"-".join(["a","b","c"])', number=100000)
-t2 = timeit.timeit('"a" + "-" + "b" + "-" + "c"', number=100000)
-print("join:", t1)
-print("+:", t2)
+t1 = timeit.timeit('"-".join(["a","b","c"])', number=100000)  # 将 timeit.timeit('"-".join(["a","b","c"])', number=100000) 赋给 t1
+t2 = timeit.timeit('"a" + "-" + "b" + "-" + "c"', number=100000)  # 将 timeit.timeit('"a" + "-" + "b" + "-" + "c"', number=100000) 赋给 t2
+print("join:", t1)                 # 输出 "join:", t1
+print("+:", t2)                    # 输出 "+:", t2
 \`\`\`
 
 命令行也能用：\`python -m timeit -s "setup" "stmt"\`。
@@ -3243,24 +3243,24 @@ print("+:", t2)
 \`cProfile\` 找出程序里「哪些函数耗时最多」：
 
 \`\`\`python
-import cProfile
+import cProfile                    # 导入 cProfile 模块
 
-def slow_func():
-    total = 0
-    for i in range(100000):
-        total += i
-    return total
+def slow_func():                   # 定义函数 slow_func，无参数
+    total = 0                      # 将整数 0 赋给 total
+    for i in range(100000):        # 遍历 range(100000)，每次取值赋给 i
+        total += i                 # total 加 i
+    return total                   # 返回 total
 
-def fast_func():
-    return sum(range(100000))
+def fast_func():                   # 定义函数 fast_func，无参数
+    return sum(range(100000))      # 返回 sum(range(100000))
 
-def main():
-    for _ in range(100):
-        slow_func()
-    for _ in range(100):
-        fast_func()
+def main():                        # 定义函数 main，无参数
+    for _ in range(100):           # 遍历 range(100)，每次取值赋给 _
+        slow_func()                # 调用 slow_func
+    for _ in range(100):           # 遍历 range(100)，每次取值赋给 _
+        fast_func()                # 调用 fast_func
 
-cProfile.run("main()", sort="cumulative")
+cProfile.run("main()", sort="cumulative")  # 对 cProfile 调用 run 方法，参数 "main()", sort="cumulative"
 \`\`\`
 
 输出会列出每个函数的调用次数、总耗时、每次平均耗时，按累计时间排序。瓶颈一目了然。

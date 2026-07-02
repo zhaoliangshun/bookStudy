@@ -66,7 +66,7 @@ let value = 42;        // 此时 value 是数字
 value = "hello";       // 此时 value 变成了字符串，JS 不会报错
 value = true;          // 又变成了布尔值
 // 函数参数也没有类型约束
-function add(a, b) {
+function add(a, b) {  // 定义函数 add，参数: a, b
   return a + b;        // 如果传入 "1" 和 2，得到 "12" 而不是 3
 }
 \`\`\`
@@ -84,8 +84,8 @@ TypeScript 的核心思想是：**在编译期（写代码时）就通过类型�
 
 \`\`\`ts
 // TypeScript 版本：类型错误在编写时就会被编辑器标红
-function add(a: number, b: number): number {
-  return a + b;
+function add(a: number, b: number): number {  // 定义函数 add，参数: a: number, b: number，返回 number
+  return a + b;  // 返回 a + b
 }
 add(1, 2);        // ✅ 正确
 add("1", 2);      // ❌ 编辑器报错：字符串不能赋给 number 类型参数
@@ -145,10 +145,10 @@ TypeScript 不会强迫你给所有东西都标注类型。你可以只在关键
 
 \`\`\`ts
 // 两个不同名字但结构相同的类型
-interface Point2D { x: number; y: number; }
-interface Coordinate { x: number; y: number; }
+interface Point2D { x: number; y: number; }  // 定义接口 Point2D
+interface Coordinate { x: number; y: number; }  // 定义接口 Coordinate
 
-const p: Point2D = { x: 1, y: 2 };
+const p: Point2D = { x: 1, y: 2 };  // 声明常量 p，类型 Point2D
 const c: Coordinate = p;  // ✅ 在 TS 中合法！因为结构相同
 // 在 Java/C# 中这会报错，因为类型名不同
 \`\`\`
@@ -181,15 +181,15 @@ TypeScript 与 ECMAScript 的关系是：
 TypeScript 通过 npm 安装。可以全局安装以便随处使用 \`tsc\` 命令：
 
 \`\`\`bash
-npm install -g typescript
+npm install -g typescript  # 全局安装依赖
 # 验证安装
-tsc --version
+tsc --version  # 运行 TypeScript 编译器
 \`\`\`
 
 也可以在项目本地安装：
 
 \`\`\`bash
-npm install --save-dev typescript
+npm install --save-dev typescript  # 安装依赖
 \`\`\`
 
 #### tsc 编译命令
@@ -198,13 +198,13 @@ npm install --save-dev typescript
 
 \`\`\`bash
 # 编译单个文件：hello.ts → hello.js
-tsc hello.ts
+tsc hello.ts  # 运行 TypeScript 编译器
 
 # 监听模式：文件修改后自动重新编译
-tsc --watch
+tsc --watch  # 运行 TypeScript 编译器
 
 # 使用配置文件 tsconfig.json 编译整个项目
-tsc
+tsc  # 运行 TypeScript 编译器
 \`\`\`
 
 #### ts-node
@@ -212,7 +212,7 @@ tsc
 \`ts-node\` 是一个让 Node.js 直接执行 TypeScript 文件的工具，它内部会先编译再运行，省去手动编译步骤：
 
 \`\`\`bash
-npm install -g ts-node
+npm install -g ts-node  # 全局安装依赖
 ts-node hello.ts   # 直接运行 .ts 文件
 \`\`\`
 
@@ -221,7 +221,7 @@ ts-node hello.ts   # 直接运行 .ts 文件
 **Deno** 是 Ryan Dahl（Node.js 之父）创建的新一代 JavaScript/TypeScript 运行时，它**原生支持 TypeScript**——无需编译，直接运行 \`.ts\` 文件：
 
 \`\`\`bash
-deno run hello.ts
+deno run hello.ts  # 执行命令 deno
 \`\`\`
 
 ### tsc 编译流程
@@ -245,8 +245,8 @@ TypeScript 的编译流程可以简化为：
 
 \`\`\`ts
 // hello.ts
-const message: string = "Hello, TypeScript!";
-console.log(message);
+const message: string = "Hello, TypeScript!";  // 声明常量 message，类型 string
+console.log(message);  // 控制台输出
 \`\`\`
 
 编译并运行：
@@ -376,8 +376,8 @@ TypeScript 的类型系统是构建一切复杂类型的基石。本章将逐一
 最基本的数据类型，只有两个值：\`true\` 和 \`false\`。
 
 \`\`\`ts
-let isDone: boolean = false;
-let hasPermission: boolean = true;
+let isDone: boolean = false;  // 声明变量 isDone，类型 boolean
+let hasPermission: boolean = true;  // 声明变量 hasPermission，类型 boolean
 \`\`\`
 
 注意：在 JavaScript/TypeScript 中，\`Boolean\`（大写）是构造函数对象类型，\`boolean\`（小写）才是原始类型。**始终使用小写的 \`boolean\`**。
@@ -399,10 +399,10 @@ let float: number = 3.14;      // 浮点数
 ### 字符串类型 string
 
 \`\`\`ts
-let name: string = "张三";
-let sentence: string = '单引号也可以';
+let name: string = "张三";  // 声明变量 name，类型 string
+let sentence: string = '单引号也可以';  // 声明变量 sentence，类型 string
 // 模板字符串：用反引号包裹，支持 \${} 插值和多行
-let greeting: string = \`你好，\${name}！\`;
+let greeting: string = \`你好，\${name}！\`;  // 声明变量 greeting，类型 string
 \`\`\`
 
 模板字符串是 ES6 引入的特性，TypeScript 完全支持。它让字符串拼接变得清晰，尤其在多行文本和变量插值时。
@@ -413,11 +413,11 @@ TypeScript 有两种声明数组的方式：
 
 \`\`\`ts
 // 方式一：元素类型后加 []
-let list1: number[] = [1, 2, 3];
+let list1: number[] = [1, 2, 3];  // 声明变量 list1，类型 number[]
 // 方式二：泛型数组 Array<元素类型>
-let list2: Array<string> = ["a", "b", "c"];
+let list2: Array<string> = ["a", "b", "c"];  // 声明变量 list2，类型 Array<string>
 // 只读数组：不能修改元素
-let readonlyList: readonly number[] = [1, 2, 3];
+let readonlyList: readonly number[] = [1, 2, 3];  // 声明变量 readonlyList，类型 readonly number[]
 // readonlyList.push(4);  // ❌ 类型错误
 \`\`\`
 
@@ -429,7 +429,7 @@ let readonlyList: readonly number[] = [1, 2, 3];
 
 \`\`\`ts
 // 一个 string 后跟一个 number
-let pair: [string, number] = ["张三", 28];
+let pair: [string, number] = ["张三", 28];  // 声明变量 pair，类型 [string, number]
 console.log(pair[0]);  // "张三"
 console.log(pair[1]);  // 28
 \`\`\`
@@ -443,17 +443,17 @@ console.log(pair[1]);  // 28
 #### 数值枚举
 
 \`\`\`ts
-enum Direction {
+enum Direction {  // 定义枚举 Direction
   Up,      // 默认从 0 开始
   Down,    // 1
   Left,    // 2
   Right,   // 3
 }
 // 也可以指定起始值
-enum HttpStatus {
-  OK = 200,
-  NotFound = 404,
-  ServerError = 500,
+enum HttpStatus {  // 定义枚举 HttpStatus
+  OK = 200,  // 赋值 OK
+  NotFound = 404,  // 赋值 NotFound
+  ServerError = 500,  // 赋值 ServerError
 }
 \`\`\`
 
@@ -462,10 +462,10 @@ enum HttpStatus {
 #### 字符串枚举
 
 \`\`\`ts
-enum Color {
-  Red = "RED",
-  Green = "GREEN",
-  Blue = "BLUE",
+enum Color {  // 定义枚举 Color
+  Red = "RED",  // 赋值 Red
+  Green = "GREEN",  // 赋值 Green
+  Blue = "BLUE",  // 赋值 Blue
 }
 \`\`\`
 
@@ -476,9 +476,9 @@ enum Color {
 数值和字符串混用，不推荐使用，容易引起混淆：
 
 \`\`\`ts
-enum Mixed {
-  No = 0,
-  Yes = "YES",
+enum Mixed {  // 定义枚举 Mixed
+  No = 0,  // 赋值 No
+  Yes = "YES",  // 赋值 Yes
 }
 \`\`\`
 
@@ -496,7 +496,7 @@ let d = Direction.Up;  // 编译后直接变成 let d = 0;
 \`any\` 是类型系统的"逃生舱"，表示**任意类型**，编译器会跳过对该值的类型检查。它是从 JavaScript 迁移到 TypeScript 时的过渡工具：
 
 \`\`\`ts
-let notSure: any = 4;
+let notSure: any = 4;  // 声明变量 notSure，类型 any（注意：any 关闭了类型检查）
 notSure = "现在变成字符串";  // 不报错
 notSure = false;            // 不报错
 notSure.ifItExists();       // 不报错（运行时可能出错）
@@ -509,9 +509,9 @@ notSure.ifItExists();       // 不报错（运行时可能出错）
 \`unknown\` 是**类型安全的 any**。它也接受任意值，但在使用前**必须先进行类型检查**：
 
 \`\`\`ts
-let value: unknown = "hello";
+let value: unknown = "hello";  // 声明变量 value，类型 unknown
 // value.toUpperCase();  // ❌ 错误：unknown 类型不能直接调用方法
-if (typeof value === "string") {
+if (typeof value === "string") {  // 类型守卫：判断是否为 string
   console.log(value.toUpperCase());  // ✅ 类型缩小后才允许
 }
 \`\`\`
@@ -527,12 +527,12 @@ if (typeof value === "string") {
 
 \`\`\`ts
 // 永不返回：抛异常
-function fail(msg: string): never {
-  throw new Error(msg);
+function fail(msg: string): never {  // 定义函数 fail，参数: msg: string，返回 never
+  throw new Error(msg);  // 抛出 Error 异常
 }
 // 永不返回：无限循环
-function infiniteLoop(): never {
-  while (true) {}
+function infiniteLoop(): never {  // 定义函数 infiniteLoop，返回 never
+  while (true) {}  // while 循环
 }
 \`\`\`
 
@@ -541,8 +541,8 @@ function infiniteLoop(): never {
 \`void\` 表示函数**没有返回值**（或者说返回 \`undefined\`）。常用于回调函数的返回类型：
 
 \`\`\`ts
-function log(msg: string): void {
-  console.log(msg);
+function log(msg: string): void {  // 定义函数 log，参数: msg: string，返回 void
+  console.log(msg);  // 控制台输出
   // 没有 return 语句
 }
 \`\`\`
@@ -554,8 +554,8 @@ function log(msg: string): void {
 在 TypeScript 中，\`null\` 和 \`undefined\` 各自有对应的类型：
 
 \`\`\`ts
-let u: undefined = undefined;
-let n: null = null;
+let u: undefined = undefined;  // 声明变量 u，类型 undefined
+let n: null = null;  // 声明变量 n，类型 null
 \`\`\`
 
 默认情况下 \`null\` 和 \`undefined\` 可以赋给任何类型。但开启 \`strictNullChecks\` 后，它们只能赋给 \`null\`、\`undefined\` 和 \`any\`，不能赋给 \`string\` 等。这能避免大量"空指针"错误。建议始终开启此选项。
@@ -575,8 +575,8 @@ direction = "left";  // ✅
 用于表示超大整数（超过 Number.MAX_SAFE_INTEGER 即 2^53-1）：
 
 \`\`\`ts
-let big: bigint = 9007199254740991n;
-let another: bigint = BigInt(123);
+let big: bigint = 9007199254740991n;  // 声明变量 big，类型 bigint
+let another: bigint = BigInt(123);  // 声明变量 another，类型 bigint
 \`\`\`
 
 注意 \`bigint\` 不能和 \`number\` 直接混合运算。
@@ -586,7 +586,7 @@ let another: bigint = BigInt(123);
 \`symbol\` 是 ES6 引入的原始类型，表示全局唯一不可变的值，常作为对象属性键：
 
 \`\`\`ts
-let sym: symbol = Symbol("key");
+let sym: symbol = Symbol("key");  // 声明变量 sym，类型 symbol
 \`\`\`
 
 ### 类型赋值兼容性
@@ -810,9 +810,9 @@ TypeScript 的类型信息有两个来源：**你显式写的类型注解**和**
 #### 变量注解
 
 \`\`\`ts
-let count: number = 10;
-let name: string = "张三";
-let items: string[] = [];
+let count: number = 10;  // 声明变量 count，类型 number
+let name: string = "张三";  // 声明变量 name，类型 string
+let items: string[] = [];  // 声明变量 items，类型 string[]
 \`\`\`
 
 #### 函数注解
@@ -820,11 +820,11 @@ let items: string[] = [];
 函数可以注解**参数类型**和**返回值类型**：
 
 \`\`\`ts
-function add(a: number, b: number): number {
-  return a + b;
+function add(a: number, b: number): number {  // 定义函数 add，参数: a: number, b: number，返回 number
+  return a + b;  // 返回 a + b
 }
 // 箭头函数
-const multiply = (a: number, b: number): number => a * b;
+const multiply = (a: number, b: number): number => a * b;  // 声明常量 multiply
 \`\`\`
 
 ### 类型推断（Type Inference）
@@ -835,7 +835,7 @@ const multiply = (a: number, b: number): number => a * b;
 let count = 10;          // 推断为 number
 let name = "张三";        // 推断为 string
 let items = [1, 2, 3];   // 推断为 number[]
-function add(a: number, b: number) {
+function add(a: number, b: number) {  // 定义函数 add，参数: a: number, b: number
   return a + b;          // 返回值推断为 number
 }
 \`\`\`
@@ -873,10 +873,10 @@ const y = "hello"; // 推断为 "hello"（字面量类型）
 
 \`\`\`ts
 // 方式一：as 语法（推荐，JSX 中必须用这种）
-let strLength: number = (someValue as string).length;
+let strLength: number = (someValue as string).length;  // 声明变量 strLength，类型 number（注意：类型断言会绕过类型检查）
 
 // 方式二：尖括号语法
-let strLength: number = (<string>someValue).length;
+let strLength: number = (<string>someValue).length;  // 声明变量 strLength，类型 number
 \`\`\`
 
 #### 两种语法的差异
@@ -890,7 +890,7 @@ let strLength: number = (<string>someValue).length;
 后缀 \`!\` 告诉编译器"我确定这个值不是 null/undefined"：
 
 \`\`\`ts
-function getLength(value: string | null): number {
+function getLength(value: string | null): number {  // 定义函数 getLength，参数: value: string | null，返回 number
   return value!.length;  // 断言 value 一定非空
 }
 \`\`\`
@@ -902,9 +902,9 @@ function getLength(value: string | null): number {
 \`as const\` 让一个值被推断为**最窄的字面量类型**，并把所有属性变成 \`readonly\`：
 
 \`\`\`ts
-const config = { host: "localhost", port: 3000 };
+const config = { host: "localhost", port: 3000 };  // 声明常量 config
 // config 的类型是 { host: string; port: number }
-const config2 = { host: "localhost", port: 3000 } as const;
+const config2 = { host: "localhost", port: 3000 } as const;  // 声明常量 config2（注意：类型断言会绕过类型检查）
 // config2 的类型是 { readonly host: "localhost"; readonly port: 3000 }
 \`\`\`
 
@@ -1087,11 +1087,11 @@ console.log("\\n类型注解与推断演示完成！");`,
 接口本质上是一份**类型契约**，它规定了一个对象应该有哪些属性、属性是什么类型、哪些方法是必须的。接口在编译时会被完全擦除，运行时不存在——它是纯粹的编译期概念。
 
 \`\`\`ts
-interface Person {
+interface Person {  // 定义接口 Person
   name: string;
   age: number;
 }
-const p: Person = { name: "张三", age: 28 };
+const p: Person = { name: "张三", age: 28 };  // 声明常量 p，类型 Person
 \`\`\`
 
 ### interface 与 type 的区别
@@ -1103,12 +1103,12 @@ const p: Person = { name: "张三", age: 28 };
 ### 基本用法：描述对象形状
 
 \`\`\`ts
-interface User {
+interface User {  // 定义接口 User
   id: number;
   name: string;
   email: string;
 }
-const user: User = { id: 1, name: "张三", email: "z@x.com" };
+const user: User = { id: 1, name: "张三", email: "z@x.com" };  // 声明常量 user，类型 User
 \`\`\`
 
 如果对象少了属性或多了属性，编译器会报错（多余属性检查）。
@@ -1118,7 +1118,7 @@ const user: User = { id: 1, name: "张三", email: "z@x.com" };
 属性名后加 \`?\` 表示该属性可选，可以不存在：
 
 \`\`\`ts
-interface User {
+interface User {  // 定义接口 User
   id: number;
   name: string;
   age?: number;  // 可选
@@ -1132,11 +1132,11 @@ const u2: User = { id: 2, name: "李四", age: 30 }; // ✅ 有 age 也行
 \`readonly\` 表示属性只能在对象创建时赋值，之后不可修改：
 
 \`\`\`ts
-interface Point {
-  readonly x: number;
-  readonly y: number;
+interface Point {  // 定义接口 Point
+  readonly x: number;  // 类属性 x: number
+  readonly y: number;  // 类属性 y: number
 }
-const p: Point = { x: 10, y: 20 };
+const p: Point = { x: 10, y: 20 };  // 声明常量 p，类型 Point
 // p.x = 5;  // ❌ 只读属性不能修改
 \`\`\`
 
@@ -1147,10 +1147,10 @@ const p: Point = { x: 10, y: 20 };
 当对象可能有任意数量的属性，且属性名不确定时，用索引签名：
 
 \`\`\`ts
-interface StringMap {
+interface StringMap {  // 定义接口 StringMap
   [key: string]: string;
 }
-const map: StringMap = { a: "1", b: "2", anything: "x" };
+const map: StringMap = { a: "1", b: "2", anything: "x" };  // 声明常量 map，类型 StringMap
 \`\`\`
 
 索引签名有两种：
@@ -1164,10 +1164,10 @@ const map: StringMap = { a: "1", b: "2", anything: "x" };
 接口也可以描述函数的类型：
 
 \`\`\`ts
-interface SearchFunc {
+interface SearchFunc {  // 定义接口 SearchFunc
   (source: string, sub: string): boolean;
 }
-const contains: SearchFunc = (src, sub) => src.includes(sub);
+const contains: SearchFunc = (src, sub) => src.includes(sub);  // 声明常量 contains，类型 SearchFunc
 \`\`\`
 
 这种写法等价于 \`type SearchFunc = (source: string, sub: string) => boolean\`。
@@ -1177,7 +1177,7 @@ const contains: SearchFunc = (src, sub) => src.includes(sub);
 结合索引签名可以创建字典/映射类型：
 
 \`\`\`ts
-interface NumberDictionary {
+interface NumberDictionary {  // 定义接口 NumberDictionary
   [index: string]: number;
   length: number;  // 必须和索引签名类型兼容
 }
@@ -1188,13 +1188,13 @@ interface NumberDictionary {
 接口可以描述类的实例形状，类用 \`implements\` 实现接口：
 
 \`\`\`ts
-interface Comparable {
-  compareTo(other: any): number;
+interface Comparable {  // 定义接口 Comparable
+  compareTo(other: any): number;  // 方法声明 compareTo(other: any)，返回 number（注意：any 关闭了类型检查）
 }
-class Score implements Comparable {
-  constructor(public value: number) {}
-  compareTo(other: Score): number {
-    return this.value - other.value;
+class Score implements Comparable {  // 定义类 Score，implements Comparable
+  constructor(public value: number) {}  // 调用 constructor
+  compareTo(other: Score): number {  // 方法声明 compareTo(other: Score)，返回 number
+    return this.value - other.value;  // 返回 this.value - other.value
   }
 }
 \`\`\`
@@ -1206,17 +1206,17 @@ class Score implements Comparable {
 接口可以继承一个或多个接口，复用类型定义：
 
 \`\`\`ts
-interface Animal { name: string; }
-interface Dog extends Animal { breed: string; }
+interface Animal { name: string; }  // 定义接口 Animal
+interface Dog extends Animal { breed: string; }  // 定义接口 Dog，extends Animal
 // Dog 有 name 和 breed 两个属性
 \`\`\`
 
 多继承：
 
 \`\`\`ts
-interface A { a: number; }
-interface B { b: number; }
-interface C extends A, B { c: number; }
+interface A { a: number; }  // 定义接口 A
+interface B { b: number; }  // 定义接口 B
+interface C extends A, B { c: number; }  // 定义接口 C，extends A, B
 // C 有 a、b、c 三个属性
 \`\`\`
 
@@ -1226,7 +1226,7 @@ interface C extends A, B { c: number; }
 
 \`\`\`ts
 interface Window { myProp: string; }  // 扩展全局 Window
-interface Window { anotherProp: number; }
+interface Window { anotherProp: number; }  // 定义接口 Window
 // 最终 Window 有 myProp 和 anotherProp
 \`\`\`
 
@@ -1464,8 +1464,8 @@ console.log("\\n接口演示完成！");`,
 \`type\` 不会创建新的类型，只是给已有类型起一个**别名**，方便复用和理解：
 
 \`\`\`ts
-type Name = string;
-type ID = number | string;
+type Name = string;  // 定义类型别名 Name
+type ID = number | string;  // 定义类型别名 ID，联合类型
 \`\`\`
 
 这里 \`Name\` 和 \`string\` 完全等价，\`ID\` 和 \`number | string\` 完全等价。
@@ -1474,11 +1474,11 @@ type ID = number | string;
 
 \`\`\`ts
 // 原始类型别名
-type Score = number;
+type Score = number;  // 定义类型别名 Score
 // 对象类型别名
-type Point = { x: number; y: number };
+type Point = { x: number; y: number };  // 定义类型别名 Point
 // 函数类型别名
-type Callback = (data: any) => void;
+type Callback = (data: any) => void;  // 定义类型别名 Callback（注意：any 关闭了类型检查）
 \`\`\`
 
 ### 联合类型（Union）\`|\`
@@ -1486,7 +1486,7 @@ type Callback = (data: any) => void;
 联合类型表示一个值可以是**多种类型之一**，用 \`|\` 连接：
 
 \`\`\`ts
-type ID = number | string;
+type ID = number | string;  // 定义类型别名 ID，联合类型
 let id: ID = 123;     // ✅ number
 id = "A-001";         // ✅ string
 \`\`\`
@@ -1494,16 +1494,16 @@ id = "A-001";         // ✅ string
 联合类型常配合**字面量类型**使用，约束值为固定几个选项：
 
 \`\`\`ts
-type Status = "active" | "inactive" | "banned";
-type Direction = "up" | "down" | "left" | "right";
+type Status = "active" | "inactive" | "banned";  // 定义类型别名 Status
+type Direction = "up" | "down" | "left" | "right";  // 定义类型别名 Direction
 \`\`\`
 
 **使用联合类型时，只能访问所有类型共有的成员**。要使用特定类型的成员，需要类型缩小（type narrowing）：
 
 \`\`\`ts
-function process(id: number | string) {
+function process(id: number | string) {  // 定义函数 process，参数: id: number | string
   // id.toUpperCase();  // ❌ number 没有 toUpperCase
-  if (typeof id === "string") {
+  if (typeof id === "string") {  // 类型守卫：判断是否为 string
     console.log(id.toUpperCase());  // ✅ 这里 id 被缩小为 string
   }
 }
@@ -1514,11 +1514,11 @@ function process(id: number | string) {
 交叉类型用 \`&\` 把多个类型**合并成一个**，新类型拥有所有类型的全部属性：
 
 \`\`\`ts
-type Person = { name: string };
-type Employee = { employeeId: number };
-type EmployeePerson = Person & Employee;
+type Person = { name: string };  // 定义类型别名 Person
+type Employee = { employeeId: number };  // 定义类型别名 Employee
+type EmployeePerson = Person & Employee;  // 定义类型别名 EmployeePerson，交叉类型
 // EmployeePerson 同时有 name 和 employeeId
-const emp: EmployeePerson = { name: "张三", employeeId: 1001 };
+const emp: EmployeePerson = { name: "张三", employeeId: 1001 };  // 声明常量 emp，类型 EmployeePerson
 \`\`\`
 
 交叉类型常用于**混入（Mixin）模式**和组合多个接口的能力。
@@ -1526,8 +1526,8 @@ const emp: EmployeePerson = { name: "张三", employeeId: 1001 };
 **陷阱**：如果交叉的两个类型有同名但类型不兼容的属性，该属性会变成 \`never\`：
 
 \`\`\`ts
-type A = { x: string };
-type B = { x: number };
+type A = { x: string };  // 定义类型别名 A
+type B = { x: number };  // 定义类型别名 B
 type C = A & B;  // C 的 x 是 string & number = never
 \`\`\`
 
@@ -1535,13 +1535,13 @@ type C = A & B;  // C 的 x 是 string & number = never
 
 \`\`\`ts
 // 对象
-type User = {
+type User = {  // 定义类型别名 User
   id: number;
   name: string;
-  readonly createdAt: Date;
+  readonly createdAt: Date;  // 类属性 createdAt: Date
 };
 // 函数
-type Handler = (event: string) => boolean;
+type Handler = (event: string) => boolean;  // 定义类型别名 Handler
 \`\`\`
 
 ### type 与 interface 的全面对比
@@ -1576,8 +1576,8 @@ type Handler = (event: string) => boolean;
 #### 联合字面量类型
 
 \`\`\`ts
-type Theme = "light" | "dark" | "auto";
-type ButtonSize = "small" | "medium" | "large";
+type Theme = "light" | "dark" | "auto";  // 定义类型别名 Theme
+type ButtonSize = "small" | "medium" | "large";  // 定义类型别名 ButtonSize
 \`\`\`
 
 #### 可辨识联合（Discriminated Union）
@@ -1585,15 +1585,15 @@ type ButtonSize = "small" | "medium" | "large";
 这是 type 最强大的用法之一。当联合类型的每个成员都有一个**共同的字面量属性（标签/判别式）**，TS 能根据这个属性自动缩小类型：
 
 \`\`\`ts
-type Circle = { kind: "circle"; radius: number };
-type Square = { kind: "square"; size: number };
-type Shape = Circle | Square;
+type Circle = { kind: "circle"; radius: number };  // 定义类型别名 Circle
+type Square = { kind: "square"; size: number };  // 定义类型别名 Square
+type Shape = Circle | Square;  // 定义类型别名 Shape，联合类型
 
-function area(shape: Shape): number {
-  switch (shape.kind) {
-    case "circle":
+function area(shape: Shape): number {  // 定义函数 area，参数: shape: Shape，返回 number
+  switch (shape.kind) {  // switch 分支选择
+    case "circle":  // case 匹配分支
       return Math.PI * shape.radius ** 2;  // 这里 shape 被缩小为 Circle
-    case "square":
+    case "square":  // case 匹配分支
       return shape.size ** 2;              // 这里 shape 被缩小为 Square
   }
 }

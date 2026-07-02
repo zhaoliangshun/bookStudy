@@ -18,9 +18,9 @@ export const chapters = [
 迭代器协议定义了一种标准的方式来产生一个有限或无限序列的值。一个对象只要实现了\`next()\`方法，并且该方法返回一个包含\`value\`（当前值）和\`done\`（是否迭代完成）两个属性的对象，它就是一个迭代器。
 
 \`\`\`javascript
-const iterator = {
-  next() {
-    return { value: 1, done: false };
+const iterator = {  // 定义对象 iterator
+  next() {  // 调用下一个中间件（不放行则请求被挂起）
+    return { value: 1, done: false };  // 返回值
   }
 };
 \`\`\`
@@ -34,8 +34,8 @@ const iterator = {
 JavaScript中内置的可迭代对象包括：Array、String、Map、Set、TypedArray、函数的arguments对象、NodeList等DOM集合类型。
 
 \`\`\`javascript
-const arr = [1, 2, 3];
-const iter = arr[Symbol.iterator]();
+const arr = [1, 2, 3];  // 定义数组 arr
+const iter = arr[Symbol.iterator]();  // 定义常量 iter
 console.log(iter.next()); // { value: 1, done: false }
 console.log(iter.next()); // { value: 2, done: false }
 \`\`\`
@@ -62,7 +62,7 @@ function* gen() {
   yield 2;
   yield 3;
 }
-const g = gen();
+const g = gen();  // 定义常量 g
 g.next(); // { value: 1, done: false }
 \`\`\`
 
@@ -259,11 +259,11 @@ console.log([...take(15, fibGen())]);
 没有使用状态模式的代码通常长这样：
 
 \`\`\`javascript
-class Order {
+class Order {  // 定义类 Order
   pay() {
-    if (this.state === 'pending') { /* ... */ }
-    else if (this.state === 'paid') { throw new Error('已支付'); }
-    else if (this.state === 'shipped') { throw new Error('已发货'); }
+    if (this.state === 'pending') { /* ... */ }  // 条件判断
+    else if (this.state === 'paid') { throw new Error('已支付'); }  // 否则如果
+    else if (this.state === 'shipped') { throw new Error('已发货'); }  // 否则如果
   }
   cancel() { /* 又是一串if-else */ }
   ship() { /* 又是一串if-else */ }
@@ -942,7 +942,7 @@ console.log('有成年人?', mySome(users, u => u.age >= 18));
 
 使用compose组合后，可以写成：
 \`\`\`javascript
-const process = compose(exclaim, truncate, toUpperCase, trim);
+const process = compose(exclaim, truncate, toUpperCase, trim);  // 定义常量 process
 process(str);
 \`\`\`
 
@@ -955,10 +955,10 @@ compose的执行顺序是**从右到左**（和数学一致）。如果你更喜
 比如：
 \`\`\`javascript
 // 不是pointfree：提到了str这个数据
-const process = str => exclaim(truncate(toUpperCase(trim(str))));
+const process = str => exclaim(truncate(toUpperCase(trim(str))));  // 定义常量 process
 
 // pointfree：没有提到数据，只是组合函数
-const process = compose(exclaim, truncate, toUpperCase, trim);
+const process = compose(exclaim, truncate, toUpperCase, trim);  // 定义常量 process
 \`\`\`
 
 Pointfree风格让代码更简洁更声明式，我们不需要关心中间数据是什么样的，只需要描述数据要经过哪些变换。它是函数式编程中非常重要的代码风格。
@@ -1768,7 +1768,7 @@ console.log('4层汉诺塔需要:', hanoi(4, 'A', 'C', 'B').length, '步');
 在学习函子之前，我们先想一个写代码时经常遇到的问题：**null/undefined检查**。几乎每个稍微复杂点的程序里都充斥着这样的代码：
 
 \`\`\`javascript
-const name = user && user.profile && user.profile.name;
+const name = user && user.profile && user.profile.name;  // 定义常量 name
 \`\`\`
 
 或者处理错误时嵌套的try/catch，或者处理嵌套回调的回调地狱……这些问题的共同点是：我们的值总是"在某个上下文里"——可能是空的上下文、可能是错误的上下文、可能是异步的上下文、可能是多个值的上下文。如果我们直接对值操作，就必须先判断上下文状态，代码很快变得臃肿。
@@ -1781,8 +1781,8 @@ const name = user && user.profile && user.profile.name;
 
 一个最基础的函子长这样：
 \`\`\`javascript
-class Container {
-  constructor(value) { this.$value = value; }
+class Container {  // 定义类 Container
+  constructor(value) { this.$value = value; }  // 构造函数
   static of(value) { return new Container(value); }
   map(f) { return Container.of(f(this.$value)); }
 }

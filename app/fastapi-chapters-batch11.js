@@ -52,17 +52,23 @@ Web 应用大部分时间花在 **I/O 等待**上（等数据库、等外部 API
 Python 用 \`async def\` 定义**协程函数**，用 \`await\` 等待一个异步操作完成：
 
 \`\`\`python filename="协程基础"
+# 导入 asyncio 模块
 import asyncio
 
 # async def 定义的函数叫"协程函数"，调用它返回一个"协程对象"，不会立刻执行
+# 定义异步函数 fetch_data，参数: 
 async def fetch_data():
+    # 调用 print()
     print("开始抓取")
     # await 把控制权交回事件循环，等待期间可以去跑别的协程
     await asyncio.sleep(1)   # 模拟 1 秒的异步 I/O（非阻塞）
+    # 调用 print()
     print("抓取完成")
+    # 返回 {"data": 42}
     return {"data": 42}
 
 # 直接调用不会执行，只返回协程对象
+# 定义变量 coro，赋值为 fetch_data()
 coro = fetch_data()
 print(coro)   # <coroutine object fetch_data at 0x...>
 
@@ -144,24 +150,34 @@ FastAPI 路由可以写 \`async def\` 也可以写普通 \`def\`。**不是所�
 ## 六、async 路由与同步路由混用的坑
 
 \`\`\`python filename="混用陷阱"
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 导入 time 模块
 import time
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 /sync-route 时触发
 @app.get("/sync-route")
 def sync_route():           # 同步路由
     time.sleep(2)           # 阻塞，但 FastAPI 自动放线程池跑，不卡事件循环
+    # 返回 {"ok": True}
     return {"ok": True}
 
+# 定义 GET 路由：访问 /async-bad 时触发
 @app.get("/async-bad")
 async def async_bad():      # 异步路由
     time.sleep(2)           # ❌ 在事件循环里阻塞 2 秒，卡住所有其他请求！
+    # 返回 {"ok": True}
     return {"ok": True}
 
+# 定义 GET 路由：访问 /async-good 时触发
 @app.get("/async-good")
+# 定义异步函数 async_good，参数: 
 async def async_good():
     await asyncio.sleep(2)  # ✅ 异步 sleep，让出 CPU
+    # 返回 {"ok": True}
     return {"ok": True}
 \`\`\`
 
@@ -172,23 +188,33 @@ async def async_good():
 有时候你不得不用阻塞库（比如老牌的 \`requests\`、同步 ORM），又不想卡住事件循环。Python 提供了把阻塞代码扔到线程池跑的机制：
 
 \`\`\`python filename="run_in_executor - 老写法"
+# 导入 asyncio 模块
 import asyncio
+# 导入 requests 模块
 import requests
 
+# 定义异步函数 fetch_url，参数: url: str
 async def fetch_url(url: str):
+    # 定义变量 loop，赋值为 asyncio.get_event_loop()
     loop = asyncio.get_event_loop()
     # 把阻塞的 requests.get 扔到线程池跑，当前协程 await 它，期间不阻塞事件循环
+    # 定义变量 response，赋值为 await loop.run_in_executor(None, requests.get...
     response = await loop.run_in_executor(None, requests.get, url)
+    # 返回 response.json()
     return response.json()
 \`\`\`
 
 \`\`\`python filename="anyio.to_thread.run_sync - 新写法（推荐）"
+# 导入 anyio.to_thread 模块
 import anyio.to_thread
 
+# 定义异步函数 fetch_url，参数: url: str
 async def fetch_url(url: str):
     # anyio 是 FastAPI/Starlette 内部用的异步抽象层
     # to_thread.run_sync 把同步函数扔到线程池跑
+    # 定义变量 response，赋值为 await anyio.to_thread.run_sync(requests.get, ...
     response = await anyio.to_thread.run_sync(requests.get, url)
+    # 返回 response.json()
     return response.json()
 \`\`\`
 
@@ -199,26 +225,39 @@ async def fetch_url(url: str):
 \`await\` 是串行等待。要并发跑多个异步任务，用 \`asyncio.gather\`：
 
 \`\`\`python filename="并发 vs 串行"
+# 导入 asyncio 模块
 import asyncio
+# 导入 httpx 模块
 import httpx
 
 # ❌ 串行：总耗时 = 1s + 1s + 1s = 3s
+# 定义异步函数 fetch_serial，参数: 
 async def fetch_serial():
+    # async with httpx.AsyncClient() as client:
     async with httpx.AsyncClient() as client:
         a = await client.get("https://api.example.com/a")  # 等 1s
         b = await client.get("https://api.example.com/b")  # 等 1s
         c = await client.get("https://api.example.com/c")  # 等 1s
+        # 返回 [a, b, c]
         return [a, b, c]
 
 # ✅ 并发：总耗时 = max(1s, 1s, 1s) ≈ 1s
+# 定义异步函数 fetch_concurrent，参数: 
 async def fetch_concurrent():
+    # async with httpx.AsyncClient() as client:
     async with httpx.AsyncClient() as client:
         # gather 同时发起三个请求，等最慢的那个完成
+        # 定义变量 results，赋值为 await asyncio.gather(
         results = await asyncio.gather(
+            # 调用 client.get()
             client.get("https://api.example.com/a"),
+            # 调用 client.get()
             client.get("https://api.example.com/b"),
+            # 调用 client.get()
             client.get("https://api.example.com/c"),
+        # )
         )
+        # 返回 results
         return results
 \`\`\`
 
@@ -238,13 +277,19 @@ t=1s C响应到 → 继续
 \`gather\` 是"等所有完成"。如果只是"启动一个后台任务不等它"，用 \`create_task\`：
 
 \`\`\`python filename="create_task 后台任务"
+# 定义异步函数 background_work，参数: 
 async def background_work():
+    # await asyncio.sleep(10)
     await asyncio.sleep(10)
+    # 调用 print()
     print("后台任务完成")
 
+# 定义异步函数 main，参数: 
 async def main():
     # 创建任务但不 await，它会并发跑
+    # 定义变量 task，赋值为 asyncio.create_task(background_work())
     task = asyncio.create_task(background_work())
+    # 调用 print()
     print("主流程继续，不等后台任务")
     # 之后需要时再 await
     await task   # 如果还没完成，这里等它
@@ -253,30 +298,47 @@ async def main():
 ## 十、完整的异步路由示例
 
 \`\`\`python filename="async 路由示例"
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 导入 asyncio 模块
 import asyncio
+# 导入 httpx 模块
 import httpx
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 /weather 时触发
 @app.get("/weather")
+# 定义异步函数 get_weather，参数: city: str
 async def get_weather(city: str):
     # 并发调两个 API：天气 + 空气质量
+    # async with httpx.AsyncClient(timeout=5) as client:
     async with httpx.AsyncClient(timeout=5) as client:
+        # weather, air = await asyncio.gather(
         weather, air = await asyncio.gather(
+            # 调用 client.get()
             client.get(f"https://api.weather.com/{city}"),
+            # 调用 client.get()
             client.get(f"https://api.air.com/{city}"),
+        # )
         )
+    # 返回 {"weather": weather.json(), "air": air.json()}
     return {"weather": weather.json(), "air": air.json()}
 
 @app.get("/heavy")   # CPU 密集型
+# 定义异步函数 heavy_compute，参数: 
 async def heavy_compute():
     # 不能在 async 里直接跑 CPU 密集任务，扔进程池
+    # 导入 anyio.to_thread 模块
     import anyio.to_thread
+    # 定义变量 result，赋值为 await anyio.to_thread.run_sync(_fib, 35)
     result = await anyio.to_thread.run_sync(_fib, 35)
+    # 返回 {"result": result}
     return {"result": result}
 
 def _fib(n: int) -> int:   # 同步 CPU 密集函数
+    # 返回 n if n < 2 else _fib(n-1) + _fib(n-2)
     return n if n < 2 else _fib(n-1) + _fib(n-2)
 \`\`\`
 
@@ -316,10 +378,14 @@ async/await 让 Python 在 I/O 等待时让出 CPU，单线程并发处理大量
 上一章我们强调过：\`async def\` 路由里不能调用阻塞函数。但前面数据库章节用的 SQLAlchemy 是**同步的**——\`session.execute()\` 会阻塞当前线程，等数据库返回。如果在 async 路由里直接用同步 Session：
 
 \`\`\`python filename="反面教材：async 路由里用同步 DB"
+# 定义 GET 路由：访问 /users/{user_id} 时触发
 @app.get("/users/{user_id}")
+# 定义异步函数 read_user，参数: user_id: int
 async def read_user(user_id: int):
     # ❌ db.execute() 是阻塞调用，会卡住事件循环！
+    # 定义变量 user，赋值为 db.execute(select(User).where(User.id == user...
     user = db.execute(select(User).where(User.id == user_id)).scalar_one()
+    # 返回 user
     return user
 \`\`\`
 
@@ -358,12 +424,15 @@ async def read_user(user_id: int):
 
 \`\`\`bash filename="按数据库装驱动"
 # PostgreSQL（推荐 asyncpg，性能最好）
+# 安装 Python 包: asyncpg
 pip install asyncpg
 
 # MySQL
+# 安装 Python 包: aiomysql
 pip install aiomysql
 
 # SQLite（开发测试用）
+# 安装 Python 包: aiosqlite
 pip install aiosqlite
 \`\`\`
 
@@ -381,35 +450,57 @@ sqlite+aiosqlite:///./app.db
 ## 四、create_async_engine 与 AsyncSession
 
 \`\`\`python filename="database.py - 异步配置"
+# 从 sqlalchemy.ext.asyncio 导入（多行）
 from sqlalchemy.ext.asyncio import (
+    # create_async_engine,
     create_async_engine,
+    # AsyncSession,
     AsyncSession,
+    # async_sessionmaker,
     async_sessionmaker,
+    # AsyncAttrs,
     AsyncAttrs,
+# )
 )
+# 从 sqlalchemy.orm 导入 DeclarativeBase
 from sqlalchemy.orm import DeclarativeBase
 
+# 定义变量 DATABASE_URL，赋值为 "postgresql+asyncpg://postgres:secret@localho...
 DATABASE_URL = "postgresql+asyncpg://postgres:secret@localhost:5432/blog"
 
 # 异步引擎（注意是 create_async_engine）
+# 定义变量 engine，赋值为 create_async_engine(
 engine = create_async_engine(
+    # DATABASE_URL,
     DATABASE_URL,
+    # 定义变量 pool_size，赋值为 5,
     pool_size=5,
+    # 定义变量 max_overflow，赋值为 10,
     max_overflow=10,
+    # 定义变量 pool_recycle，赋值为 3600,
     pool_recycle=3600,
+    # 定义变量 echo，赋值为 False,
     echo=False,
+# )
 )
 
 # 异步 Session 工厂
+# 定义变量 AsyncSessionLocal，赋值为 async_sessionmaker(
 AsyncSessionLocal = async_sessionmaker(
+    # 定义变量 bind，赋值为 engine,
     bind=engine,
+    # 定义变量 class_，赋值为 AsyncSession,
     class_=AsyncSession,
     expire_on_commit=False,   # 异步场景 commit 后访问属性会触发同步查询，必须关
+    # 定义变量 autoflush，赋值为 False,
     autoflush=False,
+# )
 )
 
 # 模型基类：用 AsyncAttrs 让关系属性支持异步访问
+# 定义类 Base，继承 DeclarativeBase
 class Base(DeclarativeBase):
+    # 空操作占位
     pass
 \`\`\`
 
@@ -418,17 +509,26 @@ class Base(DeclarativeBase):
 ## 五、异步 get_db 依赖
 
 \`\`\`python filename="异步依赖"
+# 从 typing 导入 AsyncGenerator
 from typing import AsyncGenerator
+# 从 sqlalchemy.ext.asyncio 导入 AsyncSession
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# 定义异步函数 get_async_db，返回: AsyncGenerator[AsyncSession, None]
 async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
+    # """异步版 get_db：用 async yield 依赖。"""
     """异步版 get_db：用 async yield 依赖。"""
     async with AsyncSessionLocal() as session:   # 异步上下文管理器
+        # 尝试执行，捕获异常
         try:
+            # 生成值: session
             yield session
+        # 捕获 Exception 异常
         except Exception:
             await session.rollback()   # 异步回滚
+            # raise
             raise
+        # 无论是否异常都执行
         finally:
             await session.close()     # 异步关闭
 \`\`\`
@@ -444,35 +544,55 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
 ## 六、异步 CRUD：await session.execute()
 
 \`\`\`python filename="异步 CRUD"
+# 从 sqlalchemy 导入 select, func
 from sqlalchemy import select, func
+# 从 sqlalchemy.ext.asyncio 导入 AsyncSession
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# 定义异步函数 create_user，返回: User
 async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
+    # 定义变量 user，赋值为 User(name=user_in.name, email=user_in.email, ...
     user = User(name=user_in.name, email=user_in.email, hashed_password=hash_password(user_in.password))
     db.add(user)             # add 是同步的（只是登记）
     await db.commit()        # ★ commit 是异步的
     await db.refresh(user)   # ★ refresh 是异步的
+    # 返回 user
     return user
 
+# 定义异步函数 get_user，返回: User | None
 async def get_user(db: AsyncSession, user_id: int) -> User | None:
     # ★ execute 是异步的，要 await
+    # 定义变量 result，赋值为 await db.execute(select(User).where(User.id =...
     result = await db.execute(select(User).where(User.id == user_id))
+    # 返回 result.scalar_one_or_none()
     return result.scalar_one_or_none()
 
+# 定义异步函数 list_users，返回: list[User]
 async def list_users(db: AsyncSession, skip: int = 0, limit: int = 20) -> list[User]:
+    # 定义变量 result，赋值为 await db.execute(select(User).order_by(User.i...
     result = await db.execute(select(User).order_by(User.id).offset(skip).limit(limit))
+    # 返回 list(result.scalars())
     return list(result.scalars())
 
+# 定义异步函数 update_user，返回: User
 async def update_user(db: AsyncSession, user: User, user_in: UserUpdate) -> User:
+    # 定义变量 data，赋值为 user_in.model_dump(exclude_unset=True)
     data = user_in.model_dump(exclude_unset=True)
+    # 遍历 data.items()，取 field, value
     for field, value in data.items():
+        # 调用 setattr()
         setattr(user, field, value)
+    # await db.commit()
     await db.commit()
+    # await db.refresh(user)
     await db.refresh(user)
+    # 返回 user
     return user
 
+# 定义异步函数 delete_user，返回: None
 async def delete_user(db: AsyncSession, user: User) -> None:
     await db.delete(user)    # ★ delete 也是异步的
+    # await db.commit()
     await db.commit()
 \`\`\`
 
@@ -494,50 +614,82 @@ async def delete_user(db: AsyncSession, user: User) -> None:
 ## 七、异步路由
 
 \`\`\`python filename="异步路由"
+# 从 fastapi 导入 APIRouter, Depends, HTTPException
 from fastapi import APIRouter, Depends, HTTPException
+# 从 sqlalchemy.ext.asyncio 导入 AsyncSession
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# 创建 APIRouter 实例，设置路由前缀
 router = APIRouter(prefix="/users", tags=["用户"])
 
+# 定义 POST 路由：访问 / 时触发
 @router.post("/", response_model=UserRead, status_code=201)
+# 定义异步函数 create_user_endpoint，参数: user_in: UserCreate, db: AsyncSession = Depends(ge...
 async def create_user_endpoint(user_in: UserCreate, db: AsyncSession = Depends(get_async_db)):
     # 查重
+    # 定义变量 existing，赋值为 await db.execute(select(User).where(User.emai...
     existing = await db.execute(select(User).where(User.email == user_in.email))
+    # 条件判断：如果 existing.scalar_one_or_none()
     if existing.scalar_one_or_none():
+        # 抛出 HTTPException 异常: 400, "邮箱已被注册"
         raise HTTPException(400, "邮箱已被注册")
+    # 定义变量 user，赋值为 await create_user(db, user_in)
     user = await create_user(db, user_in)
+    # 返回 user
     return user
 
+# 定义 GET 路由：访问 /{user_id} 时触发
 @router.get("/{user_id}", response_model=UserRead)
+# 定义异步函数 read_user_endpoint，参数: user_id: int, db: AsyncSession = Depends(get_async...
 async def read_user_endpoint(user_id: int, db: AsyncSession = Depends(get_async_db)):
+    # 定义变量 user，赋值为 await get_user(db, user_id)
     user = await get_user(db, user_id)
+    # 条件判断：如果 not user
     if not user:
+        # 抛出 HTTPException 异常: 404, "用户不存在"
         raise HTTPException(404, "用户不存在")
+    # 返回 user
     return user
 
+# 定义 GET 路由：访问 / 时触发
 @router.get("/")
+# async def list_users_endpoint(
 async def list_users_endpoint(
+    # 字段 skip，类型: int，默认值: 0,
     skip: int = 0,
+    # 字段 limit，类型: int，默认值: Query(default=20, le=100),
     limit: int = Query(default=20, le=100),
+    # 字段 db，类型: AsyncSession，默认值: Depends(get_async_db),
     db: AsyncSession = Depends(get_async_db),
+# ):
 ):
+    # users, total = await asyncio.gather(
     users, total = await asyncio.gather(
+        # 调用 list_users()
         list_users(db, skip, limit),
+        # 调用 count_users()
         count_users(db),
+    # )
     )
+    # 返回 {"items": users, "total": total}
     return {"items": users, "total": total}
 \`\`\`
 
 ## 八、异步建表
 
 \`\`\`python filename="异步建表"
+# 定义异步函数 init_db，参数: 
 async def init_db():
+    # async with engine.begin() as conn:
     async with engine.begin() as conn:
         # 在事务里执行 DDL
+        # await conn.run_sync(Base.metadata.create_all)
         await conn.run_sync(Base.metadata.create_all)
 
 # 应用启动时调用
+# 导入 asyncio 模块
 import asyncio
+# 调用 asyncio.run()
 asyncio.run(init_db())
 \`\`\`
 
@@ -546,18 +698,30 @@ asyncio.run(init_db())
 ## 九、并发查询：异步 DB 的真正威力
 
 \`\`\`python filename="并发查询多个表"
+# 定义 GET 路由：访问 /dashboard/{user_id} 时触发
 @app.get("/dashboard/{user_id}")
+# 定义异步函数 dashboard，参数: user_id: int, db: AsyncSession = Depends(get_async...
 async def dashboard(user_id: int, db: AsyncSession = Depends(get_async_db)):
     # 三个独立查询，并发执行，总耗时 ≈ 最慢的那个
+    # user, posts, comments = await asyncio.gather(
     user, posts, comments = await asyncio.gather(
+        # 调用 db.get()
         db.get(User, user_id),
+        # 调用 db.execute()
         db.execute(select(Post).where(Post.author_id == user_id)),
+        # 调用 db.execute()
         db.execute(select(Comment).where(Comment.user_id == user_id)),
+    # )
     )
+    # 返回 {
     return {
+        # "user": user,
         "user": user,
+        # "posts": list(posts.scalars()),
         "posts": list(posts.scalars()),
+        # "comments": list(comments.scalars()),
         "comments": list(comments.scalars()),
+    # }
     }
 \`\`\`
 
@@ -572,14 +736,20 @@ async def dashboard(user_id: int, db: AsyncSession = Depends(get_async_db)):
 ## 十、异步关系加载：selectinload 避免懒加载
 
 \`\`\`python filename="关系加载陷阱"
+# 定义异步函数 bad_load，参数: 
 async def bad_load():
+    # 定义变量 user，赋值为 await db.get(User, 1)
     user = await db.get(User, 1)
     # ❌ 访问 user.posts 会触发懒加载（同步查询），异步 Session 不支持，直接报错
+    # 调用 print()
     print(user.posts)
 
+# 定义异步函数 good_load，参数: 
 async def good_load():
     # ✅ 用 selectinload 显式预加载关系
+    # 定义变量 stmt，赋值为 select(User).options(selectinload(User.posts)...
     stmt = select(User).options(selectinload(User.posts)).where(User.id == 1)
+    # 定义变量 user，赋值为 (await db.execute(stmt)).scalar_one()
     user = (await db.execute(stmt)).scalar_one()
     print(user.posts)   # 已经加载好了，不会再查
 \`\`\`
@@ -587,12 +757,15 @@ async def good_load():
 异步场景下**禁用懒加载**，所有需要的关系必须在查询时用 \`selectinload\`/\`joinedload\` 显式预加载。否则访问关系属性会触发同步查询，AsyncSession 报错。
 
 \`\`\`python filename="加载策略对比"
+# 从 sqlalchemy.orm 导入 selectinload, joinedload
 from sqlalchemy.orm import selectinload, joinedload
 
 # selectinload：单独一条 IN 查询加载所有关联（N+1 优化首选）
+# 定义变量 stmt，赋值为 select(Post).options(selectinload(Post.author...
 stmt = select(Post).options(selectinload(Post.author))
 
 # joinedload：用 JOIN 一次查回（适合一对一或必须一起取的）
+# 定义变量 stmt，赋值为 select(User).options(joinedload(User.profile)...
 stmt = select(User).options(joinedload(User.profile))
 \`\`\`
 
@@ -632,10 +805,14 @@ stmt = select(User).options(joinedload(User.profile))
 后端经常要调外部 API：查天气、调支付、聚合多个数据源。这些调用是网络 I/O，一次可能耗时几百毫秒到几秒。如果在 async 路由里用同步的 \`requests\` 库：
 
 \`\`\`python filename="反面教材"
+# 定义 GET 路由：访问 /weather 时触发
 @app.get("/weather")
+# 定义异步函数 weather，参数: city: str
 async def weather(city: str):
     # ❌ requests.get 是阻塞的，卡住事件循环
+    # 定义变量 resp，赋值为 requests.get(f"https://api.weather.com/{city}...
     resp = requests.get(f"https://api.weather.com/{city}")
+    # 返回 resp.json()
     return resp.json()
 \`\`\`
 
@@ -652,6 +829,7 @@ async def weather(city: str):
 **httpx** 是一个现代化的 HTTP 客户端库，号称"requests 的继承者"。它最大的亮点是**同时支持同步和异步**两套 API，接口几乎和 requests 一致，迁移成本低。
 
 \`\`\`bash filename="安装"
+# 安装 Python 包: httpx
 pip install httpx
 \`\`\`
 
@@ -669,14 +847,19 @@ pip install httpx
 ## 三、AsyncClient：异步客户端
 
 \`\`\`python filename="基础用法"
+# 导入 httpx 模块
 import httpx
 
+# 定义异步函数 fetch_user，参数: user_id: int
 async def fetch_user(user_id: int):
     # async with 管理客户端生命周期（连接池）
+    # async with httpx.AsyncClient() as client:
     async with httpx.AsyncClient() as client:
         # await 等待响应，期间不阻塞事件循环
+        # 定义变量 response，赋值为 await client.get(f"https://api.example.com/us...
         response = await client.get(f"https://api.example.com/users/{user_id}")
         response.raise_for_status()   # 状态码非 2xx 抛异常
+        # 返回 response.json()
         return response.json()
 \`\`\`
 
@@ -700,30 +883,46 @@ async def fetch_user(user_id: int):
 ## 四、应用级共享客户端
 
 \`\`\`python filename="共享客户端"
+# 从 contextlib 导入 asynccontextmanager
 from contextlib import asynccontextmanager
+# 导入 httpx 模块
 import httpx
 
 # 全局共享客户端
+# 字段 http_client，类型: httpx.AsyncClient | None，默认值: None
 http_client: httpx.AsyncClient | None = None
 
+# 装饰器：asynccontextmanager
 @asynccontextmanager
+# 定义异步函数 lifespan，参数: app
 async def lifespan(app):
     # 应用启动：创建共享客户端
+    # global http_client
     global http_client
+    # 定义变量 http_client，赋值为 httpx.AsyncClient(
     http_client = httpx.AsyncClient(
         timeout=httpx.Timeout(10.0, connect=5.0),   # 总超时10s，连接超时5s
+        # 定义变量 limits，赋值为 httpx.Limits(max_connections=100, max_keepali...
         limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
+    # )
     )
+    # yield
     yield
     # 应用关闭：关闭客户端，释放连接池
+    # await http_client.aclose()
     await http_client.aclose()
 
+# 创建 FastAPI 应用实例
 app = FastAPI(lifespan=lifespan)
 
+# 定义 GET 路由：访问 /proxy/{path:path} 时触发
 @app.get("/proxy/{path:path}")
+# 定义异步函数 proxy，参数: path: str
 async def proxy(path: str):
     # 复用全局客户端，连接池命中
+    # 定义变量 resp，赋值为 await http_client.get(f"https://api.example.c...
     resp = await http_client.get(f"https://api.example.com/{path}")
+    # 返回 resp.json()
     return resp.json()
 \`\`\`
 
@@ -737,18 +936,26 @@ httpx.Timeout(10.0, connect=5.0, read=3.0)  # 总10s，连接5s，读取3s
 ## 五、各种请求方法
 
 \`\`\`python filename="HTTP 方法"
+# async with httpx.AsyncClient() as client:
 async with httpx.AsyncClient() as client:
     # GET 带查询参数
+    # 定义变量 resp，赋值为 await client.get("https://api.example.com/use...
     resp = await client.get("https://api.example.com/users", params={"page": 1, "size": 20})
     # POST 带 JSON 体
+    # 定义变量 resp，赋值为 await client.post("https://api.example.com/us...
     resp = await client.post("https://api.example.com/users", json={"name": "alice"})
     # POST 带表单
+    # 定义变量 resp，赋值为 await client.post(url, data={"username": "ali...
     resp = await client.post(url, data={"username": "alice", "password": "..."})
     # PUT / PATCH / DELETE
+    # 定义变量 resp，赋值为 await client.put(url, json={...})
     resp = await client.put(url, json={...})
+    # 定义变量 resp，赋值为 await client.patch(url, json={...})
     resp = await client.patch(url, json={...})
+    # 定义变量 resp，赋值为 await client.delete(url)
     resp = await client.delete(url)
     # 自定义请求头
+    # 定义变量 resp，赋值为 await client.get(url, headers={"Authorization...
     resp = await client.get(url, headers={"Authorization": "Bearer xxx"})
 \`\`\`
 
@@ -757,22 +964,37 @@ async with httpx.AsyncClient() as client:
 调外部 API 最爽的是并发——同时发起多个请求，总耗时约等于最慢的那个：
 
 \`\`\`python filename="并发聚合多个 API"
+# 导入 asyncio 模块
 import asyncio
+# 导入 httpx 模块
 import httpx
 
+# 定义异步函数 fetch_aggregate，参数: user_id: int
 async def fetch_aggregate(user_id: int):
+    # """并发调三个 API 聚合成仪表盘数据。"""
     """并发调三个 API 聚合成仪表盘数据。"""
+    # async with httpx.AsyncClient(timeout=5) as client:
     async with httpx.AsyncClient(timeout=5) as client:
         # 三个请求同时发，并发等待
+        # profile, orders, points = await asyncio.gather(
         profile, orders, points = await asyncio.gather(
+            # 调用 client.get()
             client.get(f"https://user-svc/users/{user_id}"),
+            # 调用 client.get()
             client.get(f"https://order-svc/orders?user={user_id}"),
+            # 调用 client.get()
             client.get(f"https://point-svc/points/{user_id}"),
+        # )
         )
+        # 返回 {
         return {
+            # "profile": profile.json(),
             "profile": profile.json(),
+            # "orders": orders.json(),
             "orders": orders.json(),
+            # "points": points.json(),
             "points": points.json(),
+        # }
         }
 
 # 串行版对比：总耗时 = 0.3s + 0.4s + 0.2s = 0.9s
@@ -782,25 +1004,39 @@ async def fetch_aggregate(user_id: int):
 ## 七、异常处理
 
 \`\`\`python filename="异常处理"
+# 导入 httpx 模块
 import httpx
 
+# 定义异步函数 safe_fetch，参数: url: str
 async def safe_fetch(url: str):
+    # 尝试执行，捕获异常
     try:
+        # async with httpx.AsyncClient() as client:
         async with httpx.AsyncClient() as client:
+            # 定义变量 resp，赋值为 await client.get(url)
             resp = await client.get(url)
             resp.raise_for_status()   # 4xx/5xx 抛 HTTPStatusError
+            # 返回 resp.json()
             return resp.json()
+    # except httpx.TimeoutException:
     except httpx.TimeoutException:
         # 超时（连接超时、读取超时）
+        # 抛出 HTTPException 异常: 504, "上游服务超时"
         raise HTTPException(504, "上游服务超时")
+    # except httpx.ConnectError:
     except httpx.ConnectError:
         # 连不上（DNS 解析失败、对方拒绝连接）
+        # 抛出 HTTPException 异常: 502, "无法连接上游服务"
         raise HTTPException(502, "无法连接上游服务")
+    # except httpx.HTTPStatusError as e:
     except httpx.HTTPStatusError as e:
         # 上游返回了错误状态码
+        # 抛出 HTTPException 异常: e.response.status_code, f"上游错误：{e.response.text}"
         raise HTTPException(e.response.status_code, f"上游错误：{e.response.text}")
+    # except httpx.RequestError:
     except httpx.RequestError:
         # 其他请求错误
+        # 抛出 HTTPException 异常: 500, "请求失败"
         raise HTTPException(500, "请求失败")
 \`\`\`
 
@@ -816,37 +1052,61 @@ async def safe_fetch(url: str):
 **BFF（Backend For Frontend）** 模式：前端不直接调多个微服务，而是由一个聚合后端调多个微服务再统一返回。httpx + gather 是实现 BFF 的利器。
 
 \`\`\`python filename="BFF 聚合"
+# 从 fastapi 导入 FastAPI, HTTPException
 from fastapi import FastAPI, HTTPException
+# 导入 httpx 模块
 import httpx
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 client = httpx.AsyncClient(timeout=5)   # 全局共享
 
+# 装饰器：app.on_event
 @app.on_event("shutdown")
+# 定义异步函数 shutdown，参数: 
 async def shutdown():
+    # await client.aclose()
     await client.aclose()
 
+# 定义 GET 路由：访问 /dashboard/{user_id} 时触发
 @app.get("/dashboard/{user_id}")
+# 定义异步函数 dashboard，参数: user_id: int
 async def dashboard(user_id: int):
+    # 尝试执行，捕获异常
     try:
         # 并发调三个微服务
+        # profile_resp, feed_resp, notif_resp = await asynci
         profile_resp, feed_resp, notif_resp = await asyncio.gather(
+            # 调用 client.get()
             client.get(f"http://user-svc/users/{user_id}"),
+            # 调用 client.get()
             client.get(f"http://feed-svc/feeds?user={user_id}&limit=10"),
+            # 调用 client.get()
             client.get(f"http://notif-svc/unread/{user_id}"),
             return_exceptions=True,   # ★ 任意一个失败不抛，返回异常对象
+        # )
         )
+    # except httpx.RequestError:
     except httpx.RequestError:
+        # 抛出 HTTPException 异常: 503, "聚合服务暂时不可用"
         raise HTTPException(503, "聚合服务暂时不可用")
 
     # 容错：某个微服务挂了不影响整体
+    # 定义字典 result
     result = {"profile": None, "feed": [], "notifications": []}
+    # 条件判断：如果 isinstance(profile_resp, httpx.Response) and profile_resp.status_code == 200
     if isinstance(profile_resp, httpx.Response) and profile_resp.status_code == 200:
+        # result["profile"] = profile_resp.json()
         result["profile"] = profile_resp.json()
+    # 条件判断：如果 isinstance(feed_resp, httpx.Response) and feed_resp.status_code == 200
     if isinstance(feed_resp, httpx.Response) and feed_resp.status_code == 200:
+        # result["feed"] = feed_resp.json()
         result["feed"] = feed_resp.json()
+    # 条件判断：如果 isinstance(notif_resp, httpx.Response) and notif_resp.status_code == 200
     if isinstance(notif_resp, httpx.Response) and notif_resp.status_code == 200:
+        # result["notifications"] = notif_resp.json()
         result["notifications"] = notif_resp.json()
+    # 返回 result
     return result
 \`\`\`
 
@@ -855,12 +1115,16 @@ async def dashboard(user_id: int):
 ## 九、连接池与并发控制
 
 \`\`\`python filename="连接池配置"
+# 定义变量 client，赋值为 httpx.AsyncClient(
 client = httpx.AsyncClient(
+    # 定义变量 limits，赋值为 httpx.Limits(
     limits=httpx.Limits(
         max_connections=100,            # 最大并发连接数
         max_keepalive_connections=20,  # 最大保活连接数（连接池大小）
         keepalive_expiry=30.0,         # 保活连接空闲多久后关闭
+    # ),
     ),
+# )
 )
 \`\`\`
 
@@ -944,21 +1208,30 @@ Python 后台任务有两个量级：
 ## 三、使用 BackgroundTasks
 
 \`\`\`python filename="基础用法"
+# 从 fastapi 导入 BackgroundTasks
 from fastapi import BackgroundTasks
 
+# 定义函数 send_welcome_email，参数: email: str
 def send_welcome_email(email: str):
     # 模拟发邮件（这是个同步函数，FastAPI 会在线程池跑）
+    # 导入 time 模块
     import time
     time.sleep(2)   # 耗时操作
+    # 调用 print()
     print(f"已发送欢迎邮件给 {email}")
 
+# 定义 POST 路由：访问 /register 时触发
 @app.post("/register")
+# 定义函数 register，参数: user_in: UserCreate, background_tasks: BackgroundT...
 def register(user_in: UserCreate, background_tasks: BackgroundTasks):
     # 1. 主流程：创建用户
+    # 定义变量 user，赋值为 create_user(user_in)
     user = create_user(user_in)
     # 2. 挂后台任务（不会立刻执行）
+    # 调用 background_tasks.add_task()
     background_tasks.add_task(send_welcome_email, user_in.email)
     # 3. 立即返回响应，用户不等邮件
+    # 返回 {"msg": "注册成功", "user_id": user.id}
     return {"msg": "注册成功", "user_id": user.id}
     # 4. 响应发送给客户端后，FastAPI 才在后台执行 send_welcome_email
 \`\`\`
@@ -982,20 +1255,29 @@ t=2  邮件发送完成
 
 \`\`\`python filename="两种任务函数"
 # 同步任务：FastAPI 自动用 anyio.to_thread 扔线程池跑（不卡事件循环）
+# 定义函数 sync_task，参数: data: str
 def sync_task(data: str):
     time.sleep(2)   # 阻塞，但在工作线程里，安全
+    # 调用 write_log()
     write_log(data)
 
 # 异步任务：直接在事件循环跑
+# 定义异步函数 async_task，参数: data: str
 async def async_task(data: str):
     await asyncio.sleep(2)   # 异步等待，更轻量
+    # await async_write_log(data)
     await async_write_log(data)
 
+# 定义 POST 路由：访问 /webhook 时触发
 @app.post("/webhook")
+# 定义异步函数 webhook，参数: background_tasks: BackgroundTasks
 async def webhook(background_tasks: BackgroundTasks):
     # 两种都能挂，FastAPI 自动判断
+    # 调用 background_tasks.add_task()
     background_tasks.add_task(sync_task, "sync data")
+    # 调用 background_tasks.add_task()
     background_tasks.add_task(async_task, "async data")
+    # 返回 {"status": "accepted"}
     return {"status": "accepted"}
 \`\`\`
 
@@ -1009,31 +1291,47 @@ async def webhook(background_tasks: BackgroundTasks):
 ## 五、依赖注入里也能用 BackgroundTasks
 
 \`\`\`python filename="依赖里挂任务"
+# 定义函数 get_db_with_log，参数: background_tasks: BackgroundTasks
 def get_db_with_log(background_tasks: BackgroundTasks):
+    # 定义变量 db，赋值为 SessionLocal()
     db = SessionLocal()
     # 在依赖里就挂个"记录访问日志"的后台任务
+    # 调用 background_tasks.add_task()
     background_tasks.add_task(write_access_log, path="/some-endpoint")
+    # 尝试执行，捕获异常
     try:
+        # 生成值: db
         yield db
+    # 无论是否异常都执行
     finally:
+        # 调用 db.close()
         db.close()
 
+# 定义 GET 路由：访问 /items 时触发
 @app.get("/items")
+# 定义函数 list_items，参数: db: Session = Depends(get_db_with_log)
 def list_items(db: Session = Depends(get_db_with_log)):
     # 依赖里挂的日志任务也会在响应后执行
+    # 返回 [...]
     return [...]
 \`\`\`
 
 ## 六、多个任务顺序执行
 
 \`\`\`python filename="任务顺序"
+# 定义 POST 路由：访问 /order 时触发
 @app.post("/order")
+# 定义函数 create_order，参数: background_tasks: BackgroundTasks
 def create_order(background_tasks: BackgroundTasks):
     # 多个任务按添加顺序依次执行（不是并发）
+    # 调用 background_tasks.add_task()
     background_tasks.add_task(send_order_confirmation, order_id)
+    # 调用 background_tasks.add_task()
     background_tasks.add_task(update_inventory, order_id)
+    # 调用 background_tasks.add_task()
     background_tasks.add_task(send_shipping_notification, order_id)
     # 执行顺序：确认邮件 → 更新库存 → 发货通知
+    # 返回 {"order_id": order_id}
     return {"order_id": order_id}
 \`\`\`
 
@@ -1049,20 +1347,31 @@ def create_order(background_tasks: BackgroundTasks):
 BackgroundTasks 的异常**不会**传给客户端（响应已经返回了）。异常会被 FastAPI 捕获并记录到日志，但客户端不知道任务失败：
 
 \`\`\`python filename="异常处理"
+# 定义函数 risky_task，参数: data: str
 def risky_task(data: str):
+    # 尝试执行，捕获异常
     try:
+        # 定义变量 result，赋值为 call_external_api(data)
         result = call_external_api(data)
+        # 条件判断：如果 not result.ok
         if not result.ok:
+            # 调用 log_error()
             log_error(f"任务失败：{result.error}")
+    # 捕获 Exception 异常，赋值为 e
     except Exception as e:
         # 任务内部必须自己处理异常，否则只进日志，无法重试
+        # 调用 log_error()
         log_error(f"任务异常：{e}")
         # 这里可以加重试逻辑
     # 如果异常逃逸到 BackgroundTasks，FastAPI 会记录但不会重试
 
+# 定义 POST 路由：访问 /webhook 时触发
 @app.post("/webhook")
+# 定义函数 webhook，参数: background_tasks: BackgroundTasks
 def webhook(background_tasks: BackgroundTasks):
+    # 调用 background_tasks.add_task()
     background_tasks.add_task(risky_task, "payload")
+    # 返回 {"status": "ok"}
     return {"status": "ok"}
 \`\`\`
 
@@ -1076,61 +1385,98 @@ def webhook(background_tasks: BackgroundTasks):
 ## 八、实战：注册后发邮件 + 写日志
 
 \`\`\`python filename="完整实战"
+# 从 fastapi 导入 FastAPI, BackgroundTasks, Depends
 from fastapi import FastAPI, BackgroundTasks, Depends
+# 导入 logging 模块
 import logging
 
+# 定义变量 logger，赋值为 logging.getLogger(__name__)
 logger = logging.getLogger(__name__)
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 同步任务：发邮件
+# 定义函数 send_welcome_email，参数: email: str, name: str
 def send_welcome_email(email: str, name: str):
+    # 尝试执行，捕获异常
     try:
         # 实际用 smtplib 或邮件服务 SDK
+        # 调用 logger.info()
         logger.info(f"开始发欢迎邮件给 {email}")
         # smtp.sendmail(...)
+        # 调用 logger.info()
         logger.info(f"邮件发送完成：{email}")
+    # 捕获 Exception 异常，赋值为 e
     except Exception as e:
+        # 调用 logger.error()
         logger.error(f"发邮件失败 {email}: {e}")
 
 # 异步任务：用 httpx 调邮件服务
+# 定义异步函数 send_email_via_api，参数: email: str, name: str
 async def send_email_via_api(email: str, name: str):
+    # 导入 httpx 模块
     import httpx
+    # 尝试执行，捕获异常
     try:
+        # async with httpx.AsyncClient() as client:
         async with httpx.AsyncClient() as client:
+            # 定义变量 resp，赋值为 await client.post(
             resp = await client.post(
+                # "https://mail-service/send",
                 "https://mail-service/send",
+                # 定义字典 json
                 json={"to": email, "template": "welcome", "name": name},
+                # 定义变量 timeout，赋值为 10,
                 timeout=10,
+            # )
             )
+            # 调用 resp.raise_for_status()
             resp.raise_for_status()
+    # 捕获 Exception 异常，赋值为 e
     except Exception as e:
+        # 调用 logger.error()
         logger.error(f"邮件服务调用失败 {email}: {e}")
 
+# 定义 POST 路由：访问 /register 时触发
 @app.post("/register", response_model=UserRead, status_code=201)
+# 定义函数 register，参数: user_in: UserCreate, db: Session = Depends(get_db)...
 def register(user_in: UserCreate, db: Session = Depends(get_db), background_tasks: BackgroundTasks):
     # 业务校验
+    # 条件判断：如果 db.execute(select(User).where(User.email == user_in.email)).scalar_one_or_none()
     if db.execute(select(User).where(User.email == user_in.email)).scalar_one_or_none():
+        # 抛出 HTTPException 异常: 400, "邮箱已被注册"
         raise HTTPException(400, "邮箱已被注册")
     # 创建用户
+    # 定义变量 user，赋值为 User(name=user_in.name, email=user_in.email, ...
     user = User(name=user_in.name, email=user_in.email, hashed_password=hash_password(user_in.password))
+    # 调用 db.add()
     db.add(user)
+    # 调用 db.commit()
     db.commit()
+    # 调用 db.refresh()
     db.refresh(user)
     # 挂后台任务：发欢迎邮件（用户不用等）
+    # 调用 background_tasks.add_task()
     background_tasks.add_task(send_email_via_api, user.email, user.name)
+    # 返回 user
     return user
 \`\`\`
 
 ## 九、测试 BackgroundTasks
 
 \`\`\`python filename="测试"
+# 从 fastapi.testclient 导入 TestClient
 from fastapi.testclient import TestClient
 
+# 定义函数 test_register_triggers_email，参数: client
 def test_register_triggers_email(client):
+    # 定义变量 response，赋值为 client.post("/register", json={"name": "alice...
     response = client.post("/register", json={"name": "alice", "email": "a@b.com", "password": "Str0ng!pw"})
+    # assert response.status_code == 201
     assert response.status_code == 201
     # TestClient 会等所有后台任务执行完才返回
     # 所以这里可以断言任务已执行（如检查 mock 被调用）
+    # 调用 mock_send_email.assert_called_once_with()
     mock_send_email.assert_called_once_with("a@b.com", "alice")
 \`\`\`
 

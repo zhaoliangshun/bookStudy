@@ -18,16 +18,24 @@ export const chapters = [
 业务逻辑里,资源不存在、权限不够、参数错误,都需要返回对应 HTTP 错误码。FastAPI 提供 \`HTTPException\` 来主动抛出 HTTP 错误:
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, HTTPException
 from fastapi import FastAPI, HTTPException
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}")
+# 定义函数 get_item，参数: item_id: int
 def get_item(item_id: int):
+    # 定义字典 items
     items = {1: "apple", 2: "banana"}
+    # 条件判断：如果 item_id not in items
     if item_id not in items:
         # 抛出 404 错误
+        # 抛出 HTTPException 异常: status_code=404, detail="商品不存在"
         raise HTTPException(status_code=404, detail="商品不存在")
+    # 返回 {"item": items[item_id]}
     return {"item": items[item_id]}
 \`\`\`
 
@@ -48,12 +56,15 @@ def get_item(item_id: int):
 
 \`\`\`python
 # 字符串详情
+# 抛出 HTTPException 异常: 404, "商品不存在"
 raise HTTPException(404, "商品不存在")
 
 # dict 详情(更丰富的错误信息)
+# 抛出 HTTPException 异常: 404, detail={"error": "not_found", "item_id": 99}
 raise HTTPException(404, detail={"error": "not_found", "item_id": 99})
 
 # list 详情
+# 抛出 HTTPException 异常: 400, detail=["字段 A 错误", "字段 B 错误"]
 raise HTTPException(400, detail=["字段 A 错误", "字段 B 错误"])
 \`\`\`
 
@@ -86,13 +97,19 @@ FastAPI 默认的 422(请求体校验失败)也是用类似机制,只是自动�
 这意味着你**不需要 try/except** 处理它,直接 raise 就行,FastAPI 接管后续。
 
 \`\`\`python
+# 定义 GET 路由：访问 /users/{uid} 时触发
 @app.get("/users/{uid}")
+# 定义函数 get_user，参数: uid: int
 def get_user(uid: int):
+    # 定义变量 user，赋值为 db.find(uid)
     user = db.find(uid)
+    # 条件判断：如果 not user
     if not user:
         # raise 后函数直接结束,不会执行后面的 return
+        # 抛出 HTTPException 异常: 404, "用户不存在"
         raise HTTPException(404, "用户不存在")
     # 只有 user 存在才会到这
+    # 返回 user
     return user
 \`\`\`
 
@@ -101,14 +118,23 @@ def get_user(uid: int):
 有些状态码需要特定响应头。最典型的是 401,要带 \`WWW-Authenticate\` 头告诉客户端怎么认证:
 
 \`\`\`python
+# 定义 GET 路由：访问 /secure 时触发
 @app.get("/secure")
+# 定义函数 secure，参数: token: str
 def secure(token: str):
+    # 条件判断：如果 token != "valid"
     if token != "valid":
+        # 抛出 HTTPException 异常
         raise HTTPException(
+            # 定义变量 status_code，赋值为 401,
             status_code=401,
+            # 定义变量 detail，赋值为 "无效的认证凭证",
             detail="无效的认证凭证",
+            # 定义字典 headers
             headers={"WWW-Authenticate": "Bearer"},
+        # )
         )
+    # 返回 {"msg": "ok"}
     return {"msg": "ok"}
 \`\`\`
 
@@ -118,10 +144,12 @@ def secure(token: str):
 
 \`\`\`python
 # HTTPException:FastAPI 专门处理,转成 JSON 错误响应
+# 抛出 HTTPException 异常: 404, "不存在"
 raise HTTPException(404, "不存在")
 # → 404 {"detail": "不存在"}
 
 # 普通 Exception:FastAPI 不专门处理,默认转成 500
+# 抛出 ValueError 异常: "不存在"
 raise ValueError("不存在")
 # → 500 {"detail": "Internal Server Error"}
 \`\`\`
@@ -140,58 +168,96 @@ raise ValueError("不存在")
 
 如果想让自定义处理器处理 HTTPException,要显式注册:
 \`\`\`python
+# 装饰器：app.exception_handler
 @app.exception_handler(HTTPException)
+# 定义异步函数 custom_http_exc_handler，参数: request, exc
 async def custom_http_exc_handler(request, exc):
+    # 返回 JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 \`\`\`
 
 ## 八、完整示例:资源不存在抛 404
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, HTTPException
 from fastapi import FastAPI, HTTPException
+# 从 pydantic 导入 BaseModel
 from pydantic import BaseModel
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 Pydantic 数据模型 Item，继承 BaseModel
 class Item(BaseModel):
+    # 字段 id，类型: int
     id: int
+    # 字段 name，类型: str
     name: str
+    # 字段 price，类型: float
     price: float
 
 # 模拟数据库
+# 字段 db，类型: dict[int, Item]，默认值: {
 db: dict[int, Item] = {
+    # 字段 1，类型: Item(id，默认值: 1, name="苹果", price=5.0),
     1: Item(id=1, name="苹果", price=5.0),
+    # 字段 2，类型: Item(id，默认值: 2, name="香蕉", price=3.0),
     2: Item(id=2, name="香蕉", price=3.0),
+# }
 }
 
+# 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}", response_model=Item)
+# 定义函数 get_item，参数: item_id: int
 def get_item(item_id: int):
     # 1. 查不到抛 404
+    # 定义变量 item，赋值为 db.get(item_id)
     item = db.get(item_id)
+    # 条件判断：如果 not item
     if not item:
+        # 抛出 HTTPException 异常
         raise HTTPException(
+            # 定义变量 status_code，赋值为 404,
             status_code=404,
+            # 定义变量 detail，赋值为 f"商品 {item_id} 不存在",
             detail=f"商品 {item_id} 不存在",
+        # )
         )
+    # 返回 item
     return item
 
+# 定义 POST 路由：访问 /items 时触发
 @app.post("/items", response_model=Item, status_code=201)
+# 定义函数 create_item，参数: item: Item
 def create_item(item: Item):
     # 2. 已存在抛 409 冲突
+    # 条件判断：如果 item.id in db
     if item.id in db:
+        # 抛出 HTTPException 异常
         raise HTTPException(
+            # 定义变量 status_code，赋值为 409,
             status_code=409,
+            # 定义字典 detail
             detail={"error": "conflict", "reason": f"商品 {item.id} 已存在"},
+        # )
         )
+    # db[item.id] = item
     db[item.id] = item
+    # 返回 item
     return item
 
+# 定义 DELETE 路由：访问 /items/{item_id} 时触发
 @app.delete("/items/{item_id}", status_code=204)
+# 定义函数 delete_item，参数: item_id: int
 def delete_item(item_id: int):
     # 3. 不存在抛 404
+    # 条件判断：如果 item_id not in db
     if item_id not in db:
+        # 抛出 HTTPException 异常: 404, f"商品 {item_id} 不存在"
         raise HTTPException(404, f"商品 {item_id} 不存在")
+    # del db[item_id]
     del db[item_id]
+    # 返回 None
     return None
 \`\`\`
 
@@ -200,16 +266,25 @@ def delete_item(item_id: int):
 HTTPException 可以在依赖、子函数里 raise,会向上传播:
 
 \`\`\`python
+# 定义函数 get_item_or_404，参数: item_id: int
 def get_item_or_404(item_id: int):
+    # 定义变量 item，赋值为 db.get(item_id)
     item = db.get(item_id)
+    # 条件判断：如果 not item
     if not item:
+        # 抛出 HTTPException 异常: 404, "不存在"
         raise HTTPException(404, "不存在")
+    # 返回 item
     return item
 
+# 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}")
+# 定义函数 get_item，参数: item_id: int
 def get_item(item_id: int):
     # 子函数抛的 HTTPException 会传播到这里,被 FastAPI 捕获
+    # 定义变量 item，赋值为 get_item_or_404(item_id)
     item = get_item_or_404(item_id)
+    # 返回 item
     return item
 \`\`\`
 
@@ -253,10 +328,14 @@ FastAPI 支持自定义异常 + 处理器,实现业务级错误处理。
 继承 \`Exception\`:
 
 \`\`\`python
+# 定义类 UnicornException，继承 Exception
 class UnicornException(Exception):
+    # 定义函数 __init__，参数: self, name: str
     def __init__(self, name: str):
+        # self.name = name
         self.name = name
         # 调用父类初始化(可选,但推荐)
+        # 调用 super()
         super().__init__(f"独角兽 {name} 不存在")
 \`\`\`
 
@@ -265,29 +344,45 @@ class UnicornException(Exception):
 ## 三、@app.exception_handler 注册处理器
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
+# 从 fastapi.responses 导入 JSONResponse
 from fastapi.responses import JSONResponse
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义类 UnicornException，继承 Exception
 class UnicornException(Exception):
+    # 定义函数 __init__，参数: self, name: str
     def __init__(self, name: str):
+        # self.name = name
         self.name = name
 
 # 注册处理器:捕获 UnicornException 时执行
+# 装饰器：app.exception_handler
 @app.exception_handler(UnicornException)
+# 定义异步函数 unicorn_exception_handler，参数: request: Request, exc: UnicornException
 async def unicorn_exception_handler(request: Request, exc: UnicornException):
     # exc 是抛出的异常实例,能访问其属性
+    # 返回 JSONResponse(
     return JSONResponse(
         status_code=418,  # I'm a teapot(示例用,实际按业务选码)
+        # 定义字典 content
         content={"msg": f"哎呀,{exc.name} 出问题了"},
+    # )
     )
 
+# 定义 GET 路由：访问 /unicorns/{name} 时触发
 @app.get("/unicorns/{name}")
+# 定义函数 get_unicorn，参数: name: str
 def get_unicorn(name: str):
+    # 条件判断：如果 name == "yolo"
     if name == "yolo":
         # 抛出自定义异常,处理器会接管
+        # 抛出 UnicornException 异常: name=name
         raise UnicornException(name=name)
+    # 返回 {"name": name}
     return {"name": name}
 \`\`\`
 
@@ -299,7 +394,9 @@ def get_unicorn(name: str):
 ## 四、处理器签名
 
 \`\`\`python
+# 定义异步函数 handler，返回: Response
 async def handler(request: Request, exc: SomeException) -> Response:
+    # ...
     ...
 \`\`\`
 
@@ -314,45 +411,77 @@ async def handler(request: Request, exc: SomeException) -> Response:
 更实用的例子:异常带错误码和上下文。
 
 \`\`\`python
+# 定义类 BusinessError，继承 Exception
 class BusinessError(Exception):
+    # """业务异常基类"""
     """业务异常基类"""
+    # 定义函数 __init__，参数: self, code: int, message: str, details: dict | Non...
     def __init__(self, code: int, message: str, details: dict | None = None):
         self.code = code          # 业务错误码
         self.message = message    # 错误信息
         self.details = details    # 上下文详情
+        # 调用 super()
         super().__init__(message)
 
 # 具体业务异常
+# 定义类 InsufficientBalanceError，继承 BusinessError
 class InsufficientBalanceError(BusinessError):
+    # 定义函数 __init__，参数: self, user_id: int, needed: float, balance: float
     def __init__(self, user_id: int, needed: float, balance: float):
+        # 调用 super()
         super().__init__(
+            # 定义变量 code，赋值为 4001,
             code=4001,
+            # 定义变量 message，赋值为 "余额不足",
             message="余额不足",
+            # 定义字典 details
             details={
+                # "user_id": user_id,
                 "user_id": user_id,
+                # "needed": needed,
                 "needed": needed,
+                # "balance": balance,
                 "balance": balance,
+            # },
             },
+        # )
         )
 
+# 装饰器：app.exception_handler
 @app.exception_handler(BusinessError)
+# 定义异步函数 business_error_handler，参数: request: Request, exc: BusinessError
 async def business_error_handler(request: Request, exc: BusinessError):
+    # 返回 JSONResponse(
     return JSONResponse(
+        # 定义变量 status_code，赋值为 400,
         status_code=400,
+        # 定义字典 content
         content={
+            # "code": exc.code,
             "code": exc.code,
+            # "message": exc.message,
             "message": exc.message,
+            # "details": exc.details,
             "details": exc.details,
+        # },
         },
+    # )
     )
 
+# 定义 POST 路由：访问 /transfer 时触发
 @app.post("/transfer")
+# 定义函数 transfer，参数: amount: float, user_id: int = 1
 def transfer(amount: float, user_id: int = 1):
     balance = 100.0  # 假设查出来的余额
+    # 条件判断：如果 amount > balance
     if amount > balance:
+        # 抛出 InsufficientBalanceError 异常
         raise InsufficientBalanceError(
+            # 定义变量 user_id，赋值为 user_id, needed=amount, balance=balance
             user_id=user_id, needed=amount, balance=balance
+        # )
         )
+    # 返回 {"msg": "转账成功"}
     return {"msg": "转账成功"}
 \`\`\`
 
@@ -370,20 +499,32 @@ def transfer(amount: float, user_id: int = 1):
 可以注册多个:
 
 \`\`\`python
+# 定义类 NotFoundError，继承 Exception
 class NotFoundError(Exception): ...
+# 定义类 PermissionError，继承 Exception
 class PermissionError(Exception): ...
+# 定义类 BusinessError，继承 Exception
 class BusinessError(Exception): ...
 
+# 装饰器：app.exception_handler
 @app.exception_handler(NotFoundError)
+# 定义异步函数 not_found_handler，参数: request, exc
 async def not_found_handler(request, exc):
+    # 返回 JSONResponse(404, {"code": 4040, "message": str(exc)})
     return JSONResponse(404, {"code": 4040, "message": str(exc)})
 
+# 装饰器：app.exception_handler
 @app.exception_handler(PermissionError)
+# 定义异步函数 permission_handler，参数: request, exc
 async def permission_handler(request, exc):
+    # 返回 JSONResponse(403, {"code": 4030, "message": str(exc)})
     return JSONResponse(403, {"code": 4030, "message": str(exc)})
 
+# 装饰器：app.exception_handler
 @app.exception_handler(BusinessError)
+# 定义异步函数 business_handler，参数: request, exc
 async def business_handler(request, exc):
+    # 返回 JSONResponse(400, {"code": 4000, "message": str(exc)})
     return JSONResponse(400, {"code": 4000, "message": str(exc)})
 \`\`\`
 
@@ -394,17 +535,25 @@ async def business_handler(request, exc):
 如果异常有继承关系,**子类的处理器优先**:
 
 \`\`\`python
+# 定义类 BusinessError，继承 Exception
 class BusinessError(Exception): ...
+# 定义类 PaymentError，继承 BusinessError
 class PaymentError(BusinessError): ...
 
 # 父类处理器
+# 装饰器：app.exception_handler
 @app.exception_handler(BusinessError)
+# 定义异步函数 business_handler，参数: request, exc
 async def business_handler(request, exc):
+    # 返回 JSONResponse(400, {"msg": "业务错误"})
     return JSONResponse(400, {"msg": "业务错误"})
 
 # 子类处理器(优先匹配)
+# 装饰器：app.exception_handler
 @app.exception_handler(PaymentError)
+# 定义异步函数 payment_handler，参数: request, exc
 async def payment_handler(request, exc):
+    # 返回 JSONResponse(402, {"msg": "支付错误"})
     return JSONResponse(402, {"msg": "支付错误"})
 
 # 抛 PaymentError 会走 payment_handler(402)
@@ -431,59 +580,101 @@ FastAPI 按「最具体类型优先」匹配。利用这点,可以建异常层�
 ## 九、完整示例:业务异常 UnicornException
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
+# 从 fastapi.responses 导入 JSONResponse
 from fastapi.responses import JSONResponse
+# 从 pydantic 导入 BaseModel
 from pydantic import BaseModel
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 1. 自定义异常层次
+# 定义类 AppError，继承 Exception
 class AppError(Exception):
+    # """应用异常基类"""
     """应用异常基类"""
+    # 定义函数 __init__，参数: self, message: str, code: int = 5000
     def __init__(self, message: str, code: int = 5000):
+        # self.message = message
         self.message = message
+        # self.code = code
         self.code = code
+        # 调用 super()
         super().__init__(message)
 
+# 定义类 UnicornException，继承 AppError
 class UnicornException(AppError):
+    # """独角兽相关错误"""
     """独角兽相关错误"""
+    # 定义函数 __init__，参数: self, name: str
     def __init__(self, name: str):
+        # 调用 super()
         super().__init__(message=f"独角兽 {name} 不存在", code=4001)
+        # self.name = name
         self.name = name
 
 # 2. 统一处理器(处理基类,子类也能被匹配)
+# 装饰器：app.exception_handler
 @app.exception_handler(AppError)
+# 定义异步函数 app_error_handler，参数: request: Request, exc: AppError
 async def app_error_handler(request: Request, exc: AppError):
+    # 返回 JSONResponse(
     return JSONResponse(
+        # 定义变量 status_code，赋值为 400,
         status_code=400,
+        # 定义字典 content
         content={
+            # "code": exc.code,
             "code": exc.code,
+            # "message": exc.message,
             "message": exc.message,
+            # "path": str(request.url.path),
             "path": str(request.url.path),
+        # },
         },
+    # )
     )
 
 # 3. 子类专属处理器(优先级高于父类)
+# 装饰器：app.exception_handler
 @app.exception_handler(UnicornException)
+# 定义异步函数 unicorn_handler，参数: request: Request, exc: UnicornException
 async def unicorn_handler(request: Request, exc: UnicornException):
+    # 返回 JSONResponse(
     return JSONResponse(
+        # 定义变量 status_code，赋值为 404,
         status_code=404,
+        # 定义字典 content
         content={
+            # "code": exc.code,
             "code": exc.code,
+            # "message": exc.message,
             "message": exc.message,
             "name": exc.name,  # 子类特有属性
+        # },
         },
+    # )
     )
 
 # 4. 路由
+# 定义 GET 路由：访问 /unicorns/{name} 时触发
 @app.get("/unicorns/{name}")
+# 定义函数 get_unicorn，参数: name: str
 def get_unicorn(name: str):
+    # 条件判断：如果 name == "missing"
     if name == "missing":
+        # 抛出 UnicornException 异常: name=name
         raise UnicornException(name=name)
+    # 返回 {"name": name}
     return {"name": name}
 
+# 定义 GET 路由：访问 /error 时触发
 @app.get("/error")
+# 定义函数 error，参数: 
 def error():
+    # 抛出 AppError 异常: "通用错误", code=5001
     raise AppError("通用错误", code=5001)
 \`\`\`
 
@@ -526,21 +717,34 @@ FastAPI 默认的 404 响应是 \`{"detail":"Not Found"}\`,422 校验错误是 \
 FastAPI 的 HTTP 错误(404/500 等由 Starlette 抛的)用的是 \`StarletteHTTPException\`。覆盖它:
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
+# 从 fastapi.responses 导入 JSONResponse
 from fastapi.responses import JSONResponse
+# 从 starlette.exceptions 导入 HTTPException as StarletteHTTPException
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 装饰器：app.exception_handler
 @app.exception_handler(StarletteHTTPException)
+# 定义异步函数 custom_http_handler，参数: request: Request, exc: StarletteHTTPException
 async def custom_http_handler(request: Request, exc: StarletteHTTPException):
     # 统一格式:{code, message}
+    # 返回 JSONResponse(
     return JSONResponse(
+        # 定义变量 status_code，赋值为 exc.status_code,
         status_code=exc.status_code,
+        # 定义字典 content
         content={
+            # "code": exc.status_code,
             "code": exc.status_code,
+            # "message": exc.detail,
             "message": exc.detail,
+        # },
         },
+    # )
     )
 
 # 现在 404 会返回 {"code": 404, "message": "Not Found"}
@@ -553,19 +757,31 @@ async def custom_http_handler(request: Request, exc: StarletteHTTPException):
 请求体校验失败时,FastAPI 抛 \`RequestValidationError\`:
 
 \`\`\`python
+# 从 fastapi.exceptions 导入 RequestValidationError
 from fastapi.exceptions import RequestValidationError
+# 从 fastapi.encoders 导入 jsonable_encoder
 from fastapi.encoders import jsonable_encoder
 
+# 装饰器：app.exception_handler
 @app.exception_handler(RequestValidationError)
+# 定义异步函数 validation_handler，参数: request: Request, exc: RequestValidationError
 async def validation_handler(request: Request, exc: RequestValidationError):
     # exc.errors() 是错误列表
+    # 返回 JSONResponse(
     return JSONResponse(
+        # 定义变量 status_code，赋值为 422,
         status_code=422,
+        # 定义字典 content
         content={
+            # "code": 422,
             "code": 422,
+            # "message": "请求参数校验失败",
             "message": "请求参数校验失败",
+            # "errors": jsonable_encoder(exc.errors()),
             "errors": jsonable_encoder(exc.errors()),
+        # },
         },
+    # )
     )
 \`\`\`
 
@@ -575,33 +791,52 @@ async def validation_handler(request: Request, exc: RequestValidationError):
 
 \`exc.errors()\` 返回的列表每个元素类似:
 \`\`\`python
+# [
 [
+    # {
     {
         "loc": ["body", "name"],      # 错误位置
         "msg": "field required",       # 错误信息
+        # "type": "value_error.missing", # 错误类型
         "type": "value_error.missing", # 错误类型
+    # }
     }
+# ]
 ]
 \`\`\`
 
 可以重新格式化更友好:
 
 \`\`\`python
+# 装饰器：app.exception_handler
 @app.exception_handler(RequestValidationError)
+# 定义异步函数 validation_handler，参数: request, exc
 async def validation_handler(request, exc):
     # 转成 {field: message} 形式,前端好用
+    # 定义字典 formatted
     formatted = {}
+    # 遍历 exc.errors()，取 err
     for err in exc.errors():
         # loc 是 ["body", "name"] 这种,取最后一个字段名
+        # 定义变量 field，赋值为 ".".join(str(x) for x in err["loc"][1:])
         field = ".".join(str(x) for x in err["loc"][1:])
+        # formatted[field] = err["msg"]
         formatted[field] = err["msg"]
+    # 返回 JSONResponse(
     return JSONResponse(
+        # 定义变量 status_code，赋值为 422,
         status_code=422,
+        # 定义字典 content
         content={
+            # "code": 422,
             "code": 422,
+            # "message": "参数错误",
             "message": "参数错误",
+            # "fields": formatted,
             "fields": formatted,
+        # },
         },
+    # )
     )
 \`\`\`
 
@@ -619,29 +854,47 @@ async def validation_handler(request, exc):
 \`\`\`@app.exception_handler(Exception)\` 捕获所有未处理的异常(不含 HTTPException,因为后者有专门处理器):
 
 \`\`\`python
+# 导入 logging 模块
 import logging
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
+# 从 fastapi.responses 导入 JSONResponse
 from fastapi.responses import JSONResponse
 
+# 定义变量 logger，赋值为 logging.getLogger("api")
 logger = logging.getLogger("api")
 
+# 装饰器：app.exception_handler
 @app.exception_handler(Exception)
+# 定义异步函数 global_exception_handler，参数: request: Request, exc: Exception
 async def global_exception_handler(request: Request, exc: Exception):
     # 1. 记录完整堆栈(生产环境必须)
+    # 调用 logger.exception()
     logger.exception(f"未处理异常: {request.url.path}")
     # 2. 返回通用错误,不暴露堆栈(安全)
+    # 返回 JSONResponse(
     return JSONResponse(
+        # 定义变量 status_code，赋值为 500,
         status_code=500,
+        # 定义字典 content
         content={
+            # "code": 500,
             "code": 500,
+            # "message": "服务器内部错误",
             "message": "服务器内部错误",
+        # },
         },
+    # )
     )
 
+# 定义 GET 路由：访问 /error 时触发
 @app.get("/error")
+# 定义函数 error，参数: 
 def error():
     # 这个异常会被全局处理器捕获
+    # 定义变量 x，赋值为 1 / 0
     x = 1 / 0
+    # 返回 {"x": x}
     return {"x": x}
 \`\`\`
 
@@ -666,20 +919,33 @@ def error():
 4. **告警**(发 Sentry/邮件)。
 
 \`\`\`python
+# 装饰器：app.exception_handler
 @app.exception_handler(Exception)
+# 定义异步函数 global_handler，参数: request: Request, exc: Exception
 async def global_handler(request: Request, exc: Exception):
+    # 定义变量 rid，赋值为 getattr(request.state, "request_id", "unknown...
     rid = getattr(request.state, "request_id", "unknown")
+    # logger.exception(
     logger.exception(
+        # f"[{rid}] 未处理异常 path={request.url.path} method={re
         f"[{rid}] 未处理异常 path={request.url.path} method={request.method}"
+    # )
     )
     # 这里可以集成 Sentry: sentry_sdk.capture_exception(exc)
+    # 返回 JSONResponse(
     return JSONResponse(
+        # 定义变量 status_code，赋值为 500,
         status_code=500,
+        # 定义字典 content
         content={
+            # "code": 500,
             "code": 500,
+            # "message": "服务器内部错误",
             "message": "服务器内部错误",
             "request_id": rid,  # 给客户端,方便反馈排查
+        # },
         },
+    # )
     )
 \`\`\`
 
@@ -688,14 +954,20 @@ async def global_handler(request: Request, exc: Exception):
 多个处理器注册顺序不影响匹配(按异常类型匹配,不是按注册顺序)。但有一个隐含规则:**最具体的类型优先**。
 
 \`\`\`python
+# 定义类 AppError，继承 Exception
 class AppError(Exception): ...
+# 定义类 SubError，继承 AppError
 class SubError(AppError): ...
 
 # 注册顺序无所谓
+# 装饰器：app.exception_handler
 @app.exception_handler(AppError)
+# 定义异步函数 app_handler，参数: request, exc
 async def app_handler(request, exc): ...
 
+# 装饰器：app.exception_handler
 @app.exception_handler(SubError)
+# 定义异步函数 sub_handler，参数: request, exc
 async def sub_handler(request, exc): ...
 
 # 抛 SubError → 走 sub_handler(更具体)
@@ -705,73 +977,127 @@ async def sub_handler(request, exc): ...
 ## 九、完整示例:统一错误格式处理器
 
 \`\`\`python
+# 导入 logging 模块
 import logging
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
+# 从 fastapi.responses 导入 JSONResponse
 from fastapi.responses import JSONResponse
+# 从 fastapi.exceptions 导入 RequestValidationError
 from fastapi.exceptions import RequestValidationError
+# 从 fastapi.encoders 导入 jsonable_encoder
 from fastapi.encoders import jsonable_encoder
+# 从 starlette.exceptions 导入 HTTPException as StarletteHTTPException
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+# 调用 logging.basicConfig()
 logging.basicConfig(level=logging.INFO)
+# 定义变量 logger，赋值为 logging.getLogger("api")
 logger = logging.getLogger("api")
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 1. 覆盖 HTTP 错误(404/403 等)
+# 装饰器：app.exception_handler
 @app.exception_handler(StarletteHTTPException)
+# 定义异步函数 http_exception_handler，参数: request: Request, exc: StarletteHTTPException
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    # 返回 JSONResponse(
     return JSONResponse(
+        # 定义变量 status_code，赋值为 exc.status_code,
         status_code=exc.status_code,
+        # 定义字典 content
         content={
+            # "code": exc.status_code,
             "code": exc.status_code,
+            # "message": exc.detail,
             "message": exc.detail,
+            # "path": str(request.url.path),
             "path": str(request.url.path),
+        # },
         },
+    # )
     )
 
 # 2. 覆盖 422 校验错误
+# 装饰器：app.exception_handler
 @app.exception_handler(RequestValidationError)
+# 定义异步函数 validation_handler，参数: request: Request, exc: RequestValidationError
 async def validation_handler(request: Request, exc: RequestValidationError):
+    # 定义字典 fields
     fields = {}
+    # 遍历 exc.errors()，取 err
     for err in exc.errors():
+        # 定义变量 loc，赋值为 err["loc"]
         loc = err["loc"]
         # body 的字段从 loc[1] 开始,path/query 从 loc[0] 开始
+        # 定义变量 field，赋值为 ".".join(str(x) for x in loc[1:]) if loc[0] =...
         field = ".".join(str(x) for x in loc[1:]) if loc[0] == "body" else loc[0]
+        # fields[field] = err["msg"]
         fields[field] = err["msg"]
+    # 返回 JSONResponse(
     return JSONResponse(
+        # 定义变量 status_code，赋值为 422,
         status_code=422,
+        # 定义字典 content
         content={
+            # "code": 422,
             "code": 422,
+            # "message": "参数校验失败",
             "message": "参数校验失败",
+            # "fields": fields,
             "fields": fields,
+        # },
         },
+    # )
     )
 
 # 3. 兜底所有未处理异常
+# 装饰器：app.exception_handler
 @app.exception_handler(Exception)
+# 定义异步函数 global_handler，参数: request: Request, exc: Exception
 async def global_handler(request: Request, exc: Exception):
+    # 调用 logger.exception()
     logger.exception(f"未处理异常: {request.url.path}")
+    # 返回 JSONResponse(
     return JSONResponse(
+        # 定义变量 status_code，赋值为 500,
         status_code=500,
+        # 定义字典 content
         content={
+            # "code": 500,
             "code": 500,
+            # "message": "服务器内部错误",
             "message": "服务器内部错误",
+        # },
         },
+    # )
     )
 
+# 定义 GET 路由：访问 / 时触发
 @app.get("/")
+# 定义函数 root，参数: 
 def root():
+    # 返回 {"msg": "ok"}
     return {"msg": "ok"}
 
+# 定义 GET 路由：访问 /notfound 时触发
 @app.get("/notfound")
+# 定义函数 notfound，参数: 
 def notfound():
     # 这会触发 404(因为路由存在,演示用 HTTPException)
+    # 从 fastapi 导入 HTTPException
     from fastapi import HTTPException
+    # 抛出 HTTPException 异常: 404, "资源不存在"
     raise HTTPException(404, "资源不存在")
 
+# 定义 GET 路由：访问 /error 时触发
 @app.get("/error")
+# 定义函数 error，参数: 
 def error():
     x = 1 / 0  # 触发全局处理器
+    # 返回 x
     return x
 \`\`\`
 
@@ -809,11 +1135,14 @@ def error():
 
 \`\`\`python
 # 校验异常:Pydantic 模型自动触发,不用手写
+# 定义 Pydantic 数据模型 UserCreate，继承 BaseModel
 class UserCreate(BaseModel):
+    # 字段 name，类型: str
     name: str
     age: int  # 传非 int 自动 422
 
 # 业务异常:自定义
+# 定义类 InsufficientBalanceError，继承 Exception
 class InsufficientBalanceError(Exception): ...
 
 # 系统异常:意外,全局兜底
@@ -842,17 +1171,28 @@ class InsufficientBalanceError(Exception): ...
 实现统一处理器:
 
 \`\`\`python
+# 从 fastapi.responses 导入 JSONResponse
 from fastapi.responses import JSONResponse
 
+# 定义异步函数 unified_error_response，参数: status_code: int, code: int, message: str, request...
 async def unified_error_response(status_code: int, code: int, message: str, request: Request, details=None):
+    # 返回 JSONResponse(
     return JSONResponse(
+        # 定义变量 status_code，赋值为 status_code,
         status_code=status_code,
+        # 定义字典 content
         content={
+            # "code": code,
             "code": code,
+            # "message": message,
             "message": message,
+            # "details": details,
             "details": details,
+            # "request_id": getattr(request.state, "request_id",
             "request_id": getattr(request.state, "request_id", None),
+        # },
         },
+    # )
     )
 \`\`\`
 
@@ -871,15 +1211,22 @@ async def unified_error_response(status_code: int, code: int, message: str, requ
 规律:前两位是模块,后三位是具体错误。这样看码就知道哪个模块出问题。
 
 \`\`\`python
+# 定义类 ErrorCode
 class ErrorCode:
     # 用户模块 1xxxx
+    # 定义变量 USER_NOT_FOUND，赋值为 10001
     USER_NOT_FOUND = 10001
+    # 定义变量 USER_PASSWORD_WRONG，赋值为 10002
     USER_PASSWORD_WRONG = 10002
     # 订单模块 2xxxx
+    # 定义变量 ORDER_NOT_FOUND，赋值为 20001
     ORDER_NOT_FOUND = 20001
+    # 定义变量 ORDER_INSUFFICIENT_STOCK，赋值为 20002
     ORDER_INSUFFICIENT_STOCK = 20002
     # 权限模块 4xxxx
+    # 定义变量 AUTH_NOT_LOGIN，赋值为 40001
     AUTH_NOT_LOGIN = 40001
+    # 定义变量 AUTH_NO_PERMISSION，赋值为 40002
     AUTH_NO_PERMISSION = 40002
 \`\`\`
 
@@ -890,17 +1237,27 @@ class ErrorCode:
 生产环境,**所有 5xx 必须记完整堆栈**:
 
 \`\`\`python
+# 导入 logging 模块
 import logging
+# 定义变量 logger，赋值为 logging.getLogger("api")
 logger = logging.getLogger("api")
 
+# 装饰器：app.exception_handler
 @app.exception_handler(Exception)
+# 定义异步函数 global_handler，参数: request: Request, exc: Exception
 async def global_handler(request: Request, exc: Exception):
     # logger.exception 会自动带堆栈(等价于 logger.error + exc_info=True)
+    # logger.exception(
     logger.exception(
+        # f"未处理异常 path={request.url.path} "
         f"未处理异常 path={request.url.path} "
+        # f"method={request.method} "
         f"method={request.method} "
+        # f"query={dict(request.query_params)}"
         f"query={dict(request.query_params)}"
+    # )
     )
+    # 返回 JSONResponse(status_code=500, content={"code": 5000, "message": "服务器错误"})
     return JSONResponse(status_code=500, content={"code": 5000, "message": "服务器错误"})
 \`\`\`
 
@@ -912,20 +1269,29 @@ async def global_handler(request: Request, exc: Exception):
 
 \`\`\`python
 # ❌ 吞异常,BUG 永远不暴露
+# 尝试执行，捕获异常
 try:
+    # 调用 do_something()
     do_something()
+# 捕获所有异常
 except:
     pass  # 静默忽略
 
 # ❌ 只记 message,丢堆栈
+# 尝试执行，捕获异常
 try:
+    # 调用 do_something()
     do_something()
+# 捕获 Exception 异常，赋值为 e
 except Exception as e:
     logger.error(str(e))  # 没堆栈,难排查
 
 # ✅ 记完整堆栈
+# 尝试执行，捕获异常
 try:
+    # 调用 do_something()
     do_something()
+# 捕获 Exception 异常，赋值为 e
 except Exception as e:
     logger.exception("do_something 失败")  # 带堆栈
     raise  # 重新抛出,让上层处理
@@ -951,21 +1317,34 @@ except Exception as e:
 在处理器里映射:
 
 \`\`\`python
+# 定义类 BusinessError，继承 Exception
 class BusinessError(Exception):
+    # 定义函数 __init__，参数: self, code: int, message: str, http_status: int = ...
     def __init__(self, code: int, message: str, http_status: int = 400):
+        # self.code = code
         self.code = code
+        # self.message = message
         self.message = message
+        # self.http_status = http_status
         self.http_status = http_status
 
+# 装饰器：app.exception_handler
 @app.exception_handler(BusinessError)
+# 定义异步函数 business_handler，参数: request, exc
 async def business_handler(request, exc):
+    # 返回 JSONResponse(
     return JSONResponse(
+        # 定义变量 status_code，赋值为 exc.http_status,
         status_code=exc.http_status,
+        # 定义字典 content
         content={"code": exc.code, "message": exc.message},
+    # )
     )
 
 # 使用时指定合适的 http_status
+# 抛出 BusinessError 异常: code=4001, message="余额不足", http_status=400
 raise BusinessError(code=4001, message="余额不足", http_status=400)
+# 抛出 BusinessError 异常: code=4040, message="订单不存在", http_status=404
 raise BusinessError(code=4040, message="订单不存在", http_status=404)
 \`\`\`
 
@@ -993,20 +1372,34 @@ RFC 7807(Problem Details for HTTP APIs)是 API 错误响应的标准格式:
 可以扩展自定义字段:
 
 \`\`\`python
+# 装饰器：app.exception_handler
 @app.exception_handler(BusinessError)
+# 定义异步函数 handler，参数: request, exc
 async def handler(request, exc):
+    # 返回 JSONResponse(
     return JSONResponse(
+        # 定义变量 status_code，赋值为 exc.http_status,
         status_code=exc.http_status,
+        # 定义字典 content
         content={
+            # "type": f"https://api.example.com/errors/{exc.code
             "type": f"https://api.example.com/errors/{exc.code}",
+            # "title": exc.message,
             "title": exc.message,
+            # "status": exc.http_status,
             "status": exc.http_status,
+            # "detail": str(exc),
             "detail": str(exc),
+            # "instance": str(request.url.path),
             "instance": str(request.url.path),
             # 扩展字段
+            # "code": exc.code,
             "code": exc.code,
+            # "request_id": getattr(request.state, "request_id",
             "request_id": getattr(request.state, "request_id", None),
+        # },
         },
+    # )
     )
 \`\`\`
 
@@ -1017,24 +1410,39 @@ async def handler(request, exc):
 生产环境要监控异常,Sentry 是主流选择:
 
 \`\`\`python
+# 导入 sentry_sdk 模块
 import sentry_sdk
+# 从 sentry_sdk.integrations.starlette 导入 StarletteIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
+# 从 sentry_sdk.integrations.fastapi 导入 FastApiIntegration
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 
+# sentry_sdk.init(
 sentry_sdk.init(
+    # 定义变量 dsn，赋值为 "https://xxx@sentry.io/123",
     dsn="https://xxx@sentry.io/123",
+    # 定义列表 integrations
     integrations=[
+        # 调用 StarletteIntegration()
         StarletteIntegration(),
+        # 调用 FastApiIntegration()
         FastApiIntegration(),
+    # ],
     ],
     traces_sample_rate=0.1,  # 10% 采样
+# )
 )
 
+# 装饰器：app.exception_handler
 @app.exception_handler(Exception)
+# 定义异步函数 global_handler，参数: request: Request, exc: Exception
 async def global_handler(request: Request, exc: Exception):
     # 上报到 Sentry
+    # 调用 sentry_sdk.capture_exception()
     sentry_sdk.capture_exception(exc)
+    # 调用 logger.exception()
     logger.exception("未处理异常")
+    # 返回 JSONResponse(status_code=500, content={"code": 5000, "message": "服务器错误"})
     return JSONResponse(status_code=500, content={"code": 5000, "message": "服务器错误"})
 \`\`\`
 
@@ -1043,135 +1451,242 @@ Sentry 自动收集堆栈、请求上下文、用户信息,异常发生时实时
 ## 九、完整示例:完整异常处理体系
 
 \`\`\`python
+# 导入 logging 模块
 import logging
+# 导入 sentry_sdk 模块
 import sentry_sdk
+# 从 fastapi 导入 FastAPI, Request, HTTPException
 from fastapi import FastAPI, Request, HTTPException
+# 从 fastapi.responses 导入 JSONResponse
 from fastapi.responses import JSONResponse
+# 从 fastapi.exceptions 导入 RequestValidationError
 from fastapi.exceptions import RequestValidationError
+# 从 starlette.exceptions 导入 HTTPException as StarletteHTTPException
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 # 1. 错误码定义
+# 定义类 ErrorCode
 class ErrorCode:
+    # 定义变量 USER_NOT_FOUND，赋值为 10001
     USER_NOT_FOUND = 10001
+    # 定义变量 USER_INSUFFICIENT_BALANCE，赋值为 10002
     USER_INSUFFICIENT_BALANCE = 10002
+    # 定义变量 ORDER_NOT_FOUND，赋值为 20001
     ORDER_NOT_FOUND = 20001
+    # 定义变量 ORDER_CONFLICT，赋值为 20002
     ORDER_CONFLICT = 20002
+    # 定义变量 AUTH_NOT_LOGIN，赋值为 40001
     AUTH_NOT_LOGIN = 40001
+    # 定义变量 AUTH_NO_PERMISSION，赋值为 40002
     AUTH_NO_PERMISSION = 40002
+    # 定义变量 SYSTEM_ERROR，赋值为 50000
     SYSTEM_ERROR = 50000
 
 # 2. 异常层次
+# 定义类 AppError，继承 Exception
 class AppError(Exception):
+    # """应用异常基类"""
     """应用异常基类"""
+    # 定义函数 __init__，参数: self, code: int, message: str, http_status: int = ...
     def __init__(self, code: int, message: str, http_status: int = 400, details=None):
+        # self.code = code
         self.code = code
+        # self.message = message
         self.message = message
+        # self.http_status = http_status
         self.http_status = http_status
+        # self.details = details
         self.details = details
+        # 调用 super()
         super().__init__(message)
 
+# 定义类 BusinessError，继承 AppError
 class BusinessError(AppError):
+    # """业务异常"""
     """业务异常"""
+    # 空操作占位
     pass
 
+# 定义类 SystemError，继承 AppError
 class SystemError(AppError):
+    # """系统异常"""
     """系统异常"""
+    # 定义函数 __init__，参数: self, message="服务器内部错误"
     def __init__(self, message="服务器内部错误"):
+        # 调用 super()
         super().__init__(
+            # 定义变量 code，赋值为 ErrorCode.SYSTEM_ERROR,
             code=ErrorCode.SYSTEM_ERROR,
+            # 定义变量 message，赋值为 message,
             message=message,
+            # 定义变量 http_status，赋值为 500,
             http_status=500,
+        # )
         )
 
 # 3. FastAPI 应用
+# 创建 FastAPI 应用实例
 app = FastAPI()
+# 定义变量 logger，赋值为 logging.getLogger("api")
 logger = logging.getLogger("api")
 
 # 4. 统一响应构造
+# 定义函数 make_error_response，参数: status: int, code: int, message: str, request: Req...
 def make_error_response(status: int, code: int, message: str, request: Request, details=None):
+    # 返回 JSONResponse(
     return JSONResponse(
+        # 定义变量 status_code，赋值为 status,
         status_code=status,
+        # 定义字典 content
         content={
+            # "code": code,
             "code": code,
+            # "message": message,
             "message": message,
+            # "details": details,
             "details": details,
+            # "request_id": getattr(request.state, "request_id",
             "request_id": getattr(request.state, "request_id", None),
+        # },
         },
+    # )
     )
 
 # 5. HTTP 异常处理器(覆盖默认)
+# 装饰器：app.exception_handler
 @app.exception_handler(StarletteHTTPException)
+# 定义异步函数 http_handler，参数: request: Request, exc: StarletteHTTPException
 async def http_handler(request: Request, exc: StarletteHTTPException):
+    # 返回 make_error_response(
     return make_error_response(
+        # 定义变量 status，赋值为 exc.status_code,
         status=exc.status_code,
         code=exc.status_code * 10,  # HTTP 错误码用 status*10
+        # 定义变量 message，赋值为 str(exc.detail),
         message=str(exc.detail),
+        # 定义变量 request，赋值为 request,
         request=request,
+    # )
     )
 
 # 6. 422 校验异常
+# 装饰器：app.exception_handler
 @app.exception_handler(RequestValidationError)
+# 定义异步函数 validation_handler，参数: request: Request, exc: RequestValidationError
 async def validation_handler(request: Request, exc: RequestValidationError):
+    # 定义字典 fields
     fields = {}
+    # 遍历 exc.errors()，取 err
     for err in exc.errors():
+        # 定义变量 loc，赋值为 err["loc"]
         loc = err["loc"]
+        # 定义变量 field，赋值为 ".".join(str(x) for x in loc[1:]) if loc[0] =...
         field = ".".join(str(x) for x in loc[1:]) if loc[0] == "body" else str(loc[0])
+        # fields[field] = err["msg"]
         fields[field] = err["msg"]
+    # 返回 make_error_response(
     return make_error_response(
+        # 定义变量 status，赋值为 422,
         status=422,
+        # 定义变量 code，赋值为 4220,
         code=4220,
+        # 定义变量 message，赋值为 "参数校验失败",
         message="参数校验失败",
+        # 定义变量 request，赋值为 request,
         request=request,
+        # 定义变量 details，赋值为 fields,
         details=fields,
+    # )
     )
 
 # 7. 应用异常(业务)
+# 装饰器：app.exception_handler
 @app.exception_handler(AppError)
+# 定义异步函数 app_handler，参数: request: Request, exc: AppError
 async def app_handler(request: Request, exc: AppError):
+    # 返回 make_error_response(
     return make_error_response(
+        # 定义变量 status，赋值为 exc.http_status,
         status=exc.http_status,
+        # 定义变量 code，赋值为 exc.code,
         code=exc.code,
+        # 定义变量 message，赋值为 exc.message,
         message=exc.message,
+        # 定义变量 request，赋值为 request,
         request=request,
+        # 定义变量 details，赋值为 exc.details,
         details=exc.details,
+    # )
     )
 
 # 8. 兜底(未处理异常)
+# 装饰器：app.exception_handler
 @app.exception_handler(Exception)
+# 定义异步函数 global_handler，参数: request: Request, exc: Exception
 async def global_handler(request: Request, exc: Exception):
+    # 调用 logger.exception()
     logger.exception(f"未处理异常: {request.url.path}")
+    # 调用 sentry_sdk.capture_exception()
     sentry_sdk.capture_exception(exc)
+    # 返回 make_error_response(
     return make_error_response(
+        # 定义变量 status，赋值为 500,
         status=500,
+        # 定义变量 code，赋值为 ErrorCode.SYSTEM_ERROR,
         code=ErrorCode.SYSTEM_ERROR,
+        # 定义变量 message，赋值为 "服务器内部错误",
         message="服务器内部错误",
+        # 定义变量 request，赋值为 request,
         request=request,
+    # )
     )
 
 # 9. 路由示例
+# 定义 GET 路由：访问 /users/{uid} 时触发
 @app.get("/users/{uid}")
+# 定义函数 get_user，参数: uid: int
 def get_user(uid: int):
+    # 条件判断：如果 uid > 100
     if uid > 100:
+        # 抛出 BusinessError 异常
         raise BusinessError(
+            # 定义变量 code，赋值为 ErrorCode.USER_NOT_FOUND,
             code=ErrorCode.USER_NOT_FOUND,
+            # 定义变量 message，赋值为 f"用户 {uid} 不存在",
             message=f"用户 {uid} 不存在",
+            # 定义变量 http_status，赋值为 404,
             http_status=404,
+        # )
         )
+    # 返回 {"id": uid, "name": "alice"}
     return {"id": uid, "name": "alice"}
 
+# 定义 POST 路由：访问 /transfer 时触发
 @app.post("/transfer")
+# 定义函数 transfer，参数: amount: float
 def transfer(amount: float):
+    # 定义变量 balance，赋值为 50
     balance = 50
+    # 条件判断：如果 amount > balance
     if amount > balance:
+        # 抛出 BusinessError 异常
         raise BusinessError(
+            # 定义变量 code，赋值为 ErrorCode.USER_INSUFFICIENT_BALANCE,
             code=ErrorCode.USER_INSUFFICIENT_BALANCE,
+            # 定义变量 message，赋值为 "余额不足",
             message="余额不足",
+            # 定义变量 http_status，赋值为 400,
             http_status=400,
+            # 定义字典 details
             details={"needed": amount, "balance": balance},
+        # )
         )
+    # 返回 {"msg": "转账成功"}
     return {"msg": "转账成功"}
 
+# 定义 GET 路由：访问 /crash 时触发
 @app.get("/crash")
+# 定义函数 crash，参数: 
 def crash():
     return {"x": 1 / 0}  # 触发全局兜底
 \`\`\`

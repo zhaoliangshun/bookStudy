@@ -74,16 +74,16 @@ Readable 流有两种工作模式，这是很多初学者困惑的地方。
 - 调用 \`stream.resume()\` 方法
 
 \`\`\`js
-const fs = require('fs');
-const readable = fs.createReadStream('large-file.txt');
+const fs = require('fs');  // 导入模块 fs；require 返回 module.exports
+const readable = fs.createReadStream('large-file.txt');  // 文件操作结果 readable
 
 // 添加 data 监听器，自动进入 flowing 模式
 readable.on('data', (chunk) => {
-  console.log(\`收到 \${chunk.length} 字节数据\`);
+  console.log(\`收到 \${chunk.length} 字节数据\`);  // 打印日志到 stdout
 });
 
 readable.on('end', () => {
-  console.log('数据读取完毕');
+  console.log('数据读取完毕');  // 打印日志到 stdout
 });
 \`\`\`
 
@@ -92,14 +92,14 @@ readable.on('end', () => {
 在暂停模式下，必须**显式调用** \`stream.read()\` 方法来从流中读取数据块。这是 Readable 流的默认模式。
 
 \`\`\`js
-const readable = fs.createReadStream('large-file.txt');
+const readable = fs.createReadStream('large-file.txt');  // 文件操作结果 readable
 
 // 暂停模式，需要手动 read
 readable.on('readable', () => {
   let chunk;
   // 循环读取，直到 read() 返回 null
-  while ((chunk = readable.read()) !== null) {
-    console.log(\`读取到 \${chunk.length} 字节\`);
+  while ((chunk = readable.read()) !== null) {  // while 循环
+    console.log(\`读取到 \${chunk.length} 字节\`);  // 打印日志到 stdout
   }
 });
 \`\`\`
@@ -181,7 +181,7 @@ readable.on('data', (chunk) => {
 // pipe 的简化实现原理
 readable.on('data', (chunk) => {
   // 如果 write 返回 false，说明可写流缓冲区满了
-  if (!writable.write(chunk)) {
+  if (!writable.write(chunk)) {  // 条件判断
     readable.pause(); // 暂停可读流，不再触发 data 事件
   }
 });
@@ -395,7 +395,7 @@ Node.js 内置了很多实用的 Transform 流：
 调用 callback 时，可以传入转换后的数据：
 \`\`\`js
 _transform(chunk, encoding, callback) {
-  const transformed = chunk.toString().toUpperCase();
+  const transformed = chunk.toString().toUpperCase();  // 定义常量 transformed
   callback(null, transformed); // 直接通过 callback 输出转换后的数据
 }
 \`\`\`
@@ -403,7 +403,7 @@ _transform(chunk, encoding, callback) {
 等价于：
 \`\`\`js
 _transform(chunk, encoding, callback) {
-  const transformed = chunk.toString().toUpperCase();
+  const transformed = chunk.toString().toUpperCase();  // 定义常量 transformed
   this.push(transformed); // 也可以用 push
   callback();
 }
@@ -438,18 +438,18 @@ _transform(chunk, encoding, callback) {
 zlib 模块提供的 Gzip、Deflate、Brotli 都是 Transform 流。它们把原始数据转成压缩数据，或者反向解压。为什么压缩是 Transform？因为压缩算法需要维护内部状态（比如 Huffman 树、滑动窗口），每块数据的压缩依赖之前的数据，最后还需要 _flush 写出收尾数据。
 
 \`\`\`js
-const zlib = require('zlib');
-const fs = require('fs');
+const zlib = require('zlib');  // 导入模块 zlib；require 返回 module.exports
+const fs = require('fs');  // 导入模块 fs；require 返回 module.exports
 
 // 压缩：读文件 → gzip压缩 → 写压缩文件
-fs.createReadStream('input.txt')
-  .pipe(zlib.createGzip())
-  .pipe(fs.createWriteStream('input.txt.gz'));
+fs.createReadStream('input.txt')  // 创建可读流（分块读取大文件）
+  .pipe(zlib.createGzip())  // 管道：把可读流接到可写流
+  .pipe(fs.createWriteStream('input.txt.gz'));  // 管道：把可读流接到可写流
 
 // 解压：读压缩文件 → gunzip解压 → 写解压文件
-fs.createReadStream('input.txt.gz')
-  .pipe(zlib.createGunzip())
-  .pipe(fs.createWriteStream('output.txt'));
+fs.createReadStream('input.txt.gz')  // 创建可读流（分块读取大文件）
+  .pipe(zlib.createGunzip())  // 管道：把可读流接到可写流
+  .pipe(fs.createWriteStream('output.txt'));  // 管道：把可读流接到可写流
 \`\`\`
 
 ### 场景3：加密/解密
@@ -457,12 +457,12 @@ fs.createReadStream('input.txt.gz')
 crypto 模块的 Cipher（加密）和 Decipher（解密）也是 Transform 流。同样，加密算法是有状态的（比如 CBC 模式需要前一个密文块），所以必须是 Transform。
 
 \`\`\`js
-const crypto = require('crypto');
+const crypto = require('crypto');  // 导入模块 crypto；require 返回 module.exports
 const key = crypto.randomBytes(32); // AES-256 需要32字节密钥
 const iv = crypto.randomBytes(16);  // 初始化向量
 
-const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);  // 定义常量 cipher
+const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);  // 定义常量 decipher
 \`\`\`
 
 ### 场景4：数据分割/聚合
@@ -481,9 +481,9 @@ const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
 
 \`\`\`js
 readable
-  .pipe(transform1)
-  .pipe(transform2)
-  .pipe(writable);
+  .pipe(transform1)  // 管道：把可读流接到可写流
+  .pipe(transform2)  // 管道：把可读流接到可写流
+  .pipe(writable);  // 管道：把可读流接到可写流
 
 // 你需要给每个流单独监听 error！
 readable.on('error', handleErr);
@@ -515,20 +515,20 @@ Node.js 10+ 提供了 \`stream.pipeline()\` 方法（在更早版本是 \`requir
 ### pipeline 基本用法
 
 \`\`\`js
-const { pipeline } = require('stream');
-const fs = require('fs');
-const zlib = require('zlib');
+const { pipeline } = require('stream');  // 导入模块 stream；require 返回 module.exports
+const fs = require('fs');  // 导入模块 fs；require 返回 module.exports
+const zlib = require('zlib');  // 导入模块 zlib；require 返回 module.exports
 
 // 回调风格
 pipeline(
-  fs.createReadStream('input.txt'),
-  zlib.createGzip(),
-  fs.createWriteStream('input.txt.gz'),
+  fs.createReadStream('input.txt'),  // 创建可读流（分块读取大文件）
+  zlib.createGzip(),  // 创建 Gzip 压缩流
+  fs.createWriteStream('input.txt.gz'),  // 创建可写流（分块写入大文件）
   (err) => {
-    if (err) {
-      console.error('管道出错:', err);
+    if (err) {  // 条件判断
+      console.error('管道出错:', err);  // 打印错误到 stderr
     } else {
-      console.log('管道成功完成！');
+      console.log('管道成功完成！');  // 打印日志到 stdout
     }
   }
 );
@@ -537,18 +537,18 @@ pipeline(
 Promise 风格（Node.js 15+，或用 util.promisify）：
 
 \`\`\`js
-const { pipeline } = require('stream/promises');
+const { pipeline } = require('stream/promises');  // 导入模块 stream/promises；require 返回 module.exports
 
-async function compressFile() {
-  try {
-    await pipeline(
-      fs.createReadStream('input.txt'),
-      zlib.createGzip(),
-      fs.createWriteStream('input.txt.gz')
+async function compressFile() {  // 声明异步函数，内部可用 await
+  try {  // 开启 try 块捕获异常
+    await pipeline(  // 等待 Promise 完成后再继续
+      fs.createReadStream('input.txt'),  // 创建可读流（分块读取大文件）
+      zlib.createGzip(),  // 创建 Gzip 压缩流
+      fs.createWriteStream('input.txt.gz')  // 创建可写流（分块写入大文件）
     );
-    console.log('压缩完成');
+    console.log('压缩完成');  // 打印日志到 stdout
   } catch (err) {
-    console.error('压缩失败:', err);
+    console.error('压缩失败:', err);  // 打印错误到 stderr
   }
 }
 \`\`\`
@@ -591,19 +591,19 @@ async function compressFile() {
 - 常用于处理 JSON、数据库记录等结构化数据
 
 \`\`\`js
-const { Readable, Transform } = require('stream');
+const { Readable, Transform } = require('stream');  // 导入模块 stream；require 返回 module.exports
 
 // 对象模式的可读流：直接输出JS对象
-const objReadable = Readable.from([
+const objReadable = Readable.from([  // 定义常量 objReadable
   { id: 1, name: '张三' },
   { id: 2, name: '李四' },
 ]);
 
 // 对象模式的转换流：处理对象
-const filterTransform = new Transform({
+const filterTransform = new Transform({  // 创建实例 filterTransform
   objectMode: true,
   transform(obj, encoding, callback) {
-    if (obj.id > 1) {
+    if (obj.id > 1) {  // 条件判断
       callback(null, obj);
     } else {
       callback(); // 过滤掉，不push
@@ -836,7 +836,7 @@ Buffer 是 Node.js 开发者每天都会接触到，但很多人理解不深的�
 很多人以为 Buffer 是 Node.js 独创的数据结构，其实不是。从 Node.js 6.x 开始，**Buffer 是 JavaScript 标准 Uint8Array 类型的子类**（TypedArray 的一种）。也就是说：
 
 \`\`\`js
-const buf = Buffer.from('hello');
+const buf = Buffer.from('hello');  // 定义常量 buf
 console.log(buf instanceof Uint8Array); // true
 \`\`\`
 
@@ -864,7 +864,7 @@ Uint8Array 是什么？它是 ES6 引入的 TypedArray（类型化数组）的�
 ### 编码转换示例
 
 \`\`\`js
-const buf = Buffer.from('你好', 'utf8');
+const buf = Buffer.from('你好', 'utf8');  // 定义常量 buf
 console.log(buf.length); // 6（每个中文3字节）
 console.log(buf.toString('hex')); // e4bda0e5a5bd（hex编码的字符串）
 console.log(buf.toString('base64')); // 5L2g5aW9（base64编码）
@@ -925,7 +925,7 @@ const buf3 = Buffer.from('hello');      // <Buffer 68 65 6c 6c 6f>
 这个机制有个重要后果：**多个小 Buffer 可能共享同一块底层内存**。这本身没什么问题，但如果你用 \`buf.buffer\` 拿到底层 ArrayBuffer，可能会拿到比 buf 本身大很多的内存区域。
 
 \`\`\`js
-const smallBuf = Buffer.from('test');
+const smallBuf = Buffer.from('test');  // 定义常量 smallBuf
 console.log(smallBuf.length);         // 4（buf的长度）
 console.log(smallBuf.buffer.byteLength); // 8192（底层slab是8KB！）
 \`\`\`
@@ -942,7 +942,7 @@ console.log(smallBuf.buffer.byteLength); // 8192（底层slab是8KB！）
 
 \`\`\`js
 // 错误的写法！可能导致乱码
-let data = '';
+let data = '';  // 定义变量 data（可变）
 readable.on('data', (chunk) => {
   data += chunk; // 隐式调用 chunk.toString()
 });
@@ -1022,119 +1022,119 @@ StringDecoder 的原理很简单：每次 write(chunk) 时，它检查末尾几�
 理解 Buffer 的内存分配和拼接乱码问题，你在处理文件和网络数据时就能避开 90% 的坑。`,
     code: `const { StringDecoder } = require('string_decoder');
 
-console.log('=== Buffer 二进制数据处理深度解析 ===\\n');
+console.log('=== Buffer 二进制数据处理深度解析 ===\\n');  // 打印日志到 stdout
 
 // ========== 1. Buffer 的本质与创建 ==========
-console.log('===== 1. Buffer 的本质与创建方式 =====');
+console.log('===== 1. Buffer 的本质与创建方式 =====');  // 打印日志到 stdout
 
-const bufFromString = Buffer.from('Hello, 世界!');
-console.log(\`从字符串创建: "\${bufFromString.toString()}"\`);
-console.log(\`Buffer 长度: \${bufFromString.length} 字节\`);
-console.log(\`是否是 Uint8Array 实例: \${bufFromString instanceof Uint8Array}\`);
-console.log('Buffer 内容 (hex):', bufFromString.toString('hex'));
-console.log('Buffer 内容 (base64):', bufFromString.toString('base64'));
-console.log('');
+const bufFromString = Buffer.from('Hello, 世界!');  // 定义常量 bufFromString
+console.log(\`从字符串创建: "\${bufFromString.toString()}"\`);  // 打印日志到 stdout
+console.log(\`Buffer 长度: \${bufFromString.length} 字节\`);  // 打印日志到 stdout
+console.log(\`是否是 Uint8Array 实例: \${bufFromString instanceof Uint8Array}\`);  // 打印日志到 stdout
+console.log('Buffer 内容 (hex):', bufFromString.toString('hex'));  // 打印日志到 stdout
+console.log('Buffer 内容 (base64):', bufFromString.toString('base64'));  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // alloc vs allocUnsafe
-const allocBuf = Buffer.alloc(8);
-const allocUnsafeBuf = Buffer.allocUnsafe(8);
-console.log(\`Buffer.alloc(8):\`, allocBuf);
-console.log(\`Buffer.allocUnsafe(8):\`, allocUnsafeBuf, '(可能包含旧内存数据)');
-console.log('');
+const allocBuf = Buffer.alloc(8);  // 定义常量 allocBuf
+const allocUnsafeBuf = Buffer.allocUnsafe(8);  // 定义常量 allocUnsafeBuf
+console.log(\`Buffer.alloc(8):\`, allocBuf);  // 打印日志到 stdout
+console.log(\`Buffer.allocUnsafe(8):\`, allocUnsafeBuf, '(可能包含旧内存数据)');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 2. 编码转换 ==========
-console.log('===== 2. 字符编码演示 =====');
+console.log('===== 2. 字符编码演示 =====');  // 打印日志到 stdout
 
-const chinese = '你好Node.js';
-const utf8Buf = Buffer.from(chinese, 'utf8');
-console.log(\`原文: "\${chinese}"\`);
-console.log(\`utf8 编码: \${utf8Buf.length} 字节, hex: \${utf8Buf.toString('hex')}\`);
-console.log(\`转 base64: \${utf8Buf.toString('base64')}\`);
-console.log(\`转 hex: \${utf8Buf.toString('hex')}\`);
-console.log(\`转 latin1: "\${utf8Buf.toString('latin1')}" (中文乱码，因为latin1是单字节)\`);
+const chinese = '你好Node.js';  // 定义常量 chinese
+const utf8Buf = Buffer.from(chinese, 'utf8');  // 定义常量 utf8Buf
+console.log(\`原文: "\${chinese}"\`);  // 打印日志到 stdout
+console.log(\`utf8 编码: \${utf8Buf.length} 字节, hex: \${utf8Buf.toString('hex')}\`);  // 打印日志到 stdout
+console.log(\`转 base64: \${utf8Buf.toString('base64')}\`);  // 打印日志到 stdout
+console.log(\`转 hex: \${utf8Buf.toString('hex')}\`);  // 打印日志到 stdout
+console.log(\`转 latin1: "\${utf8Buf.toString('latin1')}" (中文乱码，因为latin1是单字节)\`);  // 打印日志到 stdout
 
 // 从 base64 解码回来
-const decodedFromBase64 = Buffer.from(utf8Buf.toString('base64'), 'base64');
-console.log(\`从base64解码回来: "\${decodedFromBase64.toString()}"\`);
-console.log('');
+const decodedFromBase64 = Buffer.from(utf8Buf.toString('base64'), 'base64');  // 定义常量 decodedFromBase64
+console.log(\`从base64解码回来: "\${decodedFromBase64.toString()}"\`);  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 3. 演示乱码问题 ==========
-console.log('===== 3. Buffer 拼接乱码问题演示 =====');
+console.log('===== 3. Buffer 拼接乱码问题演示 =====');  // 打印日志到 stdout
 
 // 构造一个"你好"的utf8字节序列: e4 bd a0 e5 a5 bd
-const nihao = Buffer.from('你好');
-console.log(\`"你好"的utf8字节: \${nihao.toString('hex')} (共\${nihao.length}字节，每个中文3字节)\`);
+const nihao = Buffer.from('你好');  // 定义常量 nihao
+console.log(\`"你好"的utf8字节: \${nihao.toString('hex')} (共\${nihao.length}字节，每个中文3字节)\`);  // 打印日志到 stdout
 
 // 模拟流把它切成两块：第一块拿前4个字节（切断了"好"字）
 // "你"是e4bda0，"好"的第一个字节是e5
 const chunk1 = nihao.slice(0, 4); // 包含完整的"你" + "好"的1个字节
 const chunk2 = nihao.slice(4);    // "好"的剩余2个字节
 
-console.log(\`模拟chunk1（前4字节）: \${chunk1.toString('hex')}\`);
-console.log(\`模拟chunk2（后2字节）: \${chunk2.toString('hex')}\`);
-console.log('');
+console.log(\`模拟chunk1（前4字节）: \${chunk1.toString('hex')}\`);  // 打印日志到 stdout
+console.log(\`模拟chunk2（后2字节）: \${chunk2.toString('hex')}\`);  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ❌ 错误做法：每个chunk单独toString再拼接
-const badResult = chunk1.toString() + chunk2.toString();
-console.log(\`❌ 逐块toString拼接结果: "\${badResult}" (出现乱码!)\`);
+const badResult = chunk1.toString() + chunk2.toString();  // 定义常量 badResult
+console.log(\`❌ 逐块toString拼接结果: "\${badResult}" (出现乱码!)\`);  // 打印日志到 stdout
 
 // ✅ 正确做法1：先收集所有Buffer，最后concat再toString
-const goodResult1 = Buffer.concat([chunk1, chunk2]).toString();
-console.log(\`✅ Buffer.concat一次性解码结果: "\${goodResult1}"\`);
+const goodResult1 = Buffer.concat([chunk1, chunk2]).toString();  // 定义常量 goodResult1
+console.log(\`✅ Buffer.concat一次性解码结果: "\${goodResult1}"\`);  // 打印日志到 stdout
 
 // ✅ 正确做法2：用StringDecoder
-const decoder = new StringDecoder('utf8');
-const goodResult2 = decoder.write(chunk1) + decoder.write(chunk2) + decoder.end();
-console.log(\`✅ StringDecoder处理结果: "\${goodResult2}"\`);
-console.log('');
+const decoder = new StringDecoder('utf8');  // 创建实例 decoder
+const goodResult2 = decoder.write(chunk1) + decoder.write(chunk2) + decoder.end();  // 定义常量 goodResult2
+console.log(\`✅ StringDecoder处理结果: "\${goodResult2}"\`);  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 4. Slab 内存池演示 ==========
-console.log('===== 4. 8KB Slab 内存池机制 =====');
+console.log('===== 4. 8KB Slab 内存池机制 =====');  // 打印日志到 stdout
 
-const smallBuf1 = Buffer.from('a');
-const smallBuf2 = Buffer.from('bb');
-console.log(\`小Buffer length: \${smallBuf1.length}, \${smallBuf2.length}\`);
-console.log(\`小Buffer底层ArrayBuffer大小: \${smallBuf1.buffer.byteLength} 字节 (8KB slab池)\`);
-console.log(\`注意: buf.buffer是整个slab，不只是这个buf的内容!\`);
+const smallBuf1 = Buffer.from('a');  // 定义常量 smallBuf1
+const smallBuf2 = Buffer.from('bb');  // 定义常量 smallBuf2
+console.log(\`小Buffer length: \${smallBuf1.length}, \${smallBuf2.length}\`);  // 打印日志到 stdout
+console.log(\`小Buffer底层ArrayBuffer大小: \${smallBuf1.buffer.byteLength} 字节 (8KB slab池)\`);  // 打印日志到 stdout
+console.log(\`注意: buf.buffer是整个slab，不只是这个buf的内容!\`);  // 打印日志到 stdout
 
-const largeBuf = Buffer.alloc(10000);
-console.log(\`大Buffer(>4KB)底层ArrayBuffer大小: \${largeBuf.buffer.byteLength} 字节 (直接单独分配)\`);
-console.log('');
+const largeBuf = Buffer.alloc(10000);  // 定义常量 largeBuf
+console.log(\`大Buffer(>4KB)底层ArrayBuffer大小: \${largeBuf.buffer.byteLength} 字节 (直接单独分配)\`);  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 5. Buffer 常用操作 ==========
-console.log('===== 5. Buffer 常用方法 =====');
+console.log('===== 5. Buffer 常用方法 =====');  // 打印日志到 stdout
 
-const buf = Buffer.from('Hello World');
-console.log(\`原内容: "\${buf.toString()}"\`);
-console.log(\`第0字节: \${buf[0]} ('H'的ASCII码是72)\`);
-console.log(\`indexOf('World'): \${buf.indexOf('World')}\`);
+const buf = Buffer.from('Hello World');  // 定义常量 buf
+console.log(\`原内容: "\${buf.toString()}"\`);  // 打印日志到 stdout
+console.log(\`第0字节: \${buf[0]} ('H'的ASCII码是72)\`);  // 打印日志到 stdout
+console.log(\`indexOf('World'): \${buf.indexOf('World')}\`);  // 打印日志到 stdout
 
 // 切片 - 注意 subarray 是引用共享！
-const slice = buf.subarray(0, 5);
-console.log(\`subarray(0,5): "\${slice.toString()}"\`);
+const slice = buf.subarray(0, 5);  // 定义常量 slice
+console.log(\`subarray(0,5): "\${slice.toString()}"\`);  // 打印日志到 stdout
 slice[0] = 0x68; // 'h'
-console.log(\`修改slice后原buf也变了: "\${buf.toString()}" (因为共享内存!)\`);
+console.log(\`修改slice后原buf也变了: "\${buf.toString()}" (因为共享内存!)\`);  // 打印日志到 stdout
 
 // 拷贝 - 创建独立副本
-const copy = Buffer.from(buf);
+const copy = Buffer.from(buf);  // 定义常量 copy
 copy[0] = 0x48; // 'H'
-console.log(\`用Buffer.from()拷贝后修改不影响原buf: "\${buf.toString()}" vs "\${copy.toString()}"\`);
+console.log(\`用Buffer.from()拷贝后修改不影响原buf: "\${buf.toString()}" vs "\${copy.toString()}"\`);  // 打印日志到 stdout
 
 // 比较与相等
-const buf1 = Buffer.from('abc');
-const buf2 = Buffer.from('abc');
-const buf3 = Buffer.from('abd');
-console.log(\`\\nbuf1.equals(buf2): \${buf1.equals(buf2)}\`);
-console.log(\`buf1.equals(buf3): \${buf1.equals(buf3)}\`);
-console.log(\`buf1.compare(buf3): \${buf1.compare(buf3)} (负数表示buf1 < buf3)\`);
+const buf1 = Buffer.from('abc');  // 定义常量 buf1
+const buf2 = Buffer.from('abc');  // 定义常量 buf2
+const buf3 = Buffer.from('abd');  // 定义常量 buf3
+console.log(\`\\nbuf1.equals(buf2): \${buf1.equals(buf2)}\`);  // 打印日志到 stdout
+console.log(\`buf1.equals(buf3): \${buf1.equals(buf3)}\`);  // 打印日志到 stdout
+console.log(\`buf1.compare(buf3): \${buf1.compare(buf3)} (负数表示buf1 < buf3)\`);  // 打印日志到 stdout
 
-console.log('\\n===== 总结 =====');
-console.log('1. Buffer 是 Uint8Array 子类，本质是固定长度的字节序列');
-console.log('2. 编码决定字节如何解释为字符：utf8(默认), base64, hex');
-console.log('3. allocUnsafe 快但不安全（有旧数据），alloc 安全清零但慢');
-console.log('4. 小Buffer共享8KB slab内存池，buf.buffer可能比buf大');
-console.log('5. 流拼接乱码问题：用 Buffer.concat 或 StringDecoder');
-console.log('6. subarray/slice 是引用共享，要独立副本用 Buffer.from()');
+console.log('\\n===== 总结 =====');  // 打印日志到 stdout
+console.log('1. Buffer 是 Uint8Array 子类，本质是固定长度的字节序列');  // 打印日志到 stdout
+console.log('2. 编码决定字节如何解释为字符：utf8(默认), base64, hex');  // 打印日志到 stdout
+console.log('3. allocUnsafe 快但不安全（有旧数据），alloc 安全清零但慢');  // 打印日志到 stdout
+console.log('4. 小Buffer共享8KB slab内存池，buf.buffer可能比buf大');  // 打印日志到 stdout
+console.log('5. 流拼接乱码问题：用 Buffer.concat 或 StringDecoder');  // 打印日志到 stdout
+console.log('6. subarray/slice 是引用共享，要独立副本用 Buffer.from()');  // 打印日志到 stdout
 `
   },
   {
@@ -1469,13 +1469,13 @@ if (require.main === module) {
     code: `console.log('=== 模块系统与 require 原理 ===\\n');
 
 // ========== 注意：不能真的 require 外部文件，我们用代码模拟整个模块机制 ==========
-console.log('===== 模拟 Module 包装函数与执行 =====\\n');
+console.log('===== 模拟 Module 包装函数与执行 =====\\n');  // 打印日志到 stdout
 
 // 1. 模拟 Node.js 的 Module 对象和 require 机制
-class Module {
+class Module {  // 定义类 Module
   static cache = {};
   
-  constructor(id, filename) {
+  constructor(id, filename) {  // 构造函数
     this.id = id;
     this.filename = filename;
     this.dirname = filename.substring(0, filename.lastIndexOf('/'));
@@ -1486,153 +1486,153 @@ class Module {
   // 模拟 require：模块包装 + 缓存 + 执行
   static require(requestingModule, moduleId, fakeFileSystem) {
     // 简化的路径解析
-    const filename = Module._resolveFilename(requestingModule, moduleId);
-    console.log(\`[require] 尝试加载: \${moduleId} → 解析为: \${filename}\`);
+    const filename = Module._resolveFilename(requestingModule, moduleId);  // 定义常量 filename
+    console.log(\`[require] 尝试加载: \${moduleId} → 解析为: \${filename}\`);  // 打印日志到 stdout
     
     // 检查缓存！
-    if (Module.cache[filename]) {
-      console.log(\`[require] 缓存命中: \${filename}，直接返回 exports (loaded=\${Module.cache[filename].loaded})\`);
-      return Module.cache[filename].exports;
+    if (Module.cache[filename]) {  // 条件判断
+      console.log(\`[require] 缓存命中: \${filename}，直接返回 exports (loaded=\${Module.cache[filename].loaded})\`);  // 打印日志到 stdout
+      return Module.cache[filename].exports;  // 返回值
     }
     
     // 创建新模块实例，先放入缓存（重要！为了处理循环引用）
-    const mod = new Module(moduleId, filename);
+    const mod = new Module(moduleId, filename);  // 创建实例 mod
     Module.cache[filename] = mod;
-    console.log(\`[require] 缓存未命中，创建新模块并放入缓存\`);
+    console.log(\`[require] 缓存未命中，创建新模块并放入缓存\`);  // 打印日志到 stdout
     
     // 获取"文件内容"（我们的假文件系统里的函数）
-    const moduleFactory = fakeFileSystem[filename];
-    if (!moduleFactory) {
-      throw new Error(\`Cannot find module '\${moduleId}'\`);
+    const moduleFactory = fakeFileSystem[filename];  // 定义常量 moduleFactory
+    if (!moduleFactory) {  // 条件判断
+      throw new Error(\`Cannot find module '\${moduleId}'\`);  // 抛出错误中断执行
     }
     
     // 关键：调用包装函数！传入 exports, require, module, __filename, __dirname
-    const dirname = mod.dirname;
-    const requireFn = (id) => Module.require(mod, id, fakeFileSystem);
+    const dirname = mod.dirname;  // 定义常量 dirname
+    const requireFn = (id) => Module.require(mod, id, fakeFileSystem);  // 箭头函数 requireFn
     
-    console.log(\`[require] 执行模块包装函数，传入 (exports, require, module, __filename, __dirname)\`);
+    console.log(\`[require] 执行模块包装函数，传入 (exports, require, module, __filename, __dirname)\`);  // 打印日志到 stdout
     moduleFactory.call(mod.exports, mod.exports, requireFn, mod, mod.filename, dirname);
     
     // 标记加载完成
     mod.loaded = true;
-    console.log(\`[require] 模块 \${filename} 执行完毕，module.exports 已缓存\`);
+    console.log(\`[require] 模块 \${filename} 执行完毕，module.exports 已缓存\`);  // 打印日志到 stdout
     
-    return mod.exports;
+    return mod.exports;  // 返回值
   }
   
   static _resolveFilename(requestingModule, moduleId) {
-    if (moduleId.startsWith('./')) {
-      const base = requestingModule ? requestingModule.dirname : '/app';
-      return base + '/' + moduleId.substring(2);
+    if (moduleId.startsWith('./')) {  // 条件判断
+      const base = requestingModule ? requestingModule.dirname : '/app';  // 定义常量 base
+      return base + '/' + moduleId.substring(2);  // 返回值
     }
-    return '/app/node_modules/' + moduleId;
+    return '/app/node_modules/' + moduleId;  // 返回值
   }
 }
 
 // ========== 创建我们的模拟文件系统 ==========
 // 每个"文件"就是包装好后的模块函数
-const fakeFileSystem = {};
+const fakeFileSystem = {};  // 定义对象 fakeFileSystem
 
 // a.js - 模拟循环引用场景
 fakeFileSystem['/app/a.js'] = function(exports, require, module, __filename, __dirname) {
-  console.log('  [a.js] 开始执行');
-  exports.done = false;
-  exports.fromA = '我是A导出的值';
+  console.log('  [a.js] 开始执行');  // 打印日志到 stdout
+  exports.done = false;  // 给 exports 添加属性（等价于 module.exports.x = ...）
+  exports.fromA = '我是A导出的值';  // 给 exports 添加属性（等价于 module.exports.x = ...）
   
-  console.log('  [a.js] 准备 require(b.js)...');
+  console.log('  [a.js] 准备 require(b.js)...');  // 打印日志到 stdout
   const b = require('./b.js'); // 这里会加载b
-  console.log('  [a.js] 从 require(b) 返回了，b.done =', b.done);
+  console.log('  [a.js] 从 require(b) 返回了，b.done =', b.done);  // 打印日志到 stdout
   
-  exports.done = true;
-  console.log('  [a.js] 执行完毕');
+  exports.done = true;  // 给 exports 添加属性（等价于 module.exports.x = ...）
+  console.log('  [a.js] 执行完毕');  // 打印日志到 stdout
 };
 
 // b.js - 循环引用a
 fakeFileSystem['/app/b.js'] = function(exports, require, module, __filename, __dirname) {
-  console.log('    [b.js] 开始执行');
-  exports.done = false;
-  exports.fromB = '我是B导出的值';
+  console.log('    [b.js] 开始执行');  // 打印日志到 stdout
+  exports.done = false;  // 给 exports 添加属性（等价于 module.exports.x = ...）
+  exports.fromB = '我是B导出的值';  // 给 exports 添加属性（等价于 module.exports.x = ...）
   
-  console.log('    [b.js] 准备 require(a.js)...');
+  console.log('    [b.js] 准备 require(a.js)...');  // 打印日志到 stdout
   const a = require('./a.js'); // 尝试加载a，但a还没执行完！
-  console.log('    [b.js] 从 require(a) 返回了，a.done =', a.done, '(拿到的是半成品！)');
-  console.log('    [b.js] 此时能拿到 a.fromA:', a.fromA);
+  console.log('    [b.js] 从 require(a) 返回了，a.done =', a.done, '(拿到的是半成品！)');  // 打印日志到 stdout
+  console.log('    [b.js] 此时能拿到 a.fromA:', a.fromA);  // 打印日志到 stdout
   
-  exports.done = true;
-  console.log('    [b.js] 执行完毕');
+  exports.done = true;  // 给 exports 添加属性（等价于 module.exports.x = ...）
+  console.log('    [b.js] 执行完毕');  // 打印日志到 stdout
 };
 
 // main.js - 入口
 fakeFileSystem['/app/main.js'] = function(exports, require, module, __filename, __dirname) {
-  console.log('[main.js] 程序入口开始执行\\n');
+  console.log('[main.js] 程序入口开始执行\\n');  // 打印日志到 stdout
   
-  const a = require('./a.js');
-  console.log('\\n[main.js] 第一次 require(a) 完成，a.done =', a.done);
+  const a = require('./a.js');  // 导入模块 ./a.js；require 返回 module.exports
+  console.log('\\n[main.js] 第一次 require(a) 完成，a.done =', a.done);  // 打印日志到 stdout
   
-  const b = require('./b.js');
-  console.log('[main.js] require(b) 完成，b.done =', b.done);
+  const b = require('./b.js');  // 导入模块 ./b.js；require 返回 module.exports
+  console.log('[main.js] require(b) 完成，b.done =', b.done);  // 打印日志到 stdout
   
-  console.log('\\n[main.js] 再次 require(a)，验证缓存...');
-  const a2 = require('./a.js');
-  console.log('[main.js] a === a2:', a === a2, '(缓存生效，同一个对象)');
+  console.log('\\n[main.js] 再次 require(a)，验证缓存...');  // 打印日志到 stdout
+  const a2 = require('./a.js');  // 导入模块 ./a.js；require 返回 module.exports
+  console.log('[main.js] a === a2:', a === a2, '(缓存生效，同一个对象)');  // 打印日志到 stdout
 };
 
 // 运行入口模块
-console.log('===== 执行 main.js，演示循环引用与缓存 =====\\n');
-try {
+console.log('===== 执行 main.js，演示循环引用与缓存 =====\\n');  // 打印日志到 stdout
+try {  // 开启 try 块捕获异常
   Module.require(null, './main.js', fakeFileSystem);
 } catch (e) {
-  console.error('错误:', e.message);
+  console.error('错误:', e.message);  // 打印错误到 stderr
 }
 
 // 2. 演示 exports vs module.exports 区别
-console.log('\\n===== 演示 exports vs module.exports 区别 =====\\n');
+console.log('\\n===== 演示 exports vs module.exports 区别 =====\\n');  // 打印日志到 stdout
 
 // 模拟一个 exports.xxx 方式（正确）
-const mod1 = { exports: {} };
-const exports1 = mod1.exports;
+const mod1 = { exports: {} };  // 定义对象 mod1
+const exports1 = mod1.exports;  // 定义常量 exports1
 exports1.name = '通过 exports 导出';
 exports1.value = 123;
-console.log('方式1: exports.xxx 添加属性');
-console.log('  执行后 module.exports:', mod1.exports);
+console.log('方式1: exports.xxx 添加属性');  // 打印日志到 stdout
+console.log('  执行后 module.exports:', mod1.exports);  // 打印日志到 stdout
 
 // 模拟直接给 exports 赋值（错误！）
-const mod2 = { exports: {} };
-let exports2 = mod2.exports;
+const mod2 = { exports: {} };  // 定义对象 mod2
+let exports2 = mod2.exports;  // 定义变量 exports2（可变）
 exports2 = { name: '直接赋值给 exports', value: 456 }; // 改变了局部变量
-console.log('\\n方式2: 直接 exports = {} 赋值（错误）');
-console.log('  执行后 module.exports:', mod2.exports, '(空对象！因为 exports 是局部变量)');
+console.log('\\n方式2: 直接 exports = {} 赋值（错误）');  // 打印日志到 stdout
+console.log('  执行后 module.exports:', mod2.exports, '(空对象！因为 exports 是局部变量)');  // 打印日志到 stdout
 
 // 模拟 module.exports = xxx（正确）
-const mod3 = { exports: {} };
-const exports3 = mod3.exports;
+const mod3 = { exports: {} };  // 定义对象 mod3
+const exports3 = mod3.exports;  // 定义常量 exports3
 mod3.exports = { name: '直接赋值给 module.exports', value: 789 };
-console.log('\\n方式3: module.exports = {} 整体导出（正确）');
-console.log('  执行后 module.exports:', mod3.exports);
+console.log('\\n方式3: module.exports = {} 整体导出（正确）');  // 打印日志到 stdout
+console.log('  执行后 module.exports:', mod3.exports);  // 打印日志到 stdout
 
 // 3. 演示 require.main === module 判断入口
-console.log('\\n===== 演示 require.main === module 判断入口 =====');
+console.log('\\n===== 演示 require.main === module 判断入口 =====');  // 打印日志到 stdout
 const isMain = true; // 在本沙箱中我们直接运行，所以是true
-console.log('require.main === module:', isMain);
-console.log('这是模块判断自己是否是直接运行的入口的标准方式');
-console.log('');
+console.log('require.main === module:', isMain);  // 打印日志到 stdout
+console.log('这是模块判断自己是否是直接运行的入口的标准方式');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // 4. 真实查看当前模块的 module 对象信息（沙箱中实际存在的）
-console.log('===== 当前模块实际信息 =====');
-console.log('__filename 不存在于沙箱顶层（因为我们不是真正被require的模块）');
-console.log('但我们可以看到在真实 Node.js 中:');
-console.log('  - arguments.length 在模块中是5（wrapper的5个参数）');
-console.log('  - require.cache 存在，包含所有已加载模块');
-console.log('  - module 对象包含 exports, loaded, children, parent 等属性');
+console.log('===== 当前模块实际信息 =====');  // 打印日志到 stdout
+console.log('__filename 不存在于沙箱顶层（因为我们不是真正被require的模块）');  // 打印日志到 stdout
+console.log('但我们可以看到在真实 Node.js 中:');  // 打印日志到 stdout
+console.log('  - arguments.length 在模块中是5（wrapper的5个参数）');  // 打印日志到 stdout
+console.log('  - require.cache 存在，包含所有已加载模块');  // 打印日志到 stdout
+console.log('  - module 对象包含 exports, loaded, children, parent 等属性');  // 打印日志到 stdout
 
-console.log('\\n===== 总结 =====');
-console.log('1. require 过程：路径解析 → 文件定位 → 模块包装 → 编译执行 → 缓存');
-console.log('2. 你的代码被包装在函数 (exports, require, module, __filename, __dirname) 里');
-console.log('3. __dirname 和 __filename 不是全局变量，是包装函数参数');
-console.log('4. 模块加载后缓存，多次require同一模块拿到同一个对象');
-console.log('5. exports 是 module.exports 的引用，直接给exports赋值无效');
-console.log('6. 循环引用时，返回模块当前已执行部分的exports（半成品）');
-console.log('7. require.main === module 判断是否是入口文件');
+console.log('\\n===== 总结 =====');  // 打印日志到 stdout
+console.log('1. require 过程：路径解析 → 文件定位 → 模块包装 → 编译执行 → 缓存');  // 打印日志到 stdout
+console.log('2. 你的代码被包装在函数 (exports, require, module, __filename, __dirname) 里');  // 打印日志到 stdout
+console.log('3. __dirname 和 __filename 不是全局变量，是包装函数参数');  // 打印日志到 stdout
+console.log('4. 模块加载后缓存，多次require同一模块拿到同一个对象');  // 打印日志到 stdout
+console.log('5. exports 是 module.exports 的引用，直接给exports赋值无效');  // 打印日志到 stdout
+console.log('6. 循环引用时，返回模块当前已执行部分的exports（半成品）');  // 打印日志到 stdout
+console.log('7. require.main === module 判断是否是入口文件');  // 打印日志到 stdout
 `
   },
   {
@@ -1905,17 +1905,17 @@ path.relative('/data/orandea/test/aaa', '/data/orandea/impl/bbb');
 掌握 path 模块的这些 API 和区别，你的代码在跨平台时就不会出路径问题了。`,
     code: `const path = require('path');
 
-console.log('=== path 模块与路径处理最佳实践 ===\\n');
+console.log('=== path 模块与路径处理最佳实践 ===\\n');  // 打印日志到 stdout
 
-console.log('当前平台:', process.platform);
-console.log('默认路径分隔符 (path.sep):', JSON.stringify(path.sep));
-console.log('PATH 分隔符 (path.delimiter):', JSON.stringify(path.delimiter));
-console.log('');
+console.log('当前平台:', process.platform);  // 打印日志到 stdout
+console.log('默认路径分隔符 (path.sep):', JSON.stringify(path.sep));  // 打印日志到 stdout
+console.log('PATH 分隔符 (path.delimiter):', JSON.stringify(path.delimiter));  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 1. join vs resolve 核心对比 ==========
-console.log('===== 1. path.join() vs path.resolve() 核心对比 =====\\n');
+console.log('===== 1. path.join() vs path.resolve() 核心对比 =====\\n');  // 打印日志到 stdout
 
-const testCases = [
+const testCases = [  // 定义数组 testCases
   ['a', 'b', 'c'],
   ['a', 'b', '..', 'c'],
   ['/foo', 'bar', 'baz'],
@@ -1925,66 +1925,66 @@ const testCases = [
   ['a/b/c', '../', '../d'],
 ];
 
-console.log('输入参数'.padEnd(35), 'join()结果'.padEnd(28), 'resolve()结果');
-console.log('-'.repeat(90));
+console.log('输入参数'.padEnd(35), 'join()结果'.padEnd(28), 'resolve()结果');  // 打印日志到 stdout
+console.log('-'.repeat(90));  // 打印日志到 stdout
 
-for (const args of testCases) {
+for (const args of testCases) {  // for 循环
   const joinResult = path.posix.join(...args); // 用posix确保输出一致
-  const resolveResult = path.posix.resolve(...args);
-  console.log(
+  const resolveResult = path.posix.resolve(...args);  // 定义常量 resolveResult
+  console.log(  // 打印日志到 stdout
     args.join(',').padEnd(35),
     joinResult.padEnd(28),
     resolveResult
   );
 }
 
-console.log('\\n【关键结论】');
-console.log('1. join() 只是拼接+规范化，结果可能是相对路径');
-console.log('2. resolve() 模拟 cd 行为，一定返回绝对路径');
-console.log('3. resolve() 遇到绝对路径(以/开头)会丢弃前面的路径');
-console.log('4. join() 只是简单拼接，不会"重置"到根');
-console.log('');
+console.log('\\n【关键结论】');  // 打印日志到 stdout
+console.log('1. join() 只是拼接+规范化，结果可能是相对路径');  // 打印日志到 stdout
+console.log('2. resolve() 模拟 cd 行为，一定返回绝对路径');  // 打印日志到 stdout
+console.log('3. resolve() 遇到绝对路径(以/开头)会丢弃前面的路径');  // 打印日志到 stdout
+console.log('4. join() 只是简单拼接，不会"重置"到根');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 2. 模拟 __dirname 场景 ==========
-console.log('===== 2. 实际使用：与 __dirname 拼接（模拟）=====\\n');
+console.log('===== 2. 实际使用：与 __dirname 拼接（模拟）=====\\n');  // 打印日志到 stdout
 
-const fakeDirname = '/home/user/my-project';
-console.log('当前文件所在目录 (__dirname):', fakeDirname);
-console.log('');
+const fakeDirname = '/home/user/my-project';  // 定义常量 fakeDirname
+console.log('当前文件所在目录 (__dirname):', fakeDirname);  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
-console.log('path.join(__dirname, "views", "index.html"):');
-console.log(' →', path.posix.join(fakeDirname, 'views', 'index.html'));
-console.log('');
-console.log('path.resolve(__dirname, "views", "index.html"):');
-console.log(' →', path.posix.resolve(fakeDirname, 'views', 'index.html'));
-console.log('');
-console.log('→ 因为__dirname本身是绝对路径，join和resolve结果相同！');
-console.log('');
+console.log('path.join(__dirname, "views", "index.html"):');  // 打印日志到 stdout
+console.log(' →', path.posix.join(fakeDirname, 'views', 'index.html'));  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
+console.log('path.resolve(__dirname, "views", "index.html"):');  // 打印日志到 stdout
+console.log(' →', path.posix.resolve(fakeDirname, 'views', 'index.html'));  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
+console.log('→ 因为__dirname本身是绝对路径，join和resolve结果相同！');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // 上一级目录的常见用法
-console.log('path.join(__dirname, "..", "config", "db.js"):');
-console.log(' →', path.posix.join(fakeDirname, '..', 'config', 'db.js'));
-console.log('');
+console.log('path.join(__dirname, "..", "config", "db.js"):');  // 打印日志到 stdout
+console.log(' →', path.posix.join(fakeDirname, '..', 'config', 'db.js'));  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 3. path.win32 vs path.posix 对比 ==========
-console.log('===== 3. 跨平台：win32 vs posix 对比 =====\\n');
+console.log('===== 3. 跨平台：win32 vs posix 对比 =====\\n');  // 打印日志到 stdout
 
-const demoPath = ['users', 'name', 'documents', 'file.txt'];
-console.log('路径段:', demoPath);
-console.log('path.posix.join:', path.posix.join(...demoPath), '  (用/分隔)');
-console.log('path.win32.join:', path.win32.join(...demoPath), '  (用\\\\分隔)');
-console.log('');
+const demoPath = ['users', 'name', 'documents', 'file.txt'];  // 定义数组 demoPath
+console.log('路径段:', demoPath);  // 打印日志到 stdout
+console.log('path.posix.join:', path.posix.join(...demoPath), '  (用/分隔)');  // 打印日志到 stdout
+console.log('path.win32.join:', path.win32.join(...demoPath), '  (用\\\\分隔)');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // Windows 盘符处理
-console.log('Windows 路径解析:');
-console.log('path.win32.resolve("C:\\\\Users", "docs", "a.txt"):');
-console.log(' →', path.win32.resolve('C:\\\\Users', 'docs', 'a.txt'));
-console.log('');
+console.log('Windows 路径解析:');  // 打印日志到 stdout
+console.log('path.win32.resolve("C:\\\\Users", "docs", "a.txt"):');  // 打印日志到 stdout
+console.log(' →', path.win32.resolve('C:\\\\Users', 'docs', 'a.txt'));  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 4. basename, dirname, extname ==========
-console.log('===== 4. basename / dirname / extname =====\\n');
+console.log('===== 4. basename / dirname / extname =====\\n');  // 打印日志到 stdout
 
-const paths = [
+const paths = [  // 定义数组 paths
   '/home/user/projects/app/index.html',
   '/foo/bar/baz.min.js',
   '/data/readme.md',
@@ -1994,11 +1994,11 @@ const paths = [
   'photo.tar.gz',
 ];
 
-console.log('路径'.padEnd(42), 'basename'.padEnd(18), 'dirname'.padEnd(22), 'extname');
-console.log('-'.repeat(95));
+console.log('路径'.padEnd(42), 'basename'.padEnd(18), 'dirname'.padEnd(22), 'extname');  // 打印日志到 stdout
+console.log('-'.repeat(95));  // 打印日志到 stdout
 
-for (const p of paths) {
-  console.log(
+for (const p of paths) {  // for 循环
+  console.log(  // 打印日志到 stdout
     p.padEnd(42),
     path.posix.basename(p).padEnd(18),
     path.posix.dirname(p).padEnd(22),
@@ -2006,55 +2006,55 @@ for (const p of paths) {
   );
 }
 
-console.log('\\n注意点：');
-console.log('- .gitignore 的 extname 是 "" (点在开头不算扩展名)');
-console.log('- photo.tar.gz 的 extname 是 .gz (只认最后一个点)');
-console.log('- 末尾/不影响basename: /var/log/ 的basename是log');
-console.log('');
+console.log('\\n注意点：');  // 打印日志到 stdout
+console.log('- .gitignore 的 extname 是 "" (点在开头不算扩展名)');  // 打印日志到 stdout
+console.log('- photo.tar.gz 的 extname 是 .gz (只认最后一个点)');  // 打印日志到 stdout
+console.log('- 末尾/不影响basename: /var/log/ 的basename是log');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // basename 带扩展名参数
-console.log('basename 带 ext 参数演示:');
-const fullPath = '/site/assets/style.css';
-console.log(\`path.basename("\${fullPath}")           = "\${path.posix.basename(fullPath)}"\`);
-console.log(\`path.basename("\${fullPath}", ".css")   = "\${path.posix.basename(fullPath, '.css')}"\`);
-console.log(\`path.basename("\${fullPath}", ".html")  = "\${path.posix.basename(fullPath, '.html')}"\`);
-console.log('');
+console.log('basename 带 ext 参数演示:');  // 打印日志到 stdout
+const fullPath = '/site/assets/style.css';  // 定义常量 fullPath
+console.log(\`path.basename("\${fullPath}")           = "\${path.posix.basename(fullPath)}"\`);  // 打印日志到 stdout
+console.log(\`path.basename("\${fullPath}", ".css")   = "\${path.posix.basename(fullPath, '.css')}"\`);  // 打印日志到 stdout
+console.log(\`path.basename("\${fullPath}", ".html")  = "\${path.posix.basename(fullPath, '.html')}"\`);  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 5. path.parse 路径解析 ==========
-console.log('===== 5. path.parse() 路径拆解 =====\\n');
+console.log('===== 5. path.parse() 路径拆解 =====\\n');  // 打印日志到 stdout
 
-const parseDemo = '/home/user/projects/node-app/package.json';
-const parsed = path.posix.parse(parseDemo);
-console.log(\`解析路径: "\${parseDemo}"\`);
-console.log('');
-console.log('解析结果:');
-console.log('  root:', JSON.stringify(parsed.root));
-console.log('  dir :', JSON.stringify(parsed.dir));
-console.log('  base:', JSON.stringify(parsed.base));
-console.log('  name:', JSON.stringify(parsed.name));
-console.log('  ext :', JSON.stringify(parsed.ext));
-console.log('');
-console.log('关系: dir = dirname(base的父路径) = root + 中间目录');
-console.log('      base = basename = name + ext');
-console.log('');
+const parseDemo = '/home/user/projects/node-app/package.json';  // 定义常量 parseDemo
+const parsed = path.posix.parse(parseDemo);  // 定义常量 parsed
+console.log(\`解析路径: "\${parseDemo}"\`);  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
+console.log('解析结果:');  // 打印日志到 stdout
+console.log('  root:', JSON.stringify(parsed.root));  // 打印日志到 stdout
+console.log('  dir :', JSON.stringify(parsed.dir));  // 打印日志到 stdout
+console.log('  base:', JSON.stringify(parsed.base));  // 打印日志到 stdout
+console.log('  name:', JSON.stringify(parsed.name));  // 打印日志到 stdout
+console.log('  ext :', JSON.stringify(parsed.ext));  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
+console.log('关系: dir = dirname(base的父路径) = root + 中间目录');  // 打印日志到 stdout
+console.log('      base = basename = name + ext');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 6. path.relative 相对路径 ==========
-console.log('===== 6. path.relative() 计算相对路径 =====\\n');
+console.log('===== 6. path.relative() 计算相对路径 =====\\n');  // 打印日志到 stdout
 
-const relativePairs = [
+const relativePairs = [  // 定义数组 relativePairs
   ['/data/test/aaa', '/data/impl/bbb'],
   ['/a/b/c/d', '/a/x/y'],
   ['/foo', '/foo/bar/baz'],
 ];
 
-for (const [from, to] of relativePairs) {
-  console.log(\`从 "\${from}" 到 "\${to}"\`);
-  console.log(\`  相对路径: "\${path.posix.relative(from, to)}"\`);
-  console.log('');
+for (const [from, to] of relativePairs) {  // for 循环
+  console.log(\`从 "\${from}" 到 "\${to}"\`);  // 打印日志到 stdout
+  console.log(\`  相对路径: "\${path.posix.relative(from, to)}"\`);  // 打印日志到 stdout
+  console.log('');  // 打印日志到 stdout
 }
 
 // ========== 7. isAbsolute ==========
-console.log('===== 7. isAbsolute() 判断绝对路径 =====\\n');
+console.log('===== 7. isAbsolute() 判断绝对路径 =====\\n');  // 打印日志到 stdout
 [
   '/home/user',
   './relative',
@@ -2062,18 +2062,18 @@ console.log('===== 7. isAbsolute() 判断绝对路径 =====\\n');
   'foo/bar',
   'C:\\\\Windows',
 ].forEach(p => {
-  console.log(\`POSIX "\${p.padEnd(18)}": \${path.posix.isAbsolute(p)}\`);
+  console.log(\`POSIX "\${p.padEnd(18)}": \${path.posix.isAbsolute(p)}\`);  // 打印日志到 stdout
 });
 
-console.log('');
-console.log('===== 总结 =====');
-console.log('1. 永远不要手动拼路径，用path模块处理跨平台问题');
-console.log('2. path.join() 拼接+规范化，path.resolve() 解析为绝对路径');
-console.log('3. join和__dirname搭、resolve和相对路径搭，结果等价如果__dirname开头');
-console.log('4. path.win32 / path.posix 可以强制指定平台规则');
-console.log('5. basename取文件名，dirname取目录，extname取扩展名');
-console.log('6. parse()把路径拆成root/dir/base/name/ext五部分');
-console.log('7. isAbsolute()判断是否绝对路径，relative()算两个路径间的相对路径');
+console.log('');  // 打印日志到 stdout
+console.log('===== 总结 =====');  // 打印日志到 stdout
+console.log('1. 永远不要手动拼路径，用path模块处理跨平台问题');  // 打印日志到 stdout
+console.log('2. path.join() 拼接+规范化，path.resolve() 解析为绝对路径');  // 打印日志到 stdout
+console.log('3. join和__dirname搭、resolve和相对路径搭，结果等价如果__dirname开头');  // 打印日志到 stdout
+console.log('4. path.win32 / path.posix 可以强制指定平台规则');  // 打印日志到 stdout
+console.log('5. basename取文件名，dirname取目录，extname取扩展名');  // 打印日志到 stdout
+console.log('6. parse()把路径拆成root/dir/base/name/ext五部分');  // 打印日志到 stdout
+console.log('7. isAbsolute()判断是否绝对路径，relative()算两个路径间的相对路径');  // 打印日志到 stdout
 `
   },
   {
@@ -2378,54 +2378,54 @@ await pipeline(
 
 最后提醒：生产环境永远记得处理 fs 操作的错误！磁盘满了、权限不够、文件不存在、父目录不存在……这些都是常见的失败场景，必须 catch 处理。`,
     code: `const fs = require('fs');
-const os = require('os');
-const path = require('path');
+const os = require('os');  // 导入模块 os；require 返回 module.exports
+const path = require('path');  // 导入模块 path；require 返回 module.exports
 
-console.log('=== fs 文件系统模块深度使用 ===\\n');
+console.log('=== fs 文件系统模块深度使用 ===\\n');  // 打印日志到 stdout
 
 // 注意：我们不真的写磁盘，只演示API结构和只读/虚拟操作
 
 // ========== 1. 三种 API 风格对比 ==========
-console.log('===== 1. fs 三种调用方式对比 =====\\n');
+console.log('===== 1. fs 三种调用方式对比 =====\\n');  // 打印日志到 stdout
 
-console.log('fs 模块导出的 API 类型:');
-console.log('- 同步API: 函数名带 Sync 后缀，如 fs.readFileSync()');
-console.log('- 回调API: 传统Node风格，如 fs.readFile(path, cb)');
-console.log('- Promise API: fs.promises.readFile()，配合async/await');
-console.log('');
+console.log('fs 模块导出的 API 类型:');  // 打印日志到 stdout
+console.log('- 同步API: 函数名带 Sync 后缀，如 fs.readFileSync()');  // 打印日志到 stdout
+console.log('- 回调API: 传统Node风格，如 fs.readFile(path, cb)');  // 打印日志到 stdout
+console.log('- Promise API: fs.promises.readFile()，配合async/await');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // 展示 fs.promises 对象
-console.log('fs.promises 上常用的Promise方法:');
-const promiseMethods = Object.keys(fs.promises).filter(k => 
+console.log('fs.promises 上常用的Promise方法:');  // 打印日志到 stdout
+const promiseMethods = Object.keys(fs.promises).filter(k =>  // 定义常量 promiseMethods
   !k.startsWith('_') && typeof fs.promises[k] === 'function'
 ).slice(0, 15);
-console.log(' ', promiseMethods.join(', '));
-console.log('');
+console.log(' ', promiseMethods.join(', '));  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 2. 文件路径与系统信息 ==========
-console.log('===== 2. 系统临时目录与路径信息 =====\\n');
+console.log('===== 2. 系统临时目录与路径信息 =====\\n');  // 打印日志到 stdout
 
-const tmpDir = os.tmpdir();
-console.log('操作系统临时目录 (os.tmpdir()):', tmpDir);
-console.log('用户主目录 (os.homedir()):', os.homedir());
-console.log('');
+const tmpDir = os.tmpdir();  // 定义常量 tmpDir
+console.log('操作系统临时目录 (os.tmpdir()):', tmpDir);  // 打印日志到 stdout
+console.log('用户主目录 (os.homedir()):', os.homedir());  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // 用 path 构造一个假的演示路径（不真的创建）
-const demoFilePath = path.join(tmpDir, 'nodejs-fs-demo.txt');
-console.log('演示文件路径:', demoFilePath);
-console.log('路径是否绝对:', path.isAbsolute(demoFilePath));
-console.log('');
+const demoFilePath = path.join(tmpDir, 'nodejs-fs-demo.txt');  // 拼接路径 demoFilePath
+console.log('演示文件路径:', demoFilePath);  // 打印日志到 stdout
+console.log('路径是否绝对:', path.isAbsolute(demoFilePath));  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 3. 文件描述符概念 ==========
-console.log('===== 3. 文件描述符（fd）概念 =====\\n');
-console.log('标准输入 fd: 0 (process.stdin.fd =', process.stdin.fd, ')');
-console.log('标准输出 fd: 1 (process.stdout.fd =', process.stdout.fd, ')');
-console.log('标准错误 fd: 2 (process.stderr.fd =', process.stderr.fd, ')');
-console.log('');
+console.log('===== 3. 文件描述符（fd）概念 =====\\n');  // 打印日志到 stdout
+console.log('标准输入 fd: 0 (process.stdin.fd =', process.stdin.fd, ')');  // 打印日志到 stdout
+console.log('标准输出 fd: 1 (process.stdout.fd =', process.stdout.fd, ')');  // 打印日志到 stdout
+console.log('标准错误 fd: 2 (process.stderr.fd =', process.stderr.fd, ')');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 4. 文件打开标志 flags ==========
-console.log('===== 4. 文件打开标志（flags）=====\\n');
-const flagsTable = [
+console.log('===== 4. 文件打开标志（flags）=====\\n');  // 打印日志到 stdout
+const flagsTable = [  // 定义数组 flagsTable
   ['r', '只读，文件不存在则报错'],
   ['r+', '读写，文件不存在则报错'],
   ['w', '只写，不存在创建，存在清空'],
@@ -2434,75 +2434,75 @@ const flagsTable = [
   ['a+', '读+追加，不存在创建'],
   ['wx', '类似w，但是排他模式（存在则失败）'],
 ];
-console.log('Flag'.padEnd(8), '含义');
-console.log('-'.repeat(50));
-for (const [flag, desc] of flagsTable) {
-  console.log(flag.padEnd(8), desc);
+console.log('Flag'.padEnd(8), '含义');  // 打印日志到 stdout
+console.log('-'.repeat(50));  // 打印日志到 stdout
+for (const [flag, desc] of flagsTable) {  // for 循环
+  console.log(flag.padEnd(8), desc);  // 打印日志到 stdout
 }
-console.log('');
-console.log('⚠️  注意: "w" 标志会清空文件原有内容！');
-console.log('⚠️  注意: 手动 open 后必须 close，否则文件句柄泄漏！');
-console.log('');
+console.log('');  // 打印日志到 stdout
+console.log('⚠️  注意: "w" 标志会清空文件原有内容！');  // 打印日志到 stdout
+console.log('⚠️  注意: 手动 open 后必须 close，否则文件句柄泄漏！');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 5. 文件权限 mode ==========
-console.log('===== 5. 文件权限（mode）=====\\n');
-const modeTable = [
+console.log('===== 5. 文件权限（mode）=====\\n');  // 打印日志到 stdout
+const modeTable = [  // 定义数组 modeTable
   [0o644, 'rw-r--r--', '所有者读写，其他人只读（普通文件推荐）'],
   [0o755, 'rwxr-xr-x', '所有者读写执行，其他人读执行（目录/可执行）'],
   [0o600, 'rw-------', '仅所有者读写（敏感文件如密钥）'],
   [0o777, 'rwxrwxrwx', '所有人所有权限（危险，不推荐）'],
 ];
-console.log('八进制'.padEnd(10), '符号表示'.padEnd(15), '含义');
-console.log('-'.repeat(60));
-for (const [mode, symbol, desc] of modeTable) {
-  console.log(
+console.log('八进制'.padEnd(10), '符号表示'.padEnd(15), '含义');  // 打印日志到 stdout
+console.log('-'.repeat(60));  // 打印日志到 stdout
+for (const [mode, symbol, desc] of modeTable) {  // for 循环
+  console.log(  // 打印日志到 stdout
     ('0o' + mode.toString(8)).padEnd(10),
     symbol.padEnd(15),
     desc
   );
 }
-console.log('');
-console.log('权限位: r=4(读), w=2(写), x=1(执行)');
-console.log('实际权限 = mode & ~umask（umask通常0o022，会去掉其他人的写权限）');
-console.log('');
+console.log('');  // 打印日志到 stdout
+console.log('权限位: r=4(读), w=2(写), x=1(执行)');  // 打印日志到 stdout
+console.log('实际权限 = mode & ~umask（umask通常0o022，会去掉其他人的写权限）');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 6. fs.constants 常量 ==========
-console.log('===== 6. fs.constants 文件系统常量 =====\\n');
-console.log('文件访问检查常量:');
-console.log('  F_OK =', fs.constants.F_OK, '(文件存在)');
-console.log('  R_OK =', fs.constants.R_OK, '(可读)');
-console.log('  W_OK =', fs.constants.W_OK, '(可写)');
-console.log('  X_OK =', fs.constants.X_OK, '(可执行)');
-console.log('');
+console.log('===== 6. fs.constants 文件系统常量 =====\\n');  // 打印日志到 stdout
+console.log('文件访问检查常量:');  // 打印日志到 stdout
+console.log('  F_OK =', fs.constants.F_OK, '(文件存在)');  // 打印日志到 stdout
+console.log('  R_OK =', fs.constants.R_OK, '(可读)');  // 打印日志到 stdout
+console.log('  W_OK =', fs.constants.W_OK, '(可写)');  // 打印日志到 stdout
+console.log('  X_OK =', fs.constants.X_OK, '(可执行)');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 7. 安全演示：只读访问检查（不修改系统） ==========
-console.log('===== 7. 文件访问检查（只读，不修改）=====\\n');
+console.log('===== 7. 文件访问检查（只读，不修改）=====\\n');  // 打印日志到 stdout
 
 // 检查临时目录是否可访问（应该总是存在且可读写）
-try {
+try {  // 开启 try 块捕获异常
   fs.accessSync(tmpDir, fs.constants.R_OK | fs.constants.W_OK);
-  console.log('✅ 临时目录存在且可读写:', tmpDir);
+  console.log('✅ 临时目录存在且可读写:', tmpDir);  // 打印日志到 stdout
 } catch (err) {
-  console.log('❌ 临时目录不可访问:', err.message);
+  console.log('❌ 临时目录不可访问:', err.message);  // 打印日志到 stdout
 }
 
 // 演示：构造一个项目路径示例（沙箱中用临时目录模拟）
 // 在真实环境中你会用 __dirname 拼接路径，这里用 tmpDir 演示
-const demoProjectPath = path.join(tmpDir, 'demo-project', 'package.json');
-console.log('演示项目文件路径（模拟 __dirname 拼接）:', demoProjectPath);
-const currentModulePath = demoProjectPath;
-try {
+const demoProjectPath = path.join(tmpDir, 'demo-project', 'package.json');  // 拼接路径 demoProjectPath
+console.log('演示项目文件路径（模拟 __dirname 拼接）:', demoProjectPath);  // 打印日志到 stdout
+const currentModulePath = demoProjectPath;  // 定义常量 currentModulePath
+try {  // 开启 try 块捕获异常
   fs.accessSync(currentModulePath, fs.constants.R_OK);
-  console.log('✅ 路径可读');
+  console.log('✅ 路径可读');  // 打印日志到 stdout
 } catch {
-  console.log('ℹ️  路径不存在（沙箱环境正常）');
+  console.log('ℹ️  路径不存在（沙箱环境正常）');  // 打印日志到 stdout
 }
-console.log('');
+console.log('');  // 打印日志到 stdout
 
 // ========== 8. fs.Stats 结构展示 ==========
-console.log('===== 8. fs.Stats 文件元信息结构 =====\\n');
-console.log('调用 fs.statSync(path) 返回 Stats 对象，包含:');
-const statsProps = [
+console.log('===== 8. fs.Stats 文件元信息结构 =====\\n');  // 打印日志到 stdout
+console.log('调用 fs.statSync(path) 返回 Stats 对象，包含:');  // 打印日志到 stdout
+const statsProps = [  // 定义数组 statsProps
   'size',        // 文件大小
   'mode',        // 权限和文件类型
   'nlink',       // 硬链接数
@@ -2513,57 +2513,57 @@ const statsProps = [
   'ctimeMs',     // 改变时间
   'birthtimeMs', // 创建时间
 ];
-console.log('属性:', statsProps.join(', '));
-console.log('方法: isFile(), isDirectory(), isSymbolicLink(), isBlockDevice()...');
-console.log('');
+console.log('属性:', statsProps.join(', '));  // 打印日志到 stdout
+console.log('方法: isFile(), isDirectory(), isSymbolicLink(), isBlockDevice()...');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // 读取临时目录的stat信息（目录肯定存在）
-try {
-  const tmpStats = fs.statSync(tmpDir);
-  console.log('临时目录 stat 信息:');
-  console.log('  isDirectory():', tmpStats.isDirectory());
-  console.log('  size:', tmpStats.size, '字节');
-  console.log('  mtime:', tmpStats.mtime.toISOString());
+try {  // 开启 try 块捕获异常
+  const tmpStats = fs.statSync(tmpDir);  // 文件操作结果 tmpStats
+  console.log('临时目录 stat 信息:');  // 打印日志到 stdout
+  console.log('  isDirectory():', tmpStats.isDirectory());  // 打印日志到 stdout
+  console.log('  size:', tmpStats.size, '字节');  // 打印日志到 stdout
+  console.log('  mtime:', tmpStats.mtime.toISOString());  // 打印日志到 stdout
 } catch (e) {
-  console.log('无法读取临时目录stat:', e.message);
+  console.log('无法读取临时目录stat:', e.message);  // 打印日志到 stdout
 }
-console.log('');
+console.log('');  // 打印日志到 stdout
 
 // ========== 9. 大文件复制：流的正确方式 ==========
-console.log('===== 9. 大文件处理：用流！=====\\n');
+console.log('===== 9. 大文件处理：用流！=====\\n');  // 打印日志到 stdout
 
-console.log('❌ 错误方式（大文件内存爆炸）:');
+console.log('❌ 错误方式（大文件内存爆炸）:');  // 打印日志到 stdout
 console.log('   const data = fs.readFileSync("big.iso"); // 10GB文件→10GB内存!');
-console.log('   fs.writeFileSync("copy.iso", data);');
-console.log('');
-console.log('✅ 正确方式（流，内存恒定几十KB）:');
-console.log('   const { pipeline } = require("stream/promises");');
-console.log('   await pipeline(');
+console.log('   fs.writeFileSync("copy.iso", data);');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
+console.log('✅ 正确方式（流，内存恒定几十KB）:');  // 打印日志到 stdout
+console.log('   const { pipeline } = require("stream/promises");');  // 打印日志到 stdout
+console.log('   await pipeline(');  // 打印日志到 stdout
 console.log('     fs.createReadStream("big.iso"),  // 每次读highWaterMark字节');
 console.log('     fs.createWriteStream("copy.iso")  // 背压自动控制速度');
-console.log('   );');
-console.log('');
-console.log('原理：createReadStream 默认 highWaterMark = 64KB');
-console.log('      数据分块流动，内存中永远只有少量chunk');
-console.log('      pipeline 自动处理背压、错误、资源清理');
-console.log('');
+console.log('   );');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
+console.log('原理：createReadStream 默认 highWaterMark = 64KB');  // 打印日志到 stdout
+console.log('      数据分块流动，内存中永远只有少量chunk');  // 打印日志到 stdout
+console.log('      pipeline 自动处理背压、错误、资源清理');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 10. fs.watch 注意事项 ==========
-console.log('===== 10. fs.watch 注意事项 =====\\n');
-console.log('fs.watch 可以监听文件变化，但有很多坑：');
-console.log('- 跨平台行为不一致（macOS FSEvents / Linux inotify / Windows）');
-console.log('- 一次修改可能触发多次事件');
-console.log('- 有些编辑器"保存"是rename而不是change');
-console.log('- recursive: true 只在macOS/Windows原生支持');
-console.log('- 官方明确说不保证100%可靠（best effort）');
-console.log('- 生产环境稳定监听推荐第三方库: chokidar');
-console.log('');
+console.log('===== 10. fs.watch 注意事项 =====\\n');  // 打印日志到 stdout
+console.log('fs.watch 可以监听文件变化，但有很多坑：');  // 打印日志到 stdout
+console.log('- 跨平台行为不一致（macOS FSEvents / Linux inotify / Windows）');  // 打印日志到 stdout
+console.log('- 一次修改可能触发多次事件');  // 打印日志到 stdout
+console.log('- 有些编辑器"保存"是rename而不是change');  // 打印日志到 stdout
+console.log('- recursive: true 只在macOS/Windows原生支持');  // 打印日志到 stdout
+console.log('- 官方明确说不保证100%可靠（best effort）');  // 打印日志到 stdout
+console.log('- 生产环境稳定监听推荐第三方库: chokidar');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 11. 常用API速查表 ==========
-console.log('===== 常用 fs API 速查 =====\\n');
-console.log('操作'.padEnd(16), '同步'.padEnd(20), 'Promise(async/await)');
-console.log('-'.repeat(60));
-const apiTable = [
+console.log('===== 常用 fs API 速查 =====\\n');  // 打印日志到 stdout
+console.log('操作'.padEnd(16), '同步'.padEnd(20), 'Promise(async/await)');  // 打印日志到 stdout
+console.log('-'.repeat(60));  // 打印日志到 stdout
+const apiTable = [  // 定义数组 apiTable
   ['读文件', 'readFileSync', 'promises.readFile'],
   ['写文件', 'writeFileSync', 'promises.writeFile'],
   ['追加文件', 'appendFileSync', 'promises.appendFile'],
@@ -2575,19 +2575,19 @@ const apiTable = [
   ['文件信息', 'statSync', 'promises.stat'],
   ['改权限', 'chmodSync', 'promises.chmod'],
 ];
-for (const [op, sync, prom] of apiTable) {
-  console.log(op.padEnd(16), sync.padEnd(20), prom);
+for (const [op, sync, prom] of apiTable) {  // for 循环
+  console.log(op.padEnd(16), sync.padEnd(20), prom);  // 打印日志到 stdout
 }
-console.log('');
-console.log('===== 总结 =====');
-console.log('1. fs有三种API：同步(Sync后缀)、回调、Promise(async/await推荐)');
-console.log('2. 服务启动/CLI用同步，请求处理/高并发用异步');
-console.log('3. 底层通过文件描述符fd操作，open后必须close防泄漏');
-console.log('4. mode用八进制表示权限：r=4, w=2, x=1');
-console.log('5. fs.constants提供各种访问检查常量');
-console.log('6. 大文件读写必须用createReadStream/createWriteStream + pipeline');
-console.log('7. fs.watch有跨平台坑，生产用chokidar');
-console.log('8. 永远处理错误：磁盘满、权限不足、文件不存在...');
+console.log('');  // 打印日志到 stdout
+console.log('===== 总结 =====');  // 打印日志到 stdout
+console.log('1. fs有三种API：同步(Sync后缀)、回调、Promise(async/await推荐)');  // 打印日志到 stdout
+console.log('2. 服务启动/CLI用同步，请求处理/高并发用异步');  // 打印日志到 stdout
+console.log('3. 底层通过文件描述符fd操作，open后必须close防泄漏');  // 打印日志到 stdout
+console.log('4. mode用八进制表示权限：r=4, w=2, x=1');  // 打印日志到 stdout
+console.log('5. fs.constants提供各种访问检查常量');  // 打印日志到 stdout
+console.log('6. 大文件读写必须用createReadStream/createWriteStream + pipeline');  // 打印日志到 stdout
+console.log('7. fs.watch有跨平台坑，生产用chokidar');  // 打印日志到 stdout
+console.log('8. 永远处理错误：磁盘满、权限不足、文件不存在...');  // 打印日志到 stdout
 `
   },
   {
@@ -2839,160 +2839,160 @@ Node.js 中用 \`crypto.createSign()\` 和 \`crypto.createVerify()\` 进行签�
 掌握 crypto 模块的这些核心 API，你就能应对绝大多数应用层加密需求。`,
     code: `const crypto = require('crypto');
 
-console.log('=== crypto 加密模块实战 ===\\n');
+console.log('=== crypto 加密模块实战 ===\\n');  // 打印日志到 stdout
 
 // ========== 1. 哈希算法 ==========
-console.log('===== 1. 哈希算法演示 =====\\n');
+console.log('===== 1. 哈希算法演示 =====\\n');  // 打印日志到 stdout
 
-const plaintext = 'hello, node.js crypto!';
+const plaintext = 'hello, node.js crypto!';  // 定义常量 plaintext
 
-const md5Hash = crypto.createHash('md5').update(plaintext).digest('hex');
-const sha1Hash = crypto.createHash('sha1').update(plaintext).digest('hex');
-const sha256Hash = crypto.createHash('sha256').update(plaintext).digest('hex');
-const sha512Hash = crypto.createHash('sha512').update(plaintext).digest('hex');
+const md5Hash = crypto.createHash('md5').update(plaintext).digest('hex');  // 定义常量 md5Hash
+const sha1Hash = crypto.createHash('sha1').update(plaintext).digest('hex');  // 定义常量 sha1Hash
+const sha256Hash = crypto.createHash('sha256').update(plaintext).digest('hex');  // 定义常量 sha256Hash
+const sha512Hash = crypto.createHash('sha512').update(plaintext).digest('hex');  // 定义常量 sha512Hash
 
-console.log('原文:', plaintext);
-console.log('');
-console.log('MD5   (32hex/128bit):', md5Hash);
-console.log('SHA-1 (40hex/160bit):', sha1Hash);
-console.log('SHA256(64hex/256bit):', sha256Hash);
-console.log('SHA512(128hex/512bit):', sha512Hash);
-console.log('');
+console.log('原文:', plaintext);  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
+console.log('MD5   (32hex/128bit):', md5Hash);  // 打印日志到 stdout
+console.log('SHA-1 (40hex/160bit):', sha1Hash);  // 打印日志到 stdout
+console.log('SHA256(64hex/256bit):', sha256Hash);  // 打印日志到 stdout
+console.log('SHA512(128hex/512bit):', sha512Hash);  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // 雪崩效应：改一个字符哈希完全不同
-const slightlyDifferent = 'hello, node.js crypto.';
-const sha256Changed = crypto.createHash('sha256').update(slightlyDifferent).digest('hex');
-console.log('仅修改一个字符 (! → .):');
-console.log('原哈希:', sha256Hash);
-console.log('改后哈希:', sha256Changed);
-console.log('完全不同！这就是雪崩效应。');
-console.log('');
+const slightlyDifferent = 'hello, node.js crypto.';  // 定义常量 slightlyDifferent
+const sha256Changed = crypto.createHash('sha256').update(slightlyDifferent).digest('hex');  // 定义常量 sha256Changed
+console.log('仅修改一个字符 (! → .):');  // 打印日志到 stdout
+console.log('原哈希:', sha256Hash);  // 打印日志到 stdout
+console.log('改后哈希:', sha256Changed);  // 打印日志到 stdout
+console.log('完全不同！这就是雪崩效应。');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // 多次update拼接等价
-const hash1 = crypto.createHash('sha256').update('hello').update(' world').digest('hex');
-const hash2 = crypto.createHash('sha256').update('hello world').digest('hex');
-console.log('多次update拼接结果一致:', hash1 === hash2);
-console.log('');
+const hash1 = crypto.createHash('sha256').update('hello').update(' world').digest('hex');  // 定义常量 hash1
+const hash2 = crypto.createHash('sha256').update('hello world').digest('hex');  // 定义常量 hash2
+console.log('多次update拼接结果一致:', hash1 === hash2);  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 2. HMAC 消息认证码 ==========
-console.log('===== 2. HMAC 消息认证码 =====\\n');
+console.log('===== 2. HMAC 消息认证码 =====\\n');  // 打印日志到 stdout
 
-const secret = 'my-secret-key-2024';
-const message = 'user=alice&amount=100';
+const secret = 'my-secret-key-2024';  // 定义常量 secret
+const message = 'user=alice&amount=100';  // 定义常量 message
 
-const hmac = crypto.createHmac('sha256', secret).update(message).digest('hex');
-console.log('消息:', message);
-console.log('密钥:', secret);
-console.log('HMAC-SHA256:', hmac);
-console.log('');
+const hmac = crypto.createHmac('sha256', secret).update(message).digest('hex');  // 定义常量 hmac
+console.log('消息:', message);  // 打印日志到 stdout
+console.log('密钥:', secret);  // 打印日志到 stdout
+console.log('HMAC-SHA256:', hmac);  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // 验证：用相同密钥重新计算
-const tamperedMessage = 'user=alice&amount=999';
-const hmacTampered = crypto.createHmac('sha256', secret).update(tamperedMessage).digest('hex');
-console.log('被篡改消息的HMAC:', hmacTampered);
-console.log('HMAC一致吗？', hmac === hmacTampered, '(不一致说明被篡改了)');
-console.log('没有密钥就算知道算法也伪造不了HMAC');
-console.log('');
+const tamperedMessage = 'user=alice&amount=999';  // 定义常量 tamperedMessage
+const hmacTampered = crypto.createHmac('sha256', secret).update(tamperedMessage).digest('hex');  // 定义常量 hmacTampered
+console.log('被篡改消息的HMAC:', hmacTampered);  // 打印日志到 stdout
+console.log('HMAC一致吗？', hmac === hmacTampered, '(不一致说明被篡改了)');  // 打印日志到 stdout
+console.log('没有密钥就算知道算法也伪造不了HMAC');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 3. 随机数生成 ==========
-console.log('===== 3. 密码学安全随机数 =====\\n');
+console.log('===== 3. 密码学安全随机数 =====\\n');  // 打印日志到 stdout
 
-const randomKey = crypto.randomBytes(32);
-console.log('32字节(256位)随机密钥(hex):', randomKey.toString('hex'));
-console.log('16字节随机salt(hex):', crypto.randomBytes(16).toString('hex'));
-console.log('');
+const randomKey = crypto.randomBytes(32);  // 定义常量 randomKey
+console.log('32字节(256位)随机密钥(hex):', randomKey.toString('hex'));  // 打印日志到 stdout
+console.log('16字节随机salt(hex):', crypto.randomBytes(16).toString('hex'));  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
-const uuid1 = crypto.randomUUID();
-const uuid2 = crypto.randomUUID();
-console.log('UUID 1:', uuid1);
-console.log('UUID 2:', uuid2);
-console.log('UUID格式: 8-4-4-4-12 hex字符，第4段开头是4(版本4随机UUID)');
-console.log('');
+const uuid1 = crypto.randomUUID();  // 定义常量 uuid1
+const uuid2 = crypto.randomUUID();  // 定义常量 uuid2
+console.log('UUID 1:', uuid1);  // 打印日志到 stdout
+console.log('UUID 2:', uuid2);  // 打印日志到 stdout
+console.log('UUID格式: 8-4-4-4-12 hex字符，第4段开头是4(版本4随机UUID)');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 4. 加盐哈希密码（用pbkdf2演示） ==========
-console.log('===== 4. 加盐哈希密码存储演示 =====\\n');
+console.log('===== 4. 加盐哈希密码存储演示 =====\\n');  // 打印日志到 stdout
 
-function hashPassword(password, salt) {
-  return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512');
+function hashPassword(password, salt) {  // 声明函数 hashPassword
+  return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512');  // 返回值
 }
 
-function registerUser(username, password) {
-  const salt = crypto.randomBytes(16).toString('hex');
-  const hash = hashPassword(password, salt);
-  console.log(\`注册用户: \${username}\`);
-  console.log(\`  salt: \${salt}\`);
-  console.log(\`  hash: \${hash.toString('hex')}\`);
-  return { username, salt, hash: hash.toString('hex') };
+function registerUser(username, password) {  // 声明函数 registerUser
+  const salt = crypto.randomBytes(16).toString('hex');  // 定义常量 salt
+  const hash = hashPassword(password, salt);  // 定义常量 hash
+  console.log(\`注册用户: \${username}\`);  // 打印日志到 stdout
+  console.log(\`  salt: \${salt}\`);  // 打印日志到 stdout
+  console.log(\`  hash: \${hash.toString('hex')}\`);  // 打印日志到 stdout
+  return { username, salt, hash: hash.toString('hex') };  // 返回值
 }
 
-function verifyPassword(user, passwordInput) {
-  const hash = hashPassword(passwordInput, user.salt);
-  const storedHash = Buffer.from(user.hash, 'hex');
-  return crypto.timingSafeEqual(hash, storedHash);
+function verifyPassword(user, passwordInput) {  // 声明函数 verifyPassword
+  const hash = hashPassword(passwordInput, user.salt);  // 定义常量 hash
+  const storedHash = Buffer.from(user.hash, 'hex');  // 定义常量 storedHash
+  return crypto.timingSafeEqual(hash, storedHash);  // 返回值
 }
 
-const user = registerUser('alice', 'MySecurePass123!');
-console.log('');
+const user = registerUser('alice', 'MySecurePass123!');  // 定义常量 user
+console.log('');  // 打印日志到 stdout
 
-console.log('正确密码验证结果:', verifyPassword(user, 'MySecurePass123!'));
-console.log('错误密码验证结果:', verifyPassword(user, 'wrongpassword'));
-console.log('');
-console.log('要点：1. 每个用户独立salt  2. 慢哈希(多次迭代)  3. timingSafeEqual比对');
-console.log('生产推荐：crypto.scrypt() 或 bcrypt/Argon2');
-console.log('');
+console.log('正确密码验证结果:', verifyPassword(user, 'MySecurePass123!'));  // 打印日志到 stdout
+console.log('错误密码验证结果:', verifyPassword(user, 'wrongpassword'));  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
+console.log('要点：1. 每个用户独立salt  2. 慢哈希(多次迭代)  3. timingSafeEqual比对');  // 打印日志到 stdout
+console.log('生产推荐：crypto.scrypt() 或 bcrypt/Argon2');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
 // ========== 5. AES-256-GCM 对称加密 ==========
-console.log('===== 5. AES-256-GCM 对称加密演示 =====\\n');
+console.log('===== 5. AES-256-GCM 对称加密演示 =====\\n');  // 打印日志到 stdout
 
-function aesEncrypt(plaintext, key) {
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-  const authTag = cipher.getAuthTag();
-  return { iv: iv.toString('hex'), data: encrypted.toString('hex'), tag: authTag.toString('hex') };
+function aesEncrypt(plaintext, key) {  // 声明函数 aesEncrypt
+  const iv = crypto.randomBytes(12);  // 定义常量 iv
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);  // 定义常量 cipher
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);  // 定义常量 encrypted
+  const authTag = cipher.getAuthTag();  // 定义常量 authTag
+  return { iv: iv.toString('hex'), data: encrypted.toString('hex'), tag: authTag.toString('hex') };  // 返回值
 }
 
-function aesDecrypt(encrypted, key) {
-  const iv = Buffer.from(encrypted.iv, 'hex');
-  const data = Buffer.from(encrypted.data, 'hex');
-  const tag = Buffer.from(encrypted.tag, 'hex');
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+function aesDecrypt(encrypted, key) {  // 声明函数 aesDecrypt
+  const iv = Buffer.from(encrypted.iv, 'hex');  // 定义常量 iv
+  const data = Buffer.from(encrypted.data, 'hex');  // 定义常量 data
+  const tag = Buffer.from(encrypted.tag, 'hex');  // 定义常量 tag
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);  // 定义常量 decipher
   decipher.setAuthTag(tag);
-  return Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8');
+  return Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8');  // 返回值
 }
 
-const aesKey = crypto.randomBytes(32);
-const secretMessage = '这是一条需要加密的机密消息，传输过程中不能被窃取或篡改。';
-console.log('原文:', secretMessage);
-console.log('');
+const aesKey = crypto.randomBytes(32);  // 定义常量 aesKey
+const secretMessage = '这是一条需要加密的机密消息，传输过程中不能被窃取或篡改。';  // 定义常量 secretMessage
+console.log('原文:', secretMessage);  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
-const encrypted = aesEncrypt(secretMessage, aesKey);
-console.log('加密结果:');
-console.log('  IV:', encrypted.iv);
-console.log('  认证标签:', encrypted.tag);
-console.log('  密文预览:', encrypted.data.slice(0, 60) + '...');
-console.log('');
+const encrypted = aesEncrypt(secretMessage, aesKey);  // 定义常量 encrypted
+console.log('加密结果:');  // 打印日志到 stdout
+console.log('  IV:', encrypted.iv);  // 打印日志到 stdout
+console.log('  认证标签:', encrypted.tag);  // 打印日志到 stdout
+console.log('  密文预览:', encrypted.data.slice(0, 60) + '...');  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
-const decrypted = aesDecrypt(encrypted, aesKey);
-console.log('解密结果:', decrypted);
-console.log('解密成功:', decrypted === secretMessage);
-console.log('');
+const decrypted = aesDecrypt(encrypted, aesKey);  // 定义常量 decrypted
+console.log('解密结果:', decrypted);  // 打印日志到 stdout
+console.log('解密成功:', decrypted === secretMessage);  // 打印日志到 stdout
+console.log('');  // 打印日志到 stdout
 
-const tampered = { ...encrypted, data: encrypted.data.slice(0, -2) + '00' };
-try {
+const tampered = { ...encrypted, data: encrypted.data.slice(0, -2) + '00' };  // 定义对象 tampered
+try {  // 开启 try 块捕获异常
   aesDecrypt(tampered, aesKey);
 } catch(e) {
-  console.log('篡改密文后解密失败：GCM认证检测到篡改！');
+  console.log('篡改密文后解密失败：GCM认证检测到篡改！');  // 打印日志到 stdout
 }
-console.log('');
+console.log('');  // 打印日志到 stdout
 
-console.log('===== 总结 =====');
-console.log('1. 哈希：createHash(算法).update(data).digest(编码)');
-console.log('2. HMAC：带密钥的哈希，防篡改');
-console.log('3. 随机数用randomBytes/randomUUID，不要用Math.random()');
-console.log('4. 密码：加盐salt + 慢哈希 + timingSafeEqual');
-console.log('5. 对称加密推荐AES-256-GCM（认证加密）');
-console.log('6. 不要自己发明加密算法！用标准方案');
+console.log('===== 总结 =====');  // 打印日志到 stdout
+console.log('1. 哈希：createHash(算法).update(data).digest(编码)');  // 打印日志到 stdout
+console.log('2. HMAC：带密钥的哈希，防篡改');  // 打印日志到 stdout
+console.log('3. 随机数用randomBytes/randomUUID，不要用Math.random()');  // 打印日志到 stdout
+console.log('4. 密码：加盐salt + 慢哈希 + timingSafeEqual');  // 打印日志到 stdout
+console.log('5. 对称加密推荐AES-256-GCM（认证加密）');  // 打印日志到 stdout
+console.log('6. 不要自己发明加密算法！用标准方案');  // 打印日志到 stdout
 `
   },
   {

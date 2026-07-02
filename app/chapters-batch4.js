@@ -71,15 +71,15 @@ Node.js 中事件名通常使用 **camelCase** 命名。不要使用大写字母
 **error 事件是 EventEmitter 中最特殊的**：如果触发 \`'error'\` 事件但没有监听器，Node.js 会**抛出错误并终止进程**。这是 Node.js 中处理错误的核心模式。
 
 \`\`\`javascript
-const EventEmitter = require("events");
-const emitter = new EventEmitter();
+const EventEmitter = require("events");  // 导入模块 events；require 返回 module.exports
+const emitter = new EventEmitter();  // 创建实例 emitter
 
 // 如果没有监听 error 事件，emit 会抛出异常！
 emitter.emit("error", new Error("致命错误")); // 进程崩溃！
 
 // 正确做法：始终监听 error 事件
 emitter.on("error", (err) => {
-  console.error("捕获到错误:", err.message);
+  console.error("捕获到错误:", err.message);  // 打印错误到 stderr
 });
 \`\`\`
 
@@ -671,7 +671,7 @@ const data = fs.readFileSync("bigfile.mp4"); // 可能 1GB+
 res.end(data); // 内存爆炸！
 
 // ✅ 正确做法：流式传输
-fs.createReadStream("bigfile.mp4").pipe(res);
+fs.createReadStream("bigfile.mp4").pipe(res);  // 创建可读流（分块读取大文件）
 // 内存占用极低，恒定在 64KB 左右
 \`\`\`
 
@@ -1110,7 +1110,7 @@ const data = fs.readFileSync("huge.log"); // 2GB 内存占用！
 // 在内存受限的服务器上会直接崩溃
 
 // ✅ 使用流：每次只读取一小块数据
-const stream = fs.createReadStream("huge.log");
+const stream = fs.createReadStream("huge.log");  // 文件操作结果 stream
 stream.on("data", (chunk) => {
   // 每次只处理 64KB，内存占用恒定为 64KB
   processChunk(chunk);
@@ -1137,7 +1137,7 @@ Node.js 的流分为四种类型：
 readable.pipe(writable);
 
 // 可以链式连接多个流
-fs.createReadStream("input.txt")
+fs.createReadStream("input.txt")  // 创建可读流（分块读取大文件）
   .pipe(zlib.createGzip())    // 压缩
   .pipe(fs.createWriteStream("output.txt.gz"));  // 写入
 \`\`\`
@@ -1188,8 +1188,8 @@ readable.on("data", (chunk) => { ... });
 // 暂停模式：手动 read()
 readable.on("readable", () => {
   let chunk;
-  while ((chunk = readable.read()) !== null) {
-    console.log(chunk);
+  while ((chunk = readable.read()) !== null) {  // while 循环
+    console.log(chunk);  // 打印日志到 stdout
   }
 });
 \`\`\`
@@ -1415,14 +1415,14 @@ console.log("\\n✅ Stream 流基础演示完成！");`,
 Transform 流是 Duplex 流的特例，它的输出由输入经过某种转换而来。它同时实现了 Readable 和 Writable 的接口。
 
 \`\`\`javascript
-const { Transform } = require("stream");
+const { Transform } = require("stream");  // 导入模块 stream；require 返回 module.exports
 
-const upperCaseTransform = new Transform({
+const upperCaseTransform = new Transform({  // 创建实例 upperCaseTransform
   transform(chunk, encoding, callback) {
     // chunk：输入的数据块
     // encoding：编码格式
     // callback：转换完成后调用
-    const upper = chunk.toString().toUpperCase();
+    const upper = chunk.toString().toUpperCase();  // 定义常量 upper
     callback(null, upper); // 第一个参数是错误，第二个是转换后的数据
   },
 
@@ -1438,20 +1438,20 @@ const upperCaseTransform = new Transform({
 Node.js 10+ 提供了 \`stream.pipeline\` 和 \`util.promisify\` 的组合，可以优雅地处理流管道及其错误：
 
 \`\`\`javascript
-const { pipeline } = require("stream");
-const util = require("util");
-const pipelineAsync = util.promisify(pipeline);
+const { pipeline } = require("stream");  // 导入模块 stream；require 返回 module.exports
+const util = require("util");  // 导入模块 util；require 返回 module.exports
+const pipelineAsync = util.promisify(pipeline);  // 定义常量 pipelineAsync
 
 // 使用 pipeline 自动处理错误和清理
-try {
-  await pipelineAsync(
-    fs.createReadStream("input.txt"),
-    zlib.createGzip(),
-    fs.createWriteStream("output.txt.gz")
+try {  // 开启 try 块捕获异常
+  await pipelineAsync(  // 等待 Promise 完成后再继续
+    fs.createReadStream("input.txt"),  // 创建可读流（分块读取大文件）
+    zlib.createGzip(),  // 创建 Gzip 压缩流
+    fs.createWriteStream("output.txt.gz")  // 创建可写流（分块写入大文件）
   );
-  console.log("管道处理完成");
+  console.log("管道处理完成");  // 打印日志到 stdout
 } catch (err) {
-  console.error("管道处理失败:", err);
+  console.error("管道处理失败:", err);  // 打印错误到 stderr
 }
 \`\`\`
 
@@ -1471,11 +1471,11 @@ try {
 \`\`\`javascript
 // 文件复制：流式 vs 同步
 // 同步方式（内存占用大）
-const data = fs.readFileSync("large.iso");
-fs.writeFileSync("copy.iso", data);
+const data = fs.readFileSync("large.iso");  // 文件操作结果 data
+fs.writeFileSync("copy.iso", data);  // 同步写入文件
 
 // 流式方式（内存占用恒定）
-fs.createReadStream("large.iso").pipe(fs.createWriteStream("copy.iso"));
+fs.createReadStream("large.iso").pipe(fs.createWriteStream("copy.iso"));  // 创建可读流（分块读取大文件）
 \`\`\`
 
 ### 流的错误处理最佳实践
@@ -1493,7 +1493,7 @@ writable.on("error", handleError);
 
 // ✅ 推荐：pipeline 自动处理
 pipeline(readable, transform, writable, (err) => {
-  if (err) handleError(err);
+  if (err) handleError(err);  // 条件判断
 });
 \`\`\`
 
@@ -1790,11 +1790,11 @@ console.log("\\n✅ Stream 流进阶演示完成！");`,
 哈希（Hash）是将任意长度的数据映射为固定长度的摘要（Digest）。哈希是**单向**的，无法从摘要反推原始数据。
 
 \`\`\`javascript
-const crypto = require("crypto");
+const crypto = require("crypto");  // 导入模块 crypto；require 返回 module.exports
 
 // 创建哈希
-const hash = crypto.createHash("sha256");
-hash.update("Hello World");
+const hash = crypto.createHash("sha256");  // 定义常量 hash
+hash.update("Hello World");  // 更新哈希内容
 const digest = hash.digest("hex"); // 输出十六进制字符串
 // 结果：a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e
 \`\`\`
@@ -1819,9 +1819,9 @@ const digest = hash.digest("hex"); // 输出十六进制字符串
 HMAC（Hash-based Message Authentication Code）结合了哈希算法和密钥，不仅验证数据完整性，还验证发送者的身份。
 
 \`\`\`javascript
-const hmac = crypto.createHmac("sha256", "secret-key");
+const hmac = crypto.createHmac("sha256", "secret-key");  // 定义常量 hmac
 hmac.update("important data");
-const signature = hmac.digest("hex");
+const signature = hmac.digest("hex");  // 定义常量 signature
 \`\`\`
 
 ### 对称加密（AES）
@@ -1830,18 +1830,18 @@ const signature = hmac.digest("hex");
 
 \`\`\`javascript
 // AES-256-CBC 加密
-const algorithm = "aes-256-cbc";
+const algorithm = "aes-256-cbc";  // 定义常量 algorithm
 const key = crypto.randomBytes(32);  // 256 位密钥
 const iv = crypto.randomBytes(16);   // 初始化向量
 
 // 加密
-const cipher = crypto.createCipheriv(algorithm, key, iv);
-let encrypted = cipher.update("敏感数据", "utf8", "hex");
+const cipher = crypto.createCipheriv(algorithm, key, iv);  // 定义常量 cipher
+let encrypted = cipher.update("敏感数据", "utf8", "hex");  // 定义变量 encrypted（可变）
 encrypted += cipher.final("hex");
 
 // 解密
-const decipher = crypto.createDecipheriv(algorithm, key, iv);
-let decrypted = decipher.update(encrypted, "hex", "utf8");
+const decipher = crypto.createDecipheriv(algorithm, key, iv);  // 定义常量 decipher
+let decrypted = decipher.update(encrypted, "hex", "utf8");  // 定义变量 decrypted（可变）
 decrypted += decipher.final("utf8");
 \`\`\`
 
@@ -1851,8 +1851,8 @@ decrypted += decipher.final("utf8");
 
 \`\`\`javascript
 // PBKDF2 通过多次迭代增加计算成本
-crypto.pbkdf2("password", "salt", 100000, 64, "sha512", (err, derivedKey) => {
-  console.log(derivedKey.toString("hex"));
+crypto.pbkdf2("password", "salt", 100000, 64, "sha512", (err, derivedKey) => {  // PBKDF2 派生密钥
+  console.log(derivedKey.toString("hex"));  // 打印日志到 stdout
 });
 \`\`\`
 
@@ -1871,7 +1871,7 @@ Node.js 提供了密码学安全的随机数生成：
 const randomBytes = crypto.randomBytes(32); // 32 字节
 
 // 随机 UUID（v4）
-const uuid = crypto.randomUUID();
+const uuid = crypto.randomUUID();  // 定义常量 uuid
 // 结果类似：550e8400-e29b-41d4-a716-446655440000
 \`\`\`
 
@@ -2088,21 +2088,21 @@ Node.js 的 \`child_process\` 模块允许你在 Node.js 程序中**执行外部
 \`exec\` 执行 shell 命令，将整个输出缓冲在内存中，适用于**输出量小**的命令。
 
 \`\`\`javascript
-const { exec } = require("child_process");
+const { exec } = require("child_process");  // 导入模块 child_process；require 返回 module.exports
 
 // 异步执行
-exec("ls -la", (err, stdout, stderr) => {
-  if (err) {
-    console.error("执行失败:", err);
+exec("ls -la", (err, stdout, stderr) => {  // 执行 shell 命令（带回调）
+  if (err) {  // 条件判断
+    console.error("执行失败:", err);  // 打印错误到 stderr
     return;
   }
-  console.log("输出:", stdout);
+  console.log("输出:", stdout);  // 打印日志到 stdout
 });
 
 // 同步执行
-const { execSync } = require("child_process");
-const result = execSync("ls -la").toString();
-console.log(result);
+const { execSync } = require("child_process");  // 导入模块 child_process；require 返回 module.exports
+const result = execSync("ls -la").toString();  // 定义常量 result
+console.log(result);  // 打印日志到 stdout
 \`\`\`
 
 #### exec 的特点
@@ -2115,20 +2115,20 @@ console.log(result);
 \`spawn\` 以流的方式处理子进程的输出，适合**输出量大或长时间运行**的命令。
 
 \`\`\`javascript
-const { spawn } = require("child_process");
+const { spawn } = require("child_process");  // 导入模块 child_process；require 返回 module.exports
 
-const child = spawn("ls", ["-la", "/tmp"]);
+const child = spawn("ls", ["-la", "/tmp"]);  // 定义常量 child
 
 child.stdout.on("data", (data) => {
-  console.log("stdout:", data.toString());
+  console.log("stdout:", data.toString());  // 打印日志到 stdout
 });
 
 child.stderr.on("data", (data) => {
-  console.error("stderr:", data.toString());
+  console.error("stderr:", data.toString());  // 打印错误到 stderr
 });
 
 child.on("close", (code) => {
-  console.log("子进程退出，码:", code);
+  console.log("子进程退出，码:", code);  // 打印日志到 stdout
 });
 \`\`\`
 
@@ -2147,7 +2147,7 @@ child.on("close", (code) => {
 子进程默认继承父进程的环境变量，但也可以传递自定义环境变量：
 
 \`\`\`javascript
-execSync("echo $MY_VAR", {
+execSync("echo $MY_VAR", {  // 同步执行 shell 命令
   env: { ...process.env, MY_VAR: "hello" },
 });
 \`\`\`
@@ -2430,18 +2430,18 @@ console.log("\\n✅ 子进程基础演示完成！");`,
 
 \`\`\`javascript
 // 父进程
-const { fork } = require("child_process");
-const child = fork("./worker.js");
+const { fork } = require("child_process");  // 导入模块 child_process；require 返回 module.exports
+const child = fork("./worker.js");  // 定义常量 child
 
 child.on("message", (msg) => {
-  console.log("父进程收到:", msg);
+  console.log("父进程收到:", msg);  // 打印日志到 stdout
 });
 
 child.send({ task: "compute", data: [1, 2, 3] });
 
 // worker.js（子进程）
-process.on("message", (msg) => {
-  console.log("子进程收到:", msg);
+process.on("message", (msg) => {  // 注册进程级事件监听
+  console.log("子进程收到:", msg);  // 打印日志到 stdout
   // 处理任务...
   process.send({ result: "完成" });
 });
@@ -2469,10 +2469,10 @@ IPC（Inter-Process Communication）是操作系统提供的进程间通信机�
 进程池（Process Pool）是生产环境中的常见模式：预先创建一组工作进程，任务来了分配给空闲进程，避免频繁创建和销毁进程的开销。
 
 \`\`\`javascript
-class ProcessPool {
-  constructor(size, workerPath) {
+class ProcessPool {  // 定义类 ProcessPool
+  constructor(size, workerPath) {  // 构造函数
     this.pool = [];
-    for (let i = 0; i < size; i++) {
+    for (let i = 0; i < size; i++) {  // for 循环
       this.pool.push({
         worker: fork(workerPath),
         busy: false,
@@ -2482,13 +2482,13 @@ class ProcessPool {
 
   // 获取空闲进程
   acquire() {
-    return this.pool.find(w => !w.busy);
+    return this.pool.find(w => !w.busy);  // 返回值
   }
 
   // 释放进程
   release(worker) {
-    const w = this.pool.find(w => w.worker === worker);
-    if (w) w.busy = false;
+    const w = this.pool.find(w => w.worker === worker);  // 定义常量 w
+    if (w) w.busy = false;  // 条件判断
   }
 }
 \`\`\`
@@ -2501,8 +2501,8 @@ class ProcessPool {
 child.send({ type: "shutdown" });
 
 // 给子进程 5 秒时间清理
-setTimeout(() => {
-  if (!child.killed) {
+setTimeout(() => {  // 延时回调（宏任务，timers 阶段执行）
+  if (!child.killed) {  // 条件判断
     child.kill("SIGKILL"); // 强制终止
   }
 }, 5000);
@@ -2511,8 +2511,8 @@ setTimeout(() => {
 #### 异常重启
 \`\`\`javascript
 child.on("exit", (code, signal) => {
-  if (code !== 0 && signal !== "SIGTERM") {
-    console.log("子进程异常退出，重启中...");
+  if (code !== 0 && signal !== "SIGTERM") {  // 条件判断
+    console.log("子进程异常退出，重启中...");  // 打印日志到 stdout
     // 重启子进程
     child = fork("./worker.js");
   }

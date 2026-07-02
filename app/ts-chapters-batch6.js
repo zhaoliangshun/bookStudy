@@ -61,7 +61,7 @@ console.log("我能立即执行吗？");        // 也要等 500ms
 异步方式则把"等待"交给运行时，主线程立即继续执行后续代码，等操作完成后通过**回调**或 **Promise** 通知：
 
 \`\`\`js
-fetch("/api/user").then(data => console.log("用户数据:", data));
+fetch("/api/user").then(data => console.log("用户数据:", data));  // 箭头函数
 console.log("我立即执行！");  // 不等 fetch 完成
 \`\`\`
 
@@ -71,10 +71,10 @@ Promise 出现之前，异步操作用回调函数处理。多个依赖的异步
 
 \`\`\`js
 // 三层嵌套的回调地狱
-getUser(userId, function (user) {
-  getOrders(user.id, function (orders) {
-    getOrderDetail(orders[0].id, function (detail) {
-      console.log(detail);
+getUser(userId, function (user) {  // 调用 getUser
+  getOrders(user.id, function (orders) {  // 调用 getOrders
+    getOrderDetail(orders[0].id, function (detail) {  // 调用 getOrderDetail
+      console.log(detail);  // 控制台输出
     });
   });
 });
@@ -99,9 +99,9 @@ Promise 是一个代表"未来某个值"的对象。它有且仅有三种状态�
 用 \`new Promise(executor)\` 创建，executor 接收 \`resolve\` 和 \`reject\` 两个函数：
 
 \`\`\`ts
-const p = new Promise<string>((resolve, reject) => {
+const p = new Promise<string>((resolve, reject) => {  // 声明常量 p
   // 异步操作...
-  if (success) {
+  if (success) {  // 条件判断
     resolve("结果数据");  // pending → fulfilled
   } else {
     reject(new Error("失败原因"));  // pending → rejected
@@ -126,10 +126,10 @@ const p2 = Promise.reject(new Error("x")); // Promise<never>
 \`then\` 注册成功和失败的回调，**返回一个新的 Promise**，这是链式调用的基础：
 
 \`\`\`ts
-fetch("/api/user")
+fetch("/api/user")  // 调用 fetch
   .then(response => response.json())    // 返回新 Promise
   .then(user => user.name)              // 继续链式
-  .then(name => console.log(name))
+  .then(name => console.log(name))  // 箭头函数
   .catch(err => console.error(err));    // 捕获链中任何错误
 \`\`\`
 
@@ -142,7 +142,7 @@ then 回调的返回值有三种情况：
 3. **抛出异常**：新 Promise rejected。
 
 \`\`\`ts
-Promise.resolve(1)
+Promise.resolve(1)  // 调用 Promise.resolve
   .then(x => x + 1)            // 返回 2，新 Promise fulfilled(2)
   .then(x => Promise.resolve(x * 10))  // 返回 Promise，跟随 → fulfilled(20)
   .then(x => { throw new Error("boom"); })  // 抛异常，新 Promise rejected
@@ -154,7 +154,7 @@ Promise.resolve(1)
 \`catch(onRejected)\` 等价于 \`then(undefined, onRejected)\`。它捕获**链上所有**在它之前发生的错误。**重要**：catch 之后还能继续 then，因为 catch 也返回一个新 Promise：
 
 \`\`\`ts
-Promise.reject("err")
+Promise.reject("err")  // 调用 Promise.reject
   .catch(e => "恢复值")     // 捕获错误，返回"恢复值"
   .then(v => console.log(v));  // "恢复值"，因为 catch 后链恢复了
 \`\`\`
@@ -164,9 +164,9 @@ Promise.reject("err")
 \`finally(onFinally)\` 无论成功失败都会执行，回调不接收参数，且**不改变**链上的值/错误（透传）：
 
 \`\`\`ts
-fetch(url)
-  .then(r => r.json())
-  .catch(e => fallback)
+fetch(url)  // 调用 fetch
+  .then(r => r.json())  // 箭头函数
+  .catch(e => fallback)  // 箭头函数
   .finally(() => loading = false);  // 关闭加载动画，不影响结果
 \`\`\`
 
@@ -182,9 +182,9 @@ fetch(url)
 #### Promise.all —— 全部成功
 
 \`\`\`ts
-const [users, posts] = await Promise.all([
-  fetchUsers(),
-  fetchPosts()
+const [users, posts] = await Promise.all([  // 数组解构声明：从 await Promise.all([ 取 users, posts
+  fetchUsers(),  // 调用 fetchUsers
+  fetchPosts()  // 调用 fetchPosts
 ]);
 // 两个请求并发执行，全部成功后解构
 \`\`\`
@@ -194,10 +194,10 @@ const [users, posts] = await Promise.all([
 #### Promise.allSettled —— 全部完成（不管成败）
 
 \`\`\`ts
-const results = await Promise.allSettled([p1, p2, p3]);
-results.forEach(r => {
-  if (r.status === "fulfilled") console.log(r.value);
-  else console.log(r.reason);
+const results = await Promise.allSettled([p1, p2, p3]);  // 声明常量 results
+results.forEach(r => {  // 箭头函数
+  if (r.status === "fulfilled") console.log(r.value);  // 条件判断
+  else console.log(r.reason);  // 否则分支
 });
 \`\`\`
 
@@ -207,9 +207,9 @@ results.forEach(r => {
 
 \`\`\`ts
 // 超时控制：5 秒内没完成则超时
-const result = await Promise.race([
-  fetch(url),
-  new Promise((_, reject) => setTimeout(() => reject(new Error("超时")), 5000))
+const result = await Promise.race([  // 声明常量 result
+  fetch(url),  // 调用 fetch
+  new Promise((_, reject) => setTimeout(() => reject(new Error("超时")), 5000))  // 箭头函数（注意：定时器需及时清理）
 ]);
 \`\`\`
 
@@ -217,10 +217,10 @@ const result = await Promise.race([
 
 \`\`\`ts
 // 从多个镜像中获取第一个成功的响应
-const fastest = await Promise.any([
-  fetch(mirror1),
-  fetch(mirror2),
-  fetch(mirror3)
+const fastest = await Promise.any([  // 声明常量 fastest（注意：any 关闭了类型检查）
+  fetch(mirror1),  // 调用 fetch
+  fetch(mirror2),  // 调用 fetch
+  fetch(mirror3)  // 调用 fetch
 ]);
 \`\`\`
 
@@ -235,7 +235,7 @@ const fastest = await Promise.any([
 - \`await\` 只能在 async 函数内（或顶层 await，ES2022）。
 
 \`\`\`ts
-async function fetchUser(id: number): Promise<User> {
+async function fetchUser(id: number): Promise<User> {  // 定义函数 fetchUser，参数: id: number，返回 Promise<User>
   const response = await fetch("/api/user/" + id);  // 等待请求
   const user = await response.json();                // 等待解析
   return user;  // 返回值自动包成 Promise<User>
@@ -261,13 +261,13 @@ async function f3() { throw new Error("x"); }   // Promise<never>
 用 \`try/catch\` 包裹 await 来捕获错误：
 
 \`\`\`ts
-async function load() {
-  try {
-    const data = await fetch(url);
-    return data;
+async function load() {  // 定义函数 load
+  try {  // 异常捕获
+    const data = await fetch(url);  // 声明常量 data
+    return data;  // 返回 data
   } catch (e) {
-    console.error("加载失败:", e);
-    return null;
+    console.error("加载失败:", e);  // 控制台输出
+    return null;  // 返回 null
   }
 }
 \`\`\`
@@ -281,12 +281,12 @@ async function load() {
 
 \`\`\`ts
 // 串行：3 个各 1 秒，总 3 秒
-for (const url of urls) {
-  await fetch(url);
+for (const url of urls) {  // 循环
+  await fetch(url);  // 等待 Promise 完成
 }
 
 // 并发：3 个同时发，总约 1 秒
-await Promise.all(urls.map(url => fetch(url)));
+await Promise.all(urls.map(url => fetch(url)));  // 箭头函数
 \`\`\`
 
 **陷阱**：在 for 循环里用 await 会变成串行！要并发用 \`Promise.all + map\`。但如果任务太多（如 10000 个请求），需要**并发限制器**控制同时进行的数量，避免压垮服务器。
@@ -296,8 +296,8 @@ await Promise.all(urls.map(url => fetch(url)));
 普通迭代器返回 \`{value, done}\`，异步迭代器返回 \`Promise<{value, done}>\`。用 \`Symbol.asyncIterator\` 定义，用 \`for await...of\` 消费：
 
 \`\`\`ts
-async function* asyncRange(start: number, end: number) {
-  for (let i = start; i < end; i++) {
+async function* asyncRange(start: number, end: number) {  // 定义异步函数 asyncRange
+  for (let i = start; i < end; i++) {  // 循环
     await delay(100);  // 每次产出前等待
     yield i;
   }
@@ -315,11 +315,11 @@ for await (const num of asyncRange(1, 4)) {
 ES2015 的 Promise **无法取消**——一旦发起就无法中止。AbortController（Web API，Node.js 也支持）提供了取消信号机制：
 
 \`\`\`ts
-const controller = new AbortController();
-const signal = controller.signal;
+const controller = new AbortController();  // 声明常量 controller
+const signal = controller.signal;  // 声明常量 signal
 
 // 5 秒后取消
-setTimeout(() => controller.abort(), 5000);
+setTimeout(() => controller.abort(), 5000);  // 箭头函数（注意：定时器需及时清理）
 
 // 把 signal 传给支持取消的 API
 await fetch(url, { signal });  // abort 后 fetch 抛 AbortError
@@ -328,10 +328,10 @@ await fetch(url, { signal });  // abort 后 fetch 抛 AbortError
 对于自定义 Promise，可以监听 signal 的 abort 事件来手动 reject：
 
 \`\`\`ts
-function fetchWithTimeout(url: string, ms: number) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  signal.addEventListener("abort", () => reject(new Error("超时")));
+function fetchWithTimeout(url: string, ms: number) {  // 定义函数 fetchWithTimeout，参数: url: string, ms: number
+  const controller = new AbortController();  // 声明常量 controller
+  const timer = setTimeout(() => controller.abort(), ms);  // 声明常量 timer（注意：定时器需及时清理）
+  signal.addEventListener("abort", () => reject(new Error("超时")));  // 箭头函数
   // ...
 }
 \`\`\`
@@ -342,13 +342,13 @@ function fetchWithTimeout(url: string, ms: number) {
 
 \`\`\`ts
 // 函数返回 Promise<T>
-function fetchUser(id: number): Promise<User> { ... }
+function fetchUser(id: number): Promise<User> { ... }  // 定义函数 fetchUser，参数: id: number，返回 Promise<User>
 
 // 变量类型
-const p: Promise<string> = fetchString();
+const p: Promise<string> = fetchString();  // 声明常量 p，类型 Promise<string>
 
 // 泛型参数指定 resolve 值类型
-new Promise<number>((resolve) => resolve(42));
+new Promise<number>((resolve) => resolve(42));  // 箭头函数
 \`\`\`
 
 #### async 函数返回类型
@@ -357,13 +357,13 @@ async 函数的返回类型**应该显式标注为 \`Promise<T>\`**，T 是实�
 
 \`\`\`ts
 // ✅ 推荐：显式标注
-async function getUser(id: number): Promise<User> {
-  return await db.findUser(id);
+async function getUser(id: number): Promise<User> {  // 定义函数 getUser，参数: id: number，返回 Promise<User>
+  return await db.findUser(id);  // 返回 await db.findUser(id)
 }
 
 // ❌ 不推荐：让推断决定（实现变化时返回类型可能悄悄变）
-async function getUser(id: number) {
-  return await db.findUser(id);
+async function getUser(id: number) {  // 定义函数 getUser，参数: id: number
+  return await db.findUser(id);  // 返回 await db.findUser(id)
 }
 \`\`\`
 
@@ -374,7 +374,7 @@ async function getUser(id: number) {
 - \`await promise\` 的类型是 promise 的泛型参数 T
 
 \`\`\`ts
-const p1: Promise<number> = Promise.resolve(42);
+const p1: Promise<number> = Promise.resolve(42);  // 声明常量 p1，类型 Promise<number>
 const n: number = await p1;  // await Promise<number> → number
 \`\`\`
 
@@ -735,11 +735,11 @@ console.log("\\n异步编程章节演示完成！");`,
 一个对象要成为"可迭代的"（iterable），必须实现 **可迭代协议**：在 \`[Symbol.iterator]\` 方法中返回一个迭代器。
 
 \`\`\`ts
-const myIterable = {
+const myIterable = {  // 声明常量 myIterable
   [Symbol.iterator]() {
-    return {
-      next() {
-        return { value: 42, done: false };
+    return {  // 返回 {
+      next() {  // 调用 next
+        return { value: 42, done: false };  // 返回 { value: 42, done: false }
       }
     };
   }
@@ -755,8 +755,8 @@ for (const x of myIterable) { ... }  // 现在可以用 for...of
 迭代器是一个对象，实现 **迭代器协议**：拥有 \`next()\` 方法，返回 \`{ value, done }\`：
 
 \`\`\`ts
-interface Iterator<T> {
-  next(): { value: T; done: boolean };
+interface Iterator<T> {  // 定义接口 Iterator，泛型参数 T
+  next(): { value: T; done: boolean };  // 方法声明 next()，返回 
   return?(value?: any): { value: any; done: true };  // 可选：提前终止
   throw?(e?: any): { value: any; done: true };       // 可选：向生成器抛错
 }
@@ -770,16 +770,16 @@ interface Iterator<T> {
 #### 手写迭代器示例
 
 \`\`\`ts
-function makeRangeIterator(start: number, end: number, step: number = 1) {
-  let current = start;
-  return {
-    next() {
-      if (current < end) {
-        const value = current;
+function makeRangeIterator(start: number, end: number, step: number = 1) {  // 定义函数 makeRangeIterator，参数: start: number, end: number, step: number = 1
+  let current = start;  // 声明变量 current
+  return {  // 返回 {
+    next() {  // 调用 next
+      if (current < end) {  // 条件判断
+        const value = current;  // 声明常量 value
         current += step;
-        return { value, done: false };
+        return { value, done: false };  // 返回 { value, done: false }
       }
-      return { value: undefined, done: true };
+      return { value: undefined, done: true };  // 返回 { value: undefined, done: true }
     }
   };
 }
@@ -793,7 +793,7 @@ function makeRangeIterator(start: number, end: number, step: number = 1) {
 
 \`\`\`ts
 function* range(start: number, end: number, step: number = 1) {
-  for (let i = start; i < end; i += step) {
+  for (let i = start; i < end; i += step) {  // 循环
     yield i;  // 产出值，暂停执行
   }
 }
@@ -816,9 +816,9 @@ gen.next();  // { value: undefined, done: true }
 \`\`\`ts
 function* dialog() {
   const name = yield "你叫什么？";   // 产出问题，接收回答
-  return "你好，" + name;
+  return "你好，" + name;  // 返回 "你好，" + name
 }
-const g = dialog();
+const g = dialog();  // 声明常量 g
 g.next();          // { value: "你叫什么？", done: false }
 g.next("张三");    // 把"张三"作为 yield 的返回值 → { value: "你好，张三", done: true }
 \`\`\`
@@ -855,11 +855,11 @@ function* outer() {
 | **顺序** | 按迭代器定义 | 不保证顺序（整数键升序，其余按添加顺序） |
 
 \`\`\`ts
-const arr = ["a", "b", "c"];
+const arr = ["a", "b", "c"];  // 声明常量 arr
 for (const v of arr) console.log(v);   // a, b, c（值）
 for (const k in arr) console.log(k);   // 0, 1, 2（索引字符串）
 
-const obj = { x: 1, y: 2 };
+const obj = { x: 1, y: 2 };  // 声明常量 obj
 for (const v of obj) { }  // ❌ TypeError: obj 不是 iterable
 for (const k in obj) console.log(k);  // x, y（键）
 \`\`\`
@@ -877,7 +877,7 @@ for (const k in obj) console.log(k);  // x, y（键）
 - **NodeList**：DOM 节点列表（浏览器环境）。
 
 \`\`\`ts
-for (const [k, v] of new Map([["a", 1], ["b", 2]])) console.log(k, v);
+for (const [k, v] of new Map([["a", 1], ["b", 2]])) console.log(k, v);  // 循环
 for (const ch of "hello") console.log(ch);  // h, e, l, l, o
 \`\`\`
 
@@ -886,14 +886,14 @@ for (const ch of "hello") console.log(ch);  // h, e, l, l, o
 让自定义对象支持 for...of，实现 \`[Symbol.iterator]\` 即可：
 
 \`\`\`ts
-class Range {
-  constructor(public start: number, public end: number) {}
+class Range {  // 定义类 Range
+  constructor(public start: number, public end: number) {}  // 调用 constructor
   [Symbol.iterator]() {
-    let current = this.start;
-    const end = this.end;
-    return {
-      next() {
-        return current < end
+    let current = this.start;  // 声明变量 current
+    const end = this.end;  // 声明常量 end
+    return {  // 返回 {
+      next() {  // 调用 next
+        return current < end  // 返回 current < end
           ? { value: current++, done: false }
           : { value: undefined, done: true };
       }
@@ -910,14 +910,14 @@ for (const n of new Range(1, 5)) console.log(n);  // 1, 2, 3, 4
 
 \`\`\`ts
 function* fibonacci() {
-  let a = 0, b = 1;
+  let a = 0, b = 1;  // 声明变量 a
   while (true) {     // 无限循环！但不会卡死，因为每次只产出一个
     yield a;
     [a, b] = [b, a + b];
   }
 }
 
-const fib = fibonacci();
+const fib = fibonacci();  // 声明常量 fib
 fib.next();  // 0
 fib.next();  // 1
 fib.next();  // 1
@@ -929,9 +929,9 @@ fib.next();  // 2
 
 \`\`\`ts
 function* take<T>(n: number, iterable: Iterable<T>) {
-  let i = 0;
-  for (const x of iterable) {
-    if (i++ >= n) break;
+  let i = 0;  // 声明变量 i
+  for (const x of iterable) {  // 循环
+    if (i++ >= n) break;  // 条件判断
     yield x;
   }
 }
@@ -944,9 +944,9 @@ for (const n of take(10, fibonacci())) console.log(n);  // 前 10 个斐波那�
 普通迭代器同步产出值。异步迭代器（用 \`Symbol.asyncIterator\`）产出 \`Promise\`，用 \`for await...of\` 消费：
 
 \`\`\`ts
-async function* asyncLines() {
-  const lines = ["第一行", "第二行", "第三行"];
-  for (const line of lines) {
+async function* asyncLines() {  // 定义异步函数 asyncLines
+  const lines = ["第一行", "第二行", "第三行"];  // 声明常量 lines
+  for (const line of lines) {  // 循环
     await delay(100);  // 模拟异步读取
     yield line;
   }
@@ -967,22 +967,22 @@ for await (const line of asyncLines()) {
 function* taskA() {
   yield "A1";
   yield "A2";
-  return "A done";
+  return "A done";  // 返回 "A done"
 }
 function* taskB() {
   yield "B1";
   yield "B2";
-  return "B done";
+  return "B done";  // 返回 "B done"
 }
 // 调度器交替执行两个"协程"
 function* scheduler() {
-  const a = taskA();
-  const b = taskB();
-  let ra = a.next();
-  let rb = b.next();
-  while (!ra.done || !rb.done) {
-    if (!ra.done) { yield ra.value; ra = a.next(); }
-    if (!rb.done) { yield rb.value; rb = b.next(); }
+  const a = taskA();  // 声明常量 a
+  const b = taskB();  // 声明常量 b
+  let ra = a.next();  // 声明变量 ra
+  let rb = b.next();  // 声明变量 rb
+  while (!ra.done || !rb.done) {  // while 循环
+    if (!ra.done) { yield ra.value; ra = a.next(); }  // 条件判断
+    if (!rb.done) { yield rb.value; rb = b.next(); }  // 条件判断
   }
 }
 \`\`\`
@@ -993,14 +993,14 @@ TypeScript 提供了 \`Iterable<T>\`、\`Iterator<T>\`、\`IterableIterator<T>\`
 
 \`\`\`ts
 // Iterable<T>：有 [Symbol.iterator]() 方法
-interface Iterable<T> {
+interface Iterable<T> {  // 定义接口 Iterable，泛型参数 T
   [Symbol.iterator](): Iterator<T>;
 }
 // Iterator<T>：有 next() 方法
-interface Iterator<T> {
-  next(value?: any): IteratorResult<T>;
-  return?(value?: any): IteratorResult<T>;
-  throw?(e?: any): IteratorResult<T>;
+interface Iterator<T> {  // 定义接口 Iterator，泛型参数 T
+  next(value?: any): IteratorResult<T>;  // 方法声明 next(value?: any)，返回 IteratorResult<T>（注意：any 关闭了类型检查）
+  return?(value?: any): IteratorResult<T>;  // 注意：any 关闭了类型检查
+  throw?(e?: any): IteratorResult<T>;  // 注意：any 关闭了类型检查
 }
 // IteratorResult<T>：{ value: T; done: boolean }
 \`\`\`
@@ -1362,10 +1362,10 @@ JavaScript 中 this 的值由**调用方式**决定，有四条规则（按优�
 用 \`new\` 调用函数时，this 指向新创建的对象：
 
 \`\`\`ts
-function Person(name: string) {
+function Person(name: string) {  // 定义函数 Person，参数: name: string
   this.name = name;  // this 指向 new 出来的新对象
 }
-const p = new Person("张三");
+const p = new Person("张三");  // 声明常量 p
 console.log(p.name);  // "张三"
 \`\`\`
 
@@ -1376,14 +1376,14 @@ console.log(p.name);  // "张三"
 用 \`call\`、\`apply\`、\`bind\` 显式指定 this：
 
 \`\`\`ts
-function greet(greeting: string) {
-  console.log(greeting + ", " + this.name);
+function greet(greeting: string) {  // 定义函数 greet，参数: greeting: string
+  console.log(greeting + ", " + this.name);  // 控制台输出
 }
-const obj = { name: "张三" };
+const obj = { name: "张三" };  // 声明常量 obj
 greet.call(obj, "你好");    // this = obj，参数逐个传
 greet.apply(obj, ["你好"]);  // this = obj，参数以数组传
 const bound = greet.bind(obj);  // 返回 this 永久绑定为 obj 的新函数
-bound("你好");
+bound("你好");  // 调用 bound
 \`\`\`
 
 | 方法 | this | 参数 | 是否立即执行 |
@@ -1397,9 +1397,9 @@ bound("你好");
 函数作为对象的方法调用时，this 指向该对象：
 
 \`\`\`ts
-const obj = {
+const obj = {  // 声明常量 obj
   name: "张三",
-  greet() {
+  greet() {  // 调用 greet
     console.log(this.name);  // this = obj
   }
 };
@@ -1409,7 +1409,7 @@ obj.greet();  // "张三"
 **陷阱：隐式丢失**。如果把方法"取出来"裸调用，this 就丢了：
 
 \`\`\`ts
-const fn = obj.greet;
+const fn = obj.greet;  // 声明常量 fn
 fn();  // this 不再是 obj！严格模式下是 undefined，非严格是 window/global
 \`\`\`
 
@@ -1423,8 +1423,8 @@ fn();  // this 不再是 obj！严格模式下是 undefined，非严格是 windo
 - **非严格模式**：全局对象（浏览器 \`window\`，Node \`global\`）
 
 \`\`\`ts
-function show() {
-  console.log(this);
+function show() {  // 定义函数 show
+  console.log(this);  // 控制台输出
 }
 show();  // 严格模式：undefined；非严格：global/window
 \`\`\`
@@ -1438,17 +1438,17 @@ show();  // 严格模式：undefined；非严格：global/window
 箭头函数**没有自己的 this**，它继承定义时外层的 this（词法作用域）。这是箭头函数最重要的特性，也是解决 this 丢失的利器：
 
 \`\`\`ts
-const obj = {
+const obj = {  // 声明常量 obj
   name: "张三",
   // 普通方法：this 动态绑定
-  regular() {
-    setTimeout(function () {
+  regular() {  // 调用 regular
+    setTimeout(function () {  // 调用 setTimeout（注意：定时器需及时清理）
       console.log(this.name);  // ❌ this 是 window/undefined（回调丢失）
     }, 100);
   },
   // 箭头方法：this 继承外层（即 regular 的 this = obj）
-  arrow() {
-    setTimeout(() => {
+  arrow() {  // 调用 arrow
+    setTimeout(() => {  // 箭头函数（注意：定时器需及时清理）
       console.log(this.name);  // ✅ "张三"（箭头继承 arrow 的 this）
     }, 100);
   }
@@ -1460,7 +1460,7 @@ const obj = {
 箭头函数的 this 在**定义时**就固定了，后续 call/apply/bind **无法改变**它的 this：
 
 \`\`\`ts
-const arrow = () => console.log(this);
+const arrow = () => console.log(this);  // 声明常量 arrow
 arrow.call({ x: 1 });  // this 不变，仍是定义时的外层 this
 \`\`\`
 
@@ -1479,19 +1479,19 @@ arrow.call({ x: 1 });  // this 不变，仍是定义时的外层 this
 TypeScript 允许在函数参数列表**第一个位置**声明 \`this\` 参数，约束调用时 this 的类型。这个参数是**编译期的**，运行时不存在（被擦除）：
 
 \`\`\`ts
-interface Box {
+interface Box {  // 定义接口 Box
   value: number;
   show(this: Box): void;  // 约束 show 调用时 this 必须是 Box
 }
 
-const box: Box = {
+const box: Box = {  // 声明常量 box，类型 Box
   value: 42,
-  show(this: Box) {
+  show(this: Box) {  // 调用 show
     console.log(this.value);  // this 类型是 Box，有 value 属性
   }
 };
 box.show();  // ✅
-const fn = box.show;
+const fn = box.show;  // 声明常量 fn
 fn();  // ❌ 类型错误：this 不是 Box
 \`\`\`
 
@@ -1502,18 +1502,18 @@ this 参数注解能在**编译期**捕获 this 丢失问题，而不用等到�
 \`ThisType<T>\` 是一个特殊的工具类型，用于标注对象字面量中方法的 this 类型。需要 \`noImplicitThis\` 或严格模式开启：
 
 \`\`\`ts
-interface Counter {
+interface Counter {  // 定义接口 Counter
   count: number;
-  increment(): void;
-  decrement(): void;
+  increment(): void;  // 方法声明 increment()，返回 void
+  decrement(): void;  // 方法声明 decrement()，返回 void
 }
 
-const counter: Counter & ThisType<Counter> = {
+const counter: Counter & ThisType<Counter> = {  // 声明常量 counter，类型 Counter & ThisType<Counter>
   count: 0,
-  increment() {
+  increment() {  // 调用 increment
     this.count++;  // this 类型是 Counter
   },
-  decrement() {
+  decrement() {  // 调用 decrement
     this.count--;
   }
 };
@@ -1526,22 +1526,22 @@ const counter: Counter & ThisType<Counter> = {
 TypeScript 对 call/apply/bind 的类型有完整支持，能正确推断返回值和 this 类型：
 
 \`\`\`ts
-function greet(this: Person, greeting: string): string {
-  return greeting + ", " + this.name;
+function greet(this: Person, greeting: string): string {  // 定义函数 greet，参数: this: Person, greeting: string，返回 string
+  return greeting + ", " + this.name;  // 返回 greeting + ", " + this.name
 }
 
 // call：this + 逐个参数
 greet.call({ name: "张三" }, "你好");  // 返回 string
 
 // apply：this + 参数数组
-greet.apply({ name: "李四" }, ["你好"]);
+greet.apply({ name: "李四" }, ["你好"]);  // 调用 greet.apply
 
 // bind：返回新函数，this 固定，可预置参数（偏应用）
-const bound = greet.bind({ name: "王五" });
+const bound = greet.bind({ name: "王五" });  // 声明常量 bound
 bound("你好");  // "你好, 王五"
 
 // bind 预置参数（柯里化）
-const sayHi = greet.bind({ name: "赵六" }, "你好");
+const sayHi = greet.bind({ name: "赵六" }, "你好");  // 声明常量 sayHi
 sayHi();  // "你好, 赵六"
 \`\`\`
 
@@ -1550,13 +1550,13 @@ sayHi();  // "你好, 赵六"
 #### 场景 1：回调丢失
 
 \`\`\`ts
-class Timer {
+class Timer {  // 定义类 Timer
   private count = 0;
-  start() {
+  start() {  // 调用 start
     // ❌ 普通回调：this 丢失
-    setInterval(function () { this.count++; }, 1000);
+    setInterval(function () { this.count++; }, 1000);  // 调用 setInterval（注意：定时器需及时清理）
     // ✅ 箭头函数：捕获 this
-    setInterval(() => { this.count++; }, 1000);
+    setInterval(() => { this.count++; }, 1000);  // 箭头函数（注意：定时器需及时清理）
   }
 }
 \`\`\`
@@ -1564,28 +1564,28 @@ class Timer {
 #### 场景 2：解构/赋值丢失
 
 \`\`\`ts
-const obj = { name: "张三", greet() { return this.name; } };
-const fn = obj.greet;
+const obj = { name: "张三", greet() { return this.name; } };  // 声明常量 obj
+const fn = obj.greet;  // 声明常量 fn
 fn();  // ❌ this 丢失
 
 // 修复 1：bind
-const bound = obj.greet.bind(obj);
+const bound = obj.greet.bind(obj);  // 声明常量 bound
 bound();  // ✅
 
 // 修复 2：箭头包装
-const wrapped = () => obj.greet();
+const wrapped = () => obj.greet();  // 声明常量 wrapped
 wrapped();  // ✅
 \`\`\`
 
 #### 场景 3：事件处理器
 
 \`\`\`ts
-class Button {
-  constructor() {
+class Button {  // 定义类 Button
+  constructor() {  // 调用 constructor
     // ❌ this 丢失
-    element.addEventListener("click", this.onClick);
+    element.addEventListener("click", this.onClick);  // 调用 element.addEventListener
     // ✅ 箭头函数 / 构造函数中 bind
-    element.addEventListener("click", () => this.onClick());
+    element.addEventListener("click", () => this.onClick());  // 箭头函数
     this.onClick = this.onClick.bind(this);  // 构造函数中统一 bind
   }
 }
@@ -1596,11 +1596,11 @@ class Button {
 子类方法中的 this 指向子类实例（最底层实例）。父类方法如果调用 \`this.method()\`，会调用子类覆盖的版本（多态）：
 
 \`\`\`ts
-class Animal {
-  speak(): string { return this.sound(); }
-  sound(): string { return "..."; }
+class Animal {  // 定义类 Animal
+  speak(): string { return this.sound(); }  // 方法声明 speak()，返回 string
+  sound(): string { return "..."; }  // 方法声明 sound()，返回 string
 }
-class Dog extends Animal {
+class Dog extends Animal {  // 定义类 Dog，extends Animal
   sound(): string { return "汪汪"; }  // 覆盖
 }
 new Dog().speak();  // "汪汪"（this.sound() 调用 Dog 的版本）
@@ -1611,13 +1611,13 @@ new Dog().speak();  // "汪汪"（this.sound() 调用 Dog 的版本）
 getter/setter 中的 this 指向访问属性的对象实例：
 
 \`\`\`ts
-class Temperature {
-  constructor(private _celsius: number) {}
-  get fahrenheit(): number {
+class Temperature {  // 定义类 Temperature
+  constructor(private _celsius: number) {}  // 调用 constructor
+  get fahrenheit(): number {  // get 访问器 fahrenheit
     return this._celsius * 9 / 5 + 32;  // this 指向实例
   }
-  set fahrenheit(f: number) {
-    this._celsius = (f - 32) * 5 / 9;
+  set fahrenheit(f: number) {  // set 访问器 fahrenheit
+    this._celsius = (f - 32) * 5 / 9;  // 赋值 this._celsius
   }
 }
 \`\`\`
@@ -1974,16 +1974,16 @@ console.log("\\nthis 类型深入章节演示完成！");`,
 
 \`\`\`ts
 // 普通函数：一次接受所有参数
-function add(a: number, b: number, c: number): number {
-  return a + b + c;
+function add(a: number, b: number, c: number): number {  // 定义函数 add，参数: a: number, b: number, c: number，返回 number
+  return a + b + c;  // 返回 a + b + c
 }
 add(1, 2, 3);  // 6
 
 // 柯里化后：逐个接受参数
-function curriedAdd(a: number) {
-  return function (b: number) {
-    return function (c: number) {
-      return a + b + c;
+function curriedAdd(a: number) {  // 定义函数 curriedAdd，参数: a: number
+  return function (b: number) {  // 返回 function (b: number) {
+    return function (c: number) {  // 返回 function (c: number) {
+      return a + b + c;  // 返回 a + b + c
     };
   };
 }
@@ -1998,9 +1998,9 @@ curriedAdd(1)(2)(3);  // 6
 
 \`\`\`ts
 // 参数复用：固定 log 级别
-const log = (level: string) => (msg: string) => console.log("[" + level + "]", msg);
-const logInfo = log("INFO");
-const logError = log("ERROR");
+const log = (level: string) => (msg: string) => console.log("[" + level + "]", msg);  // 声明常量 log
+const logInfo = log("INFO");  // 声明常量 logInfo
+const logError = log("ERROR");  // 声明常量 logError
 logInfo("启动完成");    // [INFO] 启动完成
 logError("连接失败");   // [ERROR] 连接失败
 \`\`\`
@@ -2010,16 +2010,16 @@ logError("连接失败");   // [ERROR] 连接失败
 实现一个能自动柯里化任意函数的 \`curry\` 函数是经典面试题。关键是**递归**：如果参数够了就执行，否则返回一个继续收集参数的函数：
 
 \`\`\`ts
-function curry(fn: Function) {
-  return function curried(...args: any[]) {
-    if (args.length >= fn.length) {
+function curry(fn: Function) {  // 定义函数 curry，参数: fn: Function
+  return function curried(...args: any[]) {  // 返回 function curried(...args: any[]) {（注意：any 关闭了类型检查）
+    if (args.length >= fn.length) {  // 条件判断
       return fn(...args);  // 参数够了，执行
     }
     return (...more: any[]) => curried(...args, ...more);  // 继续收集
   };
 }
-const sum = (a: number, b: number, c: number) => a + b + c;
-const curriedSum = curry(sum);
+const sum = (a: number, b: number, c: number) => a + b + c;  // 声明常量 sum
+const curriedSum = curry(sum);  // 声明常量 curriedSum
 curriedSum(1)(2)(3);     // 6
 curriedSum(1, 2)(3);     // 6
 curriedSum(1)(2, 3);     // 6
@@ -2031,11 +2031,11 @@ curriedSum(1, 2, 3);     // 6
 偏应用是"**预先固定部分参数**，返回一个接受剩余参数的函数"。与柯里化的区别：柯里化每次只接受一个参数，偏应用可以一次固定多个：
 
 \`\`\`ts
-function partial<T, R>(fn: (...args: T[]) => R, ...preset: T[]) {
-  return (...rest: T[]) => fn(...preset, ...rest);
+function partial<T, R>(fn: (...args: T[]) => R, ...preset: T[]) {  // 定义函数 partial，泛型 T, R，参数: fn: (...args: T[]
+  return (...rest: T[]) => fn(...preset, ...rest);  // 返回 (...rest: T[]) => fn(...preset, ...rest)
 }
 
-const multiply = (a: number, b: number, c: number) => a * b * c;
+const multiply = (a: number, b: number, c: number) => a * b * c;  // 声明常量 multiply
 const doubleAndTriple = partial(multiply, 2, 3);  // 固定 a=2, b=3
 doubleAndTriple(4);  // 24
 \`\`\`
@@ -2054,10 +2054,10 @@ doubleAndTriple(4);  // 24
 函数组合是把多个函数"**串联**"成一个新函数，前一个的输出是后一个的输入：
 
 \`\`\`ts
-const compose = (f, g) => x => f(g(x));
+const compose = (f, g) => x => f(g(x));  // 声明常量 compose
 
-const addOne = (x: number) => x + 1;
-const double = (x: number) => x * 2;
+const addOne = (x: number) => x + 1;  // 声明常量 addOne
+const double = (x: number) => x * 2;  // 声明常量 double
 const addThenDouble = compose(double, addOne);  // double(addOne(x))
 addThenDouble(3);  // double(4) = 8
 \`\`\`
@@ -2066,12 +2066,12 @@ addThenDouble(3);  // double(4) = 8
 
 \`\`\`ts
 // 从右到左组合
-function compose(...fns: Function[]) {
-  return (x: any) => fns.reduceRight((acc, fn) => fn(acc), x);
+function compose(...fns: Function[]) {  // 定义函数 compose，参数: ...fns: Function[]
+  return (x: any) => fns.reduceRight((acc, fn) => fn(acc), x);  // 返回 (x: any) => fns.reduceRight((acc, fn) => fn(acc), x)（注意：any 关闭了类型检查）
 }
 // 从左到右组合（管道）
-function pipe(...fns: Function[]) {
-  return (x: any) => fns.reduce((acc, fn) => fn(acc), x);
+function pipe(...fns: Function[]) {  // 定义函数 pipe，参数: ...fns: Function[]
+  return (x: any) => fns.reduce((acc, fn) => fn(acc), x);  // 返回 (x: any) => fns.reduce((acc, fn) => fn(acc), x)（注意：any 关闭了类型检查）
 }
 
 const f = compose(double, addOne, x => x + 10);  // double(addOne(x+10))
@@ -2087,9 +2087,9 @@ f(0);  // double(addOne(10)) = double(11) = 22
 管道是组合的反方向版本（从左到右），更接近自然阅读顺序：
 
 \`\`\`ts
-const pipe = (...fns) => x => fns.reduce((v, f) => f(v), x);
+const pipe = (...fns) => x => fns.reduce((v, f) => f(v), x);  // 声明常量 pipe
 
-const pipeline = pipe(
+const pipeline = pipe(  // 声明常量 pipeline
   x => x + 1,      // 加 1
   x => x * 2,      // 乘 2
   x => x.toString  // 转字符串
@@ -2104,20 +2104,20 @@ JavaScript 有一个 **管道运算符提案** \`|>\`，能让管道写法更优
 记忆化是**缓存函数结果**，相同参数直接返回缓存值，避免重复计算。对纯函数（相同输入永远相同输出）特别有效：
 
 \`\`\`ts
-function memoize<T extends (...args: any[]) => any>(fn: T): T {
-  const cache = new Map<string, ReturnType<T>>();
-  return ((...args: any[]) => {
-    const key = JSON.stringify(args);
-    if (cache.has(key)) return cache.get(key);
-    const result = fn(...args);
-    cache.set(key, result);
-    return result;
-  }) as T;
+function memoize<T extends (...args: any[]) => any>(fn: T): T {  // 箭头函数（注意：any 关闭了类型检查）
+  const cache = new Map<string, ReturnType<T>>();  // 声明常量 cache
+  return ((...args: any[]) => {  // 返回 ((...args: any[]) => {（注意：any 关闭了类型检查）
+    const key = JSON.stringify(args);  // 声明常量 key
+    if (cache.has(key)) return cache.get(key);  // 条件判断
+    const result = fn(...args);  // 声明常量 result
+    cache.set(key, result);  // 调用 cache.set
+    return result;  // 返回 result
+  }) as T;  // 注意：类型断言会绕过类型检查
 }
 
-const slowFib = (n: number): number =>
+const slowFib = (n: number): number =>  // 声明常量 slowFib
   n < 2 ? n : slowFib(n - 1) + slowFib(n - 2);
-const memoFib = memoize(slowFib);
+const memoFib = memoize(slowFib);  // 声明常量 memoFib
 memoFib(40);  // 第一次慢，后续秒回
 \`\`\`
 
@@ -2133,17 +2133,17 @@ memoFib(40);  // 第一次慢，后续秒回
 防抖是"**等停止触发一段时间后才执行**"。适用于：搜索框输入、窗口 resize、按钮防连点：
 
 \`\`\`ts
-function debounce(fn: Function, delay: number) {
-  let timer: any = null;
-  return (...args: any[]) => {
+function debounce(fn: Function, delay: number) {  // 定义函数 debounce，参数: fn: Function, delay: number
+  let timer: any = null;  // 声明变量 timer，类型 any（注意：any 关闭了类型检查）
+  return (...args: any[]) => {  // 返回 (...args: any[]) => {（注意：any 关闭了类型检查）
     clearTimeout(timer);  // 每次触发都清掉前一个定时器
     timer = setTimeout(() => fn(...args), delay);  // 重新计时
   };
 }
 
 // 用户连续输入，只有停止 500ms 后才搜索
-const search = debounce(query => fetchResults(query), 500);
-input.addEventListener("input", e => search(e.target.value));
+const search = debounce(query => fetchResults(query), 500);  // 声明常量 search
+input.addEventListener("input", e => search(e.target.value));  // 箭头函数
 \`\`\`
 
 #### 防抖的变体
@@ -2156,20 +2156,20 @@ input.addEventListener("input", e => search(e.target.value));
 节流是"**固定时间间隔内最多执行一次**"。适用于：滚动事件、鼠标移动、拖拽：
 
 \`\`\`ts
-function throttle(fn: Function, interval: number) {
-  let lastTime = 0;
-  return (...args: any[]) => {
-    const now = Date.now();
-    if (now - lastTime >= interval) {
-      lastTime = now;
-      fn(...args);
+function throttle(fn: Function, interval: number) {  // 定义函数 throttle，参数: fn: Function, interval: number
+  let lastTime = 0;  // 声明变量 lastTime
+  return (...args: any[]) => {  // 返回 (...args: any[]) => {（注意：any 关闭了类型检查）
+    const now = Date.now();  // 声明常量 now
+    if (now - lastTime >= interval) {  // 条件判断
+      lastTime = now;  // 赋值 lastTime
+      fn(...args);  // 调用 fn
     }
   };
 }
 
 // 滚动时每 200ms 最多处理一次
-const onScroll = throttle(() => updatePosition(), 200);
-window.addEventListener("scroll", onScroll);
+const onScroll = throttle(() => updatePosition(), 200);  // 声明常量 onScroll
+window.addEventListener("scroll", onScroll);  // 调用 window.addEventListener
 \`\`\`
 
 #### 防抖 vs 节流
@@ -2185,21 +2185,21 @@ window.addEventListener("scroll", onScroll);
 once 确保**函数只执行一次**，后续调用返回第一次的结果。适用于：初始化、单次弹窗、事件绑定：
 
 \`\`\`ts
-function once<T extends (...args: any[]) => any>(fn: T): T {
-  let called = false;
-  let result: any;
-  return ((...args: any[]) => {
-    if (!called) {
-      called = true;
-      result = fn(...args);
+function once<T extends (...args: any[]) => any>(fn: T): T {  // 箭头函数（注意：any 关闭了类型检查）
+  let called = false;  // 声明变量 called
+  let result: any;  // 注意：any 关闭了类型检查
+  return ((...args: any[]) => {  // 返回 ((...args: any[]) => {（注意：any 关闭了类型检查）
+    if (!called) {  // 条件判断
+      called = true;  // 赋值 called
+      result = fn(...args);  // 赋值 result
     }
-    return result;
-  }) as T;
+    return result;  // 返回 result
+  }) as T;  // 注意：类型断言会绕过类型检查
 }
 
-const init = once(() => {
-  console.log("初始化（只执行一次）");
-  return Date.now();
+const init = once(() => {  // 声明常量 init
+  console.log("初始化（只执行一次）");  // 控制台输出
+  return Date.now();  // 返回 Date.now()
 });
 init();  // 执行并返回时间戳
 init();  // 不执行，返回上次结果
@@ -2215,11 +2215,11 @@ TypeScript 的类型系统让函数式编程更加安全：
 
 \`\`\`ts
 // 类型安全的 compose
-function compose<A, B, C>(f: (x: B) => C, g: (x: A) => B): (x: A) => C {
-  return x => f(g(x));
+function compose<A, B, C>(f: (x: B) => C, g: (x: A) => B): (x: A) => C {  // 定义函数 compose，泛型 A, B, C，参数: f: (x: B
+  return x => f(g(x));  // 返回 x => f(g(x))
 }
-const addOne = (x: number) => x + 1;
-const toString = (x: number) => String(x);
+const addOne = (x: number) => x + 1;  // 声明常量 addOne
+const toString = (x: number) => String(x);  // 声明常量 toString
 const fn = compose(toString, addOne);  // (x: number) => string
 \`\`\`
 
@@ -2561,24 +2561,24 @@ JavaScript 是**单继承**语言（一个类只能 extends 一个父类），�
 
 \`\`\`ts
 // 定义几个"能力"对象
-const Serializable = {
-  serialize() { return JSON.stringify(this); }
+const Serializable = {  // 声明常量 Serializable
+  serialize() { return JSON.stringify(this); }  // 调用 serialize
 };
-const Comparable = {
-  equals(other: any) { return JSON.stringify(this) === JSON.stringify(other); }
+const Comparable = {  // 声明常量 Comparable
+  equals(other: any) { return JSON.stringify(this) === JSON.stringify(other); }  // 调用 equals（注意：any 关闭了类型检查）
 };
 
 // 用 mixin 函数把能力混入类
-function applyMixins(target: any, sources: any[]) {
-  sources.forEach(source => {
-    Object.getOwnPropertyNames(source).forEach(name => {
+function applyMixins(target: any, sources: any[]) {  // 定义函数 applyMixins，参数: target: any, sources: any[]（注意：any 关闭了类型检查）
+  sources.forEach(source => {  // 箭头函数
+    Object.getOwnPropertyNames(source).forEach(name => {  // 箭头函数
       target.prototype[name] = source[name];
     });
   });
 }
 
-class User { constructor(public name: string) {} }
-applyMixins(User, [Serializable, Comparable]);
+class User { constructor(public name: string) {} }  // 定义类 User
+applyMixins(User, [Serializable, Comparable]);  // 调用 applyMixins
 // User 现在既有 serialize 又有 equals
 \`\`\`
 
@@ -2591,17 +2591,17 @@ Mixin 不是继承，而是**方法复制**。\`applyMixins\` 把源对象的方
 TypeScript 用**交叉类型**描述混入后的类类型：
 
 \`\`\`ts
-type Constructor<T = {}> = new (...args: any[]) => T;
+type Constructor<T = {}> = new (...args: any[]) => T;  // 定义类型别名 Constructor，泛型参数 T = {}（注意：any 关闭了类型检查）
 
 // Mixin 工厂：接收一个类，返回扩展后的类
-function Timestamped<TBase extends Constructor>(Base: TBase) {
-  return class extends Base {
-    timestamp = Date.now();
+function Timestamped<TBase extends Constructor>(Base: TBase) {  // 定义函数 Timestamped，泛型 TBase extends Constructor，参数: Base: TBase
+  return class extends Base {  // 返回 class extends Base {
+    timestamp = Date.now();  // 赋值 timestamp
   };
 }
 
-class Entity { constructor(public id: number) {} }
-const TimestampedEntity = Timestamped(Entity);
+class Entity { constructor(public id: number) {} }  // 定义类 Entity
+const TimestampedEntity = Timestamped(Entity);  // 声明常量 TimestampedEntity
 const e = new TimestampedEntity(1);  // 有 id 和 timestamp
 \`\`\`
 
@@ -2612,12 +2612,12 @@ const e = new TimestampedEntity(1);  // 有 id 和 timestamp
 **抽象类**用 \`abstract\` 定义不能被实例化、只能被继承的类。抽象方法只有签名没有实现，由子类实现：
 
 \`\`\`ts
-abstract class Animal {
+abstract class Animal {  // 定义抽象类 Animal
   abstract sound(): string;  // 抽象方法，子类必须实现
   breathe() { console.log("呼吸..."); }  // 具体方法，子类直接继承
 }
 
-class Dog extends Animal {
+class Dog extends Animal {  // 定义类 Dog，extends Animal
   sound() { return "汪汪"; }  // 必须实现
 }
 // new Animal();  // ❌ 抽象类不能实例化
@@ -2641,19 +2641,19 @@ new Dog().sound();  // "汪汪"
 单例确保**一个类只有一个实例**，并提供全局访问点。常用于：配置管理、数据库连接池、日志器：
 
 \`\`\`ts
-class Config {
+class Config {  // 定义类 Config
   private static instance: Config;
   private constructor() {}  // 私有构造函数，外部不能 new
 
-  static getInstance(): Config {
-    if (!Config.instance) {
-      Config.instance = new Config();
+  static getInstance(): Config {  // get 方法 Instance() 返回 Config
+    if (!Config.instance) {  // 条件判断
+      Config.instance = new Config();  // 赋值 Config.instance
     }
-    return Config.instance;
+    return Config.instance;  // 返回 Config.instance
   }
 }
-const c1 = Config.getInstance();
-const c2 = Config.getInstance();
+const c1 = Config.getInstance();  // 声明常量 c1
+const c2 = Config.getInstance();  // 声明常量 c2
 console.log(c1 === c2);  // true，同一个实例
 \`\`\`
 
@@ -2668,15 +2668,15 @@ console.log(c1 === c2);  // true，同一个实例
 工厂模式用一个函数/类来**封装对象的创建**，把"创建哪种对象"的逻辑集中管理，调用方不直接 new：
 
 \`\`\`ts
-abstract class Animal { abstract speak(): string; }
-class Dog extends Animal { speak() { return "汪"; } }
-class Cat extends Animal { speak() { return "喵"; } }
+abstract class Animal { abstract speak(): string; }  // 定义抽象类 Animal
+class Dog extends Animal { speak() { return "汪"; } }  // 定义类 Dog，extends Animal
+class Cat extends Animal { speak() { return "喵"; } }  // 定义类 Cat，extends Animal
 
-class AnimalFactory {
-  static create(type: "dog" | "cat"): Animal {
-    switch (type) {
-      case "dog": return new Dog();
-      case "cat": return new Cat();
+class AnimalFactory {  // 定义类 AnimalFactory
+  static create(type: "dog" | "cat"): Animal {  // 方法 create(type: "dog" | "cat") 返回 Animal
+    switch (type) {  // switch 分支选择
+      case "dog": return new Dog();  // case 匹配分支
+      case "cat": return new Cat();  // case 匹配分支
     }
   }
 }
@@ -2690,8 +2690,8 @@ const pet = AnimalFactory.create("dog");  // 不用关心怎么 new
 建造者模式用于**逐步构建复杂对象**，把构造过程拆成多个步骤，避免"参数爆炸"的构造函数：
 
 \`\`\`ts
-class Burger {
-  constructor(
+class Burger {  // 定义类 Burger
+  constructor(  // 调用 constructor
     public size: number,
     public cheese?: boolean,
     public bacon?: boolean,
@@ -2699,18 +2699,18 @@ class Burger {
   ) {}
 }
 
-class BurgerBuilder {
-  private burger: Burger;
-  constructor(size: number) {
-    this.burger = new Burger(size);
+class BurgerBuilder {  // 定义类 BurgerBuilder
+  private burger: Burger;  // 类属性 burger: Burger
+  constructor(size: number) {  // 调用 constructor
+    this.burger = new Burger(size);  // 赋值 this.burger
   }
   addCheese() { this.burger.cheese = true; return this; }  // 返回 this 支持链式
-  addBacon() { this.burger.bacon = true; return this; }
-  addLettuce() { this.burger.lettuce = true; return this; }
-  build() { return this.burger; }
+  addBacon() { this.burger.bacon = true; return this; }  // 调用 addBacon
+  addLettuce() { this.burger.lettuce = true; return this; }  // 调用 addLettuce
+  build() { return this.burger; }  // 调用 build
 }
 
-const burger = new BurgerBuilder(14)
+const burger = new BurgerBuilder(14)  // 声明常量 burger
   .addCheese()
   .addBacon()
   .build();  // 链式调用
@@ -2723,13 +2723,13 @@ const burger = new BurgerBuilder(14)
 JavaScript 的类本质是**原型链的语法糖**。理解原型链能看透类的底层行为：
 
 \`\`\`ts
-class Animal {
+class Animal {  // 定义类 Animal
   constructor(name) { this.name = name; }       // 实例属性
   speak() { return this.name; }                  // 原型方法（Animal.prototype.speak）
   static create() { return new Animal("默认"); } // 静态方法（Animal.create）
 }
 
-const a = new Animal("小狗");
+const a = new Animal("小狗");  // 声明常量 a
 a.name;           // 实例属性，在 a 自身上
 a.speak();        // 原型方法，在 Animal.prototype 上
 a.__proto__ === Animal.prototype;  // true
@@ -2747,13 +2747,13 @@ Animal.prototype.constructor === Animal;  // true
 Symbol 是**唯一且不可变**的值，非常适合作为"私有"属性键（不被 for...in、Object.keys 枚举）：
 
 \`\`\`ts
-const privateKey = Symbol("private");
+const privateKey = Symbol("private");  // 声明常量 privateKey
 
-class MyClass {
+class MyClass {  // 定义类 MyClass
   [privateKey] = "secret";  // Symbol 键属性
-  publicData = "public";
+  publicData = "public";  // 赋值 publicData
 }
-const obj = new MyClass();
+const obj = new MyClass();  // 声明常量 obj
 Object.keys(obj);        // ["publicData"]，Symbol 键不出现
 Object.getOwnPropertySymbols(obj);  // [Symbol(private)]，需主动获取
 \`\`\`
@@ -2767,7 +2767,7 @@ TypeScript 有**两种**私有机制：
 #### 1. private 关键字（TypeScript 特有）
 
 \`\`\`ts
-class A {
+class A {  // 定义类 A
   private secret: string = "ts-private";  // 编译期私有
 }
 \`\`\`
@@ -2777,9 +2777,9 @@ class A {
 #### 2. # 私有字段（ES2022 标准）
 
 \`\`\`ts
-class B {
+class B {  // 定义类 B
   #secret: string = "es-private";  // 运行时私有
-  getSecret() { return this.#secret; }
+  getSecret() { return this.#secret; }  // 调用 getSecret
 }
 new B().#secret;  // ❌ 运行时也报错（SyntaxError）
 \`\`\`
@@ -2802,13 +2802,13 @@ new B().#secret;  // ❌ 运行时也报错（SyntaxError）
 
 \`\`\`ts
 // 类表达式
-const MyClass = class {
-  greet() { return "hi"; }
+const MyClass = class {  // 声明常量 MyClass
+  greet() { return "hi"; }  // 调用 greet
 };
 
 // 立即执行的类（IIFE 风格）
-const singleton = new (class {
-  constructor() { this.time = Date.now(); }
+const singleton = new (class {  // 声明常量 singleton
+  constructor() { this.time = Date.now(); }  // 调用 constructor
 })();
 \`\`\`
 
@@ -2819,11 +2819,11 @@ const singleton = new (class {
 ES2022 引入的 \`static { }\` 块，用于**复杂的静态成员初始化**：
 
 \`\`\`ts
-class Config {
-  static settings: Record<string, any>;
+class Config {  // 定义类 Config
+  static settings: Record<string, any>;  // 类属性 settings: Record<string, any>（注意：any 关闭了类型检查）
   static {
     // 复杂的初始化逻辑
-    this.settings = { env: "production", debug: false };
+    this.settings = { env: "production", debug: false };  // 赋值 this.settings
     // 可以有 try/catch、条件判断等
   }
 }
@@ -3290,12 +3290,12 @@ console.log("\\n类进阶章节演示完成！");`,
 JavaScript 中所有错误都继承自 \`Error\`。抛出错误用 \`throw\`，错误可以是任何值（但**强烈建议抛 Error 对象**）：
 
 \`\`\`ts
-const err = new Error("出错了");
+const err = new Error("出错了");  // 声明常量 err
 err.message;  // "出错了"
 err.name;     // "Error"
 err.stack;    // 调用栈（非标准但普遍支持）
 
-throw new Error("something wrong");
+throw new Error("something wrong");  // 抛出 Error 异常
 throw "字符串错误";  // 不推荐
 throw { code: 500 };  // 不推荐
 \`\`\`
@@ -3316,21 +3316,21 @@ throw { code: 500 };  // 不推荐
 创建自定义 Error 子类，让错误能被精确识别和处理：
 
 \`\`\`ts
-class AppError extends Error {
-  constructor(message: string, public code: string) {
-    super(message);
+class AppError extends Error {  // 定义类 AppError，extends Error
+  constructor(message: string, public code: string) {  // 调用 constructor
+    super(message);  // 调用 super
     this.name = "AppError";  // 重要：设置 name
   }
 }
 
-class ValidationError extends AppError {
-  constructor(message: string, public field: string) {
-    super(message, "VALIDATION_ERROR");
-    this.name = "ValidationError";
+class ValidationError extends AppError {  // 定义类 ValidationError，extends AppError
+  constructor(message: string, public field: string) {  // 调用 constructor
+    super(message, "VALIDATION_ERROR");  // 调用 super
+    this.name = "ValidationError";  // 赋值 this.name
   }
 }
 
-throw new ValidationError("邮箱格式错误", "email");
+throw new ValidationError("邮箱格式错误", "email");  // 抛出 ValidationError 异常
 \`\`\`
 
 #### 自定义 Error 的关键点
@@ -3343,8 +3343,8 @@ throw new ValidationError("邮箱格式错误", "email");
 **ES2022 改进**：现在 Error 构造函数支持 \`cause\` 属性，用于链式记录原始错误：
 
 \`\`\`ts
-try {
-  JSON.parse(badJson);
+try {  // 异常捕获
+  JSON.parse(badJson);  // 调用 JSON.parse
 } catch (e) {
   throw new Error("解析失败", { cause: e });  // 保留原始错误
 }
@@ -3353,17 +3353,17 @@ try {
 ### try / catch / finally
 
 \`\`\`ts
-try {
+try {  // 异常捕获
   // 可能抛错的代码
-  riskyOperation();
+  riskyOperation();  // 调用 riskyOperation
 } catch (error) {
   // error 类型在 TS strict 模式下是 unknown
-  if (error instanceof Error) {
-    console.log(error.message);
+  if (error instanceof Error) {  // 类型守卫：instanceof 判断实例类型
+    console.log(error.message);  // 控制台输出
   }
 } finally {
   // 无论成功失败都执行（资源清理）
-  cleanup();
+  cleanup();  // 调用 cleanup
 }
 \`\`\`
 
@@ -3372,14 +3372,14 @@ try {
 **TypeScript 4.4+** 在 strict 模式下，\`catch\` 变量默认是 \`unknown\`（不再是 \`any\`）。这是巨大的安全性提升——\`unknown\` 强制你**收窄**后才能使用：
 
 \`\`\`ts
-try {
-  risky();
+try {  // 异常捕获
+  risky();  // 调用 risky
 } catch (err) {
   // err 是 unknown
   // err.message;  // ❌ unknown 没有 message
-  if (err instanceof Error) {
+  if (err instanceof Error) {  // 类型守卫：instanceof 判断实例类型
     err.message;  // ✅ 收窄后可用
-  } else if (typeof err === "string") {
+  } else if (typeof err === "string") {  // 类型守卫：判断是否为 string
     err.toUpperCase();  // ✅
   }
 }
@@ -3398,13 +3398,13 @@ type Result<T, E = Error> =
   | { ok: true; value: T }
   | { ok: false; error: E };
 
-function divide(a: number, b: number): Result<number, string> {
-  if (b === 0) return { ok: false, error: "除数不能为零" };
-  return { ok: true, value: a / b };
+function divide(a: number, b: number): Result<number, string> {  // 定义函数 divide，参数: a: number, b: number，返回 Result<number, string>
+  if (b === 0) return { ok: false, error: "除数不能为零" };  // 条件判断
+  return { ok: true, value: a / b };  // 返回 { ok: true, value: a / b }
 }
 
-const r = divide(10, 0);
-if (r.ok) {
+const r = divide(10, 0);  // 声明常量 r
+if (r.ok) {  // 条件判断
   console.log(r.value);  // number
 } else {
   console.log(r.error);  // string
@@ -3429,13 +3429,13 @@ if (r.ok) {
 TypeScript 的 \`asserts\` 关键字定义**断言函数**——函数如果不抛错，就"断言"某条件成立，编译器据此收窄类型：
 
 \`\`\`ts
-function assertDefined<T>(value: T | undefined | null): asserts value is T {
-  if (value === undefined || value === null) {
-    throw new Error("值不能为空");
+function assertDefined<T>(value: T | undefined | null): asserts value is T {  // 定义函数 assertDefined，泛型 T，参数: value: T | undefined | null，返回 asserts value is T
+  if (value === undefined || value === null) {  // 条件判断
+    throw new Error("值不能为空");  // 抛出 Error 异常
   }
 }
 
-const maybe: string | undefined = getValue();
+const maybe: string | undefined = getValue();  // 声明常量 maybe，类型 string | undefined
 assertDefined(maybe);  // 断言后，maybe 被收窄为 string
 maybe.toUpperCase();  // ✅ 不需要 ! 或 if
 \`\`\`
@@ -3444,18 +3444,18 @@ maybe.toUpperCase();  // ✅ 不需要 ! 或 if
 
 \`\`\`ts
 // asserts value is T：断言 value 是 T 类型
-function assertString(x: unknown): asserts x is string {
-  if (typeof x !== "string") throw new Error("不是字符串");
+function assertString(x: unknown): asserts x is string {  // 定义函数 assertString，参数: x: unknown，返回 asserts x is string
+  if (typeof x !== "string") throw new Error("不是字符串");  // 条件判断
 }
 
 // asserts x：断言 x 为真值
-function assert(truth: boolean): asserts truth {
-  if (!truth) throw new Error("断言失败");
+function assert(truth: boolean): asserts truth {  // 定义函数 assert，参数: truth: boolean，返回 asserts truth
+  if (!truth) throw new Error("断言失败");  // 条件判断
 }
 
 // 断言参数非 null/undefined
-function assertNonNull<T>(x: T): asserts x is NonNullable<T> {
-  if (x === null || x === undefined) throw new Error("为空");
+function assertNonNull<T>(x: T): asserts x is NonNullable<T> {  // 定义函数 assertNonNull，泛型 T，参数: x: T，返回 asserts x is NonNullable<T>
+  if (x === null || x === undefined) throw new Error("为空");  // 条件判断
 }
 \`\`\`
 
@@ -3470,14 +3470,14 @@ type Shape =
   | { kind: "circle"; radius: number }
   | { kind: "square"; size: number };
 
-function area(s: Shape): number {
-  switch (s.kind) {
-    case "circle": return Math.PI * s.radius ** 2;
-    case "square": return s.size ** 2;
-    default:
+function area(s: Shape): number {  // 定义函数 area，参数: s: Shape，返回 number
+  switch (s.kind) {  // switch 分支选择
+    case "circle": return Math.PI * s.radius ** 2;  // case 匹配分支
+    case "square": return s.size ** 2;  // case 匹配分支
+    default:  // 默认分支
       // 如果新增 triangle 但没处理，这里 s 不是 never，编译报错
-      const _exhaustive: never = s;
-      throw new Error("未处理: " + _exhaustive);
+      const _exhaustive: never = s;  // 声明常量 _exhaustive，类型 never
+      throw new Error("未处理: " + _exhaustive);  // 抛出 Error 异常
   }
 }
 \`\`\`
@@ -3495,36 +3495,36 @@ function area(s: Shape): number {
 
 \`\`\`ts
 // 基础错误
-class AppError extends Error {
-  constructor(message: string, public code: string, public statusCode: number = 500) {
-    super(message);
-    this.name = "AppError";
+class AppError extends Error {  // 定义类 AppError，extends Error
+  constructor(message: string, public code: string, public statusCode: number = 500) {  // 调用 constructor
+    super(message);  // 调用 super
+    this.name = "AppError";  // 赋值 this.name
   }
 }
 
 // 领域错误（业务逻辑）
-class DomainError extends AppError {}
-class ValidationError extends DomainError {
-  constructor(message: string, public field: string) {
-    super(message, "VALIDATION", 400);
+class DomainError extends AppError {}  // 定义类 DomainError，extends AppError
+class ValidationError extends DomainError {  // 定义类 ValidationError，extends DomainError
+  constructor(message: string, public field: string) {  // 调用 constructor
+    super(message, "VALIDATION", 400);  // 调用 super
   }
 }
-class BusinessRuleError extends DomainError {
-  constructor(message: string) {
-    super(message, "BUSINESS_RULE", 422);
+class BusinessRuleError extends DomainError {  // 定义类 BusinessRuleError，extends DomainError
+  constructor(message: string) {  // 调用 constructor
+    super(message, "BUSINESS_RULE", 422);  // 调用 super
   }
 }
 
 // 基础设施错误（技术问题）
-class InfrastructureError extends AppError {}
-class DatabaseError extends InfrastructureError {
-  constructor(message: string, public query?: string) {
-    super(message, "DATABASE", 500);
+class InfrastructureError extends AppError {}  // 定义类 InfrastructureError，extends AppError
+class DatabaseError extends InfrastructureError {  // 定义类 DatabaseError，extends InfrastructureError
+  constructor(message: string, public query?: string) {  // 调用 constructor
+    super(message, "DATABASE", 500);  // 调用 super
   }
 }
-class NetworkError extends InfrastructureError {
-  constructor(message: string, public url?: string) {
-    super(message, "NETWORK", 503);
+class NetworkError extends InfrastructureError {  // 定义类 NetworkError，extends InfrastructureError
+  constructor(message: string, public url?: string) {  // 调用 constructor
+    super(message, "NETWORK", 503);  // 调用 super
   }
 }
 \`\`\`
@@ -3537,20 +3537,20 @@ class NetworkError extends InfrastructureError {
 
 \`\`\`ts
 // 通用错误边界：包裹可能出错的操作
-async function withErrorBoundary<T>(
-  fn: () => Promise<T>,
+async function withErrorBoundary<T>(  // 定义异步函数 withErrorBoundary
+  fn: () => Promise<T>,  // 箭头函数
   fallback: T
 ): Promise<T> {
-  try {
-    return await fn();
+  try {  // 异常捕获
+    return await fn();  // 返回 await fn()
   } catch (e) {
-    console.error("[错误边界捕获]", e);
+    console.error("[错误边界捕获]", e);  // 控制台输出
     return fallback;  // 返回兜底值，不让错误传播
   }
 }
 
-const data = await withErrorBoundary(
-  () => fetchUnreliableData(),
+const data = await withErrorBoundary(  // 声明常量 data
+  () => fetchUnreliableData(),  // 箭头函数
   { default: true }  // 兜底
 );
 \`\`\`

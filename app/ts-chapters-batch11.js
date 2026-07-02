@@ -55,8 +55,8 @@ TypeScript 的类型系统主要在**编译期**工作，但真实程序里很�
 类型谓词用在**函数的返回类型位置**，语法是 \`parameterName is Type\`：
 
 \`\`\`ts
-function isString(x: unknown): x is string {
-  return typeof x === "string";
+function isString(x: unknown): x is string {  // 自定义类型守卫（返回 x is T）
+  return typeof x === "string";  // 类型守卫：判断是否为 string
 }
 \`\`\`
 
@@ -66,22 +66,22 @@ function isString(x: unknown): x is string {
 
 \`\`\`ts
 // 普通布尔返回：没有类型收窄
-function isStringPlain(x: unknown): boolean {
-  return typeof x === "string";
+function isStringPlain(x: unknown): boolean {  // 定义函数 isStringPlain，参数: x: unknown，返回 boolean
+  return typeof x === "string";  // 类型守卫：判断是否为 string
 }
 
 // 类型谓词：有类型收窄
-function isStringTyped(x: unknown): x is string {
-  return typeof x === "string";
+function isStringTyped(x: unknown): x is string {  // 自定义类型守卫（返回 x is T）
+  return typeof x === "string";  // 类型守卫：判断是否为 string
 }
 
-function demo(x: unknown) {
-  if (isStringPlain(x)) {
+function demo(x: unknown) {  // 定义函数 demo，参数: x: unknown
+  if (isStringPlain(x)) {  // 条件判断
     // x 仍是 unknown，不能直接用 string 方法
     // x.toUpperCase(); // ❌ 编译错误
-    console.log("是字符串");
+    console.log("是字符串");  // 控制台输出
   }
-  if (isStringTyped(x)) {
+  if (isStringTyped(x)) {  // 条件判断
     // x 被收窄为 string，可以用 string 方法
     x.toUpperCase(); // ✅
   }
@@ -95,16 +95,16 @@ function demo(x: unknown) {
 类型谓词最常见的用途是**自定义类型守卫**，用于收窄联合类型：
 
 \`\`\`ts
-interface Dog { kind: "dog"; bark: () => void; }
-interface Cat { kind: "cat"; meow: () => void; }
-type Pet = Dog | Cat;
+interface Dog { kind: "dog"; bark: () => void; }  // 定义接口 Dog
+interface Cat { kind: "cat"; meow: () => void; }  // 定义接口 Cat
+type Pet = Dog | Cat;  // 定义类型别名 Pet，联合类型
 
-function isDog(pet: Pet): pet is Dog {
-  return pet.kind === "dog";
+function isDog(pet: Pet): pet is Dog {  // 自定义类型守卫（返回 x is T）
+  return pet.kind === "dog";  // 返回 pet.kind === "dog"
 }
 
-function speak(pet: Pet) {
-  if (isDog(pet)) {
+function speak(pet: Pet) {  // 定义函数 speak，参数: pet: Pet
+  if (isDog(pet)) {  // 条件判断
     pet.bark(); // ✅ pet 收窄为 Dog
   } else {
     pet.meow(); // ✅ pet 收窄为 Cat
@@ -121,14 +121,14 @@ function speak(pet: Pet) {
 - 在 \`else\` 分支或 \`if (!isX(x))\` 的真分支里，\`x\` 收窄为**原类型减去谓词类型**（即排除）。
 
 \`\`\`ts
-type A = { tag: "a"; va: number };
-type B = { tag: "b"; vb: string };
-type AB = A | B;
+type A = { tag: "a"; va: number };  // 定义类型别名 A
+type B = { tag: "b"; vb: string };  // 定义类型别名 B
+type AB = A | B;  // 定义类型别名 AB，联合类型
 
-function isA(x: AB): x is A { return x.tag === "a"; }
+function isA(x: AB): x is A { return x.tag === "a"; }  // 自定义类型守卫（返回 x is T）
 
-function f(x: AB) {
-  if (isA(x)) {
+function f(x: AB) {  // 定义函数 f，参数: x: AB
+  if (isA(x)) {  // 条件判断
     x.va; // ✅ A
   } else {
     x.vb; // ✅ B（被排除 A 后剩余）
@@ -143,9 +143,9 @@ function f(x: AB) {
 断言函数用 \`asserts\` 关键字声明返回类型，语法是 \`asserts parameterName is Type\`：
 
 \`\`\`ts
-function assertString(x: unknown): asserts x is string {
-  if (typeof x !== "string") {
-    throw new Error("Expected string, got " + typeof x);
+function assertString(x: unknown): asserts x is string {  // 定义函数 assertString，参数: x: unknown，返回 asserts x is string
+  if (typeof x !== "string") {  // 条件判断
+    throw new Error("Expected string, got " + typeof x);  // 抛出 Error 异常
   }
 }
 \`\`\`
@@ -164,17 +164,17 @@ function assertString(x: unknown): asserts x is string {
 
 \`\`\`ts
 // 类型谓词：必须在 if 里用才收窄
-function isString(x: unknown): x is string { return typeof x === "string"; }
-function use1(x: unknown) {
+function isString(x: unknown): x is string { return typeof x === "string"; }  // 类型守卫：判断是否为 string
+function use1(x: unknown) {  // 定义函数 use1，参数: x: unknown
   if (isString(x)) { x.toUpperCase(); } // ✅ 在 if 分支里收窄
   // x.toUpperCase(); // ❌ 出了 if 就不收窄了
 }
 
 // 断言函数：调用后后续代码自动收窄
-function assertString(x: unknown): asserts x is string {
-  if (typeof x !== "string") throw new Error("not string");
+function assertString(x: unknown): asserts x is string {  // 定义函数 assertString，参数: x: unknown，返回 asserts x is string
+  if (typeof x !== "string") throw new Error("not string");  // 条件判断
 }
-function use2(x: unknown) {
+function use2(x: unknown) {  // 定义函数 use2，参数: x: unknown
   assertString(x);     // 调用后...
   x.toUpperCase();     // ✅ 后续代码自动收窄为 string
 }
@@ -187,14 +187,14 @@ function use2(x: unknown) {
 除了 \`asserts x is Type\`，还有更简单的 \`asserts condition\`：
 
 \`\`\`ts
-function assert(condition: unknown, msg?: string): asserts condition {
-  if (!condition) throw new Error(msg || "Assertion failed");
+function assert(condition: unknown, msg?: string): asserts condition {  // 定义函数 assert，参数: condition: unknown, msg?: string，返回 asserts condition
+  if (!condition) throw new Error(msg || "Assertion failed");  // 条件判断
 }
 
-function divide(a: number, b: number): number {
-  assert(b !== 0, "除数不能为 0");
+function divide(a: number, b: number): number {  // 定义函数 divide，参数: a: number, b: number，返回 number
+  assert(b !== 0, "除数不能为 0");  // 调用 assert
   // 调用后，b !== 0 这个事实被"记住"
-  return a / b;
+  return a / b;  // 返回 a / b
 }
 \`\`\`
 
@@ -209,17 +209,17 @@ function divide(a: number, b: number): number {
 Node.js 的 \`assert\` 模块是典型的断言函数库。在 TypeScript 中，可以用断言函数签名包装它，获得类型收窄：
 
 \`\`\`ts
-import assert from "assert";
+import assert from "assert";  // 导入 assert
 
 // 包装：让 assert.ok 触发类型收窄
-function assertNonNull<T>(x: T, msg?: string): asserts x is NonNullable<T> {
-  if (x === null || x === undefined) {
-    throw new Error(msg || "Expected non-null");
+function assertNonNull<T>(x: T, msg?: string): asserts x is NonNullable<T> {  // 定义函数 assertNonNull，泛型 T，参数: x: T, msg?: string，返回 asserts x is NonNullable<T>
+  if (x === null || x === undefined) {  // 条件判断
+    throw new Error(msg || "Expected non-null");  // 抛出 Error 异常
   }
 }
 
-function process(x: string | null) {
-  assertNonNull(x);
+function process(x: string | null) {  // 定义函数 process，参数: x: string | null
+  assertNonNull(x);  // 调用 assertNonNull
   x.toUpperCase(); // ✅ x 收窄为 string
 }
 \`\`\`
@@ -231,22 +231,22 @@ function process(x: string | null) {
 外部 API 响应、JSON.parse 的结果都是 \`unknown\`，用断言函数做边界校验是经典模式：
 
 \`\`\`ts
-interface User { id: number; name: string; email?: string; }
+interface User { id: number; name: string; email?: string; }  // 定义接口 User
 
-function assertUser(x: unknown): asserts x is User {
-  if (typeof x !== "object" || x === null) throw new Error("not object");
-  const obj = x as Record<string, unknown>;
-  if (typeof obj.id !== "number") throw new Error("id missing");
-  if (typeof obj.name !== "string") throw new Error("name missing");
-  if (obj.email !== undefined && typeof obj.email !== "string") {
-    throw new Error("email invalid");
+function assertUser(x: unknown): asserts x is User {  // 定义函数 assertUser，参数: x: unknown，返回 asserts x is User
+  if (typeof x !== "object" || x === null) throw new Error("not object");  // 条件判断
+  const obj = x as Record<string, unknown>;  // 声明常量 obj（注意：类型断言会绕过类型检查）
+  if (typeof obj.id !== "number") throw new Error("id missing");  // 条件判断
+  if (typeof obj.name !== "string") throw new Error("name missing");  // 条件判断
+  if (obj.email !== undefined && typeof obj.email !== "string") {  // 条件判断
+    throw new Error("email invalid");  // 抛出 Error 异常
   }
 }
 
-function handleApiResponse(data: unknown) {
+function handleApiResponse(data: unknown) {  // 定义函数 handleApiResponse，参数: data: unknown
   assertUser(data);   // 校验 + 收窄
   console.log(data.id, data.name);   // ✅ 后续按 User 用
-  return data;
+  return data;  // 返回 data
 }
 \`\`\`
 
@@ -257,18 +257,18 @@ function handleApiResponse(data: unknown) {
 不变式（Invariant）是程序某处必须成立的条件，违反就是 bug。断言函数是表达不变式的自然方式：
 
 \`\`\`ts
-function assertUnreachable(x: never): never {
-  throw new Error("Should not reach: " + JSON.stringify(x));
+function assertUnreachable(x: never): never {  // 定义函数 assertUnreachable，参数: x: never，返回 never
+  throw new Error("Should not reach: " + JSON.stringify(x));  // 抛出 Error 异常
 }
 
-type Shape = "circle" | "square";
-function area(s: Shape, n: number): number {
-  switch (s) {
-    case "circle": return Math.PI * n * n;
-    case "square": return n * n;
-    default:
+type Shape = "circle" | "square";  // 定义类型别名 Shape
+function area(s: Shape, n: number): number {  // 定义函数 area，参数: s: Shape, n: number，返回 number
+  switch (s) {  // switch 分支选择
+    case "circle": return Math.PI * n * n;  // case 匹配分支
+    case "square": return n * n;  // case 匹配分支
+    default:  // 默认分支
       // 如果未来加了新 case 忘了处理，这里编译期就报错
-      return assertUnreachable(s);
+      return assertUnreachable(s);  // 返回 assertUnreachable(s)
   }
 }
 \`\`\`
@@ -280,13 +280,13 @@ function area(s: Shape, n: number): number {
 测试框架的断言（\`expect(x).toBe(y)\`）也是断言函数的典型场景：
 
 \`\`\`ts
-function expectTruthy(x: unknown): asserts x {
-  if (!x) throw new Error("Expected truthy, got " + x);
+function expectTruthy(x: unknown): asserts x {  // 定义函数 expectTruthy，参数: x: unknown，返回 asserts x
+  if (!x) throw new Error("Expected truthy, got " + x);  // 条件判断
 }
 
-function test() {
-  const x: string | undefined = maybeGet();
-  expectTruthy(x);
+function test() {  // 定义函数 test
+  const x: string | undefined = maybeGet();  // 声明常量 x，类型 string | undefined
+  expectTruthy(x);  // 调用 expectTruthy
   x.length; // ✅ x 收窄为 string（因为 undefined 是 falsy）
 }
 \`\`\`
@@ -300,13 +300,13 @@ function test() {
 4. **循环里**：循环体内的断言函数调用，每次迭代都重新收窄。
 
 \`\`\`ts
-function assertString(x: unknown): asserts x is string {
-  if (typeof x !== "string") throw new Error();
+function assertString(x: unknown): asserts x is string {  // 定义函数 assertString，参数: x: unknown，返回 asserts x is string
+  if (typeof x !== "string") throw new Error();  // 条件判断
 }
 
-function demo(arr: unknown[]) {
-  for (const item of arr) {
-    assertString(item);
+function demo(arr: unknown[]) {  // 定义函数 demo，参数: arr: unknown[]
+  for (const item of arr) {  // 循环
+    assertString(item);  // 调用 assertString
     item.toUpperCase(); // ✅ 每次迭代都收窄
   }
 }
@@ -318,9 +318,9 @@ function demo(arr: unknown[]) {
 
 \`\`\`ts
 // ❌ 错误：没有 throw，断言函数形同虚设
-function badAssert(x: unknown): asserts x is string {
+function badAssert(x: unknown): asserts x is string {  // 定义函数 badAssert，参数: x: unknown，返回 asserts x is string
   // 没有 throw，即使条件不满足也不抛
-  if (typeof x !== "string") {
+  if (typeof x !== "string") {  // 条件判断
     console.log("不是字符串"); // 只是 log，不抛
   }
 }
@@ -332,7 +332,7 @@ function badAssert(x: unknown): asserts x is string {
 
 \`\`\`ts
 // ❌ 错误：返回值与谓词不符
-function isString(x: unknown): x is string {
+function isString(x: unknown): x is string {  // 自定义类型守卫（返回 x is T）
   return typeof x === "number"; // 返回 number 时声称是 string！
 }
 \`\`\`
@@ -342,7 +342,7 @@ TypeScript 不会检查类型谓词的实现是否正确——它信任你。如
 #### 陷阱 3：断言函数不能在异步中隐式收窄
 
 \`\`\`ts
-async function assertAsync(x: unknown): Promise<asserts x is string> {
+async function assertAsync(x: unknown): Promise<asserts x is string> {  // 定义函数 assertAsync，参数: x: unknown，返回 Promise<asserts x is string>
   // ❌ 这种写法不工作！asserts 不能和 Promise 组合
 }
 \`\`\`
@@ -804,8 +804,8 @@ console.log("\\n断言函数与类型谓词深入章节演示完成！");`,
 #### 创建与唯一性
 
 \`\`\`ts
-const s1 = Symbol("desc");
-const s2 = Symbol("desc");
+const s1 = Symbol("desc");  // 声明常量 s1
+const s2 = Symbol("desc");  // 声明常量 s2
 console.log(s1 === s2); // false —— 即使描述相同，每个 Symbol() 都是唯一的
 \`\`\`
 
@@ -816,8 +816,8 @@ console.log(s1 === s2); // false —— 即使描述相同，每个 Symbol() 都
 symbol 最常见的用途是作为对象的"私有"键——它们不会出现在 \`for...in\`、\`Object.keys\`、\`JSON.stringify\` 中：
 
 \`\`\`ts
-const privateKey = Symbol("private");
-const obj = {
+const privateKey = Symbol("private");  // 声明常量 privateKey
+const obj = {  // 声明常量 obj
   [privateKey]: "secret",
   name: "public",
 };
@@ -832,7 +832,7 @@ console.log(Object.getOwnPropertySymbols(obj)); // [Symbol(private)] —— 单�
 在 TypeScript 中，\`symbol\` 是所有 symbol 值的类型：
 
 \`\`\`ts
-let s: symbol = Symbol("x");
+let s: symbol = Symbol("x");  // 声明变量 s，类型 symbol
 \`\`\`
 
 \`symbol\` 类型是宽类型，所有 symbol 值都属于它。但具体的 symbol 值（如 \`Symbol("x")\`）有更精确的类型——这就要用到 \`unique symbol\`。
@@ -842,12 +842,12 @@ let s: symbol = Symbol("x");
 \`Symbol.for(key)\` 是全局注册表：相同的 key 返回**同一个** symbol。
 
 \`\`\`ts
-const a = Symbol.for("shared");
-const b = Symbol.for("shared");
+const a = Symbol.for("shared");  // 声明常量 a
+const b = Symbol.for("shared");  // 声明常量 b
 console.log(a === b); // true —— 全局共享
 
-const c = Symbol("shared");
-const d = Symbol("shared");
+const c = Symbol("shared");  // 声明常量 c
+const d = Symbol("shared");  // 声明常量 d
 console.log(c === d); // false —— 局部不共享
 \`\`\`
 
@@ -858,10 +858,10 @@ console.log(c === d); // false —— 局部不共享
 \`Symbol.keyFor(sym)\` 返回全局注册表中 symbol 对应的 key：
 
 \`\`\`ts
-const s = Symbol.for("myKey");
+const s = Symbol.for("myKey");  // 声明常量 s
 console.log(Symbol.keyFor(s)); // "myKey"
 
-const local = Symbol("local");
+const local = Symbol("local");  // 声明常量 local
 console.log(Symbol.keyFor(local)); // undefined —— 局部 symbol 没注册
 \`\`\`
 
@@ -881,8 +881,8 @@ console.log(Symbol.keyFor(local)); // undefined —— 局部 symbol 没注册
 #### 基础语法
 
 \`\`\`ts
-const s1: unique symbol = Symbol();
-const s2: unique symbol = Symbol();
+const s1: unique symbol = Symbol();  // 声明常量 s1，类型 unique symbol
+const s2: unique symbol = Symbol();  // 声明常量 s2，类型 unique symbol
 
 // s1 和 s2 是不同的类型！
 let a: typeof s1 = s1; // ✅
@@ -907,10 +907,10 @@ let sym2: unique symbol = Symbol();  // ❌ 不能用 let
 
 \`\`\`ts
 // symbols.ts
-export const MY_SYMBOL: unique symbol = Symbol();
+export const MY_SYMBOL: unique symbol = Symbol();  // 导出 const MY_SYMBOL
 
 // other.ts
-import { MY_SYMBOL } from "./symbols";
+import { MY_SYMBOL } from "./symbols";  // 导入 { MY_SYMBOL }
 // MY_SYMBOL 的类型是 typeof MY_SYMBOL，即那个独特的 unique symbol 类型
 \`\`\`
 
@@ -919,13 +919,13 @@ import { MY_SYMBOL } from "./symbols";
 ### 4. unique symbol 作为对象键
 
 \`\`\`ts
-const myKey: unique symbol = Symbol("myKey");
-interface MyObj {
+const myKey: unique symbol = Symbol("myKey");  // 声明常量 myKey，类型 unique symbol
+interface MyObj {  // 定义接口 MyObj
   [myKey]: string;  // ✅ 用 unique symbol 作为已知键
   name: string;
 }
 
-const obj: MyObj = {
+const obj: MyObj = {  // 声明常量 obj，类型 MyObj
   [myKey]: "secret",
   name: "public",
 };
@@ -938,21 +938,21 @@ console.log(obj[myKey]); // ✅ 类型安全访问
 ### 5. unique symbol 作为枚举成员
 
 \`\`\`ts
-enum Color {
-  Red = Symbol("red") as any,
-  Green = Symbol("green") as any,
-  Blue = Symbol("blue") as any,
+enum Color {  // 定义枚举 Color
+  Red = Symbol("red") as any,  // 赋值 Red（注意：any 关闭了类型检查；注意：类型断言会绕过类型检查）
+  Green = Symbol("green") as any,  // 赋值 Green（注意：any 关闭了类型检查；注意：类型断言会绕过类型检查）
+  Blue = Symbol("blue") as any,  // 赋值 Blue（注意：any 关闭了类型检查；注意：类型断言会绕过类型检查）
 }
 \`\`\`
 
 注意：TypeScript 的 enum 对 symbol 值的支持有限，需要 \`as any\` 断言。更推荐用 \`const\` 对象 + unique symbol 的方式：
 
 \`\`\`ts
-const Color = {
-  Red: Symbol("red") as unique symbol,
-  Green: Symbol("green") as unique symbol,
-  Blue: Symbol("blue") as unique symbol,
-} as const;
+const Color = {  // 声明常量 Color
+  Red: Symbol("red") as unique symbol,  // 注意：类型断言会绕过类型检查
+  Green: Symbol("green") as unique symbol,  // 注意：类型断言会绕过类型检查
+  Blue: Symbol("blue") as unique symbol,  // 注意：类型断言会绕过类型检查
+} as const;  // 注意：类型断言会绕过类型检查
 \`\`\`
 
 ### 6. well-known symbols
@@ -962,25 +962,25 @@ JavaScript 内置了一组"知名 symbol"，它们定义在 \`Symbol\` 对象上
 #### Symbol.iterator：自定义可迭代对象
 
 \`\`\`ts
-class Range {
-  constructor(public start: number, public end: number) {}
+class Range {  // 定义类 Range
+  constructor(public start: number, public end: number) {}  // 调用 constructor
 
   [Symbol.iterator](): Iterator<number> {
-    let current = this.start;
-    const end = this.end;
-    return {
-      next(): IteratorResult<number> {
-        if (current <= end) {
-          return { value: current++, done: false };
+    let current = this.start;  // 声明变量 current
+    const end = this.end;  // 声明常量 end
+    return {  // 返回 {
+      next(): IteratorResult<number> {  // 方法声明 next()，返回 IteratorResult<number>
+        if (current <= end) {  // 条件判断
+          return { value: current++, done: false };  // 返回 { value: current++, done: false }
         }
-        return { value: undefined, done: true };
+        return { value: undefined, done: true };  // 返回 { value: undefined, done: true }
       },
     };
   }
 }
 
-const range = new Range(1, 5);
-for (const n of range) {
+const range = new Range(1, 5);  // 声明常量 range
+for (const n of range) {  // 循环
   console.log(n); // 1, 2, 3, 4, 5
 }
 \`\`\`
@@ -990,10 +990,10 @@ for (const n of range) {
 #### Symbol.asyncIterator：异步迭代
 
 \`\`\`ts
-class AsyncRange {
+class AsyncRange {  // 定义类 AsyncRange
   async *[Symbol.asyncIterator]() {
-    for (let i = 1; i <= 3; i++) {
-      await new Promise(r => setTimeout(r, 100));
+    for (let i = 1; i <= 3; i++) {  // 循环
+      await new Promise(r => setTimeout(r, 100));  // 箭头函数（注意：定时器需及时清理）
       yield i;
     }
   }
@@ -1003,9 +1003,9 @@ class AsyncRange {
 #### Symbol.hasInstance：自定义 instanceof
 
 \`\`\`ts
-class Even {
+class Even {  // 定义类 Even
   static [Symbol.hasInstance](x: number): boolean {
-    return typeof x === "number" && x % 2 === 0;
+    return typeof x === "number" && x % 2 === 0;  // 类型守卫：判断是否为 number
   }
 }
 console.log(4 instanceof Even); // true
@@ -1015,15 +1015,15 @@ console.log(3 instanceof Even); // false
 #### Symbol.toPrimitive：自定义类型转换
 
 \`\`\`ts
-class Temperature {
-  constructor(public celsius: number) {}
+class Temperature {  // 定义类 Temperature
+  constructor(public celsius: number) {}  // 调用 constructor
   [Symbol.toPrimitive](hint: string): number | string {
-    if (hint === "number") return this.celsius;
-    if (hint === "string") return this.celsius + "°C";
-    return this.celsius.toString();
+    if (hint === "number") return this.celsius;  // 条件判断
+    if (hint === "string") return this.celsius + "°C";  // 条件判断
+    return this.celsius.toString();  // 返回 this.celsius.toString()
   }
 }
-const t = new Temperature(25);
+const t = new Temperature(25);  // 声明常量 t
 console.log(+t);        // 25（number hint）
 console.log(\`\${t}\`);    // "25°C"（string hint）
 console.log(t + "");    // "25"（default hint）
@@ -1032,9 +1032,9 @@ console.log(t + "");    // "25"（default hint）
 #### Symbol.dispose：资源清理（ES2024）
 
 \`\`\`ts
-class Resource implements Disposable {
+class Resource implements Disposable {  // 定义类 Resource，implements Disposable
   [Symbol.dispose]() {
-    console.log("清理资源");
+    console.log("清理资源");  // 控制台输出
   }
 }
 
@@ -1063,10 +1063,10 @@ using r = new Resource();
 
 \`\`\`ts
 declare const brand: unique symbol;
-type Branded<T> = T & { readonly [brand]: true };
+type Branded<T> = T & { readonly [brand]: true };  // 定义类型别名 Branded，泛型参数 T，交叉类型
 
-type UserId = Branded<number>;
-type OrderId = Branded<number>;
+type UserId = Branded<number>;  // 定义类型别名 UserId
+type OrderId = Branded<number>;  // 定义类型别名 OrderId
 
 // UserId 和 OrderId 的品牌键是同一个 symbol？
 // 不！每个 Branded<T> 用的是同一个 brand symbol，所以要为每种品牌用不同的 symbol
@@ -1077,8 +1077,8 @@ type OrderId = Branded<number>;
 \`\`\`ts
 declare const userIdBrand: unique symbol;
 declare const orderIdBrand: unique symbol;
-type UserId = number & { readonly [userIdBrand]: true };
-type OrderId = number & { readonly [orderIdBrand]: true };
+type UserId = number & { readonly [userIdBrand]: true };  // 定义类型别名 UserId，交叉类型
+type OrderId = number & { readonly [orderIdBrand]: true };  // 定义类型别名 OrderId，交叉类型
 \`\`\`
 
 这样 \`UserId\` 和 \`OrderId\` 在类型层面彻底不同，无法互相赋值。
@@ -1504,12 +1504,12 @@ console.log("\\nsymbol 与 unique symbol 深入章节演示完成！");`,
 索引签名表示"任意 \`string\`（或 \`number\`）键，值都是 \`T\`"——键是**开放的、无限的**：
 
 \`\`\`ts
-interface StringMap {
+interface StringMap {  // 定义接口 StringMap
   [key: string]: number;
 }
 
-const m: StringMap = { a: 1, b: 2, hello: 99 };
-const m2: StringMap = { x: 1, y: 2, z: 3, foo: 4 };
+const m: StringMap = { a: 1, b: 2, hello: 99 };  // 声明常量 m，类型 StringMap
+const m2: StringMap = { x: 1, y: 2, z: 3, foo: 4 };  // 声明常量 m2，类型 StringMap
 \`\`\`
 
 \`StringMap\` 接受任意 string 键，值必须是 number。键集合没有限制。
@@ -1519,7 +1519,7 @@ const m2: StringMap = { x: 1, y: 2, z: 3, foo: 4 };
 索引签名可以和显式属性共存，但**显式属性的值类型必须能赋给索引签名的值类型**：
 
 \`\`\`ts
-interface Person {
+interface Person {  // 定义接口 Person
   name: string;        // 显式属性
   age: number;         // 显式属性
   [key: string]: string | number; // 索引签名：所有值是 string|number
@@ -1528,7 +1528,7 @@ interface Person {
 \`\`\`
 
 \`\`\`ts
-interface Bad {
+interface Bad {  // 定义接口 Bad
   name: string;
   [key: string]: number; // ❌ 错误：name 是 string，不能赋给 number 索引
 }
@@ -1541,7 +1541,7 @@ interface Bad {
 JavaScript 对象的键只能是 \`string\` 或 \`symbol\`——数字键会被自动转为字符串：
 
 \`\`\`ts
-const obj = {};
+const obj = {};  // 声明常量 obj
 obj[1] = "a";
 console.log(Object.keys(obj)); // ["1"] —— 数字 1 变成字符串 "1"
 console.log(obj["1"]);         // "a"
@@ -1550,19 +1550,19 @@ console.log(obj["1"]);         // "a"
 TypeScript 的索引签名对此的处理：
 
 \`\`\`ts
-interface NumMap {
+interface NumMap {  // 定义接口 NumMap
   [key: number]: string;
 }
-const m: NumMap = {};
+const m: NumMap = {};  // 声明常量 m，类型 NumMap
 m[1] = "a";
 // m["1"] 也被允许，因为运行时 "1" 和 1 是同一个键
 \`\`\`
 
 \`\`\`ts
-interface StringMap {
+interface StringMap {  // 定义接口 StringMap
   [key: string]: number;
 }
-const m: StringMap = {};
+const m: StringMap = {};  // 声明常量 m，类型 StringMap
 m[1] = 1; // ✅ 数字键被接受（因为会 toString）
 \`\`\`
 
@@ -1580,8 +1580,8 @@ type K2 = keyof { [key: number]: string }; // number
 索引签名让"任何键都返回 T"，但对象原型链上的属性也会被查询，可能导致意外：
 
 \`\`\`ts
-interface Dict { [key: string]: number; }
-const d: Dict = { a: 1 };
+interface Dict { [key: string]: number; }  // 定义接口 Dict
+const d: Dict = { a: 1 };  // 声明常量 d，类型 Dict
 console.log(d.toString); // function —— 原型链上的方法，不是 number！
 console.log(d.hasOwnProperty); // function
 \`\`\`
@@ -1591,8 +1591,8 @@ console.log(d.hasOwnProperty); // function
 这就是为什么用 \`Object.create(null)\` 创建"纯净字典"——它没有原型链，不会有这个问题：
 
 \`\`\`ts
-const pure = Object.create(null) as Dict;
-pure.a = 1;
+const pure = Object.create(null) as Dict;  // 声明常量 pure（注意：类型断言会绕过类型检查）
+pure.a = 1;  // 赋值 pure.a
 // pure.toString 是 undefined，不是函数
 \`\`\`
 
@@ -1601,14 +1601,14 @@ pure.a = 1;
 如前所述，显式属性的类型必须兼容索引签名：
 
 \`\`\`ts
-interface Good {
+interface Good {  // 定义接口 Good
   [key: string]: string | number | boolean;
   name: string;       // ✅ string 是 string|number|boolean 的子类型
   age: number;        // ✅
   active: boolean;    // ✅
 }
 
-interface Bad {
+interface Bad {  // 定义接口 Bad
   [key: string]: string;
   count: number;      // ❌ number 不是 string 的子类型
 }
@@ -1621,7 +1621,7 @@ interface Bad {
 \`Record<K, V>\` 是 TypeScript 的内置工具类型，它的定义是：
 
 \`\`\`ts
-type Record<K extends keyof any, V> = {
+type Record<K extends keyof any, V> = {  // 定义类型别名 Record，泛型参数 K extends keyof any, V（注意：any 关闭了类型检查）
   [P in K]: V;
 };
 \`\`\`
@@ -1631,7 +1631,7 @@ type Record<K extends keyof any, V> = {
 #### Record 能限制键集合
 
 \`\`\`ts
-type ABC = Record<"a" | "b" | "c", number>;
+type ABC = Record<"a" | "b" | "c", number>;  // 定义类型别名 ABC，联合类型
 // 等价于 { a: number; b: number; c: number; }
 
 const m: ABC = { a: 1, b: 2, c: 3 }; // ✅
@@ -1645,11 +1645,11 @@ const m: ABC = { a: 1, b: 2, c: 3 }; // ✅
 
 \`\`\`ts
 // 索引签名：任意 string 键
-type Open = { [key: string]: number };
+type Open = { [key: string]: number };  // 定义类型别名 Open
 const o: Open = { a: 1, b: 2, anything: 99 }; // ✅ 任意键
 
 // Record：固定键集合
-type Closed = Record<"a" | "b", number>;
+type Closed = Record<"a" | "b", number>;  // 定义类型别名 Closed，联合类型
 const c: Closed = { a: 1, b: 2 }; // ✅
 // const c2: Closed = { a: 1, b: 2, c: 3 }; // ❌ 多了 c
 \`\`\`
@@ -1665,11 +1665,11 @@ const c: Closed = { a: 1, b: 2 }; // ✅
 ### 6. 只读索引签名
 
 \`\`\`ts
-interface ReadonlyMap {
+interface ReadonlyMap {  // 定义接口 ReadonlyMap
   readonly [key: string]: number;
 }
 
-const m: ReadonlyMap = { a: 1 };
+const m: ReadonlyMap = { a: 1 };  // 声明常量 m，类型 ReadonlyMap
 // m.a = 2; // ❌ 只读
 \`\`\`
 
@@ -1695,7 +1695,7 @@ type K3 = keyof Record<"a" | "b", number>;  // "a" | "b"
 #### 映射类型能基于已有类型转换
 
 \`\`\`ts
-type Stringify<T> = { [K in keyof T]: string };
+type Stringify<T> = { [K in keyof T]: string };  // 定义类型别名 Stringify，泛型参数 T，使用 keyof 取键的联合，映射类型
 // 把 T 的所有属性值变成 string
 \`\`\`
 
@@ -1704,8 +1704,8 @@ Record 做不到——Record 的值类型是固定的，不能根据原类型变
 #### 映射类型能保留修饰符（同态）
 
 \`\`\`ts
-interface Original { readonly id: number; name?: string; }
-type Homomorphic = { [K in keyof Original]: Original[K] };
+interface Original { readonly id: number; name?: string; }  // 定义接口 Original
+type Homomorphic = { [K in keyof Original]: Original[K] };  // 定义类型别名 Homomorphic，使用 keyof 取键的联合，映射类型
 // 保留 readonly 和 ?：{ readonly id: number; name?: string; }
 \`\`\`
 
@@ -1714,7 +1714,7 @@ Record 不保留修饰符。
 #### 映射类型能用 as 重映射键
 
 \`\`\`ts
-type Getters<T> = { [K in keyof T as \`get\${Capitalize<string & K>}\`]: () => T[K] };
+type Getters<T> = { [K in keyof T as \`get\${Capitalize<string & K>}\`]: () => T[K] };  // 定义类型别名 Getters，泛型参数 T，使用 keyof 取键的联合，映射类型（注意：类型断言会绕过类型检查）
 // { getName: () => string; ... }
 \`\`\`
 
@@ -1723,9 +1723,9 @@ Record 做不到键重映射。
 #### 映射类型能修改修饰符
 
 \`\`\`ts
-type MyReadonly<T> = { readonly [K in keyof T]: T[K] };
-type MyPartial<T> = { [K in keyof T]?: T[K] };
-type MyRequired<T> = { [K in keyof T]-?: T[K] };
+type MyReadonly<T> = { readonly [K in keyof T]: T[K] };  // 定义类型别名 MyReadonly，泛型参数 T，使用 keyof 取键的联合，映射类型
+type MyPartial<T> = { [K in keyof T]?: T[K] };  // 定义类型别名 MyPartial，泛型参数 T，使用 keyof 取键的联合，映射类型
+type MyRequired<T> = { [K in keyof T]-?: T[K] };  // 定义类型别名 MyRequired，泛型参数 T，使用 keyof 取键的联合，映射类型
 \`\`\`
 
 Record 不行。
@@ -1749,23 +1749,23 @@ Record 不行。
 
 \`\`\`ts
 // ❌ 反模式：用索引签名表示固定配置
-interface Config { [key: string]: string; }
-const cfg: Config = { host: "localhost", port: "3000" };
+interface Config { [key: string]: string; }  // 定义接口 Config
+const cfg: Config = { host: "localhost", port: "3000" };  // 声明常量 cfg，类型 Config
 // port 是 string，不是 number！而且 cfg.anyKey 也"合法"
 \`\`\`
 
 应该用 Record 或显式接口：
 
 \`\`\`ts
-type Config = Record<"host" | "port", string>;
+type Config = Record<"host" | "port", string>;  // 定义类型别名 Config，联合类型
 // 或
-interface Config { host: string; port: string; }
+interface Config { host: string; port: string; }  // 定义接口 Config
 \`\`\`
 
 #### 陷阱 2：忘记 number 键的 toString
 
 \`\`\`ts
-const m: { [key: number]: string } = {};
+const m: { [key: number]: string } = {};  // 声明常量 m，类型 { [key: number]: string }
 m[1] = "a";
 console.log(m["1"]); // "a" —— 运行时是同一个键
 \`\`\`
@@ -2158,14 +2158,14 @@ TypeScript 的函数重载由**多个重载签名**（overload signatures）和�
 
 \`\`\`ts
 // 重载签名：对外可见的调用方式
-function makeDate(timestamp: number): Date;
-function makeDate(year: number, month: number, day: number): Date;
+function makeDate(timestamp: number): Date;  // 定义函数 makeDate，参数: timestamp: number
+function makeDate(year: number, month: number, day: number): Date;  // 定义函数 makeDate，参数: year: number, month: number, day: number
 // 实现签名：内部实现，对外不可见
-function makeDate(yearOrTimestamp: number, month?: number, day?: number): Date {
-  if (month !== undefined && day !== undefined) {
-    return new Date(yearOrTimestamp, month - 1, day);
+function makeDate(yearOrTimestamp: number, month?: number, day?: number): Date {  // 定义函数 makeDate，参数: yearOrTimestamp: number, month?: number, day?: number，返回 Date
+  if (month !== undefined && day !== undefined) {  // 条件判断
+    return new Date(yearOrTimestamp, month - 1, day);  // 返回新创建的 Date 实例
   }
-  return new Date(yearOrTimestamp);
+  return new Date(yearOrTimestamp);  // 返回新创建的 Date 实例
 }
 
 makeDate(1234567890);      // ✅ 用第一个签名
@@ -2181,10 +2181,10 @@ makeDate(2024, 6, 15);     // ✅ 用第二个签名
 #### 实现签名对外不可见
 
 \`\`\`ts
-function f(x: string): string;
-function f(x: number): number;
+function f(x: string): string;  // 定义函数 f，参数: x: string
+function f(x: number): number;  // 定义函数 f，参数: x: number
 function f(x: string | number): string | number { // 实现签名
-  return x;
+  return x;  // 返回 x
 }
 
 f("a");   // ✅ string → string
@@ -2201,8 +2201,8 @@ f(1);     // ✅ number → number
 不用重载，用联合类型会怎样？
 
 \`\`\`ts
-function f(x: string | number): string | number {
-  return x;
+function f(x: string | number): string | number {  // 定义函数 f，参数: x: string | number，返回 string | number
+  return x;  // 返回 x
 }
 
 const r = f("a"); // r 的类型是 string | number，不是 string！
@@ -2214,10 +2214,10 @@ const r = f("a"); // r 的类型是 string | number，不是 string！
 #### 重载解决精确返回类型
 
 \`\`\`ts
-function f(x: string): string;
-function f(x: number): number;
-function f(x: string | number): string | number {
-  return x;
+function f(x: string): string;  // 定义函数 f，参数: x: string
+function f(x: number): number;  // 定义函数 f，参数: x: number
+function f(x: string | number): string | number {  // 定义函数 f，参数: x: string | number，返回 string | number
+  return x;  // 返回 x
 }
 
 const r1 = f("a"); // r1 类型是 string ✅
@@ -2242,11 +2242,11 @@ r2.toFixed(2);     // ✅
 #### createElement 风格
 
 \`\`\`ts
-function createElement(tag: "div"): HTMLDivElement;
-function createElement(tag: "span"): HTMLSpanElement;
-function createElement(tag: string): HTMLElement;
-function createElement(tag: string): HTMLElement {
-  return document.createElement(tag) as HTMLElement;
+function createElement(tag: "div"): HTMLDivElement;  // 定义函数 createElement，参数: tag: "div"
+function createElement(tag: "span"): HTMLSpanElement;  // 定义函数 createElement，参数: tag: "span"
+function createElement(tag: string): HTMLElement;  // 定义函数 createElement，参数: tag: string
+function createElement(tag: string): HTMLElement {  // 定义函数 createElement，参数: tag: string，返回 HTMLElement
+  return document.createElement(tag) as HTMLElement;  // 返回 document.createElement(tag) as HTMLElement（注意：类型断言会绕过类型检查）
 }
 
 const div = createElement("div"); // HTMLDivElement
@@ -2258,11 +2258,11 @@ const span = createElement("span"); // HTMLSpanElement
 #### Object.assign 的重载
 
 \`\`\`ts
-interface ObjectConstructor {
-  assign<T, U>(target: T, source: U): T & U;
-  assign<T, U, V>(target: T, source: U, source: V): T & U & V;
-  assign<T, U, V, W>(target: T, source: U, source: V, source: W): T & U & V & W;
-  assign(target: object, ...sources: any[]): any;
+interface ObjectConstructor {  // 定义接口 ObjectConstructor
+  assign<T, U>(target: T, source: U): T & U;  // 调用 assign（显式指定泛型参数）
+  assign<T, U, V>(target: T, source: U, source: V): T & U & V;  // 调用 assign（显式指定泛型参数）
+  assign<T, U, V, W>(target: T, source: U, source: V, source: W): T & U & V & W;  // 调用 assign（显式指定泛型参数）
+  assign(target: object, ...sources: any[]): any;  // 方法声明 assign(target: object, ...sources: any[])，返回 any（注意：any 关闭了类型检查）
 }
 \`\`\`
 
@@ -2271,9 +2271,9 @@ interface ObjectConstructor {
 #### fetch 的重载
 
 \`\`\`ts
-function fetch(input: string, init?: RequestInit): Promise<Response>;
-function fetch(input: URL, init?: RequestInit): Promise<Response>;
-function fetch(input: Request, init?: RequestInit): Promise<Response>;
+function fetch(input: string, init?: RequestInit): Promise<Response>;  // 定义函数 fetch，参数: input: string, init?: RequestInit
+function fetch(input: URL, init?: RequestInit): Promise<Response>;  // 定义函数 fetch，参数: input: URL, init?: RequestInit
+function fetch(input: Request, init?: RequestInit): Promise<Response>;  // 定义函数 fetch，参数: input: Request, init?: RequestInit
 \`\`\`
 
 不同输入类型（string、URL、Request），统一返回 Promise<Response>。
@@ -2281,10 +2281,10 @@ function fetch(input: Request, init?: RequestInit): Promise<Response>;
 ### 4. 重载与泛型结合
 
 \`\`\`ts
-function first<T>(arr: T[]): T;
-function first<T>(arr: readonly T[]): T;
-function first<T>(arr: readonly T[]): T {
-  return arr[0];
+function first<T>(arr: T[]): T;  // 定义函数 first，泛型 T，参数: arr: T[]
+function first<T>(arr: readonly T[]): T;  // 定义函数 first，泛型 T，参数: arr: readonly T[]
+function first<T>(arr: readonly T[]): T {  // 定义函数 first，泛型 T，参数: arr: readonly T[]，返回 T
+  return arr[0];  // 返回 arr[0]
 }
 
 const a = first([1, 2, 3]);     // number
@@ -2296,9 +2296,9 @@ const b = first(["a", "b"]);    // string
 #### 泛型 + 字面量类型
 
 \`\`\`ts
-function prop<T, K extends keyof T>(obj: T, key: K): T[K];
-function prop<T, K extends keyof T>(obj: T, key: K): T[K] {
-  return obj[key];
+function prop<T, K extends keyof T>(obj: T, key: K): T[K];  // 定义函数 prop，泛型 T, K extends keyof T，参数: obj: T, key: K
+function prop<T, K extends keyof T>(obj: T, key: K): T[K] {  // 定义函数 prop，泛型 T, K extends keyof T，参数: obj: T, key: K，返回 T[K]
+  return obj[key];  // 返回 obj[key]
 }
 
 const v = prop({ a: 1, b: "x" }, "a"); // v: number
@@ -2310,10 +2310,10 @@ const w = prop({ a: 1, b: "x" }, "b"); // w: string
 这是重载最隐蔽的陷阱：
 
 \`\`\`ts
-function f(x: string): string;
-function f(x: number): number;
-function f(x: string | number): string | number {
-  return x;
+function f(x: string): string;  // 定义函数 f，参数: x: string
+function f(x: number): number;  // 定义函数 f，参数: x: number
+function f(x: string | number): string | number {  // 定义函数 f，参数: x: string | number，返回 string | number
+  return x;  // 返回 x
 }
 
 type P = Parameters<typeof f>; // [string | number] —— 只取实现签名！
@@ -2332,14 +2332,14 @@ type OverloadReturnType<T> =
     (...a: infer A1): infer R1;
     (...a: infer A2): infer R2;
     (...a: infer A3): infer R3;
-    (...a: any): any;
+    (...a: any): any;  // 注意：any 关闭了类型检查
   } ? R1 | R2 | R3 :
   T extends {
     (...a: infer A1): infer R1;
     (...a: infer A2): infer R2;
-    (...a: any): any;
+    (...a: any): any;  // 注意：any 关闭了类型检查
   } ? R1 | R2 :
-  T extends (...a: infer A) => infer R ? R : never;
+  T extends (...a: infer A) => infer R ? R : never;  // 箭头函数
 \`\`\`
 
 但这种实现有限制——重载数量固定，且实现签名必须显式列出。更实际的做法是避免在重载函数上用 Parameters/ReturnType，或用具体的重载签名类型。
@@ -2350,17 +2350,17 @@ type OverloadReturnType<T> =
 
 \`\`\`ts
 // ✅ 正确：实现签名参数兼容所有重载
-function f(x: string): string;
-function f(x: number): number;
+function f(x: string): string;  // 定义函数 f，参数: x: string
+function f(x: number): number;  // 定义函数 f，参数: x: number
 function f(x: string | number): string | number { // 兼容 string 和 number
-  return x;
+  return x;  // 返回 x
 }
 
 // ❌ 错误：实现签名不兼容
-function g(x: string): string;
-function g(x: number): number;
+function g(x: string): string;  // 定义函数 g，参数: x: string
+function g(x: number): number;  // 定义函数 g，参数: x: number
 function g(x: boolean): boolean { // ❌ 不兼容 string 和 number
-  return x;
+  return x;  // 返回 x
 }
 \`\`\`
 
@@ -2372,13 +2372,13 @@ function g(x: boolean): boolean { // ❌ 不兼容 string 和 number
 
 \`\`\`ts
 // 重载版本
-function f(x: string): string;
-function f(x: number): number;
-function f(x: string | number): string | number { return x; }
+function f(x: string): string;  // 定义函数 f，参数: x: string
+function f(x: number): number;  // 定义函数 f，参数: x: number
+function f(x: string | number): string | number { return x; }  // 定义函数 f，参数: x: string | number，返回 string | number
 
 // 条件类型版本
-function f<T extends string | number>(x: T): T extends string ? string : number {
-  return x as any;
+function f<T extends string | number>(x: T): T extends string ? string : number {  // 定义函数 f，泛型 T extends string | number，参数: x: T，返回 T extends string ? string : number
+  return x as any;  // 返回 x as any（注意：any 关闭了类型检查；注意：类型断言会绕过类型检查）
 }
 
 const a = f("a"); // string
@@ -2398,14 +2398,14 @@ TypeScript 按顺序匹配重载签名，**第一个匹配的签名胜出**。�
 
 \`\`\`ts
 // ✅ 正确顺序：具体在前
-function f(x: "a"): "A";
-function f(x: string): string;
-function f(x: string): string {
-  return x === "a" ? "A" : x;
+function f(x: "a"): "A";  // 定义函数 f，参数: x: "a"
+function f(x: string): string;  // 定义函数 f，参数: x: string
+function f(x: string): string {  // 定义函数 f，参数: x: string，返回 string
+  return x === "a" ? "A" : x;  // 返回 x === "a" ? "A" : x
 }
 
 // ❌ 错误顺序：宽泛在前，具体永不被匹配
-function g(x: string): string;
+function g(x: string): string;  // 定义函数 g，参数: x: string
 function g(x: "a"): "A"; // 永远不会被匹配，因为 string 已经匹配
 \`\`\`
 
@@ -2414,25 +2414,25 @@ function g(x: "a"): "A"; // 永远不会被匹配，因为 string 已经匹配
 #### 函数重载
 
 \`\`\`ts
-function f(x: string): string;
-function f(x: number): number;
-function f(x: string | number): string | number { return x; }
+function f(x: string): string;  // 定义函数 f，参数: x: string
+function f(x: number): number;  // 定义函数 f，参数: x: number
+function f(x: string | number): string | number { return x; }  // 定义函数 f，参数: x: string | number，返回 string | number
 \`\`\`
 
 #### 方法重载（在类或接口中）
 
 \`\`\`ts
-class Counter {
-  add(x: number): number;
-  add(x: number, y: number): number;
-  add(x: number, y?: number): number {
-    return y !== undefined ? x + y : x;
+class Counter {  // 定义类 Counter
+  add(x: number): number;  // 方法声明 add(x: number)，返回 number
+  add(x: number, y: number): number;  // 方法声明 add(x: number, y: number)，返回 number
+  add(x: number, y?: number): number {  // 方法声明 add(x: number, y?: number)，返回 number
+    return y !== undefined ? x + y : x;  // 返回 y !== undefined ? x + y : x
   }
 }
 
-interface EventEmitter {
-  on(event: string, cb: Function): void;
-  on(event: "data", cb: (data: Buffer) => void): void;
+interface EventEmitter {  // 定义接口 EventEmitter
+  on(event: string, cb: Function): void;  // 方法声明 on(event: string, cb: Function)，返回 void
+  on(event: "data", cb: (data: Buffer) => void): void;  // 箭头函数
 }
 \`\`\`
 
@@ -2818,16 +2818,16 @@ TypeScript 的类型系统是**编译期**的——类型注解在转译成 Java
 #### 类型擦除示例
 
 \`\`\`ts
-interface User { id: number; name: string; }
+interface User { id: number; name: string; }  // 定义接口 User
 
 // 转译前
-function greet(user: User) {
-  return "Hello, " + user.name;
+function greet(user: User) {  // 定义函数 greet，参数: user: User
+  return "Hello, " + user.name;  // 返回 "Hello, " + user.name
 }
 
 // 转译后（类型完全消失）
-function greet(user) {
-  return "Hello, " + user.name;
+function greet(user) {  // 定义函数 greet，参数: user
+  return "Hello, " + user.name;  // 返回 "Hello, " + user.name
 }
 \`\`\`
 
@@ -2836,15 +2836,15 @@ function greet(user) {
 #### 后果：类型不保证运行时
 
 \`\`\`ts
-interface User { id: number; name: string; }
+interface User { id: number; name: string; }  // 定义接口 User
 
 // 从 API 获取数据
-async function fetchUser(): Promise<User> {
-  const res = await fetch("/api/user/1");
+async function fetchUser(): Promise<User> {  // 定义函数 fetchUser，返回 Promise<User>
+  const res = await fetch("/api/user/1");  // 声明常量 res
   return res.json(); // ← 类型标注是 Promise<User>，但运行时返回的是什么？
 }
 
-const user = await fetchUser();
+const user = await fetchUser();  // 声明常量 user
 // user.name 在类型层面是 string，但运行时可能是 undefined（如果 API 返回 { id: 1 }）
 console.log(user.name.toUpperCase()); // 运行时可能抛 TypeError: Cannot read property 'toUpperCase' of undefined
 \`\`\`
@@ -2866,7 +2866,7 @@ console.log(user.name.toUpperCase()); // 运行时可能抛 TypeError: Cannot re
 
 \`\`\`ts
 // localStorage 读取
-const saved = localStorage.getItem("user");
+const saved = localStorage.getItem("user");  // 声明常量 saved
 const user: User = JSON.parse(saved); // ← 类型是 User，但实际可能是任何东西
 
 // JSON.parse 的类型是 any
@@ -2907,7 +2907,7 @@ zod 是当前最流行的选择：
 import { z } from "zod"; // 沙箱没有，仅说明
 
 // 定义 schema
-const UserSchema = z.object({
+const UserSchema = z.object({  // 声明常量 UserSchema
   id: z.number(),
   name: z.string(),
   email: z.string().email().optional(),
@@ -2916,11 +2916,11 @@ const UserSchema = z.object({
 });
 
 // parse：校验失败抛异常
-const user = UserSchema.parse(unknownData);
+const user = UserSchema.parse(unknownData);  // 声明常量 user
 
 // safeParse：返回结果对象，不抛异常
-const result = UserSchema.safeParse(unknownData);
-if (result.success) {
+const result = UserSchema.safeParse(unknownData);  // 声明常量 result
+if (result.success) {  // 条件判断
   console.log(result.data);  // 已校验的数据
 } else {
   console.log(result.error); // 错误信息
@@ -2930,7 +2930,7 @@ if (result.success) {
 #### 从 schema 推导类型：z.infer
 
 \`\`\`ts
-type User = z.infer<typeof UserSchema>;
+type User = z.infer<typeof UserSchema>;  // 定义类型别名 User
 // 等价于
 // { id: number; name: string; email?: string; age: number; roles: string[] }
 \`\`\`
@@ -2941,23 +2941,23 @@ type User = z.infer<typeof UserSchema>;
 
 \`\`\`ts
 // 基础类型
-z.string();
-z.number();
-z.boolean();
-z.bigint();
-z.date();
+z.string();  // 调用 z.string
+z.number();  // 调用 z.number
+z.boolean();  // 调用 z.boolean
+z.bigint();  // 调用 z.bigint
+z.date();  // 调用 z.date
 
 // 字面量与枚举
-z.literal("hello");
-z.enum(["red", "green", "blue"]);
+z.literal("hello");  // 调用 z.literal
+z.enum(["red", "green", "blue"]);  // 调用 z.enum
 
 // 复合类型
-z.object({ ... });
-z.array(z.string());
-z.tuple([z.string(), z.number()]);
+z.object({ ... });  // 调用 z.object
+z.array(z.string());  // 调用 z.array
+z.tuple([z.string(), z.number()]);  // 调用 z.tuple
 
 // 联合与可选
-z.union([z.string(), z.number()]);
+z.union([z.string(), z.number()]);  // 调用 z.union
 z.string().optional();   // string | undefined
 z.string().nullable();   // string | null
 z.string().default("x"); // 带默认值
@@ -2966,10 +2966,10 @@ z.string().default("x"); // 带默认值
 z.string().transform(s => s.length); // string → number
 
 // 约束
-z.string().min(3).max(20);
-z.string().email();
-z.number().int().positive();
-z.array(z.string()).nonempty();
+z.string().min(3).max(20);  // 调用 z.string
+z.string().email();  // 调用 z.string
+z.number().int().positive();  // 调用 z.number
+z.array(z.string()).nonempty();  // 调用 z.array
 \`\`\`
 
 ### 6. 手写类型守卫的繁琐（对比动机）
@@ -2977,7 +2977,7 @@ z.array(z.string()).nonempty();
 不用 zod，手写类型守卫校验复杂对象非常繁琐：
 
 \`\`\`ts
-interface User {
+interface User {  // 定义接口 User
   id: number;
   name: string;
   email?: string;
@@ -2989,20 +2989,20 @@ interface User {
   };
 }
 
-function isUser(x: unknown): x is User {
-  if (typeof x !== "object" || x === null) return false;
-  const obj = x as Record<string, unknown>;
-  if (typeof obj.id !== "number") return false;
-  if (typeof obj.name !== "string") return false;
-  if (obj.email !== undefined && typeof obj.email !== "string") return false;
-  if (typeof obj.age !== "number") return false;
-  if (!Array.isArray(obj.roles)) return false;
-  if (!obj.roles.every(r => typeof r === "string")) return false;
-  if (typeof obj.address !== "object" || obj.address === null) return false;
-  const addr = obj.address as Record<string, unknown>;
-  if (typeof addr.city !== "string") return false;
-  if (typeof addr.zip !== "string") return false;
-  return true;
+function isUser(x: unknown): x is User {  // 自定义类型守卫（返回 x is T）
+  if (typeof x !== "object" || x === null) return false;  // 条件判断
+  const obj = x as Record<string, unknown>;  // 声明常量 obj（注意：类型断言会绕过类型检查）
+  if (typeof obj.id !== "number") return false;  // 条件判断
+  if (typeof obj.name !== "string") return false;  // 条件判断
+  if (obj.email !== undefined && typeof obj.email !== "string") return false;  // 条件判断
+  if (typeof obj.age !== "number") return false;  // 条件判断
+  if (!Array.isArray(obj.roles)) return false;  // 条件判断
+  if (!obj.roles.every(r => typeof r === "string")) return false;  // 类型守卫：判断是否为 string
+  if (typeof obj.address !== "object" || obj.address === null) return false;  // 条件判断
+  const addr = obj.address as Record<string, unknown>;  // 声明常量 addr（注意：类型断言会绕过类型检查）
+  if (typeof addr.city !== "string") return false;  // 条件判断
+  if (typeof addr.zip !== "string") return false;  // 条件判断
+  return true;  // 返回 true
 }
 \`\`\`
 
@@ -3028,7 +3028,7 @@ type Schema =
   | { kind: "object"; fields: Record<string, Schema>; optionals?: string[] };
 
 // 校验函数
-function validate(data: unknown, schema: Schema): true | string {
+function validate(data: unknown, schema: Schema): true | string {  // 定义函数 validate，参数: data: unknown, schema: Schema，返回 true | string
   // 根据 schema.kind 校验 data，返回 true 或错误信息
   // ...
 }
@@ -3040,7 +3040,7 @@ function validate(data: unknown, schema: Schema): true | string {
 
 \`\`\`ts
 // 模拟 zod 风格的 schema 定义
-const UserSchema = {
+const UserSchema = {  // 声明常量 UserSchema
   kind: "object",
   fields: {
     id: { kind: "number" },
@@ -3048,21 +3048,21 @@ const UserSchema = {
     email: { kind: "string" },  // optional
   },
   optionals: ["email"],
-} as const;
+} as const;  // 注意：类型断言会绕过类型检查
 
 // 校验函数
-function validateUser(data: unknown): User {
-  if (!isObject(data)) throw new Error("not object");
-  if (typeof data.id !== "number") throw new Error("id missing");
-  if (typeof data.name !== "string") throw new Error("name missing");
-  if (data.email !== undefined && typeof data.email !== "string") {
-    throw new Error("email invalid");
+function validateUser(data: unknown): User {  // 定义函数 validateUser，参数: data: unknown，返回 User
+  if (!isObject(data)) throw new Error("not object");  // 条件判断
+  if (typeof data.id !== "number") throw new Error("id missing");  // 条件判断
+  if (typeof data.name !== "string") throw new Error("name missing");  // 条件判断
+  if (data.email !== undefined && typeof data.email !== "string") {  // 条件判断
+    throw new Error("email invalid");  // 抛出 Error 异常
   }
-  return data as User;
+  return data as User;  // 返回 data as User（注意：类型断言会绕过类型检查）
 }
 
 // 从 schema 推导类型（手写模拟 z.infer）
-type User = {
+type User = {  // 定义类型别名 User
   id: number;
   name: string;
   email?: string;
@@ -3075,15 +3075,15 @@ type User = {
 
 \`\`\`ts
 // 边界层：API 客户端
-async function fetchUser(id: number): Promise<User> {
-  const raw = await fetch("/api/users/" + id).then(r => r.json());
+async function fetchUser(id: number): Promise<User> {  // 定义函数 fetchUser，参数: id: number，返回 Promise<User>
+  const raw = await fetch("/api/users/" + id).then(r => r.json());  // 声明常量 raw
   return validateUser(raw); // 边界校验
 }
 
 // 内部层：业务逻辑
-function processUser(user: User) {
+function processUser(user: User) {  // 定义函数 processUser，参数: user: User
   // 内部信任类型，不再重复校验
-  return user.name.toUpperCase();
+  return user.name.toUpperCase();  // 返回 user.name.toUpperCase()
 }
 \`\`\`
 
@@ -3094,10 +3094,10 @@ function processUser(user: User) {
 zod schema 可以转 OpenAPI/JSON Schema，反之亦然：
 
 \`\`\`ts
-import { z } from "zod";
-import { zodToOpenAPI } from "zod-openapi";
+import { z } from "zod";  // 导入 { z }
+import { zodToOpenAPI } from "zod-openapi";  // 导入 { zodToOpenAPI }
 
-const UserSchema = z.object({ ... });
+const UserSchema = z.object({ ... });  // 声明常量 UserSchema
 const openApiSchema = zodToOpenAPI(UserSchema); // 转 OpenAPI
 \`\`\`
 

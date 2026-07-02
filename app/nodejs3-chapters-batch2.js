@@ -31,7 +31,7 @@ Koa 是 Node.js 社区最流行的 Web 框架之一，它最核心的设计就�
 
 中间件的签名是：
 \`\`\`js
-async function middleware(ctx, next) {
+async function middleware(ctx, next) {  // 声明异步函数，内部可用 await
   // 请求进来时：next() 之前的逻辑
   await next(); // 调用下一个中间件
   // 响应出去时：next() 之后的逻辑
@@ -109,7 +109,7 @@ compose 的实现非常巧妙，核心是一个递归的 \`dispatch(i)\` 函数�
 
 \`\`\`js
 // Redux compose：右到左执行，把前一个函数的返回值传给后一个
-const compose = (...fns) => x => fns.reduceRight((v, f) => f(v), x);
+const compose = (...fns) => x => fns.reduceRight((v, f) => f(v), x);  // 箭头函数 compose
 // compose(f, g, h)(x) === f(g(h(x)))
 \`\`\`
 
@@ -329,7 +329,7 @@ ES2018 引入了异步迭代器，我们可以用更优雅的方式实现：维�
 怎么做到？很简单：不要按完成顺序 push 结果，而是按任务的**原始索引**存结果：
 
 \`\`\`js
-const results = [];
+const results = [];  // 定义数组 results
 // 第 i 个任务完成后
 results[i] = await task();
 \`\`\`
@@ -529,16 +529,16 @@ Node.js 的 CommonJS 模块系统我们每天都在用：\`require('fs')\`、\`m
 你的代码：
 \`\`\`js
 // a.js
-const fs = require('fs');
-module.exports = { hello: 'world' };
+const fs = require('fs');  // 导入模块 fs；require 返回 module.exports
+module.exports = { hello: 'world' };  // 设置模块导出对象（require 返回的就是它）
 \`\`\`
 
 实际上被包裹成：
 \`\`\`js
 (function (exports, require, module, __filename, __dirname) {
   // 你的代码在这里！
-  const fs = require('fs');
-  module.exports = { hello: 'world' };
+  const fs = require('fs');  // 导入模块 fs；require 返回 module.exports
+  module.exports = { hello: 'world' };  // 设置模块导出对象（require 返回的就是它）
 });
 \`\`\`
 
@@ -825,7 +825,7 @@ ES6 class 支持静态属性，我们可以把 instance 存到类的静态属性
 
 \`\`\`js
 // config.js
-class Config { ... }
+class Config { ... }  // 定义类 Config
 export default new Config(); // 整个应用 import 这个模块，拿到的都是同一个实例！
 \`\`\`
 
@@ -1110,7 +1110,7 @@ class AsyncDB {
 来看一个反例：
 \`\`\`js
 // 不好的写法：到处直接 new，和具体类强耦合
-if (role === 'user') {
+if (role === 'user') {  // 条件判断
   user = new User(name, email, DEFAULT_USER_PERMISSIONS);
 } else if (role === 'admin') {
   user = new Admin(name, email, ALL_PERMISSIONS, 'super-secret-key');
@@ -1123,7 +1123,7 @@ if (role === 'user') {
 如果我们把创建逻辑封装到工厂里：
 \`\`\`js
 // 好的写法：只和工厂打交道，不管具体怎么创建
-const user = UserFactory.create(role, { name, email });
+const user = UserFactory.create(role, { name, email });  // 定义常量 user
 \`\`\`
 
 好处：
@@ -1500,7 +1500,7 @@ console.log('');
 想象一下你要创建一个 HTTP 请求对象，它有很多可选参数：
 \`\`\`js
 // 反面教材： telescoping constructor（望远镜构造函数）
-const req = new Request(
+const req = new Request(  // 创建实例 req
   'https://api.example.com/users',  // url
   'POST',                           // method
   { 'Content-Type': 'application/json' }, // headers
@@ -1522,7 +1522,7 @@ const req = new Request(
 
 建造者模式就是来解决这个问题的：
 \`\`\`js
-const req = new RequestBuilder()
+const req = new RequestBuilder()  // 创建实例 req
   .url('https://api.example.com/users')
   .method('POST')
   .header('Content-Type', 'application/json')
@@ -1557,17 +1557,17 @@ const req = new RequestBuilder()
 建造者模式的标志性特征就是**链式调用**（Fluent Interface），它的原理非常简单：**每个设置方法都 return this**。
 
 \`\`\`js
-class Builder {
+class Builder {  // 定义类 Builder
   setA(a) {
     this.a = a;
     return this; // 返回自己，就能继续 .setB()
   }
   setB(b) {
     this.b = b;
-    return this;
+    return this;  // 返回值
   }
   build() {
-    return { a: this.a, b: this.b };
+    return { a: this.a, b: this.b };  // 返回值
   }
 }
 \`\`\`
@@ -1582,9 +1582,9 @@ jQuery 就是链式调用的经典例子：\`$('.btn').addClass('active').show()
 
 比如你要做一个"默认请求"的构建流程：
 \`\`\`js
-class RequestDirector {
+class RequestDirector {  // 定义类 RequestDirector
   static buildDefaultApiRequest(builder) {
-    return builder
+    return builder  // 返回值
       .method('GET')
       .timeout(5000)
       .header('Accept', 'application/json')
@@ -1594,7 +1594,7 @@ class RequestDirector {
   }
 }
 // 使用
-const req = RequestDirector.buildDefaultApiRequest(
+const req = RequestDirector.buildDefaultApiRequest(  // 定义常量 req
   new RequestBuilder().url('/api/users')
 );
 \`\`\`
@@ -1986,7 +1986,7 @@ console.log('');
 └───────┘ └───────┘
 
 客户端代码：
-const p1 = new ConcretePrototype1();
+const p1 = new ConcretePrototype1();  // 创建实例 p1
 const p2 = p1.clone(); // 通过克隆创建新对象
 \`\`\`
 
@@ -2011,13 +2011,13 @@ const p2 = p1.clone(); // 通过克隆创建新对象
 \`Object.create(proto, propertiesObject)\` 是原型模式的核心 API：
 
 \`\`\`js
-const shape = {
+const shape = {  // 定义对象 shape
   type: 'shape',
   getType() { return this.type; },
   area() { return 0; }
 };
 
-const circle = Object.create(shape, {
+const circle = Object.create(shape, {  // 定义常量 circle
   radius: { value: 5, writable: true },
   type: { value: 'circle' },
   area: {
@@ -2059,31 +2059,31 @@ JavaScript 中这两种风格你都会遇到：
 
 **类风格（ES6 class）**：
 \`\`\`js
-class Shape {
-  constructor(x, y) { this.x = x; this.y = y; }
+class Shape {  // 定义类 Shape
+  constructor(x, y) { this.x = x; this.y = y; }  // 构造函数
   move(x, y) { this.x += x; this.y += y; }
 }
-class Circle extends Shape {
-  constructor(x, y, r) { super(x, y); this.r = r; }
+class Circle extends Shape {  // 定义类 Circle
+  constructor(x, y, r) { super(x, y); this.r = r; }  // 构造函数
   area() { return Math.PI * this.r * this.r; }
 }
 \`\`\`
 
 **原型风格（Object.create）**：
 \`\`\`js
-const Shape = {
+const Shape = {  // 定义对象 Shape
   init(x, y) { this.x = x; this.y = y; return this; },
   move(x, y) { this.x += x; this.y += y; }
 };
-const Circle = Object.create(Shape);
+const Circle = Object.create(Shape);  // 定义常量 Circle
 Circle.init = function(x, y, r) {
   Shape.init.call(this, x, y);
   this.r = r;
-  return this;
+  return this;  // 返回值
 };
 Circle.area = function() { return Math.PI * this.r * this.r; };
 
-const c = Object.create(Circle).init(0, 0, 5);
+const c = Object.create(Circle).init(0, 0, 5);  // 定义常量 c
 \`\`\`
 
 ES6 class 本质上就是原型继承的语法糖，让写法更接近传统 OOP 语言。理解了原型，你就理解了 JS 继承的本质。
@@ -2111,8 +2111,8 @@ ES6 class 本质上就是原型继承的语法糖，让写法更接近传统 OOP
 
 \`\`\`js
 // 不好：每个对象都有自己的方法副本（占内存）
-function createBadCircle(r) {
-  return {
+function createBadCircle(r) {  // 声明函数 createBadCircle
+  return {  // 返回值
     r,
     area() { return Math.PI * r * r; }, // 每个对象都创建一个新函数！
     circumference() { return 2 * Math.PI * r; }
@@ -2120,14 +2120,14 @@ function createBadCircle(r) {
 }
 
 // 好：方法在原型上，所有实例共享
-const circlePrototype = {
+const circlePrototype = {  // 定义对象 circlePrototype
   area() { return Math.PI * this.r * this.r; },
   circumference() { return 2 * Math.PI * this.r; }
 };
-function createCircle(r) {
-  const c = Object.create(circlePrototype);
+function createCircle(r) {  // 声明函数 createCircle
+  const c = Object.create(circlePrototype);  // 定义常量 c
   c.r = r;
-  return c;
+  return c;  // 返回值
 }
 // 创建 10000 个 circle，方法在内存中只有一份！
 \`\`\`
@@ -2491,20 +2491,20 @@ JavaScript 是一门灵活的语言，很多在 Java/C# 中需要用设计模式
 Java 里要写单例类、私有构造函数、getInstance，JS 里直接：
 \`\`\`js
 // config.js
-export default { db: 'mysql', port: 3306 };
+export default { db: 'mysql', port: 3306 };  // 默认导出（每个模块只能有一个）
 // 所有 import 的地方拿到的是同一个对象，天然单例！
 \`\`\`
 
 ### 2. 工厂 → 工厂函数
 不需要工厂类层次结构，一个函数就行：
 \`\`\`js
-const createLogger = (type) => type === 'file' ? new FileLogger() : new ConsoleLogger();
+const createLogger = (type) => type === 'file' ? new FileLogger() : new ConsoleLogger();  // 箭头函数 createLogger
 \`\`\`
 
 ### 3. 建造者 → 链式对象/配置对象
 很多时候不需要专门的 Builder 类，一个带默认值的配置对象 + 展开运算符就够了：
 \`\`\`js
-const request = ({
+const request = ({  // 定义常量 request
   url,
   method = 'GET',
   headers = {},
@@ -2521,9 +2521,9 @@ JS 天生是原型语言，Object.create 就是原生的原型模式，不需要
 很多创建型模式本质上是"封装创建逻辑"，JS 的闭包和高阶函数天然就能封装，不需要类：
 \`\`\`js
 // 用闭包实现"单例工厂"
-const getLogger = (() => {
+const getLogger = (() => {  // 箭头函数 getLogger
   let instance;
-  return () => instance || (instance = createLogger());
+  return () => instance || (instance = createLogger());  // 返回值
 })();
 \`\`\`
 

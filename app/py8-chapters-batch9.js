@@ -45,26 +45,26 @@ export const chapters = [
 **方式一：直接传 target 函数**
 
 \`\`\`python
-import threading
+import threading  # 导入模块 threading
 
-def worker():
-    print("线程工作中")
+def worker():  # 定义函数 worker
+    print("线程工作中")  # 打印输出到屏幕
 
-t = threading.Thread(target=worker)
-t.start()
-t.join()
+t = threading.Thread(target=worker)  # 赋值变量 t
+t.start()  # 调用 t.start()：启动
+t.join()  # 调用 t.join()：等待所有任务完成
 \`\`\`
 
 **方式二：子类化 Thread**
 
 \`\`\`python
-class MyThread(threading.Thread):
-    def run(self):
-        print("自定义线程运行中")
+class MyThread(threading.Thread):  # 定义类 MyThread
+    def run(self):  # 定义函数 run，参数：self
+        print("自定义线程运行中")  # 打印输出到屏幕
 
-t = MyThread()
-t.start()
-t.join()
+t = MyThread()  # 赋值变量 t
+t.start()  # 调用 t.start()：启动
+t.join()  # 调用 t.join()：等待所有任务完成
 \`\`\`
 
 ### 守护线程（daemon）
@@ -72,7 +72,7 @@ t.join()
 守护线程是一种"后台线程"，当主线程结束时，守护线程会自动终止，不用等它执行完。
 
 \`\`\`python
-t = threading.Thread(target=worker, daemon=True)
+t = threading.Thread(target=worker, daemon=True)  # 赋值变量 t
 \`\`\`
 
 ### 共享数据竞争
@@ -262,21 +262,21 @@ print("=" * 40)`
 最基本的锁，只能被一个线程持有：
 
 \`\`\`python
-import threading
+import threading  # 导入模块 threading
 
-lock = threading.Lock()
+lock = threading.Lock()  # 赋值变量 lock
 
 # 方式一：手动 acquire/release
-lock.acquire()
-try:
+lock.acquire()  # 调用 lock.acquire()：获取锁
+try:  # 尝试执行可能出错的代码
     # 临界区：操作共享数据
-    shared_data += 1
-finally:
+    shared_data += 1  # shared_data 累加
+finally:  # 无论是否异常都执行
     lock.release()  # 必须释放，否则死锁！
 
 # 方式二：with 语句（推荐，自动释放）
-with lock:
-    shared_data += 1
+with lock:  # 使用上下文管理器：lock
+    shared_data += 1  # shared_data 累加
 \`\`\`
 
 ### RLock 可重入锁
@@ -284,10 +284,10 @@ with lock:
 普通 Lock 在同一线程中重复 acquire 会**死锁**。RLock 允许同一线程多次获取：
 
 \`\`\`python
-rlock = threading.RLock()
-rlock.acquire()
+rlock = threading.RLock()  # 赋值变量 rlock
+rlock.acquire()  # 调用 rlock.acquire()：获取锁
 rlock.acquire()  # 同一线程再次获取，OK
-rlock.release()
+rlock.release()  # 调用 rlock.release()：释放锁
 rlock.release()  # 获取几次就要释放几次
 \`\`\`
 
@@ -320,17 +320,17 @@ GIL（Global Interpreter Lock）是 CPython 解释器的一个机制：
 比 Lock 更高级，允许线程等待某个条件满足：
 
 \`\`\`python
-cond = threading.Condition()
+cond = threading.Condition()  # 赋值变量 cond
 
 # 消费者：等待条件
-with cond:
-    while not data_ready:
+with cond:  # 使用上下文管理器：cond
+    while not data_ready:  # 当 not data_ready 时循环
         cond.wait()   # 释放锁并等待
     # 消费数据
 
 # 生产者：通知条件满足
-with cond:
-    data_ready = True
+with cond:  # 使用上下文管理器：cond
+    data_ready = True  # 赋值变量 data_ready
     cond.notify_all()  # 唤醒所有等待的线程
 \`\`\`
 
@@ -340,11 +340,11 @@ with cond:
 
 \`\`\`python
 # 最多允许 3 个线程同时访问
-sem = threading.Semaphore(3)
+sem = threading.Semaphore(3)  # 赋值变量 sem
 
-with sem:
+with sem:  # 使用上下文管理器：sem
     # 最多3个线程能同时进入这里
-    do_work()
+    do_work()  # 调用 do_work()
 \`\`\`
 
 下面的 demo 演示 Lock、RLock、死锁、Condition、Semaphore 的完整用法。`,
@@ -581,15 +581,15 @@ print("=" * 40)`
 ### ThreadPoolExecutor 线程池
 
 \`\`\`python
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor  # 从 concurrent.futures 导入 ThreadPoolExecutor
 
-with ThreadPoolExecutor(max_workers=4) as executor:
+with ThreadPoolExecutor(max_workers=4) as executor:  # 使用上下文管理器：ThreadPoolExecutor(max_workers=4) as executor
     # 方式一：submit 提交单个任务
-    future = executor.submit(download, url)
+    future = executor.submit(download, url)  # 赋值变量 future
     result = future.result()  # 阻塞等待结果
 
     # 方式二：map 批量提交
-    results = executor.map(download, urls)
+    results = executor.map(download, urls)  # 赋值变量 results
 \`\`\`
 
 ### ProcessPoolExecutor 进程池
@@ -597,26 +597,26 @@ with ThreadPoolExecutor(max_workers=4) as executor:
 用法和线程池几乎一样，只是把 \`ThreadPoolExecutor\` 换成 \`ProcessPoolExecutor\`：
 
 \`\`\`python
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor  # 从 concurrent.futures 导入 ProcessPoolExecutor
 
-with ProcessPoolExecutor(max_workers=4) as executor:
-    results = executor.map(cpu_heavy, data)
+with ProcessPoolExecutor(max_workers=4) as executor:  # 使用上下文管理器：ProcessPoolExecutor(max_workers=4) as executor
+    results = executor.map(cpu_heavy, data)  # 赋值变量 results
 \`\`\`
 
 ### as_completed 按完成顺序获取
 
 \`\`\`python
-from concurrent.futures import as_completed
+from concurrent.futures import as_completed  # 从 concurrent.futures 导入 as_completed
 
-futures = {executor.submit(task, i): i for i in range(10)}
-for future in as_completed(futures):
+futures = {executor.submit(task, i): i for i in range(10)}  # 定义字典 futures
+for future in as_completed(futures):  # 遍历 as_completed(futures)，取值给 future
     result = future.result()  # 谁先完成就先处理谁
 \`\`\`
 
 ### Future 对象
 
 \`\`\`python
-future = executor.submit(func, arg)
+future = executor.submit(func, arg)  # 赋值变量 future
 future.done()       # 是否完成
 future.result()     # 获取结果（阻塞）
 future.cancel()     # 尝试取消
@@ -831,14 +831,14 @@ print("=" * 40)`
 ### Process 创建与使用
 
 \`\`\`python
-from multiprocessing import Process
+from multiprocessing import Process  # 从 multiprocessing 导入 Process
 
-def worker(name):
-    print(f"进程 {name} 工作中")
+def worker(name):  # 定义函数 worker，参数：name
+    print(f"进程 {name} 工作中")  # 打印输出到屏幕
 
-p = Process(target=worker, args=("A",))
-p.start()
-p.join()
+p = Process(target=worker, args=("A",))  # 赋值变量 p
+p.start()  # 调用 p.start()：启动
+p.join()  # 调用 p.join()：等待所有任务完成
 \`\`\`
 
 ### 进程间通信（IPC）
@@ -848,9 +848,9 @@ p.join()
 **Queue（队列）**：线程安全的 FIFO 队列
 
 \`\`\`python
-from multiprocessing import Queue
+from multiprocessing import Queue  # 从 multiprocessing 导入 Queue
 
-q = Queue()
+q = Queue()  # 赋值变量 q
 q.put("数据")       # 放入
 data = q.get()       # 取出
 \`\`\`
@@ -858,9 +858,9 @@ data = q.get()       # 取出
 **Pipe（管道）**：双向通信管道
 
 \`\`\`python
-from multiprocessing import Pipe
+from multiprocessing import Pipe  # 从 multiprocessing 导入 Pipe
 
-parent_conn, child_conn = Pipe()
+parent_conn, child_conn = Pipe()  # 多重赋值：parent_conn, child_conn
 parent_conn.send("hello")   # 一端发送
 msg = child_conn.recv()     # 另一端接收
 \`\`\`
@@ -870,21 +870,21 @@ msg = child_conn.recv()     # 另一端接收
 和线程池类似，管理一组工作进程：
 
 \`\`\`python
-from multiprocessing import Pool
+from multiprocessing import Pool  # 从 multiprocessing 导入 Pool
 
-with Pool(processes=4) as pool:
+with Pool(processes=4) as pool:  # 使用上下文管理器：Pool(processes=4) as pool
     # apply_async：异步提交单个任务
-    result = pool.apply_async(func, args=(x,))
-    print(result.get())
+    result = pool.apply_async(func, args=(x,))  # 赋值变量 result
+    print(result.get())  # 打印输出到屏幕
 
     # map：批量提交
-    results = pool.map(func, data)
+    results = pool.map(func, data)  # 赋值变量 results
 \`\`\`
 
 ### 守护进程
 
 \`\`\`python
-p = Process(target=worker, daemon=True)
+p = Process(target=worker, daemon=True)  # 赋值变量 p
 \`\`\`
 
 ### 重要注意事项
@@ -1114,10 +1114,10 @@ if __name__ == "__main__":
 
 \`\`\`python
 # async def 定义协程函数（不是普通函数）
-async def fetch_data():
+async def fetch_data():  # 定义异步函数 fetch_data
     # await 挂起当前协程，等待异步操作完成
-    result = await some_async_operation()
-    return result
+    result = await some_async_operation()  # 赋值变量 result
+    return result  # 返回 result
 \`\`\`
 
 - **\`async def\`**：定义一个**协程函数**（coroutine function），调用它返回的是协程对象，不是普通返回值
@@ -1128,12 +1128,12 @@ async def fetch_data():
 事件循环是 asyncio 的核心，它不停地检查哪些任务可以执行：
 
 \`\`\`python
-import asyncio
+import asyncio  # 导入模块 asyncio
 
-async def main():
-    print("Hello")
+async def main():  # 定义异步函数 main
+    print("Hello")  # 打印输出到屏幕
     await asyncio.sleep(1)  # 异步等待1秒，不阻塞
-    print("World")
+    print("World")  # 打印输出到屏幕
 
 asyncio.run(main())  # 创建事件循环并运行
 \`\`\`
@@ -1150,29 +1150,29 @@ asyncio.run(main())  # 创建事件循环并运行
 ### gather 并行执行
 
 \`\`\`python
-async def main():
+async def main():  # 定义异步函数 main
     # 同时发起3个请求，总耗时取决于最慢的那个
-    results = await asyncio.gather(
-        fetch("url1"),
-        fetch("url2"),
-        fetch("url3"),
+    results = await asyncio.gather(  # 赋值变量 results
+        fetch("url1"),  # 调用 fetch()
+        fetch("url2"),  # 调用 fetch()
+        fetch("url3"),  # 调用 fetch()
     )
 \`\`\`
 
 ### create_task 创建任务
 
 \`\`\`python
-async def main():
+async def main():  # 定义异步函数 main
     # 创建任务（立即开始执行，不等待）
-    task1 = asyncio.create_task(fetch("url1"))
-    task2 = asyncio.create_task(fetch("url2"))
+    task1 = asyncio.create_task(fetch("url1"))  # 赋值变量 task1
+    task2 = asyncio.create_task(fetch("url2"))  # 赋值变量 task2
 
     # 做其他事情...
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(0.5)  # 执行操作
 
     # 最后等待任务完成
-    result1 = await task1
-    result2 = await task2
+    result1 = await task1  # 赋值变量 result1
+    result2 = await task2  # 赋值变量 result2
 \`\`\`
 
 ### 重要规则
@@ -1379,10 +1379,10 @@ print("=" * 40)`
 设置任务的最大执行时间，超时则抛出 \`TimeoutError\`：
 
 \`\`\`python
-try:
-    result = await asyncio.wait_for(slow_task(), timeout=5.0)
-except asyncio.TimeoutError:
-    print("任务超时了！")
+try:  # 尝试执行可能出错的代码
+    result = await asyncio.wait_for(slow_task(), timeout=5.0)  # 赋值变量 result
+except asyncio.TimeoutError:  # 捕获异常 asyncio.TimeoutError:
+    print("任务超时了！")  # 打印输出到屏幕
 \`\`\`
 
 ### asyncio.shield 保护任务
@@ -1391,7 +1391,7 @@ except asyncio.TimeoutError:
 
 \`\`\`python
 # 取消 outer 不会影响 inner 的执行
-await asyncio.shield(inner_task)
+await asyncio.shield(inner_task)  # 执行操作
 \`\`\`
 
 ### asyncio.Queue 异步队列
@@ -1399,7 +1399,7 @@ await asyncio.shield(inner_task)
 生产者-消费者模式的异步版本，队列满时 put 会等待，空时 get 会等待：
 
 \`\`\`python
-queue = asyncio.Queue(maxsize=10)
+queue = asyncio.Queue(maxsize=10)  # 赋值变量 queue
 await queue.put(item)   # 放入（可能等待）
 item = await queue.get()  # 取出（可能等待）
 queue.task_done()        # 标记任务完成
@@ -1410,12 +1410,12 @@ queue.task_done()        # 标记任务完成
 异步版的互斥锁，保护共享资源：
 
 \`\`\`python
-lock = asyncio.Lock()
+lock = asyncio.Lock()  # 赋值变量 lock
 
-async def critical_section():
-    async with lock:
+async def critical_section():  # 定义异步函数 critical_section
+    async with lock:  # 执行操作
         # 同一时刻只有一个协程能进入
-        await modify_shared_data()
+        await modify_shared_data()  # 执行操作
 \`\`\`
 
 ### asyncio.Semaphore 异步信号量
@@ -1425,9 +1425,9 @@ async def critical_section():
 \`\`\`python
 sem = asyncio.Semaphore(3)  # 最多3个并发
 
-async def limited_task():
-    async with sem:
-        await do_work()
+async def limited_task():  # 定义异步函数 limited_task
+    async with sem:  # 执行操作
+        await do_work()  # 执行操作
 \`\`\`
 
 ### 生产者-消费者模式
@@ -1435,16 +1435,16 @@ async def limited_task():
 异步版本的经典模式，用 Queue 解耦生产者和消费者：
 
 \`\`\`python
-async def producer(queue):
-    for i in range(10):
-        await queue.put(f"产品{i}")
-        await asyncio.sleep(0.1)
+async def producer(queue):  # 定义异步函数 producer，参数：queue
+    for i in range(10):  # 遍历 range(10)，取值给 i
+        await queue.put(f"产品{i}")  # 执行操作
+        await asyncio.sleep(0.1)  # 执行操作
 
-async def consumer(queue, name):
-    while True:
-        item = await queue.get()
+async def consumer(queue, name):  # 定义异步函数 consumer，参数：queue, name
+    while True:  # 当 True 时循环
+        item = await queue.get()  # 赋值变量 item
         # 处理 item
-        queue.task_done()
+        queue.task_done()  # 调用 queue.task_done()：标记任务完成
 \`\`\`
 
 ### async with 与 async for
@@ -1452,15 +1452,15 @@ async def consumer(queue, name):
 **async with**：异步上下文管理器，用于需要异步初始化/清理的资源：
 
 \`\`\`python
-async with some_async_resource() as res:
-    await res.use()
+async with some_async_resource() as res:  # 执行操作
+    await res.use()  # 执行操作
 \`\`\`
 
 **async for**：异步迭代器，每次迭代都可能 await：
 
 \`\`\`python
-async for item in async_generator():
-    print(item)
+async for item in async_generator():  # 执行操作
+    print(item)  # 打印输出到屏幕
 \`\`\`
 
 ### 异步生成器
@@ -1468,10 +1468,10 @@ async for item in async_generator():
 用 \`async def\` + \`yield\` 定义异步生成器：
 
 \`\`\`python
-async def async_range(n):
-    for i in range(n):
-        await asyncio.sleep(0.1)
-        yield i
+async def async_range(n):  # 定义异步函数 async_range，参数：n
+    for i in range(n):  # 遍历 range(n)，取值给 i
+        await asyncio.sleep(0.1)  # 执行操作
+        yield i  # 生成值：i
 \`\`\`
 
 下面的 demo 综合演示 wait_for、shield、Queue、Lock、Semaphore、生产者消费者、async with/for 等进阶用法。`,
@@ -1753,10 +1753,10 @@ HTTP（HyperText Transfer Protocol）是 Web 的基石，浏览器和服务器�
 ### GET 请求
 
 \`\`\`python
-from urllib.request import urlopen
+from urllib.request import urlopen  # 从 urllib.request 导入 urlopen
 
 # 最简单的 GET
-with urlopen("https://httpbin.org/get") as response:
+with urlopen("https://httpbin.org/get") as response:  # 使用上下文管理器：urlopen("https://httpbin.org/get") as response
     data = response.read()  # 读取响应体（bytes）
     text = data.decode("utf-8")  # 解码为字符串
 \`\`\`
@@ -1764,33 +1764,33 @@ with urlopen("https://httpbin.org/get") as response:
 ### POST 请求
 
 \`\`\`python
-from urllib.request import urlopen, Request
-from urllib.parse import urlencode
+from urllib.request import urlopen, Request  # 从 urllib.request 导入 urlopen, Request
+from urllib.parse import urlencode  # 从 urllib.parse 导入 urlencode
 
-data = urlencode({"name": "小明", "age": "18"}).encode()
-req = Request("https://httpbin.org/post", data=data, method="POST")
-with urlopen(req) as response:
-    print(response.read().decode())
+data = urlencode({"name": "小明", "age": "18"}).encode()  # 赋值变量 data
+req = Request("https://httpbin.org/post", data=data, method="POST")  # 赋值变量 req
+with urlopen(req) as response:  # 使用上下文管理器：urlopen(req) as response
+    print(response.read().decode())  # 打印输出到屏幕
 \`\`\`
 
 ### Request 对象详解
 
 \`\`\`python
-req = Request(
-    url="https://api.example.com/data",
+req = Request(  # 赋值变量 req
+    url="https://api.example.com/data",  # 定义字符串 url
     data=post_data,      # POST 请求体
     headers={            # 自定义请求头
-        "User-Agent": "MyApp/1.0",
-        "Content-Type": "application/json",
+        "User-Agent": "MyApp/1.0",  # 执行操作
+        "Content-Type": "application/json",  # 执行操作
     },
-    method="POST",
+    method="POST",  # 定义字符串 method
 )
 \`\`\`
 
 ### 响应处理
 
 \`\`\`python
-with urlopen(req) as resp:
+with urlopen(req) as resp:  # 使用上下文管理器：urlopen(req) as resp
     resp.status       # 状态码（200, 404, 500...）
     resp.getheaders() # 响应头列表
     resp.getheader("Content-Type")  # 获取特定响应头
@@ -1800,7 +1800,7 @@ with urlopen(req) as resp:
 ### urllib.parse 常用函数
 
 \`\`\`python
-from urllib.parse import urlencode, quote, unquote, urlparse
+from urllib.parse import urlencode, quote, unquote, urlparse  # 从 urllib.parse 导入 urlencode, quote, unquote, urlparse
 
 urlencode({"q": "python教程"}))  # q=python%E6%95%99%E7%A8%8B
 quote("你好世界")                # 对URL编码
@@ -1811,25 +1811,25 @@ urlparse("https://a.com/path?q=1")  # 解析URL各部分
 ### 异常处理
 
 \`\`\`python
-from urllib.error import URLError, HTTPError
+from urllib.error import URLError, HTTPError  # 从 urllib.error 导入 URLError, HTTPError
 
-try:
-    with urlopen("https://httpbin.org/status/404") as resp:
-        pass
-except HTTPError as e:
-    print(f"HTTP错误：{e.code} {e.reason}")
-except URLError as e:
-    print(f"URL错误：{e.reason}")
+try:  # 尝试执行可能出错的代码
+    with urlopen("https://httpbin.org/status/404") as resp:  # 使用上下文管理器：urlopen("https://httpbin.org/status/404") as resp
+        pass  # 空操作，占位符
+except HTTPError as e:  # 捕获异常 HTTPError
+    print(f"HTTP错误：{e.code} {e.reason}")  # 打印输出到屏幕
+except URLError as e:  # 捕获异常 URLError
+    print(f"URL错误：{e.reason}")  # 打印输出到屏幕
 \`\`\`
 
 ### JSON 响应处理
 
 \`\`\`python
-import json
+import json  # 导入模块 json
 
-with urlopen("https://api.example.com/data") as resp:
-    data = json.loads(resp.read().decode())
-    print(data["key"])
+with urlopen("https://api.example.com/data") as resp:  # 使用上下文管理器：urlopen("https://api.example.com/data") as resp
+    data = json.loads(resp.read().decode())  # 赋值变量 data
+    print(data["key"])  # 打印输出到屏幕
 \`\`\`
 
 下面的 demo 演示 urllib 的 GET/POST 请求、URL 编码、响应处理、异常处理等常用操作。`,
@@ -2064,47 +2064,47 @@ Socket（套接字）是网络通信的**端点**，可以理解为两台计算�
 
 **服务器端：**
 \`\`\`python
-import socket
+import socket  # 导入模块 socket
 
 # 1. 创建 socket
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # 赋值变量 s
 
 # 2. 绑定地址和端口
-s.bind(("localhost", 8888))
+s.bind(("localhost", 8888))  # 调用 s.bind()：绑定
 
 # 3. 开始监听
-s.listen(5)
+s.listen(5)  # 调用 s.listen()：监听
 
 # 4. 接受连接
-conn, addr = s.accept()
+conn, addr = s.accept()  # 多重赋值：conn, addr
 
 # 5. 收发数据
-data = conn.recv(1024)
-conn.send(b"Hello!")
+data = conn.recv(1024)  # 赋值变量 data
+conn.send(b"Hello!")  # 调用 conn.send()：发送
 
 # 6. 关闭连接
-conn.close()
-s.close()
+conn.close()  # 调用 conn.close()：关闭
+s.close()  # 调用 s.close()：关闭
 \`\`\`
 
 **客户端：**
 \`\`\`python
-import socket
+import socket  # 导入模块 socket
 
 # 1. 创建 socket
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # 赋值变量 s
 
 # 2. 连接服务器
-s.connect(("localhost", 8888))
+s.connect(("localhost", 8888))  # 调用 s.connect()：连接
 
 # 3. 发送数据
-s.send(b"Hello Server!")
+s.send(b"Hello Server!")  # 调用 s.send()：发送
 
 # 4. 接收数据
-data = s.recv(1024)
+data = s.recv(1024)  # 赋值变量 data
 
 # 5. 关闭
-s.close()
+s.close()  # 调用 s.close()：关闭
 \`\`\`
 
 ### 关键参数说明
@@ -2131,7 +2131,7 @@ s.close()
 不同 CPU 架构的字节序可能不同（大端 vs 小端）。网络传输统一使用**大端字节序**（network byte order）：
 
 \`\`\`python
-import socket
+import socket  # 导入模块 socket
 socket.htonl(12345)   # host to network (long)
 socket.ntohl(x)       # network to host (long)
 socket.htons(8080)    # host to network (short) — 用于端口号
@@ -2352,13 +2352,13 @@ Python 的 \`email\` 模块用于**构建和解析**邮件，\`smtplib\` 用于*
 ### 构建一封简单邮件
 
 \`\`\`python
-from email.mime.text import MIMEText
+from email.mime.text import MIMEText  # 从 email.mime.text 导入 MIMEText
 
 # 创建纯文本邮件
-msg = MIMEText("你好，这是邮件正文。", "plain", "utf-8")
-msg["Subject"] = "测试邮件"
-msg["From"] = "sender@example.com"
-msg["To"] = "receiver@example.com"
+msg = MIMEText("你好，这是邮件正文。", "plain", "utf-8")  # 赋值变量 msg
+msg["Subject"] = "测试邮件"  # 执行操作
+msg["From"] = "sender@example.com"  # 执行操作
+msg["To"] = "receiver@example.com"  # 执行操作
 
 print(msg.as_string())  # 转为字符串
 \`\`\`
@@ -2366,69 +2366,69 @@ print(msg.as_string())  # 转为字符串
 ### 构建带附件的邮件
 
 \`\`\`python
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart  # 从 email.mime.multipart 导入 MIMEMultipart
+from email.mime.text import MIMEText  # 从 email.mime.text 导入 MIMEText
+from email.mime.base import MIMEBase  # 从 email.mime.base 导入 MIMEBase
 
-msg = MIMEMultipart()
-msg["Subject"] = "带附件的邮件"
-msg["From"] = "sender@example.com"
-msg["To"] = "receiver@example.com"
+msg = MIMEMultipart()  # 赋值变量 msg
+msg["Subject"] = "带附件的邮件"  # 执行操作
+msg["From"] = "sender@example.com"  # 执行操作
+msg["To"] = "receiver@example.com"  # 执行操作
 
 # 添加正文
-msg.attach(MIMEText("这是邮件正文", "plain", "utf-8"))
+msg.attach(MIMEText("这是邮件正文", "plain", "utf-8"))  # 调用 msg.attach()
 
 # 添加附件
-att = MIMEBase("application", "octet-stream")
-att.set_payload(file_data)
-att.add_header("Content-Disposition", "attachment", filename="report.pdf")
-msg.attach(att)
+att = MIMEBase("application", "octet-stream")  # 赋值变量 att
+att.set_payload(file_data)  # 调用 att.set_payload()
+att.add_header("Content-Disposition", "attachment", filename="report.pdf")  # 调用 att.add_header()
+msg.attach(att)  # 调用 msg.attach()
 \`\`\`
 
 ### smtplib 发送邮件
 
 \`\`\`python
-import smtplib
+import smtplib  # 导入模块 smtplib
 
 # 连接 SMTP 服务器
-server = smtplib.SMTP("smtp.gmail.com", 587)
+server = smtplib.SMTP("smtp.gmail.com", 587)  # 赋值变量 server
 server.starttls()  # 启用 TLS 加密
-server.login("user@gmail.com", "password")
-server.send_message(msg)
-server.quit()
+server.login("user@gmail.com", "password")  # 调用 server.login()
+server.send_message(msg)  # 调用 server.send_message()
+server.quit()  # 调用 server.quit()
 \`\`\`
 
 ### 解析邮件
 
 \`\`\`python
-from email.parser import Parser
+from email.parser import Parser  # 从 email.parser 导入 Parser
 
 # 解析原始邮件字符串
-parser = Parser()
-msg = parser.parsestr(raw_email)
+parser = Parser()  # 赋值变量 parser
+msg = parser.parsestr(raw_email)  # 赋值变量 msg
 
 print(msg["Subject"])  # 获取主题
 print(msg["From"])     # 获取发件人
 
 # 获取正文
-for part in msg.walk():
-    if part.get_content_type() == "text/plain":
-        body = part.get_payload(decode=True).decode()
+for part in msg.walk():  # 遍历 msg.walk()，取值给 part
+    if part.get_content_type() == "text/plain":  # 如果 part.get_content_type() == "text/plain"
+        body = part.get_payload(decode=True).decode()  # 赋值变量 body
 \`\`\`
 
 ### 邮件地址格式
 
 \`\`\`python
 # 标准格式
-"张三 <zhangsan@example.com>"
+"张三 <zhangsan@example.com>"  # 执行操作
 
 # 使用 email.utils 处理
-from email.utils import formataddr, parseaddr
+from email.utils import formataddr, parseaddr  # 从 email.utils 导入 formataddr, parseaddr
 
-formataddr(("张三", "zhangsan@example.com"))
+formataddr(("张三", "zhangsan@example.com"))  # 调用 formataddr()
 # 输出：'张三 <zhangsan@example.com>'
 
-parseaddr("张三 <zhangsan@example.com>")
+parseaddr("张三 <zhangsan@example.com>")  # 调用 parseaddr()
 # 输出：('张三', 'zhangsan@example.com')
 \`\`\`
 
@@ -2437,10 +2437,10 @@ parseaddr("张三 <zhangsan@example.com>")
 邮件中的附件和二进制数据通常用 base64 编码传输：
 
 \`\`\`python
-import base64
+import base64  # 导入模块 base64
 
-encoded = base64.b64encode(b"Hello World")
-decoded = base64.b64decode(encoded)
+encoded = base64.b64encode(b"Hello World")  # 赋值变量 encoded
+decoded = base64.b64decode(encoded)  # 赋值变量 decoded
 \`\`\`
 
 下面的 demo 演示构建邮件、解析邮件、处理附件、base64 编码等操作（不实际发送邮件，避免网络依赖）。`,
@@ -2693,21 +2693,21 @@ SSL（Secure Sockets Layer）/ TLS（Transport Layer Security）是网络传输�
 哈希（也叫摘要）是把任意长度数据变成固定长度的"指纹"：
 
 \`\`\`python
-import hashlib
+import hashlib  # 导入模块 hashlib
 
 # MD5（128位，已不安全，不推荐用于密码）
-h = hashlib.md5(b"hello")
+h = hashlib.md5(b"hello")  # 赋值变量 h
 print(h.hexdigest())  # 32个十六进制字符
 
 # SHA-256（256位，目前安全）
-h = hashlib.sha256(b"hello")
+h = hashlib.sha256(b"hello")  # 赋值变量 h
 print(h.hexdigest())  # 64个十六进制字符
 
 # 支持增量更新
-h = hashlib.sha256()
-h.update(b"hello ")
-h.update(b"world")
-print(h.hexdigest())
+h = hashlib.sha256()  # 赋值变量 h
+h.update(b"hello ")  # 调用 h.update()：更新
+h.update(b"world")  # 调用 h.update()：更新
+print(h.hexdigest())  # 打印输出到屏幕
 \`\`\`
 
 ### hmac 消息认证
@@ -2715,15 +2715,15 @@ print(h.hexdigest())
 HMAC 结合了哈希和密钥，用于验证消息的完整性和来源：
 
 \`\`\`python
-import hmac
+import hmac  # 导入模块 hmac
 
-key = b"secret_key"
-msg = b"important message"
-signature = hmac.new(key, msg, "sha256").hexdigest()
+key = b"secret_key"  # 定义字节串 key
+msg = b"important message"  # 定义字节串 msg
+signature = hmac.new(key, msg, "sha256").hexdigest()  # 赋值变量 signature
 
 # 验证：重新计算签名并比较
 # 使用 compare_digest 防止时序攻击
-hmac.compare_digest(signature, expected_signature)
+hmac.compare_digest(signature, expected_signature)  # 调用 hmac.compare_digest()
 \`\`\`
 
 ### secrets 安全随机
@@ -2731,7 +2731,7 @@ hmac.compare_digest(signature, expected_signature)
 \`random\` 模块的随机数**不适合安全场景**，用 \`secrets\` 代替：
 
 \`\`\`python
-import secrets
+import secrets  # 导入模块 secrets
 
 token = secrets.token_hex(16)        # 32字符的随机十六进制
 password = secrets.token_urlsafe(16)  # URL安全的随机字符串
@@ -2743,10 +2743,10 @@ choice = secrets.choice(["a", "b"])   # 安全随机选择
 Base64 把二进制数据转换为可打印的 ASCII 字符，常用于邮件、URL、JSON 等场景：
 
 \`\`\`python
-import base64
+import base64  # 导入模块 base64
 
-encoded = base64.b64encode(b"hello")
-decoded = base64.b64decode(encoded)
+encoded = base64.b64encode(b"hello")  # 赋值变量 encoded
+decoded = base64.b64decode(encoded)  # 赋值变量 decoded
 \`\`\`
 
 ### ssl 模块
@@ -2754,14 +2754,14 @@ decoded = base64.b64decode(encoded)
 创建 SSL 上下文用于安全通信：
 
 \`\`\`python
-import ssl
+import ssl  # 导入模块 ssl
 
 # 创建客户端 SSL 上下文
-context = ssl.create_default_context()
+context = ssl.create_default_context()  # 赋值变量 context
 # 或者用 ssl.SSLContext 自定义
-context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-context.check_hostname = True
-context.verify_mode = ssl.CERT_REQUIRED
+context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)  # 赋值变量 context
+context.check_hostname = True  # 执行操作
+context.verify_mode = ssl.CERT_REQUIRED  # 执行操作
 \`\`\`
 
 ### 数字签名概念

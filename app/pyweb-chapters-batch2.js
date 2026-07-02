@@ -43,10 +43,12 @@ WSGI 的意义就是**统一接口**：
 WSGI 规定一个应用必须是一个**可调用对象（callable）**，通常是函数，签名固定：
 
 \`\`\`python
+# 定义函数 app，参数: environ, start_response
 def app(environ, start_response):
     # environ: 字典，包含所有请求信息
     # start_response: 回调函数，用来发送状态码和响应头
     # 返回值: 一个可迭代对象，每个元素是响应正文的字节
+    # ...
     ...
 \`\`\`
 
@@ -80,6 +82,7 @@ def app(environ, start_response):
 \`start_response\` 是服务器传给你的函数，你调用它来发送响应行和头部：
 
 \`\`\`python
+# 调用 start_response()
 start_response(status, headers, exc_info=None)
 \`\`\`
 
@@ -92,31 +95,50 @@ start_response(status, headers, exc_info=None)
 ## 完整的 WSGI 应用示例
 
 \`\`\`python
+# 定义函数 application，参数: environ, start_response
 def application(environ, start_response):
     # 1. 从 environ 取请求信息
+    # 定义变量 method，赋值为 environ.get("REQUEST_METHOD", "GET")
     method = environ.get("REQUEST_METHOD", "GET")
+    # 定义变量 path，赋值为 environ.get("PATH_INFO", "/")
     path = environ.get("PATH_INFO", "/")
+    # 定义变量 query，赋值为 environ.get("QUERY_STRING", "")
     query = environ.get("QUERY_STRING", "")
     
     # 2. 根据路径处理（最简单的路由）
+    # 条件判断：如果 path == "/" and method == "GET"
     if path == "/" and method == "GET":
+        # 定义变量 status，赋值为 "200 OK"
         status = "200 OK"
+        # 定义列表 headers
         headers = [("Content-Type", "text/plain; charset=utf-8")]
+        # 定义变量 body，赋值为 "Hello, WSGI!"
         body = "Hello, WSGI!"
+    # 否则如果 path == "/api/time" and method == "GET"
     elif path == "/api/time" and method == "GET":
+        # 导入 datetime 模块
         import datetime
+        # 定义变量 status，赋值为 "200 OK"
         status = "200 OK"
+        # 定义列表 headers
         headers = [("Content-Type", "application/json")]
+        # 定义变量 body，赋值为 '{"time": "' + datetime.datetime.now().isofor...
         body = '{"time": "' + datetime.datetime.now().isoformat() + '"}'
+    # 否则执行
     else:
+        # 定义变量 status，赋值为 "404 Not Found"
         status = "404 Not Found"
+        # 定义列表 headers
         headers = [("Content-Type", "text/plain")]
+        # 定义变量 body，赋值为 "Not Found"
         body = "Not Found"
     
     # 3. 调用 start_response，发送状态码和头部
+    # 调用 start_response()
     start_response(status, headers)
     
     # 4. 返回可迭代的字节串（注意要 encode 成字节）
+    # 返回 [body.encode("utf-8")]
     return [body.encode("utf-8")]
 \`\`\`
 
@@ -125,11 +147,15 @@ def application(environ, start_response):
 用 Python 自带的 wsgiref 跑起来看看：
 
 \`\`\`python
+# 从 wsgiref.simple_server 导入 make_server
 from wsgiref.simple_server import make_server
 
 # 把上面的 application 函数传给 make_server
+# 定义变量 server，赋值为 make_server("0.0.0.0", 8000, application)
 server = make_server("0.0.0.0", 8000, application)
+# 调用 print()
 print("WSGI 应用跑在 http://localhost:8000")
+# 调用 server.serve_forever()
 server.serve_forever()
 \`\`\`
 
@@ -156,22 +182,33 @@ WSGI 应用不能自己监听端口（它只是个函数），需要专门的 WS
 中间件是「包装」应用的另一层应用。它既像服务器（调用内层应用），又像应用（被外层调用）：
 
 \`\`\`python
+# 定义类 TimingMiddleware
 class TimingMiddleware:
+    # """计时中间件：记录每个请求的处理时间"""
     """计时中间件：记录每个请求的处理时间"""
+    # 定义函数 __init__，参数: self, app
     def __init__(self, app):
         self.app = app  # 被包装的内层应用
     
+    # 定义函数 __call__，参数: self, environ, start_response
     def __call__(self, environ, start_response):
+        # 导入 time 模块
         import time
+        # 定义变量 start，赋值为 time.time()
         start = time.time()
         # 调用内层应用
+        # 定义变量 response，赋值为 self.app(environ, start_response)
         response = self.app(environ, start_response)
+        # 定义变量 elapsed，赋值为 time.time() - start
         elapsed = time.time() - start
         # 记录耗时（这里简化为打印）
+        # 调用 print()
         print(f"{environ['PATH_INFO']} 耗时 {elapsed:.4f}s")
+        # 返回 response
         return response
 
 # 用中间件包装应用
+# 定义变量 wrapped_app，赋值为 TimingMiddleware(application)
 wrapped_app = TimingMiddleware(application)
 # 现在 wrapped_app 也是一个 WSGI 应用，可以传给服务器
 \`\`\`
@@ -241,10 +278,12 @@ ASGI 就是把这套异步模型标准化，给 Python Web 一个统一的异步
 ASGI 应用也是一个可调用对象，但参数变了：
 
 \`\`\`python
+# 定义异步函数 app，参数: scope, receive, send
 async def app(scope, receive, send):
     # scope: 字典，连接的「类型和元信息」
     # receive: 异步函数，用来接收对方发来的事件
     # send: 异步函数，用来发送事件给对方
+    # ...
     ...
 \`\`\`
 
@@ -258,6 +297,7 @@ async def app(scope, receive, send):
 \`scope\` 描述这次「连接」是什么。最重要的字段是 \`type\`，区分连接类型：
 
 \`\`\`python
+# {
 {
     "type": "http",          # 连接类型：http / websocket / lifespan
     "method": "GET",         # HTTP 方法（http 才有）
@@ -267,6 +307,7 @@ async def app(scope, receive, send):
     "client": ("1.2.3.4", 5000),  # 客户端地址
     "server": ("0.0.0.0", 8000),  # 服务器地址
     "scheme": "http",        # 协议
+# }
 }
 \`\`\`
 
@@ -290,22 +331,33 @@ async def app(scope, receive, send):
 - \`http.response.body\`：响应正文（可以分多次发，流式）。
 
 \`\`\`python
+# 定义异步函数 app，参数: scope, receive, send
 async def app(scope, receive, send):
     # 1. 等待请求事件（receive 收请求）
+    # 定义变量 request，赋值为 await receive()
     request = await receive()
     body = request.get("body", b"")  # 请求正文
     
     # 2. 发送响应开始事件：状态码 + 头部
+    # await send({
     await send({
+        # "type": "http.response.start",
         "type": "http.response.start",
+        # "status": 200,
         "status": 200,
+        # "headers": [[b"content-type", b"application/json"]
         "headers": [[b"content-type", b"application/json"]],
+    # })
     })
     
     # 3. 发送响应正文事件
+    # await send({
     await send({
+        # "type": "http.response.body",
         "type": "http.response.body",
+        # "body": b'{"message": "Hello, ASGI!"}',
         "body": b'{"message": "Hello, ASGI!"}',
+    # })
     })
 \`\`\`
 
@@ -329,24 +381,37 @@ ASGI 的核心是**事件驱动（event-driven）**：
 ASGI 天然支持 WebSocket，因为它的「收发事件」模型正好匹配 WebSocket 的「双向通信」：
 
 \`\`\`python
+# 定义异步函数 app，参数: scope, receive, send
 async def app(scope, receive, send):
+    # 条件判断：如果 scope["type"] == "websocket"
     if scope["type"] == "websocket":
         # 1. 等客户端发起 WebSocket 握手
+        # 定义变量 event，赋值为 await receive()
         event = await receive()
+        # 条件判断：如果 event["type"] == "websocket.connect"
         if event["type"] == "websocket.connect":
             # 接受连接
+            # await send({"type": "websocket.accept"})
             await send({"type": "websocket.accept"})
         
         # 2. 循环收发消息
+        # 当 True 为真时循环
         while True:
+            # 定义变量 event，赋值为 await receive()
             event = await receive()
+            # 条件判断：如果 event["type"] == "websocket.disconnect"
             if event["type"] == "websocket.disconnect":
                 break  # 客户端断开
             # 收到消息，原样回显
+            # 定义变量 message，赋值为 event.get("text", "")
             message = event.get("text", "")
+            # await send({
             await send({
+                # "type": "websocket.send",
                 "type": "websocket.send",
+                # "text": f"你说了: {message}",
                 "text": f"你说了: {message}",
+            # })
             })
 \`\`\`
 
@@ -382,71 +447,123 @@ WSGI 根本没法表达这种「循环收发」——它的接口要求一次调
 一个能区分 HTTP 和 WebSocket 的完整 ASGI 应用：
 
 \`\`\`python
+# 定义异步函数 application，参数: scope, receive, send
 async def application(scope, receive, send):
     # 根据 type 分发到不同处理函数
+    # 条件判断：如果 scope["type"] == "http"
     if scope["type"] == "http":
+        # await handle_http(scope, receive, send)
         await handle_http(scope, receive, send)
+    # 否则如果 scope["type"] == "websocket"
     elif scope["type"] == "websocket":
+        # await handle_websocket(scope, receive, send)
         await handle_websocket(scope, receive, send)
+    # 否则如果 scope["type"] == "lifespan"
     elif scope["type"] == "lifespan":
+        # await handle_lifespan(scope, receive, send)
         await handle_lifespan(scope, receive, send)
 
+# 定义异步函数 handle_http，参数: scope, receive, send
 async def handle_http(scope, receive, send):
     # 接收请求（事件）
+    # 定义变量 request，赋值为 await receive()
     request = await receive()
     
     # 解析路径，做最简单的路由
+    # 定义变量 path，赋值为 scope["path"]
     path = scope["path"]
+    # 条件判断：如果 path == "/"
     if path == "/":
+        # 定义变量 body，赋值为 b'{"msg": "Hello ASGI"}'
         body = b'{"msg": "Hello ASGI"}'
+    # 否则如果 path == "/time"
     elif path == "/time":
+        # 导入 datetime 模块
         import datetime
+        # 定义变量 now，赋值为 datetime.datetime.now().isoformat()
         now = datetime.datetime.now().isoformat()
+        # 定义变量 body，赋值为 ('{"time": "' + now + '"}').encode("utf-8")
         body = ('{"time": "' + now + '"}').encode("utf-8")
+    # 否则执行
     else:
         # 404
+        # await send({
         await send({
+            # "type": "http.response.start",
             "type": "http.response.start",
+            # "status": 404,
             "status": 404,
+            # "headers": [[b"content-type", b"text/plain"]],
             "headers": [[b"content-type", b"text/plain"]],
+        # })
         })
+        # await send({"type": "http.response.body", "body": 
         await send({"type": "http.response.body", "body": b"Not Found"})
+        # 返回
         return
     
     # 发送 200 响应
+    # await send({
     await send({
+        # "type": "http.response.start",
         "type": "http.response.start",
+        # "status": 200,
         "status": 200,
+        # "headers": [[b"content-type", b"application/json"]
         "headers": [[b"content-type", b"application/json"]],
+    # })
     })
+    # await send({"type": "http.response.body", "body": 
     await send({"type": "http.response.body", "body": body})
 
+# 定义异步函数 handle_websocket，参数: scope, receive, send
 async def handle_websocket(scope, receive, send):
     # 等连接
+    # 定义变量 event，赋值为 await receive()
     event = await receive()
+    # 条件判断：如果 event["type"] == "websocket.connect"
     if event["type"] == "websocket.connect":
+        # await send({"type": "websocket.accept"})
         await send({"type": "websocket.accept"})
     
     # 循环回显
+    # 当 True 为真时循环
     while True:
+        # 定义变量 event，赋值为 await receive()
         event = await receive()
+        # 条件判断：如果 event["type"] == "websocket.disconnect"
         if event["type"] == "websocket.disconnect":
+            # 跳出循环
             break
+        # await send({
         await send({
+            # "type": "websocket.send",
             "type": "websocket.send",
+            # "text": "echo: " + event.get("text", ""),
             "text": "echo: " + event.get("text", ""),
+        # })
         })
 
+# 定义异步函数 handle_lifespan，参数: scope, receive, send
 async def handle_lifespan(scope, receive, send):
     # 应用启动/关闭钩子
+    # 当 True 为真时循环
     while True:
+        # 定义变量 event，赋值为 await receive()
         event = await receive()
+        # 条件判断：如果 event["type"] == "lifespan.startup"
         if event["type"] == "lifespan.startup":
+            # 调用 print()
             print("应用启动，初始化资源")
+            # await send({"type": "lifespan.startup.complete"})
             await send({"type": "lifespan.startup.complete"})
+        # 否则如果 event["type"] == "lifespan.shutdown"
         elif event["type"] == "lifespan.shutdown":
+            # 调用 print()
             print("应用关闭，清理资源")
+            # await send({"type": "lifespan.shutdown.complete"})
             await send({"type": "lifespan.shutdown.complete"})
+            # 跳出循环
             break
 \`\`\`
 
@@ -498,12 +615,15 @@ Gunicorn 解决了这些：
 
 \`\`\`bash
 # 安装
+# 安装 Python 包: gunicorn
 pip install gunicorn
 
 # 启动（假设你的应用在 main.py 的 app 变量里）
+# gunicorn main:app
 gunicorn main:app
 
 # 常用启动参数
+# gunicorn main:app \\
 gunicorn main:app \\
   --bind 0.0.0.0:8000 \\      # 绑定地址和端口
   --workers 4 \\                # worker 进程数
@@ -542,12 +662,15 @@ Gunicorn 支持不同类型的 worker，适配不同场景：
 
 \`\`\`bash
 # 同步 worker（默认，跑 Flask/Django）
+# gunicorn main:app --workers 4
 gunicorn main:app --workers 4
 
 # 用 gevent（协程，扛更多并发连接）
+# gunicorn main:app --workers 4 --worker-class geven
 gunicorn main:app --workers 4 --worker-class gevent --worker-connections 1000
 
 # 跑 ASGI 应用（FastAPI）—— 用 UvicornWorker
+# gunicorn main:app --workers 4 --worker-class uvico
 gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker
 \`\`\`
 
@@ -557,6 +680,7 @@ gunicorn main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker
 
 \`\`\`bash
 # 4 核机器
+# gunicorn main:app --workers 9
 gunicorn main:app --workers 9
 \`\`\`
 
@@ -566,6 +690,7 @@ Gunicorn 还提供了快捷写法：
 
 \`\`\`bash
 # 让 Gunicorn 自己算（等于 2*CPU+1）
+# gunicorn main:app --workers $(python -c "import mu
 gunicorn main:app --workers $(python -c "import multiprocessing; print(multiprocessing.cpu_count() * 2 + 1)")
 \`\`\`
 
@@ -574,17 +699,29 @@ gunicorn main:app --workers $(python -c "import multiprocessing; print(multiproc
 ## 常用参数详解
 
 \`\`\`bash
+# gunicorn main:app \\
 gunicorn main:app \\
+  # --bind 0.0.0.0:8000 \\
   --bind 0.0.0.0:8000 \\
+  # --workers 4 \\
   --workers 4 \\
+  # --worker-class sync \\
   --worker-class sync \\
+  # --worker-connections 1000 \\
   --worker-connections 1000 \\
+  # --timeout 30 \\
   --timeout 30 \\
+  # --graceful-timeout 30 \\
   --graceful-timeout 30 \\
+  # --keep-alive 2 \\
   --keep-alive 2 \\
+  # --preload \\
   --preload \\
+  # --log-level info \\
   --log-level info \\
+  # --access-logfile - \\
   --access-logfile - \\
+  # --error-logfile -
   --error-logfile -
 \`\`\`
 
@@ -624,6 +761,7 @@ gunicorn main:app \\
 
 \`\`\`bash
 # 有长耗时接口，适当调大
+# gunicorn main:app --timeout 120
 gunicorn main:app --timeout 120
 \`\`\`
 
@@ -644,44 +782,58 @@ gunicorn main:app --timeout 120
 # gunicorn.conf.py —— Gunicorn 配置文件
 
 # 绑定地址
+# 定义变量 bind，赋值为 "0.0.0.0:8000"
 bind = "0.0.0.0:8000"
 
 # worker 数量
+# 定义变量 workers，赋值为 4
 workers = 4
 
 # worker 类型（ASGI 应用用 uvicorn worker）
+# 定义变量 worker_class，赋值为 "sync"
 worker_class = "sync"
 
 # 每个 worker 的线程数（sync worker 用）
+# 定义变量 threads，赋值为 2
 threads = 2
 
 # 请求超时
+# 定义变量 timeout，赋值为 30
 timeout = 30
 
 # 优雅停机超时
+# 定义变量 graceful_timeout，赋值为 30
 graceful_timeout = 30
 
 # keep-alive
+# 定义变量 keepalive，赋值为 2
 keepalive = 2
 
 # 预加载应用（省内存）
+# 定义变量 preload_app，赋值为 True
 preload_app = True
 
 # 日志
+# 定义变量 accesslog，赋值为 "-"
 accesslog = "-"
+# 定义变量 errorlog，赋值为 "-"
 errorlog = "-"
+# 定义变量 loglevel，赋值为 "info"
 loglevel = "info"
 
 # 进程名（方便 ps 查看）
+# 定义变量 proc_name，赋值为 "myapp"
 proc_name = "myapp"
 
 # 优雅停机时是否重用端口（配合 systemd）
+# 定义变量 reuse_addr，赋值为 True
 reuse_addr = True
 \`\`\`
 
 启动时指定配置文件：
 
 \`\`\`bash
+# gunicorn main:app --config gunicorn.conf.py
 gunicorn main:app --config gunicorn.conf.py
 \`\`\`
 
@@ -689,28 +841,39 @@ gunicorn main:app --config gunicorn.conf.py
 
 \`\`\`python
 # main.py —— Flask 应用
+# 从 flask 导入 Flask, jsonify
 from flask import Flask, jsonify
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
 
+# 装饰器：app.route
 @app.route("/")
+# 定义函数 index，参数: 
 def index():
+    # 返回 jsonify({"msg": "Hello from Gunicorn + Flask"})
     return jsonify({"msg": "Hello from Gunicorn + Flask"})
 
+# 装饰器：app.route
 @app.route("/health")
+# 定义函数 health，参数: 
 def health():
     # 健康检查接口，给负载均衡探活用
+    # 返回 jsonify({"status": "ok"})
     return jsonify({"status": "ok"})
 \`\`\`
 
 \`\`\`bash
 # 安装
+# 安装 Python 包: flask gunicorn
 pip install flask gunicorn
 
 # 启动（4 个 worker）
+# gunicorn main:app --workers 4 --bind 0.0.0.0:8000
 gunicorn main:app --workers 4 --bind 0.0.0.0:8000
 
 # 后台运行 + 日志
+# gunicorn main:app --workers 4 --bind 0.0.0.0:8000 
 gunicorn main:app --workers 4 --bind 0.0.0.0:8000 --daemon --access-logfile access.log --error-logfile error.log
 \`\`\`
 
@@ -780,12 +943,15 @@ Uvicorn 是一个基于 uvloop（C 实现的 asyncio 事件循环）和 httptool
 
 \`\`\`bash
 # 安装（带 uvloop 等高性能依赖）
+# 安装 Python 包: uvicorn[standard]
 pip install uvicorn[standard]
 
 # 基本启动（假设应用在 main.py 的 app 变量）
+# uvicorn main:app
 uvicorn main:app
 
 # 常用参数
+# uvicorn main:app \\
 uvicorn main:app \\
   --host 0.0.0.0 \\        # 绑定地址
   --port 8000 \\           # 端口
@@ -809,6 +975,7 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 
 \`\`\`bash
 # 开发模式：热重载
+# uvicorn main:app --reload
 uvicorn main:app --reload
 \`\`\`
 
@@ -822,6 +989,7 @@ uvicorn main:app --reload
 
 \`\`\`bash
 # 生产模式：4 个 worker
+# uvicorn main:app --workers 4 --host 0.0.0.0 --port
 uvicorn main:app --workers 4 --host 0.0.0.0 --port 8000
 \`\`\`
 
@@ -831,9 +999,11 @@ Uvicorn 的多 worker 也是 pre-fork 模型（类似 Gunicorn）。但 Uvicorn 
 
 \`\`\`bash
 # 只本机访问
+# uvicorn main:app --host 127.0.0.1 --port 8000
 uvicorn main:app --host 127.0.0.1 --port 8000
 
 # 对外开放
+# uvicorn main:app --host 0.0.0.0 --port 80
 uvicorn main:app --host 0.0.0.0 --port 80
 \`\`\`
 
@@ -844,6 +1014,7 @@ uvicorn main:app --host 0.0.0.0 --port 80
 \`\`\`bash
 uvicorn main:app --log-level debug   # 最详细（开发调优）
 uvicorn main:app --log-level info    # 默认（生产常用）
+# uvicorn main:app --log-level warning # 只警告以上
 uvicorn main:app --log-level warning # 只警告以上
 uvicorn main:app --log-level error   # 只错误
 \`\`\`
@@ -862,6 +1033,7 @@ debug 级别会打印每个请求详情，方便排查；info 会打印启动信
 
 \`\`\`bash
 # 检查是否启用了 uvloop
+# uvicorn main:app --log-level debug
 uvicorn main:app --log-level debug
 # 启动日志里会看到 "Uvicorn running on ..." 和 loop 类型
 \`\`\`
@@ -884,10 +1056,15 @@ uvicorn main:app --log-level debug
 
 \`\`\`bash
 # Gunicorn 做进程管理，worker 类型用 Uvicorn
+# gunicorn main:app \\
 gunicorn main:app \\
+  # --workers 4 \\
   --workers 4 \\
+  # --worker-class uvicorn.workers.UvicornWorker \\
   --worker-class uvicorn.workers.UvicornWorker \\
+  # --bind 0.0.0.0:8000 \\
   --bind 0.0.0.0:8000 \\
+  # --timeout 120
   --timeout 120
 \`\`\`
 
@@ -910,31 +1087,46 @@ Uvicorn 的配置可以放配置文件里：
 
 \`\`\`python
 # main.py
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 导入 uvicorn 模块
 import uvicorn
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 / 时触发
 @app.get("/")
+# 定义函数 index，参数: 
 def index():
+    # 返回 {"msg": "Hello"}
     return {"msg": "Hello"}
 
 # 直接运行这个文件就启动
+# 判断是否直接运行此脚本
 if __name__ == "__main__":
+    # 使用 uvicorn 启动 ASGI 服务器
     uvicorn.run(
+        # "main:app",
         "main:app",
+        # 定义变量 host，赋值为 "0.0.0.0",
         host="0.0.0.0",
+        # 定义变量 port，赋值为 8000,
         port=8000,
         reload=True,        # 开发热重载
+        # 定义变量 log_level，赋值为 "info",
         log_level="info",
         # workers=4,        # reload 时不能用 workers
+    # )
     )
 \`\`\`
 
 \`\`\`bash
 # 然后
+# 运行 Python 脚本 main.py
 python main.py
 # 或者
+# uvicorn main:app --reload
 uvicorn main:app --reload
 \`\`\`
 
@@ -942,26 +1134,37 @@ uvicorn main:app --reload
 
 \`\`\`python
 # main.py —— FastAPI 应用
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 / 时触发
 @app.get("/")
+# 定义函数 index，参数: 
 def index():
+    # 返回 {"msg": "Hello from Uvicorn + FastAPI"}
     return {"msg": "Hello from Uvicorn + FastAPI"}
 
+# 定义 GET 路由：访问 /async 时触发
 @app.get("/async")
+# 定义异步函数 async_demo，参数: 
 async def async_demo():
     # 异步视图，能发挥 ASGI 优势
+    # 导入 asyncio 模块
     import asyncio
     await asyncio.sleep(0.1)  # 模拟 I/O 等待
+    # 返回 {"msg": "异步处理完成"}
     return {"msg": "异步处理完成"}
 \`\`\`
 
 开发：
 
 \`\`\`bash
+# 安装 Python 包: fastapi uvicorn[standard]
 pip install fastapi uvicorn[standard]
+# uvicorn main:app --reload
 uvicorn main:app --reload
 # 访问 http://localhost:8000
 # 自动文档 http://localhost:8000/docs
@@ -970,7 +1173,9 @@ uvicorn main:app --reload
 生产：
 
 \`\`\`bash
+# 安装 Python 包: gunicorn uvicorn[standard] fastapi
 pip install gunicorn uvicorn[standard] fastapi
+# gunicorn main:app -w 4 -k uvicorn.workers.UvicornW
 gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
 \`\`\`
 

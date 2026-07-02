@@ -63,12 +63,12 @@ TypeScript 在模块这块几乎完全沿用 JavaScript 的 **ES Modules** 标�
 
 \`\`\`ts
 // math.ts —— 这是一个模块（因为有顶层 export）
-export function add(a: number, b: number): number {
-  return a + b;
+export function add(a: number, b: number): number {  // 导出函数 add
+  return a + b;  // 返回 a + b
 }
 // subtract 没有导出，是模块私有的，外部访问不到
-function subtract(a: number, b: number): number {
-  return a - b;
+function subtract(a: number, b: number): number {  // 定义函数 subtract，参数: a: number, b: number，返回 number
+  return a - b;  // 返回 a - b
 }
 \`\`\`
 
@@ -96,26 +96,26 @@ ES Modules 提供两种导出方式：**命名导出（Named Export）** 和 **�
 
 \`\`\`ts
 // ===== 方式一：声明时直接导出 =====
-export const PI = 3.14159;
-export function add(a: number, b: number): number {
-  return a + b;
+export const PI = 3.14159;  // 导出 const PI
+export function add(a: number, b: number): number {  // 导出函数 add
+  return a + b;  // 返回 a + b
 }
-export class Calculator {
+export class Calculator {  // 导出类 Calculator
   /* ... */
 }
-export type Point = { x: number; y: number };
-export interface Logger {
-  log(msg: string): void;
+export type Point = { x: number; y: number };  // 导出类型 Point
+export interface Logger {  // 导出接口 Logger
+  log(msg: string): void;  // 方法声明 log(msg: string)，返回 void
 }
 
 // ===== 方式二：先声明，再用 export { } 统一导出 =====
-function multiply(a: number, b: number): number {
-  return a * b;
+function multiply(a: number, b: number): number {  // 定义函数 multiply，参数: a: number, b: number，返回 number
+  return a * b;  // 返回 a * b
 }
-function divide(a: number, b: number): number {
-  return a / b;
+function divide(a: number, b: number): number {  // 定义函数 divide，参数: a: number, b: number，返回 number
+  return a / b;  // 返回 a / b
 }
-export { multiply, divide };
+export { multiply, divide };  // 导出成员
 \`\`\`
 
 命名导出的好处是**明确、可命名、便于自动补全**。导入方必须用**完全相同的名字**（或用 \`as\` 重命名），IDE 能精确地追踪每个导出的来源。
@@ -126,18 +126,18 @@ export { multiply, divide };
 
 \`\`\`ts
 // 默认导出一个函数
-export default function square(x: number): number {
-  return x * x;
+export default function square(x: number): number {  // 导出函数 square
+  return x * x;  // 返回 x * x
 }
 
 // 默认导出一个类
-export default class Person {
-  constructor(public name: string) {}
+export default class Person {  // 导出类 Person
+  constructor(public name: string) {}  // 调用 constructor
 }
 
 // 默认导出一个值
-const config = { timeout: 5000 };
-export default config;
+const config = { timeout: 5000 };  // 声明常量 config
+export default config;  // 导出 default config
 \`\`\`
 
 默认导出的特点：
@@ -168,15 +168,15 @@ export default config;
 
 \`\`\`ts
 // 导入默认导出（名字自定，无需花括号）
-import square from './math';
-import Person from './person';
+import square from './math';  // 导入 square
+import Person from './person';  // 导入 Person
 \`\`\`
 
 #### 命名导入
 
 \`\`\`ts
 // 导入命名导出（名字必须与导出一致，用花括号）
-import { add, PI } from './math';
+import { add, PI } from './math';  // 导入 { add, PI }
 \`\`\`
 
 #### 重命名导入 import { x as y }
@@ -184,15 +184,15 @@ import { add, PI } from './math';
 如果想避免命名冲突，或想让名字更符合当前上下文，可以用 \`as\` 重命名：
 
 \`\`\`ts
-import { add as plus, PI as PI_VALUE } from './math';
+import { add as plus, PI as PI_VALUE } from './math';  // 导入 { add as plus, PI as PI_VALUE }（注意：类型断言会绕过类型检查）
 // 之后用 plus、PI_VALUE，而不是 add、PI
 \`\`\`
 
 这在你同时引入两个模块的同名导出时特别有用：
 
 \`\`\`ts
-import { open as openFile } from './file-utils';
-import { open as openModal } from './modal-utils';
+import { open as openFile } from './file-utils';  // 导入 { open as openFile }（注意：类型断言会绕过类型检查）
+import { open as openModal } from './modal-utils';  // 导入 { open as openModal }（注意：类型断言会绕过类型检查）
 \`\`\`
 
 #### 命名空间导入 import * as ns
@@ -200,8 +200,8 @@ import { open as openModal } from './modal-utils';
 把一个模块的所有命名导出作为一个对象导入：
 
 \`\`\`ts
-import * as MathUtils from './math';
-MathUtils.add(1, 2);
+import * as MathUtils from './math';  // 导入 * as MathUtils（注意：类型断言会绕过类型检查）
+MathUtils.add(1, 2);  // 调用 MathUtils.add
 MathUtils.PI;
 \`\`\`
 
@@ -213,7 +213,7 @@ MathUtils.PI;
 
 \`\`\`ts
 // 同时导入默认导出和命名导出
-import square, { add, multiply } from './math';
+import square, { add, multiply } from './math';  // 导入 square, { add, multiply }
 // square 是默认导出，add/multiply 是命名导出
 \`\`\`
 
@@ -234,8 +234,8 @@ TypeScript 区分**值**和**类型**。函数、类、变量、枚举既是值�
 
 \`\`\`ts
 // types.ts
-export type Point = { x: number; y: number };
-export interface Logger { log(msg: string): void }
+export type Point = { x: number; y: number };  // 导出类型 Point
+export interface Logger { log(msg: string): void }  // 导出接口 Logger
 
 // 也可以从别的模块"再导出"类型
 export type { Result } from './result';
@@ -243,9 +243,9 @@ export type { Result } from './result';
 
 \`\`\`ts
 // consumer.ts
-import type { Point, Logger } from './types';
+import type { Point, Logger } from './types';  // 导入 type { Point, Logger }
 // Point 和 Logger 只能用在类型位置，运行时不存在
-const p: Point = { x: 1, y: 2 };
+const p: Point = { x: 1, y: 2 };  // 声明常量 p，类型 Point
 \`\`\`
 
 #### 为什么要用 export type / import type
@@ -265,7 +265,7 @@ export type { Logger } from './types'; // ✅
 一个模块可以同时导出值和类型，导入时也可以混合：
 
 \`\`\`ts
-import { add, type Point } from './math';
+import { add, type Point } from './math';  // 导入 { add, type Point }
 // add 是值，Point 是类型（编译后被擦除，add 保留）
 \`\`\`
 
@@ -277,12 +277,12 @@ import { add, type Point } from './math';
 
 \`\`\`ts
 // import() 返回一个 Promise，异步加载模块
-const moduleRef = await import('./heavy-lib');
-moduleRef.doHeavyWork();
+const moduleRef = await import('./heavy-lib');  // 声明常量 moduleRef
+moduleRef.doHeavyWork();  // 调用 moduleRef.doHeavyWork
 
 // 也可以用 .then
-import('./heavy-lib').then((mod) => {
-  mod.doHeavyWork();
+import('./heavy-lib').then((mod) => {  // 箭头函数
+  mod.doHeavyWork();  // 调用 mod.doHeavyWork
 });
 \`\`\`
 
@@ -308,10 +308,10 @@ import('./heavy-lib').then((mod) => {
 #### 基本语法
 
 \`\`\`ts
-namespace Geometry {
+namespace Geometry {  // 定义命名空间 Geometry
   export const PI = 3.14159;        // 用 export 暴露
   export function area(r: number) {  // 不 export 就是私有的
-    return PI * r * r;
+    return PI * r * r;  // 返回 PI * r * r
   }
   export interface Point {           // 也可以装类型
     x: number;
@@ -320,9 +320,9 @@ namespace Geometry {
 }
 
 // 使用
-Geometry.area(5);
+Geometry.area(5);  // 调用 Geometry.area
 Geometry.PI;
-const p: Geometry.Point = { x: 1, y: 2 };
+const p: Geometry.Point = { x: 1, y: 2 };  // 声明常量 p，类型 Geometry.Point
 \`\`\`
 
 编译后，namespace 变成一个立即调用函数表达式（IIFE），生成一个对象：
@@ -330,9 +330,9 @@ const p: Geometry.Point = { x: 1, y: 2 };
 \`\`\`js
 var Geometry;
 (function (Geometry) {
-  Geometry.PI = 3.14159;
-  function area(r) { return Geometry.PI * r * r; }
-  Geometry.area = area;
+  Geometry.PI = 3.14159;  // 赋值 Geometry.PI
+  function area(r) { return Geometry.PI * r * r; }  // 定义函数 area，参数: r
+  Geometry.area = area;  // 赋值 Geometry.area
 })(Geometry || (Geometry = {}));
 \`\`\`
 
@@ -341,18 +341,18 @@ var Geometry;
 命名空间可以嵌套，形成层级结构：
 
 \`\`\`ts
-namespace App {
-  export namespace Utils {
-    export function formatDate(d: Date): string {
-      return d.toISOString();
+namespace App {  // 定义命名空间 App
+  export namespace Utils {  // 导出 namespace Utils
+    export function formatDate(d: Date): string {  // 导出函数 formatDate
+      return d.toISOString();  // 返回 d.toISOString()
     }
   }
-  export namespace Config {
-    export const version = '1.0.0';
+  export namespace Config {  // 导出 namespace Config
+    export const version = '1.0.0';  // 导出 const version
   }
 }
 
-App.Utils.formatDate(new Date());
+App.Utils.formatDate(new Date());  // 调用 App.Utils.formatDate
 App.Config.version;
 \`\`\`
 
@@ -361,19 +361,19 @@ App.Config.version;
 同名的命名空间会**合并**——你可以跨文件（甚至同文件）多次声明同一个 namespace，它们的内容会拼到一起：
 
 \`\`\`ts
-namespace Validator {
-  export function isString(x: unknown): x is string {
-    return typeof x === 'string';
+namespace Validator {  // 定义命名空间 Validator
+  export function isString(x: unknown): x is string {  // 自定义类型守卫（返回 x is T）
+    return typeof x === 'string';  // 类型守卫：判断是否为 string
   }
 }
-namespace Validator {
-  export function isNumber(x: unknown): x is number {
-    return typeof x === 'number';
+namespace Validator {  // 定义命名空间 Validator
+  export function isNumber(x: unknown): x is number {  // 自定义类型守卫（返回 x is T）
+    return typeof x === 'number';  // 类型守卫：判断是否为 number
   }
 }
 // 合并后 Validator 既有 isString 也有 isNumber
-Validator.isString('a');
-Validator.isNumber(1);
+Validator.isString('a');  // 调用 Validator.isString
+Validator.isNumber(1);  // 调用 Validator.isNumber
 \`\`\`
 
 #### namespace vs module 对比
@@ -446,8 +446,8 @@ TS 5.0 引入，针对 Vite/esbuild/webpack 等打包器场景：结合了 \`nod
 之后就能写：
 
 \`\`\`ts
-import { add } from '@utils/math';
-import Button from '@components/Button';
+import { add } from '@utils/math';  // 导入 { add }
+import Button from '@components/Button';  // 导入 Button
 \`\`\`
 
 ⚠️ **陷阱**：\`paths\` 只是 TS 编译期的解析规则，**运行时（Node/打包器）并不知道这些别名**。你需要在运行时也配置对应的别名解析：
@@ -497,13 +497,13 @@ Node.js 生态有大量 CommonJS 模块（\`module.exports\` / \`require\`）。
 
 \`\`\`js
 // CommonJS 模块
-module.exports = { add: function (a, b) { return a + b; } };
+module.exports = { add: function (a, b) { return a + b; } };  // 赋值 module.exports
 // 或
-exports.add = function (a, b) { return a + b; };
+exports.add = function (a, b) { return a + b; };  // 赋值 exports.add
 
 // 导入
-const math = require('./math');
-math.add(1, 2);
+const math = require('./math');  // 声明常量 math
+math.add(1, 2);  // 调用 math.add
 \`\`\`
 
 \`module.exports\` 是整个模块的导出对象，\`exports\` 是它的别名（初始时）。\`require\` 同步加载并返回该对象。
@@ -539,11 +539,11 @@ TS 特有的、专门为 CommonJS 互操作设计的语法：
 
 \`\`\`ts
 // import = 等价于 require
-import fs = require('fs');
+import fs = require('fs');  // 导入模块
 
 // export = 等价于 module.exports =
-export = function add(a: number, b: number) {
-  return a + b;
+export = function add(a: number, b: number) {  // 赋值 export
+  return a + b;  // 返回 a + b
 };
 \`\`\`
 
@@ -857,10 +857,10 @@ setTimeout(function () {
 
 \`\`\`ts
 // @sealed 是一个装饰器，sealed 必须是函数
-@sealed
-class Greeter {
-  @log
-  greet() {}
+@sealed  // 装饰器 sealed
+class Greeter {  // 定义类 Greeter
+  @log  // 装饰器 log
+  greet() {}  // 调用 greet
 }
 \`\`\`
 
@@ -868,13 +868,13 @@ class Greeter {
 
 \`\`\`ts
 // 装饰器就是一个函数：接收类构造函数，返回（可能新的）构造函数
-function sealed(constructor: Function) {
-  Object.seal(constructor);
-  Object.seal(constructor.prototype);
+function sealed(constructor: Function) {  // 定义函数 sealed，参数: constructor: Function
+  Object.seal(constructor);  // 调用 Object.seal
+  Object.seal(constructor.prototype);  // 调用 Object.seal
 }
 
-@sealed
-class Foo {}
+@sealed  // 装饰器 sealed
+class Foo {}  // 定义类 Foo
 // 等价于：class Foo {} 然后 sealed(Foo);
 \`\`\`
 
@@ -886,20 +886,20 @@ class Foo {}
 
 \`\`\`ts
 // log 是装饰器工厂：接收参数，返回装饰器
-function log(label: string) {
+function log(label: string) {  // 定义函数 log，参数: label: string
   // 返回的才是真正的装饰器
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    const original = descriptor.value;
-    descriptor.value = function (...args: any[]) {
-      console.log(\`[\${label}] 调用 \${propertyKey}\`);
-      return original.apply(this, args);
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {  // 返回 function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {（注意：any 关闭了类型检查）
+    const original = descriptor.value;  // 声明常量 original
+    descriptor.value = function (...args: any[]) {  // 赋值 descriptor.value（注意：any 关闭了类型检查）
+      console.log(\`[\${label}] 调用 \${propertyKey}\`);  // 控制台输出
+      return original.apply(this, args);  // 返回 original.apply(this, args)
     };
   };
 }
 
-class Calc {
+class Calc {  // 定义类 Calc
   @log('计算器')   // 先调用 log('计算器') 得到装饰器，再用装饰器装饰 add
-  add(a: number, b: number) { return a + b; }
+  add(a: number, b: number) { return a + b; }  // 调用 add
 }
 \`\`\`
 
@@ -914,9 +914,9 @@ class Calc {
 #### 签名
 
 \`\`\`ts
-type ClassDecorator = <TFunction extends new (...args: any[]) => any>(
+type ClassDecorator = <TFunction extends new (...args: any[]) => any>(  // 定义类型别名 ClassDecorator（注意：any 关闭了类型检查）
   target: TFunction
-) => TFunction | void;
+) => TFunction | void;  // 箭头函数
 \`\`\`
 
 - \`target\` 是类的构造函数。
@@ -931,33 +931,33 @@ type ClassDecorator = <TFunction extends new (...args: any[]) => any>(
 #### 示例：给类打标记
 
 \`\`\`ts
-const classes: Function[] = [];
-function registered(target: Function) {
-  classes.push(target);
+const classes: Function[] = [];  // 声明常量 classes，类型 Function[]
+function registered(target: Function) {  // 定义函数 registered，参数: target: Function
+  classes.push(target);  // 调用 classes.push
 }
 
-@registered
-class A {}
-@registered
-class B {}
+@registered  // 装饰器 registered
+class A {}  // 定义类 A
+@registered  // 装饰器 registered
+class B {}  // 定义类 B
 // classes 现在是 [A, B]
 \`\`\`
 
 #### 示例：替换构造函数（添加日志）
 
 \`\`\`ts
-function logged(constructor: new (...args: any[]) => any) {
-  return class extends constructor {
-    constructor(...args: any[]) {
-      console.log('创建 ' + constructor.name);
-      super(...args);
+function logged(constructor: new (...args: any[]) => any) {  // 定义函数 logged，参数: constructor: new (...args: any[]（注意：any 关闭了类型检查）
+  return class extends constructor {  // 返回 class extends constructor {
+    constructor(...args: any[]) {  // 调用 constructor（注意：any 关闭了类型检查）
+      console.log('创建 ' + constructor.name);  // 控制台输出
+      super(...args);  // 调用 super
     }
   };
 }
 
-@logged
-class Person {
-  constructor(public name: string) {}
+@logged  // 装饰器 logged
+class Person {  // 定义类 Person
+  constructor(public name: string) {}  // 调用 constructor
 }
 new Person('张三'); // 打印"创建 Person"
 \`\`\`
@@ -969,11 +969,11 @@ new Person('张三'); // 打印"创建 Person"
 #### 签名
 
 \`\`\`ts
-type MethodDecorator = (
+type MethodDecorator = (  // 定义类型别名 MethodDecorator
   target: Object,                 // 静态方法是构造函数；实例方法是原型对象
   propertyKey: string | symbol,   // 方法名
   descriptor: PropertyDescriptor  // 属性描述符，descriptor.value 是方法本身
-) => PropertyDescriptor | void;
+) => PropertyDescriptor | void;  // 箭头函数
 \`\`\`
 
 - \`target\`：对于**实例方法**是类的原型对象（\`ClassName.prototype\`）；对于**静态方法**是构造函数本身。
@@ -986,22 +986,22 @@ type MethodDecorator = (
 #### 经典应用：@log 日志装饰器
 
 \`\`\`ts
-function log(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-  const original = descriptor.value;
-  descriptor.value = function (...args: any[]) {
-    console.log(\`调用 \${propertyKey}(\${args.join(', ')})\`);
-    const result = original.apply(this, args);
-    console.log(\`\${propertyKey} 返回 \${result}\`);
-    return result;
+function log(target: any, propertyKey: string, descriptor: PropertyDescriptor) {  // 定义函数 log，参数: target: any, propertyKey: string, descriptor: PropertyDescriptor（注意：any 关闭了类型检查）
+  const original = descriptor.value;  // 声明常量 original
+  descriptor.value = function (...args: any[]) {  // 赋值 descriptor.value（注意：any 关闭了类型检查）
+    console.log(\`调用 \${propertyKey}(\${args.join(', ')})\`);  // 控制台输出
+    const result = original.apply(this, args);  // 声明常量 result
+    console.log(\`\${propertyKey} 返回 \${result}\`);  // 控制台输出
+    return result;  // 返回 result
   };
-  return descriptor;
+  return descriptor;  // 返回 descriptor
 }
 
-class Calc {
-  @log
-  add(a: number, b: number) { return a + b; }
+class Calc {  // 定义类 Calc
+  @log  // 装饰器 log
+  add(a: number, b: number) { return a + b; }  // 调用 add
 }
-new Calc().add(2, 3);
+new Calc().add(2, 3);  // 创建 Calc 实例
 // 输出：调用 add(2, 3) / add 返回 5
 \`\`\`
 
@@ -1010,13 +1010,13 @@ new Calc().add(2, 3);
 回调里 \`this\` 丢失是常见 bug。\`@bound\` 让方法每次访问都返回一个绑定了 \`this\` 的版本：
 
 \`\`\`ts
-function bound(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-  const original = descriptor.value;
+function bound(target: any, propertyKey: string, descriptor: PropertyDescriptor) {  // 定义函数 bound，参数: target: any, propertyKey: string, descriptor: PropertyDescriptor（注意：any 关闭了类型检查）
+  const original = descriptor.value;  // 声明常量 original
   // 改成 getter：每次访问方法时返回绑定 this 的版本
   delete descriptor.value;
   delete descriptor.writable;
-  descriptor.get = function () {
-    return original.bind(this);
+  descriptor.get = function () {  // 赋值 descriptor.get
+    return original.bind(this);  // 返回 original.bind(this)
   };
 }
 \`\`\`
@@ -1028,10 +1028,10 @@ function bound(target: any, propertyKey: string, descriptor: PropertyDescriptor)
 #### 签名
 
 \`\`\`ts
-type PropertyDecorator = (
+type PropertyDecorator = (  // 定义类型别名 PropertyDecorator
   target: Object,                // 实例属性是原型，静态属性是构造函数
   propertyKey: string | symbol
-) => void;
+) => void;  // 箭头函数
 \`\`\`
 
 ⚠️ **重要陷阱**：属性装饰器**拿不到属性描述符**（第三参数是 undefined）。因为实例属性的描述符在实例上，不在原型上——装饰器运行时实例还没创建。所以属性装饰器**无法直接读取/修改属性值**，只能拿到"原型 + 属性名"。它主要用于**收集元数据**（配合 reflect-metadata 或自己的存储），把信息记下来供别处（如类装饰器、序列化器）使用。
@@ -1039,11 +1039,11 @@ type PropertyDecorator = (
 #### 示例：收集只读属性标记
 
 \`\`\`ts
-const readonlyProps = new WeakMap<Object, Set<string>>();
-function readonly(target: any, propertyKey: string) {
-  let set = readonlyProps.get(target);
-  if (!set) { set = new Set(); readonlyProps.set(target, set); }
-  set.add(propertyKey);
+const readonlyProps = new WeakMap<Object, Set<string>>();  // 声明常量 readonlyProps
+function readonly(target: any, propertyKey: string) {  // 定义函数 readonly，参数: target: any, propertyKey: string（注意：any 关闭了类型检查）
+  let set = readonlyProps.get(target);  // 声明变量 set
+  if (!set) { set = new Set(); readonlyProps.set(target, set); }  // 条件判断
+  set.add(propertyKey);  // 调用 set.add
 }
 \`\`\`
 
@@ -1056,11 +1056,11 @@ function readonly(target: any, propertyKey: string) {
 #### 签名
 
 \`\`\`ts
-type ParameterDecorator = (
+type ParameterDecorator = (  // 定义类型别名 ParameterDecorator
   target: Object,                 // 实例方法是原型，静态方法是构造函数
   propertyKey: string | symbol,   // 方法名（构造函数参数是 undefined）
   parameterIndex: number          // 参数在参数列表中的索引
-) => void;
+) => void;  // 箭头函数
 \`\`\`
 
 参数装饰器同样**不能直接修改参数行为**，主要用于收集元数据（如标记某参数是必填、是请求体、是路由参数等）。NestJS 的 \`@Body()\`、\`@Param()\` 就是参数装饰器。
@@ -1068,13 +1068,13 @@ type ParameterDecorator = (
 #### 示例：标记必填参数
 
 \`\`\`ts
-const requiredParams = new WeakMap<Object, Map<string, number[]>>();
-function required(target: any, propertyKey: string, parameterIndex: number) {
-  let map = requiredParams.get(target);
-  if (!map) { map = new Map(); requiredParams.set(target, map); }
-  let arr = map.get(propertyKey);
-  if (!arr) { arr = []; map.set(propertyKey, arr); }
-  arr.push(parameterIndex);
+const requiredParams = new WeakMap<Object, Map<string, number[]>>();  // 声明常量 requiredParams
+function required(target: any, propertyKey: string, parameterIndex: number) {  // 定义函数 required，参数: target: any, propertyKey: string, parameterIndex: number（注意：any 关闭了类型检查）
+  let map = requiredParams.get(target);  // 声明变量 map
+  if (!map) { map = new Map(); requiredParams.set(target, map); }  // 条件判断
+  let arr = map.get(propertyKey);  // 声明变量 arr
+  if (!arr) { arr = []; map.set(propertyKey, arr); }  // 条件判断
+  arr.push(parameterIndex);  // 调用 arr.push
 }
 \`\`\`
 
@@ -1089,12 +1089,12 @@ function required(target: any, propertyKey: string, parameterIndex: number) {
 对于同一处堆叠的多个装饰器：
 
 \`\`\`ts
-@A
-@B
-class C {
-  @X
-  @Y
-  method() {}
+@A  // 装饰器 A
+@B  // 装饰器 B
+class C {  // 定义类 C
+  @X  // 装饰器 X
+  @Y  // 装饰器 Y
+  method() {}  // 调用 method
 }
 \`\`\`
 
@@ -1117,17 +1117,17 @@ class C {
 #### 直观例子
 
 \`\`\`ts
-function step(name: string) {
-  console.log('求值 ' + name);
-  return function () { console.log('应用 ' + name); };
+function step(name: string) {  // 定义函数 step，参数: name: string
+  console.log('求值 ' + name);  // 控制台输出
+  return function () { console.log('应用 ' + name); };  // 返回 function () { console.log('应用 ' + name); }
 }
 
-@step('A')
-@step('B')
-class C {
-  @step('X')
-  @step('Y')
-  m() {}
+@step('A')  // 装饰器 step
+@step('B')  // 装饰器 step
+class C {  // 定义类 C
+  @step('X')  // 装饰器 step
+  @step('Y')  // 装饰器 step
+  m() {}  // 调用 m
 }
 \`\`\`
 
@@ -1148,16 +1148,16 @@ class C {
 \`reflect-metadata\` 是一个 polyfill 库，它给 \`Reflect\` 对象扩展了 \`defineMetadata\` / \`getMetadata\` 等方法，让你能在任意对象上存取"元数据"（键值对）。配合 \`emitDecoratorMetadata: true\`，TS 会在编译时自动把每个被装饰成员的**类型信息**（参数类型、返回类型、属性类型）通过 \`Reflect.metadata\` 写入。
 
 \`\`\`ts
-import 'reflect-metadata';
+import 'reflect-metadata';  // 导入模块（仅副作用）
 
-function logParamTypes(target: any, key: string) {
-  const types = Reflect.getMetadata('design:paramtypes', target, key);
+function logParamTypes(target: any, key: string) {  // 定义函数 logParamTypes，参数: target: any, key: string（注意：any 关闭了类型检查）
+  const types = Reflect.getMetadata('design:paramtypes', target, key);  // 声明常量 types
   console.log(types); // [Number, String]
 }
 
-class Demo {
-  @logParamTypes
-  do(a: number, b: string) {}
+class Demo {  // 定义类 Demo
+  @logParamTypes  // 装饰器 logParamTypes
+  do(a: number, b: string) {}  // 调用 do
 }
 \`\`\`
 
@@ -2326,7 +2326,7 @@ JavaScript 生态有海量现成的库（npm 上几百万个），但绝大多�
 declare const VERSION: string;          // 声明一个全局常量
 declare function greet(name: string): string;  // 声明一个全局函数
 declare module 'math-lib' {             // 声明一个模块的类型
-  export function add(a: number, b: number): number;
+  export function add(a: number, b: number): number;  // 导出函数 add
 }
 \`\`\`
 
@@ -2351,7 +2351,7 @@ HTML 里通过 \`<script>\` 引入的库（如 jQuery）会挂全局变量 \`$\`
 
 \`\`\`ts
 // globals.d.ts
-declare const $: (selector: string) => any;
+declare const $: (selector: string) => any;  // 箭头函数（注意：any 关闭了类型检查）
 \`\`\`
 
 #### 场景三：为 JS 项目渐进迁移
@@ -2392,9 +2392,9 @@ declare function assert(cond: boolean, msg?: string): void;
 
 \`\`\`ts
 declare class Animal {
-  constructor(name: string);
+  constructor(name: string);  // 调用 constructor
   name: string;
-  move(distance: number): void;
+  move(distance: number): void;  // 方法声明 move(distance: number)，返回 void
 }
 \`\`\`
 
@@ -2413,8 +2413,8 @@ declare enum Color { Red, Green, Blue }
 \`\`\`ts
 declare namespace MyApp {
   const version: string;
-  function init(config: object): void;
-  interface Options { timeout?: number }
+  function init(config: object): void;  // 定义函数 init，参数: config: object
+  interface Options { timeout?: number }  // 定义接口 Options
 }
 \`\`\`
 
@@ -2425,12 +2425,12 @@ declare namespace MyApp {
 \`\`\`ts
 // 声明一个 CommonJS/ESM 模块的类型
 declare module 'math-lib' {
-  export function add(a: number, b: number): number;
-  export function multiply(a: number, b: number): number;
-  export const PI: number;
+  export function add(a: number, b: number): number;  // 导出函数 add
+  export function multiply(a: number, b: number): number;  // 导出函数 multiply
+  export const PI: number;  // 导出 const PI
   // 默认导出
-  const square: (x: number) => number;
-  export default square;
+  const square: (x: number) => number;  // 声明常量 square，类型 (x: number)
+  export default square;  // 导出 default square
 }
 
 // 简写形式：模块任意导出，类型为 any（不推荐，丢失类型安全）
@@ -2446,7 +2446,7 @@ declare module 'untyped-lib';
 \`\`\`ts
 // global.d.ts
 declare global {
-  interface Window {
+  interface Window {  // 定义接口 Window
     myApp: { version: string };
   }
   const __DEV__: boolean;
@@ -2463,7 +2463,7 @@ export {}; // 这个 export 让文件成为模块，从而能用 declare global
 [DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped) 是一个巨大的 GitHub 仓库，社区为成千上万个流行的 JS 库维护类型声明。这些声明以 \`@types/<包名>\` 的形式发布到 npm。
 
 \`\`\`bash
-npm install --save-dev @types/lodash @types/node @types/jest
+npm install --save-dev @types/lodash @types/node @types/jest  # 安装依赖
 \`\`\`
 
 安装后，TS 会自动把 \`node_modules/@types/*/index.d.ts\` 纳入类型环境（前提是 \`typeRoots\` 默认或包含 \`@types\`）。
@@ -2509,15 +2509,15 @@ npm install --save-dev @types/lodash @types/node @types/jest
 
 \`\`\`ts
 // src/index.ts
-export function add(a: number, b: number): number {
-  return a + b;
+export function add(a: number, b: number): number {  // 导出函数 add
+  return a + b;  // 返回 a + b
 }
 \`\`\`
 
 自动生成 \`dist/index.d.ts\`：
 
 \`\`\`ts
-export declare function add(a: number, b: number): number;
+export declare function add(a: number, b: number): number;  // 导出 declare function
 \`\`\`
 
 注意自动生成的声明会**剥离私有实现**，只保留导出的 API 类型。
@@ -2540,18 +2540,18 @@ export declare function add(a: number, b: number): number;
 
 \`\`\`js
 // string-utils.js
-exports.capitalize = function (s) { return s.charAt(0).toUpperCase() + s.slice(1); };
-exports.repeat = function (s, n) { return s.repeat(n); };
-exports.default = function (s) { return s.trim(); };
+exports.capitalize = function (s) { return s.charAt(0).toUpperCase() + s.slice(1); };  // 赋值 exports.capitalize
+exports.repeat = function (s, n) { return s.repeat(n); };  // 赋值 exports.repeat
+exports.default = function (s) { return s.trim(); };  // 赋值 exports.default
 \`\`\`
 
 为它写声明 \`string-utils.d.ts\`：
 
 \`\`\`ts
 declare module 'string-utils' {
-  export function capitalize(s: string): string;
-  export function repeat(s: string, n: number): string;
-  export default function trim(s: string): string;
+  export function capitalize(s: string): string;  // 导出函数 capitalize
+  export function repeat(s: string, n: number): string;  // 导出函数 repeat
+  export default function trim(s: string): string;  // 导出函数 trim
 }
 \`\`\`
 
@@ -2562,7 +2562,7 @@ declare module 'string-utils' {
 \`typeof\` 在类型位置可以获取一个**值**的类型，常用于从现成对象推导类型，避免重复定义：
 
 \`\`\`ts
-const config = { port: 3000, host: 'localhost' };
+const config = { port: 3000, host: 'localhost' };  // 声明常量 config
 type Config = typeof config;            // { port: number; host: string }
 type ConfigKeys = keyof typeof config;  // 'port' | 'host'
 \`\`\`
@@ -2579,7 +2579,7 @@ TS 允许多个同名声明**合并**：
 
 \`\`\`ts
 interface Window { foo: string; }   // 合并到全局 Window
-interface Window { bar: number; }
+interface Window { bar: number; }  // 定义接口 Window
 // 现在 Window 同时有 foo 和 bar
 \`\`\`
 

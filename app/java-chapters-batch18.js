@@ -26,7 +26,7 @@ Lambda 表达式是 Java 8 引入的核心特性，它允许将**函数作为参
 ## 无参数 Lambda
 
 \`\`\`java
-Runnable r = () -> System.out.println("Hello");
+Runnable r = () -> System.out.println("Hello");  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 ## 单参数 Lambda
@@ -34,13 +34,13 @@ Runnable r = () -> System.out.println("Hello");
 单个参数时可省略括号：
 
 \`\`\`java
-Consumer<String> c = s -> System.out.println(s);
+Consumer<String> c = s -> System.out.println(s);  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 ## 多参数 Lambda
 
 \`\`\`java
-BinaryOperator<Integer> add = (a, b) -> a + b;
+BinaryOperator<Integer> add = (a, b) -> a + b;  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 ## 表达式体 vs 代码块体
@@ -48,15 +48,15 @@ BinaryOperator<Integer> add = (a, b) -> a + b;
 表达式体无需 \`return\`，结果自动返回：
 
 \`\`\`java
-Function<Integer, Integer> sq = x -> x * x;
+Function<Integer, Integer> sq = x -> x * x;  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 代码块体需显式 \`return\`：
 
 \`\`\`java
-Function<Integer, Integer> sq2 = x -> {
-    int r = x * x;
-    return r;
+Function<Integer, Integer> sq2 = x -> {  // Lambda 表达式赋值给函数式接口变量
+    int r = x * x;  // 声明变量 r（int），初始值为 x * x
+    return r;  // 返回值：r
 };
 \`\`\`
 
@@ -66,9 +66,9 @@ Function<Integer, Integer> sq2 = x -> {
 
 \`\`\`java
 // 推断 a, b 为 Integer
-BinaryOperator<Integer> add = (a, b) -> a + b;
+BinaryOperator<Integer> add = (a, b) -> a + b;  // Lambda 表达式赋值给函数式接口变量
 // 显式类型（少数歧义场景）
-BinaryOperator<Integer> add2 = (Integer a, Integer b) -> a + b;
+BinaryOperator<Integer> add2 = (Integer a, Integer b) -> a + b;  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 ## 函数式接口
@@ -76,8 +76,8 @@ BinaryOperator<Integer> add2 = (Integer a, Integer b) -> a + b;
 Lambda 的目标类型必须是**函数式接口**——只有一个抽象方法的接口。可使用 \`@FunctionalInterface\` 注解标注（非强制，但编译器会校验）。
 
 \`\`\`java
-@FunctionalInterface
-interface Greeter { void greet(String name); }
+@FunctionalInterface  // 注解：FunctionalInterface
+interface Greeter { void greet(String name); }  // 定义接口 Greeter
 \`\`\`
 
 ## 访问外部变量
@@ -176,7 +176,7 @@ public class Main {
 ## 静态方法引用
 
 \`\`\`java
-Function<String, Integer> parser = Integer::parseInt;
+Function<String, Integer> parser = Integer::parseInt;  // 方法引用：复用已有方法作为函数式接口实例
 // 等价: s -> Integer.parseInt(s)
 \`\`\`
 
@@ -185,8 +185,8 @@ Function<String, Integer> parser = Integer::parseInt;
 引用某个具体对象的方法：
 
 \`\`\`java
-String prefix = "Hello, ";
-Function<String, String> greeter = prefix::concat;
+String prefix = "Hello, ";  // 声明变量 prefix（String），初始值为 "Hello, "
+Function<String, String> greeter = prefix::concat;  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 ## 类名::实例方法
@@ -194,14 +194,14 @@ Function<String, String> greeter = prefix::concat;
 这是最特殊的形式。当方法引用的目标是实例方法，却以类名作为限定符时，**第一个参数会成为接收者**：
 
 \`\`\`java
-BiFunction<String, String, Boolean> contains = String::contains;
+BiFunction<String, String, Boolean> contains = String::contains;  // 方法引用：复用已有方法作为函数式接口实例
 // 等价: (str, sub) -> str.contains(sub)
 \`\`\`
 
 常见于集合元素的方法调用：
 
 \`\`\`java
-list.forEach(System.out::println);
+list.forEach(System.out::println);  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 ## 构造器引用
@@ -209,14 +209,14 @@ list.forEach(System.out::println);
 引用构造器，返回新对象：
 
 \`\`\`java
-Supplier<List<String>> factory = ArrayList::new;
+Supplier<List<String>> factory = ArrayList::new;  // 方法引用：复用已有方法作为函数式接口实例
 // 等价: () -> new ArrayList<>()
 \`\`\`
 
 带参数的构造器引用需匹配目标函数式接口的签名：
 
 \`\`\`java
-Function<String, StringBuilder> sbFactory = StringBuilder::new;
+Function<String, StringBuilder> sbFactory = StringBuilder::new;  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 ## 选择方法引用还是 Lambda
@@ -225,9 +225,9 @@ Function<String, StringBuilder> sbFactory = StringBuilder::new;
 
 \`\`\`java
 // 用方法引用
-list.stream().map(String::toUpperCase);
+list.stream().map(String::toUpperCase);  // 方法引用：复用已有方法作为函数式接口实例
 // 用 Lambda（需额外处理）
-list.stream().map(s -> s.trim().toLowerCase());
+list.stream().map(s -> s.trim().toLowerCase());  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 下面通过代码演示四种方法引用：`,
@@ -296,7 +296,7 @@ public class Main {
 ## 基本用法
 
 \`\`\`java
-Function<String, Integer> len = s -> s.length();
+Function<String, Integer> len = s -> s.length();  // Lambda 表达式赋值给函数式接口变量
 int n = len.apply("hello"); // 5
 \`\`\`
 
@@ -305,8 +305,8 @@ int n = len.apply("hello"); // 5
 \`andThen(after)\` 返回一个新 Function，先执行当前函数，再执行 \`after\`：
 
 \`\`\`java
-Function<Integer, Integer> addOne = x -> x + 1;
-Function<Integer, Integer> timesTwo = x -> x * 2;
+Function<Integer, Integer> addOne = x -> x + 1;  // Lambda 表达式赋值给函数式接口变量
+Function<Integer, Integer> timesTwo = x -> x * 2;  // Lambda 表达式赋值给函数式接口变量
 Function<Integer, Integer> f = addOne.andThen(timesTwo); // (x+1)*2
 \`\`\`
 
@@ -328,7 +328,7 @@ Function<Integer, Integer> f = addOne.compose(timesTwo); // (x*2)+1
 接收两个参数，返回一个结果：
 
 \`\`\`java
-BiFunction<Integer, Integer, Integer> add = (a, b) -> a + b;
+BiFunction<Integer, Integer, Integer> add = (a, b) -> a + b;  // Lambda 表达式赋值给函数式接口变量
 add.apply(2, 3); // 5
 \`\`\`
 
@@ -339,7 +339,7 @@ BiFunction 只支持 \`andThen\`，不支持 \`compose\`。
 \`Function<T, T>\` 的子接口，参数与返回类型相同：
 
 \`\`\`java
-UnaryOperator<Integer> negate = x -> -x;
+UnaryOperator<Integer> negate = x -> -x;  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 ## BinaryOperator<T>
@@ -347,7 +347,7 @@ UnaryOperator<Integer> negate = x -> -x;
 \`BiFunction<T, T, T>\` 的子接口，两参同类型，返回同类型。常用于 \`reduce\`：
 
 \`\`\`java
-BinaryOperator<Integer> sum = (a, b) -> a + b;
+BinaryOperator<Integer> sum = (a, b) -> a + b;  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 \`BinaryOperator.minBy\` / \`maxBy\` 提供基于比较器的便捷工厂。
@@ -424,8 +424,8 @@ public class Main {
 ## 基本用法
 
 \`\`\`java
-Consumer<String> printer = s -> System.out.println(s);
-printer.accept("Hello");
+Consumer<String> printer = s -> System.out.println(s);  // Lambda 表达式赋值给函数式接口变量
+printer.accept("Hello");  // 调用 printer 的 accept 方法
 \`\`\`
 
 ## andThen：链式消费
@@ -433,9 +433,9 @@ printer.accept("Hello");
 \`andThen\` 将多个 Consumer 串联，按顺序依次执行：
 
 \`\`\`java
-Consumer<String> c1 = s -> System.out.println("c1: " + s);
-Consumer<String> c2 = s -> System.out.println("c2: " + s);
-Consumer<String> combined = c1.andThen(c2);
+Consumer<String> c1 = s -> System.out.println("c1: " + s);  // Lambda 表达式赋值给函数式接口变量
+Consumer<String> c2 = s -> System.out.println("c2: " + s);  // Lambda 表达式赋值给函数式接口变量
+Consumer<String> combined = c1.andThen(c2);  // 声明变量 combined（Consumer<String>），初始值为 c1.andThen(c2)
 combined.accept("Hi"); // 先 c1 后 c2
 \`\`\`
 
@@ -446,14 +446,14 @@ combined.accept("Hi"); // 先 c1 后 c2
 接收两个参数的消费者：
 
 \`\`\`java
-BiConsumer<String, Integer> kv = (k, v) -> System.out.println(k + "=" + v);
-kv.accept("age", 18);
+BiConsumer<String, Integer> kv = (k, v) -> System.out.println(k + "=" + v);  // Lambda 表达式赋值给函数式接口变量
+kv.accept("age", 18);  // 调用 kv 的 accept 方法
 \`\`\`
 
 常用于遍历 Map：
 
 \`\`\`java
-map.forEach((k, v) -> System.out.println(k + "->" + v));
+map.forEach((k, v) -> System.out.println(k + "->" + v));  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 ## 消费者模式
@@ -470,7 +470,7 @@ Consumer 是**消费者模式**的核心：一个对象接收数据并执行某�
 \`Iterable.forEach(Consumer)\`、\`Stream.forEach(Consumer)\` 都接受 Consumer：
 
 \`\`\`java
-list.forEach(System.out::println);
+list.forEach(System.out::println);  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 ## 原始类型特化
@@ -555,8 +555,8 @@ public class Main {
 ## 基本用法
 
 \`\`\`java
-Supplier<Double> random = () -> Math.random();
-double r = random.get();
+Supplier<Double> random = () -> Math.random();  // Lambda 表达式赋值给函数式接口变量
+double r = random.get();  // 声明变量 r（double），初始值为 random.get()
 \`\`\`
 
 ## 工厂模式
@@ -564,8 +564,8 @@ double r = random.get();
 Supplier 天然契合**工厂模式**，将对象创建延迟到调用时：
 
 \`\`\`java
-Supplier<List<String>> listFactory = ArrayList::new;
-List<String> list = listFactory.get();
+Supplier<List<String>> listFactory = ArrayList::new;  // 方法引用：复用已有方法作为函数式接口实例
+List<String> list = listFactory.get();  // 声明变量 list（List<String>），初始值为 listFactory.get()
 \`\`\`
 
 每次调用 \`get()\` 都会创建新实例。
@@ -575,7 +575,7 @@ List<String> list = listFactory.get();
 Supplier 是实现**惰性求值**的关键工具——把昂贵计算包装在 Supplier 中，仅在真正需要时执行：
 
 \`\`\`java
-Supplier<Heavy> lazy = () -> createHeavyObject();
+Supplier<Heavy> lazy = () -> createHeavyObject();  // Lambda 表达式赋值给函数式接口变量
 // 此处不执行
 Heavy h = lazy.get(); // 真正执行
 \`\`\`
@@ -587,7 +587,7 @@ Java 标准库中 \`Optional.orElseGet(Supplier)\`、参数化日志等均利用
 Supplier 作为"数据源"被反复调用以产生序列，例如：
 
 \`\`\`java
-Stream.generate(() -> Math.random()).limit(5);
+Stream.generate(() -> Math.random()).limit(5);  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 ## 缓存计算结果
@@ -595,7 +595,7 @@ Stream.generate(() -> Math.random()).limit(5);
 可用 Supplier 配合 memoization 缓存结果（首次计算后缓存），避免重复求值：
 
 \`\`\`java
-Supplier<Expensive> memo = memoize(() -> computeExpensive());
+Supplier<Expensive> memo = memoize(() -> computeExpensive());  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 ## BooleanSupplier 与原始特化
@@ -698,7 +698,7 @@ public class Main {
 ## 基本用法
 
 \`\`\`java
-Predicate<String> isEmpty = String::isEmpty;
+Predicate<String> isEmpty = String::isEmpty;  // 方法引用：复用已有方法作为函数式接口实例
 boolean b = isEmpty.test(""); // true
 \`\`\`
 
@@ -711,8 +711,8 @@ Predicate 提供三个默认方法实现逻辑运算：
 - \`negate()\`：逻辑非
 
 \`\`\`java
-Predicate<Integer> positive = x -> x > 0;
-Predicate<Integer> even = x -> x % 2 == 0;
+Predicate<Integer> positive = x -> x > 0;  // Lambda 表达式赋值给函数式接口变量
+Predicate<Integer> even = x -> x % 2 == 0;  // Lambda 表达式赋值给函数式接口变量
 Predicate<Integer> posEven = positive.and(even); // 正且偶
 Predicate<Integer> notEven = even.negate();       // 非偶
 \`\`\`
@@ -724,7 +724,7 @@ Predicate<Integer> notEven = even.negate();       // 非偶
 静态方法 \`Predicate.isEqual(target)\` 返回基于 \`Objects.equals\` 的相等性断言：
 
 \`\`\`java
-Predicate<String> isHello = Predicate.isEqual("Hello");
+Predicate<String> isHello = Predicate.isEqual("Hello");  // 声明变量 isHello（Predicate<String>），初始值为 Predicate.isEqual("Hello")
 \`\`\`
 
 ## BiPredicate<T, U>
@@ -732,7 +732,7 @@ Predicate<String> isHello = Predicate.isEqual("Hello");
 接收两个参数的断言：
 
 \`\`\`java
-BiPredicate<String, Integer> lenAtLeast = (s, n) -> s.length() >= n;
+BiPredicate<String, Integer> lenAtLeast = (s, n) -> s.length() >= n;  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 ## 过滤逻辑组合
@@ -740,7 +740,7 @@ BiPredicate<String, Integer> lenAtLeast = (s, n) -> s.length() >= n;
 Predicate 最常见的用途是组合多个过滤条件，用于 \`Stream.filter\` 或 \`Collection.removeIf\`：
 
 \`\`\`java
-list.stream().filter(isAdult.and(isActive)).collect(...);
+list.stream().filter(isAdult.and(isActive)).collect(...);  // 调用 list 的 stream 方法
 \`\`\`
 
 通过组合，可以构建复杂的查询表达式，避免大量嵌套 if。
@@ -750,7 +750,7 @@ list.stream().filter(isAdult.and(isActive)).collect(...);
 Java 11 引入 \`Predicate.not(predicate)\`，等价于 \`negate()\` 但更易读：
 
 \`\`\`java
-Predicate.not(String::isBlank)
+Predicate.not(String::isBlank)  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 ## 原始类型特化
@@ -856,8 +856,8 @@ Optional<String> b = Optional.ofNullable(null); // 可为空
 - \`orElseThrow()\`：无值抛异常
 
 \`\`\`java
-String v = maybe.orElse("默认");
-String v2 = maybe.orElseGet(() -> expensiveDefault());
+String v = maybe.orElse("默认");  // 声明变量 v（String），初始值为 maybe.orElse("默认")
+String v2 = maybe.orElseGet(() -> expensiveDefault());  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 \`orElse\` 与 \`orElseGet\` 的关键区别：前者**无论是否有值都会计算**默认值，后者**仅在无值时**计算。
@@ -877,7 +877,7 @@ opt.flatMap(s -> maybe(s));           // 不产生 Optional<Optional<T>>
 \`filter(Predicate)\` 有值且满足条件时保留，否则返回空：
 
 \`\`\`java
-opt.filter(s -> s.length() > 3);
+opt.filter(s -> s.length() > 3);  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 ## 判断：isPresent / ifPresent
@@ -887,7 +887,7 @@ opt.filter(s -> s.length() > 3);
 
 \`\`\`java
 if (opt.isPresent()) { ... }
-opt.ifPresent(v -> use(v));
+opt.ifPresent(v -> use(v));  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 Java 9+ 提供 \`ifPresentOrElse(Consumer, Runnable)\` 处理两种情况。
@@ -1001,7 +1001,7 @@ public class Main {
 通过显式列举元素创建：
 
 \`\`\`java
-Stream<String> s = Stream.of("a", "b", "c");
+Stream<String> s = Stream.of("a", "b", "c");  // 声明变量 s（Stream<String>），初始值为 Stream.of("a", "b", "c")
 \`\`\`
 
 也可创建空流 \`Stream.empty()\`。
@@ -1011,8 +1011,8 @@ Stream<String> s = Stream.of("a", "b", "c");
 最常见的来源——任何 Collection 都可转为流：
 
 \`\`\`java
-List<Integer> list = Arrays.asList(1, 2, 3);
-Stream<Integer> s = list.stream();
+List<Integer> list = Arrays.asList(1, 2, 3);  // 声明变量 list（List<Integer>），初始值为 Arrays.asList(1, 2, 3)
+Stream<Integer> s = list.stream();  // 声明变量 s（Stream<Integer>），初始值为 list.stream()
 \`\`\`
 
 ## Arrays.stream
@@ -1020,8 +1020,8 @@ Stream<Integer> s = list.stream();
 从数组创建流，支持基本类型数组（返回 \`IntStream\` 等）：
 
 \`\`\`java
-int[] arr = {1, 2, 3};
-IntStream is = Arrays.stream(arr);
+int[] arr = {1, 2, 3};  // 声明变量 arr（int[]），初始值为 {1, 2, 3}
+IntStream is = Arrays.stream(arr);  // 声明变量 is（IntStream），初始值为 Arrays.stream(arr)
 \`\`\`
 
 ## Stream.generate
@@ -1029,7 +1029,7 @@ IntStream is = Arrays.stream(arr);
 接收 Supplier 生成**无限流**，必须配合 \`limit\` 截断：
 
 \`\`\`java
-Stream<Double> randoms = Stream.generate(Math::random).limit(5);
+Stream<Double> randoms = Stream.generate(Math::random).limit(5);  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 ## Stream.iterate
@@ -1037,7 +1037,7 @@ Stream<Double> randoms = Stream.generate(Math::random).limit(5);
 \`iterate(seed, next)\` 生成无限流，每次根据前一个值计算下一个：
 
 \`\`\`java
-Stream<Integer> naturals = Stream.iterate(1, n -> n + 1).limit(10);
+Stream<Integer> naturals = Stream.iterate(1, n -> n + 1).limit(10);  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 Java 9+ 重载 \`iterate(seed, hasNext, next)\` 可带终止条件。
@@ -1154,7 +1154,7 @@ Stream 操作分为**中间操作**和**终端操作**。中间操作返回新 S
 过滤满足条件的元素：
 
 \`\`\`java
-stream.filter(x -> x > 0)
+stream.filter(x -> x > 0)  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 ## map
@@ -1162,7 +1162,7 @@ stream.filter(x -> x > 0)
 一对一转换：
 
 \`\`\`java
-stream.map(String::length)
+stream.map(String::length)  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 ## flatMap
@@ -1206,7 +1206,7 @@ stream.distinct()
 为每个元素执行一个动作（Consumer），返回原流。主要用于**调试**：
 
 \`\`\`java
-stream.peek(System.out::println).map(...)
+stream.peek(System.out::println).map(...)  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 注意：由于惰性求值，\`peek\` 只有在终端操作触发时才执行，且可能因短路而不执行所有元素。
@@ -1220,7 +1220,7 @@ stream.peek(System.out::println).map(...)
 
 \`\`\`java
 // 仅遍历到第一个匹配元素即停止
-list.stream().filter(x -> x > 5).findFirst();
+list.stream().filter(x -> x > 5).findFirst();  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 ## 有状态 vs 无状态
@@ -1324,7 +1324,7 @@ public class Main {
 对每个元素执行动作（Consumer），无返回值：
 
 \`\`\`java
-stream.forEach(System.out::println);
+stream.forEach(System.out::println);  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 ## collect
@@ -1332,7 +1332,7 @@ stream.forEach(System.out::println);
 将流元素收集到集合或其他结构，是最强大的终端操作：
 
 \`\`\`java
-stream.collect(Collectors.toList());
+stream.collect(Collectors.toList());  // 调用 stream 的 collect 方法
 \`\`\`
 
 详见 collect 章节。
@@ -1346,7 +1346,7 @@ stream.collect(Collectors.toList());
 返回元素数量：
 
 \`\`\`java
-long n = stream.count();
+long n = stream.count();  // 声明变量 n（long），初始值为 stream.count()
 \`\`\`
 
 ## min / max
@@ -1354,8 +1354,8 @@ long n = stream.count();
 返回 Optional，基于比较器：
 
 \`\`\`java
-stream.min(Comparator.naturalOrder());
-stream.max(Comparator.comparingInt(...));
+stream.min(Comparator.naturalOrder());  // 调用 stream 的 min 方法
+stream.max(Comparator.comparingInt(...));  // 调用 stream 的 max 方法
 \`\`\`
 
 ## 匹配：anyMatch / allMatch / noneMatch
@@ -1365,7 +1365,7 @@ stream.max(Comparator.comparingInt(...));
 - \`noneMatch(Predicate)\`：全部不匹配才返回 true（短路）
 
 \`\`\`java
-boolean hasNeg = nums.stream().anyMatch(x -> x < 0);
+boolean hasNeg = nums.stream().anyMatch(x -> x < 0);  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 ## 查找：findFirst / findAny
@@ -1374,7 +1374,7 @@ boolean hasNeg = nums.stream().anyMatch(x -> x < 0);
 - \`findAny()\`：返回任意元素（并行流中更高效）
 
 \`\`\`java
-Optional<Integer> first = stream.filter(...).findFirst();
+Optional<Integer> first = stream.filter(...).findFirst();  // 声明变量 first（Optional<Integer>），初始值为 stream.filter(...).findFirst()
 \`\`\`
 
 两者都返回 \`Optional<T>\`。
@@ -1384,9 +1384,9 @@ Optional<Integer> first = stream.filter(...).findFirst();
 数值流（IntStream 等）提供便捷聚合：
 
 \`\`\`java
-int sum = intStream.sum();
-OptionalDouble avg = intStream.average();
-IntSummaryStatistics stat = intStream.summaryStatistics();
+int sum = intStream.sum();  // 声明变量 sum（int），初始值为 intStream.sum()
+OptionalDouble avg = intStream.average();  // 声明变量 avg（OptionalDouble），初始值为 intStream.average()
+IntSummaryStatistics stat = intStream.summaryStatistics();  // 声明变量 stat（IntSummaryStatistics），初始值为 intStream.summaryStatistics()
 \`\`\`
 
 ## toArray
@@ -1394,7 +1394,7 @@ IntSummaryStatistics stat = intStream.summaryStatistics();
 收集为数组：
 
 \`\`\`java
-String[] arr = stream.toArray(String[]::new);
+String[] arr = stream.toArray(String[]::new);  // 声明变量 arr（String[]），初始值为 stream.toArray(String[]::new)
 \`\`\`
 
 ## 短路
@@ -1487,7 +1487,7 @@ public class Main {
 返回 \`Optional<T>\`，因为没有初始值，空流无法产生结果：
 
 \`\`\`java
-Optional<Integer> sum = stream.reduce((a, b) -> a + b);
+Optional<Integer> sum = stream.reduce((a, b) -> a + b);  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 BinaryOperator 是 BiFunction<T, T, T> 的子接口，两个参数和返回值同类型。
@@ -1497,7 +1497,7 @@ BinaryOperator 是 BiFunction<T, T, T> 的子接口，两个参数和返回值�
 提供**初始值** identity，返回 \`T\`（非 Optional）。空流时返回 identity：
 
 \`\`\`java
-int sum = stream.reduce(0, (a, b) -> a + b);
+int sum = stream.reduce(0, (a, b) -> a + b);  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 identity 必须满足：对于任意 x，\`accumulator(identity, x) == x\`（即 identity 是累加的"零元"），否则结果不正确。
@@ -1507,7 +1507,7 @@ identity 必须满足：对于任意 x，\`accumulator(identity, x) == x\`（即
 用于**并行流**，当累加器类型与流元素类型不同时，需要 combiner 合并部分结果：
 
 \`\`\`java
-int sum = stream.reduce(0, (acc, s) -> acc + s.length(), Integer::sum);
+int sum = stream.reduce(0, (acc, s) -> acc + s.length(), Integer::sum);  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 此处 acc 是 Integer，s 是 String，accumulator 累加字符串长度，combiner 合并多个 Integer 部分和。
@@ -1519,7 +1519,7 @@ int sum = stream.reduce(0, (acc, s) -> acc + s.length(), Integer::sum);
 \`\`\`java
 // 不推荐：用 reduce 拼接 List
 // 推荐：用 collect
-stream.collect(Collectors.toList());
+stream.collect(Collectors.toList());  // 调用 stream 的 collect 方法
 \`\`\`
 
 ## 典型应用
@@ -1534,7 +1534,7 @@ stream.collect(Collectors.toList());
 并行流中，reduce 会分片并行计算再合并。形式三的 combiner 必须满足**结合律**（associative），否则结果不确定。
 
 \`\`\`java
-int sum = list.parallelStream().reduce(0, Integer::sum, Integer::sum);
+int sum = list.parallelStream().reduce(0, Integer::sum, Integer::sum);  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 减法、除法不满足结合律，不能用于并行 reduce。
@@ -1631,8 +1631,8 @@ public class Main {
 收集为 List 或 Set：
 
 \`\`\`java
-stream.collect(Collectors.toList());
-stream.collect(Collectors.toSet());
+stream.collect(Collectors.toList());  // 调用 stream 的 collect 方法
+stream.collect(Collectors.toSet());  // 调用 stream 的 collect 方法
 \`\`\`
 
 Java 16+ 可直接 \`Stream.toList()\`（返回不可修改 List）。
@@ -1642,19 +1642,19 @@ Java 16+ 可直接 \`Stream.toList()\`（返回不可修改 List）。
 收集为 Map，需提供 key 和 value 的映射函数：
 
 \`\`\`java
-stream.collect(Collectors.toMap(User::getId, User::getName));
+stream.collect(Collectors.toMap(User::getId, User::getName));  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 默认遇重复 key 抛异常，可提供合并函数：
 
 \`\`\`java
-Collectors.toMap(User::getCity, User::getName, (a, b) -> a + "," + b);
+Collectors.toMap(User::getCity, User::getName, (a, b) -> a + "," + b);  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 可指定 Map 实现：
 
 \`\`\`java
-Collectors.toMap(k -> k, v -> v, (a, b) -> a, LinkedHashMap::new);
+Collectors.toMap(k -> k, v -> v, (a, b) -> a, LinkedHashMap::new);  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 ## Collectors.joining
@@ -1662,7 +1662,7 @@ Collectors.toMap(k -> k, v -> v, (a, b) -> a, LinkedHashMap::new);
 字符串拼接，可加分隔符、前后缀：
 
 \`\`\`java
-stream.collect(Collectors.joining(", ", "[", "]"));
+stream.collect(Collectors.joining(", ", "[", "]"));  // 调用 stream 的 collect 方法
 \`\`\`
 
 ## Collectors.groupingBy
@@ -1670,13 +1670,13 @@ stream.collect(Collectors.joining(", ", "[", "]"));
 按分类函数分组，返回 \`Map<K, List<T>>\`：
 
 \`\`\`java
-stream.collect(Collectors.groupingBy(User::getCity));
+stream.collect(Collectors.groupingBy(User::getCity));  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 可指定下游 Collector，例如计数：
 
 \`\`\`java
-Collectors.groupingBy(User::getCity, Collectors.counting());
+Collectors.groupingBy(User::getCity, Collectors.counting());  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 ## Collectors.partitioningBy
@@ -1684,7 +1684,7 @@ Collectors.groupingBy(User::getCity, Collectors.counting());
 按 Predicate 分为 true/false 两组：
 
 \`\`\`java
-stream.collect(Collectors.partitioningBy(x -> x > 0));
+stream.collect(Collectors.partitioningBy(x -> x > 0));  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 返回 \`Map<Boolean, List<T>>\`。
@@ -1702,7 +1702,7 @@ stream.collect(Collectors.partitioningBy(x -> x > 0));
 对分组内元素再映射后收集：
 
 \`\`\`java
-groupingBy(User::getCity, mapping(User::getName, toList()));
+groupingBy(User::getCity, mapping(User::getName, toList()));  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 下面通过代码演示常用 Collector：`,
@@ -1805,8 +1805,8 @@ public class Main {
 - \`parallelStream().sequential()\`：可转回顺序流
 
 \`\`\`java
-list.parallelStream().filter(...).collect(...);
-list.stream().parallel().map(...).collect(...);
+list.parallelStream().filter(...).collect(...);  // 调用 list 的 parallelStream 方法
+list.stream().parallel().map(...).collect(...);  // 调用 list 的 stream 方法
 \`\`\`
 
 ## 执行机制
@@ -1833,10 +1833,10 @@ list.stream().parallel().map(...).collect(...);
 
 \`\`\`java
 // 错误：共享 ArrayList 非线程安全
-List<Integer> result = new ArrayList<>();
+List<Integer> result = new ArrayList<>();  // 声明变量 result（List<Integer>），初始值为 new ArrayList<>()
 stream.parallel().forEach(result::add); // 数据丢失、异常
 // 正确：使用 collect
-stream.parallel().collect(Collectors.toList());
+stream.parallel().collect(Collectors.toList());  // 调用 stream 的 parallel 方法
 \`\`\`
 
 ## 顺序保证
@@ -1958,8 +1958,8 @@ public class Main {
 // 先按部门分组，再按职级分组
 Map<String, Map<String, List<Employee>>> result =
     emps.stream().collect(
-        Collectors.groupingBy(Employee::getDept,
-            Collectors.groupingBy(Employee::getLevel)));
+        Collectors.groupingBy(Employee::getDept,  // 方法引用：复用已有方法作为函数式接口实例
+            Collectors.groupingBy(Employee::getLevel)));  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 通过组合，可表达任意层级的分类。
@@ -1969,8 +1969,8 @@ Map<String, Map<String, List<Employee>>> result =
 对分组内的元素先**映射**，再交给下游 Collector 收集：
 
 \`\`\`java
-groupingBy(Employee::getDept,
-    mapping(Employee::getName, toList()));
+groupingBy(Employee::getDept,  // 方法引用：复用已有方法作为函数式接口实例
+    mapping(Employee::getName, toList()));  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 避免在分组前对原流做 map（那样会丢失用于分组的字段）。
@@ -1980,8 +1980,8 @@ groupingBy(Employee::getDept,
 在分组内进行归约。三参形式提供 identity、累加器、合并器：
 
 \`\`\`java
-groupingBy(Employee::getDept,
-    reducing(0, Employee::getSalary, Integer::sum));
+groupingBy(Employee::getDept,  // 方法引用：复用已有方法作为函数式接口实例
+    reducing(0, Employee::getSalary, Integer::sum));  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 与 \`summingInt\` 等专用 Collector 类似，但更通用。
@@ -1991,7 +1991,7 @@ groupingBy(Employee::getDept,
 在收集完成后对结果做**最终转换**：
 
 \`\`\`java
-collectingAndThen(toList(), Collections::unmodifiableList);
+collectingAndThen(toList(), Collections::unmodifiableList);  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 常用于将分组结果转为不可变集合，或求每组最大值等。
@@ -2001,8 +2001,8 @@ collectingAndThen(toList(), Collections::unmodifiableList);
 在分组内**过滤**元素：
 
 \`\`\`java
-groupingBy(Employee::getDept,
-    filtering(e -> e.getSalary() > 5000, toList()));
+groupingBy(Employee::getDept,  // 方法引用：复用已有方法作为函数式接口实例
+    filtering(e -> e.getSalary() > 5000, toList()));  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 注意与流级 \`filter\` 的区别：流级 filter 会移除整个元素，导致该组消失；分组内 filtering 保留分组，仅过滤组内元素。
@@ -2012,7 +2012,7 @@ groupingBy(Employee::getDept,
 在分组内 flatMap，处理嵌套结构：
 
 \`\`\`java
-groupingBy(..., flatMapping(e -> e.getTags().stream(), toList()));
+groupingBy(..., flatMapping(e -> e.getTags().stream(), toList()));  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 ## teeing（Java 12+）
@@ -2023,9 +2023,9 @@ groupingBy(..., flatMapping(e -> e.getTags().stream(), toList()));
 // 一次遍历同时求平均值和最大值
 Result r = stream.collect(
     Collectors.teeing(
-        Collectors.averagingInt(Employee::getSalary),
-        Collectors.maxBy(comparingInt(Employee::getSalary)),
-        (a, optMax) -> new Result(a, optMax.get().getSalary())));
+        Collectors.averagingInt(Employee::getSalary),  // 方法引用：复用已有方法作为函数式接口实例
+        Collectors.maxBy(comparingInt(Employee::getSalary)),  // 方法引用：复用已有方法作为函数式接口实例
+        (a, optMax) -> new Result(a, optMax.get().getSalary())));  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 避免遍历流两次，提升性能。
@@ -2165,8 +2165,8 @@ Stream 虽强大，但有不少陷阱。理解它们能写出更可靠、更高�
 Stream 是**一次性**的，终端操作后即被关闭，再次使用会抛 \`IllegalStateException\`：
 
 \`\`\`java
-Stream<Integer> s = Stream.of(1, 2, 3);
-s.count();
+Stream<Integer> s = Stream.of(1, 2, 3);  // 声明变量 s（Stream<Integer>），初始值为 Stream.of(1, 2, 3)
+s.count();  // 调用 s 的 count 方法
 s.findFirst(); // 抛异常
 \`\`\`
 
@@ -2182,7 +2182,7 @@ s.findFirst(); // 抛异常
 \`\`\`java
 // 错误：在 filter 中修改外部 List
 // 正确：用 collect
-List<Integer> evens = stream.filter(n -> n%2==0).collect(toList());
+List<Integer> evens = stream.filter(n -> n%2==0).collect(toList());  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 ## 短路操作
@@ -2194,7 +2194,7 @@ List<Integer> evens = stream.filter(n -> n%2==0).collect(toList());
 \`peek\` 主要用于**调试**流流水线，查看中间状态：
 
 \`\`\`java
-stream.peek(x -> System.out.println("after filter: " + x))
+stream.peek(x -> System.out.println("after filter: " + x))  // Lambda 表达式：实现函数式接口
       .map(...)
       .collect(...);
 \`\`\`
@@ -2221,7 +2221,7 @@ stream.peek(x -> System.out.println("after filter: " + x))
 Stream 的函数式接口方法都不声明受检异常。若需在流中调用抛受检异常的方法，必须包装为非受检或 try-catch：
 
 \`\`\`java
-stream.map(s -> { try { return read(s); } catch (IOException e) { throw new UncheckedIOException(e); } })
+stream.map(s -> { try { return read(s); } catch (IOException e) { throw new UncheckedIOException(e); } })  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 ## 常见误区

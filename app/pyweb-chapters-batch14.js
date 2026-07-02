@@ -55,11 +55,16 @@ WebSocket 连接的建立很有意思:**它先假装是 HTTP 请求**。客户�
 客户端握手请求(看起来像 HTTP):
 
 \`\`\`http
+# GET /chat HTTP/1.1
 GET /chat HTTP/1.1
+# 字段 Host，类型: example.com
 Host: example.com
 Upgrade: websocket        # 我要升级协议
+# 字段 Connection，类型: Upgrade
 Connection: Upgrade
+# Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==
 Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==
+# Sec-WebSocket-Version: 13
 Sec-WebSocket-Version: 13
 \`\`\`
 
@@ -105,34 +110,53 @@ wss://api.example.com/chat
 
 \`\`\`javascript
 // 1. 创建 WebSocket 连接(注意协议是 ws 或 wss)
+// 定义变量 ws
 const ws = new WebSocket("ws://localhost:8000/chat");
 
 // 2. 连接成功时触发
+// ws.onopen = function () {
 ws.onopen = function () {
+// console.log("连接已建立");
   console.log("连接已建立");
+// ws.send("你好服务器");  // 发送一条文本消息
   ws.send("你好服务器");  // 发送一条文本消息
+// };
 };
 
 // 3. 收到服务器消息时触发
+// ws.onmessage = function (event) {
 ws.onmessage = function (event) {
+// console.log("收到:", event.data);
   console.log("收到:", event.data);
+// };
 };
 
 // 4. 连接关闭时触发
+// ws.onclose = function () {
 ws.onclose = function () {
+// console.log("连接已关闭");
   console.log("连接已关闭");
+// };
 };
 
 // 5. 出错时触发
+// ws.onerror = function (error) {
 ws.onerror = function (error) {
+// console.log("出错了", error);
   console.log("出错了", error);
+// };
 };
 
 // 主动发消息
+// 定义函数 sendMsg
 function sendMsg(text) {
+// if (ws.readyState === WebSocket.OPEN) {
   if (ws.readyState === WebSocket.OPEN) {
+// ws.send(text);
     ws.send(text);
+// }
   }
+// }
 }
 \`\`\`
 
@@ -193,33 +217,46 @@ Socket.IO 的协议和原生 WebSocket **不兼容**:用 Socket.IO 的服务器,
 ### 54.2 安装
 
 \`\`\`bash
+# 安装 Python 包: flask-socketio
 pip install flask-socketio
 \`\`\`
 
 ### 54.3 最小示例
 
 \`\`\`python
+# 从 flask 导入 Flask
 from flask import Flask
+# 从 flask_socketio 导入 SocketIO, emit
 from flask_socketio import SocketIO, emit
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")  # 允许跨域
 
 # 监听客户端连接事件
+# 装饰器：socketio.on
 @socketio.on("connect")
+# 定义函数 on_connect，参数: 
 def on_connect():
+    # 调用 print()
     print("有客户端连上了")
     emit("server_msg", {"msg": "欢迎连接"})  # 给这个客户端发欢迎消息
 
 # 监听客户端发来的 "chat" 事件
+# 装饰器：socketio.on
 @socketio.on("chat")
+# 定义函数 on_chat，参数: data
 def on_chat(data):
+    # 调用 print()
     print("收到:", data)
     # broadcast=True 表示广播给所有连接的客户端
+    # 调用 emit()
     emit("chat", data, broadcast=True)
 
+# 判断是否直接运行此脚本
 if __name__ == "__main__":
     # 注意:用 socketio.run 而不是 app.run
+    # 调用 socketio.run()
     socketio.run(app, debug=True)
 \`\`\`
 
@@ -230,20 +267,29 @@ if __name__ == "__main__":
 Flask-SocketIO 用装饰器 \`@socketio.on(事件名)\` 监听事件。三个内置事件:
 
 \`\`\`python
+# 装饰器：socketio.on
 @socketio.on("connect")
+# 定义函数 on_connect，参数: 
 def on_connect():
     # 客户端连上时触发
     # 可以在这里做鉴权,返回 False 拒绝连接
+    # 空操作占位
     pass
 
+# 装饰器：socketio.on
 @socketio.on("disconnect")
+# 定义函数 on_disconnect，参数: 
 def on_disconnect():
     # 客户端断开时触发
+    # 调用 print()
     print("用户走了")
 
+# 装饰器：socketio.on
 @socketio.on("message")
+# 定义函数 on_message，参数: data
 def on_message(data):
     # 监听原生 message 事件
+    # 调用 print()
     print("收到消息:", data)
 \`\`\`
 
@@ -252,17 +298,23 @@ def on_message(data):
 \`emit(事件名, 数据)\` 给客户端发消息。三个常用参数:
 
 \`\`\`python
+# 从 flask_socketio 导入 emit
 from flask_socketio import emit
 
+# 装饰器：socketio.on
 @socketio.on("chat")
+# 定义函数 on_chat，参数: data
 def on_chat(data):
     # 1. 只回给发送者
+    # 调用 emit()
     emit("server_reply", {"msg": "已收到"})
 
     # 2. 广播给所有人(broadcast=True)
+    # 调用 emit()
     emit("broadcast", {"msg": data["msg"]}, broadcast=True)
 
     # 3. 只发给某个房间的人(room=房间名)
+    # 调用 emit()
     emit("room_msg", {"msg": "房间消息"}, room="room_1")
 \`\`\`
 
@@ -271,18 +323,26 @@ def on_chat(data):
 房间是 Socket.IO 把用户分组的机制。典型用法:进入聊天室 = join_room,群发 = emit(room=房间名)。
 
 \`\`\`python
+# 从 flask_socketio 导入 join_room, leave_room, emit
 from flask_socketio import join_room, leave_room, emit
 
+# 装饰器：socketio.on
 @socketio.on("join")
+# 定义函数 on_join，参数: data
 def on_join(data):
     room = data["room"]         # 客户端告诉要进哪个房间
     join_room(room)             # 把当前用户加入房间
     emit("sys_msg", f"有人加入了 {room}", room=room)  # 给房间所有人通知
 
+# 装饰器：socketio.on
 @socketio.on("leave")
+# 定义函数 on_leave，参数: data
 def on_leave(data):
+    # 定义变量 room，赋值为 data["room"]
     room = data["room"]
+    # 调用 leave_room()
     leave_room(room)
+    # 调用 emit()
     emit("sys_msg", f"有人离开了 {room}", room=room)
 \`\`\`
 
@@ -294,7 +354,9 @@ def on_leave(data):
 
 \`\`\`python
 @socketio.route_global_announce  # 伪代码,演示用
+# 定义函数 announce，参数: 
 def announce():
+    # 调用 emit()
     emit("announcement", {"text": "系统维护通知"}, broadcast=True)
 \`\`\`
 
@@ -303,16 +365,25 @@ def announce():
 一个连接上跑多套业务,用命名空间隔离。比如聊天和实时通知分到两个 namespace:
 
 \`\`\`python
+# 装饰器：socketio.on
 @socketio.on("connect", namespace="/chat")
+# 定义函数 on_chat_connect，参数: 
 def on_chat_connect():
+    # 调用 emit()
     emit("msg", "聊天连接成功", namespace="/chat")
 
+# 装饰器：socketio.on
 @socketio.on("connect", namespace="/notify")
+# 定义函数 on_notify_connect，参数: 
 def on_notify_connect():
+    # 调用 emit()
     emit("msg", "通知连接成功", namespace="/notify")
 
+# 装饰器：socketio.on
 @socketio.on("msg", namespace="/chat")
+# 定义函数 on_chat_msg，参数: data
 def on_chat_msg(data):
+    # 调用 emit()
     emit("msg", data, namespace="/chat", broadcast=True)
 \`\`\`
 
@@ -323,26 +394,44 @@ def on_chat_msg(data):
 后端用 Flask-SocketIO,前端必须用对应版本的 \`socket.io.js\`(不能用原生 WebSocket):
 
 \`\`\`html
+# <!-- 引入 socket.io 客户端 -->
 <!-- 引入 socket.io 客户端 -->
+# <script src="https://cdn.socket.io/socket.io-4.7.2
 <script src="https://cdn.socket.io/socket.io-4.7.2.min.js"></script>
+# <script>
 <script>
+  # // 连接服务器
   // 连接服务器
+  # const socket = io("http://localhost:5000");
   const socket = io("http://localhost:5000");
 
+  # // 收到服务器的 server_msg 事件
   // 收到服务器的 server_msg 事件
+  # 调用 socket.on()
   socket.on("server_msg", function (data) {
+    # 调用 console.log()
     console.log("服务器说:", data.msg);
+  # });
   });
 
+  # // 发送 chat 事件
   // 发送 chat 事件
+  # function sendChat(text) {
   function sendChat(text) {
+    # 调用 socket.emit()
     socket.emit("chat", { msg: text });
+  # }
   }
 
+  # // 加入房间
   // 加入房间
+  # function joinRoom(roomName) {
   function joinRoom(roomName) {
+    # 调用 socket.emit()
     socket.emit("join", { room: roomName });
+  # }
   }
+# </script>
 </script>
 \`\`\`
 
@@ -353,82 +442,140 @@ def on_chat_msg(data):
 **服务器 app.py**:
 
 \`\`\`python
+# 从 flask 导入 Flask, render_template
 from flask import Flask, render_template
+# 从 flask_socketio 导入 SocketIO, emit, join_room
 from flask_socketio import SocketIO, emit, join_room
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
+# app.config["SECRET_KEY"] = "dev-secret"
 app.config["SECRET_KEY"] = "dev-secret"
+# 定义变量 socketio，赋值为 SocketIO(app, cors_allowed_origins="*")
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+# 装饰器：app.route
 @app.route("/")
+# 定义函数 index，参数: 
 def index():
     # 返回聊天页面
+    # 返回 render_template("chat.html")
     return render_template("chat.html")
 
+# 装饰器：socketio.on
 @socketio.on("connect")
+# 定义函数 on_connect，参数: 
 def on_connect():
+    # 调用 emit()
     emit("sys", "你已连接服务器")
 
+# 装饰器：socketio.on
 @socketio.on("join")
+# 定义函数 on_join，参数: data
 def on_join(data):
+    # 定义变量 room，赋值为 data["room"]
     room = data["room"]
+    # 定义变量 username，赋值为 data["username"]
     username = data["username"]
+    # 调用 join_room()
     join_room(room)
     # 给房间其他人通知(自己不收)
+    # 调用 emit()
     emit("sys", f"{username} 加入了房间", room=room, include_self=False)
 
+# 装饰器：socketio.on
 @socketio.on("msg")
+# 定义函数 on_msg，参数: data
 def on_msg(data):
+    # 定义变量 room，赋值为 data["room"]
     room = data["room"]
     # 群发给房间所有人
+    # 调用 emit()
     emit("msg", {"username": data["username"], "text": data["text"]}, room=room)
 
+# 判断是否直接运行此脚本
 if __name__ == "__main__":
+    # 调用 socketio.run()
     socketio.run(app, debug=True)
 \`\`\`
 
 **模板 templates/chat.html**:
 
 \`\`\`html
+# <!DOCTYPE html>
 <!DOCTYPE html>
+# <html>
 <html>
+# <head><meta charset="utf-8"><title>聊天室</title></he
 <head><meta charset="utf-8"><title>聊天室</title></head>
+# <body>
 <body>
+  # <input id="room" placeholder="房间名" value="general"
   <input id="room" placeholder="房间名" value="general">
+  # <input id="username" placeholder="昵称" value="匿名">
   <input id="username" placeholder="昵称" value="匿名">
+  # <button onclick="doJoin()">加入</button>
   <button onclick="doJoin()">加入</button>
+  # <div id="msgs"></div>
   <div id="msgs"></div>
+  # <input id="text" placeholder="说点什么">
   <input id="text" placeholder="说点什么">
+  # <button onclick="sendMsg()">发送</button>
   <button onclick="sendMsg()">发送</button>
 
+  # <script src="https://cdn.socket.io/socket.io-4.7.2
   <script src="https://cdn.socket.io/socket.io-4.7.2.min.js"></script>
+  # <script>
   <script>
+    # const socket = io();
     const socket = io();
 
+    # 调用 socket.on()
     socket.on("sys", function (msg) {
+      # const div = document.getElementById("msgs");
       const div = document.getElementById("msgs");
+      # div.innerHTML += "<p><i>" + msg + "</i></p>";
       div.innerHTML += "<p><i>" + msg + "</i></p>";
+    # });
     });
 
+    # 调用 socket.on()
     socket.on("msg", function (data) {
+      # const div = document.getElementById("msgs");
       const div = document.getElementById("msgs");
+      # div.innerHTML += "<p><b>" + data.username + ":</b>
       div.innerHTML += "<p><b>" + data.username + ":</b> " + data.text + "</p>";
+    # });
     });
 
+    # function doJoin() {
     function doJoin() {
+      # const room = document.getElementById("room").value
       const room = document.getElementById("room").value;
+      # const username = document.getElementById("username
       const username = document.getElementById("username").value;
+      # 调用 socket.emit()
       socket.emit("join", { room: room, username: username });
+    # }
     }
 
+    # function sendMsg() {
     function sendMsg() {
+      # const room = document.getElementById("room").value
       const room = document.getElementById("room").value;
+      # const username = document.getElementById("username
       const username = document.getElementById("username").value;
+      # const text = document.getElementById("text").value
       const text = document.getElementById("text").value;
+      # 调用 socket.emit()
       socket.emit("msg", { room: room, username: username, text: text });
+    # }
     }
+  # </script>
   </script>
+# </body>
 </body>
+# </html>
 </html>
 \`\`\`
 
@@ -489,48 +636,72 @@ ASGI 是 WSGI 的异步版本,既能处理 HTTP 也能处理 WebSocket。Channel
 
 \`\`\`python
 # myproject/asgi.py
+# 导入 os 模块
 import os
+# 从 django.core.asgi 导入 get_asgi_application
 from django.core.asgi import get_asgi_application
+# 从 channels.routing 导入 ProtocolTypeRouter, URLRouter
 from channels.routing import ProtocolTypeRouter, URLRouter
+# 从 channels.auth 导入 AuthMiddlewareStack
 from channels.auth import AuthMiddlewareStack
+# 导入 myapp.routing 模块
 import myapp.routing
 
+# 调用 os.environ.setdefault()
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "myproject.settings")
 
+# 定义变量 application，赋值为 ProtocolTypeRouter({
 application = ProtocolTypeRouter({
     # 普通 HTTP 请求走 Django
+    # "http": get_asgi_application(),
     "http": get_asgi_application(),
     # WebSocket 请求走 Channels 的路由
+    # "websocket": AuthMiddlewareStack(
     "websocket": AuthMiddlewareStack(
+        # 调用 URLRouter()
         URLRouter(myapp.routing.websocket_urlpatterns)
+    # ),
     ),
+# })
 })
 \`\`\`
 
 ### 55.3 安装和配置
 
 \`\`\`bash
+# 安装 Python 包: channels daphne channels_redis
 pip install channels daphne channels_redis
 \`\`\`
 
 \`settings.py\`:
 
 \`\`\`python
+# 定义列表 INSTALLED_APPS
 INSTALLED_APPS = [
     "daphne",       # 放在最前面,用 Daphne 替代默认的 runserver
+    # "channels",
     "channels",
+    # "channels_redis",
     "channels_redis",
     # ...其他 app
+# ]
 ]
 
+# 定义变量 ASGI_APPLICATION，赋值为 "myproject.asgi.application"
 ASGI_APPLICATION = "myproject.asgi.application"
 
 # Channel layer 后端,用 Redis 做跨进程消息分发
+# 定义字典 CHANNEL_LAYERS
 CHANNEL_LAYERS = {
+    # "default": {
     "default": {
+        # "BACKEND": "channels_redis.core.RedisChannelLayer"
         "BACKEND": "channels_redis.core.RedisChannelLayer",
+        # "CONFIG": {"hosts": [("127.0.0.1", 6379)]},
         "CONFIG": {"hosts": [("127.0.0.1", 6379)]},
+    # },
     },
+# }
 }
 \`\`\`
 
@@ -542,67 +713,109 @@ Channels 里的"视图"叫 **Consumer**,处理 WebSocket 连接。类比 Django 
 
 \`\`\`python
 # myapp/consumers.py
+# 导入 json 模块
 import json
+# 从 channels.generic.websocket 导入 WebsocketConsumer, AsyncWebsocketConsumer
 from channels.generic.websocket import WebsocketConsumer, AsyncWebsocketConsumer
+# 从 asgiref.sync 导入 async_to_sync
 from asgiref.sync import async_to_sync
 
+# 定义类 ChatConsumer，继承 WebsocketConsumer
 class ChatConsumer(WebsocketConsumer):
+    # """同步 Consumer:简单直观,适合入门"""
     """同步 Consumer:简单直观,适合入门"""
 
+    # 定义函数 connect，参数: self
     def connect(self):
         # 客户端连上时触发
+        # self.room_name = self.scope["url_route"]["kwargs"]
         self.room_name = self.scope["url_route"]["kwargs"]["room_name"]
+        # self.room_group_name = f"chat_{self.room_name}"
         self.room_group_name = f"chat_{self.room_name}"
 
         # 加入房间组(channel layer 的 group)
+        # 调用 async_to_sync()
         async_to_sync(self.channel_layer.group_add)(
+            # self.room_group_name, self.channel_name
             self.room_group_name, self.channel_name
+        # )
         )
         self.accept()  # 接受连接
 
+    # 定义函数 disconnect，参数: self, close_code
     def disconnect(self, close_code):
         # 离开房间组
+        # 调用 async_to_sync()
         async_to_sync(self.channel_layer.group_discard)(
+            # self.room_group_name, self.channel_name
             self.room_group_name, self.channel_name
+        # )
         )
 
+    # 定义函数 receive，参数: self, text_data
     def receive(self, text_data):
         # 收到客户端消息
+        # 定义变量 data，赋值为 json.loads(text_data)
         data = json.loads(text_data)
+        # 定义变量 message，赋值为 data["message"]
         message = data["message"]
         # 群发给房间所有人(通过 group_send)
+        # 调用 async_to_sync()
         async_to_sync(self.channel_layer.group_send)(
+            # self.room_group_name,
             self.room_group_name,
+            # {"type": "chat_message", "message": message},
             {"type": "chat_message", "message": message},
+        # )
         )
 
     # 自定义 handler:接收上面 group_send 的 type
+    # 定义函数 chat_message，参数: self, event
     def chat_message(self, event):
+        # 定义变量 message，赋值为 event["message"]
         message = event["message"]
+        # 调用 self.send()
         self.send(text_data=json.dumps({"message": message}))
 
 
+# 定义类 AsyncChatConsumer，继承 AsyncWebsocketConsumer
 class AsyncChatConsumer(AsyncWebsocketConsumer):
+    # """异步 Consumer:性能更好,正式项目推荐"""
     """异步 Consumer:性能更好,正式项目推荐"""
 
+    # 定义异步函数 connect，参数: self
     async def connect(self):
+        # self.room_name = self.scope["url_route"]["kwargs"]
         self.room_name = self.scope["url_route"]["kwargs"]["room_name"]
+        # self.room_group_name = f"chat_{self.room_name}"
         self.room_group_name = f"chat_{self.room_name}"
+        # await self.channel_layer.group_add(self.room_group
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
+        # await self.accept()
         await self.accept()
 
+    # 定义异步函数 disconnect，参数: self, close_code
     async def disconnect(self, close_code):
+        # await self.channel_layer.group_discard(self.room_g
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
+    # 定义异步函数 receive，参数: self, text_data
     async def receive(self, text_data):
+        # 定义变量 data，赋值为 json.loads(text_data)
         data = json.loads(text_data)
+        # 定义变量 message，赋值为 data["message"]
         message = data["message"]
+        # await self.channel_layer.group_send(
         await self.channel_layer.group_send(
+            # self.room_group_name,
             self.room_group_name,
             {"type": "chat.message", "message": message},  # type 用点号会被转成下划线方法名
+        # )
         )
 
+    # 定义异步函数 chat_message，参数: self, event
     async def chat_message(self, event):
+        # await self.send(text_data=json.dumps({"message": e
         await self.send(text_data=json.dumps({"message": event["message"]}))
 \`\`\`
 
@@ -614,12 +827,17 @@ class AsyncChatConsumer(AsyncWebsocketConsumer):
 
 \`\`\`python
 # myapp/routing.py
+# 从 django.urls 导入 re_path
 from django.urls import re_path
+# 从 . 导入 consumers
 from . import consumers
 
+# 定义列表 websocket_urlpatterns
 websocket_urlpatterns = [
     # ws://host/ws/chat/room_name/
+    # 调用 re_path()
     re_path(r"ws/chat/(?P<room_name>\\w+)/$", consumers.ChatConsumer.as_asgi()),
+# ]
 ]
 \`\`\`
 
@@ -634,9 +852,11 @@ websocket_urlpatterns = [
 
 \`\`\`python
 # 群发消息给房间所有人
+# await self.channel_layer.group_send(
 await self.channel_layer.group_send(
     "chat_general",                              # group 名
     {"type": "chat.message", "message": "你好"},  # type 决定调哪个 handler
+# )
 )
 \`\`\`
 
@@ -666,24 +886,41 @@ await self.channel_layer.group_send(
 前端页面 \`chat.html\`:
 
 \`\`\`html
+# <input id="msg"><button onclick="send()">发</button
 <input id="msg"><button onclick="send()">发</button>
+# <div id="box"></div>
 <div id="box"></div>
+# <script>
 <script>
+  # const room = "general";
   const room = "general";
+  # // 注意协议是 ws,路径要和 routing.py 对应
   // 注意协议是 ws,路径要和 routing.py 对应
+  # const socket = new WebSocket(
   const socket = new WebSocket(
+    # "ws://" + window.location.host + "/ws/chat/" + roo
     "ws://" + window.location.host + "/ws/chat/" + room + "/"
+  # );
   );
 
+  # socket.onmessage = function (e) {
   socket.onmessage = function (e) {
+    # const data = JSON.parse(e.data);
     const data = JSON.parse(e.data);
+    # 调用 document.getElementById()
     document.getElementById("box").innerHTML += "<p>" + data.message + "</p>";
+  # };
   };
 
+  # function send() {
   function send() {
+    # const text = document.getElementById("msg").value;
     const text = document.getElementById("msg").value;
+    # 调用 socket.send()
     socket.send(JSON.stringify({ message: text }));
+  # }
   }
+# </script>
 </script>
 \`\`\`
 
@@ -762,20 +999,30 @@ data: {"price": 100}
 
 \`\`\`javascript
 // 连接 SSE 端点
+// 定义变量 source
 const source = new EventSource("/stream/logs");
 
 // 收到默认事件
+// source.onmessage = function (event) {
 source.onmessage = function (event) {
+// console.log("收到:", event.data);
   console.log("收到:", event.data);
+// };
 };
 
 // 收到自定义事件
+// source.addEventListener("update", function (event)
 source.addEventListener("update", function (event) {
+// console.log("更新:", event.data);
   console.log("更新:", event.data);
+// });
 });
 
+// source.onerror = function () {
 source.onerror = function () {
+// console.log("出错了,浏览器会自动重连");
   console.log("出错了,浏览器会自动重连");
+// };
 };
 \`\`\`
 
@@ -784,28 +1031,44 @@ source.onerror = function () {
 Flask 用生成器函数 + \`Response\` 流式响应实现 SSE:
 
 \`\`\`python
+# 从 flask 导入 Flask, Response, render_template
 from flask import Flask, Response, render_template
+# 导入 time 模块
 import time
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
 
+# 定义 GET 路由：访问 /stream/logs 时触发
 @app.get("/stream/logs")
+# 定义函数 stream_logs，参数: 
 def stream_logs():
+    # """SSE 端点:持续推送日志"""
     """SSE 端点:持续推送日志"""
+    # 定义函数 generate，参数: 
     def generate():
         # 生成器:每秒 yield 一条消息
+        # 定义变量 i，赋值为 0
         i = 0
+        # 当 True 为真时循环
         while True:
+            # i += 1
             i += 1
             # SSE 格式:data: 内容\\n\\n(两个换行结尾)
+            # 生成值: f"data: 日志第 {i} 条\\n\\n"
             yield f"data: 日志第 {i} 条\\n\\n"
+            # 调用 time.sleep()
             time.sleep(1)
 
     # 关键:mimetype 是 text/event-stream
+    # 返回 Response(generate(), mimetype="text/event-stream")
     return Response(generate(), mimetype="text/event-stream")
 
+# 定义 GET 路由：访问 / 时触发
 @app.get("/")
+# 定义函数 index，参数: 
 def index():
+    # 返回 render_template("logs.html")
     return render_template("logs.html")
 \`\`\`
 
@@ -816,18 +1079,29 @@ def index():
 Django 用 \`StreamingHttpResponse\`:
 
 \`\`\`python
+# 从 django.http 导入 StreamingHttpResponse
 from django.http import StreamingHttpResponse
+# 导入 time 模块
 import time
 
+# 定义函数 stream_logs，参数: request
 def stream_logs(request):
+    # 定义函数 event_stream，参数: 
     def event_stream():
+        # 定义变量 i，赋值为 0
         i = 0
+        # 当 True 为真时循环
         while True:
+            # i += 1
             i += 1
+            # 生成值: f"data: 日志第 {i} 条\\n\\n"
             yield f"data: 日志第 {i} 条\\n\\n"
+            # 调用 time.sleep()
             time.sleep(1)
+    # 定义变量 response，赋值为 StreamingHttpResponse(event_stream(), content...
     response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
     response["Cache-Control"] = "no-cache"  # SSE 别被缓存
+    # 返回 response
     return response
 \`\`\`
 
@@ -837,18 +1111,28 @@ def stream_logs(request):
 
 \`\`\`python
 # Flask 长轮询
+# 导入 time 模块
 import time
+# 从 flask 导入 Flask, jsonify
 from flask import Flask, jsonify
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
+# 定义列表 notifications
 notifications = []
 
+# 定义 GET 路由：访问 /poll 时触发
 @app.get("/poll")
+# 定义函数 long_poll，参数: 
 def long_poll():
+    # """客户端发请求,服务器最多挂 30 秒等新数据"""
     """客户端发请求,服务器最多挂 30 秒等新数据"""
+    # 定义变量 deadline，赋值为 time.time() + 30
     deadline = time.time() + 30
+    # 当 time.time() < deadline 为真时循环
     while time.time() < deadline:
         if notifications:               # 有新数据
+            # 返回 jsonify(notifications.pop(0))
             return jsonify(notifications.pop(0))
         time.sleep(0.5)                  # 没有就等一会再查
     return jsonify(None), 204            # 30 秒超时,客户端再发一次
@@ -888,48 +1172,81 @@ def long_poll():
 下面是一个 Flask + SSE 实时日志推送的完整例子:
 
 \`\`\`python
+# 从 flask 导入 Flask, Response, render_template
 from flask import Flask, Response, render_template
+# 导入 time, 模块
 import time, random
 
+# 定义变量 app，赋值为 Flask(__name__)
 app = Flask(__name__)
 
+# 定义 GET 路由：访问 / 时触发
 @app.get("/")
+# 定义函数 index，参数: 
 def index():
+    # 返回 render_template("logs.html")
     return render_template("logs.html")
 
+# 定义 GET 路由：访问 /stream/logs 时触发
 @app.get("/stream/logs")
+# 定义函数 stream_logs，参数: 
 def stream_logs():
+    # 定义函数 generate，参数: 
     def generate():
         # 模拟持续产生日志
+        # 定义列表 levels
         levels = ["INFO", "WARN", "ERROR"]
+        # 定义变量 i，赋值为 0
         i = 0
+        # 当 True 为真时循环
         while True:
+            # i += 1
             i += 1
+            # 定义变量 level，赋值为 random.choice(levels)
             level = random.choice(levels)
+            # 定义变量 msg，赋值为 f"[{level}] 系统运行中,处理了 {i} 个任务"
             msg = f"[{level}] 系统运行中,处理了 {i} 个任务"
             # SSE 格式:event 行(可选) + data 行 + 空行
+            # 生成值: f"event: log\\ndata: {msg}\\n\\n"
             yield f"event: log\\ndata: {msg}\\n\\n"
+            # 调用 time.sleep()
             time.sleep(1)
+    # 返回 Response(generate(), mimetype="text/event-stream")
     return Response(generate(), mimetype="text/event-stream")
 \`\`\`
 
 前端 \`templates/logs.html\`:
 
 \`\`\`html
+# <h2>实时日志</h2>
 <h2>实时日志</h2>
+# <pre id="box" style="height:300px;overflow:auto;ba
 <pre id="box" style="height:300px;overflow:auto;background:#eee"></pre>
+# <script>
 <script>
+  # const source = new EventSource("/stream/logs");
   const source = new EventSource("/stream/logs");
+  # // 监听 event=log 的消息
   // 监听 event=log 的消息
+  # 调用 source.addEventListener()
   source.addEventListener("log", function (e) {
+    # const box = document.getElementById("box");
     const box = document.getElementById("box");
+    # box.textContent += e.data + "\\n";
     box.textContent += e.data + "\\n";
+    # box.scrollTop = box.scrollHeight;  // 自动滚到底
     box.scrollTop = box.scrollHeight;  // 自动滚到底
+  # });
   });
+  # source.onerror = function () {
   source.onerror = function () {
+    # // 浏览器会自动重连,这里只记日志
     // 浏览器会自动重连,这里只记日志
+    # 调用 console.log()
     console.log("断开了,自动重连中");
+  # };
   };
+# </script>
 </script>
 \`\`\`
 

@@ -86,8 +86,8 @@ Node.js 提供与浏览器兼容的定时器函数：
 - \`setTimeout(fn, 0)\`：在**timers 阶段**执行（受系统调度影响，实际延迟可能 > 1ms）
 
 \`\`\`javascript
-setImmediate(() => console.log("setImmediate"));
-setTimeout(() => console.log("setTimeout"), 0);
+setImmediate(() => console.log("setImmediate"));  // 在 check 阶段执行回调
+setTimeout(() => console.log("setTimeout"), 0);  // 延时回调（宏任务，timers 阶段执行）
 // 输出顺序取决于具体上下文，在 I/O 回调中 setImmediate 总是先执行
 \`\`\`
 
@@ -101,12 +101,12 @@ setTimeout(() => console.log("setTimeout"), 0);
 
 \`\`\`javascript
 // 字符串 → Uint8Array
-const encoder = new TextEncoder();
-const bytes = encoder.encode("你好");
+const encoder = new TextEncoder();  // 创建实例 encoder
+const bytes = encoder.encode("你好");  // 定义常量 bytes
 
 // Uint8Array → 字符串
-const decoder = new TextDecoder();
-const text = decoder.decode(bytes);
+const decoder = new TextDecoder();  // 创建实例 decoder
+const text = decoder.decode(bytes);  // 定义常量 text
 \`\`\`
 
 ### performance
@@ -114,10 +114,10 @@ const text = decoder.decode(bytes);
 \`performance\` 是 Web Performance API 的 Node.js 实现，用于高精度时间测量（纳秒级）：
 
 \`\`\`javascript
-const start = performance.now();
+const start = performance.now();  // 定义常量 start
 // 执行一些操作
-const end = performance.now();
-console.log("耗时:", (end - start).toFixed(3), "ms");
+const end = performance.now();  // 定义常量 end
+console.log("耗时:", (end - start).toFixed(3), "ms");  // 打印日志到 stdout
 \`\`\`
 
 ### AbortController
@@ -125,11 +125,11 @@ console.log("耗时:", (end - start).toFixed(3), "ms");
 \`AbortController\` 用于取消异步操作，常用于 fetch 请求取消、流取消等场景：
 
 \`\`\`javascript
-const controller = new AbortController();
-const signal = controller.signal;
+const controller = new AbortController();  // 创建实例 controller
+const signal = controller.signal;  // 定义常量 signal
 
 // 5 秒后取消
-setTimeout(() => controller.abort(), 5000);
+setTimeout(() => controller.abort(), 5000);  // 延时回调（宏任务，timers 阶段执行）
 
 // 在支持 signal 的 API 中使用
 fetch(url, { signal });
@@ -422,9 +422,9 @@ Node.js 的 \`fs\` 模块提供了三种风格的 API：
 同步 API 以 \`Sync\` 结尾，会阻塞事件循环直到操作完成。在初始化阶段（如读取配置文件）使用是合适的，但**不要在请求处理中使用同步 API**，否则会阻塞所有请求。
 
 \`\`\`javascript
-const fs = require("fs");
-const data = fs.readFileSync("/path/to/file.txt", "utf8");
-console.log(data);
+const fs = require("fs");  // 导入模块 fs；require 返回 module.exports
+const data = fs.readFileSync("/path/to/file.txt", "utf8");  // 文件操作结果 data
+console.log(data);  // 打印日志到 stdout
 \`\`\`
 
 #### 回调 API 详解
@@ -432,12 +432,12 @@ console.log(data);
 回调 API 遵循 Node.js 的**错误优先**（Error-First）约定：第一个参数是 \`err\`（没有错误则为 \`null\`），第二个参数是结果。
 
 \`\`\`javascript
-fs.readFile("/path/to/file.txt", "utf8", (err, data) => {
-  if (err) {
-    console.error("读取失败:", err.message);
+fs.readFile("/path/to/file.txt", "utf8", (err, data) => {  // 异步读取文件（回调形式）
+  if (err) {  // 条件判断
+    console.error("读取失败:", err.message);  // 打印错误到 stderr
     return;
   }
-  console.log(data);
+  console.log(data);  // 打印日志到 stdout
 });
 \`\`\`
 
@@ -446,19 +446,19 @@ fs.readFile("/path/to/file.txt", "utf8", (err, data) => {
 Promise API 通过 \`fs.promises\` 访问，支持 async/await：
 
 \`\`\`javascript
-const fs = require("fs/promises");
-const data = await fs.readFile("/path/to/file.txt", "utf8");
-console.log(data);
+const fs = require("fs/promises");  // 导入模块 fs/promises；require 返回 module.exports
+const data = await fs.readFile("/path/to/file.txt", "utf8");  // 定义常量 data
+console.log(data);  // 打印日志到 stdout
 \`\`\`
 
 ### 读取文件：readFileSync
 
 \`\`\`javascript
 // 读取文本文件（指定编码）
-const text = fs.readFileSync("file.txt", "utf8");
+const text = fs.readFileSync("file.txt", "utf8");  // 文件操作结果 text
 
 // 读取二进制文件（不指定编码，返回 Buffer）
-const buffer = fs.readFileSync("image.png");
+const buffer = fs.readFileSync("image.png");  // 文件操作结果 buffer
 \`\`\`
 
 #### 编码参数
@@ -474,10 +474,10 @@ const buffer = fs.readFileSync("image.png");
 
 \`\`\`javascript
 // 写入字符串（覆盖已有内容）
-fs.writeFileSync("file.txt", "Hello World", "utf8");
+fs.writeFileSync("file.txt", "Hello World", "utf8");  // 同步写入文件
 
 // 写入 Buffer
-fs.writeFileSync("file.bin", Buffer.from([0x00, 0x01, 0x02]));
+fs.writeFileSync("file.bin", Buffer.from([0x00, 0x01, 0x02]));  // 同步写入文件
 \`\`\`
 
 > **注意**：\`writeFileSync\` 会**覆盖**已有文件内容。如果需要追加内容，使用 \`appendFileSync\`。
@@ -485,8 +485,8 @@ fs.writeFileSync("file.bin", Buffer.from([0x00, 0x01, 0x02]));
 ### 文件存在性检查：existsSync
 
 \`\`\`javascript
-if (fs.existsSync("file.txt")) {
-  console.log("文件存在");
+if (fs.existsSync("file.txt")) {  // 条件判断
+  console.log("文件存在");  // 打印日志到 stdout
 }
 \`\`\`
 
@@ -497,7 +497,7 @@ if (fs.existsSync("file.txt")) {
 \`statSync\` 返回一个 \`fs.Stats\` 对象，包含文件的各种元信息：
 
 \`\`\`javascript
-const stats = fs.statSync("file.txt");
+const stats = fs.statSync("file.txt");  // 文件操作结果 stats
 console.log(stats.size);       // 文件大小（字节）
 console.log(stats.isFile());   // 是否是普通文件
 console.log(stats.isDirectory()); // 是否是目录
@@ -526,8 +526,8 @@ console.log(stats.birthtime);  // 创建时间
 
 \`\`\`javascript
 // 打开文件获取文件描述符
-const fd = fs.openSync("file.txt", "r");
-const buf = Buffer.alloc(1024);
+const fd = fs.openSync("file.txt", "r");  // 文件操作结果 fd
+const buf = Buffer.alloc(1024);  // 定义常量 buf
 fs.readSync(fd, buf, 0, buf.length, 0);
 fs.closeSync(fd);
 \`\`\`
@@ -556,7 +556,7 @@ fs.closeSync(fd);
 fs.mkdirSync("a/b/c", { recursive: true });
 
 // 读取目录
-const files = fs.readdirSync(".");
+const files = fs.readdirSync(".");  // 文件操作结果 files
 console.log(files); // ["file1.js", "file2.js", "dir1"]
 
 // 删除目录
@@ -578,7 +578,7 @@ fs.rmdirSync("emptyDir");
 
 \`\`\`javascript
 // 0644 = 所有者可读写，组和其他人只读
-fs.writeFileSync("file.txt", "data", { mode: 0o644 });
+fs.writeFileSync("file.txt", "data", { mode: 0o644 });  // 同步写入文件
 \`\`\`
 
 下面这段代码演示了 fs 模块同步方法的核心用法。`,
@@ -823,7 +823,7 @@ Node.js 提供了两种文件监视方式：
 \`fs.watch\` 利用操作系统底层文件变更通知机制，效率最高：
 
 \`\`\`javascript
-const watcher = fs.watch("file.txt", (eventType, filename) => {
+const watcher = fs.watch("file.txt", (eventType, filename) => {  // 文件操作结果 watcher
   console.log(eventType, filename); // change / rename
 });
 // 停止监视
@@ -840,7 +840,7 @@ watcher.close();
 
 \`\`\`javascript
 fs.watchFile("file.txt", { interval: 1000 }, (curr, prev) => {
-  console.log("mtime changed:", curr.mtime !== prev.mtime);
+  console.log("mtime changed:", curr.mtime !== prev.mtime);  // 打印日志到 stdout
 });
 // 停止监视
 fs.unwatchFile("file.txt");
@@ -853,11 +853,11 @@ fs.unwatchFile("file.txt");
 递归遍历目录树是一个常见的需求，Node.js 没有内置的递归遍历函数，需要自己实现：
 
 \`\`\`javascript
-function walkDir(dir, callback) {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
+function walkDir(dir, callback) {  // 声明函数 walkDir
+  const entries = fs.readdirSync(dir, { withFileTypes: true });  // 文件操作结果 entries
+  for (const entry of entries) {  // for 循环
+    const fullPath = path.join(dir, entry.name);  // 拼接路径 fullPath
+    if (entry.isDirectory()) {  // 条件判断
       walkDir(fullPath, callback); // 递归
     } else {
       callback(fullPath, entry);
@@ -870,11 +870,11 @@ function walkDir(dir, callback) {
 
 \`\`\`javascript
 // 传统方式：返回文件名数组，需要额外 stat 判断类型
-const names = fs.readdirSync(dir);
+const names = fs.readdirSync(dir);  // 文件操作结果 names
 // 需要逐个 stat：fs.statSync(path.join(dir, name)).isDirectory()
 
 // 推荐方式：withFileTypes 直接返回 Dirent 对象
-const entries = fs.readdirSync(dir, { withFileTypes: true });
+const entries = fs.readdirSync(dir, { withFileTypes: true });  // 文件操作结果 entries
 entries[0].isDirectory(); // 直接判断，无需额外 stat
 \`\`\`
 
@@ -895,8 +895,8 @@ Node.js 提供了多种复制文件的方式：
 fs.copyFileSync("source.txt", "dest.txt");
 
 // 流式复制（大文件推荐）
-const rs = fs.createReadStream("source.mp4");
-const ws = fs.createWriteStream("dest.mp4");
+const rs = fs.createReadStream("source.mp4");  // 文件操作结果 rs
+const ws = fs.createWriteStream("dest.mp4");  // 文件操作结果 ws
 rs.pipe(ws);
 \`\`\`
 
@@ -924,7 +924,7 @@ fs.symlinkSync("target.txt", "link.txt");
 fs.symlinkSync("/usr/local/bin", "bin");
 
 // 读取符号链接指向的目标
-const target = fs.readlinkSync("link.txt");
+const target = fs.readlinkSync("link.txt");  // 文件操作结果 target
 console.log(target); // "target.txt"
 \`\`\`
 
@@ -941,13 +941,13 @@ fs.chmodSync("config.json", 0o600); // rw-------
 处理大文件时，不能一次性读入内存，需要分片处理：
 
 \`\`\`javascript
-const fd = fs.openSync("large.bin", "r");
+const fd = fs.openSync("large.bin", "r");  // 文件操作结果 fd
 const chunkSize = 64 * 1024; // 64KB
-const buf = Buffer.alloc(chunkSize);
+const buf = Buffer.alloc(chunkSize);  // 定义常量 buf
 let bytesRead;
-let offset = 0;
+let offset = 0;  // 定义变量 offset（可变）
 
-while ((bytesRead = fs.readSync(fd, buf, 0, chunkSize, offset)) > 0) {
+while ((bytesRead = fs.readSync(fd, buf, 0, chunkSize, offset)) > 0) {  // while 循环
   // 处理 buf 中的 bytesRead 字节
   offset += bytesRead;
 }
@@ -959,8 +959,8 @@ fs.closeSync(fd);
 Node.js 提供了 \`os.tmpdir()\` 获取系统临时目录，配合 \`fs.mkdtempSync\` 创建唯一临时目录：
 
 \`\`\`javascript
-const os = require("os");
-const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "myapp-"));
+const os = require("os");  // 导入模块 os；require 返回 module.exports
+const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "myapp-"));  // 文件操作结果 tmpDir
 // 使用完毕后清理
 // fs.rmSync(tmpDir, { recursive: true });
 \`\`\`
@@ -1274,7 +1274,7 @@ console.log("\\n===== 文件系统进阶演示结束 =====");`,
 const filePath = dir + "/" + file; // 在 Windows 上会出错
 
 // ✅ 正确方式：使用 path.join
-const filePath = path.join(dir, file);
+const filePath = path.join(dir, file);  // 拼接路径 filePath
 \`\`\`
 
 ### 路径拼接：path.join
@@ -1326,7 +1326,7 @@ path.resolve("a", "b"); // "/current/working/dir/a/b"
 | \`extname(p)\` | 获取扩展名 | \`/a/b/c.txt\` → \`.txt\` |
 
 \`\`\`javascript
-const p = "/home/user/docs/file.txt";
+const p = "/home/user/docs/file.txt";  // 定义常量 p
 
 path.basename(p);       // "file.txt"
 path.basename(p, ".txt"); // "file"（去掉扩展名）
@@ -1352,7 +1352,7 @@ path.extname("file.");        // "."
 | \`format(obj)\` | 将对象格式化为路径 |
 
 \`\`\`javascript
-const parsed = path.parse("/home/user/file.txt");
+const parsed = path.parse("/home/user/file.txt");  // 定义常量 parsed
 // {
 //   root: "/",
 //   dir: "/home/user",
@@ -1361,7 +1361,7 @@ const parsed = path.parse("/home/user/file.txt");
 //   name: "file"
 // }
 
-const formatted = path.format(parsed);
+const formatted = path.format(parsed);  // 定义常量 formatted
 // "/home/user/file.txt"
 \`\`\`
 
@@ -1390,7 +1390,7 @@ console.log(path.sep);       // "/" (macOS/Linux) 或 "\\\\" (Windows)
 console.log(path.delimiter); // ":" (macOS/Linux) 或 ";" (Windows)
 
 // 解析 PATH 环境变量
-const paths = process.env.PATH.split(path.delimiter);
+const paths = process.env.PATH.split(path.delimiter);  // 从环境变量读取配置
 \`\`\`
 
 ### 路径遍历攻击防范
@@ -1399,16 +1399,16 @@ const paths = process.env.PATH.split(path.delimiter);
 
 \`\`\`javascript
 // ❌ 危险：用户输入可能包含 ../ 来突破目录限制
-const file = path.join("/safe/dir", userInput);
+const file = path.join("/safe/dir", userInput);  // 拼接路径 file
 // 如果 userInput = "../../etc/passwd"，结果可能是 /etc/passwd
 
 // ✅ 安全：使用 path.resolve 检查结果是否在允许目录内
-function safePath(baseDir, userPath) {
-  const resolved = path.resolve(baseDir, userPath);
-  if (!resolved.startsWith(baseDir + path.sep)) {
-    throw new Error("路径遍历攻击");
+function safePath(baseDir, userPath) {  // 声明函数 safePath
+  const resolved = path.resolve(baseDir, userPath);  // 定义常量 resolved
+  if (!resolved.startsWith(baseDir + path.sep)) {  // 条件判断
+    throw new Error("路径遍历攻击");  // 抛出错误中断执行
   }
-  return resolved;
+  return resolved;  // 返回值
 }
 \`\`\`
 
@@ -1419,14 +1419,14 @@ function safePath(baseDir, userPath) {
 const p = path.join("a", "b", "c"); // 而非 "a/b/c"
 
 // 2. 使用 path.resolve 获取绝对路径
-const abs = path.resolve("relative/path");
+const abs = path.resolve("relative/path");  // 定义常量 abs
 
 // 3. 使用 path.sep 处理平台差异
-const parts = somePath.split(path.sep);
+const parts = somePath.split(path.sep);  // 定义常量 parts
 
 // 4. posix 和 win32 子命名空间
 // 在 Windows 上处理 POSIX 路径，或反过来
-const normalized = path.posix.normalize("a/b/c");
+const normalized = path.posix.normalize("a/b/c");  // 定义常量 normalized
 \`\`\`
 
 下面这段代码演示了 path 模块的各种核心用法。`,
@@ -1656,7 +1656,7 @@ console.log("\\n===== 路径处理演示结束 =====");`,
 
 \`\`\`javascript
 // 从索引 2 开始是用户参数
-const args = process.argv.slice(2);
+const args = process.argv.slice(2);  // 获取命令行参数 args
 // 或使用 util.parseArgs（Node.js 18.3+）
 \`\`\`
 
@@ -1687,7 +1687,7 @@ const args = process.argv.slice(2);
 
 \`\`\`javascript
 console.log(process.version); // "v20.10.0"
-console.log(process.versions);
+console.log(process.versions);  // 打印日志到 stdout
 // { node: "20.10.0", v8: "11.3.244.8", uv: "1.46.0",
 //   zlib: "1.2.13", openssl: "3.0.12", ... }
 \`\`\`
@@ -1731,7 +1731,7 @@ process.chdir("/tmp");       // 切换工作目录
 #### memoryUsage 详解
 
 \`\`\`javascript
-const mem = process.memoryUsage();
+const mem = process.memoryUsage();  // 定义常量 mem
 // {
 //   rss: 内存驻留集大小（总内存占用）
 //   heapTotal: V8 堆总大小
@@ -1744,9 +1744,9 @@ const mem = process.memoryUsage();
 #### cpuUsage 详解
 
 \`\`\`javascript
-const start = process.cpuUsage();
+const start = process.cpuUsage();  // 定义常量 start
 // 执行一些操作
-const end = process.cpuUsage(start);
+const end = process.cpuUsage(start);  // 定义常量 end
 // end.user: 用户态 CPU 时间（微秒）
 // end.system: 内核态 CPU 时间（微秒）
 \`\`\`
@@ -1767,9 +1767,9 @@ process.exit(1); // 错误退出
 \`process.nextTick(callback)\` 将回调函数添加到当前操作完成后、下一个事件循环阶段开始前执行。它比 \`setImmediate\` 和 \`setTimeout(fn, 0)\` 优先级更高。
 
 \`\`\`javascript
-console.log("第一");
-process.nextTick(() => console.log("nextTick"));
-console.log("第二");
+console.log("第一");  // 打印日志到 stdout
+process.nextTick(() => console.log("nextTick"));  // 把回调放入 nextTick 队列（微任务，优先级最高）
+console.log("第二");  // 打印日志到 stdout
 // 输出：第一 → 第二 → nextTick
 \`\`\`
 
@@ -1792,13 +1792,13 @@ console.log("第二");
 | \`SIGINT\` | 用户按下 Ctrl+C |
 
 \`\`\`javascript
-process.on("exit", (code) => {
-  console.log("进程退出，退出码:", code);
+process.on("exit", (code) => {  // 注册进程级事件监听
+  console.log("进程退出，退出码:", code);  // 打印日志到 stdout
 });
 
-process.on("SIGINT", () => {
-  console.log("收到 Ctrl+C，正在退出...");
-  process.exit(0);
+process.on("SIGINT", () => {  // 注册进程级事件监听
+  console.log("收到 Ctrl+C，正在退出...");  // 打印日志到 stdout
+  process.exit(0);  // 退出进程（0 正常，非 0 异常）
 });
 \`\`\`
 
@@ -2043,10 +2043,10 @@ console.log(process.env.NODE_ENV); // "production"
 | \`test\` | 测试环境 | CI 运行、模拟数据 |
 
 \`\`\`javascript
-const isProduction = process.env.NODE_ENV === "production";
-const isDevelopment = !process.env.NODE_ENV || process.env.NODE_ENV === "development";
+const isProduction = process.env.NODE_ENV === "production";  // 从环境变量读取配置
+const isDevelopment = !process.env.NODE_ENV || process.env.NODE_ENV === "development";  // 定义常量 isDevelopment
 
-if (isProduction) {
+if (isProduction) {  // 条件判断
   // 启用缓存、压缩、最小日志
 } else {
   // 启用详细日志、错误堆栈
@@ -2084,7 +2084,7 @@ Node.js 本身不解析 .env 文件，常用 \`dotenv\` 库：
 
 \`\`\`javascript
 require("dotenv").config(); // 加载 .env 到 process.env
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3000;  // 从环境变量读取配置
 \`\`\`
 
 > 由于沙箱限制，本章代码手动实现 .env 解析逻辑。
@@ -2106,7 +2106,7 @@ const port = process.env.PORT || 3000;
 
 \`\`\`javascript
 // 实现优先级：命令行 > 环境变量 > 配置文件 > 默认值
-const port = args.port || process.env.PORT || configFile.port || 3000;
+const port = args.port || process.env.PORT || configFile.port || 3000;  // 定义常量 port
 \`\`\`
 
 ### config 模块模式
@@ -2115,7 +2115,7 @@ const port = args.port || process.env.PORT || configFile.port || 3000;
 
 \`\`\`javascript
 // config.js
-module.exports = {
+module.exports = {  // 设置模块导出对象（require 返回的就是它）
   port: parseInt(process.env.PORT, 10) || 3000,
   db: {
     host: process.env.DB_HOST || "localhost",
@@ -2153,11 +2153,11 @@ module.exports = {
 生产环境应验证配置的完整性，启动时检查必需的配置项：
 
 \`\`\`javascript
-const required = ["DATABASE_URL", "SECRET_KEY", "API_KEY"];
-for (const key of required) {
-  if (!process.env[key]) {
-    console.error("缺少必需的环境变量:", key);
-    process.exit(1);
+const required = ["DATABASE_URL", "SECRET_KEY", "API_KEY"];  // 定义数组 required
+for (const key of required) {  // for 循环
+  if (!process.env[key]) {  // 条件判断
+    console.error("缺少必需的环境变量:", key);  // 打印错误到 stderr
+    process.exit(1);  // 退出进程（0 正常，非 0 异常）
   }
 }
 \`\`\`
@@ -2557,8 +2557,8 @@ Buffer 支持多种字符编码，可以在不同编码之间转换：
 | \`latin1\` / \`binary\` | Latin-1 编码 | 每字节一个字符 |
 
 \`\`\`javascript
-const text = "你好";
-const buf = Buffer.from(text, "utf8");
+const text = "你好";  // 定义常量 text
+const buf = Buffer.from(text, "utf8");  // 定义常量 buf
 console.log(buf.toString("hex"));    // "e4bda0e5a5bd"
 console.log(buf.toString("base64")); // "5L2g5aW9"
 \`\`\`
@@ -2622,23 +2622,23 @@ Buffer.from("你好").length;     // 6
 
 \`\`\`javascript
 // ❌ 错误：字符串拼接可能导致编码问题
-let result = "";
+let result = "";  // 定义变量 result（可变）
 bufs.forEach(b => result += b.toString());
 
 // ✅ 正确：使用 Buffer.concat
-const result = Buffer.concat(bufs);
+const result = Buffer.concat(bufs);  // 定义常量 result
 \`\`\`
 
 ### Buffer 与 TypedArray 互转
 
 \`\`\`javascript
 // Buffer → Uint8Array（共享内存）
-const buf = Buffer.from("Hello");
-const u8 = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+const buf = Buffer.from("Hello");  // 定义常量 buf
+const u8 = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);  // 创建实例 u8
 
 // Uint8Array → Buffer（共享内存）
-const u8 = new Uint8Array([72, 101, 108, 108, 111]);
-const buf = Buffer.from(u8.buffer);
+const u8 = new Uint8Array([72, 101, 108, 108, 111]);  // 创建实例 u8
+const buf = Buffer.from(u8.buffer);  // 定义常量 buf
 \`\`\`
 
 下面这段代码演示了 Buffer 的创建、操作和编码转换。`,
@@ -2936,14 +2936,14 @@ console.log(u.href); // "http://api.example.com/v2/data"
 
 \`\`\`javascript
 // 从字符串
-const p1 = new URLSearchParams("a=1&b=2");
+const p1 = new URLSearchParams("a=1&b=2");  // 创建实例 p1
 
 // 从对象
-const p2 = new URLSearchParams({ a: "1", b: "2" });
+const p2 = new URLSearchParams({ a: "1", b: "2" });  // 创建实例 p2
 
 // 从 URL 对象
 const u = new URL("https://example.com?a=1");
-const p3 = u.searchParams;
+const p3 = u.searchParams;  // 定义常量 p3
 \`\`\`
 
 #### 核心方法
@@ -2964,7 +2964,7 @@ const p3 = u.searchParams;
 #### get vs getAll 陷阱
 
 \`\`\`javascript
-const params = new URLSearchParams("tags=js&tags=node&tags=react");
+const params = new URLSearchParams("tags=js&tags=node&tags=react");  // 创建实例 params
 params.get("tags");    // "js" ← 只返回第一个！
 params.getAll("tags"); // ["js", "node", "react"] ← 获取所有
 \`\`\`
@@ -2972,7 +2972,7 @@ params.getAll("tags"); // ["js", "node", "react"] ← 获取所有
 #### set vs append 区别
 
 \`\`\`javascript
-const p = new URLSearchParams("a=1");
+const p = new URLSearchParams("a=1");  // 创建实例 p
 p.set("a", "2");     // a=2（覆盖）
 p.append("a", "3");  // a=2&a=3（追加）
 \`\`\`
@@ -2984,13 +2984,13 @@ p.append("a", "3");  // a=2&a=3（追加）
 \`\`\`javascript
 const base = new URL("https://example.com/docs/intro/");
 
-new URL("./images/logo.png", base).href;
+new URL("./images/logo.png", base).href;  // 解析 URL（新 WHATWG API）
 // "https://example.com/docs/intro/images/logo.png"
 
-new URL("../style.css", base).href;
+new URL("../style.css", base).href;  // 解析 URL（新 WHATWG API）
 // "https://example.com/docs/style.css"
 
-new URL("/root.js", base).href;
+new URL("/root.js", base).href;  // 解析 URL（新 WHATWG API）
 // "https://example.com/root.js"
 \`\`\`
 
@@ -2999,11 +2999,11 @@ new URL("/root.js", base).href;
 在 ESM 模块中，\`import.meta.url\` 返回 file URL，需要转换为本地路径：
 
 \`\`\`javascript
-const url = require("url");
-const fileUrl = url.pathToFileURL("/home/user/file.txt");
+const url = require("url");  // 导入模块 url；require 返回 module.exports
+const fileUrl = url.pathToFileURL("/home/user/file.txt");  // 定义常量 fileUrl
 // file:///home/user/file.txt
 
-const back = url.fileURLToPath(fileUrl);
+const back = url.fileURLToPath(fileUrl);  // 定义常量 back
 // /home/user/file.txt
 \`\`\`
 

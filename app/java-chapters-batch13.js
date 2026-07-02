@@ -50,7 +50,7 @@ Map 不属于 Collection，但属于集合框架的一部分：
 
 \`\`\`java
 for (String s : list) { // 编译器通过 Iterable 生成迭代代码
-    System.out.println(s);
+    System.out.println(s);  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -370,10 +370,10 @@ public class Main {
 每个元素封装为 \`Node\` 节点，包含前后指针：
 
 \`\`\`java
-private static class Node<E> {
-    E item;
-    Node<E> next;
-    Node<E> prev;
+private static class Node<E> {  // 定义类 Node
+    E item;  // 声明变量 item（E 类型）
+    Node<E> next;  // 声明变量 next（Node<E> 类型）
+    Node<E> prev;  // 声明变量 prev（Node<E> 类型）
 }
 \`\`\`
 
@@ -516,7 +516,7 @@ public synchronized boolean add(E e) { ... } // 每个方法都加 synchronized
 \`Stack\` 继承自 \`Vector\`，提供 push/pop/peek 等栈操作：
 
 \`\`\`java
-public class Stack<E> extends Vector<E> { ... }
+public class Stack<E> extends Vector<E> { ... }  // 定义类 Stack
 \`\`\`
 
 这本身就是一个**设计错误**：栈应该是组合而非继承 Vector。Stack 因此"是"一个 Vector，暴露了 Vector 的所有方法，破坏了栈的封装性。
@@ -527,8 +527,8 @@ public class Stack<E> extends Vector<E> { ... }
 - 替代 Stack：\`ArrayDeque\`（基于数组的双端队列，作栈使用更快）
 
 \`\`\`java
-Deque<Integer> stack = new ArrayDeque<>();
-stack.push(1); stack.push(2);
+Deque<Integer> stack = new ArrayDeque<>();  // 声明变量 stack（Deque<Integer>），初始值为 new ArrayDeque<>()
+stack.push(1); stack.push(2);  // 调用 stack 的 push 方法
 stack.pop(); // 推荐用法
 \`\`\`
 
@@ -661,7 +661,7 @@ Set 通过 \`equals()\` 判定重复。若使用 HashSet/LinkedHashSet，还必�
 
 \`\`\`java
 // 两个 equals 相等的对象必须有相同的 hashCode
-if (a.equals(b)) assert a.hashCode() == b.hashCode();
+if (a.equals(b)) assert a.hashCode() == b.hashCode();  // 调用 if (a 的 equals 方法
 \`\`\`
 
 违反此约定会导致 HashSet 中出现"重复"元素。
@@ -753,11 +753,11 @@ public class Main {
 HashSet 内部维护一个 \`HashMap\`，元素作为 Map 的 **key** 存储，所有 value 都是同一个 \`PRESENT\` 占位对象：
 
 \`\`\`java
-private transient HashMap<E,Object> map;
-private static final Object PRESENT = new Object();
+private transient HashMap<E,Object> map;  // 声明私有变量 map（HashMap<E,Object> 类型）
+private static final Object PRESENT = new Object();  // 声明静态常量私有变量 PRESENT（Object），初始值为 new Object()
 
-public boolean add(E e) {
-    return map.put(e, PRESENT) == null;
+public boolean add(E e) {  // 方法 add，返回 boolean，参数：E e
+    return map.put(e, PRESENT) == null;  // 返回值：map.put(e, PRESENT) == null
 }
 \`\`\`
 
@@ -779,7 +779,7 @@ public boolean add(E e) {
 
 可通过构造器指定初始容量与负载因子：
 \`\`\`java
-new HashSet<>(initialCapacity, loadFactor);
+new HashSet<>(initialCapacity, loadFactor);  // 创建 HashSet<> 对象
 \`\`\`
 
 ## equals 与 hashCode 契约
@@ -896,7 +896,7 @@ class Person {
 TreeSet 内部维护一个 \`TreeMap\`，元素作为 Map 的 key，value 是 \`PRESENT\` 占位对象，与 HashSet 类似：
 
 \`\`\`java
-private transient NavigableMap<E,Object> m;
+private transient NavigableMap<E,Object> m;  // 声明私有变量 m（NavigableMap<E,Object> 类型）
 \`\`\`
 
 红黑树是自平衡二叉搜索树，保证左右子树高度差不超过 2 倍，避免退化为链表。
@@ -1080,7 +1080,7 @@ Map 提供三种视图集合，它们都是**底层 Map 的视图**，修改视�
 
 \`\`\`java
 for (Map.Entry<String, Integer> e : map.entrySet()) {
-    System.out.println(e.getKey() + "=" + e.getValue());
+    System.out.println(e.getKey() + "=" + e.getValue());  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -1205,20 +1205,20 @@ JDK 8 起，HashMap 由三部分组成：
 3. **红黑树**：链表长度 ≥ 8 且数组长度 ≥ 64 时，链表转红黑树，避免退化查询
 
 \`\`\`java
-static class Node<K,V> {
-    final int hash;
-    final K key;
-    V value;
-    Node<K,V> next;
+static class Node<K,V> {  // 定义类 Node
+    final int hash;  // 声明常量变量 hash（int 类型）
+    final K key;  // 声明常量变量 key（K 类型）
+    V value;  // 声明变量 value（V 类型）
+    Node<K,V> next;  // 声明变量 next（Node<K,V> 类型）
 }
 \`\`\`
 
 ## 哈希计算
 
 \`\`\`java
-static final int hash(Object key) {
-    int h;
-    return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
+static final int hash(Object key) {  // 静态方法 hash，返回 int，参数：Object key
+    int h;  // 声明变量 h（int 类型）
+    return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);  // 返回值：(key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16)
 }
 \`\`\`
 
@@ -1356,9 +1356,9 @@ public class Main {
 ## 底层结构
 
 \`\`\`java
-static final class Entry<K,V> implements Map.Entry<K,V> {
-    K key;
-    V value;
+static final class Entry<K,V> implements Map.Entry<K,V> {  // 定义最终（不可继承）类 Entry
+    K key;  // 声明变量 key（K 类型）
+    V value;  // 声明变量 value（V 类型）
     Entry<K,V> left, right, parent;
     boolean color; // 红黑树颜色
 }
@@ -1396,7 +1396,7 @@ TreeMap 实现了 \`NavigableMap\`，提供强大的范围查询：
 \`\`\`java
 K firstKey();           // 最小键
 K lastKey();            // 最大键
-Map.Entry<K,V> firstEntry();
+Map.Entry<K,V> firstEntry();  // 方法 firstEntry，返回 Map.Entry<K,V>，无参数
 K lowerKey(K);          // 小于 key 的最大键
 K higherKey(K);         // 大于 key 的最小键
 K floorKey(K);          // <= key 的最大键
@@ -1515,7 +1515,7 @@ public class Main {
 ## 底层结构
 
 \`\`\`java
-static class Entry<K,V> extends HashMap.Node<K,V> {
+static class Entry<K,V> extends HashMap.Node<K,V> {  // 定义类 Entry
     Entry<K,V> before, after; // 链表前驱后继
 }
 \`\`\`
@@ -1543,9 +1543,9 @@ new LinkedHashMap<>(16, 0.75f, true);  // 访问顺序
 需要"先插入先输出"的场景，如 JSON 序列化、配置项展示：
 
 \`\`\`java
-Map<String, Object> config = new LinkedHashMap<>();
-config.put("name", "app");
-config.put("version", "1.0");
+Map<String, Object> config = new LinkedHashMap<>();  // 声明变量 config（Map<String, Object>），初始值为 new LinkedHashMap<>()
+config.put("name", "app");  // 调用 config 的 put 方法
+config.put("version", "1.0");  // 调用 config 的 put 方法
 // 遍历时保持 name → version 顺序
 \`\`\`
 
@@ -1554,14 +1554,14 @@ config.put("version", "1.0");
 利用 accessOrder=true，配合重写 \`removeEldestEntry\` 可实现 **LRU（最近最少使用）缓存**：
 
 \`\`\`java
-class LruCache<K,V> extends LinkedHashMap<K,V> {
-    private final int capacity;
+class LruCache<K,V> extends LinkedHashMap<K,V> {  // 定义类 LruCache
+    private final int capacity;  // 声明常量私有变量 capacity（int 类型）
     LruCache(int capacity) {
         super(capacity, 0.75f, true); // accessOrder=true
-        this.capacity = capacity;
+        this.capacity = capacity;  // 为 this.capacity 赋值：capacity
     }
-    @Override
-    protected boolean removeEldestEntry(Map.Entry<K,V> eldest) {
+    @Override  // 注解：Override
+    protected boolean removeEldestEntry(Map.Entry<K,V> eldest) {  // 方法 removeEldestEntry，返回 boolean，参数：Map.Entry<K,V> eldest
         return size() > capacity; // 超容量时淘汰最久未访问的
     }
 }
@@ -1677,10 +1677,10 @@ void remove();      // 删除上一次 next 返回的元素（可选操作）
 ## 基本用法
 
 \`\`\`java
-Iterator<String> it = list.iterator();
-while (it.hasNext()) {
-    String s = it.next();
-    System.out.println(s);
+Iterator<String> it = list.iterator();  // 声明变量 it（Iterator<String>），初始值为 list.iterator()
+while (it.hasNext()) {  // while 循环：当 it.hasNext() 为真时重复执行
+    String s = it.next();  // 声明变量 s（String），初始值为 it.next()
+    System.out.println(s);  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -1692,7 +1692,7 @@ Java 集合（ArrayList、HashMap 等）大多采用 **fail-fast**：迭代器�
 
 \`\`\`java
 // 错误：遍历时直接调用 list.remove 会触发 fail-fast
-for (String s : list) {
+for (String s : list) {  // 增强 for：遍历 list，每次取一个元素 s
     if (s.equals("x")) list.remove(s); // 抛 ConcurrentModificationException!
 }
 \`\`\`
@@ -1702,8 +1702,8 @@ for (String s : list) {
 必须使用 **Iterator.remove()**，它会同时更新迭代器内部状态和集合，不触发 fail-fast：
 
 \`\`\`java
-Iterator<String> it = list.iterator();
-while (it.hasNext()) {
+Iterator<String> it = list.iterator();  // 声明变量 it（Iterator<String>），初始值为 list.iterator()
+while (it.hasNext()) {  // while 循环：当 it.hasNext() 为真时重复执行
     if (it.next().equals("x")) it.remove(); // 安全
 }
 \`\`\`
@@ -1715,7 +1715,7 @@ while (it.hasNext()) {
 \`ListIterator\` 是 Iterator 的子接口，**仅适用于 List**，提供双向遍历和修改：
 
 \`\`\`java
-boolean hasPrevious();
+boolean hasPrevious();  // 方法 hasPrevious，返回 boolean，无参数
 E previous();           // 前驱
 int nextIndex();        // 下一个索引
 void add(E e);          // 在当前位置插入
@@ -1880,7 +1880,7 @@ sort 底层使用 \`List.sort\` → \`Arrays.sort\`（TimSort，O(n log n) 稳�
 \`\`\`java
 Collections.binarySearch(sortedList, key);    // 二分查找，返回索引（要求已排序）
 Collections.max(coll);                        // 最大值
-Collections.max(coll, comparator);
+Collections.max(coll, comparator);  // 调用 Collections 的 max 方法
 Collections.min(coll);                        // 最小值
 Collections.frequency(coll, obj);             // 元素出现次数
 Collections.disjoint(c1, c2);                 // 两集合是否无交集
@@ -1900,9 +1900,9 @@ Collections.replaceAll(list, old, new); // 替换所有 old 为 new
 将可变集合包装为**不可变视图**，任何修改操作抛 \`UnsupportedOperationException\`：
 
 \`\`\`java
-Collections.unmodifiableList(list);
-Collections.unmodifiableSet(set);
-Collections.unmodifiableMap(map);
+Collections.unmodifiableList(list);  // 调用 Collections 的 unmodifiableList 方法
+Collections.unmodifiableSet(set);  // 调用 Collections 的 unmodifiableSet 方法
+Collections.unmodifiableMap(map);  // 调用 Collections 的 unmodifiableMap 方法
 \`\`\`
 
 注意：这只是视图，原集合修改仍会反映到视图。JDK 9+ 推荐用 \`List.of()\`、\`Map.of()\` 创建真正不可变集合。
@@ -1910,9 +1910,9 @@ Collections.unmodifiableMap(map);
 ## 线程安全包装
 
 \`\`\`java
-Collections.synchronizedList(list);
-Collections.synchronizedSet(set);
-Collections.synchronizedMap(map);
+Collections.synchronizedList(list);  // 调用 Collections 的 synchronizedList 方法
+Collections.synchronizedSet(set);  // 调用 Collections 的 synchronizedSet 方法
+Collections.synchronizedMap(map);  // 调用 Collections 的 synchronizedMap 方法
 \`\`\`
 
 每个方法都加 synchronized 锁，复合操作仍需手动同步。高并发推荐 \`ConcurrentHashMap\`、\`CopyOnWriteArrayList\`。
@@ -1924,8 +1924,8 @@ Collections.singletonList(obj);  // 单元素不可变 List
 Collections.singleton(obj);      // 单元素 Set
 Collections.singletonMap(k, v);  // 单元素 Map
 Collections.emptyList();         // 空不可变 List
-Collections.emptySet();
-Collections.emptyMap();
+Collections.emptySet();  // 调用 Collections 的 emptySet 方法
+Collections.emptyMap();  // 调用 Collections 的 emptyMap 方法
 \`\`\`
 
 返回不可变实例，避免返回 null，是良好实践。
@@ -2032,8 +2032,8 @@ Java 提供多种集合遍历方式，各有适用场景。掌握它们的差异
 ## 方式一：for-each（增强 for 循环）
 
 \`\`\`java
-for (String s : list) {
-    System.out.println(s);
+for (String s : list) {  // 增强 for：遍历 list，每次取一个元素 s
+    System.out.println(s);  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -2042,9 +2042,9 @@ for (String s : list) {
 ## 方式二：Iterator
 
 \`\`\`java
-Iterator<String> it = list.iterator();
-while (it.hasNext()) {
-    String s = it.next();
+Iterator<String> it = list.iterator();  // 声明变量 it（Iterator<String>），初始值为 list.iterator()
+while (it.hasNext()) {  // while 循环：当 it.hasNext() 为真时重复执行
+    String s = it.next();  // 声明变量 s（String），初始值为 it.next()
     if (s.isEmpty()) it.remove(); // 唯一能在遍历时安全删除的方式
 }
 \`\`\`
@@ -2056,9 +2056,9 @@ while (it.hasNext()) {
 支持双向遍历和 set/add 修改：
 
 \`\`\`java
-ListIterator<String> li = list.listIterator();
-while (li.hasNext()) {
-    String s = li.next();
+ListIterator<String> li = list.listIterator();  // 声明变量 li（ListIterator<String>），初始值为 list.listIterator()
+while (li.hasNext()) {  // while 循环：当 li.hasNext() 为真时重复执行
+    String s = li.next();  // 声明变量 s（String），初始值为 li.next()
     li.set(s.toUpperCase()); // 替换
 }
 \`\`\`
@@ -2066,8 +2066,8 @@ while (li.hasNext()) {
 ## 方式四：经典 for + 索引（仅 List）
 
 \`\`\`java
-for (int i = 0; i < list.size(); i++) {
-    System.out.println(list.get(i));
+for (int i = 0; i < list.size(); i++) {  // for 循环：初始化 int i = 0；条件 i < list.size()；更新 i++
+    System.out.println(list.get(i));  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -2076,7 +2076,7 @@ for (int i = 0; i < list.size(); i++) {
 ## 方式五：forEach + lambda（JDK 8+）
 
 \`\`\`java
-list.forEach(s -> System.out.println(s));
+list.forEach(s -> System.out.println(s));  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 内部迭代，简洁优雅。Map 也有 \`forEach((k, v) -> ...)\`。
@@ -2084,7 +2084,7 @@ list.forEach(s -> System.out.println(s));
 ## 方式六：Stream（JDK 8+）
 
 \`\`\`java
-list.stream().filter(s -> s.length() > 3).forEach(System.out::println);
+list.stream().filter(s -> s.length() > 3).forEach(System.out::println);  // Lambda 表达式：实现函数式接口
 \`\`\`
 
 支持过滤、映射、聚合等链式操作，函数式风格。可并行：\`list.parallelStream()\`。
@@ -2111,7 +2111,7 @@ list.stream().filter(s -> s.length() > 3).forEach(System.out::println);
 // 推荐：entrySet
 for (Map.Entry<K,V> e : map.entrySet()) { ... }
 // JDK 8+
-map.forEach((k, v) -> ...);
+map.forEach((k, v) -> ...);  // Lambda 表达式：实现函数式接口
 // 仅需 key
 for (K k : map.keySet()) { ... }
 \`\`\`

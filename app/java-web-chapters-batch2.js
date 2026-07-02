@@ -59,10 +59,10 @@ Servlet 生命周期由容器全程管理,开发者只在关键节点插入逻�
 \`\`\`java
 package com.example;
 
-import jakarta.servlet.ServletConfig;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.ServletConfig;       // Servlet 配置接口
+import jakarta.servlet.ServletException;     // Servlet 通用异常
+import jakarta.servlet.annotation.WebServlet; // URL 映射注解
+import jakarta.servlet.http.HttpServlet;     // HTTP Servlet 基类
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -89,15 +89,15 @@ public class LifeCycleServlet extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
         // 这里是请求处理逻辑,每次请求都会进入
-        resp.setContentType("text/html;charset=UTF-8");
-        resp.getWriter().println("<h1>请求处理中...</h1>");
+        resp.setContentType("text/html;charset=UTF-8");   // 设响应类型与编码
+        resp.getWriter().println("<h1>请求处理中...</h1>");  // 输出响应体
         System.out.println("3. doGet:处理请求,线程=" + Thread.currentThread().getName());
     }
 
     // 4. destroy:容器关闭时调用一次,释放资源
     @Override
     public void destroy() {
-        System.out.println("4. destroy:销毁,释放资源");
+        System.out.println("4. destroy:销毁,释放资源");   // 适合关闭连接池等
     }
 }
 \`\`\`
@@ -161,7 +161,7 @@ public class LifeCycleServlet extends HttpServlet {
 ## 代码示例
 
 \`\`\`java
-@WebServlet("/form")
+@WebServlet("/form")   // 映射到 /form,处理表单提交
 public class FormServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
@@ -172,13 +172,13 @@ public class FormServlet extends HttpServlet {
         PrintWriter out = resp.getWriter();
 
         // 1. 读取单值参数
-        String username = req.getParameter("username");
+        String username = req.getParameter("username");   // 获取 username 字段
         out.println("用户名: " + username);
 
         // 2. 读取多值参数(复选框 checkbox 同名)
-        String[] hobbies = req.getParameterValues("hobby");
+        String[] hobbies = req.getParameterValues("hobby");  // 注意:用 getParameterValues 取多值
         if (hobbies != null) {
-            out.println("爱好: " + String.join(", ", hobbies));
+            out.println("爱好: " + String.join(", ", hobbies));  // 拼接输出
         }
 
         // 3. 读取请求头
@@ -190,8 +190,8 @@ public class FormServlet extends HttpServlet {
         req.setAttribute("processedAt", System.currentTimeMillis());
 
         // 5. 获取会话
-        HttpSession session = req.getSession();
-        session.setAttribute("user", username);
+        HttpSession session = req.getSession();   // 获取或创建 Session
+        session.setAttribute("user", username);   // 注意:用户名存入会话,后续请求可读取
     }
 }
 \`\`\`
@@ -201,18 +201,18 @@ public class FormServlet extends HttpServlet {
 文件上传需在类上加 \`@MultipartConfig\`,用 \`req.getPart("file")\` 获取:
 
 \`\`\`java
-@MultipartConfig   // 开启 multipart 支持
+@MultipartConfig   // 开启 multipart 支持,处理文件上传
 @WebServlet("/upload")
 public class UploadServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
             throws IOException, ServletException {
-        req.setCharacterEncoding("UTF-8");
+        req.setCharacterEncoding("UTF-8");   // 设置请求编码
         // getPart 按表单字段名获取上传文件
-        Part filePart = req.getPart("avatar");
+        Part filePart = req.getPart("avatar");   // 获取名为 avatar 的上传部件
         String fileName = filePart.getSubmittedFileName();   // 原始文件名
         // 写入磁盘
-        filePart.write("/uploads/" + fileName);
+        filePart.write("/uploads/" + fileName);   // 注意:生产环境需校验文件名防路径穿越
     }
 }
 \`\`\`
@@ -275,7 +275,7 @@ public class UploadServlet extends HttpServlet {
 ## 代码示例
 
 \`\`\`java
-@WebServlet("/resp")
+@WebServlet("/resp")   // 映射到 /resp,演示响应处理
 public class RespServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
@@ -283,7 +283,7 @@ public class RespServlet extends HttpServlet {
         // ★ 必须在 getWriter 之前设 Content-Type 与编码
         resp.setContentType("text/html;charset=UTF-8");
         // 设置响应头(如禁缓存)
-        resp.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        resp.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");  // 三管齐下禁缓存
 
         PrintWriter out = resp.getWriter();   // 获取字符流
         out.println("<html><body>");
@@ -296,27 +296,27 @@ public class RespServlet extends HttpServlet {
 文件下载示例:
 
 \`\`\`java
-@WebServlet("/download")
+@WebServlet("/download")   // 映射到 /download,演示文件下载
 public class DownloadServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws IOException {
         // 读取磁盘文件
-        java.io.File file = new java.io.File("/data/report.pdf");
+        java.io.File file = new java.io.File("/data/report.pdf");   // 指定下载文件
         // 设置响应头:告诉浏览器这是附件下载,指定文件名
-        resp.setHeader("Content-Disposition", "attachment; filename=report.pdf");
-        resp.setContentType("application/octet-stream");
+        resp.setHeader("Content-Disposition", "attachment; filename=report.pdf");  // attachment 触发下载
+        resp.setContentType("application/octet-stream");   // 二进制流类型
         resp.setContentLengthLong(file.length());   // 响应体大小
 
         // 用字节流写文件
         try (java.io.OutputStream out = resp.getOutputStream();
              java.io.FileInputStream in = new java.io.FileInputStream(file)) {
-            byte[] buf = new byte[8192];
+            byte[] buf = new byte[8192];   // 8KB 缓冲区
             int n;
-            while ((n = in.read(buf)) != -1) {
+            while ((n = in.read(buf)) != -1) {   // 读到文件末尾返回 -1
                 out.write(buf, 0, n);   // 边读边写,避免一次性加载大文件
             }
-        }
+        }   // try-with-resources 自动关闭流
     }
 }
 \`\`\`
@@ -324,15 +324,15 @@ public class DownloadServlet extends HttpServlet {
 JSON 响应示例(前后端分离常用):
 
 \`\`\`java
-@WebServlet("/api/user")
+@WebServlet("/api/user")   // 映射到 /api/user,返回 JSON
 public class UserApiServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws IOException {
-        resp.setContentType("application/json;charset=UTF-8");
+        resp.setContentType("application/json;charset=UTF-8");   // 响应类型设为 JSON
         PrintWriter out = resp.getWriter();
         // 手写 JSON(实际项目用 Jackson/Gson 序列化)
-        out.println("{\\"name\\":\\"张三\\",\\"age\\":20}");
+        out.println("{\\"name\\":\\"张三\\",\\"age\\":20}");   // 注意:JSON 中双引号需转义
     }
 }
 \`\`\`
@@ -405,19 +405,19 @@ Web 应用中,一个 Servlet 处理完请求后,常需要把请求"转交"给另
 转发示例(Servlet 处理后转 JSP 渲染):
 
 \`\`\`java
-@WebServlet("/list")
+@WebServlet("/list")   // 映射到 /list,列表展示
 public class ListServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
         // 1. 业务处理:查询数据
-        List<String> items = List.of("苹果", "香蕉", "橙子");
+        List<String> items = List.of("苹果", "香蕉", "橙子");   // 模拟查询结果
 
         // 2. 把数据存入 request 域,供转发目标使用
         req.setAttribute("items", items);
 
         // 3. 转发到 JSP 渲染(地址栏不变,仍是 /list)
-        req.getRequestDispatcher("/WEB-INF/list.jsp").forward(req, resp);
+        req.getRequestDispatcher("/WEB-INF/list.jsp").forward(req, resp);   // forward:服务器内部转发
     }
 }
 \`\`\`
@@ -425,25 +425,25 @@ public class ListServlet extends HttpServlet {
 重定向示例(登录后跳首页):
 
 \`\`\`java
-@WebServlet("/login")
+@WebServlet("/login")   // 映射到 /login,处理登录
 public class LoginServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp)
             throws IOException {
-        String user = req.getParameter("user");
-        String pwd = req.getParameter("pwd");
+        String user = req.getParameter("user");   // 读取用户名
+        String pwd = req.getParameter("pwd");     // 读取密码
 
         if (checkLogin(user, pwd)) {
             // ★ 登录成功用重定向跳首页,避免刷新重复提交表单
-            resp.sendRedirect("/index");
+            resp.sendRedirect("/index");   // sendRedirect:客户端重定向,地址栏变化
         } else {
             // 失败也用重定向回登录页
-            resp.sendRedirect("/login.html?error=1");
+            resp.sendRedirect("/login.html?error=1");   // 通过查询串传递错误标志
         }
     }
 
-    private boolean checkLogin(String u, String p) {
-        return "admin".equals(u) && "123".equals(p);
+    private boolean checkLogin(String u, String p) {   // 模拟登录校验
+        return "admin".equals(u) && "123".equals(p);   // 注意:实际项目需加密存储密码
     }
 }
 \`\`\`
@@ -451,12 +451,12 @@ public class LoginServlet extends HttpServlet {
 JSP 中读取转发来的属性(\`/WEB-INF/list.jsp\`):
 
 \`\`\`html
-<%@ page contentType="text/html;charset=UTF-8" %>
-<%@ taglib uri="jakarta.tags.core" prefix="c" %>
+<%@ page contentType="text/html;charset=UTF-8" %>   <!-- JSP 指令:声明页面类型与编码 -->
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>   <!-- 引入 JSTL 核心标签库,前缀 c -->
 <ul>
     <!-- 用 EL 表达式读取 request 域的 items 属性 -->
-    <c:forEach items="\${items}" var="it">
-        <li>\${it}</li>
+    <c:forEach items="\${items}" var="it">   <!-- 遍历 items 集合,当前元素变量名 it -->
+        <li>\${it}</li>   <!-- EL 表达式输出当前元素 -->
     </c:forEach>
 </ul>
 \`\`\`

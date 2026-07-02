@@ -57,17 +57,17 @@ export const chapters = [
 
 \`\`\`ts
 // 函数类型表达式：接收一个 string 参数，返回 void
-type Greeter = (name: string) => void;
+type Greeter = (name: string) => void;  // 定义类型别名 Greeter
 
 // 将这个类型赋给一个变量
-const greet: Greeter = (name) => {
-  console.log("Hello, " + name);
+const greet: Greeter = (name) => {  // 声明常量 greet，类型 Greeter
+  console.log("Hello, " + name);  // 控制台输出
 };
 
 // 多参数版本
-type MathOp = (a: number, b: number) => number;
-const add: MathOp = (a, b) => a + b;
-const multiply: MathOp = (a, b) => a * b;
+type MathOp = (a: number, b: number) => number;  // 定义类型别名 MathOp
+const add: MathOp = (a, b) => a + b;  // 声明常量 add，类型 MathOp
+const multiply: MathOp = (a, b) => a * b;  // 声明常量 multiply，类型 MathOp
 \`\`\`
 
 函数类型表达式与箭头函数语法相似，但它们的含义完全不同：**函数类型表达式描述的是类型，箭头函数是运行时的值**。
@@ -78,13 +78,13 @@ const multiply: MathOp = (a, b) => a * b;
 
 \`\`\`ts
 // 第二个参数是可选的
-type Callback = (result: string, error?: Error) => void;
+type Callback = (result: string, error?: Error) => void;  // 定义类型别名 Callback
 
-const cb: Callback = (result, error) => {
-  if (error) {
-    console.error("失败:", error.message);
+const cb: Callback = (result, error) => {  // 声明常量 cb，类型 Callback
+  if (error) {  // 条件判断
+    console.error("失败:", error.message);  // 控制台输出
   } else {
-    console.log("成功:", result);
+    console.log("成功:", result);  // 控制台输出
   }
 };
 
@@ -95,10 +95,10 @@ cb("错误", new Error("网络超时"));      // 也可以
 默认参数的类型会自动被 TypeScript 推断，也可以显式标注：
 
 \`\`\`ts
-type CreateUser = (name: string, age?: number, isAdmin?: boolean) => void;
+type CreateUser = (name: string, age?: number, isAdmin?: boolean) => void;  // 定义类型别名 CreateUser
 
-const createUser: CreateUser = (name, age = 18, isAdmin = false) => {
-  console.log(\`创建用户: \${name}, 年龄 \${age}, 管理员 \${isAdmin}\`);
+const createUser: CreateUser = (name, age = 18, isAdmin = false) => {  // 声明常量 createUser，类型 CreateUser
+  console.log(\`创建用户: \${name}, 年龄 \${age}, 管理员 \${isAdmin}\`);  // 控制台输出
 };
 \`\`\`
 
@@ -114,19 +114,19 @@ const createUser: CreateUser = (name, age = 18, isAdmin = false) => {
 
 \`\`\`ts
 // 调用签名：描述一个可调用的对象
-interface DescribableFunction {
+interface DescribableFunction {  // 定义接口 DescribableFunction
   description: string;                    // 对象自身的属性
   (someArg: number): boolean;             // 调用签名：说明这个对象可以被调用
 }
 
 // 实现一个符合 DescribableFunction 的值
-function doSomething(n: number): boolean {
-  return n > 0;
+function doSomething(n: number): boolean {  // 定义函数 doSomething，参数: n: number，返回 boolean
+  return n > 0;  // 返回 n > 0
 }
-doSomething.description = "判断是否为正数";
+doSomething.description = "判断是否为正数";  // 赋值 doSomething.description
 
 // 赋值给类型变量
-const fn: DescribableFunction = doSomething;
+const fn: DescribableFunction = doSomething;  // 声明常量 fn，类型 DescribableFunction
 console.log(fn.description);  // "判断是否为正数"
 console.log(fn(5));            // true
 console.log(fn(-1));           // false
@@ -139,13 +139,13 @@ console.log(fn(-1));           // false
 除了 \`interface\`，\`type\` 别名也可以定义调用签名：
 
 \`\`\`ts
-type Validator = {
+type Validator = {  // 定义类型别名 Validator
   message: string;
   (value: string): boolean;
 };
 
-const minLength: Validator = (value: string) => value.length >= 6;
-minLength.message = "密码长度至少 6 位";
+const minLength: Validator = (value: string) => value.length >= 6;  // 声明常量 minLength，类型 Validator
+minLength.message = "密码长度至少 6 位";  // 赋值 minLength.message
 
 console.log(minLength.message);        // "密码长度至少 6 位"
 console.log(minLength("abc"));         // false
@@ -162,14 +162,14 @@ JavaScript 中，类（class）实际上是构造函数加原型的语法糖。�
 
 \`\`\`ts
 // 构造签名：描述一个可被 new 调用的对象
-interface ClockConstructor {
-  new (hour: number, minute: number): ClockInterface;
+interface ClockConstructor {  // 定义接口 ClockConstructor
+  new (hour: number, minute: number): ClockInterface;  // 方法声明 new(hour: number, minute: number)，返回 ClockInterface
 }
 
 // 实例接口：描述 new 出来的实例
-interface ClockInterface {
-  tick(): void;
-  getTime(): string;
+interface ClockInterface {  // 定义接口 ClockInterface
+  tick(): void;  // 方法声明 tick()，返回 void
+  getTime(): string;  // 方法声明 getTime()，返回 string
 }
 
 // 工厂函数：接受一个构造函数，创建实例
@@ -178,22 +178,22 @@ function createClock(
   hour: number,
   minute: number
 ): ClockInterface {
-  return new ctor(hour, minute);
+  return new ctor(hour, minute);  // 返回新创建的 ctor 实例
 }
 
 // 实现类
-class DigitalClock implements ClockInterface {
-  constructor(private h: number, private m: number) {}
-  tick() {
-    console.log(\`\${this.h}:\${this.m}\`);
+class DigitalClock implements ClockInterface {  // 定义类 DigitalClock，implements ClockInterface
+  constructor(private h: number, private m: number) {}  // 调用 constructor
+  tick() {  // 调用 tick
+    console.log(\`\${this.h}:\${this.m}\`);  // 控制台输出
   }
-  getTime(): string {
-    return \`\${this.h}:\${this.m}\`;
+  getTime(): string {  // 方法声明 getTime()，返回 string
+    return \`\${this.h}:\${this.m}\`;  // 返回 \`\${this.h}:\${this.m}\`
   }
 }
 
 // 使用工厂函数
-const clock = createClock(DigitalClock, 10, 30);
+const clock = createClock(DigitalClock, 10, 30);  // 声明常量 clock
 clock.tick();  // "10:30"
 \`\`\`
 
@@ -202,7 +202,7 @@ clock.tick();  // "10:30"
 一个对象可以同时拥有调用签名和构造签名，比如 \`Date\` 既可以 \`Date()\` 调用，也可以 \`new Date()\` 构造：
 
 \`\`\`ts
-interface CallOrConstruct {
+interface CallOrConstruct {  // 定义接口 CallOrConstruct
   (n?: number): string;          // 调用签名：普通调用
   new (s: string): Date;          // 构造签名：new 调用
 }
@@ -216,8 +216,8 @@ interface CallOrConstruct {
 
 \`\`\`ts
 // 泛型函数：Type 是类型参数，捕获传入参数的类型
-function firstElement<Type>(arr: Type[]): Type | undefined {
-  return arr[0];
+function firstElement<Type>(arr: Type[]): Type | undefined {  // 定义函数 firstElement，泛型 Type，参数: arr: Type[]，返回 Type | undefined
+  return arr[0];  // 返回 arr[0]
 }
 
 // 调用时 TypeScript 自动推断 Type 的类型
@@ -236,13 +236,13 @@ const u = firstElement([]);               // Type 推断为 unknown, u 类型为
 // 两个类型参数：Input 和 Output
 function map<Input, Output>(
   arr: Input[],
-  func: (arg: Input) => Output
+  func: (arg: Input) => Output  // 箭头函数
 ): Output[] {
-  return arr.map(func);
+  return arr.map(func);  // 返回 arr.map(func)
 }
 
 // 调用时自动推断
-const parsed = map(["1", "2", "3"], (n) => parseInt(n));
+const parsed = map(["1", "2", "3"], (n) => parseInt(n));  // 声明常量 parsed
 // Input 推断为 string, Output 推断为 number
 // parsed 的类型为 number[]
 console.log(parsed);  // [1, 2, 3]
@@ -254,8 +254,8 @@ console.log(parsed);  // [1, 2, 3]
 
 \`\`\`ts
 // 约束：Type 必须包含 length 属性
-function longest<Type extends { length: number }>(a: Type, b: Type): Type {
-  return a.length >= b.length ? a : b;
+function longest<Type extends { length: number }>(a: Type, b: Type): Type {  // 定义函数 longest，泛型 Type extends { length: number }，参数: a: Type, b: Type，返回 Type
+  return a.length >= b.length ? a : b;  // 返回 a.length >= b.length ? a : b
 }
 
 const longerStr = longest("hello", "world");     // Type 推断为 string
@@ -273,26 +273,26 @@ TypeScript 支持**函数重载**：为同一个函数提供多个类型签名�
 
 \`\`\`ts
 // 重载签名 1：接受 Date 对象
-function formatDate(date: Date): string;
+function formatDate(date: Date): string;  // 定义函数 formatDate，参数: date: Date
 // 重载签名 2：接受时间戳 number
-function formatDate(timestamp: number): string;
+function formatDate(timestamp: number): string;  // 定义函数 formatDate，参数: timestamp: number
 // 重载签名 3：接受年、月、日
-function formatDate(year: number, month: number, day: number): string;
+function formatDate(year: number, month: number, day: number): string;  // 定义函数 formatDate，参数: year: number, month: number, day: number
 // 实现签名：参数类型必须兼容所有重载
 function formatDate(
   dateOrYear: Date | number,
   month?: number,
   day?: number
 ): string {
-  if (dateOrYear instanceof Date) {
-    return \`\${dateOrYear.getFullYear()}-\${dateOrYear.getMonth() + 1}-\${dateOrYear.getDate()}\`;
+  if (dateOrYear instanceof Date) {  // 类型守卫：instanceof 判断实例类型
+    return \`\${dateOrYear.getFullYear()}-\${dateOrYear.getMonth() + 1}-\${dateOrYear.getDate()}\`;  // 返回 \`\${dateOrYear.getFullYear()}-\${dateOrYear.getMonth() + 1}-\${dateOrYear.getDate()}\`
   }
-  if (typeof dateOrYear === "number" && month !== undefined && day !== undefined) {
-    return \`\${dateOrYear}-\${month}-\${day}\`;
+  if (typeof dateOrYear === "number" && month !== undefined && day !== undefined) {  // 类型守卫：判断是否为 number
+    return \`\${dateOrYear}-\${month}-\${day}\`;  // 返回 \`\${dateOrYear}-\${month}-\${day}\`
   }
   // 时间戳
-  const d = new Date(dateOrYear);
-  return \`\${d.getFullYear()}-\${d.getMonth() + 1}-\${d.getDate()}\`;
+  const d = new Date(dateOrYear);  // 声明常量 d
+  return \`\${d.getFullYear()}-\${d.getMonth() + 1}-\${d.getDate()}\`;  // 返回 \`\${d.getFullYear()}-\${d.getMonth() + 1}-\${d.getDate()}\`
 }
 
 // 调用时，只有重载签名对外可见
@@ -315,18 +315,18 @@ TypeScript 允许你在函数参数列表中声明 \`this\` 的类型，但这**
 #### 基本用法
 
 \`\`\`ts
-interface User {
+interface User {  // 定义接口 User
   name: string;
   admin: boolean;
 }
 
 // 声明 this 参数
-function getInfo(this: User, prefix: string): string {
-  return \`\${prefix}: \${this.name} (\${this.admin ? "管理员" : "普通用户"})\`;
+function getInfo(this: User, prefix: string): string {  // 定义函数 getInfo，参数: this: User, prefix: string，返回 string
+  return \`\${prefix}: \${this.name} (\${this.admin ? "管理员" : "普通用户"})\`;  // 返回 \`\${prefix}: \${this.name} (\${this.admin ? "管理员" : "普通用户"})\`
 }
 
 // 正确的调用方式：使用 call 绑定 this
-const user: User = { name: "张三", admin: true };
+const user: User = { name: "张三", admin: true };  // 声明常量 user，类型 User
 console.log(getInfo.call(user, "用户"));    // "用户: 张三 (管理员)"
 // getInfo("直接调用");                      // ❌ this 上下文不正确
 \`\`\`
@@ -336,21 +336,21 @@ console.log(getInfo.call(user, "用户"));    // "用户: 张三 (管理员)"
 在类方法中，如果方法被当作回调传递，\`this\` 可能会丢失。使用 \`this\` 参数可以捕获这类错误：
 
 \`\`\`ts
-class Button {
-  constructor(public label: string) {}
+class Button {  // 定义类 Button
+  constructor(public label: string) {}  // 调用 constructor
 
   // 声明 this 参数，确保调用时 this 就是 Button
-  click(this: Button): void {
-    console.log(\`按钮 "\${this.label}" 被点击\`);
+  click(this: Button): void {  // 方法声明 click(this: Button)，返回 void
+    console.log(\`按钮 "\${this.label}" 被点击\`);  // 控制台输出
   }
 }
 
-const btn = new Button("提交");
+const btn = new Button("提交");  // 声明常量 btn
 btn.click();  // 正常
 
 // 如果作为回调传递，this 会丢失，但 this 参数会在编译期报错
 // 实际运行时，用 bind 绑定
-const handler = btn.click.bind(btn);
+const handler = btn.click.bind(btn);  // 声明常量 handler
 handler();  // 运行时正常
 \`\`\`
 
@@ -362,21 +362,21 @@ handler();  // 运行时正常
 
 \`\`\`ts
 // 剩余参数 numbers 收集所有数字参数
-function sum(...numbers: number[]): number {
-  return numbers.reduce((acc, n) => acc + n, 0);
+function sum(...numbers: number[]): number {  // 定义函数 sum，参数: ...numbers: number[]，返回 number
+  return numbers.reduce((acc, n) => acc + n, 0);  // 返回 numbers.reduce((acc, n) => acc + n, 0)
 }
 
 console.log(sum(1, 2, 3));        // 6
 console.log(sum(10, 20, 30, 40)); // 100
 
 // 固定参数 + 剩余参数
-function log(prefix: string, ...messages: string[]): void {
-  for (const msg of messages) {
-    console.log(\`[\${prefix}] \${msg}\`);
+function log(prefix: string, ...messages: string[]): void {  // 定义函数 log，参数: prefix: string, ...messages: string[]，返回 void
+  for (const msg of messages) {  // 循环
+    console.log(\`[\${prefix}] \${msg}\`);  // 控制台输出
   }
 }
 
-log("INFO", "服务启动", "端口 3000", "数据库已连接");
+log("INFO", "服务启动", "端口 3000", "数据库已连接");  // 调用 log
 \`\`\`
 
 #### 参数解构（Parameter Destructuring）
@@ -385,26 +385,26 @@ TypeScript 允许在函数参数中直接解构对象，同时标注类型：
 
 \`\`\`ts
 // 参数解构 + 类型标注
-function createUser({ name, age, email }: { name: string; age: number; email?: string }): string {
-  return \`\${name}, \${age}岁\${email ? \`, 邮箱: \${email}\` : ""}\`;
+function createUser({ name, age, email }: { name: string; age: number; email?: string }): string {  // 定义函数 createUser，参数: { name, age, email }: { name: string; age: number; email?: string }，返回 string
+  return \`\${name}, \${age}岁\${email ? \`, 邮箱: \${email}\` : ""}\`;  // 返回 \`\${name}, \${age}岁\${email ? \`, 邮箱: \${email}\` : ""}\`
 }
 
-const userInfo = { name: "李四", age: 25, email: "lisi@example.com" };
+const userInfo = { name: "李四", age: 25, email: "lisi@example.com" };  // 声明常量 userInfo
 console.log(createUser(userInfo));  // "李四, 25岁, 邮箱: lisi@example.com"
 
 // 使用 type 别名让代码更清晰
-type UserParams = {
+type UserParams = {  // 定义类型别名 UserParams
   name: string;
   age: number;
   email?: string;
   role?: "admin" | "user";
 };
 
-function registerUser({ name, age, email, role = "user" }: UserParams): string {
-  return \`注册成功: \${name} (\${role})\`;
+function registerUser({ name, age, email, role = "user" }: UserParams): string {  // 定义函数 registerUser，参数: { name, age, email, role = "user" }: UserParams，返回 string
+  return \`注册成功: \${name} (\${role})\`;  // 返回 \`注册成功: \${name} (\${role})\`
 }
 
-console.log(registerUser({ name: "王五", age: 30, role: "admin" }));
+console.log(registerUser({ name: "王五", age: 30, role: "admin" }));  // 控制台输出
 \`\`\`
 
 ### void vs undefined 的微妙区别
@@ -417,8 +417,8 @@ console.log(registerUser({ name: "王五", age: 30, role: "admin" }));
 
 \`\`\`ts
 // void 返回类型：返回值被忽略
-function logMessage(msg: string): void {
-  console.log(msg);
+function logMessage(msg: string): void {  // 定义函数 logMessage，参数: msg: string，返回 void
+  console.log(msg);  // 控制台输出
   // 即使 return 了一个值，调用者也不能使用
   return;  // 可以
 }
@@ -433,11 +433,11 @@ const fn2: () => void = () => "hello";    // ✅ 同样被忽略
 当函数的返回类型是 \`undefined\` 时，函数**必须显式 return undefined 或 return 不带值**：
 
 \`\`\`ts
-function returnsUndefined(): undefined {
+function returnsUndefined(): undefined {  // 定义函数 returnsUndefined，返回 undefined
   return undefined;  // 必须显式返回 undefined
 }
 
-function returnsUndefined2(): undefined {
+function returnsUndefined2(): undefined {  // 定义函数 returnsUndefined2，返回 undefined
   return;  // 也 OK（相当于 return undefined）
 }
 \`\`\`
@@ -459,33 +459,33 @@ function returnsUndefined2(): undefined {
 
 \`\`\`ts
 // 抛出异常的函数，返回类型是 never
-function throwError(message: string): never {
-  throw new Error(message);
+function throwError(message: string): never {  // 定义函数 throwError，参数: message: string，返回 never
+  throw new Error(message);  // 抛出 Error 异常
 }
 
 // 无限循环的函数，返回类型也是 never
-function infiniteLoop(): never {
-  while (true) {
-    console.log("永远运行...");
+function infiniteLoop(): never {  // 定义函数 infiniteLoop，返回 never
+  while (true) {  // while 循环
+    console.log("永远运行...");  // 控制台输出
   }
 }
 
 // never 类型的作用：穷尽性检查（Exhaustiveness Checking）
-type Shape = "circle" | "square" | "triangle";
+type Shape = "circle" | "square" | "triangle";  // 定义类型别名 Shape
 
-function getArea(shape: Shape): number {
-  switch (shape) {
-    case "circle":
-      return Math.PI * 10 * 10;
-    case "square":
-      return 10 * 10;
-    case "triangle":
-      return (10 * 10) / 2;
-    default:
+function getArea(shape: Shape): number {  // 定义函数 getArea，参数: shape: Shape，返回 number
+  switch (shape) {  // switch 分支选择
+    case "circle":  // case 匹配分支
+      return Math.PI * 10 * 10;  // 返回 Math.PI * 10 * 10
+    case "square":  // case 匹配分支
+      return 10 * 10;  // 返回 10 * 10
+    case "triangle":  // case 匹配分支
+      return (10 * 10) / 2;  // 返回 (10 * 10) / 2
+    default:  // 默认分支
       // 如果 Shape 新增了类型，这里的 shape 就会变成 never
       // 但类型检查会报错，因为 never 不能被赋值
-      const exhaustiveCheck: never = shape;
-      return exhaustiveCheck;
+      const exhaustiveCheck: never = shape;  // 声明常量 exhaustiveCheck，类型 never
+      return exhaustiveCheck;  // 返回 exhaustiveCheck
   }
 }
 \`\`\`
@@ -809,11 +809,11 @@ console.log("\\n函数类型进阶章节演示完成！");`,
 
 \`\`\`ts
 // 用 any 实现的"通用"函数
-function identityAny(arg: any): any {
-  return arg;
+function identityAny(arg: any): any {  // 定义函数 identityAny，参数: arg: any，返回 any（注意：any 关闭了类型检查）
+  return arg;  // 返回 arg
 }
 
-const result = identityAny("hello");
+const result = identityAny("hello");  // 声明常量 result
 // result 的类型是 any——类型信息丢失了！
 result.toUpperCase();  // 不会有类型检查，运行时可能出错
 \`\`\`
@@ -822,11 +822,11 @@ result.toUpperCase();  // 不会有类型检查，运行时可能出错
 
 \`\`\`ts
 // 泛型版本：类型信息完整保留
-function identity<T>(arg: T): T {
-  return arg;
+function identity<T>(arg: T): T {  // 定义函数 identity，泛型 T，参数: arg: T，返回 T
+  return arg;  // 返回 arg
 }
 
-const result = identity("hello");
+const result = identity("hello");  // 声明常量 result
 // result 的类型是 "hello"（字面量类型），不是 any！
 result.toUpperCase();  // ✅ 类型安全，IDE 有完整提示
 \`\`\`
@@ -852,8 +852,8 @@ TypeScript 社区对类型参数有约定俗成的命名：
 调用泛型函数时，通常不需要显式指定类型参数——TypeScript 会根据传入的参数**自动推断**：
 
 \`\`\`ts
-function first<T>(arr: T[]): T | undefined {
-  return arr[0];
+function first<T>(arr: T[]): T | undefined {  // 定义函数 first，泛型 T，参数: arr: T[]，返回 T | undefined
+  return arr[0];  // 返回 arr[0]
 }
 
 // 自动推断：T 推断为 number
@@ -872,8 +872,8 @@ const n2 = first<number>([1, 2, 3]);  // 显式指定 T = number
 
 \`\`\`ts
 // 两参数泛型：建立输入和输出之间的类型关系
-function pair<T, U>(first: T, second: U): [T, U] {
-  return [first, second];
+function pair<T, U>(first: T, second: U): [T, U] {  // 定义函数 pair，泛型 T, U，参数: first: T, second: U，返回 [T, U]
+  return [first, second];  // 返回 [first, second]
 }
 
 const p1 = pair("hello", 42);           // [string, number]
@@ -888,24 +888,24 @@ const p2 = pair(true, { name: "张三" }); // [boolean, { name: string }]
 
 \`\`\`ts
 // 泛型接口：定义一个容器
-interface Container<T> {
+interface Container<T> {  // 定义接口 Container，泛型参数 T
   value: T;
-  getValue(): T;
-  setValue(newValue: T): void;
+  getValue(): T;  // 方法声明 getValue()，返回 T
+  setValue(newValue: T): void;  // 方法声明 setValue(newValue: T)，返回 void
 }
 
 // 使用 string 版本的 Container
-const stringContainer: Container<string> = {
+const stringContainer: Container<string> = {  // 声明常量 stringContainer，类型 Container<string>
   value: "hello",
-  getValue() { return this.value; },
-  setValue(newValue) { this.value = newValue; },
+  getValue() { return this.value; },  // 调用 getValue
+  setValue(newValue) { this.value = newValue; },  // 调用 setValue
 };
 
 // 使用 number 版本的 Container
-const numberContainer: Container<number> = {
+const numberContainer: Container<number> = {  // 声明常量 numberContainer，类型 Container<number>
   value: 42,
-  getValue() { return this.value; },
-  setValue(newValue) { this.value = newValue; },
+  getValue() { return this.value; },  // 调用 getValue
+  setValue(newValue) { this.value = newValue; },  // 调用 setValue
 };
 \`\`\`
 
@@ -915,7 +915,7 @@ const numberContainer: Container<number> = {
 
 \`\`\`ts
 // 分页查询结果接口
-interface PaginatedResult<T> {
+interface PaginatedResult<T> {  // 定义接口 PaginatedResult，泛型参数 T
   data: T[];          // 数据列表，类型由调用方决定
   total: number;      // 总数
   page: number;       // 当前页码
@@ -924,12 +924,12 @@ interface PaginatedResult<T> {
 }
 
 // 使用泛型接口
-interface User {
+interface User {  // 定义接口 User
   id: number;
   name: string;
 }
 
-const userResult: PaginatedResult<User> = {
+const userResult: PaginatedResult<User> = {  // 声明常量 userResult，类型 PaginatedResult<User>
   data: [{ id: 1, name: "张三" }, { id: 2, name: "李四" }],
   total: 100,
   page: 1,
@@ -938,15 +938,15 @@ const userResult: PaginatedResult<User> = {
 };
 
 // 另一个场景：API 响应
-interface ApiResponse<T> {
+interface ApiResponse<T> {  // 定义接口 ApiResponse，泛型参数 T
   code: number;
   message: string;
   data: T;
 }
 
 // 使用时指定 T
-type UserResponse = ApiResponse<User>;
-type UserListResponse = ApiResponse<User[]>;
+type UserResponse = ApiResponse<User>;  // 定义类型别名 UserResponse
+type UserListResponse = ApiResponse<User[]>;  // 定义类型别名 UserListResponse
 \`\`\`
 
 ### 泛型类
@@ -957,41 +957,41 @@ type UserListResponse = ApiResponse<User[]>;
 
 \`\`\`ts
 // 泛型栈：元素类型由调用方指定
-class Stack<T> {
-  private items: T[] = [];
+class Stack<T> {  // 定义类 Stack，泛型参数 T
+  private items: T[] = [];  // 类属性 items: T[]
 
-  push(item: T): void {
-    this.items.push(item);
+  push(item: T): void {  // 方法声明 push(item: T)，返回 void
+    this.items.push(item);  // 调用 this.items.push
   }
 
-  pop(): T | undefined {
-    return this.items.pop();
+  pop(): T | undefined {  // 方法声明 pop()，返回 T | undefined
+    return this.items.pop();  // 返回 this.items.pop()
   }
 
-  peek(): T | undefined {
-    return this.items[this.items.length - 1];
+  peek(): T | undefined {  // 方法声明 peek()，返回 T | undefined
+    return this.items[this.items.length - 1];  // 返回 this.items[this.items.length - 1]
   }
 
-  get size(): number {
-    return this.items.length;
+  get size(): number {  // get 访问器 size
+    return this.items.length;  // 返回 this.items.length
   }
 
-  isEmpty(): boolean {
-    return this.items.length === 0;
+  isEmpty(): boolean {  // 方法声明 isEmpty()，返回 boolean
+    return this.items.length === 0;  // 返回 this.items.length === 0
   }
 }
 
 // 使用
-const numberStack = new Stack<number>();
-numberStack.push(1);
-numberStack.push(2);
-numberStack.push(3);
+const numberStack = new Stack<number>();  // 声明常量 numberStack
+numberStack.push(1);  // 调用 numberStack.push
+numberStack.push(2);  // 调用 numberStack.push
+numberStack.push(3);  // 调用 numberStack.push
 console.log(numberStack.pop());  // 3
 console.log(numberStack.peek()); // 2
 
-const stringStack = new Stack<string>();
-stringStack.push("hello");
-stringStack.push("world");
+const stringStack = new Stack<string>();  // 声明常量 stringStack
+stringStack.push("hello");  // 调用 stringStack.push
+stringStack.push("world");  // 调用 stringStack.push
 console.log(stringStack.size);   // 2
 \`\`\`
 
@@ -1000,7 +1000,7 @@ console.log(stringStack.size);   // 2
 **重要规则**：泛型类的**静态成员不能使用类的类型参数**。因为静态成员属于类本身，不属于实例，而类型参数是在实例化时才确定的。
 
 \`\`\`ts
-class MyClass<T> {
+class MyClass<T> {  // 定义类 MyClass，泛型参数 T
   // ✅ 实例成员可以使用 T
   instanceValue: T;
 
@@ -1009,13 +1009,13 @@ class MyClass<T> {
 
   // ✅ 静态成员可以有自己的泛型参数
   static create<T>(value: T): MyClass<T> {
-    const instance = new MyClass<T>();
-    instance.instanceValue = value;
-    return instance;
+    const instance = new MyClass<T>();  // 声明常量 instance
+    instance.instanceValue = value;  // 赋值 instance.instanceValue
+    return instance;  // 返回 instance
   }
 
-  constructor() {
-    this.instanceValue = undefined as unknown as T;
+  constructor() {  // 调用 constructor
+    this.instanceValue = undefined as unknown as T;  // 赋值 this.instanceValue（注意：类型断言会绕过类型检查）
   }
 }
 \`\`\`
@@ -1028,13 +1028,13 @@ class MyClass<T> {
 
 \`\`\`ts
 // 约束：T 必须包含 .length 属性
-interface HasLength {
+interface HasLength {  // 定义接口 HasLength
   length: number;
 }
 
-function logLength<T extends HasLength>(arg: T): T {
-  console.log(\`长度: \${arg.length}\`);
-  return arg;
+function logLength<T extends HasLength>(arg: T): T {  // 定义函数 logLength，泛型 T extends HasLength，参数: arg: T，返回 T
+  console.log(\`长度: \${arg.length}\`);  // 控制台输出
+  return arg;  // 返回 arg
 }
 
 logLength("hello");             // ✅ string 有 length
@@ -1049,11 +1049,11 @@ logLength({ length: 10, name: "test" }); // ✅ 有 length 属性
 
 \`\`\`ts
 // 约束 K 必须是 T 的键名之一
-function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
-  return obj[key];
+function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {  // 定义函数 getProperty，泛型 T, K extends keyof T，参数: obj: T, key: K，返回 T[K]
+  return obj[key];  // 返回 obj[key]
 }
 
-const person = { name: "张三", age: 30, city: "北京" };
+const person = { name: "张三", age: 30, city: "北京" };  // 声明常量 person
 
 const name = getProperty(person, "name");    // 类型: string，安全
 const age = getProperty(person, "age");      // 类型: number，安全
@@ -1068,18 +1068,18 @@ const age = getProperty(person, "age");      // 类型: number，安全
 
 \`\`\`ts
 // 从对象中挑选指定的属性，类型安全
-function pick<T extends object, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
-  const result = {} as Pick<T, K>;
-  for (const key of keys) {
-    if (key in obj) {
+function pick<T extends object, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {  // 定义函数 pick，泛型 T extends object, K extends keyof T，参数: obj: T, keys: K[]，返回 Pick<T, K>
+  const result = {} as Pick<T, K>;  // 声明常量 result（注意：类型断言会绕过类型检查）
+  for (const key of keys) {  // 循环
+    if (key in obj) {  // 条件判断
       result[key] = obj[key];
     }
   }
-  return result;
+  return result;  // 返回 result
 }
 
-const user = { id: 1, name: "张三", email: "zhangsan@example.com", age: 30 };
-const picked = pick(user, ["name", "email"]);
+const user = { id: 1, name: "张三", email: "zhangsan@example.com", age: 30 };  // 声明常量 user
+const picked = pick(user, ["name", "email"]);  // 声明常量 picked
 // picked 的类型是 { name: string; email: string }
 console.log(picked.name);      // "张三"
 console.log(picked.email);     // "zhangsan@example.com"
@@ -1091,12 +1091,12 @@ console.log(picked.email);     // "zhangsan@example.com"
 
 \`\`\`ts
 // K 被约束为 T 的键名
-function getPropertySafe<T, K extends keyof T>(obj: T, key: K): T[K] {
-  return obj[key];
+function getPropertySafe<T, K extends keyof T>(obj: T, key: K): T[K] {  // 定义函数 getPropertySafe，泛型 T, K extends keyof T，参数: obj: T, key: K，返回 T[K]
+  return obj[key];  // 返回 obj[key]
 }
 
 // 示例：确保传入的 key 确实是 obj 的属性
-const config = { host: "localhost", port: 3000, debug: false };
+const config = { host: "localhost", port: 3000, debug: false };  // 声明常量 config
 const host = getPropertySafe(config, "host");  // host: string
 const port = getPropertySafe(config, "port");  // port: number
 // const err = getPropertySafe(config, "timeout"); // ❌ 编译错误
@@ -1106,11 +1106,11 @@ const port = getPropertySafe(config, "port");  // port: number
 
 \`\`\`ts
 // 使用泛型约束确保赋值的值类型正确
-function setProperty<T, K extends keyof T>(obj: T, key: K, value: T[K]): void {
+function setProperty<T, K extends keyof T>(obj: T, key: K, value: T[K]): void {  // 定义函数 setProperty，泛型 T, K extends keyof T，参数: obj: T, key: K, value: T[K]，返回 void
   obj[key] = value;
 }
 
-const settings = { theme: "dark" as "dark" | "light", fontSize: 14 };
+const settings = { theme: "dark" as "dark" | "light", fontSize: 14 };  // 声明常量 settings（注意：类型断言会绕过类型检查）
 setProperty(settings, "theme", "light");   // ✅ 值类型匹配
 setProperty(settings, "fontSize", 16);     // ✅ 值类型匹配
 // setProperty(settings, "theme", "blue"); // ❌ "blue" 不是 "dark" | "light"
@@ -1123,9 +1123,9 @@ setProperty(settings, "fontSize", 16);     // ✅ 值类型匹配
 
 \`\`\`ts
 // 泛型类型别名：创建可复用的类型转化
-type Nullable<T> = T | null;
-type Maybe<T> = T | undefined;
-type NullableOrMaybe<T> = T | null | undefined;
+type Nullable<T> = T | null;  // 定义类型别名 Nullable，泛型参数 T，联合类型
+type Maybe<T> = T | undefined;  // 定义类型别名 Maybe，泛型参数 T，联合类型
+type NullableOrMaybe<T> = T | null | undefined;  // 定义类型别名 NullableOrMaybe，泛型参数 T，联合类型
 
 // 使用
 type NullableString = Nullable<string>;  // string | null
@@ -1135,7 +1135,7 @@ const name: NullableString = null;       // ✅
 const age: MaybeNumber = undefined;      // ✅
 
 // 更复杂的泛型别名
-type Result<T, E = Error> = {
+type Result<T, E = Error> = {  // 定义类型别名 Result，泛型参数 T, E = Error
   success: true;
   data: T;
 } | {
@@ -1144,9 +1144,9 @@ type Result<T, E = Error> = {
 };
 
 // 使用
-type UserResult = Result<{ id: number; name: string }, string>;
-const ok: UserResult = { success: true, data: { id: 1, name: "张三" } };
-const fail: UserResult = { success: false, error: "用户不存在" };
+type UserResult = Result<{ id: number; name: string }, string>;  // 定义类型别名 UserResult
+const ok: UserResult = { success: true, data: { id: 1, name: "张三" } };  // 声明常量 ok，类型 UserResult
+const fail: UserResult = { success: false, error: "用户不存在" };  // 声明常量 fail，类型 UserResult
 \`\`\`
 
 #### 泛型类型别名与函数类型
@@ -1155,14 +1155,14 @@ const fail: UserResult = { success: false, error: "用户不存在" };
 
 \`\`\`ts
 // 泛型函数类型别名
-type Mapper<T, U> = (item: T, index: number) => U;
-type Predicate<T> = (item: T) => boolean;
-type Reducer<T, U> = (accumulator: U, current: T) => U;
+type Mapper<T, U> = (item: T, index: number) => U;  // 定义类型别名 Mapper，泛型参数 T, U
+type Predicate<T> = (item: T) => boolean;  // 定义类型别名 Predicate，泛型参数 T
+type Reducer<T, U> = (accumulator: U, current: T) => U;  // 定义类型别名 Reducer，泛型参数 T, U
 
 // 使用这些类型别名定义函数
-const stringToNumber: Mapper<string, number> = (s) => parseInt(s, 10);
-const isPositive: Predicate<number> = (n) => n > 0;
-const sumReducer: Reducer<number, number> = (acc, cur) => acc + cur;
+const stringToNumber: Mapper<string, number> = (s) => parseInt(s, 10);  // 声明常量 stringToNumber，类型 Mapper<string, number>
+const isPositive: Predicate<number> = (n) => n > 0;  // 声明常量 isPositive，类型 Predicate<number>
+const sumReducer: Reducer<number, number> = (acc, cur) => acc + cur;  // 声明常量 sumReducer，类型 Reducer<number, number>
 
 console.log(stringToNumber("42", 0));         // 42
 console.log(isPositive(-5));                   // false
@@ -1176,7 +1176,7 @@ console.log([1, 2, 3, 4].reduce(sumReducer, 0)); // 10
 #### keyof 基础
 
 \`\`\`ts
-type Person = {
+type Person = {  // 定义类型别名 Person
   name: string;
   age: number;
   location: string;
@@ -1185,11 +1185,11 @@ type Person = {
 type PersonKeys = keyof Person;  // "name" | "age" | "location"
 
 // 泛型 + keyof 模式
-function pluck<T, K extends keyof T>(items: T[], key: K): T[K][] {
-  return items.map(item => item[key]);
+function pluck<T, K extends keyof T>(items: T[], key: K): T[K][] {  // 定义函数 pluck，泛型 T, K extends keyof T，参数: items: T[], key: K，返回 T[K][]
+  return items.map(item => item[key]);  // 返回 items.map(item => item[key])
 }
 
-const people: Person[] = [
+const people: Person[] = [  // 声明常量 people，类型 Person[]
   { name: "张三", age: 30, location: "北京" },
   { name: "李四", age: 25, location: "上海" },
 ];
@@ -1611,7 +1611,7 @@ console.log("\\n泛型基础与实践章节演示完成！");`,
 
 \`\`\`ts
 // 条件类型：如果 T 是 string 的子类型，返回 string，否则返回 number
-type StringOrNumber<T> = T extends string ? string : number;
+type StringOrNumber<T> = T extends string ? string : number;  // 定义类型别名 StringOrNumber，泛型参数 T，条件类型
 
 type A = StringOrNumber<"hello">;  // string（"hello" 是 string 的子类型）
 type B = StringOrNumber<42>;       // number（42 不是 string 的子类型）
@@ -1624,14 +1624,14 @@ type C = StringOrNumber<boolean>;  // number（boolean 不是 string 的子类�
 
 \`\`\`ts
 // 提取数组元素类型，非数组返回原类型
-type Flatten<T> = T extends any[] ? T[number] : T;
+type Flatten<T> = T extends any[] ? T[number] : T;  // 定义类型别名 Flatten，泛型参数 T，条件类型（注意：any 关闭了类型检查）
 
 type Str = Flatten<string[]>;    // string
 type Num = Flatten<number>;      // number
 type Bool = Flatten<boolean[]>;  // boolean
 
 // 提取 Promise 内层类型
-type Awaited<T> = T extends Promise<infer U> ? U : T;
+type Awaited<T> = T extends Promise<infer U> ? U : T;  // 定义类型别名 Awaited，泛型参数 T，使用 infer 在条件类型中提取类型
 
 type R1 = Awaited<Promise<string>>;  // string
 type R2 = Awaited<number>;           // number
@@ -1645,10 +1645,10 @@ type R2 = Awaited<number>;           // number
 
 \`\`\`ts
 // 分发条件类型
-type ToArray<T> = T extends any ? T[] : never;
+type ToArray<T> = T extends any ? T[] : never;  // 定义类型别名 ToArray，泛型参数 T，条件类型（注意：any 关闭了类型检查）
 
 // 当 T 是联合类型时，分发发生
-type Result = ToArray<string | number>;
+type Result = ToArray<string | number>;  // 定义类型别名 Result，联合类型
 // 等价于：ToArray<string> | ToArray<number>
 // 即：string[] | number[]
 \`\`\`
@@ -1661,9 +1661,9 @@ type Result = ToArray<string | number>;
 
 \`\`\`ts
 // 不分发版本：用元组包裹类型参数
-type ToArrayNoDistribute<T> = [T] extends [any] ? T[] : never;
+type ToArrayNoDistribute<T> = [T] extends [any] ? T[] : never;  // 定义类型别名 ToArrayNoDistribute，泛型参数 T，条件类型（注意：any 关闭了类型检查）
 
-type Result2 = ToArrayNoDistribute<string | number>;
+type Result2 = ToArrayNoDistribute<string | number>;  // 定义类型别名 Result2，联合类型
 // 结果是 (string | number)[] 而不是 string[] | number[]
 \`\`\`
 
@@ -1673,12 +1673,12 @@ type Result2 = ToArrayNoDistribute<string | number>;
 
 \`\`\`ts
 // 从联合类型 T 中排除 U
-type MyExclude<T, U> = T extends U ? never : U;
+type MyExclude<T, U> = T extends U ? never : U;  // 定义类型别名 MyExclude，泛型参数 T, U，条件类型
 
 // 从联合类型 T 中提取 U
-type MyExtract<T, U> = T extends U ? T : never;
+type MyExtract<T, U> = T extends U ? T : never;  // 定义类型别名 MyExtract，泛型参数 T, U，条件类型
 
-type Events = "click" | "scroll" | "keydown" | "mousemove";
+type Events = "click" | "scroll" | "keydown" | "mousemove";  // 定义类型别名 Events
 type MouseEvents = MyExtract<Events, "click" | "mousemove">;  // "click" | "mousemove"
 type NonMouseEvents = MyExclude<Events, "click" | "mousemove">; // "scroll" | "keydown"
 \`\`\`
@@ -1691,14 +1691,14 @@ type NonMouseEvents = MyExclude<Events, "click" | "mousemove">; // "scroll" | "k
 
 \`\`\`ts
 // 提取数组元素类型
-type ElementType<T> = T extends (infer U)[] ? U : never;
+type ElementType<T> = T extends (infer U)[] ? U : never;  // 定义类型别名 ElementType，泛型参数 T，使用 infer 在条件类型中提取类型
 
 type E1 = ElementType<string[]>;    // string
 type E2 = ElementType<number[]>;    // number
 type E3 = ElementType<boolean>;     // never（不是数组）
 
 // 提取函数返回类型
-type ReturnType<T> = T extends (...args: any[]) => infer R ? R : never;
+type ReturnType<T> = T extends (...args: any[]) => infer R ? R : never;  // 定义类型别名 ReturnType，泛型参数 T，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 
 type F1 = ReturnType<() => string>;        // string
 type F2 = ReturnType<(x: number) => number>; // number
@@ -1711,14 +1711,14 @@ type F3 = ReturnType<string>;              // never
 
 \`\`\`ts
 // 提取 Promise 的值类型（递归）
-type DeepAwaited<T> = T extends Promise<infer U>
+type DeepAwaited<T> = T extends Promise<infer U>  // 定义类型别名 DeepAwaited，泛型参数 T，使用 infer 在条件类型中提取类型
   ? DeepAwaited<U>
   : T;
 
 type R = DeepAwaited<Promise<Promise<number>>>; // number
 
 // 提取函数参数类型为元组
-type Parameters<T> = T extends (...args: infer P) => any ? P : never;
+type Parameters<T> = T extends (...args: infer P) => any ? P : never;  // 定义类型别名 Parameters，泛型参数 T，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 
 type P1 = Parameters<(a: string, b: number) => void>; // [string, number]
 type P2 = Parameters<() => void>;                       // []
@@ -1732,13 +1732,13 @@ type P2 = Parameters<() => void>;                       // []
 
 \`\`\`ts
 // 协变位置：推断出联合类型
-type Covariant<T> = T extends { value: infer V } ? V : never;
+type Covariant<T> = T extends { value: infer V } ? V : never;  // 定义类型别名 Covariant，泛型参数 T，使用 infer 在条件类型中提取类型
 type CV = Covariant<{ value: string } | { value: number }>; // string | number
 
 // 逆变位置：推断出交叉类型
-type Contravariant<T> = T extends { handler: (x: infer V) => void } ? V : never;
-type CT = Contravariant<
-  { handler: (x: string) => void } | { handler: (x: number) => void }
+type Contravariant<T> = T extends { handler: (x: infer V) => void } ? V : never;  // 定义类型别名 Contravariant，泛型参数 T，使用 infer 在条件类型中提取类型
+type CT = Contravariant<  // 定义类型别名 CT
+  { handler: (x: string) => void } | { handler: (x: number) => void }  // 箭头函数
 >; // string & number（即 never）
 \`\`\`
 
@@ -1750,24 +1750,24 @@ type CT = Contravariant<
 
 \`\`\`ts
 // 映射类型：将 T 的所有属性变为只读
-type MyReadonly<T> = {
+type MyReadonly<T> = {  // 定义类型别名 MyReadonly，泛型参数 T
   readonly [K in keyof T]: T[K];
 };
 
 // 映射类型：将 T 的所有属性变为可选
-type MyPartial<T> = {
+type MyPartial<T> = {  // 定义类型别名 MyPartial，泛型参数 T
   [K in keyof T]?: T[K];
 };
 
 // 使用
-interface User {
+interface User {  // 定义接口 User
   name: string;
   age: number;
   email: string;
 }
 
-type ReadonlyUser = MyReadonly<User>;
-type PartialUser = MyPartial<User>;
+type ReadonlyUser = MyReadonly<User>;  // 定义类型别名 ReadonlyUser
+type PartialUser = MyPartial<User>;  // 定义类型别名 PartialUser
 \`\`\`
 
 #### 映射修饰符
@@ -1776,17 +1776,17 @@ type PartialUser = MyPartial<User>;
 
 \`\`\`ts
 // 移除 readonly
-type Mutable<T> = {
+type Mutable<T> = {  // 定义类型别名 Mutable，泛型参数 T
   -readonly [K in keyof T]: T[K];
 };
 
 // 移除可选
-type Required<T> = {
+type Required<T> = {  // 定义类型别名 Required，泛型参数 T
   [K in keyof T]-?: T[K];
 };
 
 // 组合使用
-type MutableRequired<T> = {
+type MutableRequired<T> = {  // 定义类型别名 MutableRequired，泛型参数 T
   -readonly [K in keyof T]-?: T[K];
 };
 \`\`\`
@@ -1797,24 +1797,24 @@ TypeScript 4.1 引入了 \`as\` 子句，允许在映射类型中重命名键：
 
 \`\`\`ts
 // 将所有属性名加上 get 前缀
-type Getters<T> = {
-  [K in keyof T as \`get\${Capitalize<string & K>}\`]: () => T[K];
+type Getters<T> = {  // 定义类型别名 Getters，泛型参数 T
+  [K in keyof T as \`get\${Capitalize<string & K>}\`]: () => T[K];  // 箭头函数（注意：类型断言会绕过类型检查）
 };
 
-interface Person {
+interface Person {  // 定义接口 Person
   name: string;
   age: number;
 }
 
-type PersonGetters = Getters<Person>;
+type PersonGetters = Getters<Person>;  // 定义类型别名 PersonGetters
 // { getName: () => string; getAge: () => number; }
 
 // 过滤出特定类型的属性
-type PickByType<T, U> = {
-  [K in keyof T as T[K] extends U ? K : never]: T[K];
+type PickByType<T, U> = {  // 定义类型别名 PickByType，泛型参数 T, U
+  [K in keyof T as T[K] extends U ? K : never]: T[K];  // 注意：类型断言会绕过类型检查
 };
 
-type StringFields = PickByType<Person, string>;
+type StringFields = PickByType<Person, string>;  // 定义类型别名 StringFields
 // { name: string }
 \`\`\`
 
@@ -1825,12 +1825,12 @@ type StringFields = PickByType<Person, string>;
 #### 基本语法
 
 \`\`\`ts
-type World = "world";
+type World = "world";  // 定义类型别名 World
 type Greeting = \`hello \${World}\`;  // "hello world"
 
 // 与联合类型结合：自动分发
-type EventName = "click" | "focus" | "blur";
-type HandlerName = \`on\${Capitalize<EventName>}\`;
+type EventName = "click" | "focus" | "blur";  // 定义类型别名 EventName
+type HandlerName = \`on\${Capitalize<EventName>}\`;  // 定义类型别名 HandlerName
 // "onClick" | "onFocus" | "onBlur"
 \`\`\`
 
@@ -1838,17 +1838,17 @@ type HandlerName = \`on\${Capitalize<EventName>}\`;
 
 \`\`\`ts
 // 为对象创建事件处理器类型
-type EventHandlers<T> = {
-  [K in keyof T & string as \`on\${Capitalize<K>}Change\`]: (value: T[K]) => void;
+type EventHandlers<T> = {  // 定义类型别名 EventHandlers，泛型参数 T
+  [K in keyof T & string as \`on\${Capitalize<K>}Change\`]: (value: T[K]) => void;  // 箭头函数（注意：类型断言会绕过类型检查）
 };
 
-interface FormState {
+interface FormState {  // 定义接口 FormState
   name: string;
   age: number;
   email: string;
 }
 
-type FormHandlers = EventHandlers<FormState>;
+type FormHandlers = EventHandlers<FormState>;  // 定义类型别名 FormHandlers
 // {
 //   onNameChange: (value: string) => void;
 //   onAgeChange: (value: number) => void;
@@ -1881,21 +1881,21 @@ TypeScript 4.7 引入了可选的变型标注，允许在泛型类型参数上�
 
 \`\`\`ts
 // 协变：类型参数只出现在输出位置（返回值）
-interface ReadonlyList<out T> {
-  get(index: number): T;
+interface ReadonlyList<out T> {  // 定义接口 ReadonlyList，泛型参数 out T
+  get(index: number): T;  // 方法声明 get(index: number)，返回 T
   // set(index: number, value: T): void; // ❌ 协变类型不能出现在输入位置
 }
 
 // 逆变：类型参数只出现在输入位置（参数）
-interface Consumer<in T> {
-  consume(value: T): void;
+interface Consumer<in T> {  // 定义接口 Consumer，泛型参数 in T
+  consume(value: T): void;  // 方法声明 consume(value: T)，返回 void
   // get(): T; // ❌ 逆变类型不能出现在输出位置
 }
 
 // 不变：类型参数出现在输入和输出位置（默认）
-interface List<T> {
-  get(index: number): T;
-  set(index: number, value: T): void;
+interface List<T> {  // 定义接口 List，泛型参数 T
+  get(index: number): T;  // 方法声明 get(index: number)，返回 T
+  set(index: number, value: T): void;  // 方法声明 set(index: number, value: T)，返回 void
 }
 \`\`\`
 
@@ -2290,19 +2290,19 @@ TypeScript 支持在类中声明字段的类型，这是与 JavaScript 的一个
 #### 字段声明与初始化
 
 \`\`\`ts
-class Person {
+class Person {  // 定义类 Person
   // 声明字段并指定类型
   name: string;
   age: number;
   // 声明并初始化
-  species = "Homo sapiens";
+  species = "Homo sapiens";  // 赋值 species
   // 声明但不初始化（需要在构造函数中赋值）
   id: number;
 
-  constructor(name: string, age: number, id: number) {
-    this.name = name;
-    this.age = age;
-    this.id = id;
+  constructor(name: string, age: number, id: number) {  // 调用 constructor
+    this.name = name;  // 赋值 this.name
+    this.age = age;  // 赋值 this.age
+    this.id = id;  // 赋值 this.id
   }
 }
 \`\`\`
@@ -2322,12 +2322,12 @@ class Person {
 TypeScript 的 \`strictPropertyInitialization\` 选项（在 \`strict\` 模式下默认开启）要求每个类字段要么在声明时初始化，要么在构造函数中赋值。如果你确定字段会在使用前被赋值，但 TypeScript 无法推断，可以使用 \`!\` 明确赋值断言：
 
 \`\`\`ts
-class Component {
+class Component {  // 定义类 Component
   // 明确赋值断言：告诉 TypeScript 这个字段会在其他地方初始化
-  container!: HTMLElement;
+  container!: HTMLElement;  // 注意：非空断言，运行时可能为空
 
-  init() {
-    this.container = document.createElement("div");
+  init() {  // 调用 init
+    this.container = document.createElement("div");  // 赋值 this.container
   }
 }
 \`\`\`
@@ -2339,15 +2339,15 @@ class Component {
 #### 基本用法
 
 \`\`\`ts
-class Config {
-  readonly apiUrl: string;
-  readonly maxRetries: number;
-  readonly createdAt: Date;
+class Config {  // 定义类 Config
+  readonly apiUrl: string;  // 类属性 apiUrl: string
+  readonly maxRetries: number;  // 类属性 maxRetries: number
+  readonly createdAt: Date;  // 类属性 createdAt: Date
 
-  constructor(apiUrl: string, maxRetries: number = 3) {
-    this.apiUrl = apiUrl;
-    this.maxRetries = maxRetries;
-    this.createdAt = new Date();
+  constructor(apiUrl: string, maxRetries: number = 3) {  // 调用 constructor
+    this.apiUrl = apiUrl;  // 赋值 this.apiUrl
+    this.maxRetries = maxRetries;  // 赋值 this.maxRetries
+    this.createdAt = new Date();  // 赋值 this.createdAt
   }
 
   // ❌ 错误：不能在构造函数外修改 readonly 字段
@@ -2366,14 +2366,14 @@ class Config {
 \`readonly\` 只阻止**重新赋值引用**，不阻止**修改引用指向的对象**：
 
 \`\`\`ts
-class Team {
-  readonly members: string[];
+class Team {  // 定义类 Team
+  readonly members: string[];  // 类属性 members: string[]
 
-  constructor(members: string[]) {
-    this.members = members;
+  constructor(members: string[]) {  // 调用 constructor
+    this.members = members;  // 赋值 this.members
   }
 
-  addMember(name: string) {
+  addMember(name: string) {  // 调用 addMember
     this.members.push(name);  // ✅ 允许：修改对象内容，没有重新赋值
   }
 
@@ -2393,19 +2393,19 @@ TypeScript 提供了三种访问修饰符来控制类成员的可见性。
 \`public\` 是默认的访问级别，表示成员可以从任何地方访问：
 
 \`\`\`ts
-class Animal {
+class Animal {  // 定义类 Animal
   public name: string;  // public 可省略
 
   public constructor(name: string) {
-    this.name = name;
+    this.name = name;  // 赋值 this.name
   }
 
-  public move(): void {
-    console.log(\`\${this.name} 移动了\`);
+  public move(): void {  // 方法 move() 返回 void
+    console.log(\`\${this.name} 移动了\`);  // 控制台输出
   }
 }
 
-const dog = new Animal("旺财");
+const dog = new Animal("旺财");  // 声明常量 dog
 console.log(dog.name);  // ✅ 可以直接访问
 dog.move();              // ✅ 可以直接调用
 \`\`\`
@@ -2415,35 +2415,35 @@ dog.move();              // ✅ 可以直接调用
 \`private\` 成员只能在**声明它的类内部**访问，子类也不能访问：
 
 \`\`\`ts
-class BankAccount {
-  private balance: number;
+class BankAccount {  // 定义类 BankAccount
+  private balance: number;  // 类属性 balance: number
   public readonly accountNumber: string;
 
-  constructor(accountNumber: string, initialBalance: number) {
-    this.accountNumber = accountNumber;
-    this.balance = initialBalance;
+  constructor(accountNumber: string, initialBalance: number) {  // 调用 constructor
+    this.accountNumber = accountNumber;  // 赋值 this.accountNumber
+    this.balance = initialBalance;  // 赋值 this.balance
   }
 
-  deposit(amount: number): void {
-    if (amount > 0) {
+  deposit(amount: number): void {  // 方法声明 deposit(amount: number)，返回 void
+    if (amount > 0) {  // 条件判断
       this.balance += amount;
     }
   }
 
-  withdraw(amount: number): boolean {
-    if (amount > 0 && amount <= this.balance) {
+  withdraw(amount: number): boolean {  // 方法声明 withdraw(amount: number)，返回 boolean
+    if (amount > 0 && amount <= this.balance) {  // 条件判断
       this.balance -= amount;
-      return true;
+      return true;  // 返回 true
     }
-    return false;
+    return false;  // 返回 false
   }
 
-  getBalance(): number {
-    return this.balance;
+  getBalance(): number {  // 方法声明 getBalance()，返回 number
+    return this.balance;  // 返回 this.balance
   }
 }
 
-class SavingsAccount extends BankAccount {
+class SavingsAccount extends BankAccount {  // 定义类 SavingsAccount，extends BankAccount
   // ❌ 错误：子类不能访问 private 成员
   // addInterest(rate: number) {
   //   this.balance *= (1 + rate);
@@ -2456,20 +2456,20 @@ TypeScript 的 \`private\` 是**编译期**的概念——转译后的 JavaScrip
 #### ECMAScript 私有字段（#）
 
 \`\`\`ts
-class SecureVault {
+class SecureVault {  // 定义类 SecureVault
   #secretKey: string;  // 真正的运行时私有
 
-  constructor(secretKey: string) {
+  constructor(secretKey: string) {  // 调用 constructor
     this.#secretKey = secretKey;
   }
 
-  verify(key: string): boolean {
-    return this.#secretKey === key;
+  verify(key: string): boolean {  // 方法声明 verify(key: string)，返回 boolean
+    return this.#secretKey === key;  // 返回 this.#secretKey === key
   }
 
   // 私有方法
   #hashKey(key: string): string {
-    return key.split("").reverse().join("");
+    return key.split("").reverse().join("");  // 返回 key.split("").reverse().join("")
   }
 }
 \`\`\`
@@ -2484,34 +2484,34 @@ class SecureVault {
 \`protected\` 成员可以在**声明它的类及其子类**中访问，但不能在类外部访问：
 
 \`\`\`ts
-class Vehicle {
-  protected speed: number = 0;
+class Vehicle {  // 定义类 Vehicle
+  protected speed: number = 0;  // 类属性 speed: number
 
-  accelerate(amount: number): void {
+  accelerate(amount: number): void {  // 方法声明 accelerate(amount: number)，返回 void
     this.speed += amount;
   }
 
-  getSpeed(): number {
-    return this.speed;
+  getSpeed(): number {  // 方法声明 getSpeed()，返回 number
+    return this.speed;  // 返回 this.speed
   }
 }
 
-class Car extends Vehicle {
+class Car extends Vehicle {  // 定义类 Car，extends Vehicle
   // 子类可以访问 protected 成员
-  honk(): void {
-    if (this.speed > 60) {
-      console.log("超速警告！");
+  honk(): void {  // 方法声明 honk()，返回 void
+    if (this.speed > 60) {  // 条件判断
+      console.log("超速警告！");  // 控制台输出
     }
   }
 
   // 子类可以重写 protected 方法
-  boost(): void {
+  boost(): void {  // 方法声明 boost()，返回 void
     this.speed += 50;  // ✅ 子类可以访问 speed
   }
 }
 
-const car = new Car();
-car.accelerate(40);
+const car = new Car();  // 声明常量 car
+car.accelerate(40);  // 调用 car.accelerate
 // console.log(car.speed);  // ❌ 错误：外部不能访问 protected 成员
 console.log(car.getSpeed());  // ✅ 通过公共方法间接访问
 \`\`\`
@@ -2524,35 +2524,35 @@ console.log(car.getSpeed());  // ✅ 通过公共方法间接访问
 
 \`\`\`ts
 // 传统写法：字段声明 + 构造函数赋值
-class UserOld {
+class UserOld {  // 定义类 UserOld
   name: string;
   age: number;
   email: string;
 
-  constructor(name: string, age: number, email: string) {
-    this.name = name;
-    this.age = age;
-    this.email = email;
+  constructor(name: string, age: number, email: string) {  // 调用 constructor
+    this.name = name;  // 赋值 this.name
+    this.age = age;  // 赋值 this.age
+    this.email = email;  // 赋值 this.email
   }
 }
 
 // 参数属性写法：一步到位
-class User {
-  constructor(
+class User {  // 定义类 User
+  constructor(  // 调用 constructor
     public name: string,
     public age: number,
     private email: string,
-    protected role: string = "user"
+    protected role: string = "user"  // 类属性 role: string
   ) {
     // 构造函数体可以为空，赋值自动完成
   }
 
-  getEmail(): string {
+  getEmail(): string {  // 方法声明 getEmail()，返回 string
     return this.email;  // ✅ private 成员只在类内部可访问
   }
 }
 
-const user = new User("张三", 30, "zhangsan@example.com", "admin");
+const user = new User("张三", 30, "zhangsan@example.com", "admin");  // 声明常量 user
 console.log(user.name);  // ✅ public
 console.log(user.age);   // ✅ public
 // console.log(user.email); // ❌ private
@@ -2562,8 +2562,8 @@ console.log(user.age);   // ✅ public
 参数属性支持所有三种访问修饰符（\`public\`、\`private\`、\`protected\`）以及 \`readonly\`：
 
 \`\`\`ts
-class Config {
-  constructor(
+class Config {  // 定义类 Config
+  constructor(  // 调用 constructor
     public readonly host: string,
     public readonly port: number,
     private readonly secretKey: string
@@ -2578,33 +2578,33 @@ TypeScript 支持 \`get\` 和 \`set\` 存取器，允许你控制对象属性的
 #### 基本用法
 
 \`\`\`ts
-class Temperature {
-  private _celsius: number = 0;
+class Temperature {  // 定义类 Temperature
+  private _celsius: number = 0;  // 类属性 _celsius: number
 
   // getter：读取时计算
-  get celsius(): number {
-    return this._celsius;
+  get celsius(): number {  // get 访问器 celsius
+    return this._celsius;  // 返回 this._celsius
   }
 
   // setter：写入时验证
-  set celsius(value: number) {
-    if (value < -273.15) {
-      throw new Error("温度不能低于绝对零度");
+  set celsius(value: number) {  // set 访问器 celsius
+    if (value < -273.15) {  // 条件判断
+      throw new Error("温度不能低于绝对零度");  // 抛出 Error 异常
     }
-    this._celsius = value;
+    this._celsius = value;  // 赋值 this._celsius
   }
 
   // 计算属性：只读 getter
-  get fahrenheit(): number {
-    return this._celsius * 9 / 5 + 32;
+  get fahrenheit(): number {  // get 访问器 fahrenheit
+    return this._celsius * 9 / 5 + 32;  // 返回 this._celsius * 9 / 5 + 32
   }
 
-  get kelvin(): number {
-    return this._celsius + 273.15;
+  get kelvin(): number {  // get 访问器 kelvin
+    return this._celsius + 273.15;  // 返回 this._celsius + 273.15
   }
 }
 
-const temp = new Temperature();
+const temp = new Temperature();  // 声明常量 temp
 temp.celsius = 25;  // 调用 setter
 console.log(temp.celsius);     // 25（调用 getter）
 console.log(temp.fahrenheit);  // 77（计算属性）
@@ -2625,7 +2625,7 @@ TypeScript 对 getter 有以下规则：
 #### 基本语法
 
 \`\`\`ts
-abstract class Shape {
+abstract class Shape {  // 定义抽象类 Shape
   // 抽象属性（TS 4.2+）
   abstract readonly name: string;
 
@@ -2634,46 +2634,46 @@ abstract class Shape {
   abstract getPerimeter(): number;
 
   // 具体方法：子类可以继承或重写
-  describe(): string {
-    return \`\${this.name}: 面积=\${this.getArea().toFixed(2)}, 周长=\${this.getPerimeter().toFixed(2)}\`;
+  describe(): string {  // 方法声明 describe()，返回 string
+    return \`\${this.name}: 面积=\${this.getArea().toFixed(2)}, 周长=\${this.getPerimeter().toFixed(2)}\`;  // 返回 \`\${this.name}: 面积=\${this.getArea().toFixed(2)}, 周长=\${this.getPerimeter().toFixed(2)}\`
   }
 }
 
-class Circle extends Shape {
+class Circle extends Shape {  // 定义类 Circle，extends Shape
   readonly name = "圆形";
 
-  constructor(private radius: number) {
-    super();
+  constructor(private radius: number) {  // 调用 constructor
+    super();  // 调用 super
   }
 
-  getArea(): number {
-    return Math.PI * this.radius * this.radius;
+  getArea(): number {  // 方法声明 getArea()，返回 number
+    return Math.PI * this.radius * this.radius;  // 返回 Math.PI * this.radius * this.radius
   }
 
-  getPerimeter(): number {
-    return 2 * Math.PI * this.radius;
+  getPerimeter(): number {  // 方法声明 getPerimeter()，返回 number
+    return 2 * Math.PI * this.radius;  // 返回 2 * Math.PI * this.radius
   }
 }
 
-class Rectangle extends Shape {
+class Rectangle extends Shape {  // 定义类 Rectangle，extends Shape
   readonly name = "矩形";
 
-  constructor(private width: number, private height: number) {
-    super();
+  constructor(private width: number, private height: number) {  // 调用 constructor
+    super();  // 调用 super
   }
 
-  getArea(): number {
-    return this.width * this.height;
+  getArea(): number {  // 方法声明 getArea()，返回 number
+    return this.width * this.height;  // 返回 this.width * this.height
   }
 
-  getPerimeter(): number {
-    return 2 * (this.width + this.height);
+  getPerimeter(): number {  // 方法声明 getPerimeter()，返回 number
+    return 2 * (this.width + this.height);  // 返回 2 * (this.width + this.height)
   }
 }
 
 // const shape = new Shape();  // ❌ 错误：不能实例化抽象类
-const circle = new Circle(5);
-const rect = new Rectangle(4, 6);
+const circle = new Circle(5);  // 声明常量 circle
+const rect = new Rectangle(4, 6);  // 声明常量 rect
 console.log(circle.describe());  // "圆形: 面积=78.54, 周长=31.42"
 console.log(rect.describe());    // "矩形: 面积=24.00, 周长=20.00"
 \`\`\`
@@ -2691,35 +2691,35 @@ console.log(rect.describe());    // "矩形: 面积=24.00, 周长=20.00"
 #### 基本用法
 
 \`\`\`ts
-interface Printable {
-  print(): string;
-  getPageCount(): number;
+interface Printable {  // 定义接口 Printable
+  print(): string;  // 方法声明 print()，返回 string
+  getPageCount(): number;  // 方法声明 getPageCount()，返回 number
 }
 
-interface Storable {
-  save(): void;
-  load(): boolean;
+interface Storable {  // 定义接口 Storable
+  save(): void;  // 方法声明 save()，返回 void
+  load(): boolean;  // 方法声明 load()，返回 boolean
 }
 
 // 一个类可以实现多个接口
-class Document implements Printable, Storable {
-  constructor(private content: string, private pageCount: number) {}
+class Document implements Printable, Storable {  // 定义类 Document，implements Printable, Storable
+  constructor(private content: string, private pageCount: number) {}  // 调用 constructor
 
-  print(): string {
-    return this.content;
+  print(): string {  // 方法声明 print()，返回 string
+    return this.content;  // 返回 this.content
   }
 
-  getPageCount(): number {
-    return this.pageCount;
+  getPageCount(): number {  // 方法声明 getPageCount()，返回 number
+    return this.pageCount;  // 返回 this.pageCount
   }
 
-  save(): void {
-    console.log("文档已保存");
+  save(): void {  // 方法声明 save()，返回 void
+    console.log("文档已保存");  // 控制台输出
   }
 
-  load(): boolean {
-    console.log("文档已加载");
-    return true;
+  load(): boolean {  // 方法声明 load()，返回 boolean
+    console.log("文档已加载");  // 控制台输出
+    return true;  // 返回 true
   }
 }
 \`\`\`
@@ -2741,28 +2741,28 @@ class Document implements Printable, Storable {
 #### 静态属性与方法
 
 \`\`\`ts
-class MathUtils {
+class MathUtils {  // 定义类 MathUtils
   // 静态常量
   static readonly PI = Math.PI;
   static readonly E = Math.E;
 
   // 静态方法
-  static clamp(value: number, min: number, max: number): number {
-    return Math.min(Math.max(value, min), max);
+  static clamp(value: number, min: number, max: number): number {  // 方法 clamp(value: number, min: number, max: number) 返回 number
+    return Math.min(Math.max(value, min), max);  // 返回 Math.min(Math.max(value, min), max)
   }
 
-  static randomInt(min: number, max: number): number {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+  static randomInt(min: number, max: number): number {  // 方法 randomInt(min: number, max: number) 返回 number
+    return Math.floor(Math.random() * (max - min + 1)) + min;  // 返回 Math.floor(Math.random() * (max - min + 1)) + min
   }
 
   // 静态工厂方法
-  static createDefault(): MathUtils {
-    return new MathUtils();
+  static createDefault(): MathUtils {  // 方法 createDefault() 返回 MathUtils
+    return new MathUtils();  // 返回新创建的 MathUtils 实例
   }
 
   // 实例方法
-  instanceMethod(): string {
-    return "我是实例方法";
+  instanceMethod(): string {  // 方法声明 instanceMethod()，返回 string
+    return "我是实例方法";  // 返回 "我是实例方法"
   }
 }
 
@@ -2779,20 +2779,20 @@ console.log(MathUtils.randomInt(1, 10));      // 随机整数
 3. **静态成员可以被继承**，但在子类中重写静态方法时要小心 \`this\` 指向。
 
 \`\`\`ts
-class Base {
-  static greet(): string {
-    return "Hello from Base";
+class Base {  // 定义类 Base
+  static greet(): string {  // 方法 greet() 返回 string
+    return "Hello from Base";  // 返回 "Hello from Base"
   }
 
-  static create(): this {
+  static create(): this {  // 方法 create() 返回 this
     // this 指向调用时的类（可能是子类）
-    return new (this as any)();
+    return new (this as any)();  // 返回 new (this as any)()（注意：any 关闭了类型检查；注意：类型断言会绕过类型检查）
   }
 }
 
-class Derived extends Base {
-  static greet(): string {
-    return "Hello from Derived";
+class Derived extends Base {  // 定义类 Derived，extends Base
+  static greet(): string {  // 方法 greet() 返回 string
+    return "Hello from Derived";  // 返回 "Hello from Derived"
   }
 }
 
@@ -2807,41 +2807,41 @@ TypeScript 支持将 \`this\` 用作返回类型，表示"返回当前类的类�
 #### 多态 this
 
 \`\`\`ts
-class Builder {
-  private data: Record<string, any> = {};
+class Builder {  // 定义类 Builder
+  private data: Record<string, any> = {};  // 类属性 data: Record<string, any>（注意：any 关闭了类型检查）
 
-  set(key: string, value: any): this {
+  set(key: string, value: any): this {  // 方法声明 set(key: string, value: any)，返回 this（注意：any 关闭了类型检查）
     this.data[key] = value;
-    return this;
+    return this;  // 返回 this
   }
 
-  build(): Record<string, any> {
-    return { ...this.data };
+  build(): Record<string, any> {  // 方法声明 build()，返回 Record<string, any>（注意：any 关闭了类型检查）
+    return { ...this.data };  // 返回 { ...this.data }
   }
 }
 
-class AdvancedBuilder extends Builder {
-  validate(): this {
+class AdvancedBuilder extends Builder {  // 定义类 AdvancedBuilder，extends Builder
+  validate(): this {  // 方法声明 validate()，返回 this
     // 验证逻辑
-    return this;
+    return this;  // 返回 this
   }
 
-  encrypt(): this {
+  encrypt(): this {  // 方法声明 encrypt()，返回 this
     // 加密逻辑
-    return this;
+    return this;  // 返回 this
   }
 }
 
 // 多态 this 保证链式调用的类型正确
-const builder = new AdvancedBuilder();
-const result = builder
+const builder = new AdvancedBuilder();  // 声明常量 builder
+const result = builder  // 声明常量 result
   .set("name", "张三")
   .set("age", 30)
   .validate()
   .encrypt()
   .build();
 
-console.log(result);
+console.log(result);  // 控制台输出
 \`\`\`
 
 \`this\` 类型的关键特性：在子类中，\`this\` 类型会自动指向子类类型，使得链式调用保持类型正确。
@@ -2854,28 +2854,28 @@ console.log(result);
 
 \`\`\`ts
 // 类表达式：将类赋值给变量
-const MyClass = class<T> {
-  constructor(public value: T) {}
+const MyClass = class<T> {  // 声明常量 MyClass
+  constructor(public value: T) {}  // 调用 constructor
 
-  getValue(): T {
-    return this.value;
+  getValue(): T {  // 方法声明 getValue()，返回 T
+    return this.value;  // 返回 this.value
   }
 };
 
 // 使用
-const instance = new MyClass("hello");
+const instance = new MyClass("hello");  // 声明常量 instance
 console.log(instance.getValue());  // "hello"
 
 // 作为函数参数
-function createFactory(ctor: new () => any) {
-  return new ctor();
+function createFactory(ctor: new () => any) {  // 定义函数 createFactory，参数: ctor: new (（注意：any 关闭了类型检查）
+  return new ctor();  // 返回新创建的 ctor 实例
 }
 
-const obj = createFactory(
+const obj = createFactory(  // 声明常量 obj
   class {
-    name = "匿名类";
-    greet() {
-      return \`Hello, \${this.name}\`;
+    name = "匿名类";  // 赋值 name
+    greet() {  // 调用 greet
+      return \`Hello, \${this.name}\`;  // 返回 \`Hello, \${this.name}\`
     }
   }
 );
@@ -3418,19 +3418,19 @@ console.log("\\n面向对象编程章节演示完成！");`,
 
 \`\`\`ts
 // 装饰器就是一个函数
-function sealed(target: Function) {
-  Object.seal(target);
-  Object.seal(target.prototype);
+function sealed(target: Function) {  // 定义函数 sealed，参数: target: Function
+  Object.seal(target);  // 调用 Object.seal
+  Object.seal(target.prototype);  // 调用 Object.seal
 }
 
 // 使用装饰器
-@sealed
-class BugReport {
-  type = "report";
+@sealed  // 装饰器 sealed
+class BugReport {  // 定义类 BugReport
+  type = "report";  // 赋值 type
   title: string;
 
-  constructor(t: string) {
-    this.title = t;
+  constructor(t: string) {  // 调用 constructor
+    this.title = t;  // 赋值 this.title
   }
 }
 \`\`\`
@@ -3453,24 +3453,24 @@ class BugReport {
 对于同一成员上的多个装饰器，执行顺序为**从下到上**（就像数学中的函数组合）：
 
 \`\`\`ts
-function first() {
-  console.log("first(): 工厂函数求值");
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    console.log("first(): 装饰器执行");
+function first() {  // 定义函数 first
+  console.log("first(): 工厂函数求值");  // 控制台输出
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {  // 返回 function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {（注意：any 关闭了类型检查）
+    console.log("first(): 装饰器执行");  // 控制台输出
   };
 }
 
-function second() {
-  console.log("second(): 工厂函数求值");
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
-    console.log("second(): 装饰器执行");
+function second() {  // 定义函数 second
+  console.log("second(): 工厂函数求值");  // 控制台输出
+  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {  // 返回 function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {（注意：any 关闭了类型检查）
+    console.log("second(): 装饰器执行");  // 控制台输出
   };
 }
 
-class Example {
-  @first()
-  @second()
-  method() {}
+class Example {  // 定义类 Example
+  @first()  // 装饰器 first
+  @second()  // 装饰器 second
+  method() {}  // 调用 method
 }
 // 输出：
 // first(): 工厂函数求值
@@ -3487,29 +3487,29 @@ class Example {
 
 \`\`\`ts
 // 类装饰器接收构造函数作为参数
-function reportableClass<T extends new (...args: any[]) => any>(constructor: T) {
+function reportableClass<T extends new (...args: any[]) => any>(constructor: T) {  // 箭头函数（注意：any 关闭了类型检查）
   // 返回一个新的类（扩展原类）
-  return class extends constructor {
-    reportingURL = "http://www.example.com/report";
-    report() {
-      console.log(\`Reporting \${this.reportingURL}\`);
+  return class extends constructor {  // 返回 class extends constructor {
+    reportingURL = "http://www.example.com/report";  // 赋值 reportingURL
+    report() {  // 调用 report
+      console.log(\`Reporting \${this.reportingURL}\`);  // 控制台输出
     }
   };
 }
 
-@reportableClass
-class BugReport {
-  type = "report";
+@reportableClass  // 装饰器 reportableClass
+class BugReport {  // 定义类 BugReport
+  type = "report";  // 赋值 type
   title: string;
 
-  constructor(t: string) {
-    this.title = t;
+  constructor(t: string) {  // 调用 constructor
+    this.title = t;  // 赋值 this.title
   }
 }
 
 // 装饰后的类拥有了新方法和新属性
-const bug = new BugReport("Needs dark mode");
-console.log(bug.title);
+const bug = new BugReport("Needs dark mode");  // 声明常量 bug
+console.log(bug.title);  // 控制台输出
 (bug as any).report();  // 装饰器添加的方法
 console.log((bug as any).reportingURL);  // 装饰器添加的属性
 \`\`\`
@@ -3519,15 +3519,15 @@ console.log((bug as any).reportingURL);  // 装饰器添加的属性
 一个常见的类装饰器用例是防止类被扩展或修改：
 
 \`\`\`ts
-function sealed(constructor: Function) {
-  Object.seal(constructor);
-  Object.seal(constructor.prototype);
+function sealed(constructor: Function) {  // 定义函数 sealed，参数: constructor: Function
+  Object.seal(constructor);  // 调用 Object.seal
+  Object.seal(constructor.prototype);  // 调用 Object.seal
 }
 
-@sealed
-class FinalClass {
-  value = 42;
-  getValue() { return this.value; }
+@sealed  // 装饰器 sealed
+class FinalClass {  // 定义类 FinalClass
+  value = 42;  // 赋值 value
+  getValue() { return this.value; }  // 调用 getValue
 }
 \`\`\`
 
@@ -3542,35 +3542,35 @@ class FinalClass {
 
 \`\`\`ts
 function log(
-  target: any,
+  target: any,  // 注意：any 关闭了类型检查
   propertyKey: string,
   descriptor: PropertyDescriptor
 ) {
-  const originalMethod = descriptor.value;
+  const originalMethod = descriptor.value;  // 声明常量 originalMethod
 
-  descriptor.value = function (...args: any[]) {
-    console.log(\`调用 \${propertyKey}, 参数: \${JSON.stringify(args)}\`);
-    const result = originalMethod.apply(this, args);
-    console.log(\`\${propertyKey} 返回: \${JSON.stringify(result)}\`);
-    return result;
+  descriptor.value = function (...args: any[]) {  // 赋值 descriptor.value（注意：any 关闭了类型检查）
+    console.log(\`调用 \${propertyKey}, 参数: \${JSON.stringify(args)}\`);  // 控制台输出
+    const result = originalMethod.apply(this, args);  // 声明常量 result
+    console.log(\`\${propertyKey} 返回: \${JSON.stringify(result)}\`);  // 控制台输出
+    return result;  // 返回 result
   };
 
-  return descriptor;
+  return descriptor;  // 返回 descriptor
 }
 
-class Calculator {
-  @log
-  add(a: number, b: number): number {
-    return a + b;
+class Calculator {  // 定义类 Calculator
+  @log  // 装饰器 log
+  add(a: number, b: number): number {  // 方法声明 add(a: number, b: number)，返回 number
+    return a + b;  // 返回 a + b
   }
 
-  @log
-  multiply(a: number, b: number): number {
-    return a * b;
+  @log  // 装饰器 log
+  multiply(a: number, b: number): number {  // 方法声明 multiply(a: number, b: number)，返回 number
+    return a * b;  // 返回 a * b
   }
 }
 
-const calc = new Calculator();
+const calc = new Calculator();  // 声明常量 calc
 calc.add(2, 3);       // 自动打印日志
 calc.multiply(4, 5);  // 自动打印日志
 \`\`\`
@@ -3579,21 +3579,21 @@ calc.multiply(4, 5);  // 自动打印日志
 
 \`\`\`ts
 function measure(
-  target: any,
+  target: any,  // 注意：any 关闭了类型检查
   propertyKey: string,
   descriptor: PropertyDescriptor
 ) {
-  const originalMethod = descriptor.value;
+  const originalMethod = descriptor.value;  // 声明常量 originalMethod
 
-  descriptor.value = function (...args: any[]) {
-    const start = performance.now();
-    const result = originalMethod.apply(this, args);
-    const end = performance.now();
-    console.log(\`\${propertyKey} 执行耗时: \${(end - start).toFixed(2)}ms\`);
-    return result;
+  descriptor.value = function (...args: any[]) {  // 赋值 descriptor.value（注意：any 关闭了类型检查）
+    const start = performance.now();  // 声明常量 start
+    const result = originalMethod.apply(this, args);  // 声明常量 result
+    const end = performance.now();  // 声明常量 end
+    console.log(\`\${propertyKey} 执行耗时: \${(end - start).toFixed(2)}ms\`);  // 控制台输出
+    return result;  // 返回 result
   };
 
-  return descriptor;
+  return descriptor;  // 返回 descriptor
 }
 \`\`\`
 
@@ -3609,47 +3609,47 @@ function measure(
 
 \`\`\`ts
 // 属性装饰器：标记必填字段
-const requiredMetadataKey = Symbol("required");
+const requiredMetadataKey = Symbol("required");  // 声明常量 requiredMetadataKey
 
-function required(target: any, propertyKey: string) {
+function required(target: any, propertyKey: string) {  // 定义函数 required，参数: target: any, propertyKey: string（注意：any 关闭了类型检查）
   // 获取已存在的必填字段列表
   const existingRequired: string[] =
-    Reflect.getOwnMetadata(requiredMetadataKey, target) || [];
+    Reflect.getOwnMetadata(requiredMetadataKey, target) || [];  // 调用 Reflect.getOwnMetadata
 
   // 添加当前字段
-  existingRequired.push(propertyKey);
+  existingRequired.push(propertyKey);  // 调用 existingRequired.push
 
   // 保存回元数据
-  Reflect.defineMetadata(requiredMetadataKey, existingRequired, target);
+  Reflect.defineMetadata(requiredMetadataKey, existingRequired, target);  // 调用 Reflect.defineMetadata
 }
 
 // 验证函数
-function validateRequired(obj: any): string[] {
-  const errors: string[] = [];
+function validateRequired(obj: any): string[] {  // 定义函数 validateRequired，参数: obj: any，返回 string[]（注意：any 关闭了类型检查）
+  const errors: string[] = [];  // 声明常量 errors，类型 string[]
   const requiredFields: string[] =
-    Reflect.getOwnMetadata(requiredMetadataKey, obj) || [];
+    Reflect.getOwnMetadata(requiredMetadataKey, obj) || [];  // 调用 Reflect.getOwnMetadata
 
-  for (const field of requiredFields) {
-    if (obj[field] === undefined || obj[field] === null || obj[field] === "") {
-      errors.push(\`\${field} 是必填项\`);
+  for (const field of requiredFields) {  // 循环
+    if (obj[field] === undefined || obj[field] === null || obj[field] === "") {  // 条件判断
+      errors.push(\`\${field} 是必填项\`);  // 调用 errors.push
     }
   }
-  return errors;
+  return errors;  // 返回 errors
 }
 
-class User {
-  @required
+class User {  // 定义类 User
+  @required  // 装饰器 required
   name: string;
 
-  @required
+  @required  // 装饰器 required
   email: string;
 
   age: number;
 
-  constructor(name: string, email: string, age: number) {
-    this.name = name;
-    this.email = email;
-    this.age = age;
+  constructor(name: string, email: string, age: number) {  // 调用 constructor
+    this.name = name;  // 赋值 this.name
+    this.email = email;  // 赋值 this.email
+    this.age = age;  // 赋值 this.age
   }
 }
 \`\`\`
@@ -3664,25 +3664,25 @@ class User {
 #### 配置保护装饰器
 
 \`\`\`ts
-function configurable(value: boolean) {
-  return function (
-    target: any,
+function configurable(value: boolean) {  // 定义函数 configurable，参数: value: boolean
+  return function (  // 返回 function (
+    target: any,  // 注意：any 关闭了类型检查
     propertyKey: string,
     descriptor: PropertyDescriptor
   ) {
-    descriptor.configurable = value;
+    descriptor.configurable = value;  // 赋值 descriptor.configurable
   };
 }
 
-class Point {
-  private _x: number = 0;
-  private _y: number = 0;
+class Point {  // 定义类 Point
+  private _x: number = 0;  // 类属性 _x: number
+  private _y: number = 0;  // 类属性 _y: number
 
-  @configurable(false)
-  get x() { return this._x; }
+  @configurable(false)  // 装饰器 configurable
+  get x() { return this._x; }  // get 访问器 x
 
-  @configurable(false)
-  get y() { return this._y; }
+  @configurable(false)  // 装饰器 configurable
+  get y() { return this._y; }  // get 访问器 y
 }
 \`\`\`
 
@@ -3697,12 +3697,12 @@ class Point {
 
 \`\`\`ts
 // 参数装饰器用于标记必需参数
-const requiredParamKey = Symbol("requiredParams");
+const requiredParamKey = Symbol("requiredParams");  // 声明常量 requiredParamKey
 
-function requiredParam(target: any, propertyKey: string, parameterIndex: number) {
-  const existing: number[] = Reflect.getOwnMetadata(requiredParamKey, target, propertyKey) || [];
-  existing.push(parameterIndex);
-  Reflect.defineMetadata(requiredParamKey, existing, target, propertyKey);
+function requiredParam(target: any, propertyKey: string, parameterIndex: number) {  // 定义函数 requiredParam，参数: target: any, propertyKey: string, parameterIndex: number（注意：any 关闭了类型检查）
+  const existing: number[] = Reflect.getOwnMetadata(requiredParamKey, target, propertyKey) || [];  // 声明常量 existing，类型 number[]
+  existing.push(parameterIndex);  // 调用 existing.push
+  Reflect.defineMetadata(requiredParamKey, existing, target, propertyKey);  // 调用 Reflect.defineMetadata
 }
 \`\`\`
 
@@ -3714,29 +3714,29 @@ function requiredParam(target: any, propertyKey: string, parameterIndex: number)
 
 \`\`\`ts
 // 装饰器工厂：接受配置参数，返回装饰器函数
-function logWithLevel(level: "debug" | "info" | "warn") {
-  return function (
-    target: any,
+function logWithLevel(level: "debug" | "info" | "warn") {  // 定义函数 logWithLevel，参数: level: "debug" | "info" | "warn"
+  return function (  // 返回 function (
+    target: any,  // 注意：any 关闭了类型检查
     propertyKey: string,
     descriptor: PropertyDescriptor
   ) {
-    const originalMethod = descriptor.value;
+    const originalMethod = descriptor.value;  // 声明常量 originalMethod
 
-    descriptor.value = function (...args: any[]) {
-      console.log(\`[\${level.toUpperCase()}] \${propertyKey} 被调用\`);
-      return originalMethod.apply(this, args);
+    descriptor.value = function (...args: any[]) {  // 赋值 descriptor.value（注意：any 关闭了类型检查）
+      console.log(\`[\${level.toUpperCase()}] \${propertyKey} 被调用\`);  // 控制台输出
+      return originalMethod.apply(this, args);  // 返回 originalMethod.apply(this, args)
     };
 
-    return descriptor;
+    return descriptor;  // 返回 descriptor
   };
 }
 
-class Service {
-  @logWithLevel("debug")
-  fetchData() { return "数据"; }
+class Service {  // 定义类 Service
+  @logWithLevel("debug")  // 装饰器 logWithLevel
+  fetchData() { return "数据"; }  // 调用 fetchData
 
-  @logWithLevel("warn")
-  deleteData() { return "已删除"; }
+  @logWithLevel("warn")  // 装饰器 logWithLevel
+  deleteData() { return "已删除"; }  // 调用 deleteData
 }
 \`\`\`
 
@@ -3756,26 +3756,26 @@ class Service {
 2. **装饰器函数**按从下到上的顺序**执行**（execute）
 
 \`\`\`ts
-function decoratorA() {
-  console.log("工厂 A 求值");
-  return function (...args: any[]) {
-    console.log("装饰器 A 执行");
+function decoratorA() {  // 定义函数 decoratorA
+  console.log("工厂 A 求值");  // 控制台输出
+  return function (...args: any[]) {  // 返回 function (...args: any[]) {（注意：any 关闭了类型检查）
+    console.log("装饰器 A 执行");  // 控制台输出
   };
 }
 
-function decoratorB() {
-  console.log("工厂 B 求值");
-  return function (...args: any[]) {
-    console.log("装饰器 B 执行");
+function decoratorB() {  // 定义函数 decoratorB
+  console.log("工厂 B 求值");  // 控制台输出
+  return function (...args: any[]) {  // 返回 function (...args: any[]) {（注意：any 关闭了类型检查）
+    console.log("装饰器 B 执行");  // 控制台输出
   };
 }
 
-@decoratorA()
-@decoratorB()
-class MyClass {
-  @decoratorA()
-  @decoratorB()
-  method() {}
+@decoratorA()  // 装饰器 decoratorA
+@decoratorB()  // 装饰器 decoratorB
+class MyClass {  // 定义类 MyClass
+  @decoratorA()  // 装饰器 decoratorA
+  @decoratorB()  // 装饰器 decoratorB
+  method() {}  // 调用 method
 }
 // 输出：
 // 工厂 A 求值（类装饰器）

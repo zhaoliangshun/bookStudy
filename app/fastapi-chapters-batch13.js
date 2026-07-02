@@ -40,27 +40,39 @@ export const chapters = [
 
 \`\`\`python
 # main.py —— 被测的应用
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 / 时触发
 @app.get("/")
+# 定义函数 root，参数: 
 def root():
+    # 返回 {"msg": "hello"}
     return {"msg": "hello"}
 
 # test_main.py —— 测试代码
+# 从 fastapi.testclient 导入 TestClient
 from fastapi.testclient import TestClient
+# 从 main 导入 app
 from main import app
 
 # 1. 用 app 创建一个测试客户端
+# 定义变量 client，赋值为 TestClient(app)
 client = TestClient(app)
 
+# 定义函数 test_root，参数: 
 def test_root():
     # 2. 像发真实请求一样调用 client.get
+    # 定义变量 response，赋值为 client.get("/")
     response = client.get("/")
     # 3. 断言状态码
+    # assert response.status_code == 200
     assert response.status_code == 200
     # 4. 断言返回的 JSON
+    # assert response.json() == {"msg": "hello"}
     assert response.json() == {"msg": "hello"}
 \`\`\`
 
@@ -71,29 +83,45 @@ def test_root():
 TestClient 对所有 HTTP 方法都做了封装,签名和 \`httpx\` 一致:
 
 \`\`\`python
+# 从 fastapi.testclient 导入 TestClient
 from fastapi.testclient import TestClient
+# 从 main 导入 app
 from main import app
 
+# 定义变量 client，赋值为 TestClient(app)
 client = TestClient(app)
 
+# 定义函数 test_get，参数: 
 def test_get():
     # GET 请求,query 参数用 params
+    # 定义变量 r，赋值为 client.get("/items", params={"skip": 0, "limi...
     r = client.get("/items", params={"skip": 0, "limit": 10})
+    # assert r.status_code == 200
     assert r.status_code == 200
 
+# 定义函数 test_post，参数: 
 def test_post():
     # POST 请求,请求体用 json
+    # 定义变量 r，赋值为 client.post("/items", json={"name": "苹果", "pr...
     r = client.post("/items", json={"name": "苹果", "price": 5.5})
+    # assert r.status_code == 201
     assert r.status_code == 201
+    # assert r.json()["name"] == "苹果"
     assert r.json()["name"] == "苹果"
 
+# 定义函数 test_put，参数: 
 def test_put():
     # PUT 请求,路径参数拼在 url 里
+    # 定义变量 r，赋值为 client.put("/items/1", json={"name": "香蕉", "p...
     r = client.put("/items/1", json={"name": "香蕉", "price": 3.0})
+    # assert r.status_code == 200
     assert r.status_code == 200
 
+# 定义函数 test_delete，参数: 
 def test_delete():
+    # 定义变量 r，赋值为 client.delete("/items/1")
     r = client.delete("/items/1")
+    # assert r.status_code == 204
     assert r.status_code == 204
 \`\`\`
 
@@ -112,24 +140,33 @@ def test_delete():
 FastAPI 的强项是自动校验,测试时一定要覆盖"传错参数"的场景,确保它真的返回 422:
 
 \`\`\`python
+# 从 fastapi.testclient 导入 TestClient
 from fastapi.testclient import TestClient
+# 从 main 导入 app
 from main import app
 
+# 定义变量 client，赋值为 TestClient(app)
 client = TestClient(app)
 
+# 定义函数 test_create_item_missing_name，参数: 
 def test_create_item_missing_name():
     # 故意少传 name 字段,应该被 Pydantic 拦下
     r = client.post("/items", json={"price": 5.5})  # 缺 name
     assert r.status_code == 422  # Unprocessable Entity
     # 422 的响应体里有详细的错误信息,可以进一步断言
+    # 定义变量 detail，赋值为 r.json()["detail"][0]
     detail = r.json()["detail"][0]
     assert detail["loc"] == ["body", "name"]   # 错误位置在 body.name
     assert detail["type"] == "missing"          # 类型是"缺失"
 
+# 定义函数 test_create_item_negative_price，参数: 
 def test_create_item_negative_price():
     # 价格传负数,应该被校验拦截
+    # 定义变量 r，赋值为 client.post("/items", json={"name": "苹果", "pr...
     r = client.post("/items", json={"name": "苹果", "price": -1})
+    # assert r.status_code == 422
     assert r.status_code == 422
+    # assert "greater_than_equal" in r.json()["detail"][
     assert "greater_than_equal" in r.json()["detail"][0]["type"]
 \`\`\`
 
@@ -141,43 +178,66 @@ def test_create_item_negative_price():
 
 \`\`\`python
 # main.py
+# 从 fastapi 导入 FastAPI, Depends, Header, HTTPException
 from fastapi import FastAPI, Depends, Header, HTTPException
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 模拟一个"校验 token"的依赖
+# 定义函数 verify_token，参数: x_token: str = Header(...)
 def verify_token(x_token: str = Header(...)):
+    # 条件判断：如果 x_token != "secret-token"
     if x_token != "secret-token":
+        # 抛出 HTTPException 异常: status_code=401, detail="token 无效"
         raise HTTPException(status_code=401, detail="token 无效")
+    # 返回 x_token
     return x_token
 
+# 定义 GET 路由：访问 /profile 时触发
 @app.get("/profile")
+# 定义函数 get_profile，参数: token: str = Depends(verify_token)
 def get_profile(token: str = Depends(verify_token)):
+    # 返回 {"user": "小明", "token": token}
     return {"user": "小明", "token": token}
 \`\`\`
 
 测试时直接把正确/错误的 token 塞进 header:
 
 \`\`\`python
+# 从 fastapi.testclient 导入 TestClient
 from fastapi.testclient import TestClient
+# 从 main 导入 app
 from main import app
 
+# 定义变量 client，赋值为 TestClient(app)
 client = TestClient(app)
 
+# 定义函数 test_profile_with_valid_token，参数: 
 def test_profile_with_valid_token():
+    # 定义变量 r，赋值为 client.get("/profile", headers={"X-Token": "s...
     r = client.get("/profile", headers={"X-Token": "secret-token"})
+    # assert r.status_code == 200
     assert r.status_code == 200
+    # assert r.json()["user"] == "小明"
     assert r.json()["user"] == "小明"
 
+# 定义函数 test_profile_without_token，参数: 
 def test_profile_without_token():
     # 不带 token,因为 Header(...) 是必填,会被 FastAPI 拦成 422
+    # 定义变量 r，赋值为 client.get("/profile")
     r = client.get("/profile")
+    # assert r.status_code == 422
     assert r.status_code == 422
 
+# 定义函数 test_profile_with_wrong_token，参数: 
 def test_profile_with_wrong_token():
     # 带 token 但值不对,被业务逻辑拦成 401
+    # 定义变量 r，赋值为 client.get("/profile", headers={"X-Token": "w...
     r = client.get("/profile", headers={"X-Token": "wrong"})
+    # assert r.status_code == 401
     assert r.status_code == 401
+    # assert r.json()["detail"] == "token 无效"
     assert r.json()["detail"] == "token 无效"
 \`\`\`
 
@@ -187,102 +247,173 @@ def test_profile_with_wrong_token():
 
 \`\`\`python
 # main.py
+# 从 fastapi 导入 FastAPI, HTTPException
 from fastapi import FastAPI, HTTPException
+# 从 pydantic 导入 BaseModel, Field
 from pydantic import BaseModel, Field
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 内存存储,测试时每次启动都是空的
+# 字段 _db，类型: dict[int, dict]，默认值: {}
 _db: dict[int, dict] = {}
+# 定义变量 _next_id，赋值为 1
 _next_id = 1
 
+# 定义 Pydantic 数据模型 Item，继承 BaseModel
 class Item(BaseModel):
+    # 字段 name，类型: str，默认值: Field(..., min_length=1)
     name: str = Field(..., min_length=1)
+    # 字段 price，类型: float，默认值: Field(..., gt=0)
     price: float = Field(..., gt=0)
 
+# 定义 Pydantic 数据模型 ItemOut，继承 BaseModel
 class ItemOut(BaseModel):
+    # 字段 id，类型: int
     id: int
+    # 字段 name，类型: str
     name: str
+    # 字段 price，类型: float
     price: float
 
+# 定义 GET 路由：访问 /items 时触发
 @app.get("/items", response_model=list[ItemOut])
+# 定义函数 list_items，参数: 
 def list_items():
+    # 返回 list(_db.values())
     return list(_db.values())
 
+# 定义 POST 路由：访问 /items 时触发
 @app.post("/items", response_model=ItemOut, status_code=201)
+# 定义函数 create_item，参数: item: Item
 def create_item(item: Item):
+    # global _next_id
     global _next_id
+    # 定义字典 saved
     saved = {"id": _next_id, **item.model_dump()}
+    # _db[_next_id] = saved
     _db[_next_id] = saved
+    # _next_id += 1
     _next_id += 1
+    # 返回 saved
     return saved
 
+# 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}", response_model=ItemOut)
+# 定义函数 get_item，参数: item_id: int
 def get_item(item_id: int):
+    # 条件判断：如果 item_id not in _db
     if item_id not in _db:
+        # 抛出 HTTPException 异常: status_code=404, detail="item 不存在"
         raise HTTPException(status_code=404, detail="item 不存在")
+    # 返回 _db[item_id]
     return _db[item_id]
 
+# 定义 PUT 路由：访问 /items/{item_id} 时触发
 @app.put("/items/{item_id}", response_model=ItemOut)
+# 定义函数 update_item，参数: item_id: int, item: Item
 def update_item(item_id: int, item: Item):
+    # 条件判断：如果 item_id not in _db
     if item_id not in _db:
+        # 抛出 HTTPException 异常: status_code=404, detail="item 不存在"
         raise HTTPException(status_code=404, detail="item 不存在")
+    # _db[item_id].update(item.model_dump())
     _db[item_id].update(item.model_dump())
+    # 返回 _db[item_id]
     return _db[item_id]
 
+# 定义 DELETE 路由：访问 /items/{item_id} 时触发
 @app.delete("/items/{item_id}", status_code=204)
+# 定义函数 delete_item，参数: item_id: int
 def delete_item(item_id: int):
+    # 条件判断：如果 item_id not in _db
     if item_id not in _db:
+        # 抛出 HTTPException 异常: status_code=404, detail="item 不存在"
         raise HTTPException(status_code=404, detail="item 不存在")
+    # del _db[item_id]
     del _db[item_id]
 \`\`\`
 
 \`\`\`python
 # test_crud.py
+# 从 fastapi.testclient 导入 TestClient
 from fastapi.testclient import TestClient
+# 从 main 导入 app, _db
 from main import app, _db
 
+# 定义变量 client，赋值为 TestClient(app)
 client = TestClient(app)
 
+# 定义函数 setup_function，参数: 
 def setup_function():
+    # """每个测试函数跑前清空内存,保证互不影响。"""
     """每个测试函数跑前清空内存,保证互不影响。"""
+    # 调用 _db.clear()
     _db.clear()
 
+# 定义函数 test_create_item，参数: 
 def test_create_item():
+    # 定义变量 r，赋值为 client.post("/items", json={"name": "苹果", "pr...
     r = client.post("/items", json={"name": "苹果", "price": 5.5})
+    # assert r.status_code == 201
     assert r.status_code == 201
+    # 定义变量 data，赋值为 r.json()
     data = r.json()
+    # assert data["id"] == 1
     assert data["id"] == 1
+    # assert data["name"] == "苹果"
     assert data["name"] == "苹果"
 
+# 定义函数 test_create_item_invalid，参数: 
 def test_create_item_invalid():
     # 价格为 0,违反 gt=0
+    # 定义变量 r，赋值为 client.post("/items", json={"name": "苹果", "pr...
     r = client.post("/items", json={"name": "苹果", "price": 0})
+    # assert r.status_code == 422
     assert r.status_code == 422
 
+# 定义函数 test_list_items，参数: 
 def test_list_items():
+    # 调用 client.post()
     client.post("/items", json={"name": "苹果", "price": 5.5})
+    # 调用 client.post()
     client.post("/items", json={"name": "香蕉", "price": 3.0})
+    # 定义变量 r，赋值为 client.get("/items")
     r = client.get("/items")
+    # assert r.status_code == 200
     assert r.status_code == 200
+    # assert len(r.json()) == 2
     assert len(r.json()) == 2
 
+# 定义函数 test_get_item_not_found，参数: 
 def test_get_item_not_found():
+    # 定义变量 r，赋值为 client.get("/items/999")
     r = client.get("/items/999")
+    # assert r.status_code == 404
     assert r.status_code == 404
 
+# 定义函数 test_update_then_delete，参数: 
 def test_update_then_delete():
     # 先创建
+    # 定义变量 r，赋值为 client.post("/items", json={"name": "苹果", "pr...
     r = client.post("/items", json={"name": "苹果", "price": 5.5})
+    # 定义变量 item_id，赋值为 r.json()["id"]
     item_id = r.json()["id"]
     # 再更新
+    # 定义变量 r，赋值为 client.put(f"/items/{item_id}", json={"name":...
     r = client.put(f"/items/{item_id}", json={"name": "红富士", "price": 6.0})
+    # assert r.status_code == 200
     assert r.status_code == 200
+    # assert r.json()["name"] == "红富士"
     assert r.json()["name"] == "红富士"
     # 再删除
+    # 定义变量 r，赋值为 client.delete(f"/items/{item_id}")
     r = client.delete(f"/items/{item_id}")
+    # assert r.status_code == 204
     assert r.status_code == 204
     # 删完查不到
+    # assert client.get(f"/items/{item_id}").status_code
     assert client.get(f"/items/{item_id}").status_code == 404
 \`\`\`
 
@@ -342,9 +473,11 @@ pytest 是 Python 生态里事实上的测试框架标准。对比 Python 自带
 
 \`\`\`bash
 # pytest 本体 + 用来支持 TestClient 的 httpx
+# 安装 Python 包: pytest httpx
 pip install pytest httpx
 
 # 测试 FastAPI 还需要这个,让 TestClient 能用 httpx
+# 安装 Python 包: fastapi[all]
 pip install fastapi[all]
 \`\`\`
 
@@ -358,21 +491,32 @@ pytest 的发现规则:
 
 \`\`\`python
 # test_demo.py
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 fastapi.testclient 导入 TestClient
 from fastapi.testclient import TestClient
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 / 时触发
 @app.get("/")
+# 定义函数 root，参数: 
 def root():
+    # 返回 {"hello": "world"}
     return {"hello": "world"}
 
+# 定义变量 client，赋值为 TestClient(app)
 client = TestClient(app)
 
 # 只要函数名是 test_ 开头,pytest 就会自动跑
+# 定义函数 test_root_returns_world，参数: 
 def test_root_returns_world():
+    # 定义变量 response，赋值为 client.get("/")
     response = client.get("/")
+    # assert response.status_code == 200
     assert response.status_code == 200
+    # assert response.json() == {"hello": "world"}
     assert response.json() == {"hello": "world"}
 \`\`\`
 
@@ -394,16 +538,24 @@ fixture 把这些"准备好的东西"集中定义,测试函数只要"声明我�
 
 \`\`\`python
 # conftest.py —— pytest 会自动发现这个文件,里面的 fixture 全局可用
+# 导入 pytest 模块
 import pytest
+# 从 fastapi.testclient 导入 TestClient
 from fastapi.testclient import TestClient
+# 从 main 导入 app
 from main import app
 
+# 装饰器：pytest.fixture
 @pytest.fixture
+# 定义函数 client，参数: 
 def client():
+    # """每个测试函数都能用的 TestClient。"""
     """每个测试函数都能用的 TestClient。"""
     # 准备阶段:创建客户端
+    # 定义变量 c，赋值为 TestClient(app)
     c = TestClient(app)
     # yield 之前是"准备",之后是"清理"
+    # 生成值: c
     yield c
     # 清理阶段:这里可以关连接、删数据等
     # 这个例子没有需要清理的
@@ -412,7 +564,9 @@ def client():
 \`\`\`python
 # test_items.py
 def test_list_items(client):   # 参数名 client 会被 pytest 自动注入
+    # 定义变量 r，赋值为 client.get("/items")
     r = client.get("/items")
+    # assert r.status_code == 200
     assert r.status_code == 200
 \`\`\`
 
@@ -424,15 +578,21 @@ fixture 不是每次都重新创建,\`scope\` 控制它"多久创建一次":
 
 \`\`\`python
 @pytest.fixture(scope="function")  # 默认,每个测试函数都新建一次
+# 定义函数 db，参数: 
 def db():
+    # ...
     ...
 
 @pytest.fixture(scope="module")   # 每个 .py 文件只创建一次
+# 定义函数 db，参数: 
 def db():
+    # ...
     ...
 
 @pytest.fixture(scope="session")  # 整个测试会话只创建一次(从 pytest 启动到结束)
+# 定义函数 db，参数: 
 def db():
+    # ...
     ...
 \`\`\`
 
@@ -453,59 +613,99 @@ def db():
 
 \`\`\`python
 # conftest.py
+# 导入 pytest 模块
 import pytest
+# 从 sqlalchemy 导入 create_engine
 from sqlalchemy import create_engine
+# 从 sqlalchemy.orm 导入 sessionmaker
 from sqlalchemy.orm import sessionmaker
+# 从 models 导入 Base
 from models import Base
+# 从 main 导入 app, get_db
 from main import app, get_db
 
 # 用一个独立的测试数据库(别和生产混用!)
+# 定义变量 TEST_DB_URL，赋值为 "sqlite:///./test.db"
 TEST_DB_URL = "sqlite:///./test.db"
 
+# 定义变量 engine，赋值为 create_engine(TEST_DB_URL, connect_args={"che...
 engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
+# 定义变量 TestingSession，赋值为 sessionmaker(bind=engine)
 TestingSession = sessionmaker(bind=engine)
 
+# 装饰器：pytest.fixture
 @pytest.fixture(scope="session", autouse=True)
+# 定义函数 create_tables，参数: 
 def create_tables():
+    # """整个测试会话开始时建表,结束时删表。"""
     """整个测试会话开始时建表,结束时删表。"""
+    # 调用 Base.metadata.create_all()
     Base.metadata.create_all(engine)
+    # yield
     yield
+    # 调用 Base.metadata.drop_all()
     Base.metadata.drop_all(engine)
 
+# 装饰器：pytest.fixture
 @pytest.fixture
+# 定义函数 db，参数: 
 def db():
+    # """每个测试函数用一个独立事务,跑完回滚。"""
     """每个测试函数用一个独立事务,跑完回滚。"""
+    # 定义变量 connection，赋值为 engine.connect()
     connection = engine.connect()
+    # 定义变量 transaction，赋值为 connection.begin()
     transaction = connection.begin()
+    # 定义变量 session，赋值为 TestingSession(bind=connection)
     session = TestingSession(bind=connection)
+    # 生成值: session
     yield session
+    # 调用 session.close()
     session.close()
     transaction.rollback()   # 关键:回滚,数据不真正写入
+    # 调用 connection.close()
     connection.close()
 
+# 装饰器：pytest.fixture
 @pytest.fixture
+# 定义函数 client，参数: db
 def client(db):
+    # """把上面的 db 注入到 FastAPI 里,覆盖 get_db 依赖。"""
     """把上面的 db 注入到 FastAPI 里,覆盖 get_db 依赖。"""
+    # 定义函数 override_get_db，参数: 
     def override_get_db():
+        # 尝试执行，捕获异常
         try:
+            # 生成值: db
             yield db
+        # 无论是否异常都执行
         finally:
+            # 空操作占位
             pass
+    # app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_db] = override_get_db
+    # 生成值: TestClient(app)
     yield TestClient(app)
+    # 调用 app.dependency_overrides.clear()
     app.dependency_overrides.clear()
 \`\`\`
 
 \`\`\`python
 # test_users.py
+# 定义函数 test_create_and_query，参数: client
 def test_create_and_query(client):
+    # 调用 client.post()
     client.post("/users", json={"name": "小明"})
+    # 定义变量 r，赋值为 client.get("/users")
     r = client.get("/users")
     assert len(r.json()) == 1   # 因为事务回滚,别的测试不会污染这里
 
+# 定义函数 test_empty，参数: client
 def test_empty(client):
     # 上面那个测试插的数据已经回滚了,这里应该是空的
+    # 定义变量 r，赋值为 client.get("/users")
     r = client.get("/users")
+    # assert r.json() == []
     assert r.json() == []
 \`\`\`
 
@@ -516,24 +716,36 @@ def test_empty(client):
 同一个逻辑想测多种输入?不要复制粘贴十个测试函数,用 \`@pytest.mark.parametrize\`:
 
 \`\`\`python
+# 导入 pytest 模块
 import pytest
+# 从 fastapi.testclient 导入 TestClient
 from fastapi.testclient import TestClient
+# 从 main 导入 app
 from main import app
 
+# 定义变量 client，赋值为 TestClient(app)
 client = TestClient(app)
 
 # 第一个参数是参数名列表,第二个是数据列表
+# 装饰器：pytest.mark.parametrize
 @pytest.mark.parametrize("price, should_pass", [
     (0.01, True),     # 正常价格
     (1.0, True),      # 正常价格
     (0, False),       # 价格为 0,违反 gt=0
     (-5, False),      # 负价格,违反 gt=0
+# ])
 ])
+# 定义函数 test_create_item_price_validation，参数: price, should_pass
 def test_create_item_price_validation(price, should_pass):
+    # 定义变量 r，赋值为 client.post("/items", json={"name": "x", "pri...
     r = client.post("/items", json={"name": "x", "price": price})
+    # 条件判断：如果 should_pass
     if should_pass:
+        # assert r.status_code == 201
         assert r.status_code == 201
+    # 否则执行
     else:
+        # assert r.status_code == 422
         assert r.status_code == 422
 \`\`\`
 
@@ -544,17 +756,25 @@ pytest 会自动生成 4 个测试用例,在报告里你还能看到每个用例
 fixture 可以依赖别的 fixture,pytest 会按依赖顺序自动注入:
 
 \`\`\`python
+# 装饰器：pytest.fixture
 @pytest.fixture
+# 定义函数 db，参数: 
 def db():
+    # """建一个 db session。"""
     """建一个 db session。"""
+    # 返回 make_session()
     return make_session()
 
+# 装饰器：pytest.fixture
 @pytest.fixture
 def user(db):   # 依赖 db fixture
+    # """在 db 里插一个测试用户。"""
     """在 db 里插一个测试用户。"""
+    # 返回 create_user(db, name="小明")
     return create_user(db, name="小明")
 
 def test_get_user(user):   # 拿到的是已经建好的用户
+    # assert user.name == "小明"
     assert user.name == "小明"
 \`\`\`
 
@@ -619,20 +839,32 @@ FastAPI 提供了一个超好用的机制:\`app.dependency_overrides\`。前面�
 
 \`\`\`python
 # main.py
+# 从 fastapi 导入 FastAPI, Depends
 from fastapi import FastAPI, Depends
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义函数 get_db，参数: 
 def get_db():
+    # """生产依赖:连真实 MySQL。"""
     """生产依赖:连真实 MySQL。"""
+    # 定义变量 db，赋值为 create_mysql_session()
     db = create_mysql_session()
+    # 尝试执行，捕获异常
     try:
+        # 生成值: db
         yield db
+    # 无论是否异常都执行
     finally:
+        # 调用 db.close()
         db.close()
 
+# 定义 GET 路由：访问 /users/{user_id} 时触发
 @app.get("/users/{user_id}")
+# 定义函数 get_user，参数: user_id: int, db = Depends(get_db)
 def get_user(user_id: int, db = Depends(get_db)):
+    # 返回 db.get(User, user_id)
     return db.get(User, user_id)
 \`\`\`
 
@@ -640,30 +872,47 @@ def get_user(user_id: int, db = Depends(get_db)):
 
 \`\`\`python
 # test_users.py
+# 从 fastapi.testclient 导入 TestClient
 from fastapi.testclient import TestClient
+# 从 sqlalchemy 导入 create_engine
 from sqlalchemy import create_engine
+# 从 sqlalchemy.orm 导入 sessionmaker
 from sqlalchemy.orm import sessionmaker
+# 从 main 导入 app, get_db
 from main import app, get_db
 
 # 用 SQLite 内存库,跑完就消失,完全隔离
+# 定义变量 test_engine，赋值为 create_engine("sqlite:///:memory:", connect_a...
 test_engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+# 定义变量 TestSession，赋值为 sessionmaker(bind=test_engine)
 TestSession = sessionmaker(bind=test_engine)
 
+# 定义函数 override_get_db，参数: 
 def override_get_db():
+    # """替身依赖:返回 SQLite 的 session。"""
     """替身依赖:返回 SQLite 的 session。"""
+    # 定义变量 db，赋值为 TestSession()
     db = TestSession()
+    # 尝试执行，捕获异常
     try:
+        # 生成值: db
         yield db
+    # 无论是否异常都执行
     finally:
+        # 调用 db.close()
         db.close()
 
 # 关键一步:用替身替换原来的 get_db
+# app.dependency_overrides[get_db] = override_get_db
 app.dependency_overrides[get_db] = override_get_db
 
+# 定义变量 client，赋值为 TestClient(app)
 client = TestClient(app)
 
+# 定义函数 test_get_user，参数: 
 def test_get_user():
     # 这次请求里,get_db 用的就是 SQLite 而不是 MySQL
+    # 定义变量 r，赋值为 client.get("/users/1")
     r = client.get("/users/1")
     # ...断言
 \`\`\`
@@ -671,7 +920,9 @@ def test_get_user():
 **测试结束一定要清理:**
 
 \`\`\`python
+# 定义函数 teardown_function，参数: 
 def teardown_function():
+    # 调用 app.dependency_overrides.clear()
     app.dependency_overrides.clear()
 \`\`\`
 
@@ -683,22 +934,36 @@ def teardown_function():
 
 \`\`\`python
 # main.py
+# 导入 httpx 模块
 import httpx
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义函数 send_sms，参数: phone: str, code: str
 def send_sms(phone: str, code: str):
+    # """调用第三方短信 API。"""
     """调用第三方短信 API。"""
+    # 定义变量 r，赋值为 httpx.post("https://sms.example.com/send", js...
     r = httpx.post("https://sms.example.com/send", json={"phone": phone, "code": code})
+    # 返回 r.json()
     return r.json()
 
+# 定义 POST 路由：访问 /register 时触发
 @app.post("/register")
+# 定义函数 register，参数: phone: str
 def register(phone: str):
+    # 定义变量 code，赋值为 "123456"
     code = "123456"
+    # 定义变量 result，赋值为 send_sms(phone, code)
     result = send_sms(phone, code)
+    # 条件判断：如果 result["status"] != "ok"
     if result["status"] != "ok":
+        # 返回 {"ok": False}
         return {"ok": False}
+    # 返回 {"ok": True}
     return {"ok": True}
 \`\`\`
 
@@ -710,39 +975,64 @@ def register(phone: str):
 
 \`\`\`python
 # main.py —— 重构成依赖
+# 从 fastapi 导入 FastAPI, Depends
 from fastapi import FastAPI, Depends
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义函数 get_sms_client，参数: 
 def get_sms_client():
+    # """生产依赖:返回真实 httpx 客户端。"""
     """生产依赖:返回真实 httpx 客户端。"""
+    # 返回 httpx.Client(base_url="https://sms.example.com")
     return httpx.Client(base_url="https://sms.example.com")
 
+# 定义 POST 路由：访问 /register 时触发
 @app.post("/register")
+# 定义函数 register，参数: phone: str, sms = Depends(get_sms_client)
 def register(phone: str, sms = Depends(get_sms_client)):
+    # 定义变量 code，赋值为 "123456"
     code = "123456"
+    # 定义变量 result，赋值为 sms.post("/send", json={"phone": phone, "code...
     result = sms.post("/send", json={"phone": phone, "code": code}).json()
+    # 返回 {"ok": result["status"] == "ok"}
     return {"ok": result["status"] == "ok"}
 
 # test_register.py
+# 定义类 FakeSmsClient
 class FakeSmsClient:
+    # """假短信客户端,返回固定成功。"""
     """假短信客户端,返回固定成功。"""
+    # 定义函数 post，参数: self, url, json=None
     def post(self, url, json=None):
+        # 定义类 R
         class R:
+            # 装饰器：staticmethod
             @staticmethod
+            # 定义函数 json，参数: 
             def json():
+                # 返回 {"status": "ok"}
                 return {"status": "ok"}
+        # 返回 R()
         return R()
 
+# 定义函数 override_sms，参数: 
 def override_sms():
+    # 返回 FakeSmsClient()
     return FakeSmsClient()
 
+# app.dependency_overrides[get_sms_client] = overrid
 app.dependency_overrides[get_sms_client] = override_sms
 
+# 定义变量 client，赋值为 TestClient(app)
 client = TestClient(app)
 
+# 定义函数 test_register_success，参数: 
 def test_register_success():
+    # 定义变量 r，赋值为 client.post("/register", params={"phone": "13...
     r = client.post("/register", params={"phone": "13800000000"})
+    # assert r.json() == {"ok": True}
     assert r.json() == {"ok": True}
 \`\`\`
 
@@ -753,22 +1043,32 @@ def test_register_success():
 如果不想重构代码,可以用 \`unittest.mock.patch\` 临时替换函数:
 
 \`\`\`python
+# 从 unittest.mock 导入 patch
 from unittest.mock import patch
+# 从 fastapi.testclient 导入 TestClient
 from fastapi.testclient import TestClient
+# 从 main 导入 app, send_sms
 from main import app, send_sms
 
+# 定义变量 client，赋值为 TestClient(app)
 client = TestClient(app)
 
+# 定义函数 test_register_with_mocked_sms，参数: 
 def test_register_with_mocked_sms():
     # 在这个 with 块里,send_sms 被替换成一个 MagicMock
+    # 使用上下文管理器 patch("main.send_sms")，赋值为 mock_sms
     with patch("main.send_sms") as mock_sms:
         # 设置替身被调用时返回什么
+        # mock_sms.return_value = {"status": "ok"}
         mock_sms.return_value = {"status": "ok"}
 
+        # 定义变量 r，赋值为 client.post("/register", params={"phone": "13...
         r = client.post("/register", params={"phone": "13800000000"})
+        # assert r.json() == {"ok": True}
         assert r.json() == {"ok": True}
 
         # 还能断言"被调用了,参数对不对"
+        # 调用 mock_sms.assert_called_once_with()
         mock_sms.assert_called_once_with("13800000000", "123456")
 \`\`\`
 
@@ -777,18 +1077,23 @@ def test_register_with_mocked_sms():
 \`MagicMock\` 是 \`unittest.mock\` 的核心类,它会自动模拟任何属性和方法调用:
 
 \`\`\`python
+# 从 unittest.mock 导入 MagicMock
 from unittest.mock import MagicMock
 
+# 定义变量 m，赋值为 MagicMock()
 m = MagicMock()
 m.foo()                    # 不报错,返回一个新 MagicMock
 m.bar.baz(1, 2)            # 也不报错
 m.bar.baz.assert_called_with(1, 2)   # 断言调用参数
 
 # 设置返回值
+# m.foo.return_value = 42
 m.foo.return_value = 42
+# assert m.foo() == 42
 assert m.foo() == 42
 
 # 设置抛异常
+# m.foo.side_effect = ValueError("boom")
 m.foo.side_effect = ValueError("boom")
 m.foo()   # 抛 ValueError
 \`\`\`
@@ -796,12 +1101,17 @@ m.foo()   # 抛 ValueError
 异步函数要用 \`AsyncMock\`:
 
 \`\`\`python
+# 从 unittest.mock 导入 AsyncMock, patch
 from unittest.mock import AsyncMock, patch
 
+# 定义异步函数 fetch_data，参数: 
 async def fetch_data():
+    # ...
     ...
 
+# 使用上下文管理器 patch("__main__.fetch_data", new=AsyncMock(return_value={"x": 1}))
 with patch("__main__.fetch_data", new=AsyncMock(return_value={"x": 1})):
+    # ...
     ...
 \`\`\`
 
@@ -810,23 +1120,35 @@ with patch("__main__.fetch_data", new=AsyncMock(return_value={"x": 1})):
 如果你的代码里大量用 \`httpx\` 调外部 API,推荐用 \`respx\` 这个库,它能精确 mock 路由:
 
 \`\`\`bash
+# 安装 Python 包: respx
 pip install respx
 \`\`\`
 
 \`\`\`python
+# 导入 respx 模块
 import respx
+# 导入 httpx 模块
 import httpx
 
+# 装饰器：respx.mock
 @respx.mock
+# 定义函数 test_call_external，参数: 
 def test_call_external():
     # 假装 https://api.example.com/users 返回固定数据
+    # 调用 respx.get()
     respx.get("https://api.example.com/users").respond(
+        # 定义变量 status_code，赋值为 200,
         status_code=200,
+        # 定义字典 json
         json={"id": 1, "name": "小明"},
+    # )
     )
 
+    # 定义变量 r，赋值为 httpx.get("https://api.example.com/users")
     r = httpx.get("https://api.example.com/users")
+    # assert r.status_code == 200
     assert r.status_code == 200
+    # assert r.json()["name"] == "小明"
     assert r.json()["name"] == "小明"
 \`\`\`
 
@@ -853,82 +1175,138 @@ def test_call_external():
 
 \`\`\`python
 # main.py —— 一个调外部汇率 API 的转账接口
+# 从 fastapi 导入 FastAPI, Depends, HTTPException
 from fastapi import FastAPI, Depends, HTTPException
+# 从 pydantic 导入 BaseModel
 from pydantic import BaseModel
+# 导入 httpx 模块
 import httpx
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 Pydantic 数据模型 Transfer，继承 BaseModel
 class Transfer(BaseModel):
+    # 字段 from_id，类型: int
     from_id: int
+    # 字段 to_id，类型: int
     to_id: int
+    # 字段 amount_usd，类型: float
     amount_usd: float
 
+# 定义函数 get_db，参数: 
 def get_db():
     db = create_db()           # 生产:连真实数据库
+    # 生成值: db
     yield db
 
+# 定义函数 get_rate_client，参数: 
 def get_rate_client():
+    # 返回 httpx.Client(base_url="https://api.exchangerate.com")
     return httpx.Client(base_url="https://api.exchangerate.com")
 
+# 定义 POST 路由：访问 /transfer 时触发
 @app.post("/transfer")
+# 定义函数 transfer，参数: t: Transfer, db = Depends(get_db), client = Depend...
 def transfer(t: Transfer, db = Depends(get_db), client = Depends(get_rate_client)):
     # 查汇率
+    # 定义变量 r，赋值为 client.get("/rate", params={"from": "USD", "t...
     r = client.get("/rate", params={"from": "USD", "to": "CNY"})
+    # 定义变量 rate，赋值为 r.json()["rate"]
     rate = r.json()["rate"]
+    # 条件判断：如果 rate <= 0
     if rate <= 0:
+        # 抛出 HTTPException 异常: 500, "汇率异常"
         raise HTTPException(500, "汇率异常")
     # 转账逻辑(简化)
+    # 定义变量 cny，赋值为 t.amount_usd * rate
     cny = t.amount_usd * rate
+    # 返回 {"cny": cny, "rate": rate}
     return {"cny": cny, "rate": rate}
 
 # test_transfer.py
+# 从 fastapi.testclient 导入 TestClient
 from fastapi.testclient import TestClient
+# 从 main 导入 app, get_db, get_rate_client
 from main import app, get_db, get_rate_client
 
+# 定义类 FakeDB
 class FakeDB:
+    # """假数据库,啥都不真做。"""
     """假数据库,啥都不真做。"""
+    # 定义函数 get，参数: self, *args, **kwargs
     def get(self, *args, **kwargs):
+        # 返回 None
         return None
 
+# 定义类 FakeRateClient
 class FakeRateClient:
+    # """假汇率 API 客户端。"""
     """假汇率 API 客户端。"""
+    # 定义函数 get，参数: self, url, params=None
     def get(self, url, params=None):
+        # 定义类 R
         class R:
+            # 装饰器：staticmethod
             @staticmethod
+            # 定义函数 json，参数: 
             def json():
+                # 返回 {"rate": 7.2}
                 return {"rate": 7.2}
+        # 返回 R()
         return R()
 
+# 定义函数 override_db，参数: 
 def override_db():
+    # 生成值: FakeDB()
     yield FakeDB()
 
+# 定义函数 override_rate，参数: 
 def override_rate():
+    # 返回 FakeRateClient()
     return FakeRateClient()
 
 # 用 fixture 注入替身
+# app.dependency_overrides[get_db] = override_db
 app.dependency_overrides[get_db] = override_db
+# app.dependency_overrides[get_rate_client] = overri
 app.dependency_overrides[get_rate_client] = override_rate
 
+# 定义变量 client，赋值为 TestClient(app)
 client = TestClient(app)
 
+# 定义函数 test_transfer，参数: 
 def test_transfer():
+    # 定义变量 r，赋值为 client.post("/transfer", json={"from_id": 1, ...
     r = client.post("/transfer", json={"from_id": 1, "to_id": 2, "amount_usd": 100})
+    # assert r.status_code == 200
     assert r.status_code == 200
+    # assert r.json() == {"cny": 720.0, "rate": 7.2}
     assert r.json() == {"cny": 720.0, "rate": 7.2}
 
 # 测异常分支:汇率 API 返回异常值
+# 定义类 BadRateClient
 class BadRateClient:
+    # 定义函数 get，参数: self, url, params=None
     def get(self, url, params=None):
+        # 定义类 R
         class R:
+            # 装饰器：staticmethod
             @staticmethod
+            # 定义函数 json，参数: 
             def json():
+                # 返回 {"rate": -1}
                 return {"rate": -1}
+        # 返回 R()
         return R()
 
+# 定义函数 test_transfer_bad_rate，参数: 
 def test_transfer_bad_rate():
+    # app.dependency_overrides[get_rate_client] = lambda
     app.dependency_overrides[get_rate_client] = lambda: BadRateClient()
+    # 定义变量 r，赋值为 client.post("/transfer", json={"from_id": 1, ...
     r = client.post("/transfer", json={"from_id": 1, "to_id": 2, "amount_usd": 100})
+    # assert r.status_code == 500
     assert r.status_code == 500
 \`\`\`
 
@@ -967,6 +1345,7 @@ def test_transfer_bad_rate():
 ### 52.2 安装 pytest-cov
 
 \`\`\`bash
+# 安装 Python 包: pytest-cov
 pip install pytest-cov
 \`\`\`
 
@@ -978,6 +1357,7 @@ pip install pytest-cov
 # --cov=app 表示统计 app 目录下代码的覆盖率
 # --cov-report=term 终端打印
 # --cov-report=html 生成 HTML 报告
+# pytest --cov=app --cov-report=term --cov-report=ht
 pytest --cov=app --cov-report=term --cov-report=html
 \`\`\`
 
@@ -1004,9 +1384,13 @@ TOTAL                  77     13    83%
 默认统计的是**行覆盖率**。更严格的是**分支覆盖率**:
 
 \`\`\`python
+# 定义函数 get_label，参数: score
 def get_label(score):
+    # 条件判断：如果 score >= 60
     if score >= 60:
+        # 返回 "及格"
         return "及格"
+    # 返回 "不及格"
     return "不及格"
 \`\`\`
 
@@ -1016,6 +1400,7 @@ def get_label(score):
 开启分支覆盖:
 
 \`\`\`bash
+# pytest --cov=app --cov-branch --cov-report=html
 pytest --cov=app --cov-branch --cov-report=html
 \`\`\`
 
@@ -1050,19 +1435,31 @@ pytest --cov=app --cov-branch --cov-report=html
 
 \`\`\`ini
 # .coveragerc
+# 配置段: run
 [run]
+# source = app                  # 只统计 app 目录
 source = app                  # 只统计 app 目录
+# branch = True                 # 开启分支覆盖
 branch = True                 # 开启分支覆盖
+# omit = 
 omit =
+    # app/tests/*               # 排除测试代码本身
     app/tests/*               # 排除测试代码本身
+    # app/__init__.py
     app/__init__.py
 
+# 配置段: report
 [report]
+# show_missing = True           # 报告里显示哪些行没覆盖
 show_missing = True           # 报告里显示哪些行没覆盖
+# precision = 2
 precision = 2
+# fail_under = 80               # 覆盖率低于 80% 就让命令失败(用于 CI)
 fail_under = 80               # 覆盖率低于 80% 就让命令失败(用于 CI)
 
+# 配置段: html
 [html]
+# directory = htmlcov            # HTML 报告输出目录
 directory = htmlcov            # HTML 报告输出目录
 \`\`\`
 
@@ -1074,30 +1471,53 @@ directory = htmlcov            # HTML 报告输出目录
 
 \`\`\`yaml
 # .github/workflows/test.yml
+# name: 测试与覆盖率
 name: 测试与覆盖率
 
+# on 配置段
 on:
+  # push 配置段
   push:
+    # branches: [main]
     branches: [main]
+  # pull_request 配置段
   pull_request:
+    # branches: [main]
     branches: [main]
 
+# jobs 配置段
 jobs:
+  # test 配置段
   test:
+    # runs-on: ubuntu-latest
     runs-on: ubuntu-latest
+    # steps 配置段
     steps:
+      # 列表项: uses: actions/checkout@v4
       - uses: actions/checkout@v4
+      # 列表项: name: 安装 Python
       - name: 安装 Python
+        # uses: actions/setup-python@v5
         uses: actions/setup-python@v5
+        # with 配置段
         with:
+          # python-version: "3.11"
           python-version: "3.11"
+      # 列表项: name: 安装依赖
       - name: 安装依赖
+        # run: pip install -r requirements.txt && 
         run: pip install -r requirements.txt && pip install pytest pytest-cov httpx
+      # 列表项: name: 跑测试 + 覆盖率
       - name: 跑测试 + 覆盖率
+        # run: pytest --cov=app --cov-branch --cov
         run: pytest --cov=app --cov-branch --cov-report=xml --cov-report=term
+      # 列表项: name: 上传覆盖率报告
       - name: 上传覆盖率报告
+        # uses: codecov/codecov-action@v3
         uses: codecov/codecov-action@v3
+        # with 配置段
         with:
+          # file: ./coverage.xml
           file: ./coverage.xml
 \`\`\`
 
@@ -1125,14 +1545,23 @@ jobs:
 假设有个 \`app/services.py\`:
 
 \`\`\`python
+# 定义函数 calculate_discount，参数: price, vip_level
 def calculate_discount(price, vip_level):
+    # """根据 VIP 等级算折扣。"""
     """根据 VIP 等级算折扣。"""
+    # 条件判断：如果 vip_level == 1
     if vip_level == 1:
+        # 返回 price * 0.95
         return price * 0.95
+    # 否则如果 vip_level == 2
     elif vip_level == 2:
+        # 返回 price * 0.9
         return price * 0.9
+    # 否则如果 vip_level >= 3
     elif vip_level >= 3:
+        # 返回 price * 0.8
         return price * 0.8
+    # 返回 price
     return price
 \`\`\`
 
@@ -1141,17 +1570,23 @@ def calculate_discount(price, vip_level):
 补全测试:
 
 \`\`\`python
+# 导入 pytest 模块
 import pytest
+# 从 app.services 导入 calculate_discount
 from app.services import calculate_discount
 
+# 装饰器：pytest.mark.parametrize
 @pytest.mark.parametrize("price, vip, expected", [
     (100, 0, 100),     # 非 VIP,原价
     (100, 1, 95),      # VIP1
     (100, 2, 90),      # VIP2
     (100, 3, 80),      # VIP3
     (100, 5, 80),      # VIP5,走 >=3 分支
+# ])
 ])
+# 定义函数 test_calculate_discount，参数: price, vip, expected
 def test_calculate_discount(price, vip, expected):
+    # assert calculate_discount(price, vip) == expected
     assert calculate_discount(price, vip) == expected
 \`\`\`
 

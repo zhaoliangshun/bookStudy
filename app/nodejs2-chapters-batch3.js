@@ -658,10 +658,10 @@ zlib 模块的大多数 API 都有三种形式：
 ### 3.1 gzipSync 和 gunzipSync
 
 \`\`\`javascript
-const zlib = require('zlib');
-const input = 'Hello, World! '.repeat(100);
-const compressed = zlib.gzipSync(input);
-const decompressed = zlib.gunzipSync(compressed);
+const zlib = require('zlib');  // 导入模块 zlib；require 返回 module.exports
+const input = 'Hello, World! '.repeat(100);  // 定义常量 input
+const compressed = zlib.gzipSync(input);  // 定义常量 compressed
+const decompressed = zlib.gunzipSync(compressed);  // 定义常量 decompressed
 \`\`\`
 
 类似的方法还有：\`deflateSync/inflateSync\`、\`deflateRawSync/inflateRawSync\`、\`brotliCompressSync/brotliDecompressSync\`。
@@ -1276,7 +1276,7 @@ V8 对堆内存有默认限制：
 未声明的变量会自动成为全局对象（global）的属性，永远不会被回收：
 
 \`\`\`javascript
-function leak() {
+function leak() {  // 声明函数 leak
   leaked = '我是全局变量'; // 忘记加 let/const/var
   this.alsoLeaked = '也泄漏了'; // 函数直接调用时 this 指向 global
 }
@@ -1289,11 +1289,11 @@ function leak() {
 闭包是 JavaScript 强大的特性，但也是内存泄漏的常见来源。闭包会持有外部函数作用域的引用，即使外部函数已经执行完毕。
 
 \`\`\`javascript
-function createClosure() {
-  const hugeData = new Array(1000000).fill('x');
-  return function() {
+function createClosure() {  // 声明函数 createClosure
+  const hugeData = new Array(1000000).fill('x');  // 创建实例 hugeData
+  return function() {  // 返回值
     // 即使这个函数没用到 hugeData，有些引擎可能仍会保留引用
-    console.log('closure');
+    console.log('closure');  // 打印日志到 stdout
   };
 }
 const fn = createClosure(); // hugeData 可能无法回收
@@ -1306,9 +1306,9 @@ const fn = createClosure(); // hugeData 可能无法回收
 在 EventEmitter 上添加监听器后，如果不手动移除，监听器以及它引用的变量会一直存在：
 
 \`\`\`javascript
-const emitter = new EventEmitter();
-function start() {
-  const data = loadHugeData();
+const emitter = new EventEmitter();  // 创建实例 emitter
+function start() {  // 声明函数 start
+  const data = loadHugeData();  // 定义常量 data
   emitter.on('data', () => {
     process(data); // data 被监听器引用
   });
@@ -1326,12 +1326,12 @@ start(); // 如果多次调用 start，监听器会累积，data 也无法回收
 使用普通对象或 Map 做缓存时，如果没有过期或淘汰机制，缓存会无限增长：
 
 \`\`\`javascript
-const cache = {};
-function get(key) {
-  if (!cache[key]) {
+const cache = {};  // 定义对象 cache
+function get(key) {  // 声明函数 get
+  if (!cache[key]) {  // 条件判断
     cache[key] = fetchFromDB(key);
   }
-  return cache[key];
+  return cache[key];  // 返回值
 }
 \`\`\`
 
@@ -1345,10 +1345,10 @@ function get(key) {
 \`setInterval\` 如果不 \`clearInterval\`，回调函数以及它引用的变量会一直存活：
 
 \`\`\`javascript
-function startPolling() {
-  const data = loadData();
-  setInterval(() => {
-    console.log(data);
+function startPolling() {  // 声明函数 startPolling
+  const data = loadData();  // 定义常量 data
+  setInterval(() => {  // 周期回调
+    console.log(data);  // 打印日志到 stdout
   }, 1000);
 }
 \`\`\`
@@ -1594,7 +1594,7 @@ console.log('4. Buffer 内存属于 external，不在 V8 堆中');`
 
 Node.js 内置的便捷计时方法：
 \`\`\`javascript
-console.time('label');
+console.time('label');  // 启动计时器（与 timeEnd 配对）
 // 要测量的代码
 console.timeEnd('label'); // 输出 label: xxxms
 \`\`\`

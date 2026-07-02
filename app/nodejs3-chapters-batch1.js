@@ -204,7 +204,7 @@ EventEmitter的本质是什么？非常简单——**一个对象，key是事件
 这是最巧妙的一个方法。你可能会想：once就是on一个包装函数，包装函数执行后把自己off掉。但这里有个问题：
 
 \`\`\`javascript
-const wrapper = (...args) => {
+const wrapper = (...args) => {  // 箭头函数 wrapper
   this.off(event, wrapper);  // 要能引用到wrapper自己才能移除
   fn.apply(this, args);
 };
@@ -578,9 +578,9 @@ value = 42;
 \`\`\`javascript
 promise.then(fn1).then(fn2).then(fn3)
 // 等价于
-const p1 = promise.then(fn1);
-const p2 = p1.then(fn2);
-const p3 = p2.then(fn3);
+const p1 = promise.then(fn1);  // 定义常量 p1
+const p2 = p1.then(fn2);  // 定义常量 p2
+const p3 = p2.then(fn3);  // 定义常量 p3
 \`\`\`
 
 这样每个环节的成功或失败都可以独立处理，fn1的返回值会传给p2的resolve，fn1抛出的错误会让p2reject。
@@ -1679,8 +1679,8 @@ console.log('🎉 所有深拷贝测试通过！');
 
 因为第2步——新对象的__proto__被设置为构造函数的prototype。这就是为什么：
 \`\`\`javascript
-function Person() {}
-const p = new Person();
+function Person() {}  // 声明函数 Person
+const p = new Person();  // 创建实例 p
 p.__proto__ === Person.prototype; // true
 p instanceof Person; // true，因为Person.prototype在p的原型链上
 \`\`\`
@@ -1962,9 +1962,9 @@ bind和call/apply不同：**它不立即执行函数，而是返回一个新函�
 
 什么意思？
 \`\`\`javascript
-function Person(name) { this.name = name; }
-const BoundPerson = Person.bind({ custom: 'obj' }, 'Tom');
-const p = new BoundPerson();
+function Person(name) { this.name = name; }  // 声明函数 Person
+const BoundPerson = Person.bind({ custom: 'obj' }, 'Tom');  // 定义常量 BoundPerson
+const p = new BoundPerson();  // 创建实例 p
 // p.name 应该是 'Tom'
 // p.__proto__ 应该是 Person.prototype
 // p 不是 { custom: 'obj' } 的实例

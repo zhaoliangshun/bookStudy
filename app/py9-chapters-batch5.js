@@ -20,7 +20,7 @@ export const chapters = [
 - **迭代器（Iterator）**：真正"产出下一个值"的对象。
 
 \`\`\`python
-lst = [1, 2, 3]
+lst = [1, 2, 3]  # 定义列表 lst
 it = iter(lst)      # 用 iter() 拿到迭代器
 next(it)            # 1，用 next() 取下一个
 next(it)            # 2
@@ -31,17 +31,17 @@ next(it)            # 抛 StopIteration！
 ## for 循环的等价写法
 
 \`\`\`python
-for x in [1, 2, 3]:
-    print(x)
+for x in [1, 2, 3]:  # 遍历 [1, 2, 3]，取值给 x
+    print(x)  # 打印输出到屏幕
 
 # 等价于：
-it = iter([1, 2, 3])
-while True:
-    try:
-        x = next(it)
-        print(x)
-    except StopIteration:
-        break
+it = iter([1, 2, 3])  # 赋值变量 it
+while True:  # 当 True 时循环
+    try:  # 尝试执行可能出错的代码
+        x = next(it)  # 赋值变量 x
+        print(x)  # 打印输出到屏幕
+    except StopIteration:  # 捕获异常 StopIteration:
+        break  # 跳出循环
 \`\`\`
 
 所以 \`for\` 本质就是：**拿到迭代器 → 不断 next → 直到 StopIteration**。
@@ -61,7 +61,7 @@ while True:
 ## 迭代器是"一次性"的
 
 \`\`\`python
-it = iter([1, 2, 3])
+it = iter([1, 2, 3])  # 赋值变量 it
 list(it)    # [1, 2, 3]
 list(it)    # []  ← 空了！迭代器用完即弃
 \`\`\`
@@ -191,10 +191,10 @@ print(f"  list(zip(...)): {list(zip(names, scores))}")`
 普通函数用 \`return\` 返回一个值就结束了。**生成器函数**用 \`yield\`，每次产出一个值后"暂停"，下次调用接着上次的暂停点继续。
 
 \`\`\`python
-def counter():
-    yield 1
-    yield 2
-    yield 3
+def counter():  # 定义函数 counter
+    yield 1  # 生成值：1
+    yield 2  # 生成值：2
+    yield 3  # 生成值：3
 
 g = counter()       # 调用生成器函数，得到生成器对象（不是执行！）
 next(g)             # 1
@@ -214,13 +214,13 @@ next(g)             # StopIteration
 
 \`\`\`python
 # 列表：一次性生成所有
-def squares_list(n):
-    return [i**2 for i in range(n)]
+def squares_list(n):  # 定义函数 squares_list，参数：n
+    return [i**2 for i in range(n)]  # 返回 [i**2 for i in range(n)]
 
 # 生成器：按需生成
-def squares_gen(n):
-    for i in range(n):
-        yield i**2
+def squares_gen(n):  # 定义函数 squares_gen，参数：n
+    for i in range(n):  # 遍历 range(n)，取值给 i
+        yield i**2  # 生成值：i**2
 \`\`\`
 
 生成器**省内存**——\`squares_gen(1000000)\` 不占内存，用时才算。
@@ -228,12 +228,12 @@ def squares_gen(n):
 ## yield 的执行流程
 
 \`\`\`python
-def gen():
-    print("开始")
-    yield 1
-    print("继续")
-    yield 2
-    print("结束")
+def gen():  # 定义函数 gen
+    print("开始")  # 打印输出到屏幕
+    yield 1  # 生成值：1
+    print("继续")  # 打印输出到屏幕
+    yield 2  # 生成值：2
+    print("结束")  # 打印输出到屏幕
 
 g = gen()           # 没打印（没执行）
 next(g)             # 打印"开始"，返回 1
@@ -246,7 +246,7 @@ next(g)             # 打印"结束"，抛 StopIteration
 生成器是迭代器，能直接用 \`for\`：
 
 \`\`\`python
-for x in squares_gen(5):
+for x in squares_gen(5):  # 遍历 squares_gen(5)，取值给 x
     print(x)        # 0, 1, 4, 9, 16
 \`\`\`
 
@@ -255,16 +255,16 @@ for x in squares_gen(5):
 生成器惰性，能表示"无限序列"：
 
 \`\`\`python
-def naturals():
-    n = 1
-    while True:
-        yield n
-        n += 1
+def naturals():  # 定义函数 naturals
+    n = 1  # 定义数值 n
+    while True:  # 当 True 时循环
+        yield n  # 生成值：n
+        n += 1  # n 累加
 
 # 不能 list(naturals())，会无限。但能取前 N 个
-for x in naturals():
-    if x > 5: break
-    print(x)
+for x in naturals():  # 遍历 naturals()，取值给 x
+    if x > 5: break  # 如果 x > 5
+    print(x)  # 打印输出到屏幕
 \`\`\`
 
 ## 本章 demo
@@ -421,12 +421,12 @@ print("  ← 用生成器表达式，没建 100万 的列表")`
 
 \`\`\`python
 # 这两个等价
-def gen1():
-    for x in [1, 2, 3]:
-        yield x
+def gen1():  # 定义函数 gen1
+    for x in [1, 2, 3]:  # 遍历 [1, 2, 3]，取值给 x
+        yield x  # 生成值：x
 
-def gen2():
-    yield from [1, 2, 3]
+def gen2():  # 定义函数 gen2
+    yield from [1, 2, 3]  # 生成值：from [1, 2, 3]
 \`\`\`
 
 ## 嵌套展开
@@ -434,22 +434,22 @@ def gen2():
 \`yield from\` 特别适合处理嵌套结构：
 
 \`\`\`python
-def flatten(nested):
-    for item in nested:
-        if isinstance(item, list):
+def flatten(nested):  # 定义函数 flatten，参数：nested
+    for item in nested:  # 遍历 nested，取值给 item
+        if isinstance(item, list):  # 如果 isinstance(item, list)
             yield from flatten(item)    # 递归委托
-        else:
-            yield item
+        else:  # 否则
+            yield item  # 生成值：item
 
-list(flatten([1, [2, [3, 4], 5], 6]))
+list(flatten([1, [2, [3, 4], 5], 6]))  # 转为列表
 # [1, 2, 3, 4, 5, 6]
 \`\`\`
 
 不用 \`yield from\` 得写成：
 
 \`\`\`python
-for x in flatten(item):
-    yield x
+for x in flatten(item):  # 遍历 flatten(item)，取值给 x
+    yield x  # 生成值：x
 \`\`\`
 
 ## 生成器组合
@@ -457,13 +457,13 @@ for x in flatten(item):
 把多个生成器串起来：
 
 \`\`\`python
-def odds():
-    yield 1; yield 3; yield 5
-def evens():
-    yield 2; yield 4; yield 6
-def all_nums():
-    yield from odds()
-    yield from evens()
+def odds():  # 定义函数 odds
+    yield 1; yield 3; yield 5  # 生成值：1; yield 3; yield 5
+def evens():  # 定义函数 evens
+    yield 2; yield 4; yield 6  # 生成值：2; yield 4; yield 6
+def all_nums():  # 定义函数 all_nums
+    yield from odds()  # 生成值：from odds()
+    yield from evens()  # 生成值：from evens()
 
 list(all_nums())    # [1, 3, 5, 2, 4, 6]
 \`\`\`
@@ -473,14 +473,14 @@ list(all_nums())    # [1, 3, 5, 2, 4, 6]
 \`yield from\` 还能接收子生成器的 return 值（通过 \`StopIteration.value\`）：
 
 \`\`\`python
-def sub_gen():
-    yield 1
-    yield 2
-    return "完成"
+def sub_gen():  # 定义函数 sub_gen
+    yield 1  # 生成值：1
+    yield 2  # 生成值：2
+    return "完成"  # 返回 "完成"
 
-def main_gen():
-    result = yield from sub_gen()
-    print(f"子生成器返回: {result}")
+def main_gen():  # 定义函数 main_gen
+    result = yield from sub_gen()  # 赋值变量 result
+    print(f"子生成器返回: {result}")  # 打印输出到屏幕
 \`\`\`
 
 这个特性在协程里用得多，普通场景用得少。
@@ -661,20 +661,20 @@ print(f"  1..10 → 平方 → 偶数 → 前3个: {list(pipeline)}")`
 - \`__next__(self)\`：返回下一个值，没值了抛 \`StopIteration\`
 
 \`\`\`python
-class Counter:
-    def __init__(self, low, high):
-        self.current = low
-        self.high = high
-    def __iter__(self):
-        return self
-    def __next__(self):
-        if self.current >= self.high:
-            raise StopIteration
-        x = self.current
-        self.current += 1
-        return x
+class Counter:  # 定义类 Counter
+    def __init__(self, low, high):  # 定义函数 __init__，参数：self, low, high
+        self.current = low  # 执行操作
+        self.high = high  # 执行操作
+    def __iter__(self):  # 定义函数 __iter__，参数：self
+        return self  # 返回 self
+    def __next__(self):  # 定义函数 __next__，参数：self
+        if self.current >= self.high:  # 如果 self.current >= self.high
+            raise StopIteration  # 抛出异常：StopIteration
+        x = self.current  # 赋值变量 x
+        self.current += 1  # 执行操作
+        return x  # 返回 x
 
-for x in Counter(1, 5):
+for x in Counter(1, 5):  # 遍历 Counter(1, 5)，取值给 x
     print(x)    # 1 2 3 4
 \`\`\`
 
@@ -685,27 +685,27 @@ for x in Counter(1, 5):
 如果想**可重复遍历**，分开实现：
 
 \`\`\`python
-class CounterIterable:
-    """可重复遍历的计数器"""
-    def __init__(self, low, high):
-        self.low = low
-        self.high = high
-    def __iter__(self):
+class CounterIterable:  # 定义类 CounterIterable
+    """可重复遍历的计数器"""  # 执行操作
+    def __init__(self, low, high):  # 定义函数 __init__，参数：self, low, high
+        self.low = low  # 执行操作
+        self.high = high  # 执行操作
+    def __iter__(self):  # 定义函数 __iter__，参数：self
         # 每次返回一个新的迭代器
-        return CounterIterator(self.low, self.high)
+        return CounterIterator(self.low, self.high)  # 返回 CounterIterator(self.low, self.high)
 
-class CounterIterator:
-    def __init__(self, low, high):
-        self.current = low
-        self.high = high
-    def __iter__(self):
-        return self
-    def __next__(self):
-        if self.current >= self.high:
-            raise StopIteration
-        x = self.current
-        self.current += 1
-        return x
+class CounterIterator:  # 定义类 CounterIterator
+    def __init__(self, low, high):  # 定义函数 __init__，参数：self, low, high
+        self.current = low  # 执行操作
+        self.high = high  # 执行操作
+    def __iter__(self):  # 定义函数 __iter__，参数：self
+        return self  # 返回 self
+    def __next__(self):  # 定义函数 __next__，参数：self
+        if self.current >= self.high:  # 如果 self.current >= self.high
+            raise StopIteration  # 抛出异常：StopIteration
+        x = self.current  # 赋值变量 x
+        self.current += 1  # 执行操作
+        return x  # 返回 x
 \`\`\`
 
 这样 \`CounterIterable\` 能反复 \`for\`，因为每次都新建迭代器。**range 就是这么实现的**。
@@ -907,7 +907,7 @@ print("  → 简单场景用生成器，复杂状态/可重复用类")`
 ## 无限迭代器
 
 \`\`\`python
-from itertools import count, cycle, repeat
+from itertools import count, cycle, repeat  # 从 itertools 导入 count, cycle, repeat
 
 count(10)           # 10, 11, 12, ... 无限
 count(10, 2)        # 10, 12, 14, ...
@@ -918,7 +918,7 @@ repeat("x", 3)      # x, x, x（指定次数）
 ## 累积：accumulate
 
 \`\`\`python
-from itertools import accumulate
+from itertools import accumulate  # 从 itertools 导入 accumulate
 list(accumulate([1, 2, 3, 4]))    # [1, 3, 6, 10] 累加
 list(accumulate([1, 2, 3, 4], lambda a, b: a * b))  # [1, 2, 6, 24] 累乘
 \`\`\`
@@ -926,7 +926,7 @@ list(accumulate([1, 2, 3, 4], lambda a, b: a * b))  # [1, 2, 6, 24] 累乘
 ## 链接：chain
 
 \`\`\`python
-from itertools import chain
+from itertools import chain  # 从 itertools 导入 chain
 list(chain([1, 2], [3, 4], [5]))    # [1, 2, 3, 4, 5]
 \`\`\`
 
@@ -941,10 +941,10 @@ list(chain.from_iterable([[1, 2], [3, 4]]))    # [1, 2, 3, 4]
 按 key 分组（**必须先排序**，因为只对相邻相同元素分组）：
 
 \`\`\`python
-from itertools import groupby
-data = [("A", 1), ("A", 2), ("B", 3), ("B", 4)]
-for key, group in groupby(data, key=lambda x: x[0]):
-    print(key, list(group))
+from itertools import groupby  # 从 itertools 导入 groupby
+data = [("A", 1), ("A", 2), ("B", 3), ("B", 4)]  # 定义列表 data
+for key, group in groupby(data, key=lambda x: x[0]):  # 遍历 groupby(data, key=lambda x: x[0])，取值给 key, group
+    print(key, list(group))  # 打印输出到屏幕
 # A [('A', 1), ('A', 2)]
 # B [('B', 3), ('B', 4)]
 \`\`\`
@@ -952,7 +952,7 @@ for key, group in groupby(data, key=lambda x: x[0]):
 ## 排列组合
 
 \`\`\`python
-from itertools import permutations, combinations, product
+from itertools import permutations, combinations, product  # 从 itertools 导入 permutations, combinations, product
 
 permutations([1, 2, 3])           # 全排列
 permutations([1, 2, 3], 2)        # 选 2 排列
@@ -963,7 +963,7 @@ product([1, 2], ["a", "b"])       # 笛卡尔积
 ## 切片：islice
 
 \`\`\`python
-from itertools import islice
+from itertools import islice  # 从 itertools 导入 islice
 list(islice(count(), 5))           # [0, 1, 2, 3, 4] 取前 5
 list(islice(range(100), 2, 8, 2))  # [2, 4, 6] 类似切片
 \`\`\`
@@ -971,7 +971,7 @@ list(islice(range(100), 2, 8, 2))  # [2, 4, 6] 类似切片
 ## 过滤：takewhile / dropwhile
 
 \`\`\`python
-from itertools import takewhile, dropwhile
+from itertools import takewhile, dropwhile  # 从 itertools 导入 takewhile, dropwhile
 list(takewhile(lambda x: x < 5, [1, 2, 5, 3, 4]))   # [1, 2] 取到不满足为止
 list(dropwhile(lambda x: x < 5, [1, 2, 5, 3, 4]))   # [5, 3, 4] 丢弃到不满足
 \`\`\`
@@ -1107,18 +1107,18 @@ print(f"  itertools版: {result}")`
 
 \`\`\`python
 lines = open("big.log").readlines()    # 全读进内存
-total = sum(1 for line in lines)
+total = sum(1 for line in lines)  # 赋值变量 total
 \`\`\`
 
 文件 10GB 就爆内存。用生成器：
 
 \`\`\`python
-def count_lines(path):
-    with open(path) as f:
+def count_lines(path):  # 定义函数 count_lines，参数：path
+    with open(path) as f:  # 使用上下文管理器：open(path) as f
         for line in f:                  # 一行行读
-            yield line
+            yield line  # 生成值：line
 
-total = sum(1 for _ in count_lines("big.log"))
+total = sum(1 for _ in count_lines("big.log"))  # 赋值变量 total
 \`\`\`
 
 \`open()\` 本身就是可迭代的，一行行读不占内存。
@@ -1126,33 +1126,33 @@ total = sum(1 for _ in count_lines("big.log"))
 ## 实战2：CSV 流式处理
 
 \`\`\`python
-import csv
-def process_csv(path):
-    with open(path) as f:
-        reader = csv.reader(f)
+import csv  # 导入模块 csv
+def process_csv(path):  # 定义函数 process_csv，参数：path
+    with open(path) as f:  # 使用上下文管理器：open(path) as f
+        reader = csv.reader(f)  # 赋值变量 reader
         next(reader)                    # 跳表头
-        for row in reader:
-            yield row
+        for row in reader:  # 遍历 reader，取值给 row
+            yield row  # 生成值：row
 \`\`\`
 
 ## 实战3：日志分析管道
 
 \`\`\`python
-def read_log(path):
-    with open(path) as f:
-        yield from f
+def read_log(path):  # 定义函数 read_log，参数：path
+    with open(path) as f:  # 使用上下文管理器：open(path) as f
+        yield from f  # 生成值：from f
 
-def parse_line(lines):
-    for line in lines:
-        yield line.split()
+def parse_line(lines):  # 定义函数 parse_line，参数：lines
+    for line in lines:  # 遍历 lines，取值给 line
+        yield line.split()  # 生成值：line.split()
 
-def filter_error(rows):
-    for row in rows:
-        if "ERROR" in row:
-            yield row
+def filter_error(rows):  # 定义函数 filter_error，参数：rows
+    for row in rows:  # 遍历 rows，取值给 row
+        if "ERROR" in row:  # 如果 "ERROR" in row
+            yield row  # 生成值：row
 
 # 管道：read → parse → filter → count
-errors = sum(1 for _ in filter_error(parse_line(read_log("app.log"))))
+errors = sum(1 for _ in filter_error(parse_line(read_log("app.log"))))  # 赋值变量 errors
 \`\`\`
 
 每一步都是生成器，数据"流"过去，不堆积。
@@ -1160,35 +1160,35 @@ errors = sum(1 for _ in filter_error(parse_line(read_log("app.log"))))
 ## 实战4：分批处理
 
 \`\`\`python
-def batch(iterable, size):
-    """分批，每批 size 个"""
-    batch = []
-    for item in iterable:
-        batch.append(item)
-        if len(batch) == size:
-            yield batch
-            batch = []
-    if batch:
-        yield batch
+def batch(iterable, size):  # 定义函数 batch，参数：iterable, size
+    """分批，每批 size 个"""  # 执行操作
+    batch = []  # 定义列表 batch
+    for item in iterable:  # 遍历 iterable，取值给 item
+        batch.append(item)  # 调用 batch.append()：向列表末尾添加元素
+        if len(batch) == size:  # 如果 len(batch) == size
+            yield batch  # 生成值：batch
+            batch = []  # 定义列表 batch
+    if batch:  # 如果 batch
+        yield batch  # 生成值：batch
 
-for b in batch(range(10), 3):
+for b in batch(range(10), 3):  # 遍历 batch(range(10), 3)，取值给 b
     print(b)    # [0,1,2], [3,4,5], [6,7,8], [9]
 \`\`\`
 
 ## 实战5：滑窗
 
 \`\`\`python
-def window(iterable, n):
-    """滑动窗口"""
-    from collections import deque
-    it = iter(iterable)
-    d = deque(maxlen=n)
-    for x in it:
-        d.append(x)
-        if len(d) == n:
-            yield tuple(d)
+def window(iterable, n):  # 定义函数 window，参数：iterable, n
+    """滑动窗口"""  # 执行操作
+    from collections import deque  # 从 collections 导入 deque
+    it = iter(iterable)  # 赋值变量 it
+    d = deque(maxlen=n)  # 赋值变量 d
+    for x in it:  # 遍历 it，取值给 x
+        d.append(x)  # 调用 d.append()：向列表末尾添加元素
+        if len(d) == n:  # 如果 len(d) == n
+            yield tuple(d)  # 生成值：tuple(d)
 
-for w in window([1,2,3,4,5], 3):
+for w in window([1,2,3,4,5], 3):  # 遍历 window([1,2,3,4,5], 3)，取值给 w
     print(w)    # (1,2,3), (2,3,4), (3,4,5)
 \`\`\`
 
@@ -1409,17 +1409,17 @@ print(f"  用 islice: {list(islice(primes(), 10))}")`
 
 \`\`\`python
 # 遍历键值对
-{v: k for k, v in pairs}
+{v: k for k, v in pairs}  # 字典推导式
 # 遍历二维
-[abs(x) for row in matrix for x in row]
+[abs(x) for row in matrix for x in row]  # 列表推导式
 \`\`\`
 
 ## 嵌套推导式
 
 \`\`\`python
 # 矩阵转置
-matrix = [[1, 2, 3], [4, 5, 6]]
-[[row[i] for row in matrix] for i in range(len(matrix[0]))]
+matrix = [[1, 2, 3], [4, 5, 6]]  # 定义列表 matrix
+[[row[i] for row in matrix] for i in range(len(matrix[0]))]  # 列表推导式
 # [[1, 4], [2, 5], [3, 6]]
 \`\`\`
 
@@ -1429,12 +1429,12 @@ matrix = [[1, 2, 3], [4, 5, 6]]
 
 \`\`\`python
 # 这两个等价
-[x for row in matrix for x in row]
+[x for row in matrix for x in row]  # 列表推导式
 # 等价于
-result = []
-for row in matrix:
-    for x in row:
-        result.append(x)
+result = []  # 定义列表 result
+for row in matrix:  # 遍历 matrix，取值给 row
+    for x in row:  # 遍历 row，取值给 x
+        result.append(x)  # 调用 result.append()：向列表末尾添加元素
 \`\`\`
 
 顺序：**左到右对应外到内**。\`[x for a in A for b in B]\` 相当于 \`for a: for b:\`。
@@ -1443,9 +1443,9 @@ for row in matrix:
 
 \`\`\`python
 # if 在后面：过滤
-[x for x in nums if x > 0]
+[x for x in nums if x > 0]  # 列表推导式
 # if 在前面：三元表达式
-[x if x > 0 else 0 for x in nums]
+[x if x > 0 else 0 for x in nums]  # 列表推导式
 \`\`\`
 
 位置不同含义不同：
@@ -1465,9 +1465,9 @@ for row in matrix:
 
 \`\`\`python
 # 建列表（占内存）
-[x**2 for x in range(10**6)]
+[x**2 for x in range(10**6)]  # 列表推导式
 # 生成器（省内存）
-(x**2 for x in range(10**6))
+(x**2 for x in range(10**6))  # 生成器表达式
 \`\`\`
 
 规则：
@@ -1478,11 +1478,11 @@ for row in matrix:
 
 \`\`\`python
 # ❌ 难读
-result = [f(x) for x in xs if g(x) > 0 for y in ys if h(y) ...]
+result = [f(x) for x in xs if g(x) > 0 for y in ys if h(y) ...]  # 定义列表 result
 
 # ✅ 拆开
-temp = [f(x) for x in xs if g(x) > 0]
-result = [do(x, y) for x in temp for y in ys if h(y)]
+temp = [f(x) for x in xs if g(x) > 0]  # 定义列表 temp
+result = [do(x, y) for x in temp for y in ys if h(y)]  # 定义列表 result
 \`\`\`
 
 ## 本章 demo

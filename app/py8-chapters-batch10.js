@@ -33,41 +33,41 @@ Python 标准库自带 \`sqlite3\` 模块，无需额外安装。
 ### 连接数据库
 
 \`\`\`python
-import sqlite3
+import sqlite3  # 导入模块 sqlite3
 
 # 连接文件数据库（不存在则自动创建）
-conn = sqlite3.connect("mydb.db")
+conn = sqlite3.connect("mydb.db")  # 赋值变量 conn
 
 # 连接内存数据库（速度快，程序退出后消失）
-conn = sqlite3.connect(":memory:")
+conn = sqlite3.connect(":memory:")  # 赋值变量 conn
 \`\`\`
 
 ### 游标与执行
 
 \`\`\`python
-cursor = conn.cursor()
-cursor.execute("CREATE TABLE users (id INTEGER, name TEXT)")
-cursor.execute("INSERT INTO users VALUES (1, '小明')")
-conn.commit()
+cursor = conn.cursor()  # 赋值变量 cursor
+cursor.execute("CREATE TABLE users (id INTEGER, name TEXT)")  # 调用 cursor.execute()
+cursor.execute("INSERT INTO users VALUES (1, '小明')")  # 调用 cursor.execute()
+conn.commit()  # 调用 conn.commit()
 \`\`\`
 
 ### 参数化查询（防 SQL 注入）
 
 \`\`\`python
 # ❌ 危险：字符串拼接
-name = "'; DROP TABLE users; --"
-cursor.execute(f"SELECT * FROM users WHERE name='{name}'")
+name = "'; DROP TABLE users; --"  # 定义字符串 name
+cursor.execute(f"SELECT * FROM users WHERE name='{name}'")  # 调用 cursor.execute()
 
 # ✅ 安全：参数化查询，用 ? 占位
-cursor.execute("SELECT * FROM users WHERE name=?", (name,))
+cursor.execute("SELECT * FROM users WHERE name=?", (name,))  # 调用 cursor.execute()
 \`\`\`
 
 ### 使用 with 语句自动管理
 
 \`\`\`python
 # with 会帮你自动 commit 或 rollback
-with sqlite3.connect(":memory:") as conn:
-    conn.execute("CREATE TABLE ...")
+with sqlite3.connect(":memory:") as conn:  # 使用上下文管理器：sqlite3.connect(":memory:") as conn
+    conn.execute("CREATE TABLE ...")  # 调用 conn.execute()
     # 如果出异常自动 rollback，正常则 commit
 \`\`\`
 
@@ -76,7 +76,7 @@ with sqlite3.connect(":memory:") as conn:
 \`\`\`python
 # 默认返回元组
 conn.row_factory = sqlite3.Row  # 返回可按键访问的 Row 对象
-row = cursor.fetchone()
+row = cursor.fetchone()  # 赋值变量 row
 print(row["name"])  # 像字典一样访问
 \`\`\`
 
@@ -574,8 +574,8 @@ ORM（Object-Relational Mapping，对象关系映射）是一种**用面向对�
 
 \`\`\`python
 # 没有 ORM：写 SQL 字符串
-cursor.execute("SELECT * FROM users WHERE id = ?", (1,))
-user = cursor.fetchone()
+cursor.execute("SELECT * FROM users WHERE id = ?", (1,))  # 调用 cursor.execute()
+user = cursor.fetchone()  # 赋值变量 user
 print(user[1])  # 用索引访问字段，容易出错
 
 # 有 ORM：用对象操作
@@ -922,12 +922,12 @@ print("   SQL 操作映射为方法调用，让数据库操作更 Pythonic。")`
 必须以 \`test_\` 开头，unittest 才会自动发现：
 
 \`\`\`python
-class TestMath(unittest.TestCase):
+class TestMath(unittest.TestCase):  # 定义类 TestMath
     def test_add(self):        # ✅ 会被执行
-        self.assertEqual(1+2, 3)
+        self.assertEqual(1+2, 3)  # 调用 self.assertEqual()
 
     def helper_method(self):   # ❌ 不会被执行（没有 test_ 前缀）
-        pass
+        pass  # 空操作，占位符
 \`\`\`
 
 ### 断言方法一览
@@ -1142,11 +1142,11 @@ pytest 是 Python 社区最流行的测试框架，比 unittest 更简洁、更�
 
 \`\`\`python
 # 不需要 import unittest！
-def test_addition():
+def test_addition():  # 定义函数 test_addition
     assert 1 + 2 == 3                    # 原生 assert 即可
 
-def test_string():
-    assert "hello".upper() == "HELLO"
+def test_string():  # 定义函数 test_string
+    assert "hello".upper() == "HELLO"  # 断言："hello".upper() == "HELLO"
 \`\`\`
 
 ### fixture 固件
@@ -1154,12 +1154,12 @@ def test_string():
 fixture 是 pytest 中最强大的概念，用于**准备测试数据和环境**：
 
 \`\`\`python
-import pytest
+import pytest  # 导入模块 pytest
 
-@pytest.fixture
-def db():
-    """创建测试数据库"""
-    conn = sqlite3.connect(":memory:")
+@pytest.fixture  # 应用装饰器 pytest
+def db():  # 定义函数 db
+    """创建测试数据库"""  # 执行操作
+    conn = sqlite3.connect(":memory:")  # 赋值变量 conn
     # 创建表...
     yield conn          # 提供给测试
     conn.close()        # 测试后清理
@@ -1174,29 +1174,29 @@ def db():
 一条测试逻辑，多组数据：
 
 \`\`\`python
-@pytest.mark.parametrize("a,b,expected", [
-    (1, 2, 3),
-    (0, 0, 0),
-    (-1, 1, 0),
+@pytest.mark.parametrize("a,b,expected", [  # 应用装饰器 pytest
+    (1, 2, 3),  # 执行操作
+    (0, 0, 0),  # 执行操作
+    (-1, 1, 0),  # 执行操作
 ])
-def test_add(a, b, expected):
-    assert a + b == expected
+def test_add(a, b, expected):  # 定义函数 test_add，参数：a, b, expected
+    assert a + b == expected  # 断言：a + b == expected
 \`\`\`
 
 ### mark 标记
 
 \`\`\`python
 @pytest.mark.slow     # 自定义标记
-@pytest.mark.skip(reason="暂不测试")
-@pytest.mark.xfail(reason="已知bug")
+@pytest.mark.skip(reason="暂不测试")  # 应用装饰器 pytest
+@pytest.mark.xfail(reason="已知bug")  # 应用装饰器 pytest
 \`\`\`
 
 ### pytest.raises 异常测试
 
 \`\`\`python
-def test_zero_division():
-    with pytest.raises(ZeroDivisionError):
-        1 / 0
+def test_zero_division():  # 定义函数 test_zero_division
+    with pytest.raises(ZeroDivisionError):  # 使用上下文管理器：pytest.raises(ZeroDivisionError)
+        1 / 0  # 执行操作
 \`\`\`
 
 ### 测试覆盖率
@@ -1489,17 +1489,17 @@ mock（测试替身）是单元测试中**模拟外部依赖**的技术。当被
 
 \`\`\`python
 # 装饰器方式
-@patch("module.requests.get")
-def test_fetch(mock_get):
-    mock_get.return_value.json.return_value = {"key": "value"}
-    result = fetch_data()
-    mock_get.assert_called_once()
+@patch("module.requests.get")  # 应用装饰器 patch
+def test_fetch(mock_get):  # 定义函数 test_fetch，参数：mock_get
+    mock_get.return_value.json.return_value = {"key": "value"}  # 执行操作
+    result = fetch_data()  # 赋值变量 result
+    mock_get.assert_called_once()  # 调用 mock_get.assert_called_once()
 
 # 上下文管理器方式
-def test_fetch():
-    with patch("module.requests.get") as mock_get:
-        mock_get.return_value.status_code = 200
-        result = fetch_data()
+def test_fetch():  # 定义函数 test_fetch
+    with patch("module.requests.get") as mock_get:  # 使用上下文管理器：patch("module.requests.get") as mock_get
+        mock_get.return_value.status_code = 200  # 执行操作
+        result = fetch_data()  # 赋值变量 result
 \`\`\`
 
 ### 常见 mock 场景
@@ -1515,13 +1515,13 @@ def test_fetch():
 
 \`\`\`python
 # 每次调用返回不同值
-mock.side_effect = [1, 2, 3]
+mock.side_effect = [1, 2, 3]  # 执行操作
 
 # 抛出异常
-mock.side_effect = ValueError("出错了")
+mock.side_effect = ValueError("出错了")  # 执行操作
 
 # 执行函数
-mock.side_effect = lambda x: x * 2
+mock.side_effect = lambda x: x * 2  # 执行操作
 \`\`\`
 
 下面的 demo 完整演示 mock 的各种用法，包括 mock 网络请求、文件操作、环境变量等。`,
@@ -1774,37 +1774,37 @@ print("  4. 过度 mock 是测试坏味道，考虑重构代码")`
 ### 基本类型注解
 
 \`\`\`python
-name: str = "小明"
-age: int = 18
-score: float = 95.5
-is_active: bool = True
+name: str = "小明"  # 执行操作
+age: int = 18  # 执行操作
+score: float = 95.5  # 执行操作
+is_active: bool = True  # 执行操作
 \`\`\`
 
 ### 函数类型注解
 
 \`\`\`python
-def greet(name: str) -> str:
-    return f"你好，{name}！"
+def greet(name: str) -> str:  # 定义函数 greet，参数：name: str
+    return f"你好，{name}！"  # 返回 f"你好，{name}！"
 
-def add(a: int, b: int) -> int:
-    return a + b
+def add(a: int, b: int) -> int:  # 定义函数 add，参数：a: int, b: int
+    return a + b  # 返回 a + b
 \`\`\`
 
 ### 泛型容器类型
 
 \`\`\`python
-from typing import List, Dict, Tuple, Set, Optional, Union
+from typing import List, Dict, Tuple, Set, Optional, Union  # 从 typing 导入 List, Dict, Tuple, Set, Optional, Union
 
-names: List[str] = ["小明", "小红"]
-scores: Dict[str, int] = {"小明": 95, "小红": 88}
-point: Tuple[int, int] = (10, 20)
-tags: Set[str] = {"Python", "TypeScript"}
+names: List[str] = ["小明", "小红"]  # 执行操作
+scores: Dict[str, int] = {"小明": 95, "小红": 88}  # 执行操作
+point: Tuple[int, int] = (10, 20)  # 执行操作
+tags: Set[str] = {"Python", "TypeScript"}  # 执行操作
 
 # Optional[X] = Union[X, None]
 user: Optional[str] = None  # 可能为 None
 
 # Union：多种类型之一
-value: Union[int, str] = "hello"
+value: Union[int, str] = "hello"  # 执行操作
 value = 42  # 也可以
 \`\`\`
 
@@ -1825,13 +1825,13 @@ value = 42  # 也可以
 ### 泛型函数
 
 \`\`\`python
-from typing import TypeVar
+from typing import TypeVar  # 从 typing 导入 TypeVar
 
-T = TypeVar("T")
+T = TypeVar("T")  # 赋值变量 T
 
-def first(items: List[T]) -> T:
-    """返回列表第一个元素，类型不变"""
-    return items[0]
+def first(items: List[T]) -> T:  # 定义函数 first，参数：items: List[T]
+    """返回列表第一个元素，类型不变"""  # 执行操作
+    return items[0]  # 返回 items[0]
 
 x = first([1, 2, 3])     # x 类型推断为 int
 y = first(["a", "b"])     # y 类型推断为 str
@@ -2125,33 +2125,33 @@ Python 以开发效率高著称，但运行速度可能不如 C/Java。当你需
 ### timeit 精确计时
 
 \`\`\`python
-import timeit
+import timeit  # 导入模块 timeit
 
 # 计时一段代码
-t = timeit.timeit("sum(range(1000))", number=10000)
-print(f"执行 10000 次，总耗时 {t:.4f} 秒")
+t = timeit.timeit("sum(range(1000))", number=10000)  # 赋值变量 t
+print(f"执行 10000 次，总耗时 {t:.4f} 秒")  # 打印输出到屏幕
 
 # 计时函数
-t = timeit.timeit(lambda: my_func(), number=1000)
+t = timeit.timeit(lambda: my_func(), number=1000)  # 赋值变量 t
 \`\`\`
 
 ### cProfile 性能分析
 
 \`\`\`python
-import cProfile
-cProfile.run("my_function()", sort="cumtime")
+import cProfile  # 导入模块 cProfile
+cProfile.run("my_function()", sort="cumtime")  # 调用 cProfile.run()：运行
 \`\`\`
 
 ### lru_cache 缓存
 
 \`\`\`python
-from functools import lru_cache
+from functools import lru_cache  # 从 functools 导入 lru_cache
 
-@lru_cache(maxsize=128)
-def fib(n):
-    if n < 2:
-        return n
-    return fib(n-1) + fib(n-2)
+@lru_cache(maxsize=128)  # 应用装饰器 lru_cache
+def fib(n):  # 定义函数 fib，参数：n
+    if n < 2:  # 如果 n < 2
+        return n  # 返回 n
+    return fib(n-1) + fib(n-2)  # 返回 fib(n-1) + fib(n-2)
 \`\`\`
 
 下面的 demo 用多种工具对比不同写法的性能，直观展示优化效果。`,
@@ -2435,51 +2435,51 @@ print("✅ 性能分析与优化演示完成！")`
 ### pdb.set_trace() 设置断点
 
 \`\`\`python
-import pdb
+import pdb  # 导入模块 pdb
 
-def buggy_function(x):
-    result = x * 2
+def buggy_function(x):  # 定义函数 buggy_function，参数：x
+    result = x * 2  # 赋值变量 result
     pdb.set_trace()  # 程序停在这里，进入交互模式
-    result += 10
-    return result
+    result += 10  # result 累加
+    return result  # 返回 result
 \`\`\`
 
 ### traceback 模块
 
 \`\`\`python
-import traceback
+import traceback  # 导入模块 traceback
 
-try:
-    1 / 0
-except:
+try:  # 尝试执行可能出错的代码
+    1 / 0  # 执行操作
+except:  # 捕获异常
     traceback.print_exc()  # 打印完整异常回溯
     # 或获取字符串
-    info = traceback.format_exc()
+    info = traceback.format_exc()  # 赋值变量 info
 \`\`\`
 
 ### logging 分级调试
 
 \`\`\`python
-import logging
-logging.basicConfig(level=logging.DEBUG)
+import logging  # 导入模块 logging
+logging.basicConfig(level=logging.DEBUG)  # 调用 logging.basicConfig()
 
-logging.debug("详细调试信息")
-logging.info("一般信息")
-logging.warning("警告信息")
-logging.error("错误信息")
-logging.critical("严重错误")
+logging.debug("详细调试信息")  # 调用 logging.debug()
+logging.info("一般信息")  # 调用 logging.info()
+logging.warning("警告信息")  # 调用 logging.warning()
+logging.error("错误信息")  # 调用 logging.error()
+logging.critical("严重错误")  # 调用 logging.critical()
 \`\`\`
 
 ### sys.excepthook 全局异常捕获
 
 \`\`\`python
-import sys
+import sys  # 导入模块 sys
 
-def my_excepthook(type, value, tb):
-    print(f"捕获到未处理异常: {type.__name__}: {value}")
-    traceback.print_tb(tb)
+def my_excepthook(type, value, tb):  # 定义函数 my_excepthook，参数：type, value, tb
+    print(f"捕获到未处理异常: {type.__name__}: {value}")  # 打印输出到屏幕
+    traceback.print_tb(tb)  # 调用 traceback.print_tb()
 
-sys.excepthook = my_excepthook
+sys.excepthook = my_excepthook  # 执行操作
 \`\`\`
 
 > ⚠️ pdb 是交互式工具，在沙箱中无法真正交互。下面的 demo 用 Python 模拟 pdb 的核心功能，并展示 traceback、logging 等调试技巧的实际用法。`,

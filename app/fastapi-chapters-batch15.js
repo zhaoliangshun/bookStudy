@@ -19,6 +19,7 @@ export const chapters = [
 开发时大家都这么跑:
 
 \`\`\`bash
+# uvicorn app.main:app --reload --port 8000
 uvicorn app.main:app --reload --port 8000
 \`\`\`
 
@@ -49,6 +50,7 @@ Gunicorn(主进程)
 ### 57.3 安装
 
 \`\`\`bash
+# 安装 Python 包: gunicorn uvicorn[standard]
 pip install gunicorn uvicorn[standard]
 \`\`\`
 
@@ -58,6 +60,7 @@ pip install gunicorn uvicorn[standard]
 # -k 指定 worker 类,用 UvicornWorker 让它支持 ASGI
 # -w 指定 worker 数量
 # -b 指定监听地址端口
+# gunicorn app.main:app -k uvicorn.workers.UvicornWo
 gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 4 -b 0.0.0.0:8000
 \`\`\`
 
@@ -69,6 +72,7 @@ gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 4 -b 0.0.0.0:8000
 
 \`\`\`bash
 # 4 核机器 → 9 个 worker
+# gunicorn app.main:app -k uvicorn.workers.UvicornWo
 gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 9 -b 0.0.0.0:8000
 \`\`\`
 
@@ -85,34 +89,44 @@ gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 9 -b 0.0.0.0:8000
 
 \`\`\`python
 # gunicorn.conf.py
+# 导入 multiprocessing 模块
 import multiprocessing
 
 # 监听
+# 定义变量 bind，赋值为 "0.0.0.0:8000"
 bind = "0.0.0.0:8000"
 
 # worker
+# 定义变量 workers，赋值为 multiprocessing.cpu_count() * 2 + 1
 workers = multiprocessing.cpu_count() * 2 + 1
+# 定义变量 worker_class，赋值为 "uvicorn.workers.UvicornWorker"
 worker_class = "uvicorn.workers.UvicornWorker"
 
 # 超时:worker 处理一个请求超过这个时间,Gunicorn 重启它
+# 定义变量 timeout，赋值为 120
 timeout = 120
 
 # 优雅停机:收到停止信号后,给 worker 多少秒处理完现有请求
+# 定义变量 graceful_timeout，赋值为 30
 graceful_timeout = 30
 
 # 保持连接:worker 处理完请求后等多少秒复用连接
+# 定义变量 keepalive，赋值为 5
 keepalive = 5
 
 # 预加载:启动 worker 前先加载 app 一次,worker fork 复用
 # 好处:省内存、模型只加载一次
+# 定义变量 preload_app，赋值为 True
 preload_app = True
 
 # 日志
 accesslog = "-"          # 访问日志输出到控制台
 errorlog = "-"           # 错误日志输出到控制台
+# 定义变量 loglevel，赋值为 "info"
 loglevel = "info"
 
 # 进程名(便于 ps 查看)
+# 定义变量 proc_name，赋值为 "myapp"
 proc_name = "myapp"
 
 # 最大并发(异步 worker 用不上,WSGI 才用)
@@ -123,6 +137,7 @@ proc_name = "myapp"
 启动:
 
 \`\`\`bash
+# gunicorn app.main:app -c gunicorn.conf.py
 gunicorn app.main:app -c gunicorn.conf.py
 \`\`\`
 
@@ -152,12 +167,15 @@ gunicorn app.main:app -c gunicorn.conf.py
 
 \`\`\`bash
 # 找到主进程 PID
+# ps aux | grep gunicorn | grep master
 ps aux | grep gunicorn | grep master
 
 # 发停止信号
+# 终止进程
 kill -TERM <主进程PID>
 
 # 或者更简单(如果你用 systemd)
+# systemctl stop myapp
 systemctl stop myapp
 \`\`\`
 
@@ -174,9 +192,11 @@ systemctl stop myapp
 
 \`\`\`bash
 # 方式 A:Gunicorn + UvicornWorker(推荐)
+# gunicorn app.main:app -k uvicorn.workers.UvicornWo
 gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 4
 
 # 方式 B:Uvicorn 自带多 worker(简单但管理弱)
+# uvicorn app.main:app --workers 4 --host 0.0.0.0 --
 uvicorn app.main:app --workers 4 --host 0.0.0.0 --port 8000
 \`\`\`
 
@@ -188,37 +208,54 @@ uvicorn app.main:app --workers 4 --host 0.0.0.0 --port 8000
 
 \`\`\`ini
 # /etc/systemd/system/myapp.service
+# 配置段: Unit
 [Unit]
+# Description = My FastAPI App
 Description=My FastAPI App
+# After = network.target
 After=network.target
 
+# 配置段: Service
 [Service]
 # 运行用户
+# User = www-data
 User=www-data
+# Group = www-data
 Group=www-data
 
 # 工作目录
+# WorkingDirectory = /var/www/myapp
 WorkingDirectory=/var/www/myapp
 
 # 虚拟环境
+# Environment = "PATH=/var/www/myapp/venv/bin"
 Environment="PATH=/var/www/myapp/venv/bin"
 
 # 启动命令
+# ExecStart = /var/www/myapp/venv/bin/gunicorn app.main:app -c gunicorn.conf.py
 ExecStart=/var/www/myapp/venv/bin/gunicorn app.main:app -c gunicorn.conf.py
 
 # 重启策略:崩溃后 5 秒重启
+# Restart = always
 Restart=always
+# RestartSec = 5
 RestartSec=5
 
 # 优雅停机:发 SIGTERM,等 30 秒
+# KillSignal = SIGTERM
 KillSignal=SIGTERM
+# TimeoutStopSec = 30
 TimeoutStopSec=30
 
 # 输出到 systemd journal(用 journalctl 查看)
+# StandardOutput = journal
 StandardOutput=journal
+# StandardError = journal
 StandardError=journal
 
+# 配置段: Install
 [Install]
+# WantedBy = multi-user.target
 WantedBy=multi-user.target
 \`\`\`
 
@@ -226,18 +263,23 @@ WantedBy=multi-user.target
 
 \`\`\`bash
 # 启动
+# sudo systemctl start myapp
 sudo systemctl start myapp
 
 # 开机自启
+# sudo systemctl enable myapp
 sudo systemctl enable myapp
 
 # 重启
+# sudo systemctl restart myapp
 sudo systemctl restart myapp
 
 # 查看状态
+# sudo systemctl status myapp
 sudo systemctl status myapp
 
 # 查看日志
+# sudo journalctl -u myapp -f
 sudo journalctl -u myapp -f
 \`\`\`
 
@@ -260,30 +302,45 @@ Gunicorn 主进程响应的信号:
 
 \`\`\`bash
 # 1. 拉代码
+# 切换到目录 /var/www
 cd /var/www
+# 克隆仓库: https://github.com/me/myapp.git
 git clone https://github.com/me/myapp.git
+# 切换到目录 myapp
 cd myapp
 
 # 2. 建虚拟环境
+# 以模块方式运行 venv
 python -m venv venv
+# 加载配置: venv/bin/activate
 source venv/bin/activate
 
 # 3. 装依赖
+# 安装 Python 包: -r requirements.txt
 pip install -r requirements.txt
+# 安装 Python 包: gunicorn "uvicorn[standard]"
 pip install gunicorn "uvicorn[standard]"
 
 # 4. 配置环境变量(或用 .env)
+# 设置环境变量 DATABASE_URL=mysql://...
 export DATABASE_URL=mysql://...
+# 设置环境变量 SECRET_KEY=$(python -c "import secrets;print(secrets.token_urlsafe(32))")
 export SECRET_KEY=$(python -c "import secrets;print(secrets.token_urlsafe(32))")
 
 # 5. 启动(用 systemd 托管)
+# sudo cp myapp.service /etc/systemd/system/
 sudo cp myapp.service /etc/systemd/system/
+# sudo systemctl daemon-reload
 sudo systemctl daemon-reload
+# sudo systemctl start myapp
 sudo systemctl start myapp
+# sudo systemctl enable myapp
 sudo systemctl enable myapp
 
 # 6. 验证
+# 发送 HTTP 请求
 curl http://localhost:8000/docs
+# sudo systemctl status myapp
 sudo systemctl status myapp
 \`\`\`
 
@@ -330,25 +387,33 @@ Dockerfile 是"镜像构建说明书",每条指令一层:
 
 \`\`\`dockerfile
 # Dockerfile
+# 基础镜像: python:3.11-slim
 FROM python:3.11-slim
 
 # 设工作目录(后续命令都在这执行)
+# 工作目录: /app
 WORKDIR /app
 
 # 设时区(可选)
+# 环境变量 TZ
 ENV TZ=Asia/Shanghai
 
 # 先复制依赖文件(利用 docker 缓存,代码变了不重装依赖)
+# 复制文件: requirements.txt .
 COPY requirements.txt .
+# 执行命令: pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 再复制代码
+# 复制文件: . .
 COPY . .
 
 # 暴露端口(只是声明,真正映射用 -p)
+# 暴露端口: 8000
 EXPOSE 8000
 
 # 启动命令
+# 启动命令: ["gunicorn", "app.main:app", "-k", "uvicorn.workers.UvicornWorker", "-w", "4", "-b", "0.0.0.0:8000"]
 CMD ["gunicorn", "app.main:app", "-k", "uvicorn.workers.UvicornWorker", "-w", "4", "-b", "0.0.0.0:8000"]
 \`\`\`
 
@@ -376,9 +441,11 @@ docker-compose.yml
 
 \`\`\`bash
 # 构建镜像,-t 起名字,:latest 是标签
+# 构建 Docker 镜像: -t myapp:latest .
 docker build -t myapp:latest .
 
 # 查看镜像
+# docker images
 docker images
 
 # 运行容器
@@ -386,21 +453,27 @@ docker images
 # -p 主机端口:容器端口
 # --name 给容器起名
 # -e 传环境变量
+# 运行 Docker 容器
 docker run -d -p 8000:8000 --name myapp -e DATABASE_URL=mysql://host/myapp myapp:latest
 
 # 查看运行中的容器
+# docker ps
 docker ps
 
 # 看日志
+# docker logs -f myapp
 docker logs -f myapp
 
 # 进入容器调试
+# docker exec -it myapp bash
 docker exec -it myapp bash
 
 # 停止
+# docker stop myapp
 docker stop myapp
 
 # 删除容器
+# docker rm myapp
 docker rm myapp
 \`\`\`
 
@@ -410,25 +483,36 @@ docker rm myapp
 
 \`\`\`dockerfile
 # 阶段 1:构建阶段(装依赖、编译)
+# 基础镜像: python:3.11-slim AS builder
 FROM python:3.11-slim AS builder
+# 工作目录: /app
 WORKDIR /app
+# 复制文件: requirements.txt .
 COPY requirements.txt .
+# 执行命令: pip install --user --no-cache-dir -r requirements.txt
 RUN pip install --user --no-cache-dir -r requirements.txt
 
 # 阶段 2:运行阶段(只复制依赖和代码)
+# 基础镜像: python:3.11-slim
 FROM python:3.11-slim
+# 工作目录: /app
 WORKDIR /app
 
 # 从 builder 复制 pip 装的包(--user 装到 /root/.local)
+# 复制文件: --from=builder /root/.local /root/.local
 COPY --from=builder /root/.local /root/.local
 
 # 复制代码
+# 复制文件: . .
 COPY . .
 
 # 确保 PATH 包含 .local
+# 环境变量 PATH
 ENV PATH=/root/.local/bin:\$PATH
 
+# 暴露端口: 8000
 EXPOSE 8000
+# 启动命令: ["gunicorn", "app.main:app", "-k", "uvicorn.workers.UvicornWorker", "-w", "4", "-b", "0.0.0.0:8000"]
 CMD ["gunicorn", "app.main:app", "-k", "uvicorn.workers.UvicornWorker", "-w", "4", "-b", "0.0.0.0:8000"]
 \`\`\`
 
@@ -442,60 +526,103 @@ CMD ["gunicorn", "app.main:app", "-k", "uvicorn.workers.UvicornWorker", "-w", "4
 
 \`\`\`yaml
 # docker-compose.yml
+# version: "3.9"
 version: "3.9"
 
+# services 配置段
 services:
   # FastAPI 应用
+  # app 配置段
   app:
     build: .                          # 用当前目录的 Dockerfile 构建
+    # container_name: myapp
     container_name: myapp
     restart: always                   # 崩溃自动重启
+    # ports 配置段
     ports:
+      # 列表项: "8000:8000"
       - "8000:8000"
+    # environment 配置段
     environment:
+      # 列表项: DATABASE_URL=mysql://user:pass@db:3
       - DATABASE_URL=mysql://user:pass@db:3306/mydb
+      # 列表项: REDIS_URL=redis://redis:6379
       - REDIS_URL=redis://redis:6379
+      # 列表项: SECRET_KEY=change-me
       - SECRET_KEY=change-me
+    # depends_on 配置段
     depends_on:
+      # db 配置段
       db:
+        # condition: service_healthy
         condition: service_healthy
+      # redis 配置段
       redis:
+        # condition: service_started
         condition: service_started
+    # volumes 配置段
     volumes:
       - ./logs:/app/logs               # 日志挂到主机,方便查看
 
   # MySQL 数据库
+  # db 配置段
   db:
+    # image: mysql:8.0
     image: mysql:8.0
+    # container_name: mydb
     container_name: mydb
+    # restart: always
     restart: always
+    # environment 配置段
     environment:
+      # MYSQL_ROOT_PASSWORD: rootpass
       MYSQL_ROOT_PASSWORD: rootpass
+      # MYSQL_DATABASE: mydb
       MYSQL_DATABASE: mydb
+      # MYSQL_USER: user
       MYSQL_USER: user
+      # MYSQL_PASSWORD: pass
       MYSQL_PASSWORD: pass
+    # ports 配置段
     ports:
+      # 列表项: "3306:3306"
       - "3306:3306"
+    # volumes 配置段
     volumes:
       - db_data:/var/lib/mysql         # 数据持久化
+    # healthcheck 配置段
     healthcheck:
+      # test: ["CMD", "mysqladmin", "ping", "-h",
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      # interval: 10s
       interval: 10s
+      # timeout: 5s
       timeout: 5s
+      # retries: 5
       retries: 5
 
   # Redis 缓存
+  # redis 配置段
   redis:
+    # image: redis:7-alpine
     image: redis:7-alpine
+    # container_name: myredis
     container_name: myredis
+    # restart: always
     restart: always
+    # ports 配置段
     ports:
+      # 列表项: "6379:6379"
       - "6379:6379"
+    # volumes 配置段
     volumes:
+      # 列表项: redis_data:/data
       - redis_data:/data
 
+# volumes 配置段
 volumes:
   db_data:                              # 命名卷,数据持久化
+  # redis_data 配置段
   redis_data:
 \`\`\`
 
@@ -503,18 +630,23 @@ volumes:
 
 \`\`\`bash
 # 启动所有服务(后台)
+# 启动 compose 服务
 docker-compose up -d
 
 # 看日志
+# docker-compose logs -f app
 docker-compose logs -f app
 
 # 只重启 app
+# docker-compose restart app
 docker-compose restart app
 
 # 停止并删除容器(数据卷保留)
+# 停止移除 compose 服务
 docker-compose down
 
 # 停止并删除数据卷(慎用!数据没了)
+# 停止移除 compose 服务
 docker-compose down -v
 \`\`\`
 
@@ -523,6 +655,7 @@ docker-compose down -v
 **端口映射**:\`-p 主机端口:容器端口\`
 
 \`\`\`yaml
+# ports 配置段
 ports:
   - "8000:8000"      # 主机 8000 → 容器 8000
   - "127.0.0.1:3306:3306"  # 只允许本机访问 3306(数据库别暴露公网)
@@ -544,15 +677,20 @@ ports:
 **方式一:compose 里直接写**(适合非敏感)
 
 \`\`\`yaml
+# environment 配置段
 environment:
+  # 列表项: DEBUG=False
   - DEBUG=False
+  # 列表项: API_V1_PREFIX=/api/v1
   - API_V1_PREFIX=/api/v1
 \`\`\`
 
 **方式二:用 env_file**(适合开发,敏感的别进 git)
 
 \`\`\`yaml
+# env_file 配置段
 env_file:
+  # 列表项: .env
   - .env
 \`\`\`
 
@@ -560,7 +698,9 @@ env_file:
 
 \`\`\`bash
 # 部署时通过环境变量注入
+# 设置环境变量 SECRET_KEY=prod-secret
 export SECRET_KEY=prod-secret
+# 启动 compose 服务
 docker-compose up -d
 \`\`\`
 
@@ -569,9 +709,13 @@ docker-compose up -d
 容器"在跑"不代表"服务正常",要主动探测:
 
 \`\`\`yaml
+# app 配置段
 app:
+  # build: .
   build: .
+  # healthcheck 配置段
   healthcheck:
+    # test: ["CMD", "curl", "-f", "http://local
     test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
     interval: 30s        # 每 30 秒探测一次
     timeout: 5s          # 超时 5 秒算失败
@@ -585,44 +729,80 @@ app:
 
 \`\`\`yaml
 # docker-compose.yml
+# version: "3.9"
 version: "3.9"
 
+# services 配置段
 services:
+  # app 配置段
   app:
+    # build: .
     build: .
+    # restart: always
     restart: always
+    # ports 配置段
     ports:
+      # 列表项: "8000:8000"
       - "8000:8000"
+    # env_file 配置段
     env_file:
+      # 列表项: .env
       - .env
+    # depends_on 配置段
     depends_on:
+      # db 配置段
       db:
+        # condition: service_healthy
         condition: service_healthy
+    # healthcheck 配置段
     healthcheck:
+      # test: ["CMD", "curl", "-f", "http://local
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      # interval: 30s
       interval: 30s
+      # timeout: 5s
       timeout: 5s
+      # retries: 3
       retries: 3
 
+  # db 配置段
   db:
+    # image: mysql:8.0
     image: mysql:8.0
+    # restart: always
     restart: always
+    # environment 配置段
     environment:
+      # MYSQL_ROOT_PASSWORD: \${DB_ROOT_PASSWORD:-rootpass}
       MYSQL_ROOT_PASSWORD: \${DB_ROOT_PASSWORD:-rootpass}
+      # MYSQL_DATABASE: \${DB_NAME:-mydb}
       MYSQL_DATABASE: \${DB_NAME:-mydb}
+      # MYSQL_USER: \${DB_USER:-user}
       MYSQL_USER: \${DB_USER:-user}
+      # MYSQL_PASSWORD: \${DB_PASSWORD:-pass}
       MYSQL_PASSWORD: \${DB_PASSWORD:-pass}
+    # ports 配置段
     ports:
+      # 列表项: "127.0.0.1:3306:3306"
       - "127.0.0.1:3306:3306"
+    # volumes 配置段
     volumes:
+      # 列表项: db_data:/var/lib/mysql
       - db_data:/var/lib/mysql
+    # healthcheck 配置段
     healthcheck:
+      # test: ["CMD", "mysqladmin", "ping", "-h",
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      # interval: 10s
       interval: 10s
+      # timeout: 5s
       timeout: 5s
+      # retries: 5
       retries: 5
 
+# volumes 配置段
 volumes:
+  # db_data 配置段
   db_data:
 \`\`\`
 
@@ -708,15 +888,24 @@ Nginx 是高性能的 Web 服务器 / 反向代理。在 FastAPI 部署架构里
 
 \`\`\`nginx
 # /etc/nginx/conf.d/myapp.conf
+# HTTP 服务器配置
 server {
+    # 监听端口
     listen 80;
+    # 服务器域名
     server_name example.com;
 
+    # 根路径处理规则
     location / {
+        # 反向代理转发
         proxy_pass http://127.0.0.1:8000;
+        # 设置请求头
         proxy_set_header Host \$host;
+        # 设置请求头
         proxy_set_header X-Real-IP \$remote_addr;
+        # 设置请求头
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        # 设置请求头
         proxy_set_header X-Forwarded-Proto \$scheme;
     }
 }
@@ -732,20 +921,32 @@ server {
 
 \`\`\`nginx
 # 定义后端服务器池
+# upstream fastapi_backend {
 upstream fastapi_backend {
+    # server 192.168.1.10:8000 weight=3;   # 权重 3
     server 192.168.1.10:8000 weight=3;   # 权重 3
+    # server 192.168.1.11:8000 weight=2;   # 权重 2
     server 192.168.1.11:8000 weight=2;   # 权重 2
+    # server 192.168.1.12:8000 backup;     # 备用,前面挂了才用
     server 192.168.1.12:8000 backup;     # 备用,前面挂了才用
 }
 
+# HTTP 服务器配置
 server {
+    # 监听端口
     listen 80;
+    # 服务器域名
     server_name example.com;
 
+    # 根路径处理规则
     location / {
+        # 反向代理转发
         proxy_pass http://fastapi_backend;
+        # 设置请求头
         proxy_set_header Host \$host;
+        # 设置请求头
         proxy_set_header X-Real-IP \$remote_addr;
+        # 设置请求头
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     }
 }
@@ -767,36 +968,55 @@ server {
 
 \`\`\`bash
 # 装 certbot
+# sudo apt install certbot python3-certbot-nginx
 sudo apt install certbot python3-certbot-nginx
 
 # 自动申请并配置
+# sudo certbot --nginx -d example.com
 sudo certbot --nginx -d example.com
 \`\`\`
 
 或者手动配:
 
 \`\`\`nginx
+# HTTP 服务器配置
 server {
+    # 监听端口
     listen 80;
+    # 服务器域名
     server_name example.com;
     # HTTP 跳 HTTPS
+    # return 301 https://\$host\$request_uri;
     return 301 https://\$host\$request_uri;
 }
 
+# HTTP 服务器配置
 server {
+    # 监听端口
     listen 443 ssl;
+    # 服务器域名
     server_name example.com;
 
+    # ssl_certificate /etc/letsencrypt/live/example.com/
     ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/example.
     ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+    # ssl_protocols TLSv1.2 TLSv1.3;
     ssl_protocols TLSv1.2 TLSv1.3;
+    # ssl_ciphers HIGH:!aNULL:!MD5;
     ssl_ciphers HIGH:!aNULL:!MD5;
 
+    # 根路径处理规则
     location / {
+        # 反向代理转发
         proxy_pass http://127.0.0.1:8000;
+        # 设置请求头
         proxy_set_header Host \$host;
+        # 设置请求头
         proxy_set_header X-Real-IP \$remote_addr;
+        # 设置请求头
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        # 设置请求头
         proxy_set_header X-Forwarded-Proto \$scheme;
     }
 }
@@ -809,12 +1029,19 @@ server {
 WebSocket 需要 \`Upgrade\` 和 \`Connection\` 头:
 
 \`\`\`nginx
+# 路径 /ws 处理规则
 location /ws {
+    # 反向代理转发
     proxy_pass http://127.0.0.1:8000;
+    # proxy_http_version 1.1;
     proxy_http_version 1.1;
+    # 设置请求头
     proxy_set_header Upgrade \$http_upgrade;
+    # 设置请求头
     proxy_set_header Connection "upgrade";
+    # 设置请求头
     proxy_set_header Host \$host;
+    # proxy_read_timeout 86400;   # WS 长连接,超时设长点
     proxy_read_timeout 86400;   # WS 长连接,超时设长点
 }
 \`\`\`
@@ -826,24 +1053,35 @@ location /ws {
 图片、CSS、JS 这些不用走 FastAPI,Nginx 直接发:
 
 \`\`\`nginx
+# HTTP 服务器配置
 server {
+    # 监听端口
     listen 80;
+    # 服务器域名
     server_name example.com;
 
     # 静态文件直接 Nginx 处理
+    # 路径 /static/ 处理规则
     location /static/ {
+        # alias /var/www/myapp/static/;   # 注意 alias 末尾的 /
         alias /var/www/myapp/static/;   # 注意 alias 末尾的 /
+        # expires 30d;                      # 客户端缓存 30 天
         expires 30d;                      # 客户端缓存 30 天
+        # 添加响应头
         add_header Cache-Control "public, immutable";
     }
 
     # 上传的文件
+    # 路径 /media/ 处理规则
     location /media/ {
+        # alias /var/www/myapp/media/;
         alias /var/www/myapp/media/;
     }
 
     # 其它走 FastAPI
+    # 根路径处理规则
     location / {
+        # 反向代理转发
         proxy_pass http://127.0.0.1:8000;
     }
 }
@@ -855,22 +1093,32 @@ server {
 
 \`\`\`nginx
 # 定义限流区:按 IP,每秒 10 个请求
+# limit_req_zone \$binary_remote_addr zone=mylimit:1
 limit_req_zone \$binary_remote_addr zone=mylimit:10m rate=10r/s;
 
+# HTTP 服务器配置
 server {
+    # 监听端口
     listen 80;
+    # 服务器域名
     server_name example.com;
 
+    # 路径 /api/ 处理规则
     location /api/ {
+        # limit_req zone=mylimit burst=20 nodelay;
         limit_req zone=mylimit burst=20 nodelay;
         # burst=20:允许瞬间 20 个排队
         # nodelay:不延迟,超出直接 503
+        # 反向代理转发
         proxy_pass http://127.0.0.1:8000;
     }
 
     # 登录接口更严格:每秒 1 个
+    # 路径 /api/login 处理规则
     location /api/login {
+        # limit_req zone=mylimit burst=5 nodelay;
         limit_req zone=mylimit burst=5 nodelay;
+        # 反向代理转发
         proxy_pass http://127.0.0.1:8000;
     }
 }
@@ -881,11 +1129,17 @@ server {
 ### 59.9 gzip 压缩
 
 \`\`\`nginx
+# HTTP 配置块
 http {
+    # gzip on;
     gzip on;
+    # gzip_min_length 1k;             # 小于 1KB 不压
     gzip_min_length 1k;             # 小于 1KB 不压
+    # gzip_comp_level 6;              # 压缩级别 1-9
     gzip_comp_level 6;              # 压缩级别 1-9
+    # gzip_types text/plain application/json application
     gzip_types text/plain application/json application/javascript text/css;
+    # gzip_vary on;
     gzip_vary on;
 }
 \`\`\`
@@ -898,53 +1152,84 @@ http {
 # /etc/nginx/conf.d/myapp.conf
 
 # 后端池
+# upstream fastapi_backend {
 upstream fastapi_backend {
+    # server 127.0.0.1:8000;
     server 127.0.0.1:8000;
+    # server 127.0.0.1:8001;
     server 127.0.0.1:8001;
 }
 
 # 限流区
+# limit_req_zone \$binary_remote_addr zone=api:10m r
 limit_req_zone \$binary_remote_addr zone=api:10m rate=10r/s;
 
 # HTTP 跳 HTTPS
+# HTTP 服务器配置
 server {
+    # 监听端口
     listen 80;
+    # 服务器域名
     server_name example.com;
+    # return 301 https://\$host\$request_uri;
     return 301 https://\$host\$request_uri;
 }
 
 # HTTPS 主服务
+# HTTP 服务器配置
 server {
+    # 监听端口
     listen 443 ssl http2;
+    # 服务器域名
     server_name example.com;
 
+    # ssl_certificate /etc/letsencrypt/live/example.com/
     ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/example.
     ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+    # ssl_protocols TLSv1.2 TLSv1.3;
     ssl_protocols TLSv1.2 TLSv1.3;
 
     # 静态文件
+    # 路径 /static/ 处理规则
     location /static/ {
+        # alias /var/www/myapp/static/;
         alias /var/www/myapp/static/;
+        # expires 30d;
         expires 30d;
     }
 
     # API
+    # 路径 /api/ 处理规则
     location /api/ {
+        # limit_req zone=api burst=20 nodelay;
         limit_req zone=api burst=20 nodelay;
+        # 反向代理转发
         proxy_pass http://fastapi_backend;
+        # 设置请求头
         proxy_set_header Host \$host;
+        # 设置请求头
         proxy_set_header X-Real-IP \$remote_addr;
+        # 设置请求头
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        # 设置请求头
         proxy_set_header X-Forwarded-Proto \$scheme;
+        # proxy_read_timeout 60s;
         proxy_read_timeout 60s;
     }
 
     # WebSocket
+    # 路径 /ws 处理规则
     location /ws {
+        # 反向代理转发
         proxy_pass http://fastapi_backend;
+        # proxy_http_version 1.1;
         proxy_http_version 1.1;
+        # 设置请求头
         proxy_set_header Upgrade \$http_upgrade;
+        # 设置请求头
         proxy_set_header Connection "upgrade";
+        # proxy_read_timeout 86400;
         proxy_read_timeout 86400;
     }
 }
@@ -956,9 +1241,12 @@ server {
 
 \`\`\`python
 # app/main.py
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
+# 从 fastapi.middleware.httpsredirect 导入 HTTPSRedirectMiddleware
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 信任 Nginx 传来的 X-Forwarded-For
@@ -970,19 +1258,28 @@ app = FastAPI()
 
 \`\`\`bash
 # uvicorn 直接跑
+# uvicorn app.main:app --proxy-headers --forwarded-a
 uvicorn app.main:app --proxy-headers --forwarded-allow-ips="*"
 
 # gunicorn 配置文件里
 # gunicorn.conf.py
+# import multiprocessing
 import multiprocessing
+# bind = "0.0.0.0:8000"
 bind = "0.0.0.0:8000"
+# workers = multiprocessing.cpu_count() * 2 + 1
 workers = multiprocessing.cpu_count() * 2 + 1
+# worker_class = "uvicorn.workers.UvicornWorker"
 worker_class = "uvicorn.workers.UvicornWorker"
 
 # uvicorn worker 的额外参数
+# uvicorn_kwargs = {
 uvicorn_kwargs = {
+    # "proxy_headers": True,
     "proxy_headers": True,
+    # "forwarded_allow_ips": "*",
     "forwarded_allow_ips": "*",
+# }
 }
 \`\`\`
 
@@ -1050,42 +1347,68 @@ GitHub Actions 是 GitHub 内置的 CI/CD 工具,在 \`.github/workflows/\` 目�
 
 \`\`\`yaml
 # .github/workflows/ci.yml
+# name: CI
 name: CI
 
+# on 配置段
 on:
+  # push 配置段
   push:
+    # branches: [main, develop]
     branches: [main, develop]
+  # pull_request 配置段
   pull_request:
+    # branches: [main]
     branches: [main]
 
+# jobs 配置段
 jobs:
+  # test 配置段
   test:
+    # runs-on: ubuntu-latest
     runs-on: ubuntu-latest
+    # steps 配置段
     steps:
       # 1. 拉代码
+      # 列表项: uses: actions/checkout@v4
       - uses: actions/checkout@v4
 
       # 2. 装 Python
+      # 列表项: name: 安装 Python
       - name: 安装 Python
+        # uses: actions/setup-python@v5
         uses: actions/setup-python@v5
+        # with 配置段
         with:
+          # python-version: "3.11"
           python-version: "3.11"
 
       # 3. 装依赖
+      # 列表项: name: 安装依赖
       - name: 安装依赖
+        # run: |
         run: |
+          # python -m pip install --upgrade pip
           python -m pip install --upgrade pip
+          # pip install -r requirements.txt
           pip install -r requirements.txt
+          # pip install pytest pytest-cov httpx
           pip install pytest pytest-cov httpx
 
       # 4. 跑测试 + 覆盖率
+      # 列表项: name: 跑测试
       - name: 跑测试
+        # run: pytest --cov=app --cov-report=xml -
         run: pytest --cov=app --cov-report=xml --cov-report=term
 
       # 5. 上传覆盖率到 codecov(可选)
+      # 列表项: name: 上传覆盖率
       - name: 上传覆盖率
+        # uses: codecov/codecov-action@v3
         uses: codecov/codecov-action@v3
+        # with 配置段
         with:
+          # file: ./coverage.xml
           file: ./coverage.xml
 \`\`\`
 
@@ -1100,45 +1423,75 @@ jobs:
 
 \`\`\`yaml
 # .github/workflows/build.yml
+# name: 构建并推送镜像
 name: 构建并推送镜像
 
+# on 配置段
 on:
+  # push 配置段
   push:
+    # branches: [main]
     branches: [main]
     tags: ["v*"]   # 打 tag 也触发
 
+# jobs 配置段
 jobs:
+  # build 配置段
   build:
+    # runs-on: ubuntu-latest
     runs-on: ubuntu-latest
+    # steps 配置段
     steps:
+      # 列表项: uses: actions/checkout@v4
       - uses: actions/checkout@v4
 
       # 登录 Docker Hub(密码在 GitHub Secrets 里)
+      # 列表项: name: 登录 Docker Hub
       - name: 登录 Docker Hub
+        # uses: docker/login-action@v3
         uses: docker/login-action@v3
+        # with 配置段
         with:
+          # username: \${{ secrets.DOCKER_USERNAME }}
           username: \${{ secrets.DOCKER_USERNAME }}
+          # password: \${{ secrets.DOCKER_TOKEN }}
           password: \${{ secrets.DOCKER_TOKEN }}
 
       # 提取 metadata(镜像名、tag)
+      # 列表项: name: 提取 metadata
       - name: 提取 metadata
+        # id: meta
         id: meta
+        # uses: docker/metadata-action@v5
         uses: docker/metadata-action@v5
+        # with 配置段
         with:
+          # images: myname/myapp
           images: myname/myapp
+          # tags: |
           tags: |
+            # type=ref,event=branch
             type=ref,event=branch
+            # type=sha,prefix={{branch}}-
             type=sha,prefix={{branch}}-
+            # type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=latest,enable={{is_default_branch}}
 
       # 构建并推送
+      # 列表项: name: 构建并推送
       - name: 构建并推送
+        # uses: docker/build-push-action@v5
         uses: docker/build-push-action@v5
+        # with 配置段
         with:
+          # context: .
           context: .
+          # push: true
           push: true
+          # tags: \${{ steps.meta.outputs.tags }}
           tags: \${{ steps.meta.outputs.tags }}
           cache-from: type=gha     # 用 GitHub Actions 缓存加速
+          # cache-to: type=gha,mode=max
           cache-to: type=gha,mode=max
 \`\`\`
 
@@ -1154,33 +1507,57 @@ jobs:
 
 \`\`\`yaml
 # .github/workflows/deploy.yml
+# name: 部署
 name: 部署
 
+# on 配置段
 on:
+  # workflow_run 配置段
   workflow_run:
+    # workflows: ["构建并推送镜像"]
     workflows: ["构建并推送镜像"]
+    # types: [completed]
     types: [completed]
+    # branches: [main]
     branches: [main]
 
+# jobs 配置段
 jobs:
+  # deploy 配置段
   deploy:
+    # runs-on: ubuntu-latest
     runs-on: ubuntu-latest
     # 只有构建成功才部署
+    # if: \${{ github.event.workflow_run.conc
     if: \${{ github.event.workflow_run.conclusion == 'success' }}
+    # steps 配置段
     steps:
+      # 列表项: name: 部署到生产
       - name: 部署到生产
+        # uses: appleboy/ssh-action@v1
         uses: appleboy/ssh-action@v1
+        # with 配置段
         with:
+          # host: \${{ secrets.PROD_HOST }}
           host: \${{ secrets.PROD_HOST }}
+          # username: \${{ secrets.PROD_USER }}
           username: \${{ secrets.PROD_USER }}
+          # key: \${{ secrets.PROD_SSH_KEY }}
           key: \${{ secrets.PROD_SSH_KEY }}
+          # script: |
           script: |
+            # cd /var/www/myapp
             cd /var/www/myapp
+            # docker-compose pull
             docker-compose pull
+            # docker-compose up -d --remove-orphans
             docker-compose up -d --remove-orphans
+            # docker image prune -f
             docker image prune -f
             # 健康检查
+            # sleep 10
             sleep 10
+            # curl -f http://localhost:8000/health || exit 1
             curl -f http://localhost:8000/health || exit 1
 \`\`\`
 
@@ -1192,59 +1569,104 @@ jobs:
 
 \`\`\`yaml
 # .github/workflows/deploy.yml
+# name: 完整 CI/CD
 name: 完整 CI/CD
 
+# on 配置段
 on:
+  # push 配置段
   push:
+    # branches: [main]
     branches: [main]
+  # pull_request 配置段
   pull_request:
+    # branches: [main]
     branches: [main]
 
+# jobs 配置段
 jobs:
   # Job 1:测试(每个 PR 都跑)
+  # test 配置段
   test:
+    # runs-on: ubuntu-latest
     runs-on: ubuntu-latest
+    # steps 配置段
     steps:
+      # 列表项: uses: actions/checkout@v4
       - uses: actions/checkout@v4
+      # 列表项: uses: actions/setup-python@v5
       - uses: actions/setup-python@v5
+        # with 配置段
         with:
+          # python-version: "3.11"
           python-version: "3.11"
+      # 列表项: run: pip install -r requirements.tx
       - run: pip install -r requirements.txt pytest pytest-cov httpx
+      # 列表项: run: pytest --cov=app --cov-report=
       - run: pytest --cov=app --cov-report=term
 
   # Job 2:构建(只有 main 分支才构建)
+  # build 配置段
   build:
     needs: test   # 测试通过才构建
+    # if: github.ref == 'refs/heads/main' && 
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # runs-on: ubuntu-latest
     runs-on: ubuntu-latest
+    # steps 配置段
     steps:
+      # 列表项: uses: actions/checkout@v4
       - uses: actions/checkout@v4
+      # 列表项: uses: docker/login-action@v3
       - uses: docker/login-action@v3
+        # with 配置段
         with:
+          # username: \${{ secrets.DOCKER_USERNAME }}
           username: \${{ secrets.DOCKER_USERNAME }}
+          # password: \${{ secrets.DOCKER_TOKEN }}
           password: \${{ secrets.DOCKER_TOKEN }}
+      # 列表项: uses: docker/build-push-action@v5
       - uses: docker/build-push-action@v5
+        # with 配置段
         with:
+          # context: .
           context: .
+          # push: true
           push: true
+          # tags: myname/myapp:latest
           tags: myname/myapp:latest
 
   # Job 3:部署(构建成功才部署)
+  # deploy 配置段
   deploy:
+    # needs: build
     needs: build
+    # runs-on: ubuntu-latest
     runs-on: ubuntu-latest
     environment: production   # 可以加审批保护
+    # steps 配置段
     steps:
+      # 列表项: uses: appleboy/ssh-action@v1
       - uses: appleboy/ssh-action@v1
+        # with 配置段
         with:
+          # host: \${{ secrets.PROD_HOST }}
           host: \${{ secrets.PROD_HOST }}
+          # username: \${{ secrets.PROD_USER }}
           username: \${{ secrets.PROD_USER }}
+          # key: \${{ secrets.PROD_SSH_KEY }}
           key: \${{ secrets.PROD_SSH_KEY }}
+          # script: |
           script: |
+            # cd /var/www/myapp
             cd /var/www/myapp
+            # docker-compose pull
             docker-compose pull
+            # docker-compose up -d --remove-orphans
             docker-compose up -d --remove-orphans
+            # sleep 10
             sleep 10
+            # curl -f http://localhost:8000/health || exit 1
             curl -f http://localhost:8000/health || exit 1
 \`\`\`
 
@@ -1265,14 +1687,22 @@ develop 分支 → 部署到预发   → secrets.STAGING_*
 \`\`\`
 
 \`\`\`yaml
+# deploy-staging 配置段
 deploy-staging:
+  # if: github.ref == 'refs/heads/develop'
   if: github.ref == 'refs/heads/develop'
+  # environment: staging
   environment: staging
+  # ...
   ...
 
+# deploy-prod 配置段
 deploy-prod:
+  # if: github.ref == 'refs/heads/main'
   if: github.ref == 'refs/heads/main'
+  # environment: production
   environment: production
+  # ...
   ...
 \`\`\`
 
@@ -1291,14 +1721,18 @@ deploy-prod:
 
 \`\`\`nginx
 # 切换前:流量到 blue
+# upstream backend {
 upstream backend {
+    # server blue:8000;
     server blue:8000;
     # server green:8000 backup;
 }
 
 # 切换后:流量到 green
+# upstream backend {
 upstream backend {
     # server blue:8000 backup;
+    # server green:8000;
     server green:8000;
 }
 \`\`\`
@@ -1311,9 +1745,13 @@ Kubernetes / Docker Swarm 原生支持滚动更新:一次替换一个 Pod,逐步
 
 \`\`\`yaml
 # k8s deployment
+# spec 配置段
 spec:
+  # strategy 配置段
   strategy:
+    # type: RollingUpdate
     type: RollingUpdate
+    # rollingUpdate 配置段
     rollingUpdate:
       maxSurge: 1        # 最多多启 1 个
       maxUnavailable: 0  # 不允许少,保证容量
@@ -1329,31 +1767,48 @@ spec:
 
 \`\`\`bash
 # 部署时给每个版本打 tag(用 commit sha)
+# docker tag myapp:latest myapp:abc123
 docker tag myapp:latest myapp:abc123
+# docker push myapp:abc123
 docker push myapp:abc123
 
 # 出问题,切回上个版本
+# 拉取镜像: myapp:abc123
 docker pull myapp:abc123
 # 改 docker-compose.yml 用 abc123 tag
+# 启动 compose 服务
 docker-compose up -d
 \`\`\`
 
 **方式二:GitHub Actions 手动触发回滚**
 
 \`\`\`yaml
+  # rollback 配置段
   rollback:
+    # if: github.event.inputs.action == 'roll
     if: github.event.inputs.action == 'rollback'
+    # runs-on: ubuntu-latest
     runs-on: ubuntu-latest
+    # steps 配置段
     steps:
+      # 列表项: uses: appleboy/ssh-action@v1
       - uses: appleboy/ssh-action@v1
+        # with 配置段
         with:
+          # host: \${{ secrets.PROD_HOST }}
           host: \${{ secrets.PROD_HOST }}
+          # username: \${{ secrets.PROD_USER }}
           username: \${{ secrets.PROD_USER }}
+          # key: \${{ secrets.PROD_SSH_KEY }}
           key: \${{ secrets.PROD_SSH_KEY }}
+          # script: |
           script: |
+            # cd /var/www/myapp
             cd /var/www/myapp
             # 切回上个镜像 tag
+            # sed -i 's/myapp:latest/myapp:prev/g' docker-compos
             sed -i 's/myapp:latest/myapp:prev/g' docker-compose.yml
+            # docker-compose up -d
             docker-compose up -d
 \`\`\`
 

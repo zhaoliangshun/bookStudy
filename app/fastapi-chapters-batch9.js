@@ -78,23 +78,33 @@ SQLAlchemy 2.0 在 2023 年发布，是一次重大升级。如果你看的教�
 初学者常问："我自己拼 SQL 字符串不行吗？"能跑，但代价大。对比一下：
 
 \`\`\`python filename="裸 SQL 写法（反面教材）"
+# 导入 sqlite3 模块
 import sqlite3
 
 # 拼接 SQL 字符串——危险！
+# 定义函数 get_user，参数: name
 def get_user(name):
+    # 定义变量 conn，赋值为 sqlite3.connect("app.db")
     conn = sqlite3.connect("app.db")
+    # 定义变量 cursor，赋值为 conn.execute(f"SELECT * FROM users WHERE name...
     cursor = conn.execute(f"SELECT * FROM users WHERE name = '{name}'")
     # ❌ 如果 name 是 "'; DROP TABLE users; --"，表就没了（SQL 注入）
+    # 返回 cursor.fetchone()
     return cursor.fetchone()
 \`\`\`
 
 \`\`\`python filename="ORM 写法（推荐）"
+# 从 sqlalchemy 导入 select
 from sqlalchemy import select
+# 从 sqlalchemy.orm 导入 Session
 from sqlalchemy.orm import Session
 
+# 定义函数 get_user，参数: session: Session, name: str
 def get_user(session: Session, name: str):
     # ✅ 参数化查询，自动防 SQL 注入
+    # 定义变量 stmt，赋值为 select(User).where(User.name == name)
     stmt = select(User).where(User.name == name)
+    # 返回 session.execute(stmt).scalar_one_or_none()
     return session.execute(stmt).scalar_one_or_none()
 \`\`\`
 
@@ -113,17 +123,25 @@ ORM 的核心价值：
 SQLAlchemy 2.0 用"声明式"定义模型：写一个 Python 类，继承 \`DeclarativeBase\`，类属性就是表字段。
 
 \`\`\`python filename="models.py - 模型定义"
+# 从 datetime 导入 datetime
 from datetime import datetime
+# 从 typing 导入 Optional, List
 from typing import Optional, List
+# 从 sqlalchemy 导入 String, ForeignKey, func
 from sqlalchemy import String, ForeignKey, func
+# 从 sqlalchemy.orm 导入 DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 # 1. 所有模型的基类：自定义一个 Base，继承 DeclarativeBase
+# 定义类 Base，继承 DeclarativeBase
 class Base(DeclarativeBase):
+    # """所有模型的根基类，被 Alembic 和 Session 共享。"""
     """所有模型的根基类，被 Alembic 和 Session 共享。"""
+    # 空操作占位
     pass
 
 # 2. User 模型 → 对应 users 表
+# 定义类 User，继承 Base
 class User(Base):
     __tablename__ = "users"  # 显式指定表名（不写则用类名小写）
 
@@ -135,26 +153,38 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())  # 数据库默认值
 
     # relationship：声明"用户拥有的文章"，不是表字段，是对象关联
+    # 字段 posts，类型: Mapped[List["Post"]]，默认值: relationship(back_populates="author", cascade="all, delete-orphan")
     posts: Mapped[List["Post"]] = relationship(back_populates="author", cascade="all, delete-orphan")
 
+    # 定义函数 __repr__，返回: str
     def __repr__(self) -> str:
+        # 返回 f"<User id={self.id} name={self.name!r}>"
         return f"<User id={self.id} name={self.name!r}>"
 
 # 3. Post 模型 → 对应 posts 表
+# 定义类 Post，继承 Base
 class Post(Base):
+    # 定义变量 __tablename__，赋值为 "posts"
     __tablename__ = "posts"
 
+    # 字段 id，类型: Mapped[int]，默认值: mapped_column(primary_key=True)
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 字段 title，类型: Mapped[str]，默认值: mapped_column(String(200))
     title: Mapped[str] = mapped_column(String(200))
+    # 字段 body，类型: Mapped[str]，默认值: mapped_column(String(5000))
     body: Mapped[str] = mapped_column(String(5000))
     # 外键：指向 users.id
+    # 字段 author_id，类型: Mapped[int]，默认值: mapped_column(ForeignKey("users.id"))
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     published: Mapped[bool] = mapped_column(default=False)  # Python 端默认值
 
     # relationship 的另一端，back_populates 让两边互相引用
+    # 字段 author，类型: Mapped["User"]，默认值: relationship(back_populates="posts")
     author: Mapped["User"] = relationship(back_populates="posts")
 
+    # 定义函数 __repr__，返回: str
     def __repr__(self) -> str:
+        # 返回 f"<Post id={self.id} title={self.title!r}>"
         return f"<Post id={self.id} title={self.title!r}>"
 \`\`\`
 
@@ -185,30 +215,45 @@ class Post(Base):
 
 \`\`\`python filename="relationship 三种基数"
 # 一对多：一个 User 有多个 Post（上面已演示）
+# 字段 posts，类型: Mapped[List["Post"]]，默认值: relationship(back_populates="author")
 posts: Mapped[List["Post"]] = relationship(back_populates="author")
 
 # 一对一：在"多"的一方加 uselist=False
+# 字段 profile，类型: Mapped["Profile"]，默认值: relationship(back_populates="user", uselist=False)
 profile: Mapped["Profile"] = relationship(back_populates="user", uselist=False)
 
 # 多对多：需要中间关联表
+# 从 sqlalchemy 导入 Table, Column
 from sqlalchemy import Table, Column
 
 # 中间表：posts 和 tags 的多对多关系
+# 定义变量 post_tags，赋值为 Table(
 post_tags = Table(
+    # "post_tags", Base.metadata,
     "post_tags", Base.metadata,
+    # 调用 Column()
     Column("post_id", ForeignKey("posts.id"), primary_key=True),
+    # 调用 Column()
     Column("tag_id", ForeignKey("tags.id"), primary_key=True),
+# )
 )
 
+# 定义类 Tag，继承 Base
 class Tag(Base):
+    # 定义变量 __tablename__，赋值为 "tags"
     __tablename__ = "tags"
+    # 字段 id，类型: Mapped[int]，默认值: mapped_column(primary_key=True)
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 字段 name，类型: Mapped[str]，默认值: mapped_column(String(30), unique=True)
     name: Mapped[str] = mapped_column(String(30), unique=True)
     # secondary 指向中间表
+    # 字段 posts，类型: Mapped[List["Post"]]，默认值: relationship(secondary=post_tags, back_populates="tags")
     posts: Mapped[List["Post"]] = relationship(secondary=post_tags, back_populates="tags")
 
+# 定义类 Post，继承 Base
 class Post(Base):
     # ... 其他字段省略
+    # 字段 tags，类型: Mapped[List["Tag"]]，默认值: relationship(secondary=post_tags, back_populates="posts")
     tags: Mapped[List["Tag"]] = relationship(secondary=post_tags, back_populates="posts")
 \`\`\`
 
@@ -223,17 +268,22 @@ class Post(Base):
 定义好模型后，需要一个 \`engine\` 和 \`Session\` 才能真正读写。这里给一个最小骨架（下一章会展开讲 Session 的细节）：
 
 \`\`\`python filename="最小模型骨架"
+# 从 sqlalchemy 导入 create_engine
 from sqlalchemy import create_engine
+# 从 sqlalchemy.orm 导入 Session
 from sqlalchemy.orm import Session
 
 # 1. 创建 engine（连接工厂），sqlite 内存库适合演示
 engine = create_engine("sqlite:///:memory:", echo=True)  # echo=True 打印执行的 SQL
 
 # 2. 建表：根据所有模型定义生成 DDL
+# 调用 Base.metadata.create_all()
 Base.metadata.create_all(engine)
 
 # 3. 开一个 Session，做增删改查
+# 使用上下文管理器 Session(engine)，赋值为 session
 with Session(engine) as session:
+    # 定义变量 alice，赋值为 User(name="alice", email="alice@example.com")
     alice = User(name="alice", email="alice@example.com")
     session.add(alice)            # 加入 Session（还没入库）
     session.commit()              # 提交事务，真正写库
@@ -310,27 +360,36 @@ postgresql+asyncpg://user:pass@localhost:5432/mydb
 ## 三、engine：连接工厂
 
 \`\`\`python filename="database.py - engine 配置"
+# 从 sqlalchemy 导入 create_engine
 from sqlalchemy import create_engine
+# 从 sqlalchemy.orm 导入 sessionmaker, DeclarativeBase
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 # 实际项目从配置/环境变量读，避免硬编码
+# 定义变量 DATABASE_URL，赋值为 "postgresql+psycopg2://postgres:secret@localh...
 DATABASE_URL = "postgresql+psycopg2://postgres:secret@localhost:5432/blog"
 
 # create_engine 返回一个 engine，它本身不立刻建连接，而是按需创建
+# 定义变量 engine，赋值为 create_engine(
 engine = create_engine(
+    # DATABASE_URL,
     DATABASE_URL,
     pool_size=5,         # 连接池常驻连接数（默认 5）
     max_overflow=10,     # 超出 pool_size 后还能临时开的连接数（默认 10）
     pool_recycle=3600,   # 连接存活秒数，超过就回收重建（防 MySQL 8h 断连）
     pool_pre_ping=True,  # 取连接前先 ping 一下，断了就重建（强烈建议开）
     echo=False,          # True 时打印执行的 SQL，调试用，生产关掉
+# )
 )
 
 # Base：所有模型的根基类
+# 定义类 Base，继承 DeclarativeBase
 class Base(DeclarativeBase):
+    # 空操作占位
     pass
 
 # SessionLocal：Session 工厂，调用一次生成一个新 Session
+# 定义变量 SessionLocal，赋值为 sessionmaker(bind=engine, autoflush=False, ex...
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 \`\`\`
 
@@ -363,21 +422,28 @@ engine 是"工厂"，Session 是"产品"。一个 Session 对应一次业务工�
 - \`commit()\` 或 \`rollback()\` 后，连接还回池子。
 
 \`\`\`python filename="Session 生命周期"
+# 从 sqlalchemy.orm 导入 Session
 from sqlalchemy.orm import Session
 
 # 1. 创建 Session（向 engine 借连接）
+# 定义变量 session，赋值为 SessionLocal()
 session = SessionLocal()
 
+# 尝试执行，捕获异常
 try:
     # 2. 在 Session 里干活
+    # 定义变量 user，赋值为 User(name="bob", email="bob@example.com")
     user = User(name="bob", email="bob@example.com")
     session.add(user)        # 攒着，还没入库
     # 此时 SELECT 还查不到 bob（未提交）
 
     session.commit()         # 3. 提交事务，真正写库，连接还回池子
+# 捕获 Exception 异常
 except Exception:
     session.rollback()       # 出错回滚，撤销所有未提交改动
+    # raise
     raise
+# 无论是否异常都执行
 finally:
     session.close()          # 4. 关闭 Session，释放资源
 \`\`\`
@@ -389,15 +455,22 @@ finally:
 如果每个路由都手动写 \`session = SessionLocal() ... try/finally close\`，代码会又长又容易忘关。FastAPI 的**依赖注入 + yield** 正好解决：在依赖里开 Session，请求结束自动关。
 
 \`\`\`python filename="依赖 get_db"
+# 从 typing 导入 Generator
 from typing import Generator
+# 从 fastapi 导入 Depends
 from fastapi import Depends
+# 从 sqlalchemy.orm 导入 Session
 from sqlalchemy.orm import Session
 
+# 定义函数 get_db，返回: Generator[Session, None, None]
 def get_db() -> Generator[Session, None, None]:
+    # """每个请求开一个独立 Session，请求结束自动关闭。"""
     """每个请求开一个独立 Session，请求结束自动关闭。"""
     db = SessionLocal()      # 请求开始：借连接、建 Session
+    # 尝试执行，捕获异常
     try:
         yield db             # 把 db 注入路由函数；路由执行期间，db 保持打开
+    # 无论是否异常都执行
     finally:
         db.close()           # 路由返回后：关 Session，连接还回池子
 \`\`\`
@@ -412,15 +485,22 @@ def get_db() -> Generator[Session, None, None]:
 - 连接池保证了"多 Session"不会真的开很多数据库连接（借出/归还复用）。
 
 \`\`\`python filename="路由里用 get_db"
+# 从 fastapi 导入 FastAPI, Depends, HTTPException
 from fastapi import FastAPI, Depends, HTTPException
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 GET 路由：访问 /users/{user_id} 时触发
 @app.get("/users/{user_id}")
+# 定义函数 read_user，参数: user_id: int, db: Session = Depends(get_db)
 def read_user(user_id: int, db: Session = Depends(get_db)):
     user = db.get(User, user_id)   # 按主键查
+    # 条件判断：如果 user is None
     if user is None:
+        # 抛出 HTTPException 异常: status_code=404, detail="用户不存在"
         raise HTTPException(status_code=404, detail="用户不存在")
+    # 返回 user
     return user
 \`\`\`
 
@@ -431,6 +511,7 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
 \`\`\`python filename="启动时建表"
 # 注意：create_all 只建"不存在的表"，不会修改已有表结构
 # 也不会删除已不存在的模型对应的表（不做迁移）
+# 调用 Base.metadata.create_all()
 Base.metadata.create_all(bind=engine)
 \`\`\`
 
@@ -449,48 +530,79 @@ Base.metadata.create_all(bind=engine)
 把 engine、Session、依赖、模型、路由串起来：
 
 \`\`\`python filename="完整最小集成 main.py"
+# 从 fastapi 导入 FastAPI, Depends, HTTPException
 from fastapi import FastAPI, Depends, HTTPException
+# 从 sqlalchemy 导入 create_engine, select
 from sqlalchemy import create_engine, select
+# 从 sqlalchemy.orm 导入 DeclarativeBase, Mapped, mapped_column, Session, sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session, sessionmaker
 
 DATABASE_URL = "sqlite:///./app.db"   # 用 SQLite 演示，无需装数据库
+# 定义变量 engine，赋值为 create_engine(DATABASE_URL, connect_args={"ch...
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 # check_same_thread=False：SQLite 默认禁止跨线程用连接，FastAPI 多线程依赖里要关掉
+# 定义变量 SessionLocal，赋值为 sessionmaker(bind=engine, autoflush=False, ex...
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
+# 定义类 Base，继承 DeclarativeBase
 class Base(DeclarativeBase):
+    # 空操作占位
     pass
 
+# 定义类 User，继承 Base
 class User(Base):
+    # 定义变量 __tablename__，赋值为 "users"
     __tablename__ = "users"
+    # 字段 id，类型: Mapped[int]，默认值: mapped_column(primary_key=True)
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 字段 name，类型: Mapped[str]，默认值: mapped_column()
     name: Mapped[str] = mapped_column()
 
 # 启动时建表（仅演示用，生产用 Alembic）
+# 调用 Base.metadata.create_all()
 Base.metadata.create_all(engine)
 
+# 定义函数 get_db，参数: 
 def get_db():
+    # 定义变量 db，赋值为 SessionLocal()
     db = SessionLocal()
+    # 尝试执行，捕获异常
     try:
+        # 生成值: db
         yield db
+    # 无论是否异常都执行
     finally:
+        # 调用 db.close()
         db.close()
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 定义 POST 路由：访问 /users/ 时触发
 @app.post("/users/")
+# 定义函数 create_user，参数: name: str, db: Session = Depends(get_db)
 def create_user(name: str, db: Session = Depends(get_db)):
+    # 定义变量 user，赋值为 User(name=name)
     user = User(name=name)
+    # 调用 db.add()
     db.add(user)
+    # 调用 db.commit()
     db.commit()
     db.refresh(user)   # 刷新，让 user.id 等数据库生成的字段回填
+    # 返回 user
     return user
 
+# 定义 GET 路由：访问 /users/{user_id} 时触发
 @app.get("/users/{user_id}")
+# 定义函数 read_user，参数: user_id: int, db: Session = Depends(get_db)
 def read_user(user_id: int, db: Session = Depends(get_db)):
+    # 定义变量 user，赋值为 db.get(User, user_id)
     user = db.get(User, user_id)
+    # 条件判断：如果 not user
     if not user:
+        # 抛出 HTTPException 异常: 404, "用户不存在"
         raise HTTPException(404, "用户不存在")
+    # 返回 user
     return user
 \`\`\`
 
@@ -547,26 +659,38 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
 - **响应 schema**（\`UserRead\`）：返回给客户端时展示什么，绝不含密码。
 
 \`\`\`python filename="schemas.py - Pydantic 模型"
+# 从 pydantic 导入 BaseModel, EmailStr, ConfigDict
 from pydantic import BaseModel, EmailStr, ConfigDict
+# 从 datetime 导入 datetime
 from datetime import datetime
 
 # 创建用户的入参
+# 定义 Pydantic 数据模型 UserCreate，继承 BaseModel
 class UserCreate(BaseModel):
+    # 字段 name，类型: str
     name: str
     email: EmailStr            # 自动校验邮箱格式
     password: str              # 明文密码，进来后哈希存储
 
 # 更新用户的入参（所有字段可选，PATCH 语义）
+# 定义 Pydantic 数据模型 UserUpdate，继承 BaseModel
 class UserUpdate(BaseModel):
+    # 字段 name，类型: str | None，默认值: None
     name: str | None = None
+    # 字段 email，类型: EmailStr | None，默认值: None
     email: EmailStr | None = None
 
 # 返回给客户端的响应（绝不含 password）
+# 定义 Pydantic 数据模型 UserRead，继承 BaseModel
 class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)  # 允许从 ORM 对象读属性
+    # 字段 id，类型: int
     id: int
+    # 字段 name，类型: str
     name: str
+    # 字段 email，类型: str
     email: str
+    # 字段 created_at，类型: datetime
     created_at: datetime
 \`\`\`
 
@@ -575,39 +699,60 @@ class UserRead(BaseModel):
 ## 三、Create：新建用户
 
 \`\`\`python filename="crud.py - create_user"
+# 从 sqlalchemy.orm 导入 Session
 from sqlalchemy.orm import Session
+# 从 passlib.context 导入 CryptContext
 from passlib.context import CryptContext
 
+# 定义变量 pwd_context，赋值为 CryptContext(schemes=["bcrypt"], deprecated="...
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# 定义函数 hash_password，返回: str
 def hash_password(password: str) -> str:
+    # 返回 pwd_context.hash(password)
     return pwd_context.hash(password)
 
+# 定义函数 create_user，返回: User
 def create_user(db: Session, user_in: UserCreate) -> User:
     # 1. 把入参转成 ORM 对象（密码先哈希）
+    # 定义变量 user，赋值为 User(
     user = User(
+        # 定义变量 name，赋值为 user_in.name,
         name=user_in.name,
+        # 定义变量 email，赋值为 user_in.email,
         email=user_in.email,
+        # 定义变量 hashed_password，赋值为 hash_password(user_in.password),
         hashed_password=hash_password(user_in.password),
+    # )
     )
     db.add(user)              # 加入 Session（暂存）
     db.commit()              # 提交事务，写库
     db.refresh(user)         # 刷新，让 id/created_at 等数据库生成字段回填
+    # 返回 user
     return user
 \`\`\`
 
 \`\`\`python filename="路由 - POST /users/"
+# 从 fastapi 导入 APIRouter, Depends, HTTPException, status
 from fastapi import APIRouter, Depends, HTTPException, status
+# 从 sqlalchemy.orm 导入 Session
 from sqlalchemy.orm import Session
 
+# 创建 APIRouter 实例，设置路由前缀
 router = APIRouter(prefix="/users", tags=["用户"])
 
+# 定义 POST 路由：访问 / 时触发
 @router.post("/", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+# 定义函数 create_user_endpoint，参数: user_in: UserCreate, db: Session = Depends(get_db)
 def create_user_endpoint(user_in: UserCreate, db: Session = Depends(get_db)):
     # 业务校验：邮箱不能重复
+    # 定义变量 existing，赋值为 db.execute(select(User).where(User.email == u...
     existing = db.execute(select(User).where(User.email == user_in.email)).scalar_one_or_none()
+    # 条件判断：如果 existing
     if existing:
+        # 抛出 HTTPException 异常: status_code=400, detail="邮箱已被注册"
         raise HTTPException(status_code=400, detail="邮箱已被注册")
+    # 定义变量 user，赋值为 create_user(db, user_in)
     user = create_user(db, user_in)
     return user   # response_model=UserRead 会自动转换（含敏感字段过滤）
 \`\`\`
@@ -622,48 +767,74 @@ def create_user_endpoint(user_in: UserCreate, db: Session = Depends(get_db)):
 SQLAlchemy 2.0 用 \`select()\` + \`session.execute()\` 取代了 1.x 的 \`session.query()\`。
 
 \`\`\`python filename="按主键查 / 按 ID 查 / 列表 / 分页"
+# 从 sqlalchemy 导入 select, func
 from sqlalchemy import select, func
 
 # 1. 按主键查：最常用，db.get() 一步到位
+# 定义函数 get_user，返回: User | None
 def get_user(db: Session, user_id: int) -> User | None:
+    # 返回 db.get(User, user_id)
     return db.get(User, user_id)
 
 # 2. 按条件查（单个）
+# 定义函数 get_user_by_email，返回: User | None
 def get_user_by_email(db: Session, email: str) -> User | None:
+    # 定义变量 stmt，赋值为 select(User).where(User.email == email)
     stmt = select(User).where(User.email == email)
+    # 返回 db.execute(stmt).scalar_one_or_none()
     return db.execute(stmt).scalar_one_or_none()
     # scalar_one_or_none：恰好一个返回对象，没有返回 None，多个抛异常
 
 # 3. 查全部
+# 定义函数 list_users，返回: list[User]
 def list_users(db: Session) -> list[User]:
+    # 定义变量 stmt，赋值为 select(User).order_by(User.id)
     stmt = select(User).order_by(User.id)
     return list(db.execute(stmt).scalars())   # scalars() 把行拆成对象
 
 # 4. 分页查询：limit/offset
+# 定义函数 list_users_paged，返回: list[User]
 def list_users_paged(db: Session, skip: int = 0, limit: int = 20) -> list[User]:
+    # 定义变量 stmt，赋值为 select(User).order_by(User.id).offset(skip).l...
     stmt = select(User).order_by(User.id).offset(skip).limit(limit)
+    # 返回 list(db.execute(stmt).scalars())
     return list(db.execute(stmt).scalars())
 
 # 5. 统计总数（分页页码要用）
+# 定义函数 count_users，返回: int
 def count_users(db: Session) -> int:
+    # 定义变量 stmt，赋值为 select(func.count()).select_from(User)
     stmt = select(func.count()).select_from(User)
+    # 返回 db.execute(stmt).scalar_one()
     return db.execute(stmt).scalar_one()
 \`\`\`
 
 \`\`\`python filename="路由 - GET 列表分页"
+# 定义 GET 路由：访问 / 时触发
 @router.get("/", response_model=list[UserRead])
+# def list_users_endpoint(
 def list_users_endpoint(
+    # 字段 skip，类型: int，默认值: 0,
     skip: int = 0,
     limit: int = Query(default=20, le=100),   # 限制每页最多 100 条
+    # 字段 db，类型: Session，默认值: Depends(get_db),
     db: Session = Depends(get_db),
+# ):
 ):
+    # 返回 list_users_paged(db, skip, limit)
     return list_users_paged(db, skip, limit)
 
+# 定义 GET 路由：访问 /{user_id} 时触发
 @router.get("/{user_id}", response_model=UserRead)
+# 定义函数 read_user_endpoint，参数: user_id: int, db: Session = Depends(get_db)
 def read_user_endpoint(user_id: int, db: Session = Depends(get_db)):
+    # 定义变量 user，赋值为 get_user(db, user_id)
     user = get_user(db, user_id)
+    # 条件判断：如果 not user
     if not user:
+        # 抛出 HTTPException 异常: status_code=404, detail="用户不存在"
         raise HTTPException(status_code=404, detail="用户不存在")
+    # 返回 user
     return user
 \`\`\`
 
@@ -680,23 +851,35 @@ def read_user_endpoint(user_id: int, db: Session = Depends(get_db)):
 ## 五、Update：修改用户
 
 \`\`\`python filename="crud.py - update_user"
+# 定义函数 update_user，返回: User
 def update_user(db: Session, user: User, user_in: UserUpdate) -> User:
     # 用 model_dump(exclude_unset=True) 只取客户端实际传入的字段
     # 避免把没传的字段误置为 None
+    # 定义变量 data，赋值为 user_in.model_dump(exclude_unset=True)
     data = user_in.model_dump(exclude_unset=True)
+    # 遍历 data.items()，取 field, value
     for field, value in data.items():
         setattr(user, field, value)   # 等价于 user.field = value，但字段名是动态的
+    # 调用 db.commit()
     db.commit()
+    # 调用 db.refresh()
     db.refresh(user)
+    # 返回 user
     return user
 \`\`\`
 
 \`\`\`python filename="路由 - PUT 更新"
+# 定义 PUT 路由：访问 /{user_id} 时触发
 @router.put("/{user_id}", response_model=UserRead)
+# 定义函数 update_user_endpoint，参数: user_id: int, user_in: UserUpdate, db: Session = D...
 def update_user_endpoint(user_id: int, user_in: UserUpdate, db: Session = Depends(get_db)):
+    # 定义变量 user，赋值为 get_user(db, user_id)
     user = get_user(db, user_id)
+    # 条件判断：如果 not user
     if not user:
+        # 抛出 HTTPException 异常: 404, "用户不存在"
         raise HTTPException(404, "用户不存在")
+    # 返回 update_user(db, user, user_in)
     return update_user(db, user, user_in)
 \`\`\`
 
@@ -705,18 +888,26 @@ def update_user_endpoint(user_id: int, user_in: UserUpdate, db: Session = Depend
 ## 六、Delete：删除用户
 
 \`\`\`python filename="crud.py - delete_user"
+# 定义函数 delete_user，返回: None
 def delete_user(db: Session, user: User) -> None:
     db.delete(user)     # 标记删除
     db.commit()         # 提交，真正执行 DELETE
 \`\`\`
 
 \`\`\`python filename="路由 - DELETE"
+# 定义 DELETE 路由：访问 /{user_id} 时触发
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+# 定义函数 delete_user_endpoint，参数: user_id: int, db: Session = Depends(get_db)
 def delete_user_endpoint(user_id: int, db: Session = Depends(get_db)):
+    # 定义变量 user，赋值为 get_user(db, user_id)
     user = get_user(db, user_id)
+    # 条件判断：如果 not user
     if not user:
+        # 抛出 HTTPException 异常: 404, "用户不存在"
         raise HTTPException(404, "用户不存在")
+    # 调用 db.delete()
     db.delete(user)
+    # 调用 db.commit()
     db.commit()
     return None   # 204 无响应体
 \`\`\`
@@ -726,18 +917,28 @@ def delete_user_endpoint(user_id: int, db: Session = Depends(get_db)):
 每个写操作前都要先查对象存不存在。可以用依赖把这个逻辑复用：
 
 \`\`\`python filename="用依赖复用 404 校验"
+# 定义函数 get_user_or_404，返回: User
 def get_user_or_404(user_id: int, db: Session = Depends(get_db)) -> User:
+    # 定义变量 user，赋值为 db.get(User, user_id)
     user = db.get(User, user_id)
+    # 条件判断：如果 not user
     if not user:
+        # 抛出 HTTPException 异常: status_code=404, detail="用户不存在"
         raise HTTPException(status_code=404, detail="用户不存在")
+    # 返回 user
     return user
 
+# 定义 GET 路由：访问 /{user_id} 时触发
 @router.get("/{user_id}")
+# 定义函数 read_user，参数: user: User = Depends(get_user_or_404)
 def read_user(user: User = Depends(get_user_or_404)):
     return user   # 依赖已经保证 user 一定存在
 
+# 定义 PUT 路由：访问 /{user_id} 时触发
 @router.put("/{user_id}")
+# 定义函数 update_user，参数: user_in: UserUpdate, user: User = Depends(get_user...
 def update_user(user_in: UserUpdate, user: User = Depends(get_user_or_404), db: Session = Depends(get_db)):
+    # 返回 update_user(db, user, user_in)
     return update_user(db, user, user_in)
 \`\`\`
 
@@ -815,9 +1016,11 @@ CRUD 是 Web 后端的"基本功"：\`db.add+commit\` 创建、\`select+where\` 
 
 \`\`\`bash filename="安装与初始化"
 # 1. 安装
+# 安装 Python 包: alembic
 pip install alembic
 
 # 2. 在项目根目录初始化（生成 alembic.ini 和 alembic/ 目录）
+# alembic init alembic
 alembic init alembic
 \`\`\`
 
@@ -843,6 +1046,7 @@ myproject/
 
 \`\`\`ini filename="alembic.ini"
 # 开发环境可硬编码（生产不要！）
+# sqlalchemy.url = postgresql+psycopg2://postgres:se
 sqlalchemy.url = postgresql+psycopg2://postgres:secret@localhost:5432/blog
 \`\`\`
 
@@ -864,8 +1068,10 @@ from models import Base   # 引入你的模型基类（确保模型被导入，m
 
 target_metadata = Base.metadata   # ★ 告诉 Alembic：这是我的"目标 schema"
 
+# 定义函数 run_migrations_online，参数: 
 def run_migrations_online():
     # ... 省略，Alembic 默认实现会用 target_metadata 做对比
+    # 空操作占位
     pass
 \`\`\`
 
@@ -876,6 +1082,7 @@ def run_migrations_online():
 from models import Base, User, Post   # 列举，或用 models 模块整体导入
 import models   # 触发所有 @declarative 注册
 
+# 定义变量 target_metadata，赋值为 models.Base.metadata
 target_metadata = models.Base.metadata
 \`\`\`
 
@@ -883,31 +1090,44 @@ target_metadata = models.Base.metadata
 
 \`\`\`bash filename="自动生成迁移"
 # 对比模型和数据库，生成差异脚本
+# alembic revision --autogenerate -m "add phone colu
 alembic revision --autogenerate -m "add phone column to users"
 \`\`\`
 
 Alembic 会生成一个文件 \`alembic/versions/<hash>_add_phone_column_to_users.py\`：
 
 \`\`\`python filename="迁移脚本示例"
+# """add phone column to users
 """add phone column to users
 
+# Revision ID: a1b2c3d4
 Revision ID: a1b2c3d4
+# 字段 Revises，类型: 9z8y7x6
 Revises: 9z8y7x6
+# Create Date: 2025-01-15 10:30:00
 Create Date: 2025-01-15 10:30:00
+# """
 """
+# 从 alembic 导入 op
 from alembic import op
+# 导入 sqlalchemy 并重命名为 sa
 import sqlalchemy as sa
 
 # 修订 ID 和父修订 ID（构成版本链）
+# 定义变量 revision，赋值为 "a1b2c3d4"
 revision = "a1b2c3d4"
 down_revision = "9z8y7x6"   # 上一个版本
 
+# 定义函数 upgrade，返回: None
 def upgrade() -> None:
     # 升级：加一列
+    # 调用 op.add_column()
     op.add_column("users", sa.Column("phone", sa.String(20), nullable=True))
 
+# 定义函数 downgrade，返回: None
 def downgrade() -> None:
     # 回滚：删这一列
+    # 调用 op.drop_column()
     op.drop_column("users", "phone")
 \`\`\`
 
@@ -920,27 +1140,35 @@ def downgrade() -> None:
 
 \`\`\`bash filename="升降级命令"
 # 升到最新版本
+# alembic upgrade head
 alembic upgrade head
 
 # 升级到指定版本
+# alembic upgrade a1b2c3d4
 alembic upgrade a1b2c3d4
 
 # 前进一步
+# alembic upgrade +1
 alembic upgrade +1
 
 # 回退一步
+# alembic downgrade -1
 alembic downgrade -1
 
 # 回退到指定版本
+# alembic downgrade 9z8y7x6
 alembic downgrade 9z8y7x6
 
 # 回退到初始（清空所有迁移）
+# alembic downgrade base
 alembic downgrade base
 
 # 查看当前版本
+# alembic current
 alembic current
 
 # 查看迁移历史
+# alembic history --verbose
 alembic history --verbose
 \`\`\`
 
@@ -963,12 +1191,16 @@ revision = "a1b2c3d4"      # 当前修订 ID（全局唯一）
 down_revision = "9z8y7x6"  # 父修订 ID（构成链表）
 # branch_labels / depends_on：分支用，普通项目用不到
 
+# 定义函数 upgrade，参数: 
 def upgrade():
     # 往"前进"时执行的 DDL/DML
+    # 调用 op.add_column()
     op.add_column(...)
 
+# 定义函数 downgrade，参数: 
 def downgrade():
     # 往"后退"时执行，应严格反操作 upgrade
+    # 调用 op.drop_column()
     op.drop_column(...)
 \`\`\`
 
@@ -990,37 +1222,62 @@ def downgrade():
 迁移不只是改表结构，还可能要搬数据。比如把 \`users.fullname\` 拆成 \`first_name\` 和 \`last_name\`：
 
 \`\`\`python filename="带数据搬运的迁移"
+# 定义函数 upgrade，参数: 
 def upgrade():
     # 1. 加两列
+    # 调用 op.add_column()
     op.add_column("users", sa.Column("first_name", sa.String(50)))
+    # 调用 op.add_column()
     op.add_column("users", sa.Column("last_name", sa.String(50)))
 
     # 2. 用 op.get_bind() 拿到连接，做数据搬运
+    # 定义变量 conn，赋值为 op.get_bind()
     conn = op.get_bind()
+    # 定义变量 users，赋值为 conn.execute(sa.text("SELECT id, fullname FRO...
     users = conn.execute(sa.text("SELECT id, fullname FROM users")).fetchall()
+    # 遍历 users，取 uid, fullname
     for uid, fullname in users:
+        # 定义变量 parts，赋值为 fullname.split(" ", 1) if fullname else ["", ...
         parts = fullname.split(" ", 1) if fullname else ["", ""]
+        # 定义变量 first，赋值为 parts[0]
         first = parts[0]
+        # 定义变量 last，赋值为 parts[1] if len(parts) > 1 else ""
         last = parts[1] if len(parts) > 1 else ""
+        # conn.execute(
         conn.execute(
+            # 调用 sa.text()
             sa.text("UPDATE users SET first_name=:f, last_name=:l WHERE id=:id"),
+            # {"f": first, "l": last, "id": uid},
             {"f": first, "l": last, "id": uid},
+        # )
         )
 
     # 3. 删旧列
+    # 调用 op.drop_column()
     op.drop_column("users", "fullname")
 
+# 定义函数 downgrade，参数: 
 def downgrade():
     # 逆操作：合并回去，删新列，加回旧列
+    # 调用 op.add_column()
     op.add_column("users", sa.Column("fullname", sa.String(100)))
+    # 定义变量 conn，赋值为 op.get_bind()
     conn = op.get_bind()
+    # 定义变量 users，赋值为 conn.execute(sa.text("SELECT id, first_name, ...
     users = conn.execute(sa.text("SELECT id, first_name, last_name FROM users")).fetchall()
+    # 遍历 users，取 uid, first, last
     for uid, first, last in users:
+        # conn.execute(
         conn.execute(
+            # 调用 sa.text()
             sa.text("UPDATE users SET fullname=:n WHERE id=:id"),
+            # {"n": f"{first} {last}".strip(), "id": uid},
             {"n": f"{first} {last}".strip(), "id": uid},
+        # )
         )
+    # 调用 op.drop_column()
     op.drop_column("users", "first_name")
+    # 调用 op.drop_column()
     op.drop_column("users", "last_name")
 \`\`\`
 
@@ -1037,6 +1294,7 @@ def downgrade():
 **冲突处理**：两人同时基于 004 各自生成 005，合并时 \`down_revision\` 都指向 004，形成"分叉"。Alembic 支持 merge：
 
 \`\`\`bash filename="合并分叉"
+# alembic merge -m "merge 005a and 005b" 005a 005b
 alembic merge -m "merge 005a and 005b" 005a 005b
 # 生成一个 merge revision，down_revision 指向两个父节点
 \`\`\`

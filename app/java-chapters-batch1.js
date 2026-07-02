@@ -211,9 +211,9 @@ Java 的 GC 会**自动**监测哪些对象不再被引用，并回收它们占�
 
 \`\`\`java
 // Hello.java —— 文件名必须与 public 类名一致
-public class Hello {
-    public static void main(String[] args) {
-        System.out.println("Hello, World!");
+public class Hello {  // 定义类 Hello
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        System.out.println("Hello, World!");  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -383,12 +383,12 @@ Java 数据类型
 #### 整型
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         int age = 28;                // 最常用
         long population = 14000000000L;  // long 字面量必须加 L 后缀
         byte b = 100;                // byte 范围小，注意溢出
-        short s = 1000;
+        short s = 1000;  // 声明变量 s（short），初始值为 1000
     }
 }
 \`\`\`
@@ -398,10 +398,10 @@ public class Main {
 Java 支持下划线分隔大数字（Java 7+），提高可读性：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        int million = 1_000_000;
-        long big = 1_000_000_000_000L;
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        int million = 1_000_000;  // 声明变量 million（int），初始值为 1_000_000
+        long big = 1_000_000_000_000L;  // 声明变量 big（long），初始值为 1_000_000_000_000L
     }
 }
 \`\`\`
@@ -409,8 +409,8 @@ public class Main {
 支持二进制（\`0b\`）、八进制（\`0\`）、十六进制（\`0x\`）字面量：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         int bin = 0b1010;     // 10
         int oct = 012;        // 10
         int hex = 0xFF;       // 255
@@ -421,8 +421,8 @@ public class Main {
 #### 浮点型
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         double pi = 3.141592653589793;  // 默认就是 double
         float f = 3.14f;                // float 字面量必须加 f 后缀
         double scientific = 6.022e23;   // 科学计数法
@@ -433,8 +433,8 @@ public class Main {
 **浮点精度陷阱**：和所有 IEEE 754 浮点数一样，Java 的 double 也有精度问题：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         System.out.println(0.1 + 0.2);        // 0.30000000000000004
         System.out.println(0.1 + 0.2 == 0.3); // false
     }
@@ -444,12 +444,12 @@ public class Main {
 涉及金额等精确计算时，应使用 \`java.math.BigDecimal\`：
 
 \`\`\`java
-import java.math.BigDecimal;
+import java.math.BigDecimal;  // 导入类 java.math.BigDecimal
 
-public class Main {
-    public static void main(String[] args) {
-        BigDecimal a = new BigDecimal("0.1");
-        BigDecimal b = new BigDecimal("0.2");
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        BigDecimal a = new BigDecimal("0.1");  // 声明变量 a（BigDecimal），初始值为 new BigDecimal("0.1")
+        BigDecimal b = new BigDecimal("0.2");  // 声明变量 b（BigDecimal），初始值为 new BigDecimal("0.2")
         System.out.println(a.add(b));   // 0.3，精确
     }
 }
@@ -460,11 +460,11 @@ public class Main {
 \`char\` 存储**单个 Unicode 字符**，用单引号包裹：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        char letter = 'A';
-        char chinese = '中';
-        char num = '9';
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        char letter = 'A';  // 声明变量 letter（char），初始值为 'A'
+        char chinese = '中';  // 声明变量 chinese（char），初始值为 '中'
+        char num = '9';  // 声明变量 num（char），初始值为 '9'
     }
 }
 \`\`\`
@@ -472,9 +472,9 @@ public class Main {
 \`char\` 本质上是一个**无符号 16 位整数**（0-65535），可以参与整数运算：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        char c = 'A';
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        char c = 'A';  // 声明变量 c（char），初始值为 'A'
         System.out.println((int) c);     // 65，A 的 Unicode 码点
         System.out.println((char) 66);   // B
         System.out.println(c + 1);       // 66（char 提升为 int 参与运算）
@@ -485,10 +485,10 @@ public class Main {
 #### 布尔型 boolean
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        boolean isJavaFun = true;
-        boolean isBoring = false;
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        boolean isJavaFun = true;  // 声明变量 isJavaFun（boolean），初始值为 true
+        boolean isBoring = false;  // 声明变量 isBoring（boolean），初始值为 false
     }
 }
 \`\`\`
@@ -500,8 +500,8 @@ Java 的 boolean 只有 \`true\` 和 \`false\` 两个值，**不能**像 C/C++ �
 引用类型变量存储的是**对象的内存地址**（引用），而非对象本身。最常见的引用类型是 \`String\`：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         String name = "张三";          // 字符串字面量
         String greeting = new String("Hello");  // 用 new 创建
     }
@@ -511,18 +511,18 @@ public class Main {
 基本类型和引用类型的核心区别：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         // 基本类型：赋值是拷贝值
-        int a = 10;
-        int b = a;
-        b = 20;
+        int a = 10;  // 声明变量 a（int），初始值为 10
+        int b = a;  // 声明变量 b（int），初始值为 a
+        b = 20;  // 为 b 赋值：20
         System.out.println(a);  // 10，a 不受影响
 
         // 引用类型：赋值是拷贝引用（指向同一个对象）
-        int[] arr1 = {1, 2, 3};
-        int[] arr2 = arr1;
-        arr2[0] = 99;
+        int[] arr1 = {1, 2, 3};  // 声明变量 arr1（int[]），初始值为 {1, 2, 3}
+        int[] arr2 = arr1;  // 声明变量 arr2（int[]），初始值为 arr1
+        arr2[0] = 99;  // 为数组 arr2 的某元素赋值：99
         System.out.println(arr1[0]);  // 99，arr1 也变了！因为是同一个数组对象
     }
 }
@@ -531,17 +531,17 @@ public class Main {
 ### 变量声明与初始化
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         // 先声明后赋值
-        int x;
-        x = 10;
+        int x;  // 声明变量 x（int 类型）
+        x = 10;  // 为 x 赋值：10
 
         // 声明同时初始化
-        int y = 20;
+        int y = 20;  // 声明变量 y（int），初始值为 20
 
         // 同时声明多个同类型变量
-        int m = 1, n = 2, k = 3;
+        int m = 1, n = 2, k = 3;  // 声明变量 m（int），初始值为 1, n = 2, k = 3
     }
 }
 \`\`\`
@@ -549,16 +549,16 @@ public class Main {
 **成员变量**（类中方法外）有默认值（0、false、null），**局部变量**（方法内）没有默认值，使用前必须初始化，否则编译报错：
 
 \`\`\`java
-public class Main {
-    public void demo() {
-        int z;
+public class Main {  // 定义类 Main
+    public void demo() {  // 方法 demo，返回 void，无参数
+        int z;  // 声明变量 z（int 类型）
         // System.out.println(z);  // ❌ 编译错误：可能尚未初始化变量 z
-        z = 5;
+        z = 5;  // 为 z 赋值：5
         System.out.println(z);     // ✅
     }
 
-    public static void main(String[] args) {
-        new Main().demo();
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        new Main().demo();  // 调用 new Main() 的 demo 方法
     }
 }
 \`\`\`
@@ -568,8 +568,8 @@ public class Main {
 Java 10 引入了 \`var\` 关键字，用于**局部变量类型推断**。编译器会根据右侧的值自动推断类型：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         var name = "张三";       // 推断为 String
         var age = 28;            // 推断为 int
         var list = new java.util.ArrayList<String>();  // 推断为 ArrayList<String>
@@ -589,9 +589,9 @@ public class Main {
 小类型向大类型自动转换，不会丢失精度：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        byte b = 100;
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        byte b = 100;  // 声明变量 b（byte），初始值为 100
         int i = b;        // byte → int，自动
         long l = i;       // int → long，自动
         double d = l;     // long → double，自动
@@ -607,15 +607,15 @@ public class Main {
 大类型向小类型转换必须显式强转，**可能丢失精度**：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        double d = 3.99;
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        double d = 3.99;  // 声明变量 d（double），初始值为 3.99
         int i = (int) d;    // 3，直接截断小数部分（不是四舍五入）
-        System.out.println(i);
+        System.out.println(i);  // 打印一行到标准输出（自动换行）
 
-        int big = 300;
+        int big = 300;  // 声明变量 big（int），初始值为 300
         byte b = (byte) big;  // 溢出！300 超出 byte 范围，结果为 44
-        System.out.println(b);
+        System.out.println(b);  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -625,9 +625,9 @@ public class Main {
 在表达式中，\`byte\`、\`short\`、\`char\` 会自动提升为 \`int\` 参与运算：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        byte a = 10, b = 20;
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        byte a = 10, b = 20;  // 声明变量 a（byte），初始值为 10, b = 20
         // byte c = a + b;   // ❌ 编译错误：a + b 的结果是 int
         byte c = (byte)(a + b);  // ✅ 需要强转
     }
@@ -650,8 +650,8 @@ Java 是面向对象语言，但 8 种基本类型不是对象。为了在需要
 | boolean | Boolean |
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         Integer ageObj = Integer.valueOf(28);   // int → Integer
         int age = ageObj.intValue();            // Integer → int
 
@@ -667,8 +667,8 @@ public class Main {
 Java 5 引入了自动装箱/拆箱，让基本类型和包装类之间自动转换：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         // 自动装箱：int → Integer
         Integer a = 10;   // 等价于 Integer a = Integer.valueOf(10);
 
@@ -683,14 +683,14 @@ public class Main {
 **1. Integer 缓存陷阱**：\`Integer\` 会缓存 -128 到 127 的对象，这个范围内 \`==\` 比较为 true，超出范围为 false：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        Integer a = 127;
-        Integer b = 127;
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        Integer a = 127;  // 声明变量 a（Integer），初始值为 127
+        Integer b = 127;  // 声明变量 b（Integer），初始值为 127
         System.out.println(a == b);   // true（缓存）
 
-        Integer c = 128;
-        Integer d = 128;
+        Integer c = 128;  // 声明变量 c（Integer），初始值为 128
+        Integer d = 128;  // 声明变量 d（Integer），初始值为 128
         System.out.println(c == d);   // false（超出缓存，是不同对象）
         System.out.println(c.equals(d));  // true（比较值，推荐用 equals）
     }
@@ -700,14 +700,14 @@ public class Main {
 **2. 空指针风险**：包装类可以为 null，自动拆箱时会抛 \`NullPointerException\`：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        Integer obj = null;
-        try {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        Integer obj = null;  // 声明变量 obj（Integer），初始值为 null
+        try {  // try 块：包裹可能抛出异常的代码
             int n = obj;   // ❌ NullPointerException（自动拆箱时）
-            System.out.println(n);
-        } catch (NullPointerException e) {
-            System.out.println("抛出 NullPointerException：obj 为 null 时不能自动拆箱");
+            System.out.println(n);  // 打印一行到标准输出（自动换行）
+        } catch (NullPointerException e) {  // 捕获异常 NullPointerException e
+            System.out.println("抛出 NullPointerException：obj 为 null 时不能自动拆箱");  // 打印一行到标准输出（自动换行）
         }
     }
 }
@@ -720,12 +720,12 @@ public class Main {
 用 \`final\` 关键字声明的变量只能赋值一次，成为常量：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        final double PI = 3.14159265;
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        final double PI = 3.14159265;  // 声明常量变量 PI（double），初始值为 3.14159265
         // PI = 3.14;  // ❌ 编译错误：不能修改 final 变量
 
-        final String APP_NAME = "我的应用";
+        final String APP_NAME = "我的应用";  // 声明常量变量 APP_NAME（String），初始值为 "我的应用"
     }
 }
 \`\`\`
@@ -948,8 +948,8 @@ public class Main {
 Java 的 \`/\` 对整数是**截断除法**（向零取整），不是 Python 的地板除：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         System.out.println(7 / 2);    // 3（截断小数）
         System.out.println(-7 / 2);   // -3（向零取整，注意与 Python 的 -4 不同）
         System.out.println(7 / 2.0);  // 3.5（有浮点数参与则为浮点除法）
@@ -960,8 +960,8 @@ public class Main {
 #### 取余 %
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         System.out.println(7 % 3);    // 1
         System.out.println(-7 % 3);   // -1（结果符号与被除数相同，注意与 Python 不同）
         System.out.println(7 % -3);   // 1
@@ -974,9 +974,9 @@ public class Main {
 \`++\` 和 \`--\` 有**前置**和**后置**两种形式，区别在于返回值：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        int i = 5;
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        int i = 5;  // 声明变量 i（int），初始值为 5
         int a = i++;   // a=5, i=6（后置：先赋值再自增）
         int b = ++i;   // i=7, b=7（前置：先自增再赋值）
     }
@@ -999,8 +999,8 @@ public class Main {
 | \`<=\` | 小于等于 | \`5 <= 4\` → false |
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         System.out.println(3 == 3);   // true
         System.out.println(5 > 3);    // true
     }
@@ -1016,15 +1016,15 @@ Java 有两组逻辑运算符：
 | 运算符 | 含义 | 短路？ |
 | --- | --- | --- |
 | \`&&\` | 逻辑与 | ✅ 短路 |
-| \`\|\|\` | 逻辑或 | ✅ 短路 |
+| \`\\|\\|\` | 逻辑或 | ✅ 短路 |
 | \`!\` | 逻辑非 | - |
 | \`&\` | 按位与（也可做逻辑与） | ❌ 不短路 |
-| \`\|\` | 按位或（也可做逻辑或） | ❌ 不短路 |
+| \`\\|\` | 按位或（也可做逻辑或） | ❌ 不短路 |
 | \`^\` | 逻辑异或 | ❌ 不短路 |
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         System.out.println(true && false);   // false
         System.out.println(true || false);   // true
         System.out.println(!true);           // false
@@ -1034,24 +1034,24 @@ public class Main {
 
 #### 短路求值（Short-circuit）
 
-\`&&\` 和 \`\|\|\` 具有**短路特性**：如果能由左操作数确定结果，就不计算右操作数。
+\`&&\` 和 \`\\|\\|\` 具有**短路特性**：如果能由左操作数确定结果，就不计算右操作数。
 
 \`\`\`java
-public class Main {
+public class Main {  // 定义类 Main
     // 模拟一个"昂贵"的调用，用来观察是否被执行
-    static boolean expensiveCall() {
-        System.out.println("  expensiveCall 被调用了！");
-        return true;
+    static boolean expensiveCall() {  // 静态方法 expensiveCall，返回 boolean，无参数
+        System.out.println("  expensiveCall 被调用了！");  // 打印一行到标准输出（自动换行）
+        return true;  // 返回值：true
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         // && 短路：左边为 false 时，不计算右边
         boolean result = (1 > 2) && expensiveCall();   // expensiveCall 不会被调用
-        System.out.println("result = " + result);
+        System.out.println("result = " + result);  // 打印一行到标准输出（自动换行）
 
         // || 短路：左边为 true 时，不计算右边
         boolean result2 = (1 < 2) || expensiveCall();  // expensiveCall 不会被调用
-        System.out.println("result2 = " + result2);
+        System.out.println("result2 = " + result2);  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -1059,14 +1059,14 @@ public class Main {
 短路求值常用于**安全访问**，避免空指针：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        String str = null;
-        if (str != null && str.length() > 0) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        String str = null;  // 声明变量 str（String），初始值为 null
+        if (str != null && str.length() > 0) {  // 条件判断：满足 str != null && str.length() > 0 时执行
             // 如果 str 为 null，由于短路，str.length() 不会被执行，避免空指针
-            System.out.println("字符串非空");
-        } else {
-            System.out.println("str 为 null 或空串，短路保护避免了 NPE");
+            System.out.println("字符串非空");  // 打印一行到标准输出（自动换行）
+        } else {  // 否则分支
+            System.out.println("str 为 null 或空串，短路保护避免了 NPE");  // 打印一行到标准输出（自动换行）
         }
     }
 }
@@ -1077,12 +1077,12 @@ public class Main {
 \`&&\` 和 \`&\` 在布尔运算中结果相同，区别在于：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        int x = 0;
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        int x = 0;  // 声明变量 x（int），初始值为 0
         // && 短路：x != 0 为 false，不计算 10/x，不会除零
         boolean r1 = (x != 0) && (10 / x > 1);   // 安全，r1 = false
-        System.out.println("r1 = " + r1);
+        System.out.println("r1 = " + r1);  // 打印一行到标准输出（自动换行）
 
         // & 不短路：两边都计算，10/x 会抛 ArithmeticException
         // boolean r2 = (x != 0) & (10 / x > 1);  // ❌ 除零异常
@@ -1090,7 +1090,7 @@ public class Main {
 }
 \`\`\`
 
-日常逻辑判断**始终用 \`&&\` 和 \`\|\|\`**，\`&\` 和 \`\|\`\` 留给位运算。
+日常逻辑判断**始终用 \`&&\` 和 \`\\|\\|\`**，\`&\` 和 \`\\|\`\` 留给位运算。
 
 ### 位运算符
 
@@ -1099,7 +1099,7 @@ public class Main {
 | 运算符 | 含义 | 示例 | 说明 |
 | --- | --- | --- | --- |
 | \`&\` | 按位与 | \`5 & 3\` → 1 | 两位都为 1 才为 1 |
-| \`\|\` | 按位或 | \`5 \| 3\` → 7 | 有一位为 1 就为 1 |
+| \`\\|\` | 按位或 | \`5 \\| 3\` → 7 | 有一位为 1 就为 1 |
 | \`^\` | 按位异或 | \`5 ^ 3\` → 6 | 两位不同为 1 |
 | \`~\` | 按位取反 | \`~5\` → -6 | 0 变 1，1 变 0 |
 | \`<<\` | 左移 | \`5 << 2\` → 20 | 左移 n 位 = 乘 2ⁿ |
@@ -1107,8 +1107,8 @@ public class Main {
 | \`>>>\` | 无符号右移 | \`-8 >>> 28\` | 高位补 0 |
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         // 5 的二进制: 0101
         // 3 的二进制: 0011
         System.out.println(5 & 3);    // 1  (0001)
@@ -1124,18 +1124,18 @@ public class Main {
 位运算常见用途：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         // 判断奇偶（比 n % 2 更快）
-        int n = 7;
-        boolean isOdd = (n & 1) == 1;
-        System.out.println(n + " 是奇数吗: " + isOdd);
+        int n = 7;  // 声明变量 n（int），初始值为 7
+        boolean isOdd = (n & 1) == 1;  // 声明变量 isOdd（boolean），初始值为 (n & 1) == 1
+        System.out.println(n + " 是奇数吗: " + isOdd);  // 打印一行到标准输出（自动换行）
 
         // 权限标志（位掩码）
         final int READ = 4, WRITE = 2, EXECUTE = 1;  // 100, 010, 001
         int permission = READ | WRITE;   // 110 = 6
-        boolean canRead = (permission & READ) != 0;
-        System.out.println("权限值: " + permission + "，有读权限: " + canRead);
+        boolean canRead = (permission & READ) != 0;  // 声明变量 canRead（boolean），初始值为 (permission & READ) != 0
+        System.out.println("权限值: " + permission + "，有读权限: " + canRead);  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -1145,9 +1145,9 @@ public class Main {
 #### 基本赋值
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        int x = 10;
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        int x = 10;  // 声明变量 x（int），初始值为 10
     }
 }
 \`\`\`
@@ -1162,15 +1162,15 @@ public class Main {
 | \`/=\` | \`x = x / y\` |
 | \`%=\` | \`x = x % y\` |
 | \`&=\` | \`x = x & y\` |
-| \`\|=\` | \`x = x \| y\` |
+| \`\\|=\` | \`x = x \\| y\` |
 | \`^=\` | \`x = x ^ y\` |
 | \`<<=\` | \`x = x << y\` |
 | \`>>=\` | \`x = x >> y\` |
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        int x = 10;
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        int x = 10;  // 声明变量 x（int），初始值为 10
         x += 5;    // x = 15
         x -= 3;    // x = 12
         x *= 2;    // x = 24
@@ -1187,14 +1187,14 @@ public class Main {
 Java 的三目运算符语法：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         // 条件 ? 值1 : 值2
         // 条件为 true 返回值1，否则返回值2
 
-        int age = 20;
+        int age = 20;  // 声明变量 age（int），初始值为 20
         String status = age >= 18 ? "成年" : "未成年";  // "成年"
-        System.out.println(status);
+        System.out.println(status);  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -1202,11 +1202,11 @@ public class Main {
 三目运算符可以嵌套，但不宜过深：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        int score = 85;
-        String grade = score >= 90 ? "优秀" : (score >= 80 ? "良好" : "及格");
-        System.out.println(grade);
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        int score = 85;  // 声明变量 score（int），初始值为 85
+        String grade = score >= 90 ? "优秀" : (score >= 80 ? "良好" : "及格");  // 声明变量 grade（String），初始值为 score >= 90 ? "优秀" : (score >= 80 ? "良好" : "及格")
+        System.out.println(grade);  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -1216,16 +1216,16 @@ public class Main {
 \`instanceof\` 用于判断对象是否是某个类（或其子类、接口实现）的实例：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        String s = "hello";
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        String s = "hello";  // 声明变量 s（String），初始值为 "hello"
         System.out.println(s instanceof String);     // true
         System.out.println(s instanceof Object);    // true（String 是 Object 子类）
 
-        Object obj = "test";
-        if (obj instanceof String) {
+        Object obj = "test";  // 声明变量 obj（Object），初始值为 "test"
+        if (obj instanceof String) {  // 条件判断：满足 obj instanceof String 时执行
             String str = (String) obj;   // 安全强转
-            System.out.println(str.length());
+            System.out.println(str.length());  // 打印一行到标准输出（自动换行）
         }
     }
 }
@@ -1234,12 +1234,12 @@ public class Main {
 Java 16+ 引入了**模式匹配 instanceof**，可以一步完成类型检查和赋值：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        Object obj = "test";
-        if (obj instanceof String str) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        Object obj = "test";  // 声明变量 obj（Object），初始值为 "test"
+        if (obj instanceof String str) {  // 条件判断：满足 obj instanceof String str 时执行
             // str 已自动声明并强转，直接用
-            System.out.println(str.length());
+            System.out.println(str.length());  // 打印一行到标准输出（自动换行）
         }
     }
 }
@@ -1262,15 +1262,15 @@ public class Main {
 | 7 | \`==\`、\`!=\` |
 | 8 | \`&\` |
 | 9 | \`^\` |
-| 10 | \`\|\` |
+| 10 | \`\\|\` |
 | 11 | \`&&\` |
-| 12 | \`\|\|\` |
+| 12 | \`\\|\\|\` |
 | 13 | \`? :\`（三目） |
 | 14（最低） | \`=\`、\`+=\`、\`-=\` 等 |
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         System.out.println(2 + 3 * 4);      // 14，先乘后加
         System.out.println((2 + 3) * 4);    // 20，括号优先
 
@@ -1472,12 +1472,12 @@ public class Main {
 Java 中 \`String\` 对象一旦创建，内容就**不能被修改**。所有"修改"字符串的操作（拼接、替换等）实际上都创建了**新的 String 对象**。
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        String s = "hello";
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        String s = "hello";  // 声明变量 s（String），初始值为 "hello"
         s = s + " world";   // 这不是修改原对象，而是创建新对象 "hello world" 并让 s 指向它
         // 原 "hello" 对象仍存在于内存中（可能被 GC 回收）
-        System.out.println(s);
+        System.out.println(s);  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -1494,8 +1494,8 @@ public class Main {
 #### 字符串字面量
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         String s1 = "hello";       // 字符串字面量，存放在字符串常量池
         String s2 = "hello";       // 同一字面量，复用常量池中的对象
         System.out.println(s1 == s2);   // true（同一对象）
@@ -1506,10 +1506,10 @@ public class Main {
 #### new 关键字
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         String s3 = new String("hello");   // 在堆上创建新对象
-        String s4 = new String("hello");
+        String s4 = new String("hello");  // 声明变量 s4（String），初始值为 new String("hello")
         System.out.println(s3 == s4);      // false（两个不同对象）
         System.out.println(s3.equals(s4)); // true（内容相同）
     }
@@ -1526,11 +1526,11 @@ public class Main {
 - \`equals()\` 比较的是**内容**（字符序列是否相同）
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        String a = "hello";
-        String b = "hello";
-        String c = new String("hello");
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        String a = "hello";  // 声明变量 a（String），初始值为 "hello"
+        String b = "hello";  // 声明变量 b（String），初始值为 "hello"
+        String c = new String("hello");  // 声明变量 c（String），初始值为 new String("hello")
 
         System.out.println(a == b);         // true（常量池复用）
         System.out.println(a == c);         // false（c 是堆上新对象）
@@ -1544,8 +1544,8 @@ public class Main {
 \`equalsIgnoreCase()\` 忽略大小写比较：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         System.out.println("Hello".equalsIgnoreCase("hello"));   // true
     }
 }
@@ -1556,9 +1556,9 @@ public class Main {
 #### 长度与字符
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        String s = "Hello";
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        String s = "Hello";  // 声明变量 s（String），初始值为 "Hello"
         System.out.println(s.length());      // 5，长度
         System.out.println(s.charAt(0));     // 'H'，指定索引的字符
         System.out.println(s.charAt(4));     // 'o'
@@ -1570,9 +1570,9 @@ public class Main {
 #### 查找
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        String s = "Hello, World";
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        String s = "Hello, World";  // 声明变量 s（String），初始值为 "Hello, World"
         System.out.println(s.indexOf("World"));   // 7，首次出现的位置
         System.out.println(s.indexOf("Java"));    // -1，找不到返回 -1
         System.out.println(s.indexOf('o'));       // 4
@@ -1587,9 +1587,9 @@ public class Main {
 #### 截取子串 substring
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        String s = "Hello, World";
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        String s = "Hello, World";  // 声明变量 s（String），初始值为 "Hello, World"
         System.out.println(s.substring(7));      // "World"，从索引 7 到末尾
         System.out.println(s.substring(0, 5));   // "Hello"，[0, 5) 左闭右开
     }
@@ -1599,9 +1599,9 @@ public class Main {
 #### 替换
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        String s = "Hello, World, Hello";
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        String s = "Hello, World, Hello";  // 声明变量 s（String），初始值为 "Hello, World, Hello"
         System.out.println(s.replace("Hello", "Hi"));   // "Hi, World, Hi"
         System.out.println(s.replaceFirst("Hello", "Hi")); // "Hi, World, Hello"
     }
@@ -1611,17 +1611,17 @@ public class Main {
 #### 分割 split
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        String s = "苹果,香蕉,橘子,葡萄";
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        String s = "苹果,香蕉,橘子,葡萄";  // 声明变量 s（String），初始值为 "苹果,香蕉,橘子,葡萄"
         String[] fruits = s.split(",");          // 按逗号分割
-        for (String f : fruits) {
-            System.out.println(f);
+        for (String f : fruits) {  // 增强 for：遍历 fruits，每次取一个元素 f
+            System.out.println(f);  // 打印一行到标准输出（自动换行）
         }
 
         // 按正则分割
         String[] parts = "1 2  3   4".split("\\\\s+");   // 按一个或多个空白分割
-        System.out.println(java.util.Arrays.toString(parts));
+        System.out.println(java.util.Arrays.toString(parts));  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -1629,12 +1629,12 @@ public class Main {
 #### 去除空白
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        String s = "  Hello World  ";
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        String s = "  Hello World  ";  // 声明变量 s（String），初始值为 "  Hello World  "
         System.out.println(s.trim());       // "Hello World"（去除两端空白）
         // Java 11+ strip() 更强大，能处理 Unicode 空白
-        System.out.println(s.strip());
+        System.out.println(s.strip());  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -1642,8 +1642,8 @@ public class Main {
 #### 大小写转换
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         System.out.println("Hello".toUpperCase());   // "HELLO"
         System.out.println("Hello".toLowerCase());   // "hello"
     }
@@ -1653,12 +1653,12 @@ public class Main {
 #### 拼接 join
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         String result = String.join("-", "2024", "01", "15");  // "2024-01-15"
         String result2 = String.join(", ", "苹果", "香蕉", "橘子");  // "苹果, 香蕉, 橘子"
-        System.out.println(result);
-        System.out.println(result2);
+        System.out.println(result);  // 打印一行到标准输出（自动换行）
+        System.out.println(result2);  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -1674,21 +1674,21 @@ public class Main {
 | \`StringBuffer\` | ✅ 安全（synchronized） | 较慢 | 多线程下大量拼接 |
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         // 不推荐：用 + 在循环中拼接（每次创建新对象）
-        String s = "";
-        for (int i = 0; i < 100; i++) {
+        String s = "";  // 声明变量 s（String），初始值为 ""
+        for (int i = 0; i < 100; i++) {  // for 循环：初始化 int i = 0；条件 i < 100；更新 i++
             s += i;   // 每次都创建新 String，效率极低
         }
 
         // 推荐：用 StringBuilder
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < 100; i++) {
+        StringBuilder sb = new StringBuilder();  // 声明变量 sb（StringBuilder），初始值为 new StringBuilder()
+        for (int i = 0; i < 100; i++) {  // for 循环：初始化 int i = 0；条件 i < 100；更新 i++
             sb.append(i);   // 原地修改，不创建新对象
         }
-        String result = sb.toString();
-        System.out.println("两种方式结果长度相同: " + (s.length() == result.length()));
+        String result = sb.toString();  // 声明变量 result（String），初始值为 sb.toString()
+        System.out.println("两种方式结果长度相同: " + (s.length() == result.length()));  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -1696,9 +1696,9 @@ public class Main {
 StringBuilder 常用方法：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        StringBuilder sb = new StringBuilder("Hello");
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        StringBuilder sb = new StringBuilder("Hello");  // 声明变量 sb（StringBuilder），初始值为 new StringBuilder("Hello")
         sb.append(", World");      // 追加
         sb.insert(5, " Java");     // 在索引 5 处插入
         sb.delete(5, 10);          // 删除 [5, 10)
@@ -1716,13 +1716,13 @@ public class Main {
 \`String.format()\` 类似 C 的 printf，用占位符格式化字符串：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        String name = "张三";
-        int age = 28;
-        String s = String.format("我叫 %s，今年 %d 岁", name, age);
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        String name = "张三";  // 声明变量 name（String），初始值为 "张三"
+        int age = 28;  // 声明变量 age（int），初始值为 28
+        String s = String.format("我叫 %s，今年 %d 岁", name, age);  // 声明变量 s（String），初始值为 String.format("我叫 %s，今年 %d 岁", name, age)
         // "我叫 张三，今年 28 岁"
-        System.out.println(s);
+        System.out.println(s);  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -1742,8 +1742,8 @@ public class Main {
 | \`%-10s\` | 左对齐宽 10 | |
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         System.out.printf("圆周率: %.2f%n", 3.14159);   // 圆周率: 3.14
         System.out.printf("编号: %05d%n", 42);          // 编号: 00042
     }
@@ -1754,11 +1754,11 @@ public class Main {
 
 ### 文本块（Text Blocks，Java 13+）
 
-Java 13 引入、Java 15 正式的**文本块**用三个双引号 \`\"\"\"\` 包裹，可以优雅地书写多行字符串，无需转义换行和引号：
+Java 13 引入、Java 15 正式的**文本块**用三个双引号 \`\\"\\"\\"\` 包裹，可以优雅地书写多行字符串，无需转义换行和引号：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         // 传统写法：满是转义
         String json = "{\\n" +
                       "  \\"name\\": \\"张三\\",\\n" +
@@ -1772,10 +1772,10 @@ public class Main {
                   "age": 28
                 }
                 """;
-        System.out.println("--- 传统写法 ---");
-        System.out.println(json);
-        System.out.println("--- 文本块写法 ---");
-        System.out.println(json2);
+        System.out.println("--- 传统写法 ---");  // 打印一行到标准输出（自动换行）
+        System.out.println(json);  // 打印一行到标准输出（自动换行）
+        System.out.println("--- 文本块写法 ---");  // 打印一行到标准输出（自动换行）
+        System.out.println(json2);  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -1783,7 +1783,7 @@ public class Main {
 文本块的特点：
 - 保留换行，无需 \`\\n\`。
 - 内部的双引号无需转义。
-- **缩进控制**：结束的 \`\"\"\"\` 位置决定基准缩进，超出部分保留。
+- **缩进控制**：结束的 \`\\"\\"\\"\` 位置决定基准缩进，超出部分保留。
 
 文本块非常适合编写 JSON、SQL、HTML 等多行文本。
 
@@ -1792,14 +1792,14 @@ public class Main {
 #### 基本类型转字符串
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         String s1 = String.valueOf(42);        // "42"
         String s2 = String.valueOf(3.14);      // "3.14"
         String s3 = String.valueOf(true);      // "true"
         String s4 = 42 + "";                   // "42"（最简写法）
         String s5 = Integer.toString(42);      // "42"
-        System.out.println(s1 + ", " + s2 + ", " + s3 + ", " + s4 + ", " + s5);
+        System.out.println(s1 + ", " + s2 + ", " + s3 + ", " + s4 + ", " + s5);  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -1807,12 +1807,12 @@ public class Main {
 #### 字符串转基本类型
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         int i = Integer.parseInt("42");        // 42
         double d = Double.parseDouble("3.14"); // 3.14
         boolean b = Boolean.parseBoolean("true"); // true
-        System.out.println("i=" + i + ", d=" + d + ", b=" + b);
+        System.out.println("i=" + i + ", d=" + d + ", b=" + b);  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -2042,17 +2042,17 @@ public class Main {
 最基本的条件判断：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        int score = 85;
-        if (score >= 90) {
-            System.out.println("优秀");
-        } else if (score >= 80) {
-            System.out.println("良好");
-        } else if (score >= 60) {
-            System.out.println("及格");
-        } else {
-            System.out.println("不及格");
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        int score = 85;  // 声明变量 score（int），初始值为 85
+        if (score >= 90) {  // 条件判断：满足 score >= 90 时执行
+            System.out.println("优秀");  // 打印一行到标准输出（自动换行）
+        } else if (score >= 80) {  // 否则若满足 score >= 80 则执行
+            System.out.println("良好");  // 打印一行到标准输出（自动换行）
+        } else if (score >= 60) {  // 否则若满足 score >= 60 则执行
+            System.out.println("及格");  // 打印一行到标准输出（自动换行）
+        } else {  // 否则分支
+            System.out.println("不及格");  // 打印一行到标准输出（自动换行）
         }
     }
 }
@@ -2065,15 +2065,15 @@ public class Main {
 #### 嵌套 if
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        int age = 20;
-        boolean hasLicense = false;
-        if (age >= 18) {
-            if (hasLicense) {
-                System.out.println("可以开车");
-            } else {
-                System.out.println("成年但无驾照");
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        int age = 20;  // 声明变量 age（int），初始值为 20
+        boolean hasLicense = false;  // 声明变量 hasLicense（boolean），初始值为 false
+        if (age >= 18) {  // 条件判断：满足 age >= 18 时执行
+            if (hasLicense) {  // 条件判断：满足 hasLicense 时执行
+                System.out.println("可以开车");  // 打印一行到标准输出（自动换行）
+            } else {  // 否则分支
+                System.out.println("成年但无驾照");  // 打印一行到标准输出（自动换行）
             }
         }
     }
@@ -2087,21 +2087,21 @@ public class Main {
 #### 传统 switch 语句
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        int day = 3;
-        switch (day) {
-            case 1:
-                System.out.println("星期一");
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        int day = 3;  // 声明变量 day（int），初始值为 3
+        switch (day) {  // switch 分支：根据 day 的值跳转
+            case 1:  // 匹配 case 1
+                System.out.println("星期一");  // 打印一行到标准输出（自动换行）
                 break;   // 必须有 break，否则会"穿透"
-            case 2:
-                System.out.println("星期二");
-                break;
-            case 3:
-                System.out.println("星期三");
-                break;
-            default:
-                System.out.println("未知");
+            case 2:  // 匹配 case 2
+                System.out.println("星期二");  // 打印一行到标准输出（自动换行）
+                break;  // 跳出当前循环或 switch
+            case 3:  // 匹配 case 3
+                System.out.println("星期三");  // 打印一行到标准输出（自动换行）
+                break;  // 跳出当前循环或 switch
+            default:  // 默认分支（所有 case 都不匹配时执行）
+                System.out.println("未知");  // 打印一行到标准输出（自动换行）
         }
     }
 }
@@ -2110,24 +2110,24 @@ public class Main {
 **case 穿透（fall-through）**：如果 case 后没有 \`break\`，执行完该 case 后会继续执行下一个 case，直到遇到 break 或 switch 结束。有时这是期望行为（多个 case 共用代码），但更多时候是 bug 来源。
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         // 利用穿透：多个 case 共用代码
-        int month = 2;
-        boolean isLeap = true;
-        int days = 0;
-        switch (month) {
-            case 1: case 3: case 5: case 7: case 8: case 10: case 12:
-                days = 31;
-                break;
-            case 4: case 6: case 9: case 11:
-                days = 30;
-                break;
-            case 2:
-                days = isLeap ? 29 : 28;
-                break;
+        int month = 2;  // 声明变量 month（int），初始值为 2
+        boolean isLeap = true;  // 声明变量 isLeap（boolean），初始值为 true
+        int days = 0;  // 声明变量 days（int），初始值为 0
+        switch (month) {  // switch 分支：根据 month 的值跳转
+            case 1: case 3: case 5: case 7: case 8: case 10: case 12:  // 匹配 case 1: case 3: case 5: case 7: case 8: case 10: case 12
+                days = 31;  // 为 days 赋值：31
+                break;  // 跳出当前循环或 switch
+            case 4: case 6: case 9: case 11:  // 匹配 case 4: case 6: case 9: case 11
+                days = 30;  // 为 days 赋值：30
+                break;  // 跳出当前循环或 switch
+            case 2:  // 匹配 case 2
+                days = isLeap ? 29 : 28;  // 为 days 赋值：isLeap ? 29 : 28
+                break;  // 跳出当前循环或 switch
         }
-        System.out.println(month + " 月有 " + days + " 天");
+        System.out.println(month + " 月有 " + days + " 天");  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -2135,18 +2135,18 @@ public class Main {
 #### switch 支持 String（Java 7+）
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        String command = "start";
-        switch (command) {
-            case "start":
-                System.out.println("启动");
-                break;
-            case "stop":
-                System.out.println("停止");
-                break;
-            default:
-                System.out.println("未知命令");
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        String command = "start";  // 声明变量 command（String），初始值为 "start"
+        switch (command) {  // switch 分支：根据 command 的值跳转
+            case "start":  // 匹配 case "start"
+                System.out.println("启动");  // 打印一行到标准输出（自动换行）
+                break;  // 跳出当前循环或 switch
+            case "stop":  // 匹配 case "stop"
+                System.out.println("停止");  // 打印一行到标准输出（自动换行）
+                break;  // 跳出当前循环或 switch
+            default:  // 默认分支（所有 case 都不匹配时执行）
+                System.out.println("未知命令");  // 打印一行到标准输出（自动换行）
         }
     }
 }
@@ -2159,30 +2159,30 @@ public class Main {
 Java 14 引入了**新的 switch 表达式**，更简洁、更安全，没有穿透问题：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         // 用箭头语法，无穿透，无需 break
-        int day = 3;
+        int day = 3;  // 声明变量 day（int），初始值为 3
         String result = switch (day) {
-            case 1, 2, 3, 4, 5 -> "工作日";
-            case 6, 7 -> "周末";
-            default -> "未知";
+            case 1, 2, 3, 4, 5 -> "工作日";  // Lambda 表达式：实现函数式接口
+            case 6, 7 -> "周末";  // Lambda 表达式：实现函数式接口
+            default -> "未知";  // Lambda 表达式：实现函数式接口
         };
-        System.out.println(result);
+        System.out.println(result);  // 打印一行到标准输出（自动换行）
 
         // 块语法：需要 yield 返回值
-        int month = 2;
-        boolean isLeap = true;
+        int month = 2;  // 声明变量 month（int），初始值为 2
+        boolean isLeap = true;  // 声明变量 isLeap（boolean），初始值为 true
         int days = switch (month) {
-            case 1, 3, 5, 7, 8, 10, 12 -> 31;
-            case 4, 6, 9, 11 -> 30;
-            case 2 -> {
-                int d = isLeap ? 29 : 28;
+            case 1, 3, 5, 7, 8, 10, 12 -> 31;  // Lambda 表达式：实现函数式接口
+            case 4, 6, 9, 11 -> 30;  // Lambda 表达式：实现函数式接口
+            case 2 -> {  // Lambda 表达式：实现函数式接口
+                int d = isLeap ? 29 : 28;  // 声明变量 d（int），初始值为 isLeap ? 29 : 28
                 yield d;   // 块中用 yield 返回值
             }
-            default -> 0;
+            default -> 0;  // Lambda 表达式：实现函数式接口
         };
-        System.out.println(days);
+        System.out.println(days);  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -2197,10 +2197,10 @@ public class Main {
 #### 传统 for 循环
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        for (int i = 0; i < 5; i++) {
-            System.out.println(i);
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        for (int i = 0; i < 5; i++) {  // for 循环：初始化 int i = 0；条件 i < 5；更新 i++
+            System.out.println(i);  // 打印一行到标准输出（自动换行）
         }
         // 输出 0 1 2 3 4
     }
@@ -2212,15 +2212,15 @@ public class Main {
 三部分都可以省略（\`for (;;)\` 是死循环），但分号不能省。
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         // 累加求和
-        int sum = 0;
-        for (int i = 1; i <= 100; i++) {
-            sum += i;
+        int sum = 0;  // 声明变量 sum（int），初始值为 0
+        for (int i = 1; i <= 100; i++) {  // for 循环：初始化 int i = 1；条件 i <= 100；更新 i++
+            sum += i;  // sum += i（复合赋值）
         }
         // sum = 5050
-        System.out.println("sum = " + sum);
+        System.out.println("sum = " + sum);  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -2228,14 +2228,14 @@ public class Main {
 #### 嵌套循环
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         // 九九乘法表
-        for (int i = 1; i <= 9; i++) {
-            for (int j = 1; j <= i; j++) {
-                System.out.print(j + "x" + i + "=" + (i * j) + "\\t");
+        for (int i = 1; i <= 9; i++) {  // for 循环：初始化 int i = 1；条件 i <= 9；更新 i++
+            for (int j = 1; j <= i; j++) {  // for 循环：初始化 int j = 1；条件 j <= i；更新 j++
+                System.out.print(j + "x" + i + "=" + (i * j) + "\\t");  // 打印到标准输出（不换行）
             }
-            System.out.println();
+            System.out.println();  // 打印一行到标准输出（自动换行）
         }
     }
 }
@@ -2246,16 +2246,16 @@ public class Main {
 用于遍历**数组**和**集合**，无需索引，更简洁：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        int[] nums = {10, 20, 30};
-        for (int n : nums) {
-            System.out.println(n);
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        int[] nums = {10, 20, 30};  // 声明变量 nums（int[]），初始值为 {10, 20, 30}
+        for (int n : nums) {  // 增强 for：遍历 nums，每次取一个元素 n
+            System.out.println(n);  // 打印一行到标准输出（自动换行）
         }
 
-        String[] fruits = {"苹果", "香蕉", "橘子"};
-        for (String f : fruits) {
-            System.out.println(f);
+        String[] fruits = {"苹果", "香蕉", "橘子"};  // 声明变量 fruits（String[]），初始值为 {"苹果", "香蕉", "橘子"}
+        for (String f : fruits) {  // 增强 for：遍历 fruits，每次取一个元素 f
+            System.out.println(f);  // 打印一行到标准输出（自动换行）
         }
     }
 }
@@ -2271,12 +2271,12 @@ public class Main {
 ### while 循环
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        int i = 0;
-        while (i < 5) {
-            System.out.println(i);
-            i++;
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        int i = 0;  // 声明变量 i（int），初始值为 0
+        while (i < 5) {  // while 循环：当 i < 5 为真时重复执行
+            System.out.println(i);  // 打印一行到标准输出（自动换行）
+            i++;  // i 自增 1
         }
     }
 }
@@ -2287,17 +2287,17 @@ public class Main {
 适用场景：**循环次数不确定**，如读取输入直到结束、处理数据直到满足条件。
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         // 经典：计算一个数的位数
-        int n = 12345;
-        int count = 0;
-        while (n > 0) {
-            n /= 10;
-            count++;
+        int n = 12345;  // 声明变量 n（int），初始值为 12345
+        int count = 0;  // 声明变量 count（int），初始值为 0
+        while (n > 0) {  // while 循环：当 n > 0 为真时重复执行
+            n /= 10;  // n /= 10（复合赋值）
+            count++;  // count 自增 1
         }
         // count = 5
-        System.out.println("count = " + count);
+        System.out.println("count = " + count);  // 打印一行到标准输出（自动换行）
     }
 }
 \`\`\`
@@ -2305,13 +2305,13 @@ public class Main {
 ### do-while 循环
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        int i = 0;
-        do {
-            System.out.println(i);
-            i++;
-        } while (i < 5);
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        int i = 0;  // 声明变量 i（int），初始值为 0
+        do {  // do-while 循环开始（先执行一次再判断条件）
+            System.out.println(i);  // 打印一行到标准输出（自动换行）
+            i++;  // i 自增 1
+        } while (i < 5);  // do-while 结束：当 i < 5 为真时继续循环
     }
 }
 \`\`\`
@@ -2334,13 +2334,13 @@ do {
 #### break：跳出循环
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        for (int i = 0; i < 10; i++) {
-            if (i == 5) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        for (int i = 0; i < 10; i++) {  // for 循环：初始化 int i = 0；条件 i < 10；更新 i++
+            if (i == 5) {  // 条件判断：满足 i == 5 时执行
                 break;   // i==5 时跳出整个循环
             }
-            System.out.println(i);
+            System.out.println(i);  // 打印一行到标准输出（自动换行）
         }
         // 输出 0 1 2 3 4
     }
@@ -2350,13 +2350,13 @@ public class Main {
 #### continue：跳过本次，进入下次
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
-        for (int i = 0; i < 10; i++) {
-            if (i % 2 == 0) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
+        for (int i = 0; i < 10; i++) {  // for 循环：初始化 int i = 0；条件 i < 10；更新 i++
+            if (i % 2 == 0) {  // 条件判断：满足 i % 2 == 0 时执行
                 continue;   // 跳过偶数
             }
-            System.out.println(i);
+            System.out.println(i);  // 打印一行到标准输出（自动换行）
         }
         // 输出 1 3 5 7 9
     }
@@ -2370,15 +2370,15 @@ public class Main {
 Java 支持**带标签的 break/continue**，可以跳出多层嵌套循环：
 
 \`\`\`java
-public class Main {
-    public static void main(String[] args) {
+public class Main {  // 定义类 Main
+    public static void main(String[] args) {  // 程序入口 main 方法，args 接收命令行参数
         outer:   // 定义标签
-        for (int i = 0; i < 5; i++) {
-            for (int j = 0; j < 5; j++) {
-                if (i * j > 6) {
+        for (int i = 0; i < 5; i++) {  // for 循环：初始化 int i = 0；条件 i < 5；更新 i++
+            for (int j = 0; j < 5; j++) {  // for 循环：初始化 int j = 0；条件 j < 5；更新 j++
+                if (i * j > 6) {  // 条件判断：满足 i * j > 6 时执行
                     break outer;   // 直接跳出外层循环
                 }
-                System.out.println("i=" + i + ", j=" + j);
+                System.out.println("i=" + i + ", j=" + j);  // 打印一行到标准输出（自动换行）
             }
         }
     }

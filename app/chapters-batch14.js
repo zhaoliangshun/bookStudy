@@ -35,17 +35,17 @@ Node.js 18+ 内置了 \`fetch()\`，但生产环境远不止"能发请求"这么
 #### 1. fetch + AbortController（推荐）
 
 \`\`\`javascript
-async function fetchWithTimeout(url, opts = {}, timeout = 5000) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeout);
-  try {
-    const res = await fetch(url, { ...opts, signal: controller.signal });
-    return await res.text();
+async function fetchWithTimeout(url, opts = {}, timeout = 5000) {  // 声明异步函数，内部可用 await
+  const controller = new AbortController();  // 创建实例 controller
+  const timer = setTimeout(() => controller.abort(), timeout);  // 定义常量 timer
+  try {  // 开启 try 块捕获异常
+    const res = await fetch(url, { ...opts, signal: controller.signal });  // 定义常量 res
+    return await res.text();  // 返回值
   } catch (err) {
-    if (err.name === "AbortError") throw new Error("请求超时");
-    throw err;
+    if (err.name === "AbortError") throw new Error("请求超时");  // 条件判断
+    throw err;  // 抛出异常
   } finally {
-    clearTimeout(timer);
+    clearTimeout(timer);  // 取消定时器
   }
 }
 \`\`\`
@@ -53,7 +53,7 @@ async function fetchWithTimeout(url, opts = {}, timeout = 5000) {
 #### 2. http.request + setTimeout（老式）
 
 \`\`\`javascript
-const req = https.request(url, (res) => { /* ... */ });
+const req = https.request(url, (res) => { /* ... */ });  // 定义常量 req
 req.setTimeout(5000, () => req.destroy(new Error("超时")));
 \`\`\`
 
@@ -66,19 +66,19 @@ req.setTimeout(5000, () => req.destroy(new Error("超时")));
 简单重试会放大流量（雪崩），必须加**指数退避**和**抖动**：
 
 \`\`\`javascript
-async function fetchWithRetry(url, opts = {}, retries = 3) {
-  for (let i = 0; i <= retries; i++) {
-    try {
-      const res = await fetch(url, opts);
-      if (res.status >= 500 && i < retries) throw new Error("5xx");
-      return res;
+async function fetchWithRetry(url, opts = {}, retries = 3) {  // 声明异步函数，内部可用 await
+  for (let i = 0; i <= retries; i++) {  // for 循环
+    try {  // 开启 try 块捕获异常
+      const res = await fetch(url, opts);  // 定义常量 res
+      if (res.status >= 500 && i < retries) throw new Error("5xx");  // 条件判断
+      return res;  // 返回值
     } catch (err) {
-      if (i === retries) throw err;
+      if (i === retries) throw err;  // 条件判断
       // 指数退避：1s, 2s, 4s
-      const base = Math.pow(2, i) * 1000;
+      const base = Math.pow(2, i) * 1000;  // 定义常量 base
       // 抖动：随机 0~500ms，避免同步重试
-      const jitter = Math.random() * 500;
-      await new Promise(r => setTimeout(r, base + jitter));
+      const jitter = Math.random() * 500;  // 定义常量 jitter
+      await new Promise(r => setTimeout(r, base + jitter));  // 等待 Promise 完成后再继续
     }
   }
 }
@@ -95,23 +95,23 @@ async function fetchWithRetry(url, opts = {}, retries = 3) {
 \`Promise.all\` 会同时发起所有请求，容易打爆下游。生产环境必须**限流**：
 
 \`\`\`javascript
-async function pMap(items, mapper, concurrency = 5) {
-  const results = [];
-  const executing = new Set();
-  for (const item of items) {
-    const p = Promise.resolve().then(() => mapper(item));
+async function pMap(items, mapper, concurrency = 5) {  // 声明异步函数，内部可用 await
+  const results = [];  // 定义数组 results
+  const executing = new Set();  // 创建实例 executing
+  for (const item of items) {  // for 循环
+    const p = Promise.resolve().then(() => mapper(item));  // 定义常量 p
     results.push(p);
     executing.add(p);
     p.finally(() => executing.delete(p));
-    if (executing.size >= concurrency) {
-      await Promise.race(executing);
+    if (executing.size >= concurrency) {  // 条件判断
+      await Promise.race(executing);  // 等待 Promise 完成后再继续
     }
   }
-  return Promise.all(results);
+  return Promise.all(results);  // 返回值
 }
 
 // 使用：同时最多 5 个请求
-await pMap(urls, url => fetch(url), 5);
+await pMap(urls, url => fetch(url), 5);  // 等待 Promise 完成后再继续
 \`\`\`
 
 **推荐**：直接用 \`p-limit\` 库（5 行代码搞定），别重复造轮子。
@@ -121,8 +121,8 @@ await pMap(urls, url => fetch(url), 5);
 默认情况下，每个 \`fetch\` 都会建立新 TCP 连接（含 TLS 握手，耗时 100-300ms）。开启 Keep-Alive 后，连接会被复用：
 
 \`\`\`javascript
-import { Agent } from "undici";
-const agent = new Agent({
+import { Agent } from "undici";  // 从 undici 导入：{ Agent }
+const agent = new Agent({  // 创建实例 agent
   keepAliveTimeout: 30000,  // 连接保活 30s
   keepAliveMaxTimeout: 60000, // 最大保活 60s
 });
@@ -149,12 +149,12 @@ ENOTFOUND         | DNS 解析失败，不重试
 ### 七、HTTP/2 客户端
 
 \`\`\`javascript
-const http2 = require("http2");
+const http2 = require("http2");  // 导入模块 http2；require 返回 module.exports
 const client = http2.connect("https://example.com");
-const req = client.request({ ":path": "/" });
-req.on("response", (headers) => console.log(headers));
-req.on("data", (chunk) => {});
-req.on("end", () => client.destroy());
+const req = client.request({ ":path": "/" });  // 定义常量 req
+req.on("response", (headers) => console.log(headers));  // 监听请求事件（如 data/end）
+req.on("data", (chunk) => {});  // 监听请求事件（如 data/end）
+req.on("end", () => client.destroy());  // 监听请求事件（如 data/end）
 \`\`\`
 
 HTTP/2 的多路复用让**单连接**就能并发多个请求，比 HTTP/1.1 的连接池更高效。
@@ -366,10 +366,10 @@ console.log("  5. 高并发场景考虑 HTTP/2 或 undici");`,
 读取 10GB 文件用 \`readFile\` 会直接 OOM。必须用 Stream：
 
 \`\`\`javascript
-const { createReadStream, createWriteStream } = require("fs");
-const { pipeline } = require("stream/promises");
+const { createReadStream, createWriteStream } = require("fs");  // 导入模块 fs；require 返回 module.exports
+const { pipeline } = require("stream/promises");  // 导入模块 stream/promises；require 返回 module.exports
 
-await pipeline(
+await pipeline(  // 等待 Promise 完成后再继续
   createReadStream("big.log"),
   async function* (source) {  // transform
     for await (const chunk of source) {
@@ -390,12 +390,12 @@ await pipeline(
 直接 \`writeFile\` 写大文件，进程中途崩溃会留下**半截文件**。原子写入方案：
 
 \`\`\`javascript
-const { writeFile, rename } = require("fs/promises");
-const { join } = require("path");
+const { writeFile, rename } = require("fs/promises");  // 导入模块 fs/promises；require 返回 module.exports
+const { join } = require("path");  // 导入模块 path；require 返回 module.exports
 
-async function atomicWrite(file, content) {
-  const tmp = file + ".tmp." + process.pid;
-  await writeFile(tmp, content);
+async function atomicWrite(file, content) {  // 声明异步函数，内部可用 await
+  const tmp = file + ".tmp." + process.pid;  // 定义常量 tmp
+  await writeFile(tmp, content);  // 等待 Promise 完成后再继续
   await rename(tmp, file);  // rename 是原子的
 }
 \`\`\`
@@ -407,15 +407,15 @@ async function atomicWrite(file, content) {
 多个进程同时写一个文件会乱。用 \`proper-lockfile\` 或 \`fs.open\` + \`O_EXCL\`：
 
 \`\`\`javascript
-const { open } = require("fs/promises");
-const lockFile = "/tmp/app.lock";
-try {
+const { open } = require("fs/promises");  // 导入模块 fs/promises；require 返回 module.exports
+const lockFile = "/tmp/app.lock";  // 定义常量 lockFile
+try {  // 开启 try 块捕获异常
   const fd = await open(lockFile, "wx");  // O_EXCL：文件已存在则失败
-  await fd.writeFile(String(process.pid));
-  await fd.close();
+  await fd.writeFile(String(process.pid));  // 等待 Promise 完成后再继续
+  await fd.close();  // 等待 Promise 完成后再继续
   // 执行业务
 } catch (err) {
-  if (err.code === "EEXIST") console.log("已有进程在运行");
+  if (err.code === "EEXIST") console.log("已有进程在运行");  // 条件判断
 }
 \`\`\`
 
@@ -423,22 +423,22 @@ try {
 
 \`\`\`javascript
 // 递归创建（Node 10+）
-await fs.mkdir("a/b/c/d", { recursive: true });
+await fs.mkdir("a/b/c/d", { recursive: true });  // 等待 Promise 完成后再继续
 
 // 递归删除（Node 14+）
-await fs.rm("dir", { recursive: true, force: true });
+await fs.rm("dir", { recursive: true, force: true });  // 等待 Promise 完成后再继续
 
 // 遍历目录
-const { readdir } = require("fs/promises");
-async function walk(dir) {
-  const entries = await readdir(dir, { withFileTypes: true });
-  const files = [];
-  for (const e of entries) {
-    const full = join(dir, e.name);
-    if (e.isDirectory()) files.push(...await walk(full));
+const { readdir } = require("fs/promises");  // 导入模块 fs/promises；require 返回 module.exports
+async function walk(dir) {  // 声明异步函数，内部可用 await
+  const entries = await readdir(dir, { withFileTypes: true });  // 定义常量 entries
+  const files = [];  // 定义数组 files
+  for (const e of entries) {  // for 循环
+    const full = join(dir, e.name);  // 定义常量 full
+    if (e.isDirectory()) files.push(...await walk(full));  // 条件判断
     else files.push(full);
   }
-  return files;
+  return files;  // 返回值
 }
 \`\`\`
 
@@ -514,27 +514,27 @@ process.on("exit", () => {
     code: `// ============================================================
 // 文件系统高阶实战
 // ============================================================
-const fs = require("fs");
+const fs = require("fs");  // 导入模块 fs；require 返回 module.exports
 // 注：沙箱未开放 fs/promises 子模块，用 fs.promises 替代（功能等价）
-const fsp = fs.promises;
-const { pipeline: pipelineCb } = require("stream");
-const { promisify } = require("util");
+const fsp = fs.promises;  // 文件操作结果 fsp
+const { pipeline: pipelineCb } = require("stream");  // 导入模块 stream；require 返回 module.exports
+const { promisify } = require("util");  // 导入模块 util；require 返回 module.exports
 // 注：沙箱未开放 stream/promises 子模块，用 util.promisify 包装
-const pipeline = promisify(pipelineCb);
-const { createReadStream, createWriteStream } = require("fs");
-const path = require("path");
-const os = require("os");
+const pipeline = promisify(pipelineCb);  // 定义常量 pipeline
+const { createReadStream, createWriteStream } = require("fs");  // 导入模块 fs；require 返回 module.exports
+const path = require("path");  // 导入模块 path；require 返回 module.exports
+const os = require("os");  // 导入模块 os；require 返回 module.exports
 
 // ---- 1. 流式读写大文件 ----
-console.log("===== 1. 流式读写 =====");
-async function streamDemo() {
-  const src = path.join(os.tmpdir(), "src-" + process.pid + ".txt");
-  const dst = path.join(os.tmpdir(), "dst-" + process.pid + ".txt");
+console.log("===== 1. 流式读写 =====");  // 打印日志到 stdout
+async function streamDemo() {  // 声明异步函数，内部可用 await
+  const src = path.join(os.tmpdir(), "src-" + process.pid + ".txt");  // 拼接路径 src
+  const dst = path.join(os.tmpdir(), "dst-" + process.pid + ".txt");  // 拼接路径 dst
   // 写入 100KB 数据
-  await fsp.writeFile(src, "A".repeat(100 * 1024));
+  await fsp.writeFile(src, "A".repeat(100 * 1024));  // 等待 Promise 完成后再继续
   
-  const start = Date.now();
-  await pipeline(
+  const start = Date.now();  // 定义常量 start
+  await pipeline(  // 等待 Promise 完成后再继续
     createReadStream(src),
     async function* (source) {
       for await (const chunk of source) {
@@ -543,179 +543,179 @@ async function streamDemo() {
     },
     createWriteStream(dst)
   );
-  console.log("  流式处理完成，耗时:", Date.now() - start, "ms");
+  console.log("  流式处理完成，耗时:", Date.now() - start, "ms");  // 打印日志到 stdout
   
-  const stat = await fsp.stat(dst);
-  console.log("  输出文件大小:", stat.size, "字节");
+  const stat = await fsp.stat(dst);  // 定义常量 stat
+  console.log("  输出文件大小:", stat.size, "字节");  // 打印日志到 stdout
   
   // 清理
-  await fsp.unlink(src);
-  await fsp.unlink(dst);
+  await fsp.unlink(src);  // 等待 Promise 完成后再继续
+  await fsp.unlink(dst);  // 等待 Promise 完成后再继续
 }
 streamDemo();
 
 // ---- 2. 原子写入 ----
-console.log("\\n===== 2. 原子写入 =====");
-async function atomicWrite(file, content) {
-  const tmp = file + ".tmp." + process.pid + "." + Date.now();
-  await fsp.writeFile(tmp, content);
-  await fsp.rename(tmp, file);
+console.log("\\n===== 2. 原子写入 =====");  // 打印日志到 stdout
+async function atomicWrite(file, content) {  // 声明异步函数，内部可用 await
+  const tmp = file + ".tmp." + process.pid + "." + Date.now();  // 定义常量 tmp
+  await fsp.writeFile(tmp, content);  // 等待 Promise 完成后再继续
+  await fsp.rename(tmp, file);  // 等待 Promise 完成后再继续
 }
 
-const targetFile = path.join(os.tmpdir(), "atomic-" + process.pid + ".json");
+const targetFile = path.join(os.tmpdir(), "atomic-" + process.pid + ".json");  // 拼接路径 targetFile
 atomicWrite(targetFile, JSON.stringify({ time: new Date().toISOString() }, null, 2))
-  .then(async () => {
-    const content = await fsp.readFile(targetFile, "utf8");
-    console.log("  原子写入成功:", content);
-    await fsp.unlink(targetFile);
+  .then(async () => {  // 注册 Promise 成功回调
+    const content = await fsp.readFile(targetFile, "utf8");  // 定义常量 content
+    console.log("  原子写入成功:", content);  // 打印日志到 stdout
+    await fsp.unlink(targetFile);  // 等待 Promise 完成后再继续
   });
 
 // ---- 3. 文件锁 ----
-console.log("\\n===== 3. 文件锁（O_EXCL） =====");
-async function acquireLock(lockPath) {
-  try {
-    const fh = await fsp.open(lockPath, "wx");
-    await fh.writeFile(String(process.pid));
-    await fh.close();
-    return true;
+console.log("\\n===== 3. 文件锁（O_EXCL） =====");  // 打印日志到 stdout
+async function acquireLock(lockPath) {  // 声明异步函数，内部可用 await
+  try {  // 开启 try 块捕获异常
+    const fh = await fsp.open(lockPath, "wx");  // 定义常量 fh
+    await fh.writeFile(String(process.pid));  // 等待 Promise 完成后再继续
+    await fh.close();  // 等待 Promise 完成后再继续
+    return true;  // 返回值
   } catch (err) {
-    if (err.code === "EEXIST") return false;
-    throw err;
+    if (err.code === "EEXIST") return false;  // 条件判断
+    throw err;  // 抛出异常
   }
 }
 
-const lockFile = path.join(os.tmpdir(), "myapp-" + process.pid + ".lock");
+const lockFile = path.join(os.tmpdir(), "myapp-" + process.pid + ".lock");  // 拼接路径 lockFile
 (async () => {
-  const got = await acquireLock(lockFile);
-  console.log("  第一次获取锁:", got);
-  const got2 = await acquireLock(lockFile);
-  console.log("  第二次获取锁（应失败）:", got2);
-  await fsp.unlink(lockFile);
+  const got = await acquireLock(lockFile);  // 定义常量 got
+  console.log("  第一次获取锁:", got);  // 打印日志到 stdout
+  const got2 = await acquireLock(lockFile);  // 定义常量 got2
+  console.log("  第二次获取锁（应失败）:", got2);  // 打印日志到 stdout
+  await fsp.unlink(lockFile);  // 等待 Promise 完成后再继续
 })();
 
 // ---- 4. 目录递归操作 ----
-console.log("\\n===== 4. 目录递归 =====");
-async function walk(dir) {
-  const entries = await fsp.readdir(dir, { withFileTypes: true });
-  const files = [];
-  for (const e of entries) {
-    const full = path.join(dir, e.name);
-    if (e.isDirectory()) {
+console.log("\\n===== 4. 目录递归 =====");  // 打印日志到 stdout
+async function walk(dir) {  // 声明异步函数，内部可用 await
+  const entries = await fsp.readdir(dir, { withFileTypes: true });  // 定义常量 entries
+  const files = [];  // 定义数组 files
+  for (const e of entries) {  // for 循环
+    const full = path.join(dir, e.name);  // 拼接路径 full
+    if (e.isDirectory()) {  // 条件判断
       files.push(...await walk(full));
     } else {
       files.push(full);
     }
   }
-  return files;
+  return files;  // 返回值
 }
 
-const testDir = path.join(os.tmpdir(), "walk-test-" + process.pid);
+const testDir = path.join(os.tmpdir(), "walk-test-" + process.pid);  // 拼接路径 testDir
 (async () => {
-  await fsp.mkdir(path.join(testDir, "a/b/c"), { recursive: true });
-  await fsp.writeFile(path.join(testDir, "1.txt"), "1");
-  await fsp.writeFile(path.join(testDir, "a/2.txt"), "2");
-  await fsp.writeFile(path.join(testDir, "a/b/3.txt"), "3");
+  await fsp.mkdir(path.join(testDir, "a/b/c"), { recursive: true });  // 等待 Promise 完成后再继续
+  await fsp.writeFile(path.join(testDir, "1.txt"), "1");  // 等待 Promise 完成后再继续
+  await fsp.writeFile(path.join(testDir, "a/2.txt"), "2");  // 等待 Promise 完成后再继续
+  await fsp.writeFile(path.join(testDir, "a/b/3.txt"), "3");  // 等待 Promise 完成后再继续
   
-  const files = await walk(testDir);
-  console.log("  遍历到", files.length, "个文件:");
+  const files = await walk(testDir);  // 定义常量 files
+  console.log("  遍历到", files.length, "个文件:");  // 打印日志到 stdout
   files.forEach(f => console.log("   ", path.relative(testDir, f)));
   
-  await fsp.rm(testDir, { recursive: true, force: true });
-  console.log("  递归删除完成");
+  await fsp.rm(testDir, { recursive: true, force: true });  // 等待 Promise 完成后再继续
+  console.log("  递归删除完成");  // 打印日志到 stdout
 })();
 
 // ---- 5. fs.watch 防抖 ----
-console.log("\\n===== 5. fs.watch 防抖 =====");
-const watchFile = path.join(os.tmpdir(), "watch-" + process.pid + ".txt");
+console.log("\\n===== 5. fs.watch 防抖 =====");  // 打印日志到 stdout
+const watchFile = path.join(os.tmpdir(), "watch-" + process.pid + ".txt");  // 拼接路径 watchFile
 fsp.writeFile(watchFile, "init").then(() => {
   let timer;
-  let changeCount = 0;
-  const watcher = fs.watch(watchFile, () => {
+  let changeCount = 0;  // 定义变量 changeCount（可变）
+  const watcher = fs.watch(watchFile, () => {  // 文件操作结果 watcher
     changeCount++;
-    clearTimeout(timer);
+    clearTimeout(timer);  // 取消定时器
     timer = setTimeout(() => {
-      console.log("  检测到真实变化（防抖后），原始事件数:", changeCount);
+      console.log("  检测到真实变化（防抖后），原始事件数:", changeCount);  // 打印日志到 stdout
       watcher.close();
       fsp.unlink(watchFile).catch(() => {});
     }, 100);
   });
   
   // 模拟编辑器：快速多次保存
-  setTimeout(async () => {
-    for (let i = 0; i < 3; i++) {
-      await fsp.writeFile(watchFile, "v" + i);
+  setTimeout(async () => {  // 延时回调（宏任务，timers 阶段执行）
+    for (let i = 0; i < 3; i++) {  // for 循环
+      await fsp.writeFile(watchFile, "v" + i);  // 等待 Promise 完成后再继续
     }
   }, 50);
 });
 
 // ---- 6. 文件描述符管理 ----
-console.log("\\n===== 6. 文件描述符管理 =====");
-async function safeRead(file) {
-  const fh = await fsp.open(file, "r");
-  try {
-    const buf = Buffer.alloc(100);
-    const { bytesRead } = await fh.read(buf, 0, 100, 0);
-    return buf.slice(0, bytesRead).toString();
+console.log("\\n===== 6. 文件描述符管理 =====");  // 打印日志到 stdout
+async function safeRead(file) {  // 声明异步函数，内部可用 await
+  const fh = await fsp.open(file, "r");  // 定义常量 fh
+  try {  // 开启 try 块捕获异常
+    const buf = Buffer.alloc(100);  // 定义常量 buf
+    const { bytesRead } = await fh.read(buf, 0, 100, 0);  // 解构赋值： bytesRead 
+    return buf.slice(0, bytesRead).toString();  // 返回值
   } finally {
-    await fh.close();
+    await fh.close();  // 等待 Promise 完成后再继续
   }
 }
 
 (async () => {
-  const f = path.join(os.tmpdir(), "fd-" + process.pid + ".txt");
-  await fsp.writeFile(f, "Hello fd!");
-  const content = await safeRead(f);
-  console.log("  安全读取:", content);
-  await fsp.unlink(f);
+  const f = path.join(os.tmpdir(), "fd-" + process.pid + ".txt");  // 拼接路径 f
+  await fsp.writeFile(f, "Hello fd!");  // 等待 Promise 完成后再继续
+  const content = await safeRead(f);  // 定义常量 content
+  console.log("  安全读取:", content);  // 打印日志到 stdout
+  await fsp.unlink(f);  // 等待 Promise 完成后再继续
 })();
 
 // ---- 7. 临时文件 ----
-console.log("\\n===== 7. 临时目录最佳实践 =====");
+console.log("\\n===== 7. 临时目录最佳实践 =====");  // 打印日志到 stdout
 (async () => {
-  const dir = await fsp.mkdtemp(path.join(os.tmpdir(), "demo-"));
-  console.log("  临时目录:", dir);
-  console.log("  目录名唯一:", /demo-[a-zA-Z0-9]{8}$/.test(dir));
-  await fsp.rm(dir, { recursive: true, force: true });
-  console.log("  清理完成");
+  const dir = await fsp.mkdtemp(path.join(os.tmpdir(), "demo-"));  // 定义常量 dir
+  console.log("  临时目录:", dir);  // 打印日志到 stdout
+  console.log("  目录名唯一:", /demo-[a-zA-Z0-9]{8}$/.test(dir));  // 打印日志到 stdout
+  await fsp.rm(dir, { recursive: true, force: true });  // 等待 Promise 完成后再继续
+  console.log("  清理完成");  // 打印日志到 stdout
 })();
 
 // ---- 8. stat 缓存 ----
-console.log("\\n===== 8. stat 缓存优化 =====");
-const statCache = new Map();
-async function cachedStat(file) {
-  if (statCache.has(file)) {
-    return statCache.get(file);
+console.log("\\n===== 8. stat 缓存优化 =====");  // 打印日志到 stdout
+const statCache = new Map();  // 创建实例 statCache
+async function cachedStat(file) {  // 声明异步函数，内部可用 await
+  if (statCache.has(file)) {  // 条件判断
+    return statCache.get(file);  // 返回值
   }
-  const stat = await fsp.stat(file);
+  const stat = await fsp.stat(file);  // 定义常量 stat
   statCache.set(file, stat);
-  return stat;
+  return stat;  // 返回值
 }
 
 (async () => {
-  const f = path.join(os.tmpdir(), "cache-" + process.pid + ".txt");
-  await fsp.writeFile(f, "x");
+  const f = path.join(os.tmpdir(), "cache-" + process.pid + ".txt");  // 拼接路径 f
+  await fsp.writeFile(f, "x");  // 等待 Promise 完成后再继续
   
-  const start = Date.now();
-  for (let i = 0; i < 1000; i++) await cachedStat(f);
-  const cachedTime = Date.now() - start;
+  const start = Date.now();  // 定义常量 start
+  for (let i = 0; i < 1000; i++) await cachedStat(f);  // for 循环
+  const cachedTime = Date.now() - start;  // 定义常量 cachedTime
   
   statCache.clear();
-  const start2 = Date.now();
-  for (let i = 0; i < 1000; i++) await fsp.stat(f);
-  const noCacheTime = Date.now() - start2;
+  const start2 = Date.now();  // 定义常量 start2
+  for (let i = 0; i < 1000; i++) await fsp.stat(f);  // for 循环
+  const noCacheTime = Date.now() - start2;  // 定义常量 noCacheTime
   
-  console.log("  1000 次 stat（缓存）:", cachedTime, "ms");
-  console.log("  1000 次 stat（无缓存）:", noCacheTime, "ms");
-  console.log("  提升:", ((1 - cachedTime/noCacheTime) * 100).toFixed(1) + "%");
-  await fsp.unlink(f);
+  console.log("  1000 次 stat（缓存）:", cachedTime, "ms");  // 打印日志到 stdout
+  console.log("  1000 次 stat（无缓存）:", noCacheTime, "ms");  // 打印日志到 stdout
+  console.log("  提升:", ((1 - cachedTime/noCacheTime) * 100).toFixed(1) + "%");  // 打印日志到 stdout
+  await fsp.unlink(f);  // 等待 Promise 完成后再继续
 })();
 
-console.log("\\n===== 文件系统高阶要点 =====");
-console.log("  1. 大文件用 stream + pipeline，不要 readFile");
-console.log("  2. 写入用原子写：先 tmp 再 rename");
-console.log("  3. 文件锁用 O_EXCL，防多进程冲突");
-console.log("  4. fs.watch 要防抖，或直接用 chokidar");
-console.log("  5. fd 必须用 try/finally close，避免 EMFILE");`,
+console.log("\\n===== 文件系统高阶要点 =====");  // 打印日志到 stdout
+console.log("  1. 大文件用 stream + pipeline，不要 readFile");  // 打印日志到 stdout
+console.log("  2. 写入用原子写：先 tmp 再 rename");  // 打印日志到 stdout
+console.log("  3. 文件锁用 O_EXCL，防多进程冲突");  // 打印日志到 stdout
+console.log("  4. fs.watch 要防抖，或直接用 chokidar");  // 打印日志到 stdout
+console.log("  5. fd 必须用 try/finally close，避免 EMFILE");`,  // 打印日志到 stdout
   },
 
   // =========================================================
@@ -942,14 +942,14 @@ debug("开始构建", src);
 // 模拟一个完整的 CLI 工具：参数解析、彩色输出、进度条、交互式
 
 // ---- 1. 参数解析（手写版，演示原理） ----
-console.log("===== 1. 参数解析 =====");
-function parseArgs(argv) {
-  const args = { _: [], _flags: {} };
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg.startsWith("--")) {
+console.log("===== 1. 参数解析 =====");  // 打印日志到 stdout
+function parseArgs(argv) {  // 声明函数 parseArgs
+  const args = { _: [], _flags: {} };  // 定义对象 args
+  for (let i = 0; i < argv.length; i++) {  // for 循环
+    const arg = argv[i];  // 定义常量 arg
+    if (arg.startsWith("--")) {  // 条件判断
       const [key, val] = arg.slice(2).split("=");
-      if (val !== undefined) {
+      if (val !== undefined) {  // 条件判断
         args._flags[key] = val;
       } else if (argv[i + 1] && !argv[i + 1].startsWith("--")) {
         args._flags[key] = argv[++i];
@@ -960,18 +960,18 @@ function parseArgs(argv) {
       args._.push(arg);
     }
   }
-  return args;
+  return args;  // 返回值
 }
 
-const fakeArgv = ["build", "src", "--output=dist", "--watch", "--port", "3000"];
-const parsed = parseArgs(fakeArgv);
-console.log("  输入:", fakeArgv.join(" "));
-console.log("  位置参数:", parsed._);
-console.log("  选项:", parsed._flags);
+const fakeArgv = ["build", "src", "--output=dist", "--watch", "--port", "3000"];  // 定义数组 fakeArgv
+const parsed = parseArgs(fakeArgv);  // 定义常量 parsed
+console.log("  输入:", fakeArgv.join(" "));  // 打印日志到 stdout
+console.log("  位置参数:", parsed._);  // 打印日志到 stdout
+console.log("  选项:", parsed._flags);  // 打印日志到 stdout
 
 // ---- 2. 彩色输出（ANSI 转义码原理） ----
-console.log("\\n===== 2. 彩色输出（ANSI 原理） =====");
-const colors = {
+console.log("\\n===== 2. 彩色输出（ANSI 原理） =====");  // 打印日志到 stdout
+const colors = {  // 定义对象 colors
   red: "\\x1b[31m",
   green: "\\x1b[32m",
   yellow: "\\x1b[33m",
@@ -982,81 +982,81 @@ const colors = {
   bold: "\\x1b[1m",
 };
 
-function colorize(text, color) {
-  return colors[color] + text + colors.reset;
+function colorize(text, color) {  // 声明函数 colorize
+  return colors[color] + text + colors.reset;  // 返回值
 }
 
-console.log("  " + colorize("错误信息", "red"));
-console.log("  " + colorize("成功信息", "green"));
-console.log("  " + colorize("警告信息", "yellow"));
-console.log("  " + colorize("信息提示", "cyan"));
-console.log("  " + colorize("加粗红色", "bold") + " <- " + colors.bold + "实际是\\x1b[1m");
+console.log("  " + colorize("错误信息", "red"));  // 打印日志到 stdout
+console.log("  " + colorize("成功信息", "green"));  // 打印日志到 stdout
+console.log("  " + colorize("警告信息", "yellow"));  // 打印日志到 stdout
+console.log("  " + colorize("信息提示", "cyan"));  // 打印日志到 stdout
+console.log("  " + colorize("加粗红色", "bold") + " <- " + colors.bold + "实际是\\x1b[1m");  // 打印日志到 stdout
 
 // 检测 TTY
-console.log("  stdout.isTTY:", process.stdout.isTTY);
-console.log("  → 管道输出时会自动去色（chalk 行为）");
+console.log("  stdout.isTTY:", process.stdout.isTTY);  // 打印日志到 stdout
+console.log("  → 管道输出时会自动去色（chalk 行为）");  // 打印日志到 stdout
 
 // ---- 3. 进度条（手动实现） ----
-console.log("\\n===== 3. 进度条 =====");
-function progressBar(percent, label) {
-  const width = 25;
-  const filled = Math.round(width * percent);
-  const bar = "█".repeat(filled) + "░".repeat(width - filled);
-  const pct = (percent * 100).toFixed(0).padStart(3) + "%";
-  process.stdout.write("\\r  " + (label || "进度") + " [" + bar + "] " + pct);
-  if (percent >= 1) process.stdout.write("\\n");
+console.log("\\n===== 3. 进度条 =====");  // 打印日志到 stdout
+function progressBar(percent, label) {  // 声明函数 progressBar
+  const width = 25;  // 定义常量 width
+  const filled = Math.round(width * percent);  // 定义常量 filled
+  const bar = "█".repeat(filled) + "░".repeat(width - filled);  // 定义常量 bar
+  const pct = (percent * 100).toFixed(0).padStart(3) + "%";  // 定义常量 pct
+  process.stdout.write("\\r  " + (label || "进度") + " [" + bar + "] " + pct);  // 直接写到 stdout（不加换行）
+  if (percent >= 1) process.stdout.write("\\n");  // 条件判断
 }
 
 // 模拟一个耗时任务
-let progress = 0;
-const task = setInterval(() => {
+let progress = 0;  // 定义变量 progress（可变）
+const task = setInterval(() => {  // 定义常量 task
   progress += 0.1;
   progressBar(Math.min(progress, 1), "构建中");
-  if (progress >= 1) {
-    clearInterval(task);
-    console.log("  构建完成！");
+  if (progress >= 1) {  // 条件判断
+    clearInterval(task);  // 取消定时器
+    console.log("  构建完成！");  // 打印日志到 stdout
   }
 }, 80);
 
 // ---- 4. 交互式 Prompt 模拟 ----
-console.log("\\n===== 4. 交互式 Prompt 模拟 =====");
+console.log("\\n===== 4. 交互式 Prompt 模拟 =====");  // 打印日志到 stdout
 // 真实环境用 inquirer，这里模拟逻辑
-const fakeAnswers = {
+const fakeAnswers = {  // 定义对象 fakeAnswers
   name: "my-app",
   framework: "React",
   typescript: true,
 };
 
-console.log("  ? 项目名? (my-app)");
-console.log("  > " + fakeAnswers.name);
-console.log("  ? 选框架? (Use arrow keys)");
-console.log("  ❯ React");
-console.log("    Vue");
-console.log("    Svelte");
-console.log("  > " + fakeAnswers.framework);
-console.log("  ? 用 TypeScript? (Y/n)");
-console.log("  > " + (fakeAnswers.typescript ? "Yes" : "No"));
-console.log("  → 真实环境用 inquirer 库");
+console.log("  ? 项目名? (my-app)");  // 打印日志到 stdout
+console.log("  > " + fakeAnswers.name);  // 打印日志到 stdout
+console.log("  ? 选框架? (Use arrow keys)");  // 打印日志到 stdout
+console.log("  ❯ React");  // 打印日志到 stdout
+console.log("    Vue");  // 打印日志到 stdout
+console.log("    Svelte");  // 打印日志到 stdout
+console.log("  > " + fakeAnswers.framework);  // 打印日志到 stdout
+console.log("  ? 用 TypeScript? (Y/n)");  // 打印日志到 stdout
+console.log("  > " + (fakeAnswers.typescript ? "Yes" : "No"));  // 打印日志到 stdout
+console.log("  → 真实环境用 inquirer 库");  // 打印日志到 stdout
 
 // ---- 5. 子命令路由 ----
-console.log("\\n===== 5. 子命令路由 =====");
-function createProgram() {
-  const commands = {};
-  return {
+console.log("\\n===== 5. 子命令路由 =====");  // 打印日志到 stdout
+function createProgram() {  // 声明函数 createProgram
+  const commands = {};  // 定义对象 commands
+  return {  // 返回值
     command(name, desc, action) {
       commands[name] = { desc, action };
     },
     run(argv) {
       const [cmd, ...rest] = argv;
-      if (!cmd || cmd === "--help") {
-        console.log("  可用命令:");
-        for (const [name, c] of Object.entries(commands)) {
-          console.log("    " + name.padEnd(10) + c.desc);
+      if (!cmd || cmd === "--help") {  // 条件判断
+        console.log("  可用命令:");  // 打印日志到 stdout
+        for (const [name, c] of Object.entries(commands)) {  // for 循环
+          console.log("    " + name.padEnd(10) + c.desc);  // 打印日志到 stdout
         }
         return;
       }
-      if (!commands[cmd]) {
-        console.error("  未知命令:", cmd);
+      if (!commands[cmd]) {  // 条件判断
+        console.error("  未知命令:", cmd);  // 打印错误到 stderr
         process.exit(2);  // 2 = 参数错误
       }
       commands[cmd].action(rest);
@@ -1064,66 +1064,66 @@ function createProgram() {
   };
 }
 
-const program = createProgram();
+const program = createProgram();  // 定义常量 program
 program.command("build", "构建项目", (args) => {
-  console.log("  执行 build，参数:", args);
+  console.log("  执行 build，参数:", args);  // 打印日志到 stdout
 });
 program.command("serve", "启动服务", (args) => {
-  console.log("  执行 serve，参数:", args);
+  console.log("  执行 serve，参数:", args);  // 打印日志到 stdout
 });
 program.command("deploy", "部署", (args) => {
-  console.log("  执行 deploy，参数:", args);
+  console.log("  执行 deploy，参数:", args);  // 打印日志到 stdout
 });
 
-console.log("  测试: mycli --help");
+console.log("  测试: mycli --help");  // 打印日志到 stdout
 program.run(["--help"]);
-console.log("  测试: mycli build src --output dist");
+console.log("  测试: mycli build src --output dist");  // 打印日志到 stdout
 program.run(["build", "src", "--output", "dist"]);
 
 // ---- 6. 退出码演示 ----
-console.log("\\n===== 6. 退出码约定 =====");
-console.log("  0   = 成功");
-console.log("  1   = 一般错误");
-console.log("  2   = 参数错误");
-console.log("  124 = 超时");
-console.log("  130 = Ctrl+C 中断");
+console.log("\\n===== 6. 退出码约定 =====");  // 打印日志到 stdout
+console.log("  0   = 成功");  // 打印日志到 stdout
+console.log("  1   = 一般错误");  // 打印日志到 stdout
+console.log("  2   = 参数错误");  // 打印日志到 stdout
+console.log("  124 = 超时");  // 打印日志到 stdout
+console.log("  130 = Ctrl+C 中断");  // 打印日志到 stdout
 
 // SIGINT 处理
-process.on("SIGINT", () => {
-  console.log("\\n  用户中断（Ctrl+C）");
-  console.log("  清理资源...");
-  process.exit(130);
+process.on("SIGINT", () => {  // 注册进程级事件监听
+  console.log("\\n  用户中断（Ctrl+C）");  // 打印日志到 stdout
+  console.log("  清理资源...");  // 打印日志到 stdout
+  process.exit(130);  // 退出进程（0 正常，非 0 异常）
 });
 
 // ---- 7. DEBUG 环境变量 ----
-console.log("\\n===== 7. DEBUG 环境变量 =====");
-function createDebug(namespace) {
-  return function (...args) {
-    if (process.env.DEBUG && process.env.DEBUG.includes(namespace)) {
-      console.log("  " + colorize(namespace, "magenta") + " " + args.join(" "));
+console.log("\\n===== 7. DEBUG 环境变量 =====");  // 打印日志到 stdout
+function createDebug(namespace) {  // 声明函数 createDebug
+  return function (...args) {  // 返回值
+    if (process.env.DEBUG && process.env.DEBUG.includes(namespace)) {  // 条件判断
+      console.log("  " + colorize(namespace, "magenta") + " " + args.join(" "));  // 打印日志到 stdout
     }
   };
 }
 
-const debug = createDebug("mycli:build");
+const debug = createDebug("mycli:build");  // 定义常量 debug
 debug("开始构建（仅 DEBUG=mycli:* 时显示）");
-console.log("  → 运行: DEBUG=mycli:* node cli.js 可看到 debug 日志");
+console.log("  → 运行: DEBUG=mycli:* node cli.js 可看到 debug 日志");  // 打印日志到 stdout
 
 // ---- 8. shebang 与 bin 配置说明 ----
-console.log("\\n===== 8. 发布 CLI 工具 =====");
-console.log("  入口文件第一行: #!/usr/bin/env node");
-console.log("  package.json: { \\"bin\\": { \\"mycli\\": \\"./bin/cli.js\\" } }");
-console.log("  权限: chmod +x bin/cli.js");
-console.log("  本地测试: npm link");
-console.log("  发布: npm publish");
-console.log("  全局安装: npm install -g mycli");
+console.log("\\n===== 8. 发布 CLI 工具 =====");  // 打印日志到 stdout
+console.log("  入口文件第一行: #!/usr/bin/env node");  // 打印日志到 stdout
+console.log("  package.json: { \\"bin\\": { \\"mycli\\": \\"./bin/cli.js\\" } }");  // 打印日志到 stdout
+console.log("  权限: chmod +x bin/cli.js");  // 打印日志到 stdout
+console.log("  本地测试: npm link");  // 打印日志到 stdout
+console.log("  发布: npm publish");  // 打印日志到 stdout
+console.log("  全局安装: npm install -g mycli");  // 打印日志到 stdout
 
-console.log("\\n===== CLI 工具开发要点 =====");
-console.log("  1. commander 解析参数，inquirer 做交互");
-console.log("  2. chalk 彩色输出会自动检测 TTY");
-console.log("  3. 进度条用 \\r 回到行首覆盖");
-console.log("  4. 退出码: 0/1/2/124/130 各有约定");
-console.log("  5. DEBUG=ns:* 控制调试日志开关");`,
+console.log("\\n===== CLI 工具开发要点 =====");  // 打印日志到 stdout
+console.log("  1. commander 解析参数，inquirer 做交互");  // 打印日志到 stdout
+console.log("  2. chalk 彩色输出会自动检测 TTY");  // 打印日志到 stdout
+console.log("  3. 进度条用 \\r 回到行首覆盖");  // 打印日志到 stdout
+console.log("  4. 退出码: 0/1/2/124/130 各有约定");  // 打印日志到 stdout
+console.log("  5. DEBUG=ns:* 控制调试日志开关");`,  // 打印日志到 stdout
   },
 
   // =========================================================
@@ -1333,68 +1333,68 @@ npm unpublish mypkg@1.0.0
     code: `// ============================================================
 // npm/pnpm 包管理深度演示
 // ============================================================
-const fs = require("fs");
-const path = require("path");
+const fs = require("fs");  // 导入模块 fs；require 返回 module.exports
+const path = require("path");  // 导入模块 path；require 返回 module.exports
 
 // ---- 1. semver 版本解析（手写简化版） ----
-console.log("===== 1. semver 版本解析 =====");
-function parseVersion(v) {
-  const match = v.match(/^(\\d+)\\.(\\d+)\\.(\\d+)/);
-  if (!match) return null;
-  return {
+console.log("===== 1. semver 版本解析 =====");  // 打印日志到 stdout
+function parseVersion(v) {  // 声明函数 parseVersion
+  const match = v.match(/^(\\d+)\\.(\\d+)\\.(\\d+)/);  // 定义常量 match
+  if (!match) return null;  // 条件判断
+  return {  // 返回值
     major: +match[1],
     minor: +match[2],
     patch: +match[3],
   };
 }
 
-function compareVersions(a, b) {
-  const va = parseVersion(a);
-  const vb = parseVersion(b);
-  if (va.major !== vb.major) return va.major - vb.major;
-  if (va.minor !== vb.minor) return va.minor - vb.minor;
-  return va.patch - vb.patch;
+function compareVersions(a, b) {  // 声明函数 compareVersions
+  const va = parseVersion(a);  // 定义常量 va
+  const vb = parseVersion(b);  // 定义常量 vb
+  if (va.major !== vb.major) return va.major - vb.major;  // 条件判断
+  if (va.minor !== vb.minor) return va.minor - vb.minor;  // 条件判断
+  return va.patch - vb.patch;  // 返回值
 }
 
-function satisfiesRange(version, range) {
-  const v = parseVersion(version);
-  if (!v) return false;
+function satisfiesRange(version, range) {  // 声明函数 satisfiesRange
+  const v = parseVersion(version);  // 定义常量 v
+  if (!v) return false;  // 条件判断
   
   // 处理 ^1.2.3
-  if (range.startsWith("^")) {
-    const target = parseVersion(range.slice(1));
-    if (v.major !== target.major) return false;
-    if (v.major === 0) {
+  if (range.startsWith("^")) {  // 条件判断
+    const target = parseVersion(range.slice(1));  // 定义常量 target
+    if (v.major !== target.major) return false;  // 条件判断
+    if (v.major === 0) {  // 条件判断
       // 0.x 版本特殊处理
-      if (v.minor !== target.minor) return false;
-      return v.patch >= target.patch;
+      if (v.minor !== target.minor) return false;  // 条件判断
+      return v.patch >= target.patch;  // 返回值
     }
-    if (v.minor < target.minor) return false;
-    if (v.minor === target.minor && v.patch < target.patch) return false;
-    return true;
+    if (v.minor < target.minor) return false;  // 条件判断
+    if (v.minor === target.minor && v.patch < target.patch) return false;  // 条件判断
+    return true;  // 返回值
   }
   // 处理 ~1.2.3
-  if (range.startsWith("~")) {
-    const target = parseVersion(range.slice(1));
-    if (v.major !== target.major) return false;
-    if (v.minor !== target.minor) return false;
-    return v.patch >= target.patch;
+  if (range.startsWith("~")) {  // 条件判断
+    const target = parseVersion(range.slice(1));  // 定义常量 target
+    if (v.major !== target.major) return false;  // 条件判断
+    if (v.minor !== target.minor) return false;  // 条件判断
+    return v.patch >= target.patch;  // 返回值
   }
   // 精确匹配
-  return version === range;
+  return version === range;  // 返回值
 }
 
-console.log("  ^1.2.3 满足 1.2.5?", satisfiesRange("1.2.5", "^1.2.3"));
-console.log("  ^1.2.3 满足 1.3.0?", satisfiesRange("1.3.0", "^1.2.3"));
-console.log("  ^1.2.3 满足 2.0.0?", satisfiesRange("2.0.0", "^1.2.3"));
-console.log("  ^0.2.3 满足 0.2.5?", satisfiesRange("0.2.5", "^0.2.3"));
-console.log("  ^0.2.3 满足 0.3.0?", satisfiesRange("0.3.0", "^0.2.3"), "(0.x 特殊)");
-console.log("  ~1.2.3 满足 1.2.9?", satisfiesRange("1.2.9", "~1.2.3"));
-console.log("  ~1.2.3 满足 1.3.0?", satisfiesRange("1.3.0", "~1.2.3"));
+console.log("  ^1.2.3 满足 1.2.5?", satisfiesRange("1.2.5", "^1.2.3"));  // 打印日志到 stdout
+console.log("  ^1.2.3 满足 1.3.0?", satisfiesRange("1.3.0", "^1.2.3"));  // 打印日志到 stdout
+console.log("  ^1.2.3 满足 2.0.0?", satisfiesRange("2.0.0", "^1.2.3"));  // 打印日志到 stdout
+console.log("  ^0.2.3 满足 0.2.5?", satisfiesRange("0.2.5", "^0.2.3"));  // 打印日志到 stdout
+console.log("  ^0.2.3 满足 0.3.0?", satisfiesRange("0.3.0", "^0.2.3"), "(0.x 特殊)");  // 打印日志到 stdout
+console.log("  ~1.2.3 满足 1.2.9?", satisfiesRange("1.2.9", "~1.2.3"));  // 打印日志到 stdout
+console.log("  ~1.2.3 满足 1.3.0?", satisfiesRange("1.3.0", "~1.2.3"));  // 打印日志到 stdout
 
 // ---- 2. 依赖类型对比 ----
-console.log("\\n===== 2. 依赖类型 =====");
-const depTypes = [
+console.log("\\n===== 2. 依赖类型 =====");  // 打印日志到 stdout
+const depTypes = [  // 定义数组 depTypes
   { name: "dependencies", 用途: "运行时依赖", 例子: "express, lodash" },
   { name: "devDependencies", 用途: "开发依赖", 例子: "jest, webpack" },
   { name: "peerDependencies", 用途: "宿主依赖", 例子: "react 插件依赖 react" },
@@ -1402,122 +1402,122 @@ const depTypes = [
   { name: "bundleDependencies", 用途: "打包依赖", 例子: "发布时一起打包" },
 ];
 depTypes.forEach(d => {
-  console.log("  " + d.name.padEnd(22) + " | " + d.用途 + " | " + d.例子);
+  console.log("  " + d.name.padEnd(22) + " | " + d.用途 + " | " + d.例子);  // 打印日志到 stdout
 });
 
 // ---- 3. package.json 操作 ----
-console.log("\\n===== 3. package.json 操作 =====");
-function readPackageJson(dir) {
-  const file = path.join(dir, "package.json");
-  if (!fs.existsSync(file)) return null;
-  return JSON.parse(fs.readFileSync(file, "utf8"));
+console.log("\\n===== 3. package.json 操作 =====");  // 打印日志到 stdout
+function readPackageJson(dir) {  // 声明函数 readPackageJson
+  const file = path.join(dir, "package.json");  // 拼接路径 file
+  if (!fs.existsSync(file)) return null;  // 条件判断
+  return JSON.parse(fs.readFileSync(file, "utf8"));  // 返回值
 }
 
 // 读取当前项目的 package.json
-const pkg = readPackageJson(process.cwd());
-if (pkg) {
-  console.log("  项目名:", pkg.name);
-  console.log("  版本:", pkg.version);
-  console.log("  main:", pkg.main || "(无)");
-  console.log("  scripts 数量:", Object.keys(pkg.scripts || {}).length);
-  console.log("  dependencies 数量:", Object.keys(pkg.dependencies || {}).length);
-  console.log("  devDependencies 数量:", Object.keys(pkg.devDependencies || {}).length);
+const pkg = readPackageJson(process.cwd());  // 定义常量 pkg
+if (pkg) {  // 条件判断
+  console.log("  项目名:", pkg.name);  // 打印日志到 stdout
+  console.log("  版本:", pkg.version);  // 打印日志到 stdout
+  console.log("  main:", pkg.main || "(无)");  // 打印日志到 stdout
+  console.log("  scripts 数量:", Object.keys(pkg.scripts || {}).length);  // 打印日志到 stdout
+  console.log("  dependencies 数量:", Object.keys(pkg.dependencies || {}).length);  // 打印日志到 stdout
+  console.log("  devDependencies 数量:", Object.keys(pkg.devDependencies || {}).length);  // 打印日志到 stdout
   
   // 列出 scripts
-  console.log("\\n  可用 scripts:");
-  Object.entries(pkg.scripts || {}).slice(0, 10).forEach(([k, v]) => {
-    console.log("    " + k.padEnd(15) + " -> " + (v.length > 50 ? v.slice(0, 50) + "..." : v));
+  console.log("\\n  可用 scripts:");  // 打印日志到 stdout
+  Object.entries(pkg.scripts || {}).slice(0, 10).forEach(([k, v]) => {  // 获取对象 [key, value] 二维数组
+    console.log("    " + k.padEnd(15) + " -> " + (v.length > 50 ? v.slice(0, 50) + "..." : v));  // 打印日志到 stdout
   });
 }
 
 // ---- 4. node_modules 结构分析 ----
-console.log("\\n===== 4. node_modules 结构 =====");
-function analyzeNodeModules(dir) {
-  const nmPath = path.join(dir, "node_modules");
-  if (!fs.existsSync(nmPath)) return null;
+console.log("\\n===== 4. node_modules 结构 =====");  // 打印日志到 stdout
+function analyzeNodeModules(dir) {  // 声明函数 analyzeNodeModules
+  const nmPath = path.join(dir, "node_modules");  // 拼接路径 nmPath
+  if (!fs.existsSync(nmPath)) return null;  // 条件判断
   
-  const stats = { topLevel: 0, scoped: 0 };
-  const entries = fs.readdirSync(nmPath);
-  for (const e of entries) {
-    if (e.startsWith(".")) continue;
-    if (e.startsWith("@")) {
-      const scoped = path.join(nmPath, e);
+  const stats = { topLevel: 0, scoped: 0 };  // 定义对象 stats
+  const entries = fs.readdirSync(nmPath);  // 文件操作结果 entries
+  for (const e of entries) {  // for 循环
+    if (e.startsWith(".")) continue;  // 条件判断
+    if (e.startsWith("@")) {  // 条件判断
+      const scoped = path.join(nmPath, e);  // 拼接路径 scoped
       stats.scoped += fs.readdirSync(scoped).length;
     } else {
       stats.topLevel++;
     }
   }
   stats.total = stats.topLevel + stats.scoped;
-  return stats;
+  return stats;  // 返回值
 }
 
-const nmStats = analyzeNodeModules(process.cwd());
-if (nmStats) {
-  console.log("  顶级包数:", nmStats.topLevel);
-  console.log("  scoped 包数:", nmStats.scoped);
-  console.log("  总包数:", nmStats.total);
+const nmStats = analyzeNodeModules(process.cwd());  // 定义常量 nmStats
+if (nmStats) {  // 条件判断
+  console.log("  顶级包数:", nmStats.topLevel);  // 打印日志到 stdout
+  console.log("  scoped 包数:", nmStats.scoped);  // 打印日志到 stdout
+  console.log("  总包数:", nmStats.total);  // 打印日志到 stdout
 }
 
 // ---- 5. 幽灵依赖问题演示 ----
-console.log("\\n===== 5. 幽灵依赖问题 =====");
-console.log("  问题: 扁平化 node_modules 导致未声明的包也能 require");
-console.log("  示例: package.json 只声明 express，但能 require body-parser");
-console.log("  → npm/yarn 有此问题");
-console.log("  → pnpm 用符号链接解决（只暴露声明的包）");
+console.log("\\n===== 5. 幽灵依赖问题 =====");  // 打印日志到 stdout
+console.log("  问题: 扁平化 node_modules 导致未声明的包也能 require");  // 打印日志到 stdout
+console.log("  示例: package.json 只声明 express，但能 require body-parser");  // 打印日志到 stdout
+console.log("  → npm/yarn 有此问题");  // 打印日志到 stdout
+console.log("  → pnpm 用符号链接解决（只暴露声明的包）");  // 打印日志到 stdout
 
 // 检测是否有幽灵依赖
-if (pkg && pkg.dependencies) {
-  const declared = new Set(Object.keys(pkg.dependencies));
-  const nmPath = path.join(process.cwd(), "node_modules");
-  if (fs.existsSync(nmPath)) {
-    const actual = fs.readdirSync(nmPath).filter(n => !n.startsWith(".") && !n.startsWith("@"));
-    const ghosts = actual.filter(p => !declared.has(p) && !p.startsWith("."));
-    console.log("  声明的依赖:", declared.size, "个");
-    console.log("  node_modules 顶级包:", actual.length, "个");
-    if (ghosts.length > 0) {
-      console.log("  可能的幽灵依赖（前5个）:", ghosts.slice(0, 5));
+if (pkg && pkg.dependencies) {  // 条件判断
+  const declared = new Set(Object.keys(pkg.dependencies));  // 创建实例 declared
+  const nmPath = path.join(process.cwd(), "node_modules");  // 拼接路径 nmPath
+  if (fs.existsSync(nmPath)) {  // 条件判断
+    const actual = fs.readdirSync(nmPath).filter(n => !n.startsWith(".") && !n.startsWith("@"));  // 文件操作结果 actual
+    const ghosts = actual.filter(p => !declared.has(p) && !p.startsWith("."));  // 定义常量 ghosts
+    console.log("  声明的依赖:", declared.size, "个");  // 打印日志到 stdout
+    console.log("  node_modules 顶级包:", actual.length, "个");  // 打印日志到 stdout
+    if (ghosts.length > 0) {  // 条件判断
+      console.log("  可能的幽灵依赖（前5个）:", ghosts.slice(0, 5));  // 打印日志到 stdout
     }
   }
 }
 
 // ---- 6. npm 缓存分析 ----
-console.log("\\n===== 6. npm 缓存 =====");
-const os = require("os");
-const cachePath = path.join(os.homedir(), ".npm/_cacache");
-if (fs.existsSync(cachePath)) {
-  function getDirSize(dir) {
-    let size = 0;
-    const items = fs.readdirSync(dir);
-    for (const item of items) {
-      const full = path.join(dir, item);
-      const stat = fs.statSync(full);
-      if (stat.isDirectory()) size += getDirSize(full);
+console.log("\\n===== 6. npm 缓存 =====");  // 打印日志到 stdout
+const os = require("os");  // 导入模块 os；require 返回 module.exports
+const cachePath = path.join(os.homedir(), ".npm/_cacache");  // 拼接路径 cachePath
+if (fs.existsSync(cachePath)) {  // 条件判断
+  function getDirSize(dir) {  // 声明函数 getDirSize
+    let size = 0;  // 定义变量 size（可变）
+    const items = fs.readdirSync(dir);  // 文件操作结果 items
+    for (const item of items) {  // for 循环
+      const full = path.join(dir, item);  // 拼接路径 full
+      const stat = fs.statSync(full);  // 文件操作结果 stat
+      if (stat.isDirectory()) size += getDirSize(full);  // 条件判断
       else size += stat.size;
     }
-    return size;
+    return size;  // 返回值
   }
-  try {
-    const size = getDirSize(cachePath);
-    console.log("  缓存路径:", cachePath);
-    console.log("  缓存大小:", (size / 1024 / 1024).toFixed(1), "MB");
+  try {  // 开启 try 块捕获异常
+    const size = getDirSize(cachePath);  // 定义常量 size
+    console.log("  缓存路径:", cachePath);  // 打印日志到 stdout
+    console.log("  缓存大小:", (size / 1024 / 1024).toFixed(1), "MB");  // 打印日志到 stdout
   } catch (e) {
-    console.log("  缓存计算失败:", e.message);
+    console.log("  缓存计算失败:", e.message);  // 打印日志到 stdout
   }
 } else {
-  console.log("  未找到 npm 缓存目录");
+  console.log("  未找到 npm 缓存目录");  // 打印日志到 stdout
 }
 
 // ---- 7. pnpm 硬链接优势演示 ----
-console.log("\\n===== 7. pnpm vs npm 磁盘占用 =====");
-console.log("  场景: 100 个项目都用 lodash");
-console.log("  npm : 100 份 lodash 副本 ≈ " + (100 * 1.5).toFixed(1) + "MB");
-console.log("  pnpm: 1 份 lodash + 100 个硬链接 ≈ 1.5MB");
-console.log("  → 硬链接（同 inode）不占额外磁盘空间");
-console.log("  → 查看 inode: ls -i node_modules/lodash");
+console.log("\\n===== 7. pnpm vs npm 磁盘占用 =====");  // 打印日志到 stdout
+console.log("  场景: 100 个项目都用 lodash");  // 打印日志到 stdout
+console.log("  npm : 100 份 lodash 副本 ≈ " + (100 * 1.5).toFixed(1) + "MB");  // 打印日志到 stdout
+console.log("  pnpm: 1 份 lodash + 100 个硬链接 ≈ 1.5MB");  // 打印日志到 stdout
+console.log("  → 硬链接（同 inode）不占额外磁盘空间");  // 打印日志到 stdout
+console.log("  → 查看 inode: ls -i node_modules/lodash");  // 打印日志到 stdout
 
 // ---- 8. 发布流程模拟 ----
-console.log("\\n===== 8. 发布流程 =====");
-const publishSteps = [
+console.log("\\n===== 8. 发布流程 =====");  // 打印日志到 stdout
+const publishSteps = [  // 定义数组 publishSteps
   "1. npm pack --dry-run (检查要发布的文件)",
   "2. npm version patch/minor/major (升版本号)",
   "3. npm login (登录)",
@@ -1526,12 +1526,12 @@ const publishSteps = [
 ];
 publishSteps.forEach(s => console.log("  " + s));
 
-console.log("\\n===== 包管理深度要点 =====");
-console.log("  1. ^0.x.x 特殊：等同于精确匹配");
-console.log("  2. peerDependencies 让宿主提供依赖");
-console.log("  3. pnpm 用硬链接省磁盘、防幽灵依赖");
-console.log("  4. npm pack --dry-run 发布前必做");
-console.log("  5. monorepo 用 pnpm workspaces 最稳");`,
+console.log("\\n===== 包管理深度要点 =====");  // 打印日志到 stdout
+console.log("  1. ^0.x.x 特殊：等同于精确匹配");  // 打印日志到 stdout
+console.log("  2. peerDependencies 让宿主提供依赖");  // 打印日志到 stdout
+console.log("  3. pnpm 用硬链接省磁盘、防幽灵依赖");  // 打印日志到 stdout
+console.log("  4. npm pack --dry-run 发布前必做");  // 打印日志到 stdout
+console.log("  5. monorepo 用 pnpm workspaces 最稳");`,  // 打印日志到 stdout
   },
 
   // =========================================================
@@ -1780,8 +1780,8 @@ project/
 // ============================================================
 
 // ---- 1. tsconfig 关键配置展示 ----
-console.log("===== 1. tsconfig 关键配置 =====");
-const recommendedTsConfig = {
+console.log("===== 1. tsconfig 关键配置 =====");  // 打印日志到 stdout
+const recommendedTsConfig = {  // 定义对象 recommendedTsConfig
   compilerOptions: {
     target: "ES2022",
     module: "NodeNext",
@@ -1801,11 +1801,11 @@ const recommendedTsConfig = {
   exclude: ["node_modules", "dist"]
 };
 
-console.log("  推荐配置:");
-console.log(JSON.stringify(recommendedTsConfig, null, 2).replace(/^/gm, "  "));
+console.log("  推荐配置:");  // 打印日志到 stdout
+console.log(JSON.stringify(recommendedTsConfig, null, 2).replace(/^/gm, "  "));  // 打印日志到 stdout
 
-console.log("\\n  strict 全家桶包含:");
-const strictOptions = [
+console.log("\\n  strict 全家桶包含:");  // 打印日志到 stdout
+const strictOptions = [  // 定义数组 strictOptions
   "noImplicitAny (禁止隐式 any)",
   "strictNullChecks (null 必须显式)",
   "strictFunctionTypes (函数逆变)",
@@ -1817,30 +1817,30 @@ const strictOptions = [
 strictOptions.forEach(s => console.log("    - " + s));
 
 // ---- 2. 装饰器模拟 ----
-console.log("\\n===== 2. 装饰器实战 =====");
+console.log("\\n===== 2. 装饰器实战 =====");  // 打印日志到 stdout
 // TS 装饰器在 JS 里用 Reflect.metadata 模拟
-const metadataKey = "design:paramtypes";
+const metadataKey = "design:paramtypes";  // 定义常量 metadataKey
 
-function LogClass(target) {
-  console.log("  [类装饰器] 类被创建:", target.name);
-  return target;
+function LogClass(target) {  // 声明函数 LogClass
+  console.log("  [类装饰器] 类被创建:", target.name);  // 打印日志到 stdout
+  return target;  // 返回值
 }
 
-function Timer(target, key, desc) {
-  const original = desc.value;
+function Timer(target, key, desc) {  // 声明函数 Timer
+  const original = desc.value;  // 定义常量 original
   desc.value = function (...args) {
-    const start = Date.now();
-    const result = original.apply(this, args);
-    const elapsed = Date.now() - start;
-    console.log("  [方法装饰器] " + key + " 耗时:", elapsed + "ms");
-    return result;
+    const start = Date.now();  // 定义常量 start
+    const result = original.apply(this, args);  // 定义常量 result
+    const elapsed = Date.now() - start;  // 定义常量 elapsed
+    console.log("  [方法装饰器] " + key + " 耗时:", elapsed + "ms");  // 打印日志到 stdout
+    return result;  // 返回值
   };
-  return desc;
+  return desc;  // 返回值
 }
 
-function Inject(dependency) {
-  return function (target, key, index) {
-    console.log("  [参数装饰器] 注入", dependency, "到", key);
+function Inject(dependency) {  // 声明函数 Inject
+  return function (target, key, index) {  // 返回值
+    console.log("  [参数装饰器] 注入", dependency, "到", key);  // 打印日志到 stdout
     target[key + "_deps"] = target[key + "_deps"] || [];
     target[key + "_deps"][index] = dependency;
   };
@@ -1854,12 +1854,12 @@ function Inject(dependency) {
 //   }
 
 // JS 中手动应用装饰器（等价效果）：
-class UserService {
+class UserService {  // 定义类 UserService
   getUser(id, db) {
     // 模拟耗时操作
-    const start = Date.now();
-    while (Date.now() - start < 50) {}
-    return { id, name: "user-" + id };
+    const start = Date.now();  // 定义常量 start
+    while (Date.now() - start < 50) {}  // while 循环
+    return { id, name: "user-" + id };  // 返回值
   }
 }
 
@@ -1867,138 +1867,138 @@ class UserService {
 Inject("db")(UserService.prototype, "getUser", 1);
 
 // 2. 方法装饰器：包装方法
-const desc = Object.getOwnPropertyDescriptor(UserService.prototype, "getUser");
+const desc = Object.getOwnPropertyDescriptor(UserService.prototype, "getUser");  // 定义常量 desc
 Timer(UserService.prototype, "getUser", desc);
 Object.defineProperty(UserService.prototype, "getUser", desc);
 
 // 3. 类装饰器：日志
 LogClass(UserService);
 
-const service = new UserService();
-const user = service.getUser(1, "fake-db");
-console.log("  结果:", user);
+const service = new UserService();  // 创建实例 service
+const user = service.getUser(1, "fake-db");  // 定义常量 user
+console.log("  结果:", user);  // 打印日志到 stdout
 
 // ---- 3. 类型推导模拟 ----
-console.log("\\n===== 3. 类型推导（模拟） =====");
+console.log("\\n===== 3. 类型推导（模拟） =====");  // 打印日志到 stdout
 // TS 的 type inference：let x = 1 → x: number
-function inferType(value) {
-  if (value === null) return "null";
-  if (value === undefined) return "undefined";
-  if (Array.isArray(value)) return "array";
-  return typeof value;
+function inferType(value) {  // 声明函数 inferType
+  if (value === null) return "null";  // 条件判断
+  if (value === undefined) return "undefined";  // 条件判断
+  if (Array.isArray(value)) return "array";  // 条件判断
+  return typeof value;  // 返回值
 }
 
-console.log("  let x = 1        →", inferType(1), "(number)");
-console.log("  let s = 'hello'  →", inferType("hello"), "(string)");
-console.log("  let arr = [1,2,3]→", inferType([1, 2, 3]), "(array)");
-console.log("  let n = null     →", inferType(null), "(null)");
-console.log("  let u = undefined→", inferType(undefined), "(undefined)");
+console.log("  let x = 1        →", inferType(1), "(number)");  // 打印日志到 stdout
+console.log("  let s = 'hello'  →", inferType("hello"), "(string)");  // 打印日志到 stdout
+console.log("  let arr = [1,2,3]→", inferType([1, 2, 3]), "(array)");  // 打印日志到 stdout
+console.log("  let n = null     →", inferType(null), "(null)");  // 打印日志到 stdout
+console.log("  let u = undefined→", inferType(undefined), "(undefined)");  // 打印日志到 stdout
 
 // strictNullChecks 的效果
-console.log("\\n  strictNullChecks: true 时:");
-console.log("    let x: string = null  → 报错！");
-console.log("    let x: string | null = null  → OK");
-console.log("    function f(x: string) { x.length }  → 安全");
-console.log("    function f(x: string | null) { x.length }  → 报错，需先判空");
+console.log("\\n  strictNullChecks: true 时:");  // 打印日志到 stdout
+console.log("    let x: string = null  → 报错！");  // 打印日志到 stdout
+console.log("    let x: string | null = null  → OK");  // 打印日志到 stdout
+console.log("    function f(x: string) { x.length }  → 安全");  // 打印日志到 stdout
+console.log("    function f(x: string | null) { x.length }  → 报错，需先判空");  // 打印日志到 stdout
 
 // ---- 4. 运行时校验（zod 风格） ----
-console.log("\\n===== 4. 运行时校验 =====");
-class ZodLike {
+console.log("\\n===== 4. 运行时校验 =====");  // 打印日志到 stdout
+class ZodLike {  // 定义类 ZodLike
   static object(shape) {
-    return {
+    return {  // 返回值
       parse(input) {
-        const result = {};
-        const errors = [];
-        for (const [key, validator] of Object.entries(shape)) {
-          const value = input[key];
-          const err = validator(value);
-          if (err) errors.push({ path: key, message: err });
+        const result = {};  // 定义对象 result
+        const errors = [];  // 定义数组 errors
+        for (const [key, validator] of Object.entries(shape)) {  // for 循环
+          const value = input[key];  // 定义常量 value
+          const err = validator(value);  // 定义常量 err
+          if (err) errors.push({ path: key, message: err });  // 条件判断
           else result[key] = value;
         }
-        if (errors.length) throw new Error("校验失败: " + JSON.stringify(errors));
-        return result;
+        if (errors.length) throw new Error("校验失败: " + JSON.stringify(errors));  // 条件判断
+        return result;  // 返回值
       },
       safeParse(input) {
-        try {
-          return { success: true, data: this.parse(input) };
+        try {  // 开启 try 块捕获异常
+          return { success: true, data: this.parse(input) };  // 返回值
         } catch (e) {
-          return { success: false, error: e.message };
+          return { success: false, error: e.message };  // 返回值
         }
       }
     };
   }
   static string() {
-    return (v) => typeof v === "string" ? null : "期望 string";
+    return (v) => typeof v === "string" ? null : "期望 string";  // 返回值
   }
   static number() {
-    return (v) => typeof v === "number" && !isNaN(v) ? null : "期望 number";
+    return (v) => typeof v === "number" && !isNaN(v) ? null : "期望 number";  // 返回值
   }
   static positiveInt() {
-    return (v) => (Number.isInteger(v) && v > 0) ? null : "期望正整数";
+    return (v) => (Number.isInteger(v) && v > 0) ? null : "期望正整数";  // 返回值
   }
 }
 
-const UserSchema = ZodLike.object({
+const UserSchema = ZodLike.object({  // 定义常量 UserSchema
   name: ZodLike.string(),
   age: ZodLike.positiveInt()
 });
 
-console.log("  Schema: { name: string, age: 正整数 }");
+console.log("  Schema: { name: string, age: 正整数 }");  // 打印日志到 stdout
 
-const good = UserSchema.safeParse({ name: "Alice", age: 20 });
-console.log("  合法输入:", good.success, good.data);
+const good = UserSchema.safeParse({ name: "Alice", age: 20 });  // 定义常量 good
+console.log("  合法输入:", good.success, good.data);  // 打印日志到 stdout
 
-const bad = UserSchema.safeParse({ name: 123, age: -5 });
-console.log("  非法输入:", bad.success, "->", bad.error);
+const bad = UserSchema.safeParse({ name: 123, age: -5 });  // 定义常量 bad
+console.log("  非法输入:", bad.success, "->", bad.error);  // 打印日志到 stdout
 
 // ---- 5. 模块系统对比 ----
-console.log("\\n===== 5. 模块系统对比 =====");
-const moduleSystems = [
+console.log("\\n===== 5. 模块系统对比 =====");  // 打印日志到 stdout
+const moduleSystems = [  // 定义数组 moduleSystems
   { name: "CommonJS", import: 'const fs = require("fs")', export: "module.exports = {}", topAwait: "❌" },
   { name: "ESM", import: 'import fs from "fs"', export: "export default {}", topAwait: "✅" },
   { name: "AMD", import: "define([...], fn)", export: "return {}", topAwait: "❌" }
 ];
 moduleSystems.forEach(m => {
-  console.log("  " + m.name.padEnd(12) + " | import: " + m.import);
-  console.log("  ".padEnd(13) + " | export: " + m.export + " | 顶层 await: " + m.topAwait);
+  console.log("  " + m.name.padEnd(12) + " | import: " + m.import);  // 打印日志到 stdout
+  console.log("  ".padEnd(13) + " | export: " + m.export + " | 顶层 await: " + m.topAwait);  // 打印日志到 stdout
 });
 
-console.log("\\n  NodeNext 规则:");
-console.log("    .js 文件 → CommonJS（默认）");
-console.log("    package.json \\"type\\": \\"module\\" → ESM");
-console.log("    .mjs 永远 ESM，.cjs 永远 CJS");
-console.log("    ESM 中 import 必须带扩展名！");
+console.log("\\n  NodeNext 规则:");  // 打印日志到 stdout
+console.log("    .js 文件 → CommonJS（默认）");  // 打印日志到 stdout
+console.log("    package.json \\"type\\": \\"module\\" → ESM");  // 打印日志到 stdout
+console.log("    .mjs 永远 ESM，.cjs 永远 CJS");  // 打印日志到 stdout
+console.log("    ESM 中 import 必须带扩展名！");  // 打印日志到 stdout
 
 // ---- 6. 类型定义文件 ----
-console.log("\\n===== 6. 类型定义文件 (.d.ts) =====");
-console.log("  - 第三方库类型：@types/lodash 或库自带 types 字段");
-console.log("  - 自定义环境类型：");
-console.log("    declare namespace NodeJS {");
-console.log("      interface ProcessEnv {");
-console.log("        DB_URL: string");
-console.log("        NODE_ENV: 'development' | 'production'");
-console.log("      }");
-console.log("    }");
-console.log("  - 模块声明：declare module '*.txt'");
+console.log("\\n===== 6. 类型定义文件 (.d.ts) =====");  // 打印日志到 stdout
+console.log("  - 第三方库类型：@types/lodash 或库自带 types 字段");  // 打印日志到 stdout
+console.log("  - 自定义环境类型：");  // 打印日志到 stdout
+console.log("    declare namespace NodeJS {");  // 打印日志到 stdout
+console.log("      interface ProcessEnv {");  // 打印日志到 stdout
+console.log("        DB_URL: string");  // 打印日志到 stdout
+console.log("        NODE_ENV: 'development' | 'production'");  // 打印日志到 stdout
+console.log("      }");  // 打印日志到 stdout
+console.log("    }");  // 打印日志到 stdout
+console.log("  - 模块声明：declare module '*.txt'");  // 打印日志到 stdout
 
 // ---- 7. 运行方案对比 ----
-console.log("\\n===== 7. 运行方案对比 =====");
-const runTimes = [
+console.log("\\n===== 7. 运行方案对比 =====");  // 打印日志到 stdout
+const runTimes = [  // 定义数组 runTimes
   { name: "tsc + node", cmd: "tsc && node dist/app.js", speed: "慢", 用途: "生产部署" },
   { name: "ts-node", cmd: "ts-node app.ts", speed: "中", 用途: "开发调试" },
   { name: "tsx", cmd: "tsx app.ts", speed: "快10x", 用途: "开发推荐" },
   { name: "node --strip-types", cmd: "node app.ts", speed: "原生", 用途: "Node 22.6+ 实验" }
 ];
 runTimes.forEach(r => {
-  console.log("  " + r.name.padEnd(20) + " | " + r.cmd.padEnd(25) + " | " + r.speed.padEnd(8) + " | " + r.用途);
+  console.log("  " + r.name.padEnd(20) + " | " + r.cmd.padEnd(25) + " | " + r.speed.padEnd(8) + " | " + r.用途);  // 打印日志到 stdout
 });
 
-console.log("\\n===== TS + Node 集成要点 =====");
-console.log("  1. module: NodeNext 是现代项目标配");
-console.log("  2. strict: true 开启所有严格检查");
-console.log("  3. paths 别名编译后要 tsc-alias 转换");
-console.log("  4. 装饰器需要 experimentalDecorators");
-console.log("  5. 运行时校验用 zod，类型用 z.infer 推导");`,
+console.log("\\n===== TS + Node 集成要点 =====");  // 打印日志到 stdout
+console.log("  1. module: NodeNext 是现代项目标配");  // 打印日志到 stdout
+console.log("  2. strict: true 开启所有严格检查");  // 打印日志到 stdout
+console.log("  3. paths 别名编译后要 tsc-alias 转换");  // 打印日志到 stdout
+console.log("  4. 装饰器需要 experimentalDecorators");  // 打印日志到 stdout
+console.log("  5. 运行时校验用 zod，类型用 z.infer 推导");`,  // 打印日志到 stdout
   },
 
   // =========================================================
@@ -2298,9 +2298,9 @@ const logger = pino({
 // ============================================================
 
 // ---- 1. process.env 的坑 ----
-console.log("===== 1. process.env 的坑 =====");
+console.log("===== 1. process.env 的坑 =====");  // 打印日志到 stdout
 // 模拟从 .env 加载的环境变量
-const fakeEnv = {
+const fakeEnv = {  // 定义对象 fakeEnv
   PORT: "3000",
   DEBUG: "true",
   TIMEOUT: "5000",
@@ -2308,43 +2308,43 @@ const fakeEnv = {
   RATIO: "0.85"
 };
 
-console.log("  原始值都是字符串:");
-console.log("    PORT =", JSON.stringify(fakeEnv.PORT), "→ typeof:", typeof fakeEnv.PORT);
-console.log("    DEBUG =", JSON.stringify(fakeEnv.DEBUG), "→ typeof:", typeof fakeEnv.DEBUG);
+console.log("  原始值都是字符串:");  // 打印日志到 stdout
+console.log("    PORT =", JSON.stringify(fakeEnv.PORT), "→ typeof:", typeof fakeEnv.PORT);  // 打印日志到 stdout
+console.log("    DEBUG =", JSON.stringify(fakeEnv.DEBUG), "→ typeof:", typeof fakeEnv.DEBUG);  // 打印日志到 stdout
 
-console.log("\\n  常见错误:");
-console.log("    ❌ if (env.DEBUG) → 'false' 也是 truthy！");
-console.log("    ❌ env.PORT + 1   → '30001' (字符串拼接)");
-console.log("    ❌ env.CACHE_SIZE || 100 → '0' 是 truthy，不会用 100");
+console.log("\\n  常见错误:");  // 打印日志到 stdout
+console.log("    ❌ if (env.DEBUG) → 'false' 也是 truthy！");  // 打印日志到 stdout
+console.log("    ❌ env.PORT + 1   → '30001' (字符串拼接)");  // 打印日志到 stdout
+console.log("    ❌ env.CACHE_SIZE || 100 → '0' 是 truthy，不会用 100");  // 打印日志到 stdout
 
-console.log("\\n  正确解析:");
-function parseInt(v, def) { const n = Number(v); return Number.isFinite(n) ? n : def; }
-function parseBool(v, def) {
-  if (v === undefined) return def;
-  return v === "true" || v === "1" || v === "yes";
+console.log("\\n  正确解析:");  // 打印日志到 stdout
+function parseInt(v, def) { const n = Number(v); return Number.isFinite(n) ? n : def; }  // 声明函数 parseInt
+function parseBool(v, def) {  // 声明函数 parseBool
+  if (v === undefined) return def;  // 条件判断
+  return v === "true" || v === "1" || v === "yes";  // 返回值
 }
-function parseFloat(v, def) { const n = Number(v); return Number.isFinite(n) ? n : def; }
+function parseFloat(v, def) { const n = Number(v); return Number.isFinite(n) ? n : def; }  // 声明函数 parseFloat
 
-console.log("    PORT:", parseInt(fakeEnv.PORT, 3000), "(number)");
-console.log("    DEBUG:", parseBool(fakeEnv.DEBUG, false), "(boolean)");
-console.log("    TIMEOUT:", parseInt(fakeEnv.TIMEOUT, 5000), "(number)");
-console.log("    CACHE_SIZE:", parseInt(fakeEnv.CACHE_SIZE, 100), "(number，0 不会被替换)");
-console.log("    RATIO:", parseFloat(fakeEnv.RATIO, 0.5), "(float)");
+console.log("    PORT:", parseInt(fakeEnv.PORT, 3000), "(number)");  // 打印日志到 stdout
+console.log("    DEBUG:", parseBool(fakeEnv.DEBUG, false), "(boolean)");  // 打印日志到 stdout
+console.log("    TIMEOUT:", parseInt(fakeEnv.TIMEOUT, 5000), "(number)");  // 打印日志到 stdout
+console.log("    CACHE_SIZE:", parseInt(fakeEnv.CACHE_SIZE, 100), "(number，0 不会被替换)");  // 打印日志到 stdout
+console.log("    RATIO:", parseFloat(fakeEnv.RATIO, 0.5), "(float)");  // 打印日志到 stdout
 
 // ---- 2. dotenv 原理模拟 ----
-console.log("\\n===== 2. dotenv 原理 =====");
-function parseDotenv(content) {
-  const env = {};
-  const lines = content.split("\\n");
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eq = trimmed.indexOf("=");
-    if (eq === -1) continue;
-    let key = trimmed.slice(0, eq).trim();
-    let value = trimmed.slice(eq + 1).trim();
+console.log("\\n===== 2. dotenv 原理 =====");  // 打印日志到 stdout
+function parseDotenv(content) {  // 声明函数 parseDotenv
+  const env = {};  // 定义对象 env
+  const lines = content.split("\\n");  // 定义常量 lines
+  for (const line of lines) {  // for 循环
+    const trimmed = line.trim();  // 定义常量 trimmed
+    if (!trimmed || trimmed.startsWith("#")) continue;  // 条件判断
+    const eq = trimmed.indexOf("=");  // 定义常量 eq
+    if (eq === -1) continue;  // 条件判断
+    let key = trimmed.slice(0, eq).trim();  // 定义变量 key（可变）
+    let value = trimmed.slice(eq + 1).trim();  // 定义变量 value（可变）
     // 处理引号
-    if ((value.startsWith('"') && value.endsWith('"')) ||
+    if ((value.startsWith('"') && value.endsWith('"')) ||  // 条件判断
         (value.startsWith("'") && value.endsWith("'"))) {
       value = value.slice(1, -1);
     }
@@ -2352,54 +2352,54 @@ function parseDotenv(content) {
     value = value.replace(/\\$\\{(\\w+)\\}/g, (_, ref) => env[ref] || process.env[ref] || "");
     env[key] = value;
   }
-  return env;
+  return env;  // 返回值
 }
 
-const dotenvContent = \`# 应用配置
+const dotenvContent = \`# 应用配置  // 定义常量 dotenvContent
 NODE_ENV=production
 PORT=3000
 DB_URL=mongodb://localhost/\\\${NODE_ENV}
 API_KEY="abc123secret"
 MULTILINE="line1\\nline2"\`;
 
-const parsed = parseDotenv(dotenvContent);
-console.log("  解析 .env 内容:");
-console.log("    " + JSON.stringify(parsed, null, 2).replace(/\\n/g, "\\n    "));
+const parsed = parseDotenv(dotenvContent);  // 定义常量 parsed
+console.log("  解析 .env 内容:");  // 打印日志到 stdout
+console.log("    " + JSON.stringify(parsed, null, 2).replace(/\\n/g, "\\n    "));  // 打印日志到 stdout
 
 // ---- 3. 配置校验 ----
-console.log("\\n===== 3. 启动时配置校验 =====");
-function validateConfig(env, schema) {
-  const errors = [];
-  const config = {};
-  for (const [key, rule] of Object.entries(schema)) {
-    const value = env[key];
-    if (value === undefined || value === "") {
-      if (rule.required) errors.push(\`缺少必填: \${key}\`);
+console.log("\\n===== 3. 启动时配置校验 =====");  // 打印日志到 stdout
+function validateConfig(env, schema) {  // 声明函数 validateConfig
+  const errors = [];  // 定义数组 errors
+  const config = {};  // 定义对象 config
+  for (const [key, rule] of Object.entries(schema)) {  // for 循环
+    const value = env[key];  // 定义常量 value
+    if (value === undefined || value === "") {  // 条件判断
+      if (rule.required) errors.push(\`缺少必填: \${key}\`);  // 条件判断
       else config[key] = rule.default;
-      continue;
+      continue;  // 跳过本次循环
     }
     // 类型转换
     let parsed;
-    switch (rule.type) {
-      case "number": parsed = Number(value); break;
-      case "boolean": parsed = value === "true"; break;
-      case "url": parsed = value; break;
-      default: parsed = value;
+    switch (rule.type) {  // switch 分支
+      case "number": parsed = Number(value); break;  // case 分支
+      case "boolean": parsed = value === "true"; break;  // case 分支
+      case "url": parsed = value; break;  // case 分支
+      default: parsed = value;  // 默认分支
     }
-    if (rule.type === "number" && isNaN(parsed)) {
+    if (rule.type === "number" && isNaN(parsed)) {  // 条件判断
       errors.push(\`\${key} 应为 number，得到: \${value}\`);
-      continue;
+      continue;  // 跳过本次循环
     }
-    if (rule.enum && !rule.enum.includes(parsed)) {
+    if (rule.enum && !rule.enum.includes(parsed)) {  // 条件判断
       errors.push(\`\${key} 必须是 \${rule.enum.join("/")}, 得到: \${parsed}\`);
-      continue;
+      continue;  // 跳过本次循环
     }
     config[key] = parsed;
   }
-  return { config, errors };
+  return { config, errors };  // 返回值
 }
 
-const schema = {
+const schema = {  // 定义对象 schema
   NODE_ENV: { type: "string", required: true, enum: ["development", "production", "test"] },
   PORT: { type: "number", default: 3000 },
   DB_URL: { type: "url", required: true },
@@ -2408,18 +2408,18 @@ const schema = {
 
 // 合法配置
 const good = validateConfig({ NODE_ENV: "production", PORT: "8080", DB_URL: "mongodb://x" }, schema);
-console.log("  合法配置:");
-console.log("    errors:", good.errors.length === 0 ? "无" : good.errors);
-console.log("    config:", good.config);
+console.log("  合法配置:");  // 打印日志到 stdout
+console.log("    errors:", good.errors.length === 0 ? "无" : good.errors);  // 打印日志到 stdout
+console.log("    config:", good.config);  // 打印日志到 stdout
 
 // 非法配置
-const bad = validateConfig({ PORT: "abc", DB_URL: "" }, schema);
-console.log("  非法配置:");
-console.log("    errors:", bad.errors);
+const bad = validateConfig({ PORT: "abc", DB_URL: "" }, schema);  // 定义常量 bad
+console.log("  非法配置:");  // 打印日志到 stdout
+console.log("    errors:", bad.errors);  // 打印日志到 stdout
 
 // ---- 4. 配置分层 ----
-console.log("\\n===== 4. 配置分层架构 =====");
-const baseConfig = {
+console.log("\\n===== 4. 配置分层架构 =====");  // 打印日志到 stdout
+const baseConfig = {  // 定义对象 baseConfig
   app: { name: "myapp", version: "1.0.0" },
   server: { port: 3000, timeout: 30000 },
   db: { url: "mongodb://localhost:27017", poolSize: 10 },
@@ -2427,7 +2427,7 @@ const baseConfig = {
   log: { level: "info" }
 };
 
-const envConfigs = {
+const envConfigs = {  // 定义对象 envConfigs
   development: {
     server: { port: 3000 },
     db: { url: "mongodb://localhost:27017/dev" },
@@ -2444,38 +2444,38 @@ const envConfigs = {
   }
 };
 
-function deepMerge(target, source) {
-  const result = { ...target };
-  for (const key of Object.keys(source)) {
-    if (typeof source[key] === "object" && !Array.isArray(source[key])) {
+function deepMerge(target, source) {  // 声明函数 deepMerge
+  const result = { ...target };  // 定义对象 result
+  for (const key of Object.keys(source)) {  // for 循环
+    if (typeof source[key] === "object" && !Array.isArray(source[key])) {  // 条件判断
       result[key] = deepMerge(target[key] || {}, source[key]);
     } else {
       result[key] = source[key];
     }
   }
-  return result;
+  return result;  // 返回值
 }
 
 ["development", "production", "test"].forEach(env => {
-  const config = deepMerge(baseConfig, envConfigs[env]);
-  console.log("  [" + env + "] port=" + config.server.port + " db=" + config.db.url.slice(0, 30) + "... log=" + config.log.level);
+  const config = deepMerge(baseConfig, envConfigs[env]);  // 定义常量 config
+  console.log("  [" + env + "] port=" + config.server.port + " db=" + config.db.url.slice(0, 30) + "... log=" + config.log.level);  // 打印日志到 stdout
 });
 
 // ---- 5. 敏感信息脱敏 ----
-console.log("\\n===== 5. 日志脱敏 =====");
-function mask(obj) {
-  const result = { ...obj };
-  const sensitive = ["password", "apiKey", "token", "secret", "creditCard"];
-  for (const key of Object.keys(result)) {
-    if (sensitive.some(s => key.toLowerCase().includes(s))) {
-      const val = String(result[key]);
+console.log("\\n===== 5. 日志脱敏 =====");  // 打印日志到 stdout
+function mask(obj) {  // 声明函数 mask
+  const result = { ...obj };  // 定义对象 result
+  const sensitive = ["password", "apiKey", "token", "secret", "creditCard"];  // 定义数组 sensitive
+  for (const key of Object.keys(result)) {  // for 循环
+    if (sensitive.some(s => key.toLowerCase().includes(s))) {  // 条件判断
+      const val = String(result[key]);  // 定义常量 val
       result[key] = val.length > 4 ? val.slice(0, 4) + "***" : "***";
     }
   }
-  return result;
+  return result;  // 返回值
 }
 
-const request = {
+const request = {  // 定义对象 request
   username: "alice",
   password: "supersecret123",
   apiKey: "sk-abc123xyz",
@@ -2483,12 +2483,12 @@ const request = {
   data: { foo: "bar" }
 };
 
-console.log("  原始:", request.password, request.apiKey);
-console.log("  脱敏:", mask(request).password, mask(request).apiKey);
+console.log("  原始:", request.password, request.apiKey);  // 打印日志到 stdout
+console.log("  脱敏:", mask(request).password, mask(request).apiKey);  // 打印日志到 stdout
 
 // ---- 6. 12-Factor 配置原则 ----
-console.log("\\n===== 6. 12-Factor 配置清单 =====");
-const checklist = [
+console.log("\\n===== 6. 12-Factor 配置清单 =====");  // 打印日志到 stdout
+const checklist = [  // 定义数组 checklist
   "✓ 配置存环境变量，不硬编码",
   "✓ .env 加入 .gitignore",
   "✓ 启动时校验必填项",
@@ -2501,32 +2501,32 @@ const checklist = [
 checklist.forEach(c => console.log("  " + c));
 
 // ---- 7. 热重载配置 ----
-console.log("\\n===== 7. 配置热重载 =====");
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
+console.log("\\n===== 7. 配置热重载 =====");  // 打印日志到 stdout
+const fs = require("fs");  // 导入模块 fs；require 返回 module.exports
+const os = require("os");  // 导入模块 os；require 返回 module.exports
+const path = require("path");  // 导入模块 path；require 返回 module.exports
 
-const configFile = path.join(os.tmpdir(), "hot-config-" + process.pid + ".json");
-fs.writeFileSync(configFile, JSON.stringify({ feature_x: false }));
+const configFile = path.join(os.tmpdir(), "hot-config-" + process.pid + ".json");  // 拼接路径 configFile
+fs.writeFileSync(configFile, JSON.stringify({ feature_x: false }));  // 同步写入文件
 
-let hotConfig = JSON.parse(fs.readFileSync(configFile, "utf8"));
-console.log("  初始配置:", hotConfig);
+let hotConfig = JSON.parse(fs.readFileSync(configFile, "utf8"));  // 定义变量 hotConfig（可变）
+console.log("  初始配置:", hotConfig);  // 打印日志到 stdout
 
 // 模拟配置变更
-setTimeout(() => {
-  fs.writeFileSync(configFile, JSON.stringify({ feature_x: true }));
+setTimeout(() => {  // 延时回调（宏任务，timers 阶段执行）
+  fs.writeFileSync(configFile, JSON.stringify({ feature_x: true }));  // 同步写入文件
   // 真实环境用 chokidar 监听 change 事件
   hotConfig = JSON.parse(fs.readFileSync(configFile, "utf8"));
-  console.log("  热重载后:", hotConfig);
+  console.log("  热重载后:", hotConfig);  // 打印日志到 stdout
   fs.unlinkSync(configFile);
 }, 100);
 
-console.log("\\n===== 配置管理要点 =====");
-console.log("  1. process.env 全是字符串，必须显式转换");
-console.log("  2. .env 只放本地，密钥用 Secrets Manager");
-console.log("  3. 启动校验 + 分层架构是标配");
-console.log("  4. 业务读 config，不读 process.env");
-console.log("  5. 日志输出前必脱敏");`,
+console.log("\\n===== 配置管理要点 =====");  // 打印日志到 stdout
+console.log("  1. process.env 全是字符串，必须显式转换");  // 打印日志到 stdout
+console.log("  2. .env 只放本地，密钥用 Secrets Manager");  // 打印日志到 stdout
+console.log("  3. 启动校验 + 分层架构是标配");  // 打印日志到 stdout
+console.log("  4. 业务读 config，不读 process.env");  // 打印日志到 stdout
+console.log("  5. 日志输出前必脱敏");`,  // 打印日志到 stdout
   },
 
   // =========================================================

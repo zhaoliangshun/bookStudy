@@ -116,32 +116,50 @@ my_project/
 
 \`\`\`python
 # app/api/v1/users.py —— 用户路由
+# 从 fastapi 导入 APIRouter, Depends
 from fastapi import APIRouter, Depends
+# 从 app.schemas.user 导入 UserCreate, UserOut
 from app.schemas.user import UserCreate, UserOut
+# 从 app.services.user_service 导入 UserService
 from app.services.user_service import UserService
+# 从 app.api.deps 导入 get_db
 from app.api.deps import get_db
 
+# 创建 APIRouter 实例，设置路由前缀
 router = APIRouter(prefix="/users", tags=["用户"])
 
+# 定义 GET 路由：访问 / 时触发
 @router.get("/", response_model=list[UserOut])
+# 定义函数 list_users，参数: db = Depends(get_db)
 def list_users(db = Depends(get_db)):
+    # 定义变量 service，赋值为 UserService(db)
     service = UserService(db)
+    # 返回 service.list_users()
     return service.list_users()
 
+# 定义 POST 路由：访问 / 时触发
 @router.post("/", response_model=UserOut, status_code=201)
+# 定义函数 create_user，参数: user_in: UserCreate, db = Depends(get_db)
 def create_user(user_in: UserCreate, db = Depends(get_db)):
+    # 定义变量 service，赋值为 UserService(db)
     service = UserService(db)
+    # 返回 service.create_user(user_in)
     return service.create_user(user_in)
 \`\`\`
 
 \`\`\`python
 # app/api/v1/posts.py —— 文章路由
+# 从 fastapi 导入 APIRouter
 from fastapi import APIRouter
 
+# 创建 APIRouter 实例，设置路由前缀
 router = APIRouter(prefix="/posts", tags=["文章"])
 
+# 定义 GET 路由：访问 / 时触发
 @router.get("/")
+# 定义函数 list_posts，参数: 
 def list_posts():
+    # 返回 []
     return []
 \`\`\`
 
@@ -149,9 +167,12 @@ def list_posts():
 
 \`\`\`python
 # app/api/v1/router.py —— 把所有子路由汇总
+# 从 fastapi 导入 APIRouter
 from fastapi import APIRouter
+# 从 app.api.v1 导入 users, posts
 from app.api.v1 import users, posts
 
+# 创建路由器实例
 api_router = APIRouter(prefix="/v1")
 api_router.include_router(users.router)    # 注册 users
 api_router.include_router(posts.router)    # 注册 posts
@@ -161,12 +182,16 @@ api_router.include_router(posts.router)    # 注册 posts
 
 \`\`\`python
 # app/main.py —— 应用入口
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 app.api.v1.router 导入 api_router
 from app.api.v1.router import api_router
 
+# 创建 FastAPI 应用实例
 app = FastAPI(title="我的博客 API", version="1.0.0")
 
 # 注册 v1 路由
+# 注册路由器 api_router
 app.include_router(api_router)
 
 # 这样所有路径是 /v1/users/... /v1/posts/...
@@ -184,27 +209,42 @@ app.include_router(api_router)
 
 \`\`\`python
 # app/services/user_service.py
+# 从 app.crud.user 导入 UserCRUD
 from app.crud.user import UserCRUD
+# 从 app.schemas.user 导入 UserCreate, UserOut
 from app.schemas.user import UserCreate, UserOut
+# 从 app.core.security 导入 hash_password
 from app.core.security import hash_password
+# 从 fastapi 导入 HTTPException
 from fastapi import HTTPException
 
+# 定义类 UserService
 class UserService:
+    # """用户业务逻辑层。"""
     """用户业务逻辑层。"""
+    # 定义函数 __init__，参数: self, db
     def __init__(self, db):
+        # self.db = db
         self.db = db
         self.crud = UserCRUD(db)   # 数据层
 
+    # 定义函数 create_user，返回: UserOut
     def create_user(self, user_in: UserCreate) -> UserOut:
         # 业务规则:邮箱不能重复
+        # 条件判断：如果 self.crud.get_by_email(user_in.email)
         if self.crud.get_by_email(user_in.email):
+            # 抛出 HTTPException 异常: 400, "邮箱已存在"
             raise HTTPException(400, "邮箱已存在")
         # 业务逻辑:密码哈希
+        # 定义变量 hashed，赋值为 hash_password(user_in.password)
         hashed = hash_password(user_in.password)
         # 调数据层写入
+        # 返回 self.crud.create(email=user_in.email, hashed_password=hashed)
         return self.crud.create(email=user_in.email, hashed_password=hashed)
 
+    # 定义函数 list_users，参数: self, skip: int = 0, limit: int = 20
     def list_users(self, skip: int = 0, limit: int = 20):
+        # 返回 self.crud.list(skip, limit)
         return self.crud.list(skip, limit)
 \`\`\`
 
@@ -216,28 +256,46 @@ class UserService:
 
 \`\`\`python
 # app/crud/user.py
+# 从 sqlalchemy.orm 导入 Session
 from sqlalchemy.orm import Session
+# 从 app.models.user 导入 User
 from app.models.user import User
+# 从 app.schemas.user 导入 UserCreate
 from app.schemas.user import UserCreate
 
+# 定义类 UserCRUD
 class UserCRUD:
+    # 定义函数 __init__，参数: self, db: Session
     def __init__(self, db: Session):
+        # self.db = db
         self.db = db
 
+    # 定义函数 get，参数: self, user_id: int
     def get(self, user_id: int):
+        # 返回 self.db.query(User).filter(User.id == user_id).first()
         return self.db.query(User).filter(User.id == user_id).first()
 
+    # 定义函数 get_by_email，参数: self, email: str
     def get_by_email(self, email: str):
+        # 返回 self.db.query(User).filter(User.email == email).first()
         return self.db.query(User).filter(User.email == email).first()
 
+    # 定义函数 list，参数: self, skip: int = 0, limit: int = 20
     def list(self, skip: int = 0, limit: int = 20):
+        # 返回 self.db.query(User).offset(skip).limit(limit).all()
         return self.db.query(User).offset(skip).limit(limit).all()
 
+    # 定义函数 create，参数: self, email: str, hashed_password: str
     def create(self, email: str, hashed_password: str):
+        # 定义变量 user，赋值为 User(email=email, hashed_password=hashed_pass...
         user = User(email=email, hashed_password=hashed_password)
+        # 调用 self.db.add()
         self.db.add(user)
+        # 调用 self.db.commit()
         self.db.commit()
+        # 调用 self.db.refresh()
         self.db.refresh(user)
+        # 返回 user
         return user
 \`\`\`
 
@@ -245,21 +303,31 @@ class UserCRUD:
 
 \`\`\`python
 # app/schemas/user.py
+# 从 pydantic 导入 BaseModel, EmailStr
 from pydantic import BaseModel, EmailStr
 
+# 定义 Pydantic 数据模型 UserBase，继承 BaseModel
 class UserBase(BaseModel):
+    # 字段 email，类型: EmailStr
     email: EmailStr
 
+# 定义类 UserCreate，继承 UserBase
 class UserCreate(UserBase):
     password: str        # 创建时需要密码
 
+# 定义 Pydantic 数据模型 UserUpdate，继承 BaseModel
 class UserUpdate(BaseModel):
+    # 字段 email，类型: EmailStr | None，默认值: None
     email: EmailStr | None = None
+    # 字段 password，类型: str | None，默认值: None
     password: str | None = None
 
 class UserOut(UserBase):  # 返回给前端的,不含密码
+    # 字段 id，类型: int
     id: int
+    # 定义类 Config
     class Config:
+        # 定义变量 from_attributes，赋值为 True
         from_attributes = True
 \`\`\`
 
@@ -315,8 +383,11 @@ main.py
 
 \`\`\`python
 # ❌ 烂写法
+# 定义变量 DATABASE_URL，赋值为 "mysql://user:pass@localhost:3306/mydb"
 DATABASE_URL = "mysql://user:pass@localhost:3306/mydb"
+# 定义变量 SECRET_KEY，赋值为 "my-super-secret"
 SECRET_KEY = "my-super-secret"
+# 定义变量 DEBUG，赋值为 True
 DEBUG = True
 \`\`\`
 
@@ -334,6 +405,7 @@ DEBUG = True
 FastAPI 作者推荐用 \`pydantic-settings\`(从 Pydantic v2 起独立成包):
 
 \`\`\`bash
+# 安装 Python 包: pydantic-settings
 pip install pydantic-settings
 \`\`\`
 
@@ -347,24 +419,37 @@ pip install pydantic-settings
 
 \`\`\`python
 # app/core/config.py
+# 从 pydantic_settings 导入 BaseSettings, SettingsConfigDict
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# 定义类 Settings，继承 BaseSettings
 class Settings(BaseSettings):
     # 每个字段会自动从同名环境变量读取(大小写不敏感)
+    # 字段 DATABASE_URL，类型: str，默认值: "sqlite:///./dev.db"
     DATABASE_URL: str = "sqlite:///./dev.db"
+    # 字段 SECRET_KEY，类型: str，默认值: "change-me"
     SECRET_KEY: str = "change-me"
+    # 字段 DEBUG，类型: bool，默认值: False
     DEBUG: bool = False
+    # 字段 API_V1_PREFIX，类型: str，默认值: "/v1"
     API_V1_PREFIX: str = "/v1"
+    # 字段 ACCESS_TOKEN_EXPIRE_MINUTES，类型: int，默认值: 30
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # 配置:允许从 .env 文件读取
+    # 定义变量 model_config，赋值为 SettingsConfigDict(
     model_config = SettingsConfigDict(
+        # 定义变量 env_file，赋值为 ".env",
         env_file=".env",
+        # 定义变量 env_file_encoding，赋值为 "utf-8",
         env_file_encoding="utf-8",
+        # 定义变量 case_sensitive，赋值为 False,
         case_sensitive=False,
+    # )
     )
 
 # 全局单例,其它地方 import 这个用
+# 定义变量 settings，赋值为 Settings()
 settings = Settings()
 \`\`\`
 
@@ -408,18 +493,25 @@ DEBUG=False
 
 \`\`\`python
 # app/main.py
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 app.core.config 导入 settings
 from app.core.config import settings
 
+# 创建 FastAPI 应用实例
 app = FastAPI(
+    # 定义变量 title，赋值为 "我的 API",
     title="我的 API",
     debug=settings.DEBUG,           # 从配置读
+# )
 )
 
 # 路由前缀从配置读
+# 注册路由器 api_router, prefix=settings.API_V1_PREFIX
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
 # 用配置生成密钥
+# 定义变量 oauth2_scheme，赋值为 OAuth2PasswordBearer(tokenUrl=f"{settings.API...
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_PREFIX}/auth/login")
 \`\`\`
 
@@ -439,22 +531,33 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_PREFIX}/auth/lo
 
 \`\`\`bash
 # 通过 ENV_FILE 环境变量切换
+# ENV_FILE=.env.prod uvicorn app.main:app
 ENV_FILE=.env.prod uvicorn app.main:app
 \`\`\`
 
 \`\`\`python
 # config.py 支持
+# 导入 os 模块
 import os
+# 从 pydantic_settings 导入 BaseSettings, SettingsConfigDict
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# 定义类 Settings，继承 BaseSettings
 class Settings(BaseSettings):
+    # 字段 DATABASE_URL，类型: str，默认值: "sqlite:///./dev.db"
     DATABASE_URL: str = "sqlite:///./dev.db"
+    # 字段 SECRET_KEY，类型: str，默认值: "change-me"
     SECRET_KEY: str = "change-me"
+    # 字段 DEBUG，类型: bool，默认值: False
     DEBUG: bool = False
 
+    # 定义变量 model_config，赋值为 SettingsConfigDict(
     model_config = SettingsConfigDict(
+        # 定义变量 env_file，赋值为 os.getenv("ENV_FILE", ".env"),
         env_file=os.getenv("ENV_FILE", ".env"),
+        # 定义变量 case_sensitive，赋值为 False,
         case_sensitive=False,
+    # )
     )
 \`\`\`
 
@@ -462,9 +565,13 @@ class Settings(BaseSettings):
 
 \`\`\`bash
 # Docker / k8s 里直接设环境变量,优先级最高
+# 设置环境变量 DATABASE_URL=mysql://prod-user:prod-pass@db:3306/mydb
 export DATABASE_URL=mysql://prod-user:prod-pass@db:3306/mydb
+# 设置环境变量 SECRET_KEY=prod-secret-key
 export SECRET_KEY=prod-secret-key
+# 设置环境变量 DEBUG=False
 export DEBUG=False
+# uvicorn app.main:app
 uvicorn app.main:app
 \`\`\`
 
@@ -498,7 +605,9 @@ uvicorn app.main:app
 
 \`\`\`python
 # 生成一个安全的随机密钥
+# 导入 secrets 模块
 import secrets
+# 调用 print()
 print(secrets.token_urlsafe(32))
 # 输出类似:9aF3kL...xY2z(43 字符)
 \`\`\`
@@ -508,24 +617,39 @@ print(secrets.token_urlsafe(32))
 配置项多了,可以分组:
 
 \`\`\`python
+# 从 pydantic 导入 BaseModel
 from pydantic import BaseModel
+# 从 pydantic_settings 导入 BaseSettings, SettingsConfigDict
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# 定义 Pydantic 数据模型 DatabaseSettings，继承 BaseModel
 class DatabaseSettings(BaseModel):
+    # 字段 url，类型: str，默认值: "sqlite:///./dev.db"
     url: str = "sqlite:///./dev.db"
+    # 字段 pool_size，类型: int，默认值: 5
     pool_size: int = 5
+    # 字段 echo，类型: bool，默认值: False
     echo: bool = False
 
+# 定义 Pydantic 数据模型 RedisSettings，继承 BaseModel
 class RedisSettings(BaseModel):
+    # 字段 url，类型: str，默认值: "redis://localhost:6379"
     url: str = "redis://localhost:6379"
+    # 字段 ttl，类型: int，默认值: 3600
     ttl: int = 3600
 
+# 定义类 Settings，继承 BaseSettings
 class Settings(BaseSettings):
+    # 字段 database，类型: DatabaseSettings，默认值: DatabaseSettings()
     database: DatabaseSettings = DatabaseSettings()
+    # 字段 redis，类型: RedisSettings，默认值: RedisSettings()
     redis: RedisSettings = RedisSettings()
+    # 字段 secret_key，类型: str，默认值: "change-me"
     secret_key: str = "change-me"
+    # 定义变量 model_config，赋值为 SettingsConfigDict(env_file=".env", env_neste...
     model_config = SettingsConfigDict(env_file=".env", env_nested_delimiter="__")
 
+# 定义变量 settings，赋值为 Settings()
 settings = Settings()
 # 用法:settings.database.url、settings.redis.ttl
 \`\`\`
@@ -542,17 +666,24 @@ REDIS__TTL=7200
 
 \`\`\`python
 # tests/conftest.py
+# 导入 os 模块
 import os
 # 测试前强制用测试数据库
+# os.environ["DATABASE_URL"] = "sqlite:///./test.db"
 os.environ["DATABASE_URL"] = "sqlite:///./test.db"
+# os.environ["DEBUG"] = "False"
 os.environ["DEBUG"] = "False"
 
 # 注意:必须在 import Settings 之前设
+# 从 app.core.config 导入 Settings
 from app.core.config import Settings
+# 定义变量 test_settings，赋值为 Settings()
 test_settings = Settings()
 
 # 或者直接构造
+# 定义函数 get_test_settings，参数: 
 def get_test_settings():
+    # 返回 Settings(DATABASE_URL="sqlite:///./test.db", DEBUG=False)
     return Settings(DATABASE_URL="sqlite:///./test.db", DEBUG=False)
 \`\`\`
 
@@ -560,62 +691,97 @@ def get_test_settings():
 
 \`\`\`python
 # app/core/config.py
+# 从 pydantic 导入 EmailStr
 from pydantic import EmailStr
+# 从 pydantic_settings 导入 BaseSettings, SettingsConfigDict
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# 定义类 Settings，继承 BaseSettings
 class Settings(BaseSettings):
+    # """应用配置,从环境变量和 .env 读取。"""
     """应用配置,从环境变量和 .env 读取。"""
 
     # 应用
+    # 字段 APP_NAME，类型: str，默认值: "我的博客 API"
     APP_NAME: str = "我的博客 API"
+    # 字段 DEBUG，类型: bool，默认值: False
     DEBUG: bool = False
+    # 字段 API_V1_PREFIX，类型: str，默认值: "/api/v1"
     API_V1_PREFIX: str = "/api/v1"
 
     # 安全
+    # 字段 SECRET_KEY，类型: str，默认值: "change-me-in-production"
     SECRET_KEY: str = "change-me-in-production"
+    # 字段 ACCESS_TOKEN_EXPIRE_MINUTES，类型: int，默认值: 30
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    # 字段 ALGORITHM，类型: str，默认值: "HS256"
     ALGORITHM: str = "HS256"
 
     # 数据库
+    # 字段 DATABASE_URL，类型: str，默认值: "sqlite:///./dev.db"
     DATABASE_URL: str = "sqlite:///./dev.db"
 
     # CORS
+    # 字段 BACKEND_CORS_ORIGINS，类型: list[str]，默认值: ["http://localhost:3000"]
     BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
     # Redis(可选)
+    # 字段 REDIS_URL，类型: str | None，默认值: None
     REDIS_URL: str | None = None
 
+    # 定义变量 model_config，赋值为 SettingsConfigDict(
     model_config = SettingsConfigDict(
+        # 定义变量 env_file，赋值为 ".env",
         env_file=".env",
+        # 定义变量 env_file_encoding，赋值为 "utf-8",
         env_file_encoding="utf-8",
+        # 定义变量 case_sensitive，赋值为 False,
         case_sensitive=False,
+    # )
     )
 
+# 定义变量 settings，赋值为 Settings()
 settings = Settings()
 \`\`\`
 
 \`\`\`python
 # app/main.py
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 fastapi.middleware.cors 导入 CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
+# 从 app.core.config 导入 settings
 from app.core.config import settings
+# 从 app.api.v1.router 导入 api_router
 from app.api.v1.router import api_router
 
+# 创建 FastAPI 应用实例
 app = FastAPI(
+    # 定义变量 title，赋值为 settings.APP_NAME,
     title=settings.APP_NAME,
+    # 定义变量 debug，赋值为 settings.DEBUG,
     debug=settings.DEBUG,
+# )
 )
 
 # CORS 配置从 settings 读
+# app.add_middleware(
 app.add_middleware(
+    # CORSMiddleware,
     CORSMiddleware,
+    # 定义变量 allow_origins，赋值为 settings.BACKEND_CORS_ORIGINS,
     allow_origins=settings.BACKEND_CORS_ORIGINS,
+    # 定义变量 allow_credentials，赋值为 True,
     allow_credentials=True,
+    # 定义列表 allow_methods
     allow_methods=["*"],
+    # 定义列表 allow_headers
     allow_headers=["*"],
+# )
 )
 
 # 路由前缀从 settings 读
+# 注册路由器 api_router, prefix=settings.API_V1_PREFIX
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 \`\`\`
 
@@ -668,21 +834,32 @@ Python 自带 \`logging\` 模块,核心概念:
 - **Level**:日志级别。
 
 \`\`\`python
+# 导入 logging 模块
 import logging
 
 # 1. 配置
+# logging.basicConfig(
 logging.basicConfig(
+    # 定义变量 level，赋值为 logging.INFO,
     level=logging.INFO,
+    # 定义变量 format，赋值为 "%(asctime)s | %(levelname)s | %(name)s | %(m...
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    # 定义列表 handlers
     handlers=[logging.StreamHandler()],
+# )
 )
 
+# 定义变量 logger，赋值为 logging.getLogger(__name__)
 logger = logging.getLogger(__name__)
 
 # 2. 用
+# 调用 logger.debug()
 logger.debug("调试信息,默认不输出")
+# 调用 logger.info()
 logger.info("普通信息")
+# 调用 logger.warning()
 logger.warning("警告")
+# 调用 logger.error()
 logger.error("错误")
 \`\`\`
 
@@ -706,46 +883,71 @@ logger.error("错误")
 
 \`\`\`python
 # app/core/logging.py
+# 导入 logging 模块
 import logging
+# 导入 sys 模块
 import sys
 
+# 定义函数 setup_logging，参数: 
 def setup_logging():
+    # """统一配置日志。"""
     """统一配置日志。"""
+    # 定义变量 formatter，赋值为 logging.Formatter(
     formatter = logging.Formatter(
+        # 定义变量 fmt，赋值为 "%(asctime)s | %(levelname)s | %(name)s | %(m...
         fmt="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+        # 定义变量 datefmt，赋值为 "%Y-%m-%d %H:%M:%S",
         datefmt="%Y-%m-%d %H:%M:%S",
+    # )
     )
 
     # 控制台输出
+    # 定义变量 console_handler，赋值为 logging.StreamHandler(sys.stdout)
     console_handler = logging.StreamHandler(sys.stdout)
+    # 调用 console_handler.setFormatter()
     console_handler.setFormatter(formatter)
 
     # 文件输出(追加模式)
+    # 定义变量 file_handler，赋值为 logging.FileHandler("app.log", encoding="utf-...
     file_handler = logging.FileHandler("app.log", encoding="utf-8")
+    # 调用 file_handler.setFormatter()
     file_handler.setFormatter(formatter)
 
     # 配置根 logger
+    # 定义变量 root，赋值为 logging.getLogger()
     root = logging.getLogger()
+    # 调用 root.setLevel()
     root.setLevel(logging.INFO)
+    # 调用 root.addHandler()
     root.addHandler(console_handler)
+    # 调用 root.addHandler()
     root.addHandler(file_handler)
 \`\`\`
 
 \`\`\`python
 # app/main.py
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 app.core.logging 导入 setup_logging
 from app.core.logging import setup_logging
 
 setup_logging()   # 启动时配置一次
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 导入 logging 模块
 import logging
+# 定义变量 logger，赋值为 logging.getLogger(__name__)
 logger = logging.getLogger(__name__)
 
+# 定义 GET 路由：访问 / 时触发
 @app.get("/")
+# 定义函数 root，参数: 
 def root():
+    # 调用 logger.info()
     logger.info("访问了根路径")
+    # 返回 {"msg": "hello"}
     return {"msg": "hello"}
 \`\`\`
 
@@ -754,28 +956,45 @@ def root():
 每个请求都记日志,出问题能追溯:
 
 \`\`\`python
+# 导入 time 模块
 import time
+# 导入 logging 模块
 import logging
+# 从 fastapi 导入 Request
 from fastapi import Request
 
+# 定义变量 logger，赋值为 logging.getLogger("app.request")
 logger = logging.getLogger("app.request")
 
+# 装饰器：app.middleware
 @app.middleware("http")
+# 定义异步函数 log_requests，参数: request: Request, call_next
 async def log_requests(request: Request, call_next):
+    # """记录每个请求的方法、路径、耗时。"""
     """记录每个请求的方法、路径、耗时。"""
+    # 定义变量 start，赋值为 time.time()
     start = time.time()
+    # 定义变量 response，赋值为 await call_next(request)
     response = await call_next(request)
+    # 定义变量 duration_ms，赋值为 (time.time() - start) * 1000
     duration_ms = (time.time() - start) * 1000
 
+    # logger.info(
     logger.info(
+        # f"{request.method} {request.url.path} "
         f"{request.method} {request.url.path} "
+        # f"-> {response.status_code} ({duration_ms:.1f}ms)"
         f"-> {response.status_code} ({duration_ms:.1f}ms)"
+    # )
     )
 
     # 慢请求单独标记
+    # 条件判断：如果 duration_ms > 1000
     if duration_ms > 1000:
+        # 调用 logger.warning()
         logger.warning(f"慢请求: {request.url.path} 耗时 {duration_ms:.0f}ms")
 
+    # 返回 response
     return response
 \`\`\`
 
@@ -784,24 +1003,33 @@ async def log_requests(request: Request, call_next):
 Python 自带 \`logging\` 配置繁琐,很多人用 \`loguru\`:
 
 \`\`\`bash
+# 安装 Python 包: loguru
 pip install loguru
 \`\`\`
 
 \`\`\`python
+# 从 loguru 导入 logger
 from loguru import logger
 
 # 开箱即用,不用配置
+# 调用 logger.info()
 logger.info("启动应用")
+# 调用 logger.warning()
 logger.warning("配置缺失,用默认值")
+# 调用 logger.error()
 logger.error("数据库连接失败")
 
 # 自动带颜色、时间、模块、行号
 # 还能直接写文件
+# 调用 logger.add()
 logger.add("app.log", rotation="10 MB", retention="7 days", level="INFO")
 
 # 捕获异常堆栈
+# 尝试执行，捕获异常
 try:
+    # 1 / 0
     1 / 0
+# 捕获 Exception 异常
 except Exception:
     logger.exception("计算出错")   # 自动打印完整堆栈
 \`\`\`
@@ -813,30 +1041,51 @@ except Exception:
 传统日志是文本,日志采集系统(ELK、Loki)更喜欢 JSON 格式,方便检索:
 
 \`\`\`python
+# 导入 json 模块
 import json
+# 导入 logging 模块
 import logging
 
+# 定义类 JsonFormatter，继承 logging.Formatter
 class JsonFormatter(logging.Formatter):
+    # """把日志格式化成 JSON。"""
     """把日志格式化成 JSON。"""
+    # 定义函数 format，参数: self, record
     def format(self, record):
+        # 定义字典 log_data
         log_data = {
+            # "timestamp": self.formatTime(record),
             "timestamp": self.formatTime(record),
+            # "level": record.levelname,
             "level": record.levelname,
+            # "logger": record.name,
             "logger": record.name,
+            # "message": record.getMessage(),
             "message": record.getMessage(),
+            # "module": record.module,
             "module": record.module,
+            # "line": record.lineno,
             "line": record.lineno,
+        # }
         }
+        # 条件判断：如果 record.exc_info
         if record.exc_info:
+            # log_data["exception"] = self.formatException(recor
             log_data["exception"] = self.formatException(record.exc_info)
+        # 返回 json.dumps(log_data, ensure_ascii=False)
         return json.dumps(log_data, ensure_ascii=False)
 
 # 用
+# 定义变量 handler，赋值为 logging.StreamHandler()
 handler = logging.StreamHandler()
+# 调用 handler.setFormatter()
 handler.setFormatter(JsonFormatter())
+# 调用 logging.basicConfig()
 logging.basicConfig(level=logging.INFO, handlers=[handler])
 
+# 定义变量 logger，赋值为 logging.getLogger("app")
 logger = logging.getLogger("app")
+# 调用 logger.info()
 logger.info("用户登录", extra={"user_id": 123, "ip": "1.2.3.4"})
 \`\`\`
 
@@ -854,17 +1103,24 @@ logger.info("用户登录", extra={"user_id": 123, "ip": "1.2.3.4"})
 
 \`\`\`python
 # ❌ 危险
+# 调用 logger.info()
 logger.info(f"用户登录,密码是 {password}")
 
 # ✅ 安全
+# 调用 logger.info()
 logger.info("用户登录", extra={"user_id": user.id})
 
 # 主动脱敏
+# 定义函数 mask，返回: str
 def mask(s: str) -> str:
+    # 条件判断：如果 len(s) <= 4
     if len(s) <= 4:
+        # 返回 "***"
         return "***"
+    # 返回 s[:2] + "***" + s[-2:]
     return s[:2] + "***" + s[-2:]
 
+# 调用 logger.info()
 logger.info(f"手机号: {mask(phone)}")
 \`\`\`
 
@@ -873,19 +1129,26 @@ logger.info(f"手机号: {mask(phone)}")
 日志是被动看,Sentry 是主动推——出了 ERROR 自动报警到你邮箱/钉钉。
 
 \`\`\`bash
+# 安装 Python 包: sentry-sdk
 pip install sentry-sdk
 \`\`\`
 
 \`\`\`python
 # app/main.py
+# 导入 sentry_sdk 模块
 import sentry_sdk
+# 从 sentry_sdk.integrations.fastapi 导入 FastApiIntegration
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 
+# sentry_sdk.init(
 sentry_sdk.init(
     dsn="https://xxx@sentry.io/123",   # 从 Sentry 后台拿
+    # 定义列表 integrations
     integrations=[FastApiIntegration()],
     traces_sample_rate=0.1,            # 10% 请求追踪性能
+    # 定义变量 environment，赋值为 "production",
     environment="production",
+# )
 )
 
 # 之后任何未捕获的异常,Sentry 都会收到
@@ -897,51 +1160,87 @@ sentry_sdk.init(
 
 \`\`\`python
 # app/core/logging.py
+# 导入 logging 模块
 import logging
+# 导入 logging.config 模块
 import logging.config
+# 导入 sys 模块
 import sys
 
+# 定义字典 LOGGING_CONFIG
 LOGGING_CONFIG = {
+    # "version": 1,
     "version": 1,
+    # "disable_existing_loggers": False,
     "disable_existing_loggers": False,
+    # "formatters": {
     "formatters": {
+        # "default": {
         "default": {
+            # "format": "%(asctime)s | %(levelname)s | %(name)s 
             "format": "%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+        # },
         },
+    # },
     },
+    # "handlers": {
     "handlers": {
+        # "console": {
         "console": {
+            # "class": "logging.StreamHandler",
             "class": "logging.StreamHandler",
+            # "stream": sys.stdout,
             "stream": sys.stdout,
+            # "formatter": "default",
             "formatter": "default",
+        # },
         },
+        # "file": {
         "file": {
+            # "class": "logging.handlers.RotatingFileHandler",
             "class": "logging.handlers.RotatingFileHandler",
+            # "filename": "logs/app.log",
             "filename": "logs/app.log",
             "maxBytes": 10 * 1024 * 1024,   # 10MB
             "backupCount": 7,               # 保留 7 个旧文件
+            # "encoding": "utf-8",
             "encoding": "utf-8",
+            # "formatter": "default",
             "formatter": "default",
+        # },
         },
+    # },
     },
+    # "loggers": {
     "loggers": {
+        # "app": {"level": "INFO", "handlers": ["console", "
         "app": {"level": "INFO", "handlers": ["console", "file"], "propagate": False},
+        # "uvicorn": {"level": "INFO"},
         "uvicorn": {"level": "INFO"},
+    # },
     },
+    # "root": {"level": "WARNING", "handlers": ["console
     "root": {"level": "WARNING", "handlers": ["console"]},
+# }
 }
 
+# 定义函数 setup_logging，参数: 
 def setup_logging():
+    # 调用 logging.config.dictConfig()
     logging.config.dictConfig(LOGGING_CONFIG)
 \`\`\`
 
 \`\`\`python
 # app/main.py
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 app.core.logging 导入 setup_logging
 from app.core.logging import setup_logging
 
+# 调用 setup_logging()
 setup_logging()
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 \`\`\`
 
@@ -996,12 +1295,18 @@ app = FastAPI()
 早期 FastAPI 用 \`@app.on_event\`:
 
 \`\`\`python
+# 装饰器：app.on_event
 @app.on_event("startup")
+# 定义异步函数 startup，参数: 
 async def startup():
+    # 调用 print()
     print("启动了")
 
+# 装饰器：app.on_event
 @app.on_event("shutdown")
+# 定义异步函数 shutdown，参数: 
 async def shutdown():
+    # 调用 print()
     print("关闭了")
 \`\`\`
 
@@ -1016,19 +1321,27 @@ async def shutdown():
 用 \`lifespan\` 上下文管理器,把"启动"和"关闭"写在一起:
 
 \`\`\`python
+# 从 contextlib 导入 asynccontextmanager
 from contextlib import asynccontextmanager
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
 
+# 装饰器：asynccontextmanager
 @asynccontextmanager
+# 定义异步函数 lifespan，参数: app: FastAPI
 async def lifespan(app: FastAPI):
     # 启动时执行(yield 之前)
+    # 调用 print()
     print("应用启动")
     # ... 这里建连接池、加载模型
+    # yield
     yield
     # 关闭时执行(yield 之后)
+    # 调用 print()
     print("应用关闭")
     # ... 这里关连接池、释放资源
 
+# 创建 FastAPI 应用实例
 app = FastAPI(lifespan=lifespan)
 \`\`\`
 
@@ -1049,33 +1362,51 @@ app = FastAPI(lifespan=lifespan)
 ### 56.5 启动时建数据库连接池
 
 \`\`\`python
+# 从 contextlib 导入 asynccontextmanager
 from contextlib import asynccontextmanager
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 sqlalchemy.ext.asyncio 导入 create_async_engine, async_sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
 # 全局变量存连接池(也可以用 app.state)
+# 定义变量 engine，赋值为 None
 engine = None
+# 定义变量 AsyncSession，赋值为 None
 AsyncSession = None
 
+# 装饰器：asynccontextmanager
 @asynccontextmanager
+# 定义异步函数 lifespan，参数: app: FastAPI
 async def lifespan(app: FastAPI):
+    # global engine, AsyncSession
     global engine, AsyncSession
     # 启动:建连接池
+    # 定义变量 engine，赋值为 create_async_engine(
     engine = create_async_engine(
+        # "mysql+aiomysql://user:pass@localhost:3306/mydb",
         "mysql+aiomysql://user:pass@localhost:3306/mydb",
+        # 定义变量 pool_size，赋值为 10,
         pool_size=10,
+        # 定义变量 max_overflow，赋值为 20,
         max_overflow=20,
         pool_recycle=3600,   # 连接每小时回收
+    # )
     )
+    # 定义变量 AsyncSession，赋值为 async_sessionmaker(engine, expire_on_commit=F...
     AsyncSession = async_sessionmaker(engine, expire_on_commit=False)
+    # 调用 print()
     print("数据库连接池已建立")
 
     yield   # 应用运行期间
 
     # 关闭:释放连接池
+    # await engine.dispose()
     await engine.dispose()
+    # 调用 print()
     print("数据库连接池已关闭")
 
+# 创建 FastAPI 应用实例
 app = FastAPI(lifespan=lifespan)
 \`\`\`
 
@@ -1084,35 +1415,54 @@ app = FastAPI(lifespan=lifespan)
 机器学习模型加载很慢(几秒到几十秒),不能每次请求都加载,要在启动时加载一次:
 
 \`\`\`python
+# 从 contextlib 导入 asynccontextmanager
 from contextlib import asynccontextmanager
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
 
 # 全局变量存模型
+# 定义变量 ml_model，赋值为 None
 ml_model = None
 
+# 装饰器：asynccontextmanager
 @asynccontextmanager
+# 定义异步函数 lifespan，参数: app: FastAPI
 async def lifespan(app: FastAPI):
+    # global ml_model
     global ml_model
     # 启动:加载模型(只加载一次)
+    # 调用 print()
     print("开始加载模型...")
+    # 从 transformers 导入 pipeline
     from transformers import pipeline
+    # 定义变量 ml_model，赋值为 pipeline("sentiment-analysis")
     ml_model = pipeline("sentiment-analysis")
+    # 调用 print()
     print("模型加载完成")
     # 把模型挂到 app.state,路由里能拿到
+    # app.state.model = ml_model
     app.state.model = ml_model
 
+    # yield
     yield
 
     # 关闭:释放模型显存
+    # del ml_model
     del ml_model
+    # 调用 print()
     print("模型已释放")
 
+# 创建 FastAPI 应用实例
 app = FastAPI(lifespan=lifespan)
 
+# 定义 GET 路由：访问 /predict 时触发
 @app.get("/predict")
+# 定义函数 predict，参数: text: str
 def predict(text: str):
     # 从 app.state 拿模型
+    # 定义变量 model，赋值为 app.state.model
     model = app.state.model
+    # 返回 model(text)
     return model(text)
 \`\`\`
 
@@ -1121,21 +1471,31 @@ def predict(text: str):
 ### 56.7 启动时预热缓存
 
 \`\`\`python
+# 装饰器：asynccontextmanager
 @asynccontextmanager
+# 定义异步函数 lifespan，参数: app: FastAPI
 async def lifespan(app: FastAPI):
     # 启动:把热门数据从数据库加载到 Redis
+    # 导入 redis.asyncio 并重命名为 redis
     import redis.asyncio as redis
+    # 定义变量 redis_client，赋值为 redis.from_url("redis://localhost:6379")
     redis_client = redis.from_url("redis://localhost:6379")
+    # app.state.redis = redis_client
     app.state.redis = redis_client
 
     # 预热:把首页文章列表缓存
+    # 定义变量 hot_posts，赋值为 await fetch_hot_posts_from_db()
     hot_posts = await fetch_hot_posts_from_db()
+    # await redis_client.set("hot_posts", json.dumps(hot
     await redis_client.set("hot_posts", json.dumps(hot_posts))
+    # 调用 print()
     print("缓存预热完成")
 
+    # yield
     yield
 
     # 关闭:关 Redis 连接
+    # await redis_client.close()
     await redis_client.close()
 \`\`\`
 
@@ -1144,26 +1504,40 @@ async def lifespan(app: FastAPI):
 \`app.state\` 是 FastAPI 提供的全局状态对象,推荐用它存启动时创建的资源:
 
 \`\`\`python
+# 装饰器：asynccontextmanager
 @asynccontextmanager
+# 定义异步函数 lifespan，参数: app: FastAPI
 async def lifespan(app: FastAPI):
     # 启动时创建资源,挂到 app.state
+    # app.state.db_pool = create_db_pool()
     app.state.db_pool = create_db_pool()
+    # app.state.redis = create_redis()
     app.state.redis = create_redis()
+    # app.state.model = load_model()
     app.state.model = load_model()
 
+    # yield
     yield
 
     # 关闭时清理
+    # await app.state.db_pool.close()
     await app.state.db_pool.close()
+    # await app.state.redis.close()
     await app.state.redis.close()
+    # del app.state.model
     del app.state.model
 
 # 路由里通过 request.app.state 拿
+# 从 fastapi 导入 Request
 from fastapi import Request
 
+# 定义 GET 路由：访问 / 时触发
 @app.get("/")
+# 定义异步函数 root，参数: request: Request
 async def root(request: Request):
+    # 定义变量 redis，赋值为 request.app.state.redis
     redis = request.app.state.redis
+    # 返回 {"cached": await redis.get("foo")}
     return {"cached": await redis.get("foo")}
 \`\`\`
 
@@ -1174,22 +1548,32 @@ async def root(request: Request):
 \`lifespan\` 里按代码顺序执行,需要按依赖顺序排:
 
 \`\`\`python
+# 装饰器：asynccontextmanager
 @asynccontextmanager
+# 定义异步函数 lifespan，参数: app: FastAPI
 async def lifespan(app: FastAPI):
     # 1. 先建数据库连接(其它任务可能依赖它)
+    # app.state.db = create_db_pool()
     app.state.db = create_db_pool()
     # 2. 再建 Redis(预热缓存需要它)
+    # app.state.redis = create_redis()
     app.state.redis = create_redis()
     # 3. 加载模型(独立任务)
+    # app.state.model = load_model()
     app.state.model = load_model()
     # 4. 预热缓存(依赖 db + redis)
+    # await warmup_cache(app.state.db, app.state.redis)
     await warmup_cache(app.state.db, app.state.redis)
 
+    # yield
     yield
 
     # 关闭顺序反过来:先关依赖方,再关被依赖方
+    # del app.state.model
     del app.state.model
+    # await app.state.redis.close()
     await app.state.redis.close()
+    # await app.state.db.close()
     await app.state.db.close()
 \`\`\`
 
@@ -1200,14 +1584,21 @@ async def lifespan(app: FastAPI):
 如果资源本身是 \`async with\` 兼容的,可以直接嵌套:
 
 \`\`\`python
+# 导入 asyncpg 模块
 import asyncpg
+# 从 contextlib 导入 asynccontextmanager
 from contextlib import asynccontextmanager
 
+# 装饰器：asynccontextmanager
 @asynccontextmanager
+# 定义异步函数 lifespan，参数: app: FastAPI
 async def lifespan(app: FastAPI):
     # async with 自动在退出时关连接
+    # async with asyncpg.create_pool(dsn="...") as pool:
     async with asyncpg.create_pool(dsn="...") as pool:
+        # app.state.db = pool
         app.state.db = pool
+        # yield
         yield
     # 退出 async with 自动关 pool
 \`\`\`
@@ -1215,15 +1606,24 @@ async def lifespan(app: FastAPI):
 多个 \`async with\` 嵌套,推荐用 \`contextlib.AsyncExitStack\`:
 
 \`\`\`python
+# 从 contextlib 导入 asynccontextmanager, AsyncExitStack
 from contextlib import asynccontextmanager, AsyncExitStack
 
+# 装饰器：asynccontextmanager
 @asynccontextmanager
+# 定义异步函数 lifespan，参数: app: FastContext
 async def lifespan(app: FastContext):
+    # async with AsyncExitStack() as stack:
     async with AsyncExitStack() as stack:
+        # 定义变量 db，赋值为 await stack.enter_async_context(open_db())
         db = await stack.enter_async_context(open_db())
+        # 定义变量 redis，赋值为 await stack.enter_async_context(open_redis())
         redis = await stack.enter_async_context(open_redis())
+        # app.state.db = db
         app.state.db = db
+        # app.state.redis = redis
         app.state.redis = redis
+        # yield
         yield
     # 退出时自动按相反顺序关 redis、db
 \`\`\`
@@ -1232,44 +1632,69 @@ async def lifespan(app: FastContext):
 
 \`\`\`python
 # app/main.py
+# 从 contextlib 导入 asynccontextmanager
 from contextlib import asynccontextmanager
+# 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
+# 导入 redis.asyncio 并重命名为 redis
 import redis.asyncio as redis
 
+# 装饰器：asynccontextmanager
 @asynccontextmanager
+# 定义异步函数 lifespan，参数: app: FastAPI
 async def lifespan(app: FastAPI):
+    # """应用生命周期:启动建资源,关闭释放。"""
     """应用生命周期:启动建资源,关闭释放。"""
     # ===== 启动阶段 =====
+    # 调用 print()
     print(">>> 应用启动中...")
 
     # 1. 建 Redis 连接池
+    # app.state.redis = redis.from_url(
     app.state.redis = redis.from_url(
+        # "redis://localhost:6379",
         "redis://localhost:6379",
+        # 定义变量 max_connections，赋值为 20,
         max_connections=20,
+    # )
     )
+    # await app.state.redis.ping()
     await app.state.redis.ping()
+    # 调用 print()
     print("   Redis 连接 OK")
 
     # 2. 加载配置(模拟)
+    # app.state.config = {"version": "1.0.0"}
     app.state.config = {"version": "1.0.0"}
 
+    # 调用 print()
     print(">>> 应用启动完成")
 
     yield   # ===== 应用运行期间 =====
 
     # ===== 关闭阶段 =====
+    # 调用 print()
     print(">>> 应用关闭中...")
+    # await app.state.redis.close()
     await app.state.redis.close()
+    # 调用 print()
     print(">>> 应用已关闭")
 
+# 创建 FastAPI 应用实例
 app = FastAPI(lifespan=lifespan)
 
+# 定义 GET 路由：访问 / 时触发
 @app.get("/")
+# 定义异步函数 root，参数: request: Request
 async def root(request: Request):
     # 从 app.state 拿启动时建的 redis
+    # 定义变量 redis_client，赋值为 request.app.state.redis
     redis_client = request.app.state.redis
+    # await redis_client.incr("visit_count")
     await redis_client.incr("visit_count")
+    # 定义变量 count，赋值为 await redis_client.get("visit_count")
     count = await redis_client.get("visit_count")
+    # 返回 {"visit_count": int(count), "version": request.app.state.config["version"]}
     return {"visit_count": int(count), "version": request.app.state.config["version"]}
 \`\`\`
 

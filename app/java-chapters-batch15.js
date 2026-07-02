@@ -17,16 +17,16 @@ export const chapters = [
 没有泛型时，集合只能存 \`Object\`，取出来必须强转，且编译器无法发现类型错误：
 
 \`\`\`java
-List list = new ArrayList();
-list.add("hello");
+List list = new ArrayList();  // 声明变量 list（List），初始值为 new ArrayList()
+list.add("hello");  // 调用 list 的 add 方法
 Integer n = (Integer) list.get(0); // 运行时 ClassCastException
 \`\`\`
 
 泛型把"运行时才发现的错误"提前到"编译时"：
 
 \`\`\`java
-List<String> list = new ArrayList<>();
-list.add("hello");
+List<String> list = new ArrayList<>();  // 声明变量 list（List<String>），初始值为 new ArrayList<>()
+list.add("hello");  // 调用 list 的 add 方法
 // list.add(100); // 编译错误，编译期就拒绝
 String s = list.get(0); // 无需强转
 \`\`\`
@@ -36,10 +36,10 @@ String s = list.get(0); // 无需强转
 在类名后用尖括号声明**类型参数（Type Parameter）**：
 
 \`\`\`java
-public class Box<T> {
-    private T item;
+public class Box<T> {  // 定义类 Box
+    private T item;  // 声明私有变量 item（T 类型）
     public void set(T item) { this.item = item; }
-    public T get() { return item; }
+    public T get() { return item; }  // 方法 get（返回 T，无参数）：返回 item
 }
 \`\`\`
 
@@ -62,9 +62,9 @@ public class Box<T> {
 一个类可以声明多个类型参数：
 
 \`\`\`java
-public class Pair<K, V> {
-    private K key;
-    private V value;
+public class Pair<K, V> {  // 定义类 Pair
+    private K key;  // 声明私有变量 key（K 类型）
+    private V value;  // 声明私有变量 value（V 类型）
     public Pair(K key, V value) { this.key = key; this.value = value; }
 }
 \`\`\`
@@ -144,7 +144,7 @@ class Pair<K, V> {
 
 \`\`\`java
 public static <T> T identity(T t) {
-    return t;
+    return t;  // 返回值：t
 }
 \`\`\`
 
@@ -162,7 +162,7 @@ public static <T> T identity(T t) {
 
 \`\`\`java
 // 显式指定
-String s = MyUtil.<String>identity("hi");
+String s = MyUtil.<String>identity("hi");  // 声明变量 s（String），初始值为 MyUtil.<String>identity("hi")
 // 自动推断（推荐）
 Integer n = identity(100); // 根据实参推断 T = Integer
 \`\`\`
@@ -172,7 +172,7 @@ Integer n = identity(100); // 根据实参推断 T = Integer
 泛型方法常与可变参数 \`T...\` 配合：
 
 \`\`\`java
-@SafeVarargs
+@SafeVarargs  // 注解：SafeVarargs
 public static <T> List<T> toList(T... items) { ... }
 \`\`\`
 
@@ -197,7 +197,7 @@ Java 编译器会根据**实参类型**和**目标类型（返回值赋值变量
 \`\`\`java
 // T 必须实现 Comparable<T>，才能调用 compareTo
 public static <T extends Comparable<T>> T max(T a, T b) {
-    return a.compareTo(b) >= 0 ? a : b;
+    return a.compareTo(b) >= 0 ? a : b;  // 返回值：a.compareTo(b) >= 0 ? a : b
 }
 \`\`\`
 
@@ -296,9 +296,9 @@ class Pair<K, V> {
 ## 定义语法
 
 \`\`\`java
-public interface Repository<T> {
-    void save(T entity);
-    T findById(int id);
+public interface Repository<T> {  // 定义接口 Repository
+    void save(T entity);  // 方法 save，返回 void，参数：T entity
+    T findById(int id);  // 方法 findById，返回 T，参数：int id
 }
 \`\`\`
 
@@ -308,10 +308,10 @@ public interface Repository<T> {
 
 \`\`\`java
 // 方式一：指定具体类型
-class UserRepository implements Repository<User> { ... }
+class UserRepository implements Repository<User> { ... }  // 定义类 UserRepository
 
 // 方式二：保留类型参数（实现类本身也是泛型类）
-class GenericRepo<T> implements Repository<T> { ... }
+class GenericRepo<T> implements Repository<T> { ... }  // 定义类 GenericRepo
 \`\`\`
 
 ## 经典泛型接口
@@ -343,11 +343,11 @@ for (Integer n : new Range(1, 5)) { ... }
 Java 8+ 允许在接口中定义**默认方法**，泛型接口同样支持。这让接口既能定义契约，又能提供通用实现：
 
 \`\`\`java
-public interface Repository<T> {
-    void save(T entity);
-    T findById(int id);
-    default Optional<T> findOrEmpty(int id) {
-        return Optional.ofNullable(findById(id));
+public interface Repository<T> {  // 定义接口 Repository
+    void save(T entity);  // 方法 save，返回 void，参数：T entity
+    T findById(int id);  // 方法 findById，返回 T，参数：int id
+    default Optional<T> findOrEmpty(int id) {  // 方法 findOrEmpty，返回 Optional<T>，参数：int id
+        return Optional.ofNullable(findById(id));  // 返回值：Optional.ofNullable(findById(id))
     }
 }
 \`\`\`
@@ -357,8 +357,8 @@ public interface Repository<T> {
 JDK 8 的函数式接口大量使用泛型：\`Function<T,R>\`、\`Predicate<T>\`、\`Consumer<T>\`、\`Supplier<T>\`。它们是 Stream API 与 Lambda 的基石：
 
 \`\`\`java
-Function<String, Integer> parser = Integer::parseInt;
-Predicate<String> nonEmpty = s -> !s.isEmpty();
+Function<String, Integer> parser = Integer::parseInt;  // 方法引用：复用已有方法作为函数式接口实例
+Predicate<String> nonEmpty = s -> !s.isEmpty();  // Lambda 表达式赋值给函数式接口变量
 \`\`\`
 
 ## 设计意义
@@ -466,8 +466,8 @@ class UserRepository implements Repository<User> {
 表示"任意类型的 List"，但不等于 \`List<Object>\`：
 
 \`\`\`java
-public static void printList(List<?> list) {
-    for (Object o : list) System.out.println(o);
+public static void printList(List<?> list) {  // 静态方法 printList，返回 void，参数：List<?> list
+    for (Object o : list) System.out.println(o);  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -499,7 +499,7 @@ public static void printList(List<?> list) {
 编译器会把 \`List<?>\` 的元素"捕获"为某个具体但未知的类型 \`CAP#1\`。这让某些操作变得合法：
 
 \`\`\`java
-public static void swap(List<?> list, int i, int j) {
+public static void swap(List<?> list, int i, int j) {  // 静态方法 swap，返回 void，参数：List<?> list, int i, int j
     swapHelper(list, i, j); // 通过辅助方法捕获通配符类型
 }
 private static <E> void swapHelper(List<E> list, int i, int j) {
@@ -587,7 +587,7 @@ public class Main {
 协变指"子类型列表也是父类型列表的子类"：
 
 \`\`\`java
-List<Integer> ints = ...;
+List<Integer> ints = ...;  // 声明变量 ints（List<Integer>），初始值为 ...
 List<? extends Number> nums = ints; // OK，协变
 \`\`\`
 
@@ -598,10 +598,10 @@ List<? extends Number> nums = ints; // OK，协变
 \`<? extends T>\` 是**生产者**（Producer），适合**读取**：
 
 \`\`\`java
-public static double sum(List<? extends Number> list) {
-    double total = 0;
+public static double sum(List<? extends Number> list) {  // 静态方法 sum，返回 double，参数：List<? extends Number> list
+    double total = 0;  // 声明变量 total（double），初始值为 0
     for (Number n : list) total += n.doubleValue(); // 可安全读为 Number
-    return total;
+    return total;  // 返回值：total
 }
 \`\`\`
 
@@ -722,7 +722,7 @@ public class Main {
 逆变指"父类型列表是子类型通配引用的子类"：
 
 \`\`\`java
-List<Number> numList = ...;
+List<Number> numList = ...;  // 声明变量 numList（List<Number>），初始值为 ...
 List<? super Integer> sink = numList; // OK，逆变
 \`\`\`
 
@@ -733,9 +733,9 @@ List<? super Integer> sink = numList; // OK，逆变
 \`<? super T>\` 是**消费者**（Consumer），适合**写入**：
 
 \`\`\`java
-public static void addNumbers(List<? super Integer> list) {
-    list.add(1);
-    list.add(2);
+public static void addNumbers(List<? super Integer> list) {  // 静态方法 addNumbers，返回 void，参数：List<? super Integer> list
+    list.add(1);  // 调用 list 的 add 方法
+    list.add(2);  // 调用 list 的 add 方法
 }
 \`\`\`
 
@@ -904,10 +904,10 @@ JDK 中 \`Collections.copy\` 就是 PECS 的经典范例：
 
 \`\`\`java
 public static <T> void copy(List<? super T> dest, List<? extends T> src) {
-    int srcSize = src.size();
+    int srcSize = src.size();  // 声明变量 srcSize（int），初始值为 src.size()
     if (srcSize > dest.size()) throw ...;
-    for (int i = 0; i < srcSize; i++)
-        dest.set(i, src.get(i));
+    for (int i = 0; i < srcSize; i++)  // for 循环：初始化 int i = 0；条件 i < srcSize；更新 i++
+        dest.set(i, src.get(i));  // 调用 dest 的 set 方法
 }
 \`\`\`
 
@@ -1000,24 +1000,24 @@ public class Main {
 编译器在编译时做**类型检查**和**类型转换插入**，编译完成后泛型信息被丢弃：
 
 \`\`\`java
-List<String> list = new ArrayList<>();
-list.add("hi");
-String s = list.get(0);
+List<String> list = new ArrayList<>();  // 声明变量 list（List<String>），初始值为 new ArrayList<>()
+list.add("hi");  // 调用 list 的 add 方法
+String s = list.get(0);  // 声明变量 s（String），初始值为 list.get(0)
 \`\`\`
 
 编译后等价于：
 
 \`\`\`java
-List list = new ArrayList();
-list.add("hi");
+List list = new ArrayList();  // 声明变量 list（List），初始值为 new ArrayList()
+list.add("hi");  // 调用 list 的 add 方法
 String s = (String) list.get(0); // 编译器自动插入强转
 \`\`\`
 
 ## 运行时无泛型信息
 
 \`\`\`java
-List<String> a = new ArrayList<>();
-List<Integer> b = new ArrayList<>();
+List<String> a = new ArrayList<>();  // 声明变量 a（List<String>），初始值为 new ArrayList<>()
+List<Integer> b = new ArrayList<>();  // 声明变量 b（List<Integer>），初始值为 new ArrayList<>()
 System.out.println(a.getClass() == b.getClass()); // true！
 \`\`\`
 
@@ -1045,8 +1045,8 @@ Java 泛型在 JDK 5 才引入，为了**与 JDK 1.4 及之前的非泛型代码
 当原始类型与泛型类型混用时，可能出现**堆污染（Heap Pollution）**：一个泛型集合实际存入了不匹配类型的元素。由于擦除，存入时不会报错，只有在取出并强转时才抛 \`ClassCastException\`：
 
 \`\`\`java
-List<String> list = new ArrayList<>();
-List raw = list;
+List<String> list = new ArrayList<>();  // 声明变量 list（List<String>），初始值为 new ArrayList<>()
+List raw = list;  // 声明变量 raw（List），初始值为 list
 raw.add(100);             // 堆污染：存入 Integer
 String s = list.get(0);   // 取出时 ClassCastException
 \`\`\`
@@ -1153,7 +1153,7 @@ public <T> T create() {
 
 \`\`\`java
 public static <T> T create(Class<T> clazz) throws Exception {
-    return clazz.getDeclaredConstructor().newInstance();
+    return clazz.getDeclaredConstructor().newInstance();  // 返回值：clazz.getDeclaredConstructor().newInstance()
 }
 \`\`\`
 
@@ -1199,7 +1199,7 @@ if (list instanceof List<?>) {}     // OK
 泛型类的静态字段/方法不能使用类的类型参数：
 
 \`\`\`java
-class Box<T> {
+class Box<T> {  // 定义类 Box
     static T cache; // 编译错误
 }
 \`\`\`
@@ -1323,7 +1323,7 @@ class MyException extends Exception {
 Java 数组是**协变（covariant）**的：\`String[]\` 是 \`Object[]\` 的子类：
 
 \`\`\`java
-String[] strs = {"a"};
+String[] strs = {"a"};  // 声明变量 strs（String[]），初始值为 {"a"}
 Object[] objs = strs; // OK，协变
 objs[0] = 1;          // 运行时 ArrayStoreException！
 \`\`\`
@@ -1341,7 +1341,7 @@ objs[0] = 1;          // 运行时 ArrayStoreException！
 \`\`\`java
 List<String>[] arr = new List<String>[1];          // 假设允许
 Object[] objs = arr;                                // 数组协变，OK
-List<Integer> ints = Arrays.asList(1);
+List<Integer> ints = Arrays.asList(1);  // 声明变量 ints（List<Integer>），初始值为 Arrays.asList(1)
 objs[0] = ints;                                     // 运行时无法检查（擦除）
 String s = arr[0].get(0);                            // ClassCastException
 \`\`\`
@@ -1357,7 +1357,7 @@ List<String>[] arr = new List<String>[1]; // 编译错误
 但可以用原始类型 + 强转（有 unchecked 警告）：
 
 \`\`\`java
-@SuppressWarnings("unchecked")
+@SuppressWarnings("unchecked")  // 注解：SuppressWarnings
 List<String>[] arr = (List<String>[]) new List[1]; // 危险！
 \`\`\`
 
@@ -1452,14 +1452,14 @@ public class Main {
 ## 不变性的含义
 
 \`\`\`java
-List<String> strs = new ArrayList<>();
+List<String> strs = new ArrayList<>();  // 声明变量 strs（List<String>），初始值为 new ArrayList<>()
 List<Object> objs = strs; // 编译错误！
 \`\`\`
 
 乍看不合理，但这是为了类型安全：
 
 \`\`\`java
-List<String> strs = new ArrayList<>();
+List<String> strs = new ArrayList<>();  // 声明变量 strs（List<String>），初始值为 new ArrayList<>()
 List<Object> objs = strs; // 假设允许
 objs.add(100);            // 往"String 列表"里加 Integer！
 String s = strs.get(0);   // ClassCastException
@@ -1472,7 +1472,7 @@ String s = strs.get(0);   // ClassCastException
 数组是**协变**的（这是 Java 早期设计缺陷）：
 
 \`\`\`java
-String[] strs = {"a"};
+String[] strs = {"a"};  // 声明变量 strs（String[]），初始值为 {"a"}
 Object[] objs = strs; // OK，协变
 objs[0] = 1;          // 运行时 ArrayStoreException
 \`\`\`
@@ -1591,9 +1591,9 @@ Java 7 引入，构造器调用时省略类型参数：
 
 \`\`\`java
 // Java 6
-Map<String, List<Integer>> map = new HashMap<String, List<Integer>>();
+Map<String, List<Integer>> map = new HashMap<String, List<Integer>>();  // 声明变量 map（Map<String, List<Integer>>），初始值为 new HashMap<String, List<Integer>>()
 // Java 7+
-Map<String, List<Integer>> map = new HashMap<>();
+Map<String, List<Integer>> map = new HashMap<>();  // 声明变量 map（Map<String, List<Integer>>），初始值为 new HashMap<>()
 \`\`\`
 
 编译器从左边的声明类型推断右边的类型参数。
@@ -1622,10 +1622,10 @@ List<String> list = Collections.emptyList(); // 推断 T = String
 Java 8 改进了链式调用中的推断：
 
 \`\`\`java
-List<Integer> nums = Arrays.asList(3, 1, 2);
+List<Integer> nums = Arrays.asList(3, 1, 2);  // 声明变量 nums（List<Integer>），初始值为 Arrays.asList(3, 1, 2)
 nums.stream()
     .sorted(Comparator.reverseOrder()) // 推断 Comparator<Integer>
-    .forEach(System.out::println);
+    .forEach(System.out::println);  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 ## Lambda 与推断
@@ -1642,7 +1642,7 @@ Java 9 允许匿名类使用菱形运算符：
 
 \`\`\`java
 Comparator<String> cmp = new Comparator<>() {
-    public int compare(String a, String b) { return a.compareTo(b); }
+    public int compare(String a, String b) { return a.compareTo(b); }  // 方法 compare（返回 int，参数：String a, String b）：返回 a.compareTo(b)
 };
 \`\`\`
 
@@ -1762,9 +1762,9 @@ public static <T> void copy(List<? super T> dst, List<? extends T> src) {}
 
 \`\`\`java
 // 旧
-class Stack { public void push(Object o) {} public Object pop() {} }
+class Stack { public void push(Object o) {} public Object pop() {} }  // 定义类 Stack
 // 新
-class Stack<E> { public void push(E e) {} public E pop() {} }
+class Stack<E> { public void push(E e) {} public E pop() {} }  // 定义类 Stack
 \`\`\`
 
 ## 5. 有界类型参数约束能力
@@ -1900,9 +1900,9 @@ Person p = new Person.Builder()
 普通容器只能存一种类型。**异构容器（Heterogeneous Container）** 用 \`Class<T>\` 作为键，可以安全地存放不同类型的对象：
 
 \`\`\`java
-Container c = new Container();
-c.put(String.class, "hi");
-c.put(Integer.class, 100);
+Container c = new Container();  // 声明变量 c（Container），初始值为 new Container()
+c.put(String.class, "hi");  // 调用 c 的 put 方法
+c.put(Integer.class, 100);  // 调用 c 的 put 方法
 String s = c.get(String.class); // 类型安全，无需强转
 \`\`\`
 
@@ -1913,7 +1913,7 @@ String s = c.get(String.class); // 类型安全，无需强转
 类型参数可以引用自身：\`class Enum<E extends Enum<E>>\`。这是 Java \`Enum\` 的声明方式，保证枚举方法 \`compareTo(E o)\` 只接受同类型枚举。
 
 \`\`\`java
-abstract class Node<N extends Node<N>> { ... }
+abstract class Node<N extends Node<N>> { ... }  // 定义抽象类 Node
 \`\`\`
 
 这种"CRTP（Curiously Recurring Template Pattern）"模式让基类能引用子类类型。
@@ -1941,9 +1941,9 @@ public static <T extends Comparable<T>> T max(List<T> list) { ... }
 无状态泛型类可用单例，通过 unchecked 强转复用：
 
 \`\`\`java
-@SuppressWarnings("unchecked")
+@SuppressWarnings("unchecked")  // 注解：SuppressWarnings
 public static <T> Comparator<T> reverseOrder() {
-    return (Comparator<T>) REVERSE;
+    return (Comparator<T>) REVERSE;  // 返回值：(Comparator<T>) REVERSE
 }
 \`\`\`
 
@@ -2053,8 +2053,8 @@ class IntNode {
 \`\`\`java
 public static <T> T parse(String s, Class<T> type) {
     if (type == String.class) return (T) s;
-    if (type == Integer.class) return (T) Integer.valueOf(s);
-    throw new IllegalArgumentException();
+    if (type == Integer.class) return (T) Integer.valueOf(s);  // 调用 if (type == Integer.class) return (T) Integer 的 valueOf 方法
+    throw new IllegalArgumentException();  // 抛出 IllegalArgumentException 异常：
 }
 \`\`\`
 
@@ -2076,7 +2076,7 @@ Class<String> c = String.class;          // OK
 Neal Gafter 提出的模式：创建一个 \`TypeToken<T>\` 的**匿名子类**，编译器会把父类的泛型参数信息记录在子类的 Class 元数据中，运行时可通过反射读取：
 
 \`\`\`java
-TypeToken<List<String>> token = new TypeToken<List<String>>() {};
+TypeToken<List<String>> token = new TypeToken<List<String>>() {};  // 声明变量 token（TypeToken<List<String>>），初始值为 new TypeToken<List<String>>() {}
 Type type = token.getType(); // 运行时得到 List<String>！
 \`\`\`
 
@@ -2085,14 +2085,14 @@ Type type = token.getType(); // 运行时得到 List<String>！
 ## 实现原理
 
 \`\`\`java
-abstract class TypeToken<T> {
-    private final Type type;
-    protected TypeToken() {
-        Type superClass = getClass().getGenericSuperclass();
-        ParameterizedType pt = (ParameterizedType) superClass;
-        this.type = pt.getActualTypeArguments()[0];
+abstract class TypeToken<T> {  // 定义抽象类 TypeToken
+    private final Type type;  // 声明常量私有变量 type（Type 类型）
+    protected TypeToken() {  // 方法 TypeToken，返回 protected，无参数
+        Type superClass = getClass().getGenericSuperclass();  // 声明变量 superClass（Type），初始值为 getClass().getGenericSuperclass()
+        ParameterizedType pt = (ParameterizedType) superClass;  // 声明变量 pt（ParameterizedType），初始值为 (ParameterizedType) superClass
+        this.type = pt.getActualTypeArguments()[0];  // 为 this.type 赋值：pt.getActualTypeArguments()[0]
     }
-    public Type getType() { return type; }
+    public Type getType() { return type; }  // 方法 getType（返回 Type，无参数）：返回 type
 }
 \`\`\`
 

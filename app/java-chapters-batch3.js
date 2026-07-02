@@ -42,8 +42,8 @@ export const chapters = [
 
 \`\`\`java
 // 泛型之前的写法：用 Object 存放任意类型
-List list = new ArrayList();
-list.add("hello");
+List list = new ArrayList();  // 声明变量 list（List），初始值为 new ArrayList()
+list.add("hello");  // 调用 list 的 add 方法
 list.add(123);          // 编译通过，但把字符串和数字混在一起
 
 String s = (String) list.get(1);  // 运行时抛出 ClassCastException！
@@ -53,8 +53,8 @@ String s = (String) list.get(1);  // 运行时抛出 ClassCastException！
 
 \`\`\`java
 // 使用泛型后：明确声明只能放 String
-List<String> list = new ArrayList<>();
-list.add("hello");
+List<String> list = new ArrayList<>();  // 声明变量 list（List<String>），初始值为 new ArrayList<>()
+list.add("hello");  // 调用 list 的 add 方法
 list.add(123);          // 编译错误！编译器直接拒绝
 String s = list.get(0); // 无需强转
 \`\`\`
@@ -85,9 +85,9 @@ String s = list.get(0); // 无需强转
 
 \`\`\`java
 // T 必须是 Number 或其子类，因此可以安全调用 Number 的方法
-class NumberBox<T extends Number> {
-    private T value;
-    public double doubleValue() { return value.doubleValue(); }
+class NumberBox<T extends Number> {  // 定义类 NumberBox
+    private T value;  // 声明私有变量 value（T 类型）
+    public double doubleValue() { return value.doubleValue(); }  // 方法 doubleValue（返回 double，无参数）：返回 value.doubleValue()
 }
 \`\`\`
 
@@ -102,7 +102,7 @@ class NumberBox<T extends Number> {
 
 \`\`\`java
 // 上界：从盒子里读取数字
-double sum(Box<? extends Number> box) { return box.get().doubleValue(); }
+double sum(Box<? extends Number> box) { return box.get().doubleValue(); }  // 方法 sum（返回 double，参数：Box<? extends Number> box）：返回 box.get().doubleValue()
 // 下界：往盒子里写入 Integer
 void fill(Box<? super Integer> box, Integer v) { box.set(v); }
 \`\`\`
@@ -240,13 +240,13 @@ public class Main {
 
 \`\`\`java
 // 写入字节数据
-ByteArrayOutputStream out = new ByteArrayOutputStream();
-out.write("你好".getBytes(StandardCharsets.UTF_8));
-byte[] bytes = out.toByteArray();
+ByteArrayOutputStream out = new ByteArrayOutputStream();  // 声明变量 out（ByteArrayOutputStream），初始值为 new ByteArrayOutputStream()
+out.write("你好".getBytes(StandardCharsets.UTF_8));  // 调用 out 的 write 方法
+byte[] bytes = out.toByteArray();  // 声明变量 bytes（byte[]），初始值为 out.toByteArray()
 
 // 读取字节数据
-InputStream in = new ByteArrayInputStream(bytes);
-int b;
+InputStream in = new ByteArrayInputStream(bytes);  // 声明变量 in（InputStream），初始值为 new ByteArrayInputStream(bytes)
+int b;  // 声明变量 b（int 类型）
 while ((b = in.read()) != -1) { /* 处理每个字节 */ }
 \`\`\`
 
@@ -256,7 +256,7 @@ while ((b = in.read()) != -1) { /* 处理每个字节 */ }
 
 \`\`\`java
 // 字节流 -> 字符流，指定 UTF-8 编码
-Reader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
+Reader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);  // 声明变量 reader（Reader），初始值为 new InputStreamReader(inputStream, StandardCharsets.UTF_8)
 \`\`\`
 
 ### 缓冲流：BufferedReader / BufferedWriter
@@ -264,9 +264,9 @@ Reader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
 每次读写一个字节/字符都要和底层资源交互，开销巨大。**缓冲流**在内部分配一块缓冲区，减少实际 I/O 次数，大幅提升性能。\`BufferedReader\` 还提供 \`readLine()\` 方法，可以**按行读取**文本，非常实用。
 
 \`\`\`java
-try (BufferedReader br = new BufferedReader(new InputStreamReader(in, UTF_8))) {
-    String line;
-    while ((line = br.readLine()) != null) { System.out.println(line); }
+try (BufferedReader br = new BufferedReader(new InputStreamReader(in, UTF_8))) {  // try-with-resources：声明资源 BufferedReader br = new BufferedReader(new InputStreamReader(in, UTF_8))，结束自动关闭
+    String line;  // 声明变量 line（String 类型）
+    while ((line = br.readLine()) != null) { System.out.println(line); }  // 打印一行到标准输出（自动换行）
 }
 \`\`\`
 
@@ -275,7 +275,7 @@ try (BufferedReader br = new BufferedReader(new InputStreamReader(in, UTF_8))) {
 I/O 资源（流、连接）用完必须关闭，否则会**资源泄漏**。Java 7 引入的 **try-with-resources** 语法让这一过程变得优雅：只要把资源声明放在 \`try\` 的括号里，无论是否抛异常，JVM 都会在结束时**自动调用 \`close()\`**。实现 \`AutoCloseable\` 接口的对象都能用这个语法。
 
 \`\`\`java
-try (BufferedReader br = new BufferedReader(...)) {
+try (BufferedReader br = new BufferedReader(...)) {  // try-with-resources：声明资源 BufferedReader br = new BufferedReader(...)，结束自动关闭
     // 使用 br
 } // 自动关闭，无需 finally
 \`\`\`
@@ -285,7 +285,7 @@ try (BufferedReader br = new BufferedReader(...)) {
 Java 7 引入的 **NIO.2**（\`java.nio.file\` 包）提供了更现代的文件 API。\`Path\` 表示路径（取代旧的 \`File\`），\`Files\` 工具类提供大量静态方法，让文件操作变得**一行搞定**：
 
 \`\`\`java
-Path p = Paths.get("docs", "readme.txt");
+Path p = Paths.get("docs", "readme.txt");  // 声明变量 p（Path），初始值为 Paths.get("docs", "readme.txt")
 List<String> lines = Files.readAllLines(p);           // 一次读完所有行
 Files.write(p, "内容".getBytes(UTF_8));               // 写入字节
 Files.copy(src, dest);                                 // 复制文件
@@ -407,8 +407,8 @@ public class Main {
 **方式一：实现 \`Runnable\` 接口**（推荐）。\`Runnable\` 只有一个 \`run()\` 方法，与继承 \`Thread\` 相比，它不影响类的继承体系，更适合配合线程池使用。
 
 \`\`\`java
-Runnable task = () -> { System.out.println("运行中: " + Thread.currentThread().getName()); };
-new Thread(task, "my-thread").start();
+Runnable task = () -> { System.out.println("运行中: " + Thread.currentThread().getName()); };  // Lambda 表达式赋值给函数式接口变量
+new Thread(task, "my-thread").start();  // 调用 new Thread(task, "my-thread") 的 start 方法
 \`\`\`
 
 **方式二：继承 \`Thread\` 类**，重写 \`run()\` 方法。这种方式限制类不能继承其他类，扩展性差。
@@ -449,8 +449,8 @@ public synchronized void increment() { count++; }
 直接 \`new Thread()\` 有诸多弊端：创建/销毁开销大、无法控制数量（可能耗尽资源）、缺乏统一管理。**线程池**预先创建一批线程复用，通过任务队列调度，是生产环境的标准做法：
 
 \`\`\`java
-ExecutorService pool = Executors.newFixedThreadPool(4);
-pool.submit(() -> { /* 任务 */ });
+ExecutorService pool = Executors.newFixedThreadPool(4);  // 声明变量 pool（ExecutorService），初始值为 Executors.newFixedThreadPool(4)
+pool.submit(() -> { /* 任务 */ });  // Lambda 表达式：实现函数式接口
 pool.shutdown(); // 优雅关闭
 \`\`\`
 
@@ -608,8 +608,8 @@ Supplier<ArrayList> s = ArrayList::new;       // 构造方法引用
 函数式接口提供了 \`andThen\`、\`compose\`、\`and\`、\`or\`、\`negate\` 等组合方法，让我们像搭积木一样拼接小函数成大逻辑：
 
 \`\`\`java
-Function<Integer, Integer> f = x -> x + 1;
-Function<Integer, Integer> g = x -> x * 2;
+Function<Integer, Integer> f = x -> x + 1;  // Lambda 表达式赋值给函数式接口变量
+Function<Integer, Integer> g = x -> x * 2;  // Lambda 表达式赋值给函数式接口变量
 Function<Integer, Integer> fg = f.andThen(g); // 先 f 后 g：(x+1)*2
 \`\`\`
 
@@ -725,7 +725,7 @@ public class Main {
 ### 创建 Stream 的常见方式
 
 \`\`\`java
-List<Integer> list = Arrays.asList(1, 2, 3);
+List<Integer> list = Arrays.asList(1, 2, 3);  // 声明变量 list（List<Integer>），初始值为 Arrays.asList(1, 2, 3)
 Stream<Integer> s1 = list.stream();              // 从集合
 Stream<Integer> s2 = Stream.of(1, 2, 3);         // 直接给定值
 Stream<Integer> s3 = Stream.generate(() -> 0).limit(3); // 生成
@@ -760,9 +760,9 @@ Stream<Integer> s3 = Stream.generate(() -> 0).limit(3); // 生成
 
 \`\`\`java
 // 按首字母分组
-Map<Character, List<String>> g = words.stream().collect(Collectors.groupingBy(w -> w.charAt(0)));
+Map<Character, List<String>> g = words.stream().collect(Collectors.groupingBy(w -> w.charAt(0)));  // Lambda 表达式赋值给函数式接口变量
 // 拼接字符串
-String s = list.stream().map(String::valueOf).collect(Collectors.joining(", "));
+String s = list.stream().map(String::valueOf).collect(Collectors.joining(", "));  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 ### 并行流（parallelStream）
@@ -774,8 +774,8 @@ String s = list.stream().map(String::valueOf).collect(Collectors.joining(", "));
 \`Optional<T>\` 是一个容器对象，要么包含一个非空值，要么为空。它强迫你**显式处理"可能为空"的情况**，避免臭名昭著的 \`NullPointerException\`。常用方法：\`isPresent()\`、\`get()\`、\`orElse(默认值)\`、\`map()\`、\`filter()\`、\`ifPresent()\`。
 
 \`\`\`java
-Optional<String> opt = Optional.ofNullable(getName());
-String name = opt.map(String::toUpperCase).orElse("UNKNOWN");
+Optional<String> opt = Optional.ofNullable(getName());  // 声明变量 opt（Optional<String>），初始值为 Optional.ofNullable(getName())
+String name = opt.map(String::toUpperCase).orElse("UNKNOWN");  // 方法引用：复用已有方法作为函数式接口实例
 \`\`\`
 
 ### 小结

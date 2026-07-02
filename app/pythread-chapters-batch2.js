@@ -40,14 +40,14 @@ lock = threading.Lock()       # 创建锁
 
 lock.acquire()                # 获取锁（拿不到就阻塞等待）
 # 临界区：同一时刻只有一个线程能进这里
-count += 1
+count += 1  # count 累加
 lock.release()                # 释放锁，让其他线程能获取
 \`\`\`
 
 ### 推荐：用 with 自动管理锁
 
 \`\`\`python
-lock = threading.Lock()
+lock = threading.Lock()  # 赋值变量 lock
 with lock:                    # 进入时自动 acquire，离开时自动 release
     count += 1                # 即使中间出异常，锁也会被释放
 \`\`\`
@@ -167,23 +167,23 @@ print("• acquire(blocking=False) 非阻塞，acquire(timeout=n) 限时")`,
 \`Lock\` 是"不可重入"的——同一线程对它 \`acquire\` 两次会**死锁**：
 
 \`\`\`python
-lock = threading.Lock()
-lock.acquire()
+lock = threading.Lock()  # 赋值变量 lock
+lock.acquire()  # 调用 lock.acquire()：获取锁
 lock.acquire()   # 死锁！第二次 acquire 永远等不到（锁被自己占着）
 \`\`\`
 
 这看起来很蠢，谁会自己锁自己？但实际开发中很常见——**函数嵌套调用**：
 
 \`\`\`python
-lock = threading.Lock()
+lock = threading.Lock()  # 赋值变量 lock
 
-def outer():
+def outer():  # 定义函数 outer
     with lock:          # 加锁
         inner()         # 调 inner，inner 也要加锁 → 死锁！
 
-def inner():
+def inner():  # 定义函数 inner
     with lock:          # 同一把锁，再 acquire → 死锁
-        print("hello")
+        print("hello")  # 打印输出到屏幕
 \`\`\`
 
 \`outer\` 持有锁时调 \`inner\`，\`inner\` 又要拿同一把锁——但锁被 \`outer\` 占着，\`inner\` 永远等不到。
@@ -193,20 +193,20 @@ def inner():
 \`threading.RLock\`（Reentrant Lock）允许**同一线程**多次 \`acquire\`，不会死锁。它内部记录了"持有锁的线程"和"加锁次数"，必须 **acquire 多少次就 release 多少次**才会真正释放。
 
 \`\`\`python
-rlock = threading.RLock()
-rlock.acquire()
+rlock = threading.RLock()  # 赋值变量 rlock
+rlock.acquire()  # 调用 rlock.acquire()：获取锁
 rlock.acquire()   # 同一线程可以再 acquire，不死锁
-rlock.release()
+rlock.release()  # 调用 rlock.release()：释放锁
 rlock.release()   # 必须 release 两次才真正释放
 \`\`\`
 
 用 \`with\` 更清晰，嵌套的 with 会自动配对：
 
 \`\`\`python
-rlock = threading.RLock()
+rlock = threading.RLock()  # 赋值变量 rlock
 with rlock:       # acquire 1次
     with rlock:   # acquire 2次（同线程，OK）
-        print("hello")
+        print("hello")  # 打印输出到屏幕
     # 这里 release 1次，但锁还没真正释放
 # 这里 release 第2次，锁真正释放
 \`\`\`
@@ -334,7 +334,7 @@ print("• 适用：递归加锁、方法嵌套加锁")`,
 
 \`\`\`python
 # 创建一个最多允许3个线程同时持有的信号量
-sem = threading.Semaphore(3)
+sem = threading.Semaphore(3)  # 赋值变量 sem
 
 sem.acquire()      # 计数-1，若已是0则阻塞等待
 # 临界区（最多3个线程能同时在这里）
@@ -343,10 +343,10 @@ sem.release()      # 计数+1，唤醒一个等待的线程
 
 推荐 \`with\` 写法：
 \`\`\`python
-sem = threading.Semaphore(3)
-with sem:
+sem = threading.Semaphore(3)  # 赋值变量 sem
+with sem:  # 使用上下文管理器：sem
     # 最多3个线程同时进入
-    do_work()
+    do_work()  # 调用 do_work()
 \`\`\`
 
 ## 典型应用场景
@@ -458,15 +458,15 @@ print("• Lock 相当于 Semaphore(1) 的特例")`,
 ## 基本用法
 
 \`\`\`python
-event = threading.Event()
+event = threading.Event()  # 赋值变量 event
 
-def waiter():
-    print("等待通知...")
+def waiter():  # 定义函数 waiter
+    print("等待通知...")  # 打印输出到屏幕
     event.wait()          # 阻塞，直到有人 event.set()
-    print("收到通知，继续")
+    print("收到通知，继续")  # 打印输出到屏幕
 
-def notifier():
-    time.sleep(2)
+def notifier():  # 定义函数 notifier
+    time.sleep(2)  # 调用 time.sleep()：休眠
     event.set()           # 发通知，唤醒 waiter
 \`\`\`
 
@@ -474,10 +474,10 @@ def notifier():
 
 \`\`\`python
 event.wait(timeout=5)     # 最多等5秒，5秒内没 set 也返回
-if event.is_set():
-    print("收到了通知")
-else:
-    print("超时，没等到通知")
+if event.is_set():  # 如果 event.is_set()
+    print("收到了通知")  # 打印输出到屏幕
+else:  # 否则
+    print("超时，没等到通知")  # 打印输出到屏幕
 \`\`\`
 
 ## Event vs Lock 的区别
@@ -607,17 +607,17 @@ print("• 典型用途：启动信号、优雅停止、就绪通知")`,
 ## 核心 API
 
 \`\`\`python
-cond = threading.Condition()
+cond = threading.Condition()  # 赋值变量 cond
 
 # 消费者：等待条件成立
-with cond:
+with cond:  # 使用上下文管理器：cond
     while not has_data():           # 用 while 不用 if（防虚假唤醒）
         cond.wait()                  # 释放锁并等待，被 notify 唤醒后重新拿锁
-    data = take_data()
+    data = take_data()  # 赋值变量 data
 
 # 生产者：改变条件后通知
-with cond:
-    put_data(new_data)
+with cond:  # 使用上下文管理器：cond
+    put_data(new_data)  # 调用 put_data()
     cond.notify()                    # 唤醒一个等待的线程
     # cond.notify_all() 唤醒所有等待的线程
 \`\`\`
@@ -627,9 +627,9 @@ with cond:
 \`wait()\` 可能有**虚假唤醒**（spurious wakeup）——线程没被 notify 也会醒。所以醒来后必须**再次检查条件**，用 \`while\` 而非 \`if\`：
 
 \`\`\`python
-with cond:
+with cond:  # 使用上下文管理器：cond
     while not has_data():    # 正确：醒来后再检查一次
-        cond.wait()
+        cond.wait()  # 调用 cond.wait()：等待完成
     # 此时条件成立，安全取数据
 \`\`\`
 
@@ -731,10 +731,10 @@ print("• 生产者-消费者是 Condition 的经典应用")`,
 
 \`\`\`python
 # 创建一个需要3个线程到达才放行的栅栏
-barrier = threading.Barrier(3)
+barrier = threading.Barrier(3)  # 赋值变量 barrier
 
-def worker():
-    do_phase1()
+def worker():  # 定义函数 worker
+    do_phase1()  # 调用 do_phase1()
     barrier.wait()       # 等3个线程都到这，才一起继续
     do_phase2()          # 3个线程同时开始 phase2
 \`\`\`
@@ -752,7 +752,7 @@ def worker():
 ### action 回调
 \`\`\`python
 # 凑齐后自动执行 action 函数（只执行一次）
-barrier = threading.Barrier(3, action=lambda: print("人到齐了！"))
+barrier = threading.Barrier(3, action=lambda: print("人到齐了！"))  # 赋值变量 barrier
 \`\`\`
 
 ### wait(timeout) 超时
@@ -893,7 +893,7 @@ print("• 适用：多阶段任务同步、并行计算分阶段汇总")`,
 ## 核心 API
 
 \`\`\`python
-import queue
+import queue  # 导入模块 queue
 
 q = queue.Queue(maxsize=5)   # 最大容量5（默认无限）
 
@@ -916,13 +916,13 @@ q.join()                     # 等所有 put 的任务都被 task_done
 这是 Queue 最巧妙的设计，用于"等待所有任务处理完"：
 
 \`\`\`python
-q = queue.Queue()
+q = queue.Queue()  # 赋值变量 q
 # 生产者每 put 一次，计数器 +1
-q.put(item1)
-q.put(item2)
+q.put(item1)  # 调用 q.put()：入队
+q.put(item2)  # 调用 q.put()：入队
 # 消费者每处理完一个，调 task_done，计数器 -1
-q.get(); q.task_done()
-q.get(); q.task_done()
+q.get(); q.task_done()  # 调用 q.get()：出队
+q.get(); q.task_done()  # 调用 q.get()：出队
 q.join()   # 等计数器归0（所有 put 都被 task_done 了）
 \`\`\`
 
@@ -1097,15 +1097,15 @@ print("• PriorityQueue 按优先级出队，LifoQueue 后进先出")`,
 
 \`\`\`python
 # 生产者放完所有任务后，放 N 个 None（N = 消费者数量）
-for _ in range(num_consumers):
-    q.put(None)
+for _ in range(num_consumers):  # 遍历 range(num_consumers)，取值给 _
+    q.put(None)  # 调用 q.put()：入队
 
 # 消费者取到 None 就退出
-while True:
-    item = q.get()
-    if item is None:
-        break
-    process(item)
+while True:  # 当 True 时循环
+    item = q.get()  # 赋值变量 item
+    if item is None:  # 如果 item is None
+        break  # 跳出循环
+    process(item)  # 调用 process()
 \`\`\`
 
 ## 完整实战：模拟日志处理系统
@@ -1211,11 +1211,11 @@ print("• task_done + join 可等待所有任务完成")`,
 ## concurrent.futures.ThreadPoolExecutor
 
 \`\`\`python
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor  # 从 concurrent.futures 导入 ThreadPoolExecutor
 
 with ThreadPoolExecutor(max_workers=4) as executor:   # 4个线程的池
     # 提交任务，立即返回 Future 对象
-    future = executor.submit(func, arg1, arg2)
+    future = executor.submit(func, arg1, arg2)  # 赋值变量 future
     result = future.result()       # 阻塞等待结果
 \`\`\`
 
@@ -1223,24 +1223,24 @@ with ThreadPoolExecutor(max_workers=4) as executor:   # 4个线程的池
 
 ### 用法1：submit + 手动收集（最灵活）
 \`\`\`python
-with ThreadPoolExecutor(4) as ex:
-    futures = [ex.submit(func, arg) for arg in args]
+with ThreadPoolExecutor(4) as ex:  # 使用上下文管理器：ThreadPoolExecutor(4) as ex
+    futures = [ex.submit(func, arg) for arg in args]  # 定义列表 futures
     results = [f.result() for f in futures]    # 按提交顺序等结果
 \`\`\`
 
 ### 用法2：map（按顺序返回结果，最简洁）
 \`\`\`python
-with ThreadPoolExecutor(4) as ex:
+with ThreadPoolExecutor(4) as ex:  # 使用上下文管理器：ThreadPoolExecutor(4) as ex
     results = list(ex.map(func, args))    # 结果顺序和输入一致
 \`\`\`
 
 ### 用法3：as_completed（谁先完成谁先处理）
 \`\`\`python
-from concurrent.futures import as_completed
-with ThreadPoolExecutor(4) as ex:
-    futures = [ex.submit(func, arg) for arg in args]
+from concurrent.futures import as_completed  # 从 concurrent.futures 导入 as_completed
+with ThreadPoolExecutor(4) as ex:  # 使用上下文管理器：ThreadPoolExecutor(4) as ex
+    futures = [ex.submit(func, arg) for arg in args]  # 定义列表 futures
     for f in as_completed(futures):       # 谁先完成先yield
-        print(f.result())
+        print(f.result())  # 打印输出到屏幕
 \`\`\`
 
 ## Future 对象
@@ -1378,13 +1378,13 @@ print("• with 结束自动 shutdown，等所有任务完成")`,
 \`threading.Timer\` 是 \`Thread\` 的子类，用于"**延迟一段时间后执行一次**任务"。
 
 \`\`\`python
-from threading import Timer
+from threading import Timer  # 从 threading 导入 Timer
 
-def hello():
-    print("hello!")
+def hello():  # 定义函数 hello
+    print("hello!")  # 打印输出到屏幕
 
 # 5秒后执行 hello
-t = Timer(5.0, hello)
+t = Timer(5.0, hello)  # 赋值变量 t
 t.start()        # 启动定时器（不会阻塞主线程）
 \`\`\`
 
@@ -1400,15 +1400,15 @@ t.start()        # 启动定时器（不会阻塞主线程）
 Timer 本身只执行一次，要周期执行可以**递归创建**：
 
 \`\`\`python
-def repeated_task():
-    print("每2秒执行一次")
+def repeated_task():  # 定义函数 repeated_task
+    print("每2秒执行一次")  # 打印输出到屏幕
     # 在任务末尾再创建一个 Timer，实现周期执行
-    global timer
-    timer = Timer(2.0, repeated_task)
-    timer.start()
+    global timer  # 声明全局变量 timer
+    timer = Timer(2.0, repeated_task)  # 赋值变量 timer
+    timer.start()  # 调用 timer.start()：启动
 
-timer = Timer(2.0, repeated_task)
-timer.start()
+timer = Timer(2.0, repeated_task)  # 赋值变量 timer
+timer.start()  # 调用 timer.start()：启动
 \`\`\`
 
 更优雅的写法：用一个标志位控制是否继续。

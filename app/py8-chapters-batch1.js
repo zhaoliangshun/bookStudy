@@ -58,7 +58,7 @@ Python 是一门**高级、解释型、跨平台**的编程语言，由荷兰人
 
 \`\`\`python
 # Python - 一行
-print("你好，Python！")
+print("你好，Python！")  # print() 内置函数，把字符串输出到屏幕
 \`\`\`
 
 \`\`\`java
@@ -131,7 +131,7 @@ print("=" * 40)`
 打开终端（Windows 用 PowerShell / CMD，macOS 用 Terminal），输入：
 
 \`\`\`bash
-python3 --version
+python3 --version   # 调用 python3 解释器，--version 输出版本号
 \`\`\`
 
 若输出类似 \`Python 3.12.0\`，说明已安装。若提示"找不到命令"，需安装。
@@ -324,13 +324,13 @@ Python 是**解释型语言**：解释器逐行读取源码、转换成字节码
 这个机制让我们可以区分"自己运行"和"被别人导入"两种情况：
 
 \`\`\`python
-def main():
-    print("程序开始")
+def main():                       # 定义主函数 main，作为程序入口
+    print("程序开始")              # 在控制台打印一行文字
 
 # 只有直接运行本文件时才执行 main()
 # 被导入时不执行，避免副作用
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__":        # 判断当前模块是否被直接运行
+    main()                        # 调用主函数启动程序
 \`\`\`
 
 ### 为什么需要这个判断
@@ -411,7 +411,7 @@ x = 10  # 行尾也可以写注释
 ### 3. 文档字符串（docstring）：三引号
 
 \`\`\`python
-def add(a, b):
+def add(a, b):                  # 定义函数 add，接收两个参数 a 和 b
     """两数相加
 
     参数：
@@ -420,7 +420,7 @@ def add(a, b):
     返回：
         两数之和
     """
-    return a + b
+    return a + b                # 返回 a 加 b 的结果
 \`\`\`
 
 文档字符串可以**多行**，可用 \`help()\` 查看，是 Python 的官方注释方式。
@@ -444,15 +444,15 @@ PEP 8 是 Python 官方编码风格指南，遵循它能让代码更易读：
 
 \`\`\`python
 # 1. 标准库
-import os
-import sys
+import os          # 导入操作系统接口模块
+import sys         # 导入系统相关变量和函数
 
 # 2. 第三方库
-import requests
-import numpy
+import requests    # 导入 HTTP 请求库（需 pip install）
+import numpy       # 导入数值计算库（需 pip install）
 
 # 3. 本地模块
-import my_utils
+import my_utils    # 导入自己写的本地模块
 \`\`\`
 
 ### 好注释 vs 坏注释
@@ -544,7 +544,7 @@ help(calculate_bmi)`
 \`print()\` 是最常用的输出函数，完整语法：
 
 \`\`\`python
-print(*objects, sep=' ', end='\\n', file=sys.stdout, flush=False)
+print(*objects, sep=' ', end='\\n', file=sys.stdout, flush=False)  # 完整签名：*objects 要打印的内容；sep 分隔符；end 结尾符；file 输出目标；flush 是否立即刷新
 \`\`\`
 
 | 参数 | 作用 | 默认值 |
@@ -561,7 +561,7 @@ print(*objects, sep=' ', end='\\n', file=sys.stdout, flush=False)
 print("a", "b", "c")               # a b c
 print("a", "b", "c", sep="-")      # a-b-c
 print("不换行", end="")             # 后面继续接
-print("拼在一起")
+print("拼在一起")  # 打印输出到屏幕
 print("\\n")                        # 输出空行
 print(f"{3.14159:.2f}")            # 3.14 保留两位小数
 \`\`\`
@@ -571,35 +571,35 @@ print(f"{3.14159:.2f}")            # 3.14 保留两位小数
 \`input()\` 从键盘读取一行，**返回值永远是字符串**：
 
 \`\`\`python
-name = input("请输入姓名：")
-age = input("请输入年龄：")
+name = input("请输入姓名：")       # input() 从键盘读取一行，返回字符串
+age = input("请输入年龄：")        # 此时 age 是字符串 "18"，不是数字
 # 注意：age 是字符串，要参与计算必须转换
-age = int(age)  # 转成整数
+age = int(age)  # 转成整数         # int() 把字符串转成整型，才能做数学运算
 \`\`\`
 
 ### 输入数字的常见模式
 
 \`\`\`python
 # 安全转换：用户输入非数字时不崩溃
-try:
-    n = int(input("输入一个数："))
-except ValueError:
-    print("不是有效数字")
+try:                                              # try 包裹可能出错的代码
+    n = int(input("输入一个数："))                 # 把输入转成整数，可能抛 ValueError
+except ValueError:                                 # 捕获转换失败的异常
+    print("不是有效数字")                          # 给出友好的错误提示
 \`\`\`
 
 ### 格式化输出三种方式
 
 \`\`\`python
-name, age = "小明", 18
+name, age = "小明", 18                              # 多重赋值，同时定义两个变量
 
 # 方式1：% 占位符（老式）
-print("我叫%s，今年%d岁" % (name, age))
+print("我叫%s，今年%d岁" % (name, age))              # %s 字符串占位，%d 整数占位，% 后传入元组
 
 # 方式2：str.format()
-print("我叫{}，今年{}岁".format(name, age))
+print("我叫{}，今年{}岁".format(name, age))           # {} 是占位符，按顺序填入 format 的参数
 
 # 方式3：f-string（推荐，Python 3.6+）
-print(f"我叫{name}，今年{age}岁")
+print(f"我叫{name}，今年{age}岁")                    # f 前缀，{} 里直接写变量名或表达式
 \`\`\`
 
 > ⚠️ 本教程代码在沙箱中执行，\`input()\` 无法接收键盘输入（会立即返回空）。下面的 demo 用预设变量模拟输入，重点演示格式化输出技巧。`,
@@ -682,13 +682,13 @@ print(f"明年你 {age_num + 1} 岁")`
 ### 最简示例
 
 \`\`\`python
-import argparse
+import argparse                                       # 导入命令行参数解析模块
 
-parser = argparse.ArgumentParser(description="计算器")
-parser.add_argument("x", type=int, help="第一个数")
-parser.add_argument("y", type=int, help="第二个数")
-args = parser.parse_args()
-print(args.x + args.y)
+parser = argparse.ArgumentParser(description="计算器")  # 创建解析器，description 是帮助说明
+parser.add_argument("x", type=int, help="第一个数")    # 添加位置参数 x，类型为整数
+parser.add_argument("y", type=int, help="第二个数")    # 添加位置参数 y，类型为整数
+args = parser.parse_args()                             # 解析命令行参数，返回命名空间对象
+print(args.x + args.y)                                # 访问 args.x 和 args.y 并求和
 \`\`\`
 
 运行：\`python3 calc.py 3 5\` 输出 \`8\`。
@@ -708,8 +708,8 @@ print(args.x + args.y)
 ### 完整示例
 
 \`\`\`python
-parser.add_argument("-n", "--name", default="世界", help="名字")
-parser.add_argument("-v", "--verbose", action="store_true", help="详细模式")
+parser.add_argument("-n", "--name", default="世界", help="名字")        # 可选参数 -n/--name，不传时默认"世界"
+parser.add_argument("-v", "--verbose", action="store_true", help="详细模式")  # 布尔开关 -v，出现即为 True
 \`\`\`
 
 > ⚠️ 沙箱里 \`argparse\` 默认从命令行读参数会失败。下面的 demo 用 \`parse_args\` 传一个**模拟参数列表**，让你看到 argparse 的解析效果，无需命令行。
@@ -806,19 +806,19 @@ print("提示：真实使用时去掉 parse_args 里的列表参数即可读命�
 
 \`\`\`bash
 # 创建虚拟环境（在项目目录下）
-python3 -m venv venv
+python3 -m venv venv       # 用 venv 模块创建名为 venv 的虚拟环境目录
 
 # 激活虚拟环境
 # macOS / Linux:
-source venv/bin/activate
+source venv/bin/activate   # 执行激活脚本，修改 PATH 指向虚拟环境
 # Windows:
-venv\\Scripts\\activate
+venv\\Scripts\\activate      # Windows 下对应的激活脚本
 
 # 激活后命令行前面会出现 (venv) 标志
 # 此时 pip 安装的库只在这个环境里
 
 # 退出虚拟环境
-deactivate
+deactivate                 # 取消虚拟环境，回到全局 Python
 \`\`\`
 
 ### pip 包管理器
@@ -950,31 +950,31 @@ for pkg in packages:
 
 \`\`\`bash
 # 安装 poetry
-curl -sSL https://install.python-poetry.org | python3 -
+curl -sSL https://install.python-poetry.org | python3 -  # 下载安装脚本并用 python3 执行
 
 # 新建项目
-poetry new my_project
+poetry new my_project                          # 创建标准目录结构的新项目
 
 # 在已有项目初始化
 cd my_project
-poetry init
+poetry init                                     # 交互式生成 pyproject.toml 配置文件
 
 # 添加依赖
 poetry add requests          # 添加生产依赖
 poetry add pytest --group dev  # 添加开发依赖
 
 # 安装项目依赖
-poetry install
+poetry install                                 # 根据 pyproject.toml 安装所有依赖
 
 # 在虚拟环境中运行命令
-poetry run python main.py
+poetry run python main.py                       # 在 poetry 管理的虚拟环境里执行命令
 
 # 进入虚拟环境 shell
-poetry shell
+poetry shell                                    # 激活虚拟环境的交互式 shell
 
 # 打包发布
-poetry build
-poetry publish
+poetry build                                    # 打包成 wheel 和 sdist
+poetry publish                                  # 发布到 PyPI（需账号）
 \`\`\`
 
 ### pyproject.toml 示例
@@ -984,7 +984,7 @@ poetry publish
 name = "my_project"
 version = "0.1.0"
 description = "我的项目"
-authors = ["作者 <a@b.com>"]
+authors = ["作者 <a@b.com>"]       # 作者列表，含邮箱
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -1097,7 +1097,7 @@ print("   >=2.30 -> 最低版本 2.30")`
 变量是**贴在对象上的标签**。Python 的变量不"装"值，而是**指向**内存中的对象。
 
 \`\`\`python
-x = 10
+x = 10   # 在内存创建整数对象 10，把名字 x 贴到它上面
 \`\`\`
 
 这行做了两件事：
@@ -1121,13 +1121,13 @@ a = "hello"   # a 变成字符串了，完全合法
 
 \`\`\`python
 # 同时给多个变量赋值
-x, y, z = 10, 20, 30
+x, y, z = 10, 20, 30    # 元组解包：右侧三个值依次赋给左侧三个变量
 
 # 多个变量赋同一个值
-a = b = c = 0
+a = b = c = 0           # 链式赋值：0 同时赋给 a、b、c
 
 # 交换两个变量（Python 特色，不需要临时变量）
-a, b = b, a
+a, b = b, a             # 交换：右侧先组成元组再解包给左侧
 \`\`\`
 
 ### 变量命名规则
@@ -1141,9 +1141,9 @@ a, b = b, a
 ### 引用的本质：可变与不可变
 
 \`\`\`python
-a = [1, 2, 3]
+a = [1, 2, 3]  # 创建列表对象
 b = a          # b 和 a 指向同一个列表对象
-b.append(4)
+b.append(4)    # 通过 b 往列表末尾添加元素 4
 print(a)       # [1, 2, 3, 4]  a 也变了！
 \`\`\`
 
@@ -1154,9 +1154,9 @@ print(a)       # [1, 2, 3, 4]  a 也变了！
 \`id()\` 返回对象在内存中的唯一标识（地址）：
 
 \`\`\`python
-a = 10
-b = a
-print(id(a) == id(b))   # True，是同一个对象
+a = 10                       # 创建整数对象 10，a 指向它
+b = a                        # b 也指向同一个对象
+print(id(a) == id(b))   # id() 返回内存地址，相等说明是同一个对象，结果为 True
 \`\`\`
 
 下面的 demo 用 \`id()\` 直观展示变量与对象的关系，把"引用"这个抽象概念可视化。`,

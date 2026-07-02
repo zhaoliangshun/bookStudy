@@ -57,7 +57,7 @@ JSP 本质是"用 HTML 写法简化 Servlet",但它把 Java 与 HTML 揉在一�
 ## 代码示例
 
 \`\`\`jsp
-<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>   <!-- page 指令:设响应类型与编码 -->
 <!-- page 指令:设响应类型、编码、错误页 -->
 <%@ page errorPage="error.jsp" %>
 <!DOCTYPE html>
@@ -70,18 +70,18 @@ JSP 本质是"用 HTML 写法简化 Servlet",但它把 Java 与 HTML 揉在一�
     <%-- 1. 脚本片段:执行 Java 语句 --%>
     <%
         // 这里是普通 Java 代码,运行在 _jspService 方法内
-        String name = request.getParameter("name");
-        if (name == null) name = "访客";
-        int hour = java.time.LocalTime.now().getHour();
+        String name = request.getParameter("name");   // 读取请求参数
+        if (name == null) name = "访客";   // 参数为空时给默认值
+        int hour = java.time.LocalTime.now().getHour();   // 获取当前小时数
     %>
 
     <%-- 2. 表达式:直接输出值(注意无分号) --%>
-    <h1>你好,<%= name %>!</h1>
+    <h1>你好,<%= name %>!</h1>   <!-- <%= %> 表达式输出变量 -->
     <p>现在小时数:<%= hour %></p>
 
     <%-- 3. 脚本片段中可用 if/for 控制页面结构 --%>
     <%
-        if (hour < 12) {
+        if (hour < 12) {   // 根据小时判断上下午
     %>
         <p>上午好</p>
     <%
@@ -99,7 +99,7 @@ JSP 本质是"用 HTML 写法简化 Servlet",但它把 Java 与 HTML 揉在一�
             return "欢迎光临";
         }
     %>
-    <p><%= greet() %>,访问计数:<%= ++visitCount %></p>
+    <p><%= greet() %>,访问计数:<%= ++visitCount %></p>   <!-- 注意:visitCount 非线程安全,生产勿用 -->
 </body>
 </html>
 \`\`\`
@@ -177,22 +177,22 @@ JSP 翻译成 Servlet 后,容器在 \`_jspService()\` 方法内**预定义了九
 ## 代码示例
 
 \`\`\`jsp
-<%@ page contentType="text/html;charset=UTF-8" isErrorPage="true" %>
+<%@ page contentType="text/html;charset=UTF-8" isErrorPage="true" %>   <!-- isErrorPage=true 才能用 exception 对象 -->
 <!DOCTYPE html>
 <html><body>
 <%
     // 1. request:读取参数与请求头
-    String name = request.getParameter("name");
+    String name = request.getParameter("name");   // request 是 JSP 内置对象
     String ua = request.getHeader("User-Agent");
 
     // 2. session:跨请求保存登录信息
-    session.setAttribute("user", name);
-    Integer visitCount = (Integer) session.getAttribute("count");
-    if (visitCount == null) visitCount = 0;
+    session.setAttribute("user", name);   // session:会话级作用域
+    Integer visitCount = (Integer) session.getAttribute("count");   // 注意:需强制类型转换
+    if (visitCount == null) visitCount = 0;   // 首次访问计数归零
     session.setAttribute("count", ++visitCount);
 
     // 3. application:全应用共享(如在线人数)
-    Integer online = (Integer) application.getAttribute("online");
+    Integer online = (Integer) application.getAttribute("online");   // application:全局作用域
     if (online == null) online = 0;
     application.setAttribute("online", ++online);
 
@@ -201,7 +201,7 @@ JSP 翻译成 Servlet 后,容器在 \`_jspService()\` 方法内**预定义了九
     Object msg = pageContext.getAttribute("msg", PageContext.PAGE_SCOPE);
 
     // 5. out:直接写响应
-    out.println("<h1>欢迎," + name + "</h1>");
+    out.println("<h1>欢迎," + name + "</h1>");   // out:响应输出流
 %>
 <p>本次会话访问次数:<%= visitCount %></p>
 <p>当前在线人数:<%= online %></p>
@@ -281,16 +281,16 @@ EL 3.0 支持调用静态方法、流式操作(\`stream.filter().toList()\`),但
 Servlet 端准备数据:
 
 \`\`\`java
-@WebServlet("/users")
+@WebServlet("/users")   // 映射到 /users,查询用户列表
 public class UserListServlet extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
-        List<User> users = List.of(
+        List<User> users = List.of(   // 构造模拟数据,实际从数据库查询
             new User("张三", 20),
             new User("李四", 25)
         );
         req.setAttribute("users", users);   // 存入 request 域
-        req.getRequestDispatcher("/WEB-INF/users.jsp").forward(req, resp);
+        req.getRequestDispatcher("/WEB-INF/users.jsp").forward(req, resp);   // 转发到 JSP 渲染
     }
 }
 \`\`\`
@@ -299,28 +299,28 @@ JSP 用 EL 渲染(\`users.jsp\`):
 
 \`\`\`jsp
 <%@ page contentType="text/html;charset=UTF-8" %>
-<%@ taglib uri="jakarta.tags.core" prefix="c" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>   <!-- 引入 JSTL core 标签库,前缀 c -->
 <!DOCTYPE html>
 <html><body>
 <%-- EL 读取请求参数并回显到输入框 --%>
 <form>
-    <input name="keyword" value="\${param.keyword}" placeholder="搜索"/>
+    <input name="keyword" value="\${param.keyword}" placeholder="搜索"/>   <!-- param 隐式对象取请求参数 -->
 </form>
 
 <%-- empty 判断:列表为空时显示提示 --%>
-<c:if test="\${empty users}">
+<c:if test="\${empty users}">   <!-- empty 运算符判断是否为 null 或空 -->
     <p>暂无用户数据</p>
 </c:if>
 
 <%-- 遍历集合,用 EL 取每项属性(user.name 自动调 getName) --%>
 <table>
 <tr><th>姓名</th><th>年龄</th><th>是否成年</th></tr>
-<c:forEach items="\${users}" var="user">
+<c:forEach items="\${users}" var="user">   <!-- 遍历 users,当前元素变量 user -->
     <tr>
-        <td>\${user.name}</td>
+        <td>\${user.name}</td>   <!-- EL 自动调用 getName() -->
         <td>\${user.age}</td>
         <%-- 三元运算做条件展示 --%>
-        <td>\${user.age >= 18 ? "成年" : "未成年"}</td>
+        <td>\${user.age >= 18 ? "成年" : "未成年"}</td>   <!-- EL 支持三元运算 -->
     </tr>
 </c:forEach>
 </table>
@@ -330,8 +330,8 @@ JSP 用 EL 渲染(\`users.jsp\`):
 <p>\${users[0].name}</p>     <%-- List 取第一个 --%>
 
 <%-- EL 隐式对象:取请求头、Cookie、上下文参数 --%>
-<p>客户端:\${header["User-Agent"]}</p>
-<p>会话用户:\${cookie.JSESSIONID.value}</p>
+<p>客户端:\${header["User-Agent"]}</p>   <!-- header 隐式对象取请求头 -->
+<p>会话用户:\${cookie.JSESSIONID.value}</p>   <!-- cookie 隐式对象取 Cookie 值 -->
 </body></html>
 \`\`\`
 
@@ -403,31 +403,31 @@ JSTL 配合 EL 形成"标签做控制流、EL 做数据访问"的分工,页面�
 
 \`\`\`jsp
 <%@ page contentType="text/html;charset=UTF-8" %>
-<%@ taglib uri="jakarta.tags.core" prefix="c" %>
-<%@ taglib uri="jakarta.tags.fmt" prefix="fmt" %>
-<%@ taglib uri="jakarta.tags.functions" prefix="fn" %>
+<%@ taglib uri="jakarta.tags.core" prefix="c" %>   <!-- JSTL core 标签库 -->
+<%@ taglib uri="jakarta.tags.fmt" prefix="fmt" %>   <!-- JSTL 格式化标签库 -->
+<%@ taglib uri="jakarta.tags.functions" prefix="fn" %>   <!-- JSTL 函数标签库 -->
 <!DOCTYPE html>
 <html><body>
 <%-- 1. c:set:设置变量到指定作用域 --%>
-<c:set var="score" value="\${param.score}" scope="request"/>
+<c:set var="score" value="\${param.score}" scope="request"/>   <!-- scope 指定存入 request 域 -->
 
 <%-- 2. c:if:单条件判断(test 用 EL) --%>
-<c:if test="\${score >= 60}">
+<c:if test="\${score >= 60}">   <!-- 注意:c:if 无 else,需用 c:choose -->
     <p>及格</p>
 </c:if>
 
 <%-- 3. c:choose:多分支(类似 switch) --%>
 <c:choose>
-    <c:when test="\${score >= 90}"><p>优秀</p></c:when>
+    <c:when test="\${score >= 90}"><p>优秀</p></c:when>   <!-- 类似 case -->
     <c:when test="\${score >= 60}"><p>及格</p></c:when>
-    <c:otherwise><p>不及格</p></c:otherwise>
+    <c:otherwise><p>不及格</p></c:otherwise>   <!-- 类似 default -->
 </c:choose>
 
 <%-- 4. c:forEach:遍历集合,varStatus 暴露索引等信息 --%>
 <table>
 <tr><th>序号</th><th>姓名</th><th>状态</th></tr>
-<c:forEach items="\${users}" var="u" varStatus="vs">
-    <tr class="\${vs.index % 2 == 0 ? 'even' : 'odd'}">
+<c:forEach items="\${users}" var="u" varStatus="vs">   <!-- varStatus 提供循环状态 -->
+    <tr class="\${vs.index % 2 == 0 ? 'even' : 'odd'}">   <!-- 隔行变色 -->
         <td>\${vs.index + 1}</td>          <%-- 序号(从0开始,加1) --%>
         <td>\${u.name}</td>
         <td>\${vs.first ? '首个' : ''}</td>  <%-- 是否第一个 --%>
@@ -436,15 +436,15 @@ JSTL 配合 EL 形成"标签做控制流、EL 做数据访问"的分工,页面�
 </table>
 
 <%-- 5. c:url:自动补全上下文路径,带会话ID(防Cookie禁用) --%>
-<a href="<c:url value='/detail'/>">详情</a>
+<a href="<c:url value='/detail'/>">详情</a>   <!-- 自动加 contextPath -->
 
 <%-- 6. fmt:格式化日期与数字 --%>
-<p>时间:<fmt:formatDate value="\${now}" pattern="yyyy-MM-dd HH:mm:ss"/></p>
-<p>金额:<fmt:formatNumber value="\${price}" type="currency"/></p>
+<p>时间:<fmt:formatDate value="\${now}" pattern="yyyy-MM-dd HH:mm:ss"/></p>   <!-- 日期格式化 -->
+<p>金额:<fmt:formatNumber value="\${price}" type="currency"/></p>   <!-- 货币格式化 -->
 
 <%-- 7. fn:字符串函数 --%>
 <c:set var="str" value="Hello World"/>
-<p>长度:\${fn:length(str)}</p>
+<p>长度:\${fn:length(str)}</p>   <!-- fn:length 取字符串长度 -->
 <p>大写:\${fn:toUpperCase(str)}</p>
 </body></html>
 \`\`\`

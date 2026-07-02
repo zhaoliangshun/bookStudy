@@ -76,12 +76,12 @@ Python 的整数在底层并不是固定 32/64 位，而是采用**变长数组*
 
 \`\`\`python
 # 小整数缓存：-5 到 256 是同一个对象
-a = 100
-b = 100
+a = 100                            # 将整数 100 赋给 a
+b = 100                            # 将整数 100 赋给 b
 print(a is b)   # True，小整数缓存
 
-c = 1000
-d = 1000
+c = 1000                           # 将整数 1000 赋给 c
+d = 1000                           # 将整数 1000 赋给 d
 print(c is d)   # False（通常情况），超出缓存范围
 \`\`\`
 
@@ -159,14 +159,14 @@ Python 的 \`float\` 内部是 **64 位双精度浮点数**（C 语言的 \`doub
 由于精度问题，**永远不要用 \`==\` 直接比较两个浮点数**，而应该用"差值小于一个很小的数（epsilon）"：
 
 \`\`\`python
-import math
+import math                        # 导入 math 模块
 
-def almost_equal(a, b, eps=1e-9):
-    return abs(a - b) < eps
+def almost_equal(a, b, eps=1e-9):  # 定义函数 almost_equal，参数：a, b, eps=1e-9
+    return abs(a - b) < eps        # 返回 abs(a - b) < eps
 
 print(almost_equal(0.1 + 0.2, 0.3))           # True
 print(math.isclose(0.1 + 0.2, 0.3))           # True，标准库方法
-print(math.isclose(0.1 + 0.2, 0.3, rel_tol=1e-9))
+print(math.isclose(0.1 + 0.2, 0.3, rel_tol=1e-9))  # 输出 math.isclose(0.1 + 0.2, 0.3, rel_tol=1e-9)
 \`\`\`
 
 \`math.isclose(a, b, rel_tol=1e-9, abs_tol=0.0)\` 是 Python 3.5+ 提供的官方浮点数比较函数：
@@ -198,15 +198,15 @@ NaN 的一个重要特性是**不等于任何值（包括自身）**，所以判
 
 \`\`\`python
 # 大数加小数：精度丢失
-big = 1e16
-small = 1.0
+big = 1e16                         # 将 1e16 赋给 big
+small = 1.0                        # 将浮点数 1.0 赋给 small
 print(big + small == big)   # True！small 被吞掉了
 print(big + small - big)    # 0.0，不是 1.0
 
 # 累加误差
-total = 0.0
-for _ in range(10):
-    total += 0.1
+total = 0.0                        # 将浮点数 0.0 赋给 total
+for _ in range(10):                # 遍历 range(10)，每次取值赋给 _
+    total += 0.1                   # total 加 0.1
 print(total)                # 0.9999999999999999，不是 1.0
 \`\`\`
 
@@ -221,7 +221,7 @@ print(total)                # 0.9999999999999999，不是 1.0
 \`\`\`python
 >>> from decimal import Decimal
 >>> Decimal('0.1') + Decimal('0.2')
-Decimal('0.3')
+Decimal('0.3')                     # 调用 Decimal，参数 '0.3'
 >>> Decimal('0.1') + Decimal('0.2') == Decimal('0.3')
 True
 \`\`\`
@@ -230,15 +230,15 @@ True
 
 \`\`\`python
 >>> Decimal(0.1)         # 错误！先转 float 再转 Decimal，已带误差
-Decimal('0.1000000000000000055511151231257827021181583404541015625')
+Decimal('0.1000000000000000055511151231257827021181583404541015625')  # 调用 Decimal，参数 '0.1000000000000000055511151231257827021181583404541015625'
 >>> Decimal('0.1')       # 正确！用字符串
-Decimal('0.1')
+Decimal('0.1')                     # 调用 Decimal，参数 '0.1'
 \`\`\`
 
 ### 3.2 设置精度和舍入模式
 
 \`\`\`python
-from decimal import Decimal, getcontext, ROUND_HALF_UP
+from decimal import Decimal, getcontext, ROUND_HALF_UP  # 从 decimal 导入 Decimal, getcontext, ROUND_HALF_UP
 
 getcontext().prec = 6          # 设置全局精度（有效数字位数）
 getcontext().rounding = ROUND_HALF_UP   # 四舍五入
@@ -265,14 +265,14 @@ print(Decimal('2.675').quantize(Decimal('0.01')))  # 2.68
 - **科学计量**：需要可控的有效数字
 
 \`\`\`python
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP  # 从 decimal 导入 Decimal, ROUND_HALF_UP
 
 # 计算商品含税价
-price = Decimal('99.95')
+price = Decimal('99.95')           # 将 Decimal('99.95') 赋给 price
 tax_rate = Decimal('0.08')   # 8% 税率
-tax = (price * tax_rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-total = price + tax
-print(f"税前: {price}, 税: {tax}, 合计: {total}")
+tax = (price * tax_rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)  # 创建元组并赋给 tax
+total = price + tax                # 将 price + tax 赋给 total
+print(f"税前: {price}, 税: {tax}, 合计: {total}")  # 输出 f"税前: {price}, 税: {tax}, 合计: {total}"
 # 税前: 99.95, 税: 8.00, 合计: 107.95
 \`\`\`
 
@@ -283,7 +283,7 @@ print(f"税前: {price}, 税: {tax}, 合计: {total}")
 \`fractions.Fraction\` 用**有理数（分子/分母）**的形式精确表示数字，运算过程不会丢失精度，适合需要精确分数运算的场景（如数学教学、概率计算）。
 
 \`\`\`python
-from fractions import Fraction
+from fractions import Fraction     # 从 fractions 导入 Fraction
 
 a = Fraction(1, 3)      # 1/3
 b = Fraction(2, 3)      # 2/3
@@ -297,14 +297,14 @@ print(Fraction(1, 3) + Fraction(1, 6))   # 1/2
 Fraction 会自动**约分到最简形式**，分母为负时会自动把负号移到分子。它还可以和 \`Decimal\`、\`float\`、\`int\` 混合运算。
 
 \`\`\`python
-from fractions import Fraction
-import math
+from fractions import Fraction     # 从 fractions 导入 Fraction
+import math                        # 导入 math 模块
 
 # 用 Fraction 精确表示圆周率的近似分数
-pi_approx = Fraction(355, 113)
+pi_approx = Fraction(355, 113)     # 将 Fraction(355, 113) 赋给 pi_approx
 print(pi_approx)              # 355/113
 print(float(pi_approx))       # 3.1415929203539825
-print(pi_approx - Fraction(math.pi).limit_denominator(1000))
+print(pi_approx - Fraction(math.pi).limit_denominator(1000))  # 输出 pi_approx - Fraction(math.pi).limit_denominator(1000)
 \`\`\`
 
 ---
@@ -452,9 +452,9 @@ Python 3.4+ 内置了 \`statistics\` 模块，提供常用的统计函数，无�
 | \`statistics.geometric_mean(data)\` | 几何平均数（Python 3.8+） |
 
 \`\`\`python
-import statistics as st
+import statistics as st            # 导入 statistics 模块并取别名 st
 
-data = [1, 2, 2, 3, 4, 5, 5, 5, 6]
+data = [1, 2, 2, 3, 4, 5, 5, 5, 6] # 创建列表并赋给 data
 print(st.mean(data))           # 3.666...
 print(st.median(data))         # 4
 print(st.mode(data))           # 5
@@ -473,8 +473,8 @@ print(st.geometric_mean([1, 2, 4]))   # 2.0
 | \`statistics.stdev(data)\` | 样本标准差 |
 
 \`\`\`python
-import statistics as st
-data = [2, 4, 4, 4, 5, 5, 7, 9]
+import statistics as st            # 导入 statistics 模块并取别名 st
+data = [2, 4, 4, 4, 5, 5, 7, 9]    # 创建列表并赋给 data
 print(st.pvariance(data))   # 4.0（总体方差）
 print(st.pstdev(data))      # 2.0（总体标准差）
 print(st.variance(data))    # 4.571...（样本方差，n-1）
@@ -486,8 +486,8 @@ print(st.stdev(data))       # 2.138...（样本标准差）
 ### 6.3 分位数
 
 \`\`\`python
-import statistics as st
-data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+import statistics as st            # 导入 statistics 模块并取别名 st
+data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]  # 创建列表并赋给 data
 print(st.quantiles(data, n=4))   # 四分位数 [2.75, 5.5, 8.25]
 print(st.quantiles(data, n=10))  # 十分位数
 \`\`\`
@@ -499,9 +499,9 @@ print(st.quantiles(data, n=10))  # 十分位数
 Python 内置了 \`complex\` 类型（如 \`3+4j\`），\`cmath\` 模块提供了针对复数的数学函数。
 
 \`\`\`python
-import cmath
+import cmath                       # 导入 cmath 模块
 
-z = 3 + 4j
+z = 3 + 4j                         # 将 3 + 4j 赋给 z
 print(abs(z))           # 5.0，模长
 print(z.real)           # 3.0，实部
 print(z.imag)           # 4.0，虚部
@@ -545,14 +545,14 @@ print(cmath.exp(1j * cmath.pi))   # (-1+1.2246e-16j) ≈ -1（欧拉公式）
 这是因为 2.675 在浮点数中实际存储的是略小于 2.675 的值，所以 round 到 2 位小数时变成了 2.67。如果需要精确的十进制舍入，用 \`decimal\` 模块：
 
 \`\`\`python
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP  # 从 decimal 导入 Decimal, ROUND_HALF_UP
 print(Decimal('2.675').quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))  # 2.68
 \`\`\`
 
 ### 8.4 保留小数位的常见做法
 
 \`\`\`python
-x = 3.14159265
+x = 3.14159265                     # 将浮点数 3.14159265 赋给 x
 print(round(x, 2))          # 3.14，返回 float
 print(f"{x:.2f}")           # '3.14'，返回字符串
 print(format(x, '.2f'))     # '3.14'，返回字符串
@@ -593,9 +593,9 @@ print("%.2f" % x)           # '3.14'，旧式格式化
 
 \`\`\`python
 a, b = 5, 9
-a ^= b
-b ^= a
-a ^= b
+a ^= b                             # a ^= b
+b ^= a                             # b ^= a
+a ^= b                             # a ^= b
 # 现在 a=9, b=5
 \`\`\`
 
@@ -634,7 +634,7 @@ perm &= ~WRITE            # 移除写权限
 计算机生成的是**伪随机数**，由确定性算法产生。给定相同的**种子（seed）**，生成的随机数序列完全相同——这对调试和复现实验结果非常重要。
 
 \`\`\`python
-import random
+import random                      # 导入 random 模块
 
 random.seed(42)        # 设置种子
 print(random.random()) # 每次运行都一样（如果种子相同）
@@ -657,14 +657,14 @@ print(random.random()) # 每次运行都一样（如果种子相同）
 | \`random.getrandbits(k)\` | 返回 k 位随机整数 |
 
 \`\`\`python
-import random
+import random                      # 导入 random 模块
 
 print(random.randint(1, 100))       # 1-100 的整数
 print(random.choice(['石头', '剪刀', '布']))  # 随机选一个
 print(random.sample(range(1, 50), 6))  # 双色球选号（不重复）
-lst = [1, 2, 3, 4, 5]
+lst = [1, 2, 3, 4, 5]              # 创建列表并赋给 lst
 random.shuffle(lst)                 # 原地打乱
-print(lst)
+print(lst)                         # 输出 lst
 \`\`\`
 
 ### 10.3 加权随机
@@ -672,14 +672,14 @@ print(lst)
 \`random.choices\` 支持权重：
 
 \`\`\`python
-import random
+import random                      # 导入 random 模块
 # 抽奖：一等奖权重 1，二等奖 5，三等奖 20，谢谢参与 74
-result = random.choices(
+result = random.choices(           # 将 random.choices( 赋给 result
     ['一等奖', '二等奖', '三等奖', '谢谢参与'],
-    weights=[1, 5, 20, 74],
+    weights=[1, 5, 20, 74],        # 将 [1, 5, 20, 74], 赋给 weights
     k=10   # 抽 10 次（有放回）
 )
-print(result)
+print(result)                      # 输出 result
 \`\`\`
 
 ### 10.4 随机分布
@@ -696,9 +696,9 @@ print(result)
 | \`random.uniform(a, b)\` | 均匀分布 |
 
 \`\`\`python
-import random
+import random                      # 导入 random 模块
 # 模拟 1000 个正态分布的身高数据（均值 170，标准差 6）
-heights = [random.gauss(170, 6) for _ in range(1000)]
+heights = [random.gauss(170, 6) for _ in range(1000)]  # 创建列表并赋给 heights
 print(sum(heights) / len(heights))  # 约 170
 \`\`\`
 
@@ -707,9 +707,9 @@ print(sum(heights) / len(heights))  # 约 170
 \`random\` 模块是**伪随机**，不适合用于密码学、token 生成等安全场景。安全场景应该用 \`secrets\` 模块：
 
 \`\`\`python
-import secrets
+import secrets                     # 导入 secrets 模块
 token = secrets.token_hex(16)         # 32 位十六进制 token
-print(token)
+print(token)                       # 输出 token
 print(secrets.choice(range(1000000, 9999999)))  # 安全的随机选择
 \`\`\`
 
@@ -732,7 +732,7 @@ Python 中 \`bool\` 是 \`int\` 的子类，\`True\` 等于 1，\`False\` 等于
 这个特性在统计"满足条件的元素个数"时非常方便：
 
 \`\`\`python
-nums = [1, 2, 3, 4, 5, 6]
+nums = [1, 2, 3, 4, 5, 6]          # 创建列表并赋给 nums
 # 统计偶数的个数
 count = sum(n % 2 == 0 for n in nums)   # 3
 \`\`\`
@@ -803,7 +803,7 @@ Python 在混合类型运算时会**自动向更宽的类型转换**（数值塔
 
 \`\`\`python
 # 大整数转 float 会丢精度
-big = 2 ** 60
+big = 2 ** 60                      # 将 2 ** 60 赋给 big
 print(big)              # 1152921504606846976
 print(float(big))       # 1.152921504606947e+18
 print(int(float(big)))  # 1152921504606846976（这里恰好没丢）
@@ -828,7 +828,7 @@ Number
 \`\`\`
 
 \`\`\`python
-from numbers import Number, Complex, Real, Rational, Integral
+from numbers import Number, Complex, Real, Rational, Integral  # 从 numbers 导入 Number, Complex, Real, Rational, Integral
 import fractions, decimal
 
 print(isinstance(3, Integral))           # True
@@ -847,7 +847,7 @@ print(isinstance(decimal.Decimal('1.5'), Number))     # True
 ### 14.1 判断一个数是不是整数
 
 \`\`\`python
-x = 4.0
+x = 4.0                            # 将浮点数 4.0 赋给 x
 print(x.is_integer())      # True，float 的方法
 print(isinstance(x, int))  # False，x 是 float 不是 int
 \`\`\`
@@ -885,19 +885,19 @@ Python 支持数学风格的链式比较：
 
 \`\`\`python
 # 在 while 中计算并赋值
-import math
-n = 2
-while (n := n - 1) > 0:
-    print(n)
+import math                        # 导入 math 模块
+n = 2                              # 将整数 2 赋给 n
+while (n := n - 1) > 0:            # 当 (n := n - 1) > 0 为真时重复执行
+    print(n)                       # 输出 n
 \`\`\`
 
 ### 14.6 大数运算性能
 
 \`\`\`python
-import math
+import math                        # 导入 math 模块
 # 计算大数阶乘
-big_fact = math.factorial(100)
-print(len(str(big_fact)), "位数")
+big_fact = math.factorial(100)     # 将 math.factorial(100) 赋给 big_fact
+print(len(str(big_fact)), "位数")    # 输出 len(str(big_fact)), "位数"
 \`\`\`
 
 ### 14.7 用 // 替代 int(a/b)
@@ -917,11 +917,11 @@ print(10**20 // 3)      # 33333333333333333333（精确）
 ### 15.1 随机种子与可复现性
 
 \`\`\`python
-import random
-random.seed(0)
-seq1 = [random.random() for _ in range(3)]
-random.seed(0)
-seq2 = [random.random() for _ in range(3)]
+import random                      # 导入 random 模块
+random.seed(0)                     # 对 random 调用 seed 方法，参数 0
+seq1 = [random.random() for _ in range(3)]  # 创建列表并赋给 seq1
+random.seed(0)                     # 对 random 调用 seed 方法，参数 0
+seq2 = [random.random() for _ in range(3)]  # 创建列表并赋给 seq2
 print(seq1 == seq2)   # True，相同种子产生相同序列
 \`\`\`
 
@@ -929,9 +929,9 @@ print(seq1 == seq2)   # True，相同种子产生相同序列
 
 \`\`\`python
 state = random.getstate()   # 保存当前状态
-r1 = random.random()
+r1 = random.random()               # 将 random.random() 赋给 r1
 random.setstate(state)      # 恢复状态
-r2 = random.random()
+r2 = random.random()               # 将 random.random() 赋给 r2
 print(r1 == r2)   # True
 \`\`\`
 
@@ -944,11 +944,11 @@ print(r1 == r2)   # True
 | 权重 | 不支持 | 支持 weights/cum_weights |
 
 \`\`\`python
-import random
+import random                      # 导入 random 模块
 # sample：从 52 张扑克中发 5 张（不重复）
-hand = random.sample(range(52), 5)
+hand = random.sample(range(52), 5) # 将 random.sample(range(52), 5) 赋给 hand
 # choices：掷骰子 10 次（可重复）
-rolls = random.choices(range(1, 7), k=10)
+rolls = random.choices(range(1, 7), k=10)  # 将 random.choices(range(1, 7), k=10) 赋给 rolls
 \`\`\`
 
 ### 15.4 自定义随机范围
@@ -1370,10 +1370,10 @@ print("\\n数字与数学进阶演示完成！")
 | \`string.printable\` | 可打印字符（字母+数字+标点+空白） | 100 |
 
 \`\`\`python
-import string
-print(string.ascii_letters)
-print(string.digits)
-print(string.punctuation)
+import string                      # 导入 string 模块
+print(string.ascii_letters)        # 输出 string.ascii_letters
+print(string.digits)               # 输出 string.digits
+print(string.punctuation)          # 输出 string.punctuation
 print(repr(string.whitespace))   # ' \\t\\n\\r\\x0b\\x0c'
 \`\`\`
 
@@ -1382,20 +1382,20 @@ print(repr(string.whitespace))   # ' \\t\\n\\r\\x0b\\x0c'
 \`\`\`python
 import string, random
 # 生成 6 位字母数字混合验证码
-chars = string.ascii_letters + string.digits
-code = ''.join(random.choices(chars, k=6))
-print(code)
+chars = string.ascii_letters + string.digits  # 将 string.ascii_letters + string.digits 赋给 chars
+code = ''.join(random.choices(chars, k=6))  # 将字符串 ''.join(random.choices(chars, k=6)) 赋给 code
+print(code)                        # 输出 code
 \`\`\`
 
 ### 1.3 实战：判断字符类别
 
 \`\`\`python
-import string
-s = 'Hello123!'
-letters = sum(c in string.ascii_letters for c in s)
-digits = sum(c in string.digits for c in s)
-puncts = sum(c in string.punctuation for c in s)
-print(f"字母 {letters}, 数字 {digits}, 标点 {puncts}")
+import string                      # 导入 string 模块
+s = 'Hello123!'                    # 将字符串 'Hello123!' 赋给 s
+letters = sum(c in string.ascii_letters for c in s)  # 将 sum(c in string.ascii_letters for c in s) 赋给 letters
+digits = sum(c in string.digits for c in s)  # 将 sum(c in string.digits for c in s) 赋给 digits
+puncts = sum(c in string.punctuation for c in s)  # 将 sum(c in string.punctuation for c in s) 赋给 puncts
+print(f"字母 {letters}, 数字 {digits}, 标点 {puncts}")  # 输出 f"字母 {letters}, 数字 {digits}, 标点 {puncts}"
 \`\`\`
 
 ### 1.4 string.Template 模板字符串
@@ -1403,9 +1403,9 @@ print(f"字母 {letters}, 数字 {digits}, 标点 {puncts}")
 \`string.Template\` 提供简单的 \`$\` 占位符替换，比 f-string 更安全（不会执行任意表达式），适合处理用户提供的模板：
 
 \`\`\`python
-from string import Template
-t = Template("你好 $name，你的订单 $order 已发货")
-print(t.substitute(name="张三", order="A12345"))
+from string import Template        # 从 string 导入 Template
+t = Template("你好 $name，你的订单 $order 已发货")  # 将 Template("你好 $name，你的订单 $order 已发货") 赋给 t
+print(t.substitute(name="张三", order="A12345"))  # 输出 t.substitute(name="张三", order="A12345")
 # 用 safe_substitute 避免缺少变量时报错
 print(t.safe_substitute(name="李四"))   # 你好 李四，你的订单 $order 已发货
 \`\`\`
@@ -1421,17 +1421,17 @@ print(t.safe_substitute(name="李四"))   # 你好 李四，你的订单 $order 
 ### 2.1 基本折行
 
 \`\`\`python
-import textwrap
-text = "Python 是一门高级编程语言，它强调代码可读性，语法简洁优雅，广泛应用于 Web 开发、数据分析、人工智能等领域。"
+import textwrap                    # 导入 textwrap 模块
+text = "Python 是一门高级编程语言，它强调代码可读性，语法简洁优雅，广泛应用于 Web 开发、数据分析、人工智能等领域。"  # 将字符串 "Python 是一门高级编程语言，它强调代码可读性，语法简洁优雅，广泛应用于 Web 开发、数据分析、人工智能等领域。" 赋给 text
 # 按每行 20 个字符折行
-for line in textwrap.wrap(text, width=20):
-    print(line)
+for line in textwrap.wrap(text, width=20):  # 遍历 textwrap.wrap(text, width=20)，每次取值赋给 line
+    print(line)                    # 输出 line
 \`\`\`
 
 \`wrap()\` 返回列表，\`fill()\` 直接返回折行后的字符串（用换行符连接）：
 
 \`\`\`python
-print(textwrap.fill(text, width=20))
+print(textwrap.fill(text, width=20))  # 输出 textwrap.fill(text, width=20)
 \`\`\`
 
 ### 2.2 常用参数
@@ -1447,12 +1447,12 @@ print(textwrap.fill(text, width=20))
 | \`placeholder\` | 超出 max_lines 时的占位符（默认 '...'） |
 
 \`\`\`python
-import textwrap
-text = "这是一个很长的标题需要被截断显示在固定宽度的容器中"
-print(textwrap.shorten(text, width=15, placeholder="..."))
+import textwrap                    # 导入 textwrap 模块
+text = "这是一个很长的标题需要被截断显示在固定宽度的容器中" # 将字符串 "这是一个很长的标题需要被截断显示在固定宽度的容器中" 赋给 text
+print(textwrap.shorten(text, width=15, placeholder="..."))  # 输出 textwrap.shorten(text, width=15, placeholder="...")
 # 控制台输出带缩进的段落
-para = "第一段内容..."
-print(textwrap.fill(para, width=30, initial_indent="    ", subsequent_indent="  "))
+para = "第一段内容..."                  # 将字符串 "第一段内容..." 赋给 para
+print(textwrap.fill(para, width=30, initial_indent="    ", subsequent_indent="  "))  # 输出 textwrap.fill(para, width=30, initial_indent="    ", subsequent_indent="  ")
 \`\`\`
 
 ### 2.3 去除公共缩进 dedent
@@ -1460,8 +1460,8 @@ print(textwrap.fill(para, width=30, initial_indent="    ", subsequent_indent="  
 \`textwrap.dedent\` 可以去除多行字符串中**公共的前导空白**，常用于在代码里写多行字符串：
 
 \`\`\`python
-import textwrap
-s = """
+import textwrap                    # 导入 textwrap 模块
+s = """                            # 将字符串 """ 赋给 s
     第一行
     第二行
     第三行
@@ -1474,8 +1474,8 @@ print(textwrap.dedent(s))   # 去掉每行前面共同的 4 个空格
 ### 2.4 indent 添加缩进
 
 \`\`\`python
-import textwrap
-text = "第一行\\n第二行\\n第三行"
+import textwrap                    # 导入 textwrap 模块
+text = "第一行\\n第二行\\n第三行"           # 将字符串 "第一行\\n第二行\\n第三行" 赋给 text
 print(textwrap.indent(text, "> "))   # 每行前加 "> "
 \`\`\`
 
@@ -1498,7 +1498,7 @@ print(textwrap.indent(text, "> "))   # 每行前加 "> "
 | \`unicodedata.normalize(form, s)\` | Unicode 规范化 |
 
 \`\`\`python
-import unicodedata
+import unicodedata                 # 导入 unicodedata 模块
 print(unicodedata.name('中'))    # 'CJK UNIFIED IDEOGRAPH-4E2D'
 print(unicodedata.name('A'))     # 'LATIN CAPITAL LETTER A'
 print(unicodedata.name('★'))     # 'BLACK STAR'
@@ -1514,7 +1514,7 @@ print(unicodedata.numeric('½'))    # 0.5
 同一个字符可能有多种 Unicode 编码方式（组合字符 vs 预组合字符），规范化让它们统一：
 
 \`\`\`python
-import unicodedata
+import unicodedata                 # 导入 unicodedata 模块
 # 'é' 可以是单个字符，也可以是 'e' + 重音符号
 s1 = 'é'              # 预组合（1 个字符）
 s2 = 'e\\u0301'        # 组合（2 个字符）
@@ -1574,7 +1574,7 @@ print(unicodedata.normalize('NFC', s2) == s1)   # True
 \`rpartition\` 从右侧查找分隔符，常用于提取文件扩展名：
 
 \`\`\`python
-filename = 'report.2024.pdf'
+filename = 'report.2024.pdf'       # 将字符串 'report.2024.pdf' 赋给 filename
 name, dot, ext = filename.rpartition('.')
 print(name, ext)   # report.2024 pdf
 \`\`\`
@@ -1592,7 +1592,7 @@ print(name, ext)   # report.2024 pdf
 
 \`\`\`python
 # maketrans 创建映射表
-table = str.maketrans('aeiou', '12345')
+table = str.maketrans('aeiou', '12345')  # 将 str.maketrans('aeiou', '12345') 赋给 table
 print('hello world'.translate(table))   # 'h2ll4 w4rld'
 
 # 第三个参数指定要删除的字符
@@ -1766,9 +1766,9 @@ Python 字符串是**不可变**的，每次 \`+\` 拼接都会创建新字符�
 
 \`\`\`python
 # 慢：每次 + 都复制整个字符串
-s = ''
-for i in range(10000):
-    s += str(i)
+s = ''                             # 将字符串 '' 赋给 s
+for i in range(10000):             # 遍历 range(10000)，每次取值赋给 i
+    s += str(i)                    # s 加 str(i)
 \`\`\`
 
 对于 N 次拼接，\`+\` 的时间复杂度接近 O(N²)，而 \`join\` 是 O(N)。
@@ -1777,8 +1777,8 @@ for i in range(10000):
 
 \`\`\`python
 # 快：join 一次性拼接
-parts = [str(i) for i in range(10000)]
-s = ''.join(parts)
+parts = [str(i) for i in range(10000)]  # 创建列表并赋给 parts
+s = ''.join(parts)                 # 将字符串 ''.join(parts) 赋给 s
 \`\`\`
 
 \`join\` 会预先计算总长度，一次性分配内存，速度远快于循环 \`+\`。
@@ -1788,12 +1788,12 @@ s = ''.join(parts)
 对于**流式**生成大量文本（如生成报表、写日志），\`io.StringIO\` 是更好的选择——它是一个内存中的"文件"，支持 \`write\` 方法，最后一次性取出：
 
 \`\`\`python
-from io import StringIO
-buf = StringIO()
-for i in range(10000):
-    buf.write(str(i))
-    buf.write('\\n')
-result = buf.getvalue()
+from io import StringIO            # 从 io 导入 StringIO
+buf = StringIO()                   # 将 StringIO() 赋给 buf
+for i in range(10000):             # 遍历 range(10000)，每次取值赋给 i
+    buf.write(str(i))              # 对 buf 调用 write 方法，参数 str(i)
+    buf.write('\\n')               # 对 buf 调用 write 方法，参数 '\\n'
+result = buf.getvalue()            # 将 buf.getvalue() 赋给 result
 \`\`\`
 
 ### 6.4 性能对比
@@ -1806,10 +1806,10 @@ result = buf.getvalue()
 | f-string | 格式化单个字符串 | 最快（格式化场景） |
 
 \`\`\`python
-import timeit
+import timeit                      # 导入 timeit 模块
 # 测量拼接 10000 个字符串的时间
-print(timeit.timeit("s=''; [s:=s+str(i) for i in range(1000)]", number=10))
-print(timeit.timeit("''.join(str(i) for i in range(1000))", number=10))
+print(timeit.timeit("s=''; [s:=s+str(i) for i in range(1000)]", number=10))  # 输出 timeit.timeit("s=''; [s:=s+str(i) for i in range(1000)]", number=10)
+print(timeit.timeit("''.join(str(i) for i in range(1000))", number=10))  # 输出 timeit.timeit("''.join(str(i) for i in range(1000))", number=10)
 \`\`\`
 
 ---
@@ -1819,48 +1819,48 @@ print(timeit.timeit("''.join(str(i) for i in range(1000))", number=10))
 ### 7.1 文本清洗
 
 \`\`\`python
-import re
-def clean_text(text):
+import re                          # 导入 re 模块
+def clean_text(text):              # 定义函数 clean_text，参数：text
     # 去除多余空白（多个空格/换行合并为一个）
-    text = re.sub(r'\\s+', ' ', text)
+    text = re.sub(r'\\s+', ' ', text)  # 将 re.sub(r'\\s+', ' ', text) 赋给 text
     # 去除首尾空白
-    text = text.strip()
+    text = text.strip()            # 将 text.strip() 赋给 text
     # 全角转半角（用 unicodedata）
-    import unicodedata
-    text = unicodedata.normalize('NFKC', text)
-    return text
+    import unicodedata             # 导入 unicodedata 模块
+    text = unicodedata.normalize('NFKC', text)  # 将 unicodedata.normalize('NFKC', text) 赋给 text
+    return text                    # 返回 text
 
-raw = "  Hello   世界  \\n  Python  "
+raw = "  Hello   世界  \\n  Python  "  # 将字符串 "  Hello   世界  \\n  Python  " 赋给 raw
 print(clean_text(raw))   # 'Hello 世界 Python'
 \`\`\`
 
 ### 7.2 词频统计
 
 \`\`\`python
-from collections import Counter
-import re
-text = "the cat sat on the mat the cat ate the rat"
-words = re.findall(r'\\w+', text.lower())
-freq = Counter(words)
+from collections import Counter    # 从 collections 导入 Counter
+import re                          # 导入 re 模块
+text = "the cat sat on the mat the cat ate the rat"  # 将字符串 "the cat sat on the mat the cat ate the rat" 赋给 text
+words = re.findall(r'\\w+', text.lower())  # 将 re.findall(r'\\w+', text.lower()) 赋给 words
+freq = Counter(words)              # 将 Counter(words) 赋给 freq
 print(freq.most_common(3))   # 最常见的 3 个词
 \`\`\`
 
 ### 7.3 模板替换
 
 \`\`\`python
-from string import Template
-template = Template("亲爱的\${user}，您的会员将于\${date}到期，请及时续费。")
-msg = template.substitute(user="张三", date="2024-12-31")
-print(msg)
+from string import Template        # 从 string 导入 Template
+template = Template("亲爱的\${user}，您的会员将于\${date}到期，请及时续费。")  # 将 Template("亲爱的\${user}，您的会员将于\${date}到期，请及时续费。") 赋给 template
+msg = template.substitute(user="张三", date="2024-12-31")  # 将 template.substitute(user="张三", date="2024-12-31") 赋给 msg
+print(msg)                         # 输出 msg
 \`\`\`
 
 ### 7.4 提取信息
 
 \`\`\`python
-import re
-text = "联系方式：电话 138-1234-5678，邮箱 abc@example.com"
-phones = re.findall(r'\\d{3}-\\d{4}-\\d{4}', text)
-emails = re.findall(r'[\\w.]+@[\\w.]+', text)
+import re                          # 导入 re 模块
+text = "联系方式：电话 138-1234-5678，邮箱 abc@example.com"  # 将字符串 "联系方式：电话 138-1234-5678，邮箱 abc@example.com" 赋给 text
+phones = re.findall(r'\\d{3}-\\d{4}-\\d{4}', text)  # 将 re.findall(r'\\d{3}-\\d{4}-\\d{4}', text) 赋给 phones
+emails = re.findall(r'[\\w.]+@[\\w.]+', text)  # 将 re.findall(r'[\\w.]+@[\\w.]+', text) 赋给 emails
 print("电话:", phones)   # ['138-1234-5678']
 print("邮箱:", emails)   # ['abc@example.com']
 \`\`\`
@@ -1868,17 +1868,17 @@ print("邮箱:", emails)   # ['abc@example.com']
 ### 7.5 表格生成
 
 \`\`\`python
-def make_table(headers, rows):
-    widths = [max(len(str(h)), max(len(str(r[i])) for r in rows)) for i, h in enumerate(headers)]
-    sep = '+' + '+'.join('-' * (w+2) for w in widths) + '+'
-    line = '|' + '|'.join(f' {str(h):^{widths[i]}} ' for i, h in enumerate(headers)) + '|'
-    result = [sep, line, sep]
-    for row in rows:
-        result.append('|' + '|'.join(f' {str(r):^{widths[i]}} ' for i, r in enumerate(row)) + '|')
-    result.append(sep)
-    return '\\n'.join(result)
+def make_table(headers, rows):     # 定义函数 make_table，参数：headers, rows
+    widths = [max(len(str(h)), max(len(str(r[i])) for r in rows)) for i, h in enumerate(headers)]  # 创建列表并赋给 widths
+    sep = '+' + '+'.join('-' * (w+2) for w in widths) + '+'  # 将字符串 '+' + '+'.join('-' * (w+2) for w in widths) + '+' 赋给 sep
+    line = '|' + '|'.join(f' {str(h):^{widths[i]}} ' for i, h in enumerate(headers)) + '|'  # 将字符串 '|' + '|'.join(f' {str(h):^{widths[i]}} ' for i, h in enumerate(headers)) + '|' 赋给 line
+    result = [sep, line, sep]      # 创建列表并赋给 result
+    for row in rows:               # 遍历 rows，每次取值赋给 row
+        result.append('|' + '|'.join(f' {str(r):^{widths[i]}} ' for i, r in enumerate(row)) + '|')  # 对 result 调用 追加 方法，参数 '|' + '|'.join(f' {str(r):^{widths[i]}} ' for i, r in enumerate(row)) + '|'
+    result.append(sep)             # 对 result 调用 追加 方法，参数 sep
+    return '\\n'.join(result)      # 返回 '\\n'.join(result)
 
-print(make_table(['姓名', '年龄', '城市'], [['张三', 28, '北京'], ['李四', 35, '上海']]))
+print(make_table(['姓名', '年龄', '城市'], [['张三', 28, '北京'], ['李四', 35, '上海']]))  # 输出 make_table(['姓名', '年龄', '城市'], [['张三', 28, '北京'], ['李四', 35, '上海']])
 \`\`\`
 
 ---
@@ -1995,8 +1995,8 @@ CPython 内部对字符串有多种存储方式：纯 ASCII 用 1 字节/字符�
 \`format()\` 支持 f-string 的所有格式说明符，但语法更冗长。新代码统一用 f-string 即可，\`format()\` 在需要把格式说明符存为变量的动态场景下仍有用：
 
 \`\`\`python
-fmt = '{:.' + str(precision) + 'f}'
-print(fmt.format(3.14159))
+fmt = '{:.' + str(precision) + 'f}'  # 将字符串 '{:.' + str(precision) + 'f}' 赋给 fmt
+print(fmt.format(3.14159))         # 输出 fmt.format(3.14159)
 \`\`\`
 
 ### 10.3 三种方式对比
@@ -2030,8 +2030,8 @@ print(fmt.format(3.14159))
 ### 11.2 实战：解析 CSV 行
 
 \`\`\`python
-line = '张三,28,北京,程序员'
-fields = line.split(',')
+line = '张三,28,北京,程序员'              # 将字符串 '张三,28,北京,程序员' 赋给 line
+fields = line.split(',')           # 将 line.split(',') 赋给 fields
 print(fields)   # ['张三', '28', '北京', '程序员']
 \`\`\`
 
@@ -2064,11 +2064,11 @@ print(fields)   # ['张三', '28', '北京', '程序员']
 | \`re.compile(pattern)\` | 预编译模式（多次使用时更快） |
 
 \`\`\`python
-import re
-text = '电话: 138-1234-5678, 邮箱: a@b.com'
+import re                          # 导入 re 模块
+text = '电话: 138-1234-5678, 邮箱: a@b.com'  # 将字符串 '电话: 138-1234-5678, 邮箱: a@b.com' 赋给 text
 # 查找
-m = re.search(r'\\d{3}-\\d{4}-\\d{4}', text)
-if m:
+m = re.search(r'\\d{3}-\\d{4}-\\d{4}', text)  # 将 re.search(r'\\d{3}-\\d{4}-\\d{4}', text) 赋给 m
+if m:                              # 如果 m 成立
     print(m.group(), m.start(), m.end())   # 138-1234-5678 4 18
 # 全部查找
 print(re.findall(r'\\d+', text))   # ['138', '1234', '5678']
@@ -2079,23 +2079,23 @@ print(re.sub(r'\\d', '*', text))   # 把所有数字替换为 *
 ### 12.2 分组与命名
 
 \`\`\`python
-import re
-m = re.search(r'(\\d{4})-(\\d{2})-(\\d{2})', '2024-01-15')
+import re                          # 导入 re 模块
+m = re.search(r'(\\d{4})-(\\d{2})-(\\d{2})', '2024-01-15')  # 将 re.search(r'(\\d{4})-(\\d{2})-(\\d{2})', '2024-01-15') 赋给 m
 print(m.group(0))   # 2024-01-15（整体）
 print(m.group(1))   # 2024（第 1 组）
 print(m.groups())   # ('2024', '01', '15')
 # 命名分组
-m = re.search(r'(?P<year>\\d{4})-(?P<month>\\d{2})', '2024-01')
+m = re.search(r'(?P<year>\\d{4})-(?P<month>\\d{2})', '2024-01')  # 将 re.search(r'(?P<year>\\d{4})-(?P<month>\\d{2})', '2024-01') 赋给 m
 print(m.group('year'))   # 2024
 \`\`\`
 
 ### 12.3 预编译提升性能
 
 \`\`\`python
-import re
+import re                          # 导入 re 模块
 # 多次使用同一模式时，预编译可显著提速
-phone_re = re.compile(r'\\d{3}-\\d{4}-\\d{4}')
-print(phone_re.findall('138-1234-5678 和 139-0000-1111'))
+phone_re = re.compile(r'\\d{3}-\\d{4}-\\d{4}')  # 将 re.compile(r'\\d{3}-\\d{4}-\\d{4}') 赋给 phone_re
+print(phone_re.findall('138-1234-5678 和 139-0000-1111'))  # 输出 phone_re.findall('138-1234-5678 和 139-0000-1111')
 \`\`\`
 
 ---
@@ -2118,9 +2118,9 @@ CPython 会自动"驻留"（intern）一些字符串——让多个相同内容�
 ### 13.2 手动驻留
 
 \`\`\`python
-import sys
-s1 = sys.intern('hello world!')
-s2 = sys.intern('hello world!')
+import sys                         # 导入 sys 模块
+s1 = sys.intern('hello world!')    # 将 sys.intern('hello world!') 赋给 s1
+s2 = sys.intern('hello world!')    # 将 sys.intern('hello world!') 赋给 s2
 print(s1 is s2)   # True，手动驻留后共享
 \`\`\`
 
@@ -2129,7 +2129,7 @@ print(s1 is s2)   # True，手动驻留后共享
 ### 13.3 字符串内存占用
 
 \`\`\`python
-import sys
+import sys                         # 导入 sys 模块
 print(sys.getsizeof(''))      # 49 字节（空字符串）
 print(sys.getsizeof('a'))     # 50 字节
 print(sys.getsizeof('ab'))    # 51 字节（ASCII 每 +1 字符 +1 字节）
@@ -2143,13 +2143,13 @@ print(sys.getsizeof('中'))    # 76 字节（中文用更宽的存储）
 ### 14.1 驼峰命名转换
 
 \`\`\`python
-def snake_to_camel(snake):
-    parts = snake.split('_')
-    return parts[0] + ''.join(p.capitalize() for p in parts[1:])
+def snake_to_camel(snake):         # 定义函数 snake_to_camel，参数：snake
+    parts = snake.split('_')       # 将 snake.split('_') 赋给 parts
+    return parts[0] + ''.join(p.capitalize() for p in parts[1:])  # 返回 parts[0] + ''.join(p.capitalize() for p in parts[1:])
 
-def camel_to_snake(camel):
-    import re
-    return re.sub(r'(?<!^)(?=[A-Z])', '_', camel).lower()
+def camel_to_snake(camel):         # 定义函数 camel_to_snake，参数：camel
+    import re                      # 导入 re 模块
+    return re.sub(r'(?<!^)(?=[A-Z])', '_', camel).lower()  # 返回 re.sub(r'(?<!^)(?=[A-Z])', '_', camel).lower()
 
 print(snake_to_camel('hello_world_foo'))   # helloWorldFoo
 print(camel_to_snake('helloWorldFoo'))     # hello_world_foo
@@ -2158,23 +2158,23 @@ print(camel_to_snake('helloWorldFoo'))     # hello_world_foo
 ### 14.2 文本左右对齐排版
 
 \`\`\`python
-def align_table(rows):
+def align_table(rows):             # 定义函数 align_table，参数：rows
     cols = list(zip(*rows))   # 转置
-    widths = [max(len(str(c)) for c in col) for col in cols]
-    for row in rows:
-        print(' | '.join(str(c).ljust(widths[i]) for i, c in enumerate(row)))
+    widths = [max(len(str(c)) for c in col) for col in cols]  # 创建列表并赋给 widths
+    for row in rows:               # 遍历 rows，每次取值赋给 row
+        print(' | '.join(str(c).ljust(widths[i]) for i, c in enumerate(row)))  # 输出 ' | '.join(str(c).ljust(widths[i]) for i, c in enumerate(row))
 
-align_table([['姓名', '年龄', '城市'], ['张三', '28', '北京'], ['李四', '35', '上海']])
+align_table([['姓名', '年龄', '城市'], ['张三', '28', '北京'], ['李四', '35', '上海']])  # 调用 align_table，参数 [['姓名', '年龄', '城市'], ['张三', '28', '北京'], ['李四', '35', '上海']]
 \`\`\`
 
 ### 14.3 脱敏处理
 
 \`\`\`python
-def mask_phone(phone):
-    return phone[:3] + '****' + phone[-4:]
+def mask_phone(phone):             # 定义函数 mask_phone，参数：phone
+    return phone[:3] + '****' + phone[-4:]  # 返回 phone[:3] + '****' + phone[-4:]
 
-def mask_id(id_card):
-    return id_card[:6] + '*' * 8 + id_card[-4:]
+def mask_id(id_card):              # 定义函数 mask_id，参数：id_card
+    return id_card[:6] + '*' * 8 + id_card[-4:]  # 返回 id_card[:6] + '*' * 8 + id_card[-4:]
 
 print(mask_phone('13812345678'))   # 138****5678
 print(mask_id('110101199001011234'))   # 110101********1234
@@ -2186,16 +2186,16 @@ print(mask_id('110101199001011234'))   # 110101********1234
 # 千分位
 print(f"{1234567890:,}")   # 1,234,567,890
 # 中文千分位（每 4 位）
-def cn_group(n):
-    s = str(n)
-    return ','.join(s[i:i+4] for i in range(0, len(s), 4))
+def cn_group(n):                   # 定义函数 cn_group，参数：n
+    s = str(n)                     # 将 str(n) 赋给 s
+    return ','.join(s[i:i+4] for i in range(0, len(s), 4))  # 返回 ','.join(s[i:i+4] for i in range(0, len(s), 4))
 print(cn_group(1234567890))   # 12,3456,7890
 \`\`\`
 
 ### 14.5 字符串反转的多种方法
 
 \`\`\`python
-s = 'hello'
+s = 'hello'                        # 将字符串 'hello' 赋给 s
 print(s[::-1])              # 'olleh'，切片反转（最快）
 print(''.join(reversed(s)))  # 'olleh'，reversed
 print(''.join(s[i] for i in range(len(s)-1, -1, -1)))  # 循环（慢）
@@ -2206,9 +2206,9 @@ print(''.join(s[i] for i in range(len(s)-1, -1, -1)))  # 循环（慢）
 ### 14.6 判断回文
 
 \`\`\`python
-def is_palindrome(s):
+def is_palindrome(s):              # 定义函数 is_palindrome，参数：s
     s = s.lower().replace(' ', '')   # 忽略大小写和空格
-    return s == s[::-1]
+    return s == s[::-1]            # 返回 s == s[::-1]
 
 print(is_palindrome('racecar'))         # True
 print(is_palindrome('A man a plan a canal Panama'))  # True
@@ -2219,22 +2219,22 @@ print(is_palindrome('hello'))           # False
 
 \`\`\`python
 # 生成固定位数订单号
-order_id = 42
+order_id = 42                      # 将整数 42 赋给 order_id
 print(f'ORD{order_id:06d}')   # 'ORD000042'
 # 序列号
-for i in range(1, 4):
+for i in range(1, 4):              # 遍历 range(1, 4)，每次取值赋给 i
     print(f'SN-{i:03d}')       # SN-001, SN-002, SN-003
 \`\`\`
 
 ### 14.8 统计字符串信息
 
 \`\`\`python
-text = 'Hello World 2024'
-print(f"总字符: {len(text)}")
-print(f"字母: {sum(c.isalpha() for c in text)}")
-print(f"数字: {sum(c.isdigit() for c in text)}")
-print(f"空格: {sum(c.isspace() for c in text)}")
-print(f"大写: {sum(c.isupper() for c in text)}")
+text = 'Hello World 2024'          # 将字符串 'Hello World 2024' 赋给 text
+print(f"总字符: {len(text)}")         # 输出 f"总字符: {len(text)}"
+print(f"字母: {sum(c.isalpha() for c in text)}")  # 输出 f"字母: {sum(c.isalpha() for c in text)}"
+print(f"数字: {sum(c.isdigit() for c in text)}")  # 输出 f"数字: {sum(c.isdigit() for c in text)}"
+print(f"空格: {sum(c.isspace() for c in text)}")  # 输出 f"空格: {sum(c.isspace() for c in text)}"
+print(f"大写: {sum(c.isupper() for c in text)}")  # 输出 f"大写: {sum(c.isupper() for c in text)}"
 \`\`\`
 
 这种用 \`sum(生成器)\` 统计的方式很 Pythonic，利用了 \`True==1\` 的特性。
@@ -2676,7 +2676,7 @@ b'\\xe4\\xbd\\xa0\\xe5\\xa5\\xbd'
 >>> ba[0] = 72         # 修改单个字节（'H' 的 ASCII 码）
 >>> ba.append(33)      # 追加 '!'
 >>> ba
-bytearray(b'Hello!')
+bytearray(b'Hello!')               # 调用 bytearray，参数 b'Hello!'
 \`\`\`
 
 \`bytearray\` 适合需要频繁修改字节数据的场景（如构建网络数据包、缓冲区）。
@@ -2790,9 +2790,9 @@ GBK 的局限：只能表示中文和少量符号，国际通用性差。新项�
 
 \`\`\`python
 # 编码：str → bytes
-b = '你好'.encode('utf-8')
+b = '你好'.encode('utf-8')           # 将字符串 '你好'.encode('utf-8') 赋给 b
 # 解码：bytes → str
-s = b.decode('utf-8')
+s = b.decode('utf-8')              # 将 b.decode('utf-8') 赋给 s
 \`\`\`
 
 编码和解码必须用**同一种编码**，否则会乱码或报错。
@@ -2819,8 +2819,8 @@ s = b.decode('utf-8')
 
 \`\`\`python
 # 用 GBK 解码 UTF-8 编码的中文 → 乱码
-s = '你好'
-utf8_bytes = s.encode('utf-8')
+s = '你好'                           # 将字符串 '你好' 赋给 s
+utf8_bytes = s.encode('utf-8')     # 将 s.encode('utf-8') 赋给 utf8_bytes
 wrong = utf8_bytes.decode('gbk')        # '浣犲ソ'（乱码）
 right = utf8_bytes.decode('utf-8')      # '你好'
 \`\`\`
@@ -2833,7 +2833,7 @@ right = utf8_bytes.decode('utf-8')      # '你好'
 
 \`\`\`python
 import chardet   # 需 pip install chardet
-raw = b'\\xe4\\xbd\\xa0\\xe5\\xa5\\xbd'
+raw = b'\\xe4\\xbd\\xa0\\xe5\\xa5\\xbd'  # 将 b'\\xe4\\xbd\\xa0\\xe5\\xa5\\xbd' 赋给 raw
 print(chardet.detect(raw))   # {'encoding': 'utf-8', 'confidence': 0.75}
 \`\`\`
 
@@ -2846,10 +2846,10 @@ print(chardet.detect(raw))   # {'encoding': 'utf-8', 'confidence': 0.75}
 ### 4.1 codecs.open 读写文件
 
 \`\`\`python
-import codecs
+import codecs                      # 导入 codecs 模块
 # 用指定编码打开文件，自动处理编解码
-with codecs.open('file.txt', 'r', encoding='utf-8') as f:
-    text = f.read()
+with codecs.open('file.txt', 'r', encoding='utf-8') as f:  # 使用上下文管理器 codecs.open('file.txt', 'r', encoding='utf-8')，绑定到 f
+    text = f.read()                # 将 f.read() 赋给 text
 \`\`\`
 
 Python 3 内置的 \`open()\` 已经支持 \`encoding\` 参数，通常不需要 \`codecs.open\`，但 \`codecs\` 提供了更多控制。
@@ -2866,9 +2866,9 @@ Python 3 内置的 \`open()\` 已经支持 \`encoding\` 参数，通常不需要
 ### 4.3 流式编解码
 
 \`\`\`python
-import codecs
+import codecs                      # 导入 codecs 模块
 # 创建增量编码器/解码器，处理流式数据
-encoder = codecs.getencoder('utf-8')
+encoder = codecs.getencoder('utf-8')  # 将 codecs.getencoder('utf-8') 赋给 encoder
 data, length = encoder('你好')
 print(data)   # b'\\xe4\\xbd\\xa0\\xe5\\xa5\\xbd'
 \`\`\`
@@ -2923,9 +2923,9 @@ UTF-16 用 2 字节存一个字符，有大端（高位在前）和小端（低�
 二进制数据（如图片、加密密钥）无法直接放在文本协议（如 JSON、URL、邮件）中传输，需要把字节转换成**纯 ASCII 字符**。\`base64\` 把每 3 字节编码成 4 个 ASCII 字符（A-Z, a-z, 0-9, +, /），末尾用 \`=\` 补齐。
 
 \`\`\`python
-import base64
+import base64                      # 导入 base64 模块
 # 编码
-data = b'hello'
+data = b'hello'                    # 将 b'hello' 赋给 data
 encoded = base64.b64encode(data)   # b'aGVsbG8='
 # 解码
 decoded = base64.b64decode(encoded)  # b'hello'
@@ -2936,8 +2936,8 @@ decoded = base64.b64decode(encoded)  # b'hello'
 base64 操作的是 bytes，对字符串要先编码：
 
 \`\`\`python
-import base64
-s = '你好'
+import base64                      # 导入 base64 模块
+s = '你好'                           # 将字符串 '你好' 赋给 s
 encoded = base64.b64encode(s.encode('utf-8'))   # b'5L2g5aW9'
 decoded = base64.b64decode(encoded).decode('utf-8')  # '你好'
 \`\`\`
@@ -2975,7 +2975,7 @@ base32 用 A-Z, 2-7（不区分大小写、不易混淆），base16 就是十六
 \`bytes.hex()\` 返回字符串，\`bytes.fromhex()\` 反向解析。hex 编码常用于显示二进制数据的摘要（如哈希值、MAC 地址）。
 
 \`\`\`python
-import binascii
+import binascii                    # 导入 binascii 模块
 >>> binascii.hexlify(b'hello')   # b'68656c6c6f'（返回 bytes）
 >>> binascii.unhexlify(b'68656c6c6f')  # b'hello'
 \`\`\`
@@ -3020,14 +3020,14 @@ import binascii
 ### 8.3 pack 与 unpack
 
 \`\`\`python
-import struct
+import struct                      # 导入 struct 模块
 # 打包：把 Python 值转成 bytes
 packed = struct.pack('<i', 1024)     # b'\\x04\\x00\\x00\\x00'，小端 4 字节整数
 # 解包：把 bytes 转回 Python 值
 value = struct.unpack('<i', packed)  # (1024,)
 # 打包多个值
 data = struct.pack('<2ihf', 1, 2, 3, 4.5)  # 2 个 int + 1 个 short + 1 个 float
-values = struct.unpack('<2ihf', data)
+values = struct.unpack('<2ihf', data)  # 将 struct.unpack('<2ihf', data) 赋给 values
 \`\`\`
 
 ### 8.4 calcsize 计算大小
@@ -3040,9 +3040,9 @@ values = struct.unpack('<2ihf', data)
 ### 8.5 实战：解析 BMP 文件头
 
 \`\`\`python
-import struct
-with open('image.bmp', 'rb') as f:
-    header = f.read(54)
+import struct                      # 导入 struct 模块
+with open('image.bmp', 'rb') as f: # 使用上下文管理器 open('image.bmp', 'rb')，绑定到 f
+    header = f.read(54)            # 将 f.read(54) 赋给 header
     # BMP 文件头：2 字节签名 + 4 字节文件大小 + 4 字节保留 + 4 字节偏移
     signature, size, _, offset = struct.unpack('<2sI4xI', header[:14])
 \`\`\`
@@ -3080,7 +3080,7 @@ b'abc'.decode()                   # 'abc'
 b'abc'.hex()                      # '616263'
 bytes.fromhex('616263')           # b'abc'
 # bytes <-> base64
-import base64
+import base64                      # 导入 base64 模块
 base64.b64encode(b'abc')          # b'YWJj'
 base64.b64decode(b'YWJj')         # b'abc'
 # bytes <-> int
@@ -3111,11 +3111,11 @@ bytes([97, 98, 99])               # b'abc'
 
 \`\`\`python
 # 写二进制
-with open('data.bin', 'wb') as f:
-    f.write(b'\\x00\\x01\\x02\\x03')
-    f.write(bytes([4, 5, 6]))
+with open('data.bin', 'wb') as f:  # 使用上下文管理器 open('data.bin', 'wb')，绑定到 f
+    f.write(b'\\x00\\x01\\x02\\x03')  # 对 f 调用 write 方法，参数 b'\\x00\\x01\\x02\\x03'
+    f.write(bytes([4, 5, 6]))      # 对 f 调用 write 方法，参数 bytes([4, 5, 6])
 # 读二进制
-with open('data.bin', 'rb') as f:
+with open('data.bin', 'rb') as f:  # 使用上下文管理器 open('data.bin', 'rb')，绑定到 f
     data = f.read()      # b'\\x00\\x01\\x02\\x03\\x04\\x05\\x06'
     f.seek(0)            # 回到开头
     first_byte = f.read(1)  # b'\\x00'
@@ -3124,7 +3124,7 @@ with open('data.bin', 'rb') as f:
 ### 10.2 seek 与 tell 定位
 
 \`\`\`python
-with open('data.bin', 'rb') as f:
+with open('data.bin', 'rb') as f:  # 使用上下文管理器 open('data.bin', 'rb')，绑定到 f
     f.seek(2)            # 移动到第 2 字节
     print(f.tell())      # 2，当前位置
     print(f.read(2))     # 读 2 字节
@@ -3135,25 +3135,25 @@ with open('data.bin', 'rb') as f:
 ### 10.3 struct 读写二进制结构
 
 \`\`\`python
-import struct
+import struct                      # 导入 struct 模块
 # 写入结构化数据
-with open('record.bin', 'wb') as f:
-    f.write(struct.pack('<i10s', 42, b'hello'))
+with open('record.bin', 'wb') as f:  # 使用上下文管理器 open('record.bin', 'wb')，绑定到 f
+    f.write(struct.pack('<i10s', 42, b'hello'))  # 对 f 调用 write 方法，参数 struct.pack('<i10s', 42, b'hello')
 # 读回
-with open('record.bin', 'rb') as f:
-    data = f.read()
+with open('record.bin', 'rb') as f:  # 使用上下文管理器 open('record.bin', 'rb')，绑定到 f
+    data = f.read()                # 将 f.read() 赋给 data
     num, name = struct.unpack('<i10s', data)
 \`\`\`
 
 ### 10.4 大文件分块读写
 
 \`\`\`python
-with open('big.bin', 'rb') as f:
-    while True:
+with open('big.bin', 'rb') as f:   # 使用上下文管理器 open('big.bin', 'rb')，绑定到 f
+    while True:                    # 当 True 为真时重复执行
         chunk = f.read(4096)   # 每次读 4KB
-        if not chunk:
-            break
-        process(chunk)
+        if not chunk:              # 如果 not chunk 成立
+            break                  # 跳出循环
+        process(chunk)             # 调用 process，参数 chunk
 \`\`\`
 
 分块读取避免一次性加载大文件到内存。
@@ -3165,9 +3165,9 @@ with open('big.bin', 'rb') as f:
 ### 11.1 字符串摘要显示
 
 \`\`\`python
-import hashlib
-text = 'hello'
-digest = hashlib.md5(text.encode()).hexdigest()
+import hashlib                     # 导入 hashlib 模块
+text = 'hello'                     # 将字符串 'hello' 赋给 text
+digest = hashlib.md5(text.encode()).hexdigest()  # 将 hashlib.md5(text.encode()).hexdigest() 赋给 digest
 print(digest)   # 5d41402abc4b2a76b9719d911017c592
 \`\`\`
 
@@ -3176,19 +3176,19 @@ print(digest)   # 5d41402abc4b2a76b9719d911017c592
 ### 11.2 安全的 token 生成
 
 \`\`\`python
-import secrets
+import secrets                     # 导入 secrets 模块
 token = secrets.token_bytes(16)        # 16 字节随机
 token_hex = token.hex()                # 32 字符十六进制
-token_b64 = __import__('base64').b64encode(token).decode()
+token_b64 = __import__('base64').b64encode(token).decode()  # 将 __import__('base64').b64encode(token).decode() 赋给 token_b64
 \`\`\`
 
 ### 11.3 简单加密（XOR）
 
 \`\`\`python
-def xor(data, key):
-    return bytes(b ^ key for b in data)
+def xor(data, key):                # 定义函数 xor，参数：data, key
+    return bytes(b ^ key for b in data)  # 返回 bytes(b ^ key for b in data)
 
-encrypted = xor(b'hello', 123)
+encrypted = xor(b'hello', 123)     # 将 xor(b'hello', 123) 赋给 encrypted
 decrypted = xor(encrypted, 123)   # XOR 两次还原
 \`\`\`
 
@@ -3201,10 +3201,10 @@ decrypted = xor(encrypted, 123)   # XOR 两次还原
 \`\`\`python
 # 错误：用文本模式读二进制文件会报错
 with open('image.png', 'r') as f:   # UnicodeDecodeError！
-    f.read()
+    f.read()                       # 对 f 调用 read 方法
 # 正确：二进制文件必须用 'rb'
-with open('image.png', 'rb') as f:
-    data = f.read()
+with open('image.png', 'rb') as f: # 使用上下文管理器 open('image.png', 'rb')，绑定到 f
+    data = f.read()                # 将 f.read() 赋给 data
 \`\`\`
 
 ### 12.2 陷阱：编码不一致
@@ -3289,9 +3289,9 @@ UTF-8 中一个汉字是 3 字节。如果按固定字节切块（比如每 4 �
 
 \`\`\`python
 text = '你好世界'           # 4 个汉字，UTF-8 共 12 字节
-b = text.encode('utf-8')
+b = text.encode('utf-8')           # 将 text.encode('utf-8') 赋给 b
 # 错误：按 4 字节切，第 2 块是 "好" 的后 1 字节 + "世" 的前 3 字节
-chunk = b[4:8]
+chunk = b[4:8]                     # 将 b[4:8] 赋给 chunk
 chunk.decode('utf-8')      # ❌ 解码失败
 chunk.decode('utf-8', errors='replace')  # '□世'
 \`\`\`
@@ -3304,7 +3304,7 @@ chunk.decode('utf-8', errors='replace')  # '□世'
 
 \`\`\`python
 # 带 BOM 的文件
-content = '\\ufeffhello'
+content = '\\ufeffhello'           # 将字符串 '\\ufeffhello' 赋给 content
 print(content == 'hello')          # False！
 print(content.startswith('hello')) # False
 print(repr(content))               # '\\ufeffhello'
@@ -3324,11 +3324,11 @@ print(repr(content))               # '\\ufeffhello'
 Python 3 的内置 \`open()\` 已经原生支持编码参数，所以一般不需要 \`codecs.open()\`。但 \`codecs\` 提供了一些高级能力：
 
 \`\`\`python
-import codecs
+import codecs                      # 导入 codecs 模块
 # 流式解码：边读边解，适合处理大文件/网络流
-with codecs.open('file.txt', 'r', 'utf-8', errors='replace') as f:
-    for line in f:
-        process(line)
+with codecs.open('file.txt', 'r', 'utf-8', errors='replace') as f:  # 使用上下文管理器 codecs.open('file.txt', 'r', 'utf-8', errors='replace')，绑定到 f
+    for line in f:                 # 遍历 f，每次取值赋给 line
+        process(line)              # 调用 process，参数 line
 \`\`\`
 
 ### 9.2 iterdecode / iterencode 流式编解码
@@ -3336,12 +3336,12 @@ with codecs.open('file.txt', 'r', 'utf-8', errors='replace') as f:
 当数据是分块到达（如网络流）时，\`codecs.iterdecode\` 能避免"切断多字节字符"的问题：
 
 \`\`\`python
-import codecs
+import codecs                      # 导入 codecs 模块
 # 模拟分块到达的字节流
-chunks = [b'\\xe4\\xbd\\xa0', b'\\xe5\\xa5\\xbd', b'\\xe4\\xb8\\x96\\xe7\\x95\\x8c']
-byte_iter = iter(chunks)
+chunks = [b'\\xe4\\xbd\\xa0', b'\\xe5\\xa5\\xbd', b'\\xe4\\xb8\\x96\\xe7\\x95\\x8c']  # 创建列表并赋给 chunks
+byte_iter = iter(chunks)           # 将 iter(chunks) 赋给 byte_iter
 # 流式解码：即使某块切断了一个字符，也会缓存到下一块拼齐
-for char in codecs.iterdecode(byte_iter, 'utf-8'):
+for char in codecs.iterdecode(byte_iter, 'utf-8'):  # 遍历 codecs.iterdecode(byte_iter, 'utf-8')，每次取值赋给 char
     print(char, end='')   # 你好世界
 \`\`\`
 
@@ -3378,8 +3378,8 @@ for char in codecs.iterdecode(byte_iter, 'utf-8'):
 \`\`\`python
 # Windows 上读 CRLF 文件，读到的是 \\n
 # 写文件时，\\n 又自动转成 \\r\\n
-with open('a.txt', 'w') as f:
-    f.write('line1\\nline2\\n')
+with open('a.txt', 'w') as f:      # 使用上下文管理器 open('a.txt', 'w')，绑定到 f
+    f.write('line1\\nline2\\n')    # 对 f 调用 write 方法，参数 'line1\\nline2\\n'
 \`\`\`
 
 ### 10.2 universal newlines 与 newline 参数
@@ -3395,7 +3395,7 @@ with open('a.txt', 'w') as f:
 
 \`\`\`python
 # 跨平台读 CSV / 配置文件，建议显式指定 newline=''
-with open('data.csv', 'r', encoding='utf-8', newline='') as f:
+with open('data.csv', 'r', encoding='utf-8', newline='') as f:  # 使用上下文管理器 open('data.csv', 'r', encoding='utf-8', newline='')，绑定到 f
     ...
 \`\`\`
 
@@ -3456,7 +3456,7 @@ with open('data.csv', 'r', encoding='utf-8', newline='') as f:
 | 原生 | \`@\` 或无前缀 | 跟 CPU | 不跨平台 |
 
 \`\`\`python
-import struct
+import struct                      # 导入 struct 模块
 # 数字 1024 = 0x00000400
 struct.pack('>I', 1024)   # b'\\x00\\x00\\x04\\x00'（大端）
 struct.pack('<I', 1024)   # b'\\x04\\x00\\x00\\x00'（小端）
@@ -3469,17 +3469,17 @@ struct.pack('I', 1024)    # 跟本机，x86 上是小端
 - **变长字段**（如字符串）：通常用"长度前缀 + 数据"，比如先用 4 字节 int 表示字符串长度，再跟字符串字节。
 
 \`\`\`python
-def pack_string(s, encoding='utf-8'):
-    b = s.encode(encoding)
+def pack_string(s, encoding='utf-8'):  # 定义函数 pack_string，参数：s, encoding='utf-8'
+    b = s.encode(encoding)         # 将 s.encode(encoding) 赋给 b
     return struct.pack('>I', len(b)) + b   # 4 字节长度 + 内容
 
-def unpack_string(buf, offset=0):
-    length = struct.unpack_from('>I', buf, offset)[0]
-    start = offset + 4
-    s = buf[start:start+length].decode('utf-8')
-    return s, start + length
+def unpack_string(buf, offset=0):  # 定义函数 unpack_string，参数：buf, offset=0
+    length = struct.unpack_from('>I', buf, offset)[0]  # 将 struct.unpack_from('>I', buf, offset)[0] 赋给 length
+    start = offset + 4             # 将 offset + 4 赋给 start
+    s = buf[start:start+length].decode('utf-8')  # 将 buf[start:start+length].decode('utf-8') 赋给 s
+    return s, start + length       # 返回 s, start + length
 
-data = pack_string('hello')
+data = pack_string('hello')        # 将 pack_string('hello') 赋给 data
 print(data)   # b'\\x00\\x00\\x00\\x05hello'
 s, _ = unpack_string(data)
 print(s)      # hello
@@ -3509,20 +3509,20 @@ print(s)      # hello
 \`bytes\` 不可变，每次修改都要创建新对象；\`bytearray\` 可变，原地修改更快。**频繁拼接字节时用 \`bytearray\`**：
 
 \`\`\`python
-import time
+import time                        # 导入 time 模块
 # 用 bytes 拼接（慢）
-b = b''
-t0 = time.time()
-for _ in range(100000):
-    b += b'ab'
-print(f"bytes 拼接: {time.time()-t0:.3f}s")
+b = b''                            # 将 b'' 赋给 b
+t0 = time.time()                   # 将 time.time() 赋给 t0
+for _ in range(100000):            # 遍历 range(100000)，每次取值赋给 _
+    b += b'ab'                     # b 加 b'ab'
+print(f"bytes 拼接: {time.time()-t0:.3f}s")  # 输出 f"bytes 拼接: {time.time()-t0:.3f}s"
 
 # 用 bytearray（快）
-ba = bytearray()
-t0 = time.time()
-for _ in range(100000):
+ba = bytearray()                   # 将 bytearray() 赋给 ba
+t0 = time.time()                   # 将 time.time() 赋给 t0
+for _ in range(100000):            # 遍历 range(100000)，每次取值赋给 _
     ba += b'ab'    # 或 ba.extend(b'ab')
-print(f"bytearray 拼接: {time.time()-t0:.3f}s")
+print(f"bytearray 拼接: {time.time()-t0:.3f}s")  # 输出 f"bytearray 拼接: {time.time()-t0:.3f}s"
 \`\`\`
 
 ### 13.2 memoryview 零拷贝
@@ -3531,9 +3531,9 @@ print(f"bytearray 拼接: {time.time()-t0:.3f}s")
 
 \`\`\`python
 big = bytearray(10_000_000)   # 10MB
-mv = memoryview(big)
+mv = memoryview(big)               # 将 memoryview(big) 赋给 mv
 # 切片是视图，不复制
-chunk = mv[1000:2000]
+chunk = mv[1000:2000]              # 将 mv[1000:2000] 赋给 chunk
 print(type(chunk))            # <class 'memoryview'>
 chunk[0] = 255                # 直接改原数据
 \`\`\`
@@ -3997,29 +3997,29 @@ print("\\n字节与编码演示完成！")
 ### 2.1 创建 date
 
 \`\`\`python
-from datetime import date
+from datetime import date          # 从 datetime 导入 date
 
 # 用年月日创建
-d1 = date(2024, 8, 15)
+d1 = date(2024, 8, 15)             # 将 date(2024, 8, 15) 赋给 d1
 print(d1)              # 2024-08-15
 
 # 今天
-today = date.today()
+today = date.today()               # 将 date.today() 赋给 today
 print(today)           # 今天的日期
 
 # 从 ISO 格式字符串创建（YYYY-MM-DD）
-d2 = date.fromisoformat('2024-12-31')
+d2 = date.fromisoformat('2024-12-31')  # 将 date.fromisoformat('2024-12-31') 赋给 d2
 print(d2)              # 2024-12-31
 
 # 从时间戳创建（自 1970-01-01 的秒数）
-d3 = date.fromtimestamp(1700000000)
+d3 = date.fromtimestamp(1700000000)  # 将 date.fromtimestamp(1700000000) 赋给 d3
 print(d3)              # 2023-11-15（取决于时区）
 \`\`\`
 
 ### 2.2 date 的属性
 
 \`\`\`python
-d = date(2024, 8, 15)
+d = date(2024, 8, 15)              # 将 date(2024, 8, 15) 赋给 d
 print(d.year)          # 2024
 print(d.month)         # 8
 print(d.day)           # 15
@@ -4034,7 +4034,7 @@ print(d.timetuple())   # time.struct_time，结构化时间
 ### 2.3 date 的常用方法
 
 \`\`\`python
-d = date(2024, 8, 15)
+d = date(2024, 8, 15)              # 将 date(2024, 8, 15) 赋给 d
 print(d.isoformat())           # '2024-08-15'
 print(d.strftime('%Y年%m月%d日'))  # '2024年08月15日'
 print(d.ctime())               # 'Thu Aug 15 00:00:00 2024'
@@ -4048,7 +4048,7 @@ print(d.replace(year=2025))    # 2025-08-15（替换某字段）
 \`datetime.time\` 表示一个**只有时间、没有日期**的对象（时:分:秒.微秒）。注意它和 \`time\` **模块**同名但完全不同——一个是类，一个是模块。
 
 \`\`\`python
-from datetime import time
+from datetime import time          # 从 datetime 导入 time
 
 t = time(14, 30, 45, 123456)   # 时 分 秒 微秒
 print(t)                # 14:30:45.123456
@@ -4071,31 +4071,31 @@ print(t.strftime('%H:%M'))   # '14:30'
 ### 4.1 创建 datetime
 
 \`\`\`python
-from datetime import datetime
+from datetime import datetime      # 从 datetime 导入 datetime
 
 # 用年月日时分秒创建
-dt = datetime(2024, 8, 15, 14, 30, 45)
+dt = datetime(2024, 8, 15, 14, 30, 45)  # 将 datetime(2024, 8, 15, 14, 30, 45) 赋给 dt
 print(dt)              # 2024-08-15 14:30:45
 
 # 现在（本地时间）
-now = datetime.now()
-print(now)
+now = datetime.now()               # 将 datetime.now() 赋给 now
+print(now)                         # 输出 now
 
 # 现在（UTC 时间）
 utc_now = datetime.utcnow()   # ⚠️ 已弃用，推荐 datetime.now(timezone.utc)
-print(utc_now)
+print(utc_now)                     # 输出 utc_now
 
 # 从时间戳创建
-dt2 = datetime.fromtimestamp(1700000000)
-print(dt2)
+dt2 = datetime.fromtimestamp(1700000000)  # 将 datetime.fromtimestamp(1700000000) 赋给 dt2
+print(dt2)                         # 输出 dt2
 
 # 从字符串解析
-dt3 = datetime.strptime('2024-08-15 14:30:45', '%Y-%m-%d %H:%M:%S')
-print(dt3)
+dt3 = datetime.strptime('2024-08-15 14:30:45', '%Y-%m-%d %H:%M:%S')  # 将 datetime.strptime('2024-08-15 14:30:45', '%Y-%m-%d %H:%M:%S') 赋给 dt3
+print(dt3)                         # 输出 dt3
 
 # 从 ISO 格式创建
-dt4 = datetime.fromisoformat('2024-08-15T14:30:45')
-print(dt4)
+dt4 = datetime.fromisoformat('2024-08-15T14:30:45')  # 将 datetime.fromisoformat('2024-08-15T14:30:45') 赋给 dt4
+print(dt4)                         # 输出 dt4
 \`\`\`
 
 **重要提醒**：\`datetime.utcnow()\` 在 Python 3.12 起被弃用，因为它返回的是**朴素型** datetime（没有时区信息），容易导致时区 bug。推荐用 \`datetime.now(timezone.utc)\` 返回**感知型** datetime。
@@ -4103,7 +4103,7 @@ print(dt4)
 ### 4.2 datetime 的属性与方法
 
 \`\`\`python
-dt = datetime(2024, 8, 15, 14, 30, 45, 123456)
+dt = datetime(2024, 8, 15, 14, 30, 45, 123456)  # 将 datetime(2024, 8, 15, 14, 30, 45, 123456) 赋给 dt
 # 日期部分
 print(dt.year, dt.month, dt.day)         # 2024 8 15
 # 时间部分
@@ -4126,10 +4126,10 @@ print(dt.strftime('%Y/%m/%d %H:%M'))      # 2024/08/15 14:30
 ### 5.1 创建 timedelta
 
 \`\`\`python
-from datetime import timedelta
+from datetime import timedelta     # 从 datetime 导入 timedelta
 
 # 1 天 2 小时 30 分
-delta = timedelta(days=1, hours=2, minutes=30)
+delta = timedelta(days=1, hours=2, minutes=30)  # 将 timedelta(days=1, hours=2, minutes=30) 赋给 delta
 print(delta)           # 1 day, 2:30:00
 
 # 只用秒
@@ -4143,18 +4143,18 @@ timedelta 内部只存 \`days\`、\`seconds\`、\`microseconds\` 三个字段，
 ### 5.2 timedelta 的运算
 
 \`\`\`python
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta  # 从 datetime 导入 datetime, timedelta
 
-now = datetime.now()
+now = datetime.now()               # 将 datetime.now() 赋给 now
 # 加减时间
-tomorrow = now + timedelta(days=1)
-last_week = now - timedelta(weeks=1)
-in_3_hours = now + timedelta(hours=3)
-print("明天:", tomorrow)
-print("上周:", last_week)
+tomorrow = now + timedelta(days=1) # 将 now + timedelta(days=1) 赋给 tomorrow
+last_week = now - timedelta(weeks=1)  # 将 now - timedelta(weeks=1) 赋给 last_week
+in_3_hours = now + timedelta(hours=3)  # 将 now + timedelta(hours=3) 赋给 in_3_hours
+print("明天:", tomorrow)             # 输出 "明天:", tomorrow
+print("上周:", last_week)            # 输出 "上周:", last_week
 
 # 两个 datetime 相减得到 timedelta
-diff = tomorrow - now
+diff = tomorrow - now              # 将 tomorrow - now 赋给 diff
 print("差值:", diff)              # 1 day, 0:00:00
 print("总秒数:", diff.total_seconds())  # 86400.0
 \`\`\`
@@ -4164,7 +4164,7 @@ print("总秒数:", diff.total_seconds())  # 86400.0
 ### 5.3 timedelta 的属性
 
 \`\`\`python
-d = timedelta(days=1, hours=2, minutes=30)
+d = timedelta(days=1, hours=2, minutes=30)  # 将 timedelta(days=1, hours=2, minutes=30) 赋给 d
 print(d.days)              # 1
 print(d.seconds)           # 9000（2 小时 30 分 = 9000 秒）
 print(d.microseconds)      # 0
@@ -4207,8 +4207,8 @@ print(d.total_seconds())   # 93600.0（1 天 2 小时 30 分）
 ### 6.2 strftime 格式化
 
 \`\`\`python
-from datetime import datetime
-dt = datetime(2024, 8, 15, 14, 30, 45)
+from datetime import datetime      # 从 datetime 导入 datetime
+dt = datetime(2024, 8, 15, 14, 30, 45)  # 将 datetime(2024, 8, 15, 14, 30, 45) 赋给 dt
 print(dt.strftime('%Y-%m-%d %H:%M:%S'))   # 2024-08-15 14:30:45
 print(dt.strftime('%Y年%m月%d日 %H时%M分'))  # 2024年08月15日 14时30分
 print(dt.strftime('%A, %B %d, %Y'))        # Thursday, August 15, 2024
@@ -4219,15 +4219,15 @@ print(dt.strftime('第 %j 天'))              # 第 228 天
 ### 6.3 strptime 解析
 
 \`\`\`python
-from datetime import datetime
-s = '2024-08-15 14:30:45'
-dt = datetime.strptime(s, '%Y-%m-%d %H:%M:%S')
+from datetime import datetime      # 从 datetime 导入 datetime
+s = '2024-08-15 14:30:45'          # 将字符串 '2024-08-15 14:30:45' 赋给 s
+dt = datetime.strptime(s, '%Y-%m-%d %H:%M:%S')  # 将 datetime.strptime(s, '%Y-%m-%d %H:%M:%S') 赋给 dt
 print(dt)              # 2024-08-15 14:30:45
 
 # 解析中文日期
-s2 = '2024年08月15日 14时30分'
-dt2 = datetime.strptime(s2, '%Y年%m月%d日 %H时%M分')
-print(dt2)
+s2 = '2024年08月15日 14时30分'          # 将字符串 '2024年08月15日 14时30分' 赋给 s2
+dt2 = datetime.strptime(s2, '%Y年%m月%d日 %H时%M分')  # 将 datetime.strptime(s2, '%Y年%m月%d日 %H时%M分') 赋给 dt2
+print(dt2)                         # 输出 dt2
 \`\`\`
 
 **strptime 的陷阱**：格式字符串必须和实际字符串**完全匹配**，多一个空格、少一个 0 都会抛 \`ValueError\`。比如 \`%m\` 期望两位月份，如果输入是 \`'2024-8-15'\`（月份没有前导 0），用 \`%m\` 解析会失败，要用 \`%-m\`（Linux/macOS）或先补 0。
@@ -4237,9 +4237,9 @@ print(dt2)
 ISO 8601 是国际标准日期时间格式（\`YYYY-MM-DDTHH:MM:SS\`），跨语言交换数据时推荐用它：
 
 \`\`\`python
-dt = datetime(2024, 8, 15, 14, 30, 45)
+dt = datetime(2024, 8, 15, 14, 30, 45)  # 将 datetime(2024, 8, 15, 14, 30, 45) 赋给 dt
 print(dt.isoformat())              # 2024-08-15T14:30:45
-dt2 = datetime.fromisoformat('2024-08-15T14:30:45')
+dt2 = datetime.fromisoformat('2024-08-15T14:30:45')  # 将 datetime.fromisoformat('2024-08-15T14:30:45') 赋给 dt2
 \`\`\`
 
 \`fromisoformat\` 在 Python 3.11+ 也支持解析带时区的 ISO 字符串（如 \`'2024-08-15T14:30:45+08:00'\`）。
@@ -4256,10 +4256,10 @@ dt2 = datetime.fromisoformat('2024-08-15T14:30:45')
 ### 7.1 为什么 naive 容易出 bug
 
 \`\`\`python
-from datetime import datetime
+from datetime import datetime      # 从 datetime 导入 datetime
 # 两个 naive datetime 看起来一样，但可能代表不同时区
 a = datetime(2024, 8, 15, 14, 0)   # 谁知道这是北京 14 点还是纽约 14 点？
-b = datetime(2024, 8, 15, 14, 0)
+b = datetime(2024, 8, 15, 14, 0)   # 将 datetime(2024, 8, 15, 14, 0) 赋给 b
 print(a == b)   # True，但语义可能错误
 \`\`\`
 
@@ -4270,20 +4270,20 @@ print(a == b)   # True，但语义可能错误
 \`datetime.timezone\` 是 Python 3.2+ 提供的简单时区类，用固定偏移量表示时区：
 
 \`\`\`python
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta  # 从 datetime 导入 datetime, timezone, timedelta
 
 # UTC 时区
-utc = timezone.utc
+utc = timezone.utc                 # 将 timezone.utc 赋给 utc
 # 东八区（北京时间）
-beijing = timezone(timedelta(hours=8))
+beijing = timezone(timedelta(hours=8))  # 将 timezone(timedelta(hours=8)) 赋给 beijing
 # 西五区（纽约）
-newyork = timezone(timedelta(hours=-5))
+newyork = timezone(timedelta(hours=-5))  # 将 timezone(timedelta(hours=-5)) 赋给 newyork
 
-now_utc = datetime.now(utc)
+now_utc = datetime.now(utc)        # 将 datetime.now(utc) 赋给 now_utc
 print(now_utc)                    # 2024-08-15 06:00:00+00:00
-beijing_time = now_utc.astimezone(beijing)
+beijing_time = now_utc.astimezone(beijing)  # 将 now_utc.astimezone(beijing) 赋给 beijing_time
 print(beijing_time)               # 2024-08-15 14:00:00+08:00
-ny_time = now_utc.astimezone(newyork)
+ny_time = now_utc.astimezone(newyork)  # 将 now_utc.astimezone(newyork) 赋给 ny_time
 print(ny_time)                    # 2024-08-15 01:00:00-05:00
 \`\`\`
 
@@ -4292,11 +4292,11 @@ print(ny_time)                    # 2024-08-15 01:00:00-05:00
 ### 7.3 timezone.utc 与 utcnow 的区别
 
 \`\`\`python
-from datetime import datetime, timezone
+from datetime import datetime, timezone  # 从 datetime 导入 datetime, timezone
 # ❌ 已弃用：返回 naive datetime
-naive_utc = datetime.utcnow()
+naive_utc = datetime.utcnow()      # 将 datetime.utcnow() 赋给 naive_utc
 # ✅ 推荐：返回 aware datetime
-aware_utc = datetime.now(timezone.utc)
+aware_utc = datetime.now(timezone.utc)  # 将 datetime.now(timezone.utc) 赋给 aware_utc
 \`\`\`
 
 \`utcnow()\` 返回的 naive datetime 调用 \`astimezone()\` 时会**假设它是本地时间**，导致错误。所以一定要用 \`datetime.now(timezone.utc)\`。
@@ -4306,12 +4306,12 @@ aware_utc = datetime.now(timezone.utc)
 \`timezone\` 类只能表示**固定偏移**，无法处理夏令时（DST）。纽约夏天是 UTC-4（EDT），冬天是 UTC-5（EST）。要正确处理夏令时，需要用 \`zoneinfo\` 模块（Python 3.9+）：
 
 \`\`\`python
-from datetime import datetime
-from zoneinfo import ZoneInfo
+from datetime import datetime      # 从 datetime 导入 datetime
+from zoneinfo import ZoneInfo      # 从 zoneinfo 导入 ZoneInfo
 
 # 用 IANA 时区名，自动处理夏令时
-ny = ZoneInfo('America/New_York')
-now_ny = datetime.now(ny)
+ny = ZoneInfo('America/New_York')  # 将 ZoneInfo('America/New_York') 赋给 ny
+now_ny = datetime.now(ny)          # 将 datetime.now(ny) 赋给 now_ny
 print(now_ny)   # 自动是 EDT 或 EST
 \`\`\`
 
@@ -4324,19 +4324,19 @@ print(now_ny)   # 自动是 EDT 或 EST
 **Unix 时间戳**（timestamp）是自 1970-01-01 00:00:00 UTC 以来的**秒数**（可为小数）。它是跨语言、跨时区的"通用时间表示"。
 
 \`\`\`python
-from datetime import datetime, timezone
+from datetime import datetime, timezone  # 从 datetime 导入 datetime, timezone
 
 # 当前时间戳
-ts = datetime.now(timezone.utc).timestamp()
+ts = datetime.now(timezone.utc).timestamp()  # 将 datetime.now(timezone.utc).timestamp() 赋给 ts
 print(ts)           # 1723716045.123456
 
 # 时间戳转 datetime
-dt = datetime.fromtimestamp(ts, timezone.utc)
-print(dt)
+dt = datetime.fromtimestamp(ts, timezone.utc)  # 将 datetime.fromtimestamp(ts, timezone.utc) 赋给 dt
+print(dt)                          # 输出 dt
 
 # datetime 转时间戳
-dt2 = datetime(2024, 8, 15, 14, 0, tzinfo=timezone.utc)
-print(dt2.timestamp())
+dt2 = datetime(2024, 8, 15, 14, 0, tzinfo=timezone.utc)  # 将 datetime(2024, 8, 15, 14, 0, tzinfo=timezone.utc) 赋给 dt2
+print(dt2.timestamp())             # 输出 dt2.timestamp()
 \`\`\`
 
 **注意**：时间戳本身没有时区——它永远是相对 UTC 的。但 \`fromtimestamp(ts)\` 不带时区参数时返回**本地时间**的 naive datetime，\`fromtimestamp(ts, tz)\` 返回指定时区的 aware datetime。
@@ -4350,7 +4350,7 @@ print(dt2.timestamp())
 ### 9.1 闰年判断
 
 \`\`\`python
-import calendar
+import calendar                    # 导入 calendar 模块
 print(calendar.isleap(2024))   # True（能被 4 整除且不能被 100 整除，或能被 400 整除）
 print(calendar.isleap(2100))   # False（能被 100 整除但不能被 400 整除）
 print(calendar.isleap(2000))   # True
@@ -4360,7 +4360,7 @@ print(calendar.leapdays(2000, 2024))  # 6（2000-2023 间有 6 个闰年）
 ### 9.2 某月有几天 / 星期几
 
 \`\`\`python
-import calendar
+import calendar                    # 导入 calendar 模块
 print(calendar.monthrange(2024, 2))   # (3, 29) —— 2 月 1 日是周四(3)，2 月有 29 天
 print(calendar.weekday(2024, 8, 15))  # 3（周四，周一=0）
 \`\`\`
@@ -4370,7 +4370,7 @@ print(calendar.weekday(2024, 8, 15))  # 3（周四，周一=0）
 ### 9.3 打印日历
 
 \`\`\`python
-import calendar
+import calendar                    # 导入 calendar 模块
 print(calendar.month(2024, 8))      # 打印 2024 年 8 月日历
 print(calendar.calendar(2024))      # 打印整年日历
 \`\`\`
@@ -4378,20 +4378,20 @@ print(calendar.calendar(2024))      # 打印整年日历
 ### 9.4 工作日计算
 
 \`\`\`python
-import calendar
+import calendar                    # 导入 calendar 模块
 # 一周哪些天是工作日（默认周一到周五）
 print(calendar.workingdays)  # NotImplementedError（新版本无此属性）
 # 手动计算两个日期间的工作日数
-from datetime import date, timedelta
-def count_workdays(start, end):
-    days = 0
-    cur = start
-    while cur <= end:
+from datetime import date, timedelta  # 从 datetime 导入 date, timedelta
+def count_workdays(start, end):    # 定义函数 count_workdays，参数：start, end
+    days = 0                       # 将整数 0 赋给 days
+    cur = start                    # 将 start 赋给 cur
+    while cur <= end:              # 当 cur <= end 为真时重复执行
         if cur.weekday() < 5:   # 0-4 是周一到周五
-            days += 1
-        cur += timedelta(days=1)
-    return days
-print(count_workdays(date(2024, 8, 1), date(2024, 8, 31)))
+            days += 1              # days 加 1
+        cur += timedelta(days=1)   # cur 加 timedelta(days=1)
+    return days                    # 返回 days
+print(count_workdays(date(2024, 8, 1), date(2024, 8, 31)))  # 输出 count_workdays(date(2024, 8, 1), date(2024, 8, 31))
 \`\`\`
 
 ---
@@ -4403,14 +4403,14 @@ print(count_workdays(date(2024, 8, 1), date(2024, 8, 31)))
 ### 10.1 time.time() 时间戳
 
 \`\`\`python
-import time
+import time                        # 导入 time 模块
 print(time.time())   # 当前 Unix 时间戳（float 秒）
 \`\`\`
 
 ### 10.2 time.sleep() 休眠
 
 \`\`\`python
-import time
+import time                        # 导入 time 模块
 time.sleep(2)        # 暂停 2 秒
 time.sleep(0.5)      # 暂停 0.5 秒
 \`\`\`
@@ -4418,16 +4418,16 @@ time.sleep(0.5)      # 暂停 0.5 秒
 ### 10.3 计时
 
 \`\`\`python
-import time
+import time                        # 导入 time 模块
 # 方法 1：time.time() 适合测量秒级
-t0 = time.time()
+t0 = time.time()                   # 将 time.time() 赋给 t0
 # ... 做点事 ...
-print(f"耗时 {time.time() - t0:.3f} 秒")
+print(f"耗时 {time.time() - t0:.3f} 秒")  # 输出 f"耗时 {time.time() - t0:.3f} 秒"
 
 # 方法 2：time.perf_counter() 高精度（纳秒级），适合性能测试
-t0 = time.perf_counter()
+t0 = time.perf_counter()           # 将 time.perf_counter() 赋给 t0
 # ...
-print(f"耗时 {time.perf_counter() - t0:.6f} 秒")
+print(f"耗时 {time.perf_counter() - t0:.6f} 秒")  # 输出 f"耗时 {time.perf_counter() - t0:.6f} 秒"
 \`\`\`
 
 **重要**：测量代码执行时间用 \`time.perf_counter()\` 而不是 \`time.time()\`——前者是高精度单调时钟，不受系统时间调整影响。
@@ -4437,9 +4437,9 @@ print(f"耗时 {time.perf_counter() - t0:.6f} 秒")
 \`time\` 模块用 \`struct_time\`（命名元组）表示时间：
 
 \`\`\`python
-import time
+import time                        # 导入 time 模块
 t = time.localtime()   # 本地时间的 struct_time
-print(t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec)
+print(t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec)  # 输出 t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec
 print(t.tm_wday)       # 周几（0=周一）
 print(t.tm_yday)       # 一年中第几天
 \`\`\`
@@ -4453,14 +4453,14 @@ print(t.tm_yday)       # 一年中第几天
 ### 11.1 计算年龄
 
 \`\`\`python
-from datetime import date
-def calc_age(birth, today=None):
-    today = today or date.today()
-    age = today.year - birth.year
+from datetime import date          # 从 datetime 导入 date
+def calc_age(birth, today=None):   # 定义函数 calc_age，参数：birth, today=None
+    today = today or date.today()  # 将 today or date.today() 赋给 today
+    age = today.year - birth.year  # 将 today.year - birth.year 赋给 age
     # 生日还没到则减 1
-    if (today.month, today.day) < (birth.month, birth.day):
-        age -= 1
-    return age
+    if (today.month, today.day) < (birth.month, birth.day):  # 如果 (today.month, today.day) < (birth.month, birth.day) 成立
+        age -= 1                   # age 减 1
+    return age                     # 返回 age
 print(calc_age(date(1990, 5, 20), date(2024, 8, 15)))   # 34
 print(calc_age(date(1990, 12, 20), date(2024, 8, 15)))  # 33
 \`\`\`
@@ -4470,15 +4470,15 @@ print(calc_age(date(1990, 12, 20), date(2024, 8, 15)))  # 33
 timedelta 只能按"天"加减，不能直接"加 1 个月"。要加减月份需要手动处理：
 
 \`\`\`python
-from datetime import date
-import calendar
-def add_months(d, months):
-    month = d.month - 1 + months
-    year = d.year + month // 12
-    month = month % 12 + 1
+from datetime import date          # 从 datetime 导入 date
+import calendar                    # 导入 calendar 模块
+def add_months(d, months):         # 定义函数 add_months，参数：d, months
+    month = d.month - 1 + months   # 将 d.month - 1 + months 赋给 month
+    year = d.year + month // 12    # 将 d.year + month // 12 赋给 year
+    month = month % 12 + 1         # 将 month % 12 + 1 赋给 month
     # 处理月末（如 1 月 31 日加 1 个月 -> 2 月 28/29 日）
-    day = min(d.day, calendar.monthrange(year, month)[1])
-    return date(year, month, day)
+    day = min(d.day, calendar.monthrange(year, month)[1])  # 将 min(d.day, calendar.monthrange(year, month)[1]) 赋给 day
+    return date(year, month, day)  # 返回 date(year, month, day)
 print(add_months(date(2024, 1, 31), 1))   # 2024-02-29（闰年）
 print(add_months(date(2024, 1, 31), 2))   # 2024-03-31
 print(add_months(date(2024, 3, 31), -1))  # 2024-02-29
@@ -4489,10 +4489,10 @@ print(add_months(date(2024, 3, 31), -1))  # 2024-02-29
 ### 11.3 两个日期相差多少天/小时
 
 \`\`\`python
-from datetime import datetime
-a = datetime(2024, 8, 15, 14, 0)
-b = datetime(2024, 8, 20, 10, 30)
-diff = b - a
+from datetime import datetime      # 从 datetime 导入 datetime
+a = datetime(2024, 8, 15, 14, 0)   # 将 datetime(2024, 8, 15, 14, 0) 赋给 a
+b = datetime(2024, 8, 20, 10, 30)  # 将 datetime(2024, 8, 20, 10, 30) 赋给 b
+diff = b - a                       # 将 b - a 赋给 diff
 print(diff.days)                # 4
 print(diff.seconds)             # 73800（剩余秒数）
 print(diff.total_seconds())     # 419400.0
@@ -4502,11 +4502,11 @@ print(diff.total_seconds() / 3600)  # 116.5 小时
 ### 11.4 倒计时
 
 \`\`\`python
-from datetime import datetime
-target = datetime(2025, 1, 1, 0, 0, 0)
-now = datetime.now()
-remaining = target - now
-print(f"距离 2025 元旦还有 {remaining.days} 天 {remaining.seconds // 3600} 小时")
+from datetime import datetime      # 从 datetime 导入 datetime
+target = datetime(2025, 1, 1, 0, 0, 0)  # 将 datetime(2025, 1, 1, 0, 0, 0) 赋给 target
+now = datetime.now()               # 将 datetime.now() 赋给 now
+remaining = target - now           # 将 target - now 赋给 remaining
+print(f"距离 2025 元旦还有 {remaining.days} 天 {remaining.seconds // 3600} 小时")  # 输出 f"距离 2025 元旦还有 {remaining.days} 天 {remaining.seconds // 3600} 小时"
 \`\`\`
 
 ---
@@ -4531,19 +4531,19 @@ datetime 内部精度到**微秒**（百万分之一秒），足以覆盖绝大�
 ### 13.1 获取带微秒的当前时间
 
 \`\`\`python
-from datetime import datetime
-now = datetime.now()
+from datetime import datetime      # 从 datetime 导入 datetime
+now = datetime.now()               # 将 datetime.now() 赋给 now
 print(now.microsecond)   # 0-999999
 # 只要毫秒部分
-ms = now.microsecond // 1000
-print(f"毫秒: {ms}")
+ms = now.microsecond // 1000       # 将 now.microsecond // 1000 赋给 ms
+print(f"毫秒: {ms}")                 # 输出 f"毫秒: {ms}"
 \`\`\`
 
 ### 13.2 去掉微秒（截断到秒）
 
 \`\`\`python
-dt = datetime.now()
-dt_no_us = dt.replace(microsecond=0)
+dt = datetime.now()                # 将 datetime.now() 赋给 dt
+dt_no_us = dt.replace(microsecond=0)  # 将 dt.replace(microsecond=0) 赋给 dt_no_us
 print(dt_no_us)   # 2024-08-15 14:30:45（没有小数部分）
 \`\`\`
 
@@ -4552,12 +4552,12 @@ print(dt_no_us)   # 2024-08-15 14:30:45（没有小数部分）
 JavaScript 等语言常用**毫秒时间戳**（13 位整数），Python 默认是**秒时间戳**（10 位浮点）。转换：
 
 \`\`\`python
-import time
+import time                        # 导入 time 模块
 ts_seconds = time.time()                  # 1723716045.123456
 ts_ms = int(time.time() * 1000)           # 1723716045123（13 位毫秒）
 # 毫秒时间戳转 datetime
-from datetime import datetime, timezone
-dt = datetime.fromtimestamp(ts_ms / 1000, timezone.utc)
+from datetime import datetime, timezone  # 从 datetime 导入 datetime, timezone
+dt = datetime.fromtimestamp(ts_ms / 1000, timezone.utc)  # 将 datetime.fromtimestamp(ts_ms / 1000, timezone.utc) 赋给 dt
 \`\`\`
 
 ### 13.4 高精度计时 perf_counter_ns
@@ -4565,11 +4565,11 @@ dt = datetime.fromtimestamp(ts_ms / 1000, timezone.utc)
 Python 3.7+ 提供了纳秒级计时函数（\`_ns\` 后缀）：
 
 \`\`\`python
-import time
+import time                        # 导入 time 模块
 t0 = time.perf_counter_ns()   # 纳秒整数
 # ... 做点事 ...
-elapsed_ns = time.perf_counter_ns() - t0
-print(f"耗时 {elapsed_ns} 纳秒 = {elapsed_ns/1e6:.3f} 毫秒")
+elapsed_ns = time.perf_counter_ns() - t0  # 将 time.perf_counter_ns() - t0 赋给 elapsed_ns
+print(f"耗时 {elapsed_ns} 纳秒 = {elapsed_ns/1e6:.3f} 毫秒")  # 输出 f"耗时 {elapsed_ns} 纳秒 = {elapsed_ns/1e6:.3f} 毫秒"
 \`\`\`
 
 \`perf_counter_ns\` 返回整数，避免浮点精度损失，适合测量极短操作（微秒级以下）。
@@ -4581,20 +4581,20 @@ print(f"耗时 {elapsed_ns} 纳秒 = {elapsed_ns/1e6:.3f} 毫秒")
 \`time.time()\` 测一次容易受系统抖动影响。\`timeit\` 模块会**自动重复多次**取最优值，是性能测试的标准工具。
 
 \`\`\`python
-import timeit
+import timeit                      # 导入 timeit 模块
 # 测量字符串拼接 10 万次
-t = timeit.timeit('"-".join(str(n) for n in range(100))', number=10000)
-print(f"join 方式: {t:.4f}s")
-t2 = timeit.timeit('"-" + "-".join(map(str, range(100)))', number=10000)
+t = timeit.timeit('"-".join(str(n) for n in range(100))', number=10000)  # 将 timeit.timeit('"-".join(str(n) for n in range(100))', number=10000) 赋给 t
+print(f"join 方式: {t:.4f}s")        # 输出 f"join 方式: {t:.4f}s"
+t2 = timeit.timeit('"-" + "-".join(map(str, range(100)))', number=10000)  # 将 timeit.timeit('"-" + "-".join(map(str, range(100)))', number=10000) 赋给 t2
 \`\`\`
 
 \`timeit.timeit(stmt, number=N)\` 把 \`stmt\` 执行 \`N\` 次返回总秒数。也可以用 \`timeit.repeat(stmt, number=N, repeat=R)\` 重复 R 轮，取最小值（最小值代表"最不受干扰"的真实性能）。
 
 \`\`\`python
-import timeit
-results = timeit.repeat('[str(n) for n in range(100)]', number=100000, repeat=5)
-print(f"5 轮结果: {results}")
-print(f"最优: {min(results):.4f}s")
+import timeit                      # 导入 timeit 模块
+results = timeit.repeat('[str(n) for n in range(100)]', number=100000, repeat=5)  # 将 timeit.repeat('[str(n) for n in range(100)]', number=100000, repeat=5) 赋给 results
+print(f"5 轮结果: {results}")         # 输出 f"5 轮结果: {results}"
+print(f"最优: {min(results):.4f}s")  # 输出 f"最优: {min(results):.4f}s"
 \`\`\`
 
 ---
@@ -4619,22 +4619,22 @@ IANA（互联网号码分配局）维护着全球时区数据库，包含所有�
 ### 15.2 zoneinfo 基本用法
 
 \`\`\`python
-from datetime import datetime
-from zoneinfo import ZoneInfo
+from datetime import datetime      # 从 datetime 导入 datetime
+from zoneinfo import ZoneInfo      # 从 zoneinfo 导入 ZoneInfo
 
-tz_sh = ZoneInfo('Asia/Shanghai')
-tz_ny = ZoneInfo('America/New_York')
-now_sh = datetime.now(tz_sh)
-now_ny = now_sh.astimezone(tz_ny)
-print(f"上海: {now_sh}")
-print(f"纽约: {now_ny}")
+tz_sh = ZoneInfo('Asia/Shanghai')  # 将 ZoneInfo('Asia/Shanghai') 赋给 tz_sh
+tz_ny = ZoneInfo('America/New_York')  # 将 ZoneInfo('America/New_York') 赋给 tz_ny
+now_sh = datetime.now(tz_sh)       # 将 datetime.now(tz_sh) 赋给 now_sh
+now_ny = now_sh.astimezone(tz_ny)  # 将 now_sh.astimezone(tz_ny) 赋给 now_ny
+print(f"上海: {now_sh}")             # 输出 f"上海: {now_sh}"
+print(f"纽约: {now_ny}")             # 输出 f"纽约: {now_ny}"
 \`\`\`
 
 ### 15.3 查询时区偏移
 
 \`\`\`python
-from datetime import datetime
-from zoneinfo import ZoneInfo
+from datetime import datetime      # 从 datetime 导入 datetime
+from zoneinfo import ZoneInfo      # 从 zoneinfo 导入 ZoneInfo
 dt = datetime(2024, 1, 15, tzinfo=ZoneInfo('America/New_York'))   # 冬天 EST
 print(dt.utcoffset())   # -1 day, 19:00:00（即 -5 小时）
 dt2 = datetime(2024, 7, 15, tzinfo=ZoneInfo('America/New_York'))  # 夏天 EDT
@@ -4678,14 +4678,14 @@ Python 的 \`isoformat()\` 默认输出扩展格式，\`fromisoformat()\` 能解
 邮件头用 \`RFC 2822\` 格式（如 \`Thu, 15 Aug 2024 14:30:45 +0800\`）。Python 用 \`email.utils\` 处理：
 
 \`\`\`python
-from email.utils import formatdate, parsedate_to_datetime
-import time
+from email.utils import formatdate, parsedate_to_datetime  # 从 email.utils 导入 formatdate, parsedate_to_datetime
+import time                        # 导入 time 模块
 # 当前时间的 RFC 2822 字符串
-rfc = formatdate(time.time(), localtime=True)
+rfc = formatdate(time.time(), localtime=True)  # 将 formatdate(time.time(), localtime=True) 赋给 rfc
 print(rfc)   # Thu, 15 Aug 2024 14:30:45 +0800
 # 解析
-dt = parsedate_to_datetime(rfc)
-print(dt)
+dt = parsedate_to_datetime(rfc)    # 将 parsedate_to_datetime(rfc) 赋给 dt
+print(dt)                          # 输出 dt
 \`\`\`
 
 ### 16.3 HTTP 日期格式
@@ -4693,8 +4693,8 @@ print(dt)
 HTTP 协议头（如 \`Last-Modified\`、\`Date\`）用 RFC 1123 格式（GMT 时间）：
 
 \`\`\`python
-from email.utils import formatdate
-http_date = formatdate(time.time(), usegmt=True)
+from email.utils import formatdate # 从 email.utils 导入 formatdate
+http_date = formatdate(time.time(), usegmt=True)  # 将 formatdate(time.time(), usegmt=True) 赋给 http_date
 print(http_date)   # Thu, 15 Aug 2024 06:30:45 GMT
 \`\`\`
 
@@ -4707,9 +4707,9 @@ print(http_date)   # Thu, 15 Aug 2024 06:30:45 GMT
 ### 17.1 计算季度
 
 \`\`\`python
-from datetime import date
-def get_quarter(d):
-    return (d.month - 1) // 3 + 1
+from datetime import date          # 从 datetime 导入 date
+def get_quarter(d):                # 定义函数 get_quarter，参数：d
+    return (d.month - 1) // 3 + 1  # 返回 (d.month - 1) // 3 + 1
 print(get_quarter(date(2024, 1, 15)))   # 1
 print(get_quarter(date(2024, 8, 15)))   # 3
 print(get_quarter(date(2024, 12, 15)))  # 4
@@ -4718,14 +4718,14 @@ print(get_quarter(date(2024, 12, 15)))  # 4
 ### 17.2 季度起止日期
 
 \`\`\`python
-from datetime import date
-import calendar
-def quarter_range(year, quarter):
-    start_month = (quarter - 1) * 3 + 1
-    end_month = start_month + 2
-    start = date(year, start_month, 1)
-    end = date(year, end_month, calendar.monthrange(year, end_month)[1])
-    return start, end
+from datetime import date          # 从 datetime 导入 date
+import calendar                    # 导入 calendar 模块
+def quarter_range(year, quarter):  # 定义函数 quarter_range，参数：year, quarter
+    start_month = (quarter - 1) * 3 + 1  # 将 (quarter - 1) * 3 + 1 赋给 start_month
+    end_month = start_month + 2    # 将 start_month + 2 赋给 end_month
+    start = date(year, start_month, 1)  # 将 date(year, start_month, 1) 赋给 start
+    end = date(year, end_month, calendar.monthrange(year, end_month)[1])  # 将 date(year, end_month, calendar.monthrange(year, end_month)[1]) 赋给 end
+    return start, end              # 返回 start, end
 s, e = quarter_range(2024, 3)
 print(f"2024 Q3: {s} ~ {e}")   # 2024-07-01 ~ 2024-09-30
 \`\`\`
@@ -4733,9 +4733,9 @@ print(f"2024 Q3: {s} ~ {e}")   # 2024-07-01 ~ 2024-09-30
 ### 17.3 日期所在周的周一
 
 \`\`\`python
-from datetime import date, timedelta
-def monday_of_week(d):
-    return d - timedelta(days=d.weekday())
+from datetime import date, timedelta  # 从 datetime 导入 date, timedelta
+def monday_of_week(d):             # 定义函数 monday_of_week，参数：d
+    return d - timedelta(days=d.weekday())  # 返回 d - timedelta(days=d.weekday())
 print(monday_of_week(date(2024, 8, 15)))   # 2024-08-12（周一）
 \`\`\`
 
@@ -4746,16 +4746,16 @@ print(monday_of_week(date(2024, 8, 15)))   # 2024-08-12（周一）
 JSON 标准没有日期类型，datetime 不能直接 \`json.dumps\`，需要转成字符串（通常用 ISO 格式）：
 
 \`\`\`python
-import json
-from datetime import datetime
+import json                        # 导入 json 模块
+from datetime import datetime      # 从 datetime 导入 datetime
 # 自定义序列化
-class DateTimeEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        return super().default(obj)
-data = {"event": "login", "time": datetime.now()}
-print(json.dumps(data, cls=DateTimeEncoder, ensure_ascii=False))
+class DateTimeEncoder(json.JSONEncoder):  # 定义类 DateTimeEncoder，继承自 json.JSONEncoder
+    def default(self, obj):        # 定义函数 default，参数：self, obj
+        if isinstance(obj, datetime):  # 如果 isinstance(obj, datetime) 成立
+            return obj.isoformat() # 返回 obj.isoformat()
+        return super().default(obj)  # 返回 super().default(obj)
+data = {"event": "login", "time": datetime.now()}  # 创建字典并赋给 data
+print(json.dumps(data, cls=DateTimeEncoder, ensure_ascii=False))  # 输出 json.dumps(data, cls=DateTimeEncoder, ensure_ascii=False)
 \`\`\`
 
 反序列化时再用 \`datetime.fromisoformat\` 解析回来。许多 Web 框架（FastAPI、Django REST）内置了这个转换。
@@ -4767,7 +4767,7 @@ print(json.dumps(data, cls=DateTimeEncoder, ensure_ascii=False))
 1. **避免在循环里重复构造 datetime**：能复用就复用。
 2. **大批量日期计算用整数**：把日期转成"距某基准的天数"（\`ordinal\`），用整数运算更快。
    \`\`\`python
-   from datetime import date
+   from datetime import date       # 从 datetime 导入 date
    n = date(2024, 8, 15).toordinal()   # 距公元 1 年的天数
    d = date.fromordinal(n)             # 转回 date
    \`\`\`
@@ -4785,9 +4785,9 @@ print(json.dumps(data, cls=DateTimeEncoder, ensure_ascii=False))
 最简单的"定时"是 \`time.sleep\` 循环：
 
 \`\`\`python
-import time
-while True:
-    do_task()
+import time                        # 导入 time 模块
+while True:                        # 当 True 为真时重复执行
+    do_task()                      # 调用 do_task
     time.sleep(60)   # 每 60 秒一次
 \`\`\`
 
@@ -4799,11 +4799,11 @@ while True:
 
 \`\`\`python
 import sched, time
-s = sched.scheduler(time.time, time.sleep)
-def task(msg):
-    print(f"[{time.time():.0f}] {msg}")
-s.enter(2, 1, task, argument=("2 秒后",))
-s.enter(5, 1, task, argument=("5 秒后",))
+s = sched.scheduler(time.time, time.sleep)  # 将 sched.scheduler(time.time, time.sleep) 赋给 s
+def task(msg):                     # 定义函数 task，参数：msg
+    print(f"[{time.time():.0f}] {msg}")  # 输出 f"[{time.time():.0f}] {msg}"
+s.enter(2, 1, task, argument=("2 秒后",))  # 对 s 调用 enter 方法，参数 2, 1, task, argument=("2 秒后",)
+s.enter(5, 1, task, argument=("5 秒后",))  # 对 s 调用 enter 方法，参数 5, 1, task, argument=("5 秒后",)
 s.run()   # 阻塞，直到所有事件执行完
 \`\`\`
 
@@ -4814,11 +4814,11 @@ s.run()   # 阻塞，直到所有事件执行完
 有时需要"等到下一个整点再执行"：
 
 \`\`\`python
-import time
-def seconds_to_next_hour():
-    now = time.time()
-    return 3600 - (now % 3600)
-print(f"距下个整点还有 {seconds_to_next_hour():.0f} 秒")
+import time                        # 导入 time 模块
+def seconds_to_next_hour():        # 定义函数 seconds_to_next_hour，无参数
+    now = time.time()              # 将 time.time() 赋给 now
+    return 3600 - (now % 3600)     # 返回 3600 - (now % 3600)
+print(f"距下个整点还有 {seconds_to_next_hour():.0f} 秒")  # 输出 f"距下个整点还有 {seconds_to_next_hour():.0f} 秒"
 \`\`\`
 
 ### 20.4 生产级调度的选择
@@ -4851,59 +4851,59 @@ print(f"距下个整点还有 {seconds_to_next_hour():.0f} 秒")
 ### 22.1 生成连续日期序列
 
 \`\`\`python
-from datetime import date, timedelta
-def date_range(start, end):
-    cur = start
-    while cur <= end:
-        yield cur
-        cur += timedelta(days=1)
-for d in date_range(date(2024, 8, 1), date(2024, 8, 5)):
-    print(d)
+from datetime import date, timedelta  # 从 datetime 导入 date, timedelta
+def date_range(start, end):        # 定义函数 date_range，参数：start, end
+    cur = start                    # 将 start 赋给 cur
+    while cur <= end:              # 当 cur <= end 为真时重复执行
+        yield cur                  # 产出值 cur（生成器）
+        cur += timedelta(days=1)   # cur 加 timedelta(days=1)
+for d in date_range(date(2024, 8, 1), date(2024, 8, 5)):  # 遍历 date_range(date(2024, 8, 1), date(2024, 8, 5))，每次取值赋给 d
+    print(d)                       # 输出 d
 \`\`\`
 
 ### 22.2 判断是否是周末
 
 \`\`\`python
-from datetime import date
-def is_weekend(d):
+from datetime import date          # 从 datetime 导入 date
+def is_weekend(d):                 # 定义函数 is_weekend，参数：d
     return d.weekday() >= 5   # 5=周六, 6=周日
 \`\`\`
 
 ### 22.3 本月最后一天
 
 \`\`\`python
-import calendar
-from datetime import date
-def last_day_of_month(d):
-    return d.replace(day=calendar.monthrange(d.year, d.month)[1])
+import calendar                    # 导入 calendar 模块
+from datetime import date          # 从 datetime 导入 date
+def last_day_of_month(d):          # 定义函数 last_day_of_month，参数：d
+    return d.replace(day=calendar.monthrange(d.year, d.month)[1])  # 返回 d.replace(day=calendar.monthrange(d.year, d.month)[1])
 \`\`\`
 
 ### 22.4 友好的相对时间
 
 \`\`\`python
-from datetime import datetime, timedelta
-def humanize(delta):
-    seconds = int(delta.total_seconds())
-    if seconds < 60:
-        return f"{seconds} 秒前"
-    if seconds < 3600:
-        return f"{seconds // 60} 分钟前"
-    if seconds < 86400:
-        return f"{seconds // 3600} 小时前"
-    return f"{delta.days} 天前"
-print(humanize(timedelta(seconds=30)))
-print(humanize(timedelta(minutes=5)))
-print(humanize(timedelta(hours=3)))
-print(humanize(timedelta(days=2)))
+from datetime import datetime, timedelta  # 从 datetime 导入 datetime, timedelta
+def humanize(delta):               # 定义函数 humanize，参数：delta
+    seconds = int(delta.total_seconds())  # 将 int(delta.total_seconds()) 赋给 seconds
+    if seconds < 60:               # 如果 seconds < 60 成立
+        return f"{seconds} 秒前"     # 返回 f"{seconds} 秒前"
+    if seconds < 3600:             # 如果 seconds < 3600 成立
+        return f"{seconds // 60} 分钟前"  # 返回 f"{seconds // 60} 分钟前"
+    if seconds < 86400:            # 如果 seconds < 86400 成立
+        return f"{seconds // 3600} 小时前"  # 返回 f"{seconds // 3600} 小时前"
+    return f"{delta.days} 天前"      # 返回 f"{delta.days} 天前"
+print(humanize(timedelta(seconds=30)))  # 输出 humanize(timedelta(seconds=30))
+print(humanize(timedelta(minutes=5)))  # 输出 humanize(timedelta(minutes=5))
+print(humanize(timedelta(hours=3)))  # 输出 humanize(timedelta(hours=3))
+print(humanize(timedelta(days=2))) # 输出 humanize(timedelta(days=2))
 \`\`\`
 
 ### 22.5 生成时间戳 ID
 
 \`\`\`python
-import time
-def ts_id():
+import time                        # 导入 time 模块
+def ts_id():                       # 定义函数 ts_id，无参数
     return f"TS{int(time.time() * 1000)}"   # 毫秒级时间戳 ID
-print(ts_id())
+print(ts_id())                     # 输出 ts_id()
 \`\`\`
 
 ---
@@ -5365,8 +5365,8 @@ Python 内置的 \`list\`、\`dict\`、\`set\`、\`tuple\` 已经很强大，但
 ### 2.1 创建与基本操作
 
 \`\`\`python
-from collections import deque
-d = deque([1, 2, 3])
+from collections import deque      # 从 collections 导入 deque
+d = deque([1, 2, 3])               # 将 deque([1, 2, 3]) 赋给 d
 d.append(4)         # 右端加
 d.appendleft(0)     # 左端加
 print(d)            # deque([0, 1, 2, 3, 4])
@@ -5380,11 +5380,11 @@ print(d)            # deque([1, 2, 3])
 \`deque(maxlen=N)\` 创建固定长度的队列，**满后再追加会自动从另一端挤出**——非常适合做"最近 N 条记录"、"滑动窗口"：
 
 \`\`\`python
-from collections import deque
-recent = deque(maxlen=3)
-for i in range(5):
-    recent.append(i)
-    print(recent)
+from collections import deque      # 从 collections 导入 deque
+recent = deque(maxlen=3)           # 将 deque(maxlen=3) 赋给 recent
+for i in range(5):                 # 遍历 range(5)，每次取值赋给 i
+    recent.append(i)               # 对 recent 调用 追加 方法，参数 i
+    print(recent)                  # 输出 recent
 # deque([0], maxlen=3)
 # deque([0, 1], maxlen=3)
 # deque([0, 1, 2], maxlen=3)
@@ -5395,20 +5395,20 @@ for i in range(5):
 ### 2.3 性能对比
 
 \`\`\`python
-from collections import deque
-import time
+from collections import deque      # 从 collections 导入 deque
+import time                        # 导入 time 模块
 # list 头部插入
-l = []
-t0 = time.time()
-for _ in range(100000):
+l = []                             # 创建列表并赋给 l
+t0 = time.time()                   # 将 time.time() 赋给 t0
+for _ in range(100000):            # 遍历 range(100000)，每次取值赋给 _
     l.insert(0, 1)    # O(n)，每次都要移动
-print(f"list 头插 10 万次: {time.time()-t0:.3f}s")
+print(f"list 头插 10 万次: {time.time()-t0:.3f}s")  # 输出 f"list 头插 10 万次: {time.time()-t0:.3f}s"
 # deque 头部插入
-d = deque()
-t0 = time.time()
-for _ in range(100000):
+d = deque()                        # 将 deque() 赋给 d
+t0 = time.time()                   # 将 time.time() 赋给 t0
+for _ in range(100000):            # 遍历 range(100000)，每次取值赋给 _
     d.appendleft(1)   # O(1)
-print(f"deque 头插 10 万次: {time.time()-t0:.3f}s")
+print(f"deque 头插 10 万次: {time.time()-t0:.3f}s")  # 输出 f"deque 头插 10 万次: {time.time()-t0:.3f}s"
 \`\`\`
 
 deque 头插通常比 list 快上百倍。但**随机访问 \`d[i]\` deque 是 O(n)**，不如 list 的 O(1)。所以 deque 适合"只在两端操作"的场景。
@@ -5418,7 +5418,7 @@ deque 头插通常比 list 快上百倍。但**随机访问 \`d[i]\` deque 是 O
 \`deque.rotate(n)\` 把元素整体旋转 n 步（正数右移，负数左移）：
 
 \`\`\`python
-d = deque([1, 2, 3, 4, 5])
+d = deque([1, 2, 3, 4, 5])         # 将 deque([1, 2, 3, 4, 5]) 赋给 d
 d.rotate(2)      # 右移 2：deque([4, 5, 1, 2, 3])
 d.rotate(-1)     # 左移 1：deque([5, 1, 2, 3, 4])
 \`\`\`
@@ -5432,21 +5432,21 @@ d.rotate(-1)     # 左移 1：deque([5, 1, 2, 3, 4])
 ### 3.1 创建与计数
 
 \`\`\`python
-from collections import Counter
+from collections import Counter    # 从 collections 导入 Counter
 # 从可迭代对象计数
-c = Counter('abracadabra')
+c = Counter('abracadabra')         # 将 Counter('abracadabra') 赋给 c
 print(c)   # Counter({'a': 5, 'b': 2, 'r': 2, 'c': 1, 'd': 1})
 # 从列表计数
-words = Counter(['apple', 'banana', 'apple', 'cherry'])
+words = Counter(['apple', 'banana', 'apple', 'cherry'])  # 将 Counter(['apple', 'banana', 'apple', 'cherry']) 赋给 words
 print(words)   # Counter({'apple': 2, 'banana': 1, 'cherry': 1})
 # 从字典创建
-c2 = Counter({'a': 3, 'b': 1})
+c2 = Counter({'a': 3, 'b': 1})     # 将 Counter({'a': 3, 'b': 1}) 赋给 c2
 \`\`\`
 
 ### 3.2 常用方法
 
 \`\`\`python
-c = Counter('abracadabra')
+c = Counter('abracadabra')         # 将 Counter('abracadabra') 赋给 c
 print(c.most_common(2))   # [('a', 5), ('b', 2)] —— 出现最多的 2 个
 print(c.most_common())    # 全部按次数降序
 print(c['z'])             # 0（不存在的键返回 0，不报错！）
@@ -5460,8 +5460,8 @@ print(list(c.elements())) # ['a','a','a','a','a','b','b','r','r','c','d']
 Counter 支持加减、交集、并集：
 
 \`\`\`python
-c1 = Counter(a=3, b=1)
-c2 = Counter(a=1, b=2)
+c1 = Counter(a=3, b=1)             # 将 Counter(a=3, b=1) 赋给 c1
+c2 = Counter(a=1, b=2)             # 将 Counter(a=1, b=2) 赋给 c2
 print(c1 + c2)   # Counter({'a': 4, 'b': 3})  求和
 print(c1 - c2)   # Counter({'a': 2})          相减（负数被丢弃）
 print(c1 & c2)   # Counter({'a': 1, 'b': 1})  交集（取最小）
@@ -5473,7 +5473,7 @@ print(c1 | c2)   # Counter({'a': 3, 'b': 2})  并集（取最大）
 ### 3.4 update 与 subtract
 
 \`\`\`python
-c = Counter('abc')
+c = Counter('abc')                 # 将 Counter('abc') 赋给 c
 c.update('aab')      # 加上新的计数
 print(c)             # Counter({'a': 3, 'b': 2, 'c': 1})
 c.subtract('aab')    # 减去计数
@@ -5489,21 +5489,21 @@ print(c)             # Counter({'a': 1, 'b': 0, 'c': 1})
 ### 4.1 分组场景
 
 \`\`\`python
-from collections import defaultdict
+from collections import defaultdict  # 从 collections 导入 defaultdict
 # 按首字母分组单词
-words = ['apple', 'ant', 'banana', 'bear', 'cat']
-groups = defaultdict(list)
-for w in words:
+words = ['apple', 'ant', 'banana', 'bear', 'cat']  # 创建列表并赋给 words
+groups = defaultdict(list)         # 将 defaultdict(list) 赋给 groups
+for w in words:                    # 遍历 words，每次取值赋给 w
     groups[w[0]].append(w)
-print(dict(groups))
+print(dict(groups))                # 输出 dict(groups)
 # {'a': ['apple', 'ant'], 'b': ['banana', 'bear'], 'c': ['cat']}
 \`\`\`
 
 用普通 dict 要写：
 \`\`\`python
-groups = {}
-for w in words:
-    if w[0] not in groups:
+groups = {}                        # 创建集合并赋给 groups
+for w in words:                    # 遍历 words，每次取值赋给 w
+    if w[0] not in groups:         # 如果 w[0] not in groups 成立
         groups[w[0]] = []
     groups[w[0]].append(w)
 \`\`\`
@@ -5522,13 +5522,13 @@ for w in words:
 
 \`\`\`python
 # 计数
-count = defaultdict(int)
-for ch in 'hello':
+count = defaultdict(int)           # 将 defaultdict(int) 赋给 count
+for ch in 'hello':                 # 遍历 'hello'，每次取值赋给 ch
     count[ch] += 1
 print(dict(count))   # {'h': 1, 'e': 1, 'l': 2, 'o': 1}
 
 # 默认值为某个常量（用 lambda）
-config = defaultdict(lambda: 'unknown')
+config = defaultdict(lambda: 'unknown')  # 将 defaultdict(lambda: 'unknown') 赋给 config
 print(config['name'])   # 'unknown'
 \`\`\`
 
@@ -5547,8 +5547,8 @@ Python 3.7+ 普通 \`dict\` 已经保证**插入顺序**，所以 \`OrderedDict\
 ### 5.1 move_to_end
 
 \`\`\`python
-from collections import OrderedDict
-od = OrderedDict([('a', 1), ('b', 2), ('c', 3)])
+from collections import OrderedDict  # 从 collections 导入 OrderedDict
+od = OrderedDict([('a', 1), ('b', 2), ('c', 3)])  # 将 OrderedDict([('a', 1), ('b', 2), ('c', 3)]) 赋给 od
 od.move_to_end('a')    # 把 a 移到末尾
 print(od)              # OrderedDict([('b', 2), ('c', 3), ('a', 1)])
 od.move_to_end('a', last=False)   # 移到开头
@@ -5559,7 +5559,7 @@ od.move_to_end('a', last=False)   # 移到开头
 ### 5.2 popitem 先进先出
 
 \`\`\`python
-od = OrderedDict([('a', 1), ('b', 2), ('c', 3)])
+od = OrderedDict([('a', 1), ('b', 2), ('c', 3)])  # 将 OrderedDict([('a', 1), ('b', 2), ('c', 3)]) 赋给 od
 print(od.popitem(last=False))   # ('a', 1) —— 弹出最早插入的
 print(od.popitem())             # ('c', 3) —— 弹出最后插入的
 \`\`\`
@@ -5569,7 +5569,7 @@ print(od.popitem())             # ('c', 3) —— 弹出最后插入的
 普通 \`dict\` 比较 \`==\` 不考虑顺序（\`{'a':1,'b':2} == {'b':2,'a':1}\` 为 True），而 \`OrderedDict\` 会考虑：
 
 \`\`\`python
-from collections import OrderedDict
+from collections import OrderedDict  # 从 collections 导入 OrderedDict
 print(OrderedDict([('a',1),('b',2)]) == OrderedDict([('b',2),('a',1)]))   # False
 \`\`\`
 
@@ -5582,9 +5582,9 @@ print(OrderedDict([('a',1),('b',2)]) == OrderedDict([('b',2),('a',1)]))   # Fals
 ### 6.1 配置分层
 
 \`\`\`python
-from collections import ChainMap
-defaults = {'host': 'localhost', 'port': 8080, 'debug': False}
-user_config = {'port': 3000, 'debug': True}
+from collections import ChainMap   # 从 collections 导入 ChainMap
+defaults = {'host': 'localhost', 'port': 8080, 'debug': False}  # 创建字典并赋给 defaults
+user_config = {'port': 3000, 'debug': True}  # 创建字典并赋给 user_config
 config = ChainMap(user_config, defaults)   # user_config 优先
 print(config['host'])    # 'localhost'（来自 defaults）
 print(config['port'])    # 3000（来自 user_config，覆盖了 defaults）
@@ -5617,9 +5617,9 @@ print(config2['port'])   # 9000
 ### 7.1 创建与使用
 
 \`\`\`python
-from collections import namedtuple
-Point = namedtuple('Point', ['x', 'y'])
-p = Point(3, 4)
+from collections import namedtuple # 从 collections 导入 namedtuple
+Point = namedtuple('Point', ['x', 'y'])  # 将 namedtuple('Point', ['x', 'y']) 赋给 Point
+p = Point(3, 4)                    # 将 Point(3, 4) 赋给 p
 print(p.x, p.y)      # 3 4 —— 用名字访问
 print(p[0], p[1])    # 3 4 —— 也能用下标
 print(p._asdict())   # {'x': 3, 'y': 4} —— 转字典
@@ -5635,13 +5635,13 @@ print(p._asdict())   # {'x': 3, 'y': 4} —— 转字典
 ### 7.3 实用方法
 
 \`\`\`python
-p = Point(3, 4)
+p = Point(3, 4)                    # 将 Point(3, 4) 赋给 p
 p2 = p._replace(x=10)   # 替换某字段，返回新对象（原对象不变）
 print(p2)               # Point(x=10, y=4)
 print(p._fields)        # ('x', 'y') —— 字段名元组
 # 用字典创建
-d = {'x': 5, 'y': 6}
-p3 = Point(**d)
+d = {'x': 5, 'y': 6}               # 创建字典并赋给 d
+p3 = Point(**d)                    # 将 Point(**d) 赋给 p3
 \`\`\`
 
 ### 7.4 常见应用
@@ -5657,14 +5657,14 @@ p3 = Point(**d)
 \`typing.NamedTuple\` 是 \`collections.namedtuple\` 的类型注解版本，写法更现代，IDE 补全更好：
 
 \`\`\`python
-from typing import NamedTuple
-class Point(NamedTuple):
+from typing import NamedTuple      # 从 typing 导入 NamedTuple
+class Point(NamedTuple):           # 定义类 Point，继承自 NamedTuple
     x: float
     y: float
     label: str = 'origin'   # 支持默认值
 
-p = Point(3.0, 4.0, 'A')
-print(p.x, p.label)
+p = Point(3.0, 4.0, 'A')           # 将 Point(3.0, 4.0, 'A') 赋给 p
+print(p.x, p.label)                # 输出 p.x, p.label
 \`\`\`
 
 它和 \`collections.namedtuple\` 生成的对象本质相同，但定义时用类语法，支持类型注解和默认值，更符合现代 Python 风格。
@@ -5678,15 +5678,15 @@ print(p.x, p.label)
 ### 9.1 基本用法
 
 \`\`\`python
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field  # 从 dataclasses 导入 dataclass, field
 
 @dataclass
-class Student:
+class Student:                     # 定义类 Student
     name: str
     age: int
     scores: list = field(default_factory=list)   # 可变默认值必须用 field
 
-s = Student('Alice', 18, [90, 85])
+s = Student('Alice', 18, [90, 85]) # 将 Student('Alice', 18, [90, 85]) 赋给 s
 print(s)   # Student(name='Alice', age=18, scores=[90, 85])
 s.scores.append(95)
 \`\`\`
@@ -5697,7 +5697,7 @@ s.scores.append(95)
 
 \`\`\`python
 @dataclass
-class Product:
+class Product:                     # 定义类 Product
     name: str
     price: float
     stock: int = 0
@@ -5712,12 +5712,12 @@ class Product:
 
 \`\`\`python
 @dataclass(frozen=True)
-class Color:
+class Color:                       # 定义类 Color
     r: int
     g: int
     b: int
 
-c = Color(255, 0, 0)
+c = Color(255, 0, 0)               # 将 Color(255, 0, 0) 赋给 c
 c.r = 100   # ❌ FrozenInstanceError
 \`\`\`
 
@@ -5742,14 +5742,14 @@ c.r = 100   # ❌ FrozenInstanceError
 直接继承 \`dict\`/\`list\`/\`str\` 自定义行为有个陷阱：内部方法互相调用，重写一个方法其他方法不一定走你的逻辑。\`UserDict\` 等用**组合而非继承**，内部维护一个 \`data\` 属性，重写更安全。
 
 \`\`\`python
-from collections import UserDict
-class CaseInsensitiveDict(UserDict):
-    def __setitem__(self, key, value):
-        super().__setitem__(key.lower(), value)
-    def __getitem__(self, key):
-        return super().__getitem__(key.lower())
+from collections import UserDict   # 从 collections 导入 UserDict
+class CaseInsensitiveDict(UserDict):  # 定义类 CaseInsensitiveDict，继承自 UserDict
+    def __setitem__(self, key, value):  # 定义函数 __setitem__，参数：self, key, value
+        super().__setitem__(key.lower(), value)  # 调用 super，参数 ).__setitem__(key.lower(), value
+    def __getitem__(self, key):    # 定义函数 __getitem__，参数：self, key
+        return super().__getitem__(key.lower())  # 返回 super().__getitem__(key.lower())
 
-d = CaseInsensitiveDict()
+d = CaseInsensitiveDict()          # 将 CaseInsensitiveDict() 赋给 d
 d['Name'] = 'Alice'
 print(d['NAME'])   # Alice（大小写不敏感）
 \`\`\`
@@ -5763,27 +5763,27 @@ print(d['NAME'])   # Alice（大小写不敏感）
 默认情况下，Python 对象用一个 \`__dict__\` 存储实例属性，灵活但占内存多。定义 \`__slots__\` 后，实例**用固定大小的数组存属性**，省内存、访问更快，但**不能动态添加新属性**。
 
 \`\`\`python
-class Point:
+class Point:                       # 定义类 Point
     __slots__ = ('x', 'y')   # 只能有 x 和 y 两个属性
-    def __init__(self, x, y):
+    def __init__(self, x, y):      # 定义函数 __init__，参数：self, x, y
         self.x = x
         self.y = y
 
-p = Point(1, 2)
+p = Point(1, 2)                    # 将 Point(1, 2) 赋给 p
 p.z = 3   # ❌ AttributeError: 'Point' object has no attribute 'z'
 \`\`\`
 
 ### 11.1 内存节省
 
 \`\`\`python
-import sys
-class WithDict:
-    def __init__(self, x, y):
+import sys                         # 导入 sys 模块
+class WithDict:                    # 定义类 WithDict
+    def __init__(self, x, y):      # 定义函数 __init__，参数：self, x, y
         self.x = x
         self.y = y
-class WithSlots:
-    __slots__ = ('x', 'y')
-    def __init__(self, x, y):
+class WithSlots:                   # 定义类 WithSlots
+    __slots__ = ('x', 'y')         # 创建元组并赋给 __slots__
+    def __init__(self, x, y):      # 定义函数 __init__，参数：self, x, y
         self.x = x
         self.y = y
 
@@ -5826,22 +5826,22 @@ print(sys.getsizeof(WithDict(1, 2).__dict__))   # ~104 字节
 求一个数组里"连续 k 个元素的最大值"序列，用 deque 能做到 O(n)：
 
 \`\`\`python
-from collections import deque
-def sliding_max(nums, k):
+from collections import deque      # 从 collections 导入 deque
+def sliding_max(nums, k):          # 定义函数 sliding_max，参数：nums, k
     dq = deque()       # 存索引，对应值保持递减
-    result = []
-    for i, n in enumerate(nums):
+    result = []                    # 创建列表并赋给 result
+    for i, n in enumerate(nums):   # 遍历 enumerate(nums)，每次取值赋给 i, n
         # 移除超出窗口的索引
-        while dq and dq[0] <= i - k:
-            dq.popleft()
+        while dq and dq[0] <= i - k:  # 当 dq and dq[0] <= i - k 为真时重复执行
+            dq.popleft()           # 对 dq 调用 popleft 方法
         # 维护递减：比当前小的尾部都移除
-        while dq and nums[dq[-1]] < n:
-            dq.pop()
-        dq.append(i)
-        if i >= k - 1:
-            result.append(nums[dq[0]])
-    return result
-print(sliding_max([1, 3, -1, -3, 5, 3, 6, 7], 3))
+        while dq and nums[dq[-1]] < n:  # 当 dq and nums[dq[-1]] < n 为真时重复执行
+            dq.pop()               # 对 dq 调用 弹出 方法
+        dq.append(i)               # 对 dq 调用 追加 方法，参数 i
+        if i >= k - 1:             # 如果 i >= k - 1 成立
+            result.append(nums[dq[0]])  # 对 result 调用 追加 方法，参数 nums[dq[0]]
+    return result                  # 返回 result
+print(sliding_max([1, 3, -1, -3, 5, 3, 6, 7], 3))  # 输出 sliding_max([1, 3, -1, -3, 5, 3, 6, 7], 3)
 # [3, 3, 5, 5, 6, 7]
 \`\`\`
 
@@ -5852,26 +5852,26 @@ print(sliding_max([1, 3, -1, -3, 5, 3, 6, 7], 3))
 树的层序遍历、图的最短路径（无权图）都用 deque 做队列：
 
 \`\`\`python
-from collections import deque
-graph = {
+from collections import deque      # 从 collections 导入 deque
+graph = {                          # 将 { 赋给 graph
     'A': ['B', 'C'],
     'B': ['D'],
     'C': ['D', 'E'],
     'D': ['E'],
     'E': [],
 }
-def bfs(graph, start):
-    visited = set([start])
-    queue = deque([start])
-    order = []
-    while queue:
+def bfs(graph, start):             # 定义函数 bfs，参数：graph, start
+    visited = set([start])         # 将 set([start]) 赋给 visited
+    queue = deque([start])         # 将 deque([start]) 赋给 queue
+    order = []                     # 创建列表并赋给 order
+    while queue:                   # 当 queue 为真时重复执行
         node = queue.popleft()   # O(1) 出队
-        order.append(node)
-        for neighbor in graph[node]:
-            if neighbor not in visited:
-                visited.add(neighbor)
-                queue.append(neighbor)
-    return order
+        order.append(node)         # 对 order 调用 追加 方法，参数 node
+        for neighbor in graph[node]:  # 遍历 graph[node]，每次取值赋给 neighbor
+            if neighbor not in visited:  # 如果 neighbor not in visited 成立
+                visited.add(neighbor)  # 对 visited 调用 添加 方法，参数 neighbor
+                queue.append(neighbor)  # 对 queue 调用 追加 方法，参数 neighbor
+    return order                   # 返回 order
 print(bfs(graph, 'A'))   # ['A', 'B', 'C', 'D', 'E']
 \`\`\`
 
@@ -5890,19 +5890,19 @@ BFS 用 \`list.pop(0)\` 是 O(n)，处理大图会很慢；用 \`deque.popleft()
 ### 14.1 统计文件词频
 
 \`\`\`python
-from collections import Counter
-import re
-with open('article.txt', encoding='utf-8') as f:
-    text = f.read().lower()
-words = re.findall(r'\\w+', text)
-top10 = Counter(words).most_common(10)
+from collections import Counter    # 从 collections 导入 Counter
+import re                          # 导入 re 模块
+with open('article.txt', encoding='utf-8') as f:  # 使用上下文管理器 open('article.txt', encoding='utf-8')，绑定到 f
+    text = f.read().lower()        # 将 f.read().lower() 赋给 text
+words = re.findall(r'\\w+', text)  # 将 re.findall(r'\\w+', text) 赋给 words
+top10 = Counter(words).most_common(10)  # 将 Counter(words).most_common(10) 赋给 top10
 \`\`\`
 
 ### 14.2 多个计数器合并
 
 \`\`\`python
-c1 = Counter(apple=5, banana=2)
-c2 = Counter(apple=3, cherry=4)
+c1 = Counter(apple=5, banana=2)    # 将 Counter(apple=5, banana=2) 赋给 c1
+c2 = Counter(apple=3, cherry=4)    # 将 Counter(apple=3, cherry=4) 赋给 c2
 total = c1 + c2   # Counter({'apple': 8, 'cherry': 4, 'banana': 2})
 \`\`\`
 
@@ -5911,7 +5911,7 @@ total = c1 + c2   # Counter({'apple': 8, 'cherry': 4, 'banana': 2})
 ### 14.3 取出前 N / 后 N
 
 \`\`\`python
-c = Counter('abracadabra')
+c = Counter('abracadabra')         # 将 Counter('abracadabra') 赋给 c
 print(c.most_common(3))    # 前 3（最高频）
 print(c.most_common()[:-4:-1])  # 后 3（最低频），技巧
 \`\`\`
@@ -5930,10 +5930,10 @@ print(c.most_common()[:-4:-1])  # 后 3（最低频），技巧
 需要"无限深度"的嵌套字典时，用递归 defaultdict：
 
 \`\`\`python
-from collections import defaultdict
-def tree():
+from collections import defaultdict  # 从 collections 导入 defaultdict
+def tree():                        # 定义函数 tree，无参数
     return defaultdict(tree)   # 每个缺失键都自动创建一个新 tree
-t = tree()
+t = tree()                         # 将 tree() 赋给 t
 t['a']['b']['c'] = 1
 t['x']['y'] = 2
 print(dict(t))   # {'a': defaultdict(...), 'x': defaultdict(...)}
@@ -5946,12 +5946,12 @@ print(dict(t))   # {'a': defaultdict(...), 'x': defaultdict(...)}
 \`defaultdict\` 打印出来带 "defaultdict(...)" 前缀，不美观。转换：
 
 \`\`\`python
-import json
-def to_dict(d):
-    if isinstance(d, defaultdict):
-        return {k: to_dict(v) for k, v in d.items()}
-    return d
-print(json.dumps(to_dict(t), ensure_ascii=False, indent=2))
+import json                        # 导入 json 模块
+def to_dict(d):                    # 定义函数 to_dict，参数：d
+    if isinstance(d, defaultdict): # 如果 isinstance(d, defaultdict) 成立
+        return {k: to_dict(v) for k, v in d.items()}  # 返回 {k: to_dict(v) for k, v in d.items()}
+    return d                       # 返回 d
+print(json.dumps(to_dict(t), ensure_ascii=False, indent=2))  # 输出 json.dumps(to_dict(t), ensure_ascii=False, indent=2)
 \`\`\`
 
 ### 15.3 defaultdict 的坑：意外创建键
@@ -5959,9 +5959,9 @@ print(json.dumps(to_dict(t), ensure_ascii=False, indent=2))
 \`defaultdict\` 在**访问**（哪怕只是判断 \`in\`？不，\`in\` 不触发）缺失键时会创建它。但 \`d[k]\` 会：
 
 \`\`\`python
-d = defaultdict(list)
+d = defaultdict(list)              # 将 defaultdict(list) 赋给 d
 if d['x']:        # ❌ 这会创建 d['x'] = []！
-    pass
+    pass                           # 空操作，占位
 print(d)          # defaultdict(<class 'list'>, {'x': []})
 \`\`\`
 
@@ -5974,10 +5974,10 @@ print(d)          # defaultdict(<class 'list'>, {'x': []})
 \`ChainMap\` 的读操作按顺序查，但**写操作只影响第一层**：
 
 \`\`\`python
-from collections import ChainMap
-a = {'x': 1}
-b = {'x': 2, 'y': 3}
-c = ChainMap(a, b)
+from collections import ChainMap   # 从 collections 导入 ChainMap
+a = {'x': 1}                       # 创建字典并赋给 a
+b = {'x': 2, 'y': 3}               # 创建字典并赋给 b
+c = ChainMap(a, b)                 # 将 ChainMap(a, b) 赋给 c
 c['x'] = 100      # 改第一层 a，不影响 b
 c['z'] = 4        # 加到第一层 a
 print(c.maps)     # [{'x': 100, 'z': 4}, {'x': 2, 'y': 3}]
@@ -5994,17 +5994,17 @@ del c['x']        # 删第一层 a 的 x
 ### 17.1 继承
 
 \`\`\`python
-from dataclasses import dataclass
+from dataclasses import dataclass  # 从 dataclasses 导入 dataclass
 @dataclass
-class Animal:
+class Animal:                      # 定义类 Animal
     name: str
     age: int
 @dataclass
-class Dog(Animal):
+class Dog(Animal):                 # 定义类 Dog，继承自 Animal
     breed: str
     name: str = 'unnamed'   # 子类可以加默认值，但要小心顺序
 
-d = Dog('Buddy', 3, 'Labrador')
+d = Dog('Buddy', 3, 'Labrador')    # 将 Dog('Buddy', 3, 'Labrador') 赋给 d
 \`\`\`
 
 继承时要注意：父类有默认值的字段，子类新加的无默认值字段会报错（参数顺序问题）。一般让所有字段都有默认值更安全。
@@ -6012,16 +6012,16 @@ d = Dog('Buddy', 3, 'Labrador')
 ### 17.2 post_init 后处理
 
 \`\`\`python
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field  # 从 dataclasses 导入 dataclass, field
 @dataclass
-class Rectangle:
+class Rectangle:                   # 定义类 Rectangle
     width: float
     height: float
     area: float = field(init=False)   # 不参与 __init__
-    def __post_init__(self):
+    def __post_init__(self):       # 定义函数 __post_init__，参数：self
         self.area = self.width * self.height   # 自动计算
 
-r = Rectangle(3, 4)
+r = Rectangle(3, 4)                # 将 Rectangle(3, 4) 赋给 r
 print(r.area)   # 12
 \`\`\`
 
@@ -6030,8 +6030,8 @@ print(r.area)   # 12
 ### 17.3 asdict / astuple
 
 \`\`\`python
-from dataclasses import asdict, astuple
-r = Rectangle(3, 4)
+from dataclasses import asdict, astuple  # 从 dataclasses 导入 asdict, astuple
+r = Rectangle(3, 4)                # 将 Rectangle(3, 4) 赋给 r
 print(asdict(r))   # {'width': 3, 'height': 4, 'area': 12}
 print(astuple(r))  # (3, 4, 12)
 \`\`\`
@@ -6047,9 +6047,9 @@ print(astuple(r))  # (3, 4, 12)
 Python 3.10+ 直接支持：
 
 \`\`\`python
-from dataclasses import dataclass
+from dataclasses import dataclass  # 从 dataclasses 导入 dataclass
 @dataclass(slots=True)
-class Point:
+class Point:                       # 定义类 Point
     x: float
     y: float
 \`\`\`
@@ -6059,11 +6059,11 @@ class Point:
 ### 18.2 slots 与继承
 
 \`\`\`python
-class Base:
-    __slots__ = ('x',)
-class Derived(Base):
+class Base:                        # 定义类 Base
+    __slots__ = ('x',)             # 创建元组并赋给 __slots__
+class Derived(Base):               # 定义类 Derived，继承自 Base
     __slots__ = ('y',)   # 子类也要定义，否则会有 __dict__
-d = Derived()
+d = Derived()                      # 将 Derived() 赋给 d
 d.x = 1
 d.y = 2
 # d.z = 3  # 报错
@@ -6083,10 +6083,10 @@ d.y = 2
 
 \`\`\`python
 # 创建 100 万个对象，对比内存
-class Normal: 
+class Normal:                      # 定义类 Normal
     def __init__(self, x, y): self.x, self.y = x, y
-class Slotted:
-    __slots__ = ('x', 'y')
+class Slotted:                     # 定义类 Slotted
+    __slots__ = ('x', 'y')         # 创建元组并赋给 __slots__
     def __init__(self, x, y): self.x, self.y = x, y
 # Slotted 通常比 Normal 省 40-50% 内存
 \`\`\`
@@ -6106,44 +6106,44 @@ class Slotted:
 ### 20.1 日志频率统计（Counter）
 
 \`\`\`python
-from collections import Counter
-log_levels = ['INFO', 'ERROR', 'INFO', 'WARN', 'ERROR', 'ERROR']
-print(Counter(log_levels).most_common())
+from collections import Counter    # 从 collections 导入 Counter
+log_levels = ['INFO', 'ERROR', 'INFO', 'WARN', 'ERROR', 'ERROR']  # 创建列表并赋给 log_levels
+print(Counter(log_levels).most_common())  # 输出 Counter(log_levels).most_common()
 # [('ERROR', 3), ('INFO', 2), ('WARN', 1)]
 \`\`\`
 
 ### 20.2 多源配置合并（ChainMap）
 
 \`\`\`python
-from collections import ChainMap
-import os
-env = {k: v for k, v in os.environ.items() if k.startswith('APP_')}
-file_config = {'db_host': 'localhost', 'db_port': '5432'}
-defaults = {'db_host': '127.0.0.1', 'db_port': '5432', 'debug': 'false'}
-config = ChainMap(env, file_config, defaults)
+from collections import ChainMap   # 从 collections 导入 ChainMap
+import os                          # 导入 os 模块
+env = {k: v for k, v in os.environ.items() if k.startswith('APP_')}  # 创建字典并赋给 env
+file_config = {'db_host': 'localhost', 'db_port': '5432'}  # 创建字典并赋给 file_config
+defaults = {'db_host': '127.0.0.1', 'db_port': '5432', 'debug': 'false'}  # 创建字典并赋给 defaults
+config = ChainMap(env, file_config, defaults)  # 将 ChainMap(env, file_config, defaults) 赋给 config
 \`\`\`
 
 ### 20.3 不可变配置对象（frozen dataclass）
 
 \`\`\`python
-from dataclasses import dataclass
+from dataclasses import dataclass  # 从 dataclasses 导入 dataclass
 @dataclass(frozen=True)
-class AppConfig:
+class AppConfig:                   # 定义类 AppConfig
     host: str
     port: int
     debug: bool = False
-config = AppConfig('0.0.0.0', 8080, True)
+config = AppConfig('0.0.0.0', 8080, True)  # 将 AppConfig('0.0.0.0', 8080, True) 赋给 config
 # config.port = 9090  # 报错，配置不可变
 \`\`\`
 
 ### 20.4 文件最近修改记录（deque maxlen）
 
 \`\`\`python
-from collections import deque
-recent_files = deque(maxlen=5)
-def on_file_modified(path):
-    recent_files.append(path)
-    print(f"最近修改: {list(recent_files)}")
+from collections import deque      # 从 collections 导入 deque
+recent_files = deque(maxlen=5)     # 将 deque(maxlen=5) 赋给 recent_files
+def on_file_modified(path):        # 定义函数 on_file_modified，参数：path
+    recent_files.append(path)      # 对 recent_files 调用 追加 方法，参数 path
+    print(f"最近修改: {list(recent_files)}")  # 输出 f"最近修改: {list(recent_files)}"
 \`\`\`
 
 ---
@@ -6155,14 +6155,14 @@ def on_file_modified(path):
 两者都能计数，但有微妙差别：
 
 \`\`\`python
-from collections import Counter, defaultdict
+from collections import Counter, defaultdict  # 从 collections 导入 Counter, defaultdict
 # Counter：访问缺失键返回 0，但不创建键
-c = Counter()
+c = Counter()                      # 将 Counter() 赋给 c
 print(c['x'])      # 0
 print(c)           # Counter() —— 没有写入
 
 # defaultdict(int)：访问缺失键返回 0，并创建键
-d = defaultdict(int)
+d = defaultdict(int)               # 将 defaultdict(int) 赋给 d
 print(d['x'])      # 0
 print(d)           # defaultdict(<class 'int'>, {'x': 0}) —— 写入了
 \`\`\`
@@ -6173,13 +6173,13 @@ print(d)           # defaultdict(<class 'int'>, {'x': 0}) —— 写入了
 
 \`\`\`python
 # ❌ 慢：list 当队列
-queue = []
+queue = []                         # 创建列表并赋给 queue
 queue.append(1)     # 入队 O(1)
 queue.pop(0)        # 出队 O(n)！要移动所有元素
 
 # ✅ 快：用 deque
-from collections import deque
-queue = deque()
+from collections import deque      # 从 collections 导入 deque
+queue = deque()                    # 将 deque() 赋给 queue
 queue.append(1)     # 入队 O(1)
 queue.popleft()     # 出队 O(1)
 \`\`\`
@@ -6187,14 +6187,14 @@ queue.popleft()     # 出队 O(1)
 ### 21.3 dataclass 可变默认值的坑
 
 \`\`\`python
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field  # 从 dataclasses 导入 dataclass, field
 # ❌ 错误：所有实例共享同一个 list
 @dataclass
-class Bad:
+class Bad:                         # 定义类 Bad
     items: list = []   # ValueError！dataclass 直接禁止
 # ✅ 正确：用 default_factory
 @dataclass
-class Good:
+class Good:                        # 定义类 Good
     items: list = field(default_factory=list)
 \`\`\`
 
@@ -6204,8 +6204,8 @@ dataclass 比\`普通类\`更友好：直接写 \`= []\` 会**报错**而不是�
 
 \`\`\`python
 # ChainMap 不复制数据，改源字典会实时反映
-a = {'x': 1}
-c = ChainMap(a)
+a = {'x': 1}                       # 创建字典并赋给 a
+c = ChainMap(a)                    # 将 ChainMap(a) 赋给 c
 a['x'] = 99
 print(c['x'])   # 99 —— 实时反映
 # 如果要"快照"合并，用 {**a, **b} 复制
@@ -6570,11 +6570,11 @@ print("\\n高级容器演示完成！")
 普通列表会**一次性生成所有元素**放到内存。比如 \`range(10**8)\` 在 Python 3 是惰性的，但 \`list(range(10**8))\` 会立刻占 800MB 内存。itertools 的所有工具都是**惰性迭代器**——只在被消费时才计算下一个值，可以处理"无限序列"或"海量数据"。
 
 \`\`\`python
-import itertools
+import itertools                   # 导入 itertools 模块
 # 无限序列：自然数 0,1,2,3,...
-naturals = itertools.count()
+naturals = itertools.count()       # 将 itertools.count() 赋给 naturals
 # 不会卡死！只有在消费时才一个个产出
-for i, n in zip(range(5), naturals):
+for i, n in zip(range(5), naturals):  # 遍历 zip(range(5), naturals)，每次取值赋给 i, n
     print(n)   # 0 1 2 3 4
 \`\`\`
 
@@ -6582,7 +6582,7 @@ for i, n in zip(range(5), naturals):
 
 \`\`\`python
 # ❌ 占内存：先造一亿个数再求和
-total = sum([x for x in range(10**8)])
+total = sum([x for x in range(10**8)])  # 将 sum([x for x in range(10**8)]) 赋给 total
 # ✅ 省内存：迭代器逐个产出
 total = sum(x for x in range(10**8))   # 生成器表达式
 # itertools 进一步提供更高效的组合工具
@@ -6605,13 +6605,13 @@ total = sum(x for x in range(10**8))   # 生成器表达式
 \`count(start, step)\` 从 start 开始，每次加 step，**无限延续**：
 
 \`\`\`python
-import itertools
-for i in itertools.count(10, 2):
+import itertools                   # 导入 itertools 模块
+for i in itertools.count(10, 2):   # 遍历 itertools.count(10, 2)，每次取值赋给 i
     print(i)   # 10 12 14 16 ...
-    if i >= 20:
-        break
+    if i >= 20:                    # 如果 i >= 20 成立
+        break                      # 跳出循环
 # 常用：给元素配编号
-for idx, val in zip(itertools.count(), ['a', 'b', 'c']):
+for idx, val in zip(itertools.count(), ['a', 'b', 'c']):  # 遍历 zip(itertools.count(), ['a', 'b', 'c'])，每次取值赋给 idx, val
     print(idx, val)   # 0 a / 1 b / 2 c（其实 enumerate 更好）
 \`\`\`
 
@@ -6622,10 +6622,10 @@ for idx, val in zip(itertools.count(), ['a', 'b', 'c']):
 \`cycle(iterable)\` 把可迭代对象无限循环：
 
 \`\`\`python
-import itertools
+import itertools                   # 导入 itertools 模块
 # 红绿灯轮转
-colors = itertools.cycle(['红', '绿', '黄'])
-for _ in range(6):
+colors = itertools.cycle(['红', '绿', '黄'])  # 将 itertools.cycle(['红', '绿', '黄']) 赋给 colors
+for _ in range(6):                 # 遍历 range(6)，每次取值赋给 _
     print(next(colors))   # 红 绿 黄 红 绿 黄
 \`\`\`
 
@@ -6636,10 +6636,10 @@ for _ in range(6):
 \`repeat(obj, times)\` 把同一个对象重复 n 次（或无限）：
 
 \`\`\`python
-import itertools
+import itertools                   # 导入 itertools 模块
 print(list(itertools.repeat('A', 3)))   # ['A', 'A', 'A']
 # 配合 map：9 的平方、立方、四次方
-bases = [2, 3, 4]
+bases = [2, 3, 4]                  # 创建列表并赋给 bases
 print(list(map(pow, [9, 9, 9], bases)))   # [81, 729, 6561]
 # 用 repeat 更优雅
 print(list(map(pow, itertools.repeat(9), [2, 3, 4])))   # [81, 729, 6561]
@@ -6656,19 +6656,19 @@ print(list(map(pow, itertools.repeat(9), [2, 3, 4])))   # [81, 729, 6561]
 \`chain(a, b, c)\` 把多个可迭代对象"首尾相连"，像一条流水线：
 
 \`\`\`python
-import itertools
-a = [1, 2, 3]
-b = ['x', 'y']
-c = (True, False)
-print(list(itertools.chain(a, b, c)))
+import itertools                   # 导入 itertools 模块
+a = [1, 2, 3]                      # 创建列表并赋给 a
+b = ['x', 'y']                     # 创建列表并赋给 b
+c = (True, False)                  # 创建元组并赋给 c
+print(list(itertools.chain(a, b, c)))  # 输出 list(itertools.chain(a, b, c))
 # [1, 2, 3, 'x', 'y', True, False]
 \`\`\`
 
 **chain.from_iterable**：当可迭代对象本身在一个容器里时用：
 
 \`\`\`python
-nested = [[1, 2], [3, 4], [5, 6]]
-print(list(itertools.chain.from_iterable(nested)))
+nested = [[1, 2], [3, 4], [5, 6]]  # 创建列表并赋给 nested
+print(list(itertools.chain.from_iterable(nested)))  # 输出 list(itertools.chain.from_iterable(nested))
 # [1, 2, 3, 4, 5, 6]   —— 扁平化一层嵌套
 \`\`\`
 
@@ -6679,8 +6679,8 @@ print(list(itertools.chain.from_iterable(nested)))
 普通切片 \`lst[1:5]\` 不能用在迭代器上（迭代器不支持索引）。\`islice\` 就是"迭代器版切片"：
 
 \`\`\`python
-import itertools
-infinite = itertools.count()
+import itertools                   # 导入 itertools 模块
+infinite = itertools.count()       # 将 itertools.count() 赋给 infinite
 print(list(itertools.islice(infinite, 5)))        # 前 5 个：[0,1,2,3,4]
 print(list(itertools.islice(infinite, 2, 8)))     # 第 2-7 个：[2,3,4,5,6,7]
 print(list(itertools.islice(infinite, 0, 10, 2))) # 步长 2：[0,2,4,6,8]
@@ -6693,11 +6693,11 @@ print(list(itertools.islice(infinite, 0, 10, 2))) # 步长 2：[0,2,4,6,8]
 内置 \`zip\` 在最短的迭代器结束时停止，\`zip_longest\` 会**用 fillvalue 填充**到最长：
 
 \`\`\`python
-import itertools
-a = [1, 2, 3]
-b = ['x', 'y']
+import itertools                   # 导入 itertools 模块
+a = [1, 2, 3]                      # 创建列表并赋给 a
+b = ['x', 'y']                     # 创建列表并赋给 b
 print(list(zip(a, b)))   # [(1,'x'), (2,'y')] —— zip 到最短
-print(list(itertools.zip_longest(a, b, fillvalue='-')))
+print(list(itertools.zip_longest(a, b, fillvalue='-')))  # 输出 list(itertools.zip_longest(a, b, fillvalue='-'))
 # [(1,'x'), (2,'y'), (3,'-')]
 \`\`\`
 
@@ -6711,8 +6711,8 @@ print(list(itertools.zip_longest(a, b, fillvalue='-')))
 - \`dropwhile(pred, iter)\`：**丢到**条件为假为止（之后都保留）。
 
 \`\`\`python
-import itertools
-nums = [1, 2, 3, 4, 1, 2]
+import itertools                   # 导入 itertools 模块
+nums = [1, 2, 3, 4, 1, 2]          # 创建列表并赋给 nums
 print(list(itertools.takewhile(lambda x: x < 4, nums)))   # [1,2,3]
 print(list(itertools.dropwhile(lambda x: x < 4, nums)))   # [4,1,2]
 \`\`\`
@@ -6724,8 +6724,8 @@ print(list(itertools.dropwhile(lambda x: x < 4, nums)))   # [4,1,2]
 \`filterfalse(pred, iter)\` 是 \`filter\` 的反义——保留**不满足**条件的：
 
 \`\`\`python
-import itertools
-nums = [1, 2, 3, 4, 5]
+import itertools                   # 导入 itertools 模块
+nums = [1, 2, 3, 4, 5]             # 创建列表并赋给 nums
 print(list(filter(lambda x: x % 2, nums)))          # [1,3,5] 奇数
 print(list(itertools.filterfalse(lambda x: x % 2, nums)))  # [2,4] 偶数
 \`\`\`
@@ -6735,9 +6735,9 @@ print(list(itertools.filterfalse(lambda x: x % 2, nums)))  # [2,4] 偶数
 \`compress(data, selectors)\` 按 selectors 的真假保留 data 对应元素：
 
 \`\`\`python
-import itertools
-data = ['a', 'b', 'c', 'd']
-mask = [True, False, True, False]
+import itertools                   # 导入 itertools 模块
+data = ['a', 'b', 'c', 'd']        # 创建列表并赋给 data
+mask = [True, False, True, False]  # 创建列表并赋给 mask
 print(list(itertools.compress(data, mask)))   # ['a', 'c']
 \`\`\`
 
@@ -6752,8 +6752,8 @@ print(list(itertools.compress(data, mask)))   # ['a', 'c']
 \`map(func, iterable)\` 把 iterable 的每个元素传给 func。但当元素是元组、希望"解包"传参时，用 \`starmap\`：
 
 \`\`\`python
-import itertools
-pairs = [(2, 3), (4, 5), (10, 2)]
+import itertools                   # 导入 itertools 模块
+pairs = [(2, 3), (4, 5), (10, 2)]  # 创建列表并赋给 pairs
 print(list(itertools.starmap(pow, pairs)))   # [8, 1024, 100]
 # 等价于 [pow(2,3), pow(4,5), pow(10,2)]
 \`\`\`
@@ -6765,9 +6765,9 @@ print(list(itertools.starmap(pow, pairs)))   # [8, 1024, 100]
 \`accumulate(iterable, func)\` 累积应用函数，产出每一步的中间结果：
 
 \`\`\`python
-import itertools
-import operator
-nums = [1, 2, 3, 4, 5]
+import itertools                   # 导入 itertools 模块
+import operator                    # 导入 operator 模块
+nums = [1, 2, 3, 4, 5]             # 创建列表并赋给 nums
 print(list(itertools.accumulate(nums)))                    # [1,3,6,10,15] 累加
 print(list(itertools.accumulate(nums, operator.mul)))      # [1,2,6,24,120] 累乘
 print(list(itertools.accumulate(nums, max)))               # [1,2,3,4,5] 累积最大值
@@ -6780,8 +6780,8 @@ print(list(itertools.accumulate(nums, max)))               # [1,2,3,4,5] 累积�
 \`pairwise(iterable)\` 把相邻元素配成对：
 
 \`\`\`python
-import itertools
-print(list(itertools.pairwise([1, 2, 3, 4])))
+import itertools                   # 导入 itertools 模块
+print(list(itertools.pairwise([1, 2, 3, 4])))  # 输出 list(itertools.pairwise([1, 2, 3, 4]))
 # [(1,2), (2,3), (3,4)]
 \`\`\`
 
@@ -6796,12 +6796,12 @@ print(list(itertools.pairwise([1, 2, 3, 4])))
 \`groupby(iterable, key)\` 把**连续**的相同 key 元素分到一组。注意：只分**连续**的，所以要先用 key 排序：
 
 \`\`\`python
-import itertools
-data = [('apple', 3), ('banana', 2), ('apple', 1), ('cherry', 5), ('banana', 4)]
+import itertools                   # 导入 itertools 模块
+data = [('apple', 3), ('banana', 2), ('apple', 1), ('cherry', 5), ('banana', 4)]  # 创建列表并赋给 data
 # 先按水果名排序
-data.sort(key=lambda x: x[0])
-for fruit, group in itertools.groupby(data, key=lambda x: x[0]):
-    print(fruit, list(group))
+data.sort(key=lambda x: x[0])      # 对 data 调用 排序 方法，参数 key=lambda x: x[0]
+for fruit, group in itertools.groupby(data, key=lambda x: x[0]):  # 遍历 itertools.groupby(data, key=lambda x: x[0])，每次取值赋给 fruit, group
+    print(fruit, list(group))      # 输出 fruit, list(group)
 # apple [('apple',3), ('apple',1)]
 # banana [('banana',2), ('banana',4)]
 # cherry [('cherry',5)]
@@ -6815,10 +6815,10 @@ for fruit, group in itertools.groupby(data, key=lambda x: x[0]):
 
 \`\`\`python
 # ❌ 错误：保存了 group 迭代器但没立即消费
-groups = [(k, g) for k, g in itertools.groupby(data, key=...)]
+groups = [(k, g) for k, g in itertools.groupby(data, key=...)]  # 创建列表并赋给 groups
 # g 此时都指向最后一组，前面的丢了
 # ✅ 正确：立即转成 list
-groups = [(k, list(g)) for k, g in itertools.groupby(data, key=...)]
+groups = [(k, list(g)) for k, g in itertools.groupby(data, key=...)]  # 创建列表并赋给 groups
 \`\`\`
 
 ---
@@ -6830,10 +6830,10 @@ groups = [(k, list(g)) for k, g in itertools.groupby(data, key=...)]
 \`product(a, b)\` 计算笛卡尔积，等价于多层 for 循环：
 
 \`\`\`python
-import itertools
-colors = ['红', '蓝']
-sizes = ['S', 'M', 'L']
-print(list(itertools.product(colors, sizes)))
+import itertools                   # 导入 itertools 模块
+colors = ['红', '蓝']                # 创建列表并赋给 colors
+sizes = ['S', 'M', 'L']            # 创建列表并赋给 sizes
+print(list(itertools.product(colors, sizes)))  # 输出 list(itertools.product(colors, sizes))
 # [('红','S'), ('红','M'), ('红','L'), ('蓝','S'), ('蓝','M'), ('蓝','L')]
 # 等价于 [(c, s) for c in colors for s in sizes]
 \`\`\`
@@ -6841,7 +6841,7 @@ print(list(itertools.product(colors, sizes)))
 \`product(a, repeat=n)\` 等价于 \`product(a, a, ..., a)\`（n 个 a）：
 
 \`\`\`python
-print(list(itertools.product('AB', repeat=2)))
+print(list(itertools.product('AB', repeat=2)))  # 输出 list(itertools.product('AB', repeat=2))
 # [('A','A'), ('A','B'), ('B','A'), ('B','B')]
 \`\`\`
 
@@ -6852,8 +6852,8 @@ print(list(itertools.product('AB', repeat=2)))
 \`permutations(iterable, r)\` 生成所有长度为 r 的**排列**（**有顺序**，不重复使用）：
 
 \`\`\`python
-import itertools
-print(list(itertools.permutations('ABC', 2)))
+import itertools                   # 导入 itertools 模块
+print(list(itertools.permutations('ABC', 2)))  # 输出 list(itertools.permutations('ABC', 2))
 # [('A','B'), ('A','C'), ('B','A'), ('B','C'), ('C','A'), ('C','B')]
 \`\`\`
 
@@ -6864,8 +6864,8 @@ print(list(itertools.permutations('ABC', 2)))
 \`combinations(iterable, r)\` 生成所有长度为 r 的**组合**（**无顺序**，不重复使用）：
 
 \`\`\`python
-import itertools
-print(list(itertools.combinations('ABC', 2)))
+import itertools                   # 导入 itertools 模块
+print(list(itertools.combinations('ABC', 2)))  # 输出 list(itertools.combinations('ABC', 2))
 # [('A','B'), ('A','C'), ('B','C')]
 \`\`\`
 
@@ -6876,8 +6876,8 @@ print(list(itertools.combinations('ABC', 2)))
 允许同一个元素用多次：
 
 \`\`\`python
-import itertools
-print(list(itertools.combinations_with_replacement('ABC', 2)))
+import itertools                   # 导入 itertools 模块
+print(list(itertools.combinations_with_replacement('ABC', 2)))  # 输出 list(itertools.combinations_with_replacement('ABC', 2))
 # [('A','A'), ('A','B'), ('A','C'), ('B','B'), ('B','C'), ('C','C')]
 \`\`\`
 
@@ -6897,8 +6897,8 @@ print(list(itertools.combinations_with_replacement('ABC', 2)))
 \`tee(iterable, n)\` 把一个迭代器复制成 n 个**独立**的迭代器：
 
 \`\`\`python
-import itertools
-it = iter([1, 2, 3])
+import itertools                   # 导入 itertools 模块
+it = iter([1, 2, 3])               # 将 iter([1, 2, 3]) 赋给 it
 a, b = itertools.tee(it, 2)
 print(list(a))   # [1, 2, 3]
 print(list(b))   # [1, 2, 3] —— 独立消费
@@ -6913,21 +6913,21 @@ print(list(b))   # [1, 2, 3] —— 独立消费
 itertools 的真正威力在于**像 Unix 管道一样组合**，每一步都是惰性的：
 
 \`\`\`python
-import itertools
+import itertools                   # 导入 itertools 模块
 # 求 100 以内所有素数的平方和
-def is_prime(n):
+def is_prime(n):                   # 定义函数 is_prime，参数：n
     if n < 2: return False
-    return all(n % i for i in range(2, int(n**0.5)+1))
+    return all(n % i for i in range(2, int(n**0.5)+1))  # 返回 all(n % i for i in range(2, int(n**0.5)+1))
 
-pipeline = (
+pipeline = (                       # 将 ( 赋给 pipeline
     itertools.count(2)                          # 2,3,4,... 无限
     |> 不存在，Python 用生成器表达式/itertools 链
 )
 # 实际写法：嵌套或生成器表达式
-nums = itertools.count(2)
+nums = itertools.count(2)          # 将 itertools.count(2) 赋给 nums
 primes = filter(is_prime, nums)                 # 惰性过滤
-primes_under_100 = itertools.takewhile(lambda x: x < 100, primes)
-squares = map(lambda x: x**2, primes_under_100)
+primes_under_100 = itertools.takewhile(lambda x: x < 100, primes)  # 将 itertools.takewhile(lambda x: x < 100, primes) 赋给 primes_under_100
+squares = map(lambda x: x**2, primes_under_100)  # 将 map(lambda x: x**2, primes_under_100) 赋给 squares
 print(sum(squares))   # 65796
 \`\`\`
 
@@ -6942,48 +6942,48 @@ print(sum(squares))   # 65796
 把长列表按固定大小切块：
 
 \`\`\`python
-import itertools
-def chunk(iterable, size):
-    it = iter(iterable)
-    while True:
-        block = list(itertools.islice(it, size))
-        if not block:
-            break
-        yield block
-for block in chunk(range(10), 3):
+import itertools                   # 导入 itertools 模块
+def chunk(iterable, size):         # 定义函数 chunk，参数：iterable, size
+    it = iter(iterable)            # 将 iter(iterable) 赋给 it
+    while True:                    # 当 True 为真时重复执行
+        block = list(itertools.islice(it, size))  # 将 list(itertools.islice(it, size)) 赋给 block
+        if not block:              # 如果 not block 成立
+            break                  # 跳出循环
+        yield block                # 产出值 block（生成器）
+for block in chunk(range(10), 3):  # 遍历 chunk(range(10), 3)，每次取值赋给 block
     print(block)   # [0,1,2] / [3,4,5] / [6,7,8] / [9]
 \`\`\`
 
 ### 10.2 滑动窗口
 
 \`\`\`python
-import itertools
-def window(iterable, size):
-    iters = itertools.tee(iterable, size)
-    for i, it in enumerate(iters):
-        for _ in range(i):
-            next(it, None)
-    return zip(*iters)
-for w in window([1,2,3,4,5], 3):
+import itertools                   # 导入 itertools 模块
+def window(iterable, size):        # 定义函数 window，参数：iterable, size
+    iters = itertools.tee(iterable, size)  # 将 itertools.tee(iterable, size) 赋给 iters
+    for i, it in enumerate(iters): # 遍历 enumerate(iters)，每次取值赋给 i, it
+        for _ in range(i):         # 遍历 range(i)，每次取值赋给 _
+            next(it, None)         # 调用 next，参数 it, None
+    return zip(*iters)             # 返回 zip(*iters)
+for w in window([1,2,3,4,5], 3):   # 遍历 window([1,2,3,4,5], 3)，每次取值赋给 w
     print(w)   # (1,2,3) / (2,3,4) / (3,4,5)
 \`\`\`
 
 ### 10.3 交替合并
 
 \`\`\`python
-import itertools
-a = [1, 3, 5]
-b = [2, 4, 6]
-print(list(itertools.chain.from_iterable(zip(a, b))))
+import itertools                   # 导入 itertools 模块
+a = [1, 3, 5]                      # 创建列表并赋给 a
+b = [2, 4, 6]                      # 创建列表并赋给 b
+print(list(itertools.chain.from_iterable(zip(a, b))))  # 输出 list(itertools.chain.from_iterable(zip(a, b)))
 # [1,2,3,4,5,6]
 \`\`\`
 
 ### 10.4 字典扁平化
 
 \`\`\`python
-import itertools
-d = {'a': 1, 'b': 2}
-flat = itertools.chain.from_iterable(d.items())
+import itertools                   # 导入 itertools 模块
+d = {'a': 1, 'b': 2}               # 创建字典并赋给 d
+flat = itertools.chain.from_iterable(d.items())  # 将 itertools.chain.from_iterable(d.items()) 赋给 flat
 print(list(flat))   # ['a', 1, 'b', 2]
 \`\`\`
 
@@ -6994,16 +6994,16 @@ print(list(flat))   # ['a', 1, 'b', 2]
 很多 itertools 功能也能用生成器表达式写，但 itertools 通常**更快**（C 实现）且**更可读**：
 
 \`\`\`python
-import itertools
-nums = range(100)
+import itertools                   # 导入 itertools 模块
+nums = range(100)                  # 将 range(100) 赋给 nums
 # 生成器表达式
-evens = (x for x in nums if x % 2 == 0)
+evens = (x for x in nums if x % 2 == 0)  # 创建元组并赋给 evens
 # itertools
-evens2 = itertools.filterfalse(lambda x: x % 2, nums)
+evens2 = itertools.filterfalse(lambda x: x % 2, nums)  # 将 itertools.filterfalse(lambda x: x % 2, nums) 赋给 evens2
 
 # chain
 a, b = [1,2], [3,4]
-chain1 = (x for lst in (a, b) for x in lst)
+chain1 = (x for lst in (a, b) for x in lst)  # 创建元组并赋给 chain1
 chain2 = itertools.chain(a, b)   # 更清晰
 \`\`\`
 
@@ -7054,12 +7054,12 @@ print(next(it))           # 抛出 StopIteration
 含 \`yield\` 关键字的函数叫**生成器函数**。调用它不会执行函数体，而是返回一个**生成器对象**（generator），生成器本身就是迭代器。
 
 \`\`\`python
-def my_count(n):
-    while True:
-        yield n
-        n += 1
+def my_count(n):                   # 定义函数 my_count，参数：n
+    while True:                    # 当 True 为真时重复执行
+        yield n                    # 产出值 n（生成器）
+        n += 1                     # n 加 1
 
-g = my_count(5)
+g = my_count(5)                    # 将 my_count(5) 赋给 g
 print(next(g))   # 5
 print(next(g))   # 6
 \`\`\`
@@ -7080,11 +7080,11 @@ squares_gen  = (x*x for x in range(10))       # 惰性，不占内存
 itertools 的每个函数本质上都是用生成器实现的工具。例如 \`itertools.count\` 等价于：
 
 \`\`\`python
-def my_count(start=0, step=1):
-    n = start
-    while True:
-        yield n
-        n += step
+def my_count(start=0, step=1):     # 定义函数 my_count，参数：start=0, step=1
+    n = start                      # 将 start 赋给 n
+    while True:                    # 当 True 为真时重复执行
+        yield n                    # 产出值 n（生成器）
+        n += step                  # n 加 step
 \`\`\`
 
 理解了迭代器协议，你就能：
@@ -7107,15 +7107,15 @@ itertools 负责**生成与变换**迭代流，collections 负责**存储与统�
 ### 14.1 itertools + Counter：流式词频统计
 
 \`\`\`python
-from collections import Counter
-import itertools
+from collections import Counter    # 从 collections 导入 Counter
+import itertools                   # 导入 itertools 模块
 
 # 模拟大文件逐行读取（不一次性载入内存）
-lines = iter(["apple banana", "apple cherry", "banana apple"])
+lines = iter(["apple banana", "apple cherry", "banana apple"])  # 将 iter(["apple banana", "apple cherry", "banana apple"]) 赋给 lines
 
 # 流式分词 + 统计
-words = itertools.chain.from_iterable(line.split() for line in lines)
-counter = Counter(words)
+words = itertools.chain.from_iterable(line.split() for line in lines)  # 将 itertools.chain.from_iterable(line.split() for line in lines) 赋给 words
+counter = Counter(words)           # 将 Counter(words) 赋给 counter
 print(counter.most_common(2))   # [('apple', 3), ('banana', 2)]
 \`\`\`
 
@@ -7124,13 +7124,13 @@ print(counter.most_common(2))   # [('apple', 3), ('banana', 2)]
 ### 14.2 itertools + defaultdict：构建分组索引
 
 \`\`\`python
-from collections import defaultdict
-import itertools
+from collections import defaultdict  # 从 collections 导入 defaultdict
+import itertools                   # 导入 itertools 模块
 
-pairs = [("fruits", "apple"), ("fruits", "banana"), ("veg", "carrot")]
-index = defaultdict(list)
-for key, group in itertools.groupby(sorted(pairs), key=lambda x: x[0]):
-    for _, item in group:
+pairs = [("fruits", "apple"), ("fruits", "banana"), ("veg", "carrot")]  # 创建列表并赋给 pairs
+index = defaultdict(list)          # 将 defaultdict(list) 赋给 index
+for key, group in itertools.groupby(sorted(pairs), key=lambda x: x[0]):  # 遍历 itertools.groupby(sorted(pairs), key=lambda x: x[0])，每次取值赋给 key, group
+    for _, item in group:          # 遍历 group，每次取值赋给 _, item
         index[key].append(item)
 # {'fruits': ['apple', 'banana'], 'veg': ['carrot']}
 \`\`\`
@@ -7140,26 +7140,26 @@ for key, group in itertools.groupby(sorted(pairs), key=lambda x: x[0]):
 \`deque(maxlen=N)\` 天然适合做定长滑动窗口，配合 \`islice\` 可以处理流式数据：
 
 \`\`\`python
-from collections import deque
-import itertools
+from collections import deque      # 从 collections 导入 deque
+import itertools                   # 导入 itertools 模块
 
-def moving_average(iterable, n):
-    window = deque(itertools.islice(iterable, n), maxlen=n)
-    total = sum(window)
-    yield total / n
-    for x in iterable:
-        total += x - window[0]
-        window.append(x)
-        yield total / n
+def moving_average(iterable, n):   # 定义函数 moving_average，参数：iterable, n
+    window = deque(itertools.islice(iterable, n), maxlen=n)  # 将 deque(itertools.islice(iterable, n), maxlen=n) 赋给 window
+    total = sum(window)            # 将 sum(window) 赋给 total
+    yield total / n                # 产出值 total / n（生成器）
+    for x in iterable:             # 遍历 iterable，每次取值赋给 x
+        total += x - window[0]     # total 加 x - window[0]
+        window.append(x)           # 对 window 调用 追加 方法，参数 x
+        yield total / n            # 产出值 total / n（生成器）
 \`\`\`
 
 ### 14.4 itertools + OrderedDict：保留插入顺序去重
 
 \`\`\`python
-from collections import OrderedDict
-import itertools
+from collections import OrderedDict  # 从 collections 导入 OrderedDict
+import itertools                   # 导入 itertools 模块
 
-data = [3, 1, 4, 1, 5, 9, 2, 6, 5]
+data = [3, 1, 4, 1, 5, 9, 2, 6, 5] # 创建列表并赋给 data
 unique_ordered = list(OrderedDict.fromkeys(data))   # [3, 1, 4, 5, 9, 2, 6]
 \`\`\`
 
@@ -7172,20 +7172,20 @@ itertools 最适合**流式处理**——数据量极大或无限，无法全部
 ### 15.1 大文件逐行处理
 
 \`\`\`python
-import itertools
+import itertools                   # 导入 itertools 模块
 
-def read_large_file(path):
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            yield line.strip()
+def read_large_file(path):         # 定义函数 read_large_file，参数：path
+    with open(path, encoding="utf-8") as f:  # 使用上下文管理器 open(path, encoding="utf-8")，绑定到 f
+        for line in f:             # 遍历 f，每次取值赋给 line
+            yield line.strip()     # 产出值 line.strip()（生成器）
 
 # 取前 100 行做样本
-sample = list(itertools.islice(read_large_file("big.log"), 100))
+sample = list(itertools.islice(read_large_file("big.log"), 100))  # 将 list(itertools.islice(read_large_file("big.log"), 100)) 赋给 sample
 
 # 跳过前 10 行注释，处理接下来的 1000 行
-lines = read_large_file("big.log")
-lines = itertools.dropwhile(lambda x: x.startswith("#"), lines)
-batch = list(itertools.islice(lines, 1000))
+lines = read_large_file("big.log") # 将 read_large_file("big.log") 赋给 lines
+lines = itertools.dropwhile(lambda x: x.startswith("#"), lines)  # 将 itertools.dropwhile(lambda x: x.startswith("#"), lines) 赋给 lines
+batch = list(itertools.islice(lines, 1000))  # 将 list(itertools.islice(lines, 1000)) 赋给 batch
 \`\`\`
 
 ### 15.2 管道式 ETL
@@ -7197,8 +7197,8 @@ def parse(line):     return line.split(",")
 def filter_valid(r): return len(r) == 3
 def to_dict(r):      return {"x": r[0], "y": r[1], "z": r[2]}
 
-lines = ["a,b,c", "x,y", "1,2,3"]
-pipeline = (
+lines = ["a,b,c", "x,y", "1,2,3"]  # 创建列表并赋给 lines
+pipeline = (                       # 将 ( 赋给 pipeline
     to_dict(r)                       # 第 3 步：转字典
     for r in filter(filter_valid,    # 第 2 步：过滤
         (parse(line) for line in lines))  # 第 1 步：解析
@@ -7212,18 +7212,18 @@ pipeline = (
 \`\`\`python
 import itertools, collections
 
-def sliding_window(iterable, n):
-    window = collections.deque(itertools.islice(iterable, n), maxlen=n)
-    if len(window) == n:
-        yield tuple(window)
-    for x in iterable:
-        window.append(x)
-        yield tuple(window)
+def sliding_window(iterable, n):   # 定义函数 sliding_window，参数：iterable, n
+    window = collections.deque(itertools.islice(iterable, n), maxlen=n)  # 将 collections.deque(itertools.islice(iterable, n), maxlen=n) 赋给 window
+    if len(window) == n:           # 如果 len(window) == n 成立
+        yield tuple(window)        # 产出值 tuple(window)（生成器）
+    for x in iterable:             # 遍历 iterable，每次取值赋给 x
+        window.append(x)           # 对 window 调用 追加 方法，参数 x
+        yield tuple(window)        # 产出值 tuple(window)（生成器）
 
 # 计算 7 日移动平均
-daily_prices = [10, 12, 11, 13, 14, 15, 13, 16, 18, 17]
-for w in sliding_window(daily_prices, 7):
-    print(sum(w) / 7)
+daily_prices = [10, 12, 11, 13, 14, 15, 13, 16, 18, 17]  # 创建列表并赋给 daily_prices
+for w in sliding_window(daily_prices, 7):  # 遍历 sliding_window(daily_prices, 7)，每次取值赋给 w
+    print(sum(w) / 7)              # 输出 sum(w) / 7
 \`\`\`
 
 ### 15.4 实时聚合（accumulate 流式累加）
@@ -7231,8 +7231,8 @@ for w in sliding_window(daily_prices, 7):
 \`\`\`python
 import itertools, operator
 
-sales = [100, 200, 150, 300, 250]
-cumulative = itertools.accumulate(sales)
+sales = [100, 200, 150, 300, 250]  # 创建列表并赋给 sales
+cumulative = itertools.accumulate(sales)  # 将 itertools.accumulate(sales) 赋给 cumulative
 print(list(cumulative))   # [100, 300, 450, 750, 1000]
 \`\`\`
 
@@ -7245,11 +7245,11 @@ print(list(cumulative))   # [100, 300, 450, 750, 1000]
 ### 16.1 functools.reduce + itertools
 
 \`\`\`python
-from functools import reduce
-import itertools
+from functools import reduce       # 从 functools 导入 reduce
+import itertools                   # 导入 itertools 模块
 
 # 求 1+2+...+100，用 reduce 而非 sum
-total = reduce(lambda a, b: a + b, itertools.islice(itertools.count(1), 100))
+total = reduce(lambda a, b: a + b, itertools.islice(itertools.count(1), 100))  # 将 reduce(lambda a, b: a + b, itertools.islice(itertools.count(1), 100)) 赋给 total
 \`\`\`
 
 注意：能用 \`sum()\` 就别用 \`reduce(operator.add, ...)\`，内置函数更快。但 \`reduce\` 适合自定义聚合逻辑（比如合并字典）。
@@ -7259,14 +7259,14 @@ total = reduce(lambda a, b: a + b, itertools.islice(itertools.count(1), 100))
 \`partial\` 把函数的某些参数固定下来，生成新函数，常用于 itertools 的 key/func 参数：
 
 \`\`\`python
-from functools import partial
-import itertools
+from functools import partial      # 从 functools 导入 partial
+import itertools                   # 导入 itertools 模块
 
-def power(base, exp):
-    return base ** exp
+def power(base, exp):              # 定义函数 power，参数：base, exp
+    return base ** exp             # 返回 base ** exp
 
-square = partial(power, exp=2)
-cube   = partial(power, exp=3)
+square = partial(power, exp=2)     # 将 partial(power, exp=2) 赋给 square
+cube   = partial(power, exp=3)     # 将 partial(power, exp=3) 赋给 cube
 
 print(list(map(square, range(5))))   # [0, 1, 4, 9, 16]
 print(list(map(cube, range(5)))  )   # [0, 1, 8, 27, 64]
@@ -7277,27 +7277,27 @@ print(list(map(cube, range(5)))  )   # [0, 1, 8, 27, 64]
 \`lru_cache\` 缓存函数结果，配合 \`itertools\` 处理重复计算：
 
 \`\`\`python
-from functools import lru_cache
+from functools import lru_cache    # 从 functools 导入 lru_cache
 
 @lru_cache(maxsize=None)
-def fib(n):
-    return n if n < 2 else fib(n-1) + fib(n-2)
+def fib(n):                        # 定义函数 fib，参数：n
+    return n if n < 2 else fib(n-1) + fib(n-2)  # 返回 n if n < 2 else fib(n-1) + fib(n-2)
 
 # 生成前 20 个斐波那契数
-fibs = [fib(i) for i in range(20)]
+fibs = [fib(i) for i in range(20)] # 创建列表并赋给 fibs
 \`\`\`
 
 ### 16.4 函数式管道：compose
 
 \`\`\`python
-def compose(*funcs):
-    def composed(x):
-        for f in reversed(funcs):
-            x = f(x)
-        return x
-    return composed
+def compose(*funcs):               # 定义函数 compose，参数：*funcs
+    def composed(x):               # 定义函数 composed，参数：x
+        for f in reversed(funcs):  # 遍历 reversed(funcs)，每次取值赋给 f
+            x = f(x)               # 将 f(x) 赋给 x
+        return x                   # 返回 x
+    return composed                # 返回 composed
 
-pipeline = compose(str, lambda x: x*2, lambda x: x+1)
+pipeline = compose(str, lambda x: x*2, lambda x: x+1)  # 将 compose(str, lambda x: x*2, lambda x: x+1) 赋给 pipeline
 print(pipeline(5))   # 先 +1 得 6，再 *2 得 12，再 str 得 "12"
 \`\`\`
 
@@ -7308,10 +7308,10 @@ itertools 的核心卖点之一是**省内存**。下面用具体数字说明。
 ### 17.1 内存对比：list vs 生成器
 
 \`\`\`python
-import sys
+import sys                         # 导入 sys 模块
 
-big_list = [x for x in range(10**6)]
-big_gen  = (x for x in range(10**6))
+big_list = [x for x in range(10**6)]  # 创建列表并赋给 big_list
+big_gen  = (x for x in range(10**6))  # 创建元组并赋给 big_gen
 print(sys.getsizeof(big_list))   # ~8 MB（800 万字节量级）
 print(sys.getsizeof(big_gen) )   # ~200 字节（恒定大小）
 \`\`\`
@@ -7322,21 +7322,21 @@ print(sys.getsizeof(big_gen) )   # ~200 字节（恒定大小）
 
 \`\`\`python
 # 传统双层循环
-result = []
-for i in range(100):
-    for j in range(100):
-        result.append((i, j))
+result = []                        # 创建列表并赋给 result
+for i in range(100):               # 遍历 range(100)，每次取值赋给 i
+    for j in range(100):           # 遍历 range(100)，每次取值赋给 j
+        result.append((i, j))      # 对 result 调用 追加 方法，参数 (i, j)
 # 占用 ~1 MB 内存
 
 # itertools.product（惰性）
-pairs = itertools.product(range(100), range(100))
+pairs = itertools.product(range(100), range(100))  # 将 itertools.product(range(100), range(100)) 赋给 pairs
 # 只占固定大小，按需产出
 \`\`\`
 
 如果只取前 10 个组合，\`product\` 完全不需要把 1 万个组合都生成出来：
 
 \`\`\`python
-first10 = list(itertools.islice(itertools.product(range(100), range(100)), 10))
+first10 = list(itertools.islice(itertools.product(range(100), range(100)), 10))  # 将 list(itertools.islice(itertools.product(range(100), range(100)), 10)) 赋给 first10
 \`\`\`
 
 ### 17.3 手写循环 vs itertools 速度
@@ -7344,12 +7344,12 @@ first10 = list(itertools.islice(itertools.product(range(100), range(100)), 10))
 itertools 用 C 实现，比纯 Python 循环快：
 
 \`\`\`python
-import timeit
+import timeit                      # 导入 timeit 模块
 
 # 求和
-t1 = timeit.timeit("sum(x for x in range(1000))", number=10000)
-t2 = timeit.timeit("sum(itertools.islice(itertools.count(), 1000))",
-                   setup="import itertools", number=10000)
+t1 = timeit.timeit("sum(x for x in range(1000))", number=10000)  # 将 timeit.timeit("sum(x for x in range(1000))", number=10000) 赋给 t1
+t2 = timeit.timeit("sum(itertools.islice(itertools.count(), 1000))",  # 将 timeit.timeit("sum(itertools.islice(itertools.count(), 1000))", 赋给 t2
+                   setup="import itertools", number=10000)  # 将字符串 "import itertools", number=10000) 赋给 setup
 \`\`\`
 
 通常 \`itertools\` 版本略快，但差距不大。**真正的优势在内存**而非速度。
@@ -7371,7 +7371,7 @@ itertools 强大但有坑，下面列出最常见的几个。
 ### 18.1 陷阱：迭代器只能遍历一次
 
 \`\`\`python
-it = itertools.chain([1,2], [3,4])
+it = itertools.chain([1,2], [3,4]) # 将 itertools.chain([1,2], [3,4]) 赋给 it
 print(list(it))   # [1, 2, 3, 4]
 print(list(it))   # []  ← 已经空了！
 \`\`\`
@@ -7382,8 +7382,8 @@ print(list(it))   # []  ← 已经空了！
 
 \`\`\`python
 data = [("a", 1), ("b", 2), ("a", 3)]   # a 不连续
-for k, g in itertools.groupby(data, key=lambda x: x[0]):
-    print(k, list(g))
+for k, g in itertools.groupby(data, key=lambda x: x[0]):  # 遍历 itertools.groupby(data, key=lambda x: x[0])，每次取值赋给 k, g
+    print(k, list(g))              # 输出 k, list(g)
 # 输出：a [('a',1)]  b [('b',2)]  a [('a',3)]   ← 分成了 3 组！
 \`\`\`
 
@@ -7409,7 +7409,7 @@ list(itertools.islice([1,2,3,4,5], -2, None))   # ❌ ValueError
 
 \`\`\`python
 for x in itertools.count():   # ❌ 死循环！
-    print(x)
+    print(x)                       # 输出 x
 \`\`\`
 
 消费无限迭代器**必须**配合 \`islice\`、\`takewhile\` 或显式 \`break\`。
@@ -7418,9 +7418,9 @@ for x in itertools.count():   # ❌ 死循环！
 
 \`\`\`python
 # 错误：先 take 再 filter
-list(itertools.takewhile(lambda x: x < 5, filter(lambda x: x % 2, [1,2,3,4,5,6])))
+list(itertools.takewhile(lambda x: x < 5, filter(lambda x: x % 2, [1,2,3,4,5,6])))  # 调用 转为列表，参数 itertools.takewhile(lambda x: x < 5, filter(lambda x: x % 2, [1,2,3,4,5,6]))
 # 正确：先 filter 再 take
-list(itertools.islice(filter(lambda x: x % 2, [1,2,3,4,5,6]), 3))
+list(itertools.islice(filter(lambda x: x % 2, [1,2,3,4,5,6]), 3))  # 调用 转为列表，参数 itertools.islice(filter(lambda x: x % 2, [1,2,3,4,5,6]), 3)
 \`\`\`
 
 链式管道的**顺序**会影响结果。一般原则：**先过滤再取前 N**，避免过早终止。
@@ -7430,61 +7430,61 @@ list(itertools.islice(filter(lambda x: x % 2, [1,2,3,4,5,6]), 3))
 ### 19.1 分页处理大数据
 
 \`\`\`python
-def paginate(iterable, page_size):
-    it = iter(iterable)
-    while True:
-        page = list(itertools.islice(it, page_size))
-        if not page:
-            break
-        yield page
+def paginate(iterable, page_size): # 定义函数 paginate，参数：iterable, page_size
+    it = iter(iterable)            # 将 iter(iterable) 赋给 it
+    while True:                    # 当 True 为真时重复执行
+        page = list(itertools.islice(it, page_size))  # 将 list(itertools.islice(it, page_size)) 赋给 page
+        if not page:               # 如果 not page 成立
+            break                  # 跳出循环
+        yield page                 # 产出值 page（生成器）
 
-for page in paginate(range(25), 10):
+for page in paginate(range(25), 10):  # 遍历 paginate(range(25), 10)，每次取值赋给 page
     print(page)   # [0..9], [10..19], [20..24]
 \`\`\`
 
 ### 19.2 批量请求合并
 
 \`\`\`python
-ids = range(100)
-for batch in paginate(ids, 50):
+ids = range(100)                   # 将 range(100) 赋给 ids
+for batch in paginate(ids, 50):    # 遍历 paginate(ids, 50)，每次取值赋给 batch
     # 一次 API 请求处理 50 个 id，减少请求次数
-    response = fetch_api(list(batch))
+    response = fetch_api(list(batch))  # 将 fetch_api(list(batch)) 赋给 response
 \`\`\`
 
 ### 19.3 配置组合测试
 
 \`\`\`python
-browsers = ["chrome", "firefox", "safari"]
-os_list  = ["win", "mac", "linux"]
-viewports = ["mobile", "tablet", "desktop"]
+browsers = ["chrome", "firefox", "safari"]  # 创建列表并赋给 browsers
+os_list  = ["win", "mac", "linux"] # 创建列表并赋给 os_list
+viewports = ["mobile", "tablet", "desktop"]  # 创建列表并赋给 viewports
 
-for combo in itertools.product(browsers, os_list, viewports):
+for combo in itertools.product(browsers, os_list, viewports):  # 遍历 itertools.product(browsers, os_list, viewports)，每次取值赋给 combo
     browser, os_, vp = combo
-    run_test(browser, os_, vp)
+    run_test(browser, os_, vp)     # 调用 run_test，参数 browser, os_, vp
 \`\`\`
 
 ### 19.4 数据分片并行
 
 \`\`\`python
-import multiprocessing
+import multiprocessing             # 导入 multiprocessing 模块
 
-def chunked(iterable, n_chunks):
-    data = list(iterable)
-    size = (len(data) + n_chunks - 1) // n_chunks
-    for i in range(0, len(data), size):
-        yield data[i:i+size]
+def chunked(iterable, n_chunks):   # 定义函数 chunked，参数：iterable, n_chunks
+    data = list(iterable)          # 将 list(iterable) 赋给 data
+    size = (len(data) + n_chunks - 1) // n_chunks  # 将 (len(data) + n_chunks - 1) // n_chunks 赋给 size
+    for i in range(0, len(data), size):  # 遍历 range(0, len(data), size)，每次取值赋给 i
+        yield data[i:i+size]       # 产出值 data[i:i+size]（生成器）
 
-with multiprocessing.Pool(4) as pool:
-    pool.map(process, chunked(big_data, 4))
+with multiprocessing.Pool(4) as pool:  # 使用上下文管理器 multiprocessing.Pool(4)，绑定到 pool
+    pool.map(process, chunked(big_data, 4))  # 对 pool 调用 map 方法，参数 process, chunked(big_data, 4)
 \`\`\`
 
 ### 19.5 缓存预热
 
 \`\`\`python
 # 预热前 1000 个热门 key
-hot_keys = itertools.islice(get_hot_keys(), 1000)
-for key in hot_keys:
-    cache.set(key, load_from_db(key))
+hot_keys = itertools.islice(get_hot_keys(), 1000)  # 将 itertools.islice(get_hot_keys(), 1000) 赋给 hot_keys
+for key in hot_keys:               # 遍历 hot_keys，每次取值赋给 key
+    cache.set(key, load_from_db(key))  # 对 cache 调用 set 方法，参数 key, load_from_db(key)
 \`\`\`
 
 ## 二十、与其他语言迭代器工具对比

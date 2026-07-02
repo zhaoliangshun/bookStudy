@@ -44,11 +44,11 @@ GIL 让 CPython 单线程实现更简单更快（无锁开销），代价是多�
 import threading, time
 
 def worker(n):
-    print(f"thread {n} start")
-    time.sleep(0.1)
-    print(f"thread {n} end")
+    print(f"thread {n} start")   # 子线程入口：打印开始
+    time.sleep(0.1)               # 模拟 IO 耗时
+    print(f"thread {n} end")     # 结束打印
 
-t = threading.Thread(target=worker, args=(1,))
+t = threading.Thread(target=worker, args=(1,))   # 创建线程对象，target 是入口函数，args 是位置参数元组
 t.start()   # 启动底层线程并开始执行
 t.join()    # 阻塞主线程直到该线程结束
 \`\`\`
@@ -84,8 +84,8 @@ def inc(n):
 \`\`\`python
 import concurrent.futures
 
-with concurrent.futures.ThreadPoolExecutor(max_workers=5) as ex:
-    results = list(ex.map(io_task, range(10)))
+with concurrent.futures.ThreadPoolExecutor(max_workers=5) as ex:   # 最多 5 个线程并发
+    results = list(ex.map(io_task, range(10)))   # ex.map 并发调度，list 收集结果（保序）
 \`\`\`
 
 - \`max_workers\`：线程池大小（默认 = min(32, cpu_count + 4)）
@@ -118,19 +118,21 @@ event.is_set() # 查询状态
 ## 九、代码逐行讲解（对应 code 字段）
 
 \`\`\`python
-with concurrent.futures.ThreadPoolExecutor(max_workers=5) as ex:
-    results = list(ex.map(io_task, range(10)))
+import concurrent.futures
+
+with concurrent.futures.ThreadPoolExecutor(max_workers=5) as ex:   # 最多 5 个线程并发
+    results = list(ex.map(io_task, range(10)))   # ex.map 并发调度，list 收集结果（保序）
 \`\`\`
 创建 5 线程池，把 10 个任务交给池调度；I/O 里的 \`time.sleep\` 会释放 GIL，5 线程并发执行，总耗时 ≈ 10/5 × 0.1s = 0.2s，而非串行的 1.0s。
 
 \`\`\`python
-with lock:
-    counter += 1
+with lock:          # with 自动 acquire/release，保证临界区互斥
+    counter += 1   # 同一时刻只有一个线程能执行此行
 \`\`\`
 临界区只有一行，但 \`+=\` 非原子，必须加锁；加锁后最终等于 40000，不加锁可能只有 30000 多（丢失更新）。
 
 \`\`\`python
-event.set()
+event.set()   # 置 True，唤醒所有 event.wait() 阻塞的线程
 \`\`\`
 主线程发信号，waiter 线程从 \`event.wait()\` 返回并打印 \`got signal!\`。
 
@@ -209,11 +211,11 @@ Python 的 \`multiprocessing\` 模块通过 \`fork\`（Unix）/ \`spawn\`（Wind
 import multiprocessing, time
 
 def worker(n):
-    print(f"process {n} pid={multiprocessing.current_process().pid}")
+    print(f"process {n} pid={multiprocessing.current_process().pid}")   # 打印子进程自己的 PID
     time.sleep(0.1)
 
-if __name__ == "__main__":
-    p = multiprocessing.Process(target=worker, args=(1,))
+if __name__ == "__main__":   # 注意：多进程必须放此保护下（尤其 Windows/macOS spawn 模式）
+    p = multiprocessing.Process(target=worker, args=(1,))   # 创建子进程对象
     p.start()   # 创建子进程并执行
     p.join()    # 等待子进程结束
 \`\`\`
@@ -226,8 +228,8 @@ if __name__ == "__main__":
 \`\`\`python
 import concurrent.futures
 
-with concurrent.futures.ProcessPoolExecutor() as ex:
-    results = list(ex.map(cpu_task, [N] * 4))
+with concurrent.futures.ProcessPoolExecutor() as ex:   # 默认 worker 数 = CPU 核数
+    results = list(ex.map(cpu_task, [N] * 4))   # 把 CPU 密集任务分到多进程绕开 GIL
 \`\`\`
 
 - 接口与 \`ThreadPoolExecutor\` 完全一致，**只是把线程换成进程**
@@ -267,9 +269,9 @@ Process(target=consumer, args=(q,)).start()
 ### 5.2 multiprocessing.Pipe（双向管道）
 \`\`\`python
 from multiprocessing import Pipe
-parent_conn, child_conn = Pipe()
-parent_conn.send([1, 2, 3])
-print(child_conn.recv())  # [1, 2, 3]
+parent_conn, child_conn = Pipe()   # 返回连接的两端，双向管道
+parent_conn.send([1, 2, 3])        # 一端发送，对象必须可 pickle
+print(child_conn.recv())  # [1, 2, 3]   # 另一端接收
 \`\`\`
 适合两个进程间点对点通信，比 Queue 轻量。
 
@@ -286,7 +288,7 @@ Windows 和 macOS 默认用 \`spawn\` 模式创建子进程：子进程启动时
 def cpu_task(n):
     ...
 
-if __name__ == "__main__":
+if __name__ == "__main__":           # 多进程入口必须放 __main__ 保护下
     # 在这里创建 Process / Pool
     with concurrent.futures.ProcessPoolExecutor() as ex:
         ...
@@ -326,29 +328,29 @@ Unix 用 \`fork\` 模式理论上不需要，但**为了跨平台兼容，强烈
 ## 十、代码逐行讲解（对应 code 字段）
 
 \`\`\`python
-def cpu_task(n):
+def cpu_task(n):           # CPU 密集任务：累加平方和
     s = 0
     for i in range(n):
-        s += i * i
+        s += i * i         # 纯计算，无 IO
     return s
 \`\`\`
 纯 Python 计算，受 GIL 限制严重，是测试多进程价值的典型场景。
 
 \`\`\`python
-with concurrent.futures.ProcessPoolExecutor() as ex:
-    results = list(ex.map(cpu_task, [N] * 4))
+with concurrent.futures.ProcessPoolExecutor() as ex:   # 进程池绕开 GIL 实现真并行
+    results = list(ex.map(cpu_task, [N] * 4))         # 4 份任务并行计算
 \`\`\`
 4 个任务分给 4 个进程并行执行，**总耗时 ≈ 单任务耗时**（理想情况下），而非 4 倍。
 
 \`\`\`python
-with concurrent.futures.ThreadPoolExecutor(2) as ex:
-    list(ex.map(cpu_bench, [N, N]))
+with concurrent.futures.ThreadPoolExecutor(2) as ex:   # 2 线程跑 CPU 任务
+    list(ex.map(cpu_bench, [N, N]))   # 受 GIL 限制，实际不会并行加速
 \`\`\`
 对比组：同样 2 个 CPU 任务用线程池，受 GIL 限制变成串行，耗时 ≈ 2 倍单任务。
 
 \`\`\`python
-with concurrent.futures.ProcessPoolExecutor(2) as ex:
-    list(ex.map(cpu_bench, [N, N]))
+with concurrent.futures.ProcessPoolExecutor(2) as ex:   # 2 进程跑 CPU 任务
+    list(ex.map(cpu_bench, [N, N]))   # 多进程真并行，耗时约为单进程一半
 \`\`\`
 进程池版本：2 个进程真并行，耗时 ≈ 1 倍单任务，明显快于线程版。
 
@@ -422,9 +424,9 @@ if __name__ == "__main__":
 
 ### 1.2 async def 定义协程函数
 \`\`\`python
-async def say(msg, delay):
-    await asyncio.sleep(delay)
-    return msg
+async def say(msg, delay):       # async def 定义协程
+    await asyncio.sleep(delay)   # await 挂起协程，让出事件循环（非阻塞睡眠）
+    return msg                   # sleep 完成后恢复并返回
 \`\`\`
 
 - 用 \`async def\` 定义的函数叫**协程函数**，**调用它不会立即执行**，而是返回一个**协程对象**（coroutine object）
@@ -435,7 +437,7 @@ async def say(msg, delay):
 \`await\` 表示**让出控制权**给事件循环，直到被等待的协程/未来完成：
 
 \`\`\`python
-result = await some_coro()
+result = await some_coro()   # await 等待协程完成并取返回值（只能在 async 函数内用）
 \`\`\`
 
 - 执行到 \`await\` 时，当前协程**挂起**，事件循环可以去调度其他就绪的协程
@@ -445,10 +447,10 @@ result = await some_coro()
 ## 二、asyncio.run(main()) 入口（3.7+）
 
 \`\`\`python
-async def main():
-    await asyncio.gather(...)
+async def main():                  # 主协程
+    await asyncio.gather(...)      # gather 并发调度多个协程
 
-asyncio.run(main())
+asyncio.run(main())   # 启动事件循环运行主协程，结束自动关闭循环
 \`\`\`
 
 - \`asyncio.run\` 是 3.7+ 推荐的入口，**自动创建事件循环**、运行 \`main()\` 协程、循环结束后清理关闭
@@ -510,27 +512,27 @@ a, b = await asyncio.gather(say("A", 0.1), say("B", 0.1))
 ## 八、代码逐行讲解（对应 code 字段）
 
 \`\`\`python
-async def say(msg, delay):
-    await asyncio.sleep(delay)
+async def say(msg, delay):       # 协程：延时后返回拼接消息
+    await asyncio.sleep(delay)   # 非阻塞等待
     return f"{msg} after {delay}s"
 \`\`\`
 \`asyncio.sleep\` 是 \`time.sleep\` 的异步版本，**会挂起协程并让出事件循环**，期间其他协程可运行。绝不要在协程里调 \`time.sleep\`，那会阻塞整个循环。
 
 \`\`\`python
-a = await say("A", 0.1)
+a = await say("A", 0.1)   # 串行：先等 A 完成再开始 B
 b = await say("B", 0.1)
 \`\`\`
 串行 await：必须等 A 完成才发起 B，总耗时 0.2s。
 
 \`\`\`python
-a, b = await asyncio.gather(say("A", 0.1), say("B", 0.1))
+a, b = await asyncio.gather(say("A", 0.1), say("B", 0.1))   # 并发：两个协程同时跑，总耗时 ≈ 0.1s
 \`\`\`
 gather 并发：A 和 B 同时挂起，总耗时 ≈ 0.1s。**这是 asyncio 最常见的优化模式**。
 
 \`\`\`python
-tasks = [asyncio.create_task(worker(i)) for i in range(3)]
-tasks[1].cancel()
-results = await asyncio.gather(*tasks, return_exceptions=True)
+tasks = [asyncio.create_task(worker(i)) for i in range(3)]   # 预先调度 3 个任务
+tasks[1].cancel()                                            # 取消第 2 个任务
+results = await asyncio.gather(*tasks, return_exceptions=True)   # return_exceptions：被取消的返回异常而非抛出
 \`\`\`
 - \`create_task\` 立即调度 3 个任务
 - \`tasks[1].cancel()\` 给 1 号任务发取消信号，\`worker\` 内部 \`await\` 处会抛 \`CancelledError\`
@@ -543,8 +545,8 @@ except asyncio.CancelledError:
 \`\`\`
 
 \`\`\`python
-results = await asyncio.gather(
-    *[fake_fetch(f"http://x/{i}") for i in range(10)]
+results = await asyncio.gather(            # gather 并发执行所有协程
+    *[fake_fetch(f"http://x/{i}") for i in range(10)]   # * 解包 10 个协程作为参数
 )
 \`\`\`
 并发抓 10 个 URL，总耗时 ≈ 0.1s（而非串行的 1.0s），这是高并发爬虫/批量 API 调用的核心收益。
@@ -677,7 +679,7 @@ await asyncio.gather(*[bounded_fetch(u) for u in urls])
 
 \`\`\`python
 try:
-    result = await asyncio.wait_for(slow(), timeout=0.5)
+    result = await asyncio.wait_for(slow(), timeout=0.5)   # 限时 0.5s，超时抛 TimeoutError
 except asyncio.TimeoutError:
     print("超时！")
 \`\`\`
@@ -766,31 +768,31 @@ except* TypeError as eg:
 \`\`\`python
 async def producer(q):
     for i in range(5):
-        await q.put(i)
-        await asyncio.sleep(0.01)
+        await q.put(i)              # 满了会挂起等待
+        await asyncio.sleep(0.01)   # 模拟生产间隔
     for _ in range(2):
         await q.put(None)   # 2 个哨兵对应 2 个消费者
 \`\`\`
 2 个消费者各收到一个 \`None\` 才会同时退出，避免一个消费者提前结束导致另一个永远等不到哨兵。
 
 \`\`\`python
-sem = asyncio.Semaphore(3)
-async with sem:
+sem = asyncio.Semaphore(3)   # 同时最多 3 个协程进入
+async with sem:              # 第 4 个会等待
     await asyncio.sleep(0.05)
 \`\`\`
 10 个任务 + Semaphore(3)：每批 3 个并发，总耗时 ≈ ceil(10/3) × 0.05s ≈ 0.2s。
 
 \`\`\`python
-await asyncio.wait_for(slow(), timeout=0.05)
+await asyncio.wait_for(slow(), timeout=0.05)   # 限时 0.05s
 \`\`\`
 \`slow()\` 要 sleep 10s，0.05s 后被取消并抛 \`TimeoutError\`。
 
 \`\`\`python
-async with asyncio.TaskGroup() as tg:
+async with asyncio.TaskGroup() as tg:    # TaskGroup (3.11+) 自动管理并发任务，退出时等待全部完成
     for i in range(5):
-        tg.create_task(task(i))
-except* ValueError as eg:
-    print("TaskGroup errors:", [str(e) for e in eg.exceptions])
+        tg.create_task(task(i))           # 创建并发协程任务，加入 TaskGroup 统一管理
+except* ValueError as eg:                # except* (3.11+) 捕获 ExceptionGroup，按异常类型分别处理
+    print("TaskGroup errors:", [str(e) for e in eg.exceptions])  # eg.exceptions 包含所有同类异常
 \`\`\`
 \`task(1)\` 抛 ValueError → 整组其他任务被取消 → 异常以 ExceptionGroup 形式抛出，\`except*\` 捕获并打印所有 ValueError。
 

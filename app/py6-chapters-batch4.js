@@ -11,9 +11,13 @@ export const chapters = [
 ### 基本语法
 
 \`\`\`python
+# 用 def 关键字定义函数，括号内为参数列表，行尾冒号
 def 函数名(参数1, 参数2):
+    # 三引号字符串为文档字符串（可选），说明函数用途
     \\"\\"\\"文档字符串（可选）\\"\\"\\"
+    # 缩进的语句构成函数体，即函数执行的操作
     函数体
+    # return 返回结果；若无 return 则默认返回 None
     return 返回值
 \`\`\`
 
@@ -32,6 +36,7 @@ def 函数名(参数1, 参数2):
 函数定义后不会自动执行，需要**调用**才会运行：
 
 \`\`\`python
+# 调用函数：写函数名并在括号内传入对应的参数值
 函数名(参数值)
 \`\`\`
 
@@ -141,6 +146,7 @@ Python 函数参数非常灵活，支持多种传递方式。
 
 定义函数时，参数必须按这个顺序写：
 \`\`\`python
+# 参数从左到右依次为：位置参数、默认参数、*args、**kwargs，顺序不可调换
 def func(位置参数, 默认参数, *args, **kwargs):
     pass
 \`\`\`
@@ -257,8 +263,10 @@ print("列表合并:", add_three([1], [2], [3]))
 \`*args\` 收集多余的位置参数，打包成一个**元组**：
 
 \`\`\`python
+# *args 收集多余的位置参数，自动打包成元组
 def func(*args):
     # args 是一个元组，包含所有传入的位置参数
+    # 遍历元组 args 中的每个参数
     for arg in args:
         print(arg)
 \`\`\`
@@ -268,8 +276,10 @@ def func(*args):
 \`**kwargs\` 收集多余的关键字参数，打包成一个**字典**：
 
 \`\`\`python
+# **kwargs 收集多余的关键字参数，自动打包成字典
 def func(**kwargs):
     # kwargs 是一个字典，包含所有传入的关键字参数
+    # 遍历字典 kwargs 的键值对
     for key, value in kwargs.items():
         print(key, value)
 \`\`\`
@@ -277,6 +287,7 @@ def func(**kwargs):
 ### 参数顺序
 
 \`\`\`python
+# 参数顺序：位置参数、默认参数、*args、**kwargs，固定不可调换
 def func(位置参数, 默认参数, *args, **kwargs):
     pass
 \`\`\`
@@ -284,10 +295,14 @@ def func(位置参数, 默认参数, *args, **kwargs):
 ### * 和 ** 也可以用于解包（调用时）
 
 \`\`\`python
+# 准备一个列表作为位置参数来源
 args = [1, 2, 3]
+# * 把列表解包成多个位置参数传入，等价于 func(1,2,3)
 func(*args)  # 等价于 func(1, 2, 3)
 
+# 准备一个字典作为关键字参数来源
 kwargs = {"a": 1, "b": 2}
+# ** 把字典解包成关键字参数传入，等价于 func(a=1,b=2)
 func(**kwargs)  # 等价于 func(a=1, b=2)
 \`\`\`
 
@@ -400,9 +415,12 @@ print(f"结果: {result}")`
 Python 函数可以返回多个值（实际上是返回一个元组）：
 
 \`\`\`python
+# 定义函数，返回多个值（实际打包成元组返回）
 def min_max(numbers):
+    # return 用逗号分隔多个值，本质返回一个元组
     return min(numbers), max(numbers)  # 返回元组
 
+# 用元组解包同时接收函数返回的多个值
 min_val, max_val = min_max([1, 2, 3])  # 解包接收
 \`\`\`
 
@@ -415,8 +433,11 @@ min_val, max_val = min_max([1, 2, 3])  # 解包接收
 在函数开头检查条件，不满足就提前 return，可以减少嵌套：
 
 \`\`\`python
+# 定义函数，参数为 x
 def func(x):
+    # 条件判断：当 x 为负数时提前返回
     if x < 0:
+        # 提前退出，避免执行后续不适用的逻辑
         return None  # 提前退出
     # 正常逻辑...
 \`\`\`
@@ -569,8 +590,10 @@ print(f"10 ÷ 0: 商={q}, 余={r}")`
 ### 基本语法
 
 \`\`\`python
+# lambda 定义匿名函数，冒号前为参数，冒号后为表达式
 lambda 参数1, 参数2: 表达式
 # 等价于
+# 上面 lambda 等价的普通函数写法
 def 函数名(参数1, 参数2):
     return 表达式
 \`\`\`
@@ -861,9 +884,13 @@ print(f"  builtins.print = {builtins.print}")
 在函数内修改**全局变量**时，需要用 \`global\` 声明：
 
 \`\`\`python
+# 在函数外定义全局变量 count
 count = 0
+# 定义函数 increment
 def increment():
+    # global 声明下方修改的是全局变量 count 而非新建局部变量
     global count  # 声明count是全局变量
+    # 对全局变量 count 自增 1
     count += 1
 \`\`\`
 
@@ -872,11 +899,17 @@ def increment():
 在嵌套函数内修改**外层函数（Enclosing）**的变量时，用 \`nonlocal\`：
 
 \`\`\`python
+# 外层函数 outer
 def outer():
+    # 外层函数的局部变量 count
     count = 0
+    # 内层函数 inner
     def inner():
+        # nonlocal 声明下方修改的是外层函数的变量 count
         nonlocal count  # 声明count是外层函数的
+        # 对外层变量 count 自增 1
         count += 1
+    # 调用内层函数，触发修改
     inner()
 \`\`\`
 
@@ -1221,13 +1254,18 @@ print("简单场景闭包更简洁，复杂场景用类")`
 ### 装饰器原理
 
 \`\`\`python
+# 装饰器：接收被装饰函数 func 作为参数
 def decorator(func):
+    # 定义包装函数 wrapper，用于扩展原函数行为
     def wrapper():
         # 调用前的操作
+        # 调用原函数
         func()
         # 调用后的操作
+    # 返回包装函数，用它替换原函数
     return wrapper
 
+# @ 语法糖，等价于 func = decorator(func)
 @decorator  # 等价于 func = decorator(func)
 def func():
     pass
@@ -1408,16 +1446,25 @@ print("（下节学functools.wraps解决这个问题）")`
 要让装饰器接收参数，需要再加一层嵌套：
 
 \`\`\`python
+# 外层函数接收装饰器参数 n
 def repeat(n):  # 接收装饰器参数
+    # 中层是真正的装饰器，接收被装饰函数
     def decorator(func):  # 真正的装饰器
+        # 内层包装函数
         def wrapper():  # 包装函数
+            # 重复执行 n 次原函数
             for _ in range(n):
                 func()
+        # 返回包装函数
         return wrapper
+    # 返回真正的装饰器
     return decorator
 
+# 带参装饰器，等价于 hello = repeat(3)(hello)
 @repeat(3)  # 等价于 func = repeat(3)(func)
+# 定义被装饰函数 hello
 def hello():
+    # 打印问候语
     print("Hi")
 \`\`\`
 
@@ -1428,8 +1475,11 @@ def hello():
 ### 多个装饰器叠加顺序
 
 \`\`\`python
+# 多个装饰器从下往上依次应用
 @dec1
+# dec2 先包装 f，再被 dec1 包装
 @dec2
+# 被装饰函数
 def f(): pass
 # 等价于 f = dec1(dec2(f))
 # 执行顺序：dec1的wrapper调用dec2的wrapper，dec2的wrapper调用f
@@ -1994,7 +2044,9 @@ print("yield from 演示:", list(main_gen()))`
 
 \`yield from iterable\` 等价于：
 \`\`\`python
+# 遍历可迭代对象
 for item in iterable:
+    # yield 暂停函数并返回值，下次调用从暂停处继续执行
     yield item
 \`\`\`
 
@@ -2212,11 +2264,15 @@ print("对比列表版本: [n*n for n in range(1,21) if n%2==0] =", [n*n for n i
 
 \`\`\`python
 # map
+# map 对每个元素应用函数 f，list 转为列表
 list(map(f, seq))
+# 列表推导式实现等价效果，更 Pythonic
 [f(x) for x in seq]
 
 # filter
+# filter 保留使 f 返回 True 的元素
 list(filter(f, seq))
+# 列表推导式实现等价过滤
 [x for x in seq if f(x)]
 \`\`\`
 
@@ -2382,12 +2438,16 @@ print(f"double_then_add1(3) = add1(double(3)) = add1(6) = {double_then_add1(3)}"
 ### 基本用法
 
 \`\`\`python
+# 导入偏函数工具 partial
 from functools import partial
 
+# 定义加法函数
 def add(a, b):
     return a + b
 
+# 固定 add 的第一个参数为 5，生成新函数 add5
 add5 = partial(add, 5)  # 固定a=5
+# 调用相当于 add(5,3)，结果为 8
 print(add5(3))  # 等价于 add(5, 3) = 8
 \`\`\`
 
@@ -2725,13 +2785,20 @@ exec(code)`
 让类的实例可以像函数一样被调用：
 
 \`\`\`python
+# 定义类，让其实例可像函数一样被调用
 class Adder:
+    # 构造方法，初始化时保存加数 n
     def __init__(self, n):
+        # 把 n 保存为实例属性
         self.n = n
+    # 实现 __call__ 使实例可被直接调用
     def __call__(self, x):
+        # 返回 x 加上保存的 n
         return x + self.n
 
+# 创建实例，保存加数 5
 add5 = Adder(5)
+# 调用实例相当于 add5.__call__(3)
 print(add5(3))  # 8
 \`\`\`
 
@@ -2937,7 +3004,9 @@ check_callable(42, "42")`
 ### 基本语法
 
 \`\`\`python
+# 参数后 :类型 标注参数类型，->类型 标注返回值类型（仅提示，不强制）
 def greet(name: str, age: int = 18) -> str:
+    # 返回 f-string 拼接的字符串
     return f"{name} is {age} years old"
 \`\`\`
 

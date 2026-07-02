@@ -67,7 +67,7 @@ export const chapters = [
 条件类型是类型体操中最基础也是最重要的构建块。它的语法是：
 
 \`\`\`ts
-type SomeType<T> = T extends U ? X : Y;
+type SomeType<T> = T extends U ? X : Y;  // 定义类型别名 SomeType，泛型参数 T，条件类型
 \`\`\`
 
 这可以读作："如果 T 可以赋值给 U（即 T 是 U 的子类型），那么类型是 X，否则是 Y。"
@@ -75,7 +75,7 @@ type SomeType<T> = T extends U ? X : Y;
 \`extends\` 关键字在这里的含义不是"继承"，而是"类型约束检查"或"是否可赋值"。让我们看几个例子：
 
 \`\`\`ts
-type IsString<T> = T extends string ? true : false;
+type IsString<T> = T extends string ? true : false;  // 定义类型别名 IsString，泛型参数 T，条件类型
 
 type A = IsString<"hello">;  // true
 type B = IsString<42>;       // false
@@ -85,16 +85,16 @@ type C = IsString<string>;   // true
 条件类型最强大的特性之一是**分配律**（Distributive Conditional Types）。当传入的 T 是联合类型时，条件类型会自动分配到每个成员上：
 
 \`\`\`ts
-type ToArray<T> = T extends any ? T[] : never;
-type StrOrNumArr = ToArray<string | number>;
+type ToArray<T> = T extends any ? T[] : never;  // 定义类型别名 ToArray，泛型参数 T，条件类型（注意：any 关闭了类型检查）
+type StrOrNumArr = ToArray<string | number>;  // 定义类型别名 StrOrNumArr，联合类型
 // 等价于 string[] | number[]（而不是 (string | number)[]）
 \`\`\`
 
 这个特性非常重要，是很多高级类型技巧的基础。如果你想阻止分配，可以用方括号包裹：
 
 \`\`\`ts
-type ToArrayNonDist<T> = [T] extends [any] ? T[] : never;
-type Result = ToArrayNonDist<string | number>;
+type ToArrayNonDist<T> = [T] extends [any] ? T[] : never;  // 定义类型别名 ToArrayNonDist，泛型参数 T，条件类型（注意：any 关闭了类型检查）
+type Result = ToArrayNonDist<string | number>;  // 定义类型别名 Result，联合类型
 // (string | number)[]
 \`\`\`
 
@@ -103,9 +103,9 @@ type Result = ToArrayNonDist<string | number>;
 \`infer\` 是条件类型中的"模式匹配"工具。它允许你在 extends 子句中声明一个类型变量，TypeScript 会自动推断出该位置的实际类型：
 
 \`\`\`ts
-type ReturnType<F> = F extends (...args: any[]) => infer R ? R : never;
+type ReturnType<F> = F extends (...args: any[]) => infer R ? R : never;  // 定义类型别名 ReturnType，泛型参数 F，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 
-type Fn = (x: number) => string;
+type Fn = (x: number) => string;  // 定义类型别名 Fn
 type R = ReturnType<Fn>;  // string
 \`\`\`
 
@@ -116,11 +116,11 @@ type R = ReturnType<Fn>;  // string
 映射类型允许你基于一个已有的对象类型，创建一个新的对象类型，对每个属性进行变换：
 
 \`\`\`ts
-type Readonly<T> = {
+type Readonly<T> = {  // 定义类型别名 Readonly，泛型参数 T
   readonly [K in keyof T]: T[K];
 };
 
-type Partial<T> = {
+type Partial<T> = {  // 定义类型别名 Partial，泛型参数 T
   [K in keyof T]?: T[K];
 };
 \`\`\`
@@ -128,11 +128,11 @@ type Partial<T> = {
 \`keyof T\` 产生 T 的所有键的联合类型，\`[K in keyof T]\` 则遍历每个键。你可以添加修饰符（\`readonly\`、\`?\`），也可以通过 \`-\` 前缀移除它们：
 
 \`\`\`ts
-type Required<T> = {
+type Required<T> = {  // 定义类型别名 Required，泛型参数 T
   [K in keyof T]-?: T[K];  // -? 移除可选修饰符
 };
 
-type Mutable<T> = {
+type Mutable<T> = {  // 定义类型别名 Mutable，泛型参数 T
   -readonly [K in keyof T]: T[K];  // -readonly 移除只读修饰符
 };
 \`\`\`
@@ -145,8 +145,8 @@ type Mutable<T> = {
 
 \`\`\`ts
 // 构建长度为 N 的元组
-type BuildTuple<N extends number, T extends any[] = []> =
-  T['length'] extends N ? T : BuildTuple<N, [...T, any]>;
+type BuildTuple<N extends number, T extends any[] = []> =  // 注意：any 关闭了类型检查
+  T['length'] extends N ? T : BuildTuple<N, [...T, any]>;  // 注意：any 关闭了类型检查
 
 type Tuple3 = BuildTuple<3>;  // [any, any, any]
 type Len3 = Tuple3['length']; // 3
@@ -159,11 +159,11 @@ type Len3 = Tuple3['length']; // 3
 基础的 \`Readonly<T>\` 和 \`Partial<T>\` 只处理第一层属性。如果对象有嵌套结构，我们需要递归地处理每一层：
 
 \`\`\`ts
-type DeepReadonly<T> = {
+type DeepReadonly<T> = {  // 定义类型别名 DeepReadonly，泛型参数 T
   readonly [K in keyof T]: T[K] extends object ? DeepReadonly<T[K]> : T[K];
 };
 
-type DeepPartial<T> = {
+type DeepPartial<T> = {  // 定义类型别名 DeepPartial，泛型参数 T
   [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
 };
 \`\`\`
@@ -175,7 +175,7 @@ type DeepPartial<T> = {
 需要注意的是，\`T[K] extends object\` 这个判断需要小心处理——函数、数组也是 object，通常你需要更精细的判断。例如，数组应该保留其结构：
 
 \`\`\`ts
-type DeepReadonly<T> = T extends (...args: any[]) => any
+type DeepReadonly<T> = T extends (...args: any[]) => any  // 定义类型别名 DeepReadonly，泛型参数 T（注意：any 关闭了类型检查）
   ? T  // 函数保持不变
   : T extends Array<infer U>
   ? ReadonlyArray<DeepReadonly<U>>  // 数组变为只读数组
@@ -189,9 +189,9 @@ type DeepReadonly<T> = T extends (...args: any[]) => any
 将元组类型转换为其所有元素类型的联合类型，是一个经典的类型体操入门题。最简洁的实现方式是利用索引访问：
 
 \`\`\`ts
-type TupleToUnion<T extends readonly any[]> = T[number];
+type TupleToUnion<T extends readonly any[]> = T[number];  // 定义类型别名 TupleToUnion，泛型参数 T extends readonly any[]（注意：any 关闭了类型检查）
 
-type Colors = TupleToUnion<['red', 'green', 'blue']>;
+type Colors = TupleToUnion<['red', 'green', 'blue']>;  // 定义类型别名 Colors
 // 'red' | 'green' | 'blue'
 \`\`\`
 
@@ -600,7 +600,7 @@ TypeScript 4.1 引入的**模板字面量类型**（Template Literal Types）是
 
 \`\`\`ts
 type Greeting = \`Hello, \${"World"}!\`;  // "Hello, World!"
-type EventName<T extends string> = \`on\${Capitalize<T>}\`;
+type EventName<T extends string> = \`on\${Capitalize<T>}\`;  // 定义类型别名 EventName，泛型参数 T extends string
 type ClickEvent = EventName<"click">;  // "onClick"
 \`\`\`
 
@@ -611,7 +611,7 @@ type ClickEvent = EventName<"click">;  // "onClick"
 在条件类型的 extends 子句中，你可以用模板字面量类型进行模式匹配，并用 \`infer\` 捕获其中的部分：
 
 \`\`\`ts
-type GetLastName<T> = T extends \`\${infer _FirstName} \${infer LastName}\`
+type GetLastName<T> = T extends \`\${infer _FirstName} \${infer LastName}\`  // 定义类型别名 GetLastName，泛型参数 T，使用 infer 在条件类型中提取类型
   ? LastName
   : never;
 
@@ -699,7 +699,7 @@ type ReplaceAll<
   ? \`\${Before}\${To}\${ReplaceAll<After, From, To>}\`
   : S;
 
-type Replaced = ReplaceAll<"hello world hello", "hello", "hi">;
+type Replaced = ReplaceAll<"hello world hello", "hello", "hi">;  // 定义类型别名 Replaced
 // "hi world hi"
 \`\`\`
 
@@ -718,7 +718,7 @@ type SnakeToCamel<S extends string> =
   : S;
 
 type CamelName = SnakeToCamel<"user_name">;  // "userName"
-type CamelFull = SnakeToCamel<"first_name_and_last_name">;
+type CamelFull = SnakeToCamel<"first_name_and_last_name">;  // 定义类型别名 CamelFull
 // "firstNameAndLastName"
 \`\`\`
 
@@ -772,7 +772,7 @@ type Chars = StringToUnion<"abc">;  // "a" | "b" | "c"
 实现 Trim 需要递归地从两端移除空白字符：
 
 \`\`\`ts
-type Whitespace = " " | "\\n" | "\\t" | "\\r";
+type Whitespace = " " | "\\n" | "\\t" | "\\r";  // 定义类型别名 Whitespace
 
 type TrimLeft<S extends string> =
   S extends \`\${Whitespace}\${infer Rest}\` ? TrimLeft<Rest> : S;
@@ -780,7 +780,7 @@ type TrimLeft<S extends string> =
 type TrimRight<S extends string> =
   S extends \`\${infer Rest}\${Whitespace}\` ? TrimRight<Rest> : S;
 
-type Trim<S extends string> = TrimLeft<TrimRight<S>>;
+type Trim<S extends string> = TrimLeft<TrimRight<S>>;  // 定义类型别名 Trim，泛型参数 S extends string
 
 type Trimmed = Trim<"  hello world  ">;  // "hello world"
 \`\`\`
@@ -803,11 +803,11 @@ type ExtractParams<Path extends string> =
   : never;
 
 // 生成参数对象类型
-type RouteParams<Path extends string> = {
+type RouteParams<Path extends string> = {  // 定义类型别名 RouteParams，泛型参数 Path extends string
   [K in ExtractParams<Path>]: string;
 };
 
-type UserPostParams = RouteParams<"/users/:id/posts/:postId">;
+type UserPostParams = RouteParams<"/users/:id/posts/:postId">;  // 定义类型别名 UserPostParams
 // { id: string; postId: string }
 \`\`\`
 
@@ -1272,10 +1272,10 @@ console.log("\\n字符串类型魔法演示完成！");`,
 一切类型级数字运算的基础是能够构建一个长度为 N 的元组。我们在第一章已经见过 \`BuildTuple\` 的基本实现：
 
 \`\`\`ts
-type BuildTuple<N extends number, T extends any[] = []> =
+type BuildTuple<N extends number, T extends any[] = []> =  // 注意：any 关闭了类型检查
   T["length"] extends N
   ? T
-  : BuildTuple<N, [...T, any]>;
+  : BuildTuple<N, [...T, any]>;  // 注意：any 关闭了类型检查
 \`\`\`
 
 这个类型通过递归地向元组添加 \`any\` 元素，直到元组长度等于 N。例如 \`BuildTuple<3>\` 产生 \`[any, any, any]\`，其 \`length\` 类型是字面量 \`3\`。
@@ -1315,7 +1315,7 @@ type Diff = Subtract<5, 3>;  // 2
 乘法可以理解为"多次加法"——A × B 等于把 B 累加 A 次：
 
 \`\`\`ts
-type Multiply<A extends number, B extends number, Acc extends any[] = []> =
+type Multiply<A extends number, B extends number, Acc extends any[] = []> =  // 注意：any 关闭了类型检查
   A extends 0
   ? Acc["length"]
   : Multiply<Subtract<A, 1>, B, [...Acc, ...BuildTuple<B>]>;
@@ -1331,7 +1331,7 @@ type Product = Multiply<3, 4>;  // 12
 
 \`\`\`ts
 type GreaterThan<A extends number, B extends number> =
-  BuildTuple<A> extends [...BuildTuple<B>, any, ...any[]]
+  BuildTuple<A> extends [...BuildTuple<B>, any, ...any[]]  // 注意：any 关闭了类型检查
   ? true
   : false;
 
@@ -1344,9 +1344,9 @@ type GT2 = GreaterThan<2, 7>;  // false
 同理，可以实现小于、大于等于、小于等于：
 
 \`\`\`ts
-type LessThan<A extends number, B extends number> = GreaterThan<B, A>;
+type LessThan<A extends number, B extends number> = GreaterThan<B, A>;  // 定义类型别名 LessThan，泛型参数 A extends number, B extends number
 type GreaterOrEqual<A extends number, B extends number> =
-  BuildTuple<A> extends [...BuildTuple<B>, ...any[]] ? true : false;
+  BuildTuple<A> extends [...BuildTuple<B>, ...any[]] ? true : false;  // 注意：any 关闭了类型检查
 \`\`\`
 
 ### 斐波那契数列：类型级递归
@@ -1361,7 +1361,7 @@ type Fibonacci<
   Count extends any[] = [any] // 当前计数（从1开始）
 > = Count["length"] extends N
   ? Curr["length"]
-  : Fibonacci<N, Curr, [...Prev, ...Curr], [...Count, any]>;
+  : Fibonacci<N, Curr, [...Prev, ...Curr], [...Count, any]>;  // 注意：any 关闭了类型检查
 
 type Fib5 = Fibonacci<5>;   // 5
 type Fib10 = Fibonacci<10>; // 55
@@ -1415,11 +1415,11 @@ TypeScript 对类型实例化的深度有限制（TypeScript 4.5+ 中类型递�
 类型级数学的一个重要应用是柯里化（Currying）函数的类型。一个柯里化的 n 元函数，其类型需要追踪已经接收了多少个参数：
 
 \`\`\`ts
-type Curry<F extends (...args: any[]) => any> =
-  <T extends any[]>(...args: T) =>
+type Curry<F extends (...args: any[]) => any> =  // 箭头函数（注意：any 关闭了类型检查）
+  <T extends any[]>(...args: T) =>  // 箭头函数（注意：any 关闭了类型检查）
     T["length"] extends Parameters<F>["length"]
     ? ReturnType<F>
-    : Curry<(...args: DropFirst<Parameters<F>, T["length"]>) => ReturnType<F>>;
+    : Curry<(...args: DropFirst<Parameters<F>, T["length"]>) => ReturnType<F>>;  // 箭头函数
 \`\`\`
 
 其中 \`DropFirst\` 需要从元组中移除前 N 个元素，这也依赖于类型级数字。
@@ -1838,20 +1838,20 @@ TypeScript 使用结构化类型系统（structural typing）——只要两个�
 **烙印类型**通过在类型中添加一个"不可能在运行时存在"的唯一标记来实现：
 
 \`\`\`ts
-type Brand<T, B> = T & { __brand: B };
+type Brand<T, B> = T & { __brand: B };  // 定义类型别名 Brand，泛型参数 T, B，交叉类型
 
-type UserId = Brand<string, "UserId">;
-type OrderId = Brand<string, "OrderId">;
+type UserId = Brand<string, "UserId">;  // 定义类型别名 UserId
+type OrderId = Brand<string, "OrderId">;  // 定义类型别名 OrderId
 
-function createUserId(id: string): UserId {
-  return id as UserId;
+function createUserId(id: string): UserId {  // 定义函数 createUserId，参数: id: string，返回 UserId
+  return id as UserId;  // 返回 id as UserId（注意：类型断言会绕过类型检查）
 }
-function createOrderId(id: string): OrderId {
-  return id as OrderId;
+function createOrderId(id: string): OrderId {  // 定义函数 createOrderId，参数: id: string，返回 OrderId
+  return id as OrderId;  // 返回 id as OrderId（注意：类型断言会绕过类型检查）
 }
 
-const uid: UserId = createUserId("u1");
-const oid: OrderId = createOrderId("o1");
+const uid: UserId = createUserId("u1");  // 声明常量 uid，类型 UserId
+const oid: OrderId = createOrderId("o1");  // 声明常量 oid，类型 OrderId
 // const bad: UserId = oid;  // ❌ 类型错误！
 \`\`\`
 
@@ -1863,26 +1863,26 @@ const oid: OrderId = createOrderId("o1");
 
 \`\`\`ts
 // 货币单位作为幻影类型
-type Currency = "USD" | "EUR" | "CNY";
+type Currency = "USD" | "EUR" | "CNY";  // 定义类型别名 Currency
 
-interface Money<C extends Currency> {
+interface Money<C extends Currency> {  // 定义接口 Money，泛型参数 C extends Currency
   amount: number;
   // C 不在运行时结构中——它是幻影类型参数
 }
 
-function usd(amount: number): Money<"USD"> {
-  return { amount };
+function usd(amount: number): Money<"USD"> {  // 定义函数 usd，参数: amount: number，返回 Money<"USD">
+  return { amount };  // 返回 { amount }
 }
-function eur(amount: number): Money<"EUR"> {
-  return { amount };
-}
-
-function add<C extends Currency>(a: Money<C>, b: Money<C>): Money<C> {
-  return { amount: a.amount + b.amount };
+function eur(amount: number): Money<"EUR"> {  // 定义函数 eur，参数: amount: number，返回 Money<"EUR">
+  return { amount };  // 返回 { amount }
 }
 
-const dollars = usd(100);
-const euros = eur(100);
+function add<C extends Currency>(a: Money<C>, b: Money<C>): Money<C> {  // 定义函数 add，泛型 C extends Currency，参数: a: Money<C>, b: Money<C>，返回 Money<C>
+  return { amount: a.amount + b.amount };  // 返回 { amount: a.amount + b.amount }
+}
+
+const dollars = usd(100);  // 声明常量 dollars
+const euros = eur(100);  // 声明常量 euros
 // add(dollars, euros);  // ❌ 类型错误：货币不同！
 const sum = add(dollars, usd(50));  // ✅ 正确
 \`\`\`
@@ -1914,28 +1914,28 @@ TypeScript 没有原生的 HKT 支持，但社区发展出了一种基于"种类
 
 \`\`\`ts
 // HKT 编码
-interface HKT<F, A> {
+interface HKT<F, A> {  // 定义接口 HKT，泛型参数 F, A
   _F: F;
   _A: A;
 }
 
 // 注册类型构造器
-interface ArrayKind {
+interface ArrayKind {  // 定义接口 ArrayKind
   kind: "Array";
 }
 // 这里用 URI 到类型的映射
-interface Kind<URI, A> {
+interface Kind<URI, A> {  // 定义接口 Kind，泛型参数 URI, A
   Array: Array<A>;
 }[URI];
 
 // Functor 类型类
-interface Functor<F> {
-  map: <A, B>(f: (a: A) => B, fa: Kind<F, A>) => Kind<F, B>;
+interface Functor<F> {  // 定义接口 Functor，泛型参数 F
+  map: <A, B>(f: (a: A) => B, fa: Kind<F, A>) => Kind<F, B>;  // 箭头函数
 }
 
 // Array 的 Functor 实现
-const ArrayFunctor: Functor<"Array"> = {
-  map: (f, arr) => arr.map(f),
+const ArrayFunctor: Functor<"Array"> = {  // 声明常量 ArrayFunctor，类型 Functor<"Array">
+  map: (f, arr) => arr.map(f),  // 箭头函数
 };
 \`\`\`
 
@@ -1949,22 +1949,22 @@ HKT 模拟在 TypeScript 中是一个高级话题，fp-ts 等函数式库大量�
 
 \`\`\`ts
 // 类型类定义
-interface Eq<T> {
-  equals(a: T, b: T): boolean;
+interface Eq<T> {  // 定义接口 Eq，泛型参数 T
+  equals(a: T, b: T): boolean;  // 方法声明 equals(a: T, b: T)，返回 boolean
 }
 
 // 为具体类型实现类型类
-const EqNumber: Eq<number> = {
-  equals: (a, b) => a === b,
+const EqNumber: Eq<number> = {  // 声明常量 EqNumber，类型 Eq<number>
+  equals: (a, b) => a === b,  // 箭头函数
 };
 
-const EqString: Eq<string> = {
-  equals: (a, b) => a === b;
+const EqString: Eq<string> = {  // 声明常量 EqString，类型 Eq<string>
+  equals: (a, b) => a === b;  // 箭头函数
 };
 
 // 使用类型类
-function contains<T>(arr: T[], item: T, eq: Eq<T>): boolean {
-  return arr.some((x) => eq.equals(x, item));
+function contains<T>(arr: T[], item: T, eq: Eq<T>): boolean {  // 定义函数 contains，泛型 T，参数: arr: T[], item: T, eq: Eq<T>，返回 boolean
+  return arr.some((x) => eq.equals(x, item));  // 返回 arr.some((x) => eq.equals(x, item))
 }
 \`\`\`
 
@@ -1978,14 +1978,14 @@ function contains<T>(arr: T[], item: T, eq: Eq<T>): boolean {
 柯里化是将多参数函数转化为一系列单参数函数的过程。在类型层面实现柯里化的类型推导是一个经典挑战：
 
 \`\`\`ts
-type Curry<P extends any[], R> =
+type Curry<P extends any[], R> =  // 注意：any 关闭了类型检查
   P extends [infer First, ...infer Rest]
   ? Rest extends []
-    ? (arg: First) => R
-    : (arg: First) => Curry<Rest, R>
-  : () => R;
+    ? (arg: First) => R  // 箭头函数
+    : (arg: First) => Curry<Rest, R>  // 箭头函数
+  : () => R;  // 箭头函数
 
-type CurriedAdd = Curry<[a: number, b: number, c: number], number>;
+type CurriedAdd = Curry<[a: number, b: number, c: number], number>;  // 定义类型别名 CurriedAdd
 // (a: number) => (b: number) => (c: number) => number
 \`\`\`
 
@@ -1996,11 +1996,11 @@ type CurriedAdd = Curry<[a: number, b: number, c: number], number>;
 \`pipe\`（从左到右）和 \`compose\`（从右到左）是函数式编程中的核心组合子。它们的类型需要保证"前一个函数的输出类型是后一个函数的输入类型"：
 
 \`\`\`ts
-function pipe<A, B>(a: A, f: (a: A) => B): B;
-function pipe<A, B, C>(a: A, f: (a: A) => B, g: (b: B) => C): C;
-function pipe<A, B, C, D>(a: A, f: (a: A) => B, g: (b: B) => C, h: (c: C) => D): D;
-function pipe(value: any, ...fns: Array<(x: any) => any>): any {
-  return fns.reduce((acc, fn) => fn(acc), value);
+function pipe<A, B>(a: A, f: (a: A) => B): B;  // 定义函数 pipe，泛型 A, B，参数: a: A, f: (a: A
+function pipe<A, B, C>(a: A, f: (a: A) => B, g: (b: B) => C): C;  // 定义函数 pipe，泛型 A, B, C，参数: a: A, f: (a: A
+function pipe<A, B, C, D>(a: A, f: (a: A) => B, g: (b: B) => C, h: (c: C) => D): D;  // 定义函数 pipe，泛型 A, B, C, D，参数: a: A, f: (a: A
+function pipe(value: any, ...fns: Array<(x: any) => any>): any {  // 定义函数 pipe，参数: value: any, ...fns: Array<(x: any（注意：any 关闭了类型检查）
+  return fns.reduce((acc, fn) => fn(acc), value);  // 返回 fns.reduce((acc, fn) => fn(acc), value)
 }
 \`\`\`
 
@@ -2504,12 +2504,12 @@ console.log("\\n高级类型模式演示完成！");`,
 这道题的关键是利用**可选属性的特殊性质**：可选属性的值类型包含 \`undefined\`，但更可靠的方式是利用"可选属性在 extends 检查中的行为"：
 
 \`\`\`ts
-type GetRequired<T> = {
-  [K in keyof T as T[K] extends { [P in K]: T[K] } ? K : never]: T[K]
+type GetRequired<T> = {  // 定义类型别名 GetRequired，泛型参数 T
+  [K in keyof T as T[K] extends { [P in K]: T[K] } ? K : never]: T[K]  // 注意：类型断言会绕过类型检查
 };
 // 或者使用更简洁的方式：判断 {} extends Pick<T, K>
-type RequiredKeys<T> = keyof {
-  [K in keyof T as {} extends Pick<T, K> ? never : K]: T[K]
+type RequiredKeys<T> = keyof {  // 定义类型别名 RequiredKeys，泛型参数 T，使用 keyof 取键的联合
+  [K in keyof T as {} extends Pick<T, K> ? never : K]: T[K]  // 注意：类型断言会绕过类型检查
 };
 \`\`\`
 
@@ -2520,8 +2520,8 @@ type RequiredKeys<T> = keyof {
 与 RequiredKeys 对称，获取所有可选属性的键：
 
 \`\`\`ts
-type OptionalKeys<T> = keyof {
-  [K in keyof T as {} extends Pick<T, K> ? K : never]: T[K]
+type OptionalKeys<T> = keyof {  // 定义类型别名 OptionalKeys，泛型参数 T，使用 keyof 取键的联合
+  [K in keyof T as {} extends Pick<T, K> ? K : never]: T[K]  // 注意：类型断言会绕过类型检查
 };
 \`\`\`
 
@@ -2552,7 +2552,7 @@ type DeepPick<T, Path extends string> =
 
 \`\`\`ts
 type UnionToIntersection<U> =
-  (U extends any ? (x: U) => void : never) extends (x: infer I) => void
+  (U extends any ? (x: U) => void : never) extends (x: infer I) => void  // 箭头函数（注意：any 关闭了类型检查）
   ? I
   : never;
 \`\`\`
@@ -2574,7 +2574,7 @@ type UnionToIntersection<U> =
 type Permutation<T, C = T> =
   [T] extends [never]
   ? []
-  : T extends any
+  : T extends any  // 注意：any 关闭了类型检查
   ? [T, ...Permutation<Exclude<C, T>>]
   : never;
 \`\`\`
@@ -2591,14 +2591,14 @@ type Permutation<T, C = T> =
 
 \`\`\`ts
 // ❌ 错误！
-type IsNeverWrong<T> = T extends never ? true : false;
+type IsNeverWrong<T> = T extends never ? true : false;  // 定义类型别名 IsNeverWrong，泛型参数 T，条件类型
 // IsNeverWrong<never> 得到的是 never，不是 true！
 \`\`\`
 
 问题在于：当 T 是 never 时，条件类型直接返回 never（因为 never 是空联合，分配后没有成员）。正确做法是用元组阻止分配：
 
 \`\`\`ts
-type IsNever<T> = [T] extends [never] ? true : false;
+type IsNever<T> = [T] extends [never] ? true : false;  // 定义类型别名 IsNever，泛型参数 T，条件类型
 \`\`\`
 
 ### IsUnion：判断类型是否为联合类型
@@ -2607,7 +2607,7 @@ type IsNever<T> = [T] extends [never] ? true : false;
 
 \`\`\`ts
 type IsUnion<T, C = T> =
-  T extends any
+  T extends any  // 注意：any 关闭了类型检查
   ? [C] extends [T] ? false : true
   : never;
 \`\`\`
@@ -2619,10 +2619,10 @@ type IsUnion<T, C = T> =
 我们在字符串章节已经见过 Trim。这里给出更完整的实现，包括去除多种空白字符：
 
 \`\`\`ts
-type Whitespace = " " | "\\n" | "\\t" | "\\r";
-type TrimLeft<S extends string> = S extends \`\${Whitespace}\${infer R}\` ? TrimLeft<R> : S;
-type TrimRight<S extends string> = S extends \`\${infer R}\${Whitespace}\` ? TrimRight<R> : S;
-type Trim<S extends string> = TrimLeft<TrimRight<S>>;
+type Whitespace = " " | "\\n" | "\\t" | "\\r";  // 定义类型别名 Whitespace
+type TrimLeft<S extends string> = S extends \`\${Whitespace}\${infer R}\` ? TrimLeft<R> : S;  // 定义类型别名 TrimLeft，泛型参数 S extends string，使用 infer 在条件类型中提取类型
+type TrimRight<S extends string> = S extends \`\${infer R}\${Whitespace}\` ? TrimRight<R> : S;  // 定义类型别名 TrimRight，泛型参数 S extends string，使用 infer 在条件类型中提取类型
+type Trim<S extends string> = TrimLeft<TrimRight<S>>;  // 定义类型别名 Trim，泛型参数 S extends string
 \`\`\`
 
 ### Capitalize 实现
@@ -2630,7 +2630,7 @@ type Trim<S extends string> = TrimLeft<TrimRight<S>>;
 TypeScript 内置了 \`Capitalize<S>\`，但手动实现它是一个好练习：
 
 \`\`\`ts
-interface CapitalMap {
+interface CapitalMap {  // 定义接口 CapitalMap
   a: "A"; b: "B"; c: "C"; d: "D"; e: "E"; f: "F"; g: "G"; h: "H";
   i: "I"; j: "J"; k: "K"; l: "L"; m: "M"; n: "N"; o: "O"; p: "P";
   q: "Q"; r: "R"; s: "S"; t: "T"; u: "U"; v: "V"; w: "W"; x: "X";
@@ -2671,7 +2671,7 @@ type PathGetter<T, P extends string> =
 4. 排序字段合法
 
 \`\`\`ts
-interface Database {
+interface Database {  // 定义接口 Database
   users: {
     id: number;
     name: string;
@@ -2686,13 +2686,13 @@ interface Database {
   };
 }
 
-type TableName = keyof Database;
+type TableName = keyof Database;  // 定义类型别名 TableName，使用 keyof 取键的联合
 
-type QueryBuilder<T extends TableName> = {
-  select<K extends keyof Database[T]>(...fields: K[]): QueryBuilder<T>;
-  where<K extends keyof Database[T]>(field: K, value: Database[T][K]): QueryBuilder<T>;
-  orderBy<K extends keyof Database[T]>(field: K, dir: "asc" | "desc"): QueryBuilder<T>;
-  execute(): void;
+type QueryBuilder<T extends TableName> = {  // 定义类型别名 QueryBuilder，泛型参数 T extends TableName
+  select<K extends keyof Database[T]>(...fields: K[]): QueryBuilder<T>;  // 调用 select（显式指定泛型参数）
+  where<K extends keyof Database[T]>(field: K, value: Database[T][K]): QueryBuilder<T>;  // 调用 where（显式指定泛型参数）
+  orderBy<K extends keyof Database[T]>(field: K, dir: "asc" | "desc"): QueryBuilder<T>;  // 调用 orderBy（显式指定泛型参数）
+  execute(): void;  // 方法声明 execute()，返回 void
 };
 \`\`\`
 
