@@ -4,6 +4,7 @@
 // Python 线程与进程教程（pythread）交互式页面
 // -------------------------------------------------------------
 // 专题教程：聚焦 threading / multiprocessing / concurrent.futures
+//   / subprocess / asyncio
 //   1. 数据源：pythreadChapters / pythreadChapterGroups
 //   2. 运行接口：/api/run-py（调用系统 python3 子进程执行）
 //   3. 高亮器：highlightPython
@@ -138,14 +139,14 @@ export default function PyThreadTutorial() {
         <Sidebar
           title="学习目录"
           tip="点击章节开始学习 Python 线程与进程"
-          footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码</p>}
+          footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码（含 asyncio 章节）</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
           currentPath="/pythread"
-          meta={`共 ${pythreadChapters.length} 章 · 线程与进程专题`}
+          meta={`共 ${pythreadChapters.length} 章 · 线程/进程/asyncio 专题`}
         />
 
         <main className="content" ref={contentRef}>
@@ -264,7 +265,7 @@ export default function PyThreadTutorial() {
 
           <footer className="content-footer">
             <p>
-              Python 线程与进程专题 · 代码由系统 python3 子进程执行 · 详解 threading / multiprocessing / concurrent.futures
+              Python 线程与进程专题 · 代码由系统 python3 子进程执行 · 详解 threading / multiprocessing / concurrent.futures / subprocess / asyncio
             </p>
           </footer>
         </main>

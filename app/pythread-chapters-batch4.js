@@ -1501,7 +1501,7 @@ print("• 这是 Celery 等任务系统的核心模式")`,
     title: "并发陷阱与最佳实践总结",
     content: `## 并发编程的"坑"比语法多
 
-学完前面 37 章，你已经掌握了工具。但并发编程真正的难点在于**陷阱**——很多代码"看起来对，跑起来错"。这一章总结常见陷阱和最佳实践。
+学完前面 47 章（含 asyncio 异步编程），你已经掌握了工具。但并发编程真正的难点在于**陷阱**——很多代码"看起来对，跑起来错"。这一章总结常见陷阱和最佳实践。
 
 ## 陷阱1：竞态条件（最常见）
 
@@ -1633,7 +1633,7 @@ with lock:
 
 ## 恭喜！
 
-学完这 38 章，你已经掌握了 Python 并发编程的核心。剩下的就是在实战中积累经验——并发编程的"感觉"只能靠踩坑练出来。多写、多测、多对比，你会越来越得心应手。
+学完这 48 章（含 asyncio 异步编程），你已经掌握了 Python 并发编程的核心。剩下的就是在实战中积累经验——并发编程的"感觉"只能靠踩坑练出来。多写、多测、多对比，你会越来越得心应手。
 
 最后送一句话：**"过早优化是万恶之源"**。先写正确的串行代码，确认是性能瓶颈后再用并发优化，并用实测数据验证效果。`,
     code: `# 第三十八章 demo：综合检查清单 + 速查
@@ -1728,13 +1728,14 @@ print("   已停止 ✓")
 print("\\n" + "=" * 55)
 print("决策速查")
 print("=" * 55)
-print("  IO 密集（网络/文件）  → ThreadPoolExecutor")
+print("  IO 密集（网络/文件）  → ThreadPoolExecutor / asyncio")
 print("  CPU 密集（计算）      → ProcessPoolExecutor")
-print("  超高并发 IO（万级）   → asyncio")
+print("  超高并发 IO（万级）   → asyncio（协程比线程轻量）")
 print("  调用外部程序          → subprocess")
 print("  任务间共享简单数据    → Value / Array")
 print("  任务间共享复杂对象    → Manager")
-print("  生产者消费者          → queue.Queue（线程）/ mp.Queue（进程）")
+print("  生产者消费者          → queue.Queue（线程）/ mp.Queue（进程）/ asyncio.Queue（协程）")
+print("  asyncio 里调阻塞函数 → asyncio.to_thread / run_in_executor")
 print()
 print("  黄金法则：")
 print("  • 先写正确的串行代码，确认瓶颈后再并发优化")
@@ -1744,6 +1745,6 @@ print("  • Lock 用 with，加锁顺序统一，设超时")
 print("  • 子任务异常要传回，别静默吞")
 print("  • 用实测数据验证并发效果，别靠猜")
 
-print("\\n🎉 教程完结！恭喜你学完了 Python 线程与进程的全部内容！")`,
+print("\\n🎉 教程完结！恭喜你学完了 Python 线程 / 进程 / asyncio 的全部内容！")`,
   },
 ];
