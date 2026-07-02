@@ -2032,7 +2032,8 @@ body {
 .pg-split {
   flex: 1;
   display: flex;
-  gap: 14px;
+  /* 两侧各留一点空隙，让面板和分隔条不贴在一起，视觉更透气 */
+  gap: 4px;
   padding: 14px 20px;
   min-height: 0; /* 关键：让子元素能正确收缩并出现滚动条 */
   overflow: hidden;
@@ -2043,11 +2044,45 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0; /* 防止 flex 子元素溢出 */
+  min-height: 0; /* 垂直布局下也要能收缩 */
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
+}
+
+/* 可拖动分隔条：提供左右 / 上下两侧之间的间距 + 拖动交互 */
+.pg-split-divider {
+  flex: 0 0 14px; /* 固定 14px 宽，等于原先的 gap */
+  position: relative;
+  cursor: col-resize;
+  /* 居中渲染细线条作为视觉指示 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 触摸设备上拖动时禁用默认滚动 / 点击行为 */
+  touch-action: none;
+  /* 让 pointer 事件不被子元素挡住 */
+  z-index: 1;
+}
+/* 中央细线条：默认低调，悬停 / 拖动时高亮 */
+.pg-split-divider::before {
+  content: "";
+  width: 2px;
+  height: 36px;
+  background: var(--border);
+  border-radius: 2px;
+  transition: background 0.15s ease, height 0.15s ease, width 0.15s ease;
+}
+.pg-split-divider:hover::before,
+.pg-split-divider.dragging::before {
+  background: var(--primary);
+  height: 56px;
+}
+/* 拖动时整个分隔条区域可见，避免鼠标偏出 ::before 范围就失去 hover */
+.pg-split-divider.dragging {
+  background: rgba(37, 99, 235, 0.06);
 }
 
 /* 面板顶部标题栏 */
@@ -2091,6 +2126,9 @@ body {
   box-shadow: none;
   /* Monaco Editor 容器需要明确尺寸才能正确布局 */
   position: relative;
+  /* 代码与面板左边框之间留一点白色间隙，视觉更透气 */
+  padding-left: 8px;
+  background: var(--editor-bg, #ffffff);
   /* 关键：不限制子元素宽度，让 Monaco 自己管理 .margin（行号槽）宽度。
      之前用 > div { width: 100% } 会干扰 Monaco 内部 absolute 布局，
      导致行号槽宽度计算异常、行号数字被裁。 */
@@ -2214,11 +2252,25 @@ body {
   .pg-split {
     flex-direction: column;
     padding: 10px 14px;
-    gap: 10px;
+    gap: 4px;
   }
   .pg-editor-pane,
   .pg-output-pane {
-    min-height: 280px;
+    min-height: 200px;
+  }
+  /* 窄屏下分隔条变为水平方向：拖动调整上下高度 */
+  .pg-split-divider {
+    flex: 0 0 14px;
+    cursor: row-resize;
+  }
+  .pg-split-divider::before {
+    width: 36px;
+    height: 2px;
+  }
+  .pg-split-divider:hover::before,
+  .pg-split-divider.dragging::before {
+    width: 56px;
+    height: 2px;
   }
   .pg-status-hint {
     display: none;

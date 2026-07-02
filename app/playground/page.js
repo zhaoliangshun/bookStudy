@@ -927,9 +927,19 @@ export default function PlaygroundPage() {
   const [toast, setToast] = useState("");
   // 自动运行开关：开启后代码改变会自动执行（防抖）
   const [autoRun, setAutoRun] = useState(true);
+  // 左右分栏拖动比例（左侧占比，0~1），默认 0.5（各占一半）
+  const [splitRatio, setSplitRatio] = useState(0.5);
+  // 是否为窄屏上下堆叠布局（响应式：max-width 900px 切换为垂直拖动）
+  const [isVerticalSplit, setIsVerticalSplit] = useState(false);
+  // 是否正在拖动分隔条（用于持续高亮分隔条视觉反馈）
+  const [isSplitDragging, setIsSplitDragging] = useState(false);
 
   // ---------- ref ----------
   const requestIdRef = useRef(0);
+  // 分栏容器引用，用于在拖动时计算鼠标位置对应的占比
+  const splitRef = useRef(null);
+  // 拖动状态标记：用 ref 而非 state，避免在 pointermove 回调里频繁触发重渲染
+  const splitDraggingRef = useRef(false);
 
   // 当前语言配置对象
   const activeLang =
@@ -1173,6 +1183,95 @@ export default function PlaygroundPage() {
     });
   }, []);
 
+  // ---------- 监听窗口宽度切换分栏方向 ----------
+  // 窄屏（max-width: 900px）下 .pg-split 变为上下堆叠，
+  // 拖动方向也要从水平（col-resize）切换为垂直（row-resize）。
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 900px)");
+    const update = () => setIsVerticalSplit(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  // ---------- 从 localStorage 恢复分栏比例 ----------
+  // 用户上次拖动设置的占比会被记住，刷新页面后保持一致。
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("playground:splitRatio");
+      if (saved !== null) {
+        const r = parseFloat(saved);
+        // 合法性校验：必须在合理区间内，避免异常值破坏布局
+        if (!Number.isNaN(r) && r > 0.05 && r < 0.95) {
+          setSplitRatio(r);
+        }
+      }
+    } catch {
+      // localStorage 不可用时保持默认 0.5
+    }
+  }, []);
+
+  // ---------- 持久化分栏比例 ----------
+  useEffect(() => {
+    try {
+      localStorage.setItem("playground:splitRatio", String(splitRatio));
+    } catch {
+      // ignore
+    }
+  }, [splitRatio]);
+
+  // ---------- 拖动分栏分隔条 ----------
+  // 用 pointer events 统一鼠标 + 触摸：在分隔条上按下后，监听全局
+  // pointermove 实时更新占比，pointerup 时清理监听。
+  // 比例被钳制到 [0.15, 0.85]，避免某一边被压到无法操作。
+  const startSplitDrag = useCallback(
+    (e) => {
+      e.preventDefault();
+      splitDraggingRef.current = true;
+      setIsSplitDragging(true);
+      // 拖动期间禁用文本选择，并把光标固定为对应方向，
+      // 防止鼠标移到分隔条外时光标来回闪烁
+      document.body.style.userSelect = "none";
+      document.body.style.cursor = isVerticalSplit ? "row-resize" : "col-resize";
+
+      const onMove = (ev) => {
+        if (!splitDraggingRef.current) return;
+        const container = splitRef.current;
+        if (!container) return;
+        const rect = container.getBoundingClientRect();
+        // 不同方向用不同坐标计算占比
+        let ratio;
+        if (isVerticalSplit) {
+          ratio = (ev.clientY - rect.top) / rect.height;
+        } else {
+          ratio = (ev.clientX - rect.left) / rect.width;
+        }
+        // 钳制到合理范围，避免一侧被挤压到无法操作
+        ratio = Math.min(0.85, Math.max(0.15, ratio));
+        setSplitRatio(ratio);
+      };
+      const onUp = () => {
+        splitDraggingRef.current = false;
+        setIsSplitDragging(false);
+        document.body.style.userSelect = "";
+        document.body.style.cursor = "";
+        document.removeEventListener("pointermove", onMove);
+        document.removeEventListener("pointerup", onUp);
+        document.removeEventListener("pointercancel", onUp);
+      };
+      document.addEventListener("pointermove", onMove);
+      document.addEventListener("pointerup", onUp);
+      document.addEventListener("pointercancel", onUp);
+    },
+    [isVerticalSplit]
+  );
+
+  // 双击分隔条：恢复到默认 50/50 比例（快捷操作）
+  const resetSplitRatio = useCallback(() => {
+    setSplitRatio(0.5);
+  }, []);
+
   return (
     <div className="app-shell">
       <main className="content playground-content playground-fullscreen">
@@ -1373,9 +1472,12 @@ export default function PlaygroundPage() {
           )}
 
           {/* ===== 左右分栏：编辑器 + 输出 ===== */}
-          <div className="pg-split">
+          <div className="pg-split" ref={splitRef}>
             {/* 左侧：代码编辑器 */}
-            <section className="pg-editor-pane">
+            <section
+              className="pg-editor-pane"
+              style={{ flexGrow: splitRatio, flexShrink: 1, flexBasis: 0 }}
+            >
               <div className="pg-pane-header">
                 <div className="pg-pane-label">
                   <span className="dot dot-red"></span>
@@ -1397,8 +1499,23 @@ export default function PlaygroundPage() {
               </div>
             </section>
 
+            {/* 可拖动分隔条：鼠标 / 触摸拖动调整两侧占比。
+                双击恢复 50/50 默认比例。窄屏自动切换为垂直拖动。 */}
+            <div
+              className={`pg-split-divider${isSplitDragging ? " dragging" : ""}`}
+              onPointerDown={startSplitDrag}
+              onDoubleClick={resetSplitRatio}
+              role="separator"
+              aria-orientation={isVerticalSplit ? "horizontal" : "vertical"}
+              aria-label="拖动调整代码与输出区域大小"
+              title="拖动调整大小 · 双击恢复对半"
+            />
+
             {/* 右侧：输出控制台 */}
-            <section className="pg-output-pane">
+            <section
+              className="pg-output-pane"
+              style={{ flexGrow: 1 - splitRatio, flexShrink: 1, flexBasis: 0 }}
+            >
               <div className="pg-pane-header">
                 <div className="pg-pane-label">
                   <span className="pg-pane-title">控制台输出</span>
