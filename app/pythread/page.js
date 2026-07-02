@@ -11,12 +11,13 @@
 //   4. 文件名：playground.py
 // =============================================================
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { pythreadChapters, pythreadChapterGroups } from "../pythread-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import { highlightPython } from "../py-highlight";
 import Sidebar from "../components/Sidebar";
 import ExternalRunDropdown from "../components/ExternalRunDropdown";
+import dynamic from "next/dynamic";
+const MonacoEditor = dynamic(() => import("../components/MonacoEditor"), { ssr: false, loading: () => <div className="monaco-loading-placeholder">正在加载编辑器…</div> });
 
 export default function PyThreadTutorial() {
   const [activeId, setActiveId] = useState(pythreadChapters[0].id);
@@ -27,27 +28,7 @@ export default function PyThreadTutorial() {
   const [hasRun, setHasRun] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const textareaRef = useRef(null);
-  const highlightRef = useRef(null);
-  const lineNumbersRef = useRef(null);
   const contentRef = useRef(null);
-
-  const highlightedHTML = useMemo(
-    () => highlightPython(code) + "\n",
-    [code]
-  );
-
-  const handleEditorScroll = useCallback(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    if (highlightRef.current) {
-      highlightRef.current.scrollTop = ta.scrollTop;
-      highlightRef.current.scrollLeft = ta.scrollLeft;
-    }
-    if (lineNumbersRef.current) {
-      lineNumbersRef.current.scrollTop = ta.scrollTop;
-    }
-  }, []);
 
   const activeChapter =
     pythreadChapters.find((c) => c.id === activeId) || pythreadChapters[0];
@@ -112,21 +93,6 @@ export default function PyThreadTutorial() {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [runCode]);
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Tab") {
-      e.preventDefault();
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const newCode = code.slice(0, start) + "    " + code.slice(end);
-      setCode(newCode);
-      requestAnimationFrame(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + 4;
-      });
-    }
-  };
 
   const groupedChapters = pythreadChapterGroups.map((group) => ({
     group,
@@ -201,34 +167,12 @@ export default function PyThreadTutorial() {
               </div>
             </div>
             <div className="editor-wrap">
-              <div className="line-numbers" ref={lineNumbersRef}>
-                {code.split("\n").map((_, i) => (
-                  <div key={i} className="line-number">
-                    {i + 1}
-                  </div>
-                ))}
-              </div>
-              <div className="editor-area">
-                <pre
-                  ref={highlightRef}
-                  className="editor-highlight"
-                  aria-hidden="true"
-                  dangerouslySetInnerHTML={{ __html: highlightedHTML }}
-                />
-                <textarea
-                  ref={textareaRef}
-                  className="code-editor"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  onScroll={handleEditorScroll}
-                  spellCheck={false}
-                  autoCapitalize="off"
-                  autoCorrect="off"
-                  wrap="off"
-                  placeholder="在这里编写 Python 代码，可以自由修改后运行..."
-                />
-              </div>
+              <MonacoEditor
+                value={code}
+                onChange={setCode}
+                language="python"
+                onRun={runCode}
+              />
             </div>
           </section>
 

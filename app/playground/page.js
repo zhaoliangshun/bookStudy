@@ -28,20 +28,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { getExternalPlaygrounds, openExternal } from "../external-playgrounds";
-import { highlightJavaScript } from "../highlight";
-import { highlightTypeScript } from "../ts-highlight";
-import { highlightPython } from "../py-highlight";
-import { highlightJava } from "../java-highlight";
-import { highlightCsharp } from "../csharp-highlight";
-import { highlightGo } from "../go-highlight";
-import { highlightScss } from "../sass-highlight";
-import { highlightGraphQL } from "../gql-highlight";
-import { highlightC } from "../c-highlight";
-import { highlightCpp } from "../cpp-highlight";
-import { highlightRuby } from "../ruby-highlight";
-import { highlightSwift } from "../swift-highlight";
-import { highlightShell } from "../shell-highlight";
-import { highlightSql } from "../sql-highlight";
 
 // Monaco Editor 是浏览器端编辑器，依赖 DOM/Worker，必须关 SSR。
 // 用 next/dynamic 在客户端动态加载，避免服务端渲染时崩溃。
@@ -182,7 +168,7 @@ const LANGUAGES = [
     filename: "playground.js",
     comment: "//",
     api: "/api/run",
-    highlight: highlightJavaScript,
+
     defaultCode: `// Node.js Playground
 // 按 Ctrl/Cmd + Enter 运行，Ctrl/Cmd + / 注释代码
 
@@ -211,7 +197,7 @@ console.log("求和:", doubled.reduce((a, b) => a + b, 0));
     filename: "playground.ts",
     comment: "//",
     api: "/api/run-ts",
-    highlight: highlightTypeScript,
+
     defaultCode: `// TypeScript Playground
 // 类型注解会被转译剥离后运行
 
@@ -246,7 +232,7 @@ console.log("第一个:", first(["a", "b", "c"]));
     filename: "playground.py",
     comment: "#",
     api: "/api/run-py",
-    highlight: highlightPython,
+
     defaultCode: `# Python Playground
 # 按 Ctrl/Cmd + Enter 运行
 
@@ -284,7 +270,7 @@ print("斐波那契前 10 项:", [fib(i) for i in range(10)])
     filename: "Playground.java",
     comment: "//",
     api: "/api/run-java",
-    highlight: highlightJava,
+
     defaultCode: `// Java Playground
 // 注意：public class 名必须为 Playground
 
@@ -319,7 +305,7 @@ public class Playground {
     filename: "Playground.cs",
     comment: "//",
     api: "/api/run-csharp",
-    highlight: highlightCsharp,
+
     defaultCode: `// C# Playground
 using System;
 
@@ -352,7 +338,7 @@ class Playground {
     filename: "playground.go",
     comment: "//",
     api: "/api/run-go",
-    highlight: highlightGo,
+
     defaultCode: `// Go Playground
 package main
 
@@ -386,7 +372,7 @@ func main() {
     filename: "playground.scss",
     comment: "//",
     api: "/api/run-sass",
-    highlight: highlightScss,
+
     defaultCode: `// Sass/SCSS Playground
 // 编译后会输出对应的 CSS
 
@@ -452,7 +438,7 @@ $radius: 8px;
     filename: "playground.gql",
     comment: "#",
     api: "/api/run-gql",
-    highlight: highlightGraphQL,
+
     defaultCode: `# GraphQL Playground
 # 代码分三段：Schema / Resolvers / Query，用注释标记分隔
 
@@ -513,7 +499,7 @@ type User {
     filename: "backend.js",
     comment: "//",
     api: "/api/run-backend",
-    highlight: highlightJavaScript,
+
     defaultCode: `// 后端开发 Playground
 // 用 Node.js 演示后端概念（HTTP / 缓存 / 限流等）
 
@@ -567,7 +553,7 @@ for (let i = 0; i < 5; i++) {
     // 浏览器端执行：不调后端接口，直接在 iframe 沙箱里跑
     // 与 Node.js 区分：能操作 DOM、用 alert/prompt，贴近前端真实场景
     clientRun: runClientJavaScript,
-    highlight: highlightJavaScript,
+
     defaultCode: `// JavaScript 浏览器端 Playground
 // 在浏览器里执行，支持 DOM 操作、alert、console.log
 
@@ -598,7 +584,7 @@ console.log("计数:", next(), next(), next());
     filename: "playground.c",
     comment: "//",
     api: "/api/run-c",
-    highlight: highlightC,
+
     defaultCode: `// C Playground
 // 用 clang 编译运行
 
@@ -636,7 +622,7 @@ int main(void) {
     filename: "playground.cpp",
     comment: "//",
     api: "/api/run-cpp",
-    highlight: highlightCpp,
+
     defaultCode: `// C++ Playground
 // 用 clang++ 编译运行（-std=c++17）
 
@@ -681,7 +667,7 @@ int main() {
     filename: "playground.rb",
     comment: "#",
     api: "/api/run-ruby",
-    highlight: highlightRuby,
+
     defaultCode: `# Ruby Playground
 # 简洁优雅的 Ruby
 
@@ -731,7 +717,7 @@ puts dog.speak
     filename: "playground.swift",
     comment: "//",
     api: "/api/run-swift",
-    highlight: highlightSwift,
+
     defaultCode: `// Swift Playground
 // Apple 的 Swift 语言
 
@@ -780,7 +766,7 @@ print(describe(.north))
     filename: "playground.sh",
     comment: "#",
     api: "/api/run-shell",
-    highlight: highlightShell,
+
     defaultCode: `#!/bin/bash
 # Shell/Bash Playground
 # 用 echo / printf 输出（shell 没有 console.log）
@@ -832,7 +818,7 @@ echo "日期: $(date '+%Y-%m-%d')"
     filename: "playground.sql",
     comment: "--",
     api: "/api/run-sql",
-    highlight: highlightSql,
+
     defaultCode: `-- SQL Playground
 -- 用 SQLite 内存数据库执行
 
