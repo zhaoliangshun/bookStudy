@@ -54,22 +54,22 @@ JDBC 连接管理的关键原则:**谁打开谁关闭,用完即关,且要在 fin
 \`\`\`java
 package com.example;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
+import java.sql.Connection;    // 数据库连接接口
+import java.sql.DriverManager; // 驱动管理器,用于获取连接
+import java.sql.ResultSet;      // 结果集,承载查询返回的数据
+import java.sql.Statement;      // 静态 SQL 语句执行接口
 
 public class JdbcDemo {
     public static void main(String[] args) {
         // 数据库连接信息
-        String url = "jdbc:mysql://localhost:3306/test?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai";
+        String url = "jdbc:mysql://localhost:3306/test?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai";   // 连接串,指定库与编码
         String user = "root";
         String pwd = "123456";
 
         // ★ try-with-resources:自动关闭 Connection/Statement/ResultSet
         // 资源声明的顺序:Connection 先开最后关,Statement 依赖 Connection
-        try (Connection conn = DriverManager.getConnection(url, user, pwd);
-             Statement stmt = conn.createStatement()) {
+        try (Connection conn = DriverManager.getConnection(url, user, pwd);   // 建立连接
+             Statement stmt = conn.createStatement()) {                      // 创建语句对象
 
             // 执行查询,返回结果集(同样用 try-with-resources 或在内部关)
             try (ResultSet rs = stmt.executeQuery("SELECT id, name FROM users")) {
@@ -98,9 +98,9 @@ public class JdbcDemo {
 
 \`\`\`xml
 <dependency>
-    <groupId>com.mysql</groupId>
-    <artifactId>mysql-connector-j</artifactId>
-    <version>8.0.33</version>
+    <groupId>com.mysql</groupId>              <!-- MySQL 官方驱动组 -->
+    <artifactId>mysql-connector-j</artifactId>  <!-- MySQL JDBC 驱动(JDBC 4.0+) -->
+    <version>8.0.33</version>                 <!-- 8.x 对应 MySQL 5.7+/8.0 -->
 </dependency>
 \`\`\`
 
@@ -181,15 +181,15 @@ JDBC 提供两种执行 SQL 的对象:**Statement** 与 **PreparedStatement**。
 \`\`\`java
 package com.example;
 
-import java.sql.*;
+import java.sql.*;   // 导入 JDBC 核心 API
 
 public class PreparedDemo {
     // 登录查询(防注入写法)
     public boolean login(Connection conn, String name, String pwd) throws SQLException {
         // ★ 用 ? 占位,绝不拼接字符串
-        String sql = "SELECT id FROM users WHERE name = ? AND pwd = ?";
+        String sql = "SELECT id FROM users WHERE name = ? AND pwd = ?";   // ? 是参数占位符
 
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {   // 预编译 SQL
             // 填充参数,索引从 1 开始
             ps.setString(1, name);   // 第一个 ?
             ps.setString(2, pwd);    // 第二个 ?
@@ -204,7 +204,7 @@ public class PreparedDemo {
     // 新增用户
     public void insert(Connection conn, String name, int age) throws SQLException {
         String sql = "INSERT INTO users(name, age) VALUES(?, ?)";
-        try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {   // 返回自增主键
             ps.setString(1, name);
             ps.setInt(2, age);
             ps.executeUpdate();     // 执行写操作
@@ -228,7 +228,7 @@ public class PreparedDemo {
                 ps.setInt(2, 20 + i % 10);
                 ps.addBatch();           // 累积到批
             }
-            ps.executeBatch();           // 一次性提交
+            ps.executeBatch();           // 一次性提交,大幅减少网络往返
         }
     }
 }
@@ -304,13 +304,13 @@ ResultSet 默认是**只进、只读**的(\`TYPE_FORWARD_ONLY\`、\`CONCUR_READ_
 \`\`\`java
 package com.example;
 
-import java.sql.*;
+import java.sql.*;   // 导入 JDBC 核心 API
 
 public class TransferDemo {
     // 转账:从 from 扣钱,给 to 加钱,必须原子
     public void transfer(Connection conn, int fromId, int toId, int amount) throws SQLException {
         // ★ 关闭自动提交,开启事务
-        conn.setAutoCommit(false);
+        conn.setAutoCommit(false);   // 注意:默认每条 SQL 自动提交,事务需手动关闭
         Statement stmt = null;
         try {
             stmt = conn.createStatement();
@@ -318,7 +318,7 @@ public class TransferDemo {
             // 步骤1:扣款(余额不足应回滚)
             int n1 = stmt.executeUpdate(
                 "UPDATE account SET balance = balance - " + amount + " WHERE id = " + fromId + " AND balance >= " + amount);
-            if (n1 == 0) {
+            if (n1 == 0) {   // 受影响行数为 0 说明余额不足
                 throw new RuntimeException("余额不足");
             }
 
@@ -330,16 +330,16 @@ public class TransferDemo {
             }
 
             // ★ 全部成功,提交事务
-            conn.commit();
+            conn.commit();   // 提交后两步更新同时生效
             System.out.println("转账成功");
         } catch (Exception e) {
             // ★ 出错回滚,撤销已执行的 SQL
-            conn.rollback();
+            conn.rollback();   // 回滚:撤销步骤1的扣款
             System.out.println("转账失败,已回滚:" + e.getMessage());
             throw e;
         } finally {
             // 恢复自动提交(连接若复用,避免影响后续)
-            conn.setAutoCommit(true);
+            conn.setAutoCommit(true);   // 注意:连接归还连接池前需恢复默认
             if (stmt != null) stmt.close();
         }
     }
@@ -347,7 +347,7 @@ public class TransferDemo {
     // 可滚动结果集示例
     public void scrollDemo(Connection conn) throws SQLException {
         Statement stmt = conn.createStatement(
-            ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+            ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);   // 可滚动、只读
         try (ResultSet rs = stmt.executeQuery("SELECT id, name FROM users")) {
             rs.last();                       // 跳到最后一行
             int total = rs.getRow();         // 当前行号 = 总行数
@@ -424,15 +424,15 @@ DAO 的设计原理是**单一职责**与**依赖倒置**:DAO 只管"怎么存�
 实体类:
 
 \`\`\`java
-package com.example.entity;
+package com.example.entity;   // 实体类放在 entity 包
 
 public class User {
-    private Integer id;
+    private Integer id;     // 用 Integer 而非 int,支持 null(未赋值)
     private String name;
     private Integer age;
     // getter/setter 省略
-    public Integer getId() { return id; }
-    public void setId(Integer id) { this.id = id; }
+    public Integer getId() { return id; }              // getter:读取属性
+    public void setId(Integer id) { this.id = id; }     // setter:设置属性
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public Integer getAge() { return age; }
@@ -443,15 +443,15 @@ public class User {
 DAO 接口与实现(基于连接池):
 
 \`\`\`java
-package com.example.dao;
+package com.example.dao;   // DAO 层放在 dao 包
 
 import com.example.entity.User;
-import javax.sql.DataSource;
+import javax.sql.DataSource;   // 连接池接口,解耦具体实现
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public interface UserDao {
+public interface UserDao {   // DAO 接口,定义数据访问契约
     User findById(int id) throws SQLException;
     List<User> findAll() throws SQLException;
     void save(User u) throws SQLException;
@@ -460,7 +460,7 @@ public interface UserDao {
 public class UserDaoImpl implements UserDao {
     private final DataSource ds;   // 依赖 DataSource(连接池),而非具体类
 
-    public UserDaoImpl(DataSource ds) { this.ds = ds; }
+    public UserDaoImpl(DataSource ds) { this.ds = ds; }   // 构造注入,便于替换实现
 
     @Override
     public User findById(int id) throws SQLException {
@@ -468,14 +468,14 @@ public class UserDaoImpl implements UserDao {
         // 从池借连接,try-with-resources 自动归还
         try (Connection conn = ds.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, id);
+            ps.setInt(1, id);   // 填充查询参数
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     return mapRow(rs);   // 映射成对象
                 }
             }
         }
-        return null;
+        return null;   // 未找到返回 null
     }
 
     @Override
@@ -486,7 +486,7 @@ public class UserDaoImpl implements UserDao {
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                list.add(mapRow(rs));
+                list.add(mapRow(rs));   // 逐行映射并收集
             }
         }
         return list;
@@ -501,7 +501,7 @@ public class UserDaoImpl implements UserDao {
             ps.setInt(2, u.getAge());
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
-                if (keys.next()) u.setId(keys.getInt(1));
+                if (keys.next()) u.setId(keys.getInt(1));   // 回填自增主键
             }
         }
     }
@@ -509,7 +509,7 @@ public class UserDaoImpl implements UserDao {
     // 把一行结果集映射成实体对象(ORM 的雏形)
     private User mapRow(ResultSet rs) throws SQLException {
         User u = new User();
-        u.setId(rs.getInt("id"));
+        u.setId(rs.getInt("id"));      // 按列名取值并设置
         u.setName(rs.getString("name"));
         u.setAge(rs.getInt("age"));
         return u;
@@ -522,21 +522,21 @@ HikariCP 连接池配置:
 \`\`\`java
 package com.example;
 
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
+import com.zaxxer.hikari.HikariConfig;     // HikariCP 配置类
+import com.zaxxer.hikari.HikariDataSource; // HikariCP 连接池实现
 import javax.sql.DataSource;
 
 public class PoolDemo {
     public static DataSource createDataSource() {
-        HikariConfig cfg = new HikariConfig();
+        HikariConfig cfg = new HikariConfig();   // 创建连接池配置
         cfg.setJdbcUrl("jdbc:mysql://localhost:3306/test?useSSL=false&serverTimezone=Asia/Shanghai");
         cfg.setUsername("root");
         cfg.setPassword("123456");
-        cfg.setMaximumPoolSize(10);      // 最大连接数
-        cfg.setMinimumIdle(2);           // 最小空闲连接
-        cfg.setConnectionTimeout(30000); // 获取连接超时 30s
-        cfg.setIdleTimeout(600000);      // 空闲连接超时 10min
-        return new HikariDataSource(cfg);
+        cfg.setMaximumPoolSize(10);      // 最大连接数,根据数据库承受能力设置
+        cfg.setMinimumIdle(2);           // 最小空闲连接,保持预热
+        cfg.setConnectionTimeout(30000); // 获取连接超时 30s,超时抛异常
+        cfg.setIdleTimeout(600000);      // 空闲连接超时 10min,超时回收
+        return new HikariDataSource(cfg);   // 返回接口类型,解耦具体实现
     }
 }
 \`\`\`

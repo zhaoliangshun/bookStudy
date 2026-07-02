@@ -109,10 +109,10 @@ Ant 的 \`build.xml\` 是过程式的——你写"先编译、再拷贝、再打
 
     <!-- 属性定义:可在下方用 \${属性名} 引用,集中管理版本号 -->
     <properties>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <junit.version>5.10.0</junit.version>
+        <maven.compiler.source>11</maven.compiler.source>   <!-- 编译源码 JDK 版本 -->
+        <maven.compiler.target>11</maven.compiler.target>   <!-- 字节码目标版本 -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>   <!-- 源码编码 -->
+        <junit.version>5.10.0</junit.version>   <!-- 自定义属性,统一管理 JUnit 版本 -->
     </properties>
 
     <!-- 依赖列表:每个 dependency 是一个第三方库 -->
@@ -120,8 +120,8 @@ Ant 的 \`build.xml\` 是过程式的——你写"先编译、再拷贝、再打
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>\${junit.version}</version>
-            <scope>test</scope>
+            <version>\${junit.version}</version>   <!-- 引用上面定义的属性 -->
+            <scope>test</scope>   <!-- test:仅测试期可见,不打进最终 jar -->
         </dependency>
     </dependencies>
 </project>
@@ -213,9 +213,9 @@ Maven 的所有构件都存放在仓库里,分三层查找:**本地 → 私服 �
 
 \`\`\`xml
 <mirror>
-    <id>aliyun</id>
-    <mirrorOf>central</mirrorOf>
-    <url>https://maven.aliyun.com/repository/public</url>
+    <id>aliyun</id>                    <!-- 镜像唯一标识 -->
+    <mirrorOf>central</mirrorOf>       <!-- mirrorOf=central 表示代理中央仓库 -->
+    <url>https://maven.aliyun.com/repository/public</url>   <!-- 阿里云镜像地址,国内加速 -->
 </mirror>
 \`\`\`
 
@@ -260,8 +260,8 @@ Maven 的所有构件都存放在仓库里,分三层查找:**本地 → 私服 �
                 <groupId>org.springframework</groupId>
                 <artifactId>spring-framework-bom</artifactId>
                 <version>5.3.30</version>
-                <type>pom</type>
-                <scope>import</scope>
+                <type>pom</type>          <!-- type=pom 表示导入的是 BOM(物料清单) -->
+                <scope>import</scope>      <!-- import:导入 BOM 统一管理配套版本 -->
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -274,7 +274,7 @@ Maven 的所有构件都存放在仓库里,分三层查找:**本地 → 私服 �
             <!-- version 由上面的 BOM 统一管理,这里不写 -->
             <exclusions>
                 <exclusion>
-                    <groupId>commons-logging</groupId>
+                    <groupId>commons-logging</groupId>    <!-- 排除传递依赖 commons-logging -->
                     <artifactId>commons-logging</artifactId>
                 </exclusion>
             </exclusions>
@@ -285,7 +285,7 @@ Maven 的所有构件都存放在仓库里,分三层查找:**本地 → 私服 �
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <version>8.0.33</version>
-            <scope>runtime</scope>
+            <scope>runtime</scope>   <!-- runtime:编译期不可见,运行期需要 -->
         </dependency>
 
         <!-- Web 容器提供:不打进 war -->
@@ -293,7 +293,7 @@ Maven 的所有构件都存放在仓库里,分三层查找:**本地 → 私服 �
             <groupId>javax.servlet</groupId>
             <artifactId>javax.servlet-api</artifactId>
             <version>4.0.1</version>
-            <scope>provided</scope>
+            <scope>provided</scope>   <!-- provided:由 Tomcat 提供,不打进包 -->
         </dependency>
 
         <!-- 测试依赖:仅测试期可见 -->
@@ -301,7 +301,7 @@ Maven 的所有构件都存放在仓库里,分三层查找:**本地 → 私服 �
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>5.10.0</version>
-            <scope>test</scope>
+            <scope>test</scope>   <!-- test:只在测试时可用 -->
         </dependency>
     </dependencies>
 </project>
@@ -422,8 +422,8 @@ Maven 的所有构件都存放在仓库里,分三层查找:**本地 → 私服 �
 \`\`\`bash
 mvn clean install          # 清理后重新编译、测试、打包、装到本地仓库
 mvn clean package          # 只打包,不装到本地仓库
-mvn clean deploy           # 发布到远程仓库
-mvn clean install -DskipTests  # 跳过测试快速打包
+mvn clean deploy           # 发布到远程仓库(需配 distributionManagement)
+mvn clean install -DskipTests  # 跳过测试快速打包(-DskipTests 跳过执行测试)
 \`\`\`
 
 **场景二:只执行某个 goal**——\`mvn dependency:tree\` 查看依赖树,\`mvn versions:display-dependency-updates\` 检查依赖更新。
@@ -455,9 +455,9 @@ mvn clean install -DskipTests  # 跳过测试快速打包
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
                 <configuration>
-                    <source>\${maven.compiler.source}</source>
-                    <target>\${maven.compiler.target}</target>
-                    <encoding>\${project.build.sourceEncoding}</encoding>
+                    <source>\${maven.compiler.source}</source>   <!-- 源码兼容版本 -->
+                    <target>\${maven.compiler.target}</target>   <!-- 字节码目标版本 -->
+                    <encoding>\${project.build.sourceEncoding}</encoding>   <!-- 源码编码 -->
                 </configuration>
             </plugin>
 
@@ -467,8 +467,8 @@ mvn clean install -DskipTests  # 跳过测试快速打包
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.1.2</version>
                 <configuration>
-                    <parallel>methods</parallel>
-                    <threadCount>4</threadCount>
+                    <parallel>methods</parallel>      <!-- 方法级并行执行测试 -->
+                    <threadCount>4</threadCount>       <!-- 4 个线程并发 -->
                 </configuration>
             </plugin>
 
@@ -485,8 +485,8 @@ mvn clean install -DskipTests  # 跳过测试快速打包
                         </goals>
                         <configuration>
                             <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.example.Main</mainClass>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">   <!-- 合并 MANIFEST -->
+                                    <mainClass>com.example.Main</mainClass>   <!-- 指定主类,java -jar 可运行 -->
                                 </transformer>
                             </transformers>
                         </configuration>
@@ -562,11 +562,11 @@ mvn clean install -DskipTests  # 跳过测试快速打包
 父 pom 的 \`<packaging>\` 是 \`pom\`,通过 \`<modules>\` 列出所有子模块:
 
 \`\`\`xml
-<packaging>pom</packaging>
+<packaging>pom</packaging>   <!-- 父 pom 打包类型必须是 pom -->
 <modules>
-    <module>common</module>
-    <module>domain</module>
-    <module>web</module>
+    <module>common</module>   <!-- 公共模块 -->
+    <module>domain</module>   <!-- 领域模型模块 -->
+    <module>web</module>      <!-- Web 模块 -->
 </modules>
 \`\`\`
 
@@ -586,13 +586,13 @@ BOM 是一种特殊的 pom,里面只有一个 \`<dependencyManagement>\` 块,列
 **Gradle** 是新一代构建工具,用 Groovy/Kotlin DSL 写构建脚本。两个标志性特性:**增量构建**(只编译改动过的文件)和**守护进程**(常驻内存避免启动开销)。Gradle 是 Android 官方构建工具,Spring Boot 自身也用它。
 
 \`\`\`groovy
-plugins { id 'java' }
-group = 'com.example'
-version = '1.0-SNAPSHOT'
-repositories { mavenCentral() }
+plugins { id 'java' }                          # 应用 java 插件
+group = 'com.example'                          # 项目组(等价 Maven groupId)
+version = '1.0-SNAPSHOT'                       # 版本号
+repositories { mavenCentral() }                 # 仓库:中央仓库
 dependencies {
-    implementation 'org.springframework:spring-core:5.3.30'
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+    implementation 'org.springframework:spring-core:5.3.30'   # 等价 Maven compile scope
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0' # 等价 Maven test scope
 }
 \`\`\`
 
@@ -648,20 +648,20 @@ my-project/
     <groupId>com.example</groupId>
     <artifactId>my-project</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <packaging>pom</packaging>
+    <packaging>pom</packaging>   <!-- 父 pom 聚合,打包类型 pom -->
 
     <modules>
-        <module>common</module>
-        <module>domain</module>
-        <module>repository</module>
-        <module>service</module>
-        <module>web</module>
+        <module>common</module>      <!-- 公共工具模块 -->
+        <module>domain</module>      <!-- 领域模型模块 -->
+        <module>repository</module>  <!-- 数据访问模块 -->
+        <module>service</module>     <!-- 业务逻辑模块 -->
+        <module>web</module>         <!-- Web 表现层模块 -->
     </modules>
 
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
-        <spring.version>5.3.30</spring.version>
+        <spring.version>5.3.30</spring.version>   <!-- 集中管理 Spring 版本 -->
     </properties>
 
     <dependencyManagement>
@@ -669,7 +669,7 @@ my-project/
             <dependency>
                 <groupId>org.springframework</groupId>
                 <artifactId>spring-context</artifactId>
-                <version>\${spring.version}</version>
+                <version>\${spring.version}</version>   <!-- 子模块引用时省略 version -->
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -682,18 +682,18 @@ my-project/
 <project>
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>com.example</groupId>
+        <groupId>com.example</groupId>      <!-- 继承父 pom -->
         <artifactId>my-project</artifactId>
         <version>1.0-SNAPSHOT</version>
     </parent>
-    <artifactId>web</artifactId>
-    <packaging>war</packaging>
+    <artifactId>web</artifactId>            <!-- 子模块名 web -->
+    <packaging>war</packaging>               <!-- Web 模块打 war 包 -->
 
     <dependencies>
         <dependency>
             <groupId>com.example</groupId>
             <artifactId>service</artifactId>
-            <version>\${project.version}</version>
+            <version>\${project.version}</version>   <!-- 引用同项目内其他模块,\${project.version} 取当前版本 -->
         </dependency>
     </dependencies>
 </project>
@@ -703,37 +703,37 @@ my-project/
 
 \`\`\`groovy
 plugins {
-    id 'java'
-    id 'application'
+    id 'java'             # java 插件:编译、测试、打包
+    id 'application'       # application 插件:支持 run 与 distZip
 }
 
 group = 'com.example'
 version = '1.0-SNAPSHOT'
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.VERSION_17   # 源码兼容 JDK 17
+    targetCompatibility = JavaVersion.VERSION_17   # 字节码目标 JDK 17
 }
 
 repositories {
-    mavenLocal()
-    mavenCentral()
-    maven { url 'https://maven.aliyun.com/repository/public' }
+    mavenLocal()       # 本地仓库
+    mavenCentral()     # 中央仓库
+    maven { url 'https://maven.aliyun.com/repository/public' }   # 阿里云镜像
 }
 
 dependencies {
-    implementation 'org.springframework:spring-context:5.3.30'
+    implementation 'org.springframework:spring-context:5.3.30'     # 编译+运行依赖
     implementation 'mysql:mysql-connector-java:8.0.33'
-    compileOnly 'javax.servlet:javax.servlet-api:4.0.1'
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+    compileOnly 'javax.servlet:javax.servlet-api:4.0.1'            # 等价 Maven provided
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'     # 仅测试依赖
 }
 
-test { useJUnitPlatform() }
+test { useJUnitPlatform() }   # 启用 JUnit 5 平台
 
-application { mainClass = 'com.example.Main' }
+application { mainClass = 'com.example.Main' }   # 指定主类
 
 jar {
-    manifest { attributes 'Main-Class': 'com.example.Main' }
+    manifest { attributes 'Main-Class': 'com.example.Main' }   # jar 清单写入主类
 }
 \`\`\`
 
