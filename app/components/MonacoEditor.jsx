@@ -151,6 +151,17 @@ export default function MonacoEditor({
     if (typeof window !== "undefined") {
       window.__monacoEditor = editor;
     }
+
+    // ---------- 强制重新布局 ----------
+    // Monaco 在 flex 容器里首次挂载时，可能因为容器尺寸还没稳定，
+    // 导致 .margin（行号槽）宽度计算偏小、行号数字被裁。
+    // 用 requestAnimationFrame 等下一帧（此时容器已布局完成），
+    // 手动触发 layout() 强制重新测量，修复行号显示问题。
+    requestAnimationFrame(() => {
+      if (editorRef.current) {
+        editorRef.current.layout();
+      }
+    });
   }, []);
 
   // ---------- 语言切换时，重新触发模型语言更新 ----------
@@ -174,18 +185,16 @@ export default function MonacoEditor({
     fontSize: 13,
     lineHeight: 1.6 * 13,        // ≈ 20.8，匹配原 line-height: 1.6
     fontLigatures: true,         // 启用 Fira Code 连字（如 => ===）
-    // 行号
-    lineNumbers: "on",
-    lineNumbersMinChars: 3,
+    // 行号：playground 空间有限，隐藏行号列让代码区更宽。
+    // 用户可通过状态栏的"行 X · N 行"提示知道当前行号。
+    lineNumbers: "off",
     // 缩进
     tabSize: 2,
     insertSpaces: true,
     detectIndentation: false,   // 关闭自动检测，固定用 2 空格
-    // minimap：右侧缩略图（专业感来源）
+    // minimap：右侧缩略图。playground 空间有限，关闭以让代码区更宽。
     minimap: {
-      enabled: true,
-      maxColumn: 80,
-      renderCharacters: false,   // 只显示色块，更清爽
+      enabled: false,
     },
     // 滚动
     automaticLayout: true,       // 自动跟随容器尺寸调整
@@ -224,6 +233,11 @@ export default function MonacoEditor({
     // 默认 insertSpaces=true 已经处理了
     // 隐藏右侧字形边距（用于断点，playground 不需要）
     glyphMargin: false,
+    // 代码区上下内边距：给代码更多呼吸空间，避免紧贴行号槽顶部/底部
+    padding: {
+      top: 14,
+      bottom: 14,
+    },
     // 关闭原地拖拽选中（避免误触）
     dragAndDrop: false,
     // 不固定宽度，自动换行关掉（playground 是代码，应该可以横向滚动）
