@@ -743,7 +743,7 @@ body {
 .md-code-editor-container {
   overflow: hidden;
   position: relative;
-  min-height: 80px;
+  min-height: 40px;
 }
 /* Monaco 编辑器在 markdown 代码块中的样式覆盖 */
 .md-code-editor-container .monaco-editor-wrap {
@@ -751,7 +751,7 @@ body {
   border: 1px solid var(--editor-border);
   border-top: none;
   box-shadow: none;
-  min-height: 80px;
+  /* min-height 由 MonacoEditor 组件的 minHeight prop 控制（autoHeight 模式） */
   max-height: 400px;
 }
 /* 有输出面板时，编辑器底部圆角去掉，与输出面板衔接 */
@@ -1208,10 +1208,45 @@ body {
   max-height: 520px;
 }
 
-/* Monaco 编辑器容器：绝对定位撑满父容器，避免 height:100% 无法解析 */
+/* Monaco 编辑器容器：默认绝对定位撑满父容器（Playground、教程主编辑器用） */
 .monaco-editor-wrap {
   position: absolute;
   inset: 0;
+}
+
+/* 自动高度模式：相对定位，高度由 JS 根据内容动态控制（CodeBlock 用） */
+.monaco-editor-wrap.auto-height {
+  position: relative;
+  inset: auto;
+  height: auto;
+}
+
+/* ===== Monaco 滚动条优化（浅色主题） ===== */
+/* 轨道：透明背景、无阴影，代码少时不会出现空轨道 */
+.monaco-editor .scrollbar.vertical,
+.monaco-editor .scrollbar.horizontal {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+/* 滑块：半透明、圆角、带透明内边距让滑块视觉更窄更柔和 */
+.monaco-editor .scrollbar .slider {
+  background: rgba(148, 163, 184, 0.35) !important;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.2s ease;
+}
+.monaco-editor .scrollbar .slider:hover {
+  background: rgba(100, 116, 139, 0.55) !important;
+  background-clip: padding-box;
+}
+.monaco-editor .scrollbar .slider:active {
+  background: rgba(100, 116, 139, 0.7) !important;
+  background-clip: padding-box;
+}
+/* 隐藏右侧装饰概览尺（标记缩略条），让编辑器右侧更干净 */
+.monaco-editor .decorationsOverviewRuler {
+  display: none !important;
 }
 
 /* Monaco 加载占位 */

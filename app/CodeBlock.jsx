@@ -324,8 +324,9 @@ export function CodeBlock({ code: initialCode, lang }) {
           onChange={setCode}
           language={monacoLang}
           onRun={canRun ? handleRun : undefined}
-          minHeight={80}
+          minHeight={60}
           maxHeight={400}
+          autoHeight
         />
       </div>
 
