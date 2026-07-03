@@ -750,8 +750,8 @@ body {
   border: 1px solid var(--editor-border);
   border-top: none;
   box-shadow: none;
-  /* min-height 由 MonacoEditor 组件的 minHeight prop 控制（autoHeight 模式） */
-  max-height: 400px;
+  /* 高度由 MonacoEditor 组件的 autoHeight 模式控制（maxHeight=800），
+     CSS 不再设 max-height，避免和组件 inline style 冲突 */
 }
 /* 有输出面板时，编辑器底部圆角去掉，与输出面板衔接 */
 .md-code-block-wrap.has-output .monaco-editor-wrap {
