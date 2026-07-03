@@ -22,8 +22,22 @@ import ExternalRunDropdown from "../components/ExternalRunDropdown";
 const MonacoEditor = dynamic(() => import("../components/MonacoEditor"), { ssr: false, loading: () => <div className="monaco-loading-placeholder">正在加载编辑器…</div> });
 
 export default function OSTutorial() {
-  const [activeId, setActiveId] = useState(osChapters[0].id);
-  const [code, setCode] = useState(osChapters[0].code);
+  // 从 URL hash 读取初始章节 id，如果没有则使用第一个章节
+  const getInitialChapterId = () => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash.slice(1);
+      if (hash && osChapters.find((c) => c.id === hash)) {
+        return hash;
+      }
+    }
+    return osChapters[0].id;
+  };
+
+  const initialId = getInitialChapterId();
+  const initialChapter = osChapters.find((c) => c.id === initialId) || osChapters[0];
+
+  const [activeId, setActiveId] = useState(initialId);
+  const [code, setCode] = useState(initialChapter.code);
   const [output, setOutput] = useState("");
   const [error, setError] = useState("");
   const [isRunning, setIsRunning] = useState(false);

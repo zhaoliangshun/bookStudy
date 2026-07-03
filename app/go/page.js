@@ -59,8 +59,22 @@ func main() {
 
 export default function GoTutorial() {
   // ---------- 状态管理 ----------
-  const [activeId, setActiveId] = useState(goChapters[0].id);
-  const [code, setCode] = useState(DEFAULT_CODE);
+  // 从 URL hash 读取初始章节 id，如果没有则使用第一个章节
+  const getInitialChapterId = () => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash.slice(1);
+      if (hash && goChapters.find((c) => c.id === hash)) {
+        return hash;
+      }
+    }
+    return goChapters[0].id;
+  };
+
+  const initialId = getInitialChapterId();
+  const initialChapter = goChapters.find((c) => c.id === initialId) || goChapters[0];
+
+  const [activeId, setActiveId] = useState(initialId);
+  const [code, setCode] = useState(initialChapter.code);
   const [output, setOutput] = useState("");
   const [error, setError] = useState("");
   const [isRunning, setIsRunning] = useState(false);

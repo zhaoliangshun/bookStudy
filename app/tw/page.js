@@ -23,8 +23,22 @@ const MonacoEditor = dynamic(() => import("../components/MonacoEditor"), { ssr: 
 
 export default function TailwindTutorial() {
   // ---------- 状态管理 ----------
-  const [activeId, setActiveId] = useState(twChapters[0].id);
-  const [code, setCode] = useState(twChapters[0].code);
+  // 从 URL hash 读取初始章节 id，如果没有则使用第一个章节
+  const getInitialChapterId = () => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash.slice(1);
+      if (hash && twChapters.find((c) => c.id === hash)) {
+        return hash;
+      }
+    }
+    return twChapters[0].id;
+  };
+
+  const initialId = getInitialChapterId();
+  const initialChapter = twChapters.find((c) => c.id === initialId) || twChapters[0];
+
+  const [activeId, setActiveId] = useState(initialId);
+  const [code, setCode] = useState(initialChapter.code);
   const [previewKey, setPreviewKey] = useState(0); // 用于强制刷新 iframe
   const [hasRun, setHasRun] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);

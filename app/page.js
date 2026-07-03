@@ -31,10 +31,24 @@ const MonacoEditor = dynamic(() => import("./components/MonacoEditor"), { ssr: f
 
 export default function Home() {
   // ---------- 状态管理 ----------
+  // 从 URL hash 读取初始章节 id，如果没有则使用第一个章节
+  const getInitialChapterId = () => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash.slice(1);
+      if (hash && chapters.find((c) => c.id === hash)) {
+        return hash;
+      }
+    }
+    return chapters[0].id;
+  };
+
+  const initialId = getInitialChapterId();
+  const initialChapter = chapters.find((c) => c.id === initialId) || chapters[0];
+
   // 当前选中的章节 id
-  const [activeId, setActiveId] = useState(chapters[0].id);
+  const [activeId, setActiveId] = useState(initialId);
   // 代码编辑器中的代码（用户可修改）
-  const [code, setCode] = useState(chapters[0].code);
+  const [code, setCode] = useState(initialChapter.code);
   // 运行输出结果
   const [output, setOutput] = useState("");
   // 运行错误信息

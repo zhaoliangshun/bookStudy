@@ -49,8 +49,22 @@ Console.WriteLine($"总和: {numbers.Sum()}, 平均: {numbers.Average():F2}, 最
 
 export default function CsharpTutorial() {
   // ---------- 状态管理 ----------
-  const [activeId, setActiveId] = useState(csharpChapters[0].id);
-  const [code, setCode] = useState(DEFAULT_CODE);
+  // 从 URL hash 读取初始章节 id，如果没有则使用第一个章节
+  const getInitialChapterId = () => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash.slice(1);
+      if (hash && csharpChapters.find((c) => c.id === hash)) {
+        return hash;
+      }
+    }
+    return csharpChapters[0].id;
+  };
+
+  const initialId = getInitialChapterId();
+  const initialChapter = csharpChapters.find((c) => c.id === initialId) || csharpChapters[0];
+
+  const [activeId, setActiveId] = useState(initialId);
+  const [code, setCode] = useState(initialChapter.code);
   const [output, setOutput] = useState("");
   const [error, setError] = useState("");
   const [isRunning, setIsRunning] = useState(false);

@@ -91,8 +91,22 @@ const DEMO_HTML = `
 
 export default function SassTutorial() {
   // ---------- 状态管理 ----------
-  const [activeId, setActiveId] = useState(sassChapters[0].id);
-  const [code, setCode] = useState(sassChapters[0].code);
+  // 从 URL hash 读取初始章节 id，如果没有则使用第一个章节
+  const getInitialChapterId = () => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash.slice(1);
+      if (hash && sassChapters.find((c) => c.id === hash)) {
+        return hash;
+      }
+    }
+    return sassChapters[0].id;
+  };
+
+  const initialId = getInitialChapterId();
+  const initialChapter = sassChapters.find((c) => c.id === initialId) || sassChapters[0];
+
+  const [activeId, setActiveId] = useState(initialId);
+  const [code, setCode] = useState(initialChapter.code);
   const [compiledCss, setCompiledCss] = useState(""); // 编译后的 CSS
   const [error, setError] = useState("");
   const [isRunning, setIsRunning] = useState(false);

@@ -22,8 +22,22 @@ const MonacoEditor = dynamic(() => import("../components/MonacoEditor"), { ssr: 
 
 export default function BackendTutorial() {
   // ---------- 状态管理 ----------
-  const [activeId, setActiveId] = useState(backendChapters[0].id);
-  const [code, setCode] = useState(backendChapters[0].code);
+  // 从 URL hash 读取初始章节 id，如果没有则使用第一个章节
+  const getInitialChapterId = () => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash.slice(1);
+      if (hash && backendChapters.find((c) => c.id === hash)) {
+        return hash;
+      }
+    }
+    return backendChapters[0].id;
+  };
+
+  const initialId = getInitialChapterId();
+  const initialChapter = backendChapters.find((c) => c.id === initialId) || backendChapters[0];
+
+  const [activeId, setActiveId] = useState(initialId);
+  const [code, setCode] = useState(initialChapter.code);
   const [output, setOutput] = useState("");
   const [error, setError] = useState("");
   const [isRunning, setIsRunning] = useState(false);
