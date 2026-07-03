@@ -1143,6 +1143,181 @@ body {
 .editor-actions {
   display: flex;
   gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ===== Monaco 编辑器主题选择器 ===== */
+.editor-theme-picker {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.editor-theme-picker--compact {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 20;
+}
+
+.monaco-theme-picker-slot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 20;
+  pointer-events: none;
+}
+.monaco-theme-picker-slot > * {
+  pointer-events: auto;
+}
+
+.editor-theme-picker-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  box-shadow: var(--shadow-sm);
+}
+.editor-theme-picker--compact .editor-theme-picker-btn {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(6px);
+}
+.editor-theme-picker-btn:hover {
+  background: #f1f5f9;
+  border-color: var(--primary);
+  color: var(--text);
+}
+
+.editor-theme-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  flex-shrink: 0;
+}
+
+.editor-theme-label {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-theme-arrow {
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: transform 0.15s;
+}
+.editor-theme-arrow.open {
+  transform: rotate(180deg);
+  color: var(--primary);
+}
+
+.editor-theme-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 220px;
+  max-height: 320px;
+  overflow: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  animation: editorThemeMenuIn 0.15s ease-out;
+}
+.editor-theme-picker--toolbar .editor-theme-menu {
+  right: auto;
+  left: 0;
+}
+
+@keyframes editorThemeMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.editor-theme-menu-header {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+  background: #f8fafc;
+  position: sticky;
+  top: 0;
+}
+
+.editor-theme-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+}
+
+.editor-theme-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.editor-theme-option:hover {
+  background: #f1f5f9;
+}
+.editor-theme-option.active {
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.editor-theme-option-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+.editor-theme-option-name {
+  flex: 1;
+}
+
+.editor-theme-option-kind {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.editor-theme-option.active .editor-theme-option-kind {
+  color: var(--primary);
+  opacity: 0.8;
+}
+
+/* 暗色编辑器主题时，外层容器边框略深 */
+.editor-wrap:has(.monaco-editor-wrap[data-editor-kind="dark"]),
+.monaco-editor-wrap[data-editor-kind="dark"] {
+  border-color: #334155;
 }
 
 /* ===== 外网运行下拉菜单（教程页面浅色主题） ===== */
