@@ -12,12 +12,14 @@
 //   6. 移除 Playground 按钮（playground 暂不支持 shell lang）
 // =============================================================
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { osChapters, osChapterGroups } from "../os-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import { highlightShell } from "../shell-highlight";
+import dynamic from "next/dynamic";
 import Sidebar from "../components/Sidebar";
 import ExternalRunDropdown from "../components/ExternalRunDropdown";
+
+const MonacoEditor = dynamic(() => import("../components/MonacoEditor"), { ssr: false, loading: () => <div className="monaco-loading-placeholder">正在加载编辑器…</div> });
 
 export default function OSTutorial() {
   const [activeId, setActiveId] = useState(osChapters[0].id);
@@ -29,29 +31,7 @@ export default function OSTutorial() {
   const [shellVersion, setShellVersion] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const textareaRef = useRef(null);
-  const highlightRef = useRef(null);
-  const lineNumbersRef = useRef(null);
   const contentRef = useRef(null);
-
-  // 代码高亮：code 变化时重新生成 HTML
-  const highlightedHTML = useMemo(
-    () => highlightShell(code) + "\n",
-    [code]
-  );
-
-  // 编辑器滚动同步：textarea / 高亮层 / 行号三者同步
-  const handleEditorScroll = useCallback(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    if (highlightRef.current) {
-      highlightRef.current.scrollTop = ta.scrollTop;
-      highlightRef.current.scrollLeft = ta.scrollLeft;
-    }
-    if (lineNumbersRef.current) {
-      lineNumbersRef.current.scrollTop = ta.scrollTop;
-    }
-  }, []);
 
   const activeChapter =
     osChapters.find((c) => c.id === activeId) || osChapters[0];
@@ -126,22 +106,6 @@ export default function OSTutorial() {
       .catch(() => {});
   }, []);
 
-  // Tab 键插入 4 空格（与 py5 一致）
-  const handleKeyDown = (e) => {
-    if (e.key === "Tab") {
-      e.preventDefault();
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const newCode = code.slice(0, start) + "    " + code.slice(end);
-      setCode(newCode);
-      requestAnimationFrame(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + 4;
-      });
-    }
-  };
-
   // 按分组聚合章节
   const groupedChapters = osChapterGroups.map((group) => ({
     group,
@@ -206,32 +170,12 @@ export default function OSTutorial() {
               </div>
             </div>
             <div className="editor-wrap">
-              <div className="line-numbers" ref={lineNumbersRef}>
-                {code.split("\n").map((_, i) => (
-                  <div key={i} className="line-number">{i + 1}</div>
-                ))}
-              </div>
-              <div className="editor-area">
-                <pre
-                  ref={highlightRef}
-                  className="editor-highlight"
-                  aria-hidden="true"
-                  dangerouslySetInnerHTML={{ __html: highlightedHTML }}
-                />
-                <textarea
-                  ref={textareaRef}
-                  className="code-editor"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  onScroll={handleEditorScroll}
-                  spellCheck={false}
-                  autoCapitalize="off"
-                  autoCorrect="off"
-                  wrap="off"
-                  placeholder="在这里编写 Shell 脚本..."
-                />
-              </div>
+              <MonacoEditor
+                value={code}
+                onChange={setCode}
+                language="shell"
+                onRun={runCode}
+              />
             </div>
           </section>
 

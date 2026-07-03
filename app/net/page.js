@@ -15,12 +15,13 @@
 //   网络协议，在沙箱中真实起本地 server + client 通信。
 // =============================================================
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { netChapters, netChapterGroups } from "../net-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import { highlightPython } from "../py-highlight";
 import Sidebar from "../components/Sidebar";
 import ExternalRunDropdown from "../components/ExternalRunDropdown";
+import dynamic from "next/dynamic";
+const MonacoEditor = dynamic(() => import("../components/MonacoEditor"), { ssr: false, loading: () => <div className="monaco-loading-placeholder">正在加载编辑器…</div> });
 
 // 默认代码示例：用户首次进入时显示，可自由修改后运行
 const DEFAULT_CODE = `# 计算机网络教程示例：用 socket 起一个 TCP server + client
@@ -64,26 +65,7 @@ export default function NetworkTutorial() {
   const [hasRun, setHasRun] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const textareaRef = useRef(null);
-  const highlightRef = useRef(null);
-  const lineNumbersRef = useRef(null);
   const contentRef = useRef(null);
-
-  // 把当前代码高亮成 HTML（用 Python 高亮器）
-  const highlightedHTML = useMemo(() => highlightPython(code) + "\n", [code]);
-
-  // 编辑器滚动同步
-  const handleEditorScroll = useCallback(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    if (highlightRef.current) {
-      highlightRef.current.scrollTop = ta.scrollTop;
-      highlightRef.current.scrollLeft = ta.scrollLeft;
-    }
-    if (lineNumbersRef.current) {
-      lineNumbersRef.current.scrollTop = ta.scrollTop;
-    }
-  }, []);
 
   // 当前章节对象
   const activeChapter =
@@ -146,23 +128,6 @@ export default function NetworkTutorial() {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [runCode]);
-
-  // ---------- Tab 键缩进 ----------
-  const handleKeyDown = (e) => {
-    if (e.key === "Tab") {
-      e.preventDefault();
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      // Python 用 4 空格缩进
-      const newCode = code.slice(0, start) + "    " + code.slice(end);
-      setCode(newCode);
-      requestAnimationFrame(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + 4;
-      });
-    }
-  };
 
   // 按分组组织章节
   const groupedChapters = netChapterGroups.map((group) => ({
@@ -237,36 +202,12 @@ export default function NetworkTutorial() {
               </div>
             </div>
             <div className="editor-wrap">
-              {/* 行号显示 */}
-              <div className="line-numbers" ref={lineNumbersRef}>
-                {code.split("\n").map((_, i) => (
-                  <div key={i} className="line-number">
-                    {i + 1}
-                  </div>
-                ))}
-              </div>
-              {/* 编辑区：高亮层 + textarea 叠加 */}
-              <div className="editor-area">
-                <pre
-                  ref={highlightRef}
-                  className="editor-highlight"
-                  aria-hidden="true"
-                  dangerouslySetInnerHTML={{ __html: highlightedHTML }}
-                />
-                <textarea
-                  ref={textareaRef}
-                  className="code-editor"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  onScroll={handleEditorScroll}
-                  spellCheck={false}
-                  autoCapitalize="off"
-                  autoCorrect="off"
-                  wrap="off"
-                  placeholder="在这里编写 Python 代码，可以自由修改后运行..."
-                />
-              </div>
+              <MonacoEditor
+                value={code}
+                onChange={setCode}
+                language="python"
+                onRun={runCode}
+              />
             </div>
           </section>
 

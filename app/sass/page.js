@@ -19,9 +19,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { sassChapters, sassChapterGroups } from "../sass-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import { highlightScss } from "../sass-highlight";
 import Sidebar from "../components/Sidebar";
 import ExternalRunDropdown from "../components/ExternalRunDropdown";
+import dynamic from "next/dynamic";
+
+const MonacoEditor = dynamic(() => import("../components/MonacoEditor"), { ssr: false, loading: () => <div className="monaco-loading-placeholder">正在加载编辑器…</div> });
 
 // 通用 demo HTML：放进 iframe body 里，让用户写的 SCSS 有元素可样式化。
 // 包含常见组件元素：按钮、卡片、列表、网格、表单、徽章、提示框、导航等。
@@ -98,16 +100,7 @@ export default function SassTutorial() {
   const [previewKey, setPreviewKey] = useState(0); // 强制刷新 iframe
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const textareaRef = useRef(null);
-  const highlightRef = useRef(null);
-  const lineNumbersRef = useRef(null);
   const contentRef = useRef(null);
-
-  // 把当前 SCSS 代码高亮成 HTML
-  const highlightedHTML = useMemo(
-    () => highlightScss(code) + "\n",
-    [code]
-  );
 
   // 构造预览用的完整 HTML 文档：编译后的 CSS + demo HTML
   // 没编译过（compiledCss 为空）时，iframe 显示提示信息
@@ -137,19 +130,6 @@ export default function SassTutorial() {
 </body>
 </html>`;
   }, [compiledCss]);
-
-  // 编辑器滚动同步
-  const handleEditorScroll = useCallback(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    if (highlightRef.current) {
-      highlightRef.current.scrollTop = ta.scrollTop;
-      highlightRef.current.scrollLeft = ta.scrollLeft;
-    }
-    if (lineNumbersRef.current) {
-      lineNumbersRef.current.scrollTop = ta.scrollTop;
-    }
-  }, []);
 
   const activeChapter =
     sassChapters.find((c) => c.id === activeId) || sassChapters[0];
@@ -226,22 +206,6 @@ export default function SassTutorial() {
     return () => window.removeEventListener("keydown", handleKey);
   }, [runPreview]);
 
-  // ---------- Tab 键缩进（2 空格，SCSS 惯例） ----------
-  const handleKeyDown = (e) => {
-    if (e.key === "Tab") {
-      e.preventDefault();
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const newCode = code.slice(0, start) + "  " + code.slice(end);
-      setCode(newCode);
-      requestAnimationFrame(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + 2;
-      });
-    }
-  };
-
   // 按分组组织章节
   const groupedChapters = sassChapterGroups.map((group) => ({
     group,
@@ -313,34 +277,12 @@ export default function SassTutorial() {
               </div>
             </div>
             <div className="editor-wrap">
-              <div className="line-numbers" ref={lineNumbersRef}>
-                {code.split("\n").map((_, i) => (
-                  <div key={i} className="line-number">
-                    {i + 1}
-                  </div>
-                ))}
-              </div>
-              <div className="editor-area">
-                <pre
-                  ref={highlightRef}
-                  className="editor-highlight"
-                  aria-hidden="true"
-                  dangerouslySetInnerHTML={{ __html: highlightedHTML }}
-                />
-                <textarea
-                  ref={textareaRef}
-                  className="code-editor"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  onScroll={handleEditorScroll}
-                  spellCheck={false}
-                  autoCapitalize="off"
-                  autoCorrect="off"
-                  wrap="off"
-                  placeholder="在这里编写 SCSS 代码，点击「编译预览」查看效果..."
-                />
-              </div>
+              <MonacoEditor
+                value={code}
+                onChange={setCode}
+                language="scss"
+                onRun={runPreview}
+              />
             </div>
           </section>
 

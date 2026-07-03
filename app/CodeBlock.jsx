@@ -3,34 +3,28 @@
 // =============================================================
 // 代码块交互组件（增强版）
 // -------------------------------------------------------------
-// 在教程页面的每个 Markdown 代码块中使用与 Playground 完全相同的
-// 代码编辑器组件，支持：
-//   - 行号显示
-//   - 语法高亮（叠加技术：透明 textarea 覆盖在高亮 pre 上）
+// 在教程页面的每个 Markdown 代码块中使用 Monaco 编辑器，支持：
+//   - 行号显示、语法高亮、代码折叠（Monaco 内置）
 //   - 可编辑（用户可修改代码后运行）
-//   - VS Code 风格快捷键（Tab 缩进、Ctrl+/ 注释、Ctrl+D 复制行等）
+//   - VS Code 风格快捷键（Monaco 内置）
 //   - 复制 / 运行 / Playground / 外网运行 四个操作按钮
 // =============================================================
 
 import { useState, useCallback, useMemo, useEffect } from "react";
-import CodeEditor from "./components/CodeEditor";
+import dynamic from "next/dynamic";
 import { getExternalPlaygrounds, openExternal } from "./external-playgrounds";
 
-// 高亮函数引入
-import { highlightJavaScript } from "./highlight";
-import { highlightTypeScript } from "./ts-highlight";
-import { highlightPython } from "./py-highlight";
-import { highlightJava } from "./java-highlight";
-import { highlightCsharp } from "./csharp-highlight";
-import { highlightGo } from "./go-highlight";
-import { highlightScss } from "./sass-highlight";
-import { highlightGraphQL } from "./gql-highlight";
-import { highlightC } from "./c-highlight";
-import { highlightCpp } from "./cpp-highlight";
-import { highlightRuby } from "./ruby-highlight";
-import { highlightSwift } from "./swift-highlight";
-import { highlightShell } from "./shell-highlight";
-import { highlightSql } from "./sql-highlight";
+// Monaco Editor 依赖浏览器环境，必须关 SSR。
+// 用 next/dynamic 在客户端动态加载。
+const MonacoEditor = dynamic(
+  () => import("./components/MonacoEditor"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="md-code-loading">正在加载编辑器…</div>
+    ),
+  }
+);
 
 // ------------------------------------------------------------------
 // 语言映射表
@@ -39,69 +33,68 @@ import { highlightSql } from "./sql-highlight";
 // api      —— 后端执行接口路径（为空则不可运行）
 // pgId     —— Playground 语言 id（为空则无 Playground 按钮）
 // label    —— 工具栏显示的语言名称
-// highlight —— 语法高亮函数
-// comment  —— 行注释前缀（用于 Ctrl+/ 快捷键）
+// lang     —— 传给 Monaco 的语言 id（为空则用 key 本身）
 // ------------------------------------------------------------------
 const LANG_MAP = {
   // JavaScript / Node.js
-  js: { api: "/api/run", pgId: "node", label: "JavaScript", highlight: highlightJavaScript, comment: "//" },
-  javascript: { api: "/api/run", pgId: "node", label: "JavaScript", highlight: highlightJavaScript, comment: "//" },
-  jsx: { api: "/api/run", pgId: "node", label: "JavaScript", highlight: highlightJavaScript, comment: "//" },
-  node: { api: "/api/run", pgId: "node", label: "Node.js", highlight: highlightJavaScript, comment: "//" },
+  js: { api: "/api/run", pgId: "node", label: "JavaScript", lang: "javascript" },
+  javascript: { api: "/api/run", pgId: "node", label: "JavaScript", lang: "javascript" },
+  jsx: { api: "/api/run", pgId: "node", label: "JavaScript", lang: "javascript" },
+  node: { api: "/api/run", pgId: "node", label: "Node.js", lang: "javascript" },
   // TypeScript
-  ts: { api: "/api/run-ts", pgId: "ts", label: "TypeScript", highlight: highlightTypeScript, comment: "//" },
-  typescript: { api: "/api/run-ts", pgId: "ts", label: "TypeScript", highlight: highlightTypeScript, comment: "//" },
-  tsx: { api: "/api/run-ts", pgId: "ts", label: "TypeScript", highlight: highlightTypeScript, comment: "//" },
+  ts: { api: "/api/run-ts", pgId: "ts", label: "TypeScript", lang: "typescript" },
+  typescript: { api: "/api/run-ts", pgId: "ts", label: "TypeScript", lang: "typescript" },
+  tsx: { api: "/api/run-ts", pgId: "ts", label: "TypeScript", lang: "typescript" },
   // Python
-  py: { api: "/api/run-py", pgId: "python", label: "Python", highlight: highlightPython, comment: "#" },
-  python: { api: "/api/run-py", pgId: "python", label: "Python", highlight: highlightPython, comment: "#" },
+  py: { api: "/api/run-py", pgId: "python", label: "Python", lang: "python" },
+  python: { api: "/api/run-py", pgId: "python", label: "Python", lang: "python" },
   // Java
-  java: { api: "/api/run-java", pgId: "java", label: "Java", highlight: highlightJava, comment: "//" },
+  java: { api: "/api/run-java", pgId: "java", label: "Java", lang: "java" },
   // C#
-  cs: { api: "/api/run-csharp", pgId: "csharp", label: "C#", highlight: highlightCsharp, comment: "//" },
-  csharp: { api: "/api/run-csharp", pgId: "csharp", label: "C#", highlight: highlightCsharp, comment: "//" },
+  cs: { api: "/api/run-csharp", pgId: "csharp", label: "C#", lang: "csharp" },
+  csharp: { api: "/api/run-csharp", pgId: "csharp", label: "C#", lang: "csharp" },
   // Go
-  go: { api: "/api/run-go", pgId: "go", label: "Go", highlight: highlightGo, comment: "//" },
-  golang: { api: "/api/run-go", pgId: "go", label: "Go", highlight: highlightGo, comment: "//" },
+  go: { api: "/api/run-go", pgId: "go", label: "Go", lang: "go" },
+  golang: { api: "/api/run-go", pgId: "go", label: "Go", lang: "go" },
   // Sass / SCSS
-  scss: { api: "/api/run-sass", pgId: "sass", label: "SCSS", highlight: highlightScss, comment: "//" },
-  sass: { api: "/api/run-sass", pgId: "sass", label: "Sass", highlight: highlightScss, comment: "//" },
+  scss: { api: "/api/run-sass", pgId: "sass", label: "SCSS", lang: "scss" },
+  sass: { api: "/api/run-sass", pgId: "sass", label: "Sass", lang: "scss" },
   // GraphQL
-  gql: { api: "/api/run-gql", pgId: "gql", label: "GraphQL", highlight: highlightGraphQL, comment: "#" },
-  graphql: { api: "/api/run-gql", pgId: "gql", label: "GraphQL", highlight: highlightGraphQL, comment: "#" },
+  gql: { api: "/api/run-gql", pgId: "gql", label: "GraphQL", lang: "graphql" },
+  graphql: { api: "/api/run-gql", pgId: "gql", label: "GraphQL", lang: "graphql" },
   // C
-  c: { api: "/api/run-c", pgId: "c", label: "C", highlight: highlightC, comment: "//" },
+  c: { api: "/api/run-c", pgId: "c", label: "C", lang: "c" },
   // C++
-  cpp: { api: "/api/run-cpp", pgId: "cpp", label: "C++", highlight: highlightCpp, comment: "//" },
-  "c++": { api: "/api/run-cpp", pgId: "cpp", label: "C++", highlight: highlightCpp, comment: "//" },
-  cc: { api: "/api/run-cpp", pgId: "cpp", label: "C++", highlight: highlightCpp, comment: "//" },
+  cpp: { api: "/api/run-cpp", pgId: "cpp", label: "C++", lang: "cpp" },
+  "c++": { api: "/api/run-cpp", pgId: "cpp", label: "C++", lang: "cpp" },
+  cc: { api: "/api/run-cpp", pgId: "cpp", label: "C++", lang: "cpp" },
   // Ruby
-  rb: { api: "/api/run-ruby", pgId: "ruby", label: "Ruby", highlight: highlightRuby, comment: "#" },
-  ruby: { api: "/api/run-ruby", pgId: "ruby", label: "Ruby", highlight: highlightRuby, comment: "#" },
+  rb: { api: "/api/run-ruby", pgId: "ruby", label: "Ruby", lang: "ruby" },
+  ruby: { api: "/api/run-ruby", pgId: "ruby", label: "Ruby", lang: "ruby" },
   // Swift
-  swift: { api: "/api/run-swift", pgId: "swift", label: "Swift", highlight: highlightSwift, comment: "//" },
+  swift: { api: "/api/run-swift", pgId: "swift", label: "Swift", lang: "swift" },
   // Shell
-  sh: { api: "/api/run-shell", pgId: "shell", label: "Shell", highlight: highlightShell, comment: "#" },
-  bash: { api: "/api/run-shell", pgId: "shell", label: "Shell", highlight: highlightShell, comment: "#" },
-  shell: { api: "/api/run-shell", pgId: "shell", label: "Shell", highlight: highlightShell, comment: "#" },
-  zsh: { api: "/api/run-shell", pgId: "shell", label: "Shell", highlight: highlightShell, comment: "#" },
+  sh: { api: "/api/run-shell", pgId: "shell", label: "Shell", lang: "shell" },
+  bash: { api: "/api/run-shell", pgId: "shell", label: "Shell", lang: "shell" },
+  shell: { api: "/api/run-shell", pgId: "shell", label: "Shell", lang: "shell" },
+  zsh: { api: "/api/run-shell", pgId: "shell", label: "Shell", lang: "shell" },
   // SQL
-  sql: { api: "/api/run-sql", pgId: "sql", label: "SQL", highlight: highlightSql, comment: "--" },
+  sql: { api: "/api/run-sql", pgId: "sql", label: "SQL", lang: "sql" },
   // 纯文本 / JSON / HTML / CSS 等不可运行语言（仅显示，不提供运行按钮）
-  json: { label: "JSON", highlight: null, comment: "//" },
-  html: { label: "HTML", highlight: null, comment: "<!--" },
-  css: { label: "CSS", highlight: null, comment: "/*" },
-  text: { label: "Text", highlight: null, comment: "#" },
-  plain: { label: "Text", highlight: null, comment: "#" },
-  yaml: { label: "YAML", highlight: null, comment: "#" },
-  yml: { label: "YAML", highlight: null, comment: "#" },
-  xml: { label: "XML", highlight: null, comment: "<!--" },
-  md: { label: "Markdown", highlight: null, comment: "<!--" },
-  markdown: { label: "Markdown", highlight: null, comment: "<!--" },
-  dockerfile: { label: "Dockerfile", highlight: null, comment: "#" },
-  nginx: { label: "Nginx", highlight: null, comment: "#" },
-  ini: { label: "INI", highlight: null, comment: ";" },
-  toml: { label: "TOML", highlight: null, comment: "#" },
+  json: { label: "JSON", lang: "json" },
+  html: { label: "HTML", lang: "html" },
+  css: { label: "CSS", lang: "css" },
+  text: { label: "Text", lang: "plaintext" },
+  plain: { label: "Text", lang: "plaintext" },
+  yaml: { label: "YAML", lang: "yaml" },
+  yml: { label: "YAML", lang: "yaml" },
+  xml: { label: "XML", lang: "xml" },
+  md: { label: "Markdown", lang: "markdown" },
+  markdown: { label: "Markdown", lang: "markdown" },
+  dockerfile: { label: "Dockerfile", lang: "dockerfile" },
+  nginx: { label: "Nginx", lang: "plaintext" },
+  ini: { label: "INI", lang: "ini" },
+  toml: { label: "TOML", lang: "ini" },
 };
 
 // ------------------------------------------------------------------
@@ -149,8 +142,7 @@ export function CodeBlock({ code: initialCode, lang }) {
   const canRun = !!langInfo?.api;
   const canPlayground = !!langInfo?.pgId;
   const displayLabel = langInfo?.label || (lang ? lang.toUpperCase() : "");
-  const highlightFn = langInfo?.highlight || null;
-  const commentPrefix = langInfo?.comment || "//";
+  const monacoLang = langInfo?.lang || langLower || "plaintext";
 
   // 当前语言可用的外网平台列表
   const externalPGs = useMemo(
@@ -325,17 +317,16 @@ export function CodeBlock({ code: initialCode, lang }) {
         </div>
       </div>
 
-      {/* 代码编辑器（与 Playground 完全相同的组件） */}
+      {/* 代码编辑器（Monaco） */}
       <div className="md-code-editor-container">
-        <CodeEditor
+        <MonacoEditor
           value={code}
           onChange={setCode}
-          highlight={highlightFn}
-          comment={commentPrefix}
+          language={monacoLang}
           onRun={canRun ? handleRun : undefined}
-          minHeight={80}
+          minHeight={60}
           maxHeight={400}
-          placeholder=""
+          autoHeight
         />
       </div>
 

@@ -11,12 +11,14 @@
 //   4. 文案：Go 教程、main.go 文件名
 // =============================================================
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { goChapters, goChapterGroups } from "../go-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import { highlightGo } from "../go-highlight";
 import Sidebar from "../components/Sidebar";
 import ExternalRunDropdown from "../components/ExternalRunDropdown";
+import dynamic from "next/dynamic";
+
+const MonacoEditor = dynamic(() => import("../components/MonacoEditor"), { ssr: false, loading: () => <div className="monaco-loading-placeholder">正在加载编辑器…</div> });
 
 // 默认代码示例：用户首次进入时显示，可自由修改后运行
 const DEFAULT_CODE = `// Go 1.21+ 示例
@@ -65,29 +67,7 @@ export default function GoTutorial() {
   const [hasRun, setHasRun] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const textareaRef = useRef(null);
-  const highlightRef = useRef(null);
-  const lineNumbersRef = useRef(null);
   const contentRef = useRef(null);
-
-  // 把当前代码高亮成 HTML（用 Go 高亮器）
-  const highlightedHTML = useMemo(
-    () => highlightGo(code) + "\n",
-    [code]
-  );
-
-  // 编辑器滚动同步
-  const handleEditorScroll = useCallback(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    if (highlightRef.current) {
-      highlightRef.current.scrollTop = ta.scrollTop;
-      highlightRef.current.scrollLeft = ta.scrollLeft;
-    }
-    if (lineNumbersRef.current) {
-      lineNumbersRef.current.scrollTop = ta.scrollTop;
-    }
-  }, []);
 
   // 当前章节对象
   const activeChapter =
@@ -158,23 +138,6 @@ export default function GoTutorial() {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [runCode]);
-
-  // ---------- Tab 键缩进 ----------
-  const handleKeyDown = (e) => {
-    if (e.key === "Tab") {
-      e.preventDefault();
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      // Go 官方规范使用 tab，但编辑器用 4 空格便于显示
-      const newCode = code.slice(0, start) + "    " + code.slice(end);
-      setCode(newCode);
-      requestAnimationFrame(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + 4;
-      });
-    }
-  };
 
   // 按分组组织章节
   const groupedChapters = goChapterGroups.map((group) => ({
@@ -255,36 +218,12 @@ export default function GoTutorial() {
               </div>
             </div>
             <div className="editor-wrap">
-              {/* 行号显示 */}
-              <div className="line-numbers" ref={lineNumbersRef}>
-                {code.split("\n").map((_, i) => (
-                  <div key={i} className="line-number">
-                    {i + 1}
-                  </div>
-                ))}
-              </div>
-              {/* 编辑区：高亮层 + textarea 叠加 */}
-              <div className="editor-area">
-                <pre
-                  ref={highlightRef}
-                  className="editor-highlight"
-                  aria-hidden="true"
-                  dangerouslySetInnerHTML={{ __html: highlightedHTML }}
-                />
-                <textarea
-                  ref={textareaRef}
-                  className="code-editor"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  onScroll={handleEditorScroll}
-                  spellCheck={false}
-                  autoCapitalize="off"
-                  autoCorrect="off"
-                  wrap="off"
-                  placeholder="在这里编写 Go 代码，可以自由修改后运行..."
-                />
-              </div>
+              <MonacoEditor
+                value={code}
+                onChange={setCode}
+                language="go"
+                onRun={runCode}
+              />
             </div>
           </section>
 

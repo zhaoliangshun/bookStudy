@@ -504,14 +504,12 @@ body {
 /* 自定义滚动条 */
 .chapter-nav::-webkit-scrollbar,
 .content::-webkit-scrollbar,
-.code-editor::-webkit-scrollbar,
 .console-body::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 .chapter-nav::-webkit-scrollbar-thumb,
 .content::-webkit-scrollbar-thumb,
-.code-editor::-webkit-scrollbar-thumb,
 .console-body::-webkit-scrollbar-thumb {
   background: rgba(148, 163, 184, 0.4);
   border-radius: 4px;
@@ -744,18 +742,19 @@ body {
 .md-code-editor-container {
   overflow: hidden;
   position: relative;
+  min-height: 40px;
 }
-/* CodeEditor 在 markdown 代码块中的样式覆盖 */
-.md-code-editor-container .ce-editor-wrap {
+/* Monaco 编辑器在 markdown 代码块中的样式覆盖 */
+.md-code-editor-container .monaco-editor-wrap {
   border-radius: 0;
   border: 1px solid var(--editor-border);
   border-top: none;
   box-shadow: none;
-  min-height: 80px;
+  /* min-height 由 MonacoEditor 组件的 minHeight prop 控制（autoHeight 模式） */
   max-height: 400px;
 }
 /* 有输出面板时，编辑器底部圆角去掉，与输出面板衔接 */
-.md-code-block-wrap.has-output .ce-editor-wrap {
+.md-code-block-wrap.has-output .monaco-editor-wrap {
   border-radius: 0;
   border-bottom: none;
 }
@@ -1196,9 +1195,9 @@ body {
   color: var(--text);
 }
 
-/* 编辑器容器（浅色模式） */
+/* 编辑器容器（浅色模式）—— Monaco 编辑器的外层容器 */
 .editor-wrap {
-  display: flex;
+  position: relative;
   background: var(--editor-bg);
   border-radius: var(--radius);
   overflow: hidden;
@@ -1208,209 +1207,58 @@ body {
   max-height: 520px;
 }
 
-/* CodeEditor 根元素：嵌套在 flex 容器中时需撑满宽度，否则会塌缩到行号宽度 */
-.ce-editor-wrap {
-  flex: 1;
-  min-width: 0;
+/* Monaco 编辑器容器：默认绝对定位撑满父容器（Playground、教程主编辑器用） */
+.monaco-editor-wrap {
+  position: absolute;
+  inset: 0;
 }
 
-/* 行号：padding 放外层（教程页面和 CodeEditor 共用）。
-   CodeEditor 里多一层 .line-numbers-inner 做 transform 平移，
-   inner 不带 padding，行号正常显示。 */
-.line-numbers {
-  background: var(--editor-gutter-bg);
-  color: var(--editor-gutter-text);
-  padding: 14px 10px 14px 14px;
-  font-family: var(--mono);
-  font-size: 13px;
-  line-height: 1.6;
-  text-align: right;
-  user-select: none;
-  overflow: hidden;
-  flex-shrink: 0;
-  min-width: 48px;
-  border-right: 1px solid var(--editor-border);
-}
-/* 行号内层（仅 CodeEditor 用）：transform 平移容器，无 padding */
-.line-numbers-inner {
-  will-change: transform;
-}
-.line-number {
-  height: calc(13px * 1.6);
-}
-
-/* 编辑区：高亮层 + textarea 叠加的定位容器 */
-.editor-area {
+/* 自动高度模式：相对定位，高度由 JS 根据内容动态控制（CodeBlock 用） */
+.monaco-editor-wrap.auto-height {
   position: relative;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
+  inset: auto;
+  height: auto;
 }
 
-/* 高亮层 <pre>：padding 放外层（教程页面和 CodeEditor 共用）。
-   CodeEditor 里多一层 .editor-highlight-inner 做 transform 平移，
-   inner 不带 padding，代码正常缩进。 */
-.editor-highlight {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  padding: 14px 16px;
-  font-family: var(--mono);
-  font-size: 13px;
-  line-height: 1.6;
-  white-space: pre;
-  /* hidden：CodeEditor 用 inner transform 平移；教程页面也用 hidden
-     保持一致（教程页面的滚动由上层 textarea 驱动） */
-  overflow: hidden;
-  /* 不响应鼠标事件，所有点击/选中都交给上层 textarea */
-  pointer-events: none;
-  color: var(--editor-text);
-  tab-size: 2;
+/* ===== Monaco 滚动条优化（浅色主题） ===== */
+/* 轨道：透明背景、无阴影，代码少时不会出现空轨道 */
+.monaco-editor .scrollbar.vertical,
+.monaco-editor .scrollbar.horizontal {
+  background: transparent !important;
+  box-shadow: none !important;
 }
-/* 高亮内层（仅 CodeEditor 用）：transform 平移容器，无 padding */
-.editor-highlight-inner {
-  will-change: transform;
+/* 滑块：半透明、圆角、带透明内边距让滑块视觉更窄更柔和 */
+.monaco-editor .scrollbar .slider {
+  background: rgba(148, 163, 184, 0.35) !important;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.2s ease;
 }
-
-/* ===== 选区层：自绘选区背景，替代 textarea 原生 ::selection ===== */
-/* 选区层在高亮层之下（DOM 顺序更早）、textarea 之下。
-   textarea ::selection 已设为 transparent，选区背景完全由此层绘制。
-   关键：选区层 inner 和高亮层 inner 用同一个 transform 值同步滚动，
-   保证选区背景和彩色文字在同一帧移动，彻底消除 1 帧错位闪动。 */
-.editor-selection {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
+.monaco-editor .scrollbar .slider:hover {
+  background: rgba(100, 116, 139, 0.55) !important;
+  background-clip: padding-box;
 }
-.editor-selection-inner {
-  position: relative;
-  will-change: transform;
+.monaco-editor .scrollbar .slider:active {
+  background: rgba(100, 116, 139, 0.7) !important;
+  background-clip: padding-box;
 }
-.editor-selection-rect {
-  position: absolute;
-  background: rgba(37, 99, 235, 0.18);
-  border-radius: 2px;
+/* 隐藏右侧装饰概览尺（标记缩略条），让编辑器右侧更干净 */
+.monaco-editor .decorationsOverviewRuler {
+  display: none !important;
 }
 
-/* 隐藏测量 span：测量等宽字体单字符宽度 */
-.editor-measure {
-  position: absolute;
-  visibility: hidden;
-  font-family: var(--mono);
-  font-size: 13px;
-  line-height: 1.6;
-  white-space: pre;
-  pointer-events: none;
-}
-
-/* 代码编辑 textarea（浅色模式 + 叠加层） */
-.code-editor {
-  /* 绝对定位铺满，和高亮层完全重合 */
-  position: absolute;
-  inset: 0;
-  width: 100%;
+/* Monaco 加载占位 */
+.monaco-loading-placeholder,
+.md-code-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 100%;
-  background: transparent;
-  /* 关键：文字颜色透明，只显示光标。用户看到的是下层高亮层。 */
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  caret-color: var(--primary);
-  border: none;
-  outline: none;
-  resize: none;
-  padding: 14px 16px;
-  font-family: var(--mono);
+  min-height: 120px;
+  color: var(--text-muted);
+  font-family: system-ui, sans-serif;
   font-size: 13px;
-  line-height: 1.6;
-  white-space: pre;
-  overflow: auto;
-  tab-size: 2;
-  /* textarea 在最上层，接收所有键盘/鼠标事件 */
-  z-index: 1;
-}
-.code-editor::placeholder {
-  color: var(--editor-placeholder);
-  -webkit-text-fill-color: var(--editor-placeholder);
-}
-/* 教程页面的 textarea：保留原生 ::selection，用户能看到选中效果 */
-.code-editor::selection {
-  background: rgba(37, 99, 235, 0.18);
-}
-/* CodeEditor 组件的 textarea：隐藏原生 ::selection。
-   原生选区由合成器即时绘制，和高亮层 transform 同步差 1 帧，
-   滚动时选区背景会和高亮文字错位闪动。
-   改为自绘选区层（.editor-selection），和高亮层共用 transform 同步。 */
-.code-editor.ce-code-editor::selection {
-  background: transparent;
-}
-.code-editor::-webkit-scrollbar-thumb {
-  background: var(--editor-scrollbar);
-}
-.code-editor::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-/* ===== 语法高亮 token 颜色（VS Code Light 风格） ===== */
-/* 颜色参考 VS Code 内置 Light+ 主题，浅色背景下对比清晰、不刺眼。 */
-.tok-comment {
-  color: #6a9955;
-  font-style: italic;
-}
-.tok-string {
-  color: #a31515;
-}
-.tok-number {
-  color: #098658;
-}
-.tok-keyword {
-  color: #0000ff;
-}
-.tok-literal {
-  color: #0000ff;
-}
-.tok-builtin {
-  color: #267f99;
-}
-.tok-function {
-  color: #795e26;
-}
-.tok-decorator {
-  /* Python 装饰器 @decorator */
-  color: #af00db;
-  font-weight: 600;
-}
-.tok-type {
-  /* TypeScript 类型名（string/number/Promise/Record 等）*/
-  color: #267f99;
-}
-
-/* ===== HTML / Tailwind 语法高亮 token ===== */
-.tok-tag {
-  /* 标签名 div/span/button */
-  color: #800000;
-}
-.tok-attr {
-  /* 属性名（非 class）src/href/type */
-  color: #ff0000;
-}
-.tok-cls {
-  /* Tailwind 工具类 p-4/bg-blue-500/text-xl */
-  color: #811f3f;
-  font-weight: 600;
-}
-.tok-variant {
-  /* Tailwind 变体前缀 hover:/md:/dark: */
-  color: #a8a29e;
-  font-style: italic;
-}
-.tok-punct {
-  /* HTML 标点 < > / = */
-  color: #808080;
-}
-.tok-prop {
-  /* JS 普通属性名 */
-  color: #001080;
 }
 
 /* ===== 控制台（浅色模式） ===== */
@@ -2129,13 +1977,6 @@ body {
      之前用 > div { width: 100% } 会干扰 Monaco 内部 absolute 布局，
      导致行号槽宽度计算异常、行号数字被裁。 */
   overflow: hidden;
-}
-
-/* 彻底隐藏左侧 margin-view-overlays（行号槽）。
-   行号本身已通过 lineNumbers: "off" 关闭，这里再把整个 margin 容器
-   收掉，让代码区贴到面板左边，最大化代码可视宽度。 */
-.pg-editor-wrap .monaco-editor .margin {
-  display: none;
 }
 
 /* 动态加载 Monaco 期间的占位：避免编辑区塌缩到 0 高度 */
