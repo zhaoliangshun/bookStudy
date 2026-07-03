@@ -1303,6 +1303,12 @@ body {
 .monaco-editor .decorationsOverviewRuler {
   display: none !important;
 }
+/* 去除 Monaco 编辑器聚焦时的蓝色外框（--vscode-focusBorder）
+   Monaco 0.46+ 给 .monaco-editor 加了 outline: 1px solid var(--vscode-focusBorder)，
+   嵌入教程页时会在行号区边缘露出一条蓝色边框，这里关掉。 */
+.monaco-editor {
+  outline: none !important;
+}
 /* 去除光标所在行的外边框
    说明：renderLineHighlight:"line" 只画背景色不画边框，
    但 Monaco 默认主题里 .current-line 元素仍带 1px 灰色边框（lineHighlightBorder）。
