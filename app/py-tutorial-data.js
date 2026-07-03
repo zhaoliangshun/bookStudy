@@ -26,6 +26,9 @@
 //                                    context-manager, typing-mypy,
 //                                    testing, packaging-distribution）
 //
+// 注意：「第一阶段：环境搭建」已独立为全新教程 /pybasic，
+// 对应数据见 pybasic-tutorial-data.js，不再混入本教程。
+//
 // 与 Node.js / TypeScript 教程不同，Python 教程的 code 字段是
 // Python 源代码，前端通过 /api/run-py 接口调用系统 python3 子进程
 // 执行，捕获 stdout / stderr 返回。

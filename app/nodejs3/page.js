@@ -164,6 +164,7 @@ export default function Nodejs3Tutorial() {
             </div>
             <div className="editor-wrap">
               <MonacoEditor
+                key={activeId}
                 value={code}
                 onChange={setCode}
                 language="javascript"

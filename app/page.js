@@ -216,6 +216,7 @@ export default function Home() {
             </div>
             <div className="editor-wrap">
               <MonacoEditor
+                key={activeId}
                 value={code}
                 onChange={setCode}
                 language="javascript"

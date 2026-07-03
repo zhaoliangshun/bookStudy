@@ -1,27 +1,28 @@
 "use client";
 
 // =============================================================
-// TypeScript 交互式教程页面
+// Python 基础路径教程（pybasic）交互式页面
 // -------------------------------------------------------------
-// 结构与 Node.js 教程页面（app/page.js）基本一致，区别：
-//   1. 数据源：tsChapters / tsChapterGroups（来自 ts-tutorial-data）
-//   2. 运行接口：/api/run-ts（先 TS 转译再沙箱执行）
-//   3. 高亮器：highlightTypeScript（支持 interface/type/enum 等关键字）
-//   4. 文案：TypeScript 教程、example.ts 文件名
+// 对应"第一阶段：Python 基础（★★★★★ 必须）"学习路径，
+// 是所有人的起点。当前覆盖 "1.1 环境" 章节。
+//   1. 数据源：pybasicChapters / pybasicChapterGroups
+//   2. 运行接口：/api/run-py（调用系统 python3 子进程执行）
+//   3. 高亮器：highlightPython
+//   4. 文件名：example.py
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { tsChapters, tsChapterGroups } from "../ts-tutorial-data";
+import { pybasicChapters, pybasicChapterGroups } from "../pybasic-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import ExternalRunDropdown from "../components/ExternalRunDropdown";
 import dynamic from "next/dynamic";
 const MonacoEditor = dynamic(() => import("../components/MonacoEditor"), { ssr: false, loading: () => <div className="monaco-loading-placeholder">正在加载编辑器…</div> });
 
-export default function TypeScriptTutorial() {
+export default function PyBasicTutorial() {
   // ---------- 状态管理 ----------
-  const [activeId, setActiveId] = useState(tsChapters[0].id);
-  const [code, setCode] = useState(tsChapters[0].code);
+  const [activeId, setActiveId] = useState(pybasicChapters[0].id);
+  const [code, setCode] = useState(pybasicChapters[0].code);
   const [output, setOutput] = useState("");
   const [error, setError] = useState("");
   const [isRunning, setIsRunning] = useState(false);
@@ -32,11 +33,11 @@ export default function TypeScriptTutorial() {
 
   // 当前章节对象
   const activeChapter =
-    tsChapters.find((c) => c.id === activeId) || tsChapters[0];
+    pybasicChapters.find((c) => c.id === activeId) || pybasicChapters[0];
 
   // ---------- 切换章节 ----------
   const selectChapter = useCallback((chapterId) => {
-    const chapter = tsChapters.find((c) => c.id === chapterId);
+    const chapter = pybasicChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
     setActiveId(chapterId);
     setCode(chapter.code);
@@ -51,13 +52,13 @@ export default function TypeScriptTutorial() {
   }, []);
 
   // ---------- 运行代码 ----------
-  // 与 Node.js 教程不同，这里调用 /api/run-ts，会先 TS 转译再沙箱执行
+  // 调用 /api/run-py，后端用子进程 python3 执行，返回 stdout/stderr
   const runCode = useCallback(async () => {
     setIsRunning(true);
-    setOutput("正在转译 TypeScript 并执行...");
+    setOutput("正在调用 python3 执行...");
     setError("");
     try {
-      const res = await fetch("/api/run-ts", {
+      const res = await fetch("/api/run-py", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code }),
@@ -85,9 +86,9 @@ export default function TypeScriptTutorial() {
   // ---------- 在 Playground 中打开 ----------
   const handlePlayground = useCallback(() => {
     try {
-      localStorage.setItem("playground:code:ts", code);
+      localStorage.setItem("playground:code:python", code);
     } catch {}
-    window.open(`/playground?lang=ts`, "_blank", "noopener,noreferrer");
+    window.open(`/playground?lang=python`, "_blank", "noopener,noreferrer");
   }, [code]);
 
   // ---------- 键盘快捷键：Ctrl/Cmd + Enter 运行 ----------
@@ -103,9 +104,9 @@ export default function TypeScriptTutorial() {
   }, [runCode]);
 
   // 按分组组织章节
-  const groupedChapters = tsChapterGroups.map((group) => ({
+  const groupedChapters = pybasicChapterGroups.map((group) => ({
     group,
-    items: tsChapters.filter((c) => c.group === group),
+    items: pybasicChapters.filter((c) => c.group === group),
   }));
 
   return (
@@ -114,15 +115,15 @@ export default function TypeScriptTutorial() {
         {/* ===== 侧边栏：章节导航 ===== */}
         <Sidebar
           title="学习目录"
-          tip="点击章节开始学习 TypeScript"
+          tip="第一阶段：环境搭建，所有人的起点"
           footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
-          currentPath="/ts"
-          meta={`共 ${tsChapters.length} 章 · 可在线编辑运行`}
+          currentPath="/pybasic"
+          meta={`共 ${pybasicChapters.length} 章 · 第一阶段：环境搭建`}
         />
 
         {/* ===== 主内容区 ===== */}
@@ -152,10 +153,10 @@ export default function TypeScriptTutorial() {
                 <span className="dot dot-red"></span>
                 <span className="dot dot-yellow"></span>
                 <span className="dot dot-green"></span>
-                <span className="editor-filename">example.ts</span>
+                <span className="editor-filename">example.py</span>
               </div>
               <div className="editor-actions">
-                <ExternalRunDropdown code={code} langLower="ts" disabled={isRunning} />
+                <ExternalRunDropdown code={code} langLower="py" disabled={isRunning} />
                 <button
                   className="btn btn-secondary"
                   onClick={resetCode}
@@ -185,7 +186,7 @@ export default function TypeScriptTutorial() {
                 key={activeId}
                 value={code}
                 onChange={setCode}
-                language="typescript"
+                language="python"
                 onRun={runCode}
               />
             </div>
@@ -226,7 +227,7 @@ export default function TypeScriptTutorial() {
 
           <footer className="content-footer">
             <p>
-              TypeScript 交互式教程 · 代码先经 TS 编译器转译再在沙箱中执行 · 支持 interface/type/enum/泛型/装饰器
+              Python 基础路径教程 · 第一阶段：环境搭建 · 代码由系统 python3 子进程执行 · 含超时保护
             </p>
           </footer>
         </main>
@@ -237,9 +238,9 @@ export default function TypeScriptTutorial() {
 
 // ===== 上一章 / 下一章 导航组件 =====
 function ChapterNav({ activeId, onSelect }) {
-  const idx = tsChapters.findIndex((c) => c.id === activeId);
-  const prev = idx > 0 ? tsChapters[idx - 1] : null;
-  const next = idx < tsChapters.length - 1 ? tsChapters[idx + 1] : null;
+  const idx = pybasicChapters.findIndex((c) => c.id === activeId);
+  const prev = idx > 0 ? pybasicChapters[idx - 1] : null;
+  const next = idx < pybasicChapters.length - 1 ? pybasicChapters[idx + 1] : null;
 
   return (
     <nav className="chapter-nav-bottom">

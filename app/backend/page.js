@@ -179,6 +179,7 @@ export default function BackendTutorial() {
             </div>
             <div className="editor-wrap">
               <MonacoEditor
+                key={activeId}
                 value={code}
                 onChange={setCode}
                 language="javascript"

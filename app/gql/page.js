@@ -195,6 +195,7 @@ export default function GraphQLTutorial() {
             </div>
             <div className="editor-wrap">
               <MonacoEditor
+                key={activeId}
                 value={code}
                 onChange={setCode}
                 language="graphql"

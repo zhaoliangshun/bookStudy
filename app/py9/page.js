@@ -167,6 +167,7 @@ export default function Py9Tutorial() {
             </div>
             <div className="editor-wrap">
               <MonacoEditor
+                key={activeId}
                 value={code}
                 onChange={setCode}
                 language="python"

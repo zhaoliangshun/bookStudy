@@ -171,6 +171,7 @@ export default function OSTutorial() {
             </div>
             <div className="editor-wrap">
               <MonacoEditor
+                key={activeId}
                 value={code}
                 onChange={setCode}
                 language="shell"

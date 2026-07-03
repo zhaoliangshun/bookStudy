@@ -47,6 +47,7 @@ const BOOK_CATEGORIES = [
       { path: "/ts2", label: "TypeScript 进阶", icon: "🔶" },
       { path: "/ts3", label: "TypeScript 高阶实战", icon: "💠" },
       { path: "/tw", label: "Tailwind CSS", icon: "🎨" },
+      { path: "/pybasic", label: "Python 基础路径", icon: "🌱" },
       { path: "/py", label: "Python", icon: "🐍" },
       { path: "/py4", label: "Python 进阶", icon: "🐍" },
       { path: "/py6", label: "Python 全解", icon: "🐍" },

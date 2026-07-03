@@ -168,6 +168,7 @@ export default function PyThreadTutorial() {
             </div>
             <div className="editor-wrap">
               <MonacoEditor
+                key={activeId}
                 value={code}
                 onChange={setCode}
                 language="python"
