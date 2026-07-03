@@ -130,12 +130,17 @@ export default function MonacoEditor({
       // 不会出现留白和多余的滚动条。受 minHeight/maxHeight 限制。
       const updateHeight = () => {
         const contentHeight = editor.getContentHeight();
-        // +2px 余量：Monaco 的 getContentHeight 偶有 1-2px 计算误差，
-        // 不加余量会出现多余的垂直滚动条。
+        // 内容超过 maxHeight 时需要滚动，显示滚动条；
+        // 否则隐藏，避免 1-2px 误差触发多余滚动条和隐形拖动。
+        const overflow = contentHeight + 2 > maxH;
         const h = Math.min(Math.max(contentHeight + 2, minH), maxH);
         if (wrapRef.current) {
           wrapRef.current.style.height = `${h}px`;
         }
+        // 动态切换滚动条可见性：溢出时显示，不溢出时隐藏
+        editor.updateOptions({
+          scrollbar: { vertical: overflow ? "auto" : "hidden" },
+        });
         // 重新测量让 Monaco 适配新高度
         editor.layout();
       };
@@ -186,11 +191,13 @@ export default function MonacoEditor({
           scrollBeyondLastLine: false,
           // 超长行不水平滚动（按需折行），避免横向滚动条
           wordWrap: "on",
+          // 代码区上下留白，避免第一行和最后一行紧贴边缘，视觉更透气
+          padding: { top: 14, bottom: 14 },
           // 滚动条样式：更细、无阴影、按需显示
+          // autoHeight 模式下会根据内容是否超过 maxHeight 动态切换 vertical
+          // 可见性（见 handleMount 里的 updateHeight），这里给默认 "auto"
           scrollbar: {
-            // autoHeight 模式下编辑器高度等于内容高度，垂直滚动条没意义，
-            // 且 getContentHeight 偶有 1-2px 误差会触发多余滚动条，直接隐藏。
-            vertical: autoHeight ? "hidden" : "auto",
+            vertical: "auto",
             horizontal: "auto",
             verticalScrollbarSize: 8,
             horizontalScrollbarSize: 8,
