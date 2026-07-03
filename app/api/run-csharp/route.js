@@ -24,7 +24,7 @@
 
 import { NextResponse } from "next/server";
 import { spawn, spawnSync } from "child_process";
-import { writeFileSync, mkdirSync, rmSync, existsSync } from "fs";
+import { writeFileSync, mkdirSync, rmSync, existsSync, cpSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 
@@ -35,8 +35,10 @@ const MAX_OUTPUT_BYTES = 1 * 1024 * 1024; // 1MB
 // dotnet 可执行文件名
 const DOTNET_BIN = "dotnet";
 
-// 预创建的运行器项目目录（复用，避免每次 dotnet new）
+// 运行器模板目录（含 .csproj 骨架，复用避免每次 dotnet new）
 // 放在系统临时目录下，进程间共享
+// 注意：本目录只作为模板，每次请求会复制一份到独立临时目录再写入用户代码，
+//       避免并发请求相互覆盖源文件
 const RUNNER_DIR = join(tmpdir(), "csharp-runner-v1");
 
 /**
@@ -202,7 +204,7 @@ async function runCsharpCode(code) {
     };
   }
 
-  // 2. 确保运行器项目存在
+  // 2. 确保运行器项目存在（作为模板目录，只创建一次）
   const projectStatus = ensureRunnerProject();
   if (!projectStatus.ok) {
     return {
@@ -212,47 +214,72 @@ async function runCsharpCode(code) {
     };
   }
 
-  // 3. 写入 Program.cs
-  const programFile = join(RUNNER_DIR, "Program.cs");
+  // 3. 创建本次请求的独立临时目录（时间戳 + 随机数，避免并发覆盖）
+  //    把模板目录(RUNNER_DIR)整体复制过来，后续编译运行都在 tmpDir 里进行
+  const tmpDir = join(
+    tmpdir(),
+    `csharp-runner-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  );
   try {
-    writeFileSync(programFile, code, "utf8");
+    cpSync(RUNNER_DIR, tmpDir, { recursive: true });
   } catch (err) {
     return {
       output: "",
-      error: `写入源代码失败：${err.message}`,
+      error: `复制运行器模板失败：${err.message}`,
       exitCode: -1,
     };
   }
 
-  // 4. 编译并运行（dotnet run 会自动编译 + 执行）
-  const env = {
-    PATH: process.env.PATH,
-    DOTNET_CLI_TELEMETRY_OPTOUT: "1",  // 禁用遥测，加快启动
-    DOTNET_NOLOGO: "1",                 // 禁用 logo
-    HOME: process.env.HOME,
-  };
+  try {
+    // 4. 写入 Program.cs（写入到独立临时目录，不影响其他并发请求）
+    const programFile = join(tmpDir, "Program.cs");
+    try {
+      writeFileSync(programFile, code, "utf8");
+    } catch (err) {
+      return {
+        output: "",
+        error: `写入源代码失败：${err.message}`,
+        exitCode: -1,
+      };
+    }
 
-  const result = await runCommand(
-    DOTNET_BIN,
-    [
-      "run",
-      "--project", RUNNER_DIR,
-      // 不使用 --no-build：--no-build 会跳过编译直接运行已有程序集，
-      // 但首次运行时还没有构建产物，会导致找不到可执行文件。
-      // 让 dotnet run 自动构建并运行（首次稍慢，后续有缓存）。
-      "-c", "Release",
-    ],
-    {
-      stdio: ["pipe", "pipe", "pipe"],
-      env,
-      cwd: RUNNER_DIR,
-    },
-    RUN_TIMEOUT_MS
-  );
+    // 5. 编译并运行（dotnet run 会自动编译 + 执行）
+    const env = {
+      PATH: process.env.PATH,
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1",  // 禁用遥测，加快启动
+      DOTNET_NOLOGO: "1",                 // 禁用 logo
+      HOME: process.env.HOME,
+    };
 
-  // 忽略 dotnet 的 build 输出（避免噪音），只保留运行时输出
-  // 通过简单启发式：包含 "Build succeeded" 之前的内容当作编译信息
-  return result;
+    const result = await runCommand(
+      DOTNET_BIN,
+      [
+        "run",
+        "--project", tmpDir,
+        // 不使用 --no-build：--no-build 会跳过编译直接运行已有程序集，
+        // 但首次运行时还没有构建产物，会导致找不到可执行文件。
+        // 让 dotnet run 自动构建并运行（首次稍慢，后续有缓存）。
+        "-c", "Release",
+      ],
+      {
+        stdio: ["pipe", "pipe", "pipe"],
+        env,
+        cwd: tmpDir,
+      },
+      RUN_TIMEOUT_MS
+    );
+
+    // 忽略 dotnet 的 build 输出（避免噪音），只保留运行时输出
+    // 通过简单启发式：包含 "Build succeeded" 之前的内容当作编译信息
+    return result;
+  } finally {
+    // 6. 清理本次请求的临时目录（无论成功失败都清理，避免磁盘泄漏）
+    try {
+      rmSync(tmpDir, { recursive: true, force: true });
+    } catch {
+      // 清理失败忽略，下次系统重启 tmpdir 也会自动清理
+    }
+  }
 }
 
 export async function POST(request) {

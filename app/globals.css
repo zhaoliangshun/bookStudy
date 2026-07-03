@@ -680,18 +680,17 @@ body {
   margin: 12px 0;
 }
 
+/* 无序列表：margin/padding/list-style 合并自原先两处分散定义 */
 .md-list {
   margin: 12px 0;
   padding-left: 24px;
+  list-style: disc;
 }
 .md-list li {
   margin: 6px 0;
 }
 .md-olist {
   list-style: decimal;
-}
-.md-list {
-  list-style: disc;
 }
 
 .md-blockquote {

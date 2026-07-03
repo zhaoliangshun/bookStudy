@@ -267,7 +267,13 @@ export async function GET() {
     let version = "";
     child.stdout.on("data", (c) => (version += c.toString()));
     child.stderr.on("data", (c) => (version += c.toString()));
+    // 健康检查超时保护：5 秒未响应视为不可用
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      resolve(NextResponse.json({ status: "timeout", error: "版本检查超时" }, { status: 504 }));
+    }, 5000);
     child.on("close", () => {
+      clearTimeout(timer);
       resolve(
         NextResponse.json({
           status: "ok",
@@ -277,6 +283,7 @@ export async function GET() {
       );
     });
     child.on("error", () => {
+      clearTimeout(timer);
       resolve(
         NextResponse.json({
           status: "error",

@@ -23,7 +23,7 @@
 
 import { NextResponse } from "next/server";
 import { spawn, spawnSync } from "child_process";
-import { writeFileSync, mkdirSync, rmSync, existsSync } from "fs";
+import { writeFileSync, mkdirSync, rmSync, existsSync, cpSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 
@@ -34,8 +34,10 @@ const MAX_OUTPUT_BYTES = 1 * 1024 * 1024; // 1MB
 // go 可执行文件名
 const GO_BIN = "go";
 
-// 运行器目录（复用，避免每次创建）
+// 运行器模板目录（含 go.mod 骨架，复用避免每次创建）
 // 放在系统临时目录下，进程间共享
+// 注意：本目录只作为模板，每次请求会复制一份到独立临时目录再写入用户代码，
+//       避免并发请求相互覆盖源文件
 const RUNNER_DIR = join(tmpdir(), "go-runner-v1");
 
 /**
@@ -197,7 +199,7 @@ async function runGoCode(code) {
     };
   }
 
-  // 2. 确保运行器目录存在
+  // 2. 确保运行器目录存在（作为模板目录，只创建一次）
   const projectStatus = ensureRunnerProject();
   if (!projectStatus.ok) {
     return {
@@ -207,42 +209,67 @@ async function runGoCode(code) {
     };
   }
 
-  // 3. 写入 main.go
-  const mainFile = join(RUNNER_DIR, "main.go");
+  // 3. 创建本次请求的独立临时目录（时间戳 + 随机数，避免并发覆盖）
+  //    把模板目录(RUNNER_DIR)整体复制过来，后续编译运行都在 tmpDir 里进行
+  const tmpDir = join(
+    tmpdir(),
+    `go-runner-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  );
   try {
-    writeFileSync(mainFile, code, "utf8");
+    cpSync(RUNNER_DIR, tmpDir, { recursive: true });
   } catch (err) {
     return {
       output: "",
-      error: `写入源代码失败：${err.message}`,
+      error: `复制运行器模板失败：${err.message}`,
       exitCode: -1,
     };
   }
 
-  // 4. 编译并运行（go run 会自动编译 + 执行）
-  const env = {
-    PATH: process.env.PATH,
-    HOME: process.env.HOME,
-    GOPATH: process.env.GOPATH || (process.env.HOME ? join(process.env.HOME, "go") : "/tmp/go"),
-    GOPROXY: process.env.GOPROXY || "https://goproxy.cn,direct",
-    GOFLAGS: "-mod=mod",
-    // 禁用网络访问（避免 go run 尝试下载依赖）
-    GOPRIVATE: process.env.GOPRIVATE || "",
-    CGO_ENABLED: "0",  // 禁用 CGO，加快编译速度
-  };
+  try {
+    // 4. 写入 main.go（写入到独立临时目录，不影响其他并发请求）
+    const mainFile = join(tmpDir, "main.go");
+    try {
+      writeFileSync(mainFile, code, "utf8");
+    } catch (err) {
+      return {
+        output: "",
+        error: `写入源代码失败：${err.message}`,
+        exitCode: -1,
+      };
+    }
 
-  const result = await runCommand(
-    GO_BIN,
-    ["run", mainFile],
-    {
-      stdio: ["pipe", "pipe", "pipe"],
-      env,
-      cwd: RUNNER_DIR,
-    },
-    RUN_TIMEOUT_MS
-  );
+    // 5. 编译并运行（go run 会自动编译 + 执行）
+    const env = {
+      PATH: process.env.PATH,
+      HOME: process.env.HOME,
+      GOPATH: process.env.GOPATH || (process.env.HOME ? join(process.env.HOME, "go") : "/tmp/go"),
+      GOPROXY: process.env.GOPROXY || "https://goproxy.cn,direct",
+      GOFLAGS: "-mod=mod",
+      // 禁用网络访问（避免 go run 尝试下载依赖）
+      GOPRIVATE: process.env.GOPRIVATE || "",
+      CGO_ENABLED: "0",  // 禁用 CGO，加快编译速度
+    };
 
-  return result;
+    const result = await runCommand(
+      GO_BIN,
+      ["run", mainFile],
+      {
+        stdio: ["pipe", "pipe", "pipe"],
+        env,
+        cwd: tmpDir,
+      },
+      RUN_TIMEOUT_MS
+    );
+
+    return result;
+  } finally {
+    // 6. 清理本次请求的临时目录（无论成功失败都清理，避免磁盘泄漏）
+    try {
+      rmSync(tmpDir, { recursive: true, force: true });
+    } catch {
+      // 清理失败忽略，下次系统重启 tmpdir 也会自动清理
+    }
+  }
 }
 
 export async function POST(request) {

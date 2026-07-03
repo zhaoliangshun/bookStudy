@@ -76,7 +76,6 @@ function executeGraphQL(sdl, resolversCode, query) {
   return new Promise((resolve) => {
     const child = spawn("node", [EXECUTOR_PATH], {
       stdio: ["pipe", "pipe", "pipe"],
-      timeout: 10000,
     });
 
     let stdout = "";
@@ -91,6 +90,8 @@ function executeGraphQL(sdl, resolversCode, query) {
     });
 
     child.on("close", (exitCode) => {
+      // 子进程已退出，清理超时定时器，避免悬挂触发无效的 kill/resolve
+      clearTimeout(timer);
       if (stdout) {
         try {
           const result = JSON.parse(stdout.trim());
@@ -114,6 +115,8 @@ function executeGraphQL(sdl, resolversCode, query) {
     });
 
     child.on("error", (err) => {
+      // 启动失败同样需要清理超时定时器
+      clearTimeout(timer);
       resolve({
         data: null,
         errors: [{ message: `启动子进程失败: ${err.message}` }],
@@ -125,8 +128,8 @@ function executeGraphQL(sdl, resolversCode, query) {
     child.stdin.write(input);
     child.stdin.end();
 
-    // 超时保护
-    setTimeout(() => {
+    // 超时保护：保存定时器引用，供 close/error 回调清理
+    const timer = setTimeout(() => {
       child.kill();
       resolve({
         data: null,
