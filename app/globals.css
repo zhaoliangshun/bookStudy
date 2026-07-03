@@ -796,6 +796,7 @@ body {
 }
 /* 编辑器容器：紧贴在工具栏下方，去掉顶部留白 */
 .md-code-editor-container {
+  background: black;
   overflow: hidden;
   position: relative;
   min-height: 40px;
@@ -1194,6 +1195,44 @@ body {
   background: #f1f5f9;
   border-color: var(--primary);
   color: var(--text);
+}
+
+/* Sidebar 中的编辑器主题选择器样式适配 */
+.sidebar .editor-theme-picker {
+  padding: 8px 14px;
+}
+.sidebar .editor-theme-picker-btn {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--text-on-dark);
+  box-shadow: none;
+}
+.sidebar .editor-theme-picker-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--accent-green);
+  color: var(--text-on-dark);
+}
+.sidebar .editor-theme-menu {
+  background: var(--bg-sidebar);
+  border-color: var(--border-dark);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.sidebar .editor-theme-menu-header {
+  color: var(--text-on-dark);
+  border-bottom-color: var(--border-dark);
+}
+.sidebar .editor-theme-option {
+  background: transparent;
+  color: var(--text-on-dark);
+}
+.sidebar .editor-theme-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.sidebar .editor-theme-option.active {
+  background: rgba(74, 222, 128, 0.15);
+  border-color: var(--accent-green);
+  color: var(--accent-green);
 }
 
 .editor-theme-swatch {

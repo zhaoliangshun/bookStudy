@@ -15,7 +15,6 @@
 //     minHeight={120}             // 可选，最小高度
 //     maxHeight={520}             // 可选，最大高度
 //     autoHeight={false}          // 可选，true=根据内容自动调整高度（代码少时不留白、无滚动条）
-//     showThemePicker={true}      // 可选，是否显示主题切换器
 //     placeholder=""              // 可选，占位提示（未实现，保留接口）
 //   />
 //
@@ -29,7 +28,6 @@ import { useEffect, useRef, useCallback } from "react";
 import Editor, { loader } from "@monaco-editor/react";
 import { useEditorTheme } from "./EditorThemeProvider";
 import { registerMonacoThemes } from "./monaco-themes";
-import EditorThemePicker from "./EditorThemePicker";
 
 // ---------- 语言 id → Monaco 语言 id 映射 ----------
 const LANG_MAP = {
@@ -99,7 +97,6 @@ export default function MonacoEditor({
   maxHeight = 520,
   placeholder = "",
   autoHeight = false,
-  showThemePicker = true,
 }) {
   const { themeId, theme } = useEditorTheme();
   const editorRef = useRef(null);
@@ -166,11 +163,6 @@ export default function MonacoEditor({
           : undefined
       }
     >
-      {showThemePicker && (
-        <div className="monaco-theme-picker-slot">
-          <EditorThemePicker variant="compact" />
-        </div>
-      )}
       <Editor
         height="100%"
         width="100%"
