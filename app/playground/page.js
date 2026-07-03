@@ -859,6 +859,25 @@ ORDER BY age;
   },
 ];
 
+// Playground 语言 id → 外网模块语言 key 的映射
+const PG_LANG_MAP = {
+  node: "js",
+  "client-js": "js",
+  ts: "ts",
+  python: "py",
+  java: "java",
+  csharp: "cs",
+  go: "go",
+  sass: "scss",
+  gql: "gql",
+  c: "c",
+  cpp: "cpp",
+  ruby: "rb",
+  swift: "swift",
+  shell: "sh",
+  sql: "sql",
+};
+
 // localStorage 存储 key 前缀，按语言隔离保存用户代码
 const STORAGE_PREFIX = "playground:code:";
 
@@ -935,23 +954,7 @@ export default function PlaygroundPage() {
   const code = codes[langId];
 
   // ---------- 外网运行平台 ----------
-  // Playground 语言 id → 外网模块语言 key 的映射
-  const PG_LANG_MAP = {
-    node: "js", "client-js": "js",
-    ts: "ts",
-    python: "py",
-    java: "java",
-    csharp: "cs",
-    go: "go",
-    sass: "scss",
-    gql: "gql",
-    c: "c",
-    cpp: "cpp",
-    ruby: "rb",
-    swift: "swift",
-    shell: "sh",
-    sql: "sql",
-  };
+  // Playground 语言 id → 外网模块语言 key 的映射（组件外部常量，无需依赖）
   const externalPGs = useMemo(
     () => getExternalPlaygrounds(PG_LANG_MAP[langId] || ""),
     [langId]
@@ -1125,7 +1128,10 @@ export default function PlaygroundPage() {
     if (langParam) {
       const found = LANGUAGES.find((l) => l.id === langParam);
       if (found && found.id !== langId) {
-        selectLanguage(found.id);
+        const id = requestAnimationFrame(() => {
+          selectLanguage(found.id);
+        });
+        return () => cancelAnimationFrame(id);
       }
     }
   }, [selectLanguage]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1151,22 +1157,25 @@ export default function PlaygroundPage() {
   // 导致的 hydration mismatch（服务端无 localStorage，客户端有）。
   // 仅在挂载时执行一次（空依赖数组）。
   useEffect(() => {
-    setCodes((prev) => {
-      const next = { ...prev };
-      let changed = false;
-      for (const lang of LANGUAGES) {
-        try {
-          const saved = localStorage.getItem(STORAGE_PREFIX + lang.id);
-          if (saved !== null && saved !== prev[lang.id]) {
-            next[lang.id] = saved;
-            changed = true;
+    const id = requestAnimationFrame(() => {
+      setCodes((prev) => {
+        const next = { ...prev };
+        let changed = false;
+        for (const lang of LANGUAGES) {
+          try {
+            const saved = localStorage.getItem(STORAGE_PREFIX + lang.id);
+            if (saved !== null && saved !== prev[lang.id]) {
+              next[lang.id] = saved;
+              changed = true;
+            }
+          } catch {
+            // localStorage 不可用时保持默认代码
           }
-        } catch {
-          // localStorage 不可用时保持默认代码
         }
-      }
-      return changed ? next : prev;
+        return changed ? next : prev;
+      });
     });
+    return () => cancelAnimationFrame(id);
   }, []);
 
   // ---------- 监听窗口宽度切换分栏方向 ----------
@@ -1184,18 +1193,21 @@ export default function PlaygroundPage() {
   // ---------- 从 localStorage 恢复分栏比例 ----------
   // 用户上次拖动设置的占比会被记住，刷新页面后保持一致。
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("playground:splitRatio");
-      if (saved !== null) {
-        const r = parseFloat(saved);
-        // 合法性校验：必须在合理区间内，避免异常值破坏布局
-        if (!Number.isNaN(r) && r > 0.05 && r < 0.95) {
-          setSplitRatio(r);
+    const id = requestAnimationFrame(() => {
+      try {
+        const saved = localStorage.getItem("playground:splitRatio");
+        if (saved !== null) {
+          const r = parseFloat(saved);
+          // 合法性校验：必须在合理区间内，避免异常值破坏布局
+          if (!Number.isNaN(r) && r > 0.05 && r < 0.95) {
+            setSplitRatio(r);
+          }
         }
+      } catch {
+        // localStorage 不可用时保持默认 0.5
       }
-    } catch {
-      // localStorage 不可用时保持默认 0.5
-    }
+    });
+    return () => cancelAnimationFrame(id);
   }, []);
 
   // ---------- 持久化分栏比例 ----------
@@ -1339,8 +1351,8 @@ export default function PlaygroundPage() {
                         setAutoRun((v) => !v);
                         setMoreMenuOpen(false);
                       }}
-                      role="menuitem"
-                      aria-pressed={autoRun}
+                      role="menuitemcheckbox"
+                      aria-checked={autoRun}
                       title="代码改变后自动执行（防抖 800ms）"
                     >
                       {autoRun ? "⚡ 自动运行: 开" : "⏸ 自动运行: 关"}

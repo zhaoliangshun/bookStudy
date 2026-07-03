@@ -140,7 +140,10 @@ export default function TodoPage() {
 
   // 首次挂载时拉取一次
   useEffect(() => {
-    loadItems();
+    const id = requestAnimationFrame(() => {
+      loadItems();
+    });
+    return () => cancelAnimationFrame(id);
   }, [loadItems]);
 
   // ---------- 新建事项 ----------

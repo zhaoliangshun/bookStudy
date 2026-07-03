@@ -132,7 +132,10 @@ export function CodeBlock({ code: initialCode, lang }) {
   // 或 React 复用了旧的 CodeBlock 实例），同步更新内部编辑状态，
   // 避免旧章节代码残留在编辑器中。
   useEffect(() => {
-    setCode(initialCode);
+    const id = requestAnimationFrame(() => {
+      setCode(initialCode);
+    });
+    return () => cancelAnimationFrame(id);
   }, [initialCode]);
 
   // 交互状态

@@ -221,7 +221,7 @@ export default function PnpmTutorial() {
               {!hasRun && !isRunning && (
                 <div className="console-placeholder">
                   <span className="placeholder-icon">▶</span>
-                  <span>点击上方"运行脚本"按钮，或按 Ctrl+Enter 执行脚本</span>
+                  <span>点击上方&quot;运行脚本&quot;按钮，或按 Ctrl+Enter 执行脚本</span>
                 </div>
               )}
             </div>

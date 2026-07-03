@@ -116,8 +116,11 @@ export default function SassTutorial() {
     if (!hash) return;
     const chapter = sassChapters.find((c) => c.id === hash);
     if (chapter) {
-      setActiveId(hash);
-      setCode(chapter.code);
+      const id = requestAnimationFrame(() => {
+        setActiveId(hash);
+        setCode(chapter.code);
+      });
+      return () => cancelAnimationFrame(id);
     } else {
       // hash 无效，清除它（跨页面跳转时可能残留）
       const url = window.location.pathname + window.location.search;
@@ -349,7 +352,7 @@ export default function SassTutorial() {
               ) : (
                 <div className="preview-placeholder">
                   <span className="placeholder-icon">🎨</span>
-                  <span>点击上方"编译预览"按钮，编译 SCSS 并查看渲染效果</span>
+                  <span>点击上方&quot;编译预览&quot;按钮，编译 SCSS 并查看渲染效果</span>
                 </div>
               )}
             </div>

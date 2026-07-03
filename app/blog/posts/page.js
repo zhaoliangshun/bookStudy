@@ -50,7 +50,10 @@ export default function PostsPage() {
   }, [page, keyword, tagId]);
 
   useEffect(() => {
-    loadPosts();
+    const id = requestAnimationFrame(() => {
+      loadPosts();
+    });
+    return () => cancelAnimationFrame(id);
   }, [loadPosts]);
 
   // 搜索：按回车触发

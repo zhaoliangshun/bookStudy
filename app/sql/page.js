@@ -49,8 +49,11 @@ export default function SQLTutorial() {
     if (!hash) return;
     const chapter = sqlChapters.find((c) => c.id === hash);
     if (chapter) {
-      setActiveId(hash);
-      setCode(chapter.code);
+      const id = requestAnimationFrame(() => {
+        setActiveId(hash);
+        setCode(chapter.code);
+      });
+      return () => cancelAnimationFrame(id);
     } else {
       // hash 无效，清除它（跨页面跳转时可能残留）
       const url = window.location.pathname + window.location.search;
@@ -221,7 +224,7 @@ export default function SQLTutorial() {
               {!hasRun && !isRunning && (
                 <div className="console-placeholder">
                   <span className="placeholder-icon">🗄️</span>
-                  <span>点击上方"执行 SQL"按钮，或按 Ctrl+Enter 在 SQLite 内存数据库中执行</span>
+                  <span>点击上方&quot;执行 SQL&quot;按钮，或按 Ctrl+Enter 在 SQLite 内存数据库中执行</span>
                 </div>
               )}
             </div>

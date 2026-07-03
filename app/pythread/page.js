@@ -47,8 +47,11 @@ export default function PyThreadTutorial() {
     if (!hash) return;
     const chapter = pythreadChapters.find((c) => c.id === hash);
     if (chapter) {
-      setActiveId(hash);
-      setCode(chapter.code);
+      const id = requestAnimationFrame(() => {
+        setActiveId(hash);
+        setCode(chapter.code);
+      });
+      return () => cancelAnimationFrame(id);
     } else {
       // hash 无效，清除它（跨页面跳转时可能残留）
       const url = window.location.pathname + window.location.search;
@@ -223,7 +226,7 @@ export default function PyThreadTutorial() {
               {!hasRun && !isRunning && (
                 <div className="console-placeholder">
                   <span className="placeholder-icon">▶</span>
-                  <span>点击上方"运行代码"按钮，或按 Ctrl+Enter 执行代码</span>
+                  <span>点击上方&quot;运行代码&quot;按钮，或按 Ctrl+Enter 执行代码</span>
                 </div>
               )}
             </div>

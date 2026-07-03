@@ -1,35 +1,27 @@
 "use client";
 
 // =============================================================
-// Java 交互式教程页面
+// Python 数据库编程教程（pydb）交互式页面
 // -------------------------------------------------------------
-// 结构与 Node.js / TypeScript / Python 教程页面基本一致，区别：
-//   1. 数据源：javaChapters / javaChapterGroups（来自 java-tutorial-data）
-//   2. 运行接口：/api/run-java（调用系统 javac 编译 + java 运行）
-//   3. 高亮器：highlightJava（支持 public/class/static 等关键字、
-//      注解 @Override、Javadoc 注释、char 字面量、类型名）
-//   4. 文案：Java 教程、Main.java 文件名
+// 系统讲解 Python 数据库编程，涵盖 SQLite、MySQL、PostgreSQL、Redis、MongoDB。
+//   1. 数据源：pydbChapters / pydbChapterGroups
+//   2. 运行接口：/api/run-py（调用系统 python3 子进程执行）
+//   3. 高亮器：highlightPython
+//   4. 文件名：example.py
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { javaChapters, javaChapterGroups } from "../java-tutorial-data";
+import { pydbChapters, pydbChapterGroups } from "../pydb-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import ExternalRunDropdown from "../components/ExternalRunDropdown";
 import dynamic from "next/dynamic";
-
 const MonacoEditor = dynamic(() => import("../components/MonacoEditor"), { ssr: false, loading: () => <div className="monaco-loading-placeholder">正在加载编辑器…</div> });
 
-export default function JavaTutorial() {
+export default function PyDbTutorial() {
   // ---------- 状态管理 ----------
-  // 默认使用第一个章节作为初始状态。
-  // 注意：不在渲染阶段读取 window.location.hash，否则 SSR 与客户端
-  // 在 URL 带 hash 时渲染结果不一致，会触发 React hydration 错误。
-  // URL hash 的处理放到 useEffect 中，在客户端挂载后再切换章节。
-  const initialChapter = javaChapters[0];
-
-  const [activeId, setActiveId] = useState(initialChapter.id);
-  const [code, setCode] = useState(initialChapter.code);
+  const [activeId, setActiveId] = useState(pydbChapters[0].id);
+  const [code, setCode] = useState(pydbChapters[0].code);
   const [output, setOutput] = useState("");
   const [error, setError] = useState("");
   const [isRunning, setIsRunning] = useState(false);
@@ -40,31 +32,11 @@ export default function JavaTutorial() {
 
   // 当前章节对象
   const activeChapter =
-    javaChapters.find((c) => c.id === activeId) || javaChapters[0];
-
-  // 客户端挂载后读取 URL hash：有效则切换到对应章节，无效则清除。
-  // 这里读取 window 不会导致 hydration 错误，因为首次渲染已经完成。
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const hash = window.location.hash.slice(1);
-    if (!hash) return;
-    const chapter = javaChapters.find((c) => c.id === hash);
-    if (chapter) {
-      const id = requestAnimationFrame(() => {
-        setActiveId(hash);
-        setCode(chapter.code);
-      });
-      return () => cancelAnimationFrame(id);
-    } else {
-      // hash 无效，清除它（跨页面跳转时可能残留）
-      const url = window.location.pathname + window.location.search;
-      window.history.replaceState(null, "", url);
-    }
-  }, []);
+    pydbChapters.find((c) => c.id === activeId) || pydbChapters[0];
 
   // ---------- 切换章节 ----------
   const selectChapter = useCallback((chapterId) => {
-    const chapter = javaChapters.find((c) => c.id === chapterId);
+    const chapter = pydbChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
     setActiveId(chapterId);
     setCode(chapter.code);
@@ -79,13 +51,13 @@ export default function JavaTutorial() {
   }, []);
 
   // ---------- 运行代码 ----------
-  // 调用 /api/run-java，后端用 javac 编译 + java 运行，返回 stdout/stderr
+  // 调用 /api/run-py，后端用子进程 python3 执行，返回 stdout/stderr
   const runCode = useCallback(async () => {
     setIsRunning(true);
-    setOutput("正在编译并执行 Java 代码...");
+    setOutput("正在调用 python3 执行...");
     setError("");
     try {
-      const res = await fetch("/api/run-java", {
+      const res = await fetch("/api/run-py", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code }),
@@ -113,9 +85,9 @@ export default function JavaTutorial() {
   // ---------- 在 Playground 中打开 ----------
   const handlePlayground = useCallback(() => {
     try {
-      localStorage.setItem("playground:code:java", code);
+      localStorage.setItem("playground:code:python", code);
     } catch {}
-    window.open(`/playground?lang=java`, "_blank", "noopener,noreferrer");
+    window.open(`/playground?lang=python`, "_blank", "noopener,noreferrer");
   }, [code]);
 
   // ---------- 键盘快捷键：Ctrl/Cmd + Enter 运行 ----------
@@ -131,9 +103,9 @@ export default function JavaTutorial() {
   }, [runCode]);
 
   // 按分组组织章节
-  const groupedChapters = javaChapterGroups.map((group) => ({
+  const groupedChapters = pydbChapterGroups.map((group) => ({
     group,
-    items: javaChapters.filter((c) => c.group === group),
+    items: pydbChapters.filter((c) => c.group === group),
   }));
 
   return (
@@ -142,15 +114,15 @@ export default function JavaTutorial() {
         {/* ===== 侧边栏：章节导航 ===== */}
         <Sidebar
           title="学习目录"
-          tip="点击章节开始学习 Java"
+          tip="系统掌握 Python 数据库编程"
           footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
-          currentPath="/java"
-          meta={`共 ${javaChapters.length} 章 · 在线编译运行`}
+          currentPath="/pydb"
+          meta={`共 ${pydbChapters.length} 章 · 数据库编程`}
         />
 
         {/* ===== 主内容区 ===== */}
@@ -180,10 +152,10 @@ export default function JavaTutorial() {
                 <span className="dot dot-red"></span>
                 <span className="dot dot-yellow"></span>
                 <span className="dot dot-green"></span>
-                <span className="editor-filename">Main.java</span>
+                <span className="editor-filename">example.py</span>
               </div>
               <div className="editor-actions">
-                <ExternalRunDropdown code={code} langLower="java" disabled={isRunning} />
+                <ExternalRunDropdown code={code} langLower="py" disabled={isRunning} />
                 <button
                   className="btn btn-secondary"
                   onClick={resetCode}
@@ -197,7 +169,7 @@ export default function JavaTutorial() {
                   onClick={runCode}
                   disabled={isRunning}
                 >
-                  {isRunning ? "⏳ 编译中..." : "▶ 运行代码"}
+                  {isRunning ? "⏳ 执行中..." : "▶ 运行代码"}
                 </button>
                 <button
                   className="btn btn-secondary"
@@ -210,10 +182,9 @@ export default function JavaTutorial() {
             </div>
             <div className="editor-wrap">
               <MonacoEditor
-                key={activeId}
                 value={code}
                 onChange={setCode}
-                language="java"
+                language="python"
                 onRun={runCode}
               />
             </div>
@@ -224,7 +195,7 @@ export default function JavaTutorial() {
             <div className="console-header">
               <span className="console-title">控制台输出</span>
               <span className="console-hint">
-                {isRunning ? "编译执行中..." : hasRun ? "执行完成" : "点击运行查看结果"}
+                {isRunning ? "执行中..." : hasRun ? "执行完成" : "点击运行查看结果"}
               </span>
             </div>
             <div className="console-body">
@@ -254,7 +225,7 @@ export default function JavaTutorial() {
 
           <footer className="content-footer">
             <p>
-              Java 交互式教程 · 代码由系统 javac 编译 + java 运行 · 支持 OOP/泛型/集合/多线程/Lambda/Stream，含超时保护
+              Python 数据库编程教程 · 代码由系统 python3 子进程执行 · 涵盖 SQLite/MySQL/PostgreSQL/Redis/MongoDB
             </p>
           </footer>
         </main>
@@ -265,9 +236,9 @@ export default function JavaTutorial() {
 
 // ===== 上一章 / 下一章 导航组件 =====
 function ChapterNav({ activeId, onSelect }) {
-  const idx = javaChapters.findIndex((c) => c.id === activeId);
-  const prev = idx > 0 ? javaChapters[idx - 1] : null;
-  const next = idx < javaChapters.length - 1 ? javaChapters[idx + 1] : null;
+  const idx = pydbChapters.findIndex((c) => c.id === activeId);
+  const prev = idx > 0 ? pydbChapters[idx - 1] : null;
+  const next = idx < pydbChapters.length - 1 ? pydbChapters[idx + 1] : null;
 
   return (
     <nav className="chapter-nav-bottom">

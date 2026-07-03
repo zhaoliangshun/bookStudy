@@ -44,7 +44,10 @@ export default function PostDetailPage() {
   }, [id]);
 
   useEffect(() => {
-    loadPost();
+    const id = requestAnimationFrame(() => {
+      loadPost();
+    });
+    return () => cancelAnimationFrame(id);
   }, [loadPost]);
 
   // 发表顶级评论

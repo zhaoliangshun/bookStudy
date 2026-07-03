@@ -202,13 +202,21 @@ export default function Sidebar({
     [groupedChapters]
   );
 
-  // 用 ref 保存最新值，避免 useEffect 频繁重新注册监听器
+  // 用 ref 保存最新值，避免 useEffect 频繁重新注册监听器。
+  // ref 的更新放在 effect 中，避免在渲染阶段修改 ref.current（React 19 严格模式报错）。
   const activeIdRef = useRef(activeId);
-  activeIdRef.current = activeId;
   const onSelectRef = useRef(onSelectChapter);
-  onSelectRef.current = onSelectChapter;
   const validIdsRef = useRef(allChapterIds);
-  validIdsRef.current = allChapterIds;
+
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
+  useEffect(() => {
+    onSelectRef.current = onSelectChapter;
+  }, [onSelectChapter]);
+  useEffect(() => {
+    validIdsRef.current = allChapterIds;
+  }, [allChapterIds]);
 
   useEffect(() => {
     // 从 URL hash 读取章节 id，若有效且与当前不同则同步

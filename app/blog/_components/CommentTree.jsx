@@ -58,7 +58,10 @@ export default function CommentTree({ comment, postId, currentUserId, isAdmin, o
       <div className="comment-header">
         <span className="blog-avatar" style={{ width: 28, height: 28, fontSize: 12 }}>
           {comment.author.avatar ? (
-            <img src={comment.author.avatar} alt={comment.author.username} />
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={comment.author.avatar} alt={comment.author.username} />
+            </>
           ) : (
             comment.author.username[0].toUpperCase()
           )}

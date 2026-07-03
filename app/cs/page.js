@@ -198,7 +198,7 @@ export default function CsTutorial() {
               {!hasRun && !isRunning && (
                 <div className="console-placeholder">
                   <span className="placeholder-icon">▶</span>
-                  <span>点击上方"运行演示"按钮，或按 Ctrl+Enter 执行代码</span>
+                  <span>点击上方&quot;运行演示&quot;按钮，或按 Ctrl+Enter 执行代码</span>
                 </div>
               )}
             </div>

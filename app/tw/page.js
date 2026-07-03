@@ -49,8 +49,11 @@ export default function TailwindTutorial() {
     if (!hash) return;
     const chapter = twChapters.find((c) => c.id === hash);
     if (chapter) {
-      setActiveId(hash);
-      setCode(chapter.code);
+      const id = requestAnimationFrame(() => {
+        setActiveId(hash);
+        setCode(chapter.code);
+      });
+      return () => cancelAnimationFrame(id);
     } else {
       // hash 无效，清除它（跨页面跳转时可能残留）
       const url = window.location.pathname + window.location.search;
@@ -217,7 +220,7 @@ ${code}
               ) : (
                 <div className="preview-placeholder">
                   <span className="preview-placeholder-icon">▶</span>
-                  <span>点击上方"刷新预览"按钮，或按 Ctrl+Enter 渲染 HTML</span>
+                  <span>点击上方&quot;刷新预览&quot;按钮，或按 Ctrl+Enter 渲染 HTML</span>
                 </div>
               )}
             </div>

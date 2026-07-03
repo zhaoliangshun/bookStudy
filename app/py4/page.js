@@ -172,7 +172,7 @@ export default function Python4Tutorial() {
               )}
               {!hasRun && !isRunning && (
                 <div className="console-placeholder">
-                  <span>点击上方"运行代码"按钮，或按 Ctrl+Enter 执行代码</span>
+                  <span>点击上方&quot;运行代码&quot;按钮，或按 Ctrl+Enter 执行代码</span>
                 </div>
               )}
             </div>

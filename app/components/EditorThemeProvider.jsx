@@ -22,13 +22,16 @@ export function EditorThemeProvider({ children }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(MONACO_THEME_STORAGE_KEY);
-      if (saved && MONACO_THEMES.some((t) => t.id === saved)) {
-        setThemeIdState(saved);
-      }
-    } catch {}
-    setReady(true);
+    const id = requestAnimationFrame(() => {
+      try {
+        const saved = localStorage.getItem(MONACO_THEME_STORAGE_KEY);
+        if (saved && MONACO_THEMES.some((t) => t.id === saved)) {
+          setThemeIdState(saved);
+        }
+      } catch {}
+      setReady(true);
+    });
+    return () => cancelAnimationFrame(id);
   }, []);
 
   const setThemeId = useCallback((id) => {

@@ -50,8 +50,11 @@ export default function OSTutorial() {
     if (!hash) return;
     const chapter = osChapters.find((c) => c.id === hash);
     if (chapter) {
-      setActiveId(hash);
-      setCode(chapter.code);
+      const id = requestAnimationFrame(() => {
+        setActiveId(hash);
+        setCode(chapter.code);
+      });
+      return () => cancelAnimationFrame(id);
     } else {
       // hash 无效，清除它（跨页面跳转时可能残留）
       const url = window.location.pathname + window.location.search;

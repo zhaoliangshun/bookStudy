@@ -65,7 +65,10 @@ export default function BlogHeader() {
               <Link href="/blog/me" className="blog-user-link">
                 <span className="blog-avatar">
                   {user.avatar ? (
-                    <img src={user.avatar} alt={user.username} />
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={user.avatar} alt={user.username} />
+                    </>
                   ) : (
                     user.username[0].toUpperCase()
                   )}

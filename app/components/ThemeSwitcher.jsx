@@ -65,19 +65,32 @@ export default function ThemeSwitcher() {
   // 同时把旧版本存到 localStorage 的主题同步到 cookie，
   // 使服务端下次渲染时可直接读取，避免首屏闪烁。
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved && THEMES.some((t) => t.id === saved)) {
-        setCurrent(saved);
-        document.documentElement.setAttribute("data-theme", saved);
-        document.cookie = `${STORAGE_KEY}=${saved}; path=/; max-age=31536000; SameSite=Lax`;
-      }
-    } catch {}
+    const id = requestAnimationFrame(() => {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved && THEMES.some((t) => t.id === saved)) {
+          setCurrent(saved);
+          document.documentElement.setAttribute("data-theme", saved);
+          document.cookie = `${STORAGE_KEY}=${saved}; path=/; max-age=31536000; SameSite=Lax`;
+        }
+      } catch {}
+    });
+    return () => cancelAnimationFrame(id);
   }, []);
 
+  // ---------- 同步主题到 cookie ----------
+  // 把 cookie 设置放在 effect 中，避免在事件处理函数里直接修改外部变量
+  // （React 19 的 react-hooks/immutability 规则会报错）。
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    try {
+      document.cookie = `${STORAGE_KEY}=${current}; path=/; max-age=31536000; SameSite=Lax`;
+    } catch {}
+  }, [current]);
+
   // ---------- 切换主题 ----------
-  // 同时更新 <html data-theme>、组件状态、localStorage、cookie。
-  // cookie 用于服务端在首屏 HTML 中直接渲染正确的 data-theme。
+  // 同时更新 <html data-theme>、组件状态、localStorage。
+  // cookie 由上面的 useEffect 自动同步。
   const switchTheme = (id) => {
     setCurrent(id);
     if (typeof document !== "undefined") {
@@ -85,7 +98,6 @@ export default function ThemeSwitcher() {
     }
     try {
       localStorage.setItem(STORAGE_KEY, id);
-      document.cookie = `${STORAGE_KEY}=${id}; path=/; max-age=31536000; SameSite=Lax`;
     } catch {}
     setOpen(false);
   };

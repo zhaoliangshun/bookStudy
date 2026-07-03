@@ -40,7 +40,10 @@ export default function MePage() {
       <div className="profile-header blog-card">
         <div className="profile-avatar">
           {user.avatar ? (
-            <img src={user.avatar} alt={user.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={user.avatar} alt={user.username} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} />
+            </>
           ) : (
             user.username[0].toUpperCase()
           )}

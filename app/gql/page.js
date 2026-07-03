@@ -50,8 +50,11 @@ export default function GraphQLTutorial() {
     if (!hash) return;
     const chapter = gqlChapters.find((c) => c.id === hash);
     if (chapter) {
-      setActiveId(hash);
-      setCode(chapter.code);
+      const id = requestAnimationFrame(() => {
+        setActiveId(hash);
+        setCode(chapter.code);
+      });
+      return () => cancelAnimationFrame(id);
     } else {
       // hash 无效，清除它（跨页面跳转时可能残留）
       const url = window.location.pathname + window.location.search;
@@ -251,7 +254,7 @@ export default function GraphQLTutorial() {
               {!hasRun && !isRunning && (
                 <div className="console-placeholder">
                   <span className="placeholder-icon">⚡</span>
-                  <span>点击上方"执行查询"按钮，或按 Ctrl+Enter 执行 GraphQL 查询</span>
+                  <span>点击上方&quot;执行查询&quot;按钮，或按 Ctrl+Enter 执行 GraphQL 查询</span>
                 </div>
               )}
             </div>
