@@ -6,7 +6,6 @@
 // 结构与 Go / Java 教程页面一致，区别：
 //   1. 数据源：pnpmChapters / pnpmChapterGroups（来自 pnpm-tutorial-data）
 //   2. 运行接口：/api/run-shell（在 bash 沙箱里执行 shell 脚本）
-//   3. 高亮器：highlightShell（支持 # 注释、变量 $var、字符串、内建命令）
 //   4. 文案：pnpm 教程、playground.sh 文件名
 //
 // 特殊说明：沙箱环境没有真实安装 pnpm，章节的 code 字段是用

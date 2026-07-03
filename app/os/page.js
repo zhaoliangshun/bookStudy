@@ -5,7 +5,6 @@
 // -------------------------------------------------------------
 // 与 py5/page.js 结构一致，差异点：
 //   1. 数据源：osChapters / osChapterGroups（来自 os-tutorial-data.js）
-//   2. 高亮器：highlightShell（来自 shell-highlight.js）
 //   3. 执行 API：/api/run-shell（POST { code } -> { output, error, exitCode }）
 //   4. 编辑器文件名：example.sh，placeholder 改为 Shell 提示
 //   5. 启动时 GET /api/run-shell 拿 bash 版本展示在侧边栏

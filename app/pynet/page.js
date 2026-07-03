@@ -6,7 +6,6 @@
 // 系统讲解 Python 网络编程，涵盖 socket、TCP、UDP、HTTP、HTTPS、WebSocket。
 //   1. 数据源：pynetChapters / pynetChapterGroups
 //   2. 运行接口：/api/run-py（调用系统 python3 子进程执行）
-//   3. 高亮器：highlightPython
 //   4. 文件名：example.py
 // =============================================================
 

@@ -6,7 +6,6 @@
 // 全新制作，覆盖 100% 日常开发知识，每知识点配详细 demo
 //   1. 数据源：py6Chapters / py6ChapterGroups
 //   2. 运行接口：/api/run-py（调用系统 python3 子进程执行）
-//   3. 高亮器：highlightPython
 //   4. 文件名：playground.py
 // =============================================================
 

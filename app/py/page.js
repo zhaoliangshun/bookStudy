@@ -6,8 +6,6 @@
 // 结构与 Node.js / TypeScript 教程页面基本一致，区别：
 //   1. 数据源：pyChapters / pyChapterGroups（来自 py-tutorial-data）
 //   2. 运行接口：/api/run-py（调用系统 python3 子进程执行）
-//   3. 高亮器：highlightPython（支持 def/class/import 等关键字、
-//      三引号字符串、装饰器 @xxx、内建函数）
 //   4. 文案：Python 教程、example.py 文件名
 // =============================================================
 

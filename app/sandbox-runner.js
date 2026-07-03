@@ -17,6 +17,10 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { EventEmitter } from "node:events";
 
+// stdout/输出最大累计字节数：超过则截断并提示，防止用户代码用
+// for 循环大量 console.log 把内存撑爆。
+const MAX_OUTPUT_BYTES = 1 * 1024 * 1024; // 1MB
+
 // 通过当前模块路径创建 CommonJS 风格 require
 const nodeRequire = createRequire(import.meta.url);
 
@@ -103,39 +107,60 @@ function formatArg(arg, seen = new WeakSet()) {
  */
 export async function runInSandbox(code) {
   const logs = [];
+  // 累计输出字节数，超过 MAX_OUTPUT_BYTES 后停止 push
+  let outputBytes = 0;
+  let truncated = false;
+
+  // 用户创建的 timer id 集合：在 finally 中全部清理，
+  // 避免 setInterval 残留导致事件循环无法退出、日志串到下次请求
+  const userTimers = new Set();
+
+  const pushLog = (text) => {
+    if (truncated) return;
+    const s = String(text);
+    if (outputBytes + s.length > MAX_OUTPUT_BYTES) {
+      const remain = MAX_OUTPUT_BYTES - outputBytes;
+      if (remain > 0) logs.push(s.slice(0, remain));
+      logs.push(`\n[输出已截断] 输出超过 ${MAX_OUTPUT_BYTES} 字节，仅显示前半部分。`);
+      truncated = true;
+      return;
+    }
+    logs.push(s);
+    outputBytes += s.length;
+  };
 
   const timers = new Map();
   const captureConsole = {
-    log: (...args) => logs.push(args.map((a) => formatArg(a)).join(" ")),
-    info: (...args) => logs.push(args.map((a) => formatArg(a)).join(" ")),
-    warn: (...args) => logs.push(args.map((a) => formatArg(a)).join(" ")),
-    error: (...args) => logs.push(args.map((a) => formatArg(a)).join(" ")),
-    debug: (...args) => logs.push(args.map((a) => formatArg(a)).join(" ")),
-    table: (data) => logs.push(formatArg(data)),
-    dir: (obj) => logs.push(formatArg(obj)),
+    log: (...args) => pushLog(args.map((a) => formatArg(a)).join(" ")),
+    info: (...args) => pushLog(args.map((a) => formatArg(a)).join(" ")),
+    warn: (...args) => pushLog(args.map((a) => formatArg(a)).join(" ")),
+    error: (...args) => pushLog(args.map((a) => formatArg(a)).join(" ")),
+    debug: (...args) => pushLog(args.map((a) => formatArg(a)).join(" ")),
+    table: (data) => pushLog(formatArg(data)),
+    dir: (obj) => pushLog(formatArg(obj)),
     trace: (...args) =>
-      logs.push("Trace: " + args.map((a) => formatArg(a)).join(" ")),
+      pushLog("Trace: " + args.map((a) => formatArg(a)).join(" ")),
     time: (label = "default") => timers.set(label, process.hrtime.bigint()),
     timeEnd: (label = "default") => {
       const start = timers.get(label);
       if (start !== undefined) {
         const ms = Number(process.hrtime.bigint() - start) / 1e6;
-        logs.push(`${label}: ${ms.toFixed(3)}ms`);
+        pushLog(`${label}: ${ms.toFixed(3)}ms`);
         timers.delete(label);
       }
     },
-    group: (...args) => logs.push(args.map((a) => formatArg(a)).join(" ")),
+    group: (...args) => pushLog(args.map((a) => formatArg(a)).join(" ")),
     groupEnd: () => {},
     assert: (condition, ...args) => {
-      if (!condition) logs.push("Assertion failed: " + args.map((a) => formatArg(a)).join(" "));
+      if (!condition) pushLog("Assertion failed: " + args.map((a) => formatArg(a)).join(" "));
     },
     count: (label = "default") => {
       const count = (captureConsole._counts?.[label] || 0) + 1;
       if (!captureConsole._counts) captureConsole._counts = {};
       captureConsole._counts[label] = count;
-      logs.push(`${label}: ${count}`);
+      pushLog(`${label}: ${count}`);
     },
-    clear: () => { logs.length = 0; },
+    clear: () => { logs.length = 0; outputBytes = 0; truncated = false; },
   };
 
   // 自定义 require：只放行白名单中的模块
@@ -148,6 +173,17 @@ export async function runInSandbox(code) {
     );
   };
 
+  // 包装 setTimeout/setInterval/setImmediate：记录 id，便于 finally 清理
+  const wrapTimer = (originalFn) => (...args) => {
+    const id = originalFn(...args);
+    userTimers.add(id);
+    return id;
+  };
+  const wrapClear = (originalFn) => (id) => {
+    if (id !== undefined && id !== null) userTimers.delete(id);
+    return originalFn(id);
+  };
+
   // 构造沙箱上下文
   const sandbox = {
     console: captureConsole,
@@ -155,12 +191,12 @@ export async function runInSandbox(code) {
     module: { exports: {} },
     exports: {},
     Buffer,
-    setTimeout,
-    setInterval,
-    setImmediate,
-    clearTimeout,
-    clearInterval,
-    clearImmediate,
+    setTimeout: wrapTimer(setTimeout),
+    setInterval: wrapTimer(setInterval),
+    setImmediate: wrapTimer(setImmediate),
+    clearTimeout: wrapClear(clearTimeout),
+    clearInterval: wrapClear(clearInterval),
+    clearImmediate: wrapClear(clearImmediate),
     process: Object.assign(new EventEmitter(), {
       version: process.version,
       versions: process.versions,
@@ -277,5 +313,13 @@ export async function runInSandbox(code) {
     process.removeListener("unhandledRejection", forwardUnhandled);
     process.removeListener("warning", forwardWarning);
     if (raceTimer) clearTimeout(raceTimer);
+    // 清理用户代码创建的所有 timer（setInterval/setTimeout/setImmediate）
+    // 防止残留 timer 持续触发，污染下次请求或阻止事件循环退出
+    for (const id of userTimers) {
+      try { clearTimeout(id); } catch {}
+      try { clearInterval(id); } catch {}
+      try { clearImmediate(id); } catch {}
+    }
+    userTimers.clear();
   }
 }

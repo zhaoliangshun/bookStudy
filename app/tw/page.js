@@ -8,7 +8,6 @@
 //   2. 没有"运行 API"——代码是 HTML 片段，前端用 iframe 直接渲染预览
 //   3. 用 Tailwind Play CDN（https://cdn.tailwindcss.com）让 iframe 里的
 //      class 实时生效，无需本地构建
-//   4. 高亮器：highlightHtml（支持 HTML 标签 + Tailwind class 着色）
 //   5. 输出区是 iframe 预览，而不是控制台文本
 // =============================================================
 

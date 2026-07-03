@@ -6,7 +6,6 @@
 // 结构与 Node.js 教程页面（app/page.js）基本一致，区别：
 //   1. 数据源：tsChapters / tsChapterGroups（来自 ts-tutorial-data）
 //   2. 运行接口：/api/run-ts（先 TS 转译再沙箱执行）
-//   3. 高亮器：highlightTypeScript（支持 interface/type/enum 等关键字）
 //   4. 文案：TypeScript 教程、example.ts 文件名
 // =============================================================
 

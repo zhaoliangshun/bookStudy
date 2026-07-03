@@ -7,7 +7,6 @@
 // 结构与 Go / pnpm 教程页面一致，区别：
 //   1. 数据源：blogChapters / blogChapterGroups（来自 blog-tutorial-data）
 //   2. 运行接口：/api/run-py（调用系统 python3 执行）
-//   3. 高亮器：highlightPython（支持 # 注释、三引号字符串、装饰器、关键字）
 //   4. 文件名：playground.py
 //
 // 教程特色：每章 code 都是「真正可运行的 Python」，使用 FastAPI 的

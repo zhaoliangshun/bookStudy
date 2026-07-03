@@ -6,7 +6,6 @@
 // 结构与 Node.js / Java / Python 教程页面基本一致，区别：
 //   1. 数据源：aiChapters / aiChapterGroups（来自 ai-tutorial-data）
 //   2. 运行接口：/api/run（Node.js 沙箱执行 JavaScript 代码）
-//   3. 高亮器：highlightJavaScript（复用主教程的高亮器）
 //   4. 文案：AI 编程方法教程
 // =============================================================
 

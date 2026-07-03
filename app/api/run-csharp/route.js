@@ -295,6 +295,14 @@ export async function POST(request) {
 
   const code = body?.code ?? "";
 
+  // 类型校验：防止 {code: 123} 导致 .trim() 抛未捕获异常
+  if (typeof code !== "string") {
+    return NextResponse.json(
+      { output: "", error: "code 必须是字符串" },
+      { status: 400 }
+    );
+  }
+
   if (!code.trim()) {
     return NextResponse.json({
       output: "",

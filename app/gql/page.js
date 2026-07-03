@@ -6,8 +6,6 @@
 // 结构与 JS/TS/Python 教程页面基本一致，区别：
 //   1. 数据源：gqlChapters / gqlChapterGroups（来自 gql-tutorial-data）
 //   2. 运行接口：/api/run-gql（构建 Schema + 执行 Query）
-//   3. 高亮器：highlightGraphQL（支持 query/mutation/type/$
-//      变量/@指令/内置标量类型等）
 //   4. 文案：GraphQL 教程、.graphql 文件名
 //   5. 输出区显示 JSON 格式的 data/errors
 // =============================================================

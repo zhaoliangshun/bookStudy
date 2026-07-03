@@ -6,8 +6,6 @@
 // 结构与 Java / Python 教程页面一致，区别：
 //   1. 数据源：csharpChapters / csharpChapterGroups（来自 csharp-tutorial-data）
 //   2. 运行接口：/api/run-csharp（调用 dotnet 编译运行）
-//   3. 高亮器：highlightCsharp（支持 class/public/static 等关键字、
-//      特性 [Attribute]、插值字符串 $"..."、原义字符串 @"..."、预处理指令）
 //   4. 文案：C# 教程、Program.cs 文件名
 // =============================================================
 

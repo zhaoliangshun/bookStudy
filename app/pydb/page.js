@@ -6,7 +6,6 @@
 // 系统讲解 Python 数据库编程，涵盖 SQLite、MySQL、PostgreSQL、Redis、MongoDB。
 //   1. 数据源：pydbChapters / pydbChapterGroups
 //   2. 运行接口：/api/run-py（调用系统 python3 子进程执行）
-//   3. 高亮器：highlightPython
 //   4. 文件名：example.py
 // =============================================================
 

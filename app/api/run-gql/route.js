@@ -29,6 +29,10 @@ const __dirname = path.dirname(__filename);
 // 不应被 Turbopack 当作模块打包。new Function 使路径在运行时才计算。
 const EXECUTOR_PATH = new Function("p", "d", "return p.join(d, 'executor.js')")(path, __dirname);
 
+// 子进程 stdout/stderr 最大字节数：超过则截断并提示，避免恶意 resolver
+// 用大量 console.log 耗尽内存（与其他子进程路由保持一致）
+const MAX_OUTPUT_BYTES = 1 * 1024 * 1024; // 1MB
+
 /**
  * 从 code 字符串中提取三段内容。
  */
@@ -80,13 +84,38 @@ function executeGraphQL(sdl, resolversCode, query) {
 
     let stdout = "";
     let stderr = "";
+    let stdoutTruncated = false;
+    let stderrTruncated = false;
+
+    // 超时定时器先于事件回调注册，避免 close/error 回调引用未声明的 timer（TDZ）
+    let timer = setTimeout(() => {
+      try { child.kill(); } catch {}
+      resolve({
+        data: null,
+        errors: [{ message: "执行超时（10秒），请检查代码是否有死循环。" }],
+      });
+    }, 10000);
 
     child.stdout.on("data", (chunk) => {
-      stdout += chunk.toString();
+      const text = chunk.toString();
+      if (stdoutTruncated) return;
+      if (stdout.length + text.length > MAX_OUTPUT_BYTES) {
+        stdout += text.slice(0, MAX_OUTPUT_BYTES - stdout.length);
+        stdoutTruncated = true;
+      } else {
+        stdout += text;
+      }
     });
 
     child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString();
+      const text = chunk.toString();
+      if (stderrTruncated) return;
+      if (stderr.length + text.length > MAX_OUTPUT_BYTES) {
+        stderr += text.slice(0, MAX_OUTPUT_BYTES - stderr.length);
+        stderrTruncated = true;
+      } else {
+        stderr += text;
+      }
     });
 
     child.on("close", (exitCode) => {
@@ -102,13 +131,17 @@ function executeGraphQL(sdl, resolversCode, query) {
         }
       }
 
+      const truncateNote =
+        stdoutTruncated || stderrTruncated
+          ? "\n[输出已截断] 子进程输出超过 1MB。"
+          : "";
       resolve({
         data: null,
         errors: [
           {
             message: stderr
-              ? `执行错误: ${stderr.trim()}`
-              : `子进程退出码 ${exitCode}，无输出`,
+              ? `执行错误: ${stderr.trim()}${truncateNote}`
+              : `子进程退出码 ${exitCode}，无输出${truncateNote}`,
           },
         ],
       });
@@ -127,15 +160,6 @@ function executeGraphQL(sdl, resolversCode, query) {
     const input = JSON.stringify({ sdl, resolversCode, query });
     child.stdin.write(input);
     child.stdin.end();
-
-    // 超时保护：保存定时器引用，供 close/error 回调清理
-    const timer = setTimeout(() => {
-      child.kill();
-      resolve({
-        data: null,
-        errors: [{ message: "执行超时（10秒），请检查代码是否有死循环。" }],
-      });
-    }, 10000);
   });
 }
 
@@ -151,6 +175,14 @@ export async function POST(request) {
   }
 
   const code = body?.code ?? "";
+
+  // 类型校验：防止 {code: 123} 导致 .trim() 抛未捕获异常
+  if (typeof code !== "string") {
+    return NextResponse.json(
+      { data: null, errors: [{ message: "code 必须是字符串" }] },
+      { status: 400 }
+    );
+  }
 
   if (!code.trim()) {
     return NextResponse.json({

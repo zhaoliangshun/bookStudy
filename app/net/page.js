@@ -7,7 +7,6 @@
 // 结构与 blog-tutorial / py 等教程页面一致，区别：
 //   1. 数据源：netChapters / netChapterGroups（来自 net-tutorial-data）
 //   2. 运行接口：/api/run-py（调用系统 python3 执行）
-//   3. 高亮器：highlightPython（支持 # 注释、三引号字符串、装饰器、关键字）
 //   4. 文件名：network.py
 //
 // 教程特色：每章 code 都是「真正可运行的 Python」，用 socket、

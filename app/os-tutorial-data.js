@@ -2,16 +2,16 @@
 // 40 章 / 10 分组 / demo 在本地 bash 沙箱实测可运行
 // （systemctl/docker/iptables 等特权命令为说明性脚本或模拟输出）
 
-import { chapters as batch1 } from "./os-chapters-batch1.js";
-import { chapters as batch2 } from "./os-chapters-batch2.js";
-import { chapters as batch3 } from "./os-chapters-batch3.js";
-import { chapters as batch4 } from "./os-chapters-batch4.js";
-import { chapters as batch5 } from "./os-chapters-batch5.js";
-import { chapters as batch6 } from "./os-chapters-batch6.js";
-import { chapters as batch7 } from "./os-chapters-batch7.js";
-import { chapters as batch8 } from "./os-chapters-batch8.js";
-import { chapters as batch9 } from "./os-chapters-batch9.js";
-import { chapters as batch10 } from "./os-chapters-batch10.js";
+import { chapters as batch1 } from "./os-chapters-batch1";
+import { chapters as batch2 } from "./os-chapters-batch2";
+import { chapters as batch3 } from "./os-chapters-batch3";
+import { chapters as batch4 } from "./os-chapters-batch4";
+import { chapters as batch5 } from "./os-chapters-batch5";
+import { chapters as batch6 } from "./os-chapters-batch6";
+import { chapters as batch7 } from "./os-chapters-batch7";
+import { chapters as batch8 } from "./os-chapters-batch8";
+import { chapters as batch9 } from "./os-chapters-batch9";
+import { chapters as batch10 } from "./os-chapters-batch10";
 
 export const osChapters = [
   ...batch1, ...batch2, ...batch3, ...batch4, ...batch5,

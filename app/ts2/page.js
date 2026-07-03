@@ -6,7 +6,6 @@
 // 结构与 TS 教程页面一致，区别：
 //   1. 数据源：ts2Chapters / ts2ChapterGroups（来自 ts2-tutorial-data）
 //   2. 运行接口：/api/run-ts（先 TS 转译再沙箱执行）
-//   3. 高亮器：highlightTypeScript（支持 interface/type/enum 等关键字）
 //   4. 文案：TypeScript 进阶教程、example.ts 文件名
 // =============================================================
 

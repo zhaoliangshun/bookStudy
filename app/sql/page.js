@@ -6,7 +6,6 @@
 // 结构与 GraphQL 教程页面一致，区别：
 //   1. 数据源：sqlChapters / sqlChapterGroups（来自 sql-tutorial-data）
 //   2. 运行接口：/api/run-sql（基于 sqlite3 内存数据库）
-//   3. 高亮器：highlightSql（支持 SQL 关键字/字符串/注释高亮）
 //   4. 文案：数据库教程、query.sql 文件名
 //   5. 输出区显示 sqlite3 的表格输出
 // =============================================================

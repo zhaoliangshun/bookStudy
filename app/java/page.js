@@ -6,8 +6,6 @@
 // 结构与 Node.js / TypeScript / Python 教程页面基本一致，区别：
 //   1. 数据源：javaChapters / javaChapterGroups（来自 java-tutorial-data）
 //   2. 运行接口：/api/run-java（调用系统 javac 编译 + java 运行）
-//   3. 高亮器：highlightJava（支持 public/class/static 等关键字、
-//      注解 @Override、Javadoc 注释、char 字面量、类型名）
 //   4. 文案：Java 教程、Main.java 文件名
 // =============================================================
 

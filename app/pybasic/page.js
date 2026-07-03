@@ -7,7 +7,6 @@
 // 是所有人的起点。当前覆盖 "1.1 环境" 章节。
 //   1. 数据源：pybasicChapters / pybasicChapterGroups
 //   2. 运行接口：/api/run-py（调用系统 python3 子进程执行）
-//   3. 高亮器：highlightPython
 //   4. 文件名：example.py
 // =============================================================
 

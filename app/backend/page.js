@@ -7,7 +7,6 @@
 //   1. 数据源：backendChapters / backendChapterGroups（来自
 //      backend-tutorial-data）
 //   2. 运行接口：/api/run-backend（复用共享沙箱执行 Node.js 代码）
-//   3. 高亮器：highlightJavaScript（code 字段为 Node.js 代码）
 //   4. 文案：后端开发教程、backend.js 文件名
 //   5. content 中讲解语言无关的后端原理，code 用 Node.js 演示
 // =============================================================

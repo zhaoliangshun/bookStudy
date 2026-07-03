@@ -6,7 +6,6 @@
 // 系统讲解 Python 的模块与包机制，是组织大型代码的基础。
 //   1. 数据源：pymodChapters / pymodChapterGroups
 //   2. 运行接口：/api/run-py（调用系统 python3 子进程执行）
-//   3. 高亮器：highlightPython
 //   4. 文件名：example.py
 // =============================================================
 

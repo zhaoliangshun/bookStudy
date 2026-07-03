@@ -39,7 +39,7 @@ const TS_COMPILER_OPTIONS = {
   isolatedModules: true,
   // 不做类型检查（教程侧重运行结果，类型错误由编辑器/IDE 提示）
   noEmitOnError: false,
-  reportDiagnostics: false,
+  // reportDiagnostics 在 transpileModule 调用处显式指定，这里不重复设置
 };
 
 /**
@@ -62,7 +62,8 @@ function transpileTypeScript(tsCode) {
   if (output.diagnostics && output.diagnostics.length > 0) {
     for (const diag of output.diagnostics) {
       const message = ts.flattenDiagnosticMessageText(diag.messageText, "\n");
-      if (diag.file) {
+      // diag.start 可能为 undefined（全局诊断），单独处理避免误报"第 1 行"
+      if (diag.file && typeof diag.start === "number") {
         const { line, character } = diag.file.getLineAndCharacterOfPosition(
           diag.start
         );
@@ -89,6 +90,22 @@ export async function POST(request) {
 
   const tsCode = body?.code ?? "";
 
+  // 类型校验：防止 {code: 123} 导致 transpileModule 异常
+  if (typeof tsCode !== "string") {
+    return NextResponse.json(
+      { output: "", error: "code 必须是字符串" },
+      { status: 400 }
+    );
+  }
+
+  // 空代码校验：与其他子进程路由保持一致
+  if (!tsCode.trim()) {
+    return NextResponse.json({
+      output: "",
+      error: "代码为空，请输入要执行的 TypeScript 代码。",
+    });
+  }
+
   // 1. 转译 TS → JS
   const { js, diagnostics } = transpileTypeScript(tsCode);
 
@@ -103,19 +120,25 @@ export async function POST(request) {
   // 2. 在沙箱中运行转译后的 JS
   const result = await runInSandbox(js);
 
-  // 如果运行时出错，附加转译阶段的诊断信息（作为额外提示）
+  // 如果运行时出错或存在转译诊断，附加诊断信息（作为额外提示）。
+  // 统一响应格式：error 永远是字符串（空字符串表示无错误），避免前端处理 null/undefined 分支
   if (diagnostics.length > 0) {
     const diagNote =
       "\n\n[TypeScript 编译提示]\n" + diagnostics.join("\n");
+    const error = (result.error || "") + diagNote;
     return NextResponse.json({
       output: result.output,
-      error: result.error ? result.error + diagNote : null,
+      error,
       warnings: diagnostics,
       exports: result.exports,
     });
   }
 
-  return NextResponse.json(result);
+  return NextResponse.json({
+    output: result.output,
+    error: result.error || "",
+    exports: result.exports,
+  });
 }
 
 // 健康检查

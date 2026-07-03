@@ -6,8 +6,6 @@
 // 结构与 C# / Java 教程页面一致，区别：
 //   1. 数据源：goChapters / goChapterGroups（来自 go-tutorial-data）
 //   2. 运行接口：/api/run-go（调用 go run 编译运行）
-//   3. 高亮器：highlightGo（支持 func/package/import/struct/interface
-//      等关键字、反引号原始字符串、rune '...'、内置函数）
 //   4. 文案：Go 教程、main.go 文件名
 // =============================================================
 
