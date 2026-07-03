@@ -56,6 +56,7 @@ const BOOK_CATEGORIES = [
       { path: "/pymod", label: "Python 模块与包", icon: "📦" },
       { path: "/pynet", label: "Python 网络编程", icon: "🌐" },
       { path: "/pythread", label: "Python 线程进程", icon: "🧵" },
+      { path: "/pydb", label: "Python 数据库", icon: "🗄️" },
       { path: "/net", label: "计算机网络", icon: "🌐" },
       { path: "/blog-tutorial", label: "Blog 系统教程", icon: "📝" },
       { path: "/pyweb", label: "Python Web", icon: "🌐" },
