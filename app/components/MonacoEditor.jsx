@@ -191,8 +191,19 @@ export default function MonacoEditor({
           scrollBeyondLastLine: false,
           // 超长行不水平滚动（按需折行），避免横向滚动条
           wordWrap: "on",
+          // 字体：与教程正文（var(--sans)）保持一致，让编辑器和正文视觉统一
+          // Mac 上回退到 -apple-system（即 SF Pro），Windows 上回退到 Segoe UI，
+          // 中文回退到 PingFang SC / Microsoft YaHei
+          fontFamily:
+            '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
+          fontSize: 13,
+          // sans 字体不支持编程连字，关闭
+          fontLigatures: false,
+          lineHeight: 1.5,
           // 代码区上下留白，避免第一行和最后一行紧贴边缘，视觉更透气
           padding: { top: 14, bottom: 14 },
+          // 光标所在行高亮：只保留背景色，去掉外边框（默认 "all" 会同时画背景和边框）
+          renderLineHighlight: "line",
           // 滚动条样式：更细、无阴影、按需显示
           // autoHeight 模式下会根据内容是否超过 maxHeight 动态切换 vertical
           // 可见性（见 handleMount 里的 updateHeight），这里给默认 "auto"

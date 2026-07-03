@@ -80,9 +80,9 @@
 }
 
 .input:focus {
-  border-color: #2563eb;
+  border-color: #0891b2;
   background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.12);
 }
 
 .input:disabled {
@@ -92,7 +92,7 @@
 
 .addButton {
   padding: 12px 22px;
-  background: #2563eb;
+  background: #0891b2;
   color: #ffffff;
   border: none;
   border-radius: 10px;
@@ -104,7 +104,7 @@
 }
 
 .addButton:hover:not(:disabled) {
-  background: #1d4ed8;
+  background: #0e7490;
 }
 
 .addButton:active:not(:disabled) {
@@ -230,7 +230,7 @@
   width: 18px;
   height: 18px;
   cursor: pointer;
-  accent-color: #2563eb;
+  accent-color: #0891b2;
   flex-shrink: 0;
 }
 

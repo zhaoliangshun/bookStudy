@@ -8,7 +8,7 @@
   --bg-elevated: #ffffff;
   --bg-sidebar: #1e293b;
   --bg-sidebar-hover: #334155;
-  --bg-sidebar-active: #2563eb;
+  --bg-sidebar-active: #0891b2;
   --bg-code: #1e1e2e;
   --bg-console: #0f172a;
   --bg-inline-code: #eef2f7;
@@ -31,9 +31,9 @@
   --border: #e2e8f0;
   --border-dark: #334155;
 
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-light: #dbeafe;
+  --primary: #0891b2;
+  --primary-hover: #0e7490;
+  --primary-light: #cffafe;
   --success: #16a34a;
   --error: #dc2626;
   --error-bg: #fef2f2;
@@ -53,6 +53,62 @@
   --topbar-h: 56px;
   --mono: "SF Mono", "Fira Code", "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+/* =============================================================
+   主题色覆盖：通过 [data-theme="xxx"] 切换主题色变量
+   -------------------------------------------------------------
+   :root 里的 --primary 等是默认值（深青 cyan），
+   切换主题时给 <html> 设置 data-theme 属性，
+   这里的选择器会覆盖默认变量，整站所有用 var(--primary) 的地方都会跟随切换。
+   ============================================================= */
+
+/* 天空蓝（项目原始主题色） */
+[data-theme="blue"] {
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-light: #dbeafe;
+  --bg-sidebar-active: #2563eb;
+}
+
+/* 葡萄紫 */
+[data-theme="violet"] {
+  --primary: #7c3aed;
+  --primary-hover: #6d28d9;
+  --primary-light: #ede9fe;
+  --bg-sidebar-active: #7c3aed;
+}
+
+/* 薄荷绿 */
+[data-theme="emerald"] {
+  --primary: #10b981;
+  --primary-hover: #059669;
+  --primary-light: #d1fae5;
+  --bg-sidebar-active: #10b981;
+}
+
+/* 玫瑰粉 */
+[data-theme="rose"] {
+  --primary: #e11d48;
+  --primary-hover: #be123c;
+  --primary-light: #ffe4e6;
+  --bg-sidebar-active: #e11d48;
+}
+
+/* 琥珀橙 */
+[data-theme="amber"] {
+  --primary: #d97706;
+  --primary-hover: #b45309;
+  --primary-light: #fef3c7;
+  --bg-sidebar-active: #d97706;
+}
+
+/* 深青（显式声明，与默认值一致，作为切换的兜底） */
+[data-theme="cyan"] {
+  --primary: #0891b2;
+  --primary-hover: #0e7490;
+  --primary-light: #cffafe;
+  --bg-sidebar-active: #0891b2;
 }
 
 * {
@@ -971,7 +1027,7 @@ body {
   border-bottom: 1px solid var(--editor-border);
   font-size: 12px;
   color: var(--text-muted);
-  font-family: var(--mono);
+  font-family: var(--sans);
 }
 .md-code-output-close {
   background: none;
@@ -990,7 +1046,7 @@ body {
 .md-code-output-body {
   padding: 10px 14px;
   color: var(--text);
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 12.5px;
   line-height: 1.55;
   white-space: pre-wrap;
@@ -1005,7 +1061,7 @@ body {
 .md-code-output-error {
   padding: 10px 14px;
   color: #b91c1c;
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 12.5px;
   line-height: 1.55;
   white-space: pre-wrap;
@@ -1153,8 +1209,8 @@ body {
   white-space: nowrap;
 }
 .ext-run-item:hover {
-  background: var(--primary-light, #eff6ff);
-  color: var(--primary, #2563eb);
+  background: var(--primary-light, #cffafe);
+  color: var(--primary, #0891b2);
 }
 .ext-run-icon {
   font-size: 14px;
@@ -1246,6 +1302,16 @@ body {
 /* 隐藏右侧装饰概览尺（标记缩略条），让编辑器右侧更干净 */
 .monaco-editor .decorationsOverviewRuler {
   display: none !important;
+}
+/* 去除光标所在行的外边框
+   说明：renderLineHighlight:"line" 只画背景色不画边框，
+   但 Monaco 默认主题里 .current-line 元素仍带 1px 灰色边框（lineHighlightBorder）。
+   这里强制覆盖掉 border / outline / box-shadow，只保留背景色高亮。 */
+.monaco-editor .view-overlays .current-line,
+.monaco-editor .view-overlays .current-line-exact {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* Monaco 加载占位 */
@@ -1353,7 +1419,7 @@ body {
   min-height: 120px;
   max-height: 360px;
   overflow: auto;
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 13px;
   line-height: 1.6;
   border: 1px solid var(--editor-border);
@@ -2000,7 +2066,7 @@ body {
   padding: 14px 16px;
   background: #f8fafc;
   color: var(--text);
-  font-family: var(--mono);
+  font-family: var(--sans);
   font-size: 13px;
   line-height: 1.6;
   min-height: 0;
@@ -2132,5 +2198,179 @@ body {
   .pg-statusbar {
     gap: 12px;
     padding: 5px 14px;
+  }
+}
+
+/* =============================================================
+   主题切换器组件样式
+   -------------------------------------------------------------
+   位于侧边栏书籍切换器下方，提供 6 种主题色快速切换。
+   下拉面板采用 fixed 定位脱离侧边栏宽度限制，铺满视口宽度
+   （与书籍目录下拉风格一致）。
+   ============================================================= */
+.theme-switcher {
+  position: relative;
+  padding: 0 14px 8px;
+  background: rgba(0, 0, 0, 0.12);
+  border-bottom: 1px solid var(--border-dark);
+  flex-shrink: 0;
+}
+
+/* 触发按钮：与 .sidebar-book-btn 风格统一但更紧凑 */
+.theme-switcher-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 12px;
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-on-dark);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  text-align: left;
+}
+.theme-switcher-btn:hover {
+  background: var(--bg-sidebar-hover);
+  border-color: var(--accent-green);
+}
+
+/* 当前主题色卡：两个三角形拼成的小方块 */
+.theme-swatch-current {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+}
+
+.theme-switcher-label {
+  flex: 1;
+  font-weight: 500;
+}
+
+.theme-arrow {
+  font-size: 11px;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+.theme-arrow.open {
+  transform: rotate(180deg);
+  color: var(--accent-green);
+}
+
+/* 下拉面板：fixed 铺满视口，与书籍目录下拉一致 */
+.theme-dropdown {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg-sidebar);
+  border-bottom: 1px solid var(--border-dark);
+  border-radius: 0 0 16px 16px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  overflow: hidden;
+  animation: themeDropdownIn 0.2s ease-out;
+}
+
+@keyframes themeDropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.theme-dropdown-header {
+  padding: 14px 24px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-on-dark);
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--border-dark);
+}
+
+/* 主题卡片网格：自动填充，每行多个 */
+.theme-grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 16px 24px 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+/* 单个主题卡片 */
+.theme-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  color: var(--text-on-dark);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, transform 0.12s;
+}
+.theme-card:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(148, 163, 184, 0.35);
+  transform: translateY(-1px);
+}
+.theme-card.active {
+  background: rgba(74, 222, 128, 0.16);
+  border-color: rgba(74, 222, 128, 0.5);
+  color: var(--accent-green);
+  font-weight: 600;
+}
+
+/* 主题色卡：圆形渐变预览 */
+.theme-card-swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.theme-card-name {
+  line-height: 1.2;
+}
+
+/* 收起状态下隐藏主题切换器（避免溢出） */
+.sidebar.collapsed .theme-switcher {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 移动端：主题卡片更紧凑 */
+@media (max-width: 768px) {
+  .theme-grid {
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 8px;
+    padding: 12px 16px 16px;
+  }
+  .theme-card {
+    padding: 10px 6px;
+    font-size: 11px;
+  }
+  .theme-card-swatch {
+    width: 30px;
+    height: 30px;
   }
 }

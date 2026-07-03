@@ -60,7 +60,7 @@ a {
 }
 
 .blog-footer a {
-  color: #2563eb;
+  color: #0891b2;
 }
 
 .blog-footer a:hover {
@@ -115,7 +115,7 @@ a {
 
 .blog-nav-link.active {
   background: #eff6ff;
-  color: #2563eb;
+  color: #0891b2;
   font-weight: 600;
 }
 
@@ -143,7 +143,7 @@ a {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #2563eb;
+  background: #0891b2;
   color: #ffffff;
   display: inline-flex;
   align-items: center;
@@ -190,12 +190,12 @@ a {
 }
 
 .blog-btn-primary {
-  background: #2563eb;
+  background: #0891b2;
   color: #ffffff;
 }
 
 .blog-btn-primary:hover:not(:disabled) {
-  background: #1d4ed8;
+  background: #0e7490;
 }
 
 .blog-btn-ghost {
@@ -268,7 +268,7 @@ a {
 .blog-input:focus,
 .blog-textarea:focus,
 .blog-select:focus {
-  border-color: #2563eb;
+  border-color: #0891b2;
   background: #ffffff;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
@@ -284,7 +284,7 @@ a {
   display: inline-block;
   padding: 2px 10px;
   background: #eff6ff;
-  color: #2563eb;
+  color: #0891b2;
   border-radius: 12px;
   font-size: 12px;
   margin-right: 6px;
@@ -297,7 +297,7 @@ a {
 }
 
 .blog-tag-clickable:hover {
-  background: #dbeafe;
+  background: #cffafe;
 }
 
 /* ---------- 错误提示 ---------- */
@@ -367,7 +367,7 @@ a {
    ============================================================= */
 
 .hero {
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #3b82f6 100%);
+  background: linear-gradient(135deg, #0e7490 0%, #0891b2 50%, #06b6d4 100%);
   color: #ffffff;
   border-radius: 16px;
   padding: 60px 32px;
@@ -401,7 +401,7 @@ a {
 
 .hero-actions .blog-btn-primary {
   background: #ffffff;
-  color: #2563eb;
+  color: #0891b2;
 }
 
 .hero-actions .blog-btn-ghost {
@@ -545,7 +545,7 @@ a {
 .account-card code {
   font-family: "SF Mono", Monaco, Consolas, monospace;
   font-size: 13px;
-  color: #2563eb;
+  color: #0891b2;
   background: #eff6ff;
   padding: 4px 10px;
   border-radius: 6px;
@@ -595,7 +595,7 @@ a {
 }
 
 .auth-footer a {
-  color: #2563eb;
+  color: #0891b2;
   font-weight: 500;
 }
 
@@ -629,7 +629,7 @@ a {
 
 .auth-hint code {
   font-family: "SF Mono", Monaco, Consolas, monospace;
-  color: #2563eb;
+  color: #0891b2;
 }
 
 /* ---------- 文章列表页 ---------- */
@@ -654,7 +654,7 @@ a {
 }
 
 .posts-search:focus {
-  border-color: #2563eb;
+  border-color: #0891b2;
   background: #ffffff;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
@@ -682,7 +682,7 @@ a {
 }
 
 .tag-filter-item.active {
-  background: #2563eb;
+  background: #0891b2;
   color: #ffffff;
 }
 
@@ -699,8 +699,8 @@ a {
 }
 
 .page-btn:hover:not(:disabled) {
-  border-color: #2563eb;
-  color: #2563eb;
+  border-color: #0891b2;
+  color: #0891b2;
 }
 
 .page-btn:disabled {
@@ -784,7 +784,7 @@ a {
 }
 
 .comment-form textarea:focus {
-  border-color: #2563eb;
+  border-color: #0891b2;
   background: #ffffff;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
@@ -886,8 +886,8 @@ a {
 
 .tag-checkbox.checked {
   background: #eff6ff;
-  border-color: #2563eb;
-  color: #2563eb;
+  border-color: #0891b2;
+  color: #0891b2;
 }
 
 .form-actions {
@@ -913,7 +913,7 @@ a {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: #2563eb;
+  background: #0891b2;
   color: #ffffff;
   display: flex;
   align-items: center;

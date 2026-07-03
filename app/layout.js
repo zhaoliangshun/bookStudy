@@ -17,8 +17,32 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
+  // 在 React hydrate 之前读取 localStorage 设置主题，
+  // 避免首屏先显示默认主题再闪烁切换的问题。
+  // suppressHydrationWarning：data-theme 与客户端可能不一致，忽略告警。
+  const themeInitScript = `
+    (function() {
+      try {
+        var t = localStorage.getItem('theme-preference');
+        if (t && ['cyan','blue','violet','emerald','rose','amber'].indexOf(t) !== -1) {
+          document.documentElement.setAttribute('data-theme', t);
+        } else {
+          document.documentElement.setAttribute('data-theme', 'cyan');
+        }
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'cyan');
+      }
+    })();
+  `;
   return (
-    <html lang="zh-CN" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
+    <html
+      lang="zh-CN"
+      className={`${geistSans.variable} ${geistMono.variable}`}
+      suppressHydrationWarning
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body>{children}</body>
     </html>
   );

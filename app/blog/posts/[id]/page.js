@@ -150,7 +150,7 @@ export default function PostDetailPage() {
         ) : (
           <div className="blog-card" style={{ textAlign: "center", marginBottom: 20 }}>
             <p style={{ margin: 0, color: "#64748b" }}>
-              <Link href="/blog/login" style={{ color: "#2563eb" }}>登录</Link> 后才能评论
+              <Link href="/blog/login" style={{ color: "#0891b2" }}>登录</Link> 后才能评论
             </p>
           </div>
         )}

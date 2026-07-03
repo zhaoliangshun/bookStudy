@@ -58,7 +58,7 @@ export default function TagsPage() {
               className="blog-card"
               style={{ display: "block" }}
             >
-              <h3 style={{ margin: "0 0 4px", fontSize: 16, color: "#2563eb" }}>
+              <h3 style={{ margin: "0 0 4px", fontSize: 16, color: "#0891b2" }}>
                 #{t.name}
               </h3>
               <p style={{ margin: "0 0 8px", fontSize: 13, color: "#64748b", minHeight: 20 }}>

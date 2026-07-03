@@ -28,6 +28,7 @@
 // =============================================================
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import ThemeSwitcher from "./ThemeSwitcher";
 
 // =============================================================
 // 书籍目录数据（从 SiteNav 移入，集中维护）
@@ -384,6 +385,9 @@ export default function Sidebar({
               </>
             )}
           </div>
+
+          {/* 主题色切换器：在书籍切换器和 meta 之间，紧贴顶部 */}
+          <ThemeSwitcher />
 
           {meta && <div className="sidebar-meta">{meta}</div>}
 
