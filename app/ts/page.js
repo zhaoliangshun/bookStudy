@@ -48,6 +48,17 @@ export default function TypeScriptTutorial() {
   const activeChapter =
     tsChapters.find((c) => c.id === activeId) || tsChapters[0];
 
+  // 清除无效的 hash（跨页面跳转时可能残留）
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash.slice(1);
+    if (hash && !tsChapters.find((c) => c.id === hash)) {
+      // hash 无效，清除它
+      const url = window.location.pathname + window.location.search;
+      window.history.replaceState(null, "", url);
+    }
+  }, []);
+
   // ---------- 切换章节 ----------
   const selectChapter = useCallback((chapterId) => {
     const chapter = tsChapters.find((c) => c.id === chapterId);

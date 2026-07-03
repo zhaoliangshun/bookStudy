@@ -49,6 +49,17 @@ export default function SQLTutorial() {
   const activeChapter =
     sqlChapters.find((c) => c.id === activeId) || sqlChapters[0];
 
+  // 清除无效的 hash（跨页面跳转时可能残留）
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash.slice(1);
+    if (hash && !sqlChapters.find((c) => c.id === hash)) {
+      // hash 无效，清除它
+      const url = window.location.pathname + window.location.search;
+      window.history.replaceState(null, "", url);
+    }
+  }, []);
+
   // ---------- 切换章节 ----------
   const selectChapter = useCallback((chapterId) => {
     const chapter = sqlChapters.find((c) => c.id === chapterId);

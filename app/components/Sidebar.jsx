@@ -54,6 +54,7 @@ const BOOK_CATEGORIES = [
       { path: "/py8", label: "Python 大全", icon: "🐍" },
       { path: "/py9", label: "Python 逐层深入", icon: "📘" },
       { path: "/pymod", label: "Python 模块与包", icon: "📦" },
+      { path: "/pynet", label: "Python 网络编程", icon: "🌐" },
       { path: "/pythread", label: "Python 线程进程", icon: "🧵" },
       { path: "/net", label: "计算机网络", icon: "🌐" },
       { path: "/blog-tutorial", label: "Blog 系统教程", icon: "📝" },
@@ -288,6 +289,27 @@ export default function Sidebar({
     },
     [onSelectChapter]
   );
+
+  // 处理跨页面跳转：当路径变化时，清除无效的 hash
+  useEffect(() => {
+    const handlePathChange = () => {
+      const hash = window.location.hash.slice(1);
+      if (hash && !validIdsRef.current.includes(hash)) {
+        // hash 无效，清除它
+        const url = `${window.location.pathname}${window.location.search}`;
+        window.history.replaceState(null, "", url);
+      }
+    };
+
+    // 监听 popstate 事件
+    window.addEventListener("popstate", handlePathChange);
+    // 初始检查
+    handlePathChange();
+
+    return () => {
+      window.removeEventListener("popstate", handlePathChange);
+    };
+  }, []);
 
   return (
     <>

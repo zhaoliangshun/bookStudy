@@ -116,6 +116,17 @@ export default function SassTutorial() {
 
   const contentRef = useRef(null);
 
+  // 清除无效的 hash（跨页面跳转时可能残留）
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash.slice(1);
+    if (hash && !sassChapters.find((c) => c.id === hash)) {
+      // hash 无效，清除它
+      const url = window.location.pathname + window.location.search;
+      window.history.replaceState(null, "", url);
+    }
+  }, []);
+
   // 构造预览用的完整 HTML 文档：编译后的 CSS + demo HTML
   // 没编译过（compiledCss 为空）时，iframe 显示提示信息
   const previewDoc = useMemo(() => {
