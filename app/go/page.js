@@ -59,21 +59,13 @@ func main() {
 
 export default function GoTutorial() {
   // ---------- 状态管理 ----------
-  // 从 URL hash 读取初始章节 id，如果没有则使用第一个章节
-  const getInitialChapterId = () => {
-    if (typeof window !== "undefined") {
-      const hash = window.location.hash.slice(1);
-      if (hash && goChapters.find((c) => c.id === hash)) {
-        return hash;
-      }
-    }
-    return goChapters[0].id;
-  };
+  // 默认使用第一个章节作为初始状态。
+  // 注意：不在渲染阶段读取 window.location.hash，否则 SSR 与客户端
+  // 在 URL 带 hash 时渲染结果不一致，会触发 React hydration 错误。
+  // URL hash 的处理放到 useEffect 中，在客户端挂载后再切换章节。
+  const initialChapter = goChapters[0];
 
-  const initialId = getInitialChapterId();
-  const initialChapter = goChapters.find((c) => c.id === initialId) || goChapters[0];
-
-  const [activeId, setActiveId] = useState(initialId);
+  const [activeId, setActiveId] = useState(initialChapter.id);
   const [code, setCode] = useState(initialChapter.code);
   const [output, setOutput] = useState("");
   const [error, setError] = useState("");
@@ -86,6 +78,23 @@ export default function GoTutorial() {
   // 当前章节对象
   const activeChapter =
     goChapters.find((c) => c.id === activeId) || goChapters[0];
+
+  // 客户端挂载后读取 URL hash：有效则切换到对应章节，无效则清除。
+  // 这里读取 window 不会导致 hydration 错误，因为首次渲染已经完成。
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    const chapter = goChapters.find((c) => c.id === hash);
+    if (chapter) {
+      setActiveId(hash);
+      setCode(chapter.code);
+    } else {
+      // hash 无效，清除它（跨页面跳转时可能残留）
+      const url = window.location.pathname + window.location.search;
+      window.history.replaceState(null, "", url);
+    }
+  }, []);
 
   // ---------- 切换章节 ----------
   const selectChapter = useCallback((chapterId) => {

@@ -146,6 +146,17 @@ export default function MonacoEditor({
     }
   }, []);
 
+  // 保险同步：@monaco-editor/react 的受控 value 在动态加载/SSR 场景下
+  // 偶尔不会立即同步，这里在 value 变化时手动把 editor 内容设为最新值，
+  // 确保刷新页面或切换章节后 demo 代码显示正确。
+  useEffect(() => {
+    if (!editorRef.current) return;
+    const currentValue = editorRef.current.getValue();
+    if (currentValue !== value) {
+      editorRef.current.setValue(value);
+    }
+  }, [value]);
+
   useEffect(() => {
     return () => {
       editorRef.current = null;

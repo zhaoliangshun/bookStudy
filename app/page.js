@@ -31,22 +31,14 @@ const MonacoEditor = dynamic(() => import("./components/MonacoEditor"), { ssr: f
 
 export default function Home() {
   // ---------- 状态管理 ----------
-  // 从 URL hash 读取初始章节 id，如果没有则使用第一个章节
-  const getInitialChapterId = () => {
-    if (typeof window !== "undefined") {
-      const hash = window.location.hash.slice(1);
-      if (hash && chapters.find((c) => c.id === hash)) {
-        return hash;
-      }
-    }
-    return chapters[0].id;
-  };
-
-  const initialId = getInitialChapterId();
-  const initialChapter = chapters.find((c) => c.id === initialId) || chapters[0];
+  // 默认使用第一个章节作为初始状态。
+  // 注意：不在渲染阶段读取 window.location.hash，否则 SSR 与客户端
+  // 在 URL 带 hash 时渲染结果不一致，会触发 React hydration 错误。
+  // URL hash 的处理放到 useEffect 中，在客户端挂载后再切换章节。
+  const initialChapter = chapters[0];
 
   // 当前选中的章节 id
-  const [activeId, setActiveId] = useState(initialId);
+  const [activeId, setActiveId] = useState(initialChapter.id);
   // 代码编辑器中的代码（用户可修改）
   const [code, setCode] = useState(initialChapter.code);
   // 运行输出结果
@@ -66,12 +58,18 @@ export default function Home() {
   // 当前章节对象
   const activeChapter = chapters.find((c) => c.id === activeId) || chapters[0];
 
-  // 清除无效的 hash（跨页面跳转时可能残留）
+  // 客户端挂载后读取 URL hash：有效则切换到对应章节，无效则清除。
+  // 这里读取 window 不会导致 hydration 错误，因为首次渲染已经完成。
   useEffect(() => {
     if (typeof window === "undefined") return;
     const hash = window.location.hash.slice(1);
-    if (hash && !chapters.find((c) => c.id === hash)) {
-      // hash 无效，清除它
+    if (!hash) return;
+    const chapter = chapters.find((c) => c.id === hash);
+    if (chapter) {
+      setActiveId(hash);
+      setCode(chapter.code);
+    } else {
+      // hash 无效，清除它（跨页面跳转时可能残留）
       const url = window.location.pathname + window.location.search;
       window.history.replaceState(null, "", url);
     }

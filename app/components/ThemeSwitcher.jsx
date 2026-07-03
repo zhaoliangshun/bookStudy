@@ -62,17 +62,22 @@ export default function ThemeSwitcher() {
   const dropdownRef = useRef(null);
 
   // ---------- 挂载时读取 localStorage ----------
+  // 同时把旧版本存到 localStorage 的主题同步到 cookie，
+  // 使服务端下次渲染时可直接读取，避免首屏闪烁。
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved && THEMES.some((t) => t.id === saved)) {
         setCurrent(saved);
+        document.documentElement.setAttribute("data-theme", saved);
+        document.cookie = `${STORAGE_KEY}=${saved}; path=/; max-age=31536000; SameSite=Lax`;
       }
     } catch {}
   }, []);
 
   // ---------- 切换主题 ----------
-  // 同时更新 <html data-theme>、组件状态、localStorage
+  // 同时更新 <html data-theme>、组件状态、localStorage、cookie。
+  // cookie 用于服务端在首屏 HTML 中直接渲染正确的 data-theme。
   const switchTheme = (id) => {
     setCurrent(id);
     if (typeof document !== "undefined") {
@@ -80,6 +85,7 @@ export default function ThemeSwitcher() {
     }
     try {
       localStorage.setItem(STORAGE_KEY, id);
+      document.cookie = `${STORAGE_KEY}=${id}; path=/; max-age=31536000; SameSite=Lax`;
     } catch {}
     setOpen(false);
   };

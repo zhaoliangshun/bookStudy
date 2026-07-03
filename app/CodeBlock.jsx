@@ -127,6 +127,14 @@ function parseRunResult(langLower, data) {
 export function CodeBlock({ code: initialCode, lang }) {
   // 可编辑代码状态
   const [code, setCode] = useState(initialCode);
+
+  // 当外部传入的初始代码变化时（例如切换章节导致 Markdown 重新渲染，
+  // 或 React 复用了旧的 CodeBlock 实例），同步更新内部编辑状态，
+  // 避免旧章节代码残留在编辑器中。
+  useEffect(() => {
+    setCode(initialCode);
+  }, [initialCode]);
+
   // 交互状态
   const [copied, setCopied] = useState(false);
   const [output, setOutput] = useState("");
