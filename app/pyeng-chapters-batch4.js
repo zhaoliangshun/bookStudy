@@ -1899,8 +1899,8 @@ pytest --maxfail=3
 pytest --lf            # 只跑上次失败的
 pytest --lf --ff       # 失败的先跑,再跑其他
 
-# 跑 N 次(随机顺序,找不稳定测试)
-pytest --pjs=random -p no:randomly  # 需 pytest-randomly 插件
+# 随机顺序跑(找不稳定测试,需 pytest-randomly 插件)
+pytest -p randomly --randomly-seed=42  # 固定种子可复现,不指定则每次随机
 
 # 用 N 个进程并行
 pytest -n 4            # 需 pytest-xdist 插件
@@ -2063,6 +2063,86 @@ with pytest.raises(ValueError):
     divide(1, 0)
 
 # 几乎一样,但 pytest 更简洁,且 match 参数更强大
+\`\`\`
+
+### 测试警告:pytest.warns
+
+除了"应该抛异常",有时要测"应该发警告"(比如废弃 API 时 \`DeprecationWarning\`)。\`pytest.warns\` 类似 \`pytest.raises\`,但断言"发出了警告":
+
+\`\`\`python
+import warnings
+import pytest
+
+def deprecated_func():
+    warnings.warn("该函数已废弃,请用 new_func", DeprecationWarning)
+    return 42
+
+def test_deprecated_warns():
+    # 断言:调用 deprecated_func 时发出 DeprecationWarning
+    with pytest.warns(DeprecationWarning, match="已废弃"):
+        result = deprecated_func()
+    assert result == 42
+
+# 也可以取出警告对象做更细的断言
+def test_warns_with_message():
+    with pytest.warns(DeprecationWarning) as record:
+        deprecated_func()
+    # record 是 list,包含所有捕获到的警告
+    assert len(record) == 1
+    assert "已废弃" in str(record[0].message)
+\`\`\`
+
+\`pytest.warns\` 和 \`recwarn\` fixture 类似,但 \`pytest.warns\` 是上下文管理器(只捕获 with 块内的警告),\`recwarn\` 是 fixture(捕获整个测试的警告)。
+
+### 跳过测试:pytest.skip / pytest.mark.skip / pytest.mark.xfail
+
+\`\`\`python
+import sys
+import pytest
+
+# 1. 直接在测试里跳过(条件动态)
+def test_only_linux():
+    if sys.platform != "linux":
+        pytest.skip("只在 Linux 跑")
+    # Linux 专属测试逻辑
+    ...
+
+# 2. 装饰器:无条件跳过
+@pytest.mark.skip(reason="还没实现,等下个版本")
+def test_future_feature():
+    ...
+
+# 3. 装饰器:条件跳过
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows 不支持 fork")
+def test_fork():
+    ...
+
+# 4. 预期失败(xfail):该测试现在会失败,但不是 bug
+#    跑过 → XPASS(意外通过,警告);失败 → XFAIL(符合预期)
+@pytest.mark.xfail(reason="已知 bug #1234,等修复")
+def test_known_bug():
+    assert buggy_func() == 1
+
+# 5. 严格 xfail:如果意外通过,直接 FAIL(防止 bug 偷偷修好了却没人发现)
+@pytest.mark.xfail(strict=True, reason="已知 bug,修好后必须更新测试")
+def test_known_bug_strict():
+    assert buggy_func() == 1
+\`\`\`
+
+**skip vs xfail 的区别**:
+
+| 标记 | 含义 | 跑了之后 |
+|------|------|----------|
+| \`skip\` | 这个测试不该跑(环境/未实现) | 直接 S,不算失败 |
+| \`xfail\` | 这个测试预期会失败 | 失败 → XFAIL(预期内),通过 → XPASS(意外) |
+| \`xfail(strict=True)\` | 预期失败,但通过算失败 | 通过也 FAIL,强制修测试 |
+
+\`\`\`bash
+$ pytest -v
+# test_x PASSED        ← 正常通过
+# test_y SKIPPED       ← skip 跳过
+# test_z XFAIL         ← 预期失败,确实失败了
+# test_w XPASS         ← 预期失败但通过了(可能 bug 修好了)
 \`\`\`
 
 ## 八、对比 demo:用 pytest 重写第二章的测试
@@ -2228,6 +2308,55 @@ markers = [
 ]
 \`\`\`
 
+### pytest 插件系统(简要)
+
+pytest 的强大很大程度上来自**插件生态**——pytest 本身只是一套"骨架",插件可以挂载到测试的各个阶段,扩展功能。
+
+**插件能做什么**:
+
+| 插件 | 作用 |
+|------|------|
+| \`pytest-cov\` | 集成 coverage.py,统计覆盖率 |
+| \`pytest-mock\` | 提供 \`mocker\` fixture,简化 mock |
+| \`pytest-xdist\` | 并行跑测试(\`pytest -n 4\`) |
+| \`pytest-randomly\` | 随机化测试顺序,找不稳定测试 |
+| \`pytest-timeout\` | 给每个测试设超时,卡死的测试自动 fail |
+| \`pytest-benchmark\` | 性能基准测试 |
+| \`pytest-asyncio\` | 测试 async/await 协程 |
+| \`pytest-django\` | 集成 Django |
+| \`pytest-vcr\` | 录制/回放 HTTP 请求 |
+
+**插件的 hook 机制**:pytest 定义了一组 hook 函数(如 \`pytest_collection_modifyitems\`、\`pytest_runtest_setup\`),插件实现这些 hook 就能介入测试流程。
+
+\`\`\`python
+# conftest.py 里也能写 hook,等同于"项目内插件"
+def pytest_collection_modifyitems(config, items):
+    """收集完测试后,把名字带 'slow' 的测试标记为 slow。"""
+    for item in items:
+        if "slow" in item.name:
+            item.add_marker(pytest.mark.slow)
+\`\`\`
+
+**写自己的插件**(简要):
+1. 在 \`conftest.py\` 或独立包里定义 fixture / hook
+2. 用 \`pytest11\` entry point 注册成正式插件(可选,跨项目复用时才需要)
+
+\`\`\`text
+# 简单的"项目内插件":在 conftest.py 里写 fixture + hook
+# tests/conftest.py
+import pytest
+
+@pytest.fixture
+def app():
+    return create_app()
+
+def pytest_configure(config):
+    """pytest 启动时调用,注册自定义 marker。"""
+    config.addinivalue_line("markers", "e2e: 端到端测试")
+\`\`\`
+
+**关键认知**:\`conftest.py\` 本质上就是"项目内的轻量插件"。你写在 \`conftest.py\` 里的 fixture 和 hook,效果和第三方插件一样。需要跨项目复用时,再封装成独立 Python 包。
+
 ## 十、实战 demo:测试一个字符串工具模块
 
 把前面的知识综合运用,测一个稍微实用点的模块。
@@ -2313,10 +2442,10 @@ class TestTruncate:
         assert truncate("hello", 5) == "hello"
 
     def test_long_text_truncated(self):
-        assert truncate("Hello, World!", 10) == "Hello..."
+        assert truncate("Hello, World!", 10) == "Hello, ..."
 
     def test_custom_suffix(self):
-        assert truncate("Hello, World!", 10, suffix="…") == "Hello, W…"
+        assert truncate("Hello, World!", 10, suffix="…") == "Hello, Wo…"
 
     def test_max_length_zero_raises(self):
         with pytest.raises(ValueError, match="max_length 必须为正数"):
@@ -2512,20 +2641,23 @@ fixture 方式(pytest):
 import pytest
 
 
+# @pytest.fixture 把普通函数标记为 fixture
+# 函数名 "sample_user" 就是 fixture 的名字(测试通过这个名字引用)
 @pytest.fixture
 def sample_user():
     """提供一个测试用户。"""
     return {"id": 1, "name": "Alice", "email": "alice@example.com"}
 
 
+# 测试函数声明参数 sample_user —— pytest 看到"参数名 = fixture 名"
+# 就会自动调用 sample_user(),把返回值作为参数传入(按名注入,不看类型)
 def test_user_has_name(sample_user):
-    # 参数名 sample_user 匹配 fixture 名,自动注入
     assert "name" in sample_user
     assert sample_user["name"] == "Alice"
 
 
+# 同一个 fixture 可以被任意多个测试复用,无需手动调用
 def test_user_email_format(sample_user):
-    # 同一个 fixture 可以被多个测试复用
     assert "@" in sample_user["email"]
 \`\`\`
 
@@ -2572,8 +2704,12 @@ def db_with_return():
 
 @pytest.fixture
 def db_with_yield():
+    # —— setup 阶段:yield 之前的代码,负责"准备资源" ——
     db = create_db()
+    # —— yield:把 db 交给测试函数,测试在此期间执行 ——
     yield db                     # 把 db 给测试,测试跑完后继续往下
+    # —— teardown 阶段:yield 之后的代码,负责"清理资源" ——
+    # 即使测试失败,这段也会执行(类似 try/finally)
     db.close()                   # 清理代码
     print("数据库已关闭")
 \`\`\`
@@ -2663,24 +2799,31 @@ def expensive_resource():
 import pytest
 
 
+# scope="session":整个 pytest 会话只执行 1 次(所有测试文件跑完才 teardown)
+# 适合最昂贵的资源:启动 Docker、连接数据库服务器
 @pytest.fixture(scope="session")
 def session_resource():
     print(">>> [session] 启动(整个 pytest 只 1 次)")
     return "session_data"
 
 
+# scope="module":每个 .py 文件执行 1 次(同文件的多个测试共享)
+# 适合文件级共享:加载配置、初始化只读数据
 @pytest.fixture(scope="module")
 def module_resource():
     print(">>> [module] 启动(每个文件 1 次)")
     return "module_data"
 
 
+# scope="function"(默认):每个测试函数执行 1 次(完全隔离)
+# 适合轻量资源:测试对象、临时数据
 @pytest.fixture(scope="function")
 def function_resource():
     print(">>> [function] 启动(每个测试 1 次)")
     return "function_data"
 
 
+# 这个测试同时依赖三个不同 scope 的 fixture
 def test_a(session_resource, module_resource, function_resource):
     print("[test_a]")
 
@@ -2715,6 +2858,72 @@ def test_b(session_resource, module_resource, function_resource):
 | **风险** | 低(隔离好) | 中 | 中 | 高(状态污染) |
 
 **经验法则**:**从 function 开始**,只有当初始化太慢时才升级到 module/session,且要确保 fixture 不会污染状态。
+
+### autouse:自动应用的 fixture
+
+普通 fixture 需要"测试函数声明参数"才会被调用。\`autouse=True\` 的 fixture **不需要声明**,会自动应用到所有符合条件的测试。
+
+\`\`\`python
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def reset_global_state():
+    """每个测试前自动清空全局状态,无需测试声明参数。"""
+    GLOBAL_COUNTER.value = 0
+    GLOBAL_CACHE.clear()
+    yield
+    # 测试后再次清理,防止状态泄漏
+    GLOBAL_CACHE.clear()
+
+
+# 这个测试没声明 reset_global_state,但 fixture 已经跑过了
+def test_counter_starts_from_zero():
+    assert GLOBAL_COUNTER.value == 0
+\`\`\`
+
+**autouse 的触发范围**:
+- 默认 \`scope="function"\`:每个测试函数前后都跑
+- 配合 \`scope="module"\`:整个文件前后跑一次
+- 只对**同 scope 或更窄 scope**的测试生效
+
+\`\`\`python
+# autouse + scope=module:整个文件所有测试共享一次自动 setup
+@pytest.fixture(autouse=True, scope="module")
+def init_test_env():
+    setup_test_env()
+    yield
+    teardown_test_env()
+\`\`\`
+
+**适用场景**:
+
+| 场景 | 说明 |
+|------|------|
+| **重置全局状态** | 单例、模块级变量在每个测试前清零 |
+| **统一 mock** | 自动 patch 某个外部依赖,所有测试都生效 |
+| **时间冻结** | autouse + freezegun,所有测试时间固定 |
+| **日志/计时** | 自动记录每个测试的开始结束 |
+
+**注意**:\`autouse\` 是"隐式"的,会让测试行为不那么直观。**只在确实需要"对所有测试都生效"时用**,否则用普通 fixture 显式声明更清晰。
+
+\`\`\`python
+# ❌ 滥用 autouse:这个 fixture 只有几个测试需要,不该 autouse
+@pytest.fixture(autouse=True)
+def special_db():
+    return create_special_db()
+
+# ✅ 改成普通 fixture,谁需要谁声明
+@pytest.fixture
+def special_db():
+    return create_special_db()
+
+def test_a(special_db):  # 需要,声明
+    ...
+
+def test_b():            # 不需要,不声明
+    ...
+\`\`\`
 
 ## 五、conftest.py:共享 fixture
 
@@ -3131,6 +3340,11 @@ class UserRepository:
         self.db = db
 
     def create(self, name, email):
+        if not email or "@" not in email or " " in email:
+            raise ValueError(f"邮箱格式不正确: {email}")
+        local, _, domain = email.partition("@")
+        if not local or not domain:
+            raise ValueError(f"邮箱格式不正确: {email}")
         user_id = self.db.execute(
             "INSERT INTO users (name, email) VALUES (?, ?)", (name, email)
         )
@@ -3207,6 +3421,7 @@ def sample_users(repo):
 
 \`\`\`python
 # tests/test_user_repo.py
+import sqlite3
 import pytest
 from user_repo import UserRepository
 
@@ -3538,14 +3753,17 @@ print(m.some_method.call_args)    # call('a', 'b')
 
 ### 配置 return_value vs side_effect
 
+\`return_value\` 和 \`side_effect\` 都能控制 mock 调用后的"结果",但行为不同。**核心区别**:\`return_value\` 是"静态值",\`side_effect\` 是"动态行为"(可变值/异常/函数)。
+
 \`\`\`python
-# return_value:每次调用都返回同一个值
+# —— return_value:每次调用都返回同一个值(静态) ——
 m = Mock()
 m.return_value = 100
 print(m())   # 100
-print(m())   # 100
+print(m())   # 100  # 不论调多少次,都返回 100
 
-# side_effect:可以是列表(按顺序返回)、函数、异常
+# —— side_effect:可以是列表/函数/异常(动态) ——
+# 形式1:列表 → 按顺序依次返回,列表耗尽会 StopIteration
 m = Mock()
 m.side_effect = [1, 2, 3]   # 第一次返回 1,第二次 2,第三次 3
 print(m())   # 1
@@ -3553,18 +3771,18 @@ print(m())   # 2
 print(m())   # 3
 print(m())   # ❌ StopIteration(列表耗尽)
 
-# side_effect 是函数:返回函数的返回值
+# 形式2:函数 → 每次调用执行函数,返回函数的返回值(可动态计算)
 m = Mock()
 m.side_effect = lambda x: x * 2
 print(m(5))   # 10
 print(m(7))   # 14
 
-# side_effect 是异常:抛出异常
+# 形式3:异常实例 → 每次调用都抛该异常(测异常分支用)
 m = Mock()
 m.side_effect = ValueError("出错了")
 m()   # ❌ 抛 ValueError
 
-# side_effect 是异常类列表:按顺序抛
+# 形式4:异常类列表 → 按顺序抛不同异常
 m = Mock()
 m.side_effect = [ValueError, TypeError]
 m()   # ❌ ValueError
@@ -3604,6 +3822,8 @@ print("x" in mm)       # True
 
 ### 断言调用
 
+mock 会**自动记录所有调用**,你可以断言"是否调用过、调用几次、用什么参数调用"。这是 mock 的核心价值之一——验证"被测代码确实以预期方式调用了依赖"。
+
 \`\`\`python
 m = Mock()
 m(1, 2)
@@ -3611,17 +3831,19 @@ m(3, 4, key="value")
 m.some_method("a")
 m.some_method("b")
 
-# 是否被调用过
+# —— assert_called:至少调用过 1 次 ——
 m.assert_called()                  # ✅ 主 mock 调用过
 
-# 调用次数
+# —— call_count:直接读属性,获取调用次数 ——
 assert m.call_count == 2
 
-# 最后一次调用的参数
+# —— assert_called_once_with:要求"恰好 1 次"且参数匹配 ——
+# 注意:这里会失败,因为 m 被调用了 2 次(不是 once)
 m.assert_called_once_with(3, 4, key="value")  # ❌ 调用了 2 次,不是 once
 
-# 子方法
-m.some_method.assert_called_once()           # ✅ 调用过 1 次
+# —— 子方法的断言:对 m.some_method 单独检查 ——
+# 注意:m.some_method 被调用了 2 次,所以 assert_called_once 会失败
+m.some_method.assert_called_once()           # ❌ 实际调用了 2 次,不是 once
 m.some_method.assert_called_with("b")        # ✅ 最后一次是 ("b",)
 m.some_method.assert_called_once_with("a")   # ❌ 调用了 2 次,不是 once
 
@@ -3723,21 +3945,27 @@ def get_user(uid):
 \`\`\`python
 # test_api.py
 # ❌ 错误:patch 的是 requests.get,但 myapp.api 已经 import 了 requests
+# 原理:import requests 时,myapp.api 模块拿到了对 requests 模块的引用
+#       patch requests.get 改的是 requests 模块,但 myapp.api 里的引用不变
 @patch("requests.get")
 def test_get_user(mock_get):
     ...
 
 # ❌ 也错:虽然不报错,但 myapp.api 里用的还是真 requests
+# 原理:同上,patch "requests" 替换的是 sys.modules["requests"],
+#       但 myapp.api 里已经持有的引用不会被改
 @patch("requests")
 def test_get_user(mock_requests):
     ...
 
 # ✅ 正确:patch myapp.api 模块里的 requests
+# 路径含义:"myapp.api" 是模块,".requests" 是该模块里的 requests 属性
+# 这样直接改 myapp.api 模块的 requests 属性,被测代码访问的就是 Mock
 @patch("myapp.api.requests.get")
 def test_get_user(mock_get):
     ...
 
-# ✅ 也可以:
+# ✅ 也可以:patch 整个 requests 名字,然后配置 .get.return_value
 @patch("myapp.api.requests")
 def test_get_user(mock_requests):
     mock_requests.get.return_value.json.return_value = {...}
@@ -4181,6 +4409,82 @@ mock_db.query("SELECT 1")  # ✅
 \`\`\`
 
 **建议**:**mock 依赖时尽量加 \`spec=RealClass\`**,防止拼写错误导致测试假绿。
+
+### autospec:更严格的 spec
+
+\`spec\` 只限制"属性/方法存在",但不检查"方法签名"。如果想连方法签名(参数个数、参数名)也校验,用 \`autospec=True\`:
+
+\`\`\`python
+class Database:
+    def query(self, sql: str, limit: int = 100):
+        return []
+
+# spec:能查到方法存在,但参数错了不报错
+mock_db = Mock(spec=Database)
+mock_db.query("SELECT 1", 2, 3, 4)   # ✅ 不报错(spec 不管参数)
+
+# autospec:连方法签名也校验
+from unittest.mock import patch
+with patch("__main__.Database", autospec=True) as MockDB:
+    instance = MockDB.return_value
+    instance.query("SELECT 1", 2, 3, 4)   # ❌ TypeError:参数太多
+\`\`\`
+
+\`autospec=True\` 配合 \`patch\` 用,会让 mock 的方法签名和原方法完全一致,调用错了立刻报错。**强烈建议 patch 类/函数时默认加 \`autospec=True\`**。
+
+### seal:防止 mock "漏气"
+
+\`Mock\` 默认会自动创建任意深度的子 mock(\`m.a.b.c.d.e\` 都能访问,全是 Mock)。这容易隐藏 bug——你以为调用了某个方法,其实拼错了名字也会"成功"返回 Mock。
+
+\`mock.seal()\` 把 mock"封住",\`seal\` 之后访问**新的**属性/方法会报错:
+
+\`\`\`python
+from unittest.mock import Mock, seal
+
+m = Mock()
+m.config.host = "localhost"   # 自动创建 config 和 host
+m.config.port = 8080          # 已存在,赋值正常
+
+seal(m)   # 封住 m 及其所有现有子 mock
+
+# ❌ 此时访问新属性会 AttributeError
+m.new_attr           # AttributeError
+m.config.new_attr    # AttributeError(因为 config 已被 seal 传染)
+m.config.host = "x"  # ✅ 已存在的属性仍可改值
+\`\`\`
+
+**适用场景**:
+- 测试复杂依赖树时,防止拼错路径返回 Mock 而不报错
+- 强制"显式声明每个 mock 属性",代码更可读
+
+\`\`\`python
+# 实战:setup 完 mock 后 seal 一下,防止测试里误访问
+def test_xxx():
+    mock_db = Mock()
+    mock_db.query.return_value = [{"id": 1}]
+    seal(mock_db)   # 配置完成,封住
+
+    # 后续代码如果误访问 mock_db.fetch(...),会立刻报错而不是返回 Mock
+\`\`\`
+
+### spec_set vs spec
+
+\`spec\` 允许"设置新属性"(只是访问不存在的不行),\`spec_set\` 更严格——**连设置新属性也不允许**:
+
+\`\`\`python
+class Config:
+    debug = False
+
+m = Mock(spec=Config)
+m.debug = True       # ✅ 已存在,可改
+m.new_attr = "x"     # ✅ spec 允许设置新属性(只是访问不存在才报错)
+
+m2 = Mock(spec_set=Config)
+m2.debug = True      # ✅ 已存在,可改
+m2.new_attr = "x"    # ❌ spec_set 不允许设置新属性
+\`\`\`
+
+\`spec_set\` 比 \`spec\` 更严格,推荐需要严格校验时用。
 
 ## 十一、本章小结
 
@@ -4925,16 +5229,20 @@ class TestAdd:
         assert cart.item_count() == 5   # 合并后 5 本
         assert cart.total() == 250
 
-    @pytest.mark.parametrize("price,quantity", [
-        (-1, 1),    # 负价格
-        (0, 1),     # 零价格(边界,假设允许)
-        (10, 0),    # 零数量
-        (10, -1),   # 负数量
+    @pytest.mark.parametrize("price,quantity,should_raise", [
+        (-1, 1, True),    # 负价格:应抛异常
+        (0, 1, False),    # 零价格(边界,允许):不应抛
+        (10, 0, True),    # 零数量:应抛异常
+        (10, -1, True),   # 负数量:应抛异常
     ])
-    def test_add_invalid_raises(self, cart, price, quantity):
-        if price < 0 or quantity <= 0:
+    def test_add_validation(self, cart, price, quantity, should_raise):
+        if should_raise:
             with pytest.raises(ValueError):
                 cart.add(Item("x", price, quantity))
+        else:
+            # 边界合法时也应正常加入购物车
+            cart.add(Item("x", price, quantity))
+            assert cart.item_count() == 1
 
 
 class TestRemove:
@@ -4943,7 +5251,7 @@ class TestRemove:
         assert cart_with_items.item_count() == 3   # 只剩 3 支笔
 
     def test_remove_nonexistent_raises(self, cart):
-        with pytest.raises(KeyError, match="不存在"):
+        with pytest.raises(KeyError, match="不在购物车"):
             cart.remove("ghost")
 
 
@@ -4972,9 +5280,10 @@ $ pytest test_cart.py --cov=cart --cov-branch --cov-report=term-missing -v
 test_cart.py::TestAdd::test_add_single_item PASSED
 test_cart.py::TestAdd::test_add_multiple_different_items PASSED
 test_cart.py::TestAdd::test_add_same_item_merges_quantity PASSED
-test_cart.py::TestAdd::test_add_invalid_raises[-1-1] PASSED
-test_cart.py::TestAdd::test_add_invalid_raises[10-0] PASSED
-test_cart.py::TestAdd::test_add_invalid_raises[10--1] PASSED
+test_cart.py::TestAdd::test_add_validation[-1-1-True] PASSED
+test_cart.py::TestAdd::test_add_validation[0-1-False] PASSED
+test_cart.py::TestAdd::test_add_validation[10-0-True] PASSED
+test_cart.py::TestAdd::test_add_validation[10--1-True] PASSED
 test_cart.py::TestRemove::test_remove_existing PASSED
 test_cart.py::TestRemove::test_remove_nonexistent_raises PASSED
 test_cart.py::TestTotal::test_empty_cart_total_zero PASSED
@@ -4989,7 +5298,7 @@ cart.py      22      0      10       0    100%
 ---------------------------------------------------------
 TOTAL        22      0      10       0    100%
 
-========================== 12 passed in 0.03s ==========================
+========================== 13 passed in 0.03s ==========================
 \`\`\`
 
 ### 这个 demo 体现的最佳实践
@@ -5003,7 +5312,7 @@ TOTAL        22      0      10       0    100%
 | **测行为不测实现** | 没断言 \`cart._items\`,只断言 \`total()\`/\`item_count()\` |
 | **测公共 API** | 没测 \`_items\` 私有属性 |
 | **边界值** | 零价格、零数量、负数都测了 |
-| **参数化** | \`test_add_invalid_raises\` 一组测多个异常 |
+| **参数化** | \`test_add_validation\` 用 \`should_raise\` 标志统一测异常与合法边界 |
 | **fixture 隔离** | 每个 test class 用独立 fixture |
 | **100% 覆盖** | 简单模块,值得全覆盖 |
 

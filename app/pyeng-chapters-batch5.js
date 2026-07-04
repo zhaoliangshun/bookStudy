@@ -625,6 +625,8 @@ black --line-length 100 .
 
 \`\`\`toml
 [tool.black]
+# 行长度:Black 默认 88,这里改成 100(常见折中值)
+# 88 来源:比 PEP 8 的 79 宽松,又比 100/120 紧凑,适合并列对比代码
 line-length = 100
 \`\`\`
 
@@ -640,6 +642,8 @@ black --target-version py311 .
 
 \`\`\`toml
 [tool.black]
+# 目标 Python 版本:影响格式化决策(如 match-case 只在 py310+ 才保留)
+# 多版本可写 ["py310", "py311", "py312"]
 target-version = ["py311"]
 \`\`\`
 
@@ -653,6 +657,7 @@ black -S .
 
 \`\`\`toml
 [tool.black]
+# 跳过引号规范化:保留单/双引号原样(不推荐,会让引号争论复活)
 skip-string-normalization = true
 \`\`\`
 
@@ -664,11 +669,13 @@ skip-string-normalization = true
 
 \`\`\`toml
 [tool.black]
+# 额外排除的文件(在默认排除基础上追加)
+# 用正则字符串字面量(regex triple-quoted string)
 extend-exclude = '''
 /(
-  | migrations
-  | build
-  | dist
+  | migrations   # Django 迁移文件,自动生成,不要格式化
+  | build        # 构建产物
+  | dist         # 打包产物
 )/
 '''
 \`\`\`
@@ -679,6 +686,7 @@ extend-exclude = '''
 
 \`\`\`toml
 [tool.black]
+# 启用预览特性(实验性,未来版本可能变更,生产项目慎用)
 preview = true
 \`\`\`
 
@@ -1031,6 +1039,28 @@ ruff check --fix .
 
 \`--fix\` 会**直接修改文件**,把能修的问题都修了(未用 import 删掉、None 比较改成 is、import 排序等)。
 
+### 安全修复 vs 不安全修复(--fix vs --unsafe-fixes)
+
+Ruff 把修复分为两类:
+
+- **安全修复(safe fix)**:不会改变代码语义的修复,例如删未用 import、把 \`== None\` 改成 \`is None\`。这些修复 \`--fix\` 会直接做。
+- **不安全修复(unsafe fix)**:可能改变代码行为的修复,例如把 \`open()\` 改成 \`Path.open()\`(可能影响异常类型)。默认 \`--fix\` **不会**做这些,需要显式 \`--unsafe-fixes\` 才会做。
+
+\`\`\`bash
+# 只做安全修复(默认,推荐)
+ruff check --fix .
+
+# 安全 + 不安全修复(慎用,可能改变行为)
+ruff check --fix --unsafe-fixes .
+\`\`\`
+
+输出里,不安全修复会用 \`[*] unsafe\` 标记,提醒你"这条修复有风险"。在 CI 里**绝对不要**用 \`--unsafe-fixes\`,只在本地手动审查时用。
+
+| 修复类型 | 标记 | 命令 | 风险 |
+|---|---|---|---|
+| 安全修复 | \`[*]\` | \`--fix\` | 无(不改语义) |
+| 不安全修复 | \`[*] unsafe\` | \`--fix --unsafe-fixes\` | 有(可能改行为) |
+
 ### 选择规则(--select)
 
 默认 ruff 只启用 F(E/F)规则。你可以用 \`--select\` 启用更多:
@@ -1056,13 +1086,16 @@ ruff check --ignore E501 .
 ruff check --ignore E501,E701 .
 \`\`\`
 
-### 只检查不修复(--no-fix)
+### 只检查不修复(默认行为)
+
+注意:ruff \`check\` 子命令**默认就只检查、不修复**(必须加 \`--fix\` 才会改文件)。所以 CI 里直接用:
 
 \`\`\`bash
-ruff check --no-fix .
+# 默认行为:只报告问题,不修改任何文件
+ruff check .
 \`\`\`
 
-CI 里通常只检查不修复,避免 CI 修改代码。
+CI 里不要加 \`--fix\`,避免 CI 修改代码。
 
 ### 查看某条规则的说明(--explain)
 
@@ -1193,10 +1226,12 @@ True if x else False  → bool(x)
 
 \`\`\`python
 # C4: 低效写法 → 推导式
-# C400
-[x for x in list(x)]      → [x for x in x]
-# C401
-[x for x in set(x)]       → {x for x in x}
+# C400:list(generator) → 列表推导式
+list(x for x in items)    → [x for x in items]
+# C401:set(generator) → 集合推导式
+set(x for x in items)     → {x for x in items}
+# C402:dict(generator) → 字典推导式
+dict(k(v) for v in items) → {k(v): v for v in items}
 \`\`\`
 
 ### 其他常用规则集
@@ -1268,45 +1303,56 @@ Ruff 的配置写在 \`pyproject.toml\` 里,主要分两块:\`[tool.ruff]\`(全�
 \`\`\`toml
 # pyproject.toml
 [tool.ruff]
-# 目标 Python 版本(影响规则,如 UP 会按版本决定能否升级)
+# 目标 Python 版本(影响规则,如 UP 会按版本决定能否升级语法)
 target-version = "py311"
-# 行长度(与 black 保持一致)
+# 行长度(与 black 保持一致,formatter 也会按这个换行)
 line-length = 88
-# 包含的文件(默认是 .py 和 .pyi)
+# 包含的文件(默认是 .py 和 .pyi,这里追加 notebook)
 include = ["*.py", "*.pyi", "*.ipynb"]
-# 排除的文件
+# 排除的文件(默认排除 .git/.venv 等,这里追加业务目录)
 exclude = [
-    ".git",
-    ".venv",
-    "build",
-    "dist",
-    "migrations",
+    ".git",        # 版本控制元数据
+    ".venv",       # 虚拟环境
+    "build",       # 构建产物
+    "dist",        # 打包产物
+    "migrations",  # Django 迁移文件,自动生成
 ]
 
 [tool.ruff.lint]
-# 启用的规则集
+# 启用的规则集(每个字母对应一类规则)
+# E  = pycodestyle Error(PEP 8 错误:空格、空行)
+# F  = Pyflakes(逻辑错误:未用变量、未用 import)
+# I  = isort(import 排序,替代 isort 工具)
+# N  = pep8-naming(命名规范:类驼峰、函数小写)
+# UP = pyupgrade(老语法升级成新语法,如 Dict→dict)
+# B  = bugbear(常见 bug 模式,如可变默认参数)
+# SIM = simplify(可简化的写法,如嵌套 if 合并)
+# RUF = ruff 专属规则(ruff 自定义的检查)
 select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
-# 忽略的规则
+# 忽略的规则(--ignore 优先级高于 --select)
 ignore = [
-    "E501",  # 行长度(交给 formatter 管)
-    "B008",  # 函数调用作默认参数(FastAPI Depends 需要)
+    "E501",  # 行长度(交给 formatter 管,formatter 会自动换行)
+    "B008",  # 函数调用作默认参数(FastAPI 的 Depends() 需要这种写法)
 ]
-# 是否允许自动修复
+# 是否允许自动修复:ALL 表示所有可修复规则都允许 --fix
 fixable = ["ALL"]
-unfixable = []
+unfixable = []  # 不禁止任何规则被修复
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "S106"]  # 测试允许 assert 和密码字面量
-"__init__.py" = ["F401"]  # __init__ 允许未用 import(导出用)
+# 测试目录豁免:S101(assert)、S106(密码字面量)在测试里是正常写法
+"tests/**" = ["S101", "S106"]
+# __init__.py 豁免 F401:导出 API 时 import 了但不直接用
+"__init__.py" = ["F401"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["myproject"]  # 项目内包名
+# 告诉 ruff 的 isort:myproject 是项目内包,排在 third-party 之后
+known-first-party = ["myproject"]
 
 [tool.ruff.format]
-# 格式化配置(对标 black)
-quote-style = "double"  # 双引号
-indent-style = "space"  # 空格缩进
-line-ending = "auto"
+# 格式化配置(对标 black,默认就 black 兼容)
+quote-style = "double"  # 引号统一双引号(和 black 一致)
+indent-style = "space"  # 用空格缩进(不用 tab)
+line-ending = "auto"    # 自动适应操作系统换行符
 \`\`\`
 
 ### 配置项说明
@@ -1438,12 +1484,12 @@ ruff check src/myproject/main.py
 输出:
 
 \`\`\`bash
+src/myproject/main.py:1:1 F401 [*] 'os' imported but unused
 src/myproject/main.py:2:1 F401 [*] 'sys' imported but unused
 src/myproject/main.py:6:1 N802 Function name 'Main' should be lowercase
 src/myproject/main.py:6:10 E203 Whitespace before ':'
 src/myproject/main.py:7:8 E711 Comparison to 'None' should be 'if x is None:'
 src/myproject/main.py:11:19 E203 Whitespace before ':'
-src/myproject/main.py:15:5 F811 Redefinition of unused 'get_config' from line 6
 src/myproject/main.py:5:1 UP006 [*] Use 'dict' instead of 'Dict'
 src/myproject/main.py:5:1 UP006 [*] Use 'list' instead of 'List'
 Found 8 errors.
@@ -1459,8 +1505,8 @@ ruff check --fix src/myproject/main.py
 修复后:
 
 \`\`\`python
-# 修复后(只剩 N802 和 E711 这种需要人工判断的)
-import os
+# 修复后(F401 删了未用的 import,UP006 把 Dict/List 改成 dict/list)
+# 剩下 N802 和 E711 这种需要人工判断的,ruff 不会自动改
 from myproject.utils import helper
 
 def Main(x, y):
@@ -1725,9 +1771,13 @@ isort 的配置可以写在多个地方:pyproject.toml、setup.cfg、.isort.cfg�
 
 \`\`\`toml
 [tool.isort]
+# profile 是预设风格:用 black 项目必须设这个,否则 isort 和 black 在 import 换行上打架
 profile = "black"
+# 行长度:与 black 保持一致(isort 会按这个决定何时换行)
 line_length = 88
+# 项目内包名:isort 据此把它们单独成组,排第三方之后
 known_first_party = ["myproject"]
+# 强制声明为第三方(可选,isort 通常能自动识别,但识别不准时手动声明)
 known_third_party = ["requests", "pandas"]
 \`\`\`
 
@@ -1820,10 +1870,12 @@ from typing import Optional
 
 \`multi_line_output\` 控制 import 换行的样式,有 0-12 共 13 种模式。最常用的是:
 
-- **0**:垂直(每个一行)
-- **3**:垂直 + 尾随逗号
-- **5**:悬挂缩进
-- **9**:黑兼容(black profile 自动用)
+- **0**:Vertical(垂直,每个 import 元素单独一行)
+- **3**:Vertical Hanging Indent(垂直悬挂缩进,带尾随逗号,常用)
+- **5**:Vertical Grid Grouped(垂直网格分组,尽量一行放多个)
+- **9**:Vertical Grid Grouped Hanging Indent(黑兼容,black profile 自动用这个)
+
+> 实际项目中**不要手动设 multi_line_output**,直接用 \`profile = "black"\` 让 isort 自动选。手动设容易和 black 冲突。
 
 ## 七、isort 与 Black 的冲突:用 profile 解决
 
@@ -2104,35 +2156,36 @@ pre-commit --version
 
 \`\`\`yaml
 # .pre-commit-config.yaml
+# 声明在 git commit 之前要跑哪些工具
 repos:
-  # Black:格式化
+  # Black:格式化(管外观)
   - repo: https://github.com/psf/black
-    rev: 24.3.0
+    rev: 24.3.0  # rev 钉死版本!避免不同开发者跑出不同格式
     hooks:
       - id: black
-        language_version: python3.11
+        language_version: python3.11  # 指定 Python 版本,避免用错环境
 
-  # Ruff:lint + format
+  # Ruff:lint + format(管质量 + 外观)
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.9
+    rev: v0.6.9  # 钉死 ruff 版本(规则集会随版本变化,必须锁)
     hooks:
       - id: ruff
-        args: [--fix]
-      - id: ruff-format
+        args: [--fix]  # 检查并自动修复(可修复的规则)
+      - id: ruff-format  # 格式化(对标 black)
 
   # isort:import 排序
   - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
+    rev: 5.13.2  # 钉死 isort 版本
     hooks:
       - id: isort
-        args: [--profile=black]
+        args: [--profile=black]  # 用 black 预设,避免与 black 打架
 
   # 基础检查:大文件、冲突标记、YAML 语法等
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v4.6.0  # 钉死 pre-commit-hooks 版本
     hooks:
-      - id: trailing-whitespace
-      - id: end-of-file-fixer
+      - id: trailing-whitespace   # 删除行尾空格
+      - id: end-of-file-fixer     # 确保文件末尾有换行
       - id: check-yaml
       - id: check-added-large-files
       - id: check-merge-conflict
@@ -2162,6 +2215,43 @@ git commit --no-verify -m "紧急修复"
 \`\`\`
 
 \`--no-verify\` 会跳过 hook。**只在紧急情况下用**,而且要在团队里说明原因。
+
+### 更新 hook 版本(autoupdate)
+
+\`.pre-commit-config.yaml\` 里每个 repo 的 \`rev\` 都是钉死的版本。时间久了,工具会出新版本(black 24.3 → 24.9、ruff 0.6 → 0.7...),手动改 rev 很繁琐。用 \`autoupdate\` 一键升级:
+
+\`\`\`bash
+# 自动把所有 repo 的 rev 更新到最新发布版本
+pre-commit autoupdate
+# 输出:
+# [https://github.com/psf/black] updating 24.3.0 -> 24.10.0
+# [https://github.com/astral-sh/ruff-pre-commit] updating v0.6.9 -> v0.7.0
+\`\`\`
+
+注意:autoupdate 后,**所有开发者要重新 \`pre-commit install\`**(或 pre-commit 会自动拉取新版本)。建议每月跑一次 autoupdate,作为版本升级节奏。
+
+### 自动修复(autofix)
+
+很多 hook(black、ruff --fix、isort)会**自动修改文件**。pre-commit 默认行为:
+
+- 如果 hook 修改了文件 → hook **失败**(退出码非 0)→ 提交被阻止
+- 你需要 \`git add\` 修复后的文件,再 \`git commit\`
+
+这是 pre-commit 的"autofix"机制:工具自动改文件,但你必须**手动确认**(重新 add)才会进提交。这样防止"工具改坏了但你没看就提交"。
+
+\`\`\`bash
+# 1. 工具改了文件,提交被阻止
+git commit -m "feat: xxx"
+# > black................................................Failed
+# > - hook id: black
+# > - files were modified by this hook
+
+# 2. 重新 add 工具改后的文件
+git add .
+
+# 3. 再提交(这次会过)
+git commit -m "feat: xxx"
+\`\`\`
 
 ### pre-commit 的工作流程
 
@@ -2218,47 +2308,107 @@ mypy.ini         # mypy 配置
 pyproject.toml   # 元数据 + 依赖 + 所有工具配置
 \`\`\`
 
+### 从 setup.py / setup.cfg 迁移到 pyproject.toml
+
+老项目通常用 \`setup.py\` + \`setup.cfg\` 管理元数据和配置。迁移到 \`pyproject.toml\` 的对应关系:
+
+| 老配置 | 新配置(pyproject.toml) | 说明 |
+|---|---|---|
+| setup.py 里的 \`setup(name=..., version=...)\` | \`[project]\` 段 | 元数据从函数参数变 TOML 字段 |
+| setup.py 里的 \`install_requires=[...]\` | \`[project] dependencies\` | 运行时依赖 |
+| setup.py 里的 \`extras_require={'dev': [...]\` | \`[project.optional-dependencies] dev\` | 可选依赖 |
+| setup.py 里的 \`entry_points={'console_scripts': ...}\` | \`[project.scripts]\` | 命令行入口 |
+| setup.cfg 里的 \`[tool:pytest]\` | \`[tool.pytest.ini_options]\` | pytest 配置 |
+| setup.cfg 里的 \`[flake8]\` | (迁移到 ruff) \`[tool.ruff]\` | flake8 → ruff |
+| setup.cfg 里的 \`[mypy]\` | \`[tool.mypy]\` | mypy 配置 |
+| mypy.ini | \`[tool.mypy]\` | mypy 配置(单文件 → 合并) |
+| .isort.cfg | \`[tool.isort]\` | isort 配置 |
+| pytest.ini | \`[tool.pytest.ini_options]\` | pytest 配置 |
+
+迁移示例:
+
+\`\`\`python
+# 老时代:setup.py
+from setuptools import setup, find_packages
+
+setup(
+    name="myproject",
+    version="1.0.0",
+    packages=find_packages(),
+    install_requires=["fastapi>=0.110", "pydantic>=2.0"],
+    extras_require={"dev": ["pytest>=8.0", "black>=24.0"]},
+    entry_points={"console_scripts": ["myproject=myproject.main:app"]},
+)
+\`\`\`
+
+迁移后:
+
+\`\`\`toml
+# 新时代:pyproject.toml
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "myproject"
+version = "1.0.0"
+dependencies = ["fastapi>=0.110", "pydantic>=2.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "black>=24.0"]
+
+[project.scripts]
+myproject = "myproject.main:app"
+\`\`\`
+
+> 迁移后可以删掉 \`setup.py\`、\`setup.cfg\`(只要 pyproject.toml 配置完整)。现代构建后端(hatchling、setuptools 61+、poetry、pdm)都支持读 pyproject.toml。
+
 ### pyproject.toml 的结构
 
 \`\`\`toml
 # pyproject.toml
 
-# 1. 构建系统(必填,告诉 pip 怎么打包)
+# 1. 构建系统(必填,告诉 pip 怎么打包成 wheel/sdist)
+# PEP 518 规定:requires 是构建所需的依赖,build-backend 是构建后端
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-# 2. 项目元数据(PEP 621)
+# 2. 项目元数据(PEP 621 标准)
 [project]
-name = "myproject"
-version = "1.0.0"
-description = "示例项目"
-requires-python = ">=3.11"
+name = "myproject"          # 包名(PyPI 上的名字,只能小写+连字符)
+version = "1.0.0"           # 语义化版本号
+description = "示例项目"     # 一句话简介(PyPI 列表显示)
+readme = "README.md"        # 长描述从哪个文件读
+requires-python = ">=3.11"  # 支持的 Python 最低版本
+authors = [{ name = "Your Name", email = "you@example.com" }]
+# 运行时依赖(pip install myproject 会装的)
 dependencies = [
     "fastapi>=0.110",
     "pydantic>=2.0",
     "typer>=0.12",
 ]
 
+# 可选依赖(pip install myproject[dev] 会额外装的)
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0",
-    "pytest-cov>=5.0",
-    "black>=24.0",
-    "ruff>=0.6",
-    "isort>=5.13",
-    "mypy>=1.10",
-    "pre-commit>=3.7",
+    "pytest>=8.0",        # 测试框架
+    "pytest-cov>=5.0",    # 覆盖率插件
+    "black>=24.0",        # 格式化器
+    "ruff>=0.6",          # linter + formatter
+    "isort>=5.13",        # import 排序
+    "mypy>=1.10",         # 类型检查
+    "pre-commit>=3.7",    # git hook 管理
 ]
 
-# 3. 命令行入口
+# 3. 命令行入口(pip install 后会生成可执行命令)
 [project.scripts]
-myproject = "myproject.main:app"
+myproject = "myproject.main:app"  # 命令名 = "模块:对象"
 
-# 4. 工具配置(每个工具一段)
+# 4. 工具配置(每个工具一段 [tool.xxx])
 [tool.black]
-line-length = 88
-target-version = ["py311"]
+line-length = 88                # 行长度:用默认 88
+target-version = ["py311"]      # 目标 Python 版本
 
 [tool.ruff]
 target-version = "py311"
@@ -2266,27 +2416,27 @@ line-length = 88
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
-ignore = ["E501"]
+ignore = ["E501"]               # 行长度交给 formatter
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]
+"tests/**" = ["S101"]           # 测试允许 assert
 
 [tool.isort]
-profile = "black"
+profile = "black"               # 必须!与 black 兼容
 known_first_party = ["myproject"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests"]           # 测试目录
 addopts = "-v --cov=myproject --cov-report=term-missing"
 
 [tool.mypy]
 python_version = "3.11"
-strict = true
-ignore_missing_imports = true
+strict = true                   # 严格模式(所有函数都要注解)
+ignore_missing_imports = true   # 第三方库没类型存根时不报错
 
 [tool.coverage.run]
-source = ["myproject"]
-omit = ["tests/*"]
+source = ["myproject"]          # 统计覆盖率的包
+omit = ["tests/*"]              # 不统计测试文件
 \`\`\`
 
 ### 工具配置速查
@@ -2357,6 +2507,7 @@ PyCharm 配置相对繁琐:
 # .github/workflows/lint.yml
 name: Lint
 
+# 触发条件:推送到 main 或对 main 提 PR 时跑
 on:
   push:
     branches: [main]
@@ -2365,18 +2516,23 @@ on:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # 跑在 Ubuntu 最新版上
     steps:
+      # 1. 拉代码
       - uses: actions/checkout@v4
 
+      # 2. 装 Python(setup-python 会自动缓存 pip 依赖,加速 CI)
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"  # 启用 pip 缓存,二次 CI 提速明显
 
+      # 3. 装工具(版本可写进 requirements-dev.txt,这里简化)
       - name: Install tools
         run: pip install black ruff isort
 
+      # 4. 以下全部用 --check:CI 只检查不修改,要"通过/不通过"信号
       - name: Black check
         run: black --check .
 
@@ -2420,32 +2576,34 @@ jobs:
 
 \`\`\`makefile
 # Makefile
+# 注意:Makefile 的命令行必须用 Tab 缩进,不能用空格!
+# 下面示例在文档里显示为 4 个空格,实际写的时候请替换成 1 个 Tab。
 .PHONY: lint format test check install-hooks
 
-# 检查(只读,不修改)
+# 检查(只读,不修改)— CI 也跑这套
 lint:
-    black --check .
-    ruff check .
-    isort --check-only --profile=black .
-    mypy .
+	black --check .
+	ruff check .
+	isort --check-only --profile=black .
+	mypy .
 
-# 格式化(会修改文件)
+# 格式化(会修改文件)— 本地开发跑这套
 format:
-    black .
-    ruff check --fix .
-    ruff format .
-    isort --profile=black .
+	black .
+	ruff check --fix .
+	ruff format .
+	isort --profile=black .
 
 # 跑测试
 test:
-    pytest
+	pytest
 
-# 一键检查(format + lint + test)
+# 一键检查(format + lint + test)— 提交前跑一次
 check: format lint test
 
 # 安装 pre-commit hook
 install-hooks:
-    pre-commit install
+	pre-commit install
 \`\`\`
 
 用法:
@@ -2630,32 +2788,39 @@ jobs:
 ### Makefile
 
 \`\`\`makefile
+# 注意:命令行必须用 Tab 缩进(此处已用 Tab)
 .PHONY: lint format test check install-hooks clean
 
+# 只读检查,CI 复用
 lint:
-    black --check .
-    ruff check .
-    ruff format --check .
-    isort --check-only --profile=black .
-    mypy .
+	black --check .
+	ruff check .
+	ruff format --check .
+	isort --check-only --profile=black .
+	mypy .
 
+# 修改文件的格式化
 format:
-    black .
-    ruff check --fix .
-    ruff format .
-    isort --profile=black .
+	black .
+	ruff check --fix .
+	ruff format .
+	isort --profile=black .
 
+# 跑测试
 test:
-    pytest
+	pytest
 
+# 一键检查(不格式化,只 lint + test)
 check: lint test
 
+# 安装 git hook
 install-hooks:
-    pre-commit install
-    pre-commit install --hook-type pre-push
+	pre-commit install
+	pre-commit install --hook-type pre-push
 
+# 清理缓存
 clean:
-    rm -rf build dist *.egg-info .pytest_cache .mypy_cache .ruff_cache
+	rm -rf build dist *.egg-info .pytest_cache .mypy_cache .ruff_cache
 \`\`\`
 
 ## 八、工具链各工具的职责
@@ -2821,12 +2986,13 @@ dev = [
     "isort>=5.13",
     "mypy>=1.10",
     "pre-commit>=3.7",
-    "types-pyyaml>=6.0",
+    "types-pyyaml>=6.0",  # mypy 检查 pyyaml 需要的类型存根
 ]
 
 [project.scripts]
 myproject = "myproject.main:app"
 
+# 告诉 hatchling:源码在 src/myproject,打包时包含这个目录
 [tool.hatch.build.targets.wheel]
 packages = ["src/myproject"]
 
@@ -2839,10 +3005,12 @@ target-version = ["py311"]
 [tool.ruff]
 target-version = "py311"
 line-length = 88
-src = ["src"]
+src = ["src"]  # 告诉 ruff 哪些是项目源码(用于 first-party 判断)
 exclude = [".git", ".venv", "build", "dist"]
 
 [tool.ruff.lint]
+# 注意:这里 select 包含 "I"(ruff 内置 isort)
+# 如果同时用 isort 工具,会和 ruff I 打架 → 实际项目二选一
 select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
 ignore = ["E501", "B008"]
 
@@ -2853,6 +3021,8 @@ ignore = ["E501", "B008"]
 known-first-party = ["myproject"]
 
 [tool.isort]
+# 注意:如果上面 ruff select 里有 "I",这里 [tool.isort] 应删掉(二选一)
+# 此处保留是为演示 isort 的配置写法,实际项目请按需二选一
 profile = "black"
 known_first_party = ["myproject"]
 src_paths = ["src"]
@@ -2860,13 +3030,13 @@ src_paths = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --cov=myproject --cov-report=term-missing"
-pythonpath = ["src"]
+pythonpath = ["src"]  # 让 pytest 能直接 import src 下的包
 
 [tool.mypy]
 python_version = "3.11"
 strict = true
 ignore_missing_imports = true
-plugins = ["pydantic.mypy"]
+plugins = ["pydantic.mypy"]  # pydantic 的 mypy 插件(增强类型推断)
 
 [tool.coverage.run]
 source = ["myproject"]
@@ -3175,6 +3345,7 @@ repos:
 # .github/workflows/ci.yml
 name: CI
 
+# 触发:推 main 或对 main 提 PR
 on:
   push:
     branches: [main]
@@ -3182,6 +3353,7 @@ on:
     branches: [main]
 
 jobs:
+  # 1. lint job:只跑静态检查(快,先跑)
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -3189,24 +3361,31 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"  # 缓存 pip,加速二次 CI
       - run: pip install black ruff isort mypy
-      - run: black --check .
-      - run: ruff check .
-      - run: ruff format --check .
+      - run: black --check .             # 格式检查(不改文件)
+      - run: ruff check .                # lint 检查(不改文件)
+      - run: ruff format --check .       # format 检查(不改文件)
       - run: isort --check-only --profile=black .
-      - run: mypy src
+      - run: mypy src                    # 类型检查
 
+  # 2. test job:跑测试,用 matrix 在多版本 Python 上并行跑
   test:
     runs-on: ubuntu-latest
     strategy:
+      # matrix 矩阵:每个 python-version 会起一个并行 job
+      # 这样能验证代码在 3.11 和 3.12 上都能跑
       matrix:
         python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
+          # 注意:\${{ }} 是 GitHub Actions 表达式语法
+          # 这里从 matrix 取当前 job 对应的 Python 版本
           python-version: \${{ matrix.python-version }}
-      - run: pip install -e ".[dev]"
+          cache: "pip"
+      - run: pip install -e ".[dev]"  # 安装项目 + dev 依赖(可选依赖)
       - run: pytest
 \`\`\`
 

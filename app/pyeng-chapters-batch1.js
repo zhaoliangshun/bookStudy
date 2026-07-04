@@ -323,9 +323,12 @@ Python 标准库 \`logging\` 的设计围绕四个核心组件,理解它们的�
 \`\`\`python
 import logging
 
+# basicConfig 一键配置 root logger:级别 + 格式串
+# 格式串里的 %(name)s 是 LogRecord 属性占位符,不是 % 格式化的 %s
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logging.info("服务启动")
-logging.warning("磁盘剩余空间不足 10%%")
+# 注意:无 args 时 logging 不做 % 格式化,直接原样输出消息
+logging.warning("磁盘剩余空间不足 10%")
 \`\`\`
 
 输出:
@@ -554,12 +557,16 @@ def handle_request(req):
 import logging
 
 def setup_logging():
+    # 入口处统一配置 root logger,各业务模块只负责 getLogger(__name__)
     logging.basicConfig(
         level=logging.INFO,
+        # %(levelname)-8s:级别左对齐宽度 8,让多行日志列对齐
+        # %(name)s:logger 名(即 __name__),自动带模块路径
         format="%(asctime)s %(levelname)-8s %(name)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
     # 单独把某个模块调成 DEBUG
+    # 利用 __name__ 树形命名,可按包名精准调级别而不影响其他模块
     logging.getLogger("myapp.db").setLevel(logging.DEBUG)
 
 if __name__ == "__main__":
@@ -723,15 +730,19 @@ logger.info(...)   → logger 级别 INFO(20) >= INFO ✓
 \`\`\`python
 import logging
 
+# StreamHandler 默认输出到 sys.stderr(不是 stdout),与程序正常输出分离
 console = logging.StreamHandler()  # 默认 sys.stderr
-console.setLevel(logging.INFO)
+console.setLevel(logging.INFO)  # handler 自己的级别阈值(第二道门)
+# Formatter 决定日志文本形态:时间 + 级别 + 消息
 console.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
 
 logger = logging.getLogger("demo")
-logger.addHandler(console)
-logger.setLevel(logging.DEBUG)
+logger.addHandler(console)  # 把 handler 挂到 logger 上
+logger.setLevel(logging.DEBUG)  # logger 级别(第一道门),DEBUG=10
 
+# info(20) 通过 logger 门(>=10)和 handler 门(>=INFO=20)→ 输出
 logger.info("控制台可见")
+# debug(10) 通过 logger 门但被 handler 门拦下(10 < 20)→ 丢弃
 logger.debug("控制台不可见(handler 级别 INFO)")
 \`\`\`
 
@@ -744,8 +755,10 @@ logger.debug("控制台不可见(handler 级别 INFO)")
 \`\`\`python
 import logging
 
+# 务必显式指定 encoding="utf-8",否则中文可能乱码(Windows 默认 gbk)
 fh = logging.FileHandler("app.log", encoding="utf-8")
-fh.setLevel(logging.DEBUG)
+fh.setLevel(logging.DEBUG)  # 文件存全量 DEBUG 及以上,便于排查
+# 格式串多带 %(name)s,方便定位日志来自哪个模块
 fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
 
 logger = logging.getLogger("demo")
@@ -772,10 +785,11 @@ logger.info("写入文件")
 import logging
 from logging.handlers import RotatingFileHandler
 
+# RotatingFileHandler:文件超过 maxBytes 时自动滚动归档,防磁盘被撑爆
 handler = RotatingFileHandler(
     "app.log",
-    maxBytes=10 * 1024 * 1024,  # 10 MB
-    backupCount=5,              # 保留 5 个历史文件
+    maxBytes=10 * 1024 * 1024,  # 10 MB:单文件上限,经验值 10~100 MB
+    backupCount=5,              # 保留 5 个历史文件(加当前文件共 6 个)
     encoding="utf-8",
 )
 handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
@@ -817,11 +831,12 @@ logger.addHandler(handler)
 import logging
 from logging.handlers import TimedRotatingFileHandler
 
+# TimedRotatingFileHandler:按时间滚动,适合按天/小时归档的场景
 handler = TimedRotatingFileHandler(
     "app.log",
-    when="midnight",   # 每天午夜滚动
-    interval=1,
-    backupCount=7,     # 保留 7 天
+    when="midnight",   # 每天午夜滚动(也可 'H'/'D'/'W0' 等单位)
+    interval=1,        # 滚动间隔,配合 when 使用;midnight 时通常为 1
+    backupCount=7,     # 保留 7 天历史,超期自动删除
     encoding="utf-8",
 )
 handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
@@ -865,16 +880,20 @@ import logging.handlers
 import queue
 
 # 1. 创建队列
+# Queue(-1) 表示无界:业务线程入队永不阻塞,但崩溃时未消费日志会丢
 log_queue = queue.Queue(-1)  # 无界
 
 # 2. QueueHandler 给业务 logger 用(非阻塞)
+# emit 只做 put_nowait,不做真实 IO,极快,不会阻塞业务线程
 queue_handler = logging.handlers.QueueHandler(log_queue)
 
 # 3. 真正的 handler(慢 IO),由 listener 调用
+# 这个 handler 只被 listener 线程调用,业务线程接触不到
 file_handler = logging.FileHandler("app.log", encoding="utf-8")
 file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
 
 # 4. QueueListener 负责从队列消费,转发给真正的 handler
+# start() 启动一个后台守护线程,持续从队列取 record 调 file_handler
 queue_listener = logging.handlers.QueueListener(log_queue, file_handler)
 queue_listener.start()  # 启动后台线程
 
@@ -886,6 +905,7 @@ logger.setLevel(logging.INFO)
 logger.info("异步写入,不阻塞业务")
 
 # 6. 程序退出时停止 listener
+# stop() 会先把队列里剩余日志 flush 完再退出,避免丢日志
 import atexit
 atexit.register(queue_listener.stop)
 \`\`\`
@@ -919,11 +939,13 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 Formatter 通过格式字符串决定一条日志的文本形态。
 
 \`\`\`python
+# Formatter 通过格式串决定日志文本形态
+# 格式串中的 %(xxx)s 是 LogRecord 属性占位符,由 Formatter 在输出时填充
 fmt = logging.Formatter(
     fmt="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
+    datefmt="%Y-%m-%d %H:%M:%S",  # 控制 %(asctime)s 的展示格式
 )
-handler.setFormatter(fmt)
+handler.setFormatter(fmt)  # 把 formatter 挂到 handler(logger 不持有 formatter)
 \`\`\`
 
 ### 常用字段(LogRecord 属性)
@@ -1002,18 +1024,23 @@ class MsecFormatter(logging.Formatter):
 import json
 import logging
 
+# 自定义 JSON Formatter:继承 logging.Formatter 重写 format 方法
+# 生产环境机器消费(告警/分析)需要结构化日志,便于 ELK/Loki 检索聚合
 class JsonFormatter(logging.Formatter):
     def format(self, record):
+        # 用 record 的属性构造字典,字段名由自己定(供下游解析)
         log = {
-            "ts": self.formatTime(record, self.datefmt),
+            "ts": self.formatTime(record, self.datefmt),  # 复用父类时间格式化
             "level": record.levelname,
             "logger": record.name,
-            "msg": record.getMessage(),
+            "msg": record.getMessage(),  # 已按 % args 格式化好的消息
             "module": record.module,
             "line": record.lineno,
         }
+        # 异常信息必须单独处理,否则 traceback 会丢失
         if record.exc_info:
             log["traceback"] = self.formatException(record.exc_info)
+        # ensure_ascii=False 保留中文,避免 \\uXXXX 转义影响可读性
         return json.dumps(log, ensure_ascii=False)
 
 handler = logging.StreamHandler()
@@ -1068,10 +1095,14 @@ handler.addFilter(logging.Filter("myapp.db"))
 LogRecord 可以携带自定义属性,Filter 基于它过滤:
 
 \`\`\`python
+# 按业务字段过滤:LogRecord 可以携带自定义属性(extra 注入)
 class HighValueFilter(logging.Filter):
     def filter(self, record):
+        # getattr 安全取值:未传 extra 时返回默认 0,避免 AttributeError
         return getattr(record, "amount", 0) > 1000
 
+# extra 的 key 会成为 record 的属性,可在 Filter/Formatter 中引用
+# 注意:extra 的 key 不能与 LogRecord 内置属性(name/message/level 等)冲突
 logger.info("大额订单", extra={"amount": 2000})   # 通过
 logger.info("小额订单", extra={"amount": 50})     # 被过滤
 \`\`\`
@@ -1086,23 +1117,27 @@ logger.info("小额订单", extra={"amount": 50})     # 被过滤
 
 \`\`\`python
 import logging
+import os
 
 def setup_logging():
-    logger = logging.getLogger()  # root
-    logger.setLevel(logging.DEBUG)
+    logger = logging.getLogger()  # root:在 root 配 handler,子 logger 靠传播复用
+    logger.setLevel(logging.DEBUG)  # root 设最低级别,把过滤交给各 handler
 
-    # 公共格式
+    # RotatingFileHandler 不会自动建目录,需提前创建,否则启动报 FileNotFoundError
+    os.makedirs("logs", exist_ok=True)
+
+    # 公共格式:所有 handler 共用一个 formatter 实例
     fmt = logging.Formatter(
         "%(asctime)s %(levelname)-8s [%(processName)s] %(name)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    # 1. 控制台:INFO 及以上
+    # 1. 控制台:INFO 及以上(开发时盯屏幕)
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
     console.setFormatter(fmt)
 
-    # 2. 全量文件:DEBUG 及以上(滚动)
+    # 2. 全量文件:DEBUG 及以上(滚动),排查时用
     from logging.handlers import RotatingFileHandler
     debug_file = RotatingFileHandler(
         "logs/debug.log", maxBytes=50*1024*1024, backupCount=5, encoding="utf-8"
@@ -1110,13 +1145,14 @@ def setup_logging():
     debug_file.setLevel(logging.DEBUG)
     debug_file.setFormatter(fmt)
 
-    # 3. 错误文件:ERROR 及以上
+    # 3. 错误文件:ERROR 及以上(滚动),便于告警脚本扫描
     error_file = RotatingFileHandler(
         "logs/error.log", maxBytes=20*1024*1024, backupCount=10, encoding="utf-8"
     )
     error_file.setLevel(logging.ERROR)
     error_file.setFormatter(fmt)
 
+    # 一个 logger 挂多个 handler:同一条日志按各 handler 级别独立决定是否输出
     logger.addHandler(console)
     logger.addHandler(debug_file)
     logger.addHandler(error_file)
@@ -1309,30 +1345,40 @@ logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 \`\`\`python
 import logging.config
 
+# dictConfig schema:用字典描述 formatters/handlers/loggers/root 的配置
+# 这是生产推荐的配置方式,可来自 YAML/JSON 文件,便于外置化管理
 config = {
-    "version": 1,
+    "version": 1,  # 必填,目前固定为 1(schema 版本号)
+    # False=保留未声明的 logger;True(默认)会禁用第三方库日志,生产务必 False
     "disable_existing_loggers": False,
+    # formatters:命名格式化器,供 handlers 引用
     "formatters": {
         "simple": {
             "format": "%(asctime)s %(levelname)s %(name)s %(message)s",
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
     },
+    # handlers:命名 handler,class 是完整类路径,其余键作为构造参数
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
             "level": "INFO",
-            "formatter": "simple",
+            "formatter": "simple",  # 引用上面定义的 formatter 名
+            # ext:// 是特殊语法,引用 sys.stdout 对象(不能直接写 sys.stdout)
             "stream": "ext://sys.stdout",
         },
     },
+    # loggers:非 root logger 配置,key 是 logger 名(如模块/包名)
     "loggers": {
         "demo": {
             "level": "DEBUG",
-            "handlers": ["console"],
+            "handlers": ["console"],  # 该 logger 自己的 handler
+            # propagate=False 阻止向上传播到 root,避免重复输出
+            # 配了自己的 handler 就应 propagate=False
             "propagate": False,
         },
     },
+    # root:所有 logger 的最终祖先,通常配兜底 handler
     "root": {
         "level": "WARNING",
         "handlers": ["console"],
@@ -1489,10 +1535,12 @@ import yaml
 from pathlib import Path
 
 def setup_logging(config_path="logging.yaml", default_level=logging.INFO):
+    # 兜底:配置文件不存在时用 basicConfig,保证至少有日志输出
     path = Path(config_path)
     if path.exists():
         with open(path, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
+            config = yaml.safe_load(f)  # YAML → dict
+        # dictConfig 接收字典,自动按 schema 创建 formatters/handlers/loggers
         logging.config.dictConfig(config)
     else:
         logging.basicConfig(level=default_level)
@@ -1669,6 +1717,7 @@ import yaml
 from pathlib import Path
 
 def setup_logging(default_level=logging.INFO):
+    # 多环境配置:按 APP_ENV 选择对应 yaml,缺省回退到通用 yaml
     env = os.getenv("APP_ENV", "dev")
     config_path = Path(f"configs/logging.{env}.yaml")
     if not config_path.exists():
@@ -1677,7 +1726,8 @@ def setup_logging(default_level=logging.INFO):
     if config_path.exists():
         with open(config_path, encoding="utf-8") as f:
             config = yaml.safe_load(f.read())
-        # 环境变量覆盖
+        # 运行时用环境变量覆盖某 logger 级别,无需改 yaml
+        # 适合临时调级别排查问题:LOG_LEVEL=DEBUG python -m myapp
         override = os.getenv("LOG_LEVEL")
         if override:
             config.setdefault("loggers", {}).setdefault("myapp", {})["level"] = override.upper()
@@ -1685,7 +1735,7 @@ def setup_logging(default_level=logging.INFO):
     else:
         logging.basicConfig(level=default_level)
 
-    # 确保日志目录存在(TimedRotatingFileHandler 不会自动建目录)
+    # 确保日志目录存在(TimedRotatingFileHandler 不会自动建目录,缺目录会报错)
     Path("logs").mkdir(exist_ok=True)
 \`\`\`
 
@@ -1740,9 +1790,11 @@ if __name__ == "__main__":
 \`incremental: true\` 时,dictConfig **不创建新 handler/formatter**,只调整已有 logger 的级别/handler 关系。适合「运行时热调级别」:
 
 \`\`\`python
+# incremental=True:不重建 handler/formatter,只调整已有 logger 的级别
+# 适合「运行时热调级别」,避免重复创建文件 handler 导致句柄泄漏
 config = {
     "version": 1,
-    "incremental": True,
+    "incremental": True,  # 增量模式:仅 logger 的 level/handlers/propagate 生效
     "loggers": {
         "myapp.db": {"level": "DEBUG"},
     },
@@ -1766,8 +1818,11 @@ formatters:
 # myapp/logging.py
 import json, logging
 
+# 工厂类:dictConfig 的 () 语法会先实例化这个类(用同节其他键作为 __init__ 参数)
+# 然后调用实例(走 __call__)返回真正的 Formatter 对象
 class JsonFormatterFactory:
     def __init__(self, datefmt=None, mask_fields=None):
+        # 构造参数来自 YAML 中 () 同级的键:datefmt / mask_fields
         self.datefmt = datefmt
         self.mask_fields = set(mask_fields or [])
 
@@ -1947,8 +2002,12 @@ JSON 日志里这些字段会被单独提取,便于在 ELK 里按 \`order_id\` �
 import uuid
 from contextvars import ContextVar
 
+# ContextVar 是 Python 3.7+ 的上下文变量,协程/异步任务各自独立
+# 比 threading.local 更适合 asyncio 场景
 request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
 
+# 自定义 Filter:把 request_id 注入到每条 LogRecord
+# Formatter 用 %(request_id)s 即可输出该字段
 class RequestIdFilter(logging.Filter):
     def filter(self, record):
         record.request_id = request_id_var.get()
@@ -1956,6 +2015,7 @@ class RequestIdFilter(logging.Filter):
 
 # 中间件里设置
 def middleware(request):
+    # 优先用上游传入的 X-Request-ID,没有则生成新 UUID
     rid = request.headers.get("X-Request-ID") or str(uuid.uuid4())
     request_id_var.set(rid)
     ...
@@ -2072,14 +2132,19 @@ logger.info("用户登录 username=%s password=***", username)
 import logging
 import re
 
+# 敏感字段黑名单:实际项目建议用白名单(只允许已知安全字段进日志)
 SENSITIVE_KEYS = {"password", "token", "secret", "id_card", "card_no"}
 
+# 自定义 Filter:在日志输出前对消息做脱敏处理
+# Filter.filter 返回 True 表示放行,False 表示丢弃
 class SensitiveFilter(logging.Filter):
     def filter(self, record):
+        # getMessage() 返回已按 % args 格式化好的消息文本
         msg = record.getMessage()
         # 简单示例:替换形如 password=xxx 的内容
         for key in SENSITIVE_KEYS:
-            msg = re.sub(rf"{key}=\S+", f"{key}=***", msg, flags=re.IGNORECASE)
+            msg = re.sub(rf"{key}=\\S+", f"{key}=***", msg, flags=re.IGNORECASE)
+        # 改写 record:把脱敏后的文本写回 msg,并清空 args(避免二次格式化)
         record.msg = msg
         record.args = ()  # 已格式化,清空 args
         return True
@@ -2114,17 +2179,23 @@ import logging.handlers
 import queue
 import atexit
 
+# 无界队列:业务线程入队永不阻塞;缺点是崩溃时未消费日志会丢
+# 对不能丢的审计日志,改用同步日志或带容量上限+告警的队列
 log_queue = queue.Queue(-1)
 
 # 业务 logger 用 QueueHandler(非阻塞,只 put)
+# QueueHandler.emit 只做 queue.put_nowait,不做真实 IO,极快
 qh = logging.handlers.QueueHandler(log_queue)
 
 # 真正的 handler(可能慢),由 listener 调用
 real_handler = logging.FileHandler("app.log", encoding="utf-8")
 real_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
 
+# QueueListener 在后台线程消费队列,转发给 real_handler
+# 这样慢 IO 只阻塞 listener 线程,不影响业务线程
 listener = logging.handlers.QueueListener(log_queue, real_handler)
 listener.start()
+# 注册退出钩子:stop() 会 flush 队列剩余日志,避免退出时丢日志
 atexit.register(listener.stop)
 
 root = logging.getLogger()

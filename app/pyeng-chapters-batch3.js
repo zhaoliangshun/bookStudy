@@ -599,14 +599,16 @@ argparse 的核心用法就三步,几乎每个 argparse 程序都长这样:
 \`\`\`python
 import argparse
 
-# 第 1 步:创建解析器
+# 第 1 步:创建解析器(description 会显示在 --help 顶部)
 parser = argparse.ArgumentParser(description="一个示例 CLI")
 
 # 第 2 步:添加参数
+# "name" 不以 - 开头 → 位置参数(必填,按顺序绑定)
 parser.add_argument("name", help="你的名字")
+# "--age" 以 -- 开头 → 可选参数;type=int 自动把字符串转成整数
 parser.add_argument("--age", type=int, default=18, help="你的年龄")
 
-# 第 3 步:解析参数
+# 第 3 步:解析参数(返回 Namespace 对象,用 args.属性名 访问)
 args = parser.parse_args()
 
 print(f"你好, {args.name}, {args.age} 岁")
@@ -855,8 +857,10 @@ $ python demo.py --mode prod
 最常见的 action,用于"开关型"参数:
 
 \`\`\`python
+# store_true:出现 -v 时 args.verbose=True,不出现时默认 False(无需写 default)
 parser.add_argument("-v", "--verbose", action="store_true",
                     help="详细输出")
+# store_false:出现 --no-cache 时 args.cache=False;dest="cache" 把属性名从 no_cache 改成 cache
 parser.add_argument("--no-cache", action="store_false",
                     dest="cache", help="禁用缓存")
 \`\`\`
@@ -876,6 +880,7 @@ $ python demo.py -v --no-cache
 #### count:累计出现次数
 
 \`\`\`python
+# count:每出现一次 -v,值 +1;default=0 保证不传时是 0 而非 None
 parser.add_argument("-v", "--verbose", action="count", default=0,
                     help="详细级别(-v, -vv, -vvv)")
 \`\`\`
@@ -892,6 +897,7 @@ $ python demo.py -vvv       # verbose = 3
 #### append:多次出现收集成列表
 
 \`\`\`python
+# append:每次 -f VALUE 都把 VALUE 追加到列表;default=[] 保证不传时是空列表而非 None
 parser.add_argument("--file", "-f", action="append", default=[],
                     help="待处理文件(可多次指定)")
 \`\`\`
@@ -936,20 +942,20 @@ $ echo $?
 | \`argparse.REMAINDER\` | 剩余所有 | \`-- x y z\` | 列表 |
 
 \`\`\`python
-# 吃 3 个值(矩形 x y w h)
+# nargs=3:必须吃恰好 3 个值;metavar 元组让帮助里显示 --rect X Y W 而非 --rect X X X
 parser.add_argument("--rect", nargs=3, type=int, metavar=("X", "Y", "W"))
 
-# 0 或多个文件
+# nargs="*":0 或多个值,收集成列表(可不传,得到 [])
 parser.add_argument("files", nargs="*", help="待处理文件")
 
-# 1 或多个文件(至少一个)
+# nargs="+":1 或多个值,至少要传一个,否则报错
 parser.add_argument("files", nargs="+", help="待处理文件(至少一个)")
 
-# ? 的经典用法:有值就用值,没值用 const
+# nargs="?":0 或 1 个值;const 是"选项出现但没给值"时的默认,default 是"选项没出现"时的默认
 parser.add_argument("--flag", nargs="?", const="DEFAULT", default="NONE")
-# --flag          → 'DEFAULT'
-# --flag X        → 'X'
-# (不传)         → 'NONE'
+# --flag          → 'DEFAULT'  (出现,无值,用 const)
+# --flag X        → 'X'        (出现,有值,用值)
+# (不传)         → 'NONE'     (没出现,用 default)
 \`\`\`
 
 \`nargs='?'\` 配合 \`const\` 是个常见模式:出现选项但没给值,用 const;出现选项且给了值,用值;不出现,用 default。
@@ -1033,6 +1039,43 @@ options:
 - \`prog\`:程序名,显示在 usage 开头(默认取 \`sys.argv[0]\`)
 - \`description\`:工具描述,显示在 usage 下方
 - \`epilog\`:尾部文字,显示在 options 下方(适合放示例)
+
+### 6.1 formatter_class:控制帮助格式
+
+默认情况下,argparse 会把帮助文本里的换行折叠成一行,长描述挤在一起。用 \`formatter_class\` 可以保留原始格式:
+
+\`\`\`python
+parser = argparse.ArgumentParser(
+    prog="mytool",
+    description="第一行描述\\n第二行描述\\n第三行描述",
+    formatter_class=argparse.RawTextHelpFormatter,
+)
+# RawTextHelpFormatter:保留 help 文本中的换行,不折叠
+\`\`\`
+
+常用 formatter_class 取值:
+
+| formatter_class | 作用 |
+|-----------------|------|
+| \`argparse.RawTextHelpFormatter\` | 保留所有 help/description 中的换行和空白 |
+| \`argparse.RawDescriptionHelpFormatter\` | 只保留 description 和 epilog 的原始格式(help 仍折叠) |
+| \`argparse.ArgumentDefaultsHelpFormatter\` | 自动在每个参数 help 后追加 "(default: ...)" |
+| \`argparse.MetavarTypeHelpFormatter\` | 用 type 名作为 metavar(如 \`--port int\` 而非 \`--port PORT\`) |
+
+\`\`\`python
+# 组合使用:既保留换行,又自动显示默认值
+parser = argparse.ArgumentParser(
+    formatter_class=argparse.RawTextHelpFormatter,
+)
+# ArgumentDefaultsHelpFormatter 会自动追加默认值,无需手写 %(default)s
+\`\`\`
+
+\`RawTextHelpFormatter\` 在 help 里写多行说明时特别有用,比如参数有"长格式说明 + 示例"时:
+
+\`\`\`python
+parser.add_argument("--mode", choices=["dev","prod"],
+    help="运行模式\\n  dev:  开发环境,输出详细日志\\n  prod: 生产环境,只输出结果")
+\`\`\`
 
 ## 七、本章代码 demo:文件处理 CLI
 
@@ -1235,18 +1278,19 @@ $ python fileproc.py hello.txt --upper --lower
 import argparse
 
 parser = argparse.ArgumentParser(prog="mytool")
+# add_subparsers 创建一个"子命令分发器";dest="command" 表示子命令名存到 args.command
 subparsers = parser.add_subparsers(dest="command", help="子命令")
 
-# 子命令 add
+# 子命令 add:每个 add_parser 返回一个独立的 ArgumentParser,有自己的参数
 parser_add = subparsers.add_parser("add", help="添加文件")
 parser_add.add_argument("files", nargs="+", help="待添加的文件")
 
-# 子命令 delete
+# 子命令 delete:和 add 完全独立,可有不同的参数
 parser_del = subparsers.add_parser("delete", help="删除文件")
 parser_del.add_argument("files", nargs="+", help="待删除的文件")
 
 args = parser.parse_args()
-print(args)
+print(args)  # 用 args.command 判断用户选了哪个子命令
 \`\`\`
 
 运行:
@@ -1341,6 +1385,7 @@ sub = parser.add_subparsers(dest="cmd", required=True)
 
 p_add = sub.add_parser("add")
 p_add.add_argument("paths", nargs="+")
+# set_defaults(func=...) 给子命令绑定处理函数,parse_args 后 args.func 就是这个函数
 p_add.set_defaults(func=do_add)
 
 p_commit = sub.add_parser("commit")
@@ -1348,7 +1393,7 @@ p_commit.add_argument("-m", "--message", required=True)
 p_commit.set_defaults(func=do_commit)
 
 args = parser.parse_args()
-args.func(args)  # 直接调用对应函数
+args.func(args)  # 直接调用对应函数,无需 if/elif 判断 args.cmd
 \`\`\`
 
 这是 argparse 官方推荐的"子命令分发"模式,比 \`if/elif\` 链更优雅。
@@ -1483,7 +1528,7 @@ options:
 
 ### 4.1 文件类型:argparse.FileType
 
-\`\`\`argparse.FileType('r')\` 会自动打开文件,文件不存在时报错:
+\`argparse.FileType('r')\` 会自动打开文件,文件不存在时报错:
 
 \`\`\`python
 parser.add_argument("--input", type=argparse.FileType("r"))
@@ -1644,6 +1689,32 @@ $ python demo.py @args.txt
 
 每行一个 token,argparse 自动展开。适合 CI/CD 里复用一组固定参数。
 
+### 7.1 手动报错:error() 方法与退出码
+
+argparse 解析失败时会自动调用 \`parser.error(msg)\` 打印错误并以退出码 2 退出。你在业务逻辑里也可以手动调用它,让错误信息格式统一:
+
+\`\`\`python
+args = parser.parse_args()
+
+# 业务层校验:argparse 自身无法表达的约束
+if args.start > args.end:
+    # error() 会自动加 "usage:" 前缀,打印 msg,然后 sys.exit(2)
+    parser.error("--start 不能大于 --end")
+
+# 正常逻辑
+do_work(args)
+\`\`\`
+
+\`parser.error()\` 和 \`sys.exit(2)\` 的区别:
+
+| 方式 | 行为 | 适合场景 |
+|------|------|----------|
+| \`parser.error(msg)\` | 打印 usage + msg 到 stderr,退出码 2 | 参数相关错误(语法/约束) |
+| \`sys.exit(1)\` | 直接退出,不打印 usage | 业务错误(文件不存在、网络失败) |
+| \`raise SystemExit(n)\` | 等价 sys.exit(n),但可被捕获 | 需要测试时拦截退出 |
+
+约定:**参数错误用 \`parser.error()\`(退出码 2),业务错误用 \`sys.exit(1)\`**。这样调用方能区分"用户用错了"和"任务执行失败"。
+
 ## 八、argparse 的局限
 
 argparse 虽然强大,但也有明显的短板:
@@ -1687,7 +1758,8 @@ def build_parser():
     parser.add_argument("-V", "--version", action="version",
                         version="%(prog)s 0.1.0")
 
-    sub = parser.add_subparsers(dest="cmd", required=True, metavar="<command>")
+    sub = parser.add_subparsers(dest="cmd", required=True, metavar="<command>",
+                                title="commands")
 
     # add:暂存文件
     p_add = sub.add_parser("add", help="暂存文件到索引")
@@ -1706,13 +1778,11 @@ def build_parser():
     p_push = sub.add_parser("push", help="推送到远程")
     p_push.add_argument("remote", nargs="?", default="origin", help="远程名")
     p_push.add_argument("refspec", nargs="?", default="main", help="分支")
-    p_push.add_argument("-f", "--force", action="store_true", help="强制推送")
-    # 互斥:--force-with-lease 与 --force 互斥
+    # 互斥组:--force 与 --force-with-lease 不能同时使用
     mx = p_push.add_mutually_exclusive_group()
+    mx.add_argument("-f", "--force", action="store_true", help="强制推送(危险)")
     mx.add_argument("--force-with-lease", action="store_true",
                     help="带租约的强制推送(更安全)")
-    mx.add_argument("--force", action="store_true", dest="force",
-                    help="强制推送(危险)")
     p_push.set_defaults(func=cmd_push)
 
     # log:查看历史
@@ -1758,7 +1828,7 @@ def cmd_log(args):
     elif args.json:
         print('  [{"hash": "abc1234", "msg": "commit 1"}]')
     else:
-        print("  commit abc1234\n  Author: ...\n  commit 1")
+        print("  commit abc1234\\n  Author: ...\\n  commit 1")
 
 def main():
     parser = build_parser()
@@ -2131,18 +2201,20 @@ $ python demo.py -f a.txt -f b.txt
 \`\`\`python
 @click.group()
 @click.option("--debug", is_flag=True)
-@click.pass_context
+@click.pass_context  # @click.pass_context 把 Context 对象 ctx 作为首参注入
 def cli(ctx, debug):
+    # ctx.ensure_object(dict):如果 ctx.obj 是 None 就初始化为 {},避免 NoneType 报错
     ctx.ensure_object(dict)
+    # 把顶层算出的数据存到 ctx.obj,子命令可通过自己的 ctx.obj 读到(父 context 向下传递)
     ctx.obj["debug"] = debug
     ctx.obj["client"] = create_client(debug=debug)
 
 @cli.command()
-@click.pass_context
+@click.pass_context  # 子命令也用 @click.pass_context 拿到继承自父级的 ctx.obj
 def list(ctx):
     if ctx.obj["debug"]:
         click.echo("调试模式")
-    items = ctx.obj["client"].list()
+    items = ctx.obj["client"].list()  # 复用父级创建的 client
     for it in items:
         click.echo(it)
 \`\`\`
@@ -2228,6 +2300,58 @@ def down():
 \`\`\`
 
 嵌套子命令在 Click 里非常自然,这是它比 argparse 显著的优势。
+
+### 5.2 invoked_subcommand:在 group 中知道用户选了哪个子命令
+
+有时 group 函数需要根据"用户接下来要跑哪个子命令"做不同准备。用 \`ctx.invoked_subcommand\` 可以拿到:
+
+\`\`\`python
+@click.group()
+@click.pass_context
+def cli(ctx):
+    """迷你 git"""
+    # ctx.invoked_subcommand 在 group 函数体执行时已可读
+    # 值是子命令名字符串(如 "commit"),没传子命令时为 None
+    if ctx.invoked_subcommand is None:
+        click.echo("提示: 用 --help 查看子命令")
+    elif ctx.invoked_subcommand == "commit":
+        click.echo("准备提交,检查暂存区...", err=True)
+
+@cli.command()
+def add():
+    click.echo("add")
+
+@cli.command()
+def commit():
+    click.echo("commit")
+\`\`\`
+
+\`\`\`bash
+$ python mygit.py
+提示: 用 --help 查看子命令
+
+$ python mygit.py commit
+准备提交,检查暂存区...
+commit
+\`\`\`
+
+注意:\`ctx.invoked_subcommand\` 在 group 回调执行时就已经被 Click 解析好了,可以用来做"按子命令预处理"(如 commit 前自动检查暂存区、push 前自动 fetch)。
+
+### 5.3 context settings:自定义上下文行为
+
+\`@click.group()\` / \`@click.command()\` 接受 \`context_settings=\` 参数,可以调整默认行为:
+
+\`\`\`python
+@click.group(context_settings=dict(
+    help_option_names=["-h", "--help"],  # 把 -h 也作为帮助开关(默认只有 --help)
+    max_content_width=120,               # 帮助文本最大宽度
+    auto_envvar_prefix="MYTOOL",         # 自动从 MYTOOL_XXX 环境变量读参数
+))
+def cli():
+    pass
+\`\`\`
+
+\`auto_envvar_prefix="MYTOOL"\` 后,选项 \`--port\` 会自动从环境变量 \`MYTOOL_PORT\` 读取,无需显式声明 \`envvar=\`。
 
 ## 六、高级特性
 
@@ -2614,7 +2738,7 @@ Typer 的核心思想:
 
 \`\`\`bash
 pip install "typer[all]"
-# extras 包括 Rich(美化输出)和 shellingham(she'll 补全)
+# extras 包括 Rich(美化输出)和 shellingham(shell 补全)
 # 或最小安装:
 pip install typer
 \`\`\`
@@ -2678,13 +2802,13 @@ Typer 的精髓在于:**它读取函数签名,自动生成 CLI 参数**。规则
 
 \`\`\`python
 def process(
-    name: str,                        # 必填位置参数
-    count: int = 1,                   # --count INTEGER
-    verbose: bool = False,            # --verbose/--no-verbose
-    output: Optional[Path] = None,    # --output PATH
-    tags: List[str] = [],             # --tags TEXT (可多次)
+    name: str,                        # 无默认值 → 必填位置参数(Argument)
+    count: int = 1,                   # int 注解 → --count INTEGER,有默认值 → 可选
+    verbose: bool = False,            # bool 注解 → 自动变成 --verbose/--no-verbose 开关
+    output: Optional[Path] = None,    # Optional → 可选,默认 None;Path → 路径类型
+    tags: List[str] = [],             # List → 可多次指定 --tags a --tags b,收集成列表
 ):
-    """处理数据"""
+    """处理数据"""  # docstring 自动变成 --help 的描述
     ...
 \`\`\`
 
@@ -2904,9 +3028,9 @@ import typer
 def main(
     name: str = typer.Option(..., "--name", "-n", help="你的名字"),
     age: int = typer.Option(18, min=0, max=150, help="年龄"),
-    config: typer.FileText = typer.Option(None, "--config", mode="r"),
+    config: typer.FileText = typer.Option(None, "--config", help="配置文件"),
     verbose: bool = typer.Option(False, "--verbose/--quiet", "-v/-q"),
-    output: typer.Argument(None, envvar="OUTPUT"),
+    output: str = typer.Argument(None, envvar="OUTPUT"),
 ):
     """精细控制示例"""
     typer.echo(f"name={name}, age={age}")
@@ -2926,8 +3050,11 @@ from typing import Annotated
 import typer
 
 def main(
+    # Annotated[类型, 元数据]:类型还是 str,元数据 typer.Option(...) 告诉 Typer 这是 CLI 选项
     name: Annotated[str, typer.Option(help="你的名字")] = "World",
+    # min/max 自动做数值校验,超出范围 Typer 直接报错
     age: Annotated[int, typer.Option(min=0, max=150, help="年龄")] = 18,
+    # bool + "--verbose/--quiet" 一行定义正反两个开关
     verbose: Annotated[bool, typer.Option("--verbose/--quiet")] = False,
 ):
     typer.echo(f"{name}, {age}, verbose={verbose}")

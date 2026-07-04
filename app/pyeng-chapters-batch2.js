@@ -1187,7 +1187,7 @@ config = load_config("production")
 |------|------|------|
 | \`read(filenames)\` | 读取文件,返回成功读取的列表 | \`config.read("a.ini")\` |
 | \`read_file(f)\` | 从文件对象读取 | \`config.read_file(open("a.ini"))\` |
-| \`read_string(s)\` | 从字符串读取 | \`config.read_string("[s]\\\\nk=v")\` |
+| \`read_string(s)\` | 从字符串读取 | \`config.read_string("[s]\\nk=v")\` |
 | \`read_dict(d)\` | 从字典读取 | \`config.read_dict({"s": {"k": "v"}})\` |
 | \`sections()\` | 列出所有段(不含 DEFAULT) | \`['s1', 's2']\` |
 | \`has_section(s)\` | 段是否存在 | \`config.has_section("s")\` |
@@ -1438,7 +1438,7 @@ config["logging"]["format"]
 config = configparser.ConfigParser(interpolation=None)
 
 # 方法 2:配置文件里写 %%
-format = %%asctime)s - %%message)s
+format = %%(asctime)s - %%(message)s
 \`\`\`
 
 ## 十、本章小结
@@ -2614,7 +2614,7 @@ quote = "He said \\"hello\\""
 
 # 2. 字面字符串(单引号,不转义)
 regex = 'C:\\Users\\Alice'   # 反斜杠是字面值
-path2 = 'C:\Users\Alice'
+path2 = 'C:\\Users\\Alice'
 
 # 3. 多行基本字符串(三个双引号,支持转义)
 description = """
@@ -3544,7 +3544,7 @@ y = 2   # 错误!a 已经有子表 b,不能再加键
 \`\`\`python
 tomllib.loads(text)
 # tomllib.TOMLDecodeError: Cannot overwrite a parent section
-\`\`\
+\`\`\`
 
 **正确**:
 
@@ -3627,7 +3627,7 @@ line2
 | 数组表混用 | \`[[s]]\` + \`[s]\` | 数组表只能用 \`[[s]]\` |
 | 字符串引号 | \`"He said "x""\` | 转义或换单引号 |
 | 布尔大小写 | \`True\` / \`TRUE\` | 必须 \`true\` / \`false\`(小写) |
-| 多行字符串开头 | 直接 \`"""\` | 用 \`"""\\\`\` 去掉开头换行 |
+| 多行字符串开头 | 直接 \`"""\` | 用 \`"""\\\` 去掉开头换行 |
 | 用 tomllib 写 | \`tomllib.dump()\` | 用 \`tomli_w.dump()\` |
 | 嵌套表写法 | \`[a.b.c]\` + 在 \`[a.b]\` 加键 | 子表先声明,父表后不能再加键 |
 | 日期格式 | \`"2024-01-01"\`(字符串) | \`2024-01-01\`(原生 date) |
@@ -4115,7 +4115,7 @@ class AppConfig(BaseSettings):
     )
 
     @classmethod
-    def settings_customise_sources(cls, settings_cls, init_settings, env_settings, dotenv_settings, yaml_settings):
+    def settings_customise_sources(cls, settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings):
         # 优先级:命令行 > 环境变量 > .env > YAML > 默认值
         return (init_settings, env_settings, dotenv_settings, YamlConfigSettingsSource(settings_cls))
 
