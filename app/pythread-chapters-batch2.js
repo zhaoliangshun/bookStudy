@@ -59,6 +59,7 @@ with lock:                    # 进入时自动 acquire，离开时自动 releas
 - \`lock.acquire()\`：阻塞式，拿不到锁就等（默认）
 - \`lock.acquire(blocking=False)\`：非阻塞式，拿不到立即返回 \`False\`
 - \`lock.acquire(timeout=5)\`：限时等待，5秒拿不到返回 \`False\`
+- \`lock.locked()\`：查询锁是否被某线程持有（返回 \`True\`/\`False\`），常用于调试
 
 ## 死锁的两种常见诱因
 
@@ -643,6 +644,19 @@ with cond:  # 使用上下文管理器：cond
 - 只有一个等待线程时，用 \`notify()\`
 - 多个等待线程、或条件对所有线程都有效时，用 \`notify_all()\`
 
+## wait_for()：更简洁的条件等待
+
+\`wait_for(predicate, timeout=None)\` 会反复调用 \`predicate()\`，直到返回 \`True\` 才继续，等价于手写 \`while + wait\`：
+
+\`\`\`python
+# 等到 buffer 非空，比手写 while + wait 更简洁
+with cond:
+    cond.wait_for(lambda: len(buffer) > 0)
+    data = buffer.pop(0)  # 赋值变量 data
+\`\`\`
+
+返回 \`True\` 表示条件成立，\`False\` 表示超时。底层原理和 \`while + wait\` 相同，只是封装更简洁。
+
 ## Condition 内部的锁
 
 \`Condition\` 内部自带一把锁（默认是 \`RLock\`）。调用 \`wait/notify\` **必须先持有这把锁**（即在 \`with cond\` 内部）。\`wait()\` 会临时释放锁让其他线程进来，被唤醒后又重新拿锁。
@@ -902,6 +916,7 @@ q.put(item, block=False)     # 入队（满了立即抛 Full）
 q.put(item, timeout=2)       # 入队（最多等2秒）
 
 q.get()                      # 出队（空了阻塞等待）
+q.get(block=False)           # 出队（空了立即抛 Empty）
 q.get(timeout=2)             # 出队（最多等2秒，超时抛 Empty）
 
 q.qsize()                    # 当前队列长度（近似值）
@@ -1268,6 +1283,8 @@ with ThreadPoolExecutor(4) as ex:  # 使用上下文管理器：ThreadPoolExecut
 - **IO 密集型**：可以多一些，如 \`2 * CPU核数\` 到几十
 - **CPU 密集型**：多线程无意义（GIL），用 \`ProcessPoolExecutor\`
 
+> **默认值**：Python 3.8+ 不传 \`max_workers\` 时默认为 \`min(32, os.cpu_count() + 4)\`。
+
 ## demo：三种用法对比
 
 下面 demo 用三种方式并发下载"网页"（用 sleep 模拟），对比特点。`,
@@ -1346,6 +1363,7 @@ print("=" * 55)
 print("异常传播：子线程的异常在 result() 抛出")
 print("=" * 55)
 def risky(x):
+    """模拟可能出错的任务：x==3 时抛异常，演示异常传播"""
     if x == 3:
         raise ValueError(f"x={x} 出错啦！")
     return x * 2
@@ -1392,7 +1410,7 @@ t.start()        # 启动定时器（不会阻塞主线程）
 
 1. **只执行一次**——不是周期性定时器
 2. **可取消**——\`t.cancel()\` 在触发前取消
-3. **是守护线程**——\`daemon=True\` 默认，主线程结束就消失
+3. **默认非守护线程**——\`daemon\` 继承自创建它的线程（主线程是非守护，所以 Timer 默认也是非守护）。若希望主线程退出时未触发的 Timer 自动消失，可手动设 \`t.daemon = True\`
 4. **可传参**——\`Timer(interval, func, args, kwargs)\`
 
 ## 如何实现"重复定时"？

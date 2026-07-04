@@ -466,6 +466,26 @@ except asyncio.CancelledError:
     print("任务已取消")
 \`\`\`
 
+## TaskGroup（3.11+ 推荐）
+
+Python 3.11 引入 \`asyncio.TaskGroup\`，是 \`create_task + gather\` 的现代替代品，更安全：
+
+\`\`\`python
+async def main():
+    async with asyncio.TaskGroup() as tg:
+        t1 = tg.create_task(task_a())      # 自动注册到组
+        t2 = tg.create_task(task_b())
+    # 退出 async with 块时自动 await 所有任务
+    print(t1.result(), t2.result())
+\`\`\`
+
+**优势**：
+- 任一任务抛异常，会自动取消其他任务（通过 \`ExceptionGroup\` 抛出）
+- 退出 \`async with\` 块时自动等待所有任务完成
+- 不用手动 gather，不会忘记 await
+
+\`TaskGroup\` 是 3.11+ 推荐写法，3.10 及以下用 \`gather\`。
+
 ## demo：串行 await vs create_task 并发
 
 下面 demo 对比两种写法的耗时差异，并演示任务取消。`,
@@ -729,7 +749,9 @@ async def main():
     print("=" * 55)
     print("实验4：wait(FIRST_COMPLETED)——一个完成就返回")
     print("=" * 55)
+    # 注意：3.8+ 建议传 Task（create_task 包装），直接传协程已废弃
     tasks = [asyncio.create_task(fetch(f"T{i}", 0.1 * i + 0.1)) for i in range(1, 4)]
+    # FIRST_COMPLETED: 任一任务完成就返回，其余在 pending 里
     done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
     print(f"  完成 {len(done)} 个：")
     for t in done:
@@ -1092,9 +1114,9 @@ async def main():
     for _ in consumers:
         await q.put(None)
 
-    # 等所有消费者退出
+    # 等所有消费者退出（消费者收到 None 后才 return）
     consumer_results = await asyncio.gather(*consumers)
-    # 等所有 task_done 被调用（其实上面 join 已经触发，这里保险）
+    # 此时所有 task_done 都已被调用，join 立即返回（保险写法）
     await q.join()
 
     print("\\n--- 统计 ---")
@@ -1233,6 +1255,22 @@ async with cond:
     # 醒来时已重新拿到锁
 \`\`\`
 
+## 注意：asyncio 同步原语不是线程安全的
+
+\`asyncio.Lock\`、\`Semaphore\`、\`Event\` 等**只能在同一个事件循环内使用**，不能跨线程共享。如果需要跨线程通信，用 \`threading.Lock\` 或 \`asyncio.Queue\` 配合 \`run_in_executor\`。
+
+\`\`\`python
+# ❌ 错：在别的线程里用 asyncio.Lock
+lock = asyncio.Lock()
+def thread_func():
+    async with lock:        # 出错——不在事件循环线程
+        ...
+
+# ✓ 对：跨线程用 threading.Lock，或用 asyncio.Queue 通信
+\`\`\`
+
+> asyncio 同步原语是为协程设计的，threading 同步原语是为线程设计的，**不要混用**。
+
 ## demo：限并发下载模拟
 
 下面 demo 用 Semaphore 限制并发数，模拟"最多 3 个并发下载"。`,
@@ -1262,6 +1300,9 @@ async def safe_inc():
         count = cur + 1
 
 async def main():
+    global count                    # 声明全局——否则下面 count=0 是局部变量，
+                                    # 而 unsafe_task/safe_task 用 global 改的是模块级，
+                                    # print 读到的会是 0（bug 修复）
     print("=" * 55)
     print("实验1：协程竞态条件 vs Lock 保护")
     print("=" * 55)
@@ -1414,7 +1455,7 @@ for t in pending:
 
 \`\`\`python
 try:
-    await asyncio.wait_for(shielded_task(), timeout=1)
+    await asyncio.wait_for(asyncio.shield(important_task()), timeout=1)
 except asyncio.TimeoutError:
     print("外层超时，但任务在后台继续跑")
 \`\`\`
@@ -1495,9 +1536,11 @@ async def main():
     print("=" * 55)
     start = time.time()
     try:
+        # async with 块内所有 await 都受 0.3s 超时约束
         async with asyncio.timeout(0.3):
             await asyncio.sleep(1)
     except TimeoutError:
+        # 3.11+ 中 asyncio.TimeoutError 已是内置 TimeoutError 的别名
         print(f"  timeout 上下文超时 ({time.time()-start:.2f}s)")
     print()
 
@@ -1706,7 +1749,8 @@ async def main():
     print("=" * 55)
     async def good_call():
         print(f"  [阻塞] 开始 {time.strftime('%H:%M:%S')}")
-        # 把 time.sleep 扔到线程跑——循环不卡
+        # asyncio.to_thread (3.9+) 把同步函数扔到默认线程池跑，循环不卡
+        # 等价于 loop.run_in_executor(None, sync_sleep_task, "T", 0.5)
         result = await asyncio.to_thread(sync_sleep_task, "T", 0.5)
         print(f"  [阻塞] 完成 {time.strftime('%H:%M:%S')} result={result}")
 

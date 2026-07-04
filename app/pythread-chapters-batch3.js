@@ -38,9 +38,11 @@ API 设计上刻意和 \`threading\` 保持一致：\`Process\` 对应 \`Thread\
 
 | 方式 | 原理 | 平台默认 | 特点 |
 |------|------|---------|------|
-| **fork** | 复制父进程内存（\`os.fork\`） | Linux 旧版 | 快，但可能不安全（复制整个状态） |
+| **fork** | 复制父进程内存（\`os.fork\`） | Linux/POSIX（非 macOS） | 快，但多线程下不安全；Windows 不可用 |
 | **spawn** | 全新启动 Python，重新导入主模块 | macOS(3.8+)、Windows | 慢，但干净安全 |
-| **forkserver** | 专门的服务进程 fork | 可选 | 折中方案 |
+| **forkserver** | 专门的服务进程 fork | 可选（部分 POSIX） | 折中方案，比 fork 安全 |
+
+> ⚠️ **fork 的安全警告**：\`fork\` 会把父进程的整个状态（包括锁）复制一份给子进程，如果父进程已经有多个线程，子进程里那些锁的状态可能不一致，容易死锁或崩溃。Python 3.8 起 macOS 默认改用 \`spawn\`，官方也预告 Linux 上的默认启动方式将不再使用 \`fork\`。新代码建议显式选 \`spawn\` 或 \`forkserver\`；确实需要 \`fork\` 时用 \`mp.get_context("fork")\` 明确指定。另外 \`fork\` 仅在 POSIX（Linux/macOS）可用，**Windows 只有 \`spawn\`**。
 
 ### fork vs spawn 的关键区别
 
@@ -112,16 +114,18 @@ print("=" * 55)
 print("实验1：创建并启动一个子进程")
 print("=" * 55)
 def hello(name):
+    """子进程入口：打印问候和自己的 PID"""
     import os
     print(f"  子进程: 你好 {name}! PID={os.getpid()}")
 
 print(f"  主进程 PID: 入口")
+# name 给进程起名方便调试；args 必须是元组，单元素要加逗号
 p = ctx.Process(target=hello, args=("Python",), name="我的子进程")
-print(f"  创建后 is_alive={p.is_alive()}")
+print(f"  创建后 is_alive={p.is_alive()}")   # 还没 start，所以 False
 p.start()
-print(f"  start 后 is_alive={p.is_alive()}")
+print(f"  start 后 is_alive={p.is_alive()}")  # 已启动，正在运行
 p.join()
-print(f"  join 后 is_alive={p.is_alive()}")
+print(f"  join 后 is_alive={p.is_alive()}")   # 已结束，回到 False
 print()
 
 # ============================================================
@@ -138,10 +142,11 @@ r2 = cpu_task(N)
 serial_time = time.time() - start
 print(f"  串行执行两次: {serial_time:.3f}s (结果 {r1}, {r2})")
 
-# 多进程：两个进程并行执行
+# 多进程：两个 worker 进程并行执行
+# ctx.Pool(2) 预创建 2 个 worker；pool.map 把任务分发并自动收集返回值
 start = time.time()
 with ctx.Pool(2) as pool:
-    results = pool.map(cpu_task, [N, N])
+    results = pool.map(cpu_task, [N, N])   # 阻塞直到全部完成，按顺序返回
 parallel_time = time.time() - start
 print(f"  多进程并行两个: {parallel_time:.3f}s (结果 {results})")
 print(f"  加速比: {serial_time/parallel_time:.2f}x（接近2倍，因真正并行）")
@@ -197,7 +202,7 @@ def task(a, b, c=10):  # 定义函数 task，参数：a, b, c=10
 p = mp.Process(target=task, args=(1, 2), kwargs={"c": 3})  # 赋值变量 p
 \`\`\`
 
-> ⚠️ 参数必须是**可序列化（pickle）的**——因为 spawn/fork 启动时参数要传给子进程。函数、lambda、文件对象等不能直接传。
+> ⚠️ 参数必须是**可序列化（pickle）的**——\`spawn\`/\`forkserver\` 启动时会 pickle 参数传给子进程；\`fork\` 靠继承内存理论上不 pickle 参数，但用 \`Pool\` 时任务参数仍会经内部队列 pickle 传输。所以养成"参数可 pickle"的习惯最稳妥。函数、lambda、文件对象、socket 等不能直接传；自定义函数要定义在**模块顶层**（\`spawn\` 才能按名字重新导入），嵌套函数/闭包无法 pickle。
 
 ## 如何拿到子进程的返回值？
 
@@ -284,13 +289,14 @@ print("实验2：类继承创建进程")
 print("=" * 55)
 
 class Worker(mp.Process):
+    """类继承方式：重写 run() 自定义子进程逻辑（start 会自动调 run）"""
     def __init__(self, task_name, count):
-        super().__init__()              # 必须调父类 __init__
+        super().__init__()              # 必须调父类 __init__，初始化进程内部状态
         self.task_name = task_name
         self.count = count
 
     def run(self):
-        """重写 run：start() 会自动调用它"""
+        """重写 run：start() 会自动调用它（不要自己调 run，要调 start）"""
         print(f"  [子进程] 任务 {self.task_name} 开始")
         for i in range(self.count):
             print(f"  [子进程] {self.task_name} 步骤 {i+1}")
@@ -309,20 +315,21 @@ print("实验3：用 Queue 取回子进程返回值")
 print("=" * 55)
 
 def compute_and_return(q, x):
-    """计算 x 的平方，结果通过队列返回"""
+    """计算 x 的平方，结果通过队列返回给主进程"""
     result = x * x
-    q.put(result)                      # 结果放进队列
+    q.put(result)                      # 结果放进队列（数据会被 pickle 传输）
 
-q = ctx.Queue()
+q = ctx.Queue()                        # 进程间队列，传给子进程当通信通道
 processes = []
 for x in [3, 5, 7]:
     p = ctx.Process(target=compute_and_return, args=(q, x))
     p.start()
     processes.append(p)
 
+# 主进程从队列取 3 次结果（get 阻塞直到有数据）
 results = [q.get() for _ in range(3)]
 for p in processes:
-    p.join()
+    p.join()                           # 回收子进程，避免僵尸进程
 print(f"  输入: [3, 5, 7]")
 print(f"  平方结果: {results}")
 print()
@@ -335,9 +342,11 @@ print("实验4：观察 exitcode（正常/异常）")
 print("=" * 55)
 
 def normal():
+    """正常结束的子进程"""
     print("  [正常进程] 我正常结束")
 
 def crash():
+    """故意抛异常的子进程：异常会被 multiprocessing 捕获，exitcode=1"""
     print("  [崩溃进程] 我要崩溃了")
     raise RuntimeError("故意崩溃")
 
@@ -375,6 +384,8 @@ p.start()  # 调用 p.start()：启动
 p.join()              # 阻塞等 p 结束
 p.join(timeout=5)     # 最多等5秒
 \`\`\`
+
+> 💡 **join 还有一个重要作用：回收子进程资源（避免僵尸进程）**。子进程结束后不会立刻消失，而是变成"僵尸进程（zombie/defunct）"，仅保留 PID 和退出码等信息，等父进程调用 \`join()\` / 查询 \`exitcode\` / 底层 \`wait()\` 后才被彻底清理。如果父进程既不 \`join\` 也不查询退出码，僵尸进程会一直占用 PID。所以养成"start 之后必 join"的习惯。守护进程（daemon）由父进程退出时自动清理，不需要担心僵尸问题。
 
 ## 守护进程 daemon
 
@@ -463,13 +474,14 @@ print("实验3：守护进程 daemon=True")
 print("=" * 55)
 
 def heartbeat():
-    """守护进程：不停打印心跳"""
+    """守护进程：不停打印心跳（父进程退出时会被自动杀死）"""
     i = 0
     while True:
         i += 1
         print(f"  [守护进程] 心跳 {i}")
         time.sleep(0.3)
 
+# daemon=True 必须在 start 前设置；守护进程父进程一退出就被终止
 pd = ctx.Process(target=heartbeat, daemon=True, name="心跳进程")
 pd.start()
 print(f"  [主] 守护进程已启动 (PID={pd.pid})")
@@ -485,10 +497,10 @@ print("实验4：守护进程不能有子进程（会报错）")
 print("=" * 55)
 
 def daemon_try_spawn():
-    """守护进程里尝试创建子进程"""
+    """守护进程里尝试创建子进程：multiprocessing 会禁止并抛 AssertionError"""
     try:
         child = ctx.Process(target=lambda: None)
-        child.start()
+        child.start()               # 这里会抛 AssertionError: daemonic processes are not allowed to create children
         child.join()
     except Exception as e:
         print(f"  [守护进程] 报错: {type(e).__name__}: {e}")
@@ -882,6 +894,7 @@ print("实验4：recv 阻塞 vs poll(timeout)")
 print("=" * 55)
 
 def slow_sender(conn):
+    """延迟 0.4 秒后发送一条消息，演示 poll(timeout) 的等待行为"""
     time.sleep(0.4)
     conn.send("迟到的消息")
     conn.close()
@@ -1252,9 +1265,9 @@ print("实验4：Manager.Namespace 共享多个属性")
 print("=" * 55)
 
 def modify_ns(ns, tag):
-    """修改命名空间的属性"""
-    ns.count += 1
-    ns.last_tag = tag
+    """修改命名空间的属性（注意：ns.count += 1 是"读-改-写"，跨进程非原子）"""
+    ns.count += 1                       # 可能丢更新：读 ns.count → +1 → 写回，中间可被打断
+    ns.last_tag = tag                   # 单次赋值是原子的，但最后值取决于谁最后写
 
 with ctx.Manager() as manager:
     ns = manager.Namespace()
@@ -1264,7 +1277,8 @@ with ctx.Manager() as manager:
              for i in range(3)]
     for p in procs: p.start()
     for p in procs: p.join()
-    print(f"  count = {ns.count}")
+    # count 不一定等于 3：ns.count += 1 跨进程非原子，可能丢更新
+    print(f"  count = {ns.count}（因非原子更新，可能小于 3）")
     print(f"  last_tag = {ns.last_tag}")
 
 print("\\n要点：")
@@ -1431,8 +1445,9 @@ with ctx.Manager() as manager:
     file_lock = manager.Lock()
 
     def write_log(lock, lines, tag, n):
+        """加锁写入 n 条日志，保证每行完整不被其他进程打断"""
         for i in range(n):
-            with lock:                 # 加锁，整行不被打断
+            with lock:                 # 加锁，整行 append 不被打断
                 lines.append(f"[{tag}] 第 {i} 条日志")
             time.sleep(0.02)
 
@@ -1629,6 +1644,7 @@ data = [2_000_000] * 4
 
 # 串行
 def cpu_heavy(n):
+    """CPU 密集任务：累加 0..n-1，用来对比串行与多进程并行的耗时"""
     total = 0
     for i in range(n):
         total += i
@@ -1826,6 +1842,7 @@ print("=" * 55)
 print("实验5：子进程异常在 result() 抛出")
 print("=" * 55)
 def risky(x):
+    """x==3 时抛异常：演示子进程异常会在主进程的 f.result() 处重新抛出"""
     if x == 3:
         raise ValueError(f"x={x} 出错")
     return x * 2
@@ -1834,6 +1851,7 @@ with ForkProcessPool(max_workers=3) as ex:
     futures = [ex.submit(risky, i) for i in range(5)]
     for i, f in enumerate(futures):
         try:
+            # f.result() 阻塞取结果；子进程抛的异常会在这里重新抛出
             print(f"  任务{i}: {f.result()}")
         except ValueError as e:
             print(f"  任务{i}: 异常 {e}")

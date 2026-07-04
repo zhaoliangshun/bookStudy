@@ -222,37 +222,38 @@ print("• 混合型   → IO 用线程池，计算用进程池，各取所长")
 
 下面 demo 跑完整对照实验，输出表格化结果。`,
     code: `# 第三十章 demo：多线程 vs 多进程 性能实测
-import threading
 import multiprocessing as mp
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 ctx = mp.get_context("fork")
 
 def cpu_work(n):
-    """CPU 密集任务"""
+    """CPU 密集任务：累加 n 次"""
     total = 0
     for i in range(n):
         total += i
     return total
 
 def io_work(secs):
-    """IO 密集任务"""
+    """IO 密集任务：sleep 模拟等待"""
     time.sleep(secs)
     return secs
 
 def measure_serial(func, args_list):
-    """串行执行，返回耗时"""
+    """串行执行所有任务，返回总耗时（作为加速比的 baseline）"""
     start = time.time()
     for a in args_list:
         func(a)
     return time.time() - start
 
 def measure_threads(func, args_list, n):
-    """n 个线程并发，返回耗时"""
+    """用 n 个线程并发处理 args_list，返回总耗时
+    用线程池控制并发数为 n（而非每个任务开一个线程），
+    这样 '2线程' 才真的是 2 个 worker 在跑，便于公平对比"""
     start = time.time()
-    ts = [threading.Thread(target=func, args=(a,)) for a in args_list]
-    for t in ts: t.start()
-    for t in ts: t.join()
+    with ThreadPoolExecutor(n) as ex:
+        list(ex.map(func, args_list))
     return time.time() - start
 
 def measure_processes(func, args_list, n):
@@ -263,28 +264,28 @@ def measure_processes(func, args_list, n):
     return time.time() - start
 
 def run_benchmark(name, func, single_arg, counts):
-    """跑一组对照实验"""
+    """跑一组对照实验：固定 4 个任务的工作负载，改变并发方式和并发数"""
     print(f"\\n{'='*55}")
     print(f"基准测试：{name}")
     print(f"{'='*55}")
     print(f"  {'方式':<12} {'耗时':>8}  {'加速比':>6}")
     print(f"  {'-'*32}")
-    # 串行 baseline
+    # 固定 4 个任务作为工作负载，串行耗时作为 baseline
     args = [single_arg] * 4
     serial_t = measure_serial(func, args)
     print(f"  {'串行(4个)':<12} {serial_t:>7.3f}s  {'1.00x':>6}")
-    # 2线程
-    t2 = measure_threads(func, args[:2], 2)
-    print(f"  {'2线程':<12} {t2:>7.3f}s  {serial_t/2/t2:>5.2f}x")
-    # 4线程
+    # 2 线程处理同样的 4 个任务，加速比 = 串行耗时 / 并发耗时
+    t2 = measure_threads(func, args, 2)
+    print(f"  {'2线程':<12} {t2:>7.3f}s  {serial_t/t2:>5.2f}x")
+    # 4 线程处理 4 个任务
     t4 = measure_threads(func, args, 4)
-    print(f"  {'4线程':<12} {t4:>7.3f}s  {serial_t/4/t4:>5.2f}x")
-    # 2进程
-    p2 = measure_processes(func, args[:2], 2)
-    print(f"  {'2进程':<12} {p2:>7.3f}s  {serial_t/2/p2:>5.2f}x")
-    # 4进程
+    print(f"  {'4线程':<12} {t4:>7.3f}s  {serial_t/t4:>5.2f}x")
+    # 2 进程处理 4 个任务
+    p2 = measure_processes(func, args, 2)
+    print(f"  {'2进程':<12} {p2:>7.3f}s  {serial_t/p2:>5.2f}x")
+    # 4 进程处理 4 个任务
     p4 = measure_processes(func, args, 4)
-    print(f"  {'4进程':<12} {p4:>7.3f}s  {serial_t/4/p4:>5.2f}x")
+    print(f"  {'4进程':<12} {p4:>7.3f}s  {serial_t/p4:>5.2f}x")
 
 # CPU 密集：累加 300万次
 run_benchmark("CPU 密集（累加300万）", cpu_work, 3_000_000, 4)
@@ -324,6 +325,17 @@ def run(tasks, use_process=False):
     with Executor(max_workers=4) as ex:
         return list(ex.map(worker, tasks))
 \`\`\`
+
+> ⚠️ **关于 ProcessPoolExecutor 的启动方式**：它默认用 spawn 启动子进程，子进程会重新导入主模块。在受限环境（比如本教程通过 \`python3 -\` 从 stdin 执行代码）下 spawn 会失败。解决办法是显式指定 fork 上下文：
+> \`\`\`python
+> import multiprocessing as mp
+> from functools import partial
+> # 用 partial 包装出一个强制使用 fork 的进程池工厂
+> ForkProcessPool = partial(ProcessPoolExecutor, mp_context=mp.get_context("fork"))
+> with ForkProcessPool(max_workers=4) as ex:
+>     ...
+> \`\`\`
+> 本教程所有进程池 demo 都采用这个写法。日常脚本（直接 \`python xxx.py\`）用默认 spawn 即可，记得把启动代码放进 \`if __name__ == "__main__":\`。
 
 ## 模块结构
 
@@ -394,6 +406,8 @@ from functools import partial
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 
 # ProcessPoolExecutor 默认 spawn，在线运行（stdin）会失败，显式指定 fork
+# partial 把 mp_context 参数预绑死，之后调用 ForkProcessPool(max_workers=4)
+# 等价于 ProcessPoolExecutor(max_workers=4, mp_context=mp.get_context("fork"))
 ForkProcessPool = partial(ProcessPoolExecutor, mp_context=mp.get_context("fork"))
 
 def cpu_task(n):
@@ -453,9 +467,12 @@ print("=" * 55)
 print("实验3：同代码，只改 Executor 类名")
 print("=" * 55)
 def run_with(Executor, name):
+    """用同一段代码跑不同的 Executor：切换类名即可换并发模型"""
     start = time.time()
     with Executor(max_workers=4) as ex:
+        # submit 提交 4 个任务，返回 4 个 Future
         futures = [ex.submit(cpu_task, 2_000_000) for _ in range(4)]
+        # f.result() 阻塞取每个任务的结果
         results = [f.result() for f in futures]
     print(f"  {name}: {time.time()-start:.3f}s")
     return results
@@ -735,6 +752,17 @@ print(result.returncode)     # 退出码（0=成功）
 | \`cwd="/path"\` | 子进程工作目录 |
 | \`env={...}\` | 子进程环境变量 |
 
+## run 取代了旧的 API
+
+\`run\` 是 Python 3.5+ 引入的高层接口，**取代了**早期的几个函数，新代码统一用 \`run\` 即可（旧函数底层也是调 Popen，仍可用）：
+
+| 旧 API | 等价 run 写法 |
+|--------|--------------|
+| \`subprocess.call(args)\` | \`run(args).returncode\` |
+| \`subprocess.check_call(args)\` | \`run(args, check=True)\` |
+| \`subprocess.check_output(args)\` | \`run(args, check=True, capture_output=True, text=True).stdout\` |
+| \`subprocess.getoutput(cmd)\` | \`run(cmd, shell=True, capture_output=True, text=True).stdout\` |
+
 ## 列表 vs shell=True
 
 **推荐用列表**（安全）：
@@ -763,6 +791,17 @@ r = subprocess.run(["python3", "-c", "import sys; print('out'); print('err', fil
                    capture_output=True, text=True)
 print(r.stdout)   # out
 print(r.stderr)   # err
+\`\`\`
+
+还有两个常用常量：
+- \`stdout=subprocess.DEVNULL\`：丢弃输出（不想看）
+- \`stderr=subprocess.STDOUT\`：把 stderr 合并进 stdout（统一捕获）
+
+\`\`\`python
+# 丢弃 stdout，把 stderr 合并进 stdout
+r = subprocess.run(["python3", "-c", "import sys; print('err', file=sys.stderr)"],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, text=True)
+print(r.stdout)   # err（被合并过来了）
 \`\`\`
 
 ## check=True 处理失败
@@ -911,6 +950,10 @@ p = Popen(["python3", "-u", "-c", "for i in range(5): print(i)"],
 | \`p.terminate()\` | 发 SIGTERM |
 | \`p.kill()\` | 发 SIGKILL |
 | \`p.pid\` | 进程 ID |
+
+> 💡 \`Popen\` 也支持 \`with\` 语句（\`with Popen(...) as p:\`），退出时会自动关闭管道并回收资源，推荐使用。
+>
+> **平台差异**：\`terminate()\` / \`kill()\` 在 Unix 上分别发 \`SIGTERM\` / \`SIGKILL\`；在 Windows 上两者都调用 \`TerminateProcess\`（都是强制结束，没有"礼貌终止"的区别）。跨平台代码别依赖 SIGTERM 的"可被捕获"语义。
 
 ## 实时读取输出
 
@@ -1110,7 +1153,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def download(url):
     """模拟下载一个 URL（真实版把 sleep 换成 requests.get）
-    返回：下载的字节数
+    返回：(url, size, secs) 三元组
     可能抛异常：模拟网络失败
     """
     # 模拟下载耗时：0.3~0.8 秒
@@ -1302,10 +1345,8 @@ print(f"  耗时 {parallel_time:.3f}s，总和 {parallel_total}")
 print("\\n方式3：4 进程 + chunksize=2")
 start = time.time()
 with ctx.Pool(4) as pool:
-    # map 的 chunksize：每2个任务打包成一个工作单元分发
-    ids = list(range(NUM_CHUNKS))
-    sizes = [CHUNK_SIZE] * NUM_CHUNKS
-    # 用 map 配合固定 size（简化演示）
+    # chunksize=2：每 2 个任务打包成一个工作单元分发给进程，
+    # 减少主进程与子进程之间的通信次数（任务多时收益更明显）
     results3 = pool.starmap(process_chunk, tasks, chunksize=2)
 chunk_time = time.time() - start
 print(f"  耗时 {chunk_time:.3f}s")
@@ -1375,6 +1416,8 @@ for _ in range(num_workers):
     q.put(None)
 # worker 收到 None 就退出
 \`\`\`
+
+> ⚠️ **PriorityQueue 的坑**：\`None\` 在普通 \`queue.Queue\` 里作停止信号没问题，但 \`PriorityQueue\` 会对元素排序比较，\`None\` 与元组无法比较会抛 \`TypeError\`。所以**优先级队列里的停止信号也必须是可比较的元组**，比如 \`(99, seq, "STOP", 0)\`（优先级设很大、排最后）。本节 demo 就采用这种方式，详见代码里的 \`STOP\` 标记。
 
 ## 应用场景
 
@@ -1501,7 +1544,7 @@ print("• 这是 Celery 等任务系统的核心模式")`,
     title: "并发陷阱与最佳实践总结",
     content: `## 并发编程的"坑"比语法多
 
-学完前面 47 章（含 asyncio 异步编程），你已经掌握了工具。但并发编程真正的难点在于**陷阱**——很多代码"看起来对，跑起来错"。这一章总结常见陷阱和最佳实践。
+学完前面 37 章（含 asyncio 异步编程），你已经掌握了工具。但并发编程真正的难点在于**陷阱**——很多代码"看起来对，跑起来错"。这一章总结常见陷阱和最佳实践。
 
 ## 陷阱1：竞态条件（最常见）
 
@@ -1633,7 +1676,7 @@ with lock:
 
 ## 恭喜！
 
-学完这 48 章（含 asyncio 异步编程），你已经掌握了 Python 并发编程的核心。剩下的就是在实战中积累经验——并发编程的"感觉"只能靠踩坑练出来。多写、多测、多对比，你会越来越得心应手。
+学完这 38 章（含 asyncio 异步编程），你已经掌握了 Python 并发编程的核心。剩下的就是在实战中积累经验——并发编程的"感觉"只能靠踩坑练出来。多写、多测、多对比，你会越来越得心应手。
 
 最后送一句话：**"过早优化是万恶之源"**。先写正确的串行代码，确认是性能瓶颈后再用并发优化，并用实测数据验证效果。`,
     code: `# 第三十八章 demo：综合检查清单 + 速查

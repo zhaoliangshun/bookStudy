@@ -243,9 +243,12 @@ def thread_worker():
     show_info("子线程内")
 
 def process_worker():
-    """子进程：修改自己进程空间里的 counter 副本"""
+    """子进程：修改自己进程空间里的 counter 副本。
+    fork 启动方式下，子进程继承父进程内存（写时复制），
+    修改 counter 时会触发复制，产生自己独立的副本，主进程不受影响。
+    """
     global counter
-    counter = 100                              # 改的是子进程自己的副本！
+    counter = 100                              # 改的是子进程自己的副本！主进程看不到
     show_info("子进程内")
 
 print("=" * 55)
@@ -303,6 +306,7 @@ GIL 只限制**执行 Python 字节码**。但有些操作会**主动释放 GIL*
 
 1. **IO 操作**：网络请求、文件读写、\`time.sleep()\`、\`input()\` 等。线程在等待 IO 时会释放 GIL，其他线程可以运行。
 2. **调用 C 扩展**：像 NumPy 这类用 C 写的库，在执行计算时会释放 GIL。
+3. **定期切换**：即使在纯 Python 计算中，解释器也会**定期释放 GIL**（默认每 5 毫秒，由 \`sys.setswitchinterval()\` 控制），让其他线程有机会运行。这就是 CPU 密集型多线程虽然不能加速、但也不会完全卡死的原因。
 
 所以：
 - **IO 密集型任务**：多线程**有效**（等待时释放 GIL，其他线程能跑）
@@ -389,6 +393,8 @@ start = time.time()
 t1 = threading.Thread(target=cpu_task, args=("线程-1", N))
 t2 = threading.Thread(target=cpu_task, args=("线程-2", N))
 t1.start(); t2.start()                    # 同时启动两个线程
+# 如果没有 GIL，两个线程分别在两个核上并行，耗时应该接近 serial_time/2
+# 但由于 GIL，两个线程只能轮流执行，反而多了锁竞争和切换开销
 t1.join(); t2.join()                      # 等两个都结束
 thread_time = time.time() - start
 print(f"多线程耗时: {thread_time:.3f} 秒\\n")
@@ -435,7 +441,7 @@ else:
 |------|------|
 | 同步阻塞 | \`requests.get()\` —— 调用后线程卡住，直到响应返回 |
 | 同步非阻塞 | 轮询检查（while循环里不停问"好了没"）—— 不卡，但要不停查 |
-| 异步阻塞 | 没什么意义，很少见 |
+| 异步阻塞 | 在 async 函数里误用阻塞调用（如 \`time.sleep\`），会卡住整个事件循环——这是常见错误 |
 | 异步非阻塞 | \`asyncio\` + 回调 —— 调用后不卡，结果好了通知你 |
 
 ## Python 中的对应
@@ -556,6 +562,8 @@ t.start()  # 调用 t.start()：启动
 - \`target\`：线程要执行的函数
 - \`args\`：传给函数的位置参数，**必须是元组**，单个参数要写 \`("Alice",)\`（注意逗号）
 - \`kwargs\`：传给函数的关键字参数，字典形式
+- \`name\`：线程名（可选），方便调试时识别，也可通过 \`t.name\` 修改
+- \`daemon\`：是否为守护线程（可选，详见第7章）
 
 ### 方式二：类继承（推荐复杂场景）
 
@@ -595,6 +603,7 @@ t.start()                    # start() 会自动调用 run()
 | \`t.name\` | 线程名 |
 | \`t.daemon\` | 是否为守护线程（详见第7章） |
 | \`threading.current_thread()\` | 获取当前线程对象 |
+| \`threading.main_thread()\` | 获取主线程对象 |
 | \`threading.get_ident()\` | 获取当前线程ID |
 | \`threading.active_count()\` | 当前存活线程数 |
 | \`threading.enumerate()\` | 列出所有存活线程 |
@@ -627,6 +636,7 @@ print("方式一：函数式创建线程")
 print("=" * 55)
 # args 必须是元组：单元素要加逗号 ("Alice",)
 # kwargs 传关键字参数
+# name 设置线程名，方便调试时识别（也可通过 t.name 读取/修改）
 t1 = threading.Thread(target=greet, args=("Alice",), kwargs={"times": 3},
                       name="我的线程-A")
 t1.start()
@@ -773,7 +783,7 @@ t2.join(); t1.join()  # 调用 t2.join()：等待所有任务完成
 虽然非守护线程不 join 也不会被强制终止，但**强烈建议显式 join**，因为：
 1. 代码意图更清晰
 2. 需要子线程结果时必须等
-3. 能捕获子线程异常（不 join 的话子线程异常会静默丢失）
+3. 便于排查异常：子线程未捕获的异常**不会传播到主线程**（\`join()\` 也不会重新抛出），而是触发 \`threading.excepthook\`（Python 3.8+ 默认打印到 stderr）。显式管理线程有助于统一异常处理
 
 ## demo：观察生命周期
 
@@ -869,7 +879,9 @@ print("\\n要点：")
 print("• is_alive() 判断线程是否在运行")
 print("• join() 等待线程结束，join(timeout) 限时等待")
 print("• join 顺序不影响总耗时，取决于最慢的线程")
-print("• 非守护线程即使不 join，程序也会等它结束")`,
+print("• 非守护线程即使不 join，程序也会等它结束")
+print("• 注意：子线程的未捕获异常不会传播到主线程，")
+print("  join() 也不会重新抛出；Python 3.8+ 通过 threading.excepthook 处理")`,
   },
 
   // -----------------------------------------------------------
@@ -1002,11 +1014,11 @@ print()
 print("=" * 55)
 print("实验3：start 后修改 daemon 会报错")
 print("=" * 55)
-t = threading.Thread(target=lambda: None)
+t = threading.Thread(target=lambda: None)   # lambda: None 是个空函数，线程立即结束
 t.start()
 t.join()
 try:
-    t.daemon = True          # 已经 start 过，会抛异常
+    t.daemon = True          # 已经 start 过，会抛 RuntimeError
 except RuntimeError as e:
     print(f"  报错: {e}")
 print("\\n要点：")
@@ -1128,12 +1140,13 @@ print("  可以看到，读到的名字可能不是自己的 —— 这就是共
 
 # ============================================================
 # 解决：threading.local 让每个线程拥有独立副本
+# 原理：local 对象内部按线程ID 存储各自的数据，访问时自动取当前线程的
 # ============================================================
-local_data = threading.local()          # 线程局部对象
+local_data = threading.local()          # 线程局部对象：每个线程看到的属性各自独立
 
 def worker_local(tag):
     """用 threading.local 存数据 —— 各线程独立"""
-    local_data.name = tag                # 写入"自己的"那份
+    local_data.name = tag                # 写入"自己的"那份（底层按线程ID隔离存储）
     time.sleep(0.05)                     # 等其他线程也写
     # local_data.name 取到的是当前线程自己设置的值，不会被别人影响
     print(f"  [局部] {tag} 读到: {local_data.name}  (期望: {tag}) ✓")
