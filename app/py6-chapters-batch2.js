@@ -234,13 +234,13 @@ i = 1
 while i <= 5:  # 当 i 不超过 5 时继续
     # 打印当前 i 的值
     print(i)
-    i = i + 1  # 别忘了改变条件，否则会死循环！  # 更新计数器，使条件最终变 False
+    i = i + 1  # 别忘了更新计数器，否则会死循环！使条件最终变 False
 \`\`\`
 
 ⚠️ **死循环警告**：如果循环条件一直是 True，循环永远不会停止！
 
 \`\`\`python
-# 这是死循环！永远不会停止（按Ctrl+C中断）  # 注释说明
+# 这是死循环！永远不会停止（按 Ctrl+C 中断）
 while True:  # 条件恒为真，循环永不退出
     print("无限循环...")
 \`\`\`
@@ -272,7 +272,7 @@ i = 1
 while i <= 100:  # 从 1 加到 100
     sum += i  # 等价于 sum = sum + i
     i += 1  # 计数器加 1
-print(sum)  # 5050  # 输出累加结果
+print(sum)  # 5050，输出累加结果
 \`\`\`
 
 ### 循环控制
@@ -401,23 +401,25 @@ for fruit in fruits:  # 遍历列表每个元素
 | \`range(n)\` | 0到n-1 | range(5) → 0,1,2,3,4 |
 | \`range(start, stop)\` | start到stop-1 | range(2,5) → 2,3,4 |
 | \`range(start, stop, step)\` | 步长为step | range(1,10,2) → 1,3,5,7,9 |
+| 负步长 | 倒序 | range(10,0,-1) → 10,9,...,1 |
 
 ⚠️ range 是"左闭右开"：包含start，不包含stop！
 
 \`\`\`python
 # 打印0到4
 for i in range(5):  # range(5) 生成 0,1,2,3,4
-    # 打印当前数字
     print(i)
 
 # 打印1到10
 for i in range(1, 11):  # 从 1 到 10（不含 11）
-    # 打印当前数字
     print(i)
 
 # 打印10以内偶数
 for i in range(0, 11, 2):  # 步长 2，取 0,2,4,6,8,10
-    # 打印当前偶数
+    print(i)
+
+# 倒序：从10到1（负步长）
+for i in range(10, 0, -1):  # step=-1，从 10 递减到 1（不含 0）
     print(i)
 \`\`\`
 
@@ -548,7 +550,7 @@ print("大多数情况下 for 更简洁好用！")`
 for i in range(1, 10):  # i 取 1 到 9
     # 判断 i 是否等于 5
     if i == 5:
-        break  # 当i等于5时，直接退出整个循环  # break 立即终止循环
+        break  # 当 i 等于 5 时，直接退出整个循环（break 立即终止）
     # 打印未触发 break 的数字
     print(i)
 # 输出：1 2 3 4
@@ -566,7 +568,7 @@ break 常用于：
 for i in range(1, 6):  # i 取 1 到 5
     # 命中需要跳过的值
     if i == 3:
-        continue  # 跳过i=3这次  # 跳过本次剩余代码，进入下一轮
+        continue  # 跳过 i=3 这次，进入下一轮循环
     # 打印未被跳过的数字
     print(i)
 # 输出：1 2 4 5（注意没有3）
@@ -589,7 +591,7 @@ continue: 循环1 循环2 [跳过3] 循环4 循环5 → 继续后面的循环
 
 \`\`\`python
 if x > 0:  # x 为正数时
-    pass  # 还没想好这里写什么，先用pass占位  # pass 空语句，保证语法合法
+    pass  # 还没想好写什么，先用 pass 占位（空语句，保证语法合法）
 else:  # 否则
     # 条件不成立时执行
     print("x<=0")
@@ -606,7 +608,7 @@ Python 的代码块不能为空（if/for/def/class后面必须有内容），
 for i in range(3):  # 外层循环
     for j in range(3):  # 内层循环
         if j == 1:
-            break  # 只跳出内层j循环，外层i循环继续  # break 仅作用于所在层
+            break  # 只跳出内层 j 循环，外层 i 循环继续（break 仅作用于所在层）
         # 打印满足条件的下标组合
         print(i, j)
 \`\`\`
@@ -617,7 +619,7 @@ for/while 可以带 else，在循环**正常结束**（没有被break打断）�
 
 \`\`\`python
 for i in range(5):  # i 取 0 到 4
-    if i == 10:  # 永远不满足  # 条件永不成立
+    if i == 10:  # 条件永不成立，break 不会触发
         break
 else:  # 循环未被 break 打断，执行 else
     print("循环正常结束，没有被break")  # 会执行
@@ -791,25 +793,23 @@ match day:
         print("周末")
 \`\`\`
 
-### 捕获变量
+### 捕获变量（捕获模式）
 
-case 中可以用变量捕获匹配的值：
+case 中可以用变量名捕获匹配到的值（小写名是变量，会捕获；引号包裹的是字面量）：
 
 \`\`\`python
 match point:  # point 是二元组
-    case (0, 0):  # 精确匹配原点
-        # 打印在 X 轴上的点
+    case (0, 0):  # 字面量模式：精确匹配原点 (0,0)
         print("原点")
-    case (x, 0):  # 捕获 x 坐标，y 为 0
-        # 打印在 Y 轴上的点
+    case (x, 0):  # 捕获模式：x 是变量（捕获任意值），y 必须为 0
         print(f"在X轴上，x={x}")
-    case (0, y):  # x 为 0，捕获 y
-        # 打印一般点
+    case (0, y):  # 捕获模式：x 必须为 0，y 捕获任意值
         print(f"在Y轴上，y={y}")
-    case (x, y):  # 捕获两个坐标
-        # 打印点坐标
+    case (x, y):  # 捕获模式：x、y 都捕获任意值（匹配所有二元组）
         print(f"点坐标({x}, {y})")
 \`\`\`
+
+⚠️ 注意：变量名小写才会捕获，大写名会被当作**值**（枚举/常量）来匹配。
 
 ### 列表/元组模式
 
@@ -828,7 +828,7 @@ match lst:  # 按列表结构匹配
         print(f"前两个是{x},{y}，后面还有{rest}")
 \`\`\`
 
-### 字典模式
+### 字典模式（映射模式）
 
 \`\`\`python
 match data:  # data 是字典
@@ -836,6 +836,62 @@ match data:  # data 是字典
         # 打印解构出的姓名和年龄
         print(f"姓名{name}，年龄{age}")
 \`\`\`
+
+映射模式只匹配列出的键，字典中多余的键会被忽略。
+
+### 类模式（Python 3.10+）
+
+类模式可以匹配对象的类型并解构其属性：
+
+\`\`\`python
+# 定义一个简单的二维点类
+class Point:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+# 对 point 对象进行类模式匹配
+match point:
+    case Point(x=0, y=0):  # 匹配原点（x 和 y 属性都为 0）
+        print("原点")
+    case Point(x=0, y=y):  # x 属性为 0，捕获 y 属性
+        print(f"在Y轴上，y={y}")
+    case Point(x=x, y=0):  # y 属性为 0，捕获 x 属性
+        print(f"在X轴上，x={x}")
+    case Point(x=x, y=y):  # 捕获两个属性
+        print(f"点坐标({x}, {y})")
+    case _:  # 不是 Point 类型
+        print("不是点对象")
+\`\`\`
+
+也可以用位置参数解构（需要 \`__match_args__\`）：
+
+\`\`\`python
+class Point:
+    __match_args__ = ("x", "y")  # 声明位置匹配顺序
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+match point:
+    case Point(0, 0):  # 位置匹配，等价于 Point(x=0, y=0)
+        print("原点")
+    case Point(x, y):  # 位置捕获 x 和 y
+        print(f"({x}, {y})")
+\`\`\`
+
+### 模式类型总结
+
+| 模式类型 | 语法示例 | 说明 |
+|---------|---------|------|
+| 字面量模式 | \`case 1:\`, \`case "hello":\` | 匹配具体的值 |
+| 捕获模式 | \`case x:\` | 捕获匹配的值到变量 |
+| 通配符模式 | \`case _:\` | 匹配任何值（不捕获） |
+| 或模式 | \`case 1 \\| 2 \\| 3:\` | 匹配多个值之一 |
+| 序列模式 | \`case [x, y]:\` | 匹配列表/元组结构 |
+| 映射模式 | \`case {"k": v}:\` | 匹配字典结构 |
+| 类模式 | \`case Point(x=0, y=0):\` | 匹配对象类型和属性 |
+| 守卫 | \`case x if x > 0:\` | 加 if 条件进一步筛选 |
 
 ### 带条件的 case（守卫）
 
@@ -977,9 +1033,33 @@ print(describe_list([42]))
 print(describe_list([1, 2]))
 print(describe_list([1, 2, 3, 4, 5]))
 
+print("\\n=== 7. 类模式（匹配对象类型和属性）===")
+class Point:
+    __match_args__ = ("x", "y")  # 声明位置匹配顺序
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+def describe_point_obj(p):
+    match p:
+        # 类模式：匹配类型 Point 并解构属性
+        case Point(0, 0):
+            return "原点"
+        case Point(0, y):
+            return f"Y轴上，y={y}"
+        case Point(x, 0):
+            return f"X轴上，x={x}"
+        case Point(x, y):
+            return f"普通点({x},{y})"
+        case _:
+            return "不是Point对象"
+
+for p in [Point(0, 0), Point(0, 5), Point(3, 0), Point(2, 7), "hello"]:
+    print(f"  {p if not isinstance(p, Point) else f'Point({p.x},{p.y})'} -> {describe_point_obj(p)}")
+
 print("\\n=== match vs if-elif 怎么选？===")
 print("- 对值进行精确匹配（如枚举状态）→ match 更清晰")
-print("- 解构复杂结构（元组/列表/字典）→ match 更强大")
+print("- 解构复杂结构（元组/列表/字典/类）→ match 更强大")
 print("- 复杂逻辑条件组合 → if-elif 更灵活")
 print("- 简单条件判断 → 两者皆可，看哪个更易读")`
   },
@@ -1408,36 +1488,30 @@ def is_prime(n):
     for i in range(2, n):
         # 若能整除说明有因子
         if n % i == 0:
-            # 找到因子了，不是质数，break跳出
-            # 找到因子，不是质数
+            # 找到因子了，return 提前返回，else 不会执行
+            # （return 和 break 一样会阻止 else 执行）
             return False
     else:
-        # 循环正常结束，说明没有找到因子
-        # 无因子，是质数
+        # 循环正常结束（没找到因子），说明是质数
         return True
 \`\`\`
 
 ### 理解例子
 
 \`\`\`python
-# 例子1：没有break，else会执行
-# 遍历 0、1、2
+# 例子1：循环正常跑完（没遇到break），else 会执行
 for i in range(3):
-    # 打印当前 i
     print(i)
 else:
-    # 打印正常结束提示
+    # for 正常结束后走到这里
     print("循环正常结束")
-# 输出 0 1 2 循环正常结束
+# 输出：0 1 2 循环正常结束
 
-# 例子2：有break，else不执行
-# 遍历 0、1、2
+# 例子2：循环被 break 打断，else 不会执行
 for i in range(3):
-    # 打印当前 i
     print(i)
-    # i 等于 1 时
     if i == 1:
-        # 跳出循环
+        # break 触发后，else 被跳过
         break
 else:
     # 因 break 触发，此处不执行
@@ -1534,7 +1608,7 @@ def is_prime(n):
         return False
     for i in range(2, n):
         if n % i == 0:
-            # 找到因子了，break跳出，else不执行
+            # 找到因子了，return 提前返回，else 不执行
             print(f"    {n} 能被 {i} 整除，不是质数")
             return False
     else:
@@ -1847,6 +1921,32 @@ list(zip(a, b))  # [(1, 'a'), (2, 'b')] —— 3被丢弃了
 
 如果不想截断，可以用 \`itertools.zip_longest()\`。
 
+### strict 参数（Python 3.10+）
+
+默认 zip 会**静默截断**长序列，这可能隐藏 bug。Python 3.10 新增了 \`strict=True\` 参数，当序列长度不一致时**抛出 ValueError**：
+
+\`\`\`python
+# strict=True：长度不一致时报错，避免数据丢失
+list(zip([1, 2, 3], ["a", "b"], strict=True))
+# ValueError: zip() argument 2 is shorter than argument 1
+
+# strict=False（默认）：静默截断
+list(zip([1, 2, 3], ["a", "b"]))
+# [(1, 'a'), (2, 'b')] —— 3 被丢弃，无警告
+\`\`\`
+
+建议：如果你期望两个序列等长，加上 \`strict=True\` 更安全！
+
+### itertools.zip_longest：不截断，用默认值填充
+
+\`\`\`python
+from itertools import zip_longest
+
+# 长度不一致时，短的用 fillvalue 填充（默认 None）
+list(zip_longest([1, 2, 3], ["a", "b"], fillvalue="?"))
+# [(1, 'a'), (2, 'b'), (3, '?')] —— 不截断，3 配上了 '?'
+\`\`\`
+
 ### zip 创建字典
 
 zip 可以方便地从两个列表创建字典：
@@ -1916,6 +2016,23 @@ for x, y in zip(a, b):
     print(f"  ({x}, '{y}')")
 print("注意：a中后面的4和5被丢弃了")
 
+print("\\n=== 3b. strict=True：长度不等时报错（Python 3.10+）===")
+print("zip([1,2,3], ['a','b'], strict=True) 会抛 ValueError:")
+try:
+    list(zip([1, 2, 3], ["a", "b"], strict=True))
+except ValueError as e:
+    print(f"  ValueError: {e}")
+print("  → 期望等长时加 strict=True 可避免数据丢失")
+
+print("\\n=== 3c. zip_longest：不截断，用默认值填充 ===")
+from itertools import zip_longest
+a = [1, 2, 3]
+b = ["a", "b"]
+result = list(zip_longest(a, b, fillvalue="?"))
+print(f"zip_longest({a}, {b}, fillvalue='?'):")
+print(f"  {result}")
+print("  → 短的用 fillvalue 填充，不丢数据")
+
 print("\\n=== 4. 用zip创建字典 ===")
 keys = ["姓名", "年龄", "城市", "职业"]
 values = ["张三", 25, "上海", "工程师"]
@@ -1968,7 +2085,9 @@ for key, value in student.items():
 print("\\n=== 总结 ===")
 print("- zip(*iterables) 并行遍历多个序列")
 print("- 返回元组，对应位置元素配对")
-print("- 长度不一致时以最短的为准")
+print("- 长度不一致时以最短的为准（静默截断）")
+print("- strict=True（3.10+）长度不等时报错，更安全")
+print("- zip_longest 不截断，用 fillvalue 填充")
 print("- dict(zip(keys, values)) 方便创建字典")
 print("- zip(*pairs) 可以解压（还原）")
 print("- 可以和enumerate组合使用")`
@@ -2263,7 +2382,7 @@ print("大写:", upper_words)`
 
 - 非零数字（即使是负数）：\`-1\`, \`0.0001\` 都是 True
 - 非空字符串：\`"0"\`, \`"False"\`, \`"false"\`, \`"None"\`, \`" "\`（空格字符串）都是 True
-- 非空容器：\`[0]\`, \`[""]\`, \`{}\\"\` 不对，空是False——\`{"": None}\` 是 True，因为不是空字典
+- 非空容器：\`[0]\`, \`[""]\` 都是 True（虽然里面的元素是假值，但容器本身非空）；而 \`{}\`（空字典）是 False——\`{"": None}\` 是 True，因为不是空字典
 - 任何自定义类的实例默认都是 True
 
 \`\`\`python
@@ -2543,16 +2662,13 @@ name = user_input or "匿名"
 Python 的 and/or **返回的是实际的操作数**，不是布尔值 True/False：
 
 \`\`\`python
-# and 返回后一个真值 5
-3 and 5      # 返回5（不是True）
-# and 遇假即返回 0
-0 and 5      # 返回0（不是False）
-# or 返回第一个真值 3
-3 or 5       # 返回3（不是True）
-# or 遇假返回后一个 5
-0 or 5       # 返回5（不是True）
-# or 返回非空字符串
-"" or "默认" # 返回"默认"
+# and 规则：A为假返回A，A为真返回B（返回操作数本身，不是布尔值）
+3 and 5      # 3为真 → 返回B=5（不是True！）
+0 and 5      # 0为假 → 直接返回A=0（不是False！）
+# or 规则：A为真返回A，A为假返回B
+3 or 5       # 3为真 → 直接返回A=3
+0 or 5       # 0为假 → 返回B=5
+"" or "默认" # ""为假 → 返回B="默认"（常用于设置默认值）
 \`\`\`
 
 这个特性让 and/or 可以做很多有用的事情，但在 if 语句中，返回值会被自动转成布尔值判断。
@@ -2661,14 +2777,22 @@ print(f"能入场吗？{can_enter}")
 print("（年龄不够，has_id和has_ticket根本不会被判断）")
 
 print("\\n=== 9. all() 和 any() 本质也是短路 ===")
-# any()找到第一个True就停
-print("any()演示：")
-result = any([0, False, None, "", "找到我了", print("这句不会执行")])
+# 注意：不能用列表字面量演示短路！因为列表在创建时所有元素就已经被求值
+# 正确做法：用生成器函数，每次 yield 时打印，才能看到短路在哪里停止
+def trace_gen(name, values):
+    """生成器：每次产出值前先打印，用来观察短路位置"""
+    for v in values:
+        print(f"    [{name}] 检查 {v!r}...")
+        yield v
+
+# any()遇到第一个真值就停，后面的不会yield
+print("any()演示（遇到第一个真值即停止）：")
+result = any(trace_gen("any", [0, False, None, "", "找到我了", "不会到这里"]))
 print(f"  any结果: {result}")
 
-# all()找到第一个False就停
-print("all()演示：")
-result = all([1, True, "hello", 0, print("这句不会执行")])
+# all()遇到第一个假值就停，后面的不会yield
+print("\\nall()演示（遇到第一个假值即停止）：")
+result = all(trace_gen("all", [1, True, "hello", 0, "不会到这里"]))
 print(f"  all结果: {result}")
 
 print("\\n=== 10. 注意：有副作用的代码不要依赖短路顺序 ===")
@@ -2719,12 +2843,11 @@ assert 条件, 错误信息（可选）
 等价于：
 
 \`\`\`python
-# assert 仅在调试模式生效
-if __debug__:
-    # 条件取反
-    if not 条件:
-        # 抛出断言异常
-        raise AssertionError(错误信息)
+# assert 底层等价于以下代码（受 __debug__ 全局变量控制）
+# __debug__ 在正常模式为 True，用 python -O 运行时为 False
+if __debug__:                # 优化模式下 __debug__=False，整块代码被跳过
+    if not 条件:             # 条件取反判断
+        raise AssertionError(错误信息)  # 抛出断言异常，附带错误信息
 \`\`\`
 
 ### 简单例子
@@ -2940,27 +3063,24 @@ print("✅ 应该用来：开发时快速验证假设")`
 用一个整数的不同二进制位表示不同权限，非常节省空间：
 
 \`\`\`python
-# 读权限位 1
-READ = 1 << 0    # 0001 = 1
-# 写权限位 2
-WRITE = 1 << 1   # 0010 = 2
-# 执行权限位 4
-EXEC = 1 << 2    # 0100 = 4
-# 删除权限位 8
-DELETE = 1 << 3  # 1000 = 8
+# 每个权限占一个二进制位（互不冲突）
+READ = 1 << 0    # 0001 = 1，读权限
+WRITE = 1 << 1   # 0010 = 2，写权限
+EXEC = 1 << 2    # 0100 = 4，执行权限
+DELETE = 1 << 3  # 1000 = 8，删除权限
 
-# 给用户读+写权限
-# 用按位或组合读和写权限
-user_perm = READ | WRITE  # 0011 = 3
+# 组合权限：用按位或 |（对应位都置1）
+user_perm = READ | WRITE  # 0011 = 3，有读+写权限
 
-# 检查是否有某权限（用&）
-if user_perm & READ:  # 有读权限
-# 添加权限（用|）
-# 用按位或添加执行权限
-user_perm = user_perm | EXEC
-# 移除权限（用&~）
-# 用按位与取反移除写权限
-user_perm = user_perm & ~WRITE
+# 检查权限：用按位与 &（对应位都为1才非0）
+if user_perm & READ:      # 0011 & 0001 = 0001，非0 → 有读权限
+    print("有读权限")
+
+# 添加权限：用按位或 |（把对应位设为1）
+user_perm = user_perm | EXEC  # 0011 | 0100 = 0111 = 7
+
+# 移除权限：用按位与取反 & ~（把对应位设为0）
+user_perm = user_perm & ~WRITE  # 0111 & ~0010 = 0111 & 1101 = 0101 = 5
 \`\`\`
 
 Linux文件权限（rwx=4+2+1=7）就是这个原理！
@@ -3024,13 +3144,13 @@ for num in nums:
 
 ### 应用6：判断2的幂
 
-\`x & (x-1) == 0\` 则x是2的幂：
+\`(x & (x-1)) == 0\` 则x是2的幂（注意括号，因为 \`==\` 优先级高于 \`&\`）：
 
 \`\`\`python
-# 8 与 7 按位与为 0，说明 8 是 2 的幂
-8 & 7 == 0   # True, 8是2^3
-# 6 与 5 按位与为 4，非 2 的幂
-6 & 5 == 4   # False, 6不是2的幂
+# 注意：& 优先级低于 ==，必须加括号写成 (n & (n-1)) == 0
+(8 & 7) == 0   # True, 8是2^3（8=1000, 7=0111, 按位与=0000）
+(6 & 5) == 0   # False, 6不是2的幂（6=110, 5=101, 按位与=100=4，非0）
+# ⚠️ 如果写成 8 & 7 == 0，会被解析为 8 & (7==0) 即 8 & False = 0，结果错误！
 \`\`\``,
     code: `# 位运算实际应用演示
 

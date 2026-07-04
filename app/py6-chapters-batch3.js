@@ -12,7 +12,8 @@ export const chapters = [
 
 使用方括号 \`[]\` 创建列表，元素之间用逗号分隔：
 
-\`\`\`python# 用方括号 [] 创建空列表
+\`\`\`python
+# 用方括号 [] 创建空列表
 # 空列表
 empty_list = []
 # 列表中可存放一组数字
@@ -31,7 +32,8 @@ chars = list("Python")  # ['P', 'y', 't', 'h', 'o', 'n']
 
 列表使用**索引**访问元素，索引从 0 开始：
 
-\`\`\`python# 创建水果列表
+\`\`\`python
+# 创建水果列表
 fruits = ["苹果", "香蕉", "橙子"]
 # 索引 0 表示第一个元素
 print(fruits[0])  # 苹果（第一个元素）
@@ -122,6 +124,13 @@ print("\\n=== 7. 错误示例（注释掉）===")
 - \`remove(x)\`：删除第一个出现的指定元素
 - \`pop(i)\`：删除并返回指定位置的元素（默认最后一个）
 - \`clear()\`：清空列表所有元素
+- \`del lst[i]\`：按索引删除单个元素（语句，不是方法）
+- \`del lst[i:j]\`：删除一段切片
+
+### 成员判断
+
+- \`x in lst\`：判断 x 是否在列表中（返回 True/False）
+- \`x not in lst\`：判断 x 是否不在列表中
 
 ### 查询元素
 
@@ -185,6 +194,17 @@ temp = [1, 2, 3]
 temp.clear()
 print("clear清空后:", temp)
 
+# del 语句：按索引删除（不是方法，是语句）
+del_list = [10, 20, 30, 40, 50]
+del del_list[1]  # 删除索引1的元素（20）
+print("del[1]后:", del_list)
+del del_list[1:3]  # 删除一段切片（30,40）
+print("del[1:3]后:", del_list)
+
+# in / not in 成员判断
+print("30在列表中吗?", 30 in del_list)
+print("30不在列表中吗?", 30 not in del_list)
+
 print("\\n=== 3. 查询方法 ===")
 nums = [10, 20, 30, 20, 40, 20]
 print("列表:", nums)
@@ -227,7 +247,8 @@ print("原列表未受影响:", original)`
 
 ### 基本语法
 
-\`\`\`python# 切片语法：start 起始、stop 结束（不含）、step 步长，三者均可省略
+\`\`\`python
+# 切片语法：start 起始、stop 结束（不含）、step 步长，三者均可省略
 list[start:stop:step]
 \`\`\`
 
@@ -323,7 +344,8 @@ Python 提供了两种排序方式：
 
 \`key\` 参数接收一个函数，该函数作用于每个元素，返回值作为排序的依据：
 
-\`\`\`python# key 指定排序依据函数：len 取字符串长度
+\`\`\`python
+# key 指定排序依据函数：len 取字符串长度
 # 按字符串长度排序
 words.sort(key=len)
 # abs 取绝对值后再排序
@@ -421,7 +443,8 @@ for name, score in sorted_students:
 
 ### 创建元组
 
-\`\`\`python# 用括号定义元组，元素不可修改
+\`\`\`python
+# 用括号定义元组，元素不可修改
 # 普通方式
 point = (3, 4)
 # 单元素元组必须加逗号，否则被当作普通括号表达式
@@ -542,7 +565,8 @@ print("坐标字典:", locations[(39.9, 116.4)])`
 
 ### 创建字典
 
-\`\`\`python# 用花括号直接书写字面量键值对
+\`\`\`python
+# 用花括号直接书写字面量键值对
 # 花括号创建
 person = {"name": "张三", "age": 25}
 # dict() 用关键字参数构造字典
@@ -900,7 +924,8 @@ Python 提供了多种合并字典的方式，不同方式有不同的行为。
 
 ### 多个字典合并
 
-\`\`\`python# 用 ** 解包多个字典到新字典中合并
+\`\`\`python
+# 用 ** 解包多个字典到新字典中合并
 # 解包多个
 merged = {**d1, **d2, **d3}
 # | 运算符合并字典，右侧覆盖左侧同键
@@ -989,7 +1014,8 @@ print("(info里的name和age丢失了！)")`
 
 ### 创建集合
 
-\`\`\`python# 花括号创建集合，元素自动去重
+\`\`\`python
+# 花括号创建集合，元素自动去重
 # 花括号创建（注意：空集合不能用{}，那是空字典）
 s = {1, 2, 3}
 # set() 创建空集合，或从可迭代对象生成集合
@@ -1014,6 +1040,20 @@ from_str = set("hello")  # {'h', 'e', 'l', 'o'}
 1. **去重**：快速去除列表中的重复元素
 2. **成员检测**：\`x in s\` 是 O(1) 极快
 3. **集合运算**：交集、并集、差集等
+
+### frozenset 不可变集合
+
+\`frozenset\` 是集合的**不可变**版本，创建后不能增删元素。因为不可变所以可哈希，可以作为字典的键或放入另一个集合中（普通 \`set\` 不行）。
+
+\`\`\`python
+# frozenset 创建后不可修改，自动去重
+fs = frozenset([1, 2, 3, 2, 1])
+print(fs)  # frozenset({1, 2, 3})
+# fs.add(4)  # AttributeError! frozenset 不可变
+# 不可变 → 可哈希 → 可作为字典的键或集合的元素
+d = {frozenset([1, 2]): "一对"}
+print(d[frozenset([1, 2])])  # 一对
+\`\`\`
 
 ### 注意事项
 
@@ -1115,7 +1155,22 @@ print("\\n=== 6. 成员检测（超快）===")
 big_set = set(range(1000000))
 big_list = list(range(1000000))
 # 集合查找是O(1)，列表是O(n)
-print("999999在集合中:", 999999 in big_set)  # 瞬间完成`
+print("999999在集合中:", 999999 in big_set)  # 瞬间完成
+
+print("\\n=== 7. frozenset 不可变集合 ===")
+# frozenset 创建后不可修改，自动去重
+fs = frozenset([1, 2, 3, 2, 1])
+print("frozenset:", fs, "类型:", type(fs).__name__)
+# fs.add(4)  # AttributeError! 不可变
+# frozenset 支持集合运算（但不支持原地修改运算）
+print("frozenset 交集:", fs & frozenset([2, 3, 4]))
+
+# frozenset 可哈希，可作为字典的键（普通 set 不行）
+d = {frozenset(["a", "b"]): "字母对"}
+print("作为字典键:", d[frozenset(["a", "b"])])
+# 也可作为另一个集合的元素
+nested = {frozenset([1, 2]), frozenset([3, 4])}
+print("集合套frozenset:", nested)`
   },
   {
     id: "py6-set-operations",
@@ -1254,7 +1309,8 @@ print("共同用户:", old_set & new_set)`
 
 一层一层用方括号访问即可：
 
-\`\`\`python# students[0] 取列表第一项（字典），再按 "name" 取值
+\`\`\`python
+# students[0] 取列表第一项（字典），再按 "name" 取值
 # 获取第一个学生的姓名
 students[0]["name"]
 # 先取学生字典，再取其 scores 字典中的 math 键
@@ -1397,7 +1453,8 @@ Python 中赋值、浅拷贝、深拷贝是三个不同的概念，理解它们�
 
 ### 浅拷贝的几种写法
 
-\`\`\`python# 三种等价的列表浅拷贝方式，仅复制外层容器
+\`\`\`python
+# 三种等价的列表浅拷贝方式，仅复制外层容器
 # 列表浅拷贝
 new_list = old_list.copy()
 # list() 转换也会产生新列表
@@ -1523,7 +1580,8 @@ print(f"s4 = {s4}")`
 
 ### 基本语法
 
-\`\`\`python# 列表推导式语法：对每个元素求表达式，收集成新列表
+\`\`\`python
+# 列表推导式语法：对每个元素求表达式，收集成新列表
 [表达式 for 变量 in 可迭代对象]
 # 等价于：
 # 创建空列表存放结果
@@ -1536,13 +1594,15 @@ for 变量 in 可迭代对象:
 
 ### 带条件筛选
 
-\`\`\`python# 带条件的列表推导式：仅对满足条件的元素求表达式
+\`\`\`python
+# 带条件的列表推导式：仅对满足条件的元素求表达式
 [表达式 for 变量 in 可迭代对象 if 条件]
 \`\`\`
 
 ### 嵌套循环
 
-\`\`\`python# 嵌套循环的列表推导式：外层循环在前，内层循环在后
+\`\`\`python
+# 嵌套循环的列表推导式：外层循环在前，内层循环在后
 [表达式 for 变量1 in 可迭代对象1 for 变量2 in 可迭代对象2]
 \`\`\`
 
@@ -1651,7 +1711,8 @@ print("保序去重:", unique)  # 不过更推荐dict.fromkeys方式`
 
 ### 字典推导式
 
-\`\`\`python# 字典推导式：用键值表达式为每个元素生成键值对
+\`\`\`python
+# 字典推导式：用键值表达式为每个元素生成键值对
 {键表达式: 值表达式 for 变量 in 可迭代对象}
 # 可加 if 过滤元素
 {键表达式: 值表达式 for 变量 in 可迭代对象 if 条件}
@@ -1659,7 +1720,8 @@ print("保序去重:", unique)  # 不过更推荐dict.fromkeys方式`
 
 ### 集合推导式
 
-\`\`\`python# 集合推导式：对元素求表达式并自动去重
+\`\`\`python
+# 集合推导式：对元素求表达式并自动去重
 {表达式 for 变量 in 可迭代对象}
 # 可加 if 条件过滤元素
 {表达式 for 变量 in 可迭代对象 if 条件}
@@ -1774,7 +1836,8 @@ print("元组结果:", tuple_result)`
 
 ### 基础解包
 
-\`\`\`python# 把列表元素依次赋给多个变量
+\`\`\`python
+# 把列表元素依次赋给多个变量
 a, b, c = [1, 2, 3]  # 列表解包
 # 元组同样可以解包
 x, y, z = (4, 5, 6)  # 元组解包
@@ -1784,7 +1847,8 @@ x, y, z = (4, 5, 6)  # 元组解包
 
 ### * 号解包（收集多余元素）
 
-\`\`\`python# 星号把剩余元素收集为列表赋给 rest
+\`\`\`python
+# 星号把剩余元素收集为列表赋给 rest
 first, *rest = [1, 2, 3, 4, 5]
 # first=1, rest=[2,3,4,5]
 # 星号也可放在中间，收集中间部分
@@ -1915,7 +1979,8 @@ for i, (fruit, price) in enumerate(pairs, 1):
 
 ### 基本用法
 
-\`\`\`python# 从 collections 导入 Counter 计数器类
+\`\`\`python
+# 从 collections 导入 Counter 计数器类
 from collections import Counter
 # 传入可迭代对象，自动统计每个元素出现次数
 # 从可迭代对象创建
@@ -2047,7 +2112,8 @@ print("共同元素列表:", list(common.elements()))`
 
 \`defaultdict\` 是字典的子类，它可以为不存在的键提供默认值，避免 KeyError。
 
-\`\`\`python# 导入 defaultdict，访问不存在的键时自动生成默认值
+\`\`\`python
+# 导入 defaultdict，访问不存在的键时自动生成默认值
 from collections import defaultdict
 # 传入 list 作为默认工厂，新键默认值为空列表
 # 默认值是list（每个键对应一个列表）
@@ -2065,7 +2131,8 @@ d["apple"] += 1
 
 命名元组让元组的字段有名字，访问更清晰：
 
-\`\`\`python# 导入 namedtuple，用于创建具名元组
+\`\`\`python
+# 导入 namedtuple，用于创建具名元组
 from collections import namedtuple
 # 创建名为 Point 的具名元组类型，字段为 x、y
 Point = namedtuple("Point", ["x", "y"])

@@ -14,7 +14,7 @@ export const chapters = [
 # 用 def 关键字定义函数，括号内为参数列表，行尾冒号
 def 函数名(参数1, 参数2):
     # 三引号字符串为文档字符串（可选），说明函数用途
-    \\"\\"\\"文档字符串（可选）\\"\\"\\"
+    """文档字符串（可选）"""
     # 缩进的语句构成函数体，即函数执行的操作
     函数体
     # return 返回结果；若无 return 则默认返回 None
@@ -151,6 +151,39 @@ def func(位置参数, 默认参数, *args, **kwargs):
     pass
 \`\`\`
 
+### 仅位置参数（/ 分隔符，Python 3.8+）
+
+用 \`/\` 表示它**前面的参数只能按位置传递**，不能用关键字：
+
+\`\`\`python
+# / 之前的参数 a、b 只能按位置传递，c 可位置或关键字传递
+def func(a, b, /, c):
+    pass
+# func(1, 2, 3)        ✅ 合法
+# func(1, 2, c=3)      ✅ 合法
+# func(a=1, b=2, c=3)  ❌ TypeError，a/b 不能用关键字
+\`\`\`
+
+### 仅关键字参数（* 分隔符）
+
+用 \`*\` 表示它**后面的参数只能用关键字传递**：
+
+\`\`\`python
+# * 之后的 c 必须用关键字传递，a、b 可位置或关键字
+def func(a, b, *, c):
+    pass
+# func(1, 2, c=3)   ✅ 合法
+# func(1, 2, 3)     ❌ TypeError，c 必须用关键字
+\`\`\`
+
+### 完整参数顺序（Python 3.8+）
+
+\`\`\`python
+# 完整顺序：仅位置参数、/ 、普通参数、*args、仅关键字参数、**kwargs
+def func(pos_only, /, normal, *args, kw_only, **kwargs):
+    pass
+\`\`\`
+
 ### 关键字参数的好处
 
 - 不用记参数顺序
@@ -247,7 +280,24 @@ print("数字相加:", add_three(1, 2, 3))
 print("字符串拼接:", add_three("a", "b", "c"))
 print("列表合并:", add_three([1], [2], [3]))
 # 但类型不匹配会报错（注释掉）
-# print(add_three(1, "a", []))  # TypeError`
+# print(add_three(1, "a", []))  # TypeError
+
+print("\\n=== 8. 仅位置参数（/ 分隔符，Python 3.8+）===")
+# / 之前的参数只能按位置传递，不能用关键字
+def power(base, exp, /):
+    # base 和 exp 只能位置传递，避免参数名冲突或语义模糊
+    return base ** exp
+
+print(f"power(2, 10) = {power(2, 10)}")
+# power(2, exp=10)  # TypeError! / 之前不能用关键字
+
+# 仅位置 + 仅关键字混合
+def create_user(id, /, name, *, age, city):
+    # id 仅位置；name 普通；age、city 仅关键字
+    return f"id={id}, name={name}, age={age}, city={city}"
+
+print(create_user(1, "小明", age=18, city="北京"))
+# print(create_user(id=1, "小明", age=18, city="北京"))  # TypeError! id 不能用关键字`
   },
   {
     id: "py6-function-args-kwargs",
@@ -775,26 +825,30 @@ def read_global():
 read_global()
 
 print("\\n=== 3. LEGB查找顺序 ===")
-# Built-in示例：len是内置函数
+# LEGB 是 Python 查找变量的顺序：Local → Enclosing → Global → Built-in
+# 找到就停止，找不到就抛 NameError
+
+# Built-in 示例：len 是内置作用域里的函数
 lst = [1, 2, 3]
-print(f"len(lst) = {len(lst)}")  # 找到Built-in的len
+print(f"len(lst) = {len(lst)}")  # L/E/G 都没有 len，最后找到 Built-in 的 len
 
-# 如果我们定义了同名变量，会覆盖内置
+# 如果我们定义了同名变量，会覆盖内置（G 优先于 B）
 len = 100  # 这不好！但演示用
-print(f"现在len是: {len}")  # 找到Global的len
-del len  # 删掉，恢复内置
+print(f"现在len是: {len}")  # G 命中，不再查 B
+del len  # 删掉 Global 的 len，恢复对 Built-in 的访问
 
+# 完整 LEGB 演示：4 个作用域同名的 x
 def outer():
-    x = "outer"  # Enclosing
+    x = "outer"  # E (Enclosing)：外层函数的局部变量，对 inner 来说是 enclosing
     def inner():
-        x = "inner"  # Local
-        print(f"inner中x = {x}")
+        x = "inner"  # L (Local)：inner 自己的局部变量，最优先
+        print(f"inner中x = {x}")  # 打印 Local 的 inner
     inner()
-    print(f"outer中x = {x}")
+    print(f"outer中x = {x}")  # outer 自己的 Local，即 Enclosing 层
 
-x = "global"  # Global
+x = "global"  # G (Global)：模块级变量
 outer()
-print(f"global中x = {x}")
+print(f"global中x = {x}")  # Global 层
 
 print("\\n=== 4. 常见错误：UnboundLocalError ===")
 # 下面这段代码会报错，用try/except捕获演示错误原因
@@ -1094,20 +1148,22 @@ print(f"最终全局x = {x}")`
     code: `# 闭包演示
 print("=== 1. 最简单的闭包 ===")
 def outer(message):
-    # message是外部函数的变量
+    # message 是外部函数的局部变量（自由变量 candidate）
     def inner():
-        # 内部函数引用了外部的message
+        # inner 引用了外部变量 message，形成闭包
+        # 即使 outer 执行结束，message 也不会被回收，被 inner 捕获
         print(f"消息: {message}")
-    return inner  # 返回内部函数
+    return inner  # 返回内部函数，闭包在此刻形成
 
-# outer执行完了，但message被记住了
+# outer 执行完了，但 message 被记住了
 say_hello = outer("Hello")
 say_goodbye = outer("Goodbye")
 say_hello()
 say_goodbye()
 
-# 查看闭包
+# 查看闭包：__closure__ 是一个 cell 对象元组，保存被捕获的自由变量
 print(f"say_hello的闭包内容: {say_hello.__closure__}")
+# cell_contents 属性读取被捕获变量的当前值
 print(f"闭包保存的变量: {say_hello.__closure__[0].cell_contents}")
 
 print("\\n=== 2. 闭包做计数器 ===")
@@ -1298,31 +1354,37 @@ def func():
 import time
 
 print("=== 1. 装饰器原理：函数替换 ===")
+# 装饰器本质：接收「函数」作参数，返回「新函数」的高阶函数
+# 被装饰的函数名会被重新绑定到返回的 wrapper，调用时执行的是 wrapper
 def my_decorator(func):
     print(f"my_decorator被调用了，传入的是: {func.__name__}")
+    # wrapper 闭包捕获了 func，可以在调用 func 前后插入额外逻辑
     def wrapper():
         print("  调用func之前...")
-        func()
+        func()  # 调用原函数
         print("  调用func之后...")
-    return wrapper
+    return wrapper  # 返回新函数，用它替换原函数
 
 def say_hello():
     print("  Hello!")
 
-# 手动装饰（理解原理）
+# 手动装饰（理解原理）：把 say_hello 传给 my_decorator，返回 wrapper 赋给新变量
 print("手动装饰:")
 decorated_hello = my_decorator(say_hello)
+# 调用 decorated_hello 实际执行 wrapper，wrapper 内部再调用原 say_hello
 decorated_hello()
 print()
 
 print("=== 2. @语法糖 ===")
+# @my_decorator 等价于在函数定义后立即执行 say_hi = my_decorator(say_hi)
+# 装饰器在「函数定义时」就执行（不是调用时），所以会先看到 "my_decorator被调用了"
 @my_decorator
 def say_hi():
     print("  Hi!")
 
 # 等价于 say_hi = my_decorator(say_hi)
 print("调用被@装饰的函数:")
-say_hi()
+say_hi()  # 此时 say_hi 已是 wrapper，不是原函数
 
 print("\\n=== 3. 实用装饰器：计时 ===")
 def timer(func):
@@ -1489,7 +1551,29 @@ def f(): pass
 
 - \`@property\`：类的属性
 - \`@staticmethod\`：静态方法
-- \`@classmethod\`：类方法`,
+- \`@classmethod\`：类方法
+- \`@functools.wraps(func)\`：保留被装饰函数的元信息（\`__name__\`、\`__doc__\` 等）
+- \`@functools.lru_cache(maxsize=None)\`：自动缓存函数结果，避免重复计算
+
+### functools.lru_cache 缓存装饰器
+
+\`lru_cache\` 是 Least Recently Used（最近最少使用）缓存，自动记忆函数调用结果：
+
+\`\`\`python
+# 导入 functools 模块
+from functools import lru_cache
+
+# maxsize 指定缓存容量，None 表示无限制；被缓存的函数参数必须可哈希
+@lru_cache(maxsize=128)
+def fib(n):
+    if n <= 1:
+        return n
+    return fib(n-1) + fib(n-2)
+# 第一次调用 fib(100) 会计算并缓存中间结果
+# 后续调用相同参数直接命中缓存，速度极快
+\`\`\`
+
+> 注意：\`lru_cache\` 要求参数必须**可哈希**（list/dict/set 等可变对象不可哈希，会报 TypeError）。可用 \`cache_clear()\` 清空缓存，\`cache_info()\` 查看命中统计。`,
     code: `# 装饰器进阶演示
 import functools
 import time
@@ -1528,18 +1612,26 @@ print(f"good_func.__name__ = {good_func.__name__}")  # good_func
 print(f"good_func.__doc__ = {good_func.__doc__}")  # 好文档
 
 print("\\n=== 2. 带参数的装饰器 ===")
+# 带参数的装饰器需要三层嵌套：
+# 第 1 层 repeat(n)：接收装饰器参数，返回真正的装饰器
+# 第 2 层 decorator(func)：接收被装饰函数，返回包装函数
+# 第 3 层 wrapper(*args, **kwargs)：实际执行扩展逻辑的函数
 def repeat(n):
     """重复执行n次的装饰器"""
+    # 第 2 层：这才是真正的装饰器
     def decorator(func):
+        # 第 3 层：包装函数，闭包捕获了 n 和 func
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             results = []
+            # n 来自最外层 repeat 的参数，func 来自 decorator 的参数
             for _ in range(n):
                 results.append(func(*args, **kwargs))
             return results
         return wrapper
-    return decorator
+    return decorator  # 返回装饰器，等待 @ 调用
 
+# @repeat(3) 等价于两步：先 repeat(3) 返回 decorator，再 decorator(say_hello) 返回 wrapper
 @repeat(3)
 def say_hello(name):
     print(f"  Hello, {name}!")
@@ -1675,7 +1767,42 @@ def expensive_calc(n):
 print("第一次计算5:", expensive_calc(5))
 print("第二次计算5:", expensive_calc(5))
 print("第一次计算10:", expensive_calc(10))
-print("第二次计算10:", expensive_calc(10))`
+print("第二次计算10:", expensive_calc(10))
+
+print("\\n=== 8. functools.lru_cache 自动缓存 ===")
+# lru_cache 是 functools 提供的开箱即用的缓存装饰器
+# 比手写 cached 更高效、线程安全，且支持容量限制（LRU 淘汰策略）
+
+# 不带缓存：递归 fib 大量重复计算，极慢
+def fib_slow(n):
+    if n <= 1:
+        return n
+    return fib_slow(n-1) + fib_slow(n-2)
+
+# 带 lru_cache：自动记忆所有 (n -> 结果) 映射，O(n) 时间
+@functools.lru_cache(maxsize=None)  # None 表示不限制缓存大小
+def fib_fast(n):
+    if n <= 1:
+        return n
+    return fib_fast(n-1) + fib_fast(n-2)
+
+import time as _time
+start = _time.time()
+print(f"fib_slow(30) = {fib_slow(30)}, 耗时 {_time.time()-start:.4f}s（无缓存）")
+start = _time.time()
+print(f"fib_fast(100) = {fib_fast(100)}, 耗时 {_time.time()-start:.6f}s（有缓存）")
+
+# cache_info() 查看缓存命中统计：hits 命中次数 / misses 未命中次数
+print(f"fib_fast 缓存信息: {fib_fast.cache_info()}")
+# cache_clear() 清空缓存
+fib_fast.cache_clear()
+print("已清空缓存，再次查看:", fib_fast.cache_info())
+
+# 注意：lru_cache 要求参数可哈希，list/dict 等不可哈希对象会报错
+try:
+    fib_fast([1, 2])  # 列表不可哈希
+except TypeError as e:
+    print(f"传 list 报错: {e}")`
   },
   {
     id: "py6-recursion",
@@ -1888,16 +2015,19 @@ import sys
 
 print("=== 1. 第一个生成器函数 ===")
 def simple_generator():
+    # 含 yield 的函数称为「生成器函数」，调用它不会执行函数体，而是返回一个生成器对象
     print("  生成器开始执行")
-    yield 1
+    yield 1  # next() 第 1 次调用：执行到这里暂停，把 1 返回给调用者
     print("  yield 1之后继续")
-    yield 2
+    yield 2  # next() 第 2 次调用：从上次暂停处恢复，执行到这里再暂停，返回 2
     print("  yield 2之后继续")
-    yield 3
+    yield 3  # next() 第 3 次调用：恢复执行，暂停并返回 3
     print("  生成器结束")
+    # 函数体执行完毕时，自动抛出 StopIteration 结束迭代
 
 gen = simple_generator()
 print("创建生成器，但函数体还没执行")
+# next() 触发生成器执行到下一个 yield，并返回 yield 后的表达式值
 print(f"next(gen) = {next(gen)}")
 print(f"next(gen) = {next(gen)}")
 print(f"next(gen) = {next(gen)}")
@@ -2079,7 +2209,9 @@ print("=== 1. yield from 基础：替代循环 ===")
 def chain(*iterables):
     """把多个可迭代对象串起来"""
     for it in iterables:
-        yield from it  # 等价于 for x in it: yield x
+        # yield from 把 it 的每个元素逐个 yield 出去
+        # 它建立一条「双向通道」：调用者的 next/send/throw/close 直接转发给子迭代器
+        yield from it  # 等价于 for x in it: yield x，但语义更清晰且支持双向通信
 
 result = list(chain([1, 2, 3], "abc", (4, 5)))
 print(f"chain([1,2,3], 'abc', (4,5)) = {result}")
@@ -2097,6 +2229,7 @@ def flatten(nested):
     """递归展平任意嵌套的列表"""
     for item in nested:
         if isinstance(item, list):
+            # yield from 委托给递归子生成器，子生成器的所有产出直接交给外层调用者
             yield from flatten(item)  # 递归展开
         else:
             yield item
@@ -2373,7 +2506,8 @@ def apply_twice(func, x):
     return func(func(x))
 
 print(f"apply_twice(lambda x: x*2, 3) = {apply_twice(lambda x: x*2, 3)}")
-print(f"apply_twice(str.upper, 'hello') = {apply_twice(lambda s: s + '!', 'hi')}")
+# 把 lambda 应用两次：'hi' -> 'hi!' -> 'hi!!'
+print(f"apply_twice(lambda s: s + '!', 'hi') = {apply_twice(lambda s: s + '!', 'hi')}")
 
 def make_apply_n(n):
     """返回一个应用n次的函数"""
@@ -2482,18 +2616,23 @@ print("=== 1. partial 基础 ===")
 def power(base, exponent):
     return base ** exponent
 
-# 固定base=2，得到只需要exponent的函数
-power2 = partial(power, 2)
+# partial(原函数, *固定位置参数, **固定关键字参数) 返回一个新函数
+# 调用新函数时，会自动把固定的参数拼到前面，再传给原函数
+# power2 = power 的「base 已固定为 2」特化版本，只需再传 exponent
+power2 = partial(power, 2)  # 固定 base=2，等价于 lambda exp: power(2, exp)
 # 固定base=10
-power10 = partial(power, 10)
+power10 = partial(power, 10)  # 固定 base=10
 
+# power2(10) 实际调用 power(2, 10) = 1024
 print(f"2^10 = {power2(10)}")
+# power10(3) 实际调用 power(10, 3) = 1000
 print(f"10^3 = {power10(3)}")
 
 # 普通加法
 def add(a, b):
     return a + b
 
+# add5 把 add 的第 1 个参数 a 固定为 5，调用时只需传 b
 add5 = partial(add, 5)  # a固定为5
 print(f"add5(3) = 5+3 = {add5(3)}")
 print(f"add5(10) = 5+10 = {add5(10)}")
@@ -2842,13 +2981,18 @@ print(f"有__call__的实例: callable(cobj) = {callable(cobj)}")
 print("\\n=== 2. __call__ 基础 ===")
 class Adder:
     def __init__(self, n):
+        # 构造时保存加数 n 到实例属性，形成「带状态」的调用上下文
         self.n = n
-    
+
+    # 实现 __call__ 方法后，实例就可以用 obj(args) 语法调用
+    # Python 看到 add5(3) 会自动转为 add5.__call__(3)
     def __call__(self, x):
         return x + self.n
 
+# Adder(5) 调用 __init__ 创建实例，self.n = 5
 add5 = Adder(5)
 add10 = Adder(10)
+# add5(3) 实际执行 add5.__call__(3)，返回 3 + 5 = 8
 print(f"add5(3) = {add5(3)}")
 print(f"add10(3) = {add10(3)}")
 print(f"callable(add5) = {callable(add5)}")

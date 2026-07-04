@@ -225,6 +225,34 @@ def __init__(self, name, age=1, breed="土狗"):
     # 可选参数 breed 赋给实例属性
     self.breed = breed
 \`\`\`
+
+### __new__ vs __init__
+
+实际上 \`Dog(...)\` 调用时，Python **先调用 \`__new__\`** 创建实例，**再调用 \`__init__\`** 初始化实例：
+
+\`\`\`python
+# 定义类 Singleton
+class Singleton:
+    # __new__ 负责创建并返回实例对象（静态方法形式）
+    def __new__(cls, *args, **kwargs):
+        # 默认实现：调用父类 object.__new__ 创建空对象
+        instance = super().__new__(cls)
+        # 必须返回实例，None 时 __init__ 不会被调用
+        return instance
+    # __init__ 负责初始化已创建的实例
+    def __init__(self):
+        # 此时 self 已经是 __new__ 返回的对象
+        pass
+\`\`\`
+
+| | \`__new__\` | \`__init__\` |
+|---|------------|------------|
+| 角色 | 创建实例（工厂） | 初始化实例 |
+| 返回 | 必须返回实例 | 不能 return 值 |
+| 第一个参数 | cls | self |
+| 常见用途 | 单例、不可变类型（str/int/tuple）子类化 | 设置属性 |
+
+> 99% 的类只需要 \`__init__\`。\`__new__\` 主要用于：实现单例、子类化不可变类型（如继承 \`str\`/\`tuple\` 时无法在 \`__init__\` 里改值）、控制实例创建。
 `,
     code: `# ========== __init__ 构造方法 ==========
 
@@ -917,9 +945,13 @@ class Dog:
 dog = Dog("旺财")
 
 print("  方式1（常规）: dog.bark()")
+# 通过实例访问方法时，Python 把 dog 绑定到 bark 的第一个参数 self
+# 这种"已绑定实例"的方法对象叫"绑定方法(bound method)"
 dog.bark()
 
 print("  方式2（本质）: Dog.bark(dog)")
+# 通过类访问方法是"未绑定方法(普通函数)"，需手动传 self
+# 这正是 self 的本质：第一个参数，由 Python 自动填入调用者
 Dog.bark(dog)  # 手动把 dog 作为 self 传入，效果完全一样！
 
 print("\\n  这两种写法完全等价！self 就是这么传进来的。")
@@ -1386,12 +1418,15 @@ print("  比如调用 duck.fly()，按顺序查找谁有fly方法")
 # 3. 钻石继承问题演示
 print("\\n=== 钻石继承问题 ===")
 
+# 钻石继承：D -> B -> A，D -> C -> A，形成菱形
+# C3 线性化算法保证：每个类只出现一次，且子类在父类前
 class A:
     def greet(self):
         print("  A.greet()")
 
 class B(A):
     def greet(self):
+        # 关键：super() 不是"调用父类"，而是按 MRO 调用下一个类
         print("  B.greet() -> ", end="")
         super().greet()
 
@@ -1406,14 +1441,18 @@ class D(B, C):
         super().greet()
 
 print("  继承关系: D(B,C) -> B(A), C(A)")
+# D 的 MRO 是 [D, B, C, A, object]，注意 B 在 C 前，C 在 A 前
 print(f"  D 的 MRO: {[c.__name__ for c in D.__mro__]}")
 print()
 d = D()
 print("  调用 d.greet():")
 d.greet()
+# 调用链：D.greet -> super()=B.greet -> super()=C.greet -> super()=A.greet
 print()
 print("  注意：B.greet()里的super()调用的不是A，而是C！")
 print("  因为super()是按MRO顺序找下一个类，不是直接找父类")
+print("  这就是多继承中 super() 的'协作式'调用：每个类只负责调")
+print("  MRO 中下一个，由 MRO 保证 A 只被调用一次（不会重复）")
 
 # 4. MixIn 模式（推荐的多继承用法）
 print("\\n=== MixIn 模式（混入类）===")
@@ -1740,9 +1779,14 @@ print(f"  随意修改后: p.age = {p.age}（可能导致数据不合理）")
 # 2. 私有属性（双下划线 __）
 print("\\n=== 私有属性（__开头）：名称改写 ===")
 
+# 名称改写(name mangling)原理：
+# __balance 在 BankAccount 类内部，会被改写为 _BankAccount__balance
+# 子类再定义 __balance 不会冲突，因为会改写为 _子类名__balance
+# 这主要用于"避免子类意外覆盖"，而不是真正的访问控制
 class BankAccount:
     def __init__(self, owner, balance=0):
         self.owner = owner
+        # __balance 实际存为 self._BankAccount__balance
         self.__balance = balance  # 私有属性
         self.__password = "123456"  # 密码也要私有
 
@@ -1995,12 +2039,17 @@ print("\\n=== getter + setter ===")
 class Student:
     def __init__(self, name):
         self.name = name
+        # _score 是真正的"存储属性"，下划线约定外部不要直接访问
         self._score = 0
 
+    # @property 装饰后，score 变成"描述符对象"挂在类上（不是实例上）
+    # 访问 s.score 时，描述符的 __get__ 被调用 → 返回 self._score
     @property
     def score(self):
         return self._score
 
+    # @score.setter 添加写入能力，描述符的 __set__ 被调用
+    # 没 setter 就是只读属性（__set__ 抛 AttributeError）
     @score.setter
     def score(self, value):
         """setter里可以做校验"""
@@ -2189,20 +2238,31 @@ print("=" * 60)
 # 1. 不写 __str__/__repr__ 的默认输出
 print("\\n=== 默认输出（不友好）===")
 
+# object 基类默认提供 __str__/__repr__
+# 默认 __repr__: <__main__.BadDog object at 0x...>
+# 默认 __str__ fallback 到 __repr__（即也是同样的格式）
 class BadDog:
     def __init__(self, name, age):
         self.name = name
         self.age = age
 
 bad_dog = BadDog("旺财", 3)
+# print(x) 等价于 print(str(x))，调用 __str__
+# f-string 中的 {x} 调用 __format__，默认也走 __str__
 print(f"  print(bad_dog) → {bad_dog}")
+# str(x) 显式调用 __str__
 print(f"  str(bad_dog)   → {str(bad_dog)}")
+# repr(x) 显式调用 __repr__
 print(f"  repr(bad_dog)  → {repr(bad_dog)}")
 print("  (默认显示: 类名 + object at + 内存地址，对用户不友好)")
 
 # 2. 写 __str__ 和 __repr__
 print("\\n=== 自定义 __str__ 和 __repr__ ===")
 
+# 调用时机速记：
+# - print()/str()/f-string "{}" → __str__（没写则 fallback 到 __repr__）
+# - repr()/交互式直接输对象名/列表元素 → __repr__
+# - 容器(list/dict)打印元素时一律用 __repr__（避免歧义）
 class Dog:
     def __init__(self, name, age, breed):
         self.name = name
@@ -2637,10 +2697,16 @@ class Vector:
 
     def __add__(self, other):
         """向量加法: v1 + v2"""
+        # 反射方法机制：a + b 时
+        # 1. 先尝试 type(a).__add__(a, b)
+        # 2. 返回 NotImplemented 时，改试 type(b).__radd__(b, a)
+        # 3. 仍 NotImplemented 则抛 TypeError
         if isinstance(other, Vector):
             return Vector(self.x + other.x, self.y + other.y)
         if isinstance(other, (int, float)):
             return Vector(self.x + other, self.y + other)
+        # 返回 NotImplemented（注意不是 NotImplementedError！）
+        # 让 Python 去尝试 other 的 __radd__
         return NotImplemented
 
     def __sub__(self, other):
@@ -2659,7 +2725,10 @@ class Vector:
         return NotImplemented
 
     def __rmul__(self, scalar):
-        """支持 3 * v （反向乘法）"""
+        """支持 3 * v （反向乘法）
+        当 3 * v 时：int.__mul__(3, v) 返回 NotImplemented
+        Python 接着调 v.__rmul__(3)，这里复用 __mul__ 即可
+        """
         return self.__mul__(scalar)
 
     def __neg__(self):
@@ -3001,14 +3070,24 @@ class Timer:
         self.name = name
 
     def __enter__(self):
+        # 进入 with 块时调用，返回值赋给 as 后的变量
+        # 如果不写 as，返回值被丢弃
         self.start = time.time()
         print(f"  ⏱️  [{self.name}] 开始计时...")
         return self  # 返回值给 as 变量
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        # 离开 with 块时调用（无论正常退出还是异常）
+        # 三个参数：
+        #   exc_type: 异常类（None 表示无异常）
+        #   exc_val: 异常实例
+        #   exc_tb: traceback 对象
         self.end = time.time()
         self.elapsed = self.end - self.start
         print(f"  ⏱️  [{self.name}] 耗时: {self.elapsed:.6f}秒")
+        # 返回值的语义：
+        #   False/None → 异常继续向外传播
+        #   True       → 异常被吞掉，with 外的代码继续执行
         # 返回False表示不吞异常
         return False
 
@@ -3167,8 +3246,8 @@ class Point:
 ### field 高级配置
 
 \`\`\`python
-# 导入 field，用于指定复杂默认值
-from dataclasses import field
+# 导入 dataclass 装饰器和 field，用于指定复杂默认值
+from dataclasses import dataclass, field
 
 # 装饰为数据类
 @dataclass
@@ -3191,6 +3270,37 @@ class Student:
 ### frozen=True 不可变
 
 \`@dataclass(frozen=True)\` 让实例不可变（像元组），创建后不能修改属性。
+
+### __eq__ 与 __hash__ 的关系
+
+Python 规定：**如果定义了 \`__eq__\`，\`__hash__\` 默认会被设为 None**（对象变成不可哈希，不能放进 set / 不能当 dict 的 key）。因为"相等的对象必须哈希到同一个值"，Python 不知道你的相等语义下如何保证这点，干脆禁止哈希。
+
+| 设置 | \`__eq__\` | \`__hash__\` | 是否可哈希 |
+|------|----------|-------------|----------|
+| 都不写 | 默认(id 比较) | 默认(id 哈希) | ✅ |
+| 只写 \`__eq__\` | 自定义 | \`None\` | ❌ |
+| 写 \`__eq__\` + 手动 \`__hash__\` | 自定义 | 自定义 | ✅ |
+| \`@dataclass(frozen=True)\` | 自动 | 自动(基于字段) | ✅ |
+| \`@dataclass\`(默认) | 自动 | \`None\` | ❌ |
+
+\`\`\`python
+# 定义类 Student 重写相等比较
+class Student:
+    # 构造方法
+    def __init__(self, name, score):
+        # 设置实例属性
+        self.name = name
+        self.score = score
+    # 自定义 __eq__ 后，__hash__ 自动变成 None
+    def __eq__(self, other):
+        # 只比较学号 score（举例）
+        return isinstance(other, Student) and self.score == other.score
+    # 想让对象可哈希，必须手动定义 __hash__
+    # 约定：相等的对象哈希值必须相同
+    def __hash__(self):
+        # 用参与相等的字段做哈希键
+        return hash(self.score)
+\`\`\`
 `,
     code: `# ========== dataclass 数据类 ==========
 
@@ -3204,6 +3314,13 @@ print("=" * 60)
 # 1. 基本用法
 print("\\n=== 基本用法：自动生成__init__/__repr__/__eq__ ===")
 
+# @dataclass 默认等价于 @dataclass(init=True, repr=True, eq=True)
+# 它会扫描类体中的"类型注解"作为字段，并据此自动生成：
+#   __init__(self, x, y, label="点")        —— init=True
+#   __repr__ -> "Point(x=..., y=..., label=...)"  —— repr=True
+#   __eq__   -> 按所有字段逐个比较          —— eq=True
+#   __hash__ -> None（因为 eq=True 默认 unsafe_hash=False）
+# 没有 default 的字段必须排在有 default 的字段之前（和函数参数规则一致）
 @dataclass
 class Point:
     x: float
@@ -3331,7 +3448,9 @@ class Character:
         return actual
 
     def attack_enemy(self, enemy):
-        dmg = self.take_damage(self.attack)
+        # 正确做法：让 enemy 调用 take_damage，扣 enemy 的血
+        # 之前误写为 self.take_damage(...) 会导致攻击者自伤
+        dmg = enemy.take_damage(self.attack)
         print(f"  {self.name} 攻击 {enemy.name}，造成 {dmg} 点伤害！")
         print(f"  {enemy.name} 剩余HP: {enemy.hp}")
 
@@ -3654,6 +3773,35 @@ Python 推荐 EAFP 风格！
 - **可调用**：\`__call__\` → obj()
 - **序列**：\`__len__\`/\`__getitem__\` → 像列表
 - **数值**：\`__add__\` 等 → 运算符
+
+### typing.Protocol：结构化类型（PEP 544）
+
+Python 3.8+ 提供 \`typing.Protocol\`，把鸭子类型**变成可静态检查的接口**。它和 Java 接口不同——**不需要显式继承**，只要"形状"对（有同名方法且签名兼容），就被认为实现了该协议。
+
+\`\`\`python
+# 导入 Protocol 用于定义结构化类型
+from typing import Protocol
+
+# 定义协议：任何有 quack() 方法的对象都算 Duck
+class DuckLike(Protocol):
+    # 协议方法声明（不写实现）
+    def quack(self) -> str: ...
+
+# 不需要写 class RealDuck(DuckLike)，只要实现 quack 即可
+# 显式继承叫 runtime_checkable，可用 isinstance 检查
+class RealDuck:
+    # 实现 quack 方法，签名与协议一致
+    def quack(self) -> str:
+        return "嘎嘎嘎！"
+
+# 静态类型检查器（如 mypy）会认为 RealDuck 满足 DuckLike 协议
+def make_quack(d: DuckLike) -> None:
+    print(d.quack())
+
+make_quack(RealDuck())  # 类型安全，运行也正确
+\`\`\`
+
+> 协议让"鸭子类型"既能保持灵活，又能在静态检查（mypy/pyright）中获得类型安全保障。
 `,
     code: `# ========== 鸭子类型 ==========
 
@@ -3849,12 +3997,17 @@ print("=" * 60)
 # 1. __slots__节省内存
 print("\\n=== __slots__ ===")
 
+# 普通类：每个实例都有 __dict__（一个 dict 用于存属性），开销大
 class NormalPoint:
     def __init__(self, x, y):
         self.x = x
         self.y = y
 
+# __slots__ 类：实例不再有 __dict__，属性通过"描述符"按固定位置存储
+# 优点：1) 省内存（无 dict 头部开销）2) 访问更快 3) 防止误加属性
+# 代价：1) 不能动态加新属性 2) 不能用 __dict__ 看属性 3) 多继承场景受限
 class SlotPoint:
+    # __slots__ 是类级配置，列出该类实例允许的属性名
     __slots__ = ('x', 'y')
     def __init__(self, x, y):
         self.x = x

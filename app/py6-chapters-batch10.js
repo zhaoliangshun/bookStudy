@@ -55,12 +55,15 @@ cursor.execute(create_sql)
 print("users表创建成功")
 
 print("\\n--- 3. INSERT 插入数据 ---")
+# 使用 ? 占位符进行参数化查询，绝对不要用字符串拼接 SQL！
+# 参数化查询会自动转义特殊字符，防止 SQL 注入攻击
 cursor.execute(
     "INSERT INTO users (name, age, email) VALUES (?, ?, ?)",
     ("张三", 25, "z****@***********")
 )
 print(f"插入1条，lastrowid: {cursor.lastrowid}")
 
+# executemany 批量插入，比循环 execute 高效
 users_data = [
     ("李四", 30, "l***@***********"),
     ("王五", 28, "w*****@***********"),
@@ -72,22 +75,24 @@ cursor.executemany(
 )
 print(f"批量插入{cursor.rowcount}条数据")
 
+# 写操作（INSERT/UPDATE/DELETE）后必须 commit 才真正保存
 conn.commit()
 
 print("\\n--- 4. SELECT 查询数据 ---")
 cursor.execute("SELECT * FROM users")
-all_users = cursor.fetchall()
+all_users = cursor.fetchall()  # fetchall 取全部，fetchone 取一条
 print("所有用户:")
 for u in all_users:
     print(f"  id={u[0]}, name={u[1]}, age={u[2]}, email={u[3]}")
 
+# WHERE 条件也用 ? 占位符，参数以元组传入（单元素要加逗号 (27,)）
 cursor.execute("SELECT name, age FROM users WHERE age > ?", (27,))
 print("\\n年龄大于27的用户:")
 for row in cursor.fetchall():
     print(f"  {row[0]}, {row[1]}岁")
 
 cursor.execute("SELECT COUNT(*) FROM users")
-count = cursor.fetchone()[0]
+count = cursor.fetchone()[0]  # fetchone 返回元组，取第一列
 print(f"\\n总用户数: {count}")
 
 print("\\n--- 5. UPDATE 更新数据 ---")
@@ -106,6 +111,7 @@ cursor.execute("SELECT COUNT(*) FROM users")
 print(f"删除后用户数: {cursor.fetchone()[0]}")
 
 print("\\n--- 7. with 语句自动事务管理 ---")
+# with conn 是上下文管理器：正常退出自动 commit，异常自动 rollback
 try:
     with conn:
         cursor.execute(
@@ -116,10 +122,12 @@ try:
 except ValueError as e:
     print(f"捕获异常: {e}")
 
+# 因为 with 块内抛了异常，INSERT 被回滚，测试用户不会保留
 cursor.execute("SELECT COUNT(*) FROM users")
 print(f"回滚后用户数（测试用户未插入）: {cursor.fetchone()[0]}")
 
 print("\\n--- 8. Row 工厂（字典式访问）---")
+# 设置 row_factory = sqlite3.Row 后，查询结果可按列名访问（像字典）
 conn.row_factory = sqlite3.Row
 cursor = conn.cursor()
 cursor.execute("SELECT * FROM users WHERE name = ?", ("张三",))
@@ -285,8 +293,16 @@ Python 鸭子类型的形式化表达，结构化类型（structural subtyping�
 ### TypeAlias
 显式声明类型别名（3.10+）。
 
-### Never/Noreturn
+### TypedDict
+类型化字典，给字典的每个键指定类型（PEP 589）。适合处理 JSON/API 返回值等结构化数据。
+- 类方式定义：\`class Point(TypedDict): x: int; y: int\`
+- 用法：\`p: Point = {"x": 1, "y": 2}\`
+- 与 \`dict[str, int]\` 不同：TypedDict 约束每个键的类型
+
+### Never/NoReturn
 表示函数永远不会正常返回（总是抛异常或无限循环）。
+- **NoReturn**：Python 3.5.4+ 引入，旧版本使用
+- **Never**：Python 3.11+ 引入，是 NoReturn 的更精确版本（NoReturn 仍可用）
 
 ### 其他实用类型
 - **Sequence[T]**：序列（list/tuple等支持索引和len）
@@ -295,17 +311,20 @@ Python 鸭子类型的形式化表达，结构化类型（structural subtyping�
 - **Iterator[T]**：迭代器`,
     code: `from typing import (
     TypeVar, Generic, Protocol, Literal, Final,
-    Callable, TypeAlias, Never, Sequence, Iterable
+    Callable, TypeAlias, Never, Sequence, Iterable, TypedDict
 )
 from collections.abc import Sized
 
 print("=== 类型提示进阶演示 ===\\n")
 
 print("--- 1. TypeVar 泛型函数 ---")
+# TypeVar 定义类型变量，T 可以代表任意类型
+# 在函数签名中用 T 让输入输出类型保持一致（类型关联）
 T = TypeVar("T")
 
 def first(items: Sequence[T]) -> T | None:
     """获取序列第一个元素，类型与元素类型一致"""
+    # 传入 list[int] 则 T 推断为 int，返回 int | None
     return items[0] if items else None
 
 print(f"first([1,2,3]) = {first([1,2,3])} (类型为int)")
@@ -315,10 +334,11 @@ print("\\n--- 2. Generic 泛型类 ---")
 K = TypeVar("K")
 V = TypeVar("V")
 
+# 继承 Generic[T] 让类变成泛型类，可在实例化时指定类型参数
 class Stack(Generic[T]):
     """泛型栈"""
     def __init__(self) -> None:
-        self._items: list[T] = []
+        self._items: list[T] = []  # 类型参数 T 用作内部存储的类型
 
     def push(self, item: T) -> None:
         self._items.append(item)
@@ -396,8 +416,27 @@ def add_vectors(v1: Vector, v2: Vector) -> Vector:
 
 print(f"向量相加: {add_vectors([1,2], [3,4])}")
 
-print("\\n--- 8. Never 永不返回 ---")
+print("\\n--- 8. TypedDict 类型化字典 ---")
+# TypedDict 给字典的每个键指定类型，适合处理 JSON/API 返回值
+class UserInfo(TypedDict):
+    name: str
+    age: int
+    email: str
+
+# 创建符合 UserInfo 类型的字典
+user: UserInfo = {"name": "张三", "age": 25, "email": "z****@***********"}
+print(f"TypedDict 用户: {user}")
+print(f"访问 user['name']: {user['name']}（IDE有类型提示）")
+
+# 函数参数使用 TypedDict，约束传入的字典结构
+def greet_user(u: UserInfo) -> str:
+    return f"你好，{u['name']}，今年{u['age']}岁"
+
+print(greet_user(user))
+
+print("\\n--- 9. Never 永不返回 ---")
 def raise_error(msg: str) -> Never:
+    # Never 表示函数永远不会正常返回（这里总是抛异常）
     raise ValueError(msg)
 
 print("Never表示函数永远不会正常返回（总是抛异常）")
@@ -426,13 +465,15 @@ print("6. 类型提示让大型项目更可维护，强烈建议使用")
 2. **\`__next__()\`**：返回下一个元素，没有则抛 StopIteration
 
 ### for 循环的本质
-\`\`\`python# for 循环遍历可迭代对象 iterable，每次取一个元素赋值给变量 item
+\`\`\`python
+# for 循环遍历可迭代对象 iterable，每次取一个元素赋值给变量 item
 for item in iterable:
     # 打印当前遍历到的元素
     print(item)
 \`\`\`
 等价于：
-\`\`\`python# 用 iter() 获取可迭代对象的迭代器，内部会调用对象的 __iter__() 方法
+\`\`\`python
+# 用 iter() 获取可迭代对象的迭代器，内部会调用对象的 __iter__() 方法
 iterator = iter(iterable)       # 调用 __iter__()
 # 无限循环，依靠循环体内的 break 来退出
 while True:
@@ -461,26 +502,28 @@ while True:
     code: `print("=== 迭代器协议演示 ===\\n")
 
 print("--- 1. 内置 iter() 和 next() ---")
+# iter() 获取可迭代对象的迭代器，next() 取下一个元素
 nums = [1, 2, 3]
-it = iter(nums)
+it = iter(nums)  # list 本身不是迭代器，iter() 返回一个 list_iterator
 print(f"iter([1,2,3]) = {it}")
 print(f"next(it) = {next(it)}")
 print(f"next(it) = {next(it)}")
 print(f"next(it) = {next(it)}")
 try:
-    next(it)
+    next(it)  # 第4次调用，元素已耗尽
 except StopIteration:
+    # 元素耗尽时 next() 抛出 StopIteration，这是迭代器协议的结束信号
     print("next(it) 抛出 StopIteration（没有更多元素）")
 
 print("\\n--- 2. for 循环原理模拟 ---")
 def my_for(iterable, action):
     """模拟for循环工作原理"""
-    iterator = iter(iterable)
+    iterator = iter(iterable)  # 1. 调用 __iter__() 拿到迭代器
     while True:
         try:
-            item = next(iterator)
+            item = next(iterator)  # 2. 调用 __next__() 取元素
             action(item)
-        except StopIteration:
+        except StopIteration:  # 3. 捕获 StopIteration 退出循环
             break
 
 print("my_for 遍历 [10,20,30]:")
@@ -493,11 +536,13 @@ class CountDown:
         self.current = start
 
     def __iter__(self):
+        # __iter__ 必须返回一个迭代器（通常是 self）
         return self
 
     def __next__(self):
+        # __next__ 返回下一个值；没有更多值时必须抛 StopIteration
         if self.current < 0:
-            raise StopIteration
+            raise StopIteration  # 结束信号，for 循环会自动捕获
         value = self.current
         self.current -= 1
         return value
@@ -518,6 +563,7 @@ class Fibonacci:
         return self
 
     def __next__(self):
+        # 达到上限时抛 StopIteration 终止迭代
         if self.count >= self.max_count:
             raise StopIteration
         self.a, self.b = self.b, self.a + self.b
@@ -604,14 +650,17 @@ print("5. list/tuple/str/dict都是可迭代对象，但不是迭代器")
 print("--- 1. 最简单的描述符 ---")
 class VerboseAttribute:
     """打印访问日志的描述符"""
+    # __get__ 参数：self=描述符实例，obj=访问属性的实例（类访问时为None），objtype=类
     def __get__(self, obj, objtype=None):
         print(f"  __get__被调用: obj={obj}, type={objtype.__name__}")
         return "描述符的值"
 
+    # __set__ 参数：self=描述符实例，obj=访问属性的实例，value=要赋的值
     def __set__(self, obj, value):
         print(f"  __set__被调用: obj={obj}, value={value}")
 
 class MyClass:
+    # 描述符实例作为类属性定义
     attr = VerboseAttribute()
 
 obj = MyClass()
@@ -625,20 +674,24 @@ print("\\n--- 2. 类型验证描述符 ---")
 class Typed:
     """类型检查描述符"""
     def __init__(self, name: str, expected_type: type):
-        self.name = name
+        self.name = name  # 存储属性名，用于在实例 __dict__ 中存取
         self.expected_type = expected_type
 
     def __get__(self, obj, objtype=None):
+        # obj 为 None 表示通过类访问（如 Person.name），返回描述符自身
         if obj is None:
             return self
+        # 从实例的 __dict__ 中取实际存储的值
         return obj.__dict__.get(self.name)
 
     def __set__(self, obj, value):
+        # 赋值前做类型检查，不符合则抛 TypeError
         if not isinstance(value, self.expected_type):
             raise TypeError(
                 f"{self.name}必须是{self.expected_type.__name__}类型，"
                 f"传入了{type(value).__name__}"
             )
+        # 通过实例 __dict__ 存值，避免触发描述符自身递归
         obj.__dict__[self.name] = value
 
 class Person:
@@ -789,6 +842,10 @@ print("\\n--- 2. 用type动态创建类 ---")
 def hello(self):
     return f"Hello, {self.name}!"
 
+# type(name, bases, namespace) 三参数形式动态创建类：
+#   name: 类名字符串
+#   bases: 父类元组（无父类用 (object,)）
+#   namespace: 类属性和方法的字典
 DynamicClass = type(
     "DynamicClass",
     (object,),
@@ -802,12 +859,15 @@ print(f"obj.version = {obj.version}")
 print(f"obj.greet() = {obj.greet()}")
 
 print("\\n--- 3. 自定义元类：自动添加类名前缀 ---")
+# 自定义元类继承 type，重写 __new__ 可以在类创建前干预
 class PrefixMetaclass(type):
     """给类名添加前缀的元类"""
+    # mcs=元类自身，name=类名，bases=父类元组，namespace=属性字典
     def __new__(mcs, name, bases, namespace):
         new_name = f"Prefix_{name}"
         namespace["class_tag"] = "由元类添加的属性"
         print(f"  元类创建类: {name} -> {new_name}")
+        # 调用 type.__new__ 真正创建类对象
         return super().__new__(mcs, new_name, bases, namespace)
 
 class MyClass(metaclass=PrefixMetaclass):
@@ -2179,6 +2239,18 @@ print("8. Sphinx/pdoc可以从docstring生成HTML文档")
 - 应用场景：事件系统、消息通知、MVC的数据更新
 - 发布-订阅模式
 
+#### 5. 责任链模式（Chain of Responsibility）
+将请求沿着处理者链传递，每个处理者决定处理或传给下一个。
+- 应用场景：审批流程、中间件、异常处理链、过滤器
+
+#### 6. 状态模式（State）
+对象状态改变时改变其行为，看起来像换了类。
+- 应用场景：订单状态机、游戏角色状态、TCP连接状态
+
+#### 7. 命令模式（Command）
+将请求封装成对象，支持撤销、队列、日志。
+- 应用场景：GUI操作、事务、宏命令、任务队列
+
 ### Python实现设计模式的优势
 - 函数是一等对象，很多模式可以更简洁
 - 鸭子类型不需要抽象接口
@@ -2192,15 +2264,19 @@ print("=== Python设计模式演示 ===\\n")
 print("--- 1. 单例模式（Singleton）---")
 class Singleton:
     """确保类只有一个实例"""
-    _instance = None
+    _instance = None  # 类属性，存储唯一实例
 
+    # __new__ 负责创建实例，重写它来控制只创建一次
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
+            # 首次调用：用 super().__new__ 创建实例
             cls._instance = super().__new__(cls)
             cls._instance.initialized = False
+        # 后续调用：直接返回已存在的实例
         return cls._instance
 
     def __init__(self, value=None):
+        # __init__ 每次实例化都会调用，需用 initialized 标记防止重复初始化
         if not self.initialized:
             self.value = value
             self.initialized = True
@@ -2345,14 +2421,201 @@ subject.set_state(50)
 print("\\n设置状态为 95:")
 subject.set_state(95)
 
+print("\\n--- 5. 责任链模式（Chain of Responsibility）---")
+# 责任链：请求沿处理者链传递，每个处理者决定处理或传给下一个
+class Handler(ABC):
+    """处理者基类，维护下一个处理者的引用"""
+    def __init__(self):
+        self._next = None
+
+    def set_next(self, handler):
+        # 设置下一个处理者，返回 handler 以便链式调用
+        self._next = handler
+        return handler
+
+    @abstractmethod
+    def handle(self, request):
+        pass
+
+class AuthHandler(Handler):
+    """认证处理者"""
+    def handle(self, request):
+        if not request.get("token"):
+            print(f"  [Auth] 拒绝：缺少 token")
+            return False
+        print(f"  [Auth] 认证通过")
+        # 传递给下一个处理者
+        if self._next:
+            return self._next.handle(request)
+        return True
+
+class LogHandler(Handler):
+    """日志处理者"""
+    def handle(self, request):
+        print(f"  [Log] 记录请求: {request.get('action')}")
+        if self._next:
+            return self._next.handle(request)
+        return True
+
+class RateLimitHandler(Handler):
+    """限流处理者"""
+    def handle(self, request):
+        if request.get("count", 0) > 100:
+            print(f"  [RateLimit] 拒绝：请求过于频繁")
+            return False
+        print(f"  [RateLimit] 限流通过")
+        if self._next:
+            return self._next.handle(request)
+        return True
+
+# 组装责任链：Auth -> Log -> RateLimit
+auth = AuthHandler()
+log = LogHandler()
+rate = RateLimitHandler()
+auth.set_next(log).set_next(rate)
+
+print("请求1（正常）:")
+result1 = auth.handle({"token": "abc", "action": "query", "count": 5})
+print(f"  最终结果: {result1}")
+
+print("\\n请求2（无 token）:")
+result2 = auth.handle({"action": "query", "count": 5})
+print(f"  最终结果: {result2}")
+
+print("\\n--- 6. 状态模式（State）---")
+# 状态模式：对象状态改变时行为也改变，像换了一个类
+class OrderState(ABC):
+    """订单状态基类"""
+    @abstractmethod
+    def next(self, order):
+        pass
+
+    @abstractmethod
+    def cancel(self, order):
+        pass
+
+class NewOrder(OrderState):
+    """新建状态"""
+    def next(self, order):
+        print("  新建 -> 已付款")
+        order.set_state(PaidOrder())
+    def cancel(self, order):
+        print("  新建订单已取消")
+
+class PaidOrder(OrderState):
+    """已付款状态"""
+    def next(self, order):
+        print("  已付款 -> 已发货")
+        order.set_state(ShippedOrder())
+    def cancel(self, order):
+        print("  已付款订单取消，退款中")
+
+class ShippedOrder(OrderState):
+    """已发货状态"""
+    def next(self, order):
+        print("  已发货 -> 已完成")
+        order.set_state(CompletedOrder())
+    def cancel(self, order):
+        print("  已发货无法取消，需走退货流程")
+
+class CompletedOrder(OrderState):
+    """已完成状态"""
+    def next(self, order):
+        print("  订单已完成，无法继续推进")
+    def cancel(self, order):
+        print("  已完成订单无法取消")
+
+class Order:
+    """订单上下文，持有当前状态"""
+    def __init__(self):
+        self._state = NewOrder()
+    def set_state(self, state):
+        self._state = state
+    def next(self):
+        self._state.next(self)
+    def cancel(self):
+        self._state.cancel(self)
+
+print("订单流程演示:")
+order = Order()
+order.next()  # 新建 -> 已付款
+order.next()  # 已付款 -> 已发货
+order.next()  # 已发货 -> 已完成
+order.next()  # 已完成，无法推进
+
+print("\\n--- 7. 命令模式（Command）---")
+# 命令模式：把请求封装成对象，支持撤销、队列
+class Command(ABC):
+    """命令基类"""
+    @abstractmethod
+    def execute(self):
+        pass
+
+    @abstractmethod
+    def undo(self):
+        pass
+
+class Light:
+    """接收者：电灯"""
+    def turn_on(self):
+        print("  💡 灯亮了")
+    def turn_off(self):
+        print("  💡 灯灭了")
+
+class LightOnCommand(Command):
+    """开灯命令"""
+    def __init__(self, light):
+        self.light = light
+    def execute(self):
+        self.light.turn_on()
+    def undo(self):
+        self.light.turn_off()
+
+class LightOffCommand(Command):
+    """关灯命令"""
+    def __init__(self, light):
+        self.light = light
+    def execute(self):
+        self.light.turn_off()
+    def undo(self):
+        self.light.turn_on()
+
+class RemoteControl:
+    """调用者：遥控器，支持撤销"""
+    def __init__(self):
+        self._history = []
+    def execute_command(self, cmd):
+        cmd.execute()
+        self._history.append(cmd)
+    def undo_last(self):
+        if self._history:
+            cmd = self._history.pop()
+            print("  撤销上一步:")
+            cmd.undo()
+
+light = Light()
+remote = RemoteControl()
+on_cmd = LightOnCommand(light)
+off_cmd = LightOffCommand(light)
+
+print("执行命令:")
+remote.execute_command(on_cmd)   # 开灯
+remote.execute_command(off_cmd)  # 关灯
+print("\\n撤销:")
+remote.undo_last()  # 撤销关灯 -> 开灯
+remote.undo_last()  # 撤销开灯 -> 关灯
+
 print("\\n=== 设计模式总结 ===")
 print("1. 单例：一个类只有一个实例（模块、__new__、元类）")
 print("2. 工厂：创建对象交给工厂，解耦创建和使用")
 print("3. 策略：算法封装可互换，消灭大量if-else")
 print("4. 观察者：事件通知机制，一对多更新")
-print("5. Python实现模式更简洁：函数/装饰器/dunder")
-print("6. 不要过度设计，简单问题不需要模式")
-print("7. Python中很多模式被语言特性内置了")
+print("5. 责任链：请求沿处理者链传递，中间件/审批流常用")
+print("6. 状态：状态改变时行为也变，订单状态机典型应用")
+print("7. 命令：请求封装成对象，支持撤销/队列/日志")
+print("8. Python实现模式更简洁：函数/装饰器/dunder")
+print("9. 不要过度设计，简单问题不需要模式")
+print("10. Python中很多模式被语言特性内置了")
 print("   - 迭代器模式 → for循环天然支持")
 print("   - 装饰器模式 → @decorator语法糖")
 print("   - 上下文管理器 → with语句")
@@ -2405,6 +2668,7 @@ import math
 print("=== Python性能优化技巧演示 ===\\n")
 
 print("--- 1. 局部变量 vs 全局变量/属性 ---")
+# 原理：局部变量用 LOAD_FAST 指令（数组索引），全局/属性用 LOAD_GLOBAL/LOAD_ATTR（字典查找），慢得多
 GLOBAL_CONST = 3.14159
 
 class SlowDemo:
@@ -2415,12 +2679,14 @@ class SlowDemo:
         """每次循环都查找self.value和math.sqrt"""
         total = 0
         for i in range(50000):
+            # 每次循环都做属性查找 self.value 和模块查找 math.sqrt
             total += math.sqrt(i) * self.value + GLOBAL_CONST
         return total
 
     def fast_method(self):
         """缓存到局部变量"""
         total = 0
+        # 循环前把全局/属性缓存到局部变量，循环内用 LOAD_FAST 访问
         sqrt = math.sqrt
         v = self.value
         g = GLOBAL_CONST
@@ -2436,13 +2702,15 @@ print(f"缓存到局部变量: {t_fast*1000:.1f}ms")
 print(f"提升: {t_slow/t_fast:.1f}x")
 
 print("\\n--- 2. 字符串拼接 + vs join ---")
+# 原理：字符串不可变，+= 每次都创建新对象；join 一次性分配内存
 def concat_plus():
     s = ""
     for i in range(2000):
-        s += str(i)
+        s += str(i)  # 每次拼接都创建新字符串，O(n²) 复杂度
     return s
 
 def concat_join():
+    # join 先计算总长度，一次分配，O(n) 复杂度
     return "".join(str(i) for i in range(2000))
 
 t_plus = timeit.timeit(concat_plus, number=200)
@@ -2469,12 +2737,14 @@ print(f"列表推导:   {t_lc*1000:.1f}ms")
 print(f"列表推导快: {t_for/t_lc:.1f}x")
 
 print("\\n--- 4. set/dict查找 vs list查找 ---")
+# 原理：set/dict 基于哈希表，in 查找是 O(1)；list 是顺序遍历，in 查找是 O(n)
 big_list = list(range(10000))
 big_set = set(big_list)
 
 def list_lookup():
     count = 0
     for i in range(100):
+        # list 的 in 操作要遍历整个列表，最坏 O(n)
         if 9999 - i in big_list:
             count += 1
     return count
@@ -2482,6 +2752,7 @@ def list_lookup():
 def set_lookup():
     count = 0
     for i in range(100):
+        # set 的 in 操作用哈希直接定位，O(1)
         if 9999 - i in big_set:
             count += 1
     return count
@@ -2493,14 +2764,15 @@ print(f"set  in查找(O(1)): {t_sl*1000:.1f}ms")
 print(f"set查找快: {t_ll/t_sl:.0f}x (列表越大差距越大!)")
 
 print("\\n--- 5. 内置函数 vs 手动循环 ---")
+# 原理：内置函数 sum/map 等是 C 实现的，没有 Python 字节码开销
 def manual_sum():
     total = 0
     for i in range(10000):
-        total += i
+        total += i  # 每次循环都有 Python 解释器开销
     return total
 
 def builtin_sum():
-    return sum(range(10000))
+    return sum(range(10000))  # C 层循环，无解释器开销
 
 t_manual = timeit.timeit(manual_sum, number=500)
 t_builtin = timeit.timeit(builtin_sum, number=500)
@@ -2509,6 +2781,7 @@ print(f"内置sum():   {t_builtin*1000:.1f}ms")
 print(f"内置快: {t_manual/t_builtin:.1f}x")
 
 print("\\n--- 6. 生成器省内存（不省时间，但适合大数据）---")
+# 原理：生成器惰性求值，不预分配全部元素；列表一次性分配所有内存
 import sys
 list_comp = [i * 2 for i in range(1000000)]
 gen_exp = (i * 2 for i in range(1000000))
@@ -2517,6 +2790,7 @@ print(f"生成器表达式内存: {sys.getsizeof(gen_exp)} bytes")
 print(f"（生成器惰性计算，内存占用极小）")
 
 print("\\n--- 7. 算法优化最重要 ---")
+# 原理：算法复杂度 O(n²) vs O(n) 的差距随数据量增大而急剧拉大
 def has_duplicate_slow(lst):
     """O(n²) 暴力检查"""
     for i in range(len(lst)):
@@ -2657,19 +2931,24 @@ print("\\n--- 坑4：整数缓存 is vs == ---")
 a = 256
 b = 256
 print(f"a=256, b=256, a is b = {a is b}（小整数缓存）")
-c = 257
-d = 257
+# 注意：直接写 c = 257; d = 257 时，CPython 会做常量折叠让两者指向同一对象，
+# 导致 c is d 错误地为 True。用 int("257") 在运行时构造，才能正确演示大整数不缓存。
+c = int("257")
+d = int("257")
 print(f"c=257, d=257, c is d = {c is d}（大整数不缓存！）")
 print(f"c == d = {c == d}（值比较永远用==）")
 print("规则：值比较用 == ， 判断是否同一对象（None/True/False/sentinel）用 is")
 
 print("\\n--- 坑5：闭包变量捕获（late binding）---")
+# 原理：闭包捕获的是变量的"引用"而非"值"，调用时才查找 i 的当前值
 def wrong_multipliers():
     """错误写法"""
     funcs = []
     for i in range(3):
+        # lambda 捕获的是变量 i 的引用，不是当时的值
         funcs.append(lambda x: x * i)
     return funcs
+# 循环结束后 i = 2，所以所有 lambda 调用时都用 2
 
 funcs_wrong = wrong_multipliers()
 print("错误闭包结果:")
@@ -2681,6 +2960,7 @@ def right_multipliers():
     """正确写法：用默认参数捕获当前值"""
     funcs = []
     for i in range(3):
+        # i=i 把当前 i 值绑定为默认参数，每次循环都保存一份
         funcs.append(lambda x, i=i: x * i)
     return funcs
 

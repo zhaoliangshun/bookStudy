@@ -135,6 +135,25 @@ import importlib
 importlib.reload(模块名)
 \`\`\`
 
+### 动态导入（importlib.import_module / __import__）
+
+有时模块名在运行时才知道（比如根据用户输入或配置文件），这时不能用普通的 \`import\` 语句，需要**动态导入**：
+
+\`\`\`python# 导入 importlib，提供 import_module 函数用于按字符串名动态导入模块
+import importlib
+# import_module 按字符串名导入模块，等价于 import json，但模块名可以是变量
+mod = importlib.import_module('json')
+# 之后用法与普通 import 完全一致
+print(mod.dumps({'a': 1}))
+
+# __import__ 是 Python 内置函数，import 语句底层就是调用它
+# 不推荐直接使用，参数语义复杂（fromlist 才能正确导入子模块）
+os_mod = __import__('os')
+print(os_mod.getcwd())
+\`\`\`
+
+\`importlib.import_module()\` 是官方推荐的动态导入方式，比 \`__import__()\` 更直观。
+
 ### 模块对象的属性
 
 每个模块都有一些特殊属性：
@@ -526,9 +545,34 @@ pip install 包名 -i https://pypi.tuna.tsinghua.edu.cn/simple
 - 阿里：https://mirrors.aliyun.com/pypi/simple/
 - 中科大：https://pypi.mirrors.ustc.edu.cn/simple/
 
+### 安装位置：--user 与虚拟环境
+
+- \`pip install 包名\`：默认装到当前 Python 的 site-packages
+- \`pip install --user 包名\`：装到**当前用户**目录（不影响系统），无需管理员权限
+- **在虚拟环境内**：\`pip install\` 会装到虚拟环境的 site-packages，**不需要** \`--user\`，激活环境后即生效
+
+\`\`\`bash
+# 装到用户目录（没有虚拟环境时推荐）
+pip install --user requests
+
+# 虚拟环境内直接安装（推荐做法）
+pip install requests
+\`\`\`
+
 ### PyPI 是什么？
 
 PyPI（Python Package Index）是 Python 的官方软件仓库，地址：https://pypi.org
+
+### 依赖管理工具对比
+
+| 文件/工具 | 用途 | 说明 |
+|----------|------|------|
+| \`requirements.txt\` | 依赖清单 | 最简单，\`pip freeze\` 生成，\`pip install -r\` 安装 |
+| \`Pipfile\` + pipenv | 依赖+锁文件 | 区分开发/生产环境，pipenv 工具使用 |
+| \`pyproject.toml\` | 现代项目标准 | PEP 518/621 标准，配合 poetry/hatch/pdm 等工具 |
+| \`setup.py\` | 旧式打包 | 仍可见，但新项目推荐迁移到 pyproject.toml |
+
+**现代项目推荐**：使用 \`pyproject.toml\` + \`poetry\` 或 \`hatch\`，能同时管理项目元数据、依赖和锁文件。
 `,
     code: `# ========== pip 包管理命令演示 ==========
 # 注意：这里只打印命令示例，不实际执行 pip install（避免污染环境）
@@ -1219,7 +1263,7 @@ print("=" * 60)
 | \`sys.stdin\` | 标准输入 |
 | \`sys.stdout\` | 标准输出 |
 | \`sys.stderr\` | 标准错误输出 |
-| \`sys.excutable\` | Python 解释器路径 |
+| \`sys.executable\` | Python 解释器路径 |
 | \`sys.exit()\` | 退出程序 |
 
 ### sys.argv —— 命令行参数
@@ -1363,6 +1407,23 @@ print(f"  空字典占用: {sys.getsizeof({})} 字节")
 | \`os.remove(path)\` | 删除文件 |
 | \`os.stat(path)\` | 获取文件状态信息 |
 | \`os.path.exists(path)\` | 判断路径是否存在 |
+| \`os.scandir(path)\` | 高效遍历目录（推荐），返回 DirEntry 对象 |
+
+### os.listdir() vs os.scandir()
+
+- \`os.listdir(path)\`：返回**文件名列表**（字符串），简单但遍历大目录时性能一般
+- \`os.scandir(path)\`：返回迭代器，每个 \`DirEntry\` 对象已缓存了 \`is_file()\`/\`is_dir()\`/\`stat()\` 信息，**性能更快**（尤其在大目录），Python 3.5+ 推荐
+
+\`\`\`python# listdir 返回纯文件名列表，需要再调 stat 才能判断类型
+for name in os.listdir('.'):
+    full = os.path.join('.', name)
+    if os.path.isfile(full):  # 每次都要再次访问文件系统
+        print(name)
+# scandir 返回 DirEntry 对象，is_file 等方法已缓存，遍历大目录更快
+for entry in os.scandir('.'):
+    if entry.is_file():  # 直接调用，无需拼接路径，性能更好
+        print(entry.name)
+\`\`\`
 
 #### 🌍 环境变量和进程
 | 函数/属性 | 说明 |
@@ -1378,9 +1439,7 @@ print(f"  空字典占用: {sys.getsizeof({})} 字节")
 |------|------|
 | \`os.name\` | 操作系统名：'posix'(Linux/Mac) 或 'nt'(Windows) |
 | \`os.sep\` | 路径分隔符：'/' 或 '\\\\' |
-| \`os.linesep\` | 换行符：'
-' 或 '
-' |
+| \`os.linesep\` | 换行符：'\\n'(Linux/Mac) 或 '\\r\\n'(Windows) |
 | \`os.pathsep\` | 环境变量路径分隔符：':' 或 ';' |
 
 ### 重要安全提示
@@ -1506,7 +1565,7 @@ print("  os.path.abspath() - 获取绝对路径")
 
 ### 为什么需要 os.path？
 
-Windows 路径用反斜杠 \`C:\Usersile.txt\`
+Windows 路径用反斜杠 \`C:\\Users\\file.txt\`
 macOS/Linux 路径用正斜杠 \`/home/user/file.txt\`
 
 \`os.path.join()\` 等函数会自动使用正确的分隔符！
@@ -1542,7 +1601,7 @@ path = os.path.join(dir, filename)  # 自动处理分隔符
 ### 绝对路径 vs 相对路径
 
 - **相对路径**：相对于当前工作目录，如 \`data/file.txt\`
-- **绝对路径**：从根目录开始，如 \`/home/user/data/file.txt\` (Linux/Mac) 或 \`C:\Usersile.txt\` (Windows)
+- **绝对路径**：从根目录开始，如 \`/home/user/data/file.txt\` (Linux/Mac) 或 \`C:\\Users\\file.txt\` (Windows)
 
 用 \`os.path.abspath()\` 可以把相对路径转成绝对路径。
 
@@ -1727,6 +1786,19 @@ p = Path('hello.txt')
 p.write_text('Hello!', encoding='utf-8')  # 写文件
 # read_text 读取文件全部内容为字符串
 content = p.read_text(encoding='utf-8')   # 读文件
+\`\`\`
+
+### 读写二进制文件（read_bytes / write_bytes）
+
+处理图片、压缩包等二进制文件时，用 \`read_bytes()\` / \`write_bytes()\`：
+
+\`\`\`python# 构造一个二进制文件的 Path 对象
+p = Path('data.bin')
+# write_bytes 直接写入 bytes 类型数据，无需指定 encoding
+p.write_bytes(b'\\x89PNG\\r\\n\\x1a\\n')  # 写二进制
+# read_bytes 读取整个文件为 bytes 对象
+data = p.read_bytes()                     # 读二进制，返回 bytes
+print(data[:4])  # b'\\x89PNG'
 \`\`\`
 
 ### 遍历目录
@@ -1934,6 +2006,19 @@ print("  写文件             open(p,'w').write(t)       p.write_text(t)")
 
 随机数其实不是真正随机的，是通过算法算出来的。设置相同的 seed，每次运行得到的随机序列相同！这在需要**可复现**结果时很有用（比如测试、调试）。
 
+### 线程安全说明
+
+- \`random\` 模块的核心生成器是**全局对象**，多线程同时调用会互相干扰结果序列
+- 如果需要在线程中使用独立的随机数流，请为每个线程创建单独的 \`random.Random()\` 实例：
+
+\`\`\`python# 导入 random 模块
+import random
+# 每个线程创建独立的 Random 实例，互不干扰，线程安全
+local_rng = random.Random(42)  # 独立实例，带种子
+# 用实例方法生成随机数，不影响全局 random 状态
+print(local_rng.randint(1, 100))
+\`\`\`
+
 ### 安全提示
 
 random 模块生成的是伪随机数，**不要用于密码学、安全相关场景**。如果需要安全的随机数，使用 \`secrets\` 模块。
@@ -2099,6 +2184,20 @@ print("   不要用于密码学/安全场景，安全场景请使用 secrets 模
 - \`math.pow()\` 返回浮点数，整数幂可以直接用 \`**\` 运算符。
 - Python 3.8+ 用 \`math.isqrt()\` 求整数平方根，比 int(math.sqrt()) 更准确。
 - \`math.sqrt(-1)\` 会报错，需要负数开方请用 \`cmath.sqrt(-1)\`。
+
+### 浮点数比较：math.isclose()
+
+由于浮点数精度问题，\`0.1 + 0.2 == 0.3\` 结果是 \`False\`！比较浮点数应该用 \`math.isclose()\`：
+
+\`\`\`python# 导入 math 模块
+import math
+# 直接 == 比较浮点数会有精度问题，0.1+0.2 实际为 0.30000000000000004
+print(0.1 + 0.2 == 0.3)            # False（精度误差）
+# isclose 用相对/绝对容差判断近似相等，避免浮点误差
+print(math.isclose(0.1 + 0.2, 0.3))  # True
+# rel_tol 是相对容差（默认 1e-09），abs_tol 是绝对容差（默认 0.0）
+print(math.isclose(1e-10, 0.0, abs_tol=1e-9))  # True，用绝对容差比较接近 0 的数
+\`\`\`
 `,
     code: `# ========== math 模块演示 ==========
 

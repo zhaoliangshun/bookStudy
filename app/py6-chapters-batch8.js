@@ -136,15 +136,49 @@ print(f"当前: {dt}")
 print(f"修改为0点: {dt.replace(hour=0, minute=0, second=0, microsecond=0)}")
 print(f"修改为月初: {dt.replace(day=1)}")
 
-# ========== 7. 时区 ==========
+# ========== 7. 时区（固定偏移） ==========
 print("\\n" + "=" * 50)
-print("7. 时区处理")
+print("7. 时区处理（固定偏移 timezone）")
 print("=" * 50)
+# timezone(timedelta) 创建固定偏移时区，不含 DST（夏令时）信息
 from datetime import timedelta as td
+# 北京时间是 UTC+8，用固定偏移创建时区对象
 beijing_tz = timezone(td(hours=8))
+# datetime.now(tz) 获取指定时区的当前时间（推荐方式，替代 utcnow()）
 beijing_time = datetime.now(beijing_tz)
 print(f"北京时间: {beijing_time}")
 print(f"UTC时间: {datetime.now(timezone.utc)}")
+# 时区转换：astimezone 将一个时区的时间转换为另一个时区
+utc_time = beijing_time.astimezone(timezone.utc)
+print(f"北京时间转UTC: {utc_time}")
+
+# ========== 8. zoneinfo（Python 3.9+，IANA 时区数据库） ==========
+print("\\n" + "=" * 50)
+print("8. zoneinfo IANA 时区（Python 3.9+）")
+print("=" * 50)
+# zoneinfo 使用操作系统的 IANA 时区数据库（如 "Asia/Shanghai"）
+# 优势：自动处理夏令时、历史时区变更，比 timezone(timedelta) 更准确
+try:
+    from zoneinfo import ZoneInfo
+    # 上海时区（含历史夏令时规则）
+    shanghai_tz = ZoneInfo("Asia/Shanghai")
+    # 纽约时区（自动处理夏令时切换）
+    ny_tz = ZoneInfo("America/New_York")
+    # 伦敦时区
+    london_tz = ZoneInfo("Europe/London")
+
+    # 用 ZoneInfo 创建带时区的时间
+    dt_shanghai = datetime.now(shanghai_tz)
+    print(f"上海时间: {dt_shanghai}")
+    # 同一时刻在不同时区的表示
+    dt_ny = dt_shanghai.astimezone(ny_tz)
+    dt_london = dt_shanghai.astimezone(london_tz)
+    print(f"纽约时间: {dt_ny}")
+    print(f"伦敦时间: {dt_london}")
+    print(f"时差(上海-纽约): {dt_shanghai.utcoffset() - dt_ny.utcoffset()}")
+    print("zoneinfo 自动处理夏令时，比 timezone(timedelta) 更准确")
+except ImportError:
+    print("zoneinfo 需要 Python 3.9+")
 `
   },
   {
@@ -477,7 +511,7 @@ print(f"match('123'): {m2}  <-- 不在开头，不匹配")
 m3 = re.search(r'123', text)
 print(f"search('123'): {m3}  <-- 搜索到第一个")
 m4 = re.findall(r'\\d+', text)
-print(f"findall(r'\\d+'): {m4}  <-- 所有匹配")
+print(rf"findall(r'\\d+'): {m4}  <-- 所有匹配")
 
 # ========== 2. 元字符演示 ==========
 print("\\n" + "=" * 50)
@@ -635,9 +669,13 @@ print(f"后缀: {m.group(3)}")
 print("\\n" + "=" * 50)
 print("2. 命名分组 (?P<name>)")
 print("=" * 50)
+# 命名分组用 (?P<名字>模式) 定义，比数字索引更易读、更易维护
+# 适合模式复杂、分组多的场景，避免 group(1)/group(2) 混淆
 m = re.search(r'(?P<year>\\d{4})-(?P<month>\\d{2})-(?P<day>\\d{2})',
               '日期: 2024-06-15')
+# groupdict() 返回 {名字: 匹配内容} 的字典
 print(f"groupdict(): {m.groupdict()}")
+# 也可用 group('名字') 获取单个分组
 print(f"年: {m.group('year')}")
 print(f"月: {m.group('month')}")
 print(f"日: {m.group('day')}")
@@ -667,12 +705,18 @@ print(f"匹配成对HTML标签: {tags}")
 print("\\n" + "=" * 50)
 print("5. 贪婪 vs 非贪婪")
 print("=" * 50)
+# 贪婪（默认）：量词 * + ? {n,m} 尽可能多匹配，会一直找到最后一个匹配点
+# 非贪婪：在量词后加 ?（即 *? +? ?? {n,m}?）尽可能少匹配，找到第一个就停
 html = "<div>内容1</div><div>内容2</div>"
+# 贪婪 .* 会匹配到字符串最后的 </div>，导致跨标签匹配（错误结果）
 print(f"贪婪匹配.*: {re.findall(r'<div>.*</div>', html)}")
+# 非贪婪 .*? 匹配到第一个 </div> 就停止，正确提取每个标签
 print(f"非贪婪.*?: {re.findall(r'<div>.*?</div>', html)}")
 print()
 text2 = "a123b456b789b"
+# 贪婪 a.*b：从 a 匹配到最后的 b，结果 "a123b456b789b"
 print(f"贪婪a.*b: {re.findall(r'a.*b', text2)}")
+# 非贪婪 a.*?b：从 a 匹配到第一个 b，结果 "a123b"
 print(f"非贪婪a.*?b: {re.findall(r'a.*?b', text2)}")
 
 # ========== 6. re.sub 替换 ==========
@@ -744,6 +788,43 @@ def check_password(pwd):
 for pwd in ["abc", "Abcdefg1", "password123", "Good1234"]:
     ok, msg = check_password(pwd)
     print(f"  {pwd!r:15} -> {'✓' if ok else '✗'} {msg}")
+
+# ========== 10. re.VERBOSE 冗长模式（可读性） ==========
+print("\\n" + "=" * 50)
+print("10. re.VERBOSE / re.X 冗长模式")
+print("=" * 50)
+# re.VERBOSE 允许在正则中添加空白和注释，提升可读性
+# 模式中的空白字符被忽略（除非在字符类 [] 中或用 \\ 转义）
+# # 后的内容被视为注释直到行尾
+phone_re = re.compile(r"""
+    ^                   # 字符串开头
+    (\\d{3})            # 区号（3位数字），捕获分组1
+    [-.\\s]?            # 分隔符：横线/点/空白（可选）
+    (\\d{4})            # 前4位号码，捕获分组2
+    [-.\\s]?            # 分隔符（可选）
+    (\\d{4})            # 后4位号码，捕获分组3
+    $                   # 字符串结尾
+""", re.VERBOSE)
+
+test_phones = ["010-1234-5678", "010.1234.5678", "010 1234 5678", "01012345678"]
+for p in test_phones:
+    m = phone_re.match(p)
+    if m:
+        print(f"  {p:18} -> 区号={m.group(1)}-{m.group(2)}-{m.group(3)}")
+    else:
+        print(f"  {p:18} -> 不匹配")
+
+# 复杂邮箱验证（VERBOSE 模式让正则更易维护）
+email_re = re.compile(r"""
+    ^                                   # 开头
+    [a-zA-Z0-9.!#$%&'*+/=?^_\`{|}~-]+   # 用户名部分（允许的字符）
+    @                                   # @ 符号
+    ([a-zA-Z0-9-]+\\.)+                  # 域名（子域+点，可重复）
+    [a-zA-Z]{2,}                        # 顶级域名（至少2个字母）
+    $                                   # 结尾
+""", re.VERBOSE)
+print(f"\\n邮箱验证 'test@example.com': {bool(email_re.match('test@example.com'))}")
+print("VERBOSE 优势：可加注释和换行，复杂正则更易维护")
 `
   },
   {
@@ -964,12 +1045,17 @@ import operator
 print("=" * 50)
 print("1. 无限迭代器（用islice截断）")
 print("=" * 50)
+# itertools 的核心特性是「惰性计算」：只在需要时产生值，不预先生成全部
+# 无限迭代器（count/cycle/repeat）必须配合 islice 或 next 截断使用，否则无限循环
 # count
+# count(10, 2) 产生 10,12,14,...（无限），用 islice 截取前6个
 print("count(10, 2):", list(itertools.islice(itertools.count(10, 2), 6)))
 # cycle
+# cycle 重复循环迭代器内容（无限），用 next 取前8个
 cyc = itertools.cycle(['A', 'B', 'C'])
 print("cycle('ABC')前8个:", [next(cyc) for _ in range(8)])
 # repeat
+# repeat 重复同一对象，指定 times 则有限
 print("repeat(42, 5):", list(itertools.repeat(42, 5)))
 
 # ========== 2. 串联与切片 ==========
@@ -1148,17 +1234,23 @@ print(f"调用: {greet('张三')}")
 print("\\n" + "=" * 50)
 print("2. @lru_cache 结果缓存")
 print("=" * 50)
+# lru_cache 原理：以函数参数为 key 缓存返回值，相同参数下次调用直接返回缓存
+# LRU = Least Recently Used，maxsize 满时淘汰最久未用的缓存项
+# 适合纯函数（相同输入必相同输出），递归函数性能提升巨大
+# 注意：参数必须可哈希（list/dict/set 不可，需转 tuple/frozenset）
 @functools.lru_cache(maxsize=128)
 def fib(n):
     if n < 2:
         return n
     return fib(n-1) + fib(n-2)
 
+# 无缓存时 fib(35) 递归约 2^35 次（千万级），有缓存仅计算每个 n 一次
 start = time.time()
 result = fib(35)
 elapsed = time.time() - start
 print(f"fib(35) = {result}")
 print(f"耗时: {elapsed:.6f}秒（有缓存极快）")
+# cache_info() 返回缓存命中信息：hits/misses/maxsize/currsize
 print(f"缓存信息: {fib.cache_info()}")
 fib.cache_clear()
 print("cache_clear()后:", fib.cache_info())
@@ -1949,9 +2041,63 @@ try:
 except ZeroDivisionError:
     logging.error("计算出错", exc_info=True)
 
-# ========== 8. 最佳实践 ==========
+# ========== 8. dictConfig 字典配置（生产环境推荐） ==========
 print("\\n" + "=" * 50)
-print("8. logging最佳实践")
+print("8. dictConfig 字典配置（生产环境推荐）")
+print("=" * 50)
+# logging.config.dictConfig 用字典描述完整日志配置
+# 优势：可从 JSON/YAML 文件加载，比 basicConfig 更灵活强大
+from logging.config import dictConfig
+import io as _io
+
+# 配置字典：定义 loggers、handlers、formatters 三大组件
+logging_config = {
+    "version": 1,                # 配置 schema 版本，目前固定为 1
+    "disable_existing_loggers": False,  # 不禁用已存在的 logger
+    "formatters": {              # 格式化器：定义日志输出格式
+        "simple": {"format": "[%(levelname)s] %(message)s"},
+        "detailed": {"format": "%(asctime)s %(name)s [%(levelname)s] %(message)s"},
+    },
+    "handlers": {                # 处理器：定义日志输出目标
+        "console": {
+            "class": "logging.StreamHandler",
+            "level": "INFO",
+            "formatter": "simple",
+            "stream": "ext://sys.stdout",
+        },
+        # 实际项目可用 FileHandler：保存到文件
+        # "file": {
+        #     "class": "logging.FileHandler",
+        #     "level": "DEBUG",
+        #     "formatter": "detailed",
+        #     "filename": "app.log",
+        #     "encoding": "utf-8",
+        # },
+    },
+    "loggers": {                 # logger 配置
+        "app": {
+            "level": "DEBUG",
+            "handlers": ["console"],
+            "propagate": False,  # 不向 root 传播，避免重复输出
+        },
+    },
+    "root": {                    # root logger 配置
+        "level": "WARNING",
+        "handlers": ["console"],
+    },
+}
+
+# 应用配置
+dictConfig(logging_config)
+app_log = logging.getLogger("app")
+app_log.debug("dictConfig DEBUG 消息")
+app_log.info("dictConfig INFO 消息（控制台显示）")
+app_log.warning("dictConfig WARNING 消息")
+print("dictConfig 适合生产环境：可从 JSON/YAML 加载，统一管理多组件配置")
+
+# ========== 9. 最佳实践 ==========
+print("\\n" + "=" * 50)
+print("9. logging最佳实践")
 print("=" * 50)
 print("""
 ✅ 模块开头创建logger:
@@ -1971,6 +2117,7 @@ print("""
        logging.StreamHandler()
    ]
 
+✅ 复杂配置用 dictConfig（可从 JSON/YAML 加载）
 ✅ 不要用print做日志，用logging
 ❌ 不要在每个模块都basicConfig
 ❌ 不要捕获所有异常只log不处理
@@ -2398,6 +2545,8 @@ print(f"SHA512: {sha512.hexdigest()} ({len(sha512.hexdigest())}字符)")
 print("\\n" + "=" * 50)
 print("2. update追加（等价于拼接后hash）")
 print("=" * 50)
+# update 是追加数据到哈希流，不是覆盖！多次 update 等价于拼接后一次 update
+# 这使得大文件可以分块处理而无需全部加载到内存
 h1 = hashlib.sha256()
 h1.update(b"Hello, ")
 h1.update(b"World!")
@@ -2424,16 +2573,18 @@ with tempfile.NamedTemporaryFile(mode='wb', delete=False) as f:
     f.write(b"line 3\\n")
     tmp_path = f.name
 try:
-    # 小文件一次读取
+    # 小文件一次读取（直接 read 全部到内存）
     with open(tmp_path, 'rb') as f:
         content = f.read()
         file_md5 = hashlib.md5(content).hexdigest()
         print(f"文件MD5: {file_md5}")
-    # 大文件分块读取（内存友好）
+    # 大文件必须分块读取 update，避免一次性加载几 GB 文件导致内存溢出
+    # 4096/8192/65536 是常见块大小，性能与内存的平衡
     sha256_hash = hashlib.sha256()
     with open(tmp_path, 'rb') as f:
+        # iter(callable, sentinel) 每次调用 callable，返回 sentinel 时停止
         for chunk in iter(lambda: f.read(4096), b''):
-            sha256_hash.update(chunk)
+            sha256_hash.update(chunk)  # 追加每块到哈希流
     print(f"文件SHA256（分块）: {sha256_hash.hexdigest()}")
 finally:
     os.unlink(tmp_path)
@@ -2562,12 +2713,16 @@ print(f"解码后一致: {decoded_bin == binary_data}")
 print("\\n" + "=" * 50)
 print("3. urlsafe_b64encode（URL安全）")
 print("=" * 50)
+# 标准 Base64 使用 A-Z a-z 0-9 + / 共 64 个字符
+# 但 + 和 / 在 URL 中有特殊含义（+ 表示空格，/ 是路径分隔符）
+# urlsafe 变体把 + 换成 -，/ 换成 _，避免 URL 编码后变 %2B %2F
 data = b"\\xfb\\xef\\xbe\\xad\\xde\\xad\\xbe\\xef"  # 包含类似+/的字节
 standard = base64.b64encode(data)
 urlsafe = base64.urlsafe_b64encode(data)
 print(f"标准Base64: {standard}")
 print(f"URL安全:   {urlsafe}")
-print("区别: + -> -, / -> _")
+print("区别: + -> -, / -> _  (其余字符完全相同)")
+print("应用场景：URL 传参、JWT、Data URI 等需放入 URL 的场景用 urlsafe")
 print(f"urlsafe解码: {base64.urlsafe_b64decode(urlsafe).hex()}")
 
 # ========== 4. 填充字符= ==========

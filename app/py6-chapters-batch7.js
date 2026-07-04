@@ -104,6 +104,26 @@ try:
     print(f"二进制前20字节: {binary_data}")
     file.close()
 
+    # ========== 7. 大文件分块读取（避免一次性加载） ==========
+    print("=" * 50)
+    print("7. 大文件分块读取（read(size) 循环）")
+    print("=" * 50)
+    # 对于 GB 级大文件，read() 一次性加载会撑爆内存
+    # 解决方案：每次读取固定大小的块，分批处理
+    file = open(temp_path, 'r', encoding='utf-8')
+    chunk_size = 16  # 演示用小块，实际可用 4096/8192 字节
+    chunk_no = 0
+    total_chars = 0
+    while True:
+        chunk = file.read(chunk_size)  # 每次读取 chunk_size 个字符
+        if not chunk:  # 读到文件末尾返回空字符串
+            break
+        chunk_no += 1
+        total_chars += len(chunk)
+        print(f"  块{chunk_no}: {repr(chunk[:20])}（{len(chunk)}字符）")
+    file.close()
+    print(f"共读取 {chunk_no} 块，{total_chars} 个字符")
+
 finally:
     # 清理临时文件
     if os.path.exists(temp_path):
@@ -157,12 +177,14 @@ try:
     print("=" * 50)
     print("1. write() 写入文件（'w'模式覆盖）")
     print("=" * 50)
+    # 'w' 模式：文件不存在则创建，存在则清空内容（重要数据慎用！）
+    # encoding='utf-8' 必须指定，否则Windows下中文可能乱码
     f = open(file1, 'w', encoding='utf-8')
-    count = f.write("第一行内容\\n")
+    count = f.write("第一行内容\\n")  # write返回写入的字符数
     print(f"写入{count}个字符")
-    f.write("第二行内容\\n")
+    f.write("第二行内容\\n")  # 注意：write不会自动加换行，需手动加\\n
     f.write("第三行：中文测试 ✓\\n")
-    f.close()
+    f.close()  # 不用with时必须手动关闭，否则数据可能还在缓冲区
     print("写入完成，文件内容：")
     print(open(file1, 'r', encoding='utf-8').read())
 
@@ -276,24 +298,27 @@ try:
     print("=" * 50)
     print("1. with 基础：自动关闭文件")
     print("=" * 50)
+    # with 语句会在块结束时自动调用 f.close()，即使发生异常也会关闭
+    # 这是因为文件对象实现了 __enter__ 和 __exit__ 协议（上下文管理器）
     with open(temp_path, 'r', encoding='utf-8') as f:
         content = f.read()
         print(content)
-        print(f"with块内文件是否关闭: {f.closed}")
-    print(f"离开with块后文件是否关闭: {f.closed}")
+        print(f"with块内文件是否关闭: {f.closed}")  # False，还在使用中
+    print(f"离开with块后文件是否关闭: {f.closed}")  # True，自动关闭
 
     # ========== 2. 对比：不用with的危险写法 ==========
     print("=" * 50)
     print("2. 演示：异常时也能安全关闭")
     print("=" * 50)
+    # with 的核心价值：异常安全。即使块内抛出异常，__exit__ 仍会被调用
     try:
         with open(temp_path, 'r', encoding='utf-8') as f:
             first_line = f.readline()
             print(f"读取一行: {first_line.rstrip()}")
-            raise ValueError("模拟发生异常！")
+            raise ValueError("模拟发生异常！")  # 主动抛异常测试
     except ValueError as e:
         print(f"捕获异常: {e}")
-        print(f"异常发生后文件是否关闭: {f.closed}")
+        print(f"异常发生后文件是否关闭: {f.closed}")  # True，异常时也关闭了
     print("✓ 即使异常，文件仍被正确关闭！")
 
     # ========== 3. 同时打开多个文件 ==========
@@ -491,10 +516,9 @@ CSV(Comma-Separated Values)是最常见的数据交换格式之一。Python标�
 ### 常用参数
 
 - \`delimiter=','\`：字段分隔符，可用制表符	等
-- \`quotechar='\\"'\`：引用字符
-- \`lineterminator='
-'\`：行终止符
-- \`encoding='utf-8'\`：文件编码
+- \`quotechar='\\"'\`：引用字符（含特殊字符的字段会被引号包裹）
+- \`lineterminator='\\r\\n'\`：行终止符（csv.writer默认为\\r\\n）
+- \`encoding='utf-8'\`：文件编码（处理中文建议用utf-8-sig）
 
 ### 注意事项
 
@@ -515,14 +539,18 @@ try:
     print("=" * 50)
     print("1. csv.writer 写入")
     print("=" * 50)
+    # newline='' 是关键：让csv模块自己控制换行符，避免Windows下出现空行
+    # utf-8-sig 带 BOM 头，可让 Excel 正确识别中文（不会乱码）
     with open(csv_path, 'w', newline='', encoding='utf-8-sig') as f:
-        writer = csv.writer(f)
-        writer.writerow(['姓名', '年龄', '城市', '职业'])
+        writer = csv.writer(f)  # 创建写入器对象
+        writer.writerow(['姓名', '年龄', '城市', '职业'])  # 写入一行（列表）
         writer.writerow(['张三', 25, '北京', '工程师'])
         writer.writerow(['李四', 30, '上海', '设计师'])
+        # writerows 一次写入多行（接收嵌套列表）
         writer.writerows([
             ['王五', 28, '广州', '产品经理'],
             ['赵六', 35, '深圳', '数据分析师'],
+            # 含逗号的字段会被自动用引号包裹："孙七, Jr."
             ['孙七, Jr.', 40, '杭州', '经理'],  # 含逗号自动加引号
         ])
     print("CSV文件已写入，内容预览：")
@@ -623,6 +651,23 @@ JSON是现代应用最常用的数据交换格式，Python的\`json\`模块提�
 - \`indent=2\`：美化缩进，便于阅读
 - \`sort_keys=True\`：按键名排序
 - \`skipkeys=True\`：跳过无法序列化的键
+- \`default=func\`：处理无法序列化的对象（如datetime）
+
+### 自定义序列化（datetime等）
+
+JSON标准不支持datetime、set、自定义类。两种解决方案：
+
+1. **\`default\` 参数**：传入一个函数，遇到无法序列化的对象时调用
+2. **继承\`json.JSONEncoder\`**：重写\`default\`方法，更通用
+
+\`\`\`python# 自定义序列化函数：把 datetime 转为 ISO 格式字符串
+def default_serializer(obj):
+    if isinstance(obj, datetime):
+        return obj.isoformat()  # 转为 "2024-01-01T12:00:00" 格式
+    raise TypeError(f"无法序列化 {type(obj)}")
+
+json.dumps(data, default=default_serializer, ensure_ascii=False)
+\`\`\`
 
 ### 注意事项
 
@@ -645,13 +690,16 @@ try:
     data = {
         "name": "Python教程",
         "version": 3.13,
-        "is_free": True,
+        "is_free": True,  # Python的True → JSON的true
         "tags": ["编程", "入门", "实战"],
-        "score": None,
+        "score": None,  # Python的None → JSON的null
         "author": {"name": "张老师", "age": 35}
     }
+    # 默认 ensure_ascii=True 会把中文转成 \\uXXXX 转义序列（不友好）
     json_str = json.dumps(data)
     print(f"默认输出（紧凑）:\\n{json_str}")
+    # ensure_ascii=False 直接输出 Unicode 中文，可读性更好
+    # indent=2 美化缩进，sort_keys=True 按键名排序
     json_str_pretty = json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True)
     print(f"\\n美化输出（中文不转义+缩进+排序）:\\n{json_str_pretty}")
 
@@ -706,6 +754,46 @@ try:
     except TypeError as e:
         print(f"  错误: {e}")
         print("  解决: 先转成list -> json.dumps(list({1,2,3}))")
+
+    # ========== 6. datetime 等自定义类型的序列化 ==========
+    print("\\n" + "=" * 50)
+    print("6. 自定义序列化（datetime、自定义类）")
+    print("=" * 50)
+    from datetime import datetime, date
+
+    event = {
+        "name": "发布会",
+        "created_at": datetime(2024, 1, 15, 10, 30, 0),  # datetime 无法直接序列化
+        "date": date(2024, 1, 15),
+    }
+    # 直接序列化会抛 TypeError
+    try:
+        json.dumps(event)
+    except TypeError as e:
+        print(f"❌ 直接序列化失败: {e}")
+
+    # 方案1：用 default 参数传入自定义序列化函数
+    def default_serializer(obj):
+        # 遇到无法序列化的对象时会调用此函数
+        if isinstance(obj, datetime):
+            return obj.isoformat()  # 转为 "2024-01-15T10:30:00" 格式
+        if isinstance(obj, date):
+            return obj.isoformat()  # 转为 "2024-01-15" 格式
+        raise TypeError(f"无法序列化 {type(obj).__name__}")
+
+    json_str = json.dumps(event, default=default_serializer, ensure_ascii=False, indent=2)
+    print(f"✅ 用 default 参数序列化成功:\\n{json_str}")
+
+    # 方案2：继承 JSONEncoder（更适合复用）
+    class CustomEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, (datetime, date)):
+                return obj.isoformat()
+            return super().default(obj)  # 其他类型走默认逻辑
+
+    json_str2 = json.dumps(event, cls=CustomEncoder, ensure_ascii=False)
+    print(f"\\n✅ 用 JSONEncoder 子类序列化: {json_str2}")
+    print("提示：反序列化时需要用 object_hook 参数把字符串还原为 datetime")
 
 finally:
     import shutil
@@ -766,15 +854,19 @@ try:
     print("=" * 50)
     print("1. dumps/loads 基本用法")
     print("=" * 50)
+    # pickle 可以序列化几乎所有 Python 对象，包括 set、tuple、自定义类等
+    # 注意：与 JSON 不同，pickle 是 Python 专用的二进制格式
     data = {
         "name": "pickle测试",
         "numbers": [1, 1, 2, 3, 5, 8],
         "nested": {"a": True, "b": None},
-        "tuple": (10, 20, 30),
+        "tuple": (10, 20, 30),  # tuple 在 pickle 中保留类型（JSON会变成list）
     }
+    # dumps 把对象序列化为 bytes 对象（在内存中）
     pickled = pickle.dumps(data)
     print(f"序列化后字节长度: {len(pickled)}")
     print(f"前30字节: {pickled[:30]}...")
+    # loads 把 bytes 反序列化回原对象
     restored = pickle.loads(pickled)
     print(f"反序列化后: {restored}")
     print(f"元组类型保留: {type(restored['tuple'])}")
@@ -824,6 +916,10 @@ try:
     print("\\n" + "=" * 50)
     print("4. protocol协议版本")
     print("=" * 50)
+    # pickle 协议版本：0(ASCII可读) ~ 5(最高效，Python 3.8+)
+    # 协议越高，序列化越快、体积越小，但旧版Python可能无法读取
+    # 默认使用 pickle.DEFAULT_PROTOCOL（一般为4或5）
+    # pickle.HIGHEST_PROTOCOL 是当前Python支持的最高版本
     for proto in range(pickle.HIGHEST_PROTOCOL + 1):
         size = len(pickle.dumps(data, protocol=proto))
         print(f"  协议{proto}: {size} 字节")
@@ -1118,6 +1214,20 @@ os.unlink(temp_path)
 print("\\n" + "=" * 50)
 print("5. 异常继承关系验证")
 print("=" * 50)
+# Python 异常层级（重要）：
+# BaseException（最顶层，不要直接捕获）
+#   ├─ SystemExit        （sys.exit() 抛出）
+#   ├─ KeyboardInterrupt （Ctrl+C 中断）
+#   ├─ GeneratorExit      （生成器关闭）
+#   └─ Exception          （所有常规异常的父类，平时捕获这个或其子类）
+#       ├─ ValueError / TypeError / AttributeError ...
+#       ├─ LookupError
+#       │   ├─ IndexError
+#       │   └─ KeyError
+#       └─ OSError
+#           ├─ FileNotFoundError
+#           ├─ PermissionError
+#           └─ ...
 print(f"ZeroDivisionError 是 Exception 的子类: {issubclass(ZeroDivisionError, Exception)}")
 print(f"FileNotFoundError 是 OSError 的子类: {issubclass(FileNotFoundError, OSError)}")
 print(f"IndexError 是 LookupError 的子类: {issubclass(IndexError, LookupError)}")
@@ -1399,17 +1509,22 @@ except FileNotFoundError as e:
 print("\\n" + "=" * 50)
 print("4. raise from 显式异常链")
 print("=" * 50)
+# raise X from Y 的语义：
+# - 明确表示 X 是由 Y 直接导致的（异常类型转换）
+# - Y 会被设置为 X 的 __cause__ 属性（显式链）
+# - 调试时能追溯到原始异常，便于定位根因
 def parse_int(s):
     try:
         return int(s)
     except ValueError as e:
+        # 把底层 ValueError 转换为业务层的 RuntimeError，但保留根因
         raise RuntimeError(f"无法解析整数: {s!r}") from e
 
 try:
     parse_int("not-a-number")
 except RuntimeError as e:
     print(f"捕获异常: {e}")
-    print(f"原始原因 (__cause__): {e.__cause__}")
+    print(f"原始原因 (__cause__): {e.__cause__}")  # 原始的 ValueError
 
 # ========== 5. assert 断言 ==========
 print("\\n" + "=" * 50)
@@ -1676,14 +1791,17 @@ def load_config(path):
         return content
     except FileNotFoundError as e:
         # 在处理FileNotFoundError时又抛RuntimeError
-        # Python自动设置 __context__
+        # 使用 raise ... from e 显式建立异常链，e 会赋值给 __cause__
+        # 即使不写 from e，Python 也会自动设置 __context__（隐式链）
         raise RuntimeError("配置加载失败") from e
 
 try:
     load_config("/missing/config.ini")
 except RuntimeError as e:
     print(f"捕获异常: {e}")
+    # __context__ 是隐式链（except块中抛新异常时自动设置）
     print(f"__context__（原始异常）: {e.__context__}")
+    # __cause__ 是显式链（使用 raise ... from 时设置）
     print(f"__cause__（显式链）: {e.__cause__}")
 
 # ========== 2. 显式异常链 raise from ==========
@@ -1843,7 +1961,25 @@ def my_context():
 - 数据库事务（提交/回滚）
 - 日志追踪
 - 临时修改环境变量
-- 捕获并统计异常`,
+- 捕获并统计异常
+
+### contextlib 实用工具
+
+\`contextlib\` 模块还提供两个常用工具：
+
+1. **\`contextlib.suppress(*exceptions)\`**：忽略指定异常（等价于 try/except pass，但更优雅）
+2. **\`contextlib.ExitStack\`**：动态管理多个资源（适合数量不定的资源）
+
+\`\`\`python# suppress：忽略指定异常，比 try/except pass 更清晰
+from contextlib import suppress
+with suppress(FileNotFoundError):
+    os.remove('maybe_missing.txt')  # 文件不存在也不报错
+
+# ExitStack：动态管理多个文件
+with ExitStack() as stack:
+    files = [stack.enter_context(open(f)) for f in file_list]
+    # 离开 with 块时所有文件都会被自动关闭
+\`\`\``,
     code: `import tempfile
 import os
 import time
@@ -1857,15 +1993,20 @@ print("=" * 50)
 class Timer:
     def __init__(self, name="操作"):
         self.name = name
+    # __enter__ 在进入 with 块时调用，返回值会赋给 as 后的变量
     def __enter__(self):
         self.start = time.time()
         print(f"[{self.name}] 开始计时...")
-        return self
+        return self  # 返回 self，这样 with Timer() as t 中的 t 就是这个实例
+    # __exit__ 在离开 with 块时调用（无论是否异常）
+    # 三个参数：exc_type=异常类型, exc_val=异常实例, exc_tb=traceback
+    # 无异常时三个参数均为 None
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.end = time.time()
         self.elapsed = self.end - self.start
         print(f"[{self.name}] 耗时: {self.elapsed:.6f}秒")
-        return False  # 不吞异常
+        return False  # 返回 False 表示不吞异常，异常会继续传播
+        # 返回 True 会吞掉异常（慎用，可能掩盖错误）
 
 with Timer("求和计算"):
     total = sum(range(1000000))
@@ -1901,6 +2042,11 @@ print("=" * 50)
 
 @contextmanager
 def timer(name="任务"):
+    # contextmanager 装饰器的原理：
+    # 1. yield 之前的代码相当于 __enter__
+    # 2. yield 暂停函数，把 yield 的值赋给 as 变量（这里没 yield 值）
+    # 3. with 块内的代码执行
+    # 4. with 块结束后，恢复执行 yield 之后的代码（相当于 __exit__）
     start = time.time()
     print(f"[{name}] 开始")
     yield  # yield前是__enter__，yield后是__exit__
@@ -1975,6 +2121,63 @@ with indent():
         iprint("还是第二层")
     iprint("回到第一层")
 iprint("结束")
+
+# ========== 7. contextlib.suppress：优雅地忽略异常 ==========
+print("\\n" + "=" * 50)
+print("7. contextlib.suppress 忽略指定异常")
+print("=" * 50)
+from contextlib import suppress
+
+# 传统写法：用 try/except pass 忽略异常
+try:
+    os.remove("/nonexistent/file.txt")
+except FileNotFoundError:
+    pass  # 文件不存在就忽略
+print("传统 try/except 写法")
+
+# suppress 写法：更简洁、意图更明确
+with suppress(FileNotFoundError):
+    os.remove("/nonexistent/file.txt")  # 不存在也不报错
+print("suppress 写法：等价但更清晰")
+
+# suppress 可以同时忽略多种异常
+with suppress(FileNotFoundError, PermissionError):
+    os.remove("/nonexistent/file.txt")
+print("suppress 也可以同时忽略多种异常")
+
+# ========== 8. ExitStack：动态管理多个资源 ==========
+print("\\n" + "=" * 50)
+print("8. contextlib.ExitStack 动态管理多个资源")
+print("=" * 50)
+from contextlib import ExitStack
+
+# 场景：需要打开数量不定的多个文件，并保证全部关闭
+temp_dir = tempfile.mkdtemp()
+try:
+    file_names = [f"file{i}.txt" for i in range(3)]
+    # 用 ExitStack 动态管理多个文件
+    with ExitStack() as stack:
+        # enter_context 注册一个上下文管理器，退出时自动清理
+        files = []
+        for name in file_names:
+            path = os.path.join(temp_dir, name)
+            f = stack.enter_context(open(path, 'w', encoding='utf-8'))
+            f.write(f"{name} 的内容\\n")
+            files.append(f)
+        print(f"打开了 {len(files)} 个文件")
+        # 离开 with 块时，ExitStack 会按相反顺序关闭所有文件
+    print(f"退出后所有文件已关闭: {all(f.closed for f in files)}")
+
+    # ExitStack 还可以注册回调函数
+    with ExitStack() as stack:
+        stack.callback(lambda: print("回调1：清理资源"))
+        stack.callback(lambda: print("回调2：关闭连接"))
+        print("with 块内执行...")
+    # 退出时回调按 LIFO 顺序执行（后注册的先执行）
+finally:
+    import shutil
+    shutil.rmtree(temp_dir)
+    print("临时目录已清理")
 `
   },
   {
