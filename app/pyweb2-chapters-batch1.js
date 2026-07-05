@@ -659,7 +659,7 @@ from cryptography.hazmat.primitives import hashes
 
 # 生成公私钥对（私钥自己留着，公钥可以公开）
 private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-public_key = private_key.public_key
+public_key = private_key.public_key()
 
 # 用公钥加密，只有私钥能解
 msg = b"secret"

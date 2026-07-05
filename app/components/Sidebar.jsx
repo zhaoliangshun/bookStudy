@@ -67,6 +67,7 @@ const BOOK_CATEGORIES = [
       { path: "/pyfile", label: "Python 文件操作", icon: "📁" },
       { path: "/pyproject", label: "Python 实战项目", icon: "🚀" },
       { path: "/java", label: "Java", icon: "☕" },
+      { path: "/pyjava", label: "Python vs Java", icon: "🐍" },
       { path: "/java-web", label: "Java Web", icon: "🌐" },
       { path: "/csharp", label: "C#", icon: "🟪" },
       { path: "/go", label: "Go", icon: "🐹" },
@@ -98,6 +99,7 @@ const BOOK_CATEGORIES = [
       { path: "/shield", label: "回怼护盾", icon: "🛡️" },
       { path: "/quotes", label: "怼人语录", icon: "💬" },
       { path: "/curse", label: "毒舌词典", icon: "🐍" },
+      { path: "/rebut", label: "反驳的艺术", icon: "⚔️" },
     ],
   },
 ];

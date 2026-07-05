@@ -1604,7 +1604,7 @@ with open("seek.bin", "r+b") as f:
 with open("seek.bin", "rb") as f:
     f.seek(48)
     print(f"修改后: {f.read(6).hex(' ')}")
-    # 30 31 2a 2a 2a 34 (50 51 52 53 改成了 2a 2a 2a)
+    # 30 31 2a 2a 2a 35 (位置 50-52 的 32 33 34 改成了 2a 2a 2a)
     # 哦不对,位置 50-52 应该是 32 33 34,改成 2a 2a 2a
     # 所以输出:30 31 2a 2a 2a 35
 

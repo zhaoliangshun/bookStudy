@@ -3198,7 +3198,7 @@ import "fmt"
 
 func main() {
     var p *int      // 零值 nil
-    fmt.Println(p)   // 0xc000016098 -> nil
+    fmt.Println(p)   // <nil>
     
     if p == nil {
         fmt.Println("p 是 nil")

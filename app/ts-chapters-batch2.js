@@ -477,7 +477,7 @@ console.log("重载 format(3.14159):", format(3.14159));
 console.log("重载 format('hello'):", format("hello"));
 
 // 重载示例 2：根据参数个数返回不同类型
-function pick(arr: string[]): string;
+function pick(arr: string[]): string | undefined;
 function pick(arr: string[], index: number): string | undefined;
 function pick(arr: string[], index?: number): string | undefined {
   if (index === undefined) {

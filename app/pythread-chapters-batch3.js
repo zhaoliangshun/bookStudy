@@ -2,7 +2,7 @@
 // Python 线程与进程教程 - batch3
 // 章节 19-28：multiprocessing 多进程
 // 注意：所有 multiprocessing demo 使用 get_context('fork') 启动方式，
-//   因为在线运行环境通过 `python3 -`（stdin）执行代码，
+//   因为在线运行环境通过 python3 -（stdin）执行代码，
 //   默认的 'spawn' 方式子进程无法重新导入主模块会失败。
 // =============================================================
 

@@ -104,7 +104,7 @@ Next.js 16 内置 React 19.2 稳定版，并默认启用了若干 React 19 能�
 
 ### 2.4 middleware 改名为 proxy（弃用，非强制）
 
-Next.js 16 把运行在请求边缘的 \`middleware.ts\` **改名为 \`proxy.ts\`**（推荐用法），更准确地表达它的语义：它在「请求被路由到页面之前」做拦截、重写、重定向，本质上是一个请求代理层。文件约定、签名基本一致，目录顶级文件由 \`middleware.ts\` 变为 \`proxy.ts\`。
+Next.js 16 把 \`middleware.ts\` **改名为 \`proxy.ts\`**（推荐用法），它运行在服务器端的 Node.js 运行时（不再是 edge runtime），更准确地表达它的语义：它在「请求被路由到页面之前」做拦截、重写、重定向，本质上是一个请求代理层。文件约定、签名基本一致，目录顶级文件由 \`middleware.ts\` 变为 \`proxy.ts\`。
 
 > 注意：\`middleware.ts\` **仍然可用但已被弃用**，启动时会出现 \`The "middleware" file convention is deprecated. Please use "proxy" instead.\` 的警告。如果同时存在 \`middleware.ts\` 和 \`proxy.ts\`，构建会直接报错，必须只保留 \`proxy.ts\`。新项目建议直接用 \`proxy.ts\`。
 
@@ -849,29 +849,32 @@ html {
 
 也可以给单个目标元素加 \`scroll-margin-top\`。
 
-### 10.3 Next.js 16 的 data-scroll-behavior
+### 10.3 通过 CSS 控制滚动行为
 
-Next.js 16 在 \`<Link>\` 上新增了 \`data-scroll-behavior\` 属性，用于**精细控制单次导航的滚动行为**，弥补 \`scroll={true|false}\` 只有两种状态的不足。常见取值：
+Next.js 的 \`<Link>\` 组件本身不提供精细的滚动行为控制，但可以结合 CSS 实现：
 
-| 值 | 含义 |
-|----|------|
-| \`auto\` | 浏览器默认滚动行为 |
-| \`smooth\` | 平滑滚动到目标 |
-| \`none\` | 不做任何滚动处理，完全交给页面自己控制 |
+| CSS 属性 | 作用 |
+| --- | --- |
+| \`scroll-behavior: smooth\` | 平滑滚动到目标位置 |
+| \`scroll-padding-top: 80px\` | 滚动时预留顶部偏移（固定导航栏场景） |
+| \`scroll-snap-type\` | 滚动捕捉行为 |
 
-\`\`\`jsx filename="app/page.js"
-import Link from 'next/link'
+\`\`\`css
+/* 全局平滑滚动 */
+html { scroll-behavior: smooth; }
 
-export default function Page() {
-  return (
-    <Link href="/dashboard#settings" data-scroll-behavior="smooth">
-      平滑滚到设置
-    </Link>
-  )
-}
+/* 有固定导航栏时，滚动目标预留空间 */
+html { scroll-padding-top: 80px; }
 \`\`\`
 
-> 用 \`data-scroll-behavior\` 可以做到「同一次导航既要点击瞬时跳转、又要 hash 部分平滑滚动」这类组合效果，而无需全局改 \`html { scroll-behavior }\`。
+\`\`\`jsx
+// Link 默认会滚动到目标，可通过 scroll={false} 禁用
+<Link href="/dashboard#settings" scroll={false}>
+  设置
+</Link>
+\`\`\`
+
+> 注意：\`<Link>\` 的 \`scroll\` prop 只能控制是否滚动（true/false），无法控制滚动方式。精细控制需依赖 CSS。
 
 ## 十一、小结
 

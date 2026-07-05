@@ -1096,7 +1096,7 @@ string s = c.ToString();  // "Red"
 
 // 字符串转枚举
 Color parsed = (Color)Enum.Parse(typeof(Color), "Green");
-// 或泛型版本（C# 7+）
+// 或泛型版本（.NET 5+ / C# 9+）
 Color parsed2 = Enum.Parse<Color>("Blue");
 
 // 检查是否定义

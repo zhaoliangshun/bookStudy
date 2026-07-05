@@ -2164,9 +2164,9 @@ public class Main {  // 定义类 Main
         // 用箭头语法，无穿透，无需 break
         int day = 3;  // 声明变量 day（int），初始值为 3
         String result = switch (day) {
-            case 1, 2, 3, 4, 5 -> "工作日";  // Lambda 表达式：实现函数式接口
-            case 6, 7 -> "周末";  // Lambda 表达式：实现函数式接口
-            default -> "未知";  // Lambda 表达式：实现函数式接口
+            case 1, 2, 3, 4, 5 -> "工作日";  // 箭头标签：无穿透，直接返回值
+            case 6, 7 -> "周末";  // 箭头标签：无穿透，直接返回值
+            default -> "未知";  // 箭头标签：无穿透，直接返回值
         };
         System.out.println(result);  // 打印一行到标准输出（自动换行）
 
@@ -2174,13 +2174,13 @@ public class Main {  // 定义类 Main
         int month = 2;  // 声明变量 month（int），初始值为 2
         boolean isLeap = true;  // 声明变量 isLeap（boolean），初始值为 true
         int days = switch (month) {
-            case 1, 3, 5, 7, 8, 10, 12 -> 31;  // Lambda 表达式：实现函数式接口
-            case 4, 6, 9, 11 -> 30;  // Lambda 表达式：实现函数式接口
-            case 2 -> {  // Lambda 表达式：实现函数式接口
+            case 1, 3, 5, 7, 8, 10, 12 -> 31;  // 箭头标签：无穿透，直接返回值
+            case 4, 6, 9, 11 -> 30;  // 箭头标签：无穿透，直接返回值
+            case 2 -> {  // 箭头标签：无穿透，直接返回值
                 int d = isLeap ? 29 : 28;  // 声明变量 d（int），初始值为 isLeap ? 29 : 28
                 yield d;   // 块中用 yield 返回值
             }
-            default -> 0;  // Lambda 表达式：实现函数式接口
+            default -> 0;  // 箭头标签：无穿透，直接返回值
         };
         System.out.println(days);  // 打印一行到标准输出（自动换行）
     }

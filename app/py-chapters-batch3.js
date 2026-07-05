@@ -1208,7 +1208,7 @@ if not user.is_admin:              # 如果 not user.is_admin 成立
 | \`FileExistsError\` | \`'x'\` 模式下文件已存在 |
 | \`OSError\` | 各种 OS 错误的基类 |
 | \`StopIteration\` | 迭代器耗尽 |
-| \`KeyError\` | dict key 不存在 |
+| \`UnicodeDecodeError\` | 解码失败 |
 | \`RecursionError\` | 递归过深 |
 | \`NotImplementedError\` | 抽象方法未实现 |
 | \`RuntimeError\` | 其他运行时错误 |
@@ -1897,7 +1897,7 @@ def fib(n):                        # 定义函数 fib，参数：n
 add3 = partial(lambda a, b, c: a+b+c, 1, 2)   # 预填参数
 add3(3)   # 6
 
-reduce(lambda x, y: x+y, [1,2,3,4], 0)        # 10 抇积
+reduce(lambda x, y: x+y, [1,2,3,4], 0)        # 10 累积
 \`\`\`
 
 \`functools.wraps\` 在写装饰器时用来保留原函数的元信息（\`__name__\` / \`__doc__\`），后面装饰器章节会详细讲。

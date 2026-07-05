@@ -986,7 +986,7 @@ JavaScript 中，以下值在布尔上下文中被视为 false：
 
 其他所有值都是 true（包括空对象 \`{}\`、空数组 \`[]\`、字符串 \`"false"\`）。
 
-TypeScript 不区分 truthy/falsy 和 boolean 类型——如果你用非 boolean 作为条件，编译器不会报错（除非开启 \`strictBooleanTypeChecks\`）。
+TypeScript 不区分 truthy/falsy 和 boolean 类型——如果你用非 boolean 作为条件，编译器不会报错（除非使用 ESLint 的 \`@typescript-eslint/strict-boolean-expressions\` 规则）。
 
 ### 4. bigint 类型 —— 处理超大整数
 
