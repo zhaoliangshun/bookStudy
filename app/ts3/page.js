@@ -5,17 +5,16 @@
 // -------------------------------------------------------------
 // 结构与 TS 教程页面一致，区别：
 //   1. 数据源：ts3Chapters / ts3ChapterGroups（来自 ts3-tutorial-data）
-//   2. 运行接口：/api/run-ts（先 TS 转译再沙箱执行）
-//   4. 文案：TypeScript 高阶实战教程、example.ts 文件名
+//   2. 运行接口：/api/run-ts（由 CodeBlock 内部调用，先 TS 转译再沙箱执行）
+//   3. 底部 demo 直接复用 CodeBlock 组件，与教程内代码块完全一致：
+//      无背景色、运行后才显示结果面板、结果内嵌在组件内
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ts3Chapters, ts3ChapterGroups } from "../ts3-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
-import ExternalRunDropdown from "../components/ExternalRunDropdown";
-import dynamic from "next/dynamic";
-const MonacoEditor = dynamic(() => import("../components/MonacoEditor"), { ssr: false, loading: () => <div className="monaco-loading-placeholder">正在加载编辑器…</div> });
+import CodeBlock from "../CodeBlock";
 
 export default function TypeScript3Tutorial() {
   // 默认使用第一个章节作为初始状态。
@@ -25,11 +24,6 @@ export default function TypeScript3Tutorial() {
   const initialChapter = ts3Chapters[0];
 
   const [activeId, setActiveId] = useState(initialChapter.id);
-  const [code, setCode] = useState(initialChapter.code);
-  const [output, setOutput] = useState("");
-  const [error, setError] = useState("");
-  const [isRunning, setIsRunning] = useState(false);
-  const [hasRun, setHasRun] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const contentRef = useRef(null);
@@ -47,7 +41,6 @@ export default function TypeScript3Tutorial() {
     if (chapter) {
       const id = requestAnimationFrame(() => {
         setActiveId(hash);
-        setCode(chapter.code);
       });
       return () => cancelAnimationFrame(id);
     } else {
@@ -57,66 +50,17 @@ export default function TypeScript3Tutorial() {
     }
   }, []);
 
+  // CodeBlock 内部通过 useEffect 监听 initialCode 变化自动同步，
+  // 这里只需切换 activeId，无需手动 setCode。
   const selectChapter = useCallback((chapterId) => {
     const chapter = ts3Chapters.find((c) => c.id === chapterId);
     if (!chapter) return;
     setActiveId(chapterId);
-    setCode(chapter.code);
-    setOutput("");
-    setError("");
-    setHasRun(false);
     setSidebarOpen(false);
     if (contentRef.current) {
       contentRef.current.scrollTop = 0;
     }
   }, []);
-
-  const runCode = useCallback(async () => {
-    setIsRunning(true);
-    setOutput("正在转译 TypeScript 并执行...");
-    setError("");
-    try {
-      const res = await fetch("/api/run-ts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
-      });
-      const data = await res.json();
-      setOutput(data.output || "(无输出)");
-      setError(data.error || "");
-    } catch (err) {
-      setError("请求失败: " + err.message);
-      setOutput("");
-    } finally {
-      setIsRunning(false);
-      setHasRun(true);
-    }
-  }, [code]);
-
-  const resetCode = useCallback(() => {
-    setCode(activeChapter.code);
-    setOutput("");
-    setError("");
-    setHasRun(false);
-  }, [activeChapter]);
-
-  const handlePlayground = useCallback(() => {
-    try {
-      localStorage.setItem("playground:code:ts", code);
-    } catch {}
-    window.open(`/playground?lang=ts`, "_blank", "noopener,noreferrer");
-  }, [code]);
-
-  useEffect(() => {
-    const handleKey = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-        e.preventDefault();
-        runCode();
-      }
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [runCode]);
 
   const groupedChapters = ts3ChapterGroups.map((group) => ({
     group,
@@ -156,78 +100,9 @@ export default function TypeScript3Tutorial() {
             <MarkdownRenderer content={activeChapter.content} />
           </section>
 
+          {/* 代码编辑器区：直接复用 CodeBlock 组件 */}
           <section className="editor-section">
-            <div className="editor-header">
-              <div className="editor-label">
-                <span className="dot dot-red"></span>
-                <span className="dot dot-yellow"></span>
-                <span className="dot dot-green"></span>
-                <span className="editor-filename">example.ts</span>
-              </div>
-              <div className="editor-actions">
-                <ExternalRunDropdown code={code} langLower="ts" disabled={isRunning} />
-                <button
-                  className="btn btn-secondary"
-                  onClick={resetCode}
-                  disabled={isRunning}
-                  title="恢复章节初始代码"
-                >
-                  ↺ 重置
-                </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={runCode}
-                  disabled={isRunning}
-                >
-                  {isRunning ? "⏳ 执行中..." : "▶ 运行代码"}
-                </button>
-                <button
-                  className="btn btn-secondary"
-                  onClick={handlePlayground}
-                  title="在 Playground 中打开"
-                >
-                  🚀 Playground
-                </button>
-              </div>
-            </div>
-            <div className="editor-wrap">
-              <MonacoEditor
-                key={activeId}
-                value={code}
-                onChange={setCode}
-                language="typescript"
-                onRun={runCode}
-              />
-            </div>
-          </section>
-
-          <section className="console-section">
-            <div className="console-header">
-              <span className="console-title">控制台输出</span>
-              <span className="console-hint">
-                {isRunning ? "执行中..." : hasRun ? "执行完成" : "点击运行查看结果"}
-              </span>
-            </div>
-            <div className="console-body">
-              {output && (
-                <pre className={`console-output ${error ? "has-error" : ""}`}>
-                  {output}
-                </pre>
-              )}
-              {error && (
-                <pre className="console-error">
-                  <span className="error-label">错误:</span>
-                  {"\n"}
-                  {error}
-                </pre>
-              )}
-              {!hasRun && !isRunning && (
-                <div className="console-placeholder">
-                  <span className="placeholder-icon">▶</span>
-                  <span>点击上方&quot;运行代码&quot;按钮，或按 Ctrl+Enter 执行代码</span>
-                </div>
-              )}
-            </div>
+            <CodeBlock code={activeChapter.code} lang="ts" />
           </section>
 
           <ChapterNav activeId={activeId} onSelect={selectChapter} />

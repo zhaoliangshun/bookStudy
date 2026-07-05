@@ -16,39 +16,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { pnpmChapters, pnpmChapterGroups } from "../pnpm-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import dynamic from "next/dynamic";
 import Sidebar from "../components/Sidebar";
-import ExternalRunDropdown from "../components/ExternalRunDropdown";
-
-const MonacoEditor = dynamic(() => import("../components/MonacoEditor"), { ssr: false, loading: () => <div className="monaco-loading-placeholder">正在加载编辑器…</div> });
-
-// 默认代码示例：用户首次进入时显示，可自由修改后运行
-const DEFAULT_CODE = `#!/bin/bash
-# pnpm 教程示例脚本
-# 沙箱环境未安装 pnpm，用 echo 模拟命令输出
-
-echo "=== pnpm 版本信息（模拟输出）===" 
-echo "pnpm v9.15.0"
-echo ""
-
-echo "=== pnpm 与 npm 磁盘占用对比（模拟）==="
-printf "%-12s %-15s %s\\n" "项目" "npm" "pnpm"
-printf "%-12s %-15s %s\\n" "----" "---" "----"
-printf "%-12s %-15s %s\\n" "项目 A" "320 MB" "45 MB"
-printf "%-12s %-15s %s\\n" "项目 B" "298 MB" "12 MB（共享 store）"
-printf "%-12s %-15s %s\\n" "总计" "618 MB" "57 MB"
-echo ""
-echo "💡 pnpm 通过内容寻址 store 让多项目共享依赖，节省磁盘"
-`;
+import CodeBlock from "../CodeBlock";
 
 export default function PnpmTutorial() {
   // ---------- 状态管理 ----------
   const [activeId, setActiveId] = useState(pnpmChapters[0].id);
-  const [code, setCode] = useState(DEFAULT_CODE);
-  const [output, setOutput] = useState("");
-  const [error, setError] = useState("");
-  const [isRunning, setIsRunning] = useState(false);
-  const [hasRun, setHasRun] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const contentRef = useRef(null);
@@ -58,62 +31,17 @@ export default function PnpmTutorial() {
     pnpmChapters.find((c) => c.id === activeId) || pnpmChapters[0];
 
   // ---------- 切换章节 ----------
+  // CodeBlock 内部通过 useEffect 监听 initialCode 变化自动同步，
+  // 这里只需切换 activeId，无需手动 setCode。
   const selectChapter = useCallback((chapterId) => {
     const chapter = pnpmChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
     setActiveId(chapterId);
-    setCode(chapter.code);
-    setOutput("");
-    setError("");
-    setHasRun(false);
     setSidebarOpen(false);
     if (contentRef.current) {
       contentRef.current.scrollTop = 0;
     }
   }, []);
-
-  // ---------- 运行代码 ----------
-  const runCode = useCallback(async () => {
-    setIsRunning(true);
-    setOutput("正在执行 Shell 脚本...");
-    setError("");
-    try {
-      const res = await fetch("/api/run-shell", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
-      });
-      const data = await res.json();
-      setOutput(data.output || "(无输出)");
-      setError(data.error || "");
-    } catch (err) {
-      setError("请求失败: " + err.message);
-      setOutput("");
-    } finally {
-      setIsRunning(false);
-      setHasRun(true);
-    }
-  }, [code]);
-
-  // ---------- 重置代码 ----------
-  const resetCode = useCallback(() => {
-    setCode(activeChapter.code);
-    setOutput("");
-    setError("");
-    setHasRun(false);
-  }, [activeChapter]);
-
-  // ---------- 键盘快捷键：Ctrl/Cmd + Enter 运行 ----------
-  useEffect(() => {
-    const handleKey = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-        e.preventDefault();
-        runCode();
-      }
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [runCode]);
 
   // 按分组组织章节
   const groupedChapters = pnpmChapterGroups.map((group) => ({
@@ -158,72 +86,9 @@ export default function PnpmTutorial() {
             <MarkdownRenderer content={activeChapter.content} />
           </section>
 
-          {/* 代码编辑器区 */}
+          {/* 代码编辑器区：直接复用 CodeBlock 组件 */}
           <section className="editor-section">
-            <div className="editor-header">
-              <div className="editor-label">
-                <span className="dot dot-red"></span>
-                <span className="dot dot-yellow"></span>
-                <span className="dot dot-green"></span>
-                <span className="editor-filename">playground.sh</span>
-              </div>
-              <div className="editor-actions">
-                <ExternalRunDropdown code={code} langLower="sh" disabled={isRunning} />
-                <button
-                  className="btn btn-secondary"
-                  onClick={resetCode}
-                  disabled={isRunning}
-                  title="恢复默认代码"
-                >
-                  ↺ 重置
-                </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={runCode}
-                  disabled={isRunning}
-                >
-                  {isRunning ? "⏳ 执行中..." : "▶ 运行脚本"}
-                </button>
-              </div>
-            </div>
-            <div className="editor-wrap">
-              <MonacoEditor
-                value={code}
-                onChange={setCode}
-                language="shell"
-                onRun={runCode}
-              />
-            </div>
-          </section>
-
-          {/* 输出控制台 */}
-          <section className="console-section">
-            <div className="console-header">
-              <span className="console-title">控制台输出</span>
-              <span className="console-hint">
-                {isRunning ? "执行中..." : hasRun ? "执行完成" : "点击运行查看结果"}
-              </span>
-            </div>
-            <div className="console-body">
-              {output && (
-                <pre className={`console-output ${error ? "has-error" : ""}`}>
-                  {output}
-                </pre>
-              )}
-              {error && (
-                <pre className="console-error">
-                  <span className="error-label">错误:</span>
-                  {"\n"}
-                  {error}
-                </pre>
-              )}
-              {!hasRun && !isRunning && (
-                <div className="console-placeholder">
-                  <span className="placeholder-icon">▶</span>
-                  <span>点击上方&quot;运行脚本&quot;按钮，或按 Ctrl+Enter 执行脚本</span>
-                </div>
-              )}
-            </div>
+            <CodeBlock code={activeChapter.code} lang="sh" />
           </section>
 
           {/* 章节底部导航：上一章/下一章 */}

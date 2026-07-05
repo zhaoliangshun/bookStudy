@@ -1,19 +1,17 @@
 "use client";
 
 // =============================================================
-// 外网运行下拉菜单组件（教程页面浅色主题）
+// 外网运行下拉菜单组件（共享版）
 // -------------------------------------------------------------
-// 在教程页面的 editor-actions 区域使用，提供与 CodeBlock 中
-// 「🌐 外网」相同的功能，但适配浅色主题样式。
+// 同时用于：
+//   1. 教程页面底部编辑器（editor-header 内）
+//   2. CodeBlock 内的「🌐 外网」按钮（CodeBlock 直接内联实现，不用本组件）
+//
+// 样式完全复用 md-ext-dropdown 系列 class，与 CodeBlock 中的
+// 外网下拉菜单视觉一致：深色半透明按钮 + 紫色 hover + 下拉菜单
 //
 // 用法：
 //   <ExternalRunDropdown code={code} langLower="py" disabled={isRunning} />
-//
-// 功能：
-//   1. 根据语言自动展示可用的外网平台列表
-//   2. 点击展开下拉菜单，选择平台后新标签页打开
-//   3. 点击菜单外部自动收起
-//   4. 无可用平台时不渲染
 // =============================================================
 
 import { useState, useCallback, useEffect, useMemo } from "react";
@@ -46,7 +44,7 @@ export default function ExternalRunDropdown({
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
-      if (!e.target.closest || !e.target.closest(".ext-run-dropdown")) {
+      if (!e.target.closest || !e.target.closest(".md-ext-dropdown")) {
         setOpen(false);
       }
     };
@@ -58,27 +56,27 @@ export default function ExternalRunDropdown({
   if (playgrounds.length === 0) return null;
 
   return (
-    <div className="ext-run-dropdown">
+    <div className="md-ext-dropdown">
       <button
-        className="btn btn-secondary ext-run-btn"
+        className="md-code-btn md-code-btn-ext"
         onClick={() => setOpen((v) => !v)}
         disabled={disabled}
         title="在外部网站运行代码（无需本地环境）"
         aria-expanded={open}
         aria-haspopup="menu"
       >
-        🌐 外网 <span className="ext-caret">▾</span>
+        🌐 外网 <span className="pg-caret">▾</span>
       </button>
       {open && (
-        <div className="ext-run-menu" role="menu">
+        <div className="md-ext-menu" role="menu">
           {playgrounds.map((pg) => (
             <button
               key={pg.id}
-              className="ext-run-item"
+              className="md-ext-item"
               onClick={() => handleSelect(pg.id)}
               role="menuitem"
             >
-              <span className="ext-run-icon">{pg.icon}</span>
+              <span className="md-ext-icon">{pg.icon}</span>
               <span>{pg.label}</span>
             </button>
           ))}

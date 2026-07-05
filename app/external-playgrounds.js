@@ -117,6 +117,77 @@ const ONLINEGDB_SLUG = {
   zsh: "online_bash_shell",
 };
 
+// ---------- OneCompiler 语言标识映射 ----------
+// OneCompiler 支持 70+ 语言，URL 格式：https://onecompiler.com/{lang}
+const ONECOMPILER_LANG = {
+  py: "python", python: "python",
+  js: "javascript", javascript: "javascript", node: "javascript", jsx: "javascript",
+  ts: "typescript", typescript: "typescript", tsx: "typescript",
+  java: "java",
+  c: "c",
+  cpp: "cpp", "c++": "cpp", cc: "cpp",
+  cs: "csharp", csharp: "csharp",
+  go: "golang", golang: "golang",
+  rb: "ruby", ruby: "ruby",
+  swift: "swift",
+  sh: "bash", bash: "bash", shell: "bash", zsh: "bash",
+  sql: "postgresql",
+  scss: "scss", sass: "sass",
+  html: "html",
+};
+
+// ---------- Programiz 语言页面对照 ----------
+// Programiz 在线编译器，URL 格式：https://www.programiz.com/{lang}/online-compiler/
+const PROGRAMIZ_SLUG = {
+  py: "python-programming", python: "python-programming",
+  java: "java",
+  c: "c-programming",
+  cpp: "cpp", "c++": "cpp", cc: "cpp",
+  cs: "csharp", csharp: "csharp",
+  go: "golang",
+  rb: "ruby", ruby: "ruby",
+  swift: "swift",
+  sql: "sql",
+};
+
+// ---------- JDoodle 语言标识映射 ----------
+// JDoodle 支持 88+ 语言，URL 格式：https://www.jdoodle.com/online-{lang}-compiler/
+const JDOODLE_SLUG = {
+  py: "python", python: "python",
+  java: "java",
+  c: "c-language",
+  cpp: "cpp", "c++": "cpp", cc: "cpp",
+  cs: "csharp", csharp: "csharp",
+  go: "go",
+  rb: "ruby", ruby: "ruby",
+  swift: "swift",
+  sh: "bash-shell", bash: "bash-shell", shell: "bash-shell", zsh: "bash-shell",
+  sql: "sql",
+};
+
+// ---------- paiza.io 语言标识映射 ----------
+// paiza.io 在线 IDE，URL 格式：https://paiza.io/projects/new?language={lang}
+const PAIZA_LANG = {
+  py: "python3", python: "python3",
+  js: "javascript", javascript: "javascript", node: "javascript", jsx: "javascript",
+  ts: "typescript", typescript: "typescript", tsx: "typescript",
+  java: "java",
+  c: "c",
+  cpp: "cpp", "c++": "cpp", cc: "cpp",
+  cs: "csharp", csharp: "csharp",
+  go: "go",
+  rb: "ruby", ruby: "ruby",
+  sh: "bash", bash: "bash", shell: "bash", zsh: "bash",
+};
+
+// ---------- Wandbox 语言标识映射 ----------
+// Wandbox 是开源编译器云服务，支持通过 POST API 获取永久链接
+// 主要用于 C/C++ 等编译型语言的快速测试
+const WANDOX_LANG = {
+  c: "gcc-head",
+  cpp: "gcc-head", "c++": "gcc-head", cc: "gcc-head",
+};
+
 // =============================================================
 // 外网平台定义
 // =============================================================
@@ -315,6 +386,343 @@ export const PLAYGROUNDS = {
       );
     },
   },
+
+  // ---- OneCompiler：支持 70+ 语言的在线编译器 ----
+  // URL 格式：https://onecompiler.com/{lang}
+  // 不支持 URL 传码，打开空白页 + 复制代码
+  onecompiler: {
+    label: "OneCompiler",
+    icon: "1️⃣",
+    open: async (code, langLower) => {
+      const ol = ONECOMPILER_LANG[langLower] || "python";
+      const ok = await openAndCopy("https://onecompiler.com/" + ol, code);
+      showToast(
+        ok
+          ? "代码已复制，请粘贴到 OneCompiler 编辑器中"
+          : "复制失败，请手动复制代码",
+        ok ? "info" : "error"
+      );
+    },
+  },
+
+  // ---- Programiz：面向初学者的在线编译器 ----
+  // 界面简洁，适合教学场景
+  programiz: {
+    label: "Programiz",
+    icon: "📚",
+    open: async (code, langLower) => {
+      const slug = PROGRAMIZ_SLUG[langLower] || "python-programming";
+      const ok = await openAndCopy(
+        "https://www.programiz.com/" + slug + "/online-compiler/",
+        code
+      );
+      showToast(
+        ok
+          ? "代码已复制，请粘贴到 Programiz 编辑器中"
+          : "复制失败，请手动复制代码",
+        ok ? "info" : "error"
+      );
+    },
+  },
+
+  // ---- JDoodle：支持 88+ 语言的在线编程平台 ----
+  // 老牌在线编译器，支持多文件项目
+  jdoodle: {
+    label: "JDoodle",
+    icon: "🍲",
+    open: async (code, langLower) => {
+      const slug = JDOODLE_SLUG[langLower] || "python";
+      const ok = await openAndCopy(
+        "https://www.jdoodle.com/online-" + slug + "-compiler/",
+        code
+      );
+      showToast(
+        ok
+          ? "代码已复制，请粘贴到 JDoodle 编辑器中"
+          : "复制失败，请手动复制代码",
+        ok ? "info" : "error"
+      );
+    },
+  },
+
+  // ---- paiza.io：支持多语言的在线 IDE ----
+  // URL 可携带 language 参数指定语言，但代码需手动粘贴
+  paiza: {
+    label: "paiza.io",
+    icon: "🇯🇵",
+    open: async (code, langLower) => {
+      const lang = PAIZA_LANG[langLower] || "python3";
+      const ok = await openAndCopy(
+        "https://paiza.io/projects/new?language=" + lang,
+        code
+      );
+      showToast(
+        ok
+          ? "代码已复制，请粘贴到 paiza.io 编辑器中"
+          : "复制失败，请手动复制代码",
+        ok ? "info" : "error"
+      );
+    },
+  },
+
+  // ---- Sololearn：社交化编程学习平台 ----
+  // 支持多语言在线运行，适合手机端使用
+  sololearn: {
+    label: "Sololearn",
+    icon: "🎓",
+    open: async (code, langLower) => {
+      const slMap = {
+        py: "python", python: "python",
+        js: "javascript", javascript: "javascript", node: "javascript", jsx: "javascript",
+        ts: "typescript", typescript: "typescript", tsx: "typescript",
+        java: "java",
+        c: "c",
+        cpp: "cpp", "c++": "cpp", cc: "cpp",
+        cs: "csharp", csharp: "csharp",
+        go: "go",
+        rb: "ruby", ruby: "ruby",
+        swift: "swift",
+        sql: "sql",
+      };
+      const sl = slMap[langLower] || "python";
+      const ok = await openAndCopy(
+        "https://www.sololearn.com/compiler-playground/" + sl,
+        code
+      );
+      showToast(
+        ok
+          ? "代码已复制，请粘贴到 Sololearn 编辑器中"
+          : "复制失败，请手动复制代码",
+        ok ? "info" : "error"
+      );
+    },
+  },
+
+  // ---- Trinket：Python 教学专用在线平台 ----
+  // 支持 Python 2/3，可嵌入网页，适合教学场景
+  trinket: {
+    label: "Trinket",
+    icon: "🐍",
+    open: async (code) => {
+      const ok = await openAndCopy("https://trinket.io/python3", code);
+      showToast(
+        ok
+          ? "Python 代码已复制，请粘贴到 Trinket 编辑器中"
+          : "复制失败，请手动复制代码",
+        ok ? "info" : "error"
+      );
+    },
+  },
+
+  // ---- Reeborg's World：Python 海龟绘图/网格机器人教学平台 ----
+  // 适合学习循环、函数、递归等基础概念
+  reeborg: {
+    label: "Reeborg",
+    icon: "🤖",
+    open: async (code) => {
+      const ok = await openAndCopy("https://reeborg.ca/reeborg.html", code);
+      showToast(
+        ok
+          ? "Python 代码已复制，请粘贴到 Reeborg's World 的编辑器中"
+          : "复制失败，请手动复制代码",
+        ok ? "info" : "error"
+      );
+    },
+  },
+
+  // ---- Python Anywhere：云端 Python 开发环境 ----
+  // 提供 IPython Shell 和 Bash 终端，适合 Web 开发测试
+  pythonanywhere: {
+    label: "PythonAnywhere",
+    icon: "☁️",
+    open: async (code) => {
+      const ok = await openAndCopy(
+        "https://www.pythonanywhere.com/try-ipython/",
+        code
+      );
+      showToast(
+        ok
+          ? "Python 代码已复制，请粘贴到 PythonAnywhere IPython Shell 中"
+          : "复制失败，请手动复制代码",
+        ok ? "info" : "error"
+      );
+    },
+  },
+
+  // ---- Coding Ground (Tutorialspoint)：多语言在线 IDE ----
+  // 提供 Cloud IDE 环境，支持 80+ 语言
+  codingground: {
+    label: "CodingGround",
+    icon: "🎯",
+    open: async (code, langLower) => {
+      const cgMap = {
+        py: "python", python: "python",
+        js: "nodejs", javascript: "nodejs", node: "nodejs", jsx: "nodejs",
+        ts: "typescript", typescript: "typescript", tsx: "typescript",
+        java: "java",
+        c: "c",
+        cpp: "cpp", "c++": "cpp", cc: "cpp",
+        cs: "csharp", csharp: "csharp",
+        go: "go",
+        rb: "ruby", ruby: "ruby",
+        swift: "swift",
+        sh: "bash", bash: "bash", shell: "bash", zsh: "bash",
+        sql: "sqlite",
+        scss: "sass", sass: "sass",
+      };
+      const cg = cgMap[langLower] || "python";
+      const ok = await openAndCopy(
+        "https://www.tutorialspoint.com/online_" + cg + "_compiler.php",
+        code
+      );
+      showToast(
+        ok
+          ? "代码已复制，请粘贴到 CodingGround 编辑器中"
+          : "复制失败，请手动复制代码",
+        ok ? "info" : "error"
+      );
+    },
+  },
+
+  // ---- Wandbox：开源编译器云服务 ----
+  // 支持 GCC/Clang 等多版本编译器，通过 POST API 获取永久链接
+  // 主要用于 C/C++ 等编译型语言
+  wandbox: {
+    label: "Wandbox",
+    icon: "📦",
+    open: async (code, langLower) => {
+      try {
+        const compiler = WANDOX_LANG[langLower] || "gcc-head";
+        const res = await fetch("https://wandbox.org/api/compile.json", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code: code,
+            compiler: compiler,
+            save: true,
+            runtime: false,
+          }),
+        });
+        if (!res.ok) throw new Error("wandbox share failed");
+        const data = await res.json();
+        if (data.url) {
+          window.open(data.url, "_blank", "noopener,noreferrer");
+          return;
+        }
+        throw new Error("no url in response");
+      } catch {
+        const ok = await openAndCopy("https://wandbox.org/", code);
+        showToast(
+          ok
+            ? "代码已复制，请粘贴到 Wandbox 编辑器中"
+            : "复制失败，请手动复制代码",
+          ok ? "info" : "error"
+        );
+      }
+    },
+  },
+
+  // ---- CodeSandbox：前端在线沙盒 ----
+  // 适合 React/Vue/Next.js 等前端项目
+  codesandbox: {
+    label: "CodeSandbox",
+    icon: "📦",
+    open: async (code) => {
+      const ok = await openAndCopy("https://codesandbox.io/s/new", code);
+      showToast(
+        ok
+          ? "JavaScript 代码已复制，请粘贴到 CodeSandbox 编辑器中"
+          : "复制失败，请手动复制代码",
+        ok ? "info" : "error"
+      );
+    },
+  },
+
+  // ---- StackBlitz：基于 Vite 的前端在线 IDE ----
+  // 启动速度快，支持现代前端框架
+  stackblitz: {
+    label: "StackBlitz",
+    icon: "⚡",
+    open: async (code) => {
+      const ok = await openAndCopy(
+        "https://stackblitz.com/edit/js-?file=index.js",
+        code
+      );
+      showToast(
+        ok
+          ? "JavaScript 代码已复制，请粘贴到 StackBlitz 编辑器中"
+          : "复制失败，请手动复制代码",
+        ok ? "info" : "error"
+      );
+    },
+  },
+
+  // ---- SQLite Online：SQL 在线运行 ----
+  sqliteonline: {
+    label: "SQLite Online",
+    icon: "🗄️",
+    open: async (code) => {
+      const ok = await openAndCopy("https://sqliteonline.com/", code);
+      showToast(
+        ok
+          ? "SQL 代码已复制，请粘贴到 SQLite Online 编辑器中"
+          : "复制失败，请手动复制代码",
+        ok ? "info" : "error"
+      );
+    },
+  },
+
+  // ---- DB Fiddle for SQLite ----
+  sqlitefiddle: {
+    label: "SQLite Fiddle",
+    icon: "🔧",
+    open: async (code) => {
+      const ok = await openAndCopy(
+        "https://sqlitefiddle.com/",
+        code
+      );
+      showToast(
+        ok
+          ? "SQL 代码已复制，请粘贴到 SQLite Fiddle 编辑器中"
+          : "复制失败，请手动复制代码",
+        ok ? "info" : "error"
+      );
+    },
+  },
+
+  // ---- CodeChef IDE：多语言在线编译器 ----
+  // 主要面向算法竞赛，但开放给所有人使用
+  codechef: {
+    label: "CodeChef",
+    icon: "👨‍🍳",
+    open: async (code) => {
+      const ok = await openAndCopy("https://www.codechef.com/ide", code);
+      showToast(
+        ok
+          ? "代码已复制，请粘贴到 CodeChef IDE 编辑器中"
+          : "复制失败，请手动复制代码",
+        ok ? "info" : "error"
+      );
+    },
+  },
+
+  // ---- GeeksforGeeks IDE：多语言在线编译器 ----
+  gfg: {
+    label: "GfG IDE",
+    icon: "🧠",
+    open: async (code) => {
+      const ok = await openAndCopy(
+        "https://ide.geeksforgeeks.org/",
+        code
+      );
+      showToast(
+        ok
+          ? "代码已复制，请粘贴到 GeeksforGeeks IDE 编辑器中"
+          : "复制失败，请手动复制代码",
+        ok ? "info" : "error"
+      );
+    },
+  },
 };
 
 // =============================================================
@@ -322,52 +730,52 @@ export const PLAYGROUNDS = {
 // =============================================================
 // 顺序即菜单展示顺序，最常用的排在前面
 const LANG_EXTERNAL_MAP = {
-  // JavaScript / Node.js → CodePen + JSFiddle
-  js: ["codepen", "jsfiddle"],
-  javascript: ["codepen", "jsfiddle"],
-  jsx: ["codepen", "jsfiddle"],
-  node: ["codepen", "jsfiddle"],
-  // TypeScript → TS Playground + CodePen
-  ts: ["tsplayground", "codepen"],
-  typescript: ["tsplayground", "codepen"],
-  tsx: ["tsplayground", "codepen"],
-  // Python → Python Tutor + Replit
-  py: ["pythontutor", "replit"],
-  python: ["pythontutor", "replit"],
-  // Java → OnlineGDB + Replit
-  java: ["onlinegdb", "replit"],
-  // C → OnlineGDB + Replit
-  c: ["onlinegdb", "replit"],
-  // C++ → OnlineGDB + Replit
-  cpp: ["onlinegdb", "replit"],
-  "c++": ["onlinegdb", "replit"],
-  cc: ["onlinegdb", "replit"],
-  // C# → .NET Fiddle + Replit
-  cs: ["dotnetfiddle", "replit"],
-  csharp: ["dotnetfiddle", "replit"],
-  // Go → Go Playground（官方）
-  go: ["goplayground"],
-  golang: ["goplayground"],
+  // JavaScript / Node.js → CodePen + JSFiddle + CodeSandbox + StackBlitz + 多语言平台
+  js: ["codepen", "jsfiddle", "stackblitz", "codesandbox", "onecompiler", "paiza", "sololearn", "codingground", "codechef", "gfg"],
+  javascript: ["codepen", "jsfiddle", "stackblitz", "codesandbox", "onecompiler", "paiza", "sololearn", "codingground", "codechef", "gfg"],
+  jsx: ["codepen", "jsfiddle", "stackblitz", "codesandbox", "onecompiler", "paiza", "sololearn", "codingground", "codechef", "gfg"],
+  node: ["codepen", "jsfiddle", "stackblitz", "codesandbox", "onecompiler", "paiza", "sololearn", "codingground", "codechef", "gfg"],
+  // TypeScript → TS Playground + CodePen + 多语言平台
+  ts: ["tsplayground", "codepen", "onecompiler", "paiza", "sololearn", "codingground", "codechef", "gfg"],
+  typescript: ["tsplayground", "codepen", "onecompiler", "paiza", "sololearn", "codingground", "codechef", "gfg"],
+  tsx: ["tsplayground", "codepen", "onecompiler", "paiza", "sololearn", "codingground", "codechef", "gfg"],
+  // Python → Python Tutor（可视化）+ Trinket（教学）+ 多语言平台
+  py: ["pythontutor", "trinket", "programiz", "onecompiler", "jdoodle", "paiza", "replit", "sololearn", "codingground", "pythonanywhere", "reeborg", "codechef", "gfg"],
+  python: ["pythontutor", "trinket", "programiz", "onecompiler", "jdoodle", "paiza", "replit", "sololearn", "codingground", "pythonanywhere", "reeborg", "codechef", "gfg"],
+  // Java → OnlineGDB + Replit + 多语言平台
+  java: ["onlinegdb", "replit", "programiz", "onecompiler", "jdoodle", "paiza", "sololearn", "codingground", "codechef", "gfg"],
+  // C → OnlineGDB + Replit + Wandbox + 多语言平台
+  c: ["onlinegdb", "replit", "wandbox", "programiz", "onecompiler", "jdoodle", "paiza", "sololearn", "codingground", "codechef", "gfg"],
+  // C++ → OnlineGDB + Replit + Wandbox + 多语言平台
+  cpp: ["onlinegdb", "replit", "wandbox", "programiz", "onecompiler", "jdoodle", "paiza", "sololearn", "codingground", "codechef", "gfg"],
+  "c++": ["onlinegdb", "replit", "wandbox", "programiz", "onecompiler", "jdoodle", "paiza", "sololearn", "codingground", "codechef", "gfg"],
+  cc: ["onlinegdb", "replit", "wandbox", "programiz", "onecompiler", "jdoodle", "paiza", "sololearn", "codingground", "codechef", "gfg"],
+  // C# → .NET Fiddle + Replit + 多语言平台
+  cs: ["dotnetfiddle", "replit", "programiz", "onecompiler", "jdoodle", "paiza", "sololearn", "codingground", "codechef", "gfg"],
+  csharp: ["dotnetfiddle", "replit", "programiz", "onecompiler", "jdoodle", "paiza", "sololearn", "codingground", "codechef", "gfg"],
+  // Go → Go Playground（官方）+ 多语言平台
+  go: ["goplayground", "programiz", "onecompiler", "jdoodle", "paiza", "sololearn", "codingground", "codechef", "gfg"],
+  golang: ["goplayground", "programiz", "onecompiler", "jdoodle", "paiza", "sololearn", "codingground", "codechef", "gfg"],
   // Sass / SCSS → SassMeister + CodePen
-  scss: ["sassmeister", "codepen"],
-  sass: ["sassmeister", "codepen"],
+  scss: ["sassmeister", "codepen", "onecompiler", "codingground"],
+  sass: ["sassmeister", "codepen", "onecompiler", "codingground"],
   // GraphQL → GraphQL Bin
   gql: ["graphqlbin"],
   graphql: ["graphqlbin"],
-  // Ruby → OnlineGDB + Replit
-  rb: ["onlinegdb", "replit"],
-  ruby: ["onlinegdb", "replit"],
-  // Swift → OnlineGDB + Replit
-  swift: ["onlinegdb", "replit"],
-  // Shell → OnlineGDB + Replit
-  sh: ["onlinegdb", "replit"],
-  bash: ["onlinegdb", "replit"],
-  shell: ["onlinegdb", "replit"],
-  zsh: ["onlinegdb", "replit"],
-  // SQL → DB Fiddle
-  sql: ["dbfiddle"],
-  // HTML → CodePen + JSFiddle
-  html: ["codepen", "jsfiddle"],
+  // Ruby → OnlineGDB + Replit + 多语言平台
+  rb: ["onlinegdb", "replit", "programiz", "onecompiler", "jdoodle", "paiza", "sololearn", "codingground", "codechef", "gfg"],
+  ruby: ["onlinegdb", "replit", "programiz", "onecompiler", "jdoodle", "paiza", "sololearn", "codingground", "codechef", "gfg"],
+  // Swift → OnlineGDB + Replit + 多语言平台
+  swift: ["onlinegdb", "replit", "programiz", "onecompiler", "jdoodle", "sololearn", "codingground", "codechef", "gfg"],
+  // Shell → OnlineGDB + Replit + 多语言平台
+  sh: ["onlinegdb", "replit", "onecompiler", "jdoodle", "paiza", "codingground", "codechef", "gfg"],
+  bash: ["onlinegdb", "replit", "onecompiler", "jdoodle", "paiza", "codingground", "codechef", "gfg"],
+  shell: ["onlinegdb", "replit", "onecompiler", "jdoodle", "paiza", "codingground", "codechef", "gfg"],
+  zsh: ["onlinegdb", "replit", "onecompiler", "jdoodle", "paiza", "codingground", "codechef", "gfg"],
+  // SQL → DB Fiddle + SQLite Online + 多语言平台
+  sql: ["dbfiddle", "sqliteonline", "sqlitefiddle", "programiz", "onecompiler", "jdoodle", "sololearn", "codingground"],
+  // HTML → CodePen + JSFiddle + CodeSandbox + StackBlitz
+  html: ["codepen", "jsfiddle", "stackblitz", "codesandbox", "onecompiler"],
   // CSS → CodePen + JSFiddle
   css: ["codepen", "jsfiddle"],
 };

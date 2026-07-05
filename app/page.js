@@ -25,9 +25,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { chapters, chapterGroups } from "./tutorial-data";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import Sidebar from "./components/Sidebar";
-import ExternalRunDropdown from "./components/ExternalRunDropdown";
-import dynamic from "next/dynamic";
-const MonacoEditor = dynamic(() => import("./components/MonacoEditor"), { ssr: false, loading: () => <div className="monaco-loading-placeholder">正在加载编辑器…</div> });
+import CodeBlock from "./CodeBlock";
 
 export default function Home() {
   // ---------- 状态管理 ----------
@@ -39,16 +37,6 @@ export default function Home() {
 
   // 当前选中的章节 id
   const [activeId, setActiveId] = useState(initialChapter.id);
-  // 代码编辑器中的代码（用户可修改）
-  const [code, setCode] = useState(initialChapter.code);
-  // 运行输出结果
-  const [output, setOutput] = useState("");
-  // 运行错误信息
-  const [error, setError] = useState("");
-  // 是否正在运行中
-  const [isRunning, setIsRunning] = useState(false);
-  // 是否已运行过（用于控制台初始提示）
-  const [hasRun, setHasRun] = useState(false);
   // 侧边栏在移动端的展开状态
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -68,7 +56,6 @@ export default function Home() {
     if (chapter) {
       const id = requestAnimationFrame(() => {
         setActiveId(hash);
-        setCode(chapter.code);
       });
       return () => cancelAnimationFrame(id);
     } else {
@@ -79,14 +66,12 @@ export default function Home() {
   }, []);
 
   // ---------- 切换章节 ----------
+  // CodeBlock 内部通过 useEffect 监听 initialCode 变化自动同步，
+  // 这里只需切换 activeId，无需手动 setCode。
   const selectChapter = useCallback((chapterId) => {
     const chapter = chapters.find((c) => c.id === chapterId);
     if (!chapter) return;
     setActiveId(chapterId);
-    setCode(chapter.code);
-    setOutput("");
-    setError("");
-    setHasRun(false);
     setSidebarOpen(false);
     // 滚动内容区到顶部
     if (contentRef.current) {
@@ -101,59 +86,6 @@ export default function Home() {
   const toggleSidebar = useCallback(() => {
     setSidebarOpen((open) => !open);
   }, []);
-
-  // ---------- 运行代码 ----------
-  const runCode = useCallback(async () => {
-    setIsRunning(true);
-    setOutput("正在执行...");
-    setError("");
-    try {
-      // 向 /api/run 发送代码，等待执行结果
-      const res = await fetch("/api/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
-      });
-      const data = await res.json();
-      setOutput(data.output || "(无输出)");
-      setError(data.error || "");
-    } catch (err) {
-      setError("请求失败: " + err.message);
-      setOutput("");
-    } finally {
-      setIsRunning(false);
-      setHasRun(true);
-    }
-  }, [code]);
-
-  // ---------- 重置代码 ----------
-  const resetCode = useCallback(() => {
-    setCode(activeChapter.code);
-    setOutput("");
-    setError("");
-    setHasRun(false);
-  }, [activeChapter]);
-
-  // ---------- 在 Playground 中打开 ----------
-  const handlePlayground = useCallback(() => {
-    try {
-      localStorage.setItem("playground:code:node", code);
-    } catch {}
-    window.open(`/playground?lang=node`, "_blank", "noopener,noreferrer");
-  }, [code]);
-
-  // ---------- 键盘快捷键 ----------
-  // Ctrl/Cmd + Enter 运行代码
-  useEffect(() => {
-    const handleKey = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-        e.preventDefault();
-        runCode();
-      }
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [runCode]);
 
   // 按分组组织章节
   const groupedChapters = chapterGroups.map((group) => ({
@@ -205,80 +137,9 @@ export default function Home() {
             <MarkdownRenderer content={activeChapter.content} />
           </section>
 
-          {/* 代码编辑器区 */}
+          {/* 代码编辑器区：直接复用 CodeBlock 组件 */}
           <section className="editor-section">
-            <div className="editor-header">
-              <div className="editor-label">
-                <span className="dot dot-red"></span>
-                <span className="dot dot-yellow"></span>
-                <span className="dot dot-green"></span>
-                <span className="editor-filename">example.js</span>
-              </div>
-              <div className="editor-actions">
-                <ExternalRunDropdown code={code} langLower="js" disabled={isRunning} />
-                <button
-                  className="btn btn-secondary"
-                  onClick={resetCode}
-                  disabled={isRunning}
-                  title="恢复章节初始代码"
-                >
-                  ↺ 重置
-                </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={runCode}
-                  disabled={isRunning}
-                >
-                  {isRunning ? "⏳ 执行中..." : "▶ 运行代码"}
-                </button>
-                <button
-                  className="btn btn-secondary"
-                  onClick={handlePlayground}
-                  title="在 Playground 中打开"
-                >
-                  🚀 Playground
-                </button>
-              </div>
-            </div>
-            <div className="editor-wrap">
-              <MonacoEditor
-                key={activeId}
-                value={code}
-                onChange={setCode}
-                language="javascript"
-                onRun={runCode}
-              />
-            </div>
-          </section>
-
-          {/* 输出控制台 */}
-          <section className="console-section">
-            <div className="console-header">
-              <span className="console-title">控制台输出</span>
-              <span className="console-hint">
-                {isRunning ? "执行中..." : hasRun ? "执行完成" : "点击运行查看结果"}
-              </span>
-            </div>
-            <div className="console-body">
-              {output && (
-                <pre className={`console-output ${error ? "has-error" : ""}`}>
-                  {output}
-                </pre>
-              )}
-              {error && (
-                <pre className="console-error">
-                  <span className="error-label">错误:</span>
-                  {"\n"}
-                  {error}
-                </pre>
-              )}
-              {!hasRun && !isRunning && (
-                <div className="console-placeholder">
-                  <span className="placeholder-icon">▶</span>
-                  <span>点击上方&quot;运行代码&quot;按钮，或按 Ctrl+Enter 执行代码</span>
-                </div>
-              )}
-            </div>
+            <CodeBlock code={activeChapter.code} lang="js" />
           </section>
 
           {/* 章节底部导航：上一章/下一章 */}

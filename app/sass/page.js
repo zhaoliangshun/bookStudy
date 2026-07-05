@@ -21,6 +21,7 @@ import { sassChapters, sassChapterGroups } from "../sass-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import ExternalRunDropdown from "../components/ExternalRunDropdown";
+import useCopyCode from "../components/useCopyCode";
 import dynamic from "next/dynamic";
 
 const MonacoEditor = dynamic(() => import("../components/MonacoEditor"), { ssr: false, loading: () => <div className="monaco-loading-placeholder">正在加载编辑器…</div> });
@@ -105,6 +106,8 @@ export default function SassTutorial() {
   const [hasRun, setHasRun] = useState(false);
   const [previewKey, setPreviewKey] = useState(0); // 强制刷新 iframe
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const { copied, handleCopy } = useCopyCode(code);
 
   const contentRef = useRef(null);
 
@@ -285,8 +288,9 @@ export default function SassTutorial() {
                 <span className="editor-filename">style.scss</span>
               </div>
               <div className="editor-actions">
+                <ExternalRunDropdown code={code} langLower="sass" disabled={isRunning} />
                 <button
-                  className="btn btn-secondary"
+                  className="md-code-btn"
                   onClick={resetCode}
                   disabled={isRunning}
                   title="恢复章节初始代码"
@@ -294,11 +298,26 @@ export default function SassTutorial() {
                   ↺ 重置
                 </button>
                 <button
-                  className="btn btn-primary"
+                  className="md-code-btn"
+                  onClick={handleCopy}
+                  title="复制代码到剪贴板"
+                >
+                  {copied ? "✓ 已复制" : "复制"}
+                </button>
+                <button
+                  className="md-code-btn md-code-btn-run"
                   onClick={runPreview}
                   disabled={isRunning}
+                  title="运行代码（Ctrl/Cmd + Enter）"
                 >
-                  {isRunning ? "⏳ 编译中..." : "▶ 编译预览"}
+                  {isRunning ? "运行中..." : "▶ 运行"}
+                </button>
+                <button
+                  className="md-code-btn md-code-btn-pg"
+                  onClick={handlePlayground}
+                  title="在 Playground 中打开"
+                >
+                  🚀 Playground
                 </button>
               </div>
             </div>

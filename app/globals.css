@@ -1106,17 +1106,21 @@ body {
 
 /* ===== 代码编辑器区 ===== */
 .editor-section {
-  padding: 24px 40px;
-  background: var(--bg);
+  padding: 16px 40px 24px;
+  background: transparent;
 }
 
 .editor-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 0;
   flex-wrap: wrap;
   gap: 12px;
+  padding: 7px 14px;
+  background: var(--bg-sidebar);
+  color: var(--text-on-dark);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 }
 
 .editor-label {
@@ -1138,7 +1142,7 @@ body {
   margin-left: 8px;
   font-family: var(--mono);
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--text-on-dark);
 }
 
 .editor-actions {
@@ -1146,6 +1150,17 @@ body {
   gap: 10px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+/* 深色工具栏上的按钮样式覆盖（教程页面底部编辑器） */
+.editor-header .btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-on-dark);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.editor-header .btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
 }
 
 /* ===== Monaco 编辑器主题选择器 ===== */
@@ -1468,11 +1483,8 @@ body {
 /* 编辑器容器（浅色模式）—— Monaco 编辑器的外层容器 */
 .editor-wrap {
   position: relative;
-  background: var(--editor-bg);
-  border-radius: var(--radius);
+  background: black;
   overflow: hidden;
-  border: 1px solid var(--editor-border);
-  box-shadow: var(--shadow);
   min-height: 320px;
   max-height: 520px;
 }

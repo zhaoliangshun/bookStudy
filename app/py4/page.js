@@ -1,86 +1,69 @@
 "use client";
 
+// =============================================================
+// Python 3.12+ 全面教程（py4）交互式页面
+// -------------------------------------------------------------
+//   1. 数据源：py4Chapters / py4ChapterGroups（来自 py4-tutorial-data）
+//   2. 运行接口：/api/run-py（由 CodeBlock 内部调用）
+//   3. 底部 demo 直接复用 CodeBlock 组件，与教程内代码块完全一致
+// =============================================================
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { py4Chapters, py4ChapterGroups } from "../py4-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
-import ExternalRunDropdown from "../components/ExternalRunDropdown";
-import dynamic from "next/dynamic";
-const MonacoEditor = dynamic(() => import("../components/MonacoEditor"), { ssr: false, loading: () => <div className="monaco-loading-placeholder">正在加载编辑器…</div> });
+import CodeBlock from "../CodeBlock";
 
 export default function Python4Tutorial() {
-  const [activeId, setActiveId] = useState(py4Chapters[0].id);
-  const [code, setCode] = useState(py4Chapters[0].code);
-  const [output, setOutput] = useState("");
-  const [error, setError] = useState("");
-  const [isRunning, setIsRunning] = useState(false);
-  const [hasRun, setHasRun] = useState(false);
+  // 默认使用第一个章节作为初始状态。
+  // 注意：不在渲染阶段读取 window.location.hash，否则 SSR 与客户端
+  // 在 URL 带 hash 时渲染结果不一致，会触发 React hydration 错误。
+  // URL hash 的处理放到 useEffect 中，在客户端挂载后再切换章节。
+  const initialChapter = py4Chapters[0];
+
+  const [activeId, setActiveId] = useState(initialChapter.id);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const contentRef = useRef(null);
 
+  // 当前章节对象
   const activeChapter =
     py4Chapters.find((c) => c.id === activeId) || py4Chapters[0];
 
+  // 客户端挂载后读取 URL hash：有效则切换到对应章节，无效则清除。
+  // 这里读取 window 不会导致 hydration 错误，因为首次渲染已经完成。
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    const chapter = py4Chapters.find((c) => c.id === hash);
+    if (chapter) {
+      const id = requestAnimationFrame(() => {
+        setActiveId(hash);
+      });
+      return () => cancelAnimationFrame(id);
+    } else {
+      // hash 无效，清除它（跨页面跳转时可能残留）
+      const url = window.location.pathname + window.location.search;
+      window.history.replaceState(null, "", url);
+    }
+  }, []);
+
+  // ---------- 切换章节 ----------
+  // CodeBlock 内部通过 useEffect 监听 initialCode 变化自动同步，
+  // 这里只需切换 activeId，无需手动 setCode。
   const selectChapter = useCallback((chapterId) => {
     const chapter = py4Chapters.find((c) => c.id === chapterId);
     if (!chapter) return;
     setActiveId(chapterId);
-    setCode(chapter.code);
-    setOutput("");
-    setError("");
-    setHasRun(false);
     setSidebarOpen(false);
-    if (contentRef.current) contentRef.current.scrollTop = 0;
+    // 切换章节后滚动到顶部
+    if (contentRef.current) {
+      contentRef.current.scrollTop = 0;
+    }
   }, []);
 
-  const runCode = useCallback(async () => {
-    setIsRunning(true);
-    setOutput("正在调用 python3 执行...");
-    setError("");
-    try {
-      const res = await fetch("/api/run-py", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
-      });
-      const data = await res.json();
-      setOutput(data.output || "(无输出)");
-      setError(data.error || "");
-    } catch (err) {
-      setError("请求失败: " + err.message);
-      setOutput("");
-    } finally {
-      setIsRunning(false);
-      setHasRun(true);
-    }
-  }, [code]);
-
-  const resetCode = useCallback(() => {
-    setCode(activeChapter.code);
-    setOutput("");
-    setError("");
-    setHasRun(false);
-  }, [activeChapter]);
-
-  const handlePlayground = useCallback(() => {
-    try {
-      localStorage.setItem("playground:code:python", code);
-    } catch {}
-    window.open(`/playground?lang=python`, "_blank", "noopener,noreferrer");
-  }, [code]);
-
-  useEffect(() => {
-    const handleKey = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-        e.preventDefault();
-        runCode();
-      }
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [runCode]);
-
+  // 按分组组织章节
   const groupedChapters = py4ChapterGroups.map((group) => ({
     group,
     items: py4Chapters.filter((c) => c.group === group),
@@ -89,6 +72,7 @@ export default function Python4Tutorial() {
   return (
     <div className="app-shell">
       <div className="main-layout">
+        {/* ===== 侧边栏：章节导航 ===== */}
         <Sidebar
           title="学习目录"
           tip="Python 3.12+ 全面教程，56 章，每章可运行 demo"
@@ -106,7 +90,9 @@ export default function Python4Tutorial() {
           meta={`共 ${py4Chapters.length} 章 · Python 3.12+`}
         />
 
+        {/* ===== 主内容区 ===== */}
         <main className="content" ref={contentRef}>
+          {/* 章节标题区 */}
           <div className="chapter-header">
             <div className="chapter-breadcrumb">
               <span>{activeChapter.group}</span>
@@ -119,65 +105,17 @@ export default function Python4Tutorial() {
             </h1>
           </div>
 
+          {/* Markdown 讲解区 */}
           <section className="lesson-section">
             <MarkdownRenderer content={activeChapter.content} />
           </section>
 
+          {/* 代码编辑器区：直接复用 CodeBlock 组件 */}
           <section className="editor-section">
-            <div className="editor-header">
-              <div className="editor-label">
-                <span className="dot dot-red"></span>
-                <span className="dot dot-yellow"></span>
-                <span className="dot dot-green"></span>
-                <span className="editor-filename">example.py</span>
-              </div>
-              <div className="editor-actions">
-                <button className="btn btn-secondary" onClick={resetCode} disabled={isRunning} title="恢复初始代码">
-                  重置
-                </button>
-                <button className="btn btn-primary" onClick={runCode} disabled={isRunning}>
-                  {isRunning ? "执行中..." : "运行代码"}
-                </button>
-                <button className="btn btn-secondary" onClick={handlePlayground} title="在 Playground 中打开">
-                  Playground
-                </button>
-              </div>
-            </div>
-            <div className="editor-wrap">
-              <MonacoEditor
-                value={code}
-                onChange={setCode}
-                language="python"
-                onRun={runCode}
-              />
-            </div>
+            <CodeBlock code={activeChapter.code} lang="py" />
           </section>
 
-          <section className="console-section">
-            <div className="console-header">
-              <span className="console-title">控制台输出</span>
-              <span className="console-hint">
-                {isRunning ? "执行中..." : hasRun ? "执行完成" : "点击运行查看结果"}
-              </span>
-            </div>
-            <div className="console-body">
-              {output && (
-                <pre className={`console-output ${error ? "has-error" : ""}`}>{output}</pre>
-              )}
-              {error && (
-                <pre className="console-error">
-                  <span className="error-label">错误:</span>
-                  {"\n"}{error}
-                </pre>
-              )}
-              {!hasRun && !isRunning && (
-                <div className="console-placeholder">
-                  <span>点击上方&quot;运行代码&quot;按钮，或按 Ctrl+Enter 执行代码</span>
-                </div>
-              )}
-            </div>
-          </section>
-
+          {/* 章节底部导航：上一章/下一章 */}
           <ChapterNav activeId={activeId} onSelect={selectChapter} />
 
           <footer className="content-footer">
@@ -189,6 +127,7 @@ export default function Python4Tutorial() {
   );
 }
 
+// ===== 上一章 / 下一章 导航组件 =====
 function ChapterNav({ activeId, onSelect }) {
   const idx = py4Chapters.findIndex((c) => c.id === activeId);
   const prev = idx > 0 ? py4Chapters[idx - 1] : null;

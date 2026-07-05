@@ -5,55 +5,16 @@
 // -------------------------------------------------------------
 // 结构与 C# / Java 教程页面一致，区别：
 //   1. 数据源：goChapters / goChapterGroups（来自 go-tutorial-data）
-//   2. 运行接口：/api/run-go（调用 go run 编译运行）
-//   4. 文案：Go 教程、main.go 文件名
+//   2. 运行接口：/api/run-go（由 CodeBlock 内部调用，调用 go run 编译运行）
+//   3. 底部 demo 直接复用 CodeBlock 组件，与教程内代码块完全一致：
+//      无背景色、运行后才显示结果面板、结果内嵌在组件内
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { goChapters, goChapterGroups } from "../go-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
-import ExternalRunDropdown from "../components/ExternalRunDropdown";
-import dynamic from "next/dynamic";
-
-const MonacoEditor = dynamic(() => import("../components/MonacoEditor"), { ssr: false, loading: () => <div className="monaco-loading-placeholder">正在加载编辑器…</div> });
-
-// 默认代码示例：用户首次进入时显示，可自由修改后运行
-const DEFAULT_CODE = `// Go 1.21+ 示例
-// 必须包含 package main 和 func main()
-package main
-
-import (
-	"fmt"
-	"strings"
-)
-
-func main() {
-	// 1. 基本输出
-	fmt.Println("Hello, Go!")
-
-	// 2. 字符串拼接与格式化
-	name := "张三"
-	age := 18
-	fmt.Printf("我叫%s，今年%d岁\n", name, age)
-
-	// 3. 切片与 for range
-	fruits := []string{"苹果", "香蕉", "橙子"}
-	for i, fruit := range fruits {
-		fmt.Printf("  %d. %s\n", i+1, fruit)
-	}
-
-	// 4. 简单计算（1 到 100 求和）
-	sum := 0
-	for i := 1; i <= 100; i++ {
-		sum += i
-	}
-	fmt.Println("1 到 100 的和：", sum)
-
-	// 5. 使用 strings 包
-	fmt.Println(strings.Repeat("Go", 3)) // GoGoGo
-}
-`;
+import CodeBlock from "../CodeBlock";
 
 export default function GoTutorial() {
   // ---------- 状态管理 ----------
@@ -64,11 +25,6 @@ export default function GoTutorial() {
   const initialChapter = goChapters[0];
 
   const [activeId, setActiveId] = useState(initialChapter.id);
-  const [code, setCode] = useState(initialChapter.code);
-  const [output, setOutput] = useState("");
-  const [error, setError] = useState("");
-  const [isRunning, setIsRunning] = useState(false);
-  const [hasRun, setHasRun] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const contentRef = useRef(null);
@@ -87,7 +43,6 @@ export default function GoTutorial() {
     if (chapter) {
       const id = requestAnimationFrame(() => {
         setActiveId(hash);
-        setCode(chapter.code);
       });
       return () => cancelAnimationFrame(id);
     } else {
@@ -98,70 +53,17 @@ export default function GoTutorial() {
   }, []);
 
   // ---------- 切换章节 ----------
+  // CodeBlock 内部通过 useEffect 监听 initialCode 变化自动同步，
+  // 这里只需切换 activeId，无需手动 setCode。
   const selectChapter = useCallback((chapterId) => {
     const chapter = goChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
     setActiveId(chapterId);
-    // 注意：不重置 code，让用户保留编辑器内容
-    setOutput("");
-    setError("");
-    setHasRun(false);
     setSidebarOpen(false);
     if (contentRef.current) {
       contentRef.current.scrollTop = 0;
     }
   }, []);
-
-  // ---------- 运行代码 ----------
-  const runCode = useCallback(async () => {
-    setIsRunning(true);
-    setOutput("正在编译并执行 Go 代码...");
-    setError("");
-    try {
-      const res = await fetch("/api/run-go", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
-      });
-      const data = await res.json();
-      setOutput(data.output || "(无输出)");
-      setError(data.error || "");
-    } catch (err) {
-      setError("请求失败: " + err.message);
-      setOutput("");
-    } finally {
-      setIsRunning(false);
-      setHasRun(true);
-    }
-  }, [code]);
-
-  // ---------- 重置代码 ----------
-  const resetCode = useCallback(() => {
-    setCode(DEFAULT_CODE);
-    setOutput("");
-    setError("");
-    setHasRun(false);
-  }, []);
-
-  // ---------- 在 Playground 中打开 ----------
-  const handlePlayground = useCallback(() => {
-    try {
-      localStorage.setItem("playground:code:go", code);
-    } catch {}
-    window.open(`/playground?lang=go`, "_blank", "noopener,noreferrer");
-  }, [code]);
-
-  // ---------- 键盘快捷键：Ctrl/Cmd + Enter 运行 ----------
-  useEffect(() => {
-    const handleKey = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-        e.preventDefault();
-        runCode();
-      }
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [runCode]);
 
   // 按分组组织章节
   const groupedChapters = goChapterGroups.map((group) => ({
@@ -206,80 +108,9 @@ export default function GoTutorial() {
             <MarkdownRenderer content={activeChapter.content} />
           </section>
 
-          {/* 代码编辑器区 */}
+          {/* 代码编辑器区：直接复用 CodeBlock 组件 */}
           <section className="editor-section">
-            <div className="editor-header">
-              <div className="editor-label">
-                <span className="dot dot-red"></span>
-                <span className="dot dot-yellow"></span>
-                <span className="dot dot-green"></span>
-                <span className="editor-filename">main.go</span>
-              </div>
-              <div className="editor-actions">
-                <ExternalRunDropdown code={code} langLower="go" disabled={isRunning} />
-                <button
-                  className="btn btn-secondary"
-                  onClick={resetCode}
-                  disabled={isRunning}
-                  title="恢复默认代码"
-                >
-                  ↺ 重置
-                </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={runCode}
-                  disabled={isRunning}
-                >
-                  {isRunning ? "⏳ 编译中..." : "▶ 运行代码"}
-                </button>
-                <button
-                  className="btn btn-secondary"
-                  onClick={handlePlayground}
-                  title="在 Playground 中打开"
-                >
-                  🚀 Playground
-                </button>
-              </div>
-            </div>
-            <div className="editor-wrap">
-              <MonacoEditor
-                key={activeId}
-                value={code}
-                onChange={setCode}
-                language="go"
-                onRun={runCode}
-              />
-            </div>
-          </section>
-
-          {/* 输出控制台 */}
-          <section className="console-section">
-            <div className="console-header">
-              <span className="console-title">控制台输出</span>
-              <span className="console-hint">
-                {isRunning ? "编译执行中..." : hasRun ? "执行完成" : "点击运行查看结果"}
-              </span>
-            </div>
-            <div className="console-body">
-              {output && (
-                <pre className={`console-output ${error ? "has-error" : ""}`}>
-                  {output}
-                </pre>
-              )}
-              {error && (
-                <pre className="console-error">
-                  <span className="error-label">错误:</span>
-                  {"\n"}
-                  {error}
-                </pre>
-              )}
-              {!hasRun && !isRunning && (
-                <div className="console-placeholder">
-                  <span className="placeholder-icon">▶</span>
-                  <span>点击上方&quot;运行代码&quot;按钮，或按 Ctrl+Enter 执行代码</span>
-                </div>
-              )}
-            </div>
+            <CodeBlock code={activeChapter.code} lang="go" />
           </section>
 
           {/* 章节底部导航：上一章/下一章 */}

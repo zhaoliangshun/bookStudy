@@ -328,6 +328,51 @@ export default function Sidebar({
     };
   }, []);
 
+  // ===== 激活章节菜单自动滚动到视野区 =====
+  // -------------------------------------------------------------
+  // 场景：刷新页面后从 URL hash 恢复到第 N 章，或点击/上下章切换时，
+  // 左侧目录里对应章节菜单需要自动出现在视野区，而非停留在顶部。
+  //
+  // 实现：
+  //   1. activeChapterRef 通过回调 ref 绑定到当前激活的 <button>
+  //   2. activeId 变化时（含首次挂载后的 hash 同步），计算激活项相对
+  //      .chapter-nav（侧边栏内部滚动容器）的位置，若不在视野内则调整
+  //      container.scrollTop，让它显示在容器中部偏上的位置。
+  //   3. 仅滚动 .chapter-nav，不调用 scrollIntoView，避免连带滚动主窗口。
+  //   4. 侧边栏收起（collapsed）时容器高度为 0，跳过本次滚动。
+  // -------------------------------------------------------------
+  const activeChapterRef = useRef(null);
+
+  useEffect(() => {
+    const el = activeChapterRef.current;
+    if (!el) return;
+    // 仅在客户端执行
+    if (typeof window === "undefined") return;
+    const container = el.closest(".chapter-nav");
+    if (!container) return;
+    // 容器不可见（如桌面端收起状态），跳过
+    if (container.clientHeight === 0) return;
+
+    const elRect = el.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    // 上下留 40px 缓冲，避免紧贴边缘
+    const margin = 40;
+    // 已在视野内则不滚动
+    if (
+      elRect.top >= containerRect.top - margin &&
+      elRect.bottom <= containerRect.bottom + margin
+    ) {
+      return;
+    }
+    // 计算激活项在容器内的偏移，让其显示在容器中部偏上
+    const offsetInContainer = elRect.top - containerRect.top;
+    const target =
+      container.scrollTop +
+      offsetInContainer -
+      (container.clientHeight - el.offsetHeight) / 2;
+    container.scrollTop = Math.max(0, target);
+  }, [activeId, collapsed]);
+
   return (
     <>
       {/* 移动端浮动菜单按钮（桌面端由 CSS 隐藏） */}
@@ -454,6 +499,7 @@ export default function Sidebar({
                   {items.map((ch) => (
                     <li key={ch.id}>
                       <button
+                        ref={activeId === ch.id ? activeChapterRef : null}
                         className={`chapter-item ${activeId === ch.id ? "active" : ""}`}
                         onClick={() => handleSelect(ch.id)}
                       >
