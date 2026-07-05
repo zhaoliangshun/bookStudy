@@ -1,52 +1,63 @@
 "use client";
 
 // =============================================================
-// Tailwind CSS 交互式教程页面
+// AI 应用编程教程页面（全新）
 // -------------------------------------------------------------
-// 与 Node.js / TypeScript 教程页面的主要区别：
-//   1. 数据源：twChapters / twChapterGroups
-//   2. 没有"运行 API"——代码是 HTML 片段，前端用 iframe 直接渲染预览
-//   3. 用 Tailwind Play CDN（https://cdn.tailwindcss.com）让 iframe 里的
-//      class 实时生效，无需本地构建
-//   5. 输出区是 iframe 预览，而不是控制台文本
+// 结构与 /ai、/ts、/py 等教程页面一致：
+//   1. 数据源：aiappChapters / aiappChapterGroups（来自 aiapp-tutorial-data）
+//   2. 运行接口：/api/run（Node.js 沙箱执行 JavaScript 代码）
+//   3. 文案：AI 应用编程教程
+//
+// 与既有 /ai（AI 编程方法 40 章）和 /ai-agent（AI Agent 开发）教程互补，
+// 本教程共 50 章，覆盖：
+//   AI 编程入门 / 主流大模型对比 / AI 编程工具全景 / Codex 深度使用 /
+//   Claude 深度使用 / 提示词工程实战 / AI 编程实用技巧 / AI 编程工作流 /
+//   陷阱与最佳实践 / 进阶与未来
 // =============================================================
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { twChapters, twChapterGroups } from "../tw-tutorial-data";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { aiappChapters, aiappChapterGroups } from "../aiapp-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import dynamic from "next/dynamic";
 import Sidebar from "../components/Sidebar";
 import ExternalRunDropdown from "../components/ExternalRunDropdown";
+import dynamic from "next/dynamic";
 
-const MonacoEditor = dynamic(() => import("../components/MonacoEditor"), { ssr: false, loading: () => <div className="monaco-loading-placeholder">正在加载编辑器…</div> });
+// Monaco 编辑器按需加载（SSR 关闭，避免服务端渲染报错）
+const MonacoEditor = dynamic(() => import("../components/MonacoEditor"), {
+  ssr: false,
+  loading: () => (
+    <div className="monaco-loading-placeholder">正在加载编辑器…</div>
+  ),
+});
 
-export default function TailwindTutorial() {
+export default function AIAppTutorial() {
   // ---------- 状态管理 ----------
   // 默认使用第一个章节作为初始状态。
   // 注意：不在渲染阶段读取 window.location.hash，否则 SSR 与客户端
   // 在 URL 带 hash 时渲染结果不一致，会触发 React hydration 错误。
   // URL hash 的处理放到 useEffect 中，在客户端挂载后再切换章节。
-  const initialChapter = twChapters[0];
+  const initialChapter = aiappChapters[0];
 
   const [activeId, setActiveId] = useState(initialChapter.id);
   const [code, setCode] = useState(initialChapter.code);
-  const [previewKey, setPreviewKey] = useState(0); // 用于强制刷新 iframe
+  const [output, setOutput] = useState("");
+  const [error, setError] = useState("");
+  const [isRunning, setIsRunning] = useState(false);
   const [hasRun, setHasRun] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const contentRef = useRef(null);
-  const iframeRef = useRef(null);
 
+  // 当前章节对象
   const activeChapter =
-    twChapters.find((c) => c.id === activeId) || twChapters[0];
+    aiappChapters.find((c) => c.id === activeId) || aiappChapters[0];
 
   // 客户端挂载后读取 URL hash：有效则切换到对应章节，无效则清除。
-  // 这里读取 window 不会导致 hydration 错误，因为首次渲染已经完成。
   useEffect(() => {
     if (typeof window === "undefined") return;
     const hash = window.location.hash.slice(1);
     if (!hash) return;
-    const chapter = twChapters.find((c) => c.id === hash);
+    const chapter = aiappChapters.find((c) => c.id === hash);
     if (chapter) {
       const id = requestAnimationFrame(() => {
         setActiveId(hash);
@@ -60,32 +71,14 @@ export default function TailwindTutorial() {
     }
   }, []);
 
-  // 构造预览用的完整 HTML 文档（含 Tailwind CDN）
-  // 用户写的 code 片段会被塞进 body 里。如果 code 开头有
-  // <script>tailwind.config = {...}</script>，会被正确执行。
-  const previewDoc = useMemo(() => {
-    return `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { margin: 0; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif; }
-  </style>
-</head>
-<body>
-${code}
-</body>
-</html>`;
-  }, [code]);
-
   // ---------- 切换章节 ----------
   const selectChapter = useCallback((chapterId) => {
-    const chapter = twChapters.find((c) => c.id === chapterId);
+    const chapter = aiappChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
     setActiveId(chapterId);
     setCode(chapter.code);
+    setOutput("");
+    setError("");
     setHasRun(false);
     setSidebarOpen(false);
     if (contentRef.current) {
@@ -93,36 +86,61 @@ ${code}
     }
   }, []);
 
-  // ---------- 运行（刷新预览） ----------
-  // 与 JS/TS 教程不同，这里不调 API。直接刷新 iframe 的 srcdoc 即可。
-  // 通过修改 previewKey 强制 React 重建 iframe，确保内容更新。
-  const runPreview = useCallback(() => {
-    setHasRun(true);
-    setPreviewKey((k) => k + 1);
-  }, []);
+  // ---------- 运行代码 ----------
+  const runCode = useCallback(async () => {
+    setIsRunning(true);
+    setOutput("正在执行...");
+    setError("");
+    try {
+      const res = await fetch("/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+      setOutput(data.output || "(无输出)");
+      setError(data.error || "");
+    } catch (err) {
+      setError("请求失败: " + err.message);
+      setOutput("");
+    } finally {
+      setIsRunning(false);
+      setHasRun(true);
+    }
+  }, [code]);
 
   // ---------- 重置代码 ----------
   const resetCode = useCallback(() => {
     setCode(activeChapter.code);
+    setOutput("");
+    setError("");
     setHasRun(false);
   }, [activeChapter]);
 
-  // ---------- 键盘快捷键：Ctrl/Cmd + Enter 刷新预览 ----------
+  // ---------- 在 Playground 中打开 ----------
+  const handlePlayground = useCallback(() => {
+    try {
+      localStorage.setItem("playground:code:node", code);
+    } catch {}
+    window.open(`/playground?lang=node`, "_blank", "noopener,noreferrer");
+  }, [code]);
+
+  // ---------- 键盘快捷键：Ctrl/Cmd + Enter 运行 ----------
   useEffect(() => {
     const handleKey = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
-        runPreview();
+        runCode();
       }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [runPreview]);
+  }, [runCode]);
 
   // 按分组组织章节
-  const groupedChapters = twChapterGroups.map((group) => ({
+  const groupedChapters = aiappChapterGroups.map((group) => ({
     group,
-    items: twChapters.filter((c) => c.group === group),
+    items: aiappChapters.filter((c) => c.group === group),
   }));
 
   return (
@@ -131,15 +149,18 @@ ${code}
         {/* ===== 侧边栏：章节导航 ===== */}
         <Sidebar
           title="学习目录"
-          tip="点击章节开始学习 Tailwind CSS"
-          footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 刷新预览</p>}
+          tip="点击章节学习 AI 应用编程"
+          footer={
+            <p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码</p>
+          }
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
-          currentPath="/tw"
-          meta={`共 ${twChapters.length} 章 · 可在线编辑运行`}
+          onToggleSidebar={() => setSidebarOpen((v) => !v)}
+          currentPath="/aiapp"
+          meta={`共 ${aiappChapters.length} 章 · 在线编辑运行`}
         />
 
         {/* ===== 主内容区 ===== */}
@@ -169,21 +190,30 @@ ${code}
                 <span className="dot dot-red"></span>
                 <span className="dot dot-yellow"></span>
                 <span className="dot dot-green"></span>
-                <span className="editor-filename">preview.html</span>
+                <span className="editor-filename">example.js</span>
               </div>
               <div className="editor-actions">
                 <button
                   className="btn btn-secondary"
                   onClick={resetCode}
+                  disabled={isRunning}
                   title="恢复章节初始代码"
                 >
                   ↺ 重置
                 </button>
                 <button
                   className="btn btn-primary"
-                  onClick={runPreview}
+                  onClick={runCode}
+                  disabled={isRunning}
                 >
-                  ▶ 刷新预览
+                  {isRunning ? "⏳ 执行中..." : "▶ 运行代码"}
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handlePlayground}
+                  title="在 Playground 中打开"
+                >
+                  🚀 Playground
                 </button>
               </div>
             </div>
@@ -192,34 +222,43 @@ ${code}
                 key={activeId}
                 value={code}
                 onChange={setCode}
-                language="html"
-                onRun={runPreview}
+                language="javascript"
+                onRun={runCode}
               />
             </div>
           </section>
 
-          {/* 预览区（替代控制台） */}
-          <section className="preview-section">
-            <div className="preview-header">
-              <span className="preview-title">实时预览</span>
-              <span className="preview-hint">
-                {hasRun ? "已刷新" : '点击"刷新预览"按钮查看效果'}
+          {/* 输出控制台 */}
+          <section className="console-section">
+            <div className="console-header">
+              <span className="console-title">控制台输出</span>
+              <span className="console-hint">
+                {isRunning
+                  ? "执行中..."
+                  : hasRun
+                  ? "执行完成"
+                  : "点击运行查看结果"}
               </span>
             </div>
-            <div className="preview-wrap">
-              {hasRun ? (
-                <iframe
-                  key={previewKey}
-                  ref={iframeRef}
-                  className="preview-iframe"
-                  srcDoc={previewDoc}
-                  title="Tailwind 预览"
-                  sandbox="allow-scripts"
-                />
-              ) : (
-                <div className="preview-placeholder">
-                  <span className="preview-placeholder-icon">▶</span>
-                  <span>点击上方&quot;刷新预览&quot;按钮，或按 Ctrl+Enter 渲染 HTML</span>
+            <div className="console-body">
+              {output && (
+                <pre className={`console-output ${error ? "has-error" : ""}`}>
+                  {output}
+                </pre>
+              )}
+              {error && (
+                <pre className="console-error">
+                  <span className="error-label">错误:</span>
+                  {"\n"}
+                  {error}
+                </pre>
+              )}
+              {!hasRun && !isRunning && (
+                <div className="console-placeholder">
+                  <span className="placeholder-icon">▶</span>
+                  <span>
+                    点击上方&quot;运行代码&quot;按钮，或按 Ctrl+Enter 执行代码
+                  </span>
                 </div>
               )}
             </div>
@@ -230,7 +269,9 @@ ${code}
 
           <footer className="content-footer">
             <p>
-              Tailwind CSS 交互式教程 · 代码在 iframe 中通过 Play CDN 实时渲染 · 支持 utility class / 响应式 / 暗黑模式 / 自定义配置
+              AI 应用编程教程 · 代码在 Node.js 沙箱中执行 · 共 50 章，覆盖 AI
+              编程入门、大模型对比、工具全景、Codex/Claude 深度使用、提示词工程、
+              实用技巧、工作流、陷阱与最佳实践、进阶与未来
             </p>
           </footer>
         </main>
@@ -241,16 +282,18 @@ ${code}
 
 // ===== 上一章 / 下一章 导航组件 =====
 function ChapterNav({ activeId, onSelect }) {
-  const idx = twChapters.findIndex((c) => c.id === activeId);
-  const prev = idx > 0 ? twChapters[idx - 1] : null;
-  const next = idx < twChapters.length - 1 ? twChapters[idx + 1] : null;
+  const idx = aiappChapters.findIndex((c) => c.id === activeId);
+  const prev = idx > 0 ? aiappChapters[idx - 1] : null;
+  const next = idx < aiappChapters.length - 1 ? aiappChapters[idx + 1] : null;
 
   return (
     <nav className="chapter-nav-bottom">
       {prev ? (
         <button className="nav-btn nav-prev" onClick={() => onSelect(prev.id)}>
           <span className="nav-dir">← 上一章</span>
-          <span className="nav-title">{prev.icon} {prev.title}</span>
+          <span className="nav-title">
+            {prev.icon} {prev.title}
+          </span>
         </button>
       ) : (
         <span />
@@ -258,7 +301,9 @@ function ChapterNav({ activeId, onSelect }) {
       {next ? (
         <button className="nav-btn nav-next" onClick={() => onSelect(next.id)}>
           <span className="nav-dir">下一章 →</span>
-          <span className="nav-title">{next.icon} {next.title}</span>
+          <span className="nav-title">
+            {next.icon} {next.title}
+          </span>
         </button>
       ) : (
         <span />

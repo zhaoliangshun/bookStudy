@@ -371,9 +371,9 @@ body {
 /* 一行放多个书籍卡片，自动换行，铺满整个面板宽度 */
 .sidebar-book-grid {
   display: grid;
-  /* 自动填充：每列最小 110px，大屏一行可放 8-10 个 */
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: 8px;
+  /* 自动填充：每列最小 90px，大屏一行可放 10+ 个 */
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 6px;
   padding: 2px 0 4px;
 }
 
@@ -383,9 +383,9 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 10px 4px;
-  border-radius: 8px;
+  gap: 3px;
+  padding: 7px 4px;
+  border-radius: 7px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(148, 163, 184, 0.12);
   color: var(--text-on-dark);
@@ -407,13 +407,13 @@ body {
 }
 
 .sidebar-book-card-icon {
-  font-size: 20px;
+  font-size: 14px;
   line-height: 1;
 }
 
 .sidebar-book-card-label {
-  font-size: 11.5px;
-  line-height: 1.25;
+  font-size: 11px;
+  line-height: 1.2;
   /* 允许最多两行，超出省略 */
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -2593,4 +2593,9 @@ body {
     width: 30px;
     height: 30px;
   }
+}
+
+
+.mtki {
+  font-style: normal !important;
 }
