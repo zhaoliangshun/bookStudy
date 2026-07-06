@@ -187,17 +187,25 @@ body {
   flex-shrink: 0;
 }
 
+/* 书籍选择 + 编辑器主题选择：同一行左右布局，各占一半 */
+.sidebar-book-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
 .sidebar-book-btn {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 8px 12px;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
   border: 1px solid var(--border-dark);
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.06);
   color: var(--text-on-dark);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
@@ -1290,10 +1298,14 @@ body {
 
 /* Sidebar 中的编辑器主题选择器样式适配 */
 .sidebar .editor-theme-picker {
-  padding: 8px 14px;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
 }
 .sidebar .editor-theme-picker-btn {
   width: 100%;
+  justify-content: center;
+  padding: 8px 6px;
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.15);
   color: var(--text-on-dark);
@@ -1303,6 +1315,9 @@ body {
   background: rgba(255, 255, 255, 0.15);
   border-color: var(--accent-green);
   color: var(--text-on-dark);
+}
+.sidebar .editor-theme-label {
+  max-width: 72px;
 }
 .sidebar .editor-theme-menu {
   background: var(--bg-sidebar);
@@ -1352,9 +1367,7 @@ body {
 }
 
 .editor-theme-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
+  /* position/top/left 由内联样式（fixed）设置，这里仅兜底 */
   min-width: 220px;
   max-height: 320px;
   overflow: auto;
@@ -1362,12 +1375,8 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-lg);
-  z-index: 100;
+  z-index: 10000;
   animation: editorThemeMenuIn 0.15s ease-out;
-}
-.editor-theme-picker--toolbar .editor-theme-menu {
-  right: auto;
-  left: 0;
 }
 
 @keyframes editorThemeMenuIn {

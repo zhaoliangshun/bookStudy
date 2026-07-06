@@ -1,7 +1,13 @@
 "use client";
 
 import { EditorThemeProvider } from "./EditorThemeProvider";
+import ScrollRestoration from "./ScrollRestoration";
 
 export default function Providers({ children }) {
-  return <EditorThemeProvider>{children}</EditorThemeProvider>;
+  return (
+    <EditorThemeProvider>
+      <ScrollRestoration />
+      {children}
+    </EditorThemeProvider>
+  );
 }

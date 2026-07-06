@@ -28,6 +28,7 @@
 // =============================================================
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import EditorThemePicker from "./EditorThemePicker";
 
 // =============================================================
 // 书籍目录数据（从 SiteNav 移入，集中维护）
@@ -207,9 +208,12 @@ export default function Sidebar({
     });
   }, []);
 
-  // 是否全部展开（collapsedGroups 为空即全部展开）
-  // 有任何分组收起时显示"全部展开"，全部展开后才显示"全部收起"
-  const allExpanded = collapsedGroups.size === 0;
+  // 按钮显示逻辑：
+  //   - 只有当前章节所在分组展开（其他都收起）→ 显示"全部展开"
+  //   - 除当前章节所在分组外还有其他分组展开 → 显示"全部收起"
+  // expandedCount 为当前展开的分组数量
+  const expandedCount = groupedChapters.length - collapsedGroups.size;
+  const allExpanded = expandedCount > 1;
 
   // 滚动相关 ref（提前声明，供 collapseAllGroups 闭包使用）
   const hasScrolledRef = useRef(false);
@@ -599,17 +603,21 @@ export default function Sidebar({
         style={collapsed ? undefined : { width: `${width}px` }}
       >
         <div className="sidebar-inner">
-          {/* 书籍目录切换器 */}
+          {/* 书籍选择 + 编辑器主题选择：同一行，左书籍右主题，各占一半 */}
           <div className="sidebar-book-switcher" ref={bookDropdownRef}>
-            <button
-              className={`sidebar-book-btn ${bookDropdownOpen ? "active" : ""}`}
-              onClick={() => setBookDropdownOpen(!bookDropdownOpen)}
-              aria-expanded={bookDropdownOpen}
-            >
-              <span className="sidebar-book-icon">{currentBook.icon}</span>
-              <span className="sidebar-book-label">{currentBook.label}</span>
-              <span className={`sidebar-book-arrow ${bookDropdownOpen ? "open" : ""}`}>▾</span>
-            </button>
+            <div className="sidebar-book-row">
+              <button
+                className={`sidebar-book-btn ${bookDropdownOpen ? "active" : ""}`}
+                onClick={() => setBookDropdownOpen(!bookDropdownOpen)}
+                aria-expanded={bookDropdownOpen}
+                title="切换书籍"
+              >
+                <span className="sidebar-book-icon">{currentBook.icon}</span>
+                <span className="sidebar-book-label">{currentBook.label}</span>
+                <span className={`sidebar-book-arrow ${bookDropdownOpen ? "open" : ""}`}>▾</span>
+              </button>
+              <EditorThemePicker variant="sidebar" />
+            </div>
             {bookDropdownOpen && (
               <>
                 {/* 全屏遮罩：点击关闭面板 */}
@@ -678,8 +686,6 @@ export default function Sidebar({
               </>
             )}
           </div>
-
-          {/* 编辑器主题切换器已隐藏（默认使用 GitHub Dark 主题） */}
 
           {/* 分组批量展开/收起 + 关闭侧边栏 工具条 */}
           {groupedChapters.length > 0 && (
