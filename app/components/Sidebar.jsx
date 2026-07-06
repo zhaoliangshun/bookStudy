@@ -97,7 +97,6 @@ const BOOK_CATEGORIES = [
     name: "综合知识",
     icon: "📚",
     books: [
-      { path: "/career", label: "职业出路", icon: "🛤️" },
       { path: "/future", label: "程序员出路指南", icon: "🧭" },
       { path: "/career40", label: "40岁前端的下半场", icon: "🌅" },
       { path: "/comm", label: "沟通交流", icon: "💬" },
@@ -118,6 +117,7 @@ const BOOK_CATEGORIES = [
     icon: "🗂️",
     books: [
       { path: "/pymod", label: "Python 模块与包", icon: "📦" },
+      { path: "/career", label: "职业出路", icon: "🛤️" },
     ],
   },
 ];
