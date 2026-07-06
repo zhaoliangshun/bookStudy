@@ -48,6 +48,7 @@ const BOOK_CATEGORIES = [
       { path: "/pythread", label: "Python 线程进程", icon: "🧵" },
       { path: "/pythread2", label: "Python 多线程入门", icon: "🧵" },
       { path: "/pydb", label: "Python 数据库", icon: "🗄️" },
+      { path: "/pyex", label: "Python 异常处理", icon: "⚠️" },
       { path: "/pyint", label: "Python 原理图解", icon: "🔬" },
       { path: "/pyweb", label: "Python Web", icon: "🌐" },
       { path: "/pyweb2", label: "Python Web 后端", icon: "🌐" },
@@ -206,6 +207,36 @@ export default function Sidebar({
       return next;
     });
   }, []);
+
+  // 是否全部展开（collapsedGroups 为空即全部展开）
+  // 有任何分组收起时显示"全部展开"，全部展开后才显示"全部收起"
+  const allExpanded = collapsedGroups.size === 0;
+
+  // 滚动相关 ref（提前声明，供 collapseAllGroups 闭包使用）
+  const hasScrolledRef = useRef(false);
+
+  // 全部展开：清空 collapsedGroups
+  const expandAllGroups = useCallback(() => {
+    setCollapsedGroups(new Set());
+  }, []);
+
+  // 全部收起：把所有分组名加入 collapsedGroups，但保留当前激活章节所在分组展开
+  // 同时触发一次"滚动到中央"，把当前章节菜单定位到视野区中央
+  const collapseAllGroups = useCallback(() => {
+    // 找到当前激活章节所在分组，收起其他分组时跳过它
+    const activeGroup = groupedChapters.find((g) =>
+      g.items.some((c) => c.id === activeId)
+    )?.group;
+    setCollapsedGroups(
+      new Set(
+        groupedChapters
+          .map((g) => g.group)
+          .filter((name) => name !== activeGroup)
+      )
+    );
+    // 重置首次滚动标记，让滚动 effect 重新执行一次
+    hasScrolledRef.current = false;
+  }, [groupedChapters, activeId]);
 
   // 激活章节变化时，自动展开其所在分组（避免点"下一章"后章节被收起看不到）
   // 注意：
@@ -378,13 +409,15 @@ export default function Sidebar({
       if (targetId !== activeIdRef.current) {
         onSelectChapter(targetId);
       }
-      // 同时重置分组：全部收起，仅展开目标章节所在分组
+      // 只展开目标章节所在分组，不收起其他已展开的分组（全部手动操作）
       const matched = groupedChapters.find((g) =>
         g.items.some((c) => c.id === targetId)
       );
       if (matched) {
-        setCollapsedGroups(() => {
-          const next = new Set(groupedChapters.map((g) => g.group));
+        setCollapsedGroups((prev) => {
+          // 已经展开就不变，避免无意义渲染
+          if (!prev.has(matched.group)) return prev;
+          const next = new Set(prev);
           next.delete(matched.group);
           return next;
         });
@@ -498,36 +531,37 @@ export default function Sidebar({
 
   // ===== 激活章节菜单自动滚动到视野区 =====
   // -------------------------------------------------------------
-  // 场景：刷新页面后从 URL hash 恢复到第 N 章，或点击/上下章切换时，
-  // 左侧目录里对应章节菜单需要自动出现在视野区，而非停留在顶部。
+  // 场景：刷新页面后从 URL hash 恢复到第 N 章，或首次打开课程时，
+  // 左侧目录里对应章节菜单需要自动出现在视野区中央。
   //
-  // 实现：
-  //   1. activeChapterRef 通过回调 ref 绑定到当前激活的 <button>
-  //   2. activeId 变化时（含首次挂载后的 hash 同步），计算激活项相对
-  //      .chapter-nav（侧边栏内部滚动容器）的位置，若不在视野内则调整
-  //      container.scrollTop，让它显示在容器中部偏上的位置。
-  //   3. 仅滚动 .chapter-nav，不调用 scrollIntoView，避免连带滚动主窗口。
-  //   4. 侧边栏收起（collapsed）时容器高度为 0，跳过本次滚动。
+  // 注意：只在"首次打开课程"时滚动一次，之后切换章节 / 分组不再自动滚动，
+  // 避免干扰用户手动滚动浏览。用 hasScrolledRef 标记是否已完成首次滚动，
+  // currentPath 变化（切换课程）时重置标记，让新课程也滚动一次。
   // -------------------------------------------------------------
   const activeChapterRef = useRef(null);
+  const lastScrolledPathRef = useRef(currentPath);
+
+  // 切换课程时重置首次滚动标记，让新课程也能滚动一次
+  if (lastScrolledPathRef.current !== currentPath) {
+    lastScrolledPathRef.current = currentPath;
+    hasScrolledRef.current = false;
+  }
 
   // 把激活章节菜单滚动到侧边栏视野区的中央。
-  // 依赖：
-  //   - activeId：切换章节时触发
-  //   - collapsedGroups：分组从收起变展开时 DOM 才渲染、ref 才绑定，
-  //     需要等分组展开后再滚动（典型场景：切换课程后恢复章节）
-  //   - collapsed：侧边栏整体收起/展开时容器高度变化，需要重新定位
+  // 仅在首次打开课程时执行一次；之后切换章节 / 分组不再滚动。
   // 用双层 requestAnimationFrame 确保浏览器完成布局后再测量位置，
   // 避免读到未更新的尺寸（分组刚展开时高度可能还是 0）。
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // 已经完成首次滚动，不再自动滚动
+    if (hasScrolledRef.current) return;
     const raf = requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const el = activeChapterRef.current;
         if (!el) return;
         const container = el.closest(".chapter-nav");
         if (!container) return;
-        // 容器不可见（如桌面端收起状态），跳过
+        // 容器不可见（如桌面端收起状态），跳过本次（下次再试）
         if (container.clientHeight === 0) return;
 
         const elRect = el.getBoundingClientRect();
@@ -540,10 +574,12 @@ export default function Sidebar({
           offsetInContainer -
           (container.clientHeight - el.offsetHeight) / 2;
         container.scrollTop = Math.max(0, target);
+        // 标记已完成首次滚动
+        hasScrolledRef.current = true;
       });
     });
     return () => cancelAnimationFrame(raf);
-  }, [activeId, collapsed, collapsedGroups]);
+  }, [activeId, collapsed, collapsedGroups, currentPath]);
 
   return (
     <>
@@ -660,6 +696,19 @@ export default function Sidebar({
             </div>
             {tip && <p className="sidebar-tip">{tip}</p>}
           </div>
+          {/* 分组批量展开/收起工具条 */}
+          {groupedChapters.length > 0 && (
+            <div className="sidebar-group-toolbar">
+              <button
+                type="button"
+                className="sidebar-group-toolbar-btn"
+                onClick={allExpanded ? collapseAllGroups : expandAllGroups}
+                title={allExpanded ? "全部收起" : "全部展开"}
+              >
+                {allExpanded ? "⊟ 全部收起" : "⊞ 全部展开"}
+              </button>
+            </div>
+          )}
           <nav className="chapter-nav">
             {groupedChapters.map(({ group, items }) => {
               const isGroupCollapsed = collapsedGroups.has(group);

@@ -552,6 +552,30 @@ body {
   color: var(--text-muted);
 }
 
+/* 分组批量展开/收起工具条 */
+.sidebar-group-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 16px 4px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.sidebar-group-toolbar-btn {
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-group-toolbar-btn:hover {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--text-on-dark);
+}
+
 .chapter-nav {
   flex: 1;
   overflow-y: auto;
