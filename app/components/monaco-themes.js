@@ -6,7 +6,7 @@
 // =============================================================
 
 export const MONACO_THEME_STORAGE_KEY = "monaco-editor-theme";
-export const DEFAULT_MONACO_THEME = "vs";
+export const DEFAULT_MONACO_THEME = "github-dark";
 
 const NO_BORDER = "#00000000";
 

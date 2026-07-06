@@ -552,11 +552,13 @@ body {
   color: var(--text-muted);
 }
 
-/* 分组批量展开/收起工具条 */
+/* 分组批量展开/收起 + 关闭侧边栏 工具条 */
 .sidebar-group-toolbar {
   display: flex;
-  justify-content: flex-end;
-  padding: 6px 16px 4px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.12);
 }
 
@@ -572,6 +574,24 @@ body {
 }
 
 .sidebar-group-toolbar-btn:hover {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--text-on-dark);
+}
+
+/* 工具条内的关闭按钮 */
+.sidebar-group-toolbar .sidebar-collapse-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-group-toolbar .sidebar-collapse-btn:hover {
   background: rgba(148, 163, 184, 0.15);
   color: var(--text-on-dark);
 }

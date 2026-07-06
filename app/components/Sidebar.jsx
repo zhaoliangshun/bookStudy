@@ -28,7 +28,6 @@
 // =============================================================
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import EditorThemePicker from "./EditorThemePicker";
 
 // =============================================================
 // 书籍目录数据（从 SiteNav 移入，集中维护）
@@ -677,26 +676,9 @@ export default function Sidebar({
             )}
           </div>
 
-          {/* 编辑器主题切换器：在书籍切换器和 meta 之间，紧贴顶部 */}
-          <EditorThemePicker variant="toolbar" />
+          {/* 编辑器主题切换器已隐藏（默认使用 GitHub Dark 主题） */}
 
-          {meta && <div className="sidebar-meta">{meta}</div>}
-
-          <div className="sidebar-header">
-            <div className="sidebar-header-row">
-              <h2>{title}</h2>
-              <button
-                className="sidebar-collapse-btn"
-                onClick={() => setCollapsed(true)}
-                title="收起目录 (Ctrl+B)"
-                aria-label="收起目录"
-              >
-                ✕
-              </button>
-            </div>
-            {tip && <p className="sidebar-tip">{tip}</p>}
-          </div>
-          {/* 分组批量展开/收起工具条 */}
+          {/* 分组批量展开/收起 + 关闭侧边栏 工具条 */}
           {groupedChapters.length > 0 && (
             <div className="sidebar-group-toolbar">
               <button
@@ -706,6 +688,14 @@ export default function Sidebar({
                 title={allExpanded ? "全部收起" : "全部展开"}
               >
                 {allExpanded ? "⊟ 全部收起" : "⊞ 全部展开"}
+              </button>
+              <button
+                className="sidebar-collapse-btn"
+                onClick={() => setCollapsed(true)}
+                title="收起目录 (Ctrl+B)"
+                aria-label="收起目录"
+              >
+                ✕
               </button>
             </div>
           )}
