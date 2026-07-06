@@ -85,6 +85,7 @@ const BOOK_CATEGORIES = [
       { path: "/ai", label: "AI编程", icon: "🤖" },
       { path: "/aiapp", label: "AI 应用编程", icon: "🤖" },
       { path: "/ai-agent", label: "AI Agent开发", icon: "🤖" },
+      { path: "/aipy", label: "Python AI开发", icon: "🐍" },
     ],
   },
   {
