@@ -392,7 +392,7 @@ class Direction(Enum):
     DOWN = auto()
     LEFT = auto()
     RIGHT = auto()
-\`\`
+\`\`\`
 
 \`auto()\` 默认从 1 递增。可重写 \`_generate_next_value_\` 自定义规则。
 
