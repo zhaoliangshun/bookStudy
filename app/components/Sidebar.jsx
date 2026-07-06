@@ -94,6 +94,7 @@ const BOOK_CATEGORIES = [
       { path: "/career40", label: "40岁前端的下半场", icon: "🌅" },
       { path: "/comm", label: "沟通交流", icon: "💬" },
       { path: "/psychology", label: "心向阳光", icon: "🧠" },
+      { path: "/relations", label: "人际关系心理学", icon: "🤝" },
       { path: "/work", label: "职场", icon: "💼" },
       { path: "/stomach", label: "脾胃调养", icon: "🌿" },
       { path: "/dui", label: "怼人艺术", icon: "🎯" },
