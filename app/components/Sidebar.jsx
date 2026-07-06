@@ -44,7 +44,6 @@ const BOOK_CATEGORIES = [
       { path: "/py6", label: "Python 全解", icon: "🐍" },
       { path: "/py8", label: "Python 大全", icon: "🐍" },
       { path: "/py9", label: "Python 逐层深入", icon: "📘" },
-      { path: "/pymod", label: "Python 模块与包", icon: "📦" },
       { path: "/pynet", label: "Python 网络编程", icon: "🌐" },
       { path: "/pythread", label: "Python 线程进程", icon: "🧵" },
       { path: "/pythread2", label: "Python 多线程入门", icon: "🧵" },
@@ -114,6 +113,13 @@ const BOOK_CATEGORIES = [
       { path: "/rebut", label: "反驳的艺术", icon: "⚔️" },
     ],
   },
+  {
+    name: "已隐藏",
+    icon: "🗂️",
+    books: [
+      { path: "/pymod", label: "Python 模块与包", icon: "📦" },
+    ],
+  },
 ];
 
 const ALL_BOOKS = BOOK_CATEGORIES.flatMap((cat) =>
@@ -144,11 +150,29 @@ export default function Sidebar({
   const bookDropdownRef = useRef(null);
   // 默认折叠的分类（点击标题后展开）
   const [collapsedCategories, setCollapsedCategories] = useState(
-    () => new Set(["综合知识"])
+    () => new Set(["综合知识", "已隐藏"])
   );
 
   // 当前书籍信息
   const currentBook = ALL_BOOKS.find((b) => b.path === currentPath) || ALL_BOOKS[0];
+
+  // 智能展开：如果当前页面属于某个已折叠分类，自动展开它，避免迷路
+  useEffect(() => {
+    setCollapsedCategories((prev) => {
+      // 找到当前 path 所属的分类名
+      const matchedCategory = BOOK_CATEGORIES.find((cat) =>
+        cat.books.some((b) => b.path === currentPath)
+      );
+      if (!matchedCategory) return prev;
+      // 如果当前分类被折叠，展开它
+      if (prev.has(matchedCategory.name)) {
+        const next = new Set(prev);
+        next.delete(matchedCategory.name);
+        return next;
+      }
+      return prev;
+    });
+  }, [currentPath]);
 
   // 点击外部关闭书籍目录下拉
   useEffect(() => {
