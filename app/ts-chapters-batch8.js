@@ -2562,7 +2562,7 @@ console.log("\\nJS 到 TS 迁移指南章节演示完成！");`,
     group: "工程化进阶",
     content: `## React + TypeScript
 
-React 与 TypeScript 是前端最流行的组合。TS 让 React 组件的 Props、状态、事件、Hook 都获得类型安全，极大减少运行时错误。本章极其详细地讲解组件 Props 类型、React.FC vs 函数组件、事件类型、Hook 泛型、useContext/forwardRef/HOC/自定义 Hook 类型、children/样式类型、React 18+ 类型变化。
+React 与 TypeScript 是前端最流行的组合。TS 让 React 组件的 Props、状态、事件、Hook 都获得类型安全，极大减少运行时错误。本章极其详细地讲解组件 Props 类型、React.FC vs 函数组件、事件类型、Hook 泛型、useContext/forwardRef/HOC/自定义 Hook 类型、children/样式类型、React 18/19 类型变化。
 
 ### 1. 组件 Props 类型
 
@@ -2888,7 +2888,7 @@ interface Props { className?: string }  // 定义接口 Props
 <div className={props.className} />  // JSX 元素
 \`\`\`
 
-### 10. React 18+ 类型变化
+### 10. React 18/19 类型变化
 
 #### children 不再隐式包含
 
@@ -2913,6 +2913,93 @@ const snapshot = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot?
 \`\`\`tsx
 const [isPending, startTransition] = useTransition();  // 数组解构声明：从 useTransition(); 取 isPending, startTransition
 // startTransition: (callback: () => void) => void
+\`\`\`
+
+#### React 19：ref 作为 prop
+
+React 19 起，函数组件可以直接接收 \`ref\` 作为普通 prop，**无需 \`forwardRef\` 包裹**。
+
+\`\`\`tsx
+interface InputProps {  // 定义接口 InputProps
+  value: string;
+  onChange: (v: string) => void;
+  ref?: React.Ref<HTMLInputElement>;  // ref 作为 prop
+}
+
+function Input({ value, onChange, ref }: InputProps) {  // 定义函数 Input，参数: { value, onChange, ref }: InputProps
+  return <input ref={ref} value={value} onChange={onChange} />;  // JSX 元素
+}
+\`\`\`
+
+#### forwardRef 弃用建议
+
+React 19 中 \`forwardRef\` 仍可用但**已不再推荐**。新代码直接把 \`ref\` 写进 Props 接口；存量代码迁移时去掉 \`forwardRef\` 包裹、把 ref 参数移到 Props 即可。
+
+\`\`\`tsx
+// 旧（React 18）：必须用 forwardRef
+const LegacyInput = forwardRef<HTMLInputElement, InputProps>(function (props, ref) {  // 声明常量 LegacyInput
+  return <input ref={ref} value={props.value} />;  // JSX 元素
+});
+
+// 新（React 19）：直接函数组件
+function ModernInput({ value, ref }: InputProps) {  // 定义函数 ModernInput，参数: { value, ref }: InputProps
+  return <input ref={ref} value={value} />;  // JSX 元素
+}
+\`\`\`
+
+#### use() Hook 的类型签名
+
+React 19 引入 \`use()\` Hook，在组件内读取 Promise 或 Context。类型按入参重载——\`use(promise)\` 解包为 Promise 的解析值类型，\`use(context)\` 返回 \`Context<T>\` 中持有的 \`T\`。
+
+\`\`\`tsx
+// 读取 Promise：自动解包，T 是 Promise<...> 的解析类型
+const data = use(promise);  // 声明常量 data，类型 T（自动 Suspense）
+
+// 读取 Context：返回 ContextValue
+const ctx = use(SomeContext);  // 声明常量 ctx，类型 ContextValue
+
+// 实战：组件内直接读取异步数据
+async function fetchUser(id: string): Promise<User> { /* ... */ }
+function User({ id }: { id: string }) {  // 定义函数 User，参数: { id }: { id: string }
+  const user = use(fetchUser(id));  // user: User（自动 Suspense）
+  return <div>{user.name}</div>;  // JSX 元素
+}
+\`\`\`
+
+注意：\`use()\` 与其它 Hook 的关键区别是**可以在条件分支中调用**（if/for 内部），但前提是 Promise/Context 在调用前已创建。
+
+#### Server Components 的类型约束
+
+React 19 的 Server Components 通过文件顶部的 \`'use client'\` / \`'use server'\` 指令区分运行环境，类型层面有两点约束：
+
+1. **Server Component 不能使用客户端 Hook**：\`useState\`、\`useEffect\`、\`useRef\`、\`use(promise)\` 等在 Server Component 中类型报错。
+2. **传给 Client Component 的 Props 必须可序列化**：不能传函数、Symbol、Class 实例等不可序列化值（但 \`'use server'\` 标记的 Server Action 引用可作为 prop 传递）。
+
+\`\`\`tsx
+// app/page.tsx（Server Component，默认）
+import ClientWidget from './ClientWidget';  // 导入 ClientWidget
+
+// 'use server' 放在 async 函数体首行，标记为 Server Action
+async function saveUser(data: User): Promise<void> {  // 定义函数 saveUser
+  'use server';  // 标记此函数为 Server Action
+  await db.write(data);  // await db.write(data)
+}
+
+// 传给 Client Component 的 props 必须可序列化
+<ClientWidget title="欢迎" count={42} onSave={saveUser} />  // JSX 元素
+
+// ClientWidget.tsx
+'use client';  // 标记客户端组件
+import { useState } from 'react';
+interface ClientWidgetProps {  // 定义接口 ClientWidgetProps
+  title: string;
+  count: number;
+  onSave: (data: User) => Promise<void>;
+}
+function ClientWidget({ title, count, onSave }: ClientWidgetProps) {  // 定义函数 ClientWidget，参数: { title, count, onSave }: ClientWidgetProps
+  const [n, setN] = useState(count);  // 数组解构声明：从 useState(count); 取 n, setN
+  return <button onClick={() => onSave(/* ... */)}>{title}{n}</button>;  // JSX 元素
+}
 \`\`\`
 
 ### 11. 陷阱与最佳实践
@@ -3287,8 +3374,8 @@ const style: CSSProperties = {
 };
 console.log("React.CSSProperties 样式对象:", JSON.stringify(style));
 
-// ---- 9. React 18+ 类型变化 ----
-console.log("\\n========== 9. React 18+ 类型变化 ==========");
+// ---- 9. React 18/19 类型变化 ----
+console.log("\\n========== 9. React 18/19 类型变化 ==========");
 
 console.log("React 18 变化:");
 console.log("  1. React.FC 不再隐式包含 children（需显式声明）");

@@ -847,11 +847,11 @@ pnpm -r run build         # 所有子包并行执行 build
 有时只想运行某个包提供的命令，不想把它装成项目依赖：
 
 \`\`\`bash
-# 创建一个 React 项目，但不想全局装 create-react-app
-npx create-react-app my-app
+# 创建一个 React 项目（注意：create-react-app 已废弃，官方推荐使用 Next.js 或 Vite）
+npx create-next-app@latest my-app
 
-# pnpm 等价命令
-pnpm dlx create-react-app my-app
+# Vite 等价命令（pnpm create vite 已替代 pnpm dlx create-react-app）
+pnpm create vite my-app --template react
 
 # 运行 cowsay 一次（不会污染全局）
 npx cowsay "Hello"
@@ -1391,7 +1391,7 @@ coverage/
 
 \`\`\`bash
 # 安装版本
-nvm install 20           # 装 Node 20 最新小版本
+nvm install 22           # 装 Node 22 最新小版本
 nvm install 18.19.0      # 装指定版本
 
 # 切换版本
@@ -1444,7 +1444,7 @@ Volta 更激进——直接读 \`package.json\` 的 \`engines\` 字段，自动�
 
 \`\`\`bash
 # 一次性配置
-volta install node@20
+volta install node@22
 
 # 之后无论在哪个目录，volta 自动按 package.json 切换
 cd my-app

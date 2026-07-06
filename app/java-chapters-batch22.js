@@ -612,7 +612,7 @@ String name = "Java";  // 声明变量 name（String），初始值为 "Java"
 String msg = STR."欢迎使用 \\{name} 21";  // 声明变量 msg（String），初始值为 STR."欢迎使用 \\{name} 21"
 \`\`\`
 
-注：字符串模板仍在演进，使用前需确认当前 JDK 状态。
+注：字符串模板(STR)在 Java 21-22 为预览特性，但在 Java 23 中被撤回(JEP 465)，设计正在重新评估，目前(JDK 25)还未正式引入。使用前需确认当前 JDK 状态。
 
 ## 8. 适用场景
 

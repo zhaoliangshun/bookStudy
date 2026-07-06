@@ -3,7 +3,7 @@
 // -------------------------------------------------------------
 // 本文件包含以下章节：
 //   1. ts-satisfies           — satisfies 操作符深入
-//   2. ts-ts5-features        — TypeScript 5.x 新特性汇总
+//   2. ts-ts5-features        — TypeScript 5.x-6.x 新特性汇总
 //   3. ts-variance            — 协变、逆变与双变深入
 //   4. ts-unknown-any-deep    — unknown vs any 系统对比
 //   5. ts-assertion-vs-guard  — 类型断言与类型守卫对比
@@ -668,16 +668,16 @@ console.log("\\nsatisfies 操作符深入章节演示完成！");`,
   },
 
   // =========================================================
-  // 第二章：TypeScript 5.x 新特性汇总
+  // 第二章：TypeScript 5.x-6.x 新特性汇总
   // =========================================================
   {
     id: "ts-ts5-features",
-    title: "TypeScript 5.x 新特性汇总",
+    title: "TypeScript 5.x-6.x 新特性汇总",
     icon: "🚀",
     group: "工程化进阶",
-    content: `## TypeScript 5.x 新特性汇总
+    content: `## TypeScript 5.x-6.x 新特性汇总
 
-TypeScript 5.0 是一个里程碑版本——它不仅带来了大量新特性，还完成了编译器内部的彻底重写（从自研代码库迁移到基于 TypeScript 自身的模块化架构），编译速度、内存占用、包体积都有显著改善。从 5.0 到 5.5，TypeScript 团队持续交付了大量语言层面的改进：全新装饰器标准、const 类型参数、显式资源管理（using）、import attributes、NoInfer 工具类型、推断类型谓词等。本章将极其详细地梳理 TS 5.x 各版本的关键特性、演进时间线、升级注意事项，以及每个特性的实战用法。
+TypeScript 5.0 是一个里程碑版本——它不仅带来了大量新特性，还完成了编译器内部的彻底重写（从自研代码库迁移到基于 TypeScript 自身的模块化架构），编译速度、内存占用、包体积都有显著改善。从 5.0 到 6.1，TypeScript 团队持续交付了大量语言层面的改进：全新装饰器标准、const 类型参数、显式资源管理（using）、import attributes、NoInfer 工具类型、推断类型谓词、迭代器辅助方法、可擦除语法、以及 6.0 重大版本的模块解析默认值变更等。本章将极其详细地梳理 TS 5.x-6.x 各版本的关键特性、演进时间线、升级注意事项，以及每个特性的实战用法。
 
 ### TS 5.0：里程碑版本
 
@@ -849,6 +849,11 @@ const strs = arr.filter(isString); // strs: string[]
 | 5.3 | 2023.11 | import attributes (with 语法) |
 | 5.4 | 2024.03 | NoInfer 工具类型、Object.groupBy |
 | 5.5 | 2024.06 | 推断类型谓词、const 类型参数占位符 |
+| 5.6 | 2024.09 | 迭代器辅助方法、strict BuiltinIterator Checks |
+| 5.7 | 2024.11 | ES2024 API、--rewriteRelativeImportExtensions |
+| 5.8 | 2025.03 | --erasableSyntaxOnly、annotate 与推断类型声明 |
+| 6.0 | 2025.10 | 重大版本：默认 moduleResolution 为 bundler、移除废弃选项 |
+| 6.1 | 2026.03 | 进一步增强 |
 
 ### 升级注意事项与 Breaking Changes
 
@@ -868,7 +873,7 @@ const strs = arr.filter(isString); // strs: string[]
 
 下面通过代码演示 TS 5.x 的关键特性。`,
     code: `// ============================================================
-// TypeScript 5.x 新特性汇总 —— 代码演示
+// TypeScript 5.x-6.x 新特性汇总 —— 代码演示
 // ============================================================
 // 注意：部分特性（如标准装饰器、using）需要 TS 5.0+ 和合适的
 // target 配置才能正确转译。这里演示核心概念，沙箱环境会尽力

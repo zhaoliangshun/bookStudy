@@ -25,7 +25,7 @@ Linux 是当今服务器领域占据绝对主导地位的操作系统内核。�
 - **查看内核版本**: \`uname -r\` 显示内核版本号，\`uname -a\` 显示全部信息 - 排查驱动/兼容性问题时常用。
 - **包管理四件套**: 安装 \`apt install\`、更新源 \`apt update\`、升级 \`apt upgrade\`、卸载 \`apt remove\` - 不同发行版命令前缀不同但套路一致。
 - **服务器选型**: 生产环境追求稳定优先选 Debian/RHEL 系长期支持版；容器场景选 Alpine；个人学习选 Ubuntu - 不要在生产用滚动发行版。
-- **LTS 版本**: 长期支持版（如 Ubuntu 22.04 LTS）提供 5 年安全更新 - 生产服务器务必选 LTS。
+- **LTS 版本**: 长期支持版（如 Ubuntu 24.04 LTS）提供 5 年安全更新 - 生产服务器务必选 LTS。
 
 ## 原理与机制
 - **内核与用户空间分离**: 内核运行在特权态，应用程序通过系统调用（syscall）请求内核服务 - 这种隔离保证了系统稳定性与安全。
@@ -37,7 +37,7 @@ Linux 是当今服务器领域占据绝对主导地位的操作系统内核。�
 - **陷阱**: 在 Alpine 上直接跑 Ubuntu 编译的二进制会报 \`not found\` 或段错误 - 根因是 musl vs glibc 不兼容，需在 Alpine 内重新编译或用 \`gcompat\` 兼容层。
 - **陷阱**: \`yum\` 在新版 RHEL/CentOS 8+ 已被 \`dnf\` 取代，但 yum 命令仍作为软链保留 - 新脚本应优先用 \`dnf\`。
 - **陷阱**: \`apt update\` 只刷新索引不安装任何东西，\`apt upgrade\` 才是真正升级 - 新手常以为 update 就升级了导致漏洞未修复。
-- **陷阱**: CentOS 8 已于 2021 年底 EOL，原镜像源失效 - 迁移到 Rocky Linux/AlmaLinux 或切换 vault 源。
+- **陷阱**: CentOS 8 已于 2021 年底 EOL，CentOS 7 也已于 2024 年 6 月 EOL，原镜像源失效 - 迁移到 Rocky Linux/AlmaLinux 或切换 vault 源。
 
 ## 实战建议
 - **建议**: 生产服务器一律使用 LTS/稳定版，并通过 \`/etc/os-release\` 确认版本后再部署应用 - 避免在滚动版上自找麻烦。
@@ -58,7 +58,7 @@ if [ -f /etc/os-release ]; then
   head -n 6 /etc/os-release
 else
   echo "（当前为 macOS，无 /etc/os-release；Linux 下输出示例：）"
-  echo 'PRETTY_NAME="Ubuntu 22.04.3 LTS"  |  NAME="Ubuntu"  |  VERSION_ID="22.04"  |  ID=ubuntu'
+  echo 'PRETTY_NAME="Ubuntu 24.04 LTS"  |  NAME="Ubuntu"  |  VERSION_ID="24.04"  |  ID=ubuntu'
 fi
 
 # 3. 各发行版特征与包管理器对照（echo 模拟说明）

@@ -63,7 +63,7 @@ SQL（Structured Query Language，结构化查询语言）是关系型数据库�
 
 - **零配置**：无需服务端，单文件即可运行
 - **内存模式**：\`sqlite3 :memory:\` 在内存中建库，进程结束即销毁
-- **标准 SQL**：支持绝大部分 SQL-92 标准
+- **标准 SQL**：支持 SQL-92 大部分，并支持 SQL:1999 CTE、SQL:2003 窗口函数(3.25+)、RETURNING(3.35+)等
 - **轻量**：整个数据库就是一个文件
 
 **适合**：学习、原型、小型应用、嵌入式设备。
@@ -259,11 +259,11 @@ DROP TABLE users;
 -- 改表名
 ALTER TABLE users RENAME TO members;
 
--- 加列（SQLite 不支持改列类型、删列）
+-- 加列（SQLite 3.35+ 支持 DROP COLUMN，但不支持改列类型）
 ALTER TABLE users ADD COLUMN created_at TEXT;
 \`\`\`
 
-**踩坑点**：SQLite 的 ALTER TABLE 功能受限，不支持 DROP COLUMN（3.35+ 支持）、不支持改列类型。生产数据库迁移要小心。
+**踩坑点**：SQLite 的 ALTER TABLE 功能受限，DROP COLUMN 需 3.35+ 版本支持、不支持改列类型。生产数据库迁移要小心。
 
 下面代码演示各种数据类型和建表方式。`,
     code: `-- ============================================================

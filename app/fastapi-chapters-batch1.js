@@ -24,7 +24,7 @@ export const chapters = [
 
 ## 一句话定义
 
-FastAPI 是一个现代、快速（高性能）的 Web 框架，用于基于标准 Python 类型注解构建 Python 3.8+ 的 API。它由 Sebastián Ramírez（昵称 tiangolo）创建，于 2018 年底首次发布，短短几年就成为 Python Web 框架中增长最快的项目之一。
+FastAPI 是一个现代、快速（高性能）的 Web 框架，用于基于标准 Python 类型注解构建 Python 3.10+ 的 API。它由 Sebastián Ramírez（昵称 tiangolo）创建，于 2018 年底首次发布，短短几年就成为 Python Web 框架中增长最快的项目之一。
 
 把这句话拆开看，有三个关键词：
 
@@ -136,7 +136,7 @@ Node.js 的 Express/Koa 也是异步、轻量。FastAPI 与之相比：
 FastAPI 不是从零造轮子，它站在两个优秀库的肩膀上：
 
 - **Starlette**：提供 ASGI 路由、中间件、WebSocket、静态文件等底层能力。FastAPI 的性能和异步能力来自这里。
-- **Pydantic**：提供基于类型注解的数据校验和序列化。FastAPI 的请求体校验、响应模型、文档生成都依赖它。
+- **Pydantic**：提供基于类型注解的数据校验和序列化。FastAPI 的请求体校验、响应模型、文档生成都依赖它。注：自 FastAPI 0.100 起底层切换到 **Pydantic v2**，核心用 Rust 重写，性能比 v1 提升 5-50 倍，API 也做了调整（如 \`@validator\` → \`@field_validator\`、\`Config\` 内嵌类 → \`model_config\`）。新项目应直接基于 Pydantic v2 编写。
 
 理解这一点很重要：FastAPI 本质是"Starlette + Pydantic + 一层把类型注解串起来的胶水"。所以学 FastAPI 的深处，其实是在学 Starlette 的异步模型和 Pydantic 的数据建模。
 
@@ -199,7 +199,7 @@ FastAPI 的作者是 Sebastián Ramírez（GitHub: tiangolo），他同时也是
 
 ## 准备 Python 环境
 
-FastAPI 要求 Python 3.8 及以上（建议 3.10+，能用上新语法）。第一步是确认 Python 版本：
+FastAPI 要求 Python 3.8 及以上（建议 3.12+，能用上新语法）。第一步是确认 Python 版本：
 
 \`\`\`bash
 # 查看 Python 版本

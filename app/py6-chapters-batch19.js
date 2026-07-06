@@ -32,7 +32,7 @@ h.update(b" world")
 print(h.hexdigest())  # 与上面结果相同
 \`\`\`
 
-\`hashlib\` 支持 md5、sha1、sha224、sha256、sha384、sha512、blake2b、blake2s、sha3_256 等。Python 3.10+ 默认禁用弱哈希的 \`usedforsecurity=False\` 选项可用于绕过 FIPS 限制。
+\`hashlib\` 支持 md5、sha1、sha224、sha256、sha384、sha512、blake2b、blake2s、sha3_256 等。Python 3.9+ 引入了 \`usedforsecurity=False\` 参数，设为 False 表示该哈希不用于安全目的，从而在 FIPS 模式下也可使用 MD5/SHA1 等弱哈希。
 
 ### 三、哈希算法对比
 

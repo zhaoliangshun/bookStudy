@@ -2265,7 +2265,7 @@ def sync_fetch(url):
 async def async_fetch_all(urls):
     """模拟 httpx.AsyncClient 并发请求
     实际 httpx 用 async/await, 这里用线程池模拟并发概念"""
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
         tasks = [loop.run_in_executor(pool, sync_fetch, url) for url in urls]
         results = await asyncio.gather(*tasks)

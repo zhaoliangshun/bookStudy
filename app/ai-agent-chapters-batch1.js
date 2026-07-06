@@ -53,7 +53,7 @@ export const chapters = [
 一个完整的 Agent 由三个核心要素组成，缺一不可：
 
 **1. LLM（大脑）**
-负责理解、推理、决策。它是 Agent 的"思考器官"，决定了 Agent 能力的上限。常见选择有 GPT-4o、Claude 3.5、Gemini、以及 Qwen、DeepSeek 等开源模型。
+负责理解、推理、决策。它是 Agent 的"思考器官"，决定了 Agent 能力的上限。常见选择有 GPT-5、Claude 4 Sonnet/Opus、Gemini 2.5、以及 Qwen 3、DeepSeek V3、Llama 4 等开源模型。
 
 **2. 工具（Tools）**
 LLM 本身是"封闭"的——它只能基于训练数据回答问题，不能联网、不能执行代码、不能访问数据库。工具就是 Agent 的"手脚"，让模型能对外部世界产生影响。典型工具有：
@@ -300,11 +300,11 @@ LLM 做复杂计算容易出错（它不是计算器）。**对策**：让 Agent
 
 | 模型 | 厂商 | 特点 | 适合场景 |
 | --- | --- | --- | --- |
-| GPT-4o / GPT-4o-mini | OpenAI | 综合能力强、多模态、生态成熟 | 通用 Agent、英文为主 |
-| Claude 3.5 Sonnet | Anthropic | 长文本、逻辑推理强、风格稳 | 长文档处理、代码 Agent |
+| GPT-5 / GPT-4o | OpenAI | 综合能力强、多模态、生态成熟 | 通用 Agent、英文为主 |
+| Claude 4 Sonnet/Opus | Anthropic | 长文本、逻辑推理强、风格稳 | 长文档处理、代码 Agent |
 | Gemini 2.5 | Google | 超长上下文、多模态原生 | 超长上下文任务 |
-| Llama 3 | Meta | 开源、可本地部署 | 私有化、成本敏感 |
-| Qwen / DeepSeek | 阿里/深度求索 | 中文好、开源、性价比高 | 中文场景、本地部署 |
+| Llama 4 | Meta | 开源、可本地部署 | 私有化、成本敏感 |
+| Qwen 3 / DeepSeek V3 | 阿里/深度求索 | 中文好、开源、性价比高 | 中文场景、本地部署 |
 
 ### 八、本章小结与易错点
 

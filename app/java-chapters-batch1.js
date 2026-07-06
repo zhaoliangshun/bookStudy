@@ -80,8 +80,12 @@ Java 的故事始于 1991 年。当时 Sun 公司启动了一个名为 **"Green 
 | Java 16 | 2021 | Records 正式 |
 | Java 17 (LTS) | 2021 | 密封类正式、模式匹配增强 |
 | Java 21 (LTS) | 2023 | 虚拟线程、模式匹配 for switch、序列化集合 |
+| Java 22 | 2024 | Unnamed Variables & Patterns 正式、结构化并发预览 |
+| Java 23 | 2024 | Markdown 文档注释、ZGC 分代默认 |
+| Java 24 | 2025 | 模块导入声明、紧凑源文件 |
+| Java 25 (LTS) | 2025 | 模式匹配正式、结构化并发正式、AOT 编译增强 |
 
-**LTS（Long Term Support，长期支持）版本**会获得多年安全更新，是企业生产环境的首选。目前主流 LTS 版本是 **Java 8、11、17、21**。自 Java 9 起，Oracle 采用**每 6 个月发布一个新版本**的快速迭代节奏，非 LTS 版本只有 6 个月支持期。
+**LTS（Long Term Support，长期支持）版本**会获得多年安全更新，是企业生产环境的首选。目前主流 LTS 版本是 **Java 8、11、17、21、25**。自 Java 9 起，Oracle 采用**每 6 个月发布一个新版本**的快速迭代节奏，非 LTS 版本只有 6 个月支持期。
 
 ### Java 的三大平台版本
 
@@ -191,7 +195,7 @@ Java 的 GC 会**自动**监测哪些对象不再被引用，并回收它们占�
 
 - **可达性分析**：JVM 从"GC Roots"（局部变量、静态字段等）出发，遍历对象引用链。不在任何引用链上的对象就是垃圾。
 - **分代回收**：JVM 把堆分为**新生代**（Young Generation）和**老年代**（Old Generation）。新对象分配在新生代，多数对象"朝生夕死"，频繁回收新生代开销小；存活久的对象晋升到老年代，较少回收。
-- **常见收集器**：Serial、Parallel、CMS、G1（Java 9 默认）、ZGC、Shenandoah。
+- **常见收集器**：Serial、Parallel、CMS（已在 Java 14 中移除）、G1（Java 9+ 服务端默认）、ZGC、Shenandoah。
 
 程序员虽然不用手动释放内存，但仍需注意**无意中保持引用**导致的隐式内存泄漏。
 

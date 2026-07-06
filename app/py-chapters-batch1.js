@@ -68,6 +68,7 @@ Guido 从 ABC 语言中汲取了大量灵感，这些灵感后来成为了 Pytho
 | Python 3.10 | 2021 | 结构化模式匹配 match/case、更好的错误提示 |
 | Python 3.12 | 2023 | 性能改进、f-string 嵌套、类型参数语法 |
 | Python 3.13 | 2024 | 实验性自由线程（移除 GIL）、JIT 编译器 |
+| Python 3.14 | 2025 | 自由线程逐步稳定、JIT 编译器优化 |
 
 ### Python 2 与 Python 3 的区别
 
@@ -339,7 +340,7 @@ python3 -c "print('Hello, World!')"   # -c 选项直接执行字符串中的 Pyt
 
 \`\`\`
 $ python3
-Python 3.12.0 (main, Oct  2 2023, 10:00:00)
+Python 3.14.0 (main, Oct  7 2025, 10:00:00)
 [Clang 15.0.0 (clang-1500.0.40.1)] on darwin
 Type "help", "copyright", "credits" or "license" for more information.
 >>> 2 + 3

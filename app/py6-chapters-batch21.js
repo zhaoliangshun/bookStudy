@@ -1418,7 +1418,7 @@ GIL（Global Interpreter Lock，全局解释器锁）是 CPython 最具争议的
 
 ### 一、GIL 是什么
 
-GIL 是一把**进程级互斥锁**，同一进程内同一时刻只有一个线程能执行 Python 字节码。它只存在于 CPython，Jython、IronPython、PyPy（部分场景）没有 GIL。
+GIL 是一把**进程级互斥锁**，同一进程内同一时刻只有一个线程能执行 Python 字节码。它只存在于 CPython 和 PyPy，Jython、IronPython 没有 GIL（PyPy 有实验性的 STM 分支也可去除 GIL，但未广泛使用）。
 
 **为什么需要 GIL**：
 1. CPython 的引用计数内存管理不是线程安全的，加锁保护每个引用计数开销太大
@@ -1526,7 +1526,7 @@ make
 
 特性：
 - 移除 GIL，改用 biased reference counting + 延迟引用计数
-- C 扩展需重新编译并标记 \`PyUnstable_Tail_CallInterp\`
+- C 扩展需重新编译并在模块定义中标记 \`Py_mod_gil\` 声明不使用 GIL
 - 单线程性能略有损失（约 5-10%），多线程 CPU 任务接近线性加速
 - 3.13 是实验阶段，3.14+ 逐步稳定，未来默认开启
 

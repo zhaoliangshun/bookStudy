@@ -840,7 +840,7 @@ AI编程工具的交互模式决定了你如何使用它：
 - 上下文窗口：约8000-32000 tokens
 - 支持的IDE：VS Code、JetBrains全家桶、Neovim、Visual Studio
 - 支持的语言：几乎所有主流编程语言，JavaScript/TypeScript/Python效果最佳
-- 模型：GPT-4o、GPT-4 Turbo等
+- 模型：GPT-5、GPT-4o等
 
 **定价：**
 - 个人版：\$10/月（或\$100/年）
@@ -879,7 +879,7 @@ AI编程工具的交互模式决定了你如何使用它：
 
 **技术特点：**
 - 底层是VS Code，保留所有VS Code功能和插件生态
-- 可以自定义使用的AI模型（GPT-4o、Claude 3.5 Sonnet等）
+- 可以自定义使用的AI模型（GPT-5、Claude 4 Sonnet/Opus等）
 - 上下文窗口大，可以理解整个项目结构
 - 支持代码索引（codebase indexing），AI可以"理解"你的整个项目
 
@@ -1012,8 +1012,8 @@ AI编程工具的交互模式决定了你如何使用它：
 - Code Interpreter：可以执行Python代码并分析数据
 
 **技术特点：**
-- 模型：GPT-4o、GPT-4 Turbo、o1系列
-- 上下文窗口：128K tokens（GPT-4 Turbo）
+- 模型：GPT-5、GPT-4o、o1系列
+- 上下文窗口：400K+ tokens（GPT-5）
 - 多模态：可以处理图片输入
 - 联网搜索：可以获取最新信息
 - 文件上传：可以分析代码文件
@@ -1056,13 +1056,13 @@ AI编程工具的交互模式决定了你如何使用它：
 - Projects：可以创建项目空间，上传文件维持上下文
 
 **技术特点：**
-- 模型：Claude 3.5 Sonnet、Claude 3 Opus
+- 模型：Claude 4 Sonnet/Opus
 - 上下文窗口：200K tokens（行业领先）
 - 支持文件上传和代码分析
 - 强调安全性和准确性
 
 **定价：**
-- 免费版：Claude 3.5 Sonnet，有使用限制
+- 免费版：Claude 4 Sonnet，有使用限制
 - Pro版：\$20/月，更高使用限额
 - Team版：\$25/用户/月
 - Enterprise版：定制定价

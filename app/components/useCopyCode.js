@@ -11,14 +11,16 @@
 //   <button onClick={handleCopy}>{copied ? "✓ 已复制" : "复制"}</button>
 // =============================================================
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 
 export default function useCopyCode(code) {
   // 是否已复制的反馈状态（1.5 秒后自动复位）
   const [copied, setCopied] = useState(false);
   // 用 ref 保存最新的 code，避免 handleCopy 闭包陈旧
   const codeRef = useRef(code);
-  codeRef.current = code;
+  useEffect(() => {
+    codeRef.current = code;
+  }, [code]);
 
   const handleCopy = useCallback(async () => {
     const text = codeRef.current || "";

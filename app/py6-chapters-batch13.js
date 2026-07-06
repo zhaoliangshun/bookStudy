@@ -2499,7 +2499,7 @@ import asyncio
 import requests
 
 async def fetch(url):
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     # 把阻塞的 requests.get 放到线程池执行
     resp = await loop.run_in_executor(None, requests.get, url)
     return resp.text
@@ -2515,8 +2515,8 @@ async def fetch(url):
 # 3.9+ 推荐写法
 result = await asyncio.to_thread(blocking_function, arg1, arg2)
 
-# 等价于（3.8 及更早）
-loop = asyncio.get_event_loop()
+# 等价于（3.8 及更早用 get_event_loop，3.10+ 推荐用 get_running_loop）
+loop = asyncio.get_running_loop()
 result = await loop.run_in_executor(None, blocking_function, arg1, arg2)
 \`\`\`
 
@@ -2543,7 +2543,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 # 自定义线程池大小
 executor = ThreadPoolExecutor(max_workers=4)
-loop = asyncio.get_event_loop()
+loop = asyncio.get_running_loop()
 result = await loop.run_in_executor(executor, blocking_func, arg)
 
 # 进程池（CPU 密集型阻塞任务）
@@ -2738,7 +2738,7 @@ print("\\n=== 3. run_in_executor（3.8 及更早）===\\n")
 
 async def run_in_executor_demo():
     """用 run_in_executor 包装阻塞函数"""
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     # 无参数的阻塞函数
     def simple_block():
@@ -2777,7 +2777,7 @@ async def custom_executor_demo():
     """使用自定义线程池和进程池"""
     # 自定义线程池（IO 密集型）
     thread_pool = ThreadPoolExecutor(max_workers=4)
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     def io_task(n):
         time.sleep(0.1)

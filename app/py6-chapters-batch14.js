@@ -46,7 +46,7 @@ mypy --strict app.py # 严格模式
 
 \`\`\`toml
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.13"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -447,7 +447,7 @@ repos:
     rev: 24.3.0
     hooks:
       - id: black
-        language_version: python3.12
+        language_version: python3.13
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
     hooks:
@@ -1987,7 +1987,7 @@ print("\\n=== 项目结构演示结束 ===")`
 ### 二、Dockerfile 基础
 
 \`\`\`dockerfile
-FROM python:3.12-slim
+FROM python:3.13-slim
 
 WORKDIR /app
 
@@ -2012,10 +2012,10 @@ CMD ["python", "-m", "myproject.server"]
 
 | 镜像 | 大小 | 适用 |
 |------|------|------|
-| python:3.12 | ~900MB | 完整 Debian，含编译工具 |
-| python:3.12-slim | ~150MB | 精简 Debian，**推荐** |
-| python:3.12-alpine | ~50MB | Alpine，可能有 musl 兼容问题 |
-| python:3.12-bookworm | ~900MB | 最新 Debian |
+| python:3.13 | ~900MB | 完整 Debian，含编译工具 |
+| python:3.13-slim | ~150MB | 精简 Debian，**推荐** |
+| python:3.13-alpine | ~50MB | Alpine，可能有 musl 兼容问题 |
+| python:3.13-bookworm | ~900MB | 最新 Debian |
 
 > 💡 **避坑提示**：alpine 用 musl libc，部分 Python 包（如 numpy、pandas）需重新编译，构建慢且可能出问题。生产环境优先用 slim。
 
@@ -2025,13 +2025,13 @@ CMD ["python", "-m", "myproject.server"]
 
 \`\`\`dockerfile
 # 阶段1：builder
-FROM python:3.12-slim AS builder
+FROM python:3.13-slim AS builder
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --user --no-cache-dir -r requirements.txt
 
 # 阶段2：runtime
-FROM python:3.12-slim
+FROM python:3.13-slim
 WORKDIR /app
 COPY --from=builder /root/.local /root/.local
 COPY . .
@@ -2046,9 +2046,9 @@ CMD ["python", "-m", "myproject.server"]
 
 \`\`\`
 # requirements.txt
-fastapi==0.110.0
-uvicorn[standard]==0.27.0
-pydantic==2.6.0
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+pydantic==2.9.0
 \`\`\`
 
 锁定版本保证可复现构建。生产建议用 \`pip-compile\`（pip-tools）生成锁定文件。
@@ -2155,7 +2155,7 @@ volumes:
 FastAPI 应用示例：
 
 \`\`\`dockerfile
-FROM python:3.12-slim
+FROM python:3.13-slim
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -2181,7 +2181,7 @@ Docker 镜像采用**分层文件系统**（OverlayFS）：
 
 ### 十三、最佳实践总结
 
-- 基础镜像用 python:3.12-slim，慎用 alpine
+- 基础镜像用 python:3.13-slim，慎用 alpine
 - 多阶段构建分离 builder 与 runtime
 - .dockerignore 必备，排除 .git/.venv/缓存
 - 非 root 用户运行，减小攻击面
@@ -2197,7 +2197,7 @@ print("--- 1. 模拟 Dockerfile 指令解析 ---")
 
 # 模拟一个典型的 Dockerfile
 dockerfile = [
-    ("FROM", "python:3.12-slim", "基础镜像"),
+    ("FROM", "python:3.13-slim", "基础镜像"),
     ("WORKDIR", "/app", "设置工作目录"),
     ("COPY", "requirements.txt .", "复制依赖文件"),
     ("RUN", "pip install -r requirements.txt", "安装依赖"),
@@ -2215,10 +2215,10 @@ for cmd, args, desc in dockerfile:
 print("\\n--- 2. 镜像选择对比 ---")
 
 images = [
-    ("python:3.12", "~900MB", "完整 Debian", "含编译工具，体积大"),
-    ("python:3.12-slim", "~150MB", "精简 Debian", "推荐，平衡体积与兼容性"),
-    ("python:3.12-alpine", "~50MB", "Alpine Linux", "musl libc 可能有兼容问题"),
-    ("python:3.12-bookworm", "~900MB", "最新 Debian", "同 python:3.12"),
+    ("python:3.13", "~900MB", "完整 Debian", "含编译工具，体积大"),
+    ("python:3.13-slim", "~150MB", "精简 Debian", "推荐，平衡体积与兼容性"),
+    ("python:3.13-alpine", "~50MB", "Alpine Linux", "musl libc 可能有兼容问题"),
+    ("python:3.13-bookworm", "~900MB", "最新 Debian", "同 python:3.13"),
 ]
 print(f"  {'镜像':<25} {'大小':<10} {'基础':<15} {'说明'}")
 for img, size, base, note in images:
@@ -2230,7 +2230,7 @@ print("\\n--- 3. 多阶段构建演示 ---")
 
 print("  阶段1：builder（含编译工具）")
 builder_stage = [
-    "FROM python:3.12-slim AS builder",
+    "FROM python:3.13-slim AS builder",
     "WORKDIR /app",
     "COPY requirements.txt .",
     "RUN pip install --user --no-cache-dir -r requirements.txt",
@@ -2240,7 +2240,7 @@ for line in builder_stage:
 
 print("\\n  阶段2：runtime（仅运行时）")
 runtime_stage = [
-    "FROM python:3.12-slim",
+    "FROM python:3.13-slim",
     "WORKDIR /app",
     "COPY --from=builder /root/.local /root/.local",
     "COPY . .",
@@ -2268,7 +2268,7 @@ def build_step(instruction, content):
     return f"新建层 #{len(layers)}"
 
 steps = [
-    ("FROM", "python:3.12-slim"),
+    ("FROM", "python:3.13-slim"),
     ("COPY", "requirements.txt"),
     ("RUN", "pip install -r requirements.txt"),
     ("COPY", "源码"),
@@ -2348,7 +2348,7 @@ print("\\n  => docker compose up -d 一键启动 web + db")
 
 print("\\n--- 9. 最佳实践总结 ---")
 best = [
-    "基础镜像用 python:3.12-slim，慎用 alpine",
+    "基础镜像用 python:3.13-slim，慎用 alpine",
     "多阶段构建分离 builder 与 runtime",
     ".dockerignore 必备，排除 .git/.venv/缓存",
     "非 root 用户运行，减小攻击面",
@@ -2439,7 +2439,7 @@ stages:
 
 lint:
   stage: lint
-  image: python:3.12
+  image: python:3.13
   script:
     - pip install ruff
     - ruff check .
@@ -2448,7 +2448,7 @@ lint:
 
 test:
   stage: test
-  image: python:3.12
+  image: python:3.13
   script:
     - pip install -e ".[dev]"
     - pytest --cov

@@ -2936,11 +2936,11 @@ uv 兼容 \`pyproject.toml\`，也支持管理 Python 版本本身（\`uv python
 
 ### 6.1 __pycache__ 与 .pyc
 
-你第一次跑 \`python mymod.py\` 后，目录里会多一个 \`__pycache__/mymod.cpython-312.pyc\` 文件。这是 Python 把源码编译成的**字节码缓存**：
+你第一次跑 \`python mymod.py\` 后，目录里会多一个 \`__pycache__/mymod.cpython-314.pyc\` 文件。这是 Python 把源码编译成的**字节码缓存**：
 
 - Python 是解释型语言，但执行前会先把 \`.py\` 编译成字节码（\`.pyc\`）
 - 下次运行时如果源码没改，直接加载 \`.pyc\`，跳过编译，启动更快
-- \`.pyc\` 是平台无关的字节码，但与 Python 版本绑定（\`cpython-312\` 标识）
+- \`.pyc\` 是平台无关的字节码，但与 Python 版本绑定（\`cpython-314\` 标识）
 
 \`__pycache__\` 不需要提交到 git，加入 \`.gitignore\`。
 

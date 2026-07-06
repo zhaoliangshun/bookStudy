@@ -767,7 +767,7 @@ React 使用 Scheduler 包来管理任务优先级：
 
 **Suspense**：允许组件等待某些条件满足后再渲染。
 
-**Concurrent Mode**：React 18 中的并发特性，让应用保持响应性。
+**Concurrent Mode**：React 18 起通过 createRoot 默认启用的并发渲染特性，让应用保持响应性。
 
 ## 6. React 性能优化
 
@@ -924,10 +924,15 @@ Next.js 是一个 React 框架，提供了多种渲染策略：
 - ISR（Incremental Static Regeneration）：定期重新生成静态页面
 - CSR：客户端渲染
 
-**数据获取方法**：
+**数据获取方法（Pages Router 专用）**：
 - getServerSideProps：每次请求时运行
 - getStaticProps：构建时运行
 - getStaticPaths：定义动态路由的静态生成路径
+
+> 注意：以上 getServerSideProps / getStaticProps / getStaticPaths 仅适用于 Pages Router（pages/ 目录）。在 App Router（app/ 目录）中，数据获取方式已改变：
+> - **async Server Component 内直接 await fetch**：服务端组件可直接写成 async function，在体内 await fetch(...) 即可获取数据，无需手动调用任何特殊函数
+> - **Server Actions**：在服务端组件或 'use server' 标注的函数中定义，用于表单提交、数据变更等场景
+> - 流式渲染配合 Suspense 边界实现渐进式加载
 
 ### 7.4 Next.js 的渲染策略选择
 
@@ -946,18 +951,18 @@ Next.js 是一个 React 框架，提供了多种渲染策略：
 - 不想每次请求都重新构建
 - 想在保持静态性能的同时支持内容更新
 
-## 8. React 18 新特性
+## 8. React 18/19 新特性
 
 ### 8.1 Concurrent Mode（并发模式）
 
-Concurrent Mode 是 React 18 的核心特性，它让 React 可以同时准备多个版本的 UI。
+从 React 18 起，并发渲染通过 createRoot 默认启用，无需显式开启 Concurrent Mode。它让 React 可以同时准备多个版本的 UI。
 
 **关键能力**：
 - 中断可恢复的渲染
 - 为任务分配优先级
 - 在后台预渲染内容
 
-**并发特性不是默认开启的**：在 React 18 中，并发特性需要通过特定的 API 来启用。
+**并发渲染默认启用**：在 React 18 中，只要使用 createRoot 挂载根节点即默认启用并发特性；旧版的 ReactDOM.render 已废弃，且不再需要通过 React.StrictMode 或实验性 API 显式开启 Concurrent Mode。
 
 ### 8.2 Suspense 改进
 
@@ -1019,6 +1024,44 @@ startTransition(() => {
 **useSyncExternalStore**：用于安全地订阅外部存储。
 
 **useInsertionEffect**：在 DOM 变更之前同步执行，适用于 CSS-in-JS 库。
+
+### 8.5 React 19 新特性
+
+React 19 在 React 18 并发渲染的基础上，进一步简化了数据变更、异步处理与组件间通信：
+
+**Actions（动作）**：将异步操作（如提交表单、调用接口）与 pending 状态、错误处理、乐观更新整合为一体。在 form 的 action 属性中直接传入异步函数，即可通过 useFormStatus、useActionState 自动管理 pending、错误与上一次结果。
+
+**use() API**：用于在组件中读取 Promise 或 Context，可像 Hook 一样使用，且支持在条件分支中调用（普通 Hooks 不允许），与 Suspense 配合实现流式数据加载：
+
+\`\`\`javascript
+import { use } from 'react';
+
+function Profile({ promise }) {
+  // 可在条件分支中调用
+  const data = use(promise);
+  return <div>{data.name}</div>;
+}
+\`\`\`
+
+**useOptimistic**：在异步提交完成前先以"乐观值"更新 UI，提交成功后与真实数据合并，失败时自动回滚，常用于点赞、评论等交互。
+
+**useFormStatus**：在表单内部子组件中读取当前提交状态（pending、action 等），无需逐层透传。
+
+**ref 作为 prop 无需 forwardRef**：函数组件可以直接在 props 中接收 ref，React.forwardRef 不再是必需（仍可使用，但官方已不推荐）：
+
+\`\`\`javascript
+function Input({ ref, ...props }) {
+  return <input ref={ref} {...props} />;
+}
+\`\`\`
+
+**Server Components 稳定化**：React 19 中 Server Components 与 Server Actions 正式稳定，配合 Next.js App Router 可直接在服务端组件中 await 数据请求、定义 'use server' 函数。
+
+**其他增强**：
+- 文档元数据支持：在组件中直接写 title、meta 等标签会自动 hoist 到文档
+- 资源加载优化：preload、preinit、prefetchDNS、preconnect API
+- 改进的错误处理：onUncaughtError、onCaughtError 选项
+- Context 简化：Context 可直接作为 Provider 使用，无需 Context.Provider
 
 ## 9. 常见 React 面试题
 

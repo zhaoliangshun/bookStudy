@@ -38,7 +38,7 @@ Python 是一门**高级、解释型、跨平台**的编程语言，由荷兰人
 - **2000**：Python 2.0 引入垃圾回收和 Unicode
 - **2008**：Python 3.0 不兼容升级，全面转向 Unicode
 - **2020**：Python 2 官方停止维护
-- **2024+**：Python 3.12 / 3.13 持续演进，性能大幅提升
+- **2024+**：Python 3.13 / 3.14 持续演进，自由线程逐步稳定，JIT 编译器优化
 
 ### Python 能做什么
 
@@ -134,12 +134,12 @@ print("=" * 40)`
 python3 --version   # 调用 python3 解释器，--version 输出版本号
 \`\`\`
 
-若输出类似 \`Python 3.12.0\`，说明已安装。若提示"找不到命令"，需安装。
+若输出类似 \`Python 3.14.0 或 Python 3.13.0\`，说明已安装。若提示"找不到命令"，需安装。
 
 ### 第二步：下载安装
 
 - **官网**：https://www.python.org/downloads/
-- 下载 3.10 及以上版本
+- 下载 3.12 及以上版本（推荐 3.13 或 3.14）
 - **Windows 安装时务必勾选 "Add Python to PATH"**（否则命令行找不到 python）
 - macOS 推荐用 Homebrew：\`brew install python\`
 - Linux（Ubuntu）：\`sudo apt install python3 python3-pip\`
@@ -1020,7 +1020,7 @@ flask = "^3.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
-black = "^23.0.0"
+black = "^24.0.0"
 
 [build-system]
 requires = ["poetry-core"]

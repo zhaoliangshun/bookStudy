@@ -1960,7 +1960,7 @@ R：迁移后构建时间从20分钟缩短到3分钟，团队开发效率提升�
 
 **制定学习计划的SMART原则**：
 
-- **Specific（具体）**：不要写"学习React"，而要写"学习React 18的并发特性，包括Suspense、useTransition、useDeferredValue"
+- **Specific（具体）**：不要写"学习React"，而要写"学习React 18/19的并发特性与新API（Actions、use()、useOptimistic、Server Components）"
 - **Measurable（可衡量）**：不要写"多刷算法题"，而要写"每天刷3道LeetCode中等难度题"
 - **Achievable（可实现）**：设定合理的目标，不要好高骛远
 - **Relevant（相关）**：学习内容应该和你的职业目标相关

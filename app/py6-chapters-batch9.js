@@ -1307,7 +1307,7 @@ def run_demo_server():
             # sendall 确保全部数据发出（send 可能只发一部分）
             conn.sendall(response)
             conn.close()
-        except:
+        except Exception:
             pass
         finally:
             server.close()

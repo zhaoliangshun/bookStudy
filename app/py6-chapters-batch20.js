@@ -1684,7 +1684,7 @@ def broadcast(message):
 3. **消息持久化**：历史存入 SQLite，支持离线消息
 4. **用户认证**：登录注册，密码哈希存储
 5. **WebSocket**：用 \`websockets\` 库支持浏览器客户端
-6. **加密通信**：TLS 包裹 socket（\`ssl.wrap_socket\`）
+6. **加密通信**：用 \`ssl.SSLContext\` 包裹 socket（\`SSLContext.wrap_socket()\`）
 7. **心跳检测**：定期 ping/pong，清理僵尸连接
 
 ### 八、业务场景类比

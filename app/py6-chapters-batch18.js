@@ -990,7 +990,7 @@ Python 不是直接执行源码，而是经过**两步编译**：
 
 \`\`\`bash
 # 导入模块时自动生成
-python -c "import mymodule"  # 生成 __pycache__/mymodule.cpython-312.pyc
+python -c "import mymodule"  # 生成 __pycache__/mymodule.cpython-314.pyc
 
 # 手动编译
 python -m compileall mymodule.py
@@ -2801,7 +2801,24 @@ PyPy 优势：
 - C 扩展兼容性差（cpyext 模拟慢）
 - 内存占用大（JIT 编译缓存）
 
-### 三、Pyjion（CPython JIT）
+### 三、Python 3.13+ 内置 JIT（PEP 744）
+
+Python 3.13 引入了实验性内置 JIT 编译器（PEP 744），无需安装任何第三方扩展：
+
+\`\`\`bash
+# 通过环境变量启用内置 JIT
+PYTHONJIT=1 python3 script.py
+\`\`\`
+
+内置 JIT 特点：
+- CPython 原生集成，无需额外安装
+- 基于 copy-and-patch 技术，启动开销极低
+- 3.13 为实验阶段，3.14+ 逐步稳定
+- 单线程 CPU 密集任务可有 2-10% 提升
+
+### 四、Pyjion（第三方 CPython JIT 扩展）
+
+> **注意**：Python 3.13+ 已内置 JIT（见上节），推荐优先使用内置方案。Pyjion 作为第三方扩展适用于 3.9-3.12 版本。
 
 Pyjion 是微软开发的 CPython JIT 扩展，3.9+ 可用：
 
@@ -2824,8 +2841,9 @@ Pyjion 特点：
 - 不换解释器，C Python 加 JIT
 - 适合已有代码无侵入加速
 - 加速比 PyPy 小（约 2-3x）
+- 维护趋缓，建议 3.13+ 用户使用内置 JIT
 
-### 四、Numba 科学计算 JIT
+### 五、Numba 科学计算 JIT
 
 Numba 是专为**数值计算**优化的 JIT，用 LLVM：
 
