@@ -794,6 +794,11 @@ body {
   max-width: 820px;
 }
 
+/* 章节末尾独立 CodeBlock（不在 .md-body 内）需与 .md-body 同宽 */
+.lesson-section > .md-code-block-wrap {
+  max-width: 820px;
+}
+
 .md-heading {
   font-weight: 700;
   margin: 24px 0 12px;
