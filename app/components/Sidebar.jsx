@@ -60,6 +60,14 @@ const BOOK_CATEGORIES = [
     ],
   },
   {
+    name: "Java 教程",
+    icon: "☕",
+    books: [
+      { path: "/java", label: "Java", icon: "☕" },
+      { path: "/java-web", label: "Java Web", icon: "🌐" },
+    ],
+  },
+  {
     name: "编程教程",
     icon: "💻",
     books: [
@@ -74,8 +82,6 @@ const BOOK_CATEGORIES = [
       { path: "/net", label: "计算机网络", icon: "🌐" },
       { path: "/blog-tutorial", label: "Blog 系统教程", icon: "📝" },
       { path: "/deploy", label: "部署与运维", icon: "🚀" },
-      { path: "/java", label: "Java", icon: "☕" },
-      { path: "/java-web", label: "Java Web", icon: "🌐" },
       { path: "/csharp", label: "C#", icon: "🟪" },
       { path: "/go", label: "Go", icon: "🐹" },
       { path: "/sass", label: "Sass", icon: "💅" },
@@ -150,30 +156,22 @@ export default function Sidebar({
   const [width, setWidth] = useState(DEFAULT_SIDEBAR_W);
   const [bookDropdownOpen, setBookDropdownOpen] = useState(false);
   const bookDropdownRef = useRef(null);
-  // 默认折叠的分类（点击标题后展开）
-  const [collapsedCategories, setCollapsedCategories] = useState(
-    () => new Set(["综合知识", "已隐藏"])
-  );
+  // 手风琴模式：同一时间只展开一个分类。
+  // expandedCategory 为当前展开的分类名；null 表示全部收起。
+  // 初始默认展开"Python 教程"。
+  const [expandedCategory, setExpandedCategory] = useState("Python 教程");
 
   // 当前书籍信息
   const currentBook = ALL_BOOKS.find((b) => b.path === currentPath) || ALL_BOOKS[0];
 
-  // 智能展开：如果当前页面属于某个已折叠分类，自动展开它，避免迷路
+  // 智能展开：如果当前页面属于某个分类，自动展开它（并收起其他），避免迷路
   useEffect(() => {
-    setCollapsedCategories((prev) => {
-      // 找到当前 path 所属的分类名
-      const matchedCategory = BOOK_CATEGORIES.find((cat) =>
-        cat.books.some((b) => b.path === currentPath)
-      );
-      if (!matchedCategory) return prev;
-      // 如果当前分类被折叠，展开它
-      if (prev.has(matchedCategory.name)) {
-        const next = new Set(prev);
-        next.delete(matchedCategory.name);
-        return next;
-      }
-      return prev;
-    });
+    const matchedCategory = BOOK_CATEGORIES.find((cat) =>
+      cat.books.some((b) => b.path === currentPath)
+    );
+    if (matchedCategory) {
+      setExpandedCategory(matchedCategory.name);
+    }
   }, [currentPath]);
 
   // 点击外部关闭书籍目录下拉
@@ -463,18 +461,15 @@ export default function Sidebar({
                   </div>
                   <div className="sidebar-book-dropdown-body">
                     {BOOK_CATEGORIES.map((category) => {
-                      const isCollapsed = collapsedCategories.has(category.name);
+                      const isCollapsed = expandedCategory !== category.name;
                       return (
                       <div key={category.name} className="sidebar-book-category">
                         <div
                           className={`sidebar-book-category-title ${isCollapsed ? "collapsed" : ""}`}
                           onClick={() =>
-                            setCollapsedCategories((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(category.name)) next.delete(category.name);
-                              else next.add(category.name);
-                              return next;
-                            })
+                            setExpandedCategory((prev) =>
+                              prev === category.name ? null : category.name
+                            )
                           }
                           title={isCollapsed ? "点击展开" : "点击收起"}
                         >
