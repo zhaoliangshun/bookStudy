@@ -1793,8 +1793,74 @@ body {
   background: var(--bg-elevated);
 }
 
+/* ===== 快速滚动按钮（回到顶部 / 跳到底部） ===== */
+.quick-scroll {
+  position: fixed;
+  right: 24px;
+  bottom: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 9000;
+  pointer-events: none;
+}
+
+.quick-scroll-btn {
+  pointer-events: auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition: all 0.2s ease;
+  opacity: 0;
+  animation: quickScrollIn 0.25s ease forwards;
+}
+
+.quick-scroll-btn:hover {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.quick-scroll-btn:active {
+  transform: translateY(0);
+}
+
+@keyframes quickScrollIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 /* ===== 响应式：移动端 ===== */
 @media (max-width: 900px) {
+  /* 快速滚动按钮在移动端靠右下角，避免遮挡内容 */
+  .quick-scroll {
+    right: 16px;
+    bottom: 64px;
+  }
+  .quick-scroll-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+
   /* 移动端浮动菜单按钮（替代原顶部 header 的菜单按钮） */
   .mobile-menu-btn {
     display: flex;
