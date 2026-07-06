@@ -68,6 +68,25 @@ const BOOK_CATEGORIES = [
     ],
   },
   {
+    name: "数据库教程",
+    icon: "🗄️",
+    books: [
+      { path: "/sql", label: "数据库开发", icon: "🗄️" },
+      { path: "/mysql", label: "MySQL", icon: "🐬" },
+      { path: "/redis", label: "Redis", icon: "🟥" },
+      { path: "/mongo", label: "MongoDB", icon: "🍃" },
+    ],
+  },
+  {
+    name: "AI 教程",
+    icon: "🤖",
+    books: [
+      { path: "/ai", label: "AI编程", icon: "🤖" },
+      { path: "/aiapp", label: "AI 应用编程", icon: "🤖" },
+      { path: "/ai-agent", label: "AI Agent开发", icon: "🤖" },
+    ],
+  },
+  {
     name: "编程教程",
     icon: "💻",
     books: [
@@ -86,14 +105,10 @@ const BOOK_CATEGORIES = [
       { path: "/go", label: "Go", icon: "🐹" },
       { path: "/sass", label: "Sass", icon: "💅" },
       { path: "/gql", label: "GraphQL", icon: "◈" },
-      { path: "/sql", label: "数据库开发", icon: "🗄️" },
       { path: "/backend", label: "后端开发", icon: "🖥️" },
       { path: "/cs", label: "计算机原理", icon: "💡" },
       { path: "/howitworks", label: "代码怎么跑起来的", icon: "⚙️" },
       { path: "/os", label: "操作系统", icon: "🐧" },
-      { path: "/ai", label: "AI编程", icon: "🤖" },
-      { path: "/aiapp", label: "AI 应用编程", icon: "🤖" },
-      { path: "/ai-agent", label: "AI Agent开发", icon: "🤖" },
       { path: "/fe-interview", label: "前端面试", icon: "🎯" },
       { path: "/fe-engineering", label: "前端工程化", icon: "⚙️" },
       { path: "/nextjs", label: "Next.js", icon: "▲" },
@@ -160,6 +175,11 @@ export default function Sidebar({
   // expandedCategory 为当前展开的分类名；null 表示全部收起。
   // 初始默认展开"Python 教程"。
   const [expandedCategory, setExpandedCategory] = useState("Python 教程");
+  // 章节分组收起状态：用 Set 记录已收起的分组名，默认全部收起。
+  // 点击 group-title 可 toggle；当前激活章节所在分组会自动展开。
+  const [collapsedGroups, setCollapsedGroups] = useState(
+    () => new Set(groupedChapters.map((g) => g.group))
+  );
 
   // 当前书籍信息
   const currentBook = ALL_BOOKS.find((b) => b.path === currentPath) || ALL_BOOKS[0];
@@ -173,6 +193,49 @@ export default function Sidebar({
       setExpandedCategory(matchedCategory.name);
     }
   }, [currentPath]);
+
+  // 切换章节分组的收起 / 展开状态
+  const toggleGroup = useCallback((groupName) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupName)) {
+        next.delete(groupName);
+      } else {
+        next.add(groupName);
+      }
+      return next;
+    });
+  }, []);
+
+  // 激活章节变化时，自动展开其所在分组（避免点"下一章"后章节被收起看不到）
+  // 注意：
+  //   1. 只在 activeId 真正变化时触发，不依赖 collapsedGroups，
+  //      否则用户手动收起当前章节所在分组时会被立即展开回去。
+  //   2. 首次挂载（prevActiveIdRef 为 null）时跳过——首次展开由
+  //      tryRestore 统一负责，避免"初始 activeId 展开第一组"与
+  //      "恢复 activeId 展开第 N 组"同时发生导致两组都展开。
+  const prevActiveIdRef = useRef(null);
+  useEffect(() => {
+    // 首次挂载，记录当前 activeId 但不展开（交给 tryRestore 处理）
+    if (prevActiveIdRef.current === null) {
+      prevActiveIdRef.current = activeId;
+      return;
+    }
+    // activeId 没变（例如只是 collapsedGroups 变了），不做任何处理
+    if (prevActiveIdRef.current === activeId) return;
+    prevActiveIdRef.current = activeId;
+    if (!activeId) return;
+    const matched = groupedChapters.find((g) =>
+      g.items.some((c) => c.id === activeId)
+    );
+    if (matched && collapsedGroups.has(matched.group)) {
+      setCollapsedGroups((prev) => {
+        const next = new Set(prev);
+        next.delete(matched.group);
+        return next;
+      });
+    }
+  }, [activeId, groupedChapters, collapsedGroups]);
 
   // 点击外部关闭书籍目录下拉
   useEffect(() => {
@@ -252,6 +315,8 @@ export default function Sidebar({
   const activeIdRef = useRef(activeId);
   const onSelectRef = useRef(onSelectChapter);
   const validIdsRef = useRef(allChapterIds);
+  // 当前课程路径的 ref，供 mount 一次性 effect 中安全读取最新值
+  const currentPathRef = useRef(currentPath);
 
   useEffect(() => {
     activeIdRef.current = activeId;
@@ -262,35 +327,86 @@ export default function Sidebar({
   useEffect(() => {
     validIdsRef.current = allChapterIds;
   }, [allChapterIds]);
-
   useEffect(() => {
-    // 从 URL hash 读取章节 id，若有效且与当前不同则同步
-    const syncFromHash = () => {
+    currentPathRef.current = currentPath;
+  }, [currentPath]);
+
+  // ===== 章节恢复：URL hash > localStorage > 默认第一章 =====
+  // -------------------------------------------------------------
+  // 触发时机：
+  //   1. 组件 mount（打开 / 刷新课程页面）
+  //   2. currentPath 变化（切换课程）
+  //   3. 浏览器前进 / 后退（hashchange / popstate）
+  //
+  // 恢复章节时同时重置分组状态：全部收起，仅展开目标章节所在分组。
+  // 这样可以避免"初始 activeId（第一组）展开第一组"与"恢复 activeId
+  // （第 N 组）展开第 N 组"同时发生导致两组都展开的问题。
+  // -------------------------------------------------------------
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const tryRestore = () => {
       const hash = window.location.hash.slice(1);
-      if (
-        hash &&
-        hash !== activeIdRef.current &&
-        validIdsRef.current.includes(hash)
-      ) {
-        onSelectRef.current(hash);
+      let targetId = null;
+      // 1. 优先恢复 URL hash 中的章节
+      if (hash && validIdsRef.current.includes(hash)) {
+        targetId = hash;
+      }
+      // 2. 没有 hash 时，回退到 localStorage 记住的最后浏览章节
+      if (!targetId && !hash && currentPath) {
+        try {
+          const last = localStorage.getItem(
+            `sidebar:lastChapter:${currentPath}`
+          );
+          if (last && validIdsRef.current.includes(last)) {
+            targetId = last;
+          }
+        } catch (e) {
+          // localStorage 不可用时静默忽略
+        }
+      }
+
+      // 3. 首次打开该课程（无 hash 且无 localStorage 记录）：
+      //    使用第一个分组的第一章，并展开第一个分组
+      if (!targetId && groupedChapters.length > 0) {
+        targetId = groupedChapters[0].items[0]?.id || null;
+      }
+
+      if (!targetId) return;
+
+      // 切换到目标章节
+      if (targetId !== activeIdRef.current) {
+        onSelectChapter(targetId);
+      }
+      // 同时重置分组：全部收起，仅展开目标章节所在分组
+      const matched = groupedChapters.find((g) =>
+        g.items.some((c) => c.id === targetId)
+      );
+      if (matched) {
+        setCollapsedGroups(() => {
+          const next = new Set(groupedChapters.map((g) => g.group));
+          next.delete(matched.group);
+          return next;
+        });
       }
     };
 
-    // mount 后立即同步一次（解决刷新后回到第一章的问题）
-    syncFromHash();
+    // mount / currentPath 变化后立即尝试恢复
+    tryRestore();
 
     // 浏览器前进 / 后退、手动改 hash 时同步
-    window.addEventListener("hashchange", syncFromHash);
-    window.addEventListener("popstate", syncFromHash);
+    window.addEventListener("hashchange", tryRestore);
+    window.addEventListener("popstate", tryRestore);
     return () => {
-      window.removeEventListener("hashchange", syncFromHash);
-      window.removeEventListener("popstate", syncFromHash);
+      window.removeEventListener("hashchange", tryRestore);
+      window.removeEventListener("popstate", tryRestore);
     };
-  }, []);
+  }, [currentPath, onSelectChapter, groupedChapters]);
 
   // activeId 变化时同步到 URL hash
   // 覆盖底部"上一章/下一章"按钮等非 Sidebar 触发的章节切换
   // 跳过首次渲染，避免覆盖初始 URL hash
+  // 同时把章节写入 localStorage，保证非 Sidebar 触发的切换也能被记住
   const mountedRef = useRef(false);
   useEffect(() => {
     if (!mountedRef.current) {
@@ -302,6 +418,16 @@ export default function Sidebar({
     if (activeId && activeId !== currentHash) {
       const url = `${window.location.pathname}${window.location.search}#${activeId}`;
       window.history.pushState(null, "", url);
+    }
+    if (activeId && currentPathRef.current) {
+      try {
+        localStorage.setItem(
+          `sidebar:lastChapter:${currentPathRef.current}`,
+          activeId
+        );
+      } catch (e) {
+        // localStorage 不可用时静默忽略
+      }
     }
   }, [activeId]);
 
@@ -337,10 +463,16 @@ export default function Sidebar({
       if (typeof window !== "undefined" && window.history) {
         const url = `${window.location.pathname}${window.location.search}#${chapterId}`;
         window.history.pushState(null, "", url);
+        // 记住此课程最后浏览的章节，下次打开该课程时自动恢复
+        try {
+          localStorage.setItem(`sidebar:lastChapter:${currentPath}`, chapterId);
+        } catch (e) {
+          // localStorage 不可用时静默忽略
+        }
       }
       onSelectChapter(chapterId);
     },
-    [onSelectChapter]
+    [onSelectChapter, currentPath]
   );
 
   // 处理跨页面跳转：当路径变化时，清除无效的 hash
@@ -379,35 +511,39 @@ export default function Sidebar({
   // -------------------------------------------------------------
   const activeChapterRef = useRef(null);
 
+  // 把激活章节菜单滚动到侧边栏视野区的中央。
+  // 依赖：
+  //   - activeId：切换章节时触发
+  //   - collapsedGroups：分组从收起变展开时 DOM 才渲染、ref 才绑定，
+  //     需要等分组展开后再滚动（典型场景：切换课程后恢复章节）
+  //   - collapsed：侧边栏整体收起/展开时容器高度变化，需要重新定位
+  // 用双层 requestAnimationFrame 确保浏览器完成布局后再测量位置，
+  // 避免读到未更新的尺寸（分组刚展开时高度可能还是 0）。
   useEffect(() => {
-    const el = activeChapterRef.current;
-    if (!el) return;
-    // 仅在客户端执行
     if (typeof window === "undefined") return;
-    const container = el.closest(".chapter-nav");
-    if (!container) return;
-    // 容器不可见（如桌面端收起状态），跳过
-    if (container.clientHeight === 0) return;
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = activeChapterRef.current;
+        if (!el) return;
+        const container = el.closest(".chapter-nav");
+        if (!container) return;
+        // 容器不可见（如桌面端收起状态），跳过
+        if (container.clientHeight === 0) return;
 
-    const elRect = el.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect();
-    // 上下留 40px 缓冲，避免紧贴边缘
-    const margin = 40;
-    // 已在视野内则不滚动
-    if (
-      elRect.top >= containerRect.top - margin &&
-      elRect.bottom <= containerRect.bottom + margin
-    ) {
-      return;
-    }
-    // 计算激活项在容器内的偏移，让其显示在容器中部偏上
-    const offsetInContainer = elRect.top - containerRect.top;
-    const target =
-      container.scrollTop +
-      offsetInContainer -
-      (container.clientHeight - el.offsetHeight) / 2;
-    container.scrollTop = Math.max(0, target);
-  }, [activeId, collapsed]);
+        const elRect = el.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        // 激活项在容器内的偏移量
+        const offsetInContainer = elRect.top - containerRect.top;
+        // 让激活项中心对齐容器中心：scrollTop = 偏移量 - (容器高度 - 项高度) / 2
+        const target =
+          container.scrollTop +
+          offsetInContainer -
+          (container.clientHeight - el.offsetHeight) / 2;
+        container.scrollTop = Math.max(0, target);
+      });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [activeId, collapsed, collapsedGroups]);
 
   return (
     <>
@@ -525,9 +661,23 @@ export default function Sidebar({
             {tip && <p className="sidebar-tip">{tip}</p>}
           </div>
           <nav className="chapter-nav">
-            {groupedChapters.map(({ group, items }) => (
+            {groupedChapters.map(({ group, items }) => {
+              const isGroupCollapsed = collapsedGroups.has(group);
+              return (
               <div key={group} className="chapter-group">
-                <div className="group-title">{group}</div>
+                <button
+                  type="button"
+                  className={`group-title ${isGroupCollapsed ? "collapsed" : ""}`}
+                  onClick={() => toggleGroup(group)}
+                  aria-expanded={!isGroupCollapsed}
+                  title={isGroupCollapsed ? "点击展开" : "点击收起"}
+                >
+                  <span className="group-title-arrow">
+                    {isGroupCollapsed ? "▶" : "▾"}
+                  </span>
+                  <span className="group-title-text">{group}</span>
+                </button>
+                {!isGroupCollapsed && (
                 <ul>
                   {items.map((ch) => (
                     <li key={ch.id}>
@@ -542,8 +692,10 @@ export default function Sidebar({
                     </li>
                   ))}
                 </ul>
+                )}
               </div>
-            ))}
+              );
+            })}
           </nav>
           {footer && <div className="sidebar-footer">{footer}</div>}
         </div>

@@ -579,12 +579,41 @@ body {
 }
 
 .group-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
   padding: 10px 20px 6px;
+  background: none;
+  border: none;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   color: var(--text-muted);
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.15s ease;
+}
+
+.group-title:hover {
+  color: var(--text-on-dark);
+}
+
+.group-title.collapsed {
+  opacity: 0.7;
+}
+
+.group-title-arrow {
+  display: inline-block;
+  width: 10px;
+  font-size: 10px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.group-title-text {
+  flex: 1;
 }
 
 .chapter-nav ul {
