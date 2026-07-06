@@ -90,6 +90,7 @@ const BOOK_CATEGORIES = [
     icon: "📚",
     books: [
       { path: "/career", label: "职业出路", icon: "🛤️" },
+      { path: "/future", label: "程序员出路指南", icon: "🧭" },
       { path: "/career40", label: "40岁前端的下半场", icon: "🌅" },
       { path: "/comm", label: "沟通交流", icon: "💬" },
       { path: "/psychology", label: "心向阳光", icon: "🧠" },
