@@ -57,6 +57,7 @@ const BOOK_CATEGORIES = [
       { path: "/pythread", label: "Python 线程进程", icon: "🧵" },
       { path: "/pythread2", label: "Python 多线程入门", icon: "🧵" },
       { path: "/pydb", label: "Python 数据库", icon: "🗄️" },
+      { path: "/pyint", label: "Python 原理图解", icon: "🔬" },
       { path: "/net", label: "计算机网络", icon: "🌐" },
       { path: "/blog-tutorial", label: "Blog 系统教程", icon: "📝" },
       { path: "/pyweb", label: "Python Web", icon: "🌐" },
