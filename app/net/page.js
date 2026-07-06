@@ -86,10 +86,6 @@ export default function NetworkTutorial() {
           {/* Markdown 讲解区 */}
           <section className="lesson-section">
             <MarkdownRenderer content={activeChapter.content} />
-          </section>
-
-          {/* 代码编辑器区：直接复用 CodeBlock 组件 */}
-          <section className="editor-section">
             <CodeBlock code={activeChapter.code} lang="py" />
           </section>
 

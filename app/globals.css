@@ -1188,11 +1188,7 @@ body {
   background: #f8fafc;
 }
 
-/* ===== 代码编辑器区 ===== */
-.editor-section {
-  padding: 16px 40px 24px;
-  background: transparent;
-}
+/* ===== 代码编辑器区（旧版独立编辑器已移除，CodeBlock 直接放在 lesson-section 内） ===== */
 
 .editor-header {
   display: flex;
@@ -1368,8 +1364,8 @@ body {
 
 .editor-theme-menu {
   /* position/top/left 由内联样式（fixed）设置，这里仅兜底 */
-  min-width: 220px;
-  max-height: 320px;
+  min-width: 240px;
+  max-height: min(60vh, 480px);
   overflow: auto;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
@@ -1399,6 +1395,18 @@ body {
   background: #f8fafc;
   position: sticky;
   top: 0;
+  z-index: 1;
+}
+
+.editor-theme-menu-sub {
+  padding: 6px 12px 8px;
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+  background: #f8fafc;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 29px;
+  z-index: 1;
 }
 
 .editor-theme-list {
@@ -1644,66 +1652,7 @@ body {
   font-size: 13px;
 }
 
-/* ===== 控制台（浅色模式） ===== */
-.console-section {
-  padding: 0 40px 24px;
-}
-
-/* ===== 预览区（Tailwind 教程用，替代控制台） ===== */
-.preview-section {
-  padding: 0 40px 24px;
-}
-.preview-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  background: var(--bg-sidebar);
-  color: var(--text-on-dark);
-  border-radius: var(--radius) var(--radius) 0 0;
-  font-size: 13px;
-  font-weight: 600;
-}
-.preview-title::before {
-  content: "👁 ";
-}
-.preview-hint {
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--text-muted);
-}
-.preview-wrap {
-  background: #ffffff;
-  border: 1px solid var(--border-dark);
-  border-top: none;
-  border-radius: 0 0 var(--radius) var(--radius);
-  overflow: hidden;
-  min-height: 200px;
-  position: relative;
-}
-.preview-iframe {
-  width: 100%;
-  min-height: 360px;
-  max-height: 600px;
-  border: none;
-  display: block;
-  background: #fff;
-}
-.preview-placeholder {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  color: var(--text-muted);
-  font-style: italic;
-  background: #f8fafc;
-}
-.preview-placeholder-icon {
-  color: var(--accent-green);
-  font-size: 16px;
-}
+/* ===== 控制台（旧版独立控制台已移除，CodeBlock 内联使用 md-code-output） ===== */
 
 .console-header {
   display: flex;
@@ -1902,8 +1851,6 @@ body {
 
   .chapter-header,
   .lesson-section,
-  .editor-section,
-  .console-section,
   .chapter-nav-bottom,
   .content-footer {
     padding-left: 20px;

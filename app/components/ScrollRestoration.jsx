@@ -6,10 +6,14 @@
 // 全局监听 .content 元素的滚动位置，按「课程路径 + 章节hash」
 // 存入 sessionStorage。刷新页面后自动恢复到上次的滚动位置。
 //
-// 工作原理：
-//   1. 滚动时（防抖 200ms）保存当前位置到 sessionStorage
-//   2. 页面刷新时，等章节恢复 + 内容渲染完毕后恢复滚动位置
-//   3. 切换章节（hash 变化）时不恢复，由 selectChapter 滚动到顶部
+// 核心难点：刷新后页面先用默认章节渲染，Sidebar 才从
+// localStorage/hash 恢复正确章节。如果在错误章节的内容上
+// 恢复滚动位置，章节切换后位置就错了。
+//
+// 解决方案：等待 hash 稳定 + 内容高度稳定后再恢复。
+//   1. hash 稳定：连续 3 次轮询（300ms）hash 未变化
+//   2. 内容稳定：连续 2 次轮询（200ms）scrollHeight 未变化
+//   3. 两个条件都满足后才恢复滚动位置
 // =============================================================
 
 import { useEffect } from "react";
@@ -21,106 +25,148 @@ export default function ScrollRestoration() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // 按当前课程路径 + 章节hash 生成存储键
-    const getKey = () =>
-      `scrollPos:${pathname}:${window.location.hash.slice(1)}`;
-
-    // 查找内容滚动容器
     const findContent = () => document.querySelector(".content");
 
-    let restored = false; // 是否已完成恢复
-    let lastHash = window.location.hash.slice(1); // 记录初始 hash
+    let restored = false;
+
+    // ---- hash 与内容高度稳定性追踪 ----
+    let lastHash = window.location.hash.slice(1);
+    let hashStableCount = 0; // hash 连续未变化次数
+    let lastScrollHeight = 0;
+    let heightStableCount = 0; // scrollHeight 连续未变化次数
 
     // ---- 恢复滚动位置 ----
-    // 内容可能在章节恢复后才渲染完成，用轮询确保内容就绪
     const tryRestore = () => {
       if (restored) return;
       const el = findContent();
       if (!el) return;
 
-      // hash 从空变为有值（Sidebar 从 localStorage 恢复了章节），
-      // 更新 lastHash 使 key 匹配
       const currentHash = window.location.hash.slice(1);
+
+      // 1. 检查 hash 是否稳定
       if (currentHash !== lastHash) {
         lastHash = currentHash;
+        hashStableCount = 0;
+        // hash 变了，重置高度追踪（内容会跟着变）
+        lastScrollHeight = 0;
+        heightStableCount = 0;
+        return;
       }
+      hashStableCount++;
 
+      // hash 需连续稳定 3 次（300ms）才继续
+      if (hashStableCount < 3) return;
+
+      // 2. hash 稳定后，检查是否有保存的滚动位置
+      const key = `scrollPos:${pathname}:${currentHash}`;
+      let savedPos;
       try {
-        const pos = sessionStorage.getItem(getKey());
-        if (pos != null) {
-          const target = parseInt(pos, 10);
-          const maxScroll = el.scrollHeight - el.clientHeight;
-          // 内容高度足够才恢复，否则等下一轮轮询
-          if (maxScroll > 0 && el.scrollHeight >= target + el.clientHeight) {
-            el.scrollTop = target;
-            restored = true;
-          } else if (maxScroll <= 0) {
-            // 内容不足以滚动，无需恢复
-            restored = true;
-          }
-        } else {
-          // 没有保存的位置，无需恢复
-          restored = true;
-        }
+        savedPos = sessionStorage.getItem(key);
       } catch (e) {
         restored = true;
+        return;
       }
+
+      if (savedPos == null) {
+        // 没有保存的位置，无需恢复
+        restored = true;
+        return;
+      }
+
+      const target = parseInt(savedPos, 10);
+
+      // 3. 检查内容高度是否稳定（章节已渲染完毕）
+      if (el.scrollHeight !== lastScrollHeight) {
+        lastScrollHeight = el.scrollHeight;
+        heightStableCount = 0;
+        return;
+      }
+      heightStableCount++;
+
+      // 高度需连续稳定 2 次（200ms）才恢复
+      if (heightStableCount < 2) return;
+
+      // 4. 内容稳定，恢复滚动位置
+      const maxScroll = el.scrollHeight - el.clientHeight;
+      if (maxScroll > 0) {
+        el.scrollTop = Math.min(target, maxScroll);
+      }
+      restored = true;
     };
 
-    // 每 100ms 尝试恢复，最多持续 2 秒
+    // 每 100ms 尝试恢复，最多持续 3 秒
     const restoreInterval = setInterval(tryRestore, 100);
     const stopTimer = setTimeout(() => {
-      clearInterval(restoreInterval);
       restored = true;
-    }, 2000);
+    }, 3000);
 
-    // ---- 保存滚动位置（防抖）----
+    // ---- 保存滚动位置（节流，确保最新位置已存储）----
+    let lastSavedPos = -1;
     let saveTimer = null;
     const handleScroll = () => {
       if (saveTimer) clearTimeout(saveTimer);
       saveTimer = setTimeout(() => {
         const el = findContent();
         if (!el || !restored) return;
+        const pos = el.scrollTop;
+        if (pos === lastSavedPos) return;
+        lastSavedPos = pos;
         try {
-          sessionStorage.setItem(getKey(), String(el.scrollTop));
-        } catch (e) {
-          // sessionStorage 不可用时静默忽略
-        }
-      }, 200);
+          const key = `scrollPos:${pathname}:${window.location.hash.slice(1)}`;
+          sessionStorage.setItem(key, String(pos));
+        } catch (e) {}
+      }, 150);
     };
 
-    // 页面卸载前立即保存一次（防止防抖未执行）
-    const handleBeforeUnload = () => {
+    // 页面隐藏 / 卸载前立即保存（比 beforeunload 更可靠）
+    const saveNow = () => {
       const el = findContent();
       if (!el) return;
       try {
-        sessionStorage.setItem(getKey(), String(el.scrollTop));
+        const key = `scrollPos:${pathname}:${window.location.hash.slice(1)}`;
+        sessionStorage.setItem(key, String(el.scrollTop));
       } catch (e) {}
     };
 
-    // ---- 挂载滚动监听 ----
+    // ---- 挂载滚动监听（元素可能延迟渲染，用 MutationObserver 兜底）----
     let currentEl = findContent();
-    if (currentEl) {
-      currentEl.addEventListener("scroll", handleScroll, { passive: true });
-    }
-    // 元素可能尚未渲染，延迟重试
+    const attachListener = (el) => {
+      if (currentEl) currentEl.removeEventListener("scroll", handleScroll);
+      currentEl = el;
+      if (currentEl) {
+        currentEl.addEventListener("scroll", handleScroll, { passive: true });
+      }
+    };
+    if (currentEl) attachListener(currentEl);
+
+    // 元素可能尚未渲染，用 MutationObserver 监听 DOM 变化
+    const observer = new MutationObserver(() => {
+      if (!currentEl || !document.contains(currentEl)) {
+        const el = findContent();
+        if (el) attachListener(el);
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // 延迟兜底（MutationObserver 在某些情况下可能错过）
     const attachTimer = setTimeout(() => {
       if (!currentEl || !document.contains(currentEl)) {
-        currentEl = findContent();
-        if (currentEl) {
-          currentEl.addEventListener("scroll", handleScroll, { passive: true });
-        }
+        const el = findContent();
+        if (el) attachListener(el);
       }
-    }, 300);
+    }, 500);
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("pagehide", saveNow);
+    window.addEventListener("beforeunload", saveNow);
 
     return () => {
       clearInterval(restoreInterval);
       clearTimeout(stopTimer);
       clearTimeout(attachTimer);
       clearTimeout(saveTimer);
-      window.removeEventListener("beforeunload", handleBeforeUnload);
+      observer.disconnect();
+      window.removeEventListener("pagehide", saveNow);
+      window.removeEventListener("beforeunload", saveNow);
       if (currentEl) {
         currentEl.removeEventListener("scroll", handleScroll);
       }

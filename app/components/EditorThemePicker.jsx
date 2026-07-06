@@ -108,6 +108,9 @@ export default function EditorThemePicker({ variant = "toolbar" }) {
             }}
           >
             <div className="editor-theme-menu-header">编辑器主题</div>
+            <div className="editor-theme-menu-sub">
+              共 {MONACO_THEMES.length} 款 · 参照 VS Code 流行主题
+            </div>
             <ul className="editor-theme-list">
               {MONACO_THEMES.map((t) => (
                 <li key={t.id}>
