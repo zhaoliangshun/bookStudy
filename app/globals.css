@@ -292,6 +292,7 @@ body {
   color: var(--text-on-dark);
   background: rgba(255, 255, 255, 0.04);
   flex-shrink: 0;
+  cursor: pointer;
 }
 
 .sidebar-book-dropdown-close {
@@ -308,6 +309,8 @@ body {
   justify-content: center;
   transition: background 0.12s;
 }
+
+
 .sidebar-book-dropdown-close:hover {
   background: rgba(255, 255, 255, 0.2);
 }

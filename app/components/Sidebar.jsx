@@ -619,11 +619,14 @@ export default function Sidebar({
                 />
                 {/* 全屏宽度面板：fixed 定位脱离侧边栏宽度限制 */}
                 <div className="sidebar-book-dropdown">
-                  <div className="sidebar-book-dropdown-header">
+                  <div className="sidebar-book-dropdown-header" onClick={() => setBookDropdownOpen(false)}>
                     <span>📚 全部书籍（{ALL_BOOKS.length} 本）</span>
                     <button
                       className="sidebar-book-dropdown-close"
-                      onClick={() => setBookDropdownOpen(false)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setBookDropdownOpen(false);
+                      }}
                       title="关闭"
                       aria-label="关闭"
                     >
