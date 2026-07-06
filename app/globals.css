@@ -1837,6 +1837,11 @@ body {
   transform: translateY(0);
 }
 
+/* 回到顶部/底部按钮在边界时的灰显状态 */
+.quick-scroll-btn.disabled {
+  opacity: 0.35;
+}
+
 @keyframes quickScrollIn {
   from {
     opacity: 0;
