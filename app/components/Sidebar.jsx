@@ -49,7 +49,6 @@ const BOOK_CATEGORIES = [
       { path: "/pythread2", label: "Python 多线程入门", icon: "🧵" },
       { path: "/pyprocess", label: "Python 多进程教程", icon: "🧬" },
       { path: "/pydb", label: "Python 数据库", icon: "🗄️" },
-      { path: "/pyex", label: "Python 异常处理", icon: "⚠️" },
       { path: "/pyint", label: "Python 原理图解", icon: "🔬" },
       { path: "/pyweb", label: "Python Web", icon: "🌐" },
       { path: "/pyweb2", label: "Python Web 后端", icon: "🌐" },
@@ -148,6 +147,7 @@ const BOOK_CATEGORIES = [
     icon: "🗂️",
     books: [
       { path: "/pymod", label: "Python 模块与包", icon: "📦" },
+      { path: "/pyex", label: "Python 异常处理", icon: "⚠️" },
       { path: "/career", label: "职业出路", icon: "🛤️" },
     ],
   },
