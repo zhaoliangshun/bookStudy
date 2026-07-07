@@ -227,6 +227,15 @@ export function MarkdownRenderer({ content }) {
     );
   }
 
+  // 最后一个代码 demo 不需要那么高的编辑区域，把最大高度减半（800 → 400）。
+  // 从末尾向前找到最后一个 CodeBlock 元素，用 cloneElement 注入 maxHeight prop。
+  for (let j = blocks.length - 1; j >= 0; j--) {
+    if (blocks[j].type === CodeBlock) {
+      blocks[j] = React.cloneElement(blocks[j], { maxHeight: 400 });
+      break;
+    }
+  }
+
   return <div className="md-body">{blocks}</div>;
 }
 

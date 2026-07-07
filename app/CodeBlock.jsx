@@ -124,7 +124,7 @@ function parseRunResult(langLower, data) {
   return { output: data.output || "(无输出)", error: data.error || "" };
 }
 
-export function CodeBlock({ code: initialCode, lang }) {
+export function CodeBlock({ code: initialCode, lang, maxHeight = 800 }) {
   // 可编辑代码状态
   const [code, setCode] = useState(initialCode);
 
@@ -336,7 +336,7 @@ export function CodeBlock({ code: initialCode, lang }) {
           language={monacoLang}
           onRun={canRun ? handleRun : undefined}
           minHeight={60}
-          maxHeight={800}
+          maxHeight={maxHeight}
           autoHeight
         />
       </div>
