@@ -242,7 +242,7 @@ body {
   flex-shrink: 0;
 }
 .sidebar-book-arrow.open {
-  transform: rotate(180deg);
+  transform: rotate(90deg);
   color: var(--accent-green);
 }
 
@@ -372,10 +372,17 @@ body {
 }
 
 .sidebar-book-category-arrow {
-  display: inline-block;
-  width: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
   font-size: 9px;
   transition: transform 0.15s ease;
+}
+
+.sidebar-book-category-arrow.expanded {
+  transform: rotate(90deg);
 }
 
 /* ===== 书籍平铺网格布局 ===== */

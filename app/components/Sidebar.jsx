@@ -621,7 +621,7 @@ export default function Sidebar({
               >
                 <span className="sidebar-book-icon">{currentBook.icon}</span>
                 <span className="sidebar-book-label">{currentBook.label}</span>
-                <span className={`sidebar-book-arrow ${bookDropdownOpen ? "open" : ""}`}>▾</span>
+                <span className={`sidebar-book-arrow ${bookDropdownOpen ? "open" : ""}`}>▶</span>
               </button>
               <EditorThemePicker variant="sidebar" />
             </div>
@@ -662,8 +662,8 @@ export default function Sidebar({
                           }
                           title={isCollapsed ? "点击展开" : "点击收起"}
                         >
-                          <span className="sidebar-book-category-arrow">
-                            {isCollapsed ? "▶" : "▾"}
+                          <span className={`sidebar-book-category-arrow${isCollapsed ? "" : " expanded"}`}>
+                            ▶
                           </span>
                           <span>{category.icon}</span>
                           <span>{category.name}</span>
