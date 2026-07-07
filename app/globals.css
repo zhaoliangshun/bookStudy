@@ -660,8 +660,11 @@ body {
 }
 
 .group-title-arrow {
-  display: inline-block;
-  width: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
   font-size: 10px;
   line-height: 1;
   flex-shrink: 0;
