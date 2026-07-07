@@ -135,6 +135,8 @@ const BOOK_CATEGORIES = [
       { path: "/quotes", label: "怼人语录", icon: "💬" },
       { path: "/curse", label: "毒舌词典", icon: "🐍" },
       { path: "/rebut", label: "反驳的艺术", icon: "⚔️" },
+      { path: "/dignity", label: "放不下的愤怒", icon: "💚" },
+      { path: "/hurt", label: "委屈的解剖学", icon: "🕊️" },
     ],
   },
   {
