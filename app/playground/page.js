@@ -932,8 +932,8 @@ export default function PlaygroundPage() {
   const [toast, setToast] = useState("");
   // 自动运行开关：开启后代码改变会自动执行（防抖）
   const [autoRun, setAutoRun] = useState(true);
-  // 左右分栏拖动比例（左侧占比，0~1），默认 0.5（各占一半）
-  const [splitRatio, setSplitRatio] = useState(0.5);
+  // 左右分栏拖动比例（左侧占比，0~1），默认 0.7（代码编辑器占 70%）
+  const [splitRatio, setSplitRatio] = useState(0.7);
   // 是否为窄屏上下堆叠布局（响应式：max-width 900px 切换为垂直拖动）
   const [isVerticalSplit, setIsVerticalSplit] = useState(false);
   // 是否正在拖动分隔条（用于持续高亮分隔条视觉反馈）
@@ -1265,9 +1265,9 @@ export default function PlaygroundPage() {
     [isVerticalSplit]
   );
 
-  // 双击分隔条：恢复到默认 50/50 比例（快捷操作）
+  // 双击分隔条：恢复到默认 70/30 比例（快捷操作）
   const resetSplitRatio = useCallback(() => {
-    setSplitRatio(0.5);
+    setSplitRatio(0.7);
   }, []);
 
   return (
