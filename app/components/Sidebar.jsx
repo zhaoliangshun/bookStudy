@@ -40,6 +40,7 @@ const BOOK_CATEGORIES = [
     books: [
       { path: "/pybasic", label: "Python 基础路径", icon: "🌱" },
       { path: "/py", label: "Python", icon: "🐍" },
+      { path: "/py4", label: "Python 进阶", icon: "🐍" },
       { path: "/py6", label: "Python 全解", icon: "🐍" },
       { path: "/py8", label: "Python 大全", icon: "🐍" },
       { path: "/py9", label: "Python 逐层深入", icon: "📘" },
@@ -143,7 +144,6 @@ const BOOK_CATEGORIES = [
     icon: "🗂️",
     books: [
       { path: "/pymod", label: "Python 模块与包", icon: "📦" },
-      { path: "/py4", label: "Python 进阶", icon: "🐍" },
       { path: "/career", label: "职业出路", icon: "🛤️" },
     ],
   },
