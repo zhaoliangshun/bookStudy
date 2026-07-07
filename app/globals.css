@@ -242,7 +242,7 @@ body {
   flex-shrink: 0;
 }
 .sidebar-book-arrow.open {
-  transform: rotate(90deg);
+  transform: rotate(180deg);
   color: var(--accent-green);
 }
 
