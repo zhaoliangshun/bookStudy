@@ -93,15 +93,23 @@ export function MarkdownRenderer({ content }) {
     }
 
     // 代码块 ```lang ... ```
-    if (line.trim().startsWith("```")) {
-      const lang = line.trim().slice(3).trim();
+    // 严格匹配：行首可选空白 + 3个及以上反引号 + 可选空白 + 可选语言名(无空格) + 可选空白 + 行尾
+    const fencedMatch = line.trim().match(/^(`{3,})\s*(\S*)\s*$/);
+    if (fencedMatch) {
+      const lang = fencedMatch[2];
       const codeLines = [];
       i++;
-      while (i < lines.length && !lines[i].trim().startsWith("```")) {
+      while (i < lines.length) {
+        const closeFence = lines[i].trim().match(/^(`{3,})\s*$/);
+        if (closeFence && closeFence[1].length >= fencedMatch[1].length) {
+          break;
+        }
         codeLines.push(lines[i]);
         i++;
       }
-      i++; // 跳过结束的 ```
+      if (i < lines.length) {
+        i++; // 跳过结束的 ```
+      }
       blocks.push(
         <CodeBlock key={key++} code={codeLines.join("\n")} lang={lang} />
       );
@@ -208,12 +216,13 @@ export function MarkdownRenderer({ content }) {
 
     // 普通段落（连续非空行合并）
     const paraLines = [];
+    const isFenceLine = (l) => /^(`{3,})\s*(\S*)\s*$/.test(l.trim());
     while (
       i < lines.length &&
       lines[i].trim() !== "" &&
       !lines[i].trim().startsWith("#") &&
       !lines[i].trim().startsWith(">") &&
-      !lines[i].trim().startsWith("```") &&
+      !isFenceLine(lines[i]) &&
       !/^\s*[-*]\s+/.test(lines[i]) &&
       !/^\s*\d+\.\s+/.test(lines[i])
     ) {
