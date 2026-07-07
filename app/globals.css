@@ -668,6 +668,11 @@ body {
   font-size: 10px;
   line-height: 1;
   flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.group-title-arrow.expanded {
+  transform: rotate(90deg);
 }
 
 .group-title-text {

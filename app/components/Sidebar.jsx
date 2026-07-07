@@ -727,8 +727,8 @@ export default function Sidebar({
                   aria-expanded={!isGroupCollapsed}
                   title={isGroupCollapsed ? "点击展开" : "点击收起"}
                 >
-                  <span className="group-title-arrow">
-                    {isGroupCollapsed ? "▶" : "▾"}
+                  <span className={`group-title-arrow${isGroupCollapsed ? "" : " expanded"}`}>
+                    ▶
                   </span>
                   <span className="group-title-text">{group}</span>
                 </button>
