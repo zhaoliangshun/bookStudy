@@ -131,9 +131,14 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 800 }) {
   // 当外部传入的初始代码变化时（例如切换章节导致 Markdown 重新渲染，
   // 或 React 复用了旧的 CodeBlock 实例），同步更新内部编辑状态，
   // 避免旧章节代码残留在编辑器中。
+  // 同时清掉上一次的运行结果（output / error / showOutput），
+  // 否则切换章节后还会看到旧章节的运行输出。
   useEffect(() => {
     const id = requestAnimationFrame(() => {
       setCode(initialCode);
+      setOutput("");
+      setError("");
+      setShowOutput(false);
     });
     return () => cancelAnimationFrame(id);
   }, [initialCode]);
