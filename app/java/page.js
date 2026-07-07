@@ -107,7 +107,7 @@ export default function JavaTutorial() {
           {/* Markdown 讲解区 */}
           <section className="lesson-section">
             <MarkdownRenderer content={activeChapter.content} />
-            <CodeBlock code={activeChapter.code} lang="java" />
+            <CodeBlock code={activeChapter.code} lang="java" maxHeight={400} />
           </section>
 
           {/* 章节底部导航：上一章/下一章 */}

@@ -102,7 +102,7 @@ export default function SQLTutorial() {
 
           <section className="lesson-section">
             <MarkdownRenderer content={activeChapter.content} />
-            <CodeBlock code={activeChapter.code} lang="sql" />
+            <CodeBlock code={activeChapter.code} lang="sql" maxHeight={400} />
           </section>
 
           <ChapterNav activeId={activeId} onSelect={selectChapter} />

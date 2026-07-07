@@ -103,7 +103,7 @@ export default function BackendTutorial() {
 
           <section className="lesson-section">
             <MarkdownRenderer content={activeChapter.content} />
-            <CodeBlock code={activeChapter.code} lang="js" />
+            <CodeBlock code={activeChapter.code} lang="js" maxHeight={400} />
           </section>
 
           <ChapterNav activeId={activeId} onSelect={selectChapter} />

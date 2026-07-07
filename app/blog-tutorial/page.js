@@ -87,7 +87,7 @@ export default function BlogTutorial() {
           {/* Markdown 讲解区 */}
           <section className="lesson-section">
             <MarkdownRenderer content={activeChapter.content} />
-            <CodeBlock code={activeChapter.code} lang="py" />
+            <CodeBlock code={activeChapter.code} lang="py" maxHeight={400} />
           </section>
 
           {/* 章节底部导航：上一章/下一章 */}

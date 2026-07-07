@@ -102,7 +102,7 @@ export default function GraphQLTutorial() {
 
           <section className="lesson-section">
             <MarkdownRenderer content={activeChapter.content} />
-            <CodeBlock code={activeChapter.code} lang="gql" />
+            <CodeBlock code={activeChapter.code} lang="gql" maxHeight={400} />
           </section>
 
           <ChapterNav activeId={activeId} onSelect={selectChapter} />

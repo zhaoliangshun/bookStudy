@@ -95,7 +95,7 @@ export default function Nodejs2Tutorial() {
 
           <section className="lesson-section">
             <MarkdownRenderer content={activeChapter.content} />
-            <CodeBlock code={activeChapter.code} lang="js" />
+            <CodeBlock code={activeChapter.code} lang="js" maxHeight={400} />
           </section>
 
           <ChapterNav activeId={activeId} onSelect={selectChapter} />

@@ -106,7 +106,7 @@ export default function SassTutorial() {
           {/* Markdown 讲解区 */}
           <section className="lesson-section">
             <MarkdownRenderer content={activeChapter.content} />
-            <CodeBlock code={activeChapter.code} lang="scss" />
+            <CodeBlock code={activeChapter.code} lang="scss" maxHeight={400} />
           </section>
 
           {/* 章节底部导航 */}

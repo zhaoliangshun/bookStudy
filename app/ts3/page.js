@@ -98,7 +98,7 @@ export default function TypeScript3Tutorial() {
 
           <section className="lesson-section">
             <MarkdownRenderer content={activeChapter.content} />
-            <CodeBlock code={activeChapter.code} lang="ts" />
+            <CodeBlock code={activeChapter.code} lang="ts" maxHeight={400} />
           </section>
 
           <ChapterNav activeId={activeId} onSelect={selectChapter} />

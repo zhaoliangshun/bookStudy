@@ -115,7 +115,7 @@ export default function OSTutorial() {
 
           <section className="lesson-section">
             <MarkdownRenderer content={activeChapter.content} />
-            <CodeBlock code={activeChapter.code} lang="sh" />
+            <CodeBlock code={activeChapter.code} lang="sh" maxHeight={400} />
           </section>
 
           <ChapterNav activeId={activeId} onSelect={selectChapter} />

@@ -106,7 +106,7 @@ export default function GoTutorial() {
           {/* Markdown 讲解区 */}
           <section className="lesson-section">
             <MarkdownRenderer content={activeChapter.content} />
-            <CodeBlock code={activeChapter.code} lang="go" />
+            <CodeBlock code={activeChapter.code} lang="go" maxHeight={400} />
           </section>
 
           {/* 章节底部导航：上一章/下一章 */}

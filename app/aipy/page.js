@@ -88,7 +88,7 @@ export default function AIPyTutorial() {
 
           <section className="lesson-section">
             <MarkdownRenderer content={activeChapter.content} />
-            <CodeBlock code={activeChapter.code} lang="py" />
+            <CodeBlock code={activeChapter.code} lang="py" maxHeight={400} />
           </section>
 
           <ChapterNav
