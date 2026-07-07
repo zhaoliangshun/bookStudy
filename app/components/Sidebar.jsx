@@ -47,6 +47,7 @@ const BOOK_CATEGORIES = [
       { path: "/pynet", label: "Python 网络编程", icon: "🌐" },
       { path: "/pythread", label: "Python 线程进程", icon: "🧵" },
       { path: "/pythread2", label: "Python 多线程入门", icon: "🧵" },
+      { path: "/pyprocess", label: "Python 多进程教程", icon: "🧬" },
       { path: "/pydb", label: "Python 数据库", icon: "🗄️" },
       { path: "/pyex", label: "Python 异常处理", icon: "⚠️" },
       { path: "/pyint", label: "Python 原理图解", icon: "🔬" },
