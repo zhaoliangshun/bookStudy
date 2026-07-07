@@ -38,7 +38,6 @@ const BOOK_CATEGORIES = [
     name: "Python 教程",
     icon: "🐍",
     books: [
-      { path: "/pybasic", label: "Python 基础路径", icon: "🌱" },
       { path: "/py", label: "Python", icon: "🐍" },
       { path: "/py4", label: "Python 进阶", icon: "🐍" },
       { path: "/py6", label: "Python 全解", icon: "🐍" },
@@ -146,6 +145,7 @@ const BOOK_CATEGORIES = [
     name: "已隐藏",
     icon: "🗂️",
     books: [
+      { path: "/pybasic", label: "Python 基础路径", icon: "🌱" },
       { path: "/pymod", label: "Python 模块与包", icon: "📦" },
       { path: "/pyex", label: "Python 异常处理", icon: "⚠️" },
       { path: "/career", label: "职业出路", icon: "🛤️" },
@@ -198,7 +198,12 @@ export default function Sidebar({
       cat.books.some((b) => b.path === currentPath)
     );
     if (matchedCategory) {
-      setExpandedCategory(matchedCategory.name);
+      // 用 raf 延迟 setState，避免在 effect 同步阶段直接更新状态触发级联渲染
+      // （react-hooks/set-state-in-effect 规则）。
+      const raf = requestAnimationFrame(() => {
+        setExpandedCategory(matchedCategory.name);
+      });
+      return () => cancelAnimationFrame(raf);
     }
   }, [currentPath]);
 
@@ -273,14 +278,19 @@ export default function Sidebar({
       g.items.some((c) => c.id === activeId)
     );
     if (matched) {
-      // 通过 functional update 读取最新的 collapsedGroups，
-      // 已展开就返回 prev（同引用，React 不会重渲染）
-      setCollapsedGroups((prev) => {
-        if (!prev.has(matched.group)) return prev;
-        const next = new Set(prev);
-        next.delete(matched.group);
-        return next;
+      // 用 raf 延迟 setState，避免在 effect 同步阶段直接更新状态触发级联渲染
+      // （react-hooks/set-state-in-effect 规则）。
+      const raf = requestAnimationFrame(() => {
+        // 通过 functional update 读取最新的 collapsedGroups，
+        // 已展开就返回 prev（同引用，React 不会重渲染）
+        setCollapsedGroups((prev) => {
+          if (!prev.has(matched.group)) return prev;
+          const next = new Set(prev);
+          next.delete(matched.group);
+          return next;
+        });
       });
+      return () => cancelAnimationFrame(raf);
     }
   }, [activeId, groupedChapters]);
 
@@ -461,7 +471,6 @@ export default function Sidebar({
     };
     // 只在 currentPath 变化时重新注册监听器；
     // groupedChapters 和 onSelectChapter 通过 ref 读取最新值，不放入依赖
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPath]);
 
   // activeId 变化时同步到 URL hash
@@ -581,11 +590,17 @@ export default function Sidebar({
   const activeChapterRef = useRef(null);
   const lastScrolledPathRef = useRef(currentPath);
 
-  // 切换课程时重置首次滚动标记，让新课程也能滚动一次
-  if (lastScrolledPathRef.current !== currentPath) {
-    lastScrolledPathRef.current = currentPath;
-    hasScrolledRef.current = false;
-  }
+  // 切换课程时重置首次滚动标记，让新课程也能滚动一次。
+  // 必须放在 effect 中执行（不能在渲染阶段访问/修改 ref，
+  // 否则触发 react-hooks/refs 规则报错）。
+  // 此 effect 在下面的滚动 effect 之前声明，因此会先执行，
+  // 确保 hasScrolledRef 在滚动 effect 读取前已被重置为 false。
+  useEffect(() => {
+    if (lastScrolledPathRef.current !== currentPath) {
+      lastScrolledPathRef.current = currentPath;
+      hasScrolledRef.current = false;
+    }
+  }, [currentPath]);
 
   // 把激活章节菜单滚动到侧边栏视野区的中央。
   // 仅在首次打开课程时执行一次；之后切换章节 / 分组不再滚动。

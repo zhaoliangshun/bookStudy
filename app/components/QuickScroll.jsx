@@ -57,13 +57,16 @@ export default function QuickScroll() {
     window.addEventListener("resize", checkScroll);
 
     // 初始检查 + 延迟检查（等待内容渲染完毕）
-    checkScroll();
+    // 用 requestAnimationFrame 包一层，避免在 effect 同步阶段直接 setState
+    // 触发级联渲染（react-hooks/set-state-in-effect 规则）。
+    const raf0 = requestAnimationFrame(checkScroll);
     const t1 = setTimeout(checkScroll, 300);
     const t2 = setTimeout(checkScroll, 800);
 
     return () => {
       window.removeEventListener("scroll", checkScroll, true);
       window.removeEventListener("resize", checkScroll);
+      cancelAnimationFrame(raf0);
       clearTimeout(t1);
       clearTimeout(t2);
     };

@@ -128,21 +128,6 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 800 }) {
   // 可编辑代码状态
   const [code, setCode] = useState(initialCode);
 
-  // 当外部传入的初始代码变化时（例如切换章节导致 Markdown 重新渲染，
-  // 或 React 复用了旧的 CodeBlock 实例），同步更新内部编辑状态，
-  // 避免旧章节代码残留在编辑器中。
-  // 同时清掉上一次的运行结果（output / error / showOutput），
-  // 否则切换章节后还会看到旧章节的运行输出。
-  useEffect(() => {
-    const id = requestAnimationFrame(() => {
-      setCode(initialCode);
-      setOutput("");
-      setError("");
-      setShowOutput(false);
-    });
-    return () => cancelAnimationFrame(id);
-  }, [initialCode]);
-
   // 交互状态
   const [copied, setCopied] = useState(false);
   const [output, setOutput] = useState("");
@@ -151,6 +136,23 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 800 }) {
   const [showOutput, setShowOutput] = useState(false);
   // 外网运行下拉菜单展开状态
   const [extMenuOpen, setExtMenuOpen] = useState(false);
+
+  // 当外部传入的初始代码变化时（例如切换章节导致 Markdown 重新渲染，
+  // 或 React 复用了旧的 CodeBlock 实例），同步更新内部编辑状态，
+  // 避免旧章节代码残留在编辑器中。
+  // 同时清掉上一次的运行结果（output / error / showOutput），
+  // 否则切换章节后还会看到旧章节的运行输出。
+  // 注意：useEffect 必须放在它所引用的 state 声明之后，否则会触发
+  // “变量未声明即使用”的报错（temporal dead zone）。
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      setCode(initialCode);
+      setOutput("");
+      setError("");
+      setShowOutput(false);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [initialCode, setOutput, setError, setShowOutput]);
 
   // 语言信息查询
   const langLower = (lang || "").toLowerCase().trim();
@@ -210,7 +212,7 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 800 }) {
     } finally {
       setIsRunning(false);
     }
-  }, [code, langLower, langInfo]);
+  }, [code, langLower, langInfo, setIsRunning, setShowOutput, setOutput, setError]);
 
   // ---------- 复制到 Playground 并在新标签页打开 ----------
   const handlePlayground = useCallback(() => {
