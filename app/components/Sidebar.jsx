@@ -61,6 +61,8 @@ const BOOK_CATEGORIES = [
       { path: "/pyasync2", label: "Python asyncio 异步编程 V2", icon: "🌊" },
       { path: "/pyproject", label: "Python 实战项目", icon: "🚀" },
       { path: "/pyjava", label: "Python vs Java", icon: "🐍" },
+      { path: "/pyvsjs", label: "Python vs JS 深度对比", icon: "⚔️" },
+      { path: "/pyvsjava", label: "Python vs Java 深度对比", icon: "⚔️" },
     ],
   },
   {
