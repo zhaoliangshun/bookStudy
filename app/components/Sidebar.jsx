@@ -58,7 +58,6 @@ const BOOK_CATEGORIES = [
       { path: "/pyfile", label: "Python 文件操作", icon: "📁" },
       { path: "/pyfile2", label: "Python 文件管理", icon: "🗂️" },
       { path: "/pyasync", label: "Python asyncio 异步编程", icon: "🌊" },
-      { path: "/pyobject", label: "Python 面向对象", icon: "🎯" },
       { path: "/pyproject", label: "Python 实战项目", icon: "🚀" },
       { path: "/pyjava", label: "Python vs Java", icon: "🐍" },
     ],
