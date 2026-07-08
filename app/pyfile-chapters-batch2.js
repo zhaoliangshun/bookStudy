@@ -1345,7 +1345,7 @@ shutil.move("/tmp/rename_test/deep/nested/path/file.txt",
 
 ## 五、shutil.rmtree:删除整个目录树
 
-\`\`\`shutil.rmtree(path, ignore_errors=False, onerror=None)\` 是删除非空目录树的标准方法,类似 \`rm -rf\`。
+\`shutil.rmtree(path, ignore_errors=False, onerror=None)\` 是删除非空目录树的标准方法,类似 \`rm -rf\`。
 
 ### demo 4:rmtree 删除目录树
 

@@ -40,7 +40,6 @@ const BOOK_CATEGORIES = [
     name: "Python 教程",
     icon: "🐍",
     books: [
-      { path: "/pybasic", label: "Python 基础路径", icon: "🌱" },
       { path: "/py", label: "Python", icon: "🐍" },
       { path: "/py4", label: "Python 进阶", icon: "🐍" },
       { path: "/py6", label: "Python 全解", icon: "🐍" },
@@ -50,6 +49,7 @@ const BOOK_CATEGORIES = [
       { path: "/pythread", label: "Python 线程进程", icon: "🧵" },
       { path: "/pythread2", label: "Python 多线程入门", icon: "🧵" },
       { path: "/pyprocess", label: "Python 多进程教程", icon: "🧬" },
+      { path: "/pysubprocess", label: "Python subprocess", icon: "🔌" },
       { path: "/pydb", label: "Python 数据库", icon: "🗄️" },
       { path: "/pyint", label: "Python 原理图解", icon: "🔬" },
       { path: "/pyweb", label: "Python Web", icon: "🌐" },
@@ -63,6 +63,8 @@ const BOOK_CATEGORIES = [
       { path: "/pyasync2", label: "Python asyncio 异步编程 V2", icon: "🌊" },
       { path: "/pyproject", label: "Python 实战项目", icon: "🚀" },
       { path: "/pyjava", label: "Python vs Java", icon: "🐍" },
+      { path: "/pyvsjs", label: "Python vs JS 深度对比", icon: "⚔️" },
+      { path: "/pyvsjava", label: "Python vs Java 深度对比", icon: "⚔️" },
     ],
   },
   {
@@ -140,14 +142,14 @@ const BOOK_CATEGORIES = [
       { path: "/quotes", label: "怼人语录", icon: "💬" },
       { path: "/curse", label: "毒舌词典", icon: "🐍" },
       { path: "/rebut", label: "反驳的艺术", icon: "⚔️" },
-      { path: "/dignity", label: "放不下的愤怒", icon: "💚" },
-      { path: "/hurt", label: "委屈的解剖学", icon: "🕊️" },
+      { path: "/unharmed", label: "破怒：情绪暴击后翻篇指南", icon: "💔" },
     ],
   },
   {
     name: "已隐藏",
     icon: "🗂️",
     books: [
+      { path: "/pybasic", label: "Python 基础路径", icon: "🌱" },
       { path: "/pymod", label: "Python 模块与包", icon: "📦" },
       { path: "/pyex", label: "Python 异常处理", icon: "⚠️" },
       { path: "/career", label: "职业出路", icon: "🛤️" },
@@ -344,7 +346,12 @@ export default function Sidebar({
       cat.books.some((b) => b.path === currentPath)
     );
     if (matchedCategory) {
-      setExpandedCategory(matchedCategory.name);
+      // 用 raf 延迟 setState，避免在 effect 同步阶段直接更新状态触发级联渲染
+      // （react-hooks/set-state-in-effect 规则）。
+      const raf = requestAnimationFrame(() => {
+        setExpandedCategory(matchedCategory.name);
+      });
+      return () => cancelAnimationFrame(raf);
     }
   }, [currentPath]);
 
@@ -401,6 +408,9 @@ export default function Sidebar({
   //   2. 首次挂载（prevActiveIdRef 为 null）时跳过——首次展开由
   //      tryRestore 统一负责，避免"初始 activeId 展开第一组"与
   //      "恢复 activeId 展开第 N 组"同时发生导致两组都展开。
+  //   3. collapsedGroups 不放入依赖数组，改在 setCollapsedGroups 的
+  //      functional update 中通过 prev 读取最新值，避免"依赖与修改同源"
+  //      导致的循环渲染。
   const prevActiveIdRef = useRef(null);
   useEffect(() => {
     // 首次挂载，记录当前 activeId 但不展开（交给 tryRestore 处理）
@@ -415,14 +425,22 @@ export default function Sidebar({
     const matched = groupedChapters.find((g) =>
       g.items.some((c) => c.id === activeId)
     );
-    if (matched && collapsedGroups.has(matched.group)) {
-      setCollapsedGroups((prev) => {
-        const next = new Set(prev);
-        next.delete(matched.group);
-        return next;
+    if (matched) {
+      // 用 raf 延迟 setState，避免在 effect 同步阶段直接更新状态触发级联渲染
+      // （react-hooks/set-state-in-effect 规则）。
+      const raf = requestAnimationFrame(() => {
+        // 通过 functional update 读取最新的 collapsedGroups，
+        // 已展开就返回 prev（同引用，React 不会重渲染）
+        setCollapsedGroups((prev) => {
+          if (!prev.has(matched.group)) return prev;
+          const next = new Set(prev);
+          next.delete(matched.group);
+          return next;
+        });
       });
+      return () => cancelAnimationFrame(raf);
     }
-  }, [activeId, groupedChapters, collapsedGroups]);
+  }, [activeId, groupedChapters]);
 
   // 点击外部关闭书籍目录下拉（排除右键菜单内的点击）
   useEffect(() => {
@@ -506,6 +524,10 @@ export default function Sidebar({
   const validIdsRef = useRef(allChapterIds);
   // 当前课程路径的 ref，供 mount 一次性 effect 中安全读取最新值
   const currentPathRef = useRef(currentPath);
+  // groupedChapters 的 ref：父组件未 memo 时每次渲染都产生新引用，
+  // 若直接放入 tryRestore 的依赖数组会导致 effect 无限重跑。
+  // 改用 ref 在 effect 内读取最新值，依赖数组只保留真正需要触发重跑的 currentPath。
+  const groupedChaptersRef = useRef(groupedChapters);
 
   useEffect(() => {
     activeIdRef.current = activeId;
@@ -519,6 +541,9 @@ export default function Sidebar({
   useEffect(() => {
     currentPathRef.current = currentPath;
   }, [currentPath]);
+  useEffect(() => {
+    groupedChaptersRef.current = groupedChapters;
+  }, [groupedChapters]);
 
   // ===== 章节恢复：URL hash > localStorage > 默认第一章 =====
   // -------------------------------------------------------------
@@ -557,18 +582,20 @@ export default function Sidebar({
 
       // 3. 首次打开该课程（无 hash 且无 localStorage 记录）：
       //    使用第一个分组的第一章，并展开第一个分组
-      if (!targetId && groupedChapters.length > 0) {
-        targetId = groupedChapters[0].items[0]?.id || null;
+      // 通过 ref 读取最新的 groupedChapters，避免将其放入依赖数组
+      const chapters = groupedChaptersRef.current;
+      if (!targetId && chapters.length > 0) {
+        targetId = chapters[0].items[0]?.id || null;
       }
 
       if (!targetId) return;
 
-      // 切换到目标章节
+      // 切换到目标章节（通过 ref 调用最新的 onSelectChapter）
       if (targetId !== activeIdRef.current) {
-        onSelectChapter(targetId);
+        onSelectRef.current(targetId);
       }
       // 只展开目标章节所在分组，不收起其他已展开的分组（全部手动操作）
-      const matched = groupedChapters.find((g) =>
+      const matched = chapters.find((g) =>
         g.items.some((c) => c.id === targetId)
       );
       if (matched) {
@@ -592,19 +619,33 @@ export default function Sidebar({
       window.removeEventListener("hashchange", tryRestore);
       window.removeEventListener("popstate", tryRestore);
     };
-  }, [currentPath, onSelectChapter, groupedChapters]);
+    // 只在 currentPath 变化时重新注册监听器；
+    // groupedChapters 和 onSelectChapter 通过 ref 读取最新值，不放入依赖
+  }, [currentPath]);
 
   // activeId 变化时同步到 URL hash
   // 覆盖底部"上一章/下一章"按钮等非 Sidebar 触发的章节切换
-  // 跳过首次渲染，避免覆盖初始 URL hash
+  // 跳过首次渲染，避免覆盖初始 URL hash（初始 hash 由 tryRestore 负责）
   // 同时把章节写入 localStorage，保证非 Sidebar 触发的切换也能被记住
-  const mountedRef = useRef(false);
+  //
+  // 注意：不能用 mountedRef（布尔 ref）跳过首次执行！
+  // React StrictMode（App Router 默认开启）下 effect 会执行两次：
+  //   第一次：mountedRef.current = false → 设为 true → return
+  //   第二次：mountedRef.current = true → 直接执行 hash 同步 → 覆盖 URL hash
+  // 这会导致 tryRestore 刚从 URL hash 恢复的章节被这里的 pushState 覆盖掉。
+  // 改用 prevActiveIdForHashRef 比较 activeId 是否"真正变化"来跳过首次执行：
+  //   首次：ref 为 null → 记录 activeId 并返回（两次 StrictMode 执行都如此）
+  //   后续：activeId 与 ref 中的旧值不同时才执行 hash 同步
+  const prevActiveIdForHashRef = useRef(null);
   useEffect(() => {
-    if (!mountedRef.current) {
-      mountedRef.current = true;
-      return;
-    }
     if (typeof window === "undefined") return;
+    // activeId 没有真正变化时跳过（包括 StrictMode 下的二次执行）
+    if (prevActiveIdForHashRef.current === activeId) return;
+    const isFirstRun = prevActiveIdForHashRef.current === null;
+    prevActiveIdForHashRef.current = activeId;
+    // 首次挂载跳过 hash 同步，交给 tryRestore 处理 URL hash 恢复
+    if (isFirstRun) return;
+
     const currentHash = window.location.hash.slice(1);
     if (activeId && activeId !== currentHash) {
       const url = `${window.location.pathname}${window.location.search}#${activeId}`;
@@ -699,11 +740,17 @@ export default function Sidebar({
   const activeChapterRef = useRef(null);
   const lastScrolledPathRef = useRef(currentPath);
 
-  // 切换课程时重置首次滚动标记，让新课程也能滚动一次
-  if (lastScrolledPathRef.current !== currentPath) {
-    lastScrolledPathRef.current = currentPath;
-    hasScrolledRef.current = false;
-  }
+  // 切换课程时重置首次滚动标记，让新课程也能滚动一次。
+  // 必须放在 effect 中执行（不能在渲染阶段访问/修改 ref，
+  // 否则触发 react-hooks/refs 规则报错）。
+  // 此 effect 在下面的滚动 effect 之前声明，因此会先执行，
+  // 确保 hasScrolledRef 在滚动 effect 读取前已被重置为 false。
+  useEffect(() => {
+    if (lastScrolledPathRef.current !== currentPath) {
+      lastScrolledPathRef.current = currentPath;
+      hasScrolledRef.current = false;
+    }
+  }, [currentPath]);
 
   // 把激活章节菜单滚动到侧边栏视野区的中央。
   // 仅在首次打开课程时执行一次；之后切换章节 / 分组不再滚动。
