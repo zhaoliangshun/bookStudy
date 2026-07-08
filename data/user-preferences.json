@@ -114,12 +114,28 @@
     "pythread-01",
     "pythread-02",
     "pythread-03",
-    "pythread-04"
+    "pythread-04",
+    "pythread-05",
+    "pythread-06",
+    "pythread-07",
+    "pythread-08",
+    "pythread-09",
+    "pythread-10",
+    "pythread-11",
+    "pythread-12",
+    "pythread-13",
+    "pythread-14",
+    "pythread-15"
   ],
   "bookOrder": {
     "Python 教程": [
       "/pyint",
+      "/pyjava",
+      "/pyeng",
+      "/pyvsjs",
       "/py",
+      "/pyvsjava",
+      "/pykit",
       "/py4",
       "/py6",
       "/py8",
@@ -139,10 +155,7 @@
       "/fastapi",
       "/pyarch",
       "/pyproject",
-      "/pyeng",
-      "/pyjava",
-      "/pyvsjs",
-      "/pyvsjava"
+      "/pyrun"
     ],
     "Java 教程": [
       "/java",
@@ -182,7 +195,8 @@
       "/os",
       "/fe-interview",
       "/fe-engineering",
-      "/nextjs"
+      "/nextjs",
+      "/http"
     ],
     "综合知识": [
       "/future",

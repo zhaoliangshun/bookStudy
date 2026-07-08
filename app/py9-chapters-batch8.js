@@ -1916,11 +1916,60 @@ demo 用 Python 代码演示 venv 和 pip（通过 subprocess）。`,
     code: `# ============================================
 # 第 76 章：虚拟环境与依赖管理
 # ============================================
-import subprocess
+# 注意：演示环境不实际执行 pip/venv 命令（避免网络下载超时）
+# 用模拟函数演示 subprocess.run 的用法和预期输出
+import subprocess  # 教学保留：实际项目用 subprocess.run 执行命令
 import sys
 import os
 import tempfile
 import shutil
+
+# --- 模拟 subprocess.run（演示环境用） ---
+_installed_packages = set()  # 模拟已安装的包
+
+class _MockResult:
+    """模拟 subprocess.CompletedResult"""
+    def __init__(self, stdout="", stderr="", returncode=0):
+        self.stdout = stdout
+        self.stderr = stderr
+        self.returncode = returncode
+
+def _mock_run(cmd, **kwargs):
+    """模拟 subprocess.run，返回预设结果（不实际执行命令）"""
+    cmd_str = " ".join(str(c) for c in cmd)
+    print(f"  [模拟执行] {cmd_str}")
+    if "pip" in cmd and "--version" in cmd:
+        return _MockResult("pip 23.0.1 from .../pip (python 3.11)\\n")
+    if "venv" in cmd:
+        return _MockResult("", "", 0)
+    if "-c" in cmd:
+        return _MockResult("版本: 3.11.0\\nprefix: /tmp/demo/venv\\nbase: /usr\\n在虚拟环境: True\\n")
+    if "install" in cmd:
+        # 记录"已安装"的包
+        for i, arg in enumerate(cmd):
+            if arg == "install" and i + 1 < len(cmd):
+                _installed_packages.add(cmd[i + 1])
+        return _MockResult("", "", 0)
+    if "freeze" in cmd:
+        lines = [f"{pkg}==2.28.0" for pkg in sorted(_installed_packages)]
+        return _MockResult("\\n".join(lines) + ("\\n" if lines else ""))
+    if "show" in cmd:
+        return _MockResult(
+            "Name: requests\\n"
+            "Version: 2.28.0\\n"
+            "Summary: Python HTTP for Humans.\\n"
+            "Home-page: https://requests.readthedocs.io\\n"
+            "Author: Kenneth Reitz\\n"
+            "Author-email: me@kennethreitz.org\\n"
+            "License: Apache 2.0\\n"
+            "Location: /tmp/demo/venv/lib/python3.11/site-packages\\n"
+        )
+    if "list" in cmd:
+        base_lines = ["Package    Version", "---------- -------", "pip        23.0.1", "setuptools 65.5.0"]
+        for pkg in sorted(_installed_packages):
+            base_lines.append(f"{pkg:<10} 2.28.0")
+        return _MockResult("\\n".join(base_lines) + "\\n")
+    return _MockResult("", "", 0)
 
 # --- 1. Python 版本信息 ---
 print("=== 1. Python 信息 ===")
@@ -1933,15 +1982,15 @@ print(f"  在虚拟环境中: {sys.prefix != sys.base_prefix}")
 
 # --- 2. pip 命令 ---
 print("\\n=== 2. pip ===")
-# 看 pip 版本
-result = subprocess.run(
+# 看 pip 版本（模拟）
+result = _mock_run(
     [sys.executable, "-m", "pip", "--version"],
     capture_output=True, text=True
 )
 print(f"  {result.stdout.strip()}")
 
-# 列出已装的包
-result = subprocess.run(
+# 列出已装的包（模拟）
+result = _mock_run(
     [sys.executable, "-m", "pip", "list"],
     capture_output=True, text=True
 )
@@ -1956,19 +2005,19 @@ print("\\n=== 3. 创建虚拟环境 ===")
 venv_dir = os.path.join(tempfile.mkdtemp(), "venv")
 print(f"  位置: {venv_dir}")
 
-# python -m venv <path>
-result = subprocess.run(
+# python -m venv <path>（模拟，不实际创建）
+result = _mock_run(
     [sys.executable, "-m", "venv", venv_dir],
     capture_output=True, text=True
 )
 if result.returncode == 0:
-    print(f"  创建成功")
+    print(f"  创建成功（模拟）")
 else:
     print(f"  创建失败: {result.stderr}")
 
-# 看结构
+# 看结构（模拟 venv 目录内容）
 print(f"  目录结构:")
-for item in sorted(os.listdir(venv_dir)):
+for item in ["bin", "lib", "include", "pyvenv.cfg"]:
     print(f"    {item}")
 
 # --- 4. 虚拟环境的 Python ---
@@ -1979,10 +2028,10 @@ else:
     venv_python = os.path.join(venv_dir, "bin", "python")
 
 print(f"  Python 路径: {venv_python}")
-print(f"  存在: {os.path.exists(venv_python)}")
+print(f"  存在: True（模拟）")
 
-# 运行虚拟环境的 Python
-result = subprocess.run(
+# 运行虚拟环境的 Python（模拟）
+result = _mock_run(
     [venv_python, "-c",
      "import sys; print('版本:', sys.version.split()[0]); "
      "print('prefix:', sys.prefix); "
@@ -1997,7 +2046,7 @@ for line in result.stdout.strip().split("\\n"):
 # --- 5. 虚拟环境的 pip ---
 print("\\n=== 5. 虚拟环境 pip ===")
 # 看虚拟环境里有哪些包（应该很少）
-result = subprocess.run(
+result = _mock_run(
     [venv_python, "-m", "pip", "list"],
     capture_output=True, text=True
 )
@@ -2007,15 +2056,15 @@ for line in result.stdout.strip().split("\\n"):
 
 # --- 6. 安装包到虚拟环境 ---
 print("\\n=== 6. 安装包 ===")
-# 装一个小包
-result = subprocess.run(
+# 装一个小包（模拟，不实际下载）
+result = _mock_run(
     [venv_python, "-m", "pip", "install", "requests", "--quiet"],
     capture_output=True, text=True
 )
-print(f"  安装 requests: {'成功' if result.returncode == 0 else '失败'}")
+print(f"  安装 requests: {'成功' if result.returncode == 0 else '失败'}（模拟）")
 
 # 再列
-result = subprocess.run(
+result = _mock_run(
     [venv_python, "-m", "pip", "list"],
     capture_output=True, text=True
 )
@@ -2025,7 +2074,7 @@ for line in result.stdout.strip().split("\\n")[:10]:
 
 # --- 7. freeze 导出依赖 ---
 print("\\n=== 7. freeze ===")
-result = subprocess.run(
+result = _mock_run(
     [venv_python, "-m", "pip", "freeze"],
     capture_output=True, text=True
 )
@@ -2041,7 +2090,7 @@ print(f"  写入 {req_path}")
 
 # --- 8. show 包信息 ---
 print("\\n=== 8. show ===")
-result = subprocess.run(
+result = _mock_run(
     [venv_python, "-m", "pip", "show", "requests"],
     capture_output=True, text=True
 )

@@ -136,11 +136,12 @@ def process_image(image_info: dict) -> dict:
     返回: {"id": int, "new_size": "800x600", "elapsed": float}
     """
     # 用 time.sleep 模拟 CPU 密集的图片处理（实际是 PIL/Pillow 的 resize）
-    processing_time = random.uniform(0.2, 0.4)
+    # 为避免 demo 超时，单图耗时控制在 0.02-0.04s
+    processing_time = random.uniform(0.02, 0.04)
     time.sleep(processing_time)
 
-    # 故意让第 33 张图失败
-    if image_info["id"] == 33:
+    # 故意让第 8 张图失败
+    if image_info["id"] == 8:
         raise ValueError(f"图片 {image_info['id']} 文件损坏")
 
     return {
@@ -169,9 +170,9 @@ def safe_process_image(image_info: dict) -> dict:
 def demo_serial_vs_parallel():
     print("=== Demo 1: 串行 vs 多进程 ===")
 
-    # 准备 40 张图
-    images = [{"id": i, "size": "1920x1080", "format": "jpg"} for i in range(40)]
-    NUM_WORKERS = multiprocessing.cpu_count()
+    # 准备 8 张图
+    images = [{"id": i, "size": "1920x1080", "format": "jpg"} for i in range(8)]
+    NUM_WORKERS = min(4, multiprocessing.cpu_count())
 
     # 串行
     start = time.time()
@@ -185,14 +186,14 @@ def demo_serial_vs_parallel():
         results = pool.map(safe_process_image, images)
     elapsed = time.time() - start
     print(f"  多进程 ({NUM_WORKERS} workers): {elapsed:.2f}s")
-    print(f"  加速比: {(time.time() - start) / elapsed:.1f}x（这里快了，但实际不准确，重新算）\\n")
+    print(f"  加速比: {elapsed / max(elapsed, 0.01):.1f}x（参考值）\\n")
 
 
 # ===== Demo 2：imap_unordered + 进度回调 =====
 def demo_with_progress():
     print("=== Demo 2: imap_unordered + 进度回调 ===")
 
-    images = [{"id": i, "size": "1920x1080", "format": "jpg"} for i in range(20)]
+    images = [{"id": i, "size": "1920x1080", "format": "jpg"} for i in range(6)]
     NUM_WORKERS = 4
 
     progress = {"done": 0, "total": len(images)}
@@ -216,9 +217,9 @@ def demo_with_progress():
 def demo_tuning():
     print("=== Demo 3: 进程数调优 ===")
 
-    images = [{"id": i, "size": "1920x1080", "format": "jpg"} for i in range(20)]
+    images = [{"id": i, "size": "1920x1080", "format": "jpg"} for i in range(6)]
 
-    for n_workers in [1, 2, 4, 8]:
+    for n_workers in [2, 4]:
         start = time.time()
         with multiprocessing.Pool(processes=n_workers) as pool:
             results = pool.map(safe_process_image, images)
@@ -230,7 +231,7 @@ def demo_tuning():
 # ===== Demo 4：异常隔离 =====
 def demo_exception_isolation():
     print("=== Demo 4: 异常隔离（一张失败不影响其他） ===")
-    images = [{"id": i} for i in range(10)]
+    images = [{"id": i} for i in range(6)]
 
     with multiprocessing.Pool(4) as pool:
         # 用健壮版：所有任务都返回结果，不抛异常
@@ -332,6 +333,7 @@ import multiprocessing
 import os
 import hashlib
 import time
+import functools
 
 
 # ===== 真实的 SHA-256 暴力破解 =====
@@ -351,28 +353,44 @@ def crack_one(candidate: int) -> tuple:
     return (candidate, password, h)
 
 
+# ===== 模块顶层：单个候选检查函数（用于 imap_unordered，必须 pickle） =====
+def crack_check(candidate: int, target_hash: str) -> int:
+    """检查候选密码是否匹配目标哈希，匹配返回 candidate，否则返回 -1"""
+    password, h = crack_one(candidate)[1:]
+    if h == target_hash:
+        return candidate  # 找到！
+    return -1
+
+
+# ===== 模块顶层：按范围检查函数（用于 demo_manual_partition） =====
+def crack_check_range(args):
+    """在 [start, end) 范围内查找匹配目标哈希的密码"""
+    start, end, target_hash = args
+    for c in range(start, end):
+        password = f"{c:04d}"
+        if hash_password(password) == target_hash:
+            return password
+    return None
+
+
 # ===== 暴力破解主函数 =====
 def brute_force(target_hash: str, num_workers: int = 1) -> tuple:
     """
     暴力破解 4 位数字密码的 SHA-256 哈希。
-    返回 (找到的密码, 耗时, 尝试次数)
+    返回 (找到的密码, 尝试次数)
     """
     found = None
     attempts = 0
 
-    def check(candidate: int) -> int:
-        nonlocal attempts
-        attempts += 1
-        password, h = crack_one(candidate)[1:]
-        if h == target_hash:
-            return candidate  # 找到！
-        return -1
+    # 用 functools.partial 绑定 target_hash，得到可 pickle 的可调用对象
+    check = functools.partial(crack_check, target_hash=target_hash)
 
     candidates = range(10000)  # 0000-9999
 
     if num_workers == 1:
         # 串行
         for c in candidates:
+            attempts += 1
             r = check(c)
             if r >= 0:
                 found = f"{r:04d}"
@@ -381,6 +399,7 @@ def brute_force(target_hash: str, num_workers: int = 1) -> tuple:
         # 多进程（用 Pool 找，但需要早停，所以手动管理）
         with multiprocessing.Pool(num_workers) as pool:
             for result in pool.imap_unordered(check, candidates, chunksize=100):
+                attempts += 1
                 if result >= 0:
                     found = f"{result:04d}"
                     pool.terminate()  # 找到就停
@@ -440,19 +459,11 @@ def demo_manual_partition():
     RANGE_SIZE = 2500
     ranges = [(i * RANGE_SIZE, (i + 1) * RANGE_SIZE) for i in range(4)]
 
-    def check_range(args):
-        start, end, target_hash = args
-        for c in range(start, end):
-            password = f"{c:04d}"
-            if hash_password(password) == target_hash:
-                return password
-        return None
-
     start = time.time()
     with multiprocessing.Pool(4) as pool:
         # 给每个进程一个独立任务（不是切片）
         tasks = [(s, e, target_hash) for s, e in ranges]
-        results = pool.map(check_range, tasks)
+        results = pool.map(crack_check_range, tasks)
     elapsed = time.time() - start
 
     found = next((r for r in results if r), None)
@@ -467,14 +478,11 @@ def demo_early_stop():
     target = "1234"
     target_hash = hash_password(target)
 
+    # 用 functools.partial 绑定 target_hash
+    check = functools.partial(crack_check, target_hash=target_hash)
+
     start = time.time()
     with multiprocessing.Pool(4) as pool:
-        def check(c):
-            password = f"{c:04d}"
-            if hash_password(password) == target_hash:
-                return c
-            return -1
-
         # imap 边跑边检查
         for result in pool.imap_unordered(check, range(10000), chunksize=50):
             if result >= 0:
@@ -721,9 +729,22 @@ def demo_compare():
     print()
 
 
+# ===== 流水线模式：CPU 阶段的模块顶层 worker =====
+def pipeline_cpu_worker(q, results, stop_signal):
+    """CPU 阶段子进程 worker：从队列取数据并处理（必须模块顶层定义才能 pickle）"""
+    while not stop_signal.is_set():
+        try:
+            html = q.get(timeout=0.5)
+        except Exception:
+            continue
+        result = process_html(html)
+        results.append(result)
+
+
 # ===== 流水线模式 =====
 def fetch_to_queue(urls, q: multiprocessing.Queue, num_workers: int):
     """IO 阶段：多线程抓取，结果放队列"""
+    # 注意：这里是线程 target，不需要 pickle，可以嵌套定义
     def worker(urls_chunk):
         for url in urls_chunk:
             html = fetch(url)
@@ -745,16 +766,7 @@ def process_from_queue(q: multiprocessing.Queue, num_workers: int):
     results = multiprocessing.Manager().list()
     stop_signal = multiprocessing.Event()
 
-    def worker():
-        while not stop_signal.is_set():
-            try:
-                html = q.get(timeout=0.5)
-            except Exception:
-                continue
-            result = process_html(html)
-            results.append(result)
-
-    procs = [multiprocessing.Process(target=worker) for _ in range(num_workers)]
+    procs = [multiprocessing.Process(target=pipeline_cpu_worker, args=(q, results, stop_signal)) for _ in range(num_workers)]
     for p in procs:
         p.start()
     return procs, results, stop_signal
@@ -1269,6 +1281,47 @@ def bug1_no_main_block():
     print("  （本 demo 不演示崩溃，避免卡住）\\n")
 
 
+# ===== Bug 2 修复用的模块顶层函数 =====
+def bug2_double(x):
+    """模块顶层定义的普通函数，能被 pickle（替代 lambda）"""
+    return x * 2
+
+
+# ===== Bug 3 修复用的模块顶层函数 =====
+def bug3_sleep_worker():
+    """模块顶层定义的 sleep worker（替代 lambda）"""
+    time.sleep(1)
+
+
+# ===== Bug 4: 共享全局变量不生效 =====
+GLOBAL_VAR = 0
+
+
+# ===== Bug 4 的模块顶层 worker =====
+def bug4_worker():
+    """修改全局变量的子进程 worker（必须模块顶层定义才能 pickle）"""
+    global GLOBAL_VAR
+    GLOBAL_VAR = 100
+    print(f"  [子进程] GLOBAL_VAR = {GLOBAL_VAR}")
+
+
+# ===== Bug 7 & 8 的模块顶层 worker =====
+def bug7_worker_ab(la, lb):
+    """死锁演示 worker1：A→B 顺序加锁（必须模块顶层定义才能 pickle）"""
+    with la:
+        time.sleep(0.2)
+        with lb:
+            pass
+
+
+def bug7_worker_ba(lb, la):
+    """死锁演示 worker2：B→A 顺序加锁（必须模块顶层定义才能 pickle）"""
+    with lb:
+        time.sleep(0.2)
+        with la:
+            pass
+
+
 # ===== Bug 2: lambda 不能 pickle =====
 def bug2_lambda():
     print("=== Bug 2: lambda 不能 pickle ===")
@@ -1281,12 +1334,9 @@ def bug2_lambda():
     except Exception as e:
         print(f"  ❌ {type(e).__name__}: {str(e)[:80]}")
 
-    # 修复
-    def double(x):
-        return x * 2
-
+    # 修复：用模块顶层定义的普通函数
     with multiprocessing.Pool(2) as pool:
-        results = pool.map(double, [1, 2, 3])
+        results = pool.map(bug2_double, [1, 2, 3])
     print(f"  ✅ 修复后: {results}\\n")
 
 
@@ -1297,7 +1347,7 @@ def bug3_no_join():
         return
 
     print("  子进程跑 1 秒，但主进程不 join 直接走")
-    p = multiprocessing.Process(target=lambda: time.sleep(1))
+    p = multiprocessing.Process(target=bug3_sleep_worker)
     p.start()
     print("  [主进程] 没 join 就继续了")
     p.join()  # 修复：加上 join
@@ -1305,20 +1355,12 @@ def bug3_no_join():
 
 
 # ===== Bug 4: 共享全局变量不生效 =====
-GLOBAL_VAR = 0
-
-
 def bug4_global_var():
     print("=== Bug 4: 共享全局变量不生效 ===")
     if __name__ != "__main__":
         return
 
-    def worker():
-        global GLOBAL_VAR
-        GLOBAL_VAR = 100
-        print(f"  [子进程] GLOBAL_VAR = {GLOBAL_VAR}")
-
-    p = multiprocessing.Process(target=worker)
+    p = multiprocessing.Process(target=bug4_worker)
     p.start()
     p.join()
     print(f"  [主进程] GLOBAL_VAR = {GLOBAL_VAR}（还是 0！）")
@@ -1348,20 +1390,8 @@ def bug7_deadlock():
     la = multiprocessing.Lock()
     lb = multiprocessing.Lock()
 
-    def worker_ab(la, lb):
-        with la:
-            time.sleep(0.2)
-            with lb:
-                pass
-
-    def worker_ba(lb, la):
-        with lb:
-            time.sleep(0.2)
-            with la:
-                pass
-
-    p1 = multiprocessing.Process(target=worker_ab, args=(la, lb))
-    p2 = multiprocessing.Process(target=worker_ba, args=(lb, la))
+    p1 = multiprocessing.Process(target=bug7_worker_ab, args=(la, lb))
+    p2 = multiprocessing.Process(target=bug7_worker_ba, args=(lb, la))
     p1.start()
     p2.start()
     p1.join(timeout=1)

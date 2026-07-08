@@ -359,14 +359,18 @@ async def greet(name):
 # ===== 2. 协程的状态 =====
 def show_state(coro, label):
     """显示协程状态"""
-    state = inspect.getcoroutinestate(coro)
-    states = {
-        0: "GEN_CREATED（已创建，未执行）",
-        1: "GEN_RUNNING（正在执行）",
-        2: "GEN_SUSPENDED（在 await 处暂停）",
-        3: "GEN_CLOSED（已结束）",
-    }
-    print(f"  {label}: {states[state]}")
+    if inspect.iscoroutine(coro):
+        state = inspect.getcoroutinestate(coro)
+        states = {
+            "CORO_CREATED": "CORO_CREATED（已创建，未执行）",
+            "CORO_RUNNING": "CORO_RUNNING（正在执行）",
+            "CORO_SUSPENDED": "CORO_SUSPENDED（在 await 处暂停）",
+            "CORO_CLOSED": "CORO_CLOSED（已结束）",
+        }
+        print(f"  {label}: {states[state]}")
+    else:
+        # Task 对象不是 coroutine，用 done() 判断
+        print(f"  {label}: {'已完成' if coro.done() else '待执行（PENDING）'}")
 
 
 # ===== 3. 三种执行方式 =====
@@ -416,6 +420,7 @@ async def main():
     coro = greet("Test")
     print(f"  类型: {type(coro).__name__}")
     show_state(coro, "状态")
+    coro.close()  # 演示完类型和状态后关闭，避免 RuntimeWarning: coroutine was never awaited
     print()
 
     print("【2. 三种执行方式】")
@@ -630,7 +635,7 @@ async def main():
     print("• 事件循环 = asyncio 的调度中心")
     print("• 协程在 await 处暂停，让出 CPU")
     print("• I/O 完成时事件循环唤醒协程")
-    print("• 单线程也能"并发"（靠切换）")
+    print('• 单线程也能"并发"（靠切换）')
     print("• asyncio.run = 创建循环 + 运行 + 关闭")
     print("=" * 50)
 

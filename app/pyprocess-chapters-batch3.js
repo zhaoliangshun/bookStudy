@@ -204,23 +204,29 @@ def consumer(q: multiprocessing.Queue, consumer_id: int, sentinel):
         print(f"  [消费者 {consumer_id} pid={pid}] 消费: {item}")
 
 
+# ===== Demo 1 的模块顶层 worker =====
+def basic_queue_worker(q):
+    """子进程往队列里放数据（必须模块顶层定义才能 pickle）"""
+    q.put("hello from child")
+    q.put(42)
+    q.put([1, 2, 3])
+
+
 # ===== Demo 1：基本 put/get =====
 def demo_basic():
     print("=== Demo 1: 基本 put/get ===")
     q = multiprocessing.Queue()
 
-    def worker():
-        q.put("hello from child")
-        q.put(42)
-        q.put([1, 2, 3])
-
-    p = multiprocessing.Process(target=worker)
+    p = multiprocessing.Process(target=basic_queue_worker, args=(q,))
     p.start()
     p.join()
 
-    print(f"  队列大小: {q.qsize()}")
+    # 注意：macOS 上 q.qsize() 不可用（NotImplementedError），用 empty() 判断
+    count = 0
     while not q.empty():
         print(f"  取出: {q.get()}")
+        count += 1
+    print(f"  共取出 {count} 个元素")
     print()
 
 
@@ -232,7 +238,7 @@ def demo_block_modes():
     # 模拟"队列已满"的情况
     q.put("A")
     q.put("B")
-    print(f"  队列已满（{q.qsize()}/{q.qsize()}）")
+    print(f"  队列已满（maxsize=2，已放 2 个）")
 
     # 非阻塞 put：满了直接抛异常
     try:
@@ -289,19 +295,22 @@ def demo_producer_consumer():
     print()
 
 
+# ===== Demo 4 的模块顶层 consumer =====
+def consumer_with_done(q):
+    """从队列消费 3 个任务并标记完成"""
+    for _ in range(3):
+        item = q.get()
+        print(f"  [consumer] 消费: {item}")
+        q.task_done()  # 标记完成
+
+
 # ===== Demo 4：task_done + join =====
 def demo_task_done():
     print("=== Demo 4: task_done + join ===")
 
     q = multiprocessing.JoinableQueue()  # 注意：JoinableQueue 才有 task_done
 
-    def consumer_with_done():
-        for _ in range(3):
-            item = q.get()
-            print(f"  [consumer] 消费: {item}")
-            q.task_done()  # 标记完成
-
-    cons = multiprocessing.Process(target=consumer_with_done)
+    cons = multiprocessing.Process(target=consumer_with_done, args=(q,))
     cons.start()
 
     # 主进程生产
@@ -427,21 +436,22 @@ import os
 import time
 
 
+# ===== 简单双向通信的子进程 worker =====
+def pipe_basic_child(conn):
+    """双向 Pipe 子进程：收消息后回复"""
+    msg = conn.recv()
+    print(f"  [子进程] 收到: {msg}")
+    conn.send(f"你好，父进程！我是 pid={os.getpid()}")
+    conn.close()
+
+
 # ===== 简单双向通信 =====
 def demo_basic_pipe():
     print("=== Demo 1: 双向 Pipe ===")
 
     parent_conn, child_conn = multiprocessing.Pipe()
 
-    def child_process(conn):
-        # 子进程收到问候
-        msg = conn.recv()
-        print(f"  [子进程] 收到: {msg}")
-        # 子进程回复
-        conn.send(f"你好，父进程！我是 pid={os.getpid()}")
-        conn.close()
-
-    p = multiprocessing.Process(target=child_process, args=(child_conn,))
+    p = multiprocessing.Process(target=pipe_basic_child, args=(child_conn,))
     p.start()
 
     parent_conn.send("你好，子进程")
@@ -451,25 +461,29 @@ def demo_basic_pipe():
     print()
 
 
+# ===== 单向 Pipe 的子进程 worker =====
+def pipe_oneway_child(conn):
+    """单向 Pipe 子进程：只能 recv，收到 STOP 退出"""
+    while True:
+        try:
+            msg = conn.recv()
+            print(f"  [子进程] 收到: {msg}")
+            if msg == "STOP":
+                break
+        except EOFError:
+            print("  [子进程] 父进程关闭了连接")
+            break
+
+
 # ===== 单向 Pipe =====
 def demo_one_way():
     print("=== Demo 2: 单向 Pipe ===")
 
-    parent_conn, child_conn = multiprocessing.Pipe(duplex=False)
+    # Pipe(duplex=False): 第一个 conn 只能 recv，第二个只能 send
+    # 父进程要 send（用第二个），子进程要 recv（用第一个）
+    child_conn, parent_conn = multiprocessing.Pipe(duplex=False)
 
-    def child_process(conn):
-        # 单向模式下，child_conn 只能 recv
-        while True:
-            try:
-                msg = conn.recv()
-                print(f"  [子进程] 收到: {msg}")
-                if msg == "STOP":
-                    break
-            except EOFError:
-                print("  [子进程] 父进程关闭了连接")
-                break
-
-    p = multiprocessing.Process(target=child_process, args=(child_conn,))
+    p = multiprocessing.Process(target=pipe_oneway_child, args=(child_conn,))
     p.start()
 
     # 父进程只发不收
@@ -483,32 +497,34 @@ def demo_one_way():
     print()
 
 
+# ===== RPC 模拟的模块顶层 server =====
+def pipe_rpc_server(conn):
+    """RPC 服务器进程：接收请求，处理，返回结果（必须模块顶层定义才能 pickle）"""
+    while True:
+        try:
+            request = conn.recv()
+        except EOFError:
+            break
+        if request is None:
+            break
+        op, x, y = request
+        print(f"  [服务器] 收到请求: {op}({x}, {y})")
+        if op == "add":
+            result = x + y
+        elif op == "mul":
+            result = x * y
+        else:
+            result = None
+        conn.send(result)
+    conn.close()
+
+
 # ===== 客户端-服务器模拟 =====
 def demo_rpc_style():
     print("=== Demo 3: Pipe 模拟 RPC（请求-响应） ===")
 
-    def server(conn):
-        """服务器进程：接收请求，处理，返回结果"""
-        while True:
-            try:
-                request = conn.recv()
-            except EOFError:
-                break
-            if request is None:
-                break
-            op, x, y = request
-            print(f"  [服务器] 收到请求: {op}({x}, {y})")
-            if op == "add":
-                result = x + y
-            elif op == "mul":
-                result = x * y
-            else:
-                result = None
-            conn.send(result)
-        conn.close()
-
     parent_conn, child_conn = multiprocessing.Pipe()
-    srv = multiprocessing.Process(target=server, args=(child_conn,))
+    srv = multiprocessing.Process(target=pipe_rpc_server, args=(child_conn,))
     srv.start()
 
     # 客户端发请求
@@ -1081,6 +1097,14 @@ def compound_increment(shared, n):
             shared.value = current + 1
 
 
+def compound_no_lock(shared, n):
+    """无锁的复合操作：用于演示丢失更新（必须模块顶层定义才能 pickle）"""
+    for _ in range(n):
+        current = shared.value
+        time.sleep(0.0001)
+        shared.value = current + 1
+
+
 def demo_compound_lock():
     print("=== Demo 3: 复合操作需要 lock ===")
 
@@ -1094,12 +1118,6 @@ def demo_compound_lock():
     print(f"  带锁复合: {v1.value}（期望 200）")
 
     # 不带锁的复合操作
-    def compound_no_lock(shared, n):
-        for _ in range(n):
-            current = shared.value
-            time.sleep(0.0001)
-            shared.value = current + 1
-
     v2 = multiprocessing.Value('i', 0, lock=False)  # 关闭内部锁
     procs = [multiprocessing.Process(target=compound_no_lock, args=(v2, 50)) for _ in range(4)]
     for p in procs:
@@ -1401,30 +1419,34 @@ def deadlock_worker2(lock_b, lock_a):
             print(f"  [pid={os.getpid()}] 拿到 lock_a")
 
 
+def safe_deadlock_worker1(la, lb):
+    """死锁演示 worker1（必须模块顶层定义才能 pickle）"""
+    try:
+        with la:
+            time.sleep(0.3)
+            with lb:
+                pass
+    except Exception as e:
+        print(f"  worker1 异常: {e}")
+
+
+def safe_deadlock_worker2(lb, la):
+    """死锁演示 worker2（必须模块顶层定义才能 pickle）"""
+    try:
+        with lb:
+            time.sleep(0.3)
+            with la:
+                pass
+    except Exception as e:
+        print(f"  worker2 异常: {e}")
+
+
 def demo_deadlock():
     print("=== Demo 3: 死锁（反向加锁）===")
     lock_a = multiprocessing.Lock()
     lock_b = multiprocessing.Lock()
 
     # 用 timeout 避免 demo 卡住
-    def safe_deadlock_worker1(la, lb):
-        try:
-            with la:
-                time.sleep(0.3)
-                with lb:
-                    pass
-        except Exception as e:
-            print(f"  worker1 异常: {e}")
-
-    def safe_deadlock_worker2(lb, la):
-        try:
-            with lb:
-                time.sleep(0.3)
-                with la:
-                    pass
-        except Exception as e:
-            print(f"  worker2 异常: {e}")
-
     p1 = multiprocessing.Process(target=safe_deadlock_worker1, args=(lock_a, lock_b))
     p2 = multiprocessing.Process(target=safe_deadlock_worker2, args=(lock_b, lock_a))
     p1.start()
@@ -1444,21 +1466,24 @@ def demo_deadlock():
     print()
 
 
+# ===== Demo 4 worker：统一加锁顺序 =====
+def deadlock_fixed_worker(order, la, lb):
+    """统一顺序加锁的 worker（必须模块顶层定义才能 pickle）"""
+    # 按相同顺序加锁
+    with la:
+        with lb:
+            print(f"  [pid={os.getpid()} order={order}] 拿到 a 和 b")
+
+
 # ===== Demo 4：死锁解决 =====
 def demo_deadlock_fixed():
     print("=== Demo 4: 死锁的解决（统一顺序）===")
     lock_a = multiprocessing.Lock()
     lock_b = multiprocessing.Lock()
 
-    def worker_correct(order, la, lb):
-        # 按相同顺序加锁
-        with la:
-            with lb:
-                print(f"  [pid={os.getpid()} order={order}] 拿到 a 和 b")
-
     # 两个进程都按 A→B 顺序加锁
-    p1 = multiprocessing.Process(target=worker_correct, args=("A→B", lock_a, lock_b))
-    p2 = multiprocessing.Process(target=worker_correct, args=("A→B", lock_a, lock_b))
+    p1 = multiprocessing.Process(target=deadlock_fixed_worker, args=("A→B", lock_a, lock_b))
+    p2 = multiprocessing.Process(target=deadlock_fixed_worker, args=("A→B", lock_a, lock_b))
     p1.start()
     p2.start()
     p1.join()

@@ -377,7 +377,7 @@ print("=" * 60)
 
 
 # ===== Demo1：递归 Timer 实现周期任务 =====
-print("\\n[Demo1] 递归 Timer 周期任务（每 2 秒一次）：")
+print("\\n[Demo1] 递归 Timer 周期任务（每 0.2 秒一次）：")
 
 demo1_start = time.time()
 current_timer = None  # 保存当前 Timer 对象，方便取消
@@ -388,19 +388,19 @@ def tick():
     global current_timer
     elapsed = time.time() - demo1_start
     print(f"  [tick] {elapsed:.1f}s")
-    # 递归：启动下一次 Timer（2 秒后再调 tick）
-    current_timer = Timer(2.0, tick)
+    # 递归：启动下一次 Timer（0.2 秒后再调 tick）
+    current_timer = Timer(0.2, tick)
     current_timer.daemon = True  # 设为守护线程，主线程退出时自动结束
     current_timer.start()
 
 
-# 启动第一次（2 秒后开始）
-current_timer = Timer(2.0, tick)
+# 启动第一次（0.2 秒后开始）
+current_timer = Timer(0.2, tick)
 current_timer.daemon = True
 current_timer.start()
 
-# 主线程等 7 秒后取消（这期间会触发 3 次 tick：2s/4s/6s）
-time.sleep(7)
+# 主线程等 0.7 秒后取消（这期间会触发 3 次 tick：0.2s/0.4s/0.6s）
+time.sleep(0.7)
 current_timer.cancel()  # 取消还没触发的 Timer（第 4 次还没到时间）
 print("  已取消递归 Timer")
 
@@ -460,8 +460,8 @@ class TaskScheduler:
         for name, task in self.tasks.items():
             task["stop_event"].set()  # 通知线程退出
         for name, task in self.tasks.items():
-            # 等线程结束，最多 1 秒（防止卡死）
-            task["thread"].join(timeout=1.0)
+            # 等线程结束，最多 0.3 秒（防止卡死）
+            task["thread"].join(timeout=0.3)
             print(f"  [{name}] 已停止")
 
 
@@ -471,22 +471,22 @@ demo2_start = time.time()
 
 
 def heartbeat():
-    """模拟心跳任务（每秒执行）。"""
+    """模拟心跳任务（每 0.1 秒执行）。"""
     print(f"  [心跳] {time.time() - demo2_start:.1f}s")
 
 
 def report():
-    """模拟定期报告任务（每 2 秒执行）。"""
+    """模拟定期报告任务（每 0.2 秒执行）。"""
     print(f"  [报告] {time.time() - demo2_start:.1f}s 生成报告")
 
 
-# 添加两个任务：心跳 1 秒一次，报告 2 秒一次
-sched.add("heartbeat", 1.0, heartbeat)
-sched.add("report", 2.0, report)
+# 添加两个任务：心跳 0.1 秒一次，报告 0.2 秒一次
+sched.add("heartbeat", 0.1, heartbeat)
+sched.add("report", 0.2, report)
 
-# 启动并运行 5 秒
+# 启动并运行 0.5 秒
 sched.start()
-time.sleep(5)
+time.sleep(0.5)
 print("  --- 准备停止 ---")
 sched.stop()
 

@@ -2096,15 +2096,65 @@ requests → urllib3 → http.client → socket
 - 大文件用 \`stream=True\` 流式下载
 - 敏感信息（token）从环境变量读取，不硬编码
 - 用 \`resp.json()\` 替代手动 \`json.loads(resp.text)\``,
-    code: `# HTTP 客户端概念演示：用标准库 urllib 演示 requests/httpx 的核心概念
-# 不依赖 requests/httpx，纯标准库
+    code: `# HTTP 客户端概念演示：用模拟数据演示 requests/httpx 的核心概念
+# 不依赖 requests/httpx，纯标准库（演示环境不发起真实网络请求）
 
 print("=== HTTP 客户端（requests/httpx/urllib）演示 ===\\n")
 
-from urllib.request import urlopen, Request
-from urllib.parse import urlencode, quote
+from urllib.request import Request
+from urllib.parse import urlencode, quote, urlparse, parse_qs
 from urllib.error import URLError, HTTPError
 import json
+import time
+
+# --- 0. 模拟服务器（避免真实网络请求） ---
+print("--- 0. 模拟服务器（用预设响应代替真实 HTTP 请求） ---\\n")
+
+class _MockResponse:
+    """模拟 urllib 响应对象"""
+    def __init__(self, status, headers, body):
+        self._status = status
+        self._headers = headers
+        self._body = body.encode("utf-8") if isinstance(body, str) else body
+    def getcode(self):
+        return self._status
+    @property
+    def headers(self):
+        return self._headers
+    def read(self):
+        return self._body
+
+def _mock_urlopen(req_or_url, timeout=5):
+    """模拟 urlopen：根据 URL 返回预设响应，不发起真实网络请求"""
+    if hasattr(req_or_url, "full_url"):
+        url = req_or_url.full_url
+        req_data = getattr(req_or_url, "data", None)
+        req_headers = getattr(req_or_url, "headers", {})
+    else:
+        url = str(req_or_url)
+        req_data = None
+        req_headers = {}
+    time.sleep(0.02)  # 极短延迟，模拟网络往返
+    if "status/404" in url:
+        raise HTTPError(url, 404, "Not Found", {}, None)
+    if "delay/10" in url:
+        raise URLError("timed out")
+    if "/get" in url:
+        parsed = urlparse(url)
+        args = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+        body = json.dumps({"args": args, "origin": "127.0.0.1", "url": url})
+        return _MockResponse(200, {"Content-Type": "application/json"}, body)
+    if "/post" in url:
+        form, json_data = {}, None
+        ct = "".join(str(v) for k, v in req_headers.items() if k.lower() == "content-type")
+        if req_data:
+            if "json" in ct.lower():
+                json_data = json.loads(req_data.decode("utf-8"))
+            else:
+                form = {k: v[0] for k, v in parse_qs(req_data.decode("utf-8")).items()}
+        body = json.dumps({"form": form, "json": json_data, "origin": "127.0.0.1"})
+        return _MockResponse(200, {"Content-Type": "application/json"}, body)
+    return _MockResponse(200, {"Content-Type": "text/plain"}, "OK")
 
 # --- 1. 模拟 requests 的 API 风格 ---
 print("--- 1. 模拟 requests 简洁 API（基于 urllib 封装） ---")
@@ -2156,7 +2206,7 @@ class Session:
             headers["Content-Type"] = "application/x-www-form-urlencoded"
 
         req = Request(url, data=body, headers=headers, method=method)
-        resp = urlopen(req, timeout=timeout)
+        resp = _mock_urlopen(req, timeout=timeout)
         return Response(resp)
 
 # --- 2. 演示 GET 请求 ---
@@ -2227,7 +2277,7 @@ print("\\n--- 5. 超时与错误处理 ---")
 def fetch_with_timeout(url, timeout=2):
     """模拟 requests.get(url, timeout=2)"""
     try:
-        resp = urlopen(url, timeout=timeout)
+        resp = _mock_urlopen(url, timeout=timeout)
         return resp.getcode(), resp.read().decode()
     except HTTPError as e:
         return e.code, f"HTTP 错误: {e.reason}"
@@ -2257,7 +2307,7 @@ import concurrent.futures
 def sync_fetch(url):
     """模拟同步 HTTP 请求"""
     try:
-        resp = urlopen(url, timeout=5)
+        resp = _mock_urlopen(url, timeout=5)
         return resp.getcode()
     except Exception:
         return None

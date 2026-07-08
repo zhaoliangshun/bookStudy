@@ -578,7 +578,7 @@ async def main():
 
     print("=" * 50)
     print("总结：")
-    print("• gather(*[coro for x in items]) 是最常用"map"")
+    print('• gather(*[coro for x in items]) 是最常用 "map"')
     print("• Semaphore 限流版 map 防止并发过多")
     print("• as_completed 边完成边处理")
     print("• 异步推导式：[x async for x in async_gen]")
@@ -1029,12 +1029,10 @@ async def demo_signal():
         print("  ⚠️  Windows 不支持 add_signal_handler\\n")
         return
 
-    print("  等待 SIGINT（5 秒超时）...")
-    try:
-        await asyncio.wait_for(stop.wait(), timeout=5.0)
-        print("  ✅ 收到信号，退出")
-    except asyncio.TimeoutError:
-        print("  超时（5 秒内没收到）\\n")
+    print("  等待 SIGINT（模拟 0.5 秒）...")
+    # 实际运行时按 Ctrl+C 触发；这里用 sleep 模拟，避免阻塞等待真实信号
+    await asyncio.sleep(0.5)
+    print("  （模拟：超时未收到信号）\\n")
 
 
 # ===== 2. 优雅退出服务 =====
@@ -1059,11 +1057,12 @@ async def demo_graceful():
         loop.add_signal_handler(signal.SIGUSR1, stop.set)
     except (NotImplementedError, AttributeError):
         print("  ⚠️  SIGUSR1 在此系统不可用")
-        # 模拟停止
-        async def auto_stop():
-            await asyncio.sleep(1.5)
-            stop.set()
-        asyncio.create_task(auto_stop())
+
+    # 无论信号是否可用，都用 auto_stop 模拟停止，避免阻塞等待真实信号
+    async def auto_stop():
+        await asyncio.sleep(1.5)
+        stop.set()
+    asyncio.create_task(auto_stop())
 
     workers = [
         asyncio.create_task(worker(f"w{i}", stop))

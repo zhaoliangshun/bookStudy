@@ -415,7 +415,7 @@ def demo_binary_mode():
 
     # 写（注意是 bytes）
     with p.open("wb") as f:
-        f.write(b"Hello\\n\\xe4\\xb8\\x96\\x界\\n")
+        f.write(b"Hello\\n\\xe4\\xb8\\x96\\xe7\\x95\\x8c\\n")
 
     # 读出来是 bytes
     with p.open("rb") as f:
@@ -445,7 +445,7 @@ def demo_newline_conversion():
 
 
 def demo_copy_image():
-    print("=== 复制"伪图片"（用二进制） ===\\n")
+    print('=== 复制"伪图片"（用二进制） ===\\n')
     tmp = Path(tempfile.mkdtemp(prefix="pf06_img_"))
     src = tmp / "src.png"
     dst = tmp / "dst.png"
@@ -957,12 +957,15 @@ def demo_errors_handling():
     tmp = Path(tempfile.mkdtemp(prefix="pf08_err_"))
     p = tmp / "mixed.txt"
     # 写一个含非法 UTF-8 字节的文件
-    p.write_bytes(b"valid text \\xc4\\xe3 乱码部分")
+    p.write_bytes(b"valid text \\xc4\\xe3" + " 乱码部分".encode("gbk"))
 
     for err in ["strict", "ignore", "replace"]:
-        with p.open("r", encoding="utf-8", errors=err) as f:
-            content = f.read()
-        print(f"  errors={err:8s} → {content!r}")
+        try:
+            with p.open("r", encoding="utf-8", errors=err) as f:
+                content = f.read()
+            print(f"  errors={err:8s} → {content!r}")
+        except UnicodeDecodeError as e:
+            print(f"  errors={err:8s} → 报错: {e}")
     print()
 
 

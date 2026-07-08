@@ -795,7 +795,7 @@ print("=== 1. 同步 ===")
 def io_task(n):
     """模拟 IO 任务"""
     import time
-    time.sleep(0.1)
+    time.sleep(0.05)
     return n * 2
 
 def cpu_task(n):
@@ -813,7 +813,7 @@ print(f"  同步 10 个 IO 任务: {t_sync:.2f}s")
 
 # 同步执行 CPU
 start = time.time()
-results = [cpu_task(2_000_000) for _ in range(4)]
+results = [cpu_task(500_000) for _ in range(4)]
 t_sync_cpu = time.time() - start
 print(f"  同步 4 个 CPU 任务: {t_sync_cpu:.2f}s")
 
@@ -829,7 +829,7 @@ print(f"  多线程 10 个 IO: {t_thread_io:.2f}s    ← 比 {t_sync:.2f}s 快")
 # CPU 任务：多线程无效（GIL）
 start = time.time()
 with ThreadPoolExecutor(max_workers=4) as executor:
-    results = list(executor.map(cpu_task, [2_000_000] * 4))
+    results = list(executor.map(cpu_task, [500_000] * 4))
 t_thread_cpu = time.time() - start
 print(f"  多线程 4 个 CPU: {t_thread_cpu:.2f}s    ← GIL 限制，没加速")
 
@@ -840,7 +840,7 @@ print("\\n=== 3. 多进程 ===")
 if __name__ == "__main__":
     start = time.time()
     with ProcessPoolExecutor(max_workers=4) as executor:
-        results = list(executor.map(cpu_task, [2_000_000] * 4))
+        results = list(executor.map(cpu_task, [500_000] * 4))
     t_proc_cpu = time.time() - start
     print(f"  多进程 4 个 CPU: {t_proc_cpu:.2f}s    ← 比 {t_sync_cpu:.2f}s 快")
 
@@ -855,7 +855,7 @@ def worker(name, duration):
 
 threads = []
 for i in range(3):
-    t = threading.Thread(target=worker, args=(f"T{i}", 0.1))
+    t = threading.Thread(target=worker, args=(f"T{i}", 0.05))
     threads.append(t)
     t.start()
 
@@ -900,7 +900,7 @@ print(f"  加锁: {counter} (期望 20000)")
 print("\\n=== 6. as_completed ===")
 def fetch(url):
     """模拟请求"""
-    time.sleep(0.05 + (hash(url) % 5) * 0.02)
+    time.sleep(0.03 + (hash(url) % 5) * 0.01)
     return f"{url}: OK"
 
 urls = [f"url_{i}" for i in range(8)]
@@ -947,10 +947,10 @@ if __name__ == "__main__":
 print("\\n=== 9. 批量任务 ===")
 def process_item(item):
     """模拟处理"""
-    time.sleep(0.05)
+    time.sleep(0.03)
     return item * 2
 
-items = list(range(20))
+items = list(range(10))
 
 # 同步
 start = time.time()
@@ -963,7 +963,7 @@ with ThreadPoolExecutor(max_workers=5) as executor:
     thread_results = list(executor.map(process_item, items))
 t_thread = time.time() - start
 
-print(f"  20 个任务:")
+print(f"  10 个任务:")
 print(f"  同步:   {t_sync:.2f}s")
 print(f"  5线程:  {t_thread:.2f}s    ← 加速 {t_sync/t_thread:.1f}x")
 print(f"  结果一致: {sync_results == thread_results}")

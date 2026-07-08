@@ -360,7 +360,8 @@ print()
 
 
 # ===== 5. 上下文管理器工厂 =====
-@asyncio.coroutine
+# 注意：旧版 Python 用 @asyncio.coroutine 装饰生成器协程，3.11 起已移除；
+# 现在统一用 async def 即可，无需装饰器。
 async def timed_context(name):
     """用 asynccontextmanager 装饰器（Python 3.7+）"""
     from contextlib import asynccontextmanager
@@ -580,7 +581,7 @@ async def main5():
     async for i in infinite_numbers():
         print(f"  {i}", end=" ")
         if i >= 4:
-            print("\n  找到目标，停止迭代")
+            print("\\n  找到目标，停止迭代")
             break
 
 

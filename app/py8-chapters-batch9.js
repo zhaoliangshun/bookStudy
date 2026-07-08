@@ -1499,7 +1499,7 @@ async def timeout_demo():
 
     # 会超时的任务
     try:
-        result = await asyncio.wait_for(slow_operation(2.0), timeout=0.3)
+        result = await asyncio.wait_for(slow_operation(0.5), timeout=0.2)
         print(f"  结果：{result}")
     except asyncio.TimeoutError:
         print("  任务超时！被取消了")
@@ -1513,7 +1513,7 @@ print("=== 2. asyncio.shield 保护任务 ===")
 async def important_task():
     """重要任务：即使外部取消也要完成"""
     try:
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.2)
         print("  重要任务执行完毕")
         return "重要数据"
     except asyncio.CancelledError:
@@ -1524,7 +1524,7 @@ async def shield_demo():
     task = asyncio.create_task(important_task())
     # shield 保护：取消外层不影响被保护的任务
     try:
-        await asyncio.wait_for(asyncio.shield(task), timeout=0.1)
+        await asyncio.wait_for(asyncio.shield(task), timeout=0.05)
     except asyncio.TimeoutError:
         print("  外层超时了，但内层任务被 shield 保护，继续执行...")
 
@@ -1585,9 +1585,9 @@ async def safe_increment(name, n):
 async def lock_demo():
     global shared_counter
     shared_counter = 0
-    # 10个协程同时自增1000次
-    await asyncio.gather(*[safe_increment(f"worker{i}", 1000) for i in range(10)])
-    print(f"  10个协程各加1000次，期望10000，实际：{shared_counter}")
+    # 10个协程同时自增100次
+    await asyncio.gather(*[safe_increment(f"worker{i}", 100) for i in range(10)])
+    print(f"  10个协程各加100次，期望1000，实际：{shared_counter}")
 
 asyncio.run(lock_demo())
 
@@ -1602,7 +1602,7 @@ async def api_call(task_id):
     """模拟 API 调用，信号量控制并发数"""
     async with api_sem:
         print(f"  [请求{task_id}] 开始 (当前并发可能已达上限)")
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(0.2)
         print(f"  [请求{task_id}] 完成")
         return f"响应{task_id}"
 
@@ -1706,10 +1706,10 @@ print("=== 9. 任务取消 ===")
 async def cancellable_task():
     """可取消的任务"""
     try:
-        print("  任务开始，将运行5秒...")
+        print("  任务开始，将运行1.5秒...")
         for i in range(5):
-            await asyncio.sleep(1)
-            print(f"  ...已运行 {i+1} 秒")
+            await asyncio.sleep(0.3)
+            print(f"  ...已运行 {i+1} 轮")
     except asyncio.CancelledError:
         print("  任务被取消了！进行清理工作...")
         await asyncio.sleep(0.1)  # 清理
@@ -1718,7 +1718,7 @@ async def cancellable_task():
 
 async def cancel_demo():
     task = asyncio.create_task(cancellable_task())
-    await asyncio.sleep(0.3)  # 等一会儿
+    await asyncio.sleep(0.1)  # 等一会儿
     task.cancel()  # 取消任务
     try:
         await task

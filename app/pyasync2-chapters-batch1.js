@@ -477,6 +477,7 @@ print(f"  coro = {coro}")
 print(f"  类型: {type(coro).__name__}")
 print(f"  是协程对象: {asyncio.iscoroutine(coro)}")
 print(f"  是协程函数: {asyncio.iscoroutinefunction(simple)}")
+coro.close()  # 仅演示类型/状态，关闭避免 RuntimeWarning: coroutine was never awaited
 print()
 
 
@@ -486,9 +487,9 @@ print("=== 2. 手动驱动协程 ===")
 
 async def two_step():
     print("  步骤 1")
-    await asyncio.sleep(0.1)
+    await asyncio.sleep(0)  # sleep(0) 走快路径（仅 yield），手动 send 驱动时无需运行中的事件循环
     print("  步骤 2")
-    await asyncio.sleep(0.1)
+    await asyncio.sleep(0)
     print("  步骤 3")
     return "finished"
 

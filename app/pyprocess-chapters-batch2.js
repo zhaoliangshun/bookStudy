@@ -991,11 +991,11 @@ import time
 import atexit
 
 
-# ===== 一个会跑 10 秒的 worker =====
+# ===== 一个会跑 3 秒的 worker =====
 def long_worker(name: str):
     pid = os.getpid()
-    print(f"  [{name} pid={pid}] 开始跑（要 10 秒）")
-    for i in range(10):
+    print(f"  [{name} pid={pid}] 开始跑（要 3 秒）")
+    for i in range(3):
         time.sleep(1)
         print(f"  [{name} pid={pid}] 跑完第 {i + 1} 秒")
     print(f"  [{name} pid={pid}] 全部跑完")
@@ -1028,30 +1028,20 @@ def daemon_wants_child():
 def demo_daemon_killed():
     print("=== Demo 1: daemon 进程在主进程退出时被强杀 ===")
 
-    # 启动一个 daemon，让它跑 10 秒
+    # 启动一个 daemon，让它跑 3 秒
     p = multiprocessing.Process(target=long_worker, args=("DaemonWorker",), daemon=True)
     p.start()
 
-    # 主进程只等 2 秒就退出
-    print("  [主进程] 等 2 秒...")
-    time.sleep(2)
+    # 主进程只等 1 秒就退出
+    print("  [主进程] 等 1 秒...")
+    time.sleep(1)
     print(f"  [主进程] 我要走了，daemon 状态: is_alive={p.is_alive()}")
-    # 主进程退出时，daemon 会被强杀，不会跑完 10 秒
-    # 后面 main 里会用 sys.exit 模拟这个过程
-
-    # 这里我们手动让 daemon 跑完来对比
-    p.daemon = False  # 临时改成非 daemon
-    # 注意：start 后不能改 daemon，这行其实无效
-    # 我们用另一种方式：直接 p.join 让它跑完
+    # 主进程退出时，daemon 会被强杀，不会跑完 3 秒
+    # 注意：start 后不能改 daemon 属性，会抛 RuntimeError
+    # 所以这里直接 join 让 daemon 跑完（仅用于 demo 演示）
     print("  （为了 demo 完整，这里我们让 daemon 跑完，看完整输出）")
-    # 改成非 daemon：只能新建一个进程
-    p2 = multiprocessing.Process(target=long_worker, args=("NormalWorker",))
-    p2.start()
-    p2.join()
-    print(f"  [主进程] 现在原始 daemon {p.name} 状态: is_alive={p.is_alive()}")
-    # 实际中如果主进程退出，daemon 会被杀
-    # 这里是 demo 演示，把 daemon 也跑完了
     p.join()
+    print(f"  [主进程] daemon {p.name} 跑完了: is_alive={p.is_alive()}")
     print()
 
 

@@ -415,7 +415,8 @@ def demo_async_result():
     with multiprocessing.Pool(processes=2) as pool:
         ar = pool.apply_async(slow_task, (99,))
 
-        print(f"  提交后: ready={ar.ready()}, successful={ar.successful()}")
+        # 注意：successful() 只能在 ready()=True 后调用，否则抛 ValueError
+        print(f"  提交后: ready={ar.ready()}")
         time.sleep(0.2)
         print(f"  0.2s 后: ready={ar.ready()}")
 
@@ -886,19 +887,22 @@ def demo_memory_efficient():
     print(f"  ✅ 处理完成，共 {processed} 个\\n")
 
 
+# ===== Demo 5 的模块顶层 fast_task =====
+def imap_fast_task(x):
+    """极短任务，用于演示 chunksize 对 imap 的影响（必须模块顶层定义才能 pickle）"""
+    time.sleep(0.001)
+    return x
+
+
 # ===== Demo 5：chunksize 影响 =====
 def demo_chunksize():
     print("=== Demo 5: imap 的 chunksize ===")
-
-    def fast_task(x):
-        time.sleep(0.001)
-        return x
 
     NUM = 500
     for cs in [1, 10, 50]:
         with multiprocessing.Pool(4) as pool:
             start = time.time()
-            count = sum(1 for _ in pool.imap(fast_task, range(NUM), chunksize=cs))
+            count = sum(1 for _ in pool.imap(imap_fast_task, range(NUM), chunksize=cs))
             elapsed = time.time() - start
         print(f"  chunksize={cs:3d}: {elapsed:.3f}s (处理 {count} 个)")
     print()

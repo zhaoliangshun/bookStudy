@@ -763,7 +763,7 @@ print(f"  int 的大小:    {sys.getsizeof(42)} 字节")  # 打印整数大小
 print(f"  str 的大小:    {sys.getsizeof('hello')} 字节")  # 打印字符串大小
 print(f"  list 的大小:   {sys.getsizeof([1,2,3])} 字节")  # 打印列表大小
 print(f"  tuple 的大小:  {sys.getsizeof((1,2,3))} 字节")  # 打印元组大小
-print(f"  dict 的大小:   {sys.getsizeof({{'a':1}})} 字节")  # 打印字典大小
+print(f"  dict 的大小:   {sys.getsizeof({'a':1})} 字节")  # 打印字典大小
 print(f"  set 的大小:    {sys.getsizeof({1,2,3})} 字节")  # 打印集合大小
 
 # -------------------------------------------------------------

@@ -1177,7 +1177,7 @@ print("=" * 60)
 print("第15章 Timer 定时器演示")
 print("=" * 60)
 
-# ============== demo1：5 秒后执行 + cancel 取消 ==============
+# ============== demo1：0.5 秒后执行 + cancel 取消 ==============
 print("\\n[demo1] Timer 定时器与 cancel 取消")
 
 def alarm(name):
@@ -1186,19 +1186,19 @@ def alarm(name):
 
 print(f"开始时间: {time.strftime('%H:%M:%S')}")
 
-# t1：5 秒后执行 alarm("t1")
-t1 = threading.Timer(5.0, alarm, args=("t1",))
+# t1：0.5 秒后执行 alarm("t1")
+t1 = threading.Timer(0.5, alarm, args=("t1",))
 t1.start()
-print(f"[1] 启动 Timer t1，5 秒后执行（线程名={t1.name}）")
+print(f"[1] 启动 Timer t1，0.5 秒后执行（线程名={t1.name}）")
 
-# t2：3 秒后执行 alarm("t2")，但 1.5 秒后会被取消
-t2 = threading.Timer(3.0, alarm, args=("t2",))
+# t2：0.3 秒后执行 alarm("t2")，但 0.15 秒后会被取消
+t2 = threading.Timer(0.3, alarm, args=("t2",))
 t2.start()
-print(f"[2] 启动 Timer t2，3 秒后执行（线程名={t2.name}）")
+print(f"[2] 启动 Timer t2，0.3 秒后执行（线程名={t2.name}）")
 
-time.sleep(1.5)                           # 主线程睡 1.5 秒
+time.sleep(0.15)                          # 主线程睡 0.15 秒
 t2.cancel()                               # 取消 t2，它不会再执行
-print(f"[3] 在 1.5 秒时取消了 t2（cancel 成功，t2 不会执行）")
+print(f"[3] 在 0.15 秒时取消了 t2（cancel 成功，t2 不会执行）")
 
 print(f"[4] 主线程等待 t1 执行完毕...")
 t1.join()                                 # 等 t1 跑完
@@ -1207,7 +1207,7 @@ print(f"结束时间: {time.strftime('%H:%M:%S')}")
 print("→ demo1 结论：Timer 在指定延迟后执行一次；cancel 可在执行前取消")
 
 # ============== demo2：递归 Timer 实现周期任务 ==============
-print("\\n[demo2] 用递归 Timer 实现周期性定时任务（每 2 秒一次，共 5 次）")
+print("\\n[demo2] 用递归 Timer 实现周期性定时任务（每 0.2 秒一次，共 5 次）")
 
 tick_count = 0                            # 已触发次数
 MAX_TICKS = 5                             # 最大触发次数
@@ -1221,30 +1221,30 @@ def tick():
         tick_count += 1
         print(f"  [Tick {tick_count}] 时间 {time.strftime('%H:%M:%S')}")
         if tick_count < MAX_TICKS:
-            # 递归：再启动一个 2 秒后的 Timer，形成周期循环
-            current_timer = threading.Timer(2.0, tick)
+            # 递归：再启动一个 0.2 秒后的 Timer，形成周期循环
+            current_timer = threading.Timer(0.2, tick)
             current_timer.start()
-            print(f"           已安排下一次 Tick（2 秒后）")
+            print(f"           已安排下一次 Tick（0.2 秒后）")
         else:
             print(f"           达到最大次数 {MAX_TICKS}，停止周期任务")
 
 print(f"开始时间: {time.strftime('%H:%M:%S')}")
-print(f"每 2 秒触发一次，共 {MAX_TICKS} 次：")
+print(f"每 0.2 秒触发一次，共 {MAX_TICKS} 次：")
 
 # 启动第一个 Timer
 with timer_lock:
-    current_timer = threading.Timer(2.0, tick)
+    current_timer = threading.Timer(0.2, tick)
     current_timer.start()
 
 # 主线程等待所有 tick 完成
 while True:
-    time.sleep(0.3)
+    time.sleep(0.1)
     with timer_lock:
         if tick_count >= MAX_TICKS:
             break
 
 # 等待最后一次 tick 完全结束
-time.sleep(0.3)
+time.sleep(0.1)
 print(f"\\n结束时间: {time.strftime('%H:%M:%S')}")
 print("→ demo2 结论：在回调里再启动下一个 Timer，即可实现周期性触发")
 
@@ -1259,7 +1259,7 @@ def greet(name, punct="!"):
     result.append(f"Hello {name}{punct}")
 
 # 设为守护线程，主线程退出时不会等它
-t = threading.Timer(0.5, greet, args=("世界",), kwargs={"punct": "。"})
+t = threading.Timer(0.1, greet, args=("世界",), kwargs={"punct": "。"})
 t.daemon = True                           # 守护线程，不阻挡主线程退出
 t.start()
 t.join()                                  # 这里显式等它跑完看结果

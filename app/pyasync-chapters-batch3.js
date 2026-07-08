@@ -176,11 +176,13 @@ class FakeAsyncClient:
                 "status": 200,
                 "delay": round(delay, 2),
             }
-        # 用 wait_for 加超时
+        # 用 wait_for 加超时；同时捕获模拟的连接错误，避免向上抛出
         try:
             return await asyncio.wait_for(fake_request(), timeout=2.0)
         except asyncio.TimeoutError:
             return {"url": url, "status": "TIMEOUT"}
+        except ConnectionError as e:
+            return {"url": url, "status": "ERROR", "error": str(e)}
 
 
 # ===== 2. 串行 vs 并发 =====
@@ -252,6 +254,8 @@ async def demo_timeout():
             )
             timeouts = [r for r in results if isinstance(r, dict) and r.get("status") == "TIMEOUT"]
             print(f"  完成: {len(results)}, 超时: {len(timeouts)}\\n")
+        except Exception as e:
+            print(f"  请求出错: {e}\\n")
 
 
 # ===== 5. 实战模板 =====

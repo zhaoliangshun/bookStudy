@@ -340,12 +340,12 @@ if __name__ == "__main__":
     print("【结论】子进程修改 list 后，主进程的 list 没变，说明内存是独立的\\n")
 
     # === 第三部分：演示 if __name__ == "__main__" 的必要性 ===
-    print("=== 第三部分：if __name__ == \"__main__\" 保护 ===")
+    print('=== 第三部分：if __name__ == "__main__" 保护 ===')
     print("spawn 模式下，子进程会重新 import 主模块。")
-    print("如果没有 if __name__ == \"__main__\" 保护，")
+    print('如果没有 if __name__ == "__main__" 保护，')
     print("子进程会再次执行启动代码 → 无限递归 → 崩溃。")
     print()
-    print("本 demo 中所有 Process() 调用都在 if __name__ == \"__main__\" 里，")
+    print('本 demo 中所有 Process() 调用都在 if __name__ == "__main__" 里，')
     print("所以运行是安全的。✅")
 `,
   },
@@ -701,15 +701,21 @@ def try_lambda_worker():
     print()
 
 
+# ===== 坑 1 修复用的模块顶层函数 =====
+def double_worker(x):
+    """模块顶层定义的普通函数，能被 pickle 序列化"""
+    pid = os.getpid()
+    print(f"  [pid={pid}] double_worker({x}) = {x * 2}")
+    return x * 2
+
+
 # ===== 演示坑 1 的修复 =====
 def try_lambda_fix():
     """修复方案：用普通函数替代 lambda"""
     print("--- 坑 1 修复：用普通函数替代 lambda ---")
 
-    def double(x):  # ✅ 普通函数，能 pickle
-        return x * 2
-
-    p = multiprocessing.Process(target=double, args=(5,))
+    # 使用模块顶层定义的函数，而非嵌套函数或 lambda
+    p = multiprocessing.Process(target=double_worker, args=(5,))
     p.start()
     p.join()
     print("  ✅ 成功！\\n")
@@ -770,7 +776,7 @@ if __name__ == "__main__":
     print("=== 总结 ===")
     print("1. 子进程函数必须是模块顶层定义的普通函数")
     print("2. 不要用 lambda、嵌套函数、闭包")
-    print("3. 启动代码必须放在 if __name__ == \"__main__\" 里")
+    print('3. 启动代码必须放在 if __name__ == "__main__" 里')
     print("4. 启动后必须 join() 等子进程结束")
 `,
   },

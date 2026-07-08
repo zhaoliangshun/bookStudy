@@ -976,16 +976,17 @@ async def demo_shield():
             print("  [inner] 被取消（不应该）")
             raise
 
+    # shield 保护：外层 wait_for 超时不会取消 inner_task
+    # 注意：必须先创建 task 拿到引用，再用 shield 包一层；
+    # 否则超时后 shield 返回的外层 future 已被取消，无法再 await 拿结果。
+    inner_task = asyncio.ensure_future(long_task())
     try:
-        # shield 保护：外层 wait_for 超时不会取消 inner
-        inner = asyncio.shield(long_task())
-        try:
-            await asyncio.wait_for(inner, timeout=0.5)
-        except asyncio.TimeoutError:
-            print("  外层超时")
-        # 但 inner 还在跑，再 await 一下
-        result = await inner
-        print(f"  inner 最终结果: {result!r}\\n")
+        await asyncio.wait_for(asyncio.shield(inner_task), timeout=0.5)
+    except asyncio.TimeoutError:
+        print("  外层超时")
+    # inner_task 还在跑（被 shield 保护），再 await 一下拿结果
+    result = await inner_task
+    print(f"  inner 最终结果: {result!r}\\n")
 
 
 # ===== 实战：多任务超时 =====
