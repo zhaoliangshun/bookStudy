@@ -31,6 +31,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import EditorThemePicker from "./EditorThemePicker";
 import ContextMenu from "./ContextMenu";
 import useBookChapterActions from "../hooks/useBookChapterActions";
+import useBookDragDrop from "../hooks/useBookDragDrop";
 
 // =============================================================
 // 书籍目录数据（从 SiteNav 移入，集中维护）
@@ -210,19 +211,40 @@ export default function Sidebar({
 
   const [ctxMenu, setCtxMenu] = useState(null);
 
-  // 根据隐藏状态过滤后的书籍分类（隐藏的书籍移到"已隐藏"分类）
+  // ===== 书籍拖拽排序 =====
+  const { bookOrder, reorderInCategory, moveToCategory, getOrderedPaths } =
+    useBookDragDrop(BOOK_CATEGORIES);
+
+  // 拖拽状态：记录正在拖拽的书籍信息
+  const dragStateRef = useRef(null); // { bookPath, sourceCategory, sourceIndex }
+
+  // 根据排序和隐藏状态过滤后的书籍分类
   const visibleCategories = useMemo(() => {
     return BOOK_CATEGORIES.map((cat) => {
+      const orderedPaths = getOrderedPaths(cat.name);
       if (cat.name === "已隐藏") {
-        const existingPaths = new Set(cat.books.map((b) => b.path));
+        // 已隐藏：显示 bookOrder 中该分类的书籍 + 动态隐藏的书籍
         const dynamicHidden = ALL_BOOKS.filter(
-          (b) => hiddenBooks.has(b.path) && !existingPaths.has(b.path)
+          (b) => hiddenBooks.has(b.path) && !orderedPaths.includes(b.path)
         );
-        return { ...cat, books: [...cat.books, ...dynamicHidden] };
+        const allPaths = [...orderedPaths, ...dynamicHidden.map((b) => b.path)];
+        return {
+          ...cat,
+          books: allPaths
+            .map((p) => ALL_BOOKS.find((b) => b.path === p))
+            .filter(Boolean),
+        };
       }
-      return { ...cat, books: cat.books.filter((b) => !hiddenBooks.has(b.path)) };
+      // 普通分类：使用排序后的路径，过滤掉已隐藏的书籍
+      return {
+        ...cat,
+        books: orderedPaths
+          .filter((p) => !hiddenBooks.has(p))
+          .map((p) => ALL_BOOKS.find((b) => b.path === p))
+          .filter(Boolean),
+      };
     });
-  }, [hiddenBooks]);
+  }, [hiddenBooks, getOrderedPaths, bookOrder]);
 
   // 根据隐藏状态过滤后的章节分组
   const filteredGroupedChapters = useMemo(() => {
@@ -234,7 +256,7 @@ export default function Sidebar({
       .filter((g) => g.items.length > 0);
   }, [groupedChapters, hiddenChapterIds]);
 
-  // 被隐藏的章节，按原始分组归类（用于"已隐藏章节"区域）
+  // 被删除的章节，按原始分组归类（用于"已删除章节"区域）
   const hiddenChapterGroups = useMemo(() => {
     return groupedChapters
       .map((g) => ({
@@ -250,10 +272,10 @@ export default function Sidebar({
     [hiddenChapterGroups]
   );
 
-  // "已隐藏章节"区域是否收起
+  // "已删除章节"区域是否收起
   const [hiddenSectionCollapsed, setHiddenSectionCollapsed] = useState(true);
 
-  // 已隐藏章节区域内各分组的收起状态
+  // 已删除章节区域内各分组的收起状态
   const [hiddenGroupCollapsed, setHiddenGroupCollapsed] = useState(() => new Set());
 
   // 右键菜单事件处理器
@@ -298,8 +320,8 @@ export default function Sidebar({
       const ids = group.items.map((c) => c.id);
       return [
         allHidden
-          ? { label: "取消隐藏此分组", icon: "👁️", onClick: () => unhideChapters(ids) }
-          : { label: "隐藏此分组所有章节", icon: "🙈", onClick: () => hideChapters(ids) },
+          ? { label: "恢复此分组", icon: "↩️", onClick: () => unhideChapters(ids) }
+          : { label: "删除此分组所有章节", icon: "🗑️", danger: true, onClick: () => hideChapters(ids) },
       ];
     }
 
@@ -308,7 +330,7 @@ export default function Sidebar({
       if (!group) return [];
       const ids = group.items.filter((c) => hiddenChapterIds.has(c.id)).map((c) => c.id);
       return [
-        { label: "取消隐藏此分组", icon: "👁️", onClick: () => unhideChapters(ids) },
+        { label: "恢复此分组", icon: "↩️", onClick: () => unhideChapters(ids) },
       ];
     }
 
@@ -318,14 +340,14 @@ export default function Sidebar({
       const items = [];
       items.push(
         isDeleted
-          ? { label: "取消删除标记", icon: "↩️", onClick: () => undeleteChapter(ctxMenu.target) }
-          : { label: "标记删除", icon: "🗑️", danger: true, onClick: () => deleteChapter(ctxMenu.target) }
+          ? { label: "标记未读", icon: "📖", onClick: () => undeleteChapter(ctxMenu.target) }
+          : { label: "已读此章节", icon: "✅", onClick: () => deleteChapter(ctxMenu.target) }
       );
       items.push({ divider: true });
       items.push(
         isHidden
-          ? { label: "取消隐藏", icon: "👁️", onClick: () => unhideChapter(ctxMenu.target) }
-          : { label: "隐藏此章节", icon: "🙈", onClick: () => hideChapter(ctxMenu.target) }
+          ? { label: "恢复此章节", icon: "↩️", onClick: () => unhideChapter(ctxMenu.target) }
+          : { label: "删除此章节", icon: "🗑️", danger: true, onClick: () => hideChapter(ctxMenu.target) }
       );
       return items;
     }
@@ -336,6 +358,85 @@ export default function Sidebar({
     hideBook, unhideBook, deleteChapter, undeleteChapter,
     hideChapter, unhideChapter, hideChapters, unhideChapters,
   ]);
+
+  // ===== 书籍拖拽事件处理 =====
+  // 拖拽开始：记录来源信息
+  const handleDragStart = useCallback((e, bookPath, categoryName, index) => {
+    dragStateRef.current = { bookPath, sourceCategory: categoryName, sourceIndex: index };
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", bookPath);
+    // 延迟添加 dragging 样式（避免拖拽幽灵图立即变半透明）
+    requestAnimationFrame(() => {
+      e.target.classList.add("dragging");
+    });
+  }, []);
+
+  // 拖拽结束：清理状态
+  const handleDragEnd = useCallback((e) => {
+    e.target.classList.remove("dragging");
+    // 延迟清空拖拽状态，确保 click 事件先检查到 dragStateRef
+    setTimeout(() => {
+      dragStateRef.current = null;
+    }, 0);
+  }, []);
+
+  // 拖拽经过书籍卡片：判断插入位置（卡片上半=插前面，下半=插后面）
+  const handleCardDragOver = useCallback((e, categoryName, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const card = e.currentTarget;
+    const rect = card.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    // 移除所有 drag-over 类
+    card.parentElement.querySelectorAll(".drag-over-before, .drag-over-after").forEach((el) => {
+      el.classList.remove("drag-over-before", "drag-over-after");
+    });
+    // 根据鼠标位置添加对应的类
+    if (e.clientY < midY) {
+      card.classList.add("drag-over-before");
+    } else {
+      card.classList.add("drag-over-after");
+    }
+  }, []);
+
+  // 拖拽离开书籍卡片
+  const handleCardDragLeave = useCallback((e) => {
+    e.currentTarget.classList.remove("drag-over-before", "drag-over-after");
+  }, []);
+
+  // 在书籍卡片上释放
+  const handleCardDrop = useCallback(
+    (e, toCategory, toIndex) => {
+      e.preventDefault();
+      e.currentTarget.classList.remove("drag-over-before", "drag-over-after");
+      const ds = dragStateRef.current;
+      if (!ds) return;
+
+      const rect = e.currentTarget.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      // 鼠标在卡片上半部 → insert before；下半部 → insert after
+      const insertIndex = e.clientY < midY ? toIndex : toIndex + 1;
+
+      if (ds.sourceCategory === toCategory) {
+        // 同分类内排序
+        const adjustedIndex =
+          insertIndex > ds.sourceIndex ? insertIndex - 1 : insertIndex;
+        reorderInCategory(toCategory, ds.sourceIndex, adjustedIndex);
+      } else {
+        // 跨分类移动
+        moveToCategory(ds.sourceCategory, ds.sourceIndex, toCategory, insertIndex);
+        // 联动隐藏状态
+        if (toCategory === "已隐藏") {
+          hideBook(ds.bookPath);
+        } else if (ds.sourceCategory === "已隐藏") {
+          unhideBook(ds.bookPath);
+        }
+      }
+      // 不清空 dragStateRef，留给 dragEnd 清理（防止 click 事件误触发跳转）
+      ds.dropped = true;
+    },
+    [reorderInCategory, moveToCategory, hideBook, unhideBook]
+  );
 
   // 当前书籍信息
   const currentBook = ALL_BOOKS.find((b) => b.path === currentPath) || ALL_BOOKS[0];
@@ -866,14 +967,27 @@ export default function Sidebar({
                         {/* 平铺网格：一行多个书籍卡片，自动换行 */}
                         {!isCollapsed && (
                         <div className="sidebar-book-grid">
-                          {category.books.map((book) => (
+                          {category.books.map((book, idx) => (
                             <a
                               key={book.path}
                               href={book.path}
+                              draggable
                               className={`sidebar-book-card ${currentPath === book.path ? "active" : ""}`}
-                              onClick={() => setBookDropdownOpen(false)}
+                              onClick={(e) => {
+                                // 拖拽中不触发点击跳转
+                                if (dragStateRef.current) {
+                                  e.preventDefault();
+                                  return;
+                                }
+                                setBookDropdownOpen(false);
+                              }}
                               onContextMenu={(e) => handleBookContextMenu(e, book.path)}
-                              title={book.label}
+                              onDragStart={(e) => handleDragStart(e, book.path, category.name, idx)}
+                              onDragEnd={handleDragEnd}
+                              onDragOver={(e) => handleCardDragOver(e, category.name, idx)}
+                              onDragLeave={handleCardDragLeave}
+                              onDrop={(e) => handleCardDrop(e, category.name, idx)}
+                              title={`${book.label}（可拖拽排序）`}
                             >
                               <span className="sidebar-book-card-icon">{book.icon}</span>
                               <span className="sidebar-book-card-label">{book.label}</span>
@@ -950,7 +1064,7 @@ export default function Sidebar({
               );
             })}
 
-            {/* 已隐藏的章节区域（按分组展示） */}
+            {/* 已删除的章节区域（按分组展示） */}
             {hiddenChapterGroups.length > 0 && (
               <div className="chapter-group hidden-chapters-section">
                 <button
@@ -962,7 +1076,7 @@ export default function Sidebar({
                   <span className={`group-title-arrow${hiddenSectionCollapsed ? "" : " expanded"}`}>
                     ▶
                   </span>
-                  <span className="group-title-text">已隐藏的章节 ({hiddenChapterCount})</span>
+                  <span className="group-title-text">已删除的章节 ({hiddenChapterCount})</span>
                 </button>
                 {!hiddenSectionCollapsed && (
                   <div className="hidden-chapters-groups">

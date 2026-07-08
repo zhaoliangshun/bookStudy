@@ -3,18 +3,18 @@
 // =============================================================
 // 书籍/章节右键操作状态管理 Hook
 // -------------------------------------------------------------
-// 提供隐藏书籍、删除/隐藏章节的状态持久化（localStorage）
+// 提供隐藏书籍、已读/删除章节的状态持久化（localStorage）
 //
 // 返回值：
-//   hiddenBooks    - Set<string>  被隐藏的书籍路径
-//   deletedChapterIds - Set<string>  被标记删除的章节 ID（删除线）
-//   hiddenChapterIds  - Set<string>  被隐藏的章节 ID
+//   hiddenBooks        - Set<string>  被隐藏的书籍路径
+//   deletedChapterIds  - Set<string>  已被标记为已读的章节 ID（删除线）
+//   hiddenChapterIds   - Set<string>  被删除的章节 ID
 //   hideBook(path)     - 隐藏一本书
 //   unhideBook(path)   - 取消隐藏一本书
-//   deleteChapter(id)  - 标记章节为删除（删除线）
-//   undeleteChapter(id) - 取消删除标记
-//   hideChapter(id)    - 隐藏章节
-//   unhideChapter(id)  - 取消隐藏章节
+//   deleteChapter(id)  - 标记章节为已读（删除线）
+//   undeleteChapter(id) - 标记章节为未读
+//   hideChapter(id)    - 删除章节
+//   unhideChapter(id)  - 恢复章节
 // =============================================================
 
 import { useState, useEffect, useCallback } from "react";
@@ -71,7 +71,7 @@ export default function useBookChapterActions() {
     });
   }, []);
 
-  // 标记 / 取消标记删除章节
+  // 标记已读 / 标记未读章节
   const deleteChapter = useCallback((id) => {
     setDeletedChapterIds((prev) => {
       const next = new Set(prev);
@@ -90,7 +90,7 @@ export default function useBookChapterActions() {
     });
   }, []);
 
-  // 隐藏 / 取消隐藏章节
+  // 删除 / 恢复章节
   const hideChapter = useCallback((id) => {
     setHiddenChapterIds((prev) => {
       const next = new Set(prev);
@@ -109,7 +109,7 @@ export default function useBookChapterActions() {
     });
   }, []);
 
-  // 批量隐藏 / 取消隐藏章节（用于分组右键菜单）
+  // 批量删除 / 恢复章节（用于分组右键菜单）
   const hideChapters = useCallback((ids) => {
     setHiddenChapterIds((prev) => {
       const next = new Set(prev);
