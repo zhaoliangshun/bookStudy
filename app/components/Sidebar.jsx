@@ -29,6 +29,8 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import EditorThemePicker from "./EditorThemePicker";
+import ContextMenu from "./ContextMenu";
+import useBookChapterActions from "../hooks/useBookChapterActions";
 
 // =============================================================
 // 书籍目录数据（从 SiteNav 移入，集中维护）
@@ -189,6 +191,150 @@ export default function Sidebar({
     () => new Set(groupedChapters.map((g) => g.group))
   );
 
+  // ===== 右键菜单状态 =====
+  const {
+    hiddenBooks,
+    deletedChapterIds,
+    hiddenChapterIds,
+    hideBook,
+    unhideBook,
+    deleteChapter,
+    undeleteChapter,
+    hideChapter,
+    unhideChapter,
+    hideChapters,
+    unhideChapters,
+  } = useBookChapterActions();
+
+  const [ctxMenu, setCtxMenu] = useState(null);
+
+  // 根据隐藏状态过滤后的书籍分类（隐藏的书籍移到"已隐藏"分类）
+  const visibleCategories = useMemo(() => {
+    return BOOK_CATEGORIES.map((cat) => {
+      if (cat.name === "已隐藏") {
+        const existingPaths = new Set(cat.books.map((b) => b.path));
+        const dynamicHidden = ALL_BOOKS.filter(
+          (b) => hiddenBooks.has(b.path) && !existingPaths.has(b.path)
+        );
+        return { ...cat, books: [...cat.books, ...dynamicHidden] };
+      }
+      return { ...cat, books: cat.books.filter((b) => !hiddenBooks.has(b.path)) };
+    });
+  }, [hiddenBooks]);
+
+  // 根据隐藏状态过滤后的章节分组
+  const filteredGroupedChapters = useMemo(() => {
+    return groupedChapters
+      .map((g) => ({
+        ...g,
+        items: g.items.filter((c) => !hiddenChapterIds.has(c.id)),
+      }))
+      .filter((g) => g.items.length > 0);
+  }, [groupedChapters, hiddenChapterIds]);
+
+  // 被隐藏的章节，按原始分组归类（用于"已隐藏章节"区域）
+  const hiddenChapterGroups = useMemo(() => {
+    return groupedChapters
+      .map((g) => ({
+        group: g.group,
+        items: g.items.filter((c) => hiddenChapterIds.has(c.id)),
+      }))
+      .filter((g) => g.items.length > 0);
+  }, [groupedChapters, hiddenChapterIds]);
+
+  // 被隐藏章节总数
+  const hiddenChapterCount = useMemo(
+    () => hiddenChapterGroups.reduce((sum, g) => sum + g.items.length, 0),
+    [hiddenChapterGroups]
+  );
+
+  // "已隐藏章节"区域是否收起
+  const [hiddenSectionCollapsed, setHiddenSectionCollapsed] = useState(true);
+
+  // 已隐藏章节区域内各分组的收起状态
+  const [hiddenGroupCollapsed, setHiddenGroupCollapsed] = useState(() => new Set());
+
+  // 右键菜单事件处理器
+  const handleBookContextMenu = useCallback((e, bookPath) => {
+    e.preventDefault();
+    setCtxMenu({ type: "book", target: bookPath, position: { x: e.clientX, y: e.clientY } });
+  }, []);
+
+  const handleGroupContextMenu = useCallback((e, groupName) => {
+    e.preventDefault();
+    setCtxMenu({ type: "group", target: groupName, position: { x: e.clientX, y: e.clientY } });
+  }, []);
+
+  const handleChapterContextMenu = useCallback((e, chapterId) => {
+    e.preventDefault();
+    setCtxMenu({ type: "chapter", target: chapterId, position: { x: e.clientX, y: e.clientY } });
+  }, []);
+
+  // 隐藏区域分组右键（始终显示"取消隐藏"）
+  const handleHiddenGroupContextMenu = useCallback((e, groupName) => {
+    e.preventDefault();
+    setCtxMenu({ type: "hidden-group", target: groupName, position: { x: e.clientX, y: e.clientY } });
+  }, []);
+
+  // 根据右键菜单类型构建菜单项
+  const ctxMenuItems = useMemo(() => {
+    if (!ctxMenu) return [];
+
+    if (ctxMenu.type === "book") {
+      const isHidden = hiddenBooks.has(ctxMenu.target);
+      return [
+        isHidden
+          ? { label: "取消隐藏", icon: "👁️", onClick: () => unhideBook(ctxMenu.target) }
+          : { label: "隐藏此书", icon: "🙈", onClick: () => hideBook(ctxMenu.target) },
+      ];
+    }
+
+    if (ctxMenu.type === "group") {
+      const group = groupedChapters.find((g) => g.group === ctxMenu.target);
+      if (!group) return [];
+      const allHidden = group.items.every((c) => hiddenChapterIds.has(c.id));
+      const ids = group.items.map((c) => c.id);
+      return [
+        allHidden
+          ? { label: "取消隐藏此分组", icon: "👁️", onClick: () => unhideChapters(ids) }
+          : { label: "隐藏此分组所有章节", icon: "🙈", onClick: () => hideChapters(ids) },
+      ];
+    }
+
+    if (ctxMenu.type === "hidden-group") {
+      const group = groupedChapters.find((g) => g.group === ctxMenu.target);
+      if (!group) return [];
+      const ids = group.items.filter((c) => hiddenChapterIds.has(c.id)).map((c) => c.id);
+      return [
+        { label: "取消隐藏此分组", icon: "👁️", onClick: () => unhideChapters(ids) },
+      ];
+    }
+
+    if (ctxMenu.type === "chapter") {
+      const isDeleted = deletedChapterIds.has(ctxMenu.target);
+      const isHidden = hiddenChapterIds.has(ctxMenu.target);
+      const items = [];
+      items.push(
+        isDeleted
+          ? { label: "取消删除标记", icon: "↩️", onClick: () => undeleteChapter(ctxMenu.target) }
+          : { label: "标记删除", icon: "🗑️", danger: true, onClick: () => deleteChapter(ctxMenu.target) }
+      );
+      items.push({ divider: true });
+      items.push(
+        isHidden
+          ? { label: "取消隐藏", icon: "👁️", onClick: () => unhideChapter(ctxMenu.target) }
+          : { label: "隐藏此章节", icon: "🙈", onClick: () => hideChapter(ctxMenu.target) }
+      );
+      return items;
+    }
+
+    return [];
+  }, [
+    ctxMenu, hiddenBooks, hiddenChapterIds, deletedChapterIds, groupedChapters,
+    hideBook, unhideBook, deleteChapter, undeleteChapter,
+    hideChapter, unhideChapter, hideChapters, unhideChapters,
+  ]);
+
   // 当前书籍信息
   const currentBook = ALL_BOOKS.find((b) => b.path === currentPath) || ALL_BOOKS[0];
 
@@ -278,10 +424,12 @@ export default function Sidebar({
     }
   }, [activeId, groupedChapters, collapsedGroups]);
 
-  // 点击外部关闭书籍目录下拉
+  // 点击外部关闭书籍目录下拉（排除右键菜单内的点击）
   useEffect(() => {
     if (!bookDropdownOpen) return;
     const handler = (e) => {
+      // 如果点击的是右键菜单内部，不关闭下拉
+      if (e.target.closest(".ctx-menu")) return;
       if (bookDropdownRef.current && !bookDropdownRef.current.contains(e.target)) {
         setBookDropdownOpen(false);
       }
@@ -649,7 +797,7 @@ export default function Sidebar({
                     </button>
                   </div>
                   <div className="sidebar-book-dropdown-body">
-                    {BOOK_CATEGORIES.map((category) => {
+                    {visibleCategories.map((category) => {
                       const isCollapsed = expandedCategory !== category.name;
                       return (
                       <div key={category.name} className="sidebar-book-category">
@@ -677,6 +825,7 @@ export default function Sidebar({
                               href={book.path}
                               className={`sidebar-book-card ${currentPath === book.path ? "active" : ""}`}
                               onClick={() => setBookDropdownOpen(false)}
+                              onContextMenu={(e) => handleBookContextMenu(e, book.path)}
                               title={book.label}
                             >
                               <span className="sidebar-book-card-icon">{book.icon}</span>
@@ -716,7 +865,7 @@ export default function Sidebar({
             </div>
           )}
           <nav className="chapter-nav">
-            {groupedChapters.map(({ group, items }) => {
+            {filteredGroupedChapters.map(({ group, items }) => {
               const isGroupCollapsed = collapsedGroups.has(group);
               return (
               <div key={group} className="chapter-group">
@@ -724,6 +873,7 @@ export default function Sidebar({
                   type="button"
                   className={`group-title ${isGroupCollapsed ? "collapsed" : ""}`}
                   onClick={() => toggleGroup(group)}
+                  onContextMenu={(e) => handleGroupContextMenu(e, group)}
                   aria-expanded={!isGroupCollapsed}
                   title={isGroupCollapsed ? "点击展开" : "点击收起"}
                 >
@@ -738,8 +888,9 @@ export default function Sidebar({
                     <li key={ch.id}>
                       <button
                         ref={activeId === ch.id ? activeChapterRef : null}
-                        className={`chapter-item ${activeId === ch.id ? "active" : ""}`}
+                        className={`chapter-item ${activeId === ch.id ? "active" : ""} ${deletedChapterIds.has(ch.id) ? "deleted" : ""}`}
                         onClick={() => handleSelect(ch.id)}
+                        onContextMenu={(e) => handleChapterContextMenu(e, ch.id)}
                       >
                         <span className="chapter-icon">{ch.icon}</span>
                         <span className="chapter-title-text">{ch.title}</span>
@@ -751,6 +902,68 @@ export default function Sidebar({
               </div>
               );
             })}
+
+            {/* 已隐藏的章节区域（按分组展示） */}
+            {hiddenChapterGroups.length > 0 && (
+              <div className="chapter-group hidden-chapters-section">
+                <button
+                  type="button"
+                  className={`group-title ${hiddenSectionCollapsed ? "collapsed" : ""}`}
+                  onClick={() => setHiddenSectionCollapsed((v) => !v)}
+                  title={hiddenSectionCollapsed ? "点击展开" : "点击收起"}
+                >
+                  <span className={`group-title-arrow${hiddenSectionCollapsed ? "" : " expanded"}`}>
+                    ▶
+                  </span>
+                  <span className="group-title-text">已隐藏的章节 ({hiddenChapterCount})</span>
+                </button>
+                {!hiddenSectionCollapsed && (
+                  <div className="hidden-chapters-groups">
+                    {hiddenChapterGroups.map(({ group, items }) => {
+                      const isGroupHidden = hiddenGroupCollapsed.has(group);
+                      return (
+                        <div key={group} className="hidden-group">
+                          <button
+                            type="button"
+                            className={`hidden-group-title ${isGroupHidden ? "collapsed" : ""}`}
+                            onClick={() =>
+                              setHiddenGroupCollapsed((prev) => {
+                                const next = new Set(prev);
+                                isGroupHidden ? next.delete(group) : next.add(group);
+                                return next;
+                              })
+                            }
+                            onContextMenu={(e) => handleHiddenGroupContextMenu(e, group)}
+                            title={isGroupHidden ? "点击展开" : "点击收起"}
+                          >
+                            <span className={`group-title-arrow${isGroupHidden ? "" : " expanded"}`}>
+                              ▶
+                            </span>
+                            <span className="hidden-group-name">{group}</span>
+                            <span className="hidden-group-count">{items.length}</span>
+                          </button>
+                          {!isGroupHidden && (
+                          <ul>
+                            {items.map((ch) => (
+                              <li key={ch.id}>
+                                <button
+                                  className={`chapter-item ${deletedChapterIds.has(ch.id) ? "deleted" : ""}`}
+                                  onContextMenu={(e) => handleChapterContextMenu(e, ch.id)}
+                                >
+                                  <span className="chapter-icon">{ch.icon}</span>
+                                  <span className="chapter-title-text">{ch.title}</span>
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </nav>
           {footer && <div className="sidebar-footer">{footer}</div>}
         </div>
@@ -782,6 +995,15 @@ export default function Sidebar({
           <span className="expand-btn-icon">📖</span>
           <span className="expand-btn-text">目录</span>
         </button>
+      )}
+
+      {/* 右键菜单 */}
+      {ctxMenu && (
+        <ContextMenu
+          items={ctxMenuItems}
+          position={ctxMenu.position}
+          onClose={() => setCtxMenu(null)}
+        />
       )}
     </>
   );
