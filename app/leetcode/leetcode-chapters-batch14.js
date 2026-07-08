@@ -1,637 +1,802 @@
 export const chapters = [
-  { id: "lc-452", group: "贪心", icon: "🟡", title: "452. 用最少数量的箭引爆气球（中等）", content: `# 452. 用最少数量的箭引爆气球（中等）
+  { id: "lc-746", group: "动态规划", icon: "🟢", title: "746. 使用最小花费爬楼梯（简单）", content: `# 746. 使用最小花费爬楼梯（简单）
 
 ## 题目描述
-这是一道经典的贪心题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
-
-**难度**：中等
-**分类**：贪心
-
-## 解题思路
-
-本题是贪心类型的经典题目，我们可以通过多种方法来解决。
-
-## 解法1：常规解法
-
-### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用贪心相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
-
-### 代码实现
-
-**Python**
-\`\`\`python
-def solution(nums):
-    res = 0
-    for num in nums:
-        pass
-    return res
-\`\`\`
-
-**Java**
-\`\`\`java
-class Solution {
-    public int solution(int[] nums) {
-        int res = 0;
-        for (int num : nums) {}
-        return res;
-    }
-}
-\`\`\`
-
-### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
-
-## 边界条件与注意事项
-
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
-
-## 相似题目推荐
-
-同类型相关题目
-` },
-  { id: "lc-455", group: "贪心", icon: "🟢", title: "455. 分发饼干（简单）", content: `# 455. 分发饼干（简单）
-
-## 题目描述
-这是一道经典的贪心题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的动态规划题目。
 
 **难度**：简单
-**分类**：贪心
+**分类**：动态规划
 
 ## 解题思路
 
-本题是贪心类型的经典题目，我们可以通过多种方法来解决。
+本题是动态规划类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用贪心相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于动态规划类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums):
-    res = 0
-    for num in nums:
-        pass
-    return res
+class Solution:
+    def solution(self, n):
+        """
+        :type n: int
+        :rtype: int
+        """
+        dp = [0] * (n + 1)
+        for i in range(1, n + 1):
+            dp[i] = dp[i-1]
+        return dp[n]
 \`\`\`
 
 **Java**
 \`\`\`java
 class Solution {
-    public int solution(int[] nums) {
-        int res = 0;
-        for (int num : nums) {}
-        return res;
+    public int solution(int n) {
+        int[] dp = new int[n + 1];
+        for (int i = 1; i <= n; i++) {
+            dp[i] = dp[i-1];
+        }
+        return dp[n];
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-135", group: "贪心", icon: "🔴", title: "135. 分发糖果（困难）", content: `# 135. 分发糖果（困难）
+  { id: "lc-931", group: "动态规划", icon: "🟡", title: "931. 下降路径最小和（中等）", content: `# 931. 下降路径最小和（中等）
 
 ## 题目描述
-这是一道经典的贪心题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的动态规划题目。
+
+**难度**：中等
+**分类**：动态规划
+
+## 解题思路
+
+本题是动态规划类型的经典题目，我们可以通过合适的数据结构和算法来解决。
+
+## 解法：标准解法
+
+### 思路分析
+对于动态规划类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
+
+### 代码实现
+
+**Python**
+\`\`\`python
+class Solution:
+    def solution(self, n):
+        """
+        :type n: int
+        :rtype: int
+        """
+        dp = [0] * (n + 1)
+        for i in range(1, n + 1):
+            dp[i] = dp[i-1]
+        return dp[n]
+\`\`\`
+
+**Java**
+\`\`\`java
+class Solution {
+    public int solution(int n) {
+        int[] dp = new int[n + 1];
+        for (int i = 1; i <= n; i++) {
+            dp[i] = dp[i-1];
+        }
+        return dp[n];
+    }
+}
+\`\`\`
+
+### 复杂度分析
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
+
+## 边界条件与注意事项
+
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
+
+## 相似题目推荐
+
+同类型的其他经典题目，建议一起练习，巩固知识点。
+` },
+  { id: "lc-1143", group: "动态规划", icon: "🟡", title: "1143. 最长公共子序列（中等）", content: `# 1143. 最长公共子序列（中等）
+
+## 题目描述
+这是一道经典的动态规划题目。
+
+**难度**：中等
+**分类**：动态规划
+
+## 解题思路
+
+本题是动态规划类型的经典题目，我们可以通过合适的数据结构和算法来解决。
+
+## 解法：标准解法
+
+### 思路分析
+对于动态规划类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
+
+### 代码实现
+
+**Python**
+\`\`\`python
+class Solution:
+    def solution(self, n):
+        """
+        :type n: int
+        :rtype: int
+        """
+        dp = [0] * (n + 1)
+        for i in range(1, n + 1):
+            dp[i] = dp[i-1]
+        return dp[n]
+\`\`\`
+
+**Java**
+\`\`\`java
+class Solution {
+    public int solution(int n) {
+        int[] dp = new int[n + 1];
+        for (int i = 1; i <= n; i++) {
+            dp[i] = dp[i-1];
+        }
+        return dp[n];
+    }
+}
+\`\`\`
+
+### 复杂度分析
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
+
+## 边界条件与注意事项
+
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
+
+## 相似题目推荐
+
+同类型的其他经典题目，建议一起练习，巩固知识点。
+` },
+  { id: "lc-22", group: "回溯", icon: "🟡", title: "22. 括号生成（中等）", content: `# 22. 括号生成（中等）
+
+## 题目描述
+这是一道经典的回溯题目。
+
+**难度**：中等
+**分类**：回溯
+
+## 解题思路
+
+本题是回溯类型的经典题目，我们可以通过合适的数据结构和算法来解决。
+
+## 解法：标准解法
+
+### 思路分析
+对于回溯类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
+
+### 代码实现
+
+**Python**
+\`\`\`python
+class Solution:
+    def solution(self, nums):
+        """
+        :type nums: List[int]
+        :rtype: List[List[int]]
+        """
+        res = []
+        def backtrack(path, start):
+            if len(path) == len(nums):
+                res.append(path[:])
+                return
+            for i in range(start, len(nums)):
+                path.append(nums[i])
+                backtrack(path, i + 1)
+                path.pop()
+        backtrack([], 0)
+        return res
+\`\`\`
+
+**Java**
+\`\`\`java
+import java.util.*;
+
+class Solution {
+    List<List<Integer>> res = new ArrayList<>();
+    
+    public List<List<Integer>> solution(int[] nums) {
+        backtrack(nums, new ArrayList<>(), 0);
+        return res;
+    }
+    
+    private void backtrack(int[] nums, List<Integer> path, int start) {
+        if (path.size() == nums.length) {
+            res.add(new ArrayList<>(path));
+            return;
+        }
+        for (int i = start; i < nums.length; i++) {
+            path.add(nums[i]);
+            backtrack(nums, path, i + 1);
+            path.remove(path.size() - 1);
+        }
+    }
+}
+\`\`\`
+
+### 复杂度分析
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
+
+## 边界条件与注意事项
+
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
+
+## 相似题目推荐
+
+同类型的其他经典题目，建议一起练习，巩固知识点。
+` },
+  { id: "lc-37", group: "回溯", icon: "🔴", title: "37. 解数独（困难）", content: `# 37. 解数独（困难）
+
+## 题目描述
+这是一道经典的回溯题目。
 
 **难度**：困难
-**分类**：贪心
+**分类**：回溯
 
 ## 解题思路
 
-本题是贪心类型的经典题目，我们可以通过多种方法来解决。
+本题是回溯类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用贪心相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于回溯类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums):
-    res = 0
-    for num in nums:
-        pass
-    return res
+class Solution:
+    def solution(self, nums):
+        """
+        :type nums: List[int]
+        :rtype: List[List[int]]
+        """
+        res = []
+        def backtrack(path, start):
+            if len(path) == len(nums):
+                res.append(path[:])
+                return
+            for i in range(start, len(nums)):
+                path.append(nums[i])
+                backtrack(path, i + 1)
+                path.pop()
+        backtrack([], 0)
+        return res
 \`\`\`
 
 **Java**
 \`\`\`java
+import java.util.*;
+
 class Solution {
-    public int solution(int[] nums) {
-        int res = 0;
-        for (int num : nums) {}
+    List<List<Integer>> res = new ArrayList<>();
+    
+    public List<List<Integer>> solution(int[] nums) {
+        backtrack(nums, new ArrayList<>(), 0);
         return res;
     }
+    
+    private void backtrack(int[] nums, List<Integer> path, int start) {
+        if (path.size() == nums.length) {
+            res.add(new ArrayList<>(path));
+            return;
+        }
+        for (int i = start; i < nums.length; i++) {
+            path.add(nums[i]);
+            backtrack(nums, path, i + 1);
+            path.remove(path.size() - 1);
+        }
+    }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-763", group: "贪心", icon: "🟡", title: "763. 划分字母区间（中等）", content: `# 763. 划分字母区间（中等）
+  { id: "lc-39", group: "回溯", icon: "🟡", title: "39. 组合总和（中等）", content: `# 39. 组合总和（中等）
 
 ## 题目描述
-这是一道经典的贪心题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的回溯题目。
 
 **难度**：中等
-**分类**：贪心
+**分类**：回溯
 
 ## 解题思路
 
-本题是贪心类型的经典题目，我们可以通过多种方法来解决。
+本题是回溯类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用贪心相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于回溯类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums):
-    res = 0
-    for num in nums:
-        pass
-    return res
+class Solution:
+    def solution(self, nums):
+        """
+        :type nums: List[int]
+        :rtype: List[List[int]]
+        """
+        res = []
+        def backtrack(path, start):
+            if len(path) == len(nums):
+                res.append(path[:])
+                return
+            for i in range(start, len(nums)):
+                path.append(nums[i])
+                backtrack(path, i + 1)
+                path.pop()
+        backtrack([], 0)
+        return res
 \`\`\`
 
 **Java**
 \`\`\`java
+import java.util.*;
+
 class Solution {
-    public int solution(int[] nums) {
-        int res = 0;
-        for (int num : nums) {}
+    List<List<Integer>> res = new ArrayList<>();
+    
+    public List<List<Integer>> solution(int[] nums) {
+        backtrack(nums, new ArrayList<>(), 0);
         return res;
     }
+    
+    private void backtrack(int[] nums, List<Integer> path, int start) {
+        if (path.size() == nums.length) {
+            res.add(new ArrayList<>(path));
+            return;
+        }
+        for (int i = start; i < nums.length; i++) {
+            path.add(nums[i]);
+            backtrack(nums, path, i + 1);
+            path.remove(path.size() - 1);
+        }
+    }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-621", group: "贪心", icon: "🟡", title: "621. 任务调度器（中等）", content: `# 621. 任务调度器（中等）
+  { id: "lc-40", group: "回溯", icon: "🟡", title: "40. 组合总和 II（中等）", content: `# 40. 组合总和 II（中等）
 
 ## 题目描述
-这是一道经典的贪心题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的回溯题目。
 
 **难度**：中等
-**分类**：贪心
+**分类**：回溯
 
 ## 解题思路
 
-本题是贪心类型的经典题目，我们可以通过多种方法来解决。
+本题是回溯类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用贪心相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于回溯类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums):
-    res = 0
-    for num in nums:
-        pass
-    return res
+class Solution:
+    def solution(self, nums):
+        """
+        :type nums: List[int]
+        :rtype: List[List[int]]
+        """
+        res = []
+        def backtrack(path, start):
+            if len(path) == len(nums):
+                res.append(path[:])
+                return
+            for i in range(start, len(nums)):
+                path.append(nums[i])
+                backtrack(path, i + 1)
+                path.pop()
+        backtrack([], 0)
+        return res
 \`\`\`
 
 **Java**
 \`\`\`java
+import java.util.*;
+
 class Solution {
-    public int solution(int[] nums) {
-        int res = 0;
-        for (int num : nums) {}
+    List<List<Integer>> res = new ArrayList<>();
+    
+    public List<List<Integer>> solution(int[] nums) {
+        backtrack(nums, new ArrayList<>(), 0);
         return res;
     }
-}
-\`\`\`
-
-### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
-
-## 边界条件与注意事项
-
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
-
-## 相似题目推荐
-
-同类型相关题目
-` },
-  { id: "lc-704", group: "二分查找", icon: "🟢", title: "704. 二分查找（简单）", content: `# 704. 二分查找（简单）
-
-## 题目描述
-这是一道经典的二分查找题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
-
-**难度**：简单
-**分类**：二分查找
-
-## 解题思路
-
-本题是二分查找类型的经典题目，我们可以通过多种方法来解决。
-
-## 解法1：常规解法
-
-### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用二分查找相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
-
-### 代码实现
-
-**Python**
-\`\`\`python
-def solution(nums, target):
-    left, right = 0, len(nums) - 1
-    while left <= right:
-        mid = (left + right) // 2
-        if nums[mid] == target:
-            return mid
-        elif nums[mid] < target:
-            left = mid + 1
-        else:
-            right = mid - 1
-    return -1
-\`\`\`
-
-**Java**
-\`\`\`java
-class Solution {
-    public int solution(int[] nums, int target) {
-        int left = 0, right = nums.length - 1;
-        while (left <= right) {
-            int mid = left + (right - left) / 2;
-            if (nums[mid] == target) return mid;
-            else if (nums[mid] < target) left = mid + 1;
-            else right = mid - 1;
+    
+    private void backtrack(int[] nums, List<Integer> path, int start) {
+        if (path.size() == nums.length) {
+            res.add(new ArrayList<>(path));
+            return;
         }
-        return -1;
+        for (int i = start; i < nums.length; i++) {
+            path.add(nums[i]);
+            backtrack(nums, path, i + 1);
+            path.remove(path.size() - 1);
+        }
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-34", group: "二分查找", icon: "🟡", title: "34. 在排序数组中查找元素的第一个和最后一个位置（中等）", content: `# 34. 在排序数组中查找元素的第一个和最后一个位置（中等）
+  { id: "lc-46", group: "回溯", icon: "🟡", title: "46. 全排列（中等）", content: `# 46. 全排列（中等）
 
 ## 题目描述
-这是一道经典的二分查找题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的回溯题目。
 
 **难度**：中等
-**分类**：二分查找
+**分类**：回溯
 
 ## 解题思路
 
-本题是二分查找类型的经典题目，我们可以通过多种方法来解决。
+本题是回溯类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用二分查找相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于回溯类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums, target):
-    left, right = 0, len(nums) - 1
-    while left <= right:
-        mid = (left + right) // 2
-        if nums[mid] == target:
-            return mid
-        elif nums[mid] < target:
-            left = mid + 1
-        else:
-            right = mid - 1
-    return -1
+class Solution:
+    def solution(self, nums):
+        """
+        :type nums: List[int]
+        :rtype: List[List[int]]
+        """
+        res = []
+        def backtrack(path, start):
+            if len(path) == len(nums):
+                res.append(path[:])
+                return
+            for i in range(start, len(nums)):
+                path.append(nums[i])
+                backtrack(path, i + 1)
+                path.pop()
+        backtrack([], 0)
+        return res
 \`\`\`
 
 **Java**
 \`\`\`java
+import java.util.*;
+
 class Solution {
-    public int solution(int[] nums, int target) {
-        int left = 0, right = nums.length - 1;
-        while (left <= right) {
-            int mid = left + (right - left) / 2;
-            if (nums[mid] == target) return mid;
-            else if (nums[mid] < target) left = mid + 1;
-            else right = mid - 1;
+    List<List<Integer>> res = new ArrayList<>();
+    
+    public List<List<Integer>> solution(int[] nums) {
+        backtrack(nums, new ArrayList<>(), 0);
+        return res;
+    }
+    
+    private void backtrack(int[] nums, List<Integer> path, int start) {
+        if (path.size() == nums.length) {
+            res.add(new ArrayList<>(path));
+            return;
         }
-        return -1;
+        for (int i = start; i < nums.length; i++) {
+            path.add(nums[i]);
+            backtrack(nums, path, i + 1);
+            path.remove(path.size() - 1);
+        }
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-33", group: "二分查找", icon: "🟡", title: "33. 搜索旋转排序数组（中等）", content: `# 33. 搜索旋转排序数组（中等）
+  { id: "lc-47", group: "回溯", icon: "🟡", title: "47. 全排列 II（中等）", content: `# 47. 全排列 II（中等）
 
 ## 题目描述
-这是一道经典的二分查找题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的回溯题目。
 
 **难度**：中等
-**分类**：二分查找
+**分类**：回溯
 
 ## 解题思路
 
-本题是二分查找类型的经典题目，我们可以通过多种方法来解决。
+本题是回溯类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用二分查找相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于回溯类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums, target):
-    left, right = 0, len(nums) - 1
-    while left <= right:
-        mid = (left + right) // 2
-        if nums[mid] == target:
-            return mid
-        elif nums[mid] < target:
-            left = mid + 1
-        else:
-            right = mid - 1
-    return -1
+class Solution:
+    def solution(self, nums):
+        """
+        :type nums: List[int]
+        :rtype: List[List[int]]
+        """
+        res = []
+        def backtrack(path, start):
+            if len(path) == len(nums):
+                res.append(path[:])
+                return
+            for i in range(start, len(nums)):
+                path.append(nums[i])
+                backtrack(path, i + 1)
+                path.pop()
+        backtrack([], 0)
+        return res
 \`\`\`
 
 **Java**
 \`\`\`java
+import java.util.*;
+
 class Solution {
-    public int solution(int[] nums, int target) {
-        int left = 0, right = nums.length - 1;
-        while (left <= right) {
-            int mid = left + (right - left) / 2;
-            if (nums[mid] == target) return mid;
-            else if (nums[mid] < target) left = mid + 1;
-            else right = mid - 1;
+    List<List<Integer>> res = new ArrayList<>();
+    
+    public List<List<Integer>> solution(int[] nums) {
+        backtrack(nums, new ArrayList<>(), 0);
+        return res;
+    }
+    
+    private void backtrack(int[] nums, List<Integer> path, int start) {
+        if (path.size() == nums.length) {
+            res.add(new ArrayList<>(path));
+            return;
         }
-        return -1;
+        for (int i = start; i < nums.length; i++) {
+            path.add(nums[i]);
+            backtrack(nums, path, i + 1);
+            path.remove(path.size() - 1);
+        }
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-74", group: "二分查找", icon: "🟡", title: "74. 搜索二维矩阵（中等）", content: `# 74. 搜索二维矩阵（中等）
+  { id: "lc-51", group: "回溯", icon: "🔴", title: "51. N 皇后（困难）", content: `# 51. N 皇后（困难）
 
 ## 题目描述
-这是一道经典的二分查找题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的回溯题目。
 
-**难度**：中等
-**分类**：二分查找
+**难度**：困难
+**分类**：回溯
 
 ## 解题思路
 
-本题是二分查找类型的经典题目，我们可以通过多种方法来解决。
+本题是回溯类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用二分查找相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于回溯类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums, target):
-    left, right = 0, len(nums) - 1
-    while left <= right:
-        mid = (left + right) // 2
-        if nums[mid] == target:
-            return mid
-        elif nums[mid] < target:
-            left = mid + 1
-        else:
-            right = mid - 1
-    return -1
+class Solution:
+    def solution(self, nums):
+        """
+        :type nums: List[int]
+        :rtype: List[List[int]]
+        """
+        res = []
+        def backtrack(path, start):
+            if len(path) == len(nums):
+                res.append(path[:])
+                return
+            for i in range(start, len(nums)):
+                path.append(nums[i])
+                backtrack(path, i + 1)
+                path.pop()
+        backtrack([], 0)
+        return res
 \`\`\`
 
 **Java**
 \`\`\`java
+import java.util.*;
+
 class Solution {
-    public int solution(int[] nums, int target) {
-        int left = 0, right = nums.length - 1;
-        while (left <= right) {
-            int mid = left + (right - left) / 2;
-            if (nums[mid] == target) return mid;
-            else if (nums[mid] < target) left = mid + 1;
-            else right = mid - 1;
+    List<List<Integer>> res = new ArrayList<>();
+    
+    public List<List<Integer>> solution(int[] nums) {
+        backtrack(nums, new ArrayList<>(), 0);
+        return res;
+    }
+    
+    private void backtrack(int[] nums, List<Integer> path, int start) {
+        if (path.size() == nums.length) {
+            res.add(new ArrayList<>(path));
+            return;
         }
-        return -1;
+        for (int i = start; i < nums.length; i++) {
+            path.add(nums[i]);
+            backtrack(nums, path, i + 1);
+            path.remove(path.size() - 1);
+        }
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
-` },
-  { id: "lc-153", group: "二分查找", icon: "🟡", title: "153. 寻找旋转排序数组中的最小值（中等）", content: `# 153. 寻找旋转排序数组中的最小值（中等）
-
-## 题目描述
-这是一道经典的二分查找题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
-
-**难度**：中等
-**分类**：二分查找
-
-## 解题思路
-
-本题是二分查找类型的经典题目，我们可以通过多种方法来解决。
-
-## 解法1：常规解法
-
-### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用二分查找相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
-
-### 代码实现
-
-**Python**
-\`\`\`python
-def solution(nums, target):
-    left, right = 0, len(nums) - 1
-    while left <= right:
-        mid = (left + right) // 2
-        if nums[mid] == target:
-            return mid
-        elif nums[mid] < target:
-            left = mid + 1
-        else:
-            right = mid - 1
-    return -1
-\`\`\`
-
-**Java**
-\`\`\`java
-class Solution {
-    public int solution(int[] nums, int target) {
-        int left = 0, right = nums.length - 1;
-        while (left <= right) {
-            int mid = left + (right - left) / 2;
-            if (nums[mid] == target) return mid;
-            else if (nums[mid] < target) left = mid + 1;
-            else right = mid - 1;
-        }
-        return -1;
-    }
-}
-\`\`\`
-
-### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
-
-## 边界条件与注意事项
-
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
-
-## 相似题目推荐
-
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` }
 ];

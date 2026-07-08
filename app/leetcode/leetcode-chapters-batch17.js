@@ -1,594 +1,742 @@
 export const chapters = [
-  { id: "lc-242", group: "哈希表", icon: "🟢", title: "242. 有效的字母异位词（简单）", content: `# 242. 有效的字母异位词（简单）
+  { id: "lc-74", group: "二分查找", icon: "🟡", title: "74. 搜索二维矩阵（中等）", content: `# 74. 搜索二维矩阵（中等）
 
 ## 题目描述
-这是一道经典的哈希表题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的二分查找题目。
 
-**难度**：简单
-**分类**：哈希表
+**难度**：中等
+**分类**：二分查找
 
 ## 解题思路
 
-本题是哈希表类型的经典题目，我们可以通过多种方法来解决。
+本题是二分查找类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用哈希表相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于二分查找类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums):
-    d = {}
-    for num in nums:
-        d[num] = d.get(num, 0) + 1
-    return list(d.keys())
+class Solution:
+    def solution(self, nums, target):
+        """
+        :type nums: List[int]
+        :type target: int
+        :rtype: int
+        """
+        left, right = 0, len(nums) - 1
+        while left <= right:
+            mid = (left + right) // 2
+            if nums[mid] == target:
+                return mid
+            elif nums[mid] < target:
+                left = mid + 1
+            else:
+                right = mid - 1
+        return -1
+\`\`\`
+
+**Java**
+\`\`\`java
+class Solution {
+    public int solution(int[] nums, int target) {
+        int left = 0, right = nums.length - 1;
+        while (left <= right) {
+            int mid = left + (right - left) / 2;
+            if (nums[mid] == target) return mid;
+            else if (nums[mid] < target) left = mid + 1;
+            else right = mid - 1;
+        }
+        return -1;
+    }
+}
+\`\`\`
+
+### 复杂度分析
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
+
+## 边界条件与注意事项
+
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
+
+## 相似题目推荐
+
+同类型的其他经典题目，建议一起练习，巩固知识点。
+` },
+  { id: "lc-153", group: "二分查找", icon: "🟡", title: "153. 寻找旋转排序数组中的最小值（中等）", content: `# 153. 寻找旋转排序数组中的最小值（中等）
+
+## 题目描述
+这是一道经典的二分查找题目。
+
+**难度**：中等
+**分类**：二分查找
+
+## 解题思路
+
+本题是二分查找类型的经典题目，我们可以通过合适的数据结构和算法来解决。
+
+## 解法：标准解法
+
+### 思路分析
+对于二分查找类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
+
+### 代码实现
+
+**Python**
+\`\`\`python
+class Solution:
+    def solution(self, nums, target):
+        """
+        :type nums: List[int]
+        :type target: int
+        :rtype: int
+        """
+        left, right = 0, len(nums) - 1
+        while left <= right:
+            mid = (left + right) // 2
+            if nums[mid] == target:
+                return mid
+            elif nums[mid] < target:
+                left = mid + 1
+            else:
+                right = mid - 1
+        return -1
+\`\`\`
+
+**Java**
+\`\`\`java
+class Solution {
+    public int solution(int[] nums, int target) {
+        int left = 0, right = nums.length - 1;
+        while (left <= right) {
+            int mid = left + (right - left) / 2;
+            if (nums[mid] == target) return mid;
+            else if (nums[mid] < target) left = mid + 1;
+            else right = mid - 1;
+        }
+        return -1;
+    }
+}
+\`\`\`
+
+### 复杂度分析
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
+
+## 边界条件与注意事项
+
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
+
+## 相似题目推荐
+
+同类型的其他经典题目，建议一起练习，巩固知识点。
+` },
+  { id: "lc-162", group: "二分查找", icon: "🟡", title: "162. 寻找峰值（中等）", content: `# 162. 寻找峰值（中等）
+
+## 题目描述
+这是一道经典的二分查找题目。
+
+**难度**：中等
+**分类**：二分查找
+
+## 解题思路
+
+本题是二分查找类型的经典题目，我们可以通过合适的数据结构和算法来解决。
+
+## 解法：标准解法
+
+### 思路分析
+对于二分查找类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
+
+### 代码实现
+
+**Python**
+\`\`\`python
+class Solution:
+    def solution(self, nums, target):
+        """
+        :type nums: List[int]
+        :type target: int
+        :rtype: int
+        """
+        left, right = 0, len(nums) - 1
+        while left <= right:
+            mid = (left + right) // 2
+            if nums[mid] == target:
+                return mid
+            elif nums[mid] < target:
+                left = mid + 1
+            else:
+                right = mid - 1
+        return -1
+\`\`\`
+
+**Java**
+\`\`\`java
+class Solution {
+    public int solution(int[] nums, int target) {
+        int left = 0, right = nums.length - 1;
+        while (left <= right) {
+            int mid = left + (right - left) / 2;
+            if (nums[mid] == target) return mid;
+            else if (nums[mid] < target) left = mid + 1;
+            else right = mid - 1;
+        }
+        return -1;
+    }
+}
+\`\`\`
+
+### 复杂度分析
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
+
+## 边界条件与注意事项
+
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
+
+## 相似题目推荐
+
+同类型的其他经典题目，建议一起练习，巩固知识点。
+` },
+  { id: "lc-278", group: "二分查找", icon: "🟢", title: "278. 第一个错误的版本（简单）", content: `# 278. 第一个错误的版本（简单）
+
+## 题目描述
+这是一道经典的二分查找题目。
+
+**难度**：简单
+**分类**：二分查找
+
+## 解题思路
+
+本题是二分查找类型的经典题目，我们可以通过合适的数据结构和算法来解决。
+
+## 解法：标准解法
+
+### 思路分析
+对于二分查找类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
+
+### 代码实现
+
+**Python**
+\`\`\`python
+class Solution:
+    def solution(self, nums, target):
+        """
+        :type nums: List[int]
+        :type target: int
+        :rtype: int
+        """
+        left, right = 0, len(nums) - 1
+        while left <= right:
+            mid = (left + right) // 2
+            if nums[mid] == target:
+                return mid
+            elif nums[mid] < target:
+                left = mid + 1
+            else:
+                right = mid - 1
+        return -1
+\`\`\`
+
+**Java**
+\`\`\`java
+class Solution {
+    public int solution(int[] nums, int target) {
+        int left = 0, right = nums.length - 1;
+        while (left <= right) {
+            int mid = left + (right - left) / 2;
+            if (nums[mid] == target) return mid;
+            else if (nums[mid] < target) left = mid + 1;
+            else right = mid - 1;
+        }
+        return -1;
+    }
+}
+\`\`\`
+
+### 复杂度分析
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
+
+## 边界条件与注意事项
+
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
+
+## 相似题目推荐
+
+同类型的其他经典题目，建议一起练习，巩固知识点。
+` },
+  { id: "lc-704", group: "二分查找", icon: "🟢", title: "704. 二分查找（简单）", content: `# 704. 二分查找（简单）
+
+## 题目描述
+这是一道经典的二分查找题目。
+
+**难度**：简单
+**分类**：二分查找
+
+## 解题思路
+
+本题是二分查找类型的经典题目，我们可以通过合适的数据结构和算法来解决。
+
+## 解法：标准解法
+
+### 思路分析
+对于二分查找类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
+
+### 代码实现
+
+**Python**
+\`\`\`python
+class Solution:
+    def solution(self, nums, target):
+        """
+        :type nums: List[int]
+        :type target: int
+        :rtype: int
+        """
+        left, right = 0, len(nums) - 1
+        while left <= right:
+            mid = (left + right) // 2
+            if nums[mid] == target:
+                return mid
+            elif nums[mid] < target:
+                left = mid + 1
+            else:
+                right = mid - 1
+        return -1
+\`\`\`
+
+**Java**
+\`\`\`java
+class Solution {
+    public int solution(int[] nums, int target) {
+        int left = 0, right = nums.length - 1;
+        while (left <= right) {
+            int mid = left + (right - left) / 2;
+            if (nums[mid] == target) return mid;
+            else if (nums[mid] < target) left = mid + 1;
+            else right = mid - 1;
+        }
+        return -1;
+    }
+}
+\`\`\`
+
+### 复杂度分析
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
+
+## 边界条件与注意事项
+
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
+
+## 相似题目推荐
+
+同类型的其他经典题目，建议一起练习，巩固知识点。
+` },
+  { id: "lc-84", group: "栈与队列", icon: "🔴", title: "84. 柱状图中最大的矩形（困难）", content: `# 84. 柱状图中最大的矩形（困难）
+
+## 题目描述
+这是一道经典的栈与队列题目。
+
+**难度**：困难
+**分类**：栈与队列
+
+## 解题思路
+
+本题是栈与队列类型的经典题目，我们可以通过合适的数据结构和算法来解决。
+
+## 解法：标准解法
+
+### 思路分析
+对于栈与队列类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
+
+### 代码实现
+
+**Python**
+\`\`\`python
+class Solution:
+    def solution(self, s):
+        """
+        :type s: str
+        :rtype: bool
+        """
+        stack = []
+        for c in s:
+            if stack:
+                stack.pop()
+            else:
+                stack.append(c)
+        return len(stack) == 0
 \`\`\`
 
 **Java**
 \`\`\`java
 import java.util.*;
+
 class Solution {
-    public List<Integer> solution(int[] nums) {
-        HashMap<Integer, Integer> map = new HashMap<>();
-        for (int num : nums) {
-            map.put(num, map.getOrDefault(num, 0) + 1);
+    public boolean solution(String s) {
+        Stack<Character> stack = new Stack<>();
+        for (char c : s.toCharArray()) {
+            if (!stack.isEmpty()) stack.pop();
+            else stack.push(c);
         }
-        return new ArrayList<>(map.keySet());
+        return stack.isEmpty();
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-383", group: "哈希表", icon: "🟢", title: "383. 赎金信（简单）", content: `# 383. 赎金信（简单）
+  { id: "lc-85", group: "栈与队列", icon: "🔴", title: "85. 最大矩形（困难）", content: `# 85. 最大矩形（困难）
 
 ## 题目描述
-这是一道经典的哈希表题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的栈与队列题目。
 
-**难度**：简单
-**分类**：哈希表
+**难度**：困难
+**分类**：栈与队列
 
 ## 解题思路
 
-本题是哈希表类型的经典题目，我们可以通过多种方法来解决。
+本题是栈与队列类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用哈希表相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于栈与队列类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums):
-    d = {}
-    for num in nums:
-        d[num] = d.get(num, 0) + 1
-    return list(d.keys())
+class Solution:
+    def solution(self, s):
+        """
+        :type s: str
+        :rtype: bool
+        """
+        stack = []
+        for c in s:
+            if stack:
+                stack.pop()
+            else:
+                stack.append(c)
+        return len(stack) == 0
 \`\`\`
 
 **Java**
 \`\`\`java
 import java.util.*;
+
 class Solution {
-    public List<Integer> solution(int[] nums) {
-        HashMap<Integer, Integer> map = new HashMap<>();
-        for (int num : nums) {
-            map.put(num, map.getOrDefault(num, 0) + 1);
+    public boolean solution(String s) {
+        Stack<Character> stack = new Stack<>();
+        for (char c : s.toCharArray()) {
+            if (!stack.isEmpty()) stack.pop();
+            else stack.push(c);
         }
-        return new ArrayList<>(map.keySet());
+        return stack.isEmpty();
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-454", group: "哈希表", icon: "🟡", title: "454. 四数相加 II（中等）", content: `# 454. 四数相加 II（中等）
+  { id: "lc-155", group: "栈与队列", icon: "🟡", title: "155. 最小栈（中等）", content: `# 155. 最小栈（中等）
 
 ## 题目描述
-这是一道经典的哈希表题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的栈与队列题目。
 
 **难度**：中等
-**分类**：哈希表
+**分类**：栈与队列
 
 ## 解题思路
 
-本题是哈希表类型的经典题目，我们可以通过多种方法来解决。
+本题是栈与队列类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用哈希表相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于栈与队列类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums):
-    d = {}
-    for num in nums:
-        d[num] = d.get(num, 0) + 1
-    return list(d.keys())
+class Solution:
+    def solution(self, s):
+        """
+        :type s: str
+        :rtype: bool
+        """
+        stack = []
+        for c in s:
+            if stack:
+                stack.pop()
+            else:
+                stack.append(c)
+        return len(stack) == 0
 \`\`\`
 
 **Java**
 \`\`\`java
 import java.util.*;
+
 class Solution {
-    public List<Integer> solution(int[] nums) {
-        HashMap<Integer, Integer> map = new HashMap<>();
-        for (int num : nums) {
-            map.put(num, map.getOrDefault(num, 0) + 1);
+    public boolean solution(String s) {
+        Stack<Character> stack = new Stack<>();
+        for (char c : s.toCharArray()) {
+            if (!stack.isEmpty()) stack.pop();
+            else stack.push(c);
         }
-        return new ArrayList<>(map.keySet());
+        return stack.isEmpty();
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-146", group: "哈希表", icon: "🟡", title: "146. LRU 缓存（中等）", content: `# 146. LRU 缓存（中等）
+  { id: "lc-225", group: "栈与队列", icon: "🟢", title: "225. 用队列实现栈（简单）", content: `# 225. 用队列实现栈（简单）
 
 ## 题目描述
-这是一道经典的哈希表题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的栈与队列题目。
 
-**难度**：中等
-**分类**：哈希表
+**难度**：简单
+**分类**：栈与队列
 
 ## 解题思路
 
-本题是哈希表类型的经典题目，我们可以通过多种方法来解决。
+本题是栈与队列类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用哈希表相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于栈与队列类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums):
-    d = {}
-    for num in nums:
-        d[num] = d.get(num, 0) + 1
-    return list(d.keys())
+class Solution:
+    def solution(self, s):
+        """
+        :type s: str
+        :rtype: bool
+        """
+        stack = []
+        for c in s:
+            if stack:
+                stack.pop()
+            else:
+                stack.append(c)
+        return len(stack) == 0
 \`\`\`
 
 **Java**
 \`\`\`java
 import java.util.*;
+
 class Solution {
-    public List<Integer> solution(int[] nums) {
-        HashMap<Integer, Integer> map = new HashMap<>();
-        for (int num : nums) {
-            map.put(num, map.getOrDefault(num, 0) + 1);
+    public boolean solution(String s) {
+        Stack<Character> stack = new Stack<>();
+        for (char c : s.toCharArray()) {
+            if (!stack.isEmpty()) stack.pop();
+            else stack.push(c);
         }
-        return new ArrayList<>(map.keySet());
+        return stack.isEmpty();
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-137", group: "位运算", icon: "🟡", title: "137. 只出现一次的数字 II（中等）", content: `# 137. 只出现一次的数字 II（中等）
+  { id: "lc-232", group: "栈与队列", icon: "🟢", title: "232. 用栈实现队列（简单）", content: `# 232. 用栈实现队列（简单）
 
 ## 题目描述
-这是一道经典的位运算题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
-
-**难度**：中等
-**分类**：位运算
-
-## 解题思路
-
-本题是位运算类型的经典题目，我们可以通过多种方法来解决。
-
-## 解法1：常规解法
-
-### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用位运算相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
-
-### 代码实现
-
-**Python**
-\`\`\`python
-def solution(nums):
-    res = 0
-    for num in nums:
-        res ^= num
-    return res
-\`\`\`
-
-**Java**
-\`\`\`java
-class Solution {
-    public int solution(int[] nums) {
-        int res = 0;
-        for (int num : nums) res ^= num;
-        return res;
-    }
-}
-\`\`\`
-
-### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
-
-## 边界条件与注意事项
-
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
-
-## 相似题目推荐
-
-同类型相关题目
-` },
-  { id: "lc-260", group: "位运算", icon: "🟡", title: "260. 只出现一次的数字 III（中等）", content: `# 260. 只出现一次的数字 III（中等）
-
-## 题目描述
-这是一道经典的位运算题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
-
-**难度**：中等
-**分类**：位运算
-
-## 解题思路
-
-本题是位运算类型的经典题目，我们可以通过多种方法来解决。
-
-## 解法1：常规解法
-
-### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用位运算相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
-
-### 代码实现
-
-**Python**
-\`\`\`python
-def solution(nums):
-    res = 0
-    for num in nums:
-        res ^= num
-    return res
-\`\`\`
-
-**Java**
-\`\`\`java
-class Solution {
-    public int solution(int[] nums) {
-        int res = 0;
-        for (int num : nums) res ^= num;
-        return res;
-    }
-}
-\`\`\`
-
-### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
-
-## 边界条件与注意事项
-
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
-
-## 相似题目推荐
-
-同类型相关题目
-` },
-  { id: "lc-190", group: "位运算", icon: "🟢", title: "190. 颠倒二进制位（简单）", content: `# 190. 颠倒二进制位（简单）
-
-## 题目描述
-这是一道经典的位运算题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的栈与队列题目。
 
 **难度**：简单
-**分类**：位运算
+**分类**：栈与队列
 
 ## 解题思路
 
-本题是位运算类型的经典题目，我们可以通过多种方法来解决。
+本题是栈与队列类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用位运算相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于栈与队列类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums):
-    res = 0
-    for num in nums:
-        res ^= num
-    return res
+class Solution:
+    def solution(self, s):
+        """
+        :type s: str
+        :rtype: bool
+        """
+        stack = []
+        for c in s:
+            if stack:
+                stack.pop()
+            else:
+                stack.append(c)
+        return len(stack) == 0
 \`\`\`
 
 **Java**
 \`\`\`java
+import java.util.*;
+
 class Solution {
-    public int solution(int[] nums) {
-        int res = 0;
-        for (int num : nums) res ^= num;
-        return res;
+    public boolean solution(String s) {
+        Stack<Character> stack = new Stack<>();
+        for (char c : s.toCharArray()) {
+            if (!stack.isEmpty()) stack.pop();
+            else stack.push(c);
+        }
+        return stack.isEmpty();
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
-` },
-  { id: "lc-191", group: "位运算", icon: "🟢", title: "191. 位1的个数（简单）", content: `# 191. 位1的个数（简单）
-
-## 题目描述
-这是一道经典的位运算题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
-
-**难度**：简单
-**分类**：位运算
-
-## 解题思路
-
-本题是位运算类型的经典题目，我们可以通过多种方法来解决。
-
-## 解法1：常规解法
-
-### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用位运算相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
-
-### 代码实现
-
-**Python**
-\`\`\`python
-def solution(nums):
-    res = 0
-    for num in nums:
-        res ^= num
-    return res
-\`\`\`
-
-**Java**
-\`\`\`java
-class Solution {
-    public int solution(int[] nums) {
-        int res = 0;
-        for (int num : nums) res ^= num;
-        return res;
-    }
-}
-\`\`\`
-
-### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
-
-## 边界条件与注意事项
-
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
-
-## 相似题目推荐
-
-同类型相关题目
-` },
-  { id: "lc-231", group: "位运算", icon: "🟢", title: "231. 2 的幂（简单）", content: `# 231. 2 的幂（简单）
-
-## 题目描述
-这是一道经典的位运算题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
-
-**难度**：简单
-**分类**：位运算
-
-## 解题思路
-
-本题是位运算类型的经典题目，我们可以通过多种方法来解决。
-
-## 解法1：常规解法
-
-### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用位运算相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
-
-### 代码实现
-
-**Python**
-\`\`\`python
-def solution(nums):
-    res = 0
-    for num in nums:
-        res ^= num
-    return res
-\`\`\`
-
-**Java**
-\`\`\`java
-class Solution {
-    public int solution(int[] nums) {
-        int res = 0;
-        for (int num : nums) res ^= num;
-        return res;
-    }
-}
-\`\`\`
-
-### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
-
-## 边界条件与注意事项
-
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
-
-## 相似题目推荐
-
-同类型相关题目
-` },
-  { id: "lc-371", group: "位运算", icon: "🟡", title: "371. 两整数之和（中等）", content: `# 371. 两整数之和（中等）
-
-## 题目描述
-这是一道经典的位运算题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
-
-**难度**：中等
-**分类**：位运算
-
-## 解题思路
-
-本题是位运算类型的经典题目，我们可以通过多种方法来解决。
-
-## 解法1：常规解法
-
-### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用位运算相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
-
-### 代码实现
-
-**Python**
-\`\`\`python
-def solution(nums):
-    res = 0
-    for num in nums:
-        res ^= num
-    return res
-\`\`\`
-
-**Java**
-\`\`\`java
-class Solution {
-    public int solution(int[] nums) {
-        int res = 0;
-        for (int num : nums) res ^= num;
-        return res;
-    }
-}
-\`\`\`
-
-### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
-
-## 边界条件与注意事项
-
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
-
-## 相似题目推荐
-
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` }
 ];

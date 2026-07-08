@@ -550,4 +550,158 @@ class Solution {
         return res;
     }
     
-    private void backtrack
+    private void backtrack(int[] nums, List<Integer> path, int start) {
+        if (path.size() == nums.length) {
+            res.add(new ArrayList<>(path));
+            return;
+        }
+        for (int i = start; i < nums.length; i++) {
+            path.add(nums[i]);
+            backtrack(nums, path, i + 1);
+            path.remove(path.size() - 1);
+        }
+    }
+}`,
+    "贪心": `class Solution {
+    public int solution(int[] nums) {
+        int res = 0;
+        for (int num : nums) {}
+        return res;
+    }
+}`,
+    "二分查找": `class Solution {
+    public int solution(int[] nums, int target) {
+        int left = 0, right = nums.length - 1;
+        while (left <= right) {
+            int mid = left + (right - left) / 2;
+            if (nums[mid] == target) return mid;
+            else if (nums[mid] < target) left = mid + 1;
+            else right = mid - 1;
+        }
+        return -1;
+    }
+}`,
+    "栈与队列": `import java.util.*;
+
+class Solution {
+    public boolean solution(String s) {
+        Stack<Character> stack = new Stack<>();
+        for (char c : s.toCharArray()) {
+            if (!stack.isEmpty()) stack.pop();
+            else stack.push(c);
+        }
+        return stack.isEmpty();
+    }
+}`,
+    "哈希表": `import java.util.*;
+
+class Solution {
+    public List<Integer> solution(int[] nums) {
+        HashMap<Integer, Integer> map = new HashMap<>();
+        for (int num : nums) {
+            map.put(num, map.getOrDefault(num, 0) + 1);
+        }
+        return new ArrayList<>(map.keySet());
+    }
+}`,
+    "位运算": `class Solution {
+    public int solution(int[] nums) {
+        int res = 0;
+        for (int num : nums) res ^= num;
+        return res;
+    }
+}`,
+    "数学": `class Solution {
+    public int solution(int n) {
+        int res = 0;
+        while (n > 0) {
+            res += n % 10;
+            n /= 10;
+        }
+        return res;
+    }
+}`,
+    "图": `class Solution {
+    public int solution(int[][] grid) {
+        if (grid == null || grid.length == 0) return 0;
+        int m = grid.length, n = grid[0].length;
+        int count = 0;
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                if (grid[i][j] == 1) {
+                    count++;
+                    dfs(grid, i, j, m, n);
+                }
+            }
+        }
+        return count;
+    }
+    
+    private void dfs(int[][] grid, int i, int j, int m, int n) {
+        if (i < 0 || i >= m || j < 0 || j >= n || grid[i][j] == 0) return;
+        grid[i][j] = 0;
+        dfs(grid, i+1, j, m, n);
+        dfs(grid, i-1, j, m, n);
+        dfs(grid, i, j+1, m, n);
+        dfs(grid, i, j-1, m, n);
+    }
+}`,
+    "设计题": `import java.util.*;
+
+class DataStructure {
+    List<Integer> data;
+    
+    public DataStructure() {
+        data = new ArrayList<>();
+    }
+    
+    public void insert(int val) {
+        data.add(val);
+    }
+    
+    public Integer get() {
+        return data.isEmpty() ? null : data.get(0);
+    }
+}`,
+  };
+  return templates[group] || templates["数组"];
+}
+
+// 分成batch，每10题一个文件 (batch4到batch20)
+const batches = [];
+for (let i = 0; i < finalNewProblems.length; i += 10) {
+  batches.push(finalNewProblems.slice(i, i + 10));
+}
+
+console.log(`Creating ${batches.length} batch files (batch4 to batch${3 + batches.length})...`);
+
+// 删除之前错误生成的batch文件
+for (let i = 4; i <= 20; i++) {
+  const filePath = path.join(leetcodeDir, `leetcode-chapters-batch${i}.js`);
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+}
+
+for (let batchIdx = 0; batchIdx < batches.length; batchIdx++) {
+  const batchNum = batchIdx + 4;
+  const batch = batches[batchIdx];
+  const filePath = path.join(leetcodeDir, `leetcode-chapters-batch${batchNum}.js`);
+  
+  let fileContent = `export const chapters = [\n`;
+  const problemEntries = [];
+  
+  for (const p of batch) {
+    const content = generateProblemContent(p);
+    const escapedContent = content.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+    problemEntries.push(`  { id: "${p.id}", group: "${p.group}", icon: "${p.icon}", title: "${p.num}. ${p.title}（${p.diff}）", content: \`${escapedContent}\` }`);
+  }
+  
+  fileContent += problemEntries.join(',\n');
+  fileContent += `\n];\n`;
+  
+  fs.writeFileSync(filePath, fileContent, 'utf-8');
+  console.log(`Created batch${batchNum}.js with ${batch.length} problems`);
+}
+
+console.log('Done generating batch4-batch' + (3 + batches.length) + '!');

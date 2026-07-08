@@ -7,9 +7,9 @@
 // 10 个 batch 文件，每组 8 章：
 //   prog-guide-chapters-batch1.js : 计算机与编程入门 1-8
 //   prog-guide-chapters-batch2.js : 编程思维与基础概念 9-16
-//   prog-guide-chapters-batch3.js : 变量与数据类型 17-24
-//   prog-guide-chapters-batch4.js : 控制流与逻辑 25-32
-//   prog-guide-chapters-batch5.js : 函数与模块化 33-40
+//   prog-guide-chapters-batch3.js : 控制流与逻辑 17-24
+//   prog-guide-chapters-batch4.js : 函数与模块化 25-32
+//   prog-guide-chapters-batch5.js : 数据结构基础 33-40
 //   prog-guide-chapters-batch6.js : 面向对象编程 41-48
 //   prog-guide-chapters-batch7.js : 函数式编程与高级概念 49-56
 //   prog-guide-chapters-batch8.js : 调试、测试与代码质量 57-64
@@ -44,9 +44,9 @@ export const progGuideChapters = [
 export const progGuideChapterGroups = [
   "计算机与编程入门",
   "编程思维与基础概念",
-  "变量与数据类型",
   "控制流与逻辑",
   "函数与模块化",
+  "数据结构基础",
   "面向对象编程",
   "函数式编程与高级概念",
   "调试、测试与代码质量",

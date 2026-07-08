@@ -1,668 +1,796 @@
 export const chapters = [
-  { id: "lc-162", group: "二分查找", icon: "🟡", title: "162. 寻找峰值（中等）", content: `# 162. 寻找峰值（中等）
+  { id: "lc-77", group: "回溯", icon: "🟡", title: "77. 组合（中等）", content: `# 77. 组合（中等）
 
 ## 题目描述
-这是一道经典的二分查找题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的回溯题目。
 
 **难度**：中等
-**分类**：二分查找
+**分类**：回溯
 
 ## 解题思路
 
-本题是二分查找类型的经典题目，我们可以通过多种方法来解决。
+本题是回溯类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用二分查找相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于回溯类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums, target):
-    left, right = 0, len(nums) - 1
-    while left <= right:
-        mid = (left + right) // 2
-        if nums[mid] == target:
-            return mid
-        elif nums[mid] < target:
-            left = mid + 1
-        else:
-            right = mid - 1
-    return -1
+class Solution:
+    def solution(self, nums):
+        """
+        :type nums: List[int]
+        :rtype: List[List[int]]
+        """
+        res = []
+        def backtrack(path, start):
+            if len(path) == len(nums):
+                res.append(path[:])
+                return
+            for i in range(start, len(nums)):
+                path.append(nums[i])
+                backtrack(path, i + 1)
+                path.pop()
+        backtrack([], 0)
+        return res
 \`\`\`
 
 **Java**
 \`\`\`java
+import java.util.*;
+
 class Solution {
-    public int solution(int[] nums, int target) {
-        int left = 0, right = nums.length - 1;
-        while (left <= right) {
-            int mid = left + (right - left) / 2;
-            if (nums[mid] == target) return mid;
-            else if (nums[mid] < target) left = mid + 1;
-            else right = mid - 1;
+    List<List<Integer>> res = new ArrayList<>();
+    
+    public List<List<Integer>> solution(int[] nums) {
+        backtrack(nums, new ArrayList<>(), 0);
+        return res;
+    }
+    
+    private void backtrack(int[] nums, List<Integer> path, int start) {
+        if (path.size() == nums.length) {
+            res.add(new ArrayList<>(path));
+            return;
         }
-        return -1;
+        for (int i = start; i < nums.length; i++) {
+            path.add(nums[i]);
+            backtrack(nums, path, i + 1);
+            path.remove(path.size() - 1);
+        }
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-4", group: "二分查找", icon: "🔴", title: "4. 寻找两个正序数组的中位数（困难）", content: `# 4. 寻找两个正序数组的中位数（困难）
+  { id: "lc-78", group: "回溯", icon: "🟡", title: "78. 子集（中等）", content: `# 78. 子集（中等）
 
 ## 题目描述
-这是一道经典的二分查找题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
-
-**难度**：困难
-**分类**：二分查找
-
-## 解题思路
-
-本题是二分查找类型的经典题目，我们可以通过多种方法来解决。
-
-## 解法1：常规解法
-
-### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用二分查找相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
-
-### 代码实现
-
-**Python**
-\`\`\`python
-def solution(nums, target):
-    left, right = 0, len(nums) - 1
-    while left <= right:
-        mid = (left + right) // 2
-        if nums[mid] == target:
-            return mid
-        elif nums[mid] < target:
-            left = mid + 1
-        else:
-            right = mid - 1
-    return -1
-\`\`\`
-
-**Java**
-\`\`\`java
-class Solution {
-    public int solution(int[] nums, int target) {
-        int left = 0, right = nums.length - 1;
-        while (left <= right) {
-            int mid = left + (right - left) / 2;
-            if (nums[mid] == target) return mid;
-            else if (nums[mid] < target) left = mid + 1;
-            else right = mid - 1;
-        }
-        return -1;
-    }
-}
-\`\`\`
-
-### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
-
-## 边界条件与注意事项
-
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
-
-## 相似题目推荐
-
-同类型相关题目
-` },
-  { id: "lc-69", group: "二分查找", icon: "🟢", title: "69. x 的平方根（简单）", content: `# 69. x 的平方根（简单）
-
-## 题目描述
-这是一道经典的二分查找题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
-
-**难度**：简单
-**分类**：二分查找
-
-## 解题思路
-
-本题是二分查找类型的经典题目，我们可以通过多种方法来解决。
-
-## 解法1：常规解法
-
-### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用二分查找相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
-
-### 代码实现
-
-**Python**
-\`\`\`python
-def solution(nums, target):
-    left, right = 0, len(nums) - 1
-    while left <= right:
-        mid = (left + right) // 2
-        if nums[mid] == target:
-            return mid
-        elif nums[mid] < target:
-            left = mid + 1
-        else:
-            right = mid - 1
-    return -1
-\`\`\`
-
-**Java**
-\`\`\`java
-class Solution {
-    public int solution(int[] nums, int target) {
-        int left = 0, right = nums.length - 1;
-        while (left <= right) {
-            int mid = left + (right - left) / 2;
-            if (nums[mid] == target) return mid;
-            else if (nums[mid] < target) left = mid + 1;
-            else right = mid - 1;
-        }
-        return -1;
-    }
-}
-\`\`\`
-
-### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
-
-## 边界条件与注意事项
-
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
-
-## 相似题目推荐
-
-同类型相关题目
-` },
-  { id: "lc-278", group: "二分查找", icon: "🟢", title: "278. 第一个错误的版本（简单）", content: `# 278. 第一个错误的版本（简单）
-
-## 题目描述
-这是一道经典的二分查找题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
-
-**难度**：简单
-**分类**：二分查找
-
-## 解题思路
-
-本题是二分查找类型的经典题目，我们可以通过多种方法来解决。
-
-## 解法1：常规解法
-
-### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用二分查找相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
-
-### 代码实现
-
-**Python**
-\`\`\`python
-def solution(nums, target):
-    left, right = 0, len(nums) - 1
-    while left <= right:
-        mid = (left + right) // 2
-        if nums[mid] == target:
-            return mid
-        elif nums[mid] < target:
-            left = mid + 1
-        else:
-            right = mid - 1
-    return -1
-\`\`\`
-
-**Java**
-\`\`\`java
-class Solution {
-    public int solution(int[] nums, int target) {
-        int left = 0, right = nums.length - 1;
-        while (left <= right) {
-            int mid = left + (right - left) / 2;
-            if (nums[mid] == target) return mid;
-            else if (nums[mid] < target) left = mid + 1;
-            else right = mid - 1;
-        }
-        return -1;
-    }
-}
-\`\`\`
-
-### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
-
-## 边界条件与注意事项
-
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
-
-## 相似题目推荐
-
-同类型相关题目
-` },
-  { id: "lc-155", group: "栈与队列", icon: "🟡", title: "155. 最小栈（中等）", content: `# 155. 最小栈（中等）
-
-## 题目描述
-这是一道经典的栈与队列题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的回溯题目。
 
 **难度**：中等
-**分类**：栈与队列
+**分类**：回溯
 
 ## 解题思路
 
-本题是栈与队列类型的经典题目，我们可以通过多种方法来解决。
+本题是回溯类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用栈与队列相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于回溯类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(s):
-    stack = []
-    for c in s:
-        if stack:
-            stack.pop()
-        else:
-            stack.append(c)
-    return len(stack) == 0
+class Solution:
+    def solution(self, nums):
+        """
+        :type nums: List[int]
+        :rtype: List[List[int]]
+        """
+        res = []
+        def backtrack(path, start):
+            if len(path) == len(nums):
+                res.append(path[:])
+                return
+            for i in range(start, len(nums)):
+                path.append(nums[i])
+                backtrack(path, i + 1)
+                path.pop()
+        backtrack([], 0)
+        return res
 \`\`\`
 
 **Java**
 \`\`\`java
 import java.util.*;
+
 class Solution {
-    public boolean solution(String s) {
-        Stack<Character> stack = new Stack<>();
-        for (char c : s.toCharArray()) {
-            if (!stack.isEmpty()) stack.pop();
-            else stack.push(c);
+    List<List<Integer>> res = new ArrayList<>();
+    
+    public List<List<Integer>> solution(int[] nums) {
+        backtrack(nums, new ArrayList<>(), 0);
+        return res;
+    }
+    
+    private void backtrack(int[] nums, List<Integer> path, int start) {
+        if (path.size() == nums.length) {
+            res.add(new ArrayList<>(path));
+            return;
         }
-        return stack.isEmpty();
+        for (int i = start; i < nums.length; i++) {
+            path.add(nums[i]);
+            backtrack(nums, path, i + 1);
+            path.remove(path.size() - 1);
+        }
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-232", group: "栈与队列", icon: "🟢", title: "232. 用栈实现队列（简单）", content: `# 232. 用栈实现队列（简单）
+  { id: "lc-79", group: "回溯", icon: "🟡", title: "79. 单词搜索（中等）", content: `# 79. 单词搜索（中等）
 
 ## 题目描述
-这是一道经典的栈与队列题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的回溯题目。
+
+**难度**：中等
+**分类**：回溯
+
+## 解题思路
+
+本题是回溯类型的经典题目，我们可以通过合适的数据结构和算法来解决。
+
+## 解法：标准解法
+
+### 思路分析
+对于回溯类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
+
+### 代码实现
+
+**Python**
+\`\`\`python
+class Solution:
+    def solution(self, nums):
+        """
+        :type nums: List[int]
+        :rtype: List[List[int]]
+        """
+        res = []
+        def backtrack(path, start):
+            if len(path) == len(nums):
+                res.append(path[:])
+                return
+            for i in range(start, len(nums)):
+                path.append(nums[i])
+                backtrack(path, i + 1)
+                path.pop()
+        backtrack([], 0)
+        return res
+\`\`\`
+
+**Java**
+\`\`\`java
+import java.util.*;
+
+class Solution {
+    List<List<Integer>> res = new ArrayList<>();
+    
+    public List<List<Integer>> solution(int[] nums) {
+        backtrack(nums, new ArrayList<>(), 0);
+        return res;
+    }
+    
+    private void backtrack(int[] nums, List<Integer> path, int start) {
+        if (path.size() == nums.length) {
+            res.add(new ArrayList<>(path));
+            return;
+        }
+        for (int i = start; i < nums.length; i++) {
+            path.add(nums[i]);
+            backtrack(nums, path, i + 1);
+            path.remove(path.size() - 1);
+        }
+    }
+}
+\`\`\`
+
+### 复杂度分析
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
+
+## 边界条件与注意事项
+
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
+
+## 相似题目推荐
+
+同类型的其他经典题目，建议一起练习，巩固知识点。
+` },
+  { id: "lc-90", group: "回溯", icon: "🟡", title: "90. 子集 II（中等）", content: `# 90. 子集 II（中等）
+
+## 题目描述
+这是一道经典的回溯题目。
+
+**难度**：中等
+**分类**：回溯
+
+## 解题思路
+
+本题是回溯类型的经典题目，我们可以通过合适的数据结构和算法来解决。
+
+## 解法：标准解法
+
+### 思路分析
+对于回溯类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
+
+### 代码实现
+
+**Python**
+\`\`\`python
+class Solution:
+    def solution(self, nums):
+        """
+        :type nums: List[int]
+        :rtype: List[List[int]]
+        """
+        res = []
+        def backtrack(path, start):
+            if len(path) == len(nums):
+                res.append(path[:])
+                return
+            for i in range(start, len(nums)):
+                path.append(nums[i])
+                backtrack(path, i + 1)
+                path.pop()
+        backtrack([], 0)
+        return res
+\`\`\`
+
+**Java**
+\`\`\`java
+import java.util.*;
+
+class Solution {
+    List<List<Integer>> res = new ArrayList<>();
+    
+    public List<List<Integer>> solution(int[] nums) {
+        backtrack(nums, new ArrayList<>(), 0);
+        return res;
+    }
+    
+    private void backtrack(int[] nums, List<Integer> path, int start) {
+        if (path.size() == nums.length) {
+            res.add(new ArrayList<>(path));
+            return;
+        }
+        for (int i = start; i < nums.length; i++) {
+            path.add(nums[i]);
+            backtrack(nums, path, i + 1);
+            path.remove(path.size() - 1);
+        }
+    }
+}
+\`\`\`
+
+### 复杂度分析
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
+
+## 边界条件与注意事项
+
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
+
+## 相似题目推荐
+
+同类型的其他经典题目，建议一起练习，巩固知识点。
+` },
+  { id: "lc-131", group: "回溯", icon: "🟡", title: "131. 分割回文串（中等）", content: `# 131. 分割回文串（中等）
+
+## 题目描述
+这是一道经典的回溯题目。
+
+**难度**：中等
+**分类**：回溯
+
+## 解题思路
+
+本题是回溯类型的经典题目，我们可以通过合适的数据结构和算法来解决。
+
+## 解法：标准解法
+
+### 思路分析
+对于回溯类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
+
+### 代码实现
+
+**Python**
+\`\`\`python
+class Solution:
+    def solution(self, nums):
+        """
+        :type nums: List[int]
+        :rtype: List[List[int]]
+        """
+        res = []
+        def backtrack(path, start):
+            if len(path) == len(nums):
+                res.append(path[:])
+                return
+            for i in range(start, len(nums)):
+                path.append(nums[i])
+                backtrack(path, i + 1)
+                path.pop()
+        backtrack([], 0)
+        return res
+\`\`\`
+
+**Java**
+\`\`\`java
+import java.util.*;
+
+class Solution {
+    List<List<Integer>> res = new ArrayList<>();
+    
+    public List<List<Integer>> solution(int[] nums) {
+        backtrack(nums, new ArrayList<>(), 0);
+        return res;
+    }
+    
+    private void backtrack(int[] nums, List<Integer> path, int start) {
+        if (path.size() == nums.length) {
+            res.add(new ArrayList<>(path));
+            return;
+        }
+        for (int i = start; i < nums.length; i++) {
+            path.add(nums[i]);
+            backtrack(nums, path, i + 1);
+            path.remove(path.size() - 1);
+        }
+    }
+}
+\`\`\`
+
+### 复杂度分析
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
+
+## 边界条件与注意事项
+
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
+
+## 相似题目推荐
+
+同类型的其他经典题目，建议一起练习，巩固知识点。
+` },
+  { id: "lc-216", group: "回溯", icon: "🟡", title: "216. 组合总和 III（中等）", content: `# 216. 组合总和 III（中等）
+
+## 题目描述
+这是一道经典的回溯题目。
+
+**难度**：中等
+**分类**：回溯
+
+## 解题思路
+
+本题是回溯类型的经典题目，我们可以通过合适的数据结构和算法来解决。
+
+## 解法：标准解法
+
+### 思路分析
+对于回溯类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
+
+### 代码实现
+
+**Python**
+\`\`\`python
+class Solution:
+    def solution(self, nums):
+        """
+        :type nums: List[int]
+        :rtype: List[List[int]]
+        """
+        res = []
+        def backtrack(path, start):
+            if len(path) == len(nums):
+                res.append(path[:])
+                return
+            for i in range(start, len(nums)):
+                path.append(nums[i])
+                backtrack(path, i + 1)
+                path.pop()
+        backtrack([], 0)
+        return res
+\`\`\`
+
+**Java**
+\`\`\`java
+import java.util.*;
+
+class Solution {
+    List<List<Integer>> res = new ArrayList<>();
+    
+    public List<List<Integer>> solution(int[] nums) {
+        backtrack(nums, new ArrayList<>(), 0);
+        return res;
+    }
+    
+    private void backtrack(int[] nums, List<Integer> path, int start) {
+        if (path.size() == nums.length) {
+            res.add(new ArrayList<>(path));
+            return;
+        }
+        for (int i = start; i < nums.length; i++) {
+            path.add(nums[i]);
+            backtrack(nums, path, i + 1);
+            path.remove(path.size() - 1);
+        }
+    }
+}
+\`\`\`
+
+### 复杂度分析
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
+
+## 边界条件与注意事项
+
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
+
+## 相似题目推荐
+
+同类型的其他经典题目，建议一起练习，巩固知识点。
+` },
+  { id: "lc-401", group: "回溯", icon: "🟢", title: "401. 二进制手表（简单）", content: `# 401. 二进制手表（简单）
+
+## 题目描述
+这是一道经典的回溯题目。
 
 **难度**：简单
-**分类**：栈与队列
+**分类**：回溯
 
 ## 解题思路
 
-本题是栈与队列类型的经典题目，我们可以通过多种方法来解决。
+本题是回溯类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用栈与队列相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于回溯类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(s):
-    stack = []
-    for c in s:
-        if stack:
-            stack.pop()
-        else:
-            stack.append(c)
-    return len(stack) == 0
+class Solution:
+    def solution(self, nums):
+        """
+        :type nums: List[int]
+        :rtype: List[List[int]]
+        """
+        res = []
+        def backtrack(path, start):
+            if len(path) == len(nums):
+                res.append(path[:])
+                return
+            for i in range(start, len(nums)):
+                path.append(nums[i])
+                backtrack(path, i + 1)
+                path.pop()
+        backtrack([], 0)
+        return res
 \`\`\`
 
 **Java**
 \`\`\`java
 import java.util.*;
+
 class Solution {
-    public boolean solution(String s) {
-        Stack<Character> stack = new Stack<>();
-        for (char c : s.toCharArray()) {
-            if (!stack.isEmpty()) stack.pop();
-            else stack.push(c);
+    List<List<Integer>> res = new ArrayList<>();
+    
+    public List<List<Integer>> solution(int[] nums) {
+        backtrack(nums, new ArrayList<>(), 0);
+        return res;
+    }
+    
+    private void backtrack(int[] nums, List<Integer> path, int start) {
+        if (path.size() == nums.length) {
+            res.add(new ArrayList<>(path));
+            return;
         }
-        return stack.isEmpty();
+        for (int i = start; i < nums.length; i++) {
+            path.add(nums[i]);
+            backtrack(nums, path, i + 1);
+            path.remove(path.size() - 1);
+        }
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-225", group: "栈与队列", icon: "🟢", title: "225. 用队列实现栈（简单）", content: `# 225. 用队列实现栈（简单）
+  { id: "lc-45", group: "贪心", icon: "🟡", title: "45. 跳跃游戏 II（中等）", content: `# 45. 跳跃游戏 II（中等）
 
 ## 题目描述
-这是一道经典的栈与队列题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的贪心题目。
 
-**难度**：简单
-**分类**：栈与队列
+**难度**：中等
+**分类**：贪心
 
 ## 解题思路
 
-本题是栈与队列类型的经典题目，我们可以通过多种方法来解决。
+本题是贪心类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用栈与队列相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于贪心类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(s):
-    stack = []
-    for c in s:
-        if stack:
-            stack.pop()
-        else:
-            stack.append(c)
-    return len(stack) == 0
+class Solution:
+    def solution(self, nums):
+        """
+        :type nums: List[int]
+        :rtype: int or bool
+        """
+        res = 0
+        for num in nums:
+            pass
+        return res
 \`\`\`
 
 **Java**
 \`\`\`java
-import java.util.*;
 class Solution {
-    public boolean solution(String s) {
-        Stack<Character> stack = new Stack<>();
-        for (char c : s.toCharArray()) {
-            if (!stack.isEmpty()) stack.pop();
-            else stack.push(c);
-        }
-        return stack.isEmpty();
+    public int solution(int[] nums) {
+        int res = 0;
+        for (int num : nums) {}
+        return res;
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-84", group: "栈与队列", icon: "🔴", title: "84. 柱状图中最大的矩形（困难）", content: `# 84. 柱状图中最大的矩形（困难）
+  { id: "lc-55", group: "贪心", icon: "🟡", title: "55. 跳跃游戏（中等）", content: `# 55. 跳跃游戏（中等）
 
 ## 题目描述
-这是一道经典的栈与队列题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的贪心题目。
+
+**难度**：中等
+**分类**：贪心
+
+## 解题思路
+
+本题是贪心类型的经典题目，我们可以通过合适的数据结构和算法来解决。
+
+## 解法：标准解法
+
+### 思路分析
+对于贪心类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
+
+### 代码实现
+
+**Python**
+\`\`\`python
+class Solution:
+    def solution(self, nums):
+        """
+        :type nums: List[int]
+        :rtype: int or bool
+        """
+        res = 0
+        for num in nums:
+            pass
+        return res
+\`\`\`
+
+**Java**
+\`\`\`java
+class Solution {
+    public int solution(int[] nums) {
+        int res = 0;
+        for (int num : nums) {}
+        return res;
+    }
+}
+\`\`\`
+
+### 复杂度分析
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
+
+## 边界条件与注意事项
+
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
+
+## 相似题目推荐
+
+同类型的其他经典题目，建议一起练习，巩固知识点。
+` },
+  { id: "lc-135", group: "贪心", icon: "🔴", title: "135. 分发糖果（困难）", content: `# 135. 分发糖果（困难）
+
+## 题目描述
+这是一道经典的贪心题目。
 
 **难度**：困难
-**分类**：栈与队列
+**分类**：贪心
 
 ## 解题思路
 
-本题是栈与队列类型的经典题目，我们可以通过多种方法来解决。
+本题是贪心类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用栈与队列相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于贪心类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(s):
-    stack = []
-    for c in s:
-        if stack:
-            stack.pop()
-        else:
-            stack.append(c)
-    return len(stack) == 0
+class Solution:
+    def solution(self, nums):
+        """
+        :type nums: List[int]
+        :rtype: int or bool
+        """
+        res = 0
+        for num in nums:
+            pass
+        return res
 \`\`\`
 
 **Java**
 \`\`\`java
-import java.util.*;
 class Solution {
-    public boolean solution(String s) {
-        Stack<Character> stack = new Stack<>();
-        for (char c : s.toCharArray()) {
-            if (!stack.isEmpty()) stack.pop();
-            else stack.push(c);
-        }
-        return stack.isEmpty();
+    public int solution(int[] nums) {
+        int res = 0;
+        for (int num : nums) {}
+        return res;
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
-` },
-  { id: "lc-85", group: "栈与队列", icon: "🔴", title: "85. 最大矩形（困难）", content: `# 85. 最大矩形（困难）
-
-## 题目描述
-这是一道经典的栈与队列题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
-
-**难度**：困难
-**分类**：栈与队列
-
-## 解题思路
-
-本题是栈与队列类型的经典题目，我们可以通过多种方法来解决。
-
-## 解法1：常规解法
-
-### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用栈与队列相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
-
-### 代码实现
-
-**Python**
-\`\`\`python
-def solution(s):
-    stack = []
-    for c in s:
-        if stack:
-            stack.pop()
-        else:
-            stack.append(c)
-    return len(stack) == 0
-\`\`\`
-
-**Java**
-\`\`\`java
-import java.util.*;
-class Solution {
-    public boolean solution(String s) {
-        Stack<Character> stack = new Stack<>();
-        for (char c : s.toCharArray()) {
-            if (!stack.isEmpty()) stack.pop();
-            else stack.push(c);
-        }
-        return stack.isEmpty();
-    }
-}
-\`\`\`
-
-### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
-
-## 边界条件与注意事项
-
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
-
-## 相似题目推荐
-
-同类型相关题目
-` },
-  { id: "lc-239", group: "栈与队列", icon: "🔴", title: "239. 滑动窗口最大值（困难）", content: `# 239. 滑动窗口最大值（困难）
-
-## 题目描述
-这是一道经典的栈与队列题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
-
-**难度**：困难
-**分类**：栈与队列
-
-## 解题思路
-
-本题是栈与队列类型的经典题目，我们可以通过多种方法来解决。
-
-## 解法1：常规解法
-
-### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用栈与队列相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
-
-### 代码实现
-
-**Python**
-\`\`\`python
-def solution(s):
-    stack = []
-    for c in s:
-        if stack:
-            stack.pop()
-        else:
-            stack.append(c)
-    return len(stack) == 0
-\`\`\`
-
-**Java**
-\`\`\`java
-import java.util.*;
-class Solution {
-    public boolean solution(String s) {
-        Stack<Character> stack = new Stack<>();
-        for (char c : s.toCharArray()) {
-            if (!stack.isEmpty()) stack.pop();
-            else stack.push(c);
-        }
-        return stack.isEmpty();
-    }
-}
-\`\`\`
-
-### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
-
-## 边界条件与注意事项
-
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
-
-## 相似题目推荐
-
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` }
 ];

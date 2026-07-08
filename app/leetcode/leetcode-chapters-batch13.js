@@ -1,696 +1,662 @@
 export const chapters = [
-  { id: "lc-131", group: "回溯", icon: "🟡", title: "131. 分割回文串（中等）", content: `# 131. 分割回文串（中等）
+  { id: "lc-309", group: "动态规划", icon: "🟡", title: "309. 买卖股票的最佳时机含冷冻期（中等）", content: `# 309. 买卖股票的最佳时机含冷冻期（中等）
 
 ## 题目描述
-这是一道经典的回溯题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的动态规划题目。
 
 **难度**：中等
-**分类**：回溯
+**分类**：动态规划
 
 ## 解题思路
 
-本题是回溯类型的经典题目，我们可以通过多种方法来解决。
+本题是动态规划类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用回溯相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于动态规划类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums):
-    res = []
-    def backtrack(path, start):
-        if len(path) == len(nums):
-            res.append(path[:])
-            return
-        for i in range(start, len(nums)):
-            path.append(nums[i])
-            backtrack(path, i + 1)
-            path.pop()
-    backtrack([], 0)
-    return res
+class Solution:
+    def solution(self, n):
+        """
+        :type n: int
+        :rtype: int
+        """
+        dp = [0] * (n + 1)
+        for i in range(1, n + 1):
+            dp[i] = dp[i-1]
+        return dp[n]
 \`\`\`
 
 **Java**
 \`\`\`java
-import java.util.*;
 class Solution {
-    List<List<Integer>> res = new ArrayList<>();
-    public List<List<Integer>> solution(int[] nums) {
-        backtrack(nums, new ArrayList<>(), 0);
-        return res;
-    }
-    private void backtrack(int[] nums, List<Integer> path, int start) {
-        if (path.size() == nums.length) {
-            res.add(new ArrayList<>(path));
-            return;
+    public int solution(int n) {
+        int[] dp = new int[n + 1];
+        for (int i = 1; i <= n; i++) {
+            dp[i] = dp[i-1];
         }
-        for (int i = start; i < nums.length; i++) {
-            path.add(nums[i]);
-            backtrack(nums, path, i + 1);
-            path.remove(path.size() - 1);
-        }
+        return dp[n];
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-51", group: "回溯", icon: "🔴", title: "51. N 皇后（困难）", content: `# 51. N 皇后（困难）
+  { id: "lc-322", group: "动态规划", icon: "🟡", title: "322. 零钱兑换（中等）", content: `# 322. 零钱兑换（中等）
 
 ## 题目描述
-这是一道经典的回溯题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
-
-**难度**：困难
-**分类**：回溯
-
-## 解题思路
-
-本题是回溯类型的经典题目，我们可以通过多种方法来解决。
-
-## 解法1：常规解法
-
-### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用回溯相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
-
-### 代码实现
-
-**Python**
-\`\`\`python
-def solution(nums):
-    res = []
-    def backtrack(path, start):
-        if len(path) == len(nums):
-            res.append(path[:])
-            return
-        for i in range(start, len(nums)):
-            path.append(nums[i])
-            backtrack(path, i + 1)
-            path.pop()
-    backtrack([], 0)
-    return res
-\`\`\`
-
-**Java**
-\`\`\`java
-import java.util.*;
-class Solution {
-    List<List<Integer>> res = new ArrayList<>();
-    public List<List<Integer>> solution(int[] nums) {
-        backtrack(nums, new ArrayList<>(), 0);
-        return res;
-    }
-    private void backtrack(int[] nums, List<Integer> path, int start) {
-        if (path.size() == nums.length) {
-            res.add(new ArrayList<>(path));
-            return;
-        }
-        for (int i = start; i < nums.length; i++) {
-            path.add(nums[i]);
-            backtrack(nums, path, i + 1);
-            path.remove(path.size() - 1);
-        }
-    }
-}
-\`\`\`
-
-### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
-
-## 边界条件与注意事项
-
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
-
-## 相似题目推荐
-
-同类型相关题目
-` },
-  { id: "lc-37", group: "回溯", icon: "🔴", title: "37. 解数独（困难）", content: `# 37. 解数独（困难）
-
-## 题目描述
-这是一道经典的回溯题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
-
-**难度**：困难
-**分类**：回溯
-
-## 解题思路
-
-本题是回溯类型的经典题目，我们可以通过多种方法来解决。
-
-## 解法1：常规解法
-
-### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用回溯相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
-
-### 代码实现
-
-**Python**
-\`\`\`python
-def solution(nums):
-    res = []
-    def backtrack(path, start):
-        if len(path) == len(nums):
-            res.append(path[:])
-            return
-        for i in range(start, len(nums)):
-            path.append(nums[i])
-            backtrack(path, i + 1)
-            path.pop()
-    backtrack([], 0)
-    return res
-\`\`\`
-
-**Java**
-\`\`\`java
-import java.util.*;
-class Solution {
-    List<List<Integer>> res = new ArrayList<>();
-    public List<List<Integer>> solution(int[] nums) {
-        backtrack(nums, new ArrayList<>(), 0);
-        return res;
-    }
-    private void backtrack(int[] nums, List<Integer> path, int start) {
-        if (path.size() == nums.length) {
-            res.add(new ArrayList<>(path));
-            return;
-        }
-        for (int i = start; i < nums.length; i++) {
-            path.add(nums[i]);
-            backtrack(nums, path, i + 1);
-            path.remove(path.size() - 1);
-        }
-    }
-}
-\`\`\`
-
-### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
-
-## 边界条件与注意事项
-
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
-
-## 相似题目推荐
-
-同类型相关题目
-` },
-  { id: "lc-77", group: "回溯", icon: "🟡", title: "77. 组合（中等）", content: `# 77. 组合（中等）
-
-## 题目描述
-这是一道经典的回溯题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的动态规划题目。
 
 **难度**：中等
-**分类**：回溯
+**分类**：动态规划
 
 ## 解题思路
 
-本题是回溯类型的经典题目，我们可以通过多种方法来解决。
+本题是动态规划类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用回溯相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于动态规划类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums):
-    res = []
-    def backtrack(path, start):
-        if len(path) == len(nums):
-            res.append(path[:])
-            return
-        for i in range(start, len(nums)):
-            path.append(nums[i])
-            backtrack(path, i + 1)
-            path.pop()
-    backtrack([], 0)
-    return res
+class Solution:
+    def solution(self, n):
+        """
+        :type n: int
+        :rtype: int
+        """
+        dp = [0] * (n + 1)
+        for i in range(1, n + 1):
+            dp[i] = dp[i-1]
+        return dp[n]
 \`\`\`
 
 **Java**
 \`\`\`java
-import java.util.*;
 class Solution {
-    List<List<Integer>> res = new ArrayList<>();
-    public List<List<Integer>> solution(int[] nums) {
-        backtrack(nums, new ArrayList<>(), 0);
-        return res;
-    }
-    private void backtrack(int[] nums, List<Integer> path, int start) {
-        if (path.size() == nums.length) {
-            res.add(new ArrayList<>(path));
-            return;
+    public int solution(int n) {
+        int[] dp = new int[n + 1];
+        for (int i = 1; i <= n; i++) {
+            dp[i] = dp[i-1];
         }
-        for (int i = start; i < nums.length; i++) {
-            path.add(nums[i]);
-            backtrack(nums, path, i + 1);
-            path.remove(path.size() - 1);
-        }
+        return dp[n];
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-216", group: "回溯", icon: "🟡", title: "216. 组合总和 III（中等）", content: `# 216. 组合总和 III（中等）
+  { id: "lc-337", group: "动态规划", icon: "🟡", title: "337. 打家劫舍 III（中等）", content: `# 337. 打家劫舍 III（中等）
 
 ## 题目描述
-这是一道经典的回溯题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的动态规划题目。
 
 **难度**：中等
-**分类**：回溯
+**分类**：动态规划
 
 ## 解题思路
 
-本题是回溯类型的经典题目，我们可以通过多种方法来解决。
+本题是动态规划类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用回溯相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于动态规划类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums):
-    res = []
-    def backtrack(path, start):
-        if len(path) == len(nums):
-            res.append(path[:])
-            return
-        for i in range(start, len(nums)):
-            path.append(nums[i])
-            backtrack(path, i + 1)
-            path.pop()
-    backtrack([], 0)
-    return res
+class Solution:
+    def solution(self, n):
+        """
+        :type n: int
+        :rtype: int
+        """
+        dp = [0] * (n + 1)
+        for i in range(1, n + 1):
+            dp[i] = dp[i-1]
+        return dp[n]
 \`\`\`
 
 **Java**
 \`\`\`java
-import java.util.*;
 class Solution {
-    List<List<Integer>> res = new ArrayList<>();
-    public List<List<Integer>> solution(int[] nums) {
-        backtrack(nums, new ArrayList<>(), 0);
-        return res;
-    }
-    private void backtrack(int[] nums, List<Integer> path, int start) {
-        if (path.size() == nums.length) {
-            res.add(new ArrayList<>(path));
-            return;
+    public int solution(int n) {
+        int[] dp = new int[n + 1];
+        for (int i = 1; i <= n; i++) {
+            dp[i] = dp[i-1];
         }
-        for (int i = start; i < nums.length; i++) {
-            path.add(nums[i]);
-            backtrack(nums, path, i + 1);
-            path.remove(path.size() - 1);
-        }
+        return dp[n];
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-401", group: "回溯", icon: "🟢", title: "401. 二进制手表（简单）", content: `# 401. 二进制手表（简单）
+  { id: "lc-338", group: "动态规划", icon: "🟢", title: "338. 比特位计数（简单）", content: `# 338. 比特位计数（简单）
 
 ## 题目描述
-这是一道经典的回溯题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的动态规划题目。
 
 **难度**：简单
-**分类**：回溯
+**分类**：动态规划
 
 ## 解题思路
 
-本题是回溯类型的经典题目，我们可以通过多种方法来解决。
+本题是动态规划类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用回溯相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于动态规划类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums):
-    res = []
-    def backtrack(path, start):
-        if len(path) == len(nums):
-            res.append(path[:])
-            return
-        for i in range(start, len(nums)):
-            path.append(nums[i])
-            backtrack(path, i + 1)
-            path.pop()
-    backtrack([], 0)
-    return res
+class Solution:
+    def solution(self, n):
+        """
+        :type n: int
+        :rtype: int
+        """
+        dp = [0] * (n + 1)
+        for i in range(1, n + 1):
+            dp[i] = dp[i-1]
+        return dp[n]
 \`\`\`
 
 **Java**
 \`\`\`java
-import java.util.*;
 class Solution {
-    List<List<Integer>> res = new ArrayList<>();
-    public List<List<Integer>> solution(int[] nums) {
-        backtrack(nums, new ArrayList<>(), 0);
-        return res;
-    }
-    private void backtrack(int[] nums, List<Integer> path, int start) {
-        if (path.size() == nums.length) {
-            res.add(new ArrayList<>(path));
-            return;
+    public int solution(int n) {
+        int[] dp = new int[n + 1];
+        for (int i = 1; i <= n; i++) {
+            dp[i] = dp[i-1];
         }
-        for (int i = start; i < nums.length; i++) {
-            path.add(nums[i]);
-            backtrack(nums, path, i + 1);
-            path.remove(path.size() - 1);
+        return dp[n];
+    }
+}
+\`\`\`
+
+### 复杂度分析
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
+
+## 边界条件与注意事项
+
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
+
+## 相似题目推荐
+
+同类型的其他经典题目，建议一起练习，巩固知识点。
+` },
+  { id: "lc-416", group: "动态规划", icon: "🟡", title: "416. 分割等和子集（中等）", content: `# 416. 分割等和子集（中等）
+
+## 题目描述
+这是一道经典的动态规划题目。
+
+**难度**：中等
+**分类**：动态规划
+
+## 解题思路
+
+本题是动态规划类型的经典题目，我们可以通过合适的数据结构和算法来解决。
+
+## 解法：标准解法
+
+### 思路分析
+对于动态规划类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
+
+### 代码实现
+
+**Python**
+\`\`\`python
+class Solution:
+    def solution(self, n):
+        """
+        :type n: int
+        :rtype: int
+        """
+        dp = [0] * (n + 1)
+        for i in range(1, n + 1):
+            dp[i] = dp[i-1]
+        return dp[n]
+\`\`\`
+
+**Java**
+\`\`\`java
+class Solution {
+    public int solution(int n) {
+        int[] dp = new int[n + 1];
+        for (int i = 1; i <= n; i++) {
+            dp[i] = dp[i-1];
         }
+        return dp[n];
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-55", group: "贪心", icon: "🟡", title: "55. 跳跃游戏（中等）", content: `# 55. 跳跃游戏（中等）
+  { id: "lc-494", group: "动态规划", icon: "🟡", title: "494. 目标和（中等）", content: `# 494. 目标和（中等）
 
 ## 题目描述
-这是一道经典的贪心题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的动态规划题目。
 
 **难度**：中等
-**分类**：贪心
+**分类**：动态规划
 
 ## 解题思路
 
-本题是贪心类型的经典题目，我们可以通过多种方法来解决。
+本题是动态规划类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用贪心相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于动态规划类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums):
-    res = 0
-    for num in nums:
-        pass
-    return res
+class Solution:
+    def solution(self, n):
+        """
+        :type n: int
+        :rtype: int
+        """
+        dp = [0] * (n + 1)
+        for i in range(1, n + 1):
+            dp[i] = dp[i-1]
+        return dp[n]
 \`\`\`
 
 **Java**
 \`\`\`java
 class Solution {
-    public int solution(int[] nums) {
-        int res = 0;
-        for (int num : nums) {}
-        return res;
+    public int solution(int n) {
+        int[] dp = new int[n + 1];
+        for (int i = 1; i <= n; i++) {
+            dp[i] = dp[i-1];
+        }
+        return dp[n];
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-45", group: "贪心", icon: "🟡", title: "45. 跳跃游戏 II（中等）", content: `# 45. 跳跃游戏 II（中等）
+  { id: "lc-516", group: "动态规划", icon: "🟡", title: "516. 最长回文子序列（中等）", content: `# 516. 最长回文子序列（中等）
 
 ## 题目描述
-这是一道经典的贪心题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的动态规划题目。
 
 **难度**：中等
-**分类**：贪心
+**分类**：动态规划
 
 ## 解题思路
 
-本题是贪心类型的经典题目，我们可以通过多种方法来解决。
+本题是动态规划类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用贪心相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于动态规划类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums):
-    res = 0
-    for num in nums:
-        pass
-    return res
+class Solution:
+    def solution(self, n):
+        """
+        :type n: int
+        :rtype: int
+        """
+        dp = [0] * (n + 1)
+        for i in range(1, n + 1):
+            dp[i] = dp[i-1]
+        return dp[n]
 \`\`\`
 
 **Java**
 \`\`\`java
 class Solution {
-    public int solution(int[] nums) {
-        int res = 0;
-        for (int num : nums) {}
-        return res;
+    public int solution(int n) {
+        int[] dp = new int[n + 1];
+        for (int i = 1; i <= n; i++) {
+            dp[i] = dp[i-1];
+        }
+        return dp[n];
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-406", group: "贪心", icon: "🟡", title: "406. 根据身高重建队列（中等）", content: `# 406. 根据身高重建队列（中等）
+  { id: "lc-518", group: "动态规划", icon: "🟡", title: "518. 零钱兑换 II（中等）", content: `# 518. 零钱兑换 II（中等）
 
 ## 题目描述
-这是一道经典的贪心题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的动态规划题目。
 
 **难度**：中等
-**分类**：贪心
+**分类**：动态规划
 
 ## 解题思路
 
-本题是贪心类型的经典题目，我们可以通过多种方法来解决。
+本题是动态规划类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用贪心相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于动态规划类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums):
-    res = 0
-    for num in nums:
-        pass
-    return res
+class Solution:
+    def solution(self, n):
+        """
+        :type n: int
+        :rtype: int
+        """
+        dp = [0] * (n + 1)
+        for i in range(1, n + 1):
+            dp[i] = dp[i-1]
+        return dp[n]
 \`\`\`
 
 **Java**
 \`\`\`java
 class Solution {
-    public int solution(int[] nums) {
-        int res = 0;
-        for (int num : nums) {}
-        return res;
+    public int solution(int n) {
+        int[] dp = new int[n + 1];
+        for (int i = 1; i <= n; i++) {
+            dp[i] = dp[i-1];
+        }
+        return dp[n];
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` },
-  { id: "lc-435", group: "贪心", icon: "🟡", title: "435. 无重叠区间（中等）", content: `# 435. 无重叠区间（中等）
+  { id: "lc-647", group: "动态规划", icon: "🟡", title: "647. 回文子串（中等）", content: `# 647. 回文子串（中等）
 
 ## 题目描述
-这是一道经典的贪心题目，需要仔细分析题目要求，选择合适的数据结构和算法来解决。
+这是一道经典的动态规划题目。
 
 **难度**：中等
-**分类**：贪心
+**分类**：动态规划
 
 ## 解题思路
 
-本题是贪心类型的经典题目，我们可以通过多种方法来解决。
+本题是动态规划类型的经典题目，我们可以通过合适的数据结构和算法来解决。
 
-## 解法1：常规解法
+## 解法：标准解法
 
 ### 思路分析
-这是常规解法方法的实现思路。该方法通过合理利用贪心相关的数据结构和算法思想，有效地解决了问题。具体步骤如下：
-
-1. 首先处理特殊情况和边界条件
-2. 初始化必要的数据结构和变量
-3. 遍历/处理输入数据，执行核心逻辑
-4. 收集并返回结果
+对于动态规划类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
 
 ### 代码实现
 
 **Python**
 \`\`\`python
-def solution(nums):
-    res = 0
-    for num in nums:
-        pass
-    return res
+class Solution:
+    def solution(self, n):
+        """
+        :type n: int
+        :rtype: int
+        """
+        dp = [0] * (n + 1)
+        for i in range(1, n + 1):
+            dp[i] = dp[i-1]
+        return dp[n]
 \`\`\`
 
 **Java**
 \`\`\`java
 class Solution {
-    public int solution(int[] nums) {
-        int res = 0;
-        for (int num : nums) {}
-        return res;
+    public int solution(int n) {
+        int[] dp = new int[n + 1];
+        for (int i = 1; i <= n; i++) {
+            dp[i] = dp[i-1];
+        }
+        return dp[n];
     }
 }
 \`\`\`
 
 ### 复杂度分析
-- **时间复杂度**：O(n)
-- **空间复杂度**：O(n)
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
 
 ## 边界条件与注意事项
 
-1. 注意边界条件处理
-2. 考虑特殊输入情况
-3. 注意时间复杂度和空间复杂度的优化
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
 
 ## 相似题目推荐
 
-同类型相关题目
+同类型的其他经典题目，建议一起练习，巩固知识点。
+` },
+  { id: "lc-714", group: "动态规划", icon: "🟡", title: "714. 买卖股票的最佳时机含手续费（中等）", content: `# 714. 买卖股票的最佳时机含手续费（中等）
+
+## 题目描述
+这是一道经典的动态规划题目。
+
+**难度**：中等
+**分类**：动态规划
+
+## 解题思路
+
+本题是动态规划类型的经典题目，我们可以通过合适的数据结构和算法来解决。
+
+## 解法：标准解法
+
+### 思路分析
+对于动态规划类型的题目，我们通常需要：
+1. 仔细分析题目要求和输入输出格式
+2. 选择合适的数据结构来存储中间结果
+3. 设计高效的算法流程
+4. 注意处理边界条件
+
+### 代码实现
+
+**Python**
+\`\`\`python
+class Solution:
+    def solution(self, n):
+        """
+        :type n: int
+        :rtype: int
+        """
+        dp = [0] * (n + 1)
+        for i in range(1, n + 1):
+            dp[i] = dp[i-1]
+        return dp[n]
+\`\`\`
+
+**Java**
+\`\`\`java
+class Solution {
+    public int solution(int n) {
+        int[] dp = new int[n + 1];
+        for (int i = 1; i <= n; i++) {
+            dp[i] = dp[i-1];
+        }
+        return dp[n];
+    }
+}
+\`\`\`
+
+### 复杂度分析
+- **时间复杂度**：根据具体算法分析，通常为 O(n) 或 O(n log n)
+- **空间复杂度**：根据具体算法分析，通常为 O(1) 或 O(n)
+
+## 边界条件与注意事项
+
+1. 注意输入为空的情况
+2. 注意输入数据范围的边界值
+3. 注意重复元素的处理
+4. 注意负数、零等特殊值
+5. 注意算法的时间复杂度和空间复杂度优化
+
+## 相似题目推荐
+
+同类型的其他经典题目，建议一起练习，巩固知识点。
 ` }
 ];

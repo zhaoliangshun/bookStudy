@@ -1,4 +1,4 @@
-export const chickenSoupChaptersBatch7 = [
+export const chapters = [
   {
     id: "cs-49",
     group: "生活智慧",

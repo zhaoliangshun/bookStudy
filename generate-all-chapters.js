@@ -369,4 +369,16 @@ const progTotal = progGuideBatches.reduce((sum, b) => sum + b.chapters.length, 0
 console.log(`\n✅ 编程指南章节生成完成！总计 ${progTotal} 章\n`);
 
 console.log('='.repeat(60));
-console.log('
+console.log('开始生成Python权威指南章节...');
+console.log('='.repeat(60) + '\n');
+
+pyDefinitiveBatches.forEach((batch, index) => {
+  writeBatchFile(index + 1, batch.group, batch.chapters, true);
+});
+
+const pyTotal = pyDefinitiveBatches.reduce((sum, b) => sum + b.chapters.length, 0);
+console.log(`\n✅ Python权威指南章节生成完成！总计 ${pyTotal} 章\n`);
+
+console.log('='.repeat(60));
+console.log(`全部完成！两本书总计 ${progTotal + pyTotal} 章`);
+console.log('='.repeat(60));

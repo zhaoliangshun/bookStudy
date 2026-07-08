@@ -1,5 +1,5 @@
 // =============================================================
-// Python 权威指南 - 章节数据（聚合入口）
+// Python权威指南 - 章节数据（聚合入口）
 // -------------------------------------------------------------
 // 共 120 章，覆盖 15 大主题方向。
 // 纯内容阅读型教程，无代码执行功能。
@@ -7,7 +7,7 @@
 // 15 个 batch 文件，每组 8 章：
 //   py-definitive-chapters-batch1.js  : Python入门与环境 1-8
 //   py-definitive-chapters-batch2.js  : 数据类型基础 9-16
-//   py-definitive-chapters-batch3.js  : 数字与字符串 17-24
+//   py-definitive-chapters-batch3.js  : 字符串与文本处理 17-24
 //   py-definitive-chapters-batch4.js  : 列表与元组 25-32
 //   py-definitive-chapters-batch5.js  : 字典与集合 33-40
 //   py-definitive-chapters-batch6.js  : 控制流 41-48
@@ -59,7 +59,7 @@ export const pyDefinitiveChapters = [
 export const pyDefinitiveChapterGroups = [
   "Python入门与环境",
   "数据类型基础",
-  "数字与字符串",
+  "字符串与文本处理",
   "列表与元组",
   "字典与集合",
   "控制流",
