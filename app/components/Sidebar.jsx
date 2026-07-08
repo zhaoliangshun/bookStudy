@@ -66,6 +66,9 @@ const BOOK_CATEGORIES = [
       { path: "/pykit", label: "Python 开发常用知识点", icon: "🧰" },
       { path: "/pyrun", label: "Python 执行代码原理", icon: "🔬" },
       { path: "/pyproject", label: "Python 实战项目", icon: "🚀" },
+      { path: "/pybasic", label: "Python 基础路径", icon: "🌱" },
+      { path: "/pymod", label: "Python 模块与包", icon: "📦" },
+      { path: "/pyex", label: "Python 异常处理", icon: "⚠️" },
       { path: "/pyjava", label: "Python vs Java", icon: "🐍" },
       { path: "/pyvsjs", label: "Python vs JS 深度对比", icon: "⚔️" },
       { path: "/pyvsjava", label: "Python vs Java 深度对比", icon: "⚔️" },
@@ -149,17 +152,13 @@ const BOOK_CATEGORIES = [
       { path: "/curse", label: "毒舌词典", icon: "🐍" },
       { path: "/rebut", label: "反驳的艺术", icon: "⚔️" },
       { path: "/unharmed", label: "破怒：情绪暴击后翻篇指南", icon: "💔" },
+      { path: "/career", label: "职业出路", icon: "🛤️" },
     ],
   },
   {
     name: "已隐藏",
     icon: "🗂️",
-    books: [
-      { path: "/pybasic", label: "Python 基础路径", icon: "🌱" },
-      { path: "/pymod", label: "Python 模块与包", icon: "📦" },
-      { path: "/pyex", label: "Python 异常处理", icon: "⚠️" },
-      { path: "/career", label: "职业出路", icon: "🛤️" },
-    ],
+    books: [],
   },
 ];
 
@@ -249,7 +248,7 @@ export default function Sidebar({
           .map((p) => ALL_BOOKS.find((b) => b.path === p))
           .filter(Boolean),
       };
-    });
+    }).filter((cat) => cat.books.length > 0);
   }, [hiddenBooks, getOrderedPaths, bookOrder]);
 
   // 根据隐藏状态过滤后的章节分组
@@ -346,15 +345,15 @@ export default function Sidebar({
       const isHidden = hiddenChapterIds.has(ctxMenu.target);
       const items = [];
       items.push(
-        isDeleted
-          ? { label: "标记未读", icon: "📖", onClick: () => undeleteChapter(ctxMenu.target) }
-          : { label: "已读此章节", icon: "✅", onClick: () => deleteChapter(ctxMenu.target) }
-      );
-      items.push({ divider: true });
-      items.push(
         isHidden
           ? { label: "恢复此章节", icon: "↩️", onClick: () => unhideChapter(ctxMenu.target) }
           : { label: "删除此章节", icon: "🗑️", danger: true, onClick: () => hideChapter(ctxMenu.target) }
+      );
+      items.push({ divider: true });
+      items.push(
+        isDeleted
+          ? { label: "标记未读", icon: "📖", onClick: () => undeleteChapter(ctxMenu.target) }
+          : { label: "已读此章节", icon: "✅", onClick: () => deleteChapter(ctxMenu.target) }
       );
       return items;
     }
@@ -387,48 +386,70 @@ export default function Sidebar({
     }, 0);
   }, []);
 
-  // 拖拽经过书籍卡片：判断插入位置（卡片上半=插前面，下半=插后面）
+  // 清除所有卡片上的拖拽指示类
+  const clearAllDragIndicators = useCallback(() => {
+    document.querySelectorAll(".drag-over-before, .drag-over-after").forEach((el) => {
+      el.classList.remove("drag-over-before", "drag-over-after");
+    });
+  }, []);
+
+  // 拖拽经过书籍卡片：判断插入位置（卡片左半=插前面，右半=插后面）
   const handleCardDragOver = useCallback((e, categoryName, index) => {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = "move";
     const card = e.currentTarget;
     const rect = card.getBoundingClientRect();
-    const midY = rect.top + rect.height / 2;
+    const midX = rect.left + rect.width / 2;
     // 移除所有 drag-over 类
-    card.parentElement.querySelectorAll(".drag-over-before, .drag-over-after").forEach((el) => {
-      el.classList.remove("drag-over-before", "drag-over-after");
-    });
-    // 根据鼠标位置添加对应的类
-    if (e.clientY < midY) {
+    clearAllDragIndicators();
+    // 根据鼠标水平位置添加对应的类（左半=插前面，右半=插后面）
+    if (e.clientX < midX) {
       card.classList.add("drag-over-before");
     } else {
       card.classList.add("drag-over-after");
     }
-  }, []);
+  }, [clearAllDragIndicators]);
+
+  // 拖拽经过网格空白区域（用于末尾追加）
+  const handleGridDragOver = useCallback((e, categoryName) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    clearAllDragIndicators();
+  }, [clearAllDragIndicators]);
 
   // 拖拽离开书籍卡片
   const handleCardDragLeave = useCallback((e) => {
-    e.currentTarget.classList.remove("drag-over-before", "drag-over-after");
+    // 只在鼠标真正离开卡片时清除（不离开到子元素）
+    const card = e.currentTarget;
+    const rect = card.getBoundingClientRect();
+    if (
+      e.clientX < rect.left ||
+      e.clientX > rect.right ||
+      e.clientY < rect.top ||
+      e.clientY > rect.bottom
+    ) {
+      card.classList.remove("drag-over-before", "drag-over-after");
+    }
   }, []);
 
   // 在书籍卡片上释放
   const handleCardDrop = useCallback(
     (e, toCategory, toIndex) => {
       e.preventDefault();
-      e.currentTarget.classList.remove("drag-over-before", "drag-over-after");
+      e.stopPropagation();
+      clearAllDragIndicators();
       const ds = dragStateRef.current;
       if (!ds) return;
 
       const rect = e.currentTarget.getBoundingClientRect();
-      const midY = rect.top + rect.height / 2;
-      // 鼠标在卡片上半部 → insert before；下半部 → insert after
-      const insertIndex = e.clientY < midY ? toIndex : toIndex + 1;
+      const midX = rect.left + rect.width / 2;
+      // 鼠标在卡片左半部 → insert before；右半部 → insert after
+      const insertIndex = e.clientX < midX ? toIndex : toIndex + 1;
 
       if (ds.sourceCategory === toCategory) {
-        // 同分类内排序
-        const adjustedIndex =
-          insertIndex > ds.sourceIndex ? insertIndex - 1 : insertIndex;
-        reorderInCategory(toCategory, ds.sourceIndex, adjustedIndex);
+        // 同分类内排序：insertIndex 已是目标位置，reorderInCategory 内部会处理移除后的索引偏移
+        reorderInCategory(toCategory, ds.sourceIndex, insertIndex);
       } else {
         // 跨分类移动
         moveToCategory(ds.sourceCategory, ds.sourceIndex, toCategory, insertIndex);
@@ -442,7 +463,36 @@ export default function Sidebar({
       // 不清空 dragStateRef，留给 dragEnd 清理（防止 click 事件误触发跳转）
       ds.dropped = true;
     },
-    [reorderInCategory, moveToCategory, hideBook, unhideBook]
+    [reorderInCategory, moveToCategory, hideBook, unhideBook, clearAllDragIndicators]
+  );
+
+  // 在网格空白区域释放 → 追加到末尾
+  const handleGridDrop = useCallback(
+    (e, toCategory) => {
+      e.preventDefault();
+      clearAllDragIndicators();
+      const ds = dragStateRef.current;
+      if (!ds) return;
+
+      // 使用 bookOrder 的长度作为插入位置（末尾追加）
+      const targetOrder = getOrderedPaths(toCategory);
+      const bookCount = targetOrder.length;
+
+      if (ds.sourceCategory === toCategory) {
+        // 同分类：移到末尾
+        reorderInCategory(toCategory, ds.sourceIndex, bookCount);
+      } else {
+        // 跨分类移到末尾
+        moveToCategory(ds.sourceCategory, ds.sourceIndex, toCategory, bookCount);
+        if (toCategory === "已隐藏") {
+          hideBook(ds.bookPath);
+        } else if (ds.sourceCategory === "已隐藏") {
+          unhideBook(ds.bookPath);
+        }
+      }
+      ds.dropped = true;
+    },
+    [reorderInCategory, moveToCategory, hideBook, unhideBook, clearAllDragIndicators, getOrderedPaths]
   );
 
   // 当前书籍信息
@@ -973,8 +1023,18 @@ export default function Sidebar({
                         </div>
                         {/* 平铺网格：一行多个书籍卡片，自动换行 */}
                         {!isCollapsed && (
-                        <div className="sidebar-book-grid">
-                          {category.books.map((book, idx) => (
+                        <div
+                          className="sidebar-book-grid"
+                          onDragOver={(e) => handleGridDragOver(e, category.name)}
+                          onDrop={(e) => handleGridDrop(e, category.name)}
+                        >
+                          {category.books.map((book, idx) => {
+                            // 获取书籍在 bookOrder 中的真实索引（考虑隐藏书籍的偏移）
+                            const orderedPaths = getOrderedPaths(category.name);
+                            const realIdx = category.name === "已隐藏"
+                              ? idx
+                              : orderedPaths.indexOf(book.path);
+                            return (
                             <div
                               key={book.path}
                               draggable
@@ -989,11 +1049,11 @@ export default function Sidebar({
                                 router.push(book.path);
                               }}
                               onContextMenu={(e) => handleBookContextMenu(e, book.path)}
-                              onDragStart={(e) => handleDragStart(e, book.path, category.name, idx)}
+                              onDragStart={(e) => handleDragStart(e, book.path, category.name, realIdx)}
                               onDragEnd={handleDragEnd}
-                              onDragOver={(e) => handleCardDragOver(e, category.name, idx)}
+                              onDragOver={(e) => handleCardDragOver(e, category.name, realIdx)}
                               onDragLeave={handleCardDragLeave}
-                              onDrop={(e) => handleCardDrop(e, category.name, idx)}
+                              onDrop={(e) => handleCardDrop(e, category.name, realIdx)}
                               title={`${book.label}（可拖拽排序）`}
                               role="link"
                               tabIndex={0}
@@ -1007,7 +1067,8 @@ export default function Sidebar({
                               <span className="sidebar-book-card-icon">{book.icon}</span>
                               <span className="sidebar-book-card-label">{book.label}</span>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                         )}
                       </div>

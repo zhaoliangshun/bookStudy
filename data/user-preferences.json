@@ -1,10 +1,111 @@
 {
-  "hiddenBooks": [],
+  "hiddenBooks": [
+    "/career",
+    "/pyex",
+    "/pymod",
+    "/pybasic"
+  ],
   "deletedChapters": [],
   "hiddenChapters": [
     "py-intro",
     "py-variables",
     "py-strings",
     "py-operators"
-  ]
+  ],
+  "bookOrder": {
+    "Python 教程": [
+      "/py",
+      "/py4",
+      "/py6",
+      "/py8",
+      "/pynet",
+      "/py9",
+      "/pythread",
+      "/pythread2",
+      "/pyprocess",
+      "/pyasync",
+      "/pyasync2",
+      "/pysubprocess",
+      "/pydb",
+      "/pyint",
+      "/pyweb",
+      "/pyweb2",
+      "/fastapi",
+      "/pyarch",
+      "/pyeng",
+      "/pyfile",
+      "/pyfile2",
+      "/pykit",
+      "/pyrun",
+      "/pyproject",
+      "/pybasic",
+      "/pymod",
+      "/pyex",
+      "/pyjava",
+      "/pyvsjs",
+      "/pyvsjava"
+    ],
+    "Java 教程": [
+      "/java",
+      "/java-web"
+    ],
+    "数据库教程": [
+      "/sql",
+      "/mysql",
+      "/redis",
+      "/mongo"
+    ],
+    "AI 教程": [
+      "/ai",
+      "/aiapp",
+      "/ai-agent",
+      "/aipy"
+    ],
+    "编程教程": [
+      "/playground",
+      "/",
+      "/nodejs2",
+      "/nodejs3",
+      "/workers",
+      "/pnpm",
+      "/ts",
+      "/ts2",
+      "/ts3",
+      "/http",
+      "/net",
+      "/blog-tutorial",
+      "/deploy",
+      "/csharp",
+      "/go",
+      "/sass",
+      "/gql",
+      "/backend",
+      "/cs",
+      "/howitworks",
+      "/os",
+      "/fe-interview",
+      "/fe-engineering",
+      "/nextjs"
+    ],
+    "综合知识": [
+      "/future",
+      "/career40",
+      "/comm",
+      "/psychology",
+      "/nervous",
+      "/relations",
+      "/work",
+      "/stomach",
+      "/ibs",
+      "/dui",
+      "/fandui",
+      "/shield",
+      "/quotes",
+      "/curse",
+      "/rebut",
+      "/unharmed",
+      "/career"
+    ],
+    "已隐藏": []
+  }
 }
