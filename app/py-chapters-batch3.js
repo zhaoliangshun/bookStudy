@@ -887,7 +887,7 @@ print("全部演示完成。")
 **异常（Exception）** 是程序运行时发生的"非正常事件"，它会打断正常的指令流。如果异常没有被处理，Python 会一路向上抛，最终打印一长串 \`Traceback\` 并退出程序。
 
 \`\`\`python
->>> 1 / 0
+1 / 0
 Traceback (most recent call last):
   File "<stdin>", line 1, in <module>
 ZeroDivisionError: division by zero

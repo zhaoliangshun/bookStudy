@@ -707,8 +707,8 @@ print(f"first: {paths[0].replace('\\\\', '/')}")
 - **import 建议模块**：拼错模块名会建议正确的包名。
 
 \`\`\`python
->>> print(name)        # NameError: name 'name' is not defined. Did you mean: 'names'?
->>> (1 + 2 * 3         # SyntaxError: '(' was never closed
+print(name)        # NameError: name 'name' is not defined. Did you mean: 'names'?
+(1 + 2 * 3         # SyntaxError: '(' was never closed
 \`\`\`
 
 对新手极其友好，调试效率显著提升。

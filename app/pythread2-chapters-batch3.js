@@ -1048,7 +1048,7 @@ t.cancel()       # 在 3 秒内取消，hello 不会执行
 ## 三、Timer 是 Thread 的子类
 
 \`\`\`python
->>> issubclass(threading.Timer, threading.Thread)
+issubclass(threading.Timer, threading.Thread)
 True
 \`\`\`
 

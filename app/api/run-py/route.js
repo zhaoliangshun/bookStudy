@@ -28,7 +28,9 @@
 
 import { NextResponse } from "next/server";
 import { spawn } from "child_process";
-import { existsSync } from "fs";
+import { existsSync, writeFileSync, unlinkSync, mkdtempSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
 
 // 执行超时（毫秒）。Python 教程的 demo 都很短，10 秒足够；
 // 死循环 / input() 阻塞等会被超时强制终止。

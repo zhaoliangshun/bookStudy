@@ -43,7 +43,7 @@ export const chapters = [
 来看一个最经典的例子——除以零：
 
 \`\`\`python
->>> 1 / 0
+1 / 0
 Traceback (most recent call last):
   File "<stdin>", line 1, in <module>
 ZeroDivisionError: division by zero

@@ -216,7 +216,7 @@ Java 9 的 **Jigsaw 项目**（JPMS，Java Platform Module System）是 Java 历
 Python 的设计哲学被写进了一个彩蛋——在 Python 交互环境中输入 \`import this\` 就会打印出 **"The Zen of Python"**（Python 之禅），由 Tim Peters 在 1999 年总结：
 
 \`\`\`python
->>> import this
+import this
 # 输出（节选）：
 # Beautiful is better than ugly.
 # 显式优于隐式（Explicit is better than implicit.）
