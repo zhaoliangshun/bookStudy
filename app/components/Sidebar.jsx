@@ -79,6 +79,7 @@ const BOOK_CATEGORIES = [
       { path: "/pyjava", label: "Python vs Java", icon: "⚔️" },
       { path: "/pyvsjava", label: "Python vs Java 深度对比", icon: "⚔️" },
       { path: "/pyvsjs", label: "Python vs JS 深度对比", icon: "⚔️" },
+      { path: "/py-definitive", label: "Python 权威指南", icon: "📕" },
     ],
   },
   {
@@ -102,6 +103,7 @@ const BOOK_CATEGORIES = [
     books: [
       { path: "/java", label: "Java 入门到精通", icon: "☕" },
       { path: "/java-web", label: "Java Web 开发", icon: "🌐" },
+      { path: "/java-master", label: "Java 开发详解", icon: "📗" },
     ],
   },
   {
@@ -131,6 +133,7 @@ const BOOK_CATEGORIES = [
       { path: "/http", label: "HTTP 通信", icon: "🌐" },
       { path: "/net", label: "计算机网络", icon: "🌐" },
       { path: "/backend", label: "后端开发", icon: "🖥️" },
+      { path: "/backend-essential", label: "后端开发必备知识", icon: "⚙️" },
       { path: "/gql", label: "GraphQL", icon: "◈" },
       { path: "/deploy", label: "部署与运维", icon: "🚀" },
       { path: "/go", label: "Go 语言", icon: "🐹" },
@@ -157,12 +160,21 @@ const BOOK_CATEGORIES = [
     ],
   },
   {
+    name: "算法与数据结构",
+    icon: "🧮",
+    books: [
+      { path: "/algo", label: "编程算法大全", icon: "📐" },
+      { path: "/leetcode", label: "LeetCode 面试 200 题", icon: "🏆" },
+    ],
+  },
+  {
     name: "计算机基础",
     icon: "🧠",
     books: [
       { path: "/cs", label: "计算机原理", icon: "💡" },
       { path: "/howitworks", label: "代码怎么跑起来", icon: "⚙️" },
       { path: "/os", label: "操作系统", icon: "🐧" },
+      { path: "/prog-guide", label: "编程指南", icon: "📖" },
     ],
   },
   {
@@ -186,6 +198,7 @@ const BOOK_CATEGORIES = [
       { path: "/ibs", label: "肠易激康复", icon: "🫃" },
       { path: "/dignity", label: "放不下的愤怒", icon: "🕊️" },
       { path: "/hurt", label: "委屈的解剖学", icon: "💔" },
+      { path: "/chicken-soup", label: "心灵鸡汤", icon: "🍲" },
     ],
   },
   {
@@ -200,6 +213,7 @@ const BOOK_CATEGORIES = [
       { path: "/curse", label: "毒舌词典", icon: "🐍" },
       { path: "/rebut", label: "反驳的艺术", icon: "⚔️" },
       { path: "/unharmed", label: "破怒：翻篇指南", icon: "💔" },
+      { path: "/talk-rebut", label: "谈话绝地反击", icon: "🗡️" },
     ],
   },
   {
@@ -929,7 +943,10 @@ export default function Sidebar({
 
     const grid = e.currentTarget;
     grid.classList.remove("grid-drop-active");
-    const cards = grid.querySelectorAll(".sidebar-book-card:not(.dragging)");
+    // 使用 data-book-path 排除正在拖拽的卡片，而非依赖 CSS 类（重渲染时类会丢失）
+    const draggingPath = dragStateRef.current.bookPath;
+    const allCards = grid.querySelectorAll(".sidebar-book-card");
+    const cards = Array.from(allCards).filter((el) => el.dataset.bookPath !== draggingPath);
 
     // 工具：设置指示器，只在变化时操作 DOM，避免闪烁
     const setIndicator = (el, type) => {
@@ -951,22 +968,21 @@ export default function Sidebar({
       return;
     }
 
-    const cardEls = Array.from(cards);
-    const rects = cardEls.map((c) => c.getBoundingClientRect());
+    const rects = cards.map((c) => c.getBoundingClientRect());
     const { clientX, clientY } = e;
-    const lastIdx = cardEls.length - 1;
+    const lastIdx = cards.length - 1;
 
     // 1. 在所有卡片上方 → 插入开头
     if (clientY < rects[0].top) {
-      setIndicator(cardEls[0], "drag-over-before");
+      setIndicator(cards[0], "drag-over-before");
       grid._dragInsertIndex = 0;
       return;
     }
 
     // 2. 在所有卡片下方 → 追加末尾
     if (clientY > rects[lastIdx].bottom) {
-      setIndicator(cardEls[lastIdx], "drag-over-after");
-      grid._dragInsertIndex = cardEls.length;
+      setIndicator(cards[lastIdx], "drag-over-after");
+      grid._dragInsertIndex = cards.length;
       return;
     }
 
@@ -988,11 +1004,11 @@ export default function Sidebar({
       if (clientX > rowRight) {
         if (lastInRow === lastIdx) {
           // 最后一行最右 → 追加末尾
-          setIndicator(cardEls[lastIdx], "drag-over-after");
-          grid._dragInsertIndex = cardEls.length;
+          setIndicator(cards[lastIdx], "drag-over-after");
+          grid._dragInsertIndex = cards.length;
         } else {
           // 非最后行右侧 → 下一行第一个卡片前
-          setIndicator(cardEls[lastInRow + 1], "drag-over-before");
+          setIndicator(cards[lastInRow + 1], "drag-over-before");
           grid._dragInsertIndex = lastInRow + 1;
         }
         return;
@@ -1000,7 +1016,7 @@ export default function Sidebar({
 
       // 3b. 在该行左侧 → 插入该行第一个卡片前
       if (clientX < rowLeft) {
-        setIndicator(cardEls[firstInRow], "drag-over-before");
+        setIndicator(cards[firstInRow], "drag-over-before");
         grid._dragInsertIndex = firstInRow;
         return;
       }
@@ -1011,12 +1027,12 @@ export default function Sidebar({
         const r = rects[idx];
         const midX = r.left + r.width / 2;
         if (clientX < midX) {
-          setIndicator(cardEls[idx], "drag-over-before");
+          setIndicator(cards[idx], "drag-over-before");
           grid._dragInsertIndex = idx;
           return;
         }
         if (i === rowIndices.length - 1 || clientX < rects[rowIndices[i + 1]].left) {
-          setIndicator(cardEls[idx], "drag-over-after");
+          setIndicator(cards[idx], "drag-over-after");
           grid._dragInsertIndex = idx + 1;
           return;
         }
@@ -1028,10 +1044,10 @@ export default function Sidebar({
       if (clientY > rects[i].bottom && clientY < rects[i + 1].top) {
         const gapMidY = (rects[i].bottom + rects[i + 1].top) / 2;
         if (clientY < gapMidY) {
-          setIndicator(cardEls[i], "drag-over-after");
+          setIndicator(cards[i], "drag-over-after");
           grid._dragInsertIndex = i + 1;
         } else {
-          setIndicator(cardEls[i + 1], "drag-over-before");
+          setIndicator(cards[i + 1], "drag-over-before");
           grid._dragInsertIndex = i + 1;
         }
         return;
@@ -1039,8 +1055,8 @@ export default function Sidebar({
     }
 
     // 兜底：追加末尾
-    setIndicator(cardEls[lastIdx], "drag-over-after");
-    grid._dragInsertIndex = cardEls.length;
+    setIndicator(cards[lastIdx], "drag-over-after");
+    grid._dragInsertIndex = cards.length;
   }, [clearBookDragTitleHighlight]);
 
   // 拖拽离开网格区域时清除空网格高亮
@@ -1057,12 +1073,10 @@ export default function Sidebar({
     }
   }, []);
 
-  // 在书籍卡片上释放（由网格统一计算插入位置，卡片 drop 只是阻止冒泡）
+  // 在书籍卡片上释放：只 preventDefault 标记为有效放置目标，让事件冒泡到 grid 统一处理
   const handleCardDrop = useCallback(
-    (e, toCategory) => {
+    (e) => {
       e.preventDefault();
-      e.stopPropagation();
-      // 不做任何位置计算，直接交给网格 drop 处理（通过事件冒泡到 grid）
     },
     []
   );
@@ -1082,7 +1096,8 @@ export default function Sidebar({
       grid._dragInsertIndex = undefined;
 
       if (ds.sourceCategory === toCategory) {
-        reorderInCategory(toCategory, ds.sourceIndex, insertIndex);
+        const adjustedInsertIndex = insertIndex <= ds.sourceIndex ? insertIndex : insertIndex + 1;
+        reorderInCategory(toCategory, ds.sourceIndex, adjustedInsertIndex);
       } else {
         moveToCategory(ds.sourceCategory, ds.sourceIndex, toCategory, insertIndex);
         setExpandedCategories((prev) => {
@@ -1958,6 +1973,7 @@ export default function Sidebar({
                             <div
                               key={book.path}
                               draggable
+                              data-book-path={book.path}
                               className={`sidebar-book-card ${currentPath === book.path ? "active" : ""}`}
                               onClick={(e) => {
                                 // 拖拽中不触发点击跳转

@@ -1,46 +1,39 @@
 {
   "hiddenBooks": [],
   "deletedChapters": [],
-  "hiddenChapters": [
-    "py-intro",
-    "py-variables",
-    "py-strings",
-    "py-operators"
-  ],
+  "hiddenChapters": [],
   "bookOrder": {
     "未分组": [
       "/playground"
     ],
     "Python 编程": [
+      "/pyint",
+      "/pyrun",
+      "/pykit",
       "/py",
-      "/py4",
       "/py6",
       "/py8",
       "/py9",
-      "/pymod",
-      "/pyex",
+      "/py-definitive",
       "/pyfile",
       "/pyfile2",
-      "/pykit",
       "/pynet",
       "/pydb",
       "/pyweb",
       "/pyweb2",
       "/fastapi",
-      "/pysubprocess",
+      "/pyproject",
+      "/pyarch",
+      "/pyeng",
+      "/pyjava",
+      "/pyvsjava",
+      "/pyvsjs",
       "/pythread",
       "/pythread2",
       "/pyprocess",
+      "/pysubprocess",
       "/pyasync",
-      "/pyasync2",
-      "/pyeng",
-      "/pyint",
-      "/pyrun",
-      "/pyarch",
-      "/pyproject",
-      "/pyjava",
-      "/pyvsjava",
-      "/pyvsjs"
+      "/pyasync2"
     ],
     "JS / TS 生态": [
       "/",
@@ -54,7 +47,8 @@
     ],
     "Java 开发": [
       "/java",
-      "/java-web"
+      "/java-web",
+      "/java-master"
     ],
     "AI 智能开发": [
       "/ai",
@@ -75,7 +69,8 @@
       "/gql",
       "/deploy",
       "/go",
-      "/csharp"
+      "/csharp",
+      "/backend-essential"
     ],
     "实战项目": [
       "/todo",
@@ -91,7 +86,8 @@
     "计算机基础": [
       "/cs",
       "/howitworks",
-      "/os"
+      "/os",
+      "/prog-guide"
     ],
     "职场成长": [
       "/future",
@@ -106,7 +102,8 @@
       "/stomach",
       "/ibs",
       "/dignity",
-      "/hurt"
+      "/hurt",
+      "/chicken-soup"
     ],
     "人际智慧": [
       "/relations",
@@ -116,10 +113,18 @@
       "/quotes",
       "/curse",
       "/rebut",
-      "/unharmed"
+      "/unharmed",
+      "/talk-rebut"
     ],
     "已隐藏": [
-      "/pybasic"
+      "/pybasic",
+      "/pymod",
+      "/py4",
+      "/pyex"
+    ],
+    "算法与数据结构": [
+      "/algo",
+      "/leetcode"
     ]
   },
   "categoryConfig": {
@@ -135,14 +140,13 @@
         "/playground"
       ],
       "Python 编程": [
-        "/pybasic",
+        "/pyint",
+        "/pyrun",
         "/py",
-        "/py4",
         "/py6",
         "/py8",
         "/py9",
-        "/pymod",
-        "/pyex",
+        "/py-definitive",
         "/pyfile",
         "/pyfile2",
         "/pykit",
@@ -151,20 +155,18 @@
         "/pyweb",
         "/pyweb2",
         "/fastapi",
-        "/pysubprocess",
-        "/pythread",
-        "/pythread2",
-        "/pyprocess",
-        "/pyasync",
-        "/pyasync2",
         "/pyeng",
-        "/pyint",
-        "/pyrun",
         "/pyarch",
         "/pyproject",
         "/pyjava",
         "/pyvsjava",
-        "/pyvsjs"
+        "/pyvsjs",
+        "/pythread",
+        "/pythread2",
+        "/pyprocess",
+        "/pysubprocess",
+        "/pyasync",
+        "/pyasync2"
       ],
       "JS / TS 生态": [
         "/",
@@ -178,7 +180,8 @@
       ],
       "Java 开发": [
         "/java",
-        "/java-web"
+        "/java-web",
+        "/java-master"
       ],
       "AI 智能开发": [
         "/ai",
@@ -199,7 +202,8 @@
         "/gql",
         "/deploy",
         "/go",
-        "/csharp"
+        "/csharp",
+        "/backend-essential"
       ],
       "实战项目": [
         "/todo",
@@ -215,7 +219,8 @@
       "计算机基础": [
         "/cs",
         "/howitworks",
-        "/os"
+        "/os",
+        "/prog-guide"
       ],
       "职场成长": [
         "/future",
@@ -230,7 +235,8 @@
         "/stomach",
         "/ibs",
         "/dignity",
-        "/hurt"
+        "/hurt",
+        "/chicken-soup"
       ],
       "人际智慧": [
         "/relations",
@@ -240,9 +246,19 @@
         "/quotes",
         "/curse",
         "/rebut",
-        "/unharmed"
+        "/unharmed",
+        "/talk-rebut"
       ],
-      "已隐藏": []
+      "已隐藏": [
+        "/pybasic",
+        "/pymod",
+        "/py4",
+        "/pyex"
+      ],
+      "算法与数据结构": [
+        "/algo",
+        "/leetcode"
+      ]
     },
     "categoryConfig": {
       "custom": [],
