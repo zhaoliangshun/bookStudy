@@ -3,12 +3,8 @@
 // =============================================================
 // 书籍拖拽排序 Hook
 // -------------------------------------------------------------
-// 管理书籍在各分类中的排序和跨分类移动，持久化到 localStorage。
-//
-// 数据结构：
-//   bookOrder = { "Python 教程": ["/py", "/py4", ...], "Java 教程": [...], ... }
-//
-// 拖拽到"已隐藏"分类时，自动联动 hiddenBooks 状态。
+// 管理书籍在各分类中的排序和跨分类移动。
+// 持久化策略：localStorage（即时响应）+ 服务端 JSON 文件（跨设备同步）
 // =============================================================
 
 import { useState, useCallback, useEffect } from "react";
@@ -42,28 +38,60 @@ export function mergeOrder(saved, defaults) {
   return merged;
 }
 
+// 将 bookOrder 同步到服务端
+async function syncToServer(bookOrder) {
+  try {
+    await fetch("/api/preferences", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bookOrder }),
+    });
+  } catch {
+    // 网络错误静默忽略，localStorage 已有本地备份
+  }
+}
+
 export default function useBookDragDrop(categories) {
   const [bookOrder, setBookOrder] = useState(() =>
     getDefaultBookOrder(categories)
   );
 
-  // 挂载后从 localStorage 恢复
+  // 挂载后：优先从服务端加载，再 fallback 到 localStorage
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(ORDER_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw);
-        const defaults = getDefaultBookOrder(categories);
-        setBookOrder(mergeOrder(saved, defaults));
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/preferences");
+        if (!res.ok) throw new Error("fetch failed");
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.bookOrder && Object.keys(data.bookOrder).length > 0) {
+          const defaults = getDefaultBookOrder(categories);
+          setBookOrder(mergeOrder(data.bookOrder, defaults));
+          return;
+        }
+      } catch {
+        // 服务端不可用，降级到 localStorage
       }
-    } catch {}
+      // fallback: 从 localStorage 读取
+      try {
+        const raw = localStorage.getItem(ORDER_KEY);
+        if (raw) {
+          const saved = JSON.parse(raw);
+          const defaults = getDefaultBookOrder(categories);
+          setBookOrder(mergeOrder(saved, defaults));
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
   }, [categories]);
 
-  // 持久化
+  // 持久化：localStorage + 服务端
   const persist = useCallback((order) => {
     try {
       localStorage.setItem(ORDER_KEY, JSON.stringify(order));
     } catch {}
+    syncToServer(order);
   }, []);
 
   // 同分类内重新排序

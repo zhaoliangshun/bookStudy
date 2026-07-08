@@ -1,0 +1,10 @@
+{
+  "hiddenBooks": [],
+  "deletedChapters": [],
+  "hiddenChapters": [
+    "py-intro",
+    "py-variables",
+    "py-strings",
+    "py-operators"
+  ]
+}
