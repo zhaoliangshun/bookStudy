@@ -107,6 +107,7 @@ const BOOK_CATEGORIES = [
       { path: "/", label: "Node.js", icon: "⬢" },
       { path: "/nodejs2", label: "Node.js 进阶", icon: "🟢" },
       { path: "/nodejs3", label: "Node.js 源码", icon: "🟡" },
+      { path: "/workers", label: "JavaScript Workers", icon: "👷" },
       { path: "/pnpm", label: "pnpm", icon: "📦" },
       { path: "/ts", label: "TypeScript", icon: "🔷" },
       { path: "/ts2", label: "TypeScript 进阶", icon: "🔶" },
