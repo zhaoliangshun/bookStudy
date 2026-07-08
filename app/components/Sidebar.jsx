@@ -320,6 +320,8 @@ export default function Sidebar({
   const draggingCatRef = useRef(null); // 正在拖拽的分类标题 DOM
   // 记录最后一次拖拽结束时间，用于阻止拖拽后的意外点击（浏览器在 dragend 后可能触发 click）
   const lastDragEndTimeRef = useRef(0);
+  // 书籍拖拽悬停在分类标题上的 DOM（用于高亮提示可以放置）
+  const bookDragOverTitleRef = useRef(null);
 
   // 构建 bookPath → 默认分类名 的映射（用于归还书籍到默认分组）
   const bookDefaultCategory = useMemo(() => {
@@ -870,11 +872,26 @@ export default function Sidebar({
 
   // ===== 书籍拖拽事件处理 =====
 
+  // 记录上一次显示的拖拽指示器，避免重复 DOM 操作导致闪烁
+  const lastIndicatorRef = useRef({ el: null, type: null });
+
   // 清除所有卡片上的拖拽指示类
   const clearAllDragIndicators = useCallback(() => {
+    if (lastIndicatorRef.current.el) {
+      lastIndicatorRef.current.el.classList.remove("drag-over-before", "drag-over-after");
+    }
+    lastIndicatorRef.current = { el: null, type: null };
     document.querySelectorAll(".drag-over-before, .drag-over-after").forEach((el) => {
       el.classList.remove("drag-over-before", "drag-over-after");
     });
+  }, []);
+
+  // 清除书籍拖拽悬停在分类标题上的高亮
+  const clearBookDragTitleHighlight = useCallback(() => {
+    if (bookDragOverTitleRef.current) {
+      bookDragOverTitleRef.current.classList.remove("book-drop-target");
+      bookDragOverTitleRef.current = null;
+    }
   }, []);
 
   // 拖拽开始：记录来源信息
@@ -882,118 +899,206 @@ export default function Sidebar({
     dragStateRef.current = { bookPath, sourceCategory: categoryName, sourceIndex: index };
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", bookPath);
-    // 延迟添加 dragging 样式（避免拖拽幽灵图立即变半透明）
-    requestAnimationFrame(() => {
-      e.target.classList.add("dragging");
-    });
+    // 立即添加 dragging 类，确保第一次 dragover 时拖拽源已被排除
+    e.target.classList.add("dragging");
   }, []);
 
   // 拖拽结束：清理状态
   const handleDragEnd = useCallback((e) => {
     e.target.classList.remove("dragging");
     clearAllDragIndicators();
+    clearBookDragTitleHighlight();
+    document.querySelectorAll(".grid-drop-active").forEach((el) => {
+      el.classList.remove("grid-drop-active");
+    });
     // 清理悬停展开定时器
     if (dragExpandTimerRef.current !== null) {
       clearTimeout(dragExpandTimerRef.current);
       dragExpandTimerRef.current = null;
     }
     dragStateRef.current = null;
-  }, [clearAllDragIndicators]);
+  }, [clearAllDragIndicators, clearBookDragTitleHighlight]);
 
-  // 拖拽经过书籍卡片：判断插入位置（卡片左半=插前面，右半=插后面）
-  const handleCardDragOver = useCallback((e, categoryName, index) => {
-    if (!dragStateRef.current) return;
-    if (catDragStateRef.current) return;
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = "move";
-    const card = e.currentTarget;
-    const rect = card.getBoundingClientRect();
-    const midX = rect.left + rect.width / 2;
-    clearAllDragIndicators();
-    if (e.clientX < midX) {
-      card.classList.add("drag-over-before");
-    } else {
-      card.classList.add("drag-over-after");
-    }
-  }, [clearAllDragIndicators]);
-
-  // 拖拽经过网格空白区域（用于末尾追加）
+  // 统一由网格 dragover 计算插入位置（避免卡片和网格两个处理器切换时闪烁）
   const handleGridDragOver = useCallback((e, categoryName) => {
     if (!dragStateRef.current) return;
     if (catDragStateRef.current) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    clearAllDragIndicators();
-  }, [clearAllDragIndicators]);
+    clearBookDragTitleHighlight();
 
-  // 拖拽离开书籍卡片
-  const handleCardDragLeave = useCallback((e) => {
-    // 只在鼠标真正离开卡片时清除（不离开到子元素）
-    const card = e.currentTarget;
-    const rect = card.getBoundingClientRect();
+    const grid = e.currentTarget;
+    grid.classList.remove("grid-drop-active");
+    const cards = grid.querySelectorAll(".sidebar-book-card:not(.dragging)");
+
+    // 工具：设置指示器，只在变化时操作 DOM，避免闪烁
+    const setIndicator = (el, type) => {
+      const last = lastIndicatorRef.current;
+      if (last.el === el && last.type === type) return;
+      if (last.el) {
+        last.el.classList.remove("drag-over-before", "drag-over-after");
+      }
+      if (el && type) {
+        el.classList.add(type);
+      }
+      lastIndicatorRef.current = { el, type };
+    };
+
+    if (cards.length === 0) {
+      setIndicator(null, null);
+      grid.classList.add("grid-drop-active");
+      grid._dragInsertIndex = 0;
+      return;
+    }
+
+    const cardEls = Array.from(cards);
+    const rects = cardEls.map((c) => c.getBoundingClientRect());
+    const { clientX, clientY } = e;
+    const lastIdx = cardEls.length - 1;
+
+    // 1. 在所有卡片上方 → 插入开头
+    if (clientY < rects[0].top) {
+      setIndicator(cardEls[0], "drag-over-before");
+      grid._dragInsertIndex = 0;
+      return;
+    }
+
+    // 2. 在所有卡片下方 → 追加末尾
+    if (clientY > rects[lastIdx].bottom) {
+      setIndicator(cardEls[lastIdx], "drag-over-after");
+      grid._dragInsertIndex = cardEls.length;
+      return;
+    }
+
+    // 3. 找到鼠标所在行（垂直覆盖 clientY 的卡片）
+    const rowIndices = [];
+    for (let i = 0; i < rects.length; i++) {
+      if (clientY >= rects[i].top && clientY <= rects[i].bottom) {
+        rowIndices.push(i);
+      }
+    }
+
+    if (rowIndices.length > 0) {
+      const firstInRow = rowIndices[0];
+      const lastInRow = rowIndices[rowIndices.length - 1];
+      const rowLeft = rects[firstInRow].left;
+      const rowRight = rects[lastInRow].right;
+
+      // 3a. 在该行所有卡片右侧
+      if (clientX > rowRight) {
+        if (lastInRow === lastIdx) {
+          // 最后一行最右 → 追加末尾
+          setIndicator(cardEls[lastIdx], "drag-over-after");
+          grid._dragInsertIndex = cardEls.length;
+        } else {
+          // 非最后行右侧 → 下一行第一个卡片前
+          setIndicator(cardEls[lastInRow + 1], "drag-over-before");
+          grid._dragInsertIndex = lastInRow + 1;
+        }
+        return;
+      }
+
+      // 3b. 在该行左侧 → 插入该行第一个卡片前
+      if (clientX < rowLeft) {
+        setIndicator(cardEls[firstInRow], "drag-over-before");
+        grid._dragInsertIndex = firstInRow;
+        return;
+      }
+
+      // 3c. 在卡片上：遍历行内卡片，根据中线判断插前面还是后面
+      for (let i = 0; i < rowIndices.length; i++) {
+        const idx = rowIndices[i];
+        const r = rects[idx];
+        const midX = r.left + r.width / 2;
+        if (clientX < midX) {
+          setIndicator(cardEls[idx], "drag-over-before");
+          grid._dragInsertIndex = idx;
+          return;
+        }
+        if (i === rowIndices.length - 1 || clientX < rects[rowIndices[i + 1]].left) {
+          setIndicator(cardEls[idx], "drag-over-after");
+          grid._dragInsertIndex = idx + 1;
+          return;
+        }
+      }
+    }
+
+    // 4. 在两行之间（行间距 gap 区域）：根据 Y 位置判断是上一行末尾还是下一行开头
+    for (let i = 0; i < lastIdx; i++) {
+      if (clientY > rects[i].bottom && clientY < rects[i + 1].top) {
+        const gapMidY = (rects[i].bottom + rects[i + 1].top) / 2;
+        if (clientY < gapMidY) {
+          setIndicator(cardEls[i], "drag-over-after");
+          grid._dragInsertIndex = i + 1;
+        } else {
+          setIndicator(cardEls[i + 1], "drag-over-before");
+          grid._dragInsertIndex = i + 1;
+        }
+        return;
+      }
+    }
+
+    // 兜底：追加末尾
+    setIndicator(cardEls[lastIdx], "drag-over-after");
+    grid._dragInsertIndex = cardEls.length;
+  }, [clearBookDragTitleHighlight]);
+
+  // 拖拽离开网格区域时清除空网格高亮
+  const handleGridDragLeave = useCallback((e) => {
+    const grid = e.currentTarget;
+    const rect = grid.getBoundingClientRect();
     if (
       e.clientX < rect.left ||
       e.clientX > rect.right ||
       e.clientY < rect.top ||
       e.clientY > rect.bottom
     ) {
-      card.classList.remove("drag-over-before", "drag-over-after");
+      grid.classList.remove("grid-drop-active");
     }
   }, []);
 
-  // 在书籍卡片上释放
+  // 在书籍卡片上释放（由网格统一计算插入位置，卡片 drop 只是阻止冒泡）
   const handleCardDrop = useCallback(
-    (e, toCategory, toIndex) => {
+    (e, toCategory) => {
       e.preventDefault();
       e.stopPropagation();
+      // 不做任何位置计算，直接交给网格 drop 处理（通过事件冒泡到 grid）
+    },
+    []
+  );
+
+  // 在网格任意位置释放（卡片上或空白区），使用 dragover 时已计算好的 _dragInsertIndex
+  const handleGridDrop = useCallback(
+    (e, toCategory) => {
+      e.preventDefault();
       clearAllDragIndicators();
+      clearBookDragTitleHighlight();
+      e.currentTarget.classList.remove("grid-drop-active");
       const ds = dragStateRef.current;
       if (!ds) return;
 
-      const rect = e.currentTarget.getBoundingClientRect();
-      const midX = rect.left + rect.width / 2;
-      const insertIndex = e.clientX < midX ? toIndex : toIndex + 1;
+      const grid = e.currentTarget;
+      const insertIndex = typeof grid._dragInsertIndex === "number" ? grid._dragInsertIndex : getOrderedPaths(toCategory).length;
+      grid._dragInsertIndex = undefined;
 
       if (ds.sourceCategory === toCategory) {
         reorderInCategory(toCategory, ds.sourceIndex, insertIndex);
       } else {
         moveToCategory(ds.sourceCategory, ds.sourceIndex, toCategory, insertIndex);
+        setExpandedCategories((prev) => {
+          if (prev.has(toCategory)) return prev;
+          const next = new Set(prev);
+          next.add(toCategory);
+          return next;
+        });
       }
-      // 立即清空拖拽状态，防止 React 重渲染导致状态残留阻止点击
       dragStateRef.current = null;
       if (dragExpandTimerRef.current !== null) {
         clearTimeout(dragExpandTimerRef.current);
         dragExpandTimerRef.current = null;
       }
     },
-    [reorderInCategory, moveToCategory, clearAllDragIndicators]
-  );
-
-  // 在网格空白区域释放 → 追加到末尾
-  const handleGridDrop = useCallback(
-    (e, toCategory) => {
-      e.preventDefault();
-      clearAllDragIndicators();
-      const ds = dragStateRef.current;
-      if (!ds) return;
-
-      const targetOrder = getOrderedPaths(toCategory);
-      const bookCount = targetOrder.length;
-
-      if (ds.sourceCategory === toCategory) {
-        reorderInCategory(toCategory, ds.sourceIndex, bookCount);
-      } else {
-        moveToCategory(ds.sourceCategory, ds.sourceIndex, toCategory, bookCount);
-      }
-      // 立即清空拖拽状态，防止 React 重渲染导致状态残留阻止点击
-      dragStateRef.current = null;
-      if (dragExpandTimerRef.current !== null) {
-        clearTimeout(dragExpandTimerRef.current);
-        dragExpandTimerRef.current = null;
-      }
-    },
-    [reorderInCategory, moveToCategory, clearAllDragIndicators, getOrderedPaths]
+    [reorderInCategory, moveToCategory, clearAllDragIndicators, clearBookDragTitleHighlight, getOrderedPaths]
   );
 
   // ===== 分类标题拖拽排序 =====
@@ -1102,6 +1207,13 @@ export default function Sidebar({
       document.querySelectorAll(".cat-drag-over-before, .cat-drag-over-after").forEach((el) => {
         el.classList.remove("cat-drag-over-before", "cat-drag-over-after");
       });
+      document.querySelectorAll(".book-drop-target").forEach((el) => {
+        el.classList.remove("book-drop-target");
+      });
+      document.querySelectorAll(".grid-drop-active").forEach((el) => {
+        el.classList.remove("grid-drop-active");
+      });
+      bookDragOverTitleRef.current = null;
       setCatDragIndicator(null);
       if (dragExpandTimerRef.current !== null) {
         clearTimeout(dragExpandTimerRef.current);
@@ -1739,25 +1851,50 @@ export default function Sidebar({
                               handleCatDragOver(e, category.name);
                               return;
                             }
-                            // 书籍拖拽悬停展开
-                            e.preventDefault();
-                            e.dataTransfer.dropEffect = "move";
-                            if (isCollapsed && dragExpandTimerRef.current === null) {
-                              dragExpandTimerRef.current = setTimeout(() => {
-                                setExpandedCategories((prev) => {
-                                  if (prev.has(category.name)) return prev;
-                                  const next = new Set(prev);
-                                  next.add(category.name);
-                                  return next;
-                                });
-                                dragExpandTimerRef.current = null;
-                              }, 500);
+                            // 书籍拖拽悬停
+                            if (dragStateRef.current) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              e.dataTransfer.dropEffect = "move";
+                              clearAllDragIndicators();
+                              // 高亮当前分类标题，提示可以放入
+                              const titleEl = e.currentTarget;
+                              if (bookDragOverTitleRef.current !== titleEl) {
+                                clearBookDragTitleHighlight();
+                                titleEl.classList.add("book-drop-target");
+                                bookDragOverTitleRef.current = titleEl;
+                              }
+                              // 折叠的分类：悬停一段时间后自动展开
+                              if (isCollapsed && dragExpandTimerRef.current === null) {
+                                dragExpandTimerRef.current = setTimeout(() => {
+                                  setExpandedCategories((prev) => {
+                                    if (prev.has(category.name)) return prev;
+                                    const next = new Set(prev);
+                                    next.add(category.name);
+                                    return next;
+                                  });
+                                  dragExpandTimerRef.current = null;
+                                }, 500);
+                              }
                             }
                           }}
                           onDragLeave={(e) => {
                             if (catDragStateRef.current) {
                               handleCatDragLeave(e);
                               return;
+                            }
+                            if (dragStateRef.current) {
+                              // 真正离开标题元素才清除高亮
+                              const titleEl = e.currentTarget;
+                              const rect = titleEl.getBoundingClientRect();
+                              if (
+                                e.clientX < rect.left ||
+                                e.clientX > rect.right ||
+                                e.clientY < rect.top ||
+                                e.clientY > rect.bottom
+                              ) {
+                                clearBookDragTitleHighlight();
+                              }
                             }
                             if (dragExpandTimerRef.current !== null) {
                               clearTimeout(dragExpandTimerRef.current);
@@ -1768,6 +1905,26 @@ export default function Sidebar({
                             if (catDragStateRef.current) {
                               handleCatDrop(e, category.name);
                               return;
+                            }
+                            // 书籍拖拽释放到分类标题上 → 追加到该分组末尾
+                            if (dragStateRef.current) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              clearAllDragIndicators();
+                              clearBookDragTitleHighlight();
+                              const ds = dragStateRef.current;
+                              if (ds.sourceCategory !== category.name) {
+                                const targetOrder = getOrderedPaths(category.name);
+                                moveToCategory(ds.sourceCategory, ds.sourceIndex, category.name, targetOrder.length);
+                              }
+                              // 拖动到标题后自动展开目标分组，方便查看效果
+                              setExpandedCategories((prev) => {
+                                if (prev.has(category.name)) return prev;
+                                const next = new Set(prev);
+                                next.add(category.name);
+                                return next;
+                              });
+                              dragStateRef.current = null;
                             }
                             if (dragExpandTimerRef.current !== null) {
                               clearTimeout(dragExpandTimerRef.current);
@@ -1788,6 +1945,7 @@ export default function Sidebar({
                         <div
                           className="sidebar-book-grid"
                           onDragOver={(e) => handleGridDragOver(e, category.name)}
+                          onDragLeave={handleGridDragLeave}
                           onDrop={(e) => handleGridDrop(e, category.name)}
                         >
                           {category.books.map((book, idx) => {
@@ -1818,9 +1976,7 @@ export default function Sidebar({
                               onContextMenu={(e) => handleBookContextMenu(e, book.path, category.name)}
                               onDragStart={(e) => handleDragStart(e, book.path, category.name, realIdx)}
                               onDragEnd={handleDragEnd}
-                              onDragOver={(e) => handleCardDragOver(e, category.name, realIdx)}
-                              onDragLeave={handleCardDragLeave}
-                              onDrop={(e) => handleCardDrop(e, category.name, realIdx)}
+                              onDrop={(e) => handleCardDrop(e, category.name)}
                               title={`${book.label}（可拖拽排序）`}
                               role="link"
                               tabIndex={0}

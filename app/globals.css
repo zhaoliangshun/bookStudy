@@ -545,6 +545,14 @@ body {
   margin-bottom: -2px;
 }
 
+/* 书籍拖拽悬停在分类标题上时高亮提示可放入该分组 */
+.sidebar-book-category-title.book-drop-target {
+  background: rgba(16, 185, 129, 0.15);
+  border-radius: 6px;
+  color: var(--accent-green, #10b981);
+  box-shadow: 0 0 0 1px var(--accent-green, #10b981) inset;
+}
+
 .sidebar-book-category-arrow {
   display: inline-flex;
   align-items: center;
@@ -567,6 +575,13 @@ body {
   gap: 6px;
   padding: 2px 0 4px;
   min-height: 40px;
+}
+
+/* 空网格在书籍拖拽悬停时高亮提示可放置 */
+.sidebar-book-grid.grid-drop-active {
+  background: rgba(16, 185, 129, 0.08);
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px var(--accent-green, #10b981) inset;
 }
 
 .sidebar-empty-grid-hint {

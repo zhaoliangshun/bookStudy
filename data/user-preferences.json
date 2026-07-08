@@ -3,7 +3,9 @@
   "deletedChapters": [],
   "hiddenChapters": [],
   "bookOrder": {
-    "未分组": [],
+    "未分组": [
+      "/playground"
+    ],
     "Python 编程": [
       "/pybasic",
       "/py",
@@ -44,8 +46,7 @@
       "/ts2",
       "/ts3",
       "/workers",
-      "/pnpm",
-      "/playground"
+      "/pnpm"
     ],
     "Java 开发": [
       "/java",
@@ -122,5 +123,127 @@
     "hidden": [],
     "order": null
   },
-  "savedDefaults": null
+  "savedDefaults": {
+    "bookOrder": {
+      "未分组": [
+        "/playground"
+      ],
+      "Python 编程": [
+        "/pybasic",
+        "/py",
+        "/py4",
+        "/py6",
+        "/py8",
+        "/py9",
+        "/pymod",
+        "/pyex",
+        "/pyfile",
+        "/pyfile2",
+        "/pykit",
+        "/pynet",
+        "/pydb",
+        "/pyweb",
+        "/pyweb2",
+        "/fastapi",
+        "/pysubprocess",
+        "/pythread",
+        "/pythread2",
+        "/pyprocess",
+        "/pyasync",
+        "/pyasync2",
+        "/pyeng",
+        "/pyint",
+        "/pyrun",
+        "/pyarch",
+        "/pyproject",
+        "/pyjava",
+        "/pyvsjava",
+        "/pyvsjs"
+      ],
+      "JS / TS 生态": [
+        "/",
+        "/nodejs2",
+        "/nodejs3",
+        "/ts",
+        "/ts2",
+        "/ts3",
+        "/workers",
+        "/pnpm"
+      ],
+      "Java 开发": [
+        "/java",
+        "/java-web"
+      ],
+      "AI 智能开发": [
+        "/ai",
+        "/aiapp",
+        "/aipy",
+        "/ai-agent"
+      ],
+      "前端工程": [
+        "/nextjs",
+        "/sass",
+        "/fe-engineering",
+        "/fe-interview"
+      ],
+      "后端与网络": [
+        "/http",
+        "/net",
+        "/backend",
+        "/gql",
+        "/deploy",
+        "/go",
+        "/csharp"
+      ],
+      "实战项目": [
+        "/todo",
+        "/blog-tutorial",
+        "/blog"
+      ],
+      "数据库与缓存": [
+        "/sql",
+        "/mysql",
+        "/redis",
+        "/mongo"
+      ],
+      "计算机基础": [
+        "/cs",
+        "/howitworks",
+        "/os"
+      ],
+      "职场成长": [
+        "/future",
+        "/career",
+        "/career40",
+        "/work",
+        "/comm"
+      ],
+      "身心健康": [
+        "/psychology",
+        "/nervous",
+        "/stomach",
+        "/ibs",
+        "/dignity",
+        "/hurt"
+      ],
+      "人际智慧": [
+        "/relations",
+        "/dui",
+        "/fandui",
+        "/shield",
+        "/quotes",
+        "/curse",
+        "/rebut",
+        "/unharmed"
+      ],
+      "已隐藏": []
+    },
+    "categoryConfig": {
+      "custom": [],
+      "renamed": {},
+      "icons": {},
+      "hidden": [],
+      "order": null
+    }
+  }
 }
