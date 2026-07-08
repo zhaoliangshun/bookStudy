@@ -280,8 +280,9 @@ export default function Sidebar({
   // "已删除章节"区域是否收起
   const [hiddenSectionCollapsed, setHiddenSectionCollapsed] = useState(true);
 
-  // 已删除章节区域内各分组的收起状态
-  const [hiddenGroupCollapsed, setHiddenGroupCollapsed] = useState(() => new Set());
+  // 已删除章节区域内各分组的展开状态
+  // 用 Set 记录已展开的分组名，默认为空 Set（即全部收起）
+  const [hiddenGroupExpanded, setHiddenGroupExpanded] = useState(() => new Set());
 
   // 右键菜单事件处理器
   const handleBookContextMenu = useCallback((e, bookPath) => {
@@ -1094,34 +1095,35 @@ export default function Sidebar({
                 {!hiddenSectionCollapsed && (
                   <div className="hidden-chapters-groups">
                     {hiddenChapterGroups.map(({ group, items }) => {
-                      const isGroupHidden = hiddenGroupCollapsed.has(group);
+                      const isGroupExpanded = hiddenGroupExpanded.has(group);
                       return (
                         <div key={group} className="hidden-group">
                           <button
                             type="button"
-                            className={`hidden-group-title ${isGroupHidden ? "collapsed" : ""}`}
+                            className={`hidden-group-title ${isGroupExpanded ? "" : "collapsed"}`}
                             onClick={() =>
-                              setHiddenGroupCollapsed((prev) => {
+                              setHiddenGroupExpanded((prev) => {
                                 const next = new Set(prev);
-                                isGroupHidden ? next.delete(group) : next.add(group);
+                                isGroupExpanded ? next.delete(group) : next.add(group);
                                 return next;
                               })
                             }
                             onContextMenu={(e) => handleHiddenGroupContextMenu(e, group)}
-                            title={isGroupHidden ? "点击展开" : "点击收起"}
+                            title={isGroupExpanded ? "点击收起" : "点击展开"}
                           >
-                            <span className={`group-title-arrow${isGroupHidden ? "" : " expanded"}`}>
+                            <span className={`group-title-arrow${isGroupExpanded ? " expanded" : ""}`}>
                               ▶
                             </span>
                             <span className="hidden-group-name">{group}</span>
                             <span className="hidden-group-count">{items.length}</span>
                           </button>
-                          {!isGroupHidden && (
+                          {isGroupExpanded && (
                           <ul>
                             {items.map((ch) => (
                               <li key={ch.id}>
                                 <button
-                                  className={`chapter-item ${deletedChapterIds.has(ch.id) ? "deleted" : ""}`}
+                                  className={`chapter-item ${activeId === ch.id ? "active" : ""} ${deletedChapterIds.has(ch.id) ? "deleted" : ""}`}
+                                  onClick={() => onSelectChapter(ch.id)}
                                   onContextMenu={(e) => handleChapterContextMenu(e, ch.id)}
                                 >
                                   <span className="chapter-icon">{ch.icon}</span>
