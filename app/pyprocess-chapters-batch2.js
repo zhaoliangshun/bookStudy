@@ -239,17 +239,21 @@ def demo_exception():
     print()
 
 
-# ===== Demo 4：with 语句（推荐写法） =====
+# ===== Demo 4：手动 close 释放资源（推荐写法） =====
 def demo_with_statement():
-    print("=== Demo 4: with 语句（Python 3.7+ 推荐写法） ===")
+    print("=== Demo 4: 手动 close 释放资源（推荐写法） ===")
 
-    # with 块结束时自动调用 p.close()，释放资源
-    with multiprocessing.Process(target=worker_slow, args=(1,)) as p:
+    # 用 try/finally 保证 close 被调用（等价于 with 语句）
+    p = multiprocessing.Process(target=worker_slow, args=(1,))
+    try:
         p.start()
         # 这里可以做别的事
         print(f"  子进程 {p.name} (pid={p.pid}) 已启动")
         p.join()
-    print(f"  with 块结束，进程已自动 close，exitcode={p.exitcode}")
+        exitcode = p.exitcode  # 在 close 之前保存 exitcode
+    finally:
+        p.close()  # 释放资源（close 后不能再访问属性）
+    print(f"  进程已 close，exitcode={exitcode}")
     print()
 
 

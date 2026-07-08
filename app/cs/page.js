@@ -77,7 +77,6 @@ export default function CsTutorial() {
         <Sidebar
           title="学习目录"
           tip="从开关到程序，用生活例子讲清楚"
-          footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行演示</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}

@@ -78,7 +78,6 @@ export default function PyExTutorial() {
         <Sidebar
           title="学习目录"
           tip="系统掌握 Python 异常处理，写出健壮代码"
-          footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}

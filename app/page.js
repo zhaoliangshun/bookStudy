@@ -100,13 +100,6 @@ export default function Home() {
         <Sidebar
           title="学习目录"
           tip="点击章节开始学习"
-          footer={
-            <p>
-              💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码
-              <br />
-              📂 按 <kbd>Ctrl</kbd> + <kbd>B</kbd> 收起 / 展开目录
-            </p>
-          }
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}

@@ -77,7 +77,6 @@ export default function BackendTutorial() {
         <Sidebar
           title="学习目录"
           tip="点击章节开始学习后端开发"
-          footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 执行代码</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}

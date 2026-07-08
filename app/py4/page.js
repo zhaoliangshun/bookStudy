@@ -76,11 +76,6 @@ export default function Python4Tutorial() {
         <Sidebar
           title="学习目录"
           tip="Python 3.12+ 全面教程，56 章，每章可运行 demo"
-          footer={
-            <p>
-              Ctrl + Enter 运行代码
-            </p>
-          }
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}

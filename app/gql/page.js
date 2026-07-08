@@ -76,7 +76,6 @@ export default function GraphQLTutorial() {
         <Sidebar
           title="学习目录"
           tip="点击章节开始学习 GraphQL"
-          footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 执行查询</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}

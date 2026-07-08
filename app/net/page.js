@@ -57,7 +57,6 @@ export default function NetworkTutorial() {
         <Sidebar
           title="学习目录"
           tip="工作中常用到的计算机网络知识"
-          footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}

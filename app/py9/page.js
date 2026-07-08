@@ -77,7 +77,6 @@ export default function Py9Tutorial() {
         <Sidebar
           title="学习目录"
           tip="逐章阅读，配合代码运行效果最佳"
-          footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}

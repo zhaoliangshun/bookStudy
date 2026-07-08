@@ -77,7 +77,6 @@ export default function Py6Tutorial() {
         <Sidebar
           title="学习目录"
           tip="点击章节开始学习 Python"
-          footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}

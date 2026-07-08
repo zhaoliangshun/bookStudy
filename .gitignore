@@ -40,3 +40,17 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 fastapi-demo/.venv/
+
+# user preferences (per-device data, not for version control)
+/data/user-preferences.json
+
+# debug logs
+debug_demo.log
+
+# temp test scripts (not part of the project)
+check_py_syntax.py
+test_py_chapters.py
+get_errors.py
+test-pyprocess.js
+py_syntax_errors.json
+py_runtime_errors.json

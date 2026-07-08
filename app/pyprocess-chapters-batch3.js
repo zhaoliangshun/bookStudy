@@ -547,22 +547,27 @@ def demo_recv_timeout():
 
     parent_conn, child_conn = multiprocessing.Pipe()
 
-    # 故意不启动子进程，演示父进程 recv 会阻塞/超时
+    # 故意不启动子进程，演示父进程 recv 会阻塞
     print("  [主进程] 试图 recv，但没有任何子进程发数据...")
 
-    # 方式 1：非阻塞（会抛 queue.Empty）
-    try:
-        msg = parent_conn.recv()
-    except Exception as e:
-        print(f"  非阻塞: {type(e).__name__}: {e}")
+    # 注意：Connection.recv() 没有 timeout 参数，会一直阻塞！
+    # 正确做法：用 poll(timeout) 先检查是否有数据
 
-    # 方式 2：超时 2 秒
-    start = time.time()
-    try:
+    # 方式 1：poll(timeout=0) 非阻塞检查
+    has_data = parent_conn.poll(timeout=0)
+    if not has_data:
+        print("  poll(0) 非阻塞: 没有数据可读")
+    else:
         msg = parent_conn.recv()
-    except Exception as e:
-        elapsed = time.time() - start
-        print(f"  2 秒超时: {type(e).__name__}（等了 {elapsed:.1f} 秒）: {e}")
+
+    # 方式 2：poll(timeout=2) 等 2 秒
+    start = time.time()
+    has_data = parent_conn.poll(timeout=2)
+    elapsed = time.time() - start
+    if not has_data:
+        print(f"  poll(2) 超时: 没有数据（等了 {elapsed:.1f} 秒）")
+    else:
+        msg = parent_conn.recv()
 
     parent_conn.close()
     child_conn.close()
@@ -1142,8 +1147,8 @@ def bench_manager(shared_dict, n):
 
 def demo_perf():
     print("=== Demo 4: 性能对比 Value vs Manager ===")
-    N = 5000
-    REPEAT = 4
+    N = 500
+    REPEAT = 2
 
     # Value 测速
     v = multiprocessing.Value('i', 0)
@@ -1166,11 +1171,7 @@ def demo_perf():
         for p in procs:
             p.start()
         for p in procs:
-            procs[0].join() if False else p.join()
-        # 上面写错了，修一下
-        for p in procs:
-            if p.is_alive():
-                p.join()
+            p.join()
         manager_time = time.time() - start
         print(f"  Manager:   {manager_time:.3f}s (counter={d['counter']})")
         print(f"  Value 比 Manager 快约 {manager_time / value_time:.1f}x\\n")

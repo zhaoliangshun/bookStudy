@@ -78,7 +78,6 @@ export default function PyDbTutorial() {
         <Sidebar
           title="学习目录"
           tip="系统掌握 Python 数据库编程"
-          footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}

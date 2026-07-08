@@ -62,7 +62,6 @@ export default function PyRunTutorial() {
         <Sidebar
           title="学习目录"
           tip="点击章节，搞懂 Python 代码是怎么跑的"
-          footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}

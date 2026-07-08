@@ -652,8 +652,8 @@ from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 # ===== 模拟 IO 任务：抓取网页 =====
 def fetch(url: str) -> str:
     """模拟网络请求（IO 密集）"""
-    time.sleep(random.uniform(0.1, 0.3))  # 网络延迟
-    return f"<html>这是 url={url} 的内容</html>" * random.randint(50, 200)
+    time.sleep(random.uniform(0.05, 0.1))  # 网络延迟
+    return f"<html>这是 url={url} 的内容</html>" * random.randint(20, 50)
 
 
 # ===== 模拟 CPU 任务：解析 HTML =====
@@ -662,7 +662,7 @@ def process_html(html: str) -> dict:
     # 模拟 CPU 密集：字符串处理
     pid = os.getpid()
     word_count = 0
-    for i in range(50_000):
+    for i in range(5_000):
         word_count += html.count("<")  # 模拟解析工作
 
     return {"size": len(html), "words": word_count, "pid": pid}
@@ -707,7 +707,7 @@ def method_dual_pool(urls):
 # ===== Demo：三种方案对比 =====
 def demo_compare():
     print("=== Demo: 三种方案对比 ===\\n")
-    urls = [f"http://example.com/page-{i}" for i in range(20)]
+    urls = [f"http://example.com/page-{i}" for i in range(8)]
 
     methods = [
         ("纯串行", method_serial),
@@ -774,7 +774,7 @@ def process_from_queue(q: multiprocessing.Queue, num_workers: int):
 
 def demo_pipeline():
     print("=== Demo: 流水线模式（IO 和 CPU 真正并行）===")
-    urls = [f"http://example.com/page-{i}" for i in range(20)]
+    urls = [f"http://example.com/page-{i}" for i in range(8)]
     q = multiprocessing.Queue(maxsize=10)
 
     start = time.time()

@@ -71,7 +71,6 @@ export default function PyKitTutorial() {
         <Sidebar
           title="学习目录"
           tip="点击章节开始学习 Python 开发常用知识点"
-          footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}

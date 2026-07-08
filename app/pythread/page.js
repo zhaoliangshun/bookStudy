@@ -78,7 +78,6 @@ export default function PyThreadTutorial() {
         <Sidebar
           title="学习目录"
           tip="点击章节开始学习 Python 线程与进程"
-          footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码（含 asyncio 章节）</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}

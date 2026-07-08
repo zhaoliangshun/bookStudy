@@ -63,7 +63,6 @@ export default function AIPyTutorial() {
         <Sidebar
           title="学习目录"
           tip="点击章节学习 Python AI 开发"
-          footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}

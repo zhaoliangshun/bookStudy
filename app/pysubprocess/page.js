@@ -78,7 +78,6 @@ export default function PySubprocessTutorial() {
         <Sidebar
           title="学习目录"
           tip="言简意赅学 subprocess，Demo 多、好上手"
-          footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}

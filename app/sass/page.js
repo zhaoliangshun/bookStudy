@@ -78,7 +78,6 @@ export default function SassTutorial() {
         <Sidebar
           title="学习目录"
           tip="点击章节开始学习 Sass"
-          footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 编译运行</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}

@@ -89,7 +89,6 @@ export default function OSTutorial() {
         <Sidebar
           title="学习目录"
           tip={`操作系统实战教程 · ${osChapters.length} 章服务器运维 · 每章 demo 可在沙箱运行${shellVersion ? " (" + shellVersion + ")" : ""}`}
-          footer={<p>Ctrl + Enter 运行代码 · 沙箱执行 bash</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}

@@ -78,7 +78,6 @@ export default function PyIntTutorial() {
         <Sidebar
           title="学习目录"
           tip="系统理解 Python 工作原理，助力日常开发"
-          footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}

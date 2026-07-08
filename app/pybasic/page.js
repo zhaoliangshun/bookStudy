@@ -79,7 +79,6 @@ export default function PyBasicTutorial() {
         <Sidebar
           title="学习目录"
           tip="第一阶段：环境搭建，所有人的起点"
-          footer={<p>💡 提示：按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 运行代码</p>}
           groupedChapters={groupedChapters}
           activeId={activeId}
           onSelectChapter={selectChapter}
