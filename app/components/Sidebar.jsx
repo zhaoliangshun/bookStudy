@@ -1142,7 +1142,6 @@ export default function Sidebar({
               </div>
             )}
           </nav>
-          {footer && <div className="sidebar-footer">{footer}</div>}
         </div>
 
         {/* 拖拽调整宽度的把手 */}

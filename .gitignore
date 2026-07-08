@@ -41,9 +41,6 @@ yarn-error.log*
 next-env.d.ts
 fastapi-demo/.venv/
 
-# user preferences (per-device data, not for version control)
-/data/user-preferences.json
-
 # debug logs
 debug_demo.log
 
