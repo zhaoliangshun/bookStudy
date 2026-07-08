@@ -318,6 +318,8 @@ export default function Sidebar({
   const catDragStateRef = useRef(null); // { catName, startY }
   const [catDragIndicator, setCatDragIndicator] = useState(null); // { catName, position: 'before'|'after' }
   const draggingCatRef = useRef(null); // 正在拖拽的分类标题 DOM
+  // 记录最后一次拖拽结束时间，用于阻止拖拽后的意外点击（浏览器在 dragend 后可能触发 click）
+  const lastDragEndTimeRef = useRef(0);
 
   // 构建 bookPath → 默认分类名 的映射（用于归还书籍到默认分组）
   const bookDefaultCategory = useMemo(() => {
@@ -830,10 +832,7 @@ export default function Sidebar({
       clearTimeout(dragExpandTimerRef.current);
       dragExpandTimerRef.current = null;
     }
-    // 延迟清空拖拽状态，确保 click 事件先检查到 dragStateRef
-    setTimeout(() => {
-      dragStateRef.current = null;
-    }, 0);
+    dragStateRef.current = null;
   }, [clearAllDragIndicators]);
 
   // 拖拽经过书籍卡片：判断插入位置（卡片左半=插前面，右半=插后面）
@@ -896,7 +895,12 @@ export default function Sidebar({
       } else {
         moveToCategory(ds.sourceCategory, ds.sourceIndex, toCategory, insertIndex);
       }
-      ds.dropped = true;
+      // 立即清空拖拽状态，防止 React 重渲染导致状态残留阻止点击
+      dragStateRef.current = null;
+      if (dragExpandTimerRef.current !== null) {
+        clearTimeout(dragExpandTimerRef.current);
+        dragExpandTimerRef.current = null;
+      }
     },
     [reorderInCategory, moveToCategory, clearAllDragIndicators]
   );
@@ -917,7 +921,12 @@ export default function Sidebar({
       } else {
         moveToCategory(ds.sourceCategory, ds.sourceIndex, toCategory, bookCount);
       }
-      ds.dropped = true;
+      // 立即清空拖拽状态，防止 React 重渲染导致状态残留阻止点击
+      dragStateRef.current = null;
+      if (dragExpandTimerRef.current !== null) {
+        clearTimeout(dragExpandTimerRef.current);
+        dragExpandTimerRef.current = null;
+      }
     },
     [reorderInCategory, moveToCategory, clearAllDragIndicators, getOrderedPaths]
   );
@@ -947,10 +956,8 @@ export default function Sidebar({
   const handleCatDragEnd = useCallback((e) => {
     e.target.classList.remove("dragging-cat");
     clearCatDragIndicator();
-    setTimeout(() => {
-      catDragStateRef.current = null;
-      draggingCatRef.current = null;
-    }, 0);
+    catDragStateRef.current = null;
+    draggingCatRef.current = null;
   }, [clearCatDragIndicator]);
 
   const handleCatDragOver = useCallback((e, catName) => {
@@ -1012,7 +1019,33 @@ export default function Sidebar({
     newOrder.splice(insertIdx, 0, sourceName);
 
     reorderCategories(newOrder);
+    // 立即清空拖拽状态
+    catDragStateRef.current = null;
+    draggingCatRef.current = null;
   }, [clearCatDragIndicator, visibleCategories, reorderCategories]);
+
+  // 全局拖拽结束兜底：防止 React 重渲染导致 DOM 上的 onDragEnd 未触发，状态残留阻止点击
+  useEffect(() => {
+    const handleGlobalDragEnd = () => {
+      lastDragEndTimeRef.current = Date.now();
+      dragStateRef.current = null;
+      catDragStateRef.current = null;
+      draggingCatRef.current = null;
+      document.querySelectorAll(".drag-over-before, .drag-over-after").forEach((el) => {
+        el.classList.remove("drag-over-before", "drag-over-after");
+      });
+      document.querySelectorAll(".cat-drag-over-before, .cat-drag-over-after").forEach((el) => {
+        el.classList.remove("cat-drag-over-before", "cat-drag-over-after");
+      });
+      setCatDragIndicator(null);
+      if (dragExpandTimerRef.current !== null) {
+        clearTimeout(dragExpandTimerRef.current);
+        dragExpandTimerRef.current = null;
+      }
+    };
+    document.addEventListener("dragend", handleGlobalDragEnd);
+    return () => document.removeEventListener("dragend", handleGlobalDragEnd);
+  }, []);
 
   // 当前书籍信息
   const currentBook = ALL_BOOKS.find((b) => b.path === currentPath) || ALL_BOOKS[0];
@@ -1706,6 +1739,11 @@ export default function Sidebar({
                               onClick={(e) => {
                                 // 拖拽中不触发点击跳转
                                 if (dragStateRef.current) {
+                                  e.preventDefault();
+                                  return;
+                                }
+                                // 拖拽刚结束（100ms 内）也不触发，防止浏览器在 dragend 后自动触发 click
+                                if (Date.now() - lastDragEndTimeRef.current < 100) {
                                   e.preventDefault();
                                   return;
                                 }

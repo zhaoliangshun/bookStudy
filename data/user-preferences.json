@@ -3,7 +3,9 @@
   "deletedChapters": [],
   "hiddenChapters": [],
   "bookOrder": {
-    "未分组": [],
+    "未分组": [
+      "/java"
+    ],
     "Python 编程": [
       "/pybasic",
       "/py",
@@ -48,7 +50,6 @@
       "/playground"
     ],
     "Java 开发": [
-      "/java",
       "/java-web"
     ],
     "AI 智能开发": [

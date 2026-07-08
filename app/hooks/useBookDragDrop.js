@@ -21,20 +21,54 @@ export function getDefaultBookOrder(categories) {
   return order;
 }
 
-// 合并已保存排序与默认排序（处理新增书籍：追加到末尾；处理新增/重命名分类）
+// 合并已保存排序与默认排序（处理新增书籍：追加到末尾；处理新增分类）
+// 核心原则：尊重用户的分组和排序，不把跨分组移动的书籍还原回默认分组
 export function mergeOrder(saved, defaults) {
-  const merged = { ...defaults };
-  for (const [cat, paths] of Object.entries(saved)) {
-    if (!merged[cat]) {
-      merged[cat] = paths;
-      continue;
+  // 收集所有有效书籍路径和它们的默认分类
+  const allValidPaths = new Set();
+  const pathToDefaultCat = {};
+  for (const [cat, paths] of Object.entries(defaults)) {
+    for (const p of paths) {
+      allValidPaths.add(p);
+      if (!pathToDefaultCat[p]) {
+        pathToDefaultCat[p] = cat;
+      }
     }
-    const savedSet = new Set(paths);
-    const defaultPaths = merged[cat];
-    const kept = paths.filter((p) => defaultPaths.includes(p));
-    const added = defaultPaths.filter((p) => !savedSet.has(p));
-    merged[cat] = [...kept, ...added];
   }
+
+  // 收集 saved 中已分配的所有路径
+  const savedAssigned = new Set();
+  for (const paths of Object.values(saved)) {
+    for (const p of paths) {
+      if (allValidPaths.has(p)) {
+        savedAssigned.add(p);
+      }
+    }
+  }
+
+  // 从 saved 开始构建结果，只保留有效路径（过滤掉已删除书籍的旧路径）
+  const merged = {};
+  for (const [cat, paths] of Object.entries(saved)) {
+    merged[cat] = paths.filter((p) => allValidPaths.has(p));
+  }
+
+  // 找出 defaults 中有但 saved 中完全没有的书籍（新增书籍），添加到它们的默认分类
+  for (const [cat, paths] of Object.entries(defaults)) {
+    for (const p of paths) {
+      if (!savedAssigned.has(p)) {
+        if (!merged[cat]) merged[cat] = [];
+        if (!merged[cat].includes(p)) {
+          merged[cat].push(p);
+        }
+      }
+    }
+  }
+
+  // 确保 defaults 中的分类键都存在（即使为空，保证分类标题显示）
+  for (const cat of Object.keys(defaults)) {
+    if (!merged[cat]) merged[cat] = [];
+  }
+
   return merged;
 }
 
