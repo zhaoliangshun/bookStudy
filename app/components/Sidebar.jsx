@@ -28,6 +28,7 @@
 // =============================================================
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
 import EditorThemePicker from "./EditorThemePicker";
 import ContextMenu from "./ContextMenu";
 import useBookChapterActions from "../hooks/useBookChapterActions";
@@ -184,6 +185,7 @@ export default function Sidebar({
   const [width, setWidth] = useState(DEFAULT_SIDEBAR_W);
   const [bookDropdownOpen, setBookDropdownOpen] = useState(false);
   const bookDropdownRef = useRef(null);
+  const router = useRouter();
   // 手风琴模式：同一时间只展开一个分类。
   // expandedCategory 为当前展开的分类名；null 表示全部收起。
   // 初始默认展开"Python 教程"。
@@ -968,9 +970,8 @@ export default function Sidebar({
                         {!isCollapsed && (
                         <div className="sidebar-book-grid">
                           {category.books.map((book, idx) => (
-                            <a
+                            <div
                               key={book.path}
-                              href={book.path}
                               draggable
                               className={`sidebar-book-card ${currentPath === book.path ? "active" : ""}`}
                               onClick={(e) => {
@@ -980,6 +981,7 @@ export default function Sidebar({
                                   return;
                                 }
                                 setBookDropdownOpen(false);
+                                router.push(book.path);
                               }}
                               onContextMenu={(e) => handleBookContextMenu(e, book.path)}
                               onDragStart={(e) => handleDragStart(e, book.path, category.name, idx)}
@@ -988,10 +990,18 @@ export default function Sidebar({
                               onDragLeave={handleCardDragLeave}
                               onDrop={(e) => handleCardDrop(e, category.name, idx)}
                               title={`${book.label}（可拖拽排序）`}
+                              role="link"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  setBookDropdownOpen(false);
+                                  router.push(book.path);
+                                }
+                              }}
                             >
                               <span className="sidebar-book-card-icon">{book.icon}</span>
                               <span className="sidebar-book-card-label">{book.label}</span>
-                            </a>
+                            </div>
                           ))}
                         </div>
                         )}
