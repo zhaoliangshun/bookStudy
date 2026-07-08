@@ -54,14 +54,14 @@ int y = x + 1;        // 溢出！y 变成 -2147483648
 而 Python 的 \`int\` **没有大小上限**（仅受内存限制），可以表示任意大的整数：
 
 \`\`\`python
->>> 2 ** 100
+2 ** 100
 1267650600228229401496703205376
->>> 2 ** 1000
+2 ** 1000
 1071508607186267320948425049060001810561404811705533607443750388370351051124936
 1224931983788156958581275946729175531468251871452856923140435984577574698574803
 9345677748242309854210746050623711418779541821530464749835819412673987675591655
 43946077062914571196477686542167660429831652624386837205668069376
->>> 10 ** 50   # 10 的 50 次方，50 位的整数
+10 ** 50   # 10 的 50 次方，50 位的整数
 100000000000000000000000000000000000000000000000000
 \`\`\`
 
@@ -99,11 +99,11 @@ Python 支持四种进制的整数字面量：
 可以用 \`bin()\`、\`oct()\`、\`hex()\` 函数把整数转换成对应进制的字符串：
 
 \`\`\`python
->>> bin(10)    # '0b1010'
->>> oct(10)    # '0o12'
->>> hex(255)   # '0xff'
->>> int('ff', 16)   # 255，把字符串按指定进制解析
->>> int('1010', 2)  # 10
+bin(10)    # '0b1010'
+oct(10)    # '0o12'
+hex(255)   # '0xff'
+int('ff', 16)   # 255，把字符串按指定进制解析
+int('1010', 2)  # 10
 \`\`\`
 
 ### 1.4 下划线分隔大数字
@@ -126,9 +126,9 @@ print(population)   # 1400000000
 ### 2.1 经典的 0.1 + 0.2 问题
 
 \`\`\`python
->>> 0.1 + 0.2
+0.1 + 0.2
 0.30000000000000004
->>> 0.1 + 0.2 == 0.3
+0.1 + 0.2 == 0.3
 False
 \`\`\`
 
@@ -176,19 +176,19 @@ print(math.isclose(0.1 + 0.2, 0.3, rel_tol=1e-9))  # 输出 math.isclose(0.1 + 0
 ### 2.5 浮点数的特殊值
 
 \`\`\`python
->>> float('inf')      # 正无穷
+float('inf')      # 正无穷
 inf
->>> float('-inf')     # 负无穷
+float('-inf')     # 负无穷
 -inf
->>> float('nan')      # 非数字（Not a Number）
+float('nan')      # 非数字（Not a Number）
 nan
->>> float('inf') > 1e308
+float('inf') > 1e308
 True
->>> float('nan') == float('nan')   # NaN 不等于自身！
+float('nan') == float('nan')   # NaN 不等于自身！
 False
->>> math.isnan(float('nan'))       # 用 math.isnan 判断
+math.isnan(float('nan'))       # 用 math.isnan 判断
 True
->>> math.isinf(float('inf'))       # 用 math.isinf 判断
+math.isinf(float('inf'))       # 用 math.isinf 判断
 True
 \`\`\`
 
@@ -219,19 +219,19 @@ print(total)                # 0.9999999999999999，不是 1.0
 当涉及**金额计算、财务、科学测量**等场景时，浮点数的精度误差是不可接受的。比如银行系统算利息，0.1 元 + 0.2 元必须精确等于 0.3 元。\`decimal\` 模块提供了**十进制高精度运算**，用十进制的方式存储和计算，避免二进制浮点数的精度问题。
 
 \`\`\`python
->>> from decimal import Decimal
->>> Decimal('0.1') + Decimal('0.2')
+from decimal import Decimal
+Decimal('0.1') + Decimal('0.2')
 Decimal('0.3')                     # 调用 Decimal，参数 '0.3'
->>> Decimal('0.1') + Decimal('0.2') == Decimal('0.3')
+Decimal('0.1') + Decimal('0.2') == Decimal('0.3')
 True
 \`\`\`
 
 注意：**一定要用字符串构造 \`Decimal\`**，不要用浮点数。如果用 \`Decimal(0.1)\`，会先把 0.1 转成不精确的浮点数，再转成 Decimal，精度已经丢了：
 
 \`\`\`python
->>> Decimal(0.1)         # 错误！先转 float 再转 Decimal，已带误差
+Decimal(0.1)         # 错误！先转 float 再转 Decimal，已带误差
 Decimal('0.1000000000000000055511151231257827021181583404541015625')  # 调用 Decimal，参数 '0.1000000000000000055511151231257827021181583404541015625'
->>> Decimal('0.1')       # 正确！用字符串
+Decimal('0.1')       # 正确！用字符串
 Decimal('0.1')                     # 调用 Decimal，参数 '0.1'
 \`\`\`
 
@@ -334,10 +334,10 @@ print(pi_approx - Fraction(math.pi).limit_denominator(1000))  # 输出 pi_approx
 注意 \`math.ceil\` 和 \`math.floor\` 与 \`int()\` 的区别：
 
 \`\`\`python
->>> int(-2.7)      # 向零取整 → -2
->>> math.trunc(-2.7)  # 向零取整 → -2
->>> math.floor(-2.7)  # 向负无穷取整 → -3
->>> math.ceil(-2.7)   # 向正无穷取整 → -2
+int(-2.7)      # 向零取整 → -2
+math.trunc(-2.7)  # 向零取整 → -2
+math.floor(-2.7)  # 向负无穷取整 → -3
+math.ceil(-2.7)   # 向正无穷取整 → -2
 \`\`\`
 
 ### 5.3 幂与对数
@@ -354,12 +354,12 @@ print(pi_approx - Fraction(math.pi).limit_denominator(1000))  # 输出 pi_approx
 | \`math.log(x, base)\` | 任意底对数 |
 
 \`\`\`python
->>> math.sqrt(144)      # 12.0
->>> math.pow(2, 10)     # 1024.0
->>> math.exp(1)         # 2.718281828459045
->>> math.log(math.e)    # 1.0
->>> math.log10(1000)    # 3.0
->>> math.log2(8)        # 3.0
+math.sqrt(144)      # 12.0
+math.pow(2, 10)     # 1024.0
+math.exp(1)         # 2.718281828459045
+math.log(math.e)    # 1.0
+math.log10(1000)    # 3.0
+math.log2(8)        # 3.0
 \`\`\`
 
 ### 5.4 阶乘与组合数
@@ -371,9 +371,9 @@ print(pi_approx - Fraction(math.pi).limit_denominator(1000))  # 输出 pi_approx
 | \`math.perm(n, k)\` | 排列数 A(n,k)（Python 3.8+） |
 
 \`\`\`python
->>> math.factorial(5)        # 120
->>> math.comb(5, 2)          # 10，从 5 个中选 2 个
->>> math.perm(5, 2)          # 20，从 5 个中选 2 个排列
+math.factorial(5)        # 120
+math.comb(5, 2)          # 10，从 5 个中选 2 个
+math.perm(5, 2)          # 20，从 5 个中选 2 个排列
 \`\`\`
 
 ### 5.5 最大公约数与最小公倍数
@@ -384,20 +384,20 @@ print(pi_approx - Fraction(math.pi).limit_denominator(1000))  # 输出 pi_approx
 | \`math.lcm(a, b)\` | 最小公倍数（Python 3.9+） |
 
 \`\`\`python
->>> math.gcd(12, 18)    # 6
->>> math.lcm(4, 6)      # 12
->>> math.gcd(12, 18, 24)  # 6，支持多参数（Python 3.9+）
+math.gcd(12, 18)    # 6
+math.lcm(4, 6)      # 12
+math.gcd(12, 18, 24)  # 6，支持多参数（Python 3.9+）
 \`\`\`
 
 ### 5.6 三角函数
 
 \`\`\`python
->>> math.sin(math.pi / 2)    # 1.0
->>> math.cos(0)              # 1.0
->>> math.tan(math.pi / 4)    # 0.9999999999999999
->>> math.degrees(math.pi)    # 180.0，弧度转角度
->>> math.radians(180)        # 3.141592653589793，角度转弧度
->>> math.asin(1)             # 1.5707963267948966（π/2）
+math.sin(math.pi / 2)    # 1.0
+math.cos(0)              # 1.0
+math.tan(math.pi / 4)    # 0.9999999999999999
+math.degrees(math.pi)    # 180.0，弧度转角度
+math.radians(180)        # 3.141592653589793，角度转弧度
+math.asin(1)             # 1.5707963267948966（π/2）
 \`\`\`
 
 注意：\`math\` 模块的三角函数**参数和返回值都是弧度**，不是角度。用 \`math.degrees()\` 和 \`math.radians()\` 互转。
@@ -405,12 +405,12 @@ print(pi_approx - Fraction(math.pi).limit_denominator(1000))  # 输出 pi_approx
 ### 5.7 双曲函数与特殊函数
 
 \`\`\`python
->>> math.sinh(0)    # 0.0，双曲正弦
->>> math.cosh(0)    # 1.0，双曲余弦
->>> math.tanh(0)    # 0.0，双曲正切
->>> math.erf(1)     # 0.8427007929497149，误差函数
->>> math.gamma(5)   # 24.0，伽马函数 Γ(5) = 4!
->>> math.lgamma(5)  # 3.1780538303479458，ln(Γ(5))
+math.sinh(0)    # 0.0，双曲正弦
+math.cosh(0)    # 1.0，双曲余弦
+math.tanh(0)    # 0.0，双曲正切
+math.erf(1)     # 0.8427007929497149，误差函数
+math.gamma(5)   # 24.0，伽马函数 Γ(5) = 4!
+math.lgamma(5)  # 3.1780538303479458，ln(Γ(5))
 \`\`\`
 
 ### 5.8 符号、绝对值与辅助函数
@@ -524,10 +524,10 @@ print(cmath.exp(1j * cmath.pi))   # (-1+1.2246e-16j) ≈ -1（欧拉公式）
 ### 8.1 Python 的 round 行为
 
 \`\`\`python
->>> round(2.5)    # 2，不是 3！
->>> round(3.5)    # 4
->>> round(0.5)    # 0
->>> round(1.5)    # 2
+round(2.5)    # 2，不是 3！
+round(3.5)    # 4
+round(0.5)    # 0
+round(1.5)    # 2
 \`\`\`
 
 很多人会惊讶 \`round(2.5)\` 居然是 2 而不是 3。这是因为 Python 的 \`round\` 采用**银行家舍入（round half to even）**，也叫"四舍六入五成双"：当小数部分正好是 0.5 时，向**最近的偶数**舍入。
@@ -539,7 +539,7 @@ print(cmath.exp(1j * cmath.pi))   # (-1+1.2246e-16j) ≈ -1（欧拉公式）
 ### 8.3 round 的精度问题
 
 \`\`\`python
->>> round(2.675, 2)   # 2.67，不是 2.68！
+round(2.675, 2)   # 2.67，不是 2.68！
 \`\`\`
 
 这是因为 2.675 在浮点数中实际存储的是略小于 2.675 的值，所以 round 到 2 位小数时变成了 2.67。如果需要精确的十进制舍入，用 \`decimal\` 模块：
@@ -577,12 +577,12 @@ print("%.2f" % x)           # '3.14'，旧式格式化
 | \`>>\` | 右移 | 各位右移，高位补符号位 |
 
 \`\`\`python
->>> bin(0b1100 & 0b1010)   # 0b1000
->>> bin(0b1100 | 0b1010)   # 0b1110
->>> bin(0b1100 ^ 0b1010)   # 0b0110
->>> ~5                      # -6（取反 = -(x+1)）
->>> 1 << 4                  # 16，等价于 2^4
->>> 256 >> 2                # 64
+bin(0b1100 & 0b1010)   # 0b1000
+bin(0b1100 | 0b1010)   # 0b1110
+bin(0b1100 ^ 0b1010)   # 0b0110
+~5                      # -6（取反 = -(x+1)）
+1 << 4                  # 16，等价于 2^4
+256 >> 2                # 64
 \`\`\`
 
 ### 9.2 位运算的常见应用
@@ -620,9 +620,9 @@ perm &= ~WRITE            # 移除写权限
 ### 9.3 位长度与位计数
 
 \`\`\`python
->>> (42).bit_length()   # 6，42 = 0b101010，需要 6 位
->>> bin(42)             # '0b101010'
->>> (42).bit_count()    # 3，二进制中 1 的个数（Python 3.10+）
+(42).bit_length()   # 6，42 = 0b101010，需要 6 位
+bin(42)             # '0b101010'
+(42).bit_count()    # 3，二进制中 1 的个数（Python 3.10+）
 \`\`\`
 
 ---
@@ -722,11 +722,11 @@ print(secrets.choice(range(1000000, 9999999)))  # 安全的随机选择
 Python 中 \`bool\` 是 \`int\` 的子类，\`True\` 等于 1，\`False\` 等于 0。这意味着布尔值可以参与算术运算：
 
 \`\`\`python
->>> True + True       # 2
->>> True * 5          # 5
->>> False + 0         # 0
->>> sum([True, False, True, True])   # 3，统计 True 的个数
->>> isinstance(True, int)   # True，bool 是 int 子类
+True + True       # 2
+True * 5          # 5
+False + 0         # 0
+sum([True, False, True, True])   # 3，统计 True 的个数
+isinstance(True, int)   # True，bool 是 int 子类
 \`\`\`
 
 这个特性在统计"满足条件的元素个数"时非常方便：
@@ -751,13 +751,13 @@ count = sum(n % 2 == 0 for n in nums)   # 3
 其他所有值都是真值。\`bool(x)\` 会按上述规则转换。
 
 \`\`\`python
->>> bool(0)        # False
->>> bool(0.0)      # False
->>> bool('')       # False
->>> bool([])       # False
->>> bool(' ')      # True，空格不是空字符串
->>> bool(0.0001)   # True
->>> bool([0])      # True，含一个 0 的列表非空
+bool(0)        # False
+bool(0.0)      # False
+bool('')       # False
+bool([])       # False
+bool(' ')      # True，空格不是空字符串
+bool(0.0001)   # True
+bool([0])      # True，含一个 0 的列表非空
 \`\`\`
 
 **坑点**：判断列表是否为空时，应该用 \`if not lst:\` 而不是 \`if len(lst) == 0:\`，前者更 Pythonic 且更快。
@@ -777,14 +777,14 @@ count = sum(n % 2 == 0 for n in nums)   # 3
 | \`bool(x)\` | bool | 真值转换 |
 
 \`\`\`python
->>> int(3.9)           # 3，向零取整（不是四舍五入）
->>> int(-3.9)          # -3
->>> int('42')          # 42
->>> int('0xff', 16)    # 255
->>> float('3.14')      # 3.14
->>> float(5)           # 5.0
->>> complex(3, 4)      # (3+4j)
->>> round(3.14159, 2)  # 3.14
+int(3.9)           # 3，向零取整（不是四舍五入）
+int(-3.9)          # -3
+int('42')          # 42
+int('0xff', 16)    # 255
+float('3.14')      # 3.14
+float(5)           # 5.0
+complex(3, 4)      # (3+4j)
+round(3.14159, 2)  # 3.14
 \`\`\`
 
 ### 12.2 隐式转换规则
@@ -792,9 +792,9 @@ count = sum(n % 2 == 0 for n in nums)   # 3
 Python 在混合类型运算时会**自动向更宽的类型转换**（数值塔）：
 
 \`\`\`python
->>> 1 + 2.0       # 3.0，int + float → float
->>> 2 + 3j        # (2+3j)，int + complex → complex
->>> True + 1      # 2，bool + int → int
+1 + 2.0       # 3.0，int + float → float
+2 + 3j        # (2+3j)，int + complex → complex
+True + 1      # 2，bool + int → int
 \`\`\`
 
 转换方向：\`bool\` → \`int\` → \`float\` → \`complex\`，运算结果总是"更宽"的那个类型。注意 \`int\` 和 \`float\` 运算结果一定是 \`float\`，不会自动升级为 \`Decimal\` 或 \`Fraction\`。
@@ -867,8 +867,8 @@ print(7 % -2)     # -1
 ### 14.3 divmod 同时取商和余
 
 \`\`\`python
->>> divmod(17, 5)    # (3, 2)，商 3 余 2
->>> quotient, remainder = divmod(17, 5)
+divmod(17, 5)    # (3, 2)，商 3 余 2
+quotient, remainder = divmod(17, 5)
 \`\`\`
 
 ### 14.4 链式比较
@@ -876,9 +876,9 @@ print(7 % -2)     # -1
 Python 支持数学风格的链式比较：
 
 \`\`\`python
->>> 1 < 2 < 3      # True，等价于 1 < 2 and 2 < 3
->>> 1 < 2 > 0      # True
->>> 5 > 3 > 1      # True
+1 < 2 < 3      # True，等价于 1 < 2 and 2 < 3
+1 < 2 > 0      # True
+5 > 3 > 1      # True
 \`\`\`
 
 ### 14.5 海象运算符与数值
@@ -1549,11 +1549,11 @@ print(unicodedata.normalize('NFC', s2) == s1)   # True
 | \`zfill(width)\` | 左侧补 0 |
 
 \`\`\`python
->>> 'hello'.center(11, '-')   # '---hello---'
->>> 'hello'.ljust(10, '.')    # 'hello.....'
->>> 'hello'.rjust(10, '*')    # '*****hello'
->>> '42'.zfill(5)             # '00042'
->>> '-42'.zfill(5)            # '-0042'（负号保留在前面）
+'hello'.center(11, '-')   # '---hello---'
+'hello'.ljust(10, '.')    # 'hello.....'
+'hello'.rjust(10, '*')    # '*****hello'
+'42'.zfill(5)             # '00042'
+'-42'.zfill(5)            # '-0042'（负号保留在前面）
 \`\`\`
 
 \`zfill\` 常用于给数字补前导零（如订单号、时间）。
@@ -1563,11 +1563,11 @@ print(unicodedata.normalize('NFC', s2) == s1)   # True
 \`partition(sep)\` 把字符串分成 **(前, 分隔符, 后)** 三部分，找不到分隔符时返回 **(原字符串, '', '')**：
 
 \`\`\`python
->>> 'name=张三'.partition('=')
+'name=张三'.partition('=')
 ('name', '=', '张三')
->>> 'hello'.partition('=')
+'hello'.partition('=')
 ('hello', '', '')
->>> 'a.b.c'.rpartition('.')   # 从右侧分割
+'a.b.c'.rpartition('.')   # 从右侧分割
 ('a.b', '.', 'c')
 \`\`\`
 
@@ -1582,7 +1582,7 @@ print(name, ext)   # report.2024 pdf
 ### 4.3 expandtabs 制表符展开
 
 \`\`\`python
->>> 'a\\tb\\tc'.expandtabs(4)   # 把 \\t 展开为 4 个空格的对齐
+'a\\tb\\tc'.expandtabs(4)   # 把 \\t 展开为 4 个空格的对齐
 'a   b   c'
 \`\`\`
 
@@ -1611,16 +1611,16 @@ print('apple'.translate(table3))   # 'Appl'
 Python 3.9+ 新增，安全地移除前缀/后缀（不存在时返回原字符串，不报错）：
 
 \`\`\`python
->>> 'test_file.py'.removeprefix('test_')   # 'file.py'
->>> 'image.png'.removesuffix('.png')       # 'image'
->>> 'hello'.removeprefix('x')              # 'hello'（无前缀，原样返回）
+'test_file.py'.removeprefix('test_')   # 'file.py'
+'image.png'.removesuffix('.png')       # 'image'
+'hello'.removeprefix('x')              # 'hello'（无前缀，原样返回）
 \`\`\`
 
 对比 \`lstrip\`/\`rstrip\`：\`lstrip('test_')\` 会移除所有 't','e','s','_' 字符组合，而非前缀字符串，行为完全不同！
 
 \`\`\`python
->>> 'test_test'.lstrip('test_')     # '' （lstrip 把 t/e/s/_ 当字符集）
->>> 'test_test'.removeprefix('test_')  # 'test'
+'test_test'.lstrip('test_')     # '' （lstrip 把 t/e/s/_ 当字符集）
+'test_test'.removeprefix('test_')  # 'test'
 \`\`\`
 
 ### 4.6 查找与计数
@@ -1636,18 +1636,18 @@ Python 3.9+ 新增，安全地移除前缀/后缀（不存在时返回原字符�
 | \`endswith(suffix)\` | 是否以 suffix 结尾 |
 
 \`\`\`python
->>> 'hello world'.find('o')       # 4
->>> 'hello world'.rfind('o')      # 7
->>> 'hello world'.count('l')      # 3
->>> 'hello world'.count('o')      # 2
->>> 'abc.txt'.endswith('.txt')    # True
->>> 'abc.txt'.startswith('abc')   # True
+'hello world'.find('o')       # 4
+'hello world'.rfind('o')      # 7
+'hello world'.count('l')      # 3
+'hello world'.count('o')      # 2
+'abc.txt'.endswith('.txt')    # True
+'abc.txt'.startswith('abc')   # True
 \`\`\`
 
 \`startswith\`/\`endswith\` 支持元组（任一匹配即可）：
 
 \`\`\`python
->>> 'image.jpg'.endswith(('.jpg', '.png', '.gif'))   # True
+'image.jpg'.endswith(('.jpg', '.png', '.gif'))   # True
 \`\`\`
 
 ### 4.7 判断方法
@@ -1664,11 +1664,11 @@ Python 3.9+ 新增，安全地移除前缀/后缀（不存在时返回原字符�
 | \`isdecimal()\` | 是否全是十进制字符 |
 
 \`\`\`python
->>> '123'.isdigit()      # True
->>> 'abc'.isalpha()      # True
->>> '一二三'.isnumeric()   # True
->>> '   '.isspace()      # True
->>> 'Hello World'.istitle()   # True
+'123'.isdigit()      # True
+'abc'.isalpha()      # True
+'一二三'.isnumeric()   # True
+'   '.isspace()      # True
+'Hello World'.istitle()   # True
 \`\`\`
 
 注意 \`isdigit\`、\`isnumeric\`、\`isdecimal\` 三者有细微区别：\`isdecimal\` 最严格（只接受 0-9 等十进制字符），\`isdigit\` 还接受上标数字如 '²'，\`isnumeric\` 最宽泛（接受中文数字、罗马数字等）。
@@ -1698,27 +1698,27 @@ f-string（Python 3.6+）是格式化字符串最强大的方式。语法：\`f'
 ### 5.2 对齐与填充
 
 \`\`\`python
->>> f"{'hello':<10}"    # 'hello     ' 左对齐
->>> f"{'hello':>10}"    # '     hello' 右对齐
->>> f"{'hello':^10}"    # '  hello   ' 居中
->>> f"{'hello':->10}"   # '-----hello' 用 - 填充
->>> f"{'hello':*^10}"   # '**hello***' 用 * 填充居中
+f"{'hello':<10}"    # 'hello     ' 左对齐
+f"{'hello':>10}"    # '     hello' 右对齐
+f"{'hello':^10}"    # '  hello   ' 居中
+f"{'hello':->10}"   # '-----hello' 用 - 填充
+f"{'hello':*^10}"   # '**hello***' 用 * 填充居中
 \`\`\`
 
 ### 5.3 数值格式化
 
 \`\`\`python
->>> f"{255:x}"          # 'ff' 十六进制
->>> f"{255:#x}"         # '0xff' 带前缀
->>> f"{255:b}"          # '11111111' 二进制
->>> f"{255:o}"          # '377' 八进制
->>> f"{3.14159:.2f}"    # '3.14' 两位小数
->>> f"{3.14159:.4e}"    # '3.1416e+00' 科学计数法
->>> f"{0.875:.2%}"      # '87.50%' 百分比
->>> f"{1234567:,}"      # '1,234,567' 千分位
->>> f"{1234567:_}"      # '1_234_567' 下划线分组
->>> f"{42:08d}"         # '00000042' 补零
->>> f"{42:+d}"          # '+42' 显示正号
+f"{255:x}"          # 'ff' 十六进制
+f"{255:#x}"         # '0xff' 带前缀
+f"{255:b}"          # '11111111' 二进制
+f"{255:o}"          # '377' 八进制
+f"{3.14159:.2f}"    # '3.14' 两位小数
+f"{3.14159:.4e}"    # '3.1416e+00' 科学计数法
+f"{0.875:.2%}"      # '87.50%' 百分比
+f"{1234567:,}"      # '1,234,567' 千分位
+f"{1234567:_}"      # '1_234_567' 下划线分组
+f"{42:08d}"         # '00000042' 补零
+f"{42:+d}"          # '+42' 显示正号
 \`\`\`
 
 ### 5.4 日期格式化
@@ -1726,11 +1726,11 @@ f-string（Python 3.6+）是格式化字符串最强大的方式。语法：\`f'
 f-string 可以直接格式化 datetime 对象：
 
 \`\`\`python
->>> from datetime import datetime
->>> now = datetime.now()
->>> f"{now:%Y-%m-%d %H:%M:%S}"      # '2024-01-15 14:30:00'
->>> f"{now:%Y年%m月%d日}"            # '2024年01月15日'
->>> f"{now:%A}"                       # 'Monday' 星期
+from datetime import datetime
+now = datetime.now()
+f"{now:%Y-%m-%d %H:%M:%S}"      # '2024-01-15 14:30:00'
+f"{now:%Y年%m月%d日}"            # '2024年01月15日'
+f"{now:%A}"                       # 'Monday' 星期
 \`\`\`
 
 ### 5.5 debug 语法 =（Python 3.8+）
@@ -1738,20 +1738,20 @@ f-string 可以直接格式化 datetime 对象：
 在变量后加 \`=\` 可以同时输出变量名和值，调试时极其方便：
 
 \`\`\`python
->>> name = "张三"
->>> age = 28
->>> f"{name=}, {age=}"      # "name='张三', age=28"
->>> f"{age=:.2f}"           # 'age=28.00'（可加格式说明符）
->>> f"{1+1=}"               # '1+1=2'
+name = "张三"
+age = 28
+f"{name=}, {age=}"      # "name='张三', age=28"
+f"{age=:.2f}"           # 'age=28.00'（可加格式说明符）
+f"{1+1=}"               # '1+1=2'
 \`\`\`
 
 ### 5.6 嵌套与表达式
 
 \`\`\`python
->>> width = 10
->>> f"{'hello':^{width}}"   # 嵌套变量作为宽度
->>> f"{[1,2,3][1]}"          # '2'，支持表达式
->>> f"{sum([1,2,3])}"        # '6'
+width = 10
+f"{'hello':^{width}}"   # 嵌套变量作为宽度
+f"{[1,2,3][1]}"          # '2'，支持表达式
+f"{sum([1,2,3])}"        # '6'
 \`\`\`
 
 Python 3.12+ 还支持 f-string 嵌套引号、多行 f-string 等增强。
@@ -1890,9 +1890,9 @@ print(make_table(['姓名', '年龄', '城市'], [['张三', 28, '北京'], ['�
 Python 3 的 \`str\` 是 Unicode 字符序列，\`len()\` 返回的是**字符数**而非字节数：
 
 \`\`\`python
->>> len('hello')      # 5
->>> len('你好')        # 2（两个中文字符）
->>> len('你好'.encode('utf-8'))   # 6（UTF-8 编码后 6 字节）
+len('hello')      # 5
+len('你好')        # 2（两个中文字符）
+len('你好'.encode('utf-8'))   # 6（UTF-8 编码后 6 字节）
 \`\`\`
 
 中文在 UTF-8 中通常占 3 字节，emoji 占 4 字节。
@@ -1900,10 +1900,10 @@ Python 3 的 \`str\` 是 Unicode 字符序列，\`len()\` 返回的是**字符�
 ### 8.2 多字节字符与切片
 
 \`\`\`python
->>> s = 'Python编程'
->>> len(s)            # 8
->>> s[:6]             # 'Python'
->>> s[6:]             # '编程'
+s = 'Python编程'
+len(s)            # 8
+s[:6]             # 'Python'
+s[6:]             # '编程'
 \`\`\`
 
 Python 3 的字符串按字符（码点）切片，不会把多字节字符切断。
@@ -1919,28 +1919,28 @@ CPython 内部对字符串有多种存储方式：纯 ASCII 用 1 字节/字符�
 ### 9.1 splitlines 按行分割
 
 \`\`\`python
->>> 'a\\nb\\nc'.splitlines()       # ['a', 'b', 'c']
->>> 'a\\nb\\nc'.splitlines(True)   # 保留换行符 ['a\\n', 'b\\n', 'c']
+'a\\nb\\nc'.splitlines()       # ['a', 'b', 'c']
+'a\\nb\\nc'.splitlines(True)   # 保留换行符 ['a\\n', 'b\\n', 'c']
 \`\`\`
 
 ### 9.2 swapcase 大小写互换
 
 \`\`\`python
->>> 'Hello World'.swapcase()   # 'hELLO wORLD'
+'Hello World'.swapcase()   # 'hELLO wORLD'
 \`\`\`
 
 ### 9.3 title 标题化
 
 \`\`\`python
->>> 'hello world'.title()      # 'Hello World'
->>> 'hello-world'.title()      # 'Hello-World'
+'hello world'.title()      # 'Hello World'
+'hello-world'.title()      # 'Hello-World'
 \`\`\`
 
 \`title\` 把每个单词首字母大写，但"单词"的划分有时不理想（如 "don't" → "Don'T"），用 \`string.capwords\` 更可控：
 
 \`\`\`python
->>> import string
->>> string.capwords("don't stop")   # "Don't Stop"
+import string
+string.capwords("don't stop")   # "Don't Stop"
 \`\`\`
 
 ### 9.4 casefold 用于无大小写比较
@@ -1948,8 +1948,8 @@ CPython 内部对字符串有多种存储方式：纯 ASCII 用 1 字节/字符�
 \`casefold\` 比 \`lower\` 更激进，专门用于**无大小写比较**（如德语 ß → ss）：
 
 \`\`\`python
->>> 'Straße'.lower() == 'strasse'   # False
->>> 'Straße'.casefold() == 'strasse'   # True
+'Straße'.lower() == 'strasse'   # False
+'Straße'.casefold() == 'strasse'   # True
 \`\`\`
 
 跨语言比较字符串是否相等（忽略大小写）时，应该用 \`s1.casefold() == s2.casefold()\`。
@@ -1957,9 +1957,9 @@ CPython 内部对字符串有多种存储方式：纯 ASCII 用 1 字节/字符�
 ### 9.5 format_map 与 format
 
 \`\`\`python
->>> data = {'name': '张三', 'age': 28}
->>> '{name}今年{age}岁'.format_map(data)   # '张三今年28岁'
->>> '{name}今年{age}岁'.format(**data)      # 等价
+data = {'name': '张三', 'age': 28}
+'{name}今年{age}岁'.format_map(data)   # '张三今年28岁'
+'{name}今年{age}岁'.format(**data)      # 等价
 \`\`\`
 
 \`format_map\` 直接接受字典，不需要解包，比 \`format(**d)\` 略快。
@@ -1973,10 +1973,10 @@ CPython 内部对字符串有多种存储方式：纯 ASCII 用 1 字节/字符�
 ### 10.1 % 格式化（C 风格，旧式）
 
 \`\`\`python
->>> '我叫 %s，今年 %d 岁' % ('张三', 28)   # '我叫 张三，今年 28 岁'
->>> '%.2f' % 3.14159                       # '3.14'
->>> '%010.2f' % 3.14                       # '0000003.14'
->>> '%x' % 255                             # 'ff'
+'我叫 %s，今年 %d 岁' % ('张三', 28)   # '我叫 张三，今年 28 岁'
+'%.2f' % 3.14159                       # '3.14'
+'%010.2f' % 3.14                       # '0000003.14'
+'%x' % 255                             # 'ff'
 \`\`\`
 
 常用占位符：\`%s\` 字符串、\`%d\` 整数、\`%f\` 浮点、\`%x\` 十六进制、\`%o\` 八进制、\`%e\` 科学计数、\`%%\` 百分号字面量。这种方式已不推荐用于新代码，但旧代码中常见。
@@ -1984,12 +1984,12 @@ CPython 内部对字符串有多种存储方式：纯 ASCII 用 1 字节/字符�
 ### 10.2 str.format() 方法
 
 \`\`\`python
->>> '{}今年{}岁'.format('张三', 28)         # '张三今年28岁'
->>> '{0}爱{0}'.format('我')                  # '我爱我'（位置参数）
->>> '{name}今年{age}岁'.format(name='张三', age=28)   # 关键字
->>> '{:>10}'.format('hi')                    # '        hi' 右对齐
->>> '{:.2f}'.format(3.14159)                 # '3.14'
->>> '{:,}'.format(1234567)                   # '1,234,567'
+'{}今年{}岁'.format('张三', 28)         # '张三今年28岁'
+'{0}爱{0}'.format('我')                  # '我爱我'（位置参数）
+'{name}今年{age}岁'.format(name='张三', age=28)   # 关键字
+'{:>10}'.format('hi')                    # '        hi' 右对齐
+'{:.2f}'.format(3.14159)                 # '3.14'
+'{:,}'.format(1234567)                   # '1,234,567'
 \`\`\`
 
 \`format()\` 支持 f-string 的所有格式说明符，但语法更冗长。新代码统一用 f-string 即可，\`format()\` 在需要把格式说明符存为变量的动态场景下仍有用：
@@ -2019,10 +2019,10 @@ print(fmt.format(3.14159))         # 输出 fmt.format(3.14159)
 - \`maxsplit\`：最多分割次数
 
 \`\`\`python
->>> 'a  b   c'.split()          # ['a', 'b', 'c']（默认按空白，忽略多个）
->>> 'a  b   c'.split(' ')       # ['a', '', 'b', '', '', 'c']（按单空格，保留空串）
->>> 'a,b,c,d'.split(',', 2)     # ['a', 'b', 'c,d']（最多分 2 次）
->>> 'a,b,c'.rsplit(',', 1)      # ['a,b', 'c']（从右侧分）
+'a  b   c'.split()          # ['a', 'b', 'c']（默认按空白，忽略多个）
+'a  b   c'.split(' ')       # ['a', '', 'b', '', '', 'c']（按单空格，保留空串）
+'a,b,c,d'.split(',', 2)     # ['a', 'b', 'c,d']（最多分 2 次）
+'a,b,c'.rsplit(',', 1)      # ['a,b', 'c']（从右侧分）
 \`\`\`
 
 这是常见坑：\`split()\` 和 \`split(' ')\` 行为完全不同。处理用户输入时通常用 \`split()\`（不传参）更安全。
@@ -2038,8 +2038,8 @@ print(fields)   # ['张三', '28', '北京', '程序员']
 ### 11.3 splitlines 按行分割
 
 \`\`\`python
->>> 'a\\nb\\r\\nc'.splitlines()   # ['a', 'b', 'c']（兼容各种换行符）
->>> 'a\\nb\\n'.splitlines()       # ['a', 'b']（不保留末尾空行）
+'a\\nb\\r\\nc'.splitlines()   # ['a', 'b', 'c']（兼容各种换行符）
+'a\\nb\\n'.splitlines()       # ['a', 'b']（不保留末尾空行）
 \`\`\`
 
 \`splitlines\` 比 \`split('\\n')\` 更健壮，能识别 \`\\n\`、\`\\r\`、\`\\r\\n\` 等各种换行符。
@@ -2107,12 +2107,12 @@ print(phone_re.findall('138-1234-5678 和 139-0000-1111'))  # 输出 phone_re.fi
 CPython 会自动"驻留"（intern）一些字符串——让多个相同内容的字符串共享同一个对象，节省内存并加速比较。符合**标识符规则**的字符串（只含字母、数字、下划线）通常会被自动驻留：
 
 \`\`\`python
->>> a = 'hello_world'
->>> b = 'hello_world'
->>> a is b   # True，自动驻留
->>> c = 'hello world!'
->>> d = 'hello world!'
->>> c is d   # False（通常），含空格/标点不驻留
+a = 'hello_world'
+b = 'hello_world'
+a is b   # True，自动驻留
+c = 'hello world!'
+d = 'hello world!'
+c is d   # False（通常），含空格/标点不驻留
 \`\`\`
 
 ### 13.2 手动驻留
@@ -2643,13 +2643,13 @@ print("\\n字符串高级处理演示完成！")
 | \`bytearray\` | 字节序列 | 0-255 的整数 | \`bytearray(b'...')\` | 可变 |
 
 \`\`\`python
->>> s = '你好'           # str，2 个字符
->>> b = s.encode('utf-8')  # bytes，6 个字节
->>> b
+s = '你好'           # str，2 个字符
+b = s.encode('utf-8')  # bytes，6 个字节
+b
 b'\\xe4\\xbd\\xa0\\xe5\\xa5\\xbd'
->>> len(s), len(b)
+len(s), len(b)
 (2, 6)
->>> type(s), type(b)
+type(s), type(b)
 (<class 'str'>, <class 'bytes'>)
 \`\`\`
 
@@ -2660,11 +2660,11 @@ b'\\xe4\\xbd\\xa0\\xe5\\xa5\\xbd'
 \`bytes\` 字面量用 \`b\` 前缀，内容只能是 ASCII 字符或转义序列：
 
 \`\`\`python
->>> b'hello'           # ASCII 字符
->>> b'\\x41\\x42'        # 十六进制转义，= b'AB'
->>> b'\\x00\\x01\\xff'    # 任意字节
->>> bytes([65, 66, 67])  # = b'ABC'，从整数列表构造
->>> bytes(5)           # b'\\x00\\x00\\x00\\x00\\x00'，5 个零字节
+b'hello'           # ASCII 字符
+b'\\x41\\x42'        # 十六进制转义，= b'AB'
+b'\\x00\\x01\\xff'    # 任意字节
+bytes([65, 66, 67])  # = b'ABC'，从整数列表构造
+bytes(5)           # b'\\x00\\x00\\x00\\x00\\x00'，5 个零字节
 \`\`\`
 
 ### 1.3 bytearray 可变字节
@@ -2672,10 +2672,10 @@ b'\\xe4\\xbd\\xa0\\xe5\\xa5\\xbd'
 \`bytearray\` 是 \`bytes\` 的可变版本，支持类似列表的修改：
 
 \`\`\`python
->>> ba = bytearray(b'hello')
->>> ba[0] = 72         # 修改单个字节（'H' 的 ASCII 码）
->>> ba.append(33)      # 追加 '!'
->>> ba
+ba = bytearray(b'hello')
+ba[0] = 72         # 修改单个字节（'H' 的 ASCII 码）
+ba.append(33)      # 追加 '!'
+ba
 bytearray(b'Hello!')               # 调用 bytearray，参数 b'Hello!'
 \`\`\`
 
@@ -2686,12 +2686,12 @@ bytearray(b'Hello!')               # 调用 bytearray，参数 b'Hello!'
 \`memoryview\` 创建一个对原始字节数据的"视图"，**不复制数据**就能切片和访问，适合处理大块二进制数据时避免内存拷贝：
 
 \`\`\`python
->>> data = bytearray(b'hello world')
->>> mv = memoryview(data)
->>> mv[0]              # 104，访问不复制
->>> mv[0:5]            # <memory at 0x...>，切片仍是视图
->>> bytes(mv[0:5])     # b'hello'，转回 bytes
->>> mv[0] = 72         # 修改视图会反映到原数据
+data = bytearray(b'hello world')
+mv = memoryview(data)
+mv[0]              # 104，访问不复制
+mv[0:5]            # <memory at 0x...>，切片仍是视图
+bytes(mv[0:5])     # b'hello'，转回 bytes
+mv[0] = 72         # 修改视图会反映到原数据
 \`\`\`
 
 \`memoryview\` 在处理大文件、零拷贝网络传输时能显著提升性能。
@@ -2705,10 +2705,10 @@ bytearray(b'Hello!')               # 调用 bytearray，参数 b'Hello!'
 **ASCII**（American Standard Code for Information Interchange）是最早的字符编码，用 **7 位二进制**表示 128 个字符：英文字母、数字、标点、控制字符。
 
 \`\`\`python
->>> ord('A')    # 65，字符 → 码点
->>> chr(65)     # 'A'，码点 → 字符
->>> ord('0')    # 48
->>> ord(' ')    # 32
+ord('A')    # 65，字符 → 码点
+chr(65)     # 'A'，码点 → 字符
+ord('0')    # 48
+ord(' ')    # 32
 \`\`\`
 
 ASCII 只能表示英文，无法表示中文、日文、emoji 等。
@@ -2718,10 +2718,10 @@ ASCII 只能表示英文，无法表示中文、日文、emoji 等。
 **Unicode** 是一个字符集标准，为世界上几乎所有文字的每个字符分配一个唯一编号（码点 code point），范围从 \`U+0000\` 到 \`U+10FFFF\`（约 110 万个码位）。Python 3 的 \`str\` 就是 Unicode 字符串。
 
 \`\`\`python
->>> ord('中')       # 20013，'中' 的 Unicode 码点
->>> hex(ord('中'))   # '0x4e2d'
->>> chr(0x4e2d)      # '中'
->>> ord('😀')        # 128512，emoji 也在 Unicode 中
+ord('中')       # 20013，'中' 的 Unicode 码点
+hex(ord('中'))   # '0x4e2d'
+chr(0x4e2d)      # '中'
+ord('😀')        # 128512，emoji 也在 Unicode 中
 \`\`\`
 
 Unicode 只是"编号表"，**具体如何用字节存储**由"编码方案"（UTF-8、UTF-16 等）决定。
@@ -2746,9 +2746,9 @@ UTF-8 的优点：
 UTF-8 是**互联网事实标准**，HTML、JSON、XML 默认都用 UTF-8。
 
 \`\`\`python
->>> 'A'.encode('utf-8')    # b'A'，1 字节
->>> '中'.encode('utf-8')   # b'\\xe4\\xbd\\xa0'，3 字节
->>> '😀'.encode('utf-8')   # b'\\xf0\\x9f\\x98\\x80'，4 字节
+'A'.encode('utf-8')    # b'A'，1 字节
+'中'.encode('utf-8')   # b'\\xe4\\xbd\\xa0'，3 字节
+'😀'.encode('utf-8')   # b'\\xf0\\x9f\\x98\\x80'，4 字节
 \`\`\`
 
 ### 2.4 UTF-16 与 UTF-32
@@ -2757,8 +2757,8 @@ UTF-8 是**互联网事实标准**，HTML、JSON、XML 默认都用 UTF-8。
 - **UTF-32**：每个字符固定 4 字节，浪费空间但定位快。
 
 \`\`\`python
->>> 'A'.encode('utf-16')   # b'\\xff\\xfeA\\x00'（带 BOM，2+2 字节）
->>> '中'.encode('utf-32')  # b'\\xff\\xfe\\x00\\x00\\x2d\\x4e\\x00\\x00'
+'A'.encode('utf-16')   # b'\\xff\\xfeA\\x00'（带 BOM，2+2 字节）
+'中'.encode('utf-32')  # b'\\xff\\xfe\\x00\\x00\\x2d\\x4e\\x00\\x00'
 \`\`\`
 
 ### 2.5 GBK / GB2312（中文编码）
@@ -2766,8 +2766,8 @@ UTF-8 是**互联网事实标准**，HTML、JSON、XML 默认都用 UTF-8。
 **GBK** 是中文 Windows 系统常用的编码，每个中文用 **2 字节**（比 UTF-8 的 3 字节省空间）：
 
 \`\`\`python
->>> '中'.encode('gbk')    # b'\\xd6\\xd0'，2 字节
->>> '中'.encode('utf-8')  # b'\\xe4\\xbd\\xa0'，3 字节
+'中'.encode('gbk')    # b'\\xd6\\xd0'，2 字节
+'中'.encode('utf-8')  # b'\\xe4\\xbd\\xa0'，3 字节
 \`\`\`
 
 GBK 的局限：只能表示中文和少量符号，国际通用性差。新项目应统一用 UTF-8。常见的中文乱码问题，基本都是 GBK 和 UTF-8 混用导致的。
@@ -2810,9 +2810,9 @@ s = b.decode('utf-8')              # 将 b.decode('utf-8') 赋给 s
 | \`'xmlcharrefreplace'\` | 用 XML 实体替换（&#NNN;） |
 
 \`\`\`python
->>> b'\\x80abc'.decode('utf-8', errors='ignore')      # 'abc'
->>> b'\\x80abc'.decode('utf-8', errors='replace')     # '�abc'
->>> b'\\x80abc'.decode('utf-8', errors='backslashreplace')  # '\\x80abc'
+b'\\x80abc'.decode('utf-8', errors='ignore')      # 'abc'
+b'\\x80abc'.decode('utf-8', errors='replace')     # '�abc'
+b'\\x80abc'.decode('utf-8', errors='backslashreplace')  # '\\x80abc'
 \`\`\`
 
 ### 3.3 常见乱码问题
@@ -2857,10 +2857,10 @@ Python 3 内置的 \`open()\` 已经支持 \`encoding\` 参数，通常不需要
 ### 4.2 codecs.lookup 查询编码
 
 \`\`\`python
->>> import codecs
->>> codecs.lookup('utf-8')
+import codecs
+codecs.lookup('utf-8')
 <codecs.CodecInfo object for encoding utf-8>
->>> 'utf-8'.upper()   # 编码名大小写不敏感
+'utf-8'.upper()   # 编码名大小写不敏感
 \`\`\`
 
 ### 4.3 流式编解码
@@ -2896,11 +2896,11 @@ UTF-8 本身没有字节序问题，但有些 Windows 软件（如记事本）�
 
 \`\`\`python
 # 带 BOM 的 UTF-8
->>> 'A'.encode('utf-8-sig')   # b'\\xef\\xbb\\xbfA'
->>> 'A'.encode('utf-8')        # b'A'
+'A'.encode('utf-8-sig')   # b'\\xef\\xbb\\xbfA'
+'A'.encode('utf-8')        # b'A'
 # 用 utf-8-sig 解码会自动去掉 BOM
->>> b'\\xef\\xbb\\xbfA'.decode('utf-8-sig')   # 'A'
->>> b'\\xef\\xbb\\xbfA'.decode('utf-8')        # '\\ufeffA'（BOM 留在字符串里）
+b'\\xef\\xbb\\xbfA'.decode('utf-8-sig')   # 'A'
+b'\\xef\\xbb\\xbfA'.decode('utf-8')        # '\\ufeffA'（BOM 留在字符串里）
 \`\`\`
 
 处理 Windows 生成的文本文件时，用 \`utf-8-sig\` 编码可以自动处理 BOM。
@@ -2910,8 +2910,8 @@ UTF-8 本身没有字节序问题，但有些 Windows 软件（如记事本）�
 UTF-16 用 2 字节存一个字符，有大端（高位在前）和小端（低位在前）之分：
 
 \`\`\`python
->>> 'A'.encode('utf-16-le')   # b'A\\x00'，小端
->>> 'A'.encode('utf-16-be')   # b'\\x00A'，大端
+'A'.encode('utf-16-le')   # b'A\\x00'，小端
+'A'.encode('utf-16-be')   # b'\\x00A'，大端
 \`\`\`
 
 ---
@@ -2947,15 +2947,15 @@ decoded = base64.b64decode(encoded).decode('utf-8')  # '你好'
 标准 base64 含 \`+\`/\`/\` 字符，不能直接放 URL。用 \`urlsafe_b64encode\` 替换为 \`-\`/\`_\`：
 
 \`\`\`python
->>> base64.urlsafe_b64encode(b'\\xfb\\xff')   # b'-_8='
->>> base64.b64encode(b'\\xfb\\xff')           # b'+/8='
+base64.urlsafe_b64encode(b'\\xfb\\xff')   # b'-_8='
+base64.b64encode(b'\\xfb\\xff')           # b'+/8='
 \`\`\`
 
 ### 6.4 base32 与 base16
 
 \`\`\`python
->>> base64.b32encode(b'hello')   # b'NBSWY3DP'
->>> base64.b16encode(b'hello')   # b'68656C6C6F'（即 hex 编码，大写）
+base64.b32encode(b'hello')   # b'NBSWY3DP'
+base64.b16encode(b'hello')   # b'68656C6C6F'（即 hex 编码，大写）
 \`\`\`
 
 base32 用 A-Z, 2-7（不区分大小写、不易混淆），base16 就是十六进制。
@@ -2967,17 +2967,17 @@ base32 用 A-Z, 2-7（不区分大小写、不易混淆），base16 就是十六
 把字节的每个十六进制值转成两个 ASCII 字符：
 
 \`\`\`python
->>> b'hello'.hex()        # '68656c6c6f'
->>> bytes.fromhex('68656c6c6f')   # b'hello'
->>> b'\\x00\\xff'.hex()    # '00ff'
+b'hello'.hex()        # '68656c6c6f'
+bytes.fromhex('68656c6c6f')   # b'hello'
+b'\\x00\\xff'.hex()    # '00ff'
 \`\`\`
 
 \`bytes.hex()\` 返回字符串，\`bytes.fromhex()\` 反向解析。hex 编码常用于显示二进制数据的摘要（如哈希值、MAC 地址）。
 
 \`\`\`python
 import binascii                    # 导入 binascii 模块
->>> binascii.hexlify(b'hello')   # b'68656c6c6f'（返回 bytes）
->>> binascii.unhexlify(b'68656c6c6f')  # b'hello'
+binascii.hexlify(b'hello')   # b'68656c6c6f'（返回 bytes）
+binascii.unhexlify(b'68656c6c6f')  # b'hello'
 \`\`\`
 
 \`binascii\` 模块提供更底层的 hex/base64 转换函数。
@@ -3033,8 +3033,8 @@ values = struct.unpack('<2ihf', data)  # 将 struct.unpack('<2ihf', data) 赋给
 ### 8.4 calcsize 计算大小
 
 \`\`\`python
->>> struct.calcsize('<i')    # 4
->>> struct.calcsize('<2ihf') # 10
+struct.calcsize('<i')    # 4
+struct.calcsize('<2ihf') # 10
 \`\`\`
 
 ### 8.5 实战：解析 BMP 文件头
@@ -3052,8 +3052,8 @@ with open('image.bmp', 'rb') as f: # 使用上下文管理器 open('image.bmp', 
 \`s\` 格式打包定长字节串：
 
 \`\`\`python
->>> struct.pack('6s', b'hello')   # b'hello\\x00'，补零到 6 字节
->>> struct.unpack('6s', b'hello\\x00')   # (b'hello\\x00',)
+struct.pack('6s', b'hello')   # b'hello\\x00'，补零到 6 字节
+struct.unpack('6s', b'hello\\x00')   # (b'hello\\x00',)
 \`\`\`
 
 ---
@@ -3094,9 +3094,9 @@ bytes([97, 98, 99])               # b'abc'
 ### 9.3 int 与 bytes 互转
 
 \`\`\`python
->>> (255).to_bytes(2, 'big')      # b'\\x00\\xff'
->>> int.from_bytes(b'\\x00\\xff', 'big')  # 255
->>> (1024).to_bytes(4, 'little')  # b'\\x00\\x04\\x00\\x00'
+(255).to_bytes(2, 'big')      # b'\\x00\\xff'
+int.from_bytes(b'\\x00\\xff', 'big')  # 255
+(1024).to_bytes(4, 'little')  # b'\\x00\\x04\\x00\\x00'
 \`\`\`
 
 \`int.to_bytes(length, byteorder)\` 和 \`int.from_bytes(bytes, byteorder)\` 是整数与字节的直接转换方法。
@@ -3214,8 +3214,8 @@ with open('image.png', 'rb') as f: # 使用上下文管理器 open('image.png', 
 ### 12.3 陷阱：str 和 bytes 混用
 
 \`\`\`python
->>> 'abc' + b'xyz'   # TypeError，不能直接拼接 str 和 bytes
->>> 'abc' + b'xyz'.decode()   # 'abcxyz'，要先 decode
+'abc' + b'xyz'   # TypeError，不能直接拼接 str 和 bytes
+'abc' + b'xyz'.decode()   # 'abcxyz'，要先 decode
 \`\`\`
 
 ### 12.4 最佳实践
@@ -3275,10 +3275,10 @@ b_gbk.decode('utf-8')          # ❌ UnicodeDecodeError
 | \`'xmlcharrefreplace'\` | 用 &#数字; 替换（XML 实体） |
 
 \`\`\`python
->>> b_gbk = '你好'.encode('gbk')
->>> b_gbk.decode('utf-8', errors='ignore')      # ''（全部跳过）
->>> b_gbk.decode('utf-8', errors='replace')     # '□□'（替换）
->>> b_gbk.decode('utf-8', errors='backslashreplace')  # '\\xc4\\xe3\\xba\\xc3'
+b_gbk = '你好'.encode('gbk')
+b_gbk.decode('utf-8', errors='ignore')      # ''（全部跳过）
+b_gbk.decode('utf-8', errors='replace')     # '□□'（替换）
+b_gbk.decode('utf-8', errors='backslashreplace')  # '\\xc4\\xe3\\xba\\xc3'
 \`\`\`
 
 **实战建议**：处理来源不明的文本时，\`errors='replace'\` 能保证程序不崩溃，但会丢失信息；最好先用 \`chardet\`（第三方库）或 \`codecs\` 检测编码。
@@ -3348,11 +3348,11 @@ for char in codecs.iterdecode(byte_iter, 'utf-8'):  # 遍历 codecs.iterdecode(b
 ### 9.3 lookup 查询编码信息
 
 \`\`\`python
->>> import codecs
->>> info = codecs.lookup('utf-8')
->>> info.name           # 'utf-8'
->>> info.encode('hi')   # (b'hi', 2)
->>> info.decode(b'hi')  # ('hi', 2)
+import codecs
+info = codecs.lookup('utf-8')
+info.name           # 'utf-8'
+info.encode('hi')   # (b'hi', 2)
+info.decode(b'hi')  # ('hi', 2)
 \`\`\`
 
 ### 9.4 注册自定义编码
@@ -3421,20 +3421,20 @@ with open('data.csv', 'r', encoding='utf-8', newline='') as f:  # 使用上下�
 | NFKD | \`unicodedata.normalize('NFKD', s)\` | 兼容性分解 |
 
 \`\`\`python
->>> import unicodedata
->>> s1 = 'é'              # 1 个字符 U+00E9
->>> s2 = 'e\\u0301'        # 2 个字符 e + 重音
->>> s1 == s2              # False
->>> len(s1), len(s2)      # (1, 2)
->>> unicodedata.normalize('NFC', s2) == s1   # True
+import unicodedata
+s1 = 'é'              # 1 个字符 U+00E9
+s2 = 'e\\u0301'        # 2 个字符 e + 重音
+s1 == s2              # False
+len(s1), len(s2)      # (1, 2)
+unicodedata.normalize('NFC', s2) == s1   # True
 \`\`\`
 
 **NFKC/NFKD 的"兼容性分解"会把全角字符转成半角**，适合搜索/去重：
 
 \`\`\`python
->>> unicodedata.normalize('NFKC', '①')   # '1'
->>> unicodedata.normalize('NFKC', 'ＡＢＣ')   # 'ABC'（全角转半角）
->>> unicodedata.normalize('NFKC', 'ﬁ')       # 'fi'（连字拆开）
+unicodedata.normalize('NFKC', '①')   # '1'
+unicodedata.normalize('NFKC', 'ＡＢＣ')   # 'ABC'（全角转半角）
+unicodedata.normalize('NFKC', 'ﬁ')       # 'fi'（连字拆开）
 \`\`\`
 
 ---
@@ -6921,7 +6921,7 @@ def is_prime(n):                   # 定义函数 is_prime，参数：n
 
 pipeline = (                       # 将 ( 赋给 pipeline
     itertools.count(2)                          # 2,3,4,... 无限
-    |> 不存在，Python 用生成器表达式/itertools 链
+    # 注意：Python 没有 |> 管道操作符，用生成器表达式或 itertools 链替代
 )
 # 实际写法：嵌套或生成器表达式
 nums = itertools.count(2)          # 将 itertools.count(2) 赋给 nums
