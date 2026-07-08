@@ -203,6 +203,11 @@ export default function useBookDragDrop(categories) {
     });
   }, []);
 
+  // 通用更新：接受 updater 函数，用于一致性维护等需要复杂批量操作的场景
+  const updateOrder = useCallback((updater) => {
+    setBookOrder((prev) => updater(prev) || prev);
+  }, []);
+
   // 重置为默认排序
   const resetToDefaults = useCallback((categories) => {
     const defaults = getDefaultBookOrder(categories);
@@ -236,6 +241,7 @@ export default function useBookDragDrop(categories) {
     removeCategoryFromOrder,
     ensureCategory,
     moveBooksToCategory,
+    updateOrder,
     resetToDefaults,
     resetToOrder,
     getOrderedPaths,

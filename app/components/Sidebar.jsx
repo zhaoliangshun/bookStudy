@@ -296,7 +296,7 @@ export default function Sidebar({
     useBookCategories(initiallyHiddenCats);
 
   // ===== 书籍拖拽排序 =====
-  const { bookOrder, reorderInCategory, moveToCategory, renameCategoryInOrder, removeCategoryFromOrder, ensureCategory, moveBooksToCategory, resetToDefaults: resetBookOrder, resetToOrder, getOrderedPaths } =
+  const { bookOrder, reorderInCategory, moveToCategory, renameCategoryInOrder, removeCategoryFromOrder, ensureCategory, moveBooksToCategory, updateOrder, resetToDefaults: resetBookOrder, resetToOrder, getOrderedPaths } =
     useBookDragDrop(BOOK_CATEGORIES);
 
   // ===== 用户保存的默认分组设置 =====
@@ -336,22 +336,62 @@ export default function Sidebar({
   // 统一维护 bookOrder 数据一致性：确保每本书都在正确的分类中
   // - 旧 hiddenBooks 中的书籍 → "已隐藏"（这些是用户之前主动隐藏的）
   // - 在被隐藏默认分类中的书籍 → "未分组"（分组被隐藏，书不应自动变隐藏）
+  // - 在被删除自定义分类中的书籍 → 归还到默认分类或"未分组"
   // - 完全不在 bookOrder 中的书籍 → 默认分类（可见）或"未分组"
-  // - 清理空的被隐藏分类 key
-  const consistencyCheckedRef = useRef(false);
+  // - 清理无效路径（已删除书籍的旧路径）
+  // - 清理已不存在的分类 key（已删除的自定义分类、已隐藏默认分类的冗余 key）
   useEffect(() => {
     const moves = [];
     const assignedPaths = new Set();
     const catsToRemove = [];
+    const allValidPaths = new Set(ALL_BOOKS.map((b) => b.path));
 
-    // 收集当前 bookOrder 中所有已分配的书籍路径，同时检查隐藏分类
+    // 收集所有合法的分类名（系统分类 + 可见默认分类 + 自定义分类）
+    const validCatNames = new Set();
+    validCatNames.add("未分组");
+    validCatNames.add("已隐藏");
+    BOOK_CATEGORIES.forEach((c) => {
+      if (c.system) return;
+      if (!catConfig.hidden.includes(c.name)) {
+        validCatNames.add(catConfig.renamed[c.name] || c.name);
+      }
+    });
+    catConfig.custom.forEach((c) => validCatNames.add(c.name));
+
+    // 收集当前 bookOrder 中所有已分配的书籍路径，同时检查隐藏/已删除分类
     for (const [catName, paths] of Object.entries(bookOrder)) {
-      // 跳过系统分类
+      // 过滤掉无效路径
+      const validPaths = paths.filter((p) => allValidPaths.has(p));
+
+      // 跳过系统分类，直接收集有效路径
       if (catName === "未分组" || catName === "已隐藏") {
-        paths.forEach((p) => assignedPaths.add(p));
+        validPaths.forEach((p) => assignedPaths.add(p));
+        // 如果有无效路径被过滤掉，需要更新
+        if (validPaths.length !== paths.length) {
+          catsToRemove.push({ cat: catName, clean: validPaths });
+        }
         continue;
       }
-      // 找原始分类名（考虑重命名）
+
+      // 分类不存在（已删除的自定义分类或已隐藏的默认分类），其中的书需要重新分配
+      if (!validCatNames.has(catName)) {
+        validPaths.forEach((p) => {
+          if (!assignedPaths.has(p)) {
+            assignedPaths.add(p);
+            const defCat = bookDefaultCategory[p];
+            if (!defCat || catConfig.hidden.includes(defCat)) {
+              moves.push({ path: p, toCategory: "未分组" });
+            } else {
+              const displayName = catConfig.renamed[defCat] || defCat;
+              moves.push({ path: p, toCategory: displayName });
+            }
+          }
+        });
+        catsToRemove.push({ cat: catName, remove: true });
+        continue;
+      }
+
+      // 找原始分类名（考虑重命名），检查是否是被隐藏的默认分类
       let origName = catName;
       for (const [orig, renamed] of Object.entries(catConfig.renamed)) {
         if (renamed === catName) { origName = orig; break; }
@@ -360,22 +400,26 @@ export default function Sidebar({
       const isHidden = isDefault && catConfig.hidden.includes(origName);
       if (isHidden) {
         // 默认分类被隐藏了，把其中的书移到"未分组"
-        paths.forEach((p) => {
+        validPaths.forEach((p) => {
           if (!assignedPaths.has(p)) {
             assignedPaths.add(p);
             moves.push({ path: p, toCategory: "未分组" });
           }
         });
-        catsToRemove.push(catName);
+        catsToRemove.push({ cat: catName, remove: true });
       } else {
-        paths.forEach((p) => assignedPaths.add(p));
+        validPaths.forEach((p) => assignedPaths.add(p));
+        // 如果有无效路径被过滤掉，记录需要清理
+        if (validPaths.length !== paths.length) {
+          catsToRemove.push({ cat: catName, clean: validPaths });
+        }
       }
     }
 
     // 收集旧 hiddenBooks 中的书籍（用户主动隐藏的，保留在已隐藏）
     if (hiddenBooks.size > 0) {
       hiddenBooks.forEach((p) => {
-        if (!assignedPaths.has(p)) {
+        if (allValidPaths.has(p) && !assignedPaths.has(p)) {
           assignedPaths.add(p);
           moves.push({ path: p, toCategory: "已隐藏" });
         }
@@ -394,14 +438,36 @@ export default function Sidebar({
       }
     });
 
-    if (moves.length > 0) {
-      moveBooksToCategory(moves);
+    // 需要清理或更新分类
+    if (catsToRemove.length > 0 || moves.length > 0) {
+      updateOrder((prev) => {
+        let next = { ...prev };
+        // 处理分类清理
+        catsToRemove.forEach(({ cat, remove, clean }) => {
+          if (remove) {
+            delete next[cat];
+          } else if (clean) {
+            next[cat] = clean;
+          }
+        });
+        // 如果有书籍需要移动
+        if (moves.length > 0) {
+          const pathSet = new Set(moves.map((m) => m.path));
+          for (const cat of Object.keys(next)) {
+            next[cat] = next[cat].filter((p) => !pathSet.has(p));
+          }
+          for (const { path, toCategory } of moves) {
+            if (!next[toCategory]) next[toCategory] = [];
+            next[toCategory] = [...next[toCategory], path];
+          }
+        }
+        return next;
+      });
     }
     if (hiddenBooks.size > 0) {
       clearHiddenBooks();
     }
-    consistencyCheckedRef.current = true;
-  }, [bookOrder, catConfig.hidden, catConfig.renamed, hiddenBooks, moveBooksToCategory, clearHiddenBooks, bookDefaultCategory]);
+  }, [bookOrder, catConfig.hidden, catConfig.renamed, catConfig.custom, hiddenBooks, updateOrder, clearHiddenBooks, bookDefaultCategory]);
 
   // 根据排序、自定义分类、隐藏状态计算最终可见的分类列表
   const visibleCategories = useMemo(() => {
@@ -492,10 +558,9 @@ export default function Sidebar({
           .filter(Boolean),
       };
     }).filter((cat) => {
-      // 系统分类（未分组、已隐藏）始终显示；自定义分类始终显示
-      if (cat.system) return true;
-      if (cat.isCustom) return true;
-      return cat.books.length > 0;
+      // 所有通过前面筛选的分类（系统分类 + 未被隐藏的默认分类 + 自定义分类）都始终显示
+      // 这样空分类也能作为拖拽目标，方便用户把书拖回去
+      return true;
     });
   }, [catConfig, getOrderedPaths, bookOrder, bookDefaultCategory]);
 
