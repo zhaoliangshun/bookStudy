@@ -90,7 +90,7 @@ export const chapters = [
 
 下面以伪代码形式展示哈希表基础的通用执行流程：
 
-```
+\`\`\`
 算法: 哈希表基础
 输入: 待处理的数据 data
 输出: 处理后的结果 result
@@ -112,13 +112,13 @@ export const chapters = [
    - 按照要求的格式返回
 
 返回 result
-```
+\`\`\`
 
 ### 3.3 图示说明
 
 为了更直观地理解，我们用ASCII图展示过程：
 
-```
+\`\`\`
 初始状态：
 [ ][ ][ ][ ][ ][ ][ ][ ][ ]  数据存储
  ↑
@@ -133,7 +133,7 @@ export const chapters = [
 [✅][✅][✅][✅][✅][✅][✅][✅][✅]
                            ↑
                        得到结果
-```
+\`\`\`
 
 ---
 
@@ -141,7 +141,7 @@ export const chapters = [
 
 ### 4.1 JavaScript实现
 
-```javascript
+\`\`\`javascript
 /**
  * 哈希表基础 - JavaScript实现
  * @param {number[]} arr - 输入数据
@@ -171,11 +171,11 @@ function hash_intro(arr) {
 // 测试用例
 const testArr = [1, 2, 3, 4, 5];
 console.log('Test:', hash_intro(testArr));
-```
+\`\`\`
 
 ### 4.2 Python实现
 
-```python
+\`\`\`python
 from typing import List
 
 def hash_intro(arr: List[int]) -> int:
@@ -207,11 +207,11 @@ def hash_intro(arr: List[int]) -> int:
 if __name__ == "__main__":
     test_arr = [1, 2, 3, 4, 5]
     print(f"Test: {hash_intro(test_arr)}")
-```
+\`\`\`
 
 ### 4.3 Java实现
 
-```java
+\`\`\`java
 /**
  * 哈希表基础 - Java实现
  */
@@ -241,11 +241,11 @@ public class Solution {
         System.out.println("Test: " + solution.hashIntro(testArr));
     }
 }
-```
+\`\`\`
 
 ### 4.4 C++实现
 
-```cpp
+\`\`\`cpp
 #include <iostream>
 #include <vector>
 using namespace std;
@@ -280,7 +280,7 @@ int main() {
     cout << "Test: " << solution.hashIntro(testArr) << endl;
     return 0;
 }
-```
+\`\`\`
 
 ---
 
@@ -329,21 +329,21 @@ int main() {
 ### 例题1：基础应用题
 
 **题目描述**：
-给定一个整数数组 `nums` 和一个目标值 `target`，请你使用哈希表基础的思想，找到...并返回其索引/长度/值。
+给定一个整数数组 \`nums\` 和一个目标值 \`target\`，请你使用哈希表基础的思想，找到...并返回其索引/长度/值。
 
 **示例 1**：
-```
+\`\`\`
 输入: nums = [1, 3, 5, 7, 9], target = 5
 输出: 2
 解释: 目标值5出现在索引2的位置
-```
+\`\`\`
 
 **示例 2**：
-```
+\`\`\`
 输入: nums = [2, 2, 3, 4, 5], target = 6
 输出: ...
 解释: ...
-```
+\`\`\`
 
 **解题思路**：
 1. 首先观察题目特征：数组是否有序？是否有单调性？
@@ -352,7 +352,7 @@ int main() {
 4. 考虑边界：空数组？单元素数组？所有元素相同？target不存在？
 
 **完整代码**：
-```javascript
+\`\`\`javascript
 function solve(nums, target) {
     let left = 0;
     let result = -1;
@@ -372,7 +372,7 @@ function solve(nums, target) {
     
     return result;
 }
-```
+\`\`\`
 
 **复杂度分析**：
 - 时间复杂度：O(n)，每个元素最多被访问两次（左右指针各一次）
@@ -392,14 +392,14 @@ function solve(nums, target) {
 - 优化点3：提前终止不可能的情况
 
 **代码实现**：
-```python
+\`\`\`python
 def solve_optimized(nums, target):
     # 优化后的实现
     from collections import defaultdict
     window = defaultdict(int)
     # ...具体实现
     pass
-```
+\`\`\`
 
 ---
 
@@ -415,7 +415,7 @@ def solve_optimized(nums, target):
 
 以LeetCode第1题为例：
 
-```java
+\`\`\`java
 // 两数之和 - 哈希表解法
 public int[] twoSum(int[] nums, int target) {
     Map<Integer, Integer> map = new HashMap<>();
@@ -428,7 +428,7 @@ public int[] twoSum(int[] nums, int target) {
     }
     throw new IllegalArgumentException("No solution");
 }
-```
+\`\`\`
 
 ---
 
@@ -460,7 +460,7 @@ public int[] twoSum(int[] nums, int target) {
 
 哈希表基础的通用代码模板：
 
-```javascript
+\`\`\`javascript
 function template(nums) {
     // 1. 边界判断
     if (!nums || nums.length === 0) return ...;
@@ -489,7 +489,7 @@ function template(nums) {
     
     return result;
 }
-```
+\`\`\`
 
 ### 7.3 识别哈希表基础的信号
 
@@ -506,9 +506,9 @@ function template(nums) {
 ### 7.4 调试技巧
 
 1. **打印法**：在关键位置打印变量值，观察是否符合预期
-   ```javascript
-   console.log(`left=${left}, right=${right}, state=${state}, result=${result}`);
-   ```
+   \`\`\`javascript
+   console.log(\`left=${left}, right=${right}, state=${state}, result=${result}\`);
+   \`\`\`
 
 2. **手动模拟**：拿最简单的例子（如[1,2,3]），用纸笔走一遍流程
 
@@ -719,7 +719,7 @@ A: 建议至少3遍：
 
 下面以伪代码形式展示哈希函数设计的通用执行流程：
 
-```
+\`\`\`
 算法: 哈希函数设计
 输入: 待处理的数据 data
 输出: 处理后的结果 result
@@ -741,13 +741,13 @@ A: 建议至少3遍：
    - 按照要求的格式返回
 
 返回 result
-```
+\`\`\`
 
 ### 3.3 图示说明
 
 为了更直观地理解，我们用ASCII图展示过程：
 
-```
+\`\`\`
 初始状态：
 [ ][ ][ ][ ][ ][ ][ ][ ][ ]  数据存储
  ↑
@@ -762,7 +762,7 @@ A: 建议至少3遍：
 [✅][✅][✅][✅][✅][✅][✅][✅][✅]
                            ↑
                        得到结果
-```
+\`\`\`
 
 ---
 
@@ -770,7 +770,7 @@ A: 建议至少3遍：
 
 ### 4.1 JavaScript实现
 
-```javascript
+\`\`\`javascript
 /**
  * 哈希函数设计 - JavaScript实现
  * @param {number[]} arr - 输入数据
@@ -800,11 +800,11 @@ function hash_function(arr) {
 // 测试用例
 const testArr = [1, 2, 3, 4, 5];
 console.log('Test:', hash_function(testArr));
-```
+\`\`\`
 
 ### 4.2 Python实现
 
-```python
+\`\`\`python
 from typing import List
 
 def hash_function(arr: List[int]) -> int:
@@ -836,11 +836,11 @@ def hash_function(arr: List[int]) -> int:
 if __name__ == "__main__":
     test_arr = [1, 2, 3, 4, 5]
     print(f"Test: {hash_function(test_arr)}")
-```
+\`\`\`
 
 ### 4.3 Java实现
 
-```java
+\`\`\`java
 /**
  * 哈希函数设计 - Java实现
  */
@@ -870,11 +870,11 @@ public class Solution {
         System.out.println("Test: " + solution.hashFunction(testArr));
     }
 }
-```
+\`\`\`
 
 ### 4.4 C++实现
 
-```cpp
+\`\`\`cpp
 #include <iostream>
 #include <vector>
 using namespace std;
@@ -909,7 +909,7 @@ int main() {
     cout << "Test: " << solution.hashFunction(testArr) << endl;
     return 0;
 }
-```
+\`\`\`
 
 ---
 
@@ -958,21 +958,21 @@ int main() {
 ### 例题1：基础应用题
 
 **题目描述**：
-给定一个整数数组 `nums` 和一个目标值 `target`，请你使用哈希函数设计的思想，找到...并返回其索引/长度/值。
+给定一个整数数组 \`nums\` 和一个目标值 \`target\`，请你使用哈希函数设计的思想，找到...并返回其索引/长度/值。
 
 **示例 1**：
-```
+\`\`\`
 输入: nums = [1, 3, 5, 7, 9], target = 5
 输出: 2
 解释: 目标值5出现在索引2的位置
-```
+\`\`\`
 
 **示例 2**：
-```
+\`\`\`
 输入: nums = [2, 2, 3, 4, 5], target = 6
 输出: ...
 解释: ...
-```
+\`\`\`
 
 **解题思路**：
 1. 首先观察题目特征：数组是否有序？是否有单调性？
@@ -981,7 +981,7 @@ int main() {
 4. 考虑边界：空数组？单元素数组？所有元素相同？target不存在？
 
 **完整代码**：
-```javascript
+\`\`\`javascript
 function solve(nums, target) {
     let left = 0;
     let result = -1;
@@ -1001,7 +1001,7 @@ function solve(nums, target) {
     
     return result;
 }
-```
+\`\`\`
 
 **复杂度分析**：
 - 时间复杂度：O(n)，每个元素最多被访问两次（左右指针各一次）
@@ -1021,14 +1021,14 @@ function solve(nums, target) {
 - 优化点3：提前终止不可能的情况
 
 **代码实现**：
-```python
+\`\`\`python
 def solve_optimized(nums, target):
     # 优化后的实现
     from collections import defaultdict
     window = defaultdict(int)
     # ...具体实现
     pass
-```
+\`\`\`
 
 ---
 
@@ -1044,7 +1044,7 @@ def solve_optimized(nums, target):
 
 以LeetCode第1题为例：
 
-```java
+\`\`\`java
 // 两数之和 - 哈希表解法
 public int[] twoSum(int[] nums, int target) {
     Map<Integer, Integer> map = new HashMap<>();
@@ -1057,7 +1057,7 @@ public int[] twoSum(int[] nums, int target) {
     }
     throw new IllegalArgumentException("No solution");
 }
-```
+\`\`\`
 
 ---
 
@@ -1089,7 +1089,7 @@ public int[] twoSum(int[] nums, int target) {
 
 哈希函数设计的通用代码模板：
 
-```javascript
+\`\`\`javascript
 function template(nums) {
     // 1. 边界判断
     if (!nums || nums.length === 0) return ...;
@@ -1118,7 +1118,7 @@ function template(nums) {
     
     return result;
 }
-```
+\`\`\`
 
 ### 7.3 识别哈希函数设计的信号
 
@@ -1135,9 +1135,9 @@ function template(nums) {
 ### 7.4 调试技巧
 
 1. **打印法**：在关键位置打印变量值，观察是否符合预期
-   ```javascript
-   console.log(`left=${left}, right=${right}, state=${state}, result=${result}`);
-   ```
+   \`\`\`javascript
+   console.log(\`left=${left}, right=${right}, state=${state}, result=${result}\`);
+   \`\`\`
 
 2. **手动模拟**：拿最简单的例子（如[1,2,3]），用纸笔走一遍流程
 
@@ -1348,7 +1348,7 @@ A: 建议至少3遍：
 
 下面以伪代码形式展示哈希冲突解决的通用执行流程：
 
-```
+\`\`\`
 算法: 哈希冲突解决
 输入: 待处理的数据 data
 输出: 处理后的结果 result
@@ -1370,13 +1370,13 @@ A: 建议至少3遍：
    - 按照要求的格式返回
 
 返回 result
-```
+\`\`\`
 
 ### 3.3 图示说明
 
 为了更直观地理解，我们用ASCII图展示过程：
 
-```
+\`\`\`
 初始状态：
 [ ][ ][ ][ ][ ][ ][ ][ ][ ]  数据存储
  ↑
@@ -1391,7 +1391,7 @@ A: 建议至少3遍：
 [✅][✅][✅][✅][✅][✅][✅][✅][✅]
                            ↑
                        得到结果
-```
+\`\`\`
 
 ---
 
@@ -1399,7 +1399,7 @@ A: 建议至少3遍：
 
 ### 4.1 JavaScript实现
 
-```javascript
+\`\`\`javascript
 /**
  * 哈希冲突解决 - JavaScript实现
  * @param {number[]} arr - 输入数据
@@ -1429,11 +1429,11 @@ function hash_collision(arr) {
 // 测试用例
 const testArr = [1, 2, 3, 4, 5];
 console.log('Test:', hash_collision(testArr));
-```
+\`\`\`
 
 ### 4.2 Python实现
 
-```python
+\`\`\`python
 from typing import List
 
 def hash_collision(arr: List[int]) -> int:
@@ -1465,11 +1465,11 @@ def hash_collision(arr: List[int]) -> int:
 if __name__ == "__main__":
     test_arr = [1, 2, 3, 4, 5]
     print(f"Test: {hash_collision(test_arr)}")
-```
+\`\`\`
 
 ### 4.3 Java实现
 
-```java
+\`\`\`java
 /**
  * 哈希冲突解决 - Java实现
  */
@@ -1499,11 +1499,11 @@ public class Solution {
         System.out.println("Test: " + solution.hashCollision(testArr));
     }
 }
-```
+\`\`\`
 
 ### 4.4 C++实现
 
-```cpp
+\`\`\`cpp
 #include <iostream>
 #include <vector>
 using namespace std;
@@ -1538,7 +1538,7 @@ int main() {
     cout << "Test: " << solution.hashCollision(testArr) << endl;
     return 0;
 }
-```
+\`\`\`
 
 ---
 
@@ -1587,21 +1587,21 @@ int main() {
 ### 例题1：基础应用题
 
 **题目描述**：
-给定一个整数数组 `nums` 和一个目标值 `target`，请你使用哈希冲突解决的思想，找到...并返回其索引/长度/值。
+给定一个整数数组 \`nums\` 和一个目标值 \`target\`，请你使用哈希冲突解决的思想，找到...并返回其索引/长度/值。
 
 **示例 1**：
-```
+\`\`\`
 输入: nums = [1, 3, 5, 7, 9], target = 5
 输出: 2
 解释: 目标值5出现在索引2的位置
-```
+\`\`\`
 
 **示例 2**：
-```
+\`\`\`
 输入: nums = [2, 2, 3, 4, 5], target = 6
 输出: ...
 解释: ...
-```
+\`\`\`
 
 **解题思路**：
 1. 首先观察题目特征：数组是否有序？是否有单调性？
@@ -1610,7 +1610,7 @@ int main() {
 4. 考虑边界：空数组？单元素数组？所有元素相同？target不存在？
 
 **完整代码**：
-```javascript
+\`\`\`javascript
 function solve(nums, target) {
     let left = 0;
     let result = -1;
@@ -1630,7 +1630,7 @@ function solve(nums, target) {
     
     return result;
 }
-```
+\`\`\`
 
 **复杂度分析**：
 - 时间复杂度：O(n)，每个元素最多被访问两次（左右指针各一次）
@@ -1650,14 +1650,14 @@ function solve(nums, target) {
 - 优化点3：提前终止不可能的情况
 
 **代码实现**：
-```python
+\`\`\`python
 def solve_optimized(nums, target):
     # 优化后的实现
     from collections import defaultdict
     window = defaultdict(int)
     # ...具体实现
     pass
-```
+\`\`\`
 
 ---
 
@@ -1673,7 +1673,7 @@ def solve_optimized(nums, target):
 
 以LeetCode第1题为例：
 
-```java
+\`\`\`java
 // 两数之和 - 哈希表解法
 public int[] twoSum(int[] nums, int target) {
     Map<Integer, Integer> map = new HashMap<>();
@@ -1686,7 +1686,7 @@ public int[] twoSum(int[] nums, int target) {
     }
     throw new IllegalArgumentException("No solution");
 }
-```
+\`\`\`
 
 ---
 
@@ -1718,7 +1718,7 @@ public int[] twoSum(int[] nums, int target) {
 
 哈希冲突解决的通用代码模板：
 
-```javascript
+\`\`\`javascript
 function template(nums) {
     // 1. 边界判断
     if (!nums || nums.length === 0) return ...;
@@ -1747,7 +1747,7 @@ function template(nums) {
     
     return result;
 }
-```
+\`\`\`
 
 ### 7.3 识别哈希冲突解决的信号
 
@@ -1764,9 +1764,9 @@ function template(nums) {
 ### 7.4 调试技巧
 
 1. **打印法**：在关键位置打印变量值，观察是否符合预期
-   ```javascript
-   console.log(`left=${left}, right=${right}, state=${state}, result=${result}`);
-   ```
+   \`\`\`javascript
+   console.log(\`left=${left}, right=${right}, state=${state}, result=${result}\`);
+   \`\`\`
 
 2. **手动模拟**：拿最简单的例子（如[1,2,3]），用纸笔走一遍流程
 
@@ -1977,7 +1977,7 @@ A: 建议至少3遍：
 
 下面以伪代码形式展示哈希表实现的通用执行流程：
 
-```
+\`\`\`
 算法: 哈希表实现
 输入: 待处理的数据 data
 输出: 处理后的结果 result
@@ -1999,13 +1999,13 @@ A: 建议至少3遍：
    - 按照要求的格式返回
 
 返回 result
-```
+\`\`\`
 
 ### 3.3 图示说明
 
 为了更直观地理解，我们用ASCII图展示过程：
 
-```
+\`\`\`
 初始状态：
 [ ][ ][ ][ ][ ][ ][ ][ ][ ]  数据存储
  ↑
@@ -2020,7 +2020,7 @@ A: 建议至少3遍：
 [✅][✅][✅][✅][✅][✅][✅][✅][✅]
                            ↑
                        得到结果
-```
+\`\`\`
 
 ---
 
@@ -2028,7 +2028,7 @@ A: 建议至少3遍：
 
 ### 4.1 JavaScript实现
 
-```javascript
+\`\`\`javascript
 /**
  * 哈希表实现 - JavaScript实现
  * @param {number[]} arr - 输入数据
@@ -2058,11 +2058,11 @@ function hash_implementation(arr) {
 // 测试用例
 const testArr = [1, 2, 3, 4, 5];
 console.log('Test:', hash_implementation(testArr));
-```
+\`\`\`
 
 ### 4.2 Python实现
 
-```python
+\`\`\`python
 from typing import List
 
 def hash_implementation(arr: List[int]) -> int:
@@ -2094,11 +2094,11 @@ def hash_implementation(arr: List[int]) -> int:
 if __name__ == "__main__":
     test_arr = [1, 2, 3, 4, 5]
     print(f"Test: {hash_implementation(test_arr)}")
-```
+\`\`\`
 
 ### 4.3 Java实现
 
-```java
+\`\`\`java
 /**
  * 哈希表实现 - Java实现
  */
@@ -2128,11 +2128,11 @@ public class Solution {
         System.out.println("Test: " + solution.hashImplementation(testArr));
     }
 }
-```
+\`\`\`
 
 ### 4.4 C++实现
 
-```cpp
+\`\`\`cpp
 #include <iostream>
 #include <vector>
 using namespace std;
@@ -2167,7 +2167,7 @@ int main() {
     cout << "Test: " << solution.hashImplementation(testArr) << endl;
     return 0;
 }
-```
+\`\`\`
 
 ---
 
@@ -2216,21 +2216,21 @@ int main() {
 ### 例题1：基础应用题
 
 **题目描述**：
-给定一个整数数组 `nums` 和一个目标值 `target`，请你使用哈希表实现的思想，找到...并返回其索引/长度/值。
+给定一个整数数组 \`nums\` 和一个目标值 \`target\`，请你使用哈希表实现的思想，找到...并返回其索引/长度/值。
 
 **示例 1**：
-```
+\`\`\`
 输入: nums = [1, 3, 5, 7, 9], target = 5
 输出: 2
 解释: 目标值5出现在索引2的位置
-```
+\`\`\`
 
 **示例 2**：
-```
+\`\`\`
 输入: nums = [2, 2, 3, 4, 5], target = 6
 输出: ...
 解释: ...
-```
+\`\`\`
 
 **解题思路**：
 1. 首先观察题目特征：数组是否有序？是否有单调性？
@@ -2239,7 +2239,7 @@ int main() {
 4. 考虑边界：空数组？单元素数组？所有元素相同？target不存在？
 
 **完整代码**：
-```javascript
+\`\`\`javascript
 function solve(nums, target) {
     let left = 0;
     let result = -1;
@@ -2259,7 +2259,7 @@ function solve(nums, target) {
     
     return result;
 }
-```
+\`\`\`
 
 **复杂度分析**：
 - 时间复杂度：O(n)，每个元素最多被访问两次（左右指针各一次）
@@ -2279,14 +2279,14 @@ function solve(nums, target) {
 - 优化点3：提前终止不可能的情况
 
 **代码实现**：
-```python
+\`\`\`python
 def solve_optimized(nums, target):
     # 优化后的实现
     from collections import defaultdict
     window = defaultdict(int)
     # ...具体实现
     pass
-```
+\`\`\`
 
 ---
 
@@ -2302,7 +2302,7 @@ def solve_optimized(nums, target):
 
 以LeetCode第1题为例：
 
-```java
+\`\`\`java
 // 两数之和 - 哈希表解法
 public int[] twoSum(int[] nums, int target) {
     Map<Integer, Integer> map = new HashMap<>();
@@ -2315,7 +2315,7 @@ public int[] twoSum(int[] nums, int target) {
     }
     throw new IllegalArgumentException("No solution");
 }
-```
+\`\`\`
 
 ---
 
@@ -2347,7 +2347,7 @@ public int[] twoSum(int[] nums, int target) {
 
 哈希表实现的通用代码模板：
 
-```javascript
+\`\`\`javascript
 function template(nums) {
     // 1. 边界判断
     if (!nums || nums.length === 0) return ...;
@@ -2376,7 +2376,7 @@ function template(nums) {
     
     return result;
 }
-```
+\`\`\`
 
 ### 7.3 识别哈希表实现的信号
 
@@ -2393,9 +2393,9 @@ function template(nums) {
 ### 7.4 调试技巧
 
 1. **打印法**：在关键位置打印变量值，观察是否符合预期
-   ```javascript
-   console.log(`left=${left}, right=${right}, state=${state}, result=${result}`);
-   ```
+   \`\`\`javascript
+   console.log(\`left=${left}, right=${right}, state=${state}, result=${result}\`);
+   \`\`\`
 
 2. **手动模拟**：拿最简单的例子（如[1,2,3]），用纸笔走一遍流程
 
@@ -2606,7 +2606,7 @@ A: 建议至少3遍：
 
 下面以伪代码形式展示哈希表应用场景的通用执行流程：
 
-```
+\`\`\`
 算法: 哈希表应用场景
 输入: 待处理的数据 data
 输出: 处理后的结果 result
@@ -2628,13 +2628,13 @@ A: 建议至少3遍：
    - 按照要求的格式返回
 
 返回 result
-```
+\`\`\`
 
 ### 3.3 图示说明
 
 为了更直观地理解，我们用ASCII图展示过程：
 
-```
+\`\`\`
 初始状态：
 [ ][ ][ ][ ][ ][ ][ ][ ][ ]  数据存储
  ↑
@@ -2649,7 +2649,7 @@ A: 建议至少3遍：
 [✅][✅][✅][✅][✅][✅][✅][✅][✅]
                            ↑
                        得到结果
-```
+\`\`\`
 
 ---
 
@@ -2657,7 +2657,7 @@ A: 建议至少3遍：
 
 ### 4.1 JavaScript实现
 
-```javascript
+\`\`\`javascript
 /**
  * 哈希表应用场景 - JavaScript实现
  * @param {number[]} arr - 输入数据
@@ -2687,11 +2687,11 @@ function hash_applications(arr) {
 // 测试用例
 const testArr = [1, 2, 3, 4, 5];
 console.log('Test:', hash_applications(testArr));
-```
+\`\`\`
 
 ### 4.2 Python实现
 
-```python
+\`\`\`python
 from typing import List
 
 def hash_applications(arr: List[int]) -> int:
@@ -2723,11 +2723,11 @@ def hash_applications(arr: List[int]) -> int:
 if __name__ == "__main__":
     test_arr = [1, 2, 3, 4, 5]
     print(f"Test: {hash_applications(test_arr)}")
-```
+\`\`\`
 
 ### 4.3 Java实现
 
-```java
+\`\`\`java
 /**
  * 哈希表应用场景 - Java实现
  */
@@ -2757,11 +2757,11 @@ public class Solution {
         System.out.println("Test: " + solution.hashApplications(testArr));
     }
 }
-```
+\`\`\`
 
 ### 4.4 C++实现
 
-```cpp
+\`\`\`cpp
 #include <iostream>
 #include <vector>
 using namespace std;
@@ -2796,7 +2796,7 @@ int main() {
     cout << "Test: " << solution.hashApplications(testArr) << endl;
     return 0;
 }
-```
+\`\`\`
 
 ---
 
@@ -2845,21 +2845,21 @@ int main() {
 ### 例题1：基础应用题
 
 **题目描述**：
-给定一个整数数组 `nums` 和一个目标值 `target`，请你使用哈希表应用场景的思想，找到...并返回其索引/长度/值。
+给定一个整数数组 \`nums\` 和一个目标值 \`target\`，请你使用哈希表应用场景的思想，找到...并返回其索引/长度/值。
 
 **示例 1**：
-```
+\`\`\`
 输入: nums = [1, 3, 5, 7, 9], target = 5
 输出: 2
 解释: 目标值5出现在索引2的位置
-```
+\`\`\`
 
 **示例 2**：
-```
+\`\`\`
 输入: nums = [2, 2, 3, 4, 5], target = 6
 输出: ...
 解释: ...
-```
+\`\`\`
 
 **解题思路**：
 1. 首先观察题目特征：数组是否有序？是否有单调性？
@@ -2868,7 +2868,7 @@ int main() {
 4. 考虑边界：空数组？单元素数组？所有元素相同？target不存在？
 
 **完整代码**：
-```javascript
+\`\`\`javascript
 function solve(nums, target) {
     let left = 0;
     let result = -1;
@@ -2888,7 +2888,7 @@ function solve(nums, target) {
     
     return result;
 }
-```
+\`\`\`
 
 **复杂度分析**：
 - 时间复杂度：O(n)，每个元素最多被访问两次（左右指针各一次）
@@ -2908,14 +2908,14 @@ function solve(nums, target) {
 - 优化点3：提前终止不可能的情况
 
 **代码实现**：
-```python
+\`\`\`python
 def solve_optimized(nums, target):
     # 优化后的实现
     from collections import defaultdict
     window = defaultdict(int)
     # ...具体实现
     pass
-```
+\`\`\`
 
 ---
 
@@ -2931,7 +2931,7 @@ def solve_optimized(nums, target):
 
 以LeetCode第1题为例：
 
-```java
+\`\`\`java
 // 两数之和 - 哈希表解法
 public int[] twoSum(int[] nums, int target) {
     Map<Integer, Integer> map = new HashMap<>();
@@ -2944,7 +2944,7 @@ public int[] twoSum(int[] nums, int target) {
     }
     throw new IllegalArgumentException("No solution");
 }
-```
+\`\`\`
 
 ---
 
@@ -2976,7 +2976,7 @@ public int[] twoSum(int[] nums, int target) {
 
 哈希表应用场景的通用代码模板：
 
-```javascript
+\`\`\`javascript
 function template(nums) {
     // 1. 边界判断
     if (!nums || nums.length === 0) return ...;
@@ -3005,7 +3005,7 @@ function template(nums) {
     
     return result;
 }
-```
+\`\`\`
 
 ### 7.3 识别哈希表应用场景的信号
 
@@ -3022,9 +3022,9 @@ function template(nums) {
 ### 7.4 调试技巧
 
 1. **打印法**：在关键位置打印变量值，观察是否符合预期
-   ```javascript
-   console.log(`left=${left}, right=${right}, state=${state}, result=${result}`);
-   ```
+   \`\`\`javascript
+   console.log(\`left=${left}, right=${right}, state=${state}, result=${result}\`);
+   \`\`\`
 
 2. **手动模拟**：拿最简单的例子（如[1,2,3]），用纸笔走一遍流程
 
@@ -3235,7 +3235,7 @@ A: 建议至少3遍：
 
 下面以伪代码形式展示两数之和类问题的通用执行流程：
 
-```
+\`\`\`
 算法: 两数之和类问题
 输入: 待处理的数据 data
 输出: 处理后的结果 result
@@ -3257,13 +3257,13 @@ A: 建议至少3遍：
    - 按照要求的格式返回
 
 返回 result
-```
+\`\`\`
 
 ### 3.3 图示说明
 
 为了更直观地理解，我们用ASCII图展示过程：
 
-```
+\`\`\`
 初始状态：
 [ ][ ][ ][ ][ ][ ][ ][ ][ ]  数据存储
  ↑
@@ -3278,7 +3278,7 @@ A: 建议至少3遍：
 [✅][✅][✅][✅][✅][✅][✅][✅][✅]
                            ↑
                        得到结果
-```
+\`\`\`
 
 ---
 
@@ -3286,7 +3286,7 @@ A: 建议至少3遍：
 
 ### 4.1 JavaScript实现
 
-```javascript
+\`\`\`javascript
 /**
  * 两数之和类问题 - JavaScript实现
  * @param {number[]} arr - 输入数据
@@ -3316,11 +3316,11 @@ function hash_two_sum(arr) {
 // 测试用例
 const testArr = [1, 2, 3, 4, 5];
 console.log('Test:', hash_two_sum(testArr));
-```
+\`\`\`
 
 ### 4.2 Python实现
 
-```python
+\`\`\`python
 from typing import List
 
 def hash_two_sum(arr: List[int]) -> int:
@@ -3352,11 +3352,11 @@ def hash_two_sum(arr: List[int]) -> int:
 if __name__ == "__main__":
     test_arr = [1, 2, 3, 4, 5]
     print(f"Test: {hash_two_sum(test_arr)}")
-```
+\`\`\`
 
 ### 4.3 Java实现
 
-```java
+\`\`\`java
 /**
  * 两数之和类问题 - Java实现
  */
@@ -3386,11 +3386,11 @@ public class Solution {
         System.out.println("Test: " + solution.hashTwoSum(testArr));
     }
 }
-```
+\`\`\`
 
 ### 4.4 C++实现
 
-```cpp
+\`\`\`cpp
 #include <iostream>
 #include <vector>
 using namespace std;
@@ -3425,7 +3425,7 @@ int main() {
     cout << "Test: " << solution.hashTwoSum(testArr) << endl;
     return 0;
 }
-```
+\`\`\`
 
 ---
 
@@ -3474,21 +3474,21 @@ int main() {
 ### 例题1：基础应用题
 
 **题目描述**：
-给定一个整数数组 `nums` 和一个目标值 `target`，请你使用两数之和类问题的思想，找到...并返回其索引/长度/值。
+给定一个整数数组 \`nums\` 和一个目标值 \`target\`，请你使用两数之和类问题的思想，找到...并返回其索引/长度/值。
 
 **示例 1**：
-```
+\`\`\`
 输入: nums = [1, 3, 5, 7, 9], target = 5
 输出: 2
 解释: 目标值5出现在索引2的位置
-```
+\`\`\`
 
 **示例 2**：
-```
+\`\`\`
 输入: nums = [2, 2, 3, 4, 5], target = 6
 输出: ...
 解释: ...
-```
+\`\`\`
 
 **解题思路**：
 1. 首先观察题目特征：数组是否有序？是否有单调性？
@@ -3497,7 +3497,7 @@ int main() {
 4. 考虑边界：空数组？单元素数组？所有元素相同？target不存在？
 
 **完整代码**：
-```javascript
+\`\`\`javascript
 function solve(nums, target) {
     let left = 0;
     let result = -1;
@@ -3517,7 +3517,7 @@ function solve(nums, target) {
     
     return result;
 }
-```
+\`\`\`
 
 **复杂度分析**：
 - 时间复杂度：O(n)，每个元素最多被访问两次（左右指针各一次）
@@ -3537,14 +3537,14 @@ function solve(nums, target) {
 - 优化点3：提前终止不可能的情况
 
 **代码实现**：
-```python
+\`\`\`python
 def solve_optimized(nums, target):
     # 优化后的实现
     from collections import defaultdict
     window = defaultdict(int)
     # ...具体实现
     pass
-```
+\`\`\`
 
 ---
 
@@ -3560,7 +3560,7 @@ def solve_optimized(nums, target):
 
 以LeetCode第1题为例：
 
-```java
+\`\`\`java
 // 两数之和 - 哈希表解法
 public int[] twoSum(int[] nums, int target) {
     Map<Integer, Integer> map = new HashMap<>();
@@ -3573,7 +3573,7 @@ public int[] twoSum(int[] nums, int target) {
     }
     throw new IllegalArgumentException("No solution");
 }
-```
+\`\`\`
 
 ---
 
@@ -3605,7 +3605,7 @@ public int[] twoSum(int[] nums, int target) {
 
 两数之和类问题的通用代码模板：
 
-```javascript
+\`\`\`javascript
 function template(nums) {
     // 1. 边界判断
     if (!nums || nums.length === 0) return ...;
@@ -3634,7 +3634,7 @@ function template(nums) {
     
     return result;
 }
-```
+\`\`\`
 
 ### 7.3 识别两数之和类问题的信号
 
@@ -3651,9 +3651,9 @@ function template(nums) {
 ### 7.4 调试技巧
 
 1. **打印法**：在关键位置打印变量值，观察是否符合预期
-   ```javascript
-   console.log(`left=${left}, right=${right}, state=${state}, result=${result}`);
-   ```
+   \`\`\`javascript
+   console.log(\`left=${left}, right=${right}, state=${state}, result=${result}\`);
+   \`\`\`
 
 2. **手动模拟**：拿最简单的例子（如[1,2,3]），用纸笔走一遍流程
 
@@ -3864,7 +3864,7 @@ A: 建议至少3遍：
 
 下面以伪代码形式展示字母异位词分组的通用执行流程：
 
-```
+\`\`\`
 算法: 字母异位词分组
 输入: 待处理的数据 data
 输出: 处理后的结果 result
@@ -3886,13 +3886,13 @@ A: 建议至少3遍：
    - 按照要求的格式返回
 
 返回 result
-```
+\`\`\`
 
 ### 3.3 图示说明
 
 为了更直观地理解，我们用ASCII图展示过程：
 
-```
+\`\`\`
 初始状态：
 [ ][ ][ ][ ][ ][ ][ ][ ][ ]  数据存储
  ↑
@@ -3907,7 +3907,7 @@ A: 建议至少3遍：
 [✅][✅][✅][✅][✅][✅][✅][✅][✅]
                            ↑
                        得到结果
-```
+\`\`\`
 
 ---
 
@@ -3915,7 +3915,7 @@ A: 建议至少3遍：
 
 ### 4.1 JavaScript实现
 
-```javascript
+\`\`\`javascript
 /**
  * 字母异位词分组 - JavaScript实现
  * @param {number[]} arr - 输入数据
@@ -3945,11 +3945,11 @@ function hash_group(arr) {
 // 测试用例
 const testArr = [1, 2, 3, 4, 5];
 console.log('Test:', hash_group(testArr));
-```
+\`\`\`
 
 ### 4.2 Python实现
 
-```python
+\`\`\`python
 from typing import List
 
 def hash_group(arr: List[int]) -> int:
@@ -3981,11 +3981,11 @@ def hash_group(arr: List[int]) -> int:
 if __name__ == "__main__":
     test_arr = [1, 2, 3, 4, 5]
     print(f"Test: {hash_group(test_arr)}")
-```
+\`\`\`
 
 ### 4.3 Java实现
 
-```java
+\`\`\`java
 /**
  * 字母异位词分组 - Java实现
  */
@@ -4015,11 +4015,11 @@ public class Solution {
         System.out.println("Test: " + solution.hashGroup(testArr));
     }
 }
-```
+\`\`\`
 
 ### 4.4 C++实现
 
-```cpp
+\`\`\`cpp
 #include <iostream>
 #include <vector>
 using namespace std;
@@ -4054,7 +4054,7 @@ int main() {
     cout << "Test: " << solution.hashGroup(testArr) << endl;
     return 0;
 }
-```
+\`\`\`
 
 ---
 
@@ -4103,21 +4103,21 @@ int main() {
 ### 例题1：基础应用题
 
 **题目描述**：
-给定一个整数数组 `nums` 和一个目标值 `target`，请你使用字母异位词分组的思想，找到...并返回其索引/长度/值。
+给定一个整数数组 \`nums\` 和一个目标值 \`target\`，请你使用字母异位词分组的思想，找到...并返回其索引/长度/值。
 
 **示例 1**：
-```
+\`\`\`
 输入: nums = [1, 3, 5, 7, 9], target = 5
 输出: 2
 解释: 目标值5出现在索引2的位置
-```
+\`\`\`
 
 **示例 2**：
-```
+\`\`\`
 输入: nums = [2, 2, 3, 4, 5], target = 6
 输出: ...
 解释: ...
-```
+\`\`\`
 
 **解题思路**：
 1. 首先观察题目特征：数组是否有序？是否有单调性？
@@ -4126,7 +4126,7 @@ int main() {
 4. 考虑边界：空数组？单元素数组？所有元素相同？target不存在？
 
 **完整代码**：
-```javascript
+\`\`\`javascript
 function solve(nums, target) {
     let left = 0;
     let result = -1;
@@ -4146,7 +4146,7 @@ function solve(nums, target) {
     
     return result;
 }
-```
+\`\`\`
 
 **复杂度分析**：
 - 时间复杂度：O(n)，每个元素最多被访问两次（左右指针各一次）
@@ -4166,14 +4166,14 @@ function solve(nums, target) {
 - 优化点3：提前终止不可能的情况
 
 **代码实现**：
-```python
+\`\`\`python
 def solve_optimized(nums, target):
     # 优化后的实现
     from collections import defaultdict
     window = defaultdict(int)
     # ...具体实现
     pass
-```
+\`\`\`
 
 ---
 
@@ -4189,7 +4189,7 @@ def solve_optimized(nums, target):
 
 以LeetCode第1题为例：
 
-```java
+\`\`\`java
 // 两数之和 - 哈希表解法
 public int[] twoSum(int[] nums, int target) {
     Map<Integer, Integer> map = new HashMap<>();
@@ -4202,7 +4202,7 @@ public int[] twoSum(int[] nums, int target) {
     }
     throw new IllegalArgumentException("No solution");
 }
-```
+\`\`\`
 
 ---
 
@@ -4234,7 +4234,7 @@ public int[] twoSum(int[] nums, int target) {
 
 字母异位词分组的通用代码模板：
 
-```javascript
+\`\`\`javascript
 function template(nums) {
     // 1. 边界判断
     if (!nums || nums.length === 0) return ...;
@@ -4263,7 +4263,7 @@ function template(nums) {
     
     return result;
 }
-```
+\`\`\`
 
 ### 7.3 识别字母异位词分组的信号
 
@@ -4280,9 +4280,9 @@ function template(nums) {
 ### 7.4 调试技巧
 
 1. **打印法**：在关键位置打印变量值，观察是否符合预期
-   ```javascript
-   console.log(`left=${left}, right=${right}, state=${state}, result=${result}`);
-   ```
+   \`\`\`javascript
+   console.log(\`left=${left}, right=${right}, state=${state}, result=${result}\`);
+   \`\`\`
 
 2. **手动模拟**：拿最简单的例子（如[1,2,3]），用纸笔走一遍流程
 
@@ -4493,7 +4493,7 @@ A: 建议至少3遍：
 
 下面以伪代码形式展示哈希表经典面试题的通用执行流程：
 
-```
+\`\`\`
 算法: 哈希表经典面试题
 输入: 待处理的数据 data
 输出: 处理后的结果 result
@@ -4515,13 +4515,13 @@ A: 建议至少3遍：
    - 按照要求的格式返回
 
 返回 result
-```
+\`\`\`
 
 ### 3.3 图示说明
 
 为了更直观地理解，我们用ASCII图展示过程：
 
-```
+\`\`\`
 初始状态：
 [ ][ ][ ][ ][ ][ ][ ][ ][ ]  数据存储
  ↑
@@ -4536,7 +4536,7 @@ A: 建议至少3遍：
 [✅][✅][✅][✅][✅][✅][✅][✅][✅]
                            ↑
                        得到结果
-```
+\`\`\`
 
 ---
 
@@ -4544,7 +4544,7 @@ A: 建议至少3遍：
 
 ### 4.1 JavaScript实现
 
-```javascript
+\`\`\`javascript
 /**
  * 哈希表经典面试题 - JavaScript实现
  * @param {number[]} arr - 输入数据
@@ -4574,11 +4574,11 @@ function hash_classic(arr) {
 // 测试用例
 const testArr = [1, 2, 3, 4, 5];
 console.log('Test:', hash_classic(testArr));
-```
+\`\`\`
 
 ### 4.2 Python实现
 
-```python
+\`\`\`python
 from typing import List
 
 def hash_classic(arr: List[int]) -> int:
@@ -4610,11 +4610,11 @@ def hash_classic(arr: List[int]) -> int:
 if __name__ == "__main__":
     test_arr = [1, 2, 3, 4, 5]
     print(f"Test: {hash_classic(test_arr)}")
-```
+\`\`\`
 
 ### 4.3 Java实现
 
-```java
+\`\`\`java
 /**
  * 哈希表经典面试题 - Java实现
  */
@@ -4644,11 +4644,11 @@ public class Solution {
         System.out.println("Test: " + solution.hashClassic(testArr));
     }
 }
-```
+\`\`\`
 
 ### 4.4 C++实现
 
-```cpp
+\`\`\`cpp
 #include <iostream>
 #include <vector>
 using namespace std;
@@ -4683,7 +4683,7 @@ int main() {
     cout << "Test: " << solution.hashClassic(testArr) << endl;
     return 0;
 }
-```
+\`\`\`
 
 ---
 
@@ -4732,21 +4732,21 @@ int main() {
 ### 例题1：基础应用题
 
 **题目描述**：
-给定一个整数数组 `nums` 和一个目标值 `target`，请你使用哈希表经典面试题的思想，找到...并返回其索引/长度/值。
+给定一个整数数组 \`nums\` 和一个目标值 \`target\`，请你使用哈希表经典面试题的思想，找到...并返回其索引/长度/值。
 
 **示例 1**：
-```
+\`\`\`
 输入: nums = [1, 3, 5, 7, 9], target = 5
 输出: 2
 解释: 目标值5出现在索引2的位置
-```
+\`\`\`
 
 **示例 2**：
-```
+\`\`\`
 输入: nums = [2, 2, 3, 4, 5], target = 6
 输出: ...
 解释: ...
-```
+\`\`\`
 
 **解题思路**：
 1. 首先观察题目特征：数组是否有序？是否有单调性？
@@ -4755,7 +4755,7 @@ int main() {
 4. 考虑边界：空数组？单元素数组？所有元素相同？target不存在？
 
 **完整代码**：
-```javascript
+\`\`\`javascript
 function solve(nums, target) {
     let left = 0;
     let result = -1;
@@ -4775,7 +4775,7 @@ function solve(nums, target) {
     
     return result;
 }
-```
+\`\`\`
 
 **复杂度分析**：
 - 时间复杂度：O(n)，每个元素最多被访问两次（左右指针各一次）
@@ -4795,14 +4795,14 @@ function solve(nums, target) {
 - 优化点3：提前终止不可能的情况
 
 **代码实现**：
-```python
+\`\`\`python
 def solve_optimized(nums, target):
     # 优化后的实现
     from collections import defaultdict
     window = defaultdict(int)
     # ...具体实现
     pass
-```
+\`\`\`
 
 ---
 
@@ -4818,7 +4818,7 @@ def solve_optimized(nums, target):
 
 以LeetCode第1题为例：
 
-```java
+\`\`\`java
 // 两数之和 - 哈希表解法
 public int[] twoSum(int[] nums, int target) {
     Map<Integer, Integer> map = new HashMap<>();
@@ -4831,7 +4831,7 @@ public int[] twoSum(int[] nums, int target) {
     }
     throw new IllegalArgumentException("No solution");
 }
-```
+\`\`\`
 
 ---
 
@@ -4863,7 +4863,7 @@ public int[] twoSum(int[] nums, int target) {
 
 哈希表经典面试题的通用代码模板：
 
-```javascript
+\`\`\`javascript
 function template(nums) {
     // 1. 边界判断
     if (!nums || nums.length === 0) return ...;
@@ -4892,7 +4892,7 @@ function template(nums) {
     
     return result;
 }
-```
+\`\`\`
 
 ### 7.3 识别哈希表经典面试题的信号
 
@@ -4909,9 +4909,9 @@ function template(nums) {
 ### 7.4 调试技巧
 
 1. **打印法**：在关键位置打印变量值，观察是否符合预期
-   ```javascript
-   console.log(`left=${left}, right=${right}, state=${state}, result=${result}`);
-   ```
+   \`\`\`javascript
+   console.log(\`left=${left}, right=${right}, state=${state}, result=${result}\`);
+   \`\`\`
 
 2. **手动模拟**：拿最简单的例子（如[1,2,3]），用纸笔走一遍流程
 

@@ -7,55 +7,3319 @@ export const chapters = [
     "title": "调试技巧：系统化排查问题",
     "icon": "🔍",
     "group": "调试、测试与代码质量",
-    "content": "# 调试技巧：系统化排查问题\n\n## 一、概述\n\n调试技巧：系统化排查问题是每一位程序员必须掌握的核心知识。无论你使用什么编程语言，这些基础概念都是相通的。本章将带你系统地学习调试技巧：系统化排查问题的方方面面，从基本概念到实际应用，从常见陷阱到最佳实践，帮助你建立扎实的编程基础。\n\n学习编程不仅仅是学习语法，更重要的是理解背后的思想和原理。我们将通过大量的代码示例、类比说明和实战练习，让你真正理解而非死记硬背。\n\n## 二、核心概念详解\n\n### 2.1 什么是调试技巧：系统化排查问题？\n\n在深入学习之前，让我们先理解调试技巧：系统化排查问题的本质。调试技巧：系统化排查问题是编程中用于解决特定问题的一组思想和技术的总称。它不是某一种语言特有的功能，而是所有现代编程语言都支持的通用概念。\n\n想象一下，如果你要盖一栋房子：\n\n| 编程概念 | 建筑类比 | 作用 |\n|---------|---------|------|\n| 变量 | 建筑材料 | 存储数据 |\n| 函数 | 预制构件 | 封装功能 |\n| 控制流 | 施工图纸 | 决定执行顺序 |\n| 数据结构 | 房间布局 | 组织数据 |\n| 调试技巧：系统化排查问题 | 核心建筑工艺 | 特定问题解决方案 |\n\n### 2.2 为什么需要调试技巧：系统化排查问题？\n\n在调试技巧：系统化排查问题出现之前，程序员面临着很多问题：\n\n1. **代码重复**：相同的逻辑需要在多处重复编写\n2. **难以维护**：代码结构混乱，修改一处可能影响多处\n3. **容易出错**：缺乏系统化的方法，bug频发\n4. **协作困难**：没有统一的范式，团队成员代码风格各异\n\n调试技巧：系统化排查问题正是为了解决这些问题而产生的。\n\n## 三、实战代码示例\n\n### 3.1 基础示例\n\n让我们从最简单的例子开始：\n\n```javascript\n// 示例1：基础用法\nfunction demonstrateprog_debugging_skills(data) {\n    // 第一步：验证输入\n    if (!data) {\n        throw new Error('输入数据不能为空');\n    }\n    \n    // 第二步：处理数据\n    const result = processData(data);\n    \n    // 第三步：返回结果\n    return result;\n}\n\nfunction processData(data) {\n    // 具体的处理逻辑\n    return data.map(item => ({\n        ...item,\n        processed: true,\n        timestamp: Date.now()\n    }));\n}\n\n// 使用示例\nconst testData = [\n    { id: 1, name: '示例1' },\n    { id: 2, name: '示例2' }\n];\n\nconst results = demonstrateprog_debugging_skills(testData);\nconsole.log('处理结果:', results);\n```\n\n### 3.2 进阶示例\n\n下面是一个更贴近实际开发的例子：\n\n```javascript\n// 示例2：实际应用场景\nclass prog-debugging-skillsExample {\n    constructor(options = {}) {\n        this.options = {\n            debug: false,\n            maxRetries: 3,\n            timeout: 5000,\n            ...options\n        };\n        this.cache = new Map();\n    }\n    \n    async execute(input) {\n        const cacheKey = this.generateCacheKey(input);\n        \n        // 检查缓存\n        if (this.cache.has(cacheKey)) {\n            this.log('从缓存返回结果');\n            return this.cache.get(cacheKey);\n        }\n        \n        // 重试逻辑\n        let lastError;\n        for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {\n            try {\n                this.log(`尝试第 ${attempt} 次执行`);\n                const result = await this.doExecute(input);\n                this.cache.set(cacheKey, result);\n                return result;\n            } catch (error) {\n                lastError = error;\n                this.log(`第 ${attempt} 次尝试失败: ${error.message}`);\n                await this.delay(1000 * attempt);\n            }\n        }\n        \n        throw new Error(`执行失败，已重试${this.options.maxRetries}次: ${lastError.message}`);\n    }\n    \n    async doExecute(input) {\n        // 实际的执行逻辑\n        return { success: true, data: input };\n    }\n    \n    generateCacheKey(input) {\n        return JSON.stringify(input);\n    }\n    \n    log(message) {\n        if (this.options.debug) {\n            console.log(`[调试技巧：系统化排查问题] ${message}`);\n        }\n    }\n    \n    delay(ms) {\n        return new Promise(resolve => setTimeout(resolve, ms));\n    }\n}\n```\n\n### 3.3 Python示例\n\n如果你更熟悉Python，这里是对应的例子：\n\n```python\n# Python示例\nfrom typing import Any, Dict, List, Optional\nimport time\nimport functools\n\n\ndef timer(func):\n    \"\"\"装饰器：测量函数执行时间\"\"\"\n    @functools.wraps(func)\n    def wrapper(*args, **kwargs):\n        start = time.time()\n        try:\n            result = func(*args, **kwargs)\n            return result\n        finally:\n            elapsed = time.time() - start\n            print(f\"{func.__name__} 执行时间: {elapsed:.4f}秒\")\n    return wrapper\n\n\nclass DataProcessor:\n    \"\"\"数据处理器 - 演示调试技巧：系统化排查问题\"\"\"\n    \n    def __init__(self, config: Optional[Dict[str, Any]] = None):\n        self.config = config or {}\n        self._cache: Dict[str, Any] = {}\n    \n    @timer\n    def process(self, items: List[Any]) -> List[Any]:\n        \"\"\"处理数据列表\"\"\"\n        results = []\n        for item in items:\n            processed = self._process_single(item)\n            results.append(processed)\n        return results\n    \n    def _process_single(self, item: Any) -> Any:\n        \"\"\"处理单个数据项\"\"\"\n        cache_key = str(item)\n        if cache_key in self._cache:\n            return self._cache[cache_key]\n        \n        # 处理逻辑\n        result = {\n            'original': item,\n            'processed': True,\n            'length': len(str(item)) if hasattr(item, '__len__') else 0\n        }\n        \n        self._cache[cache_key] = result\n        return result\n\n\n# 使用示例\nif __name__ == '__main__':\n    processor = DataProcessor()\n    data = ['apple', 'banana', 'cherry', 'date']\n    results = processor.process(data)\n    \n    for item in results:\n        print(f\"原始: {item['original']:10} 长度: {item['length']}\")\n\n```\n\n## 四、常见陷阱与注意事项\n\n### 4.1 新手常犯的错误\n\n| 错误类型 | 错误示例 | 正确做法 |\n|---------|---------|---------|\n| 过度复杂化 | 一个函数写几百行 | 拆分成小函数，单一职责 |\n| 忽略边界条件 | 不处理空输入、极端值 | 总是验证输入，考虑边缘情况 |\n| 硬编码值 | 直接在代码中写魔法数字 | 使用常量或配置 |\n| 不处理错误 | 假设所有操作都会成功 | 使用try-catch/异常处理 |\n| 过度优化 | 一开始就纠结性能 | 先写正确的代码，再优化 |\n\n### 4.2 需要特别注意的点\n\n1. **可变默认参数问题**（Python）\n\n```python\n# ❌ 错误：可变默认参数\ndef append_to(item, target=[]):\n    target.append(item)\n    return target\n\n# ✅ 正确：使用None作为默认值\ndef append_to(item, target=None):\n    if target is None:\n        target = []\n    target.append(item)\n    return target\n```\n\n2. **浮点数精度问题**\n\n```javascript\n// ❌ 错误：直接比较浮点数\nconsole.log(0.1 + 0.2 === 0.3); // false\n\n// ✅ 正确：使用精度范围比较\nfunction nearlyEqual(a, b, epsilon = 1e-10) {\n    return Math.abs(a - b) < epsilon;\n}\n```\n\n3. **异步代码陷阱**\n\n```javascript\n// ❌ 错误：在循环中使用await（可以但需理解行为）\n// 如果你想要顺序执行，这没问题；如果想并行，应该用Promise.all\n\n// ✅ 并行执行\nconst results = await Promise.all(\n    items.map(item => processItem(item))\n);\n\n```\n\n## 五、最佳实践\n\n### 5.1 编码原则\n\n**SOLID原则（面向对象）：**\n\n| 原则 | 全称 | 含义 |\n|-----|------|------|\n| S | 单一职责原则 | 一个类只做一件事 |\n| O | 开闭原则 | 对扩展开放，对修改关闭 |\n| L | 里氏替换原则 | 子类可以替换父类 |\n| I | 接口隔离原则 | 使用小而专一的接口 |\n| D | 依赖倒置原则 | 依赖抽象而非具体实现 |\n\n**通用编程原则：**\n\n1. **KISS原则** - Keep It Simple, Stupid\n   - 保持简单直接，不要过度设计\n   - 如果有两个方案，选择简单的那个\n\n2. **DRY原则** - Don't Repeat Yourself\n   - 任何重复的代码都应该提取出来\n   - 但要注意：不要为了DRY而DRY，适当的重复有时比错误的抽象更好\n\n3. **YAGNI原则** - You Aren't Gonna Need It\n   - 不要实现你认为将来可能需要的功能\n   - 只实现当前确实需要的功能\n\n### 5.2 代码风格建议\n\n```javascript\n// ✅ 好的代码风格示例\nfunction calculateTotalPrice(items, taxRate = 0.1) {\n    // 验证输入\n    if (!Array.isArray(items)) {\n        throw new TypeError('items必须是数组');\n    }\n    \n    // 计算小计\n    const subtotal = items.reduce((sum, item) => {\n        if (typeof item.price !== 'number' || item.price < 0) {\n            throw new Error('无效的商品价格');\n        }\n        return sum + item.price * (item.quantity || 1);\n    }, 0);\n    \n    // 计算税费和总价\n    const tax = subtotal * taxRate;\n    const total = subtotal + tax;\n    \n    // 返回结果（使用对象而不是多个返回值）\n    return {\n        subtotal: roundToTwo(subtotal),\n        tax: roundToTwo(tax),\n        total: roundToTwo(total)\n    };\n}\n\nfunction roundToTwo(value) {\n    return Math.round(value * 100) / 100;\n}\n\n```\n\n## 六、实战练习\n\n### 练习1：基础应用\n\n**题目：** 实现一个简单的待办事项管理器，需要支持：\n- 添加待办事项\n- 标记完成/未完成\n- 删除待办\n- 筛选显示（全部/已完成/未完成）\n\n**提示：**\n- 使用合适的数据结构存储待办事项\n- 考虑使用面向对象或函数式风格\n- 添加适当的错误处理\n\n### 练习2：进阶挑战\n\n**题目：** 实现一个简单的缓存系统，需要：\n- 支持设置过期时间\n- LRU（最近最少使用）淘汰策略\n- 最大容量限制\n- 统计命中率\n\n### 练习3：代码审查\n\n找出下面代码的问题并重构：\n\n```javascript\n// 这段代码有什么问题？\nfunction process(data) {\n    var result = [];\n    for (var i = 0; i < data.length; i++) {\n        if (data[i].active) {\n            if (data[i].score > 60) {\n                result.push(data[i].name + ':' + data[i].score);\n            }\n        }\n    }\n    return result;\n}\n```\n\n**参考答案要点：**\n- 使用const/let替代var\n- 使用有意义的变量名\n- 提前返回减少嵌套\n- 使用filter/map替代for循环\n- 添加类型检查\n- 添加注释\n\n## 七、小结\n\n调试技巧：系统化排查问题是编程学习道路上的重要里程碑。掌握本章内容后，你应该：\n\n✅ 理解调试技巧：系统化排查问题的核心概念和原理\n✅ 能够在实际代码中正确应用调试技巧：系统化排查问题\n✅ 知道常见的陷阱以及如何避免\n✅ 了解相关的最佳实践\n✅ 能够写出更清晰、更健壮的代码\n\n记住，编程是一门实践的艺术。仅仅阅读是不够的，你需要动手写代码，犯错，调试，然后从错误中学习。建议你完成本章的所有练习，并尝试在实际项目中应用学到的知识。\n\n### 下一步学习建议\n\n1. **动手实践**：找一个小项目来练习本章内容\n2. **阅读优秀代码**：看看开源项目中是如何使用这些概念的\n3. **代码审查**：让其他人审查你的代码，同时也审查别人的代码\n4. **教别人**：尝试把学到的知识教给其他人，这是最好的学习方式\n5. **持续学习**：编程世界日新月异，保持好奇心和学习热情\n\n---\n\n**拓展阅读推荐：**\n- 《代码整洁之道》- Robert C. Martin\n- 《重构：改善既有代码的设计》- Martin Fowler\n- 《设计模式》- GoF\n- 《程序员修炼之道》- Hunt & Thomas\n\n祝你编程学习之旅愉快！🚀\n"
+    content: `
+# 调试技巧：系统化排查问题
+
+## 一、概述
+
+调试技巧：系统化排查问题是每一位程序员必须掌握的核心知识。无论你使用什么编程语言，这些基础概念都是相通的。本章将带你系统地学习调试技巧：系统化排查问题的方方面面，从基本概念到实际应用，从常见陷阱到最佳实践，帮助你建立扎实的编程基础。
+
+学习编程不仅仅是学习语法，更重要的是理解背后的思想和原理。我们将通过大量的代码示例、类比说明和实战练习，让你真正理解而非死记硬背。
+
+## 二、核心概念详解
+
+### 2.1 什么是调试技巧：系统化排查问题？
+
+在深入学习之前，让我们先理解调试技巧：系统化排查问题的本质。调试技巧：系统化排查问题是编程中用于解决特定问题的一组思想和技术的总称。它不是某一种语言特有的功能，而是所有现代编程语言都支持的通用概念。
+
+想象一下，如果你要盖一栋房子：
+
+| 编程概念 | 建筑类比 | 作用 |
+|---------|---------|------|
+| 变量 | 建筑材料 | 存储数据 |
+| 函数 | 预制构件 | 封装功能 |
+| 控制流 | 施工图纸 | 决定执行顺序 |
+| 数据结构 | 房间布局 | 组织数据 |
+| 调试技巧：系统化排查问题 | 核心建筑工艺 | 特定问题解决方案 |
+
+### 2.2 为什么需要调试技巧：系统化排查问题？
+
+在调试技巧：系统化排查问题出现之前，程序员面临着很多问题：
+
+1. **代码重复**：相同的逻辑需要在多处重复编写
+2. **难以维护**：代码结构混乱，修改一处可能影响多处
+3. **容易出错**：缺乏系统化的方法，bug频发
+4. **协作困难**：没有统一的范式，团队成员代码风格各异
+
+调试技巧：系统化排查问题正是为了解决这些问题而产生的。
+
+## 三、实战代码示例
+
+### 3.1 基础示例
+
+让我们从最简单的例子开始：
+
+\`\`\`javascript
+// 示例1：基础用法
+function demonstrateprog_debugging_skills(data) {
+    // 第一步：验证输入
+    if (!data) {
+        throw new Error('输入数据不能为空');
+    }
+    
+    // 第二步：处理数据
+    const result = processData(data);
+    
+    // 第三步：返回结果
+    return result;
+}
+
+function processData(data) {
+    // 具体的处理逻辑
+    return data.map(item => ({
+        ...item,
+        processed: true,
+        timestamp: Date.now()
+    }));
+}
+
+// 使用示例
+const testData = [
+    { id: 1, name: '示例1' },
+    { id: 2, name: '示例2' }
+];
+
+const results = demonstrateprog_debugging_skills(testData);
+console.log('处理结果:', results);
+\`\`\`
+
+### 3.2 进阶示例
+
+下面是一个更贴近实际开发的例子：
+
+\`\`\`javascript
+// 示例2：实际应用场景
+class ProgDebuggingSkillsExample {
+    constructor(options = {}) {
+        this.options = {
+            debug: false,
+            maxRetries: 3,
+            timeout: 5000,
+            ...options
+        };
+        this.cache = new Map();
+    }
+    
+    async execute(input) {
+        const cacheKey = this.generateCacheKey(input);
+        
+        // 检查缓存
+        if (this.cache.has(cacheKey)) {
+            this.log('从缓存返回结果');
+            return this.cache.get(cacheKey);
+        }
+        
+        // 重试逻辑
+        let lastError;
+        for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {
+            try {
+                this.log(\`尝试第 \${attempt} 次执行\`);
+                const result = await this.doExecute(input);
+                this.cache.set(cacheKey, result);
+                return result;
+            } catch (error) {
+                lastError = error;
+                this.log(\`第 \${attempt} 次尝试失败: \${error.message}\`);
+                await this.delay(1000 * attempt);
+            }
+        }
+        
+        throw new Error(\`执行失败，已重试\${this.options.maxRetries}次: \${lastError.message}\`);
+    }
+    
+    async doExecute(input) {
+        // 实际的执行逻辑
+        return { success: true, data: input };
+    }
+    
+    generateCacheKey(input) {
+        return JSON.stringify(input);
+    }
+    
+    log(message) {
+        if (this.options.debug) {
+            console.log(\`[调试技巧：系统化排查问题] \${message}\`);
+        }
+    }
+    
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+}
+\`\`\`
+
+### 3.3 Python示例
+
+如果你更熟悉Python，这里是对应的例子：
+
+\`\`\`python
+# Python示例
+from typing import Any, Dict, List, Optional
+import time
+import functools
+
+
+def timer(func):
+    """装饰器：测量函数执行时间"""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        try:
+            result = func(*args, **kwargs)
+            return result
+        finally:
+            elapsed = time.time() - start
+            print(f"{func.__name__} 执行时间: {elapsed:.4f}秒")
+    return wrapper
+
+
+class DataProcessor:
+    """数据处理器 - 演示调试技巧：系统化排查问题"""
+    
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        self.config = config or {}
+        self._cache: Dict[str, Any] = {}
+    
+    @timer
+    def process(self, items: List[Any]) -> List[Any]:
+        """处理数据列表"""
+        results = []
+        for item in items:
+            processed = self._process_single(item)
+            results.append(processed)
+        return results
+    
+    def _process_single(self, item: Any) -> Any:
+        """处理单个数据项"""
+        cache_key = str(item)
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+        
+        # 处理逻辑
+        result = {
+            'original': item,
+            'processed': True,
+            'length': len(str(item)) if hasattr(item, '__len__') else 0
+        }
+        
+        self._cache[cache_key] = result
+        return result
+
+
+# 使用示例
+if __name__ == '__main__':
+    processor = DataProcessor()
+    data = ['apple', 'banana', 'cherry', 'date']
+    results = processor.process(data)
+    
+    for item in results:
+        print(f"原始: {item['original']:10} 长度: {item['length']}")
+
+\`\`\`
+
+## 四、常见陷阱与注意事项
+
+### 4.1 新手常犯的错误
+
+| 错误类型 | 错误示例 | 正确做法 |
+|---------|---------|---------|
+| 过度复杂化 | 一个函数写几百行 | 拆分成小函数，单一职责 |
+| 忽略边界条件 | 不处理空输入、极端值 | 总是验证输入，考虑边缘情况 |
+| 硬编码值 | 直接在代码中写魔法数字 | 使用常量或配置 |
+| 不处理错误 | 假设所有操作都会成功 | 使用try-catch/异常处理 |
+| 过度优化 | 一开始就纠结性能 | 先写正确的代码，再优化 |
+
+### 4.2 需要特别注意的点
+
+1. **可变默认参数问题**（Python）
+
+\`\`\`python
+# ❌ 错误：可变默认参数
+def append_to(item, target=[]):
+    target.append(item)
+    return target
+
+# ✅ 正确：使用None作为默认值
+def append_to(item, target=None):
+    if target is None:
+        target = []
+    target.append(item)
+    return target
+\`\`\`
+
+2. **浮点数精度问题**
+
+\`\`\`javascript
+// ❌ 错误：直接比较浮点数
+console.log(0.1 + 0.2 === 0.3); // false
+
+// ✅ 正确：使用精度范围比较
+function nearlyEqual(a, b, epsilon = 1e-10) {
+    return Math.abs(a - b) < epsilon;
+}
+\`\`\`
+
+3. **异步代码陷阱**
+
+\`\`\`javascript
+// ❌ 错误：在循环中使用await（可以但需理解行为）
+// 如果你想要顺序执行，这没问题；如果想并行，应该用Promise.all
+
+// ✅ 并行执行
+const results = await Promise.all(
+    items.map(item => processItem(item))
+);
+
+\`\`\`
+
+## 五、最佳实践
+
+### 5.1 编码原则
+
+**SOLID原则（面向对象）：**
+
+| 原则 | 全称 | 含义 |
+|-----|------|------|
+| S | 单一职责原则 | 一个类只做一件事 |
+| O | 开闭原则 | 对扩展开放，对修改关闭 |
+| L | 里氏替换原则 | 子类可以替换父类 |
+| I | 接口隔离原则 | 使用小而专一的接口 |
+| D | 依赖倒置原则 | 依赖抽象而非具体实现 |
+
+**通用编程原则：**
+
+1. **KISS原则** - Keep It Simple, Stupid
+   - 保持简单直接，不要过度设计
+   - 如果有两个方案，选择简单的那个
+
+2. **DRY原则** - Don't Repeat Yourself
+   - 任何重复的代码都应该提取出来
+   - 但要注意：不要为了DRY而DRY，适当的重复有时比错误的抽象更好
+
+3. **YAGNI原则** - You Aren't Gonna Need It
+   - 不要实现你认为将来可能需要的功能
+   - 只实现当前确实需要的功能
+
+### 5.2 代码风格建议
+
+\`\`\`javascript
+// ✅ 好的代码风格示例
+function calculateTotalPrice(items, taxRate = 0.1) {
+    // 验证输入
+    if (!Array.isArray(items)) {
+        throw new TypeError('items必须是数组');
+    }
+    
+    // 计算小计
+    const subtotal = items.reduce((sum, item) => {
+        if (typeof item.price !== 'number' || item.price < 0) {
+            throw new Error('无效的商品价格');
+        }
+        return sum + item.price * (item.quantity || 1);
+    }, 0);
+    
+    // 计算税费和总价
+    const tax = subtotal * taxRate;
+    const total = subtotal + tax;
+    
+    // 返回结果（使用对象而不是多个返回值）
+    return {
+        subtotal: roundToTwo(subtotal),
+        tax: roundToTwo(tax),
+        total: roundToTwo(total)
+    };
+}
+
+function roundToTwo(value) {
+    return Math.round(value * 100) / 100;
+}
+
+\`\`\`
+
+## 六、实战练习
+
+### 练习1：基础应用
+
+**题目：** 实现一个简单的待办事项管理器，需要支持：
+- 添加待办事项
+- 标记完成/未完成
+- 删除待办
+- 筛选显示（全部/已完成/未完成）
+
+**提示：**
+- 使用合适的数据结构存储待办事项
+- 考虑使用面向对象或函数式风格
+- 添加适当的错误处理
+
+### 练习2：进阶挑战
+
+**题目：** 实现一个简单的缓存系统，需要：
+- 支持设置过期时间
+- LRU（最近最少使用）淘汰策略
+- 最大容量限制
+- 统计命中率
+
+### 练习3：代码审查
+
+找出下面代码的问题并重构：
+
+\`\`\`javascript
+// 这段代码有什么问题？
+function process(data) {
+    var result = [];
+    for (var i = 0; i < data.length; i++) {
+        if (data[i].active) {
+            if (data[i].score > 60) {
+                result.push(data[i].name + ':' + data[i].score);
+            }
+        }
+    }
+    return result;
+}
+\`\`\`
+
+**参考答案要点：**
+- 使用const/let替代var
+- 使用有意义的变量名
+- 提前返回减少嵌套
+- 使用filter/map替代for循环
+- 添加类型检查
+- 添加注释
+
+## 七、小结
+
+调试技巧：系统化排查问题是编程学习道路上的重要里程碑。掌握本章内容后，你应该：
+
+✅ 理解调试技巧：系统化排查问题的核心概念和原理
+✅ 能够在实际代码中正确应用调试技巧：系统化排查问题
+✅ 知道常见的陷阱以及如何避免
+✅ 了解相关的最佳实践
+✅ 能够写出更清晰、更健壮的代码
+
+记住，编程是一门实践的艺术。仅仅阅读是不够的，你需要动手写代码，犯错，调试，然后从错误中学习。建议你完成本章的所有练习，并尝试在实际项目中应用学到的知识。
+
+### 下一步学习建议
+
+1. **动手实践**：找一个小项目来练习本章内容
+2. **阅读优秀代码**：看看开源项目中是如何使用这些概念的
+3. **代码审查**：让其他人审查你的代码，同时也审查别人的代码
+4. **教别人**：尝试把学到的知识教给其他人，这是最好的学习方式
+5. **持续学习**：编程世界日新月异，保持好奇心和学习热情
+
+---
+
+**拓展阅读推荐：**
+- 《代码整洁之道》- Robert C. Martin
+- 《重构：改善既有代码的设计》- Martin Fowler
+- 《设计模式》- GoF
+- 《程序员修炼之道》- Hunt & Thomas
+
+祝你编程学习之旅愉快！🚀
+`
   },
   {
     "id": "prog-debugger-tools",
     "title": "调试器使用：断点、监视与调用栈",
     "icon": "🛠️",
     "group": "调试、测试与代码质量",
-    "content": "# 调试器使用：断点、监视与调用栈\n\n## 一、概述\n\n调试器使用：断点、监视与调用栈是每一位程序员必须掌握的核心知识。无论你使用什么编程语言，这些基础概念都是相通的。本章将带你系统地学习调试器使用：断点、监视与调用栈的方方面面，从基本概念到实际应用，从常见陷阱到最佳实践，帮助你建立扎实的编程基础。\n\n学习编程不仅仅是学习语法，更重要的是理解背后的思想和原理。我们将通过大量的代码示例、类比说明和实战练习，让你真正理解而非死记硬背。\n\n## 二、核心概念详解\n\n### 2.1 什么是调试器使用：断点、监视与调用栈？\n\n在深入学习之前，让我们先理解调试器使用：断点、监视与调用栈的本质。调试器使用：断点、监视与调用栈是编程中用于解决特定问题的一组思想和技术的总称。它不是某一种语言特有的功能，而是所有现代编程语言都支持的通用概念。\n\n想象一下，如果你要盖一栋房子：\n\n| 编程概念 | 建筑类比 | 作用 |\n|---------|---------|------|\n| 变量 | 建筑材料 | 存储数据 |\n| 函数 | 预制构件 | 封装功能 |\n| 控制流 | 施工图纸 | 决定执行顺序 |\n| 数据结构 | 房间布局 | 组织数据 |\n| 调试器使用：断点、监视与调用栈 | 核心建筑工艺 | 特定问题解决方案 |\n\n### 2.2 为什么需要调试器使用：断点、监视与调用栈？\n\n在调试器使用：断点、监视与调用栈出现之前，程序员面临着很多问题：\n\n1. **代码重复**：相同的逻辑需要在多处重复编写\n2. **难以维护**：代码结构混乱，修改一处可能影响多处\n3. **容易出错**：缺乏系统化的方法，bug频发\n4. **协作困难**：没有统一的范式，团队成员代码风格各异\n\n调试器使用：断点、监视与调用栈正是为了解决这些问题而产生的。\n\n## 三、实战代码示例\n\n### 3.1 基础示例\n\n让我们从最简单的例子开始：\n\n```javascript\n// 示例1：基础用法\nfunction demonstrateprog_debugger_tools(data) {\n    // 第一步：验证输入\n    if (!data) {\n        throw new Error('输入数据不能为空');\n    }\n    \n    // 第二步：处理数据\n    const result = processData(data);\n    \n    // 第三步：返回结果\n    return result;\n}\n\nfunction processData(data) {\n    // 具体的处理逻辑\n    return data.map(item => ({\n        ...item,\n        processed: true,\n        timestamp: Date.now()\n    }));\n}\n\n// 使用示例\nconst testData = [\n    { id: 1, name: '示例1' },\n    { id: 2, name: '示例2' }\n];\n\nconst results = demonstrateprog_debugger_tools(testData);\nconsole.log('处理结果:', results);\n```\n\n### 3.2 进阶示例\n\n下面是一个更贴近实际开发的例子：\n\n```javascript\n// 示例2：实际应用场景\nclass prog-debugger-toolsExample {\n    constructor(options = {}) {\n        this.options = {\n            debug: false,\n            maxRetries: 3,\n            timeout: 5000,\n            ...options\n        };\n        this.cache = new Map();\n    }\n    \n    async execute(input) {\n        const cacheKey = this.generateCacheKey(input);\n        \n        // 检查缓存\n        if (this.cache.has(cacheKey)) {\n            this.log('从缓存返回结果');\n            return this.cache.get(cacheKey);\n        }\n        \n        // 重试逻辑\n        let lastError;\n        for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {\n            try {\n                this.log(`尝试第 ${attempt} 次执行`);\n                const result = await this.doExecute(input);\n                this.cache.set(cacheKey, result);\n                return result;\n            } catch (error) {\n                lastError = error;\n                this.log(`第 ${attempt} 次尝试失败: ${error.message}`);\n                await this.delay(1000 * attempt);\n            }\n        }\n        \n        throw new Error(`执行失败，已重试${this.options.maxRetries}次: ${lastError.message}`);\n    }\n    \n    async doExecute(input) {\n        // 实际的执行逻辑\n        return { success: true, data: input };\n    }\n    \n    generateCacheKey(input) {\n        return JSON.stringify(input);\n    }\n    \n    log(message) {\n        if (this.options.debug) {\n            console.log(`[调试器使用：断点、监视与调用栈] ${message}`);\n        }\n    }\n    \n    delay(ms) {\n        return new Promise(resolve => setTimeout(resolve, ms));\n    }\n}\n```\n\n### 3.3 Python示例\n\n如果你更熟悉Python，这里是对应的例子：\n\n```python\n# Python示例\nfrom typing import Any, Dict, List, Optional\nimport time\nimport functools\n\n\ndef timer(func):\n    \"\"\"装饰器：测量函数执行时间\"\"\"\n    @functools.wraps(func)\n    def wrapper(*args, **kwargs):\n        start = time.time()\n        try:\n            result = func(*args, **kwargs)\n            return result\n        finally:\n            elapsed = time.time() - start\n            print(f\"{func.__name__} 执行时间: {elapsed:.4f}秒\")\n    return wrapper\n\n\nclass DataProcessor:\n    \"\"\"数据处理器 - 演示调试器使用：断点、监视与调用栈\"\"\"\n    \n    def __init__(self, config: Optional[Dict[str, Any]] = None):\n        self.config = config or {}\n        self._cache: Dict[str, Any] = {}\n    \n    @timer\n    def process(self, items: List[Any]) -> List[Any]:\n        \"\"\"处理数据列表\"\"\"\n        results = []\n        for item in items:\n            processed = self._process_single(item)\n            results.append(processed)\n        return results\n    \n    def _process_single(self, item: Any) -> Any:\n        \"\"\"处理单个数据项\"\"\"\n        cache_key = str(item)\n        if cache_key in self._cache:\n            return self._cache[cache_key]\n        \n        # 处理逻辑\n        result = {\n            'original': item,\n            'processed': True,\n            'length': len(str(item)) if hasattr(item, '__len__') else 0\n        }\n        \n        self._cache[cache_key] = result\n        return result\n\n\n# 使用示例\nif __name__ == '__main__':\n    processor = DataProcessor()\n    data = ['apple', 'banana', 'cherry', 'date']\n    results = processor.process(data)\n    \n    for item in results:\n        print(f\"原始: {item['original']:10} 长度: {item['length']}\")\n\n```\n\n## 四、常见陷阱与注意事项\n\n### 4.1 新手常犯的错误\n\n| 错误类型 | 错误示例 | 正确做法 |\n|---------|---------|---------|\n| 过度复杂化 | 一个函数写几百行 | 拆分成小函数，单一职责 |\n| 忽略边界条件 | 不处理空输入、极端值 | 总是验证输入，考虑边缘情况 |\n| 硬编码值 | 直接在代码中写魔法数字 | 使用常量或配置 |\n| 不处理错误 | 假设所有操作都会成功 | 使用try-catch/异常处理 |\n| 过度优化 | 一开始就纠结性能 | 先写正确的代码，再优化 |\n\n### 4.2 需要特别注意的点\n\n1. **可变默认参数问题**（Python）\n\n```python\n# ❌ 错误：可变默认参数\ndef append_to(item, target=[]):\n    target.append(item)\n    return target\n\n# ✅ 正确：使用None作为默认值\ndef append_to(item, target=None):\n    if target is None:\n        target = []\n    target.append(item)\n    return target\n```\n\n2. **浮点数精度问题**\n\n```javascript\n// ❌ 错误：直接比较浮点数\nconsole.log(0.1 + 0.2 === 0.3); // false\n\n// ✅ 正确：使用精度范围比较\nfunction nearlyEqual(a, b, epsilon = 1e-10) {\n    return Math.abs(a - b) < epsilon;\n}\n```\n\n3. **异步代码陷阱**\n\n```javascript\n// ❌ 错误：在循环中使用await（可以但需理解行为）\n// 如果你想要顺序执行，这没问题；如果想并行，应该用Promise.all\n\n// ✅ 并行执行\nconst results = await Promise.all(\n    items.map(item => processItem(item))\n);\n\n```\n\n## 五、最佳实践\n\n### 5.1 编码原则\n\n**SOLID原则（面向对象）：**\n\n| 原则 | 全称 | 含义 |\n|-----|------|------|\n| S | 单一职责原则 | 一个类只做一件事 |\n| O | 开闭原则 | 对扩展开放，对修改关闭 |\n| L | 里氏替换原则 | 子类可以替换父类 |\n| I | 接口隔离原则 | 使用小而专一的接口 |\n| D | 依赖倒置原则 | 依赖抽象而非具体实现 |\n\n**通用编程原则：**\n\n1. **KISS原则** - Keep It Simple, Stupid\n   - 保持简单直接，不要过度设计\n   - 如果有两个方案，选择简单的那个\n\n2. **DRY原则** - Don't Repeat Yourself\n   - 任何重复的代码都应该提取出来\n   - 但要注意：不要为了DRY而DRY，适当的重复有时比错误的抽象更好\n\n3. **YAGNI原则** - You Aren't Gonna Need It\n   - 不要实现你认为将来可能需要的功能\n   - 只实现当前确实需要的功能\n\n### 5.2 代码风格建议\n\n```javascript\n// ✅ 好的代码风格示例\nfunction calculateTotalPrice(items, taxRate = 0.1) {\n    // 验证输入\n    if (!Array.isArray(items)) {\n        throw new TypeError('items必须是数组');\n    }\n    \n    // 计算小计\n    const subtotal = items.reduce((sum, item) => {\n        if (typeof item.price !== 'number' || item.price < 0) {\n            throw new Error('无效的商品价格');\n        }\n        return sum + item.price * (item.quantity || 1);\n    }, 0);\n    \n    // 计算税费和总价\n    const tax = subtotal * taxRate;\n    const total = subtotal + tax;\n    \n    // 返回结果（使用对象而不是多个返回值）\n    return {\n        subtotal: roundToTwo(subtotal),\n        tax: roundToTwo(tax),\n        total: roundToTwo(total)\n    };\n}\n\nfunction roundToTwo(value) {\n    return Math.round(value * 100) / 100;\n}\n\n```\n\n## 六、实战练习\n\n### 练习1：基础应用\n\n**题目：** 实现一个简单的待办事项管理器，需要支持：\n- 添加待办事项\n- 标记完成/未完成\n- 删除待办\n- 筛选显示（全部/已完成/未完成）\n\n**提示：**\n- 使用合适的数据结构存储待办事项\n- 考虑使用面向对象或函数式风格\n- 添加适当的错误处理\n\n### 练习2：进阶挑战\n\n**题目：** 实现一个简单的缓存系统，需要：\n- 支持设置过期时间\n- LRU（最近最少使用）淘汰策略\n- 最大容量限制\n- 统计命中率\n\n### 练习3：代码审查\n\n找出下面代码的问题并重构：\n\n```javascript\n// 这段代码有什么问题？\nfunction process(data) {\n    var result = [];\n    for (var i = 0; i < data.length; i++) {\n        if (data[i].active) {\n            if (data[i].score > 60) {\n                result.push(data[i].name + ':' + data[i].score);\n            }\n        }\n    }\n    return result;\n}\n```\n\n**参考答案要点：**\n- 使用const/let替代var\n- 使用有意义的变量名\n- 提前返回减少嵌套\n- 使用filter/map替代for循环\n- 添加类型检查\n- 添加注释\n\n## 七、小结\n\n调试器使用：断点、监视与调用栈是编程学习道路上的重要里程碑。掌握本章内容后，你应该：\n\n✅ 理解调试器使用：断点、监视与调用栈的核心概念和原理\n✅ 能够在实际代码中正确应用调试器使用：断点、监视与调用栈\n✅ 知道常见的陷阱以及如何避免\n✅ 了解相关的最佳实践\n✅ 能够写出更清晰、更健壮的代码\n\n记住，编程是一门实践的艺术。仅仅阅读是不够的，你需要动手写代码，犯错，调试，然后从错误中学习。建议你完成本章的所有练习，并尝试在实际项目中应用学到的知识。\n\n### 下一步学习建议\n\n1. **动手实践**：找一个小项目来练习本章内容\n2. **阅读优秀代码**：看看开源项目中是如何使用这些概念的\n3. **代码审查**：让其他人审查你的代码，同时也审查别人的代码\n4. **教别人**：尝试把学到的知识教给其他人，这是最好的学习方式\n5. **持续学习**：编程世界日新月异，保持好奇心和学习热情\n\n---\n\n**拓展阅读推荐：**\n- 《代码整洁之道》- Robert C. Martin\n- 《重构：改善既有代码的设计》- Martin Fowler\n- 《设计模式》- GoF\n- 《程序员修炼之道》- Hunt & Thomas\n\n祝你编程学习之旅愉快！🚀\n"
+    content: `
+# 调试器使用：断点、监视与调用栈
+
+## 一、概述
+
+调试器使用：断点、监视与调用栈是每一位程序员必须掌握的核心知识。无论你使用什么编程语言，这些基础概念都是相通的。本章将带你系统地学习调试器使用：断点、监视与调用栈的方方面面，从基本概念到实际应用，从常见陷阱到最佳实践，帮助你建立扎实的编程基础。
+
+学习编程不仅仅是学习语法，更重要的是理解背后的思想和原理。我们将通过大量的代码示例、类比说明和实战练习，让你真正理解而非死记硬背。
+
+## 二、核心概念详解
+
+### 2.1 什么是调试器使用：断点、监视与调用栈？
+
+在深入学习之前，让我们先理解调试器使用：断点、监视与调用栈的本质。调试器使用：断点、监视与调用栈是编程中用于解决特定问题的一组思想和技术的总称。它不是某一种语言特有的功能，而是所有现代编程语言都支持的通用概念。
+
+想象一下，如果你要盖一栋房子：
+
+| 编程概念 | 建筑类比 | 作用 |
+|---------|---------|------|
+| 变量 | 建筑材料 | 存储数据 |
+| 函数 | 预制构件 | 封装功能 |
+| 控制流 | 施工图纸 | 决定执行顺序 |
+| 数据结构 | 房间布局 | 组织数据 |
+| 调试器使用：断点、监视与调用栈 | 核心建筑工艺 | 特定问题解决方案 |
+
+### 2.2 为什么需要调试器使用：断点、监视与调用栈？
+
+在调试器使用：断点、监视与调用栈出现之前，程序员面临着很多问题：
+
+1. **代码重复**：相同的逻辑需要在多处重复编写
+2. **难以维护**：代码结构混乱，修改一处可能影响多处
+3. **容易出错**：缺乏系统化的方法，bug频发
+4. **协作困难**：没有统一的范式，团队成员代码风格各异
+
+调试器使用：断点、监视与调用栈正是为了解决这些问题而产生的。
+
+## 三、实战代码示例
+
+### 3.1 基础示例
+
+让我们从最简单的例子开始：
+
+\`\`\`javascript
+// 示例1：基础用法
+function demonstrateprog_debugger_tools(data) {
+    // 第一步：验证输入
+    if (!data) {
+        throw new Error('输入数据不能为空');
+    }
+    
+    // 第二步：处理数据
+    const result = processData(data);
+    
+    // 第三步：返回结果
+    return result;
+}
+
+function processData(data) {
+    // 具体的处理逻辑
+    return data.map(item => ({
+        ...item,
+        processed: true,
+        timestamp: Date.now()
+    }));
+}
+
+// 使用示例
+const testData = [
+    { id: 1, name: '示例1' },
+    { id: 2, name: '示例2' }
+];
+
+const results = demonstrateprog_debugger_tools(testData);
+console.log('处理结果:', results);
+\`\`\`
+
+### 3.2 进阶示例
+
+下面是一个更贴近实际开发的例子：
+
+\`\`\`javascript
+// 示例2：实际应用场景
+class ProgDebuggerToolsExample {
+    constructor(options = {}) {
+        this.options = {
+            debug: false,
+            maxRetries: 3,
+            timeout: 5000,
+            ...options
+        };
+        this.cache = new Map();
+    }
+    
+    async execute(input) {
+        const cacheKey = this.generateCacheKey(input);
+        
+        // 检查缓存
+        if (this.cache.has(cacheKey)) {
+            this.log('从缓存返回结果');
+            return this.cache.get(cacheKey);
+        }
+        
+        // 重试逻辑
+        let lastError;
+        for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {
+            try {
+                this.log(\`尝试第 \${attempt} 次执行\`);
+                const result = await this.doExecute(input);
+                this.cache.set(cacheKey, result);
+                return result;
+            } catch (error) {
+                lastError = error;
+                this.log(\`第 \${attempt} 次尝试失败: \${error.message}\`);
+                await this.delay(1000 * attempt);
+            }
+        }
+        
+        throw new Error(\`执行失败，已重试\${this.options.maxRetries}次: \${lastError.message}\`);
+    }
+    
+    async doExecute(input) {
+        // 实际的执行逻辑
+        return { success: true, data: input };
+    }
+    
+    generateCacheKey(input) {
+        return JSON.stringify(input);
+    }
+    
+    log(message) {
+        if (this.options.debug) {
+            console.log(\`[调试器使用：断点、监视与调用栈] \${message}\`);
+        }
+    }
+    
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+}
+\`\`\`
+
+### 3.3 Python示例
+
+如果你更熟悉Python，这里是对应的例子：
+
+\`\`\`python
+# Python示例
+from typing import Any, Dict, List, Optional
+import time
+import functools
+
+
+def timer(func):
+    """装饰器：测量函数执行时间"""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        try:
+            result = func(*args, **kwargs)
+            return result
+        finally:
+            elapsed = time.time() - start
+            print(f"{func.__name__} 执行时间: {elapsed:.4f}秒")
+    return wrapper
+
+
+class DataProcessor:
+    """数据处理器 - 演示调试器使用：断点、监视与调用栈"""
+    
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        self.config = config or {}
+        self._cache: Dict[str, Any] = {}
+    
+    @timer
+    def process(self, items: List[Any]) -> List[Any]:
+        """处理数据列表"""
+        results = []
+        for item in items:
+            processed = self._process_single(item)
+            results.append(processed)
+        return results
+    
+    def _process_single(self, item: Any) -> Any:
+        """处理单个数据项"""
+        cache_key = str(item)
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+        
+        # 处理逻辑
+        result = {
+            'original': item,
+            'processed': True,
+            'length': len(str(item)) if hasattr(item, '__len__') else 0
+        }
+        
+        self._cache[cache_key] = result
+        return result
+
+
+# 使用示例
+if __name__ == '__main__':
+    processor = DataProcessor()
+    data = ['apple', 'banana', 'cherry', 'date']
+    results = processor.process(data)
+    
+    for item in results:
+        print(f"原始: {item['original']:10} 长度: {item['length']}")
+
+\`\`\`
+
+## 四、常见陷阱与注意事项
+
+### 4.1 新手常犯的错误
+
+| 错误类型 | 错误示例 | 正确做法 |
+|---------|---------|---------|
+| 过度复杂化 | 一个函数写几百行 | 拆分成小函数，单一职责 |
+| 忽略边界条件 | 不处理空输入、极端值 | 总是验证输入，考虑边缘情况 |
+| 硬编码值 | 直接在代码中写魔法数字 | 使用常量或配置 |
+| 不处理错误 | 假设所有操作都会成功 | 使用try-catch/异常处理 |
+| 过度优化 | 一开始就纠结性能 | 先写正确的代码，再优化 |
+
+### 4.2 需要特别注意的点
+
+1. **可变默认参数问题**（Python）
+
+\`\`\`python
+# ❌ 错误：可变默认参数
+def append_to(item, target=[]):
+    target.append(item)
+    return target
+
+# ✅ 正确：使用None作为默认值
+def append_to(item, target=None):
+    if target is None:
+        target = []
+    target.append(item)
+    return target
+\`\`\`
+
+2. **浮点数精度问题**
+
+\`\`\`javascript
+// ❌ 错误：直接比较浮点数
+console.log(0.1 + 0.2 === 0.3); // false
+
+// ✅ 正确：使用精度范围比较
+function nearlyEqual(a, b, epsilon = 1e-10) {
+    return Math.abs(a - b) < epsilon;
+}
+\`\`\`
+
+3. **异步代码陷阱**
+
+\`\`\`javascript
+// ❌ 错误：在循环中使用await（可以但需理解行为）
+// 如果你想要顺序执行，这没问题；如果想并行，应该用Promise.all
+
+// ✅ 并行执行
+const results = await Promise.all(
+    items.map(item => processItem(item))
+);
+
+\`\`\`
+
+## 五、最佳实践
+
+### 5.1 编码原则
+
+**SOLID原则（面向对象）：**
+
+| 原则 | 全称 | 含义 |
+|-----|------|------|
+| S | 单一职责原则 | 一个类只做一件事 |
+| O | 开闭原则 | 对扩展开放，对修改关闭 |
+| L | 里氏替换原则 | 子类可以替换父类 |
+| I | 接口隔离原则 | 使用小而专一的接口 |
+| D | 依赖倒置原则 | 依赖抽象而非具体实现 |
+
+**通用编程原则：**
+
+1. **KISS原则** - Keep It Simple, Stupid
+   - 保持简单直接，不要过度设计
+   - 如果有两个方案，选择简单的那个
+
+2. **DRY原则** - Don't Repeat Yourself
+   - 任何重复的代码都应该提取出来
+   - 但要注意：不要为了DRY而DRY，适当的重复有时比错误的抽象更好
+
+3. **YAGNI原则** - You Aren't Gonna Need It
+   - 不要实现你认为将来可能需要的功能
+   - 只实现当前确实需要的功能
+
+### 5.2 代码风格建议
+
+\`\`\`javascript
+// ✅ 好的代码风格示例
+function calculateTotalPrice(items, taxRate = 0.1) {
+    // 验证输入
+    if (!Array.isArray(items)) {
+        throw new TypeError('items必须是数组');
+    }
+    
+    // 计算小计
+    const subtotal = items.reduce((sum, item) => {
+        if (typeof item.price !== 'number' || item.price < 0) {
+            throw new Error('无效的商品价格');
+        }
+        return sum + item.price * (item.quantity || 1);
+    }, 0);
+    
+    // 计算税费和总价
+    const tax = subtotal * taxRate;
+    const total = subtotal + tax;
+    
+    // 返回结果（使用对象而不是多个返回值）
+    return {
+        subtotal: roundToTwo(subtotal),
+        tax: roundToTwo(tax),
+        total: roundToTwo(total)
+    };
+}
+
+function roundToTwo(value) {
+    return Math.round(value * 100) / 100;
+}
+
+\`\`\`
+
+## 六、实战练习
+
+### 练习1：基础应用
+
+**题目：** 实现一个简单的待办事项管理器，需要支持：
+- 添加待办事项
+- 标记完成/未完成
+- 删除待办
+- 筛选显示（全部/已完成/未完成）
+
+**提示：**
+- 使用合适的数据结构存储待办事项
+- 考虑使用面向对象或函数式风格
+- 添加适当的错误处理
+
+### 练习2：进阶挑战
+
+**题目：** 实现一个简单的缓存系统，需要：
+- 支持设置过期时间
+- LRU（最近最少使用）淘汰策略
+- 最大容量限制
+- 统计命中率
+
+### 练习3：代码审查
+
+找出下面代码的问题并重构：
+
+\`\`\`javascript
+// 这段代码有什么问题？
+function process(data) {
+    var result = [];
+    for (var i = 0; i < data.length; i++) {
+        if (data[i].active) {
+            if (data[i].score > 60) {
+                result.push(data[i].name + ':' + data[i].score);
+            }
+        }
+    }
+    return result;
+}
+\`\`\`
+
+**参考答案要点：**
+- 使用const/let替代var
+- 使用有意义的变量名
+- 提前返回减少嵌套
+- 使用filter/map替代for循环
+- 添加类型检查
+- 添加注释
+
+## 七、小结
+
+调试器使用：断点、监视与调用栈是编程学习道路上的重要里程碑。掌握本章内容后，你应该：
+
+✅ 理解调试器使用：断点、监视与调用栈的核心概念和原理
+✅ 能够在实际代码中正确应用调试器使用：断点、监视与调用栈
+✅ 知道常见的陷阱以及如何避免
+✅ 了解相关的最佳实践
+✅ 能够写出更清晰、更健壮的代码
+
+记住，编程是一门实践的艺术。仅仅阅读是不够的，你需要动手写代码，犯错，调试，然后从错误中学习。建议你完成本章的所有练习，并尝试在实际项目中应用学到的知识。
+
+### 下一步学习建议
+
+1. **动手实践**：找一个小项目来练习本章内容
+2. **阅读优秀代码**：看看开源项目中是如何使用这些概念的
+3. **代码审查**：让其他人审查你的代码，同时也审查别人的代码
+4. **教别人**：尝试把学到的知识教给其他人，这是最好的学习方式
+5. **持续学习**：编程世界日新月异，保持好奇心和学习热情
+
+---
+
+**拓展阅读推荐：**
+- 《代码整洁之道》- Robert C. Martin
+- 《重构：改善既有代码的设计》- Martin Fowler
+- 《设计模式》- GoF
+- 《程序员修炼之道》- Hunt & Thomas
+
+祝你编程学习之旅愉快！🚀
+`
   },
   {
     "id": "prog-unit-testing",
     "title": "单元测试：验证代码正确性",
     "icon": "🧪",
     "group": "调试、测试与代码质量",
-    "content": "# 单元测试：验证代码正确性\n\n## 一、概述\n\n单元测试：验证代码正确性是每一位程序员必须掌握的核心知识。无论你使用什么编程语言，这些基础概念都是相通的。本章将带你系统地学习单元测试：验证代码正确性的方方面面，从基本概念到实际应用，从常见陷阱到最佳实践，帮助你建立扎实的编程基础。\n\n学习编程不仅仅是学习语法，更重要的是理解背后的思想和原理。我们将通过大量的代码示例、类比说明和实战练习，让你真正理解而非死记硬背。\n\n## 二、核心概念详解\n\n### 2.1 什么是单元测试：验证代码正确性？\n\n在深入学习之前，让我们先理解单元测试：验证代码正确性的本质。单元测试：验证代码正确性是编程中用于解决特定问题的一组思想和技术的总称。它不是某一种语言特有的功能，而是所有现代编程语言都支持的通用概念。\n\n想象一下，如果你要盖一栋房子：\n\n| 编程概念 | 建筑类比 | 作用 |\n|---------|---------|------|\n| 变量 | 建筑材料 | 存储数据 |\n| 函数 | 预制构件 | 封装功能 |\n| 控制流 | 施工图纸 | 决定执行顺序 |\n| 数据结构 | 房间布局 | 组织数据 |\n| 单元测试：验证代码正确性 | 核心建筑工艺 | 特定问题解决方案 |\n\n### 2.2 为什么需要单元测试：验证代码正确性？\n\n在单元测试：验证代码正确性出现之前，程序员面临着很多问题：\n\n1. **代码重复**：相同的逻辑需要在多处重复编写\n2. **难以维护**：代码结构混乱，修改一处可能影响多处\n3. **容易出错**：缺乏系统化的方法，bug频发\n4. **协作困难**：没有统一的范式，团队成员代码风格各异\n\n单元测试：验证代码正确性正是为了解决这些问题而产生的。\n\n## 三、实战代码示例\n\n### 3.1 基础示例\n\n让我们从最简单的例子开始：\n\n```javascript\n// 示例1：基础用法\nfunction demonstrateprog_unit_testing(data) {\n    // 第一步：验证输入\n    if (!data) {\n        throw new Error('输入数据不能为空');\n    }\n    \n    // 第二步：处理数据\n    const result = processData(data);\n    \n    // 第三步：返回结果\n    return result;\n}\n\nfunction processData(data) {\n    // 具体的处理逻辑\n    return data.map(item => ({\n        ...item,\n        processed: true,\n        timestamp: Date.now()\n    }));\n}\n\n// 使用示例\nconst testData = [\n    { id: 1, name: '示例1' },\n    { id: 2, name: '示例2' }\n];\n\nconst results = demonstrateprog_unit_testing(testData);\nconsole.log('处理结果:', results);\n```\n\n### 3.2 进阶示例\n\n下面是一个更贴近实际开发的例子：\n\n```javascript\n// 示例2：实际应用场景\nclass prog-unit-testingExample {\n    constructor(options = {}) {\n        this.options = {\n            debug: false,\n            maxRetries: 3,\n            timeout: 5000,\n            ...options\n        };\n        this.cache = new Map();\n    }\n    \n    async execute(input) {\n        const cacheKey = this.generateCacheKey(input);\n        \n        // 检查缓存\n        if (this.cache.has(cacheKey)) {\n            this.log('从缓存返回结果');\n            return this.cache.get(cacheKey);\n        }\n        \n        // 重试逻辑\n        let lastError;\n        for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {\n            try {\n                this.log(`尝试第 ${attempt} 次执行`);\n                const result = await this.doExecute(input);\n                this.cache.set(cacheKey, result);\n                return result;\n            } catch (error) {\n                lastError = error;\n                this.log(`第 ${attempt} 次尝试失败: ${error.message}`);\n                await this.delay(1000 * attempt);\n            }\n        }\n        \n        throw new Error(`执行失败，已重试${this.options.maxRetries}次: ${lastError.message}`);\n    }\n    \n    async doExecute(input) {\n        // 实际的执行逻辑\n        return { success: true, data: input };\n    }\n    \n    generateCacheKey(input) {\n        return JSON.stringify(input);\n    }\n    \n    log(message) {\n        if (this.options.debug) {\n            console.log(`[单元测试：验证代码正确性] ${message}`);\n        }\n    }\n    \n    delay(ms) {\n        return new Promise(resolve => setTimeout(resolve, ms));\n    }\n}\n```\n\n### 3.3 Python示例\n\n如果你更熟悉Python，这里是对应的例子：\n\n```python\n# Python示例\nfrom typing import Any, Dict, List, Optional\nimport time\nimport functools\n\n\ndef timer(func):\n    \"\"\"装饰器：测量函数执行时间\"\"\"\n    @functools.wraps(func)\n    def wrapper(*args, **kwargs):\n        start = time.time()\n        try:\n            result = func(*args, **kwargs)\n            return result\n        finally:\n            elapsed = time.time() - start\n            print(f\"{func.__name__} 执行时间: {elapsed:.4f}秒\")\n    return wrapper\n\n\nclass DataProcessor:\n    \"\"\"数据处理器 - 演示单元测试：验证代码正确性\"\"\"\n    \n    def __init__(self, config: Optional[Dict[str, Any]] = None):\n        self.config = config or {}\n        self._cache: Dict[str, Any] = {}\n    \n    @timer\n    def process(self, items: List[Any]) -> List[Any]:\n        \"\"\"处理数据列表\"\"\"\n        results = []\n        for item in items:\n            processed = self._process_single(item)\n            results.append(processed)\n        return results\n    \n    def _process_single(self, item: Any) -> Any:\n        \"\"\"处理单个数据项\"\"\"\n        cache_key = str(item)\n        if cache_key in self._cache:\n            return self._cache[cache_key]\n        \n        # 处理逻辑\n        result = {\n            'original': item,\n            'processed': True,\n            'length': len(str(item)) if hasattr(item, '__len__') else 0\n        }\n        \n        self._cache[cache_key] = result\n        return result\n\n\n# 使用示例\nif __name__ == '__main__':\n    processor = DataProcessor()\n    data = ['apple', 'banana', 'cherry', 'date']\n    results = processor.process(data)\n    \n    for item in results:\n        print(f\"原始: {item['original']:10} 长度: {item['length']}\")\n\n```\n\n## 四、常见陷阱与注意事项\n\n### 4.1 新手常犯的错误\n\n| 错误类型 | 错误示例 | 正确做法 |\n|---------|---------|---------|\n| 过度复杂化 | 一个函数写几百行 | 拆分成小函数，单一职责 |\n| 忽略边界条件 | 不处理空输入、极端值 | 总是验证输入，考虑边缘情况 |\n| 硬编码值 | 直接在代码中写魔法数字 | 使用常量或配置 |\n| 不处理错误 | 假设所有操作都会成功 | 使用try-catch/异常处理 |\n| 过度优化 | 一开始就纠结性能 | 先写正确的代码，再优化 |\n\n### 4.2 需要特别注意的点\n\n1. **可变默认参数问题**（Python）\n\n```python\n# ❌ 错误：可变默认参数\ndef append_to(item, target=[]):\n    target.append(item)\n    return target\n\n# ✅ 正确：使用None作为默认值\ndef append_to(item, target=None):\n    if target is None:\n        target = []\n    target.append(item)\n    return target\n```\n\n2. **浮点数精度问题**\n\n```javascript\n// ❌ 错误：直接比较浮点数\nconsole.log(0.1 + 0.2 === 0.3); // false\n\n// ✅ 正确：使用精度范围比较\nfunction nearlyEqual(a, b, epsilon = 1e-10) {\n    return Math.abs(a - b) < epsilon;\n}\n```\n\n3. **异步代码陷阱**\n\n```javascript\n// ❌ 错误：在循环中使用await（可以但需理解行为）\n// 如果你想要顺序执行，这没问题；如果想并行，应该用Promise.all\n\n// ✅ 并行执行\nconst results = await Promise.all(\n    items.map(item => processItem(item))\n);\n\n```\n\n## 五、最佳实践\n\n### 5.1 编码原则\n\n**SOLID原则（面向对象）：**\n\n| 原则 | 全称 | 含义 |\n|-----|------|------|\n| S | 单一职责原则 | 一个类只做一件事 |\n| O | 开闭原则 | 对扩展开放，对修改关闭 |\n| L | 里氏替换原则 | 子类可以替换父类 |\n| I | 接口隔离原则 | 使用小而专一的接口 |\n| D | 依赖倒置原则 | 依赖抽象而非具体实现 |\n\n**通用编程原则：**\n\n1. **KISS原则** - Keep It Simple, Stupid\n   - 保持简单直接，不要过度设计\n   - 如果有两个方案，选择简单的那个\n\n2. **DRY原则** - Don't Repeat Yourself\n   - 任何重复的代码都应该提取出来\n   - 但要注意：不要为了DRY而DRY，适当的重复有时比错误的抽象更好\n\n3. **YAGNI原则** - You Aren't Gonna Need It\n   - 不要实现你认为将来可能需要的功能\n   - 只实现当前确实需要的功能\n\n### 5.2 代码风格建议\n\n```javascript\n// ✅ 好的代码风格示例\nfunction calculateTotalPrice(items, taxRate = 0.1) {\n    // 验证输入\n    if (!Array.isArray(items)) {\n        throw new TypeError('items必须是数组');\n    }\n    \n    // 计算小计\n    const subtotal = items.reduce((sum, item) => {\n        if (typeof item.price !== 'number' || item.price < 0) {\n            throw new Error('无效的商品价格');\n        }\n        return sum + item.price * (item.quantity || 1);\n    }, 0);\n    \n    // 计算税费和总价\n    const tax = subtotal * taxRate;\n    const total = subtotal + tax;\n    \n    // 返回结果（使用对象而不是多个返回值）\n    return {\n        subtotal: roundToTwo(subtotal),\n        tax: roundToTwo(tax),\n        total: roundToTwo(total)\n    };\n}\n\nfunction roundToTwo(value) {\n    return Math.round(value * 100) / 100;\n}\n\n```\n\n## 六、实战练习\n\n### 练习1：基础应用\n\n**题目：** 实现一个简单的待办事项管理器，需要支持：\n- 添加待办事项\n- 标记完成/未完成\n- 删除待办\n- 筛选显示（全部/已完成/未完成）\n\n**提示：**\n- 使用合适的数据结构存储待办事项\n- 考虑使用面向对象或函数式风格\n- 添加适当的错误处理\n\n### 练习2：进阶挑战\n\n**题目：** 实现一个简单的缓存系统，需要：\n- 支持设置过期时间\n- LRU（最近最少使用）淘汰策略\n- 最大容量限制\n- 统计命中率\n\n### 练习3：代码审查\n\n找出下面代码的问题并重构：\n\n```javascript\n// 这段代码有什么问题？\nfunction process(data) {\n    var result = [];\n    for (var i = 0; i < data.length; i++) {\n        if (data[i].active) {\n            if (data[i].score > 60) {\n                result.push(data[i].name + ':' + data[i].score);\n            }\n        }\n    }\n    return result;\n}\n```\n\n**参考答案要点：**\n- 使用const/let替代var\n- 使用有意义的变量名\n- 提前返回减少嵌套\n- 使用filter/map替代for循环\n- 添加类型检查\n- 添加注释\n\n## 七、小结\n\n单元测试：验证代码正确性是编程学习道路上的重要里程碑。掌握本章内容后，你应该：\n\n✅ 理解单元测试：验证代码正确性的核心概念和原理\n✅ 能够在实际代码中正确应用单元测试：验证代码正确性\n✅ 知道常见的陷阱以及如何避免\n✅ 了解相关的最佳实践\n✅ 能够写出更清晰、更健壮的代码\n\n记住，编程是一门实践的艺术。仅仅阅读是不够的，你需要动手写代码，犯错，调试，然后从错误中学习。建议你完成本章的所有练习，并尝试在实际项目中应用学到的知识。\n\n### 下一步学习建议\n\n1. **动手实践**：找一个小项目来练习本章内容\n2. **阅读优秀代码**：看看开源项目中是如何使用这些概念的\n3. **代码审查**：让其他人审查你的代码，同时也审查别人的代码\n4. **教别人**：尝试把学到的知识教给其他人，这是最好的学习方式\n5. **持续学习**：编程世界日新月异，保持好奇心和学习热情\n\n---\n\n**拓展阅读推荐：**\n- 《代码整洁之道》- Robert C. Martin\n- 《重构：改善既有代码的设计》- Martin Fowler\n- 《设计模式》- GoF\n- 《程序员修炼之道》- Hunt & Thomas\n\n祝你编程学习之旅愉快！🚀\n"
+    content: `
+# 单元测试：验证代码正确性
+
+## 一、概述
+
+单元测试：验证代码正确性是每一位程序员必须掌握的核心知识。无论你使用什么编程语言，这些基础概念都是相通的。本章将带你系统地学习单元测试：验证代码正确性的方方面面，从基本概念到实际应用，从常见陷阱到最佳实践，帮助你建立扎实的编程基础。
+
+学习编程不仅仅是学习语法，更重要的是理解背后的思想和原理。我们将通过大量的代码示例、类比说明和实战练习，让你真正理解而非死记硬背。
+
+## 二、核心概念详解
+
+### 2.1 什么是单元测试：验证代码正确性？
+
+在深入学习之前，让我们先理解单元测试：验证代码正确性的本质。单元测试：验证代码正确性是编程中用于解决特定问题的一组思想和技术的总称。它不是某一种语言特有的功能，而是所有现代编程语言都支持的通用概念。
+
+想象一下，如果你要盖一栋房子：
+
+| 编程概念 | 建筑类比 | 作用 |
+|---------|---------|------|
+| 变量 | 建筑材料 | 存储数据 |
+| 函数 | 预制构件 | 封装功能 |
+| 控制流 | 施工图纸 | 决定执行顺序 |
+| 数据结构 | 房间布局 | 组织数据 |
+| 单元测试：验证代码正确性 | 核心建筑工艺 | 特定问题解决方案 |
+
+### 2.2 为什么需要单元测试：验证代码正确性？
+
+在单元测试：验证代码正确性出现之前，程序员面临着很多问题：
+
+1. **代码重复**：相同的逻辑需要在多处重复编写
+2. **难以维护**：代码结构混乱，修改一处可能影响多处
+3. **容易出错**：缺乏系统化的方法，bug频发
+4. **协作困难**：没有统一的范式，团队成员代码风格各异
+
+单元测试：验证代码正确性正是为了解决这些问题而产生的。
+
+## 三、实战代码示例
+
+### 3.1 基础示例
+
+让我们从最简单的例子开始：
+
+\`\`\`javascript
+// 示例1：基础用法
+function demonstrateprog_unit_testing(data) {
+    // 第一步：验证输入
+    if (!data) {
+        throw new Error('输入数据不能为空');
+    }
+    
+    // 第二步：处理数据
+    const result = processData(data);
+    
+    // 第三步：返回结果
+    return result;
+}
+
+function processData(data) {
+    // 具体的处理逻辑
+    return data.map(item => ({
+        ...item,
+        processed: true,
+        timestamp: Date.now()
+    }));
+}
+
+// 使用示例
+const testData = [
+    { id: 1, name: '示例1' },
+    { id: 2, name: '示例2' }
+];
+
+const results = demonstrateprog_unit_testing(testData);
+console.log('处理结果:', results);
+\`\`\`
+
+### 3.2 进阶示例
+
+下面是一个更贴近实际开发的例子：
+
+\`\`\`javascript
+// 示例2：实际应用场景
+class ProgUnitTestingExample {
+    constructor(options = {}) {
+        this.options = {
+            debug: false,
+            maxRetries: 3,
+            timeout: 5000,
+            ...options
+        };
+        this.cache = new Map();
+    }
+    
+    async execute(input) {
+        const cacheKey = this.generateCacheKey(input);
+        
+        // 检查缓存
+        if (this.cache.has(cacheKey)) {
+            this.log('从缓存返回结果');
+            return this.cache.get(cacheKey);
+        }
+        
+        // 重试逻辑
+        let lastError;
+        for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {
+            try {
+                this.log(\`尝试第 \${attempt} 次执行\`);
+                const result = await this.doExecute(input);
+                this.cache.set(cacheKey, result);
+                return result;
+            } catch (error) {
+                lastError = error;
+                this.log(\`第 \${attempt} 次尝试失败: \${error.message}\`);
+                await this.delay(1000 * attempt);
+            }
+        }
+        
+        throw new Error(\`执行失败，已重试\${this.options.maxRetries}次: \${lastError.message}\`);
+    }
+    
+    async doExecute(input) {
+        // 实际的执行逻辑
+        return { success: true, data: input };
+    }
+    
+    generateCacheKey(input) {
+        return JSON.stringify(input);
+    }
+    
+    log(message) {
+        if (this.options.debug) {
+            console.log(\`[单元测试：验证代码正确性] \${message}\`);
+        }
+    }
+    
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+}
+\`\`\`
+
+### 3.3 Python示例
+
+如果你更熟悉Python，这里是对应的例子：
+
+\`\`\`python
+# Python示例
+from typing import Any, Dict, List, Optional
+import time
+import functools
+
+
+def timer(func):
+    """装饰器：测量函数执行时间"""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        try:
+            result = func(*args, **kwargs)
+            return result
+        finally:
+            elapsed = time.time() - start
+            print(f"{func.__name__} 执行时间: {elapsed:.4f}秒")
+    return wrapper
+
+
+class DataProcessor:
+    """数据处理器 - 演示单元测试：验证代码正确性"""
+    
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        self.config = config or {}
+        self._cache: Dict[str, Any] = {}
+    
+    @timer
+    def process(self, items: List[Any]) -> List[Any]:
+        """处理数据列表"""
+        results = []
+        for item in items:
+            processed = self._process_single(item)
+            results.append(processed)
+        return results
+    
+    def _process_single(self, item: Any) -> Any:
+        """处理单个数据项"""
+        cache_key = str(item)
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+        
+        # 处理逻辑
+        result = {
+            'original': item,
+            'processed': True,
+            'length': len(str(item)) if hasattr(item, '__len__') else 0
+        }
+        
+        self._cache[cache_key] = result
+        return result
+
+
+# 使用示例
+if __name__ == '__main__':
+    processor = DataProcessor()
+    data = ['apple', 'banana', 'cherry', 'date']
+    results = processor.process(data)
+    
+    for item in results:
+        print(f"原始: {item['original']:10} 长度: {item['length']}")
+
+\`\`\`
+
+## 四、常见陷阱与注意事项
+
+### 4.1 新手常犯的错误
+
+| 错误类型 | 错误示例 | 正确做法 |
+|---------|---------|---------|
+| 过度复杂化 | 一个函数写几百行 | 拆分成小函数，单一职责 |
+| 忽略边界条件 | 不处理空输入、极端值 | 总是验证输入，考虑边缘情况 |
+| 硬编码值 | 直接在代码中写魔法数字 | 使用常量或配置 |
+| 不处理错误 | 假设所有操作都会成功 | 使用try-catch/异常处理 |
+| 过度优化 | 一开始就纠结性能 | 先写正确的代码，再优化 |
+
+### 4.2 需要特别注意的点
+
+1. **可变默认参数问题**（Python）
+
+\`\`\`python
+# ❌ 错误：可变默认参数
+def append_to(item, target=[]):
+    target.append(item)
+    return target
+
+# ✅ 正确：使用None作为默认值
+def append_to(item, target=None):
+    if target is None:
+        target = []
+    target.append(item)
+    return target
+\`\`\`
+
+2. **浮点数精度问题**
+
+\`\`\`javascript
+// ❌ 错误：直接比较浮点数
+console.log(0.1 + 0.2 === 0.3); // false
+
+// ✅ 正确：使用精度范围比较
+function nearlyEqual(a, b, epsilon = 1e-10) {
+    return Math.abs(a - b) < epsilon;
+}
+\`\`\`
+
+3. **异步代码陷阱**
+
+\`\`\`javascript
+// ❌ 错误：在循环中使用await（可以但需理解行为）
+// 如果你想要顺序执行，这没问题；如果想并行，应该用Promise.all
+
+// ✅ 并行执行
+const results = await Promise.all(
+    items.map(item => processItem(item))
+);
+
+\`\`\`
+
+## 五、最佳实践
+
+### 5.1 编码原则
+
+**SOLID原则（面向对象）：**
+
+| 原则 | 全称 | 含义 |
+|-----|------|------|
+| S | 单一职责原则 | 一个类只做一件事 |
+| O | 开闭原则 | 对扩展开放，对修改关闭 |
+| L | 里氏替换原则 | 子类可以替换父类 |
+| I | 接口隔离原则 | 使用小而专一的接口 |
+| D | 依赖倒置原则 | 依赖抽象而非具体实现 |
+
+**通用编程原则：**
+
+1. **KISS原则** - Keep It Simple, Stupid
+   - 保持简单直接，不要过度设计
+   - 如果有两个方案，选择简单的那个
+
+2. **DRY原则** - Don't Repeat Yourself
+   - 任何重复的代码都应该提取出来
+   - 但要注意：不要为了DRY而DRY，适当的重复有时比错误的抽象更好
+
+3. **YAGNI原则** - You Aren't Gonna Need It
+   - 不要实现你认为将来可能需要的功能
+   - 只实现当前确实需要的功能
+
+### 5.2 代码风格建议
+
+\`\`\`javascript
+// ✅ 好的代码风格示例
+function calculateTotalPrice(items, taxRate = 0.1) {
+    // 验证输入
+    if (!Array.isArray(items)) {
+        throw new TypeError('items必须是数组');
+    }
+    
+    // 计算小计
+    const subtotal = items.reduce((sum, item) => {
+        if (typeof item.price !== 'number' || item.price < 0) {
+            throw new Error('无效的商品价格');
+        }
+        return sum + item.price * (item.quantity || 1);
+    }, 0);
+    
+    // 计算税费和总价
+    const tax = subtotal * taxRate;
+    const total = subtotal + tax;
+    
+    // 返回结果（使用对象而不是多个返回值）
+    return {
+        subtotal: roundToTwo(subtotal),
+        tax: roundToTwo(tax),
+        total: roundToTwo(total)
+    };
+}
+
+function roundToTwo(value) {
+    return Math.round(value * 100) / 100;
+}
+
+\`\`\`
+
+## 六、实战练习
+
+### 练习1：基础应用
+
+**题目：** 实现一个简单的待办事项管理器，需要支持：
+- 添加待办事项
+- 标记完成/未完成
+- 删除待办
+- 筛选显示（全部/已完成/未完成）
+
+**提示：**
+- 使用合适的数据结构存储待办事项
+- 考虑使用面向对象或函数式风格
+- 添加适当的错误处理
+
+### 练习2：进阶挑战
+
+**题目：** 实现一个简单的缓存系统，需要：
+- 支持设置过期时间
+- LRU（最近最少使用）淘汰策略
+- 最大容量限制
+- 统计命中率
+
+### 练习3：代码审查
+
+找出下面代码的问题并重构：
+
+\`\`\`javascript
+// 这段代码有什么问题？
+function process(data) {
+    var result = [];
+    for (var i = 0; i < data.length; i++) {
+        if (data[i].active) {
+            if (data[i].score > 60) {
+                result.push(data[i].name + ':' + data[i].score);
+            }
+        }
+    }
+    return result;
+}
+\`\`\`
+
+**参考答案要点：**
+- 使用const/let替代var
+- 使用有意义的变量名
+- 提前返回减少嵌套
+- 使用filter/map替代for循环
+- 添加类型检查
+- 添加注释
+
+## 七、小结
+
+单元测试：验证代码正确性是编程学习道路上的重要里程碑。掌握本章内容后，你应该：
+
+✅ 理解单元测试：验证代码正确性的核心概念和原理
+✅ 能够在实际代码中正确应用单元测试：验证代码正确性
+✅ 知道常见的陷阱以及如何避免
+✅ 了解相关的最佳实践
+✅ 能够写出更清晰、更健壮的代码
+
+记住，编程是一门实践的艺术。仅仅阅读是不够的，你需要动手写代码，犯错，调试，然后从错误中学习。建议你完成本章的所有练习，并尝试在实际项目中应用学到的知识。
+
+### 下一步学习建议
+
+1. **动手实践**：找一个小项目来练习本章内容
+2. **阅读优秀代码**：看看开源项目中是如何使用这些概念的
+3. **代码审查**：让其他人审查你的代码，同时也审查别人的代码
+4. **教别人**：尝试把学到的知识教给其他人，这是最好的学习方式
+5. **持续学习**：编程世界日新月异，保持好奇心和学习热情
+
+---
+
+**拓展阅读推荐：**
+- 《代码整洁之道》- Robert C. Martin
+- 《重构：改善既有代码的设计》- Martin Fowler
+- 《设计模式》- GoF
+- 《程序员修炼之道》- Hunt & Thomas
+
+祝你编程学习之旅愉快！🚀
+`
   },
   {
     "id": "prog-test-driven",
     "title": "测试驱动开发TDD入门",
     "icon": "🔴",
     "group": "调试、测试与代码质量",
-    "content": "# 测试驱动开发TDD入门\n\n## 一、概述\n\n测试驱动开发TDD入门是每一位程序员必须掌握的核心知识。无论你使用什么编程语言，这些基础概念都是相通的。本章将带你系统地学习测试驱动开发TDD入门的方方面面，从基本概念到实际应用，从常见陷阱到最佳实践，帮助你建立扎实的编程基础。\n\n学习编程不仅仅是学习语法，更重要的是理解背后的思想和原理。我们将通过大量的代码示例、类比说明和实战练习，让你真正理解而非死记硬背。\n\n## 二、核心概念详解\n\n### 2.1 什么是测试驱动开发TDD入门？\n\n在深入学习之前，让我们先理解测试驱动开发TDD入门的本质。测试驱动开发TDD入门是编程中用于解决特定问题的一组思想和技术的总称。它不是某一种语言特有的功能，而是所有现代编程语言都支持的通用概念。\n\n想象一下，如果你要盖一栋房子：\n\n| 编程概念 | 建筑类比 | 作用 |\n|---------|---------|------|\n| 变量 | 建筑材料 | 存储数据 |\n| 函数 | 预制构件 | 封装功能 |\n| 控制流 | 施工图纸 | 决定执行顺序 |\n| 数据结构 | 房间布局 | 组织数据 |\n| 测试驱动开发TDD入门 | 核心建筑工艺 | 特定问题解决方案 |\n\n### 2.2 为什么需要测试驱动开发TDD入门？\n\n在测试驱动开发TDD入门出现之前，程序员面临着很多问题：\n\n1. **代码重复**：相同的逻辑需要在多处重复编写\n2. **难以维护**：代码结构混乱，修改一处可能影响多处\n3. **容易出错**：缺乏系统化的方法，bug频发\n4. **协作困难**：没有统一的范式，团队成员代码风格各异\n\n测试驱动开发TDD入门正是为了解决这些问题而产生的。\n\n## 三、实战代码示例\n\n### 3.1 基础示例\n\n让我们从最简单的例子开始：\n\n```javascript\n// 示例1：基础用法\nfunction demonstrateprog_test_driven(data) {\n    // 第一步：验证输入\n    if (!data) {\n        throw new Error('输入数据不能为空');\n    }\n    \n    // 第二步：处理数据\n    const result = processData(data);\n    \n    // 第三步：返回结果\n    return result;\n}\n\nfunction processData(data) {\n    // 具体的处理逻辑\n    return data.map(item => ({\n        ...item,\n        processed: true,\n        timestamp: Date.now()\n    }));\n}\n\n// 使用示例\nconst testData = [\n    { id: 1, name: '示例1' },\n    { id: 2, name: '示例2' }\n];\n\nconst results = demonstrateprog_test_driven(testData);\nconsole.log('处理结果:', results);\n```\n\n### 3.2 进阶示例\n\n下面是一个更贴近实际开发的例子：\n\n```javascript\n// 示例2：实际应用场景\nclass prog-test-drivenExample {\n    constructor(options = {}) {\n        this.options = {\n            debug: false,\n            maxRetries: 3,\n            timeout: 5000,\n            ...options\n        };\n        this.cache = new Map();\n    }\n    \n    async execute(input) {\n        const cacheKey = this.generateCacheKey(input);\n        \n        // 检查缓存\n        if (this.cache.has(cacheKey)) {\n            this.log('从缓存返回结果');\n            return this.cache.get(cacheKey);\n        }\n        \n        // 重试逻辑\n        let lastError;\n        for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {\n            try {\n                this.log(`尝试第 ${attempt} 次执行`);\n                const result = await this.doExecute(input);\n                this.cache.set(cacheKey, result);\n                return result;\n            } catch (error) {\n                lastError = error;\n                this.log(`第 ${attempt} 次尝试失败: ${error.message}`);\n                await this.delay(1000 * attempt);\n            }\n        }\n        \n        throw new Error(`执行失败，已重试${this.options.maxRetries}次: ${lastError.message}`);\n    }\n    \n    async doExecute(input) {\n        // 实际的执行逻辑\n        return { success: true, data: input };\n    }\n    \n    generateCacheKey(input) {\n        return JSON.stringify(input);\n    }\n    \n    log(message) {\n        if (this.options.debug) {\n            console.log(`[测试驱动开发TDD入门] ${message}`);\n        }\n    }\n    \n    delay(ms) {\n        return new Promise(resolve => setTimeout(resolve, ms));\n    }\n}\n```\n\n### 3.3 Python示例\n\n如果你更熟悉Python，这里是对应的例子：\n\n```python\n# Python示例\nfrom typing import Any, Dict, List, Optional\nimport time\nimport functools\n\n\ndef timer(func):\n    \"\"\"装饰器：测量函数执行时间\"\"\"\n    @functools.wraps(func)\n    def wrapper(*args, **kwargs):\n        start = time.time()\n        try:\n            result = func(*args, **kwargs)\n            return result\n        finally:\n            elapsed = time.time() - start\n            print(f\"{func.__name__} 执行时间: {elapsed:.4f}秒\")\n    return wrapper\n\n\nclass DataProcessor:\n    \"\"\"数据处理器 - 演示测试驱动开发TDD入门\"\"\"\n    \n    def __init__(self, config: Optional[Dict[str, Any]] = None):\n        self.config = config or {}\n        self._cache: Dict[str, Any] = {}\n    \n    @timer\n    def process(self, items: List[Any]) -> List[Any]:\n        \"\"\"处理数据列表\"\"\"\n        results = []\n        for item in items:\n            processed = self._process_single(item)\n            results.append(processed)\n        return results\n    \n    def _process_single(self, item: Any) -> Any:\n        \"\"\"处理单个数据项\"\"\"\n        cache_key = str(item)\n        if cache_key in self._cache:\n            return self._cache[cache_key]\n        \n        # 处理逻辑\n        result = {\n            'original': item,\n            'processed': True,\n            'length': len(str(item)) if hasattr(item, '__len__') else 0\n        }\n        \n        self._cache[cache_key] = result\n        return result\n\n\n# 使用示例\nif __name__ == '__main__':\n    processor = DataProcessor()\n    data = ['apple', 'banana', 'cherry', 'date']\n    results = processor.process(data)\n    \n    for item in results:\n        print(f\"原始: {item['original']:10} 长度: {item['length']}\")\n\n```\n\n## 四、常见陷阱与注意事项\n\n### 4.1 新手常犯的错误\n\n| 错误类型 | 错误示例 | 正确做法 |\n|---------|---------|---------|\n| 过度复杂化 | 一个函数写几百行 | 拆分成小函数，单一职责 |\n| 忽略边界条件 | 不处理空输入、极端值 | 总是验证输入，考虑边缘情况 |\n| 硬编码值 | 直接在代码中写魔法数字 | 使用常量或配置 |\n| 不处理错误 | 假设所有操作都会成功 | 使用try-catch/异常处理 |\n| 过度优化 | 一开始就纠结性能 | 先写正确的代码，再优化 |\n\n### 4.2 需要特别注意的点\n\n1. **可变默认参数问题**（Python）\n\n```python\n# ❌ 错误：可变默认参数\ndef append_to(item, target=[]):\n    target.append(item)\n    return target\n\n# ✅ 正确：使用None作为默认值\ndef append_to(item, target=None):\n    if target is None:\n        target = []\n    target.append(item)\n    return target\n```\n\n2. **浮点数精度问题**\n\n```javascript\n// ❌ 错误：直接比较浮点数\nconsole.log(0.1 + 0.2 === 0.3); // false\n\n// ✅ 正确：使用精度范围比较\nfunction nearlyEqual(a, b, epsilon = 1e-10) {\n    return Math.abs(a - b) < epsilon;\n}\n```\n\n3. **异步代码陷阱**\n\n```javascript\n// ❌ 错误：在循环中使用await（可以但需理解行为）\n// 如果你想要顺序执行，这没问题；如果想并行，应该用Promise.all\n\n// ✅ 并行执行\nconst results = await Promise.all(\n    items.map(item => processItem(item))\n);\n\n```\n\n## 五、最佳实践\n\n### 5.1 编码原则\n\n**SOLID原则（面向对象）：**\n\n| 原则 | 全称 | 含义 |\n|-----|------|------|\n| S | 单一职责原则 | 一个类只做一件事 |\n| O | 开闭原则 | 对扩展开放，对修改关闭 |\n| L | 里氏替换原则 | 子类可以替换父类 |\n| I | 接口隔离原则 | 使用小而专一的接口 |\n| D | 依赖倒置原则 | 依赖抽象而非具体实现 |\n\n**通用编程原则：**\n\n1. **KISS原则** - Keep It Simple, Stupid\n   - 保持简单直接，不要过度设计\n   - 如果有两个方案，选择简单的那个\n\n2. **DRY原则** - Don't Repeat Yourself\n   - 任何重复的代码都应该提取出来\n   - 但要注意：不要为了DRY而DRY，适当的重复有时比错误的抽象更好\n\n3. **YAGNI原则** - You Aren't Gonna Need It\n   - 不要实现你认为将来可能需要的功能\n   - 只实现当前确实需要的功能\n\n### 5.2 代码风格建议\n\n```javascript\n// ✅ 好的代码风格示例\nfunction calculateTotalPrice(items, taxRate = 0.1) {\n    // 验证输入\n    if (!Array.isArray(items)) {\n        throw new TypeError('items必须是数组');\n    }\n    \n    // 计算小计\n    const subtotal = items.reduce((sum, item) => {\n        if (typeof item.price !== 'number' || item.price < 0) {\n            throw new Error('无效的商品价格');\n        }\n        return sum + item.price * (item.quantity || 1);\n    }, 0);\n    \n    // 计算税费和总价\n    const tax = subtotal * taxRate;\n    const total = subtotal + tax;\n    \n    // 返回结果（使用对象而不是多个返回值）\n    return {\n        subtotal: roundToTwo(subtotal),\n        tax: roundToTwo(tax),\n        total: roundToTwo(total)\n    };\n}\n\nfunction roundToTwo(value) {\n    return Math.round(value * 100) / 100;\n}\n\n```\n\n## 六、实战练习\n\n### 练习1：基础应用\n\n**题目：** 实现一个简单的待办事项管理器，需要支持：\n- 添加待办事项\n- 标记完成/未完成\n- 删除待办\n- 筛选显示（全部/已完成/未完成）\n\n**提示：**\n- 使用合适的数据结构存储待办事项\n- 考虑使用面向对象或函数式风格\n- 添加适当的错误处理\n\n### 练习2：进阶挑战\n\n**题目：** 实现一个简单的缓存系统，需要：\n- 支持设置过期时间\n- LRU（最近最少使用）淘汰策略\n- 最大容量限制\n- 统计命中率\n\n### 练习3：代码审查\n\n找出下面代码的问题并重构：\n\n```javascript\n// 这段代码有什么问题？\nfunction process(data) {\n    var result = [];\n    for (var i = 0; i < data.length; i++) {\n        if (data[i].active) {\n            if (data[i].score > 60) {\n                result.push(data[i].name + ':' + data[i].score);\n            }\n        }\n    }\n    return result;\n}\n```\n\n**参考答案要点：**\n- 使用const/let替代var\n- 使用有意义的变量名\n- 提前返回减少嵌套\n- 使用filter/map替代for循环\n- 添加类型检查\n- 添加注释\n\n## 七、小结\n\n测试驱动开发TDD入门是编程学习道路上的重要里程碑。掌握本章内容后，你应该：\n\n✅ 理解测试驱动开发TDD入门的核心概念和原理\n✅ 能够在实际代码中正确应用测试驱动开发TDD入门\n✅ 知道常见的陷阱以及如何避免\n✅ 了解相关的最佳实践\n✅ 能够写出更清晰、更健壮的代码\n\n记住，编程是一门实践的艺术。仅仅阅读是不够的，你需要动手写代码，犯错，调试，然后从错误中学习。建议你完成本章的所有练习，并尝试在实际项目中应用学到的知识。\n\n### 下一步学习建议\n\n1. **动手实践**：找一个小项目来练习本章内容\n2. **阅读优秀代码**：看看开源项目中是如何使用这些概念的\n3. **代码审查**：让其他人审查你的代码，同时也审查别人的代码\n4. **教别人**：尝试把学到的知识教给其他人，这是最好的学习方式\n5. **持续学习**：编程世界日新月异，保持好奇心和学习热情\n\n---\n\n**拓展阅读推荐：**\n- 《代码整洁之道》- Robert C. Martin\n- 《重构：改善既有代码的设计》- Martin Fowler\n- 《设计模式》- GoF\n- 《程序员修炼之道》- Hunt & Thomas\n\n祝你编程学习之旅愉快！🚀\n"
+    content: `
+# 测试驱动开发TDD入门
+
+## 一、概述
+
+测试驱动开发TDD入门是每一位程序员必须掌握的核心知识。无论你使用什么编程语言，这些基础概念都是相通的。本章将带你系统地学习测试驱动开发TDD入门的方方面面，从基本概念到实际应用，从常见陷阱到最佳实践，帮助你建立扎实的编程基础。
+
+学习编程不仅仅是学习语法，更重要的是理解背后的思想和原理。我们将通过大量的代码示例、类比说明和实战练习，让你真正理解而非死记硬背。
+
+## 二、核心概念详解
+
+### 2.1 什么是测试驱动开发TDD入门？
+
+在深入学习之前，让我们先理解测试驱动开发TDD入门的本质。测试驱动开发TDD入门是编程中用于解决特定问题的一组思想和技术的总称。它不是某一种语言特有的功能，而是所有现代编程语言都支持的通用概念。
+
+想象一下，如果你要盖一栋房子：
+
+| 编程概念 | 建筑类比 | 作用 |
+|---------|---------|------|
+| 变量 | 建筑材料 | 存储数据 |
+| 函数 | 预制构件 | 封装功能 |
+| 控制流 | 施工图纸 | 决定执行顺序 |
+| 数据结构 | 房间布局 | 组织数据 |
+| 测试驱动开发TDD入门 | 核心建筑工艺 | 特定问题解决方案 |
+
+### 2.2 为什么需要测试驱动开发TDD入门？
+
+在测试驱动开发TDD入门出现之前，程序员面临着很多问题：
+
+1. **代码重复**：相同的逻辑需要在多处重复编写
+2. **难以维护**：代码结构混乱，修改一处可能影响多处
+3. **容易出错**：缺乏系统化的方法，bug频发
+4. **协作困难**：没有统一的范式，团队成员代码风格各异
+
+测试驱动开发TDD入门正是为了解决这些问题而产生的。
+
+## 三、实战代码示例
+
+### 3.1 基础示例
+
+让我们从最简单的例子开始：
+
+\`\`\`javascript
+// 示例1：基础用法
+function demonstrateprog_test_driven(data) {
+    // 第一步：验证输入
+    if (!data) {
+        throw new Error('输入数据不能为空');
+    }
+    
+    // 第二步：处理数据
+    const result = processData(data);
+    
+    // 第三步：返回结果
+    return result;
+}
+
+function processData(data) {
+    // 具体的处理逻辑
+    return data.map(item => ({
+        ...item,
+        processed: true,
+        timestamp: Date.now()
+    }));
+}
+
+// 使用示例
+const testData = [
+    { id: 1, name: '示例1' },
+    { id: 2, name: '示例2' }
+];
+
+const results = demonstrateprog_test_driven(testData);
+console.log('处理结果:', results);
+\`\`\`
+
+### 3.2 进阶示例
+
+下面是一个更贴近实际开发的例子：
+
+\`\`\`javascript
+// 示例2：实际应用场景
+class ProgTestDrivenExample {
+    constructor(options = {}) {
+        this.options = {
+            debug: false,
+            maxRetries: 3,
+            timeout: 5000,
+            ...options
+        };
+        this.cache = new Map();
+    }
+    
+    async execute(input) {
+        const cacheKey = this.generateCacheKey(input);
+        
+        // 检查缓存
+        if (this.cache.has(cacheKey)) {
+            this.log('从缓存返回结果');
+            return this.cache.get(cacheKey);
+        }
+        
+        // 重试逻辑
+        let lastError;
+        for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {
+            try {
+                this.log(\`尝试第 \${attempt} 次执行\`);
+                const result = await this.doExecute(input);
+                this.cache.set(cacheKey, result);
+                return result;
+            } catch (error) {
+                lastError = error;
+                this.log(\`第 \${attempt} 次尝试失败: \${error.message}\`);
+                await this.delay(1000 * attempt);
+            }
+        }
+        
+        throw new Error(\`执行失败，已重试\${this.options.maxRetries}次: \${lastError.message}\`);
+    }
+    
+    async doExecute(input) {
+        // 实际的执行逻辑
+        return { success: true, data: input };
+    }
+    
+    generateCacheKey(input) {
+        return JSON.stringify(input);
+    }
+    
+    log(message) {
+        if (this.options.debug) {
+            console.log(\`[测试驱动开发TDD入门] \${message}\`);
+        }
+    }
+    
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+}
+\`\`\`
+
+### 3.3 Python示例
+
+如果你更熟悉Python，这里是对应的例子：
+
+\`\`\`python
+# Python示例
+from typing import Any, Dict, List, Optional
+import time
+import functools
+
+
+def timer(func):
+    """装饰器：测量函数执行时间"""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        try:
+            result = func(*args, **kwargs)
+            return result
+        finally:
+            elapsed = time.time() - start
+            print(f"{func.__name__} 执行时间: {elapsed:.4f}秒")
+    return wrapper
+
+
+class DataProcessor:
+    """数据处理器 - 演示测试驱动开发TDD入门"""
+    
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        self.config = config or {}
+        self._cache: Dict[str, Any] = {}
+    
+    @timer
+    def process(self, items: List[Any]) -> List[Any]:
+        """处理数据列表"""
+        results = []
+        for item in items:
+            processed = self._process_single(item)
+            results.append(processed)
+        return results
+    
+    def _process_single(self, item: Any) -> Any:
+        """处理单个数据项"""
+        cache_key = str(item)
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+        
+        # 处理逻辑
+        result = {
+            'original': item,
+            'processed': True,
+            'length': len(str(item)) if hasattr(item, '__len__') else 0
+        }
+        
+        self._cache[cache_key] = result
+        return result
+
+
+# 使用示例
+if __name__ == '__main__':
+    processor = DataProcessor()
+    data = ['apple', 'banana', 'cherry', 'date']
+    results = processor.process(data)
+    
+    for item in results:
+        print(f"原始: {item['original']:10} 长度: {item['length']}")
+
+\`\`\`
+
+## 四、常见陷阱与注意事项
+
+### 4.1 新手常犯的错误
+
+| 错误类型 | 错误示例 | 正确做法 |
+|---------|---------|---------|
+| 过度复杂化 | 一个函数写几百行 | 拆分成小函数，单一职责 |
+| 忽略边界条件 | 不处理空输入、极端值 | 总是验证输入，考虑边缘情况 |
+| 硬编码值 | 直接在代码中写魔法数字 | 使用常量或配置 |
+| 不处理错误 | 假设所有操作都会成功 | 使用try-catch/异常处理 |
+| 过度优化 | 一开始就纠结性能 | 先写正确的代码，再优化 |
+
+### 4.2 需要特别注意的点
+
+1. **可变默认参数问题**（Python）
+
+\`\`\`python
+# ❌ 错误：可变默认参数
+def append_to(item, target=[]):
+    target.append(item)
+    return target
+
+# ✅ 正确：使用None作为默认值
+def append_to(item, target=None):
+    if target is None:
+        target = []
+    target.append(item)
+    return target
+\`\`\`
+
+2. **浮点数精度问题**
+
+\`\`\`javascript
+// ❌ 错误：直接比较浮点数
+console.log(0.1 + 0.2 === 0.3); // false
+
+// ✅ 正确：使用精度范围比较
+function nearlyEqual(a, b, epsilon = 1e-10) {
+    return Math.abs(a - b) < epsilon;
+}
+\`\`\`
+
+3. **异步代码陷阱**
+
+\`\`\`javascript
+// ❌ 错误：在循环中使用await（可以但需理解行为）
+// 如果你想要顺序执行，这没问题；如果想并行，应该用Promise.all
+
+// ✅ 并行执行
+const results = await Promise.all(
+    items.map(item => processItem(item))
+);
+
+\`\`\`
+
+## 五、最佳实践
+
+### 5.1 编码原则
+
+**SOLID原则（面向对象）：**
+
+| 原则 | 全称 | 含义 |
+|-----|------|------|
+| S | 单一职责原则 | 一个类只做一件事 |
+| O | 开闭原则 | 对扩展开放，对修改关闭 |
+| L | 里氏替换原则 | 子类可以替换父类 |
+| I | 接口隔离原则 | 使用小而专一的接口 |
+| D | 依赖倒置原则 | 依赖抽象而非具体实现 |
+
+**通用编程原则：**
+
+1. **KISS原则** - Keep It Simple, Stupid
+   - 保持简单直接，不要过度设计
+   - 如果有两个方案，选择简单的那个
+
+2. **DRY原则** - Don't Repeat Yourself
+   - 任何重复的代码都应该提取出来
+   - 但要注意：不要为了DRY而DRY，适当的重复有时比错误的抽象更好
+
+3. **YAGNI原则** - You Aren't Gonna Need It
+   - 不要实现你认为将来可能需要的功能
+   - 只实现当前确实需要的功能
+
+### 5.2 代码风格建议
+
+\`\`\`javascript
+// ✅ 好的代码风格示例
+function calculateTotalPrice(items, taxRate = 0.1) {
+    // 验证输入
+    if (!Array.isArray(items)) {
+        throw new TypeError('items必须是数组');
+    }
+    
+    // 计算小计
+    const subtotal = items.reduce((sum, item) => {
+        if (typeof item.price !== 'number' || item.price < 0) {
+            throw new Error('无效的商品价格');
+        }
+        return sum + item.price * (item.quantity || 1);
+    }, 0);
+    
+    // 计算税费和总价
+    const tax = subtotal * taxRate;
+    const total = subtotal + tax;
+    
+    // 返回结果（使用对象而不是多个返回值）
+    return {
+        subtotal: roundToTwo(subtotal),
+        tax: roundToTwo(tax),
+        total: roundToTwo(total)
+    };
+}
+
+function roundToTwo(value) {
+    return Math.round(value * 100) / 100;
+}
+
+\`\`\`
+
+## 六、实战练习
+
+### 练习1：基础应用
+
+**题目：** 实现一个简单的待办事项管理器，需要支持：
+- 添加待办事项
+- 标记完成/未完成
+- 删除待办
+- 筛选显示（全部/已完成/未完成）
+
+**提示：**
+- 使用合适的数据结构存储待办事项
+- 考虑使用面向对象或函数式风格
+- 添加适当的错误处理
+
+### 练习2：进阶挑战
+
+**题目：** 实现一个简单的缓存系统，需要：
+- 支持设置过期时间
+- LRU（最近最少使用）淘汰策略
+- 最大容量限制
+- 统计命中率
+
+### 练习3：代码审查
+
+找出下面代码的问题并重构：
+
+\`\`\`javascript
+// 这段代码有什么问题？
+function process(data) {
+    var result = [];
+    for (var i = 0; i < data.length; i++) {
+        if (data[i].active) {
+            if (data[i].score > 60) {
+                result.push(data[i].name + ':' + data[i].score);
+            }
+        }
+    }
+    return result;
+}
+\`\`\`
+
+**参考答案要点：**
+- 使用const/let替代var
+- 使用有意义的变量名
+- 提前返回减少嵌套
+- 使用filter/map替代for循环
+- 添加类型检查
+- 添加注释
+
+## 七、小结
+
+测试驱动开发TDD入门是编程学习道路上的重要里程碑。掌握本章内容后，你应该：
+
+✅ 理解测试驱动开发TDD入门的核心概念和原理
+✅ 能够在实际代码中正确应用测试驱动开发TDD入门
+✅ 知道常见的陷阱以及如何避免
+✅ 了解相关的最佳实践
+✅ 能够写出更清晰、更健壮的代码
+
+记住，编程是一门实践的艺术。仅仅阅读是不够的，你需要动手写代码，犯错，调试，然后从错误中学习。建议你完成本章的所有练习，并尝试在实际项目中应用学到的知识。
+
+### 下一步学习建议
+
+1. **动手实践**：找一个小项目来练习本章内容
+2. **阅读优秀代码**：看看开源项目中是如何使用这些概念的
+3. **代码审查**：让其他人审查你的代码，同时也审查别人的代码
+4. **教别人**：尝试把学到的知识教给其他人，这是最好的学习方式
+5. **持续学习**：编程世界日新月异，保持好奇心和学习热情
+
+---
+
+**拓展阅读推荐：**
+- 《代码整洁之道》- Robert C. Martin
+- 《重构：改善既有代码的设计》- Martin Fowler
+- 《设计模式》- GoF
+- 《程序员修炼之道》- Hunt & Thomas
+
+祝你编程学习之旅愉快！🚀
+`
   },
   {
     "id": "prog-code-review",
     "title": "代码审查：提升代码质量的最佳实践",
     "icon": "👀",
     "group": "调试、测试与代码质量",
-    "content": "# 代码审查：提升代码质量的最佳实践\n\n## 一、概述\n\n代码审查：提升代码质量的最佳实践是每一位程序员必须掌握的核心知识。无论你使用什么编程语言，这些基础概念都是相通的。本章将带你系统地学习代码审查：提升代码质量的最佳实践的方方面面，从基本概念到实际应用，从常见陷阱到最佳实践，帮助你建立扎实的编程基础。\n\n学习编程不仅仅是学习语法，更重要的是理解背后的思想和原理。我们将通过大量的代码示例、类比说明和实战练习，让你真正理解而非死记硬背。\n\n## 二、核心概念详解\n\n### 2.1 什么是代码审查：提升代码质量的最佳实践？\n\n在深入学习之前，让我们先理解代码审查：提升代码质量的最佳实践的本质。代码审查：提升代码质量的最佳实践是编程中用于解决特定问题的一组思想和技术的总称。它不是某一种语言特有的功能，而是所有现代编程语言都支持的通用概念。\n\n想象一下，如果你要盖一栋房子：\n\n| 编程概念 | 建筑类比 | 作用 |\n|---------|---------|------|\n| 变量 | 建筑材料 | 存储数据 |\n| 函数 | 预制构件 | 封装功能 |\n| 控制流 | 施工图纸 | 决定执行顺序 |\n| 数据结构 | 房间布局 | 组织数据 |\n| 代码审查：提升代码质量的最佳实践 | 核心建筑工艺 | 特定问题解决方案 |\n\n### 2.2 为什么需要代码审查：提升代码质量的最佳实践？\n\n在代码审查：提升代码质量的最佳实践出现之前，程序员面临着很多问题：\n\n1. **代码重复**：相同的逻辑需要在多处重复编写\n2. **难以维护**：代码结构混乱，修改一处可能影响多处\n3. **容易出错**：缺乏系统化的方法，bug频发\n4. **协作困难**：没有统一的范式，团队成员代码风格各异\n\n代码审查：提升代码质量的最佳实践正是为了解决这些问题而产生的。\n\n## 三、实战代码示例\n\n### 3.1 基础示例\n\n让我们从最简单的例子开始：\n\n```javascript\n// 示例1：基础用法\nfunction demonstrateprog_code_review(data) {\n    // 第一步：验证输入\n    if (!data) {\n        throw new Error('输入数据不能为空');\n    }\n    \n    // 第二步：处理数据\n    const result = processData(data);\n    \n    // 第三步：返回结果\n    return result;\n}\n\nfunction processData(data) {\n    // 具体的处理逻辑\n    return data.map(item => ({\n        ...item,\n        processed: true,\n        timestamp: Date.now()\n    }));\n}\n\n// 使用示例\nconst testData = [\n    { id: 1, name: '示例1' },\n    { id: 2, name: '示例2' }\n];\n\nconst results = demonstrateprog_code_review(testData);\nconsole.log('处理结果:', results);\n```\n\n### 3.2 进阶示例\n\n下面是一个更贴近实际开发的例子：\n\n```javascript\n// 示例2：实际应用场景\nclass prog-code-reviewExample {\n    constructor(options = {}) {\n        this.options = {\n            debug: false,\n            maxRetries: 3,\n            timeout: 5000,\n            ...options\n        };\n        this.cache = new Map();\n    }\n    \n    async execute(input) {\n        const cacheKey = this.generateCacheKey(input);\n        \n        // 检查缓存\n        if (this.cache.has(cacheKey)) {\n            this.log('从缓存返回结果');\n            return this.cache.get(cacheKey);\n        }\n        \n        // 重试逻辑\n        let lastError;\n        for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {\n            try {\n                this.log(`尝试第 ${attempt} 次执行`);\n                const result = await this.doExecute(input);\n                this.cache.set(cacheKey, result);\n                return result;\n            } catch (error) {\n                lastError = error;\n                this.log(`第 ${attempt} 次尝试失败: ${error.message}`);\n                await this.delay(1000 * attempt);\n            }\n        }\n        \n        throw new Error(`执行失败，已重试${this.options.maxRetries}次: ${lastError.message}`);\n    }\n    \n    async doExecute(input) {\n        // 实际的执行逻辑\n        return { success: true, data: input };\n    }\n    \n    generateCacheKey(input) {\n        return JSON.stringify(input);\n    }\n    \n    log(message) {\n        if (this.options.debug) {\n            console.log(`[代码审查：提升代码质量的最佳实践] ${message}`);\n        }\n    }\n    \n    delay(ms) {\n        return new Promise(resolve => setTimeout(resolve, ms));\n    }\n}\n```\n\n### 3.3 Python示例\n\n如果你更熟悉Python，这里是对应的例子：\n\n```python\n# Python示例\nfrom typing import Any, Dict, List, Optional\nimport time\nimport functools\n\n\ndef timer(func):\n    \"\"\"装饰器：测量函数执行时间\"\"\"\n    @functools.wraps(func)\n    def wrapper(*args, **kwargs):\n        start = time.time()\n        try:\n            result = func(*args, **kwargs)\n            return result\n        finally:\n            elapsed = time.time() - start\n            print(f\"{func.__name__} 执行时间: {elapsed:.4f}秒\")\n    return wrapper\n\n\nclass DataProcessor:\n    \"\"\"数据处理器 - 演示代码审查：提升代码质量的最佳实践\"\"\"\n    \n    def __init__(self, config: Optional[Dict[str, Any]] = None):\n        self.config = config or {}\n        self._cache: Dict[str, Any] = {}\n    \n    @timer\n    def process(self, items: List[Any]) -> List[Any]:\n        \"\"\"处理数据列表\"\"\"\n        results = []\n        for item in items:\n            processed = self._process_single(item)\n            results.append(processed)\n        return results\n    \n    def _process_single(self, item: Any) -> Any:\n        \"\"\"处理单个数据项\"\"\"\n        cache_key = str(item)\n        if cache_key in self._cache:\n            return self._cache[cache_key]\n        \n        # 处理逻辑\n        result = {\n            'original': item,\n            'processed': True,\n            'length': len(str(item)) if hasattr(item, '__len__') else 0\n        }\n        \n        self._cache[cache_key] = result\n        return result\n\n\n# 使用示例\nif __name__ == '__main__':\n    processor = DataProcessor()\n    data = ['apple', 'banana', 'cherry', 'date']\n    results = processor.process(data)\n    \n    for item in results:\n        print(f\"原始: {item['original']:10} 长度: {item['length']}\")\n\n```\n\n## 四、常见陷阱与注意事项\n\n### 4.1 新手常犯的错误\n\n| 错误类型 | 错误示例 | 正确做法 |\n|---------|---------|---------|\n| 过度复杂化 | 一个函数写几百行 | 拆分成小函数，单一职责 |\n| 忽略边界条件 | 不处理空输入、极端值 | 总是验证输入，考虑边缘情况 |\n| 硬编码值 | 直接在代码中写魔法数字 | 使用常量或配置 |\n| 不处理错误 | 假设所有操作都会成功 | 使用try-catch/异常处理 |\n| 过度优化 | 一开始就纠结性能 | 先写正确的代码，再优化 |\n\n### 4.2 需要特别注意的点\n\n1. **可变默认参数问题**（Python）\n\n```python\n# ❌ 错误：可变默认参数\ndef append_to(item, target=[]):\n    target.append(item)\n    return target\n\n# ✅ 正确：使用None作为默认值\ndef append_to(item, target=None):\n    if target is None:\n        target = []\n    target.append(item)\n    return target\n```\n\n2. **浮点数精度问题**\n\n```javascript\n// ❌ 错误：直接比较浮点数\nconsole.log(0.1 + 0.2 === 0.3); // false\n\n// ✅ 正确：使用精度范围比较\nfunction nearlyEqual(a, b, epsilon = 1e-10) {\n    return Math.abs(a - b) < epsilon;\n}\n```\n\n3. **异步代码陷阱**\n\n```javascript\n// ❌ 错误：在循环中使用await（可以但需理解行为）\n// 如果你想要顺序执行，这没问题；如果想并行，应该用Promise.all\n\n// ✅ 并行执行\nconst results = await Promise.all(\n    items.map(item => processItem(item))\n);\n\n```\n\n## 五、最佳实践\n\n### 5.1 编码原则\n\n**SOLID原则（面向对象）：**\n\n| 原则 | 全称 | 含义 |\n|-----|------|------|\n| S | 单一职责原则 | 一个类只做一件事 |\n| O | 开闭原则 | 对扩展开放，对修改关闭 |\n| L | 里氏替换原则 | 子类可以替换父类 |\n| I | 接口隔离原则 | 使用小而专一的接口 |\n| D | 依赖倒置原则 | 依赖抽象而非具体实现 |\n\n**通用编程原则：**\n\n1. **KISS原则** - Keep It Simple, Stupid\n   - 保持简单直接，不要过度设计\n   - 如果有两个方案，选择简单的那个\n\n2. **DRY原则** - Don't Repeat Yourself\n   - 任何重复的代码都应该提取出来\n   - 但要注意：不要为了DRY而DRY，适当的重复有时比错误的抽象更好\n\n3. **YAGNI原则** - You Aren't Gonna Need It\n   - 不要实现你认为将来可能需要的功能\n   - 只实现当前确实需要的功能\n\n### 5.2 代码风格建议\n\n```javascript\n// ✅ 好的代码风格示例\nfunction calculateTotalPrice(items, taxRate = 0.1) {\n    // 验证输入\n    if (!Array.isArray(items)) {\n        throw new TypeError('items必须是数组');\n    }\n    \n    // 计算小计\n    const subtotal = items.reduce((sum, item) => {\n        if (typeof item.price !== 'number' || item.price < 0) {\n            throw new Error('无效的商品价格');\n        }\n        return sum + item.price * (item.quantity || 1);\n    }, 0);\n    \n    // 计算税费和总价\n    const tax = subtotal * taxRate;\n    const total = subtotal + tax;\n    \n    // 返回结果（使用对象而不是多个返回值）\n    return {\n        subtotal: roundToTwo(subtotal),\n        tax: roundToTwo(tax),\n        total: roundToTwo(total)\n    };\n}\n\nfunction roundToTwo(value) {\n    return Math.round(value * 100) / 100;\n}\n\n```\n\n## 六、实战练习\n\n### 练习1：基础应用\n\n**题目：** 实现一个简单的待办事项管理器，需要支持：\n- 添加待办事项\n- 标记完成/未完成\n- 删除待办\n- 筛选显示（全部/已完成/未完成）\n\n**提示：**\n- 使用合适的数据结构存储待办事项\n- 考虑使用面向对象或函数式风格\n- 添加适当的错误处理\n\n### 练习2：进阶挑战\n\n**题目：** 实现一个简单的缓存系统，需要：\n- 支持设置过期时间\n- LRU（最近最少使用）淘汰策略\n- 最大容量限制\n- 统计命中率\n\n### 练习3：代码审查\n\n找出下面代码的问题并重构：\n\n```javascript\n// 这段代码有什么问题？\nfunction process(data) {\n    var result = [];\n    for (var i = 0; i < data.length; i++) {\n        if (data[i].active) {\n            if (data[i].score > 60) {\n                result.push(data[i].name + ':' + data[i].score);\n            }\n        }\n    }\n    return result;\n}\n```\n\n**参考答案要点：**\n- 使用const/let替代var\n- 使用有意义的变量名\n- 提前返回减少嵌套\n- 使用filter/map替代for循环\n- 添加类型检查\n- 添加注释\n\n## 七、小结\n\n代码审查：提升代码质量的最佳实践是编程学习道路上的重要里程碑。掌握本章内容后，你应该：\n\n✅ 理解代码审查：提升代码质量的最佳实践的核心概念和原理\n✅ 能够在实际代码中正确应用代码审查：提升代码质量的最佳实践\n✅ 知道常见的陷阱以及如何避免\n✅ 了解相关的最佳实践\n✅ 能够写出更清晰、更健壮的代码\n\n记住，编程是一门实践的艺术。仅仅阅读是不够的，你需要动手写代码，犯错，调试，然后从错误中学习。建议你完成本章的所有练习，并尝试在实际项目中应用学到的知识。\n\n### 下一步学习建议\n\n1. **动手实践**：找一个小项目来练习本章内容\n2. **阅读优秀代码**：看看开源项目中是如何使用这些概念的\n3. **代码审查**：让其他人审查你的代码，同时也审查别人的代码\n4. **教别人**：尝试把学到的知识教给其他人，这是最好的学习方式\n5. **持续学习**：编程世界日新月异，保持好奇心和学习热情\n\n---\n\n**拓展阅读推荐：**\n- 《代码整洁之道》- Robert C. Martin\n- 《重构：改善既有代码的设计》- Martin Fowler\n- 《设计模式》- GoF\n- 《程序员修炼之道》- Hunt & Thomas\n\n祝你编程学习之旅愉快！🚀\n"
+    content: `
+# 代码审查：提升代码质量的最佳实践
+
+## 一、概述
+
+代码审查：提升代码质量的最佳实践是每一位程序员必须掌握的核心知识。无论你使用什么编程语言，这些基础概念都是相通的。本章将带你系统地学习代码审查：提升代码质量的最佳实践的方方面面，从基本概念到实际应用，从常见陷阱到最佳实践，帮助你建立扎实的编程基础。
+
+学习编程不仅仅是学习语法，更重要的是理解背后的思想和原理。我们将通过大量的代码示例、类比说明和实战练习，让你真正理解而非死记硬背。
+
+## 二、核心概念详解
+
+### 2.1 什么是代码审查：提升代码质量的最佳实践？
+
+在深入学习之前，让我们先理解代码审查：提升代码质量的最佳实践的本质。代码审查：提升代码质量的最佳实践是编程中用于解决特定问题的一组思想和技术的总称。它不是某一种语言特有的功能，而是所有现代编程语言都支持的通用概念。
+
+想象一下，如果你要盖一栋房子：
+
+| 编程概念 | 建筑类比 | 作用 |
+|---------|---------|------|
+| 变量 | 建筑材料 | 存储数据 |
+| 函数 | 预制构件 | 封装功能 |
+| 控制流 | 施工图纸 | 决定执行顺序 |
+| 数据结构 | 房间布局 | 组织数据 |
+| 代码审查：提升代码质量的最佳实践 | 核心建筑工艺 | 特定问题解决方案 |
+
+### 2.2 为什么需要代码审查：提升代码质量的最佳实践？
+
+在代码审查：提升代码质量的最佳实践出现之前，程序员面临着很多问题：
+
+1. **代码重复**：相同的逻辑需要在多处重复编写
+2. **难以维护**：代码结构混乱，修改一处可能影响多处
+3. **容易出错**：缺乏系统化的方法，bug频发
+4. **协作困难**：没有统一的范式，团队成员代码风格各异
+
+代码审查：提升代码质量的最佳实践正是为了解决这些问题而产生的。
+
+## 三、实战代码示例
+
+### 3.1 基础示例
+
+让我们从最简单的例子开始：
+
+\`\`\`javascript
+// 示例1：基础用法
+function demonstrateprog_code_review(data) {
+    // 第一步：验证输入
+    if (!data) {
+        throw new Error('输入数据不能为空');
+    }
+    
+    // 第二步：处理数据
+    const result = processData(data);
+    
+    // 第三步：返回结果
+    return result;
+}
+
+function processData(data) {
+    // 具体的处理逻辑
+    return data.map(item => ({
+        ...item,
+        processed: true,
+        timestamp: Date.now()
+    }));
+}
+
+// 使用示例
+const testData = [
+    { id: 1, name: '示例1' },
+    { id: 2, name: '示例2' }
+];
+
+const results = demonstrateprog_code_review(testData);
+console.log('处理结果:', results);
+\`\`\`
+
+### 3.2 进阶示例
+
+下面是一个更贴近实际开发的例子：
+
+\`\`\`javascript
+// 示例2：实际应用场景
+class ProgCodeReviewExample {
+    constructor(options = {}) {
+        this.options = {
+            debug: false,
+            maxRetries: 3,
+            timeout: 5000,
+            ...options
+        };
+        this.cache = new Map();
+    }
+    
+    async execute(input) {
+        const cacheKey = this.generateCacheKey(input);
+        
+        // 检查缓存
+        if (this.cache.has(cacheKey)) {
+            this.log('从缓存返回结果');
+            return this.cache.get(cacheKey);
+        }
+        
+        // 重试逻辑
+        let lastError;
+        for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {
+            try {
+                this.log(\`尝试第 \${attempt} 次执行\`);
+                const result = await this.doExecute(input);
+                this.cache.set(cacheKey, result);
+                return result;
+            } catch (error) {
+                lastError = error;
+                this.log(\`第 \${attempt} 次尝试失败: \${error.message}\`);
+                await this.delay(1000 * attempt);
+            }
+        }
+        
+        throw new Error(\`执行失败，已重试\${this.options.maxRetries}次: \${lastError.message}\`);
+    }
+    
+    async doExecute(input) {
+        // 实际的执行逻辑
+        return { success: true, data: input };
+    }
+    
+    generateCacheKey(input) {
+        return JSON.stringify(input);
+    }
+    
+    log(message) {
+        if (this.options.debug) {
+            console.log(\`[代码审查：提升代码质量的最佳实践] \${message}\`);
+        }
+    }
+    
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+}
+\`\`\`
+
+### 3.3 Python示例
+
+如果你更熟悉Python，这里是对应的例子：
+
+\`\`\`python
+# Python示例
+from typing import Any, Dict, List, Optional
+import time
+import functools
+
+
+def timer(func):
+    """装饰器：测量函数执行时间"""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        try:
+            result = func(*args, **kwargs)
+            return result
+        finally:
+            elapsed = time.time() - start
+            print(f"{func.__name__} 执行时间: {elapsed:.4f}秒")
+    return wrapper
+
+
+class DataProcessor:
+    """数据处理器 - 演示代码审查：提升代码质量的最佳实践"""
+    
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        self.config = config or {}
+        self._cache: Dict[str, Any] = {}
+    
+    @timer
+    def process(self, items: List[Any]) -> List[Any]:
+        """处理数据列表"""
+        results = []
+        for item in items:
+            processed = self._process_single(item)
+            results.append(processed)
+        return results
+    
+    def _process_single(self, item: Any) -> Any:
+        """处理单个数据项"""
+        cache_key = str(item)
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+        
+        # 处理逻辑
+        result = {
+            'original': item,
+            'processed': True,
+            'length': len(str(item)) if hasattr(item, '__len__') else 0
+        }
+        
+        self._cache[cache_key] = result
+        return result
+
+
+# 使用示例
+if __name__ == '__main__':
+    processor = DataProcessor()
+    data = ['apple', 'banana', 'cherry', 'date']
+    results = processor.process(data)
+    
+    for item in results:
+        print(f"原始: {item['original']:10} 长度: {item['length']}")
+
+\`\`\`
+
+## 四、常见陷阱与注意事项
+
+### 4.1 新手常犯的错误
+
+| 错误类型 | 错误示例 | 正确做法 |
+|---------|---------|---------|
+| 过度复杂化 | 一个函数写几百行 | 拆分成小函数，单一职责 |
+| 忽略边界条件 | 不处理空输入、极端值 | 总是验证输入，考虑边缘情况 |
+| 硬编码值 | 直接在代码中写魔法数字 | 使用常量或配置 |
+| 不处理错误 | 假设所有操作都会成功 | 使用try-catch/异常处理 |
+| 过度优化 | 一开始就纠结性能 | 先写正确的代码，再优化 |
+
+### 4.2 需要特别注意的点
+
+1. **可变默认参数问题**（Python）
+
+\`\`\`python
+# ❌ 错误：可变默认参数
+def append_to(item, target=[]):
+    target.append(item)
+    return target
+
+# ✅ 正确：使用None作为默认值
+def append_to(item, target=None):
+    if target is None:
+        target = []
+    target.append(item)
+    return target
+\`\`\`
+
+2. **浮点数精度问题**
+
+\`\`\`javascript
+// ❌ 错误：直接比较浮点数
+console.log(0.1 + 0.2 === 0.3); // false
+
+// ✅ 正确：使用精度范围比较
+function nearlyEqual(a, b, epsilon = 1e-10) {
+    return Math.abs(a - b) < epsilon;
+}
+\`\`\`
+
+3. **异步代码陷阱**
+
+\`\`\`javascript
+// ❌ 错误：在循环中使用await（可以但需理解行为）
+// 如果你想要顺序执行，这没问题；如果想并行，应该用Promise.all
+
+// ✅ 并行执行
+const results = await Promise.all(
+    items.map(item => processItem(item))
+);
+
+\`\`\`
+
+## 五、最佳实践
+
+### 5.1 编码原则
+
+**SOLID原则（面向对象）：**
+
+| 原则 | 全称 | 含义 |
+|-----|------|------|
+| S | 单一职责原则 | 一个类只做一件事 |
+| O | 开闭原则 | 对扩展开放，对修改关闭 |
+| L | 里氏替换原则 | 子类可以替换父类 |
+| I | 接口隔离原则 | 使用小而专一的接口 |
+| D | 依赖倒置原则 | 依赖抽象而非具体实现 |
+
+**通用编程原则：**
+
+1. **KISS原则** - Keep It Simple, Stupid
+   - 保持简单直接，不要过度设计
+   - 如果有两个方案，选择简单的那个
+
+2. **DRY原则** - Don't Repeat Yourself
+   - 任何重复的代码都应该提取出来
+   - 但要注意：不要为了DRY而DRY，适当的重复有时比错误的抽象更好
+
+3. **YAGNI原则** - You Aren't Gonna Need It
+   - 不要实现你认为将来可能需要的功能
+   - 只实现当前确实需要的功能
+
+### 5.2 代码风格建议
+
+\`\`\`javascript
+// ✅ 好的代码风格示例
+function calculateTotalPrice(items, taxRate = 0.1) {
+    // 验证输入
+    if (!Array.isArray(items)) {
+        throw new TypeError('items必须是数组');
+    }
+    
+    // 计算小计
+    const subtotal = items.reduce((sum, item) => {
+        if (typeof item.price !== 'number' || item.price < 0) {
+            throw new Error('无效的商品价格');
+        }
+        return sum + item.price * (item.quantity || 1);
+    }, 0);
+    
+    // 计算税费和总价
+    const tax = subtotal * taxRate;
+    const total = subtotal + tax;
+    
+    // 返回结果（使用对象而不是多个返回值）
+    return {
+        subtotal: roundToTwo(subtotal),
+        tax: roundToTwo(tax),
+        total: roundToTwo(total)
+    };
+}
+
+function roundToTwo(value) {
+    return Math.round(value * 100) / 100;
+}
+
+\`\`\`
+
+## 六、实战练习
+
+### 练习1：基础应用
+
+**题目：** 实现一个简单的待办事项管理器，需要支持：
+- 添加待办事项
+- 标记完成/未完成
+- 删除待办
+- 筛选显示（全部/已完成/未完成）
+
+**提示：**
+- 使用合适的数据结构存储待办事项
+- 考虑使用面向对象或函数式风格
+- 添加适当的错误处理
+
+### 练习2：进阶挑战
+
+**题目：** 实现一个简单的缓存系统，需要：
+- 支持设置过期时间
+- LRU（最近最少使用）淘汰策略
+- 最大容量限制
+- 统计命中率
+
+### 练习3：代码审查
+
+找出下面代码的问题并重构：
+
+\`\`\`javascript
+// 这段代码有什么问题？
+function process(data) {
+    var result = [];
+    for (var i = 0; i < data.length; i++) {
+        if (data[i].active) {
+            if (data[i].score > 60) {
+                result.push(data[i].name + ':' + data[i].score);
+            }
+        }
+    }
+    return result;
+}
+\`\`\`
+
+**参考答案要点：**
+- 使用const/let替代var
+- 使用有意义的变量名
+- 提前返回减少嵌套
+- 使用filter/map替代for循环
+- 添加类型检查
+- 添加注释
+
+## 七、小结
+
+代码审查：提升代码质量的最佳实践是编程学习道路上的重要里程碑。掌握本章内容后，你应该：
+
+✅ 理解代码审查：提升代码质量的最佳实践的核心概念和原理
+✅ 能够在实际代码中正确应用代码审查：提升代码质量的最佳实践
+✅ 知道常见的陷阱以及如何避免
+✅ 了解相关的最佳实践
+✅ 能够写出更清晰、更健壮的代码
+
+记住，编程是一门实践的艺术。仅仅阅读是不够的，你需要动手写代码，犯错，调试，然后从错误中学习。建议你完成本章的所有练习，并尝试在实际项目中应用学到的知识。
+
+### 下一步学习建议
+
+1. **动手实践**：找一个小项目来练习本章内容
+2. **阅读优秀代码**：看看开源项目中是如何使用这些概念的
+3. **代码审查**：让其他人审查你的代码，同时也审查别人的代码
+4. **教别人**：尝试把学到的知识教给其他人，这是最好的学习方式
+5. **持续学习**：编程世界日新月异，保持好奇心和学习热情
+
+---
+
+**拓展阅读推荐：**
+- 《代码整洁之道》- Robert C. Martin
+- 《重构：改善既有代码的设计》- Martin Fowler
+- 《设计模式》- GoF
+- 《程序员修炼之道》- Hunt & Thomas
+
+祝你编程学习之旅愉快！🚀
+`
   },
   {
     "id": "prog-refactoring",
     "title": "重构：改善既有代码的设计",
     "icon": "♻️",
     "group": "调试、测试与代码质量",
-    "content": "# 重构：改善既有代码的设计\n\n## 一、概述\n\n重构：改善既有代码的设计是每一位程序员必须掌握的核心知识。无论你使用什么编程语言，这些基础概念都是相通的。本章将带你系统地学习重构：改善既有代码的设计的方方面面，从基本概念到实际应用，从常见陷阱到最佳实践，帮助你建立扎实的编程基础。\n\n学习编程不仅仅是学习语法，更重要的是理解背后的思想和原理。我们将通过大量的代码示例、类比说明和实战练习，让你真正理解而非死记硬背。\n\n## 二、核心概念详解\n\n### 2.1 什么是重构：改善既有代码的设计？\n\n在深入学习之前，让我们先理解重构：改善既有代码的设计的本质。重构：改善既有代码的设计是编程中用于解决特定问题的一组思想和技术的总称。它不是某一种语言特有的功能，而是所有现代编程语言都支持的通用概念。\n\n想象一下，如果你要盖一栋房子：\n\n| 编程概念 | 建筑类比 | 作用 |\n|---------|---------|------|\n| 变量 | 建筑材料 | 存储数据 |\n| 函数 | 预制构件 | 封装功能 |\n| 控制流 | 施工图纸 | 决定执行顺序 |\n| 数据结构 | 房间布局 | 组织数据 |\n| 重构：改善既有代码的设计 | 核心建筑工艺 | 特定问题解决方案 |\n\n### 2.2 为什么需要重构：改善既有代码的设计？\n\n在重构：改善既有代码的设计出现之前，程序员面临着很多问题：\n\n1. **代码重复**：相同的逻辑需要在多处重复编写\n2. **难以维护**：代码结构混乱，修改一处可能影响多处\n3. **容易出错**：缺乏系统化的方法，bug频发\n4. **协作困难**：没有统一的范式，团队成员代码风格各异\n\n重构：改善既有代码的设计正是为了解决这些问题而产生的。\n\n## 三、实战代码示例\n\n### 3.1 基础示例\n\n让我们从最简单的例子开始：\n\n```javascript\n// 示例1：基础用法\nfunction demonstrateprog_refactoring(data) {\n    // 第一步：验证输入\n    if (!data) {\n        throw new Error('输入数据不能为空');\n    }\n    \n    // 第二步：处理数据\n    const result = processData(data);\n    \n    // 第三步：返回结果\n    return result;\n}\n\nfunction processData(data) {\n    // 具体的处理逻辑\n    return data.map(item => ({\n        ...item,\n        processed: true,\n        timestamp: Date.now()\n    }));\n}\n\n// 使用示例\nconst testData = [\n    { id: 1, name: '示例1' },\n    { id: 2, name: '示例2' }\n];\n\nconst results = demonstrateprog_refactoring(testData);\nconsole.log('处理结果:', results);\n```\n\n### 3.2 进阶示例\n\n下面是一个更贴近实际开发的例子：\n\n```javascript\n// 示例2：实际应用场景\nclass prog-refactoringExample {\n    constructor(options = {}) {\n        this.options = {\n            debug: false,\n            maxRetries: 3,\n            timeout: 5000,\n            ...options\n        };\n        this.cache = new Map();\n    }\n    \n    async execute(input) {\n        const cacheKey = this.generateCacheKey(input);\n        \n        // 检查缓存\n        if (this.cache.has(cacheKey)) {\n            this.log('从缓存返回结果');\n            return this.cache.get(cacheKey);\n        }\n        \n        // 重试逻辑\n        let lastError;\n        for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {\n            try {\n                this.log(`尝试第 ${attempt} 次执行`);\n                const result = await this.doExecute(input);\n                this.cache.set(cacheKey, result);\n                return result;\n            } catch (error) {\n                lastError = error;\n                this.log(`第 ${attempt} 次尝试失败: ${error.message}`);\n                await this.delay(1000 * attempt);\n            }\n        }\n        \n        throw new Error(`执行失败，已重试${this.options.maxRetries}次: ${lastError.message}`);\n    }\n    \n    async doExecute(input) {\n        // 实际的执行逻辑\n        return { success: true, data: input };\n    }\n    \n    generateCacheKey(input) {\n        return JSON.stringify(input);\n    }\n    \n    log(message) {\n        if (this.options.debug) {\n            console.log(`[重构：改善既有代码的设计] ${message}`);\n        }\n    }\n    \n    delay(ms) {\n        return new Promise(resolve => setTimeout(resolve, ms));\n    }\n}\n```\n\n### 3.3 Python示例\n\n如果你更熟悉Python，这里是对应的例子：\n\n```python\n# Python示例\nfrom typing import Any, Dict, List, Optional\nimport time\nimport functools\n\n\ndef timer(func):\n    \"\"\"装饰器：测量函数执行时间\"\"\"\n    @functools.wraps(func)\n    def wrapper(*args, **kwargs):\n        start = time.time()\n        try:\n            result = func(*args, **kwargs)\n            return result\n        finally:\n            elapsed = time.time() - start\n            print(f\"{func.__name__} 执行时间: {elapsed:.4f}秒\")\n    return wrapper\n\n\nclass DataProcessor:\n    \"\"\"数据处理器 - 演示重构：改善既有代码的设计\"\"\"\n    \n    def __init__(self, config: Optional[Dict[str, Any]] = None):\n        self.config = config or {}\n        self._cache: Dict[str, Any] = {}\n    \n    @timer\n    def process(self, items: List[Any]) -> List[Any]:\n        \"\"\"处理数据列表\"\"\"\n        results = []\n        for item in items:\n            processed = self._process_single(item)\n            results.append(processed)\n        return results\n    \n    def _process_single(self, item: Any) -> Any:\n        \"\"\"处理单个数据项\"\"\"\n        cache_key = str(item)\n        if cache_key in self._cache:\n            return self._cache[cache_key]\n        \n        # 处理逻辑\n        result = {\n            'original': item,\n            'processed': True,\n            'length': len(str(item)) if hasattr(item, '__len__') else 0\n        }\n        \n        self._cache[cache_key] = result\n        return result\n\n\n# 使用示例\nif __name__ == '__main__':\n    processor = DataProcessor()\n    data = ['apple', 'banana', 'cherry', 'date']\n    results = processor.process(data)\n    \n    for item in results:\n        print(f\"原始: {item['original']:10} 长度: {item['length']}\")\n\n```\n\n## 四、常见陷阱与注意事项\n\n### 4.1 新手常犯的错误\n\n| 错误类型 | 错误示例 | 正确做法 |\n|---------|---------|---------|\n| 过度复杂化 | 一个函数写几百行 | 拆分成小函数，单一职责 |\n| 忽略边界条件 | 不处理空输入、极端值 | 总是验证输入，考虑边缘情况 |\n| 硬编码值 | 直接在代码中写魔法数字 | 使用常量或配置 |\n| 不处理错误 | 假设所有操作都会成功 | 使用try-catch/异常处理 |\n| 过度优化 | 一开始就纠结性能 | 先写正确的代码，再优化 |\n\n### 4.2 需要特别注意的点\n\n1. **可变默认参数问题**（Python）\n\n```python\n# ❌ 错误：可变默认参数\ndef append_to(item, target=[]):\n    target.append(item)\n    return target\n\n# ✅ 正确：使用None作为默认值\ndef append_to(item, target=None):\n    if target is None:\n        target = []\n    target.append(item)\n    return target\n```\n\n2. **浮点数精度问题**\n\n```javascript\n// ❌ 错误：直接比较浮点数\nconsole.log(0.1 + 0.2 === 0.3); // false\n\n// ✅ 正确：使用精度范围比较\nfunction nearlyEqual(a, b, epsilon = 1e-10) {\n    return Math.abs(a - b) < epsilon;\n}\n```\n\n3. **异步代码陷阱**\n\n```javascript\n// ❌ 错误：在循环中使用await（可以但需理解行为）\n// 如果你想要顺序执行，这没问题；如果想并行，应该用Promise.all\n\n// ✅ 并行执行\nconst results = await Promise.all(\n    items.map(item => processItem(item))\n);\n\n```\n\n## 五、最佳实践\n\n### 5.1 编码原则\n\n**SOLID原则（面向对象）：**\n\n| 原则 | 全称 | 含义 |\n|-----|------|------|\n| S | 单一职责原则 | 一个类只做一件事 |\n| O | 开闭原则 | 对扩展开放，对修改关闭 |\n| L | 里氏替换原则 | 子类可以替换父类 |\n| I | 接口隔离原则 | 使用小而专一的接口 |\n| D | 依赖倒置原则 | 依赖抽象而非具体实现 |\n\n**通用编程原则：**\n\n1. **KISS原则** - Keep It Simple, Stupid\n   - 保持简单直接，不要过度设计\n   - 如果有两个方案，选择简单的那个\n\n2. **DRY原则** - Don't Repeat Yourself\n   - 任何重复的代码都应该提取出来\n   - 但要注意：不要为了DRY而DRY，适当的重复有时比错误的抽象更好\n\n3. **YAGNI原则** - You Aren't Gonna Need It\n   - 不要实现你认为将来可能需要的功能\n   - 只实现当前确实需要的功能\n\n### 5.2 代码风格建议\n\n```javascript\n// ✅ 好的代码风格示例\nfunction calculateTotalPrice(items, taxRate = 0.1) {\n    // 验证输入\n    if (!Array.isArray(items)) {\n        throw new TypeError('items必须是数组');\n    }\n    \n    // 计算小计\n    const subtotal = items.reduce((sum, item) => {\n        if (typeof item.price !== 'number' || item.price < 0) {\n            throw new Error('无效的商品价格');\n        }\n        return sum + item.price * (item.quantity || 1);\n    }, 0);\n    \n    // 计算税费和总价\n    const tax = subtotal * taxRate;\n    const total = subtotal + tax;\n    \n    // 返回结果（使用对象而不是多个返回值）\n    return {\n        subtotal: roundToTwo(subtotal),\n        tax: roundToTwo(tax),\n        total: roundToTwo(total)\n    };\n}\n\nfunction roundToTwo(value) {\n    return Math.round(value * 100) / 100;\n}\n\n```\n\n## 六、实战练习\n\n### 练习1：基础应用\n\n**题目：** 实现一个简单的待办事项管理器，需要支持：\n- 添加待办事项\n- 标记完成/未完成\n- 删除待办\n- 筛选显示（全部/已完成/未完成）\n\n**提示：**\n- 使用合适的数据结构存储待办事项\n- 考虑使用面向对象或函数式风格\n- 添加适当的错误处理\n\n### 练习2：进阶挑战\n\n**题目：** 实现一个简单的缓存系统，需要：\n- 支持设置过期时间\n- LRU（最近最少使用）淘汰策略\n- 最大容量限制\n- 统计命中率\n\n### 练习3：代码审查\n\n找出下面代码的问题并重构：\n\n```javascript\n// 这段代码有什么问题？\nfunction process(data) {\n    var result = [];\n    for (var i = 0; i < data.length; i++) {\n        if (data[i].active) {\n            if (data[i].score > 60) {\n                result.push(data[i].name + ':' + data[i].score);\n            }\n        }\n    }\n    return result;\n}\n```\n\n**参考答案要点：**\n- 使用const/let替代var\n- 使用有意义的变量名\n- 提前返回减少嵌套\n- 使用filter/map替代for循环\n- 添加类型检查\n- 添加注释\n\n## 七、小结\n\n重构：改善既有代码的设计是编程学习道路上的重要里程碑。掌握本章内容后，你应该：\n\n✅ 理解重构：改善既有代码的设计的核心概念和原理\n✅ 能够在实际代码中正确应用重构：改善既有代码的设计\n✅ 知道常见的陷阱以及如何避免\n✅ 了解相关的最佳实践\n✅ 能够写出更清晰、更健壮的代码\n\n记住，编程是一门实践的艺术。仅仅阅读是不够的，你需要动手写代码，犯错，调试，然后从错误中学习。建议你完成本章的所有练习，并尝试在实际项目中应用学到的知识。\n\n### 下一步学习建议\n\n1. **动手实践**：找一个小项目来练习本章内容\n2. **阅读优秀代码**：看看开源项目中是如何使用这些概念的\n3. **代码审查**：让其他人审查你的代码，同时也审查别人的代码\n4. **教别人**：尝试把学到的知识教给其他人，这是最好的学习方式\n5. **持续学习**：编程世界日新月异，保持好奇心和学习热情\n\n---\n\n**拓展阅读推荐：**\n- 《代码整洁之道》- Robert C. Martin\n- 《重构：改善既有代码的设计》- Martin Fowler\n- 《设计模式》- GoF\n- 《程序员修炼之道》- Hunt & Thomas\n\n祝你编程学习之旅愉快！🚀\n"
+    content: `
+# 重构：改善既有代码的设计
+
+## 一、概述
+
+重构：改善既有代码的设计是每一位程序员必须掌握的核心知识。无论你使用什么编程语言，这些基础概念都是相通的。本章将带你系统地学习重构：改善既有代码的设计的方方面面，从基本概念到实际应用，从常见陷阱到最佳实践，帮助你建立扎实的编程基础。
+
+学习编程不仅仅是学习语法，更重要的是理解背后的思想和原理。我们将通过大量的代码示例、类比说明和实战练习，让你真正理解而非死记硬背。
+
+## 二、核心概念详解
+
+### 2.1 什么是重构：改善既有代码的设计？
+
+在深入学习之前，让我们先理解重构：改善既有代码的设计的本质。重构：改善既有代码的设计是编程中用于解决特定问题的一组思想和技术的总称。它不是某一种语言特有的功能，而是所有现代编程语言都支持的通用概念。
+
+想象一下，如果你要盖一栋房子：
+
+| 编程概念 | 建筑类比 | 作用 |
+|---------|---------|------|
+| 变量 | 建筑材料 | 存储数据 |
+| 函数 | 预制构件 | 封装功能 |
+| 控制流 | 施工图纸 | 决定执行顺序 |
+| 数据结构 | 房间布局 | 组织数据 |
+| 重构：改善既有代码的设计 | 核心建筑工艺 | 特定问题解决方案 |
+
+### 2.2 为什么需要重构：改善既有代码的设计？
+
+在重构：改善既有代码的设计出现之前，程序员面临着很多问题：
+
+1. **代码重复**：相同的逻辑需要在多处重复编写
+2. **难以维护**：代码结构混乱，修改一处可能影响多处
+3. **容易出错**：缺乏系统化的方法，bug频发
+4. **协作困难**：没有统一的范式，团队成员代码风格各异
+
+重构：改善既有代码的设计正是为了解决这些问题而产生的。
+
+## 三、实战代码示例
+
+### 3.1 基础示例
+
+让我们从最简单的例子开始：
+
+\`\`\`javascript
+// 示例1：基础用法
+function demonstrateprog_refactoring(data) {
+    // 第一步：验证输入
+    if (!data) {
+        throw new Error('输入数据不能为空');
+    }
+    
+    // 第二步：处理数据
+    const result = processData(data);
+    
+    // 第三步：返回结果
+    return result;
+}
+
+function processData(data) {
+    // 具体的处理逻辑
+    return data.map(item => ({
+        ...item,
+        processed: true,
+        timestamp: Date.now()
+    }));
+}
+
+// 使用示例
+const testData = [
+    { id: 1, name: '示例1' },
+    { id: 2, name: '示例2' }
+];
+
+const results = demonstrateprog_refactoring(testData);
+console.log('处理结果:', results);
+\`\`\`
+
+### 3.2 进阶示例
+
+下面是一个更贴近实际开发的例子：
+
+\`\`\`javascript
+// 示例2：实际应用场景
+class ProgRefactoringExample {
+    constructor(options = {}) {
+        this.options = {
+            debug: false,
+            maxRetries: 3,
+            timeout: 5000,
+            ...options
+        };
+        this.cache = new Map();
+    }
+    
+    async execute(input) {
+        const cacheKey = this.generateCacheKey(input);
+        
+        // 检查缓存
+        if (this.cache.has(cacheKey)) {
+            this.log('从缓存返回结果');
+            return this.cache.get(cacheKey);
+        }
+        
+        // 重试逻辑
+        let lastError;
+        for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {
+            try {
+                this.log(\`尝试第 \${attempt} 次执行\`);
+                const result = await this.doExecute(input);
+                this.cache.set(cacheKey, result);
+                return result;
+            } catch (error) {
+                lastError = error;
+                this.log(\`第 \${attempt} 次尝试失败: \${error.message}\`);
+                await this.delay(1000 * attempt);
+            }
+        }
+        
+        throw new Error(\`执行失败，已重试\${this.options.maxRetries}次: \${lastError.message}\`);
+    }
+    
+    async doExecute(input) {
+        // 实际的执行逻辑
+        return { success: true, data: input };
+    }
+    
+    generateCacheKey(input) {
+        return JSON.stringify(input);
+    }
+    
+    log(message) {
+        if (this.options.debug) {
+            console.log(\`[重构：改善既有代码的设计] \${message}\`);
+        }
+    }
+    
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+}
+\`\`\`
+
+### 3.3 Python示例
+
+如果你更熟悉Python，这里是对应的例子：
+
+\`\`\`python
+# Python示例
+from typing import Any, Dict, List, Optional
+import time
+import functools
+
+
+def timer(func):
+    """装饰器：测量函数执行时间"""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        try:
+            result = func(*args, **kwargs)
+            return result
+        finally:
+            elapsed = time.time() - start
+            print(f"{func.__name__} 执行时间: {elapsed:.4f}秒")
+    return wrapper
+
+
+class DataProcessor:
+    """数据处理器 - 演示重构：改善既有代码的设计"""
+    
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        self.config = config or {}
+        self._cache: Dict[str, Any] = {}
+    
+    @timer
+    def process(self, items: List[Any]) -> List[Any]:
+        """处理数据列表"""
+        results = []
+        for item in items:
+            processed = self._process_single(item)
+            results.append(processed)
+        return results
+    
+    def _process_single(self, item: Any) -> Any:
+        """处理单个数据项"""
+        cache_key = str(item)
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+        
+        # 处理逻辑
+        result = {
+            'original': item,
+            'processed': True,
+            'length': len(str(item)) if hasattr(item, '__len__') else 0
+        }
+        
+        self._cache[cache_key] = result
+        return result
+
+
+# 使用示例
+if __name__ == '__main__':
+    processor = DataProcessor()
+    data = ['apple', 'banana', 'cherry', 'date']
+    results = processor.process(data)
+    
+    for item in results:
+        print(f"原始: {item['original']:10} 长度: {item['length']}")
+
+\`\`\`
+
+## 四、常见陷阱与注意事项
+
+### 4.1 新手常犯的错误
+
+| 错误类型 | 错误示例 | 正确做法 |
+|---------|---------|---------|
+| 过度复杂化 | 一个函数写几百行 | 拆分成小函数，单一职责 |
+| 忽略边界条件 | 不处理空输入、极端值 | 总是验证输入，考虑边缘情况 |
+| 硬编码值 | 直接在代码中写魔法数字 | 使用常量或配置 |
+| 不处理错误 | 假设所有操作都会成功 | 使用try-catch/异常处理 |
+| 过度优化 | 一开始就纠结性能 | 先写正确的代码，再优化 |
+
+### 4.2 需要特别注意的点
+
+1. **可变默认参数问题**（Python）
+
+\`\`\`python
+# ❌ 错误：可变默认参数
+def append_to(item, target=[]):
+    target.append(item)
+    return target
+
+# ✅ 正确：使用None作为默认值
+def append_to(item, target=None):
+    if target is None:
+        target = []
+    target.append(item)
+    return target
+\`\`\`
+
+2. **浮点数精度问题**
+
+\`\`\`javascript
+// ❌ 错误：直接比较浮点数
+console.log(0.1 + 0.2 === 0.3); // false
+
+// ✅ 正确：使用精度范围比较
+function nearlyEqual(a, b, epsilon = 1e-10) {
+    return Math.abs(a - b) < epsilon;
+}
+\`\`\`
+
+3. **异步代码陷阱**
+
+\`\`\`javascript
+// ❌ 错误：在循环中使用await（可以但需理解行为）
+// 如果你想要顺序执行，这没问题；如果想并行，应该用Promise.all
+
+// ✅ 并行执行
+const results = await Promise.all(
+    items.map(item => processItem(item))
+);
+
+\`\`\`
+
+## 五、最佳实践
+
+### 5.1 编码原则
+
+**SOLID原则（面向对象）：**
+
+| 原则 | 全称 | 含义 |
+|-----|------|------|
+| S | 单一职责原则 | 一个类只做一件事 |
+| O | 开闭原则 | 对扩展开放，对修改关闭 |
+| L | 里氏替换原则 | 子类可以替换父类 |
+| I | 接口隔离原则 | 使用小而专一的接口 |
+| D | 依赖倒置原则 | 依赖抽象而非具体实现 |
+
+**通用编程原则：**
+
+1. **KISS原则** - Keep It Simple, Stupid
+   - 保持简单直接，不要过度设计
+   - 如果有两个方案，选择简单的那个
+
+2. **DRY原则** - Don't Repeat Yourself
+   - 任何重复的代码都应该提取出来
+   - 但要注意：不要为了DRY而DRY，适当的重复有时比错误的抽象更好
+
+3. **YAGNI原则** - You Aren't Gonna Need It
+   - 不要实现你认为将来可能需要的功能
+   - 只实现当前确实需要的功能
+
+### 5.2 代码风格建议
+
+\`\`\`javascript
+// ✅ 好的代码风格示例
+function calculateTotalPrice(items, taxRate = 0.1) {
+    // 验证输入
+    if (!Array.isArray(items)) {
+        throw new TypeError('items必须是数组');
+    }
+    
+    // 计算小计
+    const subtotal = items.reduce((sum, item) => {
+        if (typeof item.price !== 'number' || item.price < 0) {
+            throw new Error('无效的商品价格');
+        }
+        return sum + item.price * (item.quantity || 1);
+    }, 0);
+    
+    // 计算税费和总价
+    const tax = subtotal * taxRate;
+    const total = subtotal + tax;
+    
+    // 返回结果（使用对象而不是多个返回值）
+    return {
+        subtotal: roundToTwo(subtotal),
+        tax: roundToTwo(tax),
+        total: roundToTwo(total)
+    };
+}
+
+function roundToTwo(value) {
+    return Math.round(value * 100) / 100;
+}
+
+\`\`\`
+
+## 六、实战练习
+
+### 练习1：基础应用
+
+**题目：** 实现一个简单的待办事项管理器，需要支持：
+- 添加待办事项
+- 标记完成/未完成
+- 删除待办
+- 筛选显示（全部/已完成/未完成）
+
+**提示：**
+- 使用合适的数据结构存储待办事项
+- 考虑使用面向对象或函数式风格
+- 添加适当的错误处理
+
+### 练习2：进阶挑战
+
+**题目：** 实现一个简单的缓存系统，需要：
+- 支持设置过期时间
+- LRU（最近最少使用）淘汰策略
+- 最大容量限制
+- 统计命中率
+
+### 练习3：代码审查
+
+找出下面代码的问题并重构：
+
+\`\`\`javascript
+// 这段代码有什么问题？
+function process(data) {
+    var result = [];
+    for (var i = 0; i < data.length; i++) {
+        if (data[i].active) {
+            if (data[i].score > 60) {
+                result.push(data[i].name + ':' + data[i].score);
+            }
+        }
+    }
+    return result;
+}
+\`\`\`
+
+**参考答案要点：**
+- 使用const/let替代var
+- 使用有意义的变量名
+- 提前返回减少嵌套
+- 使用filter/map替代for循环
+- 添加类型检查
+- 添加注释
+
+## 七、小结
+
+重构：改善既有代码的设计是编程学习道路上的重要里程碑。掌握本章内容后，你应该：
+
+✅ 理解重构：改善既有代码的设计的核心概念和原理
+✅ 能够在实际代码中正确应用重构：改善既有代码的设计
+✅ 知道常见的陷阱以及如何避免
+✅ 了解相关的最佳实践
+✅ 能够写出更清晰、更健壮的代码
+
+记住，编程是一门实践的艺术。仅仅阅读是不够的，你需要动手写代码，犯错，调试，然后从错误中学习。建议你完成本章的所有练习，并尝试在实际项目中应用学到的知识。
+
+### 下一步学习建议
+
+1. **动手实践**：找一个小项目来练习本章内容
+2. **阅读优秀代码**：看看开源项目中是如何使用这些概念的
+3. **代码审查**：让其他人审查你的代码，同时也审查别人的代码
+4. **教别人**：尝试把学到的知识教给其他人，这是最好的学习方式
+5. **持续学习**：编程世界日新月异，保持好奇心和学习热情
+
+---
+
+**拓展阅读推荐：**
+- 《代码整洁之道》- Robert C. Martin
+- 《重构：改善既有代码的设计》- Martin Fowler
+- 《设计模式》- GoF
+- 《程序员修炼之道》- Hunt & Thomas
+
+祝你编程学习之旅愉快！🚀
+`
   },
   {
     "id": "prog-code-smells",
     "title": "代码坏味道：识别需要改进的代码",
     "icon": "👃",
     "group": "调试、测试与代码质量",
-    "content": "# 代码坏味道：识别需要改进的代码\n\n## 一、概述\n\n代码坏味道：识别需要改进的代码是每一位程序员必须掌握的核心知识。无论你使用什么编程语言，这些基础概念都是相通的。本章将带你系统地学习代码坏味道：识别需要改进的代码的方方面面，从基本概念到实际应用，从常见陷阱到最佳实践，帮助你建立扎实的编程基础。\n\n学习编程不仅仅是学习语法，更重要的是理解背后的思想和原理。我们将通过大量的代码示例、类比说明和实战练习，让你真正理解而非死记硬背。\n\n## 二、核心概念详解\n\n### 2.1 什么是代码坏味道：识别需要改进的代码？\n\n在深入学习之前，让我们先理解代码坏味道：识别需要改进的代码的本质。代码坏味道：识别需要改进的代码是编程中用于解决特定问题的一组思想和技术的总称。它不是某一种语言特有的功能，而是所有现代编程语言都支持的通用概念。\n\n想象一下，如果你要盖一栋房子：\n\n| 编程概念 | 建筑类比 | 作用 |\n|---------|---------|------|\n| 变量 | 建筑材料 | 存储数据 |\n| 函数 | 预制构件 | 封装功能 |\n| 控制流 | 施工图纸 | 决定执行顺序 |\n| 数据结构 | 房间布局 | 组织数据 |\n| 代码坏味道：识别需要改进的代码 | 核心建筑工艺 | 特定问题解决方案 |\n\n### 2.2 为什么需要代码坏味道：识别需要改进的代码？\n\n在代码坏味道：识别需要改进的代码出现之前，程序员面临着很多问题：\n\n1. **代码重复**：相同的逻辑需要在多处重复编写\n2. **难以维护**：代码结构混乱，修改一处可能影响多处\n3. **容易出错**：缺乏系统化的方法，bug频发\n4. **协作困难**：没有统一的范式，团队成员代码风格各异\n\n代码坏味道：识别需要改进的代码正是为了解决这些问题而产生的。\n\n## 三、实战代码示例\n\n### 3.1 基础示例\n\n让我们从最简单的例子开始：\n\n```javascript\n// 示例1：基础用法\nfunction demonstrateprog_code_smells(data) {\n    // 第一步：验证输入\n    if (!data) {\n        throw new Error('输入数据不能为空');\n    }\n    \n    // 第二步：处理数据\n    const result = processData(data);\n    \n    // 第三步：返回结果\n    return result;\n}\n\nfunction processData(data) {\n    // 具体的处理逻辑\n    return data.map(item => ({\n        ...item,\n        processed: true,\n        timestamp: Date.now()\n    }));\n}\n\n// 使用示例\nconst testData = [\n    { id: 1, name: '示例1' },\n    { id: 2, name: '示例2' }\n];\n\nconst results = demonstrateprog_code_smells(testData);\nconsole.log('处理结果:', results);\n```\n\n### 3.2 进阶示例\n\n下面是一个更贴近实际开发的例子：\n\n```javascript\n// 示例2：实际应用场景\nclass prog-code-smellsExample {\n    constructor(options = {}) {\n        this.options = {\n            debug: false,\n            maxRetries: 3,\n            timeout: 5000,\n            ...options\n        };\n        this.cache = new Map();\n    }\n    \n    async execute(input) {\n        const cacheKey = this.generateCacheKey(input);\n        \n        // 检查缓存\n        if (this.cache.has(cacheKey)) {\n            this.log('从缓存返回结果');\n            return this.cache.get(cacheKey);\n        }\n        \n        // 重试逻辑\n        let lastError;\n        for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {\n            try {\n                this.log(`尝试第 ${attempt} 次执行`);\n                const result = await this.doExecute(input);\n                this.cache.set(cacheKey, result);\n                return result;\n            } catch (error) {\n                lastError = error;\n                this.log(`第 ${attempt} 次尝试失败: ${error.message}`);\n                await this.delay(1000 * attempt);\n            }\n        }\n        \n        throw new Error(`执行失败，已重试${this.options.maxRetries}次: ${lastError.message}`);\n    }\n    \n    async doExecute(input) {\n        // 实际的执行逻辑\n        return { success: true, data: input };\n    }\n    \n    generateCacheKey(input) {\n        return JSON.stringify(input);\n    }\n    \n    log(message) {\n        if (this.options.debug) {\n            console.log(`[代码坏味道：识别需要改进的代码] ${message}`);\n        }\n    }\n    \n    delay(ms) {\n        return new Promise(resolve => setTimeout(resolve, ms));\n    }\n}\n```\n\n### 3.3 Python示例\n\n如果你更熟悉Python，这里是对应的例子：\n\n```python\n# Python示例\nfrom typing import Any, Dict, List, Optional\nimport time\nimport functools\n\n\ndef timer(func):\n    \"\"\"装饰器：测量函数执行时间\"\"\"\n    @functools.wraps(func)\n    def wrapper(*args, **kwargs):\n        start = time.time()\n        try:\n            result = func(*args, **kwargs)\n            return result\n        finally:\n            elapsed = time.time() - start\n            print(f\"{func.__name__} 执行时间: {elapsed:.4f}秒\")\n    return wrapper\n\n\nclass DataProcessor:\n    \"\"\"数据处理器 - 演示代码坏味道：识别需要改进的代码\"\"\"\n    \n    def __init__(self, config: Optional[Dict[str, Any]] = None):\n        self.config = config or {}\n        self._cache: Dict[str, Any] = {}\n    \n    @timer\n    def process(self, items: List[Any]) -> List[Any]:\n        \"\"\"处理数据列表\"\"\"\n        results = []\n        for item in items:\n            processed = self._process_single(item)\n            results.append(processed)\n        return results\n    \n    def _process_single(self, item: Any) -> Any:\n        \"\"\"处理单个数据项\"\"\"\n        cache_key = str(item)\n        if cache_key in self._cache:\n            return self._cache[cache_key]\n        \n        # 处理逻辑\n        result = {\n            'original': item,\n            'processed': True,\n            'length': len(str(item)) if hasattr(item, '__len__') else 0\n        }\n        \n        self._cache[cache_key] = result\n        return result\n\n\n# 使用示例\nif __name__ == '__main__':\n    processor = DataProcessor()\n    data = ['apple', 'banana', 'cherry', 'date']\n    results = processor.process(data)\n    \n    for item in results:\n        print(f\"原始: {item['original']:10} 长度: {item['length']}\")\n\n```\n\n## 四、常见陷阱与注意事项\n\n### 4.1 新手常犯的错误\n\n| 错误类型 | 错误示例 | 正确做法 |\n|---------|---------|---------|\n| 过度复杂化 | 一个函数写几百行 | 拆分成小函数，单一职责 |\n| 忽略边界条件 | 不处理空输入、极端值 | 总是验证输入，考虑边缘情况 |\n| 硬编码值 | 直接在代码中写魔法数字 | 使用常量或配置 |\n| 不处理错误 | 假设所有操作都会成功 | 使用try-catch/异常处理 |\n| 过度优化 | 一开始就纠结性能 | 先写正确的代码，再优化 |\n\n### 4.2 需要特别注意的点\n\n1. **可变默认参数问题**（Python）\n\n```python\n# ❌ 错误：可变默认参数\ndef append_to(item, target=[]):\n    target.append(item)\n    return target\n\n# ✅ 正确：使用None作为默认值\ndef append_to(item, target=None):\n    if target is None:\n        target = []\n    target.append(item)\n    return target\n```\n\n2. **浮点数精度问题**\n\n```javascript\n// ❌ 错误：直接比较浮点数\nconsole.log(0.1 + 0.2 === 0.3); // false\n\n// ✅ 正确：使用精度范围比较\nfunction nearlyEqual(a, b, epsilon = 1e-10) {\n    return Math.abs(a - b) < epsilon;\n}\n```\n\n3. **异步代码陷阱**\n\n```javascript\n// ❌ 错误：在循环中使用await（可以但需理解行为）\n// 如果你想要顺序执行，这没问题；如果想并行，应该用Promise.all\n\n// ✅ 并行执行\nconst results = await Promise.all(\n    items.map(item => processItem(item))\n);\n\n```\n\n## 五、最佳实践\n\n### 5.1 编码原则\n\n**SOLID原则（面向对象）：**\n\n| 原则 | 全称 | 含义 |\n|-----|------|------|\n| S | 单一职责原则 | 一个类只做一件事 |\n| O | 开闭原则 | 对扩展开放，对修改关闭 |\n| L | 里氏替换原则 | 子类可以替换父类 |\n| I | 接口隔离原则 | 使用小而专一的接口 |\n| D | 依赖倒置原则 | 依赖抽象而非具体实现 |\n\n**通用编程原则：**\n\n1. **KISS原则** - Keep It Simple, Stupid\n   - 保持简单直接，不要过度设计\n   - 如果有两个方案，选择简单的那个\n\n2. **DRY原则** - Don't Repeat Yourself\n   - 任何重复的代码都应该提取出来\n   - 但要注意：不要为了DRY而DRY，适当的重复有时比错误的抽象更好\n\n3. **YAGNI原则** - You Aren't Gonna Need It\n   - 不要实现你认为将来可能需要的功能\n   - 只实现当前确实需要的功能\n\n### 5.2 代码风格建议\n\n```javascript\n// ✅ 好的代码风格示例\nfunction calculateTotalPrice(items, taxRate = 0.1) {\n    // 验证输入\n    if (!Array.isArray(items)) {\n        throw new TypeError('items必须是数组');\n    }\n    \n    // 计算小计\n    const subtotal = items.reduce((sum, item) => {\n        if (typeof item.price !== 'number' || item.price < 0) {\n            throw new Error('无效的商品价格');\n        }\n        return sum + item.price * (item.quantity || 1);\n    }, 0);\n    \n    // 计算税费和总价\n    const tax = subtotal * taxRate;\n    const total = subtotal + tax;\n    \n    // 返回结果（使用对象而不是多个返回值）\n    return {\n        subtotal: roundToTwo(subtotal),\n        tax: roundToTwo(tax),\n        total: roundToTwo(total)\n    };\n}\n\nfunction roundToTwo(value) {\n    return Math.round(value * 100) / 100;\n}\n\n```\n\n## 六、实战练习\n\n### 练习1：基础应用\n\n**题目：** 实现一个简单的待办事项管理器，需要支持：\n- 添加待办事项\n- 标记完成/未完成\n- 删除待办\n- 筛选显示（全部/已完成/未完成）\n\n**提示：**\n- 使用合适的数据结构存储待办事项\n- 考虑使用面向对象或函数式风格\n- 添加适当的错误处理\n\n### 练习2：进阶挑战\n\n**题目：** 实现一个简单的缓存系统，需要：\n- 支持设置过期时间\n- LRU（最近最少使用）淘汰策略\n- 最大容量限制\n- 统计命中率\n\n### 练习3：代码审查\n\n找出下面代码的问题并重构：\n\n```javascript\n// 这段代码有什么问题？\nfunction process(data) {\n    var result = [];\n    for (var i = 0; i < data.length; i++) {\n        if (data[i].active) {\n            if (data[i].score > 60) {\n                result.push(data[i].name + ':' + data[i].score);\n            }\n        }\n    }\n    return result;\n}\n```\n\n**参考答案要点：**\n- 使用const/let替代var\n- 使用有意义的变量名\n- 提前返回减少嵌套\n- 使用filter/map替代for循环\n- 添加类型检查\n- 添加注释\n\n## 七、小结\n\n代码坏味道：识别需要改进的代码是编程学习道路上的重要里程碑。掌握本章内容后，你应该：\n\n✅ 理解代码坏味道：识别需要改进的代码的核心概念和原理\n✅ 能够在实际代码中正确应用代码坏味道：识别需要改进的代码\n✅ 知道常见的陷阱以及如何避免\n✅ 了解相关的最佳实践\n✅ 能够写出更清晰、更健壮的代码\n\n记住，编程是一门实践的艺术。仅仅阅读是不够的，你需要动手写代码，犯错，调试，然后从错误中学习。建议你完成本章的所有练习，并尝试在实际项目中应用学到的知识。\n\n### 下一步学习建议\n\n1. **动手实践**：找一个小项目来练习本章内容\n2. **阅读优秀代码**：看看开源项目中是如何使用这些概念的\n3. **代码审查**：让其他人审查你的代码，同时也审查别人的代码\n4. **教别人**：尝试把学到的知识教给其他人，这是最好的学习方式\n5. **持续学习**：编程世界日新月异，保持好奇心和学习热情\n\n---\n\n**拓展阅读推荐：**\n- 《代码整洁之道》- Robert C. Martin\n- 《重构：改善既有代码的设计》- Martin Fowler\n- 《设计模式》- GoF\n- 《程序员修炼之道》- Hunt & Thomas\n\n祝你编程学习之旅愉快！🚀\n"
+    content: `
+# 代码坏味道：识别需要改进的代码
+
+## 一、概述
+
+代码坏味道：识别需要改进的代码是每一位程序员必须掌握的核心知识。无论你使用什么编程语言，这些基础概念都是相通的。本章将带你系统地学习代码坏味道：识别需要改进的代码的方方面面，从基本概念到实际应用，从常见陷阱到最佳实践，帮助你建立扎实的编程基础。
+
+学习编程不仅仅是学习语法，更重要的是理解背后的思想和原理。我们将通过大量的代码示例、类比说明和实战练习，让你真正理解而非死记硬背。
+
+## 二、核心概念详解
+
+### 2.1 什么是代码坏味道：识别需要改进的代码？
+
+在深入学习之前，让我们先理解代码坏味道：识别需要改进的代码的本质。代码坏味道：识别需要改进的代码是编程中用于解决特定问题的一组思想和技术的总称。它不是某一种语言特有的功能，而是所有现代编程语言都支持的通用概念。
+
+想象一下，如果你要盖一栋房子：
+
+| 编程概念 | 建筑类比 | 作用 |
+|---------|---------|------|
+| 变量 | 建筑材料 | 存储数据 |
+| 函数 | 预制构件 | 封装功能 |
+| 控制流 | 施工图纸 | 决定执行顺序 |
+| 数据结构 | 房间布局 | 组织数据 |
+| 代码坏味道：识别需要改进的代码 | 核心建筑工艺 | 特定问题解决方案 |
+
+### 2.2 为什么需要代码坏味道：识别需要改进的代码？
+
+在代码坏味道：识别需要改进的代码出现之前，程序员面临着很多问题：
+
+1. **代码重复**：相同的逻辑需要在多处重复编写
+2. **难以维护**：代码结构混乱，修改一处可能影响多处
+3. **容易出错**：缺乏系统化的方法，bug频发
+4. **协作困难**：没有统一的范式，团队成员代码风格各异
+
+代码坏味道：识别需要改进的代码正是为了解决这些问题而产生的。
+
+## 三、实战代码示例
+
+### 3.1 基础示例
+
+让我们从最简单的例子开始：
+
+\`\`\`javascript
+// 示例1：基础用法
+function demonstrateprog_code_smells(data) {
+    // 第一步：验证输入
+    if (!data) {
+        throw new Error('输入数据不能为空');
+    }
+    
+    // 第二步：处理数据
+    const result = processData(data);
+    
+    // 第三步：返回结果
+    return result;
+}
+
+function processData(data) {
+    // 具体的处理逻辑
+    return data.map(item => ({
+        ...item,
+        processed: true,
+        timestamp: Date.now()
+    }));
+}
+
+// 使用示例
+const testData = [
+    { id: 1, name: '示例1' },
+    { id: 2, name: '示例2' }
+];
+
+const results = demonstrateprog_code_smells(testData);
+console.log('处理结果:', results);
+\`\`\`
+
+### 3.2 进阶示例
+
+下面是一个更贴近实际开发的例子：
+
+\`\`\`javascript
+// 示例2：实际应用场景
+class ProgCodeSmellsExample {
+    constructor(options = {}) {
+        this.options = {
+            debug: false,
+            maxRetries: 3,
+            timeout: 5000,
+            ...options
+        };
+        this.cache = new Map();
+    }
+    
+    async execute(input) {
+        const cacheKey = this.generateCacheKey(input);
+        
+        // 检查缓存
+        if (this.cache.has(cacheKey)) {
+            this.log('从缓存返回结果');
+            return this.cache.get(cacheKey);
+        }
+        
+        // 重试逻辑
+        let lastError;
+        for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {
+            try {
+                this.log(\`尝试第 \${attempt} 次执行\`);
+                const result = await this.doExecute(input);
+                this.cache.set(cacheKey, result);
+                return result;
+            } catch (error) {
+                lastError = error;
+                this.log(\`第 \${attempt} 次尝试失败: \${error.message}\`);
+                await this.delay(1000 * attempt);
+            }
+        }
+        
+        throw new Error(\`执行失败，已重试\${this.options.maxRetries}次: \${lastError.message}\`);
+    }
+    
+    async doExecute(input) {
+        // 实际的执行逻辑
+        return { success: true, data: input };
+    }
+    
+    generateCacheKey(input) {
+        return JSON.stringify(input);
+    }
+    
+    log(message) {
+        if (this.options.debug) {
+            console.log(\`[代码坏味道：识别需要改进的代码] \${message}\`);
+        }
+    }
+    
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+}
+\`\`\`
+
+### 3.3 Python示例
+
+如果你更熟悉Python，这里是对应的例子：
+
+\`\`\`python
+# Python示例
+from typing import Any, Dict, List, Optional
+import time
+import functools
+
+
+def timer(func):
+    """装饰器：测量函数执行时间"""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        try:
+            result = func(*args, **kwargs)
+            return result
+        finally:
+            elapsed = time.time() - start
+            print(f"{func.__name__} 执行时间: {elapsed:.4f}秒")
+    return wrapper
+
+
+class DataProcessor:
+    """数据处理器 - 演示代码坏味道：识别需要改进的代码"""
+    
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        self.config = config or {}
+        self._cache: Dict[str, Any] = {}
+    
+    @timer
+    def process(self, items: List[Any]) -> List[Any]:
+        """处理数据列表"""
+        results = []
+        for item in items:
+            processed = self._process_single(item)
+            results.append(processed)
+        return results
+    
+    def _process_single(self, item: Any) -> Any:
+        """处理单个数据项"""
+        cache_key = str(item)
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+        
+        # 处理逻辑
+        result = {
+            'original': item,
+            'processed': True,
+            'length': len(str(item)) if hasattr(item, '__len__') else 0
+        }
+        
+        self._cache[cache_key] = result
+        return result
+
+
+# 使用示例
+if __name__ == '__main__':
+    processor = DataProcessor()
+    data = ['apple', 'banana', 'cherry', 'date']
+    results = processor.process(data)
+    
+    for item in results:
+        print(f"原始: {item['original']:10} 长度: {item['length']}")
+
+\`\`\`
+
+## 四、常见陷阱与注意事项
+
+### 4.1 新手常犯的错误
+
+| 错误类型 | 错误示例 | 正确做法 |
+|---------|---------|---------|
+| 过度复杂化 | 一个函数写几百行 | 拆分成小函数，单一职责 |
+| 忽略边界条件 | 不处理空输入、极端值 | 总是验证输入，考虑边缘情况 |
+| 硬编码值 | 直接在代码中写魔法数字 | 使用常量或配置 |
+| 不处理错误 | 假设所有操作都会成功 | 使用try-catch/异常处理 |
+| 过度优化 | 一开始就纠结性能 | 先写正确的代码，再优化 |
+
+### 4.2 需要特别注意的点
+
+1. **可变默认参数问题**（Python）
+
+\`\`\`python
+# ❌ 错误：可变默认参数
+def append_to(item, target=[]):
+    target.append(item)
+    return target
+
+# ✅ 正确：使用None作为默认值
+def append_to(item, target=None):
+    if target is None:
+        target = []
+    target.append(item)
+    return target
+\`\`\`
+
+2. **浮点数精度问题**
+
+\`\`\`javascript
+// ❌ 错误：直接比较浮点数
+console.log(0.1 + 0.2 === 0.3); // false
+
+// ✅ 正确：使用精度范围比较
+function nearlyEqual(a, b, epsilon = 1e-10) {
+    return Math.abs(a - b) < epsilon;
+}
+\`\`\`
+
+3. **异步代码陷阱**
+
+\`\`\`javascript
+// ❌ 错误：在循环中使用await（可以但需理解行为）
+// 如果你想要顺序执行，这没问题；如果想并行，应该用Promise.all
+
+// ✅ 并行执行
+const results = await Promise.all(
+    items.map(item => processItem(item))
+);
+
+\`\`\`
+
+## 五、最佳实践
+
+### 5.1 编码原则
+
+**SOLID原则（面向对象）：**
+
+| 原则 | 全称 | 含义 |
+|-----|------|------|
+| S | 单一职责原则 | 一个类只做一件事 |
+| O | 开闭原则 | 对扩展开放，对修改关闭 |
+| L | 里氏替换原则 | 子类可以替换父类 |
+| I | 接口隔离原则 | 使用小而专一的接口 |
+| D | 依赖倒置原则 | 依赖抽象而非具体实现 |
+
+**通用编程原则：**
+
+1. **KISS原则** - Keep It Simple, Stupid
+   - 保持简单直接，不要过度设计
+   - 如果有两个方案，选择简单的那个
+
+2. **DRY原则** - Don't Repeat Yourself
+   - 任何重复的代码都应该提取出来
+   - 但要注意：不要为了DRY而DRY，适当的重复有时比错误的抽象更好
+
+3. **YAGNI原则** - You Aren't Gonna Need It
+   - 不要实现你认为将来可能需要的功能
+   - 只实现当前确实需要的功能
+
+### 5.2 代码风格建议
+
+\`\`\`javascript
+// ✅ 好的代码风格示例
+function calculateTotalPrice(items, taxRate = 0.1) {
+    // 验证输入
+    if (!Array.isArray(items)) {
+        throw new TypeError('items必须是数组');
+    }
+    
+    // 计算小计
+    const subtotal = items.reduce((sum, item) => {
+        if (typeof item.price !== 'number' || item.price < 0) {
+            throw new Error('无效的商品价格');
+        }
+        return sum + item.price * (item.quantity || 1);
+    }, 0);
+    
+    // 计算税费和总价
+    const tax = subtotal * taxRate;
+    const total = subtotal + tax;
+    
+    // 返回结果（使用对象而不是多个返回值）
+    return {
+        subtotal: roundToTwo(subtotal),
+        tax: roundToTwo(tax),
+        total: roundToTwo(total)
+    };
+}
+
+function roundToTwo(value) {
+    return Math.round(value * 100) / 100;
+}
+
+\`\`\`
+
+## 六、实战练习
+
+### 练习1：基础应用
+
+**题目：** 实现一个简单的待办事项管理器，需要支持：
+- 添加待办事项
+- 标记完成/未完成
+- 删除待办
+- 筛选显示（全部/已完成/未完成）
+
+**提示：**
+- 使用合适的数据结构存储待办事项
+- 考虑使用面向对象或函数式风格
+- 添加适当的错误处理
+
+### 练习2：进阶挑战
+
+**题目：** 实现一个简单的缓存系统，需要：
+- 支持设置过期时间
+- LRU（最近最少使用）淘汰策略
+- 最大容量限制
+- 统计命中率
+
+### 练习3：代码审查
+
+找出下面代码的问题并重构：
+
+\`\`\`javascript
+// 这段代码有什么问题？
+function process(data) {
+    var result = [];
+    for (var i = 0; i < data.length; i++) {
+        if (data[i].active) {
+            if (data[i].score > 60) {
+                result.push(data[i].name + ':' + data[i].score);
+            }
+        }
+    }
+    return result;
+}
+\`\`\`
+
+**参考答案要点：**
+- 使用const/let替代var
+- 使用有意义的变量名
+- 提前返回减少嵌套
+- 使用filter/map替代for循环
+- 添加类型检查
+- 添加注释
+
+## 七、小结
+
+代码坏味道：识别需要改进的代码是编程学习道路上的重要里程碑。掌握本章内容后，你应该：
+
+✅ 理解代码坏味道：识别需要改进的代码的核心概念和原理
+✅ 能够在实际代码中正确应用代码坏味道：识别需要改进的代码
+✅ 知道常见的陷阱以及如何避免
+✅ 了解相关的最佳实践
+✅ 能够写出更清晰、更健壮的代码
+
+记住，编程是一门实践的艺术。仅仅阅读是不够的，你需要动手写代码，犯错，调试，然后从错误中学习。建议你完成本章的所有练习，并尝试在实际项目中应用学到的知识。
+
+### 下一步学习建议
+
+1. **动手实践**：找一个小项目来练习本章内容
+2. **阅读优秀代码**：看看开源项目中是如何使用这些概念的
+3. **代码审查**：让其他人审查你的代码，同时也审查别人的代码
+4. **教别人**：尝试把学到的知识教给其他人，这是最好的学习方式
+5. **持续学习**：编程世界日新月异，保持好奇心和学习热情
+
+---
+
+**拓展阅读推荐：**
+- 《代码整洁之道》- Robert C. Martin
+- 《重构：改善既有代码的设计》- Martin Fowler
+- 《设计模式》- GoF
+- 《程序员修炼之道》- Hunt & Thomas
+
+祝你编程学习之旅愉快！🚀
+`
   },
   {
     "id": "prog-documentation",
     "title": "代码文档：为什么写以及如何写",
     "icon": "📄",
     "group": "调试、测试与代码质量",
-    "content": "# 代码文档：为什么写以及如何写\n\n## 一、概述\n\n代码文档：为什么写以及如何写是每一位程序员必须掌握的核心知识。无论你使用什么编程语言，这些基础概念都是相通的。本章将带你系统地学习代码文档：为什么写以及如何写的方方面面，从基本概念到实际应用，从常见陷阱到最佳实践，帮助你建立扎实的编程基础。\n\n学习编程不仅仅是学习语法，更重要的是理解背后的思想和原理。我们将通过大量的代码示例、类比说明和实战练习，让你真正理解而非死记硬背。\n\n## 二、核心概念详解\n\n### 2.1 什么是代码文档：为什么写以及如何写？\n\n在深入学习之前，让我们先理解代码文档：为什么写以及如何写的本质。代码文档：为什么写以及如何写是编程中用于解决特定问题的一组思想和技术的总称。它不是某一种语言特有的功能，而是所有现代编程语言都支持的通用概念。\n\n想象一下，如果你要盖一栋房子：\n\n| 编程概念 | 建筑类比 | 作用 |\n|---------|---------|------|\n| 变量 | 建筑材料 | 存储数据 |\n| 函数 | 预制构件 | 封装功能 |\n| 控制流 | 施工图纸 | 决定执行顺序 |\n| 数据结构 | 房间布局 | 组织数据 |\n| 代码文档：为什么写以及如何写 | 核心建筑工艺 | 特定问题解决方案 |\n\n### 2.2 为什么需要代码文档：为什么写以及如何写？\n\n在代码文档：为什么写以及如何写出现之前，程序员面临着很多问题：\n\n1. **代码重复**：相同的逻辑需要在多处重复编写\n2. **难以维护**：代码结构混乱，修改一处可能影响多处\n3. **容易出错**：缺乏系统化的方法，bug频发\n4. **协作困难**：没有统一的范式，团队成员代码风格各异\n\n代码文档：为什么写以及如何写正是为了解决这些问题而产生的。\n\n## 三、实战代码示例\n\n### 3.1 基础示例\n\n让我们从最简单的例子开始：\n\n```javascript\n// 示例1：基础用法\nfunction demonstrateprog_documentation(data) {\n    // 第一步：验证输入\n    if (!data) {\n        throw new Error('输入数据不能为空');\n    }\n    \n    // 第二步：处理数据\n    const result = processData(data);\n    \n    // 第三步：返回结果\n    return result;\n}\n\nfunction processData(data) {\n    // 具体的处理逻辑\n    return data.map(item => ({\n        ...item,\n        processed: true,\n        timestamp: Date.now()\n    }));\n}\n\n// 使用示例\nconst testData = [\n    { id: 1, name: '示例1' },\n    { id: 2, name: '示例2' }\n];\n\nconst results = demonstrateprog_documentation(testData);\nconsole.log('处理结果:', results);\n```\n\n### 3.2 进阶示例\n\n下面是一个更贴近实际开发的例子：\n\n```javascript\n// 示例2：实际应用场景\nclass prog-documentationExample {\n    constructor(options = {}) {\n        this.options = {\n            debug: false,\n            maxRetries: 3,\n            timeout: 5000,\n            ...options\n        };\n        this.cache = new Map();\n    }\n    \n    async execute(input) {\n        const cacheKey = this.generateCacheKey(input);\n        \n        // 检查缓存\n        if (this.cache.has(cacheKey)) {\n            this.log('从缓存返回结果');\n            return this.cache.get(cacheKey);\n        }\n        \n        // 重试逻辑\n        let lastError;\n        for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {\n            try {\n                this.log(`尝试第 ${attempt} 次执行`);\n                const result = await this.doExecute(input);\n                this.cache.set(cacheKey, result);\n                return result;\n            } catch (error) {\n                lastError = error;\n                this.log(`第 ${attempt} 次尝试失败: ${error.message}`);\n                await this.delay(1000 * attempt);\n            }\n        }\n        \n        throw new Error(`执行失败，已重试${this.options.maxRetries}次: ${lastError.message}`);\n    }\n    \n    async doExecute(input) {\n        // 实际的执行逻辑\n        return { success: true, data: input };\n    }\n    \n    generateCacheKey(input) {\n        return JSON.stringify(input);\n    }\n    \n    log(message) {\n        if (this.options.debug) {\n            console.log(`[代码文档：为什么写以及如何写] ${message}`);\n        }\n    }\n    \n    delay(ms) {\n        return new Promise(resolve => setTimeout(resolve, ms));\n    }\n}\n```\n\n### 3.3 Python示例\n\n如果你更熟悉Python，这里是对应的例子：\n\n```python\n# Python示例\nfrom typing import Any, Dict, List, Optional\nimport time\nimport functools\n\n\ndef timer(func):\n    \"\"\"装饰器：测量函数执行时间\"\"\"\n    @functools.wraps(func)\n    def wrapper(*args, **kwargs):\n        start = time.time()\n        try:\n            result = func(*args, **kwargs)\n            return result\n        finally:\n            elapsed = time.time() - start\n            print(f\"{func.__name__} 执行时间: {elapsed:.4f}秒\")\n    return wrapper\n\n\nclass DataProcessor:\n    \"\"\"数据处理器 - 演示代码文档：为什么写以及如何写\"\"\"\n    \n    def __init__(self, config: Optional[Dict[str, Any]] = None):\n        self.config = config or {}\n        self._cache: Dict[str, Any] = {}\n    \n    @timer\n    def process(self, items: List[Any]) -> List[Any]:\n        \"\"\"处理数据列表\"\"\"\n        results = []\n        for item in items:\n            processed = self._process_single(item)\n            results.append(processed)\n        return results\n    \n    def _process_single(self, item: Any) -> Any:\n        \"\"\"处理单个数据项\"\"\"\n        cache_key = str(item)\n        if cache_key in self._cache:\n            return self._cache[cache_key]\n        \n        # 处理逻辑\n        result = {\n            'original': item,\n            'processed': True,\n            'length': len(str(item)) if hasattr(item, '__len__') else 0\n        }\n        \n        self._cache[cache_key] = result\n        return result\n\n\n# 使用示例\nif __name__ == '__main__':\n    processor = DataProcessor()\n    data = ['apple', 'banana', 'cherry', 'date']\n    results = processor.process(data)\n    \n    for item in results:\n        print(f\"原始: {item['original']:10} 长度: {item['length']}\")\n\n```\n\n## 四、常见陷阱与注意事项\n\n### 4.1 新手常犯的错误\n\n| 错误类型 | 错误示例 | 正确做法 |\n|---------|---------|---------|\n| 过度复杂化 | 一个函数写几百行 | 拆分成小函数，单一职责 |\n| 忽略边界条件 | 不处理空输入、极端值 | 总是验证输入，考虑边缘情况 |\n| 硬编码值 | 直接在代码中写魔法数字 | 使用常量或配置 |\n| 不处理错误 | 假设所有操作都会成功 | 使用try-catch/异常处理 |\n| 过度优化 | 一开始就纠结性能 | 先写正确的代码，再优化 |\n\n### 4.2 需要特别注意的点\n\n1. **可变默认参数问题**（Python）\n\n```python\n# ❌ 错误：可变默认参数\ndef append_to(item, target=[]):\n    target.append(item)\n    return target\n\n# ✅ 正确：使用None作为默认值\ndef append_to(item, target=None):\n    if target is None:\n        target = []\n    target.append(item)\n    return target\n```\n\n2. **浮点数精度问题**\n\n```javascript\n// ❌ 错误：直接比较浮点数\nconsole.log(0.1 + 0.2 === 0.3); // false\n\n// ✅ 正确：使用精度范围比较\nfunction nearlyEqual(a, b, epsilon = 1e-10) {\n    return Math.abs(a - b) < epsilon;\n}\n```\n\n3. **异步代码陷阱**\n\n```javascript\n// ❌ 错误：在循环中使用await（可以但需理解行为）\n// 如果你想要顺序执行，这没问题；如果想并行，应该用Promise.all\n\n// ✅ 并行执行\nconst results = await Promise.all(\n    items.map(item => processItem(item))\n);\n\n```\n\n## 五、最佳实践\n\n### 5.1 编码原则\n\n**SOLID原则（面向对象）：**\n\n| 原则 | 全称 | 含义 |\n|-----|------|------|\n| S | 单一职责原则 | 一个类只做一件事 |\n| O | 开闭原则 | 对扩展开放，对修改关闭 |\n| L | 里氏替换原则 | 子类可以替换父类 |\n| I | 接口隔离原则 | 使用小而专一的接口 |\n| D | 依赖倒置原则 | 依赖抽象而非具体实现 |\n\n**通用编程原则：**\n\n1. **KISS原则** - Keep It Simple, Stupid\n   - 保持简单直接，不要过度设计\n   - 如果有两个方案，选择简单的那个\n\n2. **DRY原则** - Don't Repeat Yourself\n   - 任何重复的代码都应该提取出来\n   - 但要注意：不要为了DRY而DRY，适当的重复有时比错误的抽象更好\n\n3. **YAGNI原则** - You Aren't Gonna Need It\n   - 不要实现你认为将来可能需要的功能\n   - 只实现当前确实需要的功能\n\n### 5.2 代码风格建议\n\n```javascript\n// ✅ 好的代码风格示例\nfunction calculateTotalPrice(items, taxRate = 0.1) {\n    // 验证输入\n    if (!Array.isArray(items)) {\n        throw new TypeError('items必须是数组');\n    }\n    \n    // 计算小计\n    const subtotal = items.reduce((sum, item) => {\n        if (typeof item.price !== 'number' || item.price < 0) {\n            throw new Error('无效的商品价格');\n        }\n        return sum + item.price * (item.quantity || 1);\n    }, 0);\n    \n    // 计算税费和总价\n    const tax = subtotal * taxRate;\n    const total = subtotal + tax;\n    \n    // 返回结果（使用对象而不是多个返回值）\n    return {\n        subtotal: roundToTwo(subtotal),\n        tax: roundToTwo(tax),\n        total: roundToTwo(total)\n    };\n}\n\nfunction roundToTwo(value) {\n    return Math.round(value * 100) / 100;\n}\n\n```\n\n## 六、实战练习\n\n### 练习1：基础应用\n\n**题目：** 实现一个简单的待办事项管理器，需要支持：\n- 添加待办事项\n- 标记完成/未完成\n- 删除待办\n- 筛选显示（全部/已完成/未完成）\n\n**提示：**\n- 使用合适的数据结构存储待办事项\n- 考虑使用面向对象或函数式风格\n- 添加适当的错误处理\n\n### 练习2：进阶挑战\n\n**题目：** 实现一个简单的缓存系统，需要：\n- 支持设置过期时间\n- LRU（最近最少使用）淘汰策略\n- 最大容量限制\n- 统计命中率\n\n### 练习3：代码审查\n\n找出下面代码的问题并重构：\n\n```javascript\n// 这段代码有什么问题？\nfunction process(data) {\n    var result = [];\n    for (var i = 0; i < data.length; i++) {\n        if (data[i].active) {\n            if (data[i].score > 60) {\n                result.push(data[i].name + ':' + data[i].score);\n            }\n        }\n    }\n    return result;\n}\n```\n\n**参考答案要点：**\n- 使用const/let替代var\n- 使用有意义的变量名\n- 提前返回减少嵌套\n- 使用filter/map替代for循环\n- 添加类型检查\n- 添加注释\n\n## 七、小结\n\n代码文档：为什么写以及如何写是编程学习道路上的重要里程碑。掌握本章内容后，你应该：\n\n✅ 理解代码文档：为什么写以及如何写的核心概念和原理\n✅ 能够在实际代码中正确应用代码文档：为什么写以及如何写\n✅ 知道常见的陷阱以及如何避免\n✅ 了解相关的最佳实践\n✅ 能够写出更清晰、更健壮的代码\n\n记住，编程是一门实践的艺术。仅仅阅读是不够的，你需要动手写代码，犯错，调试，然后从错误中学习。建议你完成本章的所有练习，并尝试在实际项目中应用学到的知识。\n\n### 下一步学习建议\n\n1. **动手实践**：找一个小项目来练习本章内容\n2. **阅读优秀代码**：看看开源项目中是如何使用这些概念的\n3. **代码审查**：让其他人审查你的代码，同时也审查别人的代码\n4. **教别人**：尝试把学到的知识教给其他人，这是最好的学习方式\n5. **持续学习**：编程世界日新月异，保持好奇心和学习热情\n\n---\n\n**拓展阅读推荐：**\n- 《代码整洁之道》- Robert C. Martin\n- 《重构：改善既有代码的设计》- Martin Fowler\n- 《设计模式》- GoF\n- 《程序员修炼之道》- Hunt & Thomas\n\n祝你编程学习之旅愉快！🚀\n"
+    content: `
+# 代码文档：为什么写以及如何写
+
+## 一、概述
+
+代码文档：为什么写以及如何写是每一位程序员必须掌握的核心知识。无论你使用什么编程语言，这些基础概念都是相通的。本章将带你系统地学习代码文档：为什么写以及如何写的方方面面，从基本概念到实际应用，从常见陷阱到最佳实践，帮助你建立扎实的编程基础。
+
+学习编程不仅仅是学习语法，更重要的是理解背后的思想和原理。我们将通过大量的代码示例、类比说明和实战练习，让你真正理解而非死记硬背。
+
+## 二、核心概念详解
+
+### 2.1 什么是代码文档：为什么写以及如何写？
+
+在深入学习之前，让我们先理解代码文档：为什么写以及如何写的本质。代码文档：为什么写以及如何写是编程中用于解决特定问题的一组思想和技术的总称。它不是某一种语言特有的功能，而是所有现代编程语言都支持的通用概念。
+
+想象一下，如果你要盖一栋房子：
+
+| 编程概念 | 建筑类比 | 作用 |
+|---------|---------|------|
+| 变量 | 建筑材料 | 存储数据 |
+| 函数 | 预制构件 | 封装功能 |
+| 控制流 | 施工图纸 | 决定执行顺序 |
+| 数据结构 | 房间布局 | 组织数据 |
+| 代码文档：为什么写以及如何写 | 核心建筑工艺 | 特定问题解决方案 |
+
+### 2.2 为什么需要代码文档：为什么写以及如何写？
+
+在代码文档：为什么写以及如何写出现之前，程序员面临着很多问题：
+
+1. **代码重复**：相同的逻辑需要在多处重复编写
+2. **难以维护**：代码结构混乱，修改一处可能影响多处
+3. **容易出错**：缺乏系统化的方法，bug频发
+4. **协作困难**：没有统一的范式，团队成员代码风格各异
+
+代码文档：为什么写以及如何写正是为了解决这些问题而产生的。
+
+## 三、实战代码示例
+
+### 3.1 基础示例
+
+让我们从最简单的例子开始：
+
+\`\`\`javascript
+// 示例1：基础用法
+function demonstrateprog_documentation(data) {
+    // 第一步：验证输入
+    if (!data) {
+        throw new Error('输入数据不能为空');
+    }
+    
+    // 第二步：处理数据
+    const result = processData(data);
+    
+    // 第三步：返回结果
+    return result;
+}
+
+function processData(data) {
+    // 具体的处理逻辑
+    return data.map(item => ({
+        ...item,
+        processed: true,
+        timestamp: Date.now()
+    }));
+}
+
+// 使用示例
+const testData = [
+    { id: 1, name: '示例1' },
+    { id: 2, name: '示例2' }
+];
+
+const results = demonstrateprog_documentation(testData);
+console.log('处理结果:', results);
+\`\`\`
+
+### 3.2 进阶示例
+
+下面是一个更贴近实际开发的例子：
+
+\`\`\`javascript
+// 示例2：实际应用场景
+class ProgDocumentationExample {
+    constructor(options = {}) {
+        this.options = {
+            debug: false,
+            maxRetries: 3,
+            timeout: 5000,
+            ...options
+        };
+        this.cache = new Map();
+    }
+    
+    async execute(input) {
+        const cacheKey = this.generateCacheKey(input);
+        
+        // 检查缓存
+        if (this.cache.has(cacheKey)) {
+            this.log('从缓存返回结果');
+            return this.cache.get(cacheKey);
+        }
+        
+        // 重试逻辑
+        let lastError;
+        for (let attempt = 1; attempt <= this.options.maxRetries; attempt++) {
+            try {
+                this.log(\`尝试第 \${attempt} 次执行\`);
+                const result = await this.doExecute(input);
+                this.cache.set(cacheKey, result);
+                return result;
+            } catch (error) {
+                lastError = error;
+                this.log(\`第 \${attempt} 次尝试失败: \${error.message}\`);
+                await this.delay(1000 * attempt);
+            }
+        }
+        
+        throw new Error(\`执行失败，已重试\${this.options.maxRetries}次: \${lastError.message}\`);
+    }
+    
+    async doExecute(input) {
+        // 实际的执行逻辑
+        return { success: true, data: input };
+    }
+    
+    generateCacheKey(input) {
+        return JSON.stringify(input);
+    }
+    
+    log(message) {
+        if (this.options.debug) {
+            console.log(\`[代码文档：为什么写以及如何写] \${message}\`);
+        }
+    }
+    
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+}
+\`\`\`
+
+### 3.3 Python示例
+
+如果你更熟悉Python，这里是对应的例子：
+
+\`\`\`python
+# Python示例
+from typing import Any, Dict, List, Optional
+import time
+import functools
+
+
+def timer(func):
+    """装饰器：测量函数执行时间"""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.time()
+        try:
+            result = func(*args, **kwargs)
+            return result
+        finally:
+            elapsed = time.time() - start
+            print(f"{func.__name__} 执行时间: {elapsed:.4f}秒")
+    return wrapper
+
+
+class DataProcessor:
+    """数据处理器 - 演示代码文档：为什么写以及如何写"""
+    
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        self.config = config or {}
+        self._cache: Dict[str, Any] = {}
+    
+    @timer
+    def process(self, items: List[Any]) -> List[Any]:
+        """处理数据列表"""
+        results = []
+        for item in items:
+            processed = self._process_single(item)
+            results.append(processed)
+        return results
+    
+    def _process_single(self, item: Any) -> Any:
+        """处理单个数据项"""
+        cache_key = str(item)
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+        
+        # 处理逻辑
+        result = {
+            'original': item,
+            'processed': True,
+            'length': len(str(item)) if hasattr(item, '__len__') else 0
+        }
+        
+        self._cache[cache_key] = result
+        return result
+
+
+# 使用示例
+if __name__ == '__main__':
+    processor = DataProcessor()
+    data = ['apple', 'banana', 'cherry', 'date']
+    results = processor.process(data)
+    
+    for item in results:
+        print(f"原始: {item['original']:10} 长度: {item['length']}")
+
+\`\`\`
+
+## 四、常见陷阱与注意事项
+
+### 4.1 新手常犯的错误
+
+| 错误类型 | 错误示例 | 正确做法 |
+|---------|---------|---------|
+| 过度复杂化 | 一个函数写几百行 | 拆分成小函数，单一职责 |
+| 忽略边界条件 | 不处理空输入、极端值 | 总是验证输入，考虑边缘情况 |
+| 硬编码值 | 直接在代码中写魔法数字 | 使用常量或配置 |
+| 不处理错误 | 假设所有操作都会成功 | 使用try-catch/异常处理 |
+| 过度优化 | 一开始就纠结性能 | 先写正确的代码，再优化 |
+
+### 4.2 需要特别注意的点
+
+1. **可变默认参数问题**（Python）
+
+\`\`\`python
+# ❌ 错误：可变默认参数
+def append_to(item, target=[]):
+    target.append(item)
+    return target
+
+# ✅ 正确：使用None作为默认值
+def append_to(item, target=None):
+    if target is None:
+        target = []
+    target.append(item)
+    return target
+\`\`\`
+
+2. **浮点数精度问题**
+
+\`\`\`javascript
+// ❌ 错误：直接比较浮点数
+console.log(0.1 + 0.2 === 0.3); // false
+
+// ✅ 正确：使用精度范围比较
+function nearlyEqual(a, b, epsilon = 1e-10) {
+    return Math.abs(a - b) < epsilon;
+}
+\`\`\`
+
+3. **异步代码陷阱**
+
+\`\`\`javascript
+// ❌ 错误：在循环中使用await（可以但需理解行为）
+// 如果你想要顺序执行，这没问题；如果想并行，应该用Promise.all
+
+// ✅ 并行执行
+const results = await Promise.all(
+    items.map(item => processItem(item))
+);
+
+\`\`\`
+
+## 五、最佳实践
+
+### 5.1 编码原则
+
+**SOLID原则（面向对象）：**
+
+| 原则 | 全称 | 含义 |
+|-----|------|------|
+| S | 单一职责原则 | 一个类只做一件事 |
+| O | 开闭原则 | 对扩展开放，对修改关闭 |
+| L | 里氏替换原则 | 子类可以替换父类 |
+| I | 接口隔离原则 | 使用小而专一的接口 |
+| D | 依赖倒置原则 | 依赖抽象而非具体实现 |
+
+**通用编程原则：**
+
+1. **KISS原则** - Keep It Simple, Stupid
+   - 保持简单直接，不要过度设计
+   - 如果有两个方案，选择简单的那个
+
+2. **DRY原则** - Don't Repeat Yourself
+   - 任何重复的代码都应该提取出来
+   - 但要注意：不要为了DRY而DRY，适当的重复有时比错误的抽象更好
+
+3. **YAGNI原则** - You Aren't Gonna Need It
+   - 不要实现你认为将来可能需要的功能
+   - 只实现当前确实需要的功能
+
+### 5.2 代码风格建议
+
+\`\`\`javascript
+// ✅ 好的代码风格示例
+function calculateTotalPrice(items, taxRate = 0.1) {
+    // 验证输入
+    if (!Array.isArray(items)) {
+        throw new TypeError('items必须是数组');
+    }
+    
+    // 计算小计
+    const subtotal = items.reduce((sum, item) => {
+        if (typeof item.price !== 'number' || item.price < 0) {
+            throw new Error('无效的商品价格');
+        }
+        return sum + item.price * (item.quantity || 1);
+    }, 0);
+    
+    // 计算税费和总价
+    const tax = subtotal * taxRate;
+    const total = subtotal + tax;
+    
+    // 返回结果（使用对象而不是多个返回值）
+    return {
+        subtotal: roundToTwo(subtotal),
+        tax: roundToTwo(tax),
+        total: roundToTwo(total)
+    };
+}
+
+function roundToTwo(value) {
+    return Math.round(value * 100) / 100;
+}
+
+\`\`\`
+
+## 六、实战练习
+
+### 练习1：基础应用
+
+**题目：** 实现一个简单的待办事项管理器，需要支持：
+- 添加待办事项
+- 标记完成/未完成
+- 删除待办
+- 筛选显示（全部/已完成/未完成）
+
+**提示：**
+- 使用合适的数据结构存储待办事项
+- 考虑使用面向对象或函数式风格
+- 添加适当的错误处理
+
+### 练习2：进阶挑战
+
+**题目：** 实现一个简单的缓存系统，需要：
+- 支持设置过期时间
+- LRU（最近最少使用）淘汰策略
+- 最大容量限制
+- 统计命中率
+
+### 练习3：代码审查
+
+找出下面代码的问题并重构：
+
+\`\`\`javascript
+// 这段代码有什么问题？
+function process(data) {
+    var result = [];
+    for (var i = 0; i < data.length; i++) {
+        if (data[i].active) {
+            if (data[i].score > 60) {
+                result.push(data[i].name + ':' + data[i].score);
+            }
+        }
+    }
+    return result;
+}
+\`\`\`
+
+**参考答案要点：**
+- 使用const/let替代var
+- 使用有意义的变量名
+- 提前返回减少嵌套
+- 使用filter/map替代for循环
+- 添加类型检查
+- 添加注释
+
+## 七、小结
+
+代码文档：为什么写以及如何写是编程学习道路上的重要里程碑。掌握本章内容后，你应该：
+
+✅ 理解代码文档：为什么写以及如何写的核心概念和原理
+✅ 能够在实际代码中正确应用代码文档：为什么写以及如何写
+✅ 知道常见的陷阱以及如何避免
+✅ 了解相关的最佳实践
+✅ 能够写出更清晰、更健壮的代码
+
+记住，编程是一门实践的艺术。仅仅阅读是不够的，你需要动手写代码，犯错，调试，然后从错误中学习。建议你完成本章的所有练习，并尝试在实际项目中应用学到的知识。
+
+### 下一步学习建议
+
+1. **动手实践**：找一个小项目来练习本章内容
+2. **阅读优秀代码**：看看开源项目中是如何使用这些概念的
+3. **代码审查**：让其他人审查你的代码，同时也审查别人的代码
+4. **教别人**：尝试把学到的知识教给其他人，这是最好的学习方式
+5. **持续学习**：编程世界日新月异，保持好奇心和学习热情
+
+---
+
+**拓展阅读推荐：**
+- 《代码整洁之道》- Robert C. Martin
+- 《重构：改善既有代码的设计》- Martin Fowler
+- 《设计模式》- GoF
+- 《程序员修炼之道》- Hunt & Thomas
+
+祝你编程学习之旅愉快！🚀
+`
   }
 ];
