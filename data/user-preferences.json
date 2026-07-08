@@ -110,7 +110,11 @@
     "py6-dataclass",
     "py6-composition-vs-inheritance",
     "py6-duck-typing",
-    "py6-class-advanced"
+    "py6-class-advanced",
+    "pythread-01",
+    "pythread-02",
+    "pythread-03",
+    "pythread-04"
   ],
   "bookOrder": {
     "Python 教程": [
