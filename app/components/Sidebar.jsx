@@ -33,57 +33,121 @@ import EditorThemePicker from "./EditorThemePicker";
 import ContextMenu from "./ContextMenu";
 import useBookChapterActions from "../hooks/useBookChapterActions";
 import useBookDragDrop from "../hooks/useBookDragDrop";
+import useBookCategories from "../hooks/useBookCategories";
 
 // =============================================================
 // 书籍目录数据（从 SiteNav 移入，集中维护）
 // =============================================================
 const BOOK_CATEGORIES = [
   {
-    name: "Python 教程",
+    name: "未分组",
+    icon: "📋",
+    books: [],
+    system: true,
+  },
+  {
+    name: "Python 编程",
     icon: "🐍",
     books: [
-      { path: "/py", label: "Python", icon: "🐍" },
+      { path: "/pybasic", label: "Python 基础路径", icon: "🌱" },
+      { path: "/py", label: "Python 入门", icon: "🐍" },
       { path: "/py4", label: "Python 进阶", icon: "🐍" },
       { path: "/py6", label: "Python 全解", icon: "🐍" },
       { path: "/py8", label: "Python 大全", icon: "🐍" },
       { path: "/py9", label: "Python 逐层深入", icon: "📘" },
-      { path: "/pynet", label: "Python 网络编程", icon: "🌐" },
-      { path: "/pythread", label: "Python 线程进程", icon: "🧵" },
-      { path: "/pythread2", label: "Python 多线程入门", icon: "🧵" },
-      { path: "/pyprocess", label: "Python 多进程教程", icon: "🧬" },
-      { path: "/pysubprocess", label: "Python subprocess", icon: "🔌" },
-      { path: "/pydb", label: "Python 数据库", icon: "🗄️" },
-      { path: "/pyint", label: "Python 原理图解", icon: "🔬" },
+      { path: "/pymod", label: "模块与包", icon: "📦" },
+      { path: "/pyex", label: "异常处理", icon: "⚠️" },
+      { path: "/pyfile", label: "文件操作", icon: "📁" },
+      { path: "/pyfile2", label: "文件管理", icon: "🗂️" },
+      { path: "/pykit", label: "常用知识点", icon: "🧰" },
+      { path: "/pynet", label: "网络编程", icon: "🌐" },
+      { path: "/pydb", label: "数据库操作", icon: "🗄️" },
       { path: "/pyweb", label: "Python Web", icon: "🌐" },
-      { path: "/pyweb2", label: "Python Web 后端", icon: "🌐" },
+      { path: "/pyweb2", label: "Web 后端开发", icon: "🌐" },
       { path: "/fastapi", label: "FastAPI", icon: "⚡" },
-      { path: "/pyarch", label: "Python 设计与架构", icon: "🏛️" },
-      { path: "/pyeng", label: "Python 工程化", icon: "⚙️" },
-      { path: "/pyfile", label: "Python 文件操作", icon: "📁" },
-      { path: "/pyfile2", label: "Python 文件管理", icon: "🗂️" },
-      { path: "/pyasync", label: "Python asyncio 异步编程", icon: "🌊" },
-      { path: "/pyasync2", label: "Python asyncio 异步编程 V2", icon: "🌊" },
-      { path: "/pykit", label: "Python 开发常用知识点", icon: "🧰" },
-      { path: "/pyrun", label: "Python 执行代码原理", icon: "🔬" },
-      { path: "/pyproject", label: "Python 实战项目", icon: "🚀" },
-      { path: "/pybasic", label: "Python 基础路径", icon: "🌱" },
-      { path: "/pymod", label: "Python 模块与包", icon: "📦" },
-      { path: "/pyex", label: "Python 异常处理", icon: "⚠️" },
-      { path: "/pyjava", label: "Python vs Java", icon: "🐍" },
-      { path: "/pyvsjs", label: "Python vs JS 深度对比", icon: "⚔️" },
+      { path: "/pysubprocess", label: "subprocess 子进程", icon: "🔌" },
+      { path: "/pythread", label: "线程与进程", icon: "🧵" },
+      { path: "/pythread2", label: "多线程入门", icon: "🧵" },
+      { path: "/pyprocess", label: "多进程编程", icon: "🧬" },
+      { path: "/pyasync", label: "asyncio 异步编程", icon: "🌊" },
+      { path: "/pyasync2", label: "asyncio 异步 V2", icon: "🌊" },
+      { path: "/pyeng", label: "工程化实践", icon: "⚙️" },
+      { path: "/pyint", label: "原理图解", icon: "🔬" },
+      { path: "/pyrun", label: "代码执行原理", icon: "🔬" },
+      { path: "/pyarch", label: "设计与架构", icon: "🏛️" },
+      { path: "/pyproject", label: "实战项目", icon: "🚀" },
+      { path: "/pyjava", label: "Python vs Java", icon: "⚔️" },
       { path: "/pyvsjava", label: "Python vs Java 深度对比", icon: "⚔️" },
+      { path: "/pyvsjs", label: "Python vs JS 深度对比", icon: "⚔️" },
     ],
   },
   {
-    name: "Java 教程",
+    name: "JS / TS 生态",
+    icon: "⬢",
+    books: [
+      { path: "/", label: "Node.js 入门", icon: "🟢" },
+      { path: "/nodejs2", label: "Node.js 进阶", icon: "🟢" },
+      { path: "/nodejs3", label: "Node.js 源码", icon: "🟡" },
+      { path: "/ts", label: "TypeScript 入门", icon: "🔷" },
+      { path: "/ts2", label: "TypeScript 进阶", icon: "🔶" },
+      { path: "/ts3", label: "TypeScript 高阶实战", icon: "💠" },
+      { path: "/workers", label: "Web Workers", icon: "👷" },
+      { path: "/pnpm", label: "pnpm 包管理", icon: "📦" },
+      { path: "/playground", label: "代码 Playground", icon: "🛝" },
+    ],
+  },
+  {
+    name: "Java 开发",
     icon: "☕",
     books: [
-      { path: "/java", label: "Java", icon: "☕" },
-      { path: "/java-web", label: "Java Web", icon: "🌐" },
+      { path: "/java", label: "Java 入门到精通", icon: "☕" },
+      { path: "/java-web", label: "Java Web 开发", icon: "🌐" },
     ],
   },
   {
-    name: "数据库教程",
+    name: "AI 智能开发",
+    icon: "🤖",
+    books: [
+      { path: "/ai", label: "AI 编程入门", icon: "🤖" },
+      { path: "/aiapp", label: "AI 应用编程", icon: "🤖" },
+      { path: "/aipy", label: "Python AI 开发", icon: "🐍" },
+      { path: "/ai-agent", label: "AI Agent 开发", icon: "🤖" },
+    ],
+  },
+  {
+    name: "前端工程",
+    icon: "▲",
+    books: [
+      { path: "/nextjs", label: "Next.js", icon: "▲" },
+      { path: "/sass", label: "Sass", icon: "💅" },
+      { path: "/fe-engineering", label: "前端工程化", icon: "⚙️" },
+      { path: "/fe-interview", label: "前端面试", icon: "🎯" },
+    ],
+  },
+  {
+    name: "后端与网络",
+    icon: "🖥️",
+    books: [
+      { path: "/http", label: "HTTP 通信", icon: "🌐" },
+      { path: "/net", label: "计算机网络", icon: "🌐" },
+      { path: "/backend", label: "后端开发", icon: "🖥️" },
+      { path: "/gql", label: "GraphQL", icon: "◈" },
+      { path: "/deploy", label: "部署与运维", icon: "🚀" },
+      { path: "/go", label: "Go 语言", icon: "🐹" },
+      { path: "/csharp", label: "C#", icon: "🟪" },
+    ],
+  },
+  {
+    name: "实战项目",
+    icon: "🚀",
+    books: [
+      { path: "/todo", label: "Todo List 实战", icon: "✅" },
+      { path: "/blog-tutorial", label: "Blog 系统教程", icon: "📝" },
+      { path: "/blog", label: "博客系统", icon: "📰" },
+    ],
+  },
+  {
+    name: "数据库与缓存",
     icon: "🗄️",
     books: [
       { path: "/sql", label: "数据库开发", icon: "🗄️" },
@@ -93,72 +157,56 @@ const BOOK_CATEGORIES = [
     ],
   },
   {
-    name: "AI 教程",
-    icon: "🤖",
+    name: "计算机基础",
+    icon: "🧠",
     books: [
-      { path: "/ai", label: "AI编程", icon: "🤖" },
-      { path: "/aiapp", label: "AI 应用编程", icon: "🤖" },
-      { path: "/ai-agent", label: "AI Agent开发", icon: "🤖" },
-      { path: "/aipy", label: "Python AI开发", icon: "🐍" },
-    ],
-  },
-  {
-    name: "编程教程",
-    icon: "💻",
-    books: [
-      { path: "/playground", label: "代码 Playground", icon: "🛝" },
-      { path: "/", label: "Node.js", icon: "⬢" },
-      { path: "/nodejs2", label: "Node.js 进阶", icon: "🟢" },
-      { path: "/nodejs3", label: "Node.js 源码", icon: "🟡" },
-      { path: "/workers", label: "JavaScript Workers", icon: "👷" },
-      { path: "/pnpm", label: "pnpm", icon: "📦" },
-      { path: "/ts", label: "TypeScript", icon: "🔷" },
-      { path: "/ts2", label: "TypeScript 进阶", icon: "🔶" },
-      { path: "/ts3", label: "TypeScript 高阶实战", icon: "💠" },
-      { path: "/http", label: "HTTP 通信教程", icon: "🌐" },
-      { path: "/net", label: "计算机网络", icon: "🌐" },
-      { path: "/blog-tutorial", label: "Blog 系统教程", icon: "📝" },
-      { path: "/deploy", label: "部署与运维", icon: "🚀" },
-      { path: "/csharp", label: "C#", icon: "🟪" },
-      { path: "/go", label: "Go", icon: "🐹" },
-      { path: "/sass", label: "Sass", icon: "💅" },
-      { path: "/gql", label: "GraphQL", icon: "◈" },
-      { path: "/backend", label: "后端开发", icon: "🖥️" },
       { path: "/cs", label: "计算机原理", icon: "💡" },
-      { path: "/howitworks", label: "代码怎么跑起来的", icon: "⚙️" },
+      { path: "/howitworks", label: "代码怎么跑起来", icon: "⚙️" },
       { path: "/os", label: "操作系统", icon: "🐧" },
-      { path: "/fe-interview", label: "前端面试", icon: "🎯" },
-      { path: "/fe-engineering", label: "前端工程化", icon: "⚙️" },
-      { path: "/nextjs", label: "Next.js", icon: "▲" },
     ],
   },
   {
-    name: "综合知识",
-    icon: "📚",
+    name: "职场成长",
+    icon: "🛤️",
     books: [
       { path: "/future", label: "程序员出路指南", icon: "🧭" },
-      { path: "/career40", label: "40岁前端的下半场", icon: "🌅" },
+      { path: "/career", label: "职业发展", icon: "🛤️" },
+      { path: "/career40", label: "40岁下半场", icon: "🌅" },
+      { path: "/work", label: "职场生存", icon: "💼" },
       { path: "/comm", label: "沟通交流", icon: "💬" },
+    ],
+  },
+  {
+    name: "身心健康",
+    icon: "💚",
+    books: [
       { path: "/psychology", label: "心向阳光", icon: "🧠" },
       { path: "/nervous", label: "与紧张和解", icon: "🌊" },
-      { path: "/relations", label: "人际关系心理学", icon: "🤝" },
-      { path: "/work", label: "职场", icon: "💼" },
       { path: "/stomach", label: "脾胃调养", icon: "🌿" },
       { path: "/ibs", label: "肠易激康复", icon: "🫃" },
+      { path: "/dignity", label: "放不下的愤怒", icon: "🕊️" },
+      { path: "/hurt", label: "委屈的解剖学", icon: "💔" },
+    ],
+  },
+  {
+    name: "人际智慧",
+    icon: "🛡️",
+    books: [
+      { path: "/relations", label: "人际关系心理学", icon: "🤝" },
       { path: "/dui", label: "怼人艺术", icon: "🎯" },
       { path: "/fandui", label: "反怼心理学", icon: "🛡️" },
       { path: "/shield", label: "回怼护盾", icon: "🛡️" },
       { path: "/quotes", label: "怼人语录", icon: "💬" },
       { path: "/curse", label: "毒舌词典", icon: "🐍" },
       { path: "/rebut", label: "反驳的艺术", icon: "⚔️" },
-      { path: "/unharmed", label: "破怒：情绪暴击后翻篇指南", icon: "💔" },
-      { path: "/career", label: "职业出路", icon: "🛤️" },
+      { path: "/unharmed", label: "破怒：翻篇指南", icon: "💔" },
     ],
   },
   {
     name: "已隐藏",
     icon: "🗂️",
     books: [],
+    system: true,
   },
 ];
 
@@ -189,10 +237,10 @@ export default function Sidebar({
   const [bookDropdownOpen, setBookDropdownOpen] = useState(false);
   const bookDropdownRef = useRef(null);
   const router = useRouter();
-  // 手风琴模式：同一时间只展开一个分类。
-  // expandedCategory 为当前展开的分类名；null 表示全部收起。
-  // 初始默认展开"Python 教程"。
-  const [expandedCategory, setExpandedCategory] = useState("Python 教程");
+  // 多展开模式：同一时间可以展开多个分类，方便跨分组拖拽书籍。
+  // expandedCategories 为已展开分类名的 Set；空 Set 表示全部收起。
+  // 初始默认展开"Python 编程"。
+  const [expandedCategories, setExpandedCategories] = useState(() => new Set(["Python 编程"]));
   // 章节分组收起状态：用 Set 记录已收起的分组名，默认全部收起。
   // 点击 group-title 可 toggle；当前激活章节所在分组会自动展开。
   const [collapsedGroups, setCollapsedGroups] = useState(
@@ -204,52 +252,250 @@ export default function Sidebar({
     hiddenBooks,
     deletedChapterIds,
     hiddenChapterIds,
-    hideBook,
-    unhideBook,
     deleteChapter,
     undeleteChapter,
     hideChapter,
     unhideChapter,
     hideChapters,
     unhideChapters,
+    clearHiddenBooks,
+    resetAll: resetChapterPrefs,
   } = useBookChapterActions();
 
   const [ctxMenu, setCtxMenu] = useState(null);
 
+  // ===== 分类重命名 / 新建分组的输入状态 =====
+  const [editingCategory, setEditingCategory] = useState(null); // 正在重命名的分类名
+  const [editValue, setEditValue] = useState("");
+  const [showAddInput, setShowAddInput] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const editInputRef = useRef(null);
+  const addInputRef = useRef(null);
+
+  // 重命名输入框聚焦
+  useEffect(() => {
+    if (editingCategory && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editingCategory]);
+
+  // 新建输入框聚焦
+  useEffect(() => {
+    if (showAddInput && addInputRef.current) {
+      addInputRef.current.focus();
+    }
+  }, [showAddInput]);
+
+  // ===== 书籍分类管理（新建/重命名/删除/排序） =====
+  const initiallyHiddenCats = useMemo(
+    () => BOOK_CATEGORIES.filter((c) => c.hide && !c.system).map((c) => c.name),
+    []
+  );
+  const { config: catConfig, addCategory, renameCategory, deleteCategory, isCustom: isCustomCategory, ensureOrderInitialized, reorderCategories, resetToDefaults: resetCatConfig, resetToConfig } =
+    useBookCategories(initiallyHiddenCats);
+
   // ===== 书籍拖拽排序 =====
-  const { bookOrder, reorderInCategory, moveToCategory, getOrderedPaths } =
+  const { bookOrder, reorderInCategory, moveToCategory, renameCategoryInOrder, removeCategoryFromOrder, ensureCategory, moveBooksToCategory, resetToDefaults: resetBookOrder, resetToOrder, getOrderedPaths } =
     useBookDragDrop(BOOK_CATEGORIES);
+
+  // ===== 用户保存的默认分组设置 =====
+  const [savedDefaults, setSavedDefaults] = useState(null);
+  useEffect(() => {
+    fetch("/api/preferences")
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then((data) => {
+        if (data.savedDefaults) setSavedDefaults(data.savedDefaults);
+      })
+      .catch(() => {});
+  }, []);
 
   // 拖拽状态：记录正在拖拽的书籍信息
   const dragStateRef = useRef(null); // { bookPath, sourceCategory, sourceIndex }
+  // 拖拽悬停展开分类的定时器
+  const dragExpandTimerRef = useRef(null);
+  // 分类标题拖拽状态
+  const catDragStateRef = useRef(null); // { catName, startY }
+  const [catDragIndicator, setCatDragIndicator] = useState(null); // { catName, position: 'before'|'after' }
+  const draggingCatRef = useRef(null); // 正在拖拽的分类标题 DOM
 
-  // 根据排序和隐藏状态过滤后的书籍分类
-  const visibleCategories = useMemo(() => {
-    return BOOK_CATEGORIES.map((cat) => {
-      const orderedPaths = getOrderedPaths(cat.name);
-      if (cat.name === "已隐藏") {
-        // 已隐藏：显示 bookOrder 中该分类的书籍 + 动态隐藏的书籍
-        const dynamicHidden = ALL_BOOKS.filter(
-          (b) => hiddenBooks.has(b.path) && !orderedPaths.includes(b.path)
-        );
-        const allPaths = [...orderedPaths, ...dynamicHidden.map((b) => b.path)];
-        return {
-          ...cat,
-          books: allPaths
-            .map((p) => ALL_BOOKS.find((b) => b.path === p))
-            .filter(Boolean),
-        };
+  // 构建 bookPath → 默认分类名 的映射（用于归还书籍到默认分组）
+  const bookDefaultCategory = useMemo(() => {
+    const map = {};
+    BOOK_CATEGORIES.forEach((cat) => {
+      if (cat.system) return;
+      cat.books.forEach((b) => {
+        map[b.path] = cat.name;
+      });
+    });
+    return map;
+  }, []);
+
+  // 统一维护 bookOrder 数据一致性：确保每本书都在正确的分类中
+  // - 旧 hiddenBooks 中的书籍 → "已隐藏"（这些是用户之前主动隐藏的）
+  // - 在被隐藏默认分类中的书籍 → "未分组"（分组被隐藏，书不应自动变隐藏）
+  // - 完全不在 bookOrder 中的书籍 → 默认分类（可见）或"未分组"
+  // - 清理空的被隐藏分类 key
+  const consistencyCheckedRef = useRef(false);
+  useEffect(() => {
+    const moves = [];
+    const assignedPaths = new Set();
+    const catsToRemove = [];
+
+    // 收集当前 bookOrder 中所有已分配的书籍路径，同时检查隐藏分类
+    for (const [catName, paths] of Object.entries(bookOrder)) {
+      // 跳过系统分类
+      if (catName === "未分组" || catName === "已隐藏") {
+        paths.forEach((p) => assignedPaths.add(p));
+        continue;
       }
-      // 普通分类：使用排序后的路径，过滤掉已隐藏的书籍
+      // 找原始分类名（考虑重命名）
+      let origName = catName;
+      for (const [orig, renamed] of Object.entries(catConfig.renamed)) {
+        if (renamed === catName) { origName = orig; break; }
+      }
+      const isDefault = BOOK_CATEGORIES.some((c) => c.name === origName && !c.system);
+      const isHidden = isDefault && catConfig.hidden.includes(origName);
+      if (isHidden) {
+        // 默认分类被隐藏了，把其中的书移到"未分组"
+        paths.forEach((p) => {
+          if (!assignedPaths.has(p)) {
+            assignedPaths.add(p);
+            moves.push({ path: p, toCategory: "未分组" });
+          }
+        });
+        catsToRemove.push(catName);
+      } else {
+        paths.forEach((p) => assignedPaths.add(p));
+      }
+    }
+
+    // 收集旧 hiddenBooks 中的书籍（用户主动隐藏的，保留在已隐藏）
+    if (hiddenBooks.size > 0) {
+      hiddenBooks.forEach((p) => {
+        if (!assignedPaths.has(p)) {
+          assignedPaths.add(p);
+          moves.push({ path: p, toCategory: "已隐藏" });
+        }
+      });
+    }
+
+    // 检查所有书籍是否都在 bookOrder 中
+    ALL_BOOKS.forEach((b) => {
+      if (assignedPaths.has(b.path)) return;
+      const defCat = bookDefaultCategory[b.path];
+      if (!defCat || catConfig.hidden.includes(defCat)) {
+        moves.push({ path: b.path, toCategory: "未分组" });
+      } else {
+        const displayName = catConfig.renamed[defCat] || defCat;
+        moves.push({ path: b.path, toCategory: displayName });
+      }
+    });
+
+    if (moves.length > 0) {
+      moveBooksToCategory(moves);
+    }
+    if (hiddenBooks.size > 0) {
+      clearHiddenBooks();
+    }
+    consistencyCheckedRef.current = true;
+  }, [bookOrder, catConfig.hidden, catConfig.renamed, hiddenBooks, moveBooksToCategory, clearHiddenBooks, bookDefaultCategory]);
+
+  // 根据排序、自定义分类、隐藏状态计算最终可见的分类列表
+  const visibleCategories = useMemo(() => {
+    // 1. 处理默认分类：过滤隐藏的（系统分类"未分组""已隐藏"永不隐藏）、应用重命名和图标
+    const defaultCats = BOOK_CATEGORIES
+      .filter((cat) => cat.system || !catConfig.hidden.includes(cat.name))
+      .map((cat) => ({
+        ...cat,
+        name: cat.system ? cat.name : (catConfig.renamed[cat.name] || cat.name),
+        icon: cat.system ? cat.icon : (catConfig.icons[catConfig.renamed[cat.name] || cat.name] || cat.icon),
+        isCustom: false,
+      }));
+
+    // 2. 添加自定义分类
+    const customCats = catConfig.custom.map((c) => ({
+      name: c.name,
+      icon: c.icon || "📁",
+      books: [],
+      isCustom: true,
+      id: c.id,
+    }));
+
+    // 3. 分离系统分类："未分组"固定最前，"已隐藏"固定最后
+    const allMerged = [...defaultCats, ...customCats];
+    const ungroupedCat = allMerged.find((c) => c.name === "未分组");
+    const hiddenCat = allMerged.find((c) => c.name === "已隐藏");
+    const regularCats = allMerged.filter((c) => c.name !== "未分组" && c.name !== "已隐藏");
+
+    // 4. 应用自定义排序（不包含系统分类）
+    let sortedRegular = regularCats;
+    if (catConfig.order && catConfig.order.length > 0) {
+      const orderMap = new Map();
+      catConfig.order.forEach((name, i) => {
+        if (name !== "未分组" && name !== "已隐藏") orderMap.set(name, i);
+      });
+      sortedRegular = [...regularCats].sort((a, b) => {
+        const ai = orderMap.has(a.name) ? orderMap.get(a.name) : 999;
+        const bi = orderMap.has(b.name) ? orderMap.get(b.name) : 999;
+        return ai - bi;
+      });
+    }
+
+    // 组装：未分组 → 普通分类 → 已隐藏
+    let allCats = [
+      ...(ungroupedCat ? [ungroupedCat] : []),
+      ...sortedRegular,
+      ...(hiddenCat ? [hiddenCat] : []),
+    ];
+
+    // 5. 收集所有 bookOrder 中已分配的书籍路径
+    const assignedPaths = new Set();
+    Object.values(bookOrder).forEach((paths) => {
+      paths.forEach((p) => assignedPaths.add(p));
+    });
+
+    // 6. 找出未分配的书籍，归入合适的分类
+    const unassigned = {};
+    ALL_BOOKS.forEach((b) => {
+      if (assignedPaths.has(b.path)) return;
+      const defCat = bookDefaultCategory[b.path];
+      if (!defCat) {
+        // 完全找不到默认分类，放入未分组
+        if (!unassigned["未分组"]) unassigned["未分组"] = [];
+        unassigned["未分组"].push(b.path);
+        return;
+      }
+      // 默认分类被隐藏了，放入未分组
+      if (catConfig.hidden.includes(defCat)) {
+        if (!unassigned["未分组"]) unassigned["未分组"] = [];
+        unassigned["未分组"].push(b.path);
+        return;
+      }
+      // 默认分类可见，应用重命名后追加
+      const displayName = catConfig.renamed[defCat] || defCat;
+      if (!unassigned[displayName]) unassigned[displayName] = [];
+      unassigned[displayName].push(b.path);
+    });
+
+    return allCats.map((cat) => {
+      let orderedPaths = [...(getOrderedPaths(cat.name) || [])];
+      if (unassigned[cat.name]) {
+        orderedPaths = [...orderedPaths, ...unassigned[cat.name]];
+      }
       return {
         ...cat,
         books: orderedPaths
-          .filter((p) => !hiddenBooks.has(p))
           .map((p) => ALL_BOOKS.find((b) => b.path === p))
           .filter(Boolean),
       };
-    }).filter((cat) => cat.books.length > 0);
-  }, [hiddenBooks, getOrderedPaths, bookOrder]);
+    }).filter((cat) => {
+      // 系统分类（未分组、已隐藏）始终显示；自定义分类始终显示
+      if (cat.system) return true;
+      if (cat.isCustom) return true;
+      return cat.books.length > 0;
+    });
+  }, [catConfig, getOrderedPaths, bookOrder, bookDefaultCategory]);
 
   // 根据隐藏状态过滤后的章节分组
   const filteredGroupedChapters = useMemo(() => {
@@ -285,9 +531,9 @@ export default function Sidebar({
   const [hiddenGroupExpanded, setHiddenGroupExpanded] = useState(() => new Set());
 
   // 右键菜单事件处理器
-  const handleBookContextMenu = useCallback((e, bookPath) => {
+  const handleBookContextMenu = useCallback((e, bookPath, categoryName) => {
     e.preventDefault();
-    setCtxMenu({ type: "book", target: bookPath, position: { x: e.clientX, y: e.clientY } });
+    setCtxMenu({ type: "book", target: bookPath, category: categoryName, position: { x: e.clientX, y: e.clientY } });
   }, []);
 
   const handleGroupContextMenu = useCallback((e, groupName) => {
@@ -306,17 +552,189 @@ export default function Sidebar({
     setCtxMenu({ type: "hidden-group", target: groupName, position: { x: e.clientX, y: e.clientY } });
   }, []);
 
+  // 书籍分类标题右键
+  const handleCategoryContextMenu = useCallback((e, categoryName) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCtxMenu({ type: "book-category", target: categoryName, position: { x: e.clientX, y: e.clientY } });
+  }, []);
+
+  // 开始重命名分类
+  const startRenameCategory = useCallback((name) => {
+    setEditingCategory(name);
+    setEditValue(name);
+    setCtxMenu(null);
+  }, []);
+
+  // 确认重命名
+  const confirmRenameCategory = useCallback(() => {
+    const oldName = editingCategory;
+    const newName = editValue.trim();
+    if (!oldName || !newName || newName === oldName) {
+      setEditingCategory(null);
+      setEditValue("");
+      return;
+    }
+    // 检查重名
+    const existingNames = visibleCategories.map((c) => c.name);
+    if (existingNames.includes(newName)) {
+      setEditingCategory(null);
+      setEditValue("");
+      return;
+    }
+    renameCategory(oldName, newName);
+    renameCategoryInOrder(oldName, newName);
+    // 更新展开状态中的名称
+    setExpandedCategories((prev) => {
+      if (!prev.has(oldName)) return prev;
+      const next = new Set(prev);
+      next.delete(oldName);
+      next.add(newName);
+      return next;
+    });
+    setEditingCategory(null);
+    setEditValue("");
+  }, [editingCategory, editValue, renameCategory, renameCategoryInOrder, visibleCategories]);
+
+  // 删除/隐藏分类
+  const handleDeleteCategory = useCallback((name) => {
+    setCtxMenu(null);
+    const orderedPaths = getOrderedPaths(name);
+    const isCustom = isCustomCategory(name);
+
+    if (orderedPaths.length > 0) {
+      const moves = orderedPaths
+        .map((p) => {
+          const defCat = bookDefaultCategory[p];
+          if (!defCat) return { path: p, toCategory: "未分组" };
+          if (catConfig.hidden.includes(defCat)) return { path: p, toCategory: "未分组" };
+          if (isCustom) {
+            const displayName = catConfig.renamed[defCat] || defCat;
+            return { path: p, toCategory: displayName };
+          }
+          return { path: p, toCategory: "未分组" };
+        });
+      moveBooksToCategory(moves);
+    }
+
+    removeCategoryFromOrder(name);
+    deleteCategory(name);
+    // 从展开集合中移除
+    setExpandedCategories((prev) => {
+      if (!prev.has(name)) return prev;
+      const next = new Set(prev);
+      next.delete(name);
+      return next;
+    });
+  }, [getOrderedPaths, isCustomCategory, bookDefaultCategory, catConfig.hidden, catConfig.renamed, moveBooksToCategory, removeCategoryFromOrder, deleteCategory]);
+
+  // 确认新建分组
+  const confirmAddCategory = useCallback(() => {
+    const name = newCatName.trim();
+    if (!name) {
+      setShowAddInput(false);
+      setNewCatName("");
+      return;
+    }
+    const existingNames = visibleCategories.map((c) => c.name);
+    if (existingNames.includes(name)) {
+      setShowAddInput(false);
+      setNewCatName("");
+      return;
+    }
+    addCategory(name);
+    ensureCategory(name);
+    // 自动展开新分组
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      next.add(name);
+      return next;
+    });
+    setShowAddInput(false);
+    setNewCatName("");
+  }, [newCatName, addCategory, ensureCategory, visibleCategories]);
+
+  // 重置所有设置：恢复默认分组、排序、隐藏状态
+  const handleResetAll = useCallback(() => {
+    const hasSaved = savedDefaults && savedDefaults.bookOrder && savedDefaults.categoryConfig;
+    const msg = hasSaved
+      ? "确定要重置书籍分组设置吗？\n\n将恢复到你上次保存的默认分组布局。"
+      : "确定要重置所有书籍分组设置吗？\n\n将恢复系统默认分组、排序，清空自定义分组。";
+    if (!window.confirm(msg)) return;
+    setShowAddInput(false);
+    setNewCatName("");
+    setEditingCategory(null);
+    setEditValue("");
+    setExpandedCategories(new Set(["Python 编程"]));
+    if (hasSaved) {
+      resetToOrder(savedDefaults.bookOrder);
+      resetToConfig(savedDefaults.categoryConfig);
+    } else {
+      resetBookOrder(BOOK_CATEGORIES);
+      resetCatConfig();
+    }
+    resetChapterPrefs();
+  }, [savedDefaults, resetBookOrder, resetCatConfig, resetToOrder, resetToConfig, resetChapterPrefs]);
+
+  // 保存当前分组布局为默认设置
+  const handleSaveAsDefault = useCallback(() => {
+    if (!window.confirm("保存当前分组和排序为默认布局？\n\n下次重置时将恢复到这个状态。")) return;
+    const defaults = { bookOrder: { ...bookOrder }, categoryConfig: { ...catConfig } };
+    setSavedDefaults(defaults);
+    fetch("/api/preferences", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ savedDefaults: defaults }),
+    }).catch(() => {});
+  }, [bookOrder, catConfig]);
+
+  // 恢复出厂设置：清除用户保存的默认 + 重置到系统硬编码默认
+  const handleFactoryReset = useCallback(() => {
+    if (!window.confirm("确定要恢复出厂设置吗？\n\n这将清除你保存的自定义默认布局，所有分组、排序、自定义分组都将恢复到代码中的初始状态。")) return;
+    setSavedDefaults(null);
+    fetch("/api/preferences", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ savedDefaults: null }),
+    }).catch(() => {});
+    setShowAddInput(false);
+    setNewCatName("");
+    setEditingCategory(null);
+    setEditValue("");
+    setExpandedCategories(new Set(["Python 编程"]));
+    resetBookOrder(BOOK_CATEGORIES);
+    resetCatConfig();
+    resetChapterPrefs();
+  }, [resetBookOrder, resetCatConfig, resetChapterPrefs]);
+
   // 根据右键菜单类型构建菜单项
   const ctxMenuItems = useMemo(() => {
     if (!ctxMenu) return [];
 
     if (ctxMenu.type === "book") {
-      const isHidden = hiddenBooks.has(ctxMenu.target);
-      return [
-        isHidden
-          ? { label: "取消隐藏", icon: "👁️", onClick: () => unhideBook(ctxMenu.target) }
-          : { label: "隐藏此书", icon: "🙈", onClick: () => hideBook(ctxMenu.target) },
-      ];
+      const isInHidden = ctxMenu.category === "已隐藏";
+      if (isInHidden) {
+        // 在已隐藏分组中：移回默认分组；若默认分组不可用则进"未分组"
+        const defCat = bookDefaultCategory[ctxMenu.target];
+        const targetCat = defCat && !catConfig.hidden.includes(defCat)
+          ? (catConfig.renamed[defCat] || defCat)
+          : "未分组";
+        return [
+          {
+            label: "移出已隐藏",
+            icon: "👁️",
+            onClick: () => moveBooksToCategory([{ path: ctxMenu.target, toCategory: targetCat }]),
+          },
+        ];
+      } else {
+        return [
+          {
+            label: "移入已隐藏",
+            icon: "🙈",
+            onClick: () => moveBooksToCategory([{ path: ctxMenu.target, toCategory: "已隐藏" }]),
+          },
+        ];
+      }
     }
 
     if (ctxMenu.type === "group") {
@@ -358,14 +776,40 @@ export default function Sidebar({
       return items;
     }
 
+    if (ctxMenu.type === "book-category") {
+      const catName = ctxMenu.target;
+      const isSystem = catName === "未分组" || catName === "已隐藏";
+      const isCustom = isCustomCategory(catName);
+      if (isSystem) return [];
+      return [
+        { label: "重命名", icon: "✏️", onClick: () => startRenameCategory(catName) },
+        {
+          label: isCustom ? "删除分组" : "隐藏分组",
+          icon: "🗑️",
+          danger: true,
+          onClick: () => handleDeleteCategory(catName),
+        },
+      ];
+    }
+
     return [];
   }, [
-    ctxMenu, hiddenBooks, hiddenChapterIds, deletedChapterIds, groupedChapters,
-    hideBook, unhideBook, deleteChapter, undeleteChapter,
+    ctxMenu, hiddenChapterIds, deletedChapterIds, groupedChapters,
+    deleteChapter, undeleteChapter,
     hideChapter, unhideChapter, hideChapters, unhideChapters,
+    startRenameCategory, handleDeleteCategory, isCustomCategory,
+    bookDefaultCategory, catConfig.renamed, moveBooksToCategory,
   ]);
 
   // ===== 书籍拖拽事件处理 =====
+
+  // 清除所有卡片上的拖拽指示类
+  const clearAllDragIndicators = useCallback(() => {
+    document.querySelectorAll(".drag-over-before, .drag-over-after").forEach((el) => {
+      el.classList.remove("drag-over-before", "drag-over-after");
+    });
+  }, []);
+
   // 拖拽开始：记录来源信息
   const handleDragStart = useCallback((e, bookPath, categoryName, index) => {
     dragStateRef.current = { bookPath, sourceCategory: categoryName, sourceIndex: index };
@@ -380,30 +824,29 @@ export default function Sidebar({
   // 拖拽结束：清理状态
   const handleDragEnd = useCallback((e) => {
     e.target.classList.remove("dragging");
+    clearAllDragIndicators();
+    // 清理悬停展开定时器
+    if (dragExpandTimerRef.current !== null) {
+      clearTimeout(dragExpandTimerRef.current);
+      dragExpandTimerRef.current = null;
+    }
     // 延迟清空拖拽状态，确保 click 事件先检查到 dragStateRef
     setTimeout(() => {
       dragStateRef.current = null;
     }, 0);
-  }, []);
-
-  // 清除所有卡片上的拖拽指示类
-  const clearAllDragIndicators = useCallback(() => {
-    document.querySelectorAll(".drag-over-before, .drag-over-after").forEach((el) => {
-      el.classList.remove("drag-over-before", "drag-over-after");
-    });
-  }, []);
+  }, [clearAllDragIndicators]);
 
   // 拖拽经过书籍卡片：判断插入位置（卡片左半=插前面，右半=插后面）
   const handleCardDragOver = useCallback((e, categoryName, index) => {
+    if (!dragStateRef.current) return;
+    if (catDragStateRef.current) return;
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = "move";
     const card = e.currentTarget;
     const rect = card.getBoundingClientRect();
     const midX = rect.left + rect.width / 2;
-    // 移除所有 drag-over 类
     clearAllDragIndicators();
-    // 根据鼠标水平位置添加对应的类（左半=插前面，右半=插后面）
     if (e.clientX < midX) {
       card.classList.add("drag-over-before");
     } else {
@@ -413,6 +856,8 @@ export default function Sidebar({
 
   // 拖拽经过网格空白区域（用于末尾追加）
   const handleGridDragOver = useCallback((e, categoryName) => {
+    if (!dragStateRef.current) return;
+    if (catDragStateRef.current) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     clearAllDragIndicators();
@@ -444,26 +889,16 @@ export default function Sidebar({
 
       const rect = e.currentTarget.getBoundingClientRect();
       const midX = rect.left + rect.width / 2;
-      // 鼠标在卡片左半部 → insert before；右半部 → insert after
       const insertIndex = e.clientX < midX ? toIndex : toIndex + 1;
 
       if (ds.sourceCategory === toCategory) {
-        // 同分类内排序：insertIndex 已是目标位置，reorderInCategory 内部会处理移除后的索引偏移
         reorderInCategory(toCategory, ds.sourceIndex, insertIndex);
       } else {
-        // 跨分类移动
         moveToCategory(ds.sourceCategory, ds.sourceIndex, toCategory, insertIndex);
-        // 联动隐藏状态
-        if (toCategory === "已隐藏") {
-          hideBook(ds.bookPath);
-        } else if (ds.sourceCategory === "已隐藏") {
-          unhideBook(ds.bookPath);
-        }
       }
-      // 不清空 dragStateRef，留给 dragEnd 清理（防止 click 事件误触发跳转）
       ds.dropped = true;
     },
-    [reorderInCategory, moveToCategory, hideBook, unhideBook, clearAllDragIndicators]
+    [reorderInCategory, moveToCategory, clearAllDragIndicators]
   );
 
   // 在网格空白区域释放 → 追加到末尾
@@ -474,44 +909,133 @@ export default function Sidebar({
       const ds = dragStateRef.current;
       if (!ds) return;
 
-      // 使用 bookOrder 的长度作为插入位置（末尾追加）
       const targetOrder = getOrderedPaths(toCategory);
       const bookCount = targetOrder.length;
 
       if (ds.sourceCategory === toCategory) {
-        // 同分类：移到末尾
         reorderInCategory(toCategory, ds.sourceIndex, bookCount);
       } else {
-        // 跨分类移到末尾
         moveToCategory(ds.sourceCategory, ds.sourceIndex, toCategory, bookCount);
-        if (toCategory === "已隐藏") {
-          hideBook(ds.bookPath);
-        } else if (ds.sourceCategory === "已隐藏") {
-          unhideBook(ds.bookPath);
-        }
       }
       ds.dropped = true;
     },
-    [reorderInCategory, moveToCategory, hideBook, unhideBook, clearAllDragIndicators, getOrderedPaths]
+    [reorderInCategory, moveToCategory, clearAllDragIndicators, getOrderedPaths]
   );
+
+  // ===== 分类标题拖拽排序 =====
+  const clearCatDragIndicator = useCallback(() => {
+    document.querySelectorAll(".cat-drag-over-before, .cat-drag-over-after").forEach((el) => {
+      el.classList.remove("cat-drag-over-before", "cat-drag-over-after");
+    });
+    setCatDragIndicator(null);
+  }, []);
+
+  const handleCatDragStart = useCallback((e, catName) => {
+    if (catName === "已隐藏" || catName === "未分组") {
+      e.preventDefault();
+      return;
+    }
+    catDragStateRef.current = { catName };
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", "category:" + catName);
+    requestAnimationFrame(() => {
+      e.target.classList.add("dragging-cat");
+      draggingCatRef.current = e.target;
+    });
+  }, []);
+
+  const handleCatDragEnd = useCallback((e) => {
+    e.target.classList.remove("dragging-cat");
+    clearCatDragIndicator();
+    setTimeout(() => {
+      catDragStateRef.current = null;
+      draggingCatRef.current = null;
+    }, 0);
+  }, [clearCatDragIndicator]);
+
+  const handleCatDragOver = useCallback((e, catName) => {
+    const ds = catDragStateRef.current;
+    if (!ds) return;
+    if (catName === "已隐藏" || ds.catName === catName) {
+      clearCatDragIndicator();
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+
+    const titleEl = e.currentTarget;
+    const rect = titleEl.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    const position = e.clientY < midY ? "before" : "after";
+
+    setCatDragIndicator((prev) => {
+      if (prev && prev.catName === catName && prev.position === position) return prev;
+      return { catName, position };
+    });
+
+    document.querySelectorAll(".cat-drag-over-before, .cat-drag-over-after").forEach((el) => {
+      el.classList.remove("cat-drag-over-before", "cat-drag-over-after");
+    });
+    titleEl.classList.add(position === "before" ? "cat-drag-over-before" : "cat-drag-over-after");
+  }, [clearCatDragIndicator]);
+
+  const handleCatDragLeave = useCallback((e) => {
+    const related = e.relatedTarget;
+    if (related && e.currentTarget.contains(related)) return;
+    e.currentTarget.classList.remove("cat-drag-over-before", "cat-drag-over-after");
+  }, []);
+
+  const handleCatDrop = useCallback((e, targetCatName) => {
+    e.preventDefault();
+    e.stopPropagation();
+    clearCatDragIndicator();
+    const ds = catDragStateRef.current;
+    if (!ds) return;
+    const sourceName = ds.catName;
+    if (sourceName === targetCatName || targetCatName === "已隐藏" || targetCatName === "未分组") return;
+
+    // 构建当前顺序（不含系统分类），执行移动
+    const currentOrder = visibleCategories.map((c) => c.name).filter((n) => n !== "未分组" && n !== "已隐藏");
+    const fromIdx = currentOrder.indexOf(sourceName);
+    const toIdx = currentOrder.indexOf(targetCatName);
+    if (fromIdx === -1 || toIdx === -1) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    const insertAfter = e.clientY >= midY;
+
+    const newOrder = [...currentOrder];
+    newOrder.splice(fromIdx, 1);
+    let insertIdx = newOrder.indexOf(targetCatName);
+    if (insertAfter) insertIdx += 1;
+    newOrder.splice(insertIdx, 0, sourceName);
+
+    reorderCategories(newOrder);
+  }, [clearCatDragIndicator, visibleCategories, reorderCategories]);
 
   // 当前书籍信息
   const currentBook = ALL_BOOKS.find((b) => b.path === currentPath) || ALL_BOOKS[0];
 
-  // 智能展开：如果当前页面属于某个分类，自动展开它（并收起其他），避免迷路
+  // 智能展开：如果当前页面属于某个分类，自动展开它（不收起其他分类）
   useEffect(() => {
-    const matchedCategory = BOOK_CATEGORIES.find((cat) =>
+    const origMatched = BOOK_CATEGORIES.find((cat) =>
       cat.books.some((b) => b.path === currentPath)
     );
-    if (matchedCategory) {
-      // 用 raf 延迟 setState，避免在 effect 同步阶段直接更新状态触发级联渲染
-      // （react-hooks/set-state-in-effect 规则）。
+    if (origMatched) {
+      // 映射到显示名（可能被重命名）
+      const displayName = catConfig.renamed[origMatched.name] || origMatched.name;
       const raf = requestAnimationFrame(() => {
-        setExpandedCategory(matchedCategory.name);
+        setExpandedCategories((prev) => {
+          if (prev.has(displayName)) return prev;
+          const next = new Set(prev);
+          next.add(displayName);
+          return next;
+        });
       });
       return () => cancelAnimationFrame(raf);
     }
-  }, [currentPath]);
+  }, [currentPath, catConfig.renamed]);
 
   // 切换章节分组的收起 / 展开状态
   const toggleGroup = useCallback((groupName) => {
@@ -989,31 +1513,170 @@ export default function Sidebar({
                 <div className="sidebar-book-dropdown">
                   <div className="sidebar-book-dropdown-header" onClick={() => setBookDropdownOpen(false)}>
                     <span>📚 全部书籍（{ALL_BOOKS.length} 本）</span>
-                    <button
-                      className="sidebar-book-dropdown-close"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setBookDropdownOpen(false);
-                      }}
-                      title="关闭"
-                      aria-label="关闭"
-                    >
-                      ✕
-                    </button>
+                    <div className="sidebar-book-dropdown-actions">
+                      <button
+                        className="sidebar-add-category-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowAddInput(true);
+                        }}
+                        title="新建分组"
+                      >
+                        ➕ 新建分组
+                      </button>
+                      <button
+                        className="sidebar-save-default-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSaveAsDefault();
+                        }}
+                        title="保存当前布局为默认"
+                      >
+                        💾 保存默认
+                      </button>
+                      <button
+                        className="sidebar-reset-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleResetAll();
+                        }}
+                        title="重置所有分组设置"
+                      >
+                        🔄 重置
+                      </button>
+                      <button
+                        className="sidebar-factory-reset-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleFactoryReset();
+                        }}
+                        title="恢复出厂设置：清除所有自定义配置（包括保存的默认），回到代码初始状态"
+                      >
+                        🏭 出厂
+                      </button>
+                      <button
+                        className="sidebar-book-dropdown-close"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setBookDropdownOpen(false);
+                          setShowAddInput(false);
+                          setNewCatName("");
+                        }}
+                        title="关闭"
+                        aria-label="关闭"
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </div>
+                  {/* 新建分组输入框 */}
+                  {showAddInput && (
+                    <div className="sidebar-add-category-row">
+                      <input
+                        ref={addInputRef}
+                        type="text"
+                        className="sidebar-category-edit-input"
+                        value={newCatName}
+                        onChange={(e) => setNewCatName(e.target.value)}
+                        placeholder="输入分组名称..."
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") confirmAddCategory();
+                          if (e.key === "Escape") {
+                            setShowAddInput(false);
+                            setNewCatName("");
+                          }
+                        }}
+                        onBlur={confirmAddCategory}
+                      />
+                    </div>
+                  )}
                   <div className="sidebar-book-dropdown-body">
                     {visibleCategories.map((category) => {
-                      const isCollapsed = expandedCategory !== category.name;
+                      const isCollapsed = !expandedCategories.has(category.name);
+                      const isEditing = editingCategory === category.name;
                       return (
                       <div key={category.name} className="sidebar-book-category">
+                        {isEditing ? (
+                          <div className="sidebar-book-category-title editing">
+                            <span className={`sidebar-book-category-arrow${isCollapsed ? "" : " expanded"}`}>▶</span>
+                            <span>{category.icon}</span>
+                            <input
+                              ref={editInputRef}
+                              type="text"
+                              className="sidebar-category-edit-input"
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") confirmRenameCategory();
+                                if (e.key === "Escape") {
+                                  setEditingCategory(null);
+                                  setEditValue("");
+                                }
+                              }}
+                              onBlur={confirmRenameCategory}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                        ) : (
                         <div
                           className={`sidebar-book-category-title ${isCollapsed ? "collapsed" : ""}`}
+                          draggable={category.name !== "已隐藏"}
                           onClick={() =>
-                            setExpandedCategory((prev) =>
-                              prev === category.name ? null : category.name
-                            )
+                            setExpandedCategories((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(category.name)) {
+                                next.delete(category.name);
+                              } else {
+                                next.add(category.name);
+                              }
+                              return next;
+                            })
                           }
-                          title={isCollapsed ? "点击展开" : "点击收起"}
+                          onContextMenu={(e) => handleCategoryContextMenu(e, category.name)}
+                          onDragStart={(e) => handleCatDragStart(e, category.name)}
+                          onDragEnd={handleCatDragEnd}
+                          onDragOver={(e) => {
+                            // 分类拖拽优先
+                            if (catDragStateRef.current) {
+                              handleCatDragOver(e, category.name);
+                              return;
+                            }
+                            // 书籍拖拽悬停展开
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = "move";
+                            if (isCollapsed && dragExpandTimerRef.current === null) {
+                              dragExpandTimerRef.current = setTimeout(() => {
+                                setExpandedCategories((prev) => {
+                                  if (prev.has(category.name)) return prev;
+                                  const next = new Set(prev);
+                                  next.add(category.name);
+                                  return next;
+                                });
+                                dragExpandTimerRef.current = null;
+                              }, 500);
+                            }
+                          }}
+                          onDragLeave={(e) => {
+                            if (catDragStateRef.current) {
+                              handleCatDragLeave(e);
+                              return;
+                            }
+                            if (dragExpandTimerRef.current !== null) {
+                              clearTimeout(dragExpandTimerRef.current);
+                              dragExpandTimerRef.current = null;
+                            }
+                          }}
+                          onDrop={(e) => {
+                            if (catDragStateRef.current) {
+                              handleCatDrop(e, category.name);
+                              return;
+                            }
+                            if (dragExpandTimerRef.current !== null) {
+                              clearTimeout(dragExpandTimerRef.current);
+                              dragExpandTimerRef.current = null;
+                            }
+                          }}
+                          title={category.name === "已隐藏" ? "已隐藏的书籍" : (isCollapsed ? "点击展开，拖拽排序" : "点击收起，拖拽排序")}
                         >
                           <span className={`sidebar-book-category-arrow${isCollapsed ? "" : " expanded"}`}>
                             ▶
@@ -1021,6 +1684,7 @@ export default function Sidebar({
                           <span>{category.icon}</span>
                           <span>{category.name}</span>
                         </div>
+                        )}
                         {/* 平铺网格：一行多个书籍卡片，自动换行 */}
                         {!isCollapsed && (
                         <div
@@ -1048,7 +1712,7 @@ export default function Sidebar({
                                 setBookDropdownOpen(false);
                                 router.push(book.path);
                               }}
-                              onContextMenu={(e) => handleBookContextMenu(e, book.path)}
+                              onContextMenu={(e) => handleBookContextMenu(e, book.path, category.name)}
                               onDragStart={(e) => handleDragStart(e, book.path, category.name, realIdx)}
                               onDragEnd={handleDragEnd}
                               onDragOver={(e) => handleCardDragOver(e, category.name, realIdx)}
@@ -1069,6 +1733,15 @@ export default function Sidebar({
                             </div>
                             );
                           })}
+                          {category.books.length === 0 && (
+                            <div className="sidebar-empty-grid-hint">
+                              {category.name === "已隐藏"
+                                ? "拖拽书籍到此处隐藏"
+                                : category.name === "未分组"
+                                ? "暂无未分组书籍"
+                                : "拖拽书籍到此处"}
+                            </div>
+                          )}
                         </div>
                         )}
                       </div>

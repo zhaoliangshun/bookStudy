@@ -1,111 +1,126 @@
 {
-  "hiddenBooks": [
-    "/career",
-    "/pyex",
-    "/pymod",
-    "/pybasic"
-  ],
+  "hiddenBooks": [],
   "deletedChapters": [],
-  "hiddenChapters": [
-    "py-intro",
-    "py-variables",
-    "py-strings",
-    "py-operators"
-  ],
+  "hiddenChapters": [],
   "bookOrder": {
-    "Python 教程": [
+    "未分组": [],
+    "Python 编程": [
+      "/pybasic",
       "/py",
       "/py4",
       "/py6",
       "/py8",
-      "/pynet",
       "/py9",
+      "/pymod",
+      "/pyex",
+      "/pyfile",
+      "/pyfile2",
+      "/pykit",
+      "/pynet",
+      "/pydb",
+      "/pyweb",
+      "/pyweb2",
+      "/fastapi",
+      "/pysubprocess",
       "/pythread",
       "/pythread2",
       "/pyprocess",
       "/pyasync",
       "/pyasync2",
-      "/pysubprocess",
-      "/pydb",
-      "/pyint",
-      "/pyweb",
-      "/pyweb2",
-      "/fastapi",
-      "/pyarch",
       "/pyeng",
-      "/pyfile",
-      "/pyfile2",
-      "/pykit",
+      "/pyint",
       "/pyrun",
+      "/pyarch",
       "/pyproject",
-      "/pybasic",
-      "/pymod",
-      "/pyex",
       "/pyjava",
-      "/pyvsjs",
-      "/pyvsjava"
+      "/pyvsjava",
+      "/pyvsjs"
     ],
-    "Java 教程": [
+    "JS / TS 生态": [
+      "/",
+      "/nodejs2",
+      "/nodejs3",
+      "/ts",
+      "/ts2",
+      "/ts3",
+      "/workers",
+      "/pnpm",
+      "/playground"
+    ],
+    "Java 开发": [
       "/java",
       "/java-web"
     ],
-    "数据库教程": [
+    "AI 智能开发": [
+      "/ai",
+      "/aiapp",
+      "/aipy",
+      "/ai-agent"
+    ],
+    "前端工程": [
+      "/nextjs",
+      "/sass",
+      "/fe-engineering",
+      "/fe-interview"
+    ],
+    "后端与网络": [
+      "/http",
+      "/net",
+      "/backend",
+      "/gql",
+      "/deploy",
+      "/go",
+      "/csharp"
+    ],
+    "实战项目": [
+      "/todo",
+      "/blog-tutorial",
+      "/blog"
+    ],
+    "数据库与缓存": [
       "/sql",
       "/mysql",
       "/redis",
       "/mongo"
     ],
-    "AI 教程": [
-      "/ai",
-      "/aiapp",
-      "/ai-agent",
-      "/aipy"
-    ],
-    "编程教程": [
-      "/playground",
-      "/",
-      "/nodejs2",
-      "/nodejs3",
-      "/workers",
-      "/pnpm",
-      "/ts",
-      "/ts2",
-      "/ts3",
-      "/http",
-      "/net",
-      "/blog-tutorial",
-      "/deploy",
-      "/csharp",
-      "/go",
-      "/sass",
-      "/gql",
-      "/backend",
+    "计算机基础": [
       "/cs",
       "/howitworks",
-      "/os",
-      "/fe-interview",
-      "/fe-engineering",
-      "/nextjs"
+      "/os"
     ],
-    "综合知识": [
+    "职场成长": [
       "/future",
+      "/career",
       "/career40",
-      "/comm",
+      "/work",
+      "/comm"
+    ],
+    "身心健康": [
       "/psychology",
       "/nervous",
-      "/relations",
-      "/work",
       "/stomach",
       "/ibs",
+      "/dignity",
+      "/hurt"
+    ],
+    "人际智慧": [
+      "/relations",
       "/dui",
       "/fandui",
       "/shield",
       "/quotes",
       "/curse",
       "/rebut",
-      "/unharmed",
-      "/career"
+      "/unharmed"
     ],
     "已隐藏": []
-  }
+  },
+  "categoryConfig": {
+    "custom": [],
+    "renamed": {},
+    "icons": {},
+    "hidden": [],
+    "order": null
+  },
+  "savedDefaults": null
 }

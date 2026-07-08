@@ -11,7 +11,7 @@ import { useState, useCallback, useEffect } from "react";
 
 const ORDER_KEY = "sidebar:book-order";
 
-// 从 BOOK_CATEGORIES 生成默认排序
+// 从分类列表生成默认排序
 export function getDefaultBookOrder(categories) {
   const order = {};
   categories.forEach((cat) => {
@@ -20,11 +20,12 @@ export function getDefaultBookOrder(categories) {
   return order;
 }
 
-// 合并已保存排序与默认排序（处理新增书籍：追加到末尾）
+// 合并已保存排序与默认排序（处理新增书籍：追加到末尾；处理新增/重命名分类）
 export function mergeOrder(saved, defaults) {
   const merged = { ...defaults };
   for (const [cat, paths] of Object.entries(saved)) {
     if (!merged[cat]) {
+      // 分类在默认中不存在（自定义分类或已重命名），保留其数据
       merged[cat] = paths;
       continue;
     }
@@ -52,9 +53,7 @@ async function syncToServer(bookOrder) {
 }
 
 export default function useBookDragDrop(categories) {
-  const [bookOrder, setBookOrder] = useState(() =>
-    getDefaultBookOrder(categories)
-  );
+  const [bookOrder, setBookOrder] = useState(() => getDefaultBookOrder(categories));
 
   // 挂载后：优先从服务端加载，再 fallback 到 localStorage
   useEffect(() => {
@@ -73,7 +72,6 @@ export default function useBookDragDrop(categories) {
       } catch {
         // 服务端不可用，降级到 localStorage
       }
-      // fallback: 从 localStorage 读取
       try {
         const raw = localStorage.getItem(ORDER_KEY);
         if (raw) {
@@ -133,11 +131,109 @@ export default function useBookDragDrop(categories) {
     [persist]
   );
 
+  // 重命名分类：更新 bookOrder 中的 key
+  const renameCategoryInOrder = useCallback(
+    (oldName, newName) => {
+      setBookOrder((prev) => {
+        if (oldName === newName) return prev;
+        if (!prev[oldName] && !prev[newName]) return prev;
+        const next = { ...prev };
+        if (prev[oldName]) {
+          next[newName] = prev[oldName];
+          delete next[oldName];
+        }
+        persist(next);
+        return next;
+      });
+    },
+    [persist]
+  );
+
+  // 删除分类：从 bookOrder 中移除该分类
+  const removeCategoryFromOrder = useCallback(
+    (categoryName) => {
+      setBookOrder((prev) => {
+        if (!prev[categoryName]) return prev;
+        const next = { ...prev };
+        delete next[categoryName];
+        persist(next);
+        return next;
+      });
+    },
+    [persist]
+  );
+
+  // 确保分类存在于 bookOrder 中（新建空分类）
+  const ensureCategory = useCallback(
+    (categoryName) => {
+      setBookOrder((prev) => {
+        if (prev[categoryName]) return prev;
+        const next = { ...prev, [categoryName]: [] };
+        persist(next);
+        return next;
+      });
+    },
+    [persist]
+  );
+
+  // 批量移动书籍到指定分类（用于删除分组时归还书籍到默认分组）
+  // moves: [{ path, toCategory }]
+  const moveBooksToCategory = useCallback(
+    (moves) => {
+      setBookOrder((prev) => {
+        const next = { ...prev };
+        // 先从所有分类中移除这些书籍
+        const pathSet = new Set(moves.map((m) => m.path));
+        for (const cat of Object.keys(next)) {
+          next[cat] = next[cat].filter((p) => !pathSet.has(p));
+        }
+        // 再添加到目标分类
+        for (const { path, toCategory } of moves) {
+          if (!next[toCategory]) next[toCategory] = [];
+          next[toCategory] = [...next[toCategory], path];
+        }
+        persist(next);
+        return next;
+      });
+    },
+    [persist]
+  );
+
+  // 重置为默认排序（清空所有自定义排序）
+  const resetToDefaults = useCallback(
+    (categories) => {
+      const defaults = getDefaultBookOrder(categories);
+      setBookOrder(defaults);
+      persist(defaults);
+    },
+    [persist]
+  );
+
+  // 重置为指定的排序（用于恢复用户保存的默认设置）
+  const resetToOrder = useCallback(
+    (order) => {
+      setBookOrder(order);
+      persist(order);
+    },
+    [persist]
+  );
+
   // 获取某分类下排序后的书籍路径列表
   const getOrderedPaths = useCallback(
     (categoryName) => bookOrder[categoryName] || [],
     [bookOrder]
   );
 
-  return { bookOrder, reorderInCategory, moveToCategory, getOrderedPaths };
+  return {
+    bookOrder,
+    reorderInCategory,
+    moveToCategory,
+    renameCategoryInOrder,
+    removeCategoryFromOrder,
+    ensureCategory,
+    moveBooksToCategory,
+    resetToDefaults,
+    resetToOrder,
+    getOrderedPaths,
+  };
 }

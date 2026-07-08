@@ -5,9 +5,10 @@
 // -------------------------------------------------------------
 // 提供隐藏书籍、标记删除章节、隐藏章节的状态管理。
 // 持久化策略：localStorage（即时响应）+ 服务端 JSON 文件（跨设备同步）
+// 使用 useEffect 统一同步到服务端（防抖），避免闭包陷阱。
 // =============================================================
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 const HIDDEN_BOOKS_KEY = "sidebar:hidden-books";
 const DELETED_CHAPTERS_KEY = "sidebar:deleted-chapters";
@@ -27,27 +28,11 @@ function saveSet(key, set) {
   } catch {}
 }
 
-// 将三个集合同步到服务端
-async function syncToServer(hiddenBooks, deletedChapterIds, hiddenChapterIds) {
-  try {
-    await fetch("/api/preferences", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        hiddenBooks: [...hiddenBooks],
-        deletedChapters: [...deletedChapterIds],
-        hiddenChapters: [...hiddenChapterIds],
-      }),
-    });
-  } catch {
-    // 网络错误静默忽略
-  }
-}
-
 export default function useBookChapterActions() {
   const [hiddenBooks, setHiddenBooks] = useState(() => new Set());
   const [deletedChapterIds, setDeletedChapterIds] = useState(() => new Set());
   const [hiddenChapterIds, setHiddenChapterIds] = useState(() => new Set());
+  const loadedRef = useRef(false);
 
   // 挂载后：优先从服务端加载，再 fallback 到 localStorage
   useEffect(() => {
@@ -58,113 +43,103 @@ export default function useBookChapterActions() {
         if (!res.ok) throw new Error("fetch failed");
         const data = await res.json();
         if (cancelled) return;
-        if (data.hiddenBooks?.length) {
-          setHiddenBooks(new Set(data.hiddenBooks));
-        }
-        if (data.deletedChapters?.length) {
-          setDeletedChapterIds(new Set(data.deletedChapters));
-        }
-        if (data.hiddenChapters?.length) {
-          setHiddenChapterIds(new Set(data.hiddenChapters));
-        }
-        const hasServerData =
-          data.hiddenBooks?.length ||
-          data.deletedChapters?.length ||
-          data.hiddenChapters?.length;
-        if (hasServerData) return;
+        if (data.hiddenBooks?.length) setHiddenBooks(new Set(data.hiddenBooks));
+        if (data.deletedChapters?.length) setDeletedChapterIds(new Set(data.deletedChapters));
+        if (data.hiddenChapters?.length) setHiddenChapterIds(new Set(data.hiddenChapters));
+        loadedRef.current = true;
       } catch {
-        // 服务端不可用，降级到 localStorage
+        if (cancelled) return;
+        setHiddenBooks(loadSet(HIDDEN_BOOKS_KEY));
+        setDeletedChapterIds(loadSet(DELETED_CHAPTERS_KEY));
+        setHiddenChapterIds(loadSet(HIDDEN_CHAPTERS_KEY));
+        loadedRef.current = true;
       }
-      if (cancelled) return;
-      setHiddenBooks(loadSet(HIDDEN_BOOKS_KEY));
-      setDeletedChapterIds(loadSet(DELETED_CHAPTERS_KEY));
-      setHiddenChapterIds(loadSet(HIDDEN_CHAPTERS_KEY));
     })();
     return () => { cancelled = true; };
   }, []);
 
-  const hideBook = useCallback((path) => {
-    setHiddenBooks((prev) => {
-      const next = new Set(prev);
-      next.add(path);
-      saveSet(HIDDEN_BOOKS_KEY, next);
-      syncToServer(next, deletedChapterIds, hiddenChapterIds);
+  // 统一同步到服务端（防抖 300ms，避免频繁请求）
+  useEffect(() => {
+    if (!loadedRef.current) return;
+    const timer = setTimeout(() => {
+      fetch("/api/preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hiddenBooks: [...hiddenBooks],
+          deletedChapters: [...deletedChapterIds],
+          hiddenChapters: [...hiddenChapterIds],
+        }),
+      }).catch(() => {});
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [hiddenBooks, deletedChapterIds, hiddenChapterIds]);
+
+  const updateSet = useCallback((setter, key) => (updater) => {
+    setter((prev) => {
+      const next = typeof updater === "function"
+        ? new Set([...updater(prev)])
+        : new Set([...updater]);
+      saveSet(key, next);
       return next;
     });
-  }, [deletedChapterIds, hiddenChapterIds]);
+  }, []);
+
+  const hideBook = useCallback((path) => {
+    setHiddenBooks((prev) => { const n = new Set(prev); n.add(path); saveSet(HIDDEN_BOOKS_KEY, n); return n; });
+  }, []);
 
   const unhideBook = useCallback((path) => {
-    setHiddenBooks((prev) => {
-      const next = new Set(prev);
-      next.delete(path);
-      saveSet(HIDDEN_BOOKS_KEY, next);
-      syncToServer(next, deletedChapterIds, hiddenChapterIds);
-      return next;
-    });
-  }, [deletedChapterIds, hiddenChapterIds]);
+    setHiddenBooks((prev) => { const n = new Set(prev); n.delete(path); saveSet(HIDDEN_BOOKS_KEY, n); return n; });
+  }, []);
 
-  // 标记删除 / 取消删除标记章节
   const deleteChapter = useCallback((id) => {
-    setDeletedChapterIds((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      saveSet(DELETED_CHAPTERS_KEY, next);
-      syncToServer(hiddenBooks, next, hiddenChapterIds);
-      return next;
-    });
-  }, [hiddenBooks, hiddenChapterIds]);
+    setDeletedChapterIds((prev) => { const n = new Set(prev); n.add(id); saveSet(DELETED_CHAPTERS_KEY, n); return n; });
+  }, []);
 
   const undeleteChapter = useCallback((id) => {
-    setDeletedChapterIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      saveSet(DELETED_CHAPTERS_KEY, next);
-      syncToServer(hiddenBooks, next, hiddenChapterIds);
-      return next;
-    });
-  }, [hiddenBooks, hiddenChapterIds]);
+    setDeletedChapterIds((prev) => { const n = new Set(prev); n.delete(id); saveSet(DELETED_CHAPTERS_KEY, n); return n; });
+  }, []);
 
-  // 隐藏 / 恢复章节
   const hideChapter = useCallback((id) => {
-    setHiddenChapterIds((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      saveSet(HIDDEN_CHAPTERS_KEY, next);
-      syncToServer(hiddenBooks, deletedChapterIds, next);
-      return next;
-    });
-  }, [hiddenBooks, deletedChapterIds]);
+    setHiddenChapterIds((prev) => { const n = new Set(prev); n.add(id); saveSet(HIDDEN_CHAPTERS_KEY, n); return n; });
+  }, []);
 
   const unhideChapter = useCallback((id) => {
-    setHiddenChapterIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      saveSet(HIDDEN_CHAPTERS_KEY, next);
-      syncToServer(hiddenBooks, deletedChapterIds, next);
-      return next;
-    });
-  }, [hiddenBooks, deletedChapterIds]);
+    setHiddenChapterIds((prev) => { const n = new Set(prev); n.delete(id); saveSet(HIDDEN_CHAPTERS_KEY, n); return n; });
+  }, []);
 
-  // 批量隐藏 / 恢复章节（用于分组右键菜单）
   const hideChapters = useCallback((ids) => {
     setHiddenChapterIds((prev) => {
-      const next = new Set(prev);
-      ids.forEach((id) => next.add(id));
-      saveSet(HIDDEN_CHAPTERS_KEY, next);
-      syncToServer(hiddenBooks, deletedChapterIds, next);
-      return next;
+      const n = new Set(prev);
+      ids.forEach((id) => n.add(id));
+      saveSet(HIDDEN_CHAPTERS_KEY, n);
+      return n;
     });
-  }, [hiddenBooks, deletedChapterIds]);
+  }, []);
 
   const unhideChapters = useCallback((ids) => {
     setHiddenChapterIds((prev) => {
-      const next = new Set(prev);
-      ids.forEach((id) => next.delete(id));
-      saveSet(HIDDEN_CHAPTERS_KEY, next);
-      syncToServer(hiddenBooks, deletedChapterIds, next);
-      return next;
+      const n = new Set(prev);
+      ids.forEach((id) => n.delete(id));
+      saveSet(HIDDEN_CHAPTERS_KEY, n);
+      return n;
     });
-  }, [hiddenBooks, deletedChapterIds]);
+  }, []);
+
+  const clearHiddenBooks = useCallback(() => {
+    setHiddenBooks(() => { const n = new Set(); saveSet(HIDDEN_BOOKS_KEY, n); return n; });
+  }, []);
+
+  const resetAll = useCallback(() => {
+    const empty = new Set();
+    setHiddenBooks(empty);
+    setDeletedChapterIds(empty);
+    setHiddenChapterIds(empty);
+    saveSet(HIDDEN_BOOKS_KEY, empty);
+    saveSet(DELETED_CHAPTERS_KEY, empty);
+    saveSet(HIDDEN_CHAPTERS_KEY, empty);
+  }, []);
 
   return {
     hiddenBooks,
@@ -178,5 +153,7 @@ export default function useBookChapterActions() {
     unhideChapter,
     hideChapters,
     unhideChapters,
+    clearHiddenBooks,
+    resetAll: resetAll,
   };
 }
