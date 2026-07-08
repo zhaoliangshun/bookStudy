@@ -62,7 +62,7 @@ if age >= 18:           # 条件为 True 才执行下面的语句块
 \`\`\`py
 age = 15                          # 定义变量 age 并赋值
 if age >= 18:        # 条件不成立
-    print("成年")                    # 输出 "成年"
+    print("成年")
 else:                # 走 else 分支
     print("未成年")   # 打印「未成年」
 \`\`\`
@@ -92,7 +92,7 @@ else:                              # 否则
 \`\`\`py
 score = 82                         # 将整数 82 赋给 score
 if score >= 90:          # 多个独立 if，彼此都会判断
-    print("优秀")                    # 输出 "优秀"
+    print("优秀")
 if score >= 80:                    # 如果 score >= 80 成立
     print("良好")   # 会执行
 if score >= 60:                    # 如果 score >= 60 成立
@@ -200,7 +200,7 @@ print("存在" or "默认") # "存在"，左边为真，直接返回
 \`\`\`py
 data = []                  # 空列表为假
 if data:                   # 空列表为假
-    print("有数据")                   # 输出 "有数据"
+    print("有数据")
 else:                              # 否则
     print("空")     # 打印「空」
 \`\`\`
@@ -343,7 +343,7 @@ pass 与 continue 的区别：continue 会改变流程（跳过本次循环剩�
 nums = [1, 2, 3, 4]                # 创建列表并赋给 nums
 for n in nums:                  # 遍历每个元素
     if n < 0:                   # 发现负数
-        print("发现负数:", n)          # 输出 "发现负数:", n
+        print("发现负数:", n)
         break                      # 跳出循环
 else:                           # for-else：循环正常结束（没 break）才执行
     print("没有负数")   # 因为没 break，正常结束，执行这里
@@ -359,14 +359,14 @@ for n in nums:                  # 遍历列表
         found = True               # 将布尔值 True 赋给 found
         break                      # 跳出循环
 if not found:                   # 用标志判断是否找到
-    print("没有负数")                  # 输出 "没有负数"
+    print("没有负数")
 
 # Pythonic 写法：用 for-else
 for n in nums:                   # 同样遍历
     if n < 0:                      # 如果 n < 0 成立
         break                      # 跳出循环
 else:                           # 没break即"没有负数"
-    print("没有负数")                  # 输出 "没有负数"
+    print("没有负数")
 \`\`\`
 
 while-else 同理：while 条件变假而结束时执行 else，被 break 时不执行。
@@ -382,7 +382,7 @@ while-else 同理：while 条件变假而结束时执行 else，被 break 时不
 \`\`\`py
 # 不推荐
 for i in range(len(fruits)):    # 用下标遍历，啰嗦
-    print(i, fruits[i])            # 输出 i, fruits[i]
+    print(i, fruits[i])
 \`\`\`
 
 Pythonic 的写法是用 \`enumerate\`，它把可迭代对象包装成「(索引, 元素)」对：
@@ -390,7 +390,7 @@ Pythonic 的写法是用 \`enumerate\`，它把可迭代对象包装成「(索�
 \`\`\`py
 fruits = ["苹果", "香蕉", "橘子"]           # 待遍历的列表
 for index, value in enumerate(fruits):   # enumerate 同时给出下标和元素
-    print(index, value)            # 输出 index, value
+    print(index, value)
 # 0 苹果
 # 1 香蕉
 # 2 橘子
@@ -408,7 +408,7 @@ for index, value in enumerate(fruits):   # enumerate 同时给出下标和元素
 names = ["Alice", "Bob", "Carol"]      # 姓名列表
 ages = [25, 30, 28]                    # 年龄列表，与 names 一一对应
 for name, age in zip(names, ages):   # zip 按位置配对两个列表
-    print(name, age)               # 输出 name, age
+    print(name, age)
 # Alice 25
 # Bob 30
 # Carol 28
@@ -480,7 +480,7 @@ def handle_command(cmd):       # 定义命令处理函数
         case "reset":          # 值为 "reset"
             print("重置")      # 输出重置提示
         case _:                  # _ 是通配符，匹配任意值（类似 default）
-            print("未知命令")          # 输出 "未知命令"
+            print("未知命令")
 \`\`\`
 
 \`_\` 是通配符，表示「其他所有情况」，相当于 switch 的 default。
@@ -505,13 +505,13 @@ match 可以解构列表/元组：
 point = (3, 4)                 # 定义一个点
 match point:                   # 对元组做结构化匹配
     case (0, 0):               # 精确匹配原点
-        print("原点")                # 输出 "原点"
+        print("原点")
     case (0, y):           # 捕获第二个元素到变量 y
-        print("在 y 轴上", y)         # 输出 "在 y 轴上", y
+        print("在 y 轴上", y)
     case (x, 0):           # 捕获第一个元素到 x
-        print("在 x 轴上", x)         # 输出 "在 x 轴上", x
+        print("在 x 轴上", x)
     case (x, y):           # 捕获两个元素
-        print(f"点 ({x}, {y})")     # 输出 f"点 ({x}, {y})"
+        print(f"点 ({x}, {y})")
 \`\`\`
 
 ### 12.4 解构字典与类
@@ -519,9 +519,9 @@ match point:                   # 对元组做结构化匹配
 \`\`\`py
 match user:                              # 对字典做结构化匹配
     case {"name": name, "age": age}:   # 解构字典，提取 name 和 age
-        print(f"用户 {name}, {age} 岁")  # 输出 f"用户 {name}, {age} 岁"
+        print(f"用户 {name}, {age} 岁")
     case _:                             # 其他格式
-        print("未知格式")              # 输出 "未知格式"
+        print("未知格式")
 \`\`\`
 
 模式匹配相比 if-elif 链的优势在于：**它能同时做匹配 + 提取变量**，代码更紧凑、更声明式。但需要 Python 3.10+，老项目可能用不了。
@@ -1104,7 +1104,7 @@ print(yell.__name__)           # shout，函数对象保留原名
 
 # 2. 存进列表，批量调用
 ops = [str.upper, str.lower, str.title]   # 把方法放进列表
-for op in ops:                     # 遍历 ops，每次取值赋给 op
+for op in ops:
     print(op("hello world"))             # 逐个调用
 
 # 3. 作为参数
@@ -1114,7 +1114,7 @@ print(apply(len, "abc"))       # 3
 print(apply(abs, -5))          # 5
 
 # 4. 作为字典的值，实现「命令分发」
-commands = {                       # 将 { 赋给 commands
+commands = {                       # 创建命令分发表字典
     "upper": str.upper,
     "lower": str.lower,
 }
@@ -1411,7 +1411,7 @@ evens = [x for x in range(10) if x % 2 == 0]  # 带条件，只保留偶数
 ### 1.5 嵌套列表（二维）
 
 \`\`\`py
-matrix = [                         # 将 [ 赋给 matrix
+matrix = [                         # 创建嵌套列表（矩阵）
     [1, 2, 3],
     [4, 5, 6],
     [7, 8, 9],
@@ -1599,7 +1599,7 @@ d.setdefault("c", 3)     # c 不存在，设为 3
 d.setdefault("c", 99)    # c 已存在，返回 3，不改
 
 # update：合并覆盖
-d.update({"a": 100, "d": 4})       # 对 d 调用 更新 方法，参数 {"a": 100, "d": 4}
+d.update({"a": 100, "d": 4})       # 调用 d.update() 方法合并字典
 print(d)   # {'a':100,'b':2,'c':3,'d':4}
 \`\`\`
 
@@ -1729,7 +1729,7 @@ d1 |= d2               # 等价于 d1.update(d2)
 \`\`\`py
 # 词频统计：字典的经典用法
 text = "the cat sat on the mat the cat"  # 将字符串 "the cat sat on the mat the cat" 赋给 text
-freq = {}                          # 创建集合并赋给 freq
+freq = {}                          # 创建空字典用于计数
 for word in text.split():           # 按空白分割成单词列表
     freq[word] = freq.get(word, 0) + 1   # 不存在时默认 0，再加 1
 print(freq)   # {'the':3, 'cat':2, 'sat':1, 'on':1, 'mat':1}
@@ -1953,8 +1953,8 @@ print("按频率降序:", sorted_freq)
 
 \`\`\`py
 result = []                        # 创建列表并赋给 result
-for 变量 in 可迭代对象:                   # 遍历 可迭代对象，每次取值赋给 变量
-    result.append(表达式)             # 对 result 调用 追加 方法，参数 表达式
+for 变量 in 可迭代对象:
+    result.append(表达式)             # 调用 .append() 方法添加元素
 \`\`\`
 
 \`\`\`py
@@ -2017,7 +2017,7 @@ print(abs_set)   # {1, 2, 3, 4, 5}，自动去重
 把列表推导式的 \`[]\` 换成 \`()\`，得到一个**生成器**——它**惰性求值**，不一次性生成所有元素，节省内存：
 
 \`\`\`py
-gen = (x ** 2 for x in range(5))   # 创建元组并赋给 gen
+gen = (x ** 2 for x in range(5))   # 创建生成器表达式
 print(gen)        # <generator object>，还不是列表
 print(list(gen))  # [0, 1, 4, 9, 16]
 \`\`\`
@@ -2048,9 +2048,9 @@ print(flat)   # [1,2,3,4,5,6,7,8,9]
 
 \`\`\`py
 flat = []                          # 创建列表并赋给 flat
-for row in matrix:                 # 遍历 matrix，每次取值赋给 row
-    for num in row:                # 遍历 row，每次取值赋给 num
-        flat.append(num)           # 对 flat 调用 追加 方法，参数 num
+for row in matrix:
+    for num in row:
+        flat.append(num)           # 调用 .append() 方法添加元素
 \`\`\`
 
 ### 5.2 嵌套表达式（生成二维）
@@ -2175,8 +2175,8 @@ any / all 都是**短路**的：any 遇到真就停，all 遇到假就停。配�
 squares = [x ** 2 for x in range(1000000)]  # 创建列表并赋给 squares
 # 循环（较慢）
 squares = []                       # 创建列表并赋给 squares
-for x in range(1000000):           # 遍历 range(1000000)，每次取值赋给 x
-    squares.append(x ** 2)         # 对 squares 调用 追加 方法，参数 x ** 2
+for x in range(1000000):
+    squares.append(x ** 2)         # 调用 .append() 方法添加元素
 \`\`\`
 
 但**不要为了微小的性能牺牲可读性**。绝大多数场景，可读性比那点性能差异重要得多。
@@ -2225,7 +2225,7 @@ print(sq_list[2])     # 4，可索引
 print(len(sq_list))   # 5，可取长度
 
 # 生成器：省内存，但一次性
-sq_gen = (x ** 2 for x in range(5))  # 创建元组并赋给 sq_gen
+sq_gen = (x ** 2 for x in range(5))  # 创建生成器表达式
 print(sq_gen)         # <generator object>
 # print(sq_gen[2])    # 报错！生成器不能索引
 print(sum(sq_gen))    # 30，聚合时消费
@@ -2285,9 +2285,9 @@ print(list(zip(*matrix)))   # [(1,4),(2,5),(3,6)]
 \`\`\`py
 people = [("Alice", 30), ("Bob", 25), ("Carol", 30)]  # 创建列表并赋给 people
 # 按年龄分组
-groups = {}                        # 创建集合并赋给 groups
-for name, age in people:           # 遍历 people，每次取值赋给 name, age
-    groups.setdefault(age, []).append(name)  # 对 groups 调用 设置默认值 方法，参数 age, []).append(name
+groups = {}                        # 创建空字典用于分组
+for name, age in people:
+    groups.setdefault(age, []).append(name)  # setdefault 确保键存在，再 append 添加值
 print(groups)   # {30:['Alice','Carol'], 25:['Bob']}
 \`\`\`
 
@@ -2324,15 +2324,15 @@ print(clean)   # ['a','b','c']
 from itertools import chain, islice, count  # 从 itertools 导入 chain, islice, count
 
 # chain：把多个可迭代对象串起来
-for x in chain([1, 2], [3, 4]):    # 遍历 chain([1, 2], [3, 4])，每次取值赋给 x
+for x in chain([1, 2], [3, 4]):
     print(x)        # 1 2 3 4
 
 # islice：切片生成器（生成器不支持切片，用 islice）
-gen = (x ** 2 for x in range(100)) # 创建元组并赋给 gen
+gen = (x ** 2 for x in range(100)) # 创建生成器表达式
 print(list(islice(gen, 5)))   # [0,1,4,9,16]，只取前 5 个
 
 # count：无限计数
-for i in count(1):                 # 遍历 count(1)，每次取值赋给 i
+for i in count(1):
     if i > 5:                      # 如果 i > 5 成立
         break                      # 跳出循环
     print(i)        # 1 2 3 4 5
