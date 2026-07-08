@@ -362,4 +362,11 @@ console.log('开始生成编程指南章节...');
 console.log('='.repeat(60) + '\n');
 
 progGuideBatches.forEach((batch, index) => {
-  writeBatchFile(index
+  writeBatchFile(index + 1, batch.group, batch.chapters, false);
+});
+
+const progTotal = progGuideBatches.reduce((sum, b) => sum + b.chapters.length, 0);
+console.log(`\n✅ 编程指南章节生成完成！总计 ${progTotal} 章\n`);
+
+console.log('='.repeat(60));
+console.log('

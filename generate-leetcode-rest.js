@@ -534,4 +534,20 @@ class Solution {
     "动态规划": `class Solution {
     public int solution(int n) {
         int[] dp = new int[n + 1];
-        for (int i = 1; i
+        for (int i = 1; i <= n; i++) {
+            dp[i] = dp[i-1];
+        }
+        return dp[n];
+    }
+}`,
+    "回溯": `import java.util.*;
+
+class Solution {
+    List<List<Integer>> res = new ArrayList<>();
+    
+    public List<List<Integer>> solution(int[] nums) {
+        backtrack(nums, new ArrayList<>(), 0);
+        return res;
+    }
+    
+    private void backtrack
