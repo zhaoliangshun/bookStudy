@@ -1,13 +1,17 @@
 {
   "hiddenBooks": [],
   "deletedChapters": [],
-  "hiddenChapters": [],
+  "hiddenChapters": [
+    "py-intro",
+    "py-variables",
+    "py-strings",
+    "py-operators"
+  ],
   "bookOrder": {
     "未分组": [
       "/playground"
     ],
     "Python 编程": [
-      "/pybasic",
       "/py",
       "/py4",
       "/py6",
@@ -114,7 +118,9 @@
       "/rebut",
       "/unharmed"
     ],
-    "已隐藏": []
+    "已隐藏": [
+      "/pybasic"
+    ]
   },
   "categoryConfig": {
     "custom": [],
