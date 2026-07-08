@@ -58,10 +58,16 @@ const PYTHON_BIN = CANDIDATES.find((p) => {
  */
 function runPythonCode(code) {
   return new Promise((resolve) => {
-    // 用 spawn 启动 python3，通过 stdin 传入代码（- 表示从标准输入读脚本）。
-    // 相比 python3 -c "<code>"，stdin 方式不受命令行长度限制，也更安全
-    // （代码不会出现在进程参数里，不会被 ps 命令看到）。
-    const child = spawn(PYTHON_BIN, ["-"], {
+    // 将代码写入临时文件再执行（而非通过 stdin 传入）。
+    // 原因：macOS 上 multiprocessing 默认使用 spawn 启动子进程，
+    // spawn 会重新导入主模块。若主模块是 stdin（路径为 <stdin>），
+    // 子进程会因找不到文件而报 FileNotFoundError。
+    // 写入真实文件后，spawn 可正确找到主模块路径。
+    const tmpDir = mkdtempSync(join(tmpdir(), "pyrun-"));
+    const tmpFile = join(tmpDir, "main.py");
+    writeFileSync(tmpFile, code, "utf8");
+
+    const child = spawn(PYTHON_BIN, [tmpFile], {
       // 不继承父进程 stdio，单独建管道
       stdio: ["pipe", "pipe", "pipe"],
       // 不继承父进程环境，只保留必要的 PATH（让 python3 能被找到）
@@ -97,8 +103,15 @@ function runPythonCode(code) {
       }
     });
 
+    // 清理临时文件
+    const cleanup = () => {
+      try { unlinkSync(tmpFile); } catch { /* ignore */ }
+      try { require("fs").rmdirSync(tmpDir); } catch { /* ignore */ }
+    };
+
     // 子进程出错（例如 python3 不存在）
     child.on("error", (err) => {
+      cleanup();
       resolve({
         output: "",
         error:
@@ -111,6 +124,7 @@ function runPythonCode(code) {
 
     // 子进程退出
     child.on("close", (code, signal) => {
+      cleanup();
       if (killed) {
         // 被超时强制终止
         resolve({
@@ -135,10 +149,6 @@ function runPythonCode(code) {
 
       resolve({ output, error, exitCode: code });
     });
-
-    // 通过 stdin 传入代码，然后关闭 stdin 通知子进程读取完毕
-    child.stdin.write(code);
-    child.stdin.end();
 
     // 超时处理：到时间还没退出就 kill
     const timer = setTimeout(() => {
