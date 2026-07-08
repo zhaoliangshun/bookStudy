@@ -116,7 +116,7 @@ const BOOK_CATEGORIES = [
   },
   {
     name: "前端工程",
-    icon: "▲",
+    icon: "💻",
     books: [
       { path: "/nextjs", label: "Next.js", icon: "▲" },
       { path: "/sass", label: "Sass", icon: "💅" },
