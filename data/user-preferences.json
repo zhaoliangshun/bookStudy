@@ -251,9 +251,7 @@
       "/py6",
       "/py8",
       "/py9",
-      "/py-definitive",
-      "/pyfile",
-      "/pyfile2"
+      "/py-definitive"
     ],
     "Python 编程::__sg-mrctdmwvqji3": [
       "/pynet",
@@ -270,6 +268,10 @@
       "/pyjava",
       "/pyvsjava",
       "/pyvsjs"
+    ],
+    "Python 编程::__sg-mrd99uj4byog": [
+      "/pyfile",
+      "/pyfile2"
     ]
   },
   "categoryConfig": {
@@ -316,6 +318,10 @@
         {
           "id": "sg-mrctfokhdvl5",
           "name": "对比其他语言"
+        },
+        {
+          "id": "sg-mrd99uj4byog",
+          "name": "文件操作"
         }
       ]
     },
