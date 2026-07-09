@@ -3369,7 +3369,8 @@ body {
 .floating-panel-group .quick-scroll,
 .floating-panel-group .reading-theme-switcher,
 .floating-panel-group .floating-chapter-nav,
-.floating-panel-group .floating-theme-switcher {
+.floating-panel-group .floating-theme-switcher,
+.floating-panel-group .floating-editor-theme {
   position: static !important;
   right: auto !important;
   top: auto !important;
@@ -3384,7 +3385,8 @@ body {
 /* QuickScroll 和 FloatingChapterNav 内部按钮居中对齐 */
 .floating-panel-group .quick-scroll,
 .floating-panel-group .floating-chapter-nav,
-.floating-panel-group .floating-theme-switcher {
+.floating-panel-group .floating-theme-switcher,
+.floating-panel-group .floating-editor-theme {
   align-items: center !important;
 }
 
@@ -3409,7 +3411,8 @@ body {
 .floating-panel-group .quick-scroll-btn,
 .floating-panel-group .reading-theme-btn,
 .floating-panel-group .floating-nav-btn,
-.floating-panel-group .floating-theme-btn {
+.floating-panel-group .floating-theme-btn,
+.floating-panel-group .floating-editor-theme-btn {
   pointer-events: auto;
 }
 
@@ -3690,4 +3693,123 @@ body {
   height: 1px;
   background: var(--border);
   margin: 4px 10px;
+}
+
+/* =============================================================
+   浮动编辑器主题切换器（右侧悬浮，最上方）
+   ============================================================= */
+.floating-editor-theme {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.floating-editor-theme-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  padding: 0;
+}
+
+.floating-editor-theme-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+}
+
+.floating-editor-theme-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.floating-editor-theme-panel {
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.14);
+  overflow: hidden;
+  min-width: 220px;
+  pointer-events: auto;
+}
+
+.floating-editor-theme-panel-header {
+  padding: 10px 14px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+}
+
+.floating-editor-theme-list {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.floating-editor-theme-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.floating-editor-theme-item:hover {
+  background: var(--bg);
+}
+
+.floating-editor-theme-item.active {
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.floating-editor-theme-item-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.floating-editor-theme-item-name {
+  flex: 1;
+}
+
+.floating-editor-theme-item-kind {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.floating-editor-theme-item.active .floating-editor-theme-item-kind {
+  color: var(--primary);
+  opacity: 0.7;
 }

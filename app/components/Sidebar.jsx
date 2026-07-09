@@ -29,7 +29,6 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import EditorThemePicker from "./EditorThemePicker";
 import ContextMenu from "./ContextMenu";
 import useBookChapterActions from "../hooks/useBookChapterActions";
 import useBookDragDrop from "../hooks/useBookDragDrop";
@@ -2095,7 +2094,6 @@ export default function Sidebar({
                 <span className="sidebar-book-label">{currentBook.label}</span>
                 <span className={`sidebar-book-arrow ${bookDropdownOpen ? "open" : ""}`}>▾</span>
               </button>
-              <EditorThemePicker variant="sidebar" />
             </div>
             {bookDropdownOpen && (
               <>
