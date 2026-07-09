@@ -1031,11 +1031,13 @@ export default function Sidebar({
     if (ctxMenu.type === "chapter") {
       const isHidden = hiddenChapterIds.has(ctxMenu.target);
       const items = [];
-      items.push(
-        isHidden
-          ? { label: "恢复此章节", icon: "↩️", onClick: () => unhideChapter(ctxMenu.target) }
-          : { label: "已读此章节", icon: "✅", onClick: () => hideChapter(ctxMenu.target) }
-      );
+      if (isHidden) {
+        items.push({ label: "恢复此章节", icon: "↩️", onClick: () => unhideChapter(ctxMenu.target) });
+      } else {
+        items.push({ label: "删除此章节", icon: "🗑️", danger: true, onClick: () => hideChapter(ctxMenu.target) });
+        items.push({ divider: true });
+        items.push({ label: "已读此章节", icon: "✅", onClick: () => hideChapter(ctxMenu.target) });
+      }
       return items;
     }
 
@@ -1130,12 +1132,12 @@ export default function Sidebar({
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", bookPath);
     // 立即添加 dragging 类，确保第一次 dragover 时拖拽源已被排除
-    e.target.classList.add("dragging");
+    e.currentTarget.classList.add("dragging");
   }, []);
 
   // 拖拽结束：清理状态
   const handleDragEnd = useCallback((e) => {
-    e.target.classList.remove("dragging");
+    e.currentTarget.classList.remove("dragging");
     clearAllDragIndicators();
     clearBookDragTitleHighlight();
     clearBookDragSubGroupHighlight();
@@ -1368,13 +1370,13 @@ export default function Sidebar({
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", "category:" + catName);
     requestAnimationFrame(() => {
-      e.target.classList.add("dragging-cat");
-      draggingCatRef.current = e.target;
+      e.currentTarget.classList.add("dragging-cat");
+      draggingCatRef.current = e.currentTarget;
     });
   }, []);
 
   const handleCatDragEnd = useCallback((e) => {
-    e.target.classList.remove("dragging-cat");
+    e.currentTarget.classList.remove("dragging-cat");
     clearCatDragIndicator();
     catDragStateRef.current = null;
     draggingCatRef.current = null;
@@ -1383,7 +1385,7 @@ export default function Sidebar({
   const handleCatDragOver = useCallback((e, catName) => {
     const ds = catDragStateRef.current;
     if (!ds) return;
-    if (catName === "已隐藏" || ds.catName === catName) {
+    if (catName === "已隐藏" || catName === "未分组" || ds.catName === catName) {
       clearCatDragIndicator();
       return;
     }
@@ -1456,12 +1458,12 @@ export default function Sidebar({
     e.dataTransfer.setData("text/plain", "subgroup:" + sgKey);
     // 异步加 dragging-sg 类，避免 Chrome 立刻把拖拽源截图变透明
     requestAnimationFrame(() => {
-      e.target.classList.add("dragging-sg");
+      e.currentTarget.classList.add("dragging-sg");
     });
   }, []);
 
   const handleSgDragEnd = useCallback((e) => {
-    e.target.classList.remove("dragging-sg");
+    e.currentTarget.classList.remove("dragging-sg");
     clearSgDragIndicator();
     sgDragStateRef.current = null;
   }, [clearSgDragIndicator]);
@@ -2320,7 +2322,7 @@ export default function Sidebar({
                         ) : (
                         <div
                           className={`sidebar-book-category-title ${isCollapsed ? "collapsed" : ""}`}
-                          draggable={category.name !== "已隐藏"}
+                          draggable={category.name !== "已隐藏" && category.name !== "未分组"}
                           onClick={() =>
                             setExpandedCategories((prev) => {
                               const next = new Set(prev);
@@ -2807,7 +2809,7 @@ export default function Sidebar({
                               <li key={ch.id}>
                                 <button
                                   className={`chapter-item ${activeId === ch.id ? "active" : ""}`}
-                                  onClick={() => onSelectChapter(ch.id)}
+                                  onClick={() => handleSelect(ch.id)}
                                   onContextMenu={(e) => handleChapterContextMenu(e, ch.id)}
                                 >
                                   <span className="chapter-icon">{ch.icon}</span>

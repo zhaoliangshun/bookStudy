@@ -507,7 +507,7 @@ function template(nums) {
 
 1. **打印法**：在关键位置打印变量值，观察是否符合预期
    \`\`\`javascript
-   console.log(\`left=${left}, right=${right}, state=${state}, result=${result}\`);
+   console.log(\`left=\${left}, right=\${right}, state=\${state}, result=\${result}\`);
    \`\`\`
 
 2. **手动模拟**：拿最简单的例子（如[1,2,3]），用纸笔走一遍流程
@@ -1136,7 +1136,7 @@ function template(nums) {
 
 1. **打印法**：在关键位置打印变量值，观察是否符合预期
    \`\`\`javascript
-   console.log(\`left=${left}, right=${right}, state=${state}, result=${result}\`);
+   console.log(\`left=\${left}, right=\${right}, state=\${state}, result=\${result}\`);
    \`\`\`
 
 2. **手动模拟**：拿最简单的例子（如[1,2,3]），用纸笔走一遍流程
@@ -1765,7 +1765,7 @@ function template(nums) {
 
 1. **打印法**：在关键位置打印变量值，观察是否符合预期
    \`\`\`javascript
-   console.log(\`left=${left}, right=${right}, state=${state}, result=${result}\`);
+   console.log(\`left=\${left}, right=\${right}, state=\${state}, result=\${result}\`);
    \`\`\`
 
 2. **手动模拟**：拿最简单的例子（如[1,2,3]），用纸笔走一遍流程
@@ -2394,7 +2394,7 @@ function template(nums) {
 
 1. **打印法**：在关键位置打印变量值，观察是否符合预期
    \`\`\`javascript
-   console.log(\`left=${left}, right=${right}, state=${state}, result=${result}\`);
+   console.log(\`left=\${left}, right=\${right}, state=\${state}, result=\${result}\`);
    \`\`\`
 
 2. **手动模拟**：拿最简单的例子（如[1,2,3]），用纸笔走一遍流程
@@ -3023,7 +3023,7 @@ function template(nums) {
 
 1. **打印法**：在关键位置打印变量值，观察是否符合预期
    \`\`\`javascript
-   console.log(\`left=${left}, right=${right}, state=${state}, result=${result}\`);
+   console.log(\`left=\${left}, right=\${right}, state=\${state}, result=\${result}\`);
    \`\`\`
 
 2. **手动模拟**：拿最简单的例子（如[1,2,3]），用纸笔走一遍流程
@@ -3652,7 +3652,7 @@ function template(nums) {
 
 1. **打印法**：在关键位置打印变量值，观察是否符合预期
    \`\`\`javascript
-   console.log(\`left=${left}, right=${right}, state=${state}, result=${result}\`);
+   console.log(\`left=\${left}, right=\${right}, state=\${state}, result=\${result}\`);
    \`\`\`
 
 2. **手动模拟**：拿最简单的例子（如[1,2,3]），用纸笔走一遍流程
@@ -4281,7 +4281,7 @@ function template(nums) {
 
 1. **打印法**：在关键位置打印变量值，观察是否符合预期
    \`\`\`javascript
-   console.log(\`left=${left}, right=${right}, state=${state}, result=${result}\`);
+   console.log(\`left=\${left}, right=\${right}, state=\${state}, result=\${result}\`);
    \`\`\`
 
 2. **手动模拟**：拿最简单的例子（如[1,2,3]），用纸笔走一遍流程
@@ -4910,7 +4910,7 @@ function template(nums) {
 
 1. **打印法**：在关键位置打印变量值，观察是否符合预期
    \`\`\`javascript
-   console.log(\`left=${left}, right=${right}, state=${state}, result=${result}\`);
+   console.log(\`left=\${left}, right=\${right}, state=\${state}, result=\${result}\`);
    \`\`\`
 
 2. **手动模拟**：拿最简单的例子（如[1,2,3]），用纸笔走一遍流程

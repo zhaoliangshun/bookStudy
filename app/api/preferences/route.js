@@ -49,8 +49,15 @@ function writePrefs(data) {
 
 // GET /api/preferences —— 获取当前偏好
 export async function GET() {
-  const prefs = readPrefs();
-  return NextResponse.json(prefs);
+  try {
+    const prefs = readPrefs();
+    return NextResponse.json(prefs);
+  } catch (e) {
+    return NextResponse.json(
+      { error: `读取偏好失败：${e.message}` },
+      { status: 500 }
+    );
+  }
 }
 
 // POST /api/preferences —— 保存偏好（合并写入，只更新传入的字段）
@@ -62,9 +69,16 @@ export async function POST(request) {
     return NextResponse.json({ error: "请求体不是合法的 JSON" }, { status: 400 });
   }
 
-  // 合并写入：先读出现有数据，再用传入的字段覆盖
-  const prefs = readPrefs();
-  const merged = { ...prefs, ...body };
-  writePrefs(merged);
-  return NextResponse.json({ ok: true });
+  try {
+    // 合并写入：先读出现有数据，再用传入的字段覆盖
+    const prefs = readPrefs();
+    const merged = { ...prefs, ...body };
+    writePrefs(merged);
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    return NextResponse.json(
+      { error: `保存偏好失败：${e.message}` },
+      { status: 500 }
+    );
+  }
 }

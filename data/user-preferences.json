@@ -468,5 +468,6 @@
       "hidden": [],
       "order": null
     }
-  }
+  },
+  "testKey": "testValue"
 }
