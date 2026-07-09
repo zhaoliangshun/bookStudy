@@ -159,14 +159,10 @@
       "/py-backend"
     ],
     "JS / TS 生态": [
-      "/",
-      "/nodejs2",
-      "/nodejs3",
       "/ts",
       "/ts2",
       "/ts3",
-      "/workers",
-      "/pnpm"
+      "/workers"
     ],
     "Java 开发": [
       "/java",
@@ -243,19 +239,46 @@
       "/pybasic",
       "/pymod",
       "/py4",
-      "/pyex"
+      "/pyex",
+      "/pnpm"
     ],
     "算法与数据结构": [
       "/algo",
       "/leetcode"
+    ],
+    "nodejs": [
+      "/",
+      "/nodejs3",
+      "/nodejs2"
     ]
   },
   "categoryConfig": {
-    "custom": [],
+    "custom": [
+      {
+        "id": "c-mrcscba2w47r",
+        "name": "nodejs",
+        "icon": "📁"
+      }
+    ],
     "renamed": {},
     "icons": {},
     "hidden": [],
-    "order": null
+    "order": [
+      "Python 编程",
+      "nodejs",
+      "JS / TS 生态",
+      "Java 开发",
+      "AI 智能开发",
+      "前端工程",
+      "后端与网络",
+      "实战项目",
+      "数据库与缓存",
+      "算法与数据结构",
+      "计算机基础",
+      "职场成长",
+      "身心健康",
+      "人际智慧"
+    ]
   },
   "savedDefaults": {
     "bookOrder": {
