@@ -93,8 +93,14 @@ export function MarkdownRenderer({ content }) {
     }
 
     // 代码块 ```lang ... ```
-    // 严格匹配：行首可选空白 + 3个及以上反引号 + 可选空白 + 可选语言名(无空格) + 可选空白 + 行尾
-    const fencedMatch = line.trim().match(/^(`{3,})\s*(\S*)\s*$/);
+    // 匹配：行首可选空白 + 3个及以上反引号 + 可选空白 + 可选语言名。
+    // 语言名规则：字母/数字/+/- 组成（覆盖 js/python/c++/golang 等）；
+    // 另外允许 c# / f# 这种"以 # 结尾"的语言名（# 后必须紧跟行尾，否则视为注释）。
+    // 这样 ```python# 注释 会被识别为 fence 开头，lang=python（# 注释被忽略），
+    // 而 ```c# 仍能被识别为 lang=c#。
+    // 与下方 isFenceLine 保持一致（行首 3+ 反引号即 fence），避免段落循环与外层
+    // 判断不一致导致 i 不前进、外层 while 死循环。
+    const fencedMatch = line.trim().match(/^(`{3,})\s*([a-zA-Z0-9+-]+(?:#(?=$))?)?/);
     if (fencedMatch) {
       const lang = fencedMatch[2];
       const codeLines = [];
@@ -215,17 +221,30 @@ export function MarkdownRenderer({ content }) {
     }
 
     // 普通段落（连续非空行合并）
+    // 注意：段落循环里判断"是否为标题/引用/fence"必须和外层对应检测一致，
+    // 否则会出现"段落里跳出但外层又不处理"的情况，导致 i 不前进、外层 while 死循环。
+    // 例如：缩进的 `    # 注释`（Python 代码里的注释）以 # 开头但行首有缩进，
+    // 外层 heading 正则 /^(#{1,4})\s+/ 要求行首无缩进，匹配失败；
+    // 若段落循环用 trim().startsWith("#") 判断则会跳出，i 不前进 → 死循环 → 页面卡死。
+    // 这里改成与外层 heading 一致的 /^#{1,4}\s/ 行首检测（不 trim），保证一致。
+    // isFenceLine 与外层 fencedMatch 一致：行首 3+ 反引号即视为 fence（lang 已被外层提取）。
+    // 同时加兜底：若循环一行都没消费则强制前进，彻底避免死循环。
     const paraLines = [];
-    const isFenceLine = (l) => /^(`{3,})\s*(\S*)\s*$/.test(l.trim());
+    const isFenceLine = (l) => /^(`{3,})/.test(l.trim());
     while (
       i < lines.length &&
       lines[i].trim() !== "" &&
-      !lines[i].trim().startsWith("#") &&
+      !/^#{1,4}\s/.test(lines[i]) &&
       !lines[i].trim().startsWith(">") &&
       !isFenceLine(lines[i]) &&
       !/^\s*[-*]\s+/.test(lines[i]) &&
       !/^\s*\d+\.\s+/.test(lines[i])
     ) {
+      paraLines.push(lines[i]);
+      i++;
+    }
+    // 兜底：段落循环一行都没消费（理论上不应发生，但为防御性编程避免死循环）
+    if (paraLines.length === 0 && i < lines.length) {
       paraLines.push(lines[i]);
       i++;
     }

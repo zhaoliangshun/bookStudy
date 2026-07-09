@@ -351,7 +351,7 @@ export default function Sidebar({
     () => BOOK_CATEGORIES.filter((c) => c.hide && !c.system).map((c) => c.name),
     []
   );
-  const { config: catConfig, addCategory, renameCategory, deleteCategory, isCustom: isCustomCategory, ensureOrderInitialized, reorderCategories, resetToDefaults: resetCatConfig, resetToConfig, addSubGroup, renameSubGroup, deleteSubGroup, getOrderedSubGroups } =
+  const { config: catConfig, addCategory, renameCategory, deleteCategory, isCustom: isCustomCategory, ensureOrderInitialized, reorderCategories, resetToDefaults: resetCatConfig, resetToConfig, addSubGroup, renameSubGroup, deleteSubGroup, getOrderedSubGroups, reorderSubGroups } =
     useBookCategories(initiallyHiddenCats);
 
   // ===== 书籍拖拽排序 =====
@@ -1444,6 +1444,110 @@ export default function Sidebar({
     draggingCatRef.current = null;
   }, [clearCatDragIndicator, visibleCategories, reorderCategories]);
 
+  // ===== 子分组拖拽排序 =====
+  // 限制：只能在共同父分组内拖动。父分组不同时直接拒绝 drop。
+  // sgDragStateRef 结构：{ parent, sgId, key }
+  //   - parent  源子分组所属的父分类名（用于校验"共同父分组"）
+  //   - sgId    源子分组 id（用于在 subGroupOrder 中找到位置）
+  //   - key     源子分组 key（makeSubGroupKey(parent, sgId)）
+  const handleSgDragStart = useCallback((e, parentName, sgId, sgKey) => {
+    sgDragStateRef.current = { parent: parentName, sgId, key: sgKey };
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", "subgroup:" + sgKey);
+    // 异步加 dragging-sg 类，避免 Chrome 立刻把拖拽源截图变透明
+    requestAnimationFrame(() => {
+      e.target.classList.add("dragging-sg");
+    });
+  }, []);
+
+  const handleSgDragEnd = useCallback((e) => {
+    e.target.classList.remove("dragging-sg");
+    clearSgDragIndicator();
+    sgDragStateRef.current = null;
+  }, [clearSgDragIndicator]);
+
+  // dragover：只允许在共同父分组内显示插入指示器
+  const handleSgDragOver = useCallback((e, parentName, sgId) => {
+    const ds = sgDragStateRef.current;
+    if (!ds) return;
+    // 不同父分组：不允许 drop，清掉所有指示器
+    if (ds.parent !== parentName) {
+      clearSgDragIndicator();
+      return;
+    }
+    // 拖到自己身上：不显示指示器
+    if (ds.sgId === sgId) {
+      clearSgDragIndicator();
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+
+    const titleEl = e.currentTarget;
+    const rect = titleEl.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    const position = e.clientY < midY ? "before" : "after";
+
+    // 清除其他位置的指示器，再给当前目标加上
+    document.querySelectorAll(".sg-drag-over-before, .sg-drag-over-after").forEach((el) => {
+      el.classList.remove("sg-drag-over-before", "sg-drag-over-after");
+    });
+    titleEl.classList.add(position === "before" ? "sg-drag-over-before" : "sg-drag-over-after");
+  }, [clearSgDragIndicator]);
+
+  const handleSgDragLeave = useCallback((e) => {
+    // 只在真正离开当前 title 元素时清掉指示器（子元素间切换不清理）
+    const related = e.relatedTarget;
+    if (related && e.currentTarget.contains(related)) return;
+    e.currentTarget.classList.remove("sg-drag-over-before", "sg-drag-over-after");
+  }, []);
+
+  // drop：执行排序，调用 reorderSubGroups 持久化新顺序
+  const handleSgDrop = useCallback((e, parentName, sgId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    clearSgDragIndicator();
+    const ds = sgDragStateRef.current;
+    if (!ds) {
+      return;
+    }
+    // 不同父分组：拒绝 drop（防御性校验，dragover 已经拦截过）
+    if (ds.parent !== parentName) {
+      sgDragStateRef.current = null;
+      return;
+    }
+    // 拖到自己身上：no-op
+    if (ds.sgId === sgId) {
+      sgDragStateRef.current = null;
+      return;
+    }
+
+    // 取当前父分组下子分组的有序列表，计算 from/to 索引
+    const orderedSgs = getOrderedSubGroups(parentName);
+    const fromIdx = orderedSgs.findIndex((sg) => sg.id === ds.sgId);
+    const toIdx = orderedSgs.findIndex((sg) => sg.id === sgId);
+    if (fromIdx === -1 || toIdx === -1) {
+      sgDragStateRef.current = null;
+      return;
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    const insertAfter = e.clientY >= midY;
+
+    // 基于子分组 id 数组计算新顺序
+    const newOrder = orderedSgs.map((sg) => sg.id);
+    newOrder.splice(fromIdx, 1);
+    // splice 后重新找目标位置（fromIdx 在 toIdx 之前时 toIdx 会下移）
+    let insertIdx = newOrder.indexOf(sgId);
+    if (insertAfter) insertIdx += 1;
+    newOrder.splice(insertIdx, 0, ds.sgId);
+
+    reorderSubGroups(parentName, newOrder);
+    sgDragStateRef.current = null;
+  }, [clearSgDragIndicator, getOrderedSubGroups, reorderSubGroups]);
+
   // 全局拖拽结束兜底：防止 React 重渲染导致 DOM 上的 onDragEnd 未触发，状态残留阻止点击
   useEffect(() => {
     const handleGlobalDragEnd = () => {
@@ -2424,6 +2528,7 @@ export default function Sidebar({
                               ) : (
                               <div
                                 className={`sidebar-subgroup-title ${!sgExpanded ? "collapsed" : ""}`}
+                                draggable
                                 onClick={() =>
                                   setExpandedSubGroups((prev) => {
                                     const next = new Set(prev);
@@ -2436,8 +2541,17 @@ export default function Sidebar({
                                   })
                                 }
                                 onContextMenu={(e) => handleSubGroupContextMenu(e, category.name, sg.id, sg.name)}
+                                onDragStart={(e) => handleSgDragStart(e, category.name, sg.id, sgKey)}
+                                onDragEnd={handleSgDragEnd}
                                 onDragOver={(e) => {
-                                  if (catDragStateRef.current || sgDragStateRef.current) return;
+                                  // 分类拖拽：不处理（避免和分类排序冲突）
+                                  if (catDragStateRef.current) return;
+                                  // 子分组拖拽：交给 sg 专用 handler
+                                  if (sgDragStateRef.current) {
+                                    handleSgDragOver(e, category.name, sg.id);
+                                    return;
+                                  }
+                                  // 书籍拖拽：高亮提示可以放入此子分组
                                   if (dragStateRef.current) {
                                     e.preventDefault();
                                     e.stopPropagation();
@@ -2453,6 +2567,10 @@ export default function Sidebar({
                                   }
                                 }}
                                 onDragLeave={(e) => {
+                                  if (sgDragStateRef.current) {
+                                    handleSgDragLeave(e);
+                                    return;
+                                  }
                                   if (dragStateRef.current) {
                                     const titleEl = e.currentTarget;
                                     const rect = titleEl.getBoundingClientRect();
@@ -2467,7 +2585,12 @@ export default function Sidebar({
                                   }
                                 }}
                                 onDrop={(e) => {
-                                  if (catDragStateRef.current || sgDragStateRef.current) return;
+                                  if (catDragStateRef.current) return;
+                                  // 子分组拖拽 drop：执行排序
+                                  if (sgDragStateRef.current) {
+                                    handleSgDrop(e, category.name, sg.id);
+                                    return;
+                                  }
                                   if (dragStateRef.current) {
                                     e.preventDefault();
                                     e.stopPropagation();
@@ -2494,7 +2617,7 @@ export default function Sidebar({
                                     dragStateRef.current = null;
                                   }
                                 }}
-                                title={`子分组：${sg.name}`}
+                                title={`子分组：${sg.name}（可拖拽排序）`}
                               >
                                 <span className={`sidebar-subgroup-arrow${sgExpanded ? " expanded" : ""}`}>▶</span>
                                 <span className="sidebar-subgroup-icon">📁</span>

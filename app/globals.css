@@ -703,6 +703,14 @@ body {
   opacity: 0.4;
 }
 
+/* 子分组标题拖拽排序：和分类标题一样显示 grab/grabbing 光标提示可拖拽 */
+.sidebar-subgroup-title[draggable="true"] {
+  cursor: grab;
+}
+.sidebar-subgroup-title[draggable="true"]:active {
+  cursor: grabbing;
+}
+
 .sidebar-subgroup-title.sg-drag-over-before {
   border-top: 2px solid var(--accent-green, #10b981);
   margin-top: -2px;
