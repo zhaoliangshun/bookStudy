@@ -34,6 +34,7 @@ import ContextMenu from "./ContextMenu";
 import useBookChapterActions from "../hooks/useBookChapterActions";
 import useBookDragDrop from "../hooks/useBookDragDrop";
 import useBookCategories, { makeSubGroupKey, parseSubGroupKey } from "../hooks/useBookCategories";
+import { chapterNavStore } from "./chapterNavStore";
 
 // =============================================================
 // 书籍目录数据（从 SiteNav 移入，集中维护）
@@ -1971,6 +1972,17 @@ export default function Sidebar({
     },
     [onSelectChapter, currentPath]
   );
+
+  // ===== 注册章节数据到浮动导航 store =====
+  // 将扁平章节列表（按分组顺序展开，过滤已隐藏章节）和当前 activeId 注册到全局 store，
+  // 供右侧浮动的上一章/下一章按钮使用。组件卸载时清除。
+  useEffect(() => {
+    const flatChapters = filteredGroupedChapters.flatMap((g) => g.items);
+    chapterNavStore.register(flatChapters, activeId, handleSelect);
+    return () => {
+      chapterNavStore.unregister();
+    };
+  }, [filteredGroupedChapters, activeId, handleSelect]);
 
   // 处理跨页面跳转：当路径变化时，清除无效的 hash
   useEffect(() => {

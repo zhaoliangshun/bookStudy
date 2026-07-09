@@ -3345,3 +3345,208 @@ body {
 .mtki {
   font-style: normal !important;
 }
+
+/* =============================================================
+   右侧浮动面板统一容器
+   -------------------------------------------------------------
+   将回到顶部/底部、阅读主题、章节导航三个浮动组件收纳到一个
+   垂直居中的 fixed 容器中，保证所有按钮水平对齐、间距一致。
+   ============================================================= */
+.floating-panel-group {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+
+/* 在统一容器内，子组件取消自身的 fixed 定位，变为普通 flex 子元素 */
+.floating-panel-group .quick-scroll,
+.floating-panel-group .reading-theme-switcher,
+.floating-panel-group .floating-chapter-nav {
+  position: static !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  transform: none !important;
+  z-index: auto !important;
+  pointer-events: none;
+  gap: 10px;
+}
+
+/* QuickScroll 和 FloatingChapterNav 内部按钮居中对齐 */
+.floating-panel-group .quick-scroll,
+.floating-panel-group .floating-chapter-nav {
+  align-items: center !important;
+}
+
+/* ReadingThemeSwitcher 保持 flex-end，让展开面板向左弹出 */
+.floating-panel-group .reading-theme-switcher {
+  align-items: flex-end !important;
+}
+
+/* 阅读主题面板使用绝对定位，避免撑开容器宽度 */
+.floating-panel-group .reading-theme-panel {
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-right: 10px;
+}
+
+.floating-panel-group .reading-theme-switcher {
+  position: relative !important;
+}
+
+.floating-panel-group .quick-scroll-btn,
+.floating-panel-group .reading-theme-btn,
+.floating-panel-group .floating-nav-btn {
+  pointer-events: auto;
+}
+
+/* 窄屏适配 */
+@media (max-width: 768px) {
+  .floating-panel-group {
+    right: 12px;
+    gap: 8px;
+  }
+}
+
+/* =============================================================
+   浮动章节导航（右侧悬浮：上一章 ← / → 下一章）
+   ============================================================= */
+.floating-chapter-nav {
+  position: fixed;
+  right: 16px;
+  top: calc(50% + 60px);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.floating-nav-btn {
+  pointer-events: auto;
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  padding: 0;
+  color: var(--text);
+}
+
+.floating-nav-btn:hover {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+  transform: scale(1.08);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.2);
+}
+
+.floating-nav-btn:active {
+  transform: scale(0.96);
+}
+
+.floating-nav-btn-disabled {
+  opacity: 0.3;
+  cursor: default !important;
+  pointer-events: none !important;
+}
+
+.floating-nav-btn-disabled:hover {
+  background: var(--bg-elevated) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+  transform: none !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12) !important;
+}
+
+.floating-nav-arrow {
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+/* 悬停提示气泡 */
+.floating-nav-tip {
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text);
+  pointer-events: none;
+  z-index: 1000;
+  animation: navTipIn 0.15s ease forwards;
+}
+
+/* 小三角指向按钮 */
+.floating-nav-tip::after {
+  content: "";
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 6px solid transparent;
+  border-left-color: var(--bg-elevated);
+}
+
+.floating-nav-tip-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.floating-nav-tip-text {
+  font-weight: 500;
+}
+
+@keyframes navTipIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+/* 窄屏适配 */
+@media (max-width: 768px) {
+  .floating-chapter-nav {
+    right: 8px;
+    top: calc(50% + 50px);
+  }
+  .floating-nav-btn {
+    width: 34px;
+    height: 34px;
+  }
+  .floating-nav-arrow {
+    font-size: 16px;
+  }
+}

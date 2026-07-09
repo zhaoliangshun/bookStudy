@@ -35,18 +35,18 @@ export default function QuickScroll() {
     setAtBottom(scrollHeight - scrollTop - clientHeight < 200);
   }, [findContent]);
 
-  // 滚动到顶部
+  // 滚动到顶部（瞬间完成，无动画）
   const scrollToTop = useCallback(() => {
     const el = findContent();
     if (!el) return;
-    el.scrollTo({ top: 0, behavior: "smooth" });
+    el.scrollTop = 0;
   }, [findContent]);
 
-  // 滚动到底部
+  // 滚动到底部（瞬间完成，无动画）
   const scrollToBottom = useCallback(() => {
     const el = findContent();
     if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    el.scrollTop = el.scrollHeight;
   }, [findContent]);
 
   useEffect(() => {
