@@ -87,9 +87,11 @@ with ThreadPoolExecutor(8) as io_pool:
 
 下面 demo 用同一段"工作量"，分别用纯计算和 sleep 模拟两种任务，观察多线程/多进程的表现差异。`,
     code: `# 第二十九章 demo：CPU 密集 vs IO 密集
-import threading
-import multiprocessing as mp
-import time
+# 本 demo 对比"纯计算"和"纯等待"两种任务在串行/多线程/多进程下的耗时差异，
+# 直观展示 GIL 对 CPU 密集任务的限制，以及 IO 密集任务用线程即可并发的原理。
+import threading                    # 线程模块：创建和管理线程
+import multiprocessing as mp        # 进程模块：创建子进程，绕开 GIL 实现真正并行
+import time                         # 时间模块：time.time() 获取时间戳用于计时
 
 # 显式指定 fork 启动方式：子进程继承父进程内存空间，启动快、不重新导入主模块。
 # macOS 自 Python 3.8 起默认 spawn（会重新导入主模块，stdin 运行时易失败），
@@ -100,34 +102,35 @@ ctx = mp.get_context("fork")
 # 任务1：CPU 密集（纯计算）
 # ============================================================
 def cpu_work(n):
-    """CPU 密集：累加 n 次"""
-    total = 0
-    for i in range(n):
-        total += i
+    """CPU 密集：累加 n 次——纯计算，全程占用 CPU，不等待任何 IO"""
+    total = 0                        # 初始化累加器
+    for i in range(n):               # 循环 n 次，每次都是纯 CPU 运算
+        total += i                   # 累加：GIL 限制最典型的操作（同一时刻只有一个线程能执行）
     return total
 
-N_CPU = 3_000_000
+N_CPU = 3_000_000                    # 每个 worker 累加 300 万次（工作量足够大才能看出耗时差异）
 print("=" * 55)
 print("任务1：CPU 密集（每个累加 300万次）")
 print("=" * 55)
 
-# 串行
-start = time.time()
-cpu_work(N_CPU); cpu_work(N_CPU)
-serial = time.time() - start
+# 串行：在主线程里依次执行两次，总耗时 ≈ 2 倍单次耗时
+start = time.time()                  # 记录开始时间戳
+cpu_work(N_CPU); cpu_work(N_CPU)     # 串行调用两次：第一次跑完才开始第二次
+serial = time.time() - start         # 计算串行总耗时
 
-# 多线程（GIL 限制，≈串行）
+# 多线程（GIL 限制，≈串行）：两个线程同时跑，但 GIL 只让一个线程执行 Python 字节码
 start = time.time()
+# 创建 2 个线程：target 指定要跑的函数，args 传参数（必须是元组，所以尾部逗号不能少）
 ts = [threading.Thread(target=cpu_work, args=(N_CPU,)) for _ in range(2)]
-for t in ts: t.start()
-for t in ts: t.join()
-thread_t = time.time() - start
+for t in ts: t.start()               # 启动两个线程（理论上同时开始）
+for t in ts: t.join()                # 主线程阻塞，等两个子线程都跑完再继续
+thread_t = time.time() - start       # 多线程总耗时（因 GIL 限制，约等于串行）
 
-# 多进程（真正并行）
+# 多进程（真正并行）：两个进程各有独立 GIL，能真正同时跑在不同 CPU 核上
 start = time.time()
-with ctx.Pool(2) as p:
-    p.map(cpu_work, [N_CPU, N_CPU])
-proc_t = time.time() - start
+with ctx.Pool(2) as p:               # 创建含 2 个 worker 的进程池
+    p.map(cpu_work, [N_CPU, N_CPU])  # 把两个任务分发给两个进程并行执行
+proc_t = time.time() - start         # 多进程总耗时（≈ 串行的一半，真正并行）
 
 print(f"  串行:   {serial:.3f}s")
 print(f"  多线程: {thread_t:.3f}s  (受 GIL 限制，没变快)")
@@ -138,32 +141,32 @@ print(f"  >>> CPU 密集任务：多进程明显胜出\\n")
 # 任务2：IO 密集（sleep 模拟等待）
 # ============================================================
 def io_work(secs):
-    """IO 密集：sleep 模拟网络/文件等待"""
-    time.sleep(secs)
-    return secs
+    """IO 密集：sleep 模拟网络/文件等待——CPU 空闲，只是在等"""
+    time.sleep(secs)                 # sleep 期间会主动释放 GIL，其他线程可以执行
+    return secs                      # 返回等待的秒数
 
-SECS = 1
+SECS = 1                             # 每个 worker 等待 1 秒
 print("=" * 55)
 print("任务2：IO 密集（每个 sleep 1秒模拟等待）")
 print("=" * 55)
 
-# 串行
+# 串行：两次 sleep 依次执行，总耗时 ≈ 2 秒
 start = time.time()
-io_work(SECS); io_work(SECS)
+io_work(SECS); io_work(SECS)         # 串行等待：第一次等完才开始第二次
 serial = time.time() - start
 
-# 多线程
+# 多线程：sleep 释放 GIL，两个线程可以"同时"等待
 start = time.time()
 ts = [threading.Thread(target=io_work, args=(SECS,)) for _ in range(2)]
-for t in ts: t.start()
-for t in ts: t.join()
-thread_t = time.time() - start
+for t in ts: t.start()               # 启动两个线程
+for t in ts: t.join()                # 等两个线程都完成
+thread_t = time.time() - start       # 总耗时 ≈ 1 秒（并发等待，不是 2 秒）
 
-# 多进程
+# 多进程：也能并发，但创建进程开销比线程大
 start = time.time()
-with ctx.Pool(2) as p:
-    p.map(io_work, [SECS, SECS])
-proc_t = time.time() - start
+with ctx.Pool(2) as p:               # 2 个进程的进程池
+    p.map(io_work, [SECS, SECS])     # 两个进程同时 sleep
+proc_t = time.time() - start         # 总耗时 ≈ 1 秒，但进程创建开销更大
 
 print(f"  串行:   {serial:.3f}s")
 print(f"  多线程: {thread_t:.3f}s  (等待时释放GIL，并发)")
@@ -225,47 +228,49 @@ print("• 混合型   → IO 用线程池，计算用进程池，各取所长")
 
 下面 demo 跑完整对照实验，输出表格化结果。`,
     code: `# 第三十章 demo：多线程 vs 多进程 性能实测
-import multiprocessing as mp
-import time
-from concurrent.futures import ThreadPoolExecutor
+# 本 demo 跑一组对照实验：固定总工作量，改变并发方式和并发数，
+# 量化对比串行/2线程/4线程/2进程/4进程 的耗时和加速比。
+import multiprocessing as mp        # 进程模块
+import time                         # 计时
+from concurrent.futures import ThreadPoolExecutor  # 线程池：控制并发线程数
 
 # 显式用 fork 上下文：避免 macOS 默认 spawn 在 stdin 运行时重新导入主模块失败
 ctx = mp.get_context("fork")
 
 def cpu_work(n):
     """CPU 密集任务：累加 n 次"""
-    total = 0
-    for i in range(n):
-        total += i
+    total = 0                        # 初始化累加器
+    for i in range(n):               # 纯 CPU 循环
+        total += i                   # 每次累加都占用 CPU
     return total
 
 def io_work(secs):
     """IO 密集任务：sleep 模拟等待"""
-    time.sleep(secs)
+    time.sleep(secs)                 # sleep 期间释放 GIL，CPU 空闲
     return secs
 
 def measure_serial(func, args_list):
     """串行执行所有任务，返回总耗时（作为加速比的 baseline）"""
-    start = time.time()
-    for a in args_list:
+    start = time.time()              # 记录开始时间
+    for a in args_list:              # 逐个执行，一个跑完才跑下一个
         func(a)
-    return time.time() - start
+    return time.time() - start       # 返回总耗时
 
 def measure_threads(func, args_list, n):
     """用 n 个线程并发处理 args_list，返回总耗时
     用线程池控制并发数为 n（而非每个任务开一个线程），
     这样 '2线程' 才真的是 2 个 worker 在跑，便于公平对比"""
     start = time.time()
-    with ThreadPoolExecutor(n) as ex:
-        list(ex.map(func, args_list))
-    return time.time() - start
+    with ThreadPoolExecutor(n) as ex:  # 创建 n 个线程的线程池
+        list(ex.map(func, args_list))   # map 自动把任务分配给线程池中的线程
+    return time.time() - start       # with 结束时等所有任务完成，返回总耗时
 
 def measure_processes(func, args_list, n):
     """n 个进程并发，返回耗时"""
     start = time.time()
-    with ctx.Pool(n) as p:
-        p.map(func, args_list)
-    return time.time() - start
+    with ctx.Pool(n) as p:           # 创建 n 个进程的进程池
+        p.map(func, args_list)       # map 自动把任务分配给进程池中的进程
+    return time.time() - start       # 返回总耗时
 
 def run_benchmark(name, func, single_arg, counts):
     """跑一组对照实验：固定 counts 个任务的工作负载，改变并发方式和并发数
@@ -281,8 +286,8 @@ def run_benchmark(name, func, single_arg, counts):
     print(f"  {'方式':<12} {'耗时':>8}  {'加速比':>6}")
     print(f"  {'-'*32}")
     # 固定 counts 个任务作为工作负载，串行耗时作为 baseline（加速比 = 1.0x）
-    args = [single_arg] * counts
-    serial_t = measure_serial(func, args)
+    args = [single_arg] * counts     # 生成 counts 个相同的参数（如 4 个 300万）
+    serial_t = measure_serial(func, args)  # 串行跑完所有任务，作为基准
     serial_label = f"串行({counts}个)"
     print(f"  {serial_label:<12} {serial_t:>7.3f}s  {'1.00x':>6}")
     # 2 线程处理同样的 counts 个任务，加速比 = 串行耗时 / 并发耗时
@@ -298,10 +303,10 @@ def run_benchmark(name, func, single_arg, counts):
     p4 = measure_processes(func, args, 4)
     print(f"  {'4进程':<12} {p4:>7.3f}s  {serial_t/p4:>5.2f}x")
 
-# CPU 密集：累加 300万次
+# CPU 密集：累加 300万次（4 个任务，对比不同并发方式的加速效果）
 run_benchmark("CPU 密集（累加300万）", cpu_work, 3_000_000, 4)
 
-# IO 密集：sleep 0.5秒
+# IO 密集：sleep 0.5秒（4 个任务，对比不同并发方式的加速效果）
 run_benchmark("IO 密集（sleep 0.5s）", io_work, 0.5, 4)
 
 print(f"\\n{'='*55}")
@@ -410,10 +415,12 @@ def parallel_map(func, items, task_type="io", workers=None):
 
 下面 demo 用同一个 Executor 抽象，跑 CPU 和 IO 两种任务。`,
     code: `# 第三十一章 demo：concurrent.futures 统一接口
-import os
-import time
-import multiprocessing as mp
-from functools import partial
+# 本 demo 展示 ThreadPoolExecutor 和 ProcessPoolExecutor 的 API 一致性，
+# 用同一个 parallel_map 函数自动选型，以及 Future 对象的各种方法。
+import os                           # os.cpu_count() 获取 CPU 核数
+import time                         # 计时
+import multiprocessing as mp        # 进程模块
+from functools import partial       # partial：预绑定部分参数，生成新的可调用对象
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 
 # ProcessPoolExecutor 默认用 spawn 启动子进程：子进程会重新 import 主模块。
@@ -426,14 +433,14 @@ ForkProcessPool = partial(ProcessPoolExecutor, mp_context=mp.get_context("fork")
 
 def cpu_task(n):
     """CPU 密集"""
-    total = 0
-    for i in range(n):
-        total += i
+    total = 0                        # 初始化累加器
+    for i in range(n):               # 纯 CPU 循环
+        total += i                   # 累加
     return total
 
 def io_task(secs):
     """IO 密集"""
-    time.sleep(secs)
+    time.sleep(secs)                 # sleep 期间释放 GIL，模拟 IO 等待
     return secs
 
 # ============================================================
@@ -443,14 +450,14 @@ def parallel_map(func, items, task_type="io", workers=None):
     """根据任务类型自动选择线程池或进程池"""
     if task_type == "cpu":
         Executor = ForkProcessPool            # 进程池用 fork 上下文版
-        workers = workers or os.cpu_count()
+        workers = workers or os.cpu_count()   # CPU 密集：进程数 = CPU 核数
         print(f"  → 选择进程池 (workers={workers})")
     else:
-        Executor = ThreadPoolExecutor
-        workers = workers or min(8, (os.cpu_count() or 4) * 2)
+        Executor = ThreadPoolExecutor         # IO 密集：用线程池
+        workers = workers or min(8, (os.cpu_count() or 4) * 2)  # 线程数可以多于核数
         print(f"  → 选择线程池 (workers={workers})")
-    with Executor(max_workers=workers) as ex:
-        return list(ex.map(func, items))
+    with Executor(max_workers=workers) as ex:  # 创建池，max_workers 控制并发数
+        return list(ex.map(func, items))       # map 并发执行，list 收集结果
 
 # ============================================================
 # 实验1：CPU 任务用进程池
@@ -458,9 +465,9 @@ def parallel_map(func, items, task_type="io", workers=None):
 print("=" * 55)
 print("实验1：CPU 任务 → 自动选进程池")
 print("=" * 55)
-items = [2_000_000, 2_000_000, 2_000_000, 2_000_000]
+items = [2_000_000, 2_000_000, 2_000_000, 2_000_000]  # 4 个 CPU 任务，每个累加 200 万
 start = time.time()
-results = parallel_map(cpu_task, items, task_type="cpu")
+results = parallel_map(cpu_task, items, task_type="cpu")  # task_type="cpu" 触发进程池选型
 print(f"  耗时 {time.time()-start:.3f}s，结果 {results}\\n")
 
 # ============================================================
@@ -469,9 +476,9 @@ print(f"  耗时 {time.time()-start:.3f}s，结果 {results}\\n")
 print("=" * 55)
 print("实验2：IO 任务 → 自动选线程池")
 print("=" * 55)
-items = [0.5, 0.5, 0.5, 0.5]
+items = [0.5, 0.5, 0.5, 0.5]           # 4 个 IO 任务，每个 sleep 0.5 秒
 start = time.time()
-results = parallel_map(io_task, items, task_type="io")
+results = parallel_map(io_task, items, task_type="io")  # task_type="io" 触发线程池选型
 print(f"  耗时 {time.time()-start:.3f}s，结果 {results}\\n")
 
 # ============================================================
@@ -484,15 +491,15 @@ def run_with(Executor, name):
     """用同一段代码跑不同的 Executor：切换类名即可换并发模型"""
     start = time.time()
     with Executor(max_workers=4) as ex:
-        # submit 提交 4 个任务，返回 4 个 Future
+        # submit 提交 4 个任务，返回 4 个 Future（"未来结果"对象，非阻塞）
         futures = [ex.submit(cpu_task, 2_000_000) for _ in range(4)]
-        # f.result() 阻塞取每个任务的结果
+        # f.result() 阻塞取每个任务的结果（任务未完成时会等待）
         results = [f.result() for f in futures]
     print(f"  {name}: {time.time()-start:.3f}s")
     return results
 
-run_with(ThreadPoolExecutor, "线程池")
-run_with(ForkProcessPool, "进程池")
+run_with(ThreadPoolExecutor, "线程池")    # CPU 任务用线程池：受 GIL 限制，≈串行
+run_with(ForkProcessPool, "进程池")       # CPU 任务用进程池：真正并行，更快
 print()
 
 # ============================================================
@@ -502,24 +509,24 @@ print("=" * 55)
 print("实验4：Future 对象的方法")
 print("=" * 55)
 with ThreadPoolExecutor(2) as ex:
-    f = ex.submit(io_task, 0.3)
-    print(f"  提交后 done={f.done()}")
-    time.sleep(0.1)
-    print(f"  0.1s后 done={f.done()}")
-    result = f.result()
-    print(f"  结果={result}, done={f.done()}")
-    print(f"  异常={f.exception()}")
+    f = ex.submit(io_task, 0.3)        # 提交一个 sleep 0.3 秒的任务
+    print(f"  提交后 done={f.done()}")  # 刚提交，还没完成 → False
+    time.sleep(0.1)                    # 等 0.1 秒
+    print(f"  0.1s后 done={f.done()}") # 可能还没完成（任务要 0.3 秒）
+    result = f.result()                # 阻塞等待结果（最多再等 0.2 秒）
+    print(f"  结果={result}, done={f.done()}")  # 已完成 → True
+    print(f"  异常={f.exception()}")   # 无异常 → None
 
 # 带异常的 Future
 def boom():
-    raise ValueError("爆炸")
+    raise ValueError("爆炸")           # 故意抛异常
 with ThreadPoolExecutor(1) as ex:
-    f = ex.submit(boom)
+    f = ex.submit(boom)                # 提交会抛异常的任务
     try:
-        f.result()
+        f.result()                     # result() 会重新抛出任务中的异常
     except ValueError as e:
         print(f"  捕获异常: {e}")
-    print(f"  exception(): {f.exception()}")
+    print(f"  exception(): {f.exception()}")  # exception() 返回异常对象（不抛出）
 
 print("\\n要点：")
 print("• ThreadPoolExecutor 和 ProcessPoolExecutor API 完全一致")
@@ -614,17 +621,19 @@ f.add_done_callback(on_done)   # 完成时在主线程调用
 
 下面 demo 用不同耗时的任务，演示三种策略的结果返回顺序差异。`,
     code: `# 第三十二章 demo：as_completed / wait / Future 进阶
+# 本 demo 用不同耗时的任务，演示三种拿结果的策略：
+#   map（按顺序）、as_completed（谁先完成谁先返回）、wait（阻塞等待+策略控制）
 import time
 from concurrent.futures import (
-    ThreadPoolExecutor, ProcessPoolExecutor,
+    ThreadPoolExecutor,
     as_completed, wait, FIRST_COMPLETED, ALL_COMPLETED
 )
 
-# 不同耗时的任务（输入越大耗时越长）
+# 不同耗时的任务（输入越大耗时越长）：模拟真实场景中各任务执行时间不同
 def variable_task(x):
-    secs = x * 0.15
-    time.sleep(secs)
-    return f"任务{x}(耗时{secs:.2f}s)"
+    secs = x * 0.15                   # x 越大，sleep 越久（模拟工作量不同）
+    time.sleep(secs)                  # IO 密集：sleep 期间释放 GIL
+    return f"任务{x}(耗时{secs:.2f}s)"  # 返回描述字符串，方便观察返回顺序
 
 # ============================================================
 # 实验1：map 按顺序返回
@@ -633,7 +642,8 @@ print("=" * 55)
 print("策略1：map —— 按输入顺序返回")
 print("=" * 55)
 with ThreadPoolExecutor(4) as ex:
-    # 输入顺序：3,1,4,2（3最慢）
+    # 输入顺序：3,1,4,2（3最慢，1最快）
+    # map 的特点：结果顺序 = 输顺序，即使后面的任务先完成也要等前面的
     results = list(ex.map(variable_task, [3, 1, 4, 2]))
     for r in results:
         print(f"  {r}")
@@ -646,9 +656,11 @@ print("=" * 55)
 print("策略2：as_completed —— 谁先完成谁先返回")
 print("=" * 55)
 with ThreadPoolExecutor(4) as ex:
+    # 用字典把 future 映射到输入值，方便后续查是哪个任务
     futures = {ex.submit(variable_task, x): x for x in [3, 1, 4, 2]}
+    # as_completed：哪个 future 先完成就先 yield，不按提交顺序
     for f in as_completed(futures):
-        print(f"  ✓ {f.result()}")
+        print(f"  ✓ {f.result()}")     # f.result() 取结果（已完成，不会阻塞）
 print("  → 最快的（任务1）先返回\\n")
 
 # ============================================================
@@ -659,16 +671,16 @@ print("策略3：wait(FIRST_COMPLETED) —— 有一个完成就继续")
 print("=" * 55)
 with ThreadPoolExecutor(4) as ex:
     futures = [ex.submit(variable_task, x) for x in [3, 1, 4, 2]]
-    # 有一个完成就返回
+    # 有一个完成就返回：返回 (done集合, not_done集合)
     done, not_done = wait(futures, return_when=FIRST_COMPLETED)
     print(f"  已完成 {len(done)} 个，未完成 {len(not_done)} 个")
     for f in done:
-        print(f"  ✓ {f.result()}")
+        print(f"  ✓ {f.result()}")     # 打印已完成任务的结果
     # 继续等剩下的
     print("  继续等剩余的...")
-    done2, not_done2 = wait(not_done, return_when=ALL_COMPLETED)
+    done2, not_done2 = wait(not_done, return_when=ALL_COMPLETED)  # 等全部完成
     for f in done2:
-        print(f"  ✓ {f.result()}")
+        print(f"  ✓ {f.result()}")     # 打印剩余任务的结果
 print()
 
 # ============================================================
@@ -679,7 +691,7 @@ print("策略4：wait(timeout) 超时后取消未完成任务")
 print("=" * 55)
 with ThreadPoolExecutor(4) as ex:
     futures = [ex.submit(variable_task, x) for x in [1, 2, 3, 4]]
-    # 最多等0.5秒
+    # 最多等0.5秒：超时后返回当时已完成的和未完成的两组
     done, not_done = wait(futures, timeout=0.5, return_when=ALL_COMPLETED)
     print(f"  0.5秒内完成: {len(done)} 个")
     for f in done:
@@ -687,6 +699,7 @@ with ThreadPoolExecutor(4) as ex:
     print(f"  未完成: {len(not_done)} 个，尝试取消")
     cancelled = 0
     for f in not_done:
+        # cancel() 只能取消"还没开始执行"的任务，已开始或已完成的返回 False
         if f.cancel():
             cancelled += 1
     print(f"  成功取消: {cancelled} 个（未开始的才能取消）")
@@ -699,16 +712,17 @@ print("=" * 55)
 print("策略5：add_done_callback 完成回调")
 print("=" * 55)
 def on_success(future):
+    """回调函数：任务完成时自动调用（在 worker 线程中执行）"""
     try:
-        print(f"  [回调] 成功: {future.result()}")
+        print(f"  [回调] 成功: {future.result()}")  # 取结果，成功则打印
     except Exception as e:
-        print(f"  [回调] 失败: {e}")
+        print(f"  [回调] 失败: {e}")                # 有异常则打印失败
 
 with ThreadPoolExecutor(2) as ex:
     for x in [1, 2, 3]:
-        f = ex.submit(variable_task, x)
-        f.add_done_callback(on_success)
-    # with 结束会等所有任务完成（含回调）
+        f = ex.submit(variable_task, x)  # 提交任务
+        f.add_done_callback(on_success)  # 注册回调：任务完成时自动调 on_success
+    # with 结束会等所有任务完成（含回调执行完毕）
 
 print("\\n要点：")
 print("• map 按顺序返回，as_completed 谁先完成谁先返回")
@@ -831,7 +845,9 @@ except subprocess.CalledProcessError as e:
 
 下面 demo 用 run 调用各种命令（本环境用 echo、python3 等通用命令）。`,
     code: `# 第三十三章 demo：subprocess.run 入门
-import subprocess
+# 本 demo 演示 subprocess.run 的各种用法：
+#   捕获输出、调用 python3、check 检测失败、input 传数据、timeout 超时、shell=True
+import subprocess                      # subprocess 模块：在 Python 中启动外部程序
 
 # ============================================================
 # 实验1：基本调用，捕获输出
@@ -854,11 +870,12 @@ print()
 print("=" * 55)
 print("实验2：调用 python3 执行一段代码")
 print("=" * 55)
+# python3 -c "代码" ：直接执行一段 Python 代码字符串
 code = "print(1+1); import sys; print('to stderr', file=sys.stderr)"
 r = subprocess.run(["python3", "-c", code], capture_output=True, text=True)
-print(f"  stdout: {r.stdout.strip()}")
-print(f"  stderr: {r.stderr.strip()}")
-print(f"  返回码: {r.returncode}")
+print(f"  stdout: {r.stdout.strip()}")   # stdout：print(1+1) 的输出 "2"
+print(f"  stderr: {r.stderr.strip()}")   # stderr：print('to stderr') 的输出
+print(f"  返回码: {r.returncode}")        # 0 = 成功
 print()
 
 # ============================================================
@@ -867,14 +884,15 @@ print()
 print("=" * 55)
 print("实验3：check=True 检测命令失败")
 print("=" * 55)
-# python3 -c "import sys; sys.exit(3)" 会返回码 3
+# python3 -c "import sys; sys.exit(3)" 会返回码 3（非0 = 失败）
+# check=True：返回码非0时自动抛 CalledProcessError
 try:
     subprocess.run(["python3", "-c", "import sys; sys.exit(3)"],
                    check=True, capture_output=True, text=True)
-    print("  命令成功")
+    print("  命令成功")                  # 返回码0才会走到这里
 except subprocess.CalledProcessError as e:
-    print(f"  命令失败！返回码={e.returncode}")
-    print(f"  stdout={e.stdout!r}, stderr={e.stderr!r}")
+    print(f"  命令失败！返回码={e.returncode}")  # e.returncode 拿到退出码
+    print(f"  stdout={e.stdout!r}, stderr={e.stderr!r}")  # 异常对象也带输出
 print()
 
 # ============================================================
@@ -884,13 +902,14 @@ print("=" * 55)
 print("实验4：用 input 传数据给子进程 stdin")
 print("=" * 55)
 # 子进程从 stdin 读，反转后输出
+# input 参数：把字符串写入子进程的 stdin（子进程用 sys.stdin.read() 读取）
 r = subprocess.run(
     ["python3", "-c", "import sys; data=sys.stdin.read(); print(data[::-1])"],
-    input="Hello subprocess",
+    input="Hello subprocess",          # 这段文本会传给子进程的 stdin
     capture_output=True, text=True
 )
 print(f"  输入: 'Hello subprocess'")
-print(f"  反转: {r.stdout.strip()}")
+print(f"  反转: {r.stdout.strip()}")    # data[::-1] 把字符串反转
 print()
 
 # ============================================================
@@ -900,11 +919,11 @@ print("=" * 55)
 print("实验5：timeout 超时控制")
 print("=" * 55)
 try:
-    # sleep 5 秒的命令，但只给 1 秒超时
+    # sleep 5 秒的命令，但只给 1 秒超时 → 1 秒后强制终止子进程
     subprocess.run(["python3", "-c", "import time; time.sleep(5)"],
                    timeout=1, capture_output=True)
 except subprocess.TimeoutExpired as e:
-    print(f"  超时！命令被终止（超时 {e.timeout} 秒）")
+    print(f"  超时！命令被终止（超时 {e.timeout} 秒）")  # e.timeout 是设置的超时值
 print()
 
 # ============================================================
@@ -914,9 +933,10 @@ print("=" * 55)
 print("实验6：shell=True 执行带管道的命令")
 print("=" * 55)
 # 只有需要 shell 特性（管道 |、通配 *）时才用 shell=True
+# 这里用了管道 "echo hello | tr a-z A-Z"：echo 输出小写，tr 转大写
 r = subprocess.run("echo hello | tr a-z A-Z", shell=True,
                    capture_output=True, text=True)
-print(f"  管道处理结果: {r.stdout.strip()}")
+print(f"  管道处理结果: {r.stdout.strip()}")  # "HELLO"
 print("  注意：shell=True 有注入风险，绝不拼用户输入！")
 
 print("\\n要点：")
@@ -1008,8 +1028,10 @@ print(p.stdout.readline())     # 读响应
 
 下面 demo 用 Popen 实时读取子进程的逐行输出，演示"边跑边看"。`,
     code: `# 第三十四章 demo：Popen 实时通信
+# 本 demo 演示 Popen 的非阻塞、可交互能力：
+#   communicate 一次性交互、实时逐行读输出、poll 非阻塞检查、terminate 终止、模拟在线运行
 import subprocess
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE    # Popen：底层子进程控制；PIPE：创建管道
 import time
 
 # ============================================================
@@ -1019,13 +1041,16 @@ print("=" * 55)
 print("实验1：Popen + communicate 一次性交互")
 print("=" * 55)
 # 子进程：读一行，反转后输出
+# stdin=PIPE：创建 stdin 管道，主进程可以写数据给子进程
+# stdout=PIPE：创建 stdout 管道，主进程可以读子进程的输出
 p = Popen(["python3", "-c", "print(input()[::-1])"],
           stdin=PIPE, stdout=PIPE, stderr=PIPE, text=True)
 # communicate 一次性发输入并等结束，返回 (stdout, stderr)
-out, err = p.communicate(input="Hello Popen")
+# 内部用线程/选择机制避免管道缓冲区满导致死锁
+out, err = p.communicate(input="Hello Popen")  # 把 "Hello Popen" 写入子进程 stdin
 print(f"  输入: 'Hello Popen'")
-print(f"  反转: {out.strip()}")
-print(f"  返回码: {p.returncode}")
+print(f"  反转: {out.strip()}")          # input()[::-1] 反转字符串 → "nepoP olleH"
+print(f"  返回码: {p.returncode}")        # 0 = 正常结束
 print()
 
 # ============================================================
@@ -1054,13 +1079,13 @@ print("实验3：poll 非阻塞检查子进程状态")
 print("=" * 55)
 p = Popen(["python3", "-c", "import time; time.sleep(0.8)"], stdout=PIPE)
 for i in range(5):
-    time.sleep(0.2)
-    code = p.poll()       # 未结束返回 None，结束返回退出码
+    time.sleep(0.2)                  # 每 0.2 秒检查一次
+    code = p.poll()       # poll()：未结束返回 None，结束返回退出码（非阻塞）
     status = "运行中" if code is None else f"已结束(码={code})"
     print(f"  {(i+1)*0.2:.1f}s: {status}")
-    if code is not None:
+    if code is not None:             # 已结束，跳出循环
         break
-if p.poll() is None:
+if p.poll() is None:                 # 如果循环结束进程还在跑，等它结束
     p.wait()
 print()
 
@@ -1072,11 +1097,11 @@ print("实验4：terminate 终止子进程")
 print("=" * 55)
 p = Popen(["python3", "-c", "import time; print('开始'); time.sleep(10); print('结束')"],
           stdout=PIPE, text=True)
-time.sleep(0.3)
-print(f"  poll={p.poll()} (None=运行中)")
-p.terminate()             # 发 SIGTERM，礼貌终止
-p.wait(timeout=2)
-print(f"  terminate 后 poll={p.returncode} (负数=被信号终止)")
+time.sleep(0.3)                      # 等子进程启动
+print(f"  poll={p.poll()} (None=运行中)")  # 此时子进程在 sleep，poll 返回 None
+p.terminate()             # 发 SIGTERM，礼貌终止（子进程可以捕获处理）
+p.wait(timeout=2)                   # 等待子进程真正退出（最多2秒）
+print(f"  terminate 后 poll={p.returncode} (负数=被信号终止)")  # 负数表示被信号杀死
 print()
 
 # ============================================================
@@ -1087,12 +1112,13 @@ print("实验5：模拟在线运行 Python 代码（本教程 API 的原理）")
 print("=" * 55)
 user_code = "print('我在子进程里运行！'); print(6 * 7)"
 # 这正是 app/api/run-py 的核心：python3 - 从 stdin 读代码
+# python3 - 表示从标准输入读取代码并执行（而非从文件）
 p = Popen(["python3", "-"], stdin=PIPE, stdout=PIPE, stderr=PIPE, text=True)
-out, err = p.communicate(input=user_code, timeout=5)
+out, err = p.communicate(input=user_code, timeout=5)  # 传入代码，5秒超时
 print(f"  执行的代码: {user_code}")
-print(f"  stdout: {out.strip()}")
-print(f"  stderr: {err.strip()}")
-print(f"  返回码: {p.returncode}")
+print(f"  stdout: {out.strip()}")      # 代码的输出
+print(f"  stderr: {err.strip()}")      # 错误输出（正常为空）
+print(f"  返回码: {p.returncode}")      # 0 = 执行成功
 
 print("\\n要点：")
 print("• Popen 提供非阻塞、可交互的子进程控制")
@@ -1163,6 +1189,8 @@ download_all(urls, workers)
 
 下面 demo 实现完整的并发下载器，对比串行 vs 并发的耗时。`,
     code: `# 第三十五章 demo：多线程并发下载器（模拟）
+# 本 demo 模拟多线程并发下载：用 sleep 模拟网络延迟，随机失败模拟网络错误，
+# 对比串行 vs 4线程并发的耗时差异。代码结构和真实下载器完全一致。
 import time
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -1172,66 +1200,66 @@ def download(url):
     返回：(url, size, secs) 三元组
     可能抛异常：模拟网络失败
     """
-    # 模拟下载耗时：0.3~0.8 秒
+    # 模拟下载耗时：0.3~0.8 秒（真实版这里是 requests.get(url).content）
     secs = random.uniform(0.3, 0.8)
-    time.sleep(secs)
-    # 模拟 10% 概率失败
+    time.sleep(secs)                 # IO 密集：sleep 期间释放 GIL，其他线程可以并发
+    # 模拟 10% 概率失败（真实版这里可能是网络超时、服务器错误等）
     if random.random() < 0.1:
         raise ConnectionError(f"{url} 下载失败")
-    # 模拟下载内容大小
+    # 模拟下载内容大小（真实版这里是 len(r.content)）
     size = int(secs * 1000)
-    return (url, size, secs)
+    return (url, size, secs)         # 返回三元组：URL、大小、耗时
 
 def download_all(urls, workers):
     """并发下载所有 URL，返回 (成功列表, 失败列表)"""
-    successes = []
-    failures = []
-    completed = 0
-    total = len(urls)
-    start = time.time()
+    successes = []                    # 成功下载的结果列表
+    failures = []                     # 失败的 URL 列表
+    completed = 0                     # 已完成计数（用于进度显示）
+    total = len(urls)                # 总任务数
+    start = time.time()              # 记录开始时间
 
     with ThreadPoolExecutor(max_workers=workers) as ex:
-        # 提交所有任务
+        # 提交所有任务：submit 返回 Future，用字典映射 Future→url 方便后续查找
         future_to_url = {ex.submit(download, url): url for url in urls}
-        # 谁先完成谁先处理
+        # 谁先完成谁先处理：as_completed 按完成顺序 yield Future
         for future in as_completed(future_to_url):
             completed += 1
-            url = future_to_url[future]
+            url = future_to_url[future]  # 通过 Future 反查对应的 URL
             try:
-                result = future.result()
+                result = future.result()  # 取结果（如果任务抛了异常，这里会重新抛出）
                 successes.append(result)
                 print(f"  ✓ [{completed}/{total}] {result[0]} "
                       f"({result[2]:.2f}s, {result[1]}B)")
             except Exception as e:
-                failures.append(url)
+                failures.append(url)     # 记录失败的 URL
                 print(f"  ✗ [{completed}/{total}] {e}")
 
-    elapsed = time.time() - start
+    elapsed = time.time() - start     # 总耗时
     return successes, failures, elapsed
 
 # ============================================================
 # 主流程
 # ============================================================
 random.seed(42)   # 固定随机种子，输出可复现
-urls = [f"http://example.com/file_{i}.zip" for i in range(12)]
+urls = [f"http://example.com/file_{i}.zip" for i in range(12)]  # 生成 12 个模拟 URL
 
 print("=" * 55)
 print("并发下载器（模拟）")
 print("=" * 55)
 print(f"  共 {len(urls)} 个 URL\\n")
 
-# 串行下载（对比基准）
+# 串行下载（对比基准）：一个下完才下下一个，总耗时 = 所有下载时间之和
 print("-" * 40)
 print("方式1：串行下载")
 print("-" * 40)
 start = time.time()
-serial_ok = 0
-serial_fail = 0
+serial_ok = 0                       # 成功计数
+serial_fail = 0                     # 失败计数
 for url in urls:
     try:
-        download(url)
+        download(url)               # 串行调用，一个接一个
         serial_ok += 1
-    except Exception:
+    except Exception:               # 单个失败不影响后续
         serial_fail += 1
 serial_time = time.time() - start
 print(f"  成功 {serial_ok}，失败 {serial_fail}，耗时 {serial_time:.2f}s\\n")
@@ -1243,8 +1271,8 @@ random.seed(42)
 print("-" * 40)
 print("方式2：4 线程并发下载")
 print("-" * 40)
-ok, fail, t = download_all(urls, workers=4)
-total_bytes = sum(r[1] for r in ok)
+ok, fail, t = download_all(urls, workers=4)  # 4 线程并发下载
+total_bytes = sum(r[1] for r in ok)          # 统计总下载字节数
 print(f"\\n  成功 {len(ok)}，失败 {len(fail)}，耗时 {t:.2f}s")
 print(f"  总下载 {total_bytes}B\\n")
 
@@ -1309,8 +1337,10 @@ print("• max_workers 控制并发数，避免被封 IP")`,
 
 下面 demo 对比串行 vs 4 进程并行的耗时。`,
     code: `# 第三十六章 demo：多进程批量数据处理
-import multiprocessing as mp
-import time
+# 本 demo 模拟"批量数据分析"：对 8 个数据块分别做平方和计算（CPU 密集），
+# 对比串行 vs 4进程并行 vs 4进程+chunksize 的耗时差异。
+import multiprocessing as mp        # 进程模块
+import time                         # 计时
 
 # 显式用 fork 上下文：避免 macOS 默认 spawn 在 stdin 运行时重新导入主模块失败
 ctx = mp.get_context("fork")
@@ -1320,9 +1350,9 @@ def process_chunk(chunk_id, size):
     纯 CPU 计算，模拟数据分析
     """
     total = 0
-    for i in range(size):
-        total += i * i          # 平方和
-    return (chunk_id, total)
+    for i in range(size):           # 循环 size 次
+        total += i * i          # 平方和：i² 的累加（纯 CPU 运算，GIL 限制大）
+    return (chunk_id, total)        # 返回 (块ID, 平方和) 方便后续识别
 
 # ============================================================
 # 实验1：串行处理 8 个数据块
@@ -1331,18 +1361,18 @@ print("=" * 55)
 print("批量数据处理：8 块 × 200万数字的平方和")
 print("=" * 55)
 
-NUM_CHUNKS = 8
-CHUNK_SIZE = 2_000_000
+NUM_CHUNKS = 8                       # 8 个数据块
+CHUNK_SIZE = 2_000_000              # 每块 200 万个数字
 
-# 串行
+# 串行：在主进程里逐块处理，总耗时 ≈ 8 倍单块耗时
 print("\\n方式1：串行处理")
 start = time.time()
 serial_results = []
-for cid in range(NUM_CHUNKS):
+for cid in range(NUM_CHUNKS):       # 逐块处理
     r = process_chunk(cid, CHUNK_SIZE)
     serial_results.append(r)
 serial_time = time.time() - start
-serial_total = sum(r[1] for r in serial_results)
+serial_total = sum(r[1] for r in serial_results)  # 汇总所有块的平方和
 print(f"  耗时 {serial_time:.3f}s，总和 {serial_total}")
 
 # ============================================================
@@ -1351,11 +1381,12 @@ print(f"  耗时 {serial_time:.3f}s，总和 {serial_total}")
 print("\\n方式2：4 进程并行处理")
 start = time.time()
 # starmap 用于多参数：每个元素是参数元组 (chunk_id, size)
-tasks = [(cid, CHUNK_SIZE) for cid in range(NUM_CHUNKS)]
-with ctx.Pool(4) as pool:
-    parallel_results = pool.starmap(process_chunk, tasks)
+# 与 map 的区别：map 传单参数，starmap 把元组拆成多个参数
+tasks = [(cid, CHUNK_SIZE) for cid in range(NUM_CHUNKS)]  # 生成 8 个任务参数元组
+with ctx.Pool(4) as pool:           # 创建 4 进程的进程池
+    parallel_results = pool.starmap(process_chunk, tasks)  # 并行执行，自动分发任务
 parallel_time = time.time() - start
-parallel_total = sum(r[1] for r in parallel_results)
+parallel_total = sum(r[1] for r in parallel_results)  # 汇总
 print(f"  耗时 {parallel_time:.3f}s，总和 {parallel_total}")
 
 # ============================================================
@@ -1449,72 +1480,76 @@ for _ in range(num_workers):
 
 下面 demo 实现一个简化的任务调度系统，演示优先级、重试、并发处理。`,
     code: `# 第三十七章 demo：线程池 + 队列任务调度
-import threading
-import queue
-import time
-import random
+# 本 demo 实现一个简化的"任务调度系统"：
+#   优先级队列接收任务 → 3个worker线程消费处理 → 支持失败重试 → 优雅关闭
+import threading                      # 线程模块
+import queue                          # 队列模块：Queue（FIFO）、PriorityQueue（优先级）
+import time                           # 计时/sleep
+import random                         # 随机数（模拟失败）
 
 # 优先级队列：任务格式 (优先级, 序号, 任务名, 重试次数)
 # 优先级数字小的先处理
 # 注意：PriorityQueue 不能放 None（两个 None 无法比较大小），
 #   所以停止信号也用元组，优先级设为 99（排最后），任务名用 STOP 标记。
-STOP = "__STOP__"
-task_queue = queue.PriorityQueue()
-result_queue = queue.Queue()
-seq_counter = 0
-seq_lock = threading.Lock()
+STOP = "__STOP__"                     # 停止信号标记：worker 收到就退出
+task_queue = queue.PriorityQueue()    # 优先级队列：worker 从这里取任务
+result_queue = queue.Queue()          # 普通队列：worker 把结果放这里
+seq_counter = 0                       # 全局序号计数器（保证同优先级任务按提交顺序出队）
+seq_lock = threading.Lock()           # 保护 seq_counter 的锁（多线程自增必须加锁）
 
 def next_seq():
     """生成全局唯一序号（PriorityQueue 优先级相同时按序号排序，避免比较字符串）"""
-    global seq_counter
-    with seq_lock:
+    global seq_counter                # 声明使用全局变量
+    with seq_lock:                    # 加锁：防止多线程同时自增导致序号重复
         seq = seq_counter
         seq_counter += 1
     return seq
 
 def submit_task(priority, name):
     """提交一个任务到队列"""
-    seq = next_seq()
+    seq = next_seq()                  # 生成唯一序号
     # PriorityQueue 按元组比较：先比优先级，相同则比序号
-    task_queue.put((priority, seq, name, 0))
+    task_queue.put((priority, seq, name, 0))  # 重试次数初始为 0
     print(f"  📤 提交 [{name}] 优先级={priority}")
 
 def worker(worker_id):
     """worker 线程：从队列取任务处理"""
     while True:
+        # get() 阻塞等待，直到队列有任务可取
         priority, seq, name, retries = task_queue.get()
-        if name == STOP:               # 结束信号
+        if name == STOP:               # 结束信号：收到就退出
             print(f"  [W{worker_id}] 收到结束信号，退出")
             return
         try:
-            # 模拟处理：20% 概率失败
+            # 模拟处理：20% 概率失败（模拟真实场景中的偶发错误）
             if random.random() < 0.2:
                 raise RuntimeError("处理失败")
-            time.sleep(random.uniform(0.1, 0.3))
-            result_queue.put((name, "成功", worker_id))
+            time.sleep(random.uniform(0.1, 0.3))  # 模拟处理耗时
+            result_queue.put((name, "成功", worker_id))  # 成功：结果放入结果队列
             print(f"  ✓ [W{worker_id}] 完成 [{name}]")
         except Exception as e:
             # 失败重试：最多3次
             if retries < 3:
                 print(f"  ↻ [W{worker_id}] [{name}] 失败，重试({retries+1}/3)")
-                # 放回队列，重试次数+1，优先级降低（数字变大）
+                # 放回队列，重试次数+1，优先级降低（数字变大，排更后）
                 task_queue.put((priority + 1, seq, name, retries + 1))
             else:
+                # 超过重试上限：标记为放弃
                 result_queue.put((name, f"放弃(重试{retries}次)", worker_id))
                 print(f"  ✗ [W{worker_id}] [{name}] 放弃")
         finally:
-            task_queue.task_done()
+            task_queue.task_done()     # 通知队列：这个任务处理完了（join 依赖此计数）
 
 print("=" * 55)
 print("任务调度系统（优先级队列 + 3 worker + 重试）")
 print("=" * 55)
-random.seed(7)
+random.seed(7)                       # 固定随机种子，让失败模式可复现
 
 NUM_WORKERS = 3
-# 启动 worker
+# 启动 worker：daemon=True 表示主线程退出时自动回收（但这里我们用 STOP 优雅关闭）
 workers = [threading.Thread(target=worker, args=(i,), daemon=True)
            for i in range(NUM_WORKERS)]
-for w in workers: w.start()
+for w in workers: w.start()          # 启动 3 个 worker 线程，开始从队列取任务
 
 # 提交一批任务（不同优先级）
 print("\\n--- 提交任务 ---")
@@ -1525,23 +1560,23 @@ submit_task(1, "紧急任务-D")
 submit_task(2, "普通任务-E")
 submit_task(2, "普通任务-F")
 
-# 等所有任务处理完
+# 等所有任务处理完：join 阻塞直到所有 put 的任务都 task_done()
 task_queue.join()
 print("\\n--- 所有任务处理完，发送结束信号 ---")
 # 每个工作线程发一个 STOP（用元组，优先级99排最后，序号保证唯一不冲突）
 for _ in range(NUM_WORKERS):
     task_queue.put((99, next_seq(), STOP, 0))
-for w in workers: w.join(timeout=2)
+for w in workers: w.join(timeout=2)   # 等 worker 线程退出（最多2秒）
 
 # 统计结果
 print("\\n--- 结果统计 ---")
 results = []
-while not result_queue.empty():
+while not result_queue.empty():       # 从结果队列取出所有结果
     results.append(result_queue.get())
-success = sum(1 for r in results if r[1] == "成功")
-failed = len(results) - success
+success = sum(1 for r in results if r[1] == "成功")  # 统计成功数
+failed = len(results) - success                          # 统计失败/放弃数
 print(f"  总计 {len(results)} 个任务：成功 {success}，失败/放弃 {failed}")
-for name, status, wid in results:
+for name, status, wid in results:    # 逐个打印结果
     print(f"    [{name}] → {status} (W{wid})")
 
 print("\\n要点：")
@@ -1702,9 +1737,9 @@ with lock:
 # 这个 demo 不执行复杂逻辑，而是一份可运行的"并发速查表"
 # 涵盖常见模式的正确写法，方便日后查阅
 
-import threading
-import multiprocessing as mp
-import queue
+import threading                       # 线程模块：Thread、Lock、Event
+import multiprocessing as mp           # 进程模块
+import queue                           # 队列模块：Queue、PriorityQueue
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 
 print("=" * 55)
@@ -1715,36 +1750,36 @@ print("=" * 55)
 # 1. 线程安全计数器（Lock 正确用法）
 # ============================================================
 print("\\n1. 线程安全计数器：")
-count = 0
-lock = threading.Lock()
+count = 0                             # 共享变量：多线程同时修改会有竞态条件
+lock = threading.Lock()               # 创建锁：保护 count 的"读-改-写"操作
 def safe_inc():
-    global count
+    global count                      # 声明使用全局变量
     for _ in range(1000):
-        with lock:              # ✓ 用 with，不用手动 acquire/release
-            count += 1
-ts = [threading.Thread(target=safe_inc) for _ in range(10)]
-for t in ts: t.start()
-for t in ts: t.join()
-print(f"   期望10000，实际{count} ✓")
+        with lock:              # ✓ 用 with，不用手动 acquire/release（异常时也能释放）
+            count += 1          # 加锁后自增：保证原子性，不会丢失更新
+ts = [threading.Thread(target=safe_inc) for _ in range(10)]  # 10 个线程各加 1000
+for t in ts: t.start()               # 启动所有线程
+for t in ts: t.join()                # 等所有线程完成
+print(f"   期望10000，实际{count} ✓")  # 不加锁会小于 10000（丢失更新）
 
 # ============================================================
 # 2. 生产者消费者（Queue，推荐模式）
 # ============================================================
 print("\\n2. 生产者消费者（Queue）：")
-q = queue.Queue()
+q = queue.Queue()                     # 线程安全队列：内部已加锁，无需手动同步
 def producer():
     for i in range(3):
-        q.put(f"产品{i}")
-    q.put(None)                 # 结束信号
+        q.put(f"产品{i}")             # 生产者放入数据
+    q.put(None)                 # 结束信号：消费者收到 None 就退出循环
 def consumer():
     while True:
-        item = q.get()
-        if item is None: break
-        q.task_done()
-    q.task_done()
-threading.Thread(target=producer).start()
-threading.Thread(target=consumer, daemon=True).start()
-q.join()
+        item = q.get()                # 阻塞等待，队列有数据就取
+        if item is None: break        # 收到结束信号，退出
+        q.task_done()                 # 通知队列：这个 item 处理完了
+    q.task_done()                     # None 也要 task_done（平衡 get 计数）
+threading.Thread(target=producer).start()              # 启动生产者
+threading.Thread(target=consumer, daemon=True).start() # 启动消费者（daemon=True 随主线程退出）
+q.join()                              # 等所有 put 的数据都被 task_done
 print("   完成 ✓")
 
 # ============================================================
@@ -1752,36 +1787,36 @@ print("   完成 ✓")
 # ============================================================
 print("\\n3. 线程池 map：")
 def io_task(x):
-    import time; time.sleep(0.01)
-    return x * 2
-with ThreadPoolExecutor(4) as ex:
-    results = list(ex.map(io_task, range(5)))
-print(f"   结果: {results} ✓")
+    import time; time.sleep(0.01)      # 模拟 IO 等待（sleep 释放 GIL）
+    return x * 2                       # 返回 x 的两倍
+with ThreadPoolExecutor(4) as ex:      # 4 线程的线程池
+    results = list(ex.map(io_task, range(5)))  # map 并发处理 0~4，返回结果列表
+print(f"   结果: {results} ✓")          # [0, 2, 4, 6, 8]
 
 # ============================================================
 # 4. 优先级队列
 # ============================================================
 print("\\n4. 优先级队列（紧急任务先处理）：")
-pq = queue.PriorityQueue()
-pq.put((2, "普通"))
-pq.put((1, "紧急"))
-pq.put((3, "低优"))
+pq = queue.PriorityQueue()            # 优先级队列：元素按大小排序，小的先出
+pq.put((2, "普通"))                   # 优先级 2
+pq.put((1, "紧急"))                   # 优先级 1（最小，最先出队）
+pq.put((3, "低优"))                   # 优先级 3（最大，最后出队）
 order = []
-while not pq.empty():
-    order.append(pq.get()[1])
-print(f"   出队顺序: {order}（紧急优先）✓")
+while not pq.empty():                 # 逐个取出
+    order.append(pq.get()[1])         # get() 返回元组，[1] 取任务名
+print(f"   出队顺序: {order}（紧急优先）✓")  # ['紧急', '普通', '低优']
 
 # ============================================================
 # 5. Event 优雅停止
 # ============================================================
 print("\\n5. Event 优雅停止：")
-stop = threading.Event()
+stop = threading.Event()              # Event：线程间信号量，set() 后 is_set() 变 True
 def bg():
-    while not stop.is_set():
-        if stop.wait(0.05): break
+    while not stop.is_set():          # 检查是否收到停止信号
+        if stop.wait(0.05): break     # wait(0.05)：等0.05秒或被set()唤醒，返回True表示被唤醒
 t = threading.Thread(target=bg, daemon=True)
-t.start()
-stop.set()
+t.start()                             # 启动后台线程
+stop.set()                            # 发送停止信号：Event 被 set，wait 立即返回 True
 print("   已停止 ✓")
 
 # ============================================================

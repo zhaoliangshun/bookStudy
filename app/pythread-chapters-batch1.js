@@ -74,10 +74,10 @@ Python 提供了三套主要的并发工具，各有适用场景：
 > 💡 **学习建议**：每个 demo 都请点击"运行代码"实际跑一遍，观察输出顺序和耗时，这是理解并发的关键。`,
     code: `# 第一章 demo：感受并发的威力
 # 用 time.sleep 模拟"耗时的等待操作"（比如网络请求、磁盘读写）
-# 对比"串行执行"和"并发执行"的耗时差异
+# 对比"串行执行"和"并发执行"的耗时差异，直观感受并发带来的提速
 
-import time                      # 时间模块，用于计时和模拟等待
-import threading                 # Python 标准库的线程模块
+import time                      # 导入 time 模块：提供计时函数 time.time() 和模拟等待 time.sleep()
+import threading                 # 导入 threading 模块：Python 标准库的线程 API，用于创建和管理线程
 
 def task(name, seconds):
     """模拟一个耗时的任务：sleep seconds 秒后打印完成信息。
@@ -87,47 +87,59 @@ def task(name, seconds):
       - 查询数据库
     这些操作的共同点是：CPU 大部分时间在"等待"，而不是在"计算"。
     """
-    print(f"  [{name}] 开始执行，需要 {seconds} 秒...")
-    time.sleep(seconds)          # 模拟等待：这段时间 CPU 其实是空闲的
-    print(f"  [{name}] 完成！")
+    print(f"  [{name}] 开始执行，需要 {seconds} 秒...")  # 打印开始信息，f-string 用于格式化字符串
+    time.sleep(seconds)          # 让当前线程休眠 seconds 秒：模拟 IO 等待。此时线程会释放 GIL，其他线程可以运行
+    print(f"  [{name}] 完成！")   # 等待结束，打印完成信息
 
-print("=" * 50)
+# ============================================================
+# 方式一：串行执行 —— 三个任务依次执行，总耗时 = 各任务耗时之和
+# ============================================================
+print("=" * 50)                  # 打印分隔线，"*" 重复运算符：字符串乘以数字表示重复
 print("方式一：串行执行（一个做完再做下一个）")
 print("=" * 50)
-start = time.time()              # 记录开始时间
-task("任务A", 1)                 # 做任务A，耗时1秒
-task("任务B", 1)                 # 再做任务B，耗时1秒
-task("任务C", 1)                 # 再做任务C，耗时1秒
-serial_time = time.time() - start
-print(f"串行总耗时: {serial_time:.2f} 秒\\n")
+start = time.time()              # time.time() 返回当前时间戳（浮点秒数），作为计时起点
+task("任务A", 1)                 # 顺序调用 task：主线程执行任务A，耗时约1秒
+task("任务B", 1)                 # 任务A 完全结束后才开始任务B，再耗时1秒
+task("任务C", 1)                 # 任务B 完全结束后才开始任务C，再耗时1秒
+serial_time = time.time() - start  # 用当前时间减去起点，得到串行总耗时（约3秒）
+print(f"串行总耗时: {serial_time:.2f} 秒\\n")  # :.2f 表示保留两位小数输出
 
+# ============================================================
+# 方式二：并发执行 —— 三个任务在不同线程同时开始，总耗时 ≈ 最慢的那个
+# ============================================================
 print("=" * 50)
 print("方式二：并发执行（三个任务同时开始）")
 print("=" * 50)
-start = time.time()
+start = time.time()              # 重新记录并发执行的起点时间
 # 创建三个线程，每个线程执行一个 task
-# threading.Thread(target=函数, args=参数元组) 创建线程对象
-threads = []
+# threading.Thread(target=函数, args=参数元组) 创建线程对象（此时还没开始运行）
+threads = []                     # 用列表保存所有线程对象，方便后面统一 join
 for name in ["任务A", "任务B", "任务C"]:
+    # args=(name, 1) 是一个元组：第一个元素是任务名，第二个是 sleep 秒数
+    # 注意：单元素元组要写成 (x,)，这里有两个元素所以不用加特殊逗号
     t = threading.Thread(target=task, args=(name, 1))
-    threads.append(t)
-    t.start()                    # start() 启动线程，开始执行 task 函数
+    threads.append(t)            # 把线程对象存入列表，后面统一管理
+    t.start()                    # start() 启动线程：操作系统分配一个新的执行流来运行 task 函数
 
-# join() 的作用：主线程在这里等待，直到该子线程执行完毕才继续
+# join() 的作用：主线程在这里阻塞等待，直到该子线程执行完毕才继续往下走
 # 如果不 join，主线程会直接往下走，可能子线程还没结束程序就退出了
-for t in threads:
-    t.join()
+for t in threads:                # 遍历所有线程，逐一等待它们结束
+    t.join()                     # join() 会让主线程阻塞，直到该子线程的 run() 执行完毕
 
-concurrent_time = time.time() - start
+concurrent_time = time.time() - start  # 并发总耗时（约1秒，因为三个任务同时 sleep）
 print(f"并发总耗时: {concurrent_time:.2f} 秒\\n")
 
+# ============================================================
+# 结论对比
+# ============================================================
 print("=" * 50)
 print("结论对比")
 print("=" * 50)
-print(f"串行: {serial_time:.2f}s  vs  并发: {concurrent_time:.2f}s")
-print(f"并发比串行快了约 {serial_time / concurrent_time:.1f} 倍！")
+print(f"串行: {serial_time:.2f}s  vs  并发: {concurrent_time:.2f}s")  # 对比两种方式的耗时
+print(f"并发比串行快了约 {serial_time / concurrent_time:.1f} 倍！")    # 计算提速倍数
 print("\\n原理：三个任务都在'等待'（sleep），并发让它们同时等待，")
-print("所以总耗时接近最长的一个任务，而不是三个任务之和。")`,
+print("所以总耗时接近最长的一个任务，而不是三个任务之和。")
+print("注意：如果任务是 CPU 密集型（纯计算），由于 GIL 限制，并发不会提速，详见第3章。")`,
   },
 
   // -----------------------------------------------------------
@@ -173,32 +185,33 @@ print("所以总耗时接近最长的一个任务，而不是三个任务之和�
 
 \`\`\`python
 # 线程共享内存示例
-import threading  # 导入模块 threading
+import threading  # 导入 threading 模块：提供 Thread 类创建线程
 
-count = 0                    # 全局变量，所有线程都能访问
-def add():  # 定义函数 add
-    global count  # 声明全局变量 count
-    count += 1               # 多个线程同时修改 → 可能出错！
+count = 0                    # 全局变量：所有线程共享，都能访问和修改
+def add():  # 定义函数 add：每个线程执行一次
+    global count  # global 声明：表示要修改全局变量 count，而非创建局部变量
+    count += 1               # count += 1 不是原子操作（读-改-写三步），多个线程同时修改 → 可能出错！
 
-threads = [threading.Thread(target=add) for _ in range(1000)]  # 定义列表 threads
-for t in threads: t.start()  # 遍历 threads，取值给 t
-for t in threads: t.join()  # 遍历 threads，取值给 t
-print(count)                 # 理论上是 1000，实际可能小于 1000！
+# 列表推导式创建1000个线程，每个线程的目标函数都是 add
+threads = [threading.Thread(target=add) for _ in range(1000)]  # _ 表示循环变量不使用
+for t in threads: t.start()  # 启动所有线程：1000个线程几乎同时开始执行 add()
+for t in threads: t.join()   # 等待所有线程执行完毕
+print(count)                 # 理论上是 1000，实际可能小于 1000！因为 count += 1 存在竞态条件
 \`\`\`
 
 **进程内存独立**——这是进程安全的保障，也是进程通信麻烦的原因。
 
 \`\`\`python
 # 进程内存独立示例
-import multiprocessing as mp  # 导入模块 multiprocessing
+import multiprocessing as mp  # 导入 multiprocessing 模块并简写为 mp
 
-count = 0  # 定义数值 count
+count = 0  # 全局变量：主进程的 count 初始为 0
 def add():  # 定义函数 add
-    global count  # 声明全局变量 count
-    count += 1               # 改的是子进程自己的副本，主进程看不到
+    global count  # 声明 global，但子进程里指向的是子进程自己的内存副本
+    count += 1               # 改的是子进程自己的副本！主进程看不到这个修改
 
-p = mp.Process(target=add)  # 赋值变量 p
-p.start(); p.join()  # 调用 p.start()：启动
+p = mp.Process(target=add)  # 创建子进程，目标函数是 add
+p.start(); p.join()  # start() 启动子进程；join() 等待它结束。分号用于一行写两条语句
 print(count)                 # 还是 0！子进程的修改不会影响主进程
 \`\`\`
 
@@ -222,57 +235,70 @@ print(count)                 # 还是 0！子进程的修改不会影响主进�
 # 用一个全局变量 counter，分别在子线程和子进程中修改它
 # 看看主线程/主进程能否看到修改 —— 直观感受"线程共享 vs 进程独立"
 
-import threading
-import multiprocessing as mp
-import os
+import threading                    # 导入 threading：用于创建子线程
+import multiprocessing as mp        # 导入 multiprocessing 并简写为 mp：用于创建子进程
+import os                           # 导入 os：用于获取进程 ID（os.getpid()）
 
 # 全局变量：主进程/主线程一开始都是 0
+# 线程共享内存：子线程能直接读写这个 counter
+# 进程独立内存：子进程会获得 counter 的副本，修改不影响主进程
 counter = 0
 
 def show_info(tag):
     """打印当前是哪个进程、哪个线程，以及 counter 的值"""
-    pid = os.getpid()                         # 进程 ID
-    tid = threading.get_ident()               # 线程 ID（一个数字）
-    # 用 id() 看 counter 变量对象的内存地址
+    pid = os.getpid()                         # os.getpid() 返回当前进程的 ID（整数），同一进程内的线程 PID 相同
+    tid = threading.get_ident()               # threading.get_ident() 返回当前线程的唯一标识（一个整数）
+    # 用 id() 看 counter 变量对象的内存地址：如果地址相同说明是同一个对象
     print(f"  [{tag}] PID={pid}, 线程ID={tid}, counter={counter}, counter地址={id(counter)}")
 
 def thread_worker():
     """子线程：直接修改全局变量 counter"""
-    global counter
-    counter = 100                              # 线程共享内存，改的是同一个变量
-    show_info("子线程内")
+    global counter                            # global 声明：告诉 Python 这里要修改全局变量 counter，而不是创建局部变量
+    counter = 100                             # 线程共享内存：直接改的是主进程里的同一个 counter 变量
+    show_info("子线程内")                      # 打印修改后的状态：counter=100
 
 def process_worker():
     """子进程：修改自己进程空间里的 counter 副本。
     fork 启动方式下，子进程继承父进程内存（写时复制），
     修改 counter 时会触发复制，产生自己独立的副本，主进程不受影响。
     """
-    global counter
-    counter = 100                              # 改的是子进程自己的副本！主进程看不到
-    show_info("子进程内")
+    global counter                            # 子进程里也声明 global，但这里指向的是子进程自己的内存空间
+    counter = 100                             # 改的是子进程自己的副本！主进程的 counter 不受影响
+    show_info("子进程内")                      # 打印子进程里的状态：counter=100（但仅限子进程可见）
 
+# ============================================================
+# 实验1：线程 —— 子线程修改全局变量，主线程能看到吗？
+# ============================================================
 print("=" * 55)
 print("【实验1】线程：子线程能否修改主线程的全局变量？")
 print("=" * 55)
-show_info("主线程-修改前")
-t = threading.Thread(target=thread_worker)
-t.start()
-t.join()                                       # 等待子线程结束
-show_info("主线程-修改后")
+show_info("主线程-修改前")                     # 修改前打印：counter 应该是 0
+t = threading.Thread(target=thread_worker)   # 创建子线程，目标函数是 thread_worker
+t.start()                                    # 启动子线程：开始执行 thread_worker()
+t.join()                                     # join() 等待子线程结束，确保修改已完成
+show_info("主线程-修改后")                     # 修改后打印：counter 应该变成 100
 print("结论：counter 变成了 100 —— 线程【共享】内存\\n")
 
+# ============================================================
+# 实验2：进程 —— 子进程修改全局变量，主进程能看到吗？
+# ============================================================
 print("=" * 55)
 print("【实验2】进程：子进程能否修改主进程的全局变量？")
 print("=" * 55)
-show_info("主进程-修改前")
+show_info("主进程-修改前")                     # 修改前打印：counter 是 0（如果实验1改过，这里也是100）
 # 注意：在线运行环境用 fork 启动方式（spawn 会失败，原因见第19章）
-ctx = mp.get_context("fork")
-p = ctx.Process(target=process_worker)
-p.start()
-p.join()                                       # 等待子进程结束
-show_info("主进程-修改后")
+# fork：子进程继承父进程的内存空间（写时复制），修改时才真正复制
+# spawn：重新启动一个 Python 解释器，需要序列化传递数据，在某些环境会失败
+ctx = mp.get_context("fork")                 # 获取 fork 启动上下文
+p = ctx.Process(target=process_worker)       # 用该上下文创建子进程
+p.start()                                    # 启动子进程：fork 出一个新进程执行 process_worker()
+p.join()                                     # 等待子进程结束
+show_info("主进程-修改后")                     # 修改后打印：counter 仍然是 0（子进程的修改不影响主进程）
 print("结论：counter 还是 0 —— 进程内存【独立】\\n")
 
+# ============================================================
+# 总结
+# ============================================================
 print("=" * 55)
 print("总结")
 print("=" * 55)
@@ -363,47 +389,57 @@ Python 3.13（2024年发布）引入了**实验性的"自由线程"模式**（PE
 #   2. 多线程并发执行两次（如果有真并行，应该快接近一倍）
 # 实际结果：多线程并不会更快 —— 这就是 GIL 的证据
 
-import threading
-import time
+import threading                    # 导入 threading：用于创建子线程
+import time                         # 导入 time：用于计时
 
 def cpu_task(name, n):
     """一个纯 CPU 计算任务：把 0 到 n-1 累加到 result。
     这个函数没有任何 IO 操作，全程都在执行 Python 字节码。
     """
-    total = 0
-    for i in range(n):
-        total += i                        # 纯 Python 计算，受 GIL 限制
-    print(f"  [{name}] 完成，结果={total}")
+    total = 0                       # 初始化累加结果为 0
+    for i in range(n):              # 循环 n 次，range(n) 生成 0,1,2,...,n-1
+        total += i                  # 纯 Python 计算：受 GIL 限制，同一时刻只有一个线程能执行这行
+    print(f"  [{name}] 完成，结果={total}")  # 打印累加结果，便于确认两个任务都正确完成
 
-N = 5_000_000                             # 计算量（500万次累加）
+N = 5_000_000                       # 计算量（500万次累加）。5_000_000 中的下划线是分隔符，等价于 5000000，提高可读性
 
+# ============================================================
+# 方式一：串行执行两次 —— 依次调用，总耗时 = 两次之和
+# ============================================================
 print("=" * 55)
 print("方式一：串行执行两次")
 print("=" * 55)
-start = time.time()
-cpu_task("串行-1", N)
-cpu_task("串行-2", N)
-serial_time = time.time() - start
-print(f"串行耗时: {serial_time:.3f} 秒\\n")
+start = time.time()                 # 记录串行开始时间
+cpu_task("串行-1", N)               # 第一次执行：主线程做500万次累加
+cpu_task("串行-2", N)               # 第二次执行：第一次完全结束后才开始
+serial_time = time.time() - start   # 串行总耗时 = 两次累加时间之和
+print(f"串行耗时: {serial_time:.3f} 秒\\n")   # :.3f 保留三位小数
 
+# ============================================================
+# 方式二：多线程并发执行两次 —— 理论上应加速，实际不会
+# ============================================================
 print("=" * 55)
 print("方式二：多线程并发执行两次")
 print("=" * 55)
-start = time.time()
-t1 = threading.Thread(target=cpu_task, args=("线程-1", N))
-t2 = threading.Thread(target=cpu_task, args=("线程-2", N))
-t1.start(); t2.start()                    # 同时启动两个线程
+start = time.time()                 # 记录多线程开始时间
+t1 = threading.Thread(target=cpu_task, args=("线程-1", N))  # 创建线程1
+t2 = threading.Thread(target=cpu_task, args=("线程-2", N))  # 创建线程2
+t1.start(); t2.start()              # 同时启动两个线程。分号用于一行写多条语句
 # 如果没有 GIL，两个线程分别在两个核上并行，耗时应该接近 serial_time/2
 # 但由于 GIL，两个线程只能轮流执行，反而多了锁竞争和切换开销
-t1.join(); t2.join()                      # 等两个都结束
-thread_time = time.time() - start
+t1.join(); t2.join()                # 等两个线程都结束
+thread_time = time.time() - start   # 多线程总耗时
 print(f"多线程耗时: {thread_time:.3f} 秒\\n")
 
+# ============================================================
+# 分析对比
+# ============================================================
 print("=" * 55)
 print("分析")
 print("=" * 55)
 print(f"串行:   {serial_time:.3f}s")
 print(f"多线程: {thread_time:.3f}s")
+# 判断多线程是否明显变快：如果多线程耗时 >= 串行的80%，说明没有实质加速
 if thread_time >= serial_time * 0.8:
     print("\\n>>> 多线程并没有变快！这就是 GIL 在起作用：")
     print(">>> 两个线程只能轮流用一个 CPU 核，反而多了切换开销。")
@@ -475,53 +511,65 @@ else:
     code: `# 第四章 demo：三种调用方式的对比
 # 同样是"等待1秒"的任务，用三种方式实现，观察主线程能否立即继续
 
-import time
-import threading
+import time                         # 导入 time：提供 sleep() 和 strftime()、time() 等函数
+import threading                    # 导入 threading：用于创建子线程
 
 def do_wait():
     """模拟一个耗时1秒的操作"""
-    time.sleep(1)
+    time.sleep(1)                   # 阻塞当前线程1秒：模拟网络请求等 IO 等待
 
+# ============================================================
+# 方式一：同步阻塞 —— 直接调用，主线程被卡住1秒
+# ============================================================
 print("=" * 55)
 print("方式一：同步阻塞（直接调用，主线程被卡住）")
 print("=" * 55)
-print(f"调用前时间: {time.strftime('%H:%M:%S')}")
-do_wait()                                   # 主线程在这里卡住1秒
+print(f"调用前时间: {time.strftime('%H:%M:%S')}")   # time.strftime 格式化当前时间
+do_wait()                                   # 主线程在这里卡住1秒，什么都干不了
 print(f"调用后时间: {time.strftime('%H:%M:%S')}  ← 整整过了1秒")
 print("主线程被阻塞，期间什么都干不了\\n")
 
+# ============================================================
+# 方式二：多线程 —— 把阻塞丢给子线程，主线程立即继续
+# ============================================================
 print("=" * 55)
 print("方式二：多线程（把阻塞丢给子线程，主线程立即继续）")
 print("=" * 55)
 print(f"调用前时间: {time.strftime('%H:%M:%S')}")
-t = threading.Thread(target=do_wait)
-t.start()                                   # 启动子线程，主线程立即往下走
+t = threading.Thread(target=do_wait)         # 创建子线程，目标函数是 do_wait
+t.start()                                   # start() 启动子线程：do_wait 在子线程里阻塞，主线程立即往下走
 print(f"调用后时间: {time.strftime('%H:%M:%S')}  ← 几乎瞬间返回！")
 print("主线程没被阻塞，可以继续干别的")
-# 主线程干点别的活
+# 主线程干点别的活：体现"非阻塞"的价值
 print("主线程：我先做点别的事...")
-time.sleep(0.3)
+time.sleep(0.3)                             # 主线程自己也做点耗时操作（0.3秒）
 print("主线程：我做完了别的事，现在等子线程收尾")
-t.join()                                    # 等子线程结束（如需结果再等）
+t.join()                                    # join() 等子线程结束：子线程还需约0.7秒才完成
 print(f"子线程结束时间: {time.strftime('%H:%M:%S')}\\n")
 
+# ============================================================
+# 方式三：轮询非阻塞 —— 不用阻塞函数，自己用 time.time() 计时
+# ============================================================
 print("=" * 55)
 print("方式三：轮询非阻塞（不用阻塞函数，自己计时）")
 print("=" * 55)
 print(f"开始时间: {time.strftime('%H:%M:%S')}")
-deadline = time.time() + 1                  # 目标结束时间
-done = False
-while not done:
-    now = time.time()
-    if now >= deadline:
-        done = True
+deadline = time.time() + 1                  # 计算目标结束时间戳 = 当前时间 + 1秒
+done = False                                # 完成标志位
+while not done:                             # 不停循环检查是否到时间
+    now = time.time()                       # 获取当前时间
+    if now >= deadline:                     # 如果当前时间 >= 截止时间
+        done = True                         # 标记完成，退出循环
     else:
         # 没到时间，可以做点别的事（这里用 pass 模拟）
         # 真实场景：这里可以处理其他任务
-        pass
+        pass                                # pass 是空语句，什么都不做（这里仅占位）
 print(f"结束时间: {time.strftime('%H:%M:%S')}  ← 也过了1秒")
 print("特点：主线程没被阻塞，但需要不停轮询，浪费 CPU\\n")
 
+# ============================================================
+# 总结
+# ============================================================
 print("=" * 55)
 print("总结")
 print("=" * 55)
@@ -550,13 +598,16 @@ print("• asyncio ：主线程自由且不空转（事件循环调度，第 39-
 把一个普通函数传给 \`Thread\` 的 \`target\` 参数：
 
 \`\`\`python
-import threading  # 导入模块 threading
+import threading  # 导入 threading 模块：Python 标准库的线程 API
 
-def my_task(name):  # 定义函数 my_task，参数：name
-    print(f"hello {name}")  # 打印输出到屏幕
+def my_task(name):  # 定义函数 my_task，参数 name：线程要执行的任务
+    print(f"hello {name}")  # f-string 格式化打印，{name} 会被替换为参数值
 
-t = threading.Thread(target=my_task, args=("Alice",))  # 赋值变量 t
-t.start()  # 调用 t.start()：启动
+# threading.Thread() 创建线程对象，此时还没开始运行
+# target=my_task 指定线程要执行的函数
+# args=("Alice",) 传给函数的参数元组，单元素必须加逗号，否则被当作字符串
+t = threading.Thread(target=my_task, args=("Alice",))
+t.start()  # start() 启动线程：操作系统创建新执行流来运行 my_task("Alice")
 \`\`\`
 
 - \`target\`：线程要执行的函数
@@ -570,17 +621,17 @@ t.start()  # 调用 t.start()：启动
 继承 \`threading.Thread\`，重写 \`run()\` 方法：
 
 \`\`\`python
-import threading  # 导入模块 threading
+import threading  # 导入 threading 模块
 
-class MyThread(threading.Thread):  # 定义类 MyThread
-    def __init__(self, name):  # 定义函数 __init__，参数：self, name
-        super().__init__()  # 调用父类
-        self.name = name  # 执行操作
-    def run(self):           # 重写 run，线程启动后执行的就是这个方法
-        print(f"hello {self.name}")  # 打印输出到屏幕
+class MyThread(threading.Thread):  # 继承 threading.Thread 类，创建自定义线程类
+    def __init__(self, name):  # 构造方法：self 是实例本身，name 是传入的参数
+        super().__init__()  # 调用父类 Thread 的 __init__，初始化线程内部状态（必须调用）
+        self.name = name  # 把 name 存为实例属性，供 run() 方法使用
+    def run(self):           # 重写 run()：start() 启动后会自动调用这个方法
+        print(f"hello {self.name}")  # 打印问候语，self.name 取构造时存的值
 
-t = MyThread("Alice")  # 赋值变量 t
-t.start()                    # start() 会自动调用 run()
+t = MyThread("Alice")  # 创建自定义线程实例，传入参数 "Alice"
+t.start()                    # start() 启动线程，会自动调用 run() 方法
 \`\`\`
 
 ## 两种方式怎么选？
@@ -616,64 +667,64 @@ t.start()                    # start() 会自动调用 run()
 
 下面 demo 演示两种方式创建线程，并打印各种线程信息。`,
     code: `# 第五章 demo：创建线程的两种方式 + 线程信息查询
-import threading
-import time
+import threading                    # 导入 threading：线程模块
+import time                         # 导入 time：用于 sleep
 
 # ============================================================
-# 方式一：函数式创建线程
+# 方式一：函数式创建线程 —— 把函数传给 Thread 的 target 参数
 # ============================================================
 def greet(name, times=3):
     """被线程执行的函数：打印 name 多次"""
-    # threading.current_thread() 返回当前线程对象
+    # threading.current_thread() 返回当前正在执行的线程对象
     cur = threading.current_thread()
-    print(f"  [函数式] 线程名={cur.name}, 线程ID={threading.get_ident()}")
-    for i in range(times):
-        print(f"  [函数式] 你好 {name}！第 {i+1} 次")
-        time.sleep(0.1)
+    print(f"  [函数式] 线程名={cur.name}, 线程ID={threading.get_ident()}")  # cur.name 是线程名，get_ident() 返回线程唯一ID
+    for i in range(times):                  # 循环 times 次
+        print(f"  [函数式] 你好 {name}！第 {i+1} 次")  # i+1 让显示从1开始
+        time.sleep(0.1)                     # 每次 sleep 0.1秒，让输出不至于太快
 
 print("=" * 55)
 print("方式一：函数式创建线程")
 print("=" * 55)
-# args 必须是元组：单元素要加逗号 ("Alice",)
-# kwargs 传关键字参数
+# args 必须是元组：单元素要加逗号 ("Alice",)，否则会被当作字符串而非元组
+# kwargs 传关键字参数：{"times": 3} 对应 greet 的 times 参数
 # name 设置线程名，方便调试时识别（也可通过 t.name 读取/修改）
 t1 = threading.Thread(target=greet, args=("Alice",), kwargs={"times": 3},
-                      name="我的线程-A")
-t1.start()
-t1.join()                       # 等待 t1 结束
-print()
+                      name="我的线程-A")    # 创建线程对象（此时还没开始运行）
+t1.start()                           # start() 启动线程：操作系统创建新执行流来运行 greet 函数
+t1.join()                            # join() 等待 t1 结束，确保子线程完成后主线程才继续
+print()                              # 打印空行分隔输出
 
 # ============================================================
-# 方式二：类继承创建线程
+# 方式二：类继承创建线程 —— 继承 Thread 类，重写 run() 方法
 # ============================================================
 class GreetThread(threading.Thread):
     """继承 Thread 的自定义线程类"""
     def __init__(self, name, times=3):
-        # 必须调用父类 __init__，否则线程对象不能正常工作
+        # 必须调用父类 __init__，否则线程对象不能正常工作（内部状态未初始化）
         super().__init__()
-        self.name_arg = name      # 注意：不要覆盖 self.name（那是线程名）
-        self.times = times
+        self.name_arg = name          # 注意：不要覆盖 self.name（那是父类的线程名属性）
+        self.times = times            # 保存循环次数
 
     def run(self):
         """重写 run 方法：start() 被调用后会执行这个方法
         千万不要自己调用 t.run()，那样没有创建新线程！"""
-        cur = threading.current_thread()
+        cur = threading.current_thread()  # 获取当前线程对象
         print(f"  [类继承] 线程名={cur.name}, 线程ID={threading.get_ident()}")
-        for i in range(self.times):
+        for i in range(self.times):       # 循环 self.times 次
             print(f"  [类继承] 你好 {self.name_arg}！第 {i+1} 次")
-            time.sleep(0.1)
+            time.sleep(0.1)               # sleep 让出 GIL，其他线程有机会运行
 
 print("=" * 55)
 print("方式二：类继承创建线程")
 print("=" * 55)
-t2 = GreetThread("Bob", times=3)
-t2.name = "我的线程-B"            # 设置线程名（可选）
-t2.start()                        # start() 会自动调用 run()
-t2.join()
+t2 = GreetThread("Bob", times=3)     # 创建自定义线程类的实例
+t2.name = "我的线程-B"                # 设置线程名（可选），也可在 __init__ 里用 name 参数传
+t2.start()                           # start() 会自动调用 run()，在子线程中执行
+t2.join()                            # 等待 t2 结束
 print()
 
 # ============================================================
-# 同时启动多个线程，观察并发
+# 同时启动多个线程，观察并发 —— 输出会交错，因为线程交替执行
 # ============================================================
 print("=" * 55)
 print("同时启动3个线程，观察交错输出（并发）")
@@ -682,18 +733,18 @@ def worker(tag, n):
     for i in range(n):
         # 多个线程并发执行，输出会交错
         print(f"  [{tag}] 第{i+1}步 (线程ID={threading.get_ident()})")
-        time.sleep(0.05)          # sleep 让出 GIL，其他线程得以运行
+        time.sleep(0.05)          # sleep 让出 GIL，其他线程得以运行（这是输出交错的关键）
 
-threads = []
-for tag in ["X", "Y", "Z"]:
+threads = []                      # 列表保存所有线程对象
+for tag in ["X", "Y", "Z"]:       # 创建3个线程，tag 分别是 X、Y、Z
     t = threading.Thread(target=worker, args=(tag, 3))
-    threads.append(t)
-    t.start()
+    threads.append(t)             # 存入列表，便于后面统一 join
+    t.start()                     # 启动线程（不等它完成就继续创建下一个）
 
-print(f"  >>> 当前存活线程数: {threading.active_count()}")
-print(f"  >>> 所有线程: {[t.name for t in threading.enumerate()]}")
+print(f"  >>> 当前存活线程数: {threading.active_count()}")  # active_count() 返回当前存活的线程数（含主线程）
+print(f"  >>> 所有线程: {[t.name for t in threading.enumerate()]}")  # enumerate() 返回所有存活线程对象的列表
 
-for t in threads:
+for t in threads:                 # 遍历等待所有线程结束
     t.join()
 
 print("\\n所有线程结束。")
@@ -750,17 +801,17 @@ print("• 不要直接调 run()，那样没创建新线程")`,
 \`join()\` 让**当前线程阻塞等待**目标线程结束。简单说就是："你先走，我等你完事再继续"。
 
 \`\`\`python
-t.start()       # 启动子线程
-# 主线程继续干别的活...
-t.join()        # 主线程在这里等 t 结束，结束后才往下走
+t.start()       # start() 启动子线程：操作系统创建新执行流来运行 target 函数
+# 主线程继续干别的活...（子线程在后台并行运行）
+t.join()        # join() 让主线程阻塞等待 t 结束，t 结束后主线程才继续往下走
 \`\`\`
 
 ### join(timeout) 设置超时
 
 \`\`\`python
-t.join(timeout=2)    # 最多等2秒，2秒后不管 t 有没有结束都继续
-if t.is_alive():  # 如果 t.is_alive()
-    print("子线程还没结束，但我不等了")  # 打印输出到屏幕
+t.join(timeout=2)    # join(timeout=2)：最多等2秒，2秒后无论 t 是否结束都继续往下走
+if t.is_alive():  # is_alive() 检查线程是否仍在运行
+    print("子线程还没结束，但我不等了")  # 超时后子线程仍在运行时的提示
 \`\`\`
 
 ### join() 的常见误区
@@ -770,8 +821,8 @@ if t.is_alive():  # 如果 t.is_alive()
 
 \`\`\`python
 # 这两种写法效果一样（都是等两个都结束）
-t1.join(); t2.join()  # 调用 t1.join()：等待所有任务完成
-t2.join(); t1.join()  # 调用 t2.join()：等待所有任务完成
+t1.join(); t2.join()  # 先等 t1 结束，再等 t2 结束。分号用于一行写多条语句
+t2.join(); t1.join()  # 先等 t2 结束，再等 t1 结束。结果相同，总耗时都取决于最慢的
 \`\`\`
 
 ## 不调用 join 会怎样？
@@ -789,44 +840,45 @@ t2.join(); t1.join()  # 调用 t2.join()：等待所有任务完成
 
 下面 demo 用 \`is_alive()\` 观察线程在各阶段的状态，并演示 \`join(timeout)\` 的用法。`,
     code: `# 第六章 demo：线程生命周期与 join
-import threading
-import time
+import threading                    # 导入 threading：线程模块
+import time                         # 导入 time：用于 sleep 和计时
 
 def slow_task(seconds, tag):
     """模拟一个耗时任务"""
-    print(f"  [{tag}] 开始执行，预计 {seconds} 秒")
-    time.sleep(seconds)
-    print(f"  [{tag}] 执行完毕")
+    print(f"  [{tag}] 开始执行，预计 {seconds} 秒")  # 打印开始信息
+    time.sleep(seconds)             # 阻塞 seconds 秒，模拟耗时操作
+    print(f"  [{tag}] 执行完毕")     # 任务完成提示
 
 # ============================================================
 # 实验1：观察 is_alive() 状态变化
+# is_alive() 返回 True 表示线程正在运行（含阻塞等待中），False 表示未启动或已结束
 # ============================================================
 print("=" * 55)
 print("实验1：观察 is_alive() 状态变化")
 print("=" * 55)
 
-t = threading.Thread(target=slow_task, args=(1, "T"))
-print(f"  创建后未启动: is_alive={t.is_alive()}")   # False
-t.start()
-print(f"  刚 start():  is_alive={t.is_alive()}")     # True（正在运行）
-time.sleep(0.5)
-print(f"  运行 0.5s 后: is_alive={t.is_alive()}")     # True（还在sleep）
-t.join()
-print(f"  join() 后:    is_alive={t.is_alive()}")     # False（已结束）
+t = threading.Thread(target=slow_task, args=(1, "T"))  # 创建线程对象（未启动）
+print(f"  创建后未启动: is_alive={t.is_alive()}")   # False：还没 start，线程不存在
+t.start()                                                # 启动线程
+print(f"  刚 start():  is_alive={t.is_alive()}")     # True：正在运行
+time.sleep(0.5)                                          # 主线程等0.5秒，此时子线程正在 sleep
+print(f"  运行 0.5s 后: is_alive={t.is_alive()}")     # True：还在 sleep 中（阻塞也算存活）
+t.join()                                                 # 等待子线程结束
+print(f"  join() 后:    is_alive={t.is_alive()}")     # False：已结束
 print()
 
 # ============================================================
-# 实验2：join(timeout) 超时等待
+# 实验2：join(timeout) 超时等待 —— 最多等指定秒数，超时就不再等
 # ============================================================
 print("=" * 55)
 print("实验2：join(timeout) —— 只等2秒，超时就走")
 print("=" * 55)
 
-t = threading.Thread(target=slow_task, args=(5, "慢线程"))
-t.start()
+t = threading.Thread(target=slow_task, args=(5, "慢线程"))  # 子线程要跑5秒
+t.start()                                                # 启动子线程
 print(f"  {time.strftime('%H:%M:%S')} 主线程开始 join，最多等2秒...")
-t.join(timeout=2)                                    # 最多等2秒
-if t.is_alive():
+t.join(timeout=2)                                        # join(timeout=2)：最多等2秒，2秒后无论子线程是否结束都继续
+if t.is_alive():                                         # 如果2秒后子线程还在跑
     print(f"  {time.strftime('%H:%M:%S')} 2秒到了，子线程还没结束！")
     print(f"  is_alive={t.is_alive()}，但主线程不再等待，继续干别的")
     # 实际项目中这里可以：强制结束（设标志位）、记录日志、或继续等
@@ -837,41 +889,43 @@ else:
 print()
 
 # ============================================================
-# 实验3：join 多个线程的顺序无关性
+# 实验3：join 多个线程的顺序无关性 —— 总耗时取决于最慢的那个
 # ============================================================
 print("=" * 55)
 print("实验3：join 多个线程，总耗时取决于最慢的")
 print("=" * 55)
 
 def task_with_time(tag, secs):
-    start = time.time()
-    time.sleep(secs)
-    print(f"  [{tag}] 用时 {time.time()-start:.2f}s")
+    start = time.time()             # 记录子线程自己的开始时间
+    time.sleep(secs)                # 阻塞 secs 秒
+    print(f"  [{tag}] 用时 {time.time()-start:.2f}s")  # 打印该线程实际用时
 
-# A 用1秒，B 用2秒，C 用0.5秒
+# A 用1秒，B 用2秒，C 用0.5秒。三个线程同时启动，同时运行
 threads = [
-    threading.Thread(target=task_with_time, args=("A", 1)),
-    threading.Thread(target=task_with_time, args=("B", 2)),
-    threading.Thread(target=task_with_time, args=("C", 0.5)),
+    threading.Thread(target=task_with_time, args=("A", 1)),   # 线程A：1秒
+    threading.Thread(target=task_with_time, args=("B", 2)),   # 线程B：2秒（最慢）
+    threading.Thread(target=task_with_time, args=("C", 0.5)), # 线程C：0.5秒
 ]
-overall_start = time.time()
-for t in threads:
+overall_start = time.time()         # 记录整体开始时间
+for t in threads:                   # 先全部启动
     t.start()
 # 不管以什么顺序 join，总耗时都接近2秒（最慢的那个）
-for t in threads:
+# 因为三个线程是并行运行的，join 只是等待它们各自完成
+for t in threads:                   # 再逐一等待
     t.join()
 print(f"  三个线程全部结束，总耗时 {time.time()-overall_start:.2f}s（≈最慢的B）")
 print()
 
 # ============================================================
 # 实验4：不调用 join，主线程先结束会怎样
+# 非守护线程（daemon=False，默认）：Python 解释器会等所有非守护线程结束才退出
 # ============================================================
 print("=" * 55)
 print("实验4：不 join，主线程不等子线程")
 print("=" * 55)
 print("  （非守护线程：Python 会自动等它结束才退出程序）")
-t = threading.Thread(target=slow_task, args=(0.5, "无人等"))
-t.start()
+t = threading.Thread(target=slow_task, args=(0.5, "无人等"))  # 非守护线程（默认）
+t.start()                                                # 启动子线程
 print("  主线程不 join，直接结束自己的代码")
 print("  但程序不会立即退出，会等非守护子线程结束...")
 # 这里没有 t.join()，但程序会等 t 结束
@@ -911,22 +965,22 @@ print("  join() 也不会重新抛出；Python 3.8+ 通过 threading.excepthook 
 
 ### 方法一：构造时设置
 \`\`\`python
-t = threading.Thread(target=task, daemon=True)  # 赋值变量 t
+t = threading.Thread(target=task, daemon=True)  # 创建线程时直接传 daemon=True，设为守护线程
 \`\`\`
 
 ### 方法二：start 前设置
 \`\`\`python
-t = threading.Thread(target=task)  # 赋值变量 t
-t.daemon = True  # 执行操作
-t.start()  # 调用 t.start()：启动
+t = threading.Thread(target=task)  # 先创建线程对象（此时 daemon 默认为 False）
+t.daemon = True  # 在 start 前把 daemon 属性改为 True
+t.start()  # start() 启动线程（daemon 必须在 start 前设置，否则会报错）
 \`\`\`
 
 ### 方法三：类继承时设置
 \`\`\`python
-class MyThread(threading.Thread):  # 定义类 MyThread
-    def __init__(self):  # 定义函数 __init__，参数：self
-        super().__init__()  # 调用父类
-        self.daemon = True    # 必须在 start 前设置
+class MyThread(threading.Thread):  # 继承 Thread 类
+    def __init__(self):  # 构造方法
+        super().__init__()  # 先调用父类 __init__ 初始化线程内部状态
+        self.daemon = True    # 设置 daemon=True，必须在 start 前设置
 \`\`\`
 
 > ⚠️ **重要**：\`daemon\` 必须在 \`start()\` **之前**设置，start 之后改会报错。
@@ -959,33 +1013,38 @@ class MyThread(threading.Thread):  # 定义类 MyThread
     code: `# 第七章 demo：守护线程 vs 非守护线程
 # 两个线程都做无限循环，主线程只跑2秒就结束
 # 观察：守护线程被杀，非守护线程会让程序等它
-import threading
-import time
+import threading                    # 导入 threading：线程模块
+import time                         # 导入 time：用于 sleep 和 strftime
 
 def loop_forever(tag, interval=0.5):
     """无限循环：每隔 interval 秒打印一次"""
-    i = 0
-    while True:
-        i += 1
-        print(f"  [{tag}] 第 {i} 次循环 ({time.strftime('%H:%M:%S')})")
-        time.sleep(interval)
+    i = 0                           # 循环计数器
+    while True:                     # 无限循环：永远不停（除非被强制杀死）
+        i += 1                      # 计数器加1
+        print(f"  [{tag}] 第 {i} 次循环 ({time.strftime('%H:%M:%S')})")  # 打印第几次循环和当前时间
+        time.sleep(interval)        # 每隔 interval 秒打印一次
 
+# ============================================================
+# 实验1：守护线程 —— 主线程结束后会被自动杀死
+# 守护线程（daemon=True）是"配角"，所有非守护线程结束后它会被强制终止
+# ============================================================
 print("=" * 55)
 print("实验1：守护线程——主线程结束就被杀")
 print("=" * 55)
 # daemon=True 表示这是守护线程
 t_daemon = threading.Thread(target=loop_forever, args=("守护", 0.4),
-                            daemon=True, name="守护线程")
-t_daemon.start()
+                            daemon=True, name="守护线程")  # daemon=True 必须在创建时或 start 前设置
+t_daemon.start()                   # 启动守护线程：开始无限循环
 print("  >>> 守护线程已启动（daemon=True）")
 print("  >>> 主线程开始 sleep 2秒...")
-time.sleep(2)
+time.sleep(2)                      # 主线程休眠2秒，期间守护线程会打印多次
 print("  >>> 主线程醒了，准备结束")
-print("  >>> 主线程结束后，守护线程会被自动杀死\\n")
+print("  >>> 主线程结束后，守护线程会被自动杀死\\n")  # 主线程代码结束后，守护线程立即被终止
 
 # ============================================================
 # 实验2：非守护线程——程序会等它
 # 这里为了不让 demo 卡死，我们让非守护线程也只循环几次
+# 非守护线程（daemon=False，默认）：程序会等所有非守护线程结束才退出
 # ============================================================
 print("=" * 55)
 print("实验2：非守护线程——程序会等它结束")
@@ -993,15 +1052,15 @@ print("=" * 55)
 
 def loop_times(tag, n):
     """循环 n 次后退出（非无限循环，方便演示）"""
-    for i in range(n):
-        print(f"  [{tag}] 第 {i+1}/{n} 次 ({time.strftime('%H:%M:%S')})")
-        time.sleep(0.3)
-    print(f"  [{tag}] 自然结束")
+    for i in range(n):             # 循环 n 次
+        print(f"  [{tag}] 第 {i+1}/{n} 次 ({time.strftime('%H:%M:%S')})")  # 打印进度 i/n
+        time.sleep(0.3)            # 每次间隔0.3秒
+    print(f"  [{tag}] 自然结束")    # 循环结束提示
 
 # 默认 daemon=False，是非守护线程
 t_normal = threading.Thread(target=loop_times, args=("非守护", 4),
-                            name="非守护线程")
-t_normal.start()
+                            name="非守护线程")  # 不传 daemon 参数，默认是非守护
+t_normal.start()                   # 启动非守护线程
 print("  >>> 非守护线程已启动（daemon=False）")
 print("  >>> 主线程代码到此结束，但程序不会立即退出")
 print("  >>> 会等非守护线程跑完才退出...")
@@ -1009,18 +1068,18 @@ print("  >>> 会等非守护线程跑完才退出...")
 print()
 
 # ============================================================
-# 实验3：daemon 必须在 start 前设置
+# 实验3：daemon 必须在 start 前设置 —— start 后修改会报错
 # ============================================================
 print("=" * 55)
 print("实验3：start 后修改 daemon 会报错")
 print("=" * 55)
 t = threading.Thread(target=lambda: None)   # lambda: None 是个空函数，线程立即结束
-t.start()
-t.join()
+t.start()                                    # 启动线程
+t.join()                                     # 等线程结束
 try:
-    t.daemon = True          # 已经 start 过，会抛 RuntimeError
-except RuntimeError as e:
-    print(f"  报错: {e}")
+    t.daemon = True          # 已经 start 过，会抛 RuntimeError：daemon 属性在 start 后不可修改
+except RuntimeError as e:    # 捕获运行时错误
+    print(f"  报错: {e}")    # 打印错误信息
 print("\\n要点：")
 print("• daemon=True 的线程是'配角'，主线程结束就被杀")
 print("• daemon=False（默认）的线程，程序会等它结束")
@@ -1046,14 +1105,14 @@ print("• 不要在守护线程里做关键操作（可能来不及完成）")`
 
 \`\`\`python
 # 问题演示：所有线程共享同一个全局变量
-import threading, time  # 导入模块 threading,
+import threading, time  # 导入 threading 和 time 模块
 
-data = None  # 赋值变量 data
-def worker():  # 定义函数 worker
-    global data  # 声明全局变量 data
-    data = threading.current_thread().name   # 各线程都改 data
-    time.sleep(0.1)                            # 让其他线程也来改
-    print(data)   # 可能打印的是别人的名字！data 被覆盖了
+data = None  # 全局变量 data：初始为 None，所有线程共享这一个变量
+def worker():  # 定义函数 worker：每个线程执行的任务
+    global data  # global 声明：表示要修改全局变量 data
+    data = threading.current_thread().name   # 把当前线程名写入 data（所有线程写同一个 data）
+    time.sleep(0.1)                            # 等0.1秒，让其他线程也有机会改 data
+    print(data)   # 此时 data 可能已经被别的线程改了！打印的可能是别人的名字
 \`\`\`
 
 ## 解决方案：threading.local
@@ -1061,13 +1120,13 @@ def worker():  # 定义函数 worker
 \`threading.local()\` 创建一个"线程局部存储"对象，**每个线程对它属性的读写都是独立的**，互不可见。
 
 \`\`\`python
-import threading  # 导入模块 threading
+import threading  # 导入 threading 模块
 
-local_data = threading.local()    # 创建线程局部对象
+local_data = threading.local()    # 创建线程局部对象：每个线程看到的属性各自独立
 
 def worker():  # 定义函数 worker
     # 每个线程看到的 local_data.name 都是自己的那份
-    local_data.name = threading.current_thread().name  # 执行操作
+    local_data.name = threading.current_thread().name  # 写入当前线程的名字（自动隔离到当前线程）
     print(local_data.name)        # 各线程打印各自的名字，互不干扰
 \`\`\`
 
@@ -1077,29 +1136,29 @@ def worker():  # 定义函数 worker
 
 ### 场景1：每个线程独立的数据库连接
 \`\`\`python
-import threading, sqlite3  # 导入模块 threading,
+import threading, sqlite3  # 导入 threading 和 sqlite3（Python 内置的 SQLite 数据库模块）
 
-local = threading.local()  # 赋值变量 local
+local = threading.local()  # 创建线程局部对象，用于存每线程独立的数据库连接
 
-def get_conn():  # 定义函数 get_conn
-    if not hasattr(local, "conn"):       # 当前线程还没建连接
-        local.conn = sqlite3.connect("db.sqlite")  # 执行操作
-    return local.conn                    # 返回当前线程专属的连接
+def get_conn():  # 定义函数 get_conn：获取当前线程的数据库连接
+    if not hasattr(local, "conn"):       # hasattr 检查当前线程是否已建过连接
+        local.conn = sqlite3.connect("db.sqlite")  # 没建过就新建一个，存到 local.conn（仅当前线程可见）
+    return local.conn                    # 返回当前线程专属的连接（其他线程不会拿到这个连接）
 \`\`\`
 
 ### 场景2：Web 请求上下文
 \`\`\`python
-import threading  # 导入模块 threading
+import threading  # 导入 threading 模块
 
-ctx = threading.local()  # 赋值变量 ctx
+ctx = threading.local()  # 创建线程局部对象，作为请求上下文（每线程独立）
 
-def handle_request(user_id):  # 定义函数 handle_request，参数：user_id
-    ctx.user_id = user_id     # 当前线程设置用户
+def handle_request(user_id):  # 定义函数 handle_request，参数 user_id：当前请求的用户ID
+    ctx.user_id = user_id     # 把用户ID存到线程局部变量（仅当前线程可见）
     # 后续调用任何函数都能从 ctx.user_id 取到，无需层层传参
-    process()  # 调用 process()
+    process()  # 调用 process()：无需传 user_id，内部从 ctx 取
 
-def process():  # 定义函数 process
-    print(f"处理用户 {ctx.user_id}")   # 自动取当前线程的 user_id
+def process():  # 定义函数 process：业务处理
+    print(f"处理用户 {ctx.user_id}")   # 自动取当前线程的 user_id，无需参数传递
 \`\`\`
 
 ## threading.local 的特点
@@ -1114,28 +1173,30 @@ def process():  # 定义函数 process
 下面 demo 启动多个线程，分别用普通全局变量和 \`threading.local\` 存储数据，观察共享带来的混乱和线程局部的隔离效果。`,
     code: `# 第八章 demo：threading.local 线程局部变量
 # 对比"共享全局变量"和"线程局部变量"在多线程下的表现
-import threading
-import time
+import threading                    # 导入 threading：线程模块，含 Thread 和 local
+import time                         # 导入 time：用于 sleep 制造时间差
 
 # ============================================================
 # 问题：共享全局变量会被各线程互相覆盖
+# 所有线程读写同一个字典，后写的会覆盖先写的
 # ============================================================
 shared_data = {}                        # 共享字典：所有线程读写同一份
 
 def worker_shared(tag):
     """用共享字典存数据 —— 会互相覆盖"""
-    shared_data["name"] = tag            # 写入自己的名字
-    time.sleep(0.05)                     # 让其他线程也来写
+    shared_data["name"] = tag            # 写入自己的名字到共享字典的 "name" 键
+    time.sleep(0.05)                     # 等0.05秒，让其他线程也有机会写入（制造竞争）
     # 此时 shared_data["name"] 可能已经被别的线程改了！
-    print(f"  [共享] {tag} 读到: {shared_data['name']}  (期望: {tag})")
+    print(f"  [共享] {tag} 读到: {shared_data['name']}  (期望: {tag})")  # 读到的可能不是自己的名字
 
 print("=" * 55)
 print("实验1：共享全局变量 —— 数据会被覆盖")
 print("=" * 55)
+# 列表推导式创建3个线程，target 是 worker_shared，参数是 "线程0"/"线程1"/"线程2"
 threads = [threading.Thread(target=worker_shared, args=(f"线程{i}",))
            for i in range(3)]
-for t in threads: t.start()
-for t in threads: t.join()
+for t in threads: t.start()             # 全部启动
+for t in threads: t.join()              # 全部等待结束
 print("  可以看到，读到的名字可能不是自己的 —— 这就是共享的隐患\\n")
 
 # ============================================================
@@ -1149,49 +1210,50 @@ def worker_local(tag):
     local_data.name = tag                # 写入"自己的"那份（底层按线程ID隔离存储）
     time.sleep(0.05)                     # 等其他线程也写
     # local_data.name 取到的是当前线程自己设置的值，不会被别人影响
-    print(f"  [局部] {tag} 读到: {local_data.name}  (期望: {tag}) ✓")
+    print(f"  [局部] {tag} 读到: {local_data.name}  (期望: {tag}) ✓")  # 读到的必定是自己写的
 
 print("=" * 55)
 print("实验2：threading.local —— 各线程数据隔离")
 print("=" * 55)
 threads = [threading.Thread(target=worker_local, args=(f"线程{i}",))
-           for i in range(3)]
-for t in threads: t.start()
-for t in threads: t.join()
+           for i in range(3)]            # 创建3个线程
+for t in threads: t.start()             # 全部启动
+for t in threads: t.join()              # 全部等待结束
 print("  每个线程读到的都是自己的名字，互不干扰\\n")
 
 # ============================================================
 # 实用场景：每个线程独立的"请求上下文"
+# Web 服务器中，每个请求分配一个线程，用 local 存请求相关信息
 # ============================================================
 print("=" * 55)
 print("实验3：模拟 Web 请求上下文（每线程独立用户）")
 print("=" * 55)
 
-request_ctx = threading.local()         # 请求上下文：线程隔离
+request_ctx = threading.local()         # 请求上下文：线程隔离，每个线程看到自己的数据
 
 def handle_request(user_id, action):
     """模拟处理一个用户请求"""
     # 把用户信息存到线程局部变量，后续函数无需传参即可拿到
-    request_ctx.user_id = user_id
-    request_ctx.action = action
+    request_ctx.user_id = user_id        # 存当前线程的用户ID
+    request_ctx.action = action          # 存当前线程的操作类型
     time.sleep(0.02)                     # 模拟处理耗时
     # 调用业务函数，里面直接读 request_ctx 就能拿到当前用户
-    do_business()
+    do_business()                        # 无需传参，do_business 内部从 request_ctx 取
 
 def do_business():
     """业务函数：无需参数，从 request_ctx 取当前线程的用户"""
-    uid = request_ctx.user_id
-    act = request_ctx.action
+    uid = request_ctx.user_id            # 自动取当前线程存的 user_id
+    act = request_ctx.action             # 自动取当前线程存的 action
     print(f"  处理用户 {uid} 的请求: {act} (线程={threading.current_thread().name})")
 
-threads = []
-for i in range(3):
+threads = []                             # 线程列表
+for i in range(3):                       # 创建3个线程，模拟3个并发请求
     t = threading.Thread(target=handle_request,
-                         args=(f"用户{i+1}", ["登录", "下单", "查询"][i]),
+                         args=(f"用户{i+1}", ["登录", "下单", "查询"][i]),  # 第i个用户做第i种操作
                          name=f"Thread-{i+1}")
-    threads.append(t)
-    t.start()
-for t in threads: t.join()
+    threads.append(t)                    # 存入列表
+    t.start()                            # 启动线程
+for t in threads: t.join()              # 等所有线程结束
 
 print("\\n要点：")
 print("• threading.local() 创建线程局部存储对象")

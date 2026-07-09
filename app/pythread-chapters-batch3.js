@@ -85,31 +85,31 @@ ctx.Pool(...)         # 用 fork 的进程池
 
 下面 demo 用多进程跑同样的 CPU 密集任务，对比串行，能看到**接近 N 倍提速**（N 为进程数，受 CPU 核数限制）。`,
     code: `# 第十九章 demo：multiprocessing 入门 + 真正并行
-import multiprocessing as mp
-import time
-import os
+import multiprocessing as mp   # 导入多进程模块，简称 mp
+import time                     # 用于计时
+import os                       # 用于获取进程 PID
 
 def cpu_task(n):
     """纯 CPU 计算：累加 0..n-1"""
-    total = 0
-    for i in range(n):
-        total += i
-    return total
+    total = 0                   # 累加器初始化为 0
+    for i in range(n):          # 循环 n 次，i 从 0 到 n-1
+        total += i              # 把每个 i 累加到 total（纯 CPU 运算，不涉及 IO）
+    return total                # 返回最终累加结果
 
-N = 4_000_000   # 计算量
+N = 4_000_000   # 计算量：4百万次累加，足够耗时以便观察并行加速效果
 
 print("=" * 55)
 print("查看当前系统信息")
 print("=" * 55)
-print(f"  CPU 核心数: {mp.cpu_count()}")
-print(f"  默认启动方式: {mp.get_start_method(allow_none=True) or '(未设)'}")
+print(f"  CPU 核心数: {mp.cpu_count()}")                              # mp.cpu_count() 返回逻辑 CPU 核心数
+print(f"  默认启动方式: {mp.get_start_method(allow_none=True) or '(未设)'}")  # 查看当前默认的进程启动方式
 print()
 
 # 使用 fork 上下文（适配在线运行环境：脚本来自 stdin，spawn 会失败）
 # macOS 默认 spawn：子进程是全新 Python 解释器，会重新导入主模块，
 # 必须用 if __name__ == "__main__": 保护启动代码，否则无限递归创建子进程。
 # fork 则直接复制父进程内存，子进程无需重新导入，所以不需要该保护。
-ctx = mp.get_context("fork")
+ctx = mp.get_context("fork")   # 获取 fork 启动方式的上下文对象
 
 # ============================================================
 # 实验1：创建一个子进程
@@ -119,15 +119,15 @@ print("实验1：创建并启动一个子进程")
 print("=" * 55)
 def hello(name):
     """子进程入口：打印问候和自己的 PID"""
-    print(f"  子进程: 你好 {name}! PID={os.getpid()}")
+    print(f"  子进程: 你好 {name}! PID={os.getpid()}")  # os.getpid() 获取当前进程的进程 ID
 
 print(f"  主进程 PID: {os.getpid()}")
 # name 给进程起名方便调试；args 必须是元组，单元素要加逗号
-p = ctx.Process(target=hello, args=("Python",), name="我的子进程")
+p = ctx.Process(target=hello, args=("Python",), name="我的子进程")  # 创建进程对象（此时还没启动）
 print(f"  创建后 is_alive={p.is_alive()}")   # 还没 start，所以 False
-p.start()
+p.start()                                   # 启动子进程，操作系统开始调度运行
 print(f"  start 后 is_alive={p.is_alive()}")  # 已启动，正在运行
-p.join()
+p.join()                                    # 阻塞主进程，等待子进程执行完毕
 print(f"  join 后 is_alive={p.is_alive()}")   # 已结束，回到 False
 print()
 
@@ -138,19 +138,19 @@ print("=" * 55)
 print("实验2：多进程并行 vs 串行（CPU 密集型）")
 print("=" * 55)
 
-# 串行：执行两次
-start = time.time()
-r1 = cpu_task(N)
-r2 = cpu_task(N)
-serial_time = time.time() - start
+# 串行：执行两次（单进程内顺序执行两次 cpu_task）
+start = time.time()             # 记录开始时间
+r1 = cpu_task(N)                # 第一次计算
+r2 = cpu_task(N)                # 第二次计算
+serial_time = time.time() - start   # 串行总耗时 = 两次计算时间之和
 print(f"  串行执行两次: {serial_time:.3f}s (结果 {r1}, {r2})")
 
 # 多进程：两个 worker 进程并行执行
 # ctx.Pool(2) 预创建 2 个 worker；pool.map 把任务分发并自动收集返回值
-start = time.time()
-with ctx.Pool(2) as pool:
-    results = pool.map(cpu_task, [N, N])   # 阻塞直到全部完成，按顺序返回
-parallel_time = time.time() - start
+start = time.time()             # 记录并行开始时间
+with ctx.Pool(2) as pool:       # 创建含 2 个 worker 的进程池（with 自动管理生命周期）
+    results = pool.map(cpu_task, [N, N])   # 阻塞直到全部完成，按顺序返回结果列表
+parallel_time = time.time() - start   # 并行总耗时（两个任务同时跑，理论上接近单次耗时）
 print(f"  多进程并行两个: {parallel_time:.3f}s (结果 {results})")
 print(f"  加速比: {serial_time/parallel_time:.2f}x（接近2倍，因真正并行）")
 print()
@@ -259,10 +259,10 @@ with mp.Pool(2) as pool:
 
 下面 demo 演示两种创建方式、参数传递、用 Queue 取返回值、查看 exitcode。`,
     code: `# 第二十章 demo：Process 创建与参数传递
-import multiprocessing as mp
-import os
+import multiprocessing as mp   # 导入多进程模块
+import os                       # 用于获取进程 PID 和父进程 PID
 
-ctx = mp.get_context("fork")
+ctx = mp.get_context("fork")   # 获取 fork 启动方式上下文
 
 # ============================================================
 # 实验1：函数式创建 + args/kwargs
@@ -272,18 +272,19 @@ print("实验1：函数式创建进程，传 args 和 kwargs")
 print("=" * 55)
 
 def greet(name, greeting, times=2):
-    """子进程执行的函数"""
-    print(f"  [子进程 PID={os.getpid()}] 父PID={os.getppid()}")
-    for i in range(times):
+    """子进程执行的函数：name/greeting 是位置参数，times 是关键字参数"""
+    print(f"  [子进程 PID={os.getpid()}] 父PID={os.getppid()}")  # getppid() 获取父进程 PID
+    for i in range(times):       # 循环 times 次
         print(f"  [子进程] {greeting}, {name}! ({i+1}/{times})")
 
+# args 传位置参数（元组），kwargs 传关键字参数（字典），name 给进程命名
 p = ctx.Process(target=greet, args=("Python", "Hello"),
                 kwargs={"times": 3}, name="问候进程")
 print(f"  [主进程 PID={os.getpid()}] 启动子进程前")
-p.start()
-print(f"  [主进程] 子进程 PID={p.pid}")
-p.join()
-print(f"  [主进程] 子进程退出码={p.exitcode} (0表示正常)")
+p.start()                        # 启动子进程
+print(f"  [主进程] 子进程 PID={p.pid}")  # p.pid 在 start 后才有值
+p.join()                         # 等待子进程结束
+print(f"  [主进程] 子进程退出码={p.exitcode} (0表示正常)")  # exitcode: 0=正常, >0=异常, <0=被信号杀
 print()
 
 # ============================================================
@@ -299,19 +300,19 @@ class Worker(ctx.Process):
     若继承 mp.Process，macOS 默认 spawn 模式会重新导入主模块导致报错。"""
     def __init__(self, task_name, count):
         super().__init__()              # 必须调父类 __init__，初始化进程内部状态
-        self.task_name = task_name
-        self.count = count
+        self.task_name = task_name      # 保存任务名（自定义属性）
+        self.count = count              # 保存执行次数（自定义属性）
 
     def run(self):
         """重写 run：start() 会自动调用它（不要自己调 run，要调 start）"""
         print(f"  [子进程] 任务 {self.task_name} 开始")
-        for i in range(self.count):
+        for i in range(self.count):     # 循环 self.count 次
             print(f"  [子进程] {self.task_name} 步骤 {i+1}")
         print(f"  [子进程] 任务 {self.task_name} 完成")
 
-w = Worker("数据处理", 3)
-w.start()
-w.join()
+w = Worker("数据处理", 3)   # 实例化自定义进程对象
+w.start()                    # start() 会自动调用 run() 方法
+w.join()                     # 等待子进程结束
 print()
 
 # ============================================================
@@ -323,18 +324,18 @@ print("=" * 55)
 
 def compute_and_return(q, x):
     """计算 x 的平方，结果通过队列返回给主进程"""
-    result = x * x
+    result = x * x                # 计算平方
     q.put(result)                      # 结果放进队列（数据会被 pickle 传输）
 
 q = ctx.Queue()                        # 进程间队列，传给子进程当通信通道
 processes = []
-for x in [3, 5, 7]:
+for x in [3, 5, 7]:                    # 为每个输入值创建一个子进程
     p = ctx.Process(target=compute_and_return, args=(q, x))
-    p.start()
+    p.start()                          # 启动子进程
     processes.append(p)
 
 # 主进程从队列取 3 次结果（get 阻塞直到有数据）
-results = [q.get() for _ in range(3)]
+results = [q.get() for _ in range(3)]  # 列表推导：取 3 次结果
 for p in processes:
     p.join()                           # 回收子进程，避免僵尸进程
 print(f"  输入: [3, 5, 7]")
@@ -355,14 +356,14 @@ def normal():
 def crash():
     """故意抛异常的子进程：异常会被 multiprocessing 捕获，exitcode=1"""
     print("  [崩溃进程] 我要崩溃了")
-    raise RuntimeError("故意崩溃")
+    raise RuntimeError("故意崩溃")    # 抛出异常，子进程异常退出
 
-p1 = ctx.Process(target=normal)
-p1.start(); p1.join()
+p1 = ctx.Process(target=normal)       # 正常退出的进程
+p1.start(); p1.join()                 # 启动并等待
 print(f"  正常进程 exitcode={p1.exitcode} (0=正常)")
 
-p2 = ctx.Process(target=crash)
-p2.start(); p2.join()
+p2 = ctx.Process(target=crash)        # 会崩溃的进程
+p2.start(); p2.join()                 # 启动并等待（崩溃不影响主进程）
 print(f"  崩溃进程 exitcode={p2.exitcode} (1=异常退出)")
 print("  (崩溃信息打印在上方，但不会影响主进程)")
 
@@ -431,16 +432,16 @@ p.join()           # terminate 后仍需 join 等待清理
 
 下面 demo 演示进程等待、守护进程、强制终止。`,
     code: `# 第二十一章 demo：进程的 join / daemon / terminate
-import multiprocessing as mp
-import time
-import os
+import multiprocessing as mp   # 导入多进程模块
+import time                     # 用于 sleep 模拟耗时
+import os                       # 用于获取进程 PID
 
-ctx = mp.get_context("fork")
+ctx = mp.get_context("fork")   # 获取 fork 启动方式上下文
 
 def long_task(secs, tag):
     """运行 secs 秒的任务"""
     print(f"  [{tag}] PID={os.getpid()} 开始，运行 {secs}s")
-    time.sleep(secs)
+    time.sleep(secs)              # 模拟耗时操作
     print(f"  [{tag}] 正常结束")
 
 # ============================================================
@@ -449,10 +450,10 @@ def long_task(secs, tag):
 print("=" * 55)
 print("实验1：join 等待子进程结束")
 print("=" * 55)
-p = ctx.Process(target=long_task, args=(0.5, "子进程A"))
-p.start()
+p = ctx.Process(target=long_task, args=(0.5, "子进程A"))  # 创建运行 0.5 秒的子进程
+p.start()                        # 启动子进程
 print(f"  [主] 子进程 PID={p.pid}, is_alive={p.is_alive()}")
-p.join()
+p.join()                         # join() 阻塞等待子进程结束
 print(f"  [主] join 后 is_alive={p.is_alive()}, exitcode={p.exitcode}")
 print()
 
@@ -462,13 +463,13 @@ print()
 print("=" * 55)
 print("实验2：join(timeout) 超时 + terminate 强制终止")
 print("=" * 55)
-p = ctx.Process(target=long_task, args=(3, "慢进程"))
-p.start()
+p = ctx.Process(target=long_task, args=(3, "慢进程"))  # 创建运行 3 秒的子进程
+p.start()                        # 启动子进程
 print(f"  [主] 等0.5秒...")
-p.join(timeout=0.5)
-if p.is_alive():
+p.join(timeout=0.5)              # join(timeout) 最多等 0.5 秒，超时就返回
+if p.is_alive():                 # 如果 0.5 秒后子进程还在运行
     print(f"  [主] 0.5秒到了，子进程还在跑，terminate 掉它")
-    p.terminate()             # 强制终止
+    p.terminate()             # 强制终止子进程（发送 SIGTERM 信号）
     p.join()                  # terminate 后仍需 join 等清理
     print(f"  [主] 终止后 exitcode={p.exitcode} (负数=被信号杀)")
 print()
@@ -483,18 +484,18 @@ print("=" * 55)
 def heartbeat():
     """守护进程：不停打印心跳（父进程退出时会被自动杀死）"""
     i = 0
-    while True:
+    while True:                   # 无限循环，持续发送心跳
         i += 1
         # flush=True 必不可少：守护进程被强杀时不会刷新缓冲区，
         # 不加 flush 心跳输出会全部丢失（stdout 在管道下是块缓冲的）
         print(f"  [守护进程] 心跳 {i}", flush=True)
-        time.sleep(0.3)
+        time.sleep(0.3)           # 每 0.3 秒一次心跳
 
 # daemon=True 必须在 start 前设置；守护进程父进程一退出就被终止
 pd = ctx.Process(target=heartbeat, daemon=True, name="心跳进程")
-pd.start()
+pd.start()                        # 启动守护进程
 print(f"  [主] 守护进程已启动 (PID={pd.pid})")
-time.sleep(1)
+time.sleep(1)                     # 主进程运行 1 秒，期间守护进程持续发心跳
 print("  [主] 主进程代码结束，守护进程会被自动终止")
 print()
 
@@ -508,15 +509,15 @@ print("=" * 55)
 def daemon_try_spawn():
     """守护进程里尝试创建子进程：multiprocessing 会禁止并抛 AssertionError"""
     try:
-        child = ctx.Process(target=lambda: None)
+        child = ctx.Process(target=lambda: None)  # 尝试在守护进程中创建子进程
         child.start()               # 这里会抛 AssertionError: daemonic processes are not allowed to create children
         child.join()
-    except Exception as e:
+    except Exception as e:          # 捕获异常，打印错误信息
         print(f"  [守护进程] 报错: {type(e).__name__}: {e}")
 
-pd2 = ctx.Process(target=daemon_try_spawn, daemon=True)
-pd2.start()
-pd2.join()
+pd2 = ctx.Process(target=daemon_try_spawn, daemon=True)  # 创建一个守护进程
+pd2.start()                        # 启动守护进程
+pd2.join()                         # 等待守护进程结束
 print()
 
 print("要点：")
@@ -596,12 +597,12 @@ p1.join(); p2.join()
 
 下面 demo 用 multiprocessing.Queue 实现多进程的生产者-消费者。`,
     code: `# 第二十二章 demo：multiprocessing.Queue 进程间通信
-import multiprocessing as mp
-import time
-import os
-import queue as queue_mod
+import multiprocessing as mp   # 导入多进程模块
+import time                     # 用于 sleep 模拟耗时
+import os                       # 用于获取进程 PID
+import queue as queue_mod       # 导入 queue 模块用于捕获 Full/Empty 异常
 
-ctx = mp.get_context("fork")
+ctx = mp.get_context("fork")   # 获取 fork 启动方式上下文
 
 # ============================================================
 # 实验1：双向通信（用两个 Queue 避免竞态）
@@ -617,25 +618,25 @@ print("=" * 55)
 
 def worker(req_q, resp_q, name):
     """子进程：从 req_q 接收，处理后放回 resp_q"""
-    msg = req_q.get()                   # 阻塞接收任务
+    msg = req_q.get()                   # 阻塞接收任务（队列空时等待）
     print(f"  [{name} PID={os.getpid()}] 收到: {msg}", flush=True)
-    resp_q.put(f"{name} 处理完毕: {msg.upper()}")  # 结果放到响应队列
-    resp_q.put(None)                    # 结束信号
+    resp_q.put(f"{name} 处理完毕: {msg.upper()}")  # 结果放到响应队列（upper() 转大写）
+    resp_q.put(None)                    # 结束信号：通知主进程没有更多数据了
 
 # multiprocessing.Queue 底层用管道(pipe)+锁实现进程间通信(IPC)：
 # put 时数据被 pickle 序列化写入管道，get 时反序列化读出，故数据必须可 pickle。
 req_q = ctx.Queue()                     # 主→子：任务队列
 resp_q = ctx.Queue()                    # 子→主：结果队列
 p = ctx.Process(target=worker, args=(req_q, resp_q, "子进程A"))
-p.start()
+p.start()                               # 启动子进程
 
-req_q.put("hello multiprocessing")      # 主进程发任务
+req_q.put("hello multiprocessing")      # 主进程发任务（放入请求队列）
 while True:
     result = resp_q.get()               # 主进程只从响应队列读，不会读到自己的任务
-    if result is None:
+    if result is None:                  # 收到结束信号，退出循环
         break
     print(f"  [主进程] 收到结果: {result}", flush=True)
-p.join()
+p.join()                                # 等待子进程结束
 print()
 
 # ============================================================
@@ -651,37 +652,37 @@ print("=" * 55)
 
 def producer(q, tag, n):
     """生产者：生产 n 个产品"""
-    for i in range(n):
-        item = f"{tag}-产品{i}"
-        time.sleep(0.1)
-        q.put(item)
+    for i in range(n):               # 循环生产 n 个产品
+        item = f"{tag}-产品{i}"      # 生成产品名称
+        time.sleep(0.1)              # 模拟生产耗时
+        q.put(item)                  # 产品放入队列
         print(f"  📤 [{tag}] 生产 {item}", flush=True)
 
 def consumer(q, tag):
     """消费者：不断消费，收到 STOP 退出"""
-    while True:
-        item = q.get()
-        if item == "STOP":
+    while True:                      # 持续消费循环
+        item = q.get()               # 从队列取产品（阻塞直到有数据）
+        if item == "STOP":           # 收到停止信号
             print(f"  📥 [{tag}] 收到 STOP，退出", flush=True)
             return                       # 直接退出，不传递
-        time.sleep(0.15)
+        time.sleep(0.15)             # 模拟消费耗时
         print(f"  📥 [{tag}] 消费 {item}", flush=True)
 
-q = ctx.Queue()
+q = ctx.Queue()                      # 共享队列：生产者放，消费者取
 NUM_CONSUMERS = 2
-consumers = [ctx.Process(target=consumer, args=(q, f"C{i}")) for i in range(NUM_CONSUMERS)]
-for c in consumers: c.start()
+consumers = [ctx.Process(target=consumer, args=(q, f"C{i}")) for i in range(NUM_CONSUMERS)]  # 创建 2 个消费者
+for c in consumers: c.start()        # 启动所有消费者
 
-producers = [ctx.Process(target=producer, args=(q, f"P{i}", 3)) for i in range(2)]
-for p in producers: p.start()
-for p in producers: p.join()
+producers = [ctx.Process(target=producer, args=(q, f"P{i}", 3)) for i in range(2)]  # 创建 2 个生产者，各产 3 个
+for p in producers: p.start()        # 启动所有生产者
+for p in producers: p.join()         # 等待所有生产者完成
 
 print("  >>> 生产者都完成了，给每个消费者发一个 STOP", flush=True)
 time.sleep(0.8)                          # 等消费者把已入队的产品消费完
 for _ in range(NUM_CONSUMERS):           # 每个消费者一个 STOP
     q.put("STOP")
 
-for c in consumers: c.join()
+for c in consumers: c.join()         # 等待所有消费者退出
 print()
 
 # ============================================================
@@ -696,19 +697,19 @@ print("实验3：put_nowait / get_nowait 非阻塞操作")
 print("=" * 55)
 
 # Full：往已满的队列 put_nowait
-q_full = ctx.Queue(maxsize=2)
+q_full = ctx.Queue(maxsize=2)         # 创建容量为 2 的队列
 q_full.put_nowait("a")                  # 占第1个位置
 q_full.put_nowait("b")                  # 占第2个位置，队列满
 try:
     q_full.put_nowait("c")              # 满了再放 → 抛 Full
-except queue_mod.Full:
+except queue_mod.Full:                  # 捕获 queue.Full 异常
     print("  put_nowait 满了: 抛 Full 异常")
 
 # Empty：从全新的空队列 get_nowait
-q_empty = ctx.Queue()
+q_empty = ctx.Queue()                  # 创建空队列
 try:
     q_empty.get_nowait()                # 空队列直接取 → 抛 Empty
-except queue_mod.Empty:
+except queue_mod.Empty:                 # 捕获 queue.Empty 异常
     print("  get_nowait 空了: 抛 Empty 异常")
 
 print("\\n要点：")
@@ -797,11 +798,11 @@ p.join()
 
 下面 demo 演示 Pipe 的双向通信、poll 检查、关闭端口的影响。`,
     code: `# 第二十三章 demo：Pipe 管道通信
-import multiprocessing as mp
-import time
-import os
+import multiprocessing as mp   # 导入多进程模块
+import time                     # 用于 sleep 模拟耗时
+import os                       # 用于获取进程 PID
 
-ctx = mp.get_context("fork")
+ctx = mp.get_context("fork")   # 获取 fork 启动方式上下文
 
 # ============================================================
 # 实验1：双向 Pipe，父子进程互发消息
@@ -812,27 +813,28 @@ print("=" * 55)
 
 def chat(conn, name):
     """子进程：接收消息并回复"""
-    msg = conn.recv()                   # 阻塞接收
+    msg = conn.recv()                   # 阻塞接收父进程发来的消息
     print(f"  [{name}] 收到: {msg}")
-    conn.send(f"你好父进程，我是 {name} (PID={os.getpid()})")
-    msg = conn.recv()
+    conn.send(f"你好父进程，我是 {name} (PID={os.getpid()})")  # 回复父进程
+    msg = conn.recv()                   # 再次接收
     print(f"  [{name}] 又收到: {msg}")
-    conn.send(f"{name} 收到，再见！")
-    conn.close()
+    conn.send(f"{name} 收到，再见！")    # 最后的回复
+    conn.close()                        # 关闭连接，释放资源
 
 # Pipe 底层是 OS 匿名管道：数据在内核缓冲区流转，一端 send 写入，另一端 recv 读出
-parent_conn, child_conn = ctx.Pipe()    # 双向管道
-p = ctx.Process(target=chat, args=(child_conn, "子进程"))
+parent_conn, child_conn = ctx.Pipe()    # 创建双向管道，返回两个连接端
+p = ctx.Process(target=chat, args=(child_conn, "子进程"))  # 把 child_conn 传给子进程
 p.start()
 # 重要：父进程不用 child_conn，应该关闭它
+# 否则子进程关闭 child_conn 后，parent_conn.recv 不会收到 EOF
 child_conn.close()
 
-parent_conn.send("你好子进程，我是父进程")
-print(f"  [父进程] 收到: {parent_conn.recv()}")
+parent_conn.send("你好子进程，我是父进程")  # 父进程发送
+print(f"  [父进程] 收到: {parent_conn.recv()}")  # 父进程接收回复
 parent_conn.send("你还好吗？")
 print(f"  [父进程] 收到: {parent_conn.recv()}")
-parent_conn.close()
-p.join()
+parent_conn.close()                    # 关闭父端连接
+p.join()                               # 等待子进程结束
 print()
 
 # ============================================================
@@ -844,29 +846,30 @@ print("=" * 55)
 
 def sender(conn, name):
     """只发送"""
-    for i in range(3):
-        conn.send(f"{name} 消息{i}")
-        time.sleep(0.1)
-    conn.close()
+    for i in range(3):               # 发送 3 条消息
+        conn.send(f"{name} 消息{i}")  # 发送消息
+        time.sleep(0.1)              # 间隔 0.1 秒
+    conn.close()                     # 发送完毕关闭连接
 
+# duplex=False 创建单向管道：recv_conn 只能接收，send_conn 只能发送
 recv_conn, send_conn = ctx.Pipe(duplex=False)
-p = ctx.Process(target=sender, args=(send_conn, "发送方"))
+p = ctx.Process(target=sender, args=(send_conn, "发送方"))  # send_conn 传给子进程
 p.start()
 send_conn.close()                       # 父进程不用发送端，关闭
 
 # 注意：发送端 close() 后，接收端 poll() 仍会返回 True（表示有"EOF"可读），
 # 此时 recv() 会抛 EOFError。所以要用 try/except EOFError 来判断结束。
 while True:
-    if recv_conn.poll(0.1):             # 有数据或 EOF 可读
+    if recv_conn.poll(0.1):             # poll(0.1) 等 0.1 秒检查有无数据
         try:
-            msg = recv_conn.recv()
+            msg = recv_conn.recv()       # 有数据则接收
             print(f"  [父进程] 收到: {msg}")
         except EOFError:                # 发送端已关闭 → 结束
             break
-    elif not p.is_alive():
+    elif not p.is_alive():              # 子进程已退出且无数据
         break
-recv_conn.close()
-p.join()
+recv_conn.close()                       # 关闭接收端
+p.join()                                # 等待子进程结束
 print()
 
 # ============================================================
@@ -878,24 +881,24 @@ print("=" * 55)
 
 def worker(conn, x):
     """计算 x*x，结果通过自己的 pipe 返回"""
-    time.sleep(0.2)
-    conn.send(x * x)
-    conn.close()
+    time.sleep(0.2)              # 模拟计算耗时
+    conn.send(x * x)             # 计算平方后通过管道发送结果
+    conn.close()                 # 关闭连接
 
 pipes = []
 processes = []
-for x in [3, 5, 7]:
-    parent_conn, child_conn = ctx.Pipe()
+for x in [3, 5, 7]:              # 为每个输入值创建独立的管道和进程
+    parent_conn, child_conn = ctx.Pipe()  # 每个子进程一个独立管道
     p = ctx.Process(target=worker, args=(child_conn, x))
-    p.start()
-    child_conn.close()
-    pipes.append((x, parent_conn, p))
+    p.start()                    # 启动子进程
+    child_conn.close()           # 父进程不用 child 端，关闭
+    pipes.append((x, parent_conn, p))  # 保存输入值、父端连接、进程对象
 
-for x, conn, p in pipes:
-    result = conn.recv()
+for x, conn, p in pipes:         # 遍历所有管道收集结果
+    result = conn.recv()         # 阻塞等待该子进程的结果
     print(f"  输入 {x} → 结果 {result}")
-    conn.close()
-    p.join()
+    conn.close()                 # 关闭连接
+    p.join()                     # 等待该子进程结束
 print()
 
 # ============================================================
@@ -907,21 +910,22 @@ print("=" * 55)
 
 def slow_sender(conn):
     """延迟 0.4 秒后发送一条消息，演示 poll(timeout) 的等待行为"""
-    time.sleep(0.4)
-    conn.send("迟到的消息")
-    conn.close()
+    time.sleep(0.4)              # 故意延迟 0.4 秒
+    conn.send("迟到的消息")      # 延迟后发送
+    conn.close()                 # 关闭连接
 
 parent_conn, child_conn = ctx.Pipe()
 p = ctx.Process(target=slow_sender, args=(child_conn,))
 p.start()
-child_conn.close()
+child_conn.close()               # 父进程不用 child 端，关闭
 
-print(f"  poll(0.1) 立刻检查: {parent_conn.poll(0.1)} (还没到)")
-print(f"  poll(0.5) 再等0.5秒: {parent_conn.poll(0.5)} (到了!)")
-if parent_conn.poll():
-    print(f"  recv: {parent_conn.recv()}")
-parent_conn.close()
-p.join()
+# poll(timeout) 在 timeout 时间内有数据就返回 True，否则返回 False
+print(f"  poll(0.1) 立刻检查: {parent_conn.poll(0.1)} (还没到)")  # 0.1秒内无数据
+print(f"  poll(0.5) 再等0.5秒: {parent_conn.poll(0.5)} (到了!)")  # 0.5秒内有数据
+if parent_conn.poll():           # 无参数 poll 立刻检查
+    print(f"  recv: {parent_conn.recv()}")  # 接收数据
+parent_conn.close()              # 关闭连接
+p.join()                         # 等待子进程结束
 
 print("\\n要点：")
 print("• Pipe 适合一对一进程通信，默认双向，duplex=False 单向")
@@ -1010,10 +1014,10 @@ with v.get_lock():
 
 下面 demo 用 Value 实现多进程共享计数器，对比"不加锁丢更新"和"加锁正确"。`,
     code: `# 第二十四章 demo：Value 和 Array 共享内存
-import multiprocessing as mp
-import time
+import multiprocessing as mp   # 导入多进程模块
+import time                     # 用于 sleep（本 demo 未直接使用但保留）
 
-ctx = mp.get_context("fork")
+ctx = mp.get_context("fork")   # 获取 fork 启动方式上下文
 
 # ============================================================
 # 实验1：Value 共享单个值（不加锁 → 丢更新）
@@ -1024,21 +1028,21 @@ print("=" * 55)
 
 def increment_no_lock(v, n):
     """每个进程对 v 加 n 次（不加锁）"""
-    for _ in range(n):
-        v.value += 1                    # 非原子，会丢更新
+    for _ in range(n):               # 循环 n 次
+        v.value += 1                    # v.value += 1 是"读→加1→写"三步，非原子，并发会丢更新
 
 # Value/Array 通过共享内存(mmap)实现：多个进程映射同一块物理内存，
 # 与 Queue/Pipe 不同，数据不需要 pickle 复制，读写直接操作共享内存。
-v = ctx.Value('i', 0)                   # 共享整数，初值0
-NUM_PROCS = 4
-N = 2000
+v = ctx.Value('i', 0)                   # 创建共享整数，'i' 表示 C 语言 int 类型，初值 0
+NUM_PROCS = 4                            # 4 个进程并发
+N = 2000                                 # 每个进程加 2000 次
 
-procs = [ctx.Process(target=increment_no_lock, args=(v, N))
+procs = [ctx.Process(target=increment_no_lock, args=(v, N))  # 创建 4 个进程
          for _ in range(NUM_PROCS)]
-for p in procs: p.start()
-for p in procs: p.join()
-print(f"  期望: {NUM_PROCS * N} = {NUM_PROCS*N}")
-print(f"  实际: {v.value}（丢更新，小于期望）\\n")
+for p in procs: p.start()               # 全部启动
+for p in procs: p.join()                # 全部等待结束
+print(f"  期望: {NUM_PROCS * N} = {NUM_PROCS*N}")   # 期望 8000
+print(f"  实际: {v.value}（丢更新，小于期望）\\n")    # 实际会小于 8000
 
 # ============================================================
 # 实验2：Value 加锁，结果正确
@@ -1049,17 +1053,17 @@ print("=" * 55)
 
 def increment_with_lock(v, n):
     """加锁版：用 v.get_lock() 保护复合操作"""
-    for _ in range(n):
-        with v.get_lock():              # 加锁
-            v.value += 1                # 现在是原子的
+    for _ in range(n):               # 循环 n 次
+        with v.get_lock():              # 获取 Value 内置的锁，保证以下代码块原子执行
+            v.value += 1                # 现在是原子的，不会丢更新
 
-v2 = ctx.Value('i', 0)
-procs = [ctx.Process(target=increment_with_lock, args=(v2, N))
+v2 = ctx.Value('i', 0)                   # 创建新的共享整数
+procs = [ctx.Process(target=increment_with_lock, args=(v2, N))  # 创建 4 个进程
          for _ in range(NUM_PROCS)]
-for p in procs: p.start()
-for p in procs: p.join()
-print(f"  期望: {NUM_PROCS * N}")
-print(f"  实际: {v2.value} ✓\\n")
+for p in procs: p.start()               # 全部启动
+for p in procs: p.join()                # 全部等待结束
+print(f"  期望: {NUM_PROCS * N}")       # 期望 8000
+print(f"  实际: {v2.value} ✓\\n")       # 加锁后结果正确
 
 # ============================================================
 # 实验3：Array 共享数组
@@ -1070,17 +1074,17 @@ print("=" * 55)
 
 def fill_section(arr, start, end, val):
     """每个进程填充 arr 的 [start:end) 段"""
-    for i in range(start, end):
-        arr[i] = val * i
+    for i in range(start, end):       # 遍历 [start, end) 范围
+        arr[i] = val * i              # arr[i] = val * i，直接写入共享内存
 
-arr = ctx.Array('i', 10)                # 10个整数的共享数组
+arr = ctx.Array('i', 10)                # 创建 10 个整数的共享数组（'i' = int）
 procs = [
-    ctx.Process(target=fill_section, args=(arr, 0, 5, 10)),
-    ctx.Process(target=fill_section, args=(arr, 5, 10, 100)),
+    ctx.Process(target=fill_section, args=(arr, 0, 5, 10)),     # 进程1填充前5个：arr[i]=10*i
+    ctx.Process(target=fill_section, args=(arr, 5, 10, 100)),   # 进程2填充后5个：arr[i]=100*i
 ]
-for p in procs: p.start()
-for p in procs: p.join()
-print(f"  共享数组结果: {list(arr)}")
+for p in procs: p.start()               # 启动两个进程（各写不同区间，无需加锁）
+for p in procs: p.join()                # 等待结束
+print(f"  共享数组结果: {list(arr)}")    # list(arr) 把共享数组转为普通列表打印
 print(f"  前5个=10*i，后5个=100*i\\n")
 
 # ============================================================
@@ -1092,20 +1096,20 @@ print("=" * 55)
 
 def square_range(arr, start, end):
     """把 arr[start:end] 平方"""
-    for i in range(start, end):
-        arr[i] = arr[i] ** 2
+    for i in range(start, end):       # 遍历指定区间
+        arr[i] = arr[i] ** 2          # 原地平方：读 arr[i] → 求平方 → 写回 arr[i]
 
-data = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]
-arr2 = ctx.Array('d', data)
-mid = len(data) // 2
+data = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]  # 原始数据
+arr2 = ctx.Array('d', data)             # 'd' = double 双精度浮点，用 data 初始化
+mid = len(data) // 2                    # 中点：4
 procs = [
-    ctx.Process(target=square_range, args=(arr2, 0, mid)),
-    ctx.Process(target=square_range, args=(arr2, mid, len(data))),
+    ctx.Process(target=square_range, args=(arr2, 0, mid)),        # 进程1平方前半段 [0:4)
+    ctx.Process(target=square_range, args=(arr2, mid, len(data))),# 进程2平方后半段 [4:8)
 ]
-for p in procs: p.start()
-for p in procs: p.join()
+for p in procs: p.start()               # 启动两个进程并行计算
+for p in procs: p.join()                # 等待结束
 print(f"  原数据: {data}")
-print(f"  平方后: {list(arr2)}")
+print(f"  平方后: {list(arr2)}")        # 验证平方结果
 
 print("\\n要点：")
 print("• Value/Array 是真正的共享内存，多进程访问同一块内存")
@@ -1188,10 +1192,10 @@ with mp.Manager() as manager:
 
 下面 demo 用 Manager 让多个进程共同维护一个共享的 dict（统计）和 list（结果收集）。`,
     code: `# 第二十五章 demo：Manager 共享复杂对象
-import multiprocessing as mp
-import time
+import multiprocessing as mp   # 导入多进程模块
+import time                     # 用于 sleep 模拟耗时
 
-ctx = mp.get_context("fork")
+ctx = mp.get_context("fork")   # 获取 fork 启动方式上下文
 
 # ============================================================
 # 实验1：Manager 共享 list（多进程收集结果）
@@ -1202,19 +1206,20 @@ print("=" * 55)
 
 def collect_results(shared_list, tag, n):
     """每个进程往共享 list 添加 n 个结果"""
-    for i in range(n):
-        shared_list.append(f"{tag}-{i}")
-        time.sleep(0.05)
+    for i in range(n):               # 循环 n 次
+        shared_list.append(f"{tag}-{i}")  # 往共享 list 添加元素（每次都是远程调用）
+        time.sleep(0.05)             # 模拟工作耗时
 
-with ctx.Manager() as manager:
-    shared_list = manager.list()        # 共享 list
-    procs = [ctx.Process(target=collect_results,
+# Manager 启动一个服务器进程管理共享对象，其他进程通过代理访问
+with ctx.Manager() as manager:       # with 块结束时自动关闭 manager 和服务器进程
+    shared_list = manager.list()     # 创建共享 list（代理对象，非普通 list）
+    procs = [ctx.Process(target=collect_results,   # 创建 3 个进程
                          args=(shared_list, f"P{i}", 3))
              for i in range(3)]
-    for p in procs: p.start()
-    for p in procs: p.join()
-    print(f"  共收集 {len(shared_list)} 个结果:")
-    print(f"  {list(shared_list)}")
+    for p in procs: p.start()        # 全部启动
+    for p in procs: p.join()         # 全部等待结束
+    print(f"  共收集 {len(shared_list)} 个结果:")  # 应为 9 个（3进程×3结果）
+    print(f"  {list(shared_list)}")  # list() 把代理对象转为普通列表打印
 print()
 
 # ============================================================
@@ -1226,21 +1231,21 @@ print("=" * 55)
 
 def worker_with_stats(shared_dict, tag, n):
     """每个进程处理 n 个任务，把计数写入共享 dict"""
-    count = 0
-    for i in range(n):
-        time.sleep(0.03)
-        count += 1
-    shared_dict[tag] = count            # 整体赋值
+    count = 0                        # 本地计数器
+    for i in range(n):               # 循环 n 次
+        time.sleep(0.03)             # 模拟处理耗时
+        count += 1                   # 本部计数
+    shared_dict[tag] = count            # 整体赋值：把结果写入共享 dict（触发同步）
 
 with ctx.Manager() as manager:
-    shared_dict = manager.dict()
-    procs = [ctx.Process(target=worker_with_stats,
+    shared_dict = manager.dict()     # 创建共享 dict
+    procs = [ctx.Process(target=worker_with_stats,   # 创建 4 个进程，处理数递增
                          args=(shared_dict, f"进程{i}", i+2))
              for i in range(4)]
-    for p in procs: p.start()
-    for p in procs: p.join()
-    print(f"  各进程处理数: {dict(shared_dict)}")
-    print(f"  总计: {sum(shared_dict.values())}")
+    for p in procs: p.start()        # 全部启动
+    for p in procs: p.join()         # 全部等待结束
+    print(f"  各进程处理数: {dict(shared_dict)}")  # dict() 转为普通字典打印
+    print(f"  总计: {sum(shared_dict.values())}")  # sum 求所有值的总和
 print()
 
 # ============================================================
@@ -1252,21 +1257,21 @@ print("=" * 55)
 
 def bad_nested(d):
     """错误：直接改嵌套 list，不同步"""
-    d['items'].append('x')             # 坑：不同步！
+    d['items'].append('x')             # 坑：d['items'] 返回普通 list 副本，修改它 Manager 不知道！
 
 def good_nested(d):
     """正确：整体重新赋值"""
-    tmp = d['items']
-    tmp.append('y')
-    d['items'] = tmp                   # 整体赋值，触发同步
+    tmp = d['items']                   # 取出副本
+    tmp.append('y')                    # 在副本上修改
+    d['items'] = tmp                   # 整体赋值，触发同步（Manager 才知道变了）
 
 with ctx.Manager() as manager:
-    d = manager.dict()
-    d['items'] = []
-    p1 = ctx.Process(target=bad_nested, args=(d,))
-    p2 = ctx.Process(target=good_nested, args=(d,))
-    p1.start(); p2.start()
-    p1.join(); p2.join()
+    d = manager.dict()                 # 创建共享 dict
+    d['items'] = []                    # 初始化嵌套 list
+    p1 = ctx.Process(target=bad_nested, args=(d,))   # 错误写法进程
+    p2 = ctx.Process(target=good_nested, args=(d,))  # 正确写法进程
+    p1.start(); p2.start()             # 同时启动
+    p1.join(); p2.join()               # 同时等待
     print(f"  结果: {d['items']}")
     print("  （'x' 可能丢失，'y' 一定在 —— 嵌套修改的坑）")
 print()
@@ -1284,16 +1289,16 @@ def modify_ns(ns, tag):
     ns.last_tag = tag                   # 单次赋值是原子的，但最后值取决于谁最后写
 
 with ctx.Manager() as manager:
-    ns = manager.Namespace()
-    ns.count = 0
-    ns.last_tag = "无"
-    procs = [ctx.Process(target=modify_ns, args=(ns, f"T{i}"))
+    ns = manager.Namespace()            # 创建共享命名空间（可以存任意属性）
+    ns.count = 0                        # 初始化 count 属性
+    ns.last_tag = "无"                  # 初始化 last_tag 属性
+    procs = [ctx.Process(target=modify_ns, args=(ns, f"T{i}"))  # 创建 3 个进程
              for i in range(3)]
-    for p in procs: p.start()
-    for p in procs: p.join()
+    for p in procs: p.start()           # 全部启动
+    for p in procs: p.join()            # 全部等待结束
     # count 不一定等于 3：ns.count += 1 跨进程非原子，可能丢更新
     print(f"  count = {ns.count}（因非原子更新，可能小于 3）")
-    print(f"  last_tag = {ns.last_tag}")
+    print(f"  last_tag = {ns.last_tag}")  # 最后一个写入的 tag
 
 print("\\n要点：")
 print("• Manager 启动服务器进程，通过代理共享 dict/list 等复杂对象")
@@ -1357,10 +1362,10 @@ def write_file(lock, fname, content):
 
 下面 demo 演示 Lock 保护共享内存、Event 控制启停、Semaphore 限制并发。`,
     code: `# 第二十六章 demo：进程同步 Lock / Event / Semaphore
-import multiprocessing as mp
-import time
+import multiprocessing as mp   # 导入多进程模块
+import time                     # 用于 sleep 模拟耗时
 
-ctx = mp.get_context("fork")
+ctx = mp.get_context("fork")   # 获取 fork 启动方式上下文
 
 # ============================================================
 # 实验1：Lock 保护共享内存（Value）
@@ -1371,20 +1376,20 @@ print("=" * 55)
 
 def increment(v, lock, n):
     """加锁版自增"""
-    for _ in range(n):
-        with lock:
-            v.value += 1
+    for _ in range(n):               # 循环 n 次
+        with lock:                   # 获取锁，保证以下代码块原子执行
+            v.value += 1             # 在锁保护下自增，不会丢更新
 
-v = ctx.Value('i', 0)
-lock = ctx.Lock()
-NUM_PROCS = 4
-N = 3000
+v = ctx.Value('i', 0)                # 共享整数，初值 0
+lock = ctx.Lock()                    # 创建进程间互斥锁
+NUM_PROCS = 4                        # 4 个进程
+N = 3000                             # 每个进程加 3000 次
 
-procs = [ctx.Process(target=increment, args=(v, lock, N))
+procs = [ctx.Process(target=increment, args=(v, lock, N))  # 创建 4 个进程
          for _ in range(NUM_PROCS)]
-for p in procs: p.start()
-for p in procs: p.join()
-print(f"  期望: {NUM_PROCS*N}, 实际: {v.value} ✓")
+for p in procs: p.start()            # 全部启动
+for p in procs: p.join()             # 全部等待结束
+print(f"  期望: {NUM_PROCS*N}, 实际: {v.value} ✓")  # 加锁后结果正确
 print()
 
 # ============================================================
@@ -1398,22 +1403,22 @@ def controlled_worker(stop_event, tag):
     """受 Event 控制的工作进程"""
     print(f"  [{tag}] 开始工作")
     i = 0
-    while not stop_event.is_set():
-        i += 1
+    while not stop_event.is_set():    # is_set() 检查事件是否被设置（停止信号）
+        i += 1                        # 工作计数
         print(f"  [{tag}] 工作 {i}")
-        if stop_event.wait(timeout=0.3):
-            break
+        if stop_event.wait(timeout=0.3):  # wait(0.3) 等0.3秒，事件被set则返回True
+            break                     # 收到停止信号，退出循环
     print(f"  [{tag}] 收到停止信号，退出（共 {i} 次）")
 
-stop_event = ctx.Event()
-procs = [ctx.Process(target=controlled_worker, args=(stop_event, f"P{i}"))
+stop_event = ctx.Event()              # 创建事件对象（初始未设置）
+procs = [ctx.Process(target=controlled_worker, args=(stop_event, f"P{i}"))  # 创建 2 个进程
          for i in range(2)]
-for p in procs: p.start()
+for p in procs: p.start()             # 全部启动
 
-time.sleep(1)
+time.sleep(1)                         # 主进程等 1 秒，让子进程工作一会
 print("  >>> 主进程：发送停止信号")
-stop_event.set()
-for p in procs: p.join()
+stop_event.set()                      # set() 设置事件，通知所有等待的子进程停止
+for p in procs: p.join()              # 等待所有子进程退出
 print()
 
 # ============================================================
@@ -1425,26 +1430,26 @@ print("=" * 55)
 
 def db_query(sem, tag, shared_counter, counter_lock):
     """模拟查数据库：必须先拿到'连接'（信号量）"""
-    with sem:                           # 获取连接（最多2个）
-        with counter_lock:
-            shared_counter.value += 1
-            cur = shared_counter.value
+    with sem:                           # 获取信号量（最多2个进程能同时进入）
+        with counter_lock:              # 加锁保护计数器
+            shared_counter.value += 1   # 并发数 +1
+            cur = shared_counter.value  # 记录当前并发数
         print(f"  [{tag}] 获得连接 (并发={cur})，查询中...")
-        time.sleep(0.4)
-        with counter_lock:
-            shared_counter.value -= 1
-        print(f"  [{tag}] 完成，归还连接")
+        time.sleep(0.4)                 # 模拟查询耗时
+        with counter_lock:              # 加锁保护计数器
+            shared_counter.value -= 1   # 并发数 -1
+        print(f"  [{tag}] 完成，归还连接")  # with sem 结束自动释放信号量
 
-sem = ctx.Semaphore(2)
-shared_counter = ctx.Value('i', 0)
-counter_lock = ctx.Lock()
+sem = ctx.Semaphore(2)                  # 信号量初始值2：最多2个进程同时进入
+shared_counter = ctx.Value('i', 0)      # 共享计数器：记录当前并发数
+counter_lock = ctx.Lock()               # 保护计数器的锁
 
-procs = [ctx.Process(target=db_query,
+procs = [ctx.Process(target=db_query,   # 创建 6 个查询进程
                      args=(sem, f"Q{i}", shared_counter, counter_lock))
          for i in range(6)]
-for p in procs: p.start()
-for p in procs: p.join()
-print("  全部完成（并发始终 ≤ 2）")
+for p in procs: p.start()               # 全部启动
+for p in procs: p.join()                # 全部等待结束
+print("  全部完成（并发始终 ≤ 2）")       # 信号量保证最多2个同时查询
 print()
 
 # ============================================================
@@ -1455,23 +1460,23 @@ print("实验4：Lock 保护共享输出（模拟写文件）")
 print("=" * 55)
 
 with ctx.Manager() as manager:
-    log_lines = manager.list()
-    file_lock = manager.Lock()
+    log_lines = manager.list()          # 用 Manager 创建共享 list（存日志）
+    file_lock = manager.Lock()          # 用 Manager 创建共享锁
 
     def write_log(lock, lines, tag, n):
         """加锁写入 n 条日志，保证每行完整不被其他进程打断"""
-        for i in range(n):
+        for i in range(n):              # 写 n 条日志
             with lock:                 # 加锁，整行 append 不被打断
                 lines.append(f"[{tag}] 第 {i} 条日志")
-            time.sleep(0.02)
+            time.sleep(0.02)            # 模拟写文件间隔
 
-    procs = [ctx.Process(target=write_log,
+    procs = [ctx.Process(target=write_log,   # 创建 3 个进程
                          args=(file_lock, log_lines, f"P{i}", 3))
              for i in range(3)]
-    for p in procs: p.start()
-    for p in procs: p.join()
+    for p in procs: p.start()           # 全部启动
+    for p in procs: p.join()            # 全部等待结束
     print(f"  共写入 {len(log_lines)} 条日志，内容有序:")
-    for line in log_lines:
+    for line in log_lines:              # 逐行打印日志
         print(f"    {line}")
 
 print("\\n要点：")
@@ -1569,23 +1574,23 @@ pool.map(func, range(10000), chunksize=100)   # 每100个一批
 
 下面 demo 演示 map、starmap、apply_async、回调。`,
     code: `# 第二十七章 demo：进程池 Pool 的各种用法
-import multiprocessing as mp
-import time
+import multiprocessing as mp   # 导入多进程模块
+import time                     # 用于计时和 sleep
 
-ctx = mp.get_context("fork")
+ctx = mp.get_context("fork")   # 获取 fork 启动方式上下文
 
 def square(x):
     """平方（CPU 密集）"""
-    return x * x
+    return x * x                # 返回 x 的平方
 
 def add(a, b):
     """加法（多参数）"""
-    return a + b
+    return a + b                # 返回 a + b
 
 def slow_task(x):
     """耗时任务"""
-    time.sleep(0.3)
-    return x * 10
+    time.sleep(0.3)             # 模拟 0.3 秒耗时
+    return x * 10               # 返回 x * 10
 
 # ============================================================
 # 实验1：map 并行映射
@@ -1593,11 +1598,11 @@ def slow_task(x):
 print("=" * 55)
 print("实验1：map 并行计算平方")
 print("=" * 55)
-data = list(range(1, 9))
-with ctx.Pool(4) as pool:
-    results = pool.map(square, data)
+data = list(range(1, 9))        # [1, 2, 3, 4, 5, 6, 7, 8]
+with ctx.Pool(4) as pool:       # 创建 4 个 worker 的进程池
+    results = pool.map(square, data)  # map 并行计算，按输入顺序返回结果
 print(f"  输入: {data}")
-print(f"  平方: {results}")
+print(f"  平方: {results}")      # [1, 4, 9, 16, 25, 36, 49, 64]
 print()
 
 # ============================================================
@@ -1606,11 +1611,11 @@ print()
 print("=" * 55)
 print("实验2：starmap 多参数")
 print("=" * 55)
-pairs = [(1, 2), (3, 4), (5, 6), (7, 8)]
+pairs = [(1, 2), (3, 4), (5, 6), (7, 8)]  # 每个元素是参数元组
 with ctx.Pool(4) as pool:
-    results = pool.starmap(add, pairs)
+    results = pool.starmap(add, pairs)  # starmap 把每个元组拆开作为参数传给 add
 print(f"  输入: {pairs}")
-print(f"  求和: {results}")
+print(f"  求和: {results}")      # [3, 7, 11, 15]
 print()
 
 # ============================================================
@@ -1624,15 +1629,15 @@ def callback(result):
     """任务完成时在主进程被调用"""
     print(f"  [回调] 任务完成，结果={result}")
 
-with ctx.Pool(2) as pool:
+with ctx.Pool(2) as pool:       # 创建 2 个 worker 的进程池
     # apply_async 立即返回 AsyncResult，不阻塞
-    ar = pool.apply_async(slow_task, (5,), callback=callback)
+    ar = pool.apply_async(slow_task, (5,), callback=callback)  # 提交任务，callback 完成时调用
     print("  [主] 已提交任务，主线程可以干别的")
     # 可以提交多个任务
-    ar2 = pool.apply_async(slow_task, (8,), callback=callback)
+    ar2 = pool.apply_async(slow_task, (8,), callback=callback)  # 再提交一个任务
     # 需要结果时用 get() 阻塞取
-    print(f"  [主] 等结果1: {ar.get()}")
-    print(f"  [主] 等结果2: {ar2.get()}")
+    print(f"  [主] 等结果1: {ar.get()}")    # get() 阻塞直到任务完成，返回结果
+    print(f"  [主] 等结果2: {ar2.get()}")   # 第二个任务的结果
 print()
 
 # ============================================================
@@ -1642,10 +1647,10 @@ print("=" * 55)
 print("实验4：imap 惰性迭代")
 print("=" * 55)
 with ctx.Pool(4) as pool:
-    # imap 返回迭代器，可以边算边取
-    for r in pool.imap(square, range(10)):
-        print(f"  {r}", end=" ")
-    print()
+    # imap 返回迭代器，可以边算边取（谁先完成先 yield）
+    for r in pool.imap(square, range(10)):  # 遍历迭代器，逐个获取结果
+        print(f"  {r}", end=" ")            # 打印每个结果（不换行）
+    print()                                 # 最后换行
 print()
 
 # ============================================================
@@ -1654,26 +1659,26 @@ print()
 print("=" * 55)
 print("实验5：串行 vs 4进程并行（CPU 密集）")
 print("=" * 55)
-data = [2_000_000] * 4
+data = [2_000_000] * 4          # 4 个相同的计算任务，每个累加 200 万次
 
 # 串行
 def cpu_heavy(n):
     """CPU 密集任务：累加 0..n-1，用来对比串行与多进程并行的耗时"""
-    total = 0
-    for i in range(n):
-        total += i
-    return total
+    total = 0                    # 累加器
+    for i in range(n):           # 循环 n 次
+        total += i               # 累加
+    return total                 # 返回结果
 
-start = time.time()
-serial = [cpu_heavy(n) for n in data]
-print(f"  串行: {time.time()-start:.3f}s")
+start = time.time()              # 记录开始时间
+serial = [cpu_heavy(n) for n in data]  # 串行：列表推导逐个计算
+print(f"  串行: {time.time()-start:.3f}s")  # 串行耗时（4 次顺序执行）
 
 # 并行
-start = time.time()
-with ctx.Pool(4) as pool:
-    parallel = pool.map(cpu_heavy, data)
-print(f"  4进程并行: {time.time()-start:.3f}s")
-print(f"  结果一致: {serial == parallel}")
+start = time.time()              # 记录开始时间
+with ctx.Pool(4) as pool:        # 创建 4 worker 进程池
+    parallel = pool.map(cpu_heavy, data)  # 并行：4 个任务同时跑
+print(f"  4进程并行: {time.time()-start:.3f}s")  # 并行耗时（接近单次时间）
+print(f"  结果一致: {serial == parallel}")  # 验证结果相同
 
 print("\\n要点：")
 print("• Pool 复用进程，自动收集返回值，管理大量任务")
@@ -1761,28 +1766,28 @@ with Executor(max_workers=4) as ex:
 
 下面 demo 用 ProcessPoolExecutor 跑 CPU 密集任务，并演示与 ThreadPoolExecutor 的切换。`,
     code: `# 第二十八章 demo：ProcessPoolExecutor 进程池
-import time
-import multiprocessing as mp
-from functools import partial
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+import time                       # 用于计时和 sleep
+import multiprocessing as mp     # 用于获取 fork 上下文
+from functools import partial    # partial 用于固定函数参数，创建偏函数
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed  # 导入进程池、线程池、as_completed 工具
 
 # ProcessPoolExecutor 默认用 spawn 启动方式，子进程要重新导入主模块。
 # 在线运行时代码来自 stdin（无文件名），spawn 会报 FileNotFoundError。
 # 解决：显式指定 fork 上下文（子进程直接继承内存，无需重新导入）。
 # 用 partial 把 mp_context 固定下来，后面直接用 ForkProcessPool 即可。
-ForkProcessPool = partial(ProcessPoolExecutor, mp_context=mp.get_context("fork"))
+ForkProcessPool = partial(ProcessPoolExecutor, mp_context=mp.get_context("fork"))  # 创建带 fork 上下文的进程池工厂
 
 def cpu_heavy(n):
     """CPU 密集任务：累加"""
-    total = 0
-    for i in range(n):
-        total += i
-    return total
+    total = 0                    # 累加器
+    for i in range(n):           # 循环 n 次
+        total += i               # 累加
+    return total                 # 返回结果
 
 def io_task(secs):
     """IO 任务：sleep 模拟"""
-    time.sleep(secs)
-    return secs
+    time.sleep(secs)             # 模拟 IO 等待
+    return secs                  # 返回等待秒数
 
 # ============================================================
 # 实验1：submit + Future 收集结果
@@ -1790,10 +1795,10 @@ def io_task(secs):
 print("=" * 55)
 print("实验1：submit 提交多个任务，收集结果")
 print("=" * 55)
-with ForkProcessPool(max_workers=4) as ex:
-    futures = [ex.submit(cpu_heavy, n) for n in [1_000_000, 2_000_000, 1_500_000]]
-    for n, f in zip([1_000_000, 2_000_000, 1_500_000], futures):
-        print(f"  输入 {n} → 结果 {f.result()}")
+with ForkProcessPool(max_workers=4) as ex:  # 创建 4 worker 的进程池
+    futures = [ex.submit(cpu_heavy, n) for n in [1_000_000, 2_000_000, 1_500_000]]  # submit 提交任务，返回 Future
+    for n, f in zip([1_000_000, 2_000_000, 1_500_000], futures):  # zip 配对输入和 Future
+        print(f"  输入 {n} → 结果 {f.result()}")  # f.result() 阻塞取结果
 print()
 
 # ============================================================
@@ -1802,10 +1807,10 @@ print()
 print("=" * 55)
 print("实验2：map 按顺序返回结果")
 print("=" * 55)
-data = [1_000_000, 1_500_000, 2_000_000, 2_500_000]
-with ForkProcessPool(max_workers=4) as ex:
-    results = list(ex.map(cpu_heavy, data))
-for n, r in zip(data, results):
+data = [1_000_000, 1_500_000, 2_000_000, 2_500_000]  # 4 个不同大小的计算任务
+with ForkProcessPool(max_workers=4) as ex:  # 创建 4 worker 的进程池
+    results = list(ex.map(cpu_heavy, data))  # ex.map 并行计算，list 收集所有结果
+for n, r in zip(data, results):  # 配对打印输入和结果
     print(f"  {n} → {r}")
 print()
 
@@ -1816,12 +1821,14 @@ print("=" * 55)
 print("实验3：as_completed（谁先完成谁先返回）")
 print("=" * 55)
 # 不同耗时的任务
-tasks = [("快", 0.3), ("中", 0.6), ("慢", 0.9), ("很快", 0.2)]
-with ForkProcessPool(max_workers=4) as ex:
+tasks = [("快", 0.3), ("中", 0.6), ("慢", 0.9), ("很快", 0.2)]  # name 和 sleep 秒数
+with ForkProcessPool(max_workers=4) as ex:  # 创建 4 worker 的进程池
+    # 用字典推导：Future → name，方便后续通过 Future 反查任务名
     futures = {ex.submit(io_task, secs): name for name, secs in tasks}
+    # as_completed 返回已完成的 Future 迭代器，谁先完成谁先返回
     for f in as_completed(futures):
-        name = futures[f]
-        print(f"  ✓ [{name}] 完成，耗时 {f.result()}s")
+        name = futures[f]        # 通过 Future 反查任务名
+        print(f"  ✓ [{name}] 完成，耗时 {f.result()}s")  # f.result() 取结果
 print()
 
 # ============================================================
@@ -1830,23 +1837,23 @@ print()
 print("=" * 55)
 print("实验4：进程池 vs 线程池（CPU 密集任务）")
 print("=" * 55)
-N = 2_000_000
-data = [N] * 4
+N = 2_000_000                   # 每个任务的计算量
+data = [N] * 4                  # 4 个相同的 CPU 密集任务
 
 # 线程池（受 GIL 限制，无法真正并行）
-start = time.time()
-with ThreadPoolExecutor(max_workers=4) as ex:
-    list(ex.map(cpu_heavy, data))
-thread_time = time.time() - start
+start = time.time()              # 记录开始时间
+with ThreadPoolExecutor(max_workers=4) as ex:  # 创建 4 线程的线程池
+    list(ex.map(cpu_heavy, data))  # 线程池执行（GIL 限制，实际串行）
+thread_time = time.time() - start  # 线程池耗时
 print(f"  线程池(4): {thread_time:.3f}s（GIL 限制，≈串行）")
 
 # 进程池（真正并行）
-start = time.time()
-with ForkProcessPool(max_workers=4) as ex:
-    list(ex.map(cpu_heavy, data))
-process_time = time.time() - start
+start = time.time()              # 记录开始时间
+with ForkProcessPool(max_workers=4) as ex:  # 创建 4 进程的进程池
+    list(ex.map(cpu_heavy, data))  # 进程池执行（真正并行）
+process_time = time.time() - start  # 进程池耗时
 print(f"  进程池(4): {process_time:.3f}s（真正并行）")
-print(f"  进程池比线程池快 {thread_time/process_time:.2f}x")
+print(f"  进程池比线程池快 {thread_time/process_time:.2f}x")  # 计算加速比
 print()
 
 # ============================================================
@@ -1857,17 +1864,17 @@ print("实验5：子进程异常在 result() 抛出")
 print("=" * 55)
 def risky(x):
     """x==3 时抛异常：演示子进程异常会在主进程的 f.result() 处重新抛出"""
-    if x == 3:
-        raise ValueError(f"x={x} 出错")
-    return x * 2
+    if x == 3:                   # 当输入为 3 时
+        raise ValueError(f"x={x} 出错")  # 抛出 ValueError
+    return x * 2                 # 其他情况返回 x*2
 
-with ForkProcessPool(max_workers=3) as ex:
-    futures = [ex.submit(risky, i) for i in range(5)]
-    for i, f in enumerate(futures):
+with ForkProcessPool(max_workers=3) as ex:  # 创建 3 worker 的进程池
+    futures = [ex.submit(risky, i) for i in range(5)]  # 提交 5 个任务（0-4）
+    for i, f in enumerate(futures):  # enumerate 带索引遍历
         try:
             # f.result() 阻塞取结果；子进程抛的异常会在这里重新抛出
             print(f"  任务{i}: {f.result()}")
-        except ValueError as e:
+        except ValueError as e:        # 捕获子进程抛出的 ValueError
             print(f"  任务{i}: 异常 {e}")
 
 print("\\n要点：")

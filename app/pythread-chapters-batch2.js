@@ -72,25 +72,25 @@ with lock:                    # 进入时自动 acquire，离开时自动 releas
 1. **不加锁**：1000 个线程各对 \`count\` 加1，结果通常小于 1000
 2. **加 Lock**：结果稳定是 1000`,
     code: `# 第九章 demo：竞态条件与 Lock 互斥锁
-import threading
-import time
+import threading                  # 导入 threading 模块，提供 Thread、Lock 等多线程工具
+import time                       # 导入 time 模块，sleep 用于模拟耗时、主动让出 GIL
 
-count = 0                       # 共享变量
+count = 0                       # 共享变量（全局变量，所有线程都会读写，是竞态条件的根源）
 
 def add_without_lock():
     """不加锁：count += 1 不是原子操作，多线程下会出错"""
-    global count
+    global count                  # 声明 count 是全局变量，函数内才能修改它
     # 显式拆成"读-改-写"三步，并用 sleep(0) 主动让出 GIL，
     # 大幅增加线程切换概率，让竞态条件稳定复现
-    tmp = count                 # 第1步：读取当前值
+    tmp = count                 # 第1步：读取当前值（此时可能多个线程读到同一个旧值）
     time.sleep(0)               # 主动让出 GIL，此时其他线程可能读到同样的旧值
     count = tmp + 1             # 第2步：基于旧值+1 后写回（覆盖了其他线程的写入）
 
 def add_with_lock(lock):
     """加锁：保证'读-改-写'整个不被打断"""
-    global count
-    with lock:                  # 进入临界区（自动 acquire）
-        count += 1              # 同一时刻只有一个线程能执行这行
+    global count                  # 声明 count 是全局变量
+    with lock:                  # 进入临界区（自动 acquire），同一时刻只有一个线程能进入
+        count += 1              # 同一时刻只有一个线程能执行这行，不会被打断
     # 离开 with 自动 release，即使这里出异常锁也会释放
 
 # ============================================================
@@ -99,14 +99,14 @@ def add_with_lock(lock):
 print("=" * 55)
 print("实验1：不加锁（竞态条件）")
 print("=" * 55)
-count = 0
-threads = []
-for _ in range(1000):
-    t = threading.Thread(target=add_without_lock)
-    threads.append(t)
-    t.start()
-for t in threads:
-    t.join()
+count = 0                       # 重置共享变量为 0
+threads = []                    # 用列表收集所有线程对象，方便后续统一 join
+for _ in range(1000):           # 循环创建 1000 个线程
+    t = threading.Thread(target=add_without_lock)  # 创建线程对象，target 指定线程要执行的函数
+    threads.append(t)           # 把线程对象存入列表，稍后统一等待
+    t.start()                   # 启动线程，开始并发执行 add_without_lock
+for t in threads:               # 遍历所有线程对象
+    t.join()                    # 等待该线程执行完毕（阻塞主线程直到子线程结束）
 print(f"  期望 count = 1000")
 print(f"  实际 count = {count}")
 print(f"  差了 {1000 - count} —— 这就是竞态条件造成的丢失\\n")
@@ -117,14 +117,14 @@ print(f"  差了 {1000 - count} —— 这就是竞态条件造成的丢失\\n")
 print("=" * 55)
 print("实验2：加 Lock 互斥锁")
 print("=" * 55)
-count = 0
-lock = threading.Lock()         # 创建一把锁
-threads = []
-for _ in range(1000):
-    t = threading.Thread(target=add_with_lock, args=(lock,))
-    threads.append(t)
-    t.start()
-for t in threads:
+count = 0                       # 重置共享变量
+lock = threading.Lock()         # 创建一把互斥锁，用于保护临界区
+threads = []                    # 收集线程对象的列表
+for _ in range(1000):           # 循环创建 1000 个线程
+    t = threading.Thread(target=add_with_lock, args=(lock,))  # 把 lock 作为参数传给线程函数
+    threads.append(t)           # 保存线程对象
+    t.start()                   # 启动线程
+for t in threads:               # 等待所有线程完成
     t.join()
 print(f"  期望 count = 1000")
 print(f"  实际 count = {count}")
@@ -136,21 +136,21 @@ print(f"  加锁后结果正确 ✓\\n")
 print("=" * 55)
 print("实验3：acquire 的 blocking=False 和 timeout")
 print("=" * 55)
-lock2 = threading.Lock()
-lock2.acquire()                 # 主线程先拿走锁，不释放
+lock2 = threading.Lock()         # 创建第二把锁，用于演示 acquire 的不同模式
+lock2.acquire()                 # 主线程先拿走锁，故意不释放，模拟锁被占用
 
-# 非阻塞尝试：拿不到立即返回 False
+# 非阻塞尝试：拿不到立即返回 False（不会卡住等待）
 got = lock2.acquire(blocking=False)
 print(f"  非阻塞获取: {got} (已被占用，拿不到)")
 
-# 限时等待：0.5秒拿不到返回 False（这里会等0.5秒）
+# 限时等待：0.5秒拿不到返回 False（这里会等0.5秒才返回）
 got = lock2.acquire(timeout=0.5)
 print(f"  限时0.5秒获取: {got} (超时没拿到)")
 
-lock2.release()                 # 释放锁
+lock2.release()                 # 主线程释放锁，现在锁可用
 got = lock2.acquire(blocking=False)
 print(f"  释放后非阻塞获取: {got} (现在能拿到了)")
-lock2.release()
+lock2.release()                 # 用完再释放，保持锁状态干净
 
 print("\\n要点：")
 print("• 竞态条件：'读-改-写'非原子，多线程下数据出错")
@@ -235,8 +235,8 @@ with rlock:       # acquire 1次
 
 下面 demo 演示 Lock 嵌套加锁会死锁（用超时避免卡死），RLock 嵌套加锁正常工作。`,
     code: `# 第十章 demo：Lock 死锁 vs RLock 可重入
-import threading
-import time
+import threading                  # 导入线程模块
+import time                       # 导入时间模块
 
 # ============================================================
 # 实验1：Lock 嵌套加锁会死锁（用 timeout 避免 demo 卡死）
@@ -245,13 +245,14 @@ print("=" * 55)
 print("实验1：Lock 同线程两次 acquire → 死锁")
 print("=" * 55)
 
-lock = threading.Lock()
+lock = threading.Lock()           # 创建一把普通的不可重入锁
 
 def lock_deadlock():
     """用 Lock，同线程 acquire 两次会死锁"""
-    with lock:                       # 第一次 acquire（成功）
+    with lock:                       # 第一次 acquire（成功），进入临界区
         print("  已获取锁，准备再次获取同一把锁...")
         # 用 timeout=0.5 避免永远卡死，0.5秒拿不到就放弃
+        # Lock 不支持同线程重入，所以第二次 acquire 会一直等待
         got = lock.acquire(timeout=0.5)
         if got:
             print("  第二次获取成功")
@@ -259,7 +260,7 @@ def lock_deadlock():
         else:
             print("  第二次获取失败 —— 死锁！Lock 不允许同线程重复加锁")
 
-lock_deadlock()
+lock_deadlock()                   # 调用函数演示 Lock 死锁场景
 print()
 
 # ============================================================
@@ -269,23 +270,23 @@ print("=" * 55)
 print("实验2：RLock 同线程多次 acquire → 正常")
 print("=" * 55)
 
-rlock = threading.RLock()
+rlock = threading.RLock()         # 创建一把可重入锁（Reentrant Lock）
 
 def inner():
     """内层函数也要加锁"""
-    with rlock:                      # 同线程第2次 acquire，RLock 允许
+    with rlock:                      # 同线程第2次 acquire，RLock 允许重入（内部计数+1）
         print("  [inner] 第二次加锁成功（RLock 可重入）")
         print("  [inner] 执行 inner 逻辑")
 
 def outer():
     """外层函数加锁后调用 inner"""
-    with rlock:                      # 同线程第1次 acquire
+    with rlock:                      # 同线程第1次 acquire（计数+1）
         print("  [outer] 第一次加锁成功")
-        inner()                      # 调 inner，里面又加锁
+        inner()                      # 调 inner，里面又对同一把锁 acquire（RLock 不会死锁）
         print("  [outer] inner 返回后继续执行")
-    # 离开两个 with，release 两次，锁真正释放
+    # 离开两个 with，release 两次，计数归 0，锁真正释放
 
-outer()
+outer()                           # 调用外层函数，演示 RLock 嵌套加锁
 print()
 
 # ============================================================
@@ -295,20 +296,20 @@ print("=" * 55)
 print("实验3：RLock 跨线程依然互斥（保护共享数据）")
 print("=" * 55)
 
-rlock2 = threading.RLock()
-shared = []
+rlock2 = threading.RLock()        # 再创建一把 RLock，用于跨线程互斥演示
+shared = []                      # 共享列表，多个线程会往里追加数据
 
 def worker(tag):
     """不同线程对 RLock 互斥，安全操作 shared"""
-    with rlock2:
-        shared.append(tag)
+    with rlock2:                 # 不同线程抢锁，同一时刻只有一个能进入（互斥）
+        shared.append(tag)       # 往共享列表追加数据（在锁保护下，安全）
         # 模拟在锁内做点事
-        time.sleep(0.05)
+        time.sleep(0.05)         # 短暂休眠，放大互斥效果
         print(f"  [{tag}] 写入完成，shared={shared}")
 
-threads = [threading.Thread(target=worker, args=(f"T{i}",)) for i in range(3)]
-for t in threads: t.start()
-for t in threads: t.join()
+threads = [threading.Thread(target=worker, args=(f"T{i}",)) for i in range(3)]  # 创建3个线程
+for t in threads: t.start()      # 启动所有线程
+for t in threads: t.join()       # 等待所有线程完成
 
 print("\\n要点：")
 print("• Lock 同线程 acquire 两次会死锁")
@@ -374,8 +375,8 @@ with sem:
 
 下面 demo 启动 10 个线程，但用信号量限制同时最多 3 个执行，观察"同时运行数"始终 ≤ 3。`,
     code: `# 第十一章 demo：Semaphore 限制并发数
-import threading
-import time
+import threading                  # 导入线程模块
+import time                       # 导入时间模块
 
 # ============================================================
 # 实验1：Semaphore 限制同时最多3个线程
@@ -385,27 +386,28 @@ print("实验1：Semaphore(3) —— 10个线程但最多3个同时跑")
 print("=" * 55)
 
 # BoundedSemaphore 比 Semaphore 更安全：release 多了会报错
-sem = threading.BoundedSemaphore(3)
-current_running = 0               # 当前正在运行的线程数（用于观察）
-running_lock = threading.Lock()   # 保护 current_running 的小锁
+sem = threading.BoundedSemaphore(3)  # 创建信号量，初始值3，最多允许3个线程同时进入
+current_running = 0               # 当前正在运行的线程数（用于观察并发数）
+running_lock = threading.Lock()   # 保护 current_running 的小锁（修改共享变量需加锁）
 
 def worker(tag):
     """每个线程进入时 running+1，离开时 running-1"""
-    global current_running
-    with sem:                     # 获取信号量（最多3个能同时拿到）
-        with running_lock:
-            current_running += 1
+    global current_running        # 声明全局变量
+    with sem:                     # 获取信号量（计数-1），若已是0则阻塞等待
+        with running_lock:        # 加锁保护 current_running 的修改
+            current_running += 1  # 正在运行的线程数 +1
             print(f"  [{tag}] 开始 (当前并发={current_running})")
-        time.sleep(0.3)           # 模拟工作
-        with running_lock:
-            current_running -= 1
+        time.sleep(0.3)           # 模拟工作耗时（此时持有信号量，占用一个"车位"）
+        with running_lock:        # 再次加锁修改 current_running
+            current_running -= 1  # 正在运行的线程数 -1
             print(f"  [{tag}] 结束")
+    # 离开 with sem 自动 release（计数+1），唤醒一个等待的线程
 
-threads = [threading.Thread(target=worker, args=(f"T{i}",)) for i in range(10)]
+threads = [threading.Thread(target=worker, args=(f"T{i}",)) for i in range(10)]  # 创建10个线程
 for t in threads:
-    t.start()
+    t.start()                     # 启动所有线程
 for t in threads:
-    t.join()
+    t.join()                      # 等待所有线程完成
 print("  全部完成\\n")
 
 # ============================================================
@@ -416,23 +418,24 @@ print("实验2：模拟数据库连接池限流（最多2个连接）")
 print("=" * 55)
 
 # 模拟一个数据库连接池：最多2个连接
-pool_sem = threading.BoundedSemaphore(2)
+pool_sem = threading.BoundedSemaphore(2)  # 信号量初始值2，模拟2个数据库连接
 
 def query_db(sql, tag):
     """模拟查询数据库：必须先拿到'连接'才能查"""
     print(f"  [{tag}] 申请连接: {sql}")
-    with pool_sem:                # 拿连接（最多2个同时）
+    with pool_sem:                # 拿连接（最多2个同时拿到，其余等待）
         print(f"  [{tag}] 获得连接，开始查询...")
-        time.sleep(0.4)           # 模拟查询耗时
+        time.sleep(0.4)           # 模拟查询耗时（占用连接期间，其他人无法用）
         print(f"  [{tag}] 查询完成，归还连接")
+    # 离开 with 自动归还连接（release），唤醒等待的线程
 
-threads = []
+threads = []                      # 收集线程的列表
 for i, sql in enumerate(["SELECT 1", "SELECT 2", "SELECT 3", "SELECT 4", "SELECT 5"]):
-    t = threading.Thread(target=query_db, args=(sql, f"查询{i+1}"))
-    threads.append(t)
-    t.start()
+    t = threading.Thread(target=query_db, args=(sql, f"查询{i+1}"))  # 创建查询线程
+    threads.append(t)             # 保存线程对象
+    t.start()                     # 启动线程
 for t in threads:
-    t.join()
+    t.join()                      # 等待所有查询完成
 
 print("\\n要点：")
 print("• Semaphore(n) 允许最多 n 个线程同时进入临界区")
@@ -507,9 +510,9 @@ else:
 1. 多个线程等"开始"信号同时起跑
 2. 工作线程通过 Event 实现"可停止的循环"`,
     code: `# 第十二章 demo：Event 事件通知
-import threading
-import time
-import datetime
+import threading                  # 导入线程模块
+import time                       # 导入时间模块
+import datetime                   # 导入日期时间模块，用于打印精确时间
 
 # ============================================================
 # 实验1：多个线程等"开始"信号同时起跑
@@ -518,25 +521,25 @@ print("=" * 55)
 print("实验1：发令枪——多个线程等 start_event 同时起跑")
 print("=" * 55)
 
-start_event = threading.Event()
+start_event = threading.Event()   # 创建事件对象，内部标志初始为 False
 
 def runner(tag):
     """运动员：等到发令枪响才起跑"""
     print(f"  [{tag}] 已就位，等待发令...")
-    start_event.wait()                  # 阻塞等待 set()
+    start_event.wait()                  # 阻塞等待 set()，标志为 False 时一直等
     print(f"  [{tag}] 起跑！({datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3]})")
 
 # 3个运动员就位
-threads = [threading.Thread(target=runner, args=(f"运动员{i+1}",)) for i in range(3)]
+threads = [threading.Thread(target=runner, args=(f"运动员{i+1}",)) for i in range(3)]  # 创建3个线程
 for t in threads:
-    t.start()
+    t.start()                           # 启动所有线程（它们都会在 wait 处阻塞）
 
-time.sleep(1)                           # 裁判准备1秒
+time.sleep(1)                           # 裁判准备1秒（让所有运动员都进入等待状态）
 print("  >>> 裁判：发令枪响！")
-start_event.set()                       # 发通知，所有运动员同时起跑
+start_event.set()                       # 发通知，把标志设为 True，所有等待的线程同时被唤醒
 
 for t in threads:
-    t.join()
+    t.join()                            # 等待所有运动员跑完
 print()
 
 # ============================================================
@@ -546,28 +549,28 @@ print("=" * 55)
 print("实验2：stop_event —— 优雅停止后台线程")
 print("=" * 55)
 
-stop_event = threading.Event()
+stop_event = threading.Event()    # 创建停止事件对象，初始为 False
 
 def background_worker():
     """后台工作线程：循环检测 stop_event，收到就停"""
     i = 0
     # wait(timeout) 既可等待 set，又不会空转浪费 CPU
-    while not stop_event.is_set():      # 检查是否该停
-        i += 1
+    while not stop_event.is_set():      # 检查是否该停（标志是否为 True）
+        i += 1                          # 工作计数 +1
         print(f"  [后台] 工作 {i}...")
         # 用 wait(timeout) 替代 sleep，好处是 set() 能立即唤醒
         if stop_event.wait(timeout=0.3):
             # wait 返回 True 表示事件被 set，即收到停止信号
-            break
+            break                       # 收到停止信号，跳出循环
     print(f"  [后台] 收到停止信号，退出（共工作 {i} 次）")
 
-t = threading.Thread(target=background_worker, daemon=True)
-t.start()
+t = threading.Thread(target=background_worker, daemon=True)  # 创建守护线程（主线程退出时自动结束）
+t.start()                         # 启动后台线程
 
 time.sleep(1.2)                         # 主线程让后台跑一会儿
 print("  >>> 主线程：发送停止信号")
-stop_event.set()                        # 通知后台线程停止
-t.join(timeout=1)
+stop_event.set()                        # 通知后台线程停止（标志设为 True）
+t.join(timeout=1)                       # 等待后台线程退出（最多等1秒）
 print()
 
 # ============================================================
@@ -576,14 +579,14 @@ print()
 print("=" * 55)
 print("实验3：wait(timeout) 的返回值")
 print("=" * 55)
-ev = threading.Event()
+ev = threading.Event()            # 创建一个新的事件对象
 # 没人 set，wait 会等超时返回 False
-result = ev.wait(timeout=0.3)
+result = ev.wait(timeout=0.3)     # 等待0.3秒，期间没人 set，返回 False
 print(f"  无人 set，等0.3秒后返回: {result} (False=超时)")
-ev.set()
-result = ev.wait(timeout=1)
+ev.set()                          # 把标志设为 True
+result = ev.wait(timeout=1)       # 标志已是 True，wait 立即返回 True
 print(f"  已 set，立即返回: {result} (True=收到事件)")
-ev.clear()                              # 清除标志，恢复初始
+ev.clear()                        # 清除标志，恢复为 False，方便下次使用
 
 print("\\n要点：")
 print("• Event 用 set/wait/clear/is_set 实现线程间通知")
@@ -670,42 +673,42 @@ with cond:
 
 下面 demo 用 Condition 实现经典的生产者-消费者：一个共享队列，生产者往里放数据，消费者从里取数据，队列空时消费者等待，有数据时通知消费者。`,
     code: `# 第十三章 demo：Condition 实现生产者-消费者
-import threading
-import time
-import random
+import threading                  # 导入线程模块
+import time                       # 导入时间模块
+import random                     # 导入随机模块，用于模拟不规律的耗时
 
 # 共享缓冲区（用 list 模拟队列）
-buffer = []
-BUFFER_MAX = 3                       # 缓冲区最大容量
+buffer = []                       # 共享缓冲区，生产者放数据、消费者取数据
+BUFFER_MAX = 3                       # 缓冲区最大容量，满了生产者要等
 
 # Condition 内部自带一把锁
-cond = threading.Condition()
+cond = threading.Condition()      # 创建条件变量，内部默认包含一把 RLock
 
 def producer(tag):
     """生产者：往 buffer 放数据，满了就等"""
-    for i in range(3):
+    for i in range(3):            # 每个生产者生产3个物品
         with cond:                   # 必须先拿锁才能 wait/notify
             # 缓冲区满时等待
-            while len(buffer) >= BUFFER_MAX:
+            while len(buffer) >= BUFFER_MAX:  # 用 while 防虚假唤醒
                 print(f"  [{tag}] 缓冲区满，等待...")
-                cond.wait()          # 释放锁并等，被 notify 后重新拿锁
+                cond.wait()          # 释放锁并阻塞，被 notify 后重新拿锁
             # 条件满足：缓冲区没满
             item = f"{tag}-物品{i}"
-            buffer.append(item)
+            buffer.append(item)      # 把物品放入缓冲区
             print(f"  [{tag}] 生产 {item}，缓冲区={buffer}")
             cond.notify_all()        # 通知所有等待的消费者：有数据了
-        time.sleep(random.uniform(0.1, 0.3))   # 模拟生产耗时（不在锁内）
+        time.sleep(random.uniform(0.1, 0.3))   # 模拟生产耗时（不在锁内，提高并发）
 
 def consumer(tag):
     """消费者：从 buffer 取数据，空了就等"""
-    for i in range(3):
-        with cond:
+    for i in range(3):            # 每个消费者消费3个物品
+        with cond:                   # 必须先拿锁才能 wait/notify
             # 缓冲区空时等待
-            while not buffer:
+            while not buffer:        # 用 while 防虚假唤醒
                 print(f"  [{tag}] 缓冲区空，等待...")
-                cond.wait()
+                cond.wait()          # 释放锁并阻塞，被 notify 后重新拿锁
             # 条件满足：缓冲区有数据
-            item = buffer.pop(0)
+            item = buffer.pop(0)     # 从缓冲区头部取出物品（FIFO）
             print(f"  [{tag}] 消费 {item}，缓冲区={buffer}")
             cond.notify_all()        # 通知生产者：有空位了
         time.sleep(random.uniform(0.1, 0.3))   # 模拟消费耗时（不在锁内）
@@ -714,14 +717,14 @@ print("=" * 55)
 print("生产者-消费者模型（Condition 实现）")
 print("=" * 55)
 
-threads = [
+threads = [                            # 创建4个线程：2生产者 + 2消费者
     threading.Thread(target=producer, args=("生产者A",)),
     threading.Thread(target=producer, args=("生产者B",)),
     threading.Thread(target=consumer, args=("消费者X",)),
     threading.Thread(target=consumer, args=("消费者Y",)),
 ]
-for t in threads: t.start()
-for t in threads: t.join()
+for t in threads: t.start()            # 启动所有线程
+for t in threads: t.join()             # 等待所有线程完成
 
 print("\\n所有生产消费完成。")
 print("\\n要点：")
@@ -793,10 +796,10 @@ barrier.abort()           # 让所有正在 wait 的线程立即抛 BrokenBarrie
 
 下面 demo 模拟3个玩家"加载→同步开始→比赛"的过程。`,
     code: `# 第十四章 demo：Barrier 栅栏同步
-import threading
-import time
-import random
-import datetime
+import threading                  # 导入线程模块
+import time                       # 导入时间模块
+import random                     # 导入随机模块，模拟不规律的耗时
+import datetime                   # 导入日期时间模块，打印精确时间
 
 # ============================================================
 # 实验1：3个线程在两个阶段间用 Barrier 同步
@@ -808,26 +811,27 @@ print("=" * 55)
 # Barrier(3)：需要3个线程到达才放行
 # action：凑齐后自动执行一次（只执行一次）
 def all_ready():
+    """栅栏回调：3个线程都到达时自动执行一次"""
     print("  >>> [裁判] 所有人已就位，比赛开始！")
 
-barrier = threading.Barrier(3, action=all_ready)
+barrier = threading.Barrier(3, action=all_ready)  # 创建栅栏，需3个线程到达才放行
 
 def player(name):
     """玩家：先加载（耗时不一），到齐后同时开始比赛"""
     # 阶段1：加载
-    load_time = random.uniform(0.3, 1.0)
+    load_time = random.uniform(0.3, 1.0)  # 随机生成加载耗时
     print(f"  [{name}] 开始加载（需 {load_time:.2f}s）")
-    time.sleep(load_time)
+    time.sleep(load_time)                 # 模拟加载过程
     print(f"  [{name}] 加载完成，在起跑线等待其他人")
-    barrier.wait()                    # 等所有人都加载完
+    barrier.wait()                        # 在栅栏处等待，直到3个线程都到达
     # 阶段2：比赛（所有人同时开始）
     print(f"  [{name}] 开始比赛！({datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3]})")
-    time.sleep(random.uniform(0.2, 0.5))
+    time.sleep(random.uniform(0.2, 0.5))  # 模拟比赛耗时
     print(f"  [{name}] 到达终点")
 
-threads = [threading.Thread(target=player, args=(f"玩家{i+1}",)) for i in range(3)]
-for t in threads: t.start()
-for t in threads: t.join()
+threads = [threading.Thread(target=player, args=(f"玩家{i+1}",)) for i in range(3)]  # 创建3个玩家线程
+for t in threads: t.start()              # 启动所有线程
+for t in threads: t.join()               # 等待所有线程完成
 print()
 
 # ============================================================
@@ -838,22 +842,22 @@ print("实验2：Barrier 超时 → BrokenBarrierError")
 print("=" * 55)
 
 # 需要3个线程，但只起2个，第3个永远不到 → 超时
-barrier2 = threading.Barrier(3)
+barrier2 = threading.Barrier(3)   # 创建需要3个线程的栅栏
 
 def runner(name, delay):
-    time.sleep(delay)
+    time.sleep(delay)             # 先等待指定时间
     try:
         # 限时0.5秒，凑不齐3个就抛异常
-        barrier2.wait(timeout=0.5)
+        barrier2.wait(timeout=0.5)  # 等待0.5秒，凑不齐3个线程就抛 BrokenBarrierError
         print(f"  [{name}] 通过栅栏")
     except threading.BrokenBarrierError:
         print(f"  [{name}] 栅栏被打破（超时没凑齐）")
 
 # 只起2个线程，永远凑不齐3个
-t1 = threading.Thread(target=runner, args=("A", 0.1))
-t2 = threading.Thread(target=runner, args=("B", 0.2))
-t1.start(); t2.start()
-t1.join(); t2.join()
+t1 = threading.Thread(target=runner, args=("A", 0.1))  # 创建线程A
+t2 = threading.Thread(target=runner, args=("B", 0.2))  # 创建线程B
+t1.start(); t2.start()            # 启动两个线程
+t1.join(); t2.join()              # 等待两个线程结束
 print()
 
 # ============================================================
@@ -863,24 +867,24 @@ print("=" * 55)
 print("实验3：多阶段任务，每阶段用 Barrier 同步")
 print("=" * 55)
 
-barrier3 = threading.Barrier(3)
-results = {"phase1": [], "phase2": [], "phase3": []}
-results_lock = threading.Lock()
+barrier3 = threading.Barrier(3)   # 创建需要3个线程的栅栏，用于阶段同步
+results = {"phase1": [], "phase2": [], "phase3": []}  # 存各阶段计算结果
+results_lock = threading.Lock()   # 保护 results 字典的锁
 
 def compute(worker_id):
     """3个worker，每个完成3个阶段，阶段间同步"""
     for phase in ["phase1", "phase2", "phase3"]:
-        time.sleep(random.uniform(0.1, 0.3))   # 模拟计算
-        val = worker_id * 10 + int(phase[-1])
-        with results_lock:
-            results[phase].append(val)
+        time.sleep(random.uniform(0.1, 0.3))   # 模拟计算耗时
+        val = worker_id * 10 + int(phase[-1])  # 计算结果（用 phase 末尾数字区分）
+        with results_lock:           # 加锁保护 results 的修改
+            results[phase].append(val)  # 把结果存入对应阶段
         print(f"  [W{worker_id}] {phase} 完成 (val={val})，等其他人")
-        barrier3.wait()                # 等所有worker完成本阶段
+        barrier3.wait()              # 等所有worker完成本阶段，才能进入下一阶段
         print(f"  [W{worker_id}] 进入下一阶段")
 
-threads = [threading.Thread(target=compute, args=(i,)) for i in range(3)]
-for t in threads: t.start()
-for t in threads: t.join()
+threads = [threading.Thread(target=compute, args=(i,)) for i in range(3)]  # 创建3个worker线程
+for t in threads: t.start()        # 启动所有线程
+for t in threads: t.join()         # 等待所有线程完成
 print(f"  最终结果: {results}")
 
 print("\\n要点：")
@@ -962,10 +966,10 @@ q.join()   # 等计数器归0（所有 put 都被 task_done 了）
 
 下面 demo 用 \`Queue\` 重写第13章的生产者消费者，对比会发现**代码简洁很多**，不用手动管理 Condition。`,
     code: `# 第十五章 demo：queue.Queue 线程安全队列
-import threading
-import queue
-import time
-import random
+import threading                  # 导入线程模块
+import queue                      # 导入队列模块，提供 Queue/LifoQueue/PriorityQueue
+import time                       # 导入时间模块
+import random                     # 导入随机模块，模拟不规律耗时
 
 # ============================================================
 # 实验1：Queue 基本操作
@@ -975,30 +979,30 @@ print("实验1：Queue / LifoQueue / PriorityQueue 对比")
 print("=" * 55)
 
 # FIFO 先进先出
-q = queue.Queue()
-for x in [1, 2, 3]:
-    q.put(x)
+q = queue.Queue()                 # 创建先进先出队列
+for x in [1, 2, 3]:               # 按顺序放入1, 2, 3
+    q.put(x)                      # 入队
 print(f"  Queue(FIFO) 出队顺序: ", end="")
-while not q.empty():
-    print(q.get(), end=" ")
-print()
+while not q.empty():              # 队列不空就继续取
+    print(q.get(), end=" ")       # 出队并打印
+print()                           # 输出: 1 2 3
 
 # LIFO 后进先出
-lq = queue.LifoQueue()
-for x in [1, 2, 3]:
+lq = queue.LifoQueue()            # 创建后进先出队列（类似栈）
+for x in [1, 2, 3]:               # 按顺序放入1, 2, 3
     lq.put(x)
 print(f"  LifoQueue 出队顺序: ", end="")
 while not lq.empty():
-    print(lq.get(), end=" ")
-print()
+    print(lq.get(), end=" ")      # 出队并打印
+print()                           # 输出: 3 2 1
 
 # PriorityQueue 优先级（值小先出）
-pq = queue.PriorityQueue()
-pq.put((3, "低优先")); pq.put((1, "高优先")); pq.put((2, "中优先"))
+pq = queue.PriorityQueue()        # 创建优先级队列
+pq.put((3, "低优先")); pq.put((1, "高优先")); pq.put((2, "中优先"))  # 放入(优先级, 数据)
 print(f"  PriorityQueue 出队: ", end="")
 while not pq.empty():
-    print(pq.get()[1], end=" ")
-print("\\n")
+    print(pq.get()[1], end=" ")   # 取出元组的第二个元素（数据部分）
+print("\\n")                      # 输出: 高优先 中优先 低优先
 
 # ============================================================
 # 实验2：Queue 实现生产者-消费者（比 Condition 简洁）
@@ -1011,31 +1015,31 @@ q = queue.Queue(maxsize=3)         # 容量3的队列，put 满了会阻塞
 
 def producer(tag):
     """生产者：往队列放数据"""
-    for i in range(3):
+    for i in range(3):            # 每个生产者生产3个物品
         item = f"{tag}-{i}"
         q.put(item)                # 队列满时自动阻塞等待（无需手动加锁）
         print(f"  [{tag}] 生产 {item} (队列大小={q.qsize()})")
-        time.sleep(random.uniform(0.1, 0.3))
+        time.sleep(random.uniform(0.1, 0.3))  # 模拟生产耗时
     # 放一个 None 作为"结束信号"
-    q.put(None)
+    q.put(None)                   # None 是约定的结束信号，通知消费者退出
 
 def consumer(tag):
     """消费者：从队列取数据"""
-    while True:
+    while True:                   # 循环取数据，直到收到结束信号
         item = q.get()             # 队列空时自动阻塞等待
         if item is None:           # 收到结束信号
-            q.task_done()
-            break
+            q.task_done()          # 标记 None 这个任务完成
+            break                  # 退出循环
         print(f"  [{tag}] 消费 {item}")
-        time.sleep(random.uniform(0.1, 0.3))
-        q.task_done()              # 标记任务处理完
+        time.sleep(random.uniform(0.1, 0.3))  # 模拟消费耗时
+        q.task_done()              # 标记任务处理完（配合 join 使用）
 
-threads = [
+threads = [                            # 创建1生产者 + 1消费者
     threading.Thread(target=producer, args=("P1",)),
     threading.Thread(target=consumer, args=("C1",)),
 ]
-for t in threads: t.start()
-for t in threads: t.join()
+for t in threads: t.start()            # 启动线程
+for t in threads: t.join()             # 等待线程完成
 print()
 
 # ============================================================
@@ -1045,30 +1049,30 @@ print("=" * 55)
 print("实验3：q.join() 等所有任务处理完")
 print("=" * 55)
 
-q2 = queue.Queue()
+q2 = queue.Queue()                # 创建新队列，用于演示 task_done + join
 
 def worker(tag):
     """处理队列里的所有任务"""
-    while True:
-        item = q2.get()
-        if item is None:
-            q2.task_done()
-            break
+    while True:                   # 循环取任务
+        item = q2.get()           # 从队列取任务（空了会阻塞）
+        if item is None:          # 收到结束信号
+            q2.task_done()        # 标记 None 任务完成
+            break                 # 退出循环
         print(f"  [{tag}] 处理 {item}")
-        time.sleep(0.1)
-        q2.task_done()             # 每处理完一个就 task_done
+        time.sleep(0.1)           # 模拟处理耗时
+        q2.task_done()             # 每处理完一个就 task_done（计数器-1）
 
 # 启动一个 worker
-threading.Thread(target=worker, args=("W",), daemon=True).start()
+threading.Thread(target=worker, args=("W",), daemon=True).start()  # 创建守护线程并启动
 
 # 主线程放入5个任务
 for i in range(5):
-    q2.put(f"任务{i}")
+    q2.put(f"任务{i}")            # 入队（每次 put 计数器+1）
 # 放结束信号
-q2.put(None)
+q2.put(None)                      # 放入结束信号
 
 # join 会阻塞直到所有 put 的项目都被 task_done
-q2.join()
+q2.join()                         # 等待计数器归0（所有任务都被处理完）
 print("  >>> 所有任务处理完成！")
 
 print("\\n要点：")
@@ -1138,72 +1142,72 @@ while True:
 
 包含：多生产者、多消费者、优雅关闭、统计处理数量。`,
     code: `# 第十六章 demo：完整的生产者-消费者实战（日志处理系统）
-import threading
-import queue
-import time
-import random
+import threading                  # 导入线程模块
+import queue                      # 导入队列模块
+import time                       # 导入时间模块
+import random                     # 导入随机模块，模拟不规律耗时
 
 # 日志队列：缓冲生产者和消费者
-log_queue = queue.Queue(maxsize=10)
+log_queue = queue.Queue(maxsize=10)  # 容量10的队列，满了生产者会阻塞
 
 # 统计：已处理多少条日志
-processed_count = 0
-count_lock = threading.Lock()
+processed_count = 0               # 已处理日志计数（全局变量）
+count_lock = threading.Lock()     # 保护 processed_count 的锁
 
 def log_producer(service_name, count):
     """生产者：模拟某个服务产生 count 条日志"""
-    for i in range(count):
-        log = f"[{service_name}] 日志#{i} 严重度={random.choice(['INFO','WARN','ERROR'])}"
+    for i in range(count):        # 循环产生指定数量的日志
+        log = f"[{service_name}] 日志#{i} 严重度={random.choice(['INFO','WARN','ERROR'])}"  # 模拟日志内容
         log_queue.put(log)                 # 队列满了自动阻塞
         print(f"  📤 [{service_name}] 产生: {log}")
-        time.sleep(random.uniform(0.05, 0.2))
+        time.sleep(random.uniform(0.05, 0.2))  # 模拟产生日志的间隔
 
 def log_consumer(consumer_id):
     """消费者：从队列取日志并'处理'（模拟写盘）"""
-    global processed_count
-    while True:
-        log = log_queue.get()
+    global processed_count        # 声明全局变量
+    while True:                   # 循环取日志，直到收到结束信号
+        log = log_queue.get()     # 从队列取日志（空了会阻塞）
         if log is None:                    # 结束信号（毒丸）
-            log_queue.task_done()
+            log_queue.task_done()          # 标记任务完成
             print(f"  📥 [消费者{consumer_id}] 收到结束信号，退出")
-            return
+            return                         # 退出函数，线程结束
         # 模拟写盘耗时
         time.sleep(random.uniform(0.05, 0.15))
-        with count_lock:
-            processed_count += 1
+        with count_lock:                   # 加锁保护计数器修改
+            processed_count += 1           # 已处理数 +1
             print(f"  📥 [消费者{consumer_id}] 已写盘({processed_count}): {log}")
-        log_queue.task_done()
+        log_queue.task_done()              # 标记该日志处理完成
 
 print("=" * 55)
 print("日志处理系统：3生产者 + 2消费者")
 print("=" * 55)
 
-NUM_CONSUMERS = 2
+NUM_CONSUMERS = 2                # 消费者数量
 
 # 启动2个消费者
-consumers = [threading.Thread(target=log_consumer, args=(i,)) for i in range(NUM_CONSUMERS)]
-for t in consumers: t.start()
+consumers = [threading.Thread(target=log_consumer, args=(i,)) for i in range(NUM_CONSUMERS)]  # 创建消费者线程
+for t in consumers: t.start()    # 启动所有消费者
 
 # 启动3个生产者
-producers = [
+producers = [                            # 创建3个生产者线程，分别产生3/3/2条日志
     threading.Thread(target=log_producer, args=("Web服务", 3)),
     threading.Thread(target=log_producer, args=("DB服务", 3)),
     threading.Thread(target=log_producer, args=("缓存服务", 2)),
 ]
-for t in producers: t.start()
+for t in producers: t.start()    # 启动所有生产者
 
 # 等所有生产者完成
 for t in producers:
-    t.join()
+    t.join()                     # 等待每个生产者完成
 print("  >>> 所有生产者完成，发送结束信号")
 
 # 发送结束信号（每个消费者一个 None）
-for _ in range(NUM_CONSUMERS):
-    log_queue.put(None)
+for _ in range(NUM_CONSUMERS):   # 消费者数量个 None
+    log_queue.put(None)          # 放入结束信号（毒丸），通知消费者退出
 
 # 等所有消费者退出
 for t in consumers:
-    t.join()
+    t.join()                     # 等待所有消费者结束
 
 print(f"\\n  ✅ 全部完成，共处理 {processed_count} 条日志")
 print("\\n要点：")
@@ -1295,20 +1299,20 @@ with ThreadPoolExecutor(4) as ex:
 
 下面 demo 用三种方式并发下载"网页"（用 sleep 模拟），对比特点。`,
     code: `# 第十七章 demo：ThreadPoolExecutor 线程池三种用法
-import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import time                       # 导入时间模块
+from concurrent.futures import ThreadPoolExecutor, as_completed  # 导入线程池和 as_completed
 
 # 模拟"下载网页"：每个任务耗时不同
 def download(url):
     """模拟下载一个URL，返回内容字符串（不同 URL 耗时不同）"""
     # 提取 URL 中的数字作为耗时因子；没有数字则用字符串长度
-    digits = ''.join(c for c in url if c.isdigit())
-    num = int(digits) if digits else len(url)
-    secs = 0.2 + (num % 6) * 0.12
-    time.sleep(secs)
-    return f"{url} 的内容（耗时{secs:.2f}s）"
+    digits = ''.join(c for c in url if c.isdigit())  # 提取URL中的所有数字字符
+    num = int(digits) if digits else len(url)        # 转为整数，没有数字就用字符串长度
+    secs = 0.2 + (num % 6) * 0.12    # 根据数字计算耗时（0.2~0.8秒之间）
+    time.sleep(secs)                 # 模拟下载耗时
+    return f"{url} 的内容（耗时{secs:.2f}s）"  # 返回"下载内容"
 
-urls = [f"url_{i}.com" for i in range(6)]
+urls = [f"url_{i}.com" for i in range(6)]  # 生成6个URL
 
 # ============================================================
 # 用法1：submit + 手动收集
@@ -1316,13 +1320,13 @@ urls = [f"url_{i}.com" for i in range(6)]
 print("=" * 55)
 print("用法1：submit + 手动收集（按提交顺序取结果）")
 print("=" * 55)
-start = time.time()
-with ThreadPoolExecutor(max_workers=4) as ex:
-    futures = [ex.submit(download, url) for url in urls]
+start = time.time()               # 记录开始时间
+with ThreadPoolExecutor(max_workers=4) as ex:  # 创建4线程的线程池
+    futures = [ex.submit(download, url) for url in urls]  # 提交所有任务，返回Future列表
     # 按提交顺序等结果
-    for f in futures:
-        print(f"  {f.result()}")
-print(f"  耗时 {time.time()-start:.2f}s\\n")
+    for f in futures:             # 遍历 Future 列表（顺序与提交顺序一致）
+        print(f"  {f.result()}")  # 阻塞等待该任务的结果
+print(f"  耗时 {time.time()-start:.2f}s\\n")  # 打印总耗时
 
 # ============================================================
 # 用法2：map（结果顺序与输入一致）
@@ -1333,7 +1337,7 @@ print("=" * 55)
 start = time.time()
 with ThreadPoolExecutor(max_workers=4) as ex:
     results = ex.map(download, urls)   # 返回迭代器，顺序与 urls 一致
-    for r in results:
+    for r in results:                  # 遍历结果（按输入顺序返回）
         print(f"  {r}")
 print(f"  耗时 {time.time()-start:.2f}s\\n")
 
@@ -1345,7 +1349,7 @@ print("用法3：as_completed（谁先完成谁先返回）")
 print("=" * 55)
 start = time.time()
 with ThreadPoolExecutor(max_workers=4) as ex:
-    futures = {ex.submit(download, url): url for url in urls}
+    futures = {ex.submit(download, url): url for url in urls}  # 用字典存 Future→url 映射
     for f in as_completed(futures):    # 谁先完成先yield
         print(f"  ✓ 完成: {f.result()}")
 print(f"  耗时 {time.time()-start:.2f}s\\n")
@@ -1357,10 +1361,10 @@ print("=" * 55)
 print("Future 对象的方法")
 print("=" * 55)
 with ThreadPoolExecutor(max_workers=2) as ex:
-    f = ex.submit(download, "test.com")
-    print(f"  提交后 done={f.done()}, running={f.running()}")
+    f = ex.submit(download, "test.com")  # 提交一个任务
+    print(f"  提交后 done={f.done()}, running={f.running()}")  # 查看任务状态
     result = f.result()                # 阻塞等结果
-    print(f"  完成后 done={f.done()}")
+    print(f"  完成后 done={f.done()}")  # 完成后 done 为 True
     print(f"  结果: {result}")
 
 # ============================================================
@@ -1372,16 +1376,16 @@ print("异常传播：子线程的异常在 result() 抛出")
 print("=" * 55)
 def risky(x):
     """模拟可能出错的任务：x==3 时抛异常，演示异常传播"""
-    if x == 3:
-        raise ValueError(f"x={x} 出错啦！")
-    return x * 2
+    if x == 3:                    # x为3时故意抛异常
+        raise ValueError(f"x={x} 出错啦！")  # 抛出 ValueError
+    return x * 2                  # 正常返回 x 的两倍
 
 with ThreadPoolExecutor(max_workers=3) as ex:
-    futures = [ex.submit(risky, i) for i in range(5)]
-    for i, f in enumerate(futures):
+    futures = [ex.submit(risky, i) for i in range(5)]  # 提交5个任务
+    for i, f in enumerate(futures):  # 遍历每个任务
         try:
-            print(f"  任务{i} 结果: {f.result()}")
-        except ValueError as e:
+            print(f"  任务{i} 结果: {f.result()}")  # 取结果（异常会在此抛出）
+        except ValueError as e:    # 捕获子线程抛出的异常
             print(f"  任务{i} 异常: {e}")
 
 print("\\n要点：")
@@ -1452,8 +1456,8 @@ timer.start()
 
 下面 demo 演示：一次性定时、取消定时、重复定时。`,
     code: `# 第十八章 demo：Timer 定时器
-import threading
-import time
+import threading                  # 导入线程模块
+import time                       # 导入时间模块
 
 # ============================================================
 # 实验1：一次性定时器
@@ -1461,18 +1465,19 @@ import time
 print("=" * 55)
 print("实验1：一次性定时器（2秒后执行）")
 print("=" * 55)
-print(f"  启动时间: {time.strftime('%H:%M:%S')}")
+print(f"  启动时间: {time.strftime('%H:%M:%S')}")  # 打印当前时间
 
 def say_hello(name):
+    """定时触发的函数：打印问候语"""
     print(f"  [{time.strftime('%H:%M:%S')}] Hello, {name}! (定时触发)")
 
 # Timer(间隔秒数, 函数, args=参数)
-t = threading.Timer(2.0, say_hello, args=("Python",))
-t.start()                         # 启动，主线程不阻塞
+t = threading.Timer(2.0, say_hello, args=("Python",))  # 创建2秒后执行 say_hello 的定时器
+t.start()                         # 启动，主线程不阻塞（Timer 在子线程执行）
 print(f"  [{time.strftime('%H:%M:%S')}] 定时器已启动，主线程继续干活")
-time.sleep(0.5)
+time.sleep(0.5)                   # 主线程休眠0.5秒，演示主线程不阻塞
 print(f"  [{time.strftime('%H:%M:%S')}] 主线程在做事...")
-t.join()                          # 等定时器触发
+t.join()                          # 等定时器触发完成
 print()
 
 # ============================================================
@@ -1482,13 +1487,14 @@ print("=" * 55)
 print("实验2：在触发前取消定时器")
 print("=" * 55)
 def never_run():
+    """这个函数永远不会被调用"""
     print("  这行不会打印")
 
-t = threading.Timer(1.0, never_run)
-t.start()
+t = threading.Timer(1.0, never_run)  # 创建1秒后执行的定时器
+t.start()                         # 启动定时器
 print(f"  [{time.strftime('%H:%M:%S')}] 定时器已启动（1秒后触发）")
-time.sleep(0.3)
-t.cancel()                        # 在触发前取消
+time.sleep(0.3)                   # 等0.3秒
+t.cancel()                        # 在触发前取消（还没执行的任务会被取消）
 print(f"  [{time.strftime('%H:%M:%S')}] 已取消定时器")
 time.sleep(1)                     # 等过原定触发时间，确认不会触发
 print("  确认：取消后定时器没有触发\\n")
@@ -1500,23 +1506,23 @@ print("=" * 55)
 print("实验3：重复定时（每0.4秒一次，共5次）")
 print("=" * 55)
 
-counter = {"n": 0}                # 用字典存可变状态
-MAX_TIMES = 5
-stop_flag = threading.Event()
+counter = {"n": 0}                # 用字典存可变状态（避免 global，闭包可修改字典内容）
+MAX_TIMES = 5                     # 最大执行次数
+stop_flag = threading.Event()     # 停止标志（Event 对象）
 
 def repeat_task():
     """周期任务：每次执行后再创建下一个 Timer，直到达到次数"""
-    if stop_flag.is_set() or counter["n"] >= MAX_TIMES:
+    if stop_flag.is_set() or counter["n"] >= MAX_TIMES:  # 检查是否该停
         print(f"  >>> 停止重复（已执行 {counter['n']} 次）")
-        return
-    counter["n"] += 1
+        return                    # 不再创建新 Timer，循环结束
+    counter["n"] += 1             # 执行次数 +1
     print(f"  第 {counter['n']} 次执行 ({time.strftime('%H:%M:%S')})")
     # 递归创建下一个定时器
-    threading.Timer(0.4, repeat_task).start()
+    threading.Timer(0.4, repeat_task).start()  # 0.4秒后再执行一次 repeat_task
 
-threading.Timer(0.4, repeat_task).start()
+threading.Timer(0.4, repeat_task).start()  # 启动第一次定时
 # 等足够时间让5次都执行完
-time.sleep(3)
+time.sleep(3)                     # 等3秒，确保5次都执行完（5*0.4=2秒）
 print()
 
 # ============================================================
@@ -1526,23 +1532,23 @@ print("=" * 55)
 print("实验4：用 Event 控制重复定时器中途停止")
 print("=" * 55)
 
-stop_event = threading.Event()
+stop_event = threading.Event()    # 创建停止事件
 
 def heartbeat():
     """心跳任务：每隔0.5秒一次，直到收到停止信号"""
     # 用 while 循环而非递归，避免长时间运行导致栈溢出
-    while not stop_event.is_set():
+    while not stop_event.is_set():  # 检查是否收到停止信号
         print(f"  [心跳] 嘭 ({time.strftime('%H:%M:%S')})")
         # 用 wait 替代 sleep：既能定时，又能被 set 立即唤醒
         if stop_event.wait(timeout=0.5):
             break                 # wait 返回 True 表示收到停止信号，退出循环
     print("  [心跳] 收到停止信号，停止")
 
-threading.Thread(target=heartbeat, daemon=True).start()
-time.sleep(1.8)
+threading.Thread(target=heartbeat, daemon=True).start()  # 创建守护线程运行心跳
+time.sleep(1.8)                   # 让心跳跑一会儿
 print("  >>> 主线程：发送停止信号")
-stop_event.set()                  # 立即停止心跳
-time.sleep(0.6)
+stop_event.set()                  # 立即停止心跳（标志设为 True）
+time.sleep(0.6)                   # 等心跳线程退出
 
 print("\\n要点：")
 print("• Timer(interval, func) 延迟 interval 秒执行一次 func")
