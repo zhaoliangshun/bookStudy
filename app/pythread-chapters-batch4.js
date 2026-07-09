@@ -91,6 +91,9 @@ import threading
 import multiprocessing as mp
 import time
 
+# 显式指定 fork 启动方式：子进程继承父进程内存空间，启动快、不重新导入主模块。
+# macOS 自 Python 3.8 起默认 spawn（会重新导入主模块，stdin 运行时易失败），
+# 所以这里显式切回 fork 以保证 demo 在各种运行方式下都能正常工作。
 ctx = mp.get_context("fork")
 
 # ============================================================
@@ -226,6 +229,7 @@ import multiprocessing as mp
 import time
 from concurrent.futures import ThreadPoolExecutor
 
+# 显式用 fork 上下文：避免 macOS 默认 spawn 在 stdin 运行时重新导入主模块失败
 ctx = mp.get_context("fork")
 
 def cpu_work(n):
@@ -264,26 +268,33 @@ def measure_processes(func, args_list, n):
     return time.time() - start
 
 def run_benchmark(name, func, single_arg, counts):
-    """跑一组对照实验：固定 4 个任务的工作负载，改变并发方式和并发数"""
+    """跑一组对照实验：固定 counts 个任务的工作负载，改变并发方式和并发数
+    参数：
+      name       测试名称（用于打印标题）
+      func       任务函数（cpu_work 或 io_work）
+      single_arg 单个任务的参数（累加次数 或 sleep 秒数）
+      counts     任务总数（也是工作负载大小）
+    """
     print(f"\\n{'='*55}")
     print(f"基准测试：{name}")
     print(f"{'='*55}")
     print(f"  {'方式':<12} {'耗时':>8}  {'加速比':>6}")
     print(f"  {'-'*32}")
-    # 固定 4 个任务作为工作负载，串行耗时作为 baseline
-    args = [single_arg] * 4
+    # 固定 counts 个任务作为工作负载，串行耗时作为 baseline（加速比 = 1.0x）
+    args = [single_arg] * counts
     serial_t = measure_serial(func, args)
-    print(f"  {'串行(4个)':<12} {serial_t:>7.3f}s  {'1.00x':>6}")
-    # 2 线程处理同样的 4 个任务，加速比 = 串行耗时 / 并发耗时
+    serial_label = f"串行({counts}个)"
+    print(f"  {serial_label:<12} {serial_t:>7.3f}s  {'1.00x':>6}")
+    # 2 线程处理同样的 counts 个任务，加速比 = 串行耗时 / 并发耗时
     t2 = measure_threads(func, args, 2)
     print(f"  {'2线程':<12} {t2:>7.3f}s  {serial_t/t2:>5.2f}x")
-    # 4 线程处理 4 个任务
+    # 4 线程处理 counts 个任务（线程数 = 任务数时理论上能达到最大并发）
     t4 = measure_threads(func, args, 4)
     print(f"  {'4线程':<12} {t4:>7.3f}s  {serial_t/t4:>5.2f}x")
-    # 2 进程处理 4 个任务
+    # 2 进程处理 counts 个任务
     p2 = measure_processes(func, args, 2)
     print(f"  {'2进程':<12} {p2:>7.3f}s  {serial_t/p2:>5.2f}x")
-    # 4 进程处理 4 个任务
+    # 4 进程处理 counts 个任务
     p4 = measure_processes(func, args, 4)
     print(f"  {'4进程':<12} {p4:>7.3f}s  {serial_t/p4:>5.2f}x")
 
@@ -405,9 +416,12 @@ import multiprocessing as mp
 from functools import partial
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 
-# ProcessPoolExecutor 默认 spawn，在线运行（stdin）会失败，显式指定 fork
-# partial 把 mp_context 参数预绑死，之后调用 ForkProcessPool(max_workers=4)
-# 等价于 ProcessPoolExecutor(max_workers=4, mp_context=mp.get_context("fork"))
+# ProcessPoolExecutor 默认用 spawn 启动子进程：子进程会重新 import 主模块。
+# 但本教程通过 python3 - 从 stdin 读代码运行，主模块不是磁盘文件，spawn 无法重新导入 → 报错。
+# 解决办法：显式指定 fork 上下文（子进程直接继承父进程内存，无需重新导入主模块）。
+# 用 functools.partial 把 mp_context 参数预绑死，之后调用 ForkProcessPool(max_workers=4)
+# 等价于 ProcessPoolExecutor(max_workers=4, mp_context=mp.get_context("fork"))。
+# 日常脚本（python xxx.py）用默认 spawn 即可，记得把启动代码放进 if __name__ == "__main__":。
 ForkProcessPool = partial(ProcessPoolExecutor, mp_context=mp.get_context("fork"))
 
 def cpu_task(n):
@@ -761,7 +775,7 @@ print(result.returncode)     # 退出码（0=成功）
 | \`subprocess.call(args)\` | \`run(args).returncode\` |
 | \`subprocess.check_call(args)\` | \`run(args, check=True)\` |
 | \`subprocess.check_output(args)\` | \`run(args, check=True, capture_output=True, text=True).stdout\` |
-| \`subprocess.getoutput(cmd)\` | \`run(cmd, shell=True, capture_output=True, text=True).stdout\` |
+| \`subprocess.getoutput(cmd)\` | \`run(cmd, shell=True, stdout=PIPE, stderr=STDOUT, text=True).stdout\`（注意 getoutput 会合并 stderr 到 stdout） |
 
 ## 列表 vs shell=True
 
@@ -1020,10 +1034,12 @@ print()
 print("=" * 55)
 print("实验2：实时读取子进程逐行输出")
 print("=" * 55)
-# -u 启用无缓冲，否则 print 会缓冲导致读不到
+# -u 启用无缓冲模式：Python 默认按块缓冲 stdout，管道场景下数据会积在缓冲区，
+# 主进程 for line 读不到实时输出。-u 等价于 PYTHONUNBUFFERED=1，强制行缓冲。
+# 代码里同时加了 flush=True，双保险确保每行 print 立刻可见。
 code = "import time\\nfor i in range(5):\\n    print(f'行 {i}', flush=True)\\n    time.sleep(0.2)"
 p = Popen(["python3", "-u", "-c", code], stdout=PIPE, text=True)
-# for line 逐行读，有数据就返回
+# for line 逐行读：迭代 p.stdout 会在有数据时立刻 yield 一行，未到 EOF 时阻塞等待下一行
 for line in p.stdout:
     print(f"  [收到] {line.strip()}  ({time.strftime('%H:%M:%S')})")
 p.wait()
@@ -1221,7 +1237,9 @@ serial_time = time.time() - start
 print(f"  成功 {serial_ok}，失败 {serial_fail}，耗时 {serial_time:.2f}s\\n")
 
 # 并发下载
-random.seed(42)   # 重置种子保证公平对比
+# 重置随机种子：注意多线程下 random 调用顺序由线程调度决定，无法完全复现串行的失败模式，
+# 因此并发与串行的成功/失败数可能略有差异——这是线程非确定性的正常表现，不影响性能对比。
+random.seed(42)
 print("-" * 40)
 print("方式2：4 线程并发下载")
 print("-" * 40)
@@ -1294,6 +1312,7 @@ print("• max_workers 控制并发数，避免被封 IP")`,
 import multiprocessing as mp
 import time
 
+# 显式用 fork 上下文：避免 macOS 默认 spawn 在 stdin 运行时重新导入主模块失败
 ctx = mp.get_context("fork")
 
 def process_chunk(chunk_id, size):

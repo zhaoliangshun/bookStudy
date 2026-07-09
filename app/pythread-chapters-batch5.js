@@ -157,11 +157,20 @@ print(f"  asyncio 串行耗时: {time.time()-start:.3f}s\\n")
 # ============================================================
 async def concurrent():
     """create_task 把协程包装成 Task 同时调度
-    A 让出等待时，循环立即去跑 B——总耗时 ≈ max(0.5, 0.5) = 0.5s
+
+    事件循环调度原理：
+    1. create_task 立即把协程注册到事件循环的就绪队列
+    2. 事件循环取出第一个就绪的 Task（A）执行
+    3. A 执行到 await asyncio.sleep(0.5) 时——sleep 向循环注册一个
+       "0.5 秒后唤醒 A" 的回调，然后 A 让出控制权
+    4. 循环立即取出下一个就绪的 Task（B）执行
+    5. B 同样在 await sleep 时让出
+    6. 0.5 秒后 A 和 B 的 sleep 回调触发，循环恢复它们
+    → 总耗时 ≈ max(0.5, 0.5) = 0.5s，而非 0.5+0.5=1s
     """
     t1 = asyncio.create_task(io_task("A", 0.5))
     t2 = asyncio.create_task(io_task("B", 0.5))
-    await t1                            # 等 A 完成
+    await t1                            # 等 A 完成（此时 B 也在跑）
     await t2                            # 等 B 完成
 
 print("=" * 55)
@@ -295,17 +304,13 @@ Python 会警告 \`coroutine '...' was never awaited\`，**所有协程调用都
 下面 demo 展示 await 链、协程对象、异常处理。`,
     code: `# 第四十章 demo：async/await 语法详解
 import asyncio
+import time
 
 # ============================================================
 # 协程函数：可以 return 值
 # ============================================================
 async def add(a, b):
     """最简单的协程：直接 return"""
-    return a + b
-
-async def slow_add(a, b, delay):
-    """带 await 的协程：先等再 return"""
-    await asyncio.sleep(delay)        # 让出，模拟 IO
     return a + b
 
 # ============================================================
@@ -336,7 +341,6 @@ async def main():
     print("\\n" + "=" * 55)
     print("实验2：协程调用链 main → get_user → db_query")
     print("=" * 55)
-    import time
     start = time.time()
     user = await get_user(42)
     print(f"  结果: {user}")
@@ -515,11 +519,14 @@ async def serial():
 # ============================================================
 async def concurrent():
     start = time.time()
-    # 三个 task 立刻注册，开始并发跑
+    # create_task 把协程包装成 Task 并立即注册到事件循环
+    # 三个 Task 在循环里并发执行——不是"同时"执行（单线程），
+    # 而是在 await 让出点之间交替推进
     t1 = asyncio.create_task(io_task("A", 0.5))
     t2 = asyncio.create_task(io_task("B", 0.5))
     t3 = asyncio.create_task(io_task("C", 0.5))
-    # await 它们拿结果——顺序不影响，因为它们都在跑
+    # await Task 拿结果——顺序不影响最终结果
+    # 因为三个 Task 此刻都已注册，谁先完成谁先就绪
     r1 = await t1
     r2 = await t2
     r3 = await t3
@@ -743,6 +750,9 @@ async def main():
         )
     except ValueError as e:
         print(f"  gather 抛出: {e}")
+    # 重要：gather 抛异常后不会自动取消其他任务，ok2 仍在后台运行
+    # 这里等一下让残留任务完成，避免其输出混入下一个实验
+    await asyncio.sleep(0.25)
     print()
 
     # ---- 实验4：wait + FIRST_COMPLETED ----
@@ -1051,20 +1061,19 @@ import asyncio
 import random
 
 # ============================================================
-# 队列：maxsize 控制反压，防止生产过快撑爆内存
+# 生产者：把产品放入队列
+# 注意：Queue 通过参数传入，不能在模块级别创建——
+#   asyncio.Queue() 会绑定创建时的事件循环，
+#   模块级别创建时没有运行中的循环，会导致后续
+#   "Future attached to a different loop" 错误。
 # ============================================================
-q = asyncio.Queue(maxsize=5)
-
-# ============================================================
-# 生产者：每 0.1~0.3s 生产一个产品
-# ============================================================
-async def producer(name, count):
+async def producer(q, name, count):
     for i in range(count):
-        # 模拟生产耗时
-        secs = random.uniform(0.05, 0.2)
+        secs = random.uniform(0.05, 0.2)     # 模拟生产耗时
         await asyncio.sleep(secs)
         item = f"{name}-产品{i}"
-        # put 满了会等待——这就是反压
+        # 队列满时 put 会挂起等待——这就是反压（backpressure）
+        # 生产者被自动降速，防止撑爆内存
         await q.put(item)
         print(f"  📤 [{name}] 生产 {item} (队列大小 {q.qsize()})")
     return name
@@ -1072,25 +1081,27 @@ async def producer(name, count):
 # ============================================================
 # 消费者：从队列取产品处理
 # ============================================================
-async def consumer(name):
+async def consumer(q, name):
     processed = 0
     while True:
-        item = await q.get()
-        if item is None:                # 结束信号
+        item = await q.get()                 # 队列空时挂起等待
+        if item is None:                    # None 是约定的结束信号
             q.task_done()
             print(f"  🛑 [{name}] 收到结束信号，退出 (处理了 {processed})")
             return (name, processed)
-        # 模拟处理耗时
-        secs = random.uniform(0.1, 0.3)
+        secs = random.uniform(0.1, 0.3)     # 模拟处理耗时
         await asyncio.sleep(secs)
         print(f"  📥 [{name}] 消费 {item}")
         processed += 1
-        q.task_done()                   # 标记这个任务处理完
+        q.task_done()                       # 标记本项处理完，供 join 计数
 
 # ============================================================
 # 主流程
 # ============================================================
 async def main():
+    # Queue 必须在事件循环内（async 函数里）创建，才能绑定正确的循环
+    q = asyncio.Queue(maxsize=5)
+
     print("=" * 55)
     print("异步生产者消费者（3 生产者 × 2 消费者）")
     print("=" * 55)
@@ -1098,19 +1109,19 @@ async def main():
 
     # 启动 3 个生产者，每个生产 4 个产品
     producers = [
-        asyncio.create_task(producer(f"P{i}", 4))
+        asyncio.create_task(producer(q, f"P{i}", 4))
         for i in range(3)
     ]
     # 启动 2 个消费者
     consumers = [
-        asyncio.create_task(consumer(f"C{i}"))
+        asyncio.create_task(consumer(q, f"C{i}"))
         for i in range(2)
     ]
 
     # 等所有生产者完成
     await asyncio.gather(*producers)
     print("\\n--- 所有生产者完成，发结束信号 ---")
-    # 每个消费者发一个 None 结束信号
+    # 每个消费者发一个 None 结束信号（数量必须与消费者一致）
     for _ in consumers:
         await q.put(None)
 
@@ -1278,56 +1289,46 @@ def thread_func():
 import asyncio
 import time
 
-# ============================================================
-# 实验1：Lock 解决协程竞态条件
-# ============================================================
+# count 放模块级，供多个 task 通过 global 共享
+# 注意：asyncio.Lock / Semaphore / Event 等同步原语不能放模块级——
+#   它们会绑定创建时的事件循环，模块级别没有运行中的循环，
+#   后续在 asyncio.run() 创建的新循环里使用会报
+#   "Future attached to a different loop" 错误。
+#   必须在 async 函数（事件循环内）里创建。
 count = 0
-lock = asyncio.Lock()
-
-async def unsafe_inc():
-    """不安全的累加——await 期间会被切换"""
-    global count
-    cur = count
-    await asyncio.sleep(0)             # ← 切换点！
-    count = cur + 1
-
-async def safe_inc():
-    """安全累加——Lock 保护"""
-    global count
-    async with lock:                   # async with！
-        cur = count
-        await asyncio.sleep(0)         # 锁内 await 也不会被打断
-        count = cur + 1
 
 async def main():
     global count                    # 声明全局——否则下面 count=0 是局部变量，
                                     # 而 unsafe_task/safe_task 用 global 改的是模块级，
                                     # print 读到的会是 0（bug 修复）
+
+    # Lock 必须在事件循环内创建
+    lock = asyncio.Lock()
+
     print("=" * 55)
     print("实验1：协程竞态条件 vs Lock 保护")
     print("=" * 55)
-    # 不加锁：1000 个并发 inc
+    # 不加锁：100 个并发 task 各加 100 次
     count = 0
-    # 用闭包修改 count（每个 task 共享）
     async def unsafe_task():
         global count
         for _ in range(100):
             cur = count
-            await asyncio.sleep(0)
-            count = cur + 1
-    # 100 个 task，每个加 100 次，理论 10000
+            await asyncio.sleep(0)     # ← 切换点！其他协程可能在此刻运行
+            count = cur + 1            # 用的是旧值，覆盖了别人的写入
+    # 100 个 task × 100 次 = 理论 10000，实际远小于（竞态丢失更新）
     tasks = [asyncio.create_task(unsafe_task()) for _ in range(100)]
     await asyncio.gather(*tasks)
     print(f"  不加锁: 实际 {count} (期望 10000)")
 
-    # 加锁版本
+    # 加锁版本：Lock 保证临界区内的"读-改-写"不被其他协程打断
     count = 0
     async def safe_task():
         global count
         for _ in range(100):
-            async with lock:
+            async with lock:           # async with 获取锁
                 cur = count
-                await asyncio.sleep(0)
+                await asyncio.sleep(0)  # 锁内即使 await，别的协程也进不来
                 count = cur + 1
     tasks = [asyncio.create_task(safe_task()) for _ in range(100)]
     await asyncio.gather(*tasks)
@@ -1338,7 +1339,7 @@ async def main():
     print("实验2：Semaphore 限制并发数为 3")
     print("=" * 55)
 
-    sem = asyncio.Semaphore(3)          # 最多 3 个并发
+    sem = asyncio.Semaphore(3)          # 最多 3 个并发，第 4 个会等待
 
     current = 0                         # 当前并发数
     max_concurrent = 0                  # 历史最大并发
@@ -1346,8 +1347,8 @@ async def main():
 
     async def fetch(url):
         nonlocal current, max_concurrent
-        async with sem:                 # 第 4 个会等
-            async with counter_lock:
+        async with sem:                 # 超过 3 个时在此等待
+            async with counter_lock:    # 用锁保护 current 的读-改-写
                 current += 1
                 if current > max_concurrent:
                     max_concurrent = current
@@ -1371,13 +1372,13 @@ async def main():
 
     async def worker(name):
         print(f"  [{name}] 等待开始信号...")
-        await ready.wait()              # 等通知
+        await ready.wait()              # 阻塞直到 set() 被调用
         print(f"  [{name}] 收到信号，开始干活")
 
     workers = [asyncio.create_task(worker(f"W{i}")) for i in range(3)]
-    await asyncio.sleep(0.2)            # 让它们都进入 wait
+    await asyncio.sleep(0.2)            # 让它们都进入 wait 状态
     print("  >>> 主协程发出开始信号")
-    ready.set()                          # 通知所有等待者
+    ready.set()                          # 一次 set 唤醒所有等待者
     await asyncio.gather(*workers)
 
     # clear 后可以再用
@@ -1536,10 +1537,16 @@ async def main():
     print("=" * 55)
     start = time.time()
     try:
-        # async with 块内所有 await 都受 0.3s 超时约束
-        async with asyncio.timeout(0.3):
-            await asyncio.sleep(1)
-    except TimeoutError:
+        # asyncio.timeout 是 3.11+ 新增的上下文管理器
+        # 作用域内所有 await 都受超时约束，比 wait_for 更灵活
+        # 3.10 及以下没有此 API，用 wait_for 替代演示相同效果
+        if hasattr(asyncio, 'timeout'):
+            async with asyncio.timeout(0.3):
+                await asyncio.sleep(1)
+        else:
+            # 3.10 及以下等价写法：wait_for 包裹
+            await asyncio.wait_for(asyncio.sleep(1), timeout=0.3)
+    except (asyncio.TimeoutError, TimeoutError):
         # 3.11+ 中 asyncio.TimeoutError 已是内置 TimeoutError 的别名
         print(f"  timeout 上下文超时 ({time.time()-start:.2f}s)")
     print()
@@ -1594,7 +1601,7 @@ asyncio.run(main())
 print("\\n要点：")
 print("• as_completed 谁先完成谁先返回，适合逐个处理")
 print("• wait_for(timeout) 超时取消任务，最常用")
-print("• async with asyncio.timeout 是 3.11+ 推荐写法")
+print("• async with asyncio.timeout 是 3.11+ 推荐写法，3.10- 用 wait_for")
 print("• wait + timeout 能保留已完成的结果，取消未完成的")
 print("• shield 让任务不被外层取消影响，仍在后台跑完")`,
   },
@@ -1692,7 +1699,6 @@ async def process(data):
     code: `# 第四十七章 demo：run_in_executor / to_thread
 import asyncio
 import time
-import threading
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
@@ -1717,7 +1723,9 @@ def cpu_heavy(n):
     return total
 
 # ============================================================
-# 用 fork 上下文（在线运行 stdin 模式需要）
+# 进程池启动方式：macOS/Linux 默认 fork，Windows 只能 spawn
+# fork 模式下子进程继承父进程内存（写时复制），启动快
+# 这里显式指定 fork，避免 macOS 3.8+ 默认 spawn 导致的兼容问题
 # ============================================================
 ForkProcessPool = partial(ProcessPoolExecutor, mp_context=mp.get_context("fork"))
 
@@ -1888,7 +1896,6 @@ async def main():
 import asyncio
 import time
 import random
-import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ============================================================

@@ -20,12 +20,12 @@ export const chapters = [
 \`multiprocessing\` 是 Python 标准库的多进程模块。每个进程有**独立的内存空间和独立的 GIL**，所以多进程能**真正利用多核 CPU 并行计算**——这是它和 \`threading\` 最大的区别。
 
 \`\`\`python
-import multiprocessing as mp  # 导入模块 multiprocessing
+import multiprocessing as mp
 
-def task():  # 定义函数 task
-    print("子进程执行")  # 打印输出到屏幕
+def task():
+    print("子进程执行")
 
-p = mp.Process(target=task)  # 赋值变量 p
+p = mp.Process(target=task)
 p.start()       # 启动子进程
 p.join()        # 等待结束
 \`\`\`
@@ -69,7 +69,7 @@ p = ctx.Process(target=task)      # 用这个上下文创建进程
 \`mp.get_context("fork")\` 返回一个"上下文对象"，它有和 \`multiprocessing\` 一样的 \`Process\`、\`Queue\`、\`Lock\`、\`Pool\` 等方法，但都用指定的启动方式：
 
 \`\`\`python
-ctx = mp.get_context("fork")  # 赋值变量 ctx
+ctx = mp.get_context("fork")
 ctx.Process(...)      # 用 fork 创建进程
 ctx.Queue(...)        # 用 fork 兼容的队列
 ctx.Pool(...)         # 用 fork 的进程池
@@ -87,6 +87,7 @@ ctx.Pool(...)         # 用 fork 的进程池
     code: `# 第十九章 demo：multiprocessing 入门 + 真正并行
 import multiprocessing as mp
 import time
+import os
 
 def cpu_task(n):
     """纯 CPU 计算：累加 0..n-1"""
@@ -105,6 +106,9 @@ print(f"  默认启动方式: {mp.get_start_method(allow_none=True) or '(未设)
 print()
 
 # 使用 fork 上下文（适配在线运行环境：脚本来自 stdin，spawn 会失败）
+# macOS 默认 spawn：子进程是全新 Python 解释器，会重新导入主模块，
+# 必须用 if __name__ == "__main__": 保护启动代码，否则无限递归创建子进程。
+# fork 则直接复制父进程内存，子进程无需重新导入，所以不需要该保护。
 ctx = mp.get_context("fork")
 
 # ============================================================
@@ -115,10 +119,9 @@ print("实验1：创建并启动一个子进程")
 print("=" * 55)
 def hello(name):
     """子进程入口：打印问候和自己的 PID"""
-    import os
     print(f"  子进程: 你好 {name}! PID={os.getpid()}")
 
-print(f"  主进程 PID: 入口")
+print(f"  主进程 PID: {os.getpid()}")
 # name 给进程起名方便调试；args 必须是元组，单元素要加逗号
 p = ctx.Process(target=hello, args=("Python",), name="我的子进程")
 print(f"  创建后 is_alive={p.is_alive()}")   # 还没 start，所以 False
@@ -173,22 +176,24 @@ print("• API 设计和 threading 一致：Process/Queue/Lock/Pool")`,
 
 ### 方式一：函数式
 \`\`\`python
-p = mp.Process(target=func, args=(arg1,), kwargs={"key": val})  # 赋值变量 p
-p.start()  # 调用 p.start()：启动
+p = mp.Process(target=func, args=(arg1,), kwargs={"key": val})
+p.start()
 \`\`\`
 
 ### 方式二：类继承
 \`\`\`python
-class MyProcess(mp.Process):  # 定义类 MyProcess
-    def __init__(self, name):  # 定义函数 __init__，参数：self, name
-        super().__init__()  # 调用父类
-        self.name_arg = name  # 执行操作
-    def run(self):  # 定义函数 run，参数：self
-        print(f"子进程 {self.name_arg}")  # 打印输出到屏幕
+class MyProcess(mp.Process):
+    def __init__(self, name):
+        super().__init__()
+        self.name_arg = name
+    def run(self):
+        print(f"子进程 {self.name_arg}")
 
-p = MyProcess("Alice")  # 赋值变量 p
-p.start()  # 调用 p.start()：启动
+p = MyProcess("Alice")
+p.start()
 \`\`\`
+
+> 💡 使用 \`get_context\` 指定启动方式时，类继承应继承 \`ctx.Process\` 而非 \`mp.Process\`。若继承 \`mp.Process\`，子进程会用默认启动方式（macOS 上是 spawn），可能因重新导入主模块而报错。
 
 ## 参数传递：args 和 kwargs
 
@@ -196,10 +201,10 @@ p.start()  # 调用 p.start()：启动
 - \`kwargs\`：关键字参数，字典
 
 \`\`\`python
-def task(a, b, c=10):  # 定义函数 task，参数：a, b, c=10
-    print(a, b, c)  # 打印输出到屏幕
+def task(a, b, c=10):
+    print(a, b, c)
 
-p = mp.Process(target=task, args=(1, 2), kwargs={"c": 3})  # 赋值变量 p
+p = mp.Process(target=task, args=(1, 2), kwargs={"c": 3})
 \`\`\`
 
 > ⚠️ 参数必须是**可序列化（pickle）的**——\`spawn\`/\`forkserver\` 启动时会 pickle 参数传给子进程；\`fork\` 靠继承内存理论上不 pickle 参数，但用 \`Pool\` 时任务参数仍会经内部队列 pickle 传输。所以养成"参数可 pickle"的习惯最稳妥。函数、lambda、文件对象、socket 等不能直接传；自定义函数要定义在**模块顶层**（\`spawn\` 才能按名字重新导入），嵌套函数/闭包无法 pickle。
@@ -210,31 +215,31 @@ p = mp.Process(target=task, args=(1, 2), kwargs={"c": 3})  # 赋值变量 p
 
 ### 方法1：用 Queue 传回（最常用）
 \`\`\`python
-def task(q, n):  # 定义函数 task，参数：q, n
+def task(q, n):
     q.put(n * n)           # 结果放进队列
 
-q = mp.Queue()  # 赋值变量 q
-p = mp.Process(target=task, args=(q, 5))  # 赋值变量 p
-p.start()  # 调用 p.start()：启动
+q = mp.Queue()
+p = mp.Process(target=task, args=(q, 5))
+p.start()
 result = q.get()           # 主进程从队列取结果
-p.join()  # 调用 p.join()：等待所有任务完成
+p.join()
 \`\`\`
 
 ### 方法2：用共享 Value/Array（第24章）
 \`\`\`python
-def task(result, n):  # 定义函数 task，参数：result, n
+def task(result, n):
     result.value = n * n   # 写入共享内存
 
-result = mp.Value("i", 0)  # 赋值变量 result
-p = mp.Process(target=task, args=(result, 5))  # 赋值变量 p
-p.start(); p.join()  # 调用 p.start()：启动
-print(result.value)  # 打印输出到屏幕
+result = mp.Value("i", 0)
+p = mp.Process(target=task, args=(result, 5))
+p.start(); p.join()
+print(result.value)
 \`\`\`
 
 ### 方法3：用进程池 Pool（最优雅，第27章）
 \`\`\`python
-with mp.Pool(2) as pool:  # 使用上下文管理器：mp.Pool(2) as pool
-    result = pool.apply_async(task, (5,)).get()  # 赋值变量 result
+with mp.Pool(2) as pool:
+    result = pool.apply_async(task, (5,)).get()
 \`\`\`
 
 ## 进程的属性和方法
@@ -288,8 +293,10 @@ print("=" * 55)
 print("实验2：类继承创建进程")
 print("=" * 55)
 
-class Worker(mp.Process):
-    """类继承方式：重写 run() 自定义子进程逻辑（start 会自动调 run）"""
+class Worker(ctx.Process):
+    """类继承方式：重写 run() 自定义子进程逻辑（start 会自动调 run）
+    注意：必须继承 ctx.Process（fork 上下文），而不是 mp.Process。
+    若继承 mp.Process，macOS 默认 spawn 模式会重新导入主模块导致报错。"""
     def __init__(self, task_name, count):
         super().__init__()              # 必须调父类 __init__，初始化进程内部状态
         self.task_name = task_name
@@ -380,7 +387,7 @@ print("• 子进程崩溃不影响主进程（进程隔离）")`,
 和线程一样，\`p.join(timeout)\` 让主进程等待子进程结束：
 
 \`\`\`python
-p.start()  # 调用 p.start()：启动
+p.start()
 p.join()              # 阻塞等 p 结束
 p.join(timeout=5)     # 最多等5秒
 \`\`\`
@@ -478,7 +485,9 @@ def heartbeat():
     i = 0
     while True:
         i += 1
-        print(f"  [守护进程] 心跳 {i}")
+        # flush=True 必不可少：守护进程被强杀时不会刷新缓冲区，
+        # 不加 flush 心跳输出会全部丢失（stdout 在管道下是块缓冲的）
+        print(f"  [守护进程] 心跳 {i}", flush=True)
         time.sleep(0.3)
 
 # daemon=True 必须在 start 前设置；守护进程父进程一退出就被终止
@@ -548,9 +557,9 @@ API 几乎一样：\`put/get/put_nowait/get_nowait/qsize/empty/full/task_done/jo
 ## 基本用法
 
 \`\`\`python
-import multiprocessing as mp  # 导入模块 multiprocessing
+import multiprocessing as mp
 
-q = mp.Queue(maxsize=10)  # 赋值变量 q
+q = mp.Queue(maxsize=10)
 q.put("hello")           # 入队（数据会被 pickle 传输）
 msg = q.get()            # 出队
 \`\`\`
@@ -558,23 +567,23 @@ msg = q.get()            # 出队
 ## 生产者-消费者：多进程版
 
 \`\`\`python
-def producer(q):  # 定义函数 producer，参数：q
-    for i in range(5):  # 遍历 range(5)，取值给 i
-        q.put(f"产品{i}")  # 调用 q.put()：入队
+def producer(q):
+    for i in range(5):
+        q.put(f"产品{i}")
     q.put(None)           # 结束信号
 
-def consumer(q):  # 定义函数 consumer，参数：q
-    while True:  # 当 True 时循环
-        item = q.get()  # 赋值变量 item
-        if item is None:  # 如果 item is None
-            break  # 跳出循环
-        print(f"消费 {item}")  # 打印输出到屏幕
+def consumer(q):
+    while True:
+        item = q.get()
+        if item is None:
+            break
+        print(f"消费 {item}")
 
-q = mp.Queue()  # 赋值变量 q
-p1 = mp.Process(target=producer, args=(q,))  # 赋值变量 p1
-p2 = mp.Process(target=consumer, args=(q,))  # 赋值变量 p2
-p1.start(); p2.start()  # 调用 p1.start()：启动
-p1.join(); p2.join()  # 调用 p1.join()：等待所有任务完成
+q = mp.Queue()
+p1 = mp.Process(target=producer, args=(q,))
+p2 = mp.Process(target=consumer, args=(q,))
+p1.start(); p2.start()
+p1.join(); p2.join()
 \`\`\`
 
 ## 注意事项
@@ -613,6 +622,8 @@ def worker(req_q, resp_q, name):
     resp_q.put(f"{name} 处理完毕: {msg.upper()}")  # 结果放到响应队列
     resp_q.put(None)                    # 结束信号
 
+# multiprocessing.Queue 底层用管道(pipe)+锁实现进程间通信(IPC)：
+# put 时数据被 pickle 序列化写入管道，get 时反序列化读出，故数据必须可 pickle。
 req_q = ctx.Queue()                     # 主→子：任务队列
 resp_q = ctx.Queue()                    # 子→主：结果队列
 p = ctx.Process(target=worker, args=(req_q, resp_q, "子进程A"))
@@ -718,10 +729,10 @@ print("• 注意：mp.Queue 的 qsize/empty/full 在 macOS 上不完全可靠")
     title: "进程间通信——Pipe 管道",
     content: `## Pipe 是什么？
 
-\`Pipe\` 是一对"连接"，数据从一端写入，从另一端读出。适合**一对一**的进程通信。
+\`Pipe\` 是一对"连接"，数据从一端写入，从另一端读出。适合**一对一**的进程通信。底层基于操作系统的匿名管道（anonymous pipe）实现，数据在内核缓冲区中流转，不经过磁盘。
 
 \`\`\`python
-parent_conn, child_conn = mp.Pipe()  # 多重赋值：parent_conn, child_conn
+parent_conn, child_conn = mp.Pipe()
 # parent_conn 和 child_conn 是管道的两端
 \`\`\`
 
@@ -744,7 +755,7 @@ conn1, conn2 = mp.Pipe()       # 双向，两端都能 send/recv
 
 ### 单向管道
 \`\`\`python
-conn1, conn2 = mp.Pipe(duplex=False)  # 多重赋值：conn1, conn2
+conn1, conn2 = mp.Pipe(duplex=False)
 # conn1 只能 recv，conn2 只能 send
 \`\`\`
 
@@ -760,19 +771,19 @@ conn.close()          # 关闭连接
 ## 使用模式
 
 \`\`\`python
-def child(conn):  # 定义函数 child，参数：conn
+def child(conn):
     msg = conn.recv()         # 接收父进程消息
     conn.send("收到：" + msg)  # 回复
-    conn.close()  # 调用 conn.close()：关闭
+    conn.close()
 
-parent_conn, child_conn = mp.Pipe()  # 多重赋值：parent_conn, child_conn
-p = mp.Process(target=child, args=(child_conn,))  # 赋值变量 p
-p.start()  # 调用 p.start()：启动
+parent_conn, child_conn = mp.Pipe()
+p = mp.Process(target=child, args=(child_conn,))
+p.start()
 
 parent_conn.send("hello")     # 父发
 print(parent_conn.recv())     # 父收回复
-parent_conn.close()  # 调用 parent_conn.close()：关闭
-p.join()  # 调用 p.join()：等待所有任务完成
+parent_conn.close()
+p.join()
 \`\`\`
 
 ## 注意事项
@@ -809,6 +820,7 @@ def chat(conn, name):
     conn.send(f"{name} 收到，再见！")
     conn.close()
 
+# Pipe 底层是 OS 匿名管道：数据在内核缓冲区流转，一端 send 写入，另一端 recv 读出
 parent_conn, child_conn = ctx.Pipe()    # 双向管道
 p = ctx.Process(target=chat, args=(child_conn, "子进程"))
 p.start()
@@ -938,7 +950,7 @@ Pipe/Queue 通信是通过**序列化（pickle）传输**的——数据被复�
 
 \`\`\`python
 # 'i' 表示整数（C 类型 int），初始值 0
-v = mp.Value('i', 0)  # 赋值变量 v
+v = mp.Value('i', 0)
 
 # 在子进程里
 v.value = 42          # 写
@@ -951,7 +963,7 @@ print(v.value)        # 读
 
 \`\`\`python
 # 'd' 表示双精度浮点，5个元素
-arr = mp.Array('d', [1.0, 2.0, 3.0, 4.0, 5.0])  # 赋值变量 arr
+arr = mp.Array('d', [1.0, 2.0, 3.0, 4.0, 5.0])
 
 arr[0] = 9.9          # 写
 print(arr[:])         # 读（切片返回 list）
@@ -973,7 +985,7 @@ print(arr[:])         # 读（切片返回 list）
 \`Value\` 默认 \`lock=True\`，自带锁。但**复合操作不是原子的**：
 
 \`\`\`python
-v = mp.Value('i', 0)  # 赋值变量 v
+v = mp.Value('i', 0)
 # v.value += 1 不是原子的！它是 "读 v.value → +1 → 写 v.value"
 # 多进程并发执行会丢更新，要加锁
 \`\`\`
@@ -981,8 +993,8 @@ v = mp.Value('i', 0)  # 赋值变量 v
 用 \`with v.get_lock():\` 保护复合操作：
 
 \`\`\`python
-v = mp.Value('i', 0)  # 赋值变量 v
-with v.get_lock():  # 使用上下文管理器：v.get_lock()
+v = mp.Value('i', 0)
+with v.get_lock():
     v.value += 1       # 现在是原子的
 \`\`\`
 
@@ -1015,6 +1027,8 @@ def increment_no_lock(v, n):
     for _ in range(n):
         v.value += 1                    # 非原子，会丢更新
 
+# Value/Array 通过共享内存(mmap)实现：多个进程映射同一块物理内存，
+# 与 Queue/Pipe 不同，数据不需要 pickle 复制，读写直接操作共享内存。
 v = ctx.Value('i', 0)                   # 共享整数，初值0
 NUM_PROCS = 4
 N = 2000
@@ -1115,11 +1129,11 @@ print("• 适合共享计数器、共享数组，不适合复杂对象（用 Ma
 Manager 启动一个**服务器进程**，管理一组"共享对象"。其他进程通过**代理（proxy）**访问这些对象——每次操作都是跨进程的远程调用。
 
 \`\`\`python
-with mp.Manager() as manager:  # 使用上下文管理器：mp.Manager() as manager
+with mp.Manager() as manager:
     shared_dict = manager.dict()       # 共享字典
     shared_list = manager.list()       # 共享列表
-    shared_dict['x'] = 1  # 执行操作
-    shared_list.append('a')  # 调用 shared_list.append()：向列表末尾添加元素
+    shared_dict['x'] = 1
+    shared_list.append('a')
 \`\`\`
 
 ## Manager 支持的共享类型
@@ -1146,7 +1160,7 @@ with mp.Manager() as manager:  # 使用上下文管理器：mp.Manager() as mana
 ## ⚠️ Manager 的坑：嵌套修改不触发同步
 
 \`\`\`python
-d = manager.dict()  # 赋值变量 d
+d = manager.dict()
 d['list'] = []            # OK，整个赋值会同步
 d['list'].append(1)       # 坑！不会同步！
 \`\`\`
@@ -1154,8 +1168,8 @@ d['list'].append(1)       # 坑！不会同步！
 原因：\`d['list']\` 返回的是普通 list 的副本，修改它 Manager 不知道。要修改嵌套对象，**整体重新赋值**：
 
 \`\`\`python
-tmp = d['list']  # 赋值变量 tmp
-tmp.append(1)  # 调用 tmp.append()：向列表末尾添加元素
+tmp = d['list']
+tmp.append(1)
 d['list'] = tmp           # 整体赋值，触发同步
 \`\`\`
 
@@ -1164,9 +1178,9 @@ d['list'] = tmp           # 整体赋值，触发同步
 在 \`Pool\` 里跨进程共享状态，**必须用 Manager**（直接 \`mp.Queue\` 在 Pool 里有问题）：
 
 \`\`\`python
-with mp.Manager() as manager:  # 使用上下文管理器：mp.Manager() as manager
-    shared = manager.list()  # 赋值变量 shared
-    with ctx.Pool(4) as pool:  # 使用上下文管理器：ctx.Pool(4) as pool
+with mp.Manager() as manager:
+    shared = manager.list()
+    with ctx.Pool(4) as pool:
         pool.map(worker, args)        # worker 能访问 shared
 \`\`\`
 
@@ -1320,12 +1334,12 @@ API 和 threading 版完全一致，区别只是它们能跨进程使用（内�
 
 \`\`\`python
 # 方式1：直接创建（传给 Process）
-lock = ctx.Lock()  # 赋值变量 lock
-p = ctx.Process(target=worker, args=(lock,))  # 赋值变量 p
+lock = ctx.Lock()
+p = ctx.Process(target=worker, args=(lock,))
 
 # 方式2：Manager 创建（适合 Pool）
-with ctx.Manager() as m:  # 使用上下文管理器：ctx.Manager() as m
-    lock = m.Lock()  # 赋值变量 lock
+with ctx.Manager() as m:
+    lock = m.Lock()
 \`\`\`
 
 ## 用 Lock 保护共享文件
@@ -1333,10 +1347,10 @@ with ctx.Manager() as m:  # 使用上下文管理器：ctx.Manager() as m
 经典场景：多个进程写同一个文件，不加锁会乱序：
 
 \`\`\`python
-def write_file(lock, fname, content):  # 定义函数 write_file，参数：lock, fname, content
+def write_file(lock, fname, content):
     with lock:                    # 同一时刻一个进程写
-        with open(fname, 'a') as f:  # 使用上下文管理器：open(fname, 'a') as f
-            f.write(content)  # 调用 f.write()：写入
+        with open(fname, 'a') as f:
+            f.write(content)
 \`\`\`
 
 ## demo：进程同步三件套
@@ -1506,10 +1520,10 @@ with mp.Pool(4) as pool:           # 4个worker进程
 
 ### map：单参数，按顺序返回
 \`\`\`python
-def square(x):  # 定义函数 square，参数：x
-    return x * x  # 返回 x * x
+def square(x):
+    return x * x
 
-with mp.Pool(4) as pool:  # 使用上下文管理器：mp.Pool(4) as pool
+with mp.Pool(4) as pool:
     print(pool.map(square, [1, 2, 3, 4]))   # [1, 4, 9, 16]
 \`\`\`
 
@@ -1520,24 +1534,24 @@ result = pool.apply(square, (5,))   # 25
 
 ### starmap：多参数（每个元素是参数元组）
 \`\`\`python
-def add(a, b):  # 定义函数 add，参数：a, b
-    return a + b  # 返回 a + b
+def add(a, b):
+    return a + b
 
-with mp.Pool(4) as pool:  # 使用上下文管理器：mp.Pool(4) as pool
+with mp.Pool(4) as pool:
     print(pool.starmap(add, [(1, 2), (3, 4), (5, 6)]))   # [3, 7, 11]
 \`\`\`
 
 ## apply_async：异步 + 回调
 
 \`\`\`python
-def task(x):  # 定义函数 task，参数：x
-    return x * 2  # 返回 x * 2
+def task(x):
+    return x * 2
 
-def callback(result):  # 定义函数 callback，参数：result
-    print(f"完成: {result}")  # 打印输出到屏幕
+def callback(result):
+    print(f"完成: {result}")
 
-with mp.Pool(4) as pool:  # 使用上下文管理器：mp.Pool(4) as pool
-    ar = pool.apply_async(task, (5,), callback=callback)  # 赋值变量 ar
+with mp.Pool(4) as pool:
+    ar = pool.apply_async(task, (5,), callback=callback)
     result = ar.get(timeout=10)    # 也可阻塞取
 \`\`\`
 
@@ -1681,10 +1695,10 @@ print("• CPU 密集型任务用进程池能真正多核加速")`,
 \`concurrent.futures.ProcessPoolExecutor\` 是进程池的"现代版"接口。和 \`ThreadPoolExecutor\`（第17章）**API 完全一致**——只换类名，就能在"多线程"和"多进程"间无缝切换。
 
 \`\`\`python
-from concurrent.futures import ProcessPoolExecutor  # 从 concurrent.futures 导入 ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 
-with ProcessPoolExecutor(max_workers=4) as ex:  # 使用上下文管理器：ProcessPoolExecutor(max_workers=4) as ex
-    results = list(ex.map(func, args))  # 赋值变量 results
+with ProcessPoolExecutor(max_workers=4) as ex:
+    results = list(ex.map(func, args))
 \`\`\`
 
 ## 为什么要有两套进程池？
@@ -1703,37 +1717,37 @@ with ProcessPoolExecutor(max_workers=4) as ex:  # 使用上下文管理器：Pro
 
 ### 用法1：submit + Future
 \`\`\`python
-with ProcessPoolExecutor(4) as ex:  # 使用上下文管理器：ProcessPoolExecutor(4) as ex
-    futures = [ex.submit(func, arg) for arg in args]  # 定义列表 futures
-    results = [f.result() for f in futures]  # 定义列表 results
+with ProcessPoolExecutor(4) as ex:
+    futures = [ex.submit(func, arg) for arg in args]
+    results = [f.result() for f in futures]
 \`\`\`
 
 ### 用法2：map
 \`\`\`python
-with ProcessPoolExecutor(4) as ex:  # 使用上下文管理器：ProcessPoolExecutor(4) as ex
-    results = list(ex.map(func, args))  # 赋值变量 results
+with ProcessPoolExecutor(4) as ex:
+    results = list(ex.map(func, args))
 \`\`\`
 
 ### 用法3：as_completed
 \`\`\`python
-from concurrent.futures import as_completed  # 从 concurrent.futures 导入 as_completed
-with ProcessPoolExecutor(4) as ex:  # 使用上下文管理器：ProcessPoolExecutor(4) as ex
-    futures = [ex.submit(func, arg) for arg in args]  # 定义列表 futures
-    for f in as_completed(futures):  # 遍历 as_completed(futures)，取值给 f
-        print(f.result())  # 打印输出到屏幕
+from concurrent.futures import as_completed
+with ProcessPoolExecutor(4) as ex:
+    futures = [ex.submit(func, arg) for arg in args]
+    for f in as_completed(futures):
+        print(f.result())
 \`\`\`
 
 ## 线程池↔进程池切换
 
 \`\`\`python
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor  # 从 concurrent.futures 导入 ThreadPoolExecutor, ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
 # IO 密集 → 用线程
 # CPU 密集 → 用进程
-Executor = ProcessPoolExecutor if is_cpu_intensive else ThreadPoolExecutor  # 赋值变量 Executor
+Executor = ProcessPoolExecutor if is_cpu_intensive else ThreadPoolExecutor
 
-with Executor(max_workers=4) as ex:  # 使用上下文管理器：Executor(max_workers=4) as ex
-    results = list(ex.map(func, args))  # 赋值变量 results
+with Executor(max_workers=4) as ex:
+    results = list(ex.map(func, args))
 \`\`\`
 
 ## 注意事项
