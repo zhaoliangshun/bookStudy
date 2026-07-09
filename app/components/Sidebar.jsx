@@ -247,16 +247,16 @@ export default function Sidebar({
   meta = "",
   defaultCollapsed = false,
 }) {
-  const [collapsed, setCollapsed] = useState(() => {
-    // 从 localStorage 恢复侧边栏收起状态，保持刷新后一致
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem("sidebar:collapsed");
-        if (saved !== null) return saved === "true";
-      } catch {}
-    }
-    return defaultCollapsed;
-  });
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  // 客户端挂载后从 localStorage 恢复侧边栏收起状态（避免 SSR hydration 不匹配）
+  const [collapsedReady, setCollapsedReady] = useState(false);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("sidebar:collapsed");
+      if (saved !== null) setCollapsed(saved === "true");
+    } catch {}
+    setCollapsedReady(true);
+  }, []);
   const [width, setWidth] = useState(DEFAULT_SIDEBAR_W);
   const [bookDropdownOpen, setBookDropdownOpen] = useState(false);
   const bookDropdownRef = useRef(null);
@@ -1583,10 +1583,11 @@ export default function Sidebar({
 
   // ===== 侧边栏收起状态持久化 =====
   // 用户收起/展开侧边栏后保存到 localStorage，刷新页面保持状态
+  // collapsedReady 为 false 时跳过，避免初始恢复时覆盖 localStorage
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (!collapsedReady) return;
     try { localStorage.setItem("sidebar:collapsed", String(collapsed)); } catch {}
-  }, [collapsed]);
+  }, [collapsed, collapsedReady]);
 
   // 切换章节分组的收起 / 展开状态
   const toggleGroup = useCallback((groupName) => {
