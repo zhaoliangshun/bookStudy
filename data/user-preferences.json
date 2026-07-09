@@ -150,8 +150,8 @@
     ],
     "Java 开发": [
       "/java",
-      "/java-web",
-      "/java-master"
+      "/java-master",
+      "/java-web"
     ],
     "AI 智能开发": [
       "/ai",
@@ -325,7 +325,15 @@
         }
       ]
     },
-    "subGroupOrder": {}
+    "subGroupOrder": {
+      "Python 编程": [
+        "sg-mrctcsxkz7f9",
+        "sg-mrctbi5m16xr",
+        "sg-mrd99uj4byog",
+        "sg-mrctdmwvqji3",
+        "sg-mrctfokhdvl5"
+      ]
+    }
   },
   "savedDefaults": {
     "bookOrder": {
