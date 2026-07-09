@@ -260,14 +260,6 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 800 }) {
     <div className={`md-code-block-wrap ${showOutput ? "has-output" : ""}`}>
       {/* 顶部黑色工具栏：语言标签 + 操作按钮（仿 Playground pg-pane-header） */}
       <div className="md-code-toolbar">
-        <div className="md-code-toolbar-left">
-          <span className="dot dot-red"></span>
-          <span className="dot dot-yellow"></span>
-          <span className="dot dot-green"></span>
-          {displayLabel && (
-            <span className="md-code-lang-tag">{displayLabel}</span>
-          )}
-        </div>
         <div className="md-code-toolbar-right">
           {canExternal && (
             <div className="md-ext-dropdown">
@@ -331,6 +323,14 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 800 }) {
             >
               🚀 Playground
             </button>
+          )}
+        </div>
+        <div className="md-code-toolbar-left">
+          <span className="dot dot-red"></span>
+          <span className="dot dot-yellow"></span>
+          <span className="dot dot-green"></span>
+          {displayLabel && (
+            <span className="md-code-lang-tag">{displayLabel}</span>
           )}
         </div>
       </div>
