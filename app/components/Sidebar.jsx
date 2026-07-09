@@ -80,6 +80,7 @@ const BOOK_CATEGORIES = [
       { path: "/pyvsjava", label: "Python vs Java 深度对比", icon: "⚔️" },
       { path: "/pyvsjs", label: "Python vs JS 深度对比", icon: "⚔️" },
       { path: "/py-definitive", label: "Python 权威指南", icon: "📕" },
+      { path: "/py-backend", label: "Python Web后端大全", icon: "🏗️" },
     ],
   },
   {
