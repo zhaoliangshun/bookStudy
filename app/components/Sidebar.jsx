@@ -254,10 +254,12 @@ export default function Sidebar({
   const router = useRouter();
   // 多展开模式：同一时间可以展开多个分类，方便跨分组拖拽书籍。
   // expandedCategories 为已展开分类名的 Set；空 Set 表示全部收起。
-  // 初始默认展开"Python 编程"。
+  // 初始默认展开"Python 编程"，打开下拉框时会恢复上次状态或自动展开当前书籍分组。
   const [expandedCategories, setExpandedCategories] = useState(() => new Set(["Python 编程"]));
-  // 章节分组收起状态：用 Set 记录已收起的分组名，默认全部收起。
-  // 点击 group-title 可 toggle；当前激活章节所在分组会自动展开。
+  // 章节分组收起状态：用 Set 记录已收起的分组名。
+  // 持久化到 localStorage，key 包含当前书籍路径，刷新后保持上次展开/收起状态。
+  // 注意：初始化时不能用 lazy init，因为需要从 localStorage 读取（需要 currentPath），
+  // 由下方 useEffect 负责首次加载恢复。
   const [collapsedGroups, setCollapsedGroups] = useState(
     () => new Set(groupedChapters.map((g) => g.group))
   );
@@ -300,6 +302,13 @@ export default function Sidebar({
   const [sgDragIndicator, setSgDragIndicator] = useState(null); // { key, position: 'before'|'after' }
   // 书籍拖拽悬停在子分组标题上的 DOM
   const bookDragOverSubGroupRef = useRef(null);
+
+  // ===== 书籍下拉框展开状态记忆 =====
+  const DROPDOWN_EXPANDED_KEY = "sidebar:book-dropdown-expanded";
+  // 标记是否已经执行过首次打开时的状态恢复（避免重复）
+  const dropdownInitializedRef = useRef(false);
+  // 内存中缓存的上次关闭时的展开状态（关闭时立即保存，打开时优先使用）
+  const savedDropdownStateRef = useRef(null);
 
   // 重命名输入框聚焦
   useEffect(() => {
@@ -1476,25 +1485,100 @@ export default function Sidebar({
   // 当前书籍信息
   const currentBook = ALL_BOOKS.find((b) => b.path === currentPath) || ALL_BOOKS[0];
 
-  // 智能展开：如果当前页面属于某个分类，自动展开它（不收起其他分类）
-  useEffect(() => {
+  // ===== 查找当前书籍所在的分类和子分组 =====
+  // 返回 { categoryName, subGroupKey } ，subGroupKey 为 null 表示在根级
+  const findCurrentBookLocation = useCallback(() => {
+    const bookPath = currentPath;
+    // 遍历 bookOrder 查找书籍在哪个分类/子分组
+    for (const [key, paths] of Object.entries(bookOrder)) {
+      if (paths.includes(bookPath)) {
+        const parsed = parseSubGroupKey(key);
+        if (parsed) {
+          return { categoryName: parsed.parent, subGroupKey: key };
+        }
+        return { categoryName: key, subGroupKey: null };
+      }
+    }
+    // bookOrder 中找不到时，从默认分类中找
     const origMatched = BOOK_CATEGORIES.find((cat) =>
-      cat.books.some((b) => b.path === currentPath)
+      cat.books.some((b) => b.path === bookPath)
     );
     if (origMatched) {
-      // 映射到显示名（可能被重命名）
       const displayName = catConfig.renamed[origMatched.name] || origMatched.name;
-      const raf = requestAnimationFrame(() => {
-        setExpandedCategories((prev) => {
-          if (prev.has(displayName)) return prev;
-          const next = new Set(prev);
-          next.add(displayName);
-          return next;
-        });
-      });
-      return () => cancelAnimationFrame(raf);
+      return { categoryName: displayName, subGroupKey: null };
     }
-  }, [currentPath, catConfig.renamed]);
+    return { categoryName: null, subGroupKey: null };
+  }, [currentPath, bookOrder, catConfig.renamed]);
+
+  // ===== 书籍下拉框：打开/关闭时的展开状态管理 =====
+  // 关闭下拉框时保存展开状态到 localStorage 和内存缓存
+  // 打开下拉框时优先恢复上次保存的状态，若无则自动展开当前书籍所在分组
+  useEffect(() => {
+    if (bookDropdownOpen) {
+      // 下拉框打开
+      const saved = savedDropdownStateRef.current;
+      if (saved) {
+        // 有内存缓存，直接恢复（同一次页面会话内关闭再打开）
+        setExpandedCategories(new Set(saved.categories || []));
+        setExpandedSubGroups(new Set(saved.subGroups || []));
+      } else {
+        // 没有内存缓存，尝试从 localStorage 读取（页面刷新后首次打开）
+        try {
+          const raw = localStorage.getItem(DROPDOWN_EXPANDED_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            // 校验分类名是否仍然有效（可能被重命名/删除）
+            const validCatNames = new Set(visibleCategories.map((c) => c.name));
+            const validCats = (parsed.categories || []).filter((n) => validCatNames.has(n));
+            // 校验子分组 key 是否仍然有效
+            const validSgKeys = [];
+            visibleCategories.forEach((cat) => {
+              (cat.subGroups || []).forEach((sg) => {
+                validSgKeys.push(sg.key);
+              });
+            });
+            const validSgSet = new Set(validSgKeys);
+            const validSgs = (parsed.subGroups || []).filter((k) => validSgSet.has(k));
+            if (validCats.length > 0 || validSgs.length > 0) {
+              setExpandedCategories(new Set(validCats));
+              setExpandedSubGroups(new Set(validSgs));
+              savedDropdownStateRef.current = { categories: validCats, subGroups: validSgs };
+              return;
+            }
+          }
+        } catch {}
+        // 没有有效保存状态：自动展开当前书籍所在的分组和子分组
+        const loc = findCurrentBookLocation();
+        const catsToExpand = new Set();
+        const sgsToExpand = new Set();
+        if (loc.categoryName) {
+          catsToExpand.add(loc.categoryName);
+        }
+        if (loc.subGroupKey) {
+          sgsToExpand.add(loc.subGroupKey);
+        }
+        setExpandedCategories(catsToExpand);
+        setExpandedSubGroups(sgsToExpand);
+        savedDropdownStateRef.current = {
+          categories: Array.from(catsToExpand),
+          subGroups: Array.from(sgsToExpand),
+        };
+      }
+    } else {
+      // 下拉框关闭：保存当前展开状态到内存缓存和 localStorage
+      if (dropdownInitializedRef.current || expandedCategories.size > 0) {
+        const state = {
+          categories: Array.from(expandedCategories),
+          subGroups: Array.from(expandedSubGroups),
+        };
+        savedDropdownStateRef.current = state;
+        try {
+          localStorage.setItem(DROPDOWN_EXPANDED_KEY, JSON.stringify(state));
+        } catch {}
+      }
+    }
+    dropdownInitializedRef.current = true;
+  }, [bookDropdownOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 切换章节分组的收起 / 展开状态
   const toggleGroup = useCallback((groupName) => {
@@ -1508,6 +1592,55 @@ export default function Sidebar({
       return next;
     });
   }, []);
+
+  // ===== 章节分组展开/收起状态持久化 =====
+  // 按书籍路径（currentPath）分别保存到 localStorage，切换书籍或刷新后保持状态。
+  // 用 ref 标记是否已完成首次恢复，避免保存默认初始状态覆盖用户数据。
+  const CHAPTER_GROUPS_KEY_PREFIX = "sidebar:chapter-groups:";
+  const chapterGroupsInitializedRef = useRef(false);
+
+  // 切换书籍时：从 localStorage 恢复该书籍的分组展开状态
+  useEffect(() => {
+    if (!currentPath) return;
+    const allGroupNames = groupedChapters.map((g) => g.group);
+    if (allGroupNames.length === 0) return;
+
+    const storageKey = CHAPTER_GROUPS_KEY_PREFIX + currentPath;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        // saved 是已收起的分组名数组，校验有效性
+        const validNames = new Set(allGroupNames);
+        const validCollapsed = (saved.collapsed || []).filter((n) => validNames.has(n));
+        setCollapsedGroups(new Set(validCollapsed));
+      } else {
+        // 该书籍无保存状态：默认全部收起，仅展开包含当前激活章节的分组
+        const activeGroup = groupedChapters.find((g) =>
+          g.items.some((c) => c.id === activeId)
+        )?.group;
+        const defaultCollapsed = new Set(
+          allGroupNames.filter((name) => name !== activeGroup)
+        );
+        setCollapsedGroups(defaultCollapsed);
+      }
+    } catch {
+      // localStorage 不可用，使用默认：全部收起
+      setCollapsedGroups(new Set(allGroupNames));
+    }
+    chapterGroupsInitializedRef.current = true;
+  }, [currentPath, groupedChapters, activeId]);
+
+  // collapsedGroups 变化时（用户操作后）保存到 localStorage
+  useEffect(() => {
+    if (!chapterGroupsInitializedRef.current || !currentPath) return;
+    const storageKey = CHAPTER_GROUPS_KEY_PREFIX + currentPath;
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({
+        collapsed: Array.from(collapsedGroups),
+      }));
+    } catch {}
+  }, [collapsedGroups, currentPath]);
 
   // 按钮显示逻辑：
   //   - 只有当前章节所在分组展开（其他都收起）→ 显示"全部展开"
