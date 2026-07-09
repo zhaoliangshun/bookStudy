@@ -656,6 +656,118 @@ body {
   margin-right: -3px;
 }
 
+/* ===== 子分组样式 ===== */
+.sidebar-subgroup {
+  margin: 2px 8px 4px;
+  padding-left: 10px;
+  border-left: 2px solid rgba(148, 163, 184, 0.15);
+}
+
+.sidebar-subgroup-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px 3px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease, background 0.15s ease;
+  border-radius: 5px;
+}
+
+.sidebar-subgroup-title:hover {
+  color: var(--text-on-dark);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sidebar-subgroup-title.collapsed {
+  opacity: 0.65;
+}
+
+.sidebar-subgroup-title.editing {
+  cursor: default;
+  color: var(--text-on-dark);
+  background: transparent;
+}
+
+.sidebar-subgroup-title.book-drop-target {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-green, #10b981);
+  box-shadow: 0 0 0 1px var(--accent-green, #10b981) inset;
+}
+
+.sidebar-subgroup-title.dragging-sg {
+  opacity: 0.4;
+}
+
+.sidebar-subgroup-title.sg-drag-over-before {
+  border-top: 2px solid var(--accent-green, #10b981);
+  margin-top: -2px;
+}
+
+.sidebar-subgroup-title.sg-drag-over-after {
+  border-bottom: 2px solid var(--accent-green, #10b981);
+  margin-bottom: -2px;
+}
+
+.sidebar-subgroup-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 10px;
+  height: 10px;
+  font-size: 8px;
+  transition: transform 0.15s ease;
+  opacity: 0.7;
+}
+
+.sidebar-subgroup-arrow.expanded {
+  transform: rotate(90deg);
+}
+
+.sidebar-subgroup-icon {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.sidebar-subgroup-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-subgroup-count {
+  font-size: 9.5px;
+  opacity: 0.5;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0px 5px;
+  border-radius: 8px;
+  line-height: 1.5;
+}
+
+.sidebar-add-subgroup-row {
+  padding: 4px 8px 4px 18px;
+}
+
+.sidebar-subgroup-books {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 6px;
+  padding: 2px 0 4px;
+  min-height: 32px;
+}
+
+.sidebar-subgroup-books.grid-drop-active {
+  background: rgba(16, 185, 129, 0.08);
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px var(--accent-green, #10b981) inset;
+}
+
 /* 侧边栏元信息（章节统计等，位于切换器下方） */
 .sidebar-meta {
   padding: 6px 14px 8px;

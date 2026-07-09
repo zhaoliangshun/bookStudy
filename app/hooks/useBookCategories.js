@@ -3,7 +3,8 @@
 // =============================================================
 // 书籍分类管理 Hook
 // -------------------------------------------------------------
-// 管理用户对书籍分类的自定义操作：新建分组、重命名分组、删除/隐藏分组。
+// 管理用户对书籍分类的自定义操作：新建分组、重命名分组、删除/隐藏分组、
+// 子分组（subGroup）的新建/重命名/删除/排序。
 // 持久化策略：localStorage（即时）+ 服务端 JSON 文件（防抖同步，跨设备）
 // =============================================================
 
@@ -11,12 +12,16 @@ import { useState, useCallback, useEffect } from "react";
 
 const KEY = "sidebar:category-config";
 
+const SUBGROUP_SEP = "::__";
+
 const defaultConfig = {
   custom: [],
   renamed: {},
   icons: {},
   hidden: [],
   order: null,
+  subGroups: {},
+  subGroupOrder: {},
 };
 
 function loadLocal() {
@@ -35,6 +40,22 @@ function uid() {
   return "c-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
+function subGroupId() {
+  return "sg-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function makeSubGroupKey(parentName, sgId) {
+  return parentName + SUBGROUP_SEP + sgId;
+}
+
+function parseSubGroupKey(key) {
+  const idx = key.indexOf(SUBGROUP_SEP);
+  if (idx === -1) return null;
+  return { parent: key.slice(0, idx), sgId: key.slice(idx + SUBGROUP_SEP.length) };
+}
+
+export { SUBGROUP_SEP, makeSubGroupKey, parseSubGroupKey };
+
 export default function useBookCategories(initiallyHidden = []) {
   const [config, setConfig] = useState(() => {
     const loaded = loadLocal();
@@ -45,7 +66,6 @@ export default function useBookCategories(initiallyHidden = []) {
   });
   const [loaded, setLoaded] = useState(false);
 
-  // 挂载后：优先从服务端加载
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -59,6 +79,8 @@ export default function useBookCategories(initiallyHidden = []) {
           if (merged.hidden.length === 0 && initiallyHidden.length > 0) {
             merged.hidden = [...initiallyHidden];
           }
+          if (!merged.subGroups) merged.subGroups = {};
+          if (!merged.subGroupOrder) merged.subGroupOrder = {};
           setConfig(merged);
         }
         setLoaded(true);
@@ -70,7 +92,6 @@ export default function useBookCategories(initiallyHidden = []) {
     return () => { cancelled = true; };
   }, [initiallyHidden]);
 
-  // 统一同步：localStorage 即时保存，服务端防抖 400ms
   useEffect(() => {
     if (!loaded) return;
     saveLocal(config);
@@ -84,7 +105,6 @@ export default function useBookCategories(initiallyHidden = []) {
     return () => clearTimeout(timer);
   }, [config, loaded]);
 
-  // 新建分组
   const addCategory = useCallback((name, icon = "📁") => {
     const id = uid();
     setConfig((prev) => {
@@ -96,10 +116,16 @@ export default function useBookCategories(initiallyHidden = []) {
     return id;
   }, []);
 
-  // 重命名分组
   const renameCategory = useCallback((oldName, newName, newIcon) => {
     setConfig((prev) => {
-      const next = { ...prev, custom: [...prev.custom], renamed: { ...prev.renamed }, icons: { ...prev.icons } };
+      const next = {
+        ...prev,
+        custom: [...prev.custom],
+        renamed: { ...prev.renamed },
+        icons: { ...prev.icons },
+        subGroups: { ...prev.subGroups },
+        subGroupOrder: { ...prev.subGroupOrder },
+      };
       const customIdx = next.custom.findIndex((c) => c.name === oldName);
       if (customIdx !== -1) {
         next.custom[customIdx] = { ...next.custom[customIdx], name: newName };
@@ -117,14 +143,27 @@ export default function useBookCategories(initiallyHidden = []) {
         }
       }
       if (next.order) next.order = next.order.map((n) => (n === oldName ? newName : n));
+      if (next.subGroups[oldName]) {
+        next.subGroups[newName] = next.subGroups[oldName];
+        delete next.subGroups[oldName];
+      }
+      if (next.subGroupOrder[oldName]) {
+        next.subGroupOrder[newName] = next.subGroupOrder[oldName];
+        delete next.subGroupOrder[oldName];
+      }
       return next;
     });
   }, []);
 
-  // 删除/隐藏分组
   const deleteCategory = useCallback((name) => {
     setConfig((prev) => {
-      const next = { ...prev, custom: [...prev.custom], hidden: [...prev.hidden] };
+      const next = {
+        ...prev,
+        custom: [...prev.custom],
+        hidden: [...prev.hidden],
+        subGroups: { ...prev.subGroups },
+        subGroupOrder: { ...prev.subGroupOrder },
+      };
       const isCustom = prev.custom.some((c) => c.name === name);
       if (isCustom) {
         next.custom = next.custom.filter((c) => c.name !== name);
@@ -136,6 +175,8 @@ export default function useBookCategories(initiallyHidden = []) {
         if (!next.hidden.includes(origName)) next.hidden.push(origName);
       }
       if (next.order) next.order = next.order.filter((n) => n !== name);
+      delete next.subGroups[name];
+      delete next.subGroupOrder[name];
       return next;
     });
   }, []);
@@ -153,7 +194,74 @@ export default function useBookCategories(initiallyHidden = []) {
     setConfig((prev) => ({ ...prev, order: newOrder }));
   }, []);
 
-  // 重置为默认配置
+  // ===== 子分组管理 =====
+
+  const getSubGroups = useCallback((parentName) => {
+    return config.subGroups[parentName] || [];
+  }, [config.subGroups]);
+
+  const addSubGroup = useCallback((parentName, name) => {
+    const id = subGroupId();
+    setConfig((prev) => {
+      const next = { ...prev, subGroups: { ...prev.subGroups }, subGroupOrder: { ...prev.subGroupOrder } };
+      const existing = next.subGroups[parentName] || [];
+      next.subGroups[parentName] = [...existing, { id, name }];
+      return next;
+    });
+    return id;
+  }, []);
+
+  const renameSubGroup = useCallback((parentName, sgId, newName) => {
+    setConfig((prev) => {
+      const next = { ...prev, subGroups: { ...prev.subGroups } };
+      const list = next.subGroups[parentName];
+      if (!list) return prev;
+      const idx = list.findIndex((sg) => sg.id === sgId);
+      if (idx === -1) return prev;
+      next.subGroups[parentName] = [
+        ...list.slice(0, idx),
+        { ...list[idx], name: newName },
+        ...list.slice(idx + 1),
+      ];
+      return next;
+    });
+  }, []);
+
+  const deleteSubGroup = useCallback((parentName, sgId) => {
+    setConfig((prev) => {
+      const next = { ...prev, subGroups: { ...prev.subGroups }, subGroupOrder: { ...prev.subGroupOrder } };
+      const list = next.subGroups[parentName];
+      if (!list) return prev;
+      next.subGroups[parentName] = list.filter((sg) => sg.id !== sgId);
+      return next;
+    });
+  }, []);
+
+  const reorderSubGroups = useCallback((parentName, newOrder) => {
+    setConfig((prev) => ({
+      ...prev,
+      subGroupOrder: { ...prev.subGroupOrder, [parentName]: newOrder },
+    }));
+  }, []);
+
+  const getOrderedSubGroups = useCallback((parentName) => {
+    const list = config.subGroups[parentName] || [];
+    const order = config.subGroupOrder[parentName];
+    if (!order || order.length === 0) return list;
+    const map = new Map();
+    list.forEach((sg) => map.set(sg.id, sg));
+    const result = [];
+    order.forEach((id) => {
+      const sg = map.get(id);
+      if (sg) {
+        result.push(sg);
+        map.delete(id);
+      }
+    });
+    map.forEach((sg) => result.push(sg));
+    return result;
+  }, [config.subGroups, config.subGroupOrder]);
+
   const resetToDefaults = useCallback(() => {
     const defaults = { ...defaultConfig, hidden: [...initiallyHidden] };
     setConfig(defaults);
@@ -165,9 +273,10 @@ export default function useBookCategories(initiallyHidden = []) {
     }).catch(() => {});
   }, [initiallyHidden]);
 
-  // 重置为指定配置
   const resetToConfig = useCallback((newConfig) => {
     const next = { ...defaultConfig, ...newConfig };
+    if (!next.subGroups) next.subGroups = {};
+    if (!next.subGroupOrder) next.subGroupOrder = {};
     setConfig(next);
     saveLocal(next);
     fetch("/api/preferences", {
@@ -177,5 +286,21 @@ export default function useBookCategories(initiallyHidden = []) {
     }).catch(() => {});
   }, []);
 
-  return { config, addCategory, renameCategory, deleteCategory, isCustom, ensureOrderInitialized, reorderCategories, resetToDefaults, resetToConfig };
+  return {
+    config,
+    addCategory,
+    renameCategory,
+    deleteCategory,
+    isCustom,
+    ensureOrderInitialized,
+    reorderCategories,
+    resetToDefaults,
+    resetToConfig,
+    getSubGroups,
+    addSubGroup,
+    renameSubGroup,
+    deleteSubGroup,
+    reorderSubGroups,
+    getOrderedSubGroups,
+  };
 }
