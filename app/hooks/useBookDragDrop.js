@@ -65,8 +65,22 @@ export function mergeOrder(saved, defaults) {
   return merged;
 }
 
+// 同步从 localStorage 加载 bookOrder（用于 useState 初始化，避免首次渲染缺少子分组 key）
+function loadLocalOrder(categories) {
+  if (typeof window === "undefined") return getDefaultBookOrder(categories);
+  try {
+    const raw = localStorage.getItem(ORDER_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      const defaults = getDefaultBookOrder(categories);
+      return mergeOrder(saved, defaults);
+    }
+  } catch {}
+  return getDefaultBookOrder(categories);
+}
+
 export default function useBookDragDrop(categories) {
-  const [bookOrder, setBookOrder] = useState(() => getDefaultBookOrder(categories));
+  const [bookOrder, setBookOrder] = useState(() => loadLocalOrder(categories));
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {

@@ -276,10 +276,7 @@ export default function Sidebar({
   // ===== 右键菜单状态 =====
   const {
     hiddenBooks,
-    deletedChapterIds,
     hiddenChapterIds,
-    deleteChapter,
-    undeleteChapter,
     hideChapter,
     unhideChapter,
     hideChapters,
@@ -695,7 +692,7 @@ export default function Sidebar({
       .filter((g) => g.items.length > 0);
   }, [groupedChapters, hiddenChapterIds]);
 
-  // 被删除的章节，按原始分组归类（用于"已删除章节"区域）
+  // 已读的章节，按原始分组归类（用于"已读的章节"区域）
   const hiddenChapterGroups = useMemo(() => {
     return groupedChapters
       .map((g) => ({
@@ -1032,19 +1029,12 @@ export default function Sidebar({
     }
 
     if (ctxMenu.type === "chapter") {
-      const isDeleted = deletedChapterIds.has(ctxMenu.target);
       const isHidden = hiddenChapterIds.has(ctxMenu.target);
       const items = [];
       items.push(
         isHidden
           ? { label: "恢复此章节", icon: "↩️", onClick: () => unhideChapter(ctxMenu.target) }
-          : { label: "删除此章节", icon: "🗑️", danger: true, onClick: () => hideChapter(ctxMenu.target) }
-      );
-      items.push({ divider: true });
-      items.push(
-        isDeleted
-          ? { label: "标记未读", icon: "📖", onClick: () => undeleteChapter(ctxMenu.target) }
-          : { label: "已读此章节", icon: "✅", onClick: () => deleteChapter(ctxMenu.target) }
+          : { label: "已读此章节", icon: "✅", onClick: () => hideChapter(ctxMenu.target) }
       );
       return items;
     }
@@ -1087,8 +1077,7 @@ export default function Sidebar({
 
     return [];
   }, [
-    ctxMenu, hiddenChapterIds, deletedChapterIds, groupedChapters,
-    deleteChapter, undeleteChapter,
+    ctxMenu, hiddenChapterIds, groupedChapters,
     hideChapter, unhideChapter, hideChapters, unhideChapters,
     startRenameCategory, handleDeleteCategory, isCustomCategory,
     bookDefaultCategory, catConfig.renamed, moveBooksToCategory,
@@ -1520,53 +1509,46 @@ export default function Sidebar({
   }, [currentPath, bookOrder, catConfig.renamed]);
 
   // ===== 书籍下拉框：打开时始终展开当前书籍所在分组和子分组 =====
-  // 关闭时保存展开状态到 localStorage，打开时恢复上次状态或自动定位当前书籍
+  // 关闭时保存展开状态到 localStorage，打开时恢复上次状态，并始终确保当前书籍所在分组/子分组展开
   useEffect(() => {
     if (bookDropdownOpen) {
-      // 下拉框打开：优先恢复上次保存的状态，否则自动展开当前书籍所在分组
+      // 始终定位当前书籍所在分类和子分组（不管有无保存状态都要确保展开）
+      const loc = findCurrentBookLocation();
       const saved = savedDropdownStateRef.current;
+      let catsToExpand;
+      let sgsToExpand;
       if (saved) {
-        // 有内存缓存，直接恢复（同一次页面会话内关闭再打开）
-        setExpandedCategories(new Set(saved.categories || []));
-        setExpandedSubGroups(new Set(saved.subGroups || []));
+        // 有内存缓存，恢复上次状态（同一次页面会话内关闭再打开）
+        catsToExpand = new Set(saved.categories || []);
+        sgsToExpand = new Set(saved.subGroups || []);
       } else {
         // 尝试从 localStorage 恢复（页面刷新后首次打开）
-        let restored = false;
+        catsToExpand = new Set();
+        sgsToExpand = new Set();
         try {
           const raw = localStorage.getItem(DROPDOWN_EXPANDED_KEY);
           if (raw) {
             const parsed = JSON.parse(raw);
             const validCatNames = new Set(visibleCategories.map((c) => c.name));
-            const validCats = (parsed.categories || []).filter((n) => validCatNames.has(n));
+            (parsed.categories || []).filter((n) => validCatNames.has(n)).forEach((n) => catsToExpand.add(n));
             const validSgKeys = [];
             visibleCategories.forEach((cat) => {
               (cat.subGroups || []).forEach((sg) => validSgKeys.push(sg.key));
             });
             const validSgSet = new Set(validSgKeys);
-            const validSgs = (parsed.subGroups || []).filter((k) => validSgSet.has(k));
-            if (validCats.length > 0 || validSgs.length > 0) {
-              setExpandedCategories(new Set(validCats));
-              setExpandedSubGroups(new Set(validSgs));
-              savedDropdownStateRef.current = { categories: validCats, subGroups: validSgs };
-              restored = true;
-            }
+            (parsed.subGroups || []).filter((k) => validSgSet.has(k)).forEach((k) => sgsToExpand.add(k));
           }
         } catch {}
-        if (!restored) {
-          // 无保存状态：自动展开当前书籍所在的分组和子分组
-          const loc = findCurrentBookLocation();
-          const catsToExpand = new Set();
-          const sgsToExpand = new Set();
-          if (loc.categoryName) catsToExpand.add(loc.categoryName);
-          if (loc.subGroupKey) sgsToExpand.add(loc.subGroupKey);
-          setExpandedCategories(catsToExpand);
-          setExpandedSubGroups(sgsToExpand);
-          savedDropdownStateRef.current = {
-            categories: Array.from(catsToExpand),
-            subGroups: Array.from(sgsToExpand),
-          };
-        }
       }
+      // 关键：始终确保当前书籍所在的分类和子分组被展开（无论保存状态如何）
+      if (loc.categoryName) catsToExpand.add(loc.categoryName);
+      if (loc.subGroupKey) sgsToExpand.add(loc.subGroupKey);
+      setExpandedCategories(catsToExpand);
+      setExpandedSubGroups(sgsToExpand);
+      savedDropdownStateRef.current = {
+        categories: Array.from(catsToExpand),
+        subGroups: Array.from(sgsToExpand),
+      };
     } else {
       // 下拉框关闭：保存当前展开状态到内存缓存和 localStorage
       if (dropdownInitializedRef.current || expandedCategories.size > 0) {
@@ -2632,7 +2614,7 @@ export default function Sidebar({
                     <li key={ch.id}>
                       <button
                         ref={activeId === ch.id ? activeChapterRef : null}
-                        className={`chapter-item ${activeId === ch.id ? "active" : ""} ${deletedChapterIds.has(ch.id) ? "deleted" : ""}`}
+                        className={`chapter-item ${activeId === ch.id ? "active" : ""}`}
                         onClick={() => handleSelect(ch.id)}
                         onContextMenu={(e) => handleChapterContextMenu(e, ch.id)}
                       >
@@ -2647,7 +2629,7 @@ export default function Sidebar({
               );
             })}
 
-            {/* 已删除的章节区域（按分组展示） */}
+            {/* 已读的章节区域（按分组展示） */}
             {hiddenChapterGroups.length > 0 && (
               <div className="chapter-group hidden-chapters-section">
                 <button
@@ -2659,7 +2641,7 @@ export default function Sidebar({
                   <span className={`group-title-arrow${hiddenSectionCollapsed ? "" : " expanded"}`}>
                     ▶
                   </span>
-                  <span className="group-title-text">已删除的章节 ({hiddenChapterCount})</span>
+                  <span className="group-title-text">已读的章节 ({hiddenChapterCount})</span>
                 </button>
                 {!hiddenSectionCollapsed && (
                   <div className="hidden-chapters-groups">
@@ -2691,7 +2673,7 @@ export default function Sidebar({
                             {items.map((ch) => (
                               <li key={ch.id}>
                                 <button
-                                  className={`chapter-item ${activeId === ch.id ? "active" : ""} ${deletedChapterIds.has(ch.id) ? "deleted" : ""}`}
+                                  className={`chapter-item ${activeId === ch.id ? "active" : ""}`}
                                   onClick={() => onSelectChapter(ch.id)}
                                   onContextMenu={(e) => handleChapterContextMenu(e, ch.id)}
                                 >
