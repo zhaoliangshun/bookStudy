@@ -146,7 +146,8 @@
       "/ts",
       "/ts2",
       "/ts3",
-      "/workers"
+      "/workers",
+      "/nodejs-backend"
     ],
     "Java 开发": [
       "/java",

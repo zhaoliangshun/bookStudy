@@ -90,6 +90,7 @@ const BOOK_CATEGORIES = [
       { path: "/", label: "Node.js 入门", icon: "🟢" },
       { path: "/nodejs2", label: "Node.js 进阶", icon: "🟢" },
       { path: "/nodejs3", label: "Node.js 源码", icon: "🟡" },
+      { path: "/nodejs-backend", label: "Node.js Web后端实战", icon: "🏗️" },
       { path: "/ts", label: "TypeScript 入门", icon: "🔷" },
       { path: "/ts2", label: "TypeScript 进阶", icon: "🔶" },
       { path: "/ts3", label: "TypeScript 高阶实战", icon: "💠" },
