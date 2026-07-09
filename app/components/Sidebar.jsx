@@ -2107,6 +2107,7 @@ export default function Sidebar({
                 {/* 全屏宽度面板：fixed 定位脱离侧边栏宽度限制 */}
                 <div className="sidebar-book-dropdown">
                   <div className="sidebar-book-dropdown-header" onClick={() => setBookDropdownOpen(false)}>
+                    <span>📚 全部书籍（{ALL_BOOKS.length} 本）</span>
                     <div className="sidebar-book-dropdown-actions">
                       <button
                         className="sidebar-add-category-btn"
@@ -2162,7 +2163,6 @@ export default function Sidebar({
                         ✕
                       </button>
                     </div>
-                    <span>📚 全部书籍（{ALL_BOOKS.length} 本）</span>
                   </div>
                   {/* 新建分组输入框 */}
                   {showAddInput && (

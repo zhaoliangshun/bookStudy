@@ -3368,7 +3368,8 @@ body {
 /* 在统一容器内，子组件取消自身的 fixed 定位，变为普通 flex 子元素 */
 .floating-panel-group .quick-scroll,
 .floating-panel-group .reading-theme-switcher,
-.floating-panel-group .floating-chapter-nav {
+.floating-panel-group .floating-chapter-nav,
+.floating-panel-group .floating-theme-switcher {
   position: static !important;
   right: auto !important;
   top: auto !important;
@@ -3382,7 +3383,8 @@ body {
 
 /* QuickScroll 和 FloatingChapterNav 内部按钮居中对齐 */
 .floating-panel-group .quick-scroll,
-.floating-panel-group .floating-chapter-nav {
+.floating-panel-group .floating-chapter-nav,
+.floating-panel-group .floating-theme-switcher {
   align-items: center !important;
 }
 
@@ -3406,7 +3408,8 @@ body {
 
 .floating-panel-group .quick-scroll-btn,
 .floating-panel-group .reading-theme-btn,
-.floating-panel-group .floating-nav-btn {
+.floating-panel-group .floating-nav-btn,
+.floating-panel-group .floating-theme-btn {
   pointer-events: auto;
 }
 
@@ -3549,4 +3552,142 @@ body {
   .floating-nav-arrow {
     font-size: 16px;
   }
+}
+
+/* =============================================================
+   统一主题切换器（合并阅读主题 + 编辑器主题）
+   ============================================================= */
+.floating-theme-switcher {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.floating-theme-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  padding: 0;
+}
+
+.floating-theme-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+}
+
+.floating-theme-btn-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* 展开面板（向左弹出） */
+.floating-theme-panel {
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.14);
+  overflow: hidden;
+  min-width: 220px;
+  pointer-events: auto;
+}
+
+.floating-theme-section-header {
+  padding: 10px 14px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.floating-theme-list {
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.floating-theme-list-scroll {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.floating-theme-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.floating-theme-item:hover {
+  background: var(--bg);
+}
+
+.floating-theme-item.active {
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.floating-theme-item-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.floating-theme-item-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.floating-theme-item-name {
+  flex: 1;
+}
+
+.floating-theme-item-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.floating-theme-item-kind {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.floating-theme-item.active .floating-theme-item-desc,
+.floating-theme-item.active .floating-theme-item-kind {
+  color: var(--primary);
+  opacity: 0.7;
+}
+
+.floating-theme-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 10px;
 }
