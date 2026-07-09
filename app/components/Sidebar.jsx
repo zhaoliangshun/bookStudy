@@ -247,7 +247,16 @@ export default function Sidebar({
   meta = "",
   defaultCollapsed = false,
 }) {
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const [collapsed, setCollapsed] = useState(() => {
+    // 从 localStorage 恢复侧边栏收起状态，保持刷新后一致
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("sidebar:collapsed");
+        if (saved !== null) return saved === "true";
+      } catch {}
+    }
+    return defaultCollapsed;
+  });
   const [width, setWidth] = useState(DEFAULT_SIDEBAR_W);
   const [bookDropdownOpen, setBookDropdownOpen] = useState(false);
   const bookDropdownRef = useRef(null);
@@ -1510,32 +1519,28 @@ export default function Sidebar({
     return { categoryName: null, subGroupKey: null };
   }, [currentPath, bookOrder, catConfig.renamed]);
 
-  // ===== 书籍下拉框：打开/关闭时的展开状态管理 =====
-  // 关闭下拉框时保存展开状态到 localStorage 和内存缓存
-  // 打开下拉框时优先恢复上次保存的状态，若无则自动展开当前书籍所在分组
+  // ===== 书籍下拉框：打开时始终展开当前书籍所在分组和子分组 =====
+  // 关闭时保存展开状态到 localStorage，打开时恢复上次状态或自动定位当前书籍
   useEffect(() => {
     if (bookDropdownOpen) {
-      // 下拉框打开
+      // 下拉框打开：优先恢复上次保存的状态，否则自动展开当前书籍所在分组
       const saved = savedDropdownStateRef.current;
       if (saved) {
         // 有内存缓存，直接恢复（同一次页面会话内关闭再打开）
         setExpandedCategories(new Set(saved.categories || []));
         setExpandedSubGroups(new Set(saved.subGroups || []));
       } else {
-        // 没有内存缓存，尝试从 localStorage 读取（页面刷新后首次打开）
+        // 尝试从 localStorage 恢复（页面刷新后首次打开）
+        let restored = false;
         try {
           const raw = localStorage.getItem(DROPDOWN_EXPANDED_KEY);
           if (raw) {
             const parsed = JSON.parse(raw);
-            // 校验分类名是否仍然有效（可能被重命名/删除）
             const validCatNames = new Set(visibleCategories.map((c) => c.name));
             const validCats = (parsed.categories || []).filter((n) => validCatNames.has(n));
-            // 校验子分组 key 是否仍然有效
             const validSgKeys = [];
             visibleCategories.forEach((cat) => {
-              (cat.subGroups || []).forEach((sg) => {
-                validSgKeys.push(sg.key);
-              });
+              (cat.subGroups || []).forEach((sg) => validSgKeys.push(sg.key));
             });
             const validSgSet = new Set(validSgKeys);
             const validSgs = (parsed.subGroups || []).filter((k) => validSgSet.has(k));
@@ -1543,26 +1548,24 @@ export default function Sidebar({
               setExpandedCategories(new Set(validCats));
               setExpandedSubGroups(new Set(validSgs));
               savedDropdownStateRef.current = { categories: validCats, subGroups: validSgs };
-              return;
+              restored = true;
             }
           }
         } catch {}
-        // 没有有效保存状态：自动展开当前书籍所在的分组和子分组
-        const loc = findCurrentBookLocation();
-        const catsToExpand = new Set();
-        const sgsToExpand = new Set();
-        if (loc.categoryName) {
-          catsToExpand.add(loc.categoryName);
+        if (!restored) {
+          // 无保存状态：自动展开当前书籍所在的分组和子分组
+          const loc = findCurrentBookLocation();
+          const catsToExpand = new Set();
+          const sgsToExpand = new Set();
+          if (loc.categoryName) catsToExpand.add(loc.categoryName);
+          if (loc.subGroupKey) sgsToExpand.add(loc.subGroupKey);
+          setExpandedCategories(catsToExpand);
+          setExpandedSubGroups(sgsToExpand);
+          savedDropdownStateRef.current = {
+            categories: Array.from(catsToExpand),
+            subGroups: Array.from(sgsToExpand),
+          };
         }
-        if (loc.subGroupKey) {
-          sgsToExpand.add(loc.subGroupKey);
-        }
-        setExpandedCategories(catsToExpand);
-        setExpandedSubGroups(sgsToExpand);
-        savedDropdownStateRef.current = {
-          categories: Array.from(catsToExpand),
-          subGroups: Array.from(sgsToExpand),
-        };
       }
     } else {
       // 下拉框关闭：保存当前展开状态到内存缓存和 localStorage
@@ -1572,13 +1575,18 @@ export default function Sidebar({
           subGroups: Array.from(expandedSubGroups),
         };
         savedDropdownStateRef.current = state;
-        try {
-          localStorage.setItem(DROPDOWN_EXPANDED_KEY, JSON.stringify(state));
-        } catch {}
+        try { localStorage.setItem(DROPDOWN_EXPANDED_KEY, JSON.stringify(state)); } catch {}
       }
     }
     dropdownInitializedRef.current = true;
   }, [bookDropdownOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ===== 侧边栏收起状态持久化 =====
+  // 用户收起/展开侧边栏后保存到 localStorage，刷新页面保持状态
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try { localStorage.setItem("sidebar:collapsed", String(collapsed)); } catch {}
+  }, [collapsed]);
 
   // 切换章节分组的收起 / 展开状态
   const toggleGroup = useCallback((groupName) => {
@@ -2104,7 +2112,6 @@ export default function Sidebar({
                 {/* 全屏宽度面板：fixed 定位脱离侧边栏宽度限制 */}
                 <div className="sidebar-book-dropdown">
                   <div className="sidebar-book-dropdown-header" onClick={() => setBookDropdownOpen(false)}>
-                    <span>📚 全部书籍（{ALL_BOOKS.length} 本）</span>
                     <div className="sidebar-book-dropdown-actions">
                       <button
                         className="sidebar-add-category-btn"
@@ -2160,6 +2167,7 @@ export default function Sidebar({
                         ✕
                       </button>
                     </div>
+                    <span>📚 全部书籍（{ALL_BOOKS.length} 本）</span>
                   </div>
                   {/* 新建分组输入框 */}
                   {showAddInput && (
