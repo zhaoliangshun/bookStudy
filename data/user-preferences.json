@@ -146,8 +146,7 @@
       "/ts",
       "/ts2",
       "/ts3",
-      "/workers",
-      "/nodejs"
+      "/workers"
     ],
     "Java 开发": [
       "/java",
@@ -232,10 +231,10 @@
       "/leetcode"
     ],
     "nodejs": [
-      "/nodejs",
       "/nodejs3",
       "/nodejs2",
-      "/nodejs-backend"
+      "/nodejs-backend",
+      "/nodejs"
     ],
     "Python 编程::__sg-mrctbi5m16xr": [
       "/pythread",
