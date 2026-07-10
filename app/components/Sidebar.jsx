@@ -87,7 +87,7 @@ const BOOK_CATEGORIES = [
     name: "JS / TS 生态",
     icon: "⬢",
     books: [
-      { path: "/", label: "Node.js 入门", icon: "🟢" },
+      { path: "/nodejs", label: "Node.js 入门", icon: "🟢" },
       { path: "/nodejs2", label: "Node.js 进阶", icon: "🟢" },
       { path: "/nodejs3", label: "Node.js 源码", icon: "🟡" },
       { path: "/nodejs-backend", label: "Node.js Web后端实战", icon: "🏗️" },
@@ -264,8 +264,8 @@ export default function Sidebar({
   const router = useRouter();
   // 多展开模式：同一时间可以展开多个分类，方便跨分组拖拽书籍。
   // expandedCategories 为已展开分类名的 Set；空 Set 表示全部收起。
-  // 初始默认展开"Python 编程"，打开下拉框时会恢复上次状态或自动展开当前书籍分组。
-  const [expandedCategories, setExpandedCategories] = useState(() => new Set(["Python 编程"]));
+  // 初始不默认展开任何分类，打开下拉框时会恢复上次状态或自动展开当前书籍分组。
+  const [expandedCategories, setExpandedCategories] = useState(() => new Set());
   // 章节分组收起状态：用 Set 记录已收起的分组名。
   // 持久化到 localStorage，key 包含当前书籍路径，刷新后保持上次展开/收起状态。
   // 注意：初始化时不能用 lazy init，因为需要从 localStorage 读取（需要 currentPath），
@@ -930,7 +930,7 @@ export default function Sidebar({
     setNewSubGroupName("");
     setEditingSubGroup(null);
     setEditSubGroupValue("");
-    setExpandedCategories(new Set(["Python 编程"]));
+    setExpandedCategories(new Set());
     setExpandedSubGroups(new Set());
     if (hasSaved) {
       resetToOrder(savedDefaults.bookOrder);
@@ -971,7 +971,7 @@ export default function Sidebar({
     setNewSubGroupName("");
     setEditingSubGroup(null);
     setEditSubGroupValue("");
-    setExpandedCategories(new Set(["Python 编程"]));
+    setExpandedCategories(new Set());
     setExpandedSubGroups(new Set());
     resetBookOrder(BOOK_CATEGORIES);
     resetCatConfig();
@@ -1677,6 +1677,15 @@ export default function Sidebar({
     if (!collapsedReady) return;
     try { localStorage.setItem("sidebar:collapsed", String(collapsed)); } catch {}
   }, [collapsed, collapsedReady]);
+
+  // ===== 记住上次访问的书籍路径 =====
+  // 每次切换书籍（currentPath 变化且不为根路径）时保存到 localStorage，
+  // 下次打开根路径 / 时自动跳转到上次访问的书籍。
+  useEffect(() => {
+    if (currentPath && currentPath !== "/") {
+      try { localStorage.setItem("sidebar:last-book", currentPath); } catch {}
+    }
+  }, [currentPath]);
 
   // 切换章节分组的收起 / 展开状态
   const toggleGroup = useCallback((groupName) => {
