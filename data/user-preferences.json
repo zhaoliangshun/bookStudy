@@ -245,10 +245,10 @@
       "/leetcode"
     ],
     "nodejs": [
+      "/nodejs",
       "/nodejs3",
       "/nodejs2",
-      "/nodejs-backend",
-      "/nodejs"
+      "/nodejs-backend"
     ],
     "Python 编程::__sg-mrctbi5m16xr": [
       "/pythread",
