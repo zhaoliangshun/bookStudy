@@ -596,7 +596,7 @@ writable.on('drain', () => {
   // 缓冲区排空了，恢复读取
   readable.resume();
 });
-\`\`\
+\`\`\`
 
 \`.pipe()\` 和 \`pipeline()\` 内部已经处理了背压，所以**优先用它们**，别手写。
 
@@ -670,7 +670,7 @@ class LineCounter extends Transform {
 fs.createReadStream('big.log')
   .pipe(new LineCounter())
   .pipe(process.stdout);
-\`\`\
+\`\`\`
 
 **对象模式**：处理对象而不是 Buffer 时，设 \`objectMode: true\`：
 
@@ -711,7 +711,7 @@ async function processLargeFile(path) {  // 声明异步函数，内部可用 aw
   }
   console.log('总行数:', count);  // 打印日志到 stdout
 }
-\`\`\
+\`\`\`
 
 ### 六、可写流的并行写入控制
 
@@ -755,7 +755,7 @@ readable.on('data', () => {
     readable.destroy(e); // 把错误传给 error 事件
   }
 });
-\`\`\
+\`\`\`
 
 ### 八、消费流的三种方式
 
@@ -787,7 +787,7 @@ http.createServer((req, res) => {  // 创建 HTTP 服务器，回调接收 req/r
     .pipe(createGzip())  // 管道：把可读流接到可写流
     .pipe(res); // 直接 pipe 到 HTTP 响应
 }).listen(3000);
-\`\`\
+\`\`\`
 
 **优势**：内存占用恒定（不管文件多大），数据边读边压缩边发送。
 
@@ -1267,13 +1267,13 @@ console.log("\\n  → 进程模型演示已派发，等待异步回调...\\n");`
 \`\`\`javascript
 require('fs');     // 直接用核心模块
 require('./fs');   // 不会用核心模块，会找当前目录的 fs.js
-\`\`\
+\`\`\`
 
 **2. 文件路径**：以 \`/\`、\`./\`、\`../\` 开头
 \`\`\`javascript
 require('./utils');     // 尝试 utils.js, utils.json, utils/index.js, utils.node
 require('/abs/path');  // 绝对路径
-\`\`\
+\`\`\`
 
 **3. node_modules 目录**：从当前目录往上找
 \`\`\`
@@ -1308,7 +1308,7 @@ const c1 = require('./counter');
 c1.incr(); c1.incr(); // count = 2
 const c2 = require('./counter'); // 同一个实例！
 console.log(c2.get()); // 2，不是 0
-\`\`\
+\`\`\`
 
 **清除缓存**：
 
@@ -1316,7 +1316,7 @@ console.log(c2.get()); // 2，不是 0
 delete require.cache[require.resolve('./counter')];  // 清除模块缓存（实现热更新）
 const fresh = require('./counter'); // 重新执行模块
 console.log(fresh.get()); // 0
-\`\`\
+\`\`\`
 
 **实战用途**：热重载（开发时）、单测隔离（每个测试用全新模块）。
 
@@ -1338,7 +1338,7 @@ console.log(module);
 //     '/node_modules'
 //   ]
 // }
-\`\`\
+\`\`\`
 
 **关键点**：
 - \`module.children\` 可以看到依赖树，排查循环依赖有用
@@ -1368,7 +1368,7 @@ module.exports = { fromB: 'B 的导出' };  // 设置模块导出对象（requir
 // b 开始
 // b 拿到 a: {}        ← 关键！a 还没执行完，exports 是空对象
 // a 拿到 b: { fromB: 'B 的导出' }
-\`\`\
+\`\`\`
 
 **Node.js 的处理方式**：当检测到循环，返回**当前已完成的 exports**（可能是空对象）。
 
@@ -1391,7 +1391,7 @@ module.exports = { foo: 1 };
 
 // ✅ 正确：往 exports 上加属性
 exports.foo = 1; // 等价于 module.exports.foo = 1
-\`\`\
+\`\`\`
 
 **记住**：\`require\` 返回的永远是 \`module.exports\`，不是 \`exports\`。
 
@@ -1416,7 +1416,7 @@ import { count, incr } from './counter.mjs';  // 从 ./counter.mjs 导入：{ co
 console.log(count); // 0
 incr();
 console.log(count); // 1 ← ESM 的导出是活的绑定
-\`\`\
+\`\`\`
 
 **3. 互操作**
 - ESM 里 \`import\` CJS：\`import pkg from 'cjs-module'\`（默认导入拿到 module.exports）
@@ -1444,7 +1444,7 @@ function myRequire(modulePath) {
   // 5. 返回 exports
   return module.exports;
 }
-\`\`\
+\`\`\`
 
 **关键点**：模块在**执行前**就加入缓存，这是处理循环依赖的核心——B 再次 require A 时，A 已在缓存（虽然 exports 还空）。
 
@@ -1463,7 +1463,7 @@ function hotRequire(modulePath) {  // 声明函数 hotRequire
 
 // 开发时热重载配置
 const config = hotRequire('./config'); // 每次 require 都重新读
-\`\`\
+\`\`\`
 
 ### 九、诊断循环依赖
 
@@ -1477,7 +1477,7 @@ Module.prototype.require = function(id) {
   }
   return origRequire.apply(this, arguments);
 };
-\`\`\
+\`\`\`
 
 ### 十、总结：内部机制的核心心法
 

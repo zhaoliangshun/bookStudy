@@ -4080,7 +4080,9 @@ git commit -m "chore: 移除 common-lib 子模块"
 
 ### 7.6 替代方案
 
-如果子模块太复杂，可以考虑：\`\`\`text
+如果子模块太复杂，可以考虑：
+
+\`\`\`text
 - Git subtree：把子仓库内容直接合并进主仓库（保留历史）
 - Monorepo：把所有相关项目放进一个仓库（pnpm workspace、nx 等）
 - 包管理器依赖：能做成包的就发布成包，用 pip/npm 安装

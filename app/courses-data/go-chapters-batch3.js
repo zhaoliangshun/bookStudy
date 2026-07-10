@@ -397,7 +397,7 @@ func main() {
 	// SaveTo(c) // 编译错误：Config 没有实现 Saver（*Config 才有）
 	SaveTo(&c) // OK：*Config 实现了 Saver
 }
-\`\`\
+\`\`\`
 
 ### 八、方法与字段同名
 
@@ -607,7 +607,7 @@ func main() {
 	c.A.Hello() // 显式指定
 	c.B.Hello()
 }
-\`\`\
+\`\`\`
 
 ### 十三、空接收者（nil 安全调用）
 
@@ -667,7 +667,7 @@ func main() {
 	// var u *Unsafe
 	// u.Hello() // panic: runtime error: invalid memory address
 }
-\`\`\
+\`\`\`
 
 ### 十四、方法值（Method Value）
 
@@ -941,7 +941,7 @@ func main() {
 	_, err := s.Pop()
 	fmt.Println("err:", err) // err: stack is empty
 }
-\`\`\
+\`\`\`
 
 ### 十九、综合示例：建造者模式（Builder）
 
@@ -1618,7 +1618,7 @@ func main() {
 	i = []int{1, 2, 3}
 	fmt.Printf("type=%T value=%v\\n", i, i) // type=[]int value=[1 2 3]
 }
-\`\`\
+\`\`\`
 
 ### 二、定义与实现接口
 
@@ -2151,7 +2151,7 @@ func main() {
 
 #### 6. context.Context 简介
 
-\`\`\`context.Context\` 是 Go 1.7 引入的"上下文"接口，用于在 goroutine 之间传递截止时间、取消信号、请求范围内的值：
+\`context.Context\` 是 Go 1.7 引入的"上下文"接口，用于在 goroutine 之间传递截止时间、取消信号、请求范围内的值：
 
 \`\`\`go
 package main
@@ -3368,7 +3368,7 @@ func main() {
 	var a OldAPI = NewAPI{version: 2}
 	fmt.Println(a.Call())
 }
-\`\`\
+\`\`\`
 
 ### 二、给函数类型起新名
 
@@ -3970,7 +3970,7 @@ func main() {
 	f := Fahrenheit(c*9/5 + 32) // 显式转换
 	fmt.Println(c, f)
 }
-\`\`\
+\`\`\`
 
 #### 类型断言
 
@@ -3989,7 +3989,7 @@ func main() {
 	n, ok := i.(int)
 	fmt.Println(n, ok) // 0 false
 }
-\`\`\
+\`\`\`
 
 #### 转换 vs 断言：何时用哪个
 

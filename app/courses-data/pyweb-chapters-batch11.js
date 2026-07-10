@@ -1521,7 +1521,7 @@ def save_with_limit(file, max_size=16 * 1024 * 1024):
     return b"".join(chunks)
 \`\`\`
 
-\`\`python filename="Django 限制大小"
+\`\`\`python filename="Django 限制大小"
 # settings.py
 DATA_UPLOAD_MAX_MEMORY_SIZE = 16 * 1024 * 1024  # 内存上限
 FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024   # 超过就写临时文件

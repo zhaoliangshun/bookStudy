@@ -1260,7 +1260,7 @@ app 级别依赖:
 
 ## 六、路由级依赖(整个 router)
 
-\`\`\`APIRouter\` 也能加依赖,对该 router 下所有接口生效:
+\`APIRouter\` 也能加依赖,对该 router 下所有接口生效:
 
 \`\`\`python
 # 从 fastapi 导入 FastAPI, APIRouter, Depends, HTTPException

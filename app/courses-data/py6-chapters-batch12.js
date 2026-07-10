@@ -2066,7 +2066,9 @@ class Service:
 
 ### 与 isinstance 配合
 
-加 \`@runtime_checkable\` 后可以做运行时类型检查：\`\`\`python
+加 \`@runtime_checkable\` 后可以做运行时类型检查：
+
+\`\`\`python
 from typing import Protocol
 from typing import runtime_checkable
 @runtime_checkable

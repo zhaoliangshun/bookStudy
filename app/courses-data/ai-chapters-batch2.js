@@ -1021,7 +1021,7 @@ console.log('   每次编写提示词时，请检查四个维度是否都有覆�
 \`\`\`
 【输出格式模板】
 
-\`\`\`typescript
+[typescript 代码块]
 // ==========================================
 // 文件: [文件路径]
 // 描述: [功能说明]
@@ -1076,12 +1076,12 @@ console.log('   每次编写提示词时，请检查四个维度是否都有覆�
 - 相关文件：src/components/ShoppingCart.tsx, src/hooks/useCart.ts
 
 【错误信息】
-\`\`\`
+---
 Warning: Cannot update a component while rendering a different component
-\`\`\`
+---
 
 【代码】
-\`\`\`tsx
+[tsx 代码块]
 // ShoppingCart.tsx (简化版)
 const [total, setTotal] = useState(0);
 
@@ -1090,7 +1090,7 @@ function handleQuantityChange(id, newQty) {
   item.quantity = newQty; // 直接修改了state
   setTotal(items.reduce((sum, i) => sum + i.price * i.quantity, 0));
 }
-\`\`\`
+---
 
 【约束】
 1. 使用不可变方式更新状态

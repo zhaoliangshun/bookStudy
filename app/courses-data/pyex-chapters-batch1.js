@@ -70,7 +70,7 @@ Traceback (most recent call last):
   File "main.py", line 6, in calculate
     return x / y
 ZeroDivisionError: division by zero
-\`\`\
+\`\`\`
 
 阅读顺序：**从下往上读**。
 
@@ -2000,7 +2000,7 @@ try:                               # 尝试执行以下代码块
     do_something()
 except:                            # 不写异常类型
     pass
-\`\`\
+\`\`\`
 
 裸 \`except\` 等价于 \`except BaseException\`，会捕获**所有**异常，包括：
 
@@ -2040,7 +2040,7 @@ try:                               # 尝试执行以下代码块
     important_operation()
 except Exception:
     pass  # 错误被完全忽略
-\`\`\
+\`\`\`
 
 这会让程序在"错误状态"下继续运行，产生难以追踪的 bug。**异常处理的基本原则是：要么处理它，要么让它传播，不要假装没发生。**
 
@@ -2100,7 +2100,7 @@ def caller():                       # 定义函数 caller
     if result is None:
         # 是正常返回的 None，还是出错了？无法区分！
         do_something()
-\`\`\
+\`\`\`
 
 这导致调用方无法区分"正常返回 None"和"出错返回 None"。
 
@@ -2144,7 +2144,7 @@ for item in data:                   # 遍历 data
     except ValueError as e:
         print(f"跳过 {item}: {e}")  # 记录并继续
         continue
-\`\`\
+\`\`\`
 
 ### 4.2 不要在循环外 try
 
@@ -2156,7 +2156,7 @@ try:                               # 尝试执行以下代码块
         results.append(result)
 except ValueError:
     print("处理中断")               # 剩下的数据都没处理
-\`\`\
+\`\`\`
 
 ## 五、异常的 args 属性
 
@@ -2169,7 +2169,7 @@ except ValueError as e:
     print(e.args)   # ('消息1', '消息2', 123)
     print(e)        # ('消息1', '消息2', 123)  多参数时返回元组
     print(e.args[0])  # '消息1'
-\`\`\
+\`\`\`
 
 单参数时 \`str(e)\` 返回字符串，多参数时返回元组的字符串表示。自定义异常经常扩展这个机制来携带更多数据。
 
@@ -2183,7 +2183,7 @@ try:                               # 尝试执行以下代码块
 except Exception as e:
     log_error(e)                   # 先记录
     raise                          # 再重新抛出，让上层处理
-\`\`\
+\`\`\`
 
 \`raise\` 不带参数时，抛出的是**当前正在处理的异常**，保留原始 traceback。注意区分：
 
@@ -2201,7 +2201,7 @@ try:                               # 尝试执行以下代码块
     data = json.loads(text)
 except (JSONDecodeError, KeyError, TypeError, ValueError):
     pass  # 到底处理了哪种？都没处理
-\`\`\
+\`\`\`
 
 如果你不确定该捕获什么，就**不要捕获**，让异常传到上层（可能有更合适的处理者）。或者捕获后重新抛出：
 
@@ -2211,7 +2211,7 @@ try:                               # 尝试执行以下代码块
 except Exception as e:
     log_error(e)                   # 记录一下
     raise                          # 重新抛出，不假装处理了
-\`\`\
+\`\`\`
 
 ## 八、BaseException 的子类
 
@@ -2239,7 +2239,7 @@ except StopIteration:              # 能用，但应该用 for
 # 正确：用 for 循环
 for item in iterator:               # 遍历 iterator
     process(item)
-\`\`\
+\`\`\`
 
 ## 九、本章小结
 

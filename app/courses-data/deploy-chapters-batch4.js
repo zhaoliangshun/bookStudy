@@ -1685,7 +1685,7 @@ docker cp 3f9a2b8c7d6e:/tmp/out.txt .
 
 # 容器无需运行，停止状态也能 cp
 docker cp stopped_container:/data/db.dump ./db.dump
-\`\`\
+\`\`\`
 
 常用场景：
 
@@ -2074,7 +2074,7 @@ ADD rootfs.tar.gz /
 
 # 从 URL 下载（不推荐，构建不可复现，应先 curl 下来再 COPY）
 ADD https://example.com/bigfile.tar.gz /tmp/
-\`\`\
+\`\`\`
 
 \`\`\`text
 何时用 ADD：仅当需要自动解压 tar 时
@@ -2160,7 +2160,7 @@ ARG 会留在镜像 history 里能看到，ENV 直接在镜像里
 # 声明容器监听端口（仅文档声明，不会自动映射到主机）
 EXPOSE 8000
 EXPOSE 80 443
-\`\`\
+\`\`\`
 
 \`\`\`bash
 # EXPOSE 不会自动映射，仍需 -p
@@ -2396,7 +2396,7 @@ RUN apt update && apt install -y --no-install-recommends \\
 FROM python:3.12-slim
 RUN --mount=type=cache,target=/root/.cache/pip \\
     pip install -r requirements.txt
-\`\`\
+\`\`\`
 
 \`\`\`bash
 # 启用 BuildKit

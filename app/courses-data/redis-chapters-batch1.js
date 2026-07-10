@@ -105,7 +105,7 @@ redis-cli
 
 ### 方式三：Linux（源码编译）
 
-\`\`bash
+\`\`\`bash
 # 安装编译依赖
 sudo apt-get install -y build-essential tcl
 

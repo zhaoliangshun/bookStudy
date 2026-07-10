@@ -1297,7 +1297,7 @@ Location: /users/42
 
 **客户端决定 id**(少见,通常用 PUT):
 
-\`\`http
+\`\`\`http
 POST /users
 {"id": 42, "name": "Alice"}   → 不推荐,该用 PUT /users/42
 \`\`\`

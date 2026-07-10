@@ -3447,7 +3447,7 @@ os.remove("important.txt")
 
 ## 六、使用 print 函数写入文件:file 参数
 
-\`\`\`print()\` 函数有一个 \`file\` 参数,可以直接把输出重定向到文件:
+\`print()\` 函数有一个 \`file\` 参数,可以直接把输出重定向到文件:
 
 \`\`\`python
 # print 默认输出到 stdout(屏幕)

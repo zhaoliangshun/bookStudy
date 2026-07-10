@@ -646,7 +646,7 @@ logLen([1, 2]); // T 推断为 number[]
 
 \`\`\`ts
 logLen(42); // ❌ number 不满足 { length: number }
-\`\`\
+\`\`\`
 
 ### 4. 多候选推断：最佳公共类型
 
@@ -712,7 +712,7 @@ TypeScript 支持从函数参数（回调）推断类型：
 \`\`\`ts
 function map<T, U>(arr: T[], fn: (x: T, i: number) => U): U[] { /* ... */ }
 map([1, 2, 3], (x) => x.toString()); // T=number（从 arr），U=string（从回调返回值）
-\`\`\
+\`\`\`
 
 这是 React \`useState\`、\`useReducer\`、数组方法能精确推断的基础。
 
@@ -858,7 +858,7 @@ console.log("\\n泛型类型推断章节演示完成！");`,
 
 \`\`\`ts
 T extends U ? X : Y
-\`\`\
+\`\`\`
 
 读作"如果 T 可赋值给 U，则类型为 X，否则为 Y"。像三元表达式，但在类型层面。
 
@@ -878,7 +878,7 @@ type R = ToArray<string | number>;
 // 分发过程：ToArray<string> | ToArray<number>
 //        = string[] | number[]
 // 结果：string[] | number[]（不是 (string|number)[]）
-\`\`\
+\`\`\`
 
 注意区别：
 
@@ -904,7 +904,7 @@ type R = ToArrayNoDist<string | number>; // (string|number)[]（不分发）
 // 从联合 T 中排除可赋值给 U 的成员
 type Exclude<T, U> = T extends U ? never : T;  // 定义类型别名 Exclude，泛型参数 T, U，条件类型
 type R = Exclude<"a" | "b" | "c", "a">; // "b" | "c"
-\`\`\
+\`\`\`
 
 原理：分发后 \`"a" extends "a" ? never : "a"\` = \`never\`，\`never\` 在联合中自动消失。
 
@@ -962,7 +962,7 @@ type FnInfo<T> = T extends (...args: infer P) => infer R
   : never;
 type Info = FnInfo<(x: number) => string>;
 // { params: [number]; result: string }
-\`\`\
+\`\`\`
 
 ### 7. 递归条件类型
 
@@ -1186,7 +1186,7 @@ console.log("\\n条件类型与 infer 章节演示完成！");`,
 type Mapped<T> = {  // 定义类型别名 Mapped，泛型参数 T
   [K in keyof T]: NewType;
 };
-\`\`\
+\`\`\`
 
 \`[K in keyof T]\` 像 for 循环遍历 T 的所有键，每个键 K 的值类型被替换成 \`NewType\`。\`K\` 可以在值类型位置使用。
 
@@ -1195,7 +1195,7 @@ type Mapped<T> = {  // 定义类型别名 Mapped，泛型参数 T
 type Stringify<T> = { [K in keyof T]: string };
 type R = Stringify<{ a: number; b: boolean }>;
 // { a: string; b: string }
-\`\`\
+\`\`\`
 
 ### 2. 同态映射类型：保留修饰符
 
@@ -1203,7 +1203,7 @@ type R = Stringify<{ a: number; b: boolean }>;
 
 \`\`\`ts
 type Homomorphic<T> = { [K in keyof T]: T[K] }; // 原样复制，保留修饰符
-\`\`\
+\`\`\`
 
 非同态映射（源不是 keyof T）则不保留修饰符。
 
@@ -1220,7 +1220,7 @@ type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 type MyPartial<T> = { [K in keyof T]?: T[K] };
 // 去掉可选（必选化）
 type MyRequired<T> = { [K in keyof T]-?: T[K] };
-\`\`\
+\`\`\`
 
 \`+\` 可省略（默认加），\`-\` 表示移除。这四个就是 TS 内置 \`Readonly\`、\`Mutable\`（无内置，社区常用）、\`Partial\`、\`Required\` 的实现。
 
@@ -1234,7 +1234,7 @@ type Getters<T> = {  // 定义类型别名 Getters，泛型参数 T
 };
 type R = Getters<{ name: string; age: number }>;  // 定义类型别名 R
 // { getName: () => string; getAge: () => number }
-\`\`\
+\`\`\`
 
 \`as\` 后面是一个模板字面量类型，能基于原键名生成新键名。如果重映射结果为 \`never\`，该键被过滤掉：
 
@@ -1243,7 +1243,7 @@ type R = Getters<{ name: string; age: number }>;  // 定义类型别名 R
 type RemoveMethods<T> = {
   [K in keyof T as T[K] extends Function ? never : K]: T[K];
 };
-\`\`\
+\`\`\`
 
 ### 5. 模板字面量类型
 
@@ -1252,7 +1252,7 @@ type RemoveMethods<T> = {
 \`\`\`ts
 type Greeting = \`hello \${string}\`;  // 定义类型别名 Greeting
 const g: Greeting = "hello world"; // ✅
-\`\`\
+\`\`\`
 
 配合联合类型，会做**笛卡尔积**：
 
@@ -1260,7 +1260,7 @@ const g: Greeting = "hello world"; // ✅
 type Side = "top" | "right" | "bottom" | "left";
 type Margin = \`\${Capitalize<Side>}Margin\`;
 // "TopMargin" | "RightMargin" | "BottomMargin" | "LeftMargin"
-\`\`\
+\`\`\`
 
 ### 6. 内置字符串工具类型
 
@@ -1269,7 +1269,7 @@ type A = Uppercase<"abc">;    // "ABC"
 type B = Lowercase<"ABC">;    // "abc"
 type C = Capitalize<"abc">;   // "Abc"
 type D = Uncapitalize<"Abc">; // "abc"
-\`\`\
+\`\`\`
 
 ### 7. 重新实现核心 Utility Types
 
@@ -1280,7 +1280,7 @@ type MyReadonly<T> = { readonly [K in keyof T]: T[K] };
 type MyPick<T, K extends keyof T> = { [P in K]: T[P] };
 type MyRecord<K extends keyof any, V> = { [P in K]: V };
 type MyOmit<T, K extends keyof T> = MyPick<T, Exclude<keyof T, K>>;
-\`\`\
+\`\`\`
 
 \`Pick\` 用 \`[P in K]\`（K 是键的联合，不是 keyof T），\`Record\` 用 \`[P in K]\` 配合 \`keyof any\`（= string|number|symbol）。
 
@@ -1292,7 +1292,7 @@ type OnHandlers<T> = {  // 定义类型别名 OnHandlers，泛型参数 T
   [K in keyof T as \`on\${Capitalize<string & K>}\`]: (e: T[K]) => void;  // 箭头函数（注意：类型断言会绕过类型检查）
 };
 // { onClick: (e: MouseEvent) => void; onInput: (e: string) => void; onFocus: (e: void) => void }
-\`\`\
+\`\`\`
 
 映射 + 模板字面量 + Capitalize，自动生成事件处理器类型。这是 React 类型、Vue 类型的基础模式。
 
@@ -1481,7 +1481,7 @@ console.log("\\n映射类型与模板字面量类型章节演示完成！");`,  
 
 \`\`\`ts
 let a: Animal = new Dog(); // ✅ Dog 可赋值给 Animal
-\`\`\
+\`\`\`
 
 子类型关系是变型讨论的基础。问题是：构造出的复合类型之间，子类型关系如何？
 
@@ -1493,7 +1493,7 @@ let a: Animal = new Dog(); // ✅ Dog 可赋值给 Animal
 const dogs: Dog[] = [new Dog()];  // 声明常量 dogs，类型 Dog[]
 const animals: Animal[] = dogs; // ✅ 数组协变
 animals.push(new Cat()); // ⚠️ 运行时把 Cat 塞进了 Dog[]！
-\`\`\
+\`\`\`
 
 TypeScript 的数组是协变的（沿用 Java/C# 的设计，为了兼容性）。这其实**类型不安全**——上面把 \`Cat\` 塞进 \`Dog[]\` 编译期不报错，但逻辑上错了。这是协变的固有代价。
 
@@ -1509,7 +1509,7 @@ TypeScript 的数组是协变的（沿用 Java/C# 的设计，为了兼容性）
 const handleAnimal = (a: Animal) => console.log(a.name);
 const handleDog: (d: Dog) => void = handleAnimal; // ✅ 参数逆变
 handleDog(new Dog()); // 实际调用 handleAnimal，Dog 是 Animal，安全
-\`\`\
+\`\`\`
 
 反过来就不行：
 
@@ -1517,7 +1517,7 @@ handleDog(new Dog()); // 实际调用 handleAnimal，Dog 是 Animal，安全
 const handleDog = (d: Dog) => d.bark();  // 声明常量 handleDog
 const handleAnimal: (a: Animal) => void = handleDog; // ❌ 不安全
 handleAnimal(new Cat()); // 调用 handleDog(new Cat())，Cat 没有 bark！
-\`\`\
+\`\`\`
 
 ### 4. 双向协变 Bivariance 与 strictFunctionTypes
 
@@ -1528,7 +1528,7 @@ TypeScript 默认对**方法（method）**和**函数属性**采用**双向协�
 \`\`\`ts
 interface A { m(x: Animal): void; }   // 方法：双向协变
 interface B { m: (x: Animal) => void; } // 函数属性：严格逆变（strict 下）
-\`\`\
+\`\`\`
 
 这是为什么很多类型定义用 \`method(): void\` 而非 \`method: () => void\`——方法语法更宽松，兼容性更好。
 
@@ -1539,7 +1539,7 @@ interface B { m: (x: Animal) => void; } // 函数属性：严格逆变（strict 
 \`\`\`ts
 // 理论上 Array<Dog> 和 Array<Animal> 应该不变，但 TS 协变
 // 这就是为什么 TS 数组有"协变陷阱"
-\`\`\
+\`\`\`
 
 ### 6. 变型与泛型的关系
 
@@ -1553,7 +1553,7 @@ interface B { m: (x: Animal) => void; } // 函数属性：严格逆变（strict 
 interface Producer<T> { get(): T; }      // T 只在输出 → 协变
 interface Consumer<T> { put(x: T): void; } // T 只在输入 → 逆变
 interface Holder<T> { value: T; }        // T 既读又写 → 不变
-\`\`\
+\`\`\`
 
 ### 7. 实际影响
 
@@ -1568,7 +1568,7 @@ TS 5.x 在探索显式变型标注（\`in\`、\`out\` 修饰符）：
 \`\`\`ts
 interface Producer<out T> { get(): T; }   // 显式协变
 interface Consumer<in T> { put(x: T): void; } // 显式逆变
-\`\`\
+\`\`\`
 
 目前主要用于类型定义库的精确性，普通业务代码很少用。
 
@@ -1753,7 +1753,7 @@ function divide(a: number, b: number): Result<number, string> {
 const r = divide(10, 0);
 if (r.ok) console.log(r.value);       // value: number
 else console.log(r.error);            // error: string
-\`\`\
+\`\`\`
 
 可辨识联合 + 泛型，让分支后的类型自动收窄，是类型安全错误处理的标准范式。
 
@@ -1776,7 +1776,7 @@ class QueryBuilder<T> {  // 定义类 QueryBuilder，泛型参数 T
   filter(pred: (x: T) => boolean): this { /* ... */ return this; }  // 箭头函数
   map<U>(fn: (x: T) => U): QueryBuilder<U> { /* ... */ return new QueryBuilder(); }  // 箭头函数
 }
-\`\`\
+\`\`\`
 
 \`this\` 类型让 \`filter\` 返回当前子类型，\`map\` 切换元素类型。这是 Lodash、RxJS 链式 API 的基础。
 
@@ -1803,7 +1803,7 @@ interface Repository<T extends { id: string }> {
   save(entity: T): Promise<T>;
 }
 class UserRepo implements Repository<User> { /* ... */ }
-\`\`\
+\`\`\`
 
 约束 \`T extends { id: string }\` 让 Repository 假设实体有 id，复用于所有有 id 的实体。
 
@@ -1817,7 +1817,7 @@ function create<T>(): T {  // 定义函数 create，泛型 T，返回 T
 }
 // 正确：传入构造函数
 function create<T>(ctor: new () => T): T { return new ctor(); }  // 定义函数 create，泛型 T，参数: ctor: new (
-\`\`\
+\`\`\`
 
 #### 陷阱 2：静态成员不能用类的类型参数
 
@@ -1825,14 +1825,14 @@ function create<T>(ctor: new () => T): T { return new ctor(); }  // 定义函数
 class Box<T> {
   static default: T; // ❌ 静态成员不能引用 T
 }
-\`\`\
+\`\`\`
 
 #### 陷阱 3：装饰性泛型（无意义的 <T>）
 
 \`\`\`ts
 // ❌ T 没被使用，纯装饰，没带来任何类型安全
 function log<T>(msg: string): void { console.log(msg); }  // 定义函数 log，泛型 T，参数: msg: string，返回 void
-\`\`\
+\`\`\`
 
 类型参数必须**在参数或返回值中被使用**，否则毫无意义。
 
@@ -1841,7 +1841,7 @@ function log<T>(msg: string): void { console.log(msg); }  // 定义函数 log，
 \`\`\`ts
 // ❌ 过度抽象，可读性极差
 function process<T, U, V, W>(a: T, b: U, c: V): W { /* ... */ }
-\`\`\
+\`\`\`
 
 能用具体类型就别用泛型。泛型的代价是可读性和编译速度。
 
@@ -1849,7 +1849,7 @@ function process<T, U, V, W>(a: T, b: U, c: V): W { /* ... */ }
 
 \`\`\`ts
 function first<T>(arr: T[]): T { return arr[0] as any; } // ❌ as any 绕过检查
-\`\`\
+\`\`\`
 
 #### 陷阱 6：协变数组写入不安全
 
@@ -1860,14 +1860,14 @@ function first<T>(arr: T[]): T { return arr[0] as any; } // ❌ as any 绕过检
 \`\`\`ts
 function makeState<T>(): [T, (v: T) => void] { /* ... */ }
 const [s, setS] = makeState(); // T = unknown，类型安全丢失
-\`\`\
+\`\`\`
 
 #### 陷阱 8：泛型不会"自动"跨函数传播
 
 \`\`\`ts
 function parse<T>(s: string): T { return JSON.parse(s); }
 const u = parse<User>('{"name":"x"}'); // 必须显式，否则 T=unknown
-\`\`\
+\`\`\`
 
 ### 7. 最佳实践
 

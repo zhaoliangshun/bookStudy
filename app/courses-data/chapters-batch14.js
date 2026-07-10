@@ -446,7 +446,7 @@ async function walk(dir) {  // 声明异步函数，内部可用 await
 
 ### 六、文件 watch 的"坑"
 
-\`\`\`fs.watch\` 有三大坑：
+\`fs.watch\` 有三大坑：
 
 1. **同一事件触发多次**：编辑器保存时会触发多次写入事件
 2. **递归 watch 平台差异**：macOS 默认递归，Linux 需 \`{ recursive: true }\`

@@ -851,7 +851,7 @@ async def validation_handler(request, exc):
 
 ## 五、兜底所有未捕获异常:@app.exception_handler(Exception)
 
-\`\`\`@app.exception_handler(Exception)\` 捕获所有未处理的异常(不含 HTTPException,因为后者有专门处理器):
+\`@app.exception_handler(Exception)\` 捕获所有未处理的异常(不含 HTTPException,因为后者有专门处理器):
 
 \`\`\`python
 # 导入 logging 模块

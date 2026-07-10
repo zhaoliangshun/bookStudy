@@ -673,7 +673,7 @@ console.log("\\n条件类型深入章节演示完成！");`,
 type MappedType = {  // 定义类型别名 MappedType
   [K in SomeUnion]: ValueType;
 };
-\`\`\
+\`\`\`
 
 \`[K in SomeUnion]\` 读作"对于 \`SomeUnion\` 中的每个成员 \`K\`，定义一个属性 \`K\`，其值类型为 \`ValueType\`"。这非常像 JavaScript 的 \`for...in\` 循环，但发生在类型层面。
 
@@ -927,7 +927,7 @@ interface Config {
 type BadDeepReadonly = DeepReadonly<Config>;
 // fn 会被递归处理，变成 DeepReadonly<() => void>，结果很奇怪
 // arr 会变成 DeepReadonly<number[]>，而不是 readonly number[]
-\`\`\
+\`\`\`
 
 更健壮的实现要排除函数：
 
@@ -1319,7 +1319,7 @@ console.log("\\n映射类型深入章节演示完成！");`,
 
 \`\`\`ts
 type Greeting = \`Hello \${string}\`;  // 定义类型别名 Greeting
-\`\`\
+\`\`\`
 
 \`Greeting\` 是一个**字符串字面量类型族**——它表示所有以 \`"Hello "\` 开头、后面跟任意字符串的字符串。比如 \`"Hello World"\`、\`"Hello TypeScript"\` 都属于 \`Greeting\` 类型。
 
@@ -1334,7 +1334,7 @@ type Greeting2 = \`Hello \${S}\`;  // \`Hello \${string}\`（字符串族）
 
 type N = number;
 type Id = \`id-\${N}\`;  // \`id-\${number}\`（如 "id-1"、"id-42"）
-\`\`\
+\`\`\`
 
 当插值位置是**确定的字面量类型**（如 \`"world"\`），结果是确定的字面量；当插值位置是**宽类型**（如 \`string\`、\`number\`），结果是一个"模式"类型，匹配所有符合该模式的字符串。
 
@@ -1347,7 +1347,7 @@ type Side = "left" | "right";  // 定义类型别名 Side
 type Direction = \`top-\${Side}\` | \`bottom-\${Side}\`;  // 定义类型别名 Direction，联合类型
 // 等价于：
 // "top-left" | "top-right" | "bottom-left" | "bottom-right"
-\`\`\
+\`\`\`
 
 展开规则类似于笛卡尔积：每个联合的每个成员都会被代入，生成所有组合。
 
@@ -1358,7 +1358,7 @@ type Color = "red" | "green" | "blue";
 type Size = "sm" | "md" | "lg";
 type ClassName = \`\${Color}-\${Size}\`;
 // "red-sm" | "red-md" | "red-lg" | "green-sm" | ... 共 9 种
-\`\`\
+\`\`\`
 
 #### 嵌套展开
 
@@ -1367,7 +1367,7 @@ type ClassName = \`\${Color}-\${Size}\`;
 \`\`\`ts
 type T1 = \`\${"a" | "b"}-\${"x" | "y"}-\${1 | 2}\`;  // 定义类型别名 T1，联合类型
 // "a-x-1" | "a-x-2" | "a-y-1" | ... 共 8 种
-\`\`\
+\`\`\`
 
 ### 内置字符串操作工具
 
@@ -1388,7 +1388,7 @@ TypeScript 提供了 4 个内置的工具类型用于操作字符串字面量类
 type EventName = "click" | "change" | "submit";
 type HandlerName = \`on\${Capitalize<EventName>}\`;
 // "onClick" | "onChange" | "onSubmit"
-\`\`\
+\`\`\`
 
 这是构造事件处理器名称的标准模式。
 
@@ -1400,7 +1400,7 @@ type HandlerName = \`on\${Capitalize<EventName>}\`;
 interface Person { name: string; age: number; }  // 定义接口 Person
 type Getter = \`get\${Capitalize<keyof Person & string>}\`;  // 定义类型别名 Getter，使用 keyof 取键的联合
 // "getName" | "getAge"
-\`\`\
+\`\`\`
 
 注意这里 \`keyof Person & string\` 的用法——\`keyof Person\` 是 \`"name" | "age"\`（都是 string），但在某些情况下键可能是 \`number\` 或 \`symbol\`，而 \`Capitalize\` 只接受 \`string\`，所以用 \`& string\` 收窄。
 
@@ -1420,7 +1420,7 @@ type R2 = GetSuffix<"top-left">;  // "left"
 // 同时提取多部分
 type Split<S> = S extends \`\${infer A}-\${infer B}\` ? [A, B] : never;
 type R3 = Split<"top-left">;  // ["top", "left"]
-\`\`\
+\`\`\`
 
 \`infer\` 在模板字面量类型里就像正则表达式的捕获组——你定义一个"模式"，TypeScript 尝试匹配，匹配成功就把捕获的部分绑定到 \`infer\` 变量。
 
@@ -1441,7 +1441,7 @@ type GetParams<T extends string> =
 
 type Params = GetParams<"/users/:id">;  // "id"
 type Params2 = GetParams<"/posts/:id/comments">;  // "id"
-\`\`\
+\`\`\`
 
 更复杂的实现可以构造一个对象类型，键是参数名，值是参数类型：
 
@@ -1450,7 +1450,7 @@ type RouteParams<T extends string> = {
   [K in GetParams<T>]: string;
 };
 // RouteParams<"/users/:id"> = { id: string }
-\`\`\
+\`\`\`
 
 ### 实际应用 2：事件监听器类型
 
@@ -1462,7 +1462,7 @@ type Listener = \`on\${Capitalize<Events>}\`;  // 定义类型别名 Listener
 interface EventEmitter {  // 定义接口 EventEmitter
   on<E extends Events>(event: E, cb: (payload: EventPayload<E>) => void): void;  // 箭头函数
 }
-\`\`\
+\`\`\`
 
 ### 实际应用 3：CSS 属性类型
 
@@ -1471,14 +1471,14 @@ type CSSProperty = "margin" | "padding" | "border";
 type CSSDirection = "Top" | "Right" | "Bottom" | "Left";
 type SpacingProperty = \`\${CSSProperty}\${CSSDirection}\`;
 // "marginTop" | "marginRight" | ... 共 12 种
-\`\`\
+\`\`\`
 
 ### 实际应用 4：SQL 类型
 
 \`\`\`ts
 type SelectClause = \`SELECT \${string} FROM \${string}\`;  // 定义类型别名 SelectClause
 type Query = SelectClause;  // 匹配所有 SELECT ... FROM ... 字符串
-\`\`\
+\`\`\`
 
 ### 模板字面量类型的限制
 
@@ -1802,7 +1802,7 @@ console.log("\\n模板字面量类型深入章节演示完成！");`,  // 控制
 
 \`\`\`ts
 type F<T> = T extends SomePatternWithInfer ? ExtractedType : OtherType;
-\`\`\
+\`\`\`
 
 \`infer X\` 声明一个类型变量 \`X\`，TypeScript 会尝试用 \`T\` 去匹配 \`SomePatternWithInfer\` 这个模式，匹配成功就把 \`X\` 绑定到对应位置的实际类型，然后在条件为真的分支里使用 \`X\`。
 
@@ -1813,7 +1813,7 @@ type MyReturnType<T> = T extends (...args: any[]) => infer R ? R : never;  // �
 
 type F = (a: string, b: number) => boolean;  // 定义类型别名 F
 type R = MyReturnType<F>;  // boolean
-\`\`\
+\`\`\`
 
 \`(...args: any[]) => infer R\` 是一个"函数模式"——它匹配任何函数，并把返回类型绑定到 \`R\`。当 \`T\` 是函数时，条件为真，返回 \`R\`（即 \`T\` 的返回类型）；当 \`T\` 不是函数时，条件为假，返回 \`never\`。  // 箭头函数（注意：any 关闭了类型检查）
 
@@ -1824,7 +1824,7 @@ type MyParameters<T> = T extends (...args: infer P) => any ? P : never;
 
 type F = (name: string, age: number) => void;
 type P = MyParameters<F>;  // [string, number]
-\`\`\
+\`\`\`
 
 \`infer P\` 绑定的是参数元组。\`P\` 的类型是 \`[string, number]\`——一个元组类型，按顺序对应每个参数。
 
@@ -1835,7 +1835,7 @@ type FirstParameter<T> = T extends (first: infer F, ...rest: any[]) => any ? F :
 
 type F = (name: string, age: number) => void;  // 定义类型别名 F
 type First = FirstParameter<F>;  // string
-\`\`\
+\`\`\`
 
 利用元组的展开语法 \`...rest\`，可以只提取第一个参数。
 
@@ -1846,7 +1846,7 @@ type MyReturnType<T> = T extends (...args: any[]) => infer R ? R : never;
 
 type F = () => Promise<string>;
 type R = MyReturnType<F>;  // Promise<string>
-\`\`\
+\`\`\`
 
 注意 \`ReturnType\` 只提取**直接**返回类型，不会递归解包 Promise。如果 \`T\` 返回 \`Promise<string>\`，\`ReturnType<T>\` 是 \`Promise<string>\`，不是 \`string\`。要解包 Promise，需要递归（见下文 \`Awaited\`）。
 
@@ -1858,7 +1858,7 @@ type ElementOf<T> = T extends (infer E)[] ? E : never;  // 定义类型别名 El
 type R1 = ElementOf<string[]>;     // string
 type R2 = ElementOf<number[]>;     // number
 type R3 = ElementOf<(string | number)[]>;  // string | number
-\`\`\
+\`\`\`
 
 \`(infer E)[]\` 是"数组模式"——匹配任何数组，把元素类型绑定到 \`E\`。注意要用括号 \`()\` 包裹 \`infer E\`，否则会被解析为其他含义。
 
@@ -1870,7 +1870,7 @@ type Unwrap<T> = T extends Promise<infer U> ? U : T;
 type R1 = Unwrap<Promise<string>>;  // string
 type R2 = Unwrap<Promise<number>>;  // number
 type R3 = Unwrap<string>;           // string（不是 Promise，原样返回）
-\`\`\
+\`\`\`
 
 \`Unwrap\` 只解包一层 Promise。要解包多层嵌套的 Promise，需要递归：
 
@@ -1878,7 +1878,7 @@ type R3 = Unwrap<string>;           // string（不是 Promise，原样返回）
 type DeepUnwrap<T> = T extends Promise<infer U> ? DeepUnwrap<U> : T;  // 定义类型别名 DeepUnwrap，泛型参数 T，使用 infer 在条件类型中提取类型
 
 type R = DeepUnwrap<Promise<Promise<Promise<number>>>>;  // number
-\`\`\
+\`\`\`
 
 TypeScript 4.5 引入的内置 \`Awaited\` 类型就是这个递归版本的标准化实现，它能正确处理 \`Promise<Promise<T>>\`、\`Promise<T | Promise<U>>\` 等复杂情况。
 
@@ -1895,7 +1895,7 @@ type Tuple = [string, number, boolean];
 type F = First<Tuple>;   // string
 type S = Second<Tuple>;  // number
 type L = Last<Tuple>;    // boolean
-\`\`\
+\`\`\`
 
 \`[infer F, ...any[]]\` 匹配"第一个元素是 F，后面是任意元素"。\`[...any[], infer L]\` 匹配"最后一个元素是 L，前面是任意元素"——这是 TypeScript 4.0+ 支持的元组展开。
 
@@ -1908,14 +1908,14 @@ type FirstAndLast<T extends any[]> =  // 注意：any 关闭了类型检查
   T extends [infer F, ...any[], infer L] ? [F, L] : never;  // 注意：any 关闭了类型检查
 
 type R = FirstAndLast<[1, 2, 3, 4]>;  // [1, 4]
-\`\`\
+\`\`\`
 
 多重 \`infer\` 让我们能同时提取多个位置的类型。如果同一个 \`infer\` 变量在多个位置出现，TypeScript 会取它们的**联合类型**：
 
 \`\`\`ts
 type AllReturns<T> = T extends (...args: any[]) => (infer R | infer R) ? R : never;
 // （这个写法不常用，主要理解联合语义）
-\`\`\
+\`\`\`
 
 ### infer 与递归（DeepReturnType）
 
@@ -1932,7 +1932,7 @@ type DeepReturnType<T> =
 
 type F = () => () => () => number;  // 定义类型别名 F
 type R = DeepReturnType<F>;  // number
-\`\`\
+\`\`\`
 
 递归 \`infer\` 的关键是在 \`infer\` 提取出的类型上再次应用条件类型，形成递归。
 
@@ -1946,7 +1946,7 @@ type FirstString<T> =
 
 type R1 = FirstString<["hello", 1, 2]>;  // "hello"
 type R2 = FirstString<[1, 2, 3]>;        // never（第一个不是 string）
-\`\`\
+\`\`\`
 
 \`infer F extends string\` 表示"提取 F，但要求 F 必须是 string 的子类型；如果不满足，整个条件为假"。这在需要约束提取结果时很有用。
 
@@ -1960,7 +1960,7 @@ interface ApiSpec {  // 定义接口 ApiSpec
 
 type ApiResponse<E extends keyof ApiSpec> = ApiSpec[E]["response"];  // 定义类型别名 ApiResponse，泛型参数 E extends keyof ApiSpec
 type UsersResponse = ApiResponse<"/users">;  // { id: number; name: string }
-\`\`\
+\`\`\`
 
 ### 实际应用 2：提取组件 Props 类型
 
@@ -1969,14 +1969,14 @@ type PropsOf<T> = T extends new (...args: any[]) => { props: infer P } ? P : nev
 
 class MyComponent { props: { name: string; age: number }; }
 type P = PropsOf<MyComponent>;  // { name: string; age: number }
-\`\`\
+\`\`\`
 
 ### 实际应用 3：提取 Promise 链的结果
 
 \`\`\`ts
 async function fetchUser(): Promise<User> { /* ... */ }  // 定义函数 fetchUser，返回 Promise<User>
 type User2 = Awaited<ReturnType<typeof fetchUser>>;  // User
-\`\`\
+\`\`\`
 
 ### infer 的常见陷阱
 
@@ -2298,7 +2298,7 @@ type IsString<T> = T extends string ? true : false;
 
 // 类型层面的 "如果 T 是 never 返回 true"
 type IsNever<T> = [T] extends [never] ? true : false;
-\`\`\
+\`\`\`
 
 ### 类型层面的循环：递归
 
@@ -2308,7 +2308,7 @@ type IsNever<T> = [T] extends [never] ? true : false;
 // 类型层面的 "重复 S 字符串 N 次"
 type Repeat<S extends string, N extends number, Acc extends string[] = []> =
   Acc["length"] extends N ? "" : \`\${S}\${Repeat<S, N, [...Acc, ""]>}\`;
-\`\`\
+\`\`\`
 
 这里用 \`Acc\`（累加器）元组的 \`length\` 作为计数器，每次递归往 \`Acc\` 里加一个 \`""\`，直到 \`length\` 等于 \`N\`。这是类型层面循环的标准模式。
 
@@ -2330,7 +2330,7 @@ type Join<T extends string[], D extends string> =
 // Replace：替换字符串
 type Replace<S extends string, F extends string, T extends string> =
   S extends \`\${infer A}\${F}\${infer B}\` ? \`\${A}\${T}\${B}\` : S;
-\`\`\
+\`\`\`
 
 ### 经典题目 1：TupleToUnion
 
@@ -2340,7 +2340,7 @@ type TupleToUnion<T extends any[]> = T[number];  // 定义类型别名 TupleToUn
 type TupleToUnion2<T extends any[]> = T extends Array<infer E> ? E : never;  // 定义类型别名 TupleToUnion2，泛型参数 T extends any[]，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 
 type R = TupleToUnion<[1, 2, 3]>;  // 1 | 2 | 3
-\`\`\
+\`\`\`
 
 \`T[number]\` 是索引访问类型，得到所有数字索引处的值的联合。
 
@@ -2362,7 +2362,7 @@ type DeepMutable<T> = T extends Function
   : T extends object
   ? { -readonly [K in keyof T]: DeepMutable<T[K]> }
   : T;
-\`\`\
+\`\`\`
 
 注意排除 \`Function\`——因为函数也是 \`object\`，递归处理函数会出错。
 
@@ -2381,7 +2381,7 @@ type IsNever<T> = [T] extends [never] ? true : false;  // 定义类型别名 IsN
 // IsEqual：判断两个类型是否相等（处理 any 和 never 的边界情况）
 type IsEqual<A, B> =
   (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;  // 箭头函数
-\`\`\
+\`\`\`
 
 \`IsEqual\` 的实现很巧妙——用函数类型的兼容性判断两个类型是否严格相等，能正确处理 \`any\` 和 \`never\`。  // 注意：any 关闭了类型检查
 
@@ -2398,7 +2398,7 @@ type IsTuple<T> =
   T extends readonly any[]
     ? number extends T["length"] ? false : true
     : false;
-\`\`\
+\`\`\`
 
 ### 经典题目 5：UnionToTuple（概念性）
 
@@ -2408,7 +2408,7 @@ type IsTuple<T> =
 // 概念性实现（依赖联合类型的内部顺序，不保证稳定）
 type LastOfUnion<T> = UnionToTuple<T> extends [...any[], infer L] ? L : never;  // 定义类型别名 LastOfUnion，泛型参数 T，使用 infer 在条件类型中提取类型（注意：any 关闭了类型检查）
 // 完整实现很长且依赖内部行为，这里只展示概念
-\`\`\
+\`\`\`
 
 ### 递归深度限制与尾递归优化
 
@@ -2424,7 +2424,7 @@ type BadRepeat<T, N extends number, Acc extends T[] = []> =
 // 尾递归（支持更深，分支直接返回递归调用）
 type GoodRepeat<S extends string, N extends number, Acc extends string[] = []> =
   Acc["length"] extends N ? "" : \`\${S}\${GoodRepeat<S, N, [...Acc, ""]>}\`;
-\`\`\
+\`\`\`
 
 ### 类型体操的实战技巧
 
@@ -2738,7 +2738,7 @@ interface UserB { id: number; name: string; }  // 定义接口 UserB
 
 const a: UserA = { id: 1, name: "张三" };  // 声明常量 a，类型 UserA
 const b: UserB = a; // ✅ 结构相同，可以赋值
-\`\`\
+\`\`\`
 
 \`UserA\` 和 \`UserB\` 虽然名字不同，但结构完全一样，TypeScript 认为它们是兼容的——这就是结构化类型。
 
@@ -2752,7 +2752,7 @@ class UserA { int id; String name; }
 class UserB { int id; String name; }
 UserA a = new UserA(1, "张三");
 UserB b = a; // ❌ 编译错误：类型不兼容
-\`\`\
+\`\`\`
 
 #### 结构化类型的问题
 
@@ -2765,7 +2765,7 @@ function getOrder(id: OrderId): string { return "订单 " + id; }  // 定义函�
 
 const userId: UserId = 1001;  // 声明常量 userId，类型 UserId
 getOrder(userId); // ✅ 不报错！但语义上是 bug——把用户 ID 当订单 ID
-\`\`\
+\`\`\`
 
 \`UserId\` 和 \`OrderId\` 都是 \`number\`，TypeScript 无法区分它们。这就是结构化类型的"过度宽松"。
 
@@ -2783,7 +2783,7 @@ type OrderId = Brand<number, "OrderId">;
 // 现在 UserId 和 OrderId 结构不同（__brand 不同），不能互相赋值
 const userId: UserId = 1001 as UserId; // 需要 as 断言"创建"
 getOrder(userId); // ❌ 编译错误！不能把 UserId 当 OrderId
-\`\`\
+\`\`\`
 
 \`Brand<T, B>\` 用交叉类型 \`T & { __brand: B }\` 把 \`T\` 和一个独有属性组合起来。\`UserId\` 的结构是 \`number & { __brand: "UserId" }\`，\`OrderId\` 是 \`number & { __brand: "OrderId" }\`——它们的 \`__brand\` 不同，结构不同，所以不能互相赋值。
 
@@ -2791,7 +2791,7 @@ getOrder(userId); // ❌ 编译错误！不能把 UserId 当 OrderId
 
 \`\`\`ts
 type Brand<T, B extends string> = T & { readonly __brand: B };  // 定义类型别名 Brand，泛型参数 T, B extends string，交叉类型
-\`\`\
+\`\`\`
 
 这是最简单的实现。更完善的版本会：
 
@@ -2804,7 +2804,7 @@ type Brand<T, B extends string> = T & { readonly __brand: B };  // 定义类型�
 \`\`\`ts
 declare const brandSymbol: unique symbol;
 type Branded<T> = T & { readonly [brandSymbol]: true };
-\`\`\
+\`\`\`
 
 \`unique symbol\` 是 TypeScript 的特性，每个 \`unique symbol\` 声明都是独一无二的，无法被外部伪造。但 \`unique symbol\` 的使用稍复杂，通常 \`__brand: string\` 的简单实现已足够。
 
@@ -2823,7 +2823,7 @@ function getOrder(id: OrderId) { /* ... */ }  // 定义函数 getOrder，参数:
 const uid = 1 as UserId;  // 声明常量 uid（注意：类型断言会绕过类型检查）
 // getOrder(uid); // ❌ 编译错误，防止混淆
 getUser(uid); // ✅ 正确
-\`\`\
+\`\`\`
 
 #### 应用 2：数字单位
 
@@ -2839,7 +2839,7 @@ const d = 100 as Meters;
 const t = 10 as Seconds;
 speed(d, t); // ✅
 // speed(t, d); // ❌ 编译错误，单位搞反了
-\`\`\
+\`\`\`
 
 #### 应用 3：状态验证（ValidatedEmail）
 
@@ -2859,7 +2859,7 @@ const raw = "test@example.com";
 const valid = validateEmail(raw);
 if (valid) sendEmail(valid); // ✅ 只有验证过的邮箱才能发送
 // sendEmail(raw); // ❌ 不能直接传 string
-\`\`\
+\`\`\`
 
 这把"运行时验证"和"类型系统"结合——只有通过验证的值才能获得 \`ValidatedEmail\` 品牌类型，函数签名要求 \`ValidatedEmail\`，从而在类型层面保证"传给 sendEmail 的邮箱一定是合法的"。
 

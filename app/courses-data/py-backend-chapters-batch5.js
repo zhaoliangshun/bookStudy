@@ -2083,7 +2083,6 @@ async def handler():
 5. **使用async context manager**：确保资源正确释放
 6. **不要create_task后就不管**：要能追踪和取消后台任务
 7. **数据库使用异步驱动**：asyncpg/aiomysql/aiosqlite等
-\`\`\`
 `
   },
   {

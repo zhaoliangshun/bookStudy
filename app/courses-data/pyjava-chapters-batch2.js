@@ -473,7 +473,7 @@ public class Cat {
         System.out.println(this.name);
     }
 }
-\`\`\
+\`\`\`
 
 为什么 Python 要"多此一举"写 \`self\`？这背后有深刻的哲学原因：
 

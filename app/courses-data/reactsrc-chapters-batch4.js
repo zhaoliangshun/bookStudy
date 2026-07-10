@@ -139,7 +139,7 @@ React 内部有一个关键的判断逻辑。当你写 \`<Counter />\` 时，Rea
 function isClassComponent(type) {
   return typeof type === 'function' && !!type.prototype.isReactComponent;
 }
-\`\`\'
+\`\`\`
 
 关键在于 \`type.prototype.isReactComponent\`。注意：
 

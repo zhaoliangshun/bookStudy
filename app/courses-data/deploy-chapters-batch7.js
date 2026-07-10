@@ -4088,6 +4088,7 @@ scrape_configs:
 - process_resident_memory_bytes：进程内存使用
 - process_cpu_seconds_total：CPU 使用率
 - gunicorn_workers：worker 数量
+\`\`\`
 
 \`\`\`yaml
 # docker-compose.yml 增加 Prometheus + Grafana

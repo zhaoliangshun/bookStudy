@@ -2239,7 +2239,7 @@ pnpm publish --dry-run
 
 ### 二、pnpm pack：预览打包内容
 
-\`\`\`pnpm pack\` 把包打成 tarball（.tgz），但不发布，留在本地。这是发布前最重要的检查工具。
+\`pnpm pack\` 把包打成 tarball（.tgz），但不发布，留在本地。这是发布前最重要的检查工具。
 
 \`\`\`bash
 pnpm pack

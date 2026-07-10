@@ -1498,7 +1498,7 @@ variable-exists("brand");        // true（当前作用域是否有 $brand）
 global-variable-exists("brand"); // true（全局作用域）
 mixin-exists("clearfix");        // 某混入是否已定义
 function-exists("rem");          // 某函数是否已定义
-\`\`\
+\`\`\`
 
 这些函数让混入能「检测环境」，做条件式行为，比如只有当某个函数存在时才调用它。
 
@@ -1530,7 +1530,7 @@ inspect((a: 1, b: 2));   // '(a: 1, b: 2)' 把任意值转成可读字符串
 \`\`\`scss
 selector-nest(".card", "&:hover");   // '.card:hover'（嵌套，& 指代父级）
 selector-append(".card", ":hover");  // '.card:hover'（直接拼接，不带空格）
-\`\`\
+\`\`\`
 
 \`nest\` 会在选择器间加后代空格（除非用 \`&\`），\`append\` 直接拼接。两者都能生成 \`@extend\` 友好的选择器。
 
@@ -1548,7 +1548,7 @@ is-superselector(".a", ".a .b");        // true（.a 是否能匹配 .a .b 能�
 
 \`\`\`scss
 simple-selectors("a.btn:hover");   // (a, .btn, :hover) 拆成简单选择器
-\`\`\
+\`\`\`
 
 ---
 
@@ -1578,7 +1578,7 @@ h2 { font-size: px-to-rem(24px); }   // 1.5rem
 
 .a { width: clamp-value(150px, 100px, 200px); }   // 150px
 .b { width: clamp-value(50px, 100px, 200px); }    // 100px
-\`\`\
+\`\`\`
 
 ### 8.3 递归函数
 
@@ -1589,7 +1589,7 @@ h2 { font-size: px-to-rem(24px); }   // 1.5rem
 }
 
 $content: factorial(5);   // 120
-\`\`\
+\`\`\`
 
 > 提示：函数用于「计算」，不要在函数里输出 CSS（那是混入的活）。函数必须 \`@return\` 一个值。
 
@@ -1608,7 +1608,7 @@ $content: factorial(5);   // 120
 
 .btn-primary  { background: #3498db; color: text-color-for(#3498db); }
 .btn-warning  { background: #f39c12; color: text-color-for(#f39c12); }
-\`\`\
+\`\`\`
 
 这是一个非常实用的函数——给定任意背景色，自动返回可读性最好的文字色。
 
@@ -1626,7 +1626,7 @@ $content: factorial(5);   // 120
     @return $color;   // 已经够暗，不再处理
   }
 }
-\`\`\
+\`\`\`
 
 ---
 
@@ -2082,7 +2082,7 @@ $font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     color: #fff;
   }
 }
-\`\`\
+\`\`\`
 
 \`@if\` 后跟一个表达式，为真则执行其后的块。可以接 \`@else if\` 和 \`@else\`。
 
@@ -2096,7 +2096,7 @@ $font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   @else if $px < 36px { @return "lg"; }
   @else { @return "xl"; }
 }
-\`\`\
+\`\`\`
 
 ### 1.3 真假判定规则
 
@@ -2108,7 +2108,7 @@ Sass 中只有 \`false\` 和 \`null\` 是假，其余一切（包括 \`0\`、空
 @if null     { /* 不会执行 */ }
 @if false    { /* 不会执行 */ }
 @if ()       { /* 空列表，会执行（注意：某些版本空列表视作 null） */ }
-\`\`\
+\`\`\`
 
 > 这个细节要特别小心：写 \`@if $value\` 时，如果 \`$value\` 是 \`0\`，在 Sass 里条件成立！
 
@@ -2119,7 +2119,7 @@ Sass 中只有 \`false\` 和 \`null\` 是假，其余一切（包括 \`0\`、空
 \`\`\`scss
 $mode: dark;
 $bg: if($mode == dark, #000, #fff);   // #000
-\`\`\
+\`\`\`
 
 \`if()\` 用在表达式里，\`@if\` 用在语句块里。
 
@@ -2135,7 +2135,7 @@ $a >= $b      // 大于等于
 $a and $b     // 与
 $a or $b      // 或
 not $a        // 非
-\`\`\
+\`\`\`
 
 注意 Sass 用 \`and\` / \`or\` / \`not\`（单词），不是 \`&&\` / \`||\` / \`!\`。
 
@@ -2153,7 +2153,7 @@ not $a        // 非
     @warn "未知断点: #{$name}";
   }
 }
-\`\`\
+\`\`\`
 
 ---
 
@@ -2173,7 +2173,7 @@ not $a        // 非
   .row-#{$i} { /* ... */ }
 }
 // 生成 i = 1, 2, 3, 4
-\`\`\
+\`\`\`
 
 **区别**：\`through\` 是闭区间 \[1, 5\]，\`to\` 是左闭右开 \[1, 5)。初学者常记混，记住口诀「through 穿过去包含，to 到了不含」。
 
@@ -2184,7 +2184,7 @@ not $a        // 非
   .order-#{$i} { order: $i; }
 }
 // 生成 5, 4, 3, 2, 1
-\`\`\
+\`\`\`
 
 from 大于 to 时自动倒序。
 
@@ -2198,7 +2198,7 @@ $columns: 12;
     width: percentage($i / $columns);
   }
 }
-\`\`\
+\`\`\`
 
 输出 \`.col-1\` ~ \`.col-12\`，宽度从 8.33% 到 100%。这就是 Bootstrap 栅格的核心。
 
@@ -2211,7 +2211,7 @@ $columns: 12;
   .pt-#{$i} { padding-top: $i * 8px; }
   .pb-#{$i} { padding-bottom: $i * 8px; }
 }
-\`\`\
+\`\`\`
 
 一行循环产出 24 个工具类，覆盖 0/8/16/24/32/40px 的间距。
 
@@ -2231,7 +2231,7 @@ $sizes: small, medium, large;
     font-size: if($size == small, 12px, if($size == medium, 16px, 24px));
   }
 }
-\`\`\
+\`\`\`
 
 ### 3.2 遍历 Map（解构）
 
@@ -2248,7 +2248,7 @@ $icons: (
     content: $code;
   }
 }
-\`\`\
+\`\`\`
 
 \`@each $key, $value in $map\` 会把每个键值对解构成两个变量。这是生成图标类的标准手法。
 
@@ -2266,7 +2266,7 @@ $breakpoints: (
     @media (max-width: $value - 1) { display: none; }
   }
 }
-\`\`\
+\`\`\`
 
 当列表元素本身是列表时，\`@each\` 会自动解构，把每个子列表的元素赋给多个变量。
 
@@ -2281,7 +2281,7 @@ $colors: red green blue;
   $i: index($colors, $color);
   .box-#{$i} { background: $color; }
 }
-\`\`\
+\`\`\`
 
 ### 3.5 实战：用 Map 生成颜色调色板
 
@@ -2297,7 +2297,7 @@ $palette: (
   .bg-primary-#{$shade} { background-color: $color; }
   .text-primary-#{$shade} { color: $color; }
 }
-\`\`\
+\`\`\`
 
 这正是 Tailwind 这类工具优先框架生成 \`bg-primary-500\`、\`text-primary-900\` 的方式。
 
@@ -2315,7 +2315,7 @@ $i: 1;
   .mt-#{$i} { margin-top: $i * 8px; }
   $i: $i + 1;   // 必须手动递增！
 }
-\`\`\
+\`\`\`
 
 > **关键**：\`@while\` 不会自动改变变量，你必须在循环体内手动更新 \`$i\`，否则会**死循环**导致编译卡死。
 
@@ -2327,7 +2327,7 @@ $i: 1;
   .w-#{$i} { width: $i * 1px; }
   $i: $i * 2;   // 1, 2, 4, 8, 16 ... 1024
 }
-\`\`\
+\`\`\`
 
 生成 \`.w-1\`、\`.w-2\`、\`.w-4\` ... \`.w-1024\`，宽度按 2 的幂增长。这种「指数级」序列 \`@for\` 做不到，正好用 \`@while\`。
 
@@ -2340,7 +2340,7 @@ $i: 1;
   .box-#{$i} { /* ... */ }
   // 漏了 $i: $i + 1;
 }
-\`\`\
+\`\`\`
 
 写 \`@while\` 时第一件事就是确认循环变量会被更新。
 
@@ -2379,7 +2379,7 @@ $theme: (primary: #3498db, success: #27ae60, danger: #e74c3c);
 @for $i from 1 through 4 {
   .shadow-#{$i} { box-shadow: 0 $i * 2px $i * 6px rgba(0,0,0,.1 * $i); }
 }
-\`\`\
+\`\`\`
 
 几十行 Sass 输出上百个工具类——这就是控制指令的威力。
 
@@ -2405,7 +2405,7 @@ $states: (
     border-radius: 4px;
   }
 }
-\`\`\
+\`\`\`
 
 ### 6.2 妙用：@for 生成 Z 字形布局
 
@@ -2415,7 +2415,7 @@ $states: (
     margin-left: if($i % 2 == 1, 0, 40px);
   }
 }
-\`\`\
+\`\`\`
 
 奇数项靠左、偶数项右移，形成 Z 字形。用 \`@if\` 配合 \`@for\` 实现交替样式。
 
@@ -2428,7 +2428,7 @@ $states: (
     .box-#{$i} { /* ... */ }
   }
 }
-\`\`\
+\`\`\`
 
 嵌套循环要用不同变量名（\`$i\`、\`$j\`、\`$k\`）。
 
@@ -2443,7 +2443,7 @@ $states: (
     }
   }
 }
-\`\`\
+\`\`\`
 
 控制指令很爽，但每次循环都在「长 CSS」。过度循环会让产物膨胀到几百 KB。生成前想清楚是否真的需要这么多类，能否用 CSS 自定义属性或更通用的规则替代。
 
@@ -2454,7 +2454,7 @@ $colors: (a: 1, b: 2);
 @each $k, $v in $colors {
   $colors: map-merge($colors, ($k: $v + 1));   // ❌ 不影响当前遍历
 }
-\`\`\
+\`\`\`
 
 \`@each\` 遍历的是循环开始时的快照，循环内修改 Map 不会改变本次遍历。要在遍历中累积结果，用递归函数或先收集到列表。
 
@@ -2480,7 +2480,7 @@ $colors: (a: 1, b: 2);
     background: #999;
   }
 }
-\`\`\
+\`\`\`
 
 ### 7.2 在函数里用 @for
 
@@ -2492,7 +2492,7 @@ $colors: (a: 1, b: 2);
   }
   @return $total;
 }
-\`\`\
+\`\`\`
 
 ### 7.3 在混入里用 @each 批量生成
 
@@ -2505,7 +2505,7 @@ $colors: (a: 1, b: 2);
   }
 }
 .alert { @include generate-modifiers($states); }
-\`\`\
+\`\`\`
 
 ---
 
@@ -3182,7 +3182,7 @@ $i: 1;
   background: #dfd;
   border-color: #0a0;
 }
-\`\`\
+\`\`\`
 
 编译结果：
 
@@ -3202,7 +3202,7 @@ $i: 1;
   background: #dfd;
   border-color: #0a0;
 }
-\`\`\
+\`\`\`
 
 注意第一行：\`.message\`、\`.error\`、\`.success\` 被**合并成一个选择器组**，共享同一组声明。这正是 \`@extend\` 与混入的根本区别——**声明只输出一次**。
 
@@ -3222,7 +3222,7 @@ $i: 1;
   @extend .message;
   background: #fdd;
 }
-\`\`\
+\`\`\`
 
 编译结果：
 
@@ -3236,7 +3236,7 @@ $i: 1;
 .error {
   background: #fdd;
 }
-\`\`\
+\`\`\`
 
 \`.error .title\` 被自动加进来了——因为 \`.error\` 继承了 \`.message\`，凡是 \`.message\` 出现的地方，\`.error\` 也跟着出现。这是 \`@extend\` 强大但也容易失控的地方。
 
@@ -3268,7 +3268,7 @@ $i: 1;
   @extend %message-base;
   background: #dfd;
 }
-\`\`\
+\`\`\`
 
 编译结果：
 
@@ -3281,7 +3281,7 @@ $i: 1;
 
 .error { background: #fdd; }
 .success { background: #dfd; }
-\`\`\
+\`\`\`
 
 \`%message-base\` **没有出现在 CSS 里**——它只是个「模板」，被继承后才生成 \`.error, .success\` 这一组。这是「静态共享样式」的最佳实践。
 
@@ -3316,7 +3316,7 @@ $i: 1;
     @extend .error;   // ❌ 报错！
   }
 }
-\`\`\
+\`\`\`
 
 编译会报错：\`You may not @extend an outer selector from within @media.\`
 
@@ -3330,7 +3330,7 @@ $i: 1;
 @media (max-width: 768px) {
   .alert { @include error-style; }   // ✅ 混入可以
 }
-\`\`\
+\`\`\`
 
 ### 3.2 不能继承复杂选择器组合
 
@@ -3344,7 +3344,7 @@ $i: 1;
 .c { @extend .b; }
 .d { @extend .c; }
 .e { @extend .d; }
-\`\`\
+\`\`\`
 
 链式继承会让选择器组越来越长：\`.a, .b, .c, .d, .e\`。链太长时，最终的选择器组可能非常臃肿。
 
@@ -3375,7 +3375,7 @@ $i: 1;
 .btn-primary {
   @extend %primary;
 }
-\`\`\
+\`\`\`
 
 \`.btn-primary\` 会同时得到 \`%base\`、\`%button\`、\`%primary\` 三层样式。链式继承能构建出有层次的样式体系，但要控制深度，通常 2-3 层为宜。
 
@@ -3390,7 +3390,7 @@ $i: 1;
   @extend .nonexistent;              // ❌ 报错：选择器不存在
   @extend .nonexistent !optional;    // ✅ 静默跳过
 }
-\`\`\
+\`\`\`
 
 \`!optional\` 在写库或混入时有用——当不确定某个类是否被定义时，用 \`!optional\` 避免编译失败。
 
@@ -3416,7 +3416,7 @@ $i: 1;
 .btn-1 { @extend %btn-base; }
 .btn-2 { @extend %btn-base; }
 // ... 10 个
-\`\`\
+\`\`\`
 
 | 方案 | 5 行声明出现次数 | 选择器组长度 |
 | --- | --- | --- |
@@ -3439,7 +3439,7 @@ $i: 1;
 .header .nav .message { ... }
 
 .error { @extend .message; }
-\`\`\
+\`\`\`
 
 那么 \`.error\` 会被加到所有这些复合选择器里：
 
@@ -3448,7 +3448,7 @@ $i: 1;
 .modal .message, .modal .error { ... }
 .sidebar .message, .sidebar .error { ... }
 .header .nav .message, .header .nav .error { ... }
-\`\`\
+\`\`\`
 
 选择器数量翻倍，CSS 迅速膨胀。这就是 Sass 官方**在新版中逐渐不推荐 \`@extend\`** 的原因之一。
 
@@ -3487,7 +3487,7 @@ $i: 1;
            └─ 否 → 是静态结构性共享（is-a 关系）吗？
                     ├─ 是 → @extend %placeholder
                     └─ 否 → @mixin
-\`\`\
+\`\`\`
 
 **一个安全默认**：拿不准就用 \`@mixin\`。Sass 官方也倾向于推荐混入，因为它的行为更可预测、更易维护。
 
@@ -3498,7 +3498,7 @@ $i: 1;
 %button { padding: 10px; border-radius: 4px; }
 %blue   { @extend %button; background: blue; }
 %red    { @extend %button; background: red; }
-\`\`\
+\`\`\`
 
 颜色变体本质是「参数化的外观」，更适合混入：
 
@@ -3508,7 +3508,7 @@ $i: 1;
   border-radius: 4px;
   background: $bg;
 }
-\`\`\
+\`\`\`
 
 ### 7.5 反模式：跨大范围继承通用类
 
@@ -3520,7 +3520,7 @@ $i: 1;
 /* ... 很多 .card 相关规则 ... */
 
 .special-card { @extend .card; }
-\`\`\
+\`\`\`
 
 这种情况下，\`.special-card\` 会被塞进所有 \`.card\` 相关选择器里。改用混入或重新设计结构。
 
@@ -3548,7 +3548,7 @@ $i: 1;
   background: #fdd;      // 再写自己的
   border-color: #f00;
 }
-\`\`\
+\`\`\`
 
 虽然 \`@extend\` 的实际位置由 Sass 智能安排，但语义上「先继承基类、再覆盖细节」的书写顺序更易读。
 
@@ -3569,13 +3569,13 @@ $i: 1;
 \`\`\`scss
 .a:hover { color: red; }
 .b { @extend .a; }
-\`\`\
+\`\`\`
 
 变成：
 
 \`\`\`css
 .a:hover, .b:hover { color: red; }
-\`\`\
+\`\`\`
 
 注意是 \`.b:hover\`，不是 \`.b\`——\`@extend\` 智能地把 \`.b\` 替换到 \`.a\` 的位置，保留 \` :hover\` 部分。
 

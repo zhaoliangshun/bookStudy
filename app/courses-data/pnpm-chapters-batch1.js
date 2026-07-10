@@ -508,7 +508,7 @@ brew upgrade pnpm
 
 \`\`\`bash
 corepack enable pnpm
-\`\`
+\`\`\`
 
 如果还是不行，可能是 Node 版本低于 16.9，升级 Node 即可。
 
@@ -867,9 +867,9 @@ pnpm add -D vite typescript eslint
 
 声明项目需要的 Node/pnpm 版本。pnpm 默认会检查 \`engines.node\`，不匹配会警告（不报错）。要强制可设 \`.npmrc\`：
 
-\`\`ini
+\`\`\`ini
 engine-strict=true
-\`\`
+\`\`\`
 
 ### packageManager（包管理器锁定）
 
