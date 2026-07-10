@@ -12,7 +12,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { osChapters, osChapterGroups } from "../os-tutorial-data";
+import { osChapters, osChapterGroups } from "../courses-data/os-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

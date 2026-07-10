@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { fastapiChapters, fastapiChapterGroups } from "../fastapi-book-data";
+import { fastapiChapters, fastapiChapterGroups } from "../courses-data/fastapi-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

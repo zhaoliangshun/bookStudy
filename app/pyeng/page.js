@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { pyengChapters, pyengChapterGroups } from "../pyeng-tutorial-data";
+import { pyengChapters, pyengChapterGroups } from "../courses-data/pyeng-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

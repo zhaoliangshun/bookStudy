@@ -9,7 +9,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { psychologyChapters, psychologyChapterGroups } from "../psychology-tutorial-data";
+import { psychologyChapters, psychologyChapterGroups } from "../courses-data/psychology-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

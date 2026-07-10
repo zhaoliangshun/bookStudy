@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useCallback } from "react";
-import { leetcodeChapters, leetcodeChapterGroups } from "./leetcode-tutorial-data";
+import { leetcodeChapters, leetcodeChapterGroups } from "../courses-data/leetcode-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

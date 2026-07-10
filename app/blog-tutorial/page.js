@@ -16,7 +16,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { blogChapters, blogChapterGroups } from "../blog-tutorial-data";
+import { blogChapters, blogChapterGroups } from "../courses-data/blog-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

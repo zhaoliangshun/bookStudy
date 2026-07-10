@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { pynetChapters, pynetChapterGroups } from "../pynet-tutorial-data";
+import { pynetChapters, pynetChapterGroups } from "../courses-data/pynet-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

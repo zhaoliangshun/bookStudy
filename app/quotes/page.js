@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { quotesChapters, quotesChapterGroups } from "../quotes-book-data";
+import { quotesChapters, quotesChapterGroups } from "../courses-data/quotes-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

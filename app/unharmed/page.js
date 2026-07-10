@@ -15,7 +15,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { unharmedChapters, unharmedChapterGroups } from "../unharmed-book-data";
+import { unharmedChapters, unharmedChapterGroups } from "../courses-data/unharmed-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

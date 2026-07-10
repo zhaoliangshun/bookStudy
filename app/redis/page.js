@@ -14,7 +14,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { redisChapters, redisChapterGroups } from "../redis-tutorial-data";
+import { redisChapters, redisChapterGroups } from "../courses-data/redis-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

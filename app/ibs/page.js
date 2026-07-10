@@ -9,7 +9,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { ibsChapters, ibsChapterGroups } from "../ibs-book-data";
+import { ibsChapters, ibsChapterGroups } from "../courses-data/ibs-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

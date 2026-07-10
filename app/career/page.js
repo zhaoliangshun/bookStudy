@@ -8,7 +8,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { careerChapters, careerChapterGroups } from "../career-tutorial-data";
+import { careerChapters, careerChapterGroups } from "../courses-data/career-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

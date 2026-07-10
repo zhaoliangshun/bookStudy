@@ -11,7 +11,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { workersChapters, workersChapterGroups } from "../workers-tutorial-data";
+import { workersChapters, workersChapterGroups } from "../courses-data/workers-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

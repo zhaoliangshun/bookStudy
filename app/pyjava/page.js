@@ -13,7 +13,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { pyjavaChapters, pyjavaChapterGroups } from "../pyjava-book-data";
+import { pyjavaChapters, pyjavaChapterGroups } from "../courses-data/pyjava-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

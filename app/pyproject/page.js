@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { pyprojectChapters, pyprojectChapterGroups } from "../pyproject-tutorial-data";
+import { pyprojectChapters, pyprojectChapterGroups } from "../courses-data/pyproject-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { pyfileChapters, pyfileChapterGroups } from "../pyfile-tutorial-data";
+import { pyfileChapters, pyfileChapterGroups } from "../courses-data/pyfile-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

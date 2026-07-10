@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { pyBackendChapters, pyBackendChapterGroups } from "../py-backend-tutorial-data";
+import { pyBackendChapters, pyBackendChapterGroups } from "../courses-data/py-backend-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

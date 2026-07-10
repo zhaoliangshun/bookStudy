@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { feEngineeringChapters, feEngineeringChapterGroups } from "../fe-engineering-tutorial-data";
+import { feEngineeringChapters, feEngineeringChapterGroups } from "../courses-data/fe-engineering-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

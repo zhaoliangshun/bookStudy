@@ -11,7 +11,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { nextjsChapters, nextjsChapterGroups } from "../nextjs-tutorial-data";
+import { nextjsChapters, nextjsChapterGroups } from "../courses-data/nextjs-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

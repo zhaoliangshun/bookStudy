@@ -18,7 +18,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { pyweb2Chapters, pyweb2ChapterGroups } from "../pyweb2-tutorial-data";
+import { pyweb2Chapters, pyweb2ChapterGroups } from "../courses-data/pyweb2-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

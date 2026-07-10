@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { pykitChapters, pykitChapterGroups } from "../pykit-tutorial-data";
+import { pykitChapters, pykitChapterGroups } from "../courses-data/pykit-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

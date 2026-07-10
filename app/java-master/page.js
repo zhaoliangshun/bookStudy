@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { javaMasterChapters, javaMasterChapterGroups } from "./java-master-tutorial-data";
+import { javaMasterChapters, javaMasterChapterGroups } from "../courses-data/java-master-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

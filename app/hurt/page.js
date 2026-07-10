@@ -16,7 +16,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { hurtChapters, hurtChapterGroups } from "../hurt-tutorial-data";
+import { hurtChapters, hurtChapterGroups } from "../courses-data/hurt-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

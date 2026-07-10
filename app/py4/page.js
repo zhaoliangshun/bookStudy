@@ -9,7 +9,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { py4Chapters, py4ChapterGroups } from "../py4-tutorial-data";
+import { py4Chapters, py4ChapterGroups } from "../courses-data/py4-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

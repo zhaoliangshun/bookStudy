@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { backendEssentialChapters, backendEssentialChapterGroups } from "./backend-essential-tutorial-data";
+import { backendEssentialChapters, backendEssentialChapterGroups } from "../courses-data/backend-essential-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

@@ -12,7 +12,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { pyfile2Chapters, pyfile2ChapterGroups } from "../pyfile2-tutorial-data";
+import { pyfile2Chapters, pyfile2ChapterGroups } from "../courses-data/pyfile2-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

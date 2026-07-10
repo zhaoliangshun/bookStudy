@@ -14,7 +14,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { pnpmChapters, pnpmChapterGroups } from "../pnpm-tutorial-data";
+import { pnpmChapters, pnpmChapterGroups } from "../courses-data/pnpm-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

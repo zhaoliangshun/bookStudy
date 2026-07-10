@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { aiAgentChapters, aiAgentChapterGroups } from "../ai-agent-book-data";
+import { aiAgentChapters, aiAgentChapterGroups } from "../courses-data/ai-agent-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

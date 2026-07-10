@@ -8,7 +8,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { feInterviewChapters, feInterviewChapterGroups } from "../fe-interview-tutorial-data";
+import { feInterviewChapters, feInterviewChapterGroups } from "../courses-data/fe-interview-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

@@ -11,7 +11,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { pybasicChapters, pybasicChapterGroups } from "../pybasic-tutorial-data";
+import { pybasicChapters, pybasicChapterGroups } from "../courses-data/pybasic-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

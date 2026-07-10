@@ -9,7 +9,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { futureChapters, futureChapterGroups } from "../future-tutorial-data";
+import { futureChapters, futureChapterGroups } from "../courses-data/future-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

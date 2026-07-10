@@ -16,7 +16,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { aiappChapters, aiappChapterGroups } from "../aiapp-tutorial-data";
+import { aiappChapters, aiappChapterGroups } from "../courses-data/aiapp-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

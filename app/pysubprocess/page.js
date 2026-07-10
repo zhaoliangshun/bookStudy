@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { pysubprocessChapters, pysubprocessChapterGroups } from "../pysubprocess-tutorial-data";
+import { pysubprocessChapters, pysubprocessChapterGroups } from "../courses-data/pysubprocess-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

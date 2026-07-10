@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { py8Chapters, py8ChapterGroups } from "../py8-tutorial-data";
+import { py8Chapters, py8ChapterGroups } from "../courses-data/py8-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

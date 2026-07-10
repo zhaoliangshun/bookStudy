@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { nodejs2Chapters, nodejs2ChapterGroups } from "../nodejs2-tutorial-data";
+import { nodejs2Chapters, nodejs2ChapterGroups } from "../courses-data/nodejs2-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

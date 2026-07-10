@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { chickenSoupChapters, chickenSoupChapterGroups } from "./chicken-soup-tutorial-data";
+import { chickenSoupChapters, chickenSoupChapterGroups } from "../courses-data/chicken-soup-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

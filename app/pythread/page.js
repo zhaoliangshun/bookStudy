@@ -11,7 +11,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { pythreadChapters, pythreadChapterGroups } from "../pythread-tutorial-data";
+import { pythreadChapters, pythreadChapterGroups } from "../courses-data/pythread-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

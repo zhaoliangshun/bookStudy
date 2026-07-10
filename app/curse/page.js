@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { curseChapters, curseChapterGroups } from "../curse-book-data";
+import { curseChapters, curseChapterGroups } from "../courses-data/curse-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

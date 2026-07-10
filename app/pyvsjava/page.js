@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { pyvsjavaChapters, pyvsjavaChapterGroups } from "../pyvsjava-tutorial-data";
+import { pyvsjavaChapters, pyvsjavaChapterGroups } from "../courses-data/pyvsjava-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

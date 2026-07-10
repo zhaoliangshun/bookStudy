@@ -12,7 +12,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { pyasync2Chapters, pyasync2ChapterGroups } from "../pyasync2-tutorial-data";
+import { pyasync2Chapters, pyasync2ChapterGroups } from "../courses-data/pyasync2-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

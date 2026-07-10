@@ -14,7 +14,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { dignityChapters, dignityChapterGroups } from "../dignity-tutorial-data";
+import { dignityChapters, dignityChapterGroups } from "../courses-data/dignity-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

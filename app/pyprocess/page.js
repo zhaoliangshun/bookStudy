@@ -12,7 +12,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { pyprocessChapters, pyprocessChapterGroups } from "../pyprocess-tutorial-data";
+import { pyprocessChapters, pyprocessChapterGroups } from "../courses-data/pyprocess-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

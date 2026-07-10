@@ -11,7 +11,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { sqlChapters, sqlChapterGroups } from "../sql-tutorial-data";
+import { sqlChapters, sqlChapterGroups } from "../courses-data/sql-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

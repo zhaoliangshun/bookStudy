@@ -9,7 +9,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { duiChapters, duiChapterGroups } from "../dui-book-data";
+import { duiChapters, duiChapterGroups } from "../courses-data/dui-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

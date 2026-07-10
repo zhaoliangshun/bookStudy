@@ -11,7 +11,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { gqlChapters, gqlChapterGroups } from "../gql-tutorial-data";
+import { gqlChapters, gqlChapterGroups } from "../courses-data/gql-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

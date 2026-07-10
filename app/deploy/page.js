@@ -17,7 +17,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { deployChapters, deployChapterGroups } from "../deploy-tutorial-data";
+import { deployChapters, deployChapterGroups } from "../courses-data/deploy-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

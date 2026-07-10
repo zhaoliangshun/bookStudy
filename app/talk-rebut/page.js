@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { talkRebuttalChapters, talkRebuttalChapterGroups } from "./talk-rebut-tutorial-data";
+import { talkRebuttalChapters, talkRebuttalChapterGroups } from "../courses-data/talk-rebut-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

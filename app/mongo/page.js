@@ -13,7 +13,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { mongoChapters, mongoChapterGroups } from "../mongo-tutorial-data";
+import { mongoChapters, mongoChapterGroups } from "../courses-data/mongo-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

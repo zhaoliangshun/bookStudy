@@ -8,7 +8,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { tsgenChapters, tsgenChapterGroups } from "../tsgen-tutorial-data";
+import { tsgenChapters, tsgenChapterGroups } from "../courses-data/tsgen-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

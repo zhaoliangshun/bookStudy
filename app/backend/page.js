@@ -12,7 +12,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { backendChapters, backendChapterGroups } from "../backend-tutorial-data";
+import { backendChapters, backendChapterGroups } from "../courses-data/backend-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

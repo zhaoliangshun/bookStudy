@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { progGuideChapters, progGuideChapterGroups } from "../prog-guide-tutorial-data";
+import { progGuideChapters, progGuideChapterGroups } from "../courses-data/prog-guide-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

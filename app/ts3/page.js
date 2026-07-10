@@ -11,7 +11,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ts3Chapters, ts3ChapterGroups } from "../ts3-tutorial-data";
+import { ts3Chapters, ts3ChapterGroups } from "../courses-data/ts3-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

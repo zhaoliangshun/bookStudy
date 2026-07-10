@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { pymodChapters, pymodChapterGroups } from "../pymod-tutorial-data";
+import { pymodChapters, pymodChapterGroups } from "../courses-data/pymod-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

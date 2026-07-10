@@ -9,7 +9,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { pyrunChapters, pyrunChapterGroups } from "../pyrun-tutorial-data";
+import { pyrunChapters, pyrunChapterGroups } from "../courses-data/pyrun-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

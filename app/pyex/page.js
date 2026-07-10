@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { pyexChapters, pyexChapterGroups } from "../pyex-tutorial-data";
+import { pyexChapters, pyexChapterGroups } from "../courses-data/pyex-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

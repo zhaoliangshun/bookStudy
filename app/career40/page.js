@@ -21,7 +21,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { career40Chapters, career40ChapterGroups } from "../career40-tutorial-data";
+import { career40Chapters, career40ChapterGroups } from "../courses-data/career40-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

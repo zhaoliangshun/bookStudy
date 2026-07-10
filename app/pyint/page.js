@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { pyintChapters, pyintChapterGroups } from "../pyint-tutorial-data";
+import { pyintChapters, pyintChapterGroups } from "../courses-data/pyint-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

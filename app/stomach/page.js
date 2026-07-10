@@ -9,7 +9,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { stomachChapters, stomachChapterGroups } from "../stomach-book-data";
+import { stomachChapters, stomachChapterGroups } from "../courses-data/stomach-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

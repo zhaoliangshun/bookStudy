@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { pyarchChapters, pyarchChapterGroups } from "../pyarch-tutorial-data";
+import { pyarchChapters, pyarchChapterGroups } from "../courses-data/pyarch-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

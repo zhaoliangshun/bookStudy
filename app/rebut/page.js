@@ -15,7 +15,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { rebutChapters, rebutChapterGroups } from "../rebut-book-data";
+import { rebutChapters, rebutChapterGroups } from "../courses-data/rebut-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

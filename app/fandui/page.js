@@ -9,7 +9,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { fanduiChapters, fanduiChapterGroups } from "../fandui-book-data";
+import { fanduiChapters, fanduiChapterGroups } from "../courses-data/fandui-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

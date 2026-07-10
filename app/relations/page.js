@@ -9,7 +9,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { relationsChapters, relationsChapterGroups } from "../relations-tutorial-data";
+import { relationsChapters, relationsChapterGroups } from "../courses-data/relations-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

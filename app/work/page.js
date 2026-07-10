@@ -9,7 +9,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { workChapters, workChapterGroups } from "../work-book-data";
+import { workChapters, workChapterGroups } from "../courses-data/work-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

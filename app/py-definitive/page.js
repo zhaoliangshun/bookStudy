@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { pyDefinitiveChapters, pyDefinitiveChapterGroups } from "../py-definitive-tutorial-data";
+import { pyDefinitiveChapters, pyDefinitiveChapterGroups } from "../courses-data/py-definitive-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

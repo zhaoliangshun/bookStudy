@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { javaWebChapters, javaWebChapterGroups } from "../java-web-tutorial-data";
+import { javaWebChapters, javaWebChapterGroups } from "../courses-data/java-web-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

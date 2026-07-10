@@ -13,7 +13,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { shieldChapters, shieldChapterGroups } from "../shield-book-data";
+import { shieldChapters, shieldChapterGroups } from "../courses-data/shield-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

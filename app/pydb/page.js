@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { pydbChapters, pydbChapterGroups } from "../pydb-tutorial-data";
+import { pydbChapters, pydbChapterGroups } from "../courses-data/pydb-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

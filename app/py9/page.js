@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { py9Chapters, py9ChapterGroups } from "../py9-tutorial-data";
+import { py9Chapters, py9ChapterGroups } from "../courses-data/py9-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

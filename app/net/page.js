@@ -15,7 +15,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { netChapters, netChapterGroups } from "../net-tutorial-data";
+import { netChapters, netChapterGroups } from "../courses-data/net-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

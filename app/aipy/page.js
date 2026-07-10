@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { aipyChapters, aipyChapterGroups } from "../aipy-tutorial-data";
+import { aipyChapters, aipyChapterGroups } from "../courses-data/aipy-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

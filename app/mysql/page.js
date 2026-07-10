@@ -13,7 +13,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { mysqlChapters, mysqlChapterGroups } from "../mysql-tutorial-data";
+import { mysqlChapters, mysqlChapterGroups } from "../courses-data/mysql-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

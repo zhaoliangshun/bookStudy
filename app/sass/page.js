@@ -10,7 +10,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { sassChapters, sassChapterGroups } from "../sass-tutorial-data";
+import { sassChapters, sassChapterGroups } from "../courses-data/sass-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";

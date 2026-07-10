@@ -9,7 +9,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { commChapters, commChapterGroups } from "../comm-tutorial-data";
+import { commChapters, commChapterGroups } from "../courses-data/comm-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 

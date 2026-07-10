@@ -9,7 +9,7 @@
 // =============================================================
 
 import { useState, useRef, useCallback } from "react";
-import { howitworksChapters, howitworksChapterGroups } from "../howitworks-tutorial-data";
+import { howitworksChapters, howitworksChapterGroups } from "../courses-data/howitworks-tutorial-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 
