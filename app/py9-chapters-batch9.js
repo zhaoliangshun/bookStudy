@@ -999,6 +999,7 @@ import threading  # 导入模块 threading
 ## Thread 对象
 
 \`\`\`python
+import threading
 t = threading.Thread(target=func, args=(1, 2))  # 赋值变量 t
 t.start()    # 启动
 t.join()     # 等待完成
@@ -1010,6 +1011,7 @@ t.daemon = True    # 守护线程（主线程退出时自动结束）
 多线程共享内存，操作共享数据需要同步：
 
 \`\`\`python
+import threading
 lock = threading.Lock()  # 赋值变量 lock
 with lock:  # 使用上下文管理器：lock
     # 临界区
@@ -1027,6 +1029,7 @@ with lock:  # 使用上下文管理器：lock
 ## Condition 条件变量
 
 \`\`\`python
+import threading
 cond = threading.Condition()  # 赋值变量 cond
 
 # 等待方
@@ -1054,6 +1057,7 @@ Queue 内部有锁，多线程安全。
 ## 生产者-消费者
 
 \`\`\`python
+from queue import Queue
 def producer(q):  # 定义函数 producer，参数：q
     for i in range(10):  # 遍历 range(10)，取值给 i
         q.put(i)  # 调用 q.put()：入队
@@ -1390,6 +1394,7 @@ import multiprocessing  # 导入模块 multiprocessing
 ## Process 对象
 
 \`\`\`python
+import multiprocessing
 p = multiprocessing.Process(target=func, args=(1, 2))  # 赋值变量 p
 p.start()  # 调用 p.start()：启动
 p.join()  # 调用 p.join()：等待所有任务完成
@@ -1398,6 +1403,7 @@ p.join()  # 调用 p.join()：等待所有任务完成
 ## Pool 进程池
 
 \`\`\`python
+import multiprocessing
 with multiprocessing.Pool(processes=4) as pool:  # 使用上下文管理器：multiprocessing.Pool(processes=4) as pool
     results = pool.map(func, items)  # 赋值变量 results
     # 或
@@ -1413,6 +1419,7 @@ with multiprocessing.Pool(processes=4) as pool:  # 使用上下文管理器：mu
 - **Manager**：共享对象
 
 \`\`\`python
+import multiprocessing
 # Queue
 q = multiprocessing.Queue()  # 赋值变量 q
 q.put(item)  # 调用 q.put()：入队
@@ -2096,6 +2103,7 @@ cursor.execute("DELETE FROM users WHERE id = ?", (1,))  # 调用 cursor.execute(
 ## 上下文管理器
 
 \`\`\`python
+import sqlite3
 with sqlite3.connect("test.db") as conn:  # 使用上下文管理器：sqlite3.connect("test.db") as conn
     # 自动 commit / rollback
     conn.execute("...")  # 调用 conn.execute()
@@ -2104,6 +2112,7 @@ with sqlite3.connect("test.db") as conn:  # 使用上下文管理器：sqlite3.c
 ## Row 对象
 
 \`\`\`python
+import sqlite3
 conn.row_factory = sqlite3.Row  # 执行操作
 row = cursor.fetchone()  # 赋值变量 row
 row["name"]    # 像字典一样访问

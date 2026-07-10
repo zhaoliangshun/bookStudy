@@ -516,6 +516,7 @@ p = Path.home()                     # 用户家目录
 ### 11.2 路径组成部分
 
 \`\`\`python
+from pathlib import Path
 p = Path("/home/alice/data/users.csv")
 p.parent        # Path('/home/alice/data')   父目录
 p.name          # 'users.csv'                文件名
@@ -529,6 +530,7 @@ p.anchor        # '/'                        盘符或根目录
 ### 11.3 路径查询
 
 \`\`\`python
+from pathlib import Path
 p = Path("data.txt")
 p.exists()        # 是否存在
 p.is_file()       # 是否是文件
@@ -540,6 +542,7 @@ p.stat().st_mtime # 修改时间戳
 ### 11.4 创建 / 删除
 
 \`\`\`python
+from pathlib import Path
 p = Path("output")
 p.mkdir(exist_ok=True)        # 创建目录，已存在不报错
 p.mkdir(parents=True)         # 递归创建（类似 mkdir -p）
@@ -552,6 +555,7 @@ p.rmdir()                     # 删除空目录
 ### 11.5 遍历与匹配
 
 \`\`\`python
+from pathlib import Path
 p = Path(".")
 list(p.iterdir())                       # 列出当前目录所有条目
 list(p.glob("*.py"))                    # 匹配当前目录下 .py 文件
@@ -563,6 +567,7 @@ list(p.rglob("*.py"))                   # 递归匹配所有子目录
 \`Path\` 对象直接提供了 \`read_text\` / \`read_bytes\` / \`write_text\` / \`write_bytes\`，省去 \`open\` 的样板代码：
 
 \`\`\`python
+from pathlib import Path
 p = Path("data.txt")
 text = p.read_text(encoding="utf-8")        # 一行读完
 p.write_text("hello", encoding="utf-8")     # 一行写入（会覆盖）
@@ -1087,6 +1092,7 @@ except ValueError as e:
 在 except 块里 \`raise\` 不带参数，会把当前捕获的异常原样抛出，常用于"记录日志后继续往上抛"：
 
 \`\`\`python
+from math import log
 try:
     risky()
 except Exception as e:
@@ -1335,6 +1341,7 @@ with timer():
 \`contextlib.suppress(SomeError)\` 是个现成的"吞掉特定异常"的上下文管理器：
 
 \`\`\`python
+import os
 from contextlib import suppress
 with suppress(FileNotFoundError):
     os.remove("maybe_missing.txt")   # 文件不存在也不报错
@@ -2617,6 +2624,7 @@ print(s1 == s2)      # True  自动生成的 __eq__
 - \`field(default_factory=...)\`：可变默认值必须用 factory，避免"所有实例共享同一个 list"的经典坑。
 
 \`\`\`python
+from dataclasses import dataclass
 @dataclass(frozen=True, order=True)
 class Point:
     x: float

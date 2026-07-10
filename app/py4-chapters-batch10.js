@@ -281,6 +281,7 @@ print("first 5:", list(islice(infinite_counter(100), 5)))
 ### 4. 生成器表达式(语法糖)
 
 \`\`\`python
+from itertools import islice
 gen = (x * x for x in range(10_000_000))
 print("type:", type(gen))    # <class 'generator'>
 print("first 3:", list(islice(gen, 3)))  # [0, 1, 4]
@@ -403,6 +404,7 @@ itertools 的设计哲学:
 ### 1. 无限迭代器
 
 \`\`\`python
+import itertools
 print("count:", list(itertools.islice(itertools.count(10, 2), 5)))
 # count(10, 2):从 10 开始步长 2 → 10, 12, 14, 16, 18
 print("cycle:", list(itertools.islice(itertools.cycle("AB"), 6)))
@@ -417,6 +419,7 @@ print("cycle:", list(itertools.islice(itertools.cycle("AB"), 6)))
 ### 2. 有限迭代器
 
 \`\`\`python
+import itertools
 print("chain:", list(itertools.chain([1, 2], [3, 4])))
 # 把多个可迭代对象"拼接"成一个,[1, 2, 3, 4]
 
@@ -438,6 +441,7 @@ print("accumulate:", list(itertools.accumulate([1, 2, 3, 4, 5])))
 ### 3. 组合迭代器
 
 \`\`\`python
+import itertools
 print("product:", list(itertools.product([1, 2], ["a", "b"])))
 # 笛卡尔积 → [(1,'a'), (1,'b'), (2,'a'), (2,'b')]
 
@@ -455,6 +459,7 @@ print("combinations:", list(itertools.combinations([1, 2, 3, 4], 2)))
 ### 4. groupby 相邻分组
 
 \`\`\`python
+import itertools
 print("groupby:", [(k, list(g)) for k, g in itertools.groupby("AABCCDA")])
 # [('A', ['A','A']), ('B', ['B']), ('C', ['C','C']), ('D', ['D']), ('A', ['A'])]
 \`\`\`
@@ -462,6 +467,7 @@ print("groupby:", [(k, list(g)) for k, g in itertools.groupby("AABCCDA")])
 **关键陷阱**:\`groupby\` 只对**相邻**的相同元素分组!末尾的 \`A\` 因为不相邻,被单独成组。要按值全局分组,必须**先排序**:
 
 \`\`\`python
+import itertools
 data = sorted("AABCCDA")  # 先排序 → 'AAABCCD'
 print([(k, list(g)) for k, g in itertools.groupby(data)])
 # [('A', ['A','A','A']), ('B', ['B']), ('C', ['C','C']), ('D', ['D'])]
@@ -470,6 +476,7 @@ print([(k, list(g)) for k, g in itertools.groupby(data)])
 ### 5. zip_longest 对比内置 zip
 
 \`\`\`python
+import itertools
 print("zip_longest:", list(itertools.zip_longest([1, 2], "abc", fillvalue="?")))
 # [(1,'a'), (2,'b'), ('?','c')]
 

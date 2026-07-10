@@ -2432,6 +2432,7 @@ print(f"  外部访问耗时: {t.elapsed:.4f}s")
 \`\`\`python
 # 演示 contextlib 模块的其他实用工具
 
+import os
 from contextlib import suppress, redirect_stdout, ExitStack
 import io
 

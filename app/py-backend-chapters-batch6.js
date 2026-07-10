@@ -2112,6 +2112,7 @@ CREATE TABLE IF NOT EXISTS orders (
 ### 1.2 封装数据库操作类
 
 \`\`\`python
+from decimal import Decimal
 import pymysql
 from pymysql.cursors import DictCursor, SSDictCursor
 from contextlib import contextmanager

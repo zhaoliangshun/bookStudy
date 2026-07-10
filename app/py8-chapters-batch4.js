@@ -1241,6 +1241,7 @@ d["count"] += 1              # 不存在自动建 0 再加
 ### 经典应用：分组
 
 \`\`\`python
+from collections import defaultdict
 students = [("一班", "小明"), ("二班", "小红"), ("一班", "小刚")]  # 定义列表 students
 groups = defaultdict(list)  # 定义函数 groups
 for cls, name in students:  # 遍历 students，取值给 cls, name
@@ -1274,6 +1275,7 @@ c.subtract(...)      # 减去统计
 ### Counter 算术
 
 \`\`\`python
+from collections import Counter
 c1 = Counter(a=3, b=1)  # 赋值变量 c1
 c2 = Counter(a=1, b=2)  # 赋值变量 c2
 c1 + c2    # Counter({'a': 4, 'b': 3})  加
@@ -2039,6 +2041,7 @@ dq.clear()            # 清空
 设置 \`maxlen\` 后，超长会自动丢弃另一端：
 
 \`\`\`python
+from collections import deque
 dq = deque(maxlen=3)  # 赋值变量 dq
 dq.append(1); dq.append(2); dq.append(3)  # 调用 dq.append()：向列表末尾添加元素
 dq.append(4)          # 自动丢弃 1，变成 [2, 3, 4]
@@ -2049,6 +2052,7 @@ dq.append(4)          # 自动丢弃 1，变成 [2, 3, 4]
 ### rotate 旋转
 
 \`\`\`python
+from collections import deque
 dq = deque([1, 2, 3, 4, 5])  # 赋值变量 dq
 dq.rotate(2)          # 右转 2 位：[4, 5, 1, 2, 3]
 dq.rotate(-1)         # 左转 1 位
@@ -2299,6 +2303,7 @@ heapq.heappop(h)    # 1（永远弹最小）
 Python 的堆是最小堆，要做最大堆就把元素**取负**：
 
 \`\`\`python
+import heapq
 h = []  # 定义列表 h
 for x in [3, 1, 4, 1, 5]:  # 遍历 [3, 1, 4, 1, 5]，取值给 x
     heapq.heappush(h, -x)  # 调用 heapq.heappush()
@@ -2334,6 +2339,7 @@ bisect.insort(lst, 4)         # 插入 4 保持有序
 对有重复元素的列表：
 
 \`\`\`python
+import bisect
 lst = [1, 3, 3, 3, 5]  # 定义列表 lst
 bisect.bisect_left(lst, 3)    # 1，第一个 3 的位置
 bisect.bisect_right(lst, 3)   # 4，最后一个 3 之后
@@ -2361,6 +2367,7 @@ for s in [85, 92, 78, 90, 88]:  # 遍历 [85, 92, 78, 90, 88]，取值给 s
 ### 应用：成绩分级
 
 \`\`\`python
+import bisect
 breakpoints = [60, 80, 90]  # 定义列表 breakpoints
 grades = "FDCBA"  # 定义字符串 grades
 score = 85  # 定义数值 score

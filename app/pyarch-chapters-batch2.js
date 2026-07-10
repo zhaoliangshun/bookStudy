@@ -1110,6 +1110,7 @@ ISP 不是"方法越少越好",过度拆分会带来新的问题。
 ### 6.1 过度拆分的反例
 
 \`\`\`python
+from typing import Protocol
 # 过度拆分:每个方法一个接口
 class IReadName(Protocol):
     def get_name(self) -> str: ...
@@ -1358,6 +1359,9 @@ ISP 鼓励"小接口组合",这与"组合优于继承"原则一脉相承。
 ### 9.1 用组合代替胖接口
 
 \`\`\`python
+from typing import Protocol
+from abc import abstractmethod
+from abc import ABC
 # 反例:胖接口 + 继承
 class Worker(ABC):
     @abstractmethod
@@ -1411,6 +1415,8 @@ class Human:  # 实现全部
 一个接口包含几十个方法,无所不包。
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 class IService(ABC):
     @abstractmethod
     def login(self): ...
@@ -1432,6 +1438,8 @@ class IService(ABC):
 ### 10.2 胖基类强迫空实现
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 class Base(ABC):
     @abstractmethod
     def feature_a(self): ...
@@ -1453,6 +1461,7 @@ class OnlyA(Base):
 接口里暴露了不应该让使用者知道的方法。
 
 \`\`\`python
+from typing import Protocol
 class IUserService(Protocol):
     def get_user(self, uid: int) -> dict: ...
     def _connect_db(self) -> None: ...      # 内部方法,不该暴露
@@ -1466,6 +1475,7 @@ class IUserService(Protocol):
 每加一个功能就在接口加一个方法,不管其他实现类需不需要。
 
 \`\`\`python
+from typing import Protocol
 # 原本
 class IRepository(Protocol):
     def find(self, id: int) -> dict: ...
@@ -1759,6 +1769,8 @@ class OrderService:
 #### 4.1.3 接口注入(少用)
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 class IServiceInjector(ABC):
     @abstractmethod
     def inject_services(self, repo: IRepository, notifier: INotifier) -> None: ...
@@ -2154,6 +2166,8 @@ class OrderService:
 ### 8.2 抽象依赖细节
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 class IRepository(ABC):
     @abstractmethod
     def execute_sql(self, sql: str) -> list: ...  # ✗ 抽象暴露了 SQL 细节
@@ -2164,6 +2178,8 @@ class IRepository(ABC):
 解决:抽象用业务语义方法。
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 class IRepository(ABC):
     @abstractmethod
     def find(self, id: int) -> dict | None: ...  # ✓ 业务语义
@@ -2174,6 +2190,8 @@ class IRepository(ABC):
 抽象里混入了实现特定细节,迫使所有实现都背负。
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 class IRepository(ABC):
     @abstractmethod
     def find(self, id: int) -> dict | None: ...
@@ -2189,6 +2207,8 @@ class IRepository(ABC):
 每个小工具都抽象成接口,导致接口爆炸。
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 class IStringFormatter(ABC):
     @abstractmethod
     def format(self, s: str) -> str: ...
@@ -2450,6 +2470,8 @@ class FullReductionDiscount(DiscountStrategy):
 通知能力拆成细粒度接口,使用者按需依赖。
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 # ===== 通知抽象(ISP:拆分接口)=====
 class IOrderNotifier(ABC):
     """订单通知:只通知订单相关事件。"""
@@ -2491,6 +2513,8 @@ class SmsNotifier(IOrderNotifier):
 仓储抽象 + 多实现,OrderService 依赖抽象。
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 # ===== 仓储抽象(DIP)=====
 class IOrderRepository(ABC):
     @abstractmethod
@@ -2527,6 +2551,8 @@ class ConsoleLogger(ILogger):
 ### 2.6 数据模型 + 业务编排
 
 \`\`\`python
+from dataclasses import field
+from dataclasses import dataclass
 @dataclass
 class OrderItem:
     name: str
@@ -2696,6 +2722,8 @@ SOLID 不是免费的,滥用会带来"过度设计"问题。
 ### 3.2 经典反例:简单脚本套 SOLID
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 # 需求:读取一个 JSON 文件并打印键的数量
 
 # ✗ 过度设计:套 SOLID

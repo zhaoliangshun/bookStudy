@@ -51,6 +51,7 @@ asyncio.run(main())
 ## 五、main 函数的常见写法
 
 \`\`\`python
+import asyncio
 async def main():
     # 1. 初始化
     # 2. 启动任务
@@ -208,6 +209,7 @@ b = await t2
 ## 三、create_task 的返回值
 
 \`\`\`python
+import asyncio
 task = asyncio.create_task(some_coro())
 print(task)  # <Task pending name='Task-1' coro=<some_coro() running at ...>>
 \`\`\`

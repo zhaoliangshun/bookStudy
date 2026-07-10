@@ -100,6 +100,7 @@ Path("a") / "/b" / "c"   # PosixPath('/b/c')，左侧被丢弃
 \`Path\` 提供了一组只读属性，拆解路径各部分：
 
 \`\`\`python
+from pathlib import Path
 p = Path("/data/logs/2026/app.log")
 
 p.parent      # Path('/data/logs/2026')  父目录
@@ -165,6 +166,7 @@ except FileNotFoundError:
 ## 六、创建与删除：mkdir / rmdir / unlink
 
 \`\`\`python
+from pathlib import Path
 p = Path("data/logs")
 
 # 创建目录
@@ -870,6 +872,7 @@ json.dumps({"now": datetime.now()})   # TypeError: Object of type datetime is no
 解决办法是传 \`default\` 钩子函数，\`dumps\` 遇到不认识的类型时会调用它：
 
 \`\`\`python
+import json
 from datetime import datetime, date
 
 def default(obj):
@@ -1217,6 +1220,7 @@ with open("out.tsv", "w", encoding="utf-8", newline="") as f:
 更复杂的格式可以用 \`dialect\` 把一组参数封装复用：
 
 \`\`\`python
+import csv
 csv.register_dialect("pipe", delimiter="|", lineterminator="\\n")
 with open("data.txt", encoding="utf-8", newline="") as f:
     for row in csv.reader(f, dialect="pipe"):
@@ -1464,6 +1468,7 @@ for dirpath, dirnames, filenames in os.walk("."):
 关键技巧：**修改 \`dirnames\` 可以控制遍历行为**。比如想跳过 \`.git\` 目录：
 
 \`\`\`python
+import os
 for dirpath, dirnames, filenames in os.walk("."):
     dirnames[:] = [d for d in dirnames if d != ".git"]  # 原地修改，跳过 .git
     for fn in filenames:
@@ -1605,6 +1610,7 @@ def file_hash(path, chunk=65536):
 实战中"按 .gitignore 过滤"很常见——遍历时跳过 \`.git\`、\`node_modules\`、\`__pycache__\`、\`venv\` 等。简单做法是维护一个忽略集合：
 
 \`\`\`python
+import os
 IGNORE = {".git", "node_modules", "__pycache__", ".venv", "dist", "build"}
 for dirpath, dirnames, filenames in os.walk("."):
     dirnames[:] = [d for d in dirnames if d not in IGNORE]   # 原地剪枝

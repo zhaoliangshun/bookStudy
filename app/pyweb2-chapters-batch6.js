@@ -473,6 +473,7 @@ get_current_active_user  →  检查是否禁用，返回 User
 ### Demo 5：基于角色的依赖
 
 \`\`\`python
+from typing import Annotated
 from fastapi import Depends, HTTPException, status
 
 async def get_admin_user(
@@ -963,6 +964,7 @@ FastAPI 的 \`OAuth2PasswordBearer\` 支持 scopes 参数，登录时用户可�
 ### Demo 4：Scope 控制
 
 \`\`\`python
+from typing import Annotated
 from fastapi import FastAPI, Depends, HTTPException, status, Security
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, SecurityScopes
 
@@ -1500,6 +1502,7 @@ save_path = UPLOAD_DIR / file.filename  # filename 可能是 "../../etc/passwd"
 **防御**：用 \`Path(filename).name\` 只取文件名部分，或生成随机文件名。
 
 \`\`\`python
+from pathlib import Path
 import uuid
 # 生成随机文件名，完全不用客户端的 filename
 ext = Path(file.filename).suffix  # 只取扩展名

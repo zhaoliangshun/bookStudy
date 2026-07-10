@@ -162,6 +162,7 @@ print(hello("tom"))
 \`@decorator\` 只是上面 \`func = decorator(func)\` 的语法糖：
 
 \`\`\`python
+from math import log
 @log
 def hello(name):
     return "hello, " + name
@@ -588,6 +589,7 @@ print(list(repeat(7, 3)))  # [7, 7, 7]
 ### 8.2 组合与拼接
 
 \`\`\`python
+from itertools import count
 from itertools import chain, islice, groupby
 
 # chain: 把多个可迭代对象拼起来

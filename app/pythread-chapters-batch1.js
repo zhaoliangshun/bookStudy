@@ -970,6 +970,7 @@ t = threading.Thread(target=task, daemon=True)  # 创建线程时直接传 daemo
 
 ### 方法二：start 前设置
 \`\`\`python
+import threading
 t = threading.Thread(target=task)  # 先创建线程对象（此时 daemon 默认为 False）
 t.daemon = True  # 在 start 前把 daemon 属性改为 True
 t.start()  # start() 启动线程（daemon 必须在 start 前设置，否则会报错）
@@ -977,6 +978,7 @@ t.start()  # start() 启动线程（daemon 必须在 start 前设置，否则会
 
 ### 方法三：类继承时设置
 \`\`\`python
+import threading
 class MyThread(threading.Thread):  # 继承 Thread 类
     def __init__(self):  # 构造方法
         super().__init__()  # 先调用父类 __init__ 初始化线程内部状态

@@ -542,6 +542,7 @@ if __name__ == "__main__":
 ### 7.2 代码结构差异
 
 \`\`\`python
+from abc import ABC
 # 策略:外部注入,Context 不主动切换
 class Order:
     def __init__(self, strategy: DiscountStrategy):
@@ -1354,6 +1355,7 @@ if __name__ == "__main__":
 ### 7.3 代码对比
 
 \`\`\`python
+from typing import Callable
 # 观察者:Subject 直接持有 Observer
 class Subject:
     def notify(self):
@@ -2122,6 +2124,7 @@ order.discount = NormalDiscount()  # 切换,不关心之前
 命令可序列化保存,用于崩溃恢复或重放:
 
 \`\`\`python
+from dataclasses import dataclass
 import json
 import pickle
 
@@ -2160,6 +2163,8 @@ for item in data:
 命令天然适配异步任务队列:
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 import asyncio
 from typing import Awaitable
 
@@ -2419,6 +2424,8 @@ class XMLImporter:
 把流程骨架抽到父类,子类只填差异化的步骤:
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 class DataImporter(ABC):
     def import_file(self, path):  # 模板方法
         raw = self.read_file(path)
@@ -2668,6 +2675,8 @@ def import_file(self, path: str) -> int:
 Python 没有 \`final\` 关键字,模板方法靠约定不重写。可以用装饰器或命名约定:
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 def final(method):
     """标记方法为 final,子类重写时警告。"""
     method.__is_final__ = True
@@ -3960,6 +3969,8 @@ Koa、Redux、Django middleware 都是洋葱模型。
 异步责任链:
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 import asyncio
 
 class AsyncHandler(ABC):
@@ -4218,6 +4229,8 @@ class Order:
 把每个状态封装成类,状态类自己决定能做什么、怎么切换:
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 class OrderState(ABC):
     @abstractmethod
     def pay(self, order): ...

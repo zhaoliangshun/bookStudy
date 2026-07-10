@@ -120,6 +120,7 @@ print(re.fullmatch(r"hello", s))        # None（后面还有 world）
 \`match\` / \`search\` / \`fullmatch\` 返回的是 \`Match\` 对象（没匹配到返回 \`None\`）。Match 对象常用方法：
 
 \`\`\`python
+import re
 m = re.search(r"(\\w+)@(\\w+)", "联系 tom@example.com")  # 将 re.search(r"(\\w+)@(\\w+)", "联系 tom@example.com") 赋给 m
 print(m.group(0))   # tom@example —— 整个匹配
 print(m.group(1))   # tom —— 第 1 个分组
@@ -133,6 +134,7 @@ print(m.span())     # (3, 15) —— (start, end)
 ⚠️ 注意：用 \`match\` / \`search\` 时，**一定要先判断是否为 None 再调用 \`.group()\`**，否则没匹配到会抛 \`AttributeError\`。
 
 \`\`\`python
+import re
 m = re.search(r"xyz", "hello")     # 将 re.search(r"xyz", "hello") 赋给 m
 if m:                              # 如果 m 成立
     print(m.group())
@@ -162,6 +164,7 @@ print(re.findall(r"(\\d{3})-(\\d{4})", "010-1234, 021-5678"))
 \`finditer\` 在匹配结果很多、字符串很大时更省内存，因为它「惰性」地一个一个 yield：
 
 \`\`\`python
+import re
 for m in re.finditer(r"\\d+", "a1 b22 c333"):
     print(m.group(), m.span())
 # 1 (1, 2)
@@ -188,6 +191,7 @@ print(new, n)  # a# b# c# 3
 **函数替换**是 \`sub\` 最强大的用法：每个匹配会被传给函数，函数返回的字符串作为替换结果：
 
 \`\`\`python
+import re
 # 把所有数字加 1
 def add_one(m):                    # 定义函数 add_one，参数：m
     return str(int(m.group()) + 1) # 返回 str(int(m.group()) + 1)
@@ -248,6 +252,7 @@ for s in ["13800138000", "12345", "19900001111"]:
 \`pattern.pattern\` 和 \`pattern.flags\` 可以查看模式和标志：
 
 \`\`\`python
+import re
 p = re.compile(r"abc", re.IGNORECASE)  # 将 re.compile(r"abc", re.IGNORECASE) 赋给 p
 print(p.pattern)  # abc
 print(p.flags)    # 34（IGNORECASE=2 + UNICODE=32 等）
@@ -461,6 +466,7 @@ print(m.groupdict())     # {'year': '2024', 'month': '03', 'day': '15'}
 引用命名分组：在模式内用 \`(?P=name)\`，在替换里用 \`\\g<name>\`：
 
 \`\`\`python
+import re
 # 匹配重复的单词
 print(re.search(r"\\b(\\w+)\\s+(?P=\\1)\\b", "the the cat").group())
 # the the
@@ -526,6 +532,7 @@ print(re.sub(r"(?<=\\d)(?=(\\d{3})+$)", ",", s))  # 1,234,567
 提取价格里的数字（去掉 ¥ 符号）：
 
 \`\`\`python
+import re
 # 找出 ¥ 后面的数字，但不包含 ¥
 print(re.findall(r"(?<=￥)\\d+", "￥100 和 ￥200"))
 # ['100', '200']
@@ -708,6 +715,8 @@ ReDoS（Regular Expression Denial of Service）是指某些正则在遇到特定
 \`.\` 会匹配几乎所有字符，回溯空间大。能用 \`[^<>]\` 这种「明确的非匹配」就别用 \`.*\`。比如提取 HTML 标签内容：
 
 \`\`\`python
+import html
+import re
 # 不推荐：.* 回溯空间大
 re.search(r"<b>(.*?)</b>", html)   # 对 re 调用 search 方法，参数 r"<b>(.*?)</b>", html
 # 推荐：明确「不是 <」的字符
@@ -719,6 +728,7 @@ re.search(r"<b>([^<]*)</b>", html) # 对 re 调用 search 方法，参数 r"<b>(
 能加 \`^\` \`$\` \`\\b\` 锚定就加，能大幅减少搜索范围：
 
 \`\`\`python
+import re
 # 不加锚，每个位置都尝试匹配
 re.search(r"\\d{11}", text)        # 对 re 调用 search 方法，参数 r"\\d{11}", text
 # 加锚定，只在边界处尝试
@@ -767,6 +777,7 @@ print(re.search(r"start.*end", text, re.S))  # 匹配 —— DOTALL 让 . 匹配
 正则里反斜杠多，Python 字符串里反斜杠也是转义符，两层叠加极易出错。**永远用原始字符串 \`r""\` 写正则**：
 
 \`\`\`python
+import re
 # 错误：\\\\d 在普通字符串里是 \\d，但容易写错
 # 正确：用 r"" 让反斜杠原样传递
 re.findall(r"\\d+", "a1")   # ['1']
@@ -2542,6 +2553,7 @@ ORM 优点：面向对象、防注入、可换数据库。缺点：性能略低�
 ⚠️ 内存数据库在**同一连接**内共享。如果多次 \`connect(":memory:")\` 会得到**不同**的库。要多个连接共享内存库，用 \`file::memory:?cache=shared\`：
 
 \`\`\`python
+import sqlite3
 # 共享内存库（可被多个连接访问）
 conn1 = sqlite3.connect("file::memory:?cache=shared", uri=True)  # 将 sqlite3.connect("file::memory:?cache=shared", uri=True) 赋给 conn1
 conn2 = sqlite3.connect("file::memory:?cache=shared", uri=True)  # 将 sqlite3.connect("file::memory:?cache=shared", uri=True) 赋给 conn2
@@ -3117,6 +3129,7 @@ print(p.parts)     # ('/', 'home', 'user', 'docs', 'report.tar.gz')
 \`with_suffix(new)\` 改后缀，\`with_name(new)\` 改文件名，返回新 Path（不改原对象）：
 
 \`\`\`python
+from pathlib import Path
 p = Path("report.tar.gz")          # 将 Path("report.tar.gz") 赋给 p
 print(p.with_suffix(".zip"))    # report.tar.zip
 print(p.with_name("data.csv"))  # data.csv
@@ -3378,6 +3391,7 @@ with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=True) as f:
 ### 8.2 TemporaryDirectory
 
 \`\`\`python
+from pathlib import Path
 import tempfile                    # 导入 tempfile 模块
 
 with tempfile.TemporaryDirectory() as d:
@@ -5071,6 +5085,7 @@ parser.add_argument("--mode", action="store", default="x")  # 默认动作
 像 \`git add\`、\`git commit\` 这种「主命令 + 子命令」结构，用 \`add_subparsers\`：
 
 \`\`\`python
+import argparse
 parser = argparse.ArgumentParser(prog="mytool")  # 将 argparse.ArgumentParser(prog="mytool") 赋给 parser
 sub = parser.add_subparsers(dest="cmd", required=True)  # 将 parser.add_subparsers(dest="cmd", required=True) 赋给 sub
 

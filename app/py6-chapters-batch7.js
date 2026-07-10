@@ -660,7 +660,8 @@ JSON标准不支持datetime、set、自定义类。两种解决方案：
 1. **\`default\` 参数**：传入一个函数，遇到无法序列化的对象时调用
 2. **继承\`json.JSONEncoder\`**：重写\`default\`方法，更通用
 
-\`\`\`python# 自定义序列化函数：把 datetime 转为 ISO 格式字符串
+\`\`\`pythonimport json
+# 自定义序列化函数：把 datetime 转为 ISO 格式字符串
 def default_serializer(obj):
     if isinstance(obj, datetime):
         return obj.isoformat()  # 转为 "2024-01-01T12:00:00" 格式
@@ -1942,7 +1943,8 @@ class MyContext:
 
 用生成器语法更简洁：
 
-\`\`\`python# 用 contextmanager 装饰器把生成器函数转为上下文管理器，免去定义类
+\`\`\`pythonfrom contextlib import contextmanager
+# 用 contextmanager 装饰器把生成器函数转为上下文管理器，免去定义类
 @contextmanager
 # 定义上下文管理器函数
 def my_context():
@@ -1970,7 +1972,9 @@ def my_context():
 1. **\`contextlib.suppress(*exceptions)\`**：忽略指定异常（等价于 try/except pass，但更优雅）
 2. **\`contextlib.ExitStack\`**：动态管理多个资源（适合数量不定的资源）
 
-\`\`\`python# suppress：忽略指定异常，比 try/except pass 更清晰
+\`\`\`pythonfrom contextlib import ExitStack
+import os
+# suppress：忽略指定异常，比 try/except pass 更清晰
 from contextlib import suppress
 with suppress(FileNotFoundError):
     os.remove('maybe_missing.txt')  # 文件不存在也不报错

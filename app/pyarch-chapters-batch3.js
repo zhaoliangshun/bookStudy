@@ -257,6 +257,8 @@ def create_logger(kind: str):
 GoF 的策略模式要把每个算法封装成一个类。Python 里函数就是一等公民,直接传函数:
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 # Java 式策略:每个策略一个类
 class SortStrategy(ABC):
     @abstractmethod
@@ -411,6 +413,8 @@ Namespaces are one honking great idea -- let's do more of those!
 下面是一段典型过度设计的代码,违反了 Python 之禅的"Simple is better than complex":
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 # ❌ 过度设计:为一个简单的日志功能建了 4 层抽象
 class ILogger(ABC):
     @abstractmethod
@@ -935,6 +939,7 @@ class TestOrder:
 依赖注入(Dependency Injection, DI)是单例的现代替代品。核心思想:**不在函数内部去取全局对象,而是把依赖作为参数传进来**。
 
 \`\`\`python
+from logging import Logger
 # ✅ 依赖注入:依赖显式可见
 def process_order(order, logger: Logger, db: Database):
     logger.log(f"处理订单 {order.id}")
@@ -958,6 +963,7 @@ process_order(order, my_logger, my_db)
 Python 不需要重型 DI 框架(如 Java 的 Spring),简单的做法:
 
 \`\`\`python
+from logging import Logger
 # 应用启动时组装依赖
 class App:
     def __init__(self):
@@ -1227,6 +1233,8 @@ def do_another():
 一个常见误解是"Creator 就是个工厂,只负责造对象"。其实 GoF 的 Creator 通常**还包含业务逻辑**:
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 class Creator(ABC):
     @abstractmethod
     def factory_method(self) -> Product:
@@ -1494,6 +1502,7 @@ logger.log("应用启动")
 严格说**简单工厂不是 GoF 模式**,它只是个常用技巧:一个工厂类(或函数)根据参数返回不同产品。
 
 \`\`\`python
+from logging import Logger
 class SimpleLogFactory:
     @staticmethod
     def create(kind: str) -> Logger:
@@ -1518,6 +1527,8 @@ logger = SimpleLogFactory.create("console")
 把"选哪个"延迟到**子类**。每加一种产品,加一个工厂子类,不改现有代码。
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 class LogFactory(ABC):
     @abstractmethod
     def create(self) -> Logger: ...
@@ -1540,6 +1551,8 @@ class ConsoleLogFactory(LogFactory):
 一个工厂创建**一族相关产品**(下一章详讲)。
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 class UIFactory(ABC):
     @abstractmethod
     def create_button(self): ...
@@ -1591,6 +1604,7 @@ class WinFactory(UIFactory):
 一个工厂类 + 参数,根据参数返回不同产品。这其实是简单工厂和工厂方法的折中:
 
 \`\`\`python
+from logging import Logger
 class LogFactory:
     @staticmethod
     def create(kind: str) -> Logger:
@@ -1608,6 +1622,7 @@ class LogFactory:
 工厂方法返回的对象可以是单例(配合上一章):
 
 \`\`\`python
+from logging import Logger
 class LoggerFactory:
     _instances = {}
 
@@ -1850,6 +1865,8 @@ class PostgresMigration(Migration):
 ### 4.4 抽象工厂与具体工厂
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 # ---- 抽象工厂 ----
 class DatabaseFactory(ABC):
     @abstractmethod
@@ -2813,6 +2830,7 @@ Builder 的初始状态可以从一个原型克隆而来,在此基础上修改�
 ### 11.1 用 dataclass 的 field 简化默认值
 
 \`\`\`python
+from typing import Optional
 from dataclasses import dataclass, field
 
 @dataclass

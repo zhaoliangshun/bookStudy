@@ -72,6 +72,8 @@ ABC 是插件系统的基石。框架定义 \`Plugin\` 抽象基类，要求每�
 ABC 中**普通方法**调用**抽象方法**，子类只重写抽象方法，骨架由父类控制：
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 class DataPipeline(ABC):
     def run(self):              # 模板方法（普通方法）
         data = self.fetch()
@@ -370,6 +372,7 @@ class Color(Enum):
 \`IntEnum\` 同时是 \`int\` 子类，可以和整数比较、参与运算：
 
 \`\`\`python
+from enum import IntEnum
 class Priority(IntEnum):
     LOW = 1
     MEDIUM = 2
@@ -426,6 +429,7 @@ len(Status)                    # 成员数
 默认 \`__str__\` 显示 \`Status.PAID\`，可重写为只显示名字或值：
 
 \`\`\`python
+from enum import Enum
 class Status(Enum):
     NEW = 1
     PAID = 2
@@ -1565,6 +1569,8 @@ Square 不能无感替换 Rectangle。**修复**：不要让 Square 继承 Recta
 #### ❌ 反例：胖接口
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 class Machine(ABC):
     @abstractmethod
     def print(self): ...
@@ -1582,6 +1588,8 @@ class SimplePrinter(Machine):
 #### ✅ 正例：拆分接口
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 class Printer(ABC):
     @abstractmethod
     def print(self): ...
@@ -2018,6 +2026,7 @@ isinstance(42, SizedProtocol)        # False
 ### 业务场景：插件接口
 
 \`\`\`python
+from typing import Protocol
 class Plugin(Protocol):
     name: str
     def load(self) -> None: ...
@@ -2044,6 +2053,7 @@ install_plugin(MyPlugin())   # ✅ 结构匹配
 不希望业务代码强依赖某个具体库（如 \`requests\`），可以定义 Protocol：
 
 \`\`\`python
+from typing import Protocol
 class HTTPClient(Protocol):
     def get(self, url: str) -> "Response": ...
 
@@ -2057,6 +2067,8 @@ class Service:
 ### 与 isinstance 配合
 
 加 \`@runtime_checkable\` 后可以做运行时类型检查：\`\`\`python
+from typing import Protocol
+from typing import runtime_checkable
 @runtime_checkable
 class Closeable(Protocol):
     def close(self) -> None: ...
@@ -2119,6 +2131,7 @@ class Box(Protocol[T]):
 #### 2. Protocol 继承
 
 \`\`\`python
+from typing import Protocol
 class Readable(Protocol):
     def read(self) -> str: ...
 

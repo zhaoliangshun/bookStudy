@@ -1084,6 +1084,7 @@ client.get("http://user-service/users/1")  # K8s Service 负责转发
 客户端从注册中心拿到实例列表,自己选一个调用:
 
 \`\`\`python
+import random
 # 轮询
 class RoundRobin:
     def __init__(self):
@@ -3254,6 +3255,8 @@ class KafkaProducer(MessageProducer):
 ### 9.2 消费者抽象
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 class MessageConsumer(ABC):
     @abstractmethod
     def consume(self, topic: str, handler: callable):

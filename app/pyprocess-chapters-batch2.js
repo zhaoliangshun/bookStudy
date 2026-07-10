@@ -35,6 +35,7 @@ export const chapters = [
 ## 二、Process 的关键参数
 
 \`\`\`python
+import multiprocessing
 multiprocessing.Process(
     group=None,        # 保留参数，未来扩展用，现在必须为 None
     target=None,       # 子进程要执行的函数
@@ -48,6 +49,7 @@ multiprocessing.Process(
 ### 4 种启动方式
 
 \`\`\`python
+from multiprocessing import Process
 # 1. 传函数 + 位置参数
 p = Process(target=work, args=(10, 20))
 
@@ -92,6 +94,7 @@ None    → 子进程还没结束
 **实战技巧**：\`.join()\` 后检查 \`p.exitcode\`，可以知道子进程是不是正常结束的：
 
 \`\`\`python
+from multiprocessing import Process
 p = Process(target=work)
 p.start()
 p.join()
@@ -313,6 +316,7 @@ def run(self):
 当你需要**面向对象**地组织子进程代码时（比如要传额外状态、要在前后加钩子）：
 
 \`\`\`python
+import multiprocessing
 class MyProcess(multiprocessing.Process):
     def __init__(self, name, data):
         super().__init__()
@@ -337,6 +341,7 @@ p.join()
 ### 错误 1：在主进程里直接调 \`run()\`
 
 \`\`\`python
+from multiprocessing import Process
 p = Process(target=work)
 p.run()  # ❌ 不会启动子进程！只是在当前进程同步执行 work
 \`\`\`
@@ -346,6 +351,7 @@ p.run()  # ❌ 不会启动子进程！只是在当前进程同步执行 work
 ### 错误 2：start() 同一个进程两次
 
 \`\`\`python
+from multiprocessing import Process
 p = Process(target=work)
 p.start()
 p.start()  # ❌ 报错: RuntimeError: process already started
@@ -545,6 +551,7 @@ if __name__ == "__main__":
 主进程跑完代码就会**自动结束**——而此时子进程可能还没跑完！结果就是：
 
 \`\`\`python
+from multiprocessing import Process
 # ❌ 危险的写法
 p = Process(target=long_work)
 p.start()
@@ -555,6 +562,7 @@ p.start()
 **正确做法**：用 \`join()\` 等子进程结束：
 
 \`\`\`python
+from multiprocessing import Process
 # ✅ 正确
 p = Process(target=long_work)
 p.start()
@@ -588,6 +596,7 @@ while p.is_alive():
 ### 4. 多个进程同时 join
 
 \`\`\`python
+from multiprocessing import Process
 processes = [Process(target=work, args=(i,)) for i in range(5)]
 for p in processes:
     p.start()
@@ -601,6 +610,7 @@ for p in processes:
 join 之后建议做这些事：
 
 \`\`\`python
+from multiprocessing import Process
 p = Process(target=work)
 p.start()
 p.join()
@@ -654,6 +664,7 @@ del p
 如果子进程陷入死循环或跑太久了，怎么强制结束？
 
 \`\`\`python
+from multiprocessing import Process
 import multiprocessing
 import time
 
@@ -855,6 +866,7 @@ p = Process(target=work, daemon=True)
 ### 方法 2：start 前设置
 
 \`\`\`python
+from multiprocessing import Process
 p = Process(target=work)
 p.daemon = True  # 必须在 start 之前
 p.start()
@@ -863,6 +875,7 @@ p.start()
 ### 方法 3：全局默认（不推荐）
 
 \`\`\`python
+import multiprocessing
 multiprocessing.current_process().daemon = True
 # 改当前进程的 daemon 属性，一般没这么用
 \`\`\`
@@ -883,6 +896,7 @@ multiprocessing.current_process().daemon = True
 daemon 在主进程退出时被**强制 SIGKILL**，连"清理 try/finally"的机会都没有。如果 daemon 还能创建子进程，那子子进程就没人管了，会变成孤儿进程。
 
 \`\`\`python
+from multiprocessing import Process
 def daemon_wants_child():
     p = Process(target=child)  # ❌ 守护进程里再开子进程会报错
     p.start()
@@ -897,6 +911,8 @@ p.start()
 ### 用法 1：心跳监控
 
 \`\`\`python
+import time
+from multiprocessing import Process
 def heartbeat():
     """每 1 秒打印一次心跳"""
     while True:

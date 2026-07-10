@@ -477,6 +477,7 @@ t1.join()    # 等待结束
 ### 2. Lock —— 互斥锁
 
 \`\`\`python
+import threading
 lock = threading.Lock()
 balance = 0
 
@@ -507,6 +508,7 @@ def deposit(n):
 普通 Lock 如果同一线程二次 acquire 会死锁。RLock 允许同一线程多次获取，需对应次数释放：
 
 \`\`\`python
+import threading
 rlock = threading.RLock()
 
 def recursive(n):
@@ -521,6 +523,7 @@ def recursive(n):
 用于"等待某个条件成立"的场景，经典生产者-消费者：
 
 \`\`\`python
+import threading
 condition = threading.Condition()
 queue = []
 
@@ -541,6 +544,7 @@ def consumer():
 限制同时访问的资源数（如数据库连接池）：
 
 \`\`\`python
+import threading
 sem = threading.Semaphore(3)  # 最多 3 个并发
 
 def use_resource():
@@ -554,6 +558,7 @@ def use_resource():
 用于线程间简单通知：
 
 \`\`\`python
+import threading
 event = threading.Event()
 
 def waiter():
@@ -699,6 +704,8 @@ Python 3.8+ 还有 \`multiprocessing.shared_memory\` 模块，可共享真正的
 ### 多线程适用：I/O 密集
 
 \`\`\`python
+import urllib
+from concurrent.futures import ThreadPoolExecutor
 # 网络/磁盘 I/O 为主，CPU 空闲等待
 with ThreadPoolExecutor(16) as ex:
     ex.map(urllib.request.urlopen, urls)
@@ -707,6 +714,7 @@ with ThreadPoolExecutor(16) as ex:
 ### 多进程适用：CPU 密集
 
 \`\`\`python
+from concurrent.futures import ProcessPoolExecutor
 # 纯计算，需要多核并行
 with ProcessPoolExecutor(4) as ex:
     results = list(ex.map(heavy_compute, chunks))
@@ -793,6 +801,7 @@ asyncio 有 5 个核心概念：
 ### 1. 协程（Coroutine）
 
 \`\`\`python
+import asyncio
 async def fetch_data():
     print("开始")
     await asyncio.sleep(1)  # 遇到 await 主动让出
@@ -825,6 +834,7 @@ Future 是更底层的"将来才有结果"的对象，Task 是 Future 的子类�
 Python 的 async/await 和 JS 几乎一模一样（Python 3.5 比 JS 早一年引入）：
 
 \`\`\`python
+import asyncio
 async def fetch_user(uid):
     data = await db.get(uid)   # await 暂停，等结果
     return data
@@ -1007,6 +1017,7 @@ async def main():
 ### 3. 在异步代码里用同步锁
 
 \`\`\`python
+import asyncio
 import threading
 lock = threading.Lock()
 

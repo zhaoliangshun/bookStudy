@@ -1148,6 +1148,7 @@ print("及格" if score >= 60 else "不及格")
 #### 3. 在列表推导式中
 
 \`\`\`python
+import numbers
 # 列表推导式中嵌入三元表达式，正数保留否则置 0
 [x if x > 0 else 0 for x in numbers]
 \`\`\`

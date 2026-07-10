@@ -997,6 +997,7 @@ print("• 真实场景：aiohttp 替代 requests，aiofiles 替代 open")`,
 \`asyncio.Queue\` 是 \`queue.Queue\` 的异步版——同样的生产者消费者模式，但 \`put/get\` 是 \`async\`：
 
 \`\`\`python
+import asyncio
 q = asyncio.Queue(maxsize=10)
 
 async def producer():
@@ -1054,6 +1055,7 @@ await asyncio.gather(producer(q, 10), consumer(q))
 协程天生轻量，开几十个生产者消费者没压力：
 
 \`\`\`python
+import asyncio
 producers = [asyncio.create_task(producer(q, f"P{i}")) for i in range(3)]
 consumers = [asyncio.create_task(consumer(q, f"C{i}")) for i in range(2)]
 \`\`\`
@@ -1217,6 +1219,7 @@ async def inc():
 ## asyncio.Lock
 
 \`\`\`python
+import asyncio
 lock = asyncio.Lock()
 
 async def safe_update():
@@ -1231,6 +1234,7 @@ async def safe_update():
 最常用！控制"同时只能有 N 个协程"做某事——比如限并发请求数：
 
 \`\`\`python
+import asyncio
 sem = asyncio.Semaphore(10)        # 最多 10 个并发
 
 async def fetch(url):
@@ -1245,6 +1249,7 @@ async def fetch(url):
 \`Event\` 用来"通知所有等待者"：
 
 \`\`\`python
+import asyncio
 ready = asyncio.Event()
 
 async def worker():

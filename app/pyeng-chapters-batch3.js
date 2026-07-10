@@ -1006,6 +1006,7 @@ parser.add_argument("--config", metavar="FILE")
 argparse 最省心的功能之一。一旦你给参数加了 \`help\`,它会自动生成格式工整的帮助:
 
 \`\`\`python
+import argparse
 parser = argparse.ArgumentParser(
     prog="mytool",
     description="一个文件处理工具",
@@ -1045,6 +1046,7 @@ options:
 默认情况下,argparse 会把帮助文本里的换行折叠成一行,长描述挤在一起。用 \`formatter_class\` 可以保留原始格式:
 
 \`\`\`python
+import argparse
 parser = argparse.ArgumentParser(
     prog="mytool",
     description="第一行描述\\n第二行描述\\n第三行描述",
@@ -1063,6 +1065,7 @@ parser = argparse.ArgumentParser(
 | \`argparse.MetavarTypeHelpFormatter\` | 用 type 名作为 metavar(如 \`--port int\` 而非 \`--port PORT\`) |
 
 \`\`\`python
+import argparse
 # 组合使用:既保留换行,又自动显示默认值
 parser = argparse.ArgumentParser(
     formatter_class=argparse.RawTextHelpFormatter,
@@ -1338,6 +1341,7 @@ else:
 子命令最大的价值是:每个子命令有自己的参数集。\`git add\` 有 \`--all\`,\`git commit\` 有 \`-m\`,\`git push\` 有 \`--force\`。
 
 \`\`\`python
+import argparse
 parser = argparse.ArgumentParser(prog="mygit")
 sub = parser.add_subparsers(dest="cmd", required=True)
 
@@ -1374,6 +1378,7 @@ $ python mygit.py add --force   # 错:add 没有 --force
 用 \`set_defaults(func=...)\` 给每个子命令绑定一个处理函数,\`parse_args\` 后直接调用:
 
 \`\`\`python
+import argparse
 def do_add(args):
     print(f"添加: {args.paths}")
 
@@ -1403,6 +1408,7 @@ args.func(args)  # 直接调用对应函数,无需 if/elif 判断 args.cmd
 argparse 支持子命令嵌套(子命令的子命令),但写起来比较啰嗦:
 
 \`\`\`python
+import argparse
 parser = argparse.ArgumentParser(prog="myapp")
 sub1 = parser.add_subparsers(dest="cmd")
 
@@ -1431,6 +1437,7 @@ $ python myapp.py db rollback --steps 3
 上一章 \`fileproc.py\` 里我们手写了 \`--upper\` 和 \`--lower\` 的互斥判断。argparse 其实内置了这个功能:
 
 \`\`\`python
+import argparse
 parser = argparse.ArgumentParser()
 group = parser.add_mutually_exclusive_group()
 group.add_argument("--upper", action="store_true", help="转大写")
@@ -1479,6 +1486,7 @@ group.add_argument("-q", "--quiet", action="store_true", help="安静模式")
 当参数很多时,帮助会变成一长串。用 \`add_argument_group\` 把相关参数分组,帮助里会分块显示:
 
 \`\`\`python
+import argparse
 parser = argparse.ArgumentParser(prog="server")
 
 # 输入输出组
@@ -1662,6 +1670,7 @@ demo.py 1.2.3
 当参数特别多(比如一堆 \`--include\`),全部写在命令行很丑。argparse 支持从文件读参数:
 
 \`\`\`python
+import argparse
 parser = argparse.ArgumentParser(fromfile_prefix_chars="@")
 parser.add_argument("--include", action="append", default=[])
 parser.add_argument("--exclude", action="append", default=[])
@@ -2801,6 +2810,7 @@ Typer 的精髓在于:**它读取函数签名,自动生成 CLI 参数**。规则
 | \`x: Enum\` | 选项,限定取值 | 自动从 Enum 取 choices |
 
 \`\`\`python
+from typing import Optional
 def process(
     name: str,                        # 无默认值 → 必填位置参数(Argument)
     count: int = 1,                   # int 注解 → --count INTEGER,有默认值 → 可选

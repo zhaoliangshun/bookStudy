@@ -684,6 +684,8 @@ for t in threads: t.join()
 CPU 密集型任务多线程**不加速反减速**：
 
 \`\`\`python
+from threading import Thread
+import time
 def cpu_task(n):
     total = 0
     for i in range(n):

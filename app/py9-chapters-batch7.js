@@ -43,6 +43,7 @@ os.path.splitext(path)   # 分扩展名
 ## os.environ：环境变量
 
 \`\`\`python
+import os
 os.environ.get("HOME")       # 取
 os.environ["MY_VAR"] = "x"   # 设
 \`\`\`
@@ -470,6 +471,8 @@ from datetime import date, time, datetime, timedelta  # 从 datetime 导入 date
 ## 创建
 
 \`\`\`python
+from datetime import datetime
+from datetime import date
 date.today()                  # 今天
 datetime.now()                # 现在（本地）
 datetime.now().date()         # 今天的日期部分
@@ -480,6 +483,7 @@ datetime(2024, 1, 1, 12, 0)   # 指定日期时间
 ## 格式化：strftime
 
 \`\`\`python
+from datetime import datetime
 datetime.now().strftime("%Y-%m-%d %H:%M:%S")   # "2024-01-15 10:30:00"
 datetime.now().strftime("%Y年%m月%d日")          # "2024年01月15日"
 \`\`\`
@@ -517,6 +521,7 @@ now - delta            # 一周前
 ## 时间戳
 
 \`\`\`python
+from datetime import datetime
 import time  # 导入模块 time
 time.time()                       # 当前时间戳（秒）
 datetime.fromtimestamp(ts)        # 时间戳 → datetime
@@ -739,6 +744,7 @@ import json  # 导入模块 json
 ## 序列化：dumps
 
 \`\`\`python
+import json
 data = {"name": "小明", "age": 18}  # 定义字典 data
 s = json.dumps(data)              # 字典 → JSON 字符串
 s = json.dumps(data, ensure_ascii=False)  # 中文不转义
@@ -754,6 +760,7 @@ data = json.loads(s)              # JSON 字符串 → 字典
 ## 文件读写
 
 \`\`\`python
+import json
 with open("data.json", "w") as f:  # 使用上下文管理器：open("data.json", "w") as f
     json.dump(data, f, ensure_ascii=False, indent=2)  # 调用 json.dump()
 
@@ -766,6 +773,7 @@ with open("data.json") as f:  # 使用上下文管理器：open("data.json") as 
 JSON 默认只认基本类型。要序列化对象，需提供转换函数：
 
 \`\`\`python
+import json
 class Point:  # 定义类 Point
     def __init__(self, x, y): ...  # 定义函数 __init__，参数：self, x, y
 
@@ -1048,6 +1056,7 @@ import re  # 导入模块 re
 ## 基本函数
 
 \`\`\`python
+import re
 re.match(pattern, string)     # 从开头匹配
 re.search(pattern, string)    # 搜索任意位置（第一个）
 re.findall(pattern, string)   # 找所有
@@ -1089,6 +1098,7 @@ re.split(pattern, string)     # 分割
 ## 分组与捕获
 
 \`\`\`python
+import re
 m = re.match(r"(\\d+)-(\\d+)", "123-456")  # 赋值变量 m
 m.group(0)    # "123-456" 整个匹配
 m.group(1)    # "123" 第1组
@@ -1098,6 +1108,7 @@ m.group(2)    # "456" 第2组
 ## 命名分组
 
 \`\`\`python
+import re
 m = re.match(r"(?P<year>\\d+)-(?P<month>\\d+)", "2024-01")  # 赋值变量 m
 m.group("year")    # "2024"
 \`\`\`
@@ -1105,6 +1116,7 @@ m.group("year")    # "2024"
 ## 预编译
 
 \`\`\`python
+import re
 pattern = re.compile(r"\\d+")  # 赋值变量 pattern
 pattern.findall("a1b22c333")    # ['1', '22', '333']
 \`\`\`
@@ -1605,6 +1617,7 @@ import math  # 导入模块 math
 ### 常用函数
 
 \`\`\`python
+import math
 math.sqrt(16)      # 4.0 平方根
 math.pow(2, 10)    # 1024.0 幂
 math.log(100, 10)  # 2.0 对数
@@ -1620,6 +1633,7 @@ math.lcm(4, 6)     # 12 最小公倍数（3.9+）
 ### 取整
 
 \`\`\`python
+import math
 math.floor(3.7)    # 3 向下取整
 math.ceil(3.2)     # 4 向上取整
 math.trunc(3.9)    # 3 截断小数部分
@@ -1638,6 +1652,7 @@ math.nan      # 非数字
 ### 三角函数
 
 \`\`\`python
+import math
 math.sin(math.pi/2)    # 1.0
 math.cos(0)            # 1.0
 math.tan(0)            # 0.0
@@ -1831,6 +1846,7 @@ import random  # 导入模块 random
 ## 基本函数
 
 \`\`\`python
+import random
 random.random()              # 0.0 ~ 1.0 浮点
 random.randint(a, b)         # a ~ b 整数（含两端）
 random.randrange(0, 10, 2)   # 0,2,4,6,8（步长2）
@@ -1840,6 +1856,7 @@ random.uniform(a, b)         # a ~ b 浮点
 ## 序列操作
 
 \`\`\`python
+import random
 random.choice(seq)           # 随机选一个
 random.choices(seq, k=3)     # 选多个（可重复）
 random.sample(seq, k=3)      # 选多个（不重复）
@@ -1857,6 +1874,7 @@ random.seed(42)    # 固定种子，结果可复现
 ## 加权随机
 
 \`\`\`python
+import random
 random.choices(["A", "B", "C"], weights=[1, 2, 3], k=5)  # 调用 random.choices()
 # A 概率 1/6, B 2/6, C 3/6
 \`\`\`
@@ -2113,6 +2131,7 @@ def apply(f: Callable[[int, int], int], a, b):  # 定义函数 apply，参数：
 ## TypeVar：泛型
 
 \`\`\`python
+from typing import List
 from typing import TypeVar  # 从 typing 导入 TypeVar
 
 T = TypeVar("T")  # 赋值变量 T
@@ -2397,6 +2416,7 @@ class Point:  # 定义类 Point
 ## 默认值
 
 \`\`\`python
+from dataclasses import dataclass
 @dataclass  # 应用装饰器 dataclass
 class User:  # 定义类 User
     name: str  # 执行操作
@@ -2422,6 +2442,7 @@ class Student:  # 定义类 Student
 ## 常用 field 参数
 
 \`\`\`python
+from dataclasses import field
 field(default=10)               # 默认值
 field(default_factory=list)     # 可变默认值
 field(init=False)               # 不在 __init__ 里
@@ -2432,6 +2453,7 @@ field(compare=False)            # 不参与比较
 ## frozen 不可变
 
 \`\`\`python
+from dataclasses import dataclass
 @dataclass(frozen=True)  # 应用装饰器 dataclass
 class Point:  # 定义类 Point
     x: int  # 执行操作
@@ -2448,6 +2470,7 @@ frozen 后可哈希，能当字典 key。
 dataclass 还是类，能加方法：
 
 \`\`\`python
+from dataclasses import dataclass
 @dataclass  # 应用装饰器 dataclass
 class Circle:  # 定义类 Circle
     r: float  # 执行操作
@@ -2721,6 +2744,7 @@ logging.critical("严重")  # 调用 logging.critical()
 ## basicConfig 配置
 
 \`\`\`python
+import logging
 logging.basicConfig(  # 调用 logging.basicConfig()
     level=logging.DEBUG,  # 赋值变量 level
     format="%(asctime)s [%(levelname)s] %(message)s",  # 定义字符串 format
@@ -2741,6 +2765,7 @@ logging.basicConfig(  # 调用 logging.basicConfig()
 ## Logger 对象
 
 \`\`\`python
+import logging
 logger = logging.getLogger("my_app")  # 赋值变量 logger
 logger.info("...")  # 调用 logger.info()
 \`\`\`
@@ -3042,6 +3067,7 @@ import subprocess  # 导入模块 subprocess
 ## run：最常用
 
 \`\`\`python
+import subprocess
 result = subprocess.run(["echo", "hello"], capture_output=True, text=True)  # 赋值变量 result
 result.stdout      # "hello\\n"
 result.returncode  # 0（成功）
@@ -3059,6 +3085,7 @@ result.returncode  # 0（成功）
 推荐用**列表**形式：
 
 \`\`\`python
+import subprocess
 subprocess.run(["ls", "-l", "/tmp"])    # ✅
 subprocess.run("ls -l /tmp", shell=True)  # ⚠️ 字符串 + shell
 \`\`\`
@@ -3074,6 +3101,7 @@ subprocess.run(["false"], check=True)    # 抛 CalledProcessError
 ## Popen：更细控制
 
 \`\`\`python
+import subprocess
 p = subprocess.Popen(["cmd"], stdout=subprocess.PIPE)  # 赋值变量 p
 out, err = p.communicate()    # 等待完成
 \`\`\`
@@ -3086,6 +3114,7 @@ Popen 适合：
 ## 管道
 
 \`\`\`python
+import subprocess
 # 用 shell 管道
 subprocess.run("ls | grep .py", shell=True, capture_output=True, text=True)  # 调用 subprocess.run()：运行
 \`\`\`

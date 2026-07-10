@@ -600,6 +600,7 @@ query = select(users.c.age).distinct()
 ### 聚合函数
 
 \`\`\`python
+import select
 # COUNT/SUM/AVG/MAX/MIN
 query = select(
     func.count().label('total'),
@@ -621,6 +622,7 @@ query = select(
 ### JOIN关联查询
 
 \`\`\`python
+import select
 # INNER JOIN
 query = select(
     users.c.name,
@@ -1482,6 +1484,7 @@ for name, total, count in result:
 子查询引用外层查询的列：
 
 \`\`\`python
+import select
 # 查询每个用户最新的订单
 latest_order = select(Order.id).where(
     Order.user_id == User.id

@@ -1890,6 +1890,7 @@ type Service = Loggable & Serializable;
 \`\`\`
 
 \`\`\`python
+from typing import Protocol
 # Python：用 Protocol 多继承
 class Loggable(Protocol):
     def log(self, msg: str) -> None: ...

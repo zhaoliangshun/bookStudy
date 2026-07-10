@@ -98,6 +98,7 @@ list(p.parents)        # [PosixPath('/a/b/c'), PosixPath('/a/b'), PosixPath('/a'
 Unix 系统下创建目录可以指定权限：
 
 \`\`\`python
+from pathlib import Path
 # rwxr-xr-x (755)
 Path("data").mkdir(mode=0o755)
 \`\`\`
@@ -300,6 +301,7 @@ for p in Path(".").iterdir():
 ## 三、glob() 通配符匹配
 
 \`\`\`python
+from pathlib import Path
 # 当前目录所有 .py
 list(Path(".").glob("*.py"))
 
@@ -318,6 +320,7 @@ list(Path(".").glob("[abc]*.txt"))    # a/b/c 开头的
 ## 四、rglob() 递归匹配
 
 \`\`\`python
+from pathlib import Path
 # 递归找所有 .py
 list(Path(".").rglob("*.py"))
 
@@ -347,6 +350,7 @@ for root, dirs, files in os.walk("."):
 ## 六、按条件过滤
 
 \`\`\`python
+from pathlib import Path
 # 找大于 1MB 的文件
 for f in Path(".").rglob("*"):
     if f.is_file() and f.stat().st_size > 1_000_000:
@@ -601,6 +605,7 @@ Path("old.txt").rename("new.txt")
 ## 五、删除
 
 \`\`\`python
+from pathlib import Path
 import shutil
 
 # 删文件
@@ -863,6 +868,7 @@ for f in Path("photos").glob("*.jpg"):
 ## 三、批量加序号
 
 \`\`\`python
+from pathlib import Path
 files = sorted(Path("photos").glob("*.jpg"))
 for i, f in enumerate(files, 1):
     new_name = f"photo_{i:03d}.jpg"
@@ -886,6 +892,7 @@ for f in Path(".").iterdir():
 ## 五、按修改时间排序后编号
 
 \`\`\`python
+from pathlib import Path
 files = sorted(Path("photos").glob("*.jpg"),
                key=lambda p: p.stat().st_mtime)
 for i, f in enumerate(files, 1):
@@ -1244,6 +1251,7 @@ with tempfile.TemporaryDirectory() as tmpdir:
 ## 八、NamedTemporaryFile 的坑
 
 \`\`\`python
+import tempfile
 # 默认 delete=True
 with tempfile.NamedTemporaryFile() as f:
     f.write(b"data")
@@ -1280,6 +1288,7 @@ with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".log") as f:
 
 ### 3. 跨进程安全
 \`\`\`python
+import tempfile
 # 在 /tmp 下创建文件，多个进程不会冲突
 fd, name = tempfile.mkstemp()
 \`\`\`

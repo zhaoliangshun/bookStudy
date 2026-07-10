@@ -1292,6 +1292,7 @@ except LowLevelError as e:
 当新异常和原始异常有**明确因果关系**，且原始信息对调试有帮助时：
 
 \`\`\`python
+import urllib
 try:                               # 尝试执行以下代码块
     response = urllib.request.urlopen(url)
 except URLError as e:
@@ -1805,6 +1806,7 @@ with managed_resource("DB") as r:
 如果 \`with\` 块里抛了异常，异常会在 \`yield\` 处重新抛出，你可以用 try/except 捕获：
 
 \`\`\`python
+from contextlib import contextmanager
 @contextmanager
 def tolerant_context():
     try:
@@ -1852,6 +1854,7 @@ with ExitStack() as stack:
 \`ExitStack\` 还能注册回调（\`callback\`）和动态进入上下文，是构建复杂资源管理的利器。
 
 \`\`\`python
+from contextlib import ExitStack
 with ExitStack() as stack:
     stack.callback(print, "清理 1")
     stack.callback(print, "清理 2")
@@ -2847,6 +2850,7 @@ print("全部演示完成。")
 4. **不要假装没发生**：异常是真实的错误，假装不存在只会让 bug 更难找。
 
 \`\`\`python
+import json
 # 反面教材
 try:                               # 尝试执行以下代码块
     do_everything()
@@ -2907,6 +2911,7 @@ value = data.get(key, default)   # 比 try/except KeyError 快
 ## 三、异常粒度：try 块要尽量小
 
 \`\`\`python
+from math import log
 # 不好：try 块太大，混在一起
 try:                               # 尝试执行以下代码块
     data = open(path).read()      # OSError
@@ -2969,6 +2974,7 @@ except Exception:
 ### 5.2 traceback 模块格式化
 
 \`\`\`python
+from math import log
 import traceback
 
 try:                               # 尝试执行以下代码块

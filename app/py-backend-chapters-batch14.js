@@ -846,6 +846,7 @@ async def list_users(
 使用Link头返回分页链接，符合REST规范：
 
 \`\`\`python
+from urllib.request import Request
 from fastapi.responses import JSONResponse
 
 def paginate(query, page: int, page_size: int, request: Request):
@@ -1182,6 +1183,7 @@ SELECT * FROM articles ORDER BY created_at DESC LIMIT 20 OFFSET 1000000;
 解决方案：
 
 \`\`\`python
+from datetime import datetime
 # 1. 使用游标分页（推荐）
 # 2. 子查询优化
 def fast_offset_paginate(query, page: int, page_size: int):
@@ -2561,6 +2563,7 @@ async def articles(self, info) -> List[Article]:
 使用DataLoader后，相同的批量请求会被合并：
 
 \`\`\`python
+from urllib.request import Request
 # 使用DataLoader后
 # User: 1次查询
 # Articles: 1次批量查询（所有用户ID一起查）

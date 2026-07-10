@@ -540,6 +540,7 @@ async def create_user(user: UserCreate):
 FastAPI 的依赖注入系统是其最优雅的设计之一：
 
 \`\`\`python
+from typing import Optional
 from fastapi import Depends, Header
 
 # 公共参数提取
@@ -2007,6 +2008,7 @@ client = httpx.Client(http2=True)
 #### 并发请求
 
 \`\`\`python
+import asyncio
 async def fetch_all(urls):
     async with httpx.AsyncClient() as client:
         tasks = [client.get(url) for url in urls]
@@ -3052,6 +3054,7 @@ except Exception:
 如果不想安装第三方库，标准库 \`html.parser\` 也能解析 HTML，只是 API 不如 BeautifulSoup 友好：
 
 \`\`\`python
+import html
 from html.parser import HTMLParser
 
 class MyParser(HTMLParser):

@@ -367,6 +367,7 @@ async def read_items(
 ### Path路径参数校验
 
 \`\`\`python
+from typing import Optional
 from fastapi import FastAPI, Path, Query
 
 app = FastAPI()
@@ -415,6 +416,7 @@ async def read_items(
 | regex | 正则匹配 | regex=r'^\\d+$' |
 
 \`\`\`python
+from pathlib import Path
 from fastapi import FastAPI, Query
 app = FastAPI()
 
@@ -602,6 +604,7 @@ class AllTypes(BaseModel):
 ### 嵌套模型
 
 \`\`\`python
+from typing import Optional
 from pydantic import BaseModel
 from typing import List, Dict, Set, Tuple
 

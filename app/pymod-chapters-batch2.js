@@ -62,6 +62,8 @@ print(os_mod.getcwd())
 但 \`__import__\` 的返回值语义**有点反直觉**，尤其在处理 \`from X.Y import Z\` 时：
 
 \`\`\`python
+import sys
+import os
 # import os.path  →  __import__ 不带 fromlist 时返回的是 os（顶层包）
 mod = __import__("os.path")
 print(mod is os)          # True，返回 os 而不是 os.path！
@@ -79,6 +81,7 @@ print(mod is sys.modules["os.path"])   # True，带 fromlist 时返回叶子模�
 \`importlib.import_module(name, package=None)\` 是 Python 官方推荐的动态导入接口，语义直观：
 
 \`\`\`python
+import sys
 import importlib
 
 # 导入顶层模块

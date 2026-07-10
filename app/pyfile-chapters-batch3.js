@@ -439,6 +439,7 @@ shutil.copytree("project", "project_backup", dirs_exist_ok=True)  # 3.8+
 ## demo 3:copytree 用 ignore 过滤
 
 \`\`\`python
+import os
 import shutil
 
 # 方法一:用 ignore_patterns 工厂函数
@@ -493,6 +494,7 @@ shutil.move("old_folder", "new_folder")
 **返回值**:\`shutil.move\` 返回目标路径,常用于知道最终落地位置:
 
 \`\`\`python
+import shutil
 final = shutil.move("data.csv", "archive/")
 print(f"文件最终位置: {final}")  # archive/data.csv
 \`\`\`
@@ -1577,6 +1579,7 @@ for mtime, f in recently_modified(".", n=5, pattern="*.py"):
 5. **通配符越具体越快**:\`*.py\` 比 \`*\` 快得多(后者要 stat 每个文件)
 
 \`\`\`python
+from pathlib import Path
 # 性能对比(伪代码)
 import os, time
 

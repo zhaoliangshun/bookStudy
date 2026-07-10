@@ -2403,6 +2403,7 @@ class UserService:
 ### 7.3 模型贫血(Anemic Model)
 
 \`\`\`python
+from dataclasses import dataclass
 # 反模式:模型只有字段,没有行为
 @dataclass
 class Order:
@@ -2415,6 +2416,7 @@ class Order:
 业务规则全堆在 service,模型变成纯数据容器。这导致 service 越来越胖,模型越来越瘦,违背了 OOP 的「数据+行为在一起」原则。**领域驱动设计(DDD)** 提倡「充血模型」:把行为放回模型。
 
 \`\`\`python
+from dataclasses import dataclass
 # 正确:充血模型
 @dataclass
 class Order:
@@ -2899,6 +2901,8 @@ if __name__ == "__main__":
 \`\`\`
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 # 内层定义
 class IOrderRepository(ABC):
     @abstractmethod
@@ -2975,6 +2979,8 @@ class QueryOrderUseCase: ...
 ### 4.2 接口隔离的例子
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 # 反模式:胖接口
 class IRepository(ABC):
     @abstractmethod
@@ -2990,6 +2996,7 @@ class IRepository(ABC):
 用户仓储被迫实现订单方法,违背接口隔离。
 
 \`\`\`python
+from abc import ABC
 # 正确:细粒度接口
 class IUserRepository(ABC):
     def save_user(self, u): ...
@@ -3505,6 +3512,7 @@ class Order(Base):                    # ❌ 继承 ORM Base
 这违背了「实体独立于框架」。正确做法是:**实体是纯 Python 类,ORM 实体是另一个类,仓储层做转换**。
 
 \`\`\`python
+from dataclasses import dataclass
 # entities/order.py  —— 纯实体
 @dataclass
 class Order:
@@ -3553,6 +3561,7 @@ class OrderUseCase:
 ### 7.4 端口定义过胖
 
 \`\`\`python
+from abc import ABC
 # 反模式:一个端口包含所有方法
 class IRepo(ABC):
     def save_order(self): ...
@@ -4192,6 +4201,7 @@ def test_publish_invalid_content(service):
 ### 9.1 端口定义在适配器包
 
 \`\`\`python
+from abc import ABC
 # 反模式:端口写在 adapters 包
 # adapters/sqlalchemy_repo.py
 class IPostRepository(ABC): ...  # ❌ 端口应在 core/ports
@@ -4217,6 +4227,8 @@ class PostService:
 ### 9.3 把端口设计成「数据库语义」
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 # 反模式:端口方法名带 SQL 语义
 class IPostRepository(ABC):
     @abstractmethod
@@ -4228,6 +4240,8 @@ class IPostRepository(ABC):
 端口应该用**业务语义**:
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 class IPostRepository(ABC):
     @abstractmethod
     def save(self, post): ...
@@ -4641,6 +4655,9 @@ post_service = PostService(repo)
 ### 7.3 六边形版本
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
+from dataclasses import dataclass
 # entities/post.py
 @dataclass
 class Post:

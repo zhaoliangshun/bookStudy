@@ -443,6 +443,7 @@ database:
 ### 6.3 反模式三:配置不校验
 
 \`\`\`python
+import os
 # 反模式:直接用,出错运行时才暴露
 port = int(os.environ["PORT"])   # 如果 PORT="abc" 会崩
 \`\`\`
@@ -450,6 +451,7 @@ port = int(os.environ["PORT"])   # 如果 PORT="abc" 会崩
 **正确做法**:用 pydantic 校验配置,启动时就把错误暴露出来。
 
 \`\`\`python
+import os
 from pydantic import BaseModel, Field, ValidationError
 
 class AppConfig(BaseModel):
@@ -817,6 +819,7 @@ configparser 内置两种插值风格:
 - \`ExtendedInterpolation\`:\`\${section:key}\` 语法,可跨段引用
 
 \`\`\`python
+import configparser
 config = configparser.ConfigParser(
     interpolation=configparser.ExtendedInterpolation()
 )
@@ -877,6 +880,7 @@ with open("config.ini") as f:
 ### 3.3 从字符串读取
 
 \`\`\`python
+import configparser
 from io import StringIO
 
 config_string = """
@@ -1212,6 +1216,7 @@ config = load_config("production")
 ### 6.3 高级用法
 
 \`\`\`python
+import configparser
 # 1. 保留键名大小写(默认会转小写)
 class CaseSensitiveParser(configparser.ConfigParser):
     def optionxform(self, optionstr):
@@ -3929,6 +3934,7 @@ port = int(os.environ.get("PORT", "8000"))   # 默认 8000
 **反模式**:启动时不校验,运行时才暴露错误。
 
 \`\`\`python
+import os
 port = os.environ.get("PORT")   # 字符串,没校验
 # 几小时后,某处 port + 1 报错
 \`\`\`
@@ -3936,6 +3942,7 @@ port = os.environ.get("PORT")   # 字符串,没校验
 **正确做法**:启动时用 pydantic 校验,失败立即退出。
 
 \`\`\`python
+import os
 from pydantic import BaseModel, Field, ValidationError
 import sys
 

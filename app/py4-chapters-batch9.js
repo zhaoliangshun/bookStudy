@@ -538,6 +538,7 @@ class SwallowError:
 - \`yield\` 之后的代码 = \`__exit__\`
 
 \`\`\`python
+import contextlib
 @contextlib.contextmanager
 def tag(name):
     print(f"<{name}>")     # __enter__ 逻辑
@@ -548,6 +549,7 @@ def tag(name):
 如果 with 块抛异常，生成器会在 yield 处抛出，需要用 try/finally 包裹 yield 来保证清理：
 
 \`\`\`python
+import contextlib
 @contextlib.contextmanager
 def temp_chdir(path):
     old = os.getcwd()
@@ -595,6 +597,8 @@ print("outside:", round(t.elapsed, 4))   # 仍可访问 t.elapsed
 ### 2. @contextmanager 生成器实现
 
 \`\`\`python
+import os
+import contextlib
 @contextlib.contextmanager
 def temp_chdir(path):
     old = os.getcwd()       # __enter__ 部分
@@ -612,6 +616,7 @@ print("after, cwd:", os.getcwd())
 ### 3. 抑制异常的 contextmanager
 
 \`\`\`python
+import contextlib
 @contextlib.contextmanager
 def suppress(*excs):
     try:
@@ -627,6 +632,9 @@ print("继续运行")
 ### 4. ExitStack 动态管理多个上下文
 
 \`\`\`python
+import contextlib
+import os
+import tempfile
 with tempfile.TemporaryDirectory() as tmp:
     paths = []
     for i in range(3):

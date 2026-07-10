@@ -90,6 +90,7 @@ const BOOK_CATEGORIES = [
       { path: "/nodejs", label: "Node.js 入门", icon: "🟢" },
       { path: "/nodejs2", label: "Node.js 进阶", icon: "🟢" },
       { path: "/nodejs3", label: "Node.js 源码", icon: "🟡" },
+      { path: "/noderun", label: "Node.js 运行原理", icon: "⚙️" },
       { path: "/nodejs-backend", label: "Node.js Web后端实战", icon: "🏗️" },
       { path: "/ts", label: "TypeScript 入门", icon: "🔷" },
       { path: "/ts2", label: "TypeScript 进阶", icon: "🔶" },
@@ -1014,7 +1015,7 @@ export default function Sidebar({
       return [
         allHidden
           ? { label: "恢复此分组", icon: "↩️", onClick: () => unhideChapters(ids) }
-          : { label: "删除此分组所有章节", icon: "🗑️", danger: true, onClick: () => hideChapters(ids) },
+          : { label: "已读此分组所有章节", icon: "✅", onClick: () => hideChapters(ids) },
       ];
     }
 
@@ -1033,8 +1034,6 @@ export default function Sidebar({
       if (isHidden) {
         items.push({ label: "恢复此章节", icon: "↩️", onClick: () => unhideChapter(ctxMenu.target) });
       } else {
-        items.push({ label: "删除此章节", icon: "🗑️", danger: true, onClick: () => hideChapter(ctxMenu.target) });
-        items.push({ divider: true });
         items.push({ label: "已读此章节", icon: "✅", onClick: () => hideChapter(ctxMenu.target) });
       }
       return items;

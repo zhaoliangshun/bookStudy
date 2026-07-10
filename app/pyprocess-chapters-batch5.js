@@ -866,6 +866,7 @@ print(result.returncode)  # 退出码（0 表示成功）
 ### 风格 1：run + check + capture_output（推荐）
 
 \`\`\`python
+import subprocess
 result = subprocess.run(
     ["python3", "-c", "print('hello')"],
     capture_output=True, text=True, check=True, timeout=10
@@ -876,6 +877,7 @@ print(result.stdout)  # "hello\\n"
 ### 风格 2：shell=True（用 shell 解析命令）
 
 \`\`\`python
+import subprocess
 result = subprocess.run(
     "ls -l | grep .py",
     shell=True, capture_output=True, text=True
@@ -887,6 +889,7 @@ result = subprocess.run(
 ### 风格 3：Popen（高级用法）
 
 \`\`\`python
+import subprocess
 proc = subprocess.Popen(
     ["long_running_cmd"],
     stdout=subprocess.PIPE,
@@ -918,6 +921,7 @@ if __name__ == "__main__":
 ### 1. 永远用列表传参数
 
 \`\`\`python
+import subprocess
 # ❌ 危险（shell 注入）
 subprocess.run(f"ls {user_input}", shell=True)
 
@@ -1115,6 +1119,7 @@ if __name__ == "__main__":
 **修复**：
 
 \`\`\`python
+import multiprocessing
 # ✅ 启动代码包在 main 块里
 if __name__ == "__main__":
     pool = multiprocessing.Pool(4)
@@ -1144,6 +1149,7 @@ pool.map(double, data)
 **修复**：用 with 语句管理 Pool / Process
 
 \`\`\`python
+import multiprocessing
 # ✅ with 自动 close + join
 with multiprocessing.Pool(4) as pool:
     results = pool.map(work, tasks)
@@ -1158,6 +1164,7 @@ with multiprocessing.Pool(4) as pool:
 **修复**：用 Queue、Pipe、Value、Manager 显式通信
 
 \`\`\`python
+import multiprocessing
 # ❌
 GLOBAL_VAR = 0
 def worker():
@@ -1184,6 +1191,7 @@ def worker(shared):
 **修复**：
 
 \`\`\`python
+from multiprocessing import Process
 # ❌ 重要任务用 daemon
 p = Process(target=write_to_db, daemon=True)
 
@@ -1240,6 +1248,7 @@ pool = multiprocessing.Pool(processes=4, maxtasksperchild=10)
 **修复**：用 spawn 模式保持一致
 
 \`\`\`python
+import multiprocessing
 ctx = multiprocessing.get_context("spawn")
 with ctx.Pool(4) as pool:
     ...
@@ -1252,6 +1261,7 @@ with ctx.Pool(4) as pool:
 **修复**：
 
 \`\`\`python
+import subprocess
 # ❌
 subprocess.run(f"ls {user_input}", shell=True)
 
@@ -1502,6 +1512,7 @@ if __name__ == "__main__":
 ### 1. 永远用 \`if __name__ == "__main__":\`
 
 \`\`\`python
+import multiprocessing
 if __name__ == "__main__":
     pool = multiprocessing.Pool(4)
     ...
@@ -1510,6 +1521,7 @@ if __name__ == "__main__":
 ### 2. 用 spawn 保持跨平台一致
 
 \`\`\`python
+import multiprocessing
 ctx = multiprocessing.get_context("spawn")
 pool = ctx.Pool(4)
 \`\`\`
@@ -1517,6 +1529,7 @@ pool = ctx.Pool(4)
 ### 3. 用 with 管理 Pool / Process
 
 \`\`\`python
+import multiprocessing
 with multiprocessing.Pool(4) as pool:
     results = pool.map(work, data)
 \`\`\`
@@ -1573,6 +1586,7 @@ def worker(x):
 ### 2. 用 logging 模块
 
 \`\`\`python
+import multiprocessing
 import logging
 logger = multiprocessing.log_to_stderr(logging.DEBUG)
 \`\`\`

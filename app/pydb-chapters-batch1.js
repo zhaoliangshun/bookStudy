@@ -356,6 +356,7 @@ cursor.execute("SELECT * FROM users WHERE name = %(name)s", {"name": name})
 - DDL（CREATE/DROP/ALTER）通常会自动提交。
 
 \`\`\`python
+import sqlite3
 conn = sqlite3.connect(":memory:")
 conn.execute("INSERT INTO t VALUES (1)")
 conn.rollback()   # 撤销上面的插入
@@ -379,6 +380,7 @@ with conn:
 sqlite3 默认返回元组，用索引访问可读性差。设置 \`row_factory = sqlite3.Row\` 后，可以按列名访问，代码更清晰：
 
 \`\`\`python
+import sqlite3
 conn.row_factory = sqlite3.Row
 row = cursor.execute("SELECT * FROM users").fetchone()
 print(row["name"])       # 按列名
@@ -1154,6 +1156,7 @@ conn = sqlite3.connect("file:path/to/db?mode=ro", uri=True)
 ### 只读模式
 
 \`\`\`python
+import sqlite3
 # 以只读方式打开，任何写操作都会报错
 conn = sqlite3.connect("file:mydata.db?mode=ro", uri=True)
 conn.execute("INSERT ...")  # 报错：attempt to write a readonly database
@@ -1861,6 +1864,7 @@ ROLLBACK;       -- 回滚（撤销所有操作）
 ### Python 中的事务
 
 \`\`\`python
+import sqlite3
 conn = sqlite3.connect(":memory:")
 try:
     conn.execute("BEGIN")
@@ -1922,6 +1926,7 @@ conn.execute("PRAGMA wal_autocheckpoint = 1000")  # WAL 满 1000 页自动 check
 多个连接同时写时，后到的会等待锁释放。\`busy_timeout\` 设置等待时间：
 
 \`\`\`python
+import sqlite3
 conn = sqlite3.connect("my.db", timeout=5.0)   # 等 5 秒
 conn.execute("PRAGMA busy_timeout = 5000")       # 毫秒
 \`\`\`

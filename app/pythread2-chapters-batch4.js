@@ -105,6 +105,7 @@ join 模式：               Barrier 模式：
 多个线程需要"同时"开始干活，避免有的先跑有的后跑。
 
 \`\`\`python
+from threading import Barrier
 barrier = Barrier(3)
 def runner():
     barrier.wait()   # 都到齐了再跑
@@ -321,6 +322,7 @@ shared_list = []
 ### put 和 get 的阻塞行为
 
 \`\`\`python
+from queue import Queue
 q = Queue(maxsize=2)
 
 # 阻塞模式（默认）
@@ -376,6 +378,7 @@ q3 = PriorityQueue()   # 优先级队列
 \`PriorityQueue\` 的元素必须是**可比较的元组** \`(priority, item)\`，按优先级从小到大出队：
 
 \`\`\`python
+from queue import PriorityQueue
 pq = PriorityQueue()
 pq.put((2, "普通任务"))
 pq.put((1, "紧急任务"))
@@ -403,6 +406,7 @@ pq.get()   # → (1, "紧急任务")，优先级数字小的先出
 - 不用手动计数（\`task_done\`/\`join\` 自动跟踪）。
 
 \`\`\`python
+from queue import Queue
 q = Queue()
 
 def producer():
@@ -726,6 +730,7 @@ local_data.__dicts__ = {
 每个线程维护自己的数据库连接，避免多线程共用一个连接出错。
 
 \`\`\`python
+import threading
 local_conn = threading.local()
 
 def get_conn():
@@ -739,6 +744,7 @@ def get_conn():
 Web 框架里，每个请求在一个线程里处理，可以用 threadlocal 保存当前请求的用户、请求 ID 等。
 
 \`\`\`python
+import threading
 local_ctx = threading.local()
 
 def handle_request(request):
@@ -1132,6 +1138,7 @@ for future in as_completed(futures):
 强烈推荐用 \`with\` 语句：
 
 \`\`\`python
+from concurrent.futures import ThreadPoolExecutor
 with ThreadPoolExecutor(max_workers=4) as executor:
     # 提交任务
     executor.submit(...)
@@ -1143,6 +1150,7 @@ with ThreadPoolExecutor(max_workers=4) as executor:
 如果不用 \`with\`，要手动调 \`shutdown()\`：
 
 \`\`\`python
+from concurrent.futures import ThreadPoolExecutor
 executor = ThreadPoolExecutor(max_workers=4)
 try:
     executor.submit(...)
@@ -1155,6 +1163,7 @@ finally:
 ### 模式1：批量提交 + 收集结果
 
 \`\`\`python
+from concurrent.futures import ThreadPoolExecutor
 with ThreadPoolExecutor(max_workers=8) as executor:
     futures = [executor.submit(process, item) for item in items]
     results = [f.result() for f in futures]
@@ -1163,6 +1172,7 @@ with ThreadPoolExecutor(max_workers=8) as executor:
 ### 模式2：先到先处理
 
 \`\`\`python
+from concurrent.futures import ThreadPoolExecutor
 with ThreadPoolExecutor(max_workers=8) as executor:
     futures = {executor.submit(process, item): item for item in items}
     for future in as_completed(futures):
@@ -1177,6 +1187,7 @@ with ThreadPoolExecutor(max_workers=8) as executor:
 ### 模式3：回调链
 
 \`\`\`python
+from concurrent.futures import ThreadPoolExecutor
 def on_done(fut):
     print("完成:", fut.result())
 
@@ -1487,6 +1498,7 @@ def concurrent_download(urls):
 ### 步骤 4：统计耗时
 
 \`\`\`python
+import time
 start = time.time()
 results = concurrent_download(urls)
 elapsed = time.time() - start
@@ -1525,6 +1537,7 @@ future.result(timeout=3)   # 最多等 3 秒
 ### 进度显示
 
 \`\`\`python
+from concurrent.futures import ThreadPoolExecutor
 with ThreadPoolExecutor(max_workers=5) as executor:
     futures = [executor.submit(download, url) for url in urls]
     done_count = 0

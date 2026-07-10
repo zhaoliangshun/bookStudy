@@ -35,6 +35,7 @@ export const chapters = [
 这种事什么时候会真的发生？最常见的就是**递归函数里加锁**。比如：
 
 \`\`\`python
+import threading
 lock = threading.Lock()
 
 def save_tree(node):
@@ -96,6 +97,7 @@ release():
 写一个 \`@synchronized\` 装饰器给函数自动加锁，如果被装饰的函数内部又调了另一个被装饰的函数（用同一把锁），就必须用 \`RLock\`。
 
 \`\`\`python
+import threading
 rlock = threading.RLock()
 
 def synchronized(func):
@@ -316,6 +318,7 @@ release():
 \`BoundedSemaphore\`（有界信号量）在 release 时会检查：**如果计数器已经达到初始值，再 release 就抛 \`ValueError\`**。它能帮你发现"release 比 acquire 多"的错误。
 
 \`\`\`python
+import threading
 sem = threading.BoundedSemaphore(3)   # 初始 3
 sem.acquire()                          # → 2
 sem.acquire()                          # → 1
@@ -346,6 +349,7 @@ def query(sql):
 ### 2. 爬虫限速
 
 \`\`\`python
+import threading
 rate = threading.Semaphore(5)    # 最多 5 个并发请求
 def fetch(url):
     with rate:
@@ -518,6 +522,7 @@ Event 初始 = False（红灯）
 | \`wait(timeout=None)\` | 标志为 \`True\` 立即返回；为 \`False\` 阻塞，直到 \`set\` 或超时 | 红灯时停车等 |
 
 \`\`\`python
+import threading
 event = threading.Event()         # 初始为 False（红灯）
 
 # 工作线程
@@ -549,6 +554,7 @@ event.set()                       # 变绿灯，所有 wait 的线程被唤醒
 ### 1. 等待初始化完成
 
 \`\`\`python
+import threading
 ready = threading.Event()
 
 def worker():
@@ -563,6 +569,7 @@ ready.set()                       # 通知所有工作线程：可以开始了
 ### 2. 优雅停止
 
 \`\`\`python
+import threading
 stop = threading.Event()
 
 def worker():
@@ -577,6 +584,7 @@ stop.set()                        # 发出停止信号，工作线程下轮循�
 ### 3. 定时启动
 
 \`\`\`python
+import threading
 start_event = threading.Event()
 # 到点后
 start_event.set()                 # 所有等 start_event 的线程一起跑
@@ -756,6 +764,7 @@ print("=" * 60)
 这种"检查条件 → 不满足就等 → 被唤醒后再检查"的模式，正是 \`Condition\` 的主场。\`Condition\` 内部 = 一把 \`Lock\` + 一个等待队列，**既能互斥保护共享数据，又能通知等待的线程**。
 
 \`\`\`python
+import threading
 cond = threading.Condition()
 
 with cond:                       # 1. 加锁
@@ -823,6 +832,7 @@ with cond:
 ## 六、经典模式：生产者-消费者
 
 \`\`\`python
+import threading
 buffer = []
 MAX_SIZE = 5
 cond = threading.Condition()
@@ -1038,6 +1048,7 @@ threading.Timer(interval, function, args=None, kwargs=None)
 | \`cancel()\` | 取消定时器（必须在执行前调用，执行了就取消不了） |
 
 \`\`\`python
+import threading
 t = threading.Timer(3.0, hello, args=("world",))
 t.start()        # 3 秒后会执行 hello("world")
 t.cancel()       # 在 3 秒内取消，hello 不会执行
@@ -1048,6 +1059,7 @@ t.cancel()       # 在 3 秒内取消，hello 不会执行
 ## 三、Timer 是 Thread 的子类
 
 \`\`\`python
+import threading
 issubclass(threading.Timer, threading.Thread)
 True
 \`\`\`
@@ -1060,6 +1072,7 @@ True
 4. **可以传 args/kwargs**：像普通 Thread 一样给目标函数传参。
 
 \`\`\`python
+import threading
 t = threading.Timer(2.0, greet, args=("张三",), kwargs={"punct": "!"})
 t.daemon = True        # 设为守护线程，主线程退出时跟着退出
 t.start()
@@ -1074,6 +1087,7 @@ t.start()
 在 Timer 的回调函数里，再启动下一个 Timer：
 
 \`\`\`python
+import threading
 def tick():
     print("滴答")
     # 在回调里启动下一个 Timer，形成周期循环
@@ -1087,6 +1101,7 @@ threading.Timer(2.0, tick).start()   # 启动第一个
 ### 思路二：循环 + sleep（阻塞线程）
 
 \`\`\`python
+import threading
 def loop():
     while not stop.is_set():
         print("滴答")
@@ -1113,6 +1128,7 @@ threading.Thread(target=loop).start()
 ### 1. 超时处理
 
 \`\`\`python
+import threading
 # 5 秒后如果还没完成，强制结束
 def timeout():
     print("操作超时！")
@@ -1122,6 +1138,7 @@ threading.Timer(5.0, timeout).start()
 ### 2. 延迟初始化
 
 \`\`\`python
+import threading
 # 程序启动 10 秒后再预加载缓存
 threading.Timer(10.0, preload_cache).start()
 \`\`\`
@@ -1129,6 +1146,7 @@ threading.Timer(10.0, preload_cache).start()
 ### 3. 定时提醒
 
 \`\`\`python
+import threading
 # 30 分钟后提醒休息
 threading.Timer(30 * 60, remind_rest).start()
 \`\`\`

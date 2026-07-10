@@ -584,6 +584,7 @@ print(cube(5))     # 125
 2. 适配接口：把需要多个参数的函数，包装成只接收一个参数，配合 map 使用。
 
 \`\`\`python
+from functools import partial
 int2 = partial(int, base=2)           # 二进制转换器
 print(int2("1010"))                   # 10
 \`\`\`
@@ -851,6 +852,7 @@ def my_decorator(func):
 如果装饰器本身需要参数（比如指定重试次数、日志级别），就再加一层嵌套：
 
 \`\`\`python
+from functools import wraps
 def repeat(times):
     def decorator(func):
         @wraps(func)
@@ -919,6 +921,7 @@ print(fib(100))   # 瞬间出结果，无缓存会慢到不可用
 类也能做装饰器，用 \`__init__\` 接收被装饰函数，用 \`__call__\` 实现"调用"：
 
 \`\`\`python
+from functools import wraps
 class CallCounter:
     def __init__(self, func):
         self.func = func
@@ -1316,6 +1319,7 @@ with ExitStack() as stack:
 \`ExitStack\` 还能注册任意清理回调：
 
 \`\`\`python
+from contextlib import ExitStack
 with ExitStack() as stack:
     stack.callback(print, "清理动作 1")
     stack.callback(print, "清理动作 2")

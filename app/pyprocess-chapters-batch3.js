@@ -22,6 +22,7 @@ export const chapters = [
 子进程跑完了，结果怎么拿回主进程？直接 return 没用——**子进程是独立的 Python 进程，它 return 的值传不出来**。
 
 \`\`\`python
+from multiprocessing import Process
 # ❌ 这样拿不到子进程的返回值
 def worker():
     return 42
@@ -372,6 +373,7 @@ recv() <──send("回复")────
 ### duplex=True（默认）：双向
 
 \`\`\`python
+from multiprocessing import Pipe
 conn_a, conn_b = Pipe(duplex=True)
 conn_a.send("a 发给 b")
 msg = conn_b.recv()  # 收到 "a 发给 b"
@@ -382,6 +384,7 @@ msg = conn_a.recv()
 ### duplex=False：单向
 
 \`\`\`python
+from multiprocessing import Pipe
 # conn_a 只能发，conn_b 只能收
 parent_conn, child_conn = Pipe(duplex=False)
 parent_conn.send("单向")
@@ -632,6 +635,7 @@ shared_ns = manager.Namespace()    # 共享命名空间（属性可任意设）
 ## 三、为什么不用普通 list？
 
 \`\`\`python
+from multiprocessing import Process
 # ❌ 主进程传的普通 list，子进程拿到的是副本
 def worker(lst):
     lst.append("modified")  # 只改了子进程里的副本
@@ -644,6 +648,7 @@ p.join()
 \`\`\`
 
 \`\`\`python
+import multiprocessing
 # ✅ Manager 的 list 是共享的
 def worker(lst):
     lst.append("modified")
@@ -694,6 +699,7 @@ with shared_lock:
 Manager 是个独立进程（负责代理转发）。用完后必须 \`manager.shutdown()\`：
 
 \`\`\`python
+import multiprocessing
 manager = multiprocessing.Manager()
 try:
     shared = manager.list()
@@ -931,6 +937,7 @@ print(shared_int.value)
 ## 三、Array：共享数组
 
 \`\`\`python
+import multiprocessing
 shared_array = multiprocessing.Array('i', 10)  # 10 个 int
 shared_array[0] = 100
 shared_array[1:4] = [1, 2, 3]
@@ -949,6 +956,7 @@ for i in range(len(shared_array)):
 默认情况下 Value/Array **不带锁**。多个进程同时写会出问题。
 
 \`\`\`python
+from multiprocessing import Value
 # 带锁
 v = Value('i', 0, lock=True)   # 默认就是 True
 
@@ -1229,6 +1237,7 @@ def increment():
 Lock 让**同一时刻只有一个进程能进入临界区**：
 
 \`\`\`python
+import multiprocessing
 lock = multiprocessing.Lock()
 
 def increment():
@@ -1242,6 +1251,7 @@ def increment():
 ## 三、Lock 的 4 个操作
 
 \`\`\`python
+import multiprocessing
 lock = multiprocessing.Lock()
 
 # 方法 1：上下文管理器（推荐）
@@ -1279,6 +1289,7 @@ else:
 死锁 = 两个锁互相等对方释放，导致都卡住。
 
 \`\`\`python
+from threading import Lock
 # 经典死锁
 lock_a = Lock()
 lock_b = Lock()
@@ -1318,6 +1329,7 @@ def worker2():
 \`multiprocessing.RLock\` 允许**同一个进程多次 acquire**：
 
 \`\`\`python
+import multiprocessing
 rlock = multiprocessing.RLock()
 
 def recursive_func(n):

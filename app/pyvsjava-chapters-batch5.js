@@ -392,6 +392,7 @@ public class Counter {
 解决方式两门语言都一样：用锁。
 
 \`\`\`python
+import threading
 lock = threading.Lock()
 def increment():
     global counter
@@ -2283,6 +2284,7 @@ for (int i = 0; i < 3; i++) {
 \`\`\`
 
 \`\`\`python
+import threading
 # Python：threading.Barrier 完全对应
 barrier = threading.Barrier(3, action=lambda: print("all reached"))
 

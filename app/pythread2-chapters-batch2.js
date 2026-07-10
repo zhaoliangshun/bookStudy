@@ -91,6 +91,7 @@ t.start()   # 启动线程，进入就绪状态
 - 如果想再跑一次，必须重新 \`Thread()\` 创建一个新对象。
 
 \`\`\`python
+import threading
 t = threading.Thread(target=worker)
 t.start()
 t.start()   # ❌ RuntimeError！
@@ -105,6 +106,7 @@ t.start()   # ❌ RuntimeError！
 **重要**：**永远不要直接调用 \`t.run()\`**！直接调用会在**当前线程**同步执行，相当于普通函数调用，根本不会创建新线程：
 
 \`\`\`python
+import threading
 t = threading.Thread(target=worker)
 t.run()    # ❌ 在当前线程执行，没有创建新线程
 t.start()  # ✅ 启动新线程，由新线程调用 run()
@@ -113,6 +115,7 @@ t.start()  # ✅ 启动新线程，由新线程调用 run()
 如果你需要自定义线程行为，可以继承 \`Thread\` 重写 \`run()\`：
 
 \`\`\`python
+import threading
 class MyThread(threading.Thread):
     def run(self):
         print(f"{self.name} 自定义 run 执行")
@@ -142,6 +145,7 @@ t.start()   # 会调用重写的 run()
 **常见用法**：等待所有子线程完成再退出主线程：
 
 \`\`\`python
+from threading import Thread
 threads = [Thread(target=task) for _ in range(5)]
 for t in threads:
     t.start()
@@ -157,6 +161,7 @@ print("所有子线程都完成了")
 \`is_alive()\` 返回 \`True\` 表示线程**正在运行或就绪或阻塞**（即"还没终止"）；返回 \`False\` 表示线程已终止。
 
 \`\`\`python
+from threading import Thread
 t = Thread(target=task)
 print(t.is_alive())   # False，还没 start
 t.start()
@@ -298,6 +303,7 @@ print("=" * 60)
 \`args\` 是一个**元组**，按位置传给 \`target\` 函数：
 
 \`\`\`python
+import threading
 def download(url, save_path):
     print(f"下载 {url} 到 {save_path}")
 
@@ -313,6 +319,7 @@ t.start()
 \`kwargs\` 是一个**字典**，按键名传给函数：
 
 \`\`\`python
+import threading
 t = threading.Thread(
     target=download,
     kwargs={"url": "https://example.com", "save_path": "/tmp/file"}
@@ -323,6 +330,7 @@ t.start()
 \`args\` 和 \`kwargs\` 可以混用：
 
 \`\`\`python
+import threading
 def task(a, b, c=10, d=20):
     print(a, b, c, d)
 
@@ -336,6 +344,7 @@ t.start()
 这是新手最容易踩的坑：**Thread 没有\`get_result()\` 方法**！
 
 \`\`\`python
+from threading import Thread
 def compute():
     return 42
 
@@ -352,6 +361,7 @@ print(t.result)   # ❌ AttributeError，Thread 没这个属性
 ### 方式 1：修改全局变量（不推荐，仅演示）
 
 \`\`\`python
+from threading import Thread
 result = None
 
 def compute():
@@ -377,6 +387,7 @@ print(result)   # 42
 Python 中列表、字典是**可变对象**，传给线程函数后，线程对其的修改对主线程可见：
 
 \`\`\`python
+from threading import Thread
 def compute(results, idx):
     results[idx] = idx * idx
 
@@ -404,6 +415,7 @@ print(results)   # {0: 0, 1: 1, 2: 4, 3: 9, 4: 16}
 \`queue.Queue\` 是线程安全的队列，专门为线程间传递数据设计：
 
 \`\`\`python
+from threading import Thread
 import queue
 import threading
 
@@ -660,6 +672,7 @@ Python 解释器退出的条件是：**所有非守护线程都结束**。
 守护线程通过 \`daemon=True\` 设置：
 
 \`\`\`python
+import threading
 # 方式 1：创建时指定
 t = threading.Thread(target=worker, daemon=True)
 
@@ -672,6 +685,7 @@ t.start()
 **关键约束：\`daemon\` 必须在 \`start()\` 之前设置！**
 
 \`\`\`python
+import threading
 t = threading.Thread(target=worker)
 t.start()
 t.daemon = True   # ❌ RuntimeError: cannot set daemon status of active thread
@@ -968,6 +982,7 @@ GIL 在每条字节码之间**可能切换到其他线程**。所以：
 - **临界区**：访问临界资源的代码段
 
 \`\`\`python
+from itertools import count
 # 下面这两行就是临界区
 count = count - 1    # 读取并修改共享变量 count
 # 临界区结束
@@ -1259,6 +1274,7 @@ print(count)   # 一定是 500000
 手动 \`acquire/release\` 容易忘记 \`release\`（特别是在异常情况下），导致死锁。**强烈推荐用 \`with\` 语句**：
 
 \`\`\`python
+import threading
 lock = threading.Lock()
 
 def increment():
@@ -1279,6 +1295,7 @@ def increment():
 **Lock 同一个线程不能 acquire 两次**！第二次 acquire 会**永远阻塞**，造成死锁。
 
 \`\`\`python
+import threading
 lock = threading.Lock()
 lock.acquire()
 lock.acquire()   # ❌ 死锁！永远等不到，因为锁被自己拿着
@@ -1293,6 +1310,7 @@ lock.acquire()   # ❌ 死锁！永远等不到，因为锁被自己拿着
 上一章的售票 demo 加锁后：
 
 \`\`\`python
+import threading
 lock = threading.Lock()
 
 def sell_tickets(window, num):
@@ -1340,6 +1358,7 @@ def sell_tickets(window, num):
 ## 七、常见错误：忘记 release 导致死锁
 
 \`\`\`python
+import threading
 lock = threading.Lock()
 
 def bad():

@@ -25,6 +25,7 @@ asyncio 虽然是单线程，但多个协程会交替执行。如果它们同时
 ## 二、asyncio.Lock
 
 \`\`\`python
+import asyncio
 lock = asyncio.Lock()
 
 async def increment():
@@ -212,6 +213,7 @@ asyncio.run(manual_lock())
 信号量允许同时有**固定数量**的协程进入临界区。
 
 \`\`\`python
+import asyncio
 sem = asyncio.Semaphore(3)  # 最多 3 个协程同时执行
 
 async def fetch():

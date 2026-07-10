@@ -1011,6 +1011,7 @@ t.start()   # start() 会自动调用 run()
 | \`run()\` | 在**当前线程**中直接执行 | ❌ 否 |
 
 \`\`\`python
+import threading
 # 正确：start() 创建新线程
 t = threading.Thread(target=my_task)
 t.start()   # 新线程执行 my_task
@@ -1045,6 +1046,7 @@ run() 的执行流程（不创建新线程）：
 | \`ident\` | 线程ID（操作系统分配） | \`140735892346624\` |
 
 \`\`\`python
+import threading
 t = threading.Thread(target=task, name="my-worker")
 t.start()
 print(t.name)    # "my-worker"

@@ -3020,6 +3020,7 @@ sync_main()
 ### 2.3 封装同步库为异步
 
 \`\`\`python
+from concurrent.futures import ThreadPoolExecutor
 import asyncio
 import sqlite3
 from contextlib import asynccontextmanager

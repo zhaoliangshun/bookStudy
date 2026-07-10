@@ -317,6 +317,7 @@ print(inspect.getcoroutinestate(coro))  # GEN_CREATED（0）
 ## 八、协程链式调用
 
 \`\`\`python
+import asyncio
 async def step1():
     await asyncio.sleep(0.1)
     return "step1 done"
@@ -482,6 +483,7 @@ asyncio.run(main())
 底层相当于：
 
 \`\`\`python
+import asyncio
 loop = asyncio.new_event_loop()  # 创建事件循环
 loop.run_until_complete(main())  # 运行直到 main 完成
 loop.close()                     # 关闭循环
@@ -490,6 +492,7 @@ loop.close()                     # 关闭循环
 ## 四、获取事件循环
 
 \`\`\`python
+import asyncio
 loop = asyncio.get_event_loop()  # 旧 API（不推荐）
 loop = asyncio.get_running_loop()  # 推荐在协程内用
 \`\`\`
@@ -718,6 +721,7 @@ async def main():
 ## 五、await 链
 
 \`\`\`python
+import asyncio
 async def level1():
     await asyncio.sleep(0.1)
     return "L1"

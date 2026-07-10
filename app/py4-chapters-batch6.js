@@ -376,6 +376,8 @@ class User(LogMixin, SaveMixin):
 ## 六、代码逐行讲解（对应右侧 code）
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 class Animal(ABC):                       # 继承 ABC 才能用 @abstractmethod
     def __init__(self, name):
         self.name = name
@@ -744,12 +746,14 @@ class Point:
 ### 2.2 \`field(default_factory=...)\` 解决可变默认值
 Python 中「函数默认参数只求值一次」，所以：
 \`\`\`python
+from dataclasses import dataclass
 @dataclass
 class Bad:
     tags: list = []      # ❌ ValueError: mutable default not allowed
 \`\`\`
 dataclass 直接禁止可变默认值，必须用 \`default_factory\`：
 \`\`\`python
+from dataclasses import dataclass
 from dataclasses import field
 @dataclass
 class Point:
@@ -760,6 +764,7 @@ class Point:
 
 ### 2.3 \`frozen=True\`：不可变 + 可哈希
 \`\`\`python
+from dataclasses import dataclass
 @dataclass(frozen=True)
 class Color:
     r: int; g: int; b: int
@@ -772,6 +777,7 @@ hash(red)          # ✅ 可做 dict key / set 元素
 
 ### 2.4 \`ClassVar\`：不被当成字段
 \`\`\`python
+from dataclasses import dataclass
 from typing import ClassVar
 @dataclass
 class Item:
@@ -820,6 +826,8 @@ def area(self): return ...   # 没有 @area.setter → 只读
 dataclass 自动生成的 \`__init__\` 会给每个字段赋值。要让 property 生效，常用「私有字段 \`_xxx\` + property 暴露」：
 
 \`\`\`python
+from dataclasses import field
+from dataclasses import dataclass
 @dataclass
 class User:
     name: str
@@ -859,6 +867,8 @@ class User:
 ## 六、代码逐行讲解（对应右侧 code）
 
 \`\`\`python
+from dataclasses import field
+from dataclasses import dataclass
 @dataclass
 class Point:
     x: float
@@ -875,6 +885,7 @@ print(p1, p2, p1 == Point(1, 2))  # == 由 dataclass 自动生成，按字段比
 - 自动 \`__init__\`、\`__repr__\`、\`__eq__\`：\`p1 == Point(1,2)\` 为 True（按字段比较）。
 
 \`\`\`python
+from dataclasses import dataclass
 @dataclass(frozen=True)            # frozen=True：实例不可变，可 hash
 class Color:
     r: int; g: int; b: int
@@ -906,6 +917,8 @@ print("new area:", c.area)
 - 演示属性读写与计算。
 
 \`\`\`python
+from dataclasses import field
+from dataclasses import dataclass
 @dataclass
 class User:
     name: str

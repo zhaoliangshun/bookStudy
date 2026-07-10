@@ -35,6 +35,8 @@ export const chapters = [
 ### Popen 的核心方法
 
 \`\`\`python
+from subprocess import PIPE
+import subprocess
 p = subprocess.Popen(["cmd"], stdout=PIPE, text=True)
 
 p.poll()         # 查询是否结束（None=未结束，int=返回码）
@@ -50,6 +52,7 @@ p.stdin / p.stdout / p.stderr  # 文件对象，可读写
 #### 1. 后台执行 + 等待
 
 \`\`\`python
+import subprocess
 p = subprocess.Popen(["sleep", "2"])
 print("started, pid:", p.pid)
 # 干别的事...
@@ -59,6 +62,7 @@ p.wait()  # 等它结束
 #### 2. 流式读取输出
 
 \`\`\`python
+import subprocess
 p = subprocess.Popen(["ls", "-la"], stdout=subprocess.PIPE, text=True)
 for line in p.stdout:
     print("行:", line.rstrip())
@@ -67,6 +71,8 @@ for line in p.stdout:
 #### 3. 实时交互（写一行读一行）
 
 \`\`\`python
+from subprocess import PIPE
+import subprocess
 p = subprocess.Popen(["cat"], stdin=PIPE, stdout=PIPE, text=True)
 p.stdin.write("hi\\n")
 p.stdin.flush()
@@ -122,6 +128,8 @@ shell 里 \`cmd1 | cmd2 | cmd3\` 把三个命令的 stdin/stdout 串起来。Pyt
 ### 原理：把上一个的 stdout 当下一个的 stdin
 
 \`\`\`python
+from subprocess import PIPE
+from subprocess import Popen
 p1 = Popen(["ls"], stdout=PIPE)
 p2 = Popen(["wc", "-l"], stdin=p1.stdout, stdout=PIPE)
 p1.stdout.close()   # 关掉 p1 的引用，让 p2 能拿到 EOF
@@ -137,6 +145,8 @@ out = p2.communicate()[0]
 模拟 \`ls | grep .py | wc -l\`：
 
 \`\`\`python
+from subprocess import PIPE
+from subprocess import Popen
 p1 = Popen(["ls"], stdout=PIPE, text=True)
 p2 = Popen(["grep", ".py"], stdin=p1.stdout, stdout=PIPE, text=True)
 p1.stdout.close()
@@ -152,6 +162,7 @@ out, _ = p3.communicate()
 如果不在乎"同时跑"，用 \`run()\` 串联更简单——前一个的结果当后一个的 \`input\`：
 
 \`\`\`python
+import subprocess
 r1 = subprocess.run(["ls"], capture_output=True, text=True)
 r2 = subprocess.run(["grep", ".py"], input=r1.stdout, capture_output=True, text=True)
 r3 = subprocess.run(["wc", "-l"], input=r2.stdout, capture_output=True, text=True)
@@ -214,6 +225,7 @@ subprocess.run(["ls"], cwd="/tmp")  # 在 /tmp 下执行 ls
 \`env\` 是个 dict，**完全替换**子进程的环境（不是追加）。所以通常基于当前环境复制一份再改：
 
 \`\`\`python
+import subprocess
 import os
 env = os.environ.copy()
 env["MY_VAR"] = "hello"
@@ -223,6 +235,8 @@ subprocess.run(["python3", "-c", "import os; print(os.environ['MY_VAR'])"], env=
 ### 单独添加环境变量
 
 \`\`\`python
+import subprocess
+import os
 env = {**os.environ, "DEBUG": "1", "LOG_LEVEL": "debug"}
 subprocess.run(["python3", "app.py"], env=env)
 \`\`\`
@@ -240,6 +254,8 @@ subprocess.run(["ls"], env={})  # 会失败：找不到 ls 命令
 \`git\` 默认按系统语言输出，调试时想让输出统一为英文：
 
 \`\`\`python
+import subprocess
+import os
 env = {**os.environ, "LANG": "C", "LC_ALL": "C"}
 subprocess.run(["git", "status"], env=env)
 \`\`\`
@@ -300,6 +316,7 @@ print(r5.stdout.strip())
 ### 方法 1：迭代 stdout
 
 \`\`\`python
+import subprocess
 p = subprocess.Popen(["python3", "-c", "import time; [print(i, flush=True) or time.sleep(0.3) for i in range(5)]"],
                      stdout=subprocess.PIPE, text=True, bufsize=1)
 for line in p.stdout:
@@ -393,6 +410,7 @@ print("子进程结束，返回码:", p.returncode)
 最简单——同时启动所有进程，再统一 \`wait\`：
 
 \`\`\`python
+import subprocess
 procs = [subprocess.Popen(["sleep", str(i)]) for i in [3, 1, 2]]
 for p in procs:
     p.wait()
@@ -405,6 +423,7 @@ for p in procs:
 更高层、更 Pythonic，能拿到返回值：
 
 \`\`\`python
+import subprocess
 from concurrent.futures import ThreadPoolExecutor
 with ThreadPoolExecutor() as ex:
     futures = [ex.submit(subprocess.run, ["sleep", str(i)], capture_output=True, text=True) for i in [3, 1, 2]]
@@ -499,6 +518,8 @@ subprocess.run(["python3", "-c", "print(1+1)"], capture_output=True, text=True)
 ### 配方 4：后台日志监控（持续读）
 
 \`\`\`python
+from subprocess import PIPE
+import subprocess
 p = subprocess.Popen(["tail", "-f", "/var/log/app.log"], stdout=PIPE, text=True, bufsize=1)
 for line in p.stdout:
     if "ERROR" in line:
@@ -508,6 +529,7 @@ for line in p.stdout:
 ### 配方 5：调用其他语言运行时
 
 \`\`\`python
+import subprocess
 subprocess.run(["node", "-e", "console.log('from node')"], capture_output=True, text=True)
 subprocess.run(["ruby", "-e", "puts 'from ruby'"], capture_output=True, text=True)
 \`\`\`
@@ -515,6 +537,7 @@ subprocess.run(["ruby", "-e", "puts 'from ruby'"], capture_output=True, text=Tru
 ### 配方 6：把命令输出写到文件
 
 \`\`\`python
+import subprocess
 with open("out.txt", "w") as f:
     subprocess.run(["ls", "-la"], stdout=f)
 \`\`\`
@@ -522,6 +545,8 @@ with open("out.txt", "w") as f:
 ### 配方 7：用 subprocess.run 替代 os.system
 
 \`\`\`python
+import subprocess
+import os
 # ❌ 旧写法
 os.system("ls -la")
 # ✅ 新写法
@@ -531,6 +556,7 @@ subprocess.run(["ls", "-la"])
 ### 配方 8：批量并行编译
 
 \`\`\`python
+import subprocess
 sources = ["a.c", "b.c", "c.c"]
 procs = [subprocess.Popen(["gcc", "-c", s]) for s in sources]
 for p in procs: p.wait()

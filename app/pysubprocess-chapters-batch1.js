@@ -116,6 +116,7 @@ subprocess.run(
 **推荐用列表**——更安全、参数清晰，不会被 shell 解析：
 
 \`\`\`python
+import subprocess
 # ✅ 推荐：列表形式
 subprocess.run(["ls", "-la", "/tmp"])
 
@@ -173,6 +174,7 @@ except subprocess.CalledProcessError as e:
 Python 3.7+ 新增的便捷参数，等价于 \`stdout=PIPE, stderr=PIPE\`：
 
 \`\`\`python
+import subprocess
 r = subprocess.run(["python3", "-c", "print('hi')"], capture_output=True, text=True)
 r.stdout   # 'hi\\n'  普通输出
 r.stderr   # ''        错误输出
@@ -246,6 +248,7 @@ print(r2.stdout.strip())
 \`input\` 是字符串（或 bytes），会写到子进程的 stdin：
 
 \`\`\`python
+import subprocess
 r = subprocess.run(["cat"], input="hello\\nworld\\n", text=True, capture_output=True)
 print(r.stdout)  # cat 原样吐回 hello\\nworld\\n
 \`\`\`
@@ -255,6 +258,7 @@ print(r.stdout)  # cat 原样吐回 hello\\nworld\\n
 shell 里 \`ls | wc -l\` 把 \`ls\` 的输出送给 \`wc -l\` 计数。Python 里分两步做：
 
 \`\`\`python
+import subprocess
 p1 = subprocess.run(["ls"], capture_output=True, text=True)
 p2 = subprocess.run(["wc", "-l"], input=p1.stdout, text=True, capture_output=True)
 print(p2.stdout)
@@ -265,6 +269,7 @@ print(p2.stdout)
 \`run()\` 要等命令结束才返回，无法做实时交互。需要 \`Popen\`——它返回进程对象，可以边写边读：
 
 \`\`\`python
+import subprocess
 p = subprocess.Popen(["cat"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
 out, _ = p.communicate(input="feed me\\n")
 print(out)
@@ -317,6 +322,7 @@ print(out, end="")
 \`CompletedProcess.returncode\` 直接告诉你退出状态：
 
 \`\`\`python
+import subprocess
 r = subprocess.run(["ls", "/tmp"])
 if r.returncode == 0:
     print("成功")
@@ -329,6 +335,7 @@ else:
 加 \`check=True\`，返回码非 0 时自动抛 \`CalledProcessError\`，省去手动判断：
 
 \`\`\`python
+import subprocess
 try:
     subprocess.run(["ls", "/no/such/dir"], check=True)
 except subprocess.CalledProcessError as e:
@@ -347,6 +354,7 @@ except subprocess.CalledProcessError as e:
 \`run(timeout=N)\` 会在 N 秒后杀掉子进程并抛异常：
 
 \`\`\`python
+import subprocess
 try:
     subprocess.run(["sleep", "10"], timeout=2)
 except subprocess.TimeoutExpired:
@@ -408,6 +416,7 @@ print("情况4 返回码:", r.returncode, "（程序主动退出 3）")
 ### shell=True 能做什么
 
 \`\`\`python
+import subprocess
 # 通配符：列出所有 .py 文件
 subprocess.run("ls *.py", shell=True)
 
@@ -421,6 +430,7 @@ subprocess.run("echo $HOME", shell=True)
 ### shell=False（默认）做不到这些
 
 \`\`\`python
+import subprocess
 # ❌ 这些会失败——shell 不参与解析
 subprocess.run(["ls", "*.py"])      # 把 "*.py" 当字面文件名
 subprocess.run(["ls", "|", "wc"])   # 把 "|" 当文件名
@@ -431,6 +441,7 @@ subprocess.run(["ls", "|", "wc"])   # 把 "|" 当文件名
 如果命令里混入用户输入，\`shell=True\` 就是**命令注入漏洞**：
 
 \`\`\`python
+import subprocess
 user_input = "file.txt; rm -rf /"   # 恶意输入
 # 💀 灾难！shell 会执行 rm -rf /
 subprocess.run(f"cat {user_input}", shell=True)

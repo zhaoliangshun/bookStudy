@@ -1029,6 +1029,7 @@ path = Path("data") / "file.txt"
 
 ### 6. 没判断存在就操作
 \`\`\`python
+import os
 # ❌
 os.remove("file.txt")  # 不存在就崩
 
@@ -1039,6 +1040,7 @@ Path("file.txt").unlink(missing_ok=True)
 
 ### 7. 删非空目录
 \`\`\`python
+import os
 # ❌
 os.rmdir("non_empty")  # 报错
 
@@ -1065,6 +1067,7 @@ else:
 
 ### 9. 用 os.system 删文件
 \`\`\`python
+import os
 # ❌ 路径含空格会出错
 os.system(f"rm {filename}")
 

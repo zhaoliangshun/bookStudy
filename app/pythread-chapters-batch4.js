@@ -70,6 +70,7 @@ IO 操作（\`time.sleep\`、\`requests.get\`、\`file.read\`）会**主动释�
 
 策略：
 \`\`\`python
+from concurrent.futures import ThreadPoolExecutor
 # IO 部分用线程池
 with ThreadPoolExecutor(8) as io_pool:
     data = list(io_pool.map(read_file, files))
@@ -368,6 +369,7 @@ concurrent.futures
 ## Executor 的生命周期
 
 \`\`\`python
+from concurrent.futures import ThreadPoolExecutor
 # 推荐：用 with 自动管理
 with ThreadPoolExecutor(4) as ex:
     ex.submit(task)
@@ -555,6 +557,7 @@ results = list(ex.map(func, items))   # 第1个完成的不一定先返回
 
 ### 策略2：as_completed（谁先完成谁先返回）
 \`\`\`python
+from concurrent.futures import as_completed
 for f in as_completed(futures):
     print(f.result())   # 哪个先完成先处理
 \`\`\`
@@ -586,6 +589,7 @@ print(f"完成 {len(done)} 个，未完成 {len(not_done)} 个")
 ## as_completed 的 timeout
 
 \`\`\`python
+from concurrent.futures import as_completed
 for f in as_completed(futures, timeout=5):
     print(f.result())
 # 超时未完成的会抛 TimeoutError
@@ -800,6 +804,7 @@ subprocess.run(["ls", "-l", "/tmp"])    # 参数分开，无注入风险
 
 **shell=True 慎用**（有注入风险）：
 \`\`\`python
+import subprocess
 # 危险！如果 filename 来自用户输入，可能注入命令
 subprocess.run(f"ls {filename}", shell=True)
 # 用户输入 "a; rm -rf /" → 执行了 rm -rf /！
@@ -810,6 +815,7 @@ subprocess.run(f"ls {filename}", shell=True)
 ## 捕获输出
 
 \`\`\`python
+import subprocess
 # capture_output + text：最简单
 r = subprocess.run(["echo", "hello"], capture_output=True, text=True)
 print(r.stdout)   # "hello\\n"
@@ -826,6 +832,7 @@ print(r.stderr)   # err
 - \`stderr=subprocess.STDOUT\`：把 stderr 合并进 stdout（统一捕获）
 
 \`\`\`python
+import subprocess
 # 丢弃 stdout，把 stderr 合并进 stdout
 r = subprocess.run(["python3", "-c", "import sys; print('err', file=sys.stderr)"],
                    stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, text=True)
@@ -835,6 +842,7 @@ print(r.stdout)   # err（被合并过来了）
 ## check=True 处理失败
 
 \`\`\`python
+import subprocess
 try:
     subprocess.run(["false"], check=True)   # false 命令返回1
 except subprocess.CalledProcessError as e:
@@ -992,6 +1000,8 @@ p = Popen(["python3", "-u", "-c", "for i in range(5): print(i)"],
 ## 实时读取输出
 
 \`\`\`python
+from subprocess import PIPE
+from subprocess import Popen
 p = Popen(["python3", "-u", "-c", "import time; [print(i, flush=True) or time.sleep(0.2) for i in range(5)]"],
           stdout=PIPE, text=True)
 for line in p.stdout:          # 逐行读，有就返回
@@ -1006,6 +1016,8 @@ p.wait()
 \`communicate\` 一次性发完输入、读完输出，**避免死锁**：
 
 \`\`\`python
+from subprocess import PIPE
+from subprocess import Popen
 p = Popen(["python3", "-c", "print(input()[::-1])"], stdin=PIPE, stdout=PIPE, text=True)
 out, err = p.communicate(input="hello")
 print(out)   # olleh
@@ -1016,6 +1028,8 @@ print(out)   # olleh
 ## 与子进程持续交互
 
 \`\`\`python
+from subprocess import PIPE
+from subprocess import Popen
 p = Popen(["python3", "-u", "-i"], stdin=PIPE, stdout=PIPE, text=True)
 p.stdin.write("print(1+1)\\n")
 p.stdin.flush()                # 写完要 flush
@@ -1609,6 +1623,7 @@ print("• 这是 Celery 等任务系统的核心模式")`,
 **修复**：用 Lock 保护，或用线程安全的 Queue。
 
 \`\`\`python
+from itertools import count
 # ❌ 错误
 count += 1
 

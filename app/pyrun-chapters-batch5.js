@@ -884,6 +884,7 @@ await task_b
 一旦用了 \`async\`，调用链上所有函数都得是 \`async\`，这就是"传染性"：
 
 \`\`\`python
+import asyncio
 async def fetch_data():      # 异步
     await db.query()          # db.query 也得是 async
 

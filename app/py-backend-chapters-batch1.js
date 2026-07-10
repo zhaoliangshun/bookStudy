@@ -2950,6 +2950,7 @@ user_map = {1: "Tom", 2: "Jerry"}  # 字典可以用_map后缀
 ### 3.2 函数命名
 
 \`\`\`python
+from typing import Optional
 # 动词开头，描述做什么
 def get_user_by_id(user_id: int) -> Optional[User]:
     """根据ID获取用户"""

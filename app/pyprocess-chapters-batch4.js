@@ -22,6 +22,7 @@ export const chapters = [
 直接用 \`Process\` 启动子进程，简单但有限制：
 
 \`\`\`python
+from multiprocessing import Process
 # 直接用 Process
 processes = []
 for i in range(100):
@@ -106,6 +107,7 @@ pool.join()                   # 等待所有工作进程退出（必须先 close
 **典型流程**：
 
 \`\`\`python
+import multiprocessing
 with multiprocessing.Pool(4) as pool:
     results = pool.map(work, range(100))
 # with 块结束自动 close + join
@@ -271,6 +273,7 @@ if __name__ == "__main__":
 \`pool.apply(func, args=())\`：提交一个任务，**等它跑完**才返回。结果直接是函数返回值。
 
 \`\`\`python
+from multiprocessing import Pool
 with Pool(4) as pool:
     result = pool.apply(work, (10,))  # 同步等结果
     print(result)  # 直接拿到 work(10) 的返回值
@@ -286,6 +289,7 @@ with Pool(4) as pool:
 \`pool.apply_async(func, args=())\`：提交一个任务，**立刻返回**，不等它跑完。返回的是 \`AsyncResult\` 对象。
 
 \`\`\`python
+from multiprocessing import Pool
 with Pool(4) as pool:
     async_result = pool.apply_async(work, (10,))
     # 这里可以干别的事
@@ -517,6 +521,7 @@ if __name__ == "__main__":
 \`pool.map(func, iterable)\`：把 iterable 里每个元素作为参数传给 func，**并行执行**，**按输入顺序**返回结果列表。
 
 \`\`\`python
+from multiprocessing import Pool
 with Pool(4) as pool:
     results = pool.map(square, [1, 2, 3, 4, 5])
     # results = [1, 4, 9, 16, 25]
@@ -533,6 +538,7 @@ with Pool(4) as pool:
 \`pool.map_async(func, iterable)\`：异步版 map，**立刻返回** AsyncResult。
 
 \`\`\`python
+from multiprocessing import Pool
 with Pool(4) as pool:
     ar = pool.map_async(square, [1, 2, 3, 4, 5])
     # 这里可以干别的
@@ -544,6 +550,7 @@ with Pool(4) as pool:
 \`pool.starmap(func, iterable)\`：iterable 里每个元素是一个**参数元组**，解包后传给 func。
 
 \`\`\`python
+from multiprocessing import Pool
 def add(x, y, z):
     return x + y + z
 
@@ -731,6 +738,7 @@ if __name__ == "__main__":
 \`pool.imap(func, iterable)\`：返回一个**迭代器**，每完成一个任务就 yield 一个结果。**不是等所有任务完成**。
 
 \`\`\`python
+from multiprocessing import Pool
 with Pool(4) as pool:
     for result in pool.imap(work, range(100)):
         print(result)  # 一边处理一边输出
@@ -750,6 +758,7 @@ with Pool(4) as pool:
 \`pool.imap_unordered(func, iterable)\`：也是惰性迭代，但**哪个任务先完成就先 yield 哪个**。
 
 \`\`\`python
+from multiprocessing import Pool
 with Pool(4) as pool:
     for result in pool.imap_unordered(slow_work, [1, 2, 3, 4]):
         print(result)  # 完成顺序不确定
@@ -989,6 +998,7 @@ except Exception as e:
 ### 错误 3：worker 函数本身有 bug
 
 \`\`\`python
+from multiprocessing import Pool
 def buggy_task(x):
     if x == 5:
         raise ValueError(f"我不喜欢 {x}")

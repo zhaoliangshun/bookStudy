@@ -54,6 +54,7 @@ export const chapters = [
 ### 场景 1：读写文件
 
 \`\`\`python
+import json
 # 读配置
 with open("config.json") as f:
     config = json.load(f)
@@ -66,6 +67,7 @@ with open("app.log", "a") as f:
 ### 场景 2：目录操作
 
 \`\`\`python
+from pathlib import Path
 # 创建项目结构
 for subdir in ["src", "tests", "docs", "data"]:
     Path(subdir).mkdir(exist_ok=True)
@@ -78,6 +80,7 @@ for f in Path("photos").glob("*.jpg"):
 ### 场景 3：批量处理
 
 \`\`\`python
+from pathlib import Path
 # 找出所有大文件
 for f in Path.home().rglob("*"):
     if f.is_file() and f.stat().st_size > 100_000_000:
@@ -338,6 +341,8 @@ with open("data/users.json") as f:  # 实际打开 /Users/Alice/Projects/myapp/d
 **千万别**用字符串拼接：
 
 \`\`\`python
+from pathlib import Path
+import os
 # ❌ 跨平台会坏
 path = "data" + "/" + "users.json"  # Windows 上能用，但风格不一致
 
@@ -539,6 +544,7 @@ Path("/a") / "b" / "c" # 用 / 拼接
 ### 2. 解析路径（拆解）
 
 \`\`\`python
+from pathlib import Path
 p = Path("/Users/Alice/file.txt")
 p.parts      # ('/', 'Users', 'Alice', 'file.txt')
 p.name       # 'file.txt'  文件名
@@ -563,6 +569,7 @@ p.is_absolute()   # 是绝对路径吗
 ### 4. 路径操作（返回新 Path）
 
 \`\`\`python
+from pathlib import Path
 p = Path("/a/b.txt")
 p.with_name("c.txt")     # /a/c.txt  改文件名
 p.with_suffix(".md")     # /a/b.md    改后缀
@@ -572,6 +579,7 @@ p.parent / "new"         # /a/new
 ## 四、读 glob 通配符
 
 \`\`\`python
+from pathlib import Path
 # 找当前目录所有 .py 文件
 list(Path(".").glob("*.py"))
 
@@ -755,6 +763,7 @@ if __name__ == "__main__":
 **症状**：在 Windows 上跑的代码，到 macOS 上全坏（或反过来）。
 
 \`\`\`python
+from pathlib import Path
 # ❌ 硬编码 /
 path = "data/2024/report.csv"  # Windows 上能用，但风格不一致
 
@@ -770,6 +779,7 @@ path = Path("data") / "2024" / "report.csv"
 **症状**：在 macOS 上 OK，部署到 Windows 服务器就坏（Windows 没有 /tmp）。
 
 \`\`\`python
+from pathlib import Path
 # ❌ 硬编码 /tmp
 tmp_file = "/tmp/myapp_cache.db"
 
@@ -803,6 +813,7 @@ else:
 **症状**：\`~/data/file.json\` 找不到。
 
 \`\`\`python
+from pathlib import Path
 # ❌ Python 不认识 ~
 path = "~/data/file.json"  # 真的去找叫 ~ 的目录
 
@@ -835,6 +846,7 @@ with open(BASE_DIR / "config" / "config.json") as f:
 **症状**：\`os.system("rm " + filename)\` 失败或删错文件。
 
 \`\`\`python
+import os
 # ❌ 字符串拼接
 os.system("rm " + filename)  # 文件名带空格会出问题
 

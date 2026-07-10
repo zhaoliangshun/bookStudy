@@ -1864,6 +1864,7 @@ print(f"第一个完成: {done.pop().result()}")
 \`Executor\` 实现了上下文管理器协议，\`with\` 退出时自动 \`shutdown(wait=True)\`：
 
 \`\`\`python
+from concurrent.futures import ThreadPoolExecutor
 with ThreadPoolExecutor(max_workers=4) as executor:
     executor.submit(task)
 # 退出 with 块时自动等待所有任务完成
@@ -2073,6 +2074,7 @@ asyncio 提供了一套与 \`threading\` 平行的同步原语，但**不是线�
 \`Lock\` 确保同一时刻只有一个协程访问共享资源：
 
 \`\`\`python
+import asyncio
 lock = asyncio.Lock()
 async def safe_update():
     async with lock:  # 获取锁（await 而非阻塞）
@@ -2087,6 +2089,7 @@ async def safe_update():
 \`Event\` 用于"通知"——一个协程设置事件，其他协程等待事件：
 
 \`\`\`python
+import asyncio
 event = asyncio.Event()
 async def waiter():
     await event.wait()  # 等待事件被 set
@@ -2103,6 +2106,7 @@ async def setter():
 \`Condition\` 结合了 Lock 和 Event，支持更复杂的等待/通知模式：
 
 \`\`\`python
+import asyncio
 condition = asyncio.Condition()
 async def consumer():
     async with condition:
@@ -2118,6 +2122,7 @@ async def producer():
 \`Semaphore\` 限制同时访问的协程数量，是**并发限流**的核心工具：
 
 \`\`\`python
+import asyncio
 sem = asyncio.Semaphore(5)  # 最多 5 个并发
 async def fetch(url):
     async with sem:  # 超过 5 个会等待
@@ -2130,6 +2135,7 @@ async def fetch(url):
 \`Queue\` 实现协程间安全的数据传递，是**生产者-消费者模式**的基础：
 
 \`\`\`python
+import asyncio
 queue = asyncio.Queue(maxsize=10)
 async def producer():
     await queue.put(item)  # 队列满时 await 等待

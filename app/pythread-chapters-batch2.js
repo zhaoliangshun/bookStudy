@@ -36,6 +36,8 @@ export const chapters = [
 \`threading.Lock\` 是最基础的同步工具：同一时刻只允许一个线程持有锁，其他线程必须等待。
 
 \`\`\`python
+from itertools import count
+import threading
 lock = threading.Lock()       # 创建锁
 
 lock.acquire()                # 获取锁（拿不到就阻塞等待）
@@ -47,6 +49,8 @@ lock.release()                # 释放锁，让其他线程能获取
 ### 推荐：用 with 自动管理锁
 
 \`\`\`python
+from itertools import count
+import threading
 lock = threading.Lock()
 with lock:                    # 进入时自动 acquire，离开时自动 release
     count += 1                # 即使中间出异常，锁也会被释放
@@ -172,6 +176,7 @@ print("• acquire(blocking=False) 非阻塞，acquire(timeout=n) 限时")`,
 \`Lock\` 是"不可重入"的——同一线程对它 \`acquire\` 两次会**死锁**：
 
 \`\`\`python
+import threading
 lock = threading.Lock()
 lock.acquire()                # 获取锁
 lock.acquire()                # 死锁！第二次 acquire 永远等不到（锁被自己占着）
@@ -180,6 +185,7 @@ lock.acquire()                # 死锁！第二次 acquire 永远等不到（锁
 这看起来很蠢，谁会自己锁自己？但实际开发中很常见——**函数嵌套调用**：
 
 \`\`\`python
+import threading
 lock = threading.Lock()
 
 def outer():
@@ -198,6 +204,7 @@ def inner():
 \`threading.RLock\`（Reentrant Lock）允许**同一线程**多次 \`acquire\`，不会死锁。它内部记录了"持有锁的线程"和"加锁次数"，必须 **acquire 多少次就 release 多少次**才会真正释放。
 
 \`\`\`python
+import threading
 rlock = threading.RLock()
 rlock.acquire()             # 获取锁（计数+1）
 rlock.acquire()             # 同一线程可以再 acquire，不死锁（计数+1）
@@ -208,6 +215,7 @@ rlock.release()             # 必须 release 两次才真正释放（计数归0�
 用 \`with\` 更清晰，嵌套的 with 会自动配对：
 
 \`\`\`python
+import threading
 rlock = threading.RLock()
 with rlock:       # acquire 1次
     with rlock:   # acquire 2次（同线程，OK）
@@ -339,6 +347,7 @@ print("• 适用：递归加锁、方法嵌套加锁")`,
 ## 基本用法
 
 \`\`\`python
+import threading
 # 创建一个最多允许3个线程同时持有的信号量
 sem = threading.Semaphore(3)
 
@@ -349,6 +358,7 @@ sem.release()      # 计数+1，唤醒一个等待的线程
 
 推荐 \`with\` 写法：
 \`\`\`python
+import threading
 sem = threading.Semaphore(3)
 with sem:
     # 最多3个线程同时进入
@@ -466,6 +476,7 @@ print("• Lock 相当于 Semaphore(1) 的特例")`,
 ## 基本用法
 
 \`\`\`python
+import threading
 event = threading.Event()
 
 def waiter():
@@ -616,6 +627,7 @@ print("• 典型用途：启动信号、优雅停止、就绪通知")`,
 ## 核心 API
 
 \`\`\`python
+import threading
 cond = threading.Condition()
 
 # 消费者：等待条件成立
@@ -752,6 +764,7 @@ print("• 生产者-消费者是 Condition 的经典应用")`,
 ## 基本用法
 
 \`\`\`python
+import threading
 # 创建一个需要3个线程到达才放行的栅栏
 barrier = threading.Barrier(3)
 
@@ -773,6 +786,7 @@ def worker():
 
 ### action 回调
 \`\`\`python
+import threading
 # 凑齐后自动执行 action 函数（只执行一次）
 barrier = threading.Barrier(3, action=lambda: print("人到齐了！"))
 \`\`\`
@@ -941,6 +955,7 @@ q.join()                     # 等所有 put 的任务都被 task_done
 这是 Queue 最巧妙的设计，用于"等待所有任务处理完"：
 
 \`\`\`python
+import queue
 q = queue.Queue()
 # 生产者每 put 一次，计数器 +1
 q.put(item1)
@@ -1248,6 +1263,7 @@ with ThreadPoolExecutor(max_workers=4) as executor:   # 4个线程的池
 
 ### 用法1：submit + 手动收集（最灵活）
 \`\`\`python
+from concurrent.futures import ThreadPoolExecutor
 with ThreadPoolExecutor(4) as ex:
     futures = [ex.submit(func, arg) for arg in args]
     results = [f.result() for f in futures]    # 按提交顺序等结果
@@ -1255,12 +1271,14 @@ with ThreadPoolExecutor(4) as ex:
 
 ### 用法2：map（按顺序返回结果，最简洁）
 \`\`\`python
+from concurrent.futures import ThreadPoolExecutor
 with ThreadPoolExecutor(4) as ex:
     results = list(ex.map(func, args))    # 结果顺序和输入一致
 \`\`\`
 
 ### 用法3：as_completed（谁先完成谁先处理）
 \`\`\`python
+from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
 with ThreadPoolExecutor(4) as ex:
     futures = [ex.submit(func, arg) for arg in args]

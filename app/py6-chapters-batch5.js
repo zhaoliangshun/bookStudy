@@ -1414,7 +1414,8 @@ print(f"  空字典占用: {sys.getsizeof({})} 字节")
 - \`os.listdir(path)\`：返回**文件名列表**（字符串），简单但遍历大目录时性能一般
 - \`os.scandir(path)\`：返回迭代器，每个 \`DirEntry\` 对象已缓存了 \`is_file()\`/\`is_dir()\`/\`stat()\` 信息，**性能更快**（尤其在大目录），Python 3.5+ 推荐
 
-\`\`\`python# listdir 返回纯文件名列表，需要再调 stat 才能判断类型
+\`\`\`pythonimport os
+# listdir 返回纯文件名列表，需要再调 stat 才能判断类型
 for name in os.listdir('.'):
     full = os.path.join('.', name)
     if os.path.isfile(full):  # 每次都要再次访问文件系统
@@ -1594,7 +1595,8 @@ path = dir + "/" + filename  # Windows上可能出错
 \`\`\`
 
 ✅ 正确写法：
-\`\`\`python# 用 os.path.join 拼接路径，自动适配当前系统的路径分隔符
+\`\`\`pythonimport os
+# 用 os.path.join 拼接路径，自动适配当前系统的路径分隔符
 path = os.path.join(dir, filename)  # 自动处理分隔符
 \`\`\`
 
@@ -1780,7 +1782,8 @@ file_path.absolute()    # 绝对路径
 
 ### 读写文件（pathlib 自带！）
 
-\`\`\`python# 用文件名构造 Path 对象
+\`\`\`pythonfrom pathlib import Path
+# 用文件名构造 Path 对象
 p = Path('hello.txt')
 # write_text 把字符串写入文件，encoding 指定编码
 p.write_text('Hello!', encoding='utf-8')  # 写文件
@@ -1792,7 +1795,8 @@ content = p.read_text(encoding='utf-8')   # 读文件
 
 处理图片、压缩包等二进制文件时，用 \`read_bytes()\` / \`write_bytes()\`：
 
-\`\`\`python# 构造一个二进制文件的 Path 对象
+\`\`\`pythonfrom pathlib import Path
+# 构造一个二进制文件的 Path 对象
 p = Path('data.bin')
 # write_bytes 直接写入 bytes 类型数据，无需指定 encoding
 p.write_bytes(b'\\x89PNG\\r\\n\\x1a\\n')  # 写二进制
@@ -1803,7 +1807,8 @@ print(data[:4])  # b'\\x89PNG'
 
 ### 遍历目录
 
-\`\`\`python# 构造当前目录的 Path 对象
+\`\`\`pythonfrom pathlib import Path
+# 构造当前目录的 Path 对象
 p = Path('.')
 # iterdir 返回目录下所有条目（不递归）
 for f in p.iterdir():         # 遍历当前目录
@@ -1820,7 +1825,8 @@ for f in p.rglob('*.py'):     # 递归匹配所有子目录的 .py 文件
 
 ### 创建/删除
 
-\`\`\`python# mkdir 创建目录，exist_ok=True 表示目录已存在时不报错
+\`\`\`pythonfrom pathlib import Path
+# mkdir 创建目录，exist_ok=True 表示目录已存在时不报错
 Path('new_dir').mkdir(exist_ok=True)       # 创建目录
 # parents=True 表示递归创建缺失的父目录
 Path('new_dir').mkdir(parents=True, exist_ok=True)  # 递归创建

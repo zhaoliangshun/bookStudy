@@ -100,6 +100,7 @@ def deco(func):
 带参数装饰器需要"工厂 → 装饰器 → 包装器"三层：
 
 \`\`\`python
+import functools
 def repeat(times):                # 第 1 层：工厂，接收参数
     def decorator(func):          # 第 2 层：装饰器，接收函数
         @functools.wraps(func)
@@ -124,6 +125,7 @@ def greet(name):
 装饰器可以是任何可调用对象，类同样可以：
 
 \`\`\`python
+import functools
 class CallCounter:
     def __init__(self, func):
         functools.update_wrapper(self, func)
@@ -1824,6 +1826,7 @@ print(add.__annotations__)
 \`typing\` 模块的核心是 \`Generic\` 与 \`__class_getitem__\`：
 
 \`\`\`python
+from typing import Generic
 class List(list, Generic[T]):
     def __class_getitem__(cls, item):
         return _GenericAlias(cls, item)  # 返回别名，不是真类
@@ -1845,6 +1848,7 @@ print(type(List[int]))  # <class 'typing._GenericAlias'>
 - **不变（Invariant）**：默认。如 \`List\`，因为可读可写
 
 \`\`\`python
+from typing import Generic
 from typing import TypeVar, List, Tuple
 
 T_co = TypeVar("T_co", covariant=True)
@@ -1912,6 +1916,7 @@ mypy 内部用 \`mypy.types\` 模块表示类型 AST，例如 \`Instance\`、\`C
 Python 类型系统是**渐进式**的：可以一部分代码有类型，另一部分没有。\`Any\` 类型是"任意类型"，与任何类型兼容：
 
 \`\`\`python
+from typing import Any
 def f(x: Any) -> Any:
     return x   # 不报错
 

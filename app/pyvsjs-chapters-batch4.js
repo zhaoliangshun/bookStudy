@@ -1388,6 +1388,7 @@ function walk(dir) {
 ### HTTP 请求
 
 \`\`\`python
+import json
 # Python：urllib（同步）或 httpx（异步）
 import urllib.request
 

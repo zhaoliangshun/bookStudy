@@ -1927,6 +1927,7 @@ def my_decorator(func):  # 定义函数 my_decorator，参数：func
 装饰器本身也能接收参数：
 
 \`\`\`python
+from functools import wraps
 def repeat(n):  # 定义函数 repeat，参数：n
     def decorator(func):  # 定义函数 decorator，参数：func
         @wraps(func)  # 应用装饰器 wraps

@@ -2230,6 +2230,7 @@ HATEOAS（Hypermedia As The Engine Of Application State）是 Richardson 成熟�
 客户端硬编码所有 URL：
 
 \`\`\`python
+import http
 # 客户端代码硬编码 URL
 user = http.get("https://api.example.com/users/123")
 orders = http.get(f"https://api.example.com/users/{user['id']}/orders")
@@ -2263,6 +2264,7 @@ Content-Type: application/json
 客户端「跟着链接走」：
 
 \`\`\`python
+import http
 # 客户端不硬编码 URL，从响应的 _links 里找
 user = http.get("https://api.example.com/users/123")
 # 找「orders」链接，访问它

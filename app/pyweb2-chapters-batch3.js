@@ -1934,6 +1934,7 @@ time.sleep(1)            # ❌ 阻塞整个事件循环，所有协程都卡住
 ### asyncio.Queue —— 协程间通信
 
 \`\`\`python
+import asyncio
 async def producer(q):
     for i in range(5):
         await asyncio.sleep(0.5)
@@ -1957,6 +1958,7 @@ asyncio.run(main())
 ### asyncio.Lock / Event / Semaphore —— 异步同步原语
 
 \`\`\`python
+import asyncio
 # Lock：互斥
 lock = asyncio.Lock()
 async def critical():
@@ -2357,6 +2359,7 @@ async def good():
 ### 4. 在 async 里用同步锁
 
 \`\`\`python
+import asyncio
 import threading
 
 lock = threading.Lock()  # ❌ 同步锁

@@ -132,6 +132,7 @@ async def logout(request: Request, response: Response):
 ### 2.3 Token认证
 
 \`\`\`python
+from urllib.request import Request
 from fastapi import FastAPI, Header, HTTPException, Depends
 import secrets
 import time
@@ -704,6 +705,7 @@ async def login(request: Request, response: Response):
 ### 4.3 Session超时配置
 
 \`\`\`python
+from typing import Optional
 class SessionConfig:
     # 绝对超时：无论活跃与否，到此时间必须重新登录
     ABSOLUTE_TIMEOUT = 8 * 3600  # 8小时
@@ -1242,6 +1244,8 @@ async def refresh_token(request: RefreshTokenRequest):
 9. **防范CSRF/XSS**：根据存储方式采取对应措施
 
 \`\`\`python
+from datetime import timedelta
+import secrets
 # 安全配置清单
 JWT_CONFIG = {
     "secret_key": secrets.token_urlsafe(64),  # 从环境变量读取！
@@ -3922,6 +3926,7 @@ recovery_codes = [secrets.token_hex(4) for _ in range(8)]
 ### 7.2 secrets常见用途
 
 \`\`\`python
+import secrets
 # 1. 生成重置密码Token
 reset_token = secrets.token_urlsafe(32)
 # 存储到Redis，设置过期时间（如1小时）
@@ -3983,6 +3988,7 @@ if not SECRET or len(SECRET) < 32:
 **坑点1：重复使用Nonce/IV**
 
 \`\`\`python
+import os
 # ❌ 错误：固定nonce
 nonce = b"fixed_nonce_12"  # 同一密钥下nonce重用会泄露明文！
 

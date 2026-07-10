@@ -401,6 +401,7 @@ import myutils as mu
 别名绑定的是**同一个模块对象**，只是换了个名字：
 
 \`\`\`python
+import math
 import math as m
 print(m is math)   # True
 \`\`\`
@@ -1471,6 +1472,7 @@ Python 标准库里有大量包，本教程的演示代码会导入它们来展�
 | \`http.server\` | HTTP 服务 | \`http\` 是包 |
 
 \`\`\`python
+import xml
 import urllib.parse            # urllib 是包，parse 是子模块
 print(urllib.__path__)         # 包有 __path__
 print(urllib.parse.__file__)   # 子模块有 __file__

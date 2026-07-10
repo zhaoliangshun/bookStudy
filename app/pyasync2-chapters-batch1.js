@@ -257,6 +257,7 @@ result = await add(1, 2)  # result = 3
 ## 八、asyncio.run 只能调用一次
 
 \`\`\`python
+import asyncio
 asyncio.run(main())
 asyncio.run(main())  # 通常不建议，会重新创建事件循环
 \`\`\`
@@ -421,6 +422,7 @@ obj = foo()  # 协程对象，不是结果
 ## 三、asyncio.iscoroutine
 
 \`\`\`python
+import asyncio
 asyncio.iscoroutine(foo())   # True
 asyncio.iscoroutine(foo)     # False
 asyncio.iscoroutine(lambda: None)  # False
@@ -602,6 +604,7 @@ asyncio.run(main())
 等价于：
 
 \`\`\`python
+import asyncio
 loop = asyncio.new_event_loop()
 try:
     loop.run_until_complete(main())
@@ -612,6 +615,7 @@ finally:
 ## 四、获取当前事件循环
 
 \`\`\`python
+import asyncio
 loop = asyncio.get_event_loop()
 print(loop)
 \`\`\`

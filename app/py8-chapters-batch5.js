@@ -2200,6 +2200,7 @@ reduce(lambda a, b: a + b, [1, 2, 3, 4])  # 调用 reduce()
 \`map\` / \`filter\` / \`reduce\` 常配合 \`lambda\` 写简洁代码：
 
 \`\`\`python
+from functools import reduce
 nums = [1, 2, 3, 4, 5]  # 定义列表 nums
 sum_of_squares = reduce(lambda a, b: a + b,  # 赋值变量 sum_of_squares
                         map(lambda x: x*x, nums))  # 映射

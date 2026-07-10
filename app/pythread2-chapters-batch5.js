@@ -276,6 +276,8 @@ Timer(2.0, run_periodic).start()
 更灵活的方式是用 \`threading.Event\` 做停止信号，配合 \`Event.wait(timeout)\` 实现"等 N 秒或被停止就退出"：
 
 \`\`\`python
+from threading import Thread
+from threading import Event
 stop_event = Event()
 
 def worker():
@@ -585,6 +587,7 @@ def add():
 ### 用 Lock 修复
 
 \`\`\`python
+from threading import Lock
 lock = Lock()
 def add():
     global counter
@@ -917,6 +920,7 @@ Thread(target=worker, name="crawler-1").start()
 ### 10. 优雅关闭线程池
 
 \`\`\`python
+from concurrent.futures import ThreadPoolExecutor
 with ThreadPoolExecutor(max_workers=5) as executor:
     executor.map(task, items)
 # with 退出时自动 shutdown，等所有任务完成

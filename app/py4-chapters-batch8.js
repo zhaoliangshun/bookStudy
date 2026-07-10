@@ -401,6 +401,7 @@ p = Path("a") / "b" / "c.txt"
 ## 三、属性：name / stem / suffix / parent / parents
 
 \`\`\`python
+from pathlib import Path
 p = Path("/home/alice/work/report.tar.gz")
 
 p.name        # 'report.tar.gz'  完整文件名
@@ -498,6 +499,7 @@ list(root.glob("**/*.py"))         # 等价写法
 ## 六、Path.home() / Path.cwd()
 
 \`\`\`python
+from pathlib import Path
 Path.cwd()      # 当前工作目录，等价 os.getcwd()
 Path.home()     # 用户主目录，等价 os.path.expanduser("~")
 \`\`\`
@@ -637,6 +639,7 @@ with open("a.json", "r", encoding="utf-8") as f:
 ### 2.2 ensure_ascii=False：中文不转义
 
 \`\`\`python
+import json
 json.dumps({"name": "张三"})
 # '{"name": "\\\\u5f20\\\\u4e09"}'   ← 默认把中文转成 \\uXXXX
 
@@ -651,6 +654,7 @@ json.dumps({"name": "张三"}, ensure_ascii=False)
 ### 2.3 indent：缩进美化
 
 \`\`\`python
+import json
 json.dumps(data, indent=2)
 # {
 #   "name": "alice",
@@ -730,6 +734,7 @@ DictReader/DictWriter 优势：
 ### 3.3 newline="" 防止 Windows 空行
 
 \`\`\`python
+import csv
 # 错误写法（Windows 上会多出空行）
 with open("a.csv", "w", encoding="utf-8") as f:
     csv.writer(f).writerow(["a", "b"])

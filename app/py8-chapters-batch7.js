@@ -527,6 +527,8 @@ class Student:  # 定义类 Student
 在 \`__init__\` 执行完后自动调用，用于**初始化后的校验或计算**：
 
 \`\`\`python
+from dataclasses import field
+from dataclasses import dataclass
 @dataclass  # 应用装饰器 dataclass
 class Rectangle:  # 定义类 Rectangle
     width: float  # 执行操作

@@ -2609,6 +2609,7 @@ sum(x * x for x in range(1000000))
 #### 模式 1：无限序列
 
 \`\`\`python
+import itertools
 def naturals():
     n = 1
     while True:

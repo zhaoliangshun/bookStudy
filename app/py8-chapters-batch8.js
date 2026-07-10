@@ -536,6 +536,7 @@ Python 通过 \`os\` 和 \`shutil\` 模块进行目录和文件的高级操作�
 \`os.walk(top)\` 返回三元组 \`(dirpath, dirnames, filenames)\`：
 
 \`\`\`python
+import os
 for root, dirs, files in os.walk("/path"):  # 遍历 os.walk("/path")，取值给 root, dirs, files
     for f in files:  # 遍历 files，取值给 f
         print(os.path.join(root, f))  # 每个文件的完整路径
@@ -794,6 +795,7 @@ json.dumps({"time": datetime.now()}, default=custom_encoder)  # 调用 json.dump
 ### 自定义反序列化 object_hook
 
 \`\`\`python
+import json
 def as_person(d):  # 定义函数 as_person，参数：d
     if "name" in d and "age" in d:  # 如果 "name" in d and "age" in d
         return Person(d["name"], d["age"])  # 返回 Person(d["name"], d["age"])
@@ -1045,6 +1047,7 @@ CSV（Comma-Separated Values）是表格数据的纯文本格式，**Excel、数
 ### 关键参数
 
 \`\`\`python
+import csv
 csv.reader(f, delimiter=',', quotechar='"')  # 调用 csv.reader()
 csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)  # 调用 csv.writer()
 \`\`\`
@@ -1084,6 +1087,7 @@ with open("out.csv", "w", newline="") as f:  # 使用上下文管理器：open("
 ### Sniffer 嗅探格式
 
 \`\`\`python
+import csv
 dialect = csv.Sniffer().sniff(sample_text)  # 赋值变量 dialect
 # 自动检测分隔符、引号等
 \`\`\`
@@ -1348,6 +1352,7 @@ pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)  # 调用 pickle.dump()
 **绝不要用 pickle 加载不可信来源的数据！** pickle 在反序列化时会执行任意代码，是常见的安全漏洞。
 
 \`\`\`python
+import pickle
 # 危险！不要这样做
 data = pickle.loads(untrusted_data)  # 可能执行恶意代码
 \`\`\`

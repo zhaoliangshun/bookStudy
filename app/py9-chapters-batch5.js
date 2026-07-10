@@ -963,6 +963,7 @@ product([1, 2], ["a", "b"])       # 笛卡尔积
 ## 切片：islice
 
 \`\`\`python
+from itertools import count
 from itertools import islice  # 从 itertools 导入 islice
 list(islice(count(), 5))           # [0, 1, 2, 3, 4] 取前 5
 list(islice(range(100), 2, 8, 2))  # [2, 4, 6] 类似切片

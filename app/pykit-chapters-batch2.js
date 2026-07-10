@@ -1428,6 +1428,7 @@ c.total()              # 11（3.10+ 求总数）
 Counter 支持 \`+\` \`-\` \`&\` \`|\`：
 
 \`\`\`python
+from collections import Counter
 c1 = Counter(a=3, b=1)
 c2 = Counter(a=1, b=2)
 c1 + c2   # {'a':4, 'b':3}  对应相加
@@ -1460,6 +1461,7 @@ d["a"].append(1)   # 不需先初始化 d["a"]=[]
 **分组示例**：
 
 \`\`\`python
+from collections import defaultdict
 by_dept = defaultdict(list)
 for emp in employees:
     by_dept[emp["dept"]].append(emp)
@@ -1512,6 +1514,7 @@ dq.pop()              # 尾部出队：O(1)
 ### 4.1 maxlen：自动滑窗
 
 \`\`\`python
+from collections import deque
 dq = deque(maxlen=3)
 for i in range(5):
     dq.append(i)   # 满了自动从另一端挤掉

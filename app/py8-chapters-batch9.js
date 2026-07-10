@@ -58,6 +58,7 @@ t.join()  # 调用 t.join()：等待所有任务完成
 **方式二：子类化 Thread**
 
 \`\`\`python
+import threading
 class MyThread(threading.Thread):  # 定义类 MyThread
     def run(self):  # 定义函数 run，参数：self
         print("自定义线程运行中")  # 打印输出到屏幕
@@ -284,6 +285,7 @@ with lock:  # 使用上下文管理器：lock
 普通 Lock 在同一线程中重复 acquire 会**死锁**。RLock 允许同一线程多次获取：
 
 \`\`\`python
+import threading
 rlock = threading.RLock()  # 赋值变量 rlock
 rlock.acquire()  # 调用 rlock.acquire()：获取锁
 rlock.acquire()  # 同一线程再次获取，OK
@@ -320,6 +322,7 @@ GIL（Global Interpreter Lock）是 CPython 解释器的一个机制：
 比 Lock 更高级，允许线程等待某个条件满足：
 
 \`\`\`python
+import threading
 cond = threading.Condition()  # 赋值变量 cond
 
 # 消费者：等待条件
@@ -339,6 +342,7 @@ with cond:  # 使用上下文管理器：cond
 控制同时访问资源的线程数量上限：
 
 \`\`\`python
+import threading
 # 最多允许 3 个线程同时访问
 sem = threading.Semaphore(3)  # 赋值变量 sem
 
@@ -1410,6 +1414,7 @@ queue.task_done()        # 标记任务完成
 异步版的互斥锁，保护共享资源：
 
 \`\`\`python
+import asyncio
 lock = asyncio.Lock()  # 赋值变量 lock
 
 async def critical_section():  # 定义异步函数 critical_section
@@ -1423,6 +1428,7 @@ async def critical_section():  # 定义异步函数 critical_section
 限制并发协程数量：
 
 \`\`\`python
+import asyncio
 sem = asyncio.Semaphore(3)  # 最多3个并发
 
 async def limited_task():  # 定义异步函数 limited_task
@@ -1776,6 +1782,7 @@ with urlopen(req) as response:  # 使用上下文管理器：urlopen(req) as res
 ### Request 对象详解
 
 \`\`\`python
+from urllib.request import Request
 req = Request(  # 赋值变量 req
     url="https://api.example.com/data",  # 定义字符串 url
     data=post_data,      # POST 请求体
@@ -1790,6 +1797,7 @@ req = Request(  # 赋值变量 req
 ### 响应处理
 
 \`\`\`python
+from urllib.request import urlopen
 with urlopen(req) as resp:  # 使用上下文管理器：urlopen(req) as resp
     resp.status       # 状态码（200, 404, 500...）
     resp.getheaders() # 响应头列表
@@ -1811,6 +1819,7 @@ urlparse("https://a.com/path?q=1")  # 解析URL各部分
 ### 异常处理
 
 \`\`\`python
+from urllib.request import urlopen
 from urllib.error import URLError, HTTPError  # 从 urllib.error 导入 URLError, HTTPError
 
 try:  # 尝试执行可能出错的代码
@@ -1825,6 +1834,7 @@ except URLError as e:  # 捕获异常 URLError
 ### JSON 响应处理
 
 \`\`\`python
+from urllib.request import urlopen
 import json  # 导入模块 json
 
 with urlopen("https://api.example.com/data") as resp:  # 使用上下文管理器：urlopen("https://api.example.com/data") as resp

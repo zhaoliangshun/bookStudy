@@ -185,6 +185,7 @@ multiply(4, 5)  # 先 my_logger，再 timer
 - **内层**（wrapper）：\`def wrapper(*args, **kwargs):\` —— 实际运行的包装函数
 
 \`\`\`python
+from itertools import repeat
 @repeat(3)
 def greet(name): ...
 # 等价于：greet = repeat(3)(greet)
@@ -198,6 +199,7 @@ def greet(name): ...
 调用链展开：
 
 \`\`\`python
+from itertools import repeat
 @repeat(3)            # 第 1 步：decorator = repeat(3)
 def greet(name): ...  # 第 2 步：greet = decorator(greet) = wrapper
 greet("alice")        # 第 3 步：调用 wrapper("alice")
@@ -737,6 +739,7 @@ class Temperature:
 ## 七、@singledispatch 按类型分发
 
 \`\`\`python
+import functools
 @functools.singledispatch        # 按第一参数类型分发的泛型函数
 def serialize(obj):
     raise TypeError(f"不支持的类型: {type(obj)}")   # 默认实现：未注册类型报错

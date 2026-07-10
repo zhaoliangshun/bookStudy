@@ -36,6 +36,7 @@ async def increment(counter):
 互斥锁，协程级别的锁：
 
 \`\`\`python
+import asyncio
 lock = asyncio.Lock()
 
 async def critical_section():
@@ -56,6 +57,7 @@ async def critical_section():
 信号量，限制并发数：
 
 \`\`\`python
+import asyncio
 sem = asyncio.Semaphore(3)  # 最多 3 个并发
 
 async def limited():
@@ -70,6 +72,7 @@ async def limited():
 事件机制：
 
 \`\`\`python
+import asyncio
 event = asyncio.Event()
 
 async def waiter():
@@ -89,6 +92,7 @@ async def setter():
 条件变量：
 
 \`\`\`python
+import asyncio
 cond = asyncio.Condition()
 
 async def waiter():
@@ -118,6 +122,7 @@ class AsyncCounter:
 ## 八、Semaphore 实战：限流爬虫
 
 \`\`\`python
+import asyncio
 sem = asyncio.Semaphore(5)
 
 async def fetch(url):
@@ -129,6 +134,7 @@ async def fetch(url):
 ## 九、Event 实战：启动信号
 
 \`\`\`python
+import asyncio
 start_event = asyncio.Event()
 
 async def worker(name):
@@ -884,6 +890,7 @@ if __name__ == "__main__":
 ## 二、asyncio 处理信号
 
 \`\`\`python
+import asyncio
 loop = asyncio.get_running_loop()
 stop_event = asyncio.Event()
 
@@ -1232,6 +1239,7 @@ debug 模式会：
 ## 三、检测未 await 的协程
 
 \`\`\`python
+import asyncio
 async def main():
     some_coro()  # 没 await
 asyncio.run(main(), debug=True)
@@ -1247,6 +1255,7 @@ asyncio.run(main(), debug=True)
 ## 五、慢回调检测
 
 \`\`\`python
+import time
 import asyncio
 
 async def slow_callback():
@@ -1258,6 +1267,7 @@ asyncio.run(slow_callback(), debug=True)
 ## 六、获取当前 task
 
 \`\`\`python
+import asyncio
 task = asyncio.current_task()
 print(f"当前 task: {task.get_name()}")
 print(f"栈: {task.get_stack()}")
@@ -1266,6 +1276,7 @@ print(f"栈: {task.get_stack()}")
 ## 七、asyncio.all_tasks
 
 \`\`\`python
+import asyncio
 tasks = asyncio.all_tasks()
 for t in tasks:
     print(f"{t.get_name()}: {t.done()}")

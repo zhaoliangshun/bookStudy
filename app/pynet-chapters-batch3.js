@@ -414,6 +414,7 @@ client_ctx.load_verify_locations(cafile="ca.pem")  # 加载受信 CA
 服务器要出示证书，所以必须加载证书链：
 
 \`\`\`python
+import ssl
 ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 # load_cert_chain：加载证书 + 私钥
 # certfile 是证书（可含中间证书链），keyfile 是私钥
@@ -435,6 +436,7 @@ ctx.set_ciphers("ECDHE+AESGCM:ECDHE+CHACHA20")
 | \`CERT_REQUIRED\` | 必须有且验证通过 | 生产默认 |
 
 \`\`\`python
+import ssl
 ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 # 方式一：加载特定 CA 文件
 ctx.load_verify_locations(cafile="my_ca.pem")
@@ -450,6 +452,7 @@ ctx.load_default_certs()
 把普通 TCP socket 升级成 SSL socket：
 
 \`\`\`python
+import socket
 # 服务器端
 raw_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 raw_sock.bind(("0.0.0.0", 443))
@@ -497,6 +500,7 @@ print(ssl_sock.getpeercert())    # {'subject': ((('commonName','x.com'),),), ...
 3. **生产**：用受信 CA（如 Let's Encrypt）签发证书。
 
 \`\`\`python
+import ssl
 # 测试时关闭验证（仅本地！生产别这么做）
 ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 ctx.check_hostname = False
@@ -508,6 +512,7 @@ ctx.verify_mode = ssl.CERT_NONE
 标准库 \`urllib.request\` 可以传 SSL context：
 
 \`\`\`python
+import ssl
 import urllib.request
 ctx = ssl.create_default_context()        # 默认严格验证
 # ctx.check_hostname = False              # 测试时关
@@ -533,6 +538,7 @@ print(resp.read().decode()[:200])
 普通 HTTPS 只验证服务器。mTLS 让服务器也验证客户端证书，用于内部服务强认证：
 
 \`\`\`python
+import ssl
 # 服务器端额外要求客户端证书
 server_ctx.verify_mode = ssl.CERT_REQUIRED
 server_ctx.load_verify_locations(cafile="client_ca.pem")
@@ -569,6 +575,7 @@ A：SNI 让客户端在 ClientHello 里告知目标域名，使一个 IP 多域�
 TLS 1.3 还支持 **0-RTT**：客户端重连时把应用数据随 ClientHello 一起发，服务器秒回。但有**重放攻击风险**，只适合幂等请求。
 
 \`\`\`python
+import ssl
 # 客户端复用 session（概念示例）
 ctx = ssl.create_default_context()
 # 第一次握手后，session 缓存在 context 里
@@ -597,6 +604,7 @@ ssl.SSLCertVerificationError:
 5. **证书过期**：\`notAfter\` 已过。续期证书。
 
 \`\`\`python
+import ssl
 # 捕获并打印详细验证错误
 try:
     ssl_sock = ctx.wrap_socket(raw, server_hostname="x.com")
@@ -916,6 +924,7 @@ assert compute_accept("dGhlIHNhbXBsZSBub25jZQ==") == "s3pPLMBiTxaQ9kYGzzhZRbK+xO
 掩码算法很简单：生成 4 字节随机掩码密钥，payload 的第 i 字节与掩码密钥的第 (i mod 4) 字节做 XOR：
 
 \`\`\`python
+import os
 mask_key = os.urandom(4)
 masked = bytes(b ^ mask_key[i % 4] for i, b in enumerate(payload))
 # 解掩码是同样操作（XXOR 自身可逆）
@@ -1776,6 +1785,7 @@ while True:
 - 一段时间没收到 Pong，服务器认为连接已死，主动关闭。
 
 \`\`\`python
+import time
 # 服务器心跳：每 30 秒发 Ping
 last_pong = time.time()
 def heartbeat():

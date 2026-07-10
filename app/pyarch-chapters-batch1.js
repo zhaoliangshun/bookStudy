@@ -161,6 +161,8 @@ SOLID 最早是在 C++/Java 这种静态类型语言背景下总结的。Python 
 Java 必须显式声明接口和类型,编译器帮你检查依赖倒置。Python 没有"接口"关键字,靠**约定**和**鸭子类型**。
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 # Java 风格:显式接口
 class Database(ABC):
     @abstractmethod
@@ -871,6 +873,7 @@ class UserNameAccessor:
 ### 误区3:把"持久化"留在数据类里
 
 \`\`\`python
+from dataclasses import dataclass
 # ❌ 常见错误:User 自己 save
 @dataclass
 class User:
@@ -1361,6 +1364,8 @@ elif shape == "triangle":        class Circle(Shape):
 ### 多态如何"消灭"分支
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 # ❌ 分支版:加形状要改 calculate_total
 def calculate_total(shapes):
     total = 0

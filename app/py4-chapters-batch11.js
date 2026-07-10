@@ -131,6 +131,7 @@ print("map+filter:", result)
 ## 四、代码逐行讲解
 
 \`\`\`python
+import operator
 users = [{"name": "bob", "age": 30}, {"name": "alice", "age": 25}]
 by_age = sorted(users, key=operator.itemgetter("age"))
 # itemgetter("age") 返回 f(obj)=obj["age"]，sorted 据此排序
@@ -234,6 +235,7 @@ print("lt:", operator.lt(1, 2), operator.eq(1, 1))
 ## 四、代码逐行讲解
 
 \`\`\`python
+import functools
 square = functools.partial(power, exp=2)
 # 固定 power 的 exp=2，返回新函数 square(base)，调用 square(5) 等价于 power(5, exp=2)
 cube = functools.partial(power, exp=3)

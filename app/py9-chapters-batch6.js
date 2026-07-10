@@ -711,6 +711,8 @@ with my_context() as x:  # 使用上下文管理器：my_context() as x
 5. **计时**
 
 \`\`\`python
+import time
+from contextlib import contextmanager
 @contextmanager  # 应用装饰器 contextmanager
 def timer(name):  # 定义函数 timer，参数：name
     start = time.time()  # 赋值变量 start
@@ -1562,6 +1564,7 @@ print(a)               # [1, 2, [3, 4, 5]]  ← 内层被改了！
 ## 深拷贝
 
 \`\`\`python
+import copy
 d = copy.deepcopy(a)  # 赋值变量 d
 d[2].append(6)  # 执行操作
 print(a)    # [1, 2, [3, 4]]  ← 完全独立

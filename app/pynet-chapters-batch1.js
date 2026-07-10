@@ -845,6 +845,7 @@ Python \`socket\` 模块提供了几个 DNS 解析函数。
 ### 3.1 gethostbyname：域名 → IPv4
 
 \`\`\`python
+import socket
 ip = socket.gethostbyname('www.example.com')
 # 返回字符串 '93.184.216.34'
 \`\`\`
@@ -854,6 +855,7 @@ ip = socket.gethostbyname('www.example.com')
 ### 3.2 getaddrinfo：综合解析（推荐）
 
 \`\`\`python
+import socket
 infos = socket.getaddrinfo(host, port, family=0, type=0)
 # 返回列表，每项：(family, type, proto, canonname, sockaddr)
 \`\`\`
@@ -865,6 +867,7 @@ infos = socket.getaddrinfo(host, port, family=0, type=0)
 4. 直接返回可用于 \`socket()\` 和 \`connect()\` 的参数
 
 \`\`\`python
+import socket
 # 用法示例
 infos = socket.getaddrinfo('localhost', 80, socket.AF_INET, socket.SOCK_STREAM)
 for family, stype, proto, canon, sockaddr in infos:
@@ -886,6 +889,7 @@ socket.getfqdn()  # 返回本机的完整域名（Fully Qualified Domain Name）
 ### 4.1 inet_aton / inet_ntoa（仅 IPv4）
 
 \`\`\`python
+import socket
 # 字符串 IP → 4 字节字节串
 b = socket.inet_aton('192.168.1.1')   # b'\\xc0\\xa8\\x01\\x01'
 # 4 字节字节串 → 字符串 IP
@@ -895,6 +899,7 @@ s = socket.inet_ntoa(b)               # '192.168.1.1'
 ### 4.2 inet_pton / inet_ntop（支持 IPv6，推荐）
 
 \`\`\`python
+import socket
 # pton = presentation to network（字符串 → 字节串）
 b = socket.inet_pton(socket.AF_INET, '192.168.1.1')
 b6 = socket.inet_pton(socket.AF_INET6, '2001:db8::1')
@@ -1603,6 +1608,7 @@ else:
 \`connect_ex\` 返回 0 表示端口开放（有服务器监听），返回非 0（通常是 111=ECONNREFUSED）表示端口关闭。这就是**端口扫描器**的原理：
 
 \`\`\`python
+import socket
 for port in range(80, 90):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(0.5)
@@ -1623,6 +1629,7 @@ for port in range(80, 90):
 3. **系统更聪明**：系统会从临时端口范围挑一个空闲的。
 
 \`\`\`python
+import socket
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect(('127.0.0.1', 8080))
 print(client.getsockname())  # 看系统分配的临时端口，如 ('127.0.0.1', 54321)
@@ -1657,6 +1664,7 @@ sock.settimeout(2.0)       # 超时模式：阻塞最多 2 秒
 网络编程必须处理异常，因为网络是不可靠的：
 
 \`\`\`python
+import socket
 try:
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.settimeout(2.0)

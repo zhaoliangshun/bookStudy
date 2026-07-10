@@ -65,6 +65,7 @@ cursor.execute("SELECT * FROM users WHERE name=?", (name,))  # 调用 cursor.exe
 ### 使用 with 语句自动管理
 
 \`\`\`python
+import sqlite3
 # with 会帮你自动 commit 或 rollback
 with sqlite3.connect(":memory:") as conn:  # 使用上下文管理器：sqlite3.connect(":memory:") as conn
     conn.execute("CREATE TABLE ...")  # 调用 conn.execute()
@@ -74,6 +75,7 @@ with sqlite3.connect(":memory:") as conn:  # 使用上下文管理器：sqlite3.
 ### row_factory 自定义行格式
 
 \`\`\`python
+import sqlite3
 # 默认返回元组
 conn.row_factory = sqlite3.Row  # 返回可按键访问的 Row 对象
 row = cursor.fetchone()  # 赋值变量 row
@@ -1825,6 +1827,7 @@ value = 42  # 也可以
 ### 泛型函数
 
 \`\`\`python
+from typing import List
 from typing import TypeVar  # 从 typing 导入 TypeVar
 
 T = TypeVar("T")  # 赋值变量 T

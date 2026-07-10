@@ -2946,6 +2946,7 @@ class Order(BaseModel):
 ### 6.2 链接生成器
 
 \`\`\`python
+from typing import Dict
 def build_order_links(order: dict) -> Dict[str, Any]:
     """根据订单状态生成可用链接"""
     links = {
@@ -3765,6 +3766,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 ### 7.3 用户与权限模型
 
 \`\`\`python
+from enum import Enum
 class Role(str, Enum):
     admin = "admin"
     user = "user"
@@ -3805,6 +3807,7 @@ users_db: dict[str, User] = {
 ### 7.4 JWT 工具函数
 
 \`\`\`python
+from typing import Optional
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """创建 JWT access token"""
     to_encode = data.copy()

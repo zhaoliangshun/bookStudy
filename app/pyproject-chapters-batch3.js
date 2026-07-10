@@ -1994,6 +1994,7 @@ def delete_post(post_id: int):
 谁在什么时候干了什么,必须可追溯:
 
 \`\`\`python
+from dataclasses import dataclass
 # 记录所有敏感操作
 @dataclass
 class AuditLog:

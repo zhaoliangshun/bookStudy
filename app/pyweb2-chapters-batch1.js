@@ -2051,6 +2051,7 @@ conn.close()
 ### 1.3 with 语法 + 复用连接
 
 \`\`\`python
+import http
 # 复用连接发多个请求，省去重复握手
 with http.client.HTTPSConnection("httpbin.org") as conn:
     for i in range(3):

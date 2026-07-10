@@ -71,6 +71,7 @@ finally:
 很多人习惯把所有逻辑都塞进 \`try\`，但这样会**误捕获**不属于"可能出错"代码的异常。正确做法是 \`try\` 只放最小范围的可能出错代码，成功后的逻辑放 \`else\`：
 
 \`\`\`python
+import json
 # 不推荐：try 范围太大
 try:
     data = json.loads(text)
@@ -173,6 +174,7 @@ except ZeroDivisionError as e:
 在 \`except\` 中可以用不带参数的 \`raise\` 重新抛出当前异常（保留原始堆栈）：
 
 \`\`\`python
+import logging
 try:
     1 / 0
 except ZeroDivisionError:
@@ -185,6 +187,7 @@ except ZeroDivisionError:
 转换异常类型时，用 \`raise ... from ...\` 保留原始异常，便于追踪根因：
 
 \`\`\`python
+import json
 try:
     data = json.loads(text)
 except json.JSONDecodeError as e:
@@ -287,6 +290,7 @@ except:
 如果一定要宽泛捕获，至少用 \`except Exception:\`（不包含 \`KeyboardInterrupt\` 等），并且**记录日志**：
 
 \`\`\`python
+import logging
 try:
     do_something()
 except Exception as e:
@@ -391,6 +395,7 @@ finally:
 \`contextlib.suppress\` 是"忽略特定异常"的语义化写法，比 \`try/except: pass\` 更清晰：
 
 \`\`\`python
+import os
 from contextlib import suppress
 
 # 删除文件，不存在也不报错
@@ -722,6 +727,7 @@ logger.warning("模块 b 警告")
 \`logging\` 的架构是：Logger → Handler → Formatter。一个 Logger 可以有多个 Handler，比如同时输出到控制台和文件，且用不同格式：
 
 \`\`\`python
+import logging
 logger = logging.getLogger("myapp")
 logger.setLevel(logging.DEBUG)
 
@@ -764,6 +770,7 @@ handler = TimedRotatingFileHandler("app.log", when="midnight", backupCount=7)
 异常发生时，默认的 traceback 信息有时不够灵活。\`traceback\` 模块可以**精细控制**堆栈的打印和记录：
 
 \`\`\`python
+import logging
 import traceback
 try:
     1 / 0
@@ -1197,6 +1204,7 @@ apply(lambda x, y: x + y, 3, 5)   # 8
 复杂类型可以起别名，提高可读性：
 
 \`\`\`python
+from typing import Union
 from typing import List, Dict
 
 # JSON 数据结构别名
@@ -1255,6 +1263,7 @@ class User:
 ### 3.3 默认值
 
 \`\`\`python
+from dataclasses import dataclass
 @dataclass
 class User:
     name: str
@@ -1313,6 +1322,7 @@ print(u)   # User(name='Alice', age=30)（password 和 internal_id 不显示）
 ### 4.1 frozen：不可变 dataclass
 
 \`\`\`python
+from dataclasses import dataclass
 @dataclass(frozen=True)
 class Point:
     x: float
@@ -1327,6 +1337,7 @@ p.x = 3.0   # 报错！frozen 实例不可修改
 ### 4.2 继承
 
 \`\`\`python
+from dataclasses import dataclass
 @dataclass
 class Base:
     id: int
@@ -1342,6 +1353,7 @@ class User(Base):
 ### 4.3 asdict 与 astuple
 
 \`\`\`python
+from dataclasses import dataclass
 from dataclasses import asdict, astuple
 
 @dataclass
@@ -1384,6 +1396,7 @@ mypy my_script.py
 \`\`\`
 
 \`\`\`python
+from dataclasses import dataclass
 # mypy 会报错：age 应该是 int
 @dataclass
 class User:
@@ -1398,6 +1411,7 @@ u = User("Alice", "thirty")   # error: Argument "age" has incompatible type "str
 类型提示默认**运行时不检查**。如果需要运行时验证，可以用 \`__post_init__\`：
 
 \`\`\`python
+from dataclasses import dataclass
 @dataclass
 class User:
     name: str
@@ -1417,6 +1431,8 @@ class User:
 ### 6.1 配置模型
 
 \`\`\`python
+from dataclasses import field
+from dataclasses import dataclass
 @dataclass
 class DatabaseConfig:
     host: str = "localhost"
@@ -1434,6 +1450,7 @@ print(config)   # 自动格式化打印
 ### 6.2 API 数据结构
 
 \`\`\`python
+from dataclasses import dataclass
 @dataclass
 class ApiResponse:
     code: int

@@ -281,6 +281,7 @@ openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem \\
 \`\`\`
 
 \`\`\`python
+import ssl
 # 服务端
 ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 ctx.load_cert_chain("cert.pem", "key.pem")
@@ -1551,6 +1552,7 @@ ctypes 类型映射：
 ### 四、ctypes 高级：回调与结构体
 
 \`\`\`python
+import ctypes
 # 回调函数：C 的 qsort 需要比较函数
 CMPFUNC = ctypes.CFUNCTYPE(c_int, POINTER(c_int), POINTER(c_int))
 
@@ -1918,6 +1920,7 @@ subprocess.run(["sleep", "10"], timeout=5)  # TimeoutExpired
 \`run()\` 是阻塞的，需要**流式读输出**或**拼接管道**时用 \`Popen\`：
 
 \`\`\`python
+import subprocess
 # 模拟 ls | grep
 p1 = subprocess.Popen(["ls"], stdout=subprocess.PIPE)
 p2 = subprocess.Popen(["grep", "py"], stdin=p1.stdout, stdout=subprocess.PIPE)
@@ -1930,6 +1933,7 @@ output = p2.communicate()[0]
 ### 五、异步实时输出
 
 \`\`\`python
+import subprocess
 proc = subprocess.Popen(
     ["python", "-u", "long.py"],
     stdout=subprocess.PIPE, text=True, bufsize=1
@@ -1946,6 +1950,7 @@ proc.wait()
 ### 六、shell=True 的安全风险
 
 \`\`\`python
+import subprocess
 # 危险！命令注入
 user_input = "file.txt; rm -rf /"
 subprocess.run(f"cat {user_input}", shell=True)  # 灾难
@@ -2235,6 +2240,7 @@ ctypes.Structure 是真正的 C 结构体内存布局，可：
 ### 四、嵌套结构体与数组
 
 \`\`\`python
+import ctypes
 class Triangle(ctypes.Structure):
     _fields_ = [
         ("points", Point * 3),          # 数组
@@ -2255,6 +2261,7 @@ class Line(ctypes.Structure):
 C 编译器默认按成员类型对齐（如 uint32 对齐 4 字节），不同平台/编译器可能不同：
 
 \`\`\`python
+import ctypes
 class Default(ctypes.Structure):
     _fields_ = [("a", c_uint8), ("b", c_uint32)]
 # sizeof = 8 (a 后填充 3 字节)
@@ -2270,6 +2277,7 @@ class Packed(ctypes.Structure):
 ### 六、Union 联合体
 
 \`\`\`python
+import ctypes
 class IntBytes(ctypes.Union):
     _fields_ = [
         ("i", ctypes.c_uint32),

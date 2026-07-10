@@ -170,6 +170,7 @@ Python \`logging\` 定义了 5 个标准级别(数值越大越严重):
 一个常见的反模式:把所有异常都打成 ERROR,导致 ERROR 漫天飞,真正严重的错误被淹没。
 
 \`\`\`python
+from functools import cache
 # 反模式:无脑 ERROR
 import logging
 logger = logging.getLogger(__name__)
@@ -423,6 +424,7 @@ root
 - \`myapp\` 的父 logger 是 \`root\`
 
 \`\`\`python
+import logging
 parent = logging.getLogger("myapp.api")
 child = logging.getLogger("myapp.api.user")
 assert child.parent is parent  # True
@@ -507,6 +509,7 @@ logger = logging.getLogger(__name__)  # __name__ == "myapp.payment.service"
 ### 反模式:用字符串常量
 
 \`\`\`python
+import logging
 # 反模式
 logger = logging.getLogger("payment")  # 丢失包路径,无法定位
 \`\`\`
@@ -939,6 +942,7 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 Formatter 通过格式字符串决定一条日志的文本形态。
 
 \`\`\`python
+import logging
 # Formatter 通过格式串决定日志文本形态
 # 格式串中的 %(xxx)s 是 LogRecord 属性占位符,由 Formatter 在输出时填充
 fmt = logging.Formatter(
@@ -1000,6 +1004,7 @@ handler.setFormatter(fmt)  # 把 formatter 挂到 handler(logger 不持有 forma
 注意:标准 \`Formatter\` 的 \`datefmt\` 默认不带毫秒。要毫秒,用 \`default_msec_format\` 或自定义 Formatter:
 
 \`\`\`python
+import logging
 class MsecFormatter(logging.Formatter):
     default_msec_format = "%s,%03d"
 \`\`\`
@@ -1075,6 +1080,7 @@ handler.addFilter(MyFilter()) ← handler 也能加 filter
 ### 内置用法:按 logger 名过滤
 
 \`\`\`python
+import logging
 # 只允许 "myapp.db" 及其子 logger 的日志通过
 class DbFilter(logging.Filter):
     def filter(self, record):
@@ -1095,6 +1101,7 @@ handler.addFilter(logging.Filter("myapp.db"))
 LogRecord 可以携带自定义属性,Filter 基于它过滤:
 
 \`\`\`python
+import logging
 # 按业务字段过滤:LogRecord 可以携带自定义属性(extra 注入)
 class HighValueFilter(logging.Filter):
     def filter(self, record):
@@ -1790,6 +1797,7 @@ if __name__ == "__main__":
 \`incremental: true\` 时,dictConfig **不创建新 handler/formatter**,只调整已有 logger 的级别/handler 关系。适合「运行时热调级别」:
 
 \`\`\`python
+import logging
 # incremental=True:不重建 handler/formatter,只调整已有 logger 的级别
 # 适合「运行时热调级别」,避免重复创建文件 handler 导致句柄泄漏
 config = {
@@ -1999,6 +2007,7 @@ JSON 日志里这些字段会被单独提取,便于在 ELK 里按 \`order_id\` �
 微服务下,一个请求跨多个服务。给每个请求分配唯一 \`request_id\`,在所有日志里带上,就能串起完整链路:
 
 \`\`\`python
+import logging
 import uuid
 from contextvars import ContextVar
 
@@ -2261,6 +2270,7 @@ def request(url):
 ### 反模式:无脑 ERROR
 
 \`\`\`python
+from functools import cache
 try:
     value = cache.get(key)
 except KeyError:
@@ -2359,6 +2369,7 @@ child.info("hi")  # 输出 2 次!
 ### 陷阱 3:级别理解错误
 
 \`\`\`python
+import logging
 logger = logging.getLogger("demo")
 logger.setLevel(logging.WARNING)
 

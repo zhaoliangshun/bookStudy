@@ -591,6 +591,7 @@ Django 测试时**自动**:
 你什么都不用配,迁移会自动应用。这也是为什么 Django 测试比 Flask "省心":数据库隔离是内建的。
 
 \`\`\`python
+import sys
 # settings.py 里可以单独配测试数据库
 # 条件判断：如果 "test" in sys.argv
 if "test" in sys.argv:

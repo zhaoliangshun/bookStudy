@@ -1317,6 +1317,7 @@ async def main():
 ## 五、有界 vs 无界
 
 \`\`\`python
+import asyncio
 # 无界：永远不阻塞 put（小心内存）
 q = asyncio.Queue()
 

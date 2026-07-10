@@ -1886,6 +1886,7 @@ JSON 序列化的限制:
 如果存了不兼容类型会报错。解决:存前转字符串,取后转回。
 
 \`\`\`python
+from datetime import timezone
 # ❌ 不能直接存 datetime
 # request.session["login_time"] = timezone.now()
 

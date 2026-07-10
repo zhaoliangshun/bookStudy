@@ -64,6 +64,7 @@ cursor.execute(sql)
 **ORM 的写法：** ORM 内部使用**参数化查询**，自动把用户输入当数据而不是代码，从根本上杜绝注入。
 
 \`\`\`python
+import select
 # ORM 会自动参数化，安全
 # 定义变量 stmt，赋值为 select(User).where(User.name == username)
 stmt = select(User).where(User.name == username)
@@ -214,6 +215,7 @@ for user in users:
 **正确写法（预加载，2 次查询）**：
 
 \`\`\`python
+import select
 # 从 sqlalchemy.orm 导入 selectinload
 from sqlalchemy.orm import selectinload
 
@@ -1880,6 +1882,7 @@ with engine.begin() as conn_b:
 ### 2. 丢失更新
 
 \`\`\`python
+import select
 # 两个事务同时读、同时改、同时提交，后提交的覆盖前一个
 # 事务 A：读 balance=100，改成 100+50=150
 # 事务 B：读 balance=100，改成 100-30=70
@@ -2432,6 +2435,7 @@ for u in users:
 #### joinedload（JOIN 预加载）
 
 \`\`\`python
+import select
 # 从 sqlalchemy.orm 导入 joinedload
 from sqlalchemy.orm import joinedload
 
@@ -2452,6 +2456,7 @@ for u in users:
 #### selectinload（IN 预加载，推荐一对多）
 
 \`\`\`python
+import select
 # 从 sqlalchemy.orm 导入 selectinload
 from sqlalchemy.orm import selectinload
 
@@ -2472,6 +2477,7 @@ for u in users:
 #### raiseload（禁止懒加载）
 
 \`\`\`python
+import select
 # 从 sqlalchemy.orm 导入 raiseload
 from sqlalchemy.orm import raiseload
 
@@ -2616,6 +2622,7 @@ for user in users:
 ### where（2.0 推荐）
 
 \`\`\`python
+import select
 # 单条件
 # 定义变量 stmt，赋值为 select(User).where(User.age > 18)
 stmt = select(User).where(User.age > 18)
@@ -2632,6 +2639,7 @@ stmt3 = select(User).where(User.age > 18).where(User.active == True)
 ### filter_by（按关键字过滤）
 
 \`\`\`python
+import select
 # filter_by 用关键字参数，简洁但只能等值比较
 # 定义变量 stmt，赋值为 select(User).filter_by(active=True, name="Tom")
 stmt = select(User).filter_by(active=True, name="Tom")
@@ -2641,6 +2649,7 @@ stmt = select(User).filter_by(active=True, name="Tom")
 ### and_ / or_ / not_
 
 \`\`\`python
+import select
 # 从 sqlalchemy 导入 and_, or_, not_
 from sqlalchemy import and_, or_, not_
 
@@ -2924,6 +2933,7 @@ stmt3 = select(
 - **having**：分组后过滤组（过滤聚合结果）。
 
 \`\`\`python
+import select
 # 找出 2024 年发文超过 5 篇的用户
 # 定义变量 stmt，赋值为 select(Post.user_id, func.count(Post.id))
 stmt = select(Post.user_id, func.count(Post.id)).where(
@@ -2971,6 +2981,7 @@ stmt4 = select(User.name, Post.title, Comment.content).join(
 如果模型定义了 relationship，join 可以更简洁：
 
 \`\`\`python
+import select
 # 模型定义了 User.posts 和 Post.author
 # join 自动用关系的外键
 # 定义变量 stmt，赋值为 select(User.name, Post.title).join(User.posts)

@@ -252,6 +252,7 @@ if __name__ == "__main__":
 Python 内置就有很多适配器思想的体现:
 
 \`\`\`python
+import json
 # 1. list() 适配任意可迭代对象
 d = {"a": 1, "b": 2}
 print(list(d))              # ['a', 'b']  —— dict 适配成 list
@@ -983,6 +984,7 @@ print(say_hi.count)  # 2
 装饰器不仅能装饰函数,还能装饰**整个类**:
 
 \`\`\`python
+import functools
 def singleton(cls):
     """单例装饰器:让一个类只有一个实例"""
     instances = {}
@@ -3176,6 +3178,8 @@ class ReferenceCountingProxy:
 这是代理与适配器的根本区别。代理实现与 RealSubject 相同的接口,客户端才能透明使用:
 
 \`\`\`python
+from abc import abstractmethod
+from abc import ABC
 # ✅ 正确:Proxy 与 Real 都实现 Image
 class Image(ABC):
     @abstractmethod

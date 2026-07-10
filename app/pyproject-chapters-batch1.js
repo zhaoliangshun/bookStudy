@@ -2622,6 +2622,7 @@ $ cat fmgr_ops.log                   # 查看操作日志
 查重最朴素的做法是「每个文件都算 MD5」,但这对大目录会非常慢。我们用了**两阶段优化**:
 
 \`\`\`python
+from collections import defaultdict
 # 阶段 1:先按文件大小分组(几乎零成本,只读 stat)
 by_size = defaultdict(list)
 for e in entries:

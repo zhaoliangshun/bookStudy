@@ -214,17 +214,21 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 800 }) {
     }
   }, [code, langLower, langInfo, setIsRunning, setShowOutput, setOutput, setError]);
 
-  // ---------- 复制到 Playground 并在新标签页打开 ----------
+  // ---------- 复制到 Playground 并打开 ----------
+  // 使用固定的窗口名 "playground"：如果已有同名标签页，则复用它
+  // （导航到新 URL 触发重新加载），而不是每次都打开新标签页。
+  // 不使用 noopener，以便复用标签页时能手动 focus 将其置于前台。
   const handlePlayground = useCallback(() => {
     if (!langInfo?.pgId) return;
     try {
       localStorage.setItem("playground:code:" + langInfo.pgId, code);
     } catch {}
-    window.open(
+    const win = window.open(
       `/playground?lang=${langInfo.pgId}`,
-      "_blank",
-      "noopener,noreferrer"
+      "playground"
     );
+    // 复用已打开的标签页时，手动将其聚焦到前台
+    if (win) win.focus();
   }, [code, langInfo]);
 
   // ---------- 重置代码 ----------

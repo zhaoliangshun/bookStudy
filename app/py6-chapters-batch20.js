@@ -126,6 +126,7 @@ class Storage:
 \`argparse\` 的 \`add_subparsers\` 实现子命令模式，每个子命令注册独立参数：
 
 \`\`\`python
+import argparse
 parser = argparse.ArgumentParser(prog="todo")
 sub = parser.add_subparsers(dest="command", required=True)
 
@@ -1602,6 +1603,7 @@ if __name__ == "__main__":
 #### 4.1 服务器主循环
 
 \`\`\`python
+import socket
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.bind(("0.0.0.0", 9999))
 server_socket.listen(5)
@@ -1998,6 +2000,7 @@ if __name__ == "__main__":
 用正则把模板切成 token 列表，文本和标签交替：
 
 \`\`\`python
+import re
 pattern = re.compile(r'(\\{\\{.*?\\}\\}|\\{%.*?%\\})', re.DOTALL)
 tokens = pattern.split(template)
 # ["Hello ", "{{ name }}", "!", "{% if show %}", "Welcome", "{% endif %}"]

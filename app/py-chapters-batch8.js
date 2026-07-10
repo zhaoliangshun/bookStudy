@@ -2954,6 +2954,7 @@ with my_ctx() as r:
 如果 with 块里抛异常，异常会在 \`yield\` 那里重新抛出。你可以用 \`try/except\` 包住 \`yield\` 来处理：
 
 \`\`\`python
+from contextlib import contextmanager
 @contextmanager
 def safe_ctx():                    # 定义函数 safe_ctx，无参数
     print("进入")
@@ -2975,6 +2976,7 @@ print("继续")
 ### 4.3 计时器（生成器版）
 
 \`\`\`python
+from contextlib import contextmanager
 import time                        # 导入 time 模块
 
 @contextmanager
@@ -2992,6 +2994,7 @@ with timer("计算"):
 ### 4.4 临时切换状态（生成器版）
 
 \`\`\`python
+from contextlib import contextmanager
 @contextmanager
 def temp_attr(obj, **changes):     # 定义函数 temp_attr，参数：obj, **changes
     original = {k: getattr(obj, k) for k in changes}  # 创建字典并赋给 original
@@ -3015,6 +3018,7 @@ def temp_attr(obj, **changes):     # 定义函数 temp_attr，参数：obj, **ch
 \`suppress(*exceptions)\` 上下文管理器：忽略指定的异常。比 \`try/except: pass\` 更清晰。
 
 \`\`\`python
+import os
 from contextlib import suppress    # 从 contextlib 导入 suppress
 
 with suppress(FileNotFoundError):
@@ -3025,6 +3029,7 @@ print("继续执行，异常被忽略")
 等价于：
 
 \`\`\`python
+import os
 try:
     os.remove("不存在的文件.txt")        # 对 os 调用 移除 方法，参数 "不存在的文件.txt"
 except FileNotFoundError:
@@ -3051,6 +3056,7 @@ print("捕获到的内容:", buffer.getvalue())
 同理，重定向 stderr：
 
 \`\`\`python
+import io
 import sys                         # 导入 sys 模块
 from contextlib import redirect_stderr  # 从 contextlib 导入 redirect_stderr
 
@@ -3078,6 +3084,7 @@ with closing(urlopen("http://example.com")) as page:
 \`nullcontext()\` 是一个「什么都不做」的上下文管理器，作为「可选上下文」的占位符很有用：
 
 \`\`\`python
+import threading
 from contextlib import nullcontext # 从 contextlib 导入 nullcontext
 
 def process(lock=None):            # 定义函数 process，参数：lock=None
@@ -3134,6 +3141,7 @@ with ExitStack() as stack:
 \`ExitStack\` 可以混合 \`enter_context\` 和 \`callback\`：
 
 \`\`\`python
+from contextlib import ExitStack
 with ExitStack() as stack:
     f = stack.enter_context(open("data.txt", "w"))
     stack.callback(print, "文件已关闭") # 对 stack 调用 callback 方法，参数 print, "文件已关闭"
@@ -3183,6 +3191,7 @@ asyncio.run(main())                # 对 asyncio 调用 run 方法，参数 main
 和同步版对应，\`asynccontextmanager\` 用「带 \`yield\` 的异步生成器」定义异步上下文管理器：
 
 \`\`\`python
+import asyncio
 from contextlib import asynccontextmanager  # 从 contextlib 导入 asynccontextmanager
 
 @asynccontextmanager
@@ -3222,6 +3231,7 @@ async def main():                  # 定义异步函数 main
 ### 8.1 数据库事务
 
 \`\`\`python
+from contextlib import contextmanager
 @contextmanager
 def transaction(db):               # 定义函数 transaction，参数：db
     db.begin()                     # 对 db 调用 begin 方法
@@ -3253,6 +3263,7 @@ with lock:
 ### 8.3 临时切换工作目录
 
 \`\`\`python
+from contextlib import contextmanager
 import os                          # 导入 os 模块
 
 @contextmanager
@@ -3272,6 +3283,7 @@ print("回到:", os.getcwd())
 ### 8.4 资源清理
 
 \`\`\`python
+from contextlib import contextmanager
 @contextmanager
 def managed_file(path):            # 定义函数 managed_file，参数：path
     f = open(path, "w")
@@ -4083,6 +4095,7 @@ print(apply(lambda x, y: x + y, 3, 4))
 Python 3.9+ 也可以用 \`Callable[..., int]\` 表示「参数任意，返回 int」。
 
 \`\`\`python
+from typing import Callable
 # 不带参数注解的 Callable
 def run(fn: Callable[..., None]) -> None:  # 定义函数 run，参数：fn: Callable[..., None]，返回 None
     fn()                           # 调用 fn
@@ -4144,6 +4157,7 @@ def first(items: list[T]) -> T:    # 定义函数 first，参数：items: list[T
 可以用 \`bound\` 或 \`constrained\` 限制 TypeVar 的范围：
 
 \`\`\`python
+from typing import TypeVar
 # bound: T 必须是 Animal 或其子类
 class Animal: ...
 class Dog(Animal): ...
@@ -4191,6 +4205,8 @@ print(s.pop())   # 2
 ### 7.1 多类型参数
 
 \`\`\`python
+from typing import Generic
+from typing import TypeVar
 K = TypeVar("K")
 V = TypeVar("V")
 

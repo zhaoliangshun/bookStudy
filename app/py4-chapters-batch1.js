@@ -512,6 +512,7 @@ print(0b101, 0o755, 0xFF)           # 5 493 255
 - \`0xFF\` = 15×16 + 15 = 255
 
 \`\`\`python
+import math
 print(float("inf") > 10**100, math.isnan(float("nan")))
 # float("inf") > 10**100 → True：正无穷大于任何有限数
 # math.isnan(...) → True：必须用 math.isnan 判 NaN，nan != nan
@@ -520,6 +521,7 @@ print(float("inf") > 10**100, math.isnan(float("nan")))
 - \`math.isnan\` 判断 NaN,不能用 \`== float("nan")\`(因为 nan != nan)
 
 \`\`\`python
+import decimal
 d = decimal.Decimal("0.1") + decimal.Decimal("0.2")
 print(d, d == decimal.Decimal("0.3"))  # True，字符串构造，精确存储可比较
 \`\`\`

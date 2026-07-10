@@ -1880,6 +1880,7 @@ MongoDB是最流行的文档数据库，数据以BSON（Binary JSON）格式存�
 - **快速原型开发**：Schema不固定，需求频繁变化
 
 \`\`\`python
+from datetime import datetime
 from pymongo import MongoClient
 
 client = MongoClient('mongodb://localhost:27017/')

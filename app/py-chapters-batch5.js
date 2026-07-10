@@ -176,6 +176,9 @@ print(math.isclose(0.1 + 0.2, 0.3, rel_tol=1e-9))
 ### 2.5 浮点数的特殊值
 
 \`\`\`python
+import math
+from math import nan
+from math import inf
 float('inf')      # 正无穷
 inf
 float('-inf')     # 负无穷
@@ -229,6 +232,7 @@ True
 注意：**一定要用字符串构造 \`Decimal\`**，不要用浮点数。如果用 \`Decimal(0.1)\`，会先把 0.1 转成不精确的浮点数，再转成 Decimal，精度已经丢了：
 
 \`\`\`python
+from decimal import Decimal
 Decimal(0.1)         # 错误！先转 float 再转 Decimal，已带误差
 Decimal('0.1000000000000000055511151231257827021181583404541015625')  # 调用 Decimal，参数 '0.1000000000000000055511151231257827021181583404541015625'
 Decimal('0.1')       # 正确！用字符串
@@ -334,6 +338,7 @@ print(pi_approx - Fraction(math.pi).limit_denominator(1000))
 注意 \`math.ceil\` 和 \`math.floor\` 与 \`int()\` 的区别：
 
 \`\`\`python
+import math
 int(-2.7)      # 向零取整 → -2
 math.trunc(-2.7)  # 向零取整 → -2
 math.floor(-2.7)  # 向负无穷取整 → -3
@@ -354,6 +359,7 @@ math.ceil(-2.7)   # 向正无穷取整 → -2
 | \`math.log(x, base)\` | 任意底对数 |
 
 \`\`\`python
+import math
 math.sqrt(144)      # 12.0
 math.pow(2, 10)     # 1024.0
 math.exp(1)         # 2.718281828459045
@@ -371,6 +377,7 @@ math.log2(8)        # 3.0
 | \`math.perm(n, k)\` | 排列数 A(n,k)（Python 3.8+） |
 
 \`\`\`python
+import math
 math.factorial(5)        # 120
 math.comb(5, 2)          # 10，从 5 个中选 2 个
 math.perm(5, 2)          # 20，从 5 个中选 2 个排列
@@ -384,6 +391,7 @@ math.perm(5, 2)          # 20，从 5 个中选 2 个排列
 | \`math.lcm(a, b)\` | 最小公倍数（Python 3.9+） |
 
 \`\`\`python
+import math
 math.gcd(12, 18)    # 6
 math.lcm(4, 6)      # 12
 math.gcd(12, 18, 24)  # 6，支持多参数（Python 3.9+）
@@ -392,6 +400,7 @@ math.gcd(12, 18, 24)  # 6，支持多参数（Python 3.9+）
 ### 5.6 三角函数
 
 \`\`\`python
+import math
 math.sin(math.pi / 2)    # 1.0
 math.cos(0)              # 1.0
 math.tan(math.pi / 4)    # 0.9999999999999999
@@ -405,6 +414,7 @@ math.asin(1)             # 1.5707963267948966（π/2）
 ### 5.7 双曲函数与特殊函数
 
 \`\`\`python
+import math
 math.sinh(0)    # 0.0，双曲正弦
 math.cosh(0)    # 1.0，双曲余弦
 math.tanh(0)    # 0.0，双曲正切
@@ -426,6 +436,7 @@ math.lgamma(5)  # 3.1780538303479458，ln(Γ(5))
 | \`math.fsum(iterable)\` | 精确浮点求和（避免误差累积） |
 
 \`\`\`python
+import math
 # fsum 避免累加误差
 print(sum([0.1] * 10))        # 0.9999999999999999
 print(math.fsum([0.1] * 10))  # 1.0
@@ -928,6 +939,7 @@ print(seq1 == seq2)   # True，相同种子产生相同序列
 ### 15.2 随机状态保存与恢复
 
 \`\`\`python
+import random
 state = random.getstate()   # 保存当前状态
 r1 = random.random()               # 将 random.random() 赋给 r1
 random.setstate(state)      # 恢复状态
@@ -954,6 +966,7 @@ rolls = random.choices(range(1, 7), k=10)  # 将 random.choices(range(1, 7), k=1
 ### 15.4 自定义随机范围
 
 \`\`\`python
+import random
 # randrange 的步长用法
 print(random.randrange(0, 100, 2))   # 0-100 的偶数
 print(random.randrange(0, 100, 5))   # 0-100 的 5 的倍数
@@ -2947,6 +2960,7 @@ decoded = base64.b64decode(encoded).decode('utf-8')  # '你好'
 标准 base64 含 \`+\`/\`/\` 字符，不能直接放 URL。用 \`urlsafe_b64encode\` 替换为 \`-\`/\`_\`：
 
 \`\`\`python
+import base64
 base64.urlsafe_b64encode(b'\\xfb\\xff')   # b'-_8='
 base64.b64encode(b'\\xfb\\xff')           # b'+/8='
 \`\`\`
@@ -2954,6 +2968,7 @@ base64.b64encode(b'\\xfb\\xff')           # b'+/8='
 ### 6.4 base32 与 base16
 
 \`\`\`python
+import base64
 base64.b32encode(b'hello')   # b'NBSWY3DP'
 base64.b16encode(b'hello')   # b'68656C6C6F'（即 hex 编码，大写）
 \`\`\`
@@ -3033,6 +3048,7 @@ values = struct.unpack('<2ihf', data)  # 将 struct.unpack('<2ihf', data) 赋给
 ### 8.4 calcsize 计算大小
 
 \`\`\`python
+import struct
 struct.calcsize('<i')    # 4
 struct.calcsize('<2ihf') # 10
 \`\`\`
@@ -3052,6 +3068,7 @@ with open('image.bmp', 'rb') as f: # 使用上下文管理器 open('image.bmp', 
 \`s\` 格式打包定长字节串：
 
 \`\`\`python
+import struct
 struct.pack('6s', b'hello')   # b'hello\\x00'，补零到 6 字节
 struct.unpack('6s', b'hello\\x00')   # (b'hello\\x00',)
 \`\`\`
@@ -3432,6 +3449,7 @@ unicodedata.normalize('NFC', s2) == s1   # True
 **NFKC/NFKD 的"兼容性分解"会把全角字符转成半角**，适合搜索/去重：
 
 \`\`\`python
+import unicodedata
 unicodedata.normalize('NFKC', '①')   # '1'
 unicodedata.normalize('NFKC', 'ＡＢＣ')   # 'ABC'（全角转半角）
 unicodedata.normalize('NFKC', 'ﬁ')       # 'fi'（连字拆开）
@@ -3469,6 +3487,7 @@ struct.pack('I', 1024)    # 跟本机，x86 上是小端
 - **变长字段**（如字符串）：通常用"长度前缀 + 数据"，比如先用 4 字节 int 表示字符串长度，再跟字符串字节。
 
 \`\`\`python
+import struct
 def pack_string(s, encoding='utf-8'):  # 定义函数 pack_string，参数：s, encoding='utf-8'
     b = s.encode(encoding)         # 将 s.encode(encoding) 赋给 b
     return struct.pack('>I', len(b)) + b   # 4 字节长度 + 内容
@@ -4019,6 +4038,7 @@ print(d3)              # 2023-11-15（取决于时区）
 ### 2.2 date 的属性
 
 \`\`\`python
+from datetime import date
 d = date(2024, 8, 15)              # 将 date(2024, 8, 15) 赋给 d
 print(d.year)          # 2024
 print(d.month)         # 8
@@ -4034,6 +4054,7 @@ print(d.timetuple())   # time.struct_time，结构化时间
 ### 2.3 date 的常用方法
 
 \`\`\`python
+from datetime import date
 d = date(2024, 8, 15)              # 将 date(2024, 8, 15) 赋给 d
 print(d.isoformat())           # '2024-08-15'
 print(d.strftime('%Y年%m月%d日'))  # '2024年08月15日'
@@ -4103,6 +4124,7 @@ print(dt4)
 ### 4.2 datetime 的属性与方法
 
 \`\`\`python
+from datetime import datetime
 dt = datetime(2024, 8, 15, 14, 30, 45, 123456)  # 将 datetime(2024, 8, 15, 14, 30, 45, 123456) 赋给 dt
 # 日期部分
 print(dt.year, dt.month, dt.day)         # 2024 8 15
@@ -4164,6 +4186,7 @@ print("总秒数:", diff.total_seconds())  # 86400.0
 ### 5.3 timedelta 的属性
 
 \`\`\`python
+from datetime import timedelta
 d = timedelta(days=1, hours=2, minutes=30)  # 将 timedelta(days=1, hours=2, minutes=30) 赋给 d
 print(d.days)              # 1
 print(d.seconds)           # 9000（2 小时 30 分 = 9000 秒）
@@ -4237,6 +4260,7 @@ print(dt2)
 ISO 8601 是国际标准日期时间格式（\`YYYY-MM-DDTHH:MM:SS\`），跨语言交换数据时推荐用它：
 
 \`\`\`python
+from datetime import datetime
 dt = datetime(2024, 8, 15, 14, 30, 45)  # 将 datetime(2024, 8, 15, 14, 30, 45) 赋给 dt
 print(dt.isoformat())              # 2024-08-15T14:30:45
 dt2 = datetime.fromisoformat('2024-08-15T14:30:45')  # 将 datetime.fromisoformat('2024-08-15T14:30:45') 赋给 dt2
@@ -4542,6 +4566,7 @@ print(f"毫秒: {ms}")
 ### 13.2 去掉微秒（截断到秒）
 
 \`\`\`python
+from datetime import datetime
 dt = datetime.now()                # 将 datetime.now() 赋给 dt
 dt_no_us = dt.replace(microsecond=0)  # 将 dt.replace(microsecond=0) 赋给 dt_no_us
 print(dt_no_us)   # 2024-08-15 14:30:45（没有小数部分）
@@ -4693,6 +4718,7 @@ print(dt)
 HTTP 协议头（如 \`Last-Modified\`、\`Date\`）用 RFC 1123 格式（GMT 时间）：
 
 \`\`\`python
+import time
 from email.utils import formatdate # 从 email.utils 导入 formatdate
 http_date = formatdate(time.time(), usegmt=True)  # 将 formatdate(time.time(), usegmt=True) 赋给 http_date
 print(http_date)   # Thu, 15 Aug 2024 06:30:45 GMT
@@ -5418,6 +5444,7 @@ deque 头插通常比 list 快上百倍。但**随机访问 \`d[i]\` deque 是 O
 \`deque.rotate(n)\` 把元素整体旋转 n 步（正数右移，负数左移）：
 
 \`\`\`python
+from collections import deque
 d = deque([1, 2, 3, 4, 5])         # 将 deque([1, 2, 3, 4, 5]) 赋给 d
 d.rotate(2)      # 右移 2：deque([4, 5, 1, 2, 3])
 d.rotate(-1)     # 左移 1：deque([5, 1, 2, 3, 4])
@@ -5446,6 +5473,7 @@ c2 = Counter({'a': 3, 'b': 1})     # 将 Counter({'a': 3, 'b': 1}) 赋给 c2
 ### 3.2 常用方法
 
 \`\`\`python
+from collections import Counter
 c = Counter('abracadabra')         # 将 Counter('abracadabra') 赋给 c
 print(c.most_common(2))   # [('a', 5), ('b', 2)] —— 出现最多的 2 个
 print(c.most_common())    # 全部按次数降序
@@ -5460,6 +5488,7 @@ print(list(c.elements())) # ['a','a','a','a','a','b','b','r','r','c','d']
 Counter 支持加减、交集、并集：
 
 \`\`\`python
+from collections import Counter
 c1 = Counter(a=3, b=1)             # 将 Counter(a=3, b=1) 赋给 c1
 c2 = Counter(a=1, b=2)             # 将 Counter(a=1, b=2) 赋给 c2
 print(c1 + c2)   # Counter({'a': 4, 'b': 3})  求和
@@ -5473,6 +5502,7 @@ print(c1 | c2)   # Counter({'a': 3, 'b': 2})  并集（取最大）
 ### 3.4 update 与 subtract
 
 \`\`\`python
+from collections import Counter
 c = Counter('abc')                 # 将 Counter('abc') 赋给 c
 c.update('aab')      # 加上新的计数
 print(c)             # Counter({'a': 3, 'b': 2, 'c': 1})
@@ -5521,6 +5551,7 @@ for w in words:
 | 自定义函数 | 函数返回值 | 任意默认值 |
 
 \`\`\`python
+from collections import defaultdict
 # 计数
 count = defaultdict(int)           # 将 defaultdict(int) 赋给 count
 for ch in 'hello':
@@ -5559,6 +5590,7 @@ od.move_to_end('a', last=False)   # 移到开头
 ### 5.2 popitem 先进先出
 
 \`\`\`python
+from collections import OrderedDict
 od = OrderedDict([('a', 1), ('b', 2), ('c', 3)])  # 将 OrderedDict([('a', 1), ('b', 2), ('c', 3)]) 赋给 od
 print(od.popitem(last=False))   # ('a', 1) —— 弹出最早插入的
 print(od.popitem())             # ('c', 3) —— 弹出最后插入的
@@ -5696,6 +5728,8 @@ s.scores.append(95)
 ### 9.2 field 选项
 
 \`\`\`python
+from dataclasses import field
+from dataclasses import dataclass
 @dataclass
 class Product:                     # 定义类 Product
     name: str
@@ -5711,6 +5745,7 @@ class Product:                     # 定义类 Product
 ### 9.3 frozen 不可变
 
 \`\`\`python
+from dataclasses import dataclass
 @dataclass(frozen=True)
 class Color:                       # 定义类 Color
     r: int
@@ -5901,6 +5936,7 @@ top10 = Counter(words).most_common(10)  # 将 Counter(words).most_common(10) 赋
 ### 14.2 多个计数器合并
 
 \`\`\`python
+from collections import Counter
 c1 = Counter(apple=5, banana=2)    # 将 Counter(apple=5, banana=2) 赋给 c1
 c2 = Counter(apple=3, cherry=4)    # 将 Counter(apple=3, cherry=4) 赋给 c2
 total = c1 + c2   # Counter({'apple': 8, 'cherry': 4, 'banana': 2})
@@ -5911,6 +5947,7 @@ total = c1 + c2   # Counter({'apple': 8, 'cherry': 4, 'banana': 2})
 ### 14.3 取出前 N / 后 N
 
 \`\`\`python
+from collections import Counter
 c = Counter('abracadabra')         # 将 Counter('abracadabra') 赋给 c
 print(c.most_common(3))    # 前 3（最高频）
 print(c.most_common()[:-4:-1])  # 后 3（最低频），技巧
@@ -5959,6 +5996,7 @@ print(json.dumps(to_dict(t), ensure_ascii=False, indent=2))
 \`defaultdict\` 在**访问**（哪怕只是判断 \`in\`？不，\`in\` 不触发）缺失键时会创建它。但 \`d[k]\` 会：
 
 \`\`\`python
+from collections import defaultdict
 d = defaultdict(list)              # 将 defaultdict(list) 赋给 d
 if d['x']:        # ❌ 这会创建 d['x'] = []！
     pass                           # 空操作，占位
@@ -6203,6 +6241,7 @@ dataclass 比\`普通类\`更友好：直接写 \`= []\` 会**报错**而不是�
 ### 21.4 ChainMap 不是合并字典
 
 \`\`\`python
+from collections import ChainMap
 # ChainMap 不复制数据，改源字典会实时反映
 a = {'x': 1}                       # 创建字典并赋给 a
 c = ChainMap(a)                    # 将 ChainMap(a) 赋给 c
@@ -6667,6 +6706,7 @@ print(list(itertools.chain(a, b, c)))
 **chain.from_iterable**：当可迭代对象本身在一个容器里时用：
 
 \`\`\`python
+import itertools
 nested = [[1, 2], [3, 4], [5, 6]]  # 创建列表并赋给 nested
 print(list(itertools.chain.from_iterable(nested)))
 # [1, 2, 3, 4, 5, 6]   —— 扁平化一层嵌套
@@ -6814,6 +6854,7 @@ for fruit, group in itertools.groupby(data, key=lambda x: x[0]):
 \`groupby\` 返回的每个 group 是个迭代器，**必须在进入下一组前消费完**，否则会被丢弃：
 
 \`\`\`python
+import itertools
 # ❌ 错误：保存了 group 迭代器但没立即消费
 groups = [(k, g) for k, g in itertools.groupby(data, key=...)]  # 创建列表并赋给 groups
 # g 此时都指向最后一组，前面的丢了
@@ -6841,6 +6882,7 @@ print(list(itertools.product(colors, sizes)))
 \`product(a, repeat=n)\` 等价于 \`product(a, a, ..., a)\`（n 个 a）：
 
 \`\`\`python
+import itertools
 print(list(itertools.product('AB', repeat=2)))
 # [('A','A'), ('A','B'), ('B','A'), ('B','B')]
 \`\`\`
@@ -7321,6 +7363,7 @@ print(sys.getsizeof(big_gen) )   # ~200 字节（恒定大小）
 ### 17.2 嵌套循环 vs product
 
 \`\`\`python
+import itertools
 # 传统双层循环
 result = []                        # 创建列表并赋给 result
 for i in range(100):
@@ -7371,6 +7414,7 @@ itertools 强大但有坑，下面列出最常见的几个。
 ### 18.1 陷阱：迭代器只能遍历一次
 
 \`\`\`python
+import itertools
 it = itertools.chain([1,2], [3,4]) # 将 itertools.chain([1,2], [3,4]) 赋给 it
 print(list(it))   # [1, 2, 3, 4]
 print(list(it))   # []  ← 已经空了！
@@ -7381,6 +7425,7 @@ print(list(it))   # []  ← 已经空了！
 ### 18.2 陷阱：groupby 必须先排序
 
 \`\`\`python
+import itertools
 data = [("a", 1), ("b", 2), ("a", 3)]   # a 不连续
 for k, g in itertools.groupby(data, key=lambda x: x[0]):
     print(k, list(g))
@@ -7408,6 +7453,7 @@ list(itertools.islice([1,2,3,4,5], -2, None))   # ❌ ValueError
 ### 18.5 陷阱：忘记 islice 无限迭代器
 
 \`\`\`python
+import itertools
 for x in itertools.count():   # ❌ 死循环！
     print(x)
 \`\`\`
@@ -7417,6 +7463,7 @@ for x in itertools.count():   # ❌ 死循环！
 ### 18.6 陷阱：链式调用顺序
 
 \`\`\`python
+import itertools
 # 错误：先 take 再 filter
 list(itertools.takewhile(lambda x: x < 5, filter(lambda x: x % 2, [1,2,3,4,5,6])))  # 调用 转为列表，参数 itertools.takewhile(lambda x: x < 5, filter(lambda x: x % 2, [1,2,3,4,5,6]))
 # 正确：先 filter 再 take
@@ -7430,6 +7477,7 @@ list(itertools.islice(filter(lambda x: x % 2, [1,2,3,4,5,6]), 3))  # 调用 转�
 ### 19.1 分页处理大数据
 
 \`\`\`python
+import itertools
 def paginate(iterable, page_size): # 定义函数 paginate，参数：iterable, page_size
     it = iter(iterable)            # 将 iter(iterable) 赋给 it
     while True:                    # 当 True 为真时重复执行
@@ -7454,6 +7502,7 @@ for batch in paginate(ids, 50):
 ### 19.3 配置组合测试
 
 \`\`\`python
+import itertools
 browsers = ["chrome", "firefox", "safari"]  # 创建列表并赋给 browsers
 os_list  = ["win", "mac", "linux"] # 创建列表并赋给 os_list
 viewports = ["mobile", "tablet", "desktop"]  # 创建列表并赋给 viewports
@@ -7481,6 +7530,7 @@ with multiprocessing.Pool(4) as pool:  # 使用上下文管理器 multiprocessin
 ### 19.5 缓存预热
 
 \`\`\`python
+import itertools
 # 预热前 1000 个热门 key
 hot_keys = itertools.islice(get_hot_keys(), 1000)  # 将 itertools.islice(get_hot_keys(), 1000) 赋给 hot_keys
 for key in hot_keys:

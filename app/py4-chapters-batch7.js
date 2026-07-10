@@ -946,6 +946,7 @@ myproject/
 ## 八、本节代码逐行讲解
 
 \`\`\`python
+import sys
 import os, tempfile, textwrap
 
 # 用临时目录演示"动态创建一个包并导入"

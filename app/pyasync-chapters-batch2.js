@@ -63,6 +63,7 @@ asyncio.run(main(), debug=False, loop_factory=None)
 如果你需要更多控制：
 
 \`\`\`python
+import asyncio
 loop = asyncio.new_event_loop()
 try:
     loop.run_until_complete(main())
@@ -75,6 +76,7 @@ finally:
 ## 六、Python 3.7 之前的写法（旧）
 
 \`\`\`python
+import asyncio
 # ❌ Python 3.7 之前
 loop = asyncio.get_event_loop()
 loop.run_until_complete(main())
@@ -88,6 +90,7 @@ loop.close()
 惯例：**入口协程叫 \`main\`**。
 
 \`\`\`python
+import asyncio
 async def main():
     ...
 
@@ -302,6 +305,7 @@ await tb
 ## 三、create_task 的返回值
 
 \`\`\`python
+import asyncio
 task = asyncio.create_task(coro)
 # Task 对象有这些属性/方法:
 task.done()       # 是否完成
@@ -322,6 +326,7 @@ task.cancel()     # 取消任务
 ## 五、Task 的命名（Python 3.8+）
 
 \`\`\`python
+import asyncio
 task = asyncio.create_task(coro, name="fetch_user_data")
 print(task.get_name())  # "fetch_user_data"
 \`\`\`
@@ -531,6 +536,7 @@ r1, r2, r3 = await asyncio.gather(
 ## 三、gather 的参数
 
 \`\`\`python
+import asyncio
 asyncio.gather(
     *coros,           # 可变参数：多个协程
     return_exceptions=False,  # 是否把异常当结果返回
@@ -1114,6 +1120,7 @@ except asyncio.CancelledError:
 ## 六、task.add_done_callback
 
 \`\`\`python
+import asyncio
 def callback(task):
     print(f"任务完成: {task.result()}")
 
@@ -1126,6 +1133,7 @@ task.add_done_callback(callback)
 Task 必须被引用，否则会被 GC 回收：
 
 \`\`\`python
+import asyncio
 # ❌ 会被 GC
 asyncio.create_task(work())  # 没人引用
 

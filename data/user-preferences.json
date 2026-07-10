@@ -135,7 +135,14 @@
     "pythread-25",
     "pythread-26",
     "pythread-27",
-    "pythread-28"
+    "pythread-28",
+    "pythread-33",
+    "sp-intro",
+    "sp-capture",
+    "sp-input",
+    "sp-exception",
+    "sp-shell",
+    "sp-run"
   ],
   "bookOrder": {
     "未分组": [
@@ -146,7 +153,8 @@
       "/ts",
       "/ts2",
       "/ts3",
-      "/workers"
+      "/workers",
+      "/noderun"
     ],
     "Java 开发": [
       "/java",

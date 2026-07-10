@@ -787,6 +787,7 @@ DHCP服务器 → 客户端:68 → "我是，这是你的 IP"
 默认情况下，操作系统禁止发送广播（防止误操作）。必须显式开启：
 
 \`\`\`python
+import socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 # 开启广播权限！不设置会报 PermissionError
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
@@ -816,6 +817,7 @@ sock.sendto(data, ("192.168.1.255", port))
 - 端口必须和广播的目标端口一致
 
 \`\`\`python
+import socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 sock.bind(("0.0.0.0", 9999))  # 监听所有网卡
@@ -2089,6 +2091,7 @@ with urllib.request.urlopen(req) as response:
 有些服务器会根据 User-Agent 区分客户端（比如屏蔽爬虫）：
 
 \`\`\`python
+import urllib
 # 默认 User-Agent 是 "Python-urllib/3.x"，容易被屏蔽
 # 伪装成浏览器
 req = urllib.request.Request(
@@ -2184,6 +2187,7 @@ conn.close()
 ### 4.2 发送 POST 请求
 
 \`\`\`python
+import http
 conn = http.client.HTTPConnection("example.com", 80)
 conn.request(
     "POST",
@@ -2217,6 +2221,7 @@ conn.close()
 ### 5.1 读取响应体
 
 \`\`\`python
+import urllib
 with urllib.request.urlopen(url) as r:
     # 一次性读取全部
     body = r.read()
@@ -2233,6 +2238,7 @@ with urllib.request.urlopen(url) as r:
 ### 5.2 获取响应头
 
 \`\`\`python
+import urllib
 with urllib.request.urlopen(url) as r:
     # 获取单个头
     content_type = r.headers.get("Content-Type")
@@ -2248,6 +2254,7 @@ with urllib.request.urlopen(url) as r:
 ## 六、错误处理
 
 \`\`\`python
+import socket
 import urllib.request
 import urllib.error
 
@@ -2686,6 +2693,7 @@ opener.open(profile_url)  # cookie_jar 自动带上 Cookie
 ### 5.1 流式读取
 
 \`\`\`python
+import urllib
 with urllib.request.urlopen(url) as r:
     total = int(r.headers.get("Content-Length", 0))
     downloaded = 0
@@ -2712,6 +2720,7 @@ with urllib.request.urlopen(url) as r:
 ### 6.1 常见错误
 
 \`\`\`python
+import socket
 import urllib.error
 
 try:
@@ -2730,6 +2739,7 @@ except socket.timeout:
 ### 6.2 超时设置
 
 \`\`\`python
+import urllib
 # 全局超时
 urllib.request.urlopen(url, timeout=10)
 

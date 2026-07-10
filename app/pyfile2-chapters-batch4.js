@@ -696,6 +696,7 @@ with open("data.bin", "r+b") as f:
 ## 四、mmap 的参数
 
 \`\`\`python
+import mmap
 mmap.mmap(
     fileno,            # 文件描述符
     length,            # 映射长度，0 = 全部

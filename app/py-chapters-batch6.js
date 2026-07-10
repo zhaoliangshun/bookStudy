@@ -1251,6 +1251,7 @@ t3.join()                          # 等待 t3 结束
 #### Thread 的常用参数
 
 \`\`\`python
+import threading
 threading.Thread(
     group=None,        # 保留参数，未使用
     target=None,       # 线程执行的函数
@@ -1264,6 +1265,8 @@ threading.Thread(
 #### start / join / is_alive
 
 \`\`\`python
+import time
+import threading
 t = threading.Thread(target=time.sleep, args=(0.5,))  # 将 threading.Thread(target=time.sleep, args=(0.5,)) 赋给 t
 print("启动前 is_alive:", t.is_alive())  # False
 t.start()                          # 对 t 调用 start 方法
@@ -1281,6 +1284,7 @@ print("join 后 is_alive:", t.is_alive())  # False
 **守护线程（Daemon Thread）** 是「后台」线程：当主线程退出时，守护线程会被强制终止（不会等待它完成）。非守护线程会阻止主程序退出。
 
 \`\`\`python
+import threading
 # 守护线程
 def background():                  # 定义函数 background，无参数
     while True:                    # 当 True 为真时重复执行
@@ -1301,6 +1305,7 @@ t.start()                          # 对 t 调用 start 方法
 多个线程访问共享数据时会出现**竞态条件（Race Condition）**：
 
 \`\`\`python
+import threading
 # 经典竞态条件：自增
 counter = 0                        # 将整数 0 赋给 counter
 def increment():                   # 定义函数 increment，无参数
@@ -1323,6 +1328,7 @@ print(counter)  # 预期 500000，实际可能远小于（数据竞争）
 \`threading.Lock\` 是最基础的同步原语，保证同一时刻只有一个线程进入临界区：
 
 \`\`\`python
+import threading
 lock = threading.Lock()            # 将 threading.Lock() 赋给 lock
 counter = 0                        # 将整数 0 赋给 counter
 
@@ -1351,6 +1357,7 @@ def safe_increment():              # 定义函数 safe_increment，无参数
 \`threading.RLock\`（Reentrant Lock）允许**同一个线程多次获取同一把锁**。普通 Lock 如果同一线程重复 acquire 会死锁，RLock 不会。
 
 \`\`\`python
+import threading
 rlock = threading.RLock()          # 将 threading.RLock() 赋给 rlock
 
 def outer():                       # 定义函数 outer，无参数
@@ -1372,6 +1379,7 @@ outer()                            # 调用 outer
 \`threading.Semaphore(n)\` 允许**最多 n 个线程**同时访问某资源。常用于限流（如限制并发连接数）。
 
 \`\`\`python
+import threading
 # 限制同时只有 3 个线程访问
 sem = threading.Semaphore(3)       # 将 threading.Semaphore(3) 赋给 sem
 
@@ -1394,6 +1402,7 @@ for t in threads: t.join()
 \`threading.Event\` 用于线程间简单的事件通知。Event 内部有一个标志位，\`set()\` 置为真，\`clear()\` 置为假，\`wait()\` 阻塞直到为真。
 
 \`\`\`python
+import threading
 event = threading.Event()          # 将 threading.Event() 赋给 event
 
 def waiter():                      # 定义函数 waiter，无参数
@@ -1419,6 +1428,7 @@ t1.join(); t2.join()               # 等待两个线程结束
 \`threading.Condition\` 比 Event 更强大，结合了锁和通知机制，适合**生产者-消费者**等场景。
 
 \`\`\`python
+import threading
 cond = threading.Condition()       # 将 threading.Condition() 赋给 cond
 items = []                         # 创建列表并赋给 items
 
@@ -1471,6 +1481,7 @@ q.get(timeout=2)               # 最多等 2 秒，超时抛 queue.Empty
 当多个线程需要各自的「私有」变量副本时，用 \`threading.local()\`：
 
 \`\`\`python
+import threading
 local_data = threading.local()     # 将 threading.local() 赋给 local_data
 
 def worker():                      # 定义函数 worker，无参数
@@ -1488,6 +1499,7 @@ def worker():                      # 定义函数 worker，无参数
 手动管理线程麻烦且低效（频繁创建销毁开销大）。\`concurrent.futures.ThreadPoolExecutor\` 提供线程池，复用线程。
 
 \`\`\`python
+import time
 from concurrent.futures import ThreadPoolExecutor  # 从 concurrent.futures 导入 ThreadPoolExecutor
 
 def fetch(url):                    # 定义函数 fetch，参数：url
@@ -1510,6 +1522,7 @@ with ThreadPoolExecutor(max_workers=5) as executor:  # 使用上下文管理器 
 \`as_completed\` 返回一个迭代器，**哪个任务先完成就先返回哪个**：
 
 \`\`\`python
+from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed  # 从 concurrent.futures 导入 as_completed
 
 with ThreadPoolExecutor(max_workers=5) as executor:  # 使用上下文管理器 ThreadPoolExecutor(max_workers=5)，绑定到 executor
@@ -1586,6 +1599,7 @@ Python 3.13 引入了实验性的 **PEP 703 自由线程（Free-threaded / No-GI
 **死锁（Deadlock）** 是两个或多个线程互相等待对方释放锁，导致永久阻塞。
 
 \`\`\`python
+import threading
 # 经典死锁：两个锁互相等待
 lock1 = threading.Lock()           # 将 threading.Lock() 赋给 lock1
 lock2 = threading.Lock()           # 将 threading.Lock() 赋给 lock2
@@ -2136,6 +2150,7 @@ if __name__ == "__main__":         # 如果 __name__ == "__main__" 成立
 #### Process 的常用属性
 
 \`\`\`python
+import multiprocessing
 p = multiprocessing.Process(target=worker, args=("A",), name="MyProcess")  # 将 multiprocessing.Process(target=worker, args=("A",), name="MyProcess") 赋给 p
 print(p.pid)      # 进程 ID（start 前为 None）
 print(p.name)     # 进程名
@@ -2173,6 +2188,7 @@ if __name__ == "__main__":         # 如果 __name__ == "__main__" 成立
 | \`starmap_async\` | 异步版 starmap |
 
 \`\`\`python
+from multiprocessing import Pool
 # apply_async 异步
 with Pool(4) as pool:              # 使用上下文管理器 Pool(4)，绑定到 pool
     result = pool.apply_async(square, (5,))  # 将 pool.apply_async(square, (5,)) 赋给 result
@@ -2348,6 +2364,7 @@ mp.set_start_method("spawn")       # 对 mp 调用 set_start_method 方法，参
 **僵尸进程（Zombie）**：子进程已结束，但父进程没有调用 \`join()\` 或 \`wait()\` 回收，导致子进程的进程描述符残留。
 
 \`\`\`python
+from multiprocessing import Process
 # 不 join 会导致僵尸进程
 p = Process(target=worker)         # 将 Process(target=worker) 赋给 p
 p.start()                          # 对 p 调用 start 方法
@@ -2378,6 +2395,7 @@ p.start()                          # 对 p 调用 start 方法
 - **坏处**：通信复杂，数据需序列化（pickle）传输
 
 \`\`\`python
+from multiprocessing import Process
 # 子进程修改全局变量不影响父进程
 g_var = 0                          # 将整数 0 赋给 g_var
 def child():                       # 定义函数 child，无参数
@@ -2883,6 +2901,7 @@ async def main():                  # 定义异步函数 main
 3. 关闭事件循环
 
 \`\`\`python
+import asyncio
 async def main():                  # 定义异步函数 main
     print("hello")
 
@@ -2899,6 +2918,7 @@ asyncio.run(main())                # 对 asyncio 调用 run 方法，参数 main
 **事件循环**是 asyncio 的心脏，它不断：①检查就绪的任务 ②运行它们 ③等待新事件。可以理解为「任务调度器」。
 
 \`\`\`python
+import asyncio
 # 一般不直接操作事件循环，asyncio.run 已封装
 loop = asyncio.new_event_loop()    # 将 asyncio.new_event_loop() 赋给 loop
 loop.run_until_complete(main())    # 对 loop 调用 run_until_complete 方法，参数 main()
@@ -2939,6 +2959,7 @@ await t1; await t2; await t3
 \`Future\` 是一个**低层**对象，表示「将来会有结果」的占位。Task 是 Future 的子类。日常编程很少直接用 Future，但理解它有助于理解 asyncio 内部。
 
 \`\`\`python
+import asyncio
 future = asyncio.Future()          # 将 asyncio.Future() 赋给 future
 # future.set_result(42)  设置结果
 # future.result()        获取结果
@@ -3102,6 +3123,7 @@ await asyncio.sleep(1)   # 非阻塞
 - \`ensure_future\`（旧）：更通用，接受协程/Future/Task
 
 \`\`\`python
+import asyncio
 # 推荐
 task = asyncio.create_task(coro)   # 将 asyncio.create_task(coro) 赋给 task
 # 旧
@@ -3142,6 +3164,7 @@ asyncio 的「传染性」：一旦用了 async，调用链上的函数都得是
 ### 异步爬虫示例
 
 \`\`\`python
+import asyncio
 async def fetch(url):              # 定义异步函数 fetch，参数：url
     await asyncio.sleep(0.5)  # 模拟网络
     return "%s 的内容" % url          # 返回 "%s 的内容" % url
@@ -3828,6 +3851,7 @@ with ThreadPoolExecutor(max_workers=3) as executor:  # 使用上下文管理器 
 **流水线（Pipeline）** 把任务分成多个阶段，每个阶段一个线程/协程，数据像流水线一样流过：
 
 \`\`\`python
+from queue import Queue
 # 下载 -> 解析 -> 存储
 def stage(in_q, out_q, transform): # 定义函数 stage，参数：in_q, out_q, transform
     while True:                    # 当 True 为真时重复执行
@@ -4553,6 +4577,7 @@ print(result.stdout)  # hello
 \`subprocess.run()\`（Python 3.5+）是执行子进程的**推荐方式**，它封装了常用操作，返回 \`CompletedProcess\` 对象。
 
 \`\`\`python
+import subprocess
 subprocess.run(
     args,               # 命令（列表或字符串）
     capture_output=False,  # 是否捕获 stdout/stderr
@@ -4590,6 +4615,7 @@ except subprocess.CalledProcessError as e:
 - \`text=True\`（或 \`universal_newlines=True\`）：输出为字符串而非字节
 
 \`\`\`python
+import subprocess
 # 字节模式（默认）
 r1 = subprocess.run(["echo", "hi"], capture_output=True)  # 将 subprocess.run(["echo", "hi"], capture_output=True) 赋给 r1
 print(type(r1.stdout))  # <class 'bytes'>
@@ -4604,6 +4630,7 @@ print(r2.stdout)        # hi\\n
 #### timeout 超时
 
 \`\`\`python
+import subprocess
 try:
     subprocess.run(["sleep", "10"], timeout=2)  # 对 subprocess 调用 run 方法，参数 ["sleep", "10"], timeout=2
 except subprocess.TimeoutExpired as e:
@@ -4617,6 +4644,7 @@ except subprocess.TimeoutExpired as e:
 subprocess 的 \`args\` 可以是**列表**或**字符串**：
 
 \`\`\`python
+import subprocess
 # 列表（推荐，安全）
 subprocess.run(["ls", "-l", "/tmp"])  # 对 subprocess 调用 run 方法，参数 ["ls", "-l", "/tmp"]
 
@@ -4652,6 +4680,7 @@ print("退出码:", p.returncode)
 - 避免死锁（同时读写管道）
 
 \`\`\`python
+import subprocess
 # 向子进程 stdin 传数据
 p = subprocess.Popen(              # 将 subprocess.Popen( 赋给 p
     ["python", "-c", "x = input(); print('got', x)"],
@@ -4670,6 +4699,7 @@ print(out)  # got hello
 \`Popen\` 的管道参数：
 
 \`\`\`python
+import subprocess
 p = subprocess.Popen(              # 将 subprocess.Popen( 赋给 p
     ["cat"],
     stdin=subprocess.PIPE,   # 管道，可写入
@@ -4690,6 +4720,7 @@ p = subprocess.Popen(              # 将 subprocess.Popen( 赋给 p
 子进程的退出码：0 通常表示成功，非 0 表示失败。
 
 \`\`\`python
+import subprocess
 r = subprocess.run(["ls", "/nonexistent"], capture_output=True, text=True)  # 将 subprocess.run(["ls", "/nonexistent"], capture_output=True, text=True) 赋给 r
 print(r.returncode)  # 非 0
 print(r.stderr)      # 错误信息
@@ -4706,6 +4737,7 @@ print(r.stderr)      # 错误信息
 | \`check_output(args)\` | 捕获 stdout，非 0 抛异常，返回 stdout |
 
 \`\`\`python
+import subprocess
 # 等价写法
 rc = subprocess.call(["echo", "hi"])  # 返回 0
 subprocess.check_call(["echo", "hi"])  # 非 0 抛异常
@@ -4719,6 +4751,7 @@ out = subprocess.check_output(["echo", "hi"], text=True)  # 返回 "hi\\n"
 \`shell=True\` 会通过 shell 解析命令字符串，带来**命令注入风险**：
 
 \`\`\`python
+import subprocess
 # 危险！如果 filename 来自用户输入
 filename = "a.txt; rm -rf /"       # 将字符串 "a.txt; rm -rf /" 赋给 filename
 subprocess.run("cat " + filename, shell=True)  # 灾难性！
@@ -4729,6 +4762,7 @@ subprocess.run("cat " + filename, shell=True)  # 灾难性！
 **安全做法**：用列表 + \`shell=False\`（默认）：
 
 \`\`\`python
+import subprocess
 filename = "a.txt; rm -rf /"       # 将字符串 "a.txt; rm -rf /" 赋给 filename
 subprocess.run(["cat", filename])  # filename 作为单个参数，安全
 # cat 会尝试打开名为 "a.txt; rm -rf /" 的文件（报错），不会执行 rm
@@ -4739,6 +4773,7 @@ subprocess.run(["cat", filename])  # filename 作为单个参数，安全
 ### 环境变量 env
 
 \`\`\`python
+import subprocess
 import os                          # 导入 os 模块
 env = os.environ.copy()            # 将 os.environ.copy() 赋给 env
 env["MY_VAR"] = "custom"
@@ -4761,6 +4796,8 @@ subprocess.run(["ls"], cwd="/tmp", capture_output=True, text=True)  # 对 subpro
 \`Popen\` 对象可以发送信号：
 
 \`\`\`python
+import signal
+import subprocess
 p = subprocess.Popen(["sleep", "100"])  # 将 subprocess.Popen(["sleep", "100"]) 赋给 p
 p.terminate()  # 发送 SIGTERM（优雅终止）
 p.kill()       # 发送 SIGKILL（强制杀死）
@@ -4776,6 +4813,7 @@ p.send_signal(signal.SIGTERM)  # 发送指定信号
 用 \`Popen\` 可以把多个命令的管道串联起来（类似 shell 的 \`|\`）：
 
 \`\`\`python
+import subprocess
 # 等价于：echo "hello world" | tr a-z A-Z
 p1 = subprocess.Popen(["echo", "hello world"], stdout=subprocess.PIPE, text=True)  # 将 subprocess.Popen(["echo", "hello world"], stdout=subprocess.PIPE, text=True) 赋给 p1
 p2 = subprocess.Popen(["tr", "a-z", "A-Z"], stdin=p1.stdout, stdout=subprocess.PIPE, text=True)  # 将 subprocess.Popen(["tr", "a-z", "A-Z"], stdin=p1.stdout, stdout=subprocess.PIPE, text=True) 赋给 p2
@@ -4802,6 +4840,7 @@ os.system("echo hello")  # 直接打印到终端，返回 0
 \`os.popen(cmd)\` 返回一个文件对象，可读取输出：
 
 \`\`\`python
+import os
 output = os.popen("echo hello").read()  # 将 os.popen("echo hello").read() 赋给 output
 print(output)  # hello
 # 也不推荐，用 subprocess
@@ -4820,6 +4859,8 @@ print(platform.python_version())  # 3.13.0
 \`\`\`
 
 \`\`\`python
+import subprocess
+import platform
 # 跨平台：根据系统选命令
 if platform.system() == "Windows": # 如果 platform.system() == "Windows" 成立
     cmd = ["cmd", "/c", "dir"]     # 创建列表并赋给 cmd
@@ -4833,6 +4874,7 @@ subprocess.run(cmd)                # 对 subprocess 调用 run 方法，参数 c
 #### 案例 1：调用 git 获取版本
 
 \`\`\`python
+import subprocess
 r = subprocess.run(                # 将 subprocess.run( 赋给 r
     ["git", "--version"], capture_output=True, text=True
 )
@@ -4842,6 +4884,7 @@ print(r.stdout.strip())
 #### 案例 2：调用 Python 子进程
 
 \`\`\`python
+import subprocess
 import sys                         # 导入 sys 模块
 r = subprocess.run(                # 将 subprocess.run( 赋给 r
     [sys.executable, "-c", "print(1 + 2)"],
@@ -4855,6 +4898,7 @@ print(r.stdout)  # 3
 #### 案例 3：获取命令输出并处理
 
 \`\`\`python
+import subprocess
 r = subprocess.run(["echo", "hello world"], capture_output=True, text=True)  # 将 subprocess.run(["echo", "hello world"], capture_output=True, text=True) 赋给 r
 lines = r.stdout.strip().split("\\n")  # 将 r.stdout.strip().split("\\n") 赋给 lines
 for line in lines:

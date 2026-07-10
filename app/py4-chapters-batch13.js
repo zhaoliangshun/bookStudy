@@ -98,6 +98,7 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=5) as ex:   # 最多 5 �
 \`threading.Event\` 用于线程间简单的"通知"机制，内部维护一个布尔标志：
 
 \`\`\`python
+import threading
 event = threading.Event()  # 初始为 False
 def waiter():
     event.wait()       # 阻塞直到被 set，可传 timeout
@@ -285,6 +286,7 @@ Windows 和 macOS 默认用 \`spawn\` 模式创建子进程：子进程启动时
 
 ### 6.2 正确写法
 \`\`\`python
+import concurrent
 def cpu_task(n):
     ...
 
@@ -337,18 +339,21 @@ def cpu_task(n):           # CPU 密集任务：累加平方和
 纯 Python 计算，受 GIL 限制严重，是测试多进程价值的典型场景。
 
 \`\`\`python
+import concurrent
 with concurrent.futures.ProcessPoolExecutor() as ex:   # 进程池绕开 GIL 实现真并行
     results = list(ex.map(cpu_task, [N] * 4))         # 4 份任务并行计算
 \`\`\`
 4 个任务分给 4 个进程并行执行，**总耗时 ≈ 单任务耗时**（理想情况下），而非 4 倍。
 
 \`\`\`python
+import concurrent
 with concurrent.futures.ThreadPoolExecutor(2) as ex:   # 2 线程跑 CPU 任务
     list(ex.map(cpu_bench, [N, N]))   # 受 GIL 限制，实际不会并行加速
 \`\`\`
 对比组：同样 2 个 CPU 任务用线程池，受 GIL 限制变成串行，耗时 ≈ 2 倍单任务。
 
 \`\`\`python
+import concurrent
 with concurrent.futures.ProcessPoolExecutor(2) as ex:   # 2 进程跑 CPU 任务
     list(ex.map(cpu_bench, [N, N]))   # 多进程真并行，耗时约为单进程一半
 \`\`\`
@@ -447,6 +452,7 @@ result = await some_coro()   # await 等待协程完成并取返回值（只能�
 ## 二、asyncio.run(main()) 入口（3.7+）
 
 \`\`\`python
+import asyncio
 async def main():                  # 主协程
     await asyncio.gather(...)      # gather 并发调度多个协程
 
@@ -635,6 +641,7 @@ asyncio.run(main_fetch())
 \`asyncio.Queue\` 是协程间通信的标准工具，API 与 \`queue.Queue\` 类似但**全部方法都是协程**：
 
 \`\`\`python
+import asyncio
 q = asyncio.Queue(maxsize=10)
 
 async def producer(q):
@@ -694,6 +701,7 @@ except asyncio.TimeoutError:
 虽然单线程协程通常无需锁，但**当多个协程在 await 之间访问共享资源**时仍可能竞态：
 
 \`\`\`python
+import asyncio
 lock = asyncio.Lock()
 async def update():
     async with lock:

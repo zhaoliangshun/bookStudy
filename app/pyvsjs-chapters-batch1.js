@@ -203,6 +203,7 @@ button.addEventListener("click", () => {
 Python 0.9.0 于 1991 年 2 月发布，已经有类、异常处理、函数、模块等核心特性。1994 年的 Python 1.0 加入了 lambda、map、filter、reduce（函数式编程特性，来自 Lisp）。
 
 \`\`\`python
+from functools import reduce
 # Python 1.0 时代：lambda 和函数式工具
 nums = [1, 2, 3, 4, 5]
 squares = list(map(lambda x: x**2, nums))

@@ -392,6 +392,7 @@ asyncio.run(hello())  # 调用 asyncio.run()：运行
 - \`await\`：等待另一个协程完成
 
 \`\`\`python
+import asyncio
 async def task():  # 定义异步函数 task
     await asyncio.sleep(1)    # 等待
 

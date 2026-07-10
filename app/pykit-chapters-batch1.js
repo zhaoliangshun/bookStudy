@@ -435,6 +435,7 @@ print(m.group())   # 2024
 只从**字符串开头**匹配，开头不匹配就返回 \`None\`。
 
 \`\`\`python
+import re
 re.match(r"Hello", "Hello world")   # 匹配
 re.match(r"world", "Hello world")   # None（开头不是 world）
 \`\`\`
@@ -444,6 +445,7 @@ re.match(r"world", "Hello world")   # None（开头不是 world）
 要求**整个字符串**完全匹配，常用于格式校验。
 
 \`\`\`python
+import re
 re.fullmatch(r"\\d{11}", "13800138000")   # 匹配（11 位手机号）
 re.fullmatch(r"\\d{11}", "1380013800")    # None（只有 10 位）
 \`\`\`
@@ -477,6 +479,7 @@ re.findall(r"(\\d)(\\d)", "12 34")   # [('1','2'), ('3','4')]
 返回每个匹配的 \`Match\` 对象，能拿到匹配的位置信息，适合大文本（节省内存）。
 
 \`\`\`python
+import re
 for m in re.finditer(r"\\d+", "a1 b22"):
     print(m.group(), m.span())   # 1 (1,2)  22 (4,6)
 \`\`\`
@@ -486,6 +489,7 @@ for m in re.finditer(r"\\d+", "a1 b22"):
 #### 基本替换
 
 \`\`\`python
+import re
 re.sub(r"\\d+", "#", "a1 b22 c333")   # a# b# c#
 re.sub(r"\\d+", "#", "a1 b22", count=1)  # a# b22（只替换 1 次）
 \`\`\`
@@ -495,6 +499,7 @@ re.sub(r"\\d+", "#", "a1 b22", count=1)  # a# b22（只替换 1 次）
 \`re.sub\` 的第二个参数可以是**函数**，函数接收 \`Match\` 对象，返回替换字符串。这让替换逻辑可以非常灵活。
 
 \`\`\`python
+import re
 # 把所有数字加 1
 def add_one(m):
     return str(int(m.group()) + 1)
@@ -506,6 +511,7 @@ re.sub(r"\\d+", add_one, "a1 b22 c333")   # a2 b23 c334
 ### 五、分割：re.split
 
 \`\`\`python
+import re
 re.split(r"[,;\\s]+", "a, b; c  d")   # ['a', 'b', 'c', 'd']
 re.split(r"(-)", "2024-01-01")        # ['2024', '-', '01', '-', '01']（保留分隔符）
 \`\`\`
@@ -517,6 +523,7 @@ re.split(r"(-)", "2024-01-01")        # ['2024', '-', '01', '-', '01']（保留�
 #### 普通分组 \`()\`
 
 \`\`\`python
+import re
 m = re.search(r"(\\d{4})-(\\d{2})-(\\d{2})", "2024-01-15")
 m.group(0)   # '2024-01-15'（整个匹配）
 m.group(1)   # '2024'（第 1 组）
@@ -527,6 +534,7 @@ m.groups()   # ('2024', '01', '15')
 #### 命名分组 \`(?P<name>...)\`
 
 \`\`\`python
+import re
 m = re.search(r"(?P<year>\\d{4})-(?P<month>\\d{2})", "2024-01")
 m.group("year")    # '2024'
 m.group("month")   # '01'
@@ -540,6 +548,7 @@ m.groupdict()      # {'year': '2024', 'month': '01'}
 同个模式要多次使用时，先用 \`re.compile\` 编译，提升性能并复用：
 
 \`\`\`python
+import re
 date_re = re.compile(r"\\d{4}-\\d{2}-\\d{2}")
 date_re.search("日期 2024-01-15")
 date_re.findall("2024-01-15 和 2024-02-20")
@@ -1008,6 +1017,7 @@ textwrap.shorten("Hello World Python Programming", width=15, placeholder="...")
 #### \`textwrap.dedent(text)\` —— 去除多行字符串公共缩进
 
 \`\`\`python
+import textwrap
 s = """
     第一行
     第二行
@@ -1020,6 +1030,7 @@ print(textwrap.dedent(s))   # 去掉每行开头的公共 4 空格
 #### \`textwrap.indent(text, prefix)\` —— 给每行加前缀
 
 \`\`\`python
+import textwrap
 textwrap.indent("line1\\nline2", "> ")
 # > line1
 # > line2
@@ -1042,6 +1053,7 @@ print("".join(diff))
 #### \`difflib.ndiff\` —— 逐字符 diff
 
 \`\`\`python
+import difflib
 diff = difflib.ndiff(["hello"], ["hallo"])
 # 标记每个字符的增删改
 \`\`\`
@@ -1049,6 +1061,7 @@ diff = difflib.ndiff(["hello"], ["hallo"])
 #### \`difflib.SequenceMatcher.ratio()\` —— 相似度
 
 \`\`\`python
+import difflib
 sm = difflib.SequenceMatcher(None, "hello", "hallo")
 sm.ratio()   # 0.8（80% 相似）
 \`\`\`
@@ -1058,6 +1071,7 @@ sm.ratio()   # 0.8（80% 相似）
 #### \`difflib.get_close_matches\` —— 模糊匹配建议
 
 \`\`\`python
+import difflib
 difflib.get_close_matches("pyton", ["python", "java", "ruby"])
 # ['python']
 \`\`\`
@@ -1102,6 +1116,7 @@ unicodedata.name("😀")    # 'GRINNING FACE'
 #### \`unicodedata.category(ch)\` —— 字符分类
 
 \`\`\`python
+import unicodedata
 unicodedata.category("A")   # 'Lu'（Letter, uppercase）
 unicodedata.category("1")   # 'Nd'（Number, decimal digit）
 unicodedata.category(" ")   # 'Zs'（Separator, space）
@@ -1112,6 +1127,7 @@ unicodedata.category(" ")   # 'Zs'（Separator, space）
 Unicode 中有些字符有多种表示（如 \`é\` 可由单字符或 \`e\`+组合符表示），\`normalize\` 统一它们：
 
 \`\`\`python
+import unicodedata
 s1 = "é"              # 单个字符
 s2 = "e\\u0301"        # e + 组合重音
 s1 == s2              # False（视觉相同但编码不同）
@@ -1484,6 +1500,7 @@ decoded = base64.b64decode(encoded)  # b'Hello, World'
 **重点**：base64 的输入和输出都是 \`bytes\`。处理字符串时要先 encode，处理后 decode。
 
 \`\`\`python
+import base64
 # 字符串 → base64
 s = "中文"
 b64 = base64.b64encode(s.encode("utf-8")).decode("ascii")  # '5Lit5paH'

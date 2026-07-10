@@ -1722,6 +1722,7 @@ with ProcessPoolExecutor(max_workers=4) as ex:
 
 ### 用法1：submit + Future
 \`\`\`python
+from concurrent.futures import ProcessPoolExecutor
 with ProcessPoolExecutor(4) as ex:
     futures = [ex.submit(func, arg) for arg in args]
     results = [f.result() for f in futures]
@@ -1729,12 +1730,14 @@ with ProcessPoolExecutor(4) as ex:
 
 ### 用法2：map
 \`\`\`python
+from concurrent.futures import ProcessPoolExecutor
 with ProcessPoolExecutor(4) as ex:
     results = list(ex.map(func, args))
 \`\`\`
 
 ### 用法3：as_completed
 \`\`\`python
+from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import as_completed
 with ProcessPoolExecutor(4) as ex:
     futures = [ex.submit(func, arg) for arg in args]

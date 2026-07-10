@@ -1965,6 +1965,7 @@ print(slow_func.__doc__)   # 模拟慢函数
 ### 多个装饰器叠加
 
 \`\`\`python
+from functools import wraps
 def uppercase_result(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
@@ -1992,6 +1993,7 @@ print(greet("alice"))  # HELLO, ALICE!
 ### 带参数的装饰器
 
 \`\`\`python
+from functools import wraps
 def repeat(times):
     def decorator(fn):
         @wraps(fn)
@@ -2018,6 +2020,7 @@ say("hi")
 ### 类装饰器
 
 \`\`\`python
+from functools import wraps
 def singleton(cls):
     instances = {}
     @wraps(cls)
@@ -2302,6 +2305,7 @@ JavaScript 因为箭头函数简洁，函数组合的写法更流畅。lodash/ra
 ## 七、实战对比：日志装饰器
 
 \`\`\`python
+from functools import wraps
 # Python 版本：装饰器优雅地应用到一批函数
 def logged(fn):
     @wraps(fn)

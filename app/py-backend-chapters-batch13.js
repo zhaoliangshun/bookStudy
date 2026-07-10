@@ -671,6 +671,7 @@ class TokenData(BaseModel):
 ### 2.3 创建Token函数
 
 \`\`\`python
+from typing import Optional
 def create_access_token(
     data: dict,
     expires_delta: Optional[timedelta] = None
@@ -1035,6 +1036,7 @@ def verify_token(token: str):
 ### 7.3 生产环境配置清单
 
 \`\`\`python
+import os
 # 生产环境配置建议
 class Settings:
     SECRET_KEY: str = os.getenv("SECRET_KEY")  # 从环境变量读取
@@ -4312,6 +4314,7 @@ async def good_middleware(request: Request, call_next):
 **坑点2：lifespan中异常导致应用无法启动**
 
 \`\`\`python
+from contextlib import asynccontextmanager
 # 错误：初始化失败没有处理，应用直接崩溃
 @asynccontextmanager
 async def lifespan(app: FastAPI):

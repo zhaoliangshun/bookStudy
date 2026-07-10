@@ -3860,6 +3860,7 @@ results = asyncio.run(fetch_all(urls))
 
 CPU密集型任务用多进程绕过GIL：
 \`\`\`python
+import time
 from concurrent.futures import ProcessPoolExecutor
 import multiprocessing
 

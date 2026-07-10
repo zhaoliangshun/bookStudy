@@ -2354,6 +2354,7 @@ if __name__ == '__main__':
 4. **每个进程有独立内存空间**：全局变量修改不共享
 
 \`\`\`python
+from concurrent.futures import ProcessPoolExecutor
 # ❌ 错误：lambda无法序列化
 # with ProcessPoolExecutor() as executor:
 #     executor.map(lambda x: x*2, [1,2,3])

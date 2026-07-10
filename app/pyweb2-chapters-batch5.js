@@ -2511,6 +2511,7 @@ async def list_products(page: PaginationDep):
 SQLAlchemy 集成的标准模式：
 
 \`\`\`python
+from typing import Annotated
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from fastapi import FastAPI, Depends

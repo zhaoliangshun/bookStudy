@@ -463,6 +463,7 @@ def sort_list(xs: list[T]) -> list[T]: ...
 此外，Python 的 \`TypeVar\` 还支持**值约束**（枚举几个允许的类型），Java 没这个特性：
 
 \`\`\`python
+from typing import TypeVar
 # Python：限制 T 只能是 str 或 bytes
 T = TypeVar("T", str, bytes)
 
@@ -1886,6 +1887,7 @@ if (m3.matches()) {
 Python 的 \`r"..."\` raw string 让正则不用双转义，**比 Java 直观很多**：
 
 \`\`\`python
+import re
 # Python
 re.match(r"\\d+\\s+", text)  # 写什么就是什么
 \`\`\`

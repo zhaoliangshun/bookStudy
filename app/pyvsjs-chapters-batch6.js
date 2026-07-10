@@ -236,6 +236,7 @@ add(1, 2).then(console.log);  // 3
 \`\`\`
 
 \`\`\`python
+import asyncio
 async def add(a, b):
     return a + b  # 返回 coroutine，不是值
 

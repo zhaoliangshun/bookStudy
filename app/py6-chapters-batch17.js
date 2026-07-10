@@ -40,6 +40,7 @@ def first(items: list[T]) -> T:
 TypeVar 还支持约束（constraints）和边界（bound）：
 
 \`\`\`python
+from typing import TypeVar
 # 约束：T 只能是 str 或 bytes
 TStrOrBytes = TypeVar("TStrOrBytes", str, bytes)
 

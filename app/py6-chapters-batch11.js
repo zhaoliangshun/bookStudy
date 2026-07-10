@@ -37,6 +37,7 @@ d.popleft()        # 左端弹出: 0
 
 #### 批量操作
 \`\`\`python
+from collections import deque
 d = deque([1, 2, 3])
 d.extend([4, 5])        # 右端扩展: deque([1,2,3,4,5])
 d.extendleft([0, -1])   # 左端扩展（注意顺序反转）: deque([-1,0,1,2,3,4,5])
@@ -45,6 +46,7 @@ d.extendleft([0, -1])   # 左端扩展（注意顺序反转）: deque([-1,0,1,2,
 #### 旋转操作 rotate
 \`rotate(n)\` 把队列右旋 n 步（n 为负则左旋）：
 \`\`\`python
+from collections import deque
 d = deque([1, 2, 3, 4, 5])
 d.rotate(2)    # deque([4, 5, 1, 2, 3])  右旋2步
 d.rotate(-1)   # deque([5, 1, 2, 3, 4])  左旋1步
@@ -53,6 +55,7 @@ d.rotate(-1)   # deque([5, 1, 2, 3, 4])  左旋1步
 #### maxlen 自动丢弃的妙用
 设置 \`maxlen\` 后，deque 满后新增元素会自动从另一端丢弃旧元素，**无需手动判断长度**：
 \`\`\`python
+from collections import deque
 d = deque(maxlen=3)
 for i in range(5):
     d.append(i)
@@ -64,6 +67,7 @@ for i in range(5):
 #### 1. 滑动窗口
 在流式数据中维护最近 N 个元素，做均值/最大值统计：
 \`\`\`python
+from collections import deque
 def moving_average(stream, window=3):
     win = deque(maxlen=window)
     for x in stream:
@@ -76,6 +80,7 @@ list(moving_average([1, 2, 3, 4, 5]))  # [2.0, 3.0, 4.0]
 
 #### 2. 最近 N 条记录（日志/历史）
 \`\`\`python
+from collections import deque
 recent_logs = deque(maxlen=100)  # 只保留最近100条
 recent_logs.appendleft(new_log)  # 新日志放最前
 \`\`\`
@@ -291,6 +296,7 @@ print(heapq.nsmallest(3, nums))  # 最小的3个
 ### 大顶堆技巧（取负数）
 Python heapq 默认小顶堆，要实现大顶堆只需把元素取负：
 \`\`\`python
+import heapq
 max_heap = []
 for x in [5, 2, 8, 1]:
     heapq.heappush(max_heap, -x)   # 存负数
@@ -322,6 +328,7 @@ class PriorityQueue:
 #### 1. Top K 问题
 找海量数据中最大/最小的 K 个元素。**不要排序！** 排序是 O(n log n)，堆是 O(n log k)：
 \`\`\`python
+import heapq
 # 找最大的 3 个
 heapq.nlargest(3, huge_list)
 # 或手动维护大小为 K 的小顶堆
@@ -329,6 +336,7 @@ heapq.nlargest(3, huge_list)
 
 #### 2. 任务调度
 \`\`\`python
+import heapq
 tasks = [(2, '低优先'), (0, '紧急'), (1, '普通')]
 heapq.heapify(tasks)
 print(heapq.heappop(tasks))  # (0, '紧急') 先执行
@@ -535,6 +543,7 @@ print(bisect.bisect_right(a, 2))  # 4（插在最后一个 2 的右边）
 #### 1. 维护有序列表
 频繁插入 + 需要保持有序时，用 \`insort\` 比 \`append + sort\` 高效：
 \`\`\`python
+import bisect
 scores = []
 bisect.insort(scores, 85)   # 自动插入到正确位置
 bisect.insort(scores, 92)
@@ -563,6 +572,7 @@ def grade(score):
 #### 4. 区间查找
 查找某值落在哪个区间：
 \`\`\`python
+import bisect
 ranges = [0, 100, 500, 1000, 5000]  # 区间边界
 # 0-99, 100-499, 500-999, 1000-4999
 idx = bisect.bisect_right(ranges, 250) - 1
@@ -791,6 +801,7 @@ f = array.array('d', [1.5, 2.5, 3.5])
 #### 2. 二进制文件读写
 \`array\` 支持 \`tofile\` / \`fromfile\`，**直接读写二进制文件，速度极快**：
 \`\`\`python
+import array
 a = array.array('i', range(1000000))
 with open('data.bin', 'wb') as f:
     a.tofile(f)
