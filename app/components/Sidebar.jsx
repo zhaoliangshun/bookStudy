@@ -1370,9 +1370,11 @@ export default function Sidebar({
     catDragStateRef.current = { catName };
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", "category:" + catName);
+    // 同上：React 合成事件回收后 currentTarget 为 null，需先缓存。
+    const el = e.currentTarget;
     requestAnimationFrame(() => {
-      e.currentTarget.classList.add("dragging-cat");
-      draggingCatRef.current = e.currentTarget;
+      el.classList.add("dragging-cat");
+      draggingCatRef.current = el;
     });
   }, []);
 
@@ -1457,9 +1459,12 @@ export default function Sidebar({
     sgDragStateRef.current = { parent: parentName, sgId, key: sgKey };
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", "subgroup:" + sgKey);
-    // 异步加 dragging-sg 类，避免 Chrome 立刻把拖拽源截图变透明
+    // 异步加 dragging-sg 类，避免 Chrome 立刻把拖拽源截图变透明。
+    // 注意：React 合成事件在回调返回后会被回收（currentTarget 变为 null），
+    // 因此必须在 requestAnimationFrame 之前把 DOM 引用缓存到局部变量。
+    const el = e.currentTarget;
     requestAnimationFrame(() => {
-      e.currentTarget.classList.add("dragging-sg");
+      el.classList.add("dragging-sg");
     });
   }, []);
 
