@@ -915,7 +915,7 @@ console.log("  5. Lane 模型用二进制位表示优先级，支持位运算和
   // =========================================================
   {
     id: "rs-hook-linkedlist",
-    group: "类组件与 Hooks 系统",
+    group: "第五部分 Hooks 系统",
     icon: "🔗",
     title: "Hook 链表结构：fiber.memoizedState 的秘密",
     content: `## 一、函数组件的状态存在哪里
@@ -1474,7 +1474,7 @@ console.log("  5. currentHook 必须在 renderWithHooks 开头重置为 null");`
   // =========================================================
   {
     id: "rs-usestate",
-    group: "类组件与 Hooks 系统",
+    group: "第五部分 Hooks 系统",
     icon: "⚡",
     title: "useState 源码精读：dispatchAction 与环形队列",
     content: `## 一、useState 的全貌
@@ -2080,7 +2080,7 @@ console.log("  5. 函数式更新能基于最新的 prevState 计算，避免批
   // =========================================================
   {
     id: "rs-useeffect",
-    group: "类组件与 Hooks 系统",
+    group: "第五部分 Hooks 系统",
     icon: "🧹",
     title: "useEffect 源码精读：依赖对比与 cleanup 执行时机",
     content: `## 一、useEffect 到底解决了什么问题

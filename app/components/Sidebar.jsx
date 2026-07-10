@@ -91,6 +91,8 @@ const BOOK_CATEGORIES = [
       { path: "/nodejs2", label: "Node.js 进阶", icon: "🟢" },
       { path: "/nodejs3", label: "Node.js 源码", icon: "🟡" },
       { path: "/noderun", label: "Node.js 运行原理", icon: "⚙️" },
+      { path: "/reactsrc", label: "React 源码构建", icon: "⚛️" },
+      { path: "/vuesrc", label: "Vue 源码构建", icon: "💚" },
       { path: "/nodejs-backend", label: "Node.js Web后端实战", icon: "🏗️" },
       { path: "/ts", label: "TypeScript 入门", icon: "🔷" },
       { path: "/ts2", label: "TypeScript 进阶", icon: "🔶" },
