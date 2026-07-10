@@ -1,0 +1,12 @@
+2026-07-10 10:43:29 DEBUG    [MainProcess] myapp - 调试信息 → 仅 debug.log
+2026-07-10 10:43:29 INFO     [MainProcess] myapp - 一般信息 → 控制台 + debug.log
+2026-07-10 10:43:29 ERROR    [MainProcess] myapp - 错误信息 → 三处都有
+2026-07-10 10:53:24 DEBUG    [MainProcess] myapp - 调试信息 → 仅 debug.log
+2026-07-10 10:53:24 INFO     [MainProcess] myapp - 一般信息 → 控制台 + debug.log
+2026-07-10 10:53:24 ERROR    [MainProcess] myapp - 错误信息 → 三处都有
+2026-07-10 10:55:42 DEBUG    [MainProcess] myapp - 调试信息 → 仅 debug.log
+2026-07-10 10:55:42 INFO     [MainProcess] myapp - 一般信息 → 控制台 + debug.log
+2026-07-10 10:55:42 ERROR    [MainProcess] myapp - 错误信息 → 三处都有
+2026-07-10 10:58:52 DEBUG    [MainProcess] myapp - 调试信息 → 仅 debug.log
+2026-07-10 10:58:52 INFO     [MainProcess] myapp - 一般信息 → 控制台 + debug.log
+2026-07-10 10:58:52 ERROR    [MainProcess] myapp - 错误信息 → 三处都有
