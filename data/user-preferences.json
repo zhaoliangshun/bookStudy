@@ -142,7 +142,9 @@
     "sp-input",
     "sp-exception",
     "sp-shell",
-    "sp-run"
+    "sp-run",
+    "sp-popen",
+    "pythread-34"
   ],
   "bookOrder": {
     "未分组": [
@@ -150,6 +152,7 @@
     ],
     "Python 编程": [],
     "JS / TS 生态": [
+      "/tsgen",
       "/ts",
       "/ts2",
       "/ts3",
