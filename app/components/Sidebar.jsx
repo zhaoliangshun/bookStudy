@@ -310,12 +310,10 @@ export default function Sidebar({
   // 书籍拖拽悬停在子分组标题上的 DOM
   const bookDragOverSubGroupRef = useRef(null);
 
-  // ===== 书籍下拉框展开状态记忆 =====
-  const DROPDOWN_EXPANDED_KEY = "sidebar:book-dropdown-expanded";
-  // 标记是否已经执行过首次打开时的状态恢复（避免重复）
-  const dropdownInitializedRef = useRef(false);
   // 内存中缓存的上次关闭时的展开状态（关闭时立即保存，打开时优先使用）
   const savedDropdownStateRef = useRef(null);
+  // 标记是否已经执行过首次打开时的状态恢复（避免重复）
+  const dropdownInitializedRef = useRef(false);
 
   // 重命名输入框聚焦
   useEffect(() => {
@@ -1616,10 +1614,10 @@ export default function Sidebar({
   }, [currentPath, bookOrder, catConfig.renamed]);
 
   // ===== 书籍下拉框：打开时始终展开当前书籍所在分组和子分组 =====
-  // 关闭时保存展开状态到 localStorage，打开时恢复上次状态，并始终确保当前书籍所在分组/子分组展开
+  // 关闭时保存展开状态到内存缓存，同一 session 内关闭再打开时恢复。
+  // 页面刷新后（内存缓存丢失）只展开当前书籍所在分组，不再从 localStorage 恢复。
   useEffect(() => {
     if (bookDropdownOpen) {
-      // 始终定位当前书籍所在分类和子分组（不管有无保存状态都要确保展开）
       const loc = findCurrentBookLocation();
       const saved = savedDropdownStateRef.current;
       let catsToExpand;
@@ -1629,25 +1627,11 @@ export default function Sidebar({
         catsToExpand = new Set(saved.categories || []);
         sgsToExpand = new Set(saved.subGroups || []);
       } else {
-        // 尝试从 localStorage 恢复（页面刷新后首次打开）
+        // 页面刷新后首次打开：只展开当前书籍所在分组，不恢复历史状态
         catsToExpand = new Set();
         sgsToExpand = new Set();
-        try {
-          const raw = localStorage.getItem(DROPDOWN_EXPANDED_KEY);
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            const validCatNames = new Set(visibleCategories.map((c) => c.name));
-            (parsed.categories || []).filter((n) => validCatNames.has(n)).forEach((n) => catsToExpand.add(n));
-            const validSgKeys = [];
-            visibleCategories.forEach((cat) => {
-              (cat.subGroups || []).forEach((sg) => validSgKeys.push(sg.key));
-            });
-            const validSgSet = new Set(validSgKeys);
-            (parsed.subGroups || []).filter((k) => validSgSet.has(k)).forEach((k) => sgsToExpand.add(k));
-          }
-        } catch {}
       }
-      // 关键：始终确保当前书籍所在的分类和子分组被展开（无论保存状态如何）
+      // 关键：始终确保当前书籍所在的分类和子分组被展开
       if (loc.categoryName) catsToExpand.add(loc.categoryName);
       if (loc.subGroupKey) sgsToExpand.add(loc.subGroupKey);
       setExpandedCategories(catsToExpand);
@@ -1657,14 +1641,12 @@ export default function Sidebar({
         subGroups: Array.from(sgsToExpand),
       };
     } else {
-      // 下拉框关闭：保存当前展开状态到内存缓存和 localStorage
+      // 下拉框关闭：保存当前展开状态到内存缓存（供同 session 内重开恢复）
       if (dropdownInitializedRef.current || expandedCategories.size > 0) {
-        const state = {
+        savedDropdownStateRef.current = {
           categories: Array.from(expandedCategories),
           subGroups: Array.from(expandedSubGroups),
         };
-        savedDropdownStateRef.current = state;
-        try { localStorage.setItem(DROPDOWN_EXPANDED_KEY, JSON.stringify(state)); } catch {}
       }
     }
     dropdownInitializedRef.current = true;
