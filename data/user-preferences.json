@@ -355,49 +355,21 @@
       "未分组": [
         "/playground"
       ],
-      "Python 编程": [
-        "/pyint",
-        "/pyrun",
-        "/py",
-        "/py6",
-        "/py8",
-        "/py9",
-        "/py-definitive",
-        "/pyfile",
-        "/pyfile2",
-        "/pykit",
-        "/pynet",
-        "/pydb",
-        "/pyweb",
-        "/pyweb2",
-        "/fastapi",
-        "/pyeng",
-        "/pyarch",
-        "/pyproject",
-        "/pyjava",
-        "/pyvsjava",
-        "/pyvsjs",
-        "/pythread",
-        "/pythread2",
-        "/pyprocess",
-        "/pysubprocess",
-        "/pyasync",
-        "/pyasync2"
-      ],
+      "Python 编程": [],
       "JS / TS 生态": [
-        "/nodejs",
-        "/nodejs2",
-        "/nodejs3",
+        "/tsgen",
         "/ts",
         "/ts2",
         "/ts3",
         "/workers",
-        "/pnpm"
+        "/noderun",
+        "/reactsrc",
+        "/vuesrc"
       ],
       "Java 开发": [
         "/java",
-        "/java-web",
-        "/java-master"
+        "/java-master",
+        "/java-web"
       ],
       "AI 智能开发": [
         "/ai",
@@ -469,19 +441,118 @@
         "/pybasic",
         "/pymod",
         "/py4",
-        "/pyex"
+        "/pyex",
+        "/pnpm"
       ],
       "算法与数据结构": [
         "/algo",
         "/leetcode"
+      ],
+      "nodejs": [
+        "/nodejs",
+        "/nodejs3",
+        "/nodejs2",
+        "/nodejs-backend"
+      ],
+      "Python 编程::__sg-mrctbi5m16xr": [
+        "/pythread",
+        "/pythread2",
+        "/pyprocess",
+        "/pysubprocess",
+        "/pyasync",
+        "/pyasync2"
+      ],
+      "Python 编程::__sg-mrctcsxkz7f9": [
+        "/pyint",
+        "/pyrun",
+        "/pykit",
+        "/py",
+        "/py6",
+        "/py8",
+        "/py9",
+        "/py-definitive"
+      ],
+      "Python 编程::__sg-mrctdmwvqji3": [
+        "/pynet",
+        "/pydb",
+        "/fastapi",
+        "/pyweb",
+        "/pyweb2",
+        "/py-backend",
+        "/pyproject",
+        "/pyarch",
+        "/pyeng"
+      ],
+      "Python 编程::__sg-mrctfokhdvl5": [
+        "/pyjava",
+        "/pyvsjava",
+        "/pyvsjs"
+      ],
+      "Python 编程::__sg-mrd99uj4byog": [
+        "/pyfile",
+        "/pyfile2"
       ]
     },
     "categoryConfig": {
-      "custom": [],
+      "custom": [
+        {
+          "id": "c-mrcscba2w47r",
+          "name": "nodejs",
+          "icon": "📁"
+        }
+      ],
       "renamed": {},
       "icons": {},
       "hidden": [],
-      "order": null
+      "order": [
+        "Python 编程",
+        "nodejs",
+        "JS / TS 生态",
+        "Java 开发",
+        "AI 智能开发",
+        "前端工程",
+        "后端与网络",
+        "实战项目",
+        "数据库与缓存",
+        "算法与数据结构",
+        "计算机基础",
+        "职场成长",
+        "身心健康",
+        "人际智慧"
+      ],
+      "subGroups": {
+        "Python 编程": [
+          {
+            "id": "sg-mrctbi5m16xr",
+            "name": "并发技巧"
+          },
+          {
+            "id": "sg-mrctcsxkz7f9",
+            "name": "基础语法"
+          },
+          {
+            "id": "sg-mrctdmwvqji3",
+            "name": "后端开发"
+          },
+          {
+            "id": "sg-mrctfokhdvl5",
+            "name": "对比其他语言"
+          },
+          {
+            "id": "sg-mrd99uj4byog",
+            "name": "文件操作"
+          }
+        ]
+      },
+      "subGroupOrder": {
+        "Python 编程": [
+          "sg-mrctcsxkz7f9",
+          "sg-mrctbi5m16xr",
+          "sg-mrd99uj4byog",
+          "sg-mrctdmwvqji3",
+          "sg-mrctfokhdvl5"
+        ]
+      }
     }
   }
 }
