@@ -28,8 +28,18 @@
 import { NextResponse } from "next/server";
 import { spawn, spawnSync } from "child_process";
 import { writeFileSync, mkdirSync, rmSync, existsSync } from "fs";
-import { join } from "path";
+import { join, delimiter } from "path";
 import { tmpdir } from "os";
+
+// 增强的 PATH：合并进程 PATH 与常见编译器安装目录。
+// 原因：dev server 启动时固化了 process.env.PATH，若编译器在
+// 启动后才安装，spawn 会 ENOENT。这里补上常见安装路径。
+const ENHANCED_PATH = (() => {
+  const extra = process.platform === "win32"
+    ? ["C:\\ProgramData\\mingw64\\mingw64\\bin", "C:\\msys64\\mingw64\\bin", "C:\\mingw64\\bin"]
+    : ["/usr/local/bin", "/opt/homebrew/bin"];
+  return [process.env.PATH, ...extra.filter(existsSync)].join(delimiter);
+})();
 
 // 编译超时（毫秒）
 const COMPILE_TIMEOUT_MS = 10000;
@@ -43,7 +53,8 @@ const PREFERRED_CXX = "clang++";
 const FALLBACK_CXX = "g++";
 
 // 输出二进制名固定为 Playground，避免与系统命令冲突
-const OUTPUT_BIN_NAME = "Playground";
+// Windows 上编译器会自动加 .exe，运行时也需要 .exe 扩展名才能被 spawn 找到
+const OUTPUT_BIN_NAME = process.platform === "win32" ? "Playground.exe" : "Playground";
 // 临时源文件名
 const SOURCE_FILE_NAME = "playground.cpp";
 
@@ -61,7 +72,7 @@ function pickCompiler() {
     try {
       const r = spawnSync(bin, ["--version"], {
         stdio: "ignore",
-        env: { PATH: process.env.PATH },
+        env: { PATH: ENHANCED_PATH },
       });
       // error 表示二进制不存在；status 为数字表示能正常启动
       if (!r.error) {
@@ -176,17 +187,19 @@ async function runCppCode(code) {
     writeFileSync(sourceFile, code, "utf8");
 
     const env = {
-      PATH: process.env.PATH,
+      PATH: ENHANCED_PATH,
       LANG: "en_US.UTF-8",
       LC_ALL: "en_US.UTF-8",
     };
 
     // 3. 编译：clang++ -o Playground playground.cpp
-    //    -O0 关闭优化（编译更快、报错行号更准确），-Wall 输出常见警告，
-    //    -std=c++17 使用较新的 C++ 标准，支持多数现代写法
+    //    -O0 关闭优化（编译更快、报错行号更准确），-Wall 输出常见警告
+    //    -std=c++17 使用 C++17 标准
+    //    -static 静态链接 C++ 运行时（Windows 上 MinGW 的 libstdc++-6.dll
+    //          可能不在 PATH，动态链接会导致运行时 0xC0000005 崩溃）
     const compileResult = await runCommand(
       compiler,
-      ["-O0", "-Wall", "-std=c++17", "-o", outputFile, sourceFile],
+      ["-O0", "-Wall", "-std=c++17", "-static", "-o", outputFile, sourceFile],
       {
         stdio: ["pipe", "pipe", "pipe"],
         env,

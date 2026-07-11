@@ -27,8 +27,18 @@
 import { NextResponse } from "next/server";
 import { spawn, spawnSync } from "child_process";
 import { writeFileSync, mkdirSync, rmSync, existsSync } from "fs";
-import { join } from "path";
+import { join, delimiter } from "path";
 import { tmpdir } from "os";
+
+// 增强的 PATH：合并进程 PATH 与常见编译器安装目录。
+// 原因：dev server 启动时固化了 process.env.PATH，若编译器在
+// 启动后才安装，spawn 会 ENOENT。这里补上常见安装路径。
+const ENHANCED_PATH = (() => {
+  const extra = process.platform === "win32"
+    ? ["C:\\ProgramData\\mingw64\\mingw64\\bin", "C:\\msys64\\mingw64\\bin", "C:\\mingw64\\bin"]
+    : ["/usr/local/bin", "/opt/homebrew/bin"];
+  return [process.env.PATH, ...extra.filter(existsSync)].join(delimiter);
+})();
 
 // 编译超时（毫秒）
 const COMPILE_TIMEOUT_MS = 10000;
@@ -37,12 +47,15 @@ const RUN_TIMEOUT_MS = 10000;
 // stdout / stderr 最大缓冲（字节）
 const MAX_OUTPUT_BYTES = 1 * 1024 * 1024; // 1MB
 
-// 编译器优先级：优先 clang（错误信息更友好），回退 cc（系统默认 C 编译器）
+// 编译器优先级：优先 clang（错误信息更友好），回退 cc、gcc
+// gcc 单独列出是因为 Windows（MinGW）通常只有 gcc，没有 clang/cc
 const PREFERRED_CC = "clang";
 const FALLBACK_CC = "cc";
+const EXTRA_FALLBACK_CC = "gcc";
 
 // 输出二进制名固定为 Playground，避免与系统命令冲突
-const OUTPUT_BIN_NAME = "Playground";
+// Windows 上编译器会自动加 .exe，运行时也需要 .exe 扩展名才能被 spawn 找到
+const OUTPUT_BIN_NAME = process.platform === "win32" ? "Playground.exe" : "Playground";
 // 临时源文件名
 const SOURCE_FILE_NAME = "playground.c";
 
@@ -50,17 +63,17 @@ const SOURCE_FILE_NAME = "playground.c";
 let _resolvedCc = null;
 
 /**
- * 探测可用的 C 编译器：优先 clang，不可用则回退 cc。
+ * 探测可用的 C 编译器：优先 clang，不可用则回退 cc、gcc。
  * 用 spawnSync --version 同步探测，命中即缓存。
  * @returns {string} 编译器可执行文件名
  */
 function pickCompiler() {
   if (_resolvedCc !== null) return _resolvedCc;
-  for (const bin of [PREFERRED_CC, FALLBACK_CC]) {
+  for (const bin of [PREFERRED_CC, FALLBACK_CC, EXTRA_FALLBACK_CC]) {
     try {
       const r = spawnSync(bin, ["--version"], {
         stdio: "ignore",
-        env: { PATH: process.env.PATH },
+        env: { PATH: ENHANCED_PATH },
       });
       // error 表示二进制不存在；status 为数字表示能正常启动
       if (!r.error) {
@@ -175,16 +188,18 @@ async function runCCode(code) {
     writeFileSync(sourceFile, code, "utf8");
 
     const env = {
-      PATH: process.env.PATH,
+      PATH: ENHANCED_PATH,
       LANG: "en_US.UTF-8",
       LC_ALL: "en_US.UTF-8",
     };
 
     // 3. 编译：clang -o Playground playground.c
     //    -O0 关闭优化（编译更快、报错行号更准确），-Wall 输出常见警告
+    //    -static 静态链接运行时（Windows 上 MinGW 的 DLL 可能不在 PATH，
+    //          动态链接会导致运行时 0xC0000005 崩溃）
     const compileResult = await runCommand(
       compiler,
-      ["-O0", "-Wall", "-o", outputFile, sourceFile],
+      ["-O0", "-Wall", "-static", "-o", outputFile, sourceFile],
       {
         stdio: ["pipe", "pipe", "pipe"],
         env,

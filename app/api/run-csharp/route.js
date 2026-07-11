@@ -25,8 +25,16 @@
 import { NextResponse } from "next/server";
 import { spawn, spawnSync } from "child_process";
 import { writeFileSync, mkdirSync, rmSync, existsSync, cpSync } from "fs";
-import { join } from "path";
+import { join, delimiter } from "path";
 import { tmpdir } from "os";
+
+// 增强的 PATH：合并进程 PATH 与 .NET 常见安装目录，解决 dev server PATH 过期问题
+const ENHANCED_PATH = (() => {
+  const extra = process.platform === "win32"
+    ? ["C:\\Program Files\\dotnet", "C:\\Program Files (x86)\\dotnet"]
+    : ["/usr/local/share/dotnet", "/usr/share/dotnet"];
+  return [process.env.PATH, ...extra.filter(existsSync)].join(delimiter);
+})();
 
 // 运行超时（毫秒）—— 编译 + 运行合并计时
 const RUN_TIMEOUT_MS = 15000;
@@ -51,6 +59,7 @@ function checkDotnet() {
       stdio: ["pipe", "pipe", "pipe"],
       encoding: "utf8",
       timeout: 5000,
+      env: { PATH: ENHANCED_PATH },
     });
     if (result.status === 0) {
       return { available: true, version: result.stdout.trim() };
@@ -81,11 +90,16 @@ function ensureRunnerProject() {
 
   mkdirSync(RUNNER_DIR, { recursive: true });
 
+  // 动态检测已安装的 .NET SDK 主版本号，生成匹配的 TargetFramework。
+  // 避免硬编码 net8.0 但系统装的是 net10 导致 NuGet 还原失败。
+  const dotnetInfo = checkDotnet();
+  const majorVersion = dotnetInfo.available ? dotnetInfo.version.split(".")[0] : "8";
+
   // 直接写入 .csproj 文件，比 dotnet new 快
   const csprojContent = `<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net${majorVersion}.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>Runner</AssemblyName>
@@ -244,11 +258,12 @@ async function runCsharpCode(code) {
     }
 
     // 5. 编译并运行（dotnet run 会自动编译 + 执行）
+    // 保留全部 process.env（dotnet/NuGet 依赖大量环境变量），仅覆盖 PATH
     const env = {
-      PATH: process.env.PATH,
+      ...process.env,
+      PATH: ENHANCED_PATH,
       DOTNET_CLI_TELEMETRY_OPTOUT: "1",  // 禁用遥测，加快启动
       DOTNET_NOLOGO: "1",                 // 禁用 logo
-      HOME: process.env.HOME,
     };
 
     const result = await runCommand(

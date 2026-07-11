@@ -24,8 +24,16 @@
 import { NextResponse } from "next/server";
 import { spawn, spawnSync } from "child_process";
 import { writeFileSync, mkdirSync, rmSync, existsSync, cpSync } from "fs";
-import { join } from "path";
+import { join, delimiter } from "path";
 import { tmpdir } from "os";
+
+// 增强的 PATH：合并进程 PATH 与 Go 常见安装目录，解决 dev server PATH 过期问题
+const ENHANCED_PATH = (() => {
+  const extra = process.platform === "win32"
+    ? ["C:\\Program Files\\Go\\bin", "C:\\Go\\bin"]
+    : ["/usr/local/go/bin", "/opt/homebrew/bin"];
+  return [process.env.PATH, ...extra.filter(existsSync)].join(delimiter);
+})();
 
 // 运行超时（毫秒）—— 编译 + 运行合并计时
 const RUN_TIMEOUT_MS = 15000;
@@ -50,6 +58,7 @@ function checkGo() {
       stdio: ["pipe", "pipe", "pipe"],
       encoding: "utf8",
       timeout: 5000,
+      env: { PATH: ENHANCED_PATH },
     });
     if (result.status === 0) {
       // go version 输出格式：go version go1.22.0 darwin/arm64
@@ -240,8 +249,13 @@ async function runGoCode(code) {
 
     // 5. 编译并运行（go run 会自动编译 + 执行）
     const env = {
-      PATH: process.env.PATH,
+      PATH: ENHANCED_PATH,
       HOME: process.env.HOME,
+      USERPROFILE: process.env.USERPROFILE,
+      LOCALAPPDATA: process.env.LOCALAPPDATA,
+      APPDATA: process.env.APPDATA,
+      TEMP: process.env.TEMP,
+      TMP: process.env.TMP,
       GOPATH: process.env.GOPATH || (process.env.HOME ? join(process.env.HOME, "go") : "/tmp/go"),
       GOPROXY: process.env.GOPROXY || "https://goproxy.cn,direct",
       GOFLAGS: "-mod=mod",
