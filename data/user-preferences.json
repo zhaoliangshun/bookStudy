@@ -233,13 +233,7 @@
       "/unharmed",
       "/talk-rebut"
     ],
-    "已隐藏": [
-      "/pybasic",
-      "/pymod",
-      "/py4",
-      "/pyex",
-      "/pnpm"
-    ],
+    "已隐藏": [],
     "算法与数据结构": [
       "/algo",
       "/leetcode"
@@ -438,13 +432,7 @@
         "/unharmed",
         "/talk-rebut"
       ],
-      "已隐藏": [
-        "/pybasic",
-        "/pymod",
-        "/py4",
-        "/pyex",
-        "/pnpm"
-      ],
+      "已隐藏": [],
       "算法与数据结构": [
         "/algo",
         "/leetcode"
