@@ -25,7 +25,7 @@
 
 import { NextResponse } from "next/server";
 import { spawn } from "child_process";
-import { writeFileSync, mkdirSync, rmSync, existsSync } from "fs";
+import { writeFileSync, mkdirSync, rmSync, existsSync, readdirSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 
@@ -36,9 +36,61 @@ const RUN_TIMEOUT_MS = 10000;
 // stdout 最大缓冲（字节）
 const MAX_OUTPUT_BYTES = 1 * 1024 * 1024; // 1MB
 
-// java / javac 可执行文件名
-const JAVA_BIN = "java";
-const JAVAC_BIN = "javac";
+/**
+ * 解析 java / javac 可执行文件的绝对路径。
+ *
+ * 为什么不直接用 "javac" 让 PATH 查找？
+ *   Next.js dev server 在启动时固化了 process.env.PATH，
+ *   如果 JDK 是在 dev server 启动后才安装的，PATH 里没有
+ *   JDK 的 bin 目录，spawn("javac") 会 ENOENT。
+ *   这里依次检查 JAVA_HOME、常见安装目录、最后回退到裸命令名。
+ *
+ * @param {"java"|"javac"} name 可执行文件名（不含扩展名）
+ * @returns {string} 绝对路径或裸命令名（回退）
+ */
+function resolveJavaBin(name) {
+  const ext = process.platform === "win32" ? ".exe" : "";
+
+  // 1. JAVA_HOME 环境变量（最可靠）
+  const javaHome = process.env.JAVA_HOME;
+  if (javaHome) {
+    const p = join(javaHome, "bin", name + ext);
+    if (existsSync(p)) return p;
+  }
+
+  // 2. 常见 Windows / macOS / Linux 安装目录
+  const commonBases =
+    process.platform === "win32"
+      ? [
+          "C:\\Program Files\\Java",
+          "C:\\Program Files (x86)\\Java",
+          "C:\\Program Files\\Amazon Corretto",
+          "C:\\Program Files\\Eclipse Adoptium",
+          "C:\\Program Files\\Microsoft\\jdk-17.0.x", // 兜底
+        ]
+      : ["/Library/Java/JavaVirtualMachines", "/usr/lib/jvm"];
+
+  for (const base of commonBases) {
+    if (!existsSync(base)) continue;
+    // base 可能直接含 bin/<name>，也可能下面有 jdk* 子目录
+    const direct = join(base, "bin", name + ext);
+    if (existsSync(direct)) return direct;
+    try {
+      for (const sub of readdirSync(base)) {
+        const candidate = join(base, sub, "bin", name + ext);
+        if (existsSync(candidate)) return candidate;
+      }
+    } catch {
+      // ignore unreadable dirs
+    }
+  }
+
+  // 3. 回退：让 spawn 通过 PATH 查找（兼容已正确配置 PATH 的环境）
+  return name;
+}
+
+const JAVA_BIN = resolveJavaBin("java");
+const JAVAC_BIN = resolveJavaBin("javac");
 
 /**
  * 从 Java 源代码中提取 public class 名。

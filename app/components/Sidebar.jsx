@@ -71,6 +71,7 @@ const BOOK_CATEGORIES = [
       { path: "/pyprocess", label: "多进程编程", icon: "🧬" },
       { path: "/pyasync", label: "asyncio 异步编程", icon: "🌊" },
       { path: "/pyasync2", label: "asyncio 异步 V2", icon: "🌊" },
+      { path: "/pyasync3", label: "asyncio demo 驱动", icon: "🌊" },
       { path: "/pyeng", label: "工程化实践", icon: "⚙️" },
       { path: "/pyint", label: "原理图解", icon: "🔬" },
       { path: "/pyrun", label: "代码执行原理", icon: "🔬" },

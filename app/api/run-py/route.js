@@ -39,12 +39,14 @@ const EXEC_TIMEOUT_MS = 10000;
 // stdout 最大缓冲（字节）。超过则截断并提示，避免把内存撑爆。
 const MAX_OUTPUT_BYTES = 1 * 1024 * 1024; // 1MB
 
-// Python 可执行路径。优先使用 python3.13（Homebrew 安装），找不到再降级到系统 python3。
+// Python 可执行路径。优先使用 python3.13（Homebrew 安装），找不到再降级到系统 python。
+// Windows 上通常是 python 命令（不带 3），macOS/Linux 通常是 python3。
 const CANDIDATES = [
   "/opt/homebrew/bin/python3.13",
   "/usr/local/bin/python3.13",
   "python3.13",
   "python3",
+  "python",
 ];
 const PYTHON_BIN = CANDIDATES.find((p) => {
   if (p.startsWith("/")) return existsSync(p);
@@ -70,36 +72,59 @@ function runPythonCode(code) {
     const child = spawn(PYTHON_BIN, [tmpFile], {
       // 不继承父进程 stdio，单独建管道
       stdio: ["pipe", "pipe", "pipe"],
-      // 不继承父进程环境，只保留必要的 PATH（让 python3 能被找到）
-      env: { PATH: process.env.PATH, LANG: "en_US.UTF-8", LC_ALL: "en_US.UTF-8" },
+      // 不继承父进程环境，只保留必要的 PATH（让 python3 能被找到）。
+      // 关键：强制 Python 用 UTF-8 输出，避免 Windows 中文系统默认 GBK
+      // 导致 stdout 被 Node 按 UTF-8 解码后出现乱码。
+      //   - PYTHONIOENCODING=utf-8：强制 stdout/stderr 使用 UTF-8 编码
+      //   - PYTHONUTF8=1：Python 3.7+ 的 UTF-8 模式，文件读写等也默认 UTF-8
+      //   - LANG/LC_ALL：Unix 系统下 locale 设为 UTF-8
+      env: {
+        PATH: process.env.PATH,
+        PYTHONIOENCODING: "utf-8",
+        PYTHONUTF8: "1",
+        LANG: "en_US.UTF-8",
+        LC_ALL: "en_US.UTF-8",
+      },
       // 子进程独立成新进程组，方便超时时 kill 整个组
       detached: false,
     });
 
-    let stdoutBuf = "";
-    let stderrBuf = "";
+    // 用 Buffer 累积原始字节，最后一次性转 UTF-8 字符串。
+    // 原因：data 事件的 chunk 可能在一个多字节 UTF-8 字符中间截断，
+    // 如果每个 chunk 单独 toString("utf8") 会在截断处产生乱码字符。
+    // 累积到 Buffer 再整体 decode 可避免此问题。
+    let stdoutChunks = [];
+    let stderrChunks = [];
+    let stdoutBytes = 0;
+    let stderrBytes = 0;
     let truncated = false;
     let killed = false;
 
     // 收集 stdout
     child.stdout.on("data", (chunk) => {
-      const text = chunk.toString("utf8");
-      if (stdoutBuf.length + text.length > MAX_OUTPUT_BYTES) {
-        stdoutBuf += text.slice(0, MAX_OUTPUT_BYTES - stdoutBuf.length);
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      if (stdoutBytes + buf.length > MAX_OUTPUT_BYTES) {
+        const remain = MAX_OUTPUT_BYTES - stdoutBytes;
+        if (remain > 0) stdoutChunks.push(buf.slice(0, remain));
+        stdoutBytes = MAX_OUTPUT_BYTES;
         truncated = true;
       } else {
-        stdoutBuf += text;
+        stdoutChunks.push(buf);
+        stdoutBytes += buf.length;
       }
     });
 
     // 收集 stderr（Python 异常 traceback 会走这里）
     child.stderr.on("data", (chunk) => {
-      const text = chunk.toString("utf8");
-      if (stderrBuf.length + text.length > MAX_OUTPUT_BYTES) {
-        stderrBuf += text.slice(0, MAX_OUTPUT_BYTES - stderrBuf.length);
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      if (stderrBytes + buf.length > MAX_OUTPUT_BYTES) {
+        const remain = MAX_OUTPUT_BYTES - stderrBytes;
+        if (remain > 0) stderrChunks.push(buf.slice(0, remain));
+        stderrBytes = MAX_OUTPUT_BYTES;
         truncated = true;
       } else {
-        stderrBuf += text;
+        stderrChunks.push(buf);
+        stderrBytes += buf.length;
       }
     });
 
@@ -125,6 +150,10 @@ function runPythonCode(code) {
     // 子进程退出
     child.on("close", (code, signal) => {
       cleanup();
+      // 将累积的 Buffer chunks 一次性解码为 UTF-8 字符串
+      const stdoutBuf = Buffer.concat(stdoutChunks).toString("utf8");
+      const stderrBuf = Buffer.concat(stderrChunks).toString("utf8");
+
       if (killed) {
         // 被超时强制终止
         resolve({
@@ -154,7 +183,10 @@ function runPythonCode(code) {
     const timer = setTimeout(() => {
       killed = true;
       try {
-        child.kill("SIGKILL");
+        // Windows 不支持 SIGKILL 信号，不传信号参数 Node 会自动选合适的方式：
+        // - Unix: SIGTERM
+        // - Windows: taskkill 或 TerminateProcess
+        child.kill();
       } catch {
         // ignore
       }

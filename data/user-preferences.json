@@ -256,6 +256,7 @@
       "/pyprocess",
       "/pysubprocess",
       "/pyasync",
+      "/pyasync3",
       "/pyasync2"
     ],
     "Python 编程::__sg-mrctcsxkz7f9": [
