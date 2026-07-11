@@ -1,88 +1,86 @@
 // =============================================================
-// Batch 5：响应处理（4 章）
-// 17. resp-model   响应模型 response_model
-// 18. resp-status  状态码与 Header
-// 19. resp-cookie  Cookie 与 Session
-// 20. resp-stream  流式响应与文件下载
-// =============================================================
+// FastAPI 应用开发实战教程 - 第 5 批章节（响应处理 4 章）
+// -------------------------------------------------------------
+// 本批包含 4 章：
+//   fa-response-model : 响应模型 response_model
+//   fa-status-header  : 状态码与 Header
+//   fa-cookie-session : Cookie 与 Session
+//   fa-streaming      : 流式响应与文件下载
+// ============================================================
 
 export const chapters = [
+  // ============================================================
+  // 第 17 章：响应模型 response_model
+  // ============================================================
   {
-    id: "resp-model",
+    id: "fa-response-model",
     group: "响应处理",
     icon: "📤",
     title: "响应模型 response_model",
-    content: `
+    content: `# 响应模型 response_model
+
 ## 一、为什么需要响应模型
 
-接口返回数据时,最朴素的写法是直接 \`return dict\` 或 \`return user\`。但这样有几个隐患:
+在 Web API 开发中，"返回什么数据给客户端"和"接收什么数据"同等重要。很多初学者写 FastAPI 时习惯直接 \`return dict\` 或 \`return orm_object\`，这种写法看似简单，却埋下了几个严重隐患：
 
-1. **敏感字段泄漏**:数据库 User 表有 \`password\` 字段,直接返回 user 对象会把密码哈希也暴露给前端。
-2. **没有类型契约**:调用方不知道返回结构里有哪些字段、什么类型,IDE 没有提示。
-3. **API 文档空白**:OpenAPI 文档不知道响应结构,Swagger UI 显示不出示例。
-4. **多余字段返回**:数据库模型字段多,前端只需要其中几个,全返回浪费带宽。
+1. **敏感字段泄漏**：数据库 User 表通常有 \`password\`、\`salt\`、\`is_deleted\` 等内部字段，直接返回 ORM 对象会把密码哈希也暴露给前端，这是典型的安全漏洞。
+2. **没有类型契约**：调用方不知道返回结构里有哪些字段、什么类型，前端 IDE 没有提示，联调时反复确认字段名。
+3. **API 文档空白**：OpenAPI 文档不知道响应结构，Swagger UI 显示不出 Responses 示例，文档形同虚设。
+4. **多余字段返回**：数据库模型字段几十个，前端列表页只需要其中三五个，全量返回浪费带宽，也增加前端处理负担。
+5. **返回结构不可控**：函数里返回什么前端就拿什么，后续要加字段、改字段都得小心，没有统一的"出口过滤"。
 
-\`response_model\` 就是为解决这些问题设计的:它告诉 FastAPI「这个接口返回的数据应该长成什么样」,框架会按这个模型去**过滤、校验、序列化**实际返回值。
+\`response_model\` 就是为解决这些问题设计的：它告诉 FastAPI「这个接口返回的数据应该长成什么样」，框架会按这个模型去**过滤、校验、序列化**实际返回值。可以把它理解为接口的"出口安检"——不管函数内部返回什么，到了出口只允许符合模型定义的字段通过。
 
-## 二、response_model 的核心作用
+## 二、response_model 的核心作用与原理
 
-声明 \`response_model=SomeModel\` 后,FastAPI 会做三件事:
+声明 \`response_model=SomeModel\` 后，FastAPI 会在响应返回前做三件事：
 
-1. **过滤字段**:把返回值里多余的字段剔除,只保留模型定义的字段。这是防泄漏的核心机制。
-2. **校验类型**:返回值会被模型重新校验,类型不对会报错(开发期就能发现)。
-3. **生成文档**:OpenAPI schema 自动记录响应结构,Swagger UI 显示示例。
+1. **过滤字段**：把返回值里多余的字段剔除，只保留模型定义的字段。这是防泄漏的核心机制。
+2. **校验类型**：返回值会被模型重新校验，类型不对会报错（开发期就能发现，不会带到生产）。
+3. **生成文档**：OpenAPI schema 自动记录响应结构，Swagger UI 显示示例。
 
-注意:**过滤是按字段名匹配,不是按对象类型**。返回的 dict、ORM 对象、Pydantic 实例都行,只要字段名能对上。
+底层原理：FastAPI 收到路由函数的返回值后，调用 Pydantic 模型的 \`model_validate()\`（v2）或 \`parse_obj()\`（v1）把返回值转换为模型实例，再调用 \`model_dump()\` / \`.dict()\` 序列化为 JSON。这中间"转换为模型实例"就是过滤过程——模型没定义的字段会被丢弃。
 
-## 三、基础用法:UserOut 不返回 password
+注意：**过滤是按字段名匹配，不是按对象类型**。返回的 dict、ORM 对象、Pydantic 实例都行，只要字段名能对上。
 
-最经典的场景:接收 UserIn(含密码),处理后返回 UserOut(不含密码)。
+## 三、基础用法：UserOut 不返回 password
+
+最经典的场景：接收 UserIn（含密码），处理后返回 UserOut（不含密码）。
 
 \`\`\`python
-# 从 fastapi 导入 FastAPI
+# 从 fastapi 包导入 FastAPI 主类
 from fastapi import FastAPI
-# 从 pydantic 导入 BaseModel
+# 从 pydantic 包导入 BaseModel 基类
 from pydantic import BaseModel
 
 # 创建 FastAPI 应用实例
 app = FastAPI()
 
-# 输入模型:包含密码(创建用户需要)
-# 定义 Pydantic 数据模型 UserIn，继承 BaseModel
+# 输入模型：包含密码（创建用户时前端必须传）
 class UserIn(BaseModel):
-    # 字段 username，类型: str
-    username: str
-    password: str  # 前端传过来,我们要存,但不能返回
-    # 字段 email，类型: str
-    email: str
+    username: str        # 用户名，字符串类型
+    password: str        # 明文密码（实际项目要 hash 后再存）
+    email: str           # 邮箱
 
-# 输出模型:不含密码,对外安全
-# 定义 Pydantic 数据模型 UserOut，继承 BaseModel
+# 输出模型：不含密码，对外安全
 class UserOut(BaseModel):
-    # 字段 username，类型: str
-    username: str
-    # 字段 email，类型: str
-    email: str
+    username: str        # 用户名
+    email: str           # 邮箱
     # 没有 password 字段 —— response_model 会自动把它过滤掉
 
-# 模拟数据库
-# 定义字典 fake_db
+# 模拟数据库（实际项目用 SQLAlchemy / Tortoise 等）
 fake_db = {}
 
-# response_model=UserOut:即使函数 return 了完整 dict,FastAPI 也只输出 UserOut 的字段
-# 定义 POST 路由：访问 /users 时触发
+# response_model=UserOut：即使函数 return 了完整 dict，FastAPI 也只输出 UserOut 的字段
 @app.post("/users", response_model=UserOut)
-# 定义函数 create_user，参数: user: UserIn
 def create_user(user: UserIn):
     # 实际项目这里会 hash 密码再存
-    # fake_db[user.username] = user
     fake_db[user.username] = user
-    # 返回的是 UserIn 的所有字段(含 password),但 response_model 会过滤
-    # 返回 user
+    # 返回的是 UserIn 的所有字段（含 password），但 response_model 会过滤
     return user
 \`\`\`
 
-请求 \`POST /users\` 传 \`{"username":"alice","password":"123456","email":"a@b.com"}\`,响应只有:
+请求 \`POST /users\` 传 \`{"username":"alice","password":"123456","email":"a@b.com"}\`，响应只有：
 \`\`\`
 {"username":"alice","email":"a@b.com"}
 \`\`\`
@@ -90,1006 +88,2006 @@ def create_user(user: UserIn):
 
 ## 四、为什么不用 dict 直接返回
 
-对比两种写法:
+对比两种写法：
 
 | 维度 | \`return dict\` | \`response_model=Model\` |
 |---|---|---|
-| 敏感字段过滤 | 手动删字段,容易漏 | 自动过滤,安全 |
-| 类型校验 | 无,返回啥是啥 | 自动校验 |
+| 敏感字段过滤 | 手动删字段，容易漏 | 自动过滤，安全 |
+| 类型校验 | 无，返回啥是啥 | 自动校验 |
 | API 文档 | 没有响应结构 | 自动生成 |
 | IDE 提示 | 无 | 有类型提示 |
-| 字段顺序 | 不稳定 | 按模型定义 |
-| 前端契约 | 靠口口相传 | 靠代码 |
+| 字段变更影响 | 不可控 | 受模型约束 |
 
-**结论**:任何对外接口都应该声明 response_model,这是工程纪律,不是可选项。
+\`response_model\` 还有一个隐性好处：**它解耦了内部数据结构和外部契约**。内部你可以随意改数据库模型字段，只要 response_model 不变，前端就不受影响。
 
-## 五、返回列表:List[Model]
+## 五、response_model_exclude / response_model_include
 
-返回多个对象时用 \`List[Model]\`:
-
-\`\`\`python
-# 从 typing 导入 List
-from typing import List
-
-# 定义 GET 路由：访问 /users 时触发
-@app.get("/users", response_model=List[UserOut])
-# 定义函数 list_users，参数: 
-def list_users():
-    # 数据库里是 UserIn 列表,但返回时会被过滤成 UserOut
-    # 返回 list(fake_db.values())
-    return list(fake_db.values())
-\`\`\`
-
-每个元素都会被 UserOut 过滤一遍。即便数据库返回的是 ORM 对象列表,也能正确处理。
-
-## 六、响应模型和输入模型分离
-
-**核心原则**:输入模型和输出模型应该分开设计,不要图省事用同一个。
-
-为什么?
-
-- **输入需要 password**:创建用户时,前端要传密码。
-- **输出不能有 password**:返回用户信息时,绝不能把密码哈希吐出去。
-- **字段约束不同**:输入的 email 可能宽松(允许空字符串),输出的 email 可能要求已验证。
-- **字段集不同**:输入有 \`captcha\`(验证码),输出不需要。
-
-一个典型的用户资源会有这几个模型:
-
-\`\`\`python
-# 定义 Pydantic 数据模型 UserCreate，继承 BaseModel
-class UserCreate(BaseModel):
-    # """创建用户的输入"""
-    """创建用户的输入"""
-    # 字段 username，类型: str
-    username: str
-    # 字段 password，类型: str
-    password: str
-    # 字段 email，类型: str
-    email: str
-
-# 定义 Pydantic 数据模型 UserUpdate，继承 BaseModel
-class UserUpdate(BaseModel):
-    # """更新用户的输入,所有字段可选"""
-    """更新用户的输入,所有字段可选"""
-    # 字段 username，类型: str | None，默认值: None
-    username: str | None = None
-    # 字段 email，类型: str | None，默认值: None
-    email: str | None = None
-    # 不允许通过更新接口改密码
-
-# 定义 Pydantic 数据模型 UserOut，继承 BaseModel
-class UserOut(BaseModel):
-    # """对外输出"""
-    """对外输出"""
-    # 字段 id，类型: int
-    id: int
-    # 字段 username，类型: str
-    username: str
-    # 字段 email，类型: str
-    email: str
-    # 字段 is_active，类型: bool
-    is_active: bool
-
-# 定义 Pydantic 数据模型 UserInDB，继承 BaseModel
-class UserInDB(BaseModel):
-    # """内部使用,含密码哈希"""
-    """内部使用,含密码哈希"""
-    # 字段 id，类型: int
-    id: int
-    # 字段 username，类型: str
-    username: str
-    # 字段 email，类型: str
-    email: str
-    # 字段 hashed_password，类型: str
-    hashed_password: str
-    # 字段 is_active，类型: bool
-    is_active: bool
-\`\`\`
-
-这种「同一资源的多视角模型」是 FastAPI 推荐的实践,清晰且安全。
-
-## 七、response_model_include / exclude 精细控制
-
-如果不想为每种情况都建模型,可以用 include/exclude 临时控制返回字段:
-
-\`\`\`python
-# 定义 Pydantic 数据模型 User，继承 BaseModel
-class User(BaseModel):
-    # 字段 id，类型: int
-    id: int
-    # 字段 username，类型: str
-    username: str
-    # 字段 email，类型: str
-    email: str
-    # 字段 is_admin，类型: bool
-    is_admin: bool
-
-# 只返回 id 和 username
-# 定义 GET 路由：访问 /users/{uid} 时触发
-@app.get("/users/{uid}", response_model=User, response_model_include={"id", "username"})
-# 定义函数 get_user，参数: uid: int
-def get_user(uid: int):
-    # 返回 users[uid]
-    return users[uid]
-
-# 排除 is_admin
-# 定义 GET 路由：访问 /users/{uid}/public 时触发
-@app.get("/users/{uid}/public", response_model=User, response_model_exclude={"is_admin"})
-# 定义函数 get_public_user，参数: uid: int
-def get_public_user(uid: int):
-    # 返回 users[uid]
-    return users[uid]
-\`\`\`
-
-- \`response_model_include\`:只保留这些字段(集合)。
-- \`response_model_exclude\`:排除这些字段。
-- 参数是 set 类型,如 \`{"id", "username"}\`。
-
-**适用场景**:临时调整、不想建一堆模型。但**长期维护的项目还是建议建独立模型**,因为 include/exclude 写在路由上,散落各处,难统一管理。
-
-## 八、response_model_exclude_unset 处理默认值
-
-Pydantic 模型字段可以有默认值。如果用户没传某字段,返回时是否要带上默认值?
-
-\`\`\`python
-# 定义 Pydantic 数据模型 Item，继承 BaseModel
-class Item(BaseModel):
-    # 字段 name，类型: str
-    name: str
-    description: str | None = None  # 可选,默认 None
-    # 字段 price，类型: float
-    price: float
-    tax: float = 0.1               # 默认 0.1
-
-# 定义 POST 路由：访问 /items 时触发
-@app.post("/items", response_model=Item, response_model_exclude_unset=True)
-# 定义函数 create，参数: item: Item
-def create(item: Item):
-    # 返回 item
-    return item
-\`\`\`
-
-- 不加 \`response_model_exclude_unset\`:返回所有字段(含默认值)。用户只传 \`{"name":"x","price":1}\`,返回 \`{"name":"x","description":null,"price":1,"tax":0.1}\`。
-- 加 \`response_model_exclude_unset=True\`:只返回用户**显式设置**的字段。同样的输入返回 \`{"name":"x","price":1}\`,省略 description 和 tax。
-
-类似还有:
-- \`response_model_exclude_defaults=True\`:排除等于默认值的字段。
-- \`response_model_exclude_none=True\`:排除值为 None 的字段。
-
-PATCH 接口常用 exclude_unset,这样前端只更新了哪些字段就返回哪些,清晰。
-
-## 九、response_model 的执行时机
-
-理解 response_model 在请求生命周期里的位置很重要:
-
-1. 请求进来,Pydantic 校验输入(用 UserIn)。
-2. 路由函数执行,返回任意对象(dict/ORM/model)。
-3. **response_model 生效**:把返回值用 UserOut 校验+过滤。
-4. 序列化为 JSON 响应。
-
-这意味着:**路由函数返回什么类型都行**,只要字段能对上。返回 ORM 对象(SQLAlchemy model)、dict、Pydantic 实例都可以,FastAPI 都会用 response_model 统一处理。
-
-## 十、易错点小结
-
-| 易错点 | 说明 | 正确做法 |
-|---|---|---|
-| 忘了 response_model | 敏感字段泄漏 | 任何对外接口都声明 |
-| 输入输出共用模型 | password 被返回 | 分离 UserIn/UserOut |
-| response_model 字段名对不上返回值 | 字段丢失或为 None | 确保返回对象有对应字段 |
-| 用 return dict 跳过模型 | 失去过滤和文档 | 始终走 response_model |
-| 误以为 response_model 会改输入 | 它只影响输出 | 输入校验另靠请求体模型 |
-| List 忘了 List[] | 文档显示成单对象 | 用 \`List[UserOut]\` |
-| include/exclude 滥用 | 散落难维护 | 优先建独立模型 |
-| exclude_unset 用错场景 | GET 列表不该用 | 仅用于 PATCH 这类部分更新 |
-
-## 十一、设计思想
-
-response_model 体现了一个核心理念:**输出契约显式化**。前端拿到的数据形状由代码定义,而不是由后端随手 return 的内容决定。这让 API 变得可预测、可文档化、可演化。这也是 FastAPI 相比 Flask 的一大优势 —— Flask 默认没有这种机制,要靠 marshmallow 等额外库。
-`,
-  },
-  {
-    id: "resp-status",
-    group: "响应处理",
-    icon: "🚦",
-    title: "状态码与 Header",
-    content: `
-## 一、HTTP 状态码分类
-
-HTTP 响应状态码是三位数字,第一位表示类别:
-
-| 类别 | 含义 | 典型 |
-|---|---|---|
-| 1xx | 信息性(很少用) | 100 Continue |
-| 2xx | 成功 | 200 OK, 201 Created, 204 No Content |
-| 3xx | 重定向 | 301, 302, 304 Not Modified |
-| 4xx | 客户端错误 | 400, 401, 403, 404, 422 |
-| 5xx | 服务端错误 | 500, 502, 503 |
-
-REST API 设计中,正确使用状态码很重要,它是 HTTP 协议层面的「语义」。
-
-## 二、FastAPI 默认状态码
-
-- GET 接口默认 200。
-- POST 接口默认也是 200(不是 201!)。
-
-很多新手以为 POST 自动返回 201,其实不是。FastAPI 默认所有接口都 200。要返回 201 需要显式声明。
-
-## 三、status_code 参数指定状态码
-
-在路由装饰器上传 \`status_code\`:
-
-\`\`\`python
-# 从 fastapi 导入 FastAPI, status
-from fastapi import FastAPI, status
-
-# 创建 FastAPI 应用实例
-app = FastAPI()
-
-# 创建资源返回 201 Created
-# 定义 POST 路由：访问 /items 时触发
-@app.post("/items", status_code=status.HTTP_201_CREATED)
-# 定义函数 create_item，参数: item: dict
-def create_item(item: dict):
-    # 返回 item
-    return item
-
-# 删除资源返回 204 No Content(无响应体)
-# 定义 DELETE 路由：访问 /items/{item_id} 时触发
-@app.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
-# 定义函数 delete_item，参数: item_id: int
-def delete_item(item_id: int):
-    # 删除逻辑
-    return None  # 204 通常没有响应体
-\`\`\`
-
-\`status\` 模块提供语义化常量:
-- \`status.HTTP_200_OK\` = 200
-- \`status.HTTP_201_CREATED\` = 201
-- \`status.HTTP_204_NO_CONTENT\` = 204
-- \`status.HTTP_400_BAD_REQUEST\` = 400
-- \`status.HTTP_404_NOT_FOUND\` = 404
-
-用常量而非裸数字,可读性好。但裸数字 \`status_code=201\` 也合法。
-
-## 四、常用状态码语义
-
-| 码 | 名称 | 何时用 |
-|---|---|---|
-| 200 | OK | 通用成功,GET/PUT/PATCH |
-| 201 | Created | POST 创建资源成功 |
-| 202 | Accepted | 异步任务已接收,处理中 |
-| 204 | No Content | 删除成功,无内容返回 |
-| 301 | Moved Permanently | 资源永久搬家 |
-| 302 | Found | 临时重定向 |
-| 304 | Not Modified | 缓存有效,客户端用本地副本 |
-| 400 | Bad Request | 请求格式错误 |
-| 401 | Unauthorized | 未登录(其实该叫 Unauthenticated) |
-| 403 | Forbidden | 已登录但无权限 |
-| 404 | Not Found | 资源不存在 |
-| 409 | Conflict | 资源冲突(如重复创建) |
-| 422 | Unprocessable Entity | 语义校验失败(FastAPI 默认校验错误码) |
-| 429 | Too Many Requests | 限流 |
-| 500 | Internal Server Error | 服务器内部错误 |
-
-**注意区分 401 和 403**:401 是「不知道你是谁」(没带 token),403 是「知道你是谁但不让你干」(权限不够)。
-
-## 五、Response 对象设置 Header
-
-有时候需要在响应里加自定义 Header,比如 \`Location\`(新资源 URL)、\`X-Request-Id\`(请求追踪)。
-
-### 5.1 注入 Response 参数
-
-\`\`\`python
-# 从 fastapi 导入 FastAPI, Response
-from fastapi import FastAPI, Response
-
-# 创建 FastAPI 应用实例
-app = FastAPI()
-
-# 定义 POST 路由：访问 /items 时触发
-@app.post("/items", status_code=201)
-# 定义函数 create_item，参数: item: dict, response: Response
-def create_item(item: dict, response: Response):
-    # 定义变量 new_id，赋值为 42
-    new_id = 42
-    # 设置 Location 头,指向新创建的资源
-    # response.headers["Location"] = f"/items/{new_id}"
-    response.headers["Location"] = f"/items/{new_id}"
-    # 自定义头(非标准头习惯加 X- 前缀)
-    # response.headers["X-Custom-Header"] = "hello"
-    response.headers["X-Custom-Header"] = "hello"
-    # 返回 {"id": new_id, **item}
-    return {"id": new_id, **item}
-\`\`\`
-
-注入 \`Response\` 对象后,设置它的 \`headers\` 字典,FastAPI 会把这些 Header 合并到最终响应里。这种方式不影响返回值。
-
-### 5.2 直接返回 Response 对象
-
-也可以构造一个完整的 Response 对象 return:
+有时候同一个接口在不同场景下需要返回不同字段子集。比如用户列表页只要 \`id\` 和 \`username\`，详情页要全部字段。除了定义多个模型，还可以用 \`response_model_include\` 和 \`response_model_exclude\` 在路由级别动态裁剪。
 
 \`\`\`python
 # 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
-# 从 fastapi.responses 导入 JSONResponse
-from fastapi.responses import JSONResponse
-
-# 创建 FastAPI 应用实例
-app = FastAPI()
-
-# 定义 GET 路由：访问 /custom 时触发
-@app.get("/custom")
-# 定义函数 custom，参数: 
-def custom():
-    # 返回 JSONResponse(
-    return JSONResponse(
-        # 定义变量 status_code，赋值为 200,
-        status_code=200,
-        # 定义字典 content
-        content={"msg": "ok"},
-        # 定义字典 headers
-        headers={
-            # "X-Custom-Header": "value",
-            "X-Custom-Header": "value",
-            # "Cache-Control": "no-store",
-            "Cache-Control": "no-store",
-        # },
-        },
-    # )
-    )
-\`\`\`
-
-这种方式完全控制响应,但会跳过 response_model 过滤(因为返回的是 Response 对象,不走 Pydantic 流程)。
-
-## 六、设置 Cookie
-
-通过 Response 对象设置 Cookie:
-
-\`\`\`python
-# 从 fastapi 导入 FastAPI, Response
-from fastapi import FastAPI, Response
-
-# 创建 FastAPI 应用实例
-app = FastAPI()
-
-# 定义 POST 路由：访问 /login 时触发
-@app.post("/login")
-# 定义函数 login，参数: response: Response
-def login(response: Response):
-    # 设置 Cookie
-    # response.set_cookie(
-    response.set_cookie(
-        # 定义变量 key，赋值为 "session_id",
-        key="session_id",
-        # 定义变量 value，赋值为 "abc123",
-        value="abc123",
-        httponly=True,   # JS 不能读,防 XSS
-        secure=True,     # 只走 HTTPS
-        samesite="lax",  # 防 CSRF
-        max_age=3600,    # 1 小时后过期(秒)
-    # )
-    )
-    # 返回 {"msg": "登录成功"}
-    return {"msg": "登录成功"}
-\`\`\`
-
-详见下一章 Cookie 与 Session。
-
-## 七、content_type 设置
-
-返回非 JSON 内容时要指定 content_type:
-
-\`\`\`python
-# 从 fastapi 导入 FastAPI
-from fastapi import FastAPI
-# 从 fastapi.responses 导入 PlainTextResponse, HTMLResponse
-from fastapi.responses import PlainTextResponse, HTMLResponse
-
-# 创建 FastAPI 应用实例
-app = FastAPI()
-
-# 定义 GET 路由：访问 /text 时触发
-@app.get("/text", response_class=PlainTextResponse)
-# 定义函数 text，参数: 
-def text():
-    # 返回 "纯文本内容"
-    return "纯文本内容"
-
-# 定义 GET 路由：访问 /html 时触发
-@app.get("/html", response_class=HTMLResponse)
-# 定义函数 html，参数: 
-def html():
-    # 返回 "<h1>标题</h1><p>HTML 内容</p>"
-    return "<h1>标题</h1><p>HTML 内容</p>"
-\`\`\`
-
-\`response_class\` 参数指定响应类,FastAPI 会用它来序列化返回值。
-
-## 八、RedirectResponse 重定向
-
-\`\`\`python
-# 从 fastapi 导入 FastAPI
-from fastapi import FastAPI
-# 从 fastapi.responses 导入 RedirectResponse
-from fastapi.responses import RedirectResponse
-
-# 创建 FastAPI 应用实例
-app = FastAPI()
-
-# 定义 GET 路由：访问 /old 时触发
-@app.get("/old")
-# 定义函数 old，参数: 
-def old():
-    # 临时重定向(307)
-    # 返回 RedirectResponse(url="/new")
-    return RedirectResponse(url="/new")
-
-# 定义 GET 路由：访问 /old2 时触发
-@app.get("/old2")
-# 定义函数 old2，参数: 
-def old2():
-    # 永久重定向(301)
-    # 返回 RedirectResponse(url="/new", status_code=301)
-    return RedirectResponse(url="/new", status_code=301)
-\`\`\`
-
-- 默认状态码 307(Temporary Redirect),保留原请求方法。
-- 301(Moved Permanently)是永久重定向,但老浏览器可能把 POST 改成 GET。
-- 308(Permanent Redirect)是 301 的修正版,保留方法。
-
-## 九、完整示例:创建资源返回 201 + Location
-
-REST 规范里,创建资源应该返回 201 状态码和 Location 头指向新资源:
-
-\`\`\`python
-# 从 fastapi 导入 FastAPI, Response, status
-from fastapi import FastAPI, Response, status
 # 从 pydantic 导入 BaseModel
 from pydantic import BaseModel
 
-# 创建 FastAPI 应用实例
+# 创建应用
 app = FastAPI()
 
-# 定义 Pydantic 数据模型 ItemIn，继承 BaseModel
-class ItemIn(BaseModel):
-    # 字段 name，类型: str
-    name: str
-    # 字段 price，类型: float
-    price: float
+# 完整用户模型
+class User(BaseModel):
+    id: int               # 用户 ID
+    username: str         # 用户名
+    email: str            # 邮箱
+    password: str         # 密码哈希（内部字段）
+    is_active: bool       # 是否激活
+    created_at: str       # 创建时间
 
-# 定义 Pydantic 数据模型 ItemOut，继承 BaseModel
-class ItemOut(BaseModel):
-    # 字段 id，类型: int
-    id: int
-    # 字段 name，类型: str
-    name: str
-    # 字段 price，类型: float
-    price: float
-
-# 定义字典 db
-db = {}
-# 定义变量 next_id，赋值为 1
-next_id = 1
-
-# 装饰器：app.post
-@app.post(
-    # "/items",
-    "/items",
-    # 定义变量 response_model，赋值为 ItemOut,
-    response_model=ItemOut,
-    # 定义变量 status_code，赋值为 status.HTTP_201_CREATED,
-    status_code=status.HTTP_201_CREATED,
-# )
+# 模拟数据
+fake_user = User(
+    id=1,
+    username="alice",
+    email="alice@example.com",
+    password="hashed_secret",
+    is_active=True,
+    created_at="2026-01-01"
 )
-# 定义函数 create_item，参数: item: ItemIn, response: Response
-def create_item(item: ItemIn, response: Response):
-    # global next_id
-    global next_id
-    # 1. 存储新资源
-    # 定义变量 saved，赋值为 ItemOut(id=next_id, **item.model_dump())
-    saved = ItemOut(id=next_id, **item.model_dump())
-    # db[next_id] = saved
-    db[next_id] = saved
-    # 定义变量 new_id，赋值为 next_id
-    new_id = next_id
-    # next_id += 1
-    next_id += 1
-    # 2. 设置 Location 头,指向刚创建的资源
-    # response.headers["Location"] = f"/items/{new_id}"
-    response.headers["Location"] = f"/items/{new_id}"
-    # 3. 返回资源表示(会被 response_model 过滤)
-    # 返回 saved
-    return saved
 
-# 定义 GET 路由：访问 /items/{item_id} 时触发
-@app.get("/items/{item_id}", response_model=ItemOut)
-# 定义函数 get_item，参数: item_id: int
-def get_item(item_id: int):
-    # 返回 db[item_id]
-    return db[item_id]
+# 列表接口：只包含 id 和 username（白名单方式）
+@app.get("/users", response_model=User, response_model_include={"id", "username"})
+def list_users():
+    # response_model_include 指定只输出这两个字段
+    return fake_user
+
+# 详情接口：排除 password（黑名单方式）
+@app.get("/users/{user_id}", response_model=User, response_model_exclude={"password"})
+def get_user(user_id: int):
+    # response_model_exclude 指定排除 password 字段
+    return fake_user
+
+# 调试接口：什么都不过滤（不推荐生产用）
+@app.get("/users-raw", response_model=User)
+def get_user_raw():
+    # 没有 include/exclude，返回 User 模型所有字段
+    return fake_user
 \`\`\`
 
-请求 \`POST /items\` body \`{"name":"书","price":9.9}\`,响应:
-- 状态码 201
-- Header: \`Location: /items/1\`
-- Body: \`{"id":1,"name":"书","price":9.9}\`
+- 访问 \`GET /users\` → \`{"id":1,"username":"alice"}\`
+- 访问 \`GET /users/1\` → \`{"id":1,"username":"alice","email":"alice@example.com","is_active":true,"created_at":"2026-01-01"}\`（没有 password）
+- 访问 \`GET /users-raw\` → 含 password（不安全，仅演示）
 
-## 十、易错点小结
+**include 和 exclude 互斥**，不要同时用。它们接收的是字段名的集合（set 或 list）。
 
-| 易错点 | 说明 | 正确做法 |
-|---|---|---|
-| 以为 POST 自动 201 | FastAPI 默认 200 | 显式 status_code=201 |
-| 204 还 return body | 204 不能有响应体 | 直接 return None |
-| 401 和 403 混用 | 401 未登录,403 无权限 | 按语义区分 |
-| 用裸数字 200 等 | 可读性差 | 用 status.HTTP_200_OK |
-| 设置 Header 后 return Response | 重复设置 | 二选一 |
-| RedirectResponse 改方法 | 301 可能 POST→GET | 用 307/308 保留方法 |
-| response_class 和 response_model 冲突 | 自定义 Response 跳过过滤 | 注意取舍 |
+> 生产建议：能用独立模型就用独立模型，include/exclude 适合临时场景或字段极多的模型做局部裁剪。频繁用会让代码可读性下降。
 
-## 十一、设计思想
+## 六、response_model_exclude_unset / exclude_defaults / exclude_none
 
-HTTP 状态码是协议级别的「语义层」。用好状态码,API 才是 RESTful 的、可被代理/缓存/监控正确理解的。返回 200 + \`{"code": 404}\` 这种「假成功」是国内常见反模式,失去了 HTTP 语义,CDN 无法缓存、监控无法告警、代理无法处理。FastAPI 鼓励用真实的 HTTP 状态码。
-`,
+这三个参数控制"默认值字段是否输出"，在 PATCH（部分更新）场景特别有用。
+
+- \`response_model_exclude_unset=True\`：客户端**没传**的字段不输出（只输出显式设置的字段）。
+- \`response_model_exclude_defaults=True\`：值等于模型默认值的字段不输出。
+- \`response_model_exclude_none=True\`：值为 \`None\` 的字段不输出。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+# 从 pydantic 导入 BaseModel 和 Field
+from pydantic import BaseModel, Field
+
+# 创建应用
+app = FastAPI()
+
+# 商品模型，部分字段有默认值
+class Item(BaseModel):
+    name: str                          # 名称，必填
+    description: str | None = None     # 描述，可选，默认 None
+    price: float = 0.0                 # 价格，默认 0.0
+    tax: float = 0.0                   # 税率，默认 0.0
+    tags: list[str] = []               # 标签，默认空列表
+
+# 模拟数据库
+items = {
+    "foo": {"name": "Foo", "price": 50.5, "description": "商品 Foo"},  # 没传 tax 和 tags
+    "bar": {"name": "Bar", "price": 30.0, "tax": 3.2},                 # 没传 description 和 tags
+}
+
+# 不排除任何字段：所有字段都输出（包括默认值）
+@app.get("/items/{item_id}", response_model=Item)
+def read_item(item_id: str):
+    return items[item_id]
+
+# exclude_unset：只输出客户端显式传过的字段
+@app.get("/items-unset/{item_id}", response_model=Item, response_model_exclude_unset=True)
+def read_item_unset(item_id: str):
+    return items[item_id]
+
+# exclude_none：值为 None 的字段不输出
+@app.get("/items-none/{item_id}", response_model=Item, response_model_exclude_none=True)
+def read_item_none(item_id: str):
+    return items[item_id]
+
+# 组合使用：既排除未设置的，又排除 None
+@app.get("/items-strict/{item_id}", response_model=Item,
+         response_model_exclude_unset=True, response_model_exclude_none=True)
+def read_item_strict(item_id: str):
+    return items[item_id]
+\`\`\`
+
+以 \`items["foo"]\` 为例（只设了 name/price/description）：
+
+- \`GET /items/foo\` → \`{"name":"Foo","description":"商品 Foo","price":50.5,"tax":0.0,"tags":[]}\`（全部输出）
+- \`GET /items-unset/foo\` → \`{"name":"Foo","price":50.5,"description":"商品 Foo"}\`（tax 和 tags 没设，不输出）
+- \`GET /items-none/foo\` → \`{"name":"Foo","description":"商品 Foo","price":50.5,"tax":0.0,"tags":[]}\`（没有 None 字段，所以都输出）
+
+**关键区别**：\`exclude_unset\` 看的是"创建对象时有没有传这个字段"，\`exclude_defaults\` 看的是"当前值是否等于默认值"，\`exclude_none\` 看的是"值是否为 None"。三者侧重不同，按场景选。
+
+## 七、response_model 嵌套模型
+
+实际项目数据通常是嵌套结构：用户包含地址，订单包含商品列表。response_model 完全支持嵌套，过滤会递归进行。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+# 从 pydantic 导入 BaseModel
+from pydantic import BaseModel
+
+# 创建应用
+app = FastAPI()
+
+# 内层模型：地址（输出用，不含 user_id 等内部字段）
+class AddressOut(BaseModel):
+    city: str            # 城市
+    street: str          # 街道
+    zip_code: str        # 邮编
+
+# 内层模型：地址（输入用，含 user_id 用于关联）
+class AddressIn(BaseModel):
+    user_id: int         # 关联用户 ID（内部字段，不对外）
+    city: str            # 城市
+    street: str          # 街道
+    zip_code: str        # 邮编
+
+# 外层输出模型：用户 + 地址列表
+class UserWithAddress(BaseModel):
+    id: int                       # 用户 ID
+    username: str                 # 用户名
+    addresses: list[AddressOut]   # 地址列表，用输出模型，自动过滤 user_id
+
+# 模拟数据库返回的原始数据（含敏感字段）
+raw_data = {
+    "id": 1,
+    "username": "alice",
+    "password": "should_be_filtered",   # 应被过滤
+    "addresses": [
+        {"user_id": 1, "city": "北京", "street": "长安街 1 号", "zip_code": "100000"},
+        {"user_id": 1, "city": "上海", "street": "南京路 100 号", "zip_code": "200000"},
+    ]
+}
+
+# response_model 会递归过滤：外层过滤 password，内层过滤每个 address 的 user_id
+@app.get("/users/{user_id}", response_model=UserWithAddress)
+def get_user(user_id: int):
+    return raw_data
+\`\`\`
+
+响应：
+\`\`\`json
+{
+  "id": 1,
+  "username": "alice",
+  "addresses": [
+    {"city": "北京", "street": "长安街 1 号", "zip_code": "100000"},
+    {"city": "上海", "street": "南京路 100 号", "zip_code": "200000"}
+  ]
+}
+\`\`\`
+
+\`password\` 和每个 \`address.user_id\` 都被过滤了。嵌套模型让"分层过滤"变得自然——每一层用各自的输出模型，互不干扰。
+
+## 八、输入模型 vs 输出模型的设计模式
+
+这是 FastAPI 项目最推荐的数据建模模式：**为每个接口的"输入"和"输出"分别定义模型**，而不是一个模型走天下。
+
+常见模型分类：
+- \`UserCreate\`：创建用户时的输入（含 password）
+- \`UserUpdate\`：更新用户时的输入（所有字段可选，用于 PATCH）
+- \`UserOut\`：对外输出（不含 password、is_deleted 等）
+- \`UserInDB\`：数据库存储（含 hashed_password）
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI 和 HTTPException
+from fastapi import FastAPI, HTTPException
+# 从 pydantic 导入 BaseModel 和 Field
+from pydantic import BaseModel, Field
+
+# 创建应用
+app = FastAPI()
+
+# 创建用户输入模型（前端提交）
+class UserCreate(BaseModel):
+    username: str = Field(..., min_length=3, max_length=20)   # 用户名，3-20 字符
+    password: str = Field(..., min_length=6)                  # 密码，至少 6 位
+    email: str                                                # 邮箱
+
+# 更新用户输入模型（PATCH，所有字段可选）
+class UserUpdate(BaseModel):
+    username: str | None = None       # 用户名，可选
+    email: str | None = None          # 邮箱，可选
+    password: str | None = None       # 新密码，可选
+
+# 数据库存储模型（含哈希密码）
+class UserInDB(BaseModel):
+    id: int                           # 主键
+    username: str                     # 用户名
+    email: str                        # 邮箱
+    hashed_password: str              # 哈希后的密码
+    is_active: bool = True            # 是否激活
+
+# 对外输出模型（不含任何敏感字段）
+class UserOut(BaseModel):
+    id: int                           # 用户 ID
+    username: str                     # 用户名
+    email: str                        # 邮箱
+    is_active: bool                   # 是否激活
+
+# 模拟数据库
+db: dict[int, UserInDB] = {}
+next_id = 1  # 自增 ID
+
+# 创建用户：输入 UserCreate，输出 UserOut
+@app.post("/users", response_model=UserOut, status_code=201)
+def create_user(user: UserCreate):
+    global next_id
+    # 模拟密码哈希（实际用 passlib.context.CryptContext）
+    hashed = "hashed_" + user.password
+    # 构造数据库模型
+    db_user = UserInDB(
+        id=next_id,
+        username=user.username,
+        email=user.email,
+        hashed_password=hashed,
+        is_active=True
+    )
+    db[next_id] = db_user
+    next_id += 1
+    # 返回 db_user，response_model=UserOut 会自动过滤 hashed_password
+    return db_user
+
+# 查询用户：输出 UserOut
+@app.get("/users/{user_id}", response_model=UserOut)
+def get_user(user_id: int):
+    if user_id not in db:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    return db[user_id]
+
+# 更新用户：输入 UserUpdate，输出 UserOut
+@app.patch("/users/{user_id}", response_model=UserOut)
+def update_user(user_id: int, user: UserUpdate):
+    if user_id not in db:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    stored = db[user_id]
+    # 只更新客户端传了的字段（exclude_unset 排除未传的）
+    update_data = user.model_dump(exclude_unset=True)
+    # 用新数据构造更新后的对象
+    updated = stored.model_copy(update=update_data)
+    db[user_id] = updated
+    return updated
+\`\`\`
+
+这种设计的好处：
+1. **安全**：\`hashed_password\` 永远不会通过 API 泄漏，因为所有接口的 response_model 都是 \`UserOut\`。
+2. **清晰**：每个模型的字段反映了"这一步需要什么"，读代码就知道接口契约。
+3. **灵活**：\`UserUpdate\` 字段全可选，支持部分更新；\`UserCreate\` 字段必填，保证数据完整。
+4. **可演进**：以后给 \`UserOut\` 加字段不影响 \`UserCreate\`，给 \`UserCreate\` 加字段不影响 \`UserOut\`。
+
+## 九、response_model 与 async def
+
+\`response_model\` 与 \`async def\` 完全兼容，用法一模一样。FastAPI 内部会判断函数是否是协程函数，自动用 \`await\` 调用，但 response_model 的过滤逻辑对同步/异步函数一视同仁。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+# 从 pydantic 导入 BaseModel
+from pydantic import BaseModel
+
+# 创建应用
+app = FastAPI()
+
+# 输出模型
+class ProductOut(BaseModel):
+    id: int              # 商品 ID
+    name: str            # 商品名
+    price: float         # 价格
+
+# 异步函数 + response_model：完全兼容
+@app.get("/products/{product_id}", response_model=ProductOut)
+async def get_product(product_id: int):
+    # 模拟异步数据库查询
+    # 实际项目：product = await db.products.get(product_id)
+    return {"id": product_id, "name": "异步商品", "price": 99.9}
+
+# 同步函数 + response_model：也完全兼容
+@app.get("/products-sync/{product_id}", response_model=ProductOut)
+def get_product_sync(product_id: int):
+    # 同步函数同样支持 response_model
+    return {"id": product_id, "name": "同步商品", "price": 88.8}
+
+# 即使返回的是 dict（不是模型实例），response_model 也会过滤+校验
+@app.get("/products-extra/{product_id}", response_model=ProductOut)
+async def get_product_extra(product_id: int):
+    # 返回的 dict 多了 stock 字段，但 ProductOut 没定义，会被过滤
+    return {"id": product_id, "name": "带额外字段", "price": 77.7, "stock": 100}
+\`\`\`
+
+三个接口返回的都是 \`{"id":...,"name":...,"price":...}\`，多出的 \`stock\` 被过滤。
+
+**性能提示**：response_model 会带来一次额外的 Pydantic 序列化开销。对极致性能场景（如高频接口），可以用 \`response_model=None\` 关闭，但要确保返回值已经安全。
+
+## 十、response_model=None 关闭过滤
+
+某些场景下你想完全控制返回值，不让 FastAPI 过滤。比如返回的是动态结构（聚合统计、报表数据），字段不固定。这时用 \`response_model=None\`。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+
+# 创建应用
+app = FastAPI()
+
+# 动态统计接口：字段不固定，关闭 response_model
+@app.get("/dashboard", response_model=None)
+async def dashboard():
+    # 返回任意结构，FastAPI 不做过滤
+    return {
+        "total_users": 1024,
+        "active_today": 256,
+        "revenue": 9999.5,
+        "trend": [10, 20, 30, 40, 50],   # 数组也行
+        "metadata": {"version": "v2", "note": "动态字段"}  # 嵌套也行
+    }
+
+# 注意：response_model=None 时 OpenAPI 文档里这个接口的响应会标记为任意类型
+# 适合内部接口或动态数据，对外接口不建议
+\`\`\`
+
+## 十一、实战：完整的用户 API（UserCreate 输入、UserResponse 输出）
+
+把前面所有知识点串起来，做一个接近生产水准的用户 API。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、HTTPException、status
+from fastapi import FastAPI, HTTPException, status
+# 从 pydantic 导入 BaseModel、Field、EmailStr
+from pydantic import BaseModel, Field, EmailStr
+
+# 创建应用
+app = FastAPI(title="用户管理 API")
+
+# ============ 数据模型定义 ============
+
+# 创建用户：输入模型
+class UserCreate(BaseModel):
+    username: str = Field(..., min_length=3, max_length=20, description="用户名")
+    password: str = Field(..., min_length=6, description="密码，至少 6 位")
+    email: EmailStr                              # 邮箱，自动校验格式
+    full_name: str | None = Field(None, description="全名，可选")
+
+# 更新用户：输入模型（全部可选）
+class UserUpdate(BaseModel):
+    username: str | None = Field(None, min_length=3, max_length=20)
+    email: EmailStr | None = None
+    full_name: str | None = None
+
+# 用户输出：对外模型（不含密码）
+class UserResponse(BaseModel):
+    id: int                                       # 用户 ID
+    username: str                                 # 用户名
+    email: str                                    # 邮箱
+    full_name: str | None                         # 全名
+    is_active: bool                               # 是否激活
+
+# 数据库存储模型（含哈希密码）
+class UserInDB(BaseModel):
+    id: int
+    username: str
+    email: str
+    full_name: str | None
+    hashed_password: str
+    is_active: bool = True
+
+# ============ 模拟数据库 ============
+db: dict[int, UserInDB] = {}
+next_id = 1
+
+# ============ 接口实现 ============
+
+# 创建用户：201 状态码，返回 UserResponse
+@app.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def create_user(user: UserCreate):
+    global next_id
+    # 检查用户名是否已存在
+    for u in db.values():
+        if u.username == user.username:
+            raise HTTPException(status_code=400, detail="用户名已存在")
+    # 哈希密码（实际用 passlib）
+    hashed = "hashed_" + user.password
+    # 存入数据库
+    db_user = UserInDB(
+        id=next_id,
+        username=user.username,
+        email=user.email,
+        full_name=user.full_name,
+        hashed_password=hashed,
+        is_active=True
+    )
+    db[next_id] = db_user
+    next_id += 1
+    # 返回 db_user，response_model 过滤掉 hashed_password
+    return db_user
+
+# 查询单个用户
+@app.get("/users/{user_id}", response_model=UserResponse)
+async def get_user(user_id: int):
+    if user_id not in db:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    return db[user_id]
+
+# 用户列表：exclude_unset 让 is_active 默认值不显示
+@app.get("/users", response_model=list[UserResponse])
+async def list_users():
+    return list(db.values())
+
+# 更新用户（PATCH 部分更新）
+@app.patch("/users/{user_id}", response_model=UserResponse)
+async def update_user(user_id: int, user: UserUpdate):
+    if user_id not in db:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    stored = db[user_id]
+    # exclude_unset=True：只取客户端实际传了的字段
+    update_data = user.model_dump(exclude_unset=True)
+    # 检查用户名冲突
+    if "username" in update_data:
+        for uid, u in db.items():
+            if uid != user_id and u.username == update_data["username"]:
+                raise HTTPException(status_code=400, detail="用户名已被占用")
+    # 应用更新
+    updated = stored.model_copy(update=update_data)
+    db[user_id] = updated
+    return updated
+
+# 删除用户
+@app.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user(user_id: int):
+    if user_id not in db:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    del db[user_id]
+    # 204 不返回内容
+    return None
+\`\`\`
+
+这套 API 体现了 response_model 的完整实践：
+- 输入用 \`UserCreate\` / \`UserUpdate\`，输出用 \`UserResponse\`，存储用 \`UserInDB\`，职责分离。
+- \`hashed_password\` 永远不会出现在响应里。
+- 列表接口用 \`response_model=list[UserResponse]\` 表示返回数组。
+- PATCH 用 \`exclude_unset\` 实现部分更新。
+- 删除接口用 \`204 No Content\`，不返回 body。
+
+## 十二、response_model 使用清单
+
+| 场景 | 推荐做法 |
+|---|---|
+| 防止敏感字段泄漏 | 定义不含敏感字段的 \`XxxOut\` 模型，设为 response_model |
+| 同模型不同字段 | \`response_model_include\` / \`response_model_exclude\` |
+| PATCH 部分更新 | \`response_model_exclude_unset=True\` |
+| 可选字段不输出 | \`response_model_exclude_none=True\` |
+| 嵌套数据 | 内层和外层各定义输出模型，response_model 递归过滤 |
+| 动态返回结构 | \`response_model=None\` 关闭过滤 |
+| 列表响应 | \`response_model=list[ItemOut]\` |
+| 极致性能 | 手动控制返回值 + \`response_model=None\` |
+
+记住一个原则：**任何对外接口都应该声明 response_model**，除非有特殊理由。这是 FastAPI 项目的基本卫生习惯。
+`
   },
+
+  // ============================================================
+  // 第 18 章：状态码与 Header
+  // ============================================================
   {
-    id: "resp-cookie",
+    id: "fa-status-header",
+    group: "响应处理",
+    icon: "📊",
+    title: "状态码与 Header",
+    content: `# 状态码与 Header
+
+## 一、HTTP 状态码详解
+
+HTTP 状态码（Status Code）是响应行中的三位数字，表示请求的处理结果。理解状态码是设计 RESTful API 的基础。状态码按首位分为五大类：
+
+| 类别 | 范围 | 含义 | 典型场景 |
+|---|---|---|---|
+| 1xx | 100-199 | 信息性 | WebSocket 升级、Continue |
+| 2xx | 200-299 | 成功 | 200 OK、201 Created、204 No Content |
+| 3xx | 300-399 | 重定向 | 301 永久跳转、302 临时跳转、304 Not Modified |
+| 4xx | 400-499 | 客户端错误 | 400 Bad Request、401 Unauthorized、403 Forbidden、404 Not Found、422 Unprocessable |
+| 5xx | 500-599 | 服务端错误 | 500 Internal Error、502 Bad Gateway、503 Service Unavailable |
+
+FastAPI 中常用的状态码：
+
+- **200 OK**：默认值，请求成功。
+- **201 Created**：资源创建成功，POST 创建资源时用。
+- **204 No Content**：成功但无内容返回，DELETE 常用。
+- **301 Moved Permanently**：永久重定向。
+- **302 Found**：临时重定向。
+- **304 Not Modified**：资源未修改（配合缓存）。
+- **400 Bad Request**：请求参数错误。
+- **401 Unauthorized**：未认证（没登录或 token 无效）。
+- **403 Forbidden**：已认证但无权限。
+- **404 Not Found**：资源不存在。
+- **409 Conflict**：冲突（如用户名已存在）。
+- **422 Unprocessable Entity**：FastAPI 默认的校验失败状态码。
+- **500 Internal Server Error**：服务端内部错误。
+
+FastAPI 在 \`fastapi.status\` 模块里提供了所有状态码的常量，建议用常量而非魔法数字。
+
+## 二、status_code 设置方式
+
+### 2.1 路由装饰器设置默认状态码
+
+最简单的方式是在 \`@app.post()\` 等装饰器里传 \`status_code\`。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI 和 status 模块
+from fastapi import FastAPI, status
+# 从 pydantic 导入 BaseModel
+from pydantic import BaseModel
+
+# 创建应用
+app = FastAPI()
+
+# 任务模型
+class Task(BaseModel):
+    id: int               # 任务 ID
+    title: str            # 任务标题
+    done: bool = False    # 是否完成
+
+# 模拟数据库
+tasks: dict[int, Task] = {}
+next_id = 1
+
+# 创建任务：201 Created
+@app.post("/tasks", response_model=Task, status_code=status.HTTP_201_CREATED)
+def create_task(task: Task):
+    global next_id
+    task.id = next_id
+    tasks[next_id] = task
+    next_id += 1
+    return task
+
+# 删除任务：204 No Content
+@app.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_task(task_id: int):
+    if task_id in tasks:
+        del tasks[task_id]
+    # 204 不应返回 body
+    return None
+
+# 普通查询：默认 200
+@app.get("/tasks/{task_id}", response_model=Task)
+def get_task(task_id: int):
+    return tasks[task_id]
+\`\`\`
+
+\`status_code\` 接受整数或 \`fastapi.status\` 常量。用常量更可读，IDE 也能自动补全。
+
+### 2.2 用 Response 对象动态设置状态码
+
+有时状态码不能在装饰器里写死，要根据运行时情况返回不同状态码。这时用 \`Response\` 参数动态设置。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Response、status
+from fastapi import FastAPI, Response, status
+
+# 创建应用
+app = FastAPI()
+
+# 模拟资源查找
+def find_item(item_id: int):
+    # 实际项目查数据库
+    if item_id == 1:
+        return {"id": 1, "name": "found"}
+    return None
+
+# 动态状态码：找到了 200，没找到 404
+@app.get("/items/{item_id}")
+def get_item(item_id: int, response: Response):
+    item = find_item(item_id)
+    if item is None:
+        # 动态设置 404
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {"error": "未找到"}
+    # 默认 200
+    return item
+
+# 条件性 201：如果资源是新创建的返回 201，否则 200
+@app.put("/items/{item_id}")
+def upsert_item(item_id: int, response: Response):
+    existed = find_item(item_id)
+    if existed is None:
+        # 新建
+        response.status_code = status.HTTP_201_CREATED
+        return {"id": item_id, "name": "新建"}
+    # 更新
+    response.status_code = status.HTTP_200_OK
+    return {"id": item_id, "name": "更新"}
+\`\`\`
+
+把 \`Response\` 声明为参数后，FastAPI 注入当前响应对象，修改 \`status_code\` 即可。这种"upsert"模式（存在则更新，不存在则创建）在 RESTful API 里很常见。
+
+## 三、自定义响应头 Header
+
+响应头（Response Header）携带响应的元信息，如 \`Content-Type\`、\`Content-Length\`、\`Cache-Control\`、自定义的 \`X-Request-Id\` 等。
+
+### 3.1 通过 Response 对象设置响应头
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Response
+from fastapi import FastAPI, Response
+# 导入 uuid 用于生成请求 ID
+import uuid
+
+# 创建应用
+app = FastAPI()
+
+# 设置自定义响应头
+@app.get("/hello")
+def hello(response: Response):
+    # 给每个响应加一个唯一的 X-Request-Id
+    response.headers["X-Request-Id"] = str(uuid.uuid4())
+    # 设置缓存控制
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    # 自定义业务头
+    response.headers["X-Processed-At"] = "2026-07-11T12:00:00Z"
+    return {"message": "hello"}
+
+# 直接返回 Response 对象（完全控制）
+from fastapi.responses import JSONResponse
+
+@app.get("/custom")
+def custom():
+    # 直接构造 JSONResponse，同时设置状态码和头
+    return JSONResponse(
+        status_code=200,
+        content={"message": "custom response"},
+        headers={
+            "X-Custom-Header": "my-value",
+            "X-Version": "1.0.0",
+        }
+    )
+\`\`\`
+
+\`response.headers\` 是一个类似字典的对象，直接赋值即可。响应头名不区分大小写，但惯例是 \`X-\` 前缀的用首字母大写驼峰（\`X-Request-Id\`）。
+
+### 3.2 设置响应头的常见场景
+
+- **追踪**：\`X-Request-Id\` 贯穿请求链路，便于日志排查。
+- **缓存**：\`Cache-Control\`、\`ETag\`、\`Last-Modified\`。
+- **限流**：\`X-RateLimit-Limit\`、\`X-RateLimit-Remaining\`。
+- **分页**：\`X-Total-Count\`、\`X-Page\`。
+- **版本**：\`X-API-Version\`。
+
+## 四、Header() 获取请求头
+
+\`Header()\` 依赖用于从请求头读取值，用法类似 \`Query()\` 和 \`Path()\`。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI 和 Header
+from fastapi import FastAPI, Header
+
+# 创建应用
+app = FastAPI()
+
+# 读取单个请求头
+@app.get("/header-demo")
+def header_demo(
+    # Header() 声明从请求头读 user_agent
+    user_agent: str | None = Header(None, alias="User-Agent"),
+    # 注意：请求头名通常有连字符，Python 参数名不能用连字符
+    # 用 alias 指定实际的头名
+    x_token: str | None = Header(None, alias="X-Token"),
+):
+    return {
+        "user_agent": user_agent,
+        "x_token": x_token,
+    }
+
+# 必填请求头
+@app.get("/auth")
+def auth_check(
+    # 必填的 Authorization 头
+    authorization: str = Header(..., alias="Authorization"),
+):
+    # 简单校验
+    if not authorization.startswith("Bearer "):
+        return {"error": "无效的认证头"}
+    token = authorization[7:]  # 去掉 "Bearer " 前缀
+    return {"token": token}
+
+# 读取多个同名头（如多个 Set-Cookie 或 X-Forwarded-For）
+@app.get("/multi")
+def multi_header(
+    # convert_underscores=False 保留下划线（默认会把下划线转连字符）
+    x_forwarded_for: list[str] | None = Header(None, alias="X-Forwarded-For"),
+):
+    return {"x_forwarded_for": x_forwarded_for}
+\`\`\`
+
+**重要细节**：
+- \`Header()\` 默认会把参数名的下划线 \`_\` 转成连字符 \`-\`，因为 HTTP 头惯例用连字符。所以 \`user_agent\` 实际匹配 \`User-Agent\`。但更推荐用 \`alias\` 显式指定，避免歧义。
+- \`convert_underscores=False\` 可以关闭这个转换。
+- 头名不区分大小写，但 alias 写规范形式更清晰。
+
+## 五、常用 Header 详解
+
+### 5.1 Content-Type
+
+\`Content-Type\` 表示请求/响应体的媒体类型。FastAPI 根据这个头决定如何解析请求体。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Request
+from fastapi import FastAPI, Request
+# 从 fastapi.responses 导入各种响应类型
+from fastapi.responses import JSONResponse, PlainTextResponse, HTMLResponse
+
+# 创建应用
+app = FastAPI()
+
+# FastAPI 默认用 application/json 解析请求体
+@app.post("/json")
+async def read_json(request: Request):
+    # 读取 JSON 请求体
+    data = await request.json()
+    return {"received": data}
+
+# 返回不同 Content-Type 的响应
+@app.get("/text", response_class=PlainTextResponse)
+def get_text():
+    # Content-Type: text/plain; charset=utf-8
+    return "这是一段纯文本"
+
+@app.get("/html", response_class=HTMLResponse)
+def get_html():
+    # Content-Type: text/html; charset=utf-8
+    return "<h1>你好</h1><p>这是 HTML</p>"
+
+@app.get("/json-response")
+def get_json():
+    # 默认 JSONResponse，Content-Type: application/json
+    return {"message": "JSON"}
+\`\`\`
+
+### 5.2 Authorization
+
+\`Authorization\` 头用于携带认证信息，最常见的是 Bearer Token（JWT）。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Header、HTTPException、status
+from fastapi import FastAPI, Header, HTTPException, status
+
+# 创建应用
+app = FastAPI()
+
+# 模拟有效 token
+VALID_TOKEN = "abc123secret"
+
+# 通过 Header 读取 Authorization
+@app.get("/me")
+def get_me(authorization: str = Header(..., alias="Authorization")):
+    # 校验 Bearer 格式
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="认证格式错误，应为 Bearer <token>",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    token = authorization[7:]
+    if token != VALID_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="token 无效",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return {"user": "alice", "token": token}
+\`\`\`
+
+\`HTTPException\` 的 \`headers\` 参数可以给错误响应附加头，\`WWW-Authenticate\` 是 401 响应的标准头，告诉客户端用什么认证方案。
+
+### 5.3 X-Request-ID 请求追踪
+
+给每个请求分配唯一 ID，贯穿日志、响应、下游调用，是分布式系统排错的标配。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Header、Request、Response
+from fastapi import FastAPI, Header, Request, Response
+# 导入 uuid
+import uuid
+
+# 创建应用
+app = FastAPI()
+
+# 中间件：给每个请求生成 X-Request-Id
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    # 优先复用客户端传的 ID，没有就生成新的
+    request_id = request.headers.get("X-Request-Id", str(uuid.uuid4()))
+    # 调用下游
+    response = await call_next(request)
+    # 在响应头里也带上，便于客户端关联
+    response.headers["X-Request-Id"] = request_id
+    return response
+
+# 接口里也能读这个 ID
+@app.get("/trace")
+def trace(x_request_id: str | None = Header(None, alias="X-Request-Id")):
+    return {"request_id": x_request_id, "message": "请求已追踪"}
+\`\`\`
+
+## 六、自定义 X- 前缀头
+
+自定义业务头约定用 \`X-\` 前缀（虽然 RFC 6648 不再强制，但业界仍普遍使用）。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Header、Response
+from fastapi import FastAPI, Header, Response
+
+# 创建应用
+app = FastAPI()
+
+# 自定义版本头和客户端标识头
+@app.get("/api/data")
+def get_data(
+    response: Response,
+    # 客户端版本
+    x_client_version: str | None = Header(None, alias="X-Client-Version"),
+    # 客户端平台
+    x_client_platform: str | None = Header(None, alias="X-Client-Platform"),
+):
+    # 在响应头里返回服务端版本
+    response.headers["X-Server-Version"] = "2.1.0"
+    response.headers["X-Response-Time"] = "15ms"
+    return {
+        "data": "some data",
+        "client_version": x_client_version,
+        "client_platform": x_client_platform,
+    }
+\`\`\`
+
+## 七、实战：通过 Header 实现 API 版本控制
+
+API 版本控制有三种常见方式：URL 路径（\`/v1/users\`）、查询参数（\`?version=1\`）、请求头（\`X-API-Version: 1\`）。下面实现 Header 方式。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Header、HTTPException、status、Request
+from fastapi import FastAPI, Header, HTTPException, status, Request
+# 从 fastapi.responses 导入 JSONResponse
+from fastapi.responses import JSONResponse
+# 从 pydantic 导入 BaseModel
+from pydantic import BaseModel
+
+# 创建应用
+app = FastAPI()
+
+# ============ v1 和 v2 的数据模型 ============
+
+class UserV1(BaseModel):
+    id: int                    # 用户 ID
+    name: str                  # 名字（v1 用 name）
+    email: str                 # 邮箱
+
+class UserV2(BaseModel):
+    id: int                    # 用户 ID
+    username: str              # 用户名（v2 改用 username）
+    email: str                 # 邮箱
+    full_name: str | None      # v2 新增 full_name
+    avatar: str | None         # v2 新增 avatar
+
+# ============ 模拟数据 ============
+users_v1 = {1: UserV1(id=1, name="alice", email="a@b.com")}
+users_v2 = {1: UserV2(id=1, username="alice", email="a@b.com", full_name="Alice Liddell", avatar=None)}
+
+# ============ 版本控制中间件 ============
+# 支持的版本
+SUPPORTED_VERSIONS = {"1", "2"}
+
+@app.middleware("http")
+async def version_middleware(request: Request, call_next):
+    # 从请求头读版本
+    version = request.headers.get("X-API-Version", "1")  # 默认 v1
+    if version not in SUPPORTED_VERSIONS:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"detail": f"不支持的 API 版本: {version}"},
+        )
+    # 把版本号塞进 request.state，后续路由能读
+    request.state.api_version = version
+    # 响应头标注当前版本
+    response = await call_next(request)
+    response.headers["X-API-Version"] = version
+    return response
+
+# ============ 路由：根据版本返回不同结构 ============
+
+@app.get("/users/{user_id}")
+def get_user(user_id: int, request: Request):
+    version = request.state.api_version   # 从中间件读版本
+    if version == "1":
+        if user_id not in users_v1:
+            raise HTTPException(status_code=404, detail="用户不存在")
+        return users_v1[user_id]          # 返回 v1 结构
+    else:  # version == "2"
+        if user_id not in users_v2:
+            raise HTTPException(status_code=404, detail="用户不存在")
+        return users_v2[user_id]          # 返回 v2 结构
+
+# 也可以用依赖注入读版本
+from fastapi import Depends
+
+def get_api_version(x_api_version: str = Header("1", alias="X-API-Version")):
+    if x_api_version not in SUPPORTED_VERSIONS:
+        raise HTTPException(status_code=400, detail=f"不支持的版本: {x_api_version}")
+    return x_api_version
+
+@app.get("/users-v2/{user_id}")
+def get_user_v2(user_id: int, version: str = Depends(get_api_version)):
+    if version == "1":
+        return users_v1.get(user_id, {"error": "不存在"})
+    return users_v2.get(user_id, {"error": "不存在"})
+\`\`\`
+
+测试：
+- \`curl -H "X-API-Version: 1" http://localhost:8000/users/1\` → \`{"id":1,"name":"alice","email":"a@b.com"}\`
+- \`curl -H "X-API-Version: 2" http://localhost:8000/users/1\` → \`{"id":1,"username":"alice","email":"a@b.com","full_name":"Alice Liddell","avatar":null}\`
+
+Header 版本控制的优点是 URL 不变，对客户端透明；缺点是要测试时得手动加头，不如 URL 版本直观。
+
+## 八、状态码与 Header 完整示例：RESTful 资源 API
+
+把状态码、Header、错误处理结合起来，做一个规范的资源 API。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、HTTPException、status、Response、Header
+from fastapi import FastAPI, HTTPException, status, Response, Header
+# 从 pydantic 导入 BaseModel、Field
+from pydantic import BaseModel, Field
+# 导入 uuid
+import uuid
+
+# 创建应用
+app = FastAPI(title="文章 API")
+
+# 文章模型
+class Article(BaseModel):
+    id: str                                  # 文章 ID（UUID）
+    title: str = Field(..., min_length=1)    # 标题
+    content: str                             # 正文
+    author: str                              # 作者
+    views: int = 0                           # 浏览量
+
+# 模拟数据库
+db: dict[str, Article] = {}
+
+# 创建文章：201 Created + Location 头
+@app.post("/articles", response_model=Article, status_code=status.HTTP_201_CREATED)
+def create_article(article: Article, response: Response):
+    article.id = str(uuid.uuid4())           # 生成 ID
+    article.views = 0
+    db[article.id] = article
+    # Location 头指向新创建的资源（RESTful 规范）
+    response.headers["Location"] = f"/articles/{article.id}"
+    # 请求追踪头
+    response.headers["X-Request-Id"] = str(uuid.uuid4())
+    return article
+
+# 查询文章：200 + X-Total-Count（列表）
+@app.get("/articles", response_model=list[Article])
+def list_articles(response: Response):
+    articles = list(db.values())
+    # 在响应头里返回总数（分页场景常用）
+    response.headers["X-Total-Count"] = str(len(articles))
+    return articles
+
+# 单个查询：404 if not found
+@app.get("/articles/{article_id}", response_model=Article)
+def get_article(article_id: str, response: Response, if_none_match: str | None = Header(None, alias="If-None-Match")):
+    if article_id not in db:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="文章不存在",
+        )
+    article = db[article_id]
+    # 简单 ETag：用 id+views 作为版本标识
+    etag = f'"{article_id}-{article.views}"'
+    response.headers["ETag"] = etag
+    # 如果客户端传了 If-None-Match 且匹配，返回 304 不传 body
+    if if_none_match == etag:
+        response.status_code = status.HTTP_304_NOT_MODIFIED
+        return None
+    # 增加浏览量
+    article.views += 1
+    return article
+
+# 更新文章：200 or 404 or 409
+@app.put("/articles/{article_id}", response_model=Article)
+def update_article(article_id: str, article: Article):
+    if article_id not in db:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文章不存在")
+    article.id = article_id                   # 保持 ID 不变
+    article.views = db[article_id].views      # 保留浏览量
+    db[article_id] = article
+    return article
+
+# 删除文章：204 No Content or 404
+@app.delete("/articles/{article_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_article(article_id: str):
+    if article_id not in db:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文章不存在")
+    del db[article_id]
+    return None
+\`\`\`
+
+这个示例体现了：
+- **201 + Location**：创建资源后返回新资源 URL。
+- **204**：删除成功不返回 body。
+- **404**：资源不存在。
+- **ETag + If-None-Match + 304**：条件请求，节省带宽。
+- **X-Total-Count**：列表响应附带总数。
+- **X-Request-Id**：请求追踪。
+
+## 九、状态码选择速查表
+
+| 操作 | 成功 | 资源不存在 | 参数错误 | 冲突 | 未授权 |
+|---|---|---|---|---|---|
+| GET | 200 | 404 | 400 | - | 401 |
+| POST（新建） | 201 | - | 400/422 | 409 | 401 |
+| PUT（更新） | 200 | 404 | 400/422 | 409 | 401 |
+| PATCH（部分更新） | 200 | 404 | 400/422 | 409 | 401 |
+| DELETE | 204 | 404 | - | - | 401 |
+
+记住：**状态码是 API 契约的一部分**，规范的码值让前端能用统一逻辑处理响应，是专业 API 的标志。
+`
+  },
+
+  // ============================================================
+  // 第 19 章：Cookie 与 Session
+  // ============================================================
+  {
+    id: "fa-cookie-session",
     group: "响应处理",
     icon: "🍪",
     title: "Cookie 与 Session",
-    content: `
-## 一、Cookie 原理
+    content: `# Cookie 与 Session
 
-Cookie 是**浏览器存储的小段数据**,由服务器通过 \`Set-Cookie\` 响应头设置,之后浏览器每次请求同一域名都会自动带上 Cookie(在 \`Cookie\` 请求头里)。
+## 一、Cookie 基础
 
-特点:
-- **大小限制**:约 4KB,只适合存少量数据。
-- **域名绑定**:foo.com 的 Cookie 不会被发送到 bar.com。
-- **自动携带**:同源请求自动带上,无需前端代码处理。
-- **可设过期**:会话 Cookie(浏览器关了就没)或持久 Cookie(到过期时间)。
+Cookie 是浏览器存储在客户端的小段数据（一般不超过 4KB），每次请求同一个域名时会自动带上。Cookie 最早由 Netscape 发明，最初为了解决 HTTP 无状态的问题——服务器需要记住"这个请求是谁发的"。
 
-Cookie 是 HTTP 协议层面的机制,是「无状态 HTTP」变「有状态会话」的关键。
+### 1.1 Cookie 的工作机制
 
-## 二、设置 Cookie
+1. **服务器下发**：响应头里通过 \`Set-Cookie: name=value; 属性...\` 设置 Cookie。
+2. **浏览器存储**：浏览器收到后按域名保存。
+3. **自动携带**：之后每次请求该域名，浏览器自动在 \`Cookie\` 请求头里带上。
+4. **过期清理**：到了过期时间或浏览器关闭后清除（取决于属性）。
 
-\`\`\`python
-# 从 fastapi 导入 FastAPI, Response
-from fastapi import FastAPI, Response
+### 1.2 Cookie 的关键属性
 
-# 创建 FastAPI 应用实例
-app = FastAPI()
+| 属性 | 作用 | 示例 |
+|---|---|---|
+| \`Name=Value\` | 键值对，必填 | \`token=abc123\` |
+| \`Domain\` | 生效域名 | \`Domain=.example.com\`（含子域） |
+| \`Path\` | 生效路径 | \`Path=/\`（全站） |
+| \`Expires\` | 绝对过期时间 | \`Expires=Wed, 11 Jul 2026 12:00:00 GMT\` |
+| \`Max-Age\` | 相对存活秒数 | \`Max-Age=3600\`（1 小时） |
+| \`HttpOnly\` | 禁止 JS 访问（防 XSS） | \`HttpOnly\` |
+| \`Secure\` | 仅 HTTPS 传输 | \`Secure\` |
+| \`SameSite\` | 跨站策略 | \`SameSite=Strict/Lax/None\` |
 
-# 定义 POST 路由：访问 /login 时触发
-@app.post("/login")
-# 定义函数 login，参数: response: Response
-def login(response: Response):
-    # 通过 Response 对象设置 Cookie
-    # response.set_cookie(
-    response.set_cookie(
-        key="user_id",        # Cookie 名
-        value="42",           # Cookie 值
-        max_age=3600,         # 过期时间(秒),3600=1 小时
-        httponly=True,        # JS 读不到,防 XSS 偷 Cookie
-        secure=True,          # 只走 HTTPS 传输
-        samesite="lax",       # 跨站策略,防 CSRF
-    # )
-    )
-    # 返回 {"msg": "登录成功"}
-    return {"msg": "登录成功"}
-\`\`\`
+**安全属性详解**：
+- \`HttpOnly\`：设置后 \`document.cookie\` 读不到，能防 XSS 偷 token。**登录 Cookie 必须加**。
+- \`Secure\`：只在 HTTPS 下发送，防止中间人窃听。**生产环境必加**。
+- \`SameSite\`：
+  - \`Strict\`：跨站请求完全不带 Cookie，最安全但影响体验（如从 Google 跳过来不带登录态）。
+  - \`Lax\`（浏览器默认）：顶层 GET 导航带 Cookie，其他跨站不带。平衡安全和体验。
+  - \`None\`：跨站都带，但必须配合 \`Secure\`，否则被拒。第三方 Cookie 场景用。
 
-浏览器响应头会出现:
-\`\`\`
-Set-Cookie: user_id=42; Max-Age=3600; HttpOnly; Secure; SameSite=Lax
-\`\`\`
+## 二、Cookie() 获取请求 Cookie
 
-之后浏览器对该域名的请求会带:
-\`\`\`
-Cookie: user_id=42
-\`\`\`
-
-## 三、读取 Cookie
-
-用 \`Cookie()\` 声明 Cookie 参数:
+FastAPI 用 \`Cookie()\` 依赖从请求 Cookie 读取值，用法和 \`Query()\`、\`Header()\` 类似。
 
 \`\`\`python
-# 从 fastapi 导入 FastAPI, Cookie
+# 从 fastapi 导入 FastAPI、Cookie
 from fastapi import FastAPI, Cookie
 
-# 创建 FastAPI 应用实例
+# 创建应用
 app = FastAPI()
 
-# 定义 GET 路由：访问 /me 时触发
-@app.get("/me")
-# 定义函数 me，参数: user_id: str | None = Cookie(default=None)
-def me(user_id: str | None = Cookie(default=None)):
-    # 条件判断：如果 user_id is None
-    if user_id is None:
-        # 返回 {"msg": "未登录"}
-        return {"msg": "未登录"}
-    # 返回 {"user_id": user_id}
-    return {"user_id": user_id}
+# 读取单个 Cookie
+@app.get("/profile")
+def profile(
+    # Cookie() 声明从 Cookie 读 session_id
+    # 没有这个 Cookie 时返回 None
+    session_id: str | None = Cookie(None),
+):
+    if session_id is None:
+        return {"message": "未登录", "logged_in": False}
+    return {"session_id": session_id, "logged_in": True}
+
+# 必填 Cookie
+@app.get("/dashboard")
+def dashboard(
+    # 必填，没带 Cookie 报 422（或 401，取决于校验位置）
+    session_id: str = Cookie(...),
+):
+    # 实际项目要校验 session_id 是否有效
+    return {"session_id": session_id, "data": "敏感数据"}
+
+# 读取多个 Cookie
+@app.get("/analytics")
+def analytics(
+    user_id: str | None = Cookie(None),        # user_id Cookie
+    referrer: str | None = Cookie(None),       # referrer Cookie
+    theme: str | None = Cookie(None),          # theme Cookie
+):
+    return {
+        "user_id": user_id,
+        "referrer": referrer,
+        "theme": theme,
+    }
 \`\`\`
 
-- \`Cookie(default=None)\` 表示没传时为 None。
-- 参数名 \`user_id\` 会自动对应 Cookie 名 \`user_id\`。
-- 也可以指定别名:\`Cookie(alias="user_id")\`。
+**注意**：\`Cookie()\` 的参数名就是 Cookie 名。Cookie 名通常用下划线或连字符，FastAPI 默认不会转换，所以参数名要和 Cookie 名完全一致。
 
-## 四、Cookie 属性详解
+## 三、Response 设置 Cookie
 
-\`set_cookie\` 的关键参数:
+设置 Cookie 需要操作 \`Response\` 对象的 \`set_cookie()\` 方法，或直接写 \`Set-Cookie\` 头。
 
-| 属性 | 作用 | 推荐值 |
-|---|---|---|
-| key | Cookie 名 | 业务相关 |
-| value | Cookie 值 | 短字符串 |
-| max_age | 存活秒数 | 视场景 |
-| expires | 绝对过期时间(datetime) | 二选一,优先 max_age |
-| httponly | JS 不可读 | True(防 XSS) |
-| secure | 仅 HTTPS | 生产 True |
-| samesite | 跨站策略 | lax/strict/none |
-| domain | 作用域域名 | 通常不设 |
-| path | 作用路径 | 通常 / |
-
-### 4.1 samesite 三种值
-
-- **strict**:完全不允许跨站携带。最安全但体验差(从别的网站点链接过来也不带 Cookie,要重新登录)。
-- **lax**:导航到目标站点的 GET 请求允许带,其他跨站不带。**默认值,推荐**。
-- **none**:任意跨站都带。**必须配合 secure=True**,否则浏览器拒绝。第三方 Cookie 场景用,但现代浏览器逐渐默认禁用。
-
-### 4.2 httponly 和 secure 必开
-
-- **httponly=True**:\`document.cookie\` 读不到,防止 XSS 攻击偷 Cookie。会话 Cookie 必开。
-- **secure=True**:只在 HTTPS 上传输,防止中间人窃听。生产环境必开。
-
-## 五、删除 Cookie
+### 3.1 用 set_cookie 方法（推荐）
 
 \`\`\`python
-# 定义 POST 路由：访问 /logout 时触发
-@app.post("/logout")
-# 定义函数 logout，参数: response: Response
-def logout(response: Response):
-    # 调用 response.delete_cookie()
-    response.delete_cookie(key="user_id")
-    # 返回 {"msg": "已退出"}
-    return {"msg": "已退出"}
-\`\`\`
+# 从 fastapi 导入 FastAPI、Response
+from fastapi import FastAPI, Response
 
-\`delete_cookie\` 实际上是设置一个立即过期的同名 Cookie,让浏览器把它删掉。
-
-**注意**:删除时要和设置时的属性(domain/path/secure 等)一致,否则删不掉。
-
-## 六、Session 基于 Cookie 实现
-
-Session 是「服务器端会话」的抽象,核心思路:
-
-1. 服务器生成一个随机 \`session_id\`。
-2. 把 \`session_id\` 通过 Cookie 发给浏览器。
-3. 浏览器后续请求带上这个 Cookie。
-4. 服务器用 \`session_id\` 在自己的存储里(内存/Redis/数据库)查到对应的会话数据。
-
-**Cookie 存的是 ID,Session 数据在服务器**。这是 Cookie 和 Session 的本质区别:Cookie 在客户端,Session 在服务端。
-
-## 七、fastapi-sessions / Starlette SessionMiddleware
-
-Starlette 自带 \`SessionMiddleware\`,基于 Cookie 实现,用 \`itsdangerous\` 签名防篡改:
-
-\`\`\`python
-# 从 fastapi 导入 FastAPI, Request
-from fastapi import FastAPI, Request
-# 从 starlette.middleware.sessions 导入 SessionMiddleware
-from starlette.middleware.sessions import SessionMiddleware
-
-# 创建 FastAPI 应用实例
+# 创建应用
 app = FastAPI()
-# secret_key 用来签名,泄漏则可被伪造,务必保密
-# 添加中间件: SessionMiddleware, secret_key="your-secret-key-change-me"
-app.add_middleware(SessionMiddleware, secret_key="your-secret-key-change-me")
 
-# 定义 POST 路由：访问 /login 时触发
+# 登录接口：设置登录 Cookie
 @app.post("/login")
-# 定义函数 login，参数: request: Request
-def login(request: Request):
-    # 把用户信息存到 session(实际存在签名后的 Cookie 里)
-    # request.session["user_id"] = 42
-    request.session["user_id"] = 42
-    # request.session["role"] = "admin"
-    request.session["role"] = "admin"
-    # 返回 {"msg": "登录成功"}
-    return {"msg": "登录成功"}
+def login(response: Response):
+    # 模拟登录成功，生成 session_id
+    session_id = "session_abc123"
+    # set_cookie 参数详解：
+    response.set_cookie(
+        key="session_id",           # Cookie 名
+        value=session_id,           # Cookie 值
+        max_age=3600,               # 存活 3600 秒（1 小时）
+        httponly=True,              # 禁止 JS 访问（防 XSS）
+        secure=False,               # 生产环境改 True（仅 HTTPS）
+        samesite="lax",             # 跨站策略：Lax（默认推荐）
+        path="/",                   # 全站生效
+        # domain=None,              # 不设则默认当前域名
+    )
+    return {"message": "登录成功", "session_id": session_id}
 
-# 定义 GET 路由：访问 /me 时触发
-@app.get("/me")
-# 定义函数 me，参数: request: Request
-def me(request: Request):
-    # 定义变量 user_id，赋值为 request.session.get("user_id")
-    user_id = request.session.get("user_id")
-    # 条件判断：如果 user_id is None
-    if user_id is None:
-        # 返回 {"msg": "未登录"}
-        return {"msg": "未登录"}
-    # 返回 {"user_id": user_id, "role": request.session.get("role")}
-    return {"user_id": user_id, "role": request.session.get("role")}
-
-# 定义 POST 路由：访问 /logout 时触发
+# 登出接口：删除 Cookie
 @app.post("/logout")
-# 定义函数 logout，参数: request: Request
-def logout(request: Request):
-    # 调用 request.session.clear()
-    request.session.clear()
-    # 返回 {"msg": "已退出"}
-    return {"msg": "已退出"}
+def logout(response: Response):
+    # delete_cookie 通过设置 Max-Age=0 或过期时间来删除
+    response.delete_cookie(
+        key="session_id",           # 要删的 Cookie 名
+        path="/",                   # 路径要和设置时一致才能删掉
+    )
+    return {"message": "已登出"}
+
+# 直接操作 Set-Cookie 头（不推荐，要自己拼字符串）
+@app.get("/custom-cookie")
+def custom_cookie(response: Response):
+    # 手动拼 Set-Cookie 头，要自己处理属性格式
+    response.headers["Set-Cookie"] = "token=xyz; Path=/; HttpOnly; Max-Age=3600"
+    return {"message": "ok"}
 \`\`\`
 
-- \`request.session\` 是字典-like 对象。
-- 数据存在 Cookie 里(签名后),不是服务器存储。所以**不适合存大量数据**(受 4KB 限制)。
-- 用户能解码看到内容(但改不了,签名会失败),所以别存敏感数据。
+\`set_cookie\` 方法参数完整列表：
+- \`key\`：Cookie 名（必填）
+- \`value\`：Cookie 值
+- \`max_age\`：存活秒数（和 expires 二选一）
+- \`expires\`：绝对过期时间（datetime 或字符串）
+- \`path\`：路径，默认 \`/\`
+- \`domain\`：域名
+- \`secure\`：是否仅 HTTPS
+- \`httponly\`：是否禁止 JS 访问
+- \`samesite\`：\`strict\` / \`lax\` / \`none\`
 
-## 八、JWT vs Session 对比
-
-| 维度 | Session(Cookie) | JWT |
-|---|---|---|
-| 存储位置 | 服务端 | 客户端 |
-| 状态 | 有状态(服务端要存) | 无状态 |
-| 撤销 | 删服务端记录即可 | 难(只能等过期或换密钥) |
-| 扩展性 | 多实例要共享 session 存储 | 天然分布式友好 |
-| 大小 | Cookie 小(只存 ID) | token 较大(含 payload) |
-| 安全 | 服务端可控 | 客户端持有,要注意存放 |
-| 移动端 | Cookie 处理麻烦 | token 放 Header 方便 |
-| 适用 | 传统 Web(浏览器) | API、移动端、SSO |
-
-**选择建议**:
-- 浏览器 Web 应用 → Session(自动 Cookie,httponly 安全)。
-- 移动端 / SPA / 跨服务 → JWT。
-- 高安全要求(随时能踢人下线) → Session(服务端可立即撤销)。
-
-## 九、CSRF 防护
-
-Cookie 自动携带的特性带来 CSRF(跨站请求伪造)风险:用户在 a.com 登录后,访问恶意网站 evil.com,evil.com 发起对 a.com 的请求,浏览器会自动带上 a.com 的 Cookie,导致「以用户身份」执行操作。
-
-防护手段:
-1. **samesite=lax/strict**:浏览器限制跨站 Cookie 携带,从源头防。**现代浏览器默认 lax**。
-2. **CSRF Token**:服务端发一个随机 token,前端表单带上,服务端校验。
-3. **SameSite + 二次校验**:要求请求头里带自定义 Header(如 \`X-CSRF-Token\`),跨站 form 提交无法自定义 Header。
-
-**API 用 JWT(放 Authorization Header)天然无 CSRF**,因为 Header 不会自动跨站携带。
-
-## 十、完整示例:登录设置 Cookie
+### 3.2 Cookie 属性实战对比
 
 \`\`\`python
-# 从 fastapi 导入 FastAPI, Response, Cookie, HTTPException
-from fastapi import FastAPI, Response, Cookie, HTTPException
+# 从 fastapi 导入 FastAPI、Response
+from fastapi import FastAPI, Response
+
+app = FastAPI()
+
+# 不安全 Cookie（演示用，别学）
+@app.get("/cookie-insecure")
+def cookie_insecure(response: Response):
+    response.set_cookie(
+        key="token",
+        value="abc",
+        # 没有 httponly/secure，JS 能读，HTTP 能传
+    )
+    return {"msg": "不安全 Cookie 已设置"}
+
+# 安全 Cookie（生产推荐）
+@app.get("/cookie-secure")
+def cookie_secure(response: Response):
+    response.set_cookie(
+        key="token",
+        value="abc",
+        max_age=86400,            # 1 天
+        httponly=True,            # JS 读不到
+        secure=True,              # 仅 HTTPS
+        samesite="strict",        # 严格防 CSRF
+        path="/",
+    )
+    return {"msg": "安全 Cookie 已设置"}
+
+# 第三方 Cookie（跨站携带，需 None + Secure）
+@app.get("/cookie-third-party")
+def cookie_third_party(response: Response):
+    response.set_cookie(
+        key="tracking_id",
+        value="xyz",
+        samesite="none",          # 跨站都带
+        secure=True,              # None 必须配 Secure
+        httponly=False,           # 允许 JS 读（埋点需要）
+    )
+    return {"msg": "第三方 Cookie 已设置"}
+\`\`\`
+
+## 四、Session 概念和原理
+
+### 4.1 Session 是什么
+
+Session（会话）是服务器端保存的"用户状态"。Cookie 是存在客户端的，Session 是存在服务器的，两者配合实现登录态：
+
+1. 用户登录成功，服务器创建一个 Session，分配唯一 \`session_id\`。
+2. 服务器把 \`session_id\` 通过 Cookie 下发给浏览器。
+3. 后续请求浏览器自动带上 \`session_id\` Cookie。
+4. 服务器收到 \`session_id\`，从 Session 存储里查到用户信息。
+
+### 4.2 Session 存储方案对比
+
+| 方案 | 存储 | 优点 | 缺点 |
+|---|---|---|---|
+| 内存 | 进程字典 | 速度快 | 重启丢失、不分布 |
+| 文件 | 磁盘 | 持久化 | 慢、并发差 |
+| Redis | 内存数据库 | 快、可分布、TTL | 要额外部署 |
+| 数据库 | MySQL 等 | 持久、可查询 | 慢 |
+| 签名 Cookie | 客户端 | 无服务端存储 | 大小受限、不能撤销 |
+
+### 4.3 为什么不用纯内存 Session
+
+纯内存 Session（如 \`app.state.sessions = {}\`）的问题：
+- **重启丢失**：服务重启用户全掉线。
+- **不能水平扩展**：A 机器的 Session B 机器读不到。
+- **内存泄漏**：过期 Session 不清理会堆积。
+
+生产方案一般是 Redis Session（\`redis-backed session\`）或 JWT（无状态）。本章重点讲**签名 Cookie Session**——它不需要服务端存储，适合中小项目。
+
+## 五、使用 itsdangerous 签名 Cookie
+
+\`itsdangerous\` 是 Flask 作者开发的签名库，能把数据签名后塞进 Cookie。签名后客户端篡改会被服务器发现，但能读出来。FastAPI 没有内置 Session，但可以用 \`itsdangerous\` 自己实现。
+
+### 5.1 安装
+
+\`\`\`bash
+pip install itsdangerous
+\`\`\`
+
+### 5.2 签名 Cookie Session 实现
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Response、Cookie、HTTPException、status
+from fastapi import FastAPI, Response, Cookie, HTTPException, status
 # 从 pydantic 导入 BaseModel
 from pydantic import BaseModel
+# 从 itsdangerous 导入 URLSafeTimedSerializer（带过期时间的签名器）
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+# 导入 json
+import json
 
-# 创建 FastAPI 应用实例
+# 创建应用
 app = FastAPI()
 
-# 模拟用户库
-# 定义字典 USERS
-USERS = {"alice": {"id": 1, "password": "123456", "role": "admin"}}
+# 签名密钥（实际项目从环境变量读，不能硬编码）
+SECRET_KEY = "your-super-secret-key-change-in-production"
+# 创建签名器
+serializer = URLSafeTimedSerializer(SECRET_KEY, salt="session")
 
-# 定义 Pydantic 数据模型 LoginIn，继承 BaseModel
-class LoginIn(BaseModel):
-    # 字段 username，类型: str
+# Session 数据结构
+class SessionData(BaseModel):
+    user_id: int                # 用户 ID
+    username: str               # 用户名
+    role: str = "user"          # 角色
+
+# ============ 工具函数 ============
+
+# 把 Session 数据签名后写进 Cookie
+def set_session(response: Response, data: SessionData):
+    # 序列化为 dict 再签名（Pydantic v2）
+    payload = data.model_dump()
+    # dumps 返回签名后的字符串
+    signed = serializer.dumps(payload)
+    # 写进 Cookie
+    response.set_cookie(
+        key="session",
+        value=signed,
+        max_age=86400,          # Cookie 1 天过期
+        httponly=True,          # 防 XSS
+        secure=False,           # 生产改 True
+        samesite="lax",
+        path="/",
+    )
+
+# 从 Cookie 读 Session 并验证签名
+def get_session(session_cookie: str | None) -> SessionData | None:
+    if session_cookie is None:
+        return None
+    try:
+        # loads 验证签名+过期时间（max_age 单位秒）
+        data = serializer.loads(session_cookie, max_age=86400)
+        return SessionData(**data)
+    except SignatureExpired:
+        # 签名过期
+        return None
+    except BadSignature:
+        # 签名无效（被篡改）
+        return None
+
+# 清除 Session
+def clear_session(response: Response):
+    response.delete_cookie(key="session", path="/")
+
+# ============ 接口 ============
+
+# 登录：创建 Session
+class LoginRequest(BaseModel):
     username: str
-    # 字段 password，类型: str
     password: str
 
-# 定义 POST 路由：访问 /login 时触发
 @app.post("/login")
-# 定义函数 login，参数: data: LoginIn, response: Response
-def login(data: LoginIn, response: Response):
-    # 定义变量 user，赋值为 USERS.get(data.username)
-    user = USERS.get(data.username)
-    # 1. 校验账号密码
-    # 条件判断：如果 not user or user["password"] != data.password
-    if not user or user["password"] != data.password:
-        # 抛出 HTTPException 异常: status_code=401, detail="账号或密码错误"
-        raise HTTPException(status_code=401, detail="账号或密码错误")
-    # 2. 设置会话 Cookie(实际项目存 session_id,这里简化)
-    # response.set_cookie(
-    response.set_cookie(
-        # 定义变量 key，赋值为 "session_id",
-        key="session_id",
-        # 定义变量 value，赋值为 f"session-{user['id']}",
-        value=f"session-{user['id']}",
-        # 定义变量 max_age，赋值为 3600,
-        max_age=3600,
-        # 定义变量 httponly，赋值为 True,
-        httponly=True,
-        secure=False,      # 开发环境,生产要 True
-        # 定义变量 samesite，赋值为 "lax",
-        samesite="lax",
-    # )
-    )
-    # 返回 {"msg": "登录成功", "user_id": user["id"]}
-    return {"msg": "登录成功", "user_id": user["id"]}
+def login(req: LoginRequest, response: Response):
+    # 模拟校验（实际查数据库 + 密码哈希比对）
+    if req.username != "alice" or req.password != "123456":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
+    # 创建 Session
+    session = SessionData(user_id=1, username=req.username, role="user")
+    set_session(response, session)
+    return {"message": "登录成功", "user": session.model_dump()}
 
-# 定义 GET 路由：访问 /me 时触发
+# 需要登录的接口：读 Session
 @app.get("/me")
-# 定义函数 me，参数: session_id: str | None = Cookie(default=None)
-def me(session_id: str | None = Cookie(default=None)):
-    # 3. 校验 Cookie
-    # 条件判断：如果 not session_id or not session_id.startswith("session-")
-    if not session_id or not session_id.startswith("session-"):
-        # 抛出 HTTPException 异常: status_code=401, detail="未登录"
-        raise HTTPException(status_code=401, detail="未登录")
-    # 定义变量 user_id，赋值为 int(session_id.split("-")[1])
-    user_id = int(session_id.split("-")[1])
-    # 返回 {"user_id": user_id, "role": USERS[[u for u in USERS if USERS[u]["id"]==user_id][0]]["role"]}
-    return {"user_id": user_id, "role": USERS[[u for u in USERS if USERS[u]["id"]==user_id][0]]["role"]}
+def me(session: str | None = Cookie(None)):
+    # 从 Cookie 读 Session
+    data = get_session(session)
+    if data is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="未登录或会话过期")
+    return {"user": data.model_dump()}
 
-# 定义 POST 路由：访问 /logout 时触发
+# 登出：清除 Session
 @app.post("/logout")
-# 定义函数 logout，参数: response: Response
 def logout(response: Response):
-    # 调用 response.delete_cookie()
-    response.delete_cookie("session_id")
-    # 返回 {"msg": "已退出"}
-    return {"msg": "已退出"}
+    clear_session(response)
+    return {"message": "已登出"}
 \`\`\`
 
-## 十一、易错点小结
+**签名 Cookie 的安全性**：
+- 签名用 \`SECRET_KEY\`，客户端无法伪造（除非密钥泄漏）。
+- 客户端能"看到"内容（Base64 编码，不是加密），所以**不要塞敏感数据**（密码、密钥）。
+- 想加密用 \`itsdangerous.URLSafeSerializer\` + 自定义加密，或直接用 JWT。
 
-| 易错点 | 说明 | 正确做法 |
+### 5.3 签名 Cookie 的局限
+
+- **不能主动撤销**：签名有效期内，即使用户"登出"，签名本身仍能被解码。要撤销得改密钥（影响所有人）或维护黑名单。
+- **大小受限**：Cookie 单条 4KB，Session 数据不能太大。
+- **密钥管理**：密钥泄漏=所有 Session 可伪造，密钥要严格保密、定期轮换。
+
+## 六、实战：基于 Cookie 的完整登录状态管理
+
+把前面的知识点整合，做一个有登录、登出、权限检查、自动续期的完整方案。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Response、Cookie、HTTPException、status、Depends
+from fastapi import FastAPI, Response, Cookie, HTTPException, status, Depends
+# 从 pydantic 导入 BaseModel
+from pydantic import BaseModel
+# 从 itsdangerous 导入签名器和异常
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+# 导入时间相关
+from datetime import datetime, timezone
+
+# 创建应用
+app = FastAPI(title="Cookie Session Demo")
+
+# ============ 配置 ============
+SECRET_KEY = "dev-secret-key-change-in-production"
+SESSION_MAX_AGE = 3600  # Session 有效期 1 小时（秒）
+serializer = URLSafeTimedSerializer(SECRET_KEY, salt="auth-session")
+
+# ============ 模型 ============
+class SessionData(BaseModel):
+    user_id: int
+    username: str
+    role: str = "user"
+    login_at: str               # 登录时间
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+# ============ 模拟用户数据库 ============
+USERS = {
+    "alice": {"id": 1, "username": "alice", "password": "secret123", "role": "user"},
+    "admin": {"id": 2, "username": "admin", "password": "admin456", "role": "admin"},
+}
+
+# ============ Session 工具函数 ============
+
+def create_session(response: Response, user: dict) -> SessionData:
+    """登录成功后创建 Session 并写进 Cookie"""
+    session = SessionData(
+        user_id=user["id"],
+        username=user["username"],
+        role=user["role"],
+        login_at=datetime.now(timezone.utc).isoformat(),
+    )
+    signed = serializer.dumps(session.model_dump())
+    response.set_cookie(
+        key="session",
+        value=signed,
+        max_age=SESSION_MAX_AGE,
+        httponly=True,
+        secure=False,             # 生产改 True
+        samesite="lax",
+        path="/",
+    )
+    return session
+
+def read_session(session_cookie: str | None) -> SessionData | None:
+    """从 Cookie 读取并验证 Session"""
+    if not session_cookie:
+        return None
+    try:
+        data = serializer.loads(session_cookie, max_age=SESSION_MAX_AGE)
+        return SessionData(**data)
+    except (BadSignature, SignatureExpired):
+        return None
+
+def require_session(session: str | None = Cookie(None)) -> SessionData:
+    """依赖：要求已登录，否则 401"""
+    data = read_session(session)
+    if data is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="未登录或会话已过期",
+        )
+    return data
+
+def require_admin(session: SessionData = Depends(require_session)) -> SessionData:
+    """依赖：要求管理员"""
+    if session.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="需要管理员权限",
+        )
+    return session
+
+# ============ 接口 ============
+
+# 登录
+@app.post("/login")
+def login(req: LoginRequest, response: Response):
+    user = USERS.get(req.username)
+    if user is None or user["password"] != req.password:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
+    session = create_session(response, user)
+    return {"message": "登录成功", "session": session.model_dump()}
+
+# 登出
+@app.post("/logout")
+def logout(response: Response):
+    response.delete_cookie(key="session", path="/")
+    return {"message": "已登出"}
+
+# 查看当前登录信息（需要登录）
+@app.get("/me")
+def me(session: SessionData = Depends(require_session)):
+    return {"user": session.model_dump()}
+
+# 用户专属接口（需要登录）
+@app.get("/dashboard")
+def dashboard(session: SessionData = Depends(require_session)):
+    return {
+        "message": f"欢迎回来，{session.username}",
+        "login_at": session.login_at,
+    }
+
+# 管理员接口（需要管理员）
+@app.get("/admin/users")
+def admin_list_users(session: SessionData = Depends(require_admin)):
+    # 这里只有 admin 能进来
+    return {"users": list(USERS.values()), "requested_by": session.username}
+
+# 公开接口（不需要登录）
+@app.get("/public")
+def public():
+    return {"message": "这是公开接口，任何人都能访问"}
+\`\`\`
+
+这个方案的特点：
+- **依赖注入**：\`require_session\` 和 \`require_admin\` 作为 Depends，路由声明 \`session: SessionData = Depends(require_session)\` 即可。
+- **分层权限**：\`require_admin\` 依赖 \`require_session\`，复用登录检查。
+- **签名验证**：每次请求都验证签名和过期时间，篡改/过期直接 401。
+- **登出清 Cookie**：虽然签名仍可解码，但浏览器删了 Cookie 就不会再发。
+
+## 七、Cookie 安全注意事项
+
+### 7.1 常见攻击与防御
+
+| 攻击 | 原理 | 防御 |
 |---|---|---|
-| Cookie 存敏感数据 | 客户端可见(除非 httponly 但仍是客户端) | 服务端存,只发 ID |
-| 不设 httponly | XSS 可偷 Cookie | 必开 httponly |
-| 不设 secure | 中间人可窃听 | 生产必开 secure |
-| samesite=none 不配 secure | 浏览器拒绝 | none 必配 secure |
-| Session 存大量数据 | Cookie 超限截断 | 服务端 Session 存储 |
-| JWT 存 Cookie 还前端读 | 失去 httponly 保护 | 二选一,理清场景 |
-| 删 Cookie 属性不一致 | 删不掉 | domain/path 要对齐 |
-| 以为 Cookie 跨域可用 | 同源策略 | 跨域用 JWT 或 CORS |
+| **XSS 偷 Cookie** | JS 读 \`document.cookie\` 发给攻击者 | \`HttpOnly=True\` |
+| **中间人窃听** | HTTP 明文传输被抓包 | \`Secure=True\`（仅 HTTPS） |
+| **CSRF** | 攻击者诱导用户点链接发跨站请求 | \`SameSite=Lax/Strict\` + CSRF Token |
+| **Cookie 篡改** | 客户端改 Cookie 值 | 服务端签名（itsdangerous / JWT） |
+| **会话固定** | 攻击者预设 session_id | 登录后重新生成 session_id |
+| **会话劫持** | 偷到 session_id 冒充 | HTTPS + IP/UA 绑定 + 短有效期 |
 
-## 十二、设计思想
+### 7.2 安全配置清单
 
-Cookie 和 Session 是 Web 有状态化的基石。理解它们的本质:Cookie 是客户端存储 + 自动携带,Session 是服务端存储 + ID 映射。JWT 的兴起让 API 走向无状态化,但浏览器场景里 Session 仍有一席之地。选择技术要看场景,不要盲从。
-`,
+\`\`\`python
+# 安全 Cookie 配置模板
+response.set_cookie(
+    key="session",
+    value=signed_value,
+    max_age=3600,              # 短有效期，敏感操作要重新登录
+    httponly=True,             # 必加：防 XSS
+    secure=True,               # 生产必加：仅 HTTPS
+    samesite="lax",            # 或 strict，防 CSRF
+    path="/",
+    # domain 不设，默认当前域名，避免子域共享风险
+)
+\`\`\`
+
+### 7.3 Session 续期策略
+
+签名 Cookie Session 默认过期就失效。要实现"活跃用户续期"，可以在中间件里重新签名下发：
+
+\`\`\`python
+# 从 fastapi 导入 Request
+from fastapi import Request
+
+# 续期中间件：每次请求都续期
+@app.middleware("http")
+async def renew_session(request: Request, call_next):
+    response = await call_next(request)
+    # 读取当前 Cookie
+    session_cookie = request.cookies.get("session")
+    if session_cookie:
+        try:
+            # 重新签名（新的过期时间）
+            data = serializer.loads(session_cookie, max_age=SESSION_MAX_AGE)
+            new_signed = serializer.dumps(data)
+            response.set_cookie(
+                key="session",
+                value=new_signed,
+                max_age=SESSION_MAX_AGE,
+                httponly=True,
+                samesite="lax",
+                path="/",
+            )
+        except (BadSignature, SignatureExpired):
+            pass  # 过期/无效就不续
+    return response
+\`\`\`
+
+这样活跃用户的 Session 会一直续期，不活跃的过 1 小时自动失效。
+
+## 八、Cookie vs Session vs Token 对比
+
+| 维度 | Cookie（纯） | Session（服务端） | Token（JWT） |
+|---|---|---|---|
+| 存储位置 | 客户端 | 服务端 | 客户端 |
+| 状态 | 无状态 | 有状态 | 无状态 |
+| 撤销 | 改 Cookie | 删 Session 记录 | 难（要黑名单） |
+| 扩展性 | 好 | 差（共享存储） | 好 |
+| 大小 | 4KB 限制 | 无限 | 4KB 限制 |
+| 安全 | 签名才安全 | 较好 | 签名+可选加密 |
+
+选择建议：
+- **小项目 / 单机**：签名 Cookie Session（本章方案）。
+- **中大型 / 分布式**：Redis Session。
+- **微服务 / 跨域 / 移动端**：JWT。
+- **最高安全**：服务端 Session + CSRF Token + HTTPS。
+
+## 九、本章小结
+
+Cookie 和 Session 是 Web 登录的基础设施。掌握本章后你能：
+- 用 \`Cookie()\` 读请求 Cookie，用 \`response.set_cookie()\` 写响应 Cookie。
+- 配置 \`HttpOnly\`、\`Secure\`、\`SameSite\` 三大安全属性。
+- 用 \`itsdangerous\` 实现无服务端存储的签名 Cookie Session。
+- 用依赖注入封装"需要登录"和"需要管理员"权限检查。
+- 识别和防御 XSS、CSRF、会话固定等常见攻击。
+
+下一章我们学习流式响应和文件下载，处理大文件、实时数据等场景。
+`
   },
+
+  // ============================================================
+  // 第 20 章：流式响应与文件下载
+  // ============================================================
   {
-    id: "resp-stream",
+    id: "fa-streaming",
     group: "响应处理",
     icon: "🌊",
     title: "流式响应与文件下载",
-    content: `
+    content: `# 流式响应与文件下载
+
 ## 一、为什么需要流式响应
 
-普通响应是一次性把整个响应体生成好再发送。问题:
+前面章节的接口都是"一次性返回完整 JSON"。但当数据量大、或数据是持续生成的时候，一次性返回会有问题：
 
-1. **大文件占内存**:1GB 文件全读进内存再 return,内存爆炸。
-2. **实时数据延迟**:AI 流式回答、日志推送,要边生成边发,不能等全部完成。
-3. **长任务反馈**:导出大报表,边算边吐,用户看到进度。
+1. **内存爆炸**：导出 100 万行 CSV，全部读进内存再返回，服务器可能 OOM。
+2. **首字节延迟高**：客户端要等服务器把全部数据准备好才能收到第一个字节，体验差。
+3. **无法实时推送**：如日志流、SSE（Server-Sent Events）、AI 生成内容（ChatGPT 式打字效果），需要边生成边发。
+4. **大文件下载**：1GB 文件全部读进内存再发，并发几个就崩了。
 
-流式响应解决这些:**数据分块产出,边产边发**,不一次性占用内存,客户端能渐进式收到数据。
+流式响应（Streaming Response）解决这些问题：**数据分块发送，生成一块发一块，不用等全部就绪**。FastAPI 提供了 \`StreamingResponse\` 和 \`FileResponse\` 两个核心工具。
 
 ## 二、StreamingResponse 流式响应
 
-\`StreamingResponse\` 接收一个**迭代器**(生成器/列表),逐块产出内容:
+\`StreamingResponse\` 接受一个**生成器函数**（或任何可迭代对象），逐块产出数据并发送给客户端。
+
+### 2.1 基础：生成器 yield 数据
 
 \`\`\`python
 # 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
 # 从 fastapi.responses 导入 StreamingResponse
 from fastapi.responses import StreamingResponse
+# 导入 time 用于模拟耗时
+import time
 
-# 创建 FastAPI 应用实例
+# 创建应用
 app = FastAPI()
 
-# 定义 GET 路由：访问 /stream 时触发
-@app.get("/stream")
-# 定义函数 stream，参数: 
-def stream():
-    # 生成器函数:逐块产出
-    # 定义函数 gen，参数: 
-    def gen():
-        # 遍历 range(5)，取 i
-        for i in range(5):
-            # yield 一块数据
-            # 生成值: f"chunk-{i}\\n"
-            yield f"chunk-{i}\\n"
-    # media_type 决定 Content-Type
-    # 返回 StreamingResponse(gen(), media_type="text/plain")
-    return StreamingResponse(gen(), media_type="text/plain")
+# 生成器函数：逐行 yield 数据
+def generate_numbers():
+    """生成 1 到 5 的数字，每个间隔 1 秒"""
+    for i in range(1, 6):
+        # 模拟耗时计算
+        time.sleep(1)
+        # yield 一块数据（必须是 bytes 或 str）
+        yield f"数字 {i}\\n".encode("utf-8")
+
+# 流式接口：客户端会逐块收到数据，不用等全部生成
+@app.get("/stream/numbers")
+def stream_numbers():
+    return StreamingResponse(
+        content=generate_numbers(),       # 传入生成器
+        media_type="text/plain",          # 响应类型：纯文本
+    )
 \`\`\`
 
-- \`gen()\` 是生成器,每次 \`yield\` 产出一块。
-- FastAPI 会把每块立即 flush 给客户端,不等所有块产出。
-- \`media_type\` 设置 \`Content-Type\` 头。
+访问 \`GET /stream/numbers\`，客户端会每秒收到一行 \`数字 1\\n\`、\`数字 2\\n\`...，而不是等 5 秒后一次性收到全部。这就是流式的核心优势——**首字节延迟低**。
 
-## 三、大文件下载(分块传输)
+**关键点**：
+- 生成器 \`yield\` 的每一块都会立即发送。
+- \`media_type\` 要正确设置，决定浏览器怎么处理（文本、CSV、二进制等）。
+- 生成器结束（\`return\` 或抛异常）时响应结束。
 
-直接 \`return file\` 会把整个文件读进内存。用流式响应分块读取:
+### 2.2 流式 JSON：边生成边发
 
 \`\`\`python
-# 定义 GET 路由：访问 /download/{filename} 时触发
-@app.get("/download/{filename}")
-# 定义函数 download，参数: filename: str
-def download(filename: str):
-    # 定义函数 iterfile，参数: 
-    def iterfile():
-        # 8KB 一块读取,避免一次性读全文件
-        # 使用上下文管理器 open(f"/data/{filename}", "rb")，赋值为 f
-        with open(f"/data/{filename}", "rb") as f:
-            while chunk := f.read(8192):  # 海象运算符,3.8+
-                # 生成值: chunk
-                yield chunk
-    # 返回 StreamingResponse(iterfile(), media_type="application/octet-stream")
-    return StreamingResponse(iterfile(), media_type="application/octet-stream")
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+# 从 fastapi.responses 导入 StreamingResponse
+from fastapi.responses import StreamingResponse
+# 导入 json
+import json
+# 导入 time
+import time
+
+# 创建应用
+app = FastAPI()
+
+# 流式返回 JSON 数组：[{"id":1}, {"id":2}, ...]
+def generate_json_array():
+    """生成 JSON 数组的流式版本"""
+    # 先 yield 数组开始括号
+    yield b"["
+    for i in range(1, 6):
+        if i > 1:
+            # 元素之间用逗号分隔
+            yield b","
+        # yield 单个对象
+        item = {"id": i, "name": f"item-{i}", "ts": time.time()}
+        yield json.dumps(item).encode("utf-8")
+        # 模拟耗时
+        time.sleep(0.5)
+    # 最后 yield 数组结束括号
+    yield b"]"
+
+@app.get("/stream/json")
+def stream_json():
+    return StreamingResponse(
+        content=generate_json_array(),
+        media_type="application/json",
+    )
 \`\`\`
 
-- \`f.read(8192)\` 每次读 8KB。
-- \`:=\` 海象运算符:赋值同时判断,空字节时停止。
-- 内存占用恒定(只有一块在内存),适合大文件。
+客户端最终收到的还是合法 JSON 数组，但服务端是分块发送的。这种技巧在"返回大量数据但客户端要 JSON 格式"时有用。
 
-## 四、FileResponse 直接返回文件
+## 三、大文件分块下载
 
-\`FileResponse\` 专门处理文件,自动设置 content-type、支持断点续传:
+大文件下载是流式响应的经典场景。**不要 \`open().read()\` 全读进内存**，要分块读取、分块发送。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+# 从 fastapi.responses 导入 StreamingResponse
+from fastapi.responses import StreamingResponse
+# 导入 os 用于文件操作
+import os
+
+# 创建应用
+app = FastAPI()
+
+# 分块读取文件的生成器
+def file_iterator(file_path: str, chunk_size: int = 8192):
+    """
+    分块读取文件
+    :param file_path: 文件路径
+    :param chunk_size: 每块字节数，默认 8KB
+    """
+    # 用 with 确保文件关闭
+    with open(file_path, "rb") as f:
+        # 循环读取，直到文件结束
+        while True:
+            # 读取一块
+            chunk = f.read(chunk_size)
+            # 读到空说明文件结束
+            if not chunk:
+                break
+            # yield 这一块
+            yield chunk
+
+# 大文件下载接口
+@app.get("/download/{filename}")
+def download_file(filename: str):
+    # 拼接文件路径（实际项目要做路径校验，防目录穿越）
+    file_path = os.path.join("files", filename)
+    # 检查文件是否存在
+    if not os.path.exists(file_path):
+        return {"error": "文件不存在"}
+    # 获取文件大小（可选，设置 Content-Length）
+    file_size = os.path.getsize(file_path)
+    # 返回流式响应
+    return StreamingResponse(
+        content=file_iterator(file_path, chunk_size=64 * 1024),  # 64KB 一块
+        media_type="application/octet-stream",                   # 二进制流
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',  # 触发下载
+            "Content-Length": str(file_size),                    # 文件大小
+        },
+    )
+\`\`\`
+
+**关键点**：
+- \`chunk_size\` 一般 8KB-64KB，太小开销大，太大占内存。
+- \`Content-Disposition: attachment\` 让浏览器下载而非在线预览。
+- \`Content-Length\` 让浏览器显示下载进度条。
+- **路径校验**：\`filename\` 来自用户输入，要防 \`../../etc/passwd\` 这种目录穿越攻击。
+
+### 3.1 路径安全校验
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、HTTPException
+from fastapi import FastAPI, HTTPException
+# 从 pathlib 导入 Path
+from pathlib import Path
+# 导入 os
+import os
+
+app = FastAPI()
+
+# 允许的文件根目录
+ALLOWED_DIR = Path("files").resolve()
+
+def safe_join(base: Path, filename: str) -> Path | None:
+    """
+    安全拼接路径，防止目录穿越
+    """
+    # 解析目标完整路径
+    target = (base / filename).resolve()
+    # 检查目标是否在允许的目录内
+    try:
+        target.relative_to(base)
+    except ValueError:
+        # 不在允许目录内，拒绝
+        return None
+    return target
+
+@app.get("/safe-download/{filename}")
+def safe_download(filename: str):
+    file_path = safe_join(ALLOWED_DIR, filename)
+    if file_path is None or not file_path.exists():
+        raise HTTPException(status_code=404, detail="文件不存在")
+    # ... 流式返回
+    return {"file": str(file_path)}
+\`\`\`
+
+\`Path.resolve()\` 会解析 \`..\` 等，再和 \`base\` 比对，确保目标在允许范围内。
+
+## 四、FileResponse 文件响应
+
+\`FileResponse\` 是 FastAPI 专门为"返回文件"设计的响应类，比 \`StreamingResponse\` 手写文件迭代更方便，内部用 ASGI 的文件发送优化，性能更好。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、HTTPException
+from fastapi import FastAPI, HTTPException
+# 从 fastapi.responses 导入 FileResponse
+from fastapi.responses import FileResponse
+# 从 pathlib 导入 Path
+from pathlib import Path
+
+# 创建应用
+app = FastAPI()
+
+# 文件目录
+FILES_DIR = Path("files")
+
+# FileResponse 自动处理：流式读取、Content-Length、ETag、Last-Modified
+@app.get("/file/{filename}")
+def get_file(filename: str):
+    file_path = FILES_DIR / filename
+    # 检查文件存在
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="文件不存在")
+    # FileResponse 参数：
+    return FileResponse(
+        path=str(file_path),                # 文件路径（必填）
+        media_type="application/octet-stream",  # 媒体类型
+        filename=filename,                  # 下载时的文件名（触发 Content-Disposition）
+        # headers=None,                    # 额外头
+        # stat_result=None,                # 文件 stat 信息（缓存用）
+    )
+\`\`\`
+
+\`FileResponse\` 的优势：
+- 自动设置 \`Content-Length\`、\`Last-Modified\`、\`ETag\`。
+- 用 ASGI 的 \`send_file\` 优化（零拷贝，性能最好）。
+- 设 \`filename\` 自动生成 \`Content-Disposition: attachment\` 头。
+
+### 4.1 media_type 与 filename 的作用
 
 \`\`\`python
 # 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
 # 从 fastapi.responses 导入 FileResponse
 from fastapi.responses import FileResponse
+# 从 pathlib 导入 Path
+from pathlib import Path
 
-# 创建 FastAPI 应用实例
 app = FastAPI()
+FILES_DIR = Path("files")
 
-# 定义 GET 路由：访问 /file/{filename} 时触发
-@app.get("/file/{filename}")
-# 定义函数 get_file，参数: filename: str
-def get_file(filename: str):
-    # FileResponse 自动处理:
-    # 1. 设置 Content-Type(根据扩展名)
-    # 2. 设置 Content-Length
-    # 3. 支持 Range 请求(断点续传)
-    # 4. 流式读取,不占内存
-    # 返回 FileResponse(
+# 图片预览：media_type 设图片类型，浏览器在线显示而非下载
+@app.get("/preview/image/{filename}")
+def preview_image(filename: str):
+    file_path = FILES_DIR / filename
+    # media_type 设为 image/jpeg，浏览器内联显示
+    # 不设 filename，就不会触发 attachment，变成 inline
     return FileResponse(
-        # 定义变量 path，赋值为 f"/data/{filename}",
-        path=f"/data/{filename}",
-        filename=filename,        # 触发浏览器下载(而不是预览)
-        media_type="application/pdf",  # 可选,不传会自动推断
-    # )
+        path=str(file_path),
+        media_type="image/jpeg",        # 浏览器识别为图片，内联显示
+    )
+
+# 强制下载：设 filename，触发 attachment
+@app.get("/download/image/{filename}")
+def download_image(filename: str):
+    file_path = FILES_DIR / filename
+    return FileResponse(
+        path=str(file_path),
+        media_type="image/jpeg",        # 类型仍是图片
+        filename=filename,              # 设了 filename → attachment → 下载
+    )
+
+# 不同类型文件的 media_type
+@app.get("/file-typed/{filename}")
+def file_typed(filename: str):
+    file_path = FILES_DIR / filename
+    # 根据扩展名判断 media_type
+    ext = file_path.suffix.lower()
+    media_types = {
+        ".pdf": "application/pdf",
+        ".jpg": "image/jpeg",
+        ".png": "image/png",
+        ".mp4": "video/mp4",
+        ".mp3": "audio/mpeg",
+        ".csv": "text/csv",
+        ".zip": "application/zip",
+    }
+    media_type = media_types.get(ext, "application/octet-stream")
+    return FileResponse(
+        path=str(file_path),
+        media_type=media_type,
+        filename=filename,
     )
 \`\`\`
 
-- \`filename\` 参数设置 \`Content-Disposition: attachment\`,浏览器会下载而不是预览。
-- 不传 \`filename\` 则默认 inline(浏览器尝试预览)。
-- FileResponse 是文件下载的**首选**,功能比 StreamingResponse 全(自动 Range 支持)。
+## 五、Content-Disposition 头详解
 
-## 五、Content-Disposition 控制下载文件名
+\`Content-Disposition\` 控制浏览器如何处理响应体：
 
+- \`inline\`：内联显示（默认），浏览器能渲染就渲染（图片、PDF、文本）。
+- \`attachment; filename="xxx"\`：强制下载，\`filename\` 是建议的保存名。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Response
+from fastapi import FastAPI, Response
+# 从 fastapi.responses 导入 StreamingResponse
+from fastapi.responses import StreamingResponse
+
+app = FastAPI()
+
+# inline：浏览器内联显示
+@app.get("/inline")
+def inline():
+    content = b"<h1>Hello</h1><p>这是一段 HTML</p>"
+    return StreamingResponse(
+        content=iter([content]),
+        media_type="text/html",
+        headers={"Content-Disposition": "inline"},
+    )
+
+# attachment：强制下载
+@app.get("/attachment")
+def attachment():
+    content = b"hello world"
+    return StreamingResponse(
+        content=iter([content]),
+        media_type="text/plain",
+        headers={"Content-Disposition": 'attachment; filename="hello.txt"'},
+    )
+
+# 中文文件名：用 RFC 5987 编码
+from urllib.parse import quote
+
+@app.get("/chinese-name")
+def chinese_name():
+    content = b"你好"
+    filename = "你好.txt"
+    # 中文文件名要用 RFC 5987 编码，避免乱码
+    encoded = quote(filename)
+    disposition = f"attachment; filename*=UTF-8''{encoded}"
+    return StreamingResponse(
+        content=iter([content]),
+        media_type="text/plain",
+        headers={"Content-Disposition": disposition},
+    )
 \`\`\`
-Content-Disposition: attachment; filename="report.pdf"
-\`\`\`
 
-- \`attachment\`:浏览器下载(弹出保存对话框)。
-- \`inline\`:浏览器内联显示(能预览就预览)。
-- \`filename\`:建议的保存文件名。
+中文文件名的坑：直接写 \`filename="你好.txt"\` 在某些浏览器会乱码。规范做法是 \`filename*=UTF-8''<url编码>\` 格式。
 
-中文文件名要用 RFC 5987 编码:
-\`\`\`
-Content-Disposition: attachment; filename*=UTF-8''%E6%8A%A5%E5%91%8A.pdf
-\`\`\`
+## 六、Response 直接返回原始内容
 
-FileResponse 的 \`filename\` 参数会自动处理这个编码。
-
-## 六、各类 Response 对比
-
-| Response 类 | 用途 | Content-Type |
-|---|---|---|
-| JSONResponse | 默认,返回 JSON | application/json |
-| HTMLResponse | 返回 HTML | text/html |
-| PlainTextResponse | 纯文本 | text/plain |
-| RedirectResponse | 重定向 | - |
-| StreamingResponse | 流式(生成器) | 自定义 |
-| FileResponse | 文件下载 | 按扩展名 |
-| Response | 原始(自定义) | 自定义 |
-
-## 七、自定义 Response
-
-最底层的 \`Response\` 直接构造:
+除了专门的响应类，还可以用基础 \`Response\` 完全控制返回内容。
 
 \`\`\`python
 # 从 fastapi 导入 FastAPI
@@ -1097,177 +2095,516 @@ from fastapi import FastAPI
 # 从 fastapi.responses 导入 Response
 from fastapi.responses import Response
 
-# 创建 FastAPI 应用实例
 app = FastAPI()
 
-# 定义 GET 路由：访问 /xml 时触发
+# 返回原始字节
+@app.get("/raw")
+def raw():
+    # Response 直接返回 bytes，完全自定义
+    return Response(
+        content=b"raw bytes content",
+        media_type="text/plain",
+    )
+
+# 返回 XML
 @app.get("/xml")
-# 定义函数 xml，参数: 
 def xml():
-    # 定义变量 content，赋值为 "<book><title>Python</title></book>"
-    content = "<book><title>Python</title></book>"
-    # 返回 Response(content=content, media_type="application/xml")
-    return Response(content=content, media_type="application/xml")
+    xml_content = '<?xml version="1.0"?><root><item>hello</item></root>'
+    return Response(
+        content=xml_content.encode("utf-8"),
+        media_type="application/xml",
+    )
+
+# 返回自定义状态码和头
+@app.get("/custom")
+def custom():
+    return Response(
+        content=b"created",
+        status_code=201,
+        media_type="text/plain",
+        headers={"X-Custom": "value"},
+    )
 \`\`\`
 
-返回 XML、CSV、图片等非 JSON 内容时用。
+\`Response\` 是所有响应类的基类，\`JSONResponse\`、\`HTMLResponse\`、\`PlainTextResponse\` 都继承自它。需要完全控制时直接用 \`Response\`。
 
-## 八、SSE(Server-Sent Events)流式推送
+## 七、PlainTextResponse、HTMLResponse、RedirectResponse
 
-SSE 是服务器单向推送(服务器→客户端),用 \`text/event-stream\`:
+FastAPI 提供了几个常用响应类快捷方式。
 
 \`\`\`python
-# 导入 asyncio 模块
-import asyncio
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+# 从 fastapi.responses 导入各种响应类
+from fastapi.responses import (
+    PlainTextResponse,    # 纯文本
+    HTMLResponse,         # HTML
+    RedirectResponse,     # 重定向
+    JSONResponse,         # JSON
+    Response,             # 基础
+)
+
+app = FastAPI()
+
+# PlainTextResponse：纯文本
+@app.get("/text", response_class=PlainTextResponse)
+def text():
+    # Content-Type: text/plain; charset=utf-8
+    return "这是一段纯文本，不会被当 HTML 解析"
+
+# HTMLResponse：HTML
+@app.get("/html", response_class=HTMLResponse)
+def html():
+    # Content-Type: text/html; charset=utf-8
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head><title>测试</title></head>
+    <body><h1>你好，HTML</h1></body>
+    </html>
+    """
+
+# RedirectResponse：重定向
+@app.get("/old-page")
+def old_page():
+    # 307 临时重定向到 /new-page
+    return RedirectResponse(url="/new-page", status_code=307)
+
+@app.get("/new-page")
+def new_page():
+    return {"message": "这是新页面"}
+
+# 永久重定向（301）
+@app.get("/legacy")
+def legacy():
+    return RedirectResponse(url="/new-page", status_code=301)
+
+# JSONResponse：手动返回 JSON（带自定义状态码）
+@app.get("/error")
+def error():
+    return JSONResponse(
+        status_code=418,
+        content={"error": "I'm a teapot", "code": 418},
+    )
+\`\`\`
+
+**重定向状态码**：
+- 301：永久重定向（SEO 友好，旧 URL 权重转移）。
+- 302：临时重定向。
+- 307：临时重定向，保持原请求方法（POST 还是 POST）。
+- 308：永久重定向，保持原请求方法。
+
+## 八、Server-Sent Events（SSE）实时推送
+
+SSE 是流式响应的重要应用：服务器持续推送事件给浏览器，浏览器用 \`EventSource\` API 接收。ChatGPT 的打字效果就是 SSE。
+
+\`\`\`python
 # 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
 # 从 fastapi.responses 导入 StreamingResponse
 from fastapi.responses import StreamingResponse
+# 导入 time 和 json
+import time
+import json
 
-# 创建 FastAPI 应用实例
 app = FastAPI()
 
-# 定义 GET 路由：访问 /sse 时触发
+# SSE 生成器
+def sse_generator():
+    """
+    SSE 格式：每个事件用 data: 开头，空行结束
+    """
+    for i in range(1, 11):
+        # 构造事件数据
+        event_data = {"count": i, "message": f"第 {i} 条消息"}
+        # SSE 格式：data: <内容>\\n\\n
+        yield f"data: {json.dumps(event_data)}\\n\\n"
+        # 间隔 1 秒
+        time.sleep(1)
+    # 发送结束事件
+    yield "data: [DONE]\\n\\n"
+
+# SSE 接口
 @app.get("/sse")
-# 定义异步函数 sse，参数: 
-async def sse():
-    # 定义异步函数 event_stream，参数: 
-    async def event_stream():
-        # 遍历 range(5)，取 i
-        for i in range(5):
-            # SSE 格式:每条消息以 "data: " 开头,\\n\\n 结尾
-            # 生成值: f"data: 消息 {i}\\n\\n"
-            yield f"data: 消息 {i}\\n\\n"
-            await asyncio.sleep(1)  # 模拟异步等待
-    # 返回 StreamingResponse(event_stream(), media_type="text/event-stream")
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
+def sse():
+    return StreamingResponse(
+        content=sse_generator(),
+        media_type="text/event-stream",    # SSE 专用 media_type
+        headers={
+            "Cache-Control": "no-cache",   # 不缓存
+            "Connection": "keep-alive",    # 保持连接
+        },
+    )
 \`\`\`
 
-- 前端用 \`EventSource\` API 接收。
-- 适合服务器推送(通知、实时更新),比 WebSocket 简单(单向即可)。
-- 注意是 async 生成器,要 \`yield\` + \`await\`。
-
-## 九、Range 请求(断点续传)
-
-下载大文件中断后,客户端可以用 Range 头请求剩余部分。FileResponse 自动支持:
-
-\`\`\`
-GET /file/big.zip
-Range: bytes=1048576-  # 从 1MB 处开始
-
-响应:
-HTTP/1.1 206 Partial Content
-Content-Range: bytes 1048576-10485759/10485760
-Content-Length: 9437184
+前端用 \`EventSource\` 接收：
+\`\`\`javascript
+const es = new EventSource("/sse");
+es.onmessage = (e) => {
+    if (e.data === "[DONE]") {
+        es.close();
+        return;
+    }
+    const data = JSON.parse(e.data);
+    console.log(data);
+};
 \`\`\`
 
-- 状态码 206(Partial Content)表示部分内容。
-- FileResponse 自动处理这些,无需手动写。
-- 流媒体、下载工具(迅雷/IDM)靠这个实现多线程断点续传。
+SSE 比 WebSocket 简单（单向、基于 HTTP），适合"服务器推、客户端只收"的场景：通知、日志、AI 流式回复。
 
-如果手动实现 Range 支持很复杂,所以文件下载**优先用 FileResponse**。
+## 九、实战：CSV 导出 API + 图片下载 API
 
-## 十、完整示例:文件下载接口
+把流式响应和文件下载结合起来，做两个生产级接口。
+
+### 9.1 CSV 导出（流式生成，不占内存）
 
 \`\`\`python
-# 从 fastapi 导入 FastAPI, HTTPException
-from fastapi import FastAPI, HTTPException
-# 从 fastapi.responses 导入 FileResponse, StreamingResponse
-from fastapi.responses import FileResponse, StreamingResponse
-# 导入 os 模块
-import os
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+# 从 fastapi.responses 导入 StreamingResponse
+from fastapi.responses import StreamingResponse
+# 导入 csv 和 io
+import csv
+import io
+# 导入时间
+from datetime import datetime, timezone
 
-# 创建 FastAPI 应用实例
 app = FastAPI()
 
-# 定义变量 DATA_DIR，赋值为 "/data"
-DATA_DIR = "/data"
+# 模拟数据库查询（实际用 SQLAlchemy）
+def fetch_users(limit: int = 100000):
+    """模拟从数据库分批取用户"""
+    for i in range(1, limit + 1):
+        yield {
+            "id": i,
+            "username": f"user_{i}",
+            "email": f"user_{i}@example.com",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
 
-# 定义 GET 路由：访问 /download/{filename} 时触发
-@app.get("/download/{filename}")
-# 定义函数 download，参数: filename: str
-def download(filename: str):
-    # 定义变量 filepath，赋值为 os.path.join(DATA_DIR, filename)
-    filepath = os.path.join(DATA_DIR, filename)
-    # 1. 校验文件存在
-    # 条件判断：如果 not os.path.exists(filepath)
-    if not os.path.exists(filepath):
-        # 抛出 HTTPException 异常: status_code=404, detail="文件不存在"
-        raise HTTPException(status_code=404, detail="文件不存在")
-    # 2. 防止路径穿越(如 ../../etc/passwd)
-    # 条件判断：如果 not os.path.abspath(filepath).startswith(os.path.abspath(DATA_DIR))
-    if not os.path.abspath(filepath).startswith(os.path.abspath(DATA_DIR)):
-        # 抛出 HTTPException 异常: status_code=403, detail="禁止访问"
-        raise HTTPException(status_code=403, detail="禁止访问")
-    # 3. 用 FileResponse 返回
-    # filename 参数触发下载并设置建议文件名
-    # 返回 FileResponse(
-    return FileResponse(
-        # 定义变量 path，赋值为 filepath,
-        path=filepath,
-        # 定义变量 filename，赋值为 filename,
-        filename=filename,
-    # )
-    )
+# CSV 流式生成器
+def generate_csv():
+    """
+    流式生成 CSV，每行 yield 一次
+    """
+    # 在内存中创建 StringIO 写 CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+    # 写表头
+    writer.writerow(["ID", "用户名", "邮箱", "注册时间"])
+    # yield 表头（带 UTF-8 BOM，让 Excel 正确识别中文）
+    yield b'\\xef\\xbb\\xbf' + output.getvalue().encode("utf-8")
+    # 清空 buffer 准备写数据行
+    output.seek(0)
+    output.truncate(0)
+    # 分批写数据
+    count = 0
+    for user in fetch_users(limit=1000):
+        writer.writerow([user["id"], user["username"], user["email"], user["created_at"]])
+        count += 1
+        # 每攒 100 行 yield 一次，平衡性能和内存
+        if count % 100 == 0:
+            yield output.getvalue().encode("utf-8")
+            output.seek(0)
+            output.truncate(0)
+    # 写剩余的行
+    if output.getvalue():
+        yield output.getvalue().encode("utf-8")
 
-# 流式版本(自定义控制更多)
-# 定义 GET 路由：访问 /stream/{filename} 时触发
-@app.get("/stream/{filename}")
-# 定义函数 stream，参数: filename: str
-def stream(filename: str):
-    # 定义变量 filepath，赋值为 os.path.join(DATA_DIR, filename)
-    filepath = os.path.join(DATA_DIR, filename)
-    # 条件判断：如果 not os.path.exists(filepath)
-    if not os.path.exists(filepath):
-        # 抛出 HTTPException 异常: status_code=404, detail="文件不存在"
-        raise HTTPException(status_code=404, detail="文件不存在")
-
-    # 定义函数 iterfile，参数: 
-    def iterfile():
-        # 使用上下文管理器 open(filepath, "rb")，赋值为 f
-        with open(filepath, "rb") as f:
-            # 当 chunk := f.read(8192) 为真时循环
-            while chunk := f.read(8192):
-                # 生成值: chunk
-                yield chunk
-
-    # 返回 StreamingResponse(
+# CSV 导出接口
+@app.get("/export/users.csv")
+def export_users():
     return StreamingResponse(
-        # 调用 iterfile()
-        iterfile(),
-        # 定义变量 media_type，赋值为 "application/octet-stream",
-        media_type="application/octet-stream",
-        # 定义字典 headers
+        content=generate_csv(),
+        media_type="text/csv",
         headers={
-            # 手动设置下载文件名
-            # "Content-Disposition": f'attachment; filename="{fi
-            "Content-Disposition": f'attachment; filename="{filename}"',
-        # },
+            # 强制下载，文件名 users.csv
+            "Content-Disposition": 'attachment; filename="users.csv"',
+            # 不缓存
+            "Cache-Control": "no-cache",
         },
-    # )
     )
 \`\`\`
 
-**关键点**:
-- 路径校验防穿越(\`os.path.abspath\` 检查)。
-- FileResponse 自动 Range,StreamingResponse 不自动。
-- 大文件用 StreamingResponse 控制块大小。
+**要点**：
+- 用生成器边查数据库边写 CSV，不把全部数据加载进内存。
+- 每攒 100 行 yield 一次，减少 IO 次数。
+- UTF-8 BOM（\`\\xef\\xbb\\xbf\`）让 Excel 正确显示中文。
+- \`Content-Disposition: attachment\` 触发下载。
 
-## 十一、易错点小结
+### 9.2 图片下载 API（带缩略图和水印）
 
-| 易错点 | 说明 | 正确做法 |
+\`\`\`python
+# 从 fastapi 导入 FastAPI、HTTPException、Query
+from fastapi import FastAPI, HTTPException, Query
+# 从 fastapi.responses 导入 FileResponse、StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
+# 从 pathlib 导入 Path
+from pathlib import Path
+# 导入 io
+import io
+
+app = FastAPI()
+
+# 图片存储目录
+IMAGES_DIR = Path("images")
+IMAGES_DIR.mkdir(exist_ok=True)
+
+# 模拟创建一张测试图片（实际项目图片是用户上传的）
+def ensure_sample_image():
+    """确保有一张示例图片"""
+    sample = IMAGES_DIR / "sample.jpg"
+    if not sample.exists():
+        # 用 Pillow 生成一张图（需 pip install Pillow）
+        try:
+            from PIL import Image, ImageDraw
+            img = Image.new("RGB", (400, 300), color="lightblue")
+            draw = ImageDraw.Draw(img)
+            draw.text((100, 150), "Sample Image", fill="black")
+            img.save(sample, "JPEG")
+        except ImportError:
+            # 没 Pillow 就写个占位字节
+            sample.write_bytes(b"fake image data")
+    return sample
+
+# 原图下载
+@app.get("/download/image/{name}")
+def download_image(name: str):
+    file_path = IMAGES_DIR / name
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="图片不存在")
+    return FileResponse(
+        path=str(file_path),
+        media_type="image/jpeg",
+        filename=name,                  # 触发下载
+    )
+
+# 图片预览（内联显示）
+@app.get("/preview/image/{name}")
+def preview_image(name: str):
+    file_path = IMAGES_DIR / name
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="图片不存在")
+    return FileResponse(
+        path=str(file_path),
+        media_type="image/jpeg",
+        # 不设 filename，浏览器内联显示
+    )
+
+# 动态缩略图（用 Pillow 实时生成，流式返回）
+@app.get("/thumbnail/{name}")
+def thumbnail(name: str, size: int = Query(128, ge=32, le=512)):
+    """
+    动态生成缩略图
+    :param name: 图片名
+    :param size: 缩略图边长，32-512
+    """
+    file_path = IMAGES_DIR / name
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="图片不存在")
+    try:
+        from PIL import Image
+    except ImportError:
+        raise HTTPException(status_code=500, detail="服务器未安装 Pillow")
+
+    # 打开原图
+    img = Image.open(file_path)
+    # 生成缩略图（保持比例）
+    img.thumbnail((size, size))
+    # 存进内存
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=85)
+    buf.seek(0)
+    # 流式返回
+    return StreamingResponse(
+        content=iter([buf.getvalue()]),
+        media_type="image/jpeg",
+        headers={
+            "Cache-Control": "public, max-age=86400",  # 缓存 1 天
+        },
+    )
+
+# 初始化时创建示例图片
+@app.on_event("startup")
+def startup():
+    ensure_sample_image()
+\`\`\`
+
+这个示例展示了：
+- **原图下载**：\`FileResponse\` + \`filename\` → attachment 下载。
+- **图片预览**：\`FileResponse\` 不设 \`filename\` → inline 显示。
+- **动态缩略图**：Pillow 实时生成，\`StreamingResponse\` 返回内存字节。
+- **缓存头**：缩略图设 \`Cache-Control\` 减少重复计算。
+
+### 9.3 完整下载服务（带权限和日志）
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、HTTPException、Header、Depends
+from fastapi import FastAPI, HTTPException, Header, Depends
+# 从 fastapi.responses 导入 FileResponse
+from fastapi.responses import FileResponse
+# 从 pathlib 导入 Path
+from pathlib import Path
+# 导入 logging
+import logging
+
+app = FastAPI()
+FILES_DIR = Path("files")
+
+# 配置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("download")
+
+# 简单 token 校验
+VALID_TOKENS = {"abc123", "xyz789"}
+
+def verify_token(x_download_token: str = Header(..., alias="X-Download-Token")):
+    """校验下载 token"""
+    if x_download_token not in VALID_TOKENS:
+        raise HTTPException(status_code=403, detail="无效的下载 token")
+    return x_download_token
+
+# 受保护的下载接口
+@app.get("/secure-download/{filename}")
+def secure_download(filename: str, token: str = Depends(verify_token)):
+    # 安全路径拼接
+    file_path = (FILES_DIR / filename).resolve()
+    try:
+        file_path.relative_to(FILES_DIR.resolve())
+    except ValueError:
+        raise HTTPException(status_code=400, detail="非法路径")
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="文件不存在")
+    # 记录下载日志
+    logger.info(f"用户 token={token} 下载文件 {filename}")
+    return FileResponse(
+        path=str(file_path),
+        filename=filename,
+        media_type="application/octet-stream",
+    )
+\`\`\`
+
+## 十、流式响应注意事项
+
+### 10.1 不能用 response_model 过滤
+
+\`StreamingResponse\` 和 \`FileResponse\` 是"原始响应"，\`response_model\` 不生效。因为流式响应返回的是字节流，不是结构化数据，Pydantic 没法过滤。
+
+\`\`\`python
+# 这个 response_model 会被忽略
+@app.get("/stream", response_model=SomeModel)
+def stream():
+    return StreamingResponse(...)   # response_model 不生效
+\`\`\`
+
+### 10.2 异步生成器
+
+异步生成器（\`async def\` + \`yield\`）也支持，适合 IO 密集场景（如异步查数据库）。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+# 从 fastapi.responses 导入 StreamingResponse
+from fastapi.responses import StreamingResponse
+# 导入 asyncio
+import asyncio
+
+app = FastAPI()
+
+# 异步生成器
+async def async_generate():
+    for i in range(5):
+        # 模拟异步 IO（如 await db.fetch_one()）
+        await asyncio.sleep(1)
+        yield f"async chunk {i}\\n".encode("utf-8")
+
+@app.get("/async-stream")
+def async_stream():
+    return StreamingResponse(content=async_generate(), media_type="text/plain")
+\`\`\`
+
+### 10.3 错误处理
+
+流式响应一旦开始发送（状态码和头已发出），就不能再改状态码了。所以错误要在发送前抛出。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、HTTPException
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
+
+app = FastAPI()
+
+def gen():
+    try:
+        for i in range(10):
+            if i == 5:
+                # 这里抛异常，但响应头已发出，客户端只会收到截断的响应
+                raise ValueError("中途出错")
+            yield f"line {i}\\n".encode("utf-8")
+    except Exception:
+        # 只能记录日志，没法改状态码了
+        yield b"error occurred\\n"
+
+@app.get("/stream-error")
+def stream_error():
+    # 想在流开始前校验，就在这里抛
+    # raise HTTPException(400, "参数错误")  # 这个能正常返回 400
+    return StreamingResponse(content=gen(), media_type="text/plain")
+\`\`\`
+
+### 10.4 客户端断开检测
+
+客户端断开连接时，生成器的 \`yield\` 可能抛异常。要捕获处理。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+
+app = FastAPI()
+
+def gen():
+    try:
+        for i in range(1000):
+            yield f"data {i}\\n".encode("utf-8")
+    except Exception:
+        # 客户端断开或其他错误
+        # 这里清理资源（如关闭文件、数据库连接）
+        pass
+
+@app.get("/long-stream")
+def long_stream():
+    return StreamingResponse(content=gen(), media_type="text/plain")
+\`\`\`
+
+## 十一、各类响应对比
+
+| 响应类 | 用途 | 特点 |
 |---|---|---|
-| 大文件直接 return bytes | 内存爆炸 | 用 StreamingResponse/FileResponse |
-| 忘了 media_type | 浏览器当文件下载或乱码 | 显式指定 |
-| 中文文件名不编码 | 部分浏览器乱码 | 用 FileResponse 自动编码 |
-| StreamingResponse 不支持 Range | 断点续传失效 | 文件用 FileResponse |
-| 同步生成器在 async 路由 | 阻塞事件循环 | 用 async 生成器或 run_in_threadpool |
-| SSE 忘了 \\n\\n | 浏览器收不到消息 | 每条 data 后空行 |
-| 不校验文件路径 | 路径穿越漏洞 | abspath + startswith |
+| \`JSONResponse\` | 返回 JSON | 默认，自动序列化 |
+| \`PlainTextResponse\` | 返回文本 | text/plain |
+| \`HTMLResponse\` | 返回 HTML | text/html |
+| \`RedirectResponse\` | 重定向 | 301/302/307/308 |
+| \`Response\` | 原始字节 | 完全自定义 |
+| \`StreamingResponse\` | 流式响应 | 生成器，边生成边发 |
+| \`FileResponse\` | 文件下载 | ASGI 优化，自动头 |
 
-## 十二、设计思想
+选择建议：
+- 普通 JSON 接口：默认 \`JSONResponse\`（不用显式写）。
+- 大文件下载：\`FileResponse\`。
+- 流式生成（CSV、SSE、实时数据）：\`StreamingResponse\`。
+- 完全自定义：\`Response\`。
 
-流式响应是处理「大」和「实时」的关键。理解它的核心:**数据不需要全部就绪才能发送**,边产边发。FileResponse 是文件下载的最佳实践(自动 Range),StreamingResponse 适合自定义流(SSE、动态生成)。选择响应类型要看场景:JSON 数据用默认,文件用 FileResponse,自定义流用 StreamingResponse。
-`,
-  },
+## 十二、本章小结
+
+流式响应是处理大数据、实时数据、文件下载的核心能力。掌握本章后你能：
+- 用 \`StreamingResponse\` + 生成器实现流式输出，降低内存占用和首字节延迟。
+- 用 \`FileResponse\` 高效返回文件，自动处理 \`Content-Length\`、\`ETag\`。
+- 用 \`Content-Disposition\` 控制浏览器是下载还是预览。
+- 实现 SSE 实时推送、CSV 流式导出、图片动态缩略图。
+- 处理路径安全、错误处理、客户端断开等生产问题。
+
+至此，FastAPI 的响应处理部分就完整了。从 response_model 的字段过滤，到状态码与 Header 的精细控制，到 Cookie/Session 的登录态管理，再到流式响应的大数据处理，你掌握了构建专业 Web API 响应层所需的全部技能。
+`
+  }
 ];

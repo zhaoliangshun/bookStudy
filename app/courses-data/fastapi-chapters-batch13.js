@@ -1,1617 +1,3087 @@
 // =============================================================
-// FastAPI 应用开发实战 - 第十三批章节(测试,共 4 章)
-// 章节 49-52:TestClient 测试基础 / pytest 与 fixtures / Mock 与依赖覆盖 / 覆盖率与持续测试
-// =============================================================
+// FastAPI 应用开发实战教程 - 第 13 批章节（测试 4 章）
+// -------------------------------------------------------------
+// 本批包含 4 章：
+//   fa-testclient : TestClient 测试基础
+//   fa-pytest     : pytest 与 fixtures
+//   fa-mock       : Mock 与依赖覆盖
+//   fa-coverage   : 覆盖率与持续测试
+// ============================================================
 
 export const chapters = [
-  // =============================================================
-  // 第四十九章:TestClient 测试基础
-  // =============================================================
+  // =========================================================
+  // 第一章：TestClient 测试基础
+  // =========================================================
   {
-    id: 'test-testclient',
-    group: '测试',
-    icon: '🧪',
-    title: 'TestClient 测试基础',
-    content: `## 第四十九章　TestClient 测试基础
+    id: "fa-testclient",
+    group: "测试",
+    icon: "🧪",
+    title: "TestClient 测试基础",
+    content: `
 
-### 49.1 为什么一定要写测试
+# TestClient 测试基础
 
-很多人觉得"接口跑通了就行了,写测试浪费时间",这种想法在项目小的时候似乎没问题,但只要项目一旦长大、要重构、要多人协作,立刻会暴露问题:
+## 一、开篇：为什么一定要写测试
 
-- **改了 A 接口,不知道有没有把 B 接口改坏**:没有测试,你只能手动点一遍所有功能,既慢又容易漏;
-- **重构没有底气**:明明只是想优化一段代码,却不敢动,因为没有测试告诉你"改完之后行为还和以前一样";
-- **回归 bug 反复出现**:今天修好的 bug,下个月又出现了,因为没人记得当初为什么这么写;
-- **新人接手不敢动**:没有测试的代码,新人改一行都要提心吊胆。
+很多初学者觉得"接口能跑通就行了，写测试浪费时间"。这种想法在项目只有三五个接口时似乎没问题，但只要项目一旦长大、需要重构、需要多人协作，立刻会暴露一系列问题：
 
-> 一句话:**测试不是"证明代码没问题",而是"给未来的自己留一张安全网"**。它的价值不在写它的当下,而在你三个月后回来改代码的那一秒。
+- **改了 A 接口，不知道有没有把 B 接口改坏**：没有测试，你只能手动点一遍所有功能，既慢又容易漏。
+- **重构没有底气**：明明只是想优化一段代码，却不敢动，因为没有测试告诉你"改完之后行为还和以前一样"。
+- **回归 bug 反复出现**：今天修好的 bug，下个月又出现了，因为没人记得当初为什么这么写。
+- **新人接手不敢动**：没有测试的代码，新人改一行都要提心吊胆，只能靠"祖传经验"维护。
 
-### 49.2 TestClient 是什么
+> 一句话：**测试不是"证明代码没问题"，而是"给未来的自己留一张安全网"**。它的价值不在写它的当下，而在你三个月后回来改代码的那一秒。测试是一道防线，让你在改动时立刻知道"哪里断了"，而不是等到用户投诉才发现。
 
-\`TestClient\` 是 Starlette 提供的测试客户端,在 FastAPI 里直接从 \`fastapi.testclient\` 导入。它的核心特性:
+写测试还有一个常被忽视的好处：**写测试的过程会倒逼你思考边界条件**。当你想测试"创建用户"这个接口时，你会自然地想到——名字为空怎么办？重复怎么办？超长怎么办？这些思考会让你的代码更健壮。
 
-- **不需要真正启动服务器**:它直接在内存里模拟 HTTP 请求,调用你的 ASGI app,绕过了网络层;
-- **不需要监听端口**:省去了"启动 uvicorn → 等端口就绪 → 发请求"的麻烦;
-- **速度快**:因为没走网络,一次请求就是一次函数调用;
-- **底层用 \`httpx\`**:API 风格和 \`requests\` / \`httpx\` 几乎一样,学习成本低。
+## 二、TestClient 是什么
 
-> 对比:如果你用 \`requests\` 测试,必须先 \`uvicorn main:app\` 启动服务器,测试才能连上,既慢又要在 CI 里额外管理进程。TestClient 把这一切省了。
+\`TestClient\` 是 Starlette 提供的测试客户端，在 FastAPI 里直接从 \`fastapi.testclient\` 导入。它的核心特性：
 
-### 49.3 最简单的测试
+- **不需要真正启动服务器**：它直接在内存里模拟 HTTP 请求，调用你的 ASGI app，绕过了网络层。
+- **不需要监听端口**：省去了"启动 uvicorn → 等端口就绪 → 发请求"的麻烦。
+- **速度快**：因为没走网络，一次请求就是一次函数调用。
+- **底层用 \`httpx\`**：API 风格和 \`requests\` / \`httpx\` 几乎一样，学习成本低。
 
-\`\`\`python
-# main.py —— 被测的应用
+> 对比：如果你用 \`requests\` 测试，必须先 \`uvicorn main:app\` 启动服务器，测试才能连上，既慢又要在 CI 里额外管理进程。TestClient 把这一切省了——它直接把请求"喂"给 app，就像调用一个函数一样。
+
+\`\`\`txt filename="TestClient 的工作原理"
+你的测试代码                    真实生产环境
+    |                               |
+    | client.get("/")               | 浏览器发 HTTP 请求
+    v                               v
+TestClient 包装请求              经过网卡、TCP、HTTP 解析
+    |                               |
+    +--> 直接调用 app(请求) <-----+--> uvicorn 接收，调用 app(请求)
+                |                            |
+                v                            v
+            路由匹配、依赖注入、业务逻辑（完全一样）
+                |                            |
+                v                            v
+            返回响应给 TestClient          返回响应给浏览器
+\`\`\`
+
+关键理解：**TestClient 和真实服务器走的是同一条代码路径**（路由匹配、依赖注入、中间件、业务逻辑），只是省略了网络传输。所以 TestClient 测过的逻辑，上线后基本不会出问题（除非网络层本身有问题）。
+
+## 三、第一个测试：Hello World
+
+先写一个最简单的应用，然后测它：
+
+\`\`\`python filename="main.py —— 被测的应用"
 # 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
 
 # 创建 FastAPI 应用实例
 app = FastAPI()
 
-# 定义 GET 路由：访问 / 时触发
+# 装饰器：app.get，定义 GET 路由，访问 / 时触发
 @app.get("/")
-# 定义函数 root，参数: 
+# 定义函数 root，无参数
 def root():
-    # 返回 {"msg": "hello"}
+    # 返回一个字典，FastAPI 会自动转成 JSON
     return {"msg": "hello"}
+\`\`\`
 
-# test_main.py —— 测试代码
+\`\`\`python filename="test_main.py —— 测试代码"
 # 从 fastapi.testclient 导入 TestClient
 from fastapi.testclient import TestClient
-# 从 main 导入 app
+# 从 main 模块导入 app 实例
 from main import app
 
-# 1. 用 app 创建一个测试客户端
-# 定义变量 client，赋值为 TestClient(app)
+# 第 1 步：用 app 创建一个测试客户端
+# 把 app 传给 TestClient，它会包装这个 app，让请求直接走内存
 client = TestClient(app)
 
-# 定义函数 test_root，参数: 
+# 第 2 步：定义测试函数（函数名必须以 test_ 开头，pytest 才会识别）
 def test_root():
-    # 2. 像发真实请求一样调用 client.get
-    # 定义变量 response，赋值为 client.get("/")
+    # 像发真实请求一样调用 client.get("/")
+    # 这一步等价于：浏览器访问 http://localhost:8000/
+    # 定义变量 response，保存返回的响应对象
     response = client.get("/")
-    # 3. 断言状态码
-    # assert response.status_code == 200
+
+    # 第 3 步：断言状态码是 200
+    # assert 是 Python 关键字，条件不成立时抛 AssertionError
     assert response.status_code == 200
-    # 4. 断言返回的 JSON
-    # assert response.json() == {"msg": "hello"}
+
+    # 第 4 步：断言返回的 JSON 体
+    # response.json() 把响应体解析成 Python 字典
     assert response.json() == {"msg": "hello"}
 \`\`\`
 
-运行测试:\`pytest test_main.py\`,如果断言全过,会显示绿色 \`.\`。
+运行测试：\`pytest test_main.py\`，如果断言全过，会显示绿色 \`.\`，表示 1 个测试通过。
 
-### 49.4 测试各种 HTTP 方法
+> 怎么想：测试的本质就是"调用 → 断言"。调用你要测的函数/接口，然后断言结果符合预期。TestClient 只是帮你完成了"调用 HTTP 接口"这一步。
 
-TestClient 对所有 HTTP 方法都做了封装,签名和 \`httpx\` 一致:
+## 四、测试各种 HTTP 方法
 
-\`\`\`python
+TestClient 对所有 HTTP 方法都做了封装，方法名和 HTTP 动词一一对应，签名和 \`httpx\` 一致：
+
+\`\`\`python filename="测试 GET/POST/PUT/DELETE"
 # 从 fastapi.testclient 导入 TestClient
 from fastapi.testclient import TestClient
 # 从 main 导入 app
 from main import app
 
-# 定义变量 client，赋值为 TestClient(app)
+# 创建测试客户端
 client = TestClient(app)
 
-# 定义函数 test_get，参数: 
+# 测试 GET 请求
 def test_get():
-    # GET 请求,query 参数用 params
-    # 定义变量 r，赋值为 client.get("/items", params={"skip": 0, "limi...
+    # GET 请求，query 参数用 params 传递
+    # 等价于访问 /items?skip=0&limit=10
+    # 定义变量 r，保存响应
     r = client.get("/items", params={"skip": 0, "limit": 10})
-    # assert r.status_code == 200
+    # 断言状态码 200
     assert r.status_code == 200
 
-# 定义函数 test_post，参数: 
+# 测试 POST 请求
 def test_post():
-    # POST 请求,请求体用 json
-    # 定义变量 r，赋值为 client.post("/items", json={"name": "苹果", "pr...
+    # POST 请求，请求体用 json 参数
+    # TestClient 会自动加 Content-Type: application/json
+    # 定义变量 r，发送创建商品的请求
     r = client.post("/items", json={"name": "苹果", "price": 5.5})
-    # assert r.status_code == 201
+    # 断言状态码 201（创建成功）
     assert r.status_code == 201
-    # assert r.json()["name"] == "苹果"
+    # 断言返回体里 name 字段
     assert r.json()["name"] == "苹果"
 
-# 定义函数 test_put，参数: 
+# 测试 PUT 请求
 def test_put():
-    # PUT 请求,路径参数拼在 url 里
-    # 定义变量 r，赋值为 client.put("/items/1", json={"name": "香蕉", "p...
+    # PUT 请求，路径参数直接拼在 url 里
+    # 请求体用 json
+    # 定义变量 r，更新 id=1 的商品
     r = client.put("/items/1", json={"name": "香蕉", "price": 3.0})
-    # assert r.status_code == 200
+    # 断言状态码 200
     assert r.status_code == 200
 
-# 定义函数 test_delete，参数: 
+# 测试 DELETE 请求
 def test_delete():
-    # 定义变量 r，赋值为 client.delete("/items/1")
+    # DELETE 请求，路径参数拼在 url 里
+    # 定义变量 r，删除 id=1 的商品
     r = client.delete("/items/1")
-    # assert r.status_code == 204
+    # 断言状态码 204（无内容返回）
     assert r.status_code == 204
 \`\`\`
 
-**关键参数对照表:**
+**关键参数对照表**：
 
 | 参数 | 用途 | 示例 |
 | --- | --- | --- |
 | \`params\` | query string 参数 | \`client.get("/x", params={"page": 1})\` |
-| \`json\` | JSON 请求体(自动加 \`Content-Type\`) | \`client.post("/x", json={"a": 1})\` |
+| \`json\` | JSON 请求体（自动加 Content-Type） | \`client.post("/x", json={"a": 1})\` |
 | \`headers\` | 请求头 | \`client.get("/x", headers={"X-Token": "abc"})\` |
 | \`cookies\` | Cookie | \`client.get("/x", cookies={"sid": "xxx"})\` |
 | \`files\` | 上传文件 | \`client.post("/upload", files={"f": b"..."})\` |
+| \`data\` | 表单数据 | \`client.post("/x", data={"name": "abc"})\` |
 
-### 49.5 测试参数校验(422)
+## 五、测试路径参数与查询参数
 
-FastAPI 的强项是自动校验,测试时一定要覆盖"传错参数"的场景,确保它真的返回 422:
+路径参数和查询参数是 API 最常见的入参方式，必须熟练测试：
 
-\`\`\`python
-# 从 fastapi.testclient 导入 TestClient
-from fastapi.testclient import TestClient
-# 从 main 导入 app
-from main import app
-
-# 定义变量 client，赋值为 TestClient(app)
-client = TestClient(app)
-
-# 定义函数 test_create_item_missing_name，参数: 
-def test_create_item_missing_name():
-    # 故意少传 name 字段,应该被 Pydantic 拦下
-    r = client.post("/items", json={"price": 5.5})  # 缺 name
-    assert r.status_code == 422  # Unprocessable Entity
-    # 422 的响应体里有详细的错误信息,可以进一步断言
-    # 定义变量 detail，赋值为 r.json()["detail"][0]
-    detail = r.json()["detail"][0]
-    assert detail["loc"] == ["body", "name"]   # 错误位置在 body.name
-    assert detail["type"] == "missing"          # 类型是"缺失"
-
-# 定义函数 test_create_item_negative_price，参数: 
-def test_create_item_negative_price():
-    # 价格传负数,应该被校验拦截
-    # 定义变量 r，赋值为 client.post("/items", json={"name": "苹果", "pr...
-    r = client.post("/items", json={"name": "苹果", "price": -1})
-    # assert r.status_code == 422
-    assert r.status_code == 422
-    # assert "greater_than_equal" in r.json()["detail"][
-    assert "greater_than_equal" in r.json()["detail"][0]["type"]
-\`\`\`
-
-> 易错点:很多人只测"正常传参能成功",不测"错误传参被拦截"。后者恰恰是 Pydantic 校验的核心价值,必须测。
-
-### 49.6 测试带认证的接口
-
-需要 token 的接口,测试时把 token 放进请求头即可。先看一个完整的认证接口:
-
-\`\`\`python
-# main.py
-# 从 fastapi 导入 FastAPI, Depends, Header, HTTPException
-from fastapi import FastAPI, Depends, Header, HTTPException
-
-# 创建 FastAPI 应用实例
-app = FastAPI()
-
-# 模拟一个"校验 token"的依赖
-# 定义函数 verify_token，参数: x_token: str = Header(...)
-def verify_token(x_token: str = Header(...)):
-    # 条件判断：如果 x_token != "secret-token"
-    if x_token != "secret-token":
-        # 抛出 HTTPException 异常: status_code=401, detail="token 无效"
-        raise HTTPException(status_code=401, detail="token 无效")
-    # 返回 x_token
-    return x_token
-
-# 定义 GET 路由：访问 /profile 时触发
-@app.get("/profile")
-# 定义函数 get_profile，参数: token: str = Depends(verify_token)
-def get_profile(token: str = Depends(verify_token)):
-    # 返回 {"user": "小明", "token": token}
-    return {"user": "小明", "token": token}
-\`\`\`
-
-测试时直接把正确/错误的 token 塞进 header:
-
-\`\`\`python
-# 从 fastapi.testclient 导入 TestClient
-from fastapi.testclient import TestClient
-# 从 main 导入 app
-from main import app
-
-# 定义变量 client，赋值为 TestClient(app)
-client = TestClient(app)
-
-# 定义函数 test_profile_with_valid_token，参数: 
-def test_profile_with_valid_token():
-    # 定义变量 r，赋值为 client.get("/profile", headers={"X-Token": "s...
-    r = client.get("/profile", headers={"X-Token": "secret-token"})
-    # assert r.status_code == 200
-    assert r.status_code == 200
-    # assert r.json()["user"] == "小明"
-    assert r.json()["user"] == "小明"
-
-# 定义函数 test_profile_without_token，参数: 
-def test_profile_without_token():
-    # 不带 token,因为 Header(...) 是必填,会被 FastAPI 拦成 422
-    # 定义变量 r，赋值为 client.get("/profile")
-    r = client.get("/profile")
-    # assert r.status_code == 422
-    assert r.status_code == 422
-
-# 定义函数 test_profile_with_wrong_token，参数: 
-def test_profile_with_wrong_token():
-    # 带 token 但值不对,被业务逻辑拦成 401
-    # 定义变量 r，赋值为 client.get("/profile", headers={"X-Token": "w...
-    r = client.get("/profile", headers={"X-Token": "wrong"})
-    # assert r.status_code == 401
-    assert r.status_code == 401
-    # assert r.json()["detail"] == "token 无效"
-    assert r.json()["detail"] == "token 无效"
-\`\`\`
-
-### 49.7 完整的 CRUD 测试示例
-
-下面是一个"内存版"的 CRUD 应用 + 完整测试,涵盖了 GET/POST/PUT/DELETE、404、422:
-
-\`\`\`python
-# main.py
-# 从 fastapi 导入 FastAPI, HTTPException
-from fastapi import FastAPI, HTTPException
-# 从 pydantic 导入 BaseModel, Field
-from pydantic import BaseModel, Field
-
-# 创建 FastAPI 应用实例
-app = FastAPI()
-
-# 内存存储,测试时每次启动都是空的
-# 字段 _db，类型: dict[int, dict]，默认值: {}
-_db: dict[int, dict] = {}
-# 定义变量 _next_id，赋值为 1
-_next_id = 1
-
-# 定义 Pydantic 数据模型 Item，继承 BaseModel
-class Item(BaseModel):
-    # 字段 name，类型: str，默认值: Field(..., min_length=1)
-    name: str = Field(..., min_length=1)
-    # 字段 price，类型: float，默认值: Field(..., gt=0)
-    price: float = Field(..., gt=0)
-
-# 定义 Pydantic 数据模型 ItemOut，继承 BaseModel
-class ItemOut(BaseModel):
-    # 字段 id，类型: int
-    id: int
-    # 字段 name，类型: str
-    name: str
-    # 字段 price，类型: float
-    price: float
-
-# 定义 GET 路由：访问 /items 时触发
-@app.get("/items", response_model=list[ItemOut])
-# 定义函数 list_items，参数: 
-def list_items():
-    # 返回 list(_db.values())
-    return list(_db.values())
-
-# 定义 POST 路由：访问 /items 时触发
-@app.post("/items", response_model=ItemOut, status_code=201)
-# 定义函数 create_item，参数: item: Item
-def create_item(item: Item):
-    # global _next_id
-    global _next_id
-    # 定义字典 saved
-    saved = {"id": _next_id, **item.model_dump()}
-    # _db[_next_id] = saved
-    _db[_next_id] = saved
-    # _next_id += 1
-    _next_id += 1
-    # 返回 saved
-    return saved
-
-# 定义 GET 路由：访问 /items/{item_id} 时触发
-@app.get("/items/{item_id}", response_model=ItemOut)
-# 定义函数 get_item，参数: item_id: int
-def get_item(item_id: int):
-    # 条件判断：如果 item_id not in _db
-    if item_id not in _db:
-        # 抛出 HTTPException 异常: status_code=404, detail="item 不存在"
-        raise HTTPException(status_code=404, detail="item 不存在")
-    # 返回 _db[item_id]
-    return _db[item_id]
-
-# 定义 PUT 路由：访问 /items/{item_id} 时触发
-@app.put("/items/{item_id}", response_model=ItemOut)
-# 定义函数 update_item，参数: item_id: int, item: Item
-def update_item(item_id: int, item: Item):
-    # 条件判断：如果 item_id not in _db
-    if item_id not in _db:
-        # 抛出 HTTPException 异常: status_code=404, detail="item 不存在"
-        raise HTTPException(status_code=404, detail="item 不存在")
-    # _db[item_id].update(item.model_dump())
-    _db[item_id].update(item.model_dump())
-    # 返回 _db[item_id]
-    return _db[item_id]
-
-# 定义 DELETE 路由：访问 /items/{item_id} 时触发
-@app.delete("/items/{item_id}", status_code=204)
-# 定义函数 delete_item，参数: item_id: int
-def delete_item(item_id: int):
-    # 条件判断：如果 item_id not in _db
-    if item_id not in _db:
-        # 抛出 HTTPException 异常: status_code=404, detail="item 不存在"
-        raise HTTPException(status_code=404, detail="item 不存在")
-    # del _db[item_id]
-    del _db[item_id]
-\`\`\`
-
-\`\`\`python
-# test_crud.py
-# 从 fastapi.testclient 导入 TestClient
-from fastapi.testclient import TestClient
-# 从 main 导入 app, _db
-from main import app, _db
-
-# 定义变量 client，赋值为 TestClient(app)
-client = TestClient(app)
-
-# 定义函数 setup_function，参数: 
-def setup_function():
-    # """每个测试函数跑前清空内存,保证互不影响。"""
-    """每个测试函数跑前清空内存,保证互不影响。"""
-    # 调用 _db.clear()
-    _db.clear()
-
-# 定义函数 test_create_item，参数: 
-def test_create_item():
-    # 定义变量 r，赋值为 client.post("/items", json={"name": "苹果", "pr...
-    r = client.post("/items", json={"name": "苹果", "price": 5.5})
-    # assert r.status_code == 201
-    assert r.status_code == 201
-    # 定义变量 data，赋值为 r.json()
-    data = r.json()
-    # assert data["id"] == 1
-    assert data["id"] == 1
-    # assert data["name"] == "苹果"
-    assert data["name"] == "苹果"
-
-# 定义函数 test_create_item_invalid，参数: 
-def test_create_item_invalid():
-    # 价格为 0,违反 gt=0
-    # 定义变量 r，赋值为 client.post("/items", json={"name": "苹果", "pr...
-    r = client.post("/items", json={"name": "苹果", "price": 0})
-    # assert r.status_code == 422
-    assert r.status_code == 422
-
-# 定义函数 test_list_items，参数: 
-def test_list_items():
-    # 调用 client.post()
-    client.post("/items", json={"name": "苹果", "price": 5.5})
-    # 调用 client.post()
-    client.post("/items", json={"name": "香蕉", "price": 3.0})
-    # 定义变量 r，赋值为 client.get("/items")
-    r = client.get("/items")
-    # assert r.status_code == 200
-    assert r.status_code == 200
-    # assert len(r.json()) == 2
-    assert len(r.json()) == 2
-
-# 定义函数 test_get_item_not_found，参数: 
-def test_get_item_not_found():
-    # 定义变量 r，赋值为 client.get("/items/999")
-    r = client.get("/items/999")
-    # assert r.status_code == 404
-    assert r.status_code == 404
-
-# 定义函数 test_update_then_delete，参数: 
-def test_update_then_delete():
-    # 先创建
-    # 定义变量 r，赋值为 client.post("/items", json={"name": "苹果", "pr...
-    r = client.post("/items", json={"name": "苹果", "price": 5.5})
-    # 定义变量 item_id，赋值为 r.json()["id"]
-    item_id = r.json()["id"]
-    # 再更新
-    # 定义变量 r，赋值为 client.put(f"/items/{item_id}", json={"name":...
-    r = client.put(f"/items/{item_id}", json={"name": "红富士", "price": 6.0})
-    # assert r.status_code == 200
-    assert r.status_code == 200
-    # assert r.json()["name"] == "红富士"
-    assert r.json()["name"] == "红富士"
-    # 再删除
-    # 定义变量 r，赋值为 client.delete(f"/items/{item_id}")
-    r = client.delete(f"/items/{item_id}")
-    # assert r.status_code == 204
-    assert r.status_code == 204
-    # 删完查不到
-    # assert client.get(f"/items/{item_id}").status_code
-    assert client.get(f"/items/{item_id}").status_code == 404
-\`\`\`
-
-注意上面的 \`f"/items/{item_id}"\` 是 Python 的 f-string,花括号是单个 \`{}\`,不是 JS 的 \`\${}\`,所以放在模板字符串里不会冲突。
-
-### 49.8 响应断言常用技巧
-
-| 断言目标 | 怎么写 | 说明 |
-| --- | --- | --- |
-| 状态码 | \`assert r.status_code == 200\` | 最基础的断言 |
-| JSON 全等 | \`assert r.json() == {...}\` | 适合返回结构稳定时 |
-| JSON 字段 | \`assert r.json()["id"] == 1\` | 只关心关键字段 |
-| 响应头 | \`assert r.headers["content-type"] == "application/json"\` | 检查返回类型 |
-| 文本包含 | \`assert "成功" in r.text\` | 适合非 JSON 返回 |
-| 响应时间 | \`assert r.elapsed.total_seconds() < 1.0\` | 性能断言(谨慎) |
-
-### 49.9 易错点小结
-
-| 易错点 | 后果 | 正确做法 |
-| --- | --- | --- |
-| 测试间共享状态没清空 | 第一个测试改了数据,第二个测试莫名失败 | 用 \`setup_function\` 或 fixture 清理 |
-| 只测正常路径 | 边界错误没人管,线上翻车 | 必测 422、404、401 |
-| \`assert r.json()\` 不判 \`status_code\` | 接口报错了还以为对 | 先断言状态码再断言体 |
-| 用 \`requests\` 测必须启动服务器 | 慢、CI 难管理 | 用 \`TestClient\` 内存调用 |
-| 测试里写 \`print\` 调试 | 看不到,被 pytest 吞 | 用 \`-s\` 参数或 \`pytest -rP\` |
-| 测试依赖执行顺序 | 换个顺序就挂 | 每个测试独立,不依赖前一个 |
-
-> **本章小结**:TestClient 让测试 FastAPI 像调函数一样简单——不用起服务器,直接 \`client.get/post\`。测试要覆盖正常路径、错误路径(422/404/401)和 CRUD 全流程。下一章我们用 pytest 把这些测试组织得更优雅。`,
-  },
-
-  // =============================================================
-  // 第五十章:pytest 与 fixtures
-  // =============================================================
-  {
-    id: 'test-pytest',
-    group: '测试',
-    icon: '🧹',
-    title: 'pytest 与 fixtures',
-    content: `## 第五十章　pytest 与 fixtures
-
-### 50.1 pytest 是什么
-
-pytest 是 Python 生态里事实上的测试框架标准。对比 Python 自带的 \`unittest\`,它有几个明显优势:
-
-| 维度 | unittest | pytest |
-| --- | --- | --- |
-| 断言写法 | \`self.assertEqual(a, b)\` | \`assert a == b\`(原生 assert) |
-| 测试发现 | 要继承 \`TestCase\` | 函数名以 \`test_\` 开头即可 |
-| 夹具复用 | \`setUp/tearDown\` 写在类里 | \`fixture\` 跨文件复用 |
-| 参数化 | 自己写循环 | \`@pytest.mark.parametrize\` 一行搞定 |
-| 插件生态 | 弱 | 丰富(cov、async、mock 等) |
-| 失败信息 | 简陋 | 详细到行,自动 diff |
-
-> 一个直观对比:同一个断言,unittest 要 \`self.assertEqual(response.status_code, 200)\`,pytest 只要 \`assert response.status_code == 200\`。后者更接近"自然语言"。
-
-### 50.2 安装
-
-\`\`\`bash
-# pytest 本体 + 用来支持 TestClient 的 httpx
-# 安装 Python 包: pytest httpx
-pip install pytest httpx
-
-# 测试 FastAPI 还需要这个,让 TestClient 能用 httpx
-# 安装 Python 包: fastapi[all]
-pip install fastapi[all]
-\`\`\`
-
-### 50.3 第一个 pytest 测试
-
-pytest 的发现规则:
-
-- 文件名以 \`test_\` 开头或 \`_test\` 结尾(默认 \`test_*.py\`);
-- 函数名以 \`test_\` 开头;
-- 类名以 \`Test\` 开头(类里不能有 \`__init__\`)。
-
-\`\`\`python
-# test_demo.py
+\`\`\`python filename="main.py —— 带参数的接口"
 # 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
-# 从 fastapi.testclient 导入 TestClient
-from fastapi.testclient import TestClient
 
-# 创建 FastAPI 应用实例
+# 创建应用
 app = FastAPI()
 
-# 定义 GET 路由：访问 / 时触发
-@app.get("/")
-# 定义函数 root，参数: 
-def root():
-    # 返回 {"hello": "world"}
-    return {"hello": "world"}
+# 路径参数：{item_id} 会被提取为函数参数
+@app.get("/items/{item_id}")
+# 定义函数 get_item，参数 item_id 是 int 类型
+def get_item(item_id: int):
+    # 如果 id 不存在，返回 404（这里用固定值模拟）
+    # 条件判断：如果 item_id 不在 [1, 2, 3] 里
+    if item_id not in [1, 2, 3]:
+        # 返回 404 状态码和错误信息
+        return {"error": "not found", "code": 404}
+    # 正常返回
+    return {"id": item_id, "name": f"商品{item_id}"}
 
-# 定义变量 client，赋值为 TestClient(app)
-client = TestClient(app)
-
-# 只要函数名是 test_ 开头,pytest 就会自动跑
-# 定义函数 test_root_returns_world，参数: 
-def test_root_returns_world():
-    # 定义变量 response，赋值为 client.get("/")
-    response = client.get("/")
-    # assert response.status_code == 200
-    assert response.status_code == 200
-    # assert response.json() == {"hello": "world"}
-    assert response.json() == {"hello": "world"}
+# 查询参数：函数参数不带默认值 = 必填，带默认值 = 可选
+@app.get("/search")
+# 定义函数 search，参数 keyword 必填，limit 可选默认 10
+def search(keyword: str, limit: int = 10):
+    # 返回搜索结果
+    return {"keyword": keyword, "limit": limit, "results": []}
 \`\`\`
 
-运行:\`pytest\` 会自动找当前目录下所有 \`test_*.py\`。
+\`\`\`python filename="test_params.py —— 测试参数"
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 从 main 导入 app
+from main import app
 
-### 50.4 fixture:测试夹具是什么
+# 创建客户端
+client = TestClient(app)
 
-**fixture 是 pytest 最强大的特性,本质就是"测试前的准备工作 + 测试后的清理工作"的复用单元。**
+# 测试路径参数：正常情况
+def test_get_item_success():
+    # 访问 /items/1，路径参数自动提取
+    # 定义变量 r，保存响应
+    r = client.get("/items/1")
+    # 断言 200
+    assert r.status_code == 200
+    # 断言返回的 id
+    assert r.json()["id"] == 1
 
-为什么要它:
+# 测试路径参数：不存在的 id
+def test_get_item_not_found():
+    # 访问 /items/999，id 不存在
+    # 定义变量 r
+    r = client.get("/items/999")
+    # 断言返回体里有错误信息
+    assert r.json()["code"] == 404
 
-- 每个测试都要 \`TestClient(app)\` 这一步,重复写十遍很烦;
-- 测试数据库要建表、删表,每次都写一遍太累;
-- 测试用的假数据、配置,想统一管理。
+# 测试路径参数：类型错误（传字符串给 int 参数）
+def test_get_item_invalid_type():
+    # 访问 /items/abc，abc 不是 int
+    # FastAPI 会自动返回 422 校验错误
+    # 定义变量 r
+    r = client.get("/items/abc")
+    # 断言 422
+    assert r.status_code == 422
 
-fixture 把这些"准备好的东西"集中定义,测试函数只要"声明我要用哪个 fixture",pytest 会自动注入。
+# 测试查询参数：必填参数缺失
+def test_search_missing_keyword():
+    # 不传 keyword，FastAPI 应返回 422
+    # 定义变量 r
+    r = client.get("/search")
+    # 断言 422
+    assert r.status_code == 422
 
-### 50.5 写第一个 fixture
+# 测试查询参数：正常传参
+def test_search_with_params():
+    # 传 keyword 和 limit
+    # params 里的键值对会被拼成 query string
+    # 定义变量 r
+    r = client.get("/search", params={"keyword": "手机", "limit": 5})
+    # 断言 200
+    assert r.status_code == 200
+    # 断言返回的 keyword
+    assert r.json()["keyword"] == "手机"
+    # 断言 limit 被正确接收
+    assert r.json()["limit"] == 5
+\`\`\`
 
-\`\`\`python
-# conftest.py —— pytest 会自动发现这个文件,里面的 fixture 全局可用
-# 导入 pytest 模块
+> 避坑指南：很多人只测"传对参数能成功"，不测"传错参数被拦截"。后者恰恰是 FastAPI 自动校验的核心价值，必须测。一个接口至少要测三种情况：正常输入、缺失必填、类型错误。
+
+## 六、测试请求体与参数校验（422）
+
+FastAPI 的强项是自动校验，测试时一定要覆盖"传错参数"的场景：
+
+\`\`\`python filename="main.py —— 带校验的创建接口"
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+# 从 pydantic 导入 BaseModel 和 Field
+from pydantic import BaseModel, Field
+
+# 创建应用
+app = FastAPI()
+
+# 定义商品模型
+class Item(BaseModel):
+    # name 必填，最少 1 个字符
+    name: str = Field(..., min_length=1)
+    # price 必填，必须 >= 0
+    price: float = Field(..., ge=0)
+    # tags 可选，默认空列表
+    tags: list[str] = []
+
+# POST /items，接收 Item 请求体
+@app.post("/items")
+# 定义函数 create_item，参数 item 是 Item 类型
+def create_item(item: Item):
+    # 返回创建的商品（实际项目里会存数据库）
+    return {"id": 1, **item.model_dump()}
+\`\`\`
+
+\`\`\`python filename="test_validation.py —— 测试校验"
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 从 main 导入 app
+from main import app
+
+# 创建客户端
+client = TestClient(app)
+
+# 测试 1：正常创建
+def test_create_item_success():
+    # 传完整且合法的数据
+    # 定义变量 r
+    r = client.post("/items", json={"name": "苹果", "price": 5.5})
+    # 断言 200
+    assert r.status_code == 200
+    # 断言返回的 name
+    assert r.json()["name"] == "苹果"
+
+# 测试 2：缺少必填字段 name
+def test_create_item_missing_name():
+    # 故意不传 name，应该被 Pydantic 拦下
+    # 定义变量 r
+    r = client.post("/items", json={"price": 5.5})
+    # 断言 422（Unprocessable Entity）
+    assert r.status_code == 422
+    # 422 的响应体里有详细的错误信息
+    # 定义变量 detail，取第一条错误
+    detail = r.json()["detail"][0]
+    # 断言错误位置在 body.name
+    assert detail["loc"] == ["body", "name"]
+    # 断言错误类型是 missing（缺失）
+    assert detail["type"] == "missing"
+
+# 测试 3：price 传负数
+def test_create_item_negative_price():
+    # 价格传 -1，违反 ge=0 约束
+    # 定义变量 r
+    r = client.post("/items", json={"name": "苹果", "price": -1})
+    # 断言 422
+    assert r.status_code == 422
+    # 断言错误类型包含 greater_than_equal
+    assert "greater_than_equal" in r.json()["detail"][0]["type"]
+
+# 测试 4：name 传空字符串
+def test_create_item_empty_name():
+    # name 传空字符串，违反 min_length=1
+    # 定义变量 r
+    r = client.post("/items", json={"name": "", "price": 5.5})
+    # 断言 422
+    assert r.status_code == 422
+
+# 测试 5：price 传字符串（类型错误）
+def test_create_item_wrong_type():
+    # price 传 "abc"，不是数字
+    # 定义变量 r
+    r = client.post("/items", json={"name": "苹果", "price": "abc"})
+    # 断言 422
+    assert r.status_code == 422
+\`\`\`
+
+> 怎么想：每个字段至少想三种测试情况——正确值、缺失值、错误值。有约束的（min_length、ge、le 等）再额外测边界值。这样校验逻辑就全覆盖了。
+
+## 七、测试响应头与状态码
+
+除了 JSON 体，响应头和状态码也是 API 契约的一部分，需要测试：
+
+\`\`\`python filename="main.py —— 自定义响应头"
+# 从 fastapi 导入 FastAPI, Response
+from fastapi import FastAPI, Response
+
+# 创建应用
+app = FastAPI()
+
+# 下载接口，设置 Content-Disposition 头
+@app.get("/download")
+# 定义函数 download，参数 response 是 Response 类型
+def download(response: Response):
+    # 设置响应头，告诉浏览器以附件形式下载
+    # response.headers 是一个可变字典
+    response.headers["Content-Disposition"] = 'attachment; filename="report.csv"'
+    # 设置自定义头 X-Process-Time
+    response.headers["X-Process-Time"] = "0.05"
+    # 返回 CSV 内容
+    return "id,name\\n1,苹果\\n2,香蕉"
+
+# 自定义状态码
+@app.post("/create", status_code=201)
+# 定义函数 create
+def create():
+    # 返回 201（已创建）
+    return {"id": 1}
+\`\`\`
+
+\`\`\`python filename="test_headers.py —— 测试响应头"
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 从 main 导入 app
+from main import app
+
+# 创建客户端
+client = TestClient(app)
+
+# 测试响应头
+def test_download_headers():
+    # 发 GET 请求
+    # 定义变量 r
+    r = client.get("/download")
+    # 断言状态码 200
+    assert r.status_code == 200
+    # 断言 Content-Disposition 头存在且值正确
+    # r.headers 大小写不敏感
+    assert r.headers["content-disposition"] == 'attachment; filename="report.csv"'
+    # 断言自定义头
+    assert r.headers["x-process-time"] == "0.05"
+
+# 测试自定义状态码
+def test_create_status_code():
+    # 发 POST 请求
+    # 定义变量 r
+    r = client.post("/create")
+    # 断言 201
+    assert r.status_code == 201
+
+# 测试 404
+def test_not_found():
+    # 访问不存在的路由
+    # 定义变量 r
+    r = client.get("/nonexistent")
+    # 断言 404
+    assert r.status_code == 404
+\`\`\`
+
+## 八、测试文件上传
+
+文件上传是常见需求，TestClient 用 \`files\` 参数模拟：
+
+\`\`\`python filename="main.py —— 文件上传接口"
+# 从 fastapi 导入 FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File
+
+# 创建应用
+app = FastAPI()
+
+# 单文件上传
+@app.post("/upload")
+# 定义函数 upload，参数 file 是 UploadFile 类型
+async def upload(file: UploadFile = File(...)):
+    # 读取文件内容（bytes）
+    # 定义变量 content，等待读取完成
+    content = await file.read()
+    # 返回文件名和大小
+    return {"filename": file.filename, "size": len(content)}
+
+# 多文件上传
+@app.post("/upload-multi")
+# 定义函数 upload_multi，参数 files 是 UploadFile 列表
+async def upload_multi(files: list[UploadFile] = File(...)):
+    # 用列表推导式收集每个文件的名字
+    # 定义变量 names，遍历 files 取 filename
+    names = [f.filename for f in files]
+    # 返回文件名列表
+    return {"count": len(files), "names": names}
+\`\`\`
+
+\`\`\`python filename="test_upload.py —— 测试文件上传"
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 从 main 导入 app
+from main import app
+
+# 创建客户端
+client = TestClient(app)
+
+# 测试单文件上传
+def test_upload_single():
+    # files 参数格式：{"字段名": ("文件名", 文件内容, "MIME类型")}
+    # 文件内容可以是 bytes 或字符串
+    # 定义变量 r，上传一个文本文件
+    r = client.post(
+        "/upload",
+        files={"file": ("test.txt", b"hello world", "text/plain")}
+    )
+    # 断言 200
+    assert r.status_code == 200
+    # 断言返回的文件名
+    assert r.json()["filename"] == "test.txt"
+    # 断言文件大小（"hello world" 是 11 字节）
+    assert r.json()["size"] == 11
+
+# 测试多文件上传
+def test_upload_multi():
+    # 一次上传多个文件
+    # 定义变量 r
+    r = client.post(
+        "/upload-multi",
+        files=[
+            ("files", ("a.txt", b"aaa", "text/plain")),
+            ("files", ("b.txt", b"bbb", "text/plain")),
+        ]
+    )
+    # 断言 200
+    assert r.status_code == 200
+    # 断言数量是 2
+    assert r.json()["count"] == 2
+    # 断言文件名列表
+    assert r.json()["names"] == ["a.txt", "b.txt"]
+
+# 测试不传文件（应该 422）
+def test_upload_no_file():
+    # 不传 files 参数
+    # 定义变量 r
+    r = client.post("/upload")
+    # 断言 422（File(...) 是必填）
+    assert r.status_code == 422
+\`\`\`
+
+> 避坑指南：\`files\` 参数的值是元组 \`(filename, content, content_type)\`，不要只传 \`b"content"\`，否则文件名会是 None。
+
+## 九、测试异常和错误响应
+
+业务代码里会主动抛异常，测试要验证异常被正确转换成 HTTP 响应：
+
+\`\`\`python filename="main.py —— 带异常处理的接口"
+# 从 fastapi 导入 FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
+
+# 创建应用
+app = FastAPI()
+
+# 模拟数据库
+# 定义变量 FAKE_DB，是一个字典
+FAKE_DB = {1: "苹果", 2: "香蕉"}
+
+# GET /items/{item_id}
+@app.get("/items/{item_id}")
+# 定义函数 get_item，参数 item_id 是 int
+def get_item(item_id: int):
+    # 如果 id 不在数据库里
+    # 条件判断：如果 item_id 不在 FAKE_DB 里
+    if item_id not in FAKE_DB:
+        # 抛出 404 异常
+        # HTTPException 会被 FastAPI 自动转成 JSON 响应
+        raise HTTPException(status_code=404, detail="商品不存在")
+    # 正常返回
+    return {"id": item_id, "name": FAKE_DB[item_id]}
+
+# 模拟服务端错误
+@app.get("/error")
+# 定义函数 trigger_error
+def trigger_error():
+    # 故意除以零，触发 ZeroDivisionError
+    # 定义变量 x，赋值为 1 / 0
+    x = 1 / 0
+    return {"x": x}
+\`\`\`
+
+\`\`\`python filename="test_errors.py —— 测试异常"
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 从 main 导入 app
+from main import app
+
+# 创建客户端
+client = TestClient(app)
+
+# 测试 404
+def test_item_not_found():
+    # 访问不存在的 id
+    # 定义变量 r
+    r = client.get("/items/999")
+    # 断言 404
+    assert r.status_code == 404
+    # 断言 detail 信息
+    assert r.json()["detail"] == "商品不存在"
+
+# 测试正常情况
+def test_item_found():
+    # 访问存在的 id
+    # 定义变量 r
+    r = client.get("/items/1")
+    # 断言 200
+    assert r.status_code == 200
+    # 断言 name
+    assert r.json()["name"] == "苹果"
+
+# 测试服务端错误（默认返回 500）
+def test_server_error():
+    # 访问会触发异常的路由
+    # 定义变量 r
+    r = client.get("/error")
+    # 断言 500
+    assert r.status_code == 500
+
+# 测试类型校验错误
+def test_invalid_id_type():
+    # 传非 int 的路径参数
+    # 定义变量 r
+    r = client.get("/items/abc")
+    # 断言 422
+    assert r.status_code == 422
+\`\`\`
+
+## 十、实战：完整的 CRUD 测试套件
+
+下面是一个"内存版"的 CRUD 应用 + 完整测试，涵盖 GET/POST/PUT/DELETE、404、422：
+
+\`\`\`python filename="crud_app.py —— 完整 CRUD 应用"
+# 从 fastapi 导入 FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
+# 从 pydantic 导入 BaseModel
+from pydantic import BaseModel
+
+# 创建应用
+app = FastAPI()
+
+# 定义商品模型
+class Item(BaseModel):
+    # name 必填
+    name: str
+    # price 必填，>= 0
+    price: float
+
+# 内存数据库，key 是 id，value 是 Item 的字典表示
+# 定义变量 db，初始为空字典
+db: dict[int, dict] = {}
+# 自增 id 计数器
+# 定义变量 next_id，初始值为 1
+next_id = 1
+
+# 创建商品
+@app.post("/items", status_code=201)
+# 定义函数 create_item，参数 item 是 Item 类型
+def create_item(item: Item):
+    # 声明使用全局变量 next_id
+    global next_id
+    # 定义变量 item_id，赋值为 next_id
+    item_id = next_id
+    # id 自增
+    next_id += 1
+    # 存入数据库（转成字典存）
+    # 定义变量 item_dict，赋值为 item.model_dump() 并加上 id
+    item_dict = {"id": item_id, **item.model_dump()}
+    # 存入 db
+    db[item_id] = item_dict
+    # 返回创建的商品
+    return item_dict
+
+# 查询单个商品
+@app.get("/items/{item_id}")
+# 定义函数 get_item，参数 item_id 是 int
+def get_item(item_id: int):
+    # 如果 id 不存在
+    # 条件判断：如果 item_id 不在 db 里
+    if item_id not in db:
+        # 抛 404
+        raise HTTPException(status_code=404, detail="商品不存在")
+    # 返回商品
+    return db[item_id]
+
+# 查询列表
+@app.get("/items")
+# 定义函数 list_items，参数 skip 默认 0，limit 默认 10
+def list_items(skip: int = 0, limit: int = 10):
+    # 取 db 的所有值，切片分页
+    # 定义变量 all_items，赋值为 list(db.values())
+    all_items = list(db.values())
+    # 返回分页结果
+    return all_items[skip : skip + limit]
+
+# 更新商品
+@app.put("/items/{item_id}")
+# 定义函数 update_item，参数 item_id 和 item
+def update_item(item_id: int, item: Item):
+    # 如果 id 不存在
+    # 条件判断：如果 item_id 不在 db 里
+    if item_id not in db:
+        # 抛 404
+        raise HTTPException(status_code=404, detail="商品不存在")
+    # 更新数据库
+    # 定义变量 item_dict，赋值新数据加上 id
+    item_dict = {"id": item_id, **item.model_dump()}
+    # 存入 db
+    db[item_id] = item_dict
+    # 返回更新后的商品
+    return item_dict
+
+# 删除商品
+@app.delete("/items/{item_id}", status_code=204)
+# 定义函数 delete_item，参数 item_id
+def delete_item(item_id: int):
+    # 如果 id 不存在
+    # 条件判断：如果 item_id 不在 db 里
+    if item_id not in db:
+        # 抛 404
+        raise HTTPException(status_code=404, detail="商品不存在")
+    # 从 db 删除
+    # 调用 db.pop(item_id)
+    db.pop(item_id)
+    # 204 不返回内容
+    return None
+\`\`\`
+
+\`\`\`python filename="test_crud.py —— 完整 CRUD 测试"
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 导入 crud_app 模块，以便操作 db
+import crud_app
+# 从 crud_app 导入 app
+from crud_app import app
+
+# 创建客户端
+client = TestClient(app)
+
+# 每个测试前清空数据库，保证测试之间互不影响
+# 定义 setup 函数，在每个测试前手动调用
+def reset_db():
+    # 清空 db
+    # 调用 crud_app.db.clear()
+    crud_app.db.clear()
+    # 重置 next_id
+    # 赋值 crud_app.next_id = 1
+    crud_app.next_id = 1
+
+# 测试创建
+def test_create():
+    # 重置数据库
+    reset_db()
+    # 发 POST 请求
+    # 定义变量 r
+    r = client.post("/items", json={"name": "苹果", "price": 5.5})
+    # 断言 201
+    assert r.status_code == 201
+    # 断言返回的 id 是 1
+    assert r.json()["id"] == 1
+    # 断言 name
+    assert r.json()["name"] == "苹果"
+
+# 测试查询单个
+def test_get_one():
+    # 重置数据库
+    reset_db()
+    # 先创建一个
+    client.post("/items", json={"name": "苹果", "price": 5.5})
+    # 查询 id=1
+    # 定义变量 r
+    r = client.get("/items/1")
+    # 断言 200
+    assert r.status_code == 200
+    # 断言 name
+    assert r.json()["name"] == "苹果"
+
+# 测试查询不存在的
+def test_get_not_found():
+    # 重置数据库
+    reset_db()
+    # 查询 id=999
+    # 定义变量 r
+    r = client.get("/items/999")
+    # 断言 404
+    assert r.status_code == 404
+
+# 测试列表查询
+def test_list():
+    # 重置数据库
+    reset_db()
+    # 创建 3 个商品
+    client.post("/items", json={"name": "A", "price": 1})
+    client.post("/items", json={"name": "B", "price": 2})
+    client.post("/items", json={"name": "C", "price": 3})
+    # 查询列表
+    # 定义变量 r
+    r = client.get("/items", params={"skip": 0, "limit": 2})
+    # 断言 200
+    assert r.status_code == 200
+    # 断言只返回 2 个（limit=2）
+    assert len(r.json()) == 2
+
+# 测试更新
+def test_update():
+    # 重置数据库
+    reset_db()
+    # 先创建
+    client.post("/items", json={"name": "苹果", "price": 5.5})
+    # 更新 id=1
+    # 定义变量 r
+    r = client.put("/items/1", json={"name": "香蕉", "price": 3.0})
+    # 断言 200
+    assert r.status_code == 200
+    # 断言 name 已更新
+    assert r.json()["name"] == "香蕉"
+
+# 测试删除
+def test_delete():
+    # 重置数据库
+    reset_db()
+    # 先创建
+    client.post("/items", json={"name": "苹果", "price": 5.5})
+    # 删除 id=1
+    # 定义变量 r
+    r = client.delete("/items/1")
+    # 断言 204
+    assert r.status_code == 204
+    # 再查应该 404
+    # 定义变量 r2
+    r2 = client.get("/items/1")
+    # 断言 404
+    assert r2.status_code == 404
+
+# 测试校验失败
+def test_create_validation_error():
+    # 重置数据库
+    reset_db()
+    # 不传 name
+    # 定义变量 r
+    r = client.post("/items", json={"price": 5.5})
+    # 断言 422
+    assert r.status_code == 422
+\`\`\`
+
+## 十一、常见错误与避坑指南
+
+| 错误 | 现象 | 原因 | 解决 |
+| --- | --- | --- | --- |
+| 忘了创建 TestClient | \`NameError: client\` | 没有先实例化 | 测试文件开头 \`client = TestClient(app)\` |
+| 导入 app 报错 | \`ImportError\` | 路径不对 | 确保测试文件和 main.py 在同目录，或配置 PYTHONPATH |
+| 测试之间互相影响 | 前一个测试的数据污染后一个 | 共享了全局状态 | 每个测试前重置数据库（用 fixture，下一章讲） |
+| 异步路由测试报错 | \`RuntimeError: async ignored\` | TestClient 自动处理异步，但某些场景需注意 | 用 \`httpx.AsyncClient\` 配合 \`pytest-asyncio\` |
+| 文件上传测试失败 | \`filename is None\` | files 参数格式不对 | 用 \`(filename, content, type)\` 三元组 |
+| 422 断言失败 | 校验错误类型对不上 | Pydantic v2 改了错误类型名 | 打印 \`r.json()["detail"]\` 看实际类型 |
+
+> 最常见的坑是"测试间共享状态"。上面的 CRUD 测试里我们手动 \`reset_db()\`，但这很丑陋。下一章讲 pytest fixture，会用更优雅的方式解决。
+
+## 十二、小结
+
+TestClient 是 FastAPI 测试的基石：不需要启动服务器，直接在内存里模拟 HTTP 请求。用法和 \`httpx\` / \`requests\` 几乎一样——\`client.get()\`、\`client.post()\`，传 \`params\`、\`json\`、\`headers\`、\`files\`。测试的核心是"调用 + 断言"：调用接口，断言状态码、JSON 体、响应头。每个接口至少测正常、缺失、错误三种情况。
+
+但光有 TestClient 还不够——测试之间怎么共享数据？怎么复用客户端？怎么管理测试数据库？这些问题需要 pytest 的 fixture 机制来解决。下一章讲这个。
+`
+  },
+
+  // =========================================================
+  // 第二章：pytest 与 fixtures
+  // =========================================================
+  {
+    id: "fa-pytest",
+    group: "测试",
+    icon: " pytest",
+    title: "pytest 与 fixtures",
+    content: `
+
+# pytest 与 fixtures
+
+## 一、为什么用 pytest 而不是 unittest
+
+Python 自带 \`unittest\` 框架，为什么 FastAPI 项目几乎都用 \`pytest\`？
+
+\`\`\`txt filename="unittest vs pytest"
+unittest 写法:
+    import unittest
+    class MyTest(unittest.TestCase):
+        def test_add(self):
+            self.assertEqual(1 + 1, 2)    # 要写 self.assertEqual
+
+pytest 写法:
+    def test_add():
+        assert 1 + 1 == 2                 # 直接用 assert，简洁
+\`\`\`
+
+pytest 的优势：
+- **写法简洁**：直接 \`assert\`，不用记 \`self.assertEqual\` / \`self.assertTrue\` 等一堆方法。
+- **assert 断言增强**：失败时自动显示两个值的差异，非常直观。
+- **fixture 机制**：比 unittest 的 setUp/tearDown 强大得多，支持依赖注入、作用域、参数化。
+- **插件生态丰富**：pytest-cov（覆盖率）、pytest-asyncio（异步）、pytest-xdist（并行）等。
+- **兼容 unittest**：已有的 unittest 测试也能被 pytest 运行。
+
+## 二、安装与运行
+
+\`\`\`bash filename="安装 pytest"
+# 安装 pytest 和 FastAPI 测试需要的依赖
+pip install pytest httpx
+
+# 安装覆盖率插件（下一章用）
+pip install pytest-cov
+
+# 安装异步测试插件（测异步代码用）
+pip install pytest-asyncio
+\`\`\`
+
+\`\`\`bash filename="运行测试"
+# 运行当前目录下所有测试（文件名以 test_ 开头）
+pytest
+
+# 运行指定文件
+pytest test_main.py
+
+# 运行指定测试函数
+pytest test_main.py::test_root
+
+# 显示详细输出（每个测试的名字）
+pytest -v
+
+# 显示打印输出（默认 pytest 会吃掉 print）
+pytest -s
+
+# 只跑名字包含 "create" 的测试
+pytest -k "create"
+
+# 失败时立即停止
+pytest -x
+\`\`\`
+
+> 怎么想：\`pytest\` 默认会找当前目录下所有 \`test_*.py\` 或 \`*_test.py\` 文件，里面所有 \`test_\` 开头的函数。所以命名规则很重要——测试文件必须以 \`test_\` 开头，测试函数必须以 \`test_\` 开头。
+
+## 三、测试函数命名规则
+
+pytest 有严格的发现规则，不遵守就找不到你的测试：
+
+\`\`\`txt filename="pytest 发现规则"
+文件命名：test_*.py  或  *_test.py
+    ✅ test_main.py
+    ✅ test_user.py
+    ❌ my_test.py（不以 test_ 开头，找不到）→ 其实 *_test.py 也行
+    ❌ tests.py（不符合规则）
+
+函数命名：test_*
+    ✅ def test_create_user():
+    ✅ def test_login():
+    ❌ def create_user_test():（不以 test_ 开头）
+    ❌ def TestCreateUser():（这是类，不是函数）
+
+类命名：Test*（类以 Test 开头，里面的 test_ 方法会被运行）
+    ✅ class TestUser:
+          def test_create(self): ...
+    ❌ class UserTest:（不以 Test 开头，被忽略）
+    ❌ class TestUser(unittest.TestCase) 中的 __init__ 方法会被忽略
+\`\`\`
+
+## 四、assert 断言详解
+
+pytest 最舒服的地方就是直接用 \`assert\`，失败时会自动展示差异：
+
+\`\`\`python filename="assert 各种用法"
+# 测试函数：测试相等
+def test_equal():
+    # 定义变量 a
+    a = 1 + 1
+    # 断言 a 等于 2（失败会显示 a 的实际值）
+    assert a == 2
+
+# 测试函数：测试不相等
+def test_not_equal():
+    # 定义变量 a
+    a = 5
+    # 断言 a 不等于 3
+    assert a != 3
+
+# 测试函数：测试布尔值
+def test_truthy():
+    # 定义变量 result
+    result = [1, 2, 3]
+    # 断言列表非空（非空列表是 True）
+    assert result
+    # 断言长度是 3
+    assert len(result) == 3
+
+# 测试函数：测试包含
+def test_contains():
+    # 定义变量 text
+    text = "hello world"
+    # 断言 "world" 在 text 里
+    assert "world" in text
+    # 定义变量 nums
+    nums = [1, 2, 3]
+    # 断言 2 在列表里
+    assert 2 in nums
+
+# 测试函数：测试异常被抛出
+def test_raises():
+    # 导入 pytest
+    import pytest
+    # 用 pytest.raises 上下文管理器检查异常
+    # 条件：执行 1/0 应该抛 ZeroDivisionError
+    with pytest.raises(ZeroDivisionError):
+        # 这行代码应该抛异常
+        # 定义变量 x，赋值为 1 / 0
+        x = 1 / 0
+
+# 测试函数：测试异常的详细信息
+def test_raises_with_detail():
+    # 导入 pytest 和 HTTPException
+    import pytest
+    from fastapi import HTTPException
+    # 用 pytest.raises 检查异常
+    with pytest.raises(HTTPException) as exc_info:
+        # 模拟抛出 HTTPException
+        raise HTTPException(status_code=404, detail="不存在")
+    # 断言状态码是 404
+    assert exc_info.value.status_code == 404
+    # 断言 detail 信息
+    assert exc_info.value.detail == "不存在"
+\`\`\`
+
+> assert 失败时 pytest 会显示非常友好的差异对比，比如 \`assert {"a": 1} == {"a": 2}\` 会高亮显示 a 字段的差异。这是 unittest 做不到的。
+
+## 五、fixture 的概念：什么是依赖注入
+
+先看一个"没有 fixture"的问题：
+
+\`\`\`python filename="不用 fixture 的痛点"
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 从 main 导入 app
+from main import app
+
+# 每个测试都要重复创建 client
+def test_a():
+    # 每次都创建一次
+    # 定义变量 client
+    client = TestClient(app)
+    r = client.get("/")
+    assert r.status_code == 200
+
+def test_b():
+    # 又创建一次，重复
+    # 定义变量 client
+    client = TestClient(app)
+    r = client.get("/items")
+    assert r.status_code == 200
+
+def test_c():
+    # 又创建一次...
+    # 定义变量 client
+    client = TestClient(app)
+    r = client.post("/items", json={"name": "A"})
+    assert r.status_code == 201
+\`\`\`
+
+每个测试都重复 \`client = TestClient(app)\`，既冗余又容易漏。fixture 就是解决这个问题的——**把"准备数据"的逻辑抽出来，让 pytest 自动注入到测试函数里**。
+
+\`\`\`txt filename="fixture 的思想"
+没有 fixture:
+    测试函数自己准备数据 → 测试逻辑 → 自己清理数据
+
+有 fixture:
+    fixture 准备数据 → pytest 自动传给测试函数 → 测试逻辑 → fixture 自动清理
+    ↑ 类似 FastAPI 的 Depends 依赖注入，但用于测试
+\`\`\`
+
+## 六、@pytest.fixture 装饰器
+
+\`\`\`python filename="第一个 fixture"
+# 导入 pytest
 import pytest
 # 从 fastapi.testclient 导入 TestClient
 from fastapi.testclient import TestClient
 # 从 main 导入 app
 from main import app
 
-# 装饰器：pytest.fixture
+# 用 @pytest.fixture 定义一个 fixture
+# fixture 名就是函数名：client
 @pytest.fixture
-# 定义函数 client，参数: 
+# 定义函数 client，无参数
 def client():
-    # """每个测试函数都能用的 TestClient。"""
-    """每个测试函数都能用的 TestClient。"""
-    # 准备阶段:创建客户端
+    # 准备阶段：创建 TestClient
     # 定义变量 c，赋值为 TestClient(app)
     c = TestClient(app)
-    # yield 之前是"准备",之后是"清理"
-    # 生成值: c
+    # 把准备好的东西交给测试函数
     yield c
-    # 清理阶段:这里可以关连接、删数据等
-    # 这个例子没有需要清理的
-\`\`\`
+    # 清理阶段：yield 之后的代码在测试结束后执行
+    # 这里没有需要清理的，但可以在这里关连接、删数据等
 
-\`\`\`python
-# test_items.py
-def test_list_items(client):   # 参数名 client 会被 pytest 自动注入
-    # 定义变量 r，赋值为 client.get("/items")
+# 测试函数：参数名必须是 fixture 名（client）
+# pytest 会自动把 fixture 的返回值传进来
+def test_a(client):
+    # 直接用 client，不用自己创建
+    # 定义变量 r
+    r = client.get("/")
+    # 断言 200
+    assert r.status_code == 200
+
+def test_b(client):
+    # 同样直接用 client
+    # 定义变量 r
     r = client.get("/items")
-    # assert r.status_code == 200
+    # 断言 200
     assert r.status_code == 200
 \`\`\`
 
-**关键点:fixture 的名字就是参数名**。测试函数声明一个叫 \`client\` 的参数,pytest 就去找叫 \`client\` 的 fixture,把它的返回值(或 yield 出来的值)注入进来。
+> 怎么想：fixture 就像 FastAPI 的 \`Depends\`——你在函数参数里声明需要什么，框架就自动给你什么。区别是 \`Depends\` 注入到路由函数，fixture 注入到测试函数。
 
-### 50.6 fixture 的 scope(作用域)
+**yield 的作用**：\`yield c\` 把 \`c\` 交给测试函数，测试执行完后，继续执行 yield 后面的清理代码。这比 unittest 的 setUp/tearDown 优雅得多——准备和清理在同一个函数里，逻辑紧凑。
 
-fixture 不是每次都重新创建,\`scope\` 控制它"多久创建一次":
+## 七、fixture 的作用域
 
-\`\`\`python
-@pytest.fixture(scope="function")  # 默认,每个测试函数都新建一次
-# 定义函数 db，参数: 
-def db():
-    # ...
-    ...
+默认情况下，每个测试函数运行前都会重新执行一次 fixture（\`scope="function"\`）。如果 fixture 很耗时（比如连数据库），可以用更大的作用域让它在多个测试间共享：
 
-@pytest.fixture(scope="module")   # 每个 .py 文件只创建一次
-# 定义函数 db，参数: 
-def db():
-    # ...
-    ...
+\`\`\`python filename="fixture 作用域对比"
+# 导入 pytest
+import pytest
 
-@pytest.fixture(scope="session")  # 整个测试会话只创建一次(从 pytest 启动到结束)
-# 定义函数 db，参数: 
-def db():
-    # ...
-    ...
+# function 级（默认）：每个测试函数都重新执行
+@pytest.fixture(scope="function")
+# 定义函数 db_function
+def db_function():
+    print("\\n--- 连接数据库（function）---")
+    # 定义变量 db
+    db = {"connected": True}
+    # 交出 db
+    yield db
+    print("\\n--- 关闭数据库（function）---")
+    # 调用 db.clear()
+    db.clear()
+
+# class 级：每个测试类执行一次（类里所有方法共享）
+@pytest.fixture(scope="class")
+# 定义函数 db_class
+def db_class():
+    print("\\n--- 连接数据库（class）---")
+    # 定义变量 db
+    db = {"connected": True}
+    # 交出 db
+    yield db
+    print("\\n--- 关闭数据库（class）---")
+
+# module 级：每个 .py 文件执行一次
+@pytest.fixture(scope="module")
+# 定义函数 db_module
+def db_module():
+    print("\\n--- 连接数据库（module）---")
+    # 定义变量 db
+    db = {"connected": True}
+    # 交出 db
+    yield db
+    print("\\n--- 关闭数据库（module）---")
+
+# session 级：整个 pytest 运行期间只执行一次
+@pytest.fixture(scope="session")
+# 定义函数 db_session
+def db_session():
+    print("\\n--- 连接数据库（session）---")
+    # 定义变量 db
+    db = {"connected": True}
+    # 交出 db
+    yield db
+    print("\\n--- 关闭数据库（session）---")
 \`\`\`
 
-**scope 对照表:**
+\`\`\`txt filename="作用域对照表"
+scope="function"  每个测试函数前执行一次      最干净，但最慢
+scope="class"     每个测试类前执行一次        同类共享
+scope="module"    每个 .py 文件前执行一次     同文件共享
+scope="session"   整个测试运行只执行一次       最快，但要小心状态污染
+\`\`\`
 
-| scope | 创建时机 | 适用场景 |
-| --- | --- | --- |
-| \`function\`(默认) | 每个测试函数前 | 需要完全隔离的数据 |
-| \`class\` | 每个测试类前 | 同一类共享状态 |
-| \`module\` | 每个 .py 文件前 | 重的资源(建表) |
-| \`session\` | 整个测试会话一次 | 连接池、模型加载 |
+> 避坑指南：作用域越大越快，但共享状态的风险也越大。原则：**默认用 function，确实慢了再升级**。数据库连接通常用 session 级（连一次就够了），但测试数据必须每个测试独立。
 
-> 经验:**数据隔离用 function,重资源用 session**。比如数据库连接池可以 session 级(建一次就够),但每个测试的数据要 function 级清空,否则测试互相污染。
+## 八、conftest.py：共享 fixture
 
-### 50.7 数据库测试隔离(事务回滚)
+如果多个测试文件都要用同一个 fixture，不要在每个文件里复制粘贴。把它放到 \`conftest.py\` 里，pytest 会自动发现：
 
-测试数据库最怕"上一个测试插入的数据影响下一个测试"。标准做法是**每个测试跑在一个事务里,跑完回滚**:
+\`\`\`txt filename="conftest.py 的位置"
+project/
+├── conftest.py          ← 全局 fixture（所有目录都能用）
+├── test_main.py
+├── users/
+│   ├── conftest.py      ← users 目录专用 fixture
+│   ├── test_create.py   ← 能用全局 + users 里的 fixture
+│   └── test_delete.py
+└── items/
+    └── test_items.py    ← 只能用全局 fixture，不能用 users 的
+\`\`\`
 
-\`\`\`python
-# conftest.py
-# 导入 pytest 模块
+\`\`\`python filename="conftest.py —— 共享 fixture"
+# 导入 pytest
 import pytest
-# 从 sqlalchemy 导入 create_engine
-from sqlalchemy import create_engine
-# 从 sqlalchemy.orm 导入 sessionmaker
-from sqlalchemy.orm import sessionmaker
-# 从 models 导入 Base
-from models import Base
-# 从 main 导入 app, get_db
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 从 main 导入 app
+from main import app
+
+# 定义 client fixture，所有测试文件都能用
+@pytest.fixture
+# 定义函数 client
+def client():
+    # 创建 TestClient
+    # 定义变量 c
+    c = TestClient(app)
+    # 交出 c
+    yield c
+
+# 定义一个"干净的内存数据库" fixture
+@pytest.fixture
+# 定义函数 fake_db
+def fake_db():
+    # 创建一个空字典模拟数据库
+    # 定义变量 db
+    db = {}
+    # 交出 db
+    yield db
+    # 测试后清空（其实 yield 后 db 就被回收了，这里演示清理）
+    # 调用 db.clear()
+    db.clear()
+\`\`\`
+
+\`\`\`python filename="test_main.py —— 使用 conftest 的 fixture"
+# 不需要 import conftest，pytest 自动发现
+# 直接在参数里用 fixture 名
+
+# 测试函数：参数 client 和 fake_db 都来自 conftest.py
+def test_with_client_and_db(client, fake_db):
+    # client 是 TestClient，fake_db 是空字典
+    # 往假数据库里塞数据
+    # 赋值 fake_db[1] = "苹果"
+    fake_db[1] = "苹果"
+    # 用 client 发请求
+    # 定义变量 r
+    r = client.get("/")
+    # 断言 200
+    assert r.status_code == 200
+\`\`\`
+
+> 怎么想：\`conftest.py\` 就像 FastAPI 的 \`dependencies.py\`——把公共依赖集中管理。区别是 conftest 不需要 import，pytest 自动按目录层级发现。
+
+## 九、fixture 的参数化
+
+fixture 可以带参数，让同一个 fixture 在不同测试里返回不同数据：
+
+\`\`\`python filename="参数化 fixture"
+# 导入 pytest
+import pytest
+
+# 定义商品数据
+# 定义变量 sample_items
+sample_items = [
+    {"name": "苹果", "price": 5.5, "valid": True},
+    {"name": "", "price": 5.5, "valid": False},    # name 为空，无效
+    {"name": "香蕉", "price": -1, "valid": False},  # price 负数，无效
+]
+
+# 用 params 参数让 fixture 对每组数据各运行一次
+@pytest.fixture(params=sample_items)
+# 定义函数 item_data，参数 request（pytest 内置 fixture，传递参数信息）
+def item_data(request):
+    # request.param 是当前这组参数
+    # 交出当前参数
+    yield request.param
+
+# 这个测试会运行 3 次（因为有 3 组参数）
+def test_item_validation(item_data):
+    # item_data 是当前的参数
+    # 条件判断：如果 item_data["valid"] 为真
+    if item_data["valid"]:
+        # 有效数据应该通过校验
+        assert item_data["name"] != ""
+        assert item_data["price"] >= 0
+    else:
+        # 无效数据应该被拦下
+        # 条件判断：如果 name 为空或 price 为负
+        assert item_data["name"] == "" or item_data["price"] < 0
+\`\`\`
+
+更常用的参数化方式是 \`@pytest.mark.parametrize\`，直接在测试函数上标记：
+
+\`\`\`python filename="parametrize 装饰器"
+# 导入 pytest
+import pytest
+
+# 用 @pytest.mark.parametrize 参数化测试
+# 第一个参数是参数名的字符串（用逗号分隔）
+# 第二个参数是参数值的列表，每个元素是一组参数
+@pytest.mark.parametrize("input_a, input_b, expected", [
+    (1, 2, 3),       # 1 + 2 = 3
+    (0, 0, 0),       # 0 + 0 = 0
+    (-1, 1, 0),      # -1 + 1 = 0
+    (100, 200, 300), # 100 + 200 = 300
+])
+# 定义函数 test_add，参数 input_a, input_b, expected
+def test_add(input_a, input_b, expected):
+    # 定义变量 result，赋值为 input_a + input_b
+    result = input_a + input_b
+    # 断言结果等于 expected
+    assert result == expected
+
+# 测试参数校验
+@pytest.mark.parametrize("price, should_pass", [
+    (5.5, True),     # 正常价格
+    (0, True),       # 0 是合法的（ge=0）
+    (-1, False),     # 负数不合法
+    (100, True),     # 大数也行
+])
+# 定义函数 test_price_validation
+def test_price_validation(price, should_pass):
+    # 条件判断：如果 should_pass 为真
+    if should_pass:
+        # 应该合法
+        assert price >= 0
+    else:
+        # 应该不合法
+        assert price < 0
+\`\`\`
+
+## 十、测试数据库 fixture：隔离的测试数据库
+
+真实项目里测试不能污染生产数据库。最佳实践是每个测试用独立的数据库（或事务回滚）：
+
+\`\`\`python filename="conftest.py —— 测试数据库 fixture"
+# 导入 pytest
+import pytest
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+
+# 假设我们的应用用 SQLite
+# 从 main 导入 app 和 get_db 依赖
 from main import app, get_db
+# 导入 sqlalchemy 的 create_engine 和 sessionmaker
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+# 导入项目的 Base（模型基类）
+from models import Base
 
-# 用一个独立的测试数据库(别和生产混用!)
-# 定义变量 TEST_DB_URL，赋值为 "sqlite:///./test.db"
-TEST_DB_URL = "sqlite:///./test.db"
+# 定义测试数据库 fixture
+@pytest.fixture(scope="function")
+# 定义函数 test_db
+def test_db():
+    # 1. 创建一个内存 SQLite 数据库（每次测试都是全新的）
+    # 定义变量 engine，创建引擎连接内存数据库
+    engine = create_engine("sqlite:///:memory:")
 
-# 定义变量 engine，赋值为 create_engine(TEST_DB_URL, connect_args={"che...
-engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
-# 定义变量 TestingSession，赋值为 sessionmaker(bind=engine)
-TestingSession = sessionmaker(bind=engine)
-
-# 装饰器：pytest.fixture
-@pytest.fixture(scope="session", autouse=True)
-# 定义函数 create_tables，参数: 
-def create_tables():
-    # """整个测试会话开始时建表,结束时删表。"""
-    """整个测试会话开始时建表,结束时删表。"""
-    # 调用 Base.metadata.create_all()
+    # 2. 创建所有表
+    # 调用 Base.metadata.create_all(engine)
     Base.metadata.create_all(engine)
-    # yield
-    yield
-    # 调用 Base.metadata.drop_all()
+
+    # 3. 创建一个 session 工厂
+    # 定义变量 TestingSessionLocal
+    TestingSessionLocal = sessionmaker(bind=engine)
+
+    # 4. 创建一个 session
+    # 定义变量 db
+    db = TestingSessionLocal()
+
+    # 5. 交出 db
+    yield db
+
+    # 6. 测试结束后清理
+    # 关闭 session
+    # 调用 db.close()
+    db.close()
+    # 删除所有表
+    # 调用 Base.metadata.drop_all(engine)
     Base.metadata.drop_all(engine)
 
-# 装饰器：pytest.fixture
+# 覆盖 FastAPI 的 get_db 依赖，让 app 用测试数据库
+# 这个 fixture 依赖 test_db
 @pytest.fixture
-# 定义函数 db，参数: 
-def db():
-    # """每个测试函数用一个独立事务,跑完回滚。"""
-    """每个测试函数用一个独立事务,跑完回滚。"""
-    # 定义变量 connection，赋值为 engine.connect()
-    connection = engine.connect()
-    # 定义变量 transaction，赋值为 connection.begin()
-    transaction = connection.begin()
-    # 定义变量 session，赋值为 TestingSession(bind=connection)
-    session = TestingSession(bind=connection)
-    # 生成值: session
-    yield session
-    # 调用 session.close()
-    session.close()
-    transaction.rollback()   # 关键:回滚,数据不真正写入
-    # 调用 connection.close()
-    connection.close()
-
-# 装饰器：pytest.fixture
-@pytest.fixture
-# 定义函数 client，参数: db
-def client(db):
-    # """把上面的 db 注入到 FastAPI 里,覆盖 get_db 依赖。"""
-    """把上面的 db 注入到 FastAPI 里,覆盖 get_db 依赖。"""
-    # 定义函数 override_get_db，参数: 
+# 定义函数 client，参数 test_db（依赖上面的 test_db fixture）
+def client(test_db):
+    # 定义一个替代函数，返回测试数据库的 session
+    # 定义函数 override_get_db
     def override_get_db():
-        # 尝试执行，捕获异常
-        try:
-            # 生成值: db
-            yield db
-        # 无论是否异常都执行
-        finally:
-            # 空操作占位
-            pass
-    # app.dependency_overrides[get_db] = override_get_db
+        # 交出 test_db
+        yield test_db
+
+    # 覆盖 app 的 get_db 依赖
+    # app.dependency_overrides 是一个字典
+    # 赋值 app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_db] = override_get_db
-    # 生成值: TestClient(app)
-    yield TestClient(app)
+
+    # 创建 TestClient
+    # 定义变量 c
+    c = TestClient(app)
+    # 交出 c
+    yield c
+
+    # 清理：移除覆盖
     # 调用 app.dependency_overrides.clear()
     app.dependency_overrides.clear()
 \`\`\`
 
-\`\`\`python
-# test_users.py
-# 定义函数 test_create_and_query，参数: client
-def test_create_and_query(client):
-    # 调用 client.post()
-    client.post("/users", json={"name": "小明"})
-    # 定义变量 r，赋值为 client.get("/users")
-    r = client.get("/users")
-    assert len(r.json()) == 1   # 因为事务回滚,别的测试不会污染这里
+\`\`\`python filename="test_with_db.py —— 用测试数据库的测试"
+# client fixture 自动用测试数据库
+def test_create_and_get(client):
+    # 创建一个商品
+    # 定义变量 r
+    r = client.post("/items", json={"name": "苹果", "price": 5.5})
+    # 断言 201
+    assert r.status_code == 201
+    # 定义变量 item_id，赋值为 r.json()["id"]
+    item_id = r.json()["id"]
 
-# 定义函数 test_empty，参数: client
-def test_empty(client):
-    # 上面那个测试插的数据已经回滚了,这里应该是空的
-    # 定义变量 r，赋值为 client.get("/users")
-    r = client.get("/users")
-    # assert r.json() == []
+    # 查询刚创建的
+    # 定义变量 r2
+    r2 = client.get(f"/items/{item_id}")
+    # 断言 200
+    assert r2.status_code == 200
+    # 断言 name
+    assert r2.json()["name"] == "苹果"
+
+# 另一个测试，数据库是全新的（互不影响）
+def test_empty_list(client):
+    # 因为每个测试用新数据库，这里应该是空的
+    # 定义变量 r
+    r = client.get("/items")
+    # 断言 200
+    assert r.status_code == 200
+    # 断言返回空列表
     assert r.json() == []
 \`\`\`
 
-> 这就是"测试隔离"的核心:**每个测试都看到一个干净的数据库,互不干扰**。靠的就是 \`transaction.rollback()\`。
+> 关键点：\`app.dependency_overrides\` 是 FastAPI 测试的核心机制——它让你在不改业务代码的前提下，替换掉数据库依赖。下一章会详细讲。
 
-### 50.8 参数化测试:一次写多种情况
+## 十一、实战：用 fixture 重构 CRUD 测试
 
-同一个逻辑想测多种输入?不要复制粘贴十个测试函数,用 \`@pytest.mark.parametrize\`:
+把上一章的 CRUD 测试用 fixture 重构，变得干净且互不干扰：
 
-\`\`\`python
-# 导入 pytest 模块
+\`\`\`python filename="conftest.py —— CRUD 测试的公共 fixture"
+# 导入 pytest
 import pytest
 # 从 fastapi.testclient 导入 TestClient
 from fastapi.testclient import TestClient
-# 从 main 导入 app
-from main import app
 
-# 定义变量 client，赋值为 TestClient(app)
-client = TestClient(app)
+# 导入 crud_app 模块
+import crud_app
+# 从 crud_app 导入 app
+from crud_app import app
 
-# 第一个参数是参数名列表,第二个是数据列表
-# 装饰器：pytest.mark.parametrize
-@pytest.mark.parametrize("price, should_pass", [
-    (0.01, True),     # 正常价格
-    (1.0, True),      # 正常价格
-    (0, False),       # 价格为 0,违反 gt=0
-    (-5, False),      # 负价格,违反 gt=0
-# ])
-])
-# 定义函数 test_create_item_price_validation，参数: price, should_pass
-def test_create_item_price_validation(price, should_pass):
-    # 定义变量 r，赋值为 client.post("/items", json={"name": "x", "pri...
-    r = client.post("/items", json={"name": "x", "price": price})
-    # 条件判断：如果 should_pass
-    if should_pass:
-        # assert r.status_code == 201
-        assert r.status_code == 201
-    # 否则执行
-    else:
-        # assert r.status_code == 422
-        assert r.status_code == 422
-\`\`\`
+# 定义重置数据库的 fixture
+# scope="function" 确保每个测试前都重置
+@pytest.fixture(autouse=True)
+# autouse=True 表示自动应用，不需要在测试函数参数里声明
+# 定义函数 reset_db
+def reset_db():
+    # 清空 crud_app 的内存数据库
+    # 调用 crud_app.db.clear()
+    crud_app.db.clear()
+    # 重置自增 id
+    # 赋值 crud_app.next_id = 1
+    crud_app.next_id = 1
+    # 交出控制权（这里不需要返回什么，只是为了 autouse）
+    yield
 
-pytest 会自动生成 4 个测试用例,在报告里你还能看到每个用例的具体参数值,失败的能立刻定位是哪组数据挂了。
-
-### 50.9 fixture 之间互相依赖
-
-fixture 可以依赖别的 fixture,pytest 会按依赖顺序自动注入:
-
-\`\`\`python
-# 装饰器：pytest.fixture
+# 定义 client fixture
 @pytest.fixture
-# 定义函数 db，参数: 
-def db():
-    # """建一个 db session。"""
-    """建一个 db session。"""
-    # 返回 make_session()
-    return make_session()
+# 定义函数 client
+def client():
+    # 创建 TestClient
+    # 定义变量 c
+    c = TestClient(app)
+    # 交出 c
+    yield c
 
-# 装饰器：pytest.fixture
+# 定义"已创建商品"的 fixture（创建一个商品并返回其 id）
 @pytest.fixture
-def user(db):   # 依赖 db fixture
-    # """在 db 里插一个测试用户。"""
-    """在 db 里插一个测试用户。"""
-    # 返回 create_user(db, name="小明")
-    return create_user(db, name="小明")
-
-def test_get_user(user):   # 拿到的是已经建好的用户
-    # assert user.name == "小明"
-    assert user.name == "小明"
+# 定义函数 created_item，参数 client
+def created_item(client):
+    # 先创建一个商品
+    # 定义变量 r
+    r = client.post("/items", json={"name": "苹果", "price": 5.5})
+    # 返回创建的商品 id
+    # 定义变量 item_id，赋值为 r.json()["id"]
+    item_id = r.json()["id"]
+    # 交出 item_id
+    yield item_id
 \`\`\`
 
-### 50.10 conftest.py 的作用域
+\`\`\`python filename="test_crud_refactored.py —— 重构后的测试"
+# 不需要手动 reset_db 了（autouse fixture 自动处理）
 
-\`conftest.py\` 是 pytest 的"共享配置文件",放在哪个目录就对该目录及子目录生效:
+# 测试创建
+def test_create(client):
+    # 直接用 client
+    # 定义变量 r
+    r = client.post("/items", json={"name": "苹果", "price": 5.5})
+    # 断言 201
+    assert r.status_code == 201
+    # 断言 id
+    assert r.json()["id"] == 1
 
+# 测试查询：用 created_item fixture 自动创建一个商品
+def test_get_item(client, created_item):
+    # created_item 是已创建商品的 id
+    # 定义变量 r
+    r = client.get(f"/items/{created_item}")
+    # 断言 200
+    assert r.status_code == 200
+    # 断言 name
+    assert r.json()["name"] == "苹果"
+
+# 测试更新
+def test_update(client, created_item):
+    # 更新 created_item 对应的商品
+    # 定义变量 r
+    r = client.put(f"/items/{created_item}", json={"name": "香蕉", "price": 3.0})
+    # 断言 200
+    assert r.status_code == 200
+    # 断言已更新
+    assert r.json()["name"] == "香蕉"
+
+# 测试删除
+def test_delete(client, created_item):
+    # 删除 created_item
+    # 定义变量 r
+    r = client.delete(f"/items/{created_item}")
+    # 断言 204
+    assert r.status_code == 204
+    # 再查应该 404
+    # 定义变量 r2
+    r2 = client.get(f"/items/{created_item}")
+    # 断言 404
+    assert r2.status_code == 404
+
+# 测试列表
+def test_list_empty(client):
+    # 新数据库，列表应该空
+    # 定义变量 r
+    r = client.get("/items")
+    # 断言空
+    assert r.json() == []
 \`\`\`
-project/
-├── conftest.py          # 全局 fixture,所有测试都能用
-├── tests/
-│   ├── conftest.py      # 只对 tests/ 下生效
-│   ├── test_auth.py
-│   └── api/
-│       ├── conftest.py  # 只对 api/ 下生效
-│       └── test_items.py
-\`\`\`
 
-> 不需要 \`import\`,pytest 自动发现。这是 fixture 跨文件复用的关键。
+对比一下：之前每个测试都要手动 \`reset_db()\`，现在用 \`autouse=True\` 的 fixture 自动处理；之前每个测试都要手动创建商品才能测查询/更新/删除，现在用 \`created_item\` fixture 自动创建。代码量少了一半，可读性更好。
 
-### 50.11 易错点小结
+## 十二、常见错误与避坑指南
 
-| 易错点 | 后果 | 正确做法 |
-| --- | --- | --- |
-| fixture 名和参数名不一致 | 报错"未知的 fixture" | 参数名必须和 fixture 名完全一致 |
-| 用了 \`return\` 又想清理 | 清理代码不执行 | 清理必须用 \`yield\`,yield 之后才执行 |
-| scope 选错 | session 级数据被改,后面测试全挂 | 数据用 function 级,资源用 session 级 |
-| 测试数据库和生产混用 | 测试把生产数据删了 | 永远用独立的测试数据库 URL |
-| 忘了 \`app.dependency_overrides.clear()\` | 后面测试还用着 mock | fixture 结尾必须清理 override |
-| 参数化数据写错 | 参数对不上,报错 | 参数名和数据顺序要对应 |
+| 错误 | 现象 | 原因 | 解决 |
+| --- | --- | --- | --- |
+| fixture 没生效 | 测试参数报 \`fixture not found\` | fixture 名和参数名不一致 | 参数名必须和 fixture 函数名完全一样 |
+| conftest 不生效 | \`fixture not found\` | conftest.py 不在正确位置 | 放在测试文件的同目录或父目录 |
+| 忘了 yield | fixture 返回 None | 用了 return 而不是 yield | 用 \`yield\` 交出值，\`return\` 只用于早期返回 None 的场景 |
+| autouse 滥用 | 所有测试都被影响 | autouse=True 的 fixture 影响所有测试 | 只在确实需要全局生效时用 autouse |
+| 作用域选错 | 测试间数据污染 | 用了 session/module 级但没清理状态 | 共享 fixture 用大作用域，测试数据用 function 级 |
+| fixture 循环依赖 | \`FixtureError: circular\` | 两个 fixture 互相依赖 | 拆分公共逻辑到第三个 fixture |
 
-> **本章小结**:pytest + fixture 让测试代码从"重复劳动"变成"组装零件":fixture 是可复用的零件,测试函数只是把它们拼起来。重点掌握 scope(隔离粒度)、yield(准备+清理)、conftest.py(共享)。下一章讲怎么用 Mock 把外部依赖"假装"掉。`,
+> 最常见的坑：fixture 名拼写错误。参数名 \`cient\`（拼错了）不会被识别为 \`client\` fixture，pytest 会报"fixture not found"。仔细检查拼写。
+
+## 十三、小结
+
+pytest 的核心是 \`assert\` + \`fixture\`：\`assert\` 让断言简洁，\`fixture\` 让准备/清理逻辑复用。fixture 通过参数名注入（和 FastAPI 的 Depends 一样），用 \`conftest.py\` 跨文件共享，用 \`scope\` 控制生命周期，用 \`params\` / \`parametrize\` 做参数化测试。
+
+但到现在我们只测了"纯内存"的接口。真实项目里接口会依赖数据库、认证、外部 API——这些在测试时不能真的连。怎么"假装"这些依赖？下一章讲 Mock 与依赖覆盖。
+`
   },
 
-  // =============================================================
-  // 第五十一章:Mock 与依赖覆盖
-  // =============================================================
+  // =========================================================
+  // 第三章：Mock 与依赖覆盖
+  // =========================================================
   {
-    id: 'test-mock',
-    group: '测试',
-    icon: '🎭',
-    title: 'Mock 与依赖覆盖',
-    content: `## 第五十一章　Mock 与依赖覆盖
+    id: "fa-mock",
+    group: "测试",
+    icon: "🎭",
+    title: "Mock 与依赖覆盖",
+    content: `
 
-### 51.1 为什么需要 Mock
+# Mock 与依赖覆盖
 
-测试有三个原则:**快、稳、独立**。但如果你的测试直接连真实数据库、调真实第三方 API,这三个原则全毁了:
+## 一、为什么需要 Mock
 
-- **慢**:每次测试都连 MySQL,要几百毫秒;调外部支付接口更慢;
-- **不稳**:第三方 API 偶尔抽风、限流,你的测试就 flaky(时好时坏);
-- **不独立**:测试改了真实数据库的数据,污染生产;外部 API 调一次少一次额度。
+假设你的接口要调用第三方支付 API、发短信、查外部数据库。测试时你不能真的发短信、真的扣钱——不仅慢、不稳定，还费钱。**Mock 的本质就是"用假的替换真的"，让测试不依赖外部服务**。
 
-**Mock 的本质:把"真实的外部依赖"换成"假装的、可控的替身",让测试只关心你自己的代码逻辑。**
+\`\`\`txt filename="不 Mock 的问题"
+测试 "创建订单" 接口:
+  1. 接口调用支付 API → 真的扣了钱 ❌
+  2. 接口发短信通知 → 真的发了短信 ❌
+  3. 接口查用户数据库 → 需要连真实数据库 ❌
+  4. 支付 API 挂了 → 测试也挂了 ❌（不稳定）
+  5. 每次测试都要等几秒 → 太慢 ❌
 
-> 类比:你要测试"外卖骑手送餐"的流程,不需要真叫一份外卖,只要有个"假骑手"按你说的剧本走就行。Mock 就是那个"假骑手"。
+Mock 后:
+  1. 支付 API → 返回 "支付成功"（假的）✅
+  2. 短信 → 记录"被调用了一次"（假的）✅
+  3. 数据库 → 用内存数据库 ✅
+  4. 不依赖网络 → 稳定 ✅
+  5. 纯内存 → 快 ✅
+\`\`\`
 
-### 51.2 FastAPI 专属:依赖覆盖
+FastAPI 测试里 Mock 有两个层次：
+1. **FastAPI 层**：用 \`app.dependency_overrides\` 替换 Depends 注入的依赖（数据库、认证等）。
+2. **Python 层**：用 \`unittest.mock\` 替换任意函数/对象（外部 API 调用等）。
 
-FastAPI 提供了一个超好用的机制:\`app.dependency_overrides\`。前面我们讲依赖注入时说过,\`Depends\` 让依赖可替换,这个特性在测试时最能发挥作用。
+## 二、app.dependency_overrides：覆盖依赖
 
-举个例子,你的应用用 \`get_db\` 依赖拿到数据库 session:
+这是 FastAPI 测试最核心的机制。上一章已经用过（覆盖 get_db），这里详细讲：
 
-\`\`\`python
-# main.py
-# 从 fastapi 导入 FastAPI, Depends
-from fastapi import FastAPI, Depends
+\`\`\`python filename="main.py —— 带依赖的接口"
+# 从 fastapi 导入 FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException
 
-# 创建 FastAPI 应用实例
+# 创建应用
 app = FastAPI()
 
-# 定义函数 get_db，参数: 
-def get_db():
-    # """生产依赖:连真实 MySQL。"""
-    """生产依赖:连真实 MySQL。"""
-    # 定义变量 db，赋值为 create_mysql_session()
-    db = create_mysql_session()
-    # 尝试执行，捕获异常
-    try:
-        # 生成值: db
-        yield db
-    # 无论是否异常都执行
-    finally:
-        # 调用 db.close()
-        db.close()
+# 定义"获取当前用户"的依赖
+# 这个依赖会检查 token，返回用户信息
+# 定义函数 get_current_user，参数 token 是 str
+def get_current_user(token: str):
+    # 条件判断：如果 token 不等于 "valid-token"
+    if token != "valid-token":
+        # 抛 401
+        raise HTTPException(status_code=401, detail="无效 token")
+    # 返回模拟的用户
+    return {"id": 1, "name": "小明"}
 
-# 定义 GET 路由：访问 /users/{user_id} 时触发
-@app.get("/users/{user_id}")
-# 定义函数 get_user，参数: user_id: int, db = Depends(get_db)
-def get_user(user_id: int, db = Depends(get_db)):
-    # 返回 db.get(User, user_id)
-    return db.get(User, user_id)
+# 受保护的接口：依赖 get_current_user
+@app.get("/profile")
+# 定义函数 profile，参数 user 依赖 get_current_user
+def profile(user: dict = Depends(get_current_user)):
+    # 返回用户信息
+    return {"profile": user}
+
+# 模拟数据库依赖
+# 定义变量 fake_db，初始字典
+fake_db = {"items": [{"id": 1, "name": "苹果"}]}
+
+# 定义 get_db 依赖
+def get_db():
+    # 返回 fake_db
+    return fake_db
+
+# 查询商品列表：依赖 get_db
+@app.get("/items")
+# 定义函数 list_items，参数 db 依赖 get_db
+def list_items(db: dict = Depends(get_db)):
+    # 返回 db 里的 items
+    return db["items"]
 \`\`\`
 
-测试时不想连 MySQL,可以用 SQLite 内存库替代:
+现在看怎么覆盖这些依赖：
 
-\`\`\`python
-# test_users.py
+\`\`\`python filename="test_override.py —— 覆盖依赖"
 # 从 fastapi.testclient 导入 TestClient
 from fastapi.testclient import TestClient
-# 从 sqlalchemy 导入 create_engine
-from sqlalchemy import create_engine
-# 从 sqlalchemy.orm 导入 sessionmaker
-from sqlalchemy.orm import sessionmaker
-# 从 main 导入 app, get_db
-from main import app, get_db
+# 从 main 导入 app, get_current_user, get_db
+from main import app, get_current_user, get_db
 
-# 用 SQLite 内存库,跑完就消失,完全隔离
-# 定义变量 test_engine，赋值为 create_engine("sqlite:///:memory:", connect_a...
-test_engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
-# 定义变量 TestSession，赋值为 sessionmaker(bind=test_engine)
-TestSession = sessionmaker(bind=test_engine)
+# 测试 1：不覆盖，正常测试（需要传 token）
+def test_profile_normal():
+    # 创建客户端
+    # 定义变量 client
+    client = TestClient(app)
+    # 带正确 token 访问
+    # 定义变量 r
+    r = client.get("/profile", params={"token": "valid-token"})
+    # 断言 200
+    assert r.status_code == 200
+    # 断言返回的用户名
+    assert r.json()["profile"]["name"] == "小明"
 
-# 定义函数 override_get_db，参数: 
-def override_get_db():
-    # """替身依赖:返回 SQLite 的 session。"""
-    """替身依赖:返回 SQLite 的 session。"""
-    # 定义变量 db，赋值为 TestSession()
-    db = TestSession()
-    # 尝试执行，捕获异常
-    try:
-        # 生成值: db
-        yield db
-    # 无论是否异常都执行
-    finally:
-        # 调用 db.close()
-        db.close()
+# 测试 2：覆盖 get_current_user，跳过认证
+def test_profile_with_override():
+    # 定义替代函数：直接返回一个假用户，不检查 token
+    # 定义函数 override_user
+    def override_user():
+        # 直接返回假用户，不做任何检查
+        return {"id": 999, "name": "测试用户"}
 
-# 关键一步:用替身替换原来的 get_db
-# app.dependency_overrides[get_db] = override_get_db
-app.dependency_overrides[get_db] = override_get_db
+    # 注册覆盖：把 get_current_user 替换成 override_user
+    # app.dependency_overrides 是一个字典：{原依赖: 替代函数}
+    # 赋值 app.dependency_overrides[get_current_user] = override_user
+    app.dependency_overrides[get_current_user] = override_user
 
-# 定义变量 client，赋值为 TestClient(app)
-client = TestClient(app)
+    # 创建客户端（在覆盖之后创建）
+    # 定义变量 client
+    client = TestClient(app)
 
-# 定义函数 test_get_user，参数: 
-def test_get_user():
-    # 这次请求里,get_db 用的就是 SQLite 而不是 MySQL
-    # 定义变量 r，赋值为 client.get("/users/1")
-    r = client.get("/users/1")
-    # ...断言
-\`\`\`
+    # 不带 token 也能访问（因为认证被跳过了）
+    # 定义变量 r
+    r = client.get("/profile")
+    # 断言 200
+    assert r.status_code == 200
+    # 断言返回的是假用户
+    assert r.json()["profile"]["name"] == "测试用户"
 
-**测试结束一定要清理:**
+    # 清理：移除覆盖，避免影响其他测试
+    # 调用 app.dependency_overrides.clear()
+    app.dependency_overrides.clear()
 
-\`\`\`python
-# 定义函数 teardown_function，参数: 
-def teardown_function():
+# 测试 3：覆盖 get_db，用独立的测试数据库
+def test_items_with_override_db():
+    # 定义替代函数：返回一个假数据库
+    # 定义函数 override_db
+    def override_db():
+        # 返回一个全新的、独立的假数据库
+        return {"items": [{"id": 1, "name": "测试商品"}, {"id": 2, "name": "测试商品2"}]}
+
+    # 注册覆盖
+    # 赋值 app.dependency_overrides[get_db] = override_db
+    app.dependency_overrides[get_db] = override_db
+
+    # 创建客户端
+    # 定义变量 client
+    client = TestClient(app)
+    # 查询商品
+    # 定义变量 r
+    r = client.get("/items")
+    # 断言 200
+    assert r.status_code == 200
+    # 断言返回的是假数据库的内容
+    assert len(r.json()) == 2
+    # 断言第一个商品名
+    assert r.json()[0]["name"] == "测试商品"
+
+    # 清理
     # 调用 app.dependency_overrides.clear()
     app.dependency_overrides.clear()
 \`\`\`
 
-> 配合 fixture 用更优雅(见上一章的 \`client\` fixture)。
+> 怎么想：\`dependency_overrides\` 就像"狸猫换太子"——你告诉 FastAPI"遇到这个依赖时，别用原来的，用我给你的这个替代函数"。原代码完全不用改，但行为被替换了。
 
-### 51.3 覆盖外部 API 调用
+**关键理解**：\`dependency_overrides\` 的 key 是**原函数对象**（不是字符串），value 是**替代函数**。覆盖后，FastAPI 会调用替代函数而不是原函数。测试结束一定要 \`clear()\`，否则覆盖会"泄漏"到其他测试。
 
-假设你的接口要调一个第三方短信服务:
+## 三、模拟数据库依赖
 
-\`\`\`python
-# main.py
-# 导入 httpx 模块
-import httpx
-# 从 fastapi 导入 FastAPI
-from fastapi import FastAPI
+真实项目里数据库依赖更复杂，来看一个完整的例子：
 
-# 创建 FastAPI 应用实例
-app = FastAPI()
-
-# 定义函数 send_sms，参数: phone: str, code: str
-def send_sms(phone: str, code: str):
-    # """调用第三方短信 API。"""
-    """调用第三方短信 API。"""
-    # 定义变量 r，赋值为 httpx.post("https://sms.example.com/send", js...
-    r = httpx.post("https://sms.example.com/send", json={"phone": phone, "code": code})
-    # 返回 r.json()
-    return r.json()
-
-# 定义 POST 路由：访问 /register 时触发
-@app.post("/register")
-# 定义函数 register，参数: phone: str
-def register(phone: str):
-    # 定义变量 code，赋值为 "123456"
-    code = "123456"
-    # 定义变量 result，赋值为 send_sms(phone, code)
-    result = send_sms(phone, code)
-    # 条件判断：如果 result["status"] != "ok"
-    if result["status"] != "ok":
-        # 返回 {"ok": False}
-        return {"ok": False}
-    # 返回 {"ok": True}
-    return {"ok": True}
-\`\`\`
-
-测试时不想真的发短信(费钱又慢),有几种 Mock 方式。
-
-### 51.4 用 FastAPI 依赖覆盖(推荐)
-
-把"发短信"抽成一个依赖,然后用假实现替换:
-
-\`\`\`python
-# main.py —— 重构成依赖
-# 从 fastapi 导入 FastAPI, Depends
-from fastapi import FastAPI, Depends
-
-# 创建 FastAPI 应用实例
-app = FastAPI()
-
-# 定义函数 get_sms_client，参数: 
-def get_sms_client():
-    # """生产依赖:返回真实 httpx 客户端。"""
-    """生产依赖:返回真实 httpx 客户端。"""
-    # 返回 httpx.Client(base_url="https://sms.example.com")
-    return httpx.Client(base_url="https://sms.example.com")
-
-# 定义 POST 路由：访问 /register 时触发
-@app.post("/register")
-# 定义函数 register，参数: phone: str, sms = Depends(get_sms_client)
-def register(phone: str, sms = Depends(get_sms_client)):
-    # 定义变量 code，赋值为 "123456"
-    code = "123456"
-    # 定义变量 result，赋值为 sms.post("/send", json={"phone": phone, "code...
-    result = sms.post("/send", json={"phone": phone, "code": code}).json()
-    # 返回 {"ok": result["status"] == "ok"}
-    return {"ok": result["status"] == "ok"}
-
-# test_register.py
-# 定义类 FakeSmsClient
-class FakeSmsClient:
-    # """假短信客户端,返回固定成功。"""
-    """假短信客户端,返回固定成功。"""
-    # 定义函数 post，参数: self, url, json=None
-    def post(self, url, json=None):
-        # 定义类 R
-        class R:
-            # 装饰器：staticmethod
-            @staticmethod
-            # 定义函数 json，参数: 
-            def json():
-                # 返回 {"status": "ok"}
-                return {"status": "ok"}
-        # 返回 R()
-        return R()
-
-# 定义函数 override_sms，参数: 
-def override_sms():
-    # 返回 FakeSmsClient()
-    return FakeSmsClient()
-
-# app.dependency_overrides[get_sms_client] = overrid
-app.dependency_overrides[get_sms_client] = override_sms
-
-# 定义变量 client，赋值为 TestClient(app)
-client = TestClient(app)
-
-# 定义函数 test_register_success，参数: 
-def test_register_success():
-    # 定义变量 r，赋值为 client.post("/register", params={"phone": "13...
-    r = client.post("/register", params={"phone": "13800000000"})
-    # assert r.json() == {"ok": True}
-    assert r.json() == {"ok": True}
-\`\`\`
-
-> 这种方式最干净:**生产代码不为了测试改逻辑,只是把外部依赖抽成 \`Depends\`,测试时替换实现**。这就是为什么前面章节一直强调"依赖注入让代码可测"。
-
-### 51.5 用 unittest.mock.patch(不打扰源码)
-
-如果不想重构代码,可以用 \`unittest.mock.patch\` 临时替换函数:
-
-\`\`\`python
-# 从 unittest.mock 导入 patch
-from unittest.mock import patch
-# 从 fastapi.testclient 导入 TestClient
-from fastapi.testclient import TestClient
-# 从 main 导入 app, send_sms
-from main import app, send_sms
-
-# 定义变量 client，赋值为 TestClient(app)
-client = TestClient(app)
-
-# 定义函数 test_register_with_mocked_sms，参数: 
-def test_register_with_mocked_sms():
-    # 在这个 with 块里,send_sms 被替换成一个 MagicMock
-    # 使用上下文管理器 patch("main.send_sms")，赋值为 mock_sms
-    with patch("main.send_sms") as mock_sms:
-        # 设置替身被调用时返回什么
-        # mock_sms.return_value = {"status": "ok"}
-        mock_sms.return_value = {"status": "ok"}
-
-        # 定义变量 r，赋值为 client.post("/register", params={"phone": "13...
-        r = client.post("/register", params={"phone": "13800000000"})
-        # assert r.json() == {"ok": True}
-        assert r.json() == {"ok": True}
-
-        # 还能断言"被调用了,参数对不对"
-        # 调用 mock_sms.assert_called_once_with()
-        mock_sms.assert_called_once_with("13800000000", "123456")
-\`\`\`
-
-### 51.6 MagicMock 和 AsyncMock
-
-\`MagicMock\` 是 \`unittest.mock\` 的核心类,它会自动模拟任何属性和方法调用:
-
-\`\`\`python
-# 从 unittest.mock 导入 MagicMock
-from unittest.mock import MagicMock
-
-# 定义变量 m，赋值为 MagicMock()
-m = MagicMock()
-m.foo()                    # 不报错,返回一个新 MagicMock
-m.bar.baz(1, 2)            # 也不报错
-m.bar.baz.assert_called_with(1, 2)   # 断言调用参数
-
-# 设置返回值
-# m.foo.return_value = 42
-m.foo.return_value = 42
-# assert m.foo() == 42
-assert m.foo() == 42
-
-# 设置抛异常
-# m.foo.side_effect = ValueError("boom")
-m.foo.side_effect = ValueError("boom")
-m.foo()   # 抛 ValueError
-\`\`\`
-
-异步函数要用 \`AsyncMock\`:
-
-\`\`\`python
-# 从 unittest.mock 导入 AsyncMock, patch
-from unittest.mock import AsyncMock, patch
-
-# 定义异步函数 fetch_data，参数: 
-async def fetch_data():
-    # ...
-    ...
-
-# 使用上下文管理器 patch("__main__.fetch_data", new=AsyncMock(return_value={"x": 1}))
-with patch("__main__.fetch_data", new=AsyncMock(return_value={"x": 1})):
-    # ...
-    ...
-\`\`\`
-
-### 51.7 Mock httpx 响应(用 respx)
-
-如果你的代码里大量用 \`httpx\` 调外部 API,推荐用 \`respx\` 这个库,它能精确 mock 路由:
-
-\`\`\`bash
-# 安装 Python 包: respx
-pip install respx
-\`\`\`
-
-\`\`\`python
-# 导入 respx 模块
-import respx
-# 导入 httpx 模块
-import httpx
-
-# 装饰器：respx.mock
-@respx.mock
-# 定义函数 test_call_external，参数: 
-def test_call_external():
-    # 假装 https://api.example.com/users 返回固定数据
-    # 调用 respx.get()
-    respx.get("https://api.example.com/users").respond(
-        # 定义变量 status_code，赋值为 200,
-        status_code=200,
-        # 定义字典 json
-        json={"id": 1, "name": "小明"},
-    # )
-    )
-
-    # 定义变量 r，赋值为 httpx.get("https://api.example.com/users")
-    r = httpx.get("https://api.example.com/users")
-    # assert r.status_code == 200
-    assert r.status_code == 200
-    # assert r.json()["name"] == "小明"
-    assert r.json()["name"] == "小明"
-\`\`\`
-
-> 这种方式适合"测的是客户端代码本身",而不是 FastAPI 接口。
-
-### 51.8 单元测试 vs 集成测试
-
-| 维度 | 单元测试 | 集成测试 |
-| --- | --- | --- |
-| 测什么 | 单个函数/类 | 多个组件协作 |
-| Mock 程度 | 大量 Mock,只测自己 | 少 Mock,用真实依赖 |
-| 速度 | 极快(毫秒级) | 较慢(秒级) |
-| 范围 | 一个函数的逻辑 | 整个请求链路 |
-| 数量 | 多(每个函数几个) | 少(关键流程几个) |
-| 例子 | 测 \`calculate_price\` 函数 | 测 \`POST /order → 扣库存 → 生成订单\` |
-
-**经验法则**:
-
-- 业务逻辑(算法、规则)→ 单元测试,大量 Mock;
-- 关键 API 链路 → 集成测试,用 SQLite 内存库 + TestClient;
-- 第三方 API → 永远 Mock(费钱、不稳定)。
-
-### 51.9 完整示例:Mock 数据库 + 外部 API
-
-\`\`\`python
-# main.py —— 一个调外部汇率 API 的转账接口
+\`\`\`python filename="main.py —— 真实的数据库依赖"
 # 从 fastapi 导入 FastAPI, Depends, HTTPException
 from fastapi import FastAPI, Depends, HTTPException
 # 从 pydantic 导入 BaseModel
 from pydantic import BaseModel
-# 导入 httpx 模块
-import httpx
+# 从 sqlalchemy 导入列类型
+from sqlalchemy import Column, Integer, String, Float
+# 从 sqlalchemy.orm 导入 sessionmaker 和 declarative_base
+from sqlalchemy.orm import sessionmaker, declarative_base
+# 从 sqlalchemy 导入 create_engine
+from sqlalchemy import create_engine
 
-# 创建 FastAPI 应用实例
+# 创建应用
 app = FastAPI()
 
-# 定义 Pydantic 数据模型 Transfer，继承 BaseModel
-class Transfer(BaseModel):
-    # 字段 from_id，类型: int
-    from_id: int
-    # 字段 to_id，类型: int
-    to_id: int
-    # 字段 amount_usd，类型: float
-    amount_usd: float
+# 创建数据库引擎（这里用 SQLite 文件）
+# 定义变量 engine
+engine = create_engine("sqlite:///./app.db")
+# 定义变量 SessionLocal
+SessionLocal = sessionmaker(bind=engine)
+# 定义变量 Base
+Base = declarative_base()
 
-# 定义函数 get_db，参数: 
+# 定义商品 ORM 模型
+class Item(BaseModel_sql := type("Base", (Base,), {"__tablename__": "items"})):
+    # 等价于 class Item(Base):
+    pass
+
+# 简化：直接定义
+class ItemModel(Base):
+    # 表名
+    __tablename__ = "items"
+    # id 列，主键
+    id = Column(Integer, primary_key=True)
+    # name 列
+    name = Column(String)
+    # price 列
+    price = Column(Float)
+
+# 创建表
+# 调用 Base.metadata.create_all(engine)
+Base.metadata.create_all(engine)
+
+# 定义 get_db 依赖：每个请求开一个 session
 def get_db():
-    db = create_db()           # 生产:连真实数据库
-    # 生成值: db
-    yield db
+    # 创建 session
+    # 定义变量 db
+    db = SessionLocal()
+    # 尝试执行
+    try:
+        # 交出 db
+        yield db
+    # 无论是否异常都执行
+    finally:
+        # 关闭 session
+        # 调用 db.close()
+        db.close()
 
-# 定义函数 get_rate_client，参数: 
-def get_rate_client():
-    # 返回 httpx.Client(base_url="https://api.exchangerate.com")
-    return httpx.Client(base_url="https://api.exchangerate.com")
+# 定义 Pydantic 模型
+class ItemCreate(BaseModel):
+    # name 必填
+    name: str
+    # price 必填
+    price: float
 
-# 定义 POST 路由：访问 /transfer 时触发
-@app.post("/transfer")
-# 定义函数 transfer，参数: t: Transfer, db = Depends(get_db), client = Depend...
-def transfer(t: Transfer, db = Depends(get_db), client = Depends(get_rate_client)):
-    # 查汇率
-    # 定义变量 r，赋值为 client.get("/rate", params={"from": "USD", "t...
-    r = client.get("/rate", params={"from": "USD", "to": "CNY"})
-    # 定义变量 rate，赋值为 r.json()["rate"]
-    rate = r.json()["rate"]
-    # 条件判断：如果 rate <= 0
-    if rate <= 0:
-        # 抛出 HTTPException 异常: 500, "汇率异常"
-        raise HTTPException(500, "汇率异常")
-    # 转账逻辑(简化)
-    # 定义变量 cny，赋值为 t.amount_usd * rate
-    cny = t.amount_usd * rate
-    # 返回 {"cny": cny, "rate": rate}
-    return {"cny": cny, "rate": rate}
+# 创建商品
+@app.post("/items", status_code=201)
+# 定义函数 create_item，参数 item 和 db
+def create_item(item: ItemCreate, db = Depends(get_db)):
+    # 创建 ORM 对象
+    # 定义变量 db_item
+    db_item = ItemModel(name=item.name, price=item.price)
+    # 添加到 session
+    # 调用 db.add(db_item)
+    db.add(db_item)
+    # 提交事务
+    # 调用 db.commit()
+    db.commit()
+    # 刷新，获取自增 id
+    # 调用 db.refresh(db_item)
+    db.refresh(db_item)
+    # 返回
+    return {"id": db_item.id, "name": db_item.name, "price": db_item.price}
+\`\`\`
 
-# test_transfer.py
+用内存数据库覆盖，让测试不碰真实数据库：
+
+\`\`\`python filename="test_db_mock.py —— 用内存数据库测试"
+# 导入 pytest
+import pytest
 # 从 fastapi.testclient 导入 TestClient
 from fastapi.testclient import TestClient
-# 从 main 导入 app, get_db, get_rate_client
-from main import app, get_db, get_rate_client
+# 从 sqlalchemy 导入 create_engine
+from sqlalchemy import create_engine
+# 从 sqlalchemy.orm 导入 sessionmaker
+from sqlalchemy.orm import sessionmaker
+# 从 main 导入 app, get_db, Base
+from main import app, get_db, Base
 
-# 定义类 FakeDB
-class FakeDB:
-    # """假数据库,啥都不真做。"""
-    """假数据库,啥都不真做。"""
-    # 定义函数 get，参数: self, *args, **kwargs
-    def get(self, *args, **kwargs):
-        # 返回 None
-        return None
+# 定义测试数据库 fixture
+@pytest.fixture
+# 定义函数 test_db
+def test_db():
+    # 创建内存 SQLite 引擎
+    # 定义变量 engine
+    engine = create_engine("sqlite:///:memory:")
+    # 创建表
+    # 调用 Base.metadata.create_all(engine)
+    Base.metadata.create_all(engine)
+    # 创建 session 工厂
+    # 定义变量 TestingSession
+    TestingSession = sessionmaker(bind=engine)
+    # 创建 session
+    # 定义变量 db
+    db = TestingSession()
+    # 交出 db
+    yield db
+    # 清理
+    # 调用 db.close()
+    db.close()
 
-# 定义类 FakeRateClient
-class FakeRateClient:
-    # """假汇率 API 客户端。"""
-    """假汇率 API 客户端。"""
-    # 定义函数 get，参数: self, url, params=None
-    def get(self, url, params=None):
-        # 定义类 R
-        class R:
-            # 装饰器：staticmethod
-            @staticmethod
-            # 定义函数 json，参数: 
-            def json():
-                # 返回 {"rate": 7.2}
-                return {"rate": 7.2}
-        # 返回 R()
-        return R()
+# 定义带覆盖的 client fixture
+@pytest.fixture
+# 定义函数 client，参数 test_db
+def client(test_db):
+    # 定义替代函数
+    # 定义函数 override_get_db
+    def override_get_db():
+        # 交出 test_db
+        yield test_db
 
-# 定义函数 override_db，参数: 
-def override_db():
-    # 生成值: FakeDB()
-    yield FakeDB()
+    # 覆盖依赖
+    # 赋值 app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_db] = override_get_db
+    # 创建客户端
+    # 定义变量 c
+    c = TestClient(app)
+    # 交出 c
+    yield c
+    # 清理覆盖
+    # 调用 app.dependency_overrides.clear()
+    app.dependency_overrides.clear()
 
-# 定义函数 override_rate，参数: 
-def override_rate():
-    # 返回 FakeRateClient()
-    return FakeRateClient()
+# 测试创建商品
+def test_create_item(client):
+    # 发 POST 请求
+    # 定义变量 r
+    r = client.post("/items", json={"name": "苹果", "price": 5.5})
+    # 断言 201
+    assert r.status_code == 201
+    # 断言返回有 id
+    assert "id" in r.json()
+    # 断言 name
+    assert r.json()["name"] == "苹果"
 
-# 用 fixture 注入替身
-# app.dependency_overrides[get_db] = override_db
-app.dependency_overrides[get_db] = override_db
-# app.dependency_overrides[get_rate_client] = overri
-app.dependency_overrides[get_rate_client] = override_rate
+# 测试创建后数据库里真的有数据
+def test_create_and_verify(client, test_db):
+    # 通过 API 创建
+    # 定义变量 r
+    r = client.post("/items", json={"name": "香蕉", "price": 3.0})
+    # 断言 201
+    assert r.status_code == 201
+    # 定义变量 item_id
+    item_id = r.json()["id"]
 
-# 定义变量 client，赋值为 TestClient(app)
+    # 直接查数据库验证
+    # 从 main 导入 ItemModel
+    from main import ItemModel
+    # 查询刚创建的商品
+    # 定义变量 db_item
+    db_item = test_db.query(ItemModel).filter(ItemModel.id == item_id).first()
+    # 断言数据库里有
+    assert db_item is not None
+    # 断言 name
+    assert db_item.name == "香蕉"
+\`\`\`
+
+## 四、模拟认证依赖
+
+测试受保护的接口时，有时不需要测认证逻辑本身（它有自己的测试），只想测"认证后的业务逻辑"。这时覆盖认证依赖：
+
+\`\`\`python filename="main.py —— 认证依赖"
+# 从 fastapi 导入 FastAPI, Depends, HTTPException, Header
+from fastapi import FastAPI, Depends, HTTPException, Header
+
+# 创建应用
+app = FastAPI()
+
+# 定义"验证管理员"的依赖
+# 定义函数 require_admin，参数 x_token 从 Header 提取
+def require_admin(x_token: str = Header(...)):
+    # 模拟：去数据库查 token 对应的用户
+    # 定义变量 admin_tokens
+    admin_tokens = {"admin-secret": "管理员"}
+    # 条件判断：如果 x_token 不在 admin_tokens 里
+    if x_token not in admin_tokens:
+        # 抛 403
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    # 返回用户名
+    return {"name": admin_tokens[x_token], "role": "admin"}
+
+# 只有管理员能访问的接口
+@app.delete("/users/{user_id}")
+# 定义函数 delete_user，参数 user_id 和 admin
+def delete_user(user_id: int, admin: dict = Depends(require_admin)):
+    # 模拟删除用户
+    return {"deleted": user_id, "by": admin["name"]}
+
+# 管理员后台
+@app.get("/admin/stats")
+# 定义函数 admin_stats，参数 admin
+def admin_stats(admin: dict = Depends(require_admin)):
+    # 返回统计信息
+    return {"total_users": 100, "admin": admin["name"]}
+\`\`\`
+
+\`\`\`python filename="test_auth_mock.py —— 覆盖认证"
+# 导入 pytest
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 从 main 导入 app, require_admin
+from main import app, require_admin
+
+# 定义"假装是管理员"的 fixture
+@pytest.fixture
+# 定义函数 mock_admin
+def mock_admin():
+    # 定义替代函数：直接返回管理员，不检查 token
+    # 定义函数 fake_admin
+    def fake_admin():
+        # 返回假的管理员信息
+        return {"name": "测试管理员", "role": "admin"}
+
+    # 覆盖
+    # 赋值 app.dependency_overrides[require_admin] = fake_admin
+    app.dependency_overrides[require_admin] = fake_admin
+    # 交出控制权
+    yield
+    # 清理
+    # 调用 app.dependency_overrides.clear()
+    app.dependency_overrides.clear()
+
+# 测试管理员接口（不用真的带 token）
+def test_delete_user(mock_admin):
+    # mock_admin fixture 已经覆盖了认证
+    # 定义变量 client
+    client = TestClient(app)
+    # 不带 X-Token 也能访问
+    # 定义变量 r
+    r = client.delete("/users/5")
+    # 断言 200
+    assert r.status_code == 200
+    # 断言返回信息
+    assert r.json()["by"] == "测试管理员"
+
+# 测试不覆盖时（需要真的带 token）
+def test_delete_user_without_mock():
+    # 不用 mock_admin fixture
+    # 定义变量 client
+    client = TestClient(app)
+    # 不带 token
+    # 定义变量 r
+    r = client.delete("/users/5")
+    # 断言 422（X-Token 是必填 Header）
+    assert r.status_code == 422
+
+    # 带错误 token
+    # 定义变量 r2
+    r2 = client.delete("/users/5", headers={"X-Token": "wrong"})
+    # 断言 403
+    assert r2.status_code == 403
+
+    # 带正确 token
+    # 定义变量 r3
+    r3 = client.delete("/users/5", headers={"X-Token": "admin-secret"})
+    # 断言 200
+    assert r3.status_code == 200
+\`\`\`
+
+> 怎么想：测"认证逻辑"时不覆盖（测试 2），测"认证后的业务"时覆盖（测试 1）。这样职责分明——认证的测试归认证，业务的测试归业务。
+
+## 五、模拟外部 API 调用
+
+接口里调用第三方 API（如支付、短信、天气）是常见需求，测试时必须 Mock：
+
+\`\`\`python filename="main.py —— 调用外部 API"
+# 从 fastapi 导入 FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
+# 导入 httpx
+import httpx
+
+# 创建应用
+app = FastAPI()
+
+# 定义"调用支付 API"的函数
+# 定义函数 call_payment_api，参数 amount 和 order_id
+def call_payment_api(amount: float, order_id: str):
+    # 用 httpx 调用真实的支付 API
+    # 定义变量 resp
+    resp = httpx.post("https://api.payment.com/charge", json={
+        "amount": amount,
+        "order_id": order_id
+    })
+    # 返回响应
+    return resp.json()
+
+# 创建订单接口
+@app.post("/orders")
+# 定义函数 create_order，参数 amount 和 order_id
+def create_order(amount: float, order_id: str):
+    # 调用支付 API
+    # 定义变量 result
+    result = call_payment_api(amount, order_id)
+    # 条件判断：如果 result 里的 status 不是 "success"
+    if result.get("status") != "success":
+        # 抛 400
+        raise HTTPException(status_code=400, detail="支付失败")
+    # 返回成功
+    return {"order_id": order_id, "status": "paid"}
+\`\`\`
+
+用 \`unittest.mock.patch\` 替换 \`call_payment_api\`：
+
+\`\`\`python filename="test_external_mock.py —— Mock 外部 API"
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 从 unittest.mock 导入 patch
+from unittest.mock import patch
+# 从 main 导入 app
+from main import app
+
+# 创建客户端
+# 定义变量 client
 client = TestClient(app)
 
-# 定义函数 test_transfer，参数: 
-def test_transfer():
-    # 定义变量 r，赋值为 client.post("/transfer", json={"from_id": 1, ...
-    r = client.post("/transfer", json={"from_id": 1, "to_id": 2, "amount_usd": 100})
-    # assert r.status_code == 200
+# 测试 1：Mock 支付成功
+# 用 @patch 装饰器替换 main 模块里的 call_payment_api
+# 参数 return_value 指定 Mock 对象返回什么
+@patch("main.call_payment_api", return_value={"status": "success", "charge_id": "ch_123"})
+# 定义函数 test_order_success，参数 mock_payment（patch 会把 Mock 对象传进来）
+def test_order_success(mock_payment):
+    # 调用接口（不会真的调用支付 API）
+    # 定义变量 r
+    r = client.post("/orders", params={"amount": 100, "order_id": "ord_001"})
+    # 断言 200
     assert r.status_code == 200
-    # assert r.json() == {"cny": 720.0, "rate": 7.2}
-    assert r.json() == {"cny": 720.0, "rate": 7.2}
+    # 断言返回 paid
+    assert r.json()["status"] == "paid"
+    # 验证 mock 被调用了一次
+    # 调用 mock_payment.assert_called_once()
+    mock_payment.assert_called_once()
+    # 验证调用时的参数
+    # 调用 mock_payment.assert_called_with(100, "ord_001")
+    mock_payment.assert_called_with(100, "ord_001")
 
-# 测异常分支:汇率 API 返回异常值
-# 定义类 BadRateClient
-class BadRateClient:
-    # 定义函数 get，参数: self, url, params=None
-    def get(self, url, params=None):
-        # 定义类 R
-        class R:
-            # 装饰器：staticmethod
-            @staticmethod
-            # 定义函数 json，参数: 
-            def json():
-                # 返回 {"rate": -1}
-                return {"rate": -1}
-        # 返回 R()
-        return R()
+# 测试 2：Mock 支付失败
+@patch("main.call_payment_api", return_value={"status": "failed"})
+# 定义函数 test_order_failed，参数 mock_payment
+def test_order_failed(mock_payment):
+    # 调用接口
+    # 定义变量 r
+    r = client.post("/orders", params={"amount": 100, "order_id": "ord_002"})
+    # 断言 400
+    assert r.status_code == 400
+    # 断言 detail
+    assert r.json()["detail"] == "支付失败"
 
-# 定义函数 test_transfer_bad_rate，参数: 
-def test_transfer_bad_rate():
-    # app.dependency_overrides[get_rate_client] = lambda
-    app.dependency_overrides[get_rate_client] = lambda: BadRateClient()
-    # 定义变量 r，赋值为 client.post("/transfer", json={"from_id": 1, ...
-    r = client.post("/transfer", json={"from_id": 1, "to_id": 2, "amount_usd": 100})
-    # assert r.status_code == 500
+# 测试 3：Mock 支付 API 抛异常
+@patch("main.call_payment_api", side_effect=Exception("网络超时"))
+# 定义函数 test_order_exception，参数 mock_payment
+def test_order_exception(mock_payment):
+    # 调用接口
+    # 定义变量 r
+    r = client.post("/orders", params={"amount": 100, "order_id": "ord_003"})
+    # 因为 call_payment_api 抛异常，FastAPI 默认返回 500
     assert r.status_code == 500
 \`\`\`
 
-### 51.10 易错点小结
+> 关键点：\`@patch("main.call_payment_api")\` 的路径是"模块名.函数名"。它会在测试期间把这个函数替换成 Mock 对象，测试结束后自动恢复。\`return_value\` 指定返回值，\`side_effect\` 可以指定抛异常或返回多个值。
 
-| 易错点 | 后果 | 正确做法 |
-| --- | --- | --- |
-| Mock 没清理,影响下一个测试 | 别的测试莫名失败 | fixture 结尾 \`clear\` 或 \`stop\` |
-| \`patch\` 路径写错 | Mock 没生效,还是调了真服务 | patch 用"被测模块里的引用名" |
-| Mock 太狠,测的不再是真逻辑 | 测试永远过,线上挂 | 只 Mock 外部依赖,别 Mock 自己的业务 |
-| \`assert_called\` 写在 with 块外 | 测试挂了找不到原因 | 断言要在 patch 还生效的范围内 |
-| 异步函数用 MagicMock | 报"coroutine 不能 await" | 异步用 \`AsyncMock\` |
-| 覆盖依赖但忘了 \`Depends\` | 替身没生效 | \`dependency_overrides\` 的 key 必须是依赖函数本身 |
+## 六、MagicMock 和 AsyncMock
 
-> **本章小结**:Mock 的目的是"让测试不依赖外部世界"。FastAPI 用 \`app.dependency_overrides\` 替换依赖(最优雅),通用场景用 \`unittest.mock.patch\`。原则:**只 Mock 外部依赖,不 Mock 你要测的业务逻辑本身**。下一章讲怎么量化测试覆盖了多少代码。`,
-  },
+\`MagicMock\` 是更强大的 Mock 对象，可以模拟任意对象的行为；\`AsyncMock\` 用于 Mock 异步函数：
 
-  // =============================================================
-  // 第五十二章:覆盖率与持续测试
-  // =============================================================
-  {
-    id: 'test-coverage',
-    group: '测试',
-    icon: '📊',
-    title: '覆盖率与持续测试',
-    content: `## 第五十二章　覆盖率与持续测试
+\`\`\`python filename="test_magic_mock.py —— MagicMock 用法"
+# 从 unittest.mock 导入 MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock, AsyncMock, patch
 
-### 52.1 测试覆盖率是什么
+# 测试 1：MagicMock 基本用法
+def test_magic_mock_basic():
+    # 创建一个 MagicMock 对象
+    # 定义变量 mock_obj
+    mock_obj = MagicMock()
 
-**测试覆盖率(coverage)= 你的测试运行时,实际被执行到的代码行数 / 代码总行数。**
+    # 设置返回值
+    # 赋值 mock_obj.get_user.return_value = {"id": 1, "name": "小明"}
+    mock_obj.get_user.return_value = {"id": 1, "name": "小明"}
 
-举个例子,你的 \`main.py\` 有 100 行代码,跑完所有测试后,有 80 行被测试执行到了,那覆盖率就是 80%。
+    # 调用（不会真的执行，直接返回设定的值）
+    # 定义变量 result
+    result = mock_obj.get_user(1)
+    # 断言返回的是设定的值
+    assert result == {"id": 1, "name": "小明"}
 
-> 但要警惕:**覆盖率只衡量"代码有没有被跑到",不衡量"测得对不对"**。你可以写一个 \`def test_x(): assert True\`,它会让对应的代码"被覆盖",但其实啥也没测。覆盖率是必要条件,不是充分条件。
+    # 验证被调用过
+    # 调用 mock_obj.get_user.assert_called_once()
+    mock_obj.get_user.assert_called_once()
+    # 验证调用参数是 1
+    # 调用 mock_obj.get_user.assert_called_with(1)
+    mock_obj.get_user.assert_called_with(1)
 
-### 52.2 安装 pytest-cov
+# 测试 2：MagicMock 模拟复杂对象
+def test_magic_mock_complex():
+    # 创建 Mock
+    # 定义变量 mock_db
+    mock_db = MagicMock()
 
-\`\`\`bash
-# 安装 Python 包: pytest-cov
-pip install pytest-cov
-\`\`\`
+    # 模拟 query().filter().first() 链式调用
+    # 赋值 mock_db.query.return_value.filter.return_value.first.return_value = None
+    mock_db.query.return_value.filter.return_value.first.return_value = None
 
-它会给 pytest 加上 \`--cov\` 参数,跑测试时同时统计覆盖率。
+    # 调用链式方法
+    # 定义变量 result
+    result = mock_db.query(Item := type("Item", (), {})).filter(None).first()
+    # 断言返回 None
+    assert result is None
 
-### 52.3 跑覆盖率
-
-\`\`\`bash
-# --cov=app 表示统计 app 目录下代码的覆盖率
-# --cov-report=term 终端打印
-# --cov-report=html 生成 HTML 报告
-# pytest --cov=app --cov-report=term --cov-report=ht
-pytest --cov=app --cov-report=term --cov-report=html
-\`\`\`
-
-跑完会在终端看到一个表格:
-
-\`\`\`
-Name                Stmts   Miss  Cover
----------------------------------------
-app/__init__.py         2      0   100%
-app/main.py            45      5    89%
-app/services.py        30      8    73%
----------------------------------------
-TOTAL                  77     13    83%
-\`\`\`
-
-- **Stmts**:语句总数;
-- **Miss**:没被覆盖的语句数;
-- **Cover**:覆盖率百分比。
-
-同时会生成一个 \`htmlcov/\` 目录,浏览器打开 \`htmlcov/index.html\`,能逐行看到哪行被覆盖、哪行没覆盖(红色是没覆盖,绿色是覆盖了)。这是排查"漏测"的最直观工具。
-
-### 52.4 分支覆盖率 vs 行覆盖率
-
-默认统计的是**行覆盖率**。更严格的是**分支覆盖率**:
-
-\`\`\`python
-# 定义函数 get_label，参数: score
-def get_label(score):
-    # 条件判断：如果 score >= 60
-    if score >= 60:
-        # 返回 "及格"
-        return "及格"
-    # 返回 "不及格"
-    return "不及格"
-\`\`\`
-
-- **行覆盖率**:测了 \`score=80\`,覆盖到 \`if\` 那行和 \`return "及格"\` 那行,但 \`return "不及格"\` 没被覆盖,行覆盖率是 75%;
-- **分支覆盖率**:即使两行都覆盖了,只要没测 \`score < 60\` 的情况,分支覆盖率还是 50%——因为它要求 \`if\` 的两个分支都走到。
-
-开启分支覆盖:
-
-\`\`\`bash
-# pytest --cov=app --cov-branch --cov-report=html
-pytest --cov=app --cov-branch --cov-report=html
-\`\`\`
-
-> **分支覆盖率更能反映真实情况**。一个 \`if/else\` 只测了一个分支,行覆盖率看着高,但漏了一个分支。
-
-### 52.5 覆盖率目标:80% 不是硬指标
-
-很多团队定"覆盖率必须 80%"。这是个参考值,不是圣经:
-
-- **强行追 100% 反而有害**:为了凑覆盖率,你会写出大量低质量测试(就是 \`assert True\` 那种);
-- **80% 通常够用**:剩下 20% 可能是异常分支、错误处理,补上性价比不高;
-- **关键模块可以要求 100%**:支付、权限、核心算法,这些地方 100% 都嫌低。
-
-**更重要的指标:关键路径的覆盖率。** 一个内部 CRUD 工具的覆盖率可以低,但支付接口的覆盖率必须高。
-
-### 52.6 什么该测,什么不必测
-
-| 该测 | 不必测 |
-| --- | --- |
-| 业务逻辑(规则、算法) | 框架本身的代码(FastAPI、Pydantic) |
-| 边界值(0、负数、空、超大) | 简单的 CRUD 增删改查 |
-| 错误处理(异常、超时) | 配置文件加载 |
-| 权限校验逻辑 | 第三方库的内部 |
-| 复杂的数据转换 | getter/setter 这种没什么逻辑的方法 |
-| 并发、事务相关 | 打印日志的代码 |
-
-> 一个常见误区:**为了覆盖率去测 \`__init__\`、\`__repr__\` 这种没逻辑的方法**。这种测试除了凑数字没意义。
-
-### 52.7 配置文件:统一覆盖率规则
-
-在项目根目录建 \`pyproject.toml\` 或 \`.coveragerc\`,统一配置:
-
-\`\`\`ini
-# .coveragerc
-# 配置段: run
-[run]
-# source = app                  # 只统计 app 目录
-source = app                  # 只统计 app 目录
-# branch = True                 # 开启分支覆盖
-branch = True                 # 开启分支覆盖
-# omit = 
-omit =
-    # app/tests/*               # 排除测试代码本身
-    app/tests/*               # 排除测试代码本身
-    # app/__init__.py
-    app/__init__.py
-
-# 配置段: report
-[report]
-# show_missing = True           # 报告里显示哪些行没覆盖
-show_missing = True           # 报告里显示哪些行没覆盖
-# precision = 2
-precision = 2
-# fail_under = 80               # 覆盖率低于 80% 就让命令失败(用于 CI)
-fail_under = 80               # 覆盖率低于 80% 就让命令失败(用于 CI)
-
-# 配置段: html
-[html]
-# directory = htmlcov            # HTML 报告输出目录
-directory = htmlcov            # HTML 报告输出目录
-\`\`\`
-
-配好之后,直接 \`pytest --cov\` 就行,不用每次写一堆参数。
-
-### 52.8 在 CI 里跑测试(GitHub Actions)
-
-覆盖率最大的价值在 CI:每次提交代码、每次 PR,都自动跑测试,覆盖率掉了就报警。
-
-\`\`\`yaml
-# .github/workflows/test.yml
-# name: 测试与覆盖率
-name: 测试与覆盖率
-
-# on 配置段
-on:
-  # push 配置段
-  push:
-    # branches: [main]
-    branches: [main]
-  # pull_request 配置段
-  pull_request:
-    # branches: [main]
-    branches: [main]
-
-# jobs 配置段
-jobs:
-  # test 配置段
-  test:
-    # runs-on: ubuntu-latest
-    runs-on: ubuntu-latest
-    # steps 配置段
-    steps:
-      # 列表项: uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-      # 列表项: name: 安装 Python
-      - name: 安装 Python
-        # uses: actions/setup-python@v5
-        uses: actions/setup-python@v5
-        # with 配置段
-        with:
-          # python-version: "3.11"
-          python-version: "3.11"
-      # 列表项: name: 安装依赖
-      - name: 安装依赖
-        # run: pip install -r requirements.txt && 
-        run: pip install -r requirements.txt && pip install pytest pytest-cov httpx
-      # 列表项: name: 跑测试 + 覆盖率
-      - name: 跑测试 + 覆盖率
-        # run: pytest --cov=app --cov-branch --cov
-        run: pytest --cov=app --cov-branch --cov-report=xml --cov-report=term
-      # 列表项: name: 上传覆盖率报告
-      - name: 上传覆盖率报告
-        # uses: codecov/codecov-action@v3
-        uses: codecov/codecov-action@v3
-        # with 配置段
-        with:
-          # file: ./coverage.xml
-          file: ./coverage.xml
-\`\`\`
-
-**关键点**:
-
-- \`fail_under = 80\` 在 \`.coveragerc\` 里设了,pytest 跑完如果覆盖率低于 80%,会返回非零退出码,CI 这步就"红"了;
-- 上传到 codecov.io 后,能在 PR 里看到覆盖率变化(+1% / -2%),一目了然。
-
-### 52.9 覆盖率报告解读
-
-打开 \`htmlcov/index.html\`,你会看到:
-
-- **绿色行**:被测试执行到了;
-- **红色行**:没被覆盖;
-- **黄色行**:部分分支没覆盖(只在 \`--cov-branch\` 时出现);
-- **Missing 列**:显示哪些行号没覆盖。
-
-点击文件名进去,能看到具体代码,红色那行就是"漏测"的地方。看到红色,问自己两个问题:
-
-1. 这行该不该测?(不该测的就忽略)
-2. 该测的话,什么场景能覆盖它?(补一个测试用例)
-
-### 52.10 实战:从一个 0 覆盖的项目开始
-
-假设有个 \`app/services.py\`:
-
-\`\`\`python
-# 定义函数 calculate_discount，参数: price, vip_level
-def calculate_discount(price, vip_level):
-    # """根据 VIP 等级算折扣。"""
-    """根据 VIP 等级算折扣。"""
-    # 条件判断：如果 vip_level == 1
-    if vip_level == 1:
-        # 返回 price * 0.95
-        return price * 0.95
-    # 否则如果 vip_level == 2
-    elif vip_level == 2:
-        # 返回 price * 0.9
-        return price * 0.9
-    # 否则如果 vip_level >= 3
-    elif vip_level >= 3:
-        # 返回 price * 0.8
-        return price * 0.8
-    # 返回 price
-    return price
-\`\`\`
-
-第一次跑覆盖率,\`pytest --cov=app --cov-branch\`,可能只有 50%——因为你只测了 VIP1 的情况。报告会显示 elif 分支都是红的。
-
-补全测试:
-
-\`\`\`python
-# 导入 pytest 模块
+# 测试 3：AsyncMock 测试异步函数
+# 导入 asyncio 和 pytest
+import asyncio
 import pytest
-# 从 app.services 导入 calculate_discount
-from app.services import calculate_discount
 
-# 装饰器：pytest.mark.parametrize
-@pytest.mark.parametrize("price, vip, expected", [
-    (100, 0, 100),     # 非 VIP,原价
-    (100, 1, 95),      # VIP1
-    (100, 2, 90),      # VIP2
-    (100, 3, 80),      # VIP3
-    (100, 5, 80),      # VIP5,走 >=3 分支
-# ])
-])
-# 定义函数 test_calculate_discount，参数: price, vip, expected
-def test_calculate_discount(price, vip, expected):
-    # assert calculate_discount(price, vip) == expected
-    assert calculate_discount(price, vip) == expected
+# 定义一个异步函数
+async def fetch_data(url):
+    # 模拟异步请求
+    return {"data": "real"}
+
+# 用 AsyncMock 替换异步函数
+@pytest.mark.asyncio
+# 定义函数 test_async_mock
+def test_async_mock():
+    # 创建 AsyncMock
+    # 定义变量 mock_fetch
+    mock_fetch = AsyncMock(return_value={"data": "mocked"})
+
+    # async 函数的返回值是协程，需要 await
+    # 用 asyncio.run 执行
+    # 定义变量 result
+    result = asyncio.run(mock_fetch("http://example.com"))
+    # 断言返回的是 Mock 值
+    assert result == {"data": "mocked"}
+    # 验证被调用
+    # 调用 mock_fetch.assert_called_once_with("http://example.com")
+    mock_fetch.assert_called_once_with("http://example.com")
 \`\`\`
 
-再跑,覆盖率变 100%(行 + 分支都覆盖)。
+## 七、实战：Mock 外部服务的完整测试
 
-### 52.11 持续测试的心态
+综合运用 \`dependency_overrides\` + \`patch\`，测试一个"创建订单"接口，它依赖认证、数据库、支付 API、短信通知：
 
-覆盖率不是"一次性达标就完事",而是"持续维护":
+\`\`\`python filename="order_app.py —— 完整的订单应用"
+# 从 fastapi 导入 FastAPI, Depends, HTTPException, Header
+from fastapi import FastAPI, Depends, HTTPException, Header
+# 从 pydantic 导入 BaseModel
+from pydantic import BaseModel
+# 导入 httpx
+import httpx
 
-- **新功能必须有测试**:写代码的同时写测试,别堆到最后;
-- **修 bug 先写测试复现**:这样修完测试变绿,证明 bug 真的修了;
-- **覆盖率下降要 review**:PR 里看到覆盖率 -5%,要问清楚为什么;
-- **定期清理冗余测试**:有些测试随着重构变得没意义,该删就删。
+# 创建应用
+app = FastAPI()
 
-### 52.12 易错点小结
+# 定义订单模型
+class OrderCreate(BaseModel):
+    # 商品名
+    product: str
+    # 金额
+    amount: float
 
-| 易错点 | 后果 | 正确做法 |
-| --- | --- | --- |
-| 只看行覆盖率,忽略分支 | 漏 if/else 一个分支 | 用 \`--cov-branch\` |
-| 为了凑覆盖率写无意义测试 | 覆盖率高但质量低 | 测真正的业务逻辑,别测 getter |
-| 覆盖率 100% 就放心了 | 漏了边界、并发、错误处理 | 覆盖率只是必要条件 |
-| CI 不跑测试 | 覆盖率数据过时 | PR 必须触发 CI 跑测试 |
-| \`fail_under\` 设太高(如 100) | 团队为达标写垃圾测试 | 80% 比较合理,关键模块可加严 |
-| 没排除测试代码本身 | 覆盖率虚高 | \`.coveragerc\` 里 \`omit\` 测试目录 |
+# 内存数据库
+# 定义变量 orders_db
+orders_db = {}
+# 定义变量 next_id
+next_id = 1
 
-> **本章小结**:pytest-cov 让覆盖率可视化,\`--cov-branch\` 看分支覆盖,CI 里设 \`fail_under\` 守住下限。记住:**覆盖率衡量"测没测到",不衡量"测得对不对"**——高质量的测试用例比单纯的高覆盖率更重要。测试这一批到此结束,下一批进入项目结构与配置。`,
+# 认证依赖
+# 定义函数 get_current_user，参数 x_token
+def get_current_user(x_token: str = Header(...)):
+    # 条件判断：如果 x_token 不等于 "user-token"
+    if x_token != "user-token":
+        # 抛 401
+        raise HTTPException(status_code=401, detail="未登录")
+    # 返回用户
+    return {"id": 1, "name": "小明"}
+
+# 数据库依赖
+# 定义函数 get_db
+def get_db():
+    # 返回全局 orders_db
+    return orders_db
+
+# 支付函数（调用外部 API）
+# 定义函数 charge_payment，参数 amount 和 order_id
+def charge_payment(amount: float, order_id: str):
+    # 调用真实支付 API
+    # 定义变量 resp
+    resp = httpx.post("https://api.payment.com/charge", json={
+        "amount": amount,
+        "order_id": order_id
+    })
+    # 返回结果
+    return resp.json()
+
+# 短信通知函数（调用外部 API）
+# 定义函数 send_sms，参数 phone 和 message
+def send_sms(phone: str, message: str):
+    # 调用真实短信 API
+    # 定义变量 resp
+    resp = httpx.post("https://api.sms.com/send", json={
+        "phone": phone,
+        "message": message
+    })
+    # 返回结果
+    return resp.json()
+
+# 创建订单接口
+@app.post("/orders")
+# 定义函数 create_order，参数 order, user, db
+def create_order(
+    order: OrderCreate,
+    user: dict = Depends(get_current_user),
+    db: dict = Depends(get_db),
+):
+    # 声明使用全局变量
+    global next_id
+    # 生成订单 id
+    # 定义变量 order_id
+    order_id = next_id
+    # id 自增
+    next_id += 1
+
+    # 调用支付
+    # 定义变量 pay_result
+    pay_result = charge_payment(order.amount, f"ord_{order_id}")
+    # 条件判断：如果支付失败
+    if pay_result.get("status") != "success":
+        # 抛 400
+        raise HTTPException(status_code=400, detail="支付失败")
+
+    # 发短信通知
+    # 调用 send_sms
+    send_sms("13800000000", f"您的订单 ord_{order_id} 已创建")
+
+    # 存入数据库
+    # 定义变量 order_data
+    order_data = {
+        "id": order_id,
+        "product": order.product,
+        "amount": order.amount,
+        "user": user["name"],
+        "status": "paid",
+    }
+    # 赋值 db[order_id] = order_data
+    db[order_id] = order_data
+
+    # 返回订单
+    return order_data
+\`\`\`
+
+\`\`\`python filename="test_order_complete.py —— 完整 Mock 测试"
+# 导入 pytest
+import pytest
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 从 unittest.mock 导入 patch, MagicMock
+from unittest.mock import patch, MagicMock
+# 从 order_app 导入 app, get_current_user, get_db, charge_payment, send_sms
+from order_app import app, get_current_user, get_db, charge_payment, send_sms
+
+# 定义覆盖认证的 fixture
+@pytest.fixture
+# 定义函数 mock_auth
+def mock_auth():
+    # 定义替代函数
+    # 定义函数 fake_user
+    def fake_user():
+        # 返回假用户
+        return {"id": 1, "name": "测试用户"}
+    # 覆盖
+    # 赋值 app.dependency_overrides[get_current_user] = fake_user
+    app.dependency_overrides[get_current_user] = fake_user
+    # 交出
+    yield
+    # 清理
+    # 调用 app.dependency_overrides.clear()
+    app.dependency_overrides.clear()
+
+# 定义测试数据库 fixture
+@pytest.fixture
+# 定义函数 test_db
+def test_db():
+    # 定义替代函数：返回空字典
+    # 定义函数 fake_db
+    def fake_db():
+        # 返回空字典
+        return {}
+    # 覆盖
+    # 赋值 app.dependency_overrides[get_db] = fake_db
+    app.dependency_overrides[get_db] = fake_db
+    # 交出空字典（让测试可以直接检查）
+    # 定义变量 db
+    db = {}
+    # 修改 fake_db 让它返回这个 db
+    # 重新定义 fake_db
+    def fake_db():
+        # 返回 db
+        return db
+    # 重新覆盖
+    # 赋值 app.dependency_overrides[get_db] = fake_db
+    app.dependency_overrides[get_db] = fake_db
+    # 交出 db
+    yield db
+    # 清理
+    # 调用 app.dependency_overrides.clear()
+    app.dependency_overrides.clear()
+
+# 测试 1：创建订单成功（Mock 支付和短信）
+@patch("order_app.send_sms")
+@patch("order_app.charge_payment")
+# 定义函数 test_create_order_success
+def test_create_order_success(
+    mock_charge,       # charge_payment 的 Mock（注意：装饰器从下往上传，最下面的 patch 对应第一个参数）
+    mock_send_sms,     # send_sms 的 Mock
+    mock_auth,         # fixture
+    test_db,           # fixture
+):
+    # 设置支付 Mock 返回成功
+    # 赋值 mock_charge.return_value = {"status": "success"}
+    mock_charge.return_value = {"status": "success"}
+    # 设置短信 Mock 返回成功
+    # 赋值 mock_send_sms.return_value = {"status": "ok"}
+    mock_send_sms.return_value = {"status": "ok"}
+
+    # 创建客户端
+    # 定义变量 client
+    client = TestClient(app)
+    # 调用接口
+    # 定义变量 r
+    r = client.post("/orders", json={"product": "手机", "amount": 5999})
+    # 断言 200
+    assert r.status_code == 200
+    # 断言返回 status 是 paid
+    assert r.json()["status"] == "paid"
+    # 断言商品名
+    assert r.json()["product"] == "手机"
+
+    # 验证支付 API 被调用了一次
+    # 调用 mock_charge.assert_called_once()
+    mock_charge.assert_called_once()
+    # 验证短信被调用了一次
+    # 调用 mock_send_sms.assert_called_once()
+    mock_send_sms.assert_called_once()
+    # 验证短信内容包含订单号
+    # 定义变量 sms_args
+    sms_args = mock_send_sms.call_args[0]
+    # 断言第二个参数（message）包含 "ord_1"
+    assert "ord_1" in sms_args[1]
+
+    # 验证数据库里有数据
+    # 条件判断：如果 1 in test_db
+    assert 1 in test_db
+    # 断言数据库里的订单
+    assert test_db[1]["product"] == "手机"
+
+# 测试 2：支付失败
+@patch("order_app.send_sms")
+@patch("order_app.charge_payment")
+# 定义函数 test_create_order_pay_fail
+def test_create_order_pay_fail(mock_charge, mock_send_sms, mock_auth, test_db):
+    # 支付返回失败
+    # 赋值 mock_charge.return_value = {"status": "failed"}
+    mock_charge.return_value = {"status": "failed"}
+
+    # 创建客户端
+    # 定义变量 client
+    client = TestClient(app)
+    # 调用接口
+    # 定义变量 r
+    r = client.post("/orders", json={"product": "电脑", "amount": 8999})
+    # 断言 400
+    assert r.status_code == 400
+    # 断言 detail
+    assert r.json()["detail"] == "支付失败"
+
+    # 支付失败时，短信不应该被发送
+    # 调用 mock_send_sms.assert_not_called()
+    mock_send_sms.assert_not_called()
+    # 数据库里也不应该有订单
+    # 断言 test_db 为空
+    assert len(test_db) == 0
+
+# 测试 3：未认证（不覆盖认证）
+@patch("order_app.charge_payment")
+# 定义函数 test_create_order_no_auth
+def test_create_order_no_auth(mock_charge, test_db):
+    # 不用 mock_auth，认证依赖会真的执行
+    # 创建客户端
+    # 定义变量 client
+    client = TestClient(app)
+    # 不带 token
+    # 定义变量 r
+    r = client.post("/orders", json={"product": "手机", "amount": 5999})
+    # 断言 422（X-Token 必填）
+    assert r.status_code == 422
+    # 支付 API 不应该被调用
+    # 调用 mock_charge.assert_not_called()
+    mock_charge.assert_not_called()
+\`\`\`
+
+> 怎么想这个测试：我们 Mock 了三层——认证用 \`dependency_overrides\`（FastAPI 层），数据库用 \`dependency_overrides\`，外部 API 用 \`patch\`（Python 层）。测试验证了：正常流程、支付失败、未认证三种情况，且验证了"支付失败时不发短信""未认证时不调支付"这些逻辑约束。
+
+## 八、常见错误与避坑指南
+
+| 错误 | 现象 | 原因 | 解决 |
+| --- | --- | --- | --- |
+| 忘了 clear | 其他测试被影响 | dependency_overrides 没清理 | 用 fixture 的 yield 后 \`clear()\` |
+| patch 路径错 | Mock 不生效 | patch 的路径不对 | patch"被测模块导入的名字"，不是"定义的模块" |
+| patch 装饰器顺序反 | Mock 对象对不上 | 多个 @patch 从下往上对应参数 | 最下面的 @patch 对应第一个参数 |
+| Mock 异步函数用 MagicMock | 协程报错 | MagicMock 不支持 async | 用 \`AsyncMock\` 或 \`@patch(..., new_callable=AsyncMock)\` |
+| 验证调用次数错 | assert 报错 | 实际调用次数和预期不一致 | 先 \`print(mock.call_count)\` 看实际次数 |
+| Mock 了但代码没用到 | 测试还是调了真实 API | patch 路径不对或函数名拼错 | 检查 patch 的模块名和函数名 |
+
+> 最容易踩的坑是 **patch 的路径**。假设 \`main.py\` 里有 \`from utils import send_sms\`，然后在 \`main.py\` 里调用 \`send_sms()\`。你要 patch 的是 \`main.send_sms\`（main 模块里的名字），不是 \`utils.send_sms\`。因为 Python 导入时把名字绑定到了 main 模块的命名空间。
+
+## 九、小结
+
+Mock 让测试不依赖外部服务。FastAPI 有两种 Mock 方式：\`app.dependency_overrides\` 覆盖 Depends 依赖（数据库、认证），\`unittest.mock.patch\` 替换任意函数（外部 API）。用 fixture 管理 Mock 的生命周期——yield 前设置，yield 后清理。测试不仅要验证返回值，还要验证"Mock 是否被正确调用"（assert_called_once 等）。
+
+但写完测试后怎么知道"测了多少代码""哪些没测到"？这需要覆盖率工具。下一章讲。
+`
   },
+
+  // =========================================================
+  // 第四章：覆盖率与持续测试
+  // =========================================================
+  {
+    id: "fa-coverage",
+    group: "测试",
+    icon: "📊",
+    title: "覆盖率与持续测试",
+    content: `
+
+# 覆盖率与持续测试
+
+## 一、什么是测试覆盖率
+
+写了一堆测试，怎么知道有没有漏？**覆盖率（Coverage）**告诉你"测试运行时，有多少行代码被执行了"：
+
+\`\`\`txt filename="覆盖率示意"
+你的代码有 100 行
+测试运行时，执行了其中 80 行
+→ 行覆盖率 = 80%
+
+剩余 20 行没被执行 = 没被测试覆盖 = 可能有 bug
+\`\`\`
+
+覆盖率有两种：
+- **行覆盖率**：有多少行被执行了（最常用）。
+- **分支覆盖率**：有多少 if/else 分支被走了（更严格）。
+
+> 覆盖率 100% 不代表没 bug（你可能测了"执行了这行"但没测"结果对不对"），但覆盖率低一定有风险——没执行过的代码，你完全不知道它能不能跑。
+
+## 二、安装 pytest-cov
+
+\`\`\`bash filename="安装覆盖率工具"
+# 安装 pytest-cov（pytest 的覆盖率插件，底层用 coverage.py）
+pip install pytest-cov
+
+# 验证安装
+pytest --help | grep cov
+\`\`\`
+
+## 三、基本用法：查看覆盖率
+
+\`\`\`python filename="calculator.py —— 被测代码"
+# 定义函数 calculate，参数 a, b, op
+def calculate(a: int, b: int, op: str) -> int:
+    # 条件判断：根据 op 执行不同操作
+    if op == "add":
+        # 加法
+        return a + b
+    # 条件判断：如果 op 等于 "sub"
+    elif op == "sub":
+        # 减法
+        return a - b
+    # 条件判断：如果 op 等于 "mul"
+    elif op == "mul":
+        # 乘法
+        return a * b
+    # 条件判断：如果 op 等于 "div"
+    elif op == "div":
+        # 条件判断：如果 b 等于 0
+        if b == 0:
+            # 除零保护
+            raise ValueError("不能除以零")
+        # 除法
+        return a // b
+    else:
+        # 未知操作
+        raise ValueError(f"未知操作: {op}")
+\`\`\`
+
+\`\`\`python filename="test_calculator.py —— 测试代码"
+# 从 calculator 导入 calculate
+from calculator import calculate
+
+# 测试加法
+def test_add():
+    # 断言 1 + 2 = 3
+    assert calculate(1, 2, "add") == 3
+
+# 测试减法
+def test_sub():
+    # 断言 5 - 3 = 2
+    assert calculate(5, 3, "sub") == 2
+
+# 测试乘法
+def test_mul():
+    # 断言 3 * 4 = 12
+    assert calculate(3, 4, "mul") == 12
+
+# 测试除法
+def test_div():
+    # 断言 10 / 2 = 5
+    assert calculate(10, 2, "div") == 5
+
+# 注意：没测 div 的除零分支，也没测 else 分支
+\`\`\`
+
+\`\`\`bash filename="运行覆盖率"
+# 运行测试并显示覆盖率
+# --cov=calculator 指定要统计覆盖率的模块
+pytest --cov=calculator test_calculator.py
+
+# 输出类似：
+# Name          Stmts   Miss  Cover
+# ---------------------------------
+# calculator.py    15      3    80%
+# ---------------------------------
+# TOTAL             15      3    80%
+#
+# Stmts = 总语句数，Miss = 未执行的语句数，Cover = 覆盖率
+\`\`\`
+
+可以看到 \`calculator.py\` 覆盖率 80%，有 3 行没被执行——正是我们没测的"除零分支"和"else 分支"。
+
+\`\`\`bash filename="显示具体哪些行没覆盖"
+# 加 --cov-report=term-missing 显示漏掉的行号
+pytest --cov=calculator --cov-report=term-missing test_calculator.py
+
+# 输出：
+# Name          Stmts   Miss  Cover   Missing
+# ------------------------------------------
+# calculator.py    15      3    80%   14, 17-18
+# ------------------------------------------
+# Missing 列显示没覆盖的行号：第 14 行（除零 raise）和 17-18 行（else）
+\`\`\`
+
+## 四、生成 HTML 覆盖率报告
+
+终端报告只看数字，HTML 报告能直观看到哪些代码被覆盖、哪些没被：
+
+\`\`\`bash filename="生成 HTML 报告"
+# --cov-report=html 会在 htmlcov/ 目录生成 HTML 报告
+pytest --cov=calculator --cov-report=html test_calculator.py
+
+# 然后用浏览器打开 htmlcov/index.html
+# 绿色 = 已覆盖，红色 = 未覆盖，数字 = 被执行的次数
+\`\`\`
+
+\`\`\`txt filename="HTML 报告的优点"
+- 颜色直观：绿行=已覆盖，红行=未覆盖
+- 可点击：进入每个文件看逐行详情
+- 显示执行次数：不只是"执行了"，还显示"执行了几次"
+- 适合分享：可以发给团队看
+\`\`\`
+
+## 五、覆盖率配置：.coveragerc
+
+不要把所有 \`--cov\` 参数都写在命令行里，用配置文件管理：
+
+\`\`\`ini filename=".coveragerc —— 覆盖率配置文件"
+# .coveragerc 是 coverage.py 的配置文件
+[run]
+# 指定要统计的源码目录
+source = .
+# 开启分支覆盖率（不只是行覆盖率）
+branch = True
+# 排除不需要统计的文件
+omit =
+    */tests/*
+    */test_*.py
+    */__pycache__/*
+    */migrations/*
+    */venv/*
+
+[report]
+# 排除不需要统计的代码行（这些行即使没执行也不算"漏测"）
+exclude_lines =
+    # pragma: no cover（标记"故意不测"的行）
+    pragma: no cover
+    # 抽象方法（子类才实现，不用测）
+    @(abc\.)?abstractmethod
+    # raise NotImplementedError（占位代码）
+    raise NotImplementedError
+    # if __name__ == .__main__.（入口代码）
+    if __name__ == .__main__.:
+    # if TYPE_CHECKING:（仅类型检查用的代码）
+    if TYPE_CHECKING:
+
+# 覆盖率低于这个值时命令失败（CI 用）
+fail_under = 80
+
+# 按文件排序
+sort = cover
+
+[html]
+# HTML 报告输出目录
+directory = htmlcov
+\`\`\`
+
+> 关键配置解释：
+> - \`branch = True\`：开启分支覆盖。行覆盖只看"这行执行了没"，分支覆盖还看"if 的两个分支都走了没"。
+> - \`omit\`：排除测试文件本身、迁移脚本等不需要测的代码。
+> - \`exclude_lines\`：用注释标记"这行不用测"。比如 \`def abstract_method(): pragma: no cover\`。
+> - \`fail_under = 80\`：覆盖率低于 80% 时 pytest 退出码非 0，CI 会标红。
+
+## 六、分支覆盖率 vs 行覆盖率
+
+\`\`\`python filename="branch_example.py —— 分支覆盖示例"
+# 定义函数 grade，参数 score
+def grade(score: int) -> str:
+    # 条件判断：如果 score >= 90
+    if score >= 90:
+        # 返回 A
+        return "A"
+    # 条件判断：如果 score >= 60
+    elif score >= 60:
+        # 返回 B
+        return "B"
+    else:
+        # 返回 C
+        return "C"
+\`\`\`
+
+\`\`\`python filename="test_branch.py"
+# 从 branch_example 导入 grade
+from branch_example import grade
+
+# 只测了 score=95 和 score=70，没测 score=50
+def test_grade_a():
+    # 断言 95 分是 A
+    assert grade(95) == "A"
+
+def test_grade_b():
+    # 断言 70 分是 B
+    assert grade(70) == "B"
+
+# score=50（else 分支）没测！
+\`\`\`
+
+\`\`\`txt filename="行覆盖率 vs 分支覆盖率"
+行覆盖率：
+  score=95 走了第 2、3 行 → 第 2、3 行已覆盖
+  score=70 走了第 2、5、6 行 → 第 5、6 行已覆盖
+  第 8、9 行（else）没走过 → 未覆盖
+  → 行覆盖率 = 6/8 = 75%
+
+分支覆盖率：
+  if score >= 90：True 分支走过，False 分支走过 → 覆盖
+  elif score >= 60：True 分支走过，False 分支没走过（没测 <60） → 未覆盖
+  → 分支覆盖率更低，更能发现问题
+\`\`\`
+
+结论：**分支覆盖率比行覆盖率更严格，推荐开启**（\`branch = True\`）。
+
+## 七、在代码中标记不需要测试的行
+
+有些代码确实不需要测（环境检查、调试入口等），用 \`# pragma: no cover\` 标记：
+
+\`\`\`python filename="pragma 用法"
+# 定义函数 init_app
+def init_app():
+    # 正常代码，需要测试
+    # 定义变量 config
+    config = load_config()
+    # 返回 config
+    return config
+
+# 这个函数只在命令行直接运行时执行，不用测
+def main():  # pragma: no cover
+    # 初始化应用
+    # 定义变量 app
+    app = init_app()
+    # 启动服务器
+    # 调用 app.run()
+    app.run()
+
+# 这个分支只在 Windows 上走，CI 是 Linux 不用测
+import sys
+# 定义函数 get_path_sep
+def get_path_sep():
+    # 条件判断：如果 sys.platform 等于 "win32"
+    if sys.platform == "win32":  # pragma: no cover
+        # Windows 路径分隔符
+        return "\\\\"
+    else:
+        # Unix 路径分隔符
+        return "/"
+
+# TYPE_CHECKING 下的代码不运行，不用测
+from typing import TYPE_CHECKING
+# 条件判断：如果 TYPE_CHECKING 为真
+if TYPE_CHECKING:  # 自动被 .coveragerc 排除
+    # 导入仅用于类型注解的类
+    from models import User
+\`\`\`
+
+## 八、覆盖率目标设定
+
+\`\`\`txt filename="覆盖率目标建议"
+100% —— 理想但通常不现实，追求但不强求
+ 90% —— 优秀，核心业务代码应该达到
+ 80% —— 合格，一般项目的底线（fail_under = 80）
+ 70% —— 及格，历史项目至少要到这个
+ 50% —— 不及格，风险很大
+  0% —— 没有测试
+
+不同代码不同要求：
+- 核心业务逻辑（订单、支付）：>= 90%
+- 工具函数、辅助代码：>= 70%
+- 配置、入口代码：可以不要求
+- 第三方适配层：>= 50%（很多是转发，难测）
+\`\`\`
+
+> 避坑指南：**不要盲目追求 100% 覆盖率**。100% 覆盖率只说明"每行都执行了"，不代表"每行都测对了"。一个测试里只写 \`func()\` 不 assert 也能让覆盖率 100%，但毫无意义。覆盖率是"必要不充分条件"——达标不代表没问题，但不达标一定有问题。
+
+## 九、实战：为完整项目添加覆盖率报告
+
+来看一个完整项目的覆盖率配置和测试补充：
+
+\`\`\`txt filename="项目结构"
+myproject/
+├── app/
+│   ├── __init__.py
+│   ├── main.py          ← FastAPI 应用
+│   ├── routers/
+│   │   ├── users.py     ← 用户路由
+│   │   └── items.py     ← 商品路由
+│   ├── models.py        ← 数据模型
+│   ├── database.py      ← 数据库连接
+│   └── utils.py         ← 工具函数
+├── tests/
+│   ├── conftest.py      ← 公共 fixture
+│   ├── test_users.py    ← 用户测试
+│   ├── test_items.py    ← 商品测试
+│   └── test_utils.py    ← 工具测试
+├── .coveragerc          ← 覆盖率配置
+├── pytest.ini           ← pytest 配置
+└── requirements.txt
+\`\`\`
+
+\`\`\`ini filename="pytest.ini —— pytest 配置"
+[pytest]
+# 测试文件位置
+testpaths = tests
+# 自动发现规则
+python_files = test_*.py
+python_functions = test_*
+# 命令行默认参数（每次运行 pytest 都自动带上）
+addopts = 
+    --cov=app
+    --cov-report=term-missing
+    --cov-report=html
+    --cov-config=.coveragerc
+    -v
+# asyncio 模式（如果用 pytest-asyncio）
+asyncio_mode = auto
+\`\`\`
+
+\`\`\`ini filename=".coveragerc —— 覆盖率配置"
+[run]
+# 统计 app 目录
+source = app
+# 开启分支覆盖
+branch = True
+# 排除迁移、初始化文件
+omit =
+    app/__init__.py
+    app/migrations/*
+
+[report]
+# 最低覆盖率要求
+fail_under = 85
+# 排除的行
+exclude_lines =
+    pragma: no cover
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @(abc\.)?abstractmethod
+
+[html]
+directory = htmlcov
+\`\`\`
+
+\`\`\`python filename="app/utils.py —— 工具函数（有些分支没测）"
+# 定义函数 format_price，参数 price
+def format_price(price: float) -> str:
+    """格式化价格"""
+    # 条件判断：如果 price < 0
+    if price < 0:
+        # 负数返回错误提示
+        return "价格无效"
+    # 条件判断：如果 price 等于 0
+    if price == 0:
+        # 免费返回"免费"
+        return "免费"
+    # 条件判断：如果 price > 10000
+    if price > 10000:
+        # 大额返回万元单位
+        return f"{price / 10000:.1f}万元"
+    else:
+        # 普通返回元
+        return f"{price:.2f}元"
+
+# 定义函数 validate_phone，参数 phone
+def validate_phone(phone: str) -> bool:
+    """验证手机号"""
+    # 条件判断：如果 phone 长度不等于 11
+    if len(phone) != 11:
+        # 返回 False
+        return False
+    # 条件判断：如果不是 phone 以 1 开头
+    if not phone.startswith("1"):
+        # 返回 False
+        return False
+    # 条件判断：如果不是 phone 全是数字
+    if not phone.isdigit():
+        # 返回 False
+        return False
+    # 返回 True
+    return True
+\`\`\`
+
+\`\`\`python filename="tests/test_utils.py —— 补全测试"
+# 从 app.utils 导入 format_price, validate_phone
+from app.utils import format_price, validate_phone
+# 导入 pytest
+import pytest
+
+# 测试格式化价格：正常情况
+def test_format_price_normal():
+    # 断言 9.5 格式化为 "9.50元"
+    assert format_price(9.5) == "9.50元"
+    # 断言 99.99 格式化为 "99.99元"
+    assert format_price(99.99) == "99.99元"
+
+# 测试格式化价格：零
+def test_format_price_zero():
+    # 断言 0 格式化为 "免费"
+    assert format_price(0) == "免费"
+
+# 测试格式化价格：负数
+def test_format_price_negative():
+    # 断言 -5 格式化为 "价格无效"
+    assert format_price(-5) == "价格无效"
+
+# 测试格式化价格：大额
+def test_format_price_large():
+    # 断言 15000 格式化为 "1.5万元"
+    assert format_price(15000) == "1.5万元"
+
+# 参数化测试手机号验证
+@pytest.mark.parametrize("phone, expected", [
+    ("13800138000", True),    # 正确
+    ("1380013800", False),    # 少一位
+    ("138001380001", False),  # 多一位
+    ("23800138000", False),   # 不以 1 开头
+    ("13800abc000", False),   # 含字母
+    ("", False),              # 空字符串
+])
+# 定义函数 test_validate_phone
+def test_validate_phone(phone, expected):
+    # 断言验证结果
+    assert validate_phone(phone) == expected
+\`\`\`
+
+运行测试看覆盖率：
+
+\`\`\`bash filename="运行并查看覆盖率"
+# 直接运行 pytest（addopts 里已配好覆盖率参数）
+pytest
+
+# 输出：
+# ---------- coverage: platform win32, python 3.11 ----------
+# Name                    Stmts   Miss Branch BrPart  Cover   Missing
+# ------------------------------------------------------------------
+# app/__init__.py             0      0      0      0   100%
+# app/utils.py               15      0      8      0   100%
+# app/routers/users.py       20      2      6      1    88%   15, 28
+# app/routers/items.py       18      1      5      1    92%   12
+# app/main.py                 8      0      0      0   100%
+# ------------------------------------------------------------------
+# TOTAL                      61      3     19      2    92%
+#
+# Required test coverage of 85% reached. Total coverage: 92%
+# ========================= 15 passed in 0.45s =========================
+\`\`\`
+
+> 看到了吗？\`utils.py\` 达到 100%，\`routers/users.py\` 只有 88%（第 15、28 行没覆盖）。\`Missing\` 列告诉你该补哪些测试。如果低于 \`fail_under=85\`，pytest 会返回非 0 退出码，CI 会标红。
+
+## 十、CI 中的覆盖率检查
+
+在 GitHub Actions / GitLab CI 里集成覆盖率检查：
+
+\`\`\`yaml filename=".github/workflows/test.yml —— GitHub Actions 配置"
+# 工作流名称
+name: Test
+
+# 触发条件：push 和 pull request 时触发
+on: [push, pull_request]
+
+# 定义任务
+jobs:
+  test:
+    # 运行在 Ubuntu 上
+    runs-on: ubuntu-latest
+    # 定义步骤
+    steps:
+      # 第 1 步：检出代码
+      - uses: actions/checkout@v4
+      # 第 2 步：安装 Python
+      - uses: actions/setup-python@v5
+        with:
+          # Python 版本
+          python-version: "3.11"
+      # 第 3 步：安装依赖
+      - name: Install dependencies
+        # 执行命令
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+      # 第 4 步：运行测试（带覆盖率检查）
+      - name: Run tests
+        # 执行 pytest
+        run: pytest
+      # 第 5 步：上传 HTML 报告（可选）
+      - name: Upload coverage report
+        # 用 actions/upload-artifact 上传
+        uses: actions/upload-artifact@v4
+        with:
+          # 上传 htmlcov 目录
+          name: coverage-report
+          path: htmlcov/
+\`\`\`
+
+\`\`\`txt filename="CI 覆盖率策略"
+1. fail_under = 85：覆盖率低于 85% CI 标红，阻止合并
+2. PR 必须通过测试才能合并（分支保护规则）
+3. 定期检查覆盖率趋势：覆盖率下降时及时补测试
+4. 新功能必须带测试（Code Review 时检查）
+\`\`\`
+
+## 十一、测试最佳实践
+
+\`\`\`txt filename="测试金字塔"
+                    /\\
+                   /  \\        ← 少量端到端测试（E2E）
+                  /----\\         速度慢、不稳定
+                 /      \\
+                /        \\      ← 适量集成测试
+               /----------\\       测接口组合
+              /            \\
+             /              \\    ← 大量单元测试
+            /------------------\\   速度快、稳定
+\`\`\`
+
+**最佳实践清单**：
+
+1. **测试要快**：单元测试应该在几秒内跑完。慢的测试（连数据库、调 API）要 Mock 或隔离。
+2. **测试要独立**：测试之间不能有依赖。用 fixture 保证每个测试都是干净的状态。
+3. **测试要可读**：测试名描述行为（\`test_create_user_with_duplicate_email_returns_409\`），不只是 \`test_1\`。
+4. **Arrange-Act-Assert 模式**：每个测试分三段——准备、执行、断言。
+5. **测一个东西**：一个测试只验证一个行为，不要在一个测试里塞十个断言。
+6. **边界值必测**：0、空字符串、最大值、负数、None——这些最容易出 bug。
+7. **测异常路径**：不只是"正常流程能成功"，还要测"错误输入被拒绝"。
+8. **覆盖率是参考不是目标**：追求有意义的测试，而不是追求 100% 数字。
+
+\`\`\`python filename="好的测试 vs 坏的测试"
+# 坏的测试：名字无意义、测多个东西、没断言意图
+def test_user():
+    # 定义变量 r
+    r = client.post("/users", json={"name": "A"})
+    assert r.status_code == 201
+    # 又测了查询
+    r2 = client.get("/users/1")
+    assert r2.status_code == 200
+    # 又测了删除
+    r3 = client.delete("/users/1")
+    assert r3.status_code == 204
+
+# 好的测试：名字描述行为、只测一件事、AAA 模式
+def test_create_user_with_valid_data_returns_201():
+    # Arrange（准备）
+    # 定义变量 payload
+    payload = {"name": "小明", "email": "xm@example.com"}
+
+    # Act（执行）
+    # 定义变量 r
+    r = client.post("/users", json=payload)
+
+    # Assert（断言）
+    assert r.status_code == 201
+    assert r.json()["name"] == "小明"
+    assert "id" in r.json()
+
+def test_create_user_with_duplicate_email_returns_409():
+    # Arrange
+    # 先创建一个用户
+    client.post("/users", json={"name": "小明", "email": "dup@example.com"})
+    # 定义变量 payload，用同样的邮箱
+    payload = {"name": "小红", "email": "dup@example.com"}
+
+    # Act
+    # 定义变量 r
+    r = client.post("/users", json=payload)
+
+    # Assert
+    assert r.status_code == 409
+    assert "已存在" in r.json()["detail"]
+\`\`\`
+
+## 十二、常见错误与避坑指南
+
+| 错误 | 现象 | 原因 | 解决 |
+| --- | --- | --- | --- |
+| 覆盖率统计为 0 | \`No data to report\` | source 路径不对 | 检查 \`--cov=模块名\` 或 .coveragerc 的 \`source\` |
+| HTML 报告打不开 | 找不到 htmlcov | 没生成或目录不对 | 确认 \`--cov-report=html\` 已加 |
+| 覆盖率虚高 | 99% 但很多没测 | 只统计了部分文件 | 检查 \`omit\` 是否排多了 |
+| fail_under 不生效 | 覆盖率低但 CI 绿 | 配置没读到 | 确认 .coveragerc 在项目根目录 |
+| 分支覆盖率低 | branch 远低于 line | if/else 只走了一个分支 | 补测另一个分支的输入 |
+| CI 上覆盖率比本地低 | 本地 90% CI 80% | 测试文件不在 CI | 检查 CI 是否运行了所有测试 |
+
+> 最常见的坑：**覆盖率虚高**。如果你把所有 router 文件加到 \`omit\` 里，覆盖率会很高，但你根本没测路由逻辑。\`omit\` 只应该排除真正不需要测的（迁移、入口、第三方适配），不要用它来"刷"覆盖率。
+
+## 十三、持续测试的完整工作流
+
+\`\`\`txt filename="开发流程中的测试"
+1. 写功能代码前先写测试（TDD）或写完后立即补测试
+2. 本地运行 pytest，确保全绿
+3. 检查覆盖率：pytest --cov-report=term-missing 看有没有漏
+4. 补测 Missing 行对应的逻辑
+5. git commit 时提交代码 + 测试
+6. push 后 CI 自动运行测试 + 覆盖率检查
+7. PR 审查时检查：有没有测试？覆盖率有没有下降？
+8. 合并前必须 CI 绿 + 覆盖率达标
+9. 定期回顾：哪些测试经常挂？哪些代码覆盖率在降？
+\`\`\`
+
+## 十四、小结
+
+覆盖率是测试质量的"温度计"——它不能告诉你"代码没问题"，但能告诉你"哪些代码没被测过"。用 \`pytest-cov\` 生成覆盖率报告，用 \`.coveragerc\` 配置统计范围和排除规则，用 \`fail_under\` 在 CI 中强制覆盖率底线。开启分支覆盖率比行覆盖率更严格。但记住：覆盖率是参考不是目标——一个有意义的 \`assert\` 比 10 行无断言的"执行"更有价值。
+
+至此，FastAPI 测试的四大支柱讲完了：TestClient 发请求、pytest 组织测试、Mock 隔离依赖、覆盖率度量质量。把这四件武器组合起来，你就能为任何 FastAPI 项目写出可靠、快速、可维护的测试套件。
+`
+  }
 ];

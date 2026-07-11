@@ -2,18 +2,18 @@
 // FastAPI 应用开发实战教程 - 第 2 批章节（路径与查询参数 4 章）
 // -------------------------------------------------------------
 // 本批包含 4 章：
-//   fa-path-params     : 路径参数
-//   fa-query-params    : 查询参数
-//   fa-params-validate : 参数校验 Path/Query
-//   fa-request-context : Request 对象与元数据
-// =============================================================
+//   fa-path       : 路径参数
+//   fa-query      : 查询参数
+//   fa-validation : 参数校验：Path/Query
+//   fa-request-obj: Request 对象与元数据
+// ============================================================
 
 export const chapters = [
   // ============================================================
-  // 第 5 章：路径参数
+  // 第 1 章：路径参数
   // ============================================================
   {
-    id: "fa-path-params",
+    id: "fa-path",
     group: "路径与查询参数",
     icon: "🛤️",
     title: "路径参数",
@@ -21,14 +21,26 @@ export const chapters = [
 
 ## 什么是路径参数
 
-RESTful API 里，经常把资源的标识放在 URL 路径里，比如：
+在 RESTful API 设计中，经常需要把资源的标识符嵌入到 URL 路径里。比如：
 
-- \`GET /users/42\` —— 查询 ID 为 42 的用户
-- \`GET /articles/2024/07\` —— 查询 2024 年 7 月的文章
+- \`GET /users/42\` —— 获取 ID 为 42 的用户
+- \`GET /articles/2024/07\` —— 获取 2024 年 7 月的文章列表
+- \`GET /files/config/main.yaml\` —— 获取配置目录下的 main.yaml 文件
 
-这些 \`42\`、\`2024\`、\`07\` 就是**路径参数**（path parameter）。它们是 URL 的一部分，用花括号 \`{}\` 在路由里声明，FastAPI 会把它们提取出来传给处理函数。
+这些 URL 里的 \`42\`、\`2024\`、\`07\`、\`config/main.yaml\` 就是**路径参数**（path parameter）。它们是 URL 路径的一部分，用花括号 \`{}\` 在路由模板里声明，FastAPI 会自动提取并传给处理函数。
 
-## 基本语法
+路径参数和查询参数的区别在于位置和语义：
+
+- **路径参数**：在路径里，用来定位"哪个资源"，是 URL 的一部分，不可省略。
+- **查询参数**：在 \`?\` 后面，用来"过滤、排序、分页"，可省略。
+
+理解这个区别很重要，因为它们在设计 API 时承担不同的角色。
+
+## 一、基本路径参数
+
+最简单的用法：在路由字符串里用 \`{参数名}\` 占位，函数里用同名参数接收。
+
+### Demo 1：最基础的路径参数
 
 \`\`\`python
 # 从 fastapi 导入 FastAPI
@@ -38,42 +50,63 @@ from fastapi import FastAPI
 app = FastAPI()
 
 # {item_id} 是路径参数占位符
-# 定义 GET 路由：访问 /items/{item_id} 时触发
+# 访问 /items/42 时，FastAPI 把 "42" 提取出来传给函数
 @app.get("/items/{item_id}")
-# 定义函数 read_item，参数: item_id
+# 定义函数 read_item，参数名必须和占位符一致
 def read_item(item_id):
-    # item_id 默认是字符串，因为没声明类型
-    # 返回 {"item_id": item_id}
+    # 没有类型注解时，item_id 是字符串 "42"
+    # 返回字典，FastAPI 自动转 JSON
     return {"item_id": item_id}
 \`\`\`
 
-访问 \`/items/42\`，FastAPI 把字符串 \`"42"\` 传给 \`item_id\`，返回 \`{"item_id": "42"}\`。
+访问 \`/items/42\`：
+- FastAPI 把 URL 里的 \`42\` 提取为字符串 \`"42"\`
+- 调用 \`read_item(item_id="42")\`
+- 返回 \`{"item_id": "42"}\`
 
-注意函数参数名 \`item_id\` 必须和路径里的 \`{item_id}\` 一致，FastAPI 靠名字匹配。
+访问 \`/items/hello\`：
+- 提取为 \`"hello"\`
+- 返回 \`{"item_id": "hello"}\`
 
-## 类型声明与自动转换
+### 关键规则：参数名必须一致
 
-光传字符串还不够，实际接口里我们通常要数字、UUID。在参数后加类型注解，FastAPI 会做类型校验和转换：
+路由里的 \`{item_id}\` 和函数参数 \`item_id\` 必须名字完全一样。如果写成下面这样会报错：
 
 \`\`\`python
-# 定义 GET 路由：访问 /items/{item_id} 时触发
+# ❌ 错误示范：参数名不一致
 @app.get("/items/{item_id}")
-# 定义函数 read_item，参数: item_id: int
+def read_item(id):  # 这里写成了 id，不是 item_id
+    return {"id": id}
+\`\`\`
+
+FastAPI 会报错：\`"id" is not in path'\`，因为它在路径里找不到 \`id\` 这个占位符，又不知道该从哪里拿这个参数。
+
+## 二、类型转换：让参数有类型
+
+光拿到字符串还不够。ID 通常是整数，价格通常是浮点数。FastAPI 通过**类型注解**自动做类型转换和校验。
+
+### Demo 2：用类型注解做类型转换
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+
+# 创建应用
+app = FastAPI()
+
+# item_id: int 声明参数类型为整数
+@app.get("/items/{item_id}")
 def read_item(item_id: int):
-    # 声明 int 后：
-    # 1. 访问 /items/42 → item_id 自动转成 int 42
-    # 2. 访问 /items/abc → 类型不匹配，返回 422 错误
-    # 返回 {"item_id": item_id, "type": type(item_id).__name__}
-    return {"item_id": item_id, "type": type(item_id).__name__}
+    # 访问 /items/42 时：
+    # 1. FastAPI 把 "42" 转成 int 42
+    # 2. 传给函数 item_id=42
+    # 3. 返回 {"item_id": 42}（JSON 里是数字不是字符串）
+    return {"item_id": item_id}
 \`\`\`
 
-访问 \`/items/42\`：
+访问 \`/items/42\`：返回 \`{"item_id": 42}\`（注意是数字 42，不是字符串 "42"）
 
-\`\`\`json
-{"item_id": 42, "type": "int"}
-\`\`\`
-
-访问 \`/items/hello\`，因为 \`"hello"\` 转不成 int，FastAPI 返回 422 校验错误：
+访问 \`/items/abc\`：FastAPI 转换失败，直接返回 422 错误：
 
 \`\`\`json
 {
@@ -82,203 +115,452 @@ def read_item(item_id: int):
       "type": "int_parsing",
       "loc": ["path", "item_id"],
       "msg": "Input should be a valid integer, unable to parse string as an integer",
-      "input": "hello"
+      "input": "abc",
+      "url": "https://errors.pydantic.dev/..."
     }
   ]
 }
 \`\`\`
 
-这种"传错类型直接 422"的机制，把脏数据挡在业务逻辑之外，不用自己写 \`if not item_id.isdigit()\` 之类的判断。
+注意：错误响应里 \`loc\` 是 \`["path", "item_id"]\`，表示错误发生在路径参数 \`item_id\` 上。这是 FastAPI 校验错误的统一格式，后面会详细讲。
 
-## 支持的路径参数类型
+### 支持的类型
 
-| 类型 | 说明 | 示例路径 |
-|------|------|----------|
-| \`str\` | 字符串（默认） | \`/items/{item_id}\` |
-| \`int\` | 整数 | \`/users/{user_id}\` |
-| \`float\` | 浮点数 | \`/price/{amount}\` |
-| \`bool\` | 布尔值 | \`/flag/{active}\`（1/true/yes/...） |
-| \`uuid.UUID\` | UUID | \`/orders/{order_id}\` |
-| \`Enum\` | 枚举 | \`/models/{model_name}\` |
-| \`path\` 转换器 | 匹配含斜杠 | \`/files/{file_path:path}\` |
+FastAPI 支持所有 Pydantic 能解析的类型，常用的有：
+
+| 类型 | 说明 | 示例输入 | 转换结果 |
+|------|------|---------|---------|
+| \`int\` | 整数 | \`"42"\` | \`42\` |
+| \`float\` | 浮点数 | \`"3.14"\` | \`3.14\` |
+| \`str\` | 字符串（默认） | \`"hello"\` | \`"hello"\` |
+| \`bool\` | 布尔值 | \`"true"\`、\`"1"\` | \`True\` |
+| \`UUID\` | UUID | \`"123e4567-e89b-12d3-a456-426614174000"\` | \`UUID(...)\` |
+| \`datetime\` | 日期时间 | \`"2024-07-11T10:00:00"\` | \`datetime(...)\` |
+| \`Enum\` | 枚举 | 见下文 | 见下文 |
+
+### Demo 3：bool 和 UUID 类型转换
 
 \`\`\`python
-# 从 uuid 导入 UUID
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+# 从 uuid 模块导入 UUID 类型
 from uuid import UUID
-# 从 enum 导入 Enum
+
+# 创建应用
+app = FastAPI()
+
+# bool 类型：FastAPI 会把 "true"/"1"/"yes"/"on" 转成 True
+# "false"/"0"/"no"/"off" 转成 False
+@app.get("/flags/{flag}")
+def get_flag(flag: bool):
+    # 访问 /flags/true → flag=True
+    # 访问 /flags/1    → flag=True
+    # 访问 /flags/yes  → flag=True
+    # 访问 /flags/false → flag=False
+    return {"flag": flag, "type": type(flag).__name__}
+
+# UUID 类型：自动解析 UUID 字符串
+@app.get("/users/{user_id}")
+def get_user(user_id: UUID):
+    # 访问 /users/123e4567-e89b-12d3-a456-426614174000
+    # user_id 被解析成 UUID 对象
+    # user_id.hex 能拿到 32 位十六进制字符串
+    return {
+        "user_id": str(user_id),       # 转回字符串
+        "hex": user_id.hex,            # 32 位无连字符
+        "version": user_id.version     # UUID 版本号
+    }
+\`\`\`
+
+bool 转换的细节值得注意：FastAPI（实际是 Pydantic）对 bool 的解析比较宽松，\`"true"\`、\`"1"\`、\`"yes"\`、\`"on"\` 都会被转成 \`True\`。这在处理 URL 参数时很方便，因为 URL 里没有"真正的布尔值"，都是字符串。
+
+## 三、路径参数与函数参数的映射
+
+FastAPI 怎么知道哪个参数是路径参数、哪个是查询参数？规则很简单：
+
+- **在路由路径里出现的参数名** → 路径参数
+- **不在路径里的参数** → 查询参数
+
+### Demo 4：路径参数和查询参数混用
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+
+# 创建应用
+app = FastAPI()
+
+# 路径里有 {item_id}，所以 item_id 是路径参数
+# 路径里没有 q，所以 q 是查询参数
+# 路径里没有 short，所以 short 是查询参数
+@app.get("/items/{item_id}")
+def read_item(item_id: int, q: str | None = None, short: bool = False):
+    # 访问 /items/42?q=apple&short=true
+    # item_id=42（路径参数）
+    # q="apple"（查询参数）
+    # short=True（查询参数）
+    # 构造返回结果
+    result = {"item_id": item_id}
+    # 如果传了 q，加到结果里
+    if q:
+        result["q"] = q
+    # 如果 short 为 True，只返回 name，不返回 description
+    if not short:
+        result["description"] = "This is a long description"
+    return result
+\`\`\`
+
+访问测试：
+
+| URL | item_id | q | short |
+|-----|---------|---|-------|
+| \`/items/42\` | 42 | None | False |
+| \`/items/42?q=apple\` | 42 | "apple" | False |
+| \`/items/42?q=apple&short=true\` | 42 | "apple" | True |
+
+这个规则让 FastAPI 的参数声明非常直观：你不用显式声明"这是路径参数"还是"这是查询参数"，看路径里有没有就行。
+
+## 四、路径顺序的重要性
+
+这是新手最容易踩的坑。FastAPI 路由匹配是**按定义顺序**的，第一个匹配到的路由就会处理请求。
+
+### Demo 5：路径顺序导致的 bug
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+
+# 创建应用
+app = FastAPI()
+
+# ❌ 错误顺序：先定义 /users/me，再定义 /users/{user_id}
+# 如果反过来定义，访问 /users/me 会被 {user_id} 捕获，user_id="me"
+# 然后类型转换失败（me 不是 int），返回 422 错误
+
+# ✅ 正确：固定路径放在动态路径前面
+@app.get("/users/me")
+def read_current_user():
+    # 这个路由处理 /users/me
+    # 返回当前登录用户信息
+    return {"user": "current user"}
+
+# 动态路径放在后面
+@app.get("/users/{user_id}")
+def read_user(user_id: int):
+    # 这个路由处理 /users/42、/users/100 等
+    return {"user_id": user_id}
+\`\`\`
+
+为什么顺序很重要？因为路由匹配是"先注册先匹配"。如果先定义 \`/users/{user_id}\`，那么访问 \`/users/me\` 时，FastAPI 会先用 \`{user_id}\` 匹配，把 \`"me"\` 当成 \`user_id\`，然后尝试转成 \`int\` 失败，返回 422。固定路径 \`/users/me\` 永远不会被匹配到。
+
+**避坑指南**：当有固定路径和动态路径"长得像"时，固定路径一定要写在前面。常见场景：
+
+- \`/users/me\` 和 \`/users/{user_id}\`
+- \`/posts/latest\` 和 \`/posts/{post_id}\`
+- \`/files/main\` 和 \`/files/{filename}\`
+
+## 五、预定义路径参数值（Enum）
+
+有时候路径参数只能是几个固定值之一，比如订单状态 \`/orders/{status}\` 只能是 \`pending\`、\`shipped\`、\`delivered\`。用 \`Enum\` 可以约束。
+
+### Demo 6：用 Enum 限制路径参数取值
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+# 从 enum 模块导入 Enum
 from enum import Enum
 
-# 定义类 ModelName，继承 str, Enum
-class ModelName(str, Enum):
-    # 定义变量 alexnet，赋值为 "alexnet"
-    alexnet = "alexnet"
-    # 定义变量 resnet，赋值为 "resnet"
-    resnet = "resnet"
+# 创建应用
+app = FastAPI()
 
-# 定义 GET 路由：访问 /models/{model_name} 时触发
-@app.get("/models/{model_name}")
-# 定义函数 get_model，参数: model_name: ModelName
-def get_model(model_name: ModelName):
-    # 枚举类型：访问 /models/alexnet → model_name == ModelName.alexnet
-    # 访问 /models/foo → 不在枚举里，422
-    # 返回 {"model": model_name, "value": model_name.value}
-    return {"model": model_name, "value": model_name.value}
+# 定义枚举类，继承 str 和 Enum
+# 继承 str 是为了让 FastAPI 知道这是个字符串类型
+class OrderStatus(str, Enum):
+    # 枚举值
+    pending = "pending"       # 待支付
+    shipped = "shipped"       # 已发货
+    delivered = "delivered"   # 已送达
+    cancelled = "cancelled"   # 已取消
 
-# 定义 GET 路由：访问 /orders/{order_id} 时触发
-@app.get("/orders/{order_id}")
-# 定义函数 get_order，参数: order_id: UUID
-def get_order(order_id: UUID):
-    # UUID 类型校验
-    # /orders/3fa85f64-5717-4562-b3fc-2c963f66afa6 → 合法
-    # /orders/not-a-uuid → 422
-    # 返回 {"order_id": order_id}
-    return {"order_id": order_id}
+# 路径参数类型声明为 OrderStatus
+@app.get("/orders/{status}")
+def get_orders_by_status(status: OrderStatus):
+    # 访问 /orders/pending → status=OrderStatus.pending
+    # 访问 /orders/xyz → 422 错误，因为 xyz 不在枚举里
+    # status.name 拿到枚举名（如 "pending"）
+    # status.value 拿到枚举值（如 "pending"）
+    return {
+        "status": status,             # 自动转成字符串
+        "status_name": status.name,   # 枚举名
+        "message": f"查询状态为 {status.value} 的订单"
+    }
+
+# 单独访问某个枚举成员的路由
+@app.get("/orders/status-info")
+def get_status_info():
+    # 遍历所有枚举成员
+    # OrderStatus.__members__ 是 {name: member} 的字典
+    return {
+        "all_statuses": [s.value for s in OrderStatus],
+        "count": len(OrderStatus)
+    }
 \`\`\`
 
-## 路由顺序：固定路径要在动态路径前
+访问 \`/orders/pending\`：返回 \`{"status": "pending", "status_name": "pending", "message": "查询状态为 pending 的订单"}\`
 
-这是新手最常踩的坑。FastAPI 按代码顺序匹配路由，第一个匹配的就执行。所以固定路径（如 \`/users/me\`）必须写在动态路径（如 \`/users/{user_id}\`）前面：
+访问 \`/orders/xyz\`：返回 422 错误，提示 \`xyz\` 不是合法状态。FastAPI 还会在文档里自动列出所有合法值。
 
-\`\`\`python
-# ✅ 正确顺序：固定路径在前
-# 定义 GET 路由：访问 /users/me 时触发
-@app.get("/users/me")
-# 定义函数 read_me，参数: 
-def read_me():
-    # 返回 {"user": "当前登录用户"}
-    return {"user": "当前登录用户"}
+枚举的好处：
 
-# 定义 GET 路由：访问 /users/{user_id} 时触发
-@app.get("/users/{user_id}")
-# 定义函数 read_user，参数: user_id: int
-def read_user(user_id: int):
-    # 返回 {"user_id": user_id}
-    return {"user_id": user_id}
-\`\`\`
+1. **校验**：非法值直接被拦截
+2. **文档**：\`/docs\` 里自动显示可选值
+3. **可读性**：代码里用 \`OrderStatus.pending\` 比用 \`"pending"\` 字符串清晰
+4. **重构友好**：改枚举值时编译器能帮你找引用
 
-如果反过来写：
+## 六、路径转换器（Starlette 路径类型）
 
-\`\`\`python
-# ❌ 错误顺序：动态路径会先匹配上 /users/me
-# 定义 GET 路由：访问 /users/{user_id} 时触发
-@app.get("/users/{user_id}")
-# 定义函数 read_user，参数: user_id: int
-def read_user(user_id: int):
-    # 返回 {"user_id": user_id}
-    return {"user_id": user_id}
+FastAPI 底层用 Starlette，Starlette 用 \`starlette.routing\` 支持路径转换器。语法是 \`{参数名:转换器}\`，能改变路径参数的匹配方式。
 
-@app.get("/users/me")  # 永远到不了这里！
-# 定义函数 read_me，参数: 
-def read_me():
-    # 返回 {"user": "当前登录用户"}
-    return {"user": "当前登录用户"}
-\`\`\`
+### 支持的转换器
 
-访问 \`/users/me\` 时，\`{user_id}\` 会匹配上 \`"me"\`，然后尝试转 int 失败返回 422。后一个 \`/users/me\` 永远不会被调用，因为前面的路由先匹配上了。
+| 转换器 | 匹配规则 | 说明 |
+|--------|---------|------|
+| \`str\` | 匹配除 \`/\` 外的任意字符 | 默认行为 |
+| \`int\` | 匹配整数 | \`0\`、\`42\`、\`-1\` |
+| \`float\` | 匹配浮点数 | \`3.14\`、\`-0.5\` |
+| \`path\` | 匹配包含 \`/\` 的任意路径 | 用于文件路径 |
+| \`uuid\` | 匹配 UUID 格式 | 严格 UUID 格式 |
 
-记住原则：**越具体的路径越靠前**。
-
-## 路径转换器：匹配含斜杠的路径
-
-普通 \`{item_id}\` 不能匹配含 \`/\` 的路径——因为 \`/\` 是路径分隔符。比如访问 \`/files/a/b/c.txt\`，普通 \`{file_path}\` 只能拿到 \`a\`。
-
-用 Starlette 的 path 转换器 \`{file_path:path}\` 可以匹配含斜杠的部分：
+### Demo 7：path 转换器匹配带斜杠的路径
 
 \`\`\`python
-# 定义 GET 路由：访问 /files/{file_path:path} 时触发
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+
+# 创建应用
+app = FastAPI()
+
+# 默认 str 转换器：不匹配 /
+# 访问 /files/config/main.yaml 会 404，因为 / 把路径拆了
+# 用 :path 转换器：匹配包含 / 的整段路径
 @app.get("/files/{file_path:path}")
-# 定义函数 read_file，参数: file_path: str
 def read_file(file_path: str):
-    # /files/a/b/c.txt → file_path == "a/b/c.txt"
-    # /files/report.pdf → file_path == "report.pdf"
-    # 返回 {"file_path": file_path}
+    # 访问 /files/config/main.yaml
+    # file_path = "config/main.yaml"（包含斜杠）
+    # 访问 /files/dir/sub/file.txt
+    # file_path = "dir/sub/file.txt"
+    return {"file_path": file_path}
+
+# int 转换器：只匹配整数
+@app.get("/posts/{post_id:int}")
+def read_post(post_id: int):
+    # 访问 /posts/42 → post_id=42
+    # 访问 /posts/abc → 404（不是 422，因为路由根本没匹配上）
+    return {"post_id": post_id}
+\`\`\`
+
+**重点区分**：\`:int\` 转换器和类型注解 \`int\` 的行为不同：
+
+- \`{item_id}\` + \`item_id: int\`：路由匹配任意字符串，进函数后类型转换失败 → **422 错误**
+- \`{item_id:int}\`：路由只匹配整数格式，非整数直接不匹配 → **404 错误**
+
+实际开发中，类型注解更常用，因为 422 比 404 信息更明确（告诉用户"类型错了"而不是"没这个路由"）。\`path\` 转换器则很有用，是匹配带斜杠路径的唯一方式。
+
+## 七、多路径参数
+
+一个路由可以有多个路径参数，按顺序提取。
+
+### Demo 8：多路径参数
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+
+# 创建应用
+app = FastAPI()
+
+# 两个路径参数：{username} 和 {item_id}
+@app.get("/users/{username}/items/{item_id}")
+def get_user_item(username: str, item_id: int):
+    # 访问 /users/alice/items/42
+    # username="alice"
+    # item_id=42
+    return {"username": username, "item_id": item_id}
+
+# 三个路径参数：年、月、日
+@app.get("/posts/{year}/{month}/{day}")
+def get_posts_by_date(year: int, month: int, day: int):
+    # 访问 /posts/2024/7/11
+    # year=2024, month=7, day=11
+    # 简单校验月份范围（更严格的校验用 Path 校验器，下章讲）
+    if month < 1 or month > 12:
+        return {"error": "月份非法"}
+    return {"year": year, "month": month, "day": day}
+\`\`\`
+
+多路径参数让 URL 结构清晰：\`/users/alice/items/42\` 一眼能看出"用户 alice 的 42 号物品"。这是 RESTful 风格的精髓——URL 表达资源层级关系。
+
+## 八、路径参数的最佳实践
+
+### 1. 用复数名词表示资源集合
+
+\`\`\`python
+# ✅ 推荐：复数
+@app.get("/users/{user_id}")
+def get_user(user_id: int): ...
+
+# ❌ 不推荐：单数
+@app.get("/user/{user_id}")
+def get_user(user_id: int): ...
+\`\`\`
+
+复数 \`/users\` 表示"用户集合"，\`/users/42\` 表示"集合里的 42 号"，语义清晰。
+
+### 2. 参数名用蛇形小写
+
+\`\`\`python
+# ✅ 推荐：蛇形
+@app.get("/users/{user_id}")
+def get_user(user_id: int): ...
+
+# ❌ 不推荐：驼峰（URL 不区分大小写容易出问题）
+@app.get("/users/{userId}")
+def get_user(userId: int): ...
+\`\`\`
+
+### 3. ID 用 int 或 UUID，别用 str
+
+\`\`\`python
+# ✅ 推荐：明确类型
+@app.get("/users/{user_id:int}")
+def get_user(user_id: int): ...
+
+# ❌ 不推荐：裸 str 容易让非法输入进入业务逻辑
+@app.get("/users/{user_id}")
+def get_user(user_id: str): ...
+\`\`\`
+
+### 4. 嵌套资源用多路径参数表达层级
+
+\`\`\`python
+# ✅ 推荐：层级清晰
+@app.get("/users/{user_id}/posts/{post_id}")
+def get_user_post(user_id: int, post_id: int): ...
+
+# ❌ 不推荐：扁平化，丢失层级关系
+@app.get("/posts/{post_id}")
+def get_post(post_id: int): ...
+# （除非确实不需要 user_id 上下文）
+\`\`\`
+
+### 5. 避免把动作放在路径里
+
+\`\`\`python
+# ❌ 不推荐：动词
+@app.get("/users/{user_id}/get")
+@app.post("/users/{user_id}/delete")
+
+# ✅ 推荐：用 HTTP 方法表达动作
+@app.get("/users/{user_id}")      # 获取
+@app.delete("/users/{user_id}")   # 删除
+\`\`\`
+
+## 九、常见错误和避坑指南
+
+### 坑 1：参数名拼错
+
+\`\`\`python
+# ❌ 错误：路由写 item_id，函数写 itemid
+@app.get("/items/{item_id}")
+def read_item(itemid: int):  # 拼写不一致
+    return {"itemid": itemid}
+\`\`\`
+
+报错：\`fastapi.exceptions.FastAPIError: "itemid" is not in path.\`
+
+**避坑**：复制粘贴路径里的参数名，别手敲。
+
+### 坑 2：固定路径被动态路径"吃掉"
+
+前面讲过的顺序问题，再强调一次：
+
+\`\`\`python
+# ❌ 错误顺序
+@app.get("/users/{user_id}")  # 先定义动态
+def get_user(user_id: int): ...
+
+@app.get("/users/me")  # 这个永远不会被匹配
+def get_me(): ...
+\`\`\`
+
+**避坑**：固定路径永远放前面。
+
+### 坑 3：用 path 转换器时忘加类型注解
+
+\`\`\`python
+# ❌ 没有类型注解，file_path 是 str，但容易让人困惑
+@app.get("/files/{file_path:path}")
+def read_file(file_path):
+    return {"file_path": file_path}
+
+# ✅ 加上类型注解更清晰
+@app.get("/files/{file_path:path}")
+def read_file(file_path: str):
     return {"file_path": file_path}
 \`\`\`
 
-注意：\`:path\` 后面没有空格，直接连着写。这是 Starlette 的 URL 路由转换器语法，FastAPI 继承自它。
+### 坑 4：以为路径参数能接收空值
 
-## 多路径参数
-
-一个路径可以有多个路径参数：
+路径参数不能为空，因为它在路径里。访问 \`/items/\`（item_id 为空）会 404，不会进入函数。如果要支持"不带 ID"的情况，单独定义一个路由：
 
 \`\`\`python
-# 定义 GET 路由：访问 /users/{user_id}/items/{item_id} 时触发
-@app.get("/users/{user_id}/items/{item_id}")
-# 定义函数 read_user_item，参数: user_id: int, item_id: int
-def read_user_item(user_id: int, item_id: int):
-    # /users/42/items/100 → user_id=42, item_id=100
-    # 返回 {"user_id": user_id, "item_id": item_id}
-    return {"user_id": user_id, "item_id": item_id}
+# 处理 /items（无 ID）
+@app.get("/items")
+def list_items(): ...
+
+# 处理 /items/42（有 ID）
+@app.get("/items/{item_id}")
+def get_item(item_id: int): ...
 \`\`\`
 
-## 预设值 vs 路径参数
+### 坑 5：URL 编码的字符
 
-如果路径参数只想接受几个预设值，用 Enum（见上）或 Literal：
+路径参数里的特殊字符会被 URL 编码。比如空格变 \`%20\`，中文被编码。FastAPI 会自动解码：
 
 \`\`\`python
-# 从 typing 导入 Literal
-from typing import Literal
-
-# 定义 GET 路由：访问 /colors/{color} 时触发
-@app.get("/colors/{color}")
-# 定义函数 get_color，参数: color: Literal["red", "green", "blue"]
-def get_color(color: Literal["red", "green", "blue"]):
-    # 只接受 red/green/blue，其他值 422
-    # 返回 {"color": color}
-    return {"color": color}
+@app.get("/search/{keyword}")
+def search(keyword: str):
+    # 访问 /search/hello%20world
+    # keyword = "hello world"（已解码）
+    # 访问 /search/%E4%BD%A0%E5%A5%BD
+    # keyword = "你好"
+    return {"keyword": keyword}
 \`\`\`
 
-## 路径参数 vs 查询参数的区分
-
-FastAPI 区分路径参数和查询参数的规则很简单：
-
-- **在路径字符串 \`{}\` 里声明的** → 路径参数
-- **函数参数里但不在路径里的** → 查询参数
-
-\`\`\`python
-@app.get("/items/{item_id}")  # 路径里有 {item_id}
-# 定义函数 read_item，参数: item_id: int, q: str | None = None
-def read_item(item_id: int, q: str | None = None):
-    # item_id 是路径参数（路径里声明了）
-    # q 是查询参数（路径里没有，靠 URL ?q=xxx 传）
-    # 返回 {"item_id": item_id, "q": q}
-    return {"item_id": item_id, "q": q}
-\`\`\`
-
-访问 \`/items/42?q=hello\`，\`item_id=42\`，\`q="hello"\`。
-
-## 易错点小结
-
-| 易错点 | 说明 | 正确做法 |
-|--------|------|----------|
-| 路由顺序错 | 动态路径挡住固定路径 | 固定路径写在动态路径前 |
-| 参数名不匹配 | 路径 \`{id}\` 函数写 \`item_id\` | 名字必须一致 |
-| 类型转换失败 | 访问 \`/items/{item_id:int}\` 但传非数字 | 传符合类型的值，会自动 422 |
-| 忘记类型注解 | \`def f(item_id)\` → item_id 是 str | 需要数字加 \`: int\` |
-| 含斜杠路径匹配错 | \`{file}\` 拿不到 \`a/b/c\` | 用 \`{file:path}\` |
-
----
+不用手动解码，FastAPI/Starlette 已经处理好了。
 
 ## 本章小结
 
-| 要点 | 说明 |
-|------|------|
-| 声明 | 路径里 \`{param}\`，函数同名参数 |
-| 类型转换 | 加类型注解自动转换，失败 422 |
-| 支持类型 | str/int/float/bool/UUID/Enum |
-| 路由顺序 | 固定路径在动态路径前 |
-| path 转换器 | \`{file:path}\` 匹配含斜杠 |
-| 多参数 | \`/users/{uid}/items/{iid}\` |
-| 与查询参数区分 | 路径里声明的是路径参数，否则查询参数 |
+| 知识点 | 要点 |
+|--------|------|
+| 基本语法 | \`{参数名}\` 占位，函数同名参数接收 |
+| 类型转换 | 用类型注解（int、float、bool、UUID 等） |
+| 参数映射 | 路径里的是路径参数，不在路径里的是查询参数 |
+| 路径顺序 | 固定路径放前面，动态路径放后面 |
+| Enum | 限制取值范围，自动生成文档 |
+| 路径转换器 | \`:path\` 匹配带斜杠路径，\`:int\` 只匹配整数 |
+| 多路径参数 | 按顺序提取，表达资源层级 |
 
-下一章我们看查询参数——那些跟在 \`?\` 后面的参数怎么用、怎么设默认值。`
+路径参数是 RESTful API 的基石。掌握它之后，你已经能写出"像样"的资源接口了。下一章我们看查询参数——它让接口具备"过滤、分页、排序"的能力。
+`,
   },
 
   // ============================================================
-  // 第 6 章：查询参数
+  // 第 2 章：查询参数
   // ============================================================
   {
-    id: "fa-query-params",
+    id: "fa-query",
     group: "路径与查询参数",
     icon: "🔍",
     title: "查询参数",
@@ -286,61 +568,104 @@ def read_item(item_id: int, q: str | None = None):
 
 ## 什么是查询参数
 
-查询参数是 URL 中 \`?\` 之后、用 \`&\` 分隔的键值对，通常用来表达"过滤、排序、分页"等非资源标识的信息：
+URL 里 \`?\` 后面的部分就是查询参数，格式是 \`key=value\`，多个参数用 \`&\` 连接：
 
-- \`GET /items?skip=0&limit=10\` —— 分页，跳过 0 条，取 10 条
-- \`GET /users?role=admin&active=true\` —— 过滤
-- \`GET /articles?sort=created_at\` —— 排序
+\`\`\`
+GET /items?skip=0&limit=10&q=apple
+GET /users?role=admin&active=true
+GET /posts?sort=created_at&order=desc&page=2&page_size=20
+\`\`\`
 
-这些不是 URL 路径的一部分，是放在 query string 里的。FastAPI 会自动把"函数参数里有、但路径里没声明的参数"当作查询参数。
+查询参数的作用是**对资源进行过滤、排序、分页**，和路径参数分工明确：
 
-## 基本语法
+- 路径参数：定位"哪个资源"（\`/items/42\`）
+- 查询参数：描述"要什么样的资源"（\`/items?status=active&limit=10\`）
+
+查询参数都是可选的，不传就用默认值。这是它和路径参数最大的区别——路径参数不能省略，查询参数可以。
+
+## 一、基本查询参数
+
+FastAPI 怎么识别查询参数？规则很简单：**函数参数里，不在路径模板中的就是查询参数**。
+
+### Demo 1：最基础的查询参数
 
 \`\`\`python
 # 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
 
-# 创建 FastAPI 应用实例
+# 创建应用
 app = FastAPI()
 
-# 假数据
-# 定义列表 items
-items = [{"name": f"商品{i}"} for i in range(100)]
+# 模拟一个商品列表
+items_db = [
+    {"id": 1, "name": "苹果", "price": 5.0},
+    {"id": 2, "name": "香蕉", "price": 3.5},
+    {"id": 3, "name": "橙子", "price": 4.0},
+    {"id": 4, "name": "葡萄", "price": 8.0},
+    {"id": 5, "name": "西瓜", "price": 2.0},
+]
 
-# skip 和 limit 不在路径里，自动当成查询参数
-# 定义 GET 路由：访问 /items 时触发
+# 路径里没有 skip 和 limit，所以它们是查询参数
+# 给了默认值，所以是可选的
 @app.get("/items")
-# 定义函数 list_items，参数: skip: int = 0, limit: int = 10
 def list_items(skip: int = 0, limit: int = 10):
-    # /items → skip=0, limit=10（用默认值）
-    # /items?skip=20 → skip=20, limit=10
-    # /items?skip=20&limit=5 → skip=20, limit=5
-    # 返回 items[skip : skip + limit]
-    return items[skip : skip + limit]
+    # 访问 /items → skip=0, limit=10
+    # 访问 /items?skip=2 → skip=2, limit=10
+    # 访问 /items?skip=1&limit=2 → skip=1, limit=2
+    # 切片：从 skip 开始，取 limit 个
+    return items_db[skip : skip + limit]
 \`\`\`
 
-规则：
+访问测试：
 
-1. 参数不在路径的 \`{}\` 里 → 查询参数
-2. 有默认值 → 可选（不传就用默认值）
-3. 无默认值 → 必填（不传就 422）
+| URL | skip | limit | 返回 |
+|-----|------|-------|------|
+| \`/items\` | 0 | 10 | 全部 5 个 |
+| \`/items?skip=2\` | 2 | 10 | 第 3、4、5 个 |
+| \`/items?limit=2\` | 0 | 2 | 前 2 个 |
+| \`/items?skip=1&limit=2\` | 1 | 2 | 第 2、3 个 |
 
-## 必选 vs 可选
+## 二、可选查询参数（默认值、None）
+
+查询参数有三种"可选性"：
+
+1. **有默认值**：可省略，省略时用默认值
+2. **默认 None**：可省略，省略时是 \`None\`（表示"没传"）
+3. **必选**：没有默认值，必须传
+
+### Demo 2：三种可选性
 
 \`\`\`python
-# 定义 GET 路由：访问 /search 时触发
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+
+# 创建应用
+app = FastAPI()
+
 @app.get("/search")
-# 定义函数 search，参数: keyword: str, category: str = "all"
-def search(keyword: str, category: str = "all"):
-    # keyword 没默认值 → 必填
-    # category 有默认值 → 可选
-    # /search → 422（缺 keyword）
-    # /search?keyword=phone → keyword="phone", category="all"
-    # 返回 {"keyword": keyword, "category": category}
-    return {"keyword": keyword, "category": category}
+def search(
+    q: str | None = None,    # 可选，默认 None（表示没传）
+    category: str = "all",   # 可选，默认 "all"
+    page: int = 1            # 可选，默认 1
+):
+    # 访问 /search → q=None, category="all", page=1
+    # 访问 /search?q=apple → q="apple"
+    # 访问 /search?q=apple&category=fruit → 全部自定义
+    result = {"category": category, "page": page}
+    # 只有传了 q 才加到结果里
+    if q:
+        result["q"] = q
+    return result
+
+# 必选查询参数：没有默认值
+@app.get("/required")
+def required_search(keyword: str):
+    # 访问 /required → 422 错误，缺少 keyword
+    # 访问 /required?keyword=hello → 正常
+    return {"keyword": keyword}
 \`\`\`
 
-访问 \`/search\`（不带 keyword）返回 422：
+访问 \`/required\`（不传 keyword）返回 422：
 
 \`\`\`json
 {
@@ -349,993 +674,1872 @@ def search(keyword: str, category: str = "all"):
       "type": "missing",
       "loc": ["query", "keyword"],
       "msg": "Field required",
-      "input": null
+      "input": null,
+      "url": "..."
     }
   ]
 }
 \`\`\`
 
-## 用 Optional / None 显式表示可选
+注意 \`loc\` 是 \`["query", "keyword"]\`，表示错误发生在查询参数 \`keyword\` 上。
 
-有两种写法表达"可选参数"：
+**避坑**：必选查询参数不常用，因为它让 URL 必须带某个参数，降低了灵活性。大多数情况下用 \`None\` 默认值，在函数里判断"是否传了"。
 
-\`\`\`python
-# 从 typing 导入 Optional
-from typing import Optional
+## 三、查询参数类型转换
 
-# 写法一：默认值 None（推荐，简洁）
-# 定义 GET 路由：访问 /items 时触发
-@app.get("/items")
-# 定义函数 list_items，参数: q: str | None = None
-def list_items(q: str | None = None):
-    # q 可不传，不传时 q 是 None
-    # 条件判断：如果 q
-    if q:
-        # 返回 {"q": q}
-        return {"q": q}
-    # 返回 {"msg": "无搜索词"}
-    return {"msg": "无搜索词"}
+和路径参数一样，查询参数也支持类型注解，FastAPI 会自动转换。
 
-# 写法二：Optional（老写法，3.9 以下用）
-# 定义 GET 路由：访问 /items2 时触发
-@app.get("/items2")
-# 定义函数 list_items2，参数: q: Optional[str] = None
-def list_items2(q: Optional[str] = None):
-    # 返回 {"q": q}
-    return {"q": q}
-\`\`\`
-
-\`str | None\`（Python 3.10+）和 \`Optional[str]\` 是等价的，都表示"要么字符串，要么 None"。推荐用 \`|\` 语法，更简洁。
-
-⚠️ 注意一个常见误区：**只写 \`q: str | None\` 但不给默认值，它仍然是必填的**。类型注解 \`str | None\` 只是说"值可以是 None"，但没默认值就是必填，必须传 \`?q=\`（哪怕是空）。要可选，必须有 \`= None\`。
-
-## 默认值
-
-\`\`\`python
-# 定义 GET 路由：访问 /items 时触发
-@app.get("/items")
-# 定义函数 list_items，参数: skip: int = 0, limit: int = 10, q: str | None = No...
-def list_items(skip: int = 0, limit: int = 10, q: str | None = None):
-    # 分页查询的典型用法
-    # 返回 {"skip": skip, "limit": limit, "q": q}
-    return {"skip": skip, "limit": limit, "q": q}
-\`\`\`
-
-访问各种 URL 的结果：
-
-| URL | skip | limit | q |
-|-----|------|-------|---|
-| \`/items\` | 0 | 10 | None |
-| \`/items?skip=5\` | 5 | 10 | None |
-| \`/items?skip=5&limit=20\` | 5 | 20 | None |
-| \`/items?q=phone\` | 0 | 10 | "phone" |
-| \`/items?limit=20&q=phone\` | 0 | 20 | "phone" |
-
-## bool 类型的自动转换
-
-bool 类型查询参数，FastAPI 会把多种形式都转成 bool：
-
-\`\`\`python
-# 定义 GET 路由：访问 /items 时触发
-@app.get("/items")
-# 定义函数 list_items，参数: active: bool = False
-def list_items(active: bool = False):
-    # 返回 {"active": active}
-    return {"active": active}
-\`\`\`
-
-这些都会被转成 \`True\`：
-
-- \`/items?active=true\`（小写）
-- \`/items?active=True\`（首字母大写）
-- \`/items?active=1\`
-- \`/items?active=yes\`
-- \`/items?active=on\`
-
-这些转成 \`False\`：\`false\`、\`False\`、\`0\`、\`no\`、\`off\`、\`''\`（空）。
-
-传别的值（如 \`/items?active=maybe\`）会 422，因为转不成 bool。
-
-## 参数顺序规则
-
-Python 函数参数有个规则：**有默认值的参数不能放在无默认值的前面**。所以路径参数（无默认值）和查询参数（常有默认值）混在一起时，要按 Python 规则排序。
-
-\`\`\`python
-# ✅ 正确：无默认值（路径参数 item_id）在前，有默认值（查询参数 q）在后
-# 定义 GET 路由：访问 /items/{item_id} 时触发
-@app.get("/items/{item_id}")
-# 定义函数 read_item，参数: item_id: int, q: str | None = None
-def read_item(item_id: int, q: str | None = None):
-    # 返回 {"item_id": item_id, "q": q}
-    return {"item_id": item_id, "q": q}
-
-# ❌ 错误：有默认值的 q 放在无默认值的 item_id 前，Python 直接报语法错
-# 定义 GET 路由：访问 /items/{item_id} 时触发
-@app.get("/items/{item_id}")
-# 定义函数 read_item，参数: q: str | None = None, item_id: int
-def read_item(q: str | None = None, item_id: int):
-    # ...
-    ...
-\`\`\`
-
-记住：路径参数（路径里声明的，通常无默认值）放函数签名前面，查询参数（常有默认值）放后面。这其实不是 FastAPI 的规则，是 Python 函数定义的硬性要求。
-
-## 必填参数的顺序
-
-多个必填查询参数无顺序要求（因为都无默认值）：
-
-\`\`\`python
-# 定义 GET 路由：访问 /search 时触发
-@app.get("/search")
-# 定义函数 search，参数: keyword: str, city: str
-def search(keyword: str, city: str):
-    # keyword 和 city 都必填，顺序无所谓
-    # /search?keyword=x&city=y 或 /search?city=y&keyword=x 都行
-    # 返回 {"keyword": keyword, "city": city}
-    return {"keyword": keyword, "city": city}
-\`\`\`
-
-URL 里参数顺序不影响，FastAPI 按名字匹配，不是按位置。
-
-## 分页查询实战
-
-把前面知识点串起来，写一个带分页和过滤的列表接口：
+### Demo 3：各种类型的查询参数
 
 \`\`\`python
 # 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
-# 从 typing 导入 Optional
-from typing import Optional
+# 从 typing 导入 List（Python 3.9+ 可以直接用 list）
+from typing import List
 
-# 创建 FastAPI 应用实例
+# 创建应用
 app = FastAPI()
 
-# 模拟数据
-# 定义列表 products
-products = [
-    # {"id": i, "name": f"商品{i}", "price": i * 10, "cate
-    {"id": i, "name": f"商品{i}", "price": i * 10, "category": "电子" if i % 2 == 0 else "服装"}
-    # for i in range(1, 101)
-    for i in range(1, 101)
-# ]
-]
-
-# 定义 GET 路由：访问 /products 时触发
-@app.get("/products")
-# def list_products(
-def list_products(
-    skip: int = 0,            # 跳过多少条，默认 0
-    limit: int = 10,         # 取多少条，默认 10
-    category: Optional[str] = None,  # 按类目过滤，默认不过滤
-    min_price: float = 0.0,  # 最低价
-    max_price: float = 9999.0  # 最高价
-# ):
+@app.get("/filter")
+def filter_items(
+    min_price: float = 0.0,           # 浮点数
+    max_price: float = 9999.0,        # 浮点数
+    in_stock: bool = True,            # 布尔值
+    tags: List[str] | None = None     # 列表：?tags=a&tags=b
 ):
-    # 先过滤
-    # 定义变量 result，赋值为 products
-    result = products
-    # 条件判断：如果 category
-    if category:
-        # 定义列表 result
-        result = [p for p in result if p["category"] == category]
-    # 定义列表 result
-    result = [p for p in result if min_price <= p["price"] <= max_price]
-    # 再分页
-    # 定义变量 total，赋值为 len(result)
-    total = len(result)
-    # 定义变量 page，赋值为 result[skip : skip + limit]
-    page = result[skip : skip + limit]
-    # 返回 {"total": total, "items": page}
-    return {"total": total, "items": page}
+    # 访问 /filter?min_price=1.5&max_price=10&in_stock=false&tags=fruit&tags=red
+    # min_price=1.5（float）
+    # max_price=10.0（float）
+    # in_stock=False（bool）
+    # tags=["fruit", "red"]（list）
+    return {
+        "min_price": min_price,
+        "max_price": max_price,
+        "in_stock": in_stock,
+        "tags": tags
+    }
 \`\`\`
 
-访问 \`/products?category=电子&min_price=50&skip=0&limit=5\` 拿到价格≥50 的电子产品前 5 条。
+注意列表参数的传法：\`?tags=fruit&tags=red\`，同一个 key 传多次，FastAPI 会收集成列表 \`["fruit", "red"]\`。
 
-## 用 Query 增强（预告）
+## 四、bool 类型自动转换
 
-光给默认值还不够：你可能想限制 \`limit\` 不能超过 100、\`q\` 至少 2 个字符。这要靠下一章的 \`Query()\`，这里先看个预告：
+bool 查询参数的转换规则值得单独说，因为它很容易踩坑。FastAPI（Pydantic）会把以下值转成 \`True\`：
+
+- \`"true"\`、\`"True"\`、\`"TRUE"\`
+- \`"1"\`、\`"yes"\`、\`"on"\`、\`"y"\`、\`"t"\`
+
+以下值转成 \`False\`：
+
+- \`"false"\`、\`"False"\`、\`"FALSE"\`
+- \`"0"\`、\`"no"\`、\`"off"\`、\`"n"\`、\`"f"\`
+
+### Demo 4：bool 转换的陷阱
 
 \`\`\`python
-# 从 fastapi 导入 Query
-from fastapi import Query
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
 
-# 定义 GET 路由：访问 /items 时触发
-@app.get("/items")
-# def list_items(
-def list_items(
-    # 字段 q，类型: str | None，默认值: Query(None, min_length=2, max_length=50),
-    q: str | None = Query(None, min_length=2, max_length=50),
-    # 字段 limit，类型: int，默认值: Query(10, ge=1, le=100)
-    limit: int = Query(10, ge=1, le=100)
-# ):
-):
-    # q 长度 2~50，limit 在 1~100 之间
-    # 返回 {"q": q, "limit": limit}
-    return {"q": q, "limit": limit}
+# 创建应用
+app = FastAPI()
+
+@app.get("/toggle")
+def toggle(enabled: bool):
+    # 访问 /toggle?enabled=true → enabled=True
+    # 访问 /toggle?enabled=1    → enabled=True
+    # 访问 /toggle?enabled=yes  → enabled=True
+    # 访问 /toggle?enabled=false → enabled=False
+    # 访问 /toggle?enabled=0    → enabled=False
+    return {"enabled": enabled, "type": type(enabled).__name__}
+
+# ⚠️ 注意：如果用 str 类型接收，"false" 是真值字符串！
+@app.get("/toggle-str")
+def toggle_str(enabled: str):
+    # 访问 /toggle-str?enabled=false
+    # enabled = "false"（字符串）
+    # if enabled: → True（非空字符串都是真值）
+    if enabled:
+        return {"msg": "enabled 是真值字符串"}
+    return {"msg": "enabled 是空字符串"}
 \`\`\`
 
-## 易错点小结
+**避坑**：如果你写 \`if enabled:\` 判断布尔语义，用 \`bool\` 类型注解，别用 \`str\`。否则 \`"false"\` 这个字符串会被当成 \`True\`，逻辑就反了。
 
-| 易错点 | 说明 | 正确做法 |
-|--------|------|----------|
-| 可选忘加默认值 | \`q: str | None\` 无默认值仍必填 | 加 \`= None\` |
-| bool 传错值 | \`?active=maybe\` 转 422 | 用 true/false/1/0 |
-| 参数顺序错 | 有默认值的放无默认值前 | 路径参数（无默认值）在前 |
-| 必填没传 | 漏传必填查询参数 | 看清哪些没默认值 |
-| 想校验长度/范围 | 光默认值做不到 | 用 Query()（下章） |
+## 五、多个查询参数
 
----
+实际接口往往有多个查询参数，分别承担不同职责。
+
+### Demo 5：完整的分页 + 过滤 + 排序接口
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+# 从 typing 导入 Optional（兼容旧写法）
+from typing import Optional
+
+# 创建应用
+app = FastAPI()
+
+# 模拟商品数据
+products = [
+    {"id": 1, "name": "iPhone", "price": 6999, "category": "phone"},
+    {"id": 2, "name": "iPad", "price": 3999, "category": "tablet"},
+    {"id": 3, "name": "MacBook", "price": 12999, "category": "laptop"},
+    {"id": 4, "name": "AirPods", "price": 1299, "category": "audio"},
+    {"id": 5, "name": "iPhone Case", "price": 199, "category": "accessory"},
+]
+
+@app.get("/products")
+def list_products(
+    # 分页参数
+    page: int = 1,                    # 页码，从 1 开始
+    page_size: int = 10,              # 每页数量
+    # 过滤参数
+    category: Optional[str] = None,   # 按分类过滤
+    min_price: Optional[float] = None, # 最低价格
+    max_price: Optional[float] = None, # 最高价格
+    # 排序参数
+    sort_by: str = "id",              # 排序字段
+    order: str = "asc"                # 排序方向：asc/desc
+):
+    # 第 1 步：复制数据，避免修改原列表
+    result = list(products)
+    
+    # 第 2 步：过滤
+    if category:
+        # 只保留指定分类
+        result = [p for p in result if p["category"] == category]
+    if min_price is not None:
+        # 过滤最低价
+        result = [p for p in result if p["price"] >= min_price]
+    if max_price is not None:
+        # 过滤最高价
+        result = [p for p in result if p["price"] <= max_price]
+    
+    # 第 3 步：排序
+    # reverse=True 表示降序
+    reverse = (order == "desc")
+    # 用 lambda 取排序字段
+    result.sort(key=lambda p: p.get(sort_by, 0), reverse=reverse)
+    
+    # 第 4 步：分页
+    # page=1 → 从 0 开始
+    # page=2 → 从 page_size 开始
+    start = (page - 1) * page_size
+    end = start + page_size
+    paginated = result[start:end]
+    
+    # 返回带元数据的响应
+    return {
+        "data": paginated,            # 当前页数据
+        "total": len(result),         # 过滤后总数
+        "page": page,                 # 当前页码
+        "page_size": page_size,       # 每页数量
+        "total_pages": (len(result) + page_size - 1) // page_size  # 总页数
+    }
+\`\`\`
+
+访问示例：
+
+- \`/products\` —— 第 1 页，全部商品
+- \`/products?category=phone\` —— 只看手机
+- \`/products?min_price=1000&max_price=5000\` —— 价格区间过滤
+- \`/products?sort_by=price&order=desc\` —— 按价格降序
+- \`/products?page=2&page_size=2\` —— 第 2 页，每页 2 个
+
+## 六、查询参数与路径参数混用
+
+路径参数和查询参数可以自由组合，这是最常见的形式。
+
+### Demo 6：路径 + 查询混用
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+
+# 创建应用
+app = FastAPI()
+
+# {user_id} 是路径参数，detail 和 q 是查询参数
+@app.get("/users/{user_id}/items")
+def get_user_items(
+    user_id: int,            # 路径参数（在路径里）
+    q: str | None = None,    # 查询参数（不在路径里）
+    detail: bool = False     # 查询参数
+):
+    # 访问 /users/42/items?q=apple&detail=true
+    # user_id=42（路径）
+    # q="apple"（查询）
+    # detail=True（查询）
+    result = {"user_id": user_id, "items": []}
+    if q:
+        result["q"] = q
+    if detail:
+        result["detail"] = "显示详细信息"
+    return result
+\`\`\`
+
+规则总结：
+- 路径模板 \`/users/{user_id}/items\` 里有 \`user_id\` → 路径参数
+- 函数参数 \`q\` 和 \`detail\` 不在路径里 → 查询参数
+- \`user_id\` 没有默认值，但因为它是路径参数，"必传"由路径决定
+
+## 七、查询参数的最佳实践
+
+### 1. 分页用 page + page_size 还是 offset + limit？
+
+两种风格都常见：
+
+\`\`\`python
+# 风格 A：page + page_size（页码风格）
+@app.get("/items")
+def list_items(page: int = 1, page_size: int = 10):
+    offset = (page - 1) * page_size
+    return items[offset : offset + page_size]
+
+# 风格 B：offset + limit（偏移风格）
+@app.get("/items")
+def list_items(offset: int = 0, limit: int = 10):
+    return items[offset : offset + limit]
+\`\`\`
+
+选择建议：
+- **面向用户/前端**：用 page + page_size，更直观（"第 2 页"比"从第 10 条开始"好懂）
+- **面向数据库/内部 API**：用 offset + limit，直接对应 SQL
+
+### 2. 排序参数支持多字段
+
+\`\`\`python
+# 单字段排序
+@app.get("/items")
+def list_items(sort_by: str = "id", order: str = "asc"):
+    ...
+
+# 多字段排序：?sort=-price,created_at
+# - 号表示降序，无前缀表示升序
+@app.get("/items2")
+def list_items2(sort: str = "id"):
+    # sort = "-price,created_at"
+    # 拆分成多个排序规则
+    sort_fields = []
+    for field in sort.split(","):
+        field = field.strip()
+        if field.startswith("-"):
+            # 降序
+            sort_fields.append((field[1:], True))
+        else:
+            # 升序
+            sort_fields.append((field, False))
+    return {"sort_fields": sort_fields}
+\`\`\`
+
+### 3. 过滤参数用 None 而不是空字符串表示"不过滤"
+
+\`\`\`python
+# ✅ 推荐：None 表示不过滤
+@app.get("/items")
+def list_items(category: str | None = None):
+    if category is not None:  # 明确：传了 category 才过滤
+        ...
+
+# ❌ 不推荐：空字符串表示不过滤
+@app.get("/items2")
+def list_items2(category: str = ""):
+    if category:  # 空字符串是假值，但这种写法不直观
+        ...
+\`\`\`
+
+### 4. 别让查询参数太多
+
+如果一个接口有 10 个以上查询参数，考虑：
+- 拆分成多个接口（\`/items/search\` 专门做搜索）
+- 用 POST + body 传复杂查询条件
+- 用 Pydantic 模型 + \`Depends\` 组织参数
+
+### 5. 布尔参数用 bool，别用 str
+
+前面讲过，\`"false"\` 字符串是真值。用 \`bool\` 类型让 FastAPI 帮你转换。
+
+## 八、常见错误和避坑指南
+
+### 坑 1：参数顺序错误
+
+Python 语法要求：**有默认值的参数必须在无默认值的参数后面**。
+
+\`\`\`python
+# ❌ 错误：有默认值的 q 在无默认值的 item_id 前面
+@app.get("/items/{item_id}")
+def read_item(q: str = "default", item_id: int):  # 语法错误
+    ...
+
+# ✅ 正确：无默认值的在前
+@app.get("/items/{item_id}")
+def read_item(item_id: int, q: str = "default"):  # 正确
+    ...
+\`\`\`
+
+但有个例外：FastAPI 不在乎参数顺序，它只看"参数名在不在路径里"。所以下面这样也行：
+
+\`\`\`python
+# 这也能运行，但不推荐，容易让人困惑
+@app.get("/items/{item_id}")
+def read_item(q: str = "default", item_id: int):
+    ...
+\`\`\`
+
+**避坑**：虽然能运行，但保持"路径参数在前，查询参数在后"的习惯，可读性更好。
+
+### 坑 2：必选查询参数和可选查询参数混用
+
+\`\`\`python
+# keyword 必选，page 可选
+# 访问 /search → 422（缺 keyword）
+# 访问 /search?keyword=apple → 正常
+@app.get("/search")
+def search(keyword: str, page: int = 1):
+    return {"keyword": keyword, "page": page}
+\`\`\`
+
+这本身不是错误，但要清楚：必选查询参数会让 URL 必须带这个参数。如果前端忘了传，直接 422。
+
+### 坑 3：List 参数的传法
+
+\`\`\`python
+from typing import List
+
+@app.get("/items")
+def list_items(tags: List[str] = []):
+    return {"tags": tags}
+\`\`\`
+
+访问 \`/items?tags=a&tags=b\` → \`tags=["a", "b"]\`
+
+访问 \`/items?tags=a,b\` → \`tags=["a,b"]\`（整体当成一个字符串，不是列表）
+
+**避坑**：列表参数必须用 \`key=value&key=value\` 的形式传，不能用逗号。如果想要逗号分隔，自己解析：
+
+\`\`\`python
+@app.get("/items")
+def list_items(tags: str = ""):
+    # tags = "a,b,c"
+    tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+    return {"tags": tag_list}
+\`\`\`
+
+### 坑 4：可变默认值
+
+\`\`\`python
+# ❌ 错误：用可变对象做默认值
+@app.get("/items")
+def list_items(tags: list = []):  # 默认值是共享的列表！
+    tags.append("default")  # 会污染默认值
+    return {"tags": tags}
+
+# ✅ 正确：用 None，在函数里创建
+@app.get("/items")
+def list_items(tags: list | None = None):
+    if tags is None:
+        tags = []
+    return {"tags": tags}
+\`\`\`
+
+这是 Python 的经典坑，不是 FastAPI 特有，但在写接口时容易犯。
+
+### 坑 5：查询参数名冲突
+
+\`\`\`python
+# ❌ 错误：参数名和 Python 关键字冲突
+@app.get("/items")
+def list_items(class: str = "all"):  # class 是关键字
+    ...
+
+# ✅ 解决：用别名（下章讲 Query 的 alias）
+from fastapi import Query
+
+@app.get("/items")
+def list_items(
+    category: str = Query("all", alias="class")  # URL 用 class，代码用 category
+):
+    return {"category": category}
+\`\`\`
+
+访问 \`/items?class=fruit\`，函数里 \`category="fruit"\`。
 
 ## 本章小结
 
-| 要点 | 说明 |
-|------|------|
-| 判定 | 不在路径 \`{}\` 里的函数参数 = 查询参数 |
-| 必填 | 无默认值 |
-| 可选 | 有默认值（常 = None） |
-| bool 转换 | true/1/yes/on → True，false/0/no/off → False |
-| 参数顺序 | 无默认值在前（Python 规则） |
-| 多个查询参数 | URL 里顺序无关，按名字匹配 |
-| 校验增强 | 用 Query()（下一章详解） |
+| 知识点 | 要点 |
+|--------|------|
+| 识别规则 | 不在路径里的函数参数就是查询参数 |
+| 可选性 | 有默认值=可选，无默认值=必选，None=可选 |
+| 类型转换 | 支持 int、float、bool、list 等 |
+| bool 转换 | "true"/"1"/"yes" → True，注意别用 str 判断 |
+| 列表参数 | \`?tags=a&tags=b\` 形式传 |
+| 混用 | 路径参数 + 查询参数自由组合 |
+| 最佳实践 | 分页、过滤、排序各司其职 |
 
-下一章我们深入参数校验——用 Path() 和 Query() 给参数加约束、加文档。`
+查询参数让接口具备"筛选"能力。但光有类型转换还不够——你要限制价格不能为负、字符串长度、枚举取值等，这就需要下一章的 **Path/Query 校验器**。
+`,
   },
 
   // ============================================================
-  // 第 7 章：参数校验：Path/Query
+  // 第 3 章：参数校验
   // ============================================================
   {
-    id: "fa-params-validate",
+    id: "fa-validation",
     group: "路径与查询参数",
     icon: "✅",
     title: "参数校验：Path/Query",
     content: `# 参数校验：Path/Query
 
-## 为什么需要额外校验
+## 为什么需要校验
 
-上一章用类型注解和默认值能做基础校验（类型转换、必填可选）。但实际接口要的约束更多：
+类型注解只能保证"类型对"，但保证不了"值合理"。比如：
 
-- \`limit\` 不能超过 100（防止一次拉太多数据）
-- \`q\` 至少 2 个字符（避免单字符搜索把数据库拖垮）
-- \`user_id\` 必须 ≥ 1（ID 不能是负数）
-- 查询参数在 URL 里叫 \`user-id\`，但 Python 变量想叫 \`user_id\`（带连字符的变量名非法）
+- \`item_id: int\` 能保证是整数，但保证不了是正数（\`-1\` 也能通过）
+- \`q: str\` 能保证是字符串，但保证不了长度（空字符串、超长字符串都能通过）
+- \`status: str\` 能保证是字符串，但保证不了是合法状态
 
-这些靠光声明类型做不到，要用 \`Path()\` 和 \`Query()\`。
+校验（validation）就是给参数加"业务约束"。FastAPI 提供 \`Path()\` 和 \`Query()\` 两个函数，专门用来声明路径参数和查询参数的校验规则。它们能让校验逻辑声明式化，而且自动反映到文档里。
 
-## Query() 给查询参数加约束
+## 一、Query() 校验器详解
 
-\`Query()\` 用作参数的默认值，传入校验规则和元数据：
+\`Query()\` 用于声明查询参数的校验规则。基本用法：把默认值用 \`Query()\` 包裹。
+
+### Demo 1：Query 基础用法
 
 \`\`\`python
-# 从 fastapi 导入 FastAPI, Query
+# 从 fastapi 导入 FastAPI 和 Query
 from fastapi import FastAPI, Query
 
-# 创建 FastAPI 应用实例
+# 创建应用
 app = FastAPI()
 
-# 定义 GET 路由：访问 /items 时触发
 @app.get("/items")
-# def list_items(
 def list_items(
-    # q 是可选字符串，长度 3~50
-    # 字段 q，类型: str | None，默认值: Query(None, min_length=3, max_length=50),
-    q: str | None = Query(None, min_length=3, max_length=50),
-    # limit 必填，范围 1~100
-    # 字段 limit，类型: int，默认值: Query(..., ge=1, le=100),
-    limit: int = Query(..., ge=1, le=100),
-    # skip 默认 0，≥ 0
-    # 字段 skip，类型: int，默认值: Query(0, ge=0)
-    skip: int = Query(0, ge=0)
-# ):
+    # q 是可选字符串，默认 None
+    # min_length=3：最少 3 个字符
+    # max_length=50：最多 50 个字符
+    q: str | None = Query(default=None, min_length=3, max_length=50)
 ):
-    # 返回 {"q": q, "limit": limit, "skip": skip}
-    return {"q": q, "limit": limit, "skip": skip}
+    # 访问 /items?q=ab → 422（长度不足 3）
+    # 访问 /items?q=hello → 正常
+    # 访问 /items → 正常（q=None，校验不触发）
+    return {"q": q}
+
+@app.get("/search")
+def search(
+    # keyword 必选（default=... 表示必选）
+    # pattern 用正则校验：只允许字母和数字
+    keyword: str = Query(default=..., min_length=2, max_length=20, pattern="^[a-zA-Z0-9]+$")
+):
+    # 访问 /search?keyword=ab → 正常
+    # 访问 /search?keyword=a → 422（长度不足）
+    # 访问 /search?keyword=hello! → 422（含非法字符）
+    # 访问 /search → 422（必选参数缺失）
+    return {"keyword": keyword}
 \`\`\`
 
-\`Query()\` 的第一参数是默认值：
+### Query 的常用参数
 
-- \`None\` → 可选，默认 None
-- \`...\`（Ellipsis）→ 必填，没有默认值
-- 具体值 → 用该值作默认
+| 参数 | 作用 | 适用类型 |
+|------|------|---------|
+| \`default\` | 默认值，\`...\` 表示必选 | 所有 |
+| \`min_length\` | 最小长度 | str |
+| \`max_length\` | 最大长度 | str |
+| \`pattern\` | 正则表达式（旧版叫 regex） | str |
+| \`gt\` | 大于（>） | 数值 |
+| \`ge\` | 大于等于（>=） | 数值 |
+| \`lt\` | 小于（<） | 数值 |
+| \`le\` | 小于等于（<=） | 数值 |
+| \`title\` | 标题（文档用） | 所有 |
+| \`description\` | 描述（文档用） | 所有 |
+| \`example\` | 示例值（文档用） | 所有 |
+| \`deprecated\` | 标记为已废弃 | 所有 |
+| \`alias\` | 参数别名 | 所有 |
 
-### 字符串校验规则
+## 二、Path() 校验器详解
 
-| 参数 | 作用 |
-|------|------|
-| \`min_length\` | 最小长度 |
-| \`max_length\` | 最大长度 |
-| \`pattern\` | 正则（旧名 \`regex\`，已废弃） |
-| \`max_length\` | 最大长度 |
+\`Path()\` 用于声明路径参数的校验规则。用法和 \`Query()\` 几乎一样，区别是：
 
-\`\`\`python
-# 用户名：3~20 字符，只能字母数字下划线
-# 字段 username，类型: str，默认值: Query(..., min_length=3, max_length=20, pattern="^[a-zA-Z0-9_]+$")
-username: str = Query(..., min_length=3, max_length=20, pattern="^[a-zA-Z0-9_]+$")
-\`\`\`
+- \`Path()\` 用于路径参数（必须出现在路径模板里）
+- \`Path()\` 的 \`default\` 不能省略（路径参数总是必选），通常写成 \`default=...\` 或省略
+- \`Path()\` 额外支持 \`ge\`、\`gt\`、\`lt\`、\`le\` 数值校验
 
-### 数字校验规则
-
-| 参数 | 作用 |
-|------|------|
-| \`ge\` | ≥ greater than or equal |
-| \`gt\` | > greater than |
-| \`le\` | ≤ less than or equal |
-| \`lt\` | < less than |
-| \`multiple_of\` | 必须是某数的倍数 |
+### Demo 2：Path 数值校验
 
 \`\`\`python
-# 年龄 18~120
-# 字段 age，类型: int，默认值: Query(..., ge=18, le=120)
-age: int = Query(..., ge=18, le=120)
-# 价格 > 0
-# 字段 price，类型: float，默认值: Query(..., gt=0)
-price: float = Query(..., gt=0)
-# 数量必须是 5 的倍数
-# 字段 count，类型: int，默认值: Query(..., multiple_of=5)
-count: int = Query(..., multiple_of=5)
-\`\`\`
-
-记忆技巧：\`g\` = greater（大），\`l\` = less（小），\`e\` = equal（等于）。ge=大于等于，gt=大于（无等于）。
-
-## Path() 给路径参数加约束
-
-路径参数用 \`Path()\`，用法和 \`Query()\` 几乎一样。区别是路径参数**总是必填**（URL 里必须有），所以不需要 \`...\` 表示必填：
-
-\`\`\`python
-# 从 fastapi 导入 FastAPI, Path
+# 从 fastapi 导入 FastAPI 和 Path
 from fastapi import FastAPI, Path
 
-# 创建 FastAPI 应用实例
+# 创建应用
 app = FastAPI()
 
-# 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}")
-# def read_item(
-def read_item(
-    # 路径参数 item_id，必须 ≥ 1
-    # 字段 item_id，类型: int，默认值: Path(..., ge=1, description="商品 ID，正整数"),
-    item_id: int = Path(..., ge=1, description="商品 ID，正整数"),
-    # 查询参数 q
-    # 字段 q，类型: str | None，默认值: Query(None, max_length=20)
-    q: str | None = Query(None, max_length=20)
-# ):
+def get_item(
+    # item_id 必须大于等于 1（ge=greater than or equal）
+    # 用 Path() 包裹，default=... 表示必选（路径参数本来就必选）
+    item_id: int = Path(default=..., ge=1, lt=1000000),
+    # 另一个参数 q 是查询参数，用 Query()
+    q: str | None = Query(default=None, max_length=10)
 ):
-    # 返回 {"item_id": item_id, "q": q}
+    # 访问 /items/42 → 正常
+    # 访问 /items/0 → 422（必须 >= 1）
+    # 访问 /items/-5 → 422（必须 >= 1）
+    # 访问 /items/9999999 → 422（必须 < 1000000）
     return {"item_id": item_id, "q": q}
-\`\`\`
 
-⚠️ 注意一个 Python 语法陷阱：如果路径参数有 \`Path()\` 默认值，而后面有**无默认值**的查询参数，Python 会报"有默认值参数在无默认值参数前"的错。解决办法：给查询参数也加默认值，或用 \`*\` 分隔。
-
-\`\`\`python
-# ❌ 报错：item_id 有 Path() 默认值，q 无默认值
-# 定义 GET 路由：访问 /items/{item_id} 时触发
-@app.get("/items/{item_id}")
-# 定义函数 read_item，参数: item_id: int = Path(..., ge=1), q: str
-def read_item(item_id: int = Path(..., ge=1), q: str):
-    # ...
-    ...
-
-# ✅ 用 * 把后续参数都标记为关键字参数，绕过顺序限制
-# 定义 GET 路由：访问 /items/{item_id} 时触发
-@app.get("/items/{item_id}")
-# 定义函数 read_item，参数: *, item_id: int = Path(..., ge=1), q: str
-def read_item(*, item_id: int = Path(..., ge=1), q: str):
-    # * 之后全是关键字参数，顺序无关紧要
-    # 返回 {"item_id": item_id, "q": q}
-    return {"item_id": item_id, "q": q}
-\`\`\`
-
-加 \`*\` 是惯用法，表示"后面都是关键字参数"，这样能任意排列路径参数和查询参数，绕开 Python 的默认值顺序限制。
-
-## 列表查询参数：接收多个值
-
-有时一个查询参数要传多个值，比如 \`?q=a&q=b&q=c\`。用 \`list\` 类型 + \`Query()\`：
-
-\`\`\`python
-# 定义 GET 路由：访问 /items 时触发
-@app.get("/items")
-# 定义函数 list_items，参数: q: list[str] | None = Query(None)
-def list_items(q: list[str] | None = Query(None)):
-    # /items?q=a&q=b&q=c → q == ["a", "b", "c"]
-    # /items → q == None
-    # 返回 {"q": q}
-    return {"q": q}
-\`\`\`
-
-访问 \`/items?q=a&q=b\`：
-
-\`\`\`json
-{"q": ["a", "b"]}
-\`\`\`
-
-也可以给默认值（列表）：
-
-\`\`\`python
-# 默认 ["default"]
-# 字段 tags，类型: list[str]，默认值: Query(default=["default"])
-tags: list[str] = Query(default=["default"])
-\`\`\`
-
-列表参数常用于"多选过滤"，比如 \`?category=电子&category=服装\`。
-
-## 别名 alias
-
-URL 查询参数名和 Python 变量名不想一样时用 \`alias\`。典型场景：URL 用连字符风格 \`user-id\`，但 Python 变量不能用连字符（语法非法），用 \`user_id\`：
-
-\`\`\`python
-# 定义 GET 路由：访问 /items 时触发
-@app.get("/items")
-# def list_items(
-def list_items(
-    # URL 里是 ?user-id=42，Python 里用 user_id
-    # 字段 user_id，类型: int，默认值: Query(..., alias="user-id")
-    user_id: int = Query(..., alias="user-id")
-# ):
+# float 类型校验
+@app.get("/products/{price}")
+def get_by_price(
+    # price 必须大于 0
+    price: float = Path(default=..., gt=0, le=99999.99)
 ):
-    # 返回 {"user_id": user_id}
-    return {"user_id": user_id}
-# 访问 /items?user-id=42 → user_id=42
+    # 访问 /products/9.99 → 正常
+    # 访问 /products/0 → 422（必须 > 0）
+    # 访问 /products/-1 → 422
+    return {"price": price}
 \`\`\`
 
-\`alias\` 在对接前端已定的命名规范（如 camelCase）时很有用，不用改 Python 变量名。
+## 三、数值校验：gt、ge、lt、le
 
-## 弃用标记 deprecated
+数值校验四个参数：
 
-接口演进中，有些参数想标注"已废弃但还能用"，提示调用方迁移。用 \`deprecated=True\`：
+- \`gt\`（greater than）：大于，\`x > gt\`
+- \`ge\`（greater than or equal）：大于等于，\`x >= ge\`
+- \`lt\`（less than）：小于，\`x < lt\`
+- \`le\`（less than or equal）：小于等于，\`x <= le\`
 
-\`\`\`python
-# 定义 GET 路由：访问 /items 时触发
-@app.get("/items")
-# def list_items(
-def list_items(
-    # 字段 q，类型: str | None，默认值: Query(None, deprecated=True, description="已废弃，请用 search 代替"),
-    q: str | None = Query(None, deprecated=True, description="已废弃，请用 search 代替"),
-    # 字段 search，类型: str | None，默认值: None
-    search: str | None = None
-# ):
-):
-    # 返回 {"q": q, "search": search}
-    return {"q": q, "search": search}
-\`\`\`
-
-Swagger 文档里 \`q\` 会显示删除线和"deprecated"标记，提醒别再用。
-
-## 参数元数据：title/description/example
-
-给参数加文档和示例，让自动文档更丰富：
+### Demo 3：组合数值校验
 
 \`\`\`python
-# 定义 GET 路由：访问 /items 时触发
-@app.get("/items")
-# def list_items(
-def list_items(
-    # 字段 limit，类型: int，默认值: Query(
-    limit: int = Query(
-        # 10,
-        10,
-        # 定义变量 title，赋值为 "每页数量",
-        title="每页数量",
-        # 定义变量 description，赋值为 "分页大小，最大 100。超过 100 按 100 算。",
-        description="分页大小，最大 100。超过 100 按 100 算。",
-        # 定义变量 ge，赋值为 1,
-        ge=1,
-        # 定义变量 le，赋值为 100,
-        le=100,
-        # 定义变量 example，赋值为 20
-        example=20
-    # )
-    )
-# ):
-):
-    # 返回 {"limit": limit}
-    return {"limit": limit}
-\`\`\`
+# 从 fastapi 导入 FastAPI、Path、Query
+from fastapi import FastAPI, Path, Query
 
-- \`title\`：参数标题（短）
-- \`description\`：详细说明（支持 Markdown）
-- \`example\`：示例值，Swagger 里会预填这个值
-
-## 综合示例
-
-把校验、别名、元数据全用上：
-
-\`\`\`python
-# 从 fastapi 导入 FastAPI, Query, Path
-from fastapi import FastAPI, Query, Path
-
-# 创建 FastAPI 应用实例
+# 创建应用
 app = FastAPI()
 
-# 定义 GET 路由：访问 /users/{user_id}/orders 时触发
-@app.get("/users/{user_id}/orders")
-# def list_user_orders(
-def list_user_orders(
-    # 字段 user_id，类型: int，默认值: Path(..., ge=1, description="用户 ID"),
-    user_id: int = Path(..., ge=1, description="用户 ID"),
-    # *,
-    *,
-    # 字段 status，类型: str | None，默认值: Query(
-    status: str | None = Query(
-        # None,
-        None,
-        # 定义变量 pattern，赋值为 "^(pending|paid|shipped|done)$",
-        pattern="^(pending|paid|shipped|done)$",
-        # 定义变量 description，赋值为 "订单状态过滤"
-        description="订单状态过滤"
-    # ),
+@app.get("/orders/{order_id}")
+def get_order(
+    # order_id 在 1 到 10000 之间（含 1 和 10000）
+    order_id: int = Path(
+        default=...,
+        ge=1,          # >= 1
+        le=10000,      # <= 10000
+        title="订单ID",
+        description="订单的唯一标识符，范围 1-10000"
     ),
-    # 字段 min_amount，类型: float，默认值: Query(0, ge=0, description="最低金额"),
-    min_amount: float = Query(0, ge=0, description="最低金额"),
-    # 字段 max_amount，类型: float，默认值: Query(99999, gt=0, description="最高金额"),
-    max_amount: float = Query(99999, gt=0, description="最高金额"),
-    # 字段 sort_by，类型: str，默认值: Query("created_at", alias="sort-by"),
-    sort_by: str = Query("created_at", alias="sort-by"),
-    # 字段 page，类型: int，默认值: Query(1, ge=1),
-    page: int = Query(1, ge=1),
-    # 字段 page_size，类型: int，默认值: Query(20, ge=1, le=100, alias="page-size", deprecated=False)
-    page_size: int = Query(20, ge=1, le=100, alias="page-size", deprecated=False)
-# ):
+    # 版本号查询参数，必须大于 0
+    version: int = Query(default=1, ge=1, le=10),
+    # 折扣范围 0-1
+    discount: float = Query(default=0.0, ge=0.0, le=1.0)
 ):
-    # 返回 {
+    # 访问 /orders/42 → order_id=42, version=1, discount=0.0
+    # 访问 /orders/42?version=5&discount=0.8 → 正常
+    # 访问 /orders/0 → 422（order_id 必须 >= 1）
+    # 访问 /orders/42?discount=1.5 → 422（discount 必须 <= 1.0）
     return {
-        # "user_id": user_id,
-        "user_id": user_id,
-        # "status": status,
-        "status": status,
-        # "amount_range": [min_amount, max_amount],
-        "amount_range": [min_amount, max_amount],
-        # "sort_by": sort_by,
-        "sort_by": sort_by,
-        # "page": page,
-        "page": page,
-        # "page_size": page_size
-        "page_size": page_size
-    # }
+        "order_id": order_id,
+        "version": version,
+        "discount": discount
     }
 \`\`\`
 
-访问 \`/users/42/orders?status=paid&min-amount=100&sort-by=amount&page=2\`，所有参数按 alias 正确解析，校验通过。
+数值校验的速记：
 
-## 校验失败返回 422
+- \`gt=0\`：必须正数（不含 0）
+- \`ge=1\`：从 1 开始（含 1）
+- \`lt=100\`：小于 100
+- \`le=100\`：最大 100（含 100）
 
-任何校验不过，FastAPI 返回 422 + 详细错误：
+## 四、字符串校验
+
+字符串校验三个核心参数：\`min_length\`、\`max_length\`、\`pattern\`。
+
+### Demo 4：字符串校验综合示例
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Query
+from fastapi import FastAPI, Query
+
+# 创建应用
+app = FastAPI()
+
+@app.get("/users")
+def list_users(
+    # 用户名搜索：3-20 字符，只允许字母数字下划线
+    username: str | None = Query(
+        default=None,
+        min_length=3,
+        max_length=20,
+        pattern="^[a-zA-Z0-9_]+$",
+        title="用户名",
+        description="3-20 位字母、数字或下划线"
+    ),
+    # 邮箱搜索：用正则校验邮箱格式
+    email: str | None = Query(
+        default=None,
+        pattern=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$",
+        title="邮箱"
+    ),
+    # 手机号：11 位数字
+    phone: str | None = Query(
+        default=None,
+        min_length=11,
+        max_length=11,
+        pattern="^1[3-9]\d{9}$",
+        title="手机号"
+    )
+):
+    # 访问 /users?username=alice → 正常
+    # 访问 /users?username=ab → 422（长度不足）
+    # 访问 /users?username=alice! → 422（非法字符）
+    # 访问 /users?email=test@example.com → 正常
+    # 访问 /users?email=invalid → 422（邮箱格式错误）
+    return {
+        "username": username,
+        "email": email,
+        "phone": phone
+    }
+\`\`\`
+
+**正则校验避坑**：
+
+- \`pattern\` 是 Pydantic v2 的写法，旧版用 \`regex\`（已废弃）
+- 正则用 \`^\` 和 \`$\` 锚定首尾，否则部分匹配也会通过
+- 复杂正则可读性差，考虑用 Pydantic 模型 + \`EmailStr\` 等专用类型
+
+## 五、枚举值校验
+
+用 \`Enum\` 限制参数取值，比正则更清晰。
+
+### Demo 5：枚举校验
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Query
+from fastapi import FastAPI, Query
+# 从 enum 导入 Enum
+from enum import Enum
+
+# 创建应用
+app = FastAPI()
+
+# 定义排序方向枚举
+class SortOrder(str, Enum):
+    asc = "asc"
+    desc = "desc"
+
+# 定义排序字段枚举
+class SortField(str, Enum):
+    id = "id"
+    name = "name"
+    price = "price"
+    created_at = "created_at"
+
+@app.get("/products")
+def list_products(
+    # 排序字段：只能是枚举里的值
+    sort_by: SortField = Query(default=SortField.id),
+    # 排序方向：只能是 asc 或 desc
+    order: SortOrder = Query(default=SortOrder.asc),
+):
+    # 访问 /products → sort_by=id, order=asc
+    # 访问 /products?sort_by=price&order=desc → 正常
+    # 访问 /products?sort_by=xxx → 422（非法值）
+    return {
+        "sort_by": sort_by.value,
+        "order": order.value
+    }
+\`\`\`
+
+枚举校验的好处：
+1. 非法值直接 422，不用手写 \`if status not in [...]\`
+2. 文档自动列出所有可选值
+3. IDE 有自动补全
+
+## 六、参数元数据
+
+\`Path()\` 和 \`Query()\` 支持元数据参数，主要用于文档生成和接口管理。
+
+### Demo 6：完整的元数据示例
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Path、Query
+from fastapi import FastAPI, Path, Query
+
+# 创建应用
+app = FastAPI()
+
+@app.get("/items/{item_id}", 
+    # 路由级别的元数据
+    summary="获取商品详情",
+    description="根据 ID 获取商品的详细信息，包括名称、价格、库存等。",
+    response_description="商品详情对象"
+)
+def get_item(
+    # 路径参数的元数据
+    item_id: int = Path(
+        default=...,
+        ge=1,
+        title="商品ID",
+        description="商品的唯一标识符，必须为正整数",
+        example=42,
+        # examples 可以给多个示例（OpenAPI 3.1）
+        examples=[1, 42, 100]
+    ),
+    # 查询参数的元数据
+    q: str | None = Query(
+        default=None,
+        min_length=2,
+        max_length=50,
+        title="搜索关键词",
+        description="用于搜索商品名称的关键词，2-50 个字符",
+        example="iphone"
+    ),
+    # 标记为已废弃（文档里会显示删除线，但不影响功能）
+    old_param: str | None = Query(
+        default=None,
+        deprecated=True,
+        title="已废弃参数",
+        description="此参数已废弃，请使用 q 代替"
+    )
+):
+    # 文档里会显示：
+    # - item_id 的示例是 42
+    # - q 的示例是 "iphone"
+    # - old_param 有删除线，标记为废弃
+    return {"item_id": item_id, "q": q}
+\`\`\`
+
+元数据参数不参与校验，只影响文档：
+
+| 元数据 | 作用 |
+|--------|------|
+| \`title\` | 参数标题，文档里粗体显示 |
+| \`description\` | 参数详细说明 |
+| \`example\` | 示例值，文档里显示 |
+| \`examples\` | 多个示例（OpenAPI 3.1） |
+| \`deprecated\` | 标记废弃，文档显示删除线 |
+| \`alias\` | URL 里的参数名和代码里的参数名不同 |
+
+## 七、alias：参数别名
+
+有时候 URL 里的参数名和 Python 里的变量名冲突（比如 \`class\` 是关键字），或者前端习惯用驼峰、后端用蛇形。用 \`alias\` 解决。
+
+### Demo 7：alias 用法
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Query
+from fastapi import FastAPI, Query
+
+# 创建应用
+app = FastAPI()
+
+@app.get("/items")
+def list_items(
+    # URL 用 class（前端习惯），代码里用 category
+    category: str | None = Query(default=None, alias="class"),
+    # URL 用 pageSize，代码里用 page_size
+    page_size: int = Query(default=10, alias="pageSize", ge=1, le=100),
+    # URL 用 sortBy，代码里用 sort_by
+    sort_by: str = Query(default="id", alias="sortBy")
+):
+    # 访问 /items?class=fruit&pageSize=20&sortBy=price
+    # category="fruit", page_size=20, sort_by="price"
+    return {
+        "category": category,
+        "page_size": page_size,
+        "sort_by": sort_by
+    }
+\`\`\`
+
+\`alias\` 让前后端命名习惯解耦：前端用驼峰，后端用蛇形，互不干扰。
+
+## 八、多参数校验综合示例
+
+### Demo 8：完整的分页接口校验
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Path、Query
+from fastapi import FastAPI, Path, Query
+# 从 enum 导入 Enum
+from enum import Enum
+
+# 创建应用
+app = FastAPI()
+
+class SortField(str, Enum):
+    id = "id"
+    name = "name"
+    price = "price"
+
+@app.get("/categories/{category_id}/products")
+def list_category_products(
+    # 路径参数：分类 ID，必须 >= 1
+    category_id: int = Path(
+        default=...,
+        ge=1,
+        title="分类ID",
+        description="商品分类的唯一标识符"
+    ),
+    # 分页参数
+    page: int = Query(
+        default=1,
+        ge=1,
+        le=1000,
+        title="页码",
+        description="页码，从 1 开始，最大 1000"
+    ),
+    page_size: int = Query(
+        default=20,
+        ge=1,
+        le=100,
+        alias="pageSize",
+        title="每页数量",
+        description="每页返回的商品数量，1-100"
+    ),
+    # 过滤参数
+    min_price: float | None = Query(
+        default=None,
+        ge=0,
+        title="最低价格"
+    ),
+    max_price: float | None = Query(
+        default=None,
+        ge=0,
+        title="最高价格"
+    ),
+    # 搜索参数
+    keyword: str | None = Query(
+        default=None,
+        min_length=1,
+        max_length=50,
+        title="搜索关键词"
+    ),
+    # 排序参数
+    sort_by: SortField = Query(
+        default=SortField.id,
+        title="排序字段"
+    ),
+    # 已废弃参数
+    old_sort: str | None = Query(
+        default=None,
+        deprecated=True,
+        title="已废弃",
+        description="请使用 sort_by"
+    )
+):
+    # 构造返回
+    result = {
+        "category_id": category_id,
+        "page": page,
+        "page_size": page_size,
+        "filters": {},
+        "sort_by": sort_by.value
+    }
+    if min_price is not None:
+        result["filters"]["min_price"] = min_price
+    if max_price is not None:
+        result["filters"]["max_price"] = max_price
+    if keyword:
+        result["filters"]["keyword"] = keyword
+    return result
+\`\`\`
+
+这个例子涵盖了路径校验、查询校验、数值校验、字符串校验、枚举校验、别名、废弃标记。实际项目里的"正经"接口差不多就是这样。
+
+## 九、校验错误响应格式详解
+
+当校验失败时，FastAPI 返回 422 状态码，body 是统一的错误格式：
 
 \`\`\`json
 {
   "detail": [
     {
-      "type": "less_than_equal",
-      "loc": ["query", "limit"],
-      "msg": "Input should be less than or equal to 100",
-      "input": "200",
-      "ctx": {"le": 100}
+      "type": "greater_than_equal",
+      "loc": ["path", "item_id"],
+      "msg": "Input should be greater than or equal to 1",
+      "input": "0",
+      "ctx": {"ge": 1},
+      "url": "https://errors.pydantic.dev/2.x/v/greater_than_equal"
     }
   ]
 }
 \`\`\`
 
-\`loc\` 告诉你哪个参数错了（\`["query", "limit"]\` 表示查询参数 limit），\`msg\` 是原因，前端能据此提示用户。
+字段说明：
 
-## 易错点小结
+| 字段 | 含义 |
+|------|------|
+| \`detail\` | 错误列表，可能有多个错误 |
+| \`type\` | 错误类型（如 \`greater_than_equal\`、\`string_too_short\`） |
+| \`loc\` | 错误位置，\`["path", "item_id"]\` 表示路径参数 item_id |
+| \`msg\` | 人类可读的错误信息 |
+| \`input\` | 用户传入的值 |
+| \`ctx\` | 错误上下文（如校验的 \`ge\` 值） |
+| \`url\` | 错误说明文档链接 |
 
-| 易错点 | 说明 | 解决 |
-|--------|------|------|
-| 默认值顺序错 | Path() 在无默认值参数前 | 加 \`*\` 让后续全关键字参数 |
-| 必填用 None | \`Query(None)\` 是可选不是必填 | 必填用 \`Query(...)\` |
-| 记混 ge/le | ge=≥, le=≤, gt=>, lt=< | g=greater, l=less, e=equal |
-| 别名忘加 | URL 用 \`user-id\` 但变量 \`user_id\` | 用 \`alias="user-id"\` |
-| 列表参数 | 想传多值但只收到最后一个 | 声明 \`list[str]\` |
+### loc 字段详解
 
----
+\`loc\` 的第一个元素表示错误来源：
+
+| loc[0] | 含义 |
+|--------|------|
+| \`"query"\` | 查询参数错误 |
+| \`"path"\` | 路径参数错误 |
+| \`"body"\` | 请求体错误 |
+| \`"header"\` | 请求头错误 |
+| \`"cookie"\` | Cookie 错误 |
+
+\`loc[1]\` 是参数名。比如 \`["query", "page"]\` 表示查询参数 \`page\` 出错。
+
+### 常见错误类型
+
+| type | 含义 |
+|------|------|
+| \`missing\` | 必选参数缺失 |
+| \`int_parsing\` | 字符串无法转整数 |
+| \`greater_than_equal\` | 不满足 \`ge\` |
+| \`less_than_equal\` | 不满足 \`le\` |
+| \`string_too_short\` | 不满足 \`min_length\` |
+| \`string_too_long\` | 不满足 \`max_length\` |
+| \`string_pattern_mismatch\` | 不满足 \`pattern\` |
+| \`enum\` | 不在枚举值里 |
+
+## 十、自定义校验错误响应
+
+默认的 422 响应格式可能不符合项目规范，可以自定义。
+
+### Demo 9：自定义异常处理器
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Query、Request
+from fastapi import FastAPI, Query, Request
+# 从 fastapi.exceptions 导入 RequestValidationError
+from fastapi.exceptions import RequestValidationError
+# 从 fastapi.responses 导入 JSONResponse
+from fastapi.responses import JSONResponse
+
+# 创建应用
+app = FastAPI()
+
+# 注册异常处理器：拦截校验错误
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    # exc.errors() 是错误列表
+    # 自定义返回格式：统一返回 code + message
+    errors = []
+    for err in exc.errors():
+        errors.append({
+            "field": ".".join(str(x) for x in err["loc"]),  # 拼接 loc
+            "message": err["msg"],
+            "type": err["type"]
+        })
+    # 返回自定义格式
+    return JSONResponse(
+        status_code=422,
+        content={
+            "code": 422,
+            "message": "参数校验失败",
+            "errors": errors
+        }
+    )
+
+@app.get("/items/{item_id}")
+def get_item(
+    item_id: int = Query(default=..., ge=1)
+):
+    return {"item_id": item_id}
+
+# 访问 /items/0 → 返回：
+# {
+#   "code": 422,
+#   "message": "参数校验失败",
+#   "errors": [{"field": "query.item_id", "message": "...", "type": "..."}]
+# }
+\`\`\`
+
+## 十一、常见错误和避坑指南
+
+### 坑 1：Path 和 Query 混用
+
+\`\`\`python
+# ❌ 错误：路径参数用 Query
+@app.get("/items/{item_id}")
+def get_item(item_id: int = Query(ge=1)):  # 应该用 Path
+    ...
+
+# ❌ 错误：查询参数用 Path
+@app.get("/items")
+def list_items(page: int = Path(ge=1)):  # 应该用 Query
+    ...
+\`\`\`
+
+虽然功能上可能不报错，但语义混乱，文档也会乱。**路径参数用 Path，查询参数用 Query**。
+
+### 坑 2：default 值和校验冲突
+
+\`\`\`python
+# ❌ 错误：默认值不满足校验
+@app.get("/items")
+def list_items(
+    page: int = Query(default=0, ge=1)  # 默认 0，但要求 >= 1
+):
+    # 访问 /items → 422！默认值 0 不满足 ge=1
+    return {"page": page}
+
+# ✅ 正确：默认值满足校验
+@app.get("/items")
+def list_items(
+    page: int = Query(default=1, ge=1)  # 默认 1，满足 >= 1
+):
+    return {"page": page}
+\`\`\`
+
+**避坑**：默认值必须满足校验条件，否则不传参数时直接 422。
+
+### 坑 3：pattern 锚定
+
+\`\`\`python
+# ❌ 没有锚定，部分匹配也通过
+@app.get("/items")
+def list_items(
+    q: str = Query(pattern="[a-z]+")  # "abc123" 也能通过，因为有 "abc" 子串
+):
+    return {"q": q}
+
+# ✅ 用 ^ $ 锚定
+@app.get("/items")
+def list_items(
+    q: str = Query(pattern="^[a-z]+$")  # "abc123" 不通过
+):
+    return {"q": q}
+\`\`\`
+
+### 坑 4：Optional 参数的校验
+
+\`\`\`python
+# Optional 参数不传时是 None，校验不触发
+@app.get("/items")
+def list_items(
+    q: str | None = Query(default=None, min_length=3)
+):
+    # 访问 /items → q=None，min_length 不校验
+    # 访问 /items?q=ab → 422（长度不足 3）
+    # 访问 /items?q= → 422（空字符串长度 0）
+    return {"q": q}
+\`\`\`
+
+**注意**：如果想允许空字符串但不允许 None，用 \`default=""\` 而不是 \`default=None\`。
+
+### 坑 5：列表参数的校验
+
+\`\`\`python
+from typing import List
+
+@app.get("/items")
+def list_items(
+    # 对列表里每个元素校验
+    tags: List[str] | None = Query(default=None, min_length=1, max_length=10)
+):
+    # min_length=1：列表至少 1 个元素
+    # max_length=10：列表最多 10 个元素
+    # 访问 /items?tags=a → tags=["a"]
+    # 访问 /items?tags=a&tags=b → tags=["a", "b"]
+    return {"tags": tags}
+
+# 如果要对每个字符串元素校验长度，用 List 加元素校验（Pydantic v2）
+@app.get("/items2")
+def list_items2(
+    tags: List[str] | None = Query(default=None, max_length=5)
+):
+    # max_length=5 这里是限制列表长度，不是字符串长度
+    # 要限制每个字符串长度，需要用 Pydantic 模型
+    return {"tags": tags}
+\`\`\`
 
 ## 本章小结
 
-| 要点 | 说明 |
-|------|------|
-| Query() | 查询参数校验 + 元数据 |
-| Path() | 路径参数校验 + 元数据 |
-| 默认值位置 | 第一个参数：None/.../具体值 |
-| 数字校验 | ge/gt/le/lt/multiple_of |
-| 字符串校验 | min_length/max_length/pattern |
-| 列表参数 | \`list[str]\` 接收 ?q=a&q=b |
-| alias | URL 名 ≠ 变量名 |
-| deprecated | 标记废弃参数 |
-| 元数据 | title/description/example |
-| 顺序陷阱 | 用 \`*\` 解决默认值顺序限制 |
+| 校验类型 | 参数 | 适用 |
+|---------|------|------|
+| 数值大小 | \`gt\`、\`ge\`、\`lt\`、\`le\` | int、float |
+| 字符串长度 | \`min_length\`、\`max_length\` | str |
+| 字符串格式 | \`pattern\`（正则） | str |
+| 枚举取值 | \`Enum\` | 所有 |
+| 元数据 | \`title\`、\`description\`、\`example\` | 所有 |
+| 别名 | \`alias\` | 所有 |
+| 废弃 | \`deprecated\` | 所有 |
 
-下一章我们看 Request 对象——当你需要读原始请求头、客户端 IP 这些时，直接拿 Request 对象最方便。`
+校验是 API 质量的护城河。声明式校验让"约束"和"代码"在一起，不会脱节，还能自动反映到文档。下一章我们看 \`Request\` 对象——当 \`Path\`/\`Query\` 不够用时，直接访问原始请求数据。
+`,
   },
 
   // ============================================================
-  // 第 8 章：Request 对象与元数据
+  // 第 4 章：Request 对象与元数据
   // ============================================================
   {
-    id: "fa-request-context",
+    id: "fa-request-obj",
     group: "路径与查询参数",
     icon: "📋",
     title: "Request 对象与元数据",
     content: `# Request 对象与元数据
 
-## Request 对象是什么
+## 什么是 Request 对象
 
-前面几章，FastAPI 把参数从 URL、query、body 里提取出来，自动传给函数。但有时你需要直接拿到**原始请求对象**——读请求头、获取客户端 IP、访问完整 URL、读 Cookie。
+前面我们用路径参数、查询参数、Path/Query 校验器，都是 FastAPI "帮你解析好" 的便捷方式。但有时候你需要直接访问原始请求数据——比如读 HTTP 头、Cookie、客户端 IP、原始 body 字节流。
 
-FastAPI 基于 Starlette，提供了 \`Request\` 对象。在函数参数里声明 \`request: Request\`，FastAPI 会注入当前请求对象：
+这时候就用 \`Request\` 对象。它是 FastAPI（实际是 Starlette）提供的原始请求对象，包含 HTTP 请求的所有信息。
+
+\`Request\` 对象和 \`Path\`/\`Query\` 的关系：
+
+- \`Path\`/\`Query\`：FastAPI 的"高级封装"，自动解析、校验、转类型
+- \`Request\`：原始 ASGI 请求对象，啥都有，但要自己处理
+
+实际开发中，优先用 \`Path\`/\`Query\`，只在需要"原始数据"时才用 \`Request\`。
+
+## 一、Request 对象获取方式
+
+在函数参数里声明 \`request: Request\`，FastAPI 会自动注入。
+
+### Demo 1：最简单的 Request 用法
 
 \`\`\`python
-# 从 fastapi 导入 FastAPI, Request
+# 从 fastapi 导入 FastAPI 和 Request
 from fastapi import FastAPI, Request
 
-# 创建 FastAPI 应用实例
+# 创建应用
 app = FastAPI()
 
-# 定义 GET 路由：访问 /info 时触发
 @app.get("/info")
-# 定义函数 get_info，参数: request: Request
+# request: Request 声明后，FastAPI 自动注入请求对象
 def get_info(request: Request):
-    # 返回 {
+    # request.method 是 HTTP 方法（GET/POST/...）
+    # request.url 是完整 URL
+    # request.headers 是请求头
+    # request.client 是客户端信息
     return {
-        "client_host": request.client.host,  # 客户端 IP
-        "method": request.method,           # HTTP 方法
-        "url": str(request.url)             # 完整 URL
-    # }
+        "method": request.method,
+        "url": str(request.url),
+        "client": request.client.host if request.client else None
     }
 \`\`\`
 
-\`Request\` 是 Starlette 的 \`starlette.requests.Request\`，FastAPI 直接复用。声明 \`request: Request\` 后，FastAPI 不会把它当查询参数或路径参数，而是识别为特殊注入对象直接传进来。
+注意：\`request: Request\` 不会出现在文档里（\`/docs\` 不显示），因为它是框架注入的，不是用户传的参数。
 
-## Request 对象的核心属性
-
-### 1. request.headers —— 请求头
-
-请求头是大小写不敏感的字典（\`Headers\` 对象）：
+\`Request\` 可以和路径参数、查询参数混用：
 
 \`\`\`python
-# 定义 GET 路由：访问 /headers 时触发
-@app.get("/headers")
-# 定义函数 get_headers，参数: request: Request
-def get_headers(request: Request):
-    # 大小写不敏感，都行
-    # 定义变量 user_agent，赋值为 request.headers.get("user-agent")
-    user_agent = request.headers.get("user-agent")
-    # 定义变量 auth，赋值为 request.headers.get("Authorization")
-    auth = request.headers.get("Authorization")
-    content_type = request.headers["content-type"]  # 直接取，没有会 KeyError
-    # 返回 {"ua": user_agent, "auth": auth}
-    return {"ua": user_agent, "auth": auth}
-\`\`\`
-
-用 \`.get()\` 更安全，没有该头返回 None 而不是抛错。直接 \`request.headers["xxx"]\` 没有 KeyError。
-
-### 2. request.query_params —— 查询参数
-
-返回不可变的多值字典（\`QueryParams\`）：
-
-\`\`\`python
-# 定义 GET 路由：访问 / 时触发
-@app.get("/")
-# 定义函数 root，参数: request: Request
-def root(request: Request):
-    # ?skip=0&limit=10
-    # 定义变量 skip，赋值为 request.query_params.get("skip", "0")
-    skip = request.query_params.get("skip", "0")
-    # 定义变量 limit，赋值为 request.query_params.get("limit", "10")
-    limit = request.query_params.get("limit", "10")
-    # 返回 {"skip": skip, "limit": limit}
-    return {"skip": skip, "limit": limit}
-\`\`\`
-
-通常我们用 FastAPI 的查询参数声明（带校验），更优雅。但在某些通用中间件、动态场景下，直接读 query_params 更灵活。
-
-### 3. request.path_params —— 路径参数
-
-\`\`\`python
-# 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}")
-# 定义函数 read_item，参数: item_id: int, request: Request
-def read_item(item_id: int, request: Request):
-    # request.path_params == {"item_id": "42"}
-    # 注意：是字符串形式，类型转换是 FastAPI 在传给 item_id 时做的
-    # 返回 {"item_id": item_id, "raw_path_params": request.path_params}
-    return {"item_id": item_id, "raw_path_params": request.path_params}
+def get_item(item_id: int, request: Request):
+    # item_id 是路径参数
+    # request 是注入的请求对象
+    return {"item_id": item_id, "ua": request.headers.get("user-agent")}
 \`\`\`
 
-### 4. request.client —— 客户端信息
+## 二、Request 的核心属性
 
-\`request.client\` 是一个 \`HostPort\` 命名元组，含 \`.host\`（IP）和 \`.port\`：
+\`Request\` 对象有很多属性，最常用的有：
 
-\`\`\`python
-# 定义 GET 路由：访问 /ip 时触发
-@app.get("/ip")
-# 定义函数 get_client_ip，参数: request: Request
-def get_client_ip(request: Request):
-    # request.client.host 是客户端 IP
-    # 但注意：如果有反向代理（nginx），这里拿到的是代理的 IP
-    # 返回 {"client_ip": request.client.host if request.client else None}
-    return {"client_ip": request.client.host if request.client else None}
-\`\`\`
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| \`request.method\` | \`str\` | HTTP 方法（GET、POST 等） |
+| \`request.url\` | \`URL\` | 完整 URL 对象 |
+| \`request.headers\` | \`Headers\` | 请求头（大小写不敏感） |
+| \`request.query_params\` | \`QueryParams\` | 查询参数 |
+| \`request.path_params\` | \`dict\` | 路径参数 |
+| \`request.cookies\` | \`dict\` | Cookie |
+| \`request.client\` | \`Client\` | 客户端信息（host、port） |
+| \`request.state\` | \`State\` | 请求级共享状态 |
+| \`request.scope\` | \`dict\` | ASGI scope 原始字典 |
 
-⚠️ 生产环境通常前面有 nginx/CDN，\`request.client.host\` 拿到的是代理 IP 不是真实用户 IP。真实 IP 在 \`X-Forwarded-For\` 头里：
+异步方法（需要 \`await\`）：
 
-\`\`\`python
-# 定义 GET 路由：访问 /real-ip 时触发
-@app.get("/real-ip")
-# 定义函数 get_real_ip，参数: request: Request
-def get_real_ip(request: Request):
-    # 优先从 X-Forwarded-For 取真实 IP
-    # 定义变量 xff，赋值为 request.headers.get("x-forwarded-for")
-    xff = request.headers.get("x-forwarded-for")
-    # 条件判断：如果 xff
-    if xff:
-        # X-Forwarded-For: client, proxy1, proxy2 → 取第一个
-        # 定义变量 real_ip，赋值为 xff.split(",")[0].strip()
-        real_ip = xff.split(",")[0].strip()
-    # 否则执行
-    else:
-        # 定义变量 real_ip，赋值为 request.client.host if request.client else No...
-        real_ip = request.client.host if request.client else None
-    # 返回 {"real_ip": real_ip}
-    return {"real_ip": real_ip}
-\`\`\`
+| 方法 | 返回 | 说明 |
+|------|------|------|
+| \`await request.body()\` | \`bytes\` | 原始 body 字节 |
+| \`await request.json()\` | \`dict\` | 解析 JSON body |
+| \`await request.form()\` | \`FormData\` | 解析表单数据 |
+| \`await request.stream()\` | \`bytes\` | 流式读取 body |
 
-### 5. request.method —— HTTP 方法
+### Demo 2：访问各种属性
 
 \`\`\`python
-# 装饰器：app.api_route
-@app.api_route("/items", methods=["GET", "POST"])
-# 定义函数 handle_items，参数: request: Request
-def handle_items(request: Request):
-    # 同一路由处理多种方法
-    # 条件判断：如果 request.method == "GET"
-    if request.method == "GET":
-        # 返回 {"action": "list"}
-        return {"action": "list"}
-    # 否则如果 request.method == "POST"
-    elif request.method == "POST":
-        # 返回 {"action": "create"}
-        return {"action": "create"}
-\`\`\`
-
-\`@app.api_route\` 能同时注册多个方法，用 \`request.method\` 区分。但更推荐分开写 \`@app.get\` 和 \`@app.post\`，清晰且能各自定义校验。
-
-### 6. request.url —— 完整 URL
-
-\`request.url\` 是 \`URL\` 对象，支持各种分解：
-
-\`\`\`python
-# 定义 GET 路由：访问 /url-info 时触发
-@app.get("/url-info")
-# 定义函数 url_info，参数: request: Request
-def url_info(request: Request):
-    # 假设访问 http://localhost:8000/url-info?x=1
-    # 返回 {
-    return {
-        "full": str(request.url),          # http://localhost:8000/url-info?x=1
-        "scheme": request.url.scheme,      # http
-        "host": request.url.hostname,      # localhost
-        "port": request.url.port,          # 8000
-        "path": request.url.path,          # /url-info
-        "query": request.url.query,        # x=1
-        # "is_secure": request.url.is_secure # False（非 https
-        "is_secure": request.url.is_secure # False（非 https）
-    # }
-    }
-\`\`\`
-
-### 7. request.cookies —— Cookie
-
-\`\`\`python
-# 定义 GET 路由：访问 /profile 时触发
-@app.get("/profile")
-# 定义函数 profile，参数: request: Request
-def profile(request: Request):
-    # 读 Cookie
-    # 定义变量 session，赋值为 request.cookies.get("session_id")
-    session = request.cookies.get("session_id")
-    # 条件判断：如果 not session
-    if not session:
-        # 返回 {"error": "未登录"}
-        return {"error": "未登录"}
-    # 返回 {"session": session}
-    return {"session": session}
-\`\`\`
-
-FastAPI 也有专门的 \`Cookie()\` 参数声明方式做校验，但直接读 \`request.cookies\` 在动态场景下方便。
-
-### 8. request.state —— 请求级共享状态
-
-\`request.state\` 是一个可以挂任意属性的"口袋"，在中间件和路由之间传值：
-
-\`\`\`python
-# 从 fastapi 导入 FastAPI, Request
+# 从 fastapi 导入 FastAPI 和 Request
 from fastapi import FastAPI, Request
-# 导入 time 模块
-import time
 
-# 创建 FastAPI 应用实例
+# 创建应用
 app = FastAPI()
 
-# 装饰器：app.middleware
+@app.get("/debug")
+async def debug_request(request: Request):
+    # request.method：HTTP 方法
+    method = request.method
+    
+    # request.url：URL 对象，支持分解
+    url = request.url
+    # url.scheme: http/https
+    # url.hostname: 主机名
+    # url.port: 端口
+    # url.path: 路径
+    # url.query: 查询字符串
+    
+    # request.headers：Headers 对象，大小写不敏感
+    # 用 get 方法，不存在返回 None
+    user_agent = request.headers.get("user-agent")
+    content_type = request.headers.get("content-type")
+    authorization = request.headers.get("authorization")
+    
+    # request.query_params：查询参数
+    # 可以用 get 或 []
+    skip = request.query_params.get("skip")
+    limit = request.query_params.get("limit")
+    
+    # request.path_params：路径参数字典
+    # 这个路由没有路径参数，所以是空字典
+    path_params = request.path_params
+    
+    # request.cookies：Cookie 字典
+    session_id = request.cookies.get("session_id")
+    
+    # request.client：客户端信息
+    # client.host 是 IP，client.port 是端口
+    client_host = request.client.host if request.client else None
+    client_port = request.client.port if request.client else None
+    
+    return {
+        "method": method,
+        "url": {
+            "full": str(url),
+            "scheme": url.scheme,
+            "host": url.hostname,
+            "port": url.port,
+            "path": url.path,
+            "query": url.query
+        },
+        "headers": {
+            "user_agent": user_agent,
+            "content_type": content_type,
+            "authorization": authorization[:20] + "..." if authorization else None
+        },
+        "query_params": dict(request.query_params),
+        "path_params": dict(path_params),
+        "cookies": dict(request.cookies),
+        "client": {"host": client_host, "port": client_port}
+    }
+\`\`\`
+
+访问 \`/debug?skip=0&limit=10\`，可以看到所有请求信息的分解。
+
+## 三、获取客户端 IP 和 User-Agent
+
+这是实际项目里最常见的需求——记录访问日志、做风控、地区识别等。
+
+### Demo 3：获取真实客户端 IP
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI 和 Request
+from fastapi import FastAPI, Request
+
+# 创建应用
+app = FastAPI()
+
+@app.get("/ip")
+def get_client_ip(request: Request):
+    # request.client.host 是直连客户端的 IP
+    # 但如果有反向代理（nginx/CDN），这里是代理的 IP
+    direct_ip = request.client.host if request.client else None
+    
+    # 真实用户 IP 在 X-Forwarded-For 头里
+    # 格式：X-Forwarded-For: client, proxy1, proxy2
+    # 第一个就是真实客户端 IP
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        # 取第一个 IP（最左边的）
+        real_ip = xff.split(",")[0].strip()
+    else:
+        # 没有代理时，直连 IP 就是真实 IP
+        real_ip = direct_ip
+    
+    # X-Real-IP 也是常用的代理头（nginx 设置）
+    x_real_ip = request.headers.get("x-real-ip")
+    if x_real_ip:
+        real_ip = x_real_ip
+    
+    return {
+        "direct_ip": direct_ip,
+        "real_ip": real_ip,
+        "xff": xff
+    }
+
+@app.get("/ua")
+def get_user_agent(request: Request):
+    # User-Agent 头包含客户端信息（浏览器、操作系统等）
+    ua = request.headers.get("user-agent", "")
+    
+    # 简单判断客户端类型
+    is_mobile = "Mobile" in ua or "Android" in ua or "iPhone" in ua
+    is_curl = ua.startswith("curl/")
+    is_postman = "Postman" in ua
+    
+    return {
+        "user_agent": ua,
+        "is_mobile": is_mobile,
+        "is_curl": is_curl,
+        "is_postman": is_postman
+    }
+\`\`\`
+
+**避坑**：\`X-Forwarded-For\` 可以被伪造！生产环境要配置可信代理（nginx 设置 \`proxy_set_header X-Real-IP $remote_addr\`），别盲目信任这个头。
+
+## 四、读取请求体（raw body）
+
+\`Path\`/\`Query\` 只处理 URL 参数，请求体（body）需要用 \`Request\` 读取。
+
+### Demo 4：读取原始 body
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI 和 Request
+from fastapi import FastAPI, Request
+
+# 创建应用
+app = FastAPI()
+
+# 读取原始字节 body
+@app.post("/raw")
+async def read_raw_body(request: Request):
+    # await request.body() 返回 bytes
+    # 因为是 async 方法，函数要用 async def
+    body = await request.body()
+    
+    # body 是字节流，解码成字符串
+    body_str = body.decode("utf-8") if body else ""
+    
+    # body 长度
+    body_length = len(body)
+    
+    return {
+        "raw": body_str,
+        "length": body_length,
+        "content_type": request.headers.get("content-type")
+    }
+
+# 读取 JSON body
+@app.post("/json")
+async def read_json_body(request: Request):
+    # await request.json() 解析 JSON
+    # 如果 body 不是合法 JSON，会抛异常
+    try:
+        data = await request.json()
+        return {"parsed": data, "type": type(data).__name__}
+    except Exception as e:
+        return {"error": f"JSON 解析失败: {e}"}
+
+# 读取并保留原始 body（流式读取后还能再读）
+@app.post("/echo")
+async def echo_body(request: Request):
+    # 读取 body
+    body = await request.body()
+    # 解析 JSON
+    # 注意：body() 读取后，json() 还能用，因为 FastAPI 缓存了
+    try:
+        data = await request.json()
+    except:
+        data = None
+    
+    return {
+        "raw_size": len(body),
+        "parsed": data,
+        "headers": dict(request.headers)
+    }
+\`\`\`
+
+**重点**：\`request.body()\` 和 \`request.json()\` 是异步方法，函数必须用 \`async def\`。如果你用普通 \`def\`，会报错。
+
+**避坑**：\`request.body()\` 读取后，body 会被缓存，可以多次读取。但 \`request.stream()\` 是流式的，只能读一次。
+
+## 五、获取表单数据
+
+表单提交（\`application/x-www-form-urlencoded\` 或 \`multipart/form-data\`）用 \`request.form()\` 读取。
+
+### Demo 5：读取表单
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI 和 Request
+from fastapi import FastAPI, Request
+
+# 创建应用
+app = FastAPI()
+
+# 读取表单数据
+@app.post("/login")
+async def login(request: Request):
+    # await request.form() 返回 FormData 对象
+    # FormData 类似字典，可以用 get 或 []
+    form = await request.form()
+    
+    # 获取表单字段
+    username = form.get("username")
+    password = form.get("password")
+    remember = form.get("remember", "false")
+    
+    # 简单校验
+    if not username or not password:
+        return {"error": "用户名和密码必填"}
+    
+    # 模拟登录校验
+    if username == "admin" and password == "123456":
+        return {
+            "msg": "登录成功",
+            "username": username,
+            "remember": remember
+        }
+    return {"error": "用户名或密码错误"}
+
+# 上传文件也用 form
+@app.post("/upload")
+async def upload_file(request: Request):
+    form = await request.form()
+    
+    # 获取上传的文件
+    # 文件字段是 UploadFile 对象
+    file = form.get("file")
+    if file is None:
+        return {"error": "没有上传文件"}
+    
+    # file.filename 是文件名
+    # file.content_type 是 MIME 类型
+    # await file.read() 读取文件内容
+    content = await file.read()
+    
+    return {
+        "filename": file.filename,
+        "content_type": file.content_type,
+        "size": len(content)
+    }
+\`\`\`
+
+**注意**：实际项目中，文件上传推荐用 FastAPI 的 \`UploadFile\` 类型注解，而不是手动从 \`request.form()\` 取，因为前者有更好的文档和校验。这里用 \`Request\` 是为了演示原理。
+
+## 六、Request 与 Pydantic 混用
+
+\`Request\` 可以和 Pydantic 模型、\`Path\`、\`Query\` 等混用，各取所长。
+
+### Demo 6：Request + Pydantic 混用
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Request、Path、Query
+from fastapi import FastAPI, Request, Path, Query
+# 从 pydantic 导入 BaseModel
+from pydantic import BaseModel
+
+# 创建应用
+app = FastAPI()
+
+# 定义 Pydantic 模型
+class ItemCreate(BaseModel):
+    name: str
+    price: float
+    description: str | None = None
+
+@app.post("/users/{user_id}/items")
+async def create_item(
+    user_id: int = Path(..., ge=1),              # 路径参数，校验
+    q: str | None = Query(default=None),         # 查询参数
+    item: ItemCreate = ...,                       # Pydantic body 模型
+    request: Request = None                       # Request 对象
+):
+    # user_id：路径参数，已校验
+    # q：查询参数
+    # item：Pydantic 解析的 body，已校验
+    # request：原始请求对象
+    
+    # 从 request 拿额外的信息
+    user_agent = request.headers.get("user-agent")
+    client_ip = request.client.host if request.client else None
+    request_id = request.headers.get("x-request-id", "unknown")
+    
+    # 业务逻辑
+    return {
+        "user_id": user_id,
+        "item": item.model_dump(),
+        "q": q,
+        "meta": {
+            "user_agent": user_agent,
+            "client_ip": client_ip,
+            "request_id": request_id
+        }
+    }
+\`\`\`
+
+混用的原则：
+- **业务数据**（body）用 Pydantic 模型，享受自动校验和文档
+- **路径/查询参数**用 \`Path\`/\`Query\`，享受校验
+- **元数据**（IP、UA、请求 ID）用 \`Request\`，因为它们不需要校验
+
+## 七、request.scope 详解
+
+\`request.scope\` 是 ASGI 协议的原始字典，包含请求的所有底层信息。FastAPI 的所有属性最终都是从 \`scope\` 里取的。
+
+### Demo 7：查看 scope 内容
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI 和 Request
+from fastapi import FastAPI, Request
+# 导入 json 用于格式化输出
+import json
+
+# 创建应用
+app = FastAPI()
+
+@app.get("/scope")
+async def get_scope(request: Request):
+    # request.scope 是一个字典，包含 ASGI 协议信息
+    scope = request.scope
+    
+    # 常用字段
+    # scope["type"]：请求类型（http/websocket）
+    # scope["method"]：HTTP 方法
+    # scope["path"]：路径
+    # scope["query_string"]：查询字符串（bytes）
+    # scope["headers"]：请求头（list of tuples）
+    # scope["client"]：客户端 (host, port)
+    # scope["server"]：服务器 (host, port)
+    # scope["scheme"]：协议（http/https）
+    # scope["app"]：FastAPI 应用实例
+    # scope["path_params"] or scope["route"].path_format
+    
+    # 提取常用信息
+    info = {
+        "type": scope.get("type"),
+        "method": scope.get("method"),
+        "path": scope.get("path"),
+        "query_string": scope.get("query_string", b"").decode(),
+        "scheme": scope.get("scheme"),
+        "client": scope.get("client"),
+        "server": scope.get("server"),
+        "http_version": scope.get("http_version"),
+    }
+    
+    return info
+
+# 用 scope 实现简单的请求日志
+@app.get("/logged")
+async def logged_endpoint(request: Request):
+    # 从 scope 拿信息，记录日志
+    scope = request.scope
+    
+    # 模拟日志记录
+    log_entry = {
+        "method": scope["method"],
+        "path": scope["path"],
+        "query": scope.get("query_string", b"").decode(),
+        "client_ip": scope["client"][0] if scope.get("client") else None,
+        "http_version": scope.get("http_version"),
+        "scheme": scope.get("scheme")
+    }
+    # 实际项目里用 logging 记录
+    print(f"[LOG] {log_entry}")
+    
+    return {"msg": "已记录日志", "log": log_entry}
+\`\`\`
+
+\`scope\` 的完整字段由 ASGI 规范定义，详见 [ASGI 规范文档](https://asgi.readthedocs.io/)。日常开发不需要直接操作 \`scope\`，但了解它有助于理解 FastAPI 底层机制。
+
+## 八、实际场景：日志记录中间件
+
+\`Request\` 对象最常见的用途是写中间件——记录每个请求的日志、做权限校验、限流等。
+
+### Demo 8：完整的日志中间件
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI 和 Request
+from fastapi import FastAPI, Request
+# 从 fastapi.responses 导入 Response
+from fastapi.responses import JSONResponse
+# 导入 time 用于计时
+import time
+# 导入 logging 用于日志
+import logging
+
+# 配置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("api")
+
+# 创建应用
+app = FastAPI()
+
+# 注册中间件：用 @app.middleware("http")
 @app.middleware("http")
-# 定义异步函数 add_process_time，参数: request: Request, call_next
-async def add_process_time(request: Request, call_next):
-    # 定义变量 start，赋值为 time.time()
-    start = time.time()
-    # 中间件里往 state 写值
-    # request.state.request_id = f"req-{int(start*1000)}
-    request.state.request_id = f"req-{int(start*1000)}"
-    # 定义变量 response，赋值为 await call_next(request)
-    response = await call_next(request)
-    # 定义变量 duration，赋值为 time.time() - start
-    duration = time.time() - start
-    # 响应头里带上请求 ID 和耗时
-    # response.headers["X-Request-Id"] = request.state.r
-    response.headers["X-Request-Id"] = request.state.request_id
-    # response.headers["X-Process-Time"] = f"{duration:.
-    response.headers["X-Process-Time"] = f"{duration:.3f}s"
-    # 返回 response
+async def logging_middleware(request: Request, call_next):
+    # 中间件流程：
+    # 1. 请求进来，先到这里
+    # 2. call_next(request) 把请求传给下一个处理者
+    # 3. 拿到响应后，继续这里的逻辑
+    
+    # 记录开始时间
+    start_time = time.time()
+    
+    # 提取请求信息
+    method = request.method
+    path = request.url.path
+    query = request.url.query
+    client_ip = request.client.host if request.client else "unknown"
+    user_agent = request.headers.get("user-agent", "")
+    
+    # 记录请求日志
+    logger.info(
+        f"→ {method} {path}?{query} from {client_ip} UA={user_agent[:50]}"
+    )
+    
+    # 调用下一个处理者（路由函数或下一个中间件）
+    try:
+        response = await call_next(request)
+    except Exception as e:
+        # 记录异常
+        logger.error(f"✗ {method} {path} 异常: {e}")
+        # 返回 500
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "内部服务器错误"}
+        )
+    
+    # 计算耗时（毫秒）
+    duration_ms = (time.time() - start_time) * 1000
+    
+    # 记录响应日志
+    logger.info(
+        f"← {method} {path} {response.status_code} {duration_ms:.2f}ms"
+    )
+    
+    # 在响应头里加耗时信息
+    response.headers["X-Response-Time"] = f"{duration_ms:.2f}ms"
+    
     return response
 
-# 定义 GET 路由：访问 /items 时触发
-@app.get("/items")
-# 定义函数 list_items，参数: request: Request
-def list_items(request: Request):
-    # 路由里读中间件写的值
-    # 返回 {"request_id": request.state.request_id}
-    return {"request_id": request.state.request_id}
+# 测试路由
+@app.get("/hello")
+def hello():
+    return {"msg": "hello"}
+
+@app.get("/slow")
+async def slow():
+    # 模拟慢请求
+    import asyncio
+    await asyncio.sleep(0.5)
+    return {"msg": "slow response"}
+
+@app.get("/error")
+def error():
+    # 模拟异常
+    raise ValueError("模拟的异常")
 \`\`\`
 
-\`request.state\` 的生命周期是一次请求，请求结束就没了。适合在一次请求的处理链路里传值（如 trace_id、当前用户、权限信息）。
-
-## 异步路由里读 body
-
-\`Request\` 对象的方法大多是异步的（要 await），因为读 body 涉及 I/O：
-
-\`\`\`python
-# 定义 POST 路由：访问 /raw 时触发
-@app.post("/raw")
-# 定义异步函数 read_raw，参数: request: Request
-async def read_raw(request: Request):
-    # 读原始 body 字节（不解析 JSON）
-    # 定义变量 body，赋值为 await request.body()
-    body = await request.body()
-    # 读 JSON
-    # 定义变量 data，赋值为 await request.json()
-    data = await request.json()
-    # 返回 {"body_size": len(body), "data": data}
-    return {"body_size": len(body), "data": data}
+访问 \`/hello\`，日志输出：
+\`\`\`
+→ GET /hello? from 127.0.0.1 UA=Mozilla/5.0...
+← GET /hello 200 1.23ms
 \`\`\`
 
-⚠️ 注意：一旦在路由里用 \`request.body()\` 或 \`request.json()\` 读了 body，就不能再让 FastAPI 用 Pydantic 模型解析同一个 body 了（body 流已被消费）。要么用 Pydantic 模型（推荐），要么手动读 \`Request\`，二选一。
+访问 \`/slow\`，能看到耗时约 500ms：
+\`\`\`
+→ GET /slow? from 127.0.0.1 UA=...
+← GET /slow 200 501.34ms
+\`\`\`
 
-## 什么时候用 Request 对象
-
-| 场景 | 用什么 |
-|------|--------|
-| 读查询参数（带校验） | 声明查询参数（Query） |
-| 读路径参数 | 路径参数声明 |
-| 读 JSON body | Pydantic 模型（推荐） |
-| 读请求头（特定几个） | Header() 参数声明 |
-| 读 Cookie（特定几个） | Cookie() 参数声明 |
-| 拿原始请求 / 客户端 IP / 完整 URL | Request 对象 |
-| 中间件里传值给路由 | request.state |
-| 读非标准请求头 / 动态参数 | Request 对象 |
-
-原则：**能用 FastAPI 声明式参数（带类型校验和文档）就别用 Request**。声明式参数有校验、有文档、可读性好。Request 对象是"逃生舱"，用于声明式覆盖不到的场景。
-
-## Request 和声明式参数混用
-
-可以同时声明 \`request: Request\` 和其他参数：
+### Demo 9：用 request.state 在中间件和路由间共享数据
 
 \`\`\`python
-# 从 fastapi 导入 FastAPI, Request, Query
-from fastapi import FastAPI, Request, Query
+# 从 fastapi 导入 FastAPI 和 Request
+from fastapi import FastAPI, Request
+# 导入 uuid 生成请求 ID
+import uuid
 
-# 创建 FastAPI 应用实例
+# 创建应用
 app = FastAPI()
 
-# 定义 GET 路由：访问 /items/{item_id} 时触发
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    # 给每个请求生成唯一 ID
+    request_id = str(uuid.uuid4())
+    
+    # 存到 request.state，路由函数里能取到
+    request.state.request_id = request_id
+    
+    # 调用下一个处理者
+    response = await call_next(request)
+    
+    # 在响应头里也加上请求 ID
+    response.headers["X-Request-ID"] = request_id
+    
+    return response
+
 @app.get("/items/{item_id}")
-# def read_item(
-def read_item(
-    item_id: int,                         # 路径参数（声明式）
-    q: str | None = Query(None),          # 查询参数（声明式）
-    request: Request = None               # 原始请求对象
-# ):
-):
-    # 既有声明式参数的校验，又能拿原始请求
-    # 定义变量 client_ip，赋值为 request.client.host if request.client else No...
-    client_ip = request.client.host if request.client else None
-    # 定义变量 user_agent，赋值为 request.headers.get("user-agent")
-    user_agent = request.headers.get("user-agent")
-    # 返回 {
+def get_item(item_id: int, request: Request):
+    # 从 request.state 取请求 ID
+    # request.state 是一个简单的命名空间对象
+    request_id = request.state.request_id
+    
     return {
-        # "item_id": item_id,
         "item_id": item_id,
-        # "q": q,
-        "q": q,
-        # "client_ip": client_ip,
-        "client_ip": client_ip,
-        # "user_agent": user_agent
-        "user_agent": user_agent
-    # }
+        "request_id": request_id  # 返回给客户端
+    }
+
+@app.get("/trace")
+def trace(request: Request):
+    # 同一个请求里，request.state 是共享的
+    return {
+        "request_id": request.state.request_id,
+        "path": request.url.path
     }
 \`\`\`
 
-FastAPI 会自动识别 \`Request\` 类型并注入，不会把它当查询参数。
+\`request.state\` 是 Starlette 提供的"请求级命名空间"，可以在中间件里写、路由里读。常用于传递请求 ID、用户身份、链路追踪信息等。
 
-## 直接返回 vs response_model
+## 九、常见错误和避坑指南
 
-最后提一个相关概念：\`response_model\`。
-
-普通返回（返回 dict）时，FastAPI 不过滤字段，你返回啥前端拿啥：
+### 坑 1：在同步函数里用 async 方法
 
 \`\`\`python
-# 定义 Pydantic 数据模型 User，继承 BaseModel
-class User(BaseModel):
-    # 字段 id，类型: int
-    id: int
-    # 字段 name，类型: str
-    name: str
-    password: str  # 敏感字段！
+# ❌ 错误：def 函数里 await
+@app.post("/items")
+def create_item(request: Request):
+    body = await request.body()  # SyntaxError: 'await' outside async function
+    return {"body": body}
 
-# 定义 GET 路由：访问 /users/{id} 时触发
-@app.get("/users/{id}", response_model=UserOut)
-# 定义函数 get_user，参数: id: int
-def get_user(id: int):
-    user = get_from_db(id)  # 含 password
-    return user  # 没有 response_model 时，password 会被返回！
+# ✅ 正确：用 async def
+@app.post("/items")
+async def create_item(request: Request):
+    body = await request.body()
+    return {"body": body.decode()}
 \`\`\`
 
-用 \`response_model\` 指定输出模型，FastAPI 会按模型过滤字段：
+\`request.body()\`、\`request.json()\`、\`request.form()\` 都是异步方法，必须用 \`async def\`。
+
+### 坑 2：Request 参数被文档收录
 
 \`\`\`python
-# 定义 Pydantic 数据模型 UserOut，继承 BaseModel
-class UserOut(BaseModel):
-    # 字段 id，类型: int
-    id: int
-    # 字段 name，类型: str
-    name: str
-    # 没有 password，输出时会被过滤掉
-
-# 定义 GET 路由：访问 /users/{id} 时触发
-@app.get("/users/{id}", response_model=UserOut)
-# 定义函数 get_user，参数: id: int
-def get_user(id: int):
-    user = get_from_db(id)  # 含 password
-    return user  # 实际返回前会被 UserOut 过滤，password 不会泄漏
+# request: Request 不会出现在 /docs 里
+# FastAPI 知道这是框架注入的，不是用户参数
+@app.get("/items")
+def list_items(request: Request, q: str = "default"):
+    # /docs 只显示 q 参数，不显示 request
+    return {"q": q}
 \`\`\`
 
-\`response_model\` 的作用：**定义响应结构 + 自动过滤字段 + 生成响应文档**。涉及敏感字段时一定要用，避免把内部字段泄漏给前端。
+不用担心 \`Request\` 参数污染文档。
 
-## 易错点小结
+### 坑 3：body 被消费后 Pydantic 解析失败
 
-| 易错点 | 说明 | 解决 |
-|--------|------|------|
-| body 读两次 | Request.json() 和 Pydantic 模型都用 | 二选一 |
-| 代理后 IP 错 | request.client.host 是代理 IP | 读 X-Forwarded-For |
-| state 滥用 | 什么都塞 state | 只放请求级共享数据 |
-| 忽略 response_model | 敏感字段泄漏 | 用 response_model 过滤 |
-| headers 大小写 | 担心拿不到 | Headers 大小写不敏感 |
+\`\`\`python
+# ❌ 错误：先读 body 再用 Pydantic 模型
+@app.post("/items")
+async def create_item(request: Request, item: ItemCreate):
+    body = await request.body()  # 先读了 body
+    # Pydantic 解析时 body 已经被消费，可能拿不到数据
+    return {"item": item, "raw_size": len(body)}
 
----
+# ✅ 正确：要么用 Pydantic，要么用 Request，别混用 body
+# 如果都要，用 request.body() 后缓存，或者用依赖注入
+\`\`\`
+
+实际上 FastAPI 在解析 Pydantic body 时也会读 \`request.body()\`，但 FastAPI 做了缓存处理，所以上面那样写通常没问题。但如果你手动调用了 \`await request.stream()\`（流式读取），body 就只能读一次，Pydantic 就拿不到了。
+
+### 坑 4：headers 大小写
+
+\`\`\`python
+# request.headers 大小写不敏感
+# 下面三种写法等价
+ua1 = request.headers.get("user-agent")
+ua2 = request.headers.get("User-Agent")
+ua3 = request.headers.get("USER-AGENT")
+# 都能拿到值
+\`\`\`
+
+\`Headers\` 对象内部都转成小写存储，所以取的时候不区分大小写。
+
+### 坑 5：request.client 可能为 None
+
+\`\`\`python
+# ❌ 直接访问 request.client.host 可能报错
+@app.get("/ip")
+def get_ip(request: Request):
+    return {"ip": request.client.host}  # 如果 client 是 None，报错
+
+# ✅ 先判断 None
+@app.get("/ip")
+def get_ip(request: Request):
+    return {"ip": request.client.host if request.client else None}
+\`\`\`
+
+在某些测试环境或特殊部署下，\`request.client\` 可能是 \`None\`，访问 \`.host\` 会抛 \`AttributeError\`。
+
+### 坑 6：URL 属性的坑
+
+\`\`\`python
+@app.get("/test")
+def test(request: Request):
+    url = request.url
+    # url.query 是查询字符串（如 "a=1&b=2"），不是字典
+    # 要拿成字典用 request.query_params
+    return {
+        "query_string": url.query,           # "a=1&b=2"
+        "query_params": dict(request.query_params)  # {"a": "1", "b": "2"}
+    }
+\`\`\`
+
+\`url.query\` 是原始字符串，\`query_params\` 是解析后的字典。
+
+### 坑 7：path_params 是字典不是对象
+
+\`\`\`python
+@app.get("/users/{user_id}")
+def get_user(user_id: int, request: Request):
+    # request.path_params 是字典 {"user_id": "42"}
+    # 注意：这里是字符串 "42"，不是 int 42
+    # 类型转换是 FastAPI 给函数参数时做的，path_params 里是原始字符串
+    raw = request.path_params["user_id"]  # "42"
+    return {"user_id": user_id, "raw": raw, "raw_type": type(raw).__name__}
+\`\`\`
+
+\`path_params\` 存的是原始字符串，类型转换只在函数参数注入时发生。
+
+## 十、何时用 Request，何时用 Path/Query
+
+| 场景 | 推荐方式 |
+|------|---------|
+| 路径参数 | \`Path()\` |
+| 查询参数 | \`Query()\` |
+| JSON body | Pydantic 模型 |
+| 表单 | \`Form()\` |
+| 文件上传 | \`UploadFile\` |
+| 请求头 | \`Header()\` |
+| Cookie | \`Cookie()\` |
+| 客户端 IP、UA | \`Request\` |
+| 原始 body 字节 | \`Request\` |
+| 中间件 | \`Request\` |
+| 链路追踪 | \`Request\` + \`request.state\` |
+
+原则：**能用高级封装就用高级封装，只有在需要原始数据时才用 \`Request\`**。高级封装有校验、文档、类型转换，\`Request\` 啥都要自己处理。
 
 ## 本章小结
 
 | 属性/方法 | 用途 |
 |-----------|------|
-| request.headers | 请求头（大小写不敏感） |
-| request.query_params | 查询参数 |
-| request.path_params | 路径参数 |
-| request.client | 客户端 IP/端口 |
-| request.method | HTTP 方法 |
-| request.url | 完整 URL |
-| request.cookies | Cookie |
-| request.state | 请求级共享状态 |
-| await request.body() | 原始 body 字节 |
-| await request.json() | 解析 JSON body |
-| response_model | 过滤响应字段 |
+| \`request.method\` | HTTP 方法 |
+| \`request.url\` | 完整 URL（可分解） |
+| \`request.headers\` | 请求头（大小写不敏感） |
+| \`request.query_params\` | 查询参数字典 |
+| \`request.path_params\` | 路径参数字典（原始字符串） |
+| \`request.cookies\` | Cookie |
+| \`request.client\` | 客户端 IP/端口 |
+| \`request.state\` | 请求级共享状态 |
+| \`await request.body()\` | 原始 body 字节 |
+| \`await request.json()\` | JSON body |
+| \`await request.form()\` | 表单数据 |
+| \`request.scope\` | ASGI 原始字典 |
 
-到这儿，路径与查询参数这块讲完了。你已经能处理 URL 里的各种参数、做校验、读原始请求。下一批章节进入请求体——用 Pydantic 模型接收 JSON body，这是构建真正业务接口的关键。`
-  }
+\`Request\` 对象是 FastAPI 的"逃生舱"——当高级封装不够用时，它让你能访问请求的任何部分。但日常开发 90% 的需求用 \`Path\`/\`Query\`/Pydantic 就够了，\`Request\` 主要用于中间件、日志、链路追踪这些"横切关注点"。
+
+到这里，路径与查询参数这块讲完了。你已经能处理 URL 里的各种参数、做校验、读原始请求。下一批章节进入请求体——用 Pydantic 模型接收 JSON body，这是构建真正业务接口的关键。
+`,
+  },
 ];

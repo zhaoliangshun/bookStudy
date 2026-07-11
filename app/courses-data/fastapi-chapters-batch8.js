@@ -1,21 +1,31 @@
 // =============================================================
-// Batch 8：异常处理（4 章）
-// 29. exc-http    HTTPException
-// 30. exc-custom  自定义异常与处理器
-// 31. exc-handler 全局异常处理
-// 32. exc-practice 异常处理最佳实践
-// =============================================================
+// FastAPI 应用开发实战教程 - 第 8 批章节（异常处理 4 章）
+// -------------------------------------------------------------
+// 本批包含 4 章：
+//   fa-http-exception    : HTTPException
+//   fa-custom-exception  : 自定义异常与处理器
+//   fa-global-exception  : 全局异常处理
+//   fa-exception-best    : 异常处理最佳实践
+// ============================================================
 
 export const chapters = [
   {
-    id: "exc-http",
+    id: "fa-http-exception",
     group: "异常处理",
     icon: "⚠️",
     title: "HTTPException",
     content: `
-## 一、HTTPException 主动抛出 HTTP 错误
+## 一、为什么需要 HTTPException
 
-业务逻辑里,资源不存在、权限不够、参数错误,都需要返回对应 HTTP 错误码。FastAPI 提供 \`HTTPException\` 来主动抛出 HTTP 错误:
+写 API 最常见的场景是:客户端请求一个不存在的资源、权限不够、参数非法。如果这些情况你只是 \`return {"error": "xxx"}\`,状态码还是 200,客户端无法靠状态码判断成败,这违反了 HTTP 语义。
+
+HTTP 协议规定了丰富的状态码:404 表示资源不存在、403 表示无权限、401 表示未认证、422 表示参数校验失败、500 表示服务器内部错误。FastAPI 提供 \`HTTPException\` 让你「主动抛出」一个带正确状态码的 HTTP 错误响应。
+
+\`HTTPException\` 的核心思想是:它不是普通异常,而是一个「会被 FastAPI 自动捕获并转成 HTTP 响应」的特殊异常。你 raise 它,FastAPI 拦截后生成一个 JSON 响应,状态码就是你指定的,响应体默认是 \`{"detail": ...}\`。
+
+类比:\`return\` 是「正常交付货物」,而 \`raise HTTPException\` 是「打一张标准格式的拒收单」。两者都会结束请求,但后者带着标准错误信息。
+
+## 二、HTTPException 基本用法
 
 \`\`\`python
 # 从 fastapi 导入 FastAPI, HTTPException
@@ -24,324 +34,477 @@ from fastapi import FastAPI, HTTPException
 # 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 模拟数据库:用字典存放商品
+# 定义变量 items_db，赋值为 {1: {"name": "苹果", "price": 5}, 2: {"name": "香蕉", "price": 3}}
+items_db = {1: {"name": "苹果", "price": 5}, 2: {"name": "香蕉", "price": 3}}
+
 # 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}")
 # 定义函数 get_item，参数: item_id: int
 def get_item(item_id: int):
-    # 定义字典 items
-    items = {1: "apple", 2: "banana"}
-    # 条件判断：如果 item_id not in items
-    if item_id not in items:
-        # 抛出 404 错误
+    # 判断 item_id 是否在数据库中
+    if item_id not in items_db:
+        # 资源不存在,抛出 404 异常
         # 抛出 HTTPException 异常: status_code=404, detail="商品不存在"
         raise HTTPException(status_code=404, detail="商品不存在")
-    # 返回 {"item": items[item_id]}
-    return {"item": items[item_id]}
+    # 正常情况:返回商品数据
+    return {"item": items_db[item_id]}
 \`\`\`
 
-请求不存在的 \`/items/99\`,响应:
+请求 \`/items/99\` 时,响应如下,状态码为 404:
+
 \`\`\`json
 {
   "detail": "商品不存在"
 }
 \`\`\`
-状态码 404。
 
-## 二、status_code 和 detail
+注意:这里用的是 \`raise\` 而不是 \`return\`。raise 之后函数立即中断,后续代码不会执行。FastAPI 内部有一个异常处理器专门捕获 \`HTTPException\`,把它转成响应。
 
-\`HTTPException\` 两个核心参数:
+避坑:\`HTTPException\` 不是从 \`Exception\` 直接继承的,它继承自 Starlette 的 \`HTTPException\`。这意味着你自己写的 \`exception_handler(Exception)\` 默认不会捕获它(后面章节详解)。
 
-- **status_code**:HTTP 状态码(404/403/400 等)。
-- **detail**:错误详情,可以是字符串、dict、list,会被序列化为 JSON。
+## 三、status_code 和 detail 参数
 
-\`\`\`python
-# 字符串详情
-# 抛出 HTTPException 异常: 404, "商品不存在"
-raise HTTPException(404, "商品不存在")
+\`HTTPException\` 有两个核心参数:
 
-# dict 详情(更丰富的错误信息)
-# 抛出 HTTPException 异常: 404, detail={"error": "not_found", "item_id": 99}
-raise HTTPException(404, detail={"error": "not_found", "item_id": 99})
-
-# list 详情
-# 抛出 HTTPException 异常: 400, detail=["字段 A 错误", "字段 B 错误"]
-raise HTTPException(400, detail=["字段 A 错误", "字段 B 错误"])
-\`\`\`
-
-响应体会被包在 \`detail\` 字段里:
-\`\`\`json
-{"detail": {"error": "not_found", "item_id": 99}}
-\`\`\`
-
-## 三、常用错误码
-
-| 码 | 名称 | 何时用 |
-|---|---|---|
-| 400 | Bad Request | 请求格式/业务逻辑错误 |
-| 401 | Unauthorized | 未登录 |
-| 403 | Forbidden | 已登录但无权限 |
-| 404 | Not Found | 资源不存在 |
-| 409 | Conflict | 资源冲突(重复创建) |
-| 422 | Unprocessable Entity | 字段校验失败 |
-| 429 | Too Many Requests | 限流 |
-
-FastAPI 默认的 422(请求体校验失败)也是用类似机制,只是自动触发。
-
-## 四、raise HTTPException 后 FastAPI 自动返回
-
-\`raise HTTPException\` 后,FastAPI 会:
-1. 中断当前函数执行(像普通异常一样)。
-2. 捕获这个异常,转成 JSON 响应。
-3. 状态码用 status_code,响应体 \`{"detail": ...}\`。
-
-这意味着你**不需要 try/except** 处理它,直接 raise 就行,FastAPI 接管后续。
-
-\`\`\`python
-# 定义 GET 路由：访问 /users/{uid} 时触发
-@app.get("/users/{uid}")
-# 定义函数 get_user，参数: uid: int
-def get_user(uid: int):
-    # 定义变量 user，赋值为 db.find(uid)
-    user = db.find(uid)
-    # 条件判断：如果 not user
-    if not user:
-        # raise 后函数直接结束,不会执行后面的 return
-        # 抛出 HTTPException 异常: 404, "用户不存在"
-        raise HTTPException(404, "用户不存在")
-    # 只有 user 存在才会到这
-    # 返回 user
-    return user
-\`\`\`
-
-## 五、headers 参数
-
-有些状态码需要特定响应头。最典型的是 401,要带 \`WWW-Authenticate\` 头告诉客户端怎么认证:
-
-\`\`\`python
-# 定义 GET 路由：访问 /secure 时触发
-@app.get("/secure")
-# 定义函数 secure，参数: token: str
-def secure(token: str):
-    # 条件判断：如果 token != "valid"
-    if token != "valid":
-        # 抛出 HTTPException 异常
-        raise HTTPException(
-            # 定义变量 status_code，赋值为 401,
-            status_code=401,
-            # 定义变量 detail，赋值为 "无效的认证凭证",
-            detail="无效的认证凭证",
-            # 定义字典 headers
-            headers={"WWW-Authenticate": "Bearer"},
-        # )
-        )
-    # 返回 {"msg": "ok"}
-    return {"msg": "ok"}
-\`\`\`
-
-\`WWW-Authenticate: Bearer\` 告诉客户端「用 Bearer token 认证」。这是 HTTP 规范要求的,有些客户端(如浏览器原生认证弹窗)会读这个头。
-
-## 六、和普通 Exception 的区别
-
-\`\`\`python
-# HTTPException:FastAPI 专门处理,转成 JSON 错误响应
-# 抛出 HTTPException 异常: 404, "不存在"
-raise HTTPException(404, "不存在")
-# → 404 {"detail": "不存在"}
-
-# 普通 Exception:FastAPI 不专门处理,默认转成 500
-# 抛出 ValueError 异常: "不存在"
-raise ValueError("不存在")
-# → 500 {"detail": "Internal Server Error"}
-\`\`\`
-
-区别:
-- **HTTPException**:带状态码,被 FastAPI 的默认 HTTPException 处理器捕获,返回对应状态码。
-- **普通 Exception**:不带状态码,默认 500,且 detail 是通用 "Internal Server Error"(不暴露具体信息,安全)。
-
-所以:**业务错误用 HTTPException,意外错误(BUG)才用普通 Exception**。
-
-## 七、HTTPException 不被全局处理器捕获(除非显式)
-
-重要细节:\`HTTPException\` 和它的子类 \`StarletteHTTPException\` **有默认处理器**,如果你注册了 \`@app.exception_handler(Exception)\`(捕获所有),它**不会**捕获 HTTPException。
-
-这是因为 FastAPI 内部对 HTTPException 有专门的处理器,优先级高于通用 Exception 处理器。这样设计是为了让你能放心 raise HTTPException,不用担心被通用兜底改写。
-
-如果想让自定义处理器处理 HTTPException,要显式注册:
-\`\`\`python
-# 装饰器：app.exception_handler
-@app.exception_handler(HTTPException)
-# 定义异步函数 custom_http_exc_handler，参数: request, exc
-async def custom_http_exc_handler(request, exc):
-    # 返回 JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
-    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
-\`\`\`
-
-## 八、完整示例:资源不存在抛 404
+- **status_code**:HTTP 状态码,整数。常用 400(请求错误)、401(未认证)、403(无权限)、404(不存在)、409(冲突)、422(校验失败)、500(服务器错误)。
+- **detail**:错误详情。可以是字符串、字典、列表,会被 JSON 序列化后放在响应体的 \`detail\` 字段里。
 
 \`\`\`python
 # 从 fastapi 导入 FastAPI, HTTPException
 from fastapi import FastAPI, HTTPException
-# 从 pydantic 导入 BaseModel
-from pydantic import BaseModel
 
 # 创建 FastAPI 应用实例
 app = FastAPI()
 
-# 定义 Pydantic 数据模型 Item，继承 BaseModel
-class Item(BaseModel):
-    # 字段 id，类型: int
-    id: int
-    # 字段 name，类型: str
-    name: str
-    # 字段 price，类型: float
-    price: float
+# 字符串详情:最简单的用法
+# 抛出 HTTPException 异常: status_code=404, detail="商品不存在"
+raise HTTPException(404, "商品不存在")
 
-# 模拟数据库
-# 字段 db，类型: dict[int, Item]，默认值: {
-db: dict[int, Item] = {
-    # 字段 1，类型: Item(id，默认值: 1, name="苹果", price=5.0),
-    1: Item(id=1, name="苹果", price=5.0),
-    # 字段 2，类型: Item(id，默认值: 2, name="香蕉", price=3.0),
-    2: Item(id=2, name="香蕉", price=3.0),
-# }
-}
+# 字典详情:携带结构化错误信息
+# 抛出 HTTPException 异常: status_code=400, detail={"field": "username", "msg": "长度必须 6-20"}
+raise HTTPException(
+    status_code=400,
+    detail={"field": "username", "msg": "长度必须 6-20"}
+)
 
-# 定义 GET 路由：访问 /items/{item_id} 时触发
-@app.get("/items/{item_id}", response_model=Item)
-# 定义函数 get_item，参数: item_id: int
-def get_item(item_id: int):
-    # 1. 查不到抛 404
-    # 定义变量 item，赋值为 db.get(item_id)
-    item = db.get(item_id)
-    # 条件判断：如果 not item
-    if not item:
-        # 抛出 HTTPException 异常
-        raise HTTPException(
-            # 定义变量 status_code，赋值为 404,
-            status_code=404,
-            # 定义变量 detail，赋值为 f"商品 {item_id} 不存在",
-            detail=f"商品 {item_id} 不存在",
-        # )
-        )
-    # 返回 item
-    return item
-
-# 定义 POST 路由：访问 /items 时触发
-@app.post("/items", response_model=Item, status_code=201)
-# 定义函数 create_item，参数: item: Item
-def create_item(item: Item):
-    # 2. 已存在抛 409 冲突
-    # 条件判断：如果 item.id in db
-    if item.id in db:
-        # 抛出 HTTPException 异常
-        raise HTTPException(
-            # 定义变量 status_code，赋值为 409,
-            status_code=409,
-            # 定义字典 detail
-            detail={"error": "conflict", "reason": f"商品 {item.id} 已存在"},
-        # )
-        )
-    # db[item.id] = item
-    db[item.id] = item
-    # 返回 item
-    return item
-
-# 定义 DELETE 路由：访问 /items/{item_id} 时触发
-@app.delete("/items/{item_id}", status_code=204)
-# 定义函数 delete_item，参数: item_id: int
-def delete_item(item_id: int):
-    # 3. 不存在抛 404
-    # 条件判断：如果 item_id not in db
-    if item_id not in db:
-        # 抛出 HTTPException 异常: 404, f"商品 {item_id} 不存在"
-        raise HTTPException(404, f"商品 {item_id} 不存在")
-    # del db[item_id]
-    del db[item_id]
-    # 返回 None
-    return None
+# 列表详情:多个错误一次性返回
+# 抛出 HTTPException 异常: status_code=422, detail=[{"field": "name", "msg": "必填"}, {"field": "age", "msg": "必须正整数"}]
+raise HTTPException(
+    status_code=422,
+    detail=[
+        {"field": "name", "msg": "必填"},
+        {"field": "age", "msg": "必须正整数"}
+    ]
+)
 \`\`\`
 
-## 九、HTTPException 的传播
+为什么 detail 支持任意 JSON 可序列化类型?因为不同业务对错误信息的需求不同。简单接口用字符串够了,复杂表单需要返回每个字段的错误。支持结构化数据让你灵活选择。
 
-HTTPException 可以在依赖、子函数里 raise,会向上传播:
+避坑:detail 里的数据必须是 JSON 可序列化的。如果传了一个 datetime 对象、自定义类、或 SQLAlchemy 模型实例,会报序列化错误。需要先转成字典或字符串。
+
+## 四、headers 参数
+
+\`HTTPException\` 还有一个 \`headers\` 参数,用来给错误响应附加 HTTP 头。最典型的场景是 401 未认证时返回 \`WWW-Authenticate\` 头,告诉客户端该用什么认证方式。
 
 \`\`\`python
-# 定义函数 get_item_or_404，参数: item_id: int
-def get_item_or_404(item_id: int):
-    # 定义变量 item，赋值为 db.get(item_id)
-    item = db.get(item_id)
-    # 条件判断：如果 not item
-    if not item:
-        # 抛出 HTTPException 异常: 404, "不存在"
-        raise HTTPException(404, "不存在")
-    # 返回 item
-    return item
+# 从 fastapi 导入 FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
 
-# 定义 GET 路由：访问 /items/{item_id} 时触发
-@app.get("/items/{item_id}")
-# 定义函数 get_item，参数: item_id: int
-def get_item(item_id: int):
-    # 子函数抛的 HTTPException 会传播到这里,被 FastAPI 捕获
-    # 定义变量 item，赋值为 get_item_or_404(item_id)
-    item = get_item_or_404(item_id)
-    # 返回 item
-    return item
+# 创建 FastAPI 应用实例
+app = FastAPI()
+
+# 定义 GET 路由：访问 /secure 时触发
+@app.get("/secure")
+# 定义函数 secure_endpoint，参数: token: str
+def secure_endpoint(token: str):
+    # 如果 token 为空或不等于预期值
+    if token != "secret123":
+        # 401 未认证,通过 headers 告诉客户端使用 Bearer 认证
+        # 抛出 HTTPException 异常: status_code=401, detail="未认证", headers={"WWW-Authenticate": "Bearer"}
+        raise HTTPException(
+            status_code=401,
+            detail="未认证",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    # 认证通过
+    return {"message": "欢迎进入安全区"}
 \`\`\`
 
-这种「辅助函数抛异常」模式很常用,避免每个路由都写 if-raise。
+响应头会包含 \`WWW-Authenticate: Bearer\`,客户端(比如浏览器或前端框架)看到这个头就知道要用 Bearer Token 方式重新认证。
 
-## 十、易错点小结
+为什么 headers 参数有用?HTTP 规范里,某些状态码「应该」带特定头。401 就该带 \`WWW-Authenticate\`,429 限流就该带 \`Retry-After\`。用 headers 参数能让你符合规范。
 
-| 易错点 | 说明 | 正确做法 |
-|---|---|---|
-| 用普通 Exception 替代 HTTPException | 变成 500 | 业务错误用 HTTPException |
-| 忘了 raise,只 return HTTPException | 不生效 | 必须 raise |
-| detail 用裸 dict | 会被包在 detail 里 | 知道这是 FastAPI 行为 |
-| 401 忘带 WWW-Authenticate | 不规范 | 加 headers |
-| 用 HTTPException 传 500 | 500 应该是意外,不该主动 | 500 留给未捕获异常 |
-| status_code 用非标准码 | 客户端不认 | 用标准 HTTP 码 |
+\`\`\`python
+# 限流场景:429 配合 Retry-After 头
+# 抛出 HTTPException 异常: status_code=429, detail="请求过于频繁", headers={"Retry-After": "60"}
+raise HTTPException(
+    status_code=429,
+    detail="请求过于频繁,请 60 秒后重试",
+    headers={"Retry-After": "60"}
+)
+\`\`\`
+
+## 五、在路由中抛出 HTTPException
+
+最常见的用法:在路由函数内部根据业务条件抛出。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
+
+# 创建 FastAPI 应用实例
+app = FastAPI()
+
+# 模拟用户表
+# 定义变量 users_db，赋值为 {"alice": {"age": 20, "balance": 100}, "bob": {"age": 17, "balance": 50}}
+users_db = {"alice": {"age": 20, "balance": 100}, "bob": {"age": 17, "balance": 50}}
+
+# 定义 POST 路由：访问 /users/{username}/withdraw 时触发
+@app.post("/users/{username}/withdraw")
+# 定义函数 withdraw，参数: username: str, amount: int
+def withdraw(username: str, amount: int):
+    # 1. 用户不存在 -> 404
+    if username not in users_db:
+        # 抛出 HTTPException 异常: status_code=404, detail="用户不存在"
+        raise HTTPException(status_code=404, detail="用户不存在")
+    # 取出用户
+    user = users_db[username]
+    # 2. 未成年人禁止提现 -> 403
+    if user["age"] < 18:
+        # 抛出 HTTPException 异常: status_code=403, detail="未成年人禁止提现"
+        raise HTTPException(status_code=403, detail="未成年人禁止提现")
+    # 3. 余额不足 -> 400
+    if amount > user["balance"]:
+        # 抛出 HTTPException 异常: status_code=400, detail="余额不足"
+        raise HTTPException(status_code=400, detail="余额不足")
+    # 4. 扣减余额
+    user["balance"] -= amount
+    # 返回成功结果
+    return {"username": username, "remaining": user["balance"]}
+\`\`\`
+
+这种「层层校验,不满足就 raise」的写法叫「卫语句」(guard clause)。它的好处是:每个校验条件独立、清晰,不需要嵌套 if-else。读到哪一行就知道什么情况会报什么错。
+
+## 六、在依赖中抛出 HTTPException
+
+依赖注入(Dependency)里也能抛 \`HTTPException\`,这是做权限校验的经典位置。把鉴权逻辑抽成依赖,多个路由复用。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI, HTTPException, Depends, Header
+from fastapi import FastAPI, HTTPException, Depends, Header
+
+# 创建 FastAPI 应用实例
+app = FastAPI()
+
+# 模拟 token -> 用户 的映射
+# 定义变量 valid_tokens，赋值为 {"token-abc": {"username": "alice", "role": "admin"}, "token-xyz": {"username": "bob", "role": "user"}}
+valid_tokens = {
+    "token-abc": {"username": "alice", "role": "admin"},
+    "token-xyz": {"username": "bob", "role": "user"}
+}
+
+# 定义函数 get_current_user，参数: authorization: str = Header(...)
+def get_current_user(authorization: str = Header(...)):
+    # 校验 Authorization 头是否存在且格式正确
+    if not authorization.startswith("Bearer "):
+        # 格式错误 -> 401
+        # 抛出 HTTPException 异常: status_code=401, detail="认证格式错误,应为 Bearer <token>"
+        raise HTTPException(status_code=401, detail="认证格式错误,应为 Bearer <token>")
+    # 提取 token 部分
+    token = authorization[7:]
+    # 校验 token 是否有效
+    if token not in valid_tokens:
+        # 无效 token -> 401
+        # 抛出 HTTPException 异常: status_code=401, detail="token 无效"
+        raise HTTPException(status_code=401, detail="token 无效")
+    # 返回当前用户信息
+    return valid_tokens[token]
+
+# 定义函数 require_admin，参数: user: dict = Depends(get_current_user)
+def require_admin(user: dict = Depends(get_current_user)):
+    # 校验角色是否为 admin
+    if user["role"] != "admin":
+        # 非管理员 -> 403
+        # 抛出 HTTPException 异常: status_code=403, detail="需要管理员权限"
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    # 返回用户
+    return user
+
+# 定义 DELETE 路由：访问 /users/{username} 时触发,依赖 require_admin
+@app.delete("/users/{username}")
+# 定义函数 delete_user，参数: username: str, admin: dict = Depends(require_admin)
+def delete_user(username: str, admin: dict = Depends(require_admin)):
+    # 只有管理员能执行删除
+    return {"deleted": username, "by": admin["username"]}
+\`\`\`
+
+在依赖里抛异常的好处:路由函数只关心核心业务,鉴权逻辑完全解耦。\`require_admin\` 依赖 \`get_current_user\`,形成依赖链。任何一环 raise,整个请求中断,FastAPI 自动返回对应错误。
+
+怎么想:把「谁能访问」和「做什么」分开。依赖负责「能不能做」,路由负责「做什么」。这样权限规则变化时只改依赖,不影响业务路由。
+
+## 七、HTTPException 的响应格式
+
+默认情况下,HTTPException 的响应体是 \`{"detail": <你的 detail>}\`。FastAPI 文档里(/docs)也会根据这个格式展示错误响应。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
+
+# 创建 FastAPI 应用实例
+app = FastAPI()
+
+# 定义 GET 路由：访问 /demo 时触发
+@app.get("/demo")
+# 定义函数 demo
+def demo():
+    # 抛出带字典 detail 的异常
+    # 抛出 HTTPException 异常: status_code=418, detail={"reason": "我是茶壶", "hint": "别用茶壶煮咖啡"}
+    raise HTTPException(
+        status_code=418,
+        detail={"reason": "我是茶壶", "hint": "别用茶壶煮咖啡"}
+    )
+\`\`\`
+
+响应体:
+\`\`\`json
+{
+  "detail": {
+    "reason": "我是茶壶",
+    "hint": "别用茶壶煮咖啡"
+  }
+}
+\`\`\`
+
+如果你不满意默认的 \`{"detail": ...}\` 格式,想统一成 \`{"code": ..., "message": ..., "data": null}\`,那就需要自定义异常处理器(下一章讲)。HTTPException 本身无法改变这个外层结构。
+
+## 八、常见状态码的使用场景
+
+选对状态码是 API 设计的基本功。下面是 FastAPI 项目里最常用的状态码及适用场景:
+
+| 状态码 | 含义 | 使用场景 |
+|--------|------|----------|
+| 400 | 请求错误 | 参数格式对但语义错(如 amount 为负数) |
+| 401 | 未认证 | 没带 token 或 token 无效 |
+| 403 | 无权限 | 认证了但角色不够 |
+| 404 | 不存在 | 资源找不到 |
+| 409 | 冲突 | 唯一约束冲突、状态不允许操作 |
+| 422 | 校验失败 | FastAPI 自动参数校验失败(类型、必填等) |
+| 429 | 限流 | 请求频率超限 |
+| 500 | 服务器错误 | 代码 bug、数据库挂了 |
+
+怎么想:先区分「客户端的问题」(4xx)还是「服务端的问题」(5xx)。4xx 里再细分:认证问题(401/403)、资源问题(404/409)、参数问题(400/422)。选错状态码会让客户端误判,比如把 404 写成 400,客户端的缓存逻辑就会失效。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
+
+# 创建 FastAPI 应用实例
+app = FastAPI()
+
+# 模拟已存在的用户名集合
+# 定义变量 existing_names，赋值为 {"alice", "bob"}
+existing_names = {"alice", "bob"}
+
+# 定义 POST 路由：访问 /register 时触发
+@app.post("/register")
+# 定义函数 register，参数: username: str
+def register(username: str):
+    # 400:参数语义错误(用户名为空字符串虽类型对但非法)
+    if not username:
+        # 抛出 HTTPException 异常: status_code=400, detail="用户名不能为空"
+        raise HTTPException(status_code=400, detail="用户名不能为空")
+    # 409:用户名已被占用,资源冲突
+    if username in existing_names:
+        # 抛出 HTTPException 异常: status_code=409, detail="用户名已存在"
+        raise HTTPException(status_code=409, detail="用户名已存在")
+    # 注册成功
+    existing_names.add(username)
+    # 返回结果
+    return {"username": username, "registered": True}
+\`\`\`
+
+## 九、实战:资源不存在(404) + 权限不足(403) + 验证失败(422)
+
+综合演示三种最常见的错误场景,模拟一个文章管理系统。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI, HTTPException, Depends, Header
+from fastapi import FastAPI, HTTPException, Depends, Header
+# 从 typing 导入 Optional
+from typing import Optional
+
+# 创建 FastAPI 应用实例
+app = FastAPI()
+
+# 模拟文章数据库:每个文章有 id, title, content, owner
+# 定义变量 articles_db，赋值为 {1: {"id": 1, "title": "FastAPI 入门", "content": "...", "owner": "alice"}}
+articles_db = {
+    1: {"id": 1, "title": "FastAPI 入门", "content": "...", "owner": "alice"},
+    2: {"id": 2, "title": "异常处理", "content": "...", "owner": "bob"}
+}
+# 自增 ID 计数器
+next_id = 3
+
+# 简单鉴权依赖:从 header 读用户名
+# 定义函数 get_current_user，参数: x_user: Optional[str] = Header(None)
+def get_current_user(x_user: Optional[str] = Header(None)):
+    # 没带 x-user 头 -> 401 未认证
+    if not x_user:
+        # 抛出 HTTPException 异常: status_code=401, detail="请先登录"
+        raise HTTPException(status_code=401, detail="请先登录")
+    # 返回用户名
+    return x_user
+
+# GET /articles/{article_id}:获取文章,可能 404
+# 定义 GET 路由：访问 /articles/{article_id} 时触发
+@app.get("/articles/{article_id}")
+# 定义函数 get_article，参数: article_id: int, user: str = Depends(get_current_user)
+def get_article(article_id: int, user: str = Depends(get_current_user)):
+    # 文章不存在 -> 404
+    if article_id not in articles_db:
+        # 抛出 HTTPException 异常: status_code=404, detail=f"文章 {article_id} 不存在"
+        raise HTTPException(status_code=404, detail=f"文章 {article_id} 不存在")
+    # 返回文章
+    return articles_db[article_id]
+
+# PUT /articles/{article_id}:编辑文章,可能 404 或 403
+# 定义 PUT 路由：访问 /articles/{article_id} 时触发
+@app.put("/articles/{article_id}")
+# 定义函数 update_article，参数: article_id: int, title: str, user: str = Depends(get_current_user)
+def update_article(article_id: int, title: str, user: str = Depends(get_current_user)):
+    # 1. 文章不存在 -> 404
+    if article_id not in articles_db:
+        # 抛出 HTTPException 异常: status_code=404, detail="文章不存在"
+        raise HTTPException(status_code=404, detail="文章不存在")
+    # 取出文章
+    article = articles_db[article_id]
+    # 2. 不是作者 -> 403 无权限
+    if article["owner"] != user:
+        # 抛出 HTTPException 异常: status_code=403, detail="只能编辑自己的文章"
+        raise HTTPException(status_code=403, detail="只能编辑自己的文章")
+    # 修改标题
+    article["title"] = title
+    # 返回更新后的文章
+    return article
+
+# POST /articles:创建文章,422 由 FastAPI 自动触发
+# 定义 POST 路由：访问 /articles 时触发
+@app.post("/articles")
+# 定义函数 create_article，参数: title: str, content: str, user: str = Depends(get_current_user)
+def create_article(title: str, content: str, user: str = Depends(get_current_user)):
+    # 声明使用全局 next_id
+    global next_id
+    # title 和 content 是必填的 str,如果不传或类型不对,FastAPI 自动返回 422
+    # 这里不需要手动 raise,框架帮你做了
+    # 创建新文章
+    # 定义变量 new_article，赋值为 {"id": next_id, "title": title, "content": content, "owner": user}
+    new_article = {"id": next_id, "title": title, "content": content, "owner": user}
+    # 存入数据库
+    articles_db[next_id] = new_article
+    # id 自增
+    next_id += 1
+    # 返回新文章
+    return new_article
+\`\`\`
+
+测试要点:
+- \`GET /articles/99\` 带 \`X-User: alice\` 头 -> 404
+- \`PUT /articles/1\` 带 \`X-User: bob\` 头 -> 403(只能编辑自己的)
+- \`POST /articles\` 不传 \`title\` 参数 -> 422(FastAPI 自动校验)
+- 不带 \`X-User\` 头 -> 401
+
+注意 422 和其他状态码的区别:404/403/401 是你「主动 raise」的,而 422 是 FastAPI 在参数进入你的函数之前自动触发的。你甚至不用写任何校验代码,只要声明了类型,\`title: str\` 必填,不传就 422。
+
+## 十、常见错误与避坑指南
+
+**错误 1:return 一个错误响应而不是 raise HTTPException**
+
+\`\`\`python
+# 错误写法:状态码还是 200,客户端误以为成功
+# 定义函数 bad_example
+def bad_example():
+    if True:
+        return {"error": "出错了"}  # 状态码 200,错误!
+\`\`\`
+
+正确做法是 raise HTTPException,让状态码正确反映错误。
+
+**错误 2:detail 里放不可序列化的对象**
+
+\`\`\`python
+# 导入 datetime 模块
+import datetime
+# 错误:datetime 对象不能直接 JSON 序列化
+# 抛出 HTTPException 异常: status_code=400, detail=datetime.datetime.now()  # 会报错
+raise HTTPException(400, detail=datetime.datetime.now())  # 报错!
+\`\`\`
+
+正确:转成字符串 \`detail=str(datetime.datetime.now())\` 或用 ISO 格式。
+
+**错误 3:在异步函数里忘了 raise 而是 return 异常对象**
+
+\`\`\`python
+# 错误:return 一个异常对象不会触发 FastAPI 的异常处理
+# 定义函数 wrong
+def wrong():
+    if True:
+        return HTTPException(404, "不存在")  # 不会生效,会返回一个异常对象的 JSON
+\`\`\`
+
+必须用 \`raise\`,不能用 \`return\`。
+
+**错误 4:用 500 代替业务错误**
+
+业务错误(如余额不足)应该用 4xx,不要用 500。500 表示「服务器出 bug 了」,运维看到 500 会告警。余额不足是客户端的问题,不该触发告警。
 
 ## 十一、设计思想
 
-HTTPException 是「业务错误」的标准表达方式。它把「这是用户的问题(4xx)」和「这是服务器的 BUG(5xx)」区分开。raise HTTPException 是声明式的——你不返回错误,而是抛出错误,让框架统一处理。这符合「错误是流程的一部分」的理念,比 return error dict 更清晰。
+\`HTTPException\` 的设计体现了「用 HTTP 语义表达业务错误」的思想。状态码是 HTTP 协议的语言,客户端、网关、监控系统都认。你尊重状态码,整个系统就能协同工作;你滥用 200 包错误,所有协作方都要特殊处理。
+
+但 \`HTTPException\` 也有局限:它的响应格式固定为 \`{"detail": ...}\`,且它「混入了 HTTP 概念」(状态码、headers)。当业务逻辑变复杂,你需要统一的错误码体系、统一的响应格式时,就需要自定义异常——这是下一章的主题。
+
+记住原则:简单的、和 HTTP 强相关的错误用 \`HTTPException\`;复杂的、有业务语义的错误用自定义异常。两者配合,才能撑起一个生产级 API 的错误处理体系。
 `,
   },
   {
-    id: "exc-custom",
+    id: "fa-custom-exception",
     group: "异常处理",
     icon: "🎨",
     title: "自定义异常与处理器",
     content: `
-## 一、为什么用自定义异常
+## 一、为什么需要自定义异常
 
-\`HTTPException\` 通用,但有时不够:
+\`HTTPException\` 够用吗?简单场景够用,但生产项目会遇到这些问题:
 
-1. **业务语义**:抛 \`BusinessError\` 比 \`HTTPException(400)\` 更能表达「这是业务规则违反」。
-2. **携带上下文**:异常类可以带自定义属性(错误码、关联资源 ID 等)。
-3. **统一格式**:多个业务异常可以由一个处理器统一格式化。
-4. **类型清晰**:\`raise UnicornException()\` 比裸数字有类型语义。
+1. **响应格式不统一**:HTTPException 返回 \`{"detail": ...}\`,但你团队规范要求 \`{"code": 1001, "message": "...", "data": null}\`。
+2. **业务异常混入 HTTP 概念**:业务层(如 service)里直接 raise HTTPException(404) 把 HTTP 状态码硬编码进业务逻辑,业务层不该知道 HTTP 的存在。
+3. **缺少错误码**:HTTP 状态码只有几十个,无法表达「余额不足」「库存不足」「积分不够」这种细粒度业务错误。
 
-FastAPI 支持自定义异常 + 处理器,实现业务级错误处理。
+自定义异常 + 异常处理器解决了这些问题:业务层 raise 纯业务异常(如 \`InsufficientBalanceError\`),表现层(FastAPI 异常处理器)负责把它转成 HTTP 响应。这就是「分层」的思想——业务不碰 HTTP,HTTP 不碰业务。
 
-## 二、自定义异常类
+## 二、自定义异常类继承 Exception
 
-继承 \`Exception\`:
+自定义异常就是普通的 Python 异常类,继承 \`Exception\` 即可。
 
 \`\`\`python
 # 定义类 UnicornException，继承 Exception
 class UnicornException(Exception):
+    # """独角兽异常:演示用"""
+    """独角兽异常:演示用"""
     # 定义函数 __init__，参数: self, name: str
     def __init__(self, name: str):
-        # self.name = name
+        # 保存名字
         self.name = name
-        # 调用父类初始化(可选,但推荐)
-        # 调用 super()
-        super().__init__(f"独角兽 {name} 不存在")
+        # 调用父类构造
+        super().__init__(name)
 \`\`\`
 
-异常类就是普通 Python 类,可以带任意属性。这些属性在处理器里能用。
+怎么想:自定义异常首先是 Python 异常,继承 Exception 让它能被 raise、被 try/except 捕获。你在里面加什么属性,决定了它能携带多少信息。
 
-## 三、@app.exception_handler 注册处理器
+## 三、@app.exception_handler() 注册处理器
+
+定义了异常类还不够,你需要告诉 FastAPI:「遇到这个异常时,怎么转成响应」。这就是 \`@app.exception_handler()\` 的作用。
 
 \`\`\`python
 # 从 fastapi 导入 FastAPI, Request
@@ -352,1109 +515,838 @@ from fastapi.responses import JSONResponse
 # 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 1. 自定义异常类
 # 定义类 UnicornException，继承 Exception
 class UnicornException(Exception):
+    # """独角兽异常"""
+    """独角兽异常"""
     # 定义函数 __init__，参数: self, name: str
     def __init__(self, name: str):
-        # self.name = name
         self.name = name
+        super().__init__(name)
 
-# 注册处理器:捕获 UnicornException 时执行
-# 装饰器：app.exception_handler
+# 2. 注册异常处理器:装饰器参数是异常类
+# 装饰器：app.exception_handler(UnicornException)
 @app.exception_handler(UnicornException)
 # 定义异步函数 unicorn_exception_handler，参数: request: Request, exc: UnicornException
 async def unicorn_exception_handler(request: Request, exc: UnicornException):
-    # exc 是抛出的异常实例,能访问其属性
-    # 返回 JSONResponse(
+    # 返回 JSONResponse,状态码 418,内容自定义
+    # 返回 JSONResponse
     return JSONResponse(
-        status_code=418,  # I'm a teapot(示例用,实际按业务选码)
-        # 定义字典 content
-        content={"msg": f"哎呀,{exc.name} 出问题了"},
-    # )
+        # 定义变量 status_code，赋值为 418
+        status_code=418,
+        # 定义变量 content，赋值为 {"message": f"这只独角兽 {exc.name} 不存在"}
+        content={"message": f"这只独角兽 {exc.name} 不存在"}
     )
 
+# 3. 在路由里 raise 自定义异常
 # 定义 GET 路由：访问 /unicorns/{name} 时触发
 @app.get("/unicorns/{name}")
-# 定义函数 get_unicorn，参数: name: str
-def get_unicorn(name: str):
-    # 条件判断：如果 name == "yolo"
+# 定义函数 read_unicorn，参数: name: str
+def read_unicorn(name: str):
+    # 如果名字是 yolo
     if name == "yolo":
-        # 抛出自定义异常,处理器会接管
+        # 抛出自定义异常
         # 抛出 UnicornException 异常: name=name
         raise UnicornException(name=name)
-    # 返回 {"name": name}
+    # 正常返回
     return {"name": name}
 \`\`\`
 
-请求 \`/unicorns/yolo\`:
-- 抛 \`UnicornException(name="yolo")\`。
-- FastAPI 捕获,找到注册的处理器。
-- 执行 \`unicorn_exception_handler\`,返回 418 \`{"msg":"哎呀,yolo 出问题了"}\`。
-
-## 四、处理器签名
-
-\`\`\`python
-# 定义异步函数 handler，返回: Response
-async def handler(request: Request, exc: SomeException) -> Response:
-    # ...
-    ...
+访问 \`/unicorns/yolo\` 时,响应:
+\`\`\`json
+{"message": "这只独角兽 yolo 不存在"}
 \`\`\`
 
-- \`request: Request\` —— 当前请求,可以拿 URL、method 等。
-- \`exc: SomeException\` —— 被捕获的异常实例。
-- 返回 \`Response\`(通常 \`JSONResponse\`)。
+状态码 418。
 
-注意是 \`async def\`,即使你的异常处理器是同步逻辑也要 async。
+处理器函数签名固定:\`async def handler(request: Request, exc: 异常类)\`。\`request\` 是当前请求对象(可以拿 URL、method 等用于日志),\`exc\` 是抛出的异常实例(可以读它的属性)。
 
-## 五、异常类带自定义属性
+为什么处理器返回的是 \`JSONResponse\` 而不是 dict?因为异常处理器需要完全控制响应:状态码、headers、body。返回 dict 会用默认 200,而错误响应需要自定义状态码。
 
-更实用的例子:异常带错误码和上下文。
+## 四、自定义异常的响应格式
+
+自定义异常最大的价值:你能完全控制响应格式。下面演示统一成 \`{"code": ..., "message": ..., "data": null}\` 格式。
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Request
+from fastapi import FastAPI, Request
+# 从 fastapi.responses 导入 JSONResponse
+from fastapi.responses import JSONResponse
+
+# 创建 FastAPI 应用实例
+app = FastAPI()
+
+# 自定义业务异常基类:带错误码和 HTTP 状态码
 # 定义类 BusinessError，继承 Exception
 class BusinessError(Exception):
     # """业务异常基类"""
     """业务异常基类"""
-    # 定义函数 __init__，参数: self, code: int, message: str, details: dict | Non...
-    def __init__(self, code: int, message: str, details: dict | None = None):
+    # 定义函数 __init__，参数: self, code: int, message: str, http_status: int = 400
+    def __init__(self, code: int, message: str, http_status: int = 400):
         self.code = code          # 业务错误码
         self.message = message    # 错误信息
-        self.details = details    # 上下文详情
-        # 调用 super()
+        self.http_status = http_status  # 对应的 HTTP 状态码
         super().__init__(message)
 
-# 具体业务异常
-# 定义类 InsufficientBalanceError，继承 BusinessError
-class InsufficientBalanceError(BusinessError):
-    # 定义函数 __init__，参数: self, user_id: int, needed: float, balance: float
-    def __init__(self, user_id: int, needed: float, balance: float):
-        # 调用 super()
-        super().__init__(
-            # 定义变量 code，赋值为 4001,
-            code=4001,
-            # 定义变量 message，赋值为 "余额不足",
-            message="余额不足",
-            # 定义字典 details
-            details={
-                # "user_id": user_id,
-                "user_id": user_id,
-                # "needed": needed,
-                "needed": needed,
-                # "balance": balance,
-                "balance": balance,
-            # },
-            },
-        # )
-        )
-
-# 装饰器：app.exception_handler
+# 注册处理器:统一返回 {code, message, data} 格式
+# 装饰器：app.exception_handler(BusinessError)
 @app.exception_handler(BusinessError)
 # 定义异步函数 business_error_handler，参数: request: Request, exc: BusinessError
 async def business_error_handler(request: Request, exc: BusinessError):
-    # 返回 JSONResponse(
+    # 返回 JSONResponse
     return JSONResponse(
-        # 定义变量 status_code，赋值为 400,
-        status_code=400,
-        # 定义字典 content
+        # 用异常里的 http_status
+        status_code=exc.http_status,
+        # 统一格式
         content={
-            # "code": exc.code,
             "code": exc.code,
-            # "message": exc.message,
             "message": exc.message,
-            # "details": exc.details,
-            "details": exc.details,
-        # },
-        },
-    # )
+            "data": None
+        }
     )
 
-# 定义 POST 路由：访问 /transfer 时触发
-@app.post("/transfer")
-# 定义函数 transfer，参数: amount: float, user_id: int = 1
-def transfer(amount: float, user_id: int = 1):
-    balance = 100.0  # 假设查出来的余额
-    # 条件判断：如果 amount > balance
-    if amount > balance:
-        # 抛出 InsufficientBalanceError 异常
-        raise InsufficientBalanceError(
-            # 定义变量 user_id，赋值为 user_id, needed=amount, balance=balance
-            user_id=user_id, needed=amount, balance=balance
-        # )
-        )
-    # 返回 {"msg": "转账成功"}
-    return {"msg": "转账成功"}
+# 使用:在路由里 raise
+# 定义 GET 路由：访问 /pay 时触发
+@app.get("/pay")
+# 定义函数 pay，参数: amount: int
+def pay(amount: int):
+    # 余额不足示例
+    if amount > 1000:
+        # 抛出 BusinessError 异常: code=10001, message="余额不足", http_status=400
+        raise BusinessError(code=10001, message="余额不足", http_status=400)
+    # 成功
+    return {"message": "支付成功"}
 \`\`\`
 
-请求 \`/transfer?amount=200\`,响应:
+访问 \`/pay?amount=2000\`,响应:
 \`\`\`json
 {
-  "code": 4001,
+  "code": 10001,
   "message": "余额不足",
-  "details": {"user_id": 1, "needed": 200.0, "balance": 100.0}
+  "data": null
 }
 \`\`\`
 
-## 六、多个异常处理器
+这种设计的好处:业务层只 raise \`BusinessError\`,完全不知道 HTTP 的存在。表现层的处理器负责翻译成 HTTP 响应。业务和 HTTP 解耦。
 
-可以注册多个:
+## 五、RequestValidationError 处理器
 
-\`\`\`python
-# 定义类 NotFoundError，继承 Exception
-class NotFoundError(Exception): ...
-# 定义类 PermissionError，继承 Exception
-class PermissionError(Exception): ...
-# 定义类 BusinessError，继承 Exception
-class BusinessError(Exception): ...
-
-# 装饰器：app.exception_handler
-@app.exception_handler(NotFoundError)
-# 定义异步函数 not_found_handler，参数: request, exc
-async def not_found_handler(request, exc):
-    # 返回 JSONResponse(404, {"code": 4040, "message": str(exc)})
-    return JSONResponse(404, {"code": 4040, "message": str(exc)})
-
-# 装饰器：app.exception_handler
-@app.exception_handler(PermissionError)
-# 定义异步函数 permission_handler，参数: request, exc
-async def permission_handler(request, exc):
-    # 返回 JSONResponse(403, {"code": 4030, "message": str(exc)})
-    return JSONResponse(403, {"code": 4030, "message": str(exc)})
-
-# 装饰器：app.exception_handler
-@app.exception_handler(BusinessError)
-# 定义异步函数 business_handler，参数: request, exc
-async def business_handler(request, exc):
-    # 返回 JSONResponse(400, {"code": 4000, "message": str(exc)})
-    return JSONResponse(400, {"code": 4000, "message": str(exc)})
-\`\`\`
-
-每种异常有自己的处理器,各司其职。
-
-## 七、异常继承:子类先匹配
-
-如果异常有继承关系,**子类的处理器优先**:
-
-\`\`\`python
-# 定义类 BusinessError，继承 Exception
-class BusinessError(Exception): ...
-# 定义类 PaymentError，继承 BusinessError
-class PaymentError(BusinessError): ...
-
-# 父类处理器
-# 装饰器：app.exception_handler
-@app.exception_handler(BusinessError)
-# 定义异步函数 business_handler，参数: request, exc
-async def business_handler(request, exc):
-    # 返回 JSONResponse(400, {"msg": "业务错误"})
-    return JSONResponse(400, {"msg": "业务错误"})
-
-# 子类处理器(优先匹配)
-# 装饰器：app.exception_handler
-@app.exception_handler(PaymentError)
-# 定义异步函数 payment_handler，参数: request, exc
-async def payment_handler(request, exc):
-    # 返回 JSONResponse(402, {"msg": "支付错误"})
-    return JSONResponse(402, {"msg": "支付错误"})
-
-# 抛 PaymentError 会走 payment_handler(402)
-# 抛其它 BusinessError 子类(没单独注册)走 business_handler(400)
-\`\`\`
-
-FastAPI 按「最具体类型优先」匹配。利用这点,可以建异常层次,父类兜底,子类特殊处理。
-
-## 八、为什么用自定义异常
-
-| 维度 | HTTPException | 自定义异常 |
-|---|---|---|
-| 语义 | 通用 HTTP 错误 | 业务语义清晰 |
-| 上下文 | 只有 detail | 任意属性 |
-| 统一格式 | 难(各自拼 detail) | 处理器统一 |
-| 类型 | 一种类型 | 多种业务类型 |
-| 测试 | 难(要检查 status_code 和 detail) | 易(检查异常类型) |
-
-**适用场景**:
-- 中大型项目,业务错误多且需要分类 → 自定义异常。
-- 小项目,错误简单 → HTTPException 够用。
-- 需要统一错误响应格式 → 自定义异常 + 处理器。
-
-## 九、完整示例:业务异常 UnicornException
+FastAPI 参数校验失败时,默认返回 422,格式是 \`{"detail": [...], "body": ...}\`。很多时候我们想统一这个格式。FastAPI 提供了 \`RequestValidationError\` 让你自定义。
 
 \`\`\`python
 # 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
 # 从 fastapi.responses 导入 JSONResponse
 from fastapi.responses import JSONResponse
-# 从 pydantic 导入 BaseModel
-from pydantic import BaseModel
+# 从 fastapi.exceptions 导入 RequestValidationError
+from fastapi.exceptions import RequestValidationError
 
 # 创建 FastAPI 应用实例
 app = FastAPI()
 
-# 1. 自定义异常层次
+# 自定义参数校验错误的响应格式
+# 装饰器：app.exception_handler(RequestValidationError)
+@app.exception_handler(RequestValidationError)
+# 定义异步函数 validation_exception_handler，参数: request: Request, exc: RequestValidationError
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    # exc.errors() 返回所有校验错误的列表
+    # 定义变量 errors，赋值为 exc.errors()
+    errors = exc.errors()
+    # 返回统一格式
+    return JSONResponse(
+        status_code=422,
+        content={
+            "code": 422,
+            "message": "参数校验失败",
+            "errors": errors,
+            "data": None
+        }
+    )
+
+# 测试路由:age 必须是 >= 0 的整数
+# 定义 GET 路由：访问 /users 时触发
+@app.get("/users")
+# 定义函数 get_users，参数: age: int
+def get_users(age: int):
+    # age 必须是整数,不传或传非整数会触发 RequestValidationError
+    return {"age": age}
+\`\`\`
+
+访问 \`/users?age=abc\`,响应变成你定义的格式:
+\`\`\`json
+{
+  "code": 422,
+  "message": "参数校验失败",
+  "errors": [{"loc": ["query", "age"], "msg": "value is not a valid integer", "type": "type_error.integer"}],
+  "data": null
+}
+\`\`\`
+
+为什么重写这个?因为前端通常需要统一的错误格式来做通用处理。默认格式和你的业务错误格式不一致,前端要写两套解析逻辑。统一后,前端只认 \`{code, message}\`。
+
+## 六、自定义异常携带额外数据
+
+异常可以携带任意额外数据,处理器读取后放进响应。这让错误信息更丰富。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI, Request
+from fastapi import FastAPI, Request
+# 从 fastapi.responses 导入 JSONResponse
+from fastapi.responses import JSONResponse
+
+# 创建 FastAPI 应用实例
+app = FastAPI()
+
+# 自定义异常:携带额外字段
+# 定义类 OrderError，继承 Exception
+class OrderError(Exception):
+    # """订单异常"""
+    """订单异常"""
+    # 定义函数 __init__，参数: self, order_id: int, reason: str, suggestion: str
+    def __init__(self, order_id: int, reason: str, suggestion: str):
+        self.order_id = order_id       # 订单号
+        self.reason = reason           # 错误原因
+        self.suggestion = suggestion   # 建议操作
+        super().__init__(reason)
+
+# 处理器:读取异常的额外字段,放进响应
+# 装饰器：app.exception_handler(OrderError)
+@app.exception_handler(OrderError)
+# 定义异步函数 order_error_handler，参数: request: Request, exc: OrderError
+async def order_error_handler(request: Request, exc: OrderError):
+    # 返回 JSONResponse
+    return JSONResponse(
+        status_code=400,
+        content={
+            "order_id": exc.order_id,
+            "reason": exc.reason,
+            "suggestion": exc.suggestion
+        }
+    )
+
+# 使用
+# 定义 GET 路由：访问 /orders/{order_id}/cancel 时触发
+@app.get("/orders/{order_id}/cancel")
+# 定义函数 cancel_order，参数: order_id: int
+def cancel_order(order_id: int):
+    # 模拟:订单已发货不能取消
+    # 抛出 OrderError 异常: order_id=order_id, reason="订单已发货", suggestion="请联系客服拦截"
+    raise OrderError(order_id=order_id, reason="订单已发货", suggestion="请联系客服拦截")
+\`\`\`
+
+响应:
+\`\`\`json
+{
+  "order_id": 123,
+  "reason": "订单已发货",
+  "suggestion": "请联系客服拦截"
+}
+\`\`\`
+
+携带额外数据让错误响应更有「指导性」——不仅告诉用户错了,还告诉用户怎么办。这是好的 API 设计的体现。
+
+## 七、多个异常处理器的优先级
+
+可以注册多个异常处理器,每个对应不同异常类。FastAPI 按异常类的「具体程度」匹配:最具体的类优先。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI, Request
+from fastapi import FastAPI, Request
+# 从 fastapi.responses 导入 JSONResponse
+from fastapi.responses import JSONResponse
+
+# 创建 FastAPI 应用实例
+app = FastAPI()
+
+# 基类
 # 定义类 AppError，继承 Exception
 class AppError(Exception):
     # """应用异常基类"""
     """应用异常基类"""
-    # 定义函数 __init__，参数: self, message: str, code: int = 5000
-    def __init__(self, message: str, code: int = 5000):
-        # self.message = message
-        self.message = message
-        # self.code = code
-        self.code = code
-        # 调用 super()
-        super().__init__(message)
+    pass
 
-# 定义类 UnicornException，继承 AppError
-class UnicornException(AppError):
-    # """独角兽相关错误"""
-    """独角兽相关错误"""
-    # 定义函数 __init__，参数: self, name: str
-    def __init__(self, name: str):
-        # 调用 super()
-        super().__init__(message=f"独角兽 {name} 不存在", code=4001)
-        # self.name = name
-        self.name = name
+# 子类 1
+# 定义类 NotFoundError，继承 AppError
+class NotFoundError(AppError):
+    # """资源不存在"""
+    """资源不存在"""
+    pass
 
-# 2. 统一处理器(处理基类,子类也能被匹配)
-# 装饰器：app.exception_handler
+# 子类 2
+# 定义类 PermissionError_，继承 AppError
+class PermissionError_(AppError):
+    # """权限不足"""
+    """权限不足"""
+    pass
+
+# 处理器 1:处理基类(兜底)
+# 装饰器：app.exception_handler(AppError)
 @app.exception_handler(AppError)
 # 定义异步函数 app_error_handler，参数: request: Request, exc: AppError
 async def app_error_handler(request: Request, exc: AppError):
-    # 返回 JSONResponse(
-    return JSONResponse(
-        # 定义变量 status_code，赋值为 400,
-        status_code=400,
-        # 定义字典 content
-        content={
-            # "code": exc.code,
-            "code": exc.code,
-            # "message": exc.message,
-            "message": exc.message,
-            # "path": str(request.url.path),
-            "path": str(request.url.path),
-        # },
-        },
-    # )
-    )
+    # 返回 JSONResponse
+    return JSONResponse(status_code=400, content={"message": "应用错误"})
 
-# 3. 子类专属处理器(优先级高于父类)
-# 装饰器：app.exception_handler
-@app.exception_handler(UnicornException)
-# 定义异步函数 unicorn_handler，参数: request: Request, exc: UnicornException
-async def unicorn_handler(request: Request, exc: UnicornException):
-    # 返回 JSONResponse(
-    return JSONResponse(
-        # 定义变量 status_code，赋值为 404,
-        status_code=404,
-        # 定义字典 content
-        content={
-            # "code": exc.code,
-            "code": exc.code,
-            # "message": exc.message,
-            "message": exc.message,
-            "name": exc.name,  # 子类特有属性
-        # },
-        },
-    # )
-    )
+# 处理器 2:处理 NotFoundError(更具体,优先匹配)
+# 装饰器：app.exception_handler(NotFoundError)
+@app.exception_handler(NotFoundError)
+# 定义异步函数 not_found_handler，参数: request: Request, exc: NotFoundError
+async def not_found_handler(request: Request, exc: NotFoundError):
+    # 返回 JSONResponse
+    return JSONResponse(status_code=404, content={"message": "资源不存在"})
 
-# 4. 路由
-# 定义 GET 路由：访问 /unicorns/{name} 时触发
-@app.get("/unicorns/{name}")
-# 定义函数 get_unicorn，参数: name: str
-def get_unicorn(name: str):
-    # 条件判断：如果 name == "missing"
-    if name == "missing":
-        # 抛出 UnicornException 异常: name=name
-        raise UnicornException(name=name)
-    # 返回 {"name": name}
-    return {"name": name}
+# 处理器 3:处理 PermissionError_
+# 装饰器：app.exception_handler(PermissionError_)
+@app.exception_handler(PermissionError_)
+# 定义异步函数 permission_handler，参数: request: Request, exc: PermissionError_
+async def permission_handler(request: Request, exc: PermissionError_):
+    # 返回 JSONResponse
+    return JSONResponse(status_code=403, content={"message": "权限不足"})
 
-# 定义 GET 路由：访问 /error 时触发
-@app.get("/error")
-# 定义函数 error，参数: 
-def error():
-    # 抛出 AppError 异常: "通用错误", code=5001
-    raise AppError("通用错误", code=5001)
+# 测试
+# 定义 GET 路由：访问 /test/{kind} 时触发
+@app.get("/test/{kind}")
+# 定义函数 test，参数: kind: str
+def test(kind: str):
+    if kind == "notfound":
+        # 抛出 NotFoundError 异常
+        raise NotFoundError()
+    if kind == "permission":
+        # 抛出 PermissionError_ 异常
+        raise PermissionError_()
+    # 其他抛基类
+    raise AppError()
 \`\`\`
 
-- \`/unicorns/missing\` → 404,走 \`unicorn_handler\`(带 name 字段)。
-- \`/error\` → 400,走 \`app_error_handler\`(基类兜底)。
+规则:raise \`NotFoundError\` 时,匹配 \`NotFoundError\` 的处理器(最具体),而不是 \`AppError\` 的。这和 Python 的异常处理一致——except 子句也是从具体到通用。
 
-## 十、易错点小结
+避坑:如果你只注册了基类的处理器,子类异常也会被基类处理器捕获。这未必是你想要的,因为子类可能需要不同的状态码。
 
-| 易错点 | 说明 | 正确做法 |
-|---|---|---|
-| 处理器忘了 async | 报错 | 必须 async def |
-| 处理器返回非 Response | 报错 | 返回 JSONResponse 等 |
-| 异常类不调 super().__init__ | traceback 缺信息 | 调用父类初始化 |
-| 子类处理器注册顺序在父类后 | 不影响(按类型匹配) | 不用担心顺序 |
-| 异常被 HTTPException 处理器抢走 | 不会,自定义异常不是 HTTPException | 放心 |
-| 处理器抛异常 | 二次错误,变 500 | 处理器内部别抛 |
+## 八、实战:业务异常体系设计
 
-## 十一、设计思想
-
-自定义异常体现「业务语言化」:错误不再是裸的数字码,而是有类型、有语义、有上下文的对象。这让代码自文档化,也让错误处理可扩展(加新错误只需加新异常类)。配合处理器,把「抛异常」和「生成响应」解耦——业务代码只管抛,响应格式由处理器统一管。这是大型项目错误处理的标准模式。
-`,
-  },
-  {
-    id: "exc-handler",
-    group: "异常处理",
-    icon: "🚨",
-    title: "全局异常处理",
-    content: `
-## 一、覆盖默认错误格式
-
-FastAPI 默认的 404 响应是 \`{"detail":"Not Found"}\`,422 校验错误是 \`{"detail":[...]}\`。但生产 API 通常需要统一格式,比如:
-\`\`\`json
-{"code": 404, "message": "Not Found"}
-\`\`\`
-
-这就需要覆盖默认处理器。
-
-## 二、@app.exception_handler(StarletteHTTPException)
-
-FastAPI 的 HTTP 错误(404/500 等由 Starlette 抛的)用的是 \`StarletteHTTPException\`。覆盖它:
+设计一个完整的业务异常体系:\`BusinessError\`(基类) -> \`NotFoundError\`、\`PermissionError\`、\`ConflictError\`(子类)。
 
 \`\`\`python
 # 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
 # 从 fastapi.responses 导入 JSONResponse
 from fastapi.responses import JSONResponse
-# 从 starlette.exceptions 导入 HTTPException as StarletteHTTPException
-from starlette.exceptions import HTTPException as StarletteHTTPException
 
 # 创建 FastAPI 应用实例
 app = FastAPI()
 
-# 装饰器：app.exception_handler
-@app.exception_handler(StarletteHTTPException)
-# 定义异步函数 custom_http_handler，参数: request: Request, exc: StarletteHTTPException
-async def custom_http_handler(request: Request, exc: StarletteHTTPException):
-    # 统一格式:{code, message}
-    # 返回 JSONResponse(
+# ============ 异常体系定义 ============
+
+# 基类:所有业务异常的父类
+# 定义类 BusinessError，继承 Exception
+class BusinessError(Exception):
+    # """业务异常基类"""
+    """业务异常基类"""
+    # 定义函数 __init__，参数: self, code: int, message: str, http_status: int = 400
+    def __init__(self, code: int, message: str, http_status: int = 400):
+        self.code = code
+        self.message = message
+        self.http_status = http_status
+        super().__init__(message)
+
+# 资源不存在
+# 定义类 NotFoundError，继承 BusinessError
+class NotFoundError(BusinessError):
+    # 定义函数 __init__，参数: self, resource: str, resource_id
+    def __init__(self, resource: str, resource_id):
+        # 调用父类:code=10001, message=具体信息, http_status=404
+        super().__init__(
+            code=10001,
+            message=f"{resource} {resource_id} 不存在",
+            http_status=404
+        )
+
+# 权限不足
+# 定义类 PermissionError_，继承 BusinessError
+class PermissionError_(BusinessError):
+    # 定义函数 __init__，参数: self, action: str
+    def __init__(self, action: str):
+        super().__init__(
+            code=10002,
+            message=f"无权限执行 {action}",
+            http_status=403
+        )
+
+# 资源冲突
+# 定义类 ConflictError，继承 BusinessError
+class ConflictError(BusinessError):
+    # 定义函数 __init__，参数: self, message: str
+    def __init__(self, message: str):
+        super().__init__(
+            code=10003,
+            message=message,
+            http_status=409
+        )
+
+# ============ 异常处理器 ============
+
+# 统一处理器:捕获所有 BusinessError(子类也会进来)
+# 装饰器：app.exception_handler(BusinessError)
+@app.exception_handler(BusinessError)
+# 定义异步函数 business_error_handler，参数: request: Request, exc: BusinessError
+async def business_error_handler(request: Request, exc: BusinessError):
+    # 返回统一格式
     return JSONResponse(
-        # 定义变量 status_code，赋值为 exc.status_code,
-        status_code=exc.status_code,
-        # 定义字典 content
+        status_code=exc.http_status,
         content={
-            # "code": exc.status_code,
-            "code": exc.status_code,
-            # "message": exc.detail,
-            "message": exc.detail,
-        # },
-        },
-    # )
+            "code": exc.code,
+            "message": exc.message,
+            "data": None
+        }
     )
 
-# 现在 404 会返回 {"code": 404, "message": "Not Found"}
+# ============ 路由使用 ============
+
+# 模拟用户表
+# 定义变量 users，赋值为 {1: {"name": "alice"}, 2: {"name": "bob"}}
+users = {1: {"name": "alice"}, 2: {"name": "bob"}}
+
+# 获取用户:可能 NotFoundError
+# 定义 GET 路由：访问 /users/{user_id} 时触发
+@app.get("/users/{user_id}")
+# 定义函数 get_user，参数: user_id: int
+def get_user(user_id: int):
+    if user_id not in users:
+        # 抛出 NotFoundError 异常: resource="用户", resource_id=user_id
+        raise NotFoundError("用户", user_id)
+    return users[user_id]
+
+# 删除用户:可能 NotFoundError 或 PermissionError_
+# 定义 DELETE 路由：访问 /users/{user_id} 时触发
+@app.delete("/users/{user_id}")
+# 定义函数 delete_user，参数: user_id: int, role: str
+def delete_user(user_id: int, role: str):
+    # 1. 先检查权限
+    if role != "admin":
+        # 抛出 PermissionError_ 异常: action="删除用户"
+        raise PermissionError_("删除用户")
+    # 2. 再检查资源
+    if user_id not in users:
+        # 抛出 NotFoundError 异常: resource="用户", resource_id=user_id
+        raise NotFoundError("用户", user_id)
+    # 删除
+    del users[user_id]
+    return {"deleted": user_id}
 \`\`\`
 
-注意:\`fastapi.HTTPException\` 是 \`StarletteHTTPException\` 的子类,所以这个处理器也会捕获 FastAPI 的 HTTPException。
+这个体系的设计要点:
+- **基类携带 code/message/http_status**:子类只需在 __init__ 里填具体值,处理器只写一个(捕获基类)。
+- **子类语义化**:\`NotFoundError("用户", 1)\` 比 \`BusinessError(10001, "用户 1 不存在", 404)\` 更易读。
+- **处理器统一**:一个 \`business_error_handler\` 处理所有业务异常,响应格式统一。
 
-## 三、处理 422 校验错误
+怎么想:异常体系要反映业务语义。先列出业务里有哪些类别的错误(不存在、无权限、冲突、参数错),每类一个异常类。错误码用数字分段(10000 段是用户,20000 段是订单),方便定位。
 
-请求体校验失败时,FastAPI 抛 \`RequestValidationError\`:
+## 九、常见错误与避坑指南
+
+**错误 1:注册处理器时异常类写错**
+
+\`@app.exception_handler(BusinessError)\` 传的是「类」本身,不是字符串、不是实例。如果传错,处理器不会生效,异常会变成 500。
+
+**错误 2:处理器忘记返回 JSONResponse**
+
+处理器必须返回一个 Response 对象(通常是 JSONResponse)。如果返回 dict,FastAPI 不会自动包装,会报错。
+
+**错误 3:异常处理器里又 raise 了同样异常**
 
 \`\`\`python
-# 从 fastapi.exceptions 导入 RequestValidationError
-from fastapi.exceptions import RequestValidationError
-# 从 fastapi.encoders 导入 jsonable_encoder
-from fastapi.encoders import jsonable_encoder
-
-# 装饰器：app.exception_handler
-@app.exception_handler(RequestValidationError)
-# 定义异步函数 validation_handler，参数: request: Request, exc: RequestValidationError
-async def validation_handler(request: Request, exc: RequestValidationError):
-    # exc.errors() 是错误列表
-    # 返回 JSONResponse(
-    return JSONResponse(
-        # 定义变量 status_code，赋值为 422,
-        status_code=422,
-        # 定义字典 content
-        content={
-            # "code": 422,
-            "code": 422,
-            # "message": "请求参数校验失败",
-            "message": "请求参数校验失败",
-            # "errors": jsonable_encoder(exc.errors()),
-            "errors": jsonable_encoder(exc.errors()),
-        # },
-        },
-    # )
-    )
+# 装饰器：app.exception_handler(BusinessError)
+@app.exception_handler(BusinessError)
+async def handler(request, exc):
+    raise BusinessError(...)  # 死循环!处理器里又抛同样异常
 \`\`\`
 
-默认的 422 响应是 \`{"detail": [...]}\`,这里改成自定义格式 \`{"code":422,"message":...,"errors":[...]}\`。
+这会导致无限递归。处理器里只能返回响应,不能再 raise 被处理的那个异常。
 
-## 四、自定义 422 错误格式
+**错误 4:自定义异常和 HTTPException 混用导致处理器冲突**
 
-\`exc.errors()\` 返回的列表每个元素类似:
-\`\`\`python
-# [
-[
-    # {
-    {
-        "loc": ["body", "name"],      # 错误位置
-        "msg": "field required",       # 错误信息
-        # "type": "value_error.missing", # 错误类型
-        "type": "value_error.missing", # 错误类型
-    # }
-    }
-# ]
-]
-\`\`\`
+如果你既 raise HTTPException 又 raise 自定义异常,要注意:HTTPException 有自己的内置处理器。你的 \`exception_handler(Exception)\` 不会捕获 HTTPException(因为它的继承链特殊)。两者各管各的,不会冲突,但你要清楚哪个异常走哪个处理器。
 
-可以重新格式化更友好:
+## 十、设计思想
+
+自定义异常的核心价值是「解耦」:业务逻辑 raise 语义化的业务异常,表现层用处理器把它翻译成 HTTP 响应。这样业务代码不依赖 FastAPI,可以被复用(比如同一个 service 被 Web 和 CLI 调用)。
+
+设计异常体系时,要想清楚三件事:有哪些错误类别(决定异常类的层次)、每个错误带什么信息(决定异常类的属性)、错误怎么呈现给客户端(决定处理器的响应格式)。这三者想清楚,异常体系就立住了。
+
+下一章我们讲「全局异常处理」——当异常没被任何自定义处理器捕获时,怎么兜底,保证不把 500 错误的堆栈直接暴露给用户。
+`,
+  },
+  {
+    id: "fa-global-exception",
+    group: "异常处理",
+    icon: "🌍",
+    title: "全局异常处理",
+    content: `
+## 一、为什么需要全局异常处理
+
+上一章我们为「已知异常」(自定义业务异常、RequestValidationError)注册了处理器。但生产环境总会有「未知异常」:数据库连接断了、第三方接口超时、代码里一个 None.title() 的 bug。这些异常没有被任何处理器捕获,默认行为是 FastAPI 返回 500,并把错误堆栈暴露在响应里。
+
+这有两个严重问题:
+1. **安全问题**:堆栈信息暴露了代码结构、文件路径、依赖版本,是攻击者的情报。
+2. **体验问题**:用户看到一个原始的 Python 报错,完全不知道怎么办。
+
+全局异常处理就是给所有「漏网之鱼」兜底:注册一个 \`exception_handler(Exception)\`,捕获所有未处理异常,返回统一的友好错误响应,同时把详细错误记录到日志(而不是响应体)。
+
+## 二、捕获所有未处理异常
+
+注册 \`exception_handler(Exception)\` 可以捕获所有未被更具体处理器匹配的异常。
 
 \`\`\`python
-# 装饰器：app.exception_handler
-@app.exception_handler(RequestValidationError)
-# 定义异步函数 validation_handler，参数: request, exc
-async def validation_handler(request, exc):
-    # 转成 {field: message} 形式,前端好用
-    # 定义字典 formatted
-    formatted = {}
-    # 遍历 exc.errors()，取 err
-    for err in exc.errors():
-        # loc 是 ["body", "name"] 这种,取最后一个字段名
-        # 定义变量 field，赋值为 ".".join(str(x) for x in err["loc"][1:])
-        field = ".".join(str(x) for x in err["loc"][1:])
-        # formatted[field] = err["msg"]
-        formatted[field] = err["msg"]
-    # 返回 JSONResponse(
-    return JSONResponse(
-        # 定义变量 status_code，赋值为 422,
-        status_code=422,
-        # 定义字典 content
-        content={
-            # "code": 422,
-            "code": 422,
-            # "message": "参数错误",
-            "message": "参数错误",
-            # "fields": formatted,
-            "fields": formatted,
-        # },
-        },
-    # )
-    )
-\`\`\`
-
-响应示例:
-\`\`\`json
-{
-  "code": 422,
-  "message": "参数错误",
-  "fields": {"name": "field required", "price": "value is not a valid float"}
-}
-\`\`\`
-
-## 五、兜底所有未捕获异常:@app.exception_handler(Exception)
-
-\`@app.exception_handler(Exception)\` 捕获所有未处理的异常(不含 HTTPException,因为后者有专门处理器):
-
-\`\`\`python
-# 导入 logging 模块
-import logging
 # 从 fastapi 导入 FastAPI, Request
 from fastapi import FastAPI, Request
 # 从 fastapi.responses 导入 JSONResponse
 from fastapi.responses import JSONResponse
 
-# 定义变量 logger，赋值为 logging.getLogger("api")
-logger = logging.getLogger("api")
+# 创建 FastAPI 应用实例
+app = FastAPI()
 
-# 装饰器：app.exception_handler
+# 全局兜底处理器:捕获所有未处理异常
+# 装饰器：app.exception_handler(Exception)
 @app.exception_handler(Exception)
 # 定义异步函数 global_exception_handler，参数: request: Request, exc: Exception
 async def global_exception_handler(request: Request, exc: Exception):
-    # 1. 记录完整堆栈(生产环境必须)
-    # 调用 logger.exception()
-    logger.exception(f"未处理异常: {request.url.path}")
-    # 2. 返回通用错误,不暴露堆栈(安全)
-    # 返回 JSONResponse(
+    # 返回统一的友好错误响应,不暴露堆栈
     return JSONResponse(
-        # 定义变量 status_code，赋值为 500,
         status_code=500,
-        # 定义字典 content
         content={
-            # "code": 500,
-            "code": 500,
-            # "message": "服务器内部错误",
-            "message": "服务器内部错误",
-        # },
-        },
-    # )
+            "code": 50000,
+            "message": "服务器内部错误,请稍后重试",
+            "data": None
+        }
     )
 
-# 定义 GET 路由：访问 /error 时触发
-@app.get("/error")
-# 定义函数 error，参数: 
-def error():
-    # 这个异常会被全局处理器捕获
-    # 定义变量 x，赋值为 1 / 0
-    x = 1 / 0
-    # 返回 {"x": x}
-    return {"x": x}
+# 故意制造一个未处理异常的路由
+# 定义 GET 路由：访问 /bug 时触发
+@app.get("/bug")
+# 定义函数 trigger_bug
+def trigger_bug():
+    # None 没有 .upper() 方法,会抛 AttributeError
+    # 定义变量 name，赋值为 None
+    name = None
+    # 这行会抛异常
+    return {"upper": name.upper()}
 \`\`\`
 
-## 六、为什么兜底:避免 500 暴露堆栈
-
-不兜底的后果:
-- 默认 500 响应可能含堆栈信息(开发模式),泄漏内部实现。
-- 客户端看到原始错误,不知如何处理。
-- 日志没记录,排查困难。
-
-兜底后:
-- 返回统一格式,客户端友好。
-- 堆栈记到日志(服务器侧),可排查。
-- 不泄漏内部细节。
-
-## 七、生产环境错误日志
-
-生产环境,全局处理器应该:
-1. **记录完整堆栈**(logger.exception 自动带堆栈)。
-2. **记录请求上下文**(URL、method、参数、用户 ID)。
-3. **关联 request_id**(如果有追踪中间件)。
-4. **告警**(发 Sentry/邮件)。
-
-\`\`\`python
-# 装饰器：app.exception_handler
-@app.exception_handler(Exception)
-# 定义异步函数 global_handler，参数: request: Request, exc: Exception
-async def global_handler(request: Request, exc: Exception):
-    # 定义变量 rid，赋值为 getattr(request.state, "request_id", "unknown...
-    rid = getattr(request.state, "request_id", "unknown")
-    # logger.exception(
-    logger.exception(
-        # f"[{rid}] 未处理异常 path={request.url.path} method={re
-        f"[{rid}] 未处理异常 path={request.url.path} method={request.method}"
-    # )
-    )
-    # 这里可以集成 Sentry: sentry_sdk.capture_exception(exc)
-    # 返回 JSONResponse(
-    return JSONResponse(
-        # 定义变量 status_code，赋值为 500,
-        status_code=500,
-        # 定义字典 content
-        content={
-            # "code": 500,
-            "code": 500,
-            # "message": "服务器内部错误",
-            "message": "服务器内部错误",
-            "request_id": rid,  # 给客户端,方便反馈排查
-        # },
-        },
-    # )
-    )
+访问 \`/bug\`,响应:
+\`\`\`json
+{
+  "code": 50000,
+  "message": "服务器内部错误,请稍后重试",
+  "data": null
+}
 \`\`\`
 
-## 八、处理器注册顺序
+用户看不到堆栈,只看到友好提示。真实的错误你需要记到日志里(下面讲)。
 
-多个处理器注册顺序不影响匹配(按异常类型匹配,不是按注册顺序)。但有一个隐含规则:**最具体的类型优先**。
+## 三、exception_handler(Exception) 的注意事项
 
-\`\`\`python
-# 定义类 AppError，继承 Exception
-class AppError(Exception): ...
-# 定义类 SubError，继承 AppError
-class SubError(AppError): ...
+注册 \`exception_handler(Exception)\` 有一个重要陷阱:它可能会「过度捕获」,把本该由其他处理器处理的异常也拦走。
 
-# 注册顺序无所谓
-# 装饰器：app.exception_handler
-@app.exception_handler(AppError)
-# 定义异步函数 app_handler，参数: request, exc
-async def app_handler(request, exc): ...
+关键规则:FastAPI 的异常处理器匹配,对于 \`Exception\` 这个基类,行为和子类匹配不同。当你注册了 \`exception_handler(Exception)\`,以下异常「不会」被它捕获:
 
-# 装饰器：app.exception_handler
-@app.exception_handler(SubError)
-# 定义异步函数 sub_handler，参数: request, exc
-async def sub_handler(request, exc): ...
+- \`HTTPException\`:FastAPI 为它内置了专用处理器,优先级高于 \`Exception\`。
+- \`RequestValidationError\`:同样有内置处理器。
+- 你自定义的、注册了专用处理器的异常:会优先匹配具体的。
 
-# 抛 SubError → 走 sub_handler(更具体)
-# 抛 AppError(非 SubError)→ 走 app_handler
-\`\`\`
-
-## 九、完整示例:统一错误格式处理器
+但有些 Starlette 内部异常、或你的自定义异常如果「没注册」专用处理器,就会被 \`Exception\` 兜底。
 
 \`\`\`python
-# 导入 logging 模块
-import logging
-# 从 fastapi 导入 FastAPI, Request
-from fastapi import FastAPI, Request
+# 从 fastapi 导入 FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException
 # 从 fastapi.responses 导入 JSONResponse
 from fastapi.responses import JSONResponse
-# 从 fastapi.exceptions 导入 RequestValidationError
-from fastapi.exceptions import RequestValidationError
-# 从 fastapi.encoders 导入 jsonable_encoder
-from fastapi.encoders import jsonable_encoder
-# 从 starlette.exceptions 导入 HTTPException as StarletteHTTPException
-from starlette.exceptions import HTTPException as StarletteHTTPException
-
-# 调用 logging.basicConfig()
-logging.basicConfig(level=logging.INFO)
-# 定义变量 logger，赋值为 logging.getLogger("api")
-logger = logging.getLogger("api")
 
 # 创建 FastAPI 应用实例
 app = FastAPI()
 
-# 1. 覆盖 HTTP 错误(404/403 等)
-# 装饰器：app.exception_handler
-@app.exception_handler(StarletteHTTPException)
-# 定义异步函数 http_exception_handler，参数: request: Request, exc: StarletteHTTPException
-async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    # 返回 JSONResponse(
-    return JSONResponse(
-        # 定义变量 status_code，赋值为 exc.status_code,
-        status_code=exc.status_code,
-        # 定义字典 content
-        content={
-            # "code": exc.status_code,
-            "code": exc.status_code,
-            # "message": exc.detail,
-            "message": exc.detail,
-            # "path": str(request.url.path),
-            "path": str(request.url.path),
-        # },
-        },
-    # )
-    )
-
-# 2. 覆盖 422 校验错误
-# 装饰器：app.exception_handler
-@app.exception_handler(RequestValidationError)
-# 定义异步函数 validation_handler，参数: request: Request, exc: RequestValidationError
-async def validation_handler(request: Request, exc: RequestValidationError):
-    # 定义字典 fields
-    fields = {}
-    # 遍历 exc.errors()，取 err
-    for err in exc.errors():
-        # 定义变量 loc，赋值为 err["loc"]
-        loc = err["loc"]
-        # body 的字段从 loc[1] 开始,path/query 从 loc[0] 开始
-        # 定义变量 field，赋值为 ".".join(str(x) for x in loc[1:]) if loc[0] =...
-        field = ".".join(str(x) for x in loc[1:]) if loc[0] == "body" else loc[0]
-        # fields[field] = err["msg"]
-        fields[field] = err["msg"]
-    # 返回 JSONResponse(
-    return JSONResponse(
-        # 定义变量 status_code，赋值为 422,
-        status_code=422,
-        # 定义字典 content
-        content={
-            # "code": 422,
-            "code": 422,
-            # "message": "参数校验失败",
-            "message": "参数校验失败",
-            # "fields": fields,
-            "fields": fields,
-        # },
-        },
-    # )
-    )
-
-# 3. 兜底所有未处理异常
-# 装饰器：app.exception_handler
+# 全局兜底
+# 装饰器：app.exception_handler(Exception)
 @app.exception_handler(Exception)
 # 定义异步函数 global_handler，参数: request: Request, exc: Exception
 async def global_handler(request: Request, exc: Exception):
-    # 调用 logger.exception()
-    logger.exception(f"未处理异常: {request.url.path}")
-    # 返回 JSONResponse(
+    # 兜底:返回 500
+    return JSONResponse(status_code=500, content={"message": "服务器错误"})
+
+# HTTPException 仍然走自己的处理器,不被 Exception 拦截
+# 定义 GET 路由：访问 /http-err 时触发
+@app.get("/http-err")
+# 定义函数 http_err
+def http_err():
+    # 这个会被 HTTPException 内置处理器处理,返回 {"detail": "..."}
+    # 抛出 HTTPException 异常: status_code=404, detail="not found"
+    raise HTTPException(status_code=404, detail="not found")
+
+# 普通异常走兜底
+# 定义 GET 路由：访问 /generic-err 时触发
+@app.get("/generic-err")
+# 定义函数 generic_err
+def generic_err():
+    # 这个没有专用处理器,被 Exception 兜底
+    # 抛出 ValueError 异常: "something wrong"
+    raise ValueError("something wrong")
+\`\`\`
+
+避坑:如果你发现注册了 \`exception_handler(Exception)\` 后,某些自定义异常不走了,可能是被兜底拦走了。解决:为那个异常注册更具体的处理器。
+
+## 四、StarletteHTTPException 处理器
+
+FastAPI 的 \`HTTPException\` 继承自 Starlette 的 \`HTTPException\`。有时你需要重写它的响应格式(比如把 \`{"detail": ...}\` 改成 \`{"code", "message"}\`)。这时要捕获 Starlette 的 \`HTTPException\`。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException
+# 从 fastapi.responses 导入 JSONResponse
+from fastapi.responses import JSONResponse
+# 从 starlette.exceptions 导入 HTTPException as StarletteHTTPException
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+# 创建 FastAPI 应用实例
+app = FastAPI()
+
+# 重写 Starlette HTTPException 的响应格式
+# 装饰器：app.exception_handler(StarletteHTTPException)
+@app.exception_handler(StarletteHTTPException)
+# 定义异步函数 starlette_http_handler，参数: request: Request, exc: StarletteHTTPException
+async def starlette_http_handler(request: Request, exc: StarletteHTTPException):
+    # exc.status_code:状态码; exc.detail:详情
     return JSONResponse(
-        # 定义变量 status_code，赋值为 500,
-        status_code=500,
-        # 定义字典 content
+        status_code=exc.status_code,
         content={
-            # "code": 500,
-            "code": 500,
-            # "message": "服务器内部错误",
-            "message": "服务器内部错误",
-        # },
-        },
-    # )
+            "code": exc.status_code,
+            "message": exc.detail,
+            "data": None
+        }
     )
 
-# 定义 GET 路由：访问 / 时触发
-@app.get("/")
-# 定义函数 root，参数: 
-def root():
-    # 返回 {"msg": "ok"}
-    return {"msg": "ok"}
-
-# 定义 GET 路由：访问 /notfound 时触发
-@app.get("/notfound")
-# 定义函数 notfound，参数: 
-def notfound():
-    # 这会触发 404(因为路由存在,演示用 HTTPException)
-    # 从 fastapi 导入 HTTPException
-    from fastapi import HTTPException
-    # 抛出 HTTPException 异常: 404, "资源不存在"
-    raise HTTPException(404, "资源不存在")
-
-# 定义 GET 路由：访问 /error 时触发
-@app.get("/error")
-# 定义函数 error，参数: 
-def error():
-    x = 1 / 0  # 触发全局处理器
-    # 返回 x
-    return x
+# 测试:404 路由(访问不存在的路径也会走这里)
+# 定义 GET 路由：访问 /items/{item_id} 时触发
+@app.get("/items/{item_id}")
+# 定义函数 get_item，参数: item_id: int
+def get_item(item_id: int):
+    # 抛出 HTTPException 异常: status_code=404, detail="商品不存在"
+    raise HTTPException(status_code=404, detail="商品不存在")
 \`\`\`
 
-## 十、易错点小结
-
-| 易错点 | 说明 | 正确做法 |
-|---|---|---|
-| 覆盖 HTTPException 用错类 | 应该用 StarletteHTTPException | import 正确的类 |
-| 全局处理器暴露堆栈 | 安全风险 | 只记日志,响应不暴露 |
-| 处理器里抛异常 | 二次 500 | 处理器内部 try/except |
-| 忘记记日志 | 排查困难 | logger.exception |
-| 422 格式不友好 | 前端难用 | 重格式化 |
-| Exception 处理器捕获 HTTPException | 不会(后者有专门处理器) | 知道这个行为 |
-
-## 十一、设计思想
-
-全局异常处理是「防御性编程」的体现。无论代码怎么写 BUG,API 都应该返回一致的、不泄漏的、有日志的错误响应。这是生产级服务的基本要求。FastAPI 的异常处理器机制让你能集中控制错误响应格式,不用在每个路由里写 try/except。理解 \"HTTP 错误用 HTTPException,业务错误用自定义异常,意外错误用全局兜底\" 这个三层模型,错误处理就清晰了。
-`,
-  },
-  {
-    id: "exc-practice",
-    group: "异常处理",
-    icon: "🛡️",
-    title: "异常处理最佳实践",
-    content: `
-## 一、异常分层
-
-一个成熟的 API 应用,异常应该分三层:
-
-1. **校验异常**(422/400):请求参数格式、字段校验失败。FastAPI 自动处理。
-2. **业务异常**(4xx):业务规则违反(余额不足、权限不够、资源不存在)。自定义异常。
-3. **系统异常**(5xx):数据库连接失败、第三方服务超时、代码 BUG。兜底处理。
-
-每层职责清晰,不混淆。
-
-\`\`\`python
-# 校验异常:Pydantic 模型自动触发,不用手写
-# 定义 Pydantic 数据模型 UserCreate，继承 BaseModel
-class UserCreate(BaseModel):
-    # 字段 name，类型: str
-    name: str
-    age: int  # 传非 int 自动 422
-
-# 业务异常:自定义
-# 定义类 InsufficientBalanceError，继承 Exception
-class InsufficientBalanceError(Exception): ...
-
-# 系统异常:意外,全局兜底
-# @app.exception_handler(Exception)
-\`\`\`
-
-## 二、统一错误响应格式
-
-生产 API 应有统一格式,前端按固定结构解析:
-
+访问 \`/items/1\`,响应:
 \`\`\`json
-{
-  "code": 4001,
-  "message": "余额不足",
-  "details": {"user_id": 1, "needed": 100, "balance": 50},
-  "request_id": "abc123"
-}
+{"code": 404, "message": "商品不存在", "data": null}
 \`\`\`
 
-字段约定:
-- **code**:业务错误码(数字,有体系),区别于 HTTP status_code。
-- **message**:用户可读信息(中文)。
-- **details**:可选,上下文数据。
-- **request_id**:请求 ID,排查用。
+为什么是 StarletteHTTPException 而不是 fastapi 的 HTTPException?因为 FastAPI 的 HTTPException 继承自 Starlette 的,注册父类的处理器能覆盖所有 HTTP 异常(包括 FastAPI 自己 raise 的和 Starlette 内部 raise 的,比如 404 路由找不到)。
 
-实现统一处理器:
+## 五、ResponseError 处理器
+
+有时你想对 \`HTTPException\` 做更细的控制——比如 404 和 500 用不同格式。可以在处理器里判断状态码。
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI, Request
+from fastapi import FastAPI, Request
+# 从 fastapi.responses 导入 JSONResponse
+from fastapi.responses import JSONResponse
+# 从 starlette.exceptions 导入 HTTPException as StarletteHTTPException
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+# 创建 FastAPI 应用实例
+app = FastAPI()
+
+# 按 HTTP 状态码分类处理
+# 装饰器：app.exception_handler(StarletteHTTPException)
+@app.exception_handler(StarletteHTTPException)
+# 定义异步函数 smart_http_handler，参数: request: Request, exc: StarletteHTTPException
+async def smart_http_handler(request: Request, exc: StarletteHTTPException):
+    # 404:资源不存在
+    if exc.status_code == 404:
+        # 返回 JSONResponse
+        return JSONResponse(
+            status_code=404,
+            content={"code": 404, "message": f"路径 {request.url.path} 不存在", "data": None}
+        )
+    # 405:方法不允许
+    if exc.status_code == 405:
+        # 返回 JSONResponse
+        return JSONResponse(
+            status_code=405,
+            content={"code": 405, "message": "请求方法不被允许", "data": None}
+        )
+    # 其他 HTTP 异常:通用格式
+    # 返回 JSONResponse
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"code": exc.status_code, "message": exc.detail, "data": None}
+    )
+
+# 测试:访问不存在的路由会触发 404
+# 定义 GET 路由：访问 /known 时触发
+@app.get("/known")
+# 定义函数 known
+def known():
+    return {"hello": "world"}
+\`\`\`
+
+访问 \`/unknown\`(不存在的路径),会返回 \`{"code": 404, "message": "路径 /unknown 不存在"}\`。
+
+这种按状态码分支的做法,让错误响应更贴合场景。
+
+## 六、日志记录异常
+
+全局处理器不仅要返回友好响应,还要把真实错误记到日志,方便排查。否则用户报了错,你却没有任何记录。
+
+\`\`\`python
+# 导入 logging 模块
+import logging
+# 导入 traceback 模块
+import traceback
+# 从 fastapi 导入 FastAPI, Request
+from fastapi import FastAPI, Request
 # 从 fastapi.responses 导入 JSONResponse
 from fastapi.responses import JSONResponse
 
-# 定义异步函数 unified_error_response，参数: status_code: int, code: int, message: str, request...
-async def unified_error_response(status_code: int, code: int, message: str, request: Request, details=None):
-    # 返回 JSONResponse(
-    return JSONResponse(
-        # 定义变量 status_code，赋值为 status_code,
-        status_code=status_code,
-        # 定义字典 content
-        content={
-            # "code": code,
-            "code": code,
-            # "message": message,
-            "message": message,
-            # "details": details,
-            "details": details,
-            # "request_id": getattr(request.state, "request_id",
-            "request_id": getattr(request.state, "request_id", None),
-        # },
-        },
-    # )
-    )
-\`\`\`
-
-## 三、错误码体系设计
-
-错误码要有体系,不要随手编。常见方案:
-
-\`\`\`
-1xxxx - 用户相关(10001 用户不存在,10002 密码错误)
-2xxxx - 订单相关(20001 订单不存在,20002 库存不足)
-3xxxx - 支付相关(30001 余额不足,30002 支付超时)
-4xxxx - 权限相关(40001 未登录,40002 无权限)
-5xxxx - 系统相关(50001 数据库错误,50002 第三方服务错误)
-\`\`\`
-
-规律:前两位是模块,后三位是具体错误。这样看码就知道哪个模块出问题。
-
-\`\`\`python
-# 定义类 ErrorCode
-class ErrorCode:
-    # 用户模块 1xxxx
-    # 定义变量 USER_NOT_FOUND，赋值为 10001
-    USER_NOT_FOUND = 10001
-    # 定义变量 USER_PASSWORD_WRONG，赋值为 10002
-    USER_PASSWORD_WRONG = 10002
-    # 订单模块 2xxxx
-    # 定义变量 ORDER_NOT_FOUND，赋值为 20001
-    ORDER_NOT_FOUND = 20001
-    # 定义变量 ORDER_INSUFFICIENT_STOCK，赋值为 20002
-    ORDER_INSUFFICIENT_STOCK = 20002
-    # 权限模块 4xxxx
-    # 定义变量 AUTH_NOT_LOGIN，赋值为 40001
-    AUTH_NOT_LOGIN = 40001
-    # 定义变量 AUTH_NO_PERMISSION，赋值为 40002
-    AUTH_NO_PERMISSION = 40002
-\`\`\`
-
-用常量而非裸数字,集中管理。
-
-## 四、日志记录异常堆栈
-
-生产环境,**所有 5xx 必须记完整堆栈**:
-
-\`\`\`python
-# 导入 logging 模块
-import logging
+# 配置日志
 # 定义变量 logger，赋值为 logging.getLogger("api")
 logger = logging.getLogger("api")
+# 调用 logging.basicConfig
+logging.basicConfig(level=logging.INFO)
 
-# 装饰器：app.exception_handler
+# 创建 FastAPI 应用实例
+app = FastAPI()
+
+# 全局处理器:记日志 + 返回友好响应
+# 装饰器：app.exception_handler(Exception)
 @app.exception_handler(Exception)
 # 定义异步函数 global_handler，参数: request: Request, exc: Exception
 async def global_handler(request: Request, exc: Exception):
-    # logger.exception 会自动带堆栈(等价于 logger.error + exc_info=True)
-    # logger.exception(
-    logger.exception(
-        # f"未处理异常 path={request.url.path} "
-        f"未处理异常 path={request.url.path} "
-        # f"method={request.method} "
-        f"method={request.method} "
-        # f"query={dict(request.query_params)}"
-        f"query={dict(request.query_params)}"
-    # )
-    )
-    # 返回 JSONResponse(status_code=500, content={"code": 5000, "message": "服务器错误"})
-    return JSONResponse(status_code=500, content={"code": 5000, "message": "服务器错误"})
-\`\`\`
-
-注意:\`logger.exception\` 只能在 except 块里用(或异常处理器里,因为此时还在异常上下文)。它自动附带堆栈,比 \`logger.error(str(exc))\` 信息全。
-
-## 五、不要吞异常(裸 except)
-
-反模式:
-
-\`\`\`python
-# ❌ 吞异常,BUG 永远不暴露
-# 尝试执行，捕获异常
-try:
-    # 调用 do_something()
-    do_something()
-# 捕获所有异常
-except:
-    pass  # 静默忽略
-
-# ❌ 只记 message,丢堆栈
-# 尝试执行，捕获异常
-try:
-    # 调用 do_something()
-    do_something()
-# 捕获 Exception 异常，赋值为 e
-except Exception as e:
-    logger.error(str(e))  # 没堆栈,难排查
-
-# ✅ 记完整堆栈
-# 尝试执行，捕获异常
-try:
-    # 调用 do_something()
-    do_something()
-# 捕获 Exception 异常，赋值为 e
-except Exception as e:
-    logger.exception("do_something 失败")  # 带堆栈
-    raise  # 重新抛出,让上层处理
-\`\`\`
-
-「吞异常」是 BUG 的温床——错误被掩盖,系统带病运行,出问题时无从排查。
-
-## 六、异常和状态码映射
-
-业务异常应该映射到合适的 HTTP 状态码:
-
-| 业务场景 | 异常 | HTTP 码 |
-|---|---|---|
-| 资源不存在 | NotFoundError | 404 |
-| 未登录 | UnauthorizedError | 401 |
-| 无权限 | ForbiddenError | 403 |
-| 参数语义错(如余额不足) | BusinessError | 400 |
-| 资源冲突(重复创建) | ConflictError | 409 |
-| 限流 | RateLimitError | 429 |
-| 上游服务错 | UpstreamError | 502 |
-| 服务不可用 | ServiceUnavailableError | 503 |
-
-在处理器里映射:
-
-\`\`\`python
-# 定义类 BusinessError，继承 Exception
-class BusinessError(Exception):
-    # 定义函数 __init__，参数: self, code: int, message: str, http_status: int = ...
-    def __init__(self, code: int, message: str, http_status: int = 400):
-        # self.code = code
-        self.code = code
-        # self.message = message
-        self.message = message
-        # self.http_status = http_status
-        self.http_status = http_status
-
-# 装饰器：app.exception_handler
-@app.exception_handler(BusinessError)
-# 定义异步函数 business_handler，参数: request, exc
-async def business_handler(request, exc):
-    # 返回 JSONResponse(
+    # 1. 记录完整堆栈到日志(只给开发者看)
+    # 定义变量 tb，赋值为 traceback.format_exc()
+    tb = traceback.format_exc()
+    # 记录 ERROR 日志:包含请求 URL、方法、异常信息、堆栈
+    logger.error(f"未处理异常 | URL: {request.url} | 方法: {request.method} | 异常: {exc}\\n{tb}")
+    # 2. 返回友好响应给用户(不含堆栈)
     return JSONResponse(
-        # 定义变量 status_code，赋值为 exc.http_status,
-        status_code=exc.http_status,
-        # 定义字典 content
-        content={"code": exc.code, "message": exc.message},
-    # )
-    )
-
-# 使用时指定合适的 http_status
-# 抛出 BusinessError 异常: code=4001, message="余额不足", http_status=400
-raise BusinessError(code=4001, message="余额不足", http_status=400)
-# 抛出 BusinessError 异常: code=4040, message="订单不存在", http_status=404
-raise BusinessError(code=4040, message="订单不存在", http_status=404)
-\`\`\`
-
-## 七、API 错误响应标准 RFC 7807
-
-RFC 7807(Problem Details for HTTP APIs)是 API 错误响应的标准格式:
-
-\`\`\`json
-{
-  "type": "https://example.com/errors/insufficient-balance",
-  "title": "余额不足",
-  "status": 400,
-  "detail": "您的余额为 50,需要 100",
-  "instance": "/transfer"
-}
-\`\`\`
-
-字段:
-- **type**:错误类型文档 URI。
-- **title**:简短标题。
-- **status**:HTTP 状态码。
-- **detail**:详细说明。
-- **instance**:出错的具体 URI。
-
-可以扩展自定义字段:
-
-\`\`\`python
-# 装饰器：app.exception_handler
-@app.exception_handler(BusinessError)
-# 定义异步函数 handler，参数: request, exc
-async def handler(request, exc):
-    # 返回 JSONResponse(
-    return JSONResponse(
-        # 定义变量 status_code，赋值为 exc.http_status,
-        status_code=exc.http_status,
-        # 定义字典 content
+        status_code=500,
         content={
-            # "type": f"https://api.example.com/errors/{exc.code
-            "type": f"https://api.example.com/errors/{exc.code}",
-            # "title": exc.message,
-            "title": exc.message,
-            # "status": exc.http_status,
-            "status": exc.http_status,
-            # "detail": str(exc),
-            "detail": str(exc),
-            # "instance": str(request.url.path),
-            "instance": str(request.url.path),
-            # 扩展字段
-            # "code": exc.code,
-            "code": exc.code,
-            # "request_id": getattr(request.state, "request_id",
-            "request_id": getattr(request.state, "request_id", None),
-        # },
-        },
-    # )
+            "code": 50000,
+            "message": "服务器内部错误,请稍后重试",
+            "data": None
+        }
     )
+
+# 触发异常的路由
+# 定义 GET 路由：访问 /crash 时触发
+@app.get("/crash")
+# 定义函数 crash
+def crash():
+    # 制造一个 KeyError
+    # 定义变量 d，赋值为 {}
+    d = {}
+    # 访问不存在的 key
+    return d["missing"]
 \`\`\`
 
-遵循 RFC 7807 让 API 更标准、可互操作。
-
-## 八、监控异常(Sentry)
-
-生产环境要监控异常,Sentry 是主流选择:
-
-\`\`\`python
-# 导入 sentry_sdk 模块
-import sentry_sdk
-# 从 sentry_sdk.integrations.starlette 导入 StarletteIntegration
-from sentry_sdk.integrations.starlette import StarletteIntegration
-# 从 sentry_sdk.integrations.fastapi 导入 FastApiIntegration
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-
-# sentry_sdk.init(
-sentry_sdk.init(
-    # 定义变量 dsn，赋值为 "https://xxx@sentry.io/123",
-    dsn="https://xxx@sentry.io/123",
-    # 定义列表 integrations
-    integrations=[
-        # 调用 StarletteIntegration()
-        StarletteIntegration(),
-        # 调用 FastApiIntegration()
-        FastApiIntegration(),
-    # ],
-    ],
-    traces_sample_rate=0.1,  # 10% 采样
-# )
-)
-
-# 装饰器：app.exception_handler
-@app.exception_handler(Exception)
-# 定义异步函数 global_handler，参数: request: Request, exc: Exception
-async def global_handler(request: Request, exc: Exception):
-    # 上报到 Sentry
-    # 调用 sentry_sdk.capture_exception()
-    sentry_sdk.capture_exception(exc)
-    # 调用 logger.exception()
-    logger.exception("未处理异常")
-    # 返回 JSONResponse(status_code=500, content={"code": 5000, "message": "服务器错误"})
-    return JSONResponse(status_code=500, content={"code": 5000, "message": "服务器错误"})
+访问 \`/crash\` 后,服务器日志会打印:
+\`\`\`
+未处理异常 | URL: http://.../crash | 方法: GET | 异常: 'missing'
+Traceback (most recent call last):
+  File "...", line ..., in crash
+    return d["missing"]
+KeyError: 'missing'
 \`\`\`
 
-Sentry 自动收集堆栈、请求上下文、用户信息,异常发生时实时告警。
+而用户只看到 \`{"code": 50000, "message": "服务器内部错误"}\`。
 
-## 九、完整示例:完整异常处理体系
+怎么想:日志是给开发者的,响应是给用户的,两者要分开。日志越详细越好(含堆栈、请求信息),响应越简洁越好(不含敏感信息)。
+
+## 七、生产环境 vs 开发环境的异常处理策略
+
+开发时你希望看到详细错误(快速定位 bug),生产时你希望隐藏错误(安全)。用环境变量切换策略。
 
 \`\`\`python
+# 导入 os 模块
+import os
 # 导入 logging 模块
 import logging
-# 导入 sentry_sdk 模块
-import sentry_sdk
+# 导入 traceback 模块
+import traceback
+# 从 fastapi 导入 FastAPI, Request
+from fastapi import FastAPI, Request
+# 从 fastapi.responses 导入 JSONResponse
+from fastapi.responses import JSONResponse
+
+# 读取环境变量:开发环境为 "dev",生产为 "prod"
+# 定义变量 ENV，赋值为 os.getenv("APP_ENV", "dev")
+ENV = os.getenv("APP_ENV", "dev")
+# 配置日志
+# 定义变量 logger，赋值为 logging.getLogger("api")
+logger = logging.getLogger("api")
+# 调用 logging.basicConfig
+logging.basicConfig(level=logging.INFO)
+
+# 创建 FastAPI 应用实例,开发环境开启文档,生产可关闭
+app = FastAPI()
+
+# 全局处理器:根据环境返回不同详细程度
+# 装饰器：app.exception_handler(Exception)
+@app.exception_handler(Exception)
+# 定义异步函数 global_handler，参数: request: Request, exc: Exception
+async def global_handler(request: Request, exc: Exception):
+    # 记录日志(不管什么环境都要记)
+    # 定义变量 tb，赋值为 traceback.format_exc()
+    tb = traceback.format_exc()
+    # 记录日志
+    logger.error(f"异常: {exc}\\n{tb}")
+    # 开发环境:返回详细错误,方便调试
+    if ENV == "dev":
+        # 返回 JSONResponse
+        return JSONResponse(
+            status_code=500,
+            content={
+                "code": 50000,
+                "message": str(exc),
+                "traceback": tb,
+                "url": str(request.url)
+            }
+        )
+    # 生产环境:返回友好提示,不暴露任何细节
+    # 返回 JSONResponse
+    return JSONResponse(
+        status_code=500,
+        content={
+            "code": 50000,
+            "message": "服务器内部错误,请联系客服",
+            "data": None
+        }
+    )
+
+# 触发异常
+# 定义 GET 路由：访问 /test 时触发
+@app.get("/test")
+# 定义函数 test
+def test():
+    # 抛出 RuntimeError 异常: "故意出错"
+    raise RuntimeError("故意出错")
+\`\`\`
+
+开发环境(\`APP_ENV=dev\`)响应含堆栈和 URL,生产环境(\`APP_ENV=prod\`)只有友好提示。
+
+## 八、实战:统一错误响应格式 + 异常日志上报
+
+综合前面所有内容,实现一个完整的全局异常处理:统一格式 + 日志 + 区分环境。
+
+\`\`\`python
+# 导入 os 模块
+import os
+# 导入 logging 模块
+import logging
+# 导入 traceback 模块
+import traceback
+# 导入 time 模块
+import time
+# 导入 uuid 模块
+import uuid
 # 从 fastapi 导入 FastAPI, Request, HTTPException
 from fastapi import FastAPI, Request, HTTPException
 # 从 fastapi.responses 导入 JSONResponse
@@ -1464,248 +1356,915 @@ from fastapi.exceptions import RequestValidationError
 # 从 starlette.exceptions 导入 HTTPException as StarletteHTTPException
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-# 1. 错误码定义
+# ============ 配置 ============
+# 定义变量 ENV，赋值为 os.getenv("APP_ENV", "dev")
+ENV = os.getenv("APP_ENV", "dev")
+# 定义变量 logger，赋值为 logging.getLogger("api")
+logger = logging.getLogger("api")
+# 调用 logging.basicConfig
+logging.basicConfig(level=logging.INFO)
+
+# 创建 FastAPI 应用实例
+app = FastAPI()
+
+# ============ 统一响应构造函数 ============
+# 定义函数 make_error_response，参数: status: int, code: int, message: str, request: Request, exc: Exception = None
+def make_error_response(status: int, code: int, message: str, request: Request, exc: Exception = None):
+    # 生成错误追踪 ID,方便用户报错时定位
+    # 定义变量 trace_id，赋值为 str(uuid.uuid4())[:8]
+    trace_id = str(uuid.uuid4())[:8]
+    # 如果有异常,记日志
+    if exc:
+        # 定义变量 tb，赋值为 traceback.format_exc()
+        tb = traceback.format_exc()
+        # 记录 ERROR 日志
+        logger.error(f"[{trace_id}] {request.method} {request.url} | {code}:{message} | {exc}\\n{tb}")
+    # 开发环境多返回 trace_id 和堆栈
+    if ENV == "dev" and exc:
+        # 返回 JSONResponse
+        return JSONResponse(
+            status_code=status,
+            content={"code": code, "message": message, "trace_id": trace_id, "traceback": tb, "data": None}
+        )
+    # 返回 JSONResponse
+    return JSONResponse(
+        status_code=status,
+        content={"code": code, "message": message, "trace_id": trace_id, "data": None}
+    )
+
+# ============ 异常处理器 ============
+
+# 1. Starlette HTTPException:统一 HTTP 异常格式
+# 装饰器：app.exception_handler(StarletteHTTPException)
+@app.exception_handler(StarletteHTTPException)
+# 定义异步函数 http_exception_handler，参数: request: Request, exc: StarletteHTTPException
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    # 返回 make_error_response
+    return make_error_response(
+        status=exc.status_code,
+        code=exc.status_code,
+        message=str(exc.detail),
+        request=request
+    )
+
+# 2. 参数校验异常:统一 422 格式
+# 装饰器：app.exception_handler(RequestValidationError)
+@app.exception_handler(RequestValidationError)
+# 定义异步函数 validation_handler，参数: request: Request, exc: RequestValidationError
+async def validation_handler(request: Request, exc: RequestValidationError):
+    # 定义变量 errors，赋值为 exc.errors()
+    errors = exc.errors()
+    # 返回 JSONResponse
+    return JSONResponse(
+        status_code=422,
+        content={"code": 422, "message": "参数校验失败", "errors": errors, "data": None}
+    )
+
+# 3. 全局兜底:所有未处理异常
+# 装饰器：app.exception_handler(Exception)
+@app.exception_handler(Exception)
+# 定义异步函数 global_handler，参数: request: Request, exc: Exception
+async def global_handler(request: Request, exc: Exception):
+    # 返回 make_error_response
+    return make_error_response(
+        status=500,
+        code=50000,
+        message="服务器内部错误" if ENV == "prod" else str(exc),
+        request=request,
+        exc=exc
+    )
+
+# ============ 测试路由 ============
+# 定义 GET 路由：访问 /http-err 时触发
+@app.get("/http-err")
+# 定义函数 http_err
+def http_err():
+    # 抛出 HTTPException 异常: status_code=404, detail="不存在"
+    raise HTTPException(status_code=404, detail="不存在")
+
+# 定义 GET 路由：访问 /validate 时触发
+@app.get("/validate")
+# 定义函数 validate，参数: age: int
+def validate(age: int):
+    return {"age": age}
+
+# 定义 GET 路由：访问 /crash 时触发
+@app.get("/crash")
+# 定义函数 crash
+def crash():
+    # 定义变量 d，赋值为 {}
+    d = {}
+    # 触发 KeyError
+    return d["x"]
+\`\`\`
+
+测试:
+- \`/http-err\` -> \`{"code": 404, "message": "不存在", "trace_id": "a1b2c3d4", "data": null}\`
+- \`/validate?age=abc\` -> \`{"code": 422, "message": "参数校验失败", "errors": [...], "data": null}\`
+- \`/crash\` -> \`{"code": 50000, "message": "...", "trace_id": "...", "data": null}\`,同时日志里有完整堆栈。
+
+trace_id 是亮点:用户报错时告诉你 trace_id,你拿它在日志里一搜就能定位到那次请求的完整堆栈。
+
+## 九、常见错误与避坑指南
+
+**错误 1:exception_handler(Exception) 拦截了所有,导致 404 也变成 500**
+
+如果你注册了 \`exception_handler(Exception)\` 但没有注册 \`StarletteHTTPException\` 处理器,大部分 HTTP 异常仍走内置处理器(因为优先级)。但为保险,两个都注册,顺序无所谓。
+
+**错误 2:日志里没记请求体**
+
+光记堆栈不够,有时是请求参数触发的 bug。建议在全局处理器里读取并记录 request body(注意 body 只能读一次,需要中间件缓存,这是进阶话题)。
+
+**错误 3:生产环境返回了堆栈**
+
+\`traceback.format_exc()\` 的结果绝对不能出现在生产环境的响应里。上面的例子用 ENV 判断,生产环境只返回 message。
+
+**错误 4:全局处理器里做了耗时操作**
+
+处理器是请求链路的一部分,如果处理器里做同步慢操作(如发邮件),会阻塞响应。耗时操作应丢到后台任务(BackgroundTasks)或消息队列。
+
+## 十、设计思想
+
+全局异常处理的本质是「防御性编程」的最后一道防线。你不可能预见所有异常,但你可以保证「无论发生什么,用户都看不到堆栈,都能得到一个可读的错误响应,且错误被记录」。
+
+三个层次缺一不可:
+1. **具体异常处理器**:处理已知的业务异常、校验异常(精细控制)。
+2. **HTTP 异常处理器**:统一 HTTPException 的格式(覆盖框架默认行为)。
+3. **全局兜底处理器**:处理所有未知异常(安全 + 日志)。
+
+下一章我们讲异常处理的「最佳实践」,把前面三章的知识整合成一个完整的生产级体系。
+`,
+  },
+  {
+    id: "fa-exception-best",
+    group: "异常处理",
+    icon: "💎",
+    title: "异常处理最佳实践",
+    content: `
+## 一、异常处理的分层设计
+
+生产级项目的异常处理应该分层,每层职责不同:
+
+1. **校验层**:参数校验(FastAPI 自动 + Pydantic)。错误用 422,由 RequestValidationError 处理。
+2. **业务层**:业务规则校验(余额够不够、状态对不对)。用自定义业务异常,不碰 HTTP。
+3. **表现层**:异常处理器,把业务异常翻译成 HTTP 响应。
+4. **兜底层**:全局 Exception 处理器,捕获漏网之鱼。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException
+# 从 fastapi.responses 导入 JSONResponse
+from fastapi.responses import JSONResponse
+# 从 pydantic 导入 BaseModel, field_validator
+from pydantic import BaseModel, field_validator
+
+# 创建 FastAPI 应用实例
+app = FastAPI()
+
+# ============ 校验层:Pydantic 模型 ============
+# 定义类 TransferRequest，继承 BaseModel
+class TransferRequest(BaseModel):
+    # 定义变量 from_user，赋值为 str
+    from_user: str
+    # 定义变量 to_user，赋值为 str
+    to_user: str
+    # 定义变量 amount，赋值为 float
+    amount: float
+
+    # Pydantic 校验:金额必须为正
+    # 装饰器：field_validator("amount")
+    @field_validator("amount")
+    # 定义函数 amount_positive，参数: v
+    @classmethod
+    def amount_positive(cls, v):
+        if v <= 0:
+            # 抛出 ValueError 异常: "金额必须大于 0"
+            raise ValueError("金额必须大于 0")
+        return v
+
+# ============ 业务层:自定义异常 + service ============
+# 定义类 InsufficientBalanceError，继承 Exception
+class InsufficientBalanceError(Exception):
+    # """余额不足"""
+    """余额不足"""
+    # 定义函数 __init__，参数: self, user: str, needed: float, balance: float
+    def __init__(self, user: str, needed: float, balance: float):
+        self.user = user
+        self.needed = needed
+        self.balance = balance
+        super().__init__(f"{user} 余额不足:需要 {needed},实际 {balance}")
+
+# 业务逻辑:执行转账(纯业务,不碰 HTTP)
+# 定义函数 do_transfer，参数: req: TransferRequest
+def do_transfer(req: TransferRequest):
+    # 模拟数据库
+    # 定义变量 balances，赋值为 {"alice": 100, "bob": 50}
+    balances = {"alice": 100, "bob": 50}
+    # 业务校验:余额是否足够
+    if req.from_user not in balances or balances[req.from_user] < req.amount:
+        # 抛出 InsufficientBalanceError 异常: user=req.from_user, needed=req.amount, balance=balances.get(req.from_user, 0)
+        raise InsufficientBalanceError(
+            user=req.from_user,
+            needed=req.amount,
+            balance=balances.get(req.from_user, 0)
+        )
+    # 执行转账
+    balances[req.from_user] -= req.amount
+    balances[req.to_user] = balances.get(req.to_user, 0) + req.amount
+    # 返回结果
+    return {"from": req.from_user, "to": req.to_user, "amount": req.amount}
+
+# ============ 表现层:处理器 + 路由 ============
+# 装饰器：app.exception_handler(InsufficientBalanceError)
+@app.exception_handler(InsufficientBalanceError)
+# 定义异步函数 balance_handler，参数: request: Request, exc: InsufficientBalanceError
+async def balance_handler(request: Request, exc: InsufficientBalanceError):
+    # 返回 JSONResponse
+    return JSONResponse(
+        status_code=400,
+        content={"code": 10002, "message": "余额不足", "detail": {"user": exc.user, "needed": exc.needed, "balance": exc.balance}}
+    )
+
+# 定义 POST 路由：访问 /transfer 时触发
+@app.post("/transfer")
+# 定义函数 transfer，参数: req: TransferRequest
+def transfer(req: TransferRequest):
+    # 调用业务层,异常由处理器捕获
+    # 定义变量 result，赋值为 do_transfer(req)
+    result = do_transfer(req)
+    return result
+\`\`\`
+
+注意:\`do_transfer\` 是纯业务函数,它 raise 的是业务异常,不知道 HTTP 的存在。它可以被 Web 路由调用,也可以被 CLI 脚本调用,复用性强。
+
+## 二、什么时候用 HTTPException vs 自定义异常
+
+这是新手最困惑的问题。原则:
+
+- **HTTPException**:用在「和 HTTP 强相关」的简单场景,如路由里直接判断资源不存在、快速原型。优点是简单直接,缺点是业务层耦合了 HTTP。
+- **自定义异常**:用在「有业务语义」的场景,如余额不足、库存不够。优点是业务解耦、可扩展(错误码、额外数据),缺点是要写异常类 + 处理器,代码量多。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
+
+# 创建 FastAPI 应用实例
+app = FastAPI()
+
+# 场景 1:简单的 CRUD,用 HTTPException 足够
+# 定义 GET 路由：访问 /items/{item_id} 时触发
+@app.get("/items/{item_id}")
+# 定义函数 get_item，参数: item_id: int
+def get_item(item_id: int):
+    # 定义变量 items，赋值为 {1: "a"}
+    items = {1: "a"}
+    if item_id not in items:
+        # 简单场景:HTTPException 直接搞定
+        # 抛出 HTTPException 异常: status_code=404, detail="不存在"
+        raise HTTPException(status_code=404, detail="不存在")
+    return items[item_id]
+
+# 场景 2:复杂业务逻辑,用自定义异常
+# 业务异常
+# 定义类 PaymentError，继承 Exception
+class PaymentError(Exception):
+    # 定义函数 __init__，参数: self, code: int, message: str
+    def __init__(self, code: int, message: str):
+        self.code = code
+        self.message = message
+        super().__init__(message)
+
+# 路由
+# 定义 POST 路由：访问 /pay 时触发
+@app.post("/pay")
+# 定义函数 pay，参数: amount: float
+def pay(amount: float):
+    # 复杂业务:调用支付服务,可能多种错误
+    try:
+        # 模拟调用支付网关
+        if amount > 10000:
+            # 抛出 PaymentError 异常: code=20001, message="单笔限额"
+            raise PaymentError(20001, "单笔限额")
+    except PaymentError:
+        # 这里重新 raise,让处理器处理
+        raise
+    return {"paid": amount}
+\`\`\`
+
+怎么想:问自己「这个错误是 HTTP 层的,还是业务层的?」。\`/items/99\` 不存在是 HTTP 层(404 天然对应),用 HTTPException。余额不足是业务层(HTTP 状态码表达不了「余额不足」这个语义),用自定义异常 + 错误码。
+
+## 三、异常信息的国际化
+
+如果 API 服务多语言用户,错误信息需要国际化。做法:错误码不变,根据请求的 \`Accept-Language\` 返回不同语言的 message。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI, Request, Header
+from fastapi import FastAPI, Request, Header
+# 从 fastapi.responses 导入 JSONResponse
+from fastapi.responses import JSONResponse
+# 从 typing 导入 Optional
+from typing import Optional
+
+# 创建 FastAPI 应用实例
+app = FastAPI()
+
+# 错误信息多语言字典:code -> {lang -> message}
+# 定义变量 MESSAGES，赋值为 {10001: {"zh": "用户不存在", "en": "User not found"}, 10002: {"zh": "余额不足", "en": "Insufficient balance"}}
+MESSAGES = {
+    10001: {"zh": "用户不存在", "en": "User not found"},
+    10002: {"zh": "余额不足", "en": "Insufficient balance"}
+}
+
+# 自定义异常:只带 code,不固定 message
+# 定义类 I18nError，继承 Exception
+class I18nError(Exception):
+    # 定义函数 __init__，参数: self, code: int
+    def __init__(self, code: int):
+        self.code = code
+        super().__init__(str(code))
+
+# 处理器:根据 Accept-Language 返回对应语言
+# 装饰器：app.exception_handler(I18nError)
+@app.exception_handler(I18nError)
+# 定义异步函数 i18n_handler，参数: request: Request, exc: I18nError
+async def i18n_handler(request: Request, exc: I18nError):
+    # 从请求头读语言,默认中文
+    # 定义变量 lang，赋值为 request.headers.get("Accept-Language", "zh")
+    lang = request.headers.get("Accept-Language", "zh")
+    # 简化:只要头里含 en 就用英文
+    if "en" in lang:
+        lang = "en"
+    else:
+        lang = "zh"
+    # 取对应语言的 message
+    # 定义变量 message，赋值为 MESSAGES.get(exc.code, {}).get(lang, "未知错误")
+    message = MESSAGES.get(exc.code, {}).get(lang, "未知错误")
+    # 返回 JSONResponse
+    return JSONResponse(
+        status_code=400,
+        content={"code": exc.code, "message": message, "data": None}
+    )
+
+# 使用
+# 定义 GET 路由：访问 /users/{user_id} 时触发
+@app.get("/users/{user_id}")
+# 定义函数 get_user，参数: user_id: int
+def get_user(user_id: int):
+    if user_id == 99:
+        # 抛出 I18nError 异常: code=10001
+        raise I18nError(10001)
+    return {"user_id": user_id}
+\`\`\`
+
+带 \`Accept-Language: en\` 请求 \`/users/99\`,返回 \`{"message": "User not found"}\`;带 \`zh\` 则返回中文。
+
+怎么想:错误码是「不变的」,语言是「变的」。把不变的放代码里(code),把变的放配置或字典里(message)。这是国际化的通用思路。
+
+## 四、异常与错误码体系
+
+错误码是异常处理的「骨架」。好的错误码体系让排错、监控、文档都方便。设计原则:
+
+- **分段**:不同模块用不同号段(用户 10xxx,订单 20xxx,支付 30xxx)。
+- **层级**:前缀区分错误类别(1xxxx 业务错误,4xxxx 认证错误,5xxxx 系统错误)。
+- **唯一**:每个错误一个码,不要复用。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI, Request
+from fastapi import FastAPI, Request
+# 从 fastapi.responses 导入 JSONResponse
+from fastapi.responses import JSONResponse
+
+# 创建 FastAPI 应用实例
+app = FastAPI()
+
+# 错误码定义:集中管理,用类做枚举
 # 定义类 ErrorCode
 class ErrorCode:
+    # ===== 用户模块 10xxx =====
     # 定义变量 USER_NOT_FOUND，赋值为 10001
     USER_NOT_FOUND = 10001
-    # 定义变量 USER_INSUFFICIENT_BALANCE，赋值为 10002
-    USER_INSUFFICIENT_BALANCE = 10002
+    # 定义变量 USER_DISABLED，赋值为 10002
+    USER_DISABLED = 10002
+    # ===== 订单模块 20xxx =====
     # 定义变量 ORDER_NOT_FOUND，赋值为 20001
     ORDER_NOT_FOUND = 20001
-    # 定义变量 ORDER_CONFLICT，赋值为 20002
-    ORDER_CONFLICT = 20002
+    # 定义变量 ORDER_PAID，赋值为 20002
+    ORDER_PAID = 20002      # 订单已支付,不能重复
+    # ===== 认证模块 40xxx =====
     # 定义变量 AUTH_NOT_LOGIN，赋值为 40001
     AUTH_NOT_LOGIN = 40001
     # 定义变量 AUTH_NO_PERMISSION，赋值为 40002
     AUTH_NO_PERMISSION = 40002
+    # ===== 系统模块 50xxx =====
     # 定义变量 SYSTEM_ERROR，赋值为 50000
     SYSTEM_ERROR = 50000
 
-# 2. 异常层次
+# 异常基类:携带错误码
+# 定义类 AppError，继承 Exception
+class AppError(Exception):
+    # 定义函数 __init__，参数: self, code: int, message: str, http_status: int = 400
+    def __init__(self, code: int, message: str, http_status: int = 400):
+        self.code = code
+        self.message = message
+        self.http_status = http_status
+        super().__init__(message)
+
+# 统一处理器
+# 装饰器：app.exception_handler(AppError)
+@app.exception_handler(AppError)
+# 定义异步函数 app_error_handler，参数: request: Request, exc: AppError
+async def app_error_handler(request: Request, exc: AppError):
+    # 返回 JSONResponse
+    return JSONResponse(
+        status_code=exc.http_status,
+        content={"code": exc.code, "message": exc.message, "data": None}
+    )
+
+# 使用:错误码作为常量引用,不硬编码数字
+# 定义 GET 路由：访问 /users/{user_id} 时触发
+@app.get("/users/{user_id}")
+# 定义函数 get_user，参数: user_id: int
+def get_user(user_id: int):
+    if user_id == 99:
+        # 用常量,不用裸数字 10001
+        # 抛出 AppError 异常: code=ErrorCode.USER_NOT_FOUND, message="用户不存在", http_status=404
+        raise AppError(ErrorCode.USER_NOT_FOUND, "用户不存在", 404)
+    return {"user_id": user_id}
+\`\`\`
+
+为什么用类而不是字典?类属性有 IDE 补全,写错会报错(属性不存在),比字典的字符串 key 安全。
+
+## 五、异常的安全考虑
+
+异常处理的一个关键安全原则:**不要把内部信息泄露给客户端**。以下信息绝对不能出现在响应里:
+
+- Python 堆栈(traceback)
+- 数据库错误细节(如 SQL 语句、表名)
+- 文件路径
+- 内部 IP、端口
+- 第三方 API 的密钥
+
+\`\`\`python
+# 导入 os 模块
+import os
+# 导入 logging 模块
+import logging
+# 导入 traceback 模块
+import traceback
+# 从 fastapi 导入 FastAPI, Request
+from fastapi import FastAPI, Request
+# 从 fastapi.responses 导入 JSONResponse
+from fastapi.responses import JSONResponse
+
+# 定义变量 logger，赋值为 logging.getLogger("api")
+logger = logging.getLogger("api")
+# 创建 FastAPI 应用实例
+app = FastAPI()
+
+# 模拟数据库查询出错
+# 定义 GET 路由：访问 /db-query 时触发
+@app.get("/db-query")
+# 定义函数 db_query
+def db_query():
+    # 模拟:SQL 语句出错
+    try:
+        # 模拟执行 SQL 出错
+        # 抛出 Exception 异常: "ORA-00942: table USERS does not exist at /app/db.py:42"
+        raise Exception("ORA-00942: table USERS does not exist at /app/db.py:42")
+    except Exception as e:
+        # 记录完整错误到日志
+        logger.error(f"数据库错误: {e}\\n{traceback.format_exc()}")
+        # 返回给用户的:脱敏的友好信息
+        # 返回 JSONResponse
+        return JSONResponse(
+            status_code=500,
+            content={"code": 50000, "message": "服务暂时不可用,请稍后重试", "data": None}
+        )
+\`\`\`
+
+如果直接把 \`str(e)\` 返回给用户,用户会看到 \`ORA-00942: table USERS does not exist at /app/db.py:42\`——暴露了数据库类型(Oracle)、表名、文件路径。这是严重的安全隐患。
+
+安全原则:响应里只放「对用户有用且无安全风险」的信息(如 trace_id、友好提示)。所有技术细节只进日志。
+
+## 六、异常的测试
+
+异常处理也是代码,必须测试。用 \`TestClient\` 测试异常是否返回正确的状态码和格式。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+
+# 创建 FastAPI 应用实例
+app = FastAPI()
+
+# 定义 GET 路由：访问 /items/{item_id} 时触发
+@app.get("/items/{item_id}")
+# 定义函数 get_item，参数: item_id: int
+def get_item(item_id: int):
+    if item_id == 99:
+        # 抛出 HTTPException 异常: status_code=404, detail="不存在"
+        raise HTTPException(status_code=404, detail="不存在")
+    return {"item_id": item_id}
+
+# 创建测试客户端
+# 定义变量 client，赋值为 TestClient(app)
+client = TestClient(app)
+
+# 测试 1:正常请求
+# 定义函数 test_normal
+def test_normal():
+    # 定义变量 r，赋值为 client.get("/items/1")
+    r = client.get("/items/1")
+    # 断言状态码 200
+    assert r.status_code == 200
+    # 断言响应体
+    assert r.json() == {"item_id": 1}
+
+# 测试 2:资源不存在
+# 定义函数 test_not_found
+def test_not_found():
+    # 定义变量 r，赋值为 client.get("/items/99")
+    r = client.get("/items/99")
+    # 断言状态码 404
+    assert r.status_code == 404
+    # 断言 detail
+    assert r.json() == {"detail": "不存在"}
+
+# 测试 3:参数类型错误(422)
+# 定义函数 test_validation_error
+def test_validation_error():
+    # 定义变量 r，赋值为 client.get("/items/abc")
+    r = client.get("/items/abc")
+    # 断言状态码 422
+    assert r.status_code == 422
+
+# 运行测试
+# 调用 test_normal()
+test_normal()
+# 调用 test_not_found()
+test_not_found()
+# 调用 test_validation_error()
+test_validation_error()
+# 打印提示
+print("所有测试通过")
+\`\`\`
+
+测试要点:
+- **正常路径**:确认成功返回 200 + 正确数据。
+- **异常路径**:确认每种异常返回正确的状态码和格式。
+- **边界**:如参数类型错(422)、权限不足(403)。
+
+怎么想:异常处理的测试要覆盖「错误场景」,不只是「成功场景」。每个 raise 的地方都要有对应的测试,确保它真的被触发、真的返回了预期格式。
+
+## 七、异常处理反模式
+
+以下是要避免的反模式:
+
+**反模式 1:裸 except 吞掉所有异常**
+
+\`\`\`python
+# 错误:吞掉异常,问题被掩盖
+# 定义函数 bad
+def bad():
+    try:
+        do_something()
+    except:  # 裸 except,连 KeyboardInterrupt 都吞
+        pass  # 啥也不做,bug 永远找不到
+\`\`\`
+
+正确:捕获具体异常,至少记日志。
+
+**反模式 2:用异常控制流程**
+
+\`\`\`python
+# 错误:用异常代替 if 判断
+# 定义函数 bad
+def bad():
+    try:
+        user = users[id]
+    except KeyError:
+        # 用异常处理「不存在」,性能差且不清晰
+        user = None
+\`\`\`
+
+正确:\`user = users.get(id)\` 用 dict.get,不用异常控制正常流程。
+
+**反模式 3:异常信息过于模糊**
+
+\`\`\`python
+# 错误:用户看到这个完全不知道哪里错了
+# 抛出 HTTPException 异常: status_code=400, detail="错误"
+raise HTTPException(400, "错误")
+\`\`\`
+
+正确:\`detail="用户名长度必须 6-20 个字符"\`,具体到字段和规则。
+
+**反模式 4:500 当业务错误用**
+
+\`\`\`python
+# 错误:余额不足是客户端问题,不该 500
+# 抛出 HTTPException 异常: status_code=500, detail="余额不足"
+raise HTTPException(500, "余额不足")  # 会触发运维告警!
+\`\`\`
+
+正确:用 4xx。500 是「服务器 bug」,业务错误是「客户端请求不对」。
+
+## 八、实战:完整的异常处理体系
+
+整合所有最佳实践:错误码 + 统一响应 + 日志 + 测试。
+
+\`\`\`python
+# 导入 os 模块
+import os
+# 导入 logging 模块
+import logging
+# 导入 traceback 模块
+import traceback
+# 导入 uuid 模块
+import uuid
+# 从 fastapi 导入 FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException
+# 从 fastapi.responses 导入 JSONResponse
+from fastapi.responses import JSONResponse
+# 从 fastapi.exceptions 导入 RequestValidationError
+from fastapi.exceptions import RequestValidationError
+# 从 starlette.exceptions 导入 HTTPException as StarletteHTTPException
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+# ============ 1. 配置 ============
+# 定义变量 ENV，赋值为 os.getenv("APP_ENV", "dev")
+ENV = os.getenv("APP_ENV", "dev")
+# 定义变量 logger，赋值为 logging.getLogger("api")
+logger = logging.getLogger("api")
+# 调用 logging.basicConfig
+logging.basicConfig(level=logging.INFO)
+
+# ============ 2. 错误码体系 ============
+# 定义类 ErrorCode
+class ErrorCode:
+    # 用户模块
+    # 定义变量 USER_NOT_FOUND，赋值为 10001
+    USER_NOT_FOUND = 10001
+    # 定义变量 USER_INSUFFICIENT_BALANCE，赋值为 10002
+    USER_INSUFFICIENT_BALANCE = 10002
+    # 订单模块
+    # 定义变量 ORDER_NOT_FOUND，赋值为 20001
+    ORDER_NOT_FOUND = 20001
+    # 定义变量 ORDER_CONFLICT，赋值为 20002
+    ORDER_CONFLICT = 20002
+    # 认证模块
+    # 定义变量 AUTH_NOT_LOGIN，赋值为 40001
+    AUTH_NOT_LOGIN = 40001
+    # 定义变量 AUTH_NO_PERMISSION，赋值为 40002
+    AUTH_NO_PERMISSION = 40002
+    # 系统
+    # 定义变量 SYSTEM_ERROR，赋值为 50000
+    SYSTEM_ERROR = 50000
+
+# ============ 3. 异常层次 ============
+# 应用异常基类
 # 定义类 AppError，继承 Exception
 class AppError(Exception):
     # """应用异常基类"""
     """应用异常基类"""
-    # 定义函数 __init__，参数: self, code: int, message: str, http_status: int = ...
+    # 定义函数 __init__，参数: self, code: int, message: str, http_status: int = 400, details=None
     def __init__(self, code: int, message: str, http_status: int = 400, details=None):
-        # self.code = code
         self.code = code
-        # self.message = message
         self.message = message
-        # self.http_status = http_status
         self.http_status = http_status
-        # self.details = details
         self.details = details
-        # 调用 super()
         super().__init__(message)
 
+# 业务异常
 # 定义类 BusinessError，继承 AppError
 class BusinessError(AppError):
     # """业务异常"""
     """业务异常"""
-    # 空操作占位
     pass
 
-# 定义类 SystemError，继承 AppError
-class SystemError(AppError):
-    # """系统异常"""
-    """系统异常"""
+# 系统异常
+# 定义 class SystemError_，继承 AppError
+class SystemError_(AppError):
     # 定义函数 __init__，参数: self, message="服务器内部错误"
     def __init__(self, message="服务器内部错误"):
-        # 调用 super()
         super().__init__(
-            # 定义变量 code，赋值为 ErrorCode.SYSTEM_ERROR,
             code=ErrorCode.SYSTEM_ERROR,
-            # 定义变量 message，赋值为 message,
             message=message,
-            # 定义变量 http_status，赋值为 500,
-            http_status=500,
-        # )
+            http_status=500
         )
 
-# 3. FastAPI 应用
+# ============ 4. FastAPI 应用 ============
 # 创建 FastAPI 应用实例
 app = FastAPI()
-# 定义变量 logger，赋值为 logging.getLogger("api")
-logger = logging.getLogger("api")
 
-# 4. 统一响应构造
-# 定义函数 make_error_response，参数: status: int, code: int, message: str, request: Req...
-def make_error_response(status: int, code: int, message: str, request: Request, details=None):
-    # 返回 JSONResponse(
-    return JSONResponse(
-        # 定义变量 status_code，赋值为 status,
-        status_code=status,
-        # 定义字典 content
-        content={
-            # "code": code,
-            "code": code,
-            # "message": message,
-            "message": message,
-            # "details": details,
-            "details": details,
-            # "request_id": getattr(request.state, "request_id",
-            "request_id": getattr(request.state, "request_id", None),
-        # },
-        },
-    # )
+# ============ 5. 统一响应构造 ============
+# 定义函数 make_error_response，参数: status: int, code: int, message: str, request: Request, exc: Exception = None, details=None
+def make_error_response(status: int, code: int, message: str, request: Request, exc: Exception = None, details=None):
+    # 生成 trace_id
+    # 定义变量 trace_id，赋值为 str(uuid.uuid4())[:8]
+    trace_id = str(uuid.uuid4())[:8]
+    # 有异常就记日志
+    if exc:
+        # 定义变量 tb，赋值为 traceback.format_exc()
+        tb = traceback.format_exc()
+        logger.error(f"[{trace_id}] {request.method} {request.url} | {code}:{message} | {exc}\\n{tb}")
+    # 构造响应体
+    # 定义变量 body，赋值为 {"code": code, "message": message, "trace_id": trace_id, "data": None}
+    body = {"code": code, "message": message, "trace_id": trace_id, "data": None}
+    # 有额外详情就加上
+    if details:
+        body["details"] = details
+    # 开发环境附加堆栈
+    if ENV == "dev" and exc:
+        body["traceback"] = tb
+    # 返回 JSONResponse
+    return JSONResponse(status_code=status, content=body)
+
+# ============ 6. 异常处理器 ============
+# 6.1 业务异常
+# 装饰器：app.exception_handler(AppError)
+@app.exception_handler(AppError)
+# 定义异步函数 app_error_handler，参数: request: Request, exc: AppError
+async def app_error_handler(request: Request, exc: AppError):
+    # 返回 make_error_response
+    return make_error_response(
+        status=exc.http_status,
+        code=exc.code,
+        message=exc.message,
+        request=request,
+        exc=exc,
+        details=exc.details
     )
 
-# 5. HTTP 异常处理器(覆盖默认)
-# 装饰器：app.exception_handler
+# 6.2 Starlette HTTP 异常(统一 404 等格式)
+# 装饰器：app.exception_handler(StarletteHTTPException)
 @app.exception_handler(StarletteHTTPException)
 # 定义异步函数 http_handler，参数: request: Request, exc: StarletteHTTPException
 async def http_handler(request: Request, exc: StarletteHTTPException):
-    # 返回 make_error_response(
+    # 返回 make_error_response
     return make_error_response(
-        # 定义变量 status，赋值为 exc.status_code,
         status=exc.status_code,
-        code=exc.status_code * 10,  # HTTP 错误码用 status*10
-        # 定义变量 message，赋值为 str(exc.detail),
+        code=exc.status_code,
         message=str(exc.detail),
-        # 定义变量 request，赋值为 request,
-        request=request,
-    # )
+        request=request
     )
 
-# 6. 422 校验异常
-# 装饰器：app.exception_handler
+# 6.3 参数校验异常
+# 装饰器：app.exception_handler(RequestValidationError)
 @app.exception_handler(RequestValidationError)
 # 定义异步函数 validation_handler，参数: request: Request, exc: RequestValidationError
 async def validation_handler(request: Request, exc: RequestValidationError):
-    # 定义字典 fields
-    fields = {}
-    # 遍历 exc.errors()，取 err
-    for err in exc.errors():
-        # 定义变量 loc，赋值为 err["loc"]
-        loc = err["loc"]
-        # 定义变量 field，赋值为 ".".join(str(x) for x in loc[1:]) if loc[0] =...
-        field = ".".join(str(x) for x in loc[1:]) if loc[0] == "body" else str(loc[0])
-        # fields[field] = err["msg"]
-        fields[field] = err["msg"]
-    # 返回 make_error_response(
-    return make_error_response(
-        # 定义变量 status，赋值为 422,
-        status=422,
-        # 定义变量 code，赋值为 4220,
-        code=4220,
-        # 定义变量 message，赋值为 "参数校验失败",
-        message="参数校验失败",
-        # 定义变量 request，赋值为 request,
-        request=request,
-        # 定义变量 details，赋值为 fields,
-        details=fields,
-    # )
+    # 定义变量 errors，赋值为 exc.errors()
+    errors = exc.errors()
+    # 返回 JSONResponse
+    return JSONResponse(
+        status_code=422,
+        content={"code": 422, "message": "参数校验失败", "errors": errors, "trace_id": str(uuid.uuid4())[:8], "data": None}
     )
 
-# 7. 应用异常(业务)
-# 装饰器：app.exception_handler
-@app.exception_handler(AppError)
-# 定义异步函数 app_handler，参数: request: Request, exc: AppError
-async def app_handler(request: Request, exc: AppError):
-    # 返回 make_error_response(
-    return make_error_response(
-        # 定义变量 status，赋值为 exc.http_status,
-        status=exc.http_status,
-        # 定义变量 code，赋值为 exc.code,
-        code=exc.code,
-        # 定义变量 message，赋值为 exc.message,
-        message=exc.message,
-        # 定义变量 request，赋值为 request,
-        request=request,
-        # 定义变量 details，赋值为 exc.details,
-        details=exc.details,
-    # )
-    )
-
-# 8. 兜底(未处理异常)
-# 装饰器：app.exception_handler
+# 6.4 全局兜底
+# 装饰器：app.exception_handler(Exception)
 @app.exception_handler(Exception)
 # 定义异步函数 global_handler，参数: request: Request, exc: Exception
 async def global_handler(request: Request, exc: Exception):
-    # 调用 logger.exception()
-    logger.exception(f"未处理异常: {request.url.path}")
-    # 调用 sentry_sdk.capture_exception()
-    sentry_sdk.capture_exception(exc)
-    # 返回 make_error_response(
+    # 返回 make_error_response
     return make_error_response(
-        # 定义变量 status，赋值为 500,
         status=500,
-        # 定义变量 code，赋值为 ErrorCode.SYSTEM_ERROR,
         code=ErrorCode.SYSTEM_ERROR,
-        # 定义变量 message，赋值为 "服务器内部错误",
-        message="服务器内部错误",
-        # 定义变量 request，赋值为 request,
+        message="服务器内部错误" if ENV == "prod" else str(exc),
         request=request,
-    # )
+        exc=exc
     )
 
-# 9. 路由示例
-# 定义 GET 路由：访问 /users/{uid} 时触发
-@app.get("/users/{uid}")
-# 定义函数 get_user，参数: uid: int
-def get_user(uid: int):
-    # 条件判断：如果 uid > 100
-    if uid > 100:
-        # 抛出 BusinessError 异常
-        raise BusinessError(
-            # 定义变量 code，赋值为 ErrorCode.USER_NOT_FOUND,
-            code=ErrorCode.USER_NOT_FOUND,
-            # 定义变量 message，赋值为 f"用户 {uid} 不存在",
-            message=f"用户 {uid} 不存在",
-            # 定义变量 http_status，赋值为 404,
-            http_status=404,
-        # )
-        )
-    # 返回 {"id": uid, "name": "alice"}
-    return {"id": uid, "name": "alice"}
+# ============ 7. 路由 ============
+# 模拟数据
+# 定义变量 users_db，赋值为 {1: {"name": "alice", "balance": 100}, 2: {"name": "bob", "balance": 50}}
+users_db = {1: {"name": "alice", "balance": 100}, 2: {"name": "bob", "balance": 50}}
 
-# 定义 POST 路由：访问 /transfer 时触发
-@app.post("/transfer")
-# 定义函数 transfer，参数: amount: float
-def transfer(amount: float):
-    # 定义变量 balance，赋值为 50
-    balance = 50
-    # 条件判断：如果 amount > balance
-    if amount > balance:
-        # 抛出 BusinessError 异常
-        raise BusinessError(
-            # 定义变量 code，赋值为 ErrorCode.USER_INSUFFICIENT_BALANCE,
-            code=ErrorCode.USER_INSUFFICIENT_BALANCE,
-            # 定义变量 message，赋值为 "余额不足",
-            message="余额不足",
-            # 定义变量 http_status，赋值为 400,
-            http_status=400,
-            # 定义字典 details
-            details={"needed": amount, "balance": balance},
-        # )
-        )
-    # 返回 {"msg": "转账成功"}
-    return {"msg": "转账成功"}
+# 获取用户:可能 404
+# 定义 GET 路由：访问 /users/{user_id} 时触发
+@app.get("/users/{user_id}")
+# 定义函数 get_user，参数: user_id: int
+def get_user(user_id: int):
+    if user_id not in users_db:
+        # 抛出 BusinessError 异常: code=ErrorCode.USER_NOT_FOUND, message="用户不存在", http_status=404
+        raise BusinessError(ErrorCode.USER_NOT_FOUND, "用户不存在", 404)
+    return users_db[user_id]
 
+# 扣款:可能余额不足
+# 定义 POST 路由：访问 /users/{user_id}/deduct 时触发
+@app.post("/users/{user_id}/deduct")
+# 定义函数 deduct，参数: user_id: int, amount: float
+def deduct(user_id: int, amount: float):
+    if user_id not in users_db:
+        # 抛出 BusinessError 异常
+        raise BusinessError(ErrorCode.USER_NOT_FOUND, "用户不存在", 404)
+    # 取出用户
+    user = users_db[user_id]
+    if amount > user["balance"]:
+        # 余额不足,带额外详情
+        # 抛出 BusinessError 异常: code=ErrorCode.USER_INSUFFICIENT_BALANCE, message="余额不足", http_status=400, details={"balance": user["balance"], "needed": amount}
+        raise BusinessError(
+            ErrorCode.USER_INSUFFICIENT_BALANCE,
+            "余额不足",
+            400,
+            details={"balance": user["balance"], "needed": amount}
+        )
+    # 扣款
+    user["balance"] -= amount
+    return user
+
+# 故意崩溃:测试全局兜底
 # 定义 GET 路由：访问 /crash 时触发
 @app.get("/crash")
-# 定义函数 crash，参数: 
+# 定义函数 crash
 def crash():
-    return {"x": 1 / 0}  # 触发全局兜底
+    # 定义变量 d，赋值为 {}
+    d = {}
+    # 触发 KeyError
+    return d["x"]
+
+# ============ 8. 测试 ============
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 定义变量 client，赋值为 TestClient(app)
+client = TestClient(app)
+
+# 测试正常
+# 定义函数 test_get_user_ok
+def test_get_user_ok():
+    # 定义变量 r，赋值为 client.get("/users/1")
+    r = client.get("/users/1")
+    # 断言
+    assert r.status_code == 200
+    # 打印
+    print("test_get_user_ok 通过")
+
+# 测试 404 业务异常
+# 定义函数 test_user_not_found
+def test_user_not_found():
+    # 定义变量 r，赋值为 client.get("/users/99")
+    r = client.get("/users/99")
+    # 断言状态码
+    assert r.status_code == 404
+    # 断言错误码
+    assert r.json()["code"] == ErrorCode.USER_NOT_FOUND
+    # 打印
+    print("test_user_not_found 通过")
+
+# 测试余额不足(带 details)
+# 定义函数 test_insufficient_balance
+def test_insufficient_balance():
+    # 定义变量 r，赋值为 client.post("/users/1/deduct?amount=999")
+    r = client.post("/users/1/deduct?amount=999")
+    # 断言状态码
+    assert r.status_code == 400
+    # 断言错误码
+    assert r.json()["code"] == ErrorCode.USER_INSUFFICIENT_BALANCE
+    # 断言有 details
+    assert "details" in r.json()
+    # 打印
+    print("test_insufficient_balance 通过")
+
+# 测试全局兜底
+# 定义函数 test_crash
+def test_crash():
+    # 定义变量 r，赋值为 client.get("/crash")
+    r = client.get("/crash")
+    # 断言状态码 500
+    assert r.status_code == 500
+    # 断言错误码
+    assert r.json()["code"] == ErrorCode.SYSTEM_ERROR
+    # 打印
+    print("test_crash 通过")
+
+# 运行所有测试
+# 调用 test_get_user_ok()
+test_get_user_ok()
+# 调用 test_user_not_found()
+test_user_not_found()
+# 调用 test_insufficient_balance()
+test_insufficient_balance()
+# 调用 test_crash()
+test_crash()
+# 打印
+print("===== 所有测试通过 =====")
 \`\`\`
 
-## 十、易错点小结
+这个体系涵盖了:错误码集中定义、异常分层、统一响应格式、日志记录、trace_id 追踪、环境区分、测试覆盖。这是一个可以直接用于生产的异常处理骨架。
 
-| 易错点 | 说明 | 正确做法 |
-|---|---|---|
-| 错误码随手编 | 无体系难维护 | 设计错误码体系 |
-| 裸 except 吞异常 | BUG 掩盖 | 必须 raise |
-| 不记堆栈只记 message | 排查难 | logger.exception |
-| 生产暴露堆栈给客户端 | 安全风险 | 只响应通用信息 |
-| 业务异常用 500 | 语义错 | 4xx 用对应码 |
-| 不集成监控 | 出问题不知道 | 接 Sentry |
-| 异常处理器抛异常 | 二次 500 | 处理器内 try/except |
+## 九、设计思想
 
-## 十一、设计思想
+异常处理是「工程成熟度」的体现。新手只关心「能跑」,老手关心「出错时还能优雅地失败」。完整的异常体系包含:分层(校验/业务/系统)、统一格式、错误码体系、日志记录、监控告警、安全(不泄漏)。这些不是「锦上添花」,而是「生产可用」的底线。
 
-异常处理是「工程成熟度」的体现。新手只关心「能跑」,老手关心「出错时还能优雅地失败」。完整的异常体系包含:分层(校验/业务/系统)、统一格式、错误码体系、日志记录、监控告警、安全(不泄漏)。这些不是「锦上添花」,而是「生产可用」的底线。FastAPI 提供了机制(异常处理器),但实践要靠设计。把异常处理想清楚,API 的健壮性和可维护性就上了一个台阶。
+记住三条原则:
+1. **业务不碰 HTTP**:业务层 raise 纯业务异常,表现层负责翻译。解耦才能复用。
+2. **响应对用户友好,日志对开发者详细**:两者各司其职,不能混为一谈。
+3. **永远有兜底**:无论代码怎么写,总会有预料之外的异常。全局 Exception 处理器是最后一道防线,保证「永不暴露堆栈给用户」。
+
+FastAPI 提供了机制(异常处理器),但实践要靠设计。把异常处理想清楚,API 的健壮性和可维护性就上了一个台阶。
 `,
   },
 ];
