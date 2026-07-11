@@ -198,7 +198,8 @@
       "/sql",
       "/mysql",
       "/redis",
-      "/mongo"
+      "/mongo",
+      "/postgres"
     ],
     "计算机基础": [
       "/cs",

@@ -3420,7 +3420,8 @@ body {
 .floating-panel-group .reading-theme-btn,
 .floating-panel-group .floating-nav-btn,
 .floating-panel-group .floating-theme-btn,
-.floating-panel-group .floating-editor-theme-btn {
+.floating-panel-group .floating-editor-theme-btn,
+.floating-panel-group .floating-bookmark-btn {
   pointer-events: auto;
 }
 
@@ -3820,4 +3821,254 @@ body {
 .floating-editor-theme-item.active .floating-editor-theme-item-kind {
   color: var(--primary);
   opacity: 0.7;
+}
+
+/* =============================================================
+   浮动书签管理器（右侧悬浮，最上方）
+   ============================================================= */
+.floating-bookmark {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.floating-bookmark-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  padding: 0;
+}
+
+.floating-bookmark-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+}
+
+.floating-bookmark-btn.flash {
+  animation: bookmarkFlash 0.6s ease;
+}
+
+@keyframes bookmarkFlash {
+  0% { background: var(--primary); transform: scale(1.15); }
+  50% { background: var(--primary-light); transform: scale(1.05); }
+  100% { background: var(--bg-elevated); transform: scale(1); }
+}
+
+.floating-bookmark-btn-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* 展开面板（向左弹出） */
+.floating-bookmark-panel {
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.14);
+  overflow: hidden;
+  width: 300px;
+  max-height: 420px;
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  animation: bookmarkPanelIn 0.15s ease-out;
+}
+
+@keyframes bookmarkPanelIn {
+  from { opacity: 0; transform: translateX(4px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.floating-bookmark-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.floating-bookmark-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* 添加当前页按钮 */
+.floating-bookmark-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  font-family: inherit;
+  text-align: left;
+  flex-shrink: 0;
+}
+
+.floating-bookmark-add-btn:hover:not(:disabled) {
+  background: var(--primary);
+  color: #fff;
+}
+
+.floating-bookmark-add-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.floating-bookmark-add-icon {
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.floating-bookmark-add-text {
+  flex: 1;
+}
+
+/* 书签列表 */
+.floating-bookmark-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.floating-bookmark-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.floating-bookmark-list::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 3px;
+}
+
+.floating-bookmark-empty {
+  padding: 32px 14px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* 单条书签 */
+.floating-bookmark-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s;
+  font-family: inherit;
+  text-align: left;
+}
+
+.floating-bookmark-item:last-child {
+  border-bottom: none;
+}
+
+.floating-bookmark-item:hover {
+  background: var(--bg);
+}
+
+.floating-bookmark-item.active {
+  background: var(--primary-light);
+}
+
+.floating-bookmark-item-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.floating-bookmark-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.floating-bookmark-item-title {
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.floating-bookmark-item-path {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.floating-bookmark-item-del {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s;
+  opacity: 0;
+}
+
+.floating-bookmark-item:hover .floating-bookmark-item-del {
+  opacity: 1;
+}
+
+.floating-bookmark-item-del:hover {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+/* 窄屏适配 */
+@media (max-width: 768px) {
+  .floating-bookmark-btn {
+    width: 34px;
+    height: 34px;
+  }
+  .floating-bookmark-btn-icon {
+    font-size: 16px;
+  }
+  .floating-bookmark-panel {
+    width: 260px;
+    max-height: 360px;
+  }
 }

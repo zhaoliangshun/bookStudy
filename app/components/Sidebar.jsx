@@ -157,6 +157,7 @@ const BOOK_CATEGORIES = [
     books: [
       { path: "/sql", label: "数据库开发", icon: "🗄️" },
       { path: "/mysql", label: "MySQL", icon: "🐬" },
+      { path: "/postgres", label: "PostgreSQL", icon: "🐘" },
       { path: "/redis", label: "Redis", icon: "🟥" },
       { path: "/mongo", label: "MongoDB", icon: "🍃" },
     ],

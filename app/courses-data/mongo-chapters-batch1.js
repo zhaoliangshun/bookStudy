@@ -32,6 +32,7 @@ const chapters = [
 - **水平扩展**：原生支持分片（sharding），可跨多台机器分布数据
 - **高性能**：内存映射文件 + 索引，读写都快
 - **高可用**：副本集（Replica Set）自动故障转移
+- **功能丰富**：聚合管道、全文检索、地理空间索引、时间序列集合
 
 **典型应用场景**：
 
@@ -40,6 +41,7 @@ const chapters = [
 - 物联网时序数据
 - 实时分析与日志
 - 移动应用后端
+- 电商商品目录（属性灵活）
 
 > **一句话理解**：MongoDB 是"会持久化的 JSON 仓库"，你的代码里对象长什么样，存进去就长什么样。
 
@@ -62,6 +64,7 @@ const chapters = [
 2. 嵌套数据多（订单含商品列表、用户含地址数组）
 3. 单表数据量大、需要分库分表
 4. 读写比偏写、且无复杂 JOIN
+5. 需要地理空间查询（附近的人、附近的店）
 
 **什么时候别用 MongoDB？**
 
@@ -72,16 +75,62 @@ const chapters = [
 
 > **实战心法**：MongoDB 不是"更好的 MySQL"，而是另一种哲学——**用冗余换 JOIN，用灵活换约束**。
 
-## 1.3 MongoDB 的版本演进
+## 1.3 架构概览
 
-MongoDB 经过多次大版本迭代，每个版本都带来关键变化。作为开发者，你至少要知道近三个大版本：
+理解 MongoDB 的整体架构，能帮你更好地做容量规划和故障排查。
+
+\`\`\`
+客户端（驱动 / mongosh）
+        │
+        ▼
+┌─────────────────────────────┐
+│        mongod 进程          │
+│  ┌─────────────────────┐    │
+│  │   查询路由 / 执行    │    │
+│  ├─────────────────────┤    │
+│  │   存储引擎(WiredTiger)│   │
+│  │   - 缓存(cache)      │   │
+│  │   - 磁盘文件         │   │
+│  └─────────────────────┘    │
+└─────────────────────────────┘
+        │
+        ▼
+   数据文件 / journal
+\`\`\`
+
+**关键组件说明**：
+
+| 组件 | 作用 |
+| --- | --- |
+| **mongod** | MongoDB 主守护进程，负责数据读写 |
+| **mongos** | 分片集群的路由进程（分片场景才用） |
+| **mongosh** | 命令行客户端 |
+| **WiredTiger** | 默认存储引擎，支持文档级锁、压缩、快照隔离 |
+| **journal** | 预写日志，保证崩溃后数据可恢复 |
+
+**副本集（Replica Set）结构**：
+
+\`\`\`
+副本集（3 节点典型架构）
+  ├── Primary（主节点）   读写
+  ├── Secondary（从节点） 同步主节点数据，可读
+  └── Arbiter（仲裁节点） 不存数据，只参与选主投票
+\`\`\`
+
+> **心法**：生产环境**至少 3 个数据节点**（或 2 数据 + 1 仲裁），保证 1 个挂了仍能自动选主，业务不中断。
+
+## 1.4 版本演进
+
+MongoDB 经过多次大版本迭代，每个版本都带来关键变化。作为开发者，你至少要知道近几个大版本：
 
 | 版本 | 发布年份 | 关键特性 |
 | --- | --- | --- |
-| **4.x** | 2018 | 多文档 ACID 事务、副本集改进 |
-| **5.x** | 2021 | 时间序列集合、原生审计、窗口函数 |
-| **6.x** | 2022 | 集群到集群同步、查询优化器重写 |
-| **7.x** | 2023 | 可查询加密（Queryable Encryption）、列式存储 |
+| **4.0** | 2018 | 多文档 ACID 事务、副本集改进 |
+| **4.2** | 2019 | 分布式事务、字段级加密 |
+| **4.4** | 2020 | 复合哈希索引、不可变视图改进 |
+| **5.0** | 2021 | 时间序列集合、原生审计、窗口函数 |
+| **6.0** | 2022 | 集群到集群同步、查询优化器重写 |
+| **7.0** | 2023 | 可查询加密（Queryable Encryption）、列式存储 |
 
 **踩坑提示**：
 
@@ -91,15 +140,15 @@ MongoDB 经过多次大版本迭代，每个版本都带来关键变化。作为
 
 > **建议**：新项目直接上 7.x，老项目至少升到 5.0（再低就享受不到事务和时间序列集合了）。
 
-## 1.4 安装与启动
+## 1.5 安装与启动
 
 MongoDB 的安装方式很多，推荐**用 Docker**——一行命令搞定，环境隔离，方便切换版本。
 
 ### 方式一：Docker（强烈推荐）
 
-\`\`\`javascript
-// 拉取 MongoDB 7.0 镜像并启动一个容器
-// 端口 27017 是 MongoDB 默认端口
+\`\`\`bash
+# 拉取 MongoDB 7.0 镜像并启动一个容器
+# 端口 27017 是 MongoDB 默认端口
 docker run -d \\
   --name mongo-dev \\
   -p 27017:27017 \\
@@ -108,62 +157,137 @@ docker run -d \\
   -v mongo-data:/data/db \\
   mongo:7.0
 
-// 参数解释：
-// -d          后台运行
-// --name      容器名
-// -p          端口映射（宿主机:容器）
-// -e          环境变量（初始化 root 账号密码）
-// -v          数据卷挂载（持久化数据）
+# 参数解释：
+# -d          后台运行
+# --name      容器名
+# -p          端口映射（宿主机:容器）
+# -e          环境变量（初始化 root 账号密码）
+# -v          数据卷挂载（持久化数据）
 \`\`\`
 
 启动后用 \`docker ps\` 确认容器在跑，用 \`docker logs mongo-dev\` 看日志。
 
+**停止与重启**：
+
+\`\`\`bash
+# 停止容器
+docker stop mongo-dev
+
+# 启动已有容器
+docker start mongo-dev
+
+# 进入容器执行 mongosh
+docker exec -it mongo-dev mongosh -u admin -p admin123
+
+# 删除容器（数据卷保留）
+docker rm -f mongo-dev
+\`\`\`
+
 ### 方式二：macOS（Homebrew）
 
-\`\`\`javascript
-// 添加 MongoDB 官方 tap
+\`\`\`bash
+# 添加 MongoDB 官方 tap
 brew tap mongodb/brew
 
-// 安装社区版 7.0
+# 安装社区版 7.0
 brew install mongodb-community@7.0
 
-// 启动服务（后台常驻）
+# 启动服务（后台常驻）
 brew services start mongodb-community@7.0
 
-// 手动启动（前台，看日志）
+# 手动启动（前台，看日志）
 mongod --config /opt/homebrew/etc/mongod.conf
+
+# 停止服务
+brew services stop mongodb-community@7.0
 \`\`\`
 
 ### 方式三：Linux（Ubuntu/Debian）
 
-\`\`\`javascript
-// 1. 导入 GPG key
+\`\`\`bash
+# 1. 导入 GPG key
 wget -qO - https://www.mongodb.org/static/pgp/server-7.0.asc | sudo apt-key add -
 
-// 2. 添加源
+# 2. 添加源
 echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
 
-// 3. 安装
+# 3. 安装
 sudo apt-get update
 sudo apt-get install -y mongodb-org
 
-// 4. 启动
+# 4. 启动
 sudo systemctl start mongod
-sudo systemctl enable mongod   // 开机自启
+sudo systemctl enable mongod   # 开机自启
+sudo systemctl status mongod   # 查看状态
+\`\`\`
+
+### 方式四：Windows
+
+\`\`\`powershell
+# 下载安装包：https://www.mongodb.com/try/download/community
+# 选择 msi 安装包，一路下一步
+
+# 用 winget 安装（Windows 包管理器）
+winget install MongoDB.Server
+
+# 手动启动（指定数据目录）
+mongod --dbpath "C:\\data\\db" --logpath "C:\\data\\log\\mongod.log"
+
+# 注册为 Windows 服务
+mongod --install --serviceName MongoDB --dbpath "C:\\data\\db"
+net start MongoDB
 \`\`\`
 
 > **踩坑**：Linux 安装后默认监听 \`127.0.0.1\`，外部连不上。改 \`/etc/mongod.conf\` 的 \`bindIp: 0.0.0.0\`，但要先开防火墙和认证！
 
-## 1.5 mongosh 命令行工具
+## 1.6 配置文件详解
+
+MongoDB 的配置文件（\`mongod.conf\`）用 YAML 格式，生产部署必看：
+
+\`\`\`yaml
+# mongod.conf 示例
+storage:
+  dbPath: /data/db           # 数据目录
+  journal:
+    enabled: true            # 开启 journal（生产必开）
+  wiredTiger:
+    engineConfig:
+      cacheSizeGB: 2         # 缓存大小（建议物理内存 50%-70%）
+
+net:
+  port: 27017                # 端口
+  bindIp: 127.0.0.1          # 监听地址（生产慎改 0.0.0.0）
+
+security:
+  authorization: enabled     # 开启认证（生产必开）
+
+replication:
+  replSetName: rs0           # 副本集名称
+
+systemLog:
+  destination: file
+  path: /var/log/mongodb/mongod.log
+  logAppend: true
+\`\`\`
+
+> **心法**：生产环境三件事必做——**开认证、开 journal、限制 bindIp**。
+
+## 1.7 mongosh 命令行工具
 
 \`mongosh\` 是 MongoDB 官方新一代 shell，基于 Node.js，支持语法高亮、自动补全、错误提示。装好 MongoDB 后，单独装 mongosh：
 
-\`\`\`javascript
-// 用 npm 全局安装
+\`\`\`bash
+# 用 npm 全局安装
 npm install -g mongosh
 
-// 或用 Docker 直接进容器
+# 或用 Docker 直接进容器
 docker exec -it mongo-dev mongosh -u admin -p admin123
+
+# 连接远程 MongoDB
+mongosh "mongodb://admin:admin123@192.168.1.100:27017/admin"
+
+# 连接字符串带认证库
+mongosh "mongodb://admin:admin123@localhost:27017/mydb?authSource=admin"
 \`\`\`
 
 进入 mongosh 后，常用命令：
@@ -187,6 +311,9 @@ db.serverStatus()
 // 查看当前连接数
 db.serverStatus().connections
 
+// 查看数据库统计
+db.stats()
+
 // 退出
 exit
 \`\`\`
@@ -197,15 +324,38 @@ exit
 - **Tab 补全**：输入 \`db.\` 按 Tab 看所有方法
 - **\`.pretty()\`**：格式化输出，长文档可读性更好
 - **历史记录**：上下键翻看历史命令
+- **支持 \`.load()\`**：加载并执行外部 JS 文件
 
 \`\`\`javascript
 // 用 JS 批量插入测试数据
 for (let i = 0; i < 100; i++) {
   db.users.insertOne({ name: "user" + i, age: i });
 }
+
+// 加载外部脚本
+load("/path/to/init-data.js")
 \`\`\`
 
-## 1.6 第一个文档
+## 1.8 MongoDB Compass 图形界面
+
+除了命令行，MongoDB 官方还提供 **Compass**——一个跨平台 GUI 工具，适合不熟悉命令行的同学。
+
+**下载地址**：https://www.mongodb.com/try/download/compass
+
+**Compass 能做什么**：
+
+| 功能 | 说明 |
+| --- | --- |
+| 可视化查询 | 拖拽构建查询，实时看结果 |
+| 索引管理 | 创建、删除、查看索引 |
+| Schema 分析 | 自动分析集合字段分布 |
+| 聚合管道构建 | 可视化拖拽聚合阶段 |
+| 性能监控 | 查看慢查询、服务器状态 |
+| 数据导入导出 | JSON / CSV 格式 |
+
+> **建议**：开发阶段用 Compass 看数据很方便，但**生产环境别开 Compass 直连生产库**——它会把大查询拉到本地，可能拖垮服务器。
+
+## 1.9 第一个文档
 
 万事俱备，我们来插入并查询第一个文档。
 
@@ -275,21 +425,85 @@ async function main() {
 main().catch(console.error);
 \`\`\`
 
+**连接字符串（URI）格式详解**：
+
+\`\`\`
+mongodb://[用户名:密码@]主机1[:端口1][,主机2[:端口2]][/数据库][?参数]
+
+# 示例
+mongodb://localhost:27017                              # 无认证
+mongodb://admin:admin123@localhost:27017               # 带认证
+mongodb://host1:27017,host2:27017,host3:27017/?replicaSet=rs0  # 副本集
+mongodb+srv://cluster.mongodb.net/mydb                 # DNS 服务发现
+\`\`\`
+
+**常用 URI 参数**：
+
+| 参数 | 说明 | 示例 |
+| --- | --- | --- |
+| \`authSource\` | 认证库 | \`?authSource=admin\` |
+| \`replicaSet\` | 副本集名 | \`?replicaSet=rs0\` |
+| \`ssl\` | 启用 SSL | \`?ssl=true\` |
+| \`connectTimeoutMS\` | 连接超时 | \`?connectTimeoutMS=5000\` |
+| \`maxPoolSize\` | 连接池大小 | \`?maxPoolSize=50\` |
+
 > **踩坑提示**：
 > 1. \`_id\` 字段是 MongoDB 自动生成的 \`ObjectId\`（12 字节），你也可自定义
 > 2. \`use demo\` 不会立即创建数据库——只有插入第一条文档时才真正落盘
 > 3. Node.js 驱动返回的是 Promise，必须用 \`await\` 或 \`.then()\`
+> 4. 密码里有特殊字符（@、:、/）要 URL 编码，否则连接串解析出错
 
-## 1.7 本章小结
+## 1.10 数据库与集合管理
+
+\`\`\`javascript
+// 创建数据库（use 后插入数据即创建）
+use shop
+
+// 删除当前数据库
+db.dropDatabase()
+
+// 显式创建集合（可指定选项）
+db.createCollection("logs", {
+  capped: true,        // 固定大小集合
+  size: 10485760,      // 字节数（10MB）
+  max: 10000           // 最大文档数
+});
+
+// 删除集合
+db.users.drop();
+
+// 重命名集合
+db.oldCollection.renameCollection("newCollection");
+
+// 查看集合统计信息
+db.users.stats();
+
+// 查看集合选项
+db.users.getCollectionInfos();
+\`\`\`
+
+**Capped Collection（固定集合）特点**：
+
+- 固定大小，满了自动淘汰最老文档（FIFO）
+- 插入极快（顺序写）
+- 不支持删除单条文档
+- 适合日志、缓存等场景
+
+> **心法**：capped collection 是 MongoDB 里"环形缓冲区"般的存在，做实时日志流特别好使。
+
+## 1.11 本章小结
 
 本章你掌握了：
 
 - MongoDB 是面向文档的 NoSQL 数据库，用 BSON 存储 JSON-like 文档
 - 与 SQL 数据库的核心差异：灵活 schema、弱关联、水平扩展友好
+- 架构概览：mongod 进程、WiredTiger 存储引擎、副本集高可用
 - 版本演进：4.x 引入事务、5.x 时间序列、6.x 优化器重写、7.x 可查询加密
-- 三种安装方式：Docker（推荐）、Homebrew、apt
-- mongosh 命令行基本操作
-- 插入并查询第一个文档
+- 四种安装方式：Docker（推荐）、Homebrew、apt、Windows
+- 配置文件关键项：认证、journal、bindIp、缓存大小
+- mongosh 命令行基本操作和 JS 语法支持
+- Compass 图形界面
+- 插入并查询第一个文档，Node.js 驱动连接
 
 下一章我们深入**文档模型与 BSON 数据格式**，搞清楚 MongoDB 到底是怎么"装"数据的。`
   },
@@ -325,6 +539,7 @@ main().catch(console.error);
     zip: "100000",
     geo: [116.40, 39.90]
   },
+  balance: NumberDecimal("9999.99"),
   createdAt: ISODate("2024-01-15T08:00:00Z")
 }
 \`\`\`
@@ -335,6 +550,16 @@ main().catch(console.error);
 - **字段值类型多样**：可以是字符串、数字、布尔、日期、数组、嵌套文档、null 等
 - **字段顺序有意义**：插入时字段的顺序会被保留（虽然查询时不依赖顺序）
 - **\`_id\` 字段必须**：每个文档都有唯一的 \`_id\`，不指定时自动生成 \`ObjectId\`
+- **字段名区分大小写**：\`Name\` 和 \`name\` 是两个不同字段
+- **不能有重复字段名**：同一个文档里字段名必须唯一
+
+**字段命名最佳实践**：
+
+| 推荐 | 不推荐 | 原因 |
+| --- | --- | --- |
+| \`name\` | \`user_name\` | 短字段名省空间（文档里存的是 key 本身） |
+| \`createdAt\` | \`created_at\` | 与代码驼峰命名一致 |
+| \`userId\` | \`user_id\` | 与 JS 驼峰风格统一 |
 
 > **与 SQL 行的对比**：SQL 行是"扁平的"，每列类型固定；文档是"嵌套的"，可以装对象、数组，结构灵活。
 
@@ -390,9 +615,18 @@ db.oldCollection.renameCollection("newCollection");
 
 // 查看集合统计信息
 db.users.stats();
+
+// 查看所有集合
+show collections
+
+// 查看集合大小（字节）
+db.users.dataSize()
+
+// 查看集合存储大小（含压缩）
+db.users.storageSize()
 \`\`\`
 
-## 2.3 BSON 数据格式
+## 2.3 JSON vs BSON
 
 MongoDB 内部并不直接存 JSON——它用了一种**二进制 JSON 格式：BSON**。
 
@@ -405,6 +639,8 @@ MongoDB 内部并不直接存 JSON——它用了一种**二进制 JSON 格式�
 | **长度前缀** | 无 | 有（每个元素前有长度，便于跳过） |
 | **解析速度** | 慢（要逐字符扫描） | 快（按长度跳转） |
 | **体积** | 小 | 略大（有元数据开销） |
+| **数字类型** | 只有 number | int32 / int64 / double / Decimal128 区分 |
+| **日期** | 无（用字符串表示） | 原生 Date 类型 |
 
 **BSON 的优势场景**：
 
@@ -412,9 +648,20 @@ MongoDB 内部并不直接存 JSON——它用了一种**二进制 JSON 格式�
 2. **强类型**：能区分 int32 / int64 / double / Decimal128，JSON 只能 number
 3. **原生支持日期**：JSON 没有日期类型，BSON 有 \`ISODate\`
 
+**JSON 与 BSON 互转示意**：
+
+\`\`\`javascript
+// JSON（你写的查询）
+{ "name": "张三", "age": 28 }
+
+// BSON（存进磁盘的二进制，示意）
+// [长度][type][字段名\\0][值][type][字段名\\0][值][结束符]
+// 实际是紧凑的二进制字节流
+\`\`\`
+
 > **踩坑**：BSON 比 JSON **略大**（每字段多了类型和长度字节）。如果你的数据主要是长字符串，存储膨胀约 5%-10%。但换来的是查询性能，值得。
 
-## 2.4 数据类型（ObjectId/Date/Decimal128/Binary）
+## 2.4 数据类型详解
 
 BSON 支持丰富的数据类型，下表列出最常用的：
 
@@ -434,10 +681,44 @@ BSON 支持丰富的数据类型，下表列出最常用的：
 | **Object** | \`{ a: 1 }\` | 嵌套文档 |
 | **Binary** | \`BinData(0, "base64")\` | 二进制（存图片等） |
 | **Regex** | \`/pattern/\` | 正则表达式 |
+| **MinKey/MaxKey** | - | 类型排序边界值 |
 
-**重点类型详解**：
+### 数字类型：Int32 vs Int64 vs Double vs Decimal128
 
-### ObjectId
+这是最容易踩坑的地方——JSON 只有一种 number，MongoDB 有四种：
+
+\`\`\`javascript
+// 1. Int32（默认整数，值在 -2^31 ~ 2^31-1）
+db.nums.insertOne({ value: 42 });
+// 查类型
+db.nums.findOne({ value: 42 }).value instanceof NumberInt;  // 看 type
+
+// 2. Int64（大整数，超出 Int32 范围用）
+db.nums.insertOne({ value: NumberLong("9007199254740993") });
+
+// 3. Double（小数）
+db.nums.insertOne({ value: 3.14 });
+
+// 4. Decimal128（高精度，金额专用）
+db.nums.insertOne({ value: NumberDecimal("9999999999.99") });
+\`\`\`
+
+**类型严格性**：MongoDB **区分类型**，\`42\`（int）和 \`42.0\`（double）和 \`"42"\`（string）是不同的值！
+
+\`\`\`javascript
+// 插入不同类型的 42
+db.types.insertOne({ v: 42 });        // int32
+db.types.insertOne({ v: 42.0 });      // double
+db.types.insertOne({ v: "42" });      // string
+
+// 查询 int32 的 42，只匹配第一条
+db.types.find({ v: 42 });             // 匹配 int32 和 double（宽松匹配）
+db.types.find({ v: { \$type: "int" } });  // 精确匹配 int32
+\`\`\`
+
+> **踩坑**：从不同语言驱动插入的"42"可能是 int32、int64 或 double，导致查询和排序结果不一致。**金额、计数等场景显式指定类型**。
+
+### ObjectId 详解
 
 \`_id\` 字段默认类型，12 字节，结构如下：
 
@@ -456,11 +737,22 @@ console.log(date);            // 2024-01-12T10:30:15.000Z
 
 // 用字符串构造
 const id2 = ObjectId("65a1b2c3d4e5f6a7b8c9d0e1");
+
+// 比较两个 ObjectId
+const id3 = new ObjectId();
+id1.equals(id2);              // false
 \`\`\`
 
-> **优势**：ObjectId 内含时间戳，**按 _id 排序近似按时间排序**，且**分布式下不会冲突**（随机值保证）。
+**ObjectId 的优势**：
 
-### Date
+1. **内含时间戳**：前 4 字节就是创建时间，**按 _id 排序近似按时间排序**
+2. **分布式无冲突**：5 字节随机值保证不同机器生成的 ID 不重复
+3. **无需中心化**：客户端就能生成，不依赖数据库
+4. **紧凑**：12 字节 = 24 个十六进制字符
+
+> **心法**：ObjectId 内含时间戳，所以 \`db.col.find().sort({ _id: -1 })\` 可以近似"按创建时间倒序"，但**不能完全替代 createdAt 字段**——同一秒内顺序靠计数器保证，跨秒则依赖时间戳。
+
+### Date 类型
 
 \`\`\`javascript
 // 三种等价写法
@@ -475,11 +767,16 @@ db.events.find({
     \$lt:  ISODate("2024-01-16T00:00:00Z")
   }
 });
+
+// Date 方法
+const d = new Date();
+d.toISOString();     // "2024-01-15T08:00:00.000Z"
+d.getTime();         // 毫秒时间戳
 \`\`\`
 
-> **踩坑**：MongoDB 日期是 **UTC** 存储！查询时如果用本地时间，可能差 8 小时。Node.js 驱动返回的 Date 对象是 UTC，显示时再转本地。
+> **踩坑**：MongoDB 日期是 **UTC** 存储！查询时如果用本地时间，可能差 8 小时。Node.js 驱动返回的 Date 对象是 UTC，显示时再转本地。**永远存 UTC，显示时转时区**。
 
-### Decimal128
+### Decimal128（金额专用）
 
 \`\`\`javascript
 // 存金额必须用 Decimal128，不能用 double（浮点精度问题）
@@ -489,12 +786,19 @@ db.accounts.insertOne({
 });
 
 // 错误示范：用 double 存金额
-db.accounts.insertOne({ balance: 0.1 + 0.2 });  // 实际是 0.30000000000000004
+db.accounts.insertOne({ balance: 0.1 + 0.2 });
+// 实际存的是 0.30000000000000004！
+
+// Decimal128 运算（需用聚合或应用层处理）
+db.accounts.insertOne({
+  balance: NumberDecimal("100.00"),
+  rate: NumberDecimal("0.085")
+});
 \`\`\`
 
-> **心法**：**钱一律用 Decimal128**！double 的 \`0.1 + 0.2 = 0.30000000000000004\` 是经典坑。
+> **心法**：**钱一律用 Decimal128**！double 的 \`0.1 + 0.2 = 0.30000000000000004\` 是经典坑。Decimal128 支持 34 位有效数字，足够存任何金额。
 
-### Binary
+### Binary 类型
 
 \`\`\`javascript
 // 存二进制（图片、加密内容等）
@@ -515,7 +819,93 @@ db.images.insertOne({
 
 > **注意**：单文档 16MB 限制，大文件用 **GridFS**（分块存储），不要直接塞 Binary。
 
-## 2.5 文档大小限制（16MB）
+## 2.5 嵌套文档与数组
+
+MongoDB 文档的强大之处在于**可以任意嵌套**对象和数组。
+
+**嵌套文档**：
+
+\`\`\`javascript
+// 用户文档，含嵌套地址
+{
+  name: "张三",
+  address: {
+    city: "北京",
+    zip: "100000",
+    geo: {
+      lat: 39.90,
+      lng: 116.40
+    }
+  }
+}
+
+// 查询嵌套字段用点号路径
+db.users.find({ "address.city": "北京" });
+db.users.find({ "address.geo.lat": 39.90 });
+\`\`\`
+
+**数组**：
+
+\`\`\`javascript
+// 数组可以装标量
+{ tags: ["vip", "beta", "early"] }
+
+// 数组也可以装文档
+{
+  name: "张三",
+  orders: [
+    { id: 1, amount: 100 },
+    { id: 2, amount: 200 }
+  ]
+}
+
+// 查询数组元素
+db.users.find({ "orders.amount": 100 });
+\`\`\`
+
+**嵌套层数建议**：
+
+| 嵌套层数 | 评价 |
+| --- | --- |
+| 1-2 层 | 推荐，清晰且查询方便 |
+| 3-4 层 | 可以，但查询路径变长 |
+| 5+ 层 | 不推荐，考虑拆分集合 |
+
+> **心法**：嵌套是为了"一起读"——如果一个嵌套对象总是和父文档一起查，就嵌套；如果经常单独查，就拆成独立集合。
+
+## 2.6 类型排序与比较
+
+MongoDB 对不同类型有**预定义的排序顺序**，了解这点能解释一些"诡异"的查询结果：
+
+\`\`\`
+类型排序（从低到高）：
+1. MinKey
+2. Null
+3. 数字（int/long/double/decimal 之间按值比较）
+4. String
+5. Object
+6. Array
+7. Binary
+8. ObjectId
+9. Boolean
+10. Date
+11. Timestamp
+12. Regex
+13. MaxKey
+\`\`\`
+
+**这意味着**：
+
+\`\`\`javascript
+// 升序排序时：null < 数字 < 字符串 < 布尔 < 日期
+db.col.find().sort({ value: 1 });
+
+// 1 < 1.5 < "1" < true 的排序结果
+\`\`\`
+
+> **踩坑**：如果同一字段混了多种类型（如有的存数字、有的存字符串），排序结果会很奇怪。**保持字段类型一致**是基本素养。
+
+## 2.7 文档大小限制（16MB）
 
 **BSON 文档最大 16MB**。这个限制是为了防止单个文档占用过多内存和带宽。
 
@@ -526,6 +916,9 @@ print(JSON.stringify(doc).length);   // 字节数（近似）
 
 // 用 bsonsize 计算精确 BSON 大小
 print(bsonsize(doc));                // 字节数
+
+// 查看集合平均文档大小
+db.users.stats().avgObjSize;
 \`\`\`
 
 **超过 16MB 怎么办？**
@@ -539,14 +932,17 @@ print(bsonsize(doc));                // 字节数
 
 > **踩坑**：很多人把评论直接嵌套在文章文档里，结果热门文章评论 10 万条直接爆 16MB。**评论单独建集合**，用 \`articleId\` 引用。
 
-## 2.6 本章小结
+## 2.8 本章小结
 
 本章你掌握了：
 
 - 文档是键值对的有序集合，是 MongoDB 数据的基本单元
 - 三层结构：数据库 → 集合 → 文档
 - BSON 是 MongoDB 的二进制 JSON 编码，支持 20+ 种数据类型
+- 数字类型区分：Int32 / Int64 / Double / Decimal128，类型严格
 - 重点类型：ObjectId（含时间戳）、Date（UTC）、Decimal128（金额）、Binary
+- 嵌套文档和数组的灵活组织方式
+- 类型排序顺序（null < 数字 < 字符串 < 布尔 < 日期）
 - 文档 16MB 限制，大文件用 GridFS
 
 下一章我们正式开始**插入文档**，把数据真正写进 MongoDB。`
@@ -566,7 +962,7 @@ print(bsonsize(doc));                // 字节数
 
 学会了文档模型，下一步就是**把数据写进去**。MongoDB 提供了 \`insertOne\`、\`insertMany\` 两种插入方法，看似简单，但围绕写入确认、批量性能、错误处理有不少门道。
 
-## 3.1 insertOne
+## 3.1 insertOne 基本用法
 
 \`insertOne\` 插入单条文档，返回插入结果（含生成的 \`_id\`）。
 
@@ -622,7 +1018,91 @@ main();
 
 > **踩坑**：\`acknowledged: false\` 不代表写入失败，只是没等确认。绝大多数业务应该用默认（\`w: 1\`），保证 \`acknowledged: true\`。
 
-## 3.2 insertMany
+## 3.2 _id 自动生成机制
+
+每个文档必须有 \`_id\` 字段。不指定时，**驱动会自动生成 ObjectId**：
+
+\`\`\`javascript
+// 不指定 _id，驱动自动生成
+db.users.insertOne({ name: "张三" });
+// 实际写入：{ _id: ObjectId("..."), name: "张三" }
+
+// 生成时机：在客户端（驱动）生成，不是服务端
+// 这意味着：即使断网，_id 也能生成
+\`\`\`
+
+**ObjectId 生成规则回顾**（详见第 2 章）：
+
+\`\`\`
+| 4 字节时间戳 | 5 字节随机值 | 3 字节递增计数器 |
+\`\`\`
+
+\`\`\`javascript
+// 手动指定 _id
+db.users.insertOne({
+  _id: ObjectId("65a1b2c3d4e5f6a7b8c9d0e1"),
+  name: "张三"
+});
+
+// 用字符串 _id
+db.articles.insertOne({
+  _id: "mongo-intro",
+  title: "MongoDB 入门"
+});
+
+// 用数字 _id
+db.configs.insertOne({
+  _id: 1,
+  key: "site_name",
+  value: "我的网站"
+});
+\`\`\`
+
+> **心法**：\`_id\` 一旦插入**不可修改**（必须删除重建）。设计数据模型时，\`_id\` 的选择要慎重。
+
+## 3.3 自定义 _id
+
+\`_id\` 不指定时自动生成 \`ObjectId\`，但**你也可以自定义**：
+
+\`\`\`javascript
+// 用整数作 _id（适合固定数据）
+db.configs.insertOne({ _id: 1, key: "site_name", value: "我的网站" });
+db.configs.insertOne({ _id: 2, key: "max_users", value: 1000 });
+
+// 用字符串作 _id（适合自然唯一键）
+db.articles.insertOne({
+  _id: "mongo-intro",
+  title: "MongoDB 入门",
+  content: "..."
+});
+
+// 用 UUID（适合分布式）
+db.sessions.insertOne({
+  _id: UUID("550e8400-e29b-41d4-a716-446655440000"),
+  userId: 123,
+  expires: new Date()
+});
+
+// 用复合 _id（嵌套文档）
+db.inventory.insertOne({
+  _id: { sku: "ABC", warehouse: "A" },
+  qty: 100
+});
+\`\`\`
+
+**自定义 _id 的取舍**：
+
+| 自定义 _id 类型 | 优点 | 缺点 |
+| --- | --- | --- |
+| **整数** | 紧凑、易读 | 分布式下冲突 |
+| **字符串** | 业务可读 | 占空间大、索引慢 |
+| **UUID** | 分布式无冲突 | 16 字节，索引大 |
+| **复合 _id** | 天然唯一键 | 查询要带完整对象 |
+| **ObjectId（默认）** | 含时间戳、分布式友好 | 12 字节、不可读 |
+
+> **心法**：除非业务有强需求（如配置表用整数 _id），**默认让 MongoDB 自动生成 ObjectId**。
+
+## 3.4 insertMany 批量插入
 
 \`insertMany\` 一次插入多条，**比循环 insertOne 快几十倍**——因为它只发一次网络请求。
 
@@ -656,7 +1136,7 @@ async function bulkInsert() {
   const docs = [];
   for (let i = 0; i < 10000; i++) {
     docs.push({
-      name: \`user_\${i}\`,
+      name: "user_" + i,
       age: 18 + (i % 50),
       idx: i,
       createdAt: new Date()
@@ -664,7 +1144,7 @@ async function bulkInsert() {
   }
 
   const result = await users.insertMany(docs);
-  console.log(\`插入了 \${result.insertedCount} 条\`);
+  console.log("插入了 " + result.insertedCount + " 条");
 }
 \`\`\`
 
@@ -674,13 +1154,17 @@ async function bulkInsert() {
 2. **总大小不超 16MB**（单次请求的 BSON 上限）
 3. **大批量数据用 \`bulkWrite\`** 更可控（见下文）
 
+## 3.5 bulkWrite 超大批量写入
+
+对于海量数据，\`bulkWrite\` 是更底层、更高效的选择：
+
 \`\`\`javascript
 // 超大批量用 bulkWrite（更底层、更高效）
 const bulkOps = [];
 for (let i = 0; i < 100000; i++) {
   bulkOps.push({
     insertOne: {
-      document: { name: \`user_\${i}\`, age: i % 100 }
+      document: { name: "user_" + i, age: i % 100 }
     }
   });
 
@@ -695,42 +1179,47 @@ if (bulkOps.length > 0) {
 }
 \`\`\`
 
-## 3.3 自定义 _id
-
-\`_id\` 不指定时自动生成 \`ObjectId\`，但**你也可以自定义**：
+**bulkWrite 支持的操作**：
 
 \`\`\`javascript
-// 用整数作 _id（适合固定数据）
-db.configs.insertOne({ _id: 1, key: "site_name", value: "我的网站" });
-db.configs.insertOne({ _id: 2, key: "max_users", value: 1000 });
-
-// 用字符串作 _id（适合自然唯一键）
-db.articles.insertOne({
-  _id: "mongo-intro",
-  title: "MongoDB 入门",
-  content: "..."
-});
-
-// 用 UUID（适合分布式）
-db.sessions.insertOne({
-  _id: UUID("550e8400-e29b-41d4-a716-446655440000"),
-  userId: 123,
-  expires: new Date()
-});
+await db.collection("test").bulkWrite([
+  { insertOne: { document: { _id: 1, name: "A" } } },
+  { updateOne: {
+      filter: { _id: 1 },
+      update: { \$set: { name: "AA" } }
+  }},
+  { deleteOne: { filter: { _id: 2 } } },
+  { replaceOne: {
+      filter: { _id: 3 },
+      replacement: { _id: 3, name: "C" }
+  }}
+]);
 \`\`\`
 
-**自定义 _id 的取舍**：
+**性能对比**：
 
-| 自定义 _id 类型 | 优点 | 缺点 |
-| --- | --- | --- |
-| **整数** | 紧凑、易读 | 分布式下冲突 |
-| **字符串** | 业务可读 | 占空间大、索引慢 |
-| **UUID** | 分布式无冲突 | 16 字节，索引大 |
-| **ObjectId（默认）** | 含时间戳、分布式友好 | 12 字节、不可读 |
+\`\`\`javascript
+// 测试 10000 条数据插入
 
-> **心法**：除非业务有强需求（如配置表用整数 _id），**默认让 MongoDB 自动生成 ObjectId**。
+// 方式 1：循环 insertOne（慢）
+for (let i = 0; i < 10000; i++) {
+  await users.insertOne({ name: "user_" + i });
+}
+// 耗时：约 15-20 秒（每条一次网络往返）
 
-## 3.4 插入的写入关注（writeConcern）
+// 方式 2：insertMany（快）
+const docs = [];
+for (let i = 0; i < 10000; i++) docs.push({ name: "user_" + i });
+await users.insertMany(docs);
+// 耗时：约 0.5-1 秒（一次网络往返）
+
+// 方式 3：分批 bulkWrite（最快、最可控）
+// 耗时：约 0.3-0.8 秒
+\`\`\`
+
+> **心法**：批量导入数据用 \`insertMany\` 或 \`bulkWrite\`，**绝不要循环 \`insertOne\`**——网络往返开销远大于写入本身。
+
+## 3.6 写入关注（writeConcern）
 
 **writeConcern（写入关注）** 决定"写入算成功"需要几个节点确认。这是数据可靠性与性能的权衡。
 
@@ -776,9 +1265,22 @@ db.users.insertOne(
 | \`w: 1\`（默认） | ⭐⭐⭐⭐ | ⭐⭐ | 普通业务 |
 | \`w: "majority"\` | ⭐⭐⭐ | ⭐⭐⭐⭐ | 重要数据（订单、支付） |
 
-> **踩坑**：\`w: 0\` 看似快，但**写入失败你不会知道**！除非是日志类可丢数据，否则别用。
+**journal 的作用**：
 
-## 3.5 有序插入 vs 无序插入
+\`\`\`
+写入流程：
+1. 数据写入内存
+2. 同时写入 journal 文件（预写日志）
+3. 后台定期把内存数据刷到数据文件
+
+如果崩溃：
+- 有 journal：重启时重放 journal，数据不丢
+- 无 journal：内存中未刷盘的数据丢失
+\`\`\`
+
+> **踩坑**：\`w: 0\` 看似快，但**写入失败你不会知道**！除非是日志类可丢数据，否则别用。生产环境推荐 \`w: "majority", j: true\`。
+
+## 3.7 有序插入 vs 无序插入
 
 \`insertMany\` 有个 \`ordered\` 选项，决定**遇到错误时的行为**：
 
@@ -814,15 +1316,101 @@ db.big.insertMany(docs, { ordered: false });
 
 > **心法**：批量导入数据**默认用 \`ordered: false\`**，除非业务要求"按顺序失败即停止"。
 
-## 3.6 本章小结
+## 3.8 错误处理
+
+插入时可能遇到多种错误，正确处理能提升健壮性：
+
+\`\`\`javascript
+// 1. 重复 _id 错误（最常见）
+try {
+  await users.insertOne({ _id: 1, name: "张三" });
+  await users.insertOne({ _id: 1, name: "李四" });  // 报错
+} catch (err) {
+  if (err.code === 11000) {
+    console.log("重复 _id，跳过");
+  }
+}
+
+// 2. 文档过大错误
+try {
+  await users.insertOne({ data: "x".repeat(20 * 1024 * 1024) });  // 超 16MB
+} catch (err) {
+  console.log("文档超限:", err.message);
+}
+
+// 3. insertMany 部分失败（无序模式）
+try {
+  await users.insertMany(docs, { ordered: false });
+} catch (err) {
+  // err.writeErrors 包含所有失败的条目
+  console.log("成功:", err.insertedCount);
+  console.log("失败:", err.writeErrors.length);
+}
+\`\`\`
+
+**常见错误码**：
+
+| 错误码 | 含义 | 处理建议 |
+| --- | --- | --- |
+| \`11000\` | 重复键（_id 或唯一索引冲突） | 检查数据是否重复 |
+| \`121\` | 文档验证失败（validator 拦截） | 检查文档是否符合 schema |
+| \`2\` | 字段值超出范围 | 检查数值/字符串长度 |
+
+> **踩坑**：\`insertMany\` 在有序模式下，一旦报错就抛异常，**后续文档不会插入**。要批量容错，用 \`ordered: false\`。
+
+## 3.9 插入性能优化清单
+
+大批量插入时，按这份清单优化：
+
+\`\`\`javascript
+// ✅ 推荐：无序 + 分批 + bulkWrite
+async function importData(docs) {
+  const batchSize = 5000;
+  for (let i = 0; i < docs.length; i += batchSize) {
+    const batch = docs.slice(i, i + batchSize);
+    await collection.bulkWrite(
+      batch.map(d => ({ insertOne: { document: d } })),
+      { ordered: false }
+    );
+    console.log("已导入 " + (i + batch.length) + " 条");
+  }
+}
+
+// ✅ 关闭索引（导入前删，导入后建）
+db.col.dropIndexes();
+// ... 导入数据 ...
+db.col.createIndex({ field: 1 });
+
+// ✅ 关闭文档验证（导入时）
+db.runCommand({
+  collMod: "users",
+  validator: {}
+});
+\`\`\`
+
+**性能优化要点**：
+
+| 优化项 | 效果 |
+| --- | --- |
+| 用 \`insertMany\` / \`bulkWrite\` | 减少 90%+ 网络开销 |
+| \`ordered: false\` | 快 30%-50% |
+| 分批 5000 条 | 避免单次请求过大 |
+| 导入前删索引 | 索引维护开销大 |
+| 关闭验证 | 减少 schema 校验 |
+| 用 SSD | 磁盘 IO 瓶颈 |
+
+## 3.10 本章小结
 
 本章你掌握了：
 
 - \`insertOne\` 插入单条，返回 \`acknowledged\` 和 \`insertedId\`
+- \`_id\` 自动生成 ObjectId（客户端生成），也可自定义
 - \`insertMany\` 批量插入，比循环快几十倍，单次最多 1000 条
-- 自定义 \`_id\` 的几种方式及取舍
+- \`bulkWrite\` 支持混合操作，适合超大批量导入
 - writeConcern：\`w: 0\` 快但不可靠、\`w: "majority"\` 慢但安全
 - \`ordered\` 选项：批量插入遇错是否继续
+- 错误处理：重复键（11000）、文档过大、验证失败
+- 性能优化：无序 + 分批 + 删索引 + 关验证
 
 下一章我们学习**查询文档 find**——MongoDB 最核心、最常用的能力。`
   },
@@ -864,6 +1452,16 @@ db.users
   .pretty()
 \`\`\`
 
+**find 的两个参数**：
+
+\`\`\`javascript
+// find(查询条件, 投影)
+db.users.find(
+  { age: { \$gt: 20 } },      // 第一个参数：查询条件
+  { name: 1, age: 1, _id: 0 } // 第二个参数：投影（返回哪些字段）
+)
+\`\`\`
+
 **Node.js 驱动**：
 
 \`\`\`javascript
@@ -875,11 +1473,55 @@ const cursor = users.find({});
 for await (const doc of cursor) {
   console.log(doc.name);
 }
+
+// 分页查询
+const page = 2, size = 10;
+const list = await users
+  .find({})
+  .skip((page - 1) * size)
+  .limit(size)
+  .toArray();
 \`\`\`
 
 > **心法**：\`find\` 返回的是**游标（cursor）**，不是数组！只有调用 \`.toArray()\` 或迭代时才真正执行查询。
 
-## 4.2 比较运算符
+## 4.2 游标方法
+
+\`find\` 返回游标，常用方法：
+
+\`\`\`javascript
+// 排序（1 升序，-1 降序）
+db.users.find().sort({ age: 1 });       // 按年龄升序
+db.users.find().sort({ age: -1 });      // 按年龄降序
+db.users.find().sort({ age: -1, name: 1 }); // 多字段排序
+
+// 限制返回条数
+db.users.find().limit(10);
+
+// 跳过条数（分页用）
+db.users.find().skip(20).limit(10);     // 第 3 页
+
+// 计数
+db.users.countDocuments({ age: { \$gt: 20 } });
+
+// 只返回一条
+db.users.findOne({ name: "张三" });
+\`\`\`
+
+**分页查询的两种方式**：
+
+\`\`\`javascript
+// 方式 1：skip + limit（简单，但大页码慢）
+db.users.find().skip(10000).limit(10);
+
+// 方式 2：游标分页（推荐，性能稳定）
+// 假设上一页最后一条 _id 是 lastId
+db.users.find({ _id: { \$gt: lastId } }).limit(10).sort({ _id: 1 });
+\`\`\`
+
+> **踩坑**：\`skip(10000)\` 会扫描并跳过 10000 条文档，**大页码性能急剧下降**。深分页用游标分页（按 \`_id\` 或时间戳）。
+
+## 4.3 比较运算符
 
 | 运算符 | 含义 | 示例 |
 | --- | --- | --- |
@@ -901,11 +1543,14 @@ db.users.find({ city: { \$in: ["北京", "上海", "广州"] } });
 
 // 查不在黑名单的用户
 db.users.find({ userId: { \$nin: [1, 2, 3] } });
+
+// \$eq 显式写法（等价于 { age: 28 }）
+db.users.find({ age: { \$eq: 28 } });
 \`\`\`
 
 > **踩坑**：\`\$ne\` 和 \`\$nin\` **不能用索引高效查询**——它们要扫整个集合。大数据下慎用，改用反向条件或冗余字段。
 
-## 4.3 逻辑运算符
+## 4.4 逻辑运算符
 
 | 运算符 | 含义 |
 | --- | --- |
@@ -946,9 +1591,30 @@ db.users.find({
 });
 \`\`\`
 
+**\$and 的特殊场景**（同一字段多个条件用对象语法会冲突）：
+
+\`\`\`javascript
+// ❌ 错误：同一个 key 后面会覆盖前面
+db.users.find({
+  age: { \$gt: 18 },
+  age: { \$lt: 60 }      // 覆盖了上面的 $gt
+});
+
+// ✅ 正确 1：合并到一个对象
+db.users.find({ age: { \$gt: 18, \$lt: 60 } });
+
+// ✅ 正确 2：用 $and
+db.users.find({
+  \$and: [
+    { age: { \$gt: 18 } },
+    { age: { \$lt: 60 } }
+  ]
+});
+\`\`\`
+
 > **心法**：\`\$or\` 性能比 \`\$in\` 差（要走多次索引扫描），能用 \`\$in\` 就别用 \`\$or\`。
 
-## 4.4 字段存在性（$exists）
+## 4.5 字段存在性（\$exists）
 
 \`\`\`javascript
 // 查有 email 字段的用户
@@ -961,9 +1627,25 @@ db.users.find({ email: { \$exists: false } });
 db.users.find({ createdAt: { \$exists: false } }).count();
 \`\`\`
 
-> **踩坑**：\`{ field: null }\` 和 \`{ field: { \$exists: false } }\` 不同——前者匹配字段值为 null 的文档，后者匹配字段不存在的文档。
+**\`{ field: null }\` vs \`{ field: { \$exists: false } }\` 的区别**：
 
-## 4.5 类型查询（$type）
+\`\`\`javascript
+// 文档集合：
+// { _id: 1, name: "A", email: null }
+// { _id: 2, name: "B" }  // 没有 email 字段
+
+// { email: null } 匹配：email 为 null 或 email 不存在
+// 结果：匹配 1 和 2
+db.users.find({ email: null });
+
+// { email: { \$exists: false } } 只匹配字段不存在的
+// 结果：只匹配 2
+db.users.find({ email: { \$exists: false } });
+\`\`\`
+
+> **踩坑**：\`{ field: null }\` 和 \`{ field: { \$exists: false } }\` 不同——前者匹配字段值为 null 的文档，后者匹配字段不存在的文档。\`null\` 查询会同时匹配两者。
+
+## 4.6 类型查询（\$type）
 
 \`\$type\` 按字段的数据类型查询，适合排查"脏数据"（同一字段类型不一致）。
 
@@ -979,9 +1661,69 @@ db.users.find({ age: { \$type: ["int", "double", "long"] } });
 // "int" / "long" / "date" / "objectId" / "decimal"
 \`\`\`
 
+**BSON 类型编号对照**：
+
+| 编号 | 别名 | 类型 |
+| --- | --- | --- |
+| 1 | double | 浮点数 |
+| 2 | string | 字符串 |
+| 3 | object | 嵌套文档 |
+| 4 | array | 数组 |
+| 8 | bool | 布尔 |
+| 9 | date | 日期 |
+| 10 | null | null |
+| 16 | int | 32 位整数 |
+| 18 | long | 64 位整数 |
+| 7 | objectId | ObjectId |
+
 > **实战场景**：老数据迁移后 age 字段既有数字又有字符串，用 \`\$type\` 找出字符串的批量修复。
 
-## 4.6 查询嵌套文档
+## 4.7 正则查询（\$regex）
+
+\`\$regex\` 支持正则表达式查询，常用于模糊搜索：
+
+\`\`\`javascript
+// 查 name 以"张"开头的用户
+db.users.find({ name: { \$regex: "^张" } });
+
+// 简写（等价于上面）
+db.users.find({ name: /^张/ });
+
+// 查 name 包含"三"的用户
+db.users.find({ name: /三/ });
+db.users.find({ name: { \$regex: "三" } });
+
+// 忽略大小写
+db.users.find({ name: { \$regex: "abc", \$options: "i" } });
+
+// 多行模式
+db.users.find({ content: { \$regex: "^hello", \$options: "m" } });
+\`\`\`
+
+**\$options 选项**：
+
+| 选项 | 含义 |
+| --- | --- |
+| \`i\` | 忽略大小写 |
+| \`m\` | 多行模式（^ 和 \$ 匹配每行） |
+| \`s\` | 让 . 匹配换行符 |
+| \`x\` | 忽略正则中的空白 |
+
+\`\`\`javascript
+// 实战：搜索邮箱（不区分大小写）
+db.users.find({
+  email: { \$regex: "@example\\\\.com$", \$options: "i" }
+});
+
+// 实战：手机号以 138 开头
+db.users.find({
+  phone: { \$regex: "^138\\\\d{8}\$" }
+});
+\`\`\`
+
+> **踩坑**：\`\$regex\` **不能有效利用索引**（除非是前缀匹配 \`^xxx\`）。大数据下模糊搜索很慢，考虑用**全文索引**或 **Atlas Search**。
+
+## 4.8 查询嵌套文档
 
 文档可以嵌套，查询时用**点号路径**或**对象匹配**：
 
@@ -1004,11 +1746,14 @@ db.users.find({ address: { city: "北京", zip: "100000" } });
 
 // 嵌套多层的点号路径
 db.users.find({ "address.geo.lat": 39.9 });
+
+// 嵌套文档字段用运算符
+db.users.find({ "address.zip": { \$in: ["100000", "200000"] } });
 \`\`\`
 
 > **踩坑**：对象匹配要求**完全相等**（字段、顺序、数量都一致），实际开发**几乎都用点号路径**。
 
-## 4.7 查询数组
+## 4.9 查询数组
 
 数组查询是 MongoDB 的强项，但语法有点反直觉：
 
@@ -1041,7 +1786,7 @@ db.products.find({
 });
 \`\`\`
 
-**$elemMatch 的精髓**：
+**\$elemMatch 的精髓**：
 
 \`\`\`javascript
 // 文档：
@@ -1057,18 +1802,118 @@ db.scores.find({
 });
 \`\`\`
 
+**数组元素是文档时的查询**：
+
+\`\`\`javascript
+// 文档：
+// {
+//   name: "张三",
+//   orders: [
+//     { id: 1, amount: 100, status: "paid" },
+//     { id: 2, amount: 200, status: "pending" }
+//   ]
+// }
+
+// 查"有金额大于 150 的订单"的用户
+db.users.find({
+  "orders.amount": { \$gt: 150 }
+});
+
+// 查"有金额大于 150 且状态为 paid 的订单"的用户
+// ❌ 错误：会匹配 amount>150 或 status=paid 的任意组合
+db.users.find({
+  "orders.amount": { \$gt: 150 },
+  "orders.status": "paid"
+});
+
+// ✅ 正确：用 $elemMatch 确保是同一个订单元素
+db.users.find({
+  orders: {
+    \$elemMatch: { amount: { \$gt: 150 }, status: "paid" }
+  }
+});
+\`\`\`
+
 > **心法**：**数组多条件查询永远用 \`\$elemMatch\`**，否则可能查到错误结果。
 
-## 4.8 本章小结
+## 4.10 投影（Projection）
+
+投影决定查询结果**返回哪些字段**，能减少网络传输和内存占用：
+
+\`\`\`javascript
+// 只返回 name 和 age（_id 默认返回）
+db.users.find({}, { name: 1, age: 1 });
+// 结果：{ _id: ObjectId("..."), name: "张三", age: 28 }
+
+// 只返回 name，排除 _id
+db.users.find({}, { name: 1, _id: 0 });
+// 结果：{ name: "张三" }
+
+// 排除某些字段（其他都返回）
+db.users.find({}, { password: 0, salt: 0 });
+// 结果：返回除 password/salt 外的所有字段
+
+// 投影嵌套文档字段
+db.users.find({}, { "address.city": 1, name: 1 });
+
+// 数组投影：只返回第一个元素
+db.posts.find({}, { "comments.\$": 1 });
+// 只返回 comments 数组的第一个元素
+\`\`\`
+
+**投影规则**：
+
+| 写法 | 含义 |
+| --- | --- |
+| \`{ field: 1 }\` | 包含 field（其他默认不返回，\_id 除外） |
+| \`{ field: 0 }\` | 排除 field（其他默认返回） |
+| \`{ field: 1, _id: 0 }\` | 包含 field，排除 \_id |
+| \`{ "a.b": 1 }\` | 包含嵌套字段 |
+
+> **踩坑**：**不能混用包含和排除**（除了 \`\_id\`）。\`{ name: 1, age: 0 }\` 会报错——要么全用包含，要么全用排除。
+
+## 4.11 综合查询示例
+
+\`\`\`javascript
+// 业务场景：查询 18-35 岁、在北京或上海、有 vip 标签的活跃用户
+// 只返回 name、age、city，按年龄降序，取前 10 条
+db.users.find(
+  {
+    age: { \$gte: 18, \$lte: 35 },
+    city: { \$in: ["北京", "上海"] },
+    tags: "vip",
+    isActive: true
+  },
+  { name: 1, age: 1, city: 1, _id: 0 }
+).sort({ age: -1 }).limit(10);
+
+// 场景：搜索名字含"张"且邮箱以 @example.com 结尾的用户
+db.users.find({
+  name: { \$regex: "张" },
+  email: { \$regex: "@example\\\\.com\$" }
+});
+
+// 场景：查有金额大于 100 的已支付订单的用户
+db.users.find({
+  orders: {
+    \$elemMatch: { amount: { \$gt: 100 }, status: "paid" }
+  }
+});
+\`\`\`
+
+## 4.12 本章小结
 
 本章你掌握了：
 
-- \`find\` 基本语法，返回游标
-- 比较运算符：\`\$gt\` \`\$lt\` \`\$in\` \`\$nin\` 等
+- \`find\` 基本语法，返回游标，支持链式调用
+- 游标方法：\`sort\` \`limit\` \`skip\` \`countDocuments\`
+- 比较运算符：\`\$gt\` \`\$lt\` \`\$gte\` \`\$lte\` \`\$in\` \`\$nin\` \`\$eq\` \`\$ne\`
 - 逻辑运算符：\`\$and\` \`\$or\` \`\$nor\` \`\$not\`（能用 \`\$in\` 就别用 \`\$or\`）
 - \`\$exists\` 查字段存在性、\`\$type\` 查数据类型
+- \`\$regex\` 正则模糊查询（前缀匹配才能用索引）
 - 嵌套文档用点号路径查询（不要用对象匹配）
 - 数组查询：\`\$all\` \`\$size\` \`\$elemMatch\`（多条件必用 \`\$elemMatch\`）
+- 投影：包含（\`1\`）或排除（\`0\`），不能混用
 
 下一章我们学习**更新文档**——把查出来的数据改掉。`
   },
@@ -1087,7 +1932,9 @@ db.scores.find({
 
 MongoDB 的更新操作丰富而强大——既能改字段、删字段，又能往数组里加元素、从数组里删元素。本章系统讲解所有更新语法。
 
-## 5.1 updateOne / updateMany
+## 5.1 updateOne / updateMany / replaceOne
+
+MongoDB 提供三个主要的更新方法：
 
 \`\`\`javascript
 // 更新单条（只改第一个匹配）
@@ -1110,19 +1957,30 @@ db.users.updateMany(
 // }
 \`\`\`
 
+**三个方法对比**：
+
+| 方法 | 作用 | 更新方式 |
+| --- | --- | --- |
+| \`updateOne\` | 更新第一条匹配 | 用操作符（\`\$set\` 等） |
+| \`updateMany\` | 更新所有匹配 | 用操作符 |
+| \`replaceOne\` | 整体替换第一条匹配 | 直接给新文档（不用操作符） |
+
 > **心法**：默认情况下，\`updateOne\` 只改**第一条匹配**。如果想批量更新，**必须用 \`updateMany\`**。SQL 里的 \`UPDATE ... WHERE\` 默认是全量，MongoDB 这里反直觉，新手易踩坑。
 
-## 5.2 字段操作符（$set/$unset/$inc/$rename）
+## 5.2 字段操作符
 
 | 操作符 | 作用 | 示例 |
 | --- | --- | --- |
 | \`\$set\` | 设置字段值（不存在则创建） | \`{ \$set: { age: 30 } }\` |
 | \`\$unset\` | 删除字段 | \`{ \$unset: { email: "" } }\` |
 | \`\$inc\` | 数值增减（可为负） | \`{ \$inc: { views: 1 } }\` |
-| \`\$rename\` | 重命名字段 | \`{ \$rename: { old: "new" } }\` |
 | \`\$mul\` | 数值乘 | \`{ \$mul: { price: 1.1 } }\` |
+| \`\$rename\` | 重命名字段 | \`{ \$rename: { old: "new" } }\` |
 | \`\$min\` | 取较小值 | \`{ \$min: { price: 50 } }\` |
 | \`\$max\` | 取较大值 | \`{ \$max: { score: 90 } }\` |
+| \`\$currentDate\` | 设为当前时间 | \`{ \$currentDate: { lastModified: true } }\` |
+
+### \$set 和 \$unset
 
 \`\`\`javascript
 // 设置字段（字段不存在则创建）
@@ -1137,25 +1995,110 @@ db.users.updateOne(
   { \$unset: { email: "" } }   // value 随便填，只看 key
 );
 
+// $set 修改嵌套字段
+db.users.updateOne(
+  { name: "张三" },
+  { \$set: { "address.zip": "200000" } }
+);
+\`\`\`
+
+### \$inc 自增（原子操作）
+
+\`\`\`javascript
 // 数值自增（性能极高，原子操作）
 db.posts.updateOne(
   { _id: 1 },
   { \$inc: { views: 1, likes: -1 } }   // views+1, likes-1
 );
 
-// 重命名字段
-db.users.updateMany({}, { \$rename: { "oldName": "newName" } });
-
-// 取最小值（只更新比当前值小的）
-db.products.updateOne(
-  { _id: 1 },
-  { \$min: { price: 50 } }   // 如果当前 price > 50 才更新
+// 批量自增
+db.products.updateMany(
+  { category: "book" },
+  { \$inc: { stock: -1 } }
 );
 \`\`\`
 
 > **踩坑**：\`\$inc\` 是**原子操作**，并发安全！不要"读出来-改-写回"，会有并发问题。计数控数都用 \`\$inc\`。
 
-## 5.3 数组操作符（$push/$pull/$addToSet/$pop）
+### \$mul 乘法
+
+\`\`\`javascript
+// 价格全部涨 10%
+db.products.updateMany(
+  { category: "book" },
+  { \$mul: { price: 1.1 } }
+);
+
+// 字段不存在时，$mul 当作 0 处理
+db.products.updateOne(
+  { _id: 1 },
+  { \$mul: { discount: 0.8 } }   // 如果 discount 不存在，结果是 0
+);
+\`\`\`
+
+### \$rename 重命名
+
+\`\`\`javascript
+// 重命名字段
+db.users.updateMany(
+  {},
+  { \$rename: { "oldName": "newName", "created_at": "createdAt" } }
+);
+
+// 重命名嵌套字段
+db.users.updateMany(
+  {},
+  { \$rename: { "address.city": "address.town" } }
+);
+\`\`\`
+
+### \$min 和 \$max
+
+\`\`\`javascript
+// 取最小值（只更新比当前值小的）
+db.products.updateOne(
+  { _id: 1 },
+  { \$min: { price: 50 } }   // 如果当前 price > 50 才更新
+);
+
+// 取最大值（只更新比当前值大的）
+db.scores.updateOne(
+  { _id: 1 },
+  { \$max: { highScore: 95 } }   // 如果当前 highScore < 95 才更新
+);
+
+// 适合"只往一个方向更新"的场景，避免多余写入
+\`\`\`
+
+### \$currentDate 当前时间
+
+\`\`\`javascript
+// 设置字段为当前日期时间
+db.users.updateOne(
+  { _id: 1 },
+  { \$currentDate: { lastModified: true } }
+);
+// lastModified 自动设为当前 ISODate
+
+// 指定为时间戳类型
+db.users.updateOne(
+  { _id: 1 },
+  { \$currentDate: { lastModified: { \$type: "timestamp" } } }
+);
+
+// 实战：更新时自动维护 updatedAt
+db.users.updateOne(
+  { _id: 1 },
+  {
+    \$set: { name: "李四" },
+    \$currentDate: { updatedAt: true }
+  }
+);
+\`\`\`
+
+> **心法**：\`\$currentDate\` 比 \`{ \$set: { time: new Date() } }\` 更语义化，专门用来维护"最后修改时间"字段。
+
+## 5.3 数组操作符
 
 数组是文档里最灵活的部分，MongoDB 提供了丰富的数组操作符：
 
@@ -1166,7 +2109,11 @@ db.products.updateOne(
 | \`\$addToSet\` | 添加元素（去重） |
 | \`\$pop\` | 删除首/尾元素（\`1\` 尾、\`-1\` 首） |
 | \`\$pullAll\` | 删除所有匹配元素 |
-| \`\$position\` | 指定插入位置（配合 \`\$push\`） |
+| \`\$each\` | 配合 \`\$push\`/\`\$addToSet\` 加多个 |
+| \`\$position\` | 指定插入位置 |
+| \`\$slice\` | 限制数组长度 |
+
+### \$push 添加元素
 
 \`\`\`javascript
 // 文档：{ _id: 1, tags: ["a", "b"] }
@@ -1183,7 +2130,11 @@ db.posts.updateOne(
   { \$push: { tags: "a" } }    // 重复也能加
 );
 // 结果：["a", "b", "c", "a"]
+\`\`\`
 
+### \$addToSet 去重添加
+
+\`\`\`javascript
 // $addToSet：添加元素（已存在则不加）
 db.posts.updateOne(
   { _id: 1 },
@@ -1191,6 +2142,17 @@ db.posts.updateOne(
 );
 // 结果不变（a 已存在）
 
+// $addToSet + $each：批量去重添加
+db.posts.updateOne(
+  { _id: 1 },
+  { \$addToSet: { tags: { \$each: ["a", "b", "z"] } } }
+);
+// 结果：["a", "b", "c", "z"]（只加了 z）
+\`\`\`
+
+### \$pull 删除元素
+
+\`\`\`javascript
 // $pull：删除匹配元素
 db.posts.updateOne(
   { _id: 1 },
@@ -1203,10 +2165,24 @@ db.posts.updateOne(
   { \$pull: { comments: { author: "黑名单用户" } } }
 );
 
+// $pull 按条件删除数组元素
+db.scores.updateOne(
+  { _id: 1 },
+  { \$pull: { results: { \$lt: 60 } } }   // 删除所有小于 60 的成绩
+);
+\`\`\`
+
+### \$pop 删除首尾
+
+\`\`\`javascript
 // $pop：删首/尾
 db.posts.updateOne({ _id: 1 }, { \$pop: { tags: 1 } });   // 删尾
 db.posts.updateOne({ _id: 1 }, { \$pop: { tags: -1 } });  // 删首
+\`\`\`
 
+### \$push 的高级用法（\$each + \$position + \$slice）
+
+\`\`\`javascript
 // $push 加多个 + 指定位置
 db.posts.updateOne(
   { _id: 1 },
@@ -1215,7 +2191,21 @@ db.posts.updateOne(
       tags: {
         \$each: ["x", "y", "z"],     // 加多个
         \$position: 0,                // 插到开头
-        \$slice: 5                    // 保留前 5 个
+        \$slice: 5                    // 保留前 5 个（截断）
+      }
+    }
+  }
+);
+
+// 实战：保留最近 10 条评论
+db.articles.updateOne(
+  { _id: 1 },
+  {
+    \$push: {
+      recentComments: {
+        \$each: [newComment],         // 加新评论
+        \$position: 0,                // 加到开头
+        \$slice: 10                   // 只保留前 10 条
       }
     }
   }
@@ -1224,7 +2214,7 @@ db.posts.updateOne(
 
 > **踩坑**：\`\$push\` 加 \`\$slice\` 实现定长数组（如最近 10 条评论），但**数组越长性能越差**——超过几百个元素就该拆集合。
 
-## 5.4 replaceOne
+## 5.4 replaceOne 整体替换
 
 \`replaceOne\` 用一个新文档**整体替换**匹配的文档（保留 \`_id\`）。和 \`updateOne\` 的区别：\`updateOne\` 用操作符改字段，\`replaceOne\` 直接换整个文档。
 
@@ -1240,16 +2230,24 @@ db.users.replaceOne(
   { name: "张三" },
   { name: "张三", age: 30, city: "北京" }   // 注意没有 $set
 );
+// 替换后：原来的 email、tags 等字段全部消失
+
+// 返回值
+// {
+//   acknowledged: true,
+//   matchedCount: 1,
+//   modifiedCount: 1
+// }
 \`\`\`
 
 > **心法**：\`replaceOne\` 适合"全量同步"场景（如从外部系统同步一条完整数据），\`updateOne\` 适合"局部修改"。
 
-## 5.5 findOneAndUpdate
+## 5.5 findOneAndUpdate（findAndModify）
 
 \`findOneAndUpdate\` 是**原子地"找到-改-返回"**的复合操作，常用于"取号""更新并返回新值"。
 
 \`\`\`javascript
-// 找到并更新，返回更新后的文档
+// mongosh 中：找到并更新，返回更新后的文档
 const result = db.counters.findOneAndUpdate(
   { name: "order_id" },
   { \$inc: { seq: 1 } },
@@ -1264,6 +2262,29 @@ const result = await counters.findOneAndUpdate(
 );
 \`\`\`
 
+**findOneAndUpdate 选项**：
+
+\`\`\`javascript
+await collection.findOneAndUpdate(
+  filter,          // 查询条件
+  update,          // 更新操作
+  {
+    returnDocument: "after",   // 返回更新前(before)还是更新后(after)
+    upsert: true,              // 找不到是否插入
+    sort: { createdAt: -1 },   // 多条匹配时选哪个
+    projection: { name: 1 }    // 返回哪些字段
+  }
+);
+\`\`\`
+
+**findAndModify 家族**：
+
+| 方法 | 作用 |
+| --- | --- |
+| \`findOneAndUpdate\` | 找到并更新 |
+| \`findOneAndReplace\` | 找到并替换 |
+| \`findOneAndDelete\` | 找到并删除 |
+
 **经典应用：自增 ID 生成器**
 
 \`\`\`javascript
@@ -1277,6 +2298,17 @@ async function getNextId(name) {
 }
 
 const orderId = await getNextId("order_id");   // 1, 2, 3, ...
+\`\`\`
+
+**经典应用：原子更新并返回旧值**
+
+\`\`\`javascript
+// 取出并删除最早的一条任务（队列模式）
+const task = await tasks.findOneAndUpdate(
+  { status: "pending" },
+  { \$set: { status: "processing", worker: workerId } },
+  { sort: { createdAt: 1 }, returnDocument: "after" }
+);
 \`\`\`
 
 > **优势**：\`findOneAndUpdate\` 是**原子操作**，并发下不会取到相同号。比"读-改-写"安全得多。
@@ -1316,20 +2348,135 @@ db.visits.updateOne(
 // 第一次访问：插入新文档；后续访问：count 自增
 \`\`\`
 
+**upsert 的注意事项**：
+
+\`\`\`javascript
+// ⚠️ 查询条件里的等值字段会成为新文档的字段
+db.users.updateOne(
+  { email: "a@b.com", status: "active" },
+  { \$set: { name: "张三" } },
+  { upsert: true }
+);
+// 如果插入：{ email: "a@b.com", status: "active", name: "张三", _id: ... }
+
+// ⚠️ 查询条件里有运算符会报错
+db.users.updateOne(
+  { age: { \$gt: 18 } },           // 查询条件有 $gt
+  { \$set: { name: "张三" } },
+  { upsert: true }
+);
+// 报错：$gt 不能作为 upsert 新文档的字段值
+\`\`\`
+
 > **踩坑**：\`upsert\` 时，**查询条件里的等值字段会作为新文档的字段**。如果查询条件里有 \`\$gt\` 这类运算符，会报错——\`upsert\` 不接受运算符作为字段值。
 
-## 5.7 本章小结
+## 5.7 批量更新 bulkWrite
+
+\`bulkWrite\` 可以混合多种操作，一次提交：
+
+\`\`\`javascript
+await db.collection("users").bulkWrite([
+  { insertOne: { document: { _id: 1, name: "A" } } },
+  { updateOne: {
+      filter: { _id: 1 },
+      update: { \$set: { name: "AA" } }
+  }},
+  { updateMany: {
+      filter: { status: "old" },
+      update: { \$set: { status: "new" } }
+  }},
+  { deleteOne: { filter: { _id: 2 } } },
+  { replaceOne: {
+      filter: { _id: 3 },
+      replacement: { _id: 3, name: "C" }
+  }}
+], { ordered: false });   // 无序更快
+\`\`\`
+
+**返回值**：
+
+\`\`\`javascript
+// {
+//   insertedCount: 1,
+//   matchedCount: 2,
+//   modifiedCount: 2,
+//   deletedCount: 1,
+//   upsertedCount: 0
+// }
+\`\`\`
+
+> **心法**：\`bulkWrite\` 适合"一次操作涉及多种变更"（如同步数据：有新增、有更新、有删除）。
+
+## 5.8 更新注意事项与性能
+
+**1. 原子性**
+
+MongoDB 的单个文档更新是**原子的**——要么全成功，要么全失败。但**多文档更新不是原子的**（除非用事务）。
+
+\`\`\`javascript
+// 单文档原子操作：安全
+db.accounts.updateOne(
+  { _id: 1 },
+  { \$inc: { balance: -100 }, \$push: { logs: "转出 100" } }
+);
+
+// 多文档转账：不原子！需要事务
+// session.startTransaction();
+// await accounts.updateOne({ _id: 1 }, { \$inc: { balance: -100 } });
+// await accounts.updateOne({ _id: 2 }, { \$inc: { balance: 100 } });
+// session.commitTransaction();
+\`\`\`
+
+**2. 避免大数组更新**
+
+\`\`\`javascript
+// ❌ 数组太大，更新慢且易超 16MB
+db.posts.updateOne(
+  { _id: 1 },
+  { \$push: { comments: each(newComment) } }
+);
+// 当 comments 有 10 万条时，每次 push 都要重写整个数组
+
+// ✅ 评论单独建集合
+db.comments.insertOne({ postId: 1, content: "...", author: "..." });
+\`\`\`
+
+**3. updateOne vs updateMany 选择**
+
+\`\`\`javascript
+// ❌ 想批量更新却用了 updateOne（只改第一条）
+db.users.updateOne({ status: "old" }, { \$set: { status: "new" } });
+
+// ✅ 批量更新用 updateMany
+db.users.updateMany({ status: "old" }, { \$set: { status: "new" } });
+\`\`\`
+
+**4. 用 \$inc 而非读改写**
+
+\`\`\`javascript
+// ❌ 读出来-改-写回（并发不安全）
+const user = await users.findOne({ _id: 1 });
+user.balance += 100;
+await users.updateOne({ _id: 1 }, { \$set: { balance: user.balance } });
+
+// ✅ 用 $inc（原子操作）
+await users.updateOne({ _id: 1 }, { \$inc: { balance: 100 } });
+\`\`\`
+
+## 5.9 本章小结
 
 本章你掌握了：
 
 - \`updateOne\` 改单条、\`updateMany\` 改多条（默认行为差异要警惕）
-- 字段操作符：\`\$set\` \`\$unset\` \`\$inc\`（原子自增）\`\$rename\` \`\$min\` \`\$max\`
-- 数组操作符：\`\$push\` \`\$addToSet\` \`\$pull\` \`\$pop\` \`\$each\` \`\$position\` \`\$slice\`
 - \`replaceOne\` 整体替换 vs \`updateOne\` 局部修改
-- \`findOneAndUpdate\` 原子操作，适合取号、自增场景
+- 字段操作符：\`\$set\` \`\$unset\` \`\$inc\`（原子自增）\`\$mul\` \`\$rename\` \`\$min\` \`\$max\` \`\$currentDate\`
+- 数组操作符：\`\$push\` \`\$addToSet\` \`\$pull\` \`\$pop\` \`\$pullAll\` \`\$each\` \`\$position\` \`\$slice\`
+- \`findOneAndUpdate\` 原子操作（findAndModify 家族），适合取号、队列场景
 - \`upsert\`：找不到就插入，实现"去重写入"
+- \`bulkWrite\` 批量混合操作
+- 性能要点：单文档原子、避免大数组、用 \`\$inc\` 替代读改写
 
-下一章我们学习**删除文档**——把不要的数据清掉。`
+至此，第一部分"入门与基础"完结。下一部分我们将学习**索引与查询优化**——让 MongoDB 跑得更快。`
   }
 ];
 

@@ -19,9 +19,9 @@ export const chapters = [
     title: "asyncio.to_thread 跑同步代码",
     content: `## 一、先看一个 demo
 
-同步函数里写了 \\\`time.sleep(0.5)\\\`，在协程里直接调用 vs 用 \\\`asyncio.to_thread\\\` 包一下：
+同步函数里写了 \`time.sleep(0.5)\`，在协程里直接调用 vs 用 \`asyncio.to_thread\` 包一下：
 
-\\\`\\\`\\\`python
+\`\`\`python
 import asyncio, time
 
 def blocking():
@@ -32,9 +32,9 @@ async def main():
     await asyncio.to_thread(blocking)   # 放线程池：不卡
 
 asyncio.run(main())
-\\\`\\\`\\\`
+\`\`\`
 
-差距在哪？直接调用时，整个事件循环被 \\\`time.sleep\\\` 冻住；用 \\\`to_thread\\\` 后，阻塞被丢到线程池，循环还能继续跑别的协程。
+差距在哪？直接调用时，整个事件循环被 \`time.sleep\` 冻住；用 \`to_thread\` 后，阻塞被丢到线程池，循环还能继续跑别的协程。
 
 ## 二、为什么要 to_thread？
 
@@ -47,11 +47,11 @@ asyncio.run(main())
 
 | 知识点 | 说明 |
 |--------|------|
-| 同步阻塞会卡住循环 | \\\`time.sleep\\\` / \\\`requests.get\\\` 会冻住整个事件循环 |
-| 把同步函数放线程池 | \\\`await asyncio.to_thread(func, *args)\\\` |
+| 同步阻塞会卡住循环 | \`time.sleep\` / \`requests.get\` 会冻住整个事件循环 |
+| 把同步函数放线程池 | \`await asyncio.to_thread(func, *args)\` |
 | 使用场景 | 第三方同步库、文件 IO、CPU 计算 |
-| 参数传递 | \\\`to_thread(func, arg1, arg2)\\\` 自动传给 func |
-| 返回值 | \\\`await\\\` 拿到 func 的返回值 |
+| 参数传递 | \`to_thread(func, arg1, arg2)\` 自动传给 func |
+| 返回值 | \`await\` 拿到 func 的返回值 |
 | 与多线程区别 | to_thread 只借线程池跑一个函数，不手动管线程 |
 
 ## 四、demo 目标
@@ -201,7 +201,7 @@ if __name__ == "__main__":
 
 一个迷你爬虫：10 个 URL，最多同时 3 个请求，统计成功 / 失败 / 耗时。
 
-\\\`\\\`\\\`python
+\`\`\`python
 sem = asyncio.Semaphore(3)
 
 async def fetch(url):
@@ -210,7 +210,7 @@ async def fetch(url):
         return url
 
 results = await asyncio.gather(*[fetch(u) for u in urls])
-\\\`\\\`\\\`
+\`\`\`
 
 10 个 URL 并发跑，比一个个顺序抓快多了。
 
@@ -336,7 +336,7 @@ if __name__ == "__main__":
 
 2 个生产者往队列塞任务，3 个消费者从队列取任务处理。
 
-\\\`\\\`\\\`python
+\`\`\`python
 queue = asyncio.Queue(maxsize=20)
 
 async def producer():
@@ -347,7 +347,7 @@ async def consumer():
     while not stop_event.is_set():
         task = await asyncio.wait_for(queue.get(), timeout=0.5)
         queue.task_done()
-\\\`\\\`\\\`
+\`\`\`
 
 生产者和消费者各跑各的，队列做缓冲。
 
@@ -484,26 +484,26 @@ if __name__ == "__main__":
 
 一个综合 demo 展示最佳实践：调试模式、非阻塞、to_thread、并发 vs 顺序、异常处理、资源清理。
 
-\\\`\\\`\\\`python
+\`\`\`python
 asyncio.run(main(), debug=True)
-\\\`\\\`\\\`
+\`\`\`
 
 ## 二、知识点（从 demo 提取）
 
 | 知识点 | 说明 |
 |--------|------|
-| 开启调试模式 | \\\`asyncio.run(main(), debug=True)\\\`，慢回调会报警告 |
-| 避免阻塞事件循环 | \\\`time.sleep\\\` → \\\`await asyncio.sleep\\\` |
-| 同步代码放线程池 | \\\`await asyncio.to_thread(func)\\\` |
+| 开启调试模式 | \`asyncio.run(main(), debug=True)\`，慢回调会报警告 |
+| 避免阻塞事件循环 | \`time.sleep\` → \`await asyncio.sleep\` |
+| 同步代码放线程池 | \`await asyncio.to_thread(func)\` |
 | 并发 vs 顺序 | gather 并发远快于顺序 await |
-| 异常处理 | \\\`gather(..., return_exceptions=True)\\\` 不让一个失败炸全部 |
-| 资源清理 | \\\`async with\\\` 确保连接 / 文件被关闭 |
+| 异常处理 | \`gather(..., return_exceptions=True)\` 不让一个失败炸全部 |
+| 资源清理 | \`async with\` 确保连接 / 文件被关闭 |
 
 ## 三、常见反模式
 
 | 反模式 | 问题 | 正确做法 |
 |--------|------|----------|
-| 协程里 \\\`time.sleep\\\` | 阻塞循环 | \\\`await asyncio.sleep\\\` |
+| 协程里 \`time.sleep\` | 阻塞循环 | \`await asyncio.sleep\` |
 | 忘记 await | 协程不执行 | 确保 await / create_task |
 | main 提前 return | 子任务被取消 | await 所有任务 |
 | 并发无上限 | 资源耗尽 | Semaphore 限速 |

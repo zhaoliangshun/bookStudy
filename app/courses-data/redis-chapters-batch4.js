@@ -8,7 +8,7 @@ const chapters = [
   {
     id: "redis-ch15",
     group: "第四部分 高可用架构",
-    icon: "🏗️",
+    icon: "📡",
     title: "第 15 章 主从复制",
     content: `# 第 15 章 主从复制
 
@@ -18,7 +18,7 @@ const chapters = [
 
 主从复制的核心思想是：**主节点（master）负责写，从节点（replica/slave）复制主节点的数据并对外提供读服务**。
 
-> Redis 4.0 之后，slave 改名为 replica，命令 SLAVEOF 也推荐用 REPLICAOF 替代，但旧命令仍然兼容。
+> Redis 4.0 之后，slave 改名为 replica，命令 SLAVEOF 也推荐用 REPLICAOF 替代，但旧命令仍然兼容。为了通用，本章两种写法都会提及。
 
 一个典型的拓扑：
 
@@ -36,23 +36,121 @@ const chapters = [
 
 **复制的三个阶段**：
 
-1. **建立连接**：从节点发送 PSYNC 命令给主节点
-2. **全量同步**：主节点执行 BGSAVE 生成 RDB，发送给从节点
-3. **命令传播**：主节点把写命令实时同步给从节点
+1. **建立连接阶段**：从节点保存主节点地址，建立 TCP 连接，发送 PSYNC 命令
+2. **全量同步阶段**：主节点执行 BGSAVE 生成 RDB，发送给从节点；从节点加载 RDB
+3. **命令传播阶段**：主节点把后续写命令实时同步给从节点，维持长期复制关系
 
-## 15.2 全量同步 vs 增量同步
+### 复制状态机
 
-### 全量同步（Full Resync）
+从节点内部维护一个复制状态机，关键状态如下：
+
+| 状态 | 含义 |
+| --- | --- |
+| \`none\` | 未开启复制 |
+| \`connect\` | 正在连接主节点 |
+| \`connecting\` | TCP 连接中 |
+| \`receive_auth\` | 等待 AUTH 回复 |
+| \`receive_port\` | 等待 REPLCONF 回复 |
+| \`transfer\` | 正在接收 RDB |
+| \`connected\` | 已连接，进入命令传播 |
+
+理解这个状态机对排查"从节点一直连不上主"的问题很有帮助——日志里会打印当前状态。
+
+## 15.2 全量同步详解
 
 主节点把当前内存里的所有数据打成 RDB 快照发给从节点。过程重，主节点要 fork，从节点要清空旧数据重载。
 
-**触发场景**：
-- 从节点第一次连接主节点
+### 触发场景
+
+- 从节点**第一次连接**主节点（PSYNC ? -1）
 - 从节点断开太久，复制积压缓冲区里没有它需要的偏移量
+- 主从 replid 不匹配（主节点重启过，replid 变了）
+
+### 全量同步的完整流程
+
+\`\`\`text
+从节点                              主节点
+  │                                   │
+  │── PSYNC ? -1 ────────────────────▶│
+  │                                   │── 执行 BGSAVE 生成 RDB
+  │                                   │── 开启客户端输出缓冲区
+  │◀── +FULLRESYNC <replid> <offset> ─│
+  │                                   │
+  │                                   │── 发送 RDB 文件
+  │◀──── RDB 数据流 ──────────────────│
+  │                                   │
+  │── 加载 RDB（阻塞）                │── 继续缓冲写命令
+  │                                   │
+  │◀──── 缓冲的写命令 ────────────────│
+  │                                   │
+  │── 进入命令传播阶段                │
+  │◀──── 实时写命令 ──────────────────│
+\`\`\`
+
+### BGSAVE 与 RDB 传输
+
+主节点收到 PSYNC 后，调用 BGSAVE 在后台 fork 子进程生成 RDB 快照。fork 期间主节点会短暂阻塞（与数据量有关，大内存实例可能阻塞数百毫秒）。
+
+\`\`\`bash
+# 在主节点上观察 BGSAVE 进度
+127.0.0.1:6379> INFO persistence
+rdb_bgsave_in_progress:0
+rdb_last_save_time:1609456789
+rdb_last_bgsave_status:ok
+rdb_last_bgsave_time_sec:3
+rdb_current_bgsave_time_sec:-1
+
+# 主节点的日志会打印
+# * BGSAVE for replication requested by replica 127.0.0.1:6380
+# * Background RDB transfer started
+# * Background RDB transfer terminated with success after 3 seconds
+\`\`\`
+
+> **关键点**：全量同步期间，主节点在生成 RDB 之后、从节点加载 RDB 之前的写命令，会被缓存在主节点的"客户端输出缓冲区"（client output buffer）里，等从节点加载完 RDB 后再发过去。如果缓冲区超限，主节点会断开从节点重试，导致同步风暴。
+
+### 主节点配置输出缓冲区
+
+\`\`\`conf
+# 主从复制客户端输出缓冲区，默认 256mb 64mb 60
+# 含义：硬上限 256MB；软上限 64MB 持续 60 秒则断开
+client-output-buffer-limit replica 256mb 64mb 60
+\`\`\`
+
+从节点多或 RDB 加载慢时，要适当调大这个值，否则同步会反复失败。
+
+## 15.3 增量同步与 PSYNC
 
 ### 增量同步（Partial Resync）
 
 从节点只补齐"丢失的那一段"命令。Redis 主节点维护一个**复制积压缓冲区（replication backlog）**，记录最近的写命令。从节点重连时带上自己的 offset，主节点发现 backlog 里有这个 offset 之后的内容，就只发增量。
+
+### PSYNC 命令
+
+从节点连接主节点时发：
+
+\`\`\`bash
+# 参数：replid  offset
+PSYNC ? -1              # 第一次连，不知道主 replid，触发全量
+PSYNC <replid> <offset> # 重连，尝试增量
+\`\`\`
+
+主节点回复：
+
+- \`+FULLRESYNC <replid> <offset>\`：要全量同步
+- \`+CONTINUE\`：可以增量同步，replid 不变
+- \`+CONTINUE <newreplid>\`：可以增量同步，但 replid 变了（主节点切换过）
+- \`-ERR\`：主节点版本太老不支持 PSYNC
+
+### replid 与复制偏移量
+
+每个主节点有两个重要的标识：
+
+| 标识 | 含义 |
+| --- | --- |
+| \`master_replid\` | 主节点的复制 ID，重启或故障转移后会变 |
+| \`master_replid2\` | 第二复制 ID，故障转移后用于让老从节点能增量同步新主 |
+| \`master_repl_offset\` | 主节点全局复制偏移量，每传播一个字节 +1 |
+| \`slave_repl_offset\` | 从节点已同步到的偏移量 |
 
 \`\`\`bash
 # 查看复制状态（在主节点执行）
@@ -63,8 +161,8 @@ connected_slaves:2
 slave0:ip=127.0.0.1,port=6380,state=online,offset=10240,lag=0
 slave1:ip=127.0.0.1,port=6381,state=online,offset=10240,lag=0
 master_failover_state:no-failover
-master_replid:8a7b...3c2d
-master_replid2:0000...0000
+master_replid:8a7b9c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b
+master_replid2:0000000000000000000000000000000000000000
 master_repl_offset:10240
 second_repl_offset:-1
 repl_backlog_active:1
@@ -81,29 +179,28 @@ repl_backlog_histlen:10240
 | \`connected_slaves\` | 在线从节点数 |
 | \`master_repl_offset\` | 主节点全局复制偏移量 |
 | \`repl_backlog_size\` | backlog 大小（字节） |
+| \`repl_backlog_first_byte_offset\` | backlog 里最早的偏移量 |
+| \`repl_backlog_histlen\` | backlog 里已写入的字节数 |
 
-### PSYNC 命令
+### 增量同步成立的条件
 
-从节点连接主节点时发：
+从节点重连时，主节点判断能否增量同步：
 
-\`\`\`bash
-# 参数：replid  offset
-PSYNC ? -1             # 第一次连，不知道主 replid，触发全量
-PSYNC <replid> <offset> # 重连，尝试增量
-\`\`\`
+1. 从节点传的 replid 与主节点的 \`master_replid\` 或 \`master_replid2\` 匹配
+2. 从节点请求的 offset 在 backlog 范围内（>= \`repl_backlog_first_byte_offset\`）
 
-主节点回复：
-- \`+FULLRESYNC <replid> <offset>\`：要全量
-- \`+CONTINUE\`：可以增量
-- \`+CONTINUE <newreplid>\`：增量但 replid 变了
+只要任一条件不满足，就退化为全量同步。
 
-## 15.3 配置主从（replicaof）
+## 15.4 配置主从（replicaof / slaveof）
 
 ### 方式一：命令行临时配置
 
 \`\`\`bash
 # 启动一个从节点，端口 6380
 redis-server --port 6380 --replicaof 127.0.0.1 6379
+
+# 旧写法（兼容）
+redis-server --port 6380 --slaveof 127.0.0.1 6379
 
 # 或者运行时动态切换主从
 redis-cli -p 6380
@@ -115,11 +212,16 @@ OK
 OK
 \`\`\`
 
+> \`REPLICAOF NO ONE\` 只是断开复制关系，从节点上已经同步过来的数据**不会丢失**，它就变成一个独立的主节点继续提供服务。
+
 ### 方式二：配置文件持久化
 
 \`\`\`conf
 # redis-6380.conf
 port 6380
+daemonize yes
+
+# 配置主节点地址
 replicaof 127.0.0.1 6379
 
 # 从节点只读（默认 yes，强烈建议保持）
@@ -128,12 +230,18 @@ replica-read-only yes
 # 主节点密码
 masterauth yourpassword
 
+# 从节点向主节点声明自己的 IP 和端口（NAT/容器环境必配）
+replica-announce-ip 10.0.0.20
+replica-announce-port 6380
+
 # 复制超时（秒），默认 60
 repl-timeout 60
 
-# 是否在主从同步时允许主节点响应请求，默认 no
-# 设为 yes 会牺牲一致性，但提高主节点可用性
-min-replicas-to-write 0
+# 复制心跳间隔（秒），默认 10
+repl-ping-replica-period 10
+
+# TCP keepalive，默认 yes
+repl-disable-tcp-nodelay no
 \`\`\`
 
 ### 验证主从
@@ -150,11 +258,24 @@ redis-cli -p 6380 GET hello
 # 从节点写会报错（只读）
 redis-cli -p 6380 SET hello x
 (error) READONLY You can't write against a read only replica.
+
+# 在从节点上确认复制状态
+127.0.0.1:6380> INFO replication
+role:slave
+master_host:127.0.0.1
+master_port:6379
+master_link_status:up          # up 表示连接正常
+master_last_io_seconds_ago:0   # 距离上次 IO 的秒数
+master_sync_in_progress:0      # 是否正在全量同步
+slave_repl_offset:10240
+slave_priority:100
+slave_read_repl_offset:10240
+connected_slaves:0
 \`\`\`
 
-## 15.4 复制积压缓冲区
+## 15.5 复制积压缓冲区
 
-**复制积压缓冲区（replication backlog）** 是主节点上的一个固定大小的环形缓冲区，用于支持增量同步。
+**复制积压缓冲区（replication backlog）** 是主节点上的一个固定大小的环形缓冲区，用于支持增量同步。主节点每产生一个写命令，既发给所有从节点，也写入 backlog。
 
 \`\`\`conf
 # 默认 1MB，生产环境建议调大
@@ -164,11 +285,54 @@ repl-backlog-size 256mb
 repl-backlog-ttl 3600
 \`\`\`
 
-> **怎么估算 backlog 大小？** 假设主节点写入速度是 10MB/s，网络抖动一般不超过 30 秒，那么至少需要 300MB 才能保证短暂断线后仍能增量同步。计算公式：\`backlog_size = 每秒写入量 × 预估断线秒数 × 2（安全冗余）\`。
+### backlog 工作原理
 
-**backlog 太小的代价**：从节点断开稍久，offset 已被覆盖，只能全量同步。全量同步期间主节点要 fork、要传 RDB，对生产是灾难。
+\`\`\`text
+backlog 环形缓冲区（大小 256MB）
+┌──────────────────────────────────────────┐
+│ 旧数据 │ ... │ 偏移量 9000 │ 偏移量 10240（当前）│
+└──────────────────────────────────────────┘
+  ▲                                        ▲
+  first_byte_offset=9000                   master_repl_offset=10240
 
-## 15.5 读写分离的实现
+从节点断线时 offset=9500，重连时 9500 在 [9000, 10240] 范围内
+→ 可以增量同步，只发 9500 到 10240 之间的命令
+\`\`\`
+
+### 怎么估算 backlog 大小
+
+假设主节点写入速度是 10MB/s，网络抖动一般不超过 30 秒，那么至少需要 300MB 才能保证短暂断线后仍能增量同步。计算公式：
+
+\`\`\`text
+backlog_size = 每秒写入量 × 预估断线秒数 × 2（安全冗余）
+\`\`\`
+
+> **backlog 太小的代价**：从节点断开稍久，offset 已被覆盖，只能全量同步。全量同步期间主节点要 fork、要传 RDB，对生产是灾难。更糟的是，如果多个从节点同时全量同步，主节点资源被榨干，形成"全量同步风暴"。
+
+### 动态调整 backlog
+
+\`\`\`bash
+# 运行时调整（需要重连才生效，且会清空 backlog）
+127.0.0.1:6379> CONFIG SET repl-backlog-size 512mb
+OK
+
+# 持久化到配置文件
+127.0.0.1:6379> CONFIG REWRITE
+OK
+\`\`\`
+
+## 15.6 replica-read-only 与读写分离
+
+### replica-read-only
+
+\`\`\`conf
+# 从节点只读，默认 yes
+replica-read-only yes
+\`\`\`
+
+设为 no 的话从节点也能写，但写的数据**不会同步回主节点**，也不会同步给其他从节点，容易造成数据不一致。除非有特殊需求（比如在从节点上临时写一些计算中间结果），否则务必保持 yes。
+
+### 读写分离的实现
 
 读写分离的套路：**写请求全部打主节点，读请求按业务分流到从节点**。
 
@@ -185,6 +349,7 @@ const replicas = [
   new Redis({ host: "127.0.0.1", port: 6381 }),
 ];
 
+// 轮询负载均衡
 let readIdx = 0;
 async function read(key) {
   const replica = replicas[readIdx++ % replicas.length];
@@ -194,11 +359,77 @@ async function read(key) {
 async function write(key, val) {
   return master.set(key, val);
 }
+
+// 强一致读：直接读主
+async function readStrong(key) {
+  return master.get(key);
+}
 \`\`\`
 
 > **注意：读写分离不是银弹**。由于复制是异步的，从节点可能落后主节点几百毫秒甚至几秒。对一致性敏感的读（比如下单后立刻查订单）必须读主，否则会出现"刚下单却查不到"的现象。
 
-## 15.6 复制延迟的排查
+### 读写分离的一致性问题
+
+| 场景 | 问题 | 解决方案 |
+| --- | --- | --- |
+| 下单后立即查订单 | 从节点还没同步，查不到 | 关键读走主 |
+| 主节点写入后从节点延迟 | 读到旧数据 | 业务层加 200ms 延迟再读从 |
+| 主节点宕机，从节点升主 | 未同步的数据丢失 | 配合 min-replicas-to-write |
+
+## 15.7 min-replicas-to-write
+
+为了让主从之间达到"半同步"的效果，Redis 提供了 \`min-replicas-to-write\` 配置：当在线从节点数少于指定值时，主节点**拒绝写入**。
+
+\`\`\`conf
+# 至少 1 个从节点在线且延迟不超过 10 秒，才接受写
+min-replicas-to-write 1
+min-replicas-max-lag 10
+\`\`\`
+
+\`\`\`bash
+# 运行时配置
+127.0.0.1:6379> CONFIG SET min-replicas-to-write 1
+OK
+127.0.0.1:6379> CONFIG SET min-replicas-max-lag 10
+OK
+
+# 如果所有从节点都断了，写命令会报错
+127.0.0.1:6379> SET foo bar
+(error) NOREPLICAS Not enough good replicas to write.
+\`\`\`
+
+> **生产慎用**：这能提升一致性，但牺牲可用性。如果从节点全挂了，主节点也写不了，业务直接受影响。要权衡：是宁可不可用也不能丢数据（开启），还是宁可有点不一致也要保证可用（关闭）。
+
+## 15.8 链式复制（Chained Replication）
+
+从节点不一定要直接复制主节点，也可以复制另一个从节点，形成链式结构：
+
+\`\`\`text
+       ┌────────┐
+       │ master │
+       └───┬────┘
+           │
+       ┌───▼────┐
+       │replicaA│  ── 读
+       └───┬────┘
+           │
+    ┌──────┴──────┐
+    ▼             ▼
+┌────────┐   ┌────────┐
+│replicaB│   │replicaC│  ── 读
+└────────┘   └────────┘
+\`\`\`
+
+\`\`\`bash
+# replicaB 复制 replicaA 而不是 master
+redis-cli -p 6381 REPLICAOF 127.0.0.1 6380
+\`\`\`
+
+**适用场景**：主节点网络出口带宽紧张，让 replicaA 做中继，分担 RDB 传输压力。
+
+**缺点**：replicaB/C 的数据延迟会更大（多跳传播），且 replicaA 宕机会影响整条链。生产中一般用"星型"（所有从都连主）而非链式。
+
+## 15.9 复制延迟的排查
 
 ### 看延迟
 
@@ -223,6 +454,7 @@ master_repl_offset:10240
 2. **慢命令**：从节点跑 KEYS *、SMEMBERS 大集合，阻塞 IO 线程
 3. **主节点写入过快**：从节点 RDB 加载跟不上
 4. **backlog 太小频繁全量**：看日志 \`"Partial resynchronization not possible"\`
+5. **大 key 同步**：主节点写入大 key，传输耗时
 
 \`\`\`bash
 # 主节点慢日志
@@ -231,9 +463,20 @@ master_repl_offset:10240
 # 从节点日志（启动时加 --logfile）
 tail -f /var/log/redis/redis-6380.log
 # 关键字：Synchronization with master started / Full resync / MASTER <-> REPLICA sync
+
+# 查看从节点是否频繁全量同步
+grep "Full resync" /var/log/redis/redis-6380.log | wc -l
 \`\`\`
 
-## 15.7 踩坑提示
+### 主从延迟监控指标
+
+| 指标 | 含义 | 告警阈值 |
+| --- | --- | --- |
+| \`master_repl_offset - slave_repl_offset\` | 主从偏移差（字节） | > 10MB |
+| \`lag\` | 从节点心跳延迟（秒） | > 30s |
+| \`master_sync_in_progress\` | 是否全量同步中 | 持续 > 60s |
+
+## 15.10 踩坑提示
 
 > **坑 1：主从切换后数据丢失**。异步复制下，主节点写入后还没来得及同步就宕机，新主（被提升的从）没有这条数据。对强一致场景要配合 min-replicas-to-write。
 
@@ -243,12 +486,21 @@ tail -f /var/log/redis/redis-6380.log
 
 > **坑 4：min-replicas-to-write 误用**。配了 min-replicas-to-write 1 但从节点全挂了，主节点直接拒绝写入，业务受影响。生产慎用。
 
-## 15.8 本章小结
+> **坑 5：主节点重启 replid 变化**。主节点重启后 master_replid 变化，所有从节点重连都会触发全量同步。避免在高峰期重启主节点。
+
+> **坑 6：masterauth 没配**。主节点配了 requirepass，从节点没配 masterauth，导致复制连不上。日志报 \`"Master did not reply to PSYNC" 或 "NOAUTH"\`。
+
+> **坑 7：防火墙挡了集群总线端口**。Redis 复制用主端口即可，但 Sentinel/Cluster 还需要端口+10000 的总线端口。
+
+## 15.11 本章小结
 
 - 主从复制是 Redis 高可用的基础，**一主多从、读写分离**
 - 同步分**全量（PSYNC ? -1）和增量（PSYNC replid offset）**，靠 backlog 支撑增量
-- 配置主从用 \`REPLICAOF\`，从节点默认只读
+- 全量同步流程：BGSAVE 生成 RDB → 传输 RDB → 从节点加载 → 缓冲命令补发
+- 配置主从用 \`REPLICAOF\`（或旧版 \`SLAVEOF\`），从节点默认只读
 - backlog 大小按 \`写入速度 × 断线时间\` 估算，宁大勿小
+- \`min-replicas-to-write\` 能提升一致性但牺牲可用性，生产慎用
+- 链式复制可分担主节点带宽，但增加延迟
 - 复制是**异步**的，读写分离有一致性窗口，敏感读要走主
 - 排查延迟看 \`INFO replication\` 的 lag 和 offset 差`
   },
@@ -263,11 +515,12 @@ tail -f /var/log/redis/redis-6380.log
 
 ## 16.1 Sentinel 的作用
 
-Sentinel 是 Redis 高可用架构里的"管家"，独立于数据节点部署。它有三大职责：
+Sentinel 是 Redis 高可用架构里的"管家"，独立于数据节点部署。它有四大职责：
 
 1. **监控**：持续探测 master 和 replica 是否存活
-2. **通知**：节点异常时通知运维或客户端
+2. **通知**：节点异常时通知运维或客户端（API/脚本）
 3. **自动故障转移**：master 宕机时，自动选一个 replica 升级为新 master，并通知其他 replica 和客户端
+4. **配置中心**：客户端连接 Sentinel 查询 master 地址，无需写死 IP
 
 > Sentinel 自己也要高可用——**至少部署 3 个 Sentinel 节点**（奇数），避免单点故障和"脑裂"。
 
@@ -276,28 +529,57 @@ Sentinel 是 Redis 高可用架构里的"管家"，独立于数据节点部署�
 \`\`\`text
        ┌───────────┐  ┌───────────┐  ┌───────────┐
        │ sentinel1 │  │ sentinel2 │  │ sentinel3 │
+       │  :26379   │  │  :26380   │  │  :26381   │
        └─────┬─────┘  └─────┬─────┘  └─────┬─────┘
              │              │              │
              │   监控/通信   │              │
              ▼              ▼              ▼
        ┌──────────┐   ┌──────────┐   ┌──────────┐
        │  master   │◀─│ replica1 │   │ replica2 │
+       │  :6379    │   │  :6380   │   │  :6381   │
        └──────────┘   └──────────┘   └──────────┘
 \`\`\`
 
-- Sentinel 之间互相通信（发布订阅 \`__sentinel__:hello\`）
-- Sentinel 与 master/replica 之间保持心跳
+- Sentinel 之间互相通信（发布订阅 \`__sentinel__:hello\` 频道）
+- Sentinel 与 master/replica 之间保持心跳（每秒 PING）
 - Sentinel 也从 master 拿到 replica 列表，自动发现从节点
+- Sentinel 之间通过 gossip 互相感知彼此的存在
+
+### 自动发现机制
+
+Sentinel 启动后只需要知道 master 的地址，就能自动发现：
+
+1. 连接 master，每 10 秒执行 \`INFO\` 获取 replica 列表
+2. 连接所有 replica，每 10 秒执行 \`INFO\` 确认角色和主从关系
+3. 订阅 \`__sentinel__:hello\` 频道，发现其他 Sentinel
+4. 每个 Sentinel 每 2 秒在 \`__sentinel__:hello\` 发布自己的存在和对 master 的判断
+
+\`\`\`bash
+# Sentinel 的发布订阅频道
+127.0.0.1:26379> PSUBSCRIBE __sentinel__:hello
+# 会收到所有 Sentinel 发的心跳消息，包含：sentinel_ip, sentinel_port, sentinel_runid, sentinel_epoch, master_name, master_ip, master_port, sentinel_epoch
+\`\`\`
 
 ## 16.3 监控与自动故障转移
 
 ### 监控机制
 
-每个 Sentinel 每秒做三件事：
+每个 Sentinel 每秒做这些事：
 
-1. 向 master/replica/其他 sentinel 发 PING
-2. 向 master/replica 发 INFO 拿拓扑
-3. 向 \`__sentinel__:hello\` 频道发布自己的存在
+1. 向 master/replica/其他 sentinel 发 PING（探活）
+2. 向 master/replica 发 INFO 拿拓扑（每 10 秒）
+3. 向 \`__sentinel__:hello\` 频道发布自己的存在（每 2 秒）
+4. 订阅 \`__sentinel__:hello\` 接收其他 Sentinel 的消息
+
+### PING 的判定
+
+Sentinel 给节点发 PING，节点应在 \`down-after-milliseconds\` 内回复 \`+PONG\`。有效回复包括：
+
+- \`+PONG\`
+- \`-LOADING ...\`
+- \`-MASTERDOWN ...\`
+
+如果回复的是 \`-LOADING\`（节点在加载数据），不算下线，只是忙。
 
 ### 故障转移流程
 
@@ -307,13 +589,29 @@ Sentinel 是 Redis 高可用架构里的"管家"，独立于数据节点部署�
 4. **选新主**：Leader 从 replica 里挑一个最优的升级成 master
 5. **通知**：其他 replica 改成跟新 master，通知客户端
 
+\`\`\`text
+时间线：
+t=0s    master 宕机
+t=30s   sentinel1 标记 SDOWN（主观下线）
+t=30s   sentinel2 标记 SDOWN
+t=31s   达到 quorum=2，标记 ODOWN（客观下线）
+t=31s   选举 Leader Sentinel
+t=32s   Leader 选出新主 replica1
+t=33s   replica1 执行 REPLICAOF NO ONE 升主
+t=34s   replica2 改为复制 replica1
+t=35s   通知客户端切到新主
+\`\`\`
+
 ## 16.4 配置 Sentinel
 
 ### 配置文件 sentinel.conf
 
 \`\`\`conf
 port 26379
+daemonize yes
 dir /var/redis/sentinel-1
+logfile /var/log/redis/sentinel-26379.log
+pidfile /var/run/redis-sentinel-26379.pid
 
 # 监控的 master：名字 IP 端口 quorum
 # quorum=2 表示至少 2 个 sentinel 同意才能判定 ODOWN
@@ -322,15 +620,49 @@ sentinel monitor mymaster 127.0.0.1 6379 2
 # 主节点密码
 sentinel auth-pass mymaster yourpassword
 
-# 主观下线判定毫秒数，默认 30000
+# Sentinel 自身密码（可选，Sentinel 之间互相认证）
+# requirepass sentinelpassword
+
+# 主观下线判定毫秒数，默认 30000（30 秒）
 sentinel down-after-milliseconds mymaster 30000
 
 # 故障转移时同时向多少个 replica 发起复制，数字越小越稳，默认 1
 sentinel parallel-syncs mymaster 1
 
-# 故障转移超时，默认 180000ms
+# 故障转移超时，默认 180000ms（3 分钟）
 sentinel failover-timeout mymaster 180000
+
+# 通知脚本（可选，节点异常时调用）
+sentinel notification-script mymaster /opt/redis/notify.sh
+
+# 客户端重配置脚本（可选，failover 后调用）
+sentinel client-reconfig-script mymaster /opt/redis/reconfig.sh
 \`\`\`
+
+### 关键参数详解
+
+| 参数 | 默认值 | 含义 |
+| --- | --- | --- |
+| \`quorum\` | - | 判定 ODOWN 需要的 Sentinel 数量 |
+| \`down-after-milliseconds\` | 30000 | 多久没回 PING 判定 SDOWN |
+| \`parallel-syncs\` | 1 | 切换后同时向新主同步的 replica 数 |
+| \`failover-timeout\` | 180000 | 故障转移总超时，超时则放弃 |
+
+### parallel-syncs 的影响
+
+\`\`\`text
+parallel-syncs=1（默认，稳）：
+  replica2 ──同步──▶ 新主 replica1（完成后）
+  replica3 ──同步──▶ 新主 replica1
+  # 一次一个，慢但安全
+
+parallel-syncs=2（快）：
+  replica2 ──同步──▶ 新主 replica1
+  replica3 ──同步──▶ 新主 replica1（同时）
+  # 多个同时，快但新主压力大
+\`\`\`
+
+> \`parallel-syncs\` 设大可以让从节点更快跟上新主，但同时全量同步会压垮新主。生产建议保持默认 1。
 
 ### 启动 Sentinel
 
@@ -346,6 +678,8 @@ redis-sentinel --port 26379 --sentinel monitor mymaster 127.0.0.1 6379 2
 redis-sentinel --port 26380 --sentinel monitor mymaster 127.0.0.1 6379 2
 redis-sentinel --port 26381 --sentinel monitor mymaster 127.0.0.1 6379 2
 \`\`\`
+
+> Sentinel 的配置文件会被运行时自动改写（比如 failover 后写入新 master 地址），所以配置文件所在的 dir 必须可写。
 
 ### 查看 Sentinel 状态
 
@@ -378,6 +712,10 @@ redis-cli -p 26379
 22) "2"
 23) "quorum"
 24) "2"
+25) "failover-timeout"
+26) "180000"
+27) "parallel-syncs"
+28) "1"
 
 # 查看 replica 列表
 127.0.0.1:26379> SENTINEL replicas mymaster
@@ -389,6 +727,43 @@ redis-cli -p 26379
 127.0.0.1:26379> SENTINEL get-master-addr-by-name mymaster
 1) "127.0.0.1"
 2) "6379"
+\`\`\`
+
+### SENTINEL 命令大全
+
+\`\`\`bash
+# 查看 Sentinel 监控的所有 master
+SENTINEL masters
+
+# 查看指定 master 信息
+SENTINEL master <master-name>
+
+# 查看 master 的所有 replica
+SENTINEL replicas <master-name>
+
+# 查看其他 Sentinel
+SENTINEL sentinels <master-name>
+
+# 获取 master 地址
+SENTINEL get-master-addr-by-name <master-name>
+
+# 重置 master 状态（清空已发现的 replica 和 sentinel，慎用）
+SENTINEL reset <pattern>
+
+# 手动触发故障转移（不影响 master，只是让某个 replica 顶上）
+SENTINEL failover <master-name>
+
+# 检查 Sentinel 是否可达
+SENTINEL ckquorum <master-name>
+# 返回类似：OK 3 usable Sentinels. Quorum and failover authorization can be reached
+
+# 强制 Sentinel 刷新配置到磁盘
+SENTINEL flushconfig
+
+# 在线修改 Sentinel 配置
+SENTINEL monitor <name> <ip> <port> <quorum>
+SENTINEL remove <name>
+SENTINEL set <name> <option> <value>
 \`\`\`
 
 ## 16.5 主观下线 vs 客观下线
@@ -417,10 +792,21 @@ redis-cli -p 6379 SHUTDOWN NOSAVE
 # +slave-reconf-sent slave 127.0.0.1:6381
 # +slave-reconf-done slave 127.0.0.1:6381
 # +failover-state-wait-replicas
-# +do-failover-timeout
 # +failover-end master mymaster 127.0.0.1 6379
 # +switch-master mymaster 127.0.0.1 6379 127.0.0.1 6380
 \`\`\`
+
+### 日志关键字含义
+
+| 日志 | 含义 |
+| --- | --- |
+| \`+sdown\` | 主观下线 |
+| \`+odown\` | 客观下线 |
+| \`+try-failover\` | 开始尝试故障转移 |
+| \`+selected-slave\` | 选出了要提升的从节点 |
+| \`+promoted-slave\` | 从节点已提升为主 |
+| \`+switch-master\` | master 切换完成 |
+| \`-sdown\` | 节点恢复，取消主观下线 |
 
 ## 16.6 选举 Leader Sentinel
 
@@ -430,6 +816,7 @@ redis-cli -p 6379 SHUTDOWN NOSAVE
 2. 其他 Sentinel 按"先到先得"原则回复（同一个 epoch 内只投一票）
 3. 拿到**过半数票（N/2+1）** 的 Sentinel 成为 Leader
 4. Leader 执行故障转移
+5. 如果本轮没选出 Leader，等待随机时间后进入下一轮 epoch 重试
 
 > **为什么 Sentinel 至少 3 个且奇数？** 因为选举需要"过半数"。2 个 Sentinel 任意一个挂了都无法过半，无法选举；3 个挂 1 个还能选举；4 个和 3 个的容错能力一样（都只能挂 1 个），所以用奇数更省资源。
 
@@ -438,7 +825,7 @@ redis-cli -p 6379 SHUTDOWN NOSAVE
 Leader 从 replica 列表里挑新主，规则按顺序：
 
 1. **过滤**：剔除 \`S_DOWN\`、\`O_DOWN\`、\`断线\`、\`5 秒没回 PING\` 的
-2. **replica-priority**：取 \`slave-priority\` 最小的（默认 100，0 永不升主）
+2. **replica-priority**：取 \`replica-priority\` 最小的（默认 100，0 表示永不升主）
 3. **复制偏移量**：相同 priority 下，offset 最大的（数据最新）
 4. **runid**：都相同则 runid 字典序最小的
 
@@ -448,9 +835,49 @@ replica-priority 100   # 默认 100，越小越优先，0 永不升主
 
 # 在主节点上动态查看（或 sentinel 上 SENTINEL replicas）
 127.0.0.1:6379> CONFIG GET replica-priority
+1) "replica-priority"
+2) "100"
+
+# 动态设置：让 6380 优先升主
+127.0.0.1:6380> CONFIG SET replica-priority 50
+
+# 让某节点永不升主（比如跨机房备份节点）
+127.0.0.1:6381> CONFIG SET replica-priority 0
 \`\`\`
 
-## 16.7 客户端如何连接 Sentinel
+## 16.7 脑裂问题
+
+**脑裂（Split Brain）** 是指网络分区导致 Sentinel 和 master 之间通信中断，误判 master 宕机，于是提升了一个新 master。但老 master 其实还活着，还在接受客户端写入。等网络恢复，老 master 被降级为从，**它的那部分写入会丢失**（被新主覆盖）。
+
+\`\`\`text
+网络分区前：
+  ┌─────────┐     ┌───────────┐     ┌─────────┐
+  │ master  │ ──▶ │ sentinel1 │     │ replica │
+  │ 6379    │     │ sentinel2 │     │ 6380    │
+  └─────────┘     │ sentinel3 │     └─────────┘
+                  └───────────┘
+
+分区后（master 和 sentinel 集群分开）：
+  ┌─────────┐     ╳ 分区 ╳     ┌───────────┐     ┌─────────┐
+  │ master  │                  │ sentinel1 │     │ replica │
+  │ 6379    │  仍在写入！       │ sentinel2 │ ──▶ │ 6380    │
+  └─────────┘                  │ sentinel3 │     │ 新主！   │
+                               └───────────┘     └─────────┘
+
+恢复后：老 master 降为从，数据被新主覆盖 → 写入丢失
+\`\`\`
+
+### 如何缓解脑裂
+
+\`\`\`conf
+# 在 master 上配置：至少 1 个从节点在线且延迟 < 10 秒才接受写
+min-replicas-to-write 1
+min-replicas-max-lag 10
+\`\`\`
+
+这样网络分区时，老 master 因为连不上从节点，会自动拒绝写入，避免脑裂产生脏数据。
+
+## 16.8 客户端如何连接 Sentinel
 
 客户端**不能写死 master IP**，而是连接 Sentinel 查询 master 地址，并订阅切换通知。
 
@@ -467,17 +894,23 @@ const client = new Redis({
   name: "mymaster",
   role: "master", // 写
   // password: "xxx",
+  // sentinelPassword: "xxx",
 });
 
 // 读副本
 const reader = new Redis({
-  sentinels: [...],
+  sentinels: [
+    { host: "127.0.0.1", port: 26379 },
+    { host: "127.0.0.1", port: 26380 },
+    { host: "127.0.0.1", port: 26381 },
+  ],
   name: "mymaster",
   role: "slave",
 });
 
-client.on("switchmaster", () => {
-  console.log("主节点切换了");
+// 监听主节点切换事件
+client.on("switchmaster", (host, port) => {
+  console.log(\`主节点切换到 \${host}:\${port}\`);
 });
 \`\`\`
 
@@ -486,8 +919,10 @@ client.on("switchmaster", () => {
 import redis.sentinel
 
 sentinel = redis.sentinel.Sentinel(
-    [("127.0.0.1", 26379), ("127.0.0.1", 26380), ("127.0.0.1", 26381)]
+    [("127.0.0.1", 26379), ("127.0.0.1", 26380), ("127.0.0.1", 26381)],
+    socket_timeout=0.5,
 )
+
 master = sentinel.master_for("mymaster", socket_timeout=0.5)
 slave = sentinel.slave_for("mymaster", socket_timeout=0.5)
 
@@ -495,7 +930,49 @@ master.set("hello", "world")
 print(slave.get("hello"))
 \`\`\`
 
-## 16.8 踩坑提示
+\`\`\`java
+// Java Jedis
+import redis.clients.jedis.JedisSentinelPool;
+import java.util.HashSet;
+import java.util.Set;
+
+Set<String> sentinels = new HashSet<>();
+sentinels.add("127.0.0.1:26379");
+sentinels.add("127.0.0.1:26380");
+sentinels.add("127.0.0.1:26381");
+
+try (JedisSentinelPool pool = new JedisSentinelPool("mymaster", sentinels)) {
+    try (Jedis jedis = pool.getResource()) {
+        jedis.set("hello", "world");
+    }
+}
+\`\`\`
+
+### 客户端重连机制
+
+智能客户端（如 ioredis、redis-py、jedis）连接 Sentinel 的工作流：
+
+1. 遍历 Sentinel 列表，选一个可用的连上
+2. 调用 \`SENTINEL get-master-addr-by-name\` 拿 master 地址
+3. 连接 master，开始业务请求
+4. 订阅 \`+switch-master\` 等频道，一旦收到切换通知，重连新 master
+5. 如果当前 Sentinel 不可用，切换到列表里的下一个
+
+## 16.9 手动故障转移
+
+有时需要主动切主（比如升级 master、机器迁移），可以手动触发：
+
+\`\`\`bash
+# 在任意 Sentinel 上执行，让 master 手动切换
+127.0.0.1:26379> SENTINEL failover mymaster
+OK
+
+# 日志会走完整的 failover 流程，但不会等 down-after-milliseconds
+\`\`\`
+
+或者直接在 replica 上用 \`CLUSTER FAILOVER\`（Cluster 模式）/\`REPLICAOF NO ONE\`（主从模式）手动操作，但**不推荐**，因为不会通知其他节点和客户端，容易出问题。优先用 Sentinel 的 \`SENTINEL failover\`。
+
+## 16.10 踩坑提示
 
 > **坑 1：quorum 配置不当**。3 个 Sentinel 配 quorum=2 是合理的；配 quorum=1 则单点误判就会切主；配 quorum=3 则任意一个 Sentinel 挂掉就无法切主。
 
@@ -507,16 +984,23 @@ print(slave.get("hello"))
 
 > **坑 5：客户端只连一个 Sentinel**。这个 Sentinel 挂了就连接不上。客户端要配 sentinel 列表，逐个尝试。
 
-## 16.9 本章小结
+> **坑 6：Sentinel 配置文件不可写**。Sentinel 运行时会自动改写配置文件（记录新 master 地址），如果文件没写权限，重启后配置丢失，会连回老 master。
 
-- Sentinel 解决"master 宕机自动切换"，三大职责：监控、通知、故障转移
+> **坑 7：故障转移后老 master 回来变成从，但数据不一致**。这是异步复制的固有问题。老 master 上未同步的写入会丢失。开启 min-replicas-to-write 缓解。
+
+> **坑 8：Sentinel 数量是偶数**。4 个 Sentinel 和 3 个的容错能力一样（都只能挂 1 个），但 4 个更浪费资源。用奇数。
+
+## 16.11 本章小结
+
+- Sentinel 解决"master 宕机自动切换"，四大职责：监控、通知、故障转移、配置中心
 - 至少 3 个 Sentinel（奇数）跨机器部署
 - 故障判定分**主观下线（SDOWN）和客观下线（ODOWN）**，ODOWN 才触发切换
 - Leader Sentinel 用 Raft 选出，需**过半数票**
 - 选新主按 \`priority → offset → runid\` 顺序
 - 客户端连 Sentinel 而非直接连 master，并订阅切换事件
-- 关键参数：\`down-after-milliseconds\`、\`quorum\`、\`parallel-syncs\`、\`failover-timeout\`**
-`
+- 脑裂问题用 \`min-replicas-to-write\` 缓解
+- 关键参数：\`down-after-milliseconds\`、\`quorum\`、\`parallel-syncs\`、\`failover-timeout\`
+- 常用命令：\`SENTINEL masters/replicas/sentinels/master/get-master-addr-by-name/failover/reset\``
   },
   {
     id: "redis-ch17",
@@ -537,9 +1021,11 @@ print(slave.get("hello"))
 | **Cluster** | **可水平扩展** | **多主分散写** | 有 | 高 |
 
 **Cluster 的核心能力**：
-- **数据分片**：把 key 分散到多个 master 节点
-- **去中心化**：节点间用 gossip 协议通信，无中心代理
+
+- **数据分片**：把 key 分散到多个 master 节点，突破单机内存限制
+- **去中心化**：节点间用 gossip 协议通信，无中心代理，无单点故障
 - **自动故障转移**：每个 master 配 replica，主挂了 replica 顶上
+- **水平扩展**：加节点即可扩容，无需停机
 
 > **注意**：Cluster 不是银弹，跨 slot 的命令（MGET、事务、Lua）受限。需要强事务的场景不适合上 Cluster。
 
@@ -555,9 +1041,15 @@ slot = CRC16(key) mod 16384
 - 节点 B：slots 5461-10922
 - 节点 C：slots 10923-16383
 
-**为什么是 16384？** Redis 作者 antirez 解释过：节点间 gossip 消息要带"自己负责哪些 slot"的位图，16384 bit = 2KB；如果用 65536 则要 8KB，gossip 带宽浪费。同时 16384 个 slot 已经足够支撑 1000 个节点的集群。
+### 为什么是 16384
 
-### 计算 key 的 slot
+Redis 作者 antirez 解释过三个原因：
+
+1. **gossip 消息大小**：节点间心跳要带"自己负责哪些 slot"的位图，16384 bit = 2KB；如果用 65536 则要 8KB，gossip 带宽浪费。
+2. **集群规模上限**：Redis 作者建议集群节点数不超过 1000，16384 个 slot 平均每个节点 16 个 slot，足够用。
+3. **位图压缩**：16384 的位图在绝大多数节点都没满配时，压缩传输效率高。
+
+### CRC16 算法
 
 \`\`\`bash
 # redis-cli 计算
@@ -565,6 +1057,7 @@ redis-cli -c cluster keyslot hello
 (integer) 866
 
 # 手算：CRC16("hello") % 16384
+# CRC16 是一种循环冗余校验，Redis 用的是 XMODEM 变种
 \`\`\`
 
 ### Hash Tag（哈希标签）
@@ -581,9 +1074,34 @@ MGET user:1001:profile user:1001:orders   # 报错 CROSSSLOT
 SET {user:1001}:profile a
 SET {user:1001}:orders b
 MGET {user:1001}:profile {user:1001}:orders  # OK
+
+# 验证确实在同一个 slot
+127.0.0.1:7000> CLUSTER KEYSLOT {user:1001}:profile
+(integer) 5061
+127.0.0.1:7000> CLUSTER KEYSLOT {user:1001}:orders
+(integer) 5061
 \`\`\`
 
-> **使用场景**：用户 1001 的所有数据（profile、orders、cart）用 \`{user:1001}\` 前缀，保证落到同一节点，可以做事务、Lua、MGET。
+> **使用场景**：用户 1001 的所有数据（profile、orders、cart）用 \`{user:1001}\` 前缀，保证落到同一节点，可以做事务、Lua、MGET。设计 key 时要提前规划好 hash tag，否则后期改 key 名代价很大。
+
+### Hash Tag 的规则
+
+- 只对**第一对** \`{}\` 里的内容做 CRC16
+- 如果没有 \`{}\`，对整个 key 做 CRC16
+- \`{}\` 里不能为空
+
+\`\`\`bash
+# 这两个 key 的 slot 由 "user:1001" 决定
+{user:1001}:profile
+{user:1001}:orders
+
+# 这两个 key 的 slot 由整个 key 决定（{} 在后面不算）
+user:{1001}:profile
+user:{1001}:orders
+
+# 空大括号无效，对整个 key 算
+{}foo
+\`\`\`
 
 ## 17.3 槽位分配与节点
 
@@ -605,14 +1123,20 @@ MGET {user:1001}:profile {user:1001}:orders  # OK
 
 | 字段 | 含义 |
 | --- | --- |
-| id | 节点唯一 ID |
+| id | 节点唯一 ID（40 字符 hex） |
 | host:port@cport | 节点地址 + 集群总线端口（默认端口+10000） |
-| flags | myself/master/slave/fail/handshake 等 |
+| flags | myself/master/slave/fail/handshake 等标志 |
 | master_id | 如果是 slave，主节点 ID；master 为 \`-\` |
 | ping_sent / pong_recv | 心跳时间戳 |
 | epoch | 节点纪元 |
 | link_state | connected/disconnected |
 | slot | 负责的 slot 范围 |
+
+### 集群总线端口
+
+每个 Cluster 节点除了对外服务的端口（如 7000），还有一个**集群总线端口 = 服务端口 + 10000**（如 17000）。节点间 gossip 通信走总线端口。
+
+> **部署注意**：防火墙要同时开放服务端口和总线端口。比如 7000 节点要开放 7000 和 17000。这是新手常踩的坑。
 
 ### 集群状态
 
@@ -627,19 +1151,33 @@ cluster_known_nodes:6         # 集群节点总数
 cluster_size:3                # master 数量
 cluster_current_epoch:6
 cluster_my_epoch:1
+cluster_stats_messages_sent:123456
+cluster_stats_messages_received:123450
 \`\`\`
 
 > **重要**：\`cluster_state\` 不是 ok 时，集群会**拒绝所有写命令**（部分情况下连读都拒绝）。所以监控这个指标很关键。
 
-## 17.4 集群搭建（redis-cli --cluster）
+### cluster-require-full-coverage
 
-### 准备 6 个节点（3 主 3 从）
+\`\`\`conf
+# 默认 yes：只要有一个 slot 没有节点负责，整个集群拒绝服务
+# 设为 no：即使部分 slot 不可用，其他 slot 仍可正常服务
+cluster-require-full-coverage yes
+\`\`\`
+
+> 生产建议：如果业务能容忍部分 key 不可用，可以设为 no，提升可用性。但要注意应用层处理 MOVED 失败的情况。
+
+## 17.4 手动搭建集群（cluster meet / addslots）
+
+理解手动搭建过程有助于理解集群的工作原理。
+
+### 1. 启动节点
 
 \`\`\`bash
 # 配置文件模板 redis-7000.conf
 port 7000
 cluster-enabled yes              # 开启集群模式
-cluster-config-file nodes-7000.conf
+cluster-config-file nodes-7000.conf  # 集群配置文件（自动生成）
 cluster-node-timeout 5000        # 节点超时（ms）
 appendonly yes
 daemonize yes
@@ -653,7 +1191,53 @@ for port in 7000 7001 7002 7003 7004 7005; do
 done
 \`\`\`
 
-### 一键创建集群
+### 2. 节点握手（cluster meet）
+
+\`\`\`bash
+# 在 7000 上执行，把其他节点加入集群
+redis-cli -p 7000 CLUSTER MEET 127.0.0.1 7001
+OK
+redis-cli -p 7000 CLUSTER MEET 127.0.0.1 7002
+OK
+redis-cli -p 7000 CLUSTER MEET 127.0.0.1 7003
+OK
+redis-cli -p 7000 CLUSTER MEET 127.0.0.1 7004
+OK
+redis-cli -p 7000 CLUSTER MEET 127.0.0.1 7005
+OK
+
+# meet 后节点间通过 gossip 自动感知彼此
+\`\`\`
+
+### 3. 分配 slot（cluster addslots）
+
+\`\`\`bash
+# 给 7000 分配 0-5460
+for i in {0..5460}; do redis-cli -p 7000 CLUSTER ADDSLOTS $i; done
+
+# 给 7001 分配 5461-10922
+for i in {5461..10922}; do redis-cli -p 7001 CLUSTER ADDSLOTS $i; done
+
+# 给 7002 分配 10923-16383
+for i in {10923..16383}; do redis-cli -p 7002 CLUSTER ADDSLOTS $i; done
+\`\`\`
+
+> 手动 addslots 太繁琐，生产用 \`redis-cli --cluster create\` 一键搞定。这里只是演示原理。
+
+### 4. 设置主从（cluster replicate）
+
+\`\`\`bash
+# 7003 作为 7000 的从
+redis-cli -p 7003 CLUSTER REPLICATE <7000的node-id>
+# 7004 作为 7001 的从
+redis-cli -p 7004 CLUSTER REPLICATE <7001的node-id>
+# 7005 作为 7002 的从
+redis-cli -p 7005 CLUSTER REPLICATE <7002的node-id>
+\`\`\`
+
+## 17.5 一键搭建集群（redis-cli --cluster）
+
+### 一键创建
 
 \`\`\`bash
 # --cluster-replicas 1 表示每个主配 1 个从
@@ -668,6 +1252,16 @@ redis-cli --cluster create \\
 # Master[1] -> Slots 5461-10922
 # Master[2] -> Slots 10923-16383
 # Adding replica 127.0.0.1:7003 to 127.0.0.1:7000
+# Adding replica 127.0.0.1:7004 to 127.0.0.1:7001
+# Adding replica 127.0.0.1:7005 to 127.0.0.1:7002
+# M: 3e34... 127.0.0.1:7000
+#    slots:[0-5460] (5461 slots) master
+# M: 5f72... 127.0.0.1:7001
+#    slots:[5461-10922] (5461 slots) master
+# M: 7b21... 127.0.0.1:7002
+#    slots:[10923-16383] (5462 slots) master
+# S: 9c44... 127.0.0.1:7003
+#    replicates 3e34...
 # ...
 # [OK] All nodes agree about slots configuration.
 # >>> Check for open slots...
@@ -700,9 +1294,35 @@ redis-cli -p 7000 SET foo bar
 # 加 -c：自动重定向到正确节点
 redis-cli -c -p 7000 SET foo bar
 OK
+
+# 集群模式下的读
+redis-cli -c -p 7000 GET foo
+"bar"
 \`\`\`
 
-## 17.5 MOVED 与 ASK 重定向
+### cluster-enabled 配置
+
+\`\`\`conf
+# 必须开启
+cluster-enabled yes
+
+# 集群配置文件，由节点自动维护，不要手动编辑
+cluster-config-file nodes-7000.conf
+
+# 节点超时（毫秒），超过则认为下线
+cluster-node-timeout 5000
+
+# 是否允许 replica 迁移（自动平衡 replica 分布）
+cluster-migration-barrier 1
+
+# 集群全部 slot 覆盖检查
+cluster-require-full-coverage yes
+
+# 允许在 failover 期间读取
+cluster-allow-reads-when-down no
+\`\`\`
+
+## 17.6 MOVED 与 ASK 重定向
 
 ### MOVED
 
@@ -711,10 +1331,13 @@ OK
 \`\`\`bash
 127.0.0.1:7000> GET foo
 (error) MOVED 12182 127.0.0.1:7002
-# 意思：slot 12182 在 127.0.0.1:7002，去那里查
+# 意思：slot 12182 永久在 127.0.0.1:7002，去那里查
 \`\`\`
 
+**MOVED 格式**：\`MOVED <slot> <host>:<port>\`
+
 **客户端行为**：
+
 1. 收到 MOVED，去新节点重试
 2. 更新本地的 slot→node 映射表（智能客户端会做）
 3. 后续相同 slot 的请求直接打到新节点
@@ -722,6 +1345,7 @@ OK
 ### ASK
 
 **ASK 只在 slot 正在迁移时出现**。和 MOVED 的区别：
+
 - MOVED：永久重定向，客户端要更新映射
 - ASK：临时重定向，客户端**不要**更新映射，这次去新节点查一次
 
@@ -740,9 +1364,19 @@ OK
 
 > **为什么需要 ASKING？** 迁移过程中 slot 既不完全属于老节点（key 已经搬走）也不完全属于新节点（还没接收完）。ASKING 表示"我知道这是过渡期，临时让我查一次"。
 
+### MOVED vs ASK 对比
+
+| 特性 | MOVED | ASK |
+| --- | --- | --- |
+| 触发时机 | slot 永久属于别的节点 | slot 正在迁移中 |
+| 客户端行为 | 更新 slot 映射表 | **不**更新映射表 |
+| 是否需要 ASKING | 否 | 是（去目标节点前先发 ASKING） |
+| 出现频率 | 日常访问错误 slot | 仅 reshard 期间 |
+
 ### 智能客户端
 
 主流客户端（jedis、lettuce、ioredis、redis-py）都是"smart client"：
+
 - 启动时通过 \`CLUSTER SLOTS\` 拿到完整 slot→node 映射
 - 收到 MOVED 后更新映射
 - 收到 ASK 后临时跳转，不更新映射
@@ -751,20 +1385,20 @@ OK
 \`\`\`bash
 # 客户端启动时调用
 127.0.0.1:7000> CLUSTER SLOTS
-1) 1) (integer) 0
-   2) (integer) 5460
-   3) 1) "127.0.0.1"
-   2) (integer) 7000
-   3) "3e34..."
-   4) 1) "127.0.0.1"
-   2) (integer) 7003
-   3) "..."
+1) 1) (integer) 0          # slot 起始
+   2) (integer) 5460        # slot 结束
+   3) 1) "127.0.0.1"        # master IP
+   2) (integer) 7000        # master port
+   3) "3e34..."             # master node id
+   4) 1) "127.0.0.1"        # replica IP
+   2) (integer) 7003        # replica port
+   3) "..."                 # replica node id
 2) 1) (integer) 5461
    2) (integer) 10922
    ...
 \`\`\`
 
-## 17.6 集群的限制
+## 17.7 集群的限制
 
 Cluster 不是万能的，有些操作做不了：
 
@@ -781,6 +1415,15 @@ Cluster 不是万能的，有些操作做不了：
 ### 2. 事务和 Lua 受限
 
 \`MULTI/EXEC\` 和 \`EVAL\` 涉及的 key 必须在同一 slot，否则报错。
+
+\`\`\`bash
+127.0.0.1:7000> MULTI
+OK
+127.0.0.1:7000(TX)> SET foo bar
+QUEUED
+127.0.0.1:7000(TX)> SET baz qux
+(error) CROSSSLOT Keys in request don't hash to the same slot
+\`\`\`
 
 ### 3. SELECT db 不可用
 
@@ -799,7 +1442,22 @@ Cluster 模式只能用 db 0：
 
 老客户端不支持 MOVED 重定向就废了。生产用主流客户端。
 
-## 17.7 踩坑提示
+### 6. 批量命令受限
+
+\`KEYS\`、\`FLUSHDB\`、\`DBSIZE\` 等命令只作用于当前节点，不是全局的。要遍历所有 key 需要 scan 每个节点。
+
+\`\`\`bash
+# 每个节点单独 scan
+for port in 7000 7001 7002; do
+  echo "=== $port ==="
+  redis-cli -p $port DBSIZE
+done
+
+# 或者用 --cluster call 批量执行
+redis-cli --cluster call 127.0.0.1:7000 DBSIZE
+\`\`\`
+
+## 17.8 踩坑提示
 
 > **坑 1：跨 slot 操作报错**。设计 key 时一定要考虑分片。比如批量查用户数据，用 \`{user:1001}\` hash tag 让相关 key 在一起。
 
@@ -811,21 +1469,26 @@ Cluster 模式只能用 db 0：
 
 > **坑 5：客户端缓存 slot 映射不更新**。集群扩缩容后 slot 分布变了，老映射会导致大量 MOVED。客户端要正确响应 MOVED 更新映射。
 
-## 17.8 本章小结
+> **坑 6：只开放了服务端口没开总线端口**。节点间无法通信，集群一直处于 fail 状态。要同时开放 port 和 port+10000。
+
+> **坑 7：Docker/NAT 环境下节点地址不对**。节点对外报告的是容器内 IP，其他节点连不上。要配 \`cluster-announce-ip\` 和 \`cluster-announce-port\`。
+
+## 17.9 本章小结
 
 - Cluster 用 **16384 个 slot** 分片，\`slot = CRC16(key) % 16384\`
 - 用 **Hash Tag** \`{...}\` 把相关 key 强制到同一 slot
 - 6 节点起（3 主 3 从），用 \`redis-cli --cluster create\` 一键搭建
+- 手动搭建：\`CLUSTER MEET\` 握手 → \`CLUSTER ADDSLOTS\` 分配 slot → \`CLUSTER REPLICATE\` 设主从
 - 访问错误 slot 时返回 **MOVED（永久）或 ASK（临时迁移中）**
 - 智能客户端自动处理重定向并缓存映射
 - 跨 slot 多键操作受限，事务/Lua 也只能单 slot
-- 关键参数：\`cluster-enabled\`、\`cluster-node-timeout\`、\`cluster-config-file\`**
-`
+- 集群总线端口 = 服务端口 + 10000，防火墙要同时开放
+- 关键参数：\`cluster-enabled\`、\`cluster-node-timeout\`、\`cluster-require-full-coverage\`、\`cluster-config-file\`"`
   },
   {
     id: "redis-ch18",
     group: "第四部分 高可用架构",
-    icon: "⚖️",
+    icon: "🔄",
     title: "第 18 章 Cluster 故障转移与扩缩容",
     content: `# 第 18 章 Cluster 故障转移与扩缩容
 
@@ -834,6 +1497,27 @@ Cluster 模式只能用 db 0：
 ## 18.1 节点故障检测
 
 Cluster 用 **gossip 协议** 互相探测：每秒随机选几个节点发 PING，捎带自己掌握的集群信息。
+
+### Gossip 协议工作原理
+
+\`\`\`text
+节点 A 每秒做这些事：
+1. 随机选 5 个已知节点发 PING
+2. PING 里捎带自己知道的节点状态（gossip 部分）
+3. 收到 PING 的节点回 PONG，也捎带自己的 gossip
+4. 节点根据收到的 gossip 更新本地节点表
+
+这样集群里任何节点的状态变化，很快（秒级）就能传播到所有节点。
+\`\`\`
+
+### PING/PONG 消息结构
+
+每条 gossip 消息包含两部分：
+
+1. **Header**：发送者的 slot 分布、纪元、角色等
+2. **Gossip section**：发送者知道的随机 N 个节点的状态（IP、port、最后通信时间）
+
+通过这种方式，节点既能同步 slot 归属，又能传播节点存活状态。
 
 ### 故障检测流程
 
@@ -848,9 +1532,27 @@ Cluster 用 **gossip 协议** 互相探测：每秒随机选几个节点发 PING
 127.0.0.1:7000> CLUSTER NODES
 # fail 标记表示该节点已确定下线
 <id2> 127.0.0.1:7001@17001 master,fail - 1609456789 2 connected 5461-10922
+# pfail 标记表示疑似下线（只在部分节点视图里）
 \`\`\`
 
 > **PFAIL vs FAIL**：PFAIL 是单节点的看法（可能误判），FAIL 是集体决议（过半数 master 同意）。只有 FAIL 才会触发故障转移。这和 Sentinel 的 SDOWN/ODOWN 思路一致。
+
+### PFAIL 的传播
+
+\`\`\`text
+节点 A 发现 B 疑似下线（PFAIL）
+  │
+  ├─ 通过 gossip 告诉 C、D、E
+  │
+节点 C 也发现 B 疑似下线（PFAIL）
+  │
+  ├─ 通过 gossip 告诉 A、D、E
+  │
+当过半数 master（如 3 个里有 2 个）都报告 B 是 PFAIL
+  │
+  ▼
+B 被标记为 FAIL，触发故障转移
+\`\`\`
 
 ## 18.2 从节点选举
 
@@ -859,26 +1561,52 @@ Cluster 用 **gossip 协议** 互相探测：每秒随机选几个节点发 PING
 ### 1. 候选 replica 资格审查
 
 不是所有 replica 都能参选，要满足：
+
 - 与 master 断线时间不超过 \`cluster-node-timeout * 2\`（数据不能太旧）
 - 复制偏移量最大（数据最新）
 
+\`\`\`bash
+# 在 replica 上查看自己的复制偏移量
+127.0.0.1:7003> INFO replication
+role:slave
+master_link_status:up
+slave_repl_offset:51200   # 这个值越大，数据越新
+\`\`\`
+
 ### 2. 触发选举
 
-符合资格的 replica 等**一段随机时间**后发起选举（避免同时发起冲突），然后请求其他 master 投票。
+符合资格的 replica 等**一段随机时间**后发起选举（避免同时发起冲突），然后请求其他 master 投票。随机延迟的计算：
+
+\`\`\`text
+延迟 = 500ms × replica排名 × 0.1 × cluster-node-timeout / 1000
+\`\`\`
+
+数据越新（offset 越大）的 replica 排名越靠前，延迟越短，越先发起选举。
 
 ### 3. 投票
 
 每个 master 在一个 epoch 内只能投一票（Raft 思想）。候选 replica 拿到**过半数 master 的票**就当选。
 
+\`\`\`text
+3 主集群（master1/2/3），master2 挂了，replica2a 参选：
+  replica2a → 请求 master1 投票 → 同意
+  replica2a → 请求 master3 投票 → 同意
+  拿到 2 票（过半数 master = 2/3）→ 当选
+\`\`\`
+
 ### 4. 升主
 
 当选的 replica 执行：
+
 \`\`\`bash
 # 内部执行（不需要手动）
-CLUSTER FAILOVER TAKEOVER   # 强制升主，不要求投票（脑裂时用，慎用）
+# 1. 把自己的 epoch +1
+# 2. 把自己改成 master 角色
+# 3. 接管原 master 的 slot
+# 4. 广播 PONG 通知集群
 \`\`\`
 
-然后广播自己成为新 master，接管原 master 的 slot。
+然后广播自己成为新 master，接管原 master 的 slot。其他 replica 自动改为复制新 master。
 
 ### 手动故障转移
 
@@ -889,18 +1617,35 @@ CLUSTER FAILOVER TAKEOVER   # 强制升主，不要求投票（脑裂时用，�
 127.0.0.1:7003> CLUSTER FAILOVER
 
 # 选项：
-# (无)  正常流程：通知 master 停止写入，等 replica 同步完，再切
-# FORCE 强制：不等同步，直接切（数据可能丢）
-# TAKEOVER 强制且不要求投票：脑裂场景用
+# (无)    正常流程：通知 master 停止写入，等 replica 同步完，再切
+# FORCE   强制：不等同步，直接切（数据可能丢）
+# TAKEOVER 强制且不要求投票：脑裂场景用，慎用
 \`\`\`
+
+三种模式对比：
+
+| 模式 | 通知 master | 等数据同步 | 需要投票 | 适用场景 |
+| --- | --- | --- | --- | --- |
+| 无 | 是 | 是 | 否 | 正常升级切换 |
+| FORCE | 否 | 否 | 否 | master 卡死但没挂 |
+| TAKEOVER | 否 | 否 | 否（自封） | 脑裂紧急恢复 |
 
 **安全切换流程（升级 master 不丢请求）**：
 
-1. 把 master 设为只读：\`CONFIG SET cluster-require-full-coverage yes\`（保证一致性）
-2. 在 replica 上执行 \`CLUSTER FAILOVER\`
-3. 等待切换完成（看 \`CLUSTER NODES\` 中角色变化）
-4. 关闭老 master 升级
-5. 升级后作为 replica 重新加入
+1. 在 replica 上执行 \`CLUSTER FAILOVER\`（不带 FORCE）
+2. 等待切换完成（看 \`CLUSTER NODES\` 中角色变化）
+3. 关闭老 master 升级
+4. 升级后作为 replica 重新加入
+
+\`\`\`bash
+# 在 7003（replica）上执行手动切换
+redis-cli -p 7003 CLUSTER FAILOVER
+OK
+
+# 观察切换过程
+watch -n 1 "redis-cli -p 7000 CLUSTER NODES | grep myself"
+# 几秒后 7003 变成 master，7000 变成 7003 的 replica
+\`\`\`
 
 ## 18.3 扩容（添加节点与迁移槽）
 
@@ -909,6 +1654,14 @@ CLUSTER FAILOVER TAKEOVER   # 强制升主，不要求投票（脑裂时用，�
 ### 1. 启动并加入新节点
 
 \`\`\`bash
+# 配置文件 redis-7006.conf
+port 7006
+cluster-enabled yes
+cluster-config-file nodes-7006.conf
+cluster-node-timeout 5000
+appendonly yes
+daemonize yes
+
 # 启动新 master 7006 和它的 replica 7007
 redis-server redis-7006.conf
 redis-server redis-7007.conf
@@ -926,7 +1679,7 @@ redis-cli -p 7000 CLUSTER NODES
 
 此时 7006 还没分配 slot，不接受数据。需要把 slot 迁过来。
 
-### 2. 迁移 slot
+### 2. 迁移 slot（reshard）
 
 \`\`\`bash
 # 用 redis-cli --cluster reshard 交互式迁移
@@ -943,20 +1696,44 @@ redis-cli --cluster reshard 127.0.0.1:7000
 
 \`\`\`bash
 # 把 slot 100 从 7000 迁到 7006
-redis-cli -p 7000 CLUSTER SETSLOT 100 IMPORTING <7006-id>
-redis-cli -p 7006 CLUSTER SETSLOT 100 MIGRATING <7000-id>
-# 把 slot 100 里的 key 一个一个 MIGRATE
+# 步骤 1：在目标节点设置 IMPORTING
+redis-cli -p 7006 CLUSTER SETSLOT 100 IMPORTING <7000-id>
+
+# 步骤 2：在源节点设置 MIGRATING
+redis-cli -p 7000 CLUSTER SETSLOT 100 MIGRATING <7006-id>
+
+# 步骤 3：迁移 slot 里的 key
 redis-cli -p 7000 CLUSTER GETKEYSINSLOT 100 100
-# 假设取到 key1
-redis-cli -p 7000 MIGRATE 127.0.0.1 7006 "" 0 5000 KEYS key1
-# ...
-# 全部迁完，通知所有节点 slot 100 归属变了
+# 假设取到 key1、key2...
+redis-cli -p 7000 MIGRATE 127.0.0.1 7006 "" 0 5000 KEYS key1 key2
+
+# 步骤 4：通知所有节点 slot 100 归属变了
 redis-cli -p 7000 CLUSTER SETSLOT 100 NODE <7006-id>
 redis-cli -p 7001 CLUSTER SETSLOT 100 NODE <7006-id>
+redis-cli -p 7002 CLUSTER SETSLOT 100 NODE <7006-id>
+redis-cli -p 7006 CLUSTER SETSLOT 100 NODE <7006-id>
 # 所有节点都要执行一遍
 \`\`\`
 
 > **生产建议**：手动迁移太繁琐，**直接用 \`redis-cli --cluster reshard\`**，它会自动处理 key 迁移和节点通知。
+
+### reshard 的脚本化用法
+
+\`\`\`bash
+# 一次性指定参数，无需交互
+redis-cli --cluster reshard 127.0.0.1:7000 \\
+  --cluster-from <源节点id> \\
+  --cluster-to <目标节点id> \\
+  --cluster-slots 1000 \\
+  --cluster-yes
+
+# 从所有节点均摊
+redis-cli --cluster reshard 127.0.0.1:7000 \\
+  --cluster-from all \\
+  --cluster-to <7006-id> \\
+  --cluster-slots 4096 \\
+  --cluster-yes
+\`\`\`
 
 ### 3. 平衡 slot
 
@@ -964,8 +1741,18 @@ redis-cli -p 7001 CLUSTER SETSLOT 100 NODE <7006-id>
 # 查看每个节点的 slot 数和 key 数
 redis-cli --cluster info 127.0.0.1:7000
 
+# 输出：
+# 127.0.0.1:7000 (3e34...) -> 1536 keys | 4096 slots | 1 slaves.
+# 127.0.0.1:7001 (5f72...) -> 1480 keys | 4096 slots | 1 slaves.
+# 127.0.0.1:7002 (7b21...) -> 1502 keys | 4096 slots | 1 slaves.
+# 127.0.0.1:7006 (9c44...) -> 1490 keys | 4096 slots | 1 slaves.
+
 # 自动平衡 slot 分布（让每个 master slot 数尽量相等）
 redis-cli --cluster rebalance 127.0.0.1:7000
+
+# 带权重平衡（按节点容量比例分配）
+redis-cli --cluster rebalance 127.0.0.1:7000 \\
+  --cluster-weight <node-id-7000>=1 <node-id-7006>=2
 \`\`\`
 
 ## 18.4 缩容（迁移槽与移除节点）
@@ -988,6 +1775,8 @@ redis-cli --cluster reshard 127.0.0.1:7000 \\
 \`\`\`bash
 redis-cli -p 7006 CLUSTER NODES | grep myself
 # 输出里没有 slot 范围就对了
+# <id> 127.0.0.1:7006@17006 myself,master - 0 1609456789 7 connected
+# 注意：connected 后面没有 slot 数字
 \`\`\`
 
 ### 2. 移除节点
@@ -1007,7 +1796,9 @@ redis-cli -p 7006 SHUTDOWN NOSAVE
 redis-cli -p 7007 SHUTDOWN NOSAVE
 \`\`\`
 
-## 18.5 集群运维命令
+> **顺序很重要**：必须先迁空 slot，再 del-node。如果 slot 没迁空就 del-node，会报 \`"ERR Node ... is not empty"\`。
+
+## 18.5 集群运维命令大全
 
 ### 信息查看
 
@@ -1056,6 +1847,12 @@ CLUSTER RESET [HARD|SOFT]
 ### Slot 管理
 
 \`\`\`bash
+# 分配 slot 给当前节点
+CLUSTER ADDSLOTS 0 1 2 ...
+
+# 删除 slot
+CLUSTER DELSLOTS 0 1 2 ...
+
 # 设置 slot 100 归属节点
 CLUSTER SETSLOT 100 NODE <node-id>
 
@@ -1089,9 +1886,55 @@ redis-cli --cluster info 127.0.0.1:7000
 
 # 调用所有节点执行命令
 redis-cli --cluster call 127.0.0.1:7000 DBSIZE
+
+# 备份集群
+redis-cli --cluster backup 127.0.0.1:7000 /backup/dir
+
+# 设置超时
+redis-cli --cluster set-timeout 127.0.0.1:7000 5000
 \`\`\`
 
-## 18.6 踩坑提示
+## 18.6 cluster-announce 与多机房部署
+
+### cluster-announce
+
+在 Docker、NAT、跨机房环境下，节点对外报告的 IP 可能是内网地址，导致其他节点连不上。用 \`cluster-announce\` 强制声明对外地址：
+
+\`\`\`conf
+# redis-7000.conf
+cluster-announce-ip 10.0.0.10        # 对外报告的 IP
+cluster-announce-port 7000            # 对外报告的服务端口
+cluster-announce-bus-port 17000       # 对外报告的总线端口
+\`\`\`
+
+\`\`\`bash
+# 运行时动态设置
+127.0.0.1:7000> CONFIG SET cluster-announce-ip 10.0.0.10
+OK
+\`\`\`
+
+### 多机房部署（Multi-AZ）
+
+跨机房部署 Cluster 要注意：
+
+1. **replica 与 master 跨机房**：避免单机房故障导致 slot 双挂
+2. **网络延迟**：gossip 心跳对延迟敏感，跨城延迟 > 30ms 要评估
+3. **cluster-node-timeout 要调大**：跨机房网络抖动更频繁，默认 15s 可能不够
+
+\`\`\`text
+机房 A（北京）              机房 B（上海）
+┌──────────────┐           ┌──────────────┐
+│ master1      │           │ replica1     │
+│ master2      │           │ replica2     │
+│ master3      │           │ replica3     │
+└──────────────┘           └──────────────┘
+
+任何单机房故障，另一个机房都有完整副本
+\`\`\`
+
+> **注意**：跨机房 Cluster 的写延迟会受网络 RTT 影响。如果业务对延迟敏感，考虑用 Proxy 方案或同机房优先读。
+
+## 18.7 踩坑提示
 
 > **坑 1：扩容时 slot 迁移卡住**。原因是某个 key 太大，MIGRATE 超时。解决：先治大 key，迁移时设大点超时 \`MIGRATE ... 30000\`。
 
@@ -1107,20 +1950,27 @@ redis-cli --cluster call 127.0.0.1:7000 DBSIZE
 
 > **坑 7：CLUSTER RESET HARD 在生产用了**。这会清空所有数据和集群配置，慎之又慎。
 
-## 18.7 本章小结
+> **坑 8：迁移大 key 时阻塞源节点**。MIGRATE 是同步操作，迁移大 key 期间源节点阻塞。建议在低峰期迁移，或先拆分大 key。
+
+> **坑 9：replica 选举失败导致 slot 长时间不可用**。如果 replica 数据太旧（断线超过 timeout\*2），无法参选，slot 会一直不可用。监控 replica 的 lag。
+
+## 18.8 本章小结
 
 - **故障检测**：PFAIL（疑似）→ FAIL（确定，过半 master 同意）→ 触发故障转移
-- **从节点选举**：资格审查 → 随机延迟发起 → 过半 master 投票 → 当选升主
+- **gossip 协议**：节点间随机心跳，秒级传播状态变化
+- **从节点选举**：资格审查（数据不能太旧）→ 随机延迟发起 → 过半 master 投票 → 当选升主
 - **手动故障转移**：\`CLUSTER FAILOVER\`（可选 FORCE/TAKEOVER），升级时用得着
 - **扩容**：add-node → reshard 迁 slot → rebalance 平衡
 - **缩容**：reshard 迁出 slot → del-node → 关闭
+- **cluster-announce**：NAT/Docker 环境声明对外地址
+- **多机房**：replica 跨机房部署，timeout 要调大
 - **常用工具**：\`redis-cli --cluster check/fix/reshard/rebalance/info/call\`
 - 操作前后都要 \`CLUSTER NODES\` 和 \`CLUSTER INFO\` 确认状态`
   },
   {
     id: "redis-ch19",
     group: "第四部分 高可用架构",
-    icon: "🔌",
+    icon: "🔗",
     title: "第 19 章 客户端与连接",
     content: `# 第 19 章 客户端与连接
 
@@ -1150,6 +2000,18 @@ Redis 客户端和服务端之间用 **RESP（REdis Serialization Protocol）** 
 *3\\r\\n$3\\r\\nSET\\r\\n$5\\r\\nhello\\r\\n$5\\r\\nworld\\r\\n
 \`\`\`
 
+拆解：
+
+\`\`\`text
+*3            ← 数组，3 个元素
+$3            ← 批量字符串，3 字节
+SET           ← 字符串内容
+$5            ← 批量字符串，5 字节
+hello         ← 字符串内容
+$5            ← 批量字符串，5 字节
+world         ← 字符串内容
+\`\`\`
+
 服务端回复：
 
 \`\`\`text
@@ -1166,7 +2028,32 @@ Redis 客户端和服务端之间用 **RESP（REdis Serialization Protocol）** 
 $5\\r\\nworld\\r\\n
 \`\`\`
 
-> **为什么了解 RESP？** 调试网络问题、写自定义客户端、优化协议（RESP3 多了双精度浮点、Map、Set 等类型）都需要。生产用 redis-cli 加 \`--no-raw\` 可以看到原始 RESP：
+### RESP3 新特性
+
+Redis 6 引入 RESP3，增加了多种类型：
+
+| 新类型 | 前缀 | 用途 |
+| --- | --- | --- |
+| Map | \`%\` | 键值对（替代数组表示的 map） |
+| Set | \`~\` | 集合 |
+| Double | \`,\` | 双精度浮点 |
+| Boolean | \`#\` | 布尔值 |
+| Big number | \`(\` | 大整数 |
+| Null | \`_\` | 空值（替代 $-1） |
+
+\`\`\`bash
+# 切换到 RESP3 协议
+redis-cli -p 6379 HELLO 3
+# 服务端返回能力信息
+
+# 切换后，HGETALL 返回 Map 而不是数组
+127.0.0.1:6379> HSET myhash f1 v1 f2 v2
+127.0.0.1:6379> HGETALL myhash
+# RESP2: 数组 ["f1","v1","f2","v2"]
+# RESP3: Map {f1: "v1", f2: "v2"}
+\`\`\`
+
+> **为什么了解 RESP？** 调试网络问题、写自定义客户端、优化协议都需要。生产用 redis-cli 加 \`--no-raw\` 可以看到原始 RESP：
 
 \`\`\`bash
 redis-cli -p 6379 --no-raw GET hello
@@ -1189,7 +2076,7 @@ world
 \`\`\`javascript
 const Redis = require("ioredis");
 
-const pool = new Redis({
+const client = new Redis({
   host: "127.0.0.1",
   port: 6379,
   // 连接池配置
@@ -1205,7 +2092,7 @@ const pool = new Redis({
 });
 \`\`\`
 
-### Java（Lettuce）
+### Java（Lettuce / Jedis）
 
 Lettuce 是基于 Netty 的异步客户端，**天生线程安全**，一个连接可以被多线程共享。
 
@@ -1221,6 +2108,17 @@ RedisAsyncCommands<String, String> async = conn.async(); // 异步
 RedisReactiveCommands<String, String> reactive = conn.reactive(); // 响应式
 \`\`\`
 
+Jedis 是同步客户端，需要连接池：
+
+\`\`\`java
+import redis.clients.jedis.*;
+
+JedisPool pool = new JedisPool(new JedisPoolConfig(), "127.0.0.1", 6379);
+try (Jedis jedis = pool.getResource()) {
+    jedis.set("hello", "world");
+}
+\`\`\`
+
 ### Python（redis-py）
 
 \`\`\`python
@@ -1234,6 +2132,7 @@ pool = redis.ConnectionPool(
     socket_timeout=5,
     socket_connect_timeout=5,
     retry_on_timeout=True,
+    health_check_interval=30,  # 每 30 秒健康检查
 )
 client = redis.Redis(connection_pool=pool)
 \`\`\`
@@ -1249,6 +2148,28 @@ client = redis.Redis(connection_pool=pool)
 举例：单次请求 2ms，业务 QPS 5000，需要 \`(2 × 5000)/1000 × 1.5 = 15\` 个连接。再加点缓冲，配 30-50 即可。
 
 > **坑**：连接数配太大，Redis 服务端会被客户端连接占满（默认 maxclients 10000），且每个连接都要占内存和文件描述符。
+
+### 连接池监控
+
+\`\`\`python
+# redis-py 查看连接池状态
+print(pool._in_use_connections)  # 正在使用的连接数
+print(pool._available_connections)  # 空闲连接数
+print(pool.max_connections)  # 最大连接数
+\`\`\`
+
+\`\`\`bash
+# 服务端看客户端连接数
+127.0.0.1:6379> INFO clients
+connected_clients:50          # 当前连接数
+client_longest_output_list:0
+client_biggest_input_buf:0
+blocked_clients:0
+
+# 查看具体连接
+127.0.0.1:6379> CLIENT LIST
+id=10 addr=127.0.0.1:54321 fd=8 ... db=0 sub=0 psub=0
+\`\`\`
 
 ## 19.3 Pipeline 管道
 
@@ -1307,6 +2228,20 @@ futures.forEach(f -> {
 \`\`\`
 
 > **注意**：Pipeline 不是原子的！中间穿插了其他客户端的命令。需要原子性用事务（MULTI/EXEC）或 Lua。
+
+### Pipeline 分批
+
+一次发太多命令会撑爆缓冲区，建议分批：
+
+\`\`\`python
+# 每批 1000 条
+batch_size = 1000
+for i in range(0, 100000, batch_size):
+    pipe = client.pipeline()
+    for j in range(batch_size):
+        pipe.set(f"k{i+j}", f"v{i+j}")
+    pipe.execute()
+\`\`\`
 
 ### redis-cli --pipe 批量导入
 
@@ -1372,6 +2307,32 @@ QUEUED
 (integer) 101
 \`\`\`
 
+### WATCH 实现乐观锁的模式
+
+\`\`\`python
+# Python 实现"扣库存"乐观锁
+import redis
+r = redis.Redis()
+
+def deduct_stock(item_id, count):
+    key = f"stock:{item_id}"
+    while True:
+        try:
+            r.watch(key)               # 监视库存 key
+            current = int(r.get(key))
+            if current < count:
+                r.unwatch()
+                return False            # 库存不足
+            pipe = r.pipeline()
+            pipe.multi()                # 开启事务
+            pipe.decrby(key, count)
+            pipe.execute()              # 提交，如果 key 被改了会抛异常
+            return True
+        except redis.WatchError:
+            # 被其他客户端改了，重试
+            continue
+\`\`\`
+
 > **典型场景**：扣库存、转账。用 WATCH + MULTI 实现乐观锁，失败重试。
 
 ### 事务的限制
@@ -1411,9 +2372,23 @@ Lua 脚本在 Redis 服务端执行，**原子性**（执行期间不会被其�
 \`\`\`
 
 参数：
+
 - \`script\`：Lua 代码字符串
 - \`numkeys\`：key 的数量
 - 后面是 key 列表和 arg 列表
+
+### redis.call vs redis.pcall
+
+\`\`\`lua
+-- redis.call：出错则中断脚本，返回错误给客户端
+local val = redis.call('GET', KEYS[1])
+
+-- redis.pcall：出错不中断，返回错误对象
+local val = redis.pcall('GET', KEYS[1])
+if val.err then
+    -- 处理错误
+end
+\`\`\`
 
 ### 实战：原子计数器
 
@@ -1478,14 +2453,14 @@ redis-cli --eval rate_limit.lua mybucket , 100 $(date +%s) 10 1
 \`\`\`bash
 # 加载脚本，得到 SHA1
 127.0.0.1:6379> SCRIPT LOAD "return redis.call('GET', KEYS[1])"
-"a5260dd66ce02462..."   # 这是 SHA1
+"a5260dd66ce02462c5d5f7b8c5c5b8e1f8a3b9c0"   # 这是 SHA1
 
 # 用 SHA1 执行
-127.0.0.1:6379> EVALSHA a5260dd66ce02462... 1 mykey
+127.0.0.1:6379> EVALSHA a5260dd66ce02462c5d5f7b8c5c5b8e1f8a3b9c0 1 mykey
 "value"
 
 # 检查脚本是否在缓存里
-127.0.0.1:6379> SCRIPT EXISTS a5260dd66ce02462...
+127.0.0.1:6379> SCRIPT EXISTS a5260dd66ce02462c5d5f7b8c5c5b8e1f8a3b9c0
 1) (integer) 1
 
 # 清空脚本缓存
@@ -1493,6 +2468,35 @@ redis-cli --eval rate_limit.lua mybucket , 100 $(date +%s) 10 1
 \`\`\`
 
 > **生产实践**：客户端启动时先 \`SCRIPT LOAD\` 所有脚本，之后用 \`EVALSHA\` 调用。如果服务端重启清了缓存，回退到 \`EVAL\`。
+
+### 各语言调用 Lua
+
+\`\`\`python
+# Python redis-py
+script = """
+local cnt = redis.call('GET', KEYS[1])
+if not cnt then
+    redis.call('SET', KEYS[1], 0)
+end
+return redis.call('INCR', KEYS[1])
+"""
+# 注册脚本（自动用 EVALSHA，找不到则 fallback 到 EVAL）
+counter = client.register_script(script)
+result = counter(keys=["counter"])
+print(result)
+\`\`\`
+
+\`\`\`javascript
+// Node.js ioredis
+// defineCommand 会自动缓存脚本并用 EVALSHA 调用
+client.defineCommand("atomicIncr", {
+  numberOfKeys: 1,
+  lua: "return redis.call('INCR', KEYS[1])",
+});
+
+const result = await client.atomicIncr("counter");
+console.log(result);
+\`\`\`
 
 ### Lua 的注意点
 
@@ -1504,6 +2508,13 @@ redis-cli --eval rate_limit.lua mybucket , 100 $(date +%s) 10 1
 \`\`\`conf
 # 配置 lua 脚本超时
 lua-time-limit 5000
+\`\`\`
+
+\`\`\`bash
+# 脚本超时后，可以中断（慎用，会断开所有正在执行的脚本）
+127.0.0.1:6379> SCRIPT KILL
+
+# 如果脚本已经执行了写命令，KILL 无效，只能 SHUTDOWN NOSAVE
 \`\`\`
 
 ## 19.6 Pub/Sub 发布订阅
@@ -1535,6 +2546,9 @@ redis-cli -p 6379 PUBLISH news "hello world"
 \`\`\`bash
 # 订阅所有以 user: 开头的频道
 redis-cli -p 6379 PSUBSCRIBE user:*
+
+# 订阅多个模式
+redis-cli -p 6379 PSUBSCRIBE user:* order:*
 \`\`\`
 
 ### Pub/Sub 的限制
@@ -1542,10 +2556,23 @@ redis-cli -p 6379 PSUBSCRIBE user:*
 - **消息不持久化**：发布时没有订阅者，消息直接丢弃
 - **离线订阅者收不到补发**：断了重连不会收到断线期间的消息
 - **集群下广播**：Cluster 模式下消息会广播到所有节点，开销大
+- **无 ACK 机制**：发布者不知道订阅者是否处理成功
 
 > **生产建议**：需要可靠消息用 Stream（下一章讲）；Pub/Sub 适合实时通知、配置广播、聊天室。
 
-###Pub/Sub 客户端示例
+### Sharded Pub/Sub
+
+Redis 7.0 引入 **Sharded Pub/Sub**，消息只在负责该 channel 所在 slot 的节点上传播，不再全集群广播：
+
+\`\`\`bash
+# 用 SPUBLISH / SSUBSCRIBE（S 代表 Sharded）
+redis-cli -c -p 7000 SPUBLISH mychannel "hello"
+# 只有负责 mychannel 所在 slot 的节点会处理
+
+redis-cli -c -p 7000 SSUBSCRIBE mychannel
+\`\`\`
+
+### Pub/Sub 客户端示例
 
 \`\`\`javascript
 // Node.js ioredis
@@ -1576,7 +2603,147 @@ for msg in p.listen():
 r.publish("news", "hello from python")
 \`\`\`
 
-## 19.7 踩坑提示
+## 19.7 Cluster 客户端与智能路由
+
+Cluster 模式下，客户端要能处理 slot 路由和重定向，这就是"smart client"。
+
+### Cluster 客户端的工作流
+
+\`\`\`text
+1. 启动时连任一节点，执行 CLUSTER SLOTS 拿到 slot→node 映射
+2. 本地维护 slot 映射表
+3. 发命令时，先算 slot = CRC16(key) % 16384，找对应节点
+4. 收到 MOVED → 更新映射，重试
+5. 收到 ASK → 临时跳转（带 ASKING），不更新映射
+6. 节点故障 → 从映射表里移除，故障转移后重新发现
+\`\`\`
+
+### 各语言 Cluster 客户端
+
+\`\`\`javascript
+// Node.js ioredis
+const Redis = require("ioredis");
+
+const cluster = new Redis.Cluster([
+  { host: "127.0.0.1", port: 7000 },
+  { host: "127.0.0.1", port: 7001 },
+  { host: "127.0.0.1", port: 7002 },
+], {
+  // 自动重定向处理
+  enableReadonlyOnReplicas: true,  // 允许读副本
+  maxRedirections: 16,             // 最大重定向次数
+  redisOptions: {
+    // 每个节点的连接配置
+    connectTimeout: 10000,
+    commandTimeout: 5000,
+  },
+});
+
+// 用 hash tag 保证事务在同一 slot
+await cluster.set("{user:1001}:name", "Alice");
+await cluster.set("{user:1001}:age", "30");
+await cluster.mget("{user:1001}:name", "{user:1001}:age");
+\`\`\`
+
+\`\`\`python
+# Python redis-py
+from redis.cluster import RedisCluster
+
+rc = RedisCluster(
+    startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
+    decode_responses=True,
+)
+
+rc.set("foo", "bar")
+print(rc.get("foo"))
+
+# 批量操作要按 slot 分组
+rc.mset({"k1": "v1", "k2": "v2"})  # 自动分组路由
+\`\`\`
+
+\`\`\`java
+// Java JedisCluster
+import redis.clients.jedis.*;
+
+Set<HostAndPort> nodes = new HashSet<>();
+nodes.add(new HostAndPort("127.0.0.1", 7000));
+nodes.add(new HostAndPort("127.0.0.1", 7001));
+nodes.add(new HostAndPort("127.0.0.1", 7002));
+
+try (JedisCluster cluster = new JedisCluster(nodes, 5000)) {
+    cluster.set("foo", "bar");
+    System.out.println(cluster.get("foo"));
+}
+\`\`\`
+
+### 从副本读（Read from Replicas）
+
+写必须走 master，但读可以分流到 replica：
+
+\`\`\`javascript
+// ioredis 读副本模式
+const cluster = new Redis.Cluster([...], {
+  scaleReads: "slave",   // 读请求走副本
+  // scaleReads: "master" (默认，读走主)
+  // scaleReads: "all" (读走主和副本)
+});
+
+// GET 自动路由到副本
+await cluster.get("foo");
+\`\`\`
+
+> **注意**：读副本有一致性延迟。对强一致读的场景要设 \`scaleReads: "master"\`。
+
+## 19.8 连接最佳实践
+
+### 超时配置
+
+\`\`\`text
+必配的三类超时：
+1. 连接超时 connectTimeout：10 秒（防网络不通卡死）
+2. 命令超时 commandTimeout：5 秒（防慢查询拖垮应用）
+3. 空闲超时 idleTimeout：30 秒（及时回收空闲连接）
+\`\`\`
+
+### 重试策略
+
+\`\`\`python
+# Python redis-py 重试
+from redis.retry import Retry
+from redis.backoff import ExponentialBackoff
+
+client = redis.Redis(
+    host="127.0.0.1",
+    port=6379,
+    retry_on_timeout=True,
+    retry=Retry(ExponentialBackoff(), 3),  # 指数退避，最多 3 次
+)
+\`\`\`
+
+### 连接保活
+
+\`\`\`bash
+# 服务端配置 TCP keepalive
+tcp-keepalive 300   # 300 秒发一次 keepalive 探测
+
+# 客户端配置健康检查（redis-py）
+pool = redis.ConnectionPool(
+    health_check_interval=30,  # 每 30 秒发 PING 检查
+)
+\`\`\`
+
+### 避免的坏实践
+
+| 坏实践 | 后果 | 正确做法 |
+| --- | --- | --- |
+| 每次请求新建连接 | 性能差 | 用连接池 |
+| 不设超时 | 慢查询拖垮应用 | 配 connectTimeout + commandTimeout |
+| 不用 Pipeline | RTT 浪费 | 批量场景用 Pipeline |
+| 用事务做复杂业务 | 不支持回滚 | 用 Lua |
+| Pub/Sub 传重要消息 | 会丢消息 | 用 Stream |
+| 连接池配太大 | 占满服务端连接 | 按公式计算 |
+
+## 19.9 踩坑提示
 
 > **坑 1：连接池配太小**。QPS 高时连接池打满，请求排队等连接，超时雪崩。监控 \`inuse\` 和 \`wait\` 指标。
 
@@ -1592,14 +2759,20 @@ r.publish("news", "hello from python")
 
 > **坑 7：EVALSHA 找不到脚本**。Redis 重启或 failover 后脚本缓存清空。客户端要能 fallback 到 EVAL。
 
-## 19.8 本章小结
+> **坑 8：Cluster 模式用了不支持重定向的客户端**。收到 MOVED 直接报错，业务全挂。要用支持 Cluster 的客户端。
 
-- **RESP 协议**：5 种类型（简单字符串/错误/整数/批量字符串/数组），\`\\r\\n\` 分隔
+> **坑 9：连接没关闭**。连接泄漏导致连接池耗尽。用 try-with-resources / try-finally 确保归还连接。
+
+## 19.10 本章小结
+
+- **RESP 协议**：5 种类型（简单字符串/错误/整数/批量字符串/数组），\`\\r\\n\` 分隔；RESP3 增加了 Map/Set/Double 等类型
 - **连接池**：复用 TCP 连接，大小按 \`请求数 × RTT\` 估算，主流客户端都内置
-- **Pipeline**：批量发命令省 RTT，但不保证原子性
+- **Pipeline**：批量发命令省 RTT，但不保证原子性；分批避免缓冲区溢出
 - **事务**：MULTI/EXEC + WATCH 乐观锁，不支持回滚，复杂业务用 Lua
 - **Lua 脚本**：原子执行，EVAL/EVALSHA，注意超时和 Cluster 限制
-- **Pub/Sub**：实时广播，不持久化、不补发，可靠消息用 Stream
+- **Pub/Sub**：实时广播，不持久化、不补发，可靠消息用 Stream；7.0 有 Sharded Pub/Sub
+- **Cluster 客户端**：自动维护 slot 映射，处理 MOVED/ASK，可读副本分流
+- **连接最佳实践**：配齐超时（连接/命令/空闲）、重试策略、健康检查
 - 生产客户端配置：超时、重试、连接池大小、ready check 都要配齐`
   }
 ];
