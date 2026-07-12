@@ -28,7 +28,7 @@
 
 import { NextResponse } from "next/server";
 import { spawn } from "child_process";
-import { existsSync, writeFileSync, unlinkSync, mkdtempSync } from "fs";
+import { existsSync, writeFileSync, unlinkSync, mkdtempSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
@@ -38,6 +38,8 @@ const EXEC_TIMEOUT_MS = 10000;
 
 // stdout 最大缓冲（字节）。超过则截断并提示，避免把内存撑爆。
 const MAX_OUTPUT_BYTES = 1 * 1024 * 1024; // 1MB
+// 输入代码最大长度（字符），防止超大输入拖垮子进程
+const MAX_CODE_LENGTH = 50000;
 
 // Python 可执行路径。优先使用 python3.13（Homebrew 安装），找不到再降级到系统 python。
 // Windows 上通常是 python 命令（不带 3），macOS/Linux 通常是 python3。
@@ -131,7 +133,7 @@ function runPythonCode(code) {
     // 清理临时文件
     const cleanup = () => {
       try { unlinkSync(tmpFile); } catch { /* ignore */ }
-      try { require("fs").rmdirSync(tmpDir); } catch { /* ignore */ }
+      try { rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ }
     };
 
     // 子进程出错（例如 python3 不存在）
@@ -223,6 +225,13 @@ export async function POST(request) {
       output: "",
       error: "代码为空，请输入要执行的 Python 代码。",
     });
+  }
+
+  if (code.length > MAX_CODE_LENGTH) {
+    return NextResponse.json(
+      { output: "", error: "代码过长（超过 50000 字符），请精简后重试。" },
+      { status: 413 }
+    );
   }
 
   // 调用子进程执行

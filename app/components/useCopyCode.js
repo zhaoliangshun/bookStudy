@@ -18,16 +18,25 @@ export default function useCopyCode(code) {
   const [copied, setCopied] = useState(false);
   // 用 ref 保存最新的 code，避免 handleCopy 闭包陈旧
   const codeRef = useRef(code);
+  const timerRef = useRef(null);
   useEffect(() => {
     codeRef.current = code;
   }, [code]);
+
+  // 组件卸载时清除定时器，避免在已卸载组件上调用 setState
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   const handleCopy = useCallback(async () => {
     const text = codeRef.current || "";
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setCopied(false), 1500);
     } catch {
       // 剪贴板 API 失败时的降级方案：使用临时 textarea
       const textarea = document.createElement("textarea");
@@ -39,7 +48,8 @@ export default function useCopyCode(code) {
       try {
         document.execCommand("copy");
         setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => setCopied(false), 1500);
       } catch {
         // 忽略复制失败
       }

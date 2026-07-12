@@ -11,6 +11,8 @@
 import { NextResponse } from "next/server";
 import { runInSandbox } from "../../sandbox-runner";
 
+const MAX_CODE_LENGTH = 50000;
+
 export async function POST(request) {
   let body;
   try {
@@ -40,7 +42,18 @@ export async function POST(request) {
     });
   }
 
-  const result = await runInSandbox(code);
+  if (code.length > MAX_CODE_LENGTH) {
+    return NextResponse.json(
+      { output: "", error: "代码过长（超过 50000 字符），请精简后重试。" },
+      { status: 413 }
+    );
+  }
+
+  const result = await runInSandbox(code).catch((err) => ({
+    output: "",
+    error: "代码执行出错：" + (err?.message || String(err)),
+    exitCode: -1,
+  }));
   return NextResponse.json(result);
 }
 

@@ -43,14 +43,13 @@ export default function useBookChapterActions() {
         if (!res.ok) throw new Error("fetch failed");
         const data = await res.json();
         if (cancelled) return;
+        // 按字段独立判断：服务端有数据则用服务端，无数据则 fallback 到 localStorage
         if (data.hiddenBooks?.length) setHiddenBooks(new Set(data.hiddenBooks));
+        else setHiddenBooks(loadSet(HIDDEN_BOOKS_KEY));
         if (data.deletedChapters?.length) setDeletedChapterIds(new Set(data.deletedChapters));
+        else setDeletedChapterIds(loadSet(DELETED_CHAPTERS_KEY));
         if (data.hiddenChapters?.length) setHiddenChapterIds(new Set(data.hiddenChapters));
-        if (!data.hiddenBooks?.length && !data.deletedChapters?.length && !data.hiddenChapters?.length) {
-          setHiddenBooks(loadSet(HIDDEN_BOOKS_KEY));
-          setDeletedChapterIds(loadSet(DELETED_CHAPTERS_KEY));
-          setHiddenChapterIds(loadSet(HIDDEN_CHAPTERS_KEY));
-        }
+        else setHiddenChapterIds(loadSet(HIDDEN_CHAPTERS_KEY));
         setLoaded(true);
       } catch {
         if (cancelled) return;

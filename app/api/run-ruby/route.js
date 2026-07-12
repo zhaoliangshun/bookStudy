@@ -46,6 +46,8 @@ const EXEC_TIMEOUT_MS = 10000;
 
 // stdout / stderr 最大缓冲（字节）。超过则截断并提示，避免内存撑爆。
 const MAX_OUTPUT_BYTES = 1 * 1024 * 1024; // 1MB
+// 输入代码最大长度（字符），防止超大输入拖垮子进程
+const MAX_CODE_LENGTH = 50000;
 
 // ruby 可执行文件名。macOS 自带 ruby；Linux 可能需要包管理器安装。
 const RUBY_BIN = "ruby";
@@ -135,6 +137,8 @@ function runRubyCode(code) {
     });
 
     // 通过 stdin 传入代码，然后关闭 stdin 通知子进程读取完毕
+    // 监听 stdin error 事件，防止子进程提前退出时 write 触发未捕获的 EPIPE
+    child.stdin.on("error", () => {});
     child.stdin.write(code);
     child.stdin.end();
 
@@ -179,6 +183,13 @@ export async function POST(request) {
       output: "",
       error: "代码为空，请输入要执行的 Ruby 代码。",
     });
+  }
+
+  if (code.length > MAX_CODE_LENGTH) {
+    return NextResponse.json(
+      { output: "", error: "代码过长（超过 50000 字符），请精简后重试。" },
+      { status: 413 }
+    );
   }
 
   // 调用子进程执行

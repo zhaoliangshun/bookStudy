@@ -47,6 +47,8 @@ const COMPILE_TIMEOUT_MS = 10000;
 const RUN_TIMEOUT_MS = 10000;
 // stdout / stderr 最大缓冲（字节）
 const MAX_OUTPUT_BYTES = 1 * 1024 * 1024; // 1MB
+// 输入代码最大长度（字符），防止超大输入拖垮子进程
+const MAX_CODE_LENGTH = 50000;
 
 // 编译器优先级：优先 clang++（错误信息更友好），回退 g++（GNU 默认）
 const PREFERRED_CXX = "clang++";
@@ -270,6 +272,13 @@ export async function POST(request) {
     });
   }
 
+  if (code.length > MAX_CODE_LENGTH) {
+    return NextResponse.json(
+      { output: "", error: "代码过长（超过 50000 字符），请精简后重试。" },
+      { status: 413 }
+    );
+  }
+
   const result = await runCppCode(code);
 
   return NextResponse.json({
@@ -285,7 +294,7 @@ export async function GET() {
   return new Promise((resolve) => {
     const child = spawn(compiler, ["--version"], {
       stdio: ["pipe", "pipe", "pipe"],
-      env: { PATH: process.env.PATH },
+      env: { PATH: ENHANCED_PATH },
     });
     let version = "";
     child.stdout.on("data", (c) => (version += c.toString()));

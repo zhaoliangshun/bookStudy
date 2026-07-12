@@ -218,12 +218,16 @@ export default function BookmarkManager() {
   const [bookmarks, setBookmarks] = useState([]);
   const [addedFlash, setAddedFlash] = useState(false);
   const containerRef = useRef(null);
+  const flashTimerRef = useRef(null);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   useEffect(() => {
     setBookmarks(loadBookmarks());
+    return () => {
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -280,7 +284,8 @@ export default function BookmarkManager() {
     });
 
     setAddedFlash(true);
-    setTimeout(() => setAddedFlash(false), 600);
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    flashTimerRef.current = setTimeout(() => setAddedFlash(false), 600);
   }, []);
 
   const removeBookmark = useCallback(

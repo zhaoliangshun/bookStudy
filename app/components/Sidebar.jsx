@@ -2034,6 +2034,7 @@ export default function Sidebar({
   }, [activeId]);
 
   // ===== 拖拽调整宽度 =====
+  const resizeCleanupRef = useRef(null);
   const startResize = useCallback((e) => {
     e.preventDefault();
     document.body.style.cursor = "col-resize";
@@ -2052,10 +2053,24 @@ export default function Sidebar({
       document.body.style.userSelect = "";
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
+      resizeCleanupRef.current = null;
     };
 
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
+    resizeCleanupRef.current = () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+  }, []);
+
+  // 组件卸载时清理拖拽监听器
+  useEffect(() => {
+    return () => {
+      if (resizeCleanupRef.current) resizeCleanupRef.current();
+    };
   }, []);
 
   const handleSelect = useCallback(

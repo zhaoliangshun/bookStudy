@@ -35,6 +35,8 @@ const COMPILE_TIMEOUT_MS = 10000;
 const RUN_TIMEOUT_MS = 10000;
 // stdout 最大缓冲（字节）
 const MAX_OUTPUT_BYTES = 1 * 1024 * 1024; // 1MB
+// 输入代码最大长度（字符），防止超大输入拖垮子进程
+const MAX_CODE_LENGTH = 50000;
 
 /**
  * 解析 java / javac 可执行文件的绝对路径。
@@ -261,6 +263,13 @@ export async function POST(request) {
       output: "",
       error: "代码为空，请输入要执行的 Java 代码。",
     });
+  }
+
+  if (code.length > MAX_CODE_LENGTH) {
+    return NextResponse.json(
+      { output: "", error: "代码过长（超过 50000 字符），请精简后重试。" },
+      { status: 413 }
+    );
   }
 
   const result = await runJavaCode(code);

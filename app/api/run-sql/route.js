@@ -43,6 +43,8 @@ const EXEC_TIMEOUT_MS = 10000;
 
 // stdout / stderr 最大缓冲（字节）。超过则截断并提示，避免内存撑爆。
 const MAX_OUTPUT_BYTES = 1 * 1024 * 1024; // 1MB
+// 输入代码最大长度（字符），防止超大输入拖垮子进程
+const MAX_CODE_LENGTH = 50000;
 
 // sqlite3 可执行文件名。macOS 自带；Linux 可用 apt/yum install sqlite3。
 const SQLITE3_BIN = "sqlite3";
@@ -134,8 +136,16 @@ function runSqlCode(code) {
       resolve({ output, error, exitCode: code });
     });
 
+    // 过滤危险点命令（.shell/.system/.import/.read 等），防止命令注入
+    const sanitizedCode = code.replace(
+      /^\s*\.(shell|system|import|read|save|backup|restore|clone|load|log|excel|dump|echo)\b.*$/gim,
+      "-- 已过滤危险点命令"
+    );
+
     // 通过 stdin 传入 SQL 脚本，然后关闭 stdin 通知 sqlite3 执行完毕
-    child.stdin.write(code);
+    // 监听 stdin error 事件，防止子进程提前退出时 write 触发未捕获的 EPIPE
+    child.stdin.on("error", () => {});
+    child.stdin.write(sanitizedCode);
     child.stdin.end();
 
     // 超时处理：到时间还没退出就 kill
@@ -179,6 +189,13 @@ export async function POST(request) {
       output: "",
       error: "代码为空，请输入要执行的 SQL 脚本。",
     });
+  }
+
+  if (code.length > MAX_CODE_LENGTH) {
+    return NextResponse.json(
+      { output: "", error: "代码过长（超过 50000 字符），请精简后重试。" },
+      { status: 413 }
+    );
   }
 
   // 调用子进程执行

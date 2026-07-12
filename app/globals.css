@@ -150,7 +150,24 @@
   --text-muted: #707080;
   --border: #333350;
   --bg-inline-code: #2a2a42;
+  --primary-light: #0e4a5c;
+  --success-bg: #0a2818;
+  --error-bg: #3b1111;
 }
+
+/* 暗夜模式：硬编码浅色背景覆盖为深色 */
+[data-reading-theme="dark"] .md-code-output { background: #1a1a2e !important; }
+[data-reading-theme="dark"] .md-code-output-header { background: #16162a !important; }
+[data-reading-theme="dark"] .md-table th { background: #1a1a2e !important; }
+[data-reading-theme="dark"] .md-table tr:hover td { background: #1e1e36 !important; }
+[data-reading-theme="dark"] .editor-theme-menu-header { background: #1a1a2e !important; }
+[data-reading-theme="dark"] .editor-theme-menu-sub { background: #1a1a2e !important; }
+[data-reading-theme="dark"] .editor-theme-option:hover { background: #1e1e36 !important; }
+[data-reading-theme="dark"] .console-header { background: #1a1a2e !important; }
+[data-reading-theme="dark"] .console-body { background: #0d0d1a !important; }
+[data-reading-theme="dark"] .pg-kbd { background: #1a1a2e !important; }
+[data-reading-theme="dark"] .pg-console-body { background: #0d0d1a !important; }
+[data-reading-theme="dark"] ::selection { background: var(--primary); color: #fff; }
 
 /* 柔和灰：低对比度，减少视觉疲劳 */
 [data-reading-theme="gray"] {
@@ -170,8 +187,10 @@
 }
 
 html {
-  scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
 }
 
 html,
@@ -865,7 +884,7 @@ img {
   border: 1px solid var(--border);
   border-left: none;
   background: var(--bg-elevated);
-  color: var(--text-primary);
+  color: var(--text);
   font-size: 11px;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
@@ -2227,7 +2246,7 @@ img {
 
 /* 回到顶部/底部按钮在边界时的灰显状态 */
 .quick-scroll-btn.disabled {
-  opacity: 0.35;
+  opacity: 0.5;
 }
 
 @keyframes quickScrollIn {
@@ -3515,7 +3534,7 @@ img {
 }
 
 .floating-nav-btn-disabled {
-  opacity: 0.3;
+  opacity: 0.5;
   cursor: default !important;
   pointer-events: none !important;
 }
@@ -4155,5 +4174,20 @@ img {
     max-width: 300px;
     max-height: 60vh;
     right: 0;
+  }
+}
+
+/* =============================================================
+   无障碍：尊重用户的「减少动态」偏好
+   -------------------------------------------------------------
+   当用户在系统层面开启了 prefers-reduced-motion 时，
+   关闭所有动画与过渡，避免引起眩晕或不适。
+   ============================================================= */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

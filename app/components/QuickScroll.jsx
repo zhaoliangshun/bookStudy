@@ -77,6 +77,7 @@ export default function QuickScroll() {
       <button
         className={`quick-scroll-btn quick-scroll-top ${atTop ? "disabled" : ""}`}
         onClick={scrollToTop}
+        disabled={atTop}
         title="回到顶部"
         aria-label="回到顶部"
       >
@@ -85,6 +86,7 @@ export default function QuickScroll() {
       <button
         className={`quick-scroll-btn quick-scroll-bottom ${atBottom ? "disabled" : ""}`}
         onClick={scrollToBottom}
+        disabled={atBottom}
         title="跳到底部"
         aria-label="跳到底部"
       >

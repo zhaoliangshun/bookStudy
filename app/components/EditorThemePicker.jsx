@@ -54,10 +54,15 @@ export default function EditorThemePicker({ variant = "toolbar" }) {
     const handleResize = () => updateMenuPos();
 
     document.addEventListener("mousedown", handleClick);
+    const escHandler = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", escHandler);
     window.addEventListener("scroll", handleScroll, true);
     window.addEventListener("resize", handleResize);
     return () => {
       document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", escHandler);
       window.removeEventListener("scroll", handleScroll, true);
       window.removeEventListener("resize", handleResize);
     };

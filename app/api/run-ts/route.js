@@ -42,6 +42,9 @@ const TS_COMPILER_OPTIONS = {
   // reportDiagnostics 在 transpileModule 调用处显式指定，这里不重复设置
 };
 
+// 输入代码最大长度（字符），防止超大输入拖垮转译器/沙箱
+const MAX_CODE_LENGTH = 50000;
+
 /**
  * 把一段 TypeScript 源码转译成 JavaScript。
  * @param {string} tsCode TypeScript 源代码
@@ -106,8 +109,23 @@ export async function POST(request) {
     });
   }
 
+  if (tsCode.length > MAX_CODE_LENGTH) {
+    return NextResponse.json(
+      { output: "", error: "代码过长（超过 50000 字符），请精简后重试。" },
+      { status: 413 }
+    );
+  }
+
   // 1. 转译 TS → JS
-  const { js, diagnostics } = transpileTypeScript(tsCode);
+  let js, diagnostics;
+  try {
+    ({ js, diagnostics } = transpileTypeScript(tsCode));
+  } catch (err) {
+    return NextResponse.json({
+      output: "",
+      error: "TypeScript 转译出错：" + (err?.message || String(err)),
+    });
+  }
 
   // 如果有语法错误导致无法产出 JS，直接返回错误
   if (js === "" && diagnostics.length > 0) {
@@ -118,7 +136,15 @@ export async function POST(request) {
   }
 
   // 2. 在沙箱中运行转译后的 JS
-  const result = await runInSandbox(js);
+  let result;
+  try {
+    result = await runInSandbox(js);
+  } catch (err) {
+    return NextResponse.json({
+      output: "",
+      error: "代码执行出错：" + (err?.message || String(err)),
+    });
+  }
 
   // 如果运行时出错或存在转译诊断，附加诊断信息（作为额外提示）。
   // 统一响应格式：error 永远是字符串（空字符串表示无错误），避免前端处理 null/undefined 分支

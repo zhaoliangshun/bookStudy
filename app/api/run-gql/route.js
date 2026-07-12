@@ -89,7 +89,7 @@ function executeGraphQL(sdl, resolversCode, query) {
 
     // 超时定时器先于事件回调注册，避免 close/error 回调引用未声明的 timer（TDZ）
     let timer = setTimeout(() => {
-      try { child.kill(); } catch {}
+      try { child.kill("SIGKILL"); } catch {}
       resolve({
         data: null,
         errors: [{ message: "执行超时（10秒），请检查代码是否有死循环。" }],
@@ -158,6 +158,8 @@ function executeGraphQL(sdl, resolversCode, query) {
 
     // 写入输入数据
     const input = JSON.stringify({ sdl, resolversCode, query });
+    // 监听 stdin error 事件，防止子进程提前退出时 write 触发未捕获的 EPIPE
+    child.stdin.on("error", () => {});
     child.stdin.write(input);
     child.stdin.end();
   });

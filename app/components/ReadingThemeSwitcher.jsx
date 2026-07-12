@@ -54,7 +54,7 @@ export default function ReadingThemeSwitcher() {
     setOpen(false);
   };
 
-  // 点击外部关闭面板
+  // 点击外部或按 Escape 关闭面板
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
@@ -62,8 +62,15 @@ export default function ReadingThemeSwitcher() {
         setOpen(false);
       }
     };
+    const escHandler = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("keydown", escHandler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("keydown", escHandler);
+    };
   }, [open]);
 
   return (

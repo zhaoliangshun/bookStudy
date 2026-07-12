@@ -78,7 +78,7 @@ function isTableSeparator(line) {
 
 // 主渲染函数：把 markdown 字符串转为 React 元素数组
 export function MarkdownRenderer({ content }) {
-  const lines = content.split("\n");
+  const lines = (content || "").split("\n");
   const blocks = [];
   let i = 0;
   let key = 0;

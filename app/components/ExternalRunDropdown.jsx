@@ -35,12 +35,16 @@ export default function ExternalRunDropdown({
   const handleSelect = useCallback(
     async (pgId) => {
       setOpen(false);
-      await openExternal(pgId, code, langLower);
+      try {
+        await openExternal(pgId, code, langLower);
+      } catch (err) {
+        console.error("打开外网平台失败：", err);
+      }
     },
     [code, langLower]
   );
 
-  // ---------- 点击菜单外部自动收起 ----------
+  // ---------- 点击菜单外部或按 Escape 自动收起 ----------
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
@@ -48,8 +52,15 @@ export default function ExternalRunDropdown({
         setOpen(false);
       }
     };
+    const escHandler = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("keydown", escHandler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("keydown", escHandler);
+    };
   }, [open]);
 
   // 无可用平台时不渲染

@@ -258,12 +258,19 @@ async function runCsharpCode(code) {
     }
 
     // 5. 编译并运行（dotnet run 会自动编译 + 执行）
-    // 保留全部 process.env（dotnet/NuGet 依赖大量环境变量），仅覆盖 PATH
+    // 不再 spread process.env（避免泄漏无关变量/密钥），只传 dotnet 必需的最小环境
     const env = {
-      ...process.env,
       PATH: ENHANCED_PATH,
+      TEMP: process.env.TEMP,
+      TMP: process.env.TMP,
+      HOME: process.env.HOME,
+      USERPROFILE: process.env.USERPROFILE,
+      LANG: "en_US.UTF-8",
+      LC_ALL: "en_US.UTF-8",
       DOTNET_CLI_TELEMETRY_OPTOUT: "1",  // 禁用遥测，加快启动
       DOTNET_NOLOGO: "1",                 // 禁用 logo
+      ...(process.env.DOTNET_ROOT ? { DOTNET_ROOT: process.env.DOTNET_ROOT } : {}),
+      ...(process.env.DOTNET_CLI_HOME ? { DOTNET_CLI_HOME: process.env.DOTNET_CLI_HOME } : {}),
     };
 
     const result = await runCommand(

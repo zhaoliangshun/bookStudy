@@ -51,6 +51,7 @@ export default function TutorialPage({
   const [isTransitioning, setIsTransitioning] = useState(false);
   const contentRef = useRef(null);
   const transitionTimeoutRef = useRef(null);
+  const rafRef = useRef(null);
 
   const chaptersMap = useMemo(() => {
     const map = new Map();
@@ -97,14 +98,21 @@ export default function TutorialPage({
     if (!content) return;
 
     const handleScroll = () => {
-      const scrollTop = content.scrollTop;
-      const scrollHeight = content.scrollHeight - content.clientHeight;
-      const progress = scrollHeight > 0 ? Math.min((scrollTop / scrollHeight) * 100, 100) : 0;
-      setReadingProgress(progress);
+      if (rafRef.current) return;
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        const scrollTop = content.scrollTop;
+        const scrollHeight = content.scrollHeight - content.clientHeight;
+        const progress = scrollHeight > 0 ? Math.min((scrollTop / scrollHeight) * 100, 100) : 0;
+        setReadingProgress(progress);
+      });
     };
 
     content.addEventListener("scroll", handleScroll, { passive: true });
-    return () => content.removeEventListener("scroll", handleScroll);
+    return () => {
+      content.removeEventListener("scroll", handleScroll);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
   }, []);
 
   const selectChapter = useCallback((chapterId) => {
@@ -119,7 +127,11 @@ export default function TutorialPage({
     setSidebarOpen(false);
 
     if (contentRef.current) {
-      contentRef.current.scrollTo({ top: 0, behavior: "instant" });
+      try {
+        contentRef.current.scrollTo({ top: 0, behavior: "instant" });
+      } catch {
+        contentRef.current.scrollTop = 0;
+      }
     }
 
     try {
@@ -245,7 +257,7 @@ export default function TutorialPage({
                 {activeChapter?.title}
               </h1>
               <div style={{ marginTop: "8px", fontSize: "12px", color: "var(--text-muted)" }}>
-                第 {currentIdx + 1} / {chapters.length} 章 · Ctrl/Cmd + ←/→ 切换章节
+                第 {Math.max(currentIdx + 1, 1)} / {chapters.length} 章 · Ctrl/Cmd + ←/→ 切换章节
               </div>
             </div>
 

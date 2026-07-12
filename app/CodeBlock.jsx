@@ -202,6 +202,12 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 800 }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code }),
       });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        setError(`执行失败 (HTTP ${res.status})${errText ? ": " + errText : ""}`);
+        setOutput("");
+        return;
+      }
       const data = await res.json();
       const parsed = parseRunResult(langLower, data);
       setOutput(parsed.output || "(无输出)");

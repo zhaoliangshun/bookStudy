@@ -25,6 +25,7 @@ const defaultConfig = {
 };
 
 function loadLocal() {
+  if (typeof window === "undefined") return { ...defaultConfig };
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) return { ...defaultConfig, ...JSON.parse(raw) };

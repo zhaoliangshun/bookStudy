@@ -23,7 +23,7 @@ export default function FloatingEditorTheme() {
     setThemeId(id);
   };
 
-  // 点击外部关闭面板
+  // 点击外部或按 Escape 关闭面板
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
@@ -31,8 +31,15 @@ export default function FloatingEditorTheme() {
         setOpen(false);
       }
     };
+    const escHandler = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("keydown", escHandler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("keydown", escHandler);
+    };
   }, [open]);
 
   return (
