@@ -152,7 +152,7 @@
       "/playground"
     ],
     "Python 编程": [
-      "/fastapi-learn"
+      "/fastapi-code"
     ],
     "JS / TS 生态": [
       "/tsgen",
@@ -267,6 +267,7 @@
       "/py-definitive"
     ],
     "Python 编程::__sg-mrctdmwvqji3": [
+      "/fastapi-learn",
       "/pynet",
       "/pydb",
       "/fastapi",
