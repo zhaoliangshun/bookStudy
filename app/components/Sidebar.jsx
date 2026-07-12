@@ -207,7 +207,11 @@ const BOOK_CATEGORIES = [
       { path: "/chicken-soup", label: "心灵鸡汤", icon: "🍲" },
       { path: "/mindset", label: "看淡：情绪控制", icon: "🧊" },
       { path: "/mindset2", label: "情绪控制全书", icon: "🧘" },
+      { path: "/inner-peace", label: "内心平和：情绪控制", icon: "🧘" },
       { path: "/life-manual", label: "人生清醒手册", icon: "📖" },
+      { path: "/serenity", label: "云淡风轻", icon: "☁️" },
+      { path: "/emotion", label: "无所谓", icon: "🤷" },
+      { path: "/calm", label: "心境如水", icon: "🌊" },
     ],
   },
   {

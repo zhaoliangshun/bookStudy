@@ -224,9 +224,12 @@
       "/dignity",
       "/hurt",
       "/chicken-soup",
-      "/mindset",
       "/mindset2",
-      "/life-manual"
+      "/life-manual",
+      "/inner-peace",
+      "/serenity",
+      "/emotion",
+      "/calm"
     ],
     "人际智慧": [
       "/relations",
@@ -239,7 +242,9 @@
       "/unharmed",
       "/talk-rebut"
     ],
-    "已隐藏": [],
+    "已隐藏": [
+      "/mindset"
+    ],
     "算法与数据结构": [
       "/algo",
       "/leetcode"
