@@ -12,8 +12,8 @@ export default function Providers({ children }) {
   return (
     <EditorThemeProvider>
       <ScrollRestoration />
+      <BookmarkManager />
       <div className="floating-panel-group">
-        <BookmarkManager />
         <FloatingEditorTheme />
         <ReadingThemeSwitcher />
         <FloatingChapterNav />

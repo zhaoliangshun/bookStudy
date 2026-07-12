@@ -25,7 +25,7 @@
 
 import { NextResponse } from "next/server";
 import { spawn } from "child_process";
-import { writeFileSync, mkdirSync, rmSync, existsSync, readdirSync } from "fs";
+import { writeFileSync, mkdirSync, rmSync, existsSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 
@@ -48,49 +48,37 @@ const MAX_OUTPUT_BYTES = 1 * 1024 * 1024; // 1MB
  * @param {"java"|"javac"} name 可执行文件名（不含扩展名）
  * @returns {string} 绝对路径或裸命令名（回退）
  */
+let javaBinCache = null;
+let javacBinCache = null;
+
 function resolveJavaBin(name) {
   const ext = process.platform === "win32" ? ".exe" : "";
 
-  // 1. JAVA_HOME 环境变量（最可靠）
   const javaHome = process.env.JAVA_HOME;
   if (javaHome) {
     const p = join(javaHome, "bin", name + ext);
     if (existsSync(p)) return p;
   }
 
-  // 2. 常见 Windows / macOS / Linux 安装目录
-  const commonBases =
-    process.platform === "win32"
-      ? [
-          "C:\\Program Files\\Java",
-          "C:\\Program Files (x86)\\Java",
-          "C:\\Program Files\\Amazon Corretto",
-          "C:\\Program Files\\Eclipse Adoptium",
-          "C:\\Program Files\\Microsoft\\jdk-17.0.x", // 兜底
-        ]
-      : ["/Library/Java/JavaVirtualMachines", "/usr/lib/jvm"];
-
-  for (const base of commonBases) {
-    if (!existsSync(base)) continue;
-    // base 可能直接含 bin/<name>，也可能下面有 jdk* 子目录
-    const direct = join(base, "bin", name + ext);
-    if (existsSync(direct)) return direct;
-    try {
-      for (const sub of readdirSync(base)) {
-        const candidate = join(base, sub, "bin", name + ext);
-        if (existsSync(candidate)) return candidate;
-      }
-    } catch {
-      // ignore unreadable dirs
+  if (process.env.PATH) {
+    const pathDirs = process.env.PATH.split(process.platform === "win32" ? ";" : ":");
+    for (const dir of pathDirs) {
+      const p = join(dir, name + ext);
+      if (existsSync(p)) return p;
     }
   }
 
-  // 3. 回退：让 spawn 通过 PATH 查找（兼容已正确配置 PATH 的环境）
   return name;
 }
 
-const JAVA_BIN = resolveJavaBin("java");
-const JAVAC_BIN = resolveJavaBin("javac");
+function getJavaBins() {
+  if (javaBinCache && javacBinCache) {
+    return { javaBin: javaBinCache, javacBin: javacBinCache };
+  }
+  javaBinCache = resolveJavaBin("java");
+  javacBinCache = resolveJavaBin("javac");
+  return { javaBin: javaBinCache, javacBin: javacBinCache };
+}
 
 /**
  * 从 Java 源代码中提取 public class 名。
@@ -192,23 +180,20 @@ function runCommand(cmd, args, opts, timeout) {
  * @returns {Promise<{output: string, error: string, exitCode: number}>}
  */
 async function runJavaCode(code) {
-  // 1. 提取类名
+  const { javaBin, javacBin } = getJavaBins();
   const className = extractClassName(code);
 
-  // 2. 创建临时目录
   const tempDir = join(tmpdir(), `java-run-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(tempDir, { recursive: true });
 
   const javaFile = join(tempDir, `${className}.java`);
 
   try {
-    // 3. 写入 .java 文件
     writeFileSync(javaFile, code, "utf8");
 
-    // 4. 编译
     const env = { PATH: process.env.PATH, LANG: "en_US.UTF-8", LC_ALL: "en_US.UTF-8", JAVA_HOME: process.env.JAVA_HOME || "" };
     const compileResult = await runCommand(
-      JAVAC_BIN,
+      javacBin,
       ["-encoding", "UTF-8", javaFile],
       {
         stdio: ["pipe", "pipe", "pipe"],
@@ -218,7 +203,6 @@ async function runJavaCode(code) {
       COMPILE_TIMEOUT_MS
     );
 
-    // 编译失败
     if (compileResult.exitCode !== 0) {
       return {
         output: "",
@@ -227,9 +211,8 @@ async function runJavaCode(code) {
       };
     }
 
-    // 5. 运行
     const runResult = await runCommand(
-      JAVA_BIN,
+      javaBin,
       ["-Dfile.encoding=UTF-8", className],
       {
         stdio: ["pipe", "pipe", "pipe"],
@@ -301,17 +284,16 @@ export async function POST(request) {
   });
 }
 
-// 健康检查：GET 请求返回服务状态与 Java 版本
 export async function GET() {
+  const { javaBin } = getJavaBins();
   return new Promise((resolve) => {
-    const child = spawn(JAVA_BIN, ["-version"], {
+    const child = spawn(javaBin, ["-version"], {
       stdio: ["pipe", "pipe", "pipe"],
       env: { PATH: process.env.PATH },
     });
     let version = "";
     child.stdout.on("data", (c) => (version += c.toString()));
     child.stderr.on("data", (c) => (version += c.toString()));
-    // 健康检查超时保护：5 秒未响应视为不可用
     const timer = setTimeout(() => {
       child.kill("SIGKILL");
       resolve(NextResponse.json({ status: "timeout", error: "版本检查超时" }, { status: 504 }));
@@ -333,7 +315,7 @@ export async function GET() {
       resolve(
         NextResponse.json({
           status: "error",
-          message: `未找到 ${JAVA_BIN}，请先安装 JDK`,
+          message: `未找到 ${javaBin}，请先安装 JDK`,
         })
       );
     });

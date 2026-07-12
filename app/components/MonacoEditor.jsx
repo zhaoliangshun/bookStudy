@@ -1,33 +1,35 @@
 "use client";
 
-// =============================================================
-// MonacoEditor 包装组件
-// -------------------------------------------------------------
-// 用 Monaco Editor（VS Code 同款编辑器）提供代码编辑能力。
-// 支持多种预设主题（见 monaco-themes.js），选择保存在 localStorage。
-//
-// 用法：
-//   <MonacoEditor
-//     value={code}
-//     onChange={setCode}
-//     language="python"           // Playground 语言 id（见 LANG_MAP）
-//     onRun={runCode}             // 可选，Ctrl/Cmd+Enter 回调
-//     minHeight={120}             // 可选，最小高度
-//     maxHeight={520}             // 可选，最大高度
-//     autoHeight={false}          // 可选，true=根据内容自动调整高度（代码少时不留白、无滚动条）
-//     placeholder=""              // 可选，占位提示（未实现，保留接口）
-//   />
-//
-// autoHeight 说明：
-//   - false（默认）：编辑器绝对定位撑满父容器，适合固定区域（Playground、教程主编辑器）
-//   - true：编辑器高度随内容变化，受 minHeight/maxHeight 限制，适合代码块（CodeBlock）
-//           代码少时编辑器也小，不会出现多余滚动条和留白
-// =============================================================
-
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import Editor, { loader } from "@monaco-editor/react";
 import { useEditorTheme } from "./EditorThemeProvider";
 import { registerMonacoThemes } from "./monaco-themes";
+
+let monacoPreloaded = false;
+let monacoPreloadPromise = null;
+
+export function preloadMonaco() {
+  if (monacoPreloaded) return;
+  if (monacoPreloadPromise) return monacoPreloadPromise;
+
+  monacoPreloadPromise = loader.init().then((monaco) => {
+    registerMonacoThemes(monaco);
+    monacoPreloaded = true;
+    return monaco;
+  }).catch(() => {});
+
+  return monacoPreloadPromise;
+}
+
+if (typeof window !== "undefined") {
+  const idleCallback = window.requestIdleCallback || ((cb) => setTimeout(cb, 1000));
+  idleCallback(() => {
+    const link = document.createElement("link");
+    link.rel = "preconnect";
+    link.href = "https://cdn.jsdelivr.net";
+    document.head.appendChild(link);
+  }, { timeout: 2000 });
+}
 
 // ---------- 语言 id → Monaco 语言 id 映射 ----------
 const LANG_MAP = {
