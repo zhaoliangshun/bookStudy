@@ -8,7 +8,7 @@
 // 持久化策略：localStorage（即时响应）+ 服务端 JSON 文件（跨设备同步）
 // =============================================================
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { SUBGROUP_SEP, parseSubGroupKey } from "./useBookCategories";
 
 const ORDER_KEY = "sidebar:book-order";
@@ -82,6 +82,8 @@ function loadLocalOrder(categories) {
 export default function useBookDragDrop(categories) {
   const [bookOrder, setBookOrder] = useState(() => loadLocalOrder(categories));
   const [loaded, setLoaded] = useState(false);
+  // 追踪本地是否已修改 bookOrder（防止服务端同步覆盖用户在加载期间的拖拽操作）
+  const localModifiedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,10 +93,25 @@ export default function useBookDragDrop(categories) {
         if (!res.ok) throw new Error("fetch failed");
         const data = await res.json();
         if (cancelled) return;
-        if (data.bookOrder && Object.keys(data.bookOrder).length > 0) {
-          const defaults = getDefaultBookOrder(categories);
-          setBookOrder(mergeOrder(data.bookOrder, defaults));
-        } else {
+        if (!localModifiedRef.current) {
+          if (data.bookOrder && Object.keys(data.bookOrder).length > 0) {
+            const defaults = getDefaultBookOrder(categories);
+            setBookOrder(mergeOrder(data.bookOrder, defaults));
+          } else {
+            try {
+              const raw = localStorage.getItem(ORDER_KEY);
+              if (raw) {
+                const saved = JSON.parse(raw);
+                const defaults = getDefaultBookOrder(categories);
+                setBookOrder(mergeOrder(saved, defaults));
+              }
+            } catch {}
+          }
+        }
+        setLoaded(true);
+      } catch {
+        if (cancelled) return;
+        if (!localModifiedRef.current) {
           try {
             const raw = localStorage.getItem(ORDER_KEY);
             if (raw) {
@@ -104,17 +121,6 @@ export default function useBookDragDrop(categories) {
             }
           } catch {}
         }
-        setLoaded(true);
-      } catch {
-        if (cancelled) return;
-        try {
-          const raw = localStorage.getItem(ORDER_KEY);
-          if (raw) {
-            const saved = JSON.parse(raw);
-            const defaults = getDefaultBookOrder(categories);
-            setBookOrder(mergeOrder(saved, defaults));
-          }
-        } catch {}
         setLoaded(true);
       }
     })();
@@ -139,6 +145,7 @@ export default function useBookDragDrop(categories) {
   }, [bookOrder, loaded, persistLocal]);
 
   const reorderInCategory = useCallback((category, fromIndex, toIndex) => {
+    localModifiedRef.current = true;
     setBookOrder((prev) => {
       const items = [...(prev[category] || [])];
       if (fromIndex < 0 || fromIndex >= items.length) return prev;
@@ -150,6 +157,7 @@ export default function useBookDragDrop(categories) {
   }, []);
 
   const moveToCategory = useCallback((fromCategory, fromIndex, toCategory, toIndex) => {
+    localModifiedRef.current = true;
     setBookOrder((prev) => {
       const fromItems = [...(prev[fromCategory] || [])];
       if (fromIndex < 0 || fromIndex >= fromItems.length) return prev;
@@ -162,6 +170,7 @@ export default function useBookDragDrop(categories) {
   }, []);
 
   const renameCategoryInOrder = useCallback((oldName, newName) => {
+    localModifiedRef.current = true;
     setBookOrder((prev) => {
       if (oldName === newName) return prev;
       const next = { ...prev };
@@ -183,6 +192,7 @@ export default function useBookDragDrop(categories) {
   }, []);
 
   const removeCategoryFromOrder = useCallback((categoryName) => {
+    localModifiedRef.current = true;
     setBookOrder((prev) => {
       const next = { ...prev };
       const prefix = categoryName + SUBGROUP_SEP;
@@ -196,10 +206,12 @@ export default function useBookDragDrop(categories) {
   }, []);
 
   const ensureCategory = useCallback((categoryName) => {
+    localModifiedRef.current = true;
     setBookOrder((prev) => prev[categoryName] ? prev : { ...prev, [categoryName]: [] });
   }, []);
 
   const moveBooksToCategory = useCallback((moves) => {
+    localModifiedRef.current = true;
     setBookOrder((prev) => {
       const next = { ...prev };
       const pathSet = new Set(moves.map((m) => m.path));
@@ -215,6 +227,7 @@ export default function useBookDragDrop(categories) {
   }, []);
 
   const mergeSubGroupIntoParent = useCallback((subGroupKey) => {
+    localModifiedRef.current = true;
     setBookOrder((prev) => {
       const parsed = parseSubGroupKey(subGroupKey);
       if (!parsed) return prev;
@@ -234,10 +247,12 @@ export default function useBookDragDrop(categories) {
   }, []);
 
   const updateOrder = useCallback((updater) => {
+    localModifiedRef.current = true;
     setBookOrder((prev) => updater(prev) || prev);
   }, []);
 
   const resetToDefaults = useCallback((categories) => {
+    localModifiedRef.current = true;
     const defaults = getDefaultBookOrder(categories);
     setBookOrder(defaults);
     persistLocal(defaults);
@@ -249,6 +264,7 @@ export default function useBookDragDrop(categories) {
   }, [persistLocal]);
 
   const resetToOrder = useCallback((order) => {
+    localModifiedRef.current = true;
     setBookOrder(order);
     persistLocal(order);
     fetch("/api/preferences", {

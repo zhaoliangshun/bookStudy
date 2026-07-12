@@ -8,7 +8,7 @@
 // 持久化策略：localStorage（即时）+ 服务端 JSON 文件（防抖同步，跨设备）
 // =============================================================
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 const KEY = "sidebar:category-config";
 
@@ -66,6 +66,8 @@ export default function useBookCategories(initiallyHidden = []) {
     return loaded;
   });
   const [loaded, setLoaded] = useState(false);
+  // 追踪本地是否已修改 config（防止服务端同步覆盖用户在加载期间的拖拽操作）
+  const localModifiedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -75,7 +77,7 @@ export default function useBookCategories(initiallyHidden = []) {
         if (!res.ok) throw new Error("fetch failed");
         const data = await res.json();
         if (cancelled) return;
-        if (data.categoryConfig) {
+        if (data.categoryConfig && !localModifiedRef.current) {
           const merged = { ...defaultConfig, ...data.categoryConfig };
           if (merged.hidden.length === 0 && initiallyHidden.length > 0) {
             merged.hidden = [...initiallyHidden];
@@ -107,6 +109,7 @@ export default function useBookCategories(initiallyHidden = []) {
   }, [config, loaded]);
 
   const addCategory = useCallback((name, icon = "📁") => {
+    localModifiedRef.current = true;
     const id = uid();
     setConfig((prev) => {
       const newCustom = [...prev.custom, { id, name, icon }];
@@ -118,6 +121,7 @@ export default function useBookCategories(initiallyHidden = []) {
   }, []);
 
   const renameCategory = useCallback((oldName, newName, newIcon) => {
+    localModifiedRef.current = true;
     setConfig((prev) => {
       const next = {
         ...prev,
@@ -157,6 +161,7 @@ export default function useBookCategories(initiallyHidden = []) {
   }, []);
 
   const deleteCategory = useCallback((name) => {
+    localModifiedRef.current = true;
     setConfig((prev) => {
       const next = {
         ...prev,
@@ -192,6 +197,7 @@ export default function useBookCategories(initiallyHidden = []) {
   }, []);
 
   const reorderCategories = useCallback((newOrder) => {
+    localModifiedRef.current = true;
     setConfig((prev) => ({ ...prev, order: newOrder }));
   }, []);
 
@@ -202,6 +208,7 @@ export default function useBookCategories(initiallyHidden = []) {
   }, [config.subGroups]);
 
   const addSubGroup = useCallback((parentName, name) => {
+    localModifiedRef.current = true;
     const id = subGroupId();
     setConfig((prev) => {
       const next = { ...prev, subGroups: { ...prev.subGroups }, subGroupOrder: { ...prev.subGroupOrder } };
@@ -213,6 +220,7 @@ export default function useBookCategories(initiallyHidden = []) {
   }, []);
 
   const renameSubGroup = useCallback((parentName, sgId, newName) => {
+    localModifiedRef.current = true;
     setConfig((prev) => {
       const next = { ...prev, subGroups: { ...prev.subGroups } };
       const list = next.subGroups[parentName];
@@ -229,6 +237,7 @@ export default function useBookCategories(initiallyHidden = []) {
   }, []);
 
   const deleteSubGroup = useCallback((parentName, sgId) => {
+    localModifiedRef.current = true;
     setConfig((prev) => {
       const next = { ...prev, subGroups: { ...prev.subGroups }, subGroupOrder: { ...prev.subGroupOrder } };
       const list = next.subGroups[parentName];
@@ -239,6 +248,7 @@ export default function useBookCategories(initiallyHidden = []) {
   }, []);
 
   const reorderSubGroups = useCallback((parentName, newOrder) => {
+    localModifiedRef.current = true;
     setConfig((prev) => ({
       ...prev,
       subGroupOrder: { ...prev.subGroupOrder, [parentName]: newOrder },
@@ -264,6 +274,7 @@ export default function useBookCategories(initiallyHidden = []) {
   }, [config.subGroups, config.subGroupOrder]);
 
   const resetToDefaults = useCallback(() => {
+    localModifiedRef.current = true;
     const defaults = { ...defaultConfig, hidden: [...initiallyHidden] };
     setConfig(defaults);
     saveLocal(defaults);
@@ -275,6 +286,7 @@ export default function useBookCategories(initiallyHidden = []) {
   }, [initiallyHidden]);
 
   const resetToConfig = useCallback((newConfig) => {
+    localModifiedRef.current = true;
     const next = { ...defaultConfig, ...newConfig };
     if (!next.subGroups) next.subGroups = {};
     if (!next.subGroupOrder) next.subGroupOrder = {};

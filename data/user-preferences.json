@@ -297,65 +297,16 @@
     ]
   },
   "categoryConfig": {
-    "custom": [
-      {
-        "id": "c-mrcscba2w47r",
-        "name": "nodejs",
-        "icon": "📁"
-      }
-    ],
-    "renamed": {},
+    "subGroupOrder": {},
     "icons": {},
-    "hidden": [],
+    "custom": [],
+    "subGroups": {},
+    "renamed": {},
     "order": [
-      "Python 编程",
-      "nodejs",
-      "JS / TS 生态",
-      "Java 开发",
-      "AI 智能开发",
-      "前端工程",
-      "后端与网络",
-      "实战项目",
-      "数据库与缓存",
-      "算法与数据结构",
-      "计算机基础",
-      "职场成长",
-      "身心健康",
-      "人际智慧"
+      "test1",
+      "test2"
     ],
-    "subGroups": {
-      "Python 编程": [
-        {
-          "id": "sg-mrctbi5m16xr",
-          "name": "并发技巧"
-        },
-        {
-          "id": "sg-mrctcsxkz7f9",
-          "name": "基础语法"
-        },
-        {
-          "id": "sg-mrctdmwvqji3",
-          "name": "后端开发"
-        },
-        {
-          "id": "sg-mrctfokhdvl5",
-          "name": "对比其他语言"
-        },
-        {
-          "id": "sg-mrd99uj4byog",
-          "name": "文件操作"
-        }
-      ]
-    },
-    "subGroupOrder": {
-      "Python 编程": [
-        "sg-mrctcsxkz7f9",
-        "sg-mrctbi5m16xr",
-        "sg-mrd99uj4byog",
-        "sg-mrctdmwvqji3",
-        "sg-mrctfokhdvl5"
-      ]
-    }
+    "hidden": []
   },
   "savedDefaults": {
     "bookOrder": {

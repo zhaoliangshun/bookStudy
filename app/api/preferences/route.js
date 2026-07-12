@@ -50,7 +50,7 @@ function writePrefs(data) {
 }
 
 // 允许的字段白名单
-const ALLOWED_KEYS = new Set(["bookOrder", "hiddenBooks", "deletedChapters", "hiddenChapters"]);
+const ALLOWED_KEYS = new Set(["bookOrder", "hiddenBooks", "deletedChapters", "hiddenChapters", "categoryConfig", "savedDefaults"]);
 
 // GET /api/preferences —— 获取当前偏好
 export async function GET() {
