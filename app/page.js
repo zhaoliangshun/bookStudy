@@ -25,7 +25,6 @@ const TUTORIALS = [
 
 export default function Home() {
   const router = useRouter();
-  const [redirecting, setRedirecting] = useState(true);
   const [savedPath, setSavedPath] = useState(null);
 
   useEffect(() => {
@@ -49,7 +48,7 @@ export default function Home() {
           if (!cancelled) {
             router.replace(path + search + hash);
           }
-        }, savedPath ? 100 : 500);
+        }, saved ? 100 : 500);
       }
     };
 

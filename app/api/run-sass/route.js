@@ -121,10 +121,10 @@ export async function POST(request) {
 
   // 编译是同步的，包一层 Promise
   const compilePromise = new Promise((resolve) => {
-    // 用 setImmediate 让出事件循环，避免阻塞其它请求
-    setImmediate(() => {
+    // 用 setTimeout 让出事件循环，避免阻塞其它请求
+    setTimeout(() => {
       resolve(compileScss(scssCode));
-    });
+    }, 0);
   });
 
   const result = await Promise.race([compilePromise, timeoutPromise]);
@@ -142,7 +142,7 @@ export async function GET() {
   return NextResponse.json({
     status: "ok",
     message: "Sass 编译服务正在运行",
-    sassVersion: sass.info, // dart-sass 版本信息
+    sassVersion: sass.compileString ? "dart-sass" : "sass",
     maxLength: MAX_INPUT_LENGTH,
   });
 }
