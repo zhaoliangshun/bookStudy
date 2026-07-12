@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import Editor, { loader } from "@monaco-editor/react";
 import { useEditorTheme } from "./EditorThemeProvider";
 import { registerMonacoThemes } from "./monaco-themes";
@@ -31,7 +31,6 @@ if (typeof window !== "undefined") {
   }, { timeout: 2000 });
 }
 
-// ---------- 语言 id → Monaco 语言 id 映射 ----------
 const LANG_MAP = {
   node: "javascript",
   javascript: "javascript",
@@ -103,7 +102,10 @@ export default function MonacoEditor({
   const { themeId, theme } = useEditorTheme();
   const editorRef = useRef(null);
   const wrapRef = useRef(null);
+  const disposablesRef = useRef([]);
+  const rafRef = useRef(null);
   const onRunRef = useRef(onRun);
+
   useEffect(() => {
     onRunRef.current = onRun;
   }, [onRun]);
@@ -116,31 +118,36 @@ export default function MonacoEditor({
   const handleMount = useCallback((editor) => {
     editorRef.current = editor;
 
-    editor.addCommand(2048 | 3, () => {
+    const runDisposable = editor.addCommand(2048 | 3, () => {
       if (typeof onRunRef.current === "function") {
         onRunRef.current();
       }
     }, "");
+    if (runDisposable) disposablesRef.current.push(runDisposable);
 
     const { autoHeight: auto, minHeight: minH, maxHeight: maxH } = configRef.current;
 
     if (auto) {
       const updateHeight = () => {
-        const contentHeight = editor.getContentHeight();
+        const ed = editorRef.current;
+        if (!ed) return;
+        const contentHeight = ed.getContentHeight();
         const overflow = contentHeight + 2 > maxH;
         const h = Math.min(Math.max(contentHeight + 2, minH), maxH);
         if (wrapRef.current) {
           wrapRef.current.style.height = `${h}px`;
         }
-        editor.updateOptions({
+        ed.updateOptions({
           scrollbar: { vertical: overflow ? "auto" : "hidden" },
         });
-        editor.layout();
+        ed.layout();
       };
-      editor.onDidContentSizeChange(updateHeight);
+      const sizeDisposable = editor.onDidContentSizeChange(updateHeight);
+      if (sizeDisposable) disposablesRef.current.push(sizeDisposable);
       updateHeight();
     } else {
-      requestAnimationFrame(() => {
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
         if (editorRef.current) {
           editorRef.current.layout();
         }
@@ -148,20 +155,41 @@ export default function MonacoEditor({
     }
   }, []);
 
-  // 保险同步：@monaco-editor/react 的受控 value 在动态加载/SSR 场景下
-  // 偶尔不会立即同步，这里在 value 变化时手动把 editor 内容设为最新值，
-  // 确保刷新页面或切换章节后 demo 代码显示正确。
   useEffect(() => {
     if (!editorRef.current) return;
     const currentValue = editorRef.current.getValue();
     if (currentValue !== value) {
-      editorRef.current.setValue(value);
+      const model = editorRef.current.getModel();
+      if (model) {
+        model.pushEditOperations(
+          [],
+          [{ range: model.getFullModelRange(), text: value }],
+          () => null
+        );
+      } else {
+        editorRef.current.setValue(value);
+      }
     }
   }, [value]);
 
   useEffect(() => {
     return () => {
-      editorRef.current = null;
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      disposablesRef.current.forEach((d) => {
+        try { d.dispose(); } catch {}
+      });
+      disposablesRef.current = [];
+      if (editorRef.current) {
+        try {
+          const model = editorRef.current.getModel();
+          if (model) model.dispose();
+          editorRef.current.dispose();
+        } catch {}
+        editorRef.current = null;
+      }
     };
   }, []);
 
@@ -206,6 +234,7 @@ export default function MonacoEditor({
           minimap: { enabled: false },
           stickyScroll: { enabled: false },
           overviewRulerLanes: 0,
+          automaticLayout: true,
         }}
         loading={
           <div

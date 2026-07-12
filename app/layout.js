@@ -7,6 +7,13 @@ export const metadata = {
   description: "详细全面的 Node.js、TypeScript、Tailwind CSS、Python、Sass 与 GraphQL 教程，涵盖模块系统、文件系统、流、事件、加密、异步编程、类型系统、泛型、装饰器、原子化 CSS、响应式布局、Python 语法、面向对象、装饰器/生成器、asyncio、Sass 变量/嵌套/混入/继承、GraphQL Schema/Query/Mutation/Resolver/Subscription 等常用知识，支持在线修改源代码并实时运行/预览。",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#0891b2",
+};
+
 // 合法主题列表，与 ThemeSwitcher.jsx 和 globals.css 保持一致
 const VALID_THEMES = ["cyan", "blue", "violet", "emerald", "rose", "amber"];
 const DEFAULT_THEME = "cyan";

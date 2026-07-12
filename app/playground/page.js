@@ -115,6 +115,7 @@ async function runClientJavaScript(code) {
 
     // 监听 iframe 回传的结果
     const handler = (event) => {
+      if (event.source !== iframe.contentWindow) return;
       const data = event.data;
       if (!data || data.type !== "pg-js-result") return;
       window.removeEventListener("message", handler);
@@ -945,6 +946,8 @@ export default function PlaygroundPage() {
   const splitRef = useRef(null);
   // 拖动状态标记：用 ref 而非 state，避免在 pointermove 回调里频繁触发重渲染
   const splitDraggingRef = useRef(false);
+  // toast 定时器引用，用于清理避免多个 toast 超时叠加
+  const toastTimerRef = useRef(null);
 
   // 当前语言配置对象
   const activeLang =
@@ -1036,10 +1039,16 @@ export default function PlaygroundPage() {
   );
 
   // ---------- 显示短暂提示 ----------
-  function showToast(msg) {
+  const showToast = useCallback((msg) => {
     setToast(msg);
-    setTimeout(() => setToast(""), 1600);
-  }
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    toastTimerRef.current = setTimeout(() => {
+      setToast("");
+      toastTimerRef.current = null;
+    }, 1600);
+  }, []);
 
   // ---------- 重置代码 ----------
   const resetCode = useCallback(() => {
@@ -1218,6 +1227,16 @@ export default function PlaygroundPage() {
       // ignore
     }
   }, [splitRatio]);
+
+  // ---------- 组件卸载时清理定时器 ----------
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+        toastTimerRef.current = null;
+      }
+    };
+  }, []);
 
   // ---------- 拖动分栏分隔条 ----------
   // 用 pointer events 统一鼠标 + 触摸：在分隔条上按下后，监听全局
