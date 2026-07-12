@@ -205,6 +205,7 @@ const BOOK_CATEGORIES = [
       { path: "/dignity", label: "放不下的愤怒", icon: "🕊️" },
       { path: "/hurt", label: "委屈的解剖学", icon: "💔" },
       { path: "/chicken-soup", label: "心灵鸡汤", icon: "🍲" },
+      { path: "/mindset", label: "看淡：情绪控制", icon: "🧊" },
     ],
   },
   {
