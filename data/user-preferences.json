@@ -151,7 +151,40 @@
     "未分组": [
       "/playground"
     ],
-    "Python 编程": [],
+    "Python 编程": [
+      "/fastapi-simple",
+      "/fastapi-learn",
+      "/fastapi-code",
+      "/pythread",
+      "/pythread2",
+      "/pyprocess",
+      "/pysubprocess",
+      "/pyasync",
+      "/pyasync2",
+      "/pyasync3",
+      "/pyint",
+      "/pyrun",
+      "/pykit",
+      "/py",
+      "/py6",
+      "/py8",
+      "/py9",
+      "/py-definitive",
+      "/pynet",
+      "/pydb",
+      "/fastapi",
+      "/pyweb",
+      "/pyweb2",
+      "/py-backend",
+      "/pyproject",
+      "/pyarch",
+      "/pyeng",
+      "/pyjava",
+      "/pyvsjava",
+      "/pyvsjs",
+      "/pyfile",
+      "/pyfile2"
+    ],
     "JS / TS 生态": [
       "/tsgen",
       "/ts",
@@ -160,7 +193,11 @@
       "/workers",
       "/noderun",
       "/reactsrc",
-      "/vuesrc"
+      "/vuesrc",
+      "/nodejs",
+      "/nodejs3",
+      "/nodejs2",
+      "/nodejs-backend"
     ],
     "Java 开发": [
       "/java",
@@ -222,9 +259,10 @@
       "/dignity",
       "/hurt",
       "/chicken-soup",
+      "/mindset",
       "/mindset2",
-      "/life-manual",
       "/inner-peace",
+      "/life-manual",
       "/serenity",
       "/emotion",
       "/calm"
@@ -240,73 +278,23 @@
       "/unharmed",
       "/talk-rebut"
     ],
-    "已隐藏": [
-      "/mindset"
-    ],
+    "已隐藏": [],
     "算法与数据结构": [
       "/algo",
       "/leetcode"
-    ],
-    "nodejs": [
-      "/nodejs",
-      "/nodejs3",
-      "/nodejs2",
-      "/nodejs-backend"
-    ],
-    "Python 编程::__sg-mrctbi5m16xr": [
-      "/pythread",
-      "/pythread2",
-      "/pyprocess",
-      "/pysubprocess",
-      "/pyasync",
-      "/pyasync2",
-      "/pyasync3"
-    ],
-    "Python 编程::__sg-mrctcsxkz7f9": [
-      "/pyint",
-      "/pyrun",
-      "/pykit",
-      "/py",
-      "/py6",
-      "/py8",
-      "/py9",
-      "/py-definitive"
-    ],
-    "Python 编程::__sg-mrctdmwvqji3": [
-      "/fastapi-learn",
-      "/pynet",
-      "/pydb",
-      "/fastapi",
-      "/pyweb",
-      "/pyweb2",
-      "/py-backend",
-      "/pyproject",
-      "/pyarch",
-      "/pyeng",
-      "/fastapi-simple",
-      "/fastapi-code"
-    ],
-    "Python 编程::__sg-mrctfokhdvl5": [
-      "/pyjava",
-      "/pyvsjava",
-      "/pyvsjs"
-    ],
-    "Python 编程::__sg-mrd99uj4byog": [
-      "/pyfile",
-      "/pyfile2"
     ]
   },
   "categoryConfig": {
-    "subGroupOrder": {},
-    "icons": {},
     "custom": [],
-    "subGroups": {},
     "renamed": {},
+    "icons": {},
+    "hidden": [],
     "order": [
       "test1",
       "test2"
     ],
-    "hidden": []
+    "subGroups": {},
+    "subGroupOrder": {}
   },
   "savedDefaults": {
     "bookOrder": {

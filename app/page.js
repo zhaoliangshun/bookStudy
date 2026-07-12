@@ -35,10 +35,12 @@ export default function Home() {
       const search = window.location.search || "";
       let path = "/nodejs";
 
+      let hasSaved = false;
       try {
         const saved = localStorage.getItem("sidebar:last-book");
         if (saved && saved !== "/" && saved.startsWith("/")) {
           path = saved;
+          hasSaved = true;
           setSavedPath(saved);
         }
       } catch {}
@@ -48,7 +50,7 @@ export default function Home() {
           if (!cancelled) {
             router.replace(path + search + hash);
           }
-        }, saved ? 100 : 500);
+        }, hasSaved ? 100 : 500);
       }
     };
 
