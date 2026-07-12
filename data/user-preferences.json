@@ -151,9 +151,7 @@
     "未分组": [
       "/playground"
     ],
-    "Python 编程": [
-      "/fastapi-code"
-    ],
+    "Python 编程": [],
     "JS / TS 生态": [
       "/tsgen",
       "/ts",
@@ -285,7 +283,8 @@
       "/pyproject",
       "/pyarch",
       "/pyeng",
-      "/fastapi-simple"
+      "/fastapi-simple",
+      "/fastapi-code"
     ],
     "Python 编程::__sg-mrctfokhdvl5": [
       "/pyjava",
