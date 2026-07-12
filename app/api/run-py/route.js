@@ -27,8 +27,8 @@
 // =============================================================
 
 import { NextResponse } from "next/server";
-import { spawn } from "child_process";
-import { existsSync, writeFileSync, unlinkSync, mkdtempSync, rmSync } from "fs";
+import { spawn, spawnSync } from "child_process";
+import { writeFileSync, unlinkSync, mkdirSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
@@ -41,19 +41,39 @@ const MAX_OUTPUT_BYTES = 1 * 1024 * 1024; // 1MB
 // 输入代码最大长度（字符），防止超大输入拖垮子进程
 const MAX_CODE_LENGTH = 50000;
 
-// Python 可执行路径。优先使用 python3.13（Homebrew 安装），找不到再降级到系统 python。
-// Windows 上通常是 python 命令（不带 3），macOS/Linux 通常是 python3。
-const CANDIDATES = [
-  "/opt/homebrew/bin/python3.13",
-  "/usr/local/bin/python3.13",
-  "python3.13",
-  "python3",
-  "python",
-];
-const PYTHON_BIN = CANDIDATES.find((p) => {
-  if (p.startsWith("/")) return existsSync(p);
-  return true;
-});
+// 缓存探测到的 Python 可执行文件，避免每次请求都做 spawnSync 探测
+let _pythonBin = null;
+
+function getPythonEnv() {
+  return {
+    PATH: process.env.PATH,
+    PYTHONIOENCODING: "utf-8",
+    PYTHONUTF8: "1",
+    LANG: "en_US.UTF-8",
+    LC_ALL: "en_US.UTF-8",
+  };
+}
+
+// Python 可执行路径。按优先级尝试：python3.13 -> python3 -> python（Windows上用python）。
+// 用 spawnSync --version 同步探测，命中即缓存。
+function getPythonBin() {
+  if (_pythonBin !== null) return _pythonBin;
+  const candidates = process.platform === "win32"
+    ? ["python", "python3", "py"]
+    : ["python3.13", "python3", "python"];
+  const env = { PATH: process.env.PATH };
+  for (const bin of candidates) {
+    try {
+      const r = spawnSync(bin, ["--version"], { stdio: "ignore", timeout: 3000, env });
+      if (!r.error) {
+        _pythonBin = bin;
+        return _pythonBin;
+      }
+    } catch {}
+  }
+  _pythonBin = process.platform === "win32" ? "python" : "python3";
+  return _pythonBin;
+}
 
 /**
  * 在子进程中执行 Python 代码。
@@ -62,31 +82,21 @@ const PYTHON_BIN = CANDIDATES.find((p) => {
  */
 function runPythonCode(code) {
   return new Promise((resolve) => {
+    const pythonBin = getPythonBin();
     // 将代码写入临时文件再执行（而非通过 stdin 传入）。
     // 原因：macOS 上 multiprocessing 默认使用 spawn 启动子进程，
     // spawn 会重新导入主模块。若主模块是 stdin（路径为 <stdin>），
     // 子进程会因找不到文件而报 FileNotFoundError。
     // 写入真实文件后，spawn 可正确找到主模块路径。
-    const tmpDir = mkdtempSync(join(tmpdir(), "pyrun-"));
+    const tmpDir = join(/*turbopackIgnore: true*/ tmpdir(), `pyrun-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    mkdirSync(tmpDir, { recursive: true });
     const tmpFile = join(tmpDir, "main.py");
     writeFileSync(tmpFile, code, "utf8");
 
-    const child = spawn(PYTHON_BIN, [tmpFile], {
+    const child = spawn(pythonBin, [tmpFile], {
       // 不继承父进程 stdio，单独建管道
       stdio: ["pipe", "pipe", "pipe"],
-      // 不继承父进程环境，只保留必要的 PATH（让 python3 能被找到）。
-      // 关键：强制 Python 用 UTF-8 输出，避免 Windows 中文系统默认 GBK
-      // 导致 stdout 被 Node 按 UTF-8 解码后出现乱码。
-      //   - PYTHONIOENCODING=utf-8：强制 stdout/stderr 使用 UTF-8 编码
-      //   - PYTHONUTF8=1：Python 3.7+ 的 UTF-8 模式，文件读写等也默认 UTF-8
-      //   - LANG/LC_ALL：Unix 系统下 locale 设为 UTF-8
-      env: {
-        PATH: process.env.PATH,
-        PYTHONIOENCODING: "utf-8",
-        PYTHONUTF8: "1",
-        LANG: "en_US.UTF-8",
-        LC_ALL: "en_US.UTF-8",
-      },
+      env: getPythonEnv(),
       // 子进程独立成新进程组，方便超时时 kill 整个组
       detached: false,
     });
@@ -142,8 +152,8 @@ function runPythonCode(code) {
       resolve({
         output: "",
         error:
-          `无法启动 ${PYTHON_BIN}：${err.message}\n` +
-          `请确认系统已安装 Python 3，且 ${PYTHON_BIN} 在 PATH 中。\n` +
+          `无法启动 ${pythonBin}：${err.message}\n` +
+          `请确认系统已安装 Python 3，且 ${pythonBin} 在 PATH 中。\n` +
           `macOS 可用 brew install python，Windows 可从 python.org 下载。`,
         exitCode: -1,
       });
@@ -258,8 +268,9 @@ export async function POST(request) {
 
 // 健康检查：GET 请求返回服务状态与 Python 版本
 export async function GET() {
+  const pythonBin = getPythonBin();
   return new Promise((resolve) => {
-    const child = spawn(PYTHON_BIN, ["--version"], {
+    const child = spawn(pythonBin, ["--version"], {
       stdio: ["pipe", "pipe", "pipe"],
       env: { PATH: process.env.PATH },
     });
@@ -287,7 +298,7 @@ export async function GET() {
       resolve(
         NextResponse.json({
           status: "error",
-          message: `未找到 ${PYTHON_BIN}，请先安装 Python 3`,
+          message: `未找到 ${pythonBin}，请先安装 Python 3`,
         })
       );
     });

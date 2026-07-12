@@ -18,7 +18,7 @@ import { NextResponse } from "next/server";
 import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from "fs";
 import { join } from "path";
 
-const DATA_DIR = join(process.cwd(), "data");
+const DATA_DIR = join(/*turbopackIgnore: true*/ process.cwd(), "data");
 const FILE_PATH = join(DATA_DIR, "user-preferences.json");
 
 // 确保 data 目录存在

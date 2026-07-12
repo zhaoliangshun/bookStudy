@@ -37,12 +37,13 @@ import { join, delimiter } from "path";
 // 增强的 PATH：合并进程 PATH 与 Swift 常见安装目录，解决 dev server PATH 过期问题。
 // Swift on Windows 装在 %LOCALAPPDATA%\Programs\Swift 下，含版本号子目录。
 // 需要同时加入 Toolchains 和 Runtimes 的 bin 目录，否则运行时缺 DLL（0xC0000135）。
-const ENHANCED_PATH = (() => {
+let _enhancedPath = null;
+function getEnhancedPath() {
+  if (_enhancedPath !== null) return _enhancedPath;
   const extra = [];
   if (process.platform === "win32" && process.env.LOCALAPPDATA) {
     const swiftBase = join(process.env.LOCALAPPDATA, "Programs", "Swift");
     if (existsSync(swiftBase)) {
-      // 扫描 Toolchains/<version>/usr/bin（含 swift.exe）
       const tcDir = join(swiftBase, "Toolchains");
       if (existsSync(tcDir)) {
         for (const v of readdirSync(tcDir)) {
@@ -50,7 +51,6 @@ const ENHANCED_PATH = (() => {
           if (existsSync(bin)) extra.push(bin);
         }
       }
-      // 扫描 Runtimes/<version>/usr/bin（含运行时 DLL，缺它会 0xC0000135）
       const rtDir = join(swiftBase, "Runtimes");
       if (existsSync(rtDir)) {
         for (const v of readdirSync(rtDir)) {
@@ -58,7 +58,6 @@ const ENHANCED_PATH = (() => {
           if (existsSync(bin)) extra.push(bin);
         }
       }
-      // 扫描 Tools/<version>
       const toolsDir = join(swiftBase, "Tools");
       if (existsSync(toolsDir)) {
         for (const v of readdirSync(toolsDir)) {
@@ -70,8 +69,9 @@ const ENHANCED_PATH = (() => {
   } else if (process.platform !== "win32") {
     extra.push("/usr/bin", "/usr/local/bin", "/opt/homebrew/bin");
   }
-  return [process.env.PATH, ...extra.filter(existsSync)].join(delimiter);
-})();
+  _enhancedPath = [process.env.PATH, ...extra.filter(existsSync)].join(delimiter);
+  return _enhancedPath;
+}
 
 // 执行超时（毫秒）。Swift 解释器启动略慢，10 秒对学习 demo 足够；
 // 死循环 / 阻塞式 readLine 等会被超时强制终止。
@@ -100,7 +100,7 @@ function runSwiftCode(code) {
       // 不继承父进程 stdio，单独建管道
       stdio: ["pipe", "pipe", "pipe"],
       // 不继承父进程环境，只保留必要的 PATH（让 swift 能被找到）
-      env: { PATH: ENHANCED_PATH, LANG: "en_US.UTF-8", LC_ALL: "en_US.UTF-8" },
+      env: { PATH: getEnhancedPath(), LANG: "en_US.UTF-8", LC_ALL: "en_US.UTF-8" },
       // 子进程独立成新进程组，方便超时时 kill 整个组
       detached: false,
     });
@@ -244,7 +244,7 @@ export async function GET() {
   return new Promise((resolve) => {
     const child = spawn(SWIFT_BIN, ["--version"], {
       stdio: ["pipe", "pipe", "pipe"],
-      env: { PATH: ENHANCED_PATH },
+      env: { PATH: getEnhancedPath() },
     });
     let version = "";
     child.stdout.on("data", (c) => (version += c.toString()));

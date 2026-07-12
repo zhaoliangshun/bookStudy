@@ -224,6 +224,7 @@ export default function BookmarkManager() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBookmarks(loadBookmarks());
     return () => {
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
@@ -231,7 +232,7 @@ export default function BookmarkManager() {
   }, []);
 
   useEffect(() => {
-    setBookmarks(loadBookmarks());
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOpen(false);
 
     const timer = setTimeout(() => {

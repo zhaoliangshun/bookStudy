@@ -45,40 +45,31 @@ const MAX_CODE_LENGTH = 50000;
  *   Next.js dev server 在启动时固化了 process.env.PATH，
  *   如果 JDK 是在 dev server 启动后才安装的，PATH 里没有
  *   JDK 的 bin 目录，spawn("javac") 会 ENOENT。
- *   这里依次检查 JAVA_HOME、常见安装目录、最后回退到裸命令名。
+ *   这里检查 JAVA_HOME，最后回退到裸命令名（依赖系统PATH）。
  *
- * @param {"java"|"javac"} name 可执行文件名（不含扩展名）
- * @returns {string} 绝对路径或裸命令名（回退）
+ * @returns {{javaBin: string, javacBin: string}}
  */
 let javaBinCache = null;
 let javacBinCache = null;
-
-function resolveJavaBin(name) {
-  const ext = process.platform === "win32" ? ".exe" : "";
-
-  const javaHome = process.env.JAVA_HOME;
-  if (javaHome) {
-    const p = join(javaHome, "bin", name + ext);
-    if (existsSync(p)) return p;
-  }
-
-  if (process.env.PATH) {
-    const pathDirs = process.env.PATH.split(process.platform === "win32" ? ";" : ":");
-    for (const dir of pathDirs) {
-      const p = join(dir, name + ext);
-      if (existsSync(p)) return p;
-    }
-  }
-
-  return name;
-}
+let binsResolved = false;
 
 function getJavaBins() {
-  if (javaBinCache && javacBinCache) {
-    return { javaBin: javaBinCache, javacBin: javacBinCache };
+  if (binsResolved) {
+    return { javaBin: javaBinCache || "java", javacBin: javacBinCache || "javac" };
   }
-  javaBinCache = resolveJavaBin("java");
-  javacBinCache = resolveJavaBin("javac");
+  binsResolved = true;
+  try {
+    const ext = process.platform === "win32" ? ".exe" : "";
+    const javaHome = process.env.JAVA_HOME;
+    if (javaHome) {
+      const javaP = join(/*turbopackIgnore: true*/ javaHome, "bin", "java" + ext);
+      const javacP = join(/*turbopackIgnore: true*/ javaHome, "bin", "javac" + ext);
+      if (existsSync(javaP)) javaBinCache = javaP;
+      if (existsSync(javacP)) javacBinCache = javacP;
+    }
+  } catch {}
+  if (!javaBinCache) javaBinCache = "java";
+  if (!javacBinCache) javacBinCache = "javac";
   return { javaBin: javaBinCache, javacBin: javacBinCache };
 }
 
@@ -185,7 +176,7 @@ async function runJavaCode(code) {
   const { javaBin, javacBin } = getJavaBins();
   const className = extractClassName(code);
 
-  const tempDir = join(tmpdir(), `java-run-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const tempDir = join(/*turbopackIgnore: true*/ tmpdir(), `java-run-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(tempDir, { recursive: true });
 
   const javaFile = join(tempDir, `${className}.java`);

@@ -28,12 +28,16 @@ import { join, delimiter } from "path";
 import { tmpdir } from "os";
 
 // 增强的 PATH：合并进程 PATH 与 Go 常见安装目录，解决 dev server PATH 过期问题
-const ENHANCED_PATH = (() => {
+// 懒加载：避免模块顶层调用 existsSync 导致 Turbopack 扫描整个文件系统
+let _enhancedPath = null;
+function getEnhancedPath() {
+  if (_enhancedPath !== null) return _enhancedPath;
   const extra = process.platform === "win32"
     ? ["C:\\Program Files\\Go\\bin", "C:\\Go\\bin"]
     : ["/usr/local/go/bin", "/opt/homebrew/bin"];
-  return [process.env.PATH, ...extra.filter(existsSync)].join(delimiter);
-})();
+  _enhancedPath = [process.env.PATH, ...extra.filter(existsSync)].join(delimiter);
+  return _enhancedPath;
+}
 
 // 运行超时（毫秒）—— 编译 + 运行合并计时
 const RUN_TIMEOUT_MS = 15000;
@@ -48,7 +52,7 @@ const GO_BIN = "go";
 // 放在系统临时目录下，进程间共享
 // 注意：本目录只作为模板，每次请求会复制一份到独立临时目录再写入用户代码，
 //       避免并发请求相互覆盖源文件
-const RUNNER_DIR = join(tmpdir(), "go-runner-v1");
+const RUNNER_DIR = join(/*turbopackIgnore: true*/ tmpdir(), "go-runner-v1");
 
 /**
  * 检测 go 是否可用。
@@ -60,7 +64,7 @@ function checkGo() {
       stdio: ["pipe", "pipe", "pipe"],
       encoding: "utf8",
       timeout: 5000,
-      env: { PATH: ENHANCED_PATH },
+      env: { PATH: getEnhancedPath() },
     });
     if (result.status === 0) {
       // go version 输出格式：go version go1.22.0 darwin/arm64
@@ -223,7 +227,7 @@ async function runGoCode(code) {
   // 3. 创建本次请求的独立临时目录（时间戳 + 随机数，避免并发覆盖）
   //    把模板目录(RUNNER_DIR)整体复制过来，后续编译运行都在 tmpDir 里进行
   const tmpDir = join(
-    tmpdir(),
+    /*turbopackIgnore: true*/ tmpdir(),
     `go-runner-${Date.now()}-${Math.random().toString(36).slice(2)}`
   );
   try {
@@ -251,7 +255,7 @@ async function runGoCode(code) {
 
     // 5. 编译并运行（go run 会自动编译 + 执行）
     const env = {
-      PATH: ENHANCED_PATH,
+      PATH: getEnhancedPath(),
       HOME: process.env.HOME,
       USERPROFILE: process.env.USERPROFILE,
       LOCALAPPDATA: process.env.LOCALAPPDATA,

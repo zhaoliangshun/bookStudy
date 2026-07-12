@@ -33,12 +33,16 @@ import { existsSync } from "fs";
 import { delimiter } from "path";
 
 // 增强的 PATH：合并进程 PATH 与 Ruby 常见安装目录，解决 dev server PATH 过期问题
-const ENHANCED_PATH = (() => {
+// 使用懒加载避免模块顶层调用 existsSync 导致 Turbopack 扫描文件系统
+let _enhancedPath = null;
+function getEnhancedPath() {
+  if (_enhancedPath !== null) return _enhancedPath;
   const extra = process.platform === "win32"
     ? ["C:\\tools\\ruby34\\bin", "C:\\tools\\ruby33\\bin", "C:\\Ruby34-x64\\bin", "C:\\Ruby33-x64\\bin"]
     : ["/usr/bin", "/opt/homebrew/bin"];
-  return [process.env.PATH, ...extra.filter(existsSync)].join(delimiter);
-})();
+  _enhancedPath = [process.env.PATH, ...extra.filter(existsSync)].join(delimiter);
+  return _enhancedPath;
+}
 
 // 执行超时（毫秒）。Ruby demo 都很短，10 秒足够；
 // 死循环 / 阻塞式 gets 等会被超时强制终止。
@@ -65,7 +69,7 @@ function runRubyCode(code) {
       // 不继承父进程 stdio，单独建管道
       stdio: ["pipe", "pipe", "pipe"],
       // 不继承父进程环境，只保留必要的 PATH（让 ruby 能被找到）
-      env: { PATH: ENHANCED_PATH, LANG: "en_US.UTF-8", LC_ALL: "en_US.UTF-8" },
+      env: { PATH: getEnhancedPath(), LANG: "en_US.UTF-8", LC_ALL: "en_US.UTF-8" },
       // 子进程独立成新进程组，方便超时时 kill 整个组
       detached: false,
     });
@@ -209,7 +213,7 @@ export async function GET() {
   return new Promise((resolve) => {
     const child = spawn(RUBY_BIN, ["--version"], {
       stdio: ["pipe", "pipe", "pipe"],
-      env: { PATH: ENHANCED_PATH },
+      env: { PATH: getEnhancedPath() },
     });
     let version = "";
     child.stdout.on("data", (c) => (version += c.toString()));

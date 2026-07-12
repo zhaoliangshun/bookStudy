@@ -34,12 +34,15 @@ import { tmpdir } from "os";
 // 增强的 PATH：合并进程 PATH 与常见编译器安装目录。
 // 原因：dev server 启动时固化了 process.env.PATH，若编译器在
 // 启动后才安装，spawn 会 ENOENT。这里补上常见安装路径。
-const ENHANCED_PATH = (() => {
+let _enhancedPath = null;
+function getEnhancedPath() {
+  if (_enhancedPath !== null) return _enhancedPath;
   const extra = process.platform === "win32"
     ? ["C:\\ProgramData\\mingw64\\mingw64\\bin", "C:\\msys64\\mingw64\\bin", "C:\\mingw64\\bin"]
     : ["/usr/local/bin", "/opt/homebrew/bin"];
-  return [process.env.PATH, ...extra.filter(existsSync)].join(delimiter);
-})();
+  _enhancedPath = [process.env.PATH, ...extra.filter(existsSync)].join(delimiter);
+  return _enhancedPath;
+}
 
 // 编译超时（毫秒）
 const COMPILE_TIMEOUT_MS = 10000;
@@ -74,7 +77,7 @@ function pickCompiler() {
     try {
       const r = spawnSync(bin, ["--version"], {
         stdio: "ignore",
-        env: { PATH: ENHANCED_PATH },
+        env: { PATH: getEnhancedPath() },
       });
       // error 表示二进制不存在；status 为数字表示能正常启动
       if (!r.error) {
@@ -176,7 +179,7 @@ async function runCppCode(code) {
 
   // 1. 创建临时目录（时间戳 + 随机数，避免并发冲突）
   const tempDir = join(
-    tmpdir(),
+    /*turbopackIgnore: true*/ tmpdir(),
     `cpp-run-${Date.now()}-${Math.random().toString(36).slice(2)}`
   );
   mkdirSync(tempDir, { recursive: true });
@@ -189,7 +192,7 @@ async function runCppCode(code) {
     writeFileSync(sourceFile, code, "utf8");
 
     const env = {
-      PATH: ENHANCED_PATH,
+      PATH: getEnhancedPath(),
       LANG: "en_US.UTF-8",
       LC_ALL: "en_US.UTF-8",
     };
@@ -294,7 +297,7 @@ export async function GET() {
   return new Promise((resolve) => {
     const child = spawn(compiler, ["--version"], {
       stdio: ["pipe", "pipe", "pipe"],
-      env: { PATH: ENHANCED_PATH },
+      env: { PATH: getEnhancedPath() },
     });
     let version = "";
     child.stdout.on("data", (c) => (version += c.toString()));

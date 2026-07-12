@@ -61,6 +61,8 @@ const BOOK_CATEGORIES = [
       { path: "/pyweb", label: "Python Web", icon: "🌐" },
       { path: "/pyweb2", label: "Web 后端开发", icon: "🌐" },
       { path: "/fastapi", label: "FastAPI", icon: "⚡" },
+      { path: "/fastapi-simple", label: "FastAPI 精简教程", icon: "⚡" },
+      { path: "/fastapi-learn", label: "FastAPI Demo 详解", icon: "📘" },
       { path: "/pysubprocess", label: "subprocess 子进程", icon: "🔌" },
       { path: "/pythread", label: "线程与进程", icon: "🧵" },
       { path: "/pythread2", label: "多线程入门", icon: "🧵" },
@@ -255,7 +257,10 @@ export default function Sidebar({
   useEffect(() => {
     try {
       const saved = localStorage.getItem("sidebar:collapsed");
-      if (saved !== null) setCollapsed(saved === "true");
+      if (saved !== null) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setCollapsed(saved === "true");
+      }
     } catch {}
     setCollapsedReady(true);
   }, []);
@@ -1080,7 +1085,7 @@ export default function Sidebar({
     ctxMenu, hiddenChapterIds, groupedChapters,
     hideChapter, unhideChapter, hideChapters, unhideChapters,
     startRenameCategory, handleDeleteCategory, isCustomCategory,
-    bookDefaultCategory, catConfig.renamed, moveBooksToCategory,
+    bookDefaultCategory, catConfig.renamed, catConfig.hidden, moveBooksToCategory,
     startAddSubGroup, startRenameSubGroup, handleDeleteSubGroup,
   ]);
 
@@ -1709,6 +1714,7 @@ export default function Sidebar({
         // saved 是已收起的分组名数组，校验有效性
         const validNames = new Set(allGroupNames);
         const validCollapsed = (saved.collapsed || []).filter((n) => validNames.has(n));
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCollapsedGroups(new Set(validCollapsed));
       } else {
         // 该书籍无保存状态：默认全部收起，仅展开包含当前激活章节的分组
