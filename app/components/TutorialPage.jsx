@@ -85,8 +85,10 @@ export default function TutorialPage({
   }, [chaptersMap]);
 
   useEffect(() => {
+    const path = pathname || bookPath;
     try {
-      localStorage.setItem("sidebar:last-book", pathname || bookPath);
+      localStorage.setItem("sidebar:last-book", path);
+      document.cookie = `last_book=${encodeURIComponent(path)}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
     } catch {}
   }, [pathname, bookPath]);
 

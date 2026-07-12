@@ -1669,7 +1669,10 @@ export default function Sidebar({
   // 下次打开根路径 / 时自动跳转到上次访问的书籍。
   useEffect(() => {
     if (currentPath && currentPath !== "/") {
-      try { localStorage.setItem("sidebar:last-book", currentPath); } catch {}
+      try {
+        localStorage.setItem("sidebar:last-book", currentPath);
+        document.cookie = `last_book=${encodeURIComponent(currentPath)}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
+      } catch {}
     }
   }, [currentPath]);
 
