@@ -180,6 +180,89 @@
   --bg-inline-code: #e0e0e4;
 }
 
+/* 墨韵：宣纸墨色，中式雅致，浓墨配米白纸面 */
+[data-reading-theme="ink"] {
+  --bg: #f5f1e8;
+  --bg-elevated: #fdfbf5;
+  --text: #1a1a1a;
+  --text-secondary: #4a4a4a;
+  --text-muted: #7a7a7a;
+  --border: #d8d0bc;
+  --bg-inline-code: #ebe5d4;
+}
+
+/* 海棠：淡粉米色，柔美温馨，适合长时间轻阅读 */
+[data-reading-theme="rose"] {
+  --bg: #fdf2f4;
+  --bg-elevated: #fff8fa;
+  --text: #3d2530;
+  --text-secondary: #6b4a5a;
+  --text-muted: #9a7a8a;
+  --border: #f0d8de;
+  --bg-inline-code: #f8e4ea;
+}
+
+/* 海蓝：淡海蓝晨曦，清爽宁静，提升专注感 */
+[data-reading-theme="ocean"] {
+  --bg: #eaf4f9;
+  --bg-elevated: #f5fbfd;
+  --text: #1d3a4a;
+  --text-secondary: #4a6b7a;
+  --text-muted: #7a9aaa;
+  --border: #d0e0e8;
+  --bg-inline-code: #dde9f0;
+}
+
+/* 森林：淡森林绿底，沉稳专注，护眼且不单调 */
+[data-reading-theme="forest"] {
+  --bg: #e8efe5;
+  --bg-elevated: #f3f8f0;
+  --text: #1f3320;
+  --text-secondary: #4a6b4a;
+  --text-muted: #7a9a7a;
+  --border: #cdd8c5;
+  --bg-inline-code: #d8e5d0;
+}
+
+/* 豆沙：豆沙米白，比暖黄更柔更淡，适合长时间阅读 */
+[data-reading-theme="sepia"] {
+  --bg: #f7f1e6;
+  --bg-elevated: #fdf9f0;
+  --text: #332b22;
+  --text-secondary: #6a5a48;
+  --text-muted: #9a8a78;
+  --border: #e6d9c2;
+  --bg-inline-code: #efe4cd;
+}
+
+/* 暮光：AMOLED 深紫黑，纯黑底配紫调，省电且护眼 */
+[data-reading-theme="dusk"] {
+  --bg: #0d0d14;
+  --bg-elevated: #1a1a26;
+  --text: #e8e8f0;
+  --text-secondary: #a8a8c0;
+  --text-muted: #686878;
+  --border: #2a2a3a;
+  --bg-inline-code: #1e1e2e;
+  --primary-light: #2a1e4a;
+  --success-bg: #0a2818;
+  --error-bg: #3b1111;
+}
+
+/* 暮光模式：硬编码浅色背景覆盖为深色 */
+[data-reading-theme="dusk"] .md-code-output { background: #0d0d14 !important; }
+[data-reading-theme="dusk"] .md-code-output-header { background: #08080f !important; }
+[data-reading-theme="dusk"] .md-table th { background: #1a1a26 !important; }
+[data-reading-theme="dusk"] .md-table tr:hover td { background: #1e1e2e !important; }
+[data-reading-theme="dusk"] .editor-theme-menu-header { background: #1a1a26 !important; }
+[data-reading-theme="dusk"] .editor-theme-menu-sub { background: #1a1a26 !important; }
+[data-reading-theme="dusk"] .editor-theme-option:hover { background: #1e1e2e !important; }
+[data-reading-theme="dusk"] .console-header { background: #1a1a26 !important; }
+[data-reading-theme="dusk"] .console-body { background: #08080f !important; }
+[data-reading-theme="dusk"] .pg-kbd { background: #1a1a26 !important; }
+[data-reading-theme="dusk"] .pg-console-body { background: #08080f !important; }
+[data-reading-theme="dusk"] ::selection { background: var(--primary); color: #fff; }
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -3477,6 +3560,12 @@ img {
 .floating-panel-group .floating-nav-btn,
 .floating-panel-group .floating-theme-btn,
 .floating-panel-group .floating-editor-theme-btn {
+  pointer-events: auto;
+}
+
+/* 阅读主题面板及其内部选项也需可点击，否则点击主题项无响应 */
+.floating-panel-group .reading-theme-panel,
+.floating-panel-group .reading-theme-item {
   pointer-events: auto;
 }
 

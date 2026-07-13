@@ -6,8 +6,9 @@
 // 通过 <html> 的 data-reading-theme 属性切换整站阅读配色，
 // 与 accent 主题色（ThemeSwitcher）互不影响，可独立搭配使用。
 //
-// 阅读主题列表：
+// 阅读主题列表（11 款）：
 //   默认（浅色） / 护眼绿 / 暖黄 / 暗夜 / 柔和灰
+//   墨韵 / 海棠 / 海蓝 / 森林 / 豆沙 / 暮光
 // =============================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -18,6 +19,12 @@ const READING_THEMES = [
   { id: "warm", name: "暖黄", icon: "📖", desc: "羊皮纸色" },
   { id: "dark", name: "暗夜", icon: "🌙", desc: "夜间阅读" },
   { id: "gray", name: "柔和", icon: "☁️", desc: "低对比灰" },
+  { id: "ink", name: "墨韵", icon: "🖋️", desc: "宣纸墨色" },
+  { id: "rose", name: "海棠", icon: "🌸", desc: "淡粉米色" },
+  { id: "ocean", name: "海蓝", icon: "🌊", desc: "海蓝晨曦" },
+  { id: "forest", name: "森林", icon: "🌲", desc: "森林墨绿" },
+  { id: "sepia", name: "豆沙", icon: "🫘", desc: "豆沙米白" },
+  { id: "dusk", name: "暮光", icon: "🌌", desc: "深紫黑" },
 ];
 
 const STORAGE_KEY = "reading-theme-preference";
