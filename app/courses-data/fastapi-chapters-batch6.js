@@ -75,7 +75,7 @@ def get_user():
 
 **IoC 模式：容器主动注入依赖**
 
-\`\`python
+\`\`\`python
 # 组件声明"我需要 db"，由外部容器提供
 def get_user(db: Database):  # 声明依赖，不创建
     return db.find(1)        # 只用，不管创建和销毁
