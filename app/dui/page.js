@@ -13,23 +13,29 @@ import { duiChapters, duiChapterGroups } from "../courses-data/dui-book-data";
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 
+import { useReadingScrollPosition } from "../hooks/useReadingScrollPosition";
 export default function DuiBook() {
   const [activeId, setActiveId] = useState(duiChapters[0].id);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const contentRef = useRef(null);
 
+
+  // 章节阅读位置记忆：保存每章的滚动位置，切换回时自动恢复
+  const { saveCurrentBeforeSwitch } = useReadingScrollPosition(
+    "/dui",
+    contentRef,
+    activeId
+  );
   const activeChapter =
     duiChapters.find((c) => c.id === activeId) || duiChapters[0];
 
   const selectChapter = useCallback((chapterId) => {
     const chapter = duiChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
+    saveCurrentBeforeSwitch();
     setActiveId(chapterId);
     setSidebarOpen(false);
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-    }
-  }, []);
+  }, [saveCurrentBeforeSwitch]);
 
   const groupedChapters = duiChapterGroups.map((group) => ({
     group,

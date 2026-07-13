@@ -17,6 +17,7 @@ import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";
 
+import { useReadingScrollPosition } from "../hooks/useReadingScrollPosition";
 export default function OSTutorial() {
   // 默认使用第一个章节作为初始状态。
   // 注意：不在渲染阶段读取 window.location.hash，否则 SSR 与客户端
@@ -30,6 +31,13 @@ export default function OSTutorial() {
 
   const contentRef = useRef(null);
 
+
+  // 章节阅读位置记忆：保存每章的滚动位置，切换回时自动恢复
+  const { saveCurrentBeforeSwitch } = useReadingScrollPosition(
+    "/os",
+    contentRef,
+    activeId
+  );
   const activeChapter =
     osChapters.find((c) => c.id === activeId) || osChapters[0];
 
@@ -58,10 +66,10 @@ export default function OSTutorial() {
   const selectChapter = useCallback((chapterId) => {
     const chapter = osChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
+    saveCurrentBeforeSwitch();
     setActiveId(chapterId);
     setSidebarOpen(false);
-    if (contentRef.current) contentRef.current.scrollTop = 0;
-  }, []);
+  }, [saveCurrentBeforeSwitch]);
 
   // 启动时获取 bash 版本（GET /api/run-shell 返回 version）
   useEffect(() => {

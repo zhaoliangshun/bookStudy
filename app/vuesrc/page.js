@@ -14,6 +14,7 @@ import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";
 
+import { useReadingScrollPosition } from "../hooks/useReadingScrollPosition";
 export default function VuesrcTutorial() {
   // ---------- 状态管理 ----------
   // 默认使用第一个章节作为初始状态。
@@ -27,6 +28,13 @@ export default function VuesrcTutorial() {
 
   const contentRef = useRef(null);
 
+
+  // 章节阅读位置记忆：保存每章的滚动位置，切换回时自动恢复
+  const { saveCurrentBeforeSwitch } = useReadingScrollPosition(
+    "/vuesrc",
+    contentRef,
+    activeId
+  );
   // 当前章节对象
   const activeChapter =
     vuesrcChapters.find((c) => c.id === activeId) || vuesrcChapters[0];
@@ -55,13 +63,10 @@ export default function VuesrcTutorial() {
   const selectChapter = useCallback((chapterId) => {
     const chapter = vuesrcChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
+    saveCurrentBeforeSwitch();
     setActiveId(chapterId);
     setSidebarOpen(false);
-    // 切换章节后滚动到顶部
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-    }
-  }, []);
+  }, [saveCurrentBeforeSwitch]);
 
   // 按分组组织章节
   const groupedChapters = vuesrcChapterGroups.map((group) => ({

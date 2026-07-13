@@ -5,23 +5,29 @@ import { talkRebuttalChapters, talkRebuttalChapterGroups } from "../courses-data
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 
+import { useReadingScrollPosition } from "../hooks/useReadingScrollPosition";
 export default function TalkRebuttalBook() {
   const [activeId, setActiveId] = useState(talkRebuttalChapters[0].id);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const contentRef = useRef(null);
 
+
+  // 章节阅读位置记忆：保存每章的滚动位置，切换回时自动恢复
+  const { saveCurrentBeforeSwitch } = useReadingScrollPosition(
+    "/talk-rebut",
+    contentRef,
+    activeId
+  );
   const activeChapter =
     talkRebuttalChapters.find((c) => c.id === activeId) || talkRebuttalChapters[0];
 
   const selectChapter = useCallback((chapterId) => {
     const chapter = talkRebuttalChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
+    saveCurrentBeforeSwitch();
     setActiveId(chapterId);
     setSidebarOpen(false);
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-    }
-  }, []);
+  }, [saveCurrentBeforeSwitch]);
 
   const groupedChapters = talkRebuttalChapterGroups.map((group) => ({
     group,

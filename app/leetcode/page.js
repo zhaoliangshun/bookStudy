@@ -4,18 +4,26 @@ import { leetcodeChapters, leetcodeChapterGroups } from "../courses-data/leetcod
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 
+import { useReadingScrollPosition } from "../hooks/useReadingScrollPosition";
 export default function LeetcodeBook() {
   const [activeId, setActiveId] = useState(leetcodeChapters[0].id);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const contentRef = useRef(null);
+
+  // 章节阅读位置记忆：保存每章的滚动位置，切换回时自动恢复
+  const { saveCurrentBeforeSwitch } = useReadingScrollPosition(
+    "/leetcode",
+    contentRef,
+    activeId
+  );
   const activeChapter = leetcodeChapters.find((c) => c.id === activeId) || leetcodeChapters[0];
   const selectChapter = useCallback((chapterId) => {
     const chapter = leetcodeChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
+    saveCurrentBeforeSwitch();
     setActiveId(chapterId);
     setSidebarOpen(false);
-    if (contentRef.current) contentRef.current.scrollTop = 0;
-  }, []);
+  }, [saveCurrentBeforeSwitch]);
   const groupedChapters = leetcodeChapterGroups.map((group) => ({
     group,
     items: leetcodeChapters.filter((c) => c.group === group),

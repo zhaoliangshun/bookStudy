@@ -13,6 +13,7 @@ import { howitworksChapters, howitworksChapterGroups } from "../courses-data/how
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 
+import { useReadingScrollPosition } from "../hooks/useReadingScrollPosition";
 export default function HowItWorksTutorial() {
   // ---------- 状态管理 ----------
   const [activeId, setActiveId] = useState(howitworksChapters[0].id);
@@ -20,6 +21,13 @@ export default function HowItWorksTutorial() {
 
   const contentRef = useRef(null);
 
+
+  // 章节阅读位置记忆：保存每章的滚动位置，切换回时自动恢复
+  const { saveCurrentBeforeSwitch } = useReadingScrollPosition(
+    "/howitworks",
+    contentRef,
+    activeId
+  );
   // 当前章节对象
   const activeChapter =
     howitworksChapters.find((c) => c.id === activeId) || howitworksChapters[0];
@@ -28,13 +36,10 @@ export default function HowItWorksTutorial() {
   const selectChapter = useCallback((chapterId) => {
     const chapter = howitworksChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
+    saveCurrentBeforeSwitch();
     setActiveId(chapterId);
     setSidebarOpen(false);
-    // 切换章节后滚动到顶部
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-    }
-  }, []);
+  }, [saveCurrentBeforeSwitch]);
 
   // ---------- 按分组组织章节 ----------
   const groupedChapters = howitworksChapterGroups.map((group) => ({

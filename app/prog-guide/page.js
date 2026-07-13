@@ -5,23 +5,29 @@ import { progGuideChapters, progGuideChapterGroups } from "../courses-data/prog-
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 
+import { useReadingScrollPosition } from "../hooks/useReadingScrollPosition";
 export default function ProgGuideBook() {
   const [activeId, setActiveId] = useState(progGuideChapters[0].id);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const contentRef = useRef(null);
 
+
+  // 章节阅读位置记忆：保存每章的滚动位置，切换回时自动恢复
+  const { saveCurrentBeforeSwitch } = useReadingScrollPosition(
+    "/prog-guide",
+    contentRef,
+    activeId
+  );
   const activeChapter =
     progGuideChapters.find((c) => c.id === activeId) || progGuideChapters[0];
 
   const selectChapter = useCallback((chapterId) => {
     const chapter = progGuideChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
+    saveCurrentBeforeSwitch();
     setActiveId(chapterId);
     setSidebarOpen(false);
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-    }
-  }, []);
+  }, [saveCurrentBeforeSwitch]);
 
   const groupedChapters = progGuideChapterGroups.map((group) => ({
     group,

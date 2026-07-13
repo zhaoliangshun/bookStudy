@@ -15,6 +15,7 @@ import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";
 
+import { useReadingScrollPosition } from "../hooks/useReadingScrollPosition";
 export default function CsTutorial() {
   // 默认使用第一个章节作为初始状态。
   // 注意：不在渲染阶段读取 window.location.hash，否则 SSR 与客户端
@@ -27,6 +28,13 @@ export default function CsTutorial() {
 
   const contentRef = useRef(null);
 
+
+  // 章节阅读位置记忆：保存每章的滚动位置，切换回时自动恢复
+  const { saveCurrentBeforeSwitch } = useReadingScrollPosition(
+    "/cs",
+    contentRef,
+    activeId
+  );
   // 当前章节对象
   const activeChapter =
     csChapters.find((c) => c.id === activeId) || csChapters[0];
@@ -56,13 +64,10 @@ export default function CsTutorial() {
   const selectChapter = useCallback((chapterId) => {
     const chapter = csChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
+    saveCurrentBeforeSwitch();
     setActiveId(chapterId);
     setSidebarOpen(false);
-    // 切换章节后滚动到顶部
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-    }
-  }, []);
+  }, [saveCurrentBeforeSwitch]);
 
   // 按分组组织章节
   const groupedChapters = csChapterGroups.map((group) => ({

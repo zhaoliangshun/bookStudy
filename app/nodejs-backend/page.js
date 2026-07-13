@@ -6,6 +6,7 @@ import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";
 
+import { useReadingScrollPosition } from "../hooks/useReadingScrollPosition";
 export default function NodejsBackendTutorial() {
   const initialChapter = nodejsBackendChapters[0];
 
@@ -14,6 +15,13 @@ export default function NodejsBackendTutorial() {
 
   const contentRef = useRef(null);
 
+
+  // 章节阅读位置记忆：保存每章的滚动位置，切换回时自动恢复
+  const { saveCurrentBeforeSwitch } = useReadingScrollPosition(
+    "/nodejs-backend",
+    contentRef,
+    activeId
+  );
   const activeChapter =
     nodejsBackendChapters.find((c) => c.id === activeId) || nodejsBackendChapters[0];
 
@@ -36,12 +44,10 @@ export default function NodejsBackendTutorial() {
   const selectChapter = useCallback((chapterId) => {
     const chapter = nodejsBackendChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
+    saveCurrentBeforeSwitch();
     setActiveId(chapterId);
     setSidebarOpen(false);
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-    }
-  }, []);
+  }, [saveCurrentBeforeSwitch]);
 
   const groupedChapters = nodejsBackendChapterGroups.map((group) => ({
     group,

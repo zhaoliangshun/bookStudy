@@ -21,6 +21,7 @@ import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";
 
+import { useReadingScrollPosition } from "../hooks/useReadingScrollPosition";
 export default function AIAppTutorial() {
   // ---------- 状态管理 ----------
   // 默认使用第一个章节作为初始状态。
@@ -34,6 +35,13 @@ export default function AIAppTutorial() {
 
   const contentRef = useRef(null);
 
+
+  // 章节阅读位置记忆：保存每章的滚动位置，切换回时自动恢复
+  const { saveCurrentBeforeSwitch } = useReadingScrollPosition(
+    "/aiapp",
+    contentRef,
+    activeId
+  );
   // 当前章节对象
   const activeChapter =
     aiappChapters.find((c) => c.id === activeId) || aiappChapters[0];
@@ -62,12 +70,10 @@ export default function AIAppTutorial() {
   const selectChapter = useCallback((chapterId) => {
     const chapter = aiappChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
+    saveCurrentBeforeSwitch();
     setActiveId(chapterId);
     setSidebarOpen(false);
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-    }
-  }, []);
+  }, [saveCurrentBeforeSwitch]);
 
   // 按分组组织章节
   const groupedChapters = aiappChapterGroups.map((group) => ({

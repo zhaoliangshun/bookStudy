@@ -20,6 +20,7 @@ import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";
 
+import { useReadingScrollPosition } from "../hooks/useReadingScrollPosition";
 export default function NetworkTutorial() {
   // ---------- 状态管理 ----------
   const [activeId, setActiveId] = useState(netChapters[0].id);
@@ -27,6 +28,13 @@ export default function NetworkTutorial() {
 
   const contentRef = useRef(null);
 
+
+  // 章节阅读位置记忆：保存每章的滚动位置，切换回时自动恢复
+  const { saveCurrentBeforeSwitch } = useReadingScrollPosition(
+    "/net",
+    contentRef,
+    activeId
+  );
   // 当前章节对象
   const activeChapter =
     netChapters.find((c) => c.id === activeId) || netChapters[0];
@@ -37,12 +45,10 @@ export default function NetworkTutorial() {
   const selectChapter = useCallback((chapterId) => {
     const chapter = netChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
+    saveCurrentBeforeSwitch();
     setActiveId(chapterId);
     setSidebarOpen(false);
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-    }
-  }, []);
+  }, [saveCurrentBeforeSwitch]);
 
   // 按分组组织章节
   const groupedChapters = netChapterGroups.map((group) => ({

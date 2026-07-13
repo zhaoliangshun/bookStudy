@@ -14,23 +14,29 @@ import { javaWebChapters, javaWebChapterGroups } from "../courses-data/java-web-
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 
+import { useReadingScrollPosition } from "../hooks/useReadingScrollPosition";
 export default function JavaWebBook() {
   const [activeId, setActiveId] = useState(javaWebChapters[0].id);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const contentRef = useRef(null);
 
+
+  // 章节阅读位置记忆：保存每章的滚动位置，切换回时自动恢复
+  const { saveCurrentBeforeSwitch } = useReadingScrollPosition(
+    "/java-web",
+    contentRef,
+    activeId
+  );
   const activeChapter =
     javaWebChapters.find((c) => c.id === activeId) || javaWebChapters[0];
 
   const selectChapter = useCallback((chapterId) => {
     const chapter = javaWebChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
+    saveCurrentBeforeSwitch();
     setActiveId(chapterId);
     setSidebarOpen(false);
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-    }
-  }, []);
+  }, [saveCurrentBeforeSwitch]);
 
   const groupedChapters = javaWebChapterGroups.map((group) => ({
     group,

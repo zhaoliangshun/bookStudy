@@ -22,23 +22,29 @@ import { pyweb2Chapters, pyweb2ChapterGroups } from "../courses-data/pyweb2-tuto
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 
+import { useReadingScrollPosition } from "../hooks/useReadingScrollPosition";
 export default function PyWeb2Book() {
   const [activeId, setActiveId] = useState(pyweb2Chapters[0].id);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const contentRef = useRef(null);
 
+
+  // 章节阅读位置记忆：保存每章的滚动位置，切换回时自动恢复
+  const { saveCurrentBeforeSwitch } = useReadingScrollPosition(
+    "/pyweb2",
+    contentRef,
+    activeId
+  );
   const activeChapter =
     pyweb2Chapters.find((c) => c.id === activeId) || pyweb2Chapters[0];
 
   const selectChapter = useCallback((chapterId) => {
     const chapter = pyweb2Chapters.find((c) => c.id === chapterId);
     if (!chapter) return;
+    saveCurrentBeforeSwitch();
     setActiveId(chapterId);
     setSidebarOpen(false);
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-    }
-  }, []);
+  }, [saveCurrentBeforeSwitch]);
 
   const groupedChapters = pyweb2ChapterGroups.map((group) => ({
     group,

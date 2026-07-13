@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import Sidebar from "./Sidebar";
+import { useReadingScrollPosition } from "../hooks/useReadingScrollPosition";
 
 const MarkdownRenderer = dynamic(
   () => import("../MarkdownRenderer"),
@@ -52,6 +53,14 @@ export default function TutorialPage({
   const contentRef = useRef(null);
   const transitionTimeoutRef = useRef(null);
   const rafRef = useRef(null);
+
+  // 章节阅读位置记忆：保存每章的滚动位置，切换回时自动恢复
+  // bookPath 作为每本书的独立命名空间，避免不同书之间位置串扰
+  const { saveCurrentBeforeSwitch } = useReadingScrollPosition(
+    bookPath,
+    contentRef,
+    activeId
+  );
 
   const chaptersMap = useMemo(() => {
     const map = new Map();
@@ -123,13 +132,14 @@ export default function TutorialPage({
     }
     setIsTransitioning(true);
 
+    // 切换前保存当前章的滚动位置，下次切回时能从这里继续阅读
+    saveCurrentBeforeSwitch();
+
     setActiveId(chapterId);
     setSidebarOpen(false);
 
-    if (contentRef.current) {
-      // .content 已配置 scroll-behavior: auto，直接设置即可瞬时回顶
-      contentRef.current.scrollTop = 0;
-    }
+    // 不再强制 scrollTop = 0，由 useReadingScrollPosition 内部 effect
+    // 根据保存的位置自动恢复（无保存记录时恢复到 0）
 
     try {
       window.history.replaceState(null, "", `#${chapterId}`);
@@ -138,7 +148,7 @@ export default function TutorialPage({
     transitionTimeoutRef.current = setTimeout(() => {
       setIsTransitioning(false);
     }, 150);
-  }, [chaptersMap]);
+  }, [chaptersMap, saveCurrentBeforeSwitch]);
 
   const toggleSidebar = useCallback(() => {
     setSidebarOpen((open) => !open);

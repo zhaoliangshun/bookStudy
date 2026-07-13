@@ -12,6 +12,7 @@ import { fastapiauthSimpleChapters, fastapiauthSimpleChapterGroups } from "../co
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";
+import { useReadingScrollPosition } from "../hooks/useReadingScrollPosition";
 
 export default function FastapiAuthSimpleTutorial() {
   // 默认使用第一个章节作为初始状态（SSR 一致性）
@@ -21,6 +22,13 @@ export default function FastapiAuthSimpleTutorial() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const contentRef = useRef(null);
+
+  // 章节阅读位置记忆：保存每章的滚动位置，切换回时自动恢复
+  const { saveCurrentBeforeSwitch } = useReadingScrollPosition(
+    "/fastapiauth-simple",
+    contentRef,
+    activeId
+  );
 
   // 当前章节对象
   const activeChapter =
@@ -47,12 +55,12 @@ export default function FastapiAuthSimpleTutorial() {
   const selectChapter = useCallback((chapterId) => {
     const chapter = fastapiauthSimpleChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
+    // 切换前保存当前章的滚动位置，下次切回时能从这里继续阅读
+    saveCurrentBeforeSwitch();
     setActiveId(chapterId);
     setSidebarOpen(false);
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-    }
-  }, []);
+    // 不再强制 scrollTop = 0，由 useReadingScrollPosition 自动恢复
+  }, [saveCurrentBeforeSwitch]);
 
   // 按分组组织章节
   const groupedChapters = fastapiauthSimpleChapterGroups.map((group) => ({

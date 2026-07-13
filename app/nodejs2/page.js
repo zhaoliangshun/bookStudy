@@ -6,6 +6,7 @@ import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 import CodeBlock from "../CodeBlock";
 
+import { useReadingScrollPosition } from "../hooks/useReadingScrollPosition";
 export default function Nodejs2Tutorial() {
   // 默认使用第一个章节作为初始状态。
   // 注意：不在渲染阶段读取 window.location.hash，否则 SSR 与客户端
@@ -18,6 +19,13 @@ export default function Nodejs2Tutorial() {
 
   const contentRef = useRef(null);
 
+
+  // 章节阅读位置记忆：保存每章的滚动位置，切换回时自动恢复
+  const { saveCurrentBeforeSwitch } = useReadingScrollPosition(
+    "/nodejs2",
+    contentRef,
+    activeId
+  );
   const activeChapter =
     nodejs2Chapters.find((c) => c.id === activeId) || nodejs2Chapters[0];
 
@@ -45,12 +53,10 @@ export default function Nodejs2Tutorial() {
   const selectChapter = useCallback((chapterId) => {
     const chapter = nodejs2Chapters.find((c) => c.id === chapterId);
     if (!chapter) return;
+    saveCurrentBeforeSwitch();
     setActiveId(chapterId);
     setSidebarOpen(false);
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-    }
-  }, []);
+  }, [saveCurrentBeforeSwitch]);
 
   const groupedChapters = nodejs2ChapterGroups.map((group) => ({
     group,

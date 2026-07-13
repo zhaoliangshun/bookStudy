@@ -14,23 +14,29 @@ import { feEngineeringChapters, feEngineeringChapterGroups } from "../courses-da
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 
+import { useReadingScrollPosition } from "../hooks/useReadingScrollPosition";
 export default function FeEngineeringBook() {
   const [activeId, setActiveId] = useState(feEngineeringChapters[0].id);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const contentRef = useRef(null);
 
+
+  // 章节阅读位置记忆：保存每章的滚动位置，切换回时自动恢复
+  const { saveCurrentBeforeSwitch } = useReadingScrollPosition(
+    "/fe-engineering",
+    contentRef,
+    activeId
+  );
   const activeChapter =
     feEngineeringChapters.find((c) => c.id === activeId) || feEngineeringChapters[0];
 
   const selectChapter = useCallback((chapterId) => {
     const chapter = feEngineeringChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
+    saveCurrentBeforeSwitch();
     setActiveId(chapterId);
     setSidebarOpen(false);
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-    }
-  }, []);
+  }, [saveCurrentBeforeSwitch]);
 
   const groupedChapters = feEngineeringChapterGroups.map((group) => ({
     group,

@@ -14,23 +14,29 @@ import { quotesChapters, quotesChapterGroups } from "../courses-data/quotes-book
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 
+import { useReadingScrollPosition } from "../hooks/useReadingScrollPosition";
 export default function QuotesBook() {
   const [activeId, setActiveId] = useState(quotesChapters[0].id);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const contentRef = useRef(null);
 
+
+  // 章节阅读位置记忆：保存每章的滚动位置，切换回时自动恢复
+  const { saveCurrentBeforeSwitch } = useReadingScrollPosition(
+    "/quotes",
+    contentRef,
+    activeId
+  );
   const activeChapter =
     quotesChapters.find((c) => c.id === activeId) || quotesChapters[0];
 
   const selectChapter = useCallback((chapterId) => {
     const chapter = quotesChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
+    saveCurrentBeforeSwitch();
     setActiveId(chapterId);
     setSidebarOpen(false);
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-    }
-  }, []);
+  }, [saveCurrentBeforeSwitch]);
 
   const groupedChapters = quotesChapterGroups.map((group) => ({
     group,

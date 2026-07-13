@@ -19,23 +19,29 @@ import { rebutChapters, rebutChapterGroups } from "../courses-data/rebut-book-da
 import { MarkdownRenderer } from "../MarkdownRenderer";
 import Sidebar from "../components/Sidebar";
 
+import { useReadingScrollPosition } from "../hooks/useReadingScrollPosition";
 export default function RebutBook() {
   const [activeId, setActiveId] = useState(rebutChapters[0].id);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const contentRef = useRef(null);
 
+
+  // 章节阅读位置记忆：保存每章的滚动位置，切换回时自动恢复
+  const { saveCurrentBeforeSwitch } = useReadingScrollPosition(
+    "/rebut",
+    contentRef,
+    activeId
+  );
   const activeChapter =
     rebutChapters.find((c) => c.id === activeId) || rebutChapters[0];
 
   const selectChapter = useCallback((chapterId) => {
     const chapter = rebutChapters.find((c) => c.id === chapterId);
     if (!chapter) return;
+    saveCurrentBeforeSwitch();
     setActiveId(chapterId);
     setSidebarOpen(false);
-    if (contentRef.current) {
-      contentRef.current.scrollTop = 0;
-    }
-  }, []);
+  }, [saveCurrentBeforeSwitch]);
 
   const groupedChapters = rebutChapterGroups.map((group) => ({
     group,
