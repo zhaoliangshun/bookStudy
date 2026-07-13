@@ -2801,4 +2801,19 @@ import magic
 # 定义函数 get_real_type
 def get_real_type(contents: bytes) -> str:
     # 用 magic 检测文件真实类型（不只看 Content-Type 头）
-    # magic.from_buffer 读取 bytes 前几字节判断
+    # magic.from_buffer 读取 bytes 前几字节判断类型
+    mime = magic.from_buffer(contents, mime=True)
+    # 返回 MIME 类型
+    return mime
+\`\`\`
+
+## 文件存储到磁盘
+
+### Demo 4：保存文件到磁盘
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException
+# 导入 os 模块（路径操作）
+import os
+# 导入 uuid 模块（生成唯一文件名）
