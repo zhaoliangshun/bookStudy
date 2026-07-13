@@ -37,6 +37,16 @@ FastAPI 的"高性能"招牌，本质来自两个字——**异步**。要把异
        ↑ 等待期间让出 CPU 给其他任务，单线程扛高并发
 \`\`\`
 
+**🌟 生活类比：事件循环就是餐厅服务员**
+
+把事件循环想象成一个特别能干的服务员（单线程）：
+- 1 号桌点菜 → 服务员把单子递给后厨，**立刻**去 2 号桌（不等菜做好）
+- 2 号桌点菜 → 递单，立刻去 3 号桌
+- 后厨按铃"1 号桌菜好了" → 服务员端菜给 1 号桌
+- 这个服务员从不停下等菜，所以一个人能服务几十桌
+
+如果服务员是同步的：1 号桌点完菜，他站在 1 号桌等菜做好才去 2 号桌——一晚上只能服务几桌。这就是同步和异步的核心差别。
+
 Web 应用 90% 的时间花在 **I/O 等待**上：等数据库、等外部 API、等磁盘、等 Redis。异步的杀手锏就是：**I/O 等待时不让线程干等，去服务别的请求**。这就是 FastAPI 用很少线程扛住高并发的秘密。
 
 ## 二、协程、事件循环、任务：三个核心概念
@@ -61,6 +71,14 @@ await task          ← 等它跑完，拿到结果
 \`\`\`
 
 理解这三者的关系后，下面所有代码都是顺水推舟。
+
+**🌟 生活类比：协程对象 vs 任务**
+
+- **协程对象** = 你写好的菜单（还没递给后厨）
+- **任务（Task）** = 你把菜单递给后厨，后厨开始做（已派发）
+- **await** = 你等菜做好端上桌
+
+只调用 \`async def\` 函数得到协程对象，相当于你写了菜单但没递出去，后厨永远不会做菜。必须 \`create_task\` 或 \`await\` 才会真正执行。
 
 ## 三、async def 与 await：第一个异步程序
 
@@ -93,6 +111,53 @@ print(coro)  # 输出：<coroutine object fetch_data at 0x...>
 #   3. 关闭事件循环
 result = asyncio.run(fetch_data())
 print(result)  # 输出：{'data': 42}
+\`\`\`
+
+### 渐进式 Demo 1：感受协程的挂起与唤醒
+
+\`\`\`python filename="观察挂起与唤醒的过程"
+# 导入 asyncio 用于异步编程
+import asyncio
+# 导入 time 用于打印时间戳
+import time
+
+# 定义一个带时间戳打印的辅助函数
+def log(msg):
+    # 打印当前时间（保留 2 位小数）和消息
+    print(f"[{time.time():.2f}] {msg}")
+
+# 定义协程函数 work：模拟一个分段执行的任务
+async def work(name: str, steps: int):
+    # 循环 steps 次，每次都 await 一下
+    for i in range(steps):
+        log(f"{name} 第 {i+1} 步开始")
+        # await 让出 CPU，事件循环可以去跑别的协程
+        await asyncio.sleep(0.5)
+        log(f"{name} 第 {i+1} 步结束")
+    return f"{name} 完成"
+
+# 主协程：同时调度两个 work
+async def main():
+    # create_task 立即把两个协程都放入事件循环
+    # 它们会交替执行：A 第1步 → B 第1步 → A 第2步 → B 第2步
+    t1 = asyncio.create_task(work("A", 2))
+    t2 = asyncio.create_task(work("B", 2))
+    # 等两个任务都完成
+    r1, r2 = await t1, await t2
+    log(f"结果: {r1}, {r2}")
+
+# 启动事件循环
+asyncio.run(main())
+# 输出（注意 A 和 B 是交替执行的）：
+# [1.00] A 第 1 步开始
+# [1.00] B 第 1 步开始
+# [1.50] A 第 1 步结束
+# [1.50] B 第 1 步结束
+# [1.50] A 第 2 步开始
+# [1.50] B 第 2 步开始
+# [2.00] A 第 2 步结束
+# [2.00] B 第 2 步结束
+# [2.00] 结果: A 完成, B 完成
 \`\`\`
 
 ### 两个关键字的精确语义
@@ -148,6 +213,26 @@ def bad():
 # ✅ 正确：async def 里才能用 await
 async def good():
     await slow_op()
+\`\`\`
+
+### 常见错误 3：在 async 函数里用 time.sleep
+
+\`\`\`python filename="time.sleep 是异步的头号杀手"
+import asyncio
+import time
+
+async def bad_task():
+    # ❌ 灾难：time.sleep 是同步阻塞，会卡死整个事件循环
+    # 期间所有其他协程都跑不了
+    time.sleep(2)
+    return "完成"
+
+async def good_task():
+    # ✅ 正确：用 asyncio.sleep，它会交出 CPU
+    await asyncio.sleep(2)
+    return "完成"
+
+# 记住：在 async 函数里，所有"等待"都必须用异步版本
 \`\`\`
 
 ## 四、asyncio.create_task：并发执行
@@ -212,7 +297,7 @@ asyncio.run(main())
 
 **怎么想**：\`create_task\` 的核心价值是"提前排队"。一旦 \`create_task\` 调用，协程就进入事件循环开始跑，不用等 \`await\`。然后 \`await task\` 只是"等它跑完拿结果"。如果两个 \`create_task\` 之间没有别的 \`await\`，它们就并发执行了。
 
-### 常见错误 3：create_task 后立刻 await
+### 常见错误 4：create_task 后立刻 await
 
 \`\`\`python filename="错误的并发写法"
 # 导入 asyncio 模块
@@ -245,9 +330,57 @@ async def good():
 
 **口诀**：先 \`create_task\` 把所有任务排队，再统一 \`await\` 拿结果，才能并发。
 
+### 渐进式 Demo 2：create_task 任务取消
+
+\`\`\`python filename="任务的取消与超时控制"
+import asyncio
+
+# 定义一个长时间运行的任务
+async def long_running():
+    try:
+        # 模拟一个需要 10 秒的任务
+        for i in range(10):
+            print(f"执行中 {i+1}/10")
+            await asyncio.sleep(1)
+        return "全部完成"
+    except asyncio.CancelledError:
+        # 任务被取消时会在这里抛出 CancelledError
+        # 必须处理，做清理工作
+        print("任务被取消，正在清理资源...")
+        # 清理后可以选择 re-raise 或返回
+        raise  # 推荐 re-raise，让调用者知道任务被取消
+
+async def main():
+    # 创建任务
+    task = asyncio.create_task(long_running())
+    # 等 3 秒后取消它
+    await asyncio.sleep(3)
+    task.cancel()  # 发送取消信号
+    try:
+        # 等待任务处理取消，capture 异常
+        result = await task
+        print(f"结果: {result}")
+    except asyncio.CancelledError:
+        print("主协程捕获到任务已被取消")
+
+asyncio.run(main())
+# 输出：
+# 执行中 1/10
+# 执行中 2/10
+# 执行中 3/10
+# 任务被取消，正在清理资源...
+# 主协程捕获到任务已被取消
+\`\`\`
+
 ## 五、asyncio.gather：批量并发神器
 
 \`gather\` 是最常用的批量并发工具，把多个协程打包成一个，等所有完成。
+
+**🌟 生活类比：asyncio.gather 像同时点多个菜**
+
+你去餐厅点了 5 道菜：
+- **串行 await**：服务员给你点第 1 道，等后厨做好端上来，再点第 2 道……5 道菜要等半小时
+- **gather**：服务员一口气把 5 道菜的单子都递给后厨，后厨多个灶同时开炒，全部上齐只要最慢那道菜的时间
 
 \`\`\`python filename="gather 批量并发"
 import asyncio
@@ -324,9 +457,49 @@ asyncio.run(main())
 
 **实战建议**：调用多个外部 API 时，用 \`return_exceptions=True\`，避免一个 API 挂了导致整个请求失败。然后逐个判断结果，失败的降级处理。
 
+### 渐进式 Demo 3：gather 配合 asyncio.TaskGroup（Python 3.11+）
+
+\`\`\`python filename="TaskGroup：更现代的并发写法"
+import asyncio
+
+# Python 3.11 引入的 TaskGroup，比 gather 更安全
+# 特点：任一任务失败，会自动取消其他所有任务
+async def fetch(url: str, delay: float):
+    await asyncio.sleep(delay)
+    return f"{url} done"
+
+async def main():
+    # 用 async with 创建任务组
+    # 退出 with 块时自动等待所有任务完成
+    async with asyncio.TaskGroup() as tg:
+        # create_task 把协程加入任务组
+        t1 = tg.create_task(fetch("api-1", 1))
+        t2 = tg.create_task(fetch("api-2", 2))
+        t3 = tg.create_task(fetch("api-3", 1))
+    # 退出 with 块时所有任务已完成
+    # 任一任务抛异常，其他任务自动取消，整个 with 抛 ExceptionGroup
+    print(t1.result(), t2.result(), t3.result())
+
+# 注意：TaskGroup 要求 Python 3.11+
+asyncio.run(main())
+\`\`\`
+
 ## 六、asyncio.wait 与 as_completed
 
 \`gather\` 是"等所有完成"。但有时你需要"谁先完成先处理谁"，这时用 \`as_completed\`。
+
+### 三种并发工具对比：gather vs create_task vs wait
+
+\`\`\`txt filename="三种并发工具的选择"
+┌──────────────────┬─────────────────────────────┬──────────────────────┐
+│      工具         │         适合场景            │       返回值          │
+├──────────────────┼─────────────────────────────┼──────────────────────┤
+│ asyncio.gather   │ 等所有完成，要所有结果      │ 结果列表（按传入顺序）│
+│ asyncio.wait     │ 精细控制（首个完成/超时）   │ (done, pending) 集合 │
+│ as_completed     │ 先到先处理（流式）          │ 迭代器，按完成顺序   │
+│ create_task      │ 手动管理任务（取消/检查）   │ Task 对象            │
+└──────────────────┴─────────────────────────────┴──────────────────────┘
+\`\`\`
 
 \`\`\`python filename="as_completed：先到先处理"
 import asyncio
@@ -378,10 +551,89 @@ async def main():
 asyncio.run(main())
 \`\`\`
 
+### 渐进式 Demo 4：三种工具的对比实战
+
+\`\`\`python filename="gather vs wait vs as_completed 实战对比"
+import asyncio
+import time
+import random
+
+# 定义一个耗时随机的任务
+async def fetch(url: str):
+    delay = random.uniform(0.5, 2.0)  # 随机 0.5-2 秒
+    await asyncio.sleep(delay)
+    return f"{url}（{delay:.2f}s）"
+
+# 方式 1：gather —— 等所有完成，结果按传入顺序
+async def demo_gather():
+    start = time.time()
+    urls = [f"api-{i}" for i in range(5)]
+    results = await asyncio.gather(*[fetch(u) for u in urls])
+    print(f"[gather] 总耗时 {time.time()-start:.2f}s, 结果顺序与传入一致")
+    for r in results:
+        print(f"  {r}")
+
+# 方式 2：wait + FIRST_COMPLETED —— 只要第一个完成
+async def demo_wait_first():
+    start = time.time()
+    urls = [f"api-{i}" for i in range(5)]
+    tasks = [asyncio.create_task(fetch(u)) for u in urls]
+    # 第一个完成就返回
+    done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+    print(f"[wait] 第一个完成耗时 {time.time()-start:.2f}s")
+    for t in done:
+        print(f"  最快: {t.result()}")
+    # 取消其他任务，避免资源泄漏
+    for t in pending:
+        t.cancel()
+
+# 方式 3：as_completed —— 流式处理，先到先得
+async def demo_as_completed():
+    start = time.time()
+    urls = [f"api-{i}" for i in range(5)]
+    coros = [fetch(u) for u in urls]
+    print(f"[as_completed] 按完成顺序处理:")
+    for fut in asyncio.as_completed(coros):
+        r = await fut
+        print(f"  [{time.time()-start:.2f}s] {r}")
+
+async def main():
+    print("=== gather ===")
+    await demo_gather()
+    print("\\n=== wait FIRST_COMPLETED ===")
+    await demo_wait_first()
+    print("\\n=== as_completed ===")
+    await demo_as_completed()
+
+asyncio.run(main())
+\`\`\`
+
 **怎么选**：
 - \`gather\`：等所有完成，要所有结果 → 90% 场景用这个
 - \`as_completed\`：先到先处理（流式）→ 比如多源数据聚合，谁快用谁
 - \`wait\`：要精细控制（第一个完成就返回、超时控制）→ 复杂场景
+
+### 渐进式 Demo 5：超时控制 asyncio.wait_for
+
+\`\`\`python filename="wait_for：给单个任务设超时"
+import asyncio
+
+async def slow_api():
+    # 模拟一个慢接口，要 10 秒
+    await asyncio.sleep(10)
+    return "结果"
+
+async def main():
+    try:
+        # wait_for 给协程设超时，超过 2 秒就取消并抛 TimeoutError
+        result = await asyncio.wait_for(slow_api(), timeout=2.0)
+        print(result)
+    except asyncio.TimeoutError:
+        print("接口超时，已取消任务")
+    # 实战：调外部 API 必须设超时，避免协程永久挂起
+
+asyncio.run(main())
+\`\`\`
 
 ## 七、async with：异步上下文管理器
 
@@ -530,9 +782,112 @@ async def main():
 asyncio.run(main())
 \`\`\`
 
+### 解决方案 3：asyncio.to_thread（Python 3.9+，更简洁）
+
+\`\`\`python filename="asyncio.to_thread：更简洁的线程池调用"
+import asyncio
+import time
+
+# 一个同步阻塞函数
+def cpu_heavy(n):
+    # 模拟 CPU 密集计算
+    total = sum(i * i for i in range(n))
+    return total
+
+async def main():
+    # asyncio.to_thread 是 run_in_executor 的语法糖
+    # 更简洁，不用手动获取 event_loop
+    # 第一个参数是函数，后面是函数的参数
+    result = await asyncio.to_thread(cpu_heavy, 10_000_000)
+    print(f"结果: {result}")
+
+    # 并发调用多个同步函数
+    results = await asyncio.gather(
+        asyncio.to_thread(cpu_heavy, 5_000_000),
+        asyncio.to_thread(cpu_heavy, 5_000_000),
+    )
+    print(f"并发结果: {results}")
+
+asyncio.run(main())
+\`\`\`
+
 **FastAPI 的贴心设计**：如果你的路由函数写成普通 \`def\`（不是 \`async def\`），FastAPI 会自动把它扔到线程池跑，不会卡事件循环。所以**没有异步库时，写 \`def\` 路由反而比 \`async def\` + 阻塞调用更安全**。
 
-## 十、实战：FastAPI 并发请求多个 API
+## 十、asyncio.Semaphore：并发控制
+
+**🌟 生活类比：Semaphore 像餐厅的桌子数量**
+
+假设餐厅只有 5 张桌子（Semaphore(5)），来了 20 个客人：
+- 前 5 个客人坐下点菜（拿到许可）
+- 后 15 个客人在门口排队等
+- 有人吃完离开（release），排队的下一个补上
+
+如果不限制，20 个客人同时冲进后厨，后厨会崩溃（数据库连接耗尽、API 限流）。
+
+\`\`\`python filename="Semaphore：限制并发数量"
+import asyncio
+import time
+
+# 创建一个信号量，限制最多 3 个并发
+# 相当于"只有 3 张桌子"
+sem = asyncio.Semaphore(3)
+
+async def fetch_with_limit(url: str):
+    # async with sem：获取许可，离开 with 块时释放
+    # 如果已有 3 个任务在跑，第 4 个会在这里等
+    async with sem:
+        print(f"[{time.time():.2f}] 开始 {url}")
+        await asyncio.sleep(1)  # 模拟耗时
+        print(f"[{time.time():.2f}] 完成 {url}")
+        return f"{url} done"
+
+async def main():
+    start = time.time()
+    # 启动 10 个任务，但同一时刻只有 3 个在跑
+    urls = [f"api-{i}" for i in range(10)]
+    results = await asyncio.gather(*[fetch_with_limit(u) for u in urls])
+    # 10 个任务，每次并发 3 个，每次 1 秒
+    # 总耗时约 ceil(10/3) * 1 = 4 秒
+    print(f"总耗时: {time.time() - start:.2f}s")
+    print(f"完成数: {len(results)}")
+
+asyncio.run(main())
+\`\`\`
+
+### 渐进式 Demo 6：用 Semaphore 限制 API 并发数
+
+\`\`\`python filename="实战：限制外部 API 并发调用"
+import asyncio
+import httpx
+import time
+
+# 限制对同一 API 的并发请求数，避免被限流
+# 比如某 API 限制每秒最多 5 个请求
+sem = asyncio.Semaphore(5)
+
+async def safe_fetch(client: httpx.AsyncClient, url: str):
+    # 用信号量限制并发
+    async with sem:
+        try:
+            resp = await client.get(url, timeout=5.0)
+            return resp.status_code
+        except Exception as e:
+            return f"error: {e}"
+
+async def main():
+    start = time.time()
+    urls = [f"https://httpbin.org/delay/1" for _ in range(20)]
+    async with httpx.AsyncClient() as client:
+        # 同时启动 20 个请求，但同一时刻只有 5 个在跑
+        results = await asyncio.gather(*[safe_fetch(client, u) for u in urls])
+    print(f"20 个请求总耗时: {time.time()-start:.2f}s")
+    # 没有 Semaphore：20 个同时冲，可能被限流或连接耗尽
+    # 有 Semaphore(5)：分 4 批，每批 5 个，安全稳定
+
+asyncio.run(main())
+\`\`\`
+
+## 十一、实战：FastAPI 并发请求多个 API
 
 把前面学的全部串起来，做一个聚合接口：并发调用 3 个外部 API，返回合并结果。
 
@@ -600,7 +955,7 @@ async def user_profile(user_id: int):
 
 如果改成串行写法（一个个 \`await\`），总耗时是三者相加；用 \`gather\` 后变成最大值。这就是异步并发的威力。
 
-## 十一、避坑指南：异步编程的 7 个雷区
+## 十二、避坑指南：异步编程的 7 个雷区
 
 1. **\`asyncio.run()\` 不能在已有事件循环里调用**：在 FastAPI 路由里千万别写 \`asyncio.run()\`，因为 Uvicorn 已经在事件循环里跑了。直接 \`await\` 协程即可。
 
@@ -616,7 +971,112 @@ async def user_profile(user_id: int):
 
 7. **第三方库要看是否支持 async**：用了同步库（\`requests\`、\`pymysql\`）写在 \`async def\` 里就是灾难。要么换异步库，要么 \`run_in_executor\`。
 
-## 十二、小结
+## 十三、动手实验
+
+### 实验 1：感受并发的速度提升
+
+\`\`\`python filename="实验：并发 vs 串行的耗时对比"
+import asyncio
+import time
+
+async def fake_api(url: str, delay: float):
+    await asyncio.sleep(delay)
+    return f"{url} done"
+
+async def serial_version():
+    """串行调用 5 个 API"""
+    start = time.time()
+    results = []
+    for i in range(5):
+        r = await fake_api(f"api-{i}", 1.0)
+        results.append(r)
+    print(f"串行 5 个 API 耗时: {time.time()-start:.2f}s")  # ~5s
+    return results
+
+async def concurrent_version():
+    """并发调用 5 个 API"""
+    start = time.time()
+    results = await asyncio.gather(*[fake_api(f"api-{i}", 1.0) for i in range(5)])
+    print(f"并发 5 个 API 耗时: {time.time()-start:.2f}s")  # ~1s
+    return results
+
+async def main():
+    await serial_version()
+    await concurrent_version()
+    # 思考：为什么并发版本只要 1 秒？
+    # 因为 5 个协程都在 await asyncio.sleep(1) 处挂起
+    # 事件循环同时调度它们，1 秒后全部唤醒
+
+asyncio.run(main())
+\`\`\`
+
+**实验目标**：亲眼看到并发版本耗时从 5 秒降到 1 秒，理解 \`gather\` 的威力。
+
+### 实验 2：用 Semaphore 观察并发数限制
+
+\`\`\`python filename="实验：观察 Semaphore 的并发控制"
+import asyncio
+import time
+
+async def task_with_sem(sem: asyncio.Semaphore, idx: int):
+    async with sem:
+        print(f"[{time.time():.2f}] 任务 {idx} 开始（占用一个槽位）")
+        await asyncio.sleep(0.5)
+        print(f"[{time.time():.2f}] 任务 {idx} 结束（释放槽位）")
+
+async def main():
+    # 修改这个数字，观察行为变化
+    sem = asyncio.Semaphore(3)  # 最多 3 个并发
+    # 启动 8 个任务
+    await asyncio.gather(*[task_with_sem(sem, i) for i in range(8)])
+    # 观察：每次最多 3 个"开始"，前面的"结束"后才会出现新的"开始"
+
+asyncio.run(main())
+\`\`\`
+
+**实验目标**：把 \`Semaphore(3)\` 改成 \`Semaphore(1)\` 和 \`Semaphore(8)\`，观察行为差异。
+
+### 实验 3：异常传播实验
+
+\`\`\`python filename="实验：gather 异常传播行为"
+import asyncio
+
+async def succeed(idx: int):
+    await asyncio.sleep(0.5)
+    return f"成功-{idx}"
+
+async def fail(idx: int):
+    await asyncio.sleep(0.3)
+    raise ValueError(f"失败-{idx}")
+
+async def main():
+    # 实验 1：默认行为，一个失败全部停止
+    print("=== 默认行为 ===")
+    try:
+        results = await asyncio.gather(
+            succeed(1), fail(2), succeed(3)
+        )
+    except ValueError as e:
+        print(f"捕获异常: {e}")
+
+    # 实验 2：return_exceptions=True，异常作为结果返回
+    print("\\n=== return_exceptions=True ===")
+    results = await asyncio.gather(
+        succeed(1), fail(2), succeed(3),
+        return_exceptions=True
+    )
+    for r in results:
+        if isinstance(r, Exception):
+            print(f"  失败: {r}")
+        else:
+            print(f"  成功: {r}")
+
+asyncio.run(main())
+\`\`\`
+
+**实验目标**：理解 \`return_exceptions\` 参数的作用，掌握多 API 调用的容错策略。
+
+## 十四、小结
 
 这一章打基础，重点记住：
 
@@ -625,6 +1085,7 @@ async def user_profile(user_id: int):
 - **\`create_task\`** 把协程包装成任务并立即调度，是并发的关键
 - **\`gather\`** 批量并发，等所有完成，最常用
 - **\`async with\`** 管理异步资源（连接、客户端）
+- **\`Semaphore\`** 限制并发数，保护下游服务
 - **阻塞调用是头号杀手**，要么换异步库，要么 \`run_in_executor\`
 
 下一章我们把这些概念用到数据库上，看异步数据库驱动和 SQLAlchemy 2.0 异步引擎怎么玩。
@@ -662,6 +1123,14 @@ async def user_profile(user_id: int):
 \`\`\`
 
 所以：**FastAPI + 同步数据库驱动 = 买跑车却加 90 号汽油**。要么换异步驱动，要么把同步驱动扔线程池（\`run_in_executor\`）。这一章讲第一种方案。
+
+**🌟 生活类比：数据库连接池像出租车车队**
+
+想象你的应用是一家公司，数据库是远在 10 公里外的工厂：
+- **没有连接池**：每次发货都叫一辆出租车，跑完就让它走（建连 + 释放）。每次都要等车来，慢且贵。
+- **有连接池**：公司养了 10 辆出租车（pool_size=10），随叫随到。高峰期还能临时叫 20 辆（max_overflow=20）。
+- **pool_pre_ping**：发车前先检查车还能不能开，避免半路抛锚。
+- **pool_recycle**：每辆车用满 30 分钟就强制回厂保养，防止开太久出故障。
 
 ## 二、异步数据库驱动对比
 
@@ -714,6 +1183,48 @@ asyncio.run(main())
 \`\`\`
 
 asyncpg 用 \`$1, $2\` 占位符（不是 \`%s\` 也不是 \`?\`），性能极强但 API 与 PyMySQL/psycopg2 差异大，迁移成本高。
+
+### 渐进式 Demo 1：asyncpg 连接池
+
+\`\`\`python filename="asyncpg 连接池：复用连接提升性能"
+import asyncpg
+import asyncio
+import time
+
+async def main():
+    # create_pool 创建连接池，自动管理连接的借出和归还
+    # 比每次 connect/close 高效得多
+    pool = await asyncpg.create_pool(
+        host="localhost",
+        port=5432,
+        user="postgres",
+        password="secret",
+        database="testdb",
+        min_size=5,   # 池里最少保持 5 个连接
+        max_size=20,  # 最多 20 个连接
+    )
+
+    async def query_user(user_id: int):
+        # async with pool.acquire() 从池里借一个连接
+        # 退出 with 块自动归还，不用手动 close
+        async with pool.acquire() as conn:
+            # fetchrow 查询单行，返回 Record 或 None
+            row = await conn.fetchrow(
+                "SELECT id, name FROM users WHERE id = $1", user_id
+            )
+            return dict(row) if row else None
+
+    # 并发查询 10 个用户，复用池里的连接
+    start = time.time()
+    tasks = [query_user(i) for i in range(1, 11)]
+    results = await asyncio.gather(*tasks)
+    print(f"10 个查询耗时: {time.time()-start:.2f}s")
+
+    # 关闭池，释放所有连接
+    await pool.close()
+
+asyncio.run(main())
+\`\`\`
 
 ## 三、SQLAlchemy 2.0 异步引擎
 
@@ -911,6 +1422,58 @@ async def create_many(articles_data: list):
         await session.commit()
 \`\`\`
 
+### 渐进式 Demo 2：高性能批量插入
+
+\`\`\`python filename="bulk_insert：批量插入的两种方式"
+from sqlalchemy import select
+from database import AsyncSessionLocal
+from models import Article
+import time
+
+# 方式 1：循环 add + 一次 commit（适合几百条）
+async def bulk_insert_loop(data_list: list[dict]):
+    async with AsyncSessionLocal() as session:
+        for data in data_list:
+            article = Article(**data)
+            session.add(article)
+        await session.commit()  # 一次性提交
+
+# 方式 2：使用 session.add_all（更简洁）
+async def bulk_insert_add_all(data_list: list[dict]):
+    async with AsyncSessionLocal() as session:
+        # add_all 一次添加多个对象
+        articles = [Article(**d) for d in data_list]
+        session.add_all(articles)
+        await session.commit()
+
+# 方式 3：使用 SQLAlchemy 2.0 的 bulk_insert_mappings（最快，适合几千条）
+async def bulk_insert_mappings(data_list: list[dict]):
+    async with AsyncSessionLocal() as session:
+        # bulk_insert_mappings 跳过 ORM 对象创建，直接插字典
+        # 不触发事件、不返回对象，性能最高
+        await session.bulk_insert_mappings(Article, data_list)
+
+# 性能对比
+async def main():
+    # 准备 1000 条数据
+    data = [
+        {"title": f"文章 {i}", "content": f"内容 {i}", "author_id": 1}
+        for i in range(1000)
+    ]
+
+    start = time.time()
+    await bulk_insert_loop(data)
+    print(f"循环 add: {time.time()-start:.2f}s")
+
+    start = time.time()
+    await bulk_insert_mappings(data)
+    print(f"bulk_insert_mappings: {time.time()-start:.2f}s")
+    # bulk_insert_mappings 通常快 3-5 倍
+
+import asyncio
+asyncio.run(main())
+\`\`\`
+
 ### 5.3 异步更新（UPDATE）
 
 \`\`\`python filename="异步更新示例"
@@ -1017,6 +1580,42 @@ async def manual_transaction():
 
 **推荐写法 1**（\`async with session.begin()\`），异常自动回滚，代码更简洁。
 
+### 渐进式 Demo 3：嵌套事务（SAVEPOINT）
+
+\`\`\`python filename="嵌套事务：部分失败不影响整体"
+from sqlalchemy import select
+from database import AsyncSessionLocal
+from models import Article
+
+async def nested_transaction_demo():
+    """演示嵌套事务：子事务失败，主事务仍可继续"""
+    async with AsyncSessionLocal() as session:
+        # 开启外层事务
+        async with session.begin():
+            # 第一个操作：成功
+            article1 = Article(title="文章1", content="内容1", author_id=1)
+            session.add(article1)
+
+            # 开启嵌套事务（SAVEPOINT）
+            try:
+                async with session.begin_nested():
+                    # 这个操作会失败（比如违反约束）
+                    article2 = Article(title=None, content="内容2", author_id=1)
+                    session.add(article2)
+                    # 退出 begin_nested 时，如果出错只回滚到 SAVEPOINT
+            except Exception as e:
+                print(f"子事务失败: {e}，但主事务继续")
+
+            # 第三个操作：仍然可以执行
+            article3 = Article(title="文章3", content="内容3", author_id=1)
+            session.add(article3)
+            # 退出外层 begin() 时，article1 和 article3 会被提交
+            # article2 因为在子事务里失败，被回滚
+
+import asyncio
+asyncio.run(nested_transaction_demo())
+\`\`\`
+
 ## 七、异步连接池配置
 
 生产环境必须配置连接池，避免每次请求都新建连接（建连开销大）。
@@ -1062,6 +1661,53 @@ async def shutdown():
 - \`pool_size\`：根据数据库最大连接数和应用并发量定，通常 10-50
 - \`pool_recycle\`：必须小于数据库的 \`wait_timeout\`（MySQL 默认 8 小时，但云数据库可能更短）
 - \`pool_pre_ping=True\`：生产环境必开，避免连接断开导致 502
+
+### 渐进式 Demo 4：监控连接池状态
+
+\`\`\`python filename="连接池监控：观察连接借还"
+from sqlalchemy.ext.asyncio import create_async_engine
+import asyncio
+
+engine = create_async_engine(
+    "postgresql+asyncpg://postgres:secret@localhost:5432/testdb",
+    pool_size=5,
+    max_overflow=10,
+)
+
+def print_pool_status():
+    """打印连接池当前状态"""
+    pool = engine.pool
+    print(f"连接池状态:")
+    print(f"  常驻连接数 (pool_size): {pool.size()}")
+    print(f"  已借出连接数 (checked_out): {pool.checkedout()}")
+    print(f"  当前总连接数 (checkedin + checkedout): {pool.checkedin() + pool.checkedout()}")
+
+async def query_with_monitoring(idx: int):
+    """执行一个查询并观察连接池变化"""
+    print(f"\\n--- 任务 {idx} 开始 ---")
+    print_pool_status()
+    async with engine.connect() as conn:
+        print(f"任务 {idx} 拿到连接，执行查询中...")
+        print_pool_status()
+        await asyncio.sleep(1)  # 模拟查询耗时
+    print(f"任务 {idx} 释放连接")
+    print_pool_status()
+
+async def main():
+    print("=== 初始状态 ===")
+    print_pool_status()
+
+    print("\\n=== 并发 3 个查询 ===")
+    await asyncio.gather(
+        query_with_monitoring(1),
+        query_with_monitoring(2),
+        query_with_monitoring(3),
+    )
+
+    await engine.dispose()
+
+asyncio.run(main())
+\`\`\`
 
 ## 八、同步模型 + 异步引擎的混用陷阱
 
@@ -1253,6 +1899,44 @@ async def delete_article(article_id: int, db: AsyncSession = Depends(get_db)):
 
 这个完整示例覆盖了异步引擎、会话工厂、CRUD、事务（依赖里的 \`yield\` 模式）、Pydantic Schema 转换。复制粘贴改下数据库 URL 就能跑。
 
+### 渐进式 Demo 5：并发查询接口
+
+\`\`\`python filename="并发查询多个文章"
+from fastapi import FastAPI, Depends
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+import asyncio
+from database import AsyncSessionLocal, get_db
+from models import Article
+
+app = FastAPI()
+
+async def fetch_one(article_id: int):
+    """独立会话查询单个文章，避免 session 共享问题"""
+    async with AsyncSessionLocal() as session:
+        return await session.get(Article, article_id)
+
+@app.get("/articles-batch/{ids}")
+async def get_batch(ids: str):
+    """并发查询多个文章，比如 ids='1,2,3,4,5'"""
+    # 解析 id 列表
+    id_list = [int(x) for x in ids.split(",")]
+    # 并发查询，每个查询用独立 session（不能共享 session！）
+    tasks = [fetch_one(i) for i in id_list]
+    results = await asyncio.gather(*tasks)
+    # 过滤掉 None（不存在的）
+    valid = [
+        {"id": a.id, "title": a.title}
+        for a in results if a is not None
+    ]
+    return {"count": len(valid), "articles": valid}
+
+# 测试：curl http://127.0.0.1:8000/articles-batch/1,2,3,4,5
+# 5 个查询并发执行，总耗时约等于单个查询的耗时
+\`\`\`
+
+> ⚠️ **注意**：\`AsyncSession\` 不能跨协程共享！每个并发任务必须创建自己的 session。这是异步数据库最常见的坑。
+
 ## 十、避坑指南
 
 1. **\`expire_on_commit=False\` 必设**：否则 commit 后访问属性会触发同步刷新，卡死事件循环。
@@ -1261,7 +1945,7 @@ async def delete_article(article_id: int, db: AsyncSession = Depends(get_db)):
 
 3. **\`session.execute()\` 要 await，\`result.scalars().all()\` 不要**：前者发 SQL 是异步的，后者处理内存数据是同步的。
 
-4. **不要共享 session**：每个请求一个 session，用依赖注入 \`yield\` 模式。
+4. **不要共享 session**：每个请求一个 session，用依赖注入 \`yield\` 模式。并发任务每个用独立 session。
 
 5. **\`engine.dispose()\` 在关闭时调用**：避免连接泄漏。
 
@@ -1269,7 +1953,102 @@ async def delete_article(article_id: int, db: AsyncSession = Depends(get_db)):
 
 7. **\`asyncpg\` 不支持 \`%s\` 占位符**：用 SQLAlchemy 抽象掉就没问题，但直接写 SQL 要用 \`$1\`。
 
-## 十一、小结
+8. **避免 N+1 查询**：循环里查询性能极差，用 \`selectinload\` 或批量查询。
+
+## 十一、动手实验
+
+### 实验 1：感受异步数据库的并发优势
+
+\`\`\`python filename="实验：并发查询 vs 串行查询"
+import asyncio
+import time
+from sqlalchemy import select
+from database import AsyncSessionLocal, engine
+from models import Article, Base
+
+async def query_one(session_factory, idx: int):
+    """单个查询"""
+    async with session_factory() as session:
+        article = await session.get(Article, idx)
+        return article
+
+async def serial_query(count: int):
+    """串行查询"""
+    start = time.time()
+    results = []
+    for i in range(1, count + 1):
+        r = await query_one(AsyncSessionLocal, i)
+        results.append(r)
+    print(f"串行 {count} 次查询耗时: {time.time()-start:.2f}s")
+    return results
+
+async def concurrent_query(count: int):
+    """并发查询"""
+    start = time.time()
+    tasks = [query_one(AsyncSessionLocal, i) for i in range(1, count + 1)]
+    results = await asyncio.gather(*tasks)
+    print(f"并发 {count} 次查询耗时: {time.time()-start:.2f}s")
+    return results
+
+async def main():
+    # 先建表插数据
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    async with AsyncSessionLocal() as session:
+        for i in range(1, 11):
+            session.add(Article(title=f"文章{i}", content="内容", author_id=1))
+        await session.commit()
+
+    # 对比
+    await serial_query(10)
+    await concurrent_query(10)
+    # 如果每次查询耗时 100ms，串行 1s，并发 0.1s
+    await engine.dispose()
+
+asyncio.run(main())
+\`\`\`
+
+**实验目标**：亲眼看到并发查询比串行快 10 倍。
+
+### 实验 2：观察连接池的工作过程
+
+\`\`\`python filename="实验：连接池状态监控"
+import asyncio
+from sqlalchemy.ext.asyncio import create_async_engine
+
+# 创建一个连接池很小的引擎，方便观察
+engine = create_async_engine(
+    "sqlite+aiosqlite:///./test.db",
+    pool_size=2,
+    max_overflow=3,
+)
+
+def show_pool(label: str):
+    pool = engine.pool
+    print(f"[{label}] size={pool.size()} "
+          f"checked_out={pool.checkedout()} "
+          f"checked_in={pool.checkedin()}")
+
+async def slow_query(idx: int):
+    show_pool(f"任务{idx} 借连接前")
+    async with engine.connect() as conn:
+        show_pool(f"任务{idx} 拿到连接后")
+        await asyncio.sleep(1)  # 模拟慢查询
+    show_pool(f"任务{idx} 归还连接后")
+
+async def main():
+    show_pool("初始状态")
+    # 并发 5 个任务，但池只有 2+3=5 个连接
+    await asyncio.gather(*[slow_query(i) for i in range(5)])
+    show_pool("全部完成")
+    await engine.dispose()
+
+asyncio.run(main())
+\`\`\`
+
+**实验目标**：理解连接池的借出、归还机制，看到池满时的等待行为。
+
+## 十二、小结
 
 - **SQLAlchemy 2.0 AsyncSession** 是 FastAPI + ORM 的最佳组合
 - **\`create_async_engine\` + \`async_sessionmaker\`** 创建异步引擎和会话工厂
@@ -1277,6 +2056,7 @@ async def delete_article(article_id: int, db: AsyncSession = Depends(get_db)):
 - **事务**用 \`async with session.begin()\` 自动管理
 - **连接池**必配 \`pool_pre_ping\` 和 \`pool_recycle\`
 - **禁止懒加载**，关联数据用 \`selectinload\` 预加载
+- **并发查询**每个任务用独立 session，不能共享
 
 下一章我们看异步 HTTP 客户端 httpx，把外部 API 调用也异步化。
 `,
@@ -1301,6 +2081,14 @@ async def delete_article(article_id: int, db: AsyncSession = Depends(get_db)):
 老牌的 \`requests\` 库是同步的，在 \`async def\` 里调它就是阻塞事件循环的灾难。\`aiohttp\` 是异步的，但 API 设计反人类，和 \`requests\` 风格完全不兼容。
 
 **httpx** 是新一代 HTTP 客户端，它的设计哲学是："\`requests\` 的 API + 同步异步双模式"。同一个 API，同步代码用 \`httpx.Client\`，异步代码用 \`httpx.AsyncClient\`，迁移成本几乎为零。
+
+**🌟 生活类比：httpx.AsyncClient 像私人助理**
+
+想象你要给 5 个客户打电话：
+- **requests（同步）**：你自己一个一个打，每个客户聊 5 分钟，总共 25 分钟
+- **httpx.AsyncClient（异步）**：你有个助理，他同时拨通 5 个电话，谁接通了告诉你，你只需在最忙的时刻处理。总耗时约 5 分钟
+
+\`AsyncClient\` 就是这个助理，它管理着连接池（电话线路），让你能"同时"处理多个外部调用，而不是排队等。
 
 ### httpx vs requests 对比
 
@@ -1402,6 +2190,39 @@ async def good():
         resp2 = await client.get("https://api.example.com/b")
         # 两次请求复用 TCP 连接（keep-alive），第二次快很多
         # 省去握手时间，只算数据传输，延迟降到几十毫秒
+\`\`\`
+
+### 渐进式 Demo 1：感受连接复用的性能差异
+
+\`\`\`python filename="对比：每次新建 client vs 复用 client"
+import httpx
+import asyncio
+import time
+
+URL = "https://jsonplaceholder.typicode.com/posts/1"
+
+# 方式 1：每次请求新建 client（无连接复用）
+async def no_reuse():
+    start = time.time()
+    for _ in range(5):
+        async with httpx.AsyncClient() as client:
+            await client.get(URL)
+    print(f"每次新建 client: {time.time()-start:.2f}s")
+
+# 方式 2：复用 client（连接池 keep-alive）
+async def with_reuse():
+    start = time.time()
+    async with httpx.AsyncClient() as client:
+        for _ in range(5):
+            await client.get(URL)
+    print(f"复用 client: {time.time()-start:.2f}s")
+
+async def main():
+    await no_reuse()
+    await with_reuse()
+    # 复用版本通常快 30-50%，因为省去了重复的 TCP/TLS 握手
+
+asyncio.run(main())
 \`\`\`
 
 ## 四、GET、POST、PUT、DELETE 完整示例
@@ -1570,6 +2391,26 @@ client = httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=3.0))
 
 **生产环境铁律**：所有外部 HTTP 调用必须设超时，宁可超时失败也不要无限等待。
 
+### 常见错误 2：忘记 raise_for_status
+
+\`\`\`python filename="忘记检查状态码的坑"
+import httpx
+import asyncio
+
+async def bad():
+    async with httpx.AsyncClient() as client:
+        resp = await client.get("https://httpbin.org/status/500")
+        # ❌ httpx 默认不抛异常，4xx/5xx 静默返回
+        # 这里 resp.status_code == 500，但代码继续往下走
+        data = resp.json()  # 可能解析到错误信息，业务逻辑出错
+
+async def good():
+    async with httpx.AsyncClient() as client:
+        resp = await client.get("https://httpbin.org/status/500")
+        # ✅ 主动检查，非 2xx 抛 HTTPStatusError
+        resp.raise_for_status()  # 这里会抛异常
+\`\`\`
+
 ## 七、重试机制
 
 httpx 本身不直接提供重试，要用 \`httpx.HTTPTransport\` 配置重试次数。
@@ -1698,7 +2539,171 @@ from fastapi import Depends
 - \`startup\` 创建，\`shutdown\` 用 \`aclose()\` 关闭
 - 依赖注入获取 client，方便测试时替换 mock
 
-## 十、实战：天气 API 聚合服务
+### 渐进式 Demo 2：封装完整的 API 客户端类
+
+\`\`\`python filename="封装 API 客户端：可复用、可测试"
+import httpx
+from typing import Any, Optional
+
+class GitHubClient:
+    """封装 GitHub API 的客户端，统一管理配置和错误处理"""
+
+    def __init__(self, token: str, timeout: float = 10.0):
+        # 把配置存在实例上
+        self.base_url = "https://api.github.com"
+        self.headers = {
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "MyApp/1.0",
+        }
+        self.timeout = timeout
+        # 内部持有一个 httpx client，延迟创建
+        self._client: Optional[httpx.AsyncClient] = None
+
+    async def get_client(self) -> httpx.AsyncClient:
+        """懒加载获取 client，确保只创建一次"""
+        if self._client is None:
+            self._client = httpx.AsyncClient(
+                base_url=self.base_url,
+                headers=self.headers,
+                timeout=self.timeout,
+            )
+        return self._client
+
+    async def get_user(self, username: str) -> dict:
+        """获取用户信息"""
+        client = await self.get_client()
+        resp = await client.get(f"/users/{username}")
+        resp.raise_for_status()
+        return resp.json()
+
+    async def get_repos(self, username: str) -> list[dict]:
+        """获取用户的仓库列表"""
+        client = await self.get_client()
+        resp = await client.get(f"/users/{username}/repos", params={"sort": "updated"})
+        resp.raise_for_status()
+        return resp.json()
+
+    async def close(self):
+        """关闭客户端，释放连接"""
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
+
+# 在 FastAPI 中使用
+from fastapi import FastAPI, Depends, HTTPException
+
+app = FastAPI()
+github_client = GitHubClient(token="your-github-token")
+
+@app.on_event("shutdown")
+async def shutdown():
+    await github_client.close()
+
+async def get_github():
+    return github_client
+
+@app.get("/github/{username}")
+async def user_info(username: str, client: GitHubClient = Depends(get_github)):
+    try:
+        # 并发获取用户信息和仓库列表
+        import asyncio
+        user, repos = await asyncio.gather(
+            client.get_user(username),
+            client.get_repos(username),
+        )
+        return {
+            "username": user["login"],
+            "name": user.get("name"),
+            "public_repos": user["public_repos"],
+            "recent_repos": [{"name": r["name"], "stars": r["stargazers_count"]} for r in repos[:5]],
+        }
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail="GitHub API 错误")
+\`\`\`
+
+## 十、流式响应：处理大文件和流数据
+
+\`\`\`python filename="流式响应：下载大文件"
+import httpx
+import asyncio
+
+async def download_large_file(url: str, filepath: str):
+    """流式下载大文件，避免一次性加载到内存"""
+    async with httpx.AsyncClient() as client:
+        # stream() 返回异步上下文管理器
+        async with client.stream("GET", url) as resp:
+            resp.raise_for_status()
+            # 用 aiter_bytes 逐块读取响应体
+            # chunk_size 控制每块大小（默认 1024 字节）
+            with open(filepath, "wb") as f:
+                async for chunk in resp.aiter_bytes(chunk_size=8192):
+                    f.write(chunk)
+                    # 可以在这里打印下载进度
+                    print(f"已下载 {f.tell()} 字节", end="\\r")
+
+async def main():
+    await download_large_file(
+        "https://jsonplaceholder.typicode.com/photos",
+        "output.json",
+    )
+    print("\\n下载完成")
+
+asyncio.run(main())
+\`\`\`
+
+### 渐进式 Demo 3：流式读取 SSE 事件
+
+\`\`\`python filename="流式读取 Server-Sent Events"
+import httpx
+import asyncio
+
+async def consume_sse(url: str):
+    """消费 SSE 事件流（比如 LLM 的流式响应）"""
+    async with httpx.AsyncClient() as client:
+        async with client.stream("GET", url) as resp:
+            # aiter_lines 逐行读取，适合 SSE 这种行式协议
+            async for line in resp.aiter_lines():
+                if line.startswith("data:"):
+                    # 解析 SSE 数据
+                    data = line[5:].strip()
+                    if data == "[DONE]":
+                        print("\\n[完成]")
+                        break
+                    print(f"收到: {data}")
+
+# 模拟 LLM 流式响应（实际接入 OpenAI/ChatGLM API）
+async def mock_sse():
+    # 这里用一个公开的 SSE 测试端点
+    # 实际项目里，调用 OpenAI 的 stream=True 就是这个模式
+    await consume_sse("https://httpbin.org/stream/5")
+
+asyncio.run(mock_sse())
+\`\`\`
+
+## 十一、HTTP/2 支持
+
+\`\`\`python filename="启用 HTTP/2"
+import httpx
+import asyncio
+
+# HTTP/2 的优势：
+# 1. 多路复用：一个 TCP 连接上同时发多个请求，不用开多个连接
+# 2. 头部压缩：HPACK 算法压缩 HTTP 头，减少开销
+# 3. 服务端推送：服务器可以主动推送资源
+
+# 启用 HTTP/2 需要安装 h2 库：pip install httpx[http2]
+async def http2_demo():
+    async with httpx.AsyncClient(http2=True) as client:
+        resp = await client.get("https://nghttp2.org/httpbin/get")
+        # 检查是否用了 HTTP/2
+        print(f"协议版本: {resp.http_version}")  # HTTP/2
+        print(f"状态码: {resp.status_code}")
+
+asyncio.run(http2_demo())
+\`\`\`
+
+## 十二、实战：天气 API 聚合服务
 
 做一个真实场景：聚合多个天气 API，返回统一格式。用户访问 \`/weather/{city}\`，我们并发调用 3 个天气源，返回最快的结果或合并结果。
 
@@ -1835,7 +2840,79 @@ async def get_weather_all(city: str, client: httpx.AsyncClient = Depends(get_cli
 
 这个实战覆盖了：全局 client 管理、超时配置、并发调用、容错处理、\`as_completed\` 与 \`gather\` 的选择。可以直接跑（Open-Meteo 和 wttr.in 都是免费 API）。
 
-## 十一、避坑指南
+### 渐进式 Demo 4：用 Semaphore 限制外部 API 并发
+
+\`\`\`python filename="限制并发：保护下游 API 不被压垮"
+import httpx
+import asyncio
+from fastapi import FastAPI
+
+app = FastAPI()
+
+# 全局信号量，限制同时最多 10 个外部 API 调用
+# 防止突发流量把下游 API 打挂
+api_semaphore = asyncio.Semaphore(10)
+
+@app.get("/batch-fetch/{count}")
+async def batch_fetch(count: int):
+    """并发请求 count 个 URL，但限制同时最多 10 个"""
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        async def fetch_one(idx: int):
+            # 用信号量限制并发
+            async with api_semaphore:
+                resp = await client.get(f"https://jsonplaceholder.typicode.com/posts/{idx}")
+                return resp.json()
+
+        # 启动 count 个请求，但同时只有 10 个在跑
+        tasks = [fetch_one(i) for i in range(1, count + 1)]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        # 统计成功失败
+        ok = sum(1 for r in results if not isinstance(r, Exception))
+        fail = sum(1 for r in results if isinstance(r, Exception))
+        return {"total": count, "success": ok, "failed": fail}
+\`\`\`
+
+## 十三、用 httpx 测试 FastAPI 应用
+
+httpx 有个超棒的功能：直接调用 ASGI 应用做测试，不用真的启动服务器。
+
+\`\`\`python filename="用 httpx 测试 FastAPI"
+import httpx
+import asyncio
+from main import app  # 导入你的 FastAPI 应用
+
+async def test_endpoint():
+    # transport=httpx.ASGITransport(app=app) 直接调 ASGI 应用
+    # 不用 uvicorn 起服务，测试超快
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        # 测试 GET
+        resp = await client.get("/weather/fast/Beijing")
+        print(f"状态码: {resp.status_code}")
+        if resp.status_code == 200:
+            data = resp.json()
+            print(f"城市: {data['city']}")
+            print(f"温度: {data['temp']}")
+
+        # 测试错误情况
+        resp = await client.get("/weather/fast/不存在的城市")
+        print(f"错误状态码: {resp.status_code}")
+
+# 用 pytest 写测试
+# test_weather.py
+# import pytest
+# @pytest.mark.asyncio
+# async def test_weather():
+#     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+#         resp = await client.get("/weather/fast/Beijing")
+#         assert resp.status_code == 200
+
+asyncio.run(test_endpoint())
+\`\`\`
+
+## 十四、避坑指南
 
 1. **\`AsyncClient\` 必须用 \`async with\` 或显式 \`aclose()\`**：不关闭会泄漏连接。
 
@@ -1851,7 +2928,132 @@ async def get_weather_all(city: str, client: httpx.AsyncClient = Depends(get_cli
 
 7. **测试 FastAPI 用 \`httpx.AsyncClient(app=app)\`**：直接调 ASGI 应用，不用真起服务，超快。
 
-## 十二、小结
+8. **并发调用外部 API 时用 Semaphore**：避免突发流量压垮下游。
+
+## 十五、动手实验
+
+### 实验 1：对比 requests 和 httpx 的性能
+
+\`\`\`python filename="实验：requests 串行 vs httpx 并发"
+import httpx
+import asyncio
+import time
+# import requests  # 如果有装
+
+URL = "https://jsonplaceholder.typicode.com/posts/1"
+COUNT = 10
+
+# 方式 1：requests 串行（对比基准）
+def serial_requests():
+    import requests
+    start = time.time()
+    for _ in range(COUNT):
+        requests.get(URL)
+    print(f"requests 串行 {COUNT} 次: {time.time()-start:.2f}s")
+
+# 方式 2：httpx 并发
+async def concurrent_httpx():
+    start = time.time()
+    async with httpx.AsyncClient() as client:
+        tasks = [client.get(URL) for _ in range(COUNT)]
+        responses = await asyncio.gather(*tasks)
+    print(f"httpx 并发 {COUNT} 次: {time.time()-start:.2f}s")
+
+async def main():
+    # 运行对比
+    serial_requests()
+    await concurrent_httpx()
+    # 并发版本通常快 5-10 倍
+
+asyncio.run(main())
+\`\`\`
+
+**实验目标**：直观感受异步 HTTP 并发的速度优势。
+
+### 实验 2：观察超时和重试行为
+
+\`\`\`python filename="实验：超时与重试"
+import httpx
+import asyncio
+
+async def test_timeout():
+    """测试超时机制"""
+    # httpbin.org/delay/N 会延迟 N 秒才响应
+    cases = [
+        ("延迟 1 秒，超时 3 秒", "https://httpbin.org/delay/1", 3.0, "应该成功"),
+        ("延迟 5 秒，超时 2 秒", "https://httpbin.org/delay/5", 2.0, "应该超时"),
+    ]
+    for label, url, timeout, expected in cases:
+        print(f"\\n--- {label} ---")
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                resp = await client.get(url)
+                print(f"成功，状态码: {resp.status_code}")
+        except httpx.TimeoutException:
+            print(f"超时异常（符合预期）")
+
+async def test_retry():
+    """测试重试机制"""
+    # 配置重试 3 次
+    transport = httpx.AsyncHTTPTransport(retries=3)
+    async with httpx.AsyncClient(transport=transport, timeout=5.0) as client:
+        # 500 会触发重试
+        print("\\n--- 测试 500 错误重试 ---")
+        try:
+            resp = await client.get("https://httpbin.org/status/500")
+            print(f"最终状态码: {resp.status_code}（重试 3 次后仍失败）")
+        except Exception as e:
+            print(f"异常: {e}")
+
+async def main():
+    await test_timeout()
+    await test_retry()
+
+asyncio.run(main())
+\`\`\`
+
+**实验目标**：理解超时和重试的工作机制，学会配置容错策略。
+
+### 实验 3：流式下载大文件
+
+\`\`\`python filename="实验：流式下载并显示进度"
+import httpx
+import asyncio
+
+async def download_with_progress(url: str, filepath: str):
+    """流式下载并显示进度"""
+    async with httpx.AsyncClient() as client:
+        # 先获取文件大小
+        head_resp = await client.head(url)
+        total_size = int(head_resp.headers.get("content-length", 0))
+        print(f"文件大小: {total_size} 字节")
+
+        downloaded = 0
+        async with client.stream("GET", url) as resp:
+            with open(filepath, "wb") as f:
+                async for chunk in resp.aiter_bytes(chunk_size=8192):
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    # 显示进度条
+                    if total_size > 0:
+                        percent = downloaded * 100 // total_size
+                        bar = "█" * (percent // 5) + "░" * (20 - percent // 5)
+                        print(f"\\r进度: [{bar}] {percent}%", end="")
+        print(f"\\n下载完成: {filepath}")
+
+async def main():
+    # 下载一个图片
+    await download_with_progress(
+        "https://picsum.photos/2000/2000.jpg",
+        "downloaded_image.jpg"
+    )
+
+asyncio.run(main())
+\`\`\`
+
+**实验目标**：掌握流式响应处理，理解大文件下载的正确姿势。
+
+## 十六、小结
 
 - **httpx** = requests 的 API + 同步异步双模式，迁移友好
 - **\`AsyncClient\` + \`async with\`** 是异步模式标准用法
@@ -1859,6 +3061,8 @@ async def get_weather_all(city: str, client: httpx.AsyncClient = Depends(get_cli
 - **超时精细控制**：\`httpx.Timeout(connect, read, write, pool)\`
 - **连接池**用 \`httpx.Limits\` 配置，应用级单例复用
 - **FastAPI 集成**：\`startup\` 创建全局 client，依赖注入分发
+- **流式响应**用 \`stream()\` 处理大文件和 SSE
+- **测试**用 \`httpx.ASGITransport\` 直接测 FastAPI，超快
 
 下一章看 FastAPI 内置的后台任务机制 BackgroundTasks，处理"响应后还要做事"的场景。
 `,
@@ -1894,6 +3098,15 @@ Web 接口的标准流程是"接收请求 → 处理 → 返回响应"。但有�
 BackgroundTasks   →  短（毫秒级）   低        单进程小任务
 Celery/RQ         →  短（毫秒级）   中-高     分布式大规模
 \`\`\`
+
+**🌟 生活类比：BackgroundTasks 像外卖取餐号**
+
+你去快餐店点餐：
+- **同步执行**：你点完餐，站在收银台等厨师做完，端走才离开。后面排队的人一直等。
+- **BackgroundTasks**：你点完餐，收银员给你一个取餐号（响应立刻返回），你坐下来玩手机。厨师在后台做，做好后叫号。
+- **Celery**：你下单后，订单传到中央厨房（消息队列），由专职配送员（worker）处理，做好了快递给你。
+
+\`BackgroundTasks\` 就是"给取餐号"模式——响应立刻返回，活儿在后台慢慢干。
 
 ## 二、BackgroundTasks 的原理
 
@@ -2051,6 +3264,50 @@ async def mixed(background_tasks: BackgroundTasks):
 - 任务里有 I/O 且有异步库（\`httpx\`、\`asyncpg\`）→ \`async def\` 任务
 - 任务里只能用同步库（\`smtplib\`、\`requests\`）→ 普通 \`def\` 任务（FastAPI 自动扔线程池）
 
+### 渐进式 Demo 1：在后台任务里并发执行多个子任务
+
+\`\`\`python filename="后台任务内部用 gather 并发"
+from fastapi import FastAPI, BackgroundTasks
+import asyncio
+import time
+
+app = FastAPI()
+
+# 三个独立的子任务
+async def send_email(email: str):
+    await asyncio.sleep(1)  # 模拟发邮件
+    print(f"邮件已发: {email}")
+
+async def write_log(user_id: int, action: str):
+    await asyncio.sleep(0.5)  # 模拟写日志
+    print(f"日志已写: {user_id} {action}")
+
+async def update_stats(user_id: int):
+    await asyncio.sleep(0.8)  # 模拟更新统计
+    print(f"统计已更新: {user_id}")
+
+# 把三个子任务封装成一个 async 后台任务
+async def all_background_work(email: str, user_id: int):
+    """一个后台任务内部并发执行三个子任务"""
+    start = time.time()
+    # 用 gather 并发，而不是串行
+    await asyncio.gather(
+        send_email(email),
+        write_log(user_id, "register"),
+        update_stats(user_id),
+    )
+    print(f"所有后台工作完成，耗时: {time.time()-start:.2f}s")
+    # 串行耗时 = 1 + 0.5 + 0.8 = 2.3s
+    # 并发耗时 = max(1, 0.5, 0.8) = 1.0s
+
+@app.post("/register")
+async def register(email: str, user_id: int, background_tasks: BackgroundTasks):
+    # 添加一个 async 后台任务（内部会并发三个子任务）
+    background_tasks.add_task(all_background_work, email, user_id)
+    return {"message": "注册成功，后台工作中"}
+    # 响应立刻返回，控制台 1 秒后打印三个"完成"
+\`\`\`
+
 ## 五、后台任务的异常处理
 
 后台任务抛异常**不会影响已返回的响应**，但异常会被 FastAPI 捕获并记入日志。
@@ -2084,7 +3341,7 @@ def send(email: str, background_tasks: BackgroundTasks):
 def unsafe_task():
     raise ValueError("故意出错")
     # FastAPI 会捕获并记入日志，但你无法控制重试逻辑
-    # 异常被 Starlette 内部捕获，只打日志，不做其他处理
+    # 异常被 Starlette 内部捕获，只打日志
 
 @app.post("/unsafe")
 def unsafe(background_tasks: BackgroundTasks):
@@ -2369,6 +3626,66 @@ async def register_async(
 - 用 \`asyncio.to_thread\` 把同步函数包装成异步
 - 异常处理（任务函数内部 \`try/except\`）
 
+### 渐进式 Demo 2：文件处理后台任务
+
+\`\`\`python filename="上传图片后异步生成缩略图"
+from fastapi import FastAPI, BackgroundTasks, UploadFile, File
+import shutil
+import os
+from PIL import Image  # pip install Pillow
+import logging
+
+app = FastAPI()
+logger = logging.getLogger("app")
+
+def generate_thumbnail(src_path: str, thumb_path: str, size: tuple = (128, 128)):
+    """生成缩略图（同步 CPU 密集任务）"""
+    try:
+        with Image.open(src_path) as img:
+            img.thumbnail(size)
+            img.save(thumb_path)
+        logger.info(f"缩略图已生成: {thumb_path}")
+    except Exception as e:
+        logger.error(f"缩略图生成失败: {e}")
+
+def cleanup_temp_file(filepath: str):
+    """清理临时文件"""
+    try:
+        if os.path.exists(filepath):
+            os.remove(filepath)
+            logger.info(f"已清理临时文件: {filepath}")
+    except Exception as e:
+        logger.error(f"清理失败: {e}")
+
+@app.post("/upload-image/")
+async def upload_image(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+    """上传图片，后台生成缩略图"""
+    # 1. 保存原图
+    upload_dir = "./uploads"
+    os.makedirs(upload_dir, exist_ok=True)
+    src_path = os.path.join(upload_dir, file.filename)
+    with open(src_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    # 2. 添加后台任务：生成缩略图
+    thumb_path = os.path.join(upload_dir, f"thumb_{file.filename}")
+    background_tasks.add_task(generate_thumbnail, src_path, thumb_path)
+
+    # 3. 可以添加多个后台任务
+    # 比如清理临时文件、写日志、推送通知等
+    background_tasks.add_task(
+        cleanup_temp_file,
+        os.path.join(upload_dir, f"temp_{file.filename}")
+    )
+
+    # 立刻返回响应，不等缩略图生成
+    return {
+        "filename": file.filename,
+        "message": "上传成功，缩略图生成中",
+        "thumbnail_url": f"/uploads/thumb_{file.filename}"
+    }
+\`\`\`
+
 ## 九、避坑指南
 
 1. **任务不能依赖请求资源**：db session、request 对象在响应后失效。任务要自己创建资源。
@@ -2387,13 +3704,166 @@ async def register_async(
 
 8. **测试时注意任务时序**：测试客户端返回响应后任务可能还没执行完，要 \`await\` 或加等待。
 
-## 十、小结
+## 十、动手实验
+
+### 实验 1：观察后台任务的执行时序
+
+\`\`\`python filename="实验：观察响应与后台任务的时序"
+from fastapi import FastAPI, BackgroundTasks
+from fastapi.testclient import TestClient
+import time
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("test")
+
+app = FastAPI()
+
+def background_task(task_name: str, delay: float):
+    """模拟后台任务"""
+    logger.info(f"[后台] {task_name} 开始")
+    time.sleep(delay)
+    logger.info(f"[后台] {task_name} 完成")
+
+@app.get("/demo")
+def demo(background_tasks: BackgroundTasks):
+    logger.info("[请求] 开始处理")
+    # 添加 3 个后台任务
+    background_tasks.add_task(background_task, "任务A", 1.0)
+    background_tasks.add_task(background_task, "任务B", 0.5)
+    background_tasks.add_task(background_task, "任务C", 0.3)
+    logger.info("[请求] 即将返回响应")
+    return {"message": "响应已返回"}
+
+# 用 TestClient 测试（同步客户端）
+client = TestClient(app)
+
+logger.info("=== 发起请求 ===")
+resp = client.get("/demo")
+logger.info(f"=== 收到响应: {resp.json()} ===")
+# 注意：此时后台任务可能还没执行完
+# TestClient 会等待后台任务完成才返回
+# 如果用真实 HTTP 客户端，响应会立刻返回
+
+# 观察日志时序：
+# [请求] 开始处理
+# [请求] 即将返回响应
+# [后台] 任务A 开始    ← 响应返回后才开始
+# [后台] 任务A 完成
+# [后台] 任务B 开始
+# [后台] 任务B 完成
+# [后台] 任务C 开始
+# [后台] 任务C 完成
+\`\`\`
+
+**实验目标**：理解响应返回和后台任务执行的时序关系。
+
+### 实验 2：对比串行和并发后台任务
+
+\`\`\`python filename="实验：串行 vs 并发后台任务"
+from fastapi import FastAPI, BackgroundTasks
+import asyncio
+import time
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("test")
+
+app = FastAPI()
+
+# 三个模拟任务
+async def task_a():
+    await asyncio.sleep(1)
+    logger.info("任务A 完成")
+
+async def task_b():
+    await asyncio.sleep(0.5)
+    logger.info("任务B 完成")
+
+async def task_c():
+    await asyncio.sleep(0.3)
+    logger.info("任务C 完成")
+
+# 接口 1：串行（BackgroundTasks 默认行为）
+@app.get("/serial")
+async def serial(background_tasks: BackgroundTasks):
+    start = time.time()
+    background_tasks.add_task(task_a)
+    background_tasks.add_task(task_b)
+    background_tasks.add_task(task_c)
+    # 后台任务串行执行，总耗时 = 1 + 0.5 + 0.3 = 1.8s
+    return {"mode": "serial"}
+
+# 接口 2：并发（在任务内部用 gather）
+@app.get("/concurrent")
+async def concurrent(background_tasks: BackgroundTasks):
+    async def run_all():
+        start = time.time()
+        await asyncio.gather(task_a(), task_b(), task_c())
+        # 并发执行，总耗时 = max(1, 0.5, 0.3) = 1.0s
+        logger.info(f"并发总耗时: {time.time()-start:.2f}s")
+    background_tasks.add_task(run_all)
+    return {"mode": "concurrent"}
+
+# 测试：
+# curl http://127.0.0.1:8000/serial   → 后台 1.8s 完成
+# curl http://127.0.0.1:8000/concurrent → 后台 1.0s 完成
+\`\`\`
+
+**实验目标**：理解 BackgroundTasks 默认串行执行的特性，学会用 \`asyncio.gather\` 在任务内部实现并发。
+
+### 实验 3：异常处理实验
+
+\`\`\`python filename="实验：后台任务异常处理"
+from fastapi import FastAPI, BackgroundTasks
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("test")
+
+app = FastAPI()
+
+# 任务 1：会失败但内部捕获
+def safe_failing_task():
+    try:
+        raise ValueError("故意出错")
+    except Exception as e:
+        logger.error(f"任务失败但已处理: {e}")
+        # 可以在这里写重试逻辑或写入死信队列
+
+# 任务 2：会失败且不捕获
+def unsafe_failing_task():
+    raise RuntimeError("未捕获的错误")
+
+@app.get("/test-safe")
+def test_safe(background_tasks: BackgroundTasks):
+    background_tasks.add_task(safe_failing_task)
+    background_tasks.add_task(lambda: logger.info("后续任务正常执行"))
+    return {"message": "安全任务已排队"}
+    # 响应正常返回
+    # 后台：第一个任务失败但被捕获，第二个任务正常执行
+
+@app.get("/test-unsafe")
+def test_unsafe(background_tasks: BackgroundTasks):
+    background_tasks.add_task(unsafe_failing_task)
+    background_tasks.add_task(lambda: logger.info("这个还会执行吗？"))
+    return {"message": "不安全任务已排队"}
+    # 响应正常返回
+    # 后台：第一个任务抛异常（FastAPI 记日志），第二个任务仍会执行
+    # 说明：一个任务失败不影响其他任务
+\`\`\`
+
+**实验目标**：理解后台任务异常的传播行为，学会正确的异常处理方式。
+
+## 十一、小结
 
 - **BackgroundTasks** 解决"响应后还要做事"的轻量场景
 - **\`background_tasks.add_task(func, args)\`** 添加任务，响应返回后串行执行
 - **同步任务**扔线程池，**异步任务**在事件循环跑
 - **任务必须自己处理异常**和资源管理
 - **关键业务用 Celery**，BackgroundTasks 适合小任务
+- **任务不能依赖请求级资源**，要自己创建 session/client
+- **要并发就在任务内部用 \`asyncio.gather\`**，不要依赖 BackgroundTasks 的并发
 
 异步编程这一批章节到此结束。回顾一下四个层次：
 1. **async/await 基础**：理解协程、事件循环、并发原语

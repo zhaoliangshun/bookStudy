@@ -25,6 +25,29 @@ export const chapters = [
 
 到目前为止，我们写的所有接口都建立在 **HTTP 协议** 上。HTTP 的核心模型是"请求—响应"：客户端主动发请求，服务器被动回响应，**一次交互结束，连接就关闭**。这个模型在传统的 Web 场景（看新闻、查订单、提交表单）里工作得很好，但有一类场景它处理起来非常别扭——**服务器需要主动给客户端推消息**。
 
+### 1.1 生活类比：打电话 vs 发短信
+
+理解 HTTP 和 WebSocket 的本质区别，最好的方式是想想我们日常的两种沟通方式：
+
+\`\`\`txt filename="生活类比：发短信 vs 打电话"
+📞 打电话 = WebSocket
+   - 双方接通后，线路一直保持
+   - 你说一句，对方立刻听到
+   - 对方也能随时插话，不需要你先说"完毕"
+   - 适合：聊天、讨论、商量事情（双向实时）
+
+✉️ 发短信 = HTTP
+   - 你发一条，对方收到一条
+   - 对方要回你，必须再发一条新的
+   - 你不知道对方什么时候回，只能等
+   - 每次通信都是"独立的一次操作"
+   - 适合：通知、查询、提交表单（一问一答）
+\`\`\`
+
+想象一下用"发短信"的方式打电话：你说一句"喂"，对方要等你说完，然后重新拨号给你回"哎"，再说一句"今天天气不错"——又得挂断重拨。这就是 HTTP 用于实时通信的尴尬。
+
+### 1.2 真实业务的痛点
+
 想象下面这些真实业务：
 
 - **聊天应用**：A 给 B 发了一条消息，服务器怎么让 B 的屏幕立刻弹出消息？HTTP 没法主动找 B，只能等 B 来问。
@@ -42,6 +65,22 @@ export const chapters = [
 客户端：有新消息吗？  服务器：没有
 ...（重复 1000 次）
 客户端：有新消息吗？  服务器：有！← 但消息其实 0.9 秒前就产生了
+\`\`\`
+
+### 1.3 生活类比：轮询就像不停刷邮箱
+
+\`\`\`txt filename="轮询的生活类比"
+你不停地打开邮箱看有没有新邮件：
+  - 9:00:00 打开 → 空的
+  - 9:00:01 打开 → 空的
+  - 9:00:02 打开 → 空的
+  - 9:00:03 打开 → 终于有邮件了！
+   但发件人 9:00:00.5 就发了，你晚了 2.5 秒才知道
+   
+而 WebSocket 就像邮递员直接敲门："有你的信！"
+   - 邮递员一直在门口等着（长连接）
+   - 信一来就立刻递给你（实时推送）
+   - 你还可以随时跟邮递员说话（双向）
 \`\`\`
 
 为了根治这个问题，**WebSocket** 协议应运而生。它专为"双向实时通信"而生，是这一批章节的主角。本章我们先从协议原理讲起，再一步步在 FastAPI 里把 WebSocket 跑起来。
@@ -98,6 +137,22 @@ Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
 
 握手完成后，**服务器可以随时主动给客户端推消息，不需要等客户端先发**。这是 WebSocket 与 HTTP 最本质的区别。在这条长连接上，客户端和服务器是对等的，双方都能在任意时刻发送帧。
 
+\`\`\`txt filename="全双工的生活类比"
+HTTP   = 对讲机：你说完了对方才能说（半双工）
+WebSocket = 电话：双方可以同时说话（全双工）
+
+HTTP 场景:
+  客户端: "我要数据"  → 服务器: "给你"
+  客户端: "再要一次"  → 服务器: "再给你"
+  （必须客户端发起）
+
+WebSocket 场景:
+  服务器: "新消息来了！"  （主动推）
+  客户端: "好的，我看一下"  （随时回）
+  服务器: "又来一条！"     （继续推）
+  客户端: "知道了"        （随时回）
+\`\`\`
+
 ## 三、WebSocket vs HTTP：什么时候该用哪个
 
 理解了原理，我们用一张表把两者对比清楚，这是技术选型的基础：
@@ -135,9 +190,11 @@ FastAPI（基于 Starlette）用 \`@app.websocket()\` 装饰器定义 WebSocket 
 
 \`\`\`python filename="demo1: 最简 WebSocket"
 # 从 fastapi 模块导入 FastAPI 应用类和 WebSocket 类
+# FastAPI 是应用入口，WebSocket 是连接对象，两者都是核心
 from fastapi import FastAPI, WebSocket
 
 # 创建 FastAPI 应用实例，这是所有路由的容器
+# app 对象会管理所有 HTTP/WS 路由、中间件、事件
 app = FastAPI()
 
 # 用 @app.websocket 装饰器注册一个 WebSocket 路由，路径是 /ws
@@ -184,6 +241,116 @@ ws.client                     客户端地址信息    含 host/port
 \`\`\`
 
 > 所有方法都是 \`async\`，必须 \`await\`。WebSocket 是异步协议，基于事件循环，绝不能写成同步调用。
+
+### 4.3 渐进式 Demo：连接状态查询
+
+下面这个 demo 演示如何查询连接状态，帮助理解 WebSocket 的生命周期：
+
+\`\`\`python filename="demo1b: 连接状态查询"
+# 从 fastapi 导入必要对象
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+# 导入 WebSocketState 枚举，用于判断连接状态
+from starlette.websockets import WebSocketState
+
+# 创建应用
+app = FastAPI()
+
+# 注册 WebSocket 路由
+@app.websocket("/ws/state")
+async def ws_state(ws: WebSocket):
+    # 打印握手前的状态
+    # CONNECTING 表示正在握手，还没 accept
+    print(f"握手前状态: {ws.client_state}")  # WebSocketState.CONNECTING
+    
+    # 接受握手
+    await ws.accept()
+    
+    # 打印握手后的状态
+    # CONNECTED 表示握手完成，可以收发消息
+    print(f"握手后状态: {ws.client_state}")  # WebSocketState.CONNECTED
+    
+    # 打印客户端地址信息
+    # ws.client 含 host/port，可用于风控、日志
+    print(f"客户端地址: {ws.client.host}:{ws.client.port}")
+    
+    try:
+        while True:
+            data = await ws.receive_text()
+            # 每次收到消息都检查状态
+            # 正常情况下应该一直是 CONNECTED
+            await ws.send_text(
+                f"收到 '{data}', 当前状态: {ws.client_state}"
+            )
+    except WebSocketDisconnect:
+        # 断开后状态会变成 DISCONNECTED
+        print(f"断开后状态: {ws.client_state}")  # WebSocketState.DISCONNECTED
+\`\`\`
+
+### 4.4 渐进式 Demo：发送不同类型数据
+
+WebSocket 不仅能发文本，还能发二进制和 JSON：
+
+\`\`\`python filename="demo1c: 多种数据类型收发"
+# 从 fastapi 导入必要对象
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+# 导入 json 用于手动序列化
+import json
+
+# 创建应用
+app = FastAPI()
+
+# 注册 WebSocket 路由
+@app.websocket("/ws/types")
+async def ws_types(ws: WebSocket):
+    # 接受握手
+    await ws.accept()
+    # 发送欢迎消息（文本）
+    await ws.send_text("欢迎！请选择类型：text/bytes/json")
+    
+    try:
+        while True:
+            # 接收文本消息
+            data = await ws.receive_text()
+            
+            # 根据客户端指令，发送不同类型的数据
+            if data == "text":
+                # 文本消息
+                await ws.send_text("这是一条文本消息")
+                
+            elif data == "bytes":
+                # 二进制消息（适合传输图片、文件）
+                # 注意：bytes 不能直接 send_text，要用 send_bytes
+                binary_data = b"\\x48\\x65\\x6c\\x6c\\x6f"  # "Hello" 的字节
+                await ws.send_bytes(binary_data)
+                
+            elif data == "json":
+                # JSON 消息（结构化数据）
+                # send_json 自动序列化 dict 为 JSON 字符串
+                await ws.send_json({
+                    "type": "greeting",
+                    "content": "你好",
+                    "code": 200,
+                    "data": ["apple", "banana", "cherry"]
+                })
+                
+            elif data == "multi":
+                # 演示连续发送多条消息
+                # WebSocket 允许在一个循环里发多条
+                for i in range(3):
+                    await ws.send_text(f"消息 {i+1}/3")
+                # 客户端会依次收到 3 条
+                await ws.send_text("发送完毕")
+                
+            else:
+                # 未知指令
+                await ws.send_text(
+                    f"未知指令: {data}, 可用: text/bytes/json/multi"
+                )
+                
+    except WebSocketDisconnect:
+        # 客户端断开
+        print("客户端断开")
+\`\`\`
 
 ## 五、异常处理与 WebSocketDisconnect
 
@@ -254,6 +421,49 @@ async def ws_endpoint(ws: WebSocket, client_id: str):
 | 4000-4999 | 应用自定义关闭码 | 应用自定义 |
 
 > **1006 最坑**：它代表"异常断开"，浏览器不会触发 \`onclose\` 的正常流程，服务端也未必能立刻感知。这就是为什么后面要讲**心跳机制**。
+
+### 5.3 渐进式 Demo：关闭码实战
+
+\`\`\`python filename="demo2b: 不同关闭码的演示"
+# 从 fastapi 导入必要对象
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+
+# 创建应用
+app = FastAPI()
+
+# 注册 WebSocket 路由
+@app.websocket("/ws/close/{code}")
+async def ws_close(ws: WebSocket, code: int):
+    """
+    根据路径参数 code 演示不同的关闭方式
+    测试: ws://localhost:8000/ws/close/1000
+    """
+    # 接受握手
+    await ws.accept()
+    # 发送说明
+    await ws.send_text(f"将用关闭码 {code} 关闭连接")
+    
+    try:
+        # 等待客户端发"关闭"指令
+        while True:
+            data = await ws.receive_text()
+            if data == "close":
+                # 根据指令关闭
+                # code=1000 正常关闭
+                # code=1001 端点离开
+                # code=1008 策略违反
+                # code=1011 服务器错误
+                # code=4000+ 自定义
+                await ws.close(
+                    code=code,
+                    reason=f"演示关闭码 {code}"
+                )
+                break
+            await ws.send_text(f"收到 '{data}', 发送 'close' 来关闭")
+    except WebSocketDisconnect:
+        # 客户端先断开了
+        print(f"客户端主动断开，未演示关闭码 {code}")
+\`\`\`
 
 ## 六、接收和发送 JSON 数据
 
@@ -379,9 +589,104 @@ WebSocket 在浏览器里有原生 API，不需要任何库：
 
 > **readyState 状态值**：0=CONNECTING（连接中）、1=OPEN（已连接）、2=CLOSING（关闭中）、3=CLOSED（已关闭）。发送前最好检查是否为 OPEN。
 
+### 6.3 渐进式 Demo：消息类型分发
+
+实际业务中，客户端会发不同类型的消息（聊天、指令、心跳等），服务端要按类型分发处理：
+
+\`\`\`python filename="demo3b: 消息类型分发"
+# 从 fastapi 导入必要对象
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+# 导入 datetime 用于时间戳
+from datetime import datetime
+
+# 创建应用
+app = FastAPI()
+
+# 工具函数：获取当前时间字符串
+def now():
+    return datetime.now().strftime("%H:%M:%S")
+
+# 注册 WebSocket 路由
+@app.websocket("/ws/dispatch/{user}")
+async def ws_dispatch(ws: WebSocket, user: str):
+    # 接受握手
+    await ws.accept()
+    # 发送欢迎消息
+    await ws.send_json({
+        "type": "welcome",
+        "content": f"欢迎 {user}",
+        "time": now()
+    })
+    
+    try:
+        while True:
+            # 接收 JSON
+            data = await ws.receive_json()
+            # 取消息类型
+            msg_type = data.get("type", "unknown")
+            
+            # 按类型分发处理
+            if msg_type == "chat":
+                # 聊天消息：回显
+                content = data.get("content", "")
+                await ws.send_json({
+                    "type": "chat_reply",
+                    "from": "server",
+                    "content": f"{user} 说: {content}",
+                    "time": now()
+                })
+                
+            elif msg_type == "ping":
+                # 心跳消息：回复 pong
+                await ws.send_json({
+                    "type": "pong",
+                    "time": now()
+                })
+                
+            elif msg_type == "command":
+                # 指令消息：执行指令
+                cmd = data.get("command")
+                if cmd == "time":
+                    await ws.send_json({
+                        "type": "command_result",
+                        "result": f"当前时间: {now()}",
+                        "time": now()
+                    })
+                elif cmd == "whoami":
+                    await ws.send_json({
+                        "type": "command_result",
+                        "result": f"你是 {user}",
+                        "time": now()
+                    })
+                else:
+                    await ws.send_json({
+                        "type": "error",
+                        "message": f"未知指令: {cmd}",
+                        "time": now()
+                    })
+                    
+            elif msg_type == "binary_request":
+                # 客户端请求二进制数据
+                # 演示 send_bytes
+                await ws.send_bytes(b"\\x01\\x02\\x03\\x04\\x05")
+                
+            else:
+                # 未知类型
+                await ws.send_json({
+                    "type": "error",
+                    "message": f"未知消息类型: {msg_type}",
+                    "time": now()
+                })
+                
+    except WebSocketDisconnect:
+        print(f"{user} 断开")
+\`\`\`
+
 ## 七、查询参数与认证
 
 WebSocket 路由也能接收查询参数，常用于传 token（因为浏览器 WebSocket API 不能自定义请求头）：
+
+### 7.1 基础鉴权 Demo
 
 \`\`\`python filename="demo5: 带查询参数的 WebSocket"
 # 导入必要模块：FastAPI 应用、WebSocket 对象、WebSocketDisconnect 异常、Query 查询参数
@@ -425,6 +730,186 @@ async def ws_with_auth(ws: WebSocket, token: str = Query(None)):
 \`\`\`
 
 前端连接时把 token 拼在 URL 里：\`new WebSocket("ws://localhost:8000/ws?token=abc123")\`。
+
+### 7.2 渐进式 Demo：JWT 鉴权 WebSocket
+
+生产环境推荐用 JWT，下面是完整实现：
+
+\`\`\`python filename="demo5b: JWT 鉴权 WebSocket"
+# 从 fastapi 导入必要对象
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, HTTPException
+# 导入 jose 的 jwt 模块（需要 pip install python-jose[cryptography]）
+from jose import jwt, JWTError
+# 导入 datetime 用于 token 过期时间
+from datetime import datetime, timedelta
+
+# 创建应用
+app = FastAPI()
+
+# JWT 密钥（生产环境必须从环境变量读取，绝不硬编码）
+SECRET_KEY = "my-secret-key-change-in-production"
+ALGORITHM = "HS256"
+
+# 创建 JWT token 的函数
+def create_token(user: str) -> str:
+    """为指定用户生成 JWT token"""
+    # 构造 payload
+    payload = {
+        "sub": user,                          # subject: 用户标识
+        "exp": datetime.utcnow() + timedelta(hours=1)  # 过期时间：1小时后
+    }
+    # 编码生成 token
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+# 验证 JWT token 的函数
+def verify_token(token: str) -> str:
+    """
+    验证 token，返回用户名
+    验证失败抛 HTTPException
+    """
+    try:
+        # 解码 token
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        # 取出用户名
+        user = payload.get("sub")
+        if user is None:
+            raise HTTPException(status_code=401, detail="无效 token")
+        return user
+    except JWTError:
+        # 解码失败（签名错误、过期等）
+        raise HTTPException(status_code=401, detail="token 验证失败")
+
+# HTTP 接口：登录获取 token
+@app.get("/login/{user}")
+async def login(user: str):
+    """登录接口，返回 JWT token"""
+    token = create_token(user)
+    return {"token": token, "user": user}
+
+# WebSocket 端点：用 JWT 鉴权
+@app.websocket("/ws/jwt")
+async def ws_jwt(ws: WebSocket, token: str = Query(...)):
+    """
+    JWT 鉴权的 WebSocket
+    客户端连接: ws://localhost:8000/ws/jwt?token=xxx
+    """
+    # 验证 token
+    try:
+        user = verify_token(token)
+    except HTTPException:
+        # 验证失败，拒绝连接
+        # code=1008 表示策略违反
+        await ws.close(code=1008, reason="token 无效或过期")
+        return
+    
+    # 验证通过，接受握手
+    await ws.accept()
+    # 发送欢迎消息
+    await ws.send_json({
+        "type": "welcome",
+        "user": user,
+        "content": f"欢迎 {user}, 你已通过 JWT 鉴权"
+    })
+    
+    try:
+        while True:
+            # 接收消息
+            data = await ws.receive_json()
+            # 处理消息
+            await ws.send_json({
+                "type": "reply",
+                "to": user,
+                "content": f"收到: {data.get('content', '')}",
+                "time": datetime.now().isoformat()
+            })
+    except WebSocketDisconnect:
+        print(f"用户 {user} 断开")
+
+# 测试流程:
+# 1. 浏览器访问 http://localhost:8000/login/alice 获取 token
+# 2. 用 token 连接: new WebSocket("ws://localhost:8000/ws/jwt?token=xxx")
+\`\`\`
+
+### 7.3 渐进式 Demo：基于 Cookie 的鉴权
+
+有些场景下，Cookie 比 token 更合适（如已登录的用户连接 WebSocket）：
+
+\`\`\`python filename="demo5c: Cookie 鉴权 WebSocket"
+# 从 fastapi 导入必要对象
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Response
+# 导入 secrets 用于生成 session id
+import secrets
+
+# 创建应用
+app = FastAPI()
+
+# 模拟 session 存储
+# session_id -> user 的映射
+sessions = {}
+
+# HTTP 接口：登录，设置 Cookie
+@app.post("/login/{user}")
+async def login_with_cookie(user: str, response: Response):
+    """登录，设置 session cookie"""
+    # 生成随机 session id
+    session_id = secrets.token_urlsafe(32)
+    # 存储 session
+    sessions[session_id] = user
+    # 设置 cookie
+    # httponly=True 防止 JS 读取，防止 XSS 偷取
+    # samesite="lax" 防止 CSRF
+    response.set_cookie(
+        key="session_id",
+        value=session_id,
+        httponly=True,
+        samesite="lax",
+        max_age=3600  # 1小时过期
+    )
+    return {"message": f"登录成功, 欢迎 {user}"}
+
+# WebSocket 端点：从 Cookie 鉴权
+@app.websocket("/ws/cookie")
+async def ws_cookie(ws: WebSocket):
+    """
+    基于 Cookie 的 WebSocket 鉴权
+    浏览器会自动带上同域的 Cookie
+    """
+    # 从请求头取 Cookie
+    # WebSocket 的请求头里也带 Cookie（和 HTTP 一样）
+    cookies = ws.headers.get("cookie", "")
+    
+    # 解析 cookie 字符串
+    # 格式: "session_id=xxx; other=yyy"
+    session_id = None
+    for cookie in cookies.split(";"):
+        cookie = cookie.strip()
+        if cookie.startswith("session_id="):
+            session_id = cookie[len("session_id="):]
+            break
+    
+    # 验证 session
+    if not session_id or session_id not in sessions:
+        # 鉴权失败
+        await ws.close(code=1008, reason="未登录或 session 失效")
+        return
+    
+    # 取用户名
+    user = sessions[session_id]
+    
+    # 接受握手
+    await ws.accept()
+    await ws.send_text(f"欢迎 {user}, 你已通过 Cookie 鉴权")
+    
+    try:
+        while True:
+            data = await ws.receive_text()
+            await ws.send_text(f"[{user}] {data}")
+    except WebSocketDisconnect:
+        print(f"{user} 断开")
+
+# 注意：Cookie 鉴权要求前端和后端同域
+# 跨域时 Cookie 不会自动发送，要配置 CORS allow_credentials=True
+\`\`\`
 
 ## 八、实战：Echo 回声服务器
 
@@ -485,6 +970,104 @@ async def echo(ws: WebSocket):
 # 测试: 浏览器打开 demo4 的 HTML，把 URL 改成 ws://localhost:8000/echo
 \`\`\`
 
+### 8.1 渐进式 Demo：带命令的 Echo 服务器
+
+增强版 Echo，支持命令解析：
+
+\`\`\`python filename="demo6b: 带命令的 Echo"
+# 从 fastapi 导入必要对象
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+# 导入 datetime 用于时间戳
+from datetime import datetime
+
+# 创建应用
+app = FastAPI()
+
+# 工具函数
+def now():
+    return datetime.now().strftime("%H:%M:%S")
+
+# 增强版 Echo 端点
+@app.websocket("/echo2")
+async def echo_advanced(ws: WebSocket):
+    """
+    支持命令的 Echo 服务器
+    命令:
+      /time   - 显示当前时间
+      /upper  - 后续消息转大写
+      /lower  - 后续消息转小写
+      /count  - 显示已收消息数
+      /quit   - 退出
+      其他    - 原样回显
+    """
+    await ws.accept()
+    await ws.send_text(f"已连接, 当前时间 {now()}")
+    
+    # 状态变量
+    received_count = 0       # 收到消息数
+    transform_mode = "normal"  # 转换模式: normal/upper/lower
+    
+    try:
+        while True:
+            data = await ws.receive_text()
+            received_count += 1
+            
+            # 解析命令
+            if data.startswith("/"):
+                cmd = data.lower()
+                
+                if cmd == "/time":
+                    # 显示时间
+                    await ws.send_text(f"当前时间: {now()}")
+                    
+                elif cmd == "/upper":
+                    # 切换大写模式
+                    transform_mode = "upper"
+                    await ws.send_text("已切换到大写模式")
+                    
+                elif cmd == "/lower":
+                    # 切换小写模式
+                    transform_mode = "lower"
+                    await ws.send_text("已切换到小写模式")
+                    
+                elif cmd == "/normal":
+                    # 切换普通模式
+                    transform_mode = "normal"
+                    await ws.send_text("已切换到普通模式")
+                    
+                elif cmd == "/count":
+                    # 显示消息数
+                    await ws.send_text(f"已收到 {received_count} 条消息")
+                    
+                elif cmd == "/help":
+                    # 显示帮助
+                    await ws.send_text(
+                        "命令: /time /upper /lower /normal /count /help /quit"
+                    )
+                    
+                elif cmd == "/quit":
+                    # 退出
+                    await ws.send_text(f"再见, 共 {received_count} 条")
+                    await ws.close(code=1000, reason="用户退出")
+                    break
+                    
+                else:
+                    await ws.send_text(f"未知命令: {data}, 输入 /help 查看帮助")
+            else:
+                # 普通消息：根据模式转换
+                if transform_mode == "upper":
+                    reply = data.upper()
+                elif transform_mode == "lower":
+                    reply = data.lower()
+                else:
+                    reply = data
+                # 回显
+                await ws.send_text(f"#{received_count} [{now()}] {reply}")
+                
+    except WebSocketDisconnect:
+        print(f"客户端断开, 共 {received_count} 条")
+\`\`\`
+
 ## 九、用 Python 客户端测试 WebSocket
 
 开发时不用每次都开浏览器，可以用 \`websockets\` 库写 Python 客户端测试：
@@ -529,7 +1112,78 @@ asyncio.run(main())
 # 告别: 再见！共收到 4 条
 \`\`\`
 
+### 9.1 渐进式 Demo：交互式 Python 客户端
+
+下面这个客户端支持从命令行输入消息，实时交互：
+
+\`\`\`python filename="demo7b: 交互式 Python 客户端"
+# 需要: pip install websockets asyncio
+# 这是一个交互式 WebSocket 客户端
+# 用户输入消息，服务端回复，循环交互
+import websockets
+import asyncio
+
+# 服务器地址
+WS_URL = "ws://localhost:8000/echo2"
+
+# 异步主函数
+async def interactive_client():
+    """
+    交互式 WebSocket 客户端
+    - 从 stdin 读取用户输入
+    - 发送到服务器
+    - 接收并打印回复
+    - 同时监听服务器主动推送的消息
+    """
+    # 连接服务器
+    async with websockets.connect(WS_URL) as ws:
+        print(f"已连接 {WS_URL}, 输入消息（quit 退出）")
+        
+        # 启动两个并发任务
+        # 一个负责接收，一个负责发送
+        await asyncio.gather(
+            receiver(ws),  # 接收任务
+            sender(ws)     # 发送任务
+        )
+
+# 接收任务
+async def receiver(ws):
+    """持续接收服务器消息"""
+    try:
+        while True:
+            # 阻塞等待消息
+            msg = await ws.recv()
+            print(f"< {msg}")
+    except websockets.ConnectionClosed:
+        print("连接已关闭")
+
+# 发送任务
+async def sender(ws):
+    """持续从 stdin 读取并发送"""
+    # 用 run_in_executor 把同步的 input 包装成异步
+    loop = asyncio.get_event_loop()
+    try:
+        while True:
+            # 异步读取用户输入
+            # input() 是阻塞的，要放到 executor 里
+            user_input = await loop.run_in_executor(None, input, "> ")
+            # 发送
+            await ws.send(user_input)
+            # 如果是 quit，退出
+            if user_input.lower() == "quit":
+                break
+    except EOFError:
+        # Ctrl+D
+        pass
+
+# 运行
+if __name__ == "__main__":
+    asyncio.run(interactive_client())
+\`\`\`
+
 ## 十、常见错误与避坑指南
+
+### 10.1 核心错误清单
 
 1. **忘了调 \`accept()\`**：客户端连接后一直挂起，浏览器 \`onopen\` 不触发。**所有 WebSocket 端点第一行必须是 \`await ws.accept()\`**。
 2. **没捕获 \`WebSocketDisconnect\`**：客户端一断开，服务端日志刷一堆异常栈。**消息循环必须 try/except WebSocketDisconnect**。
@@ -547,14 +1201,150 @@ asyncio.run(main())
 9. **连接泄漏**：异常没处理好，连接没关，越积越多。**finally 块里检查状态并 close**。
 10. **用 \`ws.send\` 不 await**：\`ws.send_text(...)\` 是协程，不 await 不会真正发送。**所有 send/receive 都要 await**。
 
-## 十一、本章小结
+### 10.2 渐进式 Demo：调试断连问题
+
+下面这个 demo 演示如何调试客户端"莫名断开"的问题：
+
+\`\`\`python filename="demo8: 断连调试"
+# 从 fastapi 导入必要对象
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+# 导入 traceback 用于打印完整异常栈
+import traceback
+# 导入 time 用于时间戳
+from datetime import datetime
+
+# 创建应用
+app = FastAPI()
+
+# 调试用 WebSocket 端点
+@app.websocket("/ws/debug")
+async def ws_debug(ws: WebSocket):
+    """
+    详细记录连接生命周期的调试端点
+    适合排查"莫名断开"问题
+    """
+    # 记录连接建立时间
+    connect_time = datetime.now()
+    print(f"[{connect_time}] 收到连接请求")
+    print(f"  client: {ws.client}")
+    print(f"  headers: {dict(ws.headers)}")
+    print(f"  query_params: {dict(ws.query_params)}")
+    print(f"  path_params: {dict(ws.path_params)}")
+    
+    # 接受握手
+    await ws.accept()
+    accept_time = datetime.now()
+    print(f"[{accept_time}] 握手完成, 耗时 {(accept_time-connect_time).total_seconds()*1000:.0f}ms")
+    
+    # 消息计数
+    msg_count = 0
+    
+    try:
+        while True:
+            # 接收消息
+            data = await ws.receive_text()
+            msg_count += 1
+            recv_time = datetime.now()
+            print(f"[{recv_time}] 收到消息 #{msg_count}: {data!r}")
+            
+            # 回复
+            await ws.send_text(f"ack #{msg_count}")
+            
+    except WebSocketDisconnect as e:
+        # 客户端正常断开
+        disconnect_time = datetime.now()
+        duration = (disconnect_time - connect_time).total_seconds()
+        print(f"[{disconnect_time}] 客户端断开")
+        print(f"  code: {e.code}")
+        print(f"  reason: {e.reason}")
+        print(f"  持续时间: {duration:.1f}s")
+        print(f"  消息数: {msg_count}")
+        
+    except Exception as e:
+        # 异常断开
+        error_time = datetime.now()
+        print(f"[{error_time}] 异常断开")
+        print(f"  异常类型: {type(e).__name__}")
+        print(f"  异常信息: {e}")
+        print(f"  完整栈:")
+        traceback.print_exc()
+        
+    finally:
+        print(f"--- 连接结束 ---")
+\`\`\`
+
+## 十一、动手实验
+
+### 实验 1：消息计数器
+
+**目标**：实现一个 WebSocket 端点，统计每个客户端发送的消息数，超过 10 条后主动断开。
+
+\`\`\`python filename="实验1: 消息计数器参考答案"
+# 从 fastapi 导入必要对象
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+
+# 创建应用
+app = FastAPI()
+
+# 最大消息数限制
+MAX_MESSAGES = 10
+
+@app.websocket("/ws/limited")
+async def ws_limited(ws: WebSocket):
+    """限制每个客户端最多发 10 条消息"""
+    await ws.accept()
+    await ws.send_text(f"已连接, 最多可发 {MAX_MESSAGES} 条消息")
+    
+    msg_count = 0
+    try:
+        while True:
+            data = await ws.receive_text()
+            msg_count += 1
+            remaining = MAX_MESSAGES - msg_count
+            
+            await ws.send_text(
+                f"#{msg_count} 收到 '{data}', 剩余 {remaining} 条"
+            )
+            
+            # 达到上限
+            if msg_count >= MAX_MESSAGES:
+                await ws.send_text("已达上限, 关闭连接")
+                await ws.close(code=1000, reason="达到消息上限")
+                break
+                
+    except WebSocketDisconnect:
+        print("客户端断开")
+\`\`\`
+
+### 实验 2：大写转换器
+
+**目标**：实现一个 WebSocket，把客户端发的所有文本转大写后返回，支持 \`/lower\` 和 \`/upper\` 切换模式。
+
+提示：
+- 维护一个 \`mode\` 变量
+- 收到 \`/lower\` 时设为 \`"lower"\`
+- 收到 \`/upper\` 时设为 \`"upper"\`
+- 其他消息根据 \`mode\` 转换
+
+参考答案见 demo6b。
+
+### 实验 3：简单的 JSON 协议
+
+**目标**：实现一个 WebSocket，要求客户端发 JSON 格式消息，服务端按 \`type\` 字段处理：
+- \`type: "greet"\` → 回复 \`{"type": "greeting", "message": "你好"}\`
+- \`type: "time"\` → 回复 \`{"type": "time", "time": "12:00:00"}\`
+- \`type: "echo"\` → 回复 \`{"type": "echo", "content": "原内容"}\`
+
+参考答案见 demo3b。
+
+## 十二、本章小结
 
 - HTTP 是"请求—响应"单向模型，**服务器无法主动推消息**，实时场景要用 WebSocket 或 SSE。
 - WebSocket 通过 HTTP 握手升级到 101，之后在长连接上用帧进行**全双工**通信。
 - FastAPI 用 \`@app.websocket()\` 定义路由，\`WebSocket\` 对象提供 \`accept/receive_*/send_*/close\` 方法，**全部 async**。
 - 客户端断开会抛 \`WebSocketDisconnect\`，**必须捕获**，并在 finally 里收尾。
 - \`receive_json/send_json\` 让收发结构化数据更方便，前端用原生 \`WebSocket\` API。
-- 鉴权通常用查询参数传 token（浏览器 WebSocket 不能自定义头）。
+- 鉴权通常用查询参数传 token（浏览器 WebSocket 不能自定义头），也可以用 Cookie。
 - 多 worker 部署需要 Redis Pub/Sub 做跨进程通信，这是下一章的重点。
 
 下一章我们解决"如何管理多个并发连接、如何广播消息"，做一个真正的实时聊天室。
@@ -576,6 +1366,25 @@ asyncio.run(main())
 ## 一、开篇：从单连接到多连接的难题
 
 上一章我们写的 WebSocket 端点只能服务"一个连接和自己玩"——客户端发什么，服务器回什么。但真实场景里，聊天室是**多人**的：A 发一条消息，B、C、D 都要收到。这就要求服务器**把一条消息推给所有当前在线的连接**，这叫**广播（Broadcast）**。
+
+### 1.1 生活类比：广播站 vs 一对一电话
+
+\`\`\`txt filename="生活类比：广播 vs 一对一"
+📞 一对一电话 = 单连接 WebSocket
+   - 你和对方两人通话
+   - 你说一句，对方回一句
+   - 其他人听不到
+
+📻 广播站 = 广播 WebSocket
+   - 主持人（发送者）说一句话
+   - 所有正在收听的人（在线连接）同时听到
+   - 听众也可以打电话进来发言（消息广播给所有人）
+
+🏫 教室上课 = 房间广播（下一章）
+   - 不同的教室互不干扰
+   - 1 号教室的老师说话，只有 1 号的学生听到
+   - 2 号教室听不到
+\`\`\`
 
 广播的核心难题是**连接管理**：
 - 谁连进来了？要维护一个"活跃连接列表"。
@@ -614,6 +1423,20 @@ manager.disconnect(ws) → 从列表移除
 \`\`\`
 
 每一步都要可靠：连入要记录，断开要清理，广播要跳过已断开的。
+
+### 2.3 生活类比：会议签到表
+
+\`\`\`txt filename="连接管理就像会议签到"
+想象你组织一个会议:
+  - 入场时: 在签到表上写下名字 (connect)
+  - 会议中: 主持人说一句话，所有人都能听到 (broadcast)
+  - 离场时: 在签到表上划掉名字 (disconnect)
+  - 私聊: 只对某一个人说话 (send_personal)
+
+如果有人偷偷溜走没划名字:
+  - 主持人继续给他发资料 → 失败（连接已断）
+  - 这就是为什么需要"心跳检测"——确认人还在
+\`\`\`
 
 ## 三、设计 ConnectionManager
 
@@ -726,6 +1549,124 @@ async def chat(ws: WebSocket, client_id: str):
     except:
       pass                       ← 跳过，继续给第6个发
   ← 不容错的话，第5个失败就抛出，6/7/8 全收不到
+\`\`\`
+
+### 3.3 渐进式 Demo：带用户名的连接管理
+
+下面这个 demo 演示如何记录用户名，方便私信和查询：
+
+\`\`\`python filename="demo1b: 带用户名的管理器"
+# 从 fastapi 导入必要对象
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+# 导入 Dict 用于类型注解
+from typing import Dict
+
+# 创建应用
+app = FastAPI()
+
+# 增强版管理器：记录用户名
+class NamedConnectionManager:
+    """带用户名映射的连接管理器"""
+    
+    def __init__(self):
+        # 连接列表
+        self.connections = []
+        # ws → user 的映射
+        # 通过 ws 反查用户名，不用遍历
+        self.ws_user: Dict[WebSocket, str] = {}
+    
+    async def connect(self, ws: WebSocket, user: str):
+        """接受连接并记录用户名"""
+        await ws.accept()
+        self.connections.append(ws)
+        # 记录映射
+        self.ws_user[ws] = user
+        print(f"[{user}] 连接, 在线 {len(self.connections)} 人")
+    
+    def disconnect(self, ws: WebSocket):
+        """断开连接，返回用户名"""
+        if ws in self.connections:
+            self.connections.remove(ws)
+        # 取出用户名
+        user = self.ws_user.pop(ws, "未知")
+        print(f"[{user}] 断开, 在线 {len(self.connections)} 人")
+        return user
+    
+    async def broadcast(self, message: str, exclude: WebSocket = None):
+        """
+        广播给所有人
+        exclude: 排除的连接（比如发送者自己）
+        """
+        for ws in list(self.connections):
+            # 跳过指定的连接
+            if exclude and ws == exclude:
+                continue
+            try:
+                await ws.send_text(message)
+            except Exception:
+                # 发送失败，清理
+                self.disconnect(ws)
+    
+    async def send_to_user(self, user: str, message: str) -> bool:
+        """
+        给指定用户名的连接发消息
+        返回是否发送成功
+        """
+        # 找到该用户的所有连接
+        for ws, name in list(self.ws_user.items()):
+            if name == user:
+                try:
+                    await ws.send_text(message)
+                    return True
+                except Exception:
+                    self.disconnect(ws)
+        return False
+    
+    def get_online_users(self):
+        """获取在线用户列表"""
+        return list(self.ws_user.values())
+
+# 全局管理器
+manager = NamedConnectionManager()
+
+@app.websocket("/ws/{user}")
+async def chat(ws: WebSocket, user: str):
+    # 连接
+    await manager.connect(ws, user)
+    # 广播加入
+    await manager.broadcast(f"系统: {user} 加入了")
+    try:
+        while True:
+            data = await ws.receive_text()
+            # 检查是否是私聊指令: /pm bob 你好
+            if data.startswith("/pm "):
+                # 解析私聊指令
+                parts = data[4:].split(" ", 1)
+                if len(parts) == 2:
+                    target, msg = parts
+                    # 给目标发私聊
+                    success = await manager.send_to_user(
+                        target, 
+                        f"[私聊] {user} → 你: {msg}"
+                    )
+                    if success:
+                        await ws.send_text(f"[私聊] 你 → {target}: {msg}")
+                    else:
+                        await ws.send_text(f"系统: {target} 不在线")
+                else:
+                    await ws.send_text("用法: /pm 用户名 消息")
+            else:
+                # 普通广播
+                await manager.broadcast(f"{user}: {data}")
+    except WebSocketDisconnect:
+        left = manager.disconnect(ws)
+        await manager.broadcast(f"系统: {left} 离开了")
+
+# HTTP 接口：查在线用户
+@app.get("/online")
+async def online():
+    users = manager.get_online_users()
+    return {"count": len(users), "users": users}
 \`\`\`
 
 ## 四、并发安全：asyncio.Lock 与连接表
@@ -864,9 +1805,24 @@ async def online():
 
 TCP 有个机制叫 keep-alive，但默认要 2 小时才检测到断连。对实时应用来说太慢了——用户手机切后台、Wi-Fi 闪断，服务器 2 小时都不知道，还以为他在线，给他转发的消息全丢了。
 
-解决方法是**应用层心跳**：服务器每隔 N 秒发一个 ping，客户端回 pong，超过几次没回就认为断开。WebSocket 协议内置了 ping/pong 帧支持，Starlette 也提供了 API。
+### 5.2 生活类比：心跳就像点名
 
-### 5.2 心跳实现思路
+\`\`\`txt filename="心跳的生活类比"
+想象你在课堂上:
+  - 老师每 30 秒点名一次（发 ping）
+  - 学生喊"到"（回 pong）
+  - 三次没回应 → 认为旷课（断开连接）
+  
+如果没有点名:
+  - 学生偷偷溜走，老师不知道
+  - 老师继续给他发资料 → 浪费（消息丢失）
+  - 名单越来越脏（死连接占资源）
+
+TCP 的 keep-alive = 学校一学期点名一次（2小时）
+应用层心跳 = 老师每 30 秒点名一次（实时感知）
+\`\`\`
+
+### 5.3 心跳实现思路
 
 \`\`\`txt filename="心跳策略"
 方案A：服务端定时 ping
@@ -884,7 +1840,7 @@ TCP 有个机制叫 keep-alive，但默认要 2 小时才检测到断连。对�
   - 超时没消息就认为死了，主动关闭
 \`\`\`
 
-### 5.3 用 wait_for 实现超时检测
+### 5.4 用 wait_for 实现超时检测
 
 \`\`\`python filename="demo3: 带超时的心跳检测"
 # 导入 FastAPI、WebSocket、WebSocketDisconnect
@@ -949,7 +1905,255 @@ async def ws_heartbeat(ws: WebSocket):
 
 > 这种"超时即踢"的策略简单有效。前端配合每 30 秒发一条心跳消息就能保活：\`setInterval(() => ws.send("ping"), 30000)\`。
 
-### 5.4 后台广播任务
+### 5.5 渐进式 Demo：完整的心跳管理器
+
+下面这个 demo 把心跳检测集成到 ConnectionManager 里，更接近生产环境：
+
+\`\`\`python filename="demo3b: 完整心跳管理器"
+# 从 fastapi 导入必要对象
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+# 导入 asyncio 用于 wait_for 和后台任务
+import asyncio
+# 从 typing 导入 Dict
+from typing import Dict
+# 导入 time 用于记录最后活跃时间
+import time
+
+# 创建应用
+app = FastAPI()
+
+# 带心跳的连接管理器
+class HeartbeatManager:
+    """集成心跳检测的连接管理器"""
+    
+    def __init__(self, timeout: int = 60):
+        # 连接列表
+        self.connections = []
+        # 连接→最后活跃时间的映射
+        self.last_active: Dict[WebSocket, float] = {}
+        # 心跳超时
+        self.timeout = timeout
+        # 锁
+        self.lock = asyncio.Lock()
+    
+    async def connect(self, ws: WebSocket):
+        """接受连接，记录活跃时间"""
+        await ws.accept()
+        async with self.lock:
+            self.connections.append(ws)
+            # 记录当前时间
+            self.last_active[ws] = time.time()
+    
+    async def disconnect(self, ws: WebSocket):
+        """断开连接"""
+        async with self.lock:
+            if ws in self.connections:
+                self.connections.remove(ws)
+            self.last_active.pop(ws, None)
+    
+    async def update_active(self, ws: WebSocket):
+        """更新连接的活跃时间"""
+        async with self.lock:
+            self.last_active[ws] = time.time()
+    
+    async def broadcast(self, message: str):
+        """广播消息"""
+        # 遍历副本
+        for ws in list(self.connections):
+            try:
+                await ws.send_text(message)
+            except Exception:
+                await self.disconnect(ws)
+    
+    async def cleanup_dead_connections(self):
+        """
+        后台任务：定期清理死连接
+        每 10 秒扫描一次，超过 timeout 没活跃的就关闭
+        """
+        while True:
+            await asyncio.sleep(10)
+            now = time.time()
+            # 找出超时的连接
+            dead = []
+            async with self.lock:
+                for ws, last in list(self.last_active.items()):
+                    if now - last > self.timeout:
+                        dead.append(ws)
+            # 关闭死连接
+            for ws in dead:
+                try:
+                    await ws.close(code=1001, reason="心跳超时")
+                    print(f"清理超时连接, 闲置 {now - self.last_active.get(ws, now):.0f}s")
+                except Exception:
+                    pass
+                await self.disconnect(ws)
+
+# 全局管理器
+manager = HeartbeatManager(timeout=60)
+
+# 启动时启动清理任务
+@app.on_event("startup")
+async def startup():
+    # 启动后台清理任务
+    # 用 create_task 调度到后台
+    asyncio.create_task(manager.cleanup_dead_connections())
+
+@app.websocket("/ws/hb")
+async def ws_heartbeat(ws: WebSocket):
+    """带心跳检测的 WebSocket"""
+    await manager.connect(ws)
+    await ws.send_text("已连接, 请每 30 秒发一条消息保活")
+    
+    try:
+        while True:
+            # 用 wait_for 设超时
+            try:
+                data = await asyncio.wait_for(
+                    ws.receive_text(),
+                    timeout=manager.timeout
+                )
+                # 收到消息，更新活跃时间
+                await manager.update_active(ws)
+                # 处理消息
+                if data == "ping":
+                    await ws.send_text("pong")
+                else:
+                    await ws.send_text(f"echo: {data}")
+                    # 同时广播给其他人
+                    await manager.broadcast(f"有人说了: {data}")
+            except asyncio.TimeoutError:
+                await ws.close(code=1001, reason="心跳超时")
+                break
+    except WebSocketDisconnect:
+        print("客户端断开")
+    finally:
+        await manager.disconnect(ws)
+\`\`\`
+
+### 5.6 渐进式 Demo：客户端断线重连
+
+断线重连是客户端的责任，下面是一个完整的 JS 重连实现：
+
+\`\`\`html filename="demo3c: 客户端断线重连"
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>断线重连</title></head>
+<body>
+  <div id="status" style="color:blue;"></div>
+  <div id="log"></div>
+  <script>
+    // 重连配置
+    const config = {
+      url: "ws://localhost:8000/ws/hb",
+      // 重连间隔（指数退避）
+      reconnectDelay: 1000,
+      maxReconnectDelay: 30000,
+      // 心跳间隔
+      heartbeatInterval: 30000
+    };
+    
+    // 状态变量
+    let ws = null;
+    let reconnectAttempts = 0;
+    let heartbeatTimer = null;
+    let shouldReconnect = true;  // 是否应该重连
+    
+    // 主连接函数
+    function connect() {
+      updateStatus("正在连接...");
+      ws = new WebSocket(config.url);
+      
+      // 连接成功
+      ws.onopen = function() {
+        reconnectAttempts = 0;
+        updateStatus("已连接");
+        // 启动心跳
+        startHeartbeat();
+      };
+      
+      // 收到消息
+      ws.onmessage = function(e) {
+        appendLog("收到: " + e.data);
+      };
+      
+      // 连接关闭
+      ws.onclose = function(e) {
+        stopHeartbeat();
+        updateStatus("已断开 (" + e.code + ")");
+        // 自动重连
+        if (shouldReconnect) {
+          scheduleReconnect();
+        }
+      };
+      
+      // 错误
+      ws.onerror = function() {
+        updateStatus("连接错误");
+      };
+    }
+    
+    // 调度重连
+    function scheduleReconnect() {
+      reconnectAttempts++;
+      // 指数退避：每次重连间隔翻倍
+      const delay = Math.min(
+        config.reconnectDelay * Math.pow(2, reconnectAttempts - 1),
+        config.maxReconnectDelay
+      );
+      updateStatus(\`第 \${reconnectAttempts} 次重连, \${delay/1000}秒后...\`);
+      appendLog(\`[\${new Date().toLocaleTimeString()}] 第 \${reconnectAttempts} 次重连\`);
+      
+      setTimeout(() => {
+        connect();
+      }, delay);
+    }
+    
+    // 启动心跳
+    function startHeartbeat() {
+      heartbeatTimer = setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send("ping");
+        }
+      }, config.heartbeatInterval);
+    }
+    
+    // 停止心跳
+    function stopHeartbeat() {
+      if (heartbeatTimer) {
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
+      }
+    }
+    
+    // 主动断开（不重连）
+    function disconnect() {
+      shouldReconnect = false;
+      stopHeartbeat();
+      if (ws) {
+        ws.close();
+      }
+    }
+    
+    // 更新状态
+    function updateStatus(text) {
+      document.getElementById("status").textContent = text;
+    }
+    
+    // 追加日志
+    function appendLog(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      document.getElementById("log").appendChild(div);
+    }
+    
+    // 启动
+    connect();
+  </script>
+</body>
+</html>
+\`\`\`
+
+### 5.7 后台广播任务
 
 有时需要"服务器主动推"——比如整点报时、新公告。可以用后台任务定时广播：
 
@@ -1223,6 +2427,147 @@ async def online():
 
 打开多个浏览器标签，输入不同名字连接，就能互相聊天了。
 
+### 6.3 渐进式 Demo：带心跳的聊天室
+
+把心跳检测集成到聊天室里：
+
+\`\`\`python filename="demo6b: 带心跳的聊天室"
+# 从 fastapi 导入必要对象
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+# 导入 asyncio
+import asyncio
+# 从 typing 导入 Dict, List
+from typing import Dict, List
+# 导入 datetime
+from datetime import datetime
+# 导入 time
+import time
+
+# 创建应用
+app = FastAPI(title="带心跳的聊天室")
+
+class HeartbeatChatManager:
+    """带心跳检测的聊天室管理器"""
+    
+    def __init__(self, heartbeat_timeout: int = 60):
+        self.connections: List[WebSocket] = []
+        self.users: Dict[WebSocket, str] = {}
+        # 最后活跃时间
+        self.last_active: Dict[WebSocket, float] = {}
+        self.lock = asyncio.Lock()
+        self.heartbeat_timeout = heartbeat_timeout
+    
+    async def connect(self, ws: WebSocket, user: str):
+        async with self.lock:
+            await ws.accept()
+            self.connections.append(ws)
+            self.users[ws] = user
+            self.last_active[ws] = time.time()
+        await self.broadcast_users()
+    
+    async def disconnect(self, ws: WebSocket):
+        async with self.lock:
+            if ws in self.connections:
+                self.connections.remove(ws)
+            user = self.users.pop(ws, "未知")
+            self.last_active.pop(ws, None)
+        await self.broadcast_users()
+        return user
+    
+    async def update_active(self, ws: WebSocket):
+        """更新活跃时间"""
+        async with self.lock:
+            self.last_active[ws] = time.time()
+    
+    async def broadcast_json(self, data: dict):
+        for ws in list(self.connections):
+            try:
+                await ws.send_json(data)
+            except Exception:
+                await self.disconnect(ws)
+    
+    async def broadcast_users(self):
+        async with self.lock:
+            user_list = list(self.users.values())
+        await self.broadcast_json({
+            "type": "users",
+            "users": user_list,
+            "count": len(user_list)
+        })
+    
+    async def cleanup_dead(self):
+        """后台清理死连接"""
+        while True:
+            await asyncio.sleep(15)
+            now = time.time()
+            dead = []
+            async with self.lock:
+                for ws, last in list(self.last_active.items()):
+                    if now - last > self.heartbeat_timeout:
+                        dead.append(ws)
+            for ws in dead:
+                try:
+                    await ws.close(code=1001, reason="心跳超时")
+                except Exception:
+                    pass
+                user = await self.disconnect(ws)
+                await self.broadcast_json({
+                    "type": "system",
+                    "content": f"{user} 因心跳超时被踢出",
+                    "time": datetime.now().strftime("%H:%M:%S")
+                })
+
+# 全局管理器
+manager = HeartbeatChatManager(heartbeat_timeout=60)
+
+# 启动清理任务
+@app.on_event("startup")
+async def startup():
+    asyncio.create_task(manager.cleanup_dead())
+
+@app.websocket("/chat/hb/{user}")
+async def chat_with_heartbeat(ws: WebSocket, user: str):
+    await manager.connect(ws, user)
+    await manager.broadcast_json({
+        "type": "system",
+        "content": f"{user} 加入了",
+        "time": datetime.now().strftime("%H:%M:%S")
+    })
+    
+    try:
+        while True:
+            # 用 wait_for 设超时
+            try:
+                data = await asyncio.wait_for(
+                    ws.receive_json(),
+                    timeout=manager.heartbeat_timeout
+                )
+                # 更新活跃时间
+                await manager.update_active(ws)
+                # 处理心跳
+                if data.get("type") == "ping":
+                    await ws.send_json({"type": "pong"})
+                else:
+                    # 普通消息
+                    content = data.get("content", "")
+                    await manager.broadcast_json({
+                        "type": "message",
+                        "from": user,
+                        "content": content,
+                        "time": datetime.now().strftime("%H:%M:%S")
+                    })
+            except asyncio.TimeoutError:
+                await ws.close(code=1001, reason="心跳超时")
+                break
+    except WebSocketDisconnect:
+        left = await manager.disconnect(ws)
+        await manager.broadcast_json({
+            "type": "system",
+            "content": f"{left} 离开了",
+            "time": datetime.now().strftime("%H:%M:%S")
+        })
+\`\`\`
+
 ## 七、多进程部署与 Redis Pub/Sub
 
 ### 7.1 单进程的局限
@@ -1236,7 +2581,19 @@ uvicorn 单进程跑没问题，但生产环境为了利用多核，通常 \`uvi
 ↑ A 发的消息，C/D/E 收不到
 \`\`\`
 
-### 7.2 用 Redis Pub/Sub 跨进程广播
+### 7.2 生活类比：多栋楼的广播
+
+\`\`\`txt filename="多进程就像多栋楼"
+单进程 = 一栋楼里的广播
+  - 大喇叭一喊，全楼都能听到
+
+多进程 = 多栋楼，每栋楼有自己的喇叭
+  - 1号楼喊，2号楼听不到
+  - 需要一个"中央广播站"统一推送
+  - 这个中央广播站就是 Redis
+\`\`\`
+
+### 7.3 用 Redis Pub/Sub 跨进程广播
 
 解法是用一个**中间件**（Redis）做消息分发：每个进程订阅 Redis 频道，要广播时发到 Redis，所有进程收到后各自推给自己的连接。
 
@@ -1252,7 +2609,7 @@ Redis 把消息推给所有订阅者（进程1/2/3）
 A/B/C/D/E 都收到
 \`\`\`
 
-### 7.3 Redis Pub/Sub 代码骨架
+### 7.4 Redis Pub/Sub 代码骨架
 
 \`\`\`python filename="demo7: Redis Pub/Sub 跨进程广播（骨架）"
 # 需要 pip install redis aioredis（或 redis>=4.2 自带 async）
@@ -1362,7 +2719,88 @@ async def ws_endpoint(ws: WebSocket):
 9. **用 \`manager.disconnect(ws)\` 但没 await**：改进版 disconnect 是 async 的，不 await 不会执行清理。
 10. **在线列表频繁广播**：每来一个人就广播全量列表，人多时消息风暴。**可以增量更新，或只在人数变化时广播**。
 
-## 九、本章小结
+## 九、动手实验
+
+### 实验 1：限制最大连接数
+
+**目标**：修改 ConnectionManager，限制最多 5 个并发连接，超过则拒绝。
+
+\`\`\`python filename="实验1: 限制连接数参考答案"
+# 从 fastapi 导入必要对象
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+
+# 创建应用
+app = FastAPI()
+
+class LimitedManager:
+    def __init__(self, max_connections: int = 5):
+        self.connections = []
+        self.max_connections = max_connections
+    
+    async def connect(self, ws: WebSocket) -> bool:
+        """连接，返回是否成功"""
+        # 检查是否超过上限
+        if len(self.connections) >= self.max_connections:
+            # 拒绝连接
+            # code=1008 策略违反
+            await ws.close(code=1008, reason="连接数已满")
+            return False
+        # 接受连接
+        await ws.accept()
+        self.connections.append(ws)
+        return True
+    
+    def disconnect(self, ws: WebSocket):
+        if ws in self.connections:
+            self.connections.remove(ws)
+    
+    async def broadcast(self, message: str, exclude=None):
+        for ws in list(self.connections):
+            if ws == exclude:
+                continue
+            try:
+                await ws.send_text(message)
+            except Exception:
+                self.disconnect(ws)
+
+manager = LimitedManager(max_connections=5)
+
+@app.websocket("/ws/limited")
+async def ws_limited(ws: WebSocket):
+    success = await manager.connect(ws)
+    if not success:
+        return
+    await ws.send_text(f"已连接, 当前 {len(manager.connections)} 人")
+    await manager.broadcast(f"有人加入, 当前 {len(manager.connections)} 人")
+    
+    try:
+        while True:
+            data = await ws.receive_text()
+            await manager.broadcast(f"{data}")
+    except WebSocketDisconnect:
+        manager.disconnect(ws)
+        await manager.broadcast(f"有人离开, 当前 {len(manager.connections)} 人")
+\`\`\`
+
+### 实验 2：消息历史记录
+
+**目标**：让聊天室保存最近 20 条消息，新连接进来时推送历史消息。
+
+提示：
+- 在 ChatManager 里加 \`self.history: List[dict] = []\`
+- 每次广播消息时存到 history，超过 20 条删最早的
+- 新连接进来后，先发历史消息
+
+### 实验 3：屏蔽词过滤
+
+**目标**：在广播前检查消息内容，如果包含屏蔽词则替换为 \`***\`。
+
+提示：
+- 维护一个屏蔽词列表
+- 在广播前遍历检查
+- 用 \`str.replace()\` 替换
+
+## 十、本章小结
 
 - 多人实时通信的核心是**连接管理 + 广播**，用 \`ConnectionManager\` 类封装职责。
 - \`connect/disconnect/broadcast\` 三件套，broadcast 必须**容错**（try/except）和**遍历副本**。
@@ -1398,6 +2836,25 @@ async def ws_endpoint(ws: WebSocket):
 
 这就引出**房间（Room）**的概念：把连接按"房间"分组，消息只在自己的房间内广播；再进一步，**私聊**就是"房间内只有两个人的特例"。
 
+### 1.1 生活类比：会议室 vs 大厅
+
+\`\`\`txt filename="生活类比：大厅 vs 会议室 vs 私聊"
+🏢 大厅广播 = 单一聊天室
+   - 所有人都在一个大空间
+   - 谁说话所有人都听到
+   - 适合：小群聊天、公告
+
+🚪 会议室 = 房间机制
+   - 不同会议在不同房间
+   - 1号会议室的人听不到2号会议室
+   - 适合：多话题、多团队
+
+💬 私聊角落 = 私聊
+   - 两个人单独说话
+   - 别人听不到
+   - 适合：一对一私密对话
+\`\`\`
+
 这一章我们设计 \`RoomManager\`，实现加入/离开房间、房间内广播、私聊、在线列表，最后做出一个多房间聊天系统。
 
 ## 二、房间的概念设计
@@ -1420,16 +2877,29 @@ user_connections: { "alice": {ws1, ws2}, "bob": {ws3} }
 room_users:       { "tech": {"alice","bob"}, "game": {"bob"} }
 user_rooms:       { "alice": {"tech"}, "bob": {"tech","game"} }
 
-→ 要给 tech 房间广播：
+ 要给 tech 房间广播：
     room_users["tech"] = {"alice","bob"}
     → 对 alice: 遍历 user_connections["alice"]={ws1,ws2} 都发
     → 对 bob:   遍历 user_connections["bob"]={ws3} 发
-→ 要查 alice 在哪些房间：直接 user_rooms["alice"]，O(1)
+ 要查 alice 在哪些房间：直接 user_rooms["alice"]，O(1)
 \`\`\`
 
 这种设计虽然数据冗余，但查询和广播都高效，是实时系统的常见权衡。
 
-### 2.2 消息类型设计
+### 2.2 生活类比：双向映射就像通讯录
+
+\`\`\`txt filename="双向映射的生活类比"
+想象你的手机通讯录:
+  - 按名字查号码: 张三 → 138xxxx (user → connections)
+  - 按号码查名字: 138xxxx → 张三 (connection → user)
+  - 按群查成员: "技术群" → [张三,李四,王五] (room → users)
+  - 按人查群: 张三 → [技术群,游戏群] (user → rooms)
+
+虽然信息有重复，但查询快
+  - 不用为了"张三在哪些群"而遍历所有群
+\`\`\`
+
+### 2.3 消息类型设计
 
 房间系统的消息要区分类型，前端才知道怎么渲染：
 
@@ -1694,6 +3164,107 @@ async def ws_endpoint(ws: WebSocket, user: str):
         await manager.unregister(user, ws)
 \`\`\`
 
+### 3.3 渐进式 Demo：最小化房间聊天
+
+下面是一个最简化的房间聊天，方便理解核心逻辑：
+
+\`\`\`python filename="demo2b: 最简房间聊天"
+# 从 fastapi 导入必要对象
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+# 从 typing 导入 Dict, Set
+from typing import Dict, Set
+# 导入 asyncio
+import asyncio
+
+# 创建应用
+app = FastAPI()
+
+# 最简化的房间管理器
+class SimpleRoomManager:
+    """简化版：房间→连接集合的直接映射"""
+    
+    def __init__(self):
+        # 房间 → 连接集合
+        # 不区分用户和连接，直接按连接管理
+        self.rooms: Dict[str, Set[WebSocket]] = {}
+        self.lock = asyncio.Lock()
+    
+    async def join(self, room: str, ws: WebSocket):
+        """加入房间"""
+        async with self.lock:
+            if room not in self.rooms:
+                self.rooms[room] = set()
+            self.rooms[room].add(ws)
+    
+    async def leave(self, room: str, ws: WebSocket):
+        """离开房间"""
+        async with self.lock:
+            if room in self.rooms:
+                self.rooms[room].discard(ws)
+                # 房间空了就删
+                if not self.rooms[room]:
+                    del self.rooms[room]
+    
+    async def broadcast(self, room: str, message: str, exclude: WebSocket = None):
+        """在房间内广播"""
+        async with self.lock:
+            # 取副本
+            members = list(self.rooms.get(room, set()))
+        # 遍历
+        for ws in members:
+            if ws == exclude:
+                continue
+            try:
+                await ws.send_text(message)
+            except Exception:
+                # 发送失败，从房间移除
+                await self.leave(room, ws)
+    
+    async def get_room_size(self, room: str) -> int:
+        """获取房间人数"""
+        async with self.lock:
+            return len(self.rooms.get(room, set()))
+
+# 全局管理器
+manager = SimpleRoomManager()
+
+@app.websocket("/ws/room/{room}/{user}")
+async def ws_room(ws: WebSocket, room: str, user: str):
+    # 接受握手
+    await ws.accept()
+    # 加入房间
+    await manager.join(room, ws)
+    
+    # 广播加入通知
+    await manager.broadcast(
+        room, 
+        f"系统: {user} 加入了房间 (当前 {await manager.get_room_size(room)} 人)"
+    )
+    
+    try:
+        while True:
+            data = await ws.receive_text()
+            # 广播消息（排除自己）
+            msg = f"{user}: {data}"
+            await manager.broadcast(room, msg, exclude=ws)
+            # 给自己回显
+            await ws.send_text(f"(我) {msg}")
+    except WebSocketDisconnect:
+        # 离开房间
+        await manager.leave(room, ws)
+        # 通知其他人
+        await manager.broadcast(
+            room, 
+            f"系统: {user} 离开了房间 (剩余 {await manager.get_room_size(room)} 人)"
+        )
+
+# 测试:
+# - 标签1: ws://localhost:8000/ws/room/tech/alice
+# - 标签2: ws://localhost:8000/ws/room/tech/bob
+# - 标签3: ws://localhost:8000/ws/room/game/carol
+# alice 和 bob 互相能收到, carol 收不到 (不同房间)
+\`\`\`
+
 ## 四、在线用户列表与房间列表
 
 ### 4.1 实时推送在线列表
@@ -1794,6 +3365,59 @@ async def ws_endpoint(ws: WebSocket, user: str):
                     "content": f"{user} 下线了"
                 })
                 await manager.broadcast_user_list(room)
+\`\`\`
+
+### 4.2 渐进式 Demo：HTTP 接口查询房间状态
+
+除了 WebSocket，也可以用 HTTP 接口查询房间状态，方便管理：
+
+\`\`\`python filename="demo3b: HTTP 房间查询接口"
+# 假设 RoomManager 已经定义（见 demo1）
+# 这里添加 HTTP 接口
+
+# HTTP 接口：查所有房间
+@app.get("/api/rooms")
+async def list_rooms():
+    """获取所有房间列表"""
+    rooms = await manager.get_all_rooms()
+    return {
+        "rooms": rooms,
+        "count": len(rooms)
+    }
+
+# HTTP 接口：查指定房间的用户
+@app.get("/api/rooms/{room}/users")
+async def room_users(room: str):
+    """获取指定房间的用户列表"""
+    users = await manager.get_room_users(room)
+    return {
+        "room": room,
+        "users": users,
+        "count": len(users)
+    }
+
+# HTTP 接口：房间统计
+@app.get("/api/rooms/stats")
+async def rooms_stats():
+    """获取房间统计信息"""
+    rooms = await manager.get_all_rooms()
+    stats = []
+    for room in rooms:
+        users = await manager.get_room_users(room)
+        stats.append({
+            "room": room,
+            "user_count": len(users),
+            "users": users
+        })
+    return {
+        "total_rooms": len(rooms),
+        "rooms": stats
+    }
+
+# 测试:
+# - curl http://localhost:8000/api/rooms
+# - curl http://localhost:8000/api/rooms/tech/users
+# - curl http://localhost:8000/api/rooms/stats
 \`\`\`
 
 ## 五、实战：多房间聊天系统
@@ -2268,7 +3892,35 @@ class RoomManager:
 9. **广播风暴**：1000 人的房间，每条消息要遍历 1000 个用户×N 个连接，事件循环卡住。**大房间用分片或 Redis Stream**。
 10. **\`user_rooms\` 和 \`room_users\` 不同步**：只更新了一边，导致数据不一致。**所有修改都在锁里、成对更新**。
 
-## 九、本章小结
+## 九、动手实验
+
+### 实验 1：房间消息历史
+
+**目标**：让每个房间保存最近 20 条消息，新加入的用户能看到历史。
+
+提示：
+- 在 RoomManager 里加 \`self.room_history: Dict[str, List[dict]] = {}\`
+- 每次广播 room_msg 时存到 history
+- 新用户 join 后，先发历史消息
+
+### 实验 2：房间密码
+
+**目标**：给房间加密码，加入时要验证密码。
+
+提示：
+- 加 \`self.room_passwords: Dict[str, str] = {}\`
+- 创建房间时设密码
+- join_room 时验证密码
+
+### 实验 3：禁言功能
+
+**目标**：管理员可以禁言某用户，被禁言的用户不能发消息但能看消息。
+
+提示：
+- 加 \`self.muted_users: Dict[str, Set[str]] = {}\`（房间→被禁言用户）
+- 处理 room_msg 时检查是否被禁言
+
+## 十、本章小结
 
 - 房间机制的核心是**分组广播**，用 \`room_users\` 和 \`user_rooms\` 双向映射高效查询。
 - 支持**多端登录**用 \`user_connections: Dict[user, Set[ws]]\`，一个用户可有多个连接。
@@ -2299,6 +3951,22 @@ class RoomManager:
 前三章我们深入了 WebSocket，它能双向通信，看起来"什么实时场景都能搞定"。但 WebSocket 也有代价：协议复杂、需要长连接管理、多进程部署要 Redis、Nginx 要特殊配置。有些场景其实**不需要这么重**——比如服务器单向推送通知、日志流、股票行情，客户端只需要"听"，不需要"说"。
 
 这种"服务器单向推送"场景，有一个更轻量的方案：**SSE（Server-Sent Events）**。它基于 HTTP，不需要协议升级，天然支持断线重连，浏览器有原生 API，部署也比 WebSocket 简单。
+
+### 1.1 生活类比：广播电台 vs 电话
+
+\`\`\`txt filename="生活类比：SSE vs WebSocket"
+📻 广播电台 = SSE
+   - 电台单向广播，听众只能听
+   - 听众想点歌？得打电话（另开 HTTP 请求）
+   - 信号断了自动调频重连
+   - 简单、便宜、覆盖广
+
+📞 电话 = WebSocket
+   - 双向对话，双方都能说
+   - 一直占线（长连接）
+   - 断了要手动重拨
+   - 复杂、贵、但互动性强
+\`\`\`
 
 这一章我们学 SSE 的原理、在 FastAPI 里用 \`StreamingResponse\` 实现、对比 SSE/WebSocket/轮询的选型，最后做一个"实时通知系统"——SSE 推通知 + WebSocket 聊天，把两种技术组合起来用。
 
@@ -2484,6 +4152,63 @@ async def sse():
 
 > \`EventSource\` 自动重连是它最大的优点——断线后浏览器会自动重试，开发者不用写重连逻辑。
 
+### 3.3 渐进式 Demo：自定义事件类型
+
+SSE 支持自定义事件类型，前端可以按类型分别监听：
+
+\`\`\`python filename="demo2b: 自定义事件类型"
+# 从 fastapi 导入必要对象
+from fastapi import FastAPI, StreamingResponse
+# 导入 asyncio
+import asyncio
+# 导入 datetime
+from datetime import datetime
+
+# 创建应用
+app = FastAPI()
+
+# 工具函数
+def now():
+    return datetime.now().strftime("%H:%M:%S")
+
+# SSE 生成器：发送不同类型的事件
+async def event_generator():
+    """发送多种类型的 SSE 事件"""
+    count = 0
+    while True:
+        await asyncio.sleep(2)
+        count += 1
+        
+        # 根据计数发送不同类型的事件
+        if count % 3 == 1:
+            # 普通消息（无 event 字段，走 onmessage）
+            yield f"data: 普通消息 #{count}\\n\\n"
+            
+        elif count % 3 == 2:
+            # 自定义事件: alert
+            # 前端用 source.addEventListener("alert", ...) 监听
+            yield f"event: alert\\ndata: 警告消息 #{count}\\n\\n"
+            
+        else:
+            # 自定义事件: update
+            # 前端用 source.addEventListener("update", ...) 监听
+            yield f"event: update\\ndata: {now()} 更新 #{count}\\n\\n"
+
+@app.get("/sse/events")
+async def sse_events():
+    """返回多种类型事件的 SSE 流"""
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    )
+
+# 前端监听方式:
+# source.addEventListener("alert", e => console.log("alert:", e.data))
+# source.addEventListener("update", e => console.log("update:", e.data))
+# source.onmessage = e => console.log("default:", e.data)
+\`\`\`
+
 ## 四、SSE 断线重连与消息续传
 
 ### 4.1 浏览器自动重连
@@ -2601,6 +4326,81 @@ async def sse():
     )
 \`\`\`
 
+### 4.4 渐进式 Demo：带心跳和续传的完整 SSE
+
+把心跳和续传结合起来：
+
+\`\`\`python filename="demo5b: 完整 SSE 实现"
+# 从 fastapi 导入必要对象
+from fastapi import FastAPI, StreamingResponse, Request
+# 导入 asyncio
+import asyncio
+# 导入 json
+import json
+# 导入 datetime
+from datetime import datetime
+
+# 创建应用
+app = FastAPI()
+
+# 模拟消息存储
+messages = []
+next_id = 0
+
+# 完整的 SSE 生成器
+async def sse_generator(last_id: int):
+    """带心跳和续传的 SSE 生成器"""
+    global next_id
+    
+    # 设置重连间隔
+    yield "retry: 3000\\n\\n"
+    
+    # 补发历史消息
+    for msg_id, content in messages:
+        if msg_id > last_id:
+            yield f"id: {msg_id}\\ndata: {json.dumps(content, ensure_ascii=False)}\\n\\n"
+    
+    # 持续推送
+    last_heartbeat = asyncio.get_event_loop().time()
+    while True:
+        # 检查是否有新消息
+        # 这里简化：每 3 秒生成一条
+        await asyncio.sleep(3)
+        
+        current_time = asyncio.get_event_loop().time()
+        # 每 15 秒发一次心跳
+        if current_time - last_heartbeat > 15:
+            yield ": heartbeat\\n\\n"
+            last_heartbeat = current_time
+            continue
+        
+        # 生成新消息
+        content = {
+            "type": "notification",
+            "content": f"消息 #{next_id}",
+            "time": datetime.now().strftime("%H:%M:%S")
+        }
+        messages.append((next_id, content))
+        # 推送
+        yield f"id: {next_id}\\ndata: {json.dumps(content, ensure_ascii=False)}\\n\\n"
+        next_id += 1
+        last_heartbeat = current_time
+
+@app.get("/sse/full")
+async def sse_full(request: Request):
+    """完整的 SSE 端点"""
+    last_id = int(request.headers.get("Last-Event-ID", "0"))
+    return StreamingResponse(
+        sse_generator(last_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+\`\`\`
+
 ## 五、SSE 推送结构化数据
 
 实际业务里要推 JSON，SSE 的 \`data:\` 可以放任意字符串：
@@ -2710,7 +4510,7 @@ SSE:
   带宽: 仅消息本身（~50字节）
   实时性: 毫秒级
 
-→ SSE 在"服务器推送"场景完胜轮询
+ SSE 在"服务器推送"场景完胜轮询
 \`\`\`
 
 ## 七、实战：实时通知系统（SSE + WebSocket）
@@ -2999,7 +4799,36 @@ WebSocket:
 9. **心跳间隔设太长**：代理 60 秒超时，你 90 秒才心跳，连接被关。**心跳 15-30 秒**。
 10. **跨域没配**：SSE 跨域要 CORS，\`EventSource\` 不支持 credentials 时带 Cookie。**配 CORS 允许 credentials**。
 
-## 十、本章小结
+## 十、动手实验
+
+### 实验 1：股票行情推送
+
+**目标**：用 SSE 模拟股票行情，每秒推送一次随机价格。
+
+提示：
+- 生成器里 \`await asyncio.sleep(1)\`
+- 随机生成价格 \`random.uniform(100, 200)\`
+- 推送 JSON 格式 \`{"symbol": "AAPL", "price": 150.5, "time": "..."}\`
+
+### 实验 2：日志流推送
+
+**目标**：用 SSE 推送服务器日志，客户端实时看到新日志。
+
+提示：
+- 维护一个日志队列 \`asyncio.Queue\`
+- 模拟日志生成器往队列塞消息
+- SSE 生成器从队列取消息推送
+
+### 实验 3：SSE + 私信系统
+
+**目标**：用户登录后通过 SSE 接收私信通知，点击通知后用 HTTP 查看私信内容。
+
+提示：
+- SSE 推送 \`{"type": "new_message", "from": "alice", "id": 123}\`
+- 前端收到后弹通知
+- 点击通知调用 \`GET /api/messages/123\` 获取内容
+
+## 十一、本章小结
 
 - SSE 是基于 HTTP 的**服务器单向推送**技术，用 \`text/event-stream\` 流式响应。
 - 消息格式固定：\`data: 内容\\n\\n\`，支持 \`event/id/retry\` 字段。

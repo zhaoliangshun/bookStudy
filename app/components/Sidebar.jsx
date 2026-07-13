@@ -123,6 +123,7 @@ const BOOK_CATEGORIES = [
       { path: "/aiapp", label: "AI 应用编程", icon: "🤖" },
       { path: "/aipy", label: "Python AI 开发", icon: "🐍" },
       { path: "/ai-agent", label: "AI Agent 开发", icon: "🤖" },
+      { path: "/aiagent-simple", label: "智能体入门", icon: "🤖" },
     ],
   },
   {
@@ -194,7 +195,7 @@ const BOOK_CATEGORIES = [
     books: [
       { path: "/future", label: "程序员出路指南", icon: "🧭" },
       { path: "/career", label: "职业发展", icon: "🛤️" },
-      { path: "/career40", label: "40岁下半场", icon: "🌅" },
+      { path: "/career40", label: "40岁前端出路", icon: "🧭" },
       { path: "/work", label: "职场生存", icon: "💼" },
       { path: "/comm", label: "沟通交流", icon: "💬" },
     ],
