@@ -617,6 +617,7 @@ from typing import List
 app = FastAPI()
 
 # 定义连接管理器类
+# 把连接的增删、广播、私信封装到一个类里，职责清晰
 class ConnectionManager:
     """管理所有活跃的 WebSocket 连接"""
 
@@ -625,11 +626,13 @@ class ConnectionManager:
         # 用 list 存储所有活跃连接
         # 注意：这里用普通 list，asyncio 单线程模型下其实是安全的
         # 但如果以后扩展到多线程，要换 threading.Lock 或 asyncio.Lock
+        # list 的 append/remove 在 CPython 里是原子操作，不会被打断
         self.active_connections: List[WebSocket] = []
 
     # 接受新连接并加入列表
     async def connect(self, ws: WebSocket):
         # 先接受握手
+        # accept() 必须在加入列表前调用，否则连接还没建立就用不了
         await ws.accept()
         # 加入活跃列表
         self.active_connections.append(ws)
@@ -637,8 +640,10 @@ class ConnectionManager:
         print(f"新连接加入，当前共 {len(self.active_connections)} 个")
 
     # 断开连接，从列表移除
+    # 注意：这里不是 async，因为 list.remove 是同步操作
     def disconnect(self, ws: WebSocket):
         # 安全移除：如果不在列表里也不会报错
+        # 用 in 检查避免 ValueError
         if ws in self.active_connections:
             self.active_connections.remove(ws)
         print(f"连接离开，当前共 {len(self.active_connections)} 个")
@@ -646,21 +651,26 @@ class ConnectionManager:
     # 给指定连接发私信
     async def send_personal(self, message: str, ws: WebSocket):
         # 直接给单个连接发
+        # 只给指定的 ws 发，其他人收不到
         await ws.send_text(message)
 
     # 广播给所有连接
     async def broadcast(self, message: str):
         # 遍历所有活跃连接
+        # 注意：这里直接遍历原列表，生产环境应该遍历副本（见 demo2）
         for ws in self.active_connections:
             try:
                 # 给每个连接发消息
+                # await 期间可能被其他协程打断，列表可能被修改
                 await ws.send_text(message)
             except Exception:
                 # 如果发送失败（连接已断），跳过
                 # 真正的清理会在 disconnect 里做
+                # 这里只跳过，不中断整次广播
                 pass
 
 # 全局唯一的管理器实例
+# 所有路由共享这一个实例，保证连接列表统一
 manager = ConnectionManager()
 
 # 注册 WebSocket 路由
@@ -675,6 +685,7 @@ async def chat(ws: WebSocket, client_id: str):
     try:
         while True:
             # 接收消息
+            # receive_text 会阻塞直到收到消息或连接断开
             data = await ws.receive_text()
             # 构造广播内容
             msg = f"{client_id}: {data}"
@@ -683,6 +694,7 @@ async def chat(ws: WebSocket, client_id: str):
     # 4. 客户端断开
     except WebSocketDisconnect:
         # 从管理器移除
+        # 必须清理，否则广播时会给死连接发消息
         manager.disconnect(ws)
         # 通知其他人
         await manager.broadcast(f"系统: {client_id} 离开了")
@@ -726,18 +738,23 @@ from typing import List, Dict
 app = FastAPI()
 
 # 定义改进版连接管理器
+# 相比基础版，增加了 asyncio.Lock 保护共享数据，避免并发问题
 class ConnectionManager:
     def __init__(self):
         # 活跃连接列表
         self.active_connections: List[WebSocket] = []
         # 连接→用户名 的映射，方便反查
+        # 通过 ws 对象反查用户名，不用遍历
         self.connection_user: Dict[WebSocket, str] = {}
         # 异步锁，保护共享数据
+        # asyncio.Lock 是协程级别的锁，await 期间其他协程不能获取
+        # 注意：和 threading.Lock 不同，asyncio.Lock 不阻塞线程，只阻塞协程
         self.lock = asyncio.Lock()
 
     # 接受连接
     async def connect(self, ws: WebSocket, user: str):
         # 获取锁
+        # async with self.lock 保证块内代码不被其他协程打断
         async with self.lock:
             # 接受握手
             await ws.accept()
@@ -746,6 +763,7 @@ class ConnectionManager:
             # 记录映射
             self.connection_user[ws] = user
         # 锁外打印（不阻塞其他操作）
+        # 日志是慢操作（I/O），放锁外避免阻塞其他协程
         print(f"[{user}] 连接，在线 {len(self.active_connections)} 人")
 
     # 断开连接
@@ -756,6 +774,7 @@ class ConnectionManager:
             if ws in self.active_connections:
                 self.active_connections.remove(ws)
             # 取用户名
+            # pop(ws, "未知")：如果 ws 不在字典里，返回 "未知" 不报错
             user = self.connection_user.pop(ws, "未知")
         # 锁外打印
         print(f"[{user}] 断开，在线 {len(self.active_connections)} 人")
@@ -766,6 +785,7 @@ class ConnectionManager:
     async def broadcast(self, message: str):
         # 拷贝一份列表再遍历，避免遍历中被修改
         # 这是个常用技巧：snapshot 遍历
+        # 即使原列表在 await 期间被增删，副本不变，遍历安全
         connections = list(self.active_connections)
         # 遍历副本
         for ws in connections:
@@ -775,12 +795,15 @@ class ConnectionManager:
                 # 发送失败的连接，异步清理
                 # 不能在这里直接 remove，因为正在遍历副本
                 # 用 create_task 让 disconnect 在后台执行
+                # create_task 立即返回，不阻塞当前广播
                 asyncio.create_task(self.disconnect(ws))
 
     # 获取在线用户列表
     async def get_online_users(self) -> List[str]:
         # 获取锁后读取
+        # 读取也要加锁，避免读到不一致的中间状态
         async with self.lock:
+            # 返回 values 的副本，避免外部修改影响内部数据
             return list(self.connection_user.values())
 
 # 全局管理器
@@ -808,6 +831,7 @@ async def chat(ws: WebSocket, user: str):
 @app.get("/online")
 async def online():
     # 调用管理器方法
+    # HTTP 接口也能查 WebSocket 连接状态，因为 manager 是全局的
     users = await manager.get_online_users()
     return {"count": len(users), "users": users}
 \`\`\`
@@ -863,6 +887,8 @@ app = FastAPI()
 connections = []
 
 # 心跳超时时间（秒）
+# 60 秒是经验值：手机网络抖动 1-2 秒很常见，太短会误杀
+# 太长又不能及时发现死连接，60 秒是平衡点
 HEARTBEAT_TIMEOUT = 60
 
 @app.websocket("/ws/heartbeat")
@@ -876,16 +902,19 @@ async def ws_heartbeat(ws: WebSocket):
         while True:
             # 用 asyncio.wait_for 给 receive 设超时
             # 如果 HEARTBEAT_TIMEOUT 秒内没收到任何消息，抛 TimeoutError
+            # wait_for 的原理：把协程包装成 Task，超时后取消它
             try:
                 data = await asyncio.wait_for(
                     ws.receive_text(),
                     timeout=HEARTBEAT_TIMEOUT
                 )
                 # 收到消息，正常处理
+                # 前端可以每 30 秒发一条 "ping"，这里收到就重置超时计时
                 await ws.send_text(f"echo: {data}")
             except asyncio.TimeoutError:
                 # 超时了，说明客户端可能已经"死"了
                 # 主动关闭连接
+                # code=1001 表示端点离开（Going Away）
                 print("心跳超时，关闭连接")
                 await ws.close(code=1001, reason="心跳超时")
                 # 跳出循环
@@ -898,6 +927,7 @@ async def ws_heartbeat(ws: WebSocket):
         print(f"异常: {e}")
     finally:
         # 清理
+        # finally 确保无论正常退出还是异常，都从列表移除
         if ws in connections:
             connections.remove(ws)
 \`\`\`
@@ -923,23 +953,28 @@ app = FastAPI()
 connections = []
 
 # 后台广播任务：每 10 秒给所有连接推一次时间
+# 这是"服务器主动推送"的典型场景，不依赖客户端请求
 async def broadcast_time():
     # 无限循环
     while True:
         # 等 10 秒
+        # asyncio.sleep 不阻塞事件循环，期间能处理其他协程
         await asyncio.sleep(10)
         # 如果没有连接，跳过
+        # 空列表广播没意义，省 CPU
         if not connections:
             continue
         # 构造消息
         now = datetime.now().strftime("%H:%M:%S")
         msg = f"服务器报时: {now}"
         # 遍历副本
+        # 必须用副本，因为 send_text 的 await 期间列表可能被修改
         for ws in list(connections):
             try:
                 await ws.send_text(msg)
             except Exception:
                 # 失败就清理
+                # 发不出去说明连接已断，从列表移除
                 if ws in connections:
                     connections.remove(ws)
 
@@ -947,6 +982,8 @@ async def broadcast_time():
 @app.on_event("startup")
 async def start_background():
     # create_task 把协程调度到后台运行
+    # 注意：task 引用没保存，可能被 GC 回收（见避坑指南）
+    # 生产环境应该：tasks = set(); task = create_task(...); tasks.add(task)
     asyncio.create_task(broadcast_time())
 
 # WebSocket 端点
@@ -957,6 +994,7 @@ async def ws_endpoint(ws: WebSocket):
     try:
         while True:
             # 即使客户端不发消息，也能收到服务器的报时
+            # receive_text 只负责接收，后台广播独立运行
             data = await ws.receive_text()
             await ws.send_text(f"你说: {data}")
     except Exception:
@@ -1205,6 +1243,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 app = FastAPI()
 
 # 简化版：用 redis.asyncio
+# redis 4.2+ 自带异步支持，不用单独装 aioredis
 try:
     from redis.asyncio import Redis
 except ImportError:
@@ -1213,22 +1252,29 @@ except ImportError:
 class RedisChatManager:
     def __init__(self):
         # 本进程的连接列表
+        # 每个 worker 进程只管自己的连接
         self.connections = []
         # Redis 客户端（发布用）
+        # 所有进程连同一个 Redis，通过频道通信
         self.redis = Redis(host="localhost", port=6379) if Redis else None
         # 启动订阅任务
+        # create_task 在后台跑订阅循环，不阻塞主流程
         if self.redis:
             asyncio.create_task(self._subscribe())
 
     # 订阅 Redis 频道
     async def _subscribe(self):
         # 用 pubsub 订阅
+        # pubsub 是 Redis 的发布订阅机制，类似消息队列
         pubsub = self.redis.pubsub()
+        # subscribe 订阅频道，之后能收到该频道的所有消息
         await pubsub.subscribe("chat_channel")
         # 持续监听
+        # async for 会阻塞，直到有新消息
         async for message in pubsub.listen():
             if message["type"] == "message":
                 # 收到消息，分发给本进程所有连接
+                # message["data"] 是 bytes，要 decode 成 str
                 data = message["data"].decode()
                 for ws in list(self.connections):
                     try:
@@ -1249,9 +1295,13 @@ class RedisChatManager:
     # 广播：发到 Redis，所有进程都会收到
     async def broadcast(self, message: str):
         if self.redis:
+            # publish 把消息发到 Redis 频道
+            # 所有订阅了该频道的进程（包括自己）都会收到
+            # 这样跨进程广播就实现了
             await self.redis.publish("chat_channel", message)
         else:
             # 没有 Redis 就本地广播
+            # 降级方案：只在本进程内广播，多进程下消息会丢
             for ws in list(self.connections):
                 try:
                     await ws.send_text(message)
@@ -1388,15 +1438,20 @@ import asyncio
 app = FastAPI()
 
 # 房间管理器
+# 用三个字典实现双向映射，支持多端登录和高效反查
 class RoomManager:
     def __init__(self):
         # 用户→连接集合（一个用户可能多端登录）
+        # 用 Set 是因为同一用户的多个连接不重复
         self.user_connections: Dict[str, Set[WebSocket]] = {}
         # 房间→用户集合
+        # 存用户名而不是连接，因为一个用户可能多端登录
         self.room_users: Dict[str, Set[str]] = {}
         # 用户→房间集合（反查用）
+        # 查"这个用户在哪些房间"时 O(1)，不用遍历所有房间
         self.user_rooms: Dict[str, Set[str]] = {}
         # 锁
+        # 保护三个字典的修改，避免并发导致数据不一致
         self.lock = asyncio.Lock()
 
     # 用户连接（首次建立 WebSocket）
@@ -1406,8 +1461,10 @@ class RoomManager:
             if user not in self.user_connections:
                 self.user_connections[user] = set()
             # 加入连接
+            # 同一用户多次连接（手机+电脑），都加到集合里
             self.user_connections[user].add(ws)
         # 接受握手（锁外做，避免阻塞）
+        # accept 是 I/O 操作，放锁外不阻塞其他协程
         await ws.accept()
 
     # 用户断开
@@ -1415,19 +1472,23 @@ class RoomManager:
         async with self.lock:
             # 从该用户的连接集合移除
             if user in self.user_connections:
+                # discard 不存在不报错，比 remove 安全
                 self.user_connections[user].discard(ws)
                 # 如果连接集合空了，说明用户彻底下线
+                # 所有端都断开了，才需要清理房间
                 if not self.user_connections[user]:
                     del self.user_connections[user]
                     # 从所有他加入的房间移除
                     for room in self.user_rooms.get(user, set()):
                         self.room_users.get(room, set()).discard(user)
                         # 如果房间空了，删掉房间
+                        # 空房间占内存，及时清理
                         if not self.room_users.get(room):
                             self.room_users.pop(room, None)
                     # 删用户的房间记录
                     self.user_rooms.pop(user, None)
                     # 返回 True 表示用户彻底下线
+                    # 上层据此决定是否广播"xxx 下线"
                     return True
             return False
 
@@ -1440,6 +1501,7 @@ class RoomManager:
             # 用户加入房间
             self.room_users[room].add(user)
             # 记录用户加入了哪个房间
+            # 双向更新：room_users 和 user_rooms 都要改，保持一致
             if user not in self.user_rooms:
                 self.user_rooms[user] = set()
             self.user_rooms[user].add(room)
@@ -1454,12 +1516,14 @@ class RoomManager:
                 if not self.room_users[room]:
                     del self.room_users[room]
             # 从用户的房间集合移除
+            # 双向更新，和 join_room 对称
             if user in self.user_rooms:
                 self.user_rooms[user].discard(room)
 
     # 获取房间内用户列表
     async def get_room_users(self, room: str) -> List[str]:
         async with self.lock:
+            # 返回列表副本，避免外部修改影响内部数据
             return list(self.room_users.get(room, set()))
 
     # 获取所有房间
@@ -1481,6 +1545,7 @@ async def ws_endpoint(ws: WebSocket, user: str):
             # 接收 JSON 消息
             data = await ws.receive_json()
             # 取消息类型
+            # 用 type 字段区分不同操作，前端按 type 路由处理逻辑
             msg_type = data.get("type")
             # 处理加入房间
             if msg_type == "join":
@@ -1510,13 +1575,16 @@ class RoomManager:
     # ... 前面的方法省略 ...
 
     # 给指定房间广播消息
+    # 只发给该房间内的用户，其他房间收不到
     async def broadcast_to_room(self, room: str, message: dict):
         # 取房间内所有用户（快照）
+        # 在锁内拷贝一份，锁外遍历，避免长时间持锁
         async with self.lock:
             users = list(self.room_users.get(room, set()))
         # 遍历用户
         for user in users:
             # 取该用户的所有连接
+            # 一个用户可能多端登录，每个连接都要发
             async with self.lock:
                 conns = list(self.user_connections.get(user, set()))
             # 给每个连接发
@@ -1525,11 +1593,13 @@ class RoomManager:
                     await ws.send_json(message)
                 except Exception:
                     # 发送失败，移除该连接
+                    # 连接已断，从用户的连接集合移除
                     async with self.lock:
                         if user in self.user_connections:
                             self.user_connections[user].discard(ws)
 
     # 给指定用户发私聊
+    # 私聊就是"房间内只有两个人"的特例，直接发给目标用户的所有连接
     async def send_to_user(self, to_user: str, message: dict):
         # 取该用户所有连接
         async with self.lock:
@@ -2042,10 +2112,12 @@ class RoomManager:
     # ...
 
     # 带回执的私聊：返回是否送达
+    # 相比 send_to_user，多了返回值，调用方知道有没有送到
     async def send_to_user_with_ack(self, to_user: str, message: dict) -> bool:
         async with self.lock:
             conns = list(self.user_connections.get(to_user, set()))
         # 用户不在线
+        # 没有连接说明对方没上线或已下线
         if not conns:
             return False
         # 在线则发
@@ -2053,6 +2125,7 @@ class RoomManager:
         for ws in conns:
             try:
                 await ws.send_json(message)
+                # 只要有一个连接送达，就认为成功
                 delivered = True
             except Exception:
                 async with self.lock:
@@ -2075,10 +2148,12 @@ elif msg_type == "private":
     delivered = await manager.send_to_user_with_ack(to, msg)
     if delivered:
         # 给自己回显
+        # 发送方需要看到自己发的消息，所以也发一份给自己
         msg["self"] = True
         await manager.send_to_user(user, msg)
     else:
         # 告知发送方对方不在线
+        # 让发送方知道消息没送到，可以稍后重试或存离线
         await manager.send_to_user(user, {
             "type": "error",
             "message": f"{to} 不在线，消息未送达"
@@ -2290,6 +2365,7 @@ FastAPI 的 \`StreamingResponse\` 可以返回一个生成器，逐块输出响�
 
 \`\`\`python filename="demo1: 最简 SSE"
 # 从 fastapi 导入 FastAPI、StreamingResponse
+# StreamingResponse 让响应体可以分块输出，适合流式推送
 from fastapi import FastAPI, StreamingResponse
 # 导入 asyncio
 import asyncio
@@ -2298,17 +2374,20 @@ import asyncio
 app = FastAPI()
 
 # 定义 SSE 生成器函数
+# 异步生成器：每次 yield 产出一条数据，客户端持续接收
 async def event_generator():
     """生成 SSE 事件流"""
     # 无限循环，持续推送
     count = 0
     while True:
         # 等待 1 秒
+        # asyncio.sleep 让出 CPU，不阻塞事件循环
         await asyncio.sleep(1)
         # 计数+1
         count += 1
         # 生成 SSE 格式消息
         # 注意: data: 后面要有空格，结尾要两个 \\n
+        # 两个 \\n 是 SSE 消息的分隔符，浏览器据此判断一条消息结束
         yield f"data: 第 {count} 条消息\\n\\n"
 
 # 注册路由
@@ -2316,14 +2395,18 @@ async def event_generator():
 async def sse():
     # 返回 StreamingResponse
     # media_type 必须是 text/event-stream
+    # 浏览器看到这个 Content-Type 会用 EventSource API 解析
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",
         # 设置响应头
         headers={
             "Cache-Control": "no-cache",          # 禁用缓存
+            # 不缓存保证每次请求都新建流，不读旧数据
             "Connection": "keep-alive",            # 保持连接
+            # 长连接，不主动关闭
             "X-Accel-Buffering": "no",             # Nginx 不缓冲
+            # 关键：Nginx 默认会缓冲响应，加了这头才实时推送
         }
     )
 
@@ -2410,6 +2493,7 @@ import asyncio
 app = FastAPI()
 
 # 模拟一个消息队列（真实场景用 Redis Stream/Kafka）
+# 存所有已发送的消息，用于断线重连后补发
 messages = []  # [(id, content), ...]
 next_id = 0
 
@@ -2417,6 +2501,7 @@ async def event_generator(last_id: int):
     """从 last_id 之后开始推送"""
     global next_id
     # 先把历史消息补发
+    # 遍历所有消息，只发 id 大于 last_id 的（即断线期间漏掉的）
     for msg_id, content in messages:
         if msg_id > last_id:
             yield f"id: {msg_id}\\ndata: {content}\\n\\n"
@@ -2427,18 +2512,22 @@ async def event_generator(last_id: int):
         content = f"消息 #{next_id}"
         messages.append((next_id, content))
         # 带 id 推送
+        # id: 字段让浏览器记录最后收到的消息 ID
+        # 断线重连时浏览器自动带 Last-Event-ID 头
         yield f"id: {next_id}\\ndata: {content}\\n\\n"
         next_id += 1
 
 @app.get("/sse")
 async def sse(request: Request):
     # 从请求头取 Last-Event-ID
+    # 浏览器重连时自动带这个头，值是上次收到的最后一条消息的 id
     last_id_header = request.headers.get("Last-Event-ID", "0")
     try:
         last_id = int(last_id_header)
     except ValueError:
         last_id = 0
     # 返回流
+    # 生成器从 last_id 之后开始推送，保证不丢消息
     return StreamingResponse(
         event_generator(last_id),
         media_type="text/event-stream",
@@ -2629,27 +2718,33 @@ def now():
 
 # ========== SSE 部分：系统通知 ==========
 # SSE 客户端队列列表
+# 每个 SSE 客户端一个独立的 asyncio.Queue，实现"按需推送"
+# 管理员调 /api/notify 时，往所有队列塞消息，各客户端自己取
 sse_queues: List[asyncio.Queue] = []
 
 # 通知生成器
 async def notification_stream(queue: asyncio.Queue):
     """每个 SSE 客户端一个队列，从这里取消息推送"""
     # 先发个欢迎消息
+    # 客户端连上立即收到，确认连接成功
     yield f"data: {json.dumps({'type':'welcome','time':now()}, ensure_ascii=False)}\\n\\n"
     # 持续从队列取消息
     while True:
         try:
             # 5 秒超时，超时就发心跳
+            # wait_for 给 queue.get() 设超时，没有消息时定期发心跳保活
             msg = await asyncio.wait_for(queue.get(), timeout=15)
             yield f"data: {json.dumps(msg, ensure_ascii=False)}\\n\\n"
         except asyncio.TimeoutError:
             # 心跳
+            # 15 秒没消息就发注释行，防止代理超时关闭连接
             yield ": heartbeat\\n\\n"
 
 # SSE 端点
 @app.get("/sse/notifications")
 async def sse_notifications():
     # 为每个客户端创建独立队列
+    # 队列是生产者-消费者模型：/api/notify 生产，这里消费
     queue = asyncio.Queue()
     sse_queues.append(queue)
 
@@ -2659,6 +2754,8 @@ async def sse_notifications():
                 yield chunk
         finally:
             # 客户端断开，移除队列
+            # finally 确保无论正常断开还是异常，都清理队列
+            # 否则队列越积越多，内存泄漏
             if queue in sse_queues:
                 sse_queues.remove(queue)
 
@@ -2679,6 +2776,7 @@ async def notify(title: str, content: str):
         "time": now()
     }
     # 往所有队列塞消息
+    # 每个队列对应一个 SSE 客户端，put 后客户端的生成器就能 get 到
     for q in sse_queues:
         await q.put(notif)
     return {"pushed": len(sse_queues), "notif": notif}
@@ -2689,10 +2787,12 @@ chat_connections: List[WebSocket] = []
 
 # 广播聊天消息
 async def broadcast_chat(message: dict):
+    # 遍历副本，避免遍历中被修改
     for ws in list(chat_connections):
         try:
             await ws.send_json(message)
         except Exception:
+            # 发送失败说明连接已断，从列表移除
             if ws in chat_connections:
                 chat_connections.remove(ws)
 
@@ -2718,6 +2818,7 @@ async def chat(ws: WebSocket, user: str):
                 "time": now()
             })
     except WebSocketDisconnect:
+        # 客户端断开，清理并通知
         if ws in chat_connections:
             chat_connections.remove(ws)
         await broadcast_chat({

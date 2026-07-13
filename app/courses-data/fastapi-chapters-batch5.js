@@ -304,23 +304,28 @@ app = FastAPI()
 
 # 创建用户输入模型（前端提交）
 class UserCreate(BaseModel):
+    # Field(...) 第一个参数 ... 表示必填（不能省略）
+    # min_length=3 最少 3 字符，max_length=20 最多 20 字符
     username: str = Field(..., min_length=3, max_length=20)   # 用户名，3-20 字符
+    # min_length=6 密码至少 6 位，防止弱密码
     password: str = Field(..., min_length=6)                  # 密码，至少 6 位
     email: str                                                # 邮箱
 
 # 更新用户输入模型（PATCH，所有字段可选）
+# PATCH 语义是"部分更新"，所以所有字段都要可选（默认 None）
+# 这样客户端只传需要改的字段，没传的字段保持原值
 class UserUpdate(BaseModel):
-    username: str | None = None       # 用户名，可选
+    username: str | None = None       # 用户名，可选（str | None 表示可以是字符串或 None）
     email: str | None = None          # 邮箱，可选
     password: str | None = None       # 新密码，可选
 
 # 数据库存储模型（含哈希密码）
 class UserInDB(BaseModel):
-    id: int                           # 主键
+    id: int                           # 主键，整数类型
     username: str                     # 用户名
     email: str                        # 邮箱
-    hashed_password: str              # 哈希后的密码
-    is_active: bool = True            # 是否激活
+    hashed_password: str              # 哈希后的密码（不对外暴露）
+    is_active: bool = True            # 是否激活，默认 True
 
 # 对外输出模型（不含任何敏感字段）
 class UserOut(BaseModel):
@@ -328,48 +333,61 @@ class UserOut(BaseModel):
     username: str                     # 用户名
     email: str                        # 邮箱
     is_active: bool                   # 是否激活
+    # 注意：没有 hashed_password 字段，response_model 会自动过滤掉
 
-# 模拟数据库
+# 模拟数据库：键是用户 ID，值是 UserInDB 实例
 db: dict[int, UserInDB] = {}
-next_id = 1  # 自增 ID
+next_id = 1  # 自增 ID，模拟数据库的自增主键
 
 # 创建用户：输入 UserCreate，输出 UserOut
+# status_code=201 表示资源创建成功（RESTful 规范）
 @app.post("/users", response_model=UserOut, status_code=201)
 def create_user(user: UserCreate):
+    # 声明使用全局变量 next_id（否则 Python 会把它当局部变量）
     global next_id
     # 模拟密码哈希（实际用 passlib.context.CryptContext）
+    # 哈希后即使数据库泄漏，攻击者也拿不到明文密码
     hashed = "hashed_" + user.password
-    # 构造数据库模型
+    # 构造数据库模型实例
     db_user = UserInDB(
-        id=next_id,
-        username=user.username,
-        email=user.email,
-        hashed_password=hashed,
-        is_active=True
+        id=next_id,                   # 分配新 ID
+        username=user.username,       # 从输入模型取用户名
+        email=user.email,             # 从输入模型取邮箱
+        hashed_password=hashed,       # 存哈希后的密码
+        is_active=True                # 新用户默认激活
     )
-    db[next_id] = db_user
-    next_id += 1
+    db[next_id] = db_user             # 存入"数据库"
+    next_id += 1                      # ID 自增，为下一个用户准备
     # 返回 db_user，response_model=UserOut 会自动过滤 hashed_password
+    # 即使返回的对象里有 hashed_password，客户端也收不到
     return db_user
 
 # 查询用户：输出 UserOut
 @app.get("/users/{user_id}", response_model=UserOut)
 def get_user(user_id: int):
+    # 用户不存在则 404
     if user_id not in db:
         raise HTTPException(status_code=404, detail="用户不存在")
+    # 返回数据库实例，response_model 过滤敏感字段
     return db[user_id]
 
 # 更新用户：输入 UserUpdate，输出 UserOut
 @app.patch("/users/{user_id}", response_model=UserOut)
 def update_user(user_id: int, user: UserUpdate):
+    # 用户不存在则 404
     if user_id not in db:
         raise HTTPException(status_code=404, detail="用户不存在")
+    # 取出当前存储的用户
     stored = db[user_id]
     # 只更新客户端传了的字段（exclude_unset 排除未传的）
+    # model_dump() 把 Pydantic 模型转成 dict
+    # exclude_unset=True 只保留客户端显式设置的字段，没传的字段（用默认值的）不包含
     update_data = user.model_dump(exclude_unset=True)
     # 用新数据构造更新后的对象
+    # model_copy(update=...) 是 Pydantic v2 的方法，类似 .copy(update=...)
+    # 它创建一个新实例，用 update_data 里的字段覆盖原值
     updated = stored.model_copy(update=update_data)
-    db[user_id] = updated
+    db[user_id] = updated             # 写回数据库
     return updated
 \`\`\`
 
@@ -654,19 +672,22 @@ tasks: dict[int, Task] = {}
 next_id = 1
 
 # 创建任务：201 Created
+# status_code=status.HTTP_201_CREATED 表示资源创建成功
+# 用常量而非数字 201 更可读，IDE 也能自动补全
 @app.post("/tasks", response_model=Task, status_code=status.HTTP_201_CREATED)
 def create_task(task: Task):
-    global next_id
-    task.id = next_id
-    tasks[next_id] = task
-    next_id += 1
+    global next_id                        # 声明使用全局变量
+    task.id = next_id                     # 分配 ID
+    tasks[next_id] = task                 # 存入数据库
+    next_id += 1                          # ID 自增
     return task
 
 # 删除任务：204 No Content
+# 204 表示成功但无内容返回（DELETE 常用，客户端只关心成功与否）
 @app.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_task(task_id: int):
     if task_id in tasks:
-        del tasks[task_id]
+        del tasks[task_id]                # 从数据库删除
     # 204 不应返回 body
     return None
 
@@ -789,6 +810,8 @@ app = FastAPI()
 @app.get("/header-demo")
 def header_demo(
     # Header() 声明从请求头读 user_agent
+    # None 表示可选（没传时返回 None）
+    # alias="User-Agent" 指定实际的头名（因为 Python 参数名不能用连字符）
     user_agent: str | None = Header(None, alias="User-Agent"),
     # 注意：请求头名通常有连字符，Python 参数名不能用连字符
     # 用 alias 指定实际的头名
@@ -803,11 +826,13 @@ def header_demo(
 @app.get("/auth")
 def auth_check(
     # 必填的 Authorization 头
+    # ... 表示必填，没传这个头会自动返回 422 错误
     authorization: str = Header(..., alias="Authorization"),
 ):
-    # 简单校验
+    # 简单校验：Bearer Token 格式应该是 "Bearer <token>"
     if not authorization.startswith("Bearer "):
         return {"error": "无效的认证头"}
+    # authorization[7:] 去掉 "Bearer " 前缀（"Bearer " 正好 7 个字符）
     token = authorization[7:]  # 去掉 "Bearer " 前缀
     return {"token": token}
 
@@ -815,6 +840,7 @@ def auth_check(
 @app.get("/multi")
 def multi_header(
     # convert_underscores=False 保留下划线（默认会把下划线转连字符）
+    # list[str] 类型声明表示这个头可以出现多次，收集成列表
     x_forwarded_for: list[str] | None = Header(None, alias="X-Forwarded-For"),
 ):
     return {"x_forwarded_for": x_forwarded_for}
@@ -990,25 +1016,28 @@ class UserV2(BaseModel):
     avatar: str | None         # v2 新增 avatar
 
 # ============ 模拟数据 ============
+# v1 和 v2 用不同的数据结构（字段不同）
 users_v1 = {1: UserV1(id=1, name="alice", email="a@b.com")}
 users_v2 = {1: UserV2(id=1, username="alice", email="a@b.com", full_name="Alice Liddell", avatar=None)}
 
 # ============ 版本控制中间件 ============
-# 支持的版本
+# 支持的版本（用 set 查找快，O(1)）
 SUPPORTED_VERSIONS = {"1", "2"}
 
 @app.middleware("http")
 async def version_middleware(request: Request, call_next):
-    # 从请求头读版本
+    # 从请求头读版本，默认 "1"（兼容老客户端）
     version = request.headers.get("X-API-Version", "1")  # 默认 v1
+    # 不支持的版本返回 400
     if version not in SUPPORTED_VERSIONS:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={"detail": f"不支持的 API 版本: {version}"},
         )
     # 把版本号塞进 request.state，后续路由能读
+    # request.state 是请求级共享对象，中间件和路由都能访问
     request.state.api_version = version
-    # 响应头标注当前版本
+    # 响应头标注当前版本（让客户端知道用了哪个版本）
     response = await call_next(request)
     response.headers["X-API-Version"] = version
     return response
@@ -1027,16 +1056,18 @@ def get_user(user_id: int, request: Request):
             raise HTTPException(status_code=404, detail="用户不存在")
         return users_v2[user_id]          # 返回 v2 结构
 
-# 也可以用依赖注入读版本
+# 也可以用依赖注入读版本（替代中间件方案）
 from fastapi import Depends
 
 def get_api_version(x_api_version: str = Header("1", alias="X-API-Version")):
+    # Header("1", ...) 第一个参数 "1" 是默认值（没传时用 v1）
     if x_api_version not in SUPPORTED_VERSIONS:
         raise HTTPException(status_code=400, detail=f"不支持的版本: {x_api_version}")
     return x_api_version
 
 @app.get("/users-v2/{user_id}")
 def get_user_v2(user_id: int, version: str = Depends(get_api_version)):
+    # version 由依赖注入提供，路由函数只关心业务逻辑
     if version == "1":
         return users_v1.get(user_id, {"error": "不存在"})
     return users_v2.get(user_id, {"error": "不存在"})
@@ -1075,26 +1106,31 @@ class Article(BaseModel):
 db: dict[str, Article] = {}
 
 # 创建文章：201 Created + Location 头
+# status_code=201 表示资源创建成功（RESTful 规范，POST 创建用 201）
 @app.post("/articles", response_model=Article, status_code=status.HTTP_201_CREATED)
 def create_article(article: Article, response: Response):
-    article.id = str(uuid.uuid4())           # 生成 ID
-    article.views = 0
-    db[article.id] = article
+    article.id = str(uuid.uuid4())           # 生成唯一 ID（UUID4 是随机的）
+    article.views = 0                        # 新文章浏览量为 0
+    db[article.id] = article                 # 存入数据库
     # Location 头指向新创建的资源（RESTful 规范）
+    # 客户端可以从 Location 头拿到新资源的 URL
     response.headers["Location"] = f"/articles/{article.id}"
-    # 请求追踪头
+    # 请求追踪头（每个请求分配唯一 ID，便于日志排查）
     response.headers["X-Request-Id"] = str(uuid.uuid4())
     return article
 
 # 查询文章：200 + X-Total-Count（列表）
+# response_model=list[Article] 表示返回 Article 数组
 @app.get("/articles", response_model=list[Article])
 def list_articles(response: Response):
-    articles = list(db.values())
+    articles = list(db.values())             # 把数据库的 values 转成列表
     # 在响应头里返回总数（分页场景常用）
+    # 前端分页时需要知道总数来计算页数
     response.headers["X-Total-Count"] = str(len(articles))
     return articles
 
 # 单个查询：404 if not found
+# if_none_match 参数从请求头读 If-None-Match（客户端缓存验证）
 @app.get("/articles/{article_id}", response_model=Article)
 def get_article(article_id: str, response: Response, if_none_match: str | None = Header(None, alias="If-None-Match")):
     if article_id not in db:
@@ -1104,9 +1140,12 @@ def get_article(article_id: str, response: Response, if_none_match: str | None =
         )
     article = db[article_id]
     # 简单 ETag：用 id+views 作为版本标识
+    # ETag 是资源的"指纹"，资源变化 ETag 就变化
+    # 客户端下次请求带上 If-None-Match，服务端比对 ETag
     etag = f'"{article_id}-{article.views}"'
     response.headers["ETag"] = etag
     # 如果客户端传了 If-None-Match 且匹配，返回 304 不传 body
+    # 304 表示"资源没变"，客户端用本地缓存即可，节省带宽
     if if_none_match == etag:
         response.status_code = status.HTTP_304_NOT_MODIFIED
         return None
@@ -1119,18 +1158,19 @@ def get_article(article_id: str, response: Response, if_none_match: str | None =
 def update_article(article_id: str, article: Article):
     if article_id not in db:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文章不存在")
-    article.id = article_id                   # 保持 ID 不变
-    article.views = db[article_id].views      # 保留浏览量
-    db[article_id] = article
+    article.id = article_id                   # 保持 ID 不变（用 URL 里的 ID）
+    article.views = db[article_id].views      # 保留浏览量（不被覆盖）
+    db[article_id] = article                  # 整体替换
     return article
 
 # 删除文章：204 No Content or 404
+# 204 表示成功但无内容返回（DELETE 常用）
 @app.delete("/articles/{article_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_article(article_id: str):
     if article_id not in db:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文章不存在")
-    del db[article_id]
-    return None
+    del db[article_id]                        # 从数据库删除
+    return None                               # 204 不应返回 body
 \`\`\`
 
 这个示例体现了：
@@ -1405,76 +1445,87 @@ import json
 app = FastAPI()
 
 # 签名密钥（实际项目从环境变量读，不能硬编码）
+# 密钥泄漏=所有 Session 可伪造，必须严格保密
 SECRET_KEY = "your-super-secret-key-change-in-production"
 # 创建签名器
+# URLSafeTimedSerializer 会生成 URL 安全的签名串（可放 Cookie）
+# salt="session" 是盐值，不同 salt 签名互不通用（隔离不同用途的签名）
 serializer = URLSafeTimedSerializer(SECRET_KEY, salt="session")
 
 # Session 数据结构
 class SessionData(BaseModel):
     user_id: int                # 用户 ID
     username: str               # 用户名
-    role: str = "user"          # 角色
+    role: str = "user"          # 角色，默认普通用户
 
 # ============ 工具函数 ============
 
 # 把 Session 数据签名后写进 Cookie
 def set_session(response: Response, data: SessionData):
-    # 序列化为 dict 再签名（Pydantic v2）
+    # 序列化为 dict 再签名（Pydantic v2 的 model_dump 替代 v1 的 dict()）
     payload = data.model_dump()
-    # dumps 返回签名后的字符串
+    # dumps 返回签名后的字符串（包含数据+签名，客户端可读但无法篡改）
     signed = serializer.dumps(payload)
     # 写进 Cookie
     response.set_cookie(
-        key="session",
-        value=signed,
-        max_age=86400,          # Cookie 1 天过期
-        httponly=True,          # 防 XSS
-        secure=False,           # 生产改 True
-        samesite="lax",
-        path="/",
+        key="session",          # Cookie 名
+        value=signed,           # 签名后的 Session 数据
+        max_age=86400,          # Cookie 1 天过期（86400 秒 = 24 小时）
+        httponly=True,          # 防 XSS：JS 读不到 Cookie
+        secure=False,           # 生产改 True：仅 HTTPS 传输
+        samesite="lax",         # 跨站策略：Lax（平衡安全和体验）
+        path="/",               # 全站生效
     )
 
 # 从 Cookie 读 Session 并验证签名
 def get_session(session_cookie: str | None) -> SessionData | None:
+    # 没有 Cookie 直接返回 None
     if session_cookie is None:
         return None
     try:
         # loads 验证签名+过期时间（max_age 单位秒）
+        # 签名错误或过期都会抛异常
         data = serializer.loads(session_cookie, max_age=86400)
+        # **data 是字典解包，等价于 SessionData(user_id=..., username=..., role=...)
         return SessionData(**data)
     except SignatureExpired:
-        # 签名过期
+        # 签名过期：Session 超时，需要重新登录
         return None
     except BadSignature:
-        # 签名无效（被篡改）
+        # 签名无效（被篡改）：可能有人在伪造 Session
         return None
 
 # 清除 Session
 def clear_session(response: Response):
+    # delete_cookie 通过设置 Max-Age=0 让浏览器立即删除 Cookie
+    # path 要和设置时一致，否则删不掉
     response.delete_cookie(key="session", path="/")
 
 # ============ 接口 ============
 
 # 登录：创建 Session
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    username: str               # 用户名
+    password: str               # 密码
 
 @app.post("/login")
 def login(req: LoginRequest, response: Response):
     # 模拟校验（实际查数据库 + 密码哈希比对）
+    # 实际项目用 passlib 验证：verify_password(req.password, user.hashed_password)
     if req.username != "alice" or req.password != "123456":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
-    # 创建 Session
+    # 创建 Session 数据
     session = SessionData(user_id=1, username=req.username, role="user")
+    # 签名并写进 Cookie
     set_session(response, session)
     return {"message": "登录成功", "user": session.model_dump()}
 
 # 需要登录的接口：读 Session
 @app.get("/me")
 def me(session: str | None = Cookie(None)):
-    # 从 Cookie 读 Session
+    # 从 Cookie 读 Session（Cookie 名是 "session"）
     data = get_session(session)
+    # Session 无效（未登录/过期/被篡改）则 401
     if data is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="未登录或会话过期")
     return {"user": data.model_dump()}
@@ -1482,6 +1533,7 @@ def me(session: str | None = Cookie(None)):
 # 登出：清除 Session
 @app.post("/logout")
 def logout(response: Response):
+    # 清除 Cookie 即可（签名 Cookie 无法服务端撤销，删 Cookie 是唯一方式）
     clear_session(response)
     return {"message": "已登出"}
 \`\`\`
@@ -1767,20 +1819,22 @@ import time
 app = FastAPI()
 
 # 生成器函数：逐行 yield 数据
+# 生成器用 yield 而不是 return，每次 yield 暂停，下次调用从暂停处继续
 def generate_numbers():
     """生成 1 到 5 的数字，每个间隔 1 秒"""
     for i in range(1, 6):
-        # 模拟耗时计算
+        # 模拟耗时计算（实际可能是查数据库、调 API）
         time.sleep(1)
         # yield 一块数据（必须是 bytes 或 str）
+        # encode("utf-8") 把字符串转成 bytes
         yield f"数字 {i}\\n".encode("utf-8")
 
 # 流式接口：客户端会逐块收到数据，不用等全部生成
 @app.get("/stream/numbers")
 def stream_numbers():
     return StreamingResponse(
-        content=generate_numbers(),       # 传入生成器
-        media_type="text/plain",          # 响应类型：纯文本
+        content=generate_numbers(),       # 传入生成器（不是调用结果，是生成器对象）
+        media_type="text/plain",          # 响应类型：纯文本（决定浏览器如何处理）
     )
 \`\`\`
 
@@ -1855,33 +1909,38 @@ def file_iterator(file_path: str, chunk_size: int = 8192):
     :param file_path: 文件路径
     :param chunk_size: 每块字节数，默认 8KB
     """
-    # 用 with 确保文件关闭
+    # 用 with 确保文件关闭（即使异常也会自动关闭）
+    # "rb" 表示二进制读取模式（文件下载必须用二进制）
     with open(file_path, "rb") as f:
         # 循环读取，直到文件结束
         while True:
-            # 读取一块
+            # 读取一块（最多 chunk_size 字节）
             chunk = f.read(chunk_size)
             # 读到空说明文件结束
             if not chunk:
                 break
-            # yield 这一块
+            # yield 这一块（发送给客户端）
             yield chunk
 
 # 大文件下载接口
 @app.get("/download/{filename}")
 def download_file(filename: str):
     # 拼接文件路径（实际项目要做路径校验，防目录穿越）
+    # 目录穿越攻击：filename="../../etc/passwd" 能读到系统文件
     file_path = os.path.join("files", filename)
     # 检查文件是否存在
     if not os.path.exists(file_path):
         return {"error": "文件不存在"}
     # 获取文件大小（可选，设置 Content-Length）
+    # Content-Length 让浏览器显示下载进度条
     file_size = os.path.getsize(file_path)
     # 返回流式响应
     return StreamingResponse(
         content=file_iterator(file_path, chunk_size=64 * 1024),  # 64KB 一块
-        media_type="application/octet-stream",                   # 二进制流
+        media_type="application/octet-stream",                   # 二进制流（通用类型）
         headers={
+            # Content-Disposition: attachment 触发浏览器下载而非显示
+            # filename 指定下载后的文件名
             "Content-Disposition": f'attachment; filename="{filename}"',  # 触发下载
             "Content-Length": str(file_size),                    # 文件大小
         },

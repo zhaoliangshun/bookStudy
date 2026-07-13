@@ -947,15 +947,19 @@ API_V1_PREFIX=/api/v1
 # 导入 os 模块（用于读取环境变量）
 import os
 # 从 dotenv 包导入 load_dotenv 函数
+# load_dotenv 会把 .env 文件里的键值对加到 os.environ
 from dotenv import load_dotenv
 
 # 加载 .env 文件到环境变量
+# 必须在使用 os.getenv 之前调用
 load_dotenv()
 
 # 从环境变量读取配置，带默认值
-# os.getenv("KEY", "默认值")
+# os.getenv("KEY", "默认值")：找不到 KEY 时返回默认值
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./dev.db")
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
+# 环境变量都是字符串，需要手动转 bool
+# .lower() == "true" 把 "True"/"TRUE" 等统一转成小写再比较
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"  # 字符串转 bool
 API_V1_PREFIX = os.getenv("API_V1_PREFIX", "/api/v1")
 
@@ -968,20 +972,28 @@ API_V1_PREFIX = os.getenv("API_V1_PREFIX", "/api/v1")
 \`\`\`python
 # app/core/config.py
 # 从 pydantic_settings 包导入 BaseSettings 类
+# BaseSettings 是 Pydantic 提供的配置基类，字段自动从环境变量读取
 from pydantic_settings import BaseSettings
 
 # 定义配置类 Settings，继承 BaseSettings
 class Settings(BaseSettings):
     # 字段都会从环境变量读取
+    # 数据库连接字符串，默认用本地 SQLite
     DATABASE_URL: str = "sqlite:///./dev.db"
+    # 应用密钥，用于 JWT 签名等，生产环境必须改成随机长串
     SECRET_KEY: str = "dev-secret"
+    # 调试模式开关，生产环境必须为 False
     DEBUG: bool = False
+    # API 路径前缀，所有 v1 接口都挂在它下面
     API_V1_PREFIX: str = "/api/v1"
 
     # 配置：从 .env 文件读取
+    # model_config 是 Pydantic v2 的配置写法（v1 用 class Config:）
+    # env_file 指定 .env 文件路径，启动时自动加载
     model_config = {"env_file": ".env"}
 
 # 创建配置实例（全局单例）
+# 实例化时 BaseSettings 会按优先级读取：环境变量 > .env 文件 > 默认值
 settings = Settings()
 
 # 使用：from app.core.config import settings
@@ -1227,21 +1239,31 @@ def health():
 # GET /items：列出所有商品
 @app.get("/items", tags=["商品"])
 # 定义函数 list_items，参数 skip 和 limit 是查询参数
+# skip: int = 0 表示跳过前 N 条记录，默认 0，用于分页偏移
+# limit: int = Query(default=10, le=100) 表示每页最多返回 N 条
+#   default=10 → 不传 limit 时默认取 10 条
+#   le=100 → limit 必须 <= 100（le 是 less than or equal 的缩写）
 def list_items(skip: int = 0, limit: int = Query(default=10, le=100)):
-    # 返回 db 列表的分片
+    # 返回 db 列表的分片（切片操作实现分页）
+    # db[skip : skip + limit] 取从 skip 开始的 limit 条
     return db[skip : skip + limit]
 
 # POST /items：创建商品
+# status_code=201 表示创建成功时返回 201（而非默认 200），符合 RESTful 规范
 @app.post("/items", tags=["商品"], status_code=201)
 # 定义函数 create_item，参数 item 是 Item 类型
+# FastAPI 自动把请求体 JSON 解析并校验成 Item 实例
 def create_item(item: Item):
     # 定义变量 new_item，赋值为 item 的字典表示
+    # item.model_dump() 是 Pydantic v2 方法，把模型转成 dict（v1 是 item.dict()）
     new_item = item.model_dump()
     # 给 new_item 加 id 字段
+    # len(db) + 1 模拟自增主键（真实项目用数据库自增 ID）
     new_item["id"] = len(db) + 1
     # 添加到 db
     db.append(new_item)
     # 返回新创建的商品
+    # FastAPI 自动把 dict 序列化为 JSON 响应
     return new_item
 
 # GET /items/{item_id}：查询单个商品
@@ -1348,10 +1370,15 @@ WSGI 应用是一个普通同步函数，接收 \`environ\`（请求信息字典
 \`\`\`python
 # WSGI 应用：接收 environ（请求信息）和 start_response（开始响应的回调）
 # 定义函数 app，参数 environ 和 start_response
+# environ: dict，包含请求的所有信息（方法、路径、请求头、环境变量等）
+# start_response: callable，用于发送响应状态码和响应头
 def app(environ, start_response):
     # 调用 start_response，传入状态码和响应头列表
+    # "200 OK" 是 HTTP 状态行
+    # [("Content-Type", "text/plain")] 是响应头列表，每个元素是 (name, value) 元组
     start_response("200 OK", [("Content-Type", "text/plain")])
     # 返回可迭代对象（响应体），这里是字节串列表
+    # WSGI 要求响应体是 bytes 的可迭代对象，所以用 b"..." 前缀
     return [b"Hello, WSGI!"]
 
 # 特点：
@@ -1367,12 +1394,16 @@ ASGI 应用是一个异步函数，接收 \`scope\`（连接信息）、\`receiv
 \`\`\`python
 # ASGI 应用：接收 scope、receive、send
 # 定义异步函数 app，参数 scope、receive、send
+# scope: dict，连接的元信息（协议类型、请求方法、路径、请求头等）
+# receive: async callable，调用它会返回一个包含请求数据的 dict（如请求体分片）
+# send: async callable，调用它发送响应消息（先发 response.start 再发 response.body）
 async def app(scope, receive, send):
     # await send 发送响应起始行和头
+    # 必须先发 http.response.start，再发 http.response.body
     await send({
         "type": "http.response.start",   # 消息类型：响应开始
         "status": 200,                    # 状态码
-        "headers": [[b"content-type", b"text/plain"]],  # 响应头
+        "headers": [[b"content-type", b"text/plain"]],  # 响应头（字节串对列表）
     })
     # await send 发送响应体
     await send({
@@ -1481,29 +1512,38 @@ await send({
 \`\`\`python
 # raw_asgi.py
 # 定义异步函数 app，参数 scope、receive、send
+# 这是一个最原生的 ASGI 应用，没有任何框架封装
 async def app(scope, receive, send):
     # 只处理 http 类型
+    # scope["type"] 可能是 "http" / "websocket" / "lifespan"
     if scope["type"] != "http":
         # 不是 http 就直接返回
         return
 
     # 从 scope 读 method 和 path
+    # scope 在连接建立时就确定，整个连接期间不变
     method = scope["method"]
     path = scope["path"]
 
     # 接收请求体（即使不用也要消费掉）
+    # body 用 bytes 拼接，因为 receive 返回的 body 是字节串
     body = b""
+    # more 控制循环，表示是否还有更多分片要接收
     more = True
     while more:
         # 定义变量 message，赋值为 await receive()
+        # 每次调用 receive() 拿到一段请求体消息
         message = await receive()
         # 拼接 body
+        # message["body"] 是这一段的字节串，没有就用空字节串 b""
         body += message.get("body", b"")
         # 更新 more
+        # message["more_body"] 为 True 表示后面还有分片，False 表示这是最后一段
         more = message.get("more_body", False)
 
     # 构造响应
     # 定义变量 response，赋值为 JSON 字符串
+    # body.decode() 把字节串解码成 str（默认 UTF-8），以便拼进字符串
     response = f'{"method": "{method}", "path": "{path}", "body": "{body.decode()}"}'
 
     # 发送响应起始行和头
@@ -1516,7 +1556,7 @@ async def app(scope, receive, send):
     # 发送响应体
     await send({
         "type": "http.response.body",
-        "body": response.encode(),
+        "body": response.encode(),  # response.encode() 把 str 编码成 bytes（默认 UTF-8）
     })
 
 # 启动：uvicorn raw_asgi:app
@@ -1608,28 +1648,34 @@ async def concurrent():
 # 事件循环的伪代码（便于理解，非真实实现）
 def event_loop():
     # 待执行的任务队列
+    # ready 里是"可以立即跑"的协程（刚进来或 I/O 已就绪）
     ready = []
     # 等待中的任务（在等 I/O）
+    # waiting 里是"卡在 await I/O"的协程
     waiting = []
 
     while True:
         # 1. 把 ready 里的任务跑一轮
         for task in ready:
             # 跑任务，直到它 await 或完成
+            # run_until_await 是伪代码：跑到下一次 await 就把控制权还回来
             result = task.run_until_await()
             if task.is_waiting():
                 # 任务在等 I/O，移到 waiting
                 waiting.append(task)
             elif task.is_done():
                 # 任务完成，回调
+                # 触发 await 处的回调，让等待结果的协程继续
                 task.callback()
 
         # 2. 检查 waiting 里哪些 I/O 完成了
         for task in waiting:
             if task.io_ready():
+                # I/O 就绪，把任务移回 ready，下一轮继续跑
                 ready.append(task)
 
         # 3. 没事干就阻塞等 I/O 事件（select/epoll）
+        # 这是事件循环"休息"的时刻，操作系统会在 I/O 就绪时唤醒它
         # ...
 \`\`\`
 
@@ -2522,8 +2568,13 @@ class Book(BaseModel):
 # 定义函数 get_book，参数 book_id 和 detail
 def get_book(
     # book_id：路径参数，int，>=1，有描述
+    # Path(...) 第一个参数 ... 是 Ellipsis，表示必填（路径参数本来就必填，这里显式声明）
+    # description 生成到 OpenAPI 文档的参数说明
+    # ge=1 表示 book_id 必须 >= 1（ge 是 greater than or equal 的缩写）
     book_id: int = Path(..., description="图书 ID，正整数", ge=1),
     # detail：查询参数，bool，默认 False
+    # Query(False, description=...) 第一个参数 False 是默认值
+    # bool 类型查询参数，传 ?detail=true / ?detail=1 都会转成 True
     detail: bool = Query(False, description="是否返回详细信息"),
 ):
     """
@@ -2642,26 +2693,35 @@ import os
 # 导入 secrets 模块（安全随机数）
 import secrets
 # 从 fastapi 包导入 FastAPI, HTTPException, Depends
+# Depends 用于依赖注入，HTTPException 用于抛出 HTTP 错误
 from fastapi import FastAPI, HTTPException, Depends
 # 从 fastapi.security 包导入 HTTPBasic, HTTPBasicCredentials
+# HTTPBasic 是 Basic Auth 方案，HTTPBasicCredentials 是解析后的凭据对象
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 # 创建 FastAPI 应用实例
 app = FastAPI()
 # 创建 HTTPBasic 实例
+# security 作为依赖被注入时，会自动解析请求头的 Authorization 字段
 security = HTTPBasic()
 
 # 定义依赖函数 verify_docs，参数 credentials
+# Depends(security) 表示：调用此函数前，先执行 security 依赖，把结果赋给 credentials
+# FastAPI 看到 Depends 就知道这是个依赖，会自动解析并注入
 def verify_docs(credentials: HTTPBasicCredentials = Depends(security)):
     # 校验用户名密码
     # 用 secrets.compare_digest 防止时序攻击
+    # 时序攻击：普通 == 比较会在第一个不匹配字符就返回，攻击者通过响应时间猜测密码
+    # compare_digest 无论是否匹配都比较完所有字符，时间恒定
     # 定义变量 correct_user，赋值为 secrets.compare_digest(...)
     correct_user = secrets.compare_digest(credentials.username, "admin")
     # 定义变量 correct_pass，赋值为 secrets.compare_digest(...)
+    # 密码从环境变量 DOCS_PASS 读取，不写死在代码里
     correct_pass = secrets.compare_digest(credentials.password, os.getenv("DOCS_PASS", ""))
     # 如果不正确
     if not (correct_user and correct_pass):
         # 抛出 401
+        # headers={"WWW-Authenticate": "Basic"} 让浏览器弹出登录框
         raise HTTPException(status_code=401, headers={"WWW-Authenticate": "Basic"})
     # 校验通过
     return True

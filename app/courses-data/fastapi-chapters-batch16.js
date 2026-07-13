@@ -150,7 +150,9 @@ settings = Settings()
 \`\`\`python
 # app/core/database.py
 # 从 sqlalchemy 导入引擎工厂、会话工厂
+# create_engine 创建数据库连接引擎
 from sqlalchemy import create_engine
+# sessionmaker 是会话工厂，DeclarativeBase 是 ORM 模型基类
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 # 从 config 拿连接串
@@ -158,16 +160,22 @@ from app.core.config import settings
 
 # 创建引擎。check_same_thread=False 是 SQLite 专用，允许多线程访问
 # echo=True 会打印 SQL，开发时开着看执行了啥，生产必须关掉（泄露数据+慢）
+# connect_args 只在用 SQLite 时加，PostgreSQL/MySQL 不需要
 engine = create_engine(
     settings.database_url,
+    # 三元表达式：如果是 SQLite 就加 check_same_thread=False，否则空字典
     connect_args={"check_same_thread": False} if "sqlite" in settings.database_url else {},
     echo=False,
 )
 
 # SessionLocal 是会话工厂，每个请求开一个 session，用完关掉
+# autocommit=False: 不自动提交，要手动 db.commit()
+# autoflush=False: 不自动刷新，避免查询前自动 flush 产生意外 SQL
+# bind=engine: 绑定到上面创建的引擎
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # 定义 Base，所有 model 继承它
+# DeclarativeBase 是 SQLAlchemy 2.0 的基类（旧版用 declarative_base()）
 class Base(DeclarativeBase):
     pass
 \`\`\`
@@ -305,21 +313,31 @@ class Tag(Base):
 
 \`\`\`python
 # app/core/security.py
+# 从 datetime 模块导入 datetime（时间点）、timedelta（时间差）、timezone（时区）
 from datetime import datetime, timedelta, timezone
+# 从 jose 库导入 jwt 和 JWTError
+# jose 是 Python 的 JWT 库，jwt 是编解码函数，JWTError 是异常类
 from jose import jwt, JWTError
+# 从 passlib.context 导入 CryptContext，用于密码哈希
+# passlib 支持多种哈希算法，CryptContext 是统一接口
 from passlib.context import CryptContext
+# 从 config 导入 settings，里面有密钥、算法、过期时间
 from app.core.config import settings
 
 # 密码上下文，指定用 bcrypt
+# schemes=["bcrypt"] 表示用 bcrypt 算法（自带盐，抗彩虹表）
+# deprecated="auto" 表示旧算法自动迁移到新算法
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # 哈希密码
 def hash_password(password: str) -> str:
     # pwd_context.hash 会自动加盐
+    # 同一个密码每次哈希结果都不同（因为盐不同），但 verify 能正确校验
     return pwd_context.hash(password)
 
 # 校验密码：明文 vs 哈希值
 def verify_password(plain: str, hashed: str) -> bool:
+    # verify 内部会用同样的盐对 plain 哈希，再和 hashed 比对
     return pwd_context.verify(plain, hashed)
 
 # 生成 JWT
@@ -327,16 +345,22 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     # 拷贝一份，避免改原 dict
     to_encode = data.copy()
     # 过期时间
+    # datetime.now(timezone.utc) 获取当前 UTC 时间（带时区）
+    # expires_delta 优先用传入的，没传就用配置的默认值
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
     )
+    # 把 exp（expiration）字段加进去，JWT 标准字段
     to_encode.update({"exp": expire})
     # 用密钥签名
+    # jwt.encode 会把 data 编码成 header.payload.signature 三段
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 # 解析 JWT
 def decode_token(token: str) -> dict | None:
     try:
+        # jwt.decode 会校验签名和过期时间，失败抛 JWTError
+        # algorithms 必须是列表（即使只有一个）
         return jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
     except JWTError:
         # token 过期、签名不对、格式错都会抛 JWTError
@@ -347,27 +371,39 @@ def decode_token(token: str) -> dict | None:
 
 \`\`\`python
 # app/core/deps.py
+# 从 fastapi 导入 Depends（依赖注入）、HTTPException（HTTP 异常）、status（状态码常量）
 from fastapi import Depends, HTTPException, status
+# 从 fastapi.security 导入 OAuth2PasswordBearer
+# 它是一个依赖类，自动从请求头 Authorization: Bearer xxx 提取 token
 from fastapi.security import OAuth2PasswordBearer
+# 从 sqlalchemy.orm 导入 Session，用于类型注解
 from sqlalchemy.orm import Session
 
+# 从 database 导入 SessionLocal 会话工厂
 from app.core.database import SessionLocal
+# 从 security 导入 decode_token 解析 JWT
 from app.core.security import decode_token
+# 从 models 导入 User 模型
 from app.models.user import User
 
 # OAuth2PasswordBearer 自动从 Authorization: Bearer xxx 读 token
-# tokenUrl 是 Swagger 文档里登录接口的 URL
+# tokenUrl 是 Swagger 文档里登录接口的 URL（Swagger 会在 /docs 页面显示登录按钮）
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 # 依赖：每个请求拿一个 db session
+# 用 yield 语法，FastAPI 会在请求结束后执行 finally 关闭 session
 def get_db():
     db = SessionLocal()
     try:
+        # yield 把 db 交给路由用，路由执行完后才继续往下
         yield db
     finally:
+        # 无论路由是否抛异常，都会关闭 session（防止连接泄漏）
         db.close()
 
 # 依赖：拿当前登录用户
+# token: str = Depends(oauth2_scheme) 自动提取并校验 token
+# db: Session = Depends(get_db) 嵌套依赖，FastAPI 会先执行 get_db
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
@@ -375,13 +411,15 @@ def get_current_user(
     # 解析 token
     payload = decode_token(token)
     if payload is None:
-        # 401 = 没认证
+        # 401 = 没认证（没 token、token 无效、token 过期）
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="无效的认证凭证")
     # 从 payload 取 user_id（登录时塞进去的）
+    # "sub" 是 JWT 标准字段，表示 subject（主体），这里存 user_id
     user_id = payload.get("sub")
     if user_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="token 缺少用户信息")
     # 查用户
+    # db.get(User, int(user_id)) 按主键查，比 query.filter 更高效
     user = db.get(User, int(user_id))
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在")
@@ -394,70 +432,96 @@ def get_current_user(
 
 \`\`\`python
 # app/api/v1/auth.py
+# 从 fastapi 导入 APIRouter（路由容器）、Depends（依赖注入）、HTTPException、status
 from fastapi import APIRouter, Depends, HTTPException, status
+# 从 sqlalchemy.orm 导入 Session，用于类型注解
 from sqlalchemy.orm import Session
-
+# 从 deps 导入 get_db 和 get_current_user 依赖
 from app.core.deps import get_db, get_current_user
+# 从 security 导入密码哈希、校验、token 生成函数
 from app.core.security import hash_password, verify_password, create_access_token
+# 从 models 导入 User ORM 模型
 from app.models.user import User
+# 从 schemas 导入请求/响应模型（Pydantic）
 from app.schemas.auth import RegisterIn, LoginIn, TokenOut, UserOut
 
+# 创建路由器，prefix="/auth" 表示所有路径自动加 /auth 前缀
+# tags=["认证"] 用于 Swagger 文档分组
 router = APIRouter(prefix="/auth", tags=["认证"])
 
 # 注册
+# @router.post 注册 POST 路由，完整路径是 /auth/register
+# response_model=UserOut 指定响应模型，FastAPI 会按 UserOut 过滤输出字段
+# status_code=201 表示创建成功（默认是 200）
 @router.post("/register", response_model=UserOut, status_code=201)
+# body: RegisterIn 自动从请求体解析并校验
+# db: Session = Depends(get_db) 通过依赖注入获取数据库会话
 def register(body: RegisterIn, db: Session = Depends(get_db)):
     # 先查邮箱有没有被注册
+    # db.query(User) 创建查询，.filter 加条件，.first() 取第一条
     existing = db.query(User).filter(User.email == body.email).first()
     if existing:
-        # 409 = 冲突
+        # 409 = 冲突（资源已存在）
         raise HTTPException(status_code=409, detail="该邮箱已被注册")
     # 创建用户
+    # 密码要哈希后存储，绝不存明文
     user = User(
         email=body.email,
         hashed_password=hash_password(body.password),
         nickname=body.nickname,
     )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    db.add(user)        # 加到会话
+    db.commit()         # 提交到数据库
+    db.refresh(user)    # 刷新，获取数据库生成的 id
     return user
 
 # 登录
+# @router.post 注册 POST 路由，完整路径是 /auth/login
 @router.post("/login", response_model=TokenOut)
 def login(body: LoginIn, db: Session = Depends(get_db)):
     # 按邮箱查用户
     user = db.query(User).filter(User.email == body.email).first()
     # 用户不存在 或 密码错
+    # 注意：不要分开报"用户不存在"和"密码错"，会被枚举攻击
     if not user or not verify_password(body.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="邮箱或密码错误")
     # 生成 token，sub（subject）放 user_id
+    # str(user.id) 因为 JWT payload 的值必须是字符串
     token = create_access_token({"sub": str(user.id)})
     return {"access_token": token, "token_type": "bearer"}
 \`\`\`
 
 \`\`\`python
 # app/schemas/auth.py
+# 从 pydantic 导入 BaseModel（模型基类）、EmailStr（邮箱类型）、Field（字段约束）
 from pydantic import BaseModel, EmailStr, Field
 
+# 注册请求模型
 class RegisterIn(BaseModel):
+    # EmailStr 会自动校验邮箱格式，不合法返回 422
     email: EmailStr
+    # Field(min_length=6, max_length=64) 限制密码长度
     password: str = Field(min_length=6, max_length=64)
     nickname: str = Field(min_length=2, max_length=50)
 
+# 登录请求模型
 class LoginIn(BaseModel):
     email: EmailStr
-    password: str
+    password: str  # 登录不做长度校验，因为注册时已经校验过
 
+# 登录响应模型（返回 token）
 class TokenOut(BaseModel):
-    access_token: str
-    token_type: str
+    access_token: str   # JWT token
+    token_type: str     # token 类型，OAuth2 标准是 "bearer"
 
+# 用户信息响应模型（返回给前端，不含密码）
 class UserOut(BaseModel):
     id: int
     email: EmailStr
     nickname: str
     is_admin: bool
+    # from_attributes=True 允许从 ORM 对象的属性自动构造
+    # 这样 return user（ORM 对象）会被自动转成 UserOut
     model_config = {"from_attributes": True}
 \`\`\`
 
@@ -469,53 +533,72 @@ class UserOut(BaseModel):
 
 \`\`\`python
 # app/utils/pagination.py
+# 从 fastapi 导入 Query，用于声明查询参数并加约束
 from fastapi import Query
+# 从 pydantic 导入 BaseModel
 from pydantic import BaseModel
 
 # 分页参数依赖：复用，每个列表接口都 Depends(pagination_params)
+# 写成依赖而不是函数，这样 FastAPI 能自动从 query string 提取参数
 def pagination_params(
+    # Query(1, ge=1, ...) 表示默认值 1，必须 >= 1
+    # ge=1: greater than or equal（>=1）
+    # description 显示在 Swagger 文档
     page: int = Query(1, ge=1, description="页码，从1开始"),
+    # le=100: less than or equal（<=100），防止一次查太多
     size: int = Query(20, ge=1, le=100, description="每页数量，最多100"),
 ):
     return {"page": page, "size": size}
 
 # 分页响应
 class Page(BaseModel):
-    items: list
-    total: int
-    page: int
-    size: int
-    pages: int  # 总页数
+    items: list      # 当前页的数据列表
+    total: int       # 总记录数
+    page: int        # 当前页码
+    size: int        # 每页数量
+    pages: int       # 总页数（前端用来显示分页器）
 \`\`\`
 
 **CRUD 基类**——为什么写泛型基类？因为 User/Post/Comment 的增删改查套路一样，写一遍复用，少写重复代码。
 
 \`\`\`python
 # app/crud/base.py
+# 从 typing 导入泛型相关：Generic（泛型基类）、TypeVar（类型变量）、Type（类型本身）
 from typing import Generic, TypeVar, Type
+# 从 sqlalchemy.orm 导入 Session
 from sqlalchemy.orm import Session
 
+# 定义类型变量 ModelT，代表任意 ORM 模型类型
+# 这样 CRUDBase[User] 里 ModelT 就等于 User
 ModelT = TypeVar("ModelT")
 
+# Generic[ModelT] 让 CRUDBase 支持泛型，子类可以指定具体模型
 class CRUDBase(Generic[ModelT]):
     def __init__(self, model: Type[ModelT]):
+        # model 是 ORM 模型类（如 User、Post）
         self.model = model
 
+    # 按主键查
     def get(self, db: Session, id: int) -> ModelT | None:
+        # db.get(模型, 主键) 是按主键查的最高效方式
         return db.get(self.model, id)
 
+    # 查多条
     def get_multi(self, db: Session, skip: int = 0, limit: int = 20) -> list[ModelT]:
+        # offset(skip) 跳过前 skip 条，limit(limit) 取 limit 条
         return db.query(self.model).offset(skip).limit(limit).all()
 
+    # 创建
     def create(self, db: Session, obj: ModelT) -> ModelT:
-        db.add(obj)
-        db.commit()
-        db.refresh(obj)
+        db.add(obj)        # 加到会话（还没入库）
+        db.commit()        # 提交到数据库
+        db.refresh(obj)    # 刷新，获取数据库生成的字段（如自增 id）
         return obj
 
+    # 删除
     def delete(self, db: Session, obj: ModelT) -> None:
-        db.delete(obj)
-        db.commit()
+        db.delete(obj)     # 标记删除
+        db.commit()        # 提交，真正执行 DELETE
 \`\`\`
 
 **文章 CRUD**（带搜索）：
@@ -795,47 +878,67 @@ api_router.include_router(tags.router)
 
 \`\`\`python
 # tests/conftest.py
+# 导入 pytest
 import pytest
+# 从 fastapi.testclient 导入 TestClient
 from fastapi.testclient import TestClient
+# 从 sqlalchemy 导入 create_engine 和 sessionmaker
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+# 从 app.main 导入 app（被测对象）
 from app.main import app
+# 从 database 导入 Base（模型基类）和 get_db（要覆盖的依赖）
 from app.core.database import Base, get_db
+# 从 deps 导入 get_current_user
 from app.core.deps import get_current_user
+# 从 models 导入 User
 from app.models.user import User
 
 # 测试用内存 SQLite，跑完即弃，不污染开发库
+# sqlite:///:memory: 是内存数据库，进程结束就消失
 TEST_ENGINE = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+# 测试用会话工厂
 TestingSession = sessionmaker(autocommit=False, autoflush=False, bind=TEST_ENGINE)
 
 # 每个测试函数前后建表/删表
+# @pytest.fixture() 把函数变成夹具，测试函数参数名匹配夹具名就自动注入
 @pytest.fixture()
 def db():
+    # 测试前建表
     Base.metadata.create_all(bind=TEST_ENGINE)
     session = TestingSession()
     try:
+        # yield 把 session 交给测试函数用
         yield session
     finally:
+        # 测试后关闭 session 并删表（保证测试之间隔离）
         session.close()
         Base.metadata.drop_all(bind=TEST_ENGINE)
 
 # 覆盖 get_db 依赖，让它用测试 session
 @pytest.fixture()
 def client(db):
+    # 定义替代函数，返回测试用的 db
     def override_get_db():
         try:
             yield db
         finally:
             pass
+    # dependency_overrides 是 FastAPI 的依赖覆盖机制
+    # 把原来的 get_db 换成 override_get_db，这样路由拿到的 db 就是测试 session
     app.dependency_overrides[get_db] = override_get_db
+    # yield 把 TestClient 交给测试函数
     yield TestClient(app)
+    # 测试完清空覆盖，避免影响其他测试
     app.dependency_overrides.clear()
 
-# 注册+登录拿 token
+# 注册+登录拿 token（给需要认证的测试用）
 @pytest.fixture()
 def auth_token(client):
+    # 先注册
     client.post("/api/v1/auth/register", json={"email": "a@b.com", "password": "123456", "nickname": "A"})
+    # 再登录，拿 token
     r = client.post("/api/v1/auth/login", json={"email": "a@b.com", "password": "123456"})
     return r.json()["access_token"]
 \`\`\`
@@ -983,32 +1086,38 @@ pip install strawberry-graphql[fastapi]
 
 \`\`\`python
 # hello_graphql.py
+# 导入 strawberry 库（GraphQL 库）
 import strawberry
+# 从 strawberry.fastapi 导入 GraphQLRouter，用于把 GraphQL 挂到 FastAPI
 from strawberry.fastapi import GraphQLRouter
 
 # 定义类型：用 @strawberry.type 装饰的类
+# @strawberry.type 类似 Pydantic 的 BaseModel，但是用于 GraphQL 输出
 @strawberry.type
 class Book:
-    # 字段，带类型注解
+    # 字段，带类型注解（和 Pydantic 写法一样）
     title: str
     author: str
     year: int
 
-# 模拟数据
+# 模拟数据（真实项目从数据库查）
 books = [
     Book(title="三体", author="刘慈欣", year=2008),
     Book(title="活着", author="余华", year=1993),
 ]
 
 # 定义 Query：所有"查"的入口
+# @strawberry.type 装饰的 Query 类是 GraphQL 查询的根
 @strawberry.type
 class Query:
     # 一个字段就是一个查询入口。return 类型告诉 GraphQL 返回啥
+    # @strawberry.field 装饰器把方法变成 GraphQL 字段
     @strawberry.field
     def books(self) -> list[Book]:
         return books
 
     # 带参数的查询
+    # 参数 title 会出现在 GraphQL 查询里：book(title: "三体") { ... }
     @strawberry.field
     def book(self, title: str) -> Book | None:
         for b in books:
@@ -1017,12 +1126,14 @@ class Query:
         return None
 
 # 创建 schema
+# query=Query 告诉 Strawberry 查询入口是 Query 类
 schema = strawberry.Schema(query=Query)
 
 # FastAPI 集成
 from fastapi import FastAPI
 app = FastAPI()
 # GraphQLRouter 把 schema 挂到 /graphql
+# 访问 /graphql 会出现 GraphQL Playground 调试界面
 graphql_app = GraphQLRouter(schema)
 app.include_router(graphql_app, prefix="/graphql")
 \`\`\`
@@ -1504,41 +1615,54 @@ GraphQL 的核心价值是"按需取数据"和"一个端点"。Strawberry 让 Py
 
 \`\`\`python
 # user_service/main.py —— 用户服务
+# 从 fastapi 导入 FastAPI 和 HTTPException
 from fastapi import FastAPI, HTTPException
+# 从 pydantic 导入 BaseModel
 from pydantic import BaseModel
+# 导入 hashlib（本例用哈希模拟密码加密，真实项目用 passlib）
 import hashlib
 
+# 创建应用实例
 app = FastAPI(title="用户服务")
 
-# 模拟数据库
+# 模拟数据库（真实项目用 PostgreSQL/MySQL）
 users_db = {}
 
+# 用户响应模型
 class User(BaseModel):
     id: int
     email: str
     nickname: str
 
+# 注册请求模型
 class RegisterIn(BaseModel):
     email: str
     nickname: str
     password: str
 
+# 注册接口
 @app.post("/users", response_model=User)
 def register(body: RegisterIn):
+    # 检查邮箱是否已存在
     if body.email in users_db:
         raise HTTPException(409, "邮箱已存在")
+    # 生成自增 id
     user_id = len(users_db) + 1
     user = User(id=user_id, email=body.email, nickname=body.nickname)
+    # 存到"数据库"，{**body.dict(), "id": user_id} 合并字典
     users_db[body.email] = {**body.dict(), "id": user_id}
     return user
 
+# 查用户接口（其他服务调这个拿作者信息）
 @app.get("/users/{user_id}", response_model=User)
 def get_user(user_id: int):
+    # 遍历查找（真实项目用主键查）
     for u in users_db.values():
         if u["id"] == user_id:
             return User(id=u["id"], email=u["email"], nickname=u["nickname"])
     raise HTTPException(404, "用户不存在")
 
+# 健康检查（给网关/服务发现用）
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -1546,27 +1670,36 @@ def health():
 
 \`\`\`python
 # post_service/main.py —— 文章服务，需要调用户服务拿作者信息
+# 从 fastapi 导入 FastAPI 和 HTTPException
 from fastapi import FastAPI, HTTPException
+# 从 pydantic 导入 BaseModel
 from pydantic import BaseModel
+# 导入 httpx：异步 HTTP 客户端，用于跨服务调用
 import httpx
 
+# 创建应用实例
 app = FastAPI(title="文章服务")
 
+# 模拟数据库
 posts_db = {}
+# 用户服务地址（真实项目从配置或服务发现拿）
 USER_SERVICE_URL = "http://localhost:8001"  # 用户服务地址
 
+# 文章模型（内部用）
 class Post(BaseModel):
     id: int
     title: str
     content: str
     author_id: int
 
+# 文章响应模型（返给客户端，含作者信息）
 class PostOut(BaseModel):
     id: int
     title: str
     content: str
     author: dict | None  # 作者信息，从用户服务拿
 
+# 查文章详情
 @app.get("/posts/{post_id}", response_model=PostOut)
 async def get_post(post_id: int):
     post = posts_db.get(post_id)
@@ -1575,15 +1708,20 @@ async def get_post(post_id: int):
     # 跨服务调用户服务拿作者信息
     author = None
     try:
+        # httpx.AsyncClient 是异步 HTTP 客户端
+        # timeout=2.0 是关键！不设超时会导致雪崩
         async with httpx.AsyncClient(timeout=2.0) as client:
+            # 调用户服务的 /users/{id} 接口
             r = await client.get(f"{USER_SERVICE_URL}/users/{post['author_id']}")
             if r.status_code == 200:
                 author = r.json()
     except httpx.RequestError:
         # 用户服务挂了，降级：返文章但作者为 null
+        # 降级是微服务的重要策略——依赖挂了不能把自己也拖死
         author = None
     return {"id": post["id"], "title": post["title"], "content": post["content"], "author": author}
 
+# 健康检查
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -1963,28 +2101,41 @@ docker-compose up -d
 
 \`\`\`python
 # profile_app.py —— 用 cProfile 分析接口
+# 导入 cProfile：Python 自带的性能分析器
 import cProfile
+# 导入 pstats：分析结果的统计和输出
 import pstats
+# 从 fastapi.testclient 导入 TestClient，用于模拟请求
 from fastapi.testclient import TestClient
+# 从 app.main 导入 app 实例
 from app.main import app
 
+# 创建测试客户端
 client = TestClient(app)
 
+# 模拟发 100 个请求的基准测试
 def run_benchmark():
     """模拟发 100 个请求"""
     for i in range(100):
         client.get("/api/v1/posts")
 
 # 用 cProfile 跑
+# 创建 Profile 对象
 profiler = cProfile.Profile()
+# 开始记录每个函数的调用次数和耗时
 profiler.enable()
+# 执行要分析的代码
 run_benchmark()
+# 停止记录
 profiler.disable()
 
 # 输出统计：按累计时间排序
+# pstats.Stats 把 Profile 数据转成可读统计
 stats = pstats.Stats(profiler)
+# sort_stats("cumulative") 按累计耗时排序（含子调用）
 stats.sort_stats("cumulative")
-stats.print_stats(20)  # 只看前 20 个最慢的函数
+# print_stats(20) 只看前 20 个最慢的函数
+stats.print_stats(20)
 \`\`\`
 
 输出类似：
@@ -2095,26 +2246,39 @@ for row in result:
 
 \`\`\`python
 # app/core/cache.py —— Redis 缓存工具
+# 导入 redis 库
 import redis
+# 导入 json，用于序列化/反序列化（Redis 只能存字符串/字节）
 import json
+# 从 typing 导入 Any，表示任意类型
 from typing import Any
 
 # 连接 Redis
+# decode_responses=True 让 redis 返回 str 而不是 bytes，省去手动 decode
 redis_client = redis.Redis(host="localhost", port=6379, db=0, decode_responses=True)
 
+# 从缓存取
 def cache_get(key: str) -> Any | None:
     """从缓存取，取不到返回 None"""
+    # redis_client.get 返回 None 表示 key 不存在
     data = redis_client.get(key)
     if data:
+        # json.loads 把 JSON 字符串转回 Python 对象
         return json.loads(data)
     return None
 
+# 写缓存
 def cache_set(key: str, value: Any, ttl: int = 300) -> None:
     """写缓存，ttl 是过期秒数"""
+    # setex(key, 过期秒数, 值)：写入并设置过期时间
+    # ttl=300 表示 5 分钟后自动删除（防止缓存数据过旧）
+    # json.dumps 把 Python 对象转成 JSON 字符串
     redis_client.setex(key, ttl, json.dumps(value))
 
+# 删缓存
 def cache_delete(key: str) -> None:
     """删缓存"""
+    # 数据变更时调用，防止返脏数据
     redis_client.delete(key)
 \`\`\`
 
@@ -2189,21 +2353,26 @@ def get_dashboard(db):
     post_count = db.query(Post).count()         # 0.1s
     comment_count = db.query(Comment).count()   # 0.1s
     return {"users": user_count, "posts": post_count, "comments": comment_count}
-    # 总耗时 0.3s
+    # 总耗时 0.3s（三个查询一个等一个）
 
 # 并发：3 个查询同时跑，总耗时 = max(t1, t2, t3)
+# 导入 asyncio，用于并发执行
 import asyncio
+# 从 fastapi.concurrency 导入 run_in_threadpool
+# 它把同步函数放到线程池里跑，避免阻塞事件循环
 from fastapi.concurrency import run_in_threadpool
 
 async def get_dashboard_async(db):
     # SQLAlchemy 同步操作要放线程池里跑，否则阻塞事件循环
+    # asyncio.gather 并发执行多个协程，等全部完成
+    # 每个查询独立在线程里跑，互不阻塞
     user_count, post_count, comment_count = await asyncio.gather(
         run_in_threadpool(db.query(User).count),
         run_in_threadpool(db.query(Post).count),
         run_in_threadpool(db.query(Comment).count),
     )
     return {"users": user_count, "posts": post_count, "comments": comment_count}
-    # 总耗时 0.1s
+    # 总耗时 0.1s（三个查询同时跑，取最慢的那个）
 \`\`\`
 
 > **避坑**：同步的 SQLAlchemy session 不能在多个线程并发用！上面例子要给每个查询开独立 session，或者用 \`async def\` + \`AsyncSession\`。否则会报 "Session is already in use"。
@@ -2288,23 +2457,30 @@ engine = create_engine(
 # 错误：每次请求新建 client，每次都要 TCP 握手
 @app.get("/proxy")
 async def proxy():
+    # 每次请求都新建 AsyncClient，相当于每次都 TCP 握手，慢
     async with httpx.AsyncClient() as client:  # 每次新建
         r = await client.get("http://api.example.com/data")
     return r.json()
 
 # 正确：复用 client，连接池保持长连接
-# 全局创建一次
+# 全局创建一次（在模块加载时创建，所有请求复用）
+# httpx.Timeout(5.0) 设置超时 5 秒
+# httpx.Limits(max_connections=100, max_keepalive_connections=20) 配置连接池
+#   max_connections: 最大连接数
+#   max_keepalive_connections: 最大保活连接数（长连接）
 http_client = httpx.AsyncClient(
     timeout=httpx.Timeout(5.0),
     limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
 )
 
+# 应用关闭时关闭客户端，释放连接
 @app.on_event("shutdown")
 async def close_client():
     await http_client.aclose()
 
 @app.get("/proxy")
 async def proxy():
+    # 复用全局 client，连接池里的长连接直接发请求，省掉握手
     r = await http_client.get("http://api.example.com/data")
     return r.json()
 \`\`\`
@@ -2333,14 +2509,18 @@ pip install locust
 
 \`\`\`python
 # locustfile.py
+# 从 locust 导入 HttpUser（虚拟用户基类）、task（任务装饰器）、between（随机等待）
 from locust import HttpUser, task, between
 
+# BlogUser 继承 HttpUser，表示一个虚拟用户
 class BlogUser(HttpUser):
-    # 每个请求间隔 1-3 秒
+    # 每个请求间隔 1-3 秒（模拟真实用户思考时间）
     wait_time = between(1, 3)
 
+    # @task(3) 权重 3：这个任务被执行的概率最高
     @task(3)  # 权重 3：最常做
     def list_posts(self):
+        # self.client 类似 requests.Session，自动带 cookie
         self.client.get("/api/v1/posts")
 
     @task(1)  # 权重 1
@@ -2351,12 +2531,14 @@ class BlogUser(HttpUser):
     def search(self):
         self.client.get("/api/v1/posts?keyword=python")
 
+    # on_start 在每个虚拟用户启动时执行一次（类似 setup）
     def on_start(self):
-        # 模拟登录
+        # 模拟登录，拿 token
         r = self.client.post("/api/v1/auth/login", json={
             "email": "a@b.com", "password": "123456"
         })
         self.token = r.json()["access_token"]
+        # 把 token 加到后续请求的 header 里
         self.client.headers.update({"Authorization": f"Bearer {self.token}"})
 \`\`\`
 

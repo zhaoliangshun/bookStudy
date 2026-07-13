@@ -215,9 +215,16 @@ class Article(Base):
 
     # 7. 服务器端默认值：server_default（写在 DDL 里，不是 Python 端）
     # func.now() 生成数据库的 NOW()，插入时数据库自己填
+    # 和 Python 端 default=datetime.now 的区别：
+    #   - default：SQLAlchemy 在 Python 里算好时间再发 INSERT
+    #   - server_default：DDL 里写 DEFAULT NOW()，由数据库自己填
+    # server_default 的好处：多语言客户端共用同一库时，时间标准统一
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     # 8. 更新时间：onupdate 在 UPDATE 时触发（Python 端）
+    # onupdate=datetime.now 表示每次 UPDATE 时自动刷新时间
+    # 注意：传函数本身，不是调用结果（不带括号）
+    # 配合 default=None，首次插入时为 None，更新后才有值
     updated_at: Mapped[Optional[datetime]] = mapped_column(
         default=None, onupdate=datetime.now
     )
@@ -634,99 +641,134 @@ post_tags = Table(
     __import__("sqlalchemy").Column("tag_id", Integer, ForeignKey("tags.id"), primary_key=True),
 )
 
-# 3. User 模型
+# 3. User 模型（用户表，博客系统的核心实体）
 # 定义类 User，继承 Base
 class User(Base):
+    # __tablename__ 指定数据库里的真实表名
     __tablename__ = "users"
+    # 主键 id：自增整数，Mapped[int] 表示 Python 端是 int 类型
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 用户名：限长 50 字符，NOT NULL（因为 Mapped[str] 没加 Optional）
     name: Mapped[str] = mapped_column(String(50))
+    # 邮箱：限长 120，加 unique=True 创建唯一索引，确保邮箱不重复
     email: Mapped[str] = mapped_column(String(120), unique=True)
-    # 是否是管理员
+    # 是否是管理员：bool 类型，数据库存 0/1，默认 False
     is_admin: Mapped[bool] = mapped_column(default=False)
+    # 创建时间：default 传函数本身（不带括号），每次插入时调用 datetime.now
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
 
-    # 一个用户有多篇文章
+    # 一个用户有多篇文章（一对多关系）
+    # Mapped[List["Post"]]：List 表示多方，"Post" 用字符串避免前向引用
+    # back_populates="author"：与 Post.author 属性双向同步
+    # cascade="all, delete-orphan"：级联策略
+    #   - all：包含 save-update, merge, refresh-expire, expunge, delete
+    #   - delete-orphan：删用户时，关联的孤儿文章也一起删
     posts: Mapped[List["Post"]] = relationship(
         back_populates="author", cascade="all, delete-orphan"
     )
-    # 一个用户有多条评论
+    # 一个用户有多条评论（一对多关系）
+    # 同样用 delete-orphan：删用户时连带删他的评论，避免孤儿数据
     comments: Mapped[List["Comment"]] = relationship(
         back_populates="author", cascade="all, delete-orphan"
     )
     # 一对一：用户档案
+    # uselist=False：把默认的"集合"改成"单个对象"，实现一对一
+    # Mapped[Optional["Profile"]]：Optional 表示档案可能不存在（未填写）
     profile: Mapped[Optional["Profile"]] = relationship(
         back_populates="user", uselist=False
     )
 
-# 4. Profile 模型（一对一）
+# 4. Profile 模型（用户档案，与 User 一对一）
 # 定义类 Profile，继承 Base
 class Profile(Base):
     __tablename__ = "profiles"
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 外键指向 users.id，加 unique=True 从数据库层面保证一对一
+    # （即使 SQLAlchemy 的 uselist=False 配错，数据库也会拦截重复）
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True)
+    # 个人简介：限长 500，默认空字符串（不是 None，方便前端展示）
     bio: Mapped[str] = mapped_column(String(500), default="")
+    # 头像 URL：可空，用户没上传时为 None
     avatar: Mapped[Optional[str]] = mapped_column(default=None)
 
+    # 反向关系：指向所属的 User 对象
     user: Mapped["User"] = relationship(back_populates="profile")
 
-# 5. Post 模型
+# 5. Post 模型（文章表，博客系统的内容主体）
 # 定义类 Post，继承 Base
 class Post(Base):
     __tablename__ = "posts"
+    # __table_args__ 配置表级选项（索引、约束等）
     __table_args__ = (
-        # 联合索引：按作者 + 创建时间查询（常用列表页）
+        # 联合索引：按作者 + 创建时间查询（常用列表页场景）
+        # 比如查"某作者最新 10 篇文章"，联合索引能避免回表
         Index("ix_author_created", "author_id", "created_at"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 标题：限长 200，必填
     title: Mapped[str] = mapped_column(String(200))
+    # 正文：用 Text 类型，不限长度，适合长文章
     body: Mapped[str] = mapped_column(Text)
-    # 是否发布
+    # 是否发布：bool，默认 False（草稿状态），发布后改为 True
     published: Mapped[bool] = mapped_column(default=False)
-    # 浏览量
+    # 浏览量：整数，默认 0，每次访问 +1
     view_count: Mapped[int] = mapped_column(default=0)
+    # 创建时间：插入时自动填入
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
+    # 更新时间：可空，onupdate=datetime.now 表示 UPDATE 时自动刷新
+    # 注意传函数本身，不是调用结果
     updated_at: Mapped[Optional[datetime]] = mapped_column(
         default=None, onupdate=datetime.now
     )
 
-    # 外键：作者
+    # 外键：指向 authors 表的 id，建立数据库层面的关联
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    # ORM 关系：访问 post.author 直接拿到 User 对象（不用手动 JOIN）
     author: Mapped["User"] = relationship(back_populates="posts")
 
-    # 一对多：文章的评论
+    # 一对多：一篇文章有多条评论
+    # cascade="all, delete-orphan"：删文章时连带删评论
     comments: Mapped[List["Comment"]] = relationship(
         back_populates="post", cascade="all, delete-orphan"
     )
 
-    # 多对多：文章的标签
+    # 多对多：一篇文章有多个标签，一个标签下有多篇文章
+    # secondary=post_tags：指定中间关联表
+    # SQLAlchemy 会自动维护中间表，不用手动操作
     tags: Mapped[List["Tag"]] = relationship(
         secondary=post_tags, back_populates="posts"
     )
 
-# 6. Comment 模型
+# 6. Comment 模型（评论表，同时关联文章和用户）
 # 定义类 Comment，继承 Base
 class Comment(Base):
     __tablename__ = "comments"
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 评论内容：用 Text，不限长度
     body: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
 
-    # 外键：评论的文章
+    # 外键：评论所属的文章（多的一方持有外键）
     post_id: Mapped[int] = mapped_column(ForeignKey("posts.id"))
+    # ORM 关系：访问 comment.post 拿到所属文章
     post: Mapped["Post"] = relationship(back_populates="comments")
 
-    # 外键：评论的作者
+    # 外键：评论的作者（评论也属于某个用户）
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    # ORM 关系：访问 comment.author 拿到评论者
     author: Mapped["User"] = relationship(back_populates="comments")
 
-# 7. Tag 模型
+# 7. Tag 模型（标签表，与 Post 多对多）
 # 定义类 Tag，继承 Base
 class Tag(Base):
     __tablename__ = "tags"
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 标签名：限长 50，唯一索引（标签不能重名）
     name: Mapped[str] = mapped_column(String(50), unique=True)
 
+    # 反向关系：从标签查所有文章
+    # secondary=post_tags：复用同一个中间表
     posts: Mapped[List["Post"]] = relationship(
         secondary=post_tags, back_populates="tags"
     )
@@ -1242,26 +1284,32 @@ ASYNC_DB_URL = "postgresql+asyncpg://postgres:pass@localhost:5432/blog"
 
 # 创建异步引擎
 # 定义变量 async_engine，赋值为 create_async_engine(...)
+# 异步引擎和同步引擎的参数基本一致，但底层用异步驱动
 async_engine = create_async_engine(
     ASYNC_DB_URL,
-    echo=False,
-    pool_size=10,
-    max_overflow=20,
-    pool_recycle=3600,
+    echo=False,           # 是否打印 SQL（开发期可开 True 调试）
+    pool_size=10,         # 连接池常驻连接数
+    max_overflow=20,      # 高峰期可临时扩到 pool_size + max_overflow 个连接
+    pool_recycle=3600,    # 连接回收周期（秒），避免数据库端断开
 )
 
 # 创建异步会话工厂
 # 定义变量 AsyncSessionLocal，赋值为 async_sessionmaker(...)
+# async_sessionmaker 是 sessionmaker 的异步版本
 AsyncSessionLocal = async_sessionmaker(
-    bind=async_engine,
-    class_=AsyncSession,
-    autocommit=False,
-    autoflush=False,
+    bind=async_engine,    # 绑定异步引擎
+    class_=AsyncSession,  # 指定会话类为 AsyncSession（不是同步的 Session）
+    autocommit=False,     # 不自动提交，手动 await session.commit()
+    autoflush=False,      # 不自动刷新，避免查询触发未预期的写入
     expire_on_commit=False,  # 异步场景推荐 False，避免访问属性触发隐式查询
+    # 为什么异步场景要设 False？
+    # 因为 expire_on_commit=True 时，commit 后访问属性会触发 SELECT
+    # 但异步场景下这个 SELECT 是隐式的，会报错（必须在 async with 里显式 await）
 )
 
 # 异步依赖：yield async session
 # 定义函数 get_async_db
+# 注意是 async def，不是 def（异步依赖必须用 async def）
 async def get_async_db():
     # 创建异步会话
     # 定义变量 db，赋值为 AsyncSessionLocal()
@@ -1270,7 +1318,7 @@ async def get_async_db():
         # 注入给路由
         yield db
     finally:
-        # 异步关闭
+        # 异步关闭：必须 await，因为是异步操作
         await db.close()
 \`\`\`
 
@@ -1907,24 +1955,34 @@ def get_user_posts_lazy(session: Session, user_id: int):
 # 定义函数 get_users_with_posts_join，参数: session
 def get_users_with_posts_join(session: Session) -> list:
     """一次 JOIN 查出用户和文章。"""
+    # joinedload 的原理：用 LEFT JOIN 把主表和关联表一次查回来
+    # 优点：1 次 SQL 搞定，无 N+1
+    # 缺点：一对多关系会笛卡尔积（1 个用户 10 篇文章 → 10 行），需要 unique()
     stmt = (
         select(User)
         .options(joinedload(User.posts))  # 预加载，避免 N+1
         .order_by(User.id)
     )
     # joinedload 用 LEFT JOIN 一次查回
+    # unique()：因为 JOIN 产生了重复的 User 行，需要去重
     return session.execute(stmt).unique().scalars().all()
 
 # 3. selectinload：分两次查（适合一对多、多对多）
 # 定义函数 get_users_with_posts_selectin，参数: session
 def get_users_with_posts_selectin(session: Session) -> list:
     """selectinload 避免 N+1，且不爆笛卡尔积。"""
+    # selectinload 的原理：分两次 SQL
+    #   第一次：SELECT * FROM users
+    #   第二次：SELECT * FROM posts WHERE author_id IN (1, 2, 3, ...)
+    # 优点：不笛卡尔积，适合一对多、多对多
+    # 缺点：2 次 SQL（但比 N+1 的 N+1 次好太多）
     stmt = (
         select(User)
         .options(selectinload(User.posts))
         .order_by(User.id)
     )
     # selectinload：先 SELECT users，再 SELECT posts WHERE author_id IN (...)
+    # 不需要 unique()，因为没有 JOIN 产生重复
     return session.execute(stmt).scalars().all()
 
 # 4. 手动 join 查询
@@ -2616,28 +2674,32 @@ target_metadata = Base.metadata
 
 # 定义函数 run_migrations_offline
 def run_migrations_offline() -> None:
-    """离线模式：只生成 SQL，不连数据库。"""
-    # 从配置取连接字符串
+    """离线模式：只生成 SQL，不连数据库。
+    适用场景：在没数据库的环境下预览迁移 SQL，或把 SQL 交给 DBA 手动执行。
+    """
+    # 从配置取连接字符串（仅用于推断 SQL 方言，不真连）
     url = config.get_main_option("sqlalchemy.url")
     # 构造迁移上下文
     context.configure(
         url=url,
         target_metadata=target_metadata,
-        literal_binds=True,  # 参数绑定为字面量
-        dialect_opts={"paramstyle": "named"},
+        literal_binds=True,  # 把参数绑定为字面量（如 :name → 'alice'），方便看完整 SQL
+        dialect_opts={"paramstyle": "named"},  # 用命名参数风格（:name 而不是 ?）
     )
-    # 执行迁移
+    # 执行迁移（在事务中跑，保证原子性）
     with context.begin_transaction():
         context.run_migrations()
 
 # 定义函数 run_migrations_online
 def run_migrations_online() -> None:
-    """在线模式：连数据库执行迁移。"""
+    """在线模式：连数据库执行迁移。
+    适用场景：开发/测试/生产环境实际执行迁移脚本。
+    """
     # 创建引擎
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,  # 迁移时不用连接池（短连接）
+        config.get_section(config.config_ini_section),  # 从 alembic.ini 读 [alembic] 段
+        prefix="sqlalchemy.",  # 配置项前缀，让 engine_from_config 识别 sqlalchemy.xxx
+        poolclass=pool.NullPool,  # 迁移时不用连接池（短连接），避免迁移期间占用连接
     )
     # 用连接执行迁移
     with connectable.connect() as connection:
@@ -2645,14 +2707,16 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             # 比较类型（默认 False，建议开）
+            # 开启后能检测 String(50) → String(100) 这类类型变化
             compare_type=True,
             # 比较服务器默认值
+            # 开启后能检测 server_default 的变化（如 DEFAULT 0 → DEFAULT 1）
             compare_server_default=True,
         )
         with context.begin_transaction():
             context.run_migrations()
 
-# 根据模式执行
+# 根据模式执行：alembic 命令行会通过环境变量告诉 context 当前是哪种模式
 if context.is_offline_mode():
     run_migrations_offline()
 else:
@@ -2696,41 +2760,56 @@ from alembic import op
 # 导入 sa（SQLAlchemy 别名）
 import sqlalchemy as sa
 
-# 版本号
+# 版本号：当前迁移的唯一标识（自动生成的 12 位 hex）
 revision: str = 'abcdef123456'
-# 上一个版本（首迁移是 None）
+# 上一个版本（首迁移是 None，表示这是第一个迁移）
+# 链条通过 down_revision 串起来：None → abc123 → def456 → ...
 down_revision: Union[str, None] = None
-# 分支标签
+# 分支标签：多分支开发时用，一般不用
 branch_labels: Union[str, Sequence[str], None] = None
-# 依赖
+# 依赖：声明本迁移依赖的其他迁移（跨分支时用）
 depends_on: Union[str, Sequence[str], None] = None
 
 # 定义函数 upgrade
 def upgrade() -> None:
-    """升级：创建表。"""
-    # op.create_table 创建表
+    """升级：创建表。
+    alembic upgrade head 时会执行这个函数。
+    """
+    # op.create_table 创建 users 表
+    # op 是 Alembic 的操作 API，封装了 DDL 操作
     op.create_table(
         'users',
+        # sa.Column(列名, 类型, 约束)：定义列
+        # primary_key=True：主键
         sa.Column('id', sa.Integer(), primary_key=True),
+        # nullable=False：NOT NULL 约束
         sa.Column('name', sa.String(50), nullable=False),
         sa.Column('email', sa.String(120), nullable=False),
+        # server_default=sa.func.now()：数据库端默认值 NOW()
         sa.Column('created_at', sa.DateTime(), server_default=sa.func.now()),
     )
-    # 创建索引
+    # 创建索引：op.create_index(索引名, 表名, 列列表, unique=是否唯一)
+    # unique=True 创建唯一索引，防止邮箱重复
     op.create_index('ix_users_email', 'users', ['email'], unique=True)
 
+    # 创建 posts 表
     op.create_table(
         'posts',
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('title', sa.String(200), nullable=False),
         sa.Column('body', sa.Text(), nullable=False),
         sa.Column('author_id', sa.Integer(), nullable=False),
+        # ForeignKeyConstraint：外键约束
+        # 第一个列表是本表的列，第二个列表是引用表的列
         sa.ForeignKeyConstraint(['author_id'], ['users.id']),
     )
 
 # 定义函数 downgrade
 def downgrade() -> None:
-    """回滚：删除表。"""
+    """回滚：删除表。
+    alembic downgrade -1 时会执行这个函数。
+    注意删除顺序：先删依赖表（posts），再删被依赖表（users）
+    """
     op.drop_table('posts')
     op.drop_table('users')
 \`\`\`
@@ -2833,21 +2912,30 @@ from alembic import op
 import sqlalchemy as sa
 
 revision: str = 'fedcba654321'
+# down_revision 指向上一个版本，串联迁移链条
+# 这里指向 abcdef123456，表示在它之后执行
 down_revision: Union[str, None] = 'abcdef123456'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 # 定义函数 upgrade
 def upgrade() -> None:
-    """升级：把 name 列改名为 username。"""
-    # op.alter_column 改列定义
-    # 参数：表名, 旧列名, 新列名, 类型
+    """升级：把 name 列改名为 username。
+    为什么不能让 autogenerate 自动生成？
+    因为 autogenerate 会看成"删 name + 加 username"，数据会丢。
+    手写 alter_column 只改列名，数据保留。
+    """
+    # op.alter_column 改列定义（改名、改类型、改约束都能用）
+    # 参数：表名, 旧列名, new_column_name=新列名, existing_type=原类型
+    # existing_type 必填，告诉 Alembic 当前列的类型
     op.alter_column('users', 'name', new_column_name='username',
                     existing_type=sa.String(50))
 
 # 定义函数 downgrade
 def downgrade() -> None:
-    """回滚：把 username 改回 name。"""
+    """回滚：把 username 改回 name。
+    downgrade 必须和 upgrade 严格对称，否则版本链会乱。
+    """
     op.alter_column('users', 'username', new_column_name='name',
                     existing_type=sa.String(50))
 \`\`\`
@@ -2871,21 +2959,34 @@ depends_on: Union[str, Sequence[str], None] = None
 
 # 定义函数 upgrade
 def upgrade() -> None:
-    """升级：status 字符串转整数。"""
-    # 先加新列（整数）
+    """升级：status 字符串转整数。
+    分四步走，每步都安全可回滚：
+    1. 加新列（可空，避免 NOT NULL 约束失败）
+    2. 回填数据（CASE WHEN 转换）
+    3. 删旧列
+    4. 新列改名 + 加约束
+    """
+    # 第一步：加新列 status_new，类型 Integer，可空
+    # 先用可空避免 NOT NULL 约束失败（旧数据还没填）
     op.add_column('users', sa.Column('status_new', sa.Integer(), nullable=True))
-    # 用原生 SQL 迁移数据
+    # 第二步：用原生 SQL 迁移数据
+    # CASE WHEN ... THEN ... ELSE ... END：条件表达式
+    # 'active' → 1，其他 → 0
     op.execute("UPDATE users SET status_new = CASE WHEN status = 'active' THEN 1 ELSE 0 END")
-    # 删旧列
+    # 第三步：删旧列 status（数据已迁移到 status_new）
     op.drop_column('users', 'status')
-    # 新列改名
+    # 第四步：新列改名 status_new → status
+    # 同时加 NOT NULL 约束和默认值 0
     op.alter_column('users', 'status_new', new_column_name='status',
                     existing_type=sa.Integer(), nullable=False, server_default='0')
 
 # 定义函数 downgrade
 def downgrade() -> None:
-    """回滚：status 整数转字符串。"""
+    """回滚：status 整数转字符串。
+    和 upgrade 严格对称，只是方向相反。
+    """
     op.add_column('users', sa.Column('status_old', sa.String(20), nullable=True))
+    # 反向转换：1 → 'active'，其他 → 'inactive'
     op.execute("UPDATE users SET status_old = CASE WHEN status = 1 THEN 'active' ELSE 'inactive' END")
     op.drop_column('users', 'status')
     op.alter_column('users', 'status_old', new_column_name='status',

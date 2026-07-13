@@ -27,16 +27,19 @@ pip install "uvicorn[standard]"
 
 \`\`\`python
 # main.py
+# 导入 FastAPI 主类，用于创建 Web 应用和定义路由
 from fastapi import FastAPI
 
-# 创建 FastAPI 应用实例
+# 创建 FastAPI 应用实例，所有路由都注册到这个对象上
 app = FastAPI()
 
 # 定义根路径路由
 # @app.get("/") 装饰器表示：当访问 / 路径时，调用下面的函数
+# get 表示只响应 GET 请求（读取数据）
 @app.get("/")
 def read_root():
-    # 返回字典，FastAPI 自动转换为 JSON
+    # 返回字典，FastAPI 自动转换为 JSON 响应
+    # Content-Type 自动设为 application/json
     return {"message": "Hello World"}
 
 # 启动命令：uvicorn main:app --reload
@@ -48,6 +51,7 @@ def read_root():
 \`\`\`python
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
 # {item_id} 是路径参数
@@ -57,6 +61,7 @@ app = FastAPI()
 # 3. 如果类型不对，返回 422 错误
 @app.get("/items/{item_id}")
 def read_item(item_id: int):
+    # item_id 已被自动转换为 int，可直接使用
     return {"item_id": item_id}
 
 # 访问 /items/42 返回 {"item_id": 42}
@@ -68,14 +73,17 @@ def read_item(item_id: int):
 \`\`\`python
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
 # 查询参数：不在路径中的参数
 # 访问 /items/?skip=0&limit=10
 @app.get("/items/")
 def read_items(skip: int = 0, limit: int = 10):
-    # skip 和 limit 是查询参数
-    # 有默认值，所以是可选的
+    # skip 和 limit 是查询参数（不在路径 {} 中）
+    # 有默认值，所以是可选的；没传时用默认值
+    # skip: 跳过前 N 条（分页用）
+    # limit: 最多返回 N 条
     return {"skip": skip, "limit": limit}
 
 # 访问 /items/ 返回 {"skip": 0, "limit": 10}
@@ -87,20 +95,23 @@ def read_items(skip: int = 0, limit: int = 10):
 
 \`\`\`python
 from fastapi import FastAPI
+# 导入 BaseModel，用于定义数据模型，自动校验请求体 JSON
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
-# 定义数据模型
+# 定义数据模型，继承 BaseModel
 class Item(BaseModel):
-    name: str
-    price: float
-    is_offer: bool = False  # 可选字段，默认 False
+    name: str                # 必填字段，字符串类型
+    price: float             # 必填字段，浮点数类型
+    is_offer: bool = False   # 可选字段，默认 False
 
 # POST 请求，接收 JSON 请求体
 @app.post("/items/")
 def create_item(item: Item):
     # item 自动验证并转换为 Item 对象
+    # 如果请求体不符合模型定义，返回 422 错误
     return {"item_name": item.name, "item_price": item.price}
 
 # 请求示例：
@@ -117,6 +128,7 @@ def create_item(item: Item):
 \`\`\`python
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
 @app.get("/")
@@ -126,6 +138,7 @@ def read_root():
     
     返回欢迎信息
     """
+    # 三引号 docstring 会自动显示在 /docs 文档页面
     return {"message": "Welcome to FastAPI"}
 
 @app.get("/items/{item_id}")
@@ -135,6 +148,7 @@ def read_item(item_id: int):
     
     - **item_id**: 商品 ID（整数）
     """
+    # Markdown 格式的文档说明也会显示在 /docs 中
     return {"item_id": item_id}
 
 # 启动后访问：
@@ -163,11 +177,13 @@ def read_item(item_id: int):
 \`\`\`python
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
-# 路径参数：{item_id}
+# 路径参数：{item_id} 在 URL 路径中用花括号占位
 @app.get("/items/{item_id}")
 def read_item(item_id: int):
+    # item_id: int 声明类型，FastAPI 自动转换和校验
     return {"item_id": item_id}
 \`\`\`
 
@@ -181,6 +197,8 @@ app = FastAPI()
 # 多个路径参数
 @app.get("/users/{user_id}/items/{item_id}")
 def read_user_item(user_id: int, item_id: int):
+    # user_id 和 item_id 按顺序对应 URL 中的占位符
+    # 访问 /users/1/items/42 → user_id=1, item_id=42
     return {"user_id": user_id, "item_id": item_id}
 
 # 访问 /users/1/items/42
@@ -221,19 +239,21 @@ def read_flag(flag: bool):
 
 \`\`\`python
 from fastapi import FastAPI
+# 导入 Enum，用于定义枚举类型，限定参数只能取特定值
 from enum import Enum
 
 app = FastAPI()
 
-# 定义枚举类
+# 定义枚举类，继承 str 让枚举值可当字符串用
 class ModelName(str, Enum):
-    alexnet = "alexnet"
+    alexnet = "alexnet"   # 枚举成员，值为字符串
     resnet = "resnet"
     lenet = "lenet"
 
 @app.get("/models/{model_name}")
 def get_model(model_name: ModelName):
-    # 自动验证枚举值
+    # model_name 类型为 ModelName，FastAPI 自动校验是否为合法枚举值
+    # 传非法值（如 /models/invalid）会返回 422 错误
     if model_name == ModelName.alexnet:
         return {"model_name": model_name, "message": "Alexnet"}
     return {"model_name": model_name}
@@ -250,9 +270,10 @@ from fastapi import FastAPI
 app = FastAPI()
 
 # 路径参数包含 /
-# 使用 path 类型
+# 使用 :path 类型转换器，让参数可以匹配含 / 的完整路径
 @app.get("/files/{file_path:path}")
 def read_file(file_path: str):
+    # 不加 :path 的话，/ 会被当作路径分隔符
     return {"file_path": file_path}
 
 # 访问 /files/home/user/data.txt
@@ -267,6 +288,8 @@ from fastapi import FastAPI
 app = FastAPI()
 
 # 固定路径必须在动态路径之前
+# FastAPI 按定义顺序匹配路由，如果 /users/{user_id} 在前
+# /users/me 中的 "me" 会被当成 user_id，导致类型校验失败
 @app.get("/users/me")
 def read_current_user():
     return {"user_id": "current"}
@@ -356,15 +379,19 @@ def read_items(in_stock: bool = True):
 
 \`\`\`python
 from fastapi import FastAPI
+# 导入 Optional，表示参数可以是指定类型或 None
 from typing import Optional
 
 app = FastAPI()
 
 # 可选参数，默认为 None
+# Optional[str] 等价于 str | None（Python 3.10+）
 @app.get("/items/")
 def read_items(q: Optional[str] = None):
     if q:
+        # 有查询参数 q 时返回查询结果
         return {"q": q}
+    # 没传 q 时返回默认信息
     return {"message": "no query"}
 
 # 访问 /items/ 返回 {"message": "no query"}
@@ -375,6 +402,7 @@ def read_items(q: Optional[str] = None):
 
 \`\`\`python
 from fastapi import FastAPI, Query
+# Query 用于给查询参数添加校验规则和文档元数据
 
 app = FastAPI()
 
@@ -382,11 +410,11 @@ app = FastAPI()
 @app.get("/items/")
 def read_items(
     q: str = Query(
-        default=None,
-        min_length=3,
-        max_length=50,
-        title="查询字符串",
-        description="用于搜索的查询字符串"
+        default=None,        # 默认值 None，表示参数可选
+        min_length=3,        # 最小长度 3，少于则返回 422
+        max_length=50,       # 最大长度 50，超过则返回 422
+        title="查询字符串",   # 标题，显示在 /docs 文档
+        description="用于搜索的查询字符串"  # 描述，显示在 /docs 文档
     )
 ):
     return {"q": q}
@@ -403,8 +431,10 @@ from fastapi import FastAPI, Query
 app = FastAPI()
 
 # 接收多个值
+# list[str] 类型让 FastAPI 接收同名参数的多个值
 @app.get("/items/")
 def read_items(q: list[str] = Query(default=[])):
+    # 访问 /items/?q=apple&q=banana → q = ["apple", "banana"]
     return {"q": q}
 
 # 访问 /items/?q=apple&q=banana
@@ -574,6 +604,8 @@ class Item(BaseModel):
 
 @app.put("/items/{item_id}")
 def update_item(item_id: int, item: Item):
+    # item_id 是路径参数，item 是请求体（Pydantic 模型）
+    # item.dict() 把模型转成字典，** 展开到返回的字典中
     return {"item_id": item_id, **item.dict()}
 
 # 请求示例：
@@ -588,6 +620,7 @@ def update_item(item_id: int, item: Item):
 
 \`\`\`python
 from fastapi import FastAPI, Body
+# Body 用于声明请求体中的单独字段（非 Pydantic 模型）
 from pydantic import BaseModel
 
 app = FastAPI()
@@ -601,10 +634,10 @@ class User(BaseModel):
 
 @app.put("/items/{item_id}")
 def update_item(
-    item_id: int,
-    item: Item,
-    user: User,
-    importance: int = Body(...)
+    item_id: int,               # 路径参数
+    item: Item,                 # 请求体（Pydantic 模型）
+    user: User,                 # 请求体（Pydantic 模型）
+    importance: int = Body(...) # Body(...) 声明这是请求体的一个独立字段，... 表示必填
 ):
     return {
         "item_id": item_id,
@@ -626,11 +659,14 @@ def update_item(
 
 \`\`\`python
 from fastapi import FastAPI, Form
+# Form 用于接收表单字段（application/x-www-form-urlencoded）
 
 app = FastAPI()
 
 @app.post("/login/")
 def login(username: str = Form(...), password: str = Form(...)):
+    # Form(...) 表示从表单数据中读取，... 表示必填
+    # 与 JSON 请求体不同，表单数据是 key=value 格式
     return {"username": username}
 
 # 请求示例：
@@ -643,17 +679,22 @@ def login(username: str = Form(...), password: str = Form(...)):
 
 \`\`\`python
 from fastapi import FastAPI, File, UploadFile
+# File 用于声明文件字段，UploadFile 是文件对象类型
 
 app = FastAPI()
 
 # 单文件上传
 @app.post("/upload/")
 def upload_file(file: UploadFile = File(...)):
+    # UploadFile 对象有 filename、content_type、size 等属性
+    # 可用 await file.read() 读取内容
     return {"filename": file.filename}
 
 # 多文件上传
 @app.post("/upload/multiple/")
 def upload_files(files: list[UploadFile] = File(...)):
+    # list[UploadFile] 接收多个文件
+    # 列表推导式提取每个文件的文件名
     return {"filenames": [f.filename for f in files]}
 \`\`\`
 

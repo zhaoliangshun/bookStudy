@@ -686,21 +686,27 @@ FastAPI/Starlette 内置 CORS 中间件,用 \`add_middleware\` 添加:
 # 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
 # 从 fastapi.middleware.cors 导入 CORSMiddleware
+# CORSMiddleware:处理跨域请求,自动添加 Access-Control-* 响应头
 from fastapi.middleware.cors import CORSMiddleware
 
 # 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 添加 CORS 中间件
+# add_middleware 第一个参数是中间件类,后续参数是配置
 app.add_middleware(
     CORSMiddleware,
-    # 允许的前端来源(开发地址)
+    # allow_origins:允许跨域的前端来源列表
+    # 必须包含协议+域名+端口,缺一不可
+    # ["*"] 表示允许任何来源(不安全,生产不推荐)
     allow_origins=[
-        "http://localhost:3000",   # 前端开发地址
+        "http://localhost:3000",   # 前端开发地址(React 默认端口)
     ],
-    # 允许所有方法(GET/POST/PUT/DELETE 等)
+    # allow_methods:允许的 HTTP 方法
+    # ["*"] 表示允许所有标准方法(GET/POST/PUT/DELETE/PATCH/HEAD/OPTIONS)
     allow_methods=["*"],
-    # 允许所有请求头
+    # allow_headers:允许的请求头
+    # ["*"] 表示允许所有请求头(Authorization、Content-Type 等)
     allow_headers=["*"],
 )
 
@@ -786,17 +792,25 @@ app.add_middleware(
 ### Demo 3:allow_origin_regex 用法
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 fastapi.middleware.cors 导入 CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 用正则匹配所有子域名
 # https://*.mycompany.com 都允许
 app.add_middleware(
     CORSMiddleware,
+    # allow_origin_regex:用正则匹配来源,适合子域名多的场景
+    # 比一个个列 allow_origins 方便
     # 正则:匹配 https://任意.mycompany.com
+    # r"..." 是原始字符串,反斜杠不转义
+    # \\. 匹配真正的点号(正则里 . 匹配任意字符,要转义)
     allow_origin_regex=r"https://.*\\.mycompany\\.com",
+    # allow_credentials=True:允许带 Cookie 跨域
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -901,10 +915,14 @@ CORS 报错信息通常很模糊(浏览器只说「CORS policy」)。排查方�
 ### Demo 5:CORS 调试中间件
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI 和 Request
 from fastapi import FastAPI, Request
+# 从 fastapi.middleware.cors 导入 CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
+# 从 fastapi.responses 导入 JSONResponse
 from fastapi.responses import JSONResponse
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 先不加 CORS,测试报错
@@ -914,12 +932,16 @@ app = FastAPI()
 @app.middleware("http")
 async def cors_debug_middleware(request: Request, call_next):
     # 打印 Origin 头(跨域请求会带)
+    # Origin 标识请求来源,浏览器跨域请求自动加上
     origin = request.headers.get("origin", "无")
     print(f"请求方法: {request.method}, Origin: {origin}")
 
+    # 调用下游,拿到响应
     response = await call_next(request)
 
     # 打印响应头里的 CORS 相关头,看配没配对
+    # 字典推导式:筛选出 key 包含 "access-control" 的响应头
+    # .lower() 统一转小写,做大小写不敏感匹配
     cors_headers = {
         k: v for k, v in response.headers.items()
         if "access-control" in k.lower()
@@ -1021,16 +1043,19 @@ def get_product(pid: int):
     return {"id": pid, "name": "商品", "price": 100}
 
 # 模拟登录,设置 Cookie
+# 从 fastapi 导入 Response(用于设置 Cookie)
 from fastapi import Response
 
 @app.post("/api/login")
 def login(response: Response):
+    # set_cookie 方法用于在响应里设置 Set-Cookie 头
     response.set_cookie(
-        key="session_id",
-        value="abc123",
-        httponly=True,     # JS 读不到,防 XSS
-        samesite="none",   # 跨域带 Cookie 必须设 none
-        secure=True,       # 生产环境必须 HTTPS
+        key="session_id",      # Cookie 的名字
+        value="abc123",        # Cookie 的值
+        httponly=True,         # HttpOnly:JS 读不到,防 XSS 偷 Cookie
+        samesite="none",       # SameSite=None:跨域带 Cookie 必须设 none
+        # samesite=none 时,secure 必须为 True,否则浏览器拒绝
+        secure=True,           # Secure:只走 HTTPS,生产环境必须开启
     )
     return {"msg": "登录成功"}
 
@@ -1148,20 +1173,28 @@ curl http://localhost:8000/big -o /dev/null -w "大小: %{size_download} 字节"
 Host 头攻击:攻击者伪造 Host 头(如 \`Host: evil.com\`),如果你的代码用 Host 生成 URL(如密码重置链接),会被诱导到恶意网站。
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 starlette.middleware.trustedhost 导入 TrustedHostMiddleware
+# TrustedHostMiddleware:校验请求头里的 Host 字段,防止 Host 头攻击
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
-# 只允许这些 Host,其他的返回 400
+# 添加 TrustedHost 中间件
+# 只允许这些 Host,其他的返回 400 Bad Request
 app.add_middleware(
     TrustedHostMiddleware,
+    # allowed_hosts:允许访问的 Host 白名单
+    # 不在列表里的 Host 会被拒绝,返回 400
     allowed_hosts=[
-        "example.com",           # 主域名
-        "www.example.com",       # www 子域
-        ".example.com",          # 所有子域名(. 开头)
-        "localhost",             # 开发环境
-        "127.0.0.1",             # 开发环境
+        "example.com",           # 主域名(精确匹配)
+        "www.example.com",       # www 子域(精确匹配)
+        ".example.com",          # 所有子域名(. 开头表示通配子域)
+        # .example.com 能匹配 api.example.com、admin.example.com 等
+        "localhost",             # 开发环境(本机访问)
+        "127.0.0.1",             # 开发环境(IP 访问)
     ],
 )
 
@@ -1183,12 +1216,18 @@ def root():
 ### Demo 2:强制 HTTPS 跳转
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 starlette.middleware.httpsredirect 导入 HTTPSRedirectMiddleware
+# HTTPSRedirectMiddleware:把所有 HTTP 请求永久重定向(308)到 HTTPS
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 添加 HTTPS 重定向中间件
 # 强制 HTTPS:所有 HTTP 请求 308 跳转到 HTTPS
+# 308 是永久重定向,保留原请求方法和 body
 app.add_middleware(HTTPSRedirectMiddleware)
 
 @app.get("/")
@@ -1210,18 +1249,23 @@ def root():
 # 从 fastapi 导入 FastAPI 和 Request
 from fastapi import FastAPI, Request, Response
 # 从 starlette.middleware.sessions 导入 SessionMiddleware
+# SessionMiddleware:用 itsdangerous 签名的 Cookie Session,无需服务端存储
 from starlette.middleware.sessions import SessionMiddleware
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # secret_key 用来签名 Cookie,泄漏则可伪造
 # 生产环境用随机长字符串,不要硬编码
+# 建议用 os.getenv("SESSION_SECRET") 从环境变量读
 app.add_middleware(SessionMiddleware, secret_key="your-very-secret-key-change-me")
 
 # 登录:往 session 存数据
 @app.post("/login")
 def login(request: Request):
+    # request.session 是一个 dict-like 对象
     # 存到 session(会签名后写到 Cookie)
+    # 数据经 itsdangerous 签名后序列化到 Cookie,下次请求自动校验签名
     request.session["user_id"] = 42
     request.session["username"] = "alice"
     return {"msg": "登录成功"}
@@ -1229,7 +1273,8 @@ def login(request: Request):
 # 读 session
 @app.get("/me")
 def me(request: Request):
-    uid = request.session.get("user_id")      # 读 session
+    # .get(key, default) 读 session,不存在返回默认值
+    uid = request.session.get("user_id")      # 读 session,不存在返回 None
     name = request.session.get("username")    # 读 session
     if uid is None:
         return {"msg": "未登录"}
@@ -1238,16 +1283,17 @@ def me(request: Request):
 # 登出:清空 session
 @app.post("/logout")
 def logout(request: Request):
-    # 清空所有 session 数据
+    # clear() 清空所有 session 数据
+    # 会删除 Cookie 里的 session 内容
     request.session.clear()
     return {"msg": "已登出"}
 
 # 访问计数:演示 session 存储
 @app.get("/visit")
 def visit(request: Request):
-    # 读当前访问次数
+    # 读当前访问次数,默认 0
     count = request.session.get("visit_count", 0)
-    # 加 1 后存回
+    # 加 1 后存回 session
     request.session["visit_count"] = count + 1
     return {"visit_count": count + 1}
 \`\`\`
@@ -1272,16 +1318,20 @@ FastAPI 是 ASGI 框架,但有些老应用是 WSGI(如 Flask、Django)。\`WSGIM
 # 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
 # 从 fastapi.middleware.wsgi 导入 WSGIMiddleware
+# WSGIMiddleware:把 WSGI 应用(如 Flask/Django)包装成 ASGI,挂到 FastAPI 下
 from fastapi.middleware.wsgi import WSGIMiddleware
 
 # 假设有个 Flask 应用(需要 pip install flask)
 # 实际运行需要安装 Flask
 try:
+    # 尝试导入 Flask,没装会抛 ImportError
     from flask import Flask as FlaskApp
 
     # 创建 Flask 应用
+    # __name__ 是当前模块名,Flask 用它定位静态文件和模板
     flask_app = FlaskApp(__name__)
 
+    # 用 @flask_app.route 装饰器注册 Flask 路由
     @flask_app.route("/flask/hello")
     def flask_hello():
         return "Hello from Flask!"
@@ -1291,7 +1341,7 @@ try:
         import time
         return {"time": time.time()}
 except ImportError:
-    # 没装 Flask 就跳过
+    # 没装 Flask 就跳过,flask_app 设为 None
     flask_app = None
 
 # 创建 FastAPI 应用
@@ -1303,6 +1353,8 @@ def fastapi_data():
     return {"source": "FastAPI", "msg": "hello"}
 
 # 把 Flask 挂到 /flask 路径下
+# app.mount(path, app):把另一个应用挂到指定路径前缀下
+# WSGIMiddleware(flask_app) 把 Flask(WSGI) 转成 ASGI,让 FastAPI 能调用
 if flask_app:
     app.mount("/flask", WSGIMiddleware(flask_app))
     # 访问 /flask/hello 会走 Flask
@@ -1318,24 +1370,32 @@ if flask_app:
 ### Demo 5:中间件顺序对比
 
 \`\`\`python
+# 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
+# 从 fastapi.middleware.gzip 导入 GZipMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+# 从 fastapi.middleware.cors 导入 CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
+# 从 starlette.middleware.trustedhost 导入 TrustedHostMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+# 从 starlette.middleware.httpsredirect 导入 HTTPSRedirectMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
 # 正确顺序(后加的更外层):
 # 执行流:请求 → GZip(外) → CORS → TrustedHost(内) → 路由
 
 # 1. 先加 TrustedHost(最内层,最先执行校验)
+# 先注册的在内层,请求最后到达这层(但校验类要放内层,早点拒绝非法请求)
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["localhost", "127.0.0.1", "myapp.com"],
 )
 
 # 2. 再加 CORS(中间层)
+# 中间注册的在中间层,处理跨域头
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -1344,6 +1404,7 @@ app.add_middleware(
 )
 
 # 3. 最后加 GZip(最外层,最后处理响应)
+# 最后注册的在最外层,请求最先经过,响应最后处理(压缩最终响应)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # 实际执行顺序:
@@ -1400,11 +1461,18 @@ else:
     )
 
 # 2. Session:Cookie 会话
+# SessionMiddleware 用 itsdangerous 签名 Cookie 存储 session 数据
 app.add_middleware(
     SessionMiddleware,
+    # secret_key:签名密钥,从环境变量读,开发用默认值
     secret_key=os.getenv("SESSION_SECRET", "dev-secret-change-in-prod"),
+    # max_age:Session 过期时间(秒),14 天 = 14*24*3600
     max_age=14 * 24 * 3600,  # 14 天过期
+    # same_site:SameSite 策略,防 CSRF
+    # "lax":大部分跨域不带 Cookie,顶部导航带(默认推荐)
     same_site="lax",
+    # https_only:生产环境只走 HTTPS(secure 属性)
+    # 开发环境 False(HTTP 能用),生产 True(只 HTTPS)
     https_only=IS_PROD,       # 生产环境只走 HTTPS
 )
 
@@ -1425,21 +1493,32 @@ app.add_middleware(
 )
 
 # 4. 请求日志(自定义)
+# 日志中间件:记录每个请求的方法、路径、状态码、耗时
 class LoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        # 生成 8 位短 UUID 作为请求 ID
         request_id = str(uuid.uuid4())[:8]
+        # 存到 state,路由和其他中间件都能用
         request.state.request_id = request_id
+        # 记录开始时间,用于计算耗时
         start = time.time()
         try:
+            # 调用下游,拿到响应
             response = await call_next(request)
+            # 计算耗时(秒)
             dur = time.time() - start
+            # 记录 INFO 日志:请求ID、方法、路径、状态码、耗时
             logger.info(f"[{request_id}] {request.method} {request.url.path} {response.status_code} {dur:.3f}s")
+            # 响应头加请求 ID,前端能关联
             response.headers["X-Request-ID"] = request_id
+            # 响应头加耗时,方便排查慢请求
             response.headers["X-Process-Time"] = f"{dur:.4f}s"
             return response
         except Exception as e:
+            # 下游抛异常,记录错误日志
             dur = time.time() - start
             logger.error(f"[{request_id}] {request.method} {request.url.path} 500 {dur:.3f}s {e}")
+            # 重新抛出,让外层异常处理器处理
             raise
 
 app.add_middleware(LoggingMiddleware)
@@ -1943,34 +2022,46 @@ async def upload(request: Request):
 更严格的实现(检查实际 body 大小,防 chunked 绕过):
 
 \`\`\`python
+# 严格检查实际 body 大小的中间件
+# 防止客户端用 chunked 传输绕过 Content-Length 检查
 class StrictBodySizeMiddleware(BaseHTTPMiddleware):
     """严格检查实际 body 大小"""
 
     def __init__(self, app, max_size: int = 1024 * 1024):
         super().__init__(app)
+        # max_size 单位字节,默认 1MB(1024*1024)
         self.max_size = max_size
 
     async def dispatch(self, request: Request, call_next):
-        received = 0  # 已接收字节数
+        received = 0  # 已接收字节数,累加统计
 
         # 包装 receive 函数,统计 body 大小
+        # ASGI 的 receive 函数返回 message 字典
+        # 通过替换 request._receive,在下读取 body 时自动统计
         async def receive_wrapper():
+            # nonlocal 声明修改外层变量 received
             nonlocal received
+            # 调用原始 receive,拿到消息
             message = await request.receive()
+            # http.request 类型消息包含请求体数据
             if message["type"] == "http.request":
+                # body 是字节串,可能分多次到达(more_body=True)
                 body = message.get("body", b"")
                 received += len(body)
-                # 超限,直接中断
+                # 超限,直接中断,抛异常
                 if received > self.max_size:
                     raise ValueError("请求体过大")
             return message
 
-        # 替换 receive
+        # 替换 request 的 receive 函数为包装版
+        # 下游调用 request.body() 时会走我们的包装函数
         request._receive = receive_wrapper
 
         try:
+            # 调用下游,如果 body 超限会抛 ValueError
             return await call_next(request)
         except ValueError as e:
+            # 捕获超限异常,返回 413 Payload Too Large
             return JSONResponse(
                 status_code=413,
                 content={"detail": str(e)},

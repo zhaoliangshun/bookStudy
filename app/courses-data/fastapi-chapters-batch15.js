@@ -143,39 +143,53 @@ Gunicorn 参数非常多，常用的列在下面：
 
 \`\`\`python
 # uvicorn/workers.py 源码简化版，理解原理即可
+# 从 uvicorn.server 模块导入 Server 类，它负责真正运行 ASGI 服务器
 from uvicorn.server import Server
+# 导入 HTTP 协议自动选择类（会根据是否装了 httptools 自动选实现）
 from uvicorn.protocols.http.auto import AutoHTTPProtocol
+# 导入 WebSocket 协议自动选择类（会根据是否装了 websockets 自动选实现）
 from uvicorn.protocols.websockets.auto import AutoWebsocketProtocol
 
+# UvicornWorker 继承自 gunicorn 的 Worker 基类
+# 这样 Gunicorn master 就能像管理普通 WSGI worker 一样管理 Uvicorn worker
 class UvicornWorker(Worker):
     """
     Uvicorn 实现的 Gunicorn worker class。
     继承自 gunicorn.workers.base.Worker，实现了 ASGI 接口。
     """
+    # CONFIG_KWARGS 是传给 uvicorn Server 的配置参数
     # 底层用 httptools 解析 HTTP（高性能，C 实现）
     CONFIG_KWARGS = {
-        "loop": "uvloop",        # 用 uvloop 代替 asyncio 原生 loop
-        "http": "httptools",     # 用 httptools 解析 HTTP
+        "loop": "uvloop",        # 用 uvloop 代替 asyncio 原生 loop（性能提升 2-4 倍）
+        "http": "httptools",     # 用 httptools 解析 HTTP（C 扩展，比 h11 快）
         "lifespan": "on",        # 启用 lifespan 事件（FastAPI startup/shutdown）
     }
 
     def run(self):
+        # run 方法由 Gunicorn master 调用，每个 worker fork 后会执行这里
         # 每个 worker 内部跑一个 uvicorn Server
+        # self.config 是 Gunicorn 传进来的配置对象
         server = Server(config=self.config)
+        # server.run() 会阻塞，直到收到退出信号
         server.run()
 
     def handle_exit(self, sig, frame):
-        # 处理 SIGTERM/SIGINT，优雅退出
+        # 处理 SIGTERM/SIGINT 信号，实现优雅退出
+        # sig: 信号编号（如 15 表示 SIGTERM）
+        # frame: 当前栈帧（一般用不到）
+        # 优雅退出 = 先处理完当前请求再退出，而不是立即中断
         ...
 
+# UvicornH11Worker 继承 UvicornWorker，只覆盖了 CONFIG_KWARGS
+# 适用于装不上 httptools C 扩展的环境（如某些 ARM 设备）
 class UvicornH11Worker(UvicornWorker):
     """
     用 h11 代替 httptools（纯 Python 实现，慢但兼容性好）。
     一般不用，除非你的环境装不上 httptools。
     """
     CONFIG_KWARGS = {
-        "loop": "asyncio",       # 用原生 asyncio loop
-        "http": "h11",           # 用 h11 解析 HTTP（纯 Python）
+        "loop": "asyncio",       # 用原生 asyncio loop（不用 uvloop）
+        "http": "h11",           # 用 h11 解析 HTTP（纯 Python 实现，兼容性好但慢）
         "lifespan": "on",
     }
 \`\`\`
@@ -190,14 +204,20 @@ worker 数量不是越多越好。每个 worker 都是独立进程，占内存�
 # worker 数量计算公式
 # Gunicorn 官方推荐：(2 * CPU 核数) + 1
 
+# 导入 multiprocessing 模块，用于获取 CPU 核数
 import multiprocessing
 
+# multiprocessing.cpu_count() 返回当前机器的逻辑 CPU 核数
+# 注意：这是逻辑核数（含超线程），不是物理核数
 # 获取 CPU 核数
 cpu_count = multiprocessing.cpu_count()
 
 # 计算推荐 worker 数
+# 2 倍 CPU：一个 worker 处理请求时 IO 等待，另一个 worker 用 CPU
+# +1：留一个 worker 应对突发流量，避免请求排队
 workers = (2 * cpu_count) + 1
 
+# 用 f-string 格式化输出（Python 3.6+ 语法）
 print(f"CPU 核数: {cpu_count}")
 print(f"推荐 worker 数: {workers}")
 
@@ -230,7 +250,9 @@ print(f"推荐 worker 数: {workers}")
 # gunicorn.conf.py - Gunicorn 配置文件
 # 用法: gunicorn -c gunicorn.conf.py app.main:app
 
+# 导入 multiprocessing 用于获取 CPU 核数
 import multiprocessing
+# 导入 os 用于读取环境变量
 import os
 
 # ============ 基础配置 ============
@@ -512,24 +534,32 @@ gunicorn --chdir /var/www/my_project app.main:app
 # 原因：FastAPI 的 startup/shutdown 事件没正确注册
 # 检查：UvicornWorker 默认 lifespan="on"，确保你的 app 生命周事件写对
 
+# 从 fastapi 导入 FastAPI 应用类
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
+# 旧写法：用 @app.on_event 装饰器注册生命周期事件（已弃用，不推荐）
 @app.on_event("startup")
 async def startup():
     # 正确写法
     pass
 
 # 新写法（FastAPI 0.93+ 推荐）
+# 从 contextlib 导入 asynccontextmanager 装饰器
+# 它能把一个含 yield 的 async 生成器函数变成异步上下文管理器
 from contextlib import asynccontextmanager
 
+# @asynccontextmanager 装饰后，lifespan 函数变成异步上下文管理器
+# yield 之前是 startup 逻辑，yield 之后是 shutdown 逻辑
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # startup
+    # startup: 应用启动时执行（初始化数据库连接池、Redis 等）
     yield
-    # shutdown
+    # shutdown: 应用关闭时执行（释放资源、关闭连接）
 
+# 通过 lifespan 参数把生命周期管理器传给 FastAPI
 app = FastAPI(lifespan=lifespan)
 \`\`\`
 
@@ -562,20 +592,29 @@ max_requests_jitter = 100
 # 但 fork 后内存是 COW（copy-on-write），写操作各改各的
 
 # 错误示例：用全局变量做计数器
+# master 加载时 request_count=0，fork 后每个 worker 都有一份独立的 0
+# worker A 加到 5，worker B 还是 0，看到的计数永远不对
 request_count = 0  # 每个 worker 各自一份，加起来不对
 
+# @app.get 装饰器注册 GET 路由 /count
 @app.get("/count")
 async def count():
+    # global 声明修改的是当前 worker 进程里的全局变量
+    # 其他 worker 看不到这个修改
     global request_count
     request_count += 1  # 这个计数只在当前 worker 有效
     return {"count": request_count}
 
 # 正确做法：用 Redis 等外部存储
+# Redis 是独立进程，所有 worker 共享同一份数据
 import redis
+# 创建 Redis 客户端，默认连 127.0.0.1:6379
 r = redis.Redis()
 
 @app.get("/count")
 async def count():
+    # r.incr 是原子操作，对 "request_count" 键自增 1 并返回新值
+    # 即使多个 worker 同时调用，Redis 也能保证计数正确
     return {"count": r.incr("request_count")}
 \`\`\`
 
@@ -585,57 +624,80 @@ async def count():
 
 \`\`\`python
 # app/main.py - 一个完整的 FastAPI 应用
+# 从 contextlib 导入 asynccontextmanager，用于创建异步生命周期管理器
 from contextlib import asynccontextmanager
+# 从 fastapi 导入 FastAPI 应用类
 from fastapi import FastAPI
+# 导入 logging 模块，用于记录日志
 import logging
+# 导入 os 模块，用于获取进程 PID 等系统信息
 import os
 
-# 配置日志
+# 配置日志：basicConfig 设置全局日志格式和级别
+# level=logging.INFO 表示 INFO 及以上级别的日志都会输出
 logging.basicConfig(level=logging.INFO)
+# 创建一个 logger 实例，__name__ 是当前模块名（如 app.main）
 logger = logging.getLogger(__name__)
 
-# 生命周期管理
+# 生命周期管理：用 @asynccontextmanager 装饰器定义
+# yield 前是 startup 逻辑，yield 后是 shutdown 逻辑
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # startup: 初始化资源（数据库连接池、Redis 等）
     logger.info("应用启动中...")
+    # os.getpid() 返回当前进程 ID，用于区分是哪个 worker 在启动
     logger.info(f"工作进程 PID: {os.getpid()}")
     yield
     # shutdown: 释放资源
     logger.info("应用关闭中...")
 
+# 创建 FastAPI 应用实例
+# title 显示在 Swagger 文档标题，version 显示版本号
+# lifespan 参数接收生命周期管理器，FastAPI 会在启动/关闭时自动调用
 app = FastAPI(
     title="生产环境示例 API",
     version="1.0.0",
     lifespan=lifespan,
 )
 
+# @app.get 装饰器注册 GET 路由，访问 / 时触发
 @app.get("/")
 async def root():
+    # 返回进程 PID，方便验证多 worker 是否生效
+    # 访问多次会看到不同的 PID，说明请求被分发到不同 worker
     return {"message": "Hello from Gunicorn", "pid": os.getpid()}
 
+# 健康检查接口，给 K8s/docker/Nginx 做存活探测用
 @app.get("/health")
 async def health():
     # 健康检查接口（给 K8s/docker/Nginx 用）
     return {"status": "healthy"}
 
+# 模拟慢请求接口，用于测试 Gunicorn 的 timeout 配置
 @app.get("/slow")
 async def slow():
     # 模拟慢请求（测试 timeout）
+    # 导入 asyncio 用于异步休眠
     import asyncio
+    # await asyncio.sleep(10) 异步等待 10 秒，不阻塞事件循环
+    # 如果 timeout=60 则正常返回；如果 timeout=5 则 worker 会被 master 杀掉
     await asyncio.sleep(10)
     return {"message": "终于返回了"}
 \`\`\`
 
 \`\`\`python
 # gunicorn.conf.py - 生产环境配置
+# 导入 multiprocessing 用于获取 CPU 核数
 import multiprocessing
+# 导入 os（备用，可用于读取环境变量）
 import os
 
 # 绑定地址（绑 127.0.0.1，让 Nginx 代理）
+# 只绑本地回环地址，外部无法直接访问，必须通过 Nginx 代理
 bind = "127.0.0.1:8000"
 
 # worker 数量
+# 用经典公式 2*CPU+1 自动计算，避免手动数 CPU 核数
 workers = multiprocessing.cpu_count() * 2 + 1
 
 # Uvicorn worker（支持 ASGI）
@@ -1010,19 +1072,29 @@ FastAPI 应用里读取环境变量：
 
 \`\`\`python
 # app/core/config.py
+# 从 pydantic_settings 导入 BaseSettings 基类
+# pydantic-settings 是 pydantic v2 的配置管理子包，专门用于读取环境变量
 from pydantic_settings import BaseSettings
 
+# Settings 类继承 BaseSettings，会自动从环境变量和 .env 文件读取配置
 class Settings(BaseSettings):
+    # 每个类属性对应一个环境变量，类型注解决定如何转换
+    # 冒号后面是默认值，环境变量没设时用默认值
     # 从环境变量读取，有默认值
-    app_env: str = "development"
-    database_url: str = "sqlite:///./test.db"
-    secret_key: str = "change-me"
-    log_level: str = "info"
-    workers: int = 4
+    app_env: str = "development"       # 应用环境（development/staging/production）
+    database_url: str = "sqlite:///./test.db"  # 数据库连接 URL
+    secret_key: str = "change-me"      # 密钥（生产环境必须改！）
+    log_level: str = "info"            # 日志级别
+    workers: int = 4                   # worker 数量
 
+    # 内部 Config 类配置 BaseSettings 的行为
     class Config:
+        # env_file 指定从哪个文件读取环境变量
+        # 优先级：系统环境变量 > .env 文件 > 类默认值
         env_file = ".env"
 
+# 创建全局配置实例
+# 其他模块 from app.core.config import settings 使用
 settings = Settings()
 \`\`\`
 
@@ -1171,87 +1243,128 @@ docker-compose down -v
 
 \`\`\`python
 # app/main.py - 完整的三服务集成
+# 从 contextlib 导入 asynccontextmanager 用于创建异步生命周期管理器
 from contextlib import asynccontextmanager
+# 从 fastapi 导入 FastAPI 应用类和 HTTPException 异常类
+# HTTPException 用于抛出带状态码的 HTTP 错误响应
 from fastapi import FastAPI, HTTPException
+# 从 pydantic 导入 BaseModel，用于定义请求/响应数据模型
 from pydantic import BaseModel
+# 导入 asyncpg：PostgreSQL 的异步驱动，性能比 psycopg2 好
 import asyncpg
+# 导入 redis 的异步客户端（redis.asyncio 是 Python 3.6+ 异步版本）
+# 用 as redis 是为了和同步 redis 包名区分
 import redis.asyncio as redis
+# 导入 os 用于读取环境变量
 import os
 
-# 全局连接（lifespan 里初始化）
-db_pool = None
-redis_client = None
+# 全局连接池/客户端（在 lifespan 里初始化，路由里使用）
+# 全局变量让所有请求共享同一个连接池，避免每个请求都新建连接
+db_pool = None       # asyncpg 连接池
+redis_client = None  # Redis 异步客户端
 
+# @asynccontextmanager 装饰器把 lifespan 函数变成异步上下文管理器
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # === startup ===
+    # global 声明要修改全局变量（否则 Python 会创建局部变量）
     global db_pool, redis_client
 
     # 创建数据库连接池
+    # asyncpg.create_pool 创建连接池，复用连接避免频繁握手
+    # min_size=5: 池里至少保持 5 个连接
+    # max_size=20: 池里最多 20 个连接（超过的请求要等）
     db_pool = await asyncpg.create_pool(
+        # os.getenv 读取环境变量，第二个参数是默认值
         os.getenv("DATABASE_URL", "postgresql://postgres:password@db:5432/mydb"),
         min_size=5,
         max_size=20,
     )
 
     # 创建 Redis 连接
+    # redis.from_url 用 URL 字符串创建客户端，比传参数直观
     redis_client = redis.from_url(
         os.getenv("REDIS_URL", "redis://redis:6379/0")
     )
 
+    # yield 把控制权交回给 FastAPI，开始处理请求
     yield
 
     # === shutdown ===
-    await db_pool.close()
-    await redis_client.close()
+    # 应用关闭时释放资源，否则会泄漏连接
+    await db_pool.close()      # 关闭连接池
+    await redis_client.close() # 关闭 Redis 连接
 
+# 创建 FastAPI 应用，传入 lifespan 管理器
 app = FastAPI(lifespan=lifespan)
 
+# 定义商品模型（Pydantic BaseModel）
+# 用于 POST 请求体校验和响应序列化
 class Item(BaseModel):
-    name: str
-    price: float
+    name: str        # 商品名，必填
+    price: float     # 价格，必填，自动转 float
 
+# @app.get 注册 GET 路由，{item_id} 是路径参数
 @app.get("/items/{item_id}")
+# item_id: int 表示路径参数会被自动转成整数
 async def get_item(item_id: int):
-    # 1. 先查 Redis 缓存
+    # 1. 先查 Redis 缓存（缓存穿透防护：减少数据库压力）
+    # f-string 构造缓存 key，格式统一便于管理
     cache_key = f"item:{item_id}"
+    # await redis_client.get 是异步操作，不阻塞事件循环
     cached = await redis_client.get(cache_key)
     if cached:
+        # 命中缓存直接返回，不查数据库
         return {"source": "cache", "data": cached}
 
     # 2. 缓存没有，查数据库
+    # db_pool.acquire() 从连接池获取一个连接，用完自动归还
+    # async with 保证连接无论是否异常都会归还
     async with db_pool.acquire() as conn:
+        # conn.fetchrow 执行 SQL 并返回一行（没结果返回 None）
+        # $1 是 asyncpg 的参数占位符（不是 psycopg2 的 %s）
         row = await conn.fetchrow(
             "SELECT id, name, price FROM items WHERE id = $1", item_id
         )
         if not row:
+            # 数据库查不到，抛 404 异常
             raise HTTPException(status_code=404, detail="Item not found")
 
     # 3. 写入缓存（5 分钟过期）
+    # setex(key, 过期秒数, value)：写入并设置过期时间
+    # 300 秒 = 5 分钟，避免缓存数据过旧
     await redis_client.setex(cache_key, 300, str(dict(row)))
 
     return {"source": "db", "data": dict(row)}
 
+# @app.post 注册 POST 路由，用于创建商品
 @app.post("/items")
+# item: Item 表示请求体会被解析成 Item 模型（自动校验类型）
 async def create_item(item: Item):
     async with db_pool.acquire() as conn:
+        # RETURNING id 是 PostgreSQL 特性，返回插入的 id
+        # 不用再单独查一次
         row = await conn.fetchrow(
             "INSERT INTO items (name, price) VALUES ($1, $2) RETURNING id",
             item.name, item.price
         )
-    # 创建后清相关缓存
+    # 创建后清相关缓存（防止后续查询读到旧数据）
     await redis_client.delete(f"item:{row['id']}")
     return {"id": row["id"], "name": item.name, "price": item.price}
 
+# 健康检查接口，检查依赖服务是否正常
 @app.get("/health")
 async def health():
     # 健康检查（检查依赖）
     try:
+        # redis ping 检查 Redis 是否能连
         await redis_client.ping()
         async with db_pool.acquire() as conn:
+            # SELECT 1 是最轻量的 SQL，只测试连接是否正常
             await conn.fetchval("SELECT 1")
         return {"status": "healthy", "db": "ok", "redis": "ok"}
     except Exception as e:
+        # 依赖挂了返回 503，让 K8s/docker 知道服务不可用
         raise HTTPException(status_code=503, detail=str(e))
 \`\`\`
 
@@ -1333,41 +1446,55 @@ docker inspect --format='{{json .State.Health.Log}}' my-app | jq
 
 \`\`\`python
 # 健康检查接口要检查关键依赖
+# 这是"全面"健康检查，会检查所有依赖服务
 @app.get("/health")
 async def health():
     """全面健康检查"""
+    # checks 字典记录每个依赖的状态
     checks = {}
 
     # 检查数据库
     try:
+        # db_pool.acquire() 从连接池借一个连接
         async with db_pool.acquire() as conn:
+            # fetchval 返回第一行第一列的值（这里只是测试连接）
             await conn.fetchval("SELECT 1")
         checks["db"] = "ok"
     except Exception:
+        # 任何异常都算数据库挂了
         checks["db"] = "fail"
 
     # 检查 Redis
     try:
+        # redis ping 是最轻量的检查，返回 PONG
         await redis_client.ping()
         checks["redis"] = "ok"
     except Exception:
         checks["redis"] = "fail"
 
     # 只要有依赖挂了，返回 503
+    # all() 函数：所有元素为 True 才返回 True
+    # 这里遍历 checks 的值，全为 "ok" 才算健康
     all_ok = all(v == "ok" for v in checks.values())
     if not all_ok:
+        # 503 Service Unavailable，让 K8s 把流量切走
         raise HTTPException(status_code=503, detail=checks)
     return {"status": "healthy", "checks": checks}
 
 # 存活检查（liveness）vs 就绪检查（readiness）
+# K8s 有两种探针：livenessProbe 和 readinessProbe
 @app.get("/health/live")
 async def liveness():
     """存活检查：应用进程活着就 OK，不查依赖"""
+    # liveness 只检查进程是否活着，不查依赖
+    # 进程活着但依赖挂了，K8s 不会重启（因为重启没用，依赖还是挂的）
     return {"status": "alive"}
 
 @app.get("/health/ready")
 async def readiness():
     """就绪检查：能处理请求才 OK，要查依赖"""
+    # readiness 检查依赖，依赖挂了 K8s 会把流量切走（但不重启）
+    # 等依赖恢复，readiness 通过，K8s 再把流量切回来
     return await health()
 \`\`\`
 
@@ -1924,20 +2051,35 @@ server {
 
 \`\`\`python
 # app/main.py - WebSocket 服务端
+# 从 fastapi 导入 FastAPI 应用类
+# WebSocket 是 FastAPI 的 WebSocket 连接类，用于类型注解
+# WebSocketDisconnect 是客户端断开时抛出的异常
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# @app.websocket 装饰器注册 WebSocket 路由（注意不是 @app.get）
+# /ws/chat 是 WebSocket 端点路径，客户端连 wss://example.com/ws/chat
 @app.websocket("/ws/chat")
+# websocket: WebSocket 是 FastAPI 自动注入的 WebSocket 连接对象
 async def websocket_endpoint(websocket: WebSocket):
+    # websocket.accept() 接受客户端连接（完成握手）
+    # 不调用 accept 客户端会收到 403
     await websocket.accept()
     try:
+        # while True 死循环持续接收消息，直到客户端断开
         while True:
             # 接收消息
+            # receive_text() 接收文本消息（还有 receive_bytes/receive_json）
+            # await 是异步等待，不阻塞事件循环
             data = await websocket.receive_text()
             # 回显
+            # send_text 发送文本消息给客户端
             await websocket.send_text(f"Echo: {data}")
     except WebSocketDisconnect:
+        # 客户端主动断开或网络断开时抛出此异常
+        # 这里只打印日志，实际项目可能要清理用户在线状态
         print("客户端断开")
 \`\`\`
 
@@ -2050,30 +2192,47 @@ server {
 
 \`\`\`python
 # app/main.py
+# 从 fastapi 导入 FastAPI 应用类和 Request 请求对象
+# Request 用于在路由里获取请求信息（如 headers、client 等）
 from fastapi import FastAPI, Request
+# 从 fastapi.responses 导入 JSONResponse，用于手动构造 JSON 响应
+# 异常处理器里用 JSONResponse 而不是 return dict，因为要自定义状态码
 from fastapi.responses import JSONResponse
+# 导入 logging 模块用于记录日志
 import logging
 
+# 配置日志：level=INFO 设置日志级别
 logging.basicConfig(level=logging.INFO)
+# 创建 logger 实例，用 "uvicorn.access" 名字便于和 uvicorn 日志关联
 logger = logging.getLogger("uvicorn.access")
 
+# 创建 FastAPI 应用，title 显示在 Swagger 文档
 app = FastAPI(title="三层架构示例")
 
+# 根路由，简单返回欢迎消息
 @app.get("/")
 async def root():
     return {"message": "Hello from FastAPI"}
 
+# 健康检查接口，给 Nginx/K8s 做探针用
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
 
+# 用户接口，{user_id} 是路径参数，int 类型注解自动转换
 @app.get("/api/users/{user_id}")
 async def get_user(user_id: int):
     return {"user_id": user_id, "name": f"User {user_id}"}
 
+# @app.exception_handler(Exception) 注册全局异常处理器
+# Exception 是所有异常的基类，捕获所有未处理的异常
+# 这样业务代码抛异常时不会返回 500 带堆栈（不安全也不友好）
 @app.exception_handler(Exception)
+# 异常处理函数签名固定：request: Request, exc: Exception
 async def global_exception_handler(request: Request, exc: Exception):
+    # 记录错误日志，exc_info=True 会打印完整堆栈
     logger.error(f"未处理异常: {exc}", exc_info=True)
+    # 返回统一的 500 响应，不暴露内部错误细节给客户端
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal Server Error"}
@@ -2199,16 +2358,26 @@ proxy_read_timeout 86400s;
 # proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 
 # FastAPI 要用 X-Forwarded-For
+# 从 fastapi 导入 Request，用于访问请求信息（headers、client 等）
 from fastapi import Request
 
+# @app.get 注册 GET 路由 /ip
 @app.get("/ip")
+# request: Request 是 FastAPI 自动注入的请求对象
+# 不用 Depends，直接用类型注解就能拿到
 async def get_ip(request: Request):
-    # request.client.host 是 Nginx 的 IP，不是客户端的
+    # request.client.host 是直接连到应用的客户端 IP
+    # 走 Nginx 代理后，这里是 Nginx 的 IP（如 127.0.0.1），不是真实客户端
     # 要从 X-Forwarded-For 取
+    # request.headers.get 不区分大小写，"x-forwarded-for" 和 "X-Forwarded-For" 都行
     forwarded = request.headers.get("x-forwarded-for", "")
     if forwarded:
+        # X-Forwarded-For 格式: "客户端IP, 代理1, 代理2, ..."
+        # split(",")[0] 取第一个，即真实客户端 IP
+        # strip() 去掉前后空格
         client_ip = forwarded.split(",")[0].strip()
     else:
+        # 没走代理（如开发环境），直接用 client.host
         client_ip = request.client.host
     return {"ip": client_ip}
 \`\`\`
@@ -2481,33 +2650,50 @@ jobs:
 
 \`\`\`python
 # tests/test_main.py - 配套的测试代码
+# 从 fastapi.testclient 导入 TestClient，用于模拟 HTTP 请求
+# TestClient 不需要真正启动服务器，直接在内存里调用 app
 from fastapi.testclient import TestClient
+# 从 app.main 导入 app 实例（被测对象）
 from app.main import app
 
+# 创建测试客户端，后续用它发请求
 client = TestClient(app)
 
+# 测试函数必须以 test_ 开头，pytest 才会自动识别
 def test_root():
     """测试根路径"""
+    # client.get("/") 模拟 GET / 请求
+    # 不走网络，直接调用 app，返回 Response 对象
     response = client.get("/")
+    # 断言状态码是 200
     assert response.status_code == 200
+    # response.json() 把响应体解析成字典
+    # 断言返回体里有 "message" 字段
     assert "message" in response.json()
 
 def test_health():
     """测试健康检查"""
+    # 测试 /health 接口
     response = client.get("/health")
     assert response.status_code == 200
+    # 断言 status 字段值是 "healthy"
     assert response.json()["status"] == "healthy"
 
 def test_create_and_get_user():
     """测试创建用户并查询"""
     # 创建
+    # client.post 发 POST 请求，json= 是请求体
+    # TestClient 会自动加 Content-Type: application/json
     response = client.post("/api/users", json={"name": "Alice", "age": 30})
     assert response.status_code == 200
+    # 从返回体提取 user_id，用于后续查询
     user_id = response.json()["id"]
 
     # 查询
+    # f-string 把 user_id 拼到 URL 里
     response = client.get(f"/api/users/{user_id}")
     assert response.status_code == 200
+    # 断言查到的名字和创建时一致
     assert response.json()["name"] == "Alice"
 \`\`\`
 

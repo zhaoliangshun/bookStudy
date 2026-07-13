@@ -24,6 +24,7 @@ Pydantic 是 Python 的数据验证库，FastAPI 用它来做请求体校验、�
 
 \`\`\`python
 from fastapi import FastAPI
+# 导入 BaseModel，Pydantic 的基类，用于定义数据模型
 from pydantic import BaseModel
 
 app = FastAPI()
@@ -41,6 +42,7 @@ class User(BaseModel):
 def create_user(user: User):
     # user 已经过校验
     # 如果传错类型，会返回 422 错误
+    # user 是 User 实例，用点号访问字段
     return {
         "username": user.username,
         "email": user.email,
@@ -58,6 +60,7 @@ def create_user(user: User):
 
 \`\`\`python
 from fastapi import FastAPI
+# Field 用于给模型字段添加校验规则和文档元数据
 from pydantic import BaseModel, Field
 
 app = FastAPI()
@@ -274,12 +277,14 @@ def create_user(user: User):
 
 \`\`\`python
 from fastapi import FastAPI, Depends
+# Depends 是依赖注入的核心，用于声明路由的依赖
 
 app = FastAPI()
 
 # 定义依赖函数
 def common_parameters(q: str | None = None, skip: int = 0, limit: int = 100):
     # 这个函数会被多个路由复用
+    # q/skip/limit 是查询参数，FastAPI 自动从 URL 提取
     return {"q": q, "skip": skip, "limit": limit}
 
 # 在路由中使用 Depends 注入依赖
@@ -334,14 +339,21 @@ def read_items(pagination: dict = Depends(pagination)):
 
 \`\`\`python
 from fastapi import FastAPI, Depends
+# create_engine 创建数据库引擎（连接池）
 from sqlalchemy import create_engine
+# sessionmaker 是会话工厂，Session 是会话类型
 from sqlalchemy.orm import sessionmaker, Session
 
 app = FastAPI()
 
 # 数据库配置
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
+# 创建引擎，连接数据库
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
+# 创建会话工厂
+# autocommit=False：不自动提交，需手动 db.commit()
+# autoflush=False：不自动刷新到数据库
+# bind=engine：绑定到引擎
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # 依赖：数据库会话
@@ -373,16 +385,19 @@ def read_users(db: Session = Depends(get_db)):
 
 \`\`\`python
 from fastapi import FastAPI, Depends, HTTPException, status
+# HTTPException 用于抛出 HTTP 错误，status 包含 HTTP 状态码常量
+# HTTPBearer 是 Bearer token 认证方案，HTTPAuthorizationCredentials 是凭证类型
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 app = FastAPI()
 
 # 定义安全方案
+# HTTPBearer 自动从 Authorization: Bearer <token> 头中提取 token
 security = HTTPBearer()
 
 # 认证依赖
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    # 从 Authorization 头获取 token
+    # credentials.credentials 是 token 字符串
     token = credentials.credentials
     
     # 验证 token（这里简化，实际应该验证 JWT）
@@ -537,19 +552,23 @@ class Base(DeclarativeBase):
 
 \`\`\`python
 from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey
+# Column 等是字段类型，ForeignKey 是外键
+# relationship 用于定义模型间的关联关系
 from sqlalchemy.orm import relationship
 
 # 用户模型
 class User(Base):
-    __tablename__ = "users"
+    __tablename__ = "users"  # 数据库表名
     
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    email = Column(String, unique=True, index=True)
-    hashed_password = Column(String)
-    is_active = Column(Boolean, default=True)
+    # Column(类型, 约束) 定义字段
+    id = Column(Integer, primary_key=True, index=True)       # 主键，自增，建索引
+    username = Column(String, unique=True, index=True)       # 唯一，建索引
+    email = Column(String, unique=True, index=True)          # 唯一，建索引
+    hashed_password = Column(String)                         # 存哈希密码，不存明文
+    is_active = Column(Boolean, default=True)                # 默认 True
     
     # 关系：一个用户可以有多个文章
+    # back_populates 指定反向关联的字段名
     posts = relationship("Post", back_populates="author")
 
 # 文章模型
@@ -559,12 +578,14 @@ class Post(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
     content = Column(String)
+    # ForeignKey 定义外键，指向 users 表的 id 字段
     author_id = Column(Integer, ForeignKey("users.id"))
     
     # 关系：一篇文章属于一个用户
     author = relationship("User", back_populates="posts")
 
 # 创建表
+# 根据所有继承 Base 的模型，在数据库中创建对应的表
 Base.metadata.create_all(bind=engine)
 \`\`\`
 
@@ -701,17 +722,22 @@ FastAPI 支持多种认证方式：OAuth2、JWT、API Key 等。最常用的是 
 ## Demo 1：密码哈希
 
 \`\`\`python
+# 导入 CryptContext，用于密码哈希和验证
 from passlib.context import CryptContext
 
 # 密码哈希上下文
+# schemes 指定使用 bcrypt 算法（行业标准的密码哈希算法）
+# deprecated="auto" 自动处理废弃的算法
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(password: str) -> str:
-    # 哈希密码
+    # 哈希密码，返回哈希字符串
+    # 相同密码每次哈希结果不同（因为含随机盐）
     return pwd_context.hash(password)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    # 验证密码
+    # 验证密码：对比明文和哈希值
+    # 返回 True/False
     return pwd_context.verify(plain_password, hashed_password)
 
 # 使用
@@ -728,13 +754,16 @@ verify_password("wrong", hashed)
 ## Demo 2：JWT Token
 
 \`\`\`python
+# jose 是 JWT 库
+# JWTError 是 JWT 相关异常，jwt 是编码/解码工具
 from jose import JWTError, jwt
+# datetime 用于时间操作，timedelta 表示时间间隔
 from datetime import datetime, timedelta
 
 # JWT 配置
-SECRET_KEY = "your-secret-key"  # 实际应该用环境变量
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+SECRET_KEY = "your-secret-key"  # 实际应该用环境变量，不能硬编码
+ALGORITHM = "HS256"  # 签名算法，HS256 是对称加密
+ACCESS_TOKEN_EXPIRE_MINUTES = 30  # token 有效期 30 分钟
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     # 创建 JWT token
@@ -775,12 +804,15 @@ username = verify_token(token)
 
 \`\`\`python
 from fastapi import FastAPI, Depends, HTTPException, status
+# OAuth2PasswordBearer：从 Authorization 头提取 Bearer token
+# OAuth2PasswordRequestForm：标准 OAuth2 登录表单（username/password 字段）
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 
 app = FastAPI()
 
 # OAuth2 安全方案
+# tokenUrl 指向获取 token 的接口路径，/docs 会显示登录按钮
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # 模拟用户数据库
@@ -864,20 +896,22 @@ def delete_user(user_id: int, admin: User = Depends(require_admin)):
 
 \`\`\`python
 from fastapi import FastAPI
+# 导入 CORSMiddleware，用于解决跨域请求问题
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
 # CORS 配置
+# add_middleware 注册中间件，第一个参数是中间件类
 app.add_middleware(
     CORSMiddleware,
     # 允许的前端地址
     allow_origins=["http://localhost:3000", "https://myapp.com"],
-    # 允许的方法
+    # 允许的 HTTP 方法
     allow_methods=["GET", "POST", "PUT", "DELETE"],
-    # 允许的请求头
+    # 允许的请求头，["*"] 表示所有
     allow_headers=["*"],
-    # 允许携带 Cookie
+    # 允许携带 Cookie（跨域时前端需配合 credentials: "include"）
     allow_credentials=True,
 )
 

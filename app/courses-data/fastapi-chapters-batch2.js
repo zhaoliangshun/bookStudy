@@ -835,6 +835,10 @@ def list_products(
         "total": len(result),         # 过滤后总数
         "page": page,                 # 当前页码
         "page_size": page_size,       # 每页数量
+        # total_pages 计算公式：(total + page_size - 1) // page_size
+        # 这是"向上取整除法"：当 total 不能被 page_size 整除时，多出的一页也要算
+        # 例如 total=23, page_size=10 → (23+9)//10 = 32//10 = 3 页
+        # 等价于 math.ceil(total / page_size)，但用整数运算避免浮点误差
         "total_pages": (len(result) + page_size - 1) // page_size  # 总页数
     }
 \`\`\`
@@ -1130,6 +1134,12 @@ def list_items(
 def search(
     # keyword 必选（default=... 表示必选）
     # pattern 用正则校验：只允许字母和数字
+    # pattern="^[a-zA-Z0-9]+$" 解释：
+    #   ^   匹配字符串开头
+    #   [a-zA-Z0-9] 字母（大小写）或数字
+    #   +   前面的字符至少 1 个
+    #   $   匹配字符串结尾
+    #   整体含义：整串只能是字母数字，不能有空格或特殊符号
     keyword: str = Query(default=..., min_length=2, max_length=20, pattern="^[a-zA-Z0-9]+$")
 ):
     # 访问 /search?keyword=ab → 正常
@@ -1267,6 +1277,7 @@ app = FastAPI()
 @app.get("/users")
 def list_users(
     # 用户名搜索：3-20 字符，只允许字母数字下划线
+    # pattern="^[a-zA-Z0-9_]+$" → 整串只能是字母、数字、下划线
     username: str | None = Query(
         default=None,
         min_length=3,
@@ -1276,12 +1287,23 @@ def list_users(
         description="3-20 位字母、数字或下划线"
     ),
     # 邮箱搜索：用正则校验邮箱格式
+    # 邮箱正则拆解：用户名@域名.后缀
+    #   [a-zA-Z0-9_.+-]+  用户名部分（字母数字及 . _ + -）
+    #   @                 必须有 @
+    #   [a-zA-Z0-9-]+     域名部分
+    #   \.                必须有点（. 在正则里是特殊字符，要转义）
+    #   [a-zA-Z0-9-.]+    顶级域名部分
+    # r"..." 前缀表示 raw 字符串，反斜杠不被转义
     email: str | None = Query(
         default=None,
         pattern=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$",
         title="邮箱"
     ),
     # 手机号：11 位数字
+    # pattern="^1[3-9]\d{9}$" → 中国手机号格式
+    #   1      第一位必须是 1
+    #   [3-9]  第二位是 3-9（13x/14x/15x/17x/18x/19x 号段）
+    #   \d{9}  后面跟 9 位数字（\d 表示数字，{9} 表示重复 9 次）
     phone: str | None = Query(
         default=None,
         min_length=11,
@@ -1615,26 +1637,35 @@ def list_category_products(
 # 从 fastapi 导入 FastAPI、Query、Request
 from fastapi import FastAPI, Query, Request
 # 从 fastapi.exceptions 导入 RequestValidationError
+# RequestValidationError 是 FastAPI 在请求校验失败时抛出的异常类
 from fastapi.exceptions import RequestValidationError
 # 从 fastapi.responses 导入 JSONResponse
+# JSONResponse 用于返回自定义 JSON 响应（可控制状态码和内容）
 from fastapi.responses import JSONResponse
 
 # 创建应用
 app = FastAPI()
 
 # 注册异常处理器：拦截校验错误
+# @app.exception_handler(异常类) 注册一个处理该异常的函数
+# 当代码里抛出 RequestValidationError 时，FastAPI 会调用这个函数而不是返回默认 422
 @app.exception_handler(RequestValidationError)
+# 异常处理函数签名：async def handler(request: Request, exc: 异常类)
+# request 是当前请求对象，exc 是捕获到的异常实例
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     # exc.errors() 是错误列表
+    # 每个错误包含 type/loc/msg/input/ctx 等字段
     # 自定义返回格式：统一返回 code + message
     errors = []
     for err in exc.errors():
         errors.append({
+            # err["loc"] 是元组如 ("query", "item_id")，用 "." 拼接成 "query.item_id"
             "field": ".".join(str(x) for x in err["loc"]),  # 拼接 loc
             "message": err["msg"],
             "type": err["type"]
         })
     # 返回自定义格式
+    # JSONResponse 直接控制 HTTP 响应：状态码 + JSON 内容
     return JSONResponse(
         status_code=422,
         content={
@@ -2150,13 +2181,17 @@ async def create_item(
     # user_id：路径参数，已校验
     # q：查询参数
     # item：Pydantic 解析的 body，已校验
+    #   item: ItemCreate = ... 这里的 = ... 表示必填
+    #   FastAPI 看到 BaseModel 类型参数，自动把 JSON body 解析成 ItemCreate 实例
     # request：原始请求对象
-    
+    #   Request 类型参数由框架自动注入，不会出现在 /docs 文档里
+    #   request: Request = None 给个默认值 None 是为了不破坏"有默认值参数在后"的规则
+
     # 从 request 拿额外的信息
     user_agent = request.headers.get("user-agent")
     client_ip = request.client.host if request.client else None
     request_id = request.headers.get("x-request-id", "unknown")
-    
+
     # 业务逻辑
     return {
         "user_id": user_id,
@@ -2261,36 +2296,45 @@ import time
 import logging
 
 # 配置日志
+# basicConfig 是 logging 模块的简化配置，level=INFO 表示记录 INFO 及以上级别的日志
 logging.basicConfig(level=logging.INFO)
+# getLogger("api") 创建一个名为 "api" 的日志记录器
 logger = logging.getLogger("api")
 
 # 创建应用
 app = FastAPI()
 
 # 注册中间件：用 @app.middleware("http")
+# @app.middleware("http") 表示注册一个 HTTP 中间件
+# 中间件在请求到达路由函数之前/之后执行，常用于日志、鉴权、限流、CORS 等
 @app.middleware("http")
+# 中间件函数签名：async def middleware(request: Request, call_next)
+# request 是当前请求对象
+# call_next 是一个异步函数，调用它会把请求传给下一个处理者（路由或下一个中间件）
 async def logging_middleware(request: Request, call_next):
     # 中间件流程：
     # 1. 请求进来，先到这里
     # 2. call_next(request) 把请求传给下一个处理者
     # 3. 拿到响应后，继续这里的逻辑
-    
+
     # 记录开始时间
     start_time = time.time()
-    
+
     # 提取请求信息
     method = request.method
     path = request.url.path
     query = request.url.query
     client_ip = request.client.host if request.client else "unknown"
     user_agent = request.headers.get("user-agent", "")
-    
+
     # 记录请求日志
+    # logger.info() 记录 INFO 级别日志
     logger.info(
         f"→ {method} {path}?{query} from {client_ip} UA={user_agent[:50]}"
     )
-    
+
     # 调用下一个处理者（路由函数或下一个中间件）
+    # await call_next(request) 返回的是 Response 对象
     try:
         response = await call_next(request)
     except Exception as e:
@@ -2301,18 +2345,19 @@ async def logging_middleware(request: Request, call_next):
             status_code=500,
             content={"detail": "内部服务器错误"}
         )
-    
+
     # 计算耗时（毫秒）
     duration_ms = (time.time() - start_time) * 1000
-    
+
     # 记录响应日志
     logger.info(
         f"← {method} {path} {response.status_code} {duration_ms:.2f}ms"
     )
-    
+
     # 在响应头里加耗时信息
+    # 这样前端能从响应头看到接口耗时
     response.headers["X-Response-Time"] = f"{duration_ms:.2f}ms"
-    
+
     return response
 
 # 测试路由
@@ -2359,25 +2404,30 @@ app = FastAPI()
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):
     # 给每个请求生成唯一 ID
+    # uuid.uuid4() 生成随机 UUID（v4 基于随机数）
+    # str() 把 UUID 对象转成字符串，如 "550e8400-e29b-41d4-a716-446655440000"
     request_id = str(uuid.uuid4())
-    
+
     # 存到 request.state，路由函数里能取到
+    # request.state 是 Starlette 提供的命名空间，可以任意设置属性
     request.state.request_id = request_id
-    
+
     # 调用下一个处理者
     response = await call_next(request)
-    
+
     # 在响应头里也加上请求 ID
+    # 方便前端在排查问题时把请求关联起来
     response.headers["X-Request-ID"] = request_id
-    
+
     return response
 
 @app.get("/items/{item_id}")
 def get_item(item_id: int, request: Request):
     # 从 request.state 取请求 ID
     # request.state 是一个简单的命名空间对象
+    # 中间件设置的 request_id 在这里能取到
     request_id = request.state.request_id
-    
+
     return {
         "item_id": item_id,
         "request_id": request_id  # 返回给客户端
@@ -2386,6 +2436,7 @@ def get_item(item_id: int, request: Request):
 @app.get("/trace")
 def trace(request: Request):
     # 同一个请求里，request.state 是共享的
+    # 不同请求之间 request.state 是隔离的（每个请求一个 Request 对象）
     return {
         "request_id": request.state.request_id,
         "path": request.url.path

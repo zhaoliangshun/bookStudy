@@ -189,6 +189,10 @@ books_db = []
 def create_book(book: Book):
     # 把 book 转成字典存入数据库
     # book.model_dump() 是 Pydantic v2 的方法，返回 dict
+    # v1 用 book.dict()，v2 改名为 model_dump()，语义更清晰
+    # 返回的字典包含所有字段的值，如 {"title": "...", "author": "...", ...}
+    # 不能直接存 BaseModel 实例到列表，因为后续 list_books 返回时
+    # FastAPI 需要序列化，存 dict 更直观
     books_db.append(book.model_dump())
     # 返回创建结果
     return {
@@ -295,6 +299,13 @@ class Order(BaseModel):
 def create_order(order: Order):
     # 计算订单总金额
     # 遍历 items，每项的 quantity * unit_price 求和
+    # sum() 是内置函数，对可迭代对象求和
+    # 这里的语法是生成器表达式：item.quantity * item.unit_price for item in order.items
+    # 等价于：
+    #   total = 0
+    #   for item in order.items:
+    #       total += item.quantity * item.unit_price
+    # 但生成器表达式更简洁，且是惰性求值（不生成中间列表）
     total = sum(item.quantity * item.unit_price for item in order.items)
     # 返回订单详情
     return {
@@ -722,10 +733,15 @@ users_db = {}
 next_id = 1
 
 # 定义 POST 路由：访问 /register 时触发
+# response_model=UserResponse 指定响应结构为 UserResponse
+# FastAPI 会按 UserResponse 的字段过滤返回值
+# 这里关键是过滤掉 password 字段（UserResponse 里没有 password）
 @app.post("/register", response_model=UserResponse)
 # 定义函数 register，参数: user: UserRegister
 def register(user: UserRegister):
     # 声明 next_id 为全局变量
+    # 因为函数内要修改 next_id（next_id += 1）
+    # 不加 global 会创建局部变量，无法修改全局的 next_id
     global next_id
     # 检查用户名是否已存在
     for existing in users_db.values():
@@ -1046,6 +1062,13 @@ def search_products(
         results.append(p)
     # 排序
     # sort_by 决定按什么排序
+    # list.sort(key=...) 是原地排序，修改 results 本身
+    # key=lambda x: x[sort_by] 是 lambda 函数：
+    #   - lambda 是匿名函数，等价于 def f(x): return x[sort_by]
+    #   - x 是列表里的每个元素（字典）
+    #   - x[sort_by] 取排序字段（"price" 或 "name"）
+    #   - sort 会根据 key 函数的返回值排序
+    # 例如 sort_by="price" 时，按 x["price"] 的值升序排列
     results.sort(key=lambda x: x[sort_by])
     # 返回结果
     return {
@@ -1182,12 +1205,18 @@ def submit_resume(
     resume: UploadFile = File(...)
 ):
     # 校验文件类型
+    # resume.content_type 是客户端声明的 MIME 类型（可能被伪造，实际项目要校验魔数）
     if resume.content_type != "application/pdf":
         # 抛出 400 错误
         raise HTTPException(status_code=400, detail="简历必须是 PDF 格式")
     # 读取文件内容
+    # resume.file 是底层文件对象（SpooledTemporaryFile）
+    # read() 一次性读取全部内容到内存，返回 bytes
+    # 适合小文件，大文件应该分块读取
     content = resume.file.read()
     # 校验文件大小（不超过 5MB）
+    # 5 * 1024 * 1024 = 5MB（5 × 1024KB × 1024B）
+    # 1MB = 1024 × 1024 字节 = 1048576 字节
     if len(content) > 5 * 1024 * 1024:
         # 抛出 400 错误
         raise HTTPException(status_code=400, detail="简历不能超过 5MB")
@@ -1633,17 +1662,27 @@ app = FastAPI()
 # 定义函数 upload_chunk（异步函数）
 async def upload_chunk(file: UploadFile = File(...)):
     # 定义块大小：1MB
+    # 1024 * 1024 = 1048576 字节 = 1MB
+    # 分块大小影响内存占用和 I/O 效率：
+    # - 太小（如 1KB）：I/O 次数多，效率低
+    # - 太大（如 100MB）：内存占用高
+    # 1MB 是常用的平衡值
     chunk_size = 1024 * 1024
     # 总大小计数
     total_size = 0
     # 循环分块读取
+    # while True 无限循环，靠 break 退出
     while True:
         # 异步读取一块
+        # file.read(chunk_size) 最多读 chunk_size 字节
+        # 文件末尾时返回空 bytes（b""）
         chunk = await file.read(chunk_size)
         # 如果读到空，说明文件结束
+        # b"" 是 falsy，not chunk 为 True
         if not chunk:
             break
         # 累加大小
+        # len(chunk) 返回这块的字节数
         total_size += len(chunk)
         # 这里可以处理每一块（写磁盘、上传 OSS 等）
         # 示例只统计大小
@@ -1842,15 +1881,25 @@ def upload_and_save(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="只允许上传图片")
     # 生成唯一文件名，防止重名覆盖
     # 取原始扩展名
+    # os.path.splitext("photo.jpg") 返回 ("photo", ".jpg")
+    # [1] 取第二部分，即扩展名（含点号）
     ext = os.path.splitext(file.filename)[1]
     # 生成 UUID + 扩展名
+    # uuid.uuid4() 生成随机 UUID 对象
+    # .hex 取 32 位十六进制字符串（无连字符），如 "550e8400e29b41d4a716446655440000"
     new_filename = f"{uuid.uuid4().hex}{ext}"
     # 拼接完整路径
+    # os.path.join 会自动处理路径分隔符，跨平台兼容
+    # 如 os.path.join("uploads", "abc123.jpg") → "uploads/abc123.jpg"
     file_path = os.path.join(UPLOAD_DIR, new_filename)
     # 用 shutil.copyfileobj 把文件内容写到磁盘
     # file.file 是源文件对象，目标文件用 open 创建
+    # "wb" 表示以二进制写入模式打开（文件是二进制数据，必须用 wb 不能用 w）
     with open(file_path, "wb") as buffer:
         # copyfileobj 把源文件内容复制到目标
+        # 参数 1：源文件对象（file.file）
+        # 参数 2：目标文件对象（buffer）
+        # 它会分块读取源文件写入目标，避免一次性占满内存
         shutil.copyfileobj(file.file, buffer)
     # 返回保存结果
     return {
@@ -1970,14 +2019,23 @@ def upload_avatar(
         # 抛出 400 错误
         raise HTTPException(status_code=400, detail="头像不能超过 2MB")
     # 4. 校验文件魔数（前几字节判断真实类型）
-    # JPEG 文件以 FF D8 FF 开头
-    # PNG 文件以 89 50 4E 47 开头
+    # 魔数（magic number）是文件开头的固定字节，用于标识文件格式
+    # 比 content_type 更可靠，因为 content_type 是客户端声明的，可以被伪造
+    # JPEG 文件以 FF D8 FF 开头（十六进制）
+    # PNG 文件以 89 50 4E 47 开头（十六进制，对应 ASCII "‰PNG"）
     if file.content_type == "image/jpeg":
         # 检查 JPEG 魔数
+        # contents[:3] 取前 3 个字节
+        # b'\\xff\\xd8\\xff' 是 JPEG 文件的魔数（十六进制字节串）
+        # \\xff 是十六进制 255，\\xd8 是 216，组合起来是 JPEG 的起始标记
         if not contents[:3] == b'\\xff\\xd8\\xff':
             raise HTTPException(status_code=400, detail="文件不是真正的 JPEG")
     elif file.content_type == "image/png":
         # 检查 PNG 魔数
+        # contents[:4] 取前 4 个字节
+        # b'\\x89PNG' 是 PNG 文件的魔数
+        # \\x89 是十六进制 137，后面跟 ASCII 字符 "PNG"
+        # 完整的 PNG 魔数是 89 50 4E 47 0D 0A 1A 0A，前 4 字节足够识别
         if not contents[:4] == b'\\x89PNG':
             raise HTTPException(status_code=400, detail="文件不是真正的 PNG")
     # 5. 生成唯一文件名
@@ -2772,6 +2830,9 @@ def create_product(product: ProductCreate):
     # 生成商品记录
     product_record = {
         # "id": uuid.uuid4().hex,
+        # uuid.uuid4() 生成随机 UUID 对象
+        # .hex 取 32 位十六进制字符串（无连字符）
+        # 作为商品 ID，保证全局唯一，避免自增 ID 的冲突问题
         "id": uuid.uuid4().hex,
         # "name": product.name,
         "name": product.name,
@@ -2784,11 +2845,18 @@ def create_product(product: ProductCreate):
         # "is_active": product.is_active,
         "is_active": product.is_active,
         # "created_at": datetime.now()
+        # datetime.now() 返回当前本地时间（不带时区信息）
+        # 实际项目推荐用 datetime.utcnow() 或 datetime.now(timezone.utc) 存 UTC 时间
         "created_at": datetime.now()
     }
     # 存入数据库
+    # 用 product_record["id"]（UUID 字符串）作为字典的键
     products_db[product_record["id"]] = product_record
     # 返回响应（按 response_model 过滤）
+    # response_model=ProductResponse 指定了响应结构
+    # FastAPI 会自动把 product_record 按 ProductResponse 的字段过滤
+    # ProductResponse 只有 id/name/sku/price/stock/is_active/created_at
+    # 所以 product_record 里的其他字段（如 categories、tags）不会出现在响应里
     return product_record
 
 # 定义 GET 路由：访问 /products/{product_id} 时触发
@@ -2834,10 +2902,18 @@ class ArticleCreate(BaseModel):
         example="FastAPI 入门指南"
     )
     # slug: URL 友好名，正则匹配
+    # slug 是文章在 URL 中的标识符，如 /articles/fastapi-getting-started
+    # 相比用 ID（如 /articles/123），slug 更 SEO 友好、更易读
+    # 规则：小写字母、数字、短横线，不能以短横线开头或结尾，不能连续短横线
     slug: str = Field(
         ...,
         min_length=3,
         max_length=100,
+        # 正则解释：^[a-z0-9]+(?:-[a-z0-9]+)*$
+        # ^[a-z0-9]+  开头是 1 个或多个小写字母/数字
+        # (?:-[a-z0-9]+)*  后面跟着 0 个或多个 "-小写字母数字" 组合
+        # $  结尾
+        # 整体匹配：fastapi-getting-started ✓，-fastapi ✗，fastapi--x ✗
         pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
         title="URL别名",
         description="小写字母、数字、短横线",
@@ -2893,6 +2969,10 @@ def create_article(article: ArticleCreate):
     excerpt = article.excerpt
     if excerpt is None:
         # 取 content 前 200 字符
+        # 三元表达式：A if 条件 else B
+        # 如果 content 长度 > 200，取前 200 字符 + "..."
+        # 否则取完整 content（不加分隔符，避免短文章后面跟多余的 "..."）
+        # article.content[:200] 是字符串切片，取索引 0 到 199 的字符（共 200 个）
         excerpt = article.content[:200] + "..." if len(article.content) > 200 else article.content
     # 构造文章记录
     record = {

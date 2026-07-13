@@ -579,14 +579,16 @@ app = FastAPI()
 
 # 自定义业务异常基类:带错误码和 HTTP 状态码
 # 定义类 BusinessError，继承 Exception
+# BusinessError 是所有业务异常的基类,携带业务错误码和 HTTP 状态码
 class BusinessError(Exception):
     # """业务异常基类"""
     """业务异常基类"""
     # 定义函数 __init__，参数: self, code: int, message: str, http_status: int = 400
     def __init__(self, code: int, message: str, http_status: int = 400):
-        self.code = code          # 业务错误码
-        self.message = message    # 错误信息
-        self.http_status = http_status  # 对应的 HTTP 状态码
+        self.code = code          # 业务错误码(如 10001,用于前端区分错误类型)
+        self.message = message    # 错误信息(给用户看的提示)
+        self.http_status = http_status  # 对应的 HTTP 状态码(如 400/404/403)
+        # 调用父类 __init__,message 作为异常的字符串表示
         super().__init__(message)
 
 # 注册处理器:统一返回 {code, message, data} 格式
@@ -651,9 +653,10 @@ app = FastAPI()
 # 定义异步函数 validation_exception_handler，参数: request: Request, exc: RequestValidationError
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     # exc.errors() 返回所有校验错误的列表
+    # 每个错误包含 loc(出错位置)、msg(错误信息)、type(错误类型)
     # 定义变量 errors，赋值为 exc.errors()
     errors = exc.errors()
-    # 返回统一格式
+    # 返回统一格式:把默认的 {detail: [...]} 改成 {code, message, errors, data}
     return JSONResponse(
         status_code=422,
         content={
@@ -700,14 +703,16 @@ app = FastAPI()
 
 # 自定义异常:携带额外字段
 # 定义类 OrderError，继承 Exception
+# OrderError 携带订单号、错误原因、建议操作,让错误响应更有指导性
 class OrderError(Exception):
     # """订单异常"""
     """订单异常"""
     # 定义函数 __init__，参数: self, order_id: int, reason: str, suggestion: str
     def __init__(self, order_id: int, reason: str, suggestion: str):
-        self.order_id = order_id       # 订单号
-        self.reason = reason           # 错误原因
-        self.suggestion = suggestion   # 建议操作
+        self.order_id = order_id       # 订单号(方便定位具体订单)
+        self.reason = reason           # 错误原因(如"订单已发货")
+        self.suggestion = suggestion   # 建议操作(如"请联系客服拦截")
+        # 调用父类 __init__,reason 作为异常的字符串表示
         super().__init__(reason)
 
 # 处理器:读取异常的额外字段,放进响应
@@ -1006,11 +1011,14 @@ from fastapi.responses import JSONResponse
 app = FastAPI()
 
 # 全局兜底处理器:捕获所有未处理异常
+# 注册 exception_handler(Exception) 能捕获所有未被更具体处理器匹配的异常
 # 装饰器：app.exception_handler(Exception)
 @app.exception_handler(Exception)
 # 定义异步函数 global_exception_handler，参数: request: Request, exc: Exception
 async def global_exception_handler(request: Request, exc: Exception):
     # 返回统一的友好错误响应,不暴露堆栈
+    # 注意:绝对不能把 str(exc) 或 traceback 返回给用户
+    # 堆栈会暴露文件路径、代码结构、依赖版本,是安全漏洞
     return JSONResponse(
         status_code=500,
         content={
@@ -1159,14 +1167,15 @@ app = FastAPI()
 @app.exception_handler(StarletteHTTPException)
 # 定义异步函数 smart_http_handler，参数: request: Request, exc: StarletteHTTPException
 async def smart_http_handler(request: Request, exc: StarletteHTTPException):
-    # 404:资源不存在
+    # 404:资源不存在(访问不存在的路径也会触发)
     if exc.status_code == 404:
         # 返回 JSONResponse
+        # request.url.path 是请求路径,放进消息方便用户定位
         return JSONResponse(
             status_code=404,
             content={"code": 404, "message": f"路径 {request.url.path} 不存在", "data": None}
         )
-    # 405:方法不允许
+    # 405:方法不允许(如对只支持 GET 的路由发 POST)
     if exc.status_code == 405:
         # 返回 JSONResponse
         return JSONResponse(
@@ -1174,6 +1183,7 @@ async def smart_http_handler(request: Request, exc: StarletteHTTPException):
             content={"code": 405, "message": "请求方法不被允许", "data": None}
         )
     # 其他 HTTP 异常:通用格式
+    # exc.detail 是异常携带的详情(如 HTTPException 的 detail 参数)
     # 返回 JSONResponse
     return JSONResponse(
         status_code=exc.status_code,
@@ -1369,17 +1379,21 @@ app = FastAPI()
 
 # ============ 统一响应构造函数 ============
 # 定义函数 make_error_response，参数: status: int, code: int, message: str, request: Request, exc: Exception = None
+# 统一构造错误响应:生成 trace_id、记日志、按环境返回不同详细程度
 def make_error_response(status: int, code: int, message: str, request: Request, exc: Exception = None):
     # 生成错误追踪 ID,方便用户报错时定位
+    # trace_id 是 8 位短 UUID,用户报错时提供这个 ID,能在日志里快速定位
     # 定义变量 trace_id，赋值为 str(uuid.uuid4())[:8]
     trace_id = str(uuid.uuid4())[:8]
     # 如果有异常,记日志
     if exc:
+        # traceback.format_exc() 获取完整堆栈字符串
         # 定义变量 tb，赋值为 traceback.format_exc()
         tb = traceback.format_exc()
         # 记录 ERROR 日志
+        # 日志含 trace_id、请求方法、URL、错误码、消息、异常对象、堆栈
         logger.error(f"[{trace_id}] {request.method} {request.url} | {code}:{message} | {exc}\\n{tb}")
-    # 开发环境多返回 trace_id 和堆栈
+    # 开发环境多返回 trace_id 和堆栈,方便调试
     if ENV == "dev" and exc:
         # 返回 JSONResponse
         return JSONResponse(
@@ -1387,6 +1401,7 @@ def make_error_response(status: int, code: int, message: str, request: Request, 
             content={"code": code, "message": message, "trace_id": trace_id, "traceback": tb, "data": None}
         )
     # 返回 JSONResponse
+    # 生产环境不返回堆栈,只返回 trace_id 让用户报错时提供
     return JSONResponse(
         status_code=status,
         content={"code": code, "message": message, "trace_id": trace_id, "data": None}
@@ -1532,44 +1547,55 @@ class TransferRequest(BaseModel):
     amount: float
 
     # Pydantic 校验:金额必须为正
+    # field_validator("amount") 装饰器:对 amount 字段做自定义校验
     # 装饰器：field_validator("amount")
     @field_validator("amount")
     # 定义函数 amount_positive，参数: v
+    # @classmethod:类方法装饰器,Pydantic v2 要求 validator 用类方法
     @classmethod
     def amount_positive(cls, v):
+        # v 是待校验的值,如果校验不通过抛 ValueError
         if v <= 0:
             # 抛出 ValueError 异常: "金额必须大于 0"
+            # Pydantic 会把 ValueError 转成 ValidationError(422)
             raise ValueError("金额必须大于 0")
+        # 校验通过,返回值(必须返回,否则字段变成 None)
         return v
 
 # ============ 业务层:自定义异常 + service ============
 # 定义类 InsufficientBalanceError，继承 Exception
+# 业务异常:余额不足,携带用户、需要金额、实际余额三个信息
 class InsufficientBalanceError(Exception):
     # """余额不足"""
     """余额不足"""
     # 定义函数 __init__，参数: self, user: str, needed: float, balance: float
     def __init__(self, user: str, needed: float, balance: float):
-        self.user = user
-        self.needed = needed
-        self.balance = balance
+        self.user = user            # 用户名
+        self.needed = needed        # 需要的金额
+        self.balance = balance      # 实际余额
+        # 调用父类 __init__,传入描述信息
         super().__init__(f"{user} 余额不足:需要 {needed},实际 {balance}")
 
 # 业务逻辑:执行转账(纯业务,不碰 HTTP)
+# 这个函数不知道 FastAPI 的存在,可以被 Web、CLI、测试复用
 # 定义函数 do_transfer，参数: req: TransferRequest
 def do_transfer(req: TransferRequest):
     # 模拟数据库
     # 定义变量 balances，赋值为 {"alice": 100, "bob": 50}
     balances = {"alice": 100, "bob": 50}
     # 业务校验:余额是否足够
+    # 先检查用户是否存在,再检查余额
     if req.from_user not in balances or balances[req.from_user] < req.amount:
         # 抛出 InsufficientBalanceError 异常: user=req.from_user, needed=req.amount, balance=balances.get(req.from_user, 0)
+        # balances.get(user, 0):用户不存在时返回 0,避免 KeyError
         raise InsufficientBalanceError(
             user=req.from_user,
             needed=req.amount,
             balance=balances.get(req.from_user, 0)
         )
-    # 执行转账
+    # 执行转账:扣减转出方余额
     balances[req.from_user] -= req.amount
+    # 增加接收方余额(不存在则初始化为 0 再加)
     balances[req.to_user] = balances.get(req.to_user, 0) + req.amount
     # 返回结果
     return {"from": req.from_user, "to": req.to_user, "amount": req.amount}
@@ -1689,14 +1715,18 @@ class I18nError(Exception):
 # 定义异步函数 i18n_handler，参数: request: Request, exc: I18nError
 async def i18n_handler(request: Request, exc: I18nError):
     # 从请求头读语言,默认中文
+    # Accept-Language 是 HTTP 标准头,浏览器根据用户语言设置自动发送
     # 定义变量 lang，赋值为 request.headers.get("Accept-Language", "zh")
     lang = request.headers.get("Accept-Language", "zh")
     # 简化:只要头里含 en 就用英文
+    # 实际 Accept-Language 可能是 "en-US,en;q=0.9,zh-CN;q=0.8"
     if "en" in lang:
         lang = "en"
     else:
         lang = "zh"
     # 取对应语言的 message
+    # MESSAGES.get(exc.code, {}):先按 code 取语言字典,code 不存在返回空字典
+    # .get(lang, "未知错误"):再按语言取消息,语言不存在返回默认值
     # 定义变量 message，赋值为 MESSAGES.get(exc.code, {}).get(lang, "未知错误")
     message = MESSAGES.get(exc.code, {}).get(lang, "未知错误")
     # 返回 JSONResponse
@@ -1829,12 +1859,14 @@ def db_query():
     # 模拟:SQL 语句出错
     try:
         # 模拟执行 SQL 出错
+        # 这个错误信息含数据库类型(Oracle)、表名(USERS)、文件路径(/app/db.py)
+        # 如果直接返回给用户,会暴露系统架构,是安全隐患
         # 抛出 Exception 异常: "ORA-00942: table USERS does not exist at /app/db.py:42"
         raise Exception("ORA-00942: table USERS does not exist at /app/db.py:42")
     except Exception as e:
-        # 记录完整错误到日志
+        # 记录完整错误到日志(含堆栈,给开发者排查用)
         logger.error(f"数据库错误: {e}\\n{traceback.format_exc()}")
-        # 返回给用户的:脱敏的友好信息
+        # 返回给用户的:脱敏的友好信息(不含任何技术细节)
         # 返回 JSONResponse
         return JSONResponse(
             status_code=500,
@@ -1869,6 +1901,7 @@ def get_item(item_id: int):
     return {"item_id": item_id}
 
 # 创建测试客户端
+# TestClient 模拟 HTTP 请求,不需要真正启动服务器
 # 定义变量 client，赋值为 TestClient(app)
 client = TestClient(app)
 
@@ -1877,9 +1910,9 @@ client = TestClient(app)
 def test_normal():
     # 定义变量 r，赋值为 client.get("/items/1")
     r = client.get("/items/1")
-    # 断言状态码 200
+    # 断言状态码 200(请求成功)
     assert r.status_code == 200
-    # 断言响应体
+    # 断言响应体等于预期 JSON
     assert r.json() == {"item_id": 1}
 
 # 测试 2:资源不存在
@@ -1887,17 +1920,18 @@ def test_normal():
 def test_not_found():
     # 定义变量 r，赋值为 client.get("/items/99")
     r = client.get("/items/99")
-    # 断言状态码 404
+    # 断言状态码 404(资源不存在)
     assert r.status_code == 404
-    # 断言 detail
+    # 断言 detail 字段等于"不存在"(HTTPException 的默认响应格式)
     assert r.json() == {"detail": "不存在"}
 
 # 测试 3:参数类型错误(422)
 # 定义函数 test_validation_error
 def test_validation_error():
     # 定义变量 r，赋值为 client.get("/items/abc")
+    # item_id 声明为 int,传 "abc" 会触发 FastAPI 自动校验失败
     r = client.get("/items/abc")
-    # 断言状态码 422
+    # 断言状态码 422(参数校验失败,FastAPI 自动返回)
     assert r.status_code == 422
 
 # 运行测试
@@ -2026,31 +2060,37 @@ class ErrorCode:
 # ============ 3. 异常层次 ============
 # 应用异常基类
 # 定义类 AppError，继承 Exception
+# AppError 携带错误码、消息、HTTP 状态码、可选详情
 class AppError(Exception):
     # """应用异常基类"""
     """应用异常基类"""
     # 定义函数 __init__，参数: self, code: int, message: str, http_status: int = 400, details=None
     def __init__(self, code: int, message: str, http_status: int = 400, details=None):
-        self.code = code
-        self.message = message
-        self.http_status = http_status
-        self.details = details
+        self.code = code              # 业务错误码(如 10001)
+        self.message = message        # 错误消息(给用户看)
+        self.http_status = http_status  # 对应的 HTTP 状态码(如 404)
+        self.details = details        # 额外详情(可选,如余额信息)
+        # 调用父类 __init__,message 作为异常的字符串表示
         super().__init__(message)
 
 # 业务异常
 # 定义类 BusinessError，继承 AppError
+# BusinessError 是业务错误的基类(余额不足、订单冲突等)
 class BusinessError(AppError):
     # """业务异常"""
     """业务异常"""
-    pass
+    pass  # 直接继承,不需要额外实现
 
 # 系统异常
 # 定义 class SystemError_，继承 AppError
+# SystemError_ 表示服务器内部错误(500),用于包装未知异常
+# 加下划线后缀避免和 Python 内置 SystemError 冲突
 class SystemError_(AppError):
     # 定义函数 __init__，参数: self, message="服务器内部错误"
     def __init__(self, message="服务器内部错误"):
+        # 调用父类,固定 code 和 http_status
         super().__init__(
-            code=ErrorCode.SYSTEM_ERROR,
+            code=ErrorCode.SYSTEM_ERROR,  # 50000
             message=message,
             http_status=500
         )
@@ -2061,22 +2101,25 @@ app = FastAPI()
 
 # ============ 5. 统一响应构造 ============
 # 定义函数 make_error_response，参数: status: int, code: int, message: str, request: Request, exc: Exception = None, details=None
+# 统一构造错误响应:trace_id + 日志 + 环境区分 + 可选详情
 def make_error_response(status: int, code: int, message: str, request: Request, exc: Exception = None, details=None):
-    # 生成 trace_id
+    # 生成 trace_id:8 位短 UUID,用于日志追踪
     # 定义变量 trace_id，赋值为 str(uuid.uuid4())[:8]
     trace_id = str(uuid.uuid4())[:8]
-    # 有异常就记日志
+    # 有异常就记日志(记完整堆栈,只给开发者看)
     if exc:
+        # traceback.format_exc() 获取完整堆栈字符串
         # 定义变量 tb，赋值为 traceback.format_exc()
         tb = traceback.format_exc()
+        # 记录 ERROR 日志:trace_id、方法、URL、错误码、消息、异常、堆栈
         logger.error(f"[{trace_id}] {request.method} {request.url} | {code}:{message} | {exc}\\n{tb}")
-    # 构造响应体
+    # 构造响应体:统一格式 {code, message, trace_id, data}
     # 定义变量 body，赋值为 {"code": code, "message": message, "trace_id": trace_id, "data": None}
     body = {"code": code, "message": message, "trace_id": trace_id, "data": None}
-    # 有额外详情就加上
+    # 有额外详情就加上(如余额不足时返回当前余额和需要金额)
     if details:
         body["details"] = details
-    # 开发环境附加堆栈
+    # 开发环境附加堆栈,方便本地调试
     if ENV == "dev" and exc:
         body["traceback"] = tb
     # 返回 JSONResponse
@@ -2197,7 +2240,7 @@ client = TestClient(app)
 def test_get_user_ok():
     # 定义变量 r，赋值为 client.get("/users/1")
     r = client.get("/users/1")
-    # 断言
+    # 断言状态码为 200(成功)
     assert r.status_code == 200
     # 打印
     print("test_get_user_ok 通过")
@@ -2207,9 +2250,9 @@ def test_get_user_ok():
 def test_user_not_found():
     # 定义变量 r，赋值为 client.get("/users/99")
     r = client.get("/users/99")
-    # 断言状态码
+    # 断言状态码 404(用户不存在)
     assert r.status_code == 404
-    # 断言错误码
+    # 断言响应体里的 code 等于 USER_NOT_FOUND(10001)
     assert r.json()["code"] == ErrorCode.USER_NOT_FOUND
     # 打印
     print("test_user_not_found 通过")
@@ -2218,12 +2261,13 @@ def test_user_not_found():
 # 定义函数 test_insufficient_balance
 def test_insufficient_balance():
     # 定义变量 r，赋值为 client.post("/users/1/deduct?amount=999")
+    # alice 余额 100,扣 999 会触发余额不足
     r = client.post("/users/1/deduct?amount=999")
-    # 断言状态码
+    # 断言状态码 400(客户端错误)
     assert r.status_code == 400
-    # 断言错误码
+    # 断言错误码等于 USER_INSUFFICIENT_BALANCE(10002)
     assert r.json()["code"] == ErrorCode.USER_INSUFFICIENT_BALANCE
-    # 断言有 details
+    # 断言响应体里有 details 字段(携带余额和需要金额)
     assert "details" in r.json()
     # 打印
     print("test_insufficient_balance 通过")
@@ -2233,9 +2277,9 @@ def test_insufficient_balance():
 def test_crash():
     # 定义变量 r，赋值为 client.get("/crash")
     r = client.get("/crash")
-    # 断言状态码 500
+    # 断言状态码 500(服务器内部错误)
     assert r.status_code == 500
-    # 断言错误码
+    # 断言错误码等于 SYSTEM_ERROR(50000)
     assert r.json()["code"] == ErrorCode.SYSTEM_ERROR
     # 打印
     print("test_crash 通过")

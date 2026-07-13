@@ -462,12 +462,17 @@ import requests  # 同步 HTTP 库
 async def fetch_sync(url):
     # 把同步阻塞的 requests.get 扔到默认线程池跑
     # 事件循环在此期间能继续跑别的协程
+    # 原理：run_in_executor 把函数交给线程池，返回 Future，await 它不阻塞事件循环
     loop = asyncio.get_event_loop()
+    # 第一个参数 None 表示用默认线程池（ThreadPoolExecutor）
+    # 第二个参数是要跑的函数
+    # 后面的参数是传给函数的参数
     result = await loop.run_in_executor(None, requests.get, url)
     return result.status_code
 
 async def main():
     # 这样并发调用就不会互相卡死
+    # 两个 requests.get 各自在独立线程跑，主事件循环不受影响
     results = await asyncio.gather(
         fetch_sync("https://httpbin.org/delay/2"),
         fetch_sync("https://httpbin.org/delay/2"),
@@ -499,6 +504,8 @@ app = FastAPI()
 # 定义异步函数：获取用户信息
 async def fetch_user(user_id: int):
     # async with 创建异步 HTTP 客户端，自动关闭连接
+    # 注意：这里每次都新建 client，仅为演示
+    # 生产环境应该用应用级单例 client（见 httpx 章节）
     async with httpx.AsyncClient() as client:
         # await 等待响应
         resp = await client.get(f"https://jsonplaceholder.typicode.com/users/{user_id}")
@@ -522,6 +529,8 @@ async def fetch_albums(user_id: int):
 async def user_profile(user_id: int):
     start = time.time()
     # 并发调用 3 个 API，总耗时 = 最慢的那个（而非三者之和）
+    # gather 会同时启动三个协程，等全部完成
+    # 返回结果顺序与传入顺序一致（不是完成顺序）
     user, posts, albums = await asyncio.gather(
         fetch_user(user_id),
         fetch_posts(user_id),
@@ -626,26 +635,31 @@ Python 生态有几个主流异步数据库驱动，先看对比表，再选适�
 ### asyncpg 速览（直接 SQL 的选择）
 
 \`\`\`python filename="asyncpg 基础示例"
-# 导入 asyncpg
+# 导入 asyncpg（PostgreSQL 的原生异步驱动，性能极强）
 import asyncpg
-# 导入 asyncio
+# 导入 asyncio（事件循环库）
 import asyncio
 
 async def main():
     # 异步连接 PostgreSQL
+    # await 是因为建连涉及网络 I/O，必须让出 CPU
     conn = await asyncpg.connect(
-        host="localhost",
-        port=5432,
-        user="postgres",
-        password="secret",
-        database="testdb",
+        host="localhost",     # 数据库主机地址
+        port=5432,            # PostgreSQL 默认端口
+        user="postgres",      # 数据库用户名
+        password="secret",    # 数据库密码
+        database="testdb",    # 要连接的数据库名
     )
     # 执行查询，返回记录列表
+    # 注意：asyncpg 用 $1, $2 作为占位符（不是 %s 也不是 ?）
+    # $1 对应第二个参数 18，参数化查询防止 SQL 注入
     rows = await conn.fetch("SELECT id, name FROM users WHERE age > $1", 18)
     for row in rows:
         # row 是 Record 对象，可以用 row['name'] 或 row.name 访问
+        # 两种访问方式等价，row.name 更简洁
         print(row['id'], row['name'])
-    # 关闭连接
+    # 关闭连接（必须 await，因为关闭也是网络 I/O）
+    # 实际项目建议用连接池 asyncpg.create_pool 复用连接
     await conn.close()
 
 asyncio.run(main())
@@ -673,23 +687,28 @@ pip install aiosqlite
 
 \`\`\`python filename="database.py：异步引擎配置"
 # 从 sqlalchemy.ext.asyncio 导入异步引擎和会话
+# create_async_engine 是 create_engine 的异步版，返回 AsyncEngine
+# AsyncSession 是 Session 的异步版，所有 I/O 方法都要 await
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-# 导入 declarative_base 的异步版
+# 导入 declarative_base（注意：2.0 推荐 DeclarativeBase，这里是兼容写法）
 from sqlalchemy.orm import declarative_base
-# 导入会话工厂
+# 导入会话工厂 async_sessionmaker（sessionmaker 的异步版）
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-# 异步数据库 URL（注意驱动前缀）
+# 异步数据库 URL（注意驱动前缀，+ 后面是异步驱动名）
 # PostgreSQL: postgresql+asyncpg://user:pass@host:port/dbname
 # MySQL:      mysql+aiomysql://user:pass@host:port/dbname
 # SQLite:     sqlite+aiosqlite:///./test.db
+# 格式：dialect+driver://user:password@host:port/database
 DATABASE_URL = "postgresql+asyncpg://postgres:secret@localhost:5432/testdb"
 
 # 创建异步引擎
-# echo=True 打印 SQL 日志（开发用，生产关掉）
-# pool_size=10 连接池大小
-# max_overflow=20 超出 pool_size 后还能开多少连接
-# pool_pre_ping=True 借连接前先 ping 一下，避免拿到断开的连接
+# echo=True 打印 SQL 日志（开发调试用，生产必须关掉避免日志爆炸）
+# pool_size=10 连接池常驻连接数（默认 5）
+# max_overflow=20 超出 pool_size 后还能临时开的连接数（默认 10）
+#   实际最大连接数 = pool_size + max_overflow = 30
+# pool_pre_ping=True 借连接前先发 ping，避免拿到已断开的连接
+#   生产环境必开，防止数据库重启或网络抖动导致"幽灵连接"
 engine = create_async_engine(
     DATABASE_URL,
     echo=True,
@@ -699,7 +718,11 @@ engine = create_async_engine(
 )
 
 # 创建异步会话工厂
+# async_sessionmaker 类似 sessionmaker，但生成的会话是异步的
+# bind=engine：会话从哪个引擎拿连接
+# class_=AsyncSession：指定会话类（默认就是 AsyncSession，可省略）
 # expire_on_commit=False：commit 后对象不过期，避免异步访问触发同步刷新
+#   这是异步场景的必设项，原因见下方说明
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
     class_=AsyncSession,
@@ -707,6 +730,8 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 # 声明模型基类
+# 所有模型继承 Base，Base.metadata 记录所有表结构
+# Alembic 迁移和 create_all 都依赖这个 metadata
 Base = declarative_base()
 \`\`\`
 
@@ -755,25 +780,34 @@ from database import AsyncSessionLocal, engine
 from models import Article, Base
 
 async def get_articles():
-    # async with 创建会话，自动关闭
+    # async with 创建会话，退出块时自动关闭（释放连接回池）
     async with AsyncSessionLocal() as session:
         # 构建查询：select(Article).where(...).order_by(...)
+        # select() 是 SQLAlchemy 2.0 风格（1.x 用 session.query）
+        # .where() 条件：published == True（注意是 == 不是 =）
+        # .order_by() 排序：.desc() 降序（最新的在前）
         stmt = select(Article).where(Article.published == True).order_by(Article.created_at.desc())
         # await session.execute 执行查询，返回 Result 对象
+        # 这里必须 await，因为要等数据库返回数据（异步 I/O）
         result = await session.execute(stmt)
         # .scalars() 把每行从 Row 解包成 Article 对象
-        # .all() 返回列表
+        #   不加 scalars() 得到的是 (Article,) 元组，加了得到 Article
+        # .all() 返回列表（同步操作，数据已在内存，不需要 await）
         articles = result.scalars().all()
         return articles
 
 async def get_article_by_id(article_id: int):
     async with AsyncSessionLocal() as session:
         # 按主键查询单条，最简单
+        # session.get 是 session.execute(select(...).filter_by(id=...)) 的快捷方式
+        # 找不到返回 None（不抛异常）
         article = await session.get(Article, article_id)
         return article
 
 async def main():
     # 首次运行要建表
+    # engine.begin() 开启一个连接级事务
+    # run_sync 把同步函数放到线程里跑（create_all 是同步 API）
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     # 查询
@@ -799,19 +833,22 @@ from models import Article
 async def create_article(title: str, content: str, author_id: int):
     # async with 创建会话
     async with AsyncSessionLocal() as session:
-        # 创建 Article 对象（暂未入库）
+        # 创建 Article 对象（暂未入库，只在 Python 内存里）
         article = Article(
             title=title,
             content=content,
             author_id=author_id,
             published=False,
         )
-        # add 把对象加入会话（还没发 SQL）
+        # add 把对象加入会话的 identity map（还没发 SQL）
+        # SQLAlchemy 用"工作单元"模式，累积变更，commit 时统一发 SQL
         session.add(article)
         # commit 才真正发 INSERT SQL 入库
+        # 必须 await，因为发 SQL 是异步 I/O
         await session.commit()
         # commit 后 article.id 已被自动填充（数据库生成的自增 ID）
         # 因为 expire_on_commit=False，可以直接访问
+        # refresh 重新发一次 SELECT 拿到所有字段（如 server_default 生成的值）
         await session.refresh(article)  # 刷新获取完整字段
         return article
 
@@ -822,6 +859,7 @@ async def create_many(articles_data: list):
             article = Article(**data)
             session.add(article)
         # 一次 commit 提交所有
+        # 比循环里每次 commit 快得多（一次事务，一次往返）
         await session.commit()
 \`\`\`
 
@@ -900,15 +938,18 @@ async def transfer_articles_demo(from_author: int, to_author: int):
         # async with session.begin() 开启事务
         # 正常退出 → 自动 commit
         # 抛异常 → 自动 rollback
+        # 比 try/except 简洁，推荐用这种
         async with session.begin():
             # 查询作者 A 的所有文章
             stmt = select(Article).where(Article.author_id == from_author)
             result = await session.execute(stmt)
             articles = result.scalars().all()
             # 把作者改成 B
+            # 修改属性不会立即发 SQL，只标记为 dirty
             for a in articles:
                 a.author_id = to_author
             # 不需要手动 commit，退出 begin() 块自动提交
+            # SQLAlchemy 会自动比对变更，生成 UPDATE 语句
         # 退出 session 块自动关闭
 
 # 写法 2：手动控制
@@ -921,6 +962,7 @@ async def manual_transaction():
             await session.commit()  # 提交
         except Exception as e:
             # 出错回滚
+            # rollback 撤销所有未提交的变更，释放事务锁
             await session.rollback()
             raise e
 \`\`\`
@@ -935,26 +977,36 @@ async def manual_transaction():
 from sqlalchemy.ext.asyncio import create_async_engine
 
 # 连接池参数详解
+# 连接池的核心价值：复用 TCP 连接，避免每次请求都三次握手建连
 engine = create_async_engine(
     "postgresql+asyncpg://postgres:secret@localhost:5432/testdb",
     # 连接池大小：常驻连接数
+    # 应用启动后预建这么多连接放池里，请求来了直接借
     pool_size=20,
     # 超出 pool_size 后还能临时开的连接数
     # 实际最大连接数 = pool_size + max_overflow = 20 + 10 = 30
+    # 流量高峰时临时扩容，空闲后回收
     max_overflow=10,
     # 连接超时：从池里拿连接等超过 30 秒就抛异常
+    # 防止池满时请求无限等待，导致协程堆积
+    # 抛的是 TimeoutError，上层可捕获降级
     pool_timeout=30,
     # 连接回收周期：连接活超过 1800 秒（30 分钟）自动重建
     # 防止数据库主动断开连接导致"幽灵连接"
+    # 必须小于数据库的 wait_timeout，否则连接已被数据库踢掉你还以为有效
     pool_recycle=1800,
     # 借连接前先 ping 一下，避免拿到已断开的连接
+    # 多一次 RTT 但更安全，生产环境必开
     pool_pre_ping=True,
     # echo=False 生产环境关掉 SQL 日志
+    # 开了日志每个 SQL 都打印，IO 开销大
     echo=False,
 )
 
 # 应用关闭时清理连接池
 async def shutdown():
+    # dispose 关闭所有连接（常驻 + 临时）
+    # 不调用会连接泄漏，数据库连接数涨满
     await engine.dispose()  # 关闭所有连接
 \`\`\`
 
@@ -977,7 +1029,9 @@ class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
     name = Column(String(100))
-    # relationship 定义关联（懒加载！）
+    # relationship 定义关联（默认懒加载！）
+    # 懒加载：访问 user.articles 时才发 SQL，而不是查 user 时一起查
+    # 同步代码里这很方便，但异步代码里是灾难
     articles = relationship("Article", back_populates="author")
 
 class Article(Base):
@@ -990,19 +1044,27 @@ async def bad_example(session: AsyncSession):
     user = await session.get(User, 1)
     # ❌ 灾难：访问 user.articles 触发懒加载（同步 I/O）
     # 在异步上下文里会抛 MissingGreenlet 异常或卡死
+    # 原因：懒加载是同步阻塞操作，但异步代码不允许同步 I/O
     print(user.articles)  # 异常！
 
 async def good_example(session: AsyncSession):
     # ✅ 方案 1：selectinload 一次性把关联数据加载好
+    # selectinload 用独立的 SELECT ... WHERE id IN (...) 查询关联数据
+    # 相比 joinedload 不会产生笛卡尔积，适合一对多关系
     from sqlalchemy.orm import selectinload
+    # .options(selectinload(User.articles)) 告诉 SQLAlchemy：
+    #   查 User 时顺便把每个 user 的 articles 也查出来（用第二次 SELECT）
     stmt = select(User).options(selectinload(User.articles)).where(User.id == 1)
     result = await session.execute(stmt)
     user = result.scalar_one()
     # 现在 user.articles 已经加载好，访问不会触发懒加载
+    # 因为数据已在内存，访问属性是同步操作，安全
     print(user.articles)
 
 async def good_example_2(session: AsyncSession):
     # ✅ 方案 2：明确 join 查询
+    # 用 join 显式关联，返回 (User, Article) 元组
+    # 适合只需要部分字段或要跨表过滤的场景
     from sqlalchemy import select
     stmt = select(User, Article).join(Article, User.id == Article.author_id).where(User.id == 1)
     result = await session.execute(stmt)
@@ -1251,11 +1313,17 @@ import asyncio
 
 async def fetch_post(post_id: int):
     # async with 创建 AsyncClient，自动管理连接池
+    # 进入 with 块时初始化连接池，退出时调用 aclose() 释放
+    # 一个 client 内的多次请求会复用 TCP 连接（keep-alive）
     async with httpx.AsyncClient() as client:
-        # await 等待响应
+        # await 等待响应（必须 await，网络 I/O 是异步的）
+        # client.get 是同步方法 client.get 的异步版
         resp = await client.get(f"https://jsonplaceholder.typicode.com/posts/{post_id}")
         # 检查状态码（非 2xx 抛异常）
+        # httpx 默认不抛异常，4xx/5xx 静默返回
+        # raise_for_status 主动检查，把 HTTP 错误转成异常
         resp.raise_for_status()
+        # resp.json() 把响应体解析成 dict（同步操作，数据已在内存）
         return resp.json()
 
 async def main():
@@ -1277,6 +1345,7 @@ async def bad():
     async with httpx.AsyncClient() as client:
         resp = await client.get("https://api.example.com/b")
     # 每次都新建连接池，没有 keep-alive 复用，性能差
+    # 每次都要 TCP 三次握手 + TLS 握手（HTTPS），耗时几百毫秒
 
 # ✅ 推荐：一个 client 多次请求，复用连接
 async def good():
@@ -1284,6 +1353,7 @@ async def good():
         resp1 = await client.get("https://api.example.com/a")
         resp2 = await client.get("https://api.example.com/b")
         # 两次请求复用 TCP 连接（keep-alive），第二次快很多
+        # 省去握手时间，只算数据传输，延迟降到几十毫秒
 \`\`\`
 
 ## 四、GET、POST、PUT、DELETE 完整示例
@@ -1409,24 +1479,27 @@ import asyncio
 
 async def timeout_demo():
     # 方式 1：统一超时（所有阶段都 5 秒）
+    # 简单粗暴，适合快速验证
     async with httpx.AsyncClient(timeout=5.0) as client:
         resp = await client.get("https://httpbin.org/delay/2")
 
     # 方式 2：精细控制（推荐生产用）
-    # connect: 连接建立超时
-    # read: 等待响应数据超时
-    # write: 发送请求超时
-    # pool: 从连接池拿连接的超时
+    # connect: 连接建立超时（TCP 握手阶段）
+    # read: 等待响应数据超时（服务器处理 + 传输）
+    # write: 发送请求超时（上传请求体阶段）
+    # pool: 从连接池拿连接的超时（池满时等待）
+    # 不同阶段用不同超时，避免某阶段卡死拖累全局
     timeout = httpx.Timeout(
-        connect=5.0,    # 5 秒连不上就放弃
-        read=10.0,      # 10 秒读不到数据就放弃
-        write=5.0,      # 5 秒写不完请求就放弃
-        pool=5.0,       # 5 秒拿不到连接就放弃
+        connect=5.0,    # 5 秒连不上就放弃（网络不通快速失败）
+        read=10.0,      # 10 秒读不到数据就放弃（服务器慢但别死等）
+        write=5.0,      # 5 秒写不完请求就放弃（上传大文件场景调大）
+        pool=5.0,       # 5 秒拿不到连接就放弃（连接池满，防协程堆积）
     )
     async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await client.get("https://httpbin.org/delay/3")
 
     # 方式 3：单个请求覆盖超时
+    # 某些慢接口单独设大超时，不影响其他请求
     async with httpx.AsyncClient(timeout=10.0) as client:
         # 这个请求用 30 秒超时（其他请求还是 10 秒）
         resp = await client.get("https://httpbin.org/delay/5", timeout=30.0)
@@ -1508,10 +1581,13 @@ asyncio.run(main())
 import httpx
 
 # 连接池配置
+# httpx.Limits 控制连接池的三条边界
 limits = httpx.Limits(
-    max_connections=100,        # 最大总连接数
+    max_connections=100,        # 最大总连接数（同时活跃的连接上限）
     max_keepalive_connections=20,  # 保持的 keep-alive 连接数
+    # 空闲连接超过这个数就关闭多余的，保留 20 个备用
     keepalive_expiry=30.0,      # keep-alive 连接空闲 30 秒后关闭
+    # 防止连接长期闲置占用资源，到期自动回收
 )
 
 # 把 limits 传给 client
@@ -1537,6 +1613,8 @@ app = FastAPI()
 @app.on_event("startup")
 async def startup():
     # 创建全局 AsyncClient，复用连接池
+    # 存在 app.state 上，所有请求共享这一个 client
+    # 这样连接池能跨请求复用，性能最佳
     app.state.http_client = httpx.AsyncClient(
         timeout=httpx.Timeout(10.0, connect=5.0),
         limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
@@ -1545,9 +1623,12 @@ async def startup():
 @app.on_event("shutdown")
 async def shutdown():
     # 关闭 client，释放连接
+    # aclose 是 async 的，因为关闭连接涉及网络 I/O
+    # 不关闭会连接泄漏，进程退出时操作系统才回收
     await app.state.http_client.aclose()
 
 # 依赖函数：从 app.state 获取 client
+# 通过依赖注入而不是直接用全局变量，方便测试时 mock
 async def get_http_client(request: Request):
     return request.app.state.http_client
 
@@ -1555,6 +1636,7 @@ async def get_http_client(request: Request):
 @app.get("/proxy/{post_id}")
 async def proxy_post(post_id: int, client: httpx.AsyncClient = Depends(get_http_client)):
     # 复用全局 client，性能最佳
+    # client 已经配好超时和连接池，这里直接用
     resp = await client.get(f"https://jsonplaceholder.typicode.com/posts/{post_id}")
     if resp.status_code != 200:
         raise HTTPException(status_code=resp.status_code, detail="上游错误")
@@ -1896,11 +1978,14 @@ import time
 app = FastAPI()
 
 # 同步任务：FastAPI 扔到线程池跑
+# 普通 def 函数，里面有 time.sleep 这种阻塞调用
+# FastAPI 自动用 run_in_executor 把它丢到线程池，不卡事件循环
 def sync_task():
     time.sleep(1)
     print("同步任务完成")
 
 # 异步任务：FastAPI 在事件循环里 await
+# async def 函数，用 await asyncio.sleep 不阻塞
 async def async_task():
     await asyncio.sleep(1)
     print("异步任务完成")
@@ -1911,6 +1996,7 @@ async def mixed(background_tasks: BackgroundTasks):
     background_tasks.add_task(async_task)   # 异步任务
     return {"ok": True}
     # 响应返回后，FastAPI 自动判断是同步还是异步，分别处理
+    # sync_task → 线程池；async_task → 事件循环
 \`\`\`
 
 **怎么选**：
@@ -1930,6 +2016,7 @@ app = FastAPI()
 logger = logging.getLogger("background")
 
 # 方式 1：任务函数内部 try/except（推荐）
+# 优点：可以自定义重试、降级、写死信队列
 def safe_send_email(email: str):
     try:
         # 模拟发邮件
@@ -1938,6 +2025,7 @@ def safe_send_email(email: str):
         # 任务内部捕获，记录日志，不影响其他任务
         logger.error(f"发邮件失败 {email}: {e}")
         # 可以选择重试或写失败队列
+        # 比如：把失败的邮件写入 failed_emails 表，等人工处理
 
 @app.post("/send")
 def send(email: str, background_tasks: BackgroundTasks):
@@ -1948,6 +2036,7 @@ def send(email: str, background_tasks: BackgroundTasks):
 def unsafe_task():
     raise ValueError("故意出错")
     # FastAPI 会捕获并记入日志，但你无法控制重试逻辑
+    # 异常被 Starlette 内部捕获，只打日志，不做其他处理
 
 @app.post("/unsafe")
 def unsafe(background_tasks: BackgroundTasks):
@@ -2004,15 +2093,18 @@ async def get_db():
     async with AsyncSessionLocal() as session:
         yield session
         # yield 后 session 还在，但响应返回后 session 会被关闭！
+        # 因为 async with 在 yield 之后的 finally 里调用 session.close()
 
 # ❌ 错误：后台任务用了 session，但执行时 session 已关闭
 def write_log_with_db(session: AsyncSession, message: str):
     # 这时 session 已被 get_db 关闭，会报错
+    # 因为后台任务在响应返回后才执行，那时依赖已清理完毕
     await session.execute(...)  # Session is closed
 
 @app.post("/bad")
 async def bad(background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     # 后台任务用了 db，但响应返回后 get_db 会关闭 db
+    # 任务执行时 db 已经是个关闭了的 session 对象
     background_tasks.add_task(write_log_with_db, db, "log")
     return {"ok": True}
     # 后台任务执行时报错：session closed
@@ -2020,6 +2112,7 @@ async def bad(background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_
 # ✅ 正确：后台任务自己创建 session
 async def safe_write_log(message: str):
     # 任务内部新建独立 session
+    # 不依赖请求级资源，生命周期完全由任务自己控制
     async with AsyncSessionLocal() as session:
         await session.execute(text("INSERT INTO logs ..."))
         await session.commit()
@@ -2193,6 +2286,9 @@ async def register_async(
     # 定义一个并发执行所有后台逻辑的任务
     async def run_all_background_tasks(user_id: int, email: str, username: str):
         # 三个任务并发（而不是串行）
+        # send_email_async 本身是 async def，直接传入
+        # write_user_log / update_user_stats 是同步函数，用 asyncio.to_thread 包装
+        # asyncio.to_thread 把同步函数扔到线程池跑，返回协程
         await asyncio.gather(
             send_email_async(email, "欢迎注册", f"你好 {username}"),
             asyncio.to_thread(write_user_log, user_id, "register", "127.0.0.1"),
@@ -2200,6 +2296,7 @@ async def register_async(
         )
 
     # 添加一个 async 任务（内部并发三个子任务）
+    # 这样三个子任务并发执行，而不是 BackgroundTasks 默认的串行
     background_tasks.add_task(run_all_background_tasks, user_id, req.email, req.username)
 
     return RegisterResponse(

@@ -111,13 +111,24 @@ class UserV2(BaseModel):
     age: int
 
     # 字段校验器：校验 age 字段
+    # @field_validator('age') 是 Pydantic v2 的字段校验器装饰器
+    # 参数 'age' 指定校验哪个字段，可以传多个：@field_validator('a', 'b')
+    # 它在 Pydantic 完成基础类型校验后执行自定义校验逻辑
     @field_validator('age')
+    # @classmethod 把方法变成类方法
+    # v2 要求字段校验器必须是类方法（v1 也建议加）
+    # 第一个参数是 cls（类本身），不是 self（实例）
+    # 因为校验发生在实例化过程中，此时实例还没创建
     @classmethod
     def check_age(cls, v: int) -> int:
+        # cls 是模型类本身（这里是 UserV2）
+        # v 是已经过基础类型校验的值（已经是 int 类型）
         # 如果年龄小于 0，抛出 ValueError
+        # Pydantic 会把 ValueError 包装成 ValidationError
         if v < 0:
             raise ValueError('age must be positive')
         # 校验通过，返回值会被赋给字段
+        # 必须返回值，不返回相当于赋 None
         return v
 
 # 实例化模型
@@ -321,31 +332,46 @@ print(e.model_dump())
 # 输出: {'id': 1, 'name': 'click', 'time': datetime.datetime(2026, 7, 11, 12, 0), 'tags': ['ui', 'btn']}
 
 # 2. model_dump_json() 把 datetime 自动转成 ISO 格式字符串
+# JSON 标准不支持 datetime 对象，必须转成字符串
+# ISO 8601 格式：YYYY-MM-DDTHH:MM:SS，是国际标准日期时间格式
 print(e.model_dump_json())
 # 输出: {"id":1,"name":"click","time":"2026-07-11T12:00:00","tags":["ui","btn"]}
 
 # 3. exclude 参数：排除指定字段
+# exclude={"tags"} 表示序列化时排除 tags 字段
+# 适合响应模型需要隐藏某些字段的场景
 print(e.model_dump(exclude={"tags"}))
 # 输出: {'id': 1, 'name': 'click', 'time': datetime.datetime(2026, 7, 11, 12, 0)}
 
 # 4. include 参数：只包含指定字段
+# include={"id", "name"} 表示只序列化 id 和 name
+# 和 exclude 互补，适合只暴露部分字段的场景
 print(e.model_dump(include={"id", "name"}))
 # 输出: {'id': 1, 'name': 'click'}
 
 # 5. by_alias 参数：使用别名序列化（配合 alias 定义）
 # 默认是 False，设为 True 时使用字段的 alias 作为键
+# 例如字段 user_id 有 alias='userId'，by_alias=True 时输出 {'userId': ...}
 
 # 6. exclude_unset=True：只包含实例化时显式传入的字段
+# "显式传入"指创建实例时传了该字段，而不是用默认值
+# e2 没传 tags，所以 exclude_unset=True 不包含 tags
+# 这在 PATCH 更新场景很有用：只更新用户传了的字段
 e2 = Event(id=2, name="view", time=datetime(2026, 7, 11, 13, 0))
 print(e2.model_dump(exclude_unset=True))
 # 输出: {'id': 2, 'name': 'view', 'time': datetime.datetime(2026, 7, 11, 13, 0)}（没有 tags）
 
 # 7. exclude_defaults=True：排除使用默认值的字段
+# 和 exclude_unset 的区别：
+# - exclude_unset：排除"没传"的字段（即使该字段有非默认值）
+# - exclude_defaults：排除"值等于默认值"的字段（传了但等于默认值也排除）
+# e2 的 tags 没传，用默认值 []，被排除
 print(e2.model_dump(exclude_defaults=True))
 # 输出: {'id': 2, 'name': 'view', 'time': ...}（tags 用了默认值 []，被排除）
 
 # 8. exclude_none=True：排除值为 None 的字段
 # 适用于可选字段较多的场景
+# 例如 {"name": "alice", "age": None} → {"name": "alice"}
 \`\`\`
 
 **实战技巧**：在 FastAPI 中，路由函数返回模型实例时，FastAPI 自动调用 \`model_dump()\`（通过 \`response_model\` 控制），所以你不需要手动序列化。但在写测试、日志、缓存时，这两个方法用得非常频繁。
@@ -375,6 +401,10 @@ print(c1)  # 输出: host='localhost' port=8080 debug=True
 
 # === model_validate_json：从 JSON 字符串直接创建 ===
 # 比 json.loads + model_validate 更快，因为跳过中间的 dict 构造
+# 性能提示：model_validate_json 内部直接用 Rust 解析 JSON 并校验
+# 而 json.loads + model_validate 是两步：先解析成 dict，再校验 dict
+# 前者省去了构造中间 dict 的开销，快 20%~30%
+# 在处理大量 JSON 数据（如批量导入）时性能差异明显
 json_str = '{"host": "127.0.0.1", "port": 3306}'
 c2 = Config.model_validate_json(json_str)
 print(c2)  # 输出: host='127.0.0.1' port=3306 debug=False
@@ -412,6 +442,10 @@ class FakeORMUser:
         self.email = email
 
 # === 定义 Pydantic 模型，开启 from_attributes ===
+# from_attributes=True 允许从任意对象创建模型，只要对象有对应属性
+# 工作原理：Pydantic 用 getattr(obj, field_name) 逐个读取字段
+# 而不是用 obj[field_name]（字典方式）
+# 这就是为什么 ORM 对象（如 SQLAlchemy 模型实例）能直接传入
 class UserOut(BaseModel):
     # 关键配置：允许从任意对象的属性创建模型
     model_config = ConfigDict(from_attributes=True)
@@ -517,15 +551,21 @@ except Exception as e:
     print(type(e).__name__)  # 输出: ValidationError
 
 # === frozen 的额外好处：可哈希，能作为 dict 的键或集合元素 ===
-# 因为不可变，所以可以哈希
+# "可哈希"是指对象实现了 __hash__ 方法，能计算出一个固定哈希值
+# Python 要求 dict 的键和 set 的元素必须可哈希
+# 可变对象（如 list、dict、普通 BaseModel）不可哈希，因为内容变化后哈希值会变
+# frozen=True 的模型不可变，内容固定，所以可以安全哈希
 p1 = FrozenPoint(x=1.0, y=2.0)
 p2 = FrozenPoint(x=1.0, y=2.0)
 # 两个值相同的不可变模型被视为相等
+# frozen=True 同时启用了 __eq__ 和 __hash__，基于字段值比较和计算哈希
 print(p1 == p2)  # 输出: True
 # 可以放进集合
+# set 用哈希值去重，p1 和 p2 哈希值相同且相等，所以只保留一个
 s = {p1, p2}
 print(len(s))    # 输出: 1（因为相等）
 # 可以作为字典键
+# dict 用哈希值查找，p2 的哈希值和 p1 相同，所以 d[p2] 能找到 p1 的值
 d = {p1: "value"}
 print(d[p2])     # 输出: value
 \`\`\`
@@ -816,16 +856,25 @@ UUID（通用唯一标识符）常用于主键、令牌、会话 ID。Pydantic �
 # 从 pydantic 导入 BaseModel
 from pydantic import BaseModel
 # 从 uuid 模块导入 UUID
+# UUID 是通用唯一标识符类，uuid4 是生成随机 UUID 的函数
+# UUID 有 5 个版本：
+# - uuid1：基于 MAC 地址和时间戳（可能泄露物理位置）
+# - uuid3：基于名字和 MD5 哈希
+# - uuid4：完全随机（最常用，无泄露风险）
+# - uuid5：基于名字和 SHA-1 哈希
 from uuid import UUID, uuid4
 
 # 定义模型 Resource
 class Resource(BaseModel):
     # 字段 id，类型 UUID
+    # UUID 是 128 位标识符，通常表示为 36 字符字符串
+    # 格式：8-4-4-4-12 十六进制，如 "550e8400-e29b-41d4-a716-446655440000"
     id: UUID
     # 字段 name，类型 str
     name: str
 
 # 实例化方式 1：用 UUID 对象
+# uuid4() 生成一个随机 UUID 对象
 r1 = Resource(id=uuid4(), name="res1")
 print(r1.id)         # 输出: 类似 550e8400-e29b-41d4-a716-446655440000
 print(type(r1.id))   # 输出: <class 'uuid.UUID'>
@@ -884,11 +933,17 @@ print(m4.amount)        # 输出: 0.10000000000000000555111512312578270211815834
 
 # === Decimal 的精度优势 ===
 # float 计算 0.1 + 0.2 不等于 0.3
+# 原因：float 用二进制浮点数表示，0.1 在二进制里是无限循环小数
+# 存储时被截断，导致微小误差，金融计算不能接受
 print(0.1 + 0.2)              # 输出: 0.30000000000000004
 # Decimal 计算 0.1 + 0.2 等于 0.3
+# Decimal 用十进制存储，精确表示 0.1 这种十进制小数
+# 适合金融场景，不会累积误差
 print(Decimal("0.1") + Decimal("0.2"))  # 输出: 0.3
 
 # 序列化为 JSON：Decimal 被转成字符串（避免精度丢失）
+# JSON 标准没有 Decimal 类型，如果转成 float 会丢失精度
+# 所以 Pydantic 默认把 Decimal 序列化成字符串
 print(m2.model_dump_json())  # 输出: {"amount":"123.45","currency":"CNY"}
 \`\`\`
 
@@ -908,16 +963,24 @@ from pydantic import BaseModel
 # 定义集合类型模型 Collections
 class Collections(BaseModel):
     # 字段 tags，类型 list[str]（字符串列表）
+    # list[str] 是 Python 3.9+ 的泛型写法，等价于 List[str]
     tags: list[str]
     # 字段 scores，类型 list[int]（整数列表）
     scores: list[int]
     # 字段 metadata，类型 dict[str, str]（字符串到字符串的字典）
+    # dict[键类型, 值类型]，Pydantic 会递归校验键和值
     metadata: dict[str, str]
     # 字段 unique_tags，类型 set[str]（字符串集合，自动去重）
+    # set 是无序集合，重复元素会被自动去重
+    # 传入 ["a", "a", "b"] 会变成 {"a", "b"}
     unique_tags: set[str]
     # 字段 point，类型 tuple[int, int]（固定长度元组）
+    # tuple[int, int] 表示正好 2 个元素，都是 int
+    # 传 3 个或 1 个会报错
     point: tuple[int, int]
     # 字段 coords，类型 tuple[float, ...]（变长元组，全 float）
+    # tuple[float, ...] 中的 ... 表示任意长度
+    # 所有元素必须是 float，但数量不限
     coords: tuple[float, ...]
 
 # 实例化
@@ -1060,11 +1123,16 @@ from typing import Union
 # 定义模型 A
 class A(BaseModel):
     # 字段 x，类型 Union[int, str]（先试 int）
+    # Union[int, str] 表示 x 可以是 int 或 str
+    # Pydantic 按声明顺序尝试匹配：先试 int，转不了才用 str
+    # 注意：这意味着 "123" 会被转成 int 123，而不是保留字符串
     x: Union[int, str]
 
 # 定义模型 B
 class B(BaseModel):
     # 字段 x，类型 Union[str, int]（先试 str）
+    # Union[str, int] 先试 str，"123" 能转成 str 所以保留为字符串
+    # 声明顺序很重要：想保留字符串就写 Union[str, int]
     x: Union[str, int]
 
 # 输入 "123"
@@ -1228,13 +1296,20 @@ from pydantic import BaseModel, AfterValidator
 from typing import Annotated
 
 # === 方式 1：用 Annotated + AfterValidator 创建自定义类型 ===
+# Annotated 是 Python 3.9+ 的类型注解工具，给类型附加额外元数据
+# 语法：Annotated[基础类型, 元数据1, 元数据2, ...]
+# 这里 Annotated[str, AfterValidator(to_lower)] 表示：
+# - 基础类型是 str
+# - 附加一个 AfterValidator 校验器
 # AfterValidator 在 Pydantic 完成基础校验后执行自定义函数
-# 定义校验函数：把字符串转成小写
+# "After" 指在类型转换之后执行，此时 v 已经是 str 类型
 def to_lower(v: str) -> str:
     # 转成小写后返回
     return v.lower()
 
 # 定义自定义类型 LowerStr（str 基础 + 转小写校验）
+# 这样 LowerStr 就像一个新类型，可以在多个模型里复用
+# 比每个字段都写 @field_validator 更简洁
 LowerStr = Annotated[str, AfterValidator(to_lower)]
 
 # 定义模型 User
@@ -1314,8 +1389,13 @@ l = Loose(x="123")
 print(l.x, type(l.x))  # 输出: 123 <class 'int'>
 
 # === StrictInt 严格模式 ===
+# StrictInt 是 Pydantic 提供的严格整数类型
+# 普通 int 会自动把 "123" 转成 123，StrictInt 不接受字符串
+# 类似的还有 StrictStr、StrictFloat、StrictBool
 class Strict(BaseModel):
     # 字段 x，类型 StrictInt（严格，必须是 int，不接受字符串）
+    # 严格模式下，只有真正的 int 类型才能通过校验
+    # 避免 "123" 被自动转换成 123 这种意外行为
     x: StrictInt
 
 # 严格模式下，字符串会报错
@@ -1554,6 +1634,8 @@ class Demo(BaseModel):
     value: str
 
     # mode='after'：默认，v 已经是 str
+    # 执行时机：Pydantic 类型校验和转换之后
+    # 此时 v 已经是声明类型的值，可以安全地按 str 操作
     @field_validator('value')
     @classmethod
     def after_check(cls, v: str) -> str:
@@ -1563,6 +1645,9 @@ class Demo(BaseModel):
         return v
 
     # mode='before'：v 是原始输入，可能是任意类型
+    # 执行时机：Pydantic 类型校验之前
+    # 此时 v 是原始输入值，可能是任意类型（str、int、None、dict 等）
+    # 适合预处理：把 None 转默认值、字符串去空格、多种格式统一等
     @field_validator('value', mode='before')
     @classmethod
     def before_check(cls, v: Any) -> Any:
@@ -1912,13 +1997,22 @@ class UserRegister(BaseModel):
     password_confirm: str
 
     # 校验两次密码是否一致
+    # @model_validator(mode='after') 是模型级校验器
+    # mode='after' 在所有字段校验完成后执行
+    # 此时 self 是已校验的模型实例，所有字段都已就位
+    # 适合跨字段校验（如密码确认、日期范围、字段互斥等）
     @model_validator(mode='after')
     def passwords_match(self) -> 'UserRegister':
+        # self 是模型实例，可以访问所有字段
         # 比较 password 和 password_confirm
         if self.password != self.password_confirm:
             # 抛出 ValueError，指明是 password_confirm 字段的问题
+            # Pydantic 会把 ValueError 包装成 ValidationError
+            # 错误信息会附在模型级别（loc 是 ()）
             raise ValueError('两次输入的密码不一致')
         # 一致则返回 self
+        # mode='after' 的校验器必须返回 self
+        # 返回值就是最终的模型实例
         return self
 
 # 正常注册
@@ -2018,16 +2112,24 @@ class User(BaseModel):
     created_at: datetime
 
     # 自定义 password 的序列化：永远输出 ******
+    # @field_serializer('password') 装饰实例方法
+    # 只影响 model_dump() / model_dump_json() 的输出
+    # 不影响字段实际值（u.password 还是原值）
     @field_serializer('password')
     def serialize_password(self, value: str) -> str:
-        # value 是字段的原始值
+        # self 是模型实例
+        # value 是字段的原始值（这里是 password 的真实值）
+        # 返回值就是序列化时的输出
         # 返回脱敏后的值
         return "******"
 
     # 自定义 created_at 的序列化：格式化为 YYYY-MM-DD
     @field_serializer('created_at')
     def serialize_created_at(self, value: datetime) -> str:
-        # 格式化日期
+        # value 是 datetime 对象
+        # strftime 是 datetime 的方法，按格式化字符串转字符串
+        # %Y 年（4位）、%m 月（2位）、%d 日（2位）
+        # 如 datetime(2026, 7, 11) → "2026-07-11"
         return value.strftime("%Y-%m-%d")
 
 # 实例化
@@ -2337,18 +2439,33 @@ from pydantic import BaseModel, ConfigDict
 # 定义模型 User
 class User(BaseModel):
     # 模型配置
+    # ConfigDict 是 TypedDict，所有配置项都有类型提示
+    # IDE 能自动补全配置项名称，写错会报错
     model_config = ConfigDict(
         # 允许从 ORM 对象创建模型
+        # 开启后 model_validate 能接受 ORM 对象（用 getattr 读属性）
+        # 等价于 v1 的 orm_mode=True
         from_attributes=True,
         # 禁止额外字段（默认是 'ignore'，会忽略多余字段）
+        # 'forbid'：传未定义字段会报错，防止客户端传错字段
+        # 'ignore'：静默忽略（默认）
+        # 'allow'：保留额外字段
         extra='forbid',
         # 字符串自动去首尾空格
+        # 实例化时所有 str 字段会自动调用 .strip()
+        # 避免用户输入 "alice " 这种带空格的值
         str_strip_whitespace=True,
         # 字段名大小写不敏感（'Name' 也能匹配 'name'）
         str_to_lower=False,
         # 验证赋值（修改字段时也触发校验）
+        # 默认 False：u.id = "abc" 不会校验类型
+        # 设为 True：u.id = "abc" 会触发类型校验，报错
+        # 适合需要保证数据一致性的场景
         validate_assignment=True,
         # 允许使用枚举的值（而不只是枚举成员）
+        # 设为 True 后，字段存储的是枚举的 .value（如 "pending"）
+        # 而不是枚举成员（如 OrderStatus.pending）
+        # 方便序列化，但失去枚举方法
         use_enum_values=True,
     )
     # 字段 id，类型 int
@@ -2524,14 +2641,19 @@ class User(BaseModel):
     created_at: str = Field(alias='createdAt')
 
 # 实例化：必须用别名
+# 定义了 alias 后，实例化时必须用 alias 作为关键字参数
+# 不能用字段名 user_id，要用 userId
 u = User(userId=1, createdAt="2026-07-11")
 print(u.user_id)      # 输出: 1（用字段名访问）
 print(u.created_at)   # 输出: 2026-07-11
 
 # 序列化：默认用别名
+# model_dump() 默认 by_alias=False，用字段名
+# 但 Pydantic v2 改变了默认行为，定义了 alias 后默认用别名
 print(u.model_dump())
 # 输出: {'userId': 1, 'createdAt': '2026-07-11'}（键是别名）
 # 用 model_dump(by_alias=False) 可以用字段名
+# by_alias=False 强制使用字段名而非别名
 print(u.model_dump(by_alias=False))
 # 输出: {'user_id': 1, 'created_at': '2026-07-11'}
 \`\`\`
@@ -2908,18 +3030,28 @@ class Product(BaseModel):
 # 从 pydantic 导入 BaseModel
 from pydantic import BaseModel
 # 从 typing 导入 Generic、TypeVar
+# Generic 是泛型基类，继承后类变成泛型类
+# TypeVar 是类型变量，表示一个"待确定的类型"
 from typing import Generic, TypeVar
 
 # 定义类型变量 T，表示泛型类型参数
+# T 是一个占位符，实例化时用具体类型替换
+# 如 Response[User] 中 T 被替换为 User，Response[str] 中 T 被替换为 str
+# TypeVar('T') 中的 'T' 是名字，约定用大写字母
 T = TypeVar('T')
 
 # 定义泛型响应包装模型 Response
+# 继承 BaseModel 和 Generic[T]，表示这是一个泛型模型
+# Generic[T] 让 Response 变成"参数化类型"，可以用 Response[具体类型] 实例化
 class Response(BaseModel, Generic[T]):
     # 字段 code，类型 int（状态码）
     code: int
     # 字段 message，类型 str（消息）
     message: str
     # 字段 data，类型 T（泛型数据）
+    # T 是类型变量，实例化时确定具体类型
+    # Response[User] 时 data 是 User 类型
+    # Response[str] 时 data 是 str 类型
     data: T
 
 # 定义用户模型
@@ -3037,21 +3169,31 @@ class PageResponse(BaseModel, Generic[T]):
     size: int = Field(ge=1, description="每页数量")
 
     # 计算字段：总页数
+    # @computed_field 装饰的方法会作为字段出现在 model_dump() 里
+    # 但它是只读的，不能在实例化时传值
     @computed_field
     def total_pages(self) -> int:
         # 总页数 = 向上取整(总数 / 每页大小)
+        # (self.total + self.size - 1) // self.size 是整数向上取整除法
+        # 例如 total=23, size=10 → (23+9)//10 = 32//10 = 3 页
+        # 等价于 math.ceil(self.total / self.size)，但用整数运算避免浮点误差
+        # 注意：total=0 时返回 0，不会出现负数
         return (self.total + self.size - 1) // self.size
 
     # 计算字段：是否有下一页
     @computed_field
     def has_next(self) -> bool:
         # 当前页 < 总页数 → 有下一页
+        # 例如 page=1, total_pages=10 → True（有下一页）
+        # 例如 page=10, total_pages=10 → False（最后一页）
         return self.page < self.total_pages
 
     # 计算字段：是否有上一页
     @computed_field
     def has_prev(self) -> bool:
         # 当前页 > 1 → 有上一页
+        # 例如 page=1 → False（第一页没上一页）
+        # 例如 page=2 → True
         return self.page > 1
 
 # === 在 FastAPI 中使用 ===
@@ -3073,20 +3215,33 @@ MOCK_USERS = [
 ]  # 100 个用户
 
 # 定义路由：分页查询用户
+# response_model=PageResponse[User] 指定响应为分页模型，数据是 User 类型
+# FastAPI 支持 response_model 用泛型模型参数化，会正确生成 OpenAPI 文档
 @app.get("/users", response_model=PageResponse[User])
 def list_users(
     # 查询参数 page，默认 1，最小 1
+    # Query(default=1, ge=1) 表示默认值 1，必须 >= 1
+    # 查询参数通过 URL 传递：/users?page=2&size=20
     page: int = Query(default=1, ge=1, description="页码"),
     # 查询参数 size，默认 10，范围 1~100
+    # le=100 限制每页最多 100 条，防止客户端请求过多数据拖垮服务器
     size: int = Query(default=10, ge=1, le=100, description="每页数量"),
 ):
     # 计算分页起始位置
+    # page=1 时 start=0，page=2 时 start=size，依此类推
+    # 这是分页的标准公式：start = (page - 1) * size
     start = (page - 1) * size
     # 计算结束位置
+    # end = start + size，切片时超出列表长度不会报错
     end = start + size
     # 切片获取当前页数据
+    # MOCK_USERS[start:end] 是 Python 列表切片
+    # 例如 MOCK_USERS[0:10] 取索引 0-9 的元素（共 10 个）
+    # 切片是浅拷贝，返回新列表
     items = MOCK_USERS[start:end]
     # 构造分页响应
+    # PageResponse[User] 实例化泛型模型，items 必须是 User 实例列表
+    # total 是数据库总数，不是 len(items)（最后一页 items 可能少于 size）
     return PageResponse[User](
         items=items,
         total=len(MOCK_USERS),

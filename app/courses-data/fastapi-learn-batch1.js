@@ -47,10 +47,13 @@ pip install "uvicorn[standard]"
 
 \`\`\`python
 # 验证安装是否成功
+# 导入 fastapi 包，用于检查版本号
 import fastapi
+# 导入 uvicorn 包，ASGI 服务器，用于检查版本号
 import uvicorn
 
 # 打印版本号，能看到版本说明安装成功
+# __version__ 是 Python 包的版本属性惯例
 print(fastapi.__version__)  # 例如 0.115.x
 print(uvicorn.__version__)  # 例如 0.32.x
 \`\`\`
@@ -91,6 +94,7 @@ print(uvicorn.__version__)  # 例如 0.32.x
 
 \`\`\`python
 # main.py
+# 导入 FastAPI 类，这是创建应用和路由的入口
 from fastapi import FastAPI
 
 # 创建应用实例
@@ -104,6 +108,7 @@ app = FastAPI(
 # @app.get("/") 是装饰器，含义：
 #   - get：只响应 GET 请求（读数据用 GET，写数据用 POST）
 #   - "/"：匹配根路径，即 http://localhost:8000/
+# 装饰器把下面的函数注册为路由处理函数
 @app.get("/")
 def read_root():
     # 返回字典，FastAPI 自动转成 JSON
@@ -125,8 +130,10 @@ uvicorn main:app --reload
 ## Demo 2：多个路由
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
 # 一个应用可以有多个路由，每个路由处理一个 URL
@@ -147,6 +154,7 @@ def get_current_user():
 
 @app.get("/users/{user_id}")
 def get_user(user_id: int):
+    # 参数 user_id: int 表示从路径提取并自动转为整数
     # {user_id} 是路径参数，下一章详细讲
     return {"user_id": user_id}
 \`\`\`
@@ -167,24 +175,33 @@ def get_user(user_id: int):
 #   - 点击 "Try it out" 直接发请求测试
 #   - 看到每个接口的请求参数和响应格式
 
+# 导入 FastAPI 类
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
+# summary 参数：接口摘要，显示在文档列表里
+# description 参数：接口详细描述
 @app.get("/items/{item_id}", summary="获取商品", description="根据 ID 查询商品详情")
 def get_item(item_id: int, q: str | None = None):
     """
     这里的 docstring 会自动显示在 /docs 文档里
     作为接口的说明文字。
+    FastAPI 会读取函数的 docstring 作为接口描述。
     """
+    # 参数 item_id: int 路径参数，自动转整数
+    # 参数 q: str | None = None 查询参数，可选
     return {"item_id": item_id, "q": q}
 \`\`\`
 
 ## Demo 4：HTTP 方法对照
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
 # FastAPI 为每种 HTTP 方法提供了对应的装饰器
@@ -223,14 +240,17 @@ def delete_item(): ...
 ## 基本用法
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
 # 路径参数：URL 路径里用 {参数名} 占位
 # 访问 /items/42 时，item_id 的值就是 "42"（字符串）
 @app.get("/items/{item_id}")
 def read_item(item_id):
+    # 参数 item_id 没有类型注解，所以是字符串类型
     return {"item_id": item_id}
 
 # 但这样不安全 —— /items/hello 也会通过，item_id 变成 "hello"
@@ -240,13 +260,16 @@ def read_item(item_id):
 ## Demo 2：类型校验（重点）
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
 # item_id: int 告诉 FastAPI：这个参数必须是整数
 @app.get("/items/{item_id}")
 def read_item(item_id: int):
+    # 参数 item_id: int 表示路径参数会被自动转为整数
     # FastAPI 自动做的事：
     # 1. 从 URL 提取 item_id
     # 2. 尝试转成 int
@@ -260,13 +283,16 @@ def read_item(item_id: int):
 ## Demo 3：多个路径参数
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
 # 一个路径可以有多个参数，按顺序对应
 @app.get("/users/{user_id}/posts/{post_id}")
 def get_post(user_id: int, post_id: int):
+    # 参数 user_id: int 和 post_id: int 都是路径参数
     # 访问 /users/1/posts/100
     # user_id=1, post_id=100
     return {"user_id": user_id, "post_id": post_id}
@@ -275,8 +301,10 @@ def get_post(user_id: int, post_id: int):
 ## Demo 4：路径顺序很重要（踩坑点）
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
 # ❌ 错误顺序：/users/me 会被 /users/{user_id} 抢先匹配
@@ -305,21 +333,26 @@ def get_user(user_id: str):
 ## Demo 5：枚举参数（限定取值）
 
 \`\`\`python
+# 导入 FastAPI 类
+# 导入 Enum，Python 标准库的枚举类，用于定义一组固定取值
 from fastapi import FastAPI
 from enum import Enum
 
+# 创建应用实例
 app = FastAPI()
 
 # 用 Enum 定义一组固定取值
+# 继承 str 是为了 JSON 序列化时是字符串
+# 同时继承 Enum 和 str 让枚举成员既是枚举又是字符串
 class ModelName(str, Enum):
-    # 继承 str 是为了 JSON 序列化时是字符串
-    alexnet = "alexnet"
+    alexnet = "alexnet"   # 枚举成员，值为 "alexnet"
     resnet = "resnet"
     vgg = "vgg"
 
 # 参数类型写成 ModelName，FastAPI 会限制只能传这三个值之一
 @app.get("/models/{model_name}")
 def get_model(model_name: ModelName):
+    # 参数 model_name: ModelName 表示路径参数必须是枚举成员之一
     # model_name 已经是枚举成员，不是字符串
     # 访问 /models/alexnet  → model_name 是 ModelName.alexnet
     # 访问 /models/unknown  → 422 错误，提示可选值
@@ -332,14 +365,18 @@ def get_model(model_name: ModelName):
 ## Demo 6：路径参数包含路径
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
 # 默认 {file_path} 不会匹配含 / 的路径
 # 加 :path 后缀可以让它匹配完整路径（含斜杠）
+# :path 是 FastAPI 的特殊转换器，告诉它匹配任意字符（包括 /）
 @app.get("/files/{file_path:path}")
 def read_file(file_path: str):
+    # 参数 file_path: str 接收完整路径
     # 访问 /files/home/user/docs/readme.txt
     # file_path = "home/user/docs/readme.txt"（完整路径）
     return {"file_path": file_path}
@@ -381,14 +418,18 @@ def read_file(file_path: str):
 ## Demo 1：基本查询参数
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
 # 函数参数里：不在路径中的参数，自动识别为查询参数
 # skip: int = 0  ← 有默认值，所以是可选的
 @app.get("/items")
 def list_items(skip: int = 0, limit: int = 10):
+    # 参数 skip: int = 0 查询参数，默认 0
+    # 参数 limit: int = 10 查询参数，默认 10
     # 模拟从数据库分页查询
     # 访问 /items           → skip=0,  limit=10（用默认值）
     # 访问 /items?skip=5    → skip=5,  limit=10
@@ -401,14 +442,16 @@ def list_items(skip: int = 0, limit: int = 10):
 ## Demo 2：必填 vs 可选
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
 @app.get("/search")
 def search(keyword: str, page: int = 1):
-    # keyword 没有默认值 → 必填查询参数
-    # page 有默认值       → 可选查询参数
+    # 参数 keyword: str 没有默认值 → 必填查询参数
+    # 参数 page: int = 1 有默认值 → 可选查询参数
     #
     # 访问 /search?keyword=python        → keyword="python", page=1
     # 访问 /search?keyword=py&page=2     → keyword="py", page=2
@@ -419,15 +462,20 @@ def search(keyword: str, page: int = 1):
 ## Demo 3：可选参数（None 写法）
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
-from typing import Union  # Python 3.10+ 可直接用 str | None
+# 导入 Union，typing 模块的工具，用于声明多种可能的类型
+# Python 3.10+ 可直接用 str | None 代替 Union[str, None]
+from typing import Union
 
+# 创建应用实例
 app = FastAPI()
 
 # 当参数可以"不传"时，用 None 作为默认值
 # Union[str, None] 表示：可以是字符串，也可以是 None
 @app.get("/items")
 def list_items(q: Union[str, None] = None):
+    # 参数 q: Union[str, None] = None 表示 q 可以是字符串或 None
     # q 不传时是 None，传了就是字符串
     if q:
         # 有查询关键词，执行搜索
@@ -441,13 +489,16 @@ def list_items(q: Union[str, None] = None):
 ## Demo 4：bool 类型自动转换
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
 # bool 参数会被自动转换，很贴心
 @app.get("/items")
 def list_items(short: bool = False):
+    # 参数 short: bool = False 查询参数，会被自动转为布尔值
     # 访问 /items?short=true   → short=True
     # 访问 /items?short=1      → short=True（1/0 会被转）
     # 访问 /items?short=yes    → short=True
@@ -463,17 +514,25 @@ def list_items(short: bool = False):
 ## Demo 5：参数校验（Query）
 
 \`\`\`python
+# 导入 FastAPI 类
+# 导入 Query，FastAPI 的查询参数校验工具，用于给查询参数加约束
 from fastapi import FastAPI, Query
 
+# 创建应用实例
 app = FastAPI()
 
 # 用 Query() 给查询参数加约束
 @app.get("/items")
 def list_items(
-    # gt=0：必须大于 0；le=100：必须小于等于 100
+    # Query(default=None, min_length=3, max_length=50)
+    # default=None 表示参数可选（不传时为 None）
+    # min_length=3 最少 3 字符，max_length=50 最多 50 字符
     q: str | None = Query(default=None, min_length=3, max_length=50),
-    # min_length/max_length 限制字符串长度
+    # Query(default=0, ge=0)
+    # ge=0 表示 greater than or equal，即 >= 0
     skip: int = Query(default=0, ge=0),      # ge=0：大于等于 0
+    # Query(default=10, ge=1, le=100)
+    # ge=1 大于等于 1，le=100 小于等于 100
     limit: int = Query(default=10, ge=1, le=100),  # 1 ≤ limit ≤ 100
 ):
     # 校验规则：
@@ -490,14 +549,18 @@ def list_items(
 ## Demo 6：接收多个相同参数
 
 \`\`\`python
+# 导入 FastAPI 类和 Query
 from fastapi import FastAPI, Query
 
+# 创建应用实例
 app = FastAPI()
 
 # 有时 URL 会有同名参数多次出现，比如 ?tag=a&tag=b
 # 用 list 类型接收
 @app.get("/items")
 def list_items(tags: list[str] | None = Query(default=None)):
+    # 参数 tags: list[str] | None = Query(default=None)
+    # list[str] 表示接收字符串列表
     # 访问 /items?tags=python&tags=fastapi
     # tags = ["python", "fastapi"]
     # 访问 /items（不传 tags）
@@ -510,8 +573,10 @@ def list_items(tags: list[str] | None = Query(default=None)):
 ## Demo 7：路径参数 + 查询参数混用
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
 # 同时有路径参数和查询参数，FastAPI 自动区分

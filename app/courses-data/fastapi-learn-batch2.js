@@ -32,9 +32,12 @@ export const chapters = [
 ## Demo 1：用 Pydantic 模型接收请求体
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 BaseModel，Pydantic 的基础模型类，用于定义数据结构并自动校验
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
 # 第 1 步：定义数据模型（继承 BaseModel）
@@ -46,6 +49,7 @@ class Item(BaseModel):
 # 第 2 步：在函数参数里用这个模型
 @app.post("/items")
 def create_item(item: Item):
+    # 参数 item: Item 表示请求体会被自动解析为 Item 对象
     # FastAPI 自动做的事：
     # 1. 读取请求体的 JSON
     # 2. 按 Item 模型校验字段（类型、必填）
@@ -63,9 +67,12 @@ def create_item(item: Item):
 ## Demo 2：访问模型字段
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 BaseModel
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
 class Item(BaseModel):
@@ -90,9 +97,12 @@ def create_item(item: Item):
 ## Demo 3：请求体 + 路径参数 + 查询参数
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 BaseModel
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
 class Item(BaseModel):
@@ -121,9 +131,12 @@ def update_item(item_id: int, item: Item, q: str | None = None):
 ## Demo 4：嵌套模型
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 BaseModel
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
 # 模型可以嵌套，反映复杂数据结构
@@ -139,6 +152,7 @@ class User(BaseModel):
 # 请求体 JSON 也要嵌套
 @app.post("/users")
 def create_user(user: User):
+    # 参数 user: User 是嵌套模型
     # user.address 是 Address 对象
     # 用点号逐层访问
     return {
@@ -161,9 +175,12 @@ def create_user(user: User):
 ## Demo 5：列表和字典字段
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 BaseModel
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
 class Article(BaseModel):
@@ -220,9 +237,13 @@ def create_article(article: Article):
 ## Demo 1：字段校验器（Field）
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 BaseModel 和 Field
+# Field 用于给字段加约束（最小值、最大值、长度等）
 from pydantic import BaseModel, Field
 
+# 创建应用实例
 app = FastAPI()
 
 class Item(BaseModel):
@@ -242,6 +263,7 @@ class Item(BaseModel):
 
 @app.post("/items")
 def create_item(item: Item):
+    # 参数 item: Item 会被自动校验
     return item
 
 # 常用校验参数：
@@ -253,9 +275,13 @@ def create_item(item: Item):
 ## Demo 2：自定义校验（validator）
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 BaseModel 和 field_validator
+# field_validator 是 Pydantic v2 的自定义校验器装饰器（v1 是 validator）
 from pydantic import BaseModel, field_validator
 
+# 创建应用实例
 app = FastAPI()
 
 class User(BaseModel):
@@ -264,10 +290,11 @@ class User(BaseModel):
     age: int
 
     # @field_validator 装饰器：自定义校验某个字段
+    # 参数是要校验的字段名
     @field_validator("username")
-    @classmethod
+    @classmethod  # 必须加 @classmethod，因为校验方法是类方法
     def username_must_alphanumeric(cls, v):
-        # v 是字段值
+        # cls 是类本身，v 是字段值
         # 校验用户名只能字母数字
         if not v.isalnum():
             raise ValueError("用户名只能包含字母和数字")
@@ -297,9 +324,12 @@ def create_user(user: User):
 ## Demo 3：默认值与可选字段
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 BaseModel
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
 class Product(BaseModel):
@@ -320,9 +350,12 @@ def create_product(p: Product):
 ## Demo 4：模型方法（dict/json）
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 BaseModel
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
 class Item(BaseModel):
@@ -344,9 +377,12 @@ def create_item(item: Item):
 ## Demo 5：模型继承复用
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 BaseModel
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
 # 基类：通用字段
@@ -362,6 +398,7 @@ class UserOut(BaseUser):
     id: int         # 输出时有 id，但没有密码
     is_active: bool = True
 
+# response_model=UserOut 指定响应模型
 @app.post("/users", response_model=UserOut)
 def create_user(user: UserCreate):
     # 入参用 UserCreate（含密码）
@@ -377,13 +414,17 @@ def create_user(user: UserCreate):
 ## Demo 6：示例数据（文档更清晰）
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 BaseModel 和 Field
 from pydantic import BaseModel, Field
 
+# 创建应用实例
 app = FastAPI()
 
 class Item(BaseModel):
     # model_config 里放 JSON 示例，显示在 /docs 文档
+    # model_config 是 Pydantic v2 的配置方式（v1 用 class Config）
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -440,9 +481,12 @@ Pydantic 让数据校验声明式化，**写类型就等于写校验**。`
 ## Demo 1：response_model 过滤字段（重点）
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 BaseModel
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
 # 入参模型：包含密码
@@ -461,6 +505,7 @@ class UserOut(BaseModel):
 # 不管你返回什么，只输出 UserOut 定义的字段
 @app.post("/users", response_model=UserOut)
 def create_user(user: UserIn):
+    # 参数 user: UserIn 是请求体，自动校验
     # 实际返回包含 password，但响应会被过滤掉
     return {
         "id": 1,
@@ -476,9 +521,12 @@ def create_user(user: UserIn):
 ## Demo 2：response_model 用 list
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 BaseModel
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
 class Item(BaseModel):
@@ -486,6 +534,7 @@ class Item(BaseModel):
     price: float
 
 # 响应是列表时，用 list[模型] 
+# response_model=list[Item] 表示返回 Item 对象的列表
 @app.get("/items", response_model=list[Item])
 def list_items():
     # 返回列表，每个元素都会按 Item 校验/过滤
@@ -500,9 +549,13 @@ def list_items():
 ## Demo 3：自定义状态码
 
 \`\`\`python
+# 导入 FastAPI 类和 status 模块
+# status 模块包含所有 HTTP 状态码常量
 from fastapi import FastAPI, status
+# 导入 BaseModel
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
 class Item(BaseModel):
@@ -526,9 +579,15 @@ def create_item(item: Item):
 ## Demo 4：Response 对象精细控制
 
 \`\`\`python
+# 导入 FastAPI 类和 Response 类
 from fastapi import FastAPI, Response
+# 导入 JSONResponse、PlainTextResponse、HTMLResponse
+# JSONResponse 返回 JSON
+# PlainTextResponse 返回纯文本
+# HTMLResponse 返回 HTML
 from fastapi.responses import JSONResponse, PlainTextResponse, HTMLResponse
 
+# 创建应用实例
 app = FastAPI()
 
 # 返回 JSONResponse：自定义状态码和响应头
@@ -541,11 +600,13 @@ def custom():
     )
 
 # 返回纯文本
+# response_class=PlainTextResponse 指定响应类型为纯文本
 @app.get("/text", response_class=PlainTextResponse)
 def text():
     return "这是纯文本"
 
 # 返回 HTML
+# response_class=HTMLResponse 指定响应类型为 HTML
 @app.get("/html", response_class=HTMLResponse)
 def html():
     return "<h1>你好</h1>"
@@ -553,6 +614,7 @@ def html():
 # 设置 Cookie
 @app.get("/set-cookie")
 def set_cookie(response: Response):
+    # 参数 response: Response 由 FastAPI 自动注入
     # 通过 response.set_cookie 设置
     response.set_cookie(key="token", value="abc123", httponly=True)
     return {"msg": "cookie 已设置"}
@@ -561,12 +623,15 @@ def set_cookie(response: Response):
 ## Demo 5：响应头控制
 
 \`\`\`python
+# 导入 FastAPI 类和 Response 类
 from fastapi import FastAPI, Response
 
+# 创建应用实例
 app = FastAPI()
 
 @app.get("/items")
 def get_items(response: Response):
+    # 参数 response: Response 由 FastAPI 自动注入
     # response.headers 直接加响应头
     response.headers["X-Total-Count"] = "100"
     response.headers["Cache-Control"] = "no-cache"
@@ -579,9 +644,12 @@ def get_items(response: Response):
 ## Demo 6：直接返回 dict 也行
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 BaseModel
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
 class Item(BaseModel):
@@ -591,6 +659,7 @@ class Item(BaseModel):
 # 不指定 response_model 时，返回啥就响应啥
 @app.get("/items/{id}")
 def get_item(id: int):
+    # 参数 id: int 从路径提取并自动转为整数
     # 直接返回 dict，FastAPI 转 JSON
     return {"id": id, "name": "商品", "price": 10}
 
@@ -635,8 +704,11 @@ def get_item(id: int):
 ## Demo 1：接收表单（Form）
 
 \`\`\`python
+# 导入 FastAPI 类
+# 导入 Form，用于接收表单字段（application/x-www-form-urlencoded）
 from fastapi import FastAPI, Form
 
+# 创建应用实例
 app = FastAPI()
 
 # 用 Form 替代 Pydantic 模型接收表单
@@ -646,6 +718,7 @@ def login(
     password: str = Form(...),
     remember: bool = Form(False),
 ):
+    # 参数 username: str = Form(...) 表示从表单字段读取
     # Form(...) 的 ... 表示必填，等价于无默认值
     # 客户端要用 Content-Type: application/x-www-form-urlencoded
     return {
@@ -661,14 +734,18 @@ def login(
 ## Demo 2：单文件上传
 
 \`\`\`python
+# 导入 FastAPI 类
+# 导入 UploadFile，专门用于接收上传文件
 from fastapi import FastAPI, UploadFile
 
+# 创建应用实例
 app = FastAPI()
 
 # UploadFile 专门接收文件
 @app.post("/upload")
 async def upload_file(file: UploadFile):
-    # file 有这些属性/方法：
+    # 参数 file: UploadFile 由 FastAPI 自动注入
+    # UploadFile 是异步文件对象，有以下属性/方法：
     # file.filename    —— 文件名
     # file.content_type —— MIME 类型，如 image/png
     # file.size        —— 文件大小（字节）
@@ -690,20 +767,27 @@ async def upload_file(file: UploadFile):
 ## Demo 3：保存上传文件
 
 \`\`\`python
+# 导入 FastAPI 类和 UploadFile
 from fastapi import FastAPI, UploadFile
+# 导入 shutil，标准库，提供文件操作工具
 import shutil
+# 导入 Path，pathlib 提供的路径操作类，比 os.path 更优雅
 from pathlib import Path
 
+# 创建应用实例
 app = FastAPI()
 UPLOAD_DIR = Path("uploads")
+# mkdir(exist_ok=True) 创建目录，如果已存在不报错
 UPLOAD_DIR.mkdir(exist_ok=True)  # 确保目录存在
 
 @app.post("/upload")
 async def upload_file(file: UploadFile):
     # 推荐用流式写入，避免大文件撑爆内存
+    # / 操作符拼接路径，Path 对象支持
     dest = UPLOAD_DIR / file.filename
     with dest.open("wb") as buffer:
         # shutil.copyfileobj 把文件流复制到目标
+        # 比一次性 read + write 更省内存
         shutil.copyfileobj(file.file, buffer)
     return {"saved_to": str(dest), "size": dest.stat().st_size}
 
@@ -716,13 +800,16 @@ async def upload_file(file: UploadFile):
 ## Demo 4：多文件上传
 
 \`\`\`python
+# 导入 FastAPI 类和 UploadFile
 from fastapi import FastAPI, UploadFile
 
+# 创建应用实例
 app = FastAPI()
 
 # 参数类型用 list[UploadFile] 接收多个文件
 @app.post("/uploads")
 async def upload_files(files: list[UploadFile]):
+    # 参数 files: list[UploadFile] 接收文件列表
     results = []
     for f in files:
         # 逐个处理
@@ -740,8 +827,10 @@ async def upload_files(files: list[UploadFile]):
 ## Demo 5：文件 + 表单字段
 
 \`\`\`python
+# 导入 FastAPI 类、UploadFile、Form
 from fastapi import FastAPI, UploadFile, Form
 
+# 创建应用实例
 app = FastAPI()
 
 # 文件和表单字段可以一起传（都是 multipart/form-data）
@@ -750,6 +839,8 @@ async def update_profile(
     name: str = Form(...),        # 表单字段
     avatar: UploadFile = Form(...),  # 文件字段
 ):
+    # 参数 name: str = Form(...) 表单字段，必填
+    # 参数 avatar: UploadFile = Form(...) 文件字段，必填
     content = await avatar.read()
     return {
         "name": name,
@@ -765,13 +856,17 @@ async def update_profile(
 ## Demo 6：返回文件（文件下载）
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 FileResponse，用于返回文件给客户端下载
 from fastapi.responses import FileResponse
 
+# 创建应用实例
 app = FastAPI()
 
 @app.get("/download/{filename}")
 def download(filename: str):
+    # 参数 filename: str 从路径提取
     # FileResponse 让浏览器下载文件
     # media_type 指定 MIME 类型
     # filename 设置下载时保存的文件名
@@ -787,14 +882,18 @@ def download(filename: str):
 ## Demo 7：bytes vs UploadFile
 
 \`\`\`python
+# 导入 FastAPI 类、File、UploadFile
+# File 用于声明文件参数（和 Form 类似，但用于文件）
 from fastapi import FastAPI, File, UploadFile
 
+# 创建应用实例
 app = FastAPI()
 
 # 两种接收文件的方式：
 # 1. bytes: File(...) —— 简单，但整个文件读进内存
 @app.post("/upload-bytes")
 def upload_bytes(file: bytes = File(...)):
+    # 参数 file: bytes = File(...) 整个文件作为 bytes 读入
     # file 是 bytes，整个文件内容
     return {"size": len(file)}
 

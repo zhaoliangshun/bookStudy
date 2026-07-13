@@ -39,20 +39,31 @@ export const chapters = [
 
 \`\`\`python
 # main.py —— 所有东西都在一个文件
+# 从 fastapi 导入 FastAPI 应用类
 from fastapi import FastAPI
+# 导入 Python 标准库的 sqlite3 模块（轻量级数据库，无需安装服务）
 import sqlite3
 
+# 创建 FastAPI 应用实例
 app = FastAPI()
 
+# 用装饰器注册 GET 路由，{user_id} 是路径参数
 @app.get("/users/{user_id}")
+# user_id: int 表示路径参数会被自动转成整数类型
 def get_user(user_id: int):
-    # 路由 + 数据库查询 + 业务逻辑 全混在一起
+    # 路由 + 数据库查询 + 业务逻辑 全混在一起（反模式！）
+    # 每次请求都连接数据库，没有连接池，效率低
     conn = sqlite3.connect("test.db")
+    # 执行 SQL 查询，用 ? 占位符防 SQL 注入
     cursor = conn.execute("SELECT * FROM users WHERE id=?", (user_id,))
+    # fetchone() 取第一条匹配记录，没有则返回 None
     row = cursor.fetchone()
+    # 关闭连接（忘了关就泄漏，但异常时这行可能执行不到）
     conn.close()
+    # 查不到就返回错误
     if not row:
         return {"error": "not found"}
+    # row[0] 是 id 列，row[1] 是 name 列（按索引取值，不直观）
     return {"id": row[0], "name": row[1]}
 \`\`\`
 
@@ -257,16 +268,23 @@ app.include_router(router)  # 此时不用再写 prefix 了
 
 \`\`\`python
 # 文件：app/posts/router.py
+# 从 fastapi 导入 APIRouter 路由容器
 from fastapi import APIRouter
 
+# 创建路由器，prefix="/posts" 表示下面所有路径自动加 /posts 前缀
+# tags=["文章"] 用于 Swagger 文档分组
 router = APIRouter(prefix="/posts", tags=["文章"])
 
+# 注册 GET 路由，路径是 /posts/（前缀 + "/"）
 @router.get("/")
 def list_posts():
     """文章列表"""
+    # 返回假数据，真实项目会调 service 层查数据库
     return [{"id": 1, "title": "Hello"}]
 
+# 注册 POST 路由，路径也是 /posts/（同 URL 不同方法）
 @router.post("/")
+# payload: dict 表示请求体会被解析成字典（没有校验，真实项目用 Pydantic 模型）
 def create_post(payload: dict):
     """创建文章"""
     return {"msg": "创建成功", "data": payload}
@@ -274,11 +292,16 @@ def create_post(payload: dict):
 
 \`\`\`python
 # 文件：app/comments/router.py
+# 从 fastapi 导入 APIRouter 路由容器
 from fastapi import APIRouter
 
+# 前缀里可以带路径参数 {post_id}，这样评论路由天然挂在某篇文章下
+# 完整路径示例：/posts/1/comments/（文章 id=1 的评论列表）
 router = APIRouter(prefix="/posts/{post_id}/comments", tags=["评论"])
 
+# 注册 GET 路由，完整路径是 /posts/{post_id}/comments/
 @router.get("/")
+# post_id 从 URL 路径中自动提取，int 类型注解会自动转换
 def list_comments(post_id: int):
     """某篇文章的评论列表"""
     return {"post_id": post_id, "comments": []}
@@ -286,18 +309,23 @@ def list_comments(post_id: int):
 
 \`\`\`python
 # 文件：app/main.py
+# 从 fastapi 导入 FastAPI 应用类
 from fastapi import FastAPI
+# 导入三个子路由模块，用 as 重命名避免冲突
 from app.users.router import router as user_router
 from app.posts.router import router as post_router
 from app.comments.router import router as comment_router
 
+# 创建应用实例，title 会显示在 Swagger 文档页面
 app = FastAPI(title="博客系统")
 
 # 一次性挂载所有路由，main.py 只做组装，不含业务
+# 因为各 router 已自带 prefix，这里不需要再写 prefix
 app.include_router(user_router)       # /users/*
 app.include_router(post_router)       # /posts/*
 app.include_router(comment_router)    # /posts/{post_id}/comments/*
 
+# 根路径，通常用作健康检查或欢迎页
 @app.get("/")
 def root():
     return {"msg": "博客系统已启动"}
@@ -439,14 +467,20 @@ blog/
 \`\`\`python
 # 文件：app/main.py —— 只做组装，不含业务
 from fastapi import FastAPI
+# 导入模型基类 Base 和数据库引擎 engine
+# Base.metadata 收集了所有 ORM 模型的表定义
 from app.database import Base, engine
+# 导入三个业务模块的路由器
 from app.users.router import router as user_router
 from app.posts.router import router as post_router
 from app.comments.router import router as comment_router
 
 # 创建表（开发期用，生产用 Alembic 迁移）
+# Base.metadata.create_all 会根据所有继承 Base 的模型创建数据库表
+# bind=engine 指定用哪个数据库引擎建表
 Base.metadata.create_all(bind=engine)
 
+# 创建应用，title 和 version 显示在 Swagger 文档 (/docs)
 app = FastAPI(title="博客系统", version="1.0.0")
 
 # 挂载所有子路由
@@ -454,6 +488,7 @@ app.include_router(user_router)
 app.include_router(post_router)
 app.include_router(comment_router)
 
+# tags=["健康检查"] 给这个路由单独打标签，在 Swagger 文档里单独分组
 @app.get("/", tags=["健康检查"])
 def root():
     return {"status": "ok", "service": "blog"}
@@ -461,27 +496,42 @@ def root():
 
 \`\`\`python
 # 文件：app/posts/router.py —— 路由层示范
+# APIRouter 路由容器、Depends 依赖注入、HTTPException 抛 HTTP 异常
 from fastapi import APIRouter, Depends, HTTPException
+# Session 是 SQLAlchemy 的数据库会话类型，用于类型注解
 from sqlalchemy.orm import Session
+# get_db 是依赖函数，每个请求拿一个独立的数据库会话
 from app.database import get_db
+# 导入 service 层（业务逻辑）和 schemas（Pydantic 模型）
 from app.posts import service, schemas
 
+# 创建路由器，所有路径自动加 /posts 前缀
 router = APIRouter(prefix="/posts", tags=["文章"])
 
+# response_model=list[schemas.PostOut] 指定响应模型
+# FastAPI 会按 PostOut 模型过滤输出字段，多出的字段不返回
+# list[...] 表示返回的是一个列表
 @router.get("/", response_model=list[schemas.PostOut])
+# skip/limit 是查询参数（分页），db 通过 Depends(get_db) 注入
 def list_posts(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
     """文章列表"""
+    # 调 service 层，不直接操作数据库
     return service.list_posts(db, skip=skip, limit=limit)
 
+# response_model=schemas.PostOut 指定返回单个文章对象
 @router.post("/", response_model=schemas.PostOut)
+# post: schemas.PostCreate 是请求体参数，FastAPI 会按 PostCreate 模型校验
 def create_post(post: schemas.PostCreate, db: Session = Depends(get_db)):
     """创建文章"""
     return service.create_post(db, post)
 
+# {post_id} 是路径参数
 @router.get("/{post_id}", response_model=schemas.PostOut)
 def get_post(post_id: int, db: Session = Depends(get_db)):
     """获取单篇文章"""
+    # 调 service 层查文章
     post = service.get_post(db, post_id)
+    # 查不到就抛 404 异常，FastAPI 自动转成 JSON 响应
     if not post:
         raise HTTPException(404, "文章不存在")
     return post
@@ -542,8 +592,11 @@ def create_order(order: OrderIn, db: Session = Depends(get_db)):
 
 \`\`\`python
 # ❌ 反例：硬编码
+# 创建 FastAPI 应用
 app = FastAPI()
+# 数据库连接串写死在代码里：换环境就得改代码，密码也暴露在代码中
 engine = create_engine("postgresql://user:pass@localhost:5432/mydb")
+# 密钥直接写在源码里，一旦提交 git 就等于公开了
 SECRET_KEY = "abcdef123456"
 \`\`\`
 
@@ -766,8 +819,11 @@ settings = get_settings()
 \`\`\`python
 # 文件：app/main.py
 from fastapi import FastAPI
+# 从 config 模块导入配置实例 settings
 from app.config import settings
 
+# 用配置创建 app，title 和 debug 都从配置读
+# 这样换环境只改配置，代码完全不用动
 app = FastAPI(
     title=settings.app_name,
     debug=settings.debug,
@@ -775,6 +831,7 @@ app = FastAPI(
 
 @app.get("/")
 def root():
+    # 返回当前配置信息，方便确认运行在哪个环境
     return {"env_debug": settings.debug, "log_level": settings.log_level}
 \`\`\`
 
@@ -952,6 +1009,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """应用配置主类"""
     # —— 环境 ——
+    # Literal["dev", "staging", "prod"] 限制 env 只能是这三个值之一
+    # 传了其他值 pydantic 会报错，防止拼错环境名
     env: Literal["dev", "staging", "prod"] = "dev"
     debug: bool = False
     
@@ -979,17 +1038,25 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     
     # —— 校验 ——
+    # @field_validator 是 Pydantic v2 的字段校验装饰器
+    # "secret_key" 指定校验哪个字段
     @field_validator("secret_key")
+    # @classmethod 表示这是类方法（Pydantic v2 要求）
     @classmethod
     def secret_must_be_long(cls, v: str) -> str:
+        # v 是被校验的字段值，校验不通过就 raise ValueError
         if len(v) < 16:
             raise ValueError("secret_key 至少 16 位")
+        # 校验通过必须返回 v
         return v
-    
+
+    # mode="before" 表示在 Pydantic 类型转换之前执行
+    # 这样能拿到原始的字符串值（还没被尝试转成 list）
     @field_validator("cors_origins", mode="before")
     @classmethod
     def split_cors(cls, v):
         # 允许 .env 里写成逗号分隔字符串：CORS_ORIGINS=http://a.com,http://b.com
+        # 如果是字符串就 split 成列表，是列表就直接返回
         if isinstance(v, str):
             return [origin.strip() for origin in v.split(",")]
         return v
@@ -1001,9 +1068,11 @@ class Settings(BaseSettings):
     )
 
 # lru_cache 让 get_settings() 只执行一次，后续都返回同一个实例
-# 这比全局变量更安全，也方便测试时 override
+# LRU = Least Recently Used，这里实际效果就是"单例缓存"
+# 这比全局变量更安全，也方便测试时 override（清除缓存即可）
 @lru_cache
 def get_settings() -> Settings:
+    # 首次调用会解析 .env 和环境变量，后续调用直接返回缓存
     return Settings()
 
 # 提供一个直接可用的实例（兼容老代码）
@@ -1013,9 +1082,12 @@ settings = get_settings()
 \`\`\`python
 # 文件：app/main.py
 from fastapi import FastAPI, Depends
+# CORSMiddleware 是跨域中间件，允许浏览器跨域访问 API
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import Settings, get_settings
 
+# 工厂函数：根据传入的配置创建 app
+# 好处：测试时可以传不同的 settings 创建不同的 app
 def create_app(settings: Settings) -> FastAPI:
     """工厂函数：根据配置创建 app"""
     app = FastAPI(
@@ -1024,6 +1096,9 @@ def create_app(settings: Settings) -> FastAPI:
         debug=settings.debug,
     )
     # CORS 配置从配置读
+    # allow_origins: 允许哪些域名跨域访问
+    # allow_methods=["*"]: 允许所有 HTTP 方法
+    # allow_headers=["*"]: 允许所有请求头
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -1032,10 +1107,12 @@ def create_app(settings: Settings) -> FastAPI:
     )
     return app
 
+# 用全局配置创建 app
 settings = get_settings()
 app = create_app(settings)
 
 # 也可以把 settings 做成依赖，方便测试时覆盖
+# Depends(get_settings) 会调用 get_settings()（有 lru_cache，只算一次）
 @app.get("/info")
 def info(settings: Settings = Depends(get_settings)):
     return {"env": settings.env, "app": settings.app_name}
@@ -1420,16 +1497,21 @@ pip install sentry-sdk
 
 \`\`\`python
 # 文件：app/main.py
+# 导入 Sentry SDK
 import sentry_sdk
+# 导入 FastAPI 和 Starlette 的集成模块，让 Sentry 能自动捕获框架异常
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.starlette import StarletteIntegration
 from fastapi import FastAPI
 from app.config import settings
 
 # 初始化 Sentry，DSN 从配置读
+# DSN 是 Sentry 项目的接入地址，在 Sentry 后台创建项目时获得
 # traces_sample_rate 是性能采样率，1.0=全采样，0.1=采 10%
 sentry_sdk.init(
     dsn=settings.sentry_dsn,  # 没配 DSN 就不启用（None 时 Sentry 静默）
+    # integrations 列表指定要集成的框架，Sentry 会自动拦截这些框架的异常
+    # transaction_style="endpoint" 表示用路由端点名作为事务名
     integrations=[
         StarletteIntegration(transaction_style="endpoint"),
         FastApiIntegration(transaction_style="endpoint"),
@@ -1458,6 +1540,7 @@ def manual_report():
         # 一些可能失败的操作
         result = do_risky_thing()
     except Exception as e:
+        # capture_exception 把异常上报到 Sentry，但不抛出，程序继续运行
         sentry_sdk.capture_exception(e)  # 上报但不抛出
         return {"msg": "降级处理"}
     return {"result": result}
@@ -1983,16 +2066,18 @@ async def redis_lifespan(app: FastAPI):
 @asynccontextmanager
 async def app_lifespan(app: FastAPI):
     """主 lifespan，组合所有子 lifespan"""
-    # 用 AsyncExitStack 管理多个异步上下文，确保按相反顺序清理
+    # AsyncExitStack 是 Python 标准库的异步上下文管理器栈
+    # 它能管理多个异步上下文，退出时按"后进先出"顺序调用各自的清理代码
     from contextlib import AsyncExitStack
     async with AsyncExitStack() as stack:
         # 进入顺序：db → redis
-        # 退出顺序：redis → db（后进先出，符合资源依赖关系）
+        # enter_async_context 把子 lifespan 压入栈并执行其 yield 前的代码
         await stack.enter_async_context(db_lifespan(app))
         await stack.enter_async_context(redis_lifespan(app))
         print(">>> 所有资源就绪，开始服务")
         yield
         # 退出时 AsyncExitStack 自动按相反顺序调各 lifespan 的清理代码
+        # 退出顺序：redis → db（后进先出，符合资源依赖关系）
 \`\`\`
 
 \`\`\`python

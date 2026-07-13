@@ -32,18 +32,23 @@ export const chapters = [
 ## Demo 1：基本依赖（Depends）
 
 \`\`\`python
+# 导入 FastAPI 类
+# 导入 Depends，FastAPI 依赖注入的核心装饰器
 from fastapi import FastAPI, Depends
 
+# 创建应用实例
 app = FastAPI()
 
 # 定义依赖函数：普通函数即可
 def common_params(q: str | None = None, skip: int = 0, limit: int = 10):
     # 这个函数做"准备工作"，返回结果给路由用
+    # 参数 q/skip/limit 会从查询参数中读取
     return {"q": q, "skip": skip, "limit": limit}
 
 # 用 Depends(函数名) 声明依赖
 @app.get("/items")
 def list_items(commons: dict = Depends(common_params)):
+    # 参数 commons: dict = Depends(common_params) 表示依赖注入
     # commons 是 common_params 的返回值
     # FastAPI 自动调用 common_params，把结果传进来
     return {"items": [], **commons}
@@ -60,21 +65,24 @@ def list_users(commons: dict = Depends(common_params)):
 ## Demo 2：依赖里也能有依赖（链式）
 
 \`\`\`python
+# 导入 FastAPI 类、Depends、HTTPException、Header
+# Header 用于读取请求头
 from fastapi import FastAPI, Depends, HTTPException, Header
 
+# 创建应用实例
 app = FastAPI()
 
 # 依赖 A：解析 token
 def get_token(authorization: str = Header(...)):
-    # 从请求头取 authorization
-    # Header(...) 表示从请求头读取，必填
+    # 参数 authorization: str = Header(...) 从请求头读取 Authorization
+    # Header(...) 的 ... 表示必填
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="无效的 token 格式")
     return authorization.replace("Bearer ", "")
 
 # 依赖 B：依赖 A，再查用户
 def get_current_user(token: str = Depends(get_token)):
-    # token 来自 get_token 的返回值
+    # 参数 token: str = Depends(get_token) 依赖注入，token 来自 get_token 的返回值
     # 这里模拟查数据库
     if token == "abc123":
         return {"id": 1, "name": "张三"}
@@ -83,6 +91,7 @@ def get_current_user(token: str = Depends(get_token)):
 # 路由依赖 B，自动连 A 一起执行
 @app.get("/me")
 def me(user: dict = Depends(get_current_user)):
+    # 参数 user: dict = Depends(get_current_user) 链式依赖
     # 执行顺序：get_token → get_current_user → me
     return user
 
@@ -92,17 +101,22 @@ def me(user: dict = Depends(get_current_user)):
 ## Demo 3：全局依赖
 
 \`\`\`python
+# 导入 FastAPI 类、Depends、HTTPException、Header
 from fastapi import FastAPI, Depends, HTTPException, Header
 
+# 创建应用实例
 app = FastAPI()
 
 # 校验函数
 def verify_key(x_api_key: str = Header(...)):
+    # 参数 x_api_key: str = Header(...) 从请求头读取 X-API-Key
+    # Header 自动把下划线转成连字符
     if x_api_key != "secret":
         raise HTTPException(status_code=403, detail="API key 错误")
     return x_api_key
 
 # 全局依赖：所有路由都生效
+# dependencies=[Depends(verify_key)] 表示所有路由都需要这个依赖
 app = FastAPI(dependencies=[Depends(verify_key)])
 
 # 这个路由自动要求带 X-API-Key 头
@@ -121,8 +135,10 @@ def list_users():
 ## Demo 4：路由级依赖
 
 \`\`\`python
+# 导入 FastAPI 类和 Depends
 from fastapi import FastAPI, Depends
 
+# 创建应用实例
 app = FastAPI()
 
 def check_admin():
@@ -138,18 +154,22 @@ def list_users():
 # 对比：Depends 写在函数参数里，会接收返回值
 @app.get("/admin/info")
 def admin_info(admin: dict = Depends(check_admin)):
+    # 参数 admin: dict = Depends(check_admin) 接收返回值
     return {"admin_role": admin["role"]}
 \`\`\`
 
 ## Demo 5：类作为依赖
 
 \`\`\`python
+# 导入 FastAPI 类和 Depends
 from fastapi import FastAPI, Depends
 
+# 创建应用实例
 app = FastAPI()
 
 # 类也能作为依赖，FastAPI 会实例化它
 class CommonQueryParams:
+    # __init__ 方法的参数会被当作查询参数
     def __init__(self, q: str | None = None, skip: int = 0, limit: int = 10):
         self.q = q
         self.skip = skip
@@ -158,6 +178,7 @@ class CommonQueryParams:
 # 直接用类作为类型注解，FastAPI 自动实例化
 @app.get("/items")
 def list_items(commons: CommonQueryParams = Depends()):
+    # 参数 commons: CommonQueryParams = Depends() 
     # 注意：Depends() 不传参数时，自动用参数类型作为依赖
     # 等价于 commons: CommonQueryParams = Depends(CommonQueryParams)
     return {"q": commons.q, "skip": commons.skip, "limit": commons.limit}
@@ -168,8 +189,10 @@ def list_items(commons: CommonQueryParams = Depends()):
 ## Demo 6：yield 依赖（资源管理）
 
 \`\`\`python
+# 导入 FastAPI 类和 Depends
 from fastapi import FastAPI, Depends
 
+# 创建应用实例
 app = FastAPI()
 
 # 用 yield 的依赖：可以执行"清理"代码
@@ -184,6 +207,7 @@ def get_db():
 
 @app.get("/items")
 def list_items(db = Depends(get_db)):
+    # 参数 db = Depends(get_db) 接收 yield 出来的值
     # db 是 yield 出来的值
     return {"db": db, "items": []}
 
@@ -229,13 +253,20 @@ def list_items(db = Depends(get_db)):
 ## Demo 1：基本中间件
 
 \`\`\`python
+# 导入 time 模块，用于计算耗时
 import time
+# 导入 FastAPI 类和 Request 类
+# Request 用于获取请求信息
 from fastapi import FastAPI, Request
 
+# 创建应用实例
 app = FastAPI()
 
+# @app.middleware("http") 注册 HTTP 中间件
 @app.middleware("http")
 async def timing_middleware(request: Request, call_next):
+    # 参数 request: Request 包含本次请求的所有信息
+    # 参数 call_next: 下一个处理函数（中间件或路由）
     # 1. 请求进来，先到这里
     start = time.time()
 
@@ -258,8 +289,10 @@ def home():
 ## Demo 2：多个中间件顺序
 
 \`\`\`python
+# 导入 FastAPI 类和 Request 类
 from fastapi import FastAPI, Request
 
+# 创建应用实例
 app = FastAPI()
 
 # 中间件执行顺序：后添加的先执行"前"部分，先执行"后"部分
@@ -287,18 +320,25 @@ async def middleware_b(request: Request, call_next):
 ## Demo 3：日志中间件
 
 \`\`\`python
+# 导入 time 和 logging 模块
 import time
 import logging
+# 导入 FastAPI 类和 Request 类
 from fastapi import FastAPI, Request
 
+# 创建应用实例
 app = FastAPI()
+# 获取名为 "api" 的 logger
 logger = logging.getLogger("api")
+# 配置日志级别为 INFO
 logging.basicConfig(level=logging.INFO)
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     # 记录请求信息
+    # request.method 是 HTTP 方法
     method = request.method
+    # request.url.path 是请求路径
     path = request.url.path
     start = time.time()
 
@@ -316,9 +356,12 @@ async def log_requests(request: Request, call_next):
 ## Demo 4：CORS 中间件（最常用）
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 CORSMiddleware，跨域中间件
 from fastapi.middleware.cors import CORSMiddleware
 
+# 创建应用实例
 app = FastAPI()
 
 # CORS：跨域资源共享
@@ -343,9 +386,12 @@ app.add_middleware(
 ## Demo 5：GZip 压缩中间件
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 GZipMiddleware，自动压缩响应
 from fastapi.middleware.gzip import GZipMiddleware
 
+# 创建应用实例
 app = FastAPI()
 
 # 自动压缩响应，减小传输体积
@@ -365,18 +411,23 @@ def big():
 ## Demo 6：修改请求体（高级）
 
 \`\`\`python
+# 导入 FastAPI 类和 Request 类
 from fastapi import FastAPI, Request
+# 导入 Response 类
 from starlette.responses import Response
 
+# 创建应用实例
 app = FastAPI()
 
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):
     # 给每个请求加一个唯一 ID（用于日志追踪）
     import uuid
+    # uuid.uuid4() 生成随机 UUID，[:8] 取前 8 位
     request_id = str(uuid.uuid4())[:8]
 
     # 把 request_id 放到 state 里，路由可以取
+    # request.state 是 FastAPI 提供的请求级存储
     request.state.request_id = request_id
 
     response = await call_next(request)
@@ -387,6 +438,7 @@ async def add_request_id(request: Request, call_next):
 
 @app.get("/items")
 def list_items(request: Request):
+    # 参数 request: Request 由 FastAPI 自动注入
     # 路由里取中间件设置的 request_id
     rid = request.state.request_id
     return {"request_id": rid, "items": []}
@@ -395,10 +447,13 @@ def list_items(request: Request):
 ## Demo 7：限流中间件（简单版）
 
 \`\`\`python
+# 导入 time 模块
 import time
+# 导入 FastAPI 类、Request 类、JSONResponse
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+# 创建应用实例
 app = FastAPI()
 
 # 简单的内存限流：每个 IP 每秒最多 5 次请求
@@ -406,11 +461,13 @@ request_counts = {}
 
 @app.middleware("http")
 async def rate_limit(request: Request, call_next):
+    # request.client.host 是客户端 IP
     client_ip = request.client.host
     now = time.time()
 
     # 清理 1 秒前的记录
     if client_ip in request_counts:
+        # 列表推导式：只保留 1 秒内的记录
         request_counts[client_ip] = [
             t for t in request_counts[client_ip] if now - t < 1
         ]
@@ -420,7 +477,7 @@ async def rate_limit(request: Request, call_next):
     # 检查是否超限
     if len(request_counts[client_ip]) >= 5:
         return JSONResponse(
-            status_code=429,
+            status_code=429,                            # 429 Too Many Requests
             content={"detail": "请求太频繁，稍后再试"},
         )
 
@@ -462,23 +519,28 @@ async def rate_limit(request: Request, call_next):
 ## Demo 1：HTTPException（最常用）
 
 \`\`\`python
+# 导入 FastAPI 类和 HTTPException
+# HTTPException：FastAPI 内置异常类，抛出后自动转成 HTTP 错误响应
 from fastapi import FastAPI, HTTPException
 
+# 创建应用实例
 app = FastAPI()
 
-# 模拟数据库
+# 模拟数据库（字典模拟，key 是商品 ID，value 是名称）
 fake_db = {1: "苹果", 2: "香蕉"}
 
+# @app.get 声明 GET 路由
 @app.get("/items/{item_id}")
 def get_item(item_id: int):
+    # 参数 item_id: int 表示路径参数会被自动转为整数
     if item_id not in fake_db:
         # 主动抛出 404 错误
-        # status_code：HTTP 状态码
-        # detail：错误信息（会作为响应体返回）
+        # raise：抛出异常后，后续代码不再执行，FastAPI 拦截并转成响应
         raise HTTPException(
-            status_code=404,
-            detail=f"商品 {item_id} 不存在",
+            status_code=404,   # status_code：HTTP 状态码，404 表示资源不存在
+            detail=f"商品 {item_id} 不存在",  # detail：错误信息，会作为响应体的 detail 字段返回
         )
+    # 正常情况返回找到的商品
     return {"item": fake_db[item_id]}
 
 # 访问 /items/1 → {"item":"苹果"}
@@ -488,51 +550,67 @@ def get_item(item_id: int):
 ## Demo 2：带自定义响应头
 
 \`\`\`python
+# 导入 FastAPI 类和 HTTPException
 from fastapi import FastAPI, HTTPException
 
+# 创建应用实例
 app = FastAPI()
 
+# @app.get 声明 GET 路由
 @app.get("/items/{item_id}")
 def get_item(item_id: int):
+    # 参数 item_id: int 表示路径参数会被自动转为整数
     if item_id < 0:
+        # 抛出 400 错误（客户端请求错误）
         raise HTTPException(
-            status_code=400,
+            status_code=400,   # 400 Bad Request：请求参数有问题
             detail="ID 不能为负数",
-            headers={"X-Error": "invalid-id"},  # 自定义响应头
+            headers={"X-Error": "invalid-id"},  # headers：附加自定义响应头，方便客户端识别错误类型
         )
     return {"item_id": item_id}
 
 # headers 参数可以附加错误响应头
-# 常用于：限流时返回 Retry-After 头
+# 常用于：限流时返回 Retry-After 头（告诉客户端多久后重试）
 \`\`\`
 
 ## Demo 3：自定义异常类
 
 \`\`\`python
+# 导入 FastAPI 类和 Request 类
+# Request：请求对象，包含本次请求的所有信息（URL、headers、body 等）
 from fastapi import FastAPI, Request
+# 导入 JSONResponse，用于返回自定义 JSON 响应
 from fastapi.responses import JSONResponse
 
+# 创建应用实例
 app = FastAPI()
 
-# 1. 定义自定义异常类
+# 1. 定义自定义异常类（继承 Exception）
+# 自定义异常方便业务里 raise，由统一的 handler 处理
 class UnicornException(Exception):
     def __init__(self, name: str):
+        # 参数 name: str 异常携带的信息
         self.name = name
 
 # 2. 注册异常处理器
+# @app.exception_handler(异常类) 注册针对某异常的处理器
 @app.exception_handler(UnicornException)
 async def unicorn_exception_handler(request: Request, exc: UnicornException):
+    # 参数 request: Request 当前请求对象（可记录日志用）
+    # 参数 exc: UnicornException 抛出的异常实例，可以取到 name
     # 当任何地方 raise UnicornException 时，会走到这里
     # 返回 JSONResponse 统一处理
     return JSONResponse(
         status_code=418,  # 418 I'm a teapot（有趣的码）
-        content={"message": f"出错了，{exc.name} 不存在"},
+        content={"message": f"出错了，{exc.name} 不存在"},  # 自定义响应体格式
     )
 
 # 3. 在路由里抛出
 @app.get("/unicorns/{name}")
 def get_unicorn(name: str):
+    # 参数 name: str 路径参数，字符串类型
     if name == "yolo":
+        # raise 后被上面的 handler 捕获
         raise UnicornException(name=name)
     return {"name": name}
 
@@ -542,28 +620,36 @@ def get_unicorn(name: str):
 ## Demo 4：覆盖默认 422 校验异常
 
 \`\`\`python
+# 导入 FastAPI 类和 Request 类
 from fastapi import FastAPI, Request
+# 导入 JSONResponse
 from fastapi.responses import JSONResponse
+# 导入 RequestValidationError，FastAPI 校验失败时抛出的异常类
 from fastapi.exceptions import RequestValidationError
 
+# 创建应用实例
 app = FastAPI()
 
 # FastAPI 校验失败默认返回 422
 # 可以覆盖成 400 或自定义格式
+# @app.exception_handler(RequestValidationError) 注册针对校验异常的处理器
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    # exc.errors() 包含详细的校验错误信息
+    # 参数 request: Request 当前请求对象
+    # 参数 exc: RequestValidationError 异常实例
+    # exc.errors() 包含详细的校验错误信息（字段名、错误类型、位置等）
     return JSONResponse(
-        status_code=400,  # 改成 400
+        status_code=400,  # 改成 400（更符合通用规范）
         content={
             "code": 400,
             "message": "参数校验失败",
-            "errors": exc.errors(),  # 原始错误列表
+            "errors": exc.errors(),  # 原始错误列表，方便前端调试
         },
     )
 
 @app.get("/items/{item_id}")
 def get_item(item_id: int):
+    # 参数 item_id: int 类型校验失败会触发上面的 handler
     return {"item_id": item_id}
 
 # 访问 /items/abc → 400，{"code":400,"message":"参数校验失败","errors":[...]}
@@ -572,30 +658,38 @@ def get_item(item_id: int):
 ## Demo 5：全局兜底异常处理
 
 \`\`\`python
+# 导入 FastAPI 类和 Request 类
 from fastapi import FastAPI, Request
+# 导入 JSONResponse
 from fastapi.responses import JSONResponse
 
+# 创建应用实例
 app = FastAPI()
 
 # 兜底所有未捕获的 Exception
 # 防止程序崩溃暴露内部错误
+# @app.exception_handler(Exception) 注册针对所有 Exception 的处理器
+# 注意：Exception 是所有异常的基类，所以能兜底所有未捕获的异常
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    # 参数 request: Request 当前请求对象
+    # 参数 exc: Exception 抛出的异常实例
     # 记录日志（真实项目里）
     # logger.error(f"未处理异常: {exc}", exc_info=True)
     return JSONResponse(
-        status_code=500,
+        status_code=500,  # 500 Internal Server Error：服务器内部错误
         content={
             "code": 500,
             "message": "服务器内部错误",
             # 生产环境不要返回 str(exc)，会泄露信息
+            # 三元表达式：False 时返回 None，隐藏详细错误
             "detail": str(exc) if False else None,
         },
     )
 
 @app.get("/crash")
 def crash():
-    # 模拟意外错误
+    # 模拟意外错误：除以 0 会抛出 ZeroDivisionError
     1 / 0  # ZeroDivisionError
 
 # 访问 /crash → 500，{"code":500,"message":"服务器内部错误"}

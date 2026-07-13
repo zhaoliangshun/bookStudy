@@ -127,6 +127,9 @@ app = FastAPI()
 # 它的作用有两个：
 #   1. 告诉 Swagger UI："用户该去 /token 这个地址登录"
 #   2. 在 OpenAPI 文档里记录这个信息，方便客户端集成
+# 实例化后，oauth2_scheme 是一个可调用对象
+# 作为依赖时，它会自动从请求头 Authorization: Bearer xxx 提取 token
+# 如果请求头没有 Authorization，FastAPI 直接返回 401
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # 定义一个路由 /me，依赖 oauth2_scheme
@@ -802,6 +805,7 @@ payload = {
 
 # 调用 jwt.encode 生成 token
 # 参数：payload、密钥、算法
+# 返回值：三段式字符串（Header.Payload.Signature）
 token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 print("生成的 JWT：", token)
 # 输出类似：eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWI...
@@ -810,6 +814,9 @@ print("生成的 JWT：", token)
 
 # 调用 jwt.decode 验证签名 + 解码
 # 参数：token、密钥、算法列表
+# 注意：algorithms 必须传列表，即使只有一个算法
+# 为什么必须传 algorithms？防止"算法混淆攻击"
+#   如果不指定，攻击者可以把 alg 改成 none，绕过验签
 # jwt.decode 会自动检查 exp 是否过期，过期会抛 ExpiredSignatureError
 decoded = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 print("解码出的 Payload：", decoded)
@@ -853,21 +860,23 @@ from cryptography.hazmat.primitives import serialization
 # 生产环境密钥应该是固定加载的，不要每次启动都生成
 # 这里为了演示，运行时生成
 private_key = rsa.generate_private_key(
-    public_exponent=65537,  # 标准 RSA 公开指数
-    key_size=2048,          # 2048 位足够安全
+    public_exponent=65537,  # 标准 RSA 公开指数（费马素数，加密快）
+    key_size=2048,          # 2048 位足够安全，1024 位已不安全
 )
 # 从私钥导出公钥
+# RSA 是非对称算法：私钥能推出公钥，公钥不能推出私钥
 public_key = private_key.public_key()
 
 # 把密钥序列化成 PEM 格式字符串（实际场景从文件读）
+# PEM 是 Base64 编码的密钥格式，带 -----BEGIN ...----- 头尾
 private_pem = private_key.private_bytes(
-    encoding=serialization.Encoding.PEM,
-    format=serialization.PrivateFormat.PKCS8,
-    encryption_algorithm=serialization.NoEncryption(),
+    encoding=serialization.Encoding.PEM,        # PEM 格式（文本，方便存储）
+    format=serialization.PrivateFormat.PKCS8,   # PKCS8 是通用私钥格式
+    encryption_algorithm=serialization.NoEncryption(),  # 不加密（生产可加密）
 ).decode()
 public_pem = public_key.public_bytes(
     encoding=serialization.Encoding.PEM,
-    format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    format=serialization.PublicFormat.SubjectPublicKeyInfo,  # 公钥标准格式
 ).decode()
 
 # 第二步：用私钥签发 JWT
@@ -1280,9 +1289,14 @@ async def login(response: Response, form_data: OAuth2PasswordRequestForm = Depen
         algorithm=ALGORITHM,
     )
     # 把 token 写进 HttpOnly Cookie
-    # httponly=True：JS 读不到，防 XSS
+    # httponly=True：JS 读不到，防 XSS 窃取
+    #   XSS 攻击者能执行 JS，但读不到 HttpOnly Cookie
     # secure=True：只通过 HTTPS 传输（本地开发可设 False）
+    #   生产环境必须 True，否则 token 会被中间人截获
     # samesite="lax"：防 CSRF
+    #   lax：跨站 GET 请求带 Cookie，POST 不带（够用）
+    #   strict：任何跨站请求都不带（最安全，但影响体验）
+    #   none：都带（需要 secure=True，不推荐）
     response.set_cookie(
         key="access_token",
         value=f"bearer {token}",
@@ -1447,8 +1461,12 @@ pip install "bcrypt<4.0.0"
 from passlib.context import CryptContext
 
 # 创建 CryptContext 实例
+# CryptContext 是密码哈希的"上下文"，封装了多算法切换
 # schemes: 支持的算法列表，这里只用 bcrypt
+#   可以配多个：schemes=["bcrypt", "argon2"]，方便迁移
 # deprecated: 标记哪些算法已废弃（用于自动迁移）
+#   "auto" 表示 schemes 里除第一个外的都标记为废弃
+#   废弃算法能 verify 但不会用于新 hash
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # ---------- 哈希密码 ----------
@@ -2145,13 +2163,17 @@ from enum import Enum
 
 # 继承 str 和 Enum，这样 Role.ADMIN 直接等于 "admin" 字符串
 # 方便存数据库和 JSON 序列化
+# 为什么继承 str？因为 JSON 不支持枚举，序列化时要转字符串
+# 继承 str 后 Role.ADMIN == "admin" 为 True，可以直接当字符串用
 class Role(str, Enum):
     ADMIN = "admin"      # 管理员：最高权限
     EDITOR = "editor"    # 编辑：能写能改，不能删
     VIEWER = "viewer"    # 访客：只能看
 
 # 角色到权限的映射
-# 用 set 方便做"是否包含"判断
+# 用 set 方便做"是否包含"判断（O(1) 查找）
+# 权限命名规范：资源:操作（如 article:delete）
+# 这种命名方便后续做通配符匹配（如 article:* 表示所有文章操作）
 ROLE_PERMISSIONS: dict[Role, set[str]] = {
     Role.ADMIN: {
         "article:view",
@@ -2251,14 +2273,19 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
 
 # 关键技巧：写一个"返回依赖函数"的函数
 # 这样可以在路由里声明需要的角色
+# 原理：require_roles 是高阶函数，调用它返回 check_role 闭包
+# 闭包捕获了 roles 变量，所以 check_role 内部能访问 roles
 def require_roles(*roles: Role):
     """
     角色检查依赖工厂
     用法：Depends(require_roles(Role.ADMIN, Role.EDITOR))
+    *roles 收集所有传入的角色为元组，如 (Role.ADMIN, Role.EDITOR)
     """
     # 返回的是一个真正的依赖函数
+    # FastAPI 会用 Depends(get_current_user) 先获取当前用户
     async def check_role(current_user: User = Depends(get_current_user)) -> User:
         # 检查当前用户角色是否在允许列表里
+        # roles 是闭包捕获的外层参数
         if current_user.role not in roles:
             # 没权限，返回 403（不是 401）
             # 401 = 没登录；403 = 登录了但没权限
@@ -2267,7 +2294,8 @@ def require_roles(*roles: Role):
                 detail=f"需要以下角色之一：{[r.value for r in roles]}",
             )
         return current_user
-    # 返回依赖函数本身
+    # 返回依赖函数本身（不是调用它）
+    # FastAPI 拿到这个函数后，会把它当依赖来解析参数和注入
     return check_role
 
 # ---------- 路由 ----------
@@ -2279,11 +2307,15 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     if user is None:
         raise HTTPException(401, "用户不存在")
     # 把角色也写进 token，避免每次查库
+    # 好处：减少数据库查询，性能高
+    # 代价：token 签发后角色变化不会立即生效（要等 token 过期）
+    # 解决：角色变更时让旧 token 失效（需要 token 版本号机制）
+    # user.role.value 把枚举转成字符串（"admin"），因为 JSON 不支持枚举
     token = jwt.encode(
         {
-            "sub": user.username,
-            "role": user.role.value,
-            "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+            "sub": user.username,       # subject：用户标识
+            "role": user.role.value,    # 角色：用于权限检查
+            "exp": datetime.now(timezone.utc) + timedelta(hours=1),  # 过期时间
         },
         SECRET_KEY,
         algorithm=ALGORITHM,
@@ -2355,13 +2387,20 @@ class User(BaseModel):
     username: str
     role: Role
     # 也可以直接给用户额外权限，绕过角色（高级用法）
+    # 适用场景：临时给某用户某项权限，不必新建角色
     extra_permissions: set[str] = set()
 
     def has_permission(self, permission: str) -> bool:
-        """检查用户是否有某权限（角色权限 + 额外权限）"""
+        """检查用户是否有某权限（角色权限 + 额外权限）
+        权限来源有两部分：
+        1. 角色自带权限（通过 ROLE_PERMISSIONS 查）
+        2. 用户额外权限（extra_permissions 字段）
+        任一来源包含目标权限即通过
+        """
         # 角色自带权限
         role_perms = ROLE_PERMISSIONS.get(self.role, set())
         # 加上额外权限
+        # 用 or 短路：角色有就直接 True，不查 extra
         return permission in role_perms or permission in self.extra_permissions
 
 # ---------- 假数据库 ----------

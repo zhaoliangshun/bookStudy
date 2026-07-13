@@ -1732,19 +1732,23 @@ SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
 # 定义商品 ORM 模型
+# 下面这行用到了"海象运算符":=和 type() 动态建类，理解即可，不用深究
+# type("Base", (Base,), {"__tablename__": "items"}) 会动态创建一个继承 Base 的类
+# := 把这个动态类同时赋值给变量 BaseModel_sql，再让 Item 继承它
+# 这只是演示动态建类技巧，实际项目不会这么写
 class Item(BaseModel_sql := type("Base", (Base,), {"__tablename__": "items"})):
-    # 等价于 class Item(Base):
+    # pass 表示空类体，什么都不做（这个 Item 类只是演示，后面不会用到）
     pass
 
-# 简化：直接定义
+# 简化：直接定义真正的 ORM 模型（项目实际用这个）
 class ItemModel(Base):
-    # 表名
+    # 表名，对应数据库里的 items 表
     __tablename__ = "items"
-    # id 列，主键
+    # id 列，Integer 整数类型，primary_key=True 标记为主键（自增）
     id = Column(Integer, primary_key=True)
-    # name 列
+    # name 列，String 字符串类型（不指定长度默认 VARCHAR）
     name = Column(String)
-    # price 列
+    # price 列，Float 浮点数类型，存储商品价格
     price = Column(Float)
 
 # 创建表
@@ -1873,10 +1877,13 @@ def test_create_and_verify(client, test_db):
     # 定义变量 item_id
     item_id = r.json()["id"]
 
-    # 直接查数据库验证
+    # 直接查数据库验证（绕过 API，直接用 ORM 查）
     # 从 main 导入 ItemModel
     from main import ItemModel
     # 查询刚创建的商品
+    # test_db.query(ItemModel) 开始查询 items 表
+    # .filter(ItemModel.id == item_id) 加 WHERE id = item_id 条件
+    # .first() 返回第一条匹配记录，没有则返回 None
     # 定义变量 db_item
     db_item = test_db.query(ItemModel).filter(ItemModel.id == item_id).first()
     # 断言数据库里有
@@ -2126,13 +2133,18 @@ def test_magic_mock_complex():
     mock_db = MagicMock()
 
     # 模拟 query().filter().first() 链式调用
+    # SQLAlchemy 的查询是链式的：db.query(Model).filter(条件).first()
+    # Mock 要逐层设置 return_value，才能让链式调用都返回 Mock 对象
     # 赋值 mock_db.query.return_value.filter.return_value.first.return_value = None
     mock_db.query.return_value.filter.return_value.first.return_value = None
 
     # 调用链式方法
+    # type("Item", (), {}) 用 type() 动态创建一个空类（类名 "Item"，无父类，无属性）
+    # Item := 是海象运算符，把动态创建的类赋值给变量 Item，同时作为参数传给 query()
+    # 这里只是需要一个占位参数，用动态建类省去单独定义类的麻烦
     # 定义变量 result
     result = mock_db.query(Item := type("Item", (), {})).filter(None).first()
-    # 断言返回 None
+    # 断言返回 None（前面设置的 return_value = None）
     assert result is None
 
 # 测试 3：AsyncMock 测试异步函数

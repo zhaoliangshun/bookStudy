@@ -337,43 +337,64 @@ def admin_dashboard(user: dict = Depends(get_admin_user)):
 # 导入 FastAPI 和 Depends
 from fastapi import FastAPI, Depends
 # 导入 SQLAlchemy 相关组件
+# create_engine: 创建数据库引擎（连接池）
+# Column: 定义表字段
+# Integer, String: 字段类型
 from sqlalchemy import create_engine, Column, Integer, String
+# declarative_base: 创建 ORM 模型基类
+# sessionmaker: 创建 Session 工厂
+# Session: Session 类型（用于类型注解）
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
 app = FastAPI()
 
 # 创建数据库引擎（SQLite，内存数据库，方便演示）
+# "sqlite:///:memory:" 表示内存数据库（重启数据丢失）
+# echo=False 不打印 SQL 日志（开发时可以设 True 调试）
 engine = create_engine("sqlite:///:memory:", echo=False)
 # 创建 Session 工厂
+# sessionmaker 是一个工厂类，调用它创建 Session 实例
+# bind=engine 表示 Session 用这个引擎连接数据库
 SessionLocal = sessionmaker(bind=engine)
 # 创建模型基类
+# 所有 ORM 模型都要继承 Base
 Base = declarative_base()
 
 # 定义 User 模型
 class User(Base):
+    # __tablename__ 指定数据库表名
     __tablename__ = "users"
+    # primary_key=True 表示主键
     id = Column(Integer, primary_key=True)
+    # String 类型，不指定长度默认 VARCHAR
     name = Column(String)
     age = Column(Integer)
 
 # 创建表
+# Base.metadata.create_all 会根据所有继承 Base 的模型创建表
+# 如果表已存在则跳过
 Base.metadata.create_all(engine)
 
 # 依赖函数：获取数据库 session
 def get_db():
     # 创建 session 实例
+    # 每个请求创建独立 session，保证事务隔离
     db = SessionLocal()
     try:
         # yield 把 db 交给路由函数使用
         yield db
     finally:
         # 路由函数执行完毕后，关闭 session
+        # finally 保证即使抛异常也会关闭，防止连接泄漏
         db.close()
 
 # 路由函数：声明依赖 db: Session
 @app.get("/users/{user_id}")
 def get_user(user_id: int, db: Session = Depends(get_db)):
     # 用 db 查询用户
+    # db.query(User) 相当于 SELECT * FROM users
+    # .filter(User.id == user_id) 相当于 WHERE id = ?
+    # .first() 取第一条，没有则返回 None
     user = db.query(User).filter(User.id == user_id).first()
     # 用户不存在返回 404
     if not user:
@@ -385,13 +406,14 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
 # 创建用户的接口
 @app.post("/users")
 def create_user(name: str, age: int, db: Session = Depends(get_db)):
-    # 创建 User 实例
+    # 创建 User 实例（此时还没写入数据库）
     user = User(name=name, age=age)
-    # 添加到 session
+    # 添加到 session（还没提交到数据库）
     db.add(user)
-    # 提交事务
+    # 提交事务（真正写入数据库）
     db.commit()
     # 刷新获取自增 id
+    # commit 后 user.id 还是 None，refresh 从数据库重新加载
     db.refresh(user)
     return {"id": user.id, "name": user.name, "age": user.age}
 \`\`\`
@@ -415,10 +437,14 @@ app = FastAPI()
 # 公共查询参数依赖
 def common_query_params(
     # q 是搜索关键字，可选
+    # Query(None, ...) 第一个参数 None 是默认值（没传时返回 None）
+    # description 用于 OpenAPI 文档展示
     q: Optional[str] = Query(None, description="搜索关键字"),
     # skip 是偏移量
+    # ge=0 表示值必须 >= 0（大于等于 0）
     skip: int = Query(0, ge=0, description="跳过条数"),
     # limit 是上限
+    # ge=1 最小 1，le=100 最大 100（防止客户端请求过多数据）
     limit: int = Query(10, ge=1, le=100, description="返回上限"),
 ):
     # 打包成字典返回
@@ -429,6 +455,7 @@ def sort_params(
     # sort_by 是排序字段
     sort_by: str = Query("id", description="排序字段"),
     # order 是排序方向
+    # regex="^(asc|desc)$" 用正则校验，只接受 asc 或 desc
     order: str = Query("asc", regex="^(asc|desc)$", description="排序方向"),
 ):
     return {"sort_by": sort_by, "order": order}
@@ -476,9 +503,12 @@ from typing import Generic, TypeVar, List
 app = FastAPI()
 
 # 定义泛型类型变量
+# TypeVar("T") 创建一个类型变量，可以在泛型类中使用
 T = TypeVar("T")
 
 # 分页响应模型（泛型）
+# Generic[T] 让类支持泛型，T 是占位类型
+# 用法：PageResponse[Product]、PageResponse[Order] 等
 class PageResponse(BaseModel, Generic[T]):
     # 当前页码
     page: int
@@ -487,13 +517,16 @@ class PageResponse(BaseModel, Generic[T]):
     # 总条数
     total: int
     # 数据列表（泛型）
+    # List[T] 表示 T 类型的列表，具体类型由使用时决定
     items: List[T]
 
 # 分页参数依赖
 def get_page_params(
     # 页码，最小 1
+    # ge=1 保证页码从 1 开始（不允许 0 或负数）
     page: int = Query(1, ge=1, description="页码，从 1 开始"),
     # 每页条数，1-100 之间
+    # le=100 限制最大 100，防止客户端请求过多数据拖垮服务
     size: int = Query(20, ge=1, le=100, description="每页条数"),
 ):
     # 返回分页参数
@@ -1198,22 +1231,27 @@ init_data()
 # ✅ 事务型 yield 依赖
 def get_transactional_db():
     # 1. 创建 session（开启事务）
+    # SQLAlchemy 的 session 自动开启事务
     db = SessionLocal()
     print("[tx] 事务开始")
     try:
         # 2. yield session 给路由
         yield db
         # 3. 路由正常返回，提交事务
+        # commit 把所有改动写入数据库
         db.commit()
         print("[tx] 事务提交")
     except Exception as e:
         # 4. 路由抛异常，回滚事务
+        # rollback 撤销所有未提交的改动
         db.rollback()
         print(f"[tx] 事务回滚: {e}")
         # 异常会被 FastAPI 重新抛出
+        # raise 不吞掉异常，让客户端收到错误响应
         raise
     finally:
         # 5. 无论提交还是回滚，都关闭 session
+        # close 释放连接回连接池
         db.close()
         print("[tx] session 关闭")
 
@@ -2200,28 +2238,36 @@ app = FastAPI()
 # 定义一个类：分页参数
 class Pagination:
     # __init__ 的参数会被 FastAPI 从请求解析
+    # 就像函数依赖的参数一样，类型注解会被识别
     def __init__(
         self,
         # page 参数，从 query string 取
+        # Query(1, ge=1) 默认值 1，最小值 1
         page: int = Query(1, ge=1, description="页码"),
         # size 参数
+        # le=100 限制最大 100 条
         size: int = Query(20, ge=1, le=100, description="每页条数"),
     ):
         # 把参数存为实例属性
+        # 这样路由函数可以通过 pagination.page 访问
         self.page = page
         self.size = size
-        # 计算 offset
+        # 计算 offset（数据库查询的偏移量）
+        # 第 1 页 offset=0，第 2 页 offset=size
         self.offset = (page - 1) * size
 
     # 类的方法
     def get_range(self):
         # 返回 [start, end) 区间
+        # 用于切片查询
         return (self.offset, self.offset + self.size)
 
     def __repr__(self):
+        # __repr__ 定义打印时的显示，方便调试
         return f"Pagination(page={self.page}, size={self.size})"
 
 # 路由：用类作为依赖
+# Depends(Pagination) 传类本身，框架会调用 Pagination(page=..., size=...) 实例化
 @app.get("/items")
 def list_items(pagination: Pagination = Depends(Pagination)):
     # pagination 是 Pagination 实例
@@ -2501,10 +2547,12 @@ def old(
 # Annotated 写法
 # 把类型和依赖打包成 Annotated[类型, 依赖]
 # 优点：可复用、可读性好
+# Annotated 第一个参数是类型，后面是元数据（Query/Header/Depends 等）
 PageQuery = Annotated[int, Query(1, ge=1, description="页码")]
 SizeQuery = Annotated[int, Query(20, ge=1, le=100, description="每页条数")]
 
 # 依赖函数
+# Annotated[str, Header()] 表示从 Header 读取 str 类型
 def get_current_user(token: Annotated[str, Header()] = "") -> dict:
     if token != "valid":
         from fastapi import HTTPException
@@ -2512,6 +2560,8 @@ def get_current_user(token: Annotated[str, Header()] = "") -> dict:
     return {"name": "alice"}
 
 # 把依赖也封装成 Annotated 类型
+# CurrentUser 等价于 dict 类型 + Depends(get_current_user) 依赖
+# 用时只需写 user: CurrentUser，不用写完整的 Depends(...)
 CurrentUser = Annotated[dict, Depends(get_current_user)]
 
 @app.get("/new")
@@ -2562,20 +2612,27 @@ from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
 # ========== lifespan：管理应用级资源 ==========
+# @asynccontextmanager 把 async 生成器函数变成异步上下文管理器
+# lifespan 在应用启动时执行 yield 之前的代码，关闭时执行 yield 之后的代码
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 启动时：创建连接池
     print("[lifespan] 创建数据库连接池")
+    # create_async_engine 创建异步引擎（连接池）
+    # "sqlite+aiosqlite:///test.db" 表示用 aiosqlite 驱动连接 SQLite
     engine = create_async_engine("sqlite+aiosqlite:///test.db")
     # 存到 app.state，全局可访问
+    # app.state 是应用级共享对象，所有请求都能访问
     app.state.engine = engine
     app.state.SessionLocal = async_sessionmaker(engine)
 
     # yield 把控制权交给应用
+    # yield 之前是启动代码，yield 之后是关闭代码
     yield
 
     # 关闭时：清理资源
     print("[lifespan] 关闭连接池")
+    # engine.dispose() 关闭所有连接，释放资源
     await engine.dispose()
 
 app = FastAPI(lifespan=lifespan)
@@ -2583,8 +2640,10 @@ app = FastAPI(lifespan=lifespan)
 # ========== Depends：管理请求级资源 ==========
 async def get_db(request: Request):
     # 从 app.state 取 SessionLocal 工厂
+    # request.app.state 访问应用级状态
     SessionLocal = request.app.state.SessionLocal
     # 每个请求创建独立 session
+    # async with 自动管理 session 生命周期（退出时关闭）
     async with SessionLocal() as db:
         print(f"[get_db] 创建 session")
         yield db
