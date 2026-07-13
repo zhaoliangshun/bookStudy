@@ -86,7 +86,7 @@ export default function ScrollRestoration() {
       // 高度需连续稳定 2 次（200ms）才恢复
       if (heightStableCount < 2) return;
 
-      // 4. 内容稳定，恢复滚动位置
+      // 4. 内容稳定，恢复滚动位置（.content 已配置 scroll-behavior: auto，瞬时定位）
       const maxScroll = el.scrollHeight - el.clientHeight;
       if (maxScroll > 0) {
         el.scrollTop = Math.min(target, maxScroll);

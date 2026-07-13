@@ -157,10 +157,7 @@
     "未分组": [
       "/playground"
     ],
-    "Python 编程": [
-      "/fastapiauth",
-      "/fastapi-test"
-    ],
+    "Python 编程": [],
     "JS / TS 生态": [
       "/tsgen",
       "/ts",
@@ -196,7 +193,8 @@
       "/deploy",
       "/go",
       "/csharp",
-      "/backend-essential"
+      "/backend-essential",
+      "/https-book"
     ],
     "实战项目": [
       "/todo",
@@ -236,7 +234,8 @@
       "/inner-peace",
       "/serenity",
       "/emotion",
-      "/calm"
+      "/calm",
+      "/hermit"
     ],
     "人际智慧": [
       "/relations",
@@ -282,19 +281,14 @@
       "/py-definitive"
     ],
     "Python 编程::__sg-mrctdmwvqji3": [
-      "/fastapi-learn",
-      "/fastapi-pro",
       "/pynet",
       "/pydb",
-      "/fastapi",
       "/pyweb",
       "/pyweb2",
       "/py-backend",
       "/pyproject",
       "/pyarch",
-      "/pyeng",
-      "/fastapi-simple",
-      "/fastapi-code"
+      "/pyeng"
     ],
     "Python 编程::__sg-mrctfokhdvl5": [
       "/pyjava",
@@ -304,6 +298,16 @@
     "Python 编程::__sg-mrd99uj4byog": [
       "/pyfile",
       "/pyfile2"
+    ],
+    "Python 编程::__sg-mriwj9hbry00": [
+      "/fastapi-simple",
+      "/fastapi-learn",
+      "/fastapi-code",
+      "/fastapiauth-simple",
+      "/fastapiauth",
+      "/fastapi-test",
+      "/fastapi-pro",
+      "/fastapi"
     ]
   },
   "categoryConfig": {
@@ -354,6 +358,10 @@
         {
           "id": "sg-mrd99uj4byog",
           "name": "文件操作"
+        },
+        {
+          "id": "sg-mriwj9hbry00",
+          "name": "FastApi"
         }
       ]
     },
@@ -362,6 +370,7 @@
         "sg-mrctcsxkz7f9",
         "sg-mrctbi5m16xr",
         "sg-mrd99uj4byog",
+        "sg-mriwj9hbry00",
         "sg-mrctdmwvqji3",
         "sg-mrctfokhdvl5"
       ]

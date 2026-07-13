@@ -3096,7 +3096,7 @@ payload = jwt.decode(token, public_key, algorithms=["RS256"])
 FastAPI 官方教程的标准用法：
 
 \`\`\`python
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
@@ -3110,7 +3110,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 def create_access_token(data: dict) -> str:
     """生成访问令牌。"""
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 

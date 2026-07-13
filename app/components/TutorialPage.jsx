@@ -127,11 +127,8 @@ export default function TutorialPage({
     setSidebarOpen(false);
 
     if (contentRef.current) {
-      try {
-        contentRef.current.scrollTo({ top: 0, behavior: "instant" });
-      } catch {
-        contentRef.current.scrollTop = 0;
-      }
+      // .content 已配置 scroll-behavior: auto，直接设置即可瞬时回顶
+      contentRef.current.scrollTop = 0;
     }
 
     try {

@@ -272,8 +272,9 @@
 html {
   -webkit-text-size-adjust: 100%;
 }
+/* 用户偏好瞬时滚动，不使用 smooth 平滑动画 */
 @media (prefers-reduced-motion: no-preference) {
-  html { scroll-behavior: smooth; }
+  html { scroll-behavior: auto; }
 }
 
 html,
@@ -1232,7 +1233,8 @@ img {
   min-width: 0;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
-  scroll-behavior: smooth;
+  /* 用户偏好瞬时滚动，章节切换/刷新定位不使用平滑动画 */
+  scroll-behavior: auto;
   will-change: scroll-position;
 }
 
@@ -3254,6 +3256,10 @@ img {
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.14);
   overflow: hidden;
   min-width: 180px;
+  /* 限制面板最大高度，超出滚动；与编辑器主题面板保持一致 */
+  max-height: 360px;
+  display: flex;
+  flex-direction: column;
 }
 
 .reading-theme-panel-header {
@@ -3264,6 +3270,8 @@ img {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   border-bottom: 1px solid var(--border);
+  /* header 固定不滚动 */
+  flex-shrink: 0;
 }
 
 .reading-theme-list {
@@ -3271,6 +3279,29 @@ img {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* 主题列表区域可滚动 */
+  overflow-y: auto;
+  flex: 1;
+  /* 自定义细滚动条样式，与编辑器主题面板风格一致 */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.reading-theme-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.reading-theme-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.reading-theme-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.reading-theme-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 /* 单个主题选项 */

@@ -67,6 +67,7 @@ const BOOK_CATEGORIES = [
       { path: "/fastapi-pro", label: "FastAPI 现代开发", icon: "🚀" },
       { path: "/fastapi-test", label: "FastAPI 测试与部署", icon: "🧪" },
       { path: "/fastapiauth", label: "FastAPI 认证授权", icon: "🔐" },
+      { path: "/fastapiauth-simple", label: "FastAPI 认证精简", icon: "🗝️" },
       { path: "/pysubprocess", label: "subprocess 子进程", icon: "🔌" },
       { path: "/pythread", label: "线程与进程", icon: "🧵" },
       { path: "/pythread2", label: "多线程入门", icon: "🧵" },
@@ -139,6 +140,7 @@ const BOOK_CATEGORIES = [
     icon: "🖥️",
     books: [
       { path: "/http", label: "HTTP 通信", icon: "🌐" },
+      { path: "/https-book", label: "HTTPS 详解", icon: "🔒" },
       { path: "/net", label: "计算机网络", icon: "🌐" },
       { path: "/backend", label: "后端开发", icon: "🖥️" },
       { path: "/backend-essential", label: "后端开发必备知识", icon: "⚙️" },
@@ -215,6 +217,7 @@ const BOOK_CATEGORIES = [
       { path: "/serenity", label: "云淡风轻", icon: "☁️" },
       { path: "/emotion", label: "无所谓", icon: "🤷" },
       { path: "/calm", label: "心境如水", icon: "🌊" },
+      { path: "/hermit", label: "红尘之外：隐居之道", icon: "🍃" },
     ],
   },
   {
