@@ -145,13 +145,22 @@
     "sp-run",
     "sp-popen",
     "pythread-34",
-    "pykit-01"
+    "pykit-01",
+    "fa-quickstart",
+    "fa-path-params",
+    "fa-query-params",
+    "fa-request-body",
+    "fa-pydantic",
+    "fa-dependency"
   ],
   "bookOrder": {
     "未分组": [
       "/playground"
     ],
-    "Python 编程": [],
+    "Python 编程": [
+      "/fastapiauth",
+      "/fastapi-test"
+    ],
     "JS / TS 生态": [
       "/tsgen",
       "/ts",
@@ -274,6 +283,7 @@
     ],
     "Python 编程::__sg-mrctdmwvqji3": [
       "/fastapi-learn",
+      "/fastapi-pro",
       "/pynet",
       "/pydb",
       "/fastapi",
