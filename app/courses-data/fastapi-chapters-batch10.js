@@ -572,26 +572,32 @@ async def register(req: RegisterRequest):
             detail="用户名已存在",
         )
     # 创建用户（密码明文存储，仅演示！真实场景必须哈希）
+    # UserInDB 继承自 User，多了 password 字段（入库用）
     user = UserInDB(
         username=req.username,
         email=req.email,
-        disabled=False,
-        password=req.password,
+        disabled=False,  # 新用户默认激活
+        password=req.password,  # 真实场景：pwd_context.hash(req.password)
     )
+    # 存入"数据库"（字典模拟）
     fake_users_db[req.username] = user
     # 返回时不带密码
+    # model_dump(exclude={"password"}) 把 UserInDB 转成字典并排除 password 字段
+    # 再用 User(**...) 构造，确保响应里不泄露密码
     return User(**user.model_dump(exclude={"password"}))
 
 # 登录端点：颁发 token
 @app.post("/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    # 查用户
+    # 查用户：从假数据库按用户名查
     user = fake_users_db.get(form_data.username)
     # 验证用户存在 + 密码正确
+    # 用 or 合并判断，错误信息统一，防止攻击者区分"用户不存在"和"密码错误"
     if user is None or user.password != form_data.password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户名或密码错误",
+            # WWW-Authenticate 头是 OAuth2 规范要求，提示客户端用 Bearer 认证
             headers={"WWW-Authenticate": "Bearer"},
         )
     # 检查账号是否激活
@@ -602,9 +608,12 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
         )
     # 生成 token（伪 token，真实场景用 JWT）
     import secrets
+    # secrets.token_hex(16) 生成 32 字符的随机十六进制字符串，确保 token 不可预测
     token = "fake-token-" + secrets.token_hex(16)
+    # 存入反向索引表：token -> username，后续 get_current_user 用它反查用户
     fake_tokens[token] = user.username
     # 按 OAuth2 规范返回
+    # access_token 和 token_type 是规范要求的固定字段名，不能改
     return {"access_token": token, "token_type": "bearer"}
 
 # 获取当前用户
@@ -1031,30 +1040,36 @@ class RefreshRequest(BaseModel):
 async def refresh_token(req: RefreshRequest):
     try:
         # 解码 refresh token
+        # jwt.decode 自动验签 + 检查 exp，过期或签名错都会抛异常
         payload = jwt.decode(req.refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
     except ExpiredSignatureError:
         # refresh token 也过期了，必须重新登录
+        # 此时用户需要回到 /token 端点重新输密码
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="refresh token 已过期，请重新登录",
         )
     except JWTError:
-        # token 无效
+        # token 无效（签名错误、格式错误、被篡改等）
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="无效的 refresh token",
         )
     # 检查类型：必须是 refresh token，不能用 access token 来刷新
+    # 这一步防止用户拿 access token 来换新 access token（绕过刷新机制）
     if payload.get("type") != "refresh":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="token 类型错误",
         )
     # 签发新的 access token
+    # 从 refresh token 取 sub（用户名），写入新 access token
+    # type 设为 "access"，标记这是访问令牌
     new_access = create_token(
         data={"sub": payload["sub"], "type": "access"},
         expires_delta=timedelta(minutes=30),
     )
+    # 只返回新的 access_token，refresh_token 不刷新（让旧的继续用到过期）
     return {"access_token": new_access, "token_type": "bearer"}
 
 # 测试流程：
@@ -1195,18 +1210,21 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     # 查用户
     user = fake_users_db.get(form_data.username)
     # 验证用户和密码（这里用明文比对，仅演示，真实用 passlib）
+    # or 短路：user is None 时不再判断密码，避免 None.attribute 报错
     if user is None or user.hashed_password != form_data.password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户名或密码错误",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    # 生成 JWT，sub 是用户名
+    # 生成 JWT，sub 是用户名（JWT 标准声明，表示 token 主体）
+    # expires_delta 设过期时间，到点后 jwt.decode 自动抛 ExpiredSignatureError
     access_token = create_access_token(
         data={"sub": user.username},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
     # 返回符合 OAuth2 规范的格式
+    # response_model=Token 会自动校验返回值结构
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.get("/me", response_model=User)
@@ -1584,20 +1602,25 @@ def validate_password_strength(password: str) -> None:
         )
 
 # 测试
+# if __name__ == "__main__" 确保只在直接运行时执行，被导入时不执行
 if __name__ == "__main__":
+    # 测试用例 1：密码太短（少于 8 位）
     try:
         validate_password_strength("123")  # 太短
     except HTTPException as e:
         print(e.detail)  # 密码至少 8 位
+    # 测试用例 2：密码没数字（只有字母）
     try:
         validate_password_strength("abcdefgh")  # 没数字
     except HTTPException as e:
         print(e.detail)  # 密码必须包含数字
+    # 测试用例 3：常见弱密码（在黑名单里）
     try:
         validate_password_strength("password1")  # 常见弱密码
     except HTTPException as e:
         print(e.detail)  # 密码太常见，请换一个
-    # 合法密码
+    # 测试用例 4：合法密码（长度够、有字母有数字、不在黑名单）
+    # 不抛异常就是通过
     validate_password_strength("MyStr0ngP@ss")
     print("密码强度 OK")
 \`\`\`
@@ -1696,6 +1719,8 @@ async def forgot_password(req: ForgotPasswordRequest):
 async def reset_password(req: ResetPasswordRequest):
     """执行密码重置"""
     # 检查 token 是否已被使用过
+    # used_reset_tokens 是黑名单集合，用过的 token 进黑名单
+    # 防止重放攻击：攻击者截获 token 后反复重置密码
     if req.token in used_reset_tokens:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -1703,6 +1728,7 @@ async def reset_password(req: ResetPasswordRequest):
         )
     try:
         # 解码 token
+        # jwt.decode 自动验签 + 检查 exp
         payload = jwt.decode(req.token, SECRET_KEY, algorithms=[ALGORITHM])
     except ExpiredSignatureError:
         raise HTTPException(
@@ -1714,13 +1740,14 @@ async def reset_password(req: ResetPasswordRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="无效的重置链接",
         )
-    # 检查类型
+    # 检查类型：必须是 reset token，不能用 access token 来重置密码
     if payload.get("type") != "reset":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="token 类型错误",
         )
     # 取邮箱，查用户
+    # sub 存的是邮箱（创建 reset token 时写入的）
     email = payload["sub"]
     username = email_index.get(email)
     if username is None:
@@ -1735,8 +1762,10 @@ async def reset_password(req: ResetPasswordRequest):
             detail="密码至少 8 位",
         )
     # 更新密码哈希
+    # pwd_context.hash 自动加 salt + bcrypt 计算
     fake_users_db[username]["hashed_password"] = pwd_context.hash(req.new_password)
     # token 加入黑名单，防止重放
+    # 即使 token 还没过期，用过的也不能再用
     used_reset_tokens.add(req.token)
     return {"message": "密码已重置，请用新密码登录"}
 
@@ -1924,41 +1953,53 @@ async def register(req: RegisterRequest):
     if req.username in fake_users_db:
         raise HTTPException(400, "用户名已存在")
     # 检查邮箱是否已注册
+    # email_index 是 邮箱->用户名 的反向索引，方便按邮箱查
     if req.email in email_index:
         raise HTTPException(400, "邮箱已注册")
-    # 校验密码强度
+    # 校验密码强度（长度、字母+数字、禁用弱密码）
     validate_password_strength(req.password)
-    # 哈希密码
+    # 哈希密码：pwd_context.hash 自动加 salt + bcrypt 计算
+    # 每次 hash 结果不同（salt 随机），但 verify 都能识别
     hashed = pwd_context.hash(req.password)
-    # 创建用户
+    # 创建用户：UserInDB 是入库模型，包含 hashed_password
     user = UserInDB(
         username=req.username,
         email=req.email,
-        disabled=False,
+        disabled=False,  # 新用户默认激活
         hashed_password=hashed,
     )
+    # 存入用户表
     fake_users_db[req.username] = user
+    # 维护邮箱索引（方便按邮箱查用户）
     email_index[req.email] = req.username
+    # 返回 User（不含 hashed_password），防止密码泄露
     return User(**user.model_dump(exclude={"hashed_password"}))
 
 @app.post("/token", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     """登录"""
     # 查用户（支持用户名或邮箱登录）
+    # email_index.get(form_data.username, form_data.username)：
+    #   先按邮箱查用户名，查不到就当用户名用
+    #   这样用户输入邮箱或用户名都能登录
     username = email_index.get(form_data.username, form_data.username)
     user = fake_users_db.get(username)
     if user is None:
         raise HTTPException(401, "用户名或密码错误")
     # 验证密码（用 verify，不是 ==）
+    # verify(明文, 哈希)：内部从哈希提取 salt + cost，重新计算后比对
     if not pwd_context.verify(form_data.password, user.hashed_password):
         raise HTTPException(401, "用户名或密码错误")
     # 检查账号是否激活
     if user.disabled:
         raise HTTPException(400, "账号已被禁用")
     # 哈希需要升级时自动升级
+    # needs_update 检查哈希是否用了老算法或低 cost（如 cost=10 想升到 12）
+    # 登录时用户输了原密码，正好可以重新哈希（其他时候拿不到原密码）
     if pwd_context.needs_update(user.hashed_password):
         user.hashed_password = pwd_context.hash(form_data.password)
     # 颁发 token
+    # sub 是 JWT 标准声明，存用户名，get_current_user 用它反查用户
     access_token = create_access_token({"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -2506,15 +2547,23 @@ def require_role(*roles: Role):
     async def admin_panel(current_user: User = Depends(get_current_user)):
         ...
     """
+    # decorator 是真正的装饰器函数，接收被装饰的函数 func
     def decorator(func):
+        # @wraps(func) 保留原函数的元信息（名字、文档字符串等）
+        # 不加的话原函数的 __name__ 会变成 "wrapper"
         @wraps(func)
+        # wrapper 是替换原函数的包装函数
+        # *args, **kwargs 透传原函数的参数
+        # current_user 通过 Depends 注入（装饰器里也能用依赖注入）
         async def wrapper(*args, current_user: User = Depends(get_current_user), **kwargs):
+            # 检查角色：roles 是闭包捕获的外层参数
             if current_user.role not in roles:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=f"需要角色：{[r.value for r in roles]}",
                 )
             # 调用原函数，把 current_user 传进去
+            # await 因为原函数是 async def
             return await func(*args, current_user=current_user, **kwargs)
         return wrapper
     return decorator
@@ -2647,12 +2696,15 @@ async def delete_article(
     id: int,
     current_user: User = Depends(get_current_user),
 ):
+    # 查文章是否存在
     article = fake_articles_db.get(id)
     if article is None:
         raise HTTPException(404, "文章不存在")
-    # 只有管理员能删
+    # 只有管理员能删（作者本人也不能删自己的文章，只能编辑）
+    # 删除是危险操作，限制更严格
     if current_user.role != Role.ADMIN:
         raise HTTPException(403, "只有管理员能删文章")
+    # 真正删除：从字典移除（数据库场景是 DELETE FROM ...）
     del fake_articles_db[id]
     return {"message": "已删除"}
 
@@ -2802,24 +2854,36 @@ async def get_current_active_user(
     return current_user
 
 def require_permission(permission: str):
-    """权限检查依赖工厂"""
+    """权限检查依赖工厂
+    用法：Depends(require_permission("article:delete"))
+    """
     async def check(
+        # 先依赖 get_current_active_user 拿到已激活的当前用户
         current_user: User = Depends(get_current_active_user),
     ) -> User:
+        # 从角色-权限映射表取出当前角色的所有权限
+        # .get(role, set()) 防止角色不存在时 KeyError，返回空集合
         role_perms = ROLE_PERMISSIONS.get(current_user.role, set())
+        # 检查目标权限是否在角色的权限集合里
         if permission not in role_perms:
+            # 403 = 登录了但没权限（区别于 401 = 没登录）
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"需要权限：{permission}",
             )
         return current_user
+    # 返回依赖函数本身，FastAPI 会调用它
     return check
 
 def require_roles(*roles: Role):
-    """角色检查依赖工厂"""
+    """角色检查依赖工厂
+    用法：Depends(require_roles(Role.ADMIN, Role.EDITOR))
+    """
     async def check(
         current_user: User = Depends(get_current_active_user),
     ) -> User:
+        # 检查当前用户角色是否在允许的角色列表里
+        # roles 是闭包捕获的外层参数（元组）
         if current_user.role not in roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -2832,14 +2896,19 @@ def require_roles(*roles: Role):
 
 @app.post("/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    # 查用户
     user = fake_users_db.get(form_data.username)
+    # 验证用户存在 + 密码正确（用 verify 比对哈希）
     if user is None or not pwd_context.verify(form_data.password, user.hashed_password):
         raise HTTPException(401, "用户名或密码错误")
+    # 检查账号是否激活
     if user.disabled:
         raise HTTPException(400, "账号已被禁用")
+    # 把角色写进 token，这样验权限时不用每次查库
+    # user.role.value 把枚举转成字符串（"admin"），因为 JSON 不支持枚举
     token = create_access_token({
-        "sub": user.username,
-        "role": user.role.value,
+        "sub": user.username,       # sub：用户标识（JWT 标准声明）
+        "role": user.role.value,    # role：角色（自定义声明，用于权限检查）
     })
     return {"access_token": token, "token_type": "bearer"}
 
@@ -2897,17 +2966,23 @@ async def list_articles(
 @app.post("/articles")
 async def create_article(
     req: ArticleCreateRequest,
+    # require_permission("article:create") 检查当前用户是否有创建文章权限
+    # admin 和 editor 有此权限，viewer 没有
     current_user: User = Depends(require_permission("article:create")),
 ):
     """创建文章，作者自动设为当前用户"""
+    # global 声明：修改模块级变量（不是读，是写，所以必须 global）
     global article_id_counter
+    # 创建文章：author 设为当前用户，保证文章有所属
     article = Article(
         id=article_id_counter,
         title=req.title,
         content=req.content,
-        author=current_user.username,
+        author=current_user.username,  # 作者 = 当前登录用户
     )
+    # 存入文章库
     fake_articles_db[article_id_counter] = article
+    # 自增 ID（模拟数据库自增主键）
     article_id_counter += 1
     return article
 
@@ -2915,17 +2990,25 @@ async def create_article(
 async def update_article(
     id: int,
     req: ArticleCreateRequest,
+    # 这里用 get_current_active_user 而不是 require_permission
+    # 因为编辑文章的权限取决于"是否是作者"，不是固定的角色权限
     current_user: User = Depends(get_current_active_user),
 ):
     """更新文章：作者本人或管理员"""
+    # 查文章
     article = fake_articles_db.get(id)
     if article is None:
         raise HTTPException(404, "文章不存在")
     # 所有权检查：admin 或作者本人
+    # is_admin：管理员能改任何文章
+    # is_author：作者只能改自己的文章
     is_admin = current_user.role == Role.ADMIN
     is_author = article.author == current_user.username
+    # 两个条件满足任一即可（用 or）
     if not (is_admin or is_author):
+        # 403 而不是 404：用户已经能看到文章，只是没权限改
         raise HTTPException(403, "只能编辑自己的文章")
+    # 更新字段
     article.title = req.title
     article.content = req.content
     return article

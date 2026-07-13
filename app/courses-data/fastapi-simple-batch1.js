@@ -49,19 +49,22 @@ def read_root():
 ## Demo 2: 路径参数
 
 \`\`\`python
+# 导入 FastAPI 主类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 
-# 创建应用实例
+# 创建应用实例，所有路由都注册到这个对象上
 app = FastAPI()
 
-# {item_id} 是路径参数
+# {item_id} 是路径参数，在 URL 路径中用花括号占位
 # 函数参数 item_id: int 表示：
-# 1. 从 URL 中提取 item_id
-# 2. 自动转换为 int 类型
-# 3. 如果类型不对，返回 422 错误
+# 1. 从 URL 中提取 item_id 的值
+# 2. 自动转换为 int 类型（类型注解生效）
+# 3. 如果类型不对（如传 abc），返回 422 错误
+# @app.get 装饰器：注册 GET 路由，路径为 /items/{item_id}
 @app.get("/items/{item_id}")
 def read_item(item_id: int):
     # item_id 已被自动转换为 int，可直接使用
+    # 返回字典，FastAPI 自动序列化为 JSON 响应
     return {"item_id": item_id}
 
 # 访问 /items/42 返回 {"item_id": 42}
@@ -71,19 +74,21 @@ def read_item(item_id: int):
 ## Demo 3: 查询参数
 
 \`\`\`python
+# 导入 FastAPI 主类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 
-# 创建应用实例
+# 创建应用实例，所有路由都注册到这个对象上
 app = FastAPI()
 
-# 查询参数：不在路径中的参数
+# 查询参数：不在路径中的函数参数，FastAPI 自动识别为查询参数
 # 访问 /items/?skip=0&limit=10
 @app.get("/items/")
 def read_items(skip: int = 0, limit: int = 10):
     # skip 和 limit 是查询参数（不在路径 {} 中）
     # 有默认值，所以是可选的；没传时用默认值
-    # skip: 跳过前 N 条（分页用）
-    # limit: 最多返回 N 条
+    # skip: 跳过前 N 条（分页用，偏移量）
+    # limit: 最多返回 N 条（分页用，每页数量）
+    # 返回字典，FastAPI 自动序列化为 JSON 响应
     return {"skip": skip, "limit": limit}
 
 # 访问 /items/ 返回 {"skip": 0, "limit": 10}
@@ -126,11 +131,13 @@ def create_item(item: Item):
 ## Demo 5: 自动文档
 
 \`\`\`python
+# 导入 FastAPI 主类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 
-# 创建应用实例
+# 创建应用实例，所有路由都注册到这个对象上
 app = FastAPI()
 
+# @app.get("/") 装饰器：注册 GET 路由，路径为根路径 /
 @app.get("/")
 def read_root():
     """
@@ -139,8 +146,10 @@ def read_root():
     返回欢迎信息
     """
     # 三引号 docstring 会自动显示在 /docs 文档页面
+    # 作为接口的描述文字，支持 Markdown 格式
     return {"message": "Welcome to FastAPI"}
 
+# @app.get 装饰器：注册 GET 路由，{item_id} 是路径参数
 @app.get("/items/{item_id}")
 def read_item(item_id: int):
     """
@@ -149,6 +158,7 @@ def read_item(item_id: int):
     - **item_id**: 商品 ID（整数）
     """
     # Markdown 格式的文档说明也会显示在 /docs 中
+    # **item_id** 加粗显示，是 Markdown 语法
     return {"item_id": item_id}
 
 # 启动后访问：
@@ -175,30 +185,38 @@ def read_item(item_id: int):
 ## 基本用法
 
 \`\`\`python
+# 导入 FastAPI 主类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 
-# 创建应用实例
+# 创建应用实例，所有路由都注册到这个对象上
 app = FastAPI()
 
 # 路径参数：{item_id} 在 URL 路径中用花括号占位
+# @app.get 装饰器：注册 GET 路由，路径为 /items/{item_id}
 @app.get("/items/{item_id}")
 def read_item(item_id: int):
     # item_id: int 声明类型，FastAPI 自动转换和校验
+    # 返回字典，FastAPI 自动序列化为 JSON 响应
     return {"item_id": item_id}
 \`\`\`
 
 ## Demo 1: 多个路径参数
 
 \`\`\`python
+# 导入 FastAPI 主类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
-# 多个路径参数
+# 多个路径参数：URL 中可以有多个 {} 占位符
+# @app.get 装饰器：注册 GET 路由，路径含两个路径参数
 @app.get("/users/{user_id}/items/{item_id}")
 def read_user_item(user_id: int, item_id: int):
     # user_id 和 item_id 按顺序对应 URL 中的占位符
     # 访问 /users/1/items/42 → user_id=1, item_id=42
+    # 两个参数都有 int 类型注解，自动校验和转换
+    # 返回字典，FastAPI 自动序列化为 JSON 响应
     return {"user_id": user_id, "item_id": item_id}
 
 # 访问 /users/1/items/42
@@ -208,26 +226,28 @@ def read_user_item(user_id: int, item_id: int):
 ## Demo 2: 路径参数类型验证
 
 \`\`\`python
+# 导入 FastAPI 主类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
-# int 类型
+# int 类型：路径参数自动转为整数，传非数字会 422
 @app.get("/items/{item_id}")
 def read_item(item_id: int):
     return {"item_id": item_id}
 
-# float 类型
+# float 类型：路径参数自动转为浮点数，支持小数
 @app.get("/prices/{price}")
 def read_price(price: float):
     return {"price": price}
 
-# str 类型（默认）
+# str 类型（默认）：不转换，直接作为字符串
 @app.get("/names/{name}")
 def read_name(name: str):
     return {"name": name}
 
-# bool 类型
+# bool 类型：自动转换 true/false、1/0、yes/no 等
 @app.get("/flags/{flag}")
 def read_flag(flag: bool):
     return {"flag": flag}
@@ -238,22 +258,27 @@ def read_flag(flag: bool):
 ## Demo 3: Enum 路径参数
 
 \`\`\`python
+# 导入 FastAPI 主类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 # 导入 Enum，用于定义枚举类型，限定参数只能取特定值
 from enum import Enum
 
+# 创建应用实例
 app = FastAPI()
 
 # 定义枚举类，继承 str 让枚举值可当字符串用
+# 继承 str 是为了 JSON 序列化时输出字符串
 class ModelName(str, Enum):
     alexnet = "alexnet"   # 枚举成员，值为字符串
     resnet = "resnet"
     lenet = "lenet"
 
+# @app.get 装饰器：注册 GET 路由，{model_name} 是路径参数
 @app.get("/models/{model_name}")
 def get_model(model_name: ModelName):
     # model_name 类型为 ModelName，FastAPI 自动校验是否为合法枚举值
     # 传非法值（如 /models/invalid）会返回 422 错误
+    # model_name 已经是枚举成员，可直接比较
     if model_name == ModelName.alexnet:
         return {"model_name": model_name, "message": "Alexnet"}
     return {"model_name": model_name}
@@ -320,13 +345,18 @@ def read_user(user_id: int):
 ## 基本用法
 
 \`\`\`python
+# 导入 FastAPI 主类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
-# 查询参数：不在路径中的函数参数
+# 查询参数：不在路径中的函数参数，FastAPI 自动识别为查询参数
+# @app.get 装饰器：注册 GET 路由，路径为 /items/
 @app.get("/items/")
 def read_items(skip: int = 0, limit: int = 10):
+    # skip 和 limit 有默认值，所以是可选的
+    # 返回字典，FastAPI 自动序列化为 JSON 响应
     return {"skip": skip, "limit": limit}
 
 # 访问 /items/?skip=0&limit=10
@@ -335,18 +365,21 @@ def read_items(skip: int = 0, limit: int = 10):
 ## Demo 1: 可选查询参数
 
 \`\`\`python
+# 导入 FastAPI 主类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
-# 可选参数：有默认值
+# 可选参数：有默认值，不传时使用默认值
 @app.get("/items/")
 def read_items(skip: int = 0, limit: int = 10):
     return {"skip": skip, "limit": limit}
 
-# 必选参数：没有默认值
+# 必选参数：没有默认值，不传会报错
 @app.get("/items/")
 def read_items_required(skip: int, limit: int):
+    # skip 和 limit 没有默认值，必须传，否则 422
     return {"skip": skip, "limit": limit}
 # 访问 /items/ 返回 422 错误（缺少参数）
 \`\`\`
@@ -354,21 +387,23 @@ def read_items_required(skip: int, limit: int):
 ## Demo 2: 查询参数类型
 
 \`\`\`python
+# 导入 FastAPI 主类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
-# int 类型
+# int 类型：查询参数自动转为整数
 @app.get("/items/")
 def read_items(skip: int = 0, limit: int = 10):
     return {"skip": skip, "limit": limit}
 
-# float 类型
+# float 类型：查询参数自动转为浮点数
 @app.get("/prices/")
 def read_prices(min_price: float = 0, max_price: float = 100):
     return {"min": min_price, "max": max_price}
 
-# bool 类型
+# bool 类型：查询参数自动转为布尔值
 @app.get("/items/")
 def read_items(in_stock: bool = True):
     return {"in_stock": in_stock}
@@ -483,19 +518,27 @@ def read_user_items(
 ## 基本用法
 
 \`\`\`python
+# 导入 FastAPI 主类，用于创建应用实例和定义路由
 from fastapi import FastAPI
+# 导入 BaseModel，Pydantic 的基础模型类，用于定义数据结构并自动校验
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
-# 定义数据模型
+# 定义数据模型，继承 BaseModel
+# Pydantic 会根据类型注解自动校验请求体 JSON
 class Item(BaseModel):
-    name: str
-    price: float
-    is_offer: bool = False
+    name: str                # 必填字段，字符串类型
+    price: float             # 必填字段，浮点数类型
+    is_offer: bool = False   # 可选字段，默认 False
 
+# @app.post 装饰器：注册 POST 路由，用于创建资源
+# 参数 item: Item 表示请求体会被自动解析为 Item 对象
 @app.post("/items/")
 def create_item(item: Item):
+    # item 已经过校验，是 Item 实例
+    # 直接返回模型，FastAPI 自动转 JSON
     return item
 
 # 请求示例：
@@ -510,23 +553,30 @@ def create_item(item: Item):
 ## Demo 1: 嵌套模型
 
 \`\`\`python
+# 导入 FastAPI 主类，用于创建应用实例和定义路由
 from fastapi import FastAPI
+# 导入 BaseModel，Pydantic 的基础模型类，用于定义数据结构并自动校验
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
+# 定义图片模型
 class Image(BaseModel):
-    url: str
-    name: str
+    url: str       # 图片 URL，必填
+    name: str      # 图片名称，必填
 
+# 定义商品模型，嵌套 Image 模型
 class Item(BaseModel):
-    name: str
-    description: str = None
-    price: float
-    image: Image  # 嵌套模型
+    name: str               # 必填字段
+    description: str = None # 可选字段，默认 None
+    price: float            # 必填字段
+    image: Image  # 嵌套模型：字段类型是另一个 BaseModel
 
+# @app.post 装饰器：注册 POST 路由
 @app.post("/items/")
 def create_item(item: Item):
+    # item.image 是 Image 对象，可逐层访问
     return item
 
 # 请求示例：
@@ -566,20 +616,26 @@ def create_item(item: Item):
 ## Demo 3: 可选字段
 
 \`\`\`python
+# 导入 FastAPI 主类，用于创建应用实例和定义路由
 from fastapi import FastAPI
+# 导入 BaseModel，Pydantic 的基础模型类，用于定义数据结构并自动校验
 from pydantic import BaseModel
+# 导入 Optional，表示参数可以是指定类型或 None
 from typing import Optional
 
+# 创建应用实例
 app = FastAPI()
 
 class Item(BaseModel):
-    name: str
-    description: Optional[str] = None  # 可选字段
-    price: float
-    tax: Optional[float] = None
+    name: str                       # 必填字段
+    description: Optional[str] = None  # 可选字段，可以是 str 或 None
+    price: float                    # 必填字段
+    tax: Optional[float] = None     # 可选字段，可以是 float 或 None
 
+# @app.post 装饰器：注册 POST 路由
 @app.post("/items/")
 def create_item(item: Item):
+    # item 是 Item 实例，可选字段不传时为 None
     return item
 
 # 请求示例：
@@ -593,15 +649,22 @@ def create_item(item: Item):
 ## Demo 4: 请求体 + 路径参数
 
 \`\`\`python
+# 导入 FastAPI 主类，用于创建应用实例和定义路由
 from fastapi import FastAPI
+# 导入 BaseModel，Pydantic 的基础模型类，用于定义数据结构并自动校验
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
+# 定义商品模型
 class Item(BaseModel):
-    name: str
-    price: float
+    name: str       # 必填字段
+    price: float    # 必填字段
 
+# @app.put 装饰器：注册 PUT 路由，用于更新资源
+# 参数 item_id: int 是路径参数（在路径 {} 里）
+# 参数 item: Item 是请求体（Pydantic 模型）
 @app.put("/items/{item_id}")
 def update_item(item_id: int, item: Item):
     # item_id 是路径参数，item 是请求体（Pydantic 模型）
@@ -678,23 +741,29 @@ def login(username: str = Form(...), password: str = Form(...)):
 ## Demo 7: 文件上传
 
 \`\`\`python
-from fastapi import FastAPI, File, UploadFile
+# 导入 FastAPI 主类、File 和 UploadFile
 # File 用于声明文件字段，UploadFile 是文件对象类型
+from fastapi import FastAPI, File, UploadFile
 
+# 创建应用实例
 app = FastAPI()
 
 # 单文件上传
+# @app.post 装饰器：注册 POST 路由
+# 参数 file: UploadFile = File(...) 声明文件字段，... 表示必填
 @app.post("/upload/")
 def upload_file(file: UploadFile = File(...)):
     # UploadFile 对象有 filename、content_type、size 等属性
     # 可用 await file.read() 读取内容
+    # file.filename 是上传文件的原始文件名
     return {"filename": file.filename}
 
 # 多文件上传
+# list[UploadFile] 接收多个文件
 @app.post("/upload/multiple/")
 def upload_files(files: list[UploadFile] = File(...)):
-    # list[UploadFile] 接收多个文件
     # 列表推导式提取每个文件的文件名
+    # f.filename 获取每个上传文件的文件名
     return {"filenames": [f.filename for f in files]}
 \`\`\`
 

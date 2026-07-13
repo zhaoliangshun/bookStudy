@@ -896,14 +896,21 @@ def get_user_items(
 
 \`\`\`python
 # 风格 A：page + page_size（页码风格）
+# 适合面向用户/前端的接口，"第 2 页"比"从第 10 条开始"更直观
 @app.get("/items")
 def list_items(page: int = 1, page_size: int = 10):
+    # page=1 时 offset=0，page=2 时 offset=page_size，以此类推
+    # 公式：offset = (page - 1) * page_size
     offset = (page - 1) * page_size
+    # 列表切片：从 offset 开始取 page_size 个
     return items[offset : offset + page_size]
 
 # 风格 B：offset + limit（偏移风格）
+# 适合面向数据库/内部 API，直接对应 SQL 的 OFFSET ... LIMIT ...
 @app.get("/items")
 def list_items(offset: int = 0, limit: int = 10):
+    # offset 表示跳过前 N 条，limit 表示取多少条
+    # 直接切片，无需转换
     return items[offset : offset + limit]
 \`\`\`
 
@@ -1009,10 +1016,16 @@ def search(keyword: str, page: int = 1):
 ### 坑 3：List 参数的传法
 
 \`\`\`python
+# 从 typing 导入 List（Python 3.9+ 可以直接用 list[str]）
 from typing import List
 
+# List[str] 表示参数是字符串列表
+# URL 传法：?tags=a&tags=b（同一个 key 传多次）
+# FastAPI 会自动收集成 ["a", "b"]
 @app.get("/items")
 def list_items(tags: List[str] = []):
+    # 注意：默认值用 [] 是可变默认值陷阱（见下文坑 4）
+    # 实际项目中推荐用 None 再在函数里初始化
     return {"tags": tags}
 \`\`\`
 
@@ -1025,8 +1038,12 @@ def list_items(tags: List[str] = []):
 \`\`\`python
 @app.get("/items")
 def list_items(tags: str = ""):
-    # tags = "a,b,c"
+    # tags = "a,b,c"（前端用逗号拼接传过来）
+    # tags.split(",") 按逗号拆分成 ["a", "b", "c"]
+    # t.strip() 去除每个元素两端的空格（防止 "a, b, c" 带空格）
+    # if t.strip() 过滤掉空字符串（防止 "a,,b" 产生空元素）
     tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+    # 返回解析后的列表
     return {"tags": tag_list}
 \`\`\`
 
@@ -1861,8 +1878,11 @@ def get_info(request: Request):
 \`\`\`python
 @app.get("/items/{item_id}")
 def get_item(item_id: int, request: Request):
-    # item_id 是路径参数
-    # request 是注入的请求对象
+    # item_id 是路径参数，FastAPI 自动从 URL 提取并转成 int
+    # request 是注入的请求对象，FastAPI 看到 Request 类型会自动传入
+    # request 不会出现在 /docs 文档里，因为它不是用户传的参数
+    # request.headers.get("user-agent") 读取请求头里的 UA 信息
+    # headers 大小写不敏感，"user-agent" 和 "User-Agent" 等价
     return {"item_id": item_id, "ua": request.headers.get("user-agent")}
 \`\`\`
 
@@ -2528,12 +2548,15 @@ def get_ip(request: Request):
 \`\`\`python
 @app.get("/test")
 def test(request: Request):
+    # request.url 是 URL 对象，可以分解出各部分
     url = request.url
     # url.query 是查询字符串（如 "a=1&b=2"），不是字典
-    # 要拿成字典用 request.query_params
+    # 它是原始字符串，需要自己解析才能用
+    # 要拿成字典用 request.query_params（QueryParams 对象）
+    # dict() 把 QueryParams 对象转成普通字典
     return {
-        "query_string": url.query,           # "a=1&b=2"
-        "query_params": dict(request.query_params)  # {"a": "1", "b": "2"}
+        "query_string": url.query,           # "a=1&b=2"（原始字符串）
+        "query_params": dict(request.query_params)  # {"a": "1", "b": "2"}（字典）
     }
 \`\`\`
 

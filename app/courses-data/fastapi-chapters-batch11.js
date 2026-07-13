@@ -105,22 +105,29 @@ print(result)  # 输出：{'data': 42}
 ### 常见错误 1：忘记 await
 
 \`\`\`python filename="忘记 await 的坑"
+# 导入 asyncio 模块，提供事件循环和异步原语
 import asyncio
 
+# 定义协程函数 slow_op，模拟一个耗时操作
 async def slow_op():
+    # await 等待异步 sleep 完成，期间让出 CPU 给事件循环
     await asyncio.sleep(1)
+    # 返回字符串结果
     return "done"
 
 async def main():
     # ❌ 错误：忘记 await，result 是协程对象，不是 "done"
+    # 直接调用协程函数只会创建协程对象，不会执行函数体
     result = slow_op()
     print(result)  # <coroutine object slow_op at 0x...>
     # 而且会有 RuntimeWarning: coroutine was never awaited
 
     # ✅ 正确：加 await
+    # await 会驱动协程执行，并等待其返回结果
     result = await slow_op()
     print(result)  # done
 
+# asyncio.run 创建事件循环并运行 main 协程直至完成
 asyncio.run(main())
 \`\`\`
 
@@ -148,43 +155,58 @@ async def good():
 如果两个协程有 \`await\`，顺序 \`await\` 它们是**串行**的（总耗时 = 两者之和）。要并发，必须用 \`create_task\` 把它们包装成任务。
 
 \`\`\`python filename="串行 vs 并发对比"
+# 导入 asyncio 用于异步编程和事件循环
 import asyncio
+# 导入 time 用于测量耗时
 import time
 
+# 定义协程函数 fetch_user：模拟从数据库查询用户
 async def fetch_user():
     # 模拟 1 秒的数据库查询
     await asyncio.sleep(1)
+    # 返回用户字典
     return {"user": "Alice"}
 
+# 定义协程函数 fetch_orders：模拟从数据库查询订单列表
 async def fetch_orders():
     # 模拟 2 秒的数据库查询
     await asyncio.sleep(2)
+    # 返回订单列表
     return [{"order": 1}, {"order": 2}]
 
+# 串行执行：依次 await 两个协程
 async def serial():
     # ❌ 串行：先等 user 再等 orders，总耗时 1 + 2 = 3 秒
+    # 记录开始时间用于计算耗时
     start = time.time()
+    # 顺序 await：第一个完成才开始第二个
     user = await fetch_user()
     orders = await fetch_orders()
+    # time.time() - start 计算实际耗时，:.2f 保留两位小数
     print(f"串行耗时: {time.time() - start:.2f}s")  # 3.00s
     return {"user": user, "orders": orders}
 
+# 并发执行：用 create_task 同时调度两个协程
 async def concurrent():
     # ✅ 并发：两个任务同时开始，总耗时 = max(1, 2) = 2 秒
     start = time.time()
     # create_task 立即把协程丢进事件循环开始调度
+    # 返回 Task 对象，Task 是协程的"包装"，可被事件循环调度
     task1 = asyncio.create_task(fetch_user())
     task2 = asyncio.create_task(fetch_orders())
     # 两个 await 等的是已经在跑的任务，谁先完成谁先返回
+    # 由于两个任务已在并发执行，await 只是拿结果，不会重复等待
     user = await task1
     orders = await task2
     print(f"并发耗时: {time.time() - start:.2f}s")  # 2.00s
     return {"user": user, "orders": orders}
 
+# 主协程：依次演示串行和并发两种方式
 async def main():
     await serial()
     await concurrent()
 
+# 启动事件循环运行 main
 asyncio.run(main())
 \`\`\`
 
@@ -193,22 +215,29 @@ asyncio.run(main())
 ### 常见错误 3：create_task 后立刻 await
 
 \`\`\`python filename="错误的并发写法"
+# 导入 asyncio 模块
 import asyncio
 
+# 定义协程函数 op：接收参数 n，返回 n*2
 async def op(n):
+    # 模拟 1 秒耗时操作
     await asyncio.sleep(1)
+    # 返回 n 的两倍
     return n * 2
 
 async def bad():
     # ❌ 这样写还是串行！因为 create_task 后立刻 await，等于没并发
+    # create_task 刚把任务放入事件循环，紧接着 await 就阻塞等待它完成
     a = await asyncio.create_task(op(1))  # 等 1 秒
     b = await asyncio.create_task(op(2))  # 再等 1 秒
     # 总耗时 2 秒
 
 async def good():
     # ✅ 先 create_task 两个任务，再一起 await
+    # 两个任务几乎同时进入事件循环，开始并发执行
     t1 = asyncio.create_task(op(1))
     t2 = asyncio.create_task(op(2))
+    # 此时两个任务都在跑，await 只是等结果，不会重复执行
     a = await t1
     b = await t2
     # 总耗时 1 秒（并发）
@@ -250,34 +279,46 @@ asyncio.run(main())
 \`gather\` 默认行为：任意一个协程抛异常，整个 gather 立刻抛出，其他协程**不会被取消**（继续跑但结果丢弃）。要改这个行为，用 \`return_exceptions=True\`。
 
 \`\`\`python filename="gather 异常处理"
+# 导入 asyncio 模块
 import asyncio
 
+# 定义一个会成功的协程
 async def good():
+    # 模拟 1 秒耗时
     await asyncio.sleep(1)
+    # 返回成功字符串
     return "成功"
 
+# 定义一个会抛异常的协程
 async def bad():
+    # 模拟 0.5 秒耗时（先于 good 完成）
     await asyncio.sleep(0.5)
+    # 主动抛出 ValueError 异常
     raise ValueError("故意失败")
 
 async def main():
     # 默认：遇到异常立刻抛出
+    # gather 任一协程抛异常，整个 gather 立即抛出
     try:
         await asyncio.gather(good(), bad())
     except ValueError as e:
+        # 捕获 ValueError 异常并打印
         print(f"捕获异常: {e}")  # 捕获异常: 故意失败
 
     # return_exceptions=True：异常不抛出，作为结果返回
+    # 这样不会因为一个任务失败而中断其他任务的结果获取
     results = await asyncio.gather(good(), bad(), return_exceptions=True)
     print(results)
     # ['成功', ValueError('故意失败')]
     # 可以遍历 results 判断每个任务是成功还是异常
     for r in results:
+        # isinstance 判断元素是否是 Exception 实例（即失败的任务）
         if isinstance(r, Exception):
             print(f"任务失败: {r}")
         else:
             print(f"任务成功: {r}")
 
+# 启动事件循环
 asyncio.run(main())
 \`\`\`
 
@@ -455,7 +496,9 @@ asyncio.run(main())
 如果只有同步库可用，用 \`run_in_executor\` 把阻塞调用扔到线程池，不占事件循环。
 
 \`\`\`python filename="run_in_executor 救场"
+# 导入 asyncio 用于异步编程
 import asyncio
+# 导入 time 用于计时
 import time
 import requests  # 同步 HTTP 库
 
@@ -463,22 +506,27 @@ async def fetch_sync(url):
     # 把同步阻塞的 requests.get 扔到默认线程池跑
     # 事件循环在此期间能继续跑别的协程
     # 原理：run_in_executor 把函数交给线程池，返回 Future，await 它不阻塞事件循环
+    # 获取当前事件循环对象
     loop = asyncio.get_event_loop()
     # 第一个参数 None 表示用默认线程池（ThreadPoolExecutor）
     # 第二个参数是要跑的函数
     # 后面的参数是传给函数的参数
     result = await loop.run_in_executor(None, requests.get, url)
+    # 返回 HTTP 状态码（如 200 表示成功）
     return result.status_code
 
 async def main():
     # 这样并发调用就不会互相卡死
     # 两个 requests.get 各自在独立线程跑，主事件循环不受影响
+    # gather 并发调度两个 fetch_sync 协程
     results = await asyncio.gather(
         fetch_sync("https://httpbin.org/delay/2"),
         fetch_sync("https://httpbin.org/delay/2"),
     )
+    # 打印两个请求的状态码列表
     print(results)
 
+# 启动事件循环
 asyncio.run(main())
 \`\`\`
 

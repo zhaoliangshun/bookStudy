@@ -130,28 +130,33 @@ uvicorn main:app --reload
 ## Demo 2：多个路由
 
 \`\`\`python
-# 导入 FastAPI 类
+# 导入 FastAPI 类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 
 # 创建应用实例
 app = FastAPI()
 
 # 一个应用可以有多个路由，每个路由处理一个 URL
+# @app.get 装饰器：注册 GET 路由，路径为根路径 /
 @app.get("/")
 def home():
+    # 返回字典，FastAPI 自动转 JSON
     return {"page": "首页"}
 
+# @app.get 装饰器：注册 GET 路由，路径为 /about
 @app.get("/about")
 def about():
     # 访问 http://localhost:8000/about
     return {"page": "关于我们"}
 
+# @app.get 装饰器：注册 GET 路由，路径为 /users/me
+# 注意：更具体的路径要放在前面
+# /users/me 要写在 /users/{id} 之前，否则 me 会被当成 id
 @app.get("/users/me")
 def get_current_user():
-    # 注意：更具体的路径要放在前面
-    # /users/me 要写在 /users/{id} 之前，否则 me 会被当成 id
     return {"user": "当前登录用户"}
 
+# @app.get 装饰器：注册 GET 路由，{user_id} 是路径参数
 @app.get("/users/{user_id}")
 def get_user(user_id: int):
     # 参数 user_id: int 表示从路径提取并自动转为整数
@@ -175,7 +180,7 @@ def get_user(user_id: int):
 #   - 点击 "Try it out" 直接发请求测试
 #   - 看到每个接口的请求参数和响应格式
 
-# 导入 FastAPI 类
+# 导入 FastAPI 类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 
 # 创建应用实例
@@ -183,6 +188,7 @@ app = FastAPI()
 
 # summary 参数：接口摘要，显示在文档列表里
 # description 参数：接口详细描述
+# @app.get 装饰器：注册 GET 路由，{item_id} 是路径参数
 @app.get("/items/{item_id}", summary="获取商品", description="根据 ID 查询商品详情")
 def get_item(item_id: int, q: str | None = None):
     """
@@ -192,31 +198,37 @@ def get_item(item_id: int, q: str | None = None):
     """
     # 参数 item_id: int 路径参数，自动转整数
     # 参数 q: str | None = None 查询参数，可选
+    # 返回字典，FastAPI 自动转 JSON
     return {"item_id": item_id, "q": q}
 \`\`\`
 
 ## Demo 4：HTTP 方法对照
 
 \`\`\`python
-# 导入 FastAPI 类
+# 导入 FastAPI 类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 
 # 创建应用实例
 app = FastAPI()
 
 # FastAPI 为每种 HTTP 方法提供了对应的装饰器
+# @app.get 装饰器：注册 GET 路由，用于查询/读取数据
 @app.get("/items")           # GET    —— 查询/读取数据
 def list_items(): ...
 
+# @app.post 装饰器：注册 POST 路由，用于新建数据
 @app.post("/items")          # POST   —— 新建数据
 def create_item(): ...
 
+# @app.put 装饰器：注册 PUT 路由，用于完整更新
 @app.put("/items/{id}")      # PUT    —— 完整更新（替换整个资源）
 def update_item(): ...
 
+# @app.patch 装饰器：注册 PATCH 路由，用于部分更新
 @app.patch("/items/{id}")    # PATCH  —— 部分更新（只改几个字段）
 def patch_item(): ...
 
+# @app.delete 装饰器：注册 DELETE 路由，用于删除数据
 @app.delete("/items/{id}")   # DELETE —— 删除数据
 def delete_item(): ...
 
@@ -283,25 +295,28 @@ def read_item(item_id: int):
 ## Demo 3：多个路径参数
 
 \`\`\`python
-# 导入 FastAPI 类
+# 导入 FastAPI 类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 
 # 创建应用实例
 app = FastAPI()
 
 # 一个路径可以有多个参数，按顺序对应
+# @app.get 装饰器：注册 GET 路由，路径含两个路径参数
 @app.get("/users/{user_id}/posts/{post_id}")
 def get_post(user_id: int, post_id: int):
     # 参数 user_id: int 和 post_id: int 都是路径参数
     # 访问 /users/1/posts/100
     # user_id=1, post_id=100
+    # 两个参数都有 int 类型注解，自动校验和转换
+    # 返回字典，FastAPI 自动转 JSON
     return {"user_id": user_id, "post_id": post_id}
 \`\`\`
 
 ## Demo 4：路径顺序很重要（踩坑点）
 
 \`\`\`python
-# 导入 FastAPI 类
+# 导入 FastAPI 类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 
 # 创建应用实例
@@ -309,20 +324,24 @@ app = FastAPI()
 
 # ❌ 错误顺序：/users/me 会被 /users/{user_id} 抢先匹配
 # 因为 FastAPI 按定义顺序匹配，me 会被当成 user_id
+# @app.get 装饰器：注册 GET 路由，{user_id} 是动态路径参数
 @app.get("/users/{user_id}")
 def get_user(user_id: str):
     return {"user_id": user_id}
 
+# @app.get 装饰器：注册 GET 路由，/users/me 是固定路径
 @app.get("/users/me")
 def get_me():
     # 这条永远匹配不到！/users/me 已经被上面拦截，user_id="me"
     return {"user": "我"}
 
 # ✅ 正确做法：固定路径放在动态路径前面
+# @app.get 装饰器：先定义固定路径 /users/me
 @app.get("/users/me")       # 先定义固定路径
 def get_me():
     return {"user": "我"}
 
+# @app.get 装饰器：再定义动态路径 /users/{user_id}
 @app.get("/users/{user_id}")  # 再定义动态路径
 def get_user(user_id: str):
     return {"user_id": user_id}
@@ -333,7 +352,7 @@ def get_user(user_id: str):
 ## Demo 5：枚举参数（限定取值）
 
 \`\`\`python
-# 导入 FastAPI 类
+# 导入 FastAPI 类，用于创建应用实例和定义路由
 # 导入 Enum，Python 标准库的枚举类，用于定义一组固定取值
 from fastapi import FastAPI
 from enum import Enum
@@ -350,12 +369,14 @@ class ModelName(str, Enum):
     vgg = "vgg"
 
 # 参数类型写成 ModelName，FastAPI 会限制只能传这三个值之一
+# @app.get 装饰器：注册 GET 路由，{model_name} 是路径参数
 @app.get("/models/{model_name}")
 def get_model(model_name: ModelName):
     # 参数 model_name: ModelName 表示路径参数必须是枚举成员之一
     # model_name 已经是枚举成员，不是字符串
     # 访问 /models/alexnet  → model_name 是 ModelName.alexnet
     # 访问 /models/unknown  → 422 错误，提示可选值
+    # model_name.value 取枚举的字符串值
     return {
         "model": model_name,
         "value": model_name.value,   # .value 取字符串值
@@ -365,7 +386,7 @@ def get_model(model_name: ModelName):
 ## Demo 6：路径参数包含路径
 
 \`\`\`python
-# 导入 FastAPI 类
+# 导入 FastAPI 类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 
 # 创建应用实例
@@ -374,11 +395,13 @@ app = FastAPI()
 # 默认 {file_path} 不会匹配含 / 的路径
 # 加 :path 后缀可以让它匹配完整路径（含斜杠）
 # :path 是 FastAPI 的特殊转换器，告诉它匹配任意字符（包括 /）
+# @app.get 装饰器：注册 GET 路由，{file_path:path} 匹配含斜杠的路径
 @app.get("/files/{file_path:path}")
 def read_file(file_path: str):
     # 参数 file_path: str 接收完整路径
     # 访问 /files/home/user/docs/readme.txt
     # file_path = "home/user/docs/readme.txt"（完整路径）
+    # 返回字典，FastAPI 自动转 JSON
     return {"file_path": file_path}
 
 # 用途：文件浏览器、静态资源代理
@@ -442,12 +465,13 @@ def list_items(skip: int = 0, limit: int = 10):
 ## Demo 2：必填 vs 可选
 
 \`\`\`python
-# 导入 FastAPI 类
+# 导入 FastAPI 类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 
 # 创建应用实例
 app = FastAPI()
 
+# @app.get 装饰器：注册 GET 路由，路径为 /search
 @app.get("/search")
 def search(keyword: str, page: int = 1):
     # 参数 keyword: str 没有默认值 → 必填查询参数
@@ -456,13 +480,14 @@ def search(keyword: str, page: int = 1):
     # 访问 /search?keyword=python        → keyword="python", page=1
     # 访问 /search?keyword=py&page=2     → keyword="py", page=2
     # 访问 /search                       → 422 错误，缺少 keyword
+    # 返回字典，FastAPI 自动转 JSON
     return {"keyword": keyword, "page": page}
 \`\`\`
 
 ## Demo 3：可选参数（None 写法）
 
 \`\`\`python
-# 导入 FastAPI 类
+# 导入 FastAPI 类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 # 导入 Union，typing 模块的工具，用于声明多种可能的类型
 # Python 3.10+ 可直接用 str | None 代替 Union[str, None]
@@ -473,6 +498,7 @@ app = FastAPI()
 
 # 当参数可以"不传"时，用 None 作为默认值
 # Union[str, None] 表示：可以是字符串，也可以是 None
+# @app.get 装饰器：注册 GET 路由，路径为 /items
 @app.get("/items")
 def list_items(q: Union[str, None] = None):
     # 参数 q: Union[str, None] = None 表示 q 可以是字符串或 None

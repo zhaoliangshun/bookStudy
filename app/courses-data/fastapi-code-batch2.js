@@ -25,6 +25,8 @@ Pydantic 是 FastAPI 的数据校验引擎。你用类型注解定义数据模�
 ## Demo 1：基本校验规则
 
 \`\`\`python
+# 导入 BaseModel 和 Field
+# Field 用于给字段加约束（长度、范围、正则等）
 from pydantic import BaseModel, Field
 
 # 字段校验规则全写在 Field() 里
@@ -38,7 +40,7 @@ class User(BaseModel):
         le=150,             # less than or equal：<= 150
     )
     email: str = Field(
-        pattern=r"^[\\w.-]+@[\\w.-]+\\.\\w+$",  # 正则校验邮箱格式
+        pattern=r"^[\\w.-]+@[\\w.-]+\\.\\w+$",  # pattern：正则校验邮箱格式
     )
     score: float = Field(
         gt=0,               # greater than：> 0
@@ -55,32 +57,41 @@ class User(BaseModel):
 ## Demo 2：常用校验器一览
 
 \`\`\`python
+# 导入 BaseModel、Field、validator
+# validator 是 Pydantic v1 的自定义校验器装饰器（v2 用 field_validator）
 from pydantic import BaseModel, Field, validator
+# 导入 List，typing 模块的类型注解
 from typing import List
+# 导入 date，日期类型
 from datetime import date
 
 class Product(BaseModel):
     # 字符串校验
+    # strip_whitespace=True：自动去除首尾空格
     name: str = Field(min_length=1, max_length=100, strip_whitespace=True)  # 自动去首尾空格
     # 数字校验
     price: float = Field(gt=0, le=999999)
     stock: int = Field(ge=0, default=0)  # 库存 >= 0，默认 0
     # 列表校验
+    # min_items/max_items：列表元素数量限制
     tags: List[str] = Field(default=[], min_items=0, max_items=10)  # 最多 10 个标签
     # 日期校验
     expiry_date: date | None = Field(default=None)  # 可选日期
 
     # 自定义校验器：用 @validator 装饰器
+    # 参数是要校验的字段名
     @validator("name")
     def name_not_empty(cls, v):
-        # cls 是类本身，v 是字段值
+        # cls 是类本身（类方法）
+        # v 是字段值
         if not v.strip():
             raise ValueError("名称不能为空")
-        return v.strip()  # 返回处理后的值
+        return v.strip()  # 校验通过必须返回值（可以返回处理后的值）
 
     @validator("price")
     def price_two_decimals(cls, v):
         # 确保价格最多两位小数
+        # round(数值, 小数位) 四舍五入
         return round(v, 2)
 \`\`\`
 
@@ -204,19 +215,24 @@ def login(
 ## Demo 2：表单 + 文件上传
 
 \`\`\`python
+# 导入 FastAPI 类、File（文件声明）、UploadFile（文件类型）、Form（表单字段）
 from fastapi import FastAPI, File, UploadFile, Form
 
+# 创建应用实例
 app = FastAPI()
 
 # 上传单个文件：UploadFile 类型
+# async def 异步函数，因为文件读取是异步的
 @app.post("/upload")
 async def upload_file(file: UploadFile = File()):
+    # 参数 file: UploadFile = File() 表示从 multipart/form-data 接收文件
     # UploadFile 是异步文件对象，有以下属性：
     # file.filename  → 原始文件名
     # file.content_type → MIME 类型（如 image/png）
     # file.size      → 文件大小（需要先读取）
 
     # 读取文件内容
+    # await file.read() 异步读取全部字节内容
     content = await file.read()  # await 读取字节内容
 
     return {
@@ -273,17 +289,23 @@ async def upload_with_info(
 ## Demo 5：保存上传的文件
 
 \`\`\`python
-import aiofiles  # pip install aiofiles（异步文件操作库）
+# 导入 aiofiles，异步文件操作库
+# pip install aiofiles
+import aiofiles
 
+# async def 异步函数
 @app.post("/upload-save")
 async def upload_and_save(file: UploadFile = File()):
+    # 参数 file: UploadFile = File() 接收上传的文件
     # 保存到本地磁盘
+    # f"uploads/{file.filename}" 用 f-string 拼接保存路径
     save_path = f"uploads/{file.filename}"
 
     # aiofiles 提供异步文件写入，不阻塞事件循环
+    # "wb" 表示二进制写入模式
     async with aiofiles.open(save_path, "wb") as f:
-        content = await file.read()
-        await f.write(content)
+        content = await file.read()  # 异步读取文件内容
+        await f.write(content)       # 异步写入磁盘
 
     return {"saved": save_path, "size": len(content)}
 \`\`\`
@@ -291,19 +313,24 @@ async def upload_and_save(file: UploadFile = File()):
 ## Demo 6：限制文件大小
 
 \`\`\`python
+# 导入 HTTPException
 from fastapi import HTTPException
 
+# 最大文件大小：5MB（5 * 1024 * 1024 字节）
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
 @app.post("/upload-limited")
 async def upload_limited(file: UploadFile = File()):
+    # 参数 file: UploadFile = File() 接收上传的文件
     # 读取文件内容
     content = await file.read()
 
     # 检查文件大小
     if len(content) > MAX_FILE_SIZE:
+        # 413 Payload Too Large：请求体过大
         raise HTTPException(
             status_code=413,  # 413 Payload Too Large
+            # // 是整除，避免出现小数
             detail=f"文件不能超过 {MAX_FILE_SIZE // 1024 // 1024}MB",
         )
 
@@ -383,13 +410,18 @@ def headers_demo(
 ## Demo 4：设置响应头
 
 \`\`\`python
-from fastapi import FastAPI, Response  # Response 用于设置响应
+# 导入 FastAPI 类和 Response 类
+# Response 用于设置响应头和 Cookie
+from fastapi import FastAPI, Response
 
+# 创建应用实例
 app = FastAPI()
 
+# 参数 response: Response 由 FastAPI 自动注入
 @app.get("/set-headers")
 def set_headers(response: Response):
     # 在函数中直接修改 response 对象
+    # response.headers 是字典，可以直接赋值
     response.headers["X-Custom-Header"] = "my-value"
     response.headers["X-Request-Time"] = "2024-01-01T00:00:00Z"
     # 也可以设置标准头
@@ -418,20 +450,23 @@ def read_cookie(session_id: str | None = Cookie(default=None)):
 ## Demo 6：设置 Cookie
 
 \`\`\`python
+# 导入 JSONResponse，用于返回 JSON 响应（可设置 Cookie）
 from fastapi.responses import JSONResponse
 
 @app.post("/login-cookie")
 def login_with_cookie():
     # 创建响应对象
+    # JSONResponse 可以自定义状态码、响应头、Cookie
     response = JSONResponse(content={"msg": "登录成功"})
 
     # 设置 Cookie：key, value, 可选参数
+    # set_cookie 的参数：
     response.set_cookie(
-        key="session_id",
-        value="abc123xyz",
+        key="session_id",     # Cookie 名
+        value="abc123xyz",    # Cookie 值
         httponly=True,      # 只能通过 HTTP 读取，JS 无法访问（防 XSS）
         max_age=3600,       # 有效期 3600 秒（1 小时）
-        secure=True,        # 仅 HTTPS 传输
+        secure=True,        # 仅 HTTPS 传输（生产环境用）
         samesite="lax",     # 同站请求才发送 Cookie（防 CSRF）
     )
 
@@ -441,12 +476,16 @@ def login_with_cookie():
 ## Demo 7：获取所有请求头
 
 \`\`\`python
+# 导入 Request，请求对象类
 from fastapi import Request
 
+# 参数 request: Request 由 FastAPI 自动注入
+# async def 异步函数
 @app.get("/all-headers")
 async def all_headers(request: Request):
     # Request 对象包含完整请求信息
     # request.headers 是字典，包含了所有请求头
+    # .get(key) 取某个头，不存在返回 None
     return {
         "host": request.headers.get("host"),
         "user_agent": request.headers.get("user-agent"),
@@ -490,10 +529,15 @@ async def all_headers(request: Request):
 ## Demo 1：手动设置状态码
 
 \`\`\`python
-from fastapi import FastAPI, status  # status 模块有所有状态码常量
+# 导入 FastAPI 类和 status 模块
+# status 模块包含所有 HTTP 状态码常量
+from fastapi import FastAPI, status
 
+# 创建应用实例
 app = FastAPI()
 
+# status_code 参数：设置成功响应的状态码
+# status.HTTP_201_CREATED = 201（资源创建成功）
 @app.post("/items", status_code=status.HTTP_201_CREATED)  # 创建成功返回 201
 def create_item():
     # 装饰器中设置默认状态码，所有成功响应都返回 201
@@ -502,7 +546,9 @@ def create_item():
 # 也可以直接在函数中动态设置
 @app.delete("/items/{item_id}")
 def delete_item(item_id: int):
+    # 参数 item_id: int 路径参数
     # 删除成功返回 204 No Content
+    # Response(status_code=...) 返回空响应
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # 或者用 status_code 参数返回
@@ -514,8 +560,11 @@ def create_user():
 ## Demo 2：HTTPException 抛异常
 
 \`\`\`python
+# 导入 FastAPI 类和 HTTPException
+# HTTPException：FastAPI 内置异常类，抛出后自动转成 HTTP 错误响应
 from fastapi import FastAPI, HTTPException
 
+# 创建应用实例
 app = FastAPI()
 
 # 模拟数据库
@@ -523,12 +572,14 @@ items = {"1": "苹果", "2": "香蕉"}
 
 @app.get("/items/{item_id}")
 def get_item(item_id: str):
+    # 参数 item_id: str 路径参数（字符串）
     # 查找数据，没找到就返回 404
     if item_id not in items:
+        # raise 抛出异常后，后续代码不再执行
         raise HTTPException(
-            status_code=404,            # 状态码
-            detail=f"商品 {item_id} 不存在",  # 错误详情
-            # 还可以加自定义头
+            status_code=404,            # 状态码：404 资源不存在
+            detail=f"商品 {item_id} 不存在",  # detail：错误详情，作为响应体返回
+            # headers：附加自定义响应头
             headers={"X-Error-Code": "ITEM_NOT_FOUND"},
         )
     return {"item": items[item_id]}
@@ -567,20 +618,29 @@ def register(username: str, email: str):
 ## Demo 4：全局异常处理
 
 \`\`\`python
+# 导入 FastAPI 类和 Request 类
 from fastapi import FastAPI, Request
+# 导入 JSONResponse
 from fastapi.responses import JSONResponse
 
+# 创建应用实例
 app = FastAPI()
 
 # 注册全局异常处理器，捕获所有未被处理的异常
+# @app.exception_handler(Exception) 注册针对 Exception 的处理器
+# Exception 是所有异常的基类，所以能兜底所有未捕获的异常
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    # 参数 request: Request 当前请求对象
+    # 参数 exc: Exception 抛出的异常实例
     # 任何未捕获的异常都会到这里
     return JSONResponse(
         status_code=500,
         content={
             "error": "服务器内部错误",
-            "detail": str(exc),  # 生产环境别暴露详细错误信息！
+            # str(exc) 把异常转成字符串
+            # 生产环境别暴露详细错误信息！
+            "detail": str(exc),
         },
     )
 \`\`\`
@@ -588,9 +648,15 @@ async def global_exception_handler(request: Request, exc: Exception):
 ## Demo 5：自定义异常处理器（针对特定异常）
 
 \`\`\`python
+# @app.exception_handler(异常类) 注册针对特定异常的处理器
+
 # 只处理 HTTPException
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
+    # 参数 request: Request 当前请求对象
+    # 参数 exc: HTTPException 异常实例
+    # exc.status_code 异常的状态码
+    # exc.detail 异常的详情
     return JSONResponse(
         status_code=exc.status_code,
         content={
@@ -602,6 +668,8 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 # 只处理 ValueError
 @app.exception_handler(ValueError)
 async def value_error_handler(request: Request, exc: ValueError):
+    # 参数 request: Request 当前请求对象
+    # 参数 exc: ValueError 异常实例
     return JSONResponse(
         status_code=400,
         content={"error": str(exc)},
@@ -611,13 +679,18 @@ async def value_error_handler(request: Request, exc: ValueError):
 ## Demo 6：自定义异常类
 
 \`\`\`python
-# 定义自己的异常类
+# 定义自己的异常类（继承 Exception）
+# 自定义异常方便业务里 raise，由统一的 handler 处理
 class ItemNotFoundError(Exception):
     def __init__(self, item_id: str):
+        # 参数 item_id: str 异常携带的商品 ID
         self.item_id = item_id
 
+# 注册针对 ItemNotFoundError 的处理器
 @app.exception_handler(ItemNotFoundError)
 async def item_not_found_handler(request: Request, exc: ItemNotFoundError):
+    # 参数 request: Request 当前请求对象
+    # 参数 exc: ItemNotFoundError 异常实例，可以取到 item_id
     return JSONResponse(
         status_code=404,
         content={"error": f"商品 {exc.item_id} 不存在"},
@@ -625,6 +698,7 @@ async def item_not_found_handler(request: Request, exc: ItemNotFoundError):
 
 @app.get("/products/{product_id}")
 def get_product(product_id: str):
+    # 参数 product_id: str 路径参数
     # 直接抛自定义异常，由上面的处理器处理
     raise ItemNotFoundError(product_id)
 \`\`\`

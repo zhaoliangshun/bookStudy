@@ -32,16 +32,18 @@ export const chapters = [
 
 \`\`\`python
 # database.py
+# 导入 create_engine，SQLAlchemy 创建数据库引擎的函数
 from sqlalchemy import create_engine
+# 导入 sessionmaker（会话工厂）和 declarative_base（模型基类）
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 # SQLite 连接字符串
 # sqlite:///./app.db 表示当前目录下的 app.db 文件
-# check_same_thread=False：允许多线程访问（FastAPI 需要）
+# check_same_thread=False：允许多线程访问（FastAPI 需要，因为请求可能在不同线程）
 SQLALCHEMY_DATABASE_URL = "sqlite:///./app.db"
 
-# create_engine 创建数据库引擎
-# connect_args 仅 SQLite 需要
+# create_engine 创建数据库引擎（连接池的封装）
+# connect_args 仅 SQLite 需要（其他数据库不用）
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
     connect_args={"check_same_thread": False},
@@ -49,9 +51,13 @@ engine = create_engine(
 
 # SessionLocal：数据库会话工厂
 # 每个请求创建一个 session，用完关闭
+# autocommit=False：不自动提交，需要手动 db.commit()
+# autoflush=False：不自动刷新，避免不必要的查询
+# bind=engine：绑定到上面的引擎
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Base：所有模型的基类
+# Base：所有 ORM 模型的基类
+# 定义模型时继承它，SQLAlchemy 才能识别
 Base = declarative_base()
 \`\`\`
 
@@ -59,17 +65,24 @@ Base = declarative_base()
 
 \`\`\`python
 # models.py
+# 导入 Column（字段）和各种类型（Integer/String/Float/Boolean）
 from sqlalchemy import Column, Integer, String, Float, Boolean
+# 从 database.py 导入 Base（模型基类）
 from database import Base
 
 # 每个类对应一张表，继承 Base
 class Item(Base):
+    # __tablename__ 指定表名
     __tablename__ = "items"  # 表名
 
     # Column(类型, 约束) 定义字段
+    # primary_key=True：主键
+    # index=True：建索引，加快查询
     id = Column(Integer, primary_key=True, index=True)  # 主键
+    # String(50)：最大长度 50 的字符串
     name = Column(String(50), index=True)               # 字符串，建索引
     price = Column(Float)                               # 浮点数
+    # default=False：默认值 False
     is_offer = Column(Boolean, default=False)           # 布尔，有默认值
 
 # 运行 Base.metadata.create_all(engine) 会自动建表
@@ -79,30 +92,39 @@ class Item(Base):
 
 \`\`\`python
 # main.py
+# 导入 FastAPI 类、Depends、HTTPException
 from fastapi import FastAPI, Depends, HTTPException
+# 导入 Session，SQLAlchemy 会话类型注解
 from sqlalchemy.orm import Session
+# 从 database.py 导入 engine、SessionLocal、Base
 from database import engine, SessionLocal, Base
+# 从 models.py 导入 Item 模型
 from models import Item
+# 导入 BaseModel，Pydantic 模型基类
 from pydantic import BaseModel
 
 # 建表（开发时用，生产用 Alembic 迁移）
+# create_all 会根据所有继承 Base 的模型创建表
 Base.metadata.create_all(bind=engine)
 
+# 创建应用实例
 app = FastAPI()
 
 # 用 yield 依赖管理 session（见依赖注入章）
+# yield 依赖：路由结束后自动执行 finally 里的清理代码
 def get_db():
-    db = SessionLocal()
+    db = SessionLocal()  # 创建会话
     try:
         yield db  # 把 session 给路由用
     finally:
-        db.close()  # 路由结束后关闭
+        db.close()  # 路由结束后关闭（释放连接回连接池）
 
-# Pydantic 模型（API 数据格式）
+# Pydantic 模型（API 数据格式，与数据库模型分开）
+# 分离的原因：API 格式和表结构可能不同（如不暴露某些字段）
 class ItemCreate(BaseModel):
-    name: str
-    price: float
-    is_offer: bool = False
+    name: str              # 商品名，必填
+    price: float           # 价格，必填
+    is_offer: bool = False # 是否优惠，可选（默认 False）
 \`\`\`
 
 ## Demo 4：CRUD 增删改查
@@ -111,22 +133,30 @@ class ItemCreate(BaseModel):
 # 接 Demo 3 的代码
 
 # CREATE 创建
+# response_model=dict 指定响应为字典
 @app.post("/items", response_model=dict)
 def create_item(item: ItemCreate, db: Session = Depends(get_db)):
+    # 参数 item: ItemCreate 请求体，自动校验
+    # 参数 db: Session = Depends(get_db) 依赖注入获取数据库会话
     # 1. 用 SQLAlchemy 模型创建对象
+    # **item.dict() 把 Pydantic 模型转成关键字参数
     db_item = Item(**item.dict())
-    # 2. 加到 session
+    # 2. 加到 session（此时还没写库）
     db.add(db_item)
     # 3. 提交事务（真正写库）
     db.commit()
-    # 4. 刷新获取自增 id
+    # 4. 刷新获取自增 id（commit 后 id 才生成）
     db.refresh(db_item)
     return {"id": db_item.id, "name": db_item.name}
 
 # READ 查询
 @app.get("/items/{item_id}")
 def read_item(item_id: int, db: Session = Depends(get_db)):
+    # 参数 item_id: int 路径参数
+    # 参数 db: Session = Depends(get_db) 依赖注入
     # db.query(模型).filter(条件).first() 查询
+    # Item.id == item_id 是过滤条件
+    # .first() 取第一条，没有返回 None
     item = db.query(Item).filter(Item.id == item_id).first()
     if item is None:
         raise HTTPException(status_code=404, detail="不存在")
@@ -135,7 +165,10 @@ def read_item(item_id: int, db: Session = Depends(get_db)):
 # READ 列表
 @app.get("/items")
 def list_items(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+    # 参数 skip: int = 0 跳过的记录数（分页用）
+    # 参数 limit: int = 10 每页数量
     # .offset().limit() 分页
+    # .all() 返回所有匹配记录
     items = db.query(Item).offset(skip).limit(limit).all()
     return items
 
@@ -145,7 +178,8 @@ def update_item(item_id: int, item: ItemCreate, db: Session = Depends(get_db)):
     db_item = db.query(Item).filter(Item.id == item_id).first()
     if db_item is None:
         raise HTTPException(status_code=404, detail="不存在")
-    # 更新字段
+    # 更新字段：遍历 item 的字段，逐个 setattr
+    # setattr(对象, 属性名, 值) 等价于 对象.属性名 = 值
     for key, value in item.dict().items():
         setattr(db_item, key, value)
     db.commit()  # 提交修改
@@ -157,8 +191,8 @@ def delete_item(item_id: int, db: Session = Depends(get_db)):
     db_item = db.query(Item).filter(Item.id == item_id).first()
     if db_item is None:
         raise HTTPException(status_code=404, detail="不存在")
-    db.delete(db_item)
-    db.commit()
+    db.delete(db_item)  # 标记删除
+    db.commit()         # 真正删除
     return {"msg": "已删除"}
 \`\`\`
 
@@ -166,34 +200,45 @@ def delete_item(item_id: int, db: Session = Depends(get_db)):
 
 \`\`\`python
 # 异步版本，配合 async def 路由
+# 导入 create_async_engine（异步引擎）和 AsyncSession（异步会话）
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+# 导入 sessionmaker（会话工厂）
 from sqlalchemy.orm import sessionmaker
 
 # aiosqlite 是 SQLite 的异步驱动
 # pip install aiosqlite
+# 连接字符串格式：数据库类型+驱动://地址
 ASYNC_URL = "sqlite+aiosqlite:///./app.db"
 
-# async engine
+# async engine：异步引擎
 async_engine = create_async_engine(ASYNC_URL)
+# 异步会话工厂
+# class_=AsyncSession：用异步会话类
+# expire_on_commit=False：commit 后不过期（避免再查询时阻塞）
 AsyncSessionLocal = sessionmaker(
     async_engine, class_=AsyncSession, expire_on_commit=False,
 )
 
-# 异步依赖
+# 异步依赖（async def + yield）
 async def get_db():
+    # async with 异步上下文管理器
     async with AsyncSessionLocal() as db:
         try:
             yield db
         finally:
-            await db.close()
+            await db.close()  # 异步关闭
 
 # 路由用 async def
 @app.get("/items/{item_id}")
 async def read_item(item_id: int, db: AsyncSession = Depends(get_db)):
-    # await db.execute(...) 执行查询
+    # 参数 item_id: int 路径参数
+    # 参数 db: AsyncSession = Depends(get_db) 依赖注入异步会话
+    # await db.execute(...) 执行查询（异步）
+    # select(Item).where(条件) 是 SQLAlchemy 2.0 风格的查询
     result = await db.execute(
         select(Item).where(Item.id == item_id)
     )
+    # scalar_one_or_none()：返回单个对象，没有返回 None
     item = result.scalar_one_or_none()
     return item
 \`\`\`
@@ -252,16 +297,24 @@ async def read_item(item_id: int, db: AsyncSession = Depends(get_db)):
 
 \`\`\`python
 # security.py
+# 导入 CryptContext，passlib 的密码哈希上下文
 from passlib.context import CryptContext
 
 # CryptContext 管理密码哈希算法
+# schemes=["bcrypt"]：使用 bcrypt 算法（推荐，安全）
+# deprecated="auto"：自动迁移旧算法
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(password: str) -> str:
+    # 参数 password: str 明文密码
+    # 返回：哈希后的字符串
     # 哈希密码（存数据库时用哈希值，不存明文）
     return pwd_context.hash(password)
 
 def verify_password(plain: str, hashed: str) -> bool:
+    # 参数 plain: str 用户输入的明文
+    # 参数 hashed: str 数据库存的哈希值
+    # 返回：是否匹配
     # 验证密码：明文 vs 哈希值
     return pwd_context.verify(plain, hashed)
 
@@ -274,24 +327,36 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 \`\`\`python
 # security.py 续
+# 导入 datetime（日期时间）、timedelta（时间差）、timezone（时区）
 from datetime import datetime, timedelta, timezone
+# 导入 jwt（编码/解码）、JWTError（异常类）
 from jose import jwt, JWTError
 
+# 密钥（用于签名 JWT，不能泄露）
 SECRET_KEY = "your-secret-key-keep-it-safe"  # 生产环境要从环境变量读
+# 算法：HS256 是对称加密（同一个密钥签名和验证）
 ALGORITHM = "HS256"
 
 def create_access_token(data: dict, expires_minutes: int = 30):
+    # 参数 data: dict 要编码进 token 的数据（如 {"sub": "user1"}）
+    # 参数 expires_minutes: int = 30 过期时间（分钟）
     # data 是要编码进 token 的数据，比如 {"sub": "user1"}
-    to_encode = data.copy()
+    to_encode = data.copy()  # 复制一份，避免修改原数据
     # 设置过期时间
+    # datetime.now(timezone.utc) 当前 UTC 时间
+    # timedelta(minutes=...) 时间差
     expire = datetime.now(timezone.utc) + timedelta(minutes=expires_minutes)
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire})  # 加上 exp（过期时间）字段
     # 生成 JWT 字符串
+    # jwt.encode(数据, 密钥, algorithm=算法)
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def decode_token(token: str) -> dict | None:
+    # 参数 token: str JWT 字符串
+    # 返回：解码后的字典，失败返回 None
     try:
         # 解码并验证 token
+        # jwt.decode 会自动检查 exp（过期时间）
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
     except JWTError:
@@ -301,17 +366,22 @@ def decode_token(token: str) -> dict | None:
 ## Demo 4：OAuth2 登录流程
 
 \`\`\`python
+# 导入 FastAPI 类、Depends、HTTPException
 from fastapi import FastAPI, Depends, HTTPException
+# 导入 OAuth2PasswordBearer（token 提取器）和 OAuth2PasswordRequestForm（登录表单）
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+# 导入 BaseModel，Pydantic 模型基类
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
 # OAuth2PasswordBearer：声明本应用用 Bearer token 认证
 # tokenUrl 指向获取 token 的接口，/docs 会显示登录按钮
+# 这个对象作为依赖时，自动从 Authorization 头取 Bearer token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-# 模拟用户库
+# 模拟用户库（真实项目存数据库）
 fake_users = {
     "admin": {
         "username": "admin",
@@ -320,22 +390,29 @@ fake_users = {
     }
 }
 
+# Token 响应模型：规范登录接口的返回格式
 class Token(BaseModel):
-    access_token: str
-    token_type: str
+    access_token: str   # JWT token 字符串
+    token_type: str     # token 类型（一般是 "bearer"）
 
 # 登录接口：OAuth2PasswordRequestForm 自动解析表单
+# response_model=Token 指定响应格式
 @app.post("/login", response_model=Token)
 def login(form: OAuth2PasswordRequestForm = Depends()):
+    # 参数 form: OAuth2PasswordRequestForm = Depends() 依赖注入
+    # OAuth2PasswordRequestForm 自动解析 application/x-www-form-urlencoded 表单
     # form.username / form.password 是表单字段
     user = fake_users.get(form.username)
+    # 验证用户存在 + 密码正确
     if not user or not verify_password(form.password, user["hashed_password"]):
+        # 401 未授权
+        # headers={"WWW-Authenticate": "Bearer"} 是 OAuth2 规范要求
         raise HTTPException(
             status_code=401,
             detail="用户名或密码错误",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    # 生成 token，sub 是 subject（用户标识）
+    # 生成 token，sub 是 subject（用户标识，JWT 规范字段）
     token = create_access_token({"sub": form.username})
     return {"access_token": token, "token_type": "bearer"}
 \`\`\`
@@ -346,33 +423,42 @@ def login(form: OAuth2PasswordRequestForm = Depends()):
 # 接 Demo 4
 
 # 依赖：从 token 解出当前用户
+# token: str = Depends(oauth2_scheme) 自动从请求头取 token
 def get_current_user(token: str = Depends(oauth2_scheme)):
-    # oauth2_scheme 自动从 Authorization 头取 token
+    # 参数 token: str = Depends(oauth2_scheme)
+    # oauth2_scheme 自动从 Authorization 头取 Bearer token
     # 如果没有 token，FastAPI 自动返回 401
     payload = decode_token(token)
     if payload is None:
         raise HTTPException(status_code=401, detail="无效的 token")
+    # payload["sub"] 是签发时放进去的用户名
     username = payload.get("sub")
     user = fake_users.get(username)
     if user is None:
         raise HTTPException(status_code=401, detail="用户不存在")
-    return user
+    return user  # 返回用户对象，路由可以直接用
 
 # 用依赖保护路由
 @app.get("/me")
 def me(current_user: dict = Depends(get_current_user)):
+    # 参数 current_user: dict = Depends(get_current_user)
+    # 如果没带 token 或 token 无效，依赖里就抛 401，不会走到这里
     # 没带 token 或 token 无效 → 401
     # 有效 → 返回当前用户信息
     return {"username": current_user["username"]}
 
-# 二级依赖：要求管理员
+# 二级依赖：要求管理员（链式依赖）
 def get_admin_user(current_user: dict = Depends(get_current_user)):
+    # 参数 current_user: dict = Depends(get_current_user) 链式依赖
+    # 先执行 get_current_user，再执行这里
     if not current_user.get("is_admin"):
+        # 403 有权限限制
         raise HTTPException(status_code=403, detail="需要管理员权限")
     return current_user
 
 @app.get("/admin")
 def admin(user: dict = Depends(get_admin_user)):
+    # 参数 user: dict = Depends(get_admin_user) 链式依赖
     # 普通用户 → 403
     # 管理员 → 通过
     return {"msg": "欢迎管理员"}
@@ -381,54 +467,76 @@ def admin(user: dict = Depends(get_admin_user)):
 ## Demo 6：完整登录示例（可运行）
 
 \`\`\`python
+# 导入 FastAPI 类、Depends、HTTPException
 from fastapi import FastAPI, Depends, HTTPException
+# 导入 OAuth2PasswordBearer、OAuth2PasswordRequestForm
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+# 导入 CryptContext，密码哈希
 from passlib.context import CryptContext
+# 导入 jwt、JWTError
 from jose import jwt, JWTError
+# 导入 datetime、timedelta、timezone
 from datetime import datetime, timedelta, timezone
+# 导入 BaseModel
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
+# 密码哈希上下文
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# JWT 密钥（生产环境从环境变量读）
 SECRET = "dev-secret"
+# OAuth2 token 提取器
 oauth2 = OAuth2PasswordBearer(tokenUrl="login")
 
+# 内存用户库（示例用，真实项目存数据库）
 users_db = {}
 
+# 注册请求模型
 class User(BaseModel):
-    username: str
-    password: str
+    username: str  # 用户名，必填
+    password: str  # 密码，必填
 
+# 注册接口
 @app.post("/register")
 def register(u: User):
+    # 参数 u: User 请求体
     if u.username in users_db:
         raise HTTPException(400, "用户已存在")
+    # 存哈希密码，不存明文
     users_db[u.username] = {
         "username": u.username,
         "password": pwd_ctx.hash(u.password),
     }
     return {"msg": "注册成功"}
 
+# 登录接口
 @app.post("/login")
 def login(form: OAuth2PasswordRequestForm = Depends()):
+    # 参数 form: OAuth2PasswordRequestForm = Depends() 登录表单
     user = users_db.get(form.username)
     if not user or not pwd_ctx.verify(form.password, user["password"]):
         raise HTTPException(401, "账号或密码错误")
+    # 签发 JWT，exp 是过期时间（1 小时后）
     token = jwt.encode(
         {"sub": form.username, "exp": datetime.now(timezone.utc) + timedelta(hours=1)},
         SECRET,
     )
     return {"access_token": token, "token_type": "bearer"}
 
+# 依赖：从 token 解出当前用户
 def current_user(token: str = Depends(oauth2)):
+    # 参数 token: str = Depends(oauth2) 自动取 Bearer token
     try:
         payload = jwt.decode(token, SECRET, algorithms=["HS256"])
         return users_db.get(payload["sub"])
     except JWTError:
         raise HTTPException(401, "token 无效")
 
+# 受保护接口
 @app.get("/me")
 def me(user = Depends(current_user)):
+    # 参数 user = Depends(current_user) 依赖注入
     return {"username": user["username"]}
 \`\`\`
 
@@ -472,20 +580,25 @@ def me(user = Depends(current_user)):
 ## Demo 1：FastAPI 配置 CORS
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 CORSMiddleware，跨域中间件
 from fastapi.middleware.cors import CORSMiddleware
 
+# 创建应用实例
 app = FastAPI()
 
 # 配置 CORS（最常用方式）
+# app.add_middleware(中间件类, 参数...) 添加中间件
 app.add_middleware(
     CORSMiddleware,
+    # allow_origins：允许的前端域名列表
     allow_origins=[
         "http://localhost:3000",     # React 开发服务器
         "http://localhost:5173",     # Vite 开发服务器
         "https://myapp.com",         # 生产域名
     ],
-    allow_credentials=True,   # 允许携带 Cookie
+    allow_credentials=True,   # 允许携带 Cookie（跨域时）
     allow_methods=["*"],      # 允许所有 HTTP 方法
     allow_headers=["*"],      # 允许所有请求头
 )
@@ -498,16 +611,19 @@ def get_data():
 ## Demo 2：开发环境允许所有源
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 
+# 创建应用实例
 app = FastAPI()
 
 # 开发时图方便，允许所有源
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # 允许所有源
-    allow_credentials=False,      # 注意：* 和 True 不能同时用
+    allow_origins=["*"],          # 允许所有源（"*" 是通配符）
+    allow_credentials=False,      # 注意：* 和 True 不能同时用（浏览器规范限制）
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -534,10 +650,14 @@ app.add_middleware(
 # FastAPI 的 CORSMiddleware 自动处理 OPTIONS 请求
 # 你不用自己写 OPTIONS 路由
 
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 
+# 创建应用实例
 app = FastAPI()
+# 明确列出允许的方法和头（更安全）
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -557,9 +677,12 @@ def create_data():
 ## Demo 4：带 Cookie 的跨域（凭证）
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 
+# 创建应用实例
 app = FastAPI()
 
 # 如果前端要带 Cookie 跨域，必须：
@@ -568,17 +691,20 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],  # 必须具体
-    allow_credentials=True,                    # 允许带凭证
+    allow_credentials=True,                    # 允许带凭证（Cookie）
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# 参数 response 由 FastAPI 自动注入（Response 对象）
 @app.get("/set-cookie")
 def set_cookie(response):
     # 设置 Cookie
+    # httponly=True：JS 不能读取（防 XSS）
     response.set_cookie(key="token", value="abc", httponly=True)
     return {"msg": "cookie 已设置"}
 
+# 参数 token: str | None = None 从 Cookie 读取（同名）
 @app.get("/get-cookie")
 def get_cookie(token: str | None = None):
     # 前端跨域请求会带上 cookie（因为 allow_credentials=True）
@@ -667,8 +793,10 @@ fetch("http://localhost:8000/api/data", {
 
 \`\`\`python
 # main.py（被测代码）
+# 导入 FastAPI 类
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
 @app.get("/")
@@ -677,18 +805,24 @@ def root():
 
 @app.get("/items/{item_id}")
 def get_item(item_id: int):
+    # 参数 item_id: int 路径参数
     return {"item_id": item_id}
 
 # test_main.py（测试代码）
+# 导入 TestClient，FastAPI 测试客户端（基于 httpx）
 from fastapi.testclient import TestClient
+# 从 main.py 导入 app
 from main import app
 
 # 用 app 创建测试客户端
+# TestClient 模拟 HTTP 请求，不用真启动服务
 client = TestClient(app)
 
 def test_root():
     # 像发真请求一样测试
+    # client.get("/") 模拟 GET /
     response = client.get("/")
+    # assert 断言：不满足就报错
     assert response.status_code == 200
     assert response.json() == {"msg": "hi"}
 
@@ -708,13 +842,17 @@ def test_get_item_invalid():
 ## Demo 2：测试 POST 请求
 
 \`\`\`python
+# 导入 TestClient
 from fastapi.testclient import TestClient
+# 从 main.py 导入 app
 from main import app
 
+# 创建测试客户端
 client = TestClient(app)
 
 def test_create_item():
     # POST 请求，json 参数发请求体
+    # client.post(路径, json=请求体)
     response = client.post(
         "/items",
         json={"name": "苹果", "price": 5.5},
@@ -730,11 +868,13 @@ def test_create_item_invalid():
 
 def test_with_query():
     # 带查询参数
+    # params 参数：URL 查询参数（?skip=0&limit=5）
     response = client.get("/items", params={"skip": 0, "limit": 5})
     assert response.status_code == 200
 
 def test_with_headers():
     # 带请求头
+    # headers 参数：请求头
     response = client.get("/items", headers={"X-Token": "abc"})
     assert response.status_code == 200
 \`\`\`
@@ -742,9 +882,12 @@ def test_with_headers():
 ## Demo 3：测试依赖覆盖
 
 \`\`\`python
+# 导入 TestClient
 from fastapi.testclient import TestClient
+# 导入 FastAPI 类、Depends
 from fastapi import FastAPI, Depends
 
+# 创建应用实例
 app = FastAPI()
 
 # 真实依赖：查数据库
@@ -754,35 +897,44 @@ def get_db():
 
 @app.get("/items")
 def list_items(db = Depends(get_db)):
+    # 参数 db = Depends(get_db) 依赖注入
     return {"db": db, "items": []}
 
 # 测试时不想连真数据库，覆盖依赖
+# 定义替换函数，返回测试数据
 def override_get_db():
     yield "假数据库"  # 返回测试数据
 
+# 创建测试客户端
 client = TestClient(app)
 
 def test_list_items():
     # 覆盖依赖：把 get_db 替换成 override_get_db
+    # app.dependency_overrides 是字典：{原依赖: 替换依赖}
     app.dependency_overrides[get_db] = override_get_db
 
     response = client.get("/items")
     assert response.json()["db"] == "假数据库"
 
-    # 测完清理覆盖
+    # 测完清理覆盖（避免影响其他测试）
     app.dependency_overrides.clear()
 \`\`\`
 
 ## Demo 4：测试认证接口
 
 \`\`\`python
+# 导入 TestClient
 from fastapi.testclient import TestClient
-from main import app  # 假设有上一章的认证代码
+# 从 main.py 导入 app（假设有上一章的认证代码）
+from main import app
 
+# 创建测试客户端
 client = TestClient(app)
 
 def test_login():
     # 测登录获取 token
+    # data 参数：发 form 表单（不是 json）
+    # OAuth2PasswordRequestForm 要求 form 格式
     response = client.post(
         "/login",
         data={"username": "admin", "password": "123456"},  # 表单用 data
@@ -794,11 +946,12 @@ def test_login():
 def test_protected_without_token():
     # 不带 token 访问受保护接口
     response = client.get("/me")
-    assert response.status_code == 401
+    assert response.status_code == 401  # 未授权
 
 def test_protected_with_token():
     token = test_login()
     # 带 token 访问
+    # Authorization: Bearer <token> 是 OAuth2 规范
     response = client.get(
         "/me",
         headers={"Authorization": f"Bearer {token}"},
@@ -811,25 +964,34 @@ def test_protected_with_token():
 
 \`\`\`python
 # config.py
+# 导入 os，用于读环境变量
 import os
-from pydantic_settings import BaseSettings  # pip install pydantic-settings
+# 导入 BaseSettings，Pydantic 的配置管理类
+# pip install pydantic-settings
+from pydantic_settings import BaseSettings
 
 # 用 BaseSettings 管理配置，自动从环境变量读
+# 字段名不区分大小写（app_name 对应 APP_NAME）
 class Settings(BaseSettings):
-    app_name: str = "My API"
-    database_url: str = "sqlite:///./app.db"
-    secret_key: str = "dev-secret"
-    debug: bool = True
+    app_name: str = "My API"                    # 应用名，默认 My API
+    database_url: str = "sqlite:///./app.db"    # 数据库连接
+    secret_key: str = "dev-secret"              # 密钥（生产要换）
+    debug: bool = True                          # 调试模式
 
+    # Pydantic v1 风格的配置类
     class Config:
-        env_file = ".env"  # 从 .env 文件读
+        env_file = ".env"  # 从 .env 文件读环境变量
 
+# 实例化配置（全局单例）
 settings = Settings()
 
 # main.py
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 从 config.py 导入 settings
 from config import settings
 
+# 创建应用实例（用配置）
 app = FastAPI(title=settings.app_name, debug=settings.debug)
 
 @app.get("/")

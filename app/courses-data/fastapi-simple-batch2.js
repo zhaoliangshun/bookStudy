@@ -108,22 +108,28 @@ def create_product(product: Product):
 ## Demo 3：嵌套模型
 
 \`\`\`python
+# 导入 FastAPI 主类，用于创建应用实例和定义路由
 from fastapi import FastAPI
+# 导入 BaseModel，Pydantic 的基础模型类，用于定义数据结构并自动校验
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
-# 定义嵌套模型
+# 定义嵌套模型：地址模型
 class Address(BaseModel):
-    street: str
-    city: str
-    zipcode: str
+    street: str    # 街道，必填
+    city: str      # 城市，必填
+    zipcode: str   # 邮编，必填
 
+# 用户模型，嵌套 Address 模型
 class User(BaseModel):
-    username: str
-    # 嵌套模型
+    username: str     # 用户名，必填
+    # 嵌套模型：字段类型是另一个 BaseModel
+    # 请求体 JSON 里 address 字段也要是嵌套对象
     address: Address
 
+# @app.post 装饰器：注册 POST 路由
 @app.post("/users")
 def create_user(user: User):
     # Body: {
@@ -144,20 +150,24 @@ def create_user(user: User):
 ## Demo 4：列表和字典字段
 
 \`\`\`python
+# 导入 FastAPI 主类，用于创建应用实例和定义路由
 from fastapi import FastAPI
+# 导入 BaseModel，Pydantic 的基础模型类，用于定义数据结构并自动校验
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
 class Order(BaseModel):
-    order_id: str
-    # 列表字段
+    order_id: str                # 订单 ID，必填
+    # 列表字段：list[str] 表示字符串列表
     items: list[str]
-    # 字典字段
+    # 字典字段：dict[str, str] 表示键值都是字符串
     metadata: dict[str, str]
-    # 嵌套列表
+    # 嵌套列表：list[dict[str, str]] 表示字典列表
     tags: list[dict[str, str]]
 
+# @app.post 装饰器：注册 POST 路由
 @app.post("/orders")
 def create_order(order: Order):
     # Body: {
@@ -177,25 +187,32 @@ def create_order(order: Order):
 ## Demo 5：模型继承
 
 \`\`\`python
+# 导入 FastAPI 主类，用于创建应用实例和定义路由
 from fastapi import FastAPI
+# 导入 BaseModel，Pydantic 的基础模型类，用于定义数据结构并自动校验
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
-# 基类
+# 基类：定义通用字段，供其他模型继承复用
 class UserBase(BaseModel):
-    username: str
-    email: str
+    username: str    # 用户名
+    email: str       # 邮箱
 
-# 创建用：继承基类，添加密码
+# 创建用：继承基类，添加密码字段
+# 继承 UserBase，自动拥有 username 和 email 字段
 class UserCreate(UserBase):
-    password: str
+    password: str    # 创建用户时需要密码
 
-# 响应用：继承基类，添加 ID
+# 响应用：继承基类，添加 ID 和状态字段
+# 继承 UserBase，但不含密码，避免泄露
 class UserResponse(UserBase):
-    id: int
-    is_active: bool
+    id: int          # 用户 ID
+    is_active: bool  # 是否激活
 
+# @app.post 装饰器：注册 POST 路由
+# response_model=UserResponse 指定响应模型，过滤掉敏感字段
 @app.post("/users", response_model=UserResponse)
 def create_user(user: UserCreate):
     # 模拟创建用户
@@ -216,30 +233,35 @@ def create_user(user: UserCreate):
 ## Demo 6：模型序列化
 
 \`\`\`python
+# 导入 FastAPI 主类，用于创建应用实例和定义路由
 from fastapi import FastAPI
+# 导入 BaseModel，Pydantic 的基础模型类，用于定义数据结构并自动校验
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
 class User(BaseModel):
-    username: str
-    password: str  # 敏感字段
-    email: str
+    username: str     # 用户名
+    password: str     # 敏感字段，不应该返回给客户端
+    email: str        # 邮箱
 
+# @app.post 装饰器：注册 POST 路由
 @app.post("/users")
 def create_user(user: User):
-    # 模型转字典
+    # model_dump() 是 Pydantic v2 的方法，把模型转成字典
+    # v1 用 .dict()，已废弃
     user_dict = user.model_dump()
     # {'username': 'alice', 'password': 'secret', 'email': 'alice@example.com'}
-    
-    # 排除某些字段
+
+    # exclude 参数：排除指定字段，适合过滤敏感信息
     user_dict_safe = user.model_dump(exclude={'password'})
     # {'username': 'alice', 'email': 'alice@example.com'}
-    
-    # 只包含某些字段
+
+    # include 参数：只包含指定字段，比 exclude 更严格
     user_dict_partial = user.model_dump(include={'username', 'email'})
     # {'username': 'alice', 'email': 'alice@example.com'}
-    
+
     return {
         "dict": user_dict_safe,
         "partial": user_dict_partial
@@ -306,29 +328,37 @@ def read_users(params: dict = Depends(common_parameters)):
 ## Demo 2：依赖注入链
 
 \`\`\`python
+# 导入 FastAPI 主类和 Depends
+# Depends 是依赖注入的核心，用于声明路由的依赖
 from fastapi import FastAPI, Depends
 
+# 创建应用实例
 app = FastAPI()
 
-# 依赖 1：查询参数
+# 依赖 1：提取查询参数
+# q 和 page 是查询参数，FastAPI 自动从 URL 提取
 def query_params(q: str | None = None, page: int = 1):
     return {"q": q, "page": page}
 
-# 依赖 2：可以依赖其他依赖
+# 依赖 2：可以依赖其他依赖，形成依赖链
+# Depends(query_params) 表示依赖 query_params 函数
 def pagination(params: dict = Depends(query_params)):
-    # 依赖 query_params
+    # params 是 query_params 的返回值
     page = params["page"]
-    page_size = 10
+    page_size = 10  # 每页固定 10 条
     return {
         "q": params["q"],
         "page": page,
         "page_size": page_size,
+        # offset 计算分页偏移量，用于 SQL 的 OFFSET
         "offset": (page - 1) * page_size
     }
 
+# @app.get 装饰器：注册 GET 路由
 @app.get("/items")
 def read_items(pagination: dict = Depends(pagination)):
     # 依赖 pagination，pagination 又依赖 query_params
+    # FastAPI 会按依赖链依次调用
     return pagination
 
 # 访问 /items?q=test&page=2
@@ -426,33 +456,46 @@ def read_current_user(user: dict = Depends(get_current_user)):
 ## Demo 5：权限控制依赖
 
 \`\`\`python
+# 导入 FastAPI 主类、Depends、HTTPException、status
+# Depends 用于依赖注入，HTTPException 用于抛出 HTTP 错误
+# status 包含 HTTP 状态码常量
 from fastapi import FastAPI, Depends, HTTPException, status
 
+# 创建应用实例
 app = FastAPI()
 
 # 模拟用户数据库
+# key 是用户名，value 是用户信息（含角色）
 users_db = {
-    "alice": {"username": "alice", "role": "admin"},
-    "bob": {"username": "bob", "role": "user"}
+    "alice": {"username": "alice", "role": "admin"},  # 管理员
+    "bob": {"username": "bob", "role": "user"}        # 普通用户
 }
 
-# 认证依赖
+# 认证依赖：验证 token 并返回用户信息
 def get_current_user(token: str):
     # 简化：token 就是用户名
+    # 实际项目里应该验证 JWT
     if token not in users_db:
+        # 用户不存在，抛出 401 未认证
         raise HTTPException(status_code=401, detail="Invalid token")
     return users_db[token]
 
-# 权限依赖
+# 权限依赖：检查是否是管理员
+# Depends(get_current_user) 依赖认证依赖，形成权限检查链
 def require_admin(user: dict = Depends(get_current_user)):
+    # user 是 get_current_user 的返回值
     if user["role"] != "admin":
+        # 不是管理员，抛出 403 禁止访问
         raise HTTPException(status_code=403, detail="Not authorized")
     return user
 
 # 需要管理员权限的路由
+# @app.delete 装饰器：注册 DELETE 路由
+# Depends(require_admin) 会先执行认证，再检查权限
 @app.delete("/users/{username}")
 def delete_user(username: str, admin: dict = Depends(require_admin)):
-    # 只有管理员才能删除用户
+    # 只有管理员才能到这里
+    # admin 是 require_admin 的返回值
     return {"message": f"User {username} deleted by {admin['username']}"}
 
 # 访问：
@@ -522,10 +565,14 @@ FastAPI 可以和任何数据库集成，最常用的是 SQLAlchemy（ORM）。
 ## Demo 1：数据库配置
 
 \`\`\`python
+# 导入 FastAPI 主类，用于创建应用实例和定义路由
 from fastapi import FastAPI
+# 导入 create_engine，创建数据库引擎（连接池）
 from sqlalchemy import create_engine
+# 导入 sessionmaker（会话工厂）和 DeclarativeBase（模型基类）
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
+# 创建应用实例
 app = FastAPI()
 
 # 数据库配置
@@ -534,16 +581,22 @@ app = FastAPI()
 # MySQL：mysql+pymysql://user:password@localhost/dbname
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 
-# 创建引擎
+# 创建引擎，连接数据库
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
+    # check_same_thread=False 是 SQLite 专用参数
+    # 允许跨线程使用连接，FastAPI 多线程需要
     connect_args={"check_same_thread": False}  # SQLite 需要
 )
 
 # 创建会话工厂
+# autocommit=False：不自动提交，需手动 db.commit()
+# autoflush=False：不自动刷新到数据库
+# bind=engine：绑定到引擎
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# 基类
+# 基类：所有模型继承这个类
+# DeclarativeBase 是 SQLAlchemy 2.0 的基类写法
 class Base(DeclarativeBase):
     pass
 \`\`\`
@@ -592,89 +645,115 @@ Base.metadata.create_all(bind=engine)
 ## Demo 3：CRUD 操作
 
 \`\`\`python
+# 导入 FastAPI 主类、Depends、HTTPException
+# Depends 用于依赖注入，HTTPException 用于抛出 HTTP 错误
 from fastapi import FastAPI, Depends, HTTPException
+# 导入 Session，SQLAlchemy 的会话类型
 from sqlalchemy.orm import Session
+# 导入 BaseModel，用于定义请求/响应模型
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
 # 依赖：获取数据库会话
+# 用 yield 管理会话生命周期，路由结束后自动关闭
 def get_db():
     db = SessionLocal()
     try:
+        # yield 返回会话给路由使用
         yield db
     finally:
+        # 路由执行完毕后，关闭会话
         db.close()
 
-# Pydantic 模型
+# Pydantic 模型：创建用户用的请求体
 class UserCreate(BaseModel):
-    username: str
-    email: str
-    password: str
+    username: str    # 用户名
+    email: str       # 邮箱
+    password: str    # 密码（明文，实际应哈希）
 
+# Pydantic 模型：响应用户数据
 class UserResponse(BaseModel):
-    id: int
-    username: str
-    email: str
-    is_active: bool
+    id: int          # 用户 ID
+    username: str    # 用户名
+    email: str       # 邮箱
+    is_active: bool  # 是否激活
 
-# 创建用户
+# 创建用户（Create）
+# @app.post 装饰器：注册 POST 路由
+# response_model=UserResponse 指定响应模型
+# db: Session = Depends(get_db) 依赖注入数据库会话
 @app.post("/users", response_model=UserResponse)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
     # 检查用户是否已存在
+    # db.query(User) 查询 User 表
+    # .filter(User.email == user.email) 添加 WHERE 条件
+    # .first() 返回第一条匹配记录，没有返回 None
     db_user = db.query(User).filter(User.email == user.email).first()
     if db_user:
+        # 邮箱已注册，抛出 400 错误
         raise HTTPException(status_code=400, detail="Email already registered")
-    
+
     # 创建新用户
-    # 注意：实际应该哈希密码
+    # 注意：实际应该哈希密码，不要存明文
     db_user = User(
         username=user.username,
         email=user.email,
         hashed_password=user.password
     )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
+    db.add(db_user)      # 添加到会话
+    db.commit()          # 提交到数据库
+    db.refresh(db_user)  # 刷新，获取数据库生成的 id
     return db_user
 
-# 查询用户
+# 查询单个用户（Read）
+# @app.get 装饰器：注册 GET 路由，{user_id} 是路径参数
 @app.get("/users/{user_id}", response_model=UserResponse)
 def read_user(user_id: int, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
+        # 用户不存在，抛出 404 错误
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
 
-# 查询所有用户
+# 查询所有用户（Read）
+# @app.get 装饰器：注册 GET 路由
+# response_model=list[UserResponse] 表示返回用户列表
 @app.get("/users", response_model=list[UserResponse])
 def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    # .offset(skip) 跳过前 skip 条（分页用）
+    # .limit(limit) 最多返回 limit 条
+    # .all() 返回所有匹配记录
     users = db.query(User).offset(skip).limit(limit).all()
     return users
 
-# 更新用户
+# 更新用户（Update）
+# @app.put 装饰器：注册 PUT 路由，用于完整更新
 @app.put("/users/{user_id}", response_model=UserResponse)
 def update_user(user_id: int, user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
+    # 直接修改对象属性，SQLAlchemy 会跟踪变更
     db_user.username = user.username
     db_user.email = user.email
     db_user.hashed_password = user.password
-    db.commit()
-    db.refresh(db_user)
+    db.commit()          # 提交变更
+    db.refresh(db_user)  # 刷新对象
     return db_user
 
-# 删除用户
+# 删除用户（Delete）
+# @app.delete 装饰器：注册 DELETE 路由
 @app.delete("/users/{user_id}")
 def delete_user(user_id: int, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    db.delete(db_user)
-    db.commit()
+
+    db.delete(db_user)   # 从会话中标记删除
+    db.commit()          # 提交删除操作
     return {"message": "User deleted"}
 \`\`\`
 
@@ -682,16 +761,22 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
 
 \`\`\`python
 # 查询用户及其文章
+# @app.get 装饰器：注册 GET 路由，{user_id} 是路径参数
 @app.get("/users/{user_id}/posts")
 def read_user_posts(user_id: int, db: Session = Depends(get_db)):
+    # 查询用户
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
+        # 用户不存在，抛出 404
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     # 通过关系查询文章
+    # db_user.posts 是 relationship 定义的关联属性
+    # SQLAlchemy 会自动查询关联的文章，无需手写 SQL
     posts = db_user.posts
     return {
         "username": db_user.username,
+        # 列表推导式：提取每篇文章的 id 和 title
         "posts": [{"id": p.id, "title": p.title} for p in posts]
     }
 \`\`\`
@@ -803,66 +888,82 @@ username = verify_token(token)
 ## Demo 3：OAuth2 登录
 
 \`\`\`python
+# 导入 FastAPI 主类、Depends、HTTPException、status
 from fastapi import FastAPI, Depends, HTTPException, status
 # OAuth2PasswordBearer：从 Authorization 头提取 Bearer token
 # OAuth2PasswordRequestForm：标准 OAuth2 登录表单（username/password 字段）
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+# 导入 BaseModel，用于定义数据模型
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
 # OAuth2 安全方案
 # tokenUrl 指向获取 token 的接口路径，/docs 会显示登录按钮
+# FastAPI 会在 /docs 页面显示 "Authorize" 按钮
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # 模拟用户数据库
 fake_users_db = {
     "alice": {
         "username": "alice",
-        "hashed_password": hash_password("secret"),
+        "hashed_password": hash_password("secret"),  # 存哈希密码
         "is_active": True
     }
 }
 
-# 用户模型
+# 用户模型（响应用）
 class User(BaseModel):
-    username: str
-    is_active: bool
+    username: str    # 用户名
+    is_active: bool  # 是否激活
 
-# 认证依赖
+# 认证依赖：验证 token 并返回用户
+# Depends(oauth2_scheme) 自动从请求头提取 token
 def get_current_user(token: str = Depends(oauth2_scheme)):
+    # 验证 token，返回用户名
     username = verify_token(token)
     if username is None:
+        # token 无效，抛出 401 未认证
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
+            # WWW-Authenticate 头告诉客户端认证方案
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     user = fake_users_db.get(username)
     if user is None:
+        # 用户不存在，抛出 401
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
         )
     return user
 
-# 登录接口
+# 登录接口：验证用户名密码，返回 token
+# @app.post 装饰器：注册 POST 路由
+# OAuth2PasswordRequestForm = Depends() 自动解析表单数据
 @app.post("/token")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    # form_data.username 和 form_data.password 是表单字段
     # 验证用户名和密码
     user = fake_users_db.get(form_data.username)
     if not user or not verify_password(form_data.password, user["hashed_password"]):
+        # 用户名不存在或密码错误，抛出 401
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
-    
+
     # 创建 token
+    # "sub" 是 JWT 的标准字段，表示主体（用户名）
     access_token = create_access_token(data={"sub": user["username"]})
+    # 返回 token 和类型，前端保存后请求时带上
     return {"access_token": access_token, "token_type": "bearer"}
 
 # 需要认证的路由
+# Depends(get_current_user) 会验证 token，失败返回 401
 @app.get("/users/me")
 def read_current_user(user: User = Depends(get_current_user)):
     return user
@@ -876,29 +977,40 @@ def read_current_user(user: User = Depends(get_current_user)):
 ## Demo 4：权限控制
 
 \`\`\`python
+# 导入 FastAPI 主类、Depends、HTTPException
 from fastapi import FastAPI, Depends, HTTPException
 
+# 创建应用实例
 app = FastAPI()
 
-# 权限依赖
+# 权限依赖：检查是否是管理员
+# Depends(get_current_user) 先认证用户，再检查权限
 def require_admin(user: User = Depends(get_current_user)):
+    # user 是 get_current_user 的返回值
     if user.username != "admin":
+        # 不是管理员，抛出 403 禁止访问
         raise HTTPException(status_code=403, detail="Not authorized")
     return user
 
+# 需要管理员权限的路由
+# @app.delete 装饰器：注册 DELETE 路由
+# Depends(require_admin) 会先认证，再检查权限
 @app.delete("/users/{user_id}")
 def delete_user(user_id: int, admin: User = Depends(require_admin)):
-    # 只有管理员才能删除用户
+    # 只有管理员才能到这里
+    # admin 是 require_admin 的返回值
     return {"message": f"User {user_id} deleted"}
 \`\`\`
 
 ## Demo 5：CORS 配置
 
 \`\`\`python
+# 导入 FastAPI 主类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 # 导入 CORSMiddleware，用于解决跨域请求问题
 from fastapi.middleware.cors import CORSMiddleware
 
+# 创建应用实例
 app = FastAPI()
 
 # CORS 配置
@@ -906,15 +1018,19 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     # 允许的前端地址
+    # 生产环境要指定具体域名，不能用 ["*"]
     allow_origins=["http://localhost:3000", "https://myapp.com"],
     # 允许的 HTTP 方法
+    # 不在列表中的方法会被浏览器拦截
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     # 允许的请求头，["*"] 表示所有
     allow_headers=["*"],
     # 允许携带 Cookie（跨域时前端需配合 credentials: "include"）
+    # 注意：allow_credentials=True 时，allow_origins 不能为 ["*"]
     allow_credentials=True,
 )
 
+# @app.get 装饰器：注册 GET 路由
 @app.get("/api/data")
 def get_data():
     return {"data": "hello"}

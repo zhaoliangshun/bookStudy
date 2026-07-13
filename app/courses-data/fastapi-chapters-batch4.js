@@ -242,13 +242,21 @@ class Article(BaseModel):
     views: int = 0
 
 # 方式 1：关键字参数（最常用）
+# 直接传字段名=值，最直观，适合手写少量字段
 a1 = Article(title="hello", views=10)
 # 方式 2：解包字典
+# **data 是字典解包，等价于 Article(title="world", views=5)
+# 适合从外部数据（如 request.json()）构造模型
 data = {"title": "world", "views": 5}
 a2 = Article(**data)
 # 方式 3：model_validate（从字典创建，会触发完整校验）
+# v2 推荐用法，等价于 v1 的 parse_obj
+# 适合从 yaml.load、json.loads 等拿到字典后转模型
 a3 = Article.model_validate({"title": "pydantic", "views": 100})
 # 方式 4：model_validate_json（从 JSON 字符串创建）
+# 直接从 JSON 字符串创建，跳过 json.loads 步骤
+# 性能比 json.loads + model_validate 快 20%~30%
+# 适合直接处理 HTTP 请求体等 JSON 字符串场景
 a4 = Article.model_validate_json('{"title": "json", "views": 1}')
 
 # 四种方式等价，都会触发校验
@@ -273,24 +281,33 @@ class Article(BaseModel):
 a = Article(title="hello", views=10)
 
 # 方式 1：model_dump() —— 转为 Python 字典
+# 返回的字典里 datetime、UUID 等保持原生 Python 类型
+# 适合需要在 Python 中继续操作的场景（如传给模板引擎）
 d = a.model_dump()
 print(d)            # 输出: {'title': 'hello', 'views': 10}
 print(type(d))      # 输出: <class 'dict'>
 
 # 方式 2：model_dump_json() —— 转为 JSON 字符串
+# datetime、UUID 等会被自动转成字符串（JSON 不支持这些类型）
+# 适合作为 HTTP 响应体返回给前端
 s = a.model_dump_json()
 print(s)            # 输出: {"title":"hello","views":10}
 print(type(s))      # 输出: <class 'str'>
 
 # 方式 3：选择性序列化（include / exclude）
+# include 只保留指定字段（白名单模式）
+# 适合响应模型只暴露部分字段的场景
 # 只包含 title 字段
 print(a.model_dump(include={"title"}))   # 输出: {'title': 'hello'}
+# exclude 排除指定字段（黑名单模式）
+# 适合隐藏敏感字段（如 password、token）
 # 排除 views 字段
 print(a.model_dump(exclude={"views"}))   # 输出: {'title': 'hello'}
 
 # 方式 4：排除默认值未设置的字段
 a2 = Article(title="world")  # views 用默认值
 # exclude_defaults=True 会排除使用默认值的字段
+# 适合只返回用户显式设置的字段，减少响应体积
 print(a2.model_dump(exclude_defaults=True))  # 输出: {'title': 'world'}
 \`\`\`
 
@@ -915,19 +932,31 @@ class Money(BaseModel):
     currency: str = "CNY"
 
 # 实例化方式 1：用 Decimal 对象
+# Decimal("99.99") 从字符串构造 Decimal，精度完整
+# 适合代码里直接定义常量金额
 m1 = Money(amount=Decimal("99.99"))
 print(m1.amount)        # 输出: 99.99
 print(type(m1.amount))  # 输出: <class 'decimal.Decimal'>
 
 # 实例化方式 2：用字符串（推荐，避免 float 精度问题）
+# Pydantic 会把字符串自动转成 Decimal
+# 推荐原因：JSON 里的数字如果用 float 传输会有精度丢失
+# 用字符串传输 "123.45" 能完整保留精度
+# 这也是为什么 API 文档常建议金额用字符串传
 m2 = Money(amount="123.45")
 print(m2.amount)        # 输出: 123.45
 
 # 实例化方式 3：用 int
+# int 没有精度问题，Pydantic 直接转成 Decimal
+# 适合金额是整数的情况（如分）
 m3 = Money(amount=100)
 print(m3.amount)        # 输出: 100
 
 # 实例化方式 4：用 float（不推荐，会有精度问题）
+# float 在二进制里无法精确表示 0.1
+# 就像十进制无法精确表示 1/3 一样
+# 所以 0.1 会变成一长串小数，金融计算不能接受
+# 如果从外部接收到 float，应先转成字符串再传给 Decimal
 m4 = Money(amount=0.1)
 print(m4.amount)        # 输出: 0.1000000000000000055511151231257827021181583404541015625
 
@@ -1467,14 +1496,22 @@ from uuid import UUID, uuid4
 from typing import Optional, Literal
 
 # 定义商品变体模型 Variant（SKU）
+# SKU = Stock Keeping Unit（库存量单位），是商品的最小可售卖单元
+# 如同一款手机有"128G 黑色"、"256G 白色"等多个 SKU
 class Variant(BaseModel):
     # 字段 sku_id，类型 str
+    # SKU 编码，全局唯一，用于库存管理和订单处理
     sku_id: str
     # 字段 name，类型 str（变体名，如"红色 64G"）
+    # 显示给用户的变体名称，通常由规格组合而成
     name: str
     # 字段 price，类型 Decimal（变体价格）
+    # 用 Decimal 而非 float，避免金融计算精度问题
+    # gt=0 表示价格必须大于 0，防止设置 0 元或负数价格
     price: Decimal = Field(gt=0, description="价格，必须大于 0")
     # 字段 stock，类型 int（库存）
+    # ge=0 表示库存不能为负数
+    # 库存为 0 时前端应显示"售罄"
     stock: int = Field(ge=0, description="库存，>= 0")
 
 # 定义商品模型 Product
@@ -3321,10 +3358,19 @@ from pydantic import BaseModel, PrivateAttr
 # 定义模型 Counter
 class Counter(BaseModel):
     # 公开字段 count
+    # 公开字段会出现在 model_dump() 输出里，也能从外部输入设置
     count: int = 0
     # 私有字段 _secret（用 PrivateAttr 声明）
+    # PrivateAttr 声明的字段特点：
+    # - 不会出现在 model_dump() 输出里（不参与序列化）
+    # - 不能从外部输入设置（防止客户端注入）
+    # - 只能在代码内部修改（如 self._secret = "new_value"）
+    # 适合存储缓存、内部状态、敏感中间数据
     _secret: str = PrivateAttr(default="hidden")
     # 私有字段 _cache（可变默认值）
+    # 用 default_factory=dict 而非 default={}
+    # 因为可变默认值必须用 factory，每次实例化生成新对象
+    # 避免多个实例共享同一个 dict 的问题
     _cache: dict = PrivateAttr(default_factory=dict)
 
 # 实例化

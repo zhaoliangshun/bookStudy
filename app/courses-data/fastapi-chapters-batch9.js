@@ -1461,24 +1461,30 @@ def get_user(user_id: int, db: Session = Depends(get_replica_db)):
 # 定义函数 delete_user，参数: user_id, primary=Depends, log_db=Depends
 def delete_user(
     user_id: int,
+    # primary: 主库 Session，用于写操作（删除用户）
     primary: Session = Depends(get_primary_db),
+    # log_db: 日志库 Session，独立于主库（即使日志写入失败也不影响主库删除）
     log_db: Session = Depends(get_log_db),
 ):
-    # 从主库查
+    # 从主库查用户是否存在
     stmt = select(User).where(User.id == user_id)
     user = primary.execute(stmt).scalar_one_or_none()
     if user:
-        # 主库删除
+        # 主库删除：session.delete 标记删除，commit 真正执行 DELETE
         primary.delete(user)
         primary.commit()
-    # 日志库记录（独立事务）
+    # 日志库记录（独立事务）：即使主库删除失败，也记录这次尝试
+    # 这种设计叫"审计日志"，保证所有删除操作都有迹可循
     log_db.execute(
         # 用原生 SQL 插入日志（简化演示）
+        # text() 包装原生 SQL，参数用 :name 占位，防 SQL 注入
         __import__("sqlalchemy").text(
             "INSERT INTO access_logs (action, target) VALUES (:a, :t)"
         ),
+        # 参数绑定：:a 对应 action，:t 对应 target
         {"a": "delete_user", "t": str(user_id)},
     )
+    # 日志库独立提交，不影响主库事务
     log_db.commit()
     return {"ok": True}
 \`\`\`
@@ -1888,14 +1894,18 @@ def get_users_multi_sort(session: Session) -> list:
 # 定义函数 get_users_page，参数: session, page, size
 def get_users_page(session: Session, page: int = 1, size: int = 10) -> list:
     """分页查询。page 从 1 开始。"""
+    # offset 计算：第 1 页跳过 0 条，第 2 页跳过 size 条，以此类推
+    # 公式：(page - 1) * size，page 从 1 开始所以减 1
     # offset = (page - 1) * size
     offset_val = (page - 1) * size
     stmt = (
         select(User)
+        # order_by 必须有：分页前必须排序，否则结果顺序不确定
         .order_by(User.id)
-        .offset(offset_val)  # 跳过多少条
-        .limit(size)         # 取多少条
+        .offset(offset_val)  # 跳过多少条（OFFSET 子句）
+        .limit(size)         # 取多少条（LIMIT 子句）
     )
+    # 等价 SQL：SELECT * FROM users ORDER BY id LIMIT 10 OFFSET 0
     return session.execute(stmt).scalars().all()
 
 # 3. 聚合：count
@@ -1912,10 +1922,16 @@ def count_users(session: Session) -> int:
 def count_users_by_status(session: Session) -> list:
     """按 is_admin 分组统计。"""
     stmt = (
+        # select 两个列：分组列 + 聚合结果
+        # User.is_admin 是分组依据，func.count 是聚合函数
         select(User.is_admin, func.count(User.id).label("cnt"))
+        # .label("cnt") 给聚合结果起别名，方便结果里按名字取值
+        # group_by 按 is_admin 分组：True 一组，False 一组
         .group_by(User.is_admin)
     )
     # 返回 [(True, 5), (False, 100)]
+    # 每行是元组：(is_admin 值, 该组的用户数)
+    # 因为查了多个列，用 all() 返回 Row 列表，不用 scalars()
     return session.execute(stmt).all()
 
 # 5. 去重：distinct
@@ -1992,11 +2008,16 @@ from sqlalchemy import join
 def get_posts_with_author(session: Session) -> list:
     """手动 JOIN 查文章和作者名。"""
     stmt = (
+        # select(Post, User) 查两个模型，结果每行是 (Post, User) 元组
         select(Post, User)
+        # .join(目标表, 连接条件)：生成 INNER JOIN
+        # Post.author_id == User.id 是 ON 条件
         .join(User, Post.author_id == User.id)  # JOIN 条件
+        # 只查已发布的文章
         .where(Post.published == True)
     )
-    # 结果是 [(Post, User), ...] 元组
+    # 结果是 [(Post, User), ...] 元组列表
+    # 因为查了两个模型，每行包含两个对象，不用 scalars()
     return session.execute(stmt).all()
 
 # 5. 用 relationship 的 join
@@ -2004,10 +2025,17 @@ def get_posts_with_author(session: Session) -> list:
 def get_posts_by_user_name(session: Session, name: str) -> list:
     """通过作者名查文章（用 relationship 的 join）。"""
     stmt = (
+        # select(Post) 只查 Post，结果每行是单个 Post
         select(Post)
+        # .join(Post.author) 隐式 JOIN：
+        #   不用手写 ON 条件，SQLAlchemy 从 relationship 定义推断
+        #   等价于 .join(User, Post.author_id == User.id)
         .join(Post.author)  # 隐式 JOIN，用 relationship
+        # 过滤条件：作者名等于传入的 name
         .where(User.name == name)
     )
+    # scalars() 把 Row(Post,) 转成 Post 对象
+    # all() 取出所有匹配的文章
     return session.execute(stmt).scalars().all()
 \`\`\`
 
@@ -2053,22 +2081,26 @@ from sqlalchemy.orm import Session
 def transfer_credits(session: Session, from_id: int, to_id: int, amount: int) -> bool:
     """转账：从一个用户扣分，给另一个用户加分。"""
     try:
-        # 查两个用户
+        # 查两个用户：session.get 按主键查，比 select 更简洁且走缓存
         from_user = session.get(User, from_id)
         to_user = session.get(User, to_id)
+        # 任意一方不存在，转账无法进行
         if not from_user or not to_user:
             return False
+        # 检查余额是否充足：不足则拒绝，避免负数积分
         if from_user.credits < amount:
             return False
-        # 扣分
+        # 扣分：修改属性，ORM 标记对象为 dirty（待更新）
         from_user.credits -= amount
-        # 加分
+        # 加分：同样修改属性，等待 commit 时一起 UPDATE
         to_user.credits += amount
-        # 一次 commit，要么全成功，要么全失败
+        # 一次 commit，要么全成功，要么全失败（事务的原子性）
+        # commit 时 ORM 把 dirty 对象的变更一次性提交
         session.commit()
         return True
     except SQLAlchemyError:
-        # 出错回滚，前面的修改全部撤销
+        # 出错回滚，前面的修改全部撤销，数据库回到事务开始前的状态
+        # 不回滚的话 Session 状态混乱，后续操作会报错
         session.rollback()
         return False
 
@@ -2091,18 +2123,22 @@ def safe_create_user(session: Session, name: str, email: str) -> User | None:
 # 定义函数 nested_example，参数: session
 def nested_example(session: Session):
     """嵌套事务：外层失败全回滚，内层失败只回内层。"""
+    # with session.begin() 开启外层事务，块结束自动 commit 或 rollback
     with session.begin():
-        # 外层事务
+        # 外层事务：插入一条用户
         session.add(User(name="外层", email="outer@test.com"))
         try:
-            # 内层 savepoint
+            # 内层 savepoint：begin_nested 创建一个保存点
+            # 保存点是事务内的"检查点"，可以单独回滚到这里而不影响外层
             with session.begin_nested():
                 session.add(User(name="内层", email="inner@test.com"))
-                # 内层成功，提交 savepoint
+                # 内层成功，提交 savepoint（保存点的变更纳入外层事务）
         except SQLAlchemyError:
-            # 内层失败，只回滚到 savepoint，外层继续
+            # 内层失败，只回滚到 savepoint，外层事务继续运行
+            # 外层已插入的"外层"用户不受影响
             pass
-        # 外层继续执行
+        # 外层继续执行：再插入一条用户
+        # 即使内层失败，这里依然会执行
         session.add(User(name="外层2", email="outer2@test.com"))
 \`\`\`
 
@@ -2249,17 +2285,25 @@ def create_post(post: PostCreate, db: Session = Depends(get_db)):
 @app.get("/posts/", response_model=PaginatedPosts)
 # 定义函数 list_posts，参数: 多个查询参数
 def list_posts(
+    # db: 通过依赖注入获取数据库 Session，每个请求独立
     db: Session = Depends(get_db),
+    # Query(1, ge=1, ...)：第一个参数 1 是默认值，ge=1 表示大于等于 1（页码不能为 0 或负数）
     page: int = Query(1, ge=1, description="页码，从1开始"),
+    # size: 每页数量，ge=1 最小 1 条，le=100 最大 100 条（防止一次查太多拖垮数据库）
     size: int = Query(10, ge=1, le=100, description="每页数量"),
+    # search: 搜索关键字，Optional 表示可传可不传，None 表示不过滤
     search: Optional[str] = Query(None, description="按标题搜索"),
+    # sort: 排序字段名，对应 Post 模型的属性名，默认按创建时间排序
     sort: str = Query("created_at", description="排序字段"),
+    # order: 排序方向，desc 降序（新的在前），asc 升序（旧的在前）
     order: str = Query("desc", description="asc 或 desc"),
+    # published_only: 是否只返回已发布文章，默认 True（草稿不给访客看）
     published_only: bool = Query(True, description="只看已发布"),
 ):
     """分页查询文章，支持搜索和排序。"""
-    # 构造基础查询
+    # 构造基础查询：stmt 用于查列表数据
     stmt = select(Post)
+    # count_stmt 用于统计总数（不受分页影响），func.count 生成 COUNT(id)
     count_stmt = select(func.count(Post.id))
 
     # 过滤：只看已发布
@@ -2341,21 +2385,30 @@ def get_post(post_id: int, db: Session = Depends(get_db)):
 # 定义函数 update_post，参数: post_id, post: PostUpdate, db
 def update_post(
     post_id: int,
+    # post: 请求体，用 PostUpdate 模型校验（字段都是 Optional）
     post: PostUpdate,
     db: Session = Depends(get_db),
 ):
     """更新文章。只更新传入的字段。"""
-    # 查出来
+    # 查出来：session.get 按主键查，比 select+where 更简洁
     # 定义变量 db_post，赋值为 db.get(Post, post_id)
     db_post = db.get(Post, post_id)
     if not db_post:
         raise HTTPException(404, "文章不存在")
     # 只更新非 None 的字段（PATCH 语义）
+    # model_dump(exclude_unset=True) 关键：
+    #   - 默认 model_dump() 会把所有字段都输出（包括没传的，值为默认 None）
+    #   - exclude_unset=True 只输出客户端明确传入的字段
+    #   - 这样没传的字段不会被覆盖成 None，实现 PATCH 语义
     # 定义变量 update_data，赋值为 post.model_dump(exclude_unset=True)
     update_data = post.model_dump(exclude_unset=True)
+    # 遍历要更新的字段，用 setattr 动态设置属性
+    # setattr(obj, "name", value) 等价于 obj.name = value
     for key, value in update_data.items():
         setattr(db_post, key, value)
+    # commit 时 ORM 自动生成 UPDATE 语句，只更新变更的字段
     db.commit()
+    # refresh 从数据库重新加载，确保拿到最新值
     db.refresh(db_post)
     return db_post
 

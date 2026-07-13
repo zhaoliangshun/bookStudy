@@ -484,13 +484,20 @@ app = FastAPI(title="用户管理 API")
 
 # 创建用户：输入模型
 class UserCreate(BaseModel):
+    # Field(...) 第一个参数 ... 表示必填
+    # min_length/max_length 限制长度范围
+    # description 写进 OpenAPI 文档，供前端参考
     username: str = Field(..., min_length=3, max_length=20, description="用户名")
     password: str = Field(..., min_length=6, description="密码，至少 6 位")
+    # EmailStr 是 pydantic 的邮箱类型，自动校验格式（如 a@b.com）
     email: EmailStr                              # 邮箱，自动校验格式
+    # 默认 None 表示可选，前端不传则存 None
     full_name: str | None = Field(None, description="全名，可选")
 
 # 更新用户：输入模型（全部可选）
+# PATCH 语义是部分更新，所以字段都要可选
 class UserUpdate(BaseModel):
+    # 所有字段默认 None，客户端只传需要改的字段
     username: str | None = Field(None, min_length=3, max_length=20)
     email: EmailStr | None = None
     full_name: str | None = None
@@ -500,17 +507,17 @@ class UserResponse(BaseModel):
     id: int                                       # 用户 ID
     username: str                                 # 用户名
     email: str                                    # 邮箱
-    full_name: str | None                         # 全名
+    full_name: str | None                         # 全名，可能为 None
     is_active: bool                               # 是否激活
 
 # 数据库存储模型（含哈希密码）
 class UserInDB(BaseModel):
-    id: int
-    username: str
-    email: str
-    full_name: str | None
-    hashed_password: str
-    is_active: bool = True
+    id: int                       # 主键 ID
+    username: str                 # 用户名
+    email: str                    # 邮箱
+    full_name: str | None         # 全名
+    hashed_password: str          # 哈希后的密码（不对外暴露）
+    is_active: bool = True        # 是否激活，新用户默认 True
 
 # ============ 模拟数据库 ============
 db: dict[int, UserInDB] = {}
@@ -519,39 +526,47 @@ next_id = 1
 # ============ 接口实现 ============
 
 # 创建用户：201 状态码，返回 UserResponse
+# status_code=status.HTTP_201_CREATED 表示资源创建成功（RESTful 规范）
 @app.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(user: UserCreate):
+    # 声明使用全局变量 next_id（否则 Python 把它当局部变量）
     global next_id
-    # 检查用户名是否已存在
+    # 检查用户名是否已存在（遍历模拟数据库）
     for u in db.values():
         if u.username == user.username:
+            # 用户名重复返回 400 Bad Request
             raise HTTPException(status_code=400, detail="用户名已存在")
-    # 哈希密码（实际用 passlib）
+    # 哈希密码（实际用 passlib 的 CryptContext）
+    # 这里用简单前缀模拟，实际项目要用 bcrypt/scrypt
     hashed = "hashed_" + user.password
-    # 存入数据库
+    # 构造数据库模型实例存入"数据库"
     db_user = UserInDB(
-        id=next_id,
-        username=user.username,
-        email=user.email,
-        full_name=user.full_name,
-        hashed_password=hashed,
-        is_active=True
+        id=next_id,                   # 分配新 ID
+        username=user.username,       # 从输入模型取用户名
+        email=user.email,             # 从输入模型取邮箱
+        full_name=user.full_name,     # 从输入模型取全名
+        hashed_password=hashed,       # 存哈希后的密码
+        is_active=True                # 新用户默认激活
     )
-    db[next_id] = db_user
-    next_id += 1
-    # 返回 db_user，response_model 过滤掉 hashed_password
+    db[next_id] = db_user             # 存入字典模拟数据库
+    next_id += 1                      # ID 自增，为下一个用户准备
+    # 返回 db_user，response_model=UserResponse 会过滤掉 hashed_password
     return db_user
 
 # 查询单个用户
 @app.get("/users/{user_id}", response_model=UserResponse)
 async def get_user(user_id: int):
+    # user_id 从 URL 路径解析
     if user_id not in db:
+        # 不存在返回 404
         raise HTTPException(status_code=404, detail="用户不存在")
+    # 返回数据库实例，response_model 过滤敏感字段
     return db[user_id]
 
-# 用户列表：exclude_unset 让 is_active 默认值不显示
+# 用户列表：response_model=list[UserResponse] 表示返回数组
 @app.get("/users", response_model=list[UserResponse])
 async def list_users():
+    # db.values() 返回所有用户，list() 转成列表
     return list(db.values())
 
 # 更新用户（PATCH 部分更新）
@@ -559,26 +574,29 @@ async def list_users():
 async def update_user(user_id: int, user: UserUpdate):
     if user_id not in db:
         raise HTTPException(status_code=404, detail="用户不存在")
+    # 取出当前存储的用户
     stored = db[user_id]
     # exclude_unset=True：只取客户端实际传了的字段
+    # model_dump() 把 Pydantic 模型转成 dict
     update_data = user.model_dump(exclude_unset=True)
-    # 检查用户名冲突
+    # 检查用户名冲突（如果要改用户名）
     if "username" in update_data:
         for uid, u in db.items():
+            # 排除自己，检查其他用户是否占用该用户名
             if uid != user_id and u.username == update_data["username"]:
                 raise HTTPException(status_code=400, detail="用户名已被占用")
-    # 应用更新
+    # 应用更新：model_copy 创建新实例，用 update_data 覆盖原值
     updated = stored.model_copy(update=update_data)
-    db[user_id] = updated
+    db[user_id] = updated             # 写回数据库
     return updated
 
-# 删除用户
+# 删除用户：204 No Content
 @app.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(user_id: int):
     if user_id not in db:
         raise HTTPException(status_code=404, detail="用户不存在")
-    del db[user_id]
-    # 204 不返回内容
+    del db[user_id]                   # 从数据库删除
+    # 204 不应返回 body，return None 即可
     return None
 \`\`\`
 
@@ -1017,6 +1035,7 @@ class UserV2(BaseModel):
 
 # ============ 模拟数据 ============
 # v1 和 v2 用不同的数据结构（字段不同）
+# 实际项目里可能是同一张表，接口层做字段映射
 users_v1 = {1: UserV1(id=1, name="alice", email="a@b.com")}
 users_v2 = {1: UserV2(id=1, username="alice", email="a@b.com", full_name="Alice Liddell", avatar=None)}
 
@@ -1057,19 +1076,24 @@ def get_user(user_id: int, request: Request):
         return users_v2[user_id]          # 返回 v2 结构
 
 # 也可以用依赖注入读版本（替代中间件方案）
+# Depends 方式比中间件更细粒度，可以按路由选择是否启用
 from fastapi import Depends
 
 def get_api_version(x_api_version: str = Header("1", alias="X-API-Version")):
     # Header("1", ...) 第一个参数 "1" 是默认值（没传时用 v1）
+    # alias="X-API-Version" 指定实际请求头名
     if x_api_version not in SUPPORTED_VERSIONS:
         raise HTTPException(status_code=400, detail=f"不支持的版本: {x_api_version}")
+    # 返回版本号，注入到路由函数
     return x_api_version
 
 @app.get("/users-v2/{user_id}")
 def get_user_v2(user_id: int, version: str = Depends(get_api_version)):
     # version 由依赖注入提供，路由函数只关心业务逻辑
     if version == "1":
+        # v1 用 name 字段
         return users_v1.get(user_id, {"error": "不存在"})
+    # v2 用 username 字段
     return users_v2.get(user_id, {"error": "不存在"})
 \`\`\`
 
@@ -1096,11 +1120,12 @@ app = FastAPI(title="文章 API")
 
 # 文章模型
 class Article(BaseModel):
-    id: str                                  # 文章 ID（UUID）
+    id: str                                  # 文章 ID（UUID 字符串）
+    # Field(..., min_length=1) 表示必填且至少 1 字符（不能空标题）
     title: str = Field(..., min_length=1)    # 标题
     content: str                             # 正文
     author: str                              # 作者
-    views: int = 0                           # 浏览量
+    views: int = 0                           # 浏览量，默认 0
 
 # 模拟数据库
 db: dict[str, Article] = {}
@@ -1153,14 +1178,16 @@ def get_article(article_id: str, response: Response, if_none_match: str | None =
     article.views += 1
     return article
 
-# 更新文章：200 or 404 or 409
+# 更新文章：200 or 404
+# PUT 是整体替换语义（客户端要传完整对象）
 @app.put("/articles/{article_id}", response_model=Article)
 def update_article(article_id: str, article: Article):
     if article_id not in db:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="文章不存在")
     article.id = article_id                   # 保持 ID 不变（用 URL 里的 ID）
-    article.views = db[article_id].views      # 保留浏览量（不被覆盖）
-    db[article_id] = article                  # 整体替换
+    # 保留原浏览量（客户端传的 views 不应覆盖服务端统计的值）
+    article.views = db[article_id].views
+    db[article_id] = article                  # 整体替换存储
     return article
 
 # 删除文章：204 No Content or 404
@@ -1573,16 +1600,17 @@ serializer = URLSafeTimedSerializer(SECRET_KEY, salt="auth-session")
 
 # ============ 模型 ============
 class SessionData(BaseModel):
-    user_id: int
-    username: str
-    role: str = "user"
-    login_at: str               # 登录时间
+    user_id: int                # 用户 ID
+    username: str               # 用户名
+    role: str = "user"          # 角色，默认普通用户
+    login_at: str               # 登录时间（ISO 格式字符串）
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    username: str               # 用户名
+    password: str               # 密码（明文传输，生产环境必须用 HTTPS）
 
 # ============ 模拟用户数据库 ============
+# 实际项目用数据库存储，密码字段存哈希值而非明文
 USERS = {
     "alice": {"id": 1, "username": "alice", "password": "secret123", "role": "user"},
     "admin": {"id": 2, "username": "admin", "password": "admin456", "role": "admin"},
@@ -1592,38 +1620,49 @@ USERS = {
 
 def create_session(response: Response, user: dict) -> SessionData:
     """登录成功后创建 Session 并写进 Cookie"""
+    # 构造 Session 数据
     session = SessionData(
         user_id=user["id"],
         username=user["username"],
         role=user["role"],
+        # datetime.now(timezone.utc) 获取 UTC 时间，isoformat() 转 ISO 字符串
         login_at=datetime.now(timezone.utc).isoformat(),
     )
+    # 签名后序列化（包含数据+签名+时间戳）
     signed = serializer.dumps(session.model_dump())
+    # 写进 Cookie，浏览器会自动保存并在后续请求带上
     response.set_cookie(
-        key="session",
-        value=signed,
-        max_age=SESSION_MAX_AGE,
-        httponly=True,
-        secure=False,             # 生产改 True
-        samesite="lax",
-        path="/",
+        key="session",            # Cookie 名
+        value=signed,             # 签名后的 Session 数据
+        max_age=SESSION_MAX_AGE,  # 存活秒数（1 小时）
+        httponly=True,            # 防 XSS：JS 读不到
+        secure=False,             # 生产改 True：仅 HTTPS 传输
+        samesite="lax",           # 跨站策略：Lax
+        path="/",                 # 全站生效
     )
     return session
 
 def read_session(session_cookie: str | None) -> SessionData | None:
     """从 Cookie 读取并验证 Session"""
+    # 没有 Cookie 直接返回 None（未登录）
     if not session_cookie:
         return None
     try:
+        # loads 验证签名+过期时间
+        # max_age=SESSION_MAX_AGE 超过这个时间视为过期
         data = serializer.loads(session_cookie, max_age=SESSION_MAX_AGE)
+        # **data 字典解包，构造 SessionData 实例
         return SessionData(**data)
     except (BadSignature, SignatureExpired):
+        # 签名无效（被篡改）或已过期，返回 None
         return None
 
 def require_session(session: str | None = Cookie(None)) -> SessionData:
     """依赖：要求已登录，否则 401"""
+    # Cookie(None) 从名为 session 的 Cookie 取值，没有则 None
     data = read_session(session)
     if data is None:
+        # 未登录或 Session 过期，返回 401
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="未登录或会话已过期",
@@ -1632,7 +1671,10 @@ def require_session(session: str | None = Cookie(None)) -> SessionData:
 
 def require_admin(session: SessionData = Depends(require_session)) -> SessionData:
     """依赖：要求管理员"""
+    # 依赖 require_session（先验证登录，再验证权限）
+    # require_session 的返回值（SessionData）注入到 session 参数
     if session.role != "admin":
+        # 非 admin 返回 403 Forbidden
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="需要管理员权限",
@@ -1641,22 +1683,28 @@ def require_admin(session: SessionData = Depends(require_session)) -> SessionDat
 
 # ============ 接口 ============
 
-# 登录
+# 登录：验证用户名密码，创建 Session
 @app.post("/login")
 def login(req: LoginRequest, response: Response):
+    # 从模拟数据库查用户
     user = USERS.get(req.username)
+    # 用户不存在或密码不匹配
     if user is None or user["password"] != req.password:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
+    # 登录成功，创建 Session 并写进 Cookie
     session = create_session(response, user)
     return {"message": "登录成功", "session": session.model_dump()}
 
-# 登出
+# 登出：删除 Cookie
 @app.post("/logout")
 def logout(response: Response):
+    # delete_cookie 通过设置 Max-Age=0 让浏览器删除 Cookie
+    # path 要和设置时一致才能删掉
     response.delete_cookie(key="session", path="/")
     return {"message": "已登出"}
 
 # 查看当前登录信息（需要登录）
+# Depends(require_session) 自动校验登录态，失败返回 401
 @app.get("/me")
 def me(session: SessionData = Depends(require_session)):
     return {"user": session.model_dump()}
@@ -1670,9 +1718,10 @@ def dashboard(session: SessionData = Depends(require_session)):
     }
 
 # 管理员接口（需要管理员）
+# Depends(require_admin) 先验证登录，再验证 admin 角色
 @app.get("/admin/users")
 def admin_list_users(session: SessionData = Depends(require_admin)):
-    # 这里只有 admin 能进来
+    # 这里只有 admin 能进来，非 admin 会被 require_admin 拦截
     return {"users": list(USERS.values()), "requested_by": session.username}
 
 # 公开接口（不需要登录）
@@ -2331,9 +2380,11 @@ from datetime import datetime, timezone
 app = FastAPI()
 
 # 模拟数据库查询（实际用 SQLAlchemy）
+# 用生成器模拟"分批取数据"，避免一次性加载 10 万行到内存
 def fetch_users(limit: int = 100000):
     """模拟从数据库分批取用户"""
     for i in range(1, limit + 1):
+        # yield 每个用户，模拟从数据库逐行读取
         yield {
             "id": i,
             "username": f"user_{i}",
@@ -2346,27 +2397,32 @@ def generate_csv():
     """
     流式生成 CSV，每行 yield 一次
     """
-    # 在内存中创建 StringIO 写 CSV
+    # 在内存中创建 StringIO 写 CSV（StringIO 是内存中的文本流）
     output = io.StringIO()
+    # csv.writer 把列表写成 CSV 行（自动处理逗号、引号转义）
     writer = csv.writer(output)
     # 写表头
     writer.writerow(["ID", "用户名", "邮箱", "注册时间"])
     # yield 表头（带 UTF-8 BOM，让 Excel 正确识别中文）
+    # \\xef\\xbb\\xbf 是 UTF-8 BOM 的字节序列
     yield b'\\xef\\xbb\\xbf' + output.getvalue().encode("utf-8")
     # 清空 buffer 准备写数据行
+    # seek(0) 移到开头，truncate(0) 截断为 0 字节
     output.seek(0)
     output.truncate(0)
     # 分批写数据
     count = 0
     for user in fetch_users(limit=1000):
+        # 写一行 CSV
         writer.writerow([user["id"], user["username"], user["email"], user["created_at"]])
         count += 1
         # 每攒 100 行 yield 一次，平衡性能和内存
+        # 太频繁 yield 增加 IO 次数，太少则占内存
         if count % 100 == 0:
             yield output.getvalue().encode("utf-8")
             output.seek(0)
             output.truncate(0)
-    # 写剩余的行
+    # 写剩余的行（不满 100 行的尾部数据）
     if output.getvalue():
         yield output.getvalue().encode("utf-8")
 
@@ -2406,7 +2462,9 @@ import io
 app = FastAPI()
 
 # 图片存储目录
+# Path("images") 创建 Path 对象指向 images 文件夹
 IMAGES_DIR = Path("images")
+# mkdir(exist_ok=True) 创建目录，如果已存在不报错
 IMAGES_DIR.mkdir(exist_ok=True)
 
 # 模拟创建一张测试图片（实际项目图片是用户上传的）
@@ -2417,9 +2475,13 @@ def ensure_sample_image():
         # 用 Pillow 生成一张图（需 pip install Pillow）
         try:
             from PIL import Image, ImageDraw
+            # Image.new 创建新图，"RGB" 模式，400x300 尺寸，背景色 lightblue
             img = Image.new("RGB", (400, 300), color="lightblue")
+            # ImageDraw.Draw 创建绘图对象，用于在图片上画文字/图形
             draw = ImageDraw.Draw(img)
+            # 在 (100,150) 位置写文字
             draw.text((100, 150), "Sample Image", fill="black")
+            # 保存为 JPEG 格式
             img.save(sample, "JPEG")
         except ImportError:
             # 没 Pillow 就写个占位字节
@@ -2427,18 +2489,20 @@ def ensure_sample_image():
     return sample
 
 # 原图下载
+# 设了 filename 参数会触发 Content-Disposition: attachment，浏览器下载
 @app.get("/download/image/{name}")
 def download_image(name: str):
     file_path = IMAGES_DIR / name
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="图片不存在")
     return FileResponse(
-        path=str(file_path),
-        media_type="image/jpeg",
-        filename=name,                  # 触发下载
+        path=str(file_path),       # 文件路径
+        media_type="image/jpeg",   # 图片类型
+        filename=name,             # 触发下载（生成 attachment 头）
     )
 
 # 图片预览（内联显示）
+# 不设 filename，浏览器内联显示而不是下载
 @app.get("/preview/image/{name}")
 def preview_image(name: str):
     file_path = IMAGES_DIR / name
@@ -2451,6 +2515,7 @@ def preview_image(name: str):
     )
 
 # 动态缩略图（用 Pillow 实时生成，流式返回）
+# Query(128, ge=32, le=512) 默认 128，最小 32，最大 512
 @app.get("/thumbnail/{name}")
 def thumbnail(name: str, size: int = Query(128, ge=32, le=512)):
     """
@@ -2468,22 +2533,29 @@ def thumbnail(name: str, size: int = Query(128, ge=32, le=512)):
 
     # 打开原图
     img = Image.open(file_path)
-    # 生成缩略图（保持比例）
+    # 生成缩略图（保持比例，不拉伸变形）
+    # thumbnail 是原地操作，会修改 img 对象
     img.thumbnail((size, size))
-    # 存进内存
+    # 存进内存（BytesIO 是内存中的二进制流）
     buf = io.BytesIO()
+    # quality=85 设置 JPEG 质量（85 是质量和体积的平衡点）
     img.save(buf, format="JPEG", quality=85)
+    # seek(0) 把读写指针移回开头（否则读不到数据）
     buf.seek(0)
     # 流式返回
+    # iter([buf.getvalue()]) 把字节数据包成可迭代对象
     return StreamingResponse(
         content=iter([buf.getvalue()]),
         media_type="image/jpeg",
         headers={
-            "Cache-Control": "public, max-age=86400",  # 缓存 1 天
+            # 缓存 1 天（86400 秒），减少重复计算
+            "Cache-Control": "public, max-age=86400",
         },
     )
 
 # 初始化时创建示例图片
+# @app.on_event("startup") 是 FastAPI 的启动事件钩子
+# 应用启动时自动调用（新版推荐用 lifespan 替代）
 @app.on_event("startup")
 def startup():
     ensure_sample_image()
@@ -2511,35 +2583,45 @@ app = FastAPI()
 FILES_DIR = Path("files")
 
 # 配置日志
+# basicConfig 设置日志级别，INFO 及以上会输出
 logging.basicConfig(level=logging.INFO)
+# 创建 logger 实例，名字 "download" 用于区分不同模块的日志
 logger = logging.getLogger("download")
 
 # 简单 token 校验
+# 实际项目用 JWT 或数据库查 token
 VALID_TOKENS = {"abc123", "xyz789"}
 
 def verify_token(x_download_token: str = Header(..., alias="X-Download-Token")):
     """校验下载 token"""
+    # Header(..., alias="X-Download-Token") 从请求头取 X-Download-Token
+    # ... 表示必填，没传会 422
     if x_download_token not in VALID_TOKENS:
+        # token 不在有效集合里，返回 403
         raise HTTPException(status_code=403, detail="无效的下载 token")
     return x_download_token
 
 # 受保护的下载接口
+# Depends(verify_token) 自动校验 token，失败返回 403
 @app.get("/secure-download/{filename}")
 def secure_download(filename: str, token: str = Depends(verify_token)):
     # 安全路径拼接
+    # resolve() 解析绝对路径，处理 .. 等符号
     file_path = (FILES_DIR / filename).resolve()
     try:
+        # relative_to 检查目标路径是否在 FILES_DIR 内
+        # 如果不在会抛 ValueError（说明想目录穿越）
         file_path.relative_to(FILES_DIR.resolve())
     except ValueError:
         raise HTTPException(status_code=400, detail="非法路径")
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="文件不存在")
-    # 记录下载日志
+    # 记录下载日志（谁下载了什么）
     logger.info(f"用户 token={token} 下载文件 {filename}")
     return FileResponse(
         path=str(file_path),
-        filename=filename,
-        media_type="application/octet-stream",
+        filename=filename,                          # 触发下载
+        media_type="application/octet-stream",      # 通用二进制类型
     )
 \`\`\`
 

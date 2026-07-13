@@ -66,14 +66,16 @@ def list_items(pagination: dict = Depends(get_page)):
 ## Demo 3：依赖获取数据库连接（最常用场景）
 
 \`\`\`python
-# 模拟数据库连接
+# 模拟数据库连接（真实项目用 SQLAlchemy）
 class FakeDB:
     def __init__(self):
-        self.connected = True
+        self.connected = True  # 连接状态
     def query(self, sql):
+        # 参数 sql: str SQL 语句
         return f"执行了: {sql}"
 
 # 依赖函数：创建和关闭连接
+# 用 yield 的依赖可以执行"清理"代码（类似 with 语句）
 def get_db():
     db = FakeDB()
     try:
@@ -84,6 +86,7 @@ def get_db():
         db.connected = False
         print("数据库连接已关闭")
 
+# 参数 db: FakeDB = Depends(get_db) 接收 yield 出来的值
 @app.get("/users")
 def get_users(db: FakeDB = Depends(get_db)):
     # db 是 get_db() 中 yield 出来的值
@@ -184,21 +187,28 @@ def test(
 ## Demo 1：依赖做认证（最常见的用法）
 
 \`\`\`python
+# 导入 FastAPI 类、Depends、HTTPException、Header
+# Header 用于读取请求头
 from fastapi import FastAPI, Depends, HTTPException, Header
 
+# 创建应用实例
 app = FastAPI()
 
 # 认证依赖：检查 token 是否有效
+# authorization: str = Header() 从请求头读取 Authorization
+# Header 自动把下划线转成连字符（authorization → Authorization）
 def verify_token(authorization: str = Header()):
     # authorization 的值是 "Bearer xxx" 格式
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="缺少认证令牌")
+    # split(" ")[1] 按空格分割，取第二部分（token）
     token = authorization.split(" ")[1]  # 提取 "Bearer " 后面的部分
     if token != "secret-token":
         raise HTTPException(status_code=401, detail="令牌无效")
     return token  # 返回 token 给路由函数使用
 
 # 使用认证依赖
+# 参数 token: str = Depends(verify_token) 依赖注入
 @app.get("/protected")
 def protected_route(token: str = Depends(verify_token)):
     # 只有通过认证才能到这里
@@ -318,14 +328,19 @@ def items():
 ## Demo 6：子路由依赖
 
 \`\`\`python
+# 导入 APIRouter，用于创建子路由（模块化路由）
 from fastapi import APIRouter
 
 # 创建子路由
+# APIRouter 参数：
+# prefix：路径前缀，所有路由会自动加上这个前缀
+# dependencies：所有路由都自动使用的依赖
 admin_router = APIRouter(
     prefix="/admin",        # 路径前缀
     dependencies=[Depends(require_admin)],  # 所有子路由都需要管理员权限
 )
 
+# 用 admin_router.get 而不是 app.get 注册路由
 @admin_router.get("/dashboard")
 def dashboard():
     return {"msg": "管理面板"}
@@ -334,7 +349,8 @@ def dashboard():
 def manage_users():
     return {"users": []}
 
-# 注册子路由
+# 注册子路由到主应用
+# app.include_router(子路由) 把子路由挂载到主应用
 app.include_router(admin_router)
 
 # 访问 /admin/dashboard 和 /admin/users 都需要管理员权限
@@ -366,18 +382,26 @@ app.include_router(admin_router)
 ## Demo 1：最简单的中间件
 
 \`\`\`python
+# 导入 FastAPI 类和 Request 类
+# Request 用于获取请求信息
 from fastapi import FastAPI, Request
+# 导入 time，用于计算耗时
 import time
 
+# 创建应用实例
 app = FastAPI()
 
+# @app.middleware("http") 注册 HTTP 中间件
 # 中间件是 async 函数，接收 request 和 call_next
 @app.middleware("http")
 async def add_process_time(request: Request, call_next):
+    # 参数 request: Request 当前请求对象
+    # 参数 call_next: 下一个处理函数（中间件或路由）
     # 请求处理前
     start = time.time()
 
     # call_next 调用下一个中间件或路由处理函数
+    # 必须 await，因为路由可能是异步的
     response = await call_next(request)
 
     # 请求处理后
@@ -418,16 +442,20 @@ async def log_requests(request: Request, call_next):
 ## Demo 3：CORS 中间件（跨域资源共享）
 
 \`\`\`python
+# 导入 CORSMiddleware，跨域中间件
 from fastapi.middleware.cors import CORSMiddleware
 
 # CORS 是跨域问题的解决方案
 # 浏览器默认禁止不同域名之间的请求，CORS 告诉浏览器哪些跨域请求是允许的
 
+# 创建应用实例
 app = FastAPI()
 
 # 添加 CORS 中间件
+# app.add_middleware(中间件类, 参数...) 添加中间件
 app.add_middleware(
     CORSMiddleware,
+    # allow_origins：允许的前端域名列表
     allow_origins=["http://localhost:3000"],  # 允许的前端域名
     allow_credentials=True,   # 允许携带 Cookie
     allow_methods=["*"],      # 允许所有 HTTP 方法（GET/POST/PUT/DELETE...）
@@ -442,13 +470,17 @@ app.add_middleware(
 ## Demo 4：错误处理中间件
 
 \`\`\`python
+# @app.middleware("http") 注册中间件
 @app.middleware("http")
 async def catch_exceptions(request: Request, call_next):
+    # 参数 request: Request 当前请求对象
+    # 参数 call_next: 下一个处理函数
     try:
         response = await call_next(request)
         return response
     except Exception as e:
         # 捕获所有未处理的异常，返回统一格式
+        # JSONResponse 返回 JSON 格式响应
         return JSONResponse(
             status_code=500,
             content={"error": "服务器内部错误", "detail": str(e)},
@@ -530,53 +562,72 @@ SQLAlchemy 是 Python 最流行的 ORM（对象关系映射），让你用 Pytho
 
 \`\`\`python
 # pip install sqlalchemy databases aiomysql  # 安装依赖
+# 导入 create_engine，SQLAlchemy 创建数据库引擎的函数
 from sqlalchemy import create_engine
+# 导入 declarative_base，模型基类
 from sqlalchemy.ext.declarative import declarative_base
+# 导入 sessionmaker（会话工厂）和 Session（会话类型）
 from sqlalchemy.orm import sessionmaker, Session
 
 # 数据库连接 URL（SQLite 为例，生产环境用 MySQL/PostgreSQL）
+# sqlite:///./test.db 表示当前目录下的 test.db 文件
 DATABASE_URL = "sqlite:///./test.db"  # 文件存储，简单
 
 # 创建引擎
+# engine 是数据库连接池的封装
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False},  # SQLite 需要这个参数
+    connect_args={"check_same_thread": False},  # SQLite 需要这个参数（允许多线程）
 )
 
 # 创建会话工厂
+# autocommit=False：不自动提交，需要手动 db.commit()
+# autoflush=False：不自动刷新
+# bind=engine：绑定引擎
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Base 是所有模型的基类
+# 定义模型时继承它，SQLAlchemy 才能识别
 Base = declarative_base()
 \`\`\`
 
 ## Demo 2：定义模型
 
 \`\`\`python
+# 导入 Column（字段）和各种类型
 from sqlalchemy import Column, Integer, String, Float, Boolean
 
 # 定义 User 模型（对应数据库中的 users 表）
+# 继承 Base 让 SQLAlchemy 识别这是模型
 class User(Base):
+    # __tablename__ 指定表名
     __tablename__ = "users"  # 表名
 
+    # Column(类型, 约束) 定义字段
     id = Column(Integer, primary_key=True, index=True)  # 主键，自动递增
+    # nullable=False：不能为空
     name = Column(String(50), nullable=False)            # 不能为空
+    # unique=True：唯一约束；index=True：建索引
     email = Column(String(100), unique=True, index=True) # 唯一，建索引
     age = Column(Integer, default=0)                     # 默认值 0
     is_active = Column(Boolean, default=True)            # 默认 True
 
 # 创建所有表（首次运行时执行）
+# create_all 会根据所有继承 Base 的模型创建表
 Base.metadata.create_all(bind=engine)
 \`\`\`
 
 ## Demo 3：依赖注入数据库会话
 
 \`\`\`python
+# 导入 FastAPI 类和 Depends
 from fastapi import FastAPI, Depends
 
+# 创建应用实例
 app = FastAPI()
 
 # 依赖函数：每次请求创建新的数据库会话
+# yield 依赖：路由结束后自动执行 finally 里的清理代码
 def get_db():
     db = SessionLocal()  # 创建会话
     try:
@@ -585,9 +636,11 @@ def get_db():
         db.close()  # 请求结束后关闭会话
 
 # 使用方式：在路由参数中注入 db
+# 参数 db: Session = Depends(get_db) 依赖注入获取会话
 @app.get("/users")
 def get_users(db: Session = Depends(get_db)):
     # db.query(User) 相当于 SELECT * FROM users
+    # .all() 返回所有记录
     users = db.query(User).all()
     return users  # 返回所有用户
 \`\`\`
@@ -689,7 +742,9 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
 ## Demo 6：关联查询
 
 \`\`\`python
+# 导入 relationship，建立模型间的关联关系
 from sqlalchemy.orm import relationship
+# 导入 ForeignKey，外键约束
 from sqlalchemy import ForeignKey
 
 # 定义两个关联模型
@@ -699,17 +754,22 @@ class Post(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(100))
     content = Column(String)
+    # ForeignKey("users.id") 外键，指向 users 表的 id
     user_id = Column(Integer, ForeignKey("users.id"))  # 外键
 
     # relationship 建立关联关系
+    # back_populates 指定双向关联的字段名
     author = relationship("User", back_populates="posts")
 
 # 在 User 模型中添加反向关联
+# 这样 User.posts 能取到该用户的所有文章
 User.posts = relationship("Post", back_populates="author")
 
 # 查询用户及其所有文章
 @app.get("/users/{user_id}/posts")
 def get_user_posts(user_id: int, db: Session = Depends(get_db)):
+    # 参数 user_id: int 路径参数
+    # 参数 db: Session = Depends(get_db) 依赖注入
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")

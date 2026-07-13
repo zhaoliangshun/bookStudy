@@ -604,8 +604,12 @@ body 也可以是 JSON 数组，对应 \`list[Model]\`：
 # 定义 POST 路由：访问 /items/batch 时触发
 @app.post("/items/batch")
 # 定义函数 create_items，参数: items: list[Item]
+# list[Item] 表示 body 是 JSON 数组，每个元素都是 Item 模型
+# FastAPI 会逐个校验数组中的每个对象，任意一个不通过都会返回 422
 def create_items(items: list[Item]):
-    # items 是 Item 实例列表
+    # items 是 Item 实例列表（已经过 Pydantic 校验和类型转换）
+    # 可以像普通 list 一样遍历：for item in items: print(item.name)
+    # len(items) 返回列表长度，即批量创建的数量
     # 返回创建数量
     return {"created": len(items)}
 \`\`\`
@@ -630,10 +634,17 @@ from pydantic import BaseModel, Field, ConfigDict
 # 定义 Pydantic 数据模型 User，继承 BaseModel
 class User(BaseModel):
     # 允许按字段名或别名填充
+    # populate_by_name=True 表示既可以用别名 "userName" 填充
+    # 也可以用字段名 "user_name" 填充
+    # 默认是 False，即只能用 alias 填充，不能用字段名
+    # 应用场景：JSON 用驼峰（前端约定），Python 用蛇形（PEP 8 规范）
     model_config = ConfigDict(populate_by_name=True)
     # 字段 user_name，别名: "userName"（JSON 里用驼峰）
+    # alias 指定 JSON 中的字段名，与 Python 属性名解耦
+    # 接收 {"userName": "alice"} 时，会赋值给 user_name 属性
     user_name: str = Field(alias="userName")
     # 字段 created_at，别名: "createdAt"
+    # 同样把 JSON 的驼峰名映射到 Python 的蛇形名
     created_at: str = Field(alias="createdAt")
 
 # 提交 JSON：
@@ -1498,8 +1509,14 @@ app = FastAPI()
 @app.post("/upload-bytes")
 # 定义函数 upload_bytes
 # 参数: file: bytes = File(...)（文件内容，bytes 类型）
+# File(...) 中的 ... 表示必填，等价于 Ellipsis
+# bytes 类型提示 FastAPI 接收文件并把整个内容读入内存为 bytes
+# 注意：bytes 类型只能拿到文件内容，拿不到文件名、类型等元数据
+# 如需元数据，应使用 UploadFile 类型（下一个示例）
 def upload_bytes(file: bytes = File(...)):
     # file 是文件全部内容的 bytes
+    # 整个文件已读入内存，对于 1GB 文件会占用 1GB 内存
+    # len(bytes) 返回字节数，即文件大小
     # 返回文件大小
     return {
         # "file_size": len(file),
@@ -1565,15 +1582,27 @@ app = FastAPI()
 @app.post("/file-info")
 # 定义函数 file_info
 def file_info(file: UploadFile = File(...)):
+    # UploadFile 是 FastAPI 推荐的文件接收方式
+    # 文件先存内存 buffer（2MB 上限），超出自动写临时文件
+    # 相比 bytes 类型，UploadFile 不会一次性占满内存
     # 返回文件的所有属性
     return {
         # "filename": file.filename, → 原始文件名
+        # filename 是客户端上传时的原始文件名（含扩展名）
+        # 注意：客户端可以伪造，不能完全信任，存盘前应重命名
         "filename": file.filename,
         # "content_type": file.content_type, → MIME 类型
+        # content_type 是客户端声明的 MIME 类型（如 image/jpeg）
+        # 同样可被伪造，重要场景应校验文件魔数
         "content_type": file.content_type,
         # "size": file.size, → 文件大小（字节）
+        # size 是文件的字节大小，FastAPI 新版支持
+        # 可在校验阶段就拒绝过大的文件，避免读取整个文件
         "size": file.size,
         # "headers": dict(file.headers), → 头信息
+        # headers 是该文件部分的 HTTP 头（multipart 中的部分头）
+        # 包含 Content-Disposition、Content-Type 等
+        # dict() 把 Headers 对象转成普通字典，便于 JSON 序列化
         "headers": dict(file.headers)
     }
 \`\`\`
@@ -1629,9 +1658,15 @@ app = FastAPI()
 # 定义 POST 路由：访问 /upload-async 时触发
 @app.post("/upload-async")
 # 定义函数 upload_async（异步函数用 async def）
+# async def 声明这是协程函数，运行在事件循环中
+# 在 async 函数里用 await 调用其他协程，避免阻塞事件循环
 async def upload_async(file: UploadFile = File(...)):
     # 异步读取文件内容
     # await file.read() 返回 bytes
+    # await 会暂停当前协程，让出事件循环给其他请求
+    # 等 I/O 完成后再恢复执行，避免一个慢文件读取卡住整个服务
+    # 注意：在 async def 里不要用 file.file.read()（同步阻塞）
+    # 同步阻塞会卡住事件循环，影响其他请求的并发处理
     contents = await file.read()
     # 返回文件信息
     return {

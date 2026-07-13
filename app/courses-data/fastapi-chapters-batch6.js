@@ -534,20 +534,22 @@ def get_page_params(
 
 # 商品模型
 class Product(BaseModel):
-    id: int
-    name: str
-    price: float
+    id: int            # 商品 ID
+    name: str          # 商品名
+    price: float       # 价格
 
 # 模拟商品数据
+# 列表推导式生成 100 个商品，实际项目从数据库查
 fake_products = [
     Product(id=i, name=f"商品{i}", price=i * 10.0)
     for i in range(1, 101)
 ]
 
 # 商品列表接口：使用分页依赖 + 分页响应模型
+# response_model=PageResponse[Product] 用泛型指定 items 类型
 @app.get("/products", response_model=PageResponse[Product])
 def list_products(page_params: dict = Depends(get_page_params)):
-    # 解构参数
+    # 解构参数（page_params 是 get_page_params 返回的 dict）
     page = page_params["page"]
     size = page_params["size"]
     # 计算起止索引
@@ -559,17 +561,18 @@ def list_products(page_params: dict = Depends(get_page_params)):
     return PageResponse(
         page=page,
         size=size,
-        total=len(fake_products),
-        items=items,
+        total=len(fake_products),  # 总条数
+        items=items,               # 当前页数据
     )
 
 # 订单模型
 class Order(BaseModel):
-    id: int
-    user_id: int
-    amount: float
+    id: int            # 订单 ID
+    user_id: int       # 用户 ID（外键）
+    amount: float      # 订单金额
 
 # 模拟订单数据
+# 生成 200 个订单，user_id 在 1-10 之间循环
 fake_orders = [
     Order(id=i, user_id=i % 10 + 1, amount=i * 50.0)
     for i in range(1, 201)
@@ -1209,23 +1212,26 @@ Base = declarative_base()
 
 # 账户模型
 class Account(Base):
-    __tablename__ = "accounts"
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
-    balance = Column(Float)  # 余额
+    __tablename__ = "accounts"                # 表名
+    id = Column(Integer, primary_key=True)    # 主键 ID
+    name = Column(String)                     # 账户名
+    balance = Column(Float)                   # 余额（浮点数）
 
 # 创建表
 Base.metadata.create_all(engine)
 
 # 初始化数据
 def init_data():
+    # 创建 session 操作数据库
     db = SessionLocal()
+    # 如果表里没数据，插入两个测试账户
     if db.query(Account).count() == 0:
         db.add(Account(id=1, name="alice", balance=1000.0))
         db.add(Account(id=2, name="bob", balance=500.0))
-        db.commit()
-    db.close()
+        db.commit()  # 提交事务，真正写入
+    db.close()  # 关闭 session
 
+# 启动时调用，初始化测试数据
 init_data()
 
 # ✅ 事务型 yield 依赖
@@ -1258,10 +1264,10 @@ def get_transactional_db():
 # 转账接口
 @app.post("/transfer")
 def transfer(
-    from_id: int,
-    to_id: int,
-    amount: float,
-    db: Session = Depends(get_transactional_db),
+    from_id: int,      # 转出账户 ID（从 query string 取）
+    to_id: int,        # 转入账户 ID
+    amount: float,     # 转账金额
+    db: Session = Depends(get_transactional_db),  # 事务型 session
 ):
     # 查转出账户
     from_acc = db.query(Account).filter(Account.id == from_id).first()
@@ -1271,14 +1277,15 @@ def transfer(
     to_acc = db.query(Account).filter(Account.id == to_id).first()
     if not to_acc:
         raise HTTPException(404, "转入账户不存在")
-    # 检查余额
+    # 检查余额是否充足
     if from_acc.balance < amount:
         raise HTTPException(400, "余额不足")
-    # 扣款
+    # 扣款（修改 ORM 对象，还未提交到数据库）
     from_acc.balance -= amount
     # 加款
     to_acc.balance += amount
-    # 这里不需要 db.commit()，依赖会自动提交
+    # 这里不需要 db.commit()，依赖会在路由正常返回后自动提交
+    # 如果上面任何一步抛异常，依赖会自动回滚
     return {
         "msg": "转账成功",
         "from": {"id": from_id, "balance": from_acc.balance},
@@ -1288,10 +1295,11 @@ def transfer(
 # 故意失败的转账接口（测试回滚）
 @app.post("/transfer/fail")
 def transfer_fail(db: Session = Depends(get_transactional_db)):
-    # 修改数据
+    # 修改数据（扣款 100）
     acc = db.query(Account).filter(Account.id == 1).first()
     acc.balance -= 100  # 扣款
-    # 故意抛异常
+    # 故意抛异常，触发事务回滚
+    # 回滚后 acc.balance 会恢复原值，扣款不会生效
     raise HTTPException(500, "模拟失败")
 \`\`\`
 
@@ -1827,41 +1835,47 @@ from pydantic import BaseModel
 app = FastAPI()
 
 # 模拟数据
+# 用户库：token -> 用户信息
 fake_users_db = {
     "alice_token": {"id": 1, "name": "alice", "role": "admin"},
     "bob_token": {"id": 2, "name": "bob", "role": "user"},
 }
+# 文章库：user_id -> 文章列表
 fake_db_data = {1: [{"id": 1, "owner": 1, "title": "alice 的文章"}]}
 
 # ========== 第一层：基础设施依赖 ==========
 
 # 依赖：从 Header 提取 token
 def get_token(authorization: Optional[str] = Header(None)):
-    # 没传 Authorization
+    # Header(None) 从请求头取 Authorization，没有则 None
     if not authorization:
         raise HTTPException(401, "缺少 Authorization")
-    # 解析 token
+    # 校验 Bearer 格式
     if not authorization.startswith("Bearer "):
         raise HTTPException(401, "Authorization 格式错误")
-    # 提取 token
+    # 提取 token（去掉 "Bearer " 前缀，7 个字符）
     token = authorization[7:]
-    # 返回
+    # 返回 token 给上层依赖
     return token
 
-# 依赖：模拟数据库 session
+# 依赖：模拟数据库 session（yield 依赖）
 def get_db():
-    # 模拟 session
+    # 模拟 session（实际是 SQLAlchemy Session）
     db = {"data": fake_db_data}
     print("[db] 创建 session")
     try:
+        # yield 把 db 交给路由函数
         yield db
     finally:
+        # 路由结束后关闭 session
         print("[db] 关闭 session")
 
 # ========== 第二层：业务依赖 ==========
 
 # 依赖：根据 token 获取用户（依赖 get_token）
+# 依赖链：get_current_user -> get_token
 def get_current_user(token: str = Depends(get_token)):
+    # token 是 get_token 的返回值（被缓存复用）
     # 查用户
     user = fake_users_db.get(token)
     # 不存在
@@ -1872,19 +1886,23 @@ def get_current_user(token: str = Depends(get_token)):
     return user
 
 # 依赖：校验管理员权限（依赖 get_current_user）
+# 依赖链：require_admin -> get_current_user -> get_token
 def require_admin(user: dict = Depends(get_current_user)):
     # 检查角色
     if user["role"] != "admin":
+        # 非 admin 返回 403 Forbidden
         raise HTTPException(403, "需要管理员权限")
     print(f"[admin] 权限校验通过: {user['name']}")
     return user
 
 # 依赖：获取当前用户的文章（依赖 get_current_user + get_db）
+# 组合两个依赖：用户 + 数据库
 def get_user_articles(
     user: dict = Depends(get_current_user),
     db: dict = Depends(get_db),
 ):
     # 从数据库查用户文章
+    # db["data"] 是 fake_db_data，按 user_id 取文章列表
     articles = db["data"].get(user["id"], [])
     print(f"[articles] 查询 {user['name']} 的文章: {len(articles)} 篇")
     return articles
@@ -1893,23 +1911,26 @@ def get_user_articles(
 
 # 文章响应模型
 class Article(BaseModel):
-    id: int
-    owner: int
-    title: str
+    id: int            # 文章 ID
+    owner: int         # 所有者用户 ID
+    title: str         # 文章标题
 
 # 接口1：获取自己的文章（只需登录）
+# 依赖链：get_user_articles -> get_current_user -> get_token
 @app.get("/articles", response_model=list[Article])
 def list_my_articles(articles: list = Depends(get_user_articles)):
     # articles 是 get_user_articles 的返回值
+    # 已经过登录校验和数据库查询，直接返回
     return articles
 
 # 接口2：管理员查看所有人文章（需要 admin）
+# 依赖链：require_admin -> get_current_user -> get_token
 @app.get("/admin/articles", response_model=list[Article])
 def list_all_articles(
     admin: dict = Depends(require_admin),  # 校验 admin
     db: dict = Depends(get_db),            # 复用 db（缓存）
 ):
-    # 查所有文章
+    # 查所有文章（遍历所有用户的文章）
     all_articles = []
     for uid, arts in db["data"].items():
         all_articles.extend(arts)
@@ -1918,16 +1939,18 @@ def list_all_articles(
 # 接口3：管理员删除文章（需要 admin + db）
 @app.delete("/admin/articles/{article_id}")
 def delete_article(
-    article_id: int,
-    admin: dict = Depends(require_admin),
-    db: dict = Depends(get_db),
+    article_id: int,                       # 从 URL 路径取文章 ID
+    admin: dict = Depends(require_admin),  # 校验 admin
+    db: dict = Depends(get_db),            # 复用 db（缓存）
 ):
     # 遍历查找并删除
     for uid, arts in db["data"].items():
+        # arts[:] 创建副本遍历，避免遍历时修改原列表
         for art in arts[:]:
             if art["id"] == article_id:
-                arts.remove(art)
+                arts.remove(art)  # 从列表删除
                 return {"msg": f"已删除文章 {article_id}", "by": admin["name"]}
+    # 没找到返回 404
     raise HTTPException(404, "文章不存在")
 \`\`\`
 
@@ -2624,6 +2647,7 @@ async def lifespan(app: FastAPI):
     # 存到 app.state，全局可访问
     # app.state 是应用级共享对象，所有请求都能访问
     app.state.engine = engine
+    # 创建异步 Session 工厂，每个请求用它创建独立 session
     app.state.SessionLocal = async_sessionmaker(engine)
 
     # yield 把控制权交给应用
@@ -2635,9 +2659,11 @@ async def lifespan(app: FastAPI):
     # engine.dispose() 关闭所有连接，释放资源
     await engine.dispose()
 
+# 创建 app 时传入 lifespan
 app = FastAPI(lifespan=lifespan)
 
 # ========== Depends：管理请求级资源 ==========
+# get_db 是请求级依赖，每个请求创建独立 session
 async def get_db(request: Request):
     # 从 app.state 取 SessionLocal 工厂
     # request.app.state 访问应用级状态
@@ -2646,13 +2672,15 @@ async def get_db(request: Request):
     # async with 自动管理 session 生命周期（退出时关闭）
     async with SessionLocal() as db:
         print(f"[get_db] 创建 session")
+        # yield db 给路由函数使用
         yield db
         print(f"[get_db] 关闭 session")
 
 # 路由
 @app.get("/users")
 async def list_users(db=Depends(get_db)):
-    # db 是请求级 session
+    # db 是请求级 session（每个请求独立）
+    # await db.execute 执行异步 SQL 查询
     result = await db.execute("SELECT 1")
     return {"data": "ok"}
 \`\`\`
@@ -2688,19 +2716,20 @@ from contextlib import asynccontextmanager
 class Settings:
     """应用配置（从环境变量或配置文件加载）"""
     def __init__(self):
-        # 模拟配置
-        self.app_name = "MyAPI"
-        self.debug = True
-        self.database_url = "sqlite:///test.db"
-        self.secret_key = "super-secret"
+        # 模拟配置（实际项目从环境变量 .env 读）
+        self.app_name = "MyAPI"            # 应用名
+        self.debug = True                  # 调试模式
+        self.database_url = "sqlite:///test.db"  # 数据库连接
+        self.secret_key = "super-secret"   # 签名密钥（生产环境必须改）
         # JWT 过期时间（秒）
         self.jwt_expire = 3600
 
     def get_secret(self) -> str:
-        # 获取密钥
+        # 获取密钥（实际项目可加解密逻辑）
         return self.secret_key
 
 # 全局配置单例（也可以用 lifespan 创建）
+# 整个应用共享一个 Settings 实例
 settings = Settings()
 
 # ========== 2. 日志类 ==========
@@ -2710,11 +2739,13 @@ class LoggerService:
     def __init__(self, name: str = "app"):
         # 创建 logger
         self.logger = logging.getLogger(name)
-        # 设置级别
+        # 设置级别：debug 模式输出 DEBUG 及以上，否则 INFO 及以上
         self.logger.setLevel(logging.DEBUG if settings.debug else logging.INFO)
-        # 避免重复添加 handler
+        # 避免重复添加 handler（防止日志重复输出）
         if not self.logger.handlers:
+            # StreamHandler 输出到控制台
             handler = logging.StreamHandler()
+            # 定义日志格式：时间 [级别] 名字: 消息
             formatter = logging.Formatter(
                 "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
             )
@@ -2722,12 +2753,15 @@ class LoggerService:
             self.logger.addHandler(handler)
 
     def info(self, msg: str):
+        # 记录 INFO 级别日志
         self.logger.info(msg)
 
     def error(self, msg: str):
+        # 记录 ERROR 级别日志
         self.logger.error(msg)
 
     def debug(self, msg: str):
+        # 记录 DEBUG 级别日志（仅 debug 模式输出）
         self.logger.debug(msg)
 
 # 全局 logger 单例
@@ -2738,9 +2772,9 @@ logger = LoggerService()
 class AuthService:
     """认证服务类"""
     def __init__(self, secret: str):
-        # 保存密钥
+        # 保存密钥（用于 JWT 签名等）
         self.secret = secret
-        # 模拟用户库
+        # 模拟用户库（实际项目用数据库）
         self.users = {
             "alice_token": {"id": 1, "name": "alice", "role": "admin"},
             "bob_token": {"id": 2, "name": "bob", "role": "user"},
@@ -2753,6 +2787,8 @@ class AuthService:
             raise HTTPException(401, "无效 token")
         return user
 
+    # 方法作为依赖：从 Header 取 token，返回用户
+    # Annotated[Optional[str], Header()] 等价于 Optional[str] = Header(None)
     def get_current_user(
         self,
         authorization: Annotated[Optional[str], Header()] = None,
@@ -2760,40 +2796,50 @@ class AuthService:
         # 从 Header 取 token
         if not authorization:
             raise HTTPException(401, "缺少 Authorization")
+        # 去掉 "Bearer " 前缀
         token = authorization.replace("Bearer ", "")
         # 校验并返回用户
         return self.verify_token(token)
 
+    # 方法作为依赖：校验 admin（依赖 get_current_user）
+    # Annotated[dict, Depends(get_current_user)] 等价于 dict = Depends(get_current_user)
     def require_admin(
         self,
         user: Annotated[dict, Depends(get_current_user)],
     ) -> dict:
-        # 校验 admin
+        # 校验 admin 角色
         if user["role"] != "admin":
             raise HTTPException(403, "需要管理员权限")
         return user
 
 # 全局 auth 服务（用配置初始化）
+# 用 settings.get_secret() 传入密钥
 auth_service = AuthService(secret=settings.get_secret())
 
 # ========== 4. Annotated 类型别名 ==========
 
 # 当前用户依赖类型
+# CurrentUser 等价于 dict + Depends(auth_service.get_current_user)
+# 用时只需写 user: CurrentUser，不用写完整的 Depends(...)
 CurrentUser = Annotated[dict, Depends(auth_service.get_current_user)]
 # 管理员依赖类型
+# AdminUser 等价于 dict + Depends(auth_service.require_admin)
 AdminUser = Annotated[dict, Depends(auth_service.require_admin)]
 
 # ========== 5. 全局依赖：请求日志 ==========
 
+# 全局依赖：对所有路由生效
 def log_request(request: Request):
-    # 记录请求方法、路径
+    # request 是 FastAPI 注入的 Request 对象
+    # 记录请求方法（GET/POST...）和路径
     logger.info(f"{request.method} {request.url.path}")
 
 # ========== 6. 创建 app ==========
 
 app = FastAPI(
-    title=settings.app_name,
+    title=settings.app_name,  # 应用名（显示在文档）
     # 全局依赖：所有请求都记日志
+    # dependencies 里的依赖只执行副作用，不注入返回值
     dependencies=[Depends(log_request)],
 )
 
@@ -2803,37 +2849,39 @@ app = FastAPI(
 @app.get("/")
 def root():
     logger.info("访问根路径")
+    # 返回应用配置信息
     return {"app": settings.app_name, "debug": settings.debug}
 
 # 需要登录的接口
 @app.get("/me")
 def get_me(user: CurrentUser):
-    # CurrentUser 自动注入当前用户
+    # CurrentUser 自动注入当前用户（已校验 token）
     logger.info(f"用户 {user['name']} 查看自己的信息")
     return {"user": user}
 
 # 需要管理员权限的接口
 @app.get("/admin/users")
 def admin_list_users(admin: AdminUser):
-    # AdminUser 自动校验并注入管理员
+    # AdminUser 自动校验并注入管理员（已校验 admin 角色）
     logger.info(f"管理员 {admin['name']} 查看用户列表")
     return {
         "admin": admin["name"],
+        # 返回所有用户（实际项目要分页）
         "users": list(auth_service.users.values()),
     }
 
 # 创建用户的接口（管理员）
 @app.post("/admin/users")
 def admin_create_user(
-    admin: AdminUser,
-    name: str,
-    role: str = "user",
+    admin: AdminUser,       # 校验管理员权限
+    name: str,              # 新用户名（从 query string 取）
+    role: str = "user",     # 角色，默认普通用户
 ):
-    # 生成新 token
+    # 生成新 token（实际项目用 JWT 或随机字符串）
     new_token = f"{name}_token"
-    # 创建用户
+    # 创建用户并存入用户库
     auth_service.users[new_token] = {
-        "id": len(auth_service.users) + 1,
+        "id": len(auth_service.users) + 1,  # ID 自增
         "name": name,
         "role": role,
     }

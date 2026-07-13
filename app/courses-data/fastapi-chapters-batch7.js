@@ -175,23 +175,33 @@ from fastapi import FastAPI, Request
 app = FastAPI()
 
 # 中间件 A:先注册
+# 先注册的中间件位于「洋葱」的内层,请求后到达、响应先返回
 @app.middleware("http")
 async def mw_a(request: Request, call_next):
+    # 请求阶段(还未进入路由):此处位于内层,因此后执行
     print("A before")  # 请求前执行
+    # call_next 把请求传给下一层(此处是路由),阻塞等待响应返回
+    # 由于 A 在内层,call_next 实际是直接进入路由
     response = await call_next(request)  # 调用下一层
+    # 响应阶段(路由已执行完):此处位于内层,因此先执行
     print("A after")   # 响应后执行
     return response
 
 # 中间件 B:后注册,所以在更外层
+# 后注册的中间件被包在更外层,请求先经过它,响应最后经过它
 @app.middleware("http")
 async def mw_b(request: Request, call_next):
+    # 请求阶段(还未进入路由):此处位于外层,因此先执行
     print("B before")  # B 在外层,请求先到 B
+    # call_next 把请求传给下一层(此处是 mw_a),阻塞等待响应返回
     response = await call_next(request)
+    # 响应阶段(路由已执行完):此处位于外层,因此后执行
     print("B after")   # 响应后,B 后执行
     return response
 
 @app.get("/")
 def root():
+    # 路由函数:位于洋葱最内层,在所有中间件的「请求前」之后执行
     print("路由执行")
     return {"msg": "ok"}
 \`\`\`
@@ -724,30 +734,41 @@ from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
 
 # 完整的 CORS 配置,生产级
+# CORSMiddleware 会自动处理 OPTIONS 预检请求,无需手写路由
 app.add_middleware(
     CORSMiddleware,
     # 1. allow_origins:允许的前端来源列表
     #    必须明确列出,不要用 ["*"](尤其是带 credentials 时)
+    #    每项必须包含 协议+域名+端口 三要素,缺一不可
     allow_origins=[
         "http://localhost:3000",        # 本地开发
         "http://127.0.0.1:3000",        # 本地开发(IP 访问)
+        # 注意:localhost 和 127.0.0.1 浏览器视为不同源,需分别列出
         "http://dev.mycompany.com",     # 测试环境
         "https://app.mycompany.com",    # 生产环境
+        # 注意:http 和 https 也是不同源,生产环境必须用 https
     ],
     # 2. allow_credentials:是否允许带 Cookie 跨域
-    #    True 时 allow_origins 不能是 ["*"]
+    #    True 时 allow_origins 不能是 ["*"](浏览器安全限制)
+    #    如果用 JWT(放 Authorization 头)而非 Cookie,可以设为 False
     allow_credentials=True,
     # 3. allow_methods:允许的 HTTP 方法
     #    显式列出比 ["*"] 更清晰、更安全
+    #    OPTIONS 必须列出:预检请求就是 OPTIONS 方法
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     # 4. allow_headers:允许的请求头
-    #    前端用到的自定义头都要列
+    #    前端用到的自定义头都要列,否则预检会失败
+    #    Authorization:JWT token 常用
+    #    Content-Type:JSON 请求必须(application/json 是非简单请求)
+    #    X-Request-ID:自定义链路追踪头
     allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
     # 5. expose_headers:暴露给前端 JS 能读的响应头
-    #    默认前端只能读"安全"头,自定义头要 expose
+    #    默认前端只能读"安全"头(Content-Type、Content-Length 等)
+    #    自定义头必须 expose,前端 response.headers.get() 才能读到
     expose_headers=["X-Request-ID", "X-Total-Count", "X-Process-Time"],
     # 6. max_age:预检结果缓存秒数
-    #    缓存期内不重复发 OPTIONS,减少请求
+    #    缓存期内浏览器不重复发 OPTIONS,减少请求
+    #    600 秒=10 分钟,生产环境可适当调大(如 3600)
     max_age=600,
 )
 
@@ -1120,6 +1141,7 @@ GZip 把响应体压缩后传输,显著减少传输量。文本类响应(JSON/HT
 # 从 fastapi 导入 FastAPI
 from fastapi import FastAPI
 # 从 fastapi.middleware.gzip 导入 GZipMiddleware
+# GZipMiddleware:自动压缩响应体,减少网络传输量
 from fastapi.middleware.gzip import GZipMiddleware
 
 # 创建 FastAPI 应用实例
@@ -1127,23 +1149,32 @@ app = FastAPI()
 
 # 添加 GZip 中间件
 # minimum_size=1000:小于 1000 字节的响应不压缩
-# 因为压缩小文件反而可能变大(压缩头有开销)
+# 为什么不压小文件?因为 GZip 压缩头本身有几十字节开销
+# 小文件压缩后体积可能不降反升,且浪费 CPU
+# 推荐值 500~1000,根据实际响应大小调整
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 @app.get("/big")
 def big():
     # 大 JSON 响应会被自动 GZip 压缩
-    # 原始大小约 10KB,压缩后约 500 字节
+    # ["item"] * 1000 是 Python 列表乘法,生成 1000 个 "item" 元素的列表
+    # 原始大小约 10KB,压缩后约 500 字节(压缩率约 95%)
+    # 文本类数据(重复字符多)压缩率极高,二进制数据(图片/视频)几乎不压缩
     return {"data": ["item"] * 1000}
 
 @app.get("/small")
 def small():
     # 小响应不压缩(小于 minimum_size)
+    # 响应体仅 14 字节,小于 1000 字节阈值,GZip 中间件直接跳过
     return {"msg": "hi"}
 
 @app.get("/list")
 def list_items():
     # 返回 1000 个对象,压缩效果显著
+    # 列表推导式:[表达式 for 变量 in 可迭代对象]
+    # 生成 [{"id": 0, "name": "item-0", "value": 0}, ..., {"id": 999, ...}]
+    # f"item-{i}" 是 f-string 格式化,把 i 的值嵌入字符串
+    # 原始约 30KB,压缩后约 3KB
     return [{"id": i, "name": f"item-{i}", "value": i * 10} for i in range(1000)]
 \`\`\`
 
@@ -1680,17 +1711,24 @@ from fastapi import FastAPI, Request
 app = FastAPI()
 
 # 定义纯 ASGI 中间件类
+# 纯 ASGI 中间件不继承任何基类,直接实现 __call__ 协议
+# 性能最高,因为不经过 BaseHTTPMiddleware 的 Request 对象转换开销
 class TimingASGIMiddleware:
     """纯 ASGI 计时中间件,性能最高"""
 
     def __init__(self, app):
-        # app 是下游 ASGI 应用
+        # app 是下游 ASGI 应用(FastAPI 会自动传入被包装的应用)
+        # 中间件链:外层中间件.__call__ → 内层中间件.__call__ → ... → 路由
         self.app = app
 
+    # __call__ 是 ASGI 协议的核心方法
+    # ASGI 应用必须是可调用对象,接收三个参数
     async def __call__(self, scope, receive, send):
         # scope 是字典,包含请求元信息
+        # scope["type"] 可能值:"http"(HTTP请求)、"websocket"(WS连接)、"lifespan"(应用生命周期)
         # 只处理 HTTP 请求(lifespan、websocket 不处理)
         if scope["type"] != "http":
+            # 非 HTTP 请求直接透传给下游,不做任何处理
             await self.app(scope, receive, send)
             return
 
@@ -1699,21 +1737,31 @@ class TimingASGIMiddleware:
         start = time.time()
 
         # 包装 send 函数,在响应头发送时加自定义头
+        # 为什么包装 send?因为纯 ASGI 中间件拿不到 Response 对象
+        # 只能通过拦截 send 函数来修改响应
         async def send_wrapper(message):
-            # message 类型:http.response.start(响应头)或 http.response.body(响应体)
+            # ASGI 协议中,响应通过两个消息发送:
+            # message 类型:http.response.start(响应头,含状态码和 headers)
+            #             http.response.body(响应体,二进制数据)
             if message["type"] == "http.response.start":
                 # 响应头阶段:加自定义头
+                # headers 是字节列表 [(b"key", b"value"), ...]
+                # 注意:ASGI 规范要求 header 的 key 和 value 都是 bytes,不是 str
                 headers = message.get("headers", [])
                 duration = time.time() - start
-                # headers 是字节列表 [(b"key", b"value"), ...]
+                # b"x-process-time" 是 bytes 字面量
+                # f"{duration:.4f}s".encode() 把 str 转 bytes(默认 UTF-8)
                 headers.append((b"x-process-time", f"{duration:.4f}s".encode()))
                 message["headers"] = headers
+            # 调用原始 send,把修改后的消息发出去
             await send(message)
 
-        # 调用下游应用,用包装后的 send
+        # 调用下游应用,用包装后的 send 替换原始 send
+        # 下游应用调用 send 时,实际执行的是我们的 send_wrapper
         await self.app(scope, receive, send_wrapper)
 
 # 添加中间件
+# add_middleware 会把当前 app 包进 TimingASGIMiddleware,形成新的 app
 app.add_middleware(TimingASGIMiddleware)
 
 @app.get("/")
@@ -1874,6 +1922,8 @@ def error(request: Request):
 # 导入 time 模块
 import time
 # 从 collections 导入 defaultdict
+# defaultdict:访问不存在的 key 时自动调用工厂函数创建默认值
+# 这里用 lambda 创建新的 TokenBucket,省去手动初始化
 from collections import defaultdict
 # 从 fastapi 导入 FastAPI 和 Request
 from fastapi import FastAPI, Request
@@ -1883,29 +1933,37 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 # 令牌桶类
+# 令牌桶算法:固定速率往桶里加令牌,请求消耗令牌,没令牌就拒绝
+# 相比固定窗口计数器,令牌桶能应对突发流量(桶里有存量的令牌)
 class TokenBucket:
     """令牌桶:固定速率补充令牌,请求消耗令牌"""
 
     def __init__(self, capacity: int, refill_rate: float):
         self.capacity = capacity        # 桶容量(最多存多少令牌)
+        # capacity 决定能应对多大突发流量
+        # 例如 capacity=100,允许瞬间 100 个并发请求
         self.refill_rate = refill_rate  # 每秒补充多少令牌
+        # refill_rate 决定长期平均速率
+        # 例如 refill_rate=10,长期平均每秒最多 10 个请求
         self.tokens = capacity          # 当前令牌数,初始满
         self.last_refill = time.time()  # 上次补充时间
 
     def consume(self, n: int = 1) -> bool:
         """消耗 n 个令牌,返回是否成功"""
         # 1. 补充令牌(按时间差计算)
+        # 这种「惰性补充」不需要后台线程,只在 consume 时计算
         now = time.time()
-        elapsed = now - self.last_refill
+        elapsed = now - self.last_refill  # 距上次补充的秒数
         # 补充量 = 时间差 * 速率,不超过容量
+        # min() 确保令牌数不超过桶容量(防止溢出)
         self.tokens = min(self.capacity, self.tokens + elapsed * self.refill_rate)
         self.last_refill = now
 
         # 2. 消耗令牌
         if self.tokens >= n:
             self.tokens -= n
-            return True
-        return False
+            return True   # 令牌足够,放行
+        return False      # 令牌不足,拒绝
 
 # 限流中间件
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -1916,18 +1974,23 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.capacity = capacity        # 桶容量
         self.refill_rate = refill_rate  # 补充速率
         # 每个 IP 一个桶(defaultdict 自动创建)
+        # defaultdict 访问不存在的 key 时,自动调用 lambda 创建新桶
+        # 这样第一次访问的 IP 也会得到一个满桶令牌
         self.buckets = defaultdict(
             lambda: TokenBucket(capacity, refill_rate)
         )
 
     async def dispatch(self, request: Request, call_next):
         # 获取客户端 IP(实际可用 user_id 或 API key)
+        # request.client 是 Client 对象,host 是 IP 地址
+        # 注意:NAT/代理后,多个用户可能共享同一 IP,此时用 IP 限流不准确
         client_ip = request.client.host if request.client else "unknown"
         bucket = self.buckets[client_ip]
 
         # 尝试消耗令牌
         if not bucket.consume():
-            # 限流:返回 429
+            # 限流:返回 429 Too Many Requests
+            # 429 是 HTTP 标准的限流状态码
             return JSONResponse(
                 status_code=429,
                 content={
@@ -1935,7 +1998,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "retry_after": "1秒"
                 },
                 headers={
+                    # Retry-After 告诉客户端多久后重试(秒)
                     "Retry-After": "1",
+                    # X-RateLimit-* 是非标准头,给前端展示限流信息
                     "X-RateLimit-Limit": str(self.capacity),
                     "X-RateLimit-Remaining": "0",
                 },
@@ -1949,6 +2014,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
 app = FastAPI()
 # 每个IP:桶容量100,每秒补充10个
+# 含义:允许瞬间 100 个突发请求,长期平均每秒 10 个
 app.add_middleware(RateLimitMiddleware, capacity=100, refill_rate=10)
 
 @app.get("/")

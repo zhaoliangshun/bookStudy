@@ -339,25 +339,41 @@ def root():
 
 \`\`\`python
 # 文件：app/database.py
+# 从 sqlalchemy 导入 create_engine（数据库引擎工厂）
+# create_engine 是 SQLAlchemy 的入口，负责管理连接池和底层 DBAPI
 from sqlalchemy import create_engine
+# 从 sqlalchemy.orm 导入两个核心工具：
+#   sessionmaker —— 会话工厂，用来批量生产 Session 实例
+#   declarative_base —— 所有 ORM 模型的基类工厂，继承它的类会被识别为表模型
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 # 数据库连接 URL（真实项目从配置读）
+# 格式：dialect+driver://user:password@host:port/database
+# sqlite:///./blog.db 表示用 SQLite，数据库文件是当前目录下的 blog.db
 SQLALCHEMY_DATABASE_URL = "sqlite:///./blog.db"
 
 # 创建引擎，connect_args 是 SQLite 专用参数
+# check_same_thread=False 是因为 FastAPI 用线程池跑同步路由
+# SQLite 默认只允许创建连接的线程使用它，多线程下必须关掉这个检查
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
     connect_args={"check_same_thread": False}
 )
 
 # 会话工厂，每次调用 SessionLocal() 产生一个新会话
+# bind=engine 指定这个会话用哪个引擎执行 SQL
+# autocommit=False 表示不会自动 commit，需要显式 db.commit()
+# autoflush=False 表示不会在查询前自动 flush，避免意外的 SQL 执行
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # 所有模型的基类
+# 继承 Base 的类会被 SQLAlchemy 识别为 ORM 模型
+# Base.metadata 收集所有表的定义，create_all 时用来建表
 Base = declarative_base()
 
 # 依赖函数：每个请求拿一个独立数据库会话，用完关闭
+# 这是 FastAPI 依赖注入的标准写法：用 yield 的函数作为 Depends 的参数
+# yield 之前是请求开始时的初始化，yield 之后是请求结束时的清理
 def get_db():
     db = SessionLocal()        # 请求开始：创建会话
     try:
@@ -623,26 +639,40 @@ pip install pydantic-settings
 
 \`\`\`python
 # 文件：app/config.py
+# 从 pydantic_settings 导入 BaseSettings（配置基类）和 SettingsConfigDict（配置元数据）
+# BaseSettings 继承自 pydantic BaseModel，额外支持从环境变量/.env 读取字段
+# SettingsConfigDict 是 TypedDict，用来声明 BaseSettings 的行为参数（如加载哪个 .env 文件）
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# 继承 BaseSettings 后，类的字段会自动和环境变量绑定
+# 字段名（大写）就是环境变量名，比如 app_name 对应环境变量 APP_NAME
 class Settings(BaseSettings):
     """应用配置类，所有配置项集中管理"""
     
     # 应用基本配置
+    # 类型注解 + 默认值：str 是类型，"我的应用" 是默认值
+    # 如果环境变量里没设 APP_NAME，就用这个默认值
     app_name: str = "我的应用"           # 有默认值，不传就用默认
+    # bool 类型会自动把 "true"/"false"/"1"/"0" 等字符串转成布尔值
     debug: bool = False                  # 调试模式，默认关闭
     
     # 数据库配置
+    # sqlite:///./app.db 是 SQLAlchemy 的连接串格式：dialect+driver://user:pass@host:port/db
     database_url: str = "sqlite:///./app.db"
     
     # 安全配置
+    # secret_key 用于签 JWT、加密 cookie 等，生产环境必须换成随机长字符串
     secret_key: str = "change-me-in-prod"  # 生产环境必须改！
     
+    # model_config 是 Pydantic v2 的写法（v1 用 class Config）
     # 告诉 pydantic-settings 从 .env 文件读配置
     # env_file=".env" 表示会自动加载同目录下的 .env 文件
+    # env_file_encoding="utf-8" 指定 .env 文件编码，避免中文乱码
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 # 全局单例：整个应用用同一个 settings 实例
+# 模块导入时执行 Settings()，从环境变量和 .env 加载配置
+# 其他文件 from app.config import settings 即可拿到配置
 settings = Settings()
 \`\`\`
 
@@ -1199,10 +1229,21 @@ CRITICAL (50)  系统级灾难：数据库连不上、磁盘满
 
 \`\`\`python
 # 文件：app/main.py
+# 导入 Python 标准库 logging，提供日志功能（无需安装）
 import logging
+# 导入 FastAPI 应用入口类
 from fastapi import FastAPI
 
-# 配置根 logger：级别 INFO，格式含时间、级别、logger 名、消息
+# logging.basicConfig 是一次性配置根 logger 的便捷方法
+# 只在第一次调用时生效，后续调用会被忽略
+# 参数说明：
+#   level=logging.INFO  设置根 logger 的最低输出级别为 INFO（DEBUG 会被过滤掉）
+#   format 是日志格式字符串，%(name)s 等是占位符：
+#     %(asctime)s  —— 时间戳（由 datefmt 决定格式）
+#     %(levelname)s —— 日志级别名（INFO/ERROR 等）
+#     %(name)s     —— logger 的名字（如 "app.main"）
+#     %(message)s  —— 日志消息正文
+#   datefmt 用 strftime 语法指定时间格式
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -1210,18 +1251,25 @@ logging.basicConfig(
 )
 
 # 给当前模块创建一个 logger，名字通常是 __name__（即 "app.main"）
+# logging.getLogger 是模块级单例：同名 logger 全局只有一个
+# 用 __name__ 命名的好处：日志里能看出是哪个模块输出的
 logger = logging.getLogger(__name__)
 
+# 创建应用实例
 app = FastAPI()
 
+# 注册 GET 路由
 @app.get("/")
 def root():
+    # logger.info 输出 INFO 级别日志，会显示
     logger.info("访问了根路径")          # 会输出
+    # logger.debug 输出 DEBUG 级别日志，根 logger 设了 INFO，这里会被过滤
     logger.debug("这是调试信息")         # 不会输出（级别不够）
     return {"msg": "ok"}
 
 @app.get("/error")
 def error():
+    # logger.error 输出 ERROR 级别日志，级别高于 INFO，会显示
     logger.error("出错了！")             # 会输出
     return {"msg": "error"}
 \`\`\`
@@ -1296,37 +1344,66 @@ def setup_logging():
 
 \`\`\`python
 # 文件：app/logging_config.py
+# 导入标准库 json，用于把字典序列化成 JSON 字符串
 import json
+# 导入标准库 logging，提供日志框架
 import logging
 
+# 自定义 Formatter，继承 logging.Formatter 并重写 format 方法
+# Formatter 是日志格式化的核心：把 LogRecord 对象转成最终输出的字符串
 class JsonFormatter(logging.Formatter):
     """把日志格式化成 JSON，方便日志系统采集"""
     
+    # record: logging.LogRecord 是日志事件的载体，包含 levelname、message、module 等字段
+    # -> str 表示返回字符串（类型注解）
     def format(self, record: logging.LogRecord) -> str:
-        # 构造日志字典
+        # 构造日志字典：把 LogRecord 里的字段挑出我们关心的，组成 dict
+        # 之后 json.dumps 会把这个 dict 转成 JSON 字符串
         log_dict = {
+            # self.formatTime 是父类方法，把 record.created（时间戳）格式化成字符串
+            # self.datefmt 是日期格式，没设则用默认 "%Y-%m-%d %H:%M:%S,mmm"
             "time": self.formatTime(record, self.datefmt),
+            # record.levelname 是级别名（"INFO"/"ERROR" 等），字符串
             "level": record.levelname,
+            # record.name 是 logger 的名字（如 "app.main"）
             "logger": record.name,
+            # record.getMessage() 返回格式化后的消息正文
+            # 用 getMessage() 而不是 record.msg，是因为它会把 % 参数填进去
             "message": record.getMessage(),
+            # record.module 是发出日志的模块名（不含 .py）
             "module": record.module,
+            # record.lineno 是发出日志的行号
             "line": record.lineno,
         }
         # 如果有异常，加上 traceback
+        # record.exc_info 是 (type, value, traceback) 三元组，logger.error(..., exc_info=True) 时填充
         if record.exc_info:
+            # self.formatException 是父类方法，把 exc_info 格式化成多行字符串
             log_dict["exception"] = self.formatException(record.exc_info)
         # 把自定义字段加进来（通过 extra 传的）
+        # extra 是 logger.info("xxx", extra={"user_id": 1}) 这种用法传进来的
+        # 这些字段会被动态加到 record 上，需要手动检查并取出
         for key in ["request_id", "user_id", "method", "path"]:
+            # hasattr 检查 record 上有没有这个属性
             if hasattr(record, key):
+                # getattr 取出属性值
                 log_dict[key] = getattr(record, key)
+        # json.dumps 把 dict 转成 JSON 字符串
+        # ensure_ascii=False 让中文字符原样输出，不转成 \\uXXXX
         return json.dumps(log_dict, ensure_ascii=False)
 
+# 配置函数：把 JsonFormatter 挂到根 logger
 def setup_json_logging():
+    # getLogger() 不传名字，返回根 logger
     logger = logging.getLogger()
+    # 根 logger 设最低级别 INFO，DEBUG 会被过滤
     logger.setLevel(logging.INFO)
     
+    # StreamHandler 输出到 stderr（控制台）
     handler = logging.StreamHandler()
+    # setFormatter 把我们的 JsonFormatter 挂上，每条日志都会经过它格式化
     handler.setFormatter(JsonFormatter())
+    # addHandler 把 handler 加到根 logger，可以加多个
     logger.addHandler(handler)
 \`\`\`
 
@@ -1793,26 +1870,38 @@ yield —— 应用开始接收请求
 
 \`\`\`python
 # 文件：app/main.py
+# 导入 FastAPI 应用入口类，所有路由和生命周期事件都注册在它上面
 from fastapi import FastAPI
 
+# 创建应用实例，全局唯一
 app = FastAPI()
 
-# 启动时执行
+# @app.on_event("startup") 是一个装饰器，注册一个"启动事件处理器"
+# 当 uvicorn 启动 app、开始接收请求之前，会自动调用这个函数
+# "startup" 是事件名，对应的还有 "shutdown"
 @app.on_event("startup")
+# async def 因为初始化可能涉及异步 I/O（如连数据库、连 Redis）
 async def startup():
-    # 初始化资源
+    # 初始化资源：在请求到来之前把重资源准备好
     print("应用启动，初始化中...")
+    # app.state 是 FastAPI 提供的全局共享空间
+    # 在这里塞的东西，路由里通过 request.app.state 能拿到
+    # 这里用一个列表假装是连接池（真实项目用 SQLAlchemy 的连接池）
     app.state.db_pool = ["连接1", "连接2"]  # 假装是连接池
 
-# 关闭时执行
+# @app.on_event("shutdown") 注册"关闭事件处理器"
+# 当应用收到关闭信号（Ctrl+C / SIGTERM）时会调用
 @app.on_event("shutdown")
 async def shutdown():
-    # 清理资源
+    # 清理资源：关闭连接、刷缓冲、通知下游
     print("应用关闭，清理中...")
+    # await 因为要异步等待清理完成
     await app.state.db_pool.clear()
 
+# 普通 GET 路由，演示从 app.state 取数据
 @app.get("/")
 def root():
+    # len() 取连接池长度，返回给客户端
     return {"pool_size": len(app.state.db_pool)}
 \`\`\`
 
@@ -1827,26 +1916,41 @@ def root():
 
 \`\`\`python
 # 文件：app/main.py
+# 从标准库 contextlib 导入 asynccontextmanager 装饰器
+# 它把一个"含 yield 的 async 函数"包装成异步上下文管理器
+# 类似同步版的 contextmanager，但支持 await
 from contextlib import asynccontextmanager
+# 导入 FastAPI 应用入口类
 from fastapi import FastAPI
 
 # @asynccontextmanager 把一个 async 生成器函数变成异步上下文管理器
 # 这就是 lifespan 事件处理器
+# 关键机制：函数体内必须有且仅有一个 yield，把函数分成两段
+#   yield 之前 —— 启动时执行（相当于旧版 startup）
+#   yield 之后 —— 关闭时执行（相当于旧版 shutdown）
 @asynccontextmanager
+# 参数 app: FastAPI 是当前应用实例，可以往 app.state 上挂资源
 async def lifespan(app: FastAPI):
     # —— 启动阶段：yield 之前 ——
+    # 这段代码在应用开始接收请求之前执行
     print(">>> 应用启动，初始化资源")
+    # 往 app.state 上挂资源，路由里通过 request.app.state.db_pool 能取到
     app.state.db_pool = ["连接1", "连接2"]  # 初始化连接池
     
+    # yield 把控制权交还给框架，应用开始接收请求
+    # yield 这里会"暂停"，直到收到关闭信号才继续往下执行
     yield  # <-- 这里之前是 startup，之后是 shutdown
     
     # —— 关闭阶段：yield 之后 ——
+    # 收到 Ctrl+C / SIGTERM 时执行这段
     print(">>> 应用关闭，清理资源")
     app.state.db_pool.clear()  # 清理连接池
 
-# 把 lifespan 传给 FastAPI
+# 把 lifespan 传给 FastAPI 的 lifespan 参数
+# FastAPI 会在启动时调用 lifespan，把 app 传进去
 app = FastAPI(lifespan=lifespan)
 
+# 普通路由，从 app.state 取连接池长度
 @app.get("/")
 def root():
     return {"pool_size": len(app.state.db_pool)}

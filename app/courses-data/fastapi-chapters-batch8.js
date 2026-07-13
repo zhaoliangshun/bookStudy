@@ -29,6 +29,8 @@ HTTP 协议规定了丰富的状态码:404 表示资源不存在、403 表示无
 
 \`\`\`python
 # 从 fastapi 导入 FastAPI, HTTPException
+# HTTPException 是 FastAPI 提供的「HTTP 异常专用类」
+# 它会被 FastAPI 内置的异常处理器捕获,自动转成带状态码的 JSON 响应
 from fastapi import FastAPI, HTTPException
 
 # 创建 FastAPI 应用实例
@@ -41,13 +43,18 @@ items_db = {1: {"name": "苹果", "price": 5}, 2: {"name": "香蕉", "price": 3}
 # 定义 GET 路由：访问 /items/{item_id} 时触发
 @app.get("/items/{item_id}")
 # 定义函数 get_item，参数: item_id: int
+# item_id: int 表示路径参数会被自动转成 int 类型,非数字会触发 422
 def get_item(item_id: int):
     # 判断 item_id 是否在数据库中
     if item_id not in items_db:
         # 资源不存在,抛出 404 异常
         # 抛出 HTTPException 异常: status_code=404, detail="商品不存在"
+        # status_code:HTTP 状态码,404 表示资源不存在
+        # detail:错误详情,会被 JSON 序列化后放在响应体 {"detail": ...} 中
+        # raise 而非 return:raise 会中断函数执行,FastAPI 拦截后生成响应
         raise HTTPException(status_code=404, detail="商品不存在")
     # 正常情况:返回商品数据
+    # 只有 raise 未触发时,这里才会执行
     return {"item": items_db[item_id]}
 \`\`\`
 
@@ -192,6 +199,8 @@ def withdraw(username: str, amount: int):
 
 \`\`\`python
 # 从 fastapi 导入 FastAPI, HTTPException, Depends, Header
+# Depends:声明依赖注入,FastAPI 会自动调用依赖函数并注入返回值
+# Header:从请求头读取参数,自动做类型转换和必填校验
 from fastapi import FastAPI, HTTPException, Depends, Header
 
 # 创建 FastAPI 应用实例
@@ -205,13 +214,18 @@ valid_tokens = {
 }
 
 # 定义函数 get_current_user，参数: authorization: str = Header(...)
+# Header(...):从 Authorization 请求头读取,... 表示必填(不存在则 422)
+# 函数名会自动转成 header 名: get_current_user -> get-current-user
+# 这里用参数名 authorization,对应请求头 Authorization(大小写不敏感)
 def get_current_user(authorization: str = Header(...)):
     # 校验 Authorization 头是否存在且格式正确
+    # Bearer 认证格式:"Bearer <token>",前 7 个字符是 "Bearer "
     if not authorization.startswith("Bearer "):
         # 格式错误 -> 401
         # 抛出 HTTPException 异常: status_code=401, detail="认证格式错误,应为 Bearer <token>"
         raise HTTPException(status_code=401, detail="认证格式错误,应为 Bearer <token>")
     # 提取 token 部分
+    # authorization[7:] 切片,跳过 "Bearer "(7 个字符),取后面的 token
     token = authorization[7:]
     # 校验 token 是否有效
     if token not in valid_tokens:
@@ -219,14 +233,19 @@ def get_current_user(authorization: str = Header(...)):
         # 抛出 HTTPException 异常: status_code=401, detail="token 无效"
         raise HTTPException(status_code=401, detail="token 无效")
     # 返回当前用户信息
+    # 返回值会被注入到依赖此函数的路由参数中
     return valid_tokens[token]
 
 # 定义函数 require_admin，参数: user: dict = Depends(get_current_user)
+# Depends(get_current_user):声明依赖,FastAPI 会先执行 get_current_user
+# get_current_user 的返回值(user)会作为参数注入
+# 这形成「依赖链」:require_admin 依赖 get_current_user
 def require_admin(user: dict = Depends(get_current_user)):
     # 校验角色是否为 admin
     if user["role"] != "admin":
         # 非管理员 -> 403
         # 抛出 HTTPException 异常: status_code=403, detail="需要管理员权限"
+        # 403 表示「认证了但无权限」,区别于 401「未认证」
         raise HTTPException(status_code=403, detail="需要管理员权限")
     # 返回用户
     return user
@@ -234,8 +253,11 @@ def require_admin(user: dict = Depends(get_current_user)):
 # 定义 DELETE 路由：访问 /users/{username} 时触发,依赖 require_admin
 @app.delete("/users/{username}")
 # 定义函数 delete_user，参数: username: str, admin: dict = Depends(require_admin)
+# admin 参数:FastAPI 自动执行依赖链 require_admin -> get_current_user
+# 任何一环 raise,整个请求中断,FastAPI 返回对应错误响应
 def delete_user(username: str, admin: dict = Depends(require_admin)):
     # 只有管理员能执行删除
+    # 能走到这里说明依赖链全部通过(token 有效 + 角色是 admin)
     return {"deleted": username, "by": admin["username"]}
 \`\`\`
 
@@ -508,8 +530,10 @@ class UnicornException(Exception):
 
 \`\`\`python
 # 从 fastapi 导入 FastAPI, Request
+# Request:请求对象,处理器里可用于读取 URL、method 等信息(用于日志)
 from fastapi import FastAPI, Request
 # 从 fastapi.responses 导入 JSONResponse
+# JSONResponse:显式构造响应,可自定义状态码和内容(普通 dict 返回会是 200)
 from fastapi.responses import JSONResponse
 
 # 创建 FastAPI 应用实例
@@ -517,25 +541,38 @@ app = FastAPI()
 
 # 1. 自定义异常类
 # 定义类 UnicornException，继承 Exception
+# 继承 Exception 让它可以被 raise、被 try/except 捕获
+# 不继承 HTTPException,因为它不是「HTTP 概念的异常」,而是业务异常
 class UnicornException(Exception):
     # """独角兽异常"""
     """独角兽异常"""
     # 定义函数 __init__，参数: self, name: str
     def __init__(self, name: str):
+        # 把 name 存为实例属性,处理器里能通过 exc.name 访问
         self.name = name
+        # 调用父类 __init__,name 作为异常的字符串表示
+        # 这样 str(exc) 会返回 name,方便日志记录
         super().__init__(name)
 
 # 2. 注册异常处理器:装饰器参数是异常类
 # 装饰器：app.exception_handler(UnicornException)
+# @app.exception_handler(异常类):告诉 FastAPI 遇到这个异常时用下面的函数处理
+# 参数必须是「类」本身,不是字符串、不是实例
 @app.exception_handler(UnicornException)
 # 定义异步函数 unicorn_exception_handler，参数: request: Request, exc: UnicornException
+# 处理器签名固定:必须是 async def,两个参数 request 和 exc
+# request:当前请求对象,可读 URL、method、headers 等
+# exc:抛出的异常实例,可读它的属性(这里读 exc.name)
 async def unicorn_exception_handler(request: Request, exc: UnicornException):
     # 返回 JSONResponse,状态码 418,内容自定义
     # 返回 JSONResponse
+    # 状态码 418 是 "I'm a teapot"(RFC 2324),这里用作演示,实际业务用 4xx/5xx
     return JSONResponse(
         # 定义变量 status_code，赋值为 418
         status_code=418,
         # 定义变量 content，赋值为 {"message": f"这只独角兽 {exc.name} 不存在"}
+        # content 是响应体,会被 JSON 序列化
+        # exc.name 是异常实例的属性,处理器能访问异常携带的数据
         content={"message": f"这只独角兽 {exc.name} 不存在"}
     )
 
@@ -548,6 +585,7 @@ def read_unicorn(name: str):
     if name == "yolo":
         # 抛出自定义异常
         # 抛出 UnicornException 异常: name=name
+        # raise 后函数立即中断,FastAPI 拦截异常并调用注册的处理器
         raise UnicornException(name=name)
     # 正常返回
     return {"name": name}
@@ -1013,17 +1051,23 @@ app = FastAPI()
 # 全局兜底处理器:捕获所有未处理异常
 # 注册 exception_handler(Exception) 能捕获所有未被更具体处理器匹配的异常
 # 装饰器：app.exception_handler(Exception)
+# Exception 是所有 Python 异常的基类,注册它能捕获所有未处理的异常
+# 但注意:HTTPException、RequestValidationError 有内置处理器,优先级更高
 @app.exception_handler(Exception)
 # 定义异步函数 global_exception_handler，参数: request: Request, exc: Exception
 async def global_exception_handler(request: Request, exc: Exception):
     # 返回统一的友好错误响应,不暴露堆栈
     # 注意:绝对不能把 str(exc) 或 traceback 返回给用户
     # 堆栈会暴露文件路径、代码结构、依赖版本,是安全漏洞
+    # 攻击者能从堆栈里推断出:你用的框架版本、数据库类型、文件路径
+    # 进而有针对性地发起攻击(如利用已知漏洞)
     return JSONResponse(
         status_code=500,
+        # 500 是「服务器内部错误」,表示「不是客户端的锅,是服务端出 bug 了」
+        # 实际的错误详情应该记到日志,而不是响应体
         content={
-            "code": 50000,
-            "message": "服务器内部错误,请稍后重试",
+            "code": 50000,  # 业务错误码,50000 段表示系统错误
+            "message": "服务器内部错误,请稍后重试",  # 给用户的友好提示
             "data": None
         }
     )
@@ -1037,6 +1081,8 @@ def trigger_bug():
     # 定义变量 name，赋值为 None
     name = None
     # 这行会抛异常
+    # AttributeError: 'NoneType' object has no attribute 'upper'
+    # 这个异常没有专用处理器,被 Exception 兜底捕获
     return {"upper": name.upper()}
 \`\`\`
 
@@ -1380,28 +1426,36 @@ app = FastAPI()
 # ============ 统一响应构造函数 ============
 # 定义函数 make_error_response，参数: status: int, code: int, message: str, request: Request, exc: Exception = None
 # 统一构造错误响应:生成 trace_id、记日志、按环境返回不同详细程度
+# 这个函数是所有异常处理器的「公共出口」,保证响应格式统一
 def make_error_response(status: int, code: int, message: str, request: Request, exc: Exception = None):
     # 生成错误追踪 ID,方便用户报错时定位
     # trace_id 是 8 位短 UUID,用户报错时提供这个 ID,能在日志里快速定位
+    # 为什么用 UUID 而不是自增 ID?因为 UUID 全局唯一,分布式系统不会冲突
+    # 为什么截断成 8 位?完整的 UUID 太长(36 字符),8 位足够区分且易读
     # 定义变量 trace_id，赋值为 str(uuid.uuid4())[:8]
     trace_id = str(uuid.uuid4())[:8]
     # 如果有异常,记日志
     if exc:
         # traceback.format_exc() 获取完整堆栈字符串
         # 定义变量 tb，赋值为 traceback.format_exc()
+        # format_exc() 返回当前异常的完整堆栈文本,包含文件路径、行号、调用链
         tb = traceback.format_exc()
         # 记录 ERROR 日志
         # 日志含 trace_id、请求方法、URL、错误码、消息、异常对象、堆栈
+        # trace_id 是关联线索:用户报错时提供 ID,开发者用它在日志里搜索
         logger.error(f"[{trace_id}] {request.method} {request.url} | {code}:{message} | {exc}\\n{tb}")
     # 开发环境多返回 trace_id 和堆栈,方便调试
+    # ENV 从环境变量读取,"dev" 是开发环境,"prod" 是生产环境
     if ENV == "dev" and exc:
         # 返回 JSONResponse
+        # 开发环境直接返回堆栈,前端能看到完整错误,方便调试
         return JSONResponse(
             status_code=status,
             content={"code": code, "message": message, "trace_id": trace_id, "traceback": tb, "data": None}
         )
     # 返回 JSONResponse
     # 生产环境不返回堆栈,只返回 trace_id 让用户报错时提供
+    # 这样既不暴露技术细节,又能通过 trace_id 定位问题
     return JSONResponse(
         status_code=status,
         content={"code": code, "message": message, "trace_id": trace_id, "data": None}

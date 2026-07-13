@@ -645,47 +645,71 @@ post_crud = CRUDPost()
 
 \`\`\`python
 # app/api/v1/posts.py
+# 从 fastapi 导入 APIRouter（路由容器）、Depends（依赖注入）、HTTPException（HTTP 异常）、status（状态码常量）
 from fastapi import APIRouter, Depends, HTTPException, status
+# 从 sqlalchemy.orm 导入 Session，用于类型注解
 from sqlalchemy.orm import Session
 
+# 从 deps 导入 get_db 和 get_current_user 依赖
 from app.core.deps import get_db, get_current_user
+# 导入 crud 层（数据访问），把 SQL 操作封装在 crud 里，路由不直接写 SQL
 from app.crud.post import post_crud
+# 导入 User 和 Post ORM 模型
 from app.models.user import User
 from app.models.post import Post
+# 导入 Pydantic 模型（请求体/响应体）
 from app.schemas.post import PostCreate, PostOut, PostList
+# 导入分页参数依赖
 from app.utils.pagination import pagination_params
 
+# 创建路由器，prefix="/posts" 表示所有路径自动加 /posts 前缀
+# tags=["文章"] 用于 Swagger 文档分组
 router = APIRouter(prefix="/posts", tags=["文章"])
 
 # 文章列表（公开，分页+搜索）
+# @router.get 注册 GET 路由，路径是 ""（空字符串，配合 prefix 就是 /posts）
+# response_model=PostList 指定响应模型，FastAPI 会按 PostList 过滤输出
 @router.get("", response_model=PostList)
+# keyword/tag_id 是查询参数，str | None 表示可选（默认 None）
+# paging: dict = Depends(pagination_params) 通过依赖注入拿分页参数
+# db: Session = Depends(get_db) 通过依赖注入拿数据库会话
 def list_posts(
     keyword: str | None = None,
     tag_id: int | None = None,
     paging: dict = Depends(pagination_params),
     db: Session = Depends(get_db),
 ):
+    # 计算跳过多少条（分页公式：第 n 页跳过 (n-1)*size 条）
     skip = (paging["page"] - 1) * paging["size"]
+    # 调 crud 层查询，返回 (items, total) 元组
     items, total = post_crud.search(db, keyword=keyword, tag_id=tag_id, skip=skip, limit=paging["size"])
+    # 计算总页数：(total + size - 1) // size 是向上取整的写法
+    # 例如 total=21, size=20 → (21+19)//20 = 2 页
     pages = (total + paging["size"] - 1) // paging["size"]
     return {"items": items, "total": total, "page": paging["page"], "size": paging["size"], "pages": pages}
 
 # 发布文章（需登录）
+# @router.post 注册 POST 路由，status_code=201 表示创建成功
 @router.post("", response_model=PostOut, status_code=201)
+# current_user: User = Depends(get_current_user) 强制登录
+# get_current_user 内部会校验 token，没登录直接抛 401
 def create_post(
     body: PostCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # 创建文章 ORM 对象，author_id 从当前登录用户拿
     post = Post(title=body.title, content=body.content, author_id=current_user.id)
-    db.add(post)
-    db.commit()
-    db.refresh(post)
+    db.add(post)        # 加到会话
+    db.commit()         # 提交到数据库
+    db.refresh(post)    # 刷新，获取数据库生成的 id 和默认值
     return post
 
 # 文章详情（公开）
 @router.get("/{post_id}", response_model=PostOut)
+# post_id: int 路径参数，FastAPI 自动从 URL 提取并转成 int
 def get_post(post_id: int, db: Session = Depends(get_db)):
+    # db.get(Post, post_id) 按主键查，比 query.filter 更简洁
     post = db.get(Post, post_id)
     if not post:
         raise HTTPException(status_code=404, detail="文章不存在")
@@ -703,15 +727,18 @@ def update_post(
     if not post:
         raise HTTPException(status_code=404, detail="文章不存在")
     # 权限校验：只有作者本人能改
+    # 不校验的话，任何人都能改别人的文章，严重安全漏洞
     if post.author_id != current_user.id:
         raise HTTPException(status_code=403, detail="只能修改自己的文章")
+    # 直接修改 ORM 对象的属性，SQLAlchemy 会跟踪变化
     post.title = body.title
     post.content = body.content
-    db.commit()
-    db.refresh(post)
+    db.commit()         # 提交，SQLAlchemy 自动生成 UPDATE SQL
+    db.refresh(post)    # 刷新，确保返回最新数据
     return post
 
 # 删除文章（权限：作者本人 或 管理员）
+# status_code=204 表示无内容返回（DELETE 成功通常不返回 body）
 @router.delete("/{post_id}", status_code=204)
 def delete_post(
     post_id: int,
@@ -722,10 +749,12 @@ def delete_post(
     if not post:
         raise HTTPException(status_code=404, detail="文章不存在")
     # 权限：作者本人 或 管理员
+    # and not 的优先级：先算 and，再算 not
+    # 即：如果（不是作者）并且（不是管理员），才拒绝
     if post.author_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="没有权限删除此文")
-    db.delete(post)
-    db.commit()
+    db.delete(post)     # 标记删除
+    db.commit()         # 提交，生成 DELETE SQL
 \`\`\`
 
 > **权限怎么想**：权限校验写在路由里而不是 crud 里，因为 crud 不知道"当前用户是谁"。路由层拿到 current_user 才能判断。如果权限规则复杂（比如"作者或编辑或管理员"），可以抽成依赖工厂，下一节演示。
@@ -754,28 +783,40 @@ def require_post_author(post_id: int, db: Session = Depends(get_db), current_use
 
 \`\`\`python
 # app/api/v1/comments.py
+# 从 fastapi 导入 APIRouter（路由容器）、Depends（依赖注入）、HTTPException（HTTP 异常）
 from fastapi import APIRouter, Depends, HTTPException
+# 从 sqlalchemy.orm 导入 Session，用于类型注解
 from sqlalchemy.orm import Session
 
+# 从 deps 导入 get_db 和 get_current_user 依赖
 from app.core.deps import get_db, get_current_user
+# 导入 ORM 模型
 from app.models.user import User
 from app.models.post import Post
 from app.models.comment import Comment
+# 导入 Pydantic 模型
 from app.schemas.comment import CommentCreate, CommentOut
 
+# 创建路由器，prefix 里带路径参数 {post_id}
+# 这样评论路由天然挂在某篇文章下，完整路径如 /posts/1/comments
 router = APIRouter(prefix="/posts/{post_id}/comments", tags=["评论"])
 
 # 文章评论列表（公开，只返顶级评论，回复嵌套在里面）
+# response_model=list[CommentOut] 表示返回 CommentOut 列表
 @router.get("", response_model=list[CommentOut])
 def list_comments(post_id: int, db: Session = Depends(get_db)):
     # 先确认文章存在
+    # 避免对不存在的文章查评论，浪费资源
     post = db.get(Post, post_id)
     if not post:
         raise HTTPException(status_code=404, detail="文章不存在")
     # 查顶级评论（parent_id 为空），预加载 replies 避免 N+1
+    # N+1 问题：查 N 条评论后再逐条查回复，共 N+1 次 SQL
+    # 解决：用 relationship 的 joinedload/selectinload 一次性查完
     comments = (
         db.query(Comment)
         .filter(Comment.post_id == post_id, Comment.parent_id.is_(None))
+        # .asc() 升序（早发的在前），.desc() 降序
         .order_by(Comment.created_at.asc())
         .all()
     )
@@ -799,8 +840,10 @@ def create_comment(
         parent_id=body.parent_id,  # 如果是回复，传父评论 id
     )
     # 校验 parent_id 有效
+    # 防止客户端伪造 parent_id，把回复挂到别的文章的评论上
     if body.parent_id:
         parent = db.get(Comment, body.parent_id)
+        # 父评论必须存在，且必须属于同一篇文章
         if not parent or parent.post_id != post_id:
             raise HTTPException(status_code=400, detail="父评论不存在或不属于该文章")
     db.add(comment)
@@ -817,10 +860,13 @@ def delete_comment(
     current_user: User = Depends(get_current_user),
 ):
     comment = db.get(Comment, comment_id)
+    # 同时校验 comment 存在 且 属于该文章（防止跨文章删评论）
     if not comment or comment.post_id != post_id:
         raise HTTPException(status_code=404, detail="评论不存在")
     post = db.get(Post, post_id)
     # 评论作者 / 文章作者 / 管理员 都能删
+    # 三个条件用 and 连接，意思是"三个都不是"才拒绝
+    # 文章作者能删任何人在他文章下的评论（管理自己文章的言论）
     if comment.author_id != current_user.id and post.author_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="没有权限删除此评论")
     db.delete(comment)
@@ -833,29 +879,44 @@ def delete_comment(
 
 \`\`\`python
 # app/main.py
+# 从 fastapi 导入 FastAPI 应用入口类
 from fastapi import FastAPI
+# 从 fastapi.middleware.cors 导入 CORSMiddleware（跨域中间件）
+# CORS = Cross-Origin Resource Sharing，跨域资源共享
+# 浏览器有同源策略，前端域名和后端不同时会被拦截，CORS 中间件解决这个
 from fastapi.middleware.cors import CORSMiddleware
 
+# 从 database 导入 Base（模型基类）和 engine（数据库引擎）
 from app.core.database import Base, engine
+# 从 router 导入聚合后的 api_router（包含所有子路由）
 from app.api.v1.router import api_router
 
 # 建表（开发用。生产用 Alembic 迁移）
+# Base.metadata.create_all 会根据所有继承 Base 的模型创建表
+# 生产环境不用这个，因为：1) 不能改表结构 2) 没有版本管理
+# 生产用 Alembic 做 schema 迁移，能升级/回滚
 Base.metadata.create_all(bind=engine)
 
+# 创建应用实例，title 和 version 显示在 Swagger 文档 (/docs)
 app = FastAPI(title="博客系统 API", version="1.0.0")
 
 # CORS：允许前端跨域。生产环境别写 allow_origins=["*"]
+# allow_origins=["*"] + allow_credentials=True 是无效组合（浏览器规范禁止）
+# 生产环境应明确列出前端域名，如 ["https://blog.example.com"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["http://localhost:3000"],  # 允许的前端域名
+    allow_credentials=True,   # 允许带 cookie（登录态需要）
+    allow_methods=["*"],      # 允许所有 HTTP 方法
+    allow_headers=["*"],      # 允许所有请求头
 )
 
 # 挂载所有 v1 路由
+# prefix="/api/v1" 给所有接口加统一前缀，方便未来版本升级
+# 比如未来出 v2，可以同时挂 /api/v1 和 /api/v2，平滑过渡
 app.include_router(api_router, prefix="/api/v1")
 
+# 根路由，用作欢迎页或健康检查
 @app.get("/")
 def root():
     return {"msg": "博客系统 API 运行中"}
@@ -863,15 +924,23 @@ def root():
 
 \`\`\`python
 # app/api/v1/router.py
+# 从 fastapi 导入 APIRouter（路由容器）
 from fastapi import APIRouter
+# 导入所有子路由模块
+# 每个模块里都有一个 router 变量（APIRouter 实例）
 from app.api.v1 import auth, users, posts, comments, tags
 
+# 创建聚合路由器
+# 这个路由器本身不定义路由，只负责把各模块的 router 挂上来
 api_router = APIRouter()
-api_router.include_router(auth.router)
-api_router.include_router(users.router)
-api_router.include_router(posts.router)
-api_router.include_router(comments.router)
-api_router.include_router(tags.router)
+# 逐个挂载子路由
+# 各子路由已自带 prefix（如 auth.router 有 prefix="/auth"）
+# 挂载后完整路径如：/api/v1/auth/login（main.py 里还会加 /api/v1 前缀）
+api_router.include_router(auth.router)       # /auth/*
+api_router.include_router(users.router)     # /users/*
+api_router.include_router(posts.router)     # /posts/*
+api_router.include_router(comments.router)  # /posts/{post_id}/comments/*
+api_router.include_router(tags.router)      # /tags/*
 \`\`\`
 
 **测试**——为什么用 pytest + httpx？因为 FastAPI 的 TestClient 底层就是 httpx，能跑异步，也能测 WebSocket。
@@ -1231,23 +1300,38 @@ class CommentInput:
 
 \`\`\`python
 # app/gql/schema.py
+# 导入 strawberry（GraphQL 库）
 import strawberry
+# 从 typing 导入 Optional（Python 3.9 以下用 Optional[X]，3.10+ 可用 X | None）
 from typing import Optional
+# 从 sqlalchemy.orm 导入 Session，用于类型注解
 from sqlalchemy.orm import Session
 
+# 导入 GraphQL 类型定义
 from app.gql.types import UserType, PostType, CommentType, PostInput, CommentInput
+# 导入 ORM 模型
 from app.models.post import Post
 from app.models.comment import Comment
 from app.models.user import User
 
+# @strawberry.type 装饰的 Query 类是 GraphQL 查询的根
+# GraphQL 规范要求一个 schema 必须有一个 Query 类型，可选有一个 Mutation 类型
 @strawberry.type
 class Query:
     # 查所有文章，带分页
+    # @strawberry.field 把方法变成 GraphQL 字段
+    # info 参数是 Strawberry 注入的上下文对象，含 context、root 等
     @strawberry.field
     def posts(self, info, page: int = 1, size: int = 20) -> list[PostType]:
+        # info.context["db"] 从上下文拿数据库会话
+        # context 是在 GraphQLRouter 的 context_getter 里构造的
         db = info.context["db"]
+        # 分页公式：跳过 (page-1)*size 条
         skip = (page - 1) * size
+        # order_by 排序，offset 跳过，limit 限制数量
         posts = db.query(Post).order_by(Post.created_at.desc()).offset(skip).limit(size).all()
+        # 把 ORM 对象转成 GraphQL 类型对象
+        # 必须手动转，因为 PostType 不是 ORM 模型
         return [PostType(
             id=p.id, title=p.title, content=p.content,
             author_id=p.author_id, created_at=p.created_at
@@ -1266,18 +1350,25 @@ class Query:
     @strawberry.field
     def search_posts(self, info, keyword: str) -> list[PostType]:
         db = info.context["db"]
+        # 延迟导入 or_，避免模块加载时就把 sqlalchemy 的 or_ 拉进来
         from sqlalchemy import or_
+        # ilike 是不区分大小写的 LIKE
+        # %{keyword}% 是 SQL 通配符，% 匹配任意字符
         posts = db.query(Post).filter(
             or_(Post.title.ilike(f"%{keyword}%"), Post.content.ilike(f"%{keyword}%"))
         ).all()
         return [PostType(id=p.id, title=p.title, content=p.content, author_id=p.author_id, created_at=p.created_at) for p in posts]
 
+# Mutation 类型：所有"写"操作的入口
+# GraphQL 规范：Query 只读，Mutation 写
 @strawberry.type
 class Mutation:
     # 发文章（需要登录）
+    # @strawberry.mutation 把方法变成 GraphQL mutation 字段
     @strawberry.mutation
     def create_post(self, info, input: PostInput) -> PostType:
         # 从 context 拿当前用户
+        # context["user"] 在 context_getter 里设置，未登录时为 None
         user = info.context.get("user")
         if not user:
             raise Exception("未登录")
@@ -1307,6 +1398,8 @@ class Mutation:
         return CommentType(id=comment.id, content=comment.content, author_id=comment.author_id, post_id=comment.post_id, created_at=comment.created_at)
 
 # 组装 schema
+# query=Query 告诉 Strawberry 查询入口
+# mutation=Mutation 告诉 Strawberry 写入入口
 schema = strawberry.Schema(query=Query, mutation=Mutation)
 \`\`\`
 
@@ -1316,26 +1409,39 @@ schema = strawberry.Schema(query=Query, mutation=Mutation)
 
 \`\`\`python
 # app/gql/router.py
+# 从 strawberry.fastapi 导入 GraphQLRouter，用于把 GraphQL 挂到 FastAPI
 from strawberry.fastapi import GraphQLRouter
+# 从 fastapi 导入 Depends（依赖注入）、Request（请求对象）
 from fastapi import Depends, Request
+# 从 sqlalchemy.orm 导入 Session，用于类型注解
 from sqlalchemy.orm import Session
+# 从 deps 导入 get_db 和 get_current_user_optional
+# get_current_user_optional 是可选认证：未登录返回 None 而不是抛 401
 from app.core.deps import get_db, get_current_user_optional
+# 导入 User ORM 模型
 from app.models.user import User
+# 导入组装好的 schema
 from app.gql.schema import schema
 
 # 自定义 context_getter：每个请求执行一次，把东西塞进 context
+# context 是 GraphQL resolver 里 info.context 能拿到的字典
+# 这是 FastAPI 依赖注入和 GraphQL 世界的桥梁
 async def get_context(
     request: Request,
     db: Session = Depends(get_db),
     user: User | None = Depends(get_current_user_optional),
 ):
+    # 返回的字典会作为 info.context 传给所有 resolver
+    # 把 db 和 user 放进去，resolver 就能拿到数据库会话和当前用户
     return {
-        "request": request,
-        "db": db,
+        "request": request,  # 原始请求对象，需要时可读 headers 等
+        "db": db,            # 数据库会话
         "user": user,  # 可能为 None（未登录）
     }
 
 # 创建 router。graphiql=True 开启浏览器调试界面
+# context_getter=get_context 告诉 GraphQLRouter 用我们的函数构造 context
+# graphiql=True 会在 /graphql 路径提供交互式调试界面（GraphiQL）
 graphql_app = GraphQLRouter(schema, context_getter=get_context, graphiql=True)
 \`\`\`
 

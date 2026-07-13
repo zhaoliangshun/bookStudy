@@ -699,67 +699,79 @@ def crash():
 ## Demo 6：业务异常分层
 
 \`\`\`python
+# 导入 FastAPI 类、Request 类、HTTPException
 from fastapi import FastAPI, Request, HTTPException
+# 导入 JSONResponse
 from fastapi.responses import JSONResponse
 
+# 创建应用实例
 app = FastAPI()
 
-# 业务异常基类
+# 业务异常基类：所有业务异常的父类，统一携带 code 和 message
 class BizError(Exception):
-    code = 400
-    message = "业务错误"
+    code = 400       # 默认状态码 400
+    message = "业务错误"  # 默认错误信息
 
+# 子类：资源不存在，继承 BizError 自动复用 handler
 class NotFoundError(BizError):
-    code = 404
+    code = 404              # 覆盖父类的 code
     message = "资源不存在"
 
+# 子类：未授权
 class AuthError(BizError):
     code = 401
     message = "未授权"
 
-# 统一处理器
+# 统一处理器：注册针对 BizError 的处理器
+# 由于 NotFoundError 和 AuthError 都继承 BizError，所以也会被这里捕获
 @app.exception_handler(BizError)
 async def biz_error_handler(request: Request, exc: BizError):
+    # 参数 request: Request 当前请求对象
+    # 参数 exc: BizError 抛出的异常实例，可以取到 code 和 message
     return JSONResponse(
-        status_code=exc.code,
+        status_code=exc.code,  # 用异常自身的 code 作为 HTTP 状态码
         content={"code": exc.code, "message": exc.message},
     )
 
 # 业务代码直接 raise，不用关心状态码
 @app.get("/users/{user_id}")
 def get_user(user_id: int):
+    # 参数 user_id: int 路径参数
     if user_id > 100:
-        raise NotFoundError()  # 自动返回 404
+        raise NotFoundError()  # 自动返回 404，被 biz_error_handler 处理
     return {"user_id": user_id}
 
 @app.get("/admin")
 def admin():
-    raise AuthError()  # 自动返回 401
+    raise AuthError()  # 自动返回 401，被 biz_error_handler 处理
 \`\`\`
 
 ## Demo 7：常用 HTTP 状态码
 
 \`\`\`python
+# 导入 HTTPException
 from fastapi import HTTPException
 
 # 写代码时选对状态码，让 API 更规范
-# 2xx 成功：
-raise HTTPException(200, "OK")           # 普通成功
-raise HTTPException(201, "Created")      # 创建成功
-raise HTTPException(204, "No Content")   # 成功无内容
+# HTTPException 第一个参数是状态码，第二个是 detail（错误信息）
 
-# 4xx 客户端错误：
-raise HTTPException(400, "Bad Request")  # 请求格式错
-raise HTTPException(401, "Unauthorized") # 未登录
-raise HTTPException(403, "Forbidden")    # 无权限
-raise HTTPException(404, "Not Found")    # 资源不存在
-raise HTTPException(409, "Conflict")     # 冲突（重复创建）
-raise HTTPException(422, "Validation")   # 校验失败
-raise HTTPException(429, "Too Many")     # 限流
+# 2xx 成功（请求被正确处理）：
+raise HTTPException(200, "OK")           # 200 普通成功（GET 请求默认）
+raise HTTPException(201, "Created")      # 201 创建成功（POST 创建资源后用）
+raise HTTPException(204, "No Content")   # 204 成功但无内容返回（DELETE 常用）
 
-# 5xx 服务端错误：
-raise HTTPException(500, "Server Error") # 服务端 bug
-raise HTTPException(503, "Unavailable")  # 维护中
+# 4xx 客户端错误（请求有问题）：
+raise HTTPException(400, "Bad Request")  # 400 请求格式错（参数不对、JSON 解析失败）
+raise HTTPException(401, "Unauthorized") # 401 未登录（没带 token 或 token 失效）
+raise HTTPException(403, "Forbidden")    # 403 无权限（登录了但没权限）
+raise HTTPException(404, "Not Found")    # 404 资源不存在
+raise HTTPException(409, "Conflict")     # 409 冲突（重复创建、版本冲突）
+raise HTTPException(422, "Validation")   # 422 校验失败（FastAPI 默认）
+raise HTTPException(429, "Too Many")     # 429 限流（请求太频繁）
+
+# 5xx 服务端错误（服务器自己出问题）：
+raise HTTPException(500, "Server Error") # 500 服务端 bug（代码异常）
+raise HTTPException(503, "Unavailable")  # 503 维护中/过载（暂时不可用）
 \`\`\`
 
 ## 小结
@@ -799,16 +811,20 @@ raise HTTPException(503, "Unavailable")  # 维护中
 ## Demo 1：async def 基本用法
 
 \`\`\`python
+# 导入 asyncio，Python 标准异步库，提供 sleep/gather 等异步工具
 import asyncio
+# 导入 FastAPI 类
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
 # async def 定义异步函数
+# async def 的函数叫"协程函数"，调用返回"协程对象"，需要 await 才执行
 @app.get("/")
 async def root():
-    # await 等待异步操作完成
-    # asyncio.sleep 模拟耗时操作（不阻塞线程）
+    # await 等待异步操作完成（await 只能在 async def 里用）
+    # asyncio.sleep 模拟耗时操作（不阻塞线程，让出 CPU 给别的任务）
     await asyncio.sleep(1)
     return {"msg": "hi"}
 
@@ -816,28 +832,36 @@ async def root():
 # @app.get("/")
 # def root():
 #     import time
-#     time.sleep(1)  # 阻塞整个线程
+#     time.sleep(1)  # 阻塞整个线程（别的请求得排队）
 #     return {"msg": "hi"}
 \`\`\`
 
 ## Demo 2：异步 IO 操作（httpx）
 
 \`\`\`python
+# 导入 httpx，异步 HTTP 客户端库（推荐替代 requests）
 import httpx
+# 导入 FastAPI 类
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
 # 异步 HTTP 请求：用 httpx（推荐）而非 requests
+# async def 定义异步路由，内部可以用 await
 @app.get("/weather")
 async def get_weather():
-    # httpx.AsyncClient 是异步的
+    # httpx.AsyncClient 是异步客户端
+    # async with 是异步上下文管理器，自动管理资源（连接池等）
     async with httpx.AsyncClient() as client:
         # await 等待请求完成，期间可以处理别的请求
+        # client.get 发起 GET 请求
+        # params 参数：URL 查询参数（?city=beijing）
         resp = await client.get(
             "https://api.example.com/weather",
             params={"city": "beijing"},
         )
+    # resp.json() 把响应体解析成 dict
     return resp.json()
 
 # 为什么要异步？
@@ -849,13 +873,19 @@ async def get_weather():
 ## Demo 3：并发执行多个异步任务
 
 \`\`\`python
+# 导入 asyncio
 import asyncio
+# 导入 httpx
 import httpx
+# 导入 FastAPI 类
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
+# 定义异步函数：根据 uid 获取用户信息
 async def fetch_user(uid: int):
+    # 参数 uid: int 用户 ID
     async with httpx.AsyncClient() as client:
         resp = await client.get(f"https://api.example.com/users/{uid}")
         return resp.json()
@@ -865,39 +895,52 @@ async def list_users():
     # asyncio.gather 并发执行多个协程
     # 串行：3 个请求各 1 秒 = 3 秒
     # 并发：3 个请求同时 = 约 1 秒
+    # gather 返回一个聚合协程，await 后得到结果列表（顺序与传入一致）
     results = await asyncio.gather(
         fetch_user(1),
         fetch_user(2),
         fetch_user(3),
     )
+    # results 是 [fetch_user(1) 的结果, fetch_user(2) 的结果, fetch_user(3) 的结果]
     return {"users": results}
 \`\`\`
 
 ## Demo 4：后台任务（BackgroundTasks）
 
 \`\`\`python
+# 导入 FastAPI 类和 BackgroundTasks
+# BackgroundTasks：FastAPI 后台任务队列，响应返回后再执行
 from fastapi import FastAPI, BackgroundTasks
+# 导入 BaseModel，Pydantic 模型基类
 from pydantic import BaseModel
 
+# 创建应用实例
 app = FastAPI()
 
 # 后台任务：响应返回后再执行的操作
 # 用途：发邮件、写日志、清理临时文件（不阻塞用户响应）
+# 注意：后台任务函数用普通 def 即可，FastAPI 会处理
 
 def send_email(to: str, subject: str):
+    # 参数 to: str 收件人邮箱
+    # 参数 subject: str 邮件主题
     # 模拟发邮件（耗时操作）
     import time
     time.sleep(3)
     print(f"邮件已发送给 {to}: {subject}")
 
+# 定义请求体模型
 class EmailRequest(BaseModel):
-    to: str
-    subject: str
+    to: str       # 收件人，必填
+    subject: str  # 主题，必填
 
+# 参数 background_tasks: BackgroundTasks 由 FastAPI 自动注入
 @app.post("/send")
 def send(req: EmailRequest, background_tasks: BackgroundTasks):
+    # 参数 req: EmailRequest 请求体，自动校验
+    # 参数 background_tasks: BackgroundTasks 后台任务队列（FastAPI 自动注入）
     # 把任务加入后台队列，立即返回响应
-    # add_task(函数, 参数1, 参数2, ...)
+    # add_task(函数, 参数1, 参数2, ...) 把函数和参数加入队列
     background_tasks.add_task(send_email, req.to, req.subject)
     return {"msg": "已加入发送队列，稍后发送"}
 
@@ -908,22 +951,32 @@ def send(req: EmailRequest, background_tasks: BackgroundTasks):
 ## Demo 5：多个后台任务
 
 \`\`\`python
+# 导入 FastAPI 类和 BackgroundTasks
 from fastapi import FastAPI, BackgroundTasks
 
+# 创建应用实例
 app = FastAPI()
 
+# 后台任务 1：写日志
 def task_log(msg: str):
+    # 参数 msg: str 日志内容
     print(f"[LOG] {msg}")
 
+# 后台任务 2：清理临时文件
 def task_cleanup(file_id: str):
+    # 参数 file_id: str 文件 ID
     print(f"清理临时文件: {file_id}")
 
+# 后台任务 3：通知用户
 def task_notify(user_id: int):
+    # 参数 user_id: int 用户 ID
     print(f"通知用户: {user_id}")
 
+# 参数 background_tasks: BackgroundTasks 由 FastAPI 自动注入
 @app.post("/upload")
 def upload(background_tasks: BackgroundTasks):
     # 可以添加多个后台任务，按顺序执行
+    # add_task 多次调用即可加入多个任务
     background_tasks.add_task(task_log, "上传完成")
     background_tasks.add_task(task_cleanup, "tmp_123")
     background_tasks.add_task(task_notify, 1)
@@ -936,31 +989,41 @@ def upload(background_tasks: BackgroundTasks):
 ## Demo 6：依赖注入里的后台任务
 
 \`\`\`python
+# 导入 FastAPI 类、BackgroundTasks、Depends
 from fastapi import FastAPI, BackgroundTasks, Depends
 
+# 创建应用实例
 app = FastAPI()
 
 # 后台任务也能通过依赖注入使用
+# 依赖函数参数声明 BackgroundTasks，FastAPI 会自动注入同一个实例
 def write_log(bg: BackgroundTasks):
+    # 参数 bg: BackgroundTasks 由 FastAPI 注入
     # 依赖函数里也能添加后台任务
+    # lambda 是匿名函数，这里用它简化一次性任务
     bg.add_task(lambda: print("依赖里的后台任务"))
-    return bg
+    return bg  # 把 bg 返回给路由用
 
 @app.get("/items")
 def list_items(bg: BackgroundTasks = Depends(write_log)):
+    # 参数 bg: BackgroundTasks = Depends(write_log) 依赖注入
+    # bg 是 write_log 返回的 BackgroundTasks 实例（同一个）
     # 路由里还能继续加
     bg.add_task(lambda: print("路由里的后台任务"))
     return {"items": []}
 
-# 两个任务都会在响应后执行
+# 两个任务都会在响应后执行（依赖加的先，路由加的后）
 \`\`\`
 
 ## Demo 7：什么时候用 async 什么时候用 def
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 time，用于演示同步阻塞
 import time
 
+# 创建应用实例
 app = FastAPI()
 
 # ✅ 用 async def 的情况：
@@ -968,8 +1031,11 @@ app = FastAPI()
 # 2. 调用其他 async 函数
 @app.get("/async-example")
 async def async_example():
+    # aiofiles 是异步文件库，await 不阻塞事件循环
     import aiofiles
+    # async with 异步上下文管理器
     async with aiofiles.open("file.txt", "r") as f:
+        # await f.read() 异步读取文件
         content = await f.read()
     return {"content": content}
 
@@ -979,7 +1045,7 @@ async def async_example():
 # FastAPI 会自动把 def 函数放到线程池，不阻塞事件循环
 @app.get("/sync-example")
 def sync_example():
-    # 同步读文件，但 FastAPI 自动处理
+    # 同步读文件，但 FastAPI 自动处理（放到线程池）
     with open("file.txt", "r") as f:
         content = f.read()
     return {"content": content}
@@ -987,10 +1053,13 @@ def sync_example():
 # ❌ 常见错误：async def 里用同步阻塞操作
 @app.get("/wrong")
 async def wrong():
+    # time.sleep 是同步阻塞，会卡住整个事件循环！
+    # 这会导致别的请求全部排队等待
     time.sleep(1)  # 这会阻塞整个事件循环！
     return {"msg": "bad"}
 
 # 正确做法：要么用 def，要么用 asyncio.sleep
+# 总结：async def 里只能用 await 异步操作，不能用同步阻塞操作
 \`\`\`
 
 ## 小结

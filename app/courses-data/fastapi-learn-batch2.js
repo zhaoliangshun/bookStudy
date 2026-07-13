@@ -67,24 +67,26 @@ def create_item(item: Item):
 ## Demo 2：访问模型字段
 
 \`\`\`python
-# 导入 FastAPI 类
+# 导入 FastAPI 类，用于创建应用实例和定义路由
 from fastapi import FastAPI
-# 导入 BaseModel
+# 导入 BaseModel，Pydantic 的基础模型类，用于定义数据结构并自动校验
 from pydantic import BaseModel
 
 # 创建应用实例
 app = FastAPI()
 
+# 定义商品模型
 class Item(BaseModel):
-    name: str
-    price: float
-    quantity: int = 0
+    name: str            # 商品名称，必填
+    price: float         # 商品价格，必填
+    quantity: int = 0    # 商品数量，可选，默认 0
 
+# @app.post 装饰器：注册 POST 路由，用于创建资源
 @app.post("/items")
 def create_item(item: Item):
     # item 是 Item 对象，用点号访问字段
     name = item.name              # 取字段值
-    total = item.price * item.quantity  # 直接计算
+    total = item.price * item.quantity  # 直接计算总价
 
     # 可以返回任意结构，不一定要返回模型本身
     return {
@@ -97,27 +99,30 @@ def create_item(item: Item):
 ## Demo 3：请求体 + 路径参数 + 查询参数
 
 \`\`\`python
-# 导入 FastAPI 类
+# 导入 FastAPI 类，用于创建应用实例和定义路由
 from fastapi import FastAPI
-# 导入 BaseModel
+# 导入 BaseModel，Pydantic 的基础模型类，用于定义数据结构并自动校验
 from pydantic import BaseModel
 
 # 创建应用实例
 app = FastAPI()
 
+# 定义商品模型
 class Item(BaseModel):
-    name: str
-    price: float
+    name: str       # 商品名称，必填
+    price: float    # 商品价格，必填
 
 # 三种参数可以同时出现，FastAPI 自动识别：
 # - 在路径 {} 里的 → 路径参数
 # - 是 Pydantic 模型的 → 请求体
 # - 其他普通类型的 → 查询参数
+# @app.put 装饰器：注册 PUT 路由，用于更新资源
 @app.put("/items/{item_id}")
 def update_item(item_id: int, item: Item, q: str | None = None):
     # item_id：路径参数（在路径里）
     # item：请求体（是 BaseModel）
     # q：查询参数（普通类型，不在路径里）
+    # item.dict() 把模型转成字典，** 展开到 result 中
     result = {"item_id": item_id, **item.dict()}
     if q:
         result["q"] = q
@@ -131,25 +136,28 @@ def update_item(item_id: int, item: Item, q: str | None = None):
 ## Demo 4：嵌套模型
 
 \`\`\`python
-# 导入 FastAPI 类
+# 导入 FastAPI 类，用于创建应用实例和定义路由
 from fastapi import FastAPI
-# 导入 BaseModel
+# 导入 BaseModel，Pydantic 的基础模型类，用于定义数据结构并自动校验
 from pydantic import BaseModel
 
 # 创建应用实例
 app = FastAPI()
 
 # 模型可以嵌套，反映复杂数据结构
+# 定义地址模型
 class Address(BaseModel):
-    city: str
-    street: str
+    city: str       # 城市，必填
+    street: str     # 街道，必填
 
+# 用户模型，嵌套 Address 模型
 class User(BaseModel):
-    name: str
-    age: int
-    address: Address   # 嵌套另一个模型
+    name: str            # 姓名，必填
+    age: int             # 年龄，必填
+    address: Address     # 嵌套另一个模型，请求体 JSON 里也要嵌套
 
 # 请求体 JSON 也要嵌套
+# @app.post 装饰器：注册 POST 路由，用于创建用户
 @app.post("/users")
 def create_user(user: User):
     # 参数 user: User 是嵌套模型
@@ -175,23 +183,27 @@ def create_user(user: User):
 ## Demo 5：列表和字典字段
 
 \`\`\`python
-# 导入 FastAPI 类
+# 导入 FastAPI 类，用于创建应用实例和定义路由
 from fastapi import FastAPI
-# 导入 BaseModel
+# 导入 BaseModel，Pydantic 的基础模型类，用于定义数据结构并自动校验
 from pydantic import BaseModel
 
 # 创建应用实例
 app = FastAPI()
 
+# 文章模型
 class Article(BaseModel):
-    title: str
-    # tags 是字符串列表
+    title: str                       # 标题，必填
+    # tags 是字符串列表，默认空列表
     tags: list[str] = []
-    # metadata 是任意键值对（字典）
+    # metadata 是任意键值对（字典），键和值都是字符串
     metadata: dict[str, str] = {}
 
+# @app.post 装饰器：注册 POST 路由，用于创建文章
 @app.post("/articles")
 def create_article(article: Article):
+    # article.tags 是列表，len() 取长度
+    # article.metadata 是字典，len() 取键值对数量
     return {
         "title": article.title,
         "tag_count": len(article.tags),       # 统计标签数
@@ -350,26 +362,30 @@ def create_product(p: Product):
 ## Demo 4：模型方法（dict/json）
 
 \`\`\`python
-# 导入 FastAPI 类
+# 导入 FastAPI 类，用于创建应用实例和定义路由
 from fastapi import FastAPI
-# 导入 BaseModel
+# 导入 BaseModel，Pydantic 的基础模型类，用于定义数据结构并自动校验
 from pydantic import BaseModel
 
 # 创建应用实例
 app = FastAPI()
 
+# 定义商品模型
 class Item(BaseModel):
-    name: str
-    price: float
+    name: str       # 商品名称，必填
+    price: float    # 商品价格，必填
 
+# @app.post 装饰器：注册 POST 路由，用于创建资源
 @app.post("/items")
 def create_item(item: Item):
     # Pydantic 模型内置方法：
+    # model_dump() 是 Pydantic v2 的方法，把模型转成字典
     d = item.model_dump()        # 转成 dict（v2 写法）
     # 旧版 v1 用 .dict()，已废弃
     j = item.model_dump_json()   # 转成 JSON 字符串
 
     # 可以修改 dict 后返回
+    # d["tax"] 添加税金字段，价格 * 0.1
     d["tax"] = d["price"] * 0.1
     return d
 \`\`\`
@@ -377,32 +393,36 @@ def create_item(item: Item):
 ## Demo 5：模型继承复用
 
 \`\`\`python
-# 导入 FastAPI 类
+# 导入 FastAPI 类，用于创建应用实例和定义路由
 from fastapi import FastAPI
-# 导入 BaseModel
+# 导入 BaseModel，Pydantic 的基础模型类，用于定义数据结构并自动校验
 from pydantic import BaseModel
 
 # 创建应用实例
 app = FastAPI()
 
-# 基类：通用字段
+# 基类：通用字段，供其他模型继承复用
 class BaseUser(BaseModel):
-    username: str
-    email: str
+    username: str    # 用户名
+    email: str       # 邮箱
 
 # 继承基类，扩展字段
+# UserCreate 继承 BaseUser，自动拥有 username 和 email
 class UserCreate(BaseUser):
     password: str   # 创建时需要密码
 
+# 继承基类，但不含密码，避免泄露
 class UserOut(BaseUser):
     id: int         # 输出时有 id，但没有密码
-    is_active: bool = True
+    is_active: bool = True  # 是否激活，默认 True
 
 # response_model=UserOut 指定响应模型
+# @app.post 装饰器：注册 POST 路由
 @app.post("/users", response_model=UserOut)
 def create_user(user: UserCreate):
     # 入参用 UserCreate（含密码）
     # 返回用 UserOut（不含密码），见下一章 response_model
+    # response_model 会过滤掉不在 UserOut 里的字段
     return {
         "id": 1,
         "username": user.username,
@@ -521,23 +541,26 @@ def create_user(user: UserIn):
 ## Demo 2：response_model 用 list
 
 \`\`\`python
-# 导入 FastAPI 类
+# 导入 FastAPI 类，用于创建应用实例和定义路由
 from fastapi import FastAPI
-# 导入 BaseModel
+# 导入 BaseModel，Pydantic 的基础模型类，用于定义数据结构并自动校验
 from pydantic import BaseModel
 
 # 创建应用实例
 app = FastAPI()
 
+# 定义商品模型
 class Item(BaseModel):
-    name: str
-    price: float
+    name: str       # 商品名称
+    price: float    # 商品价格
 
-# 响应是列表时，用 list[模型] 
+# 响应是列表时，用 list[模型]
 # response_model=list[Item] 表示返回 Item 对象的列表
+# @app.get 装饰器：注册 GET 路由
 @app.get("/items", response_model=list[Item])
 def list_items():
     # 返回列表，每个元素都会按 Item 校验/过滤
+    # extra 字段不在 Item 模型里，会被自动过滤掉
     return [
         {"name": "苹果", "price": 5, "extra": "被过滤"},  # extra 没了
         {"name": "香蕉", "price": 3},
@@ -768,6 +791,7 @@ async def upload_file(file: UploadFile):
 
 \`\`\`python
 # 导入 FastAPI 类和 UploadFile
+# UploadFile 专门用于接收上传文件，是异步文件对象
 from fastapi import FastAPI, UploadFile
 # 导入 shutil，标准库，提供文件操作工具
 import shutil
@@ -776,19 +800,26 @@ from pathlib import Path
 
 # 创建应用实例
 app = FastAPI()
+# 上传目录路径
 UPLOAD_DIR = Path("uploads")
 # mkdir(exist_ok=True) 创建目录，如果已存在不报错
 UPLOAD_DIR.mkdir(exist_ok=True)  # 确保目录存在
 
+# @app.post 装饰器：注册 POST 路由，用于上传文件
+# async def 定义异步路由，因为要 await 文件操作
 @app.post("/upload")
 async def upload_file(file: UploadFile):
     # 推荐用流式写入，避免大文件撑爆内存
     # / 操作符拼接路径，Path 对象支持
+    # file.filename 是上传文件的原始文件名
     dest = UPLOAD_DIR / file.filename
+    # open("wb") 以二进制写入模式打开文件
     with dest.open("wb") as buffer:
         # shutil.copyfileobj 把文件流复制到目标
         # 比一次性 read + write 更省内存
+        # file.file 是 UploadFile 内部的文件对象
         shutil.copyfileobj(file.file, buffer)
+    # dest.stat().st_size 获取文件大小（字节）
     return {"saved_to": str(dest), "size": dest.stat().st_size}
 
 # async 写法（更推荐，不阻塞）：

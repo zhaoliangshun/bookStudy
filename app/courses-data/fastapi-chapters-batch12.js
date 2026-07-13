@@ -384,23 +384,27 @@ WebSocket 在浏览器里有原生 API，不需要任何库：
 WebSocket 路由也能接收查询参数，常用于传 token（因为浏览器 WebSocket API 不能自定义请求头）：
 
 \`\`\`python filename="demo5: 带查询参数的 WebSocket"
-# 导入必要模块
+# 导入必要模块：FastAPI 应用、WebSocket 对象、WebSocketDisconnect 异常、Query 查询参数
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
 
+# 创建应用实例
 app = FastAPI()
 
 # 模拟一个 token 白名单（真实场景用 JWT 验证）
+# 用 set 存储，O(1) 查找
 VALID_TOKENS = {"abc123", "xyz789"}
 
 # 注册 WebSocket 路由
 @app.websocket("/ws")
 # 参数 token 来自查询字符串 ?token=abc123
 # Query(None) 表示可选，默认 None
+# 浏览器 WebSocket API 不支持自定义请求头，所以 token 只能放 URL
 async def ws_with_auth(ws: WebSocket, token: str = Query(None)):
     # 鉴权：token 不合法就拒绝连接
     if token not in VALID_TOKENS:
         # 用 close 拒绝，code=1008 表示策略违反
         # 注意：还没 accept 就 close，要用 ws.close(code=1008)
+        # Starlette 支持在 accept 前调用 close 来拒绝握手
         await ws.close(code=1008, reason="token 无效")
         # 直接 return，结束函数
         return
@@ -411,9 +415,12 @@ async def ws_with_auth(ws: WebSocket, token: str = Query(None)):
     # 消息循环
     try:
         while True:
+            # 接收客户端消息
             data = await ws.receive_text()
+            # 回复客户端
             await ws.send_text(f"已收到: {data}")
     except WebSocketDisconnect:
+        # 客户端断开连接
         print("客户端断开")
 \`\`\`
 
@@ -484,31 +491,36 @@ async def echo(ws: WebSocket):
 
 \`\`\`python filename="demo7: Python WebSocket 客户端"
 # 先安装: pip install websockets
-# 导入 websockets 库
+# 导入 websockets 库（第三方异步 WebSocket 客户端库）
 import websockets
-# 导入 asyncio
+# 导入 asyncio 用于事件循环
 import asyncio
 
 # 定义异步主函数
 async def main():
     # 连接到服务器
     # async with 会在退出时自动关闭连接
+    # websockets.connect 返回一个 WebSocketClientProtocol 对象
     async with websockets.connect("ws://localhost:8000/echo") as ws:
         # 发送 3 条消息
         for i in range(3):
-            # 发送
+            # 发送文本消息到服务端
+            # ws.send 是协程，必须 await
             await ws.send(f"hello {i}")
             # 等待回复
+            # ws.recv 阻塞直到收到一条消息
             reply = await ws.recv()
-            # 打印
+            # 打印收到的回复
             print(f"收到: {reply}")
         # 发送 quit 退出
+        # 服务端收到 quit 会主动关闭连接
         await ws.send("quit")
         # 接收告别消息
+        # 服务端关闭前会发一条告别消息
         bye = await ws.recv()
         print(f"告别: {bye}")
 
-# 运行
+# 运行事件循环执行 main 协程
 asyncio.run(main())
 # 预期输出:
 # 收到: echo #1: hello 0
@@ -877,13 +889,14 @@ TCP 有个机制叫 keep-alive，但默认要 2 小时才检测到断连。对�
 \`\`\`python filename="demo3: 带超时的心跳检测"
 # 导入 FastAPI、WebSocket、WebSocketDisconnect
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-# 导入 asyncio
+# 导入 asyncio，用它的 wait_for 实现超时
 import asyncio
 
 # 创建应用
 app = FastAPI()
 
 # 全局连接列表
+# 存所有活跃连接，用于广播等场景
 connections = []
 
 # 心跳超时时间（秒）
@@ -904,6 +917,8 @@ async def ws_heartbeat(ws: WebSocket):
             # 如果 HEARTBEAT_TIMEOUT 秒内没收到任何消息，抛 TimeoutError
             # wait_for 的原理：把协程包装成 Task，超时后取消它
             try:
+                # wait_for 第一个参数是要等待的协程
+                # timeout 参数是超时秒数
                 data = await asyncio.wait_for(
                     ws.receive_text(),
                     timeout=HEARTBEAT_TIMEOUT
@@ -941,15 +956,16 @@ async def ws_heartbeat(ws: WebSocket):
 \`\`\`python filename="demo4: 后台定时广播"
 # 导入 FastAPI、WebSocket
 from fastapi import FastAPI, WebSocket
-# 导入 asyncio
+# 导入 asyncio 用于异步操作和后台任务
 import asyncio
-# 导入 datetime
+# 导入 datetime 用于生成时间字符串
 from datetime import datetime
 
 # 创建应用
 app = FastAPI()
 
 # 连接列表
+# 存所有当前活跃的 WebSocket 连接
 connections = []
 
 # 后台广播任务：每 10 秒给所有连接推一次时间
@@ -965,6 +981,7 @@ async def broadcast_time():
         if not connections:
             continue
         # 构造消息
+        # strftime 格式化时间，%H:%M:%S 是时:分:秒
         now = datetime.now().strftime("%H:%M:%S")
         msg = f"服务器报时: {now}"
         # 遍历副本
@@ -989,7 +1006,9 @@ async def start_background():
 # WebSocket 端点
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
+    # 接受握手
     await ws.accept()
+    # 加入连接列表
     connections.append(ws)
     try:
         while True:
@@ -998,6 +1017,7 @@ async def ws_endpoint(ws: WebSocket):
             data = await ws.receive_text()
             await ws.send_text(f"你说: {data}")
     except Exception:
+        # 客户端断开，从列表移除
         if ws in connections:
             connections.remove(ws)
 \`\`\`
@@ -2367,7 +2387,7 @@ FastAPI 的 \`StreamingResponse\` 可以返回一个生成器，逐块输出响�
 # 从 fastapi 导入 FastAPI、StreamingResponse
 # StreamingResponse 让响应体可以分块输出，适合流式推送
 from fastapi import FastAPI, StreamingResponse
-# 导入 asyncio
+# 导入 asyncio 用于异步 sleep
 import asyncio
 
 # 创建应用

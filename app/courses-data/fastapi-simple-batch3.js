@@ -1016,19 +1016,23 @@ FastAPI 基于 Starlette，测试用 httpx 或自带的 TestClient。
 
 \`\`\`python
 # main.py
-# 导入 FastAPI 核心类
+# 导入 FastAPI 核心类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 
 # 创建应用实例
 app = FastAPI()
 
+# @app.get 装饰器：注册 GET 路由，路径为根路径 /
 @app.get("/")
 def root():
+    # 返回字典，FastAPI 自动转 JSON
     return {"message": "Hello, FastAPI!"}
 
+# @app.get 装饰器：注册 GET 路由，{item_id} 是路径参数
 @app.get("/items/{item_id}")
 def read_item(item_id: int):
     # 参数 item_id: int 会自动转换路径参数为整数
+    # 传非数字会返回 422 校验错误
     return {"item_id": item_id}
 \`\`\`
 
@@ -1074,7 +1078,7 @@ def test_read_item_invalid():
 
 \`\`\`python
 # main.py
-# 导入 FastAPI 核心类
+# 导入 FastAPI 核心类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 # 导入 BaseModel，用于定义请求体模型
 from pydantic import BaseModel
@@ -1084,13 +1088,16 @@ app = FastAPI()
 
 # 商品模型
 class Item(BaseModel):
-    name: str       # 商品名称
-    price: float    # 商品价格
+    name: str       # 商品名称，必填
+    price: float    # 商品价格，必填
 
+# @app.post 装饰器：注册 POST 路由，用于创建资源
 @app.post("/items")
 def create_item(item: Item):
+    # 参数 item: Item 表示请求体会被自动解析为 Item 对象
     # item.model_dump() 把 Pydantic 模型转成字典（Pydantic v2 用法）
     # **item.model_dump() 把字典展开为关键字参数
+    # total 是计算字段：价格 * 1.1（含税）
     return {**item.model_dump(), "total": item.price * 1.1}
 \`\`\`
 
@@ -1141,6 +1148,7 @@ def test_create_item_invalid_type():
 \`\`\`python
 # main.py
 # 导入 FastAPI 核心类和 Depends
+# Depends 用于依赖注入
 from fastapi import FastAPI, Depends
 
 # 创建应用实例
@@ -1148,14 +1156,17 @@ app = FastAPI()
 
 # 依赖函数：返回数据库连接
 # 实际项目中这里会连接真实数据库
+# 测试时可以覆盖这个依赖，返回测试数据
 def get_db():
     # 实际数据库
     return {"db": "production", "users": []}
 
+# @app.get 装饰器：注册 GET 路由
 @app.get("/users")
 def get_users(db: dict = Depends(get_db)):
     # 参数 db: dict = Depends(get_db) 表示依赖注入
     # FastAPI 会调用 get_db()，把返回值赋给 db
+    # db["users"] 返回用户列表
     return db["users"]
 \`\`\`
 
@@ -1211,18 +1222,23 @@ app = FastAPI()
 security = HTTPBearer()
 
 # 认证依赖：验证 token
+# Depends(security) 自动从请求头提取 Bearer token
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     # 参数 credentials 由 HTTPBearer 自动注入
     # credentials.credentials 是 token 字符串（去掉 "Bearer " 前缀后的部分）
     token = credentials.credentials
     if token != "valid-token":
-        # token 无效，抛出 401
+        # token 无效，抛出 401 未认证
         raise HTTPException(status_code=401, detail="Invalid token")
+    # 返回用户信息（实际项目应从数据库查询）
     return {"username": "alice"}
 
+# @app.get 装饰器：注册 GET 路由
+# Depends(get_current_user) 会验证 token，失败返回 403/401
 @app.get("/me")
 def get_me(user: dict = Depends(get_current_user)):
     # 只有通过认证才能到这里
+    # user 是 get_current_user 的返回值
     return user
 \`\`\`
 
@@ -1268,7 +1284,7 @@ def test_get_me_no_token():
 
 \`\`\`python
 # main.py
-# 导入 FastAPI 核心类
+# 导入 FastAPI 核心类，用于创建应用实例和定义路由
 from fastapi import FastAPI
 # 导入 CORSMiddleware，跨域中间件
 from fastapi.middleware.cors import CORSMiddleware
@@ -1283,18 +1299,19 @@ class Settings(BaseSettings):
     admin_email: str = "admin@example.com"          # 管理员邮箱
     debug: bool = False                             # 调试模式，生产环境必须 False
     database_url: str = "sqlite:///./test.db"       # 数据库连接字符串
-    
+
     class Config:
         # 从 .env 文件读取环境变量
         # .env 文件格式：KEY=value
         env_file = ".env"
 
 # 实例化配置，会自动读取环境变量和 .env 文件
+# 环境变量优先级高于 .env 文件和默认值
 settings = Settings()
 
 # 创建应用实例
 app = FastAPI(
-    title=settings.app_name,
+    title=settings.app_name,  # 应用标题，显示在文档
     # 生产环境关闭文档，避免暴露 API 结构
     # debug=False 时 docs_url=None，访问 /docs 返回 404
     docs_url=None if not settings.debug else "/docs",
@@ -1302,12 +1319,13 @@ app = FastAPI(
 )
 
 # 生产环境 CORS 只允许特定域名
+# add_middleware 注册中间件，第一个参数是中间件类
 app.add_middleware(
     CORSMiddleware,
     # debug 模式允许所有源，生产模式只允许指定域名
     allow_origins=["https://myapp.com"] if not settings.debug else ["*"],
-    allow_methods=["GET", "POST"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],   # 允许的 HTTP 方法
+    allow_headers=["*"],              # 允许的请求头
 )
 \`\`\`
 

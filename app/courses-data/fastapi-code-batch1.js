@@ -145,14 +145,17 @@ app.get("/items")(get_items)  # 手动注册路由
 ## Demo 1：基本路径参数
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
 
+# 创建应用实例
 app = FastAPI()
 
 # {item_id} 是路径参数，花括号里的名字要和函数参数名一致
 # 访问 /items/42 → item_id = "42"（字符串）
 @app.get("/items/{item_id}")
 def read_item(item_id):
+    # 参数 item_id 没有类型注解，所以是字符串类型
     # 默认路径参数是字符串类型
     return {"item_id": item_id}
 
@@ -210,16 +213,20 @@ def get_user(user_id: int):
 ## Demo 5：枚举路径参数
 
 \`\`\`python
+# 导入 Enum，Python 标准库的枚举类，用于定义一组固定取值
 from enum import Enum
 
 # 定义一个枚举类型，限制参数只能是这几个值
-class Color(str, Enum):  # 继承 str 让枚举值也能当字符串用
-    RED = "red"
+# 继承 str 让枚举值也能当字符串用（JSON 序列化时是字符串）
+class Color(str, Enum):
+    RED = "red"      # 枚举成员，值为 "red"
     GREEN = "green"
     BLUE = "blue"
 
+# 参数类型写成 Color，FastAPI 会限制只能传这三个值之一
 @app.get("/color/{color}")
 def get_color(color: Color):
+    # 参数 color: Color 路径参数会被解析为 Color 枚举成员
     # color 是 Color 枚举成员，不是普通字符串
     if color == Color.RED:
         return {"msg": "红色", "hex": "#FF0000"}
@@ -341,18 +348,21 @@ def get_users(
 ## Demo 4：请求体（POST JSON）
 
 \`\`\`python
-from pydantic import BaseModel  # Pydantic 是 FastAPI 自带的，不需要额外安装
+# 导入 BaseModel，Pydantic 的基础模型类
+# Pydantic 是 FastAPI 自带的，不需要额外安装
+from pydantic import BaseModel
 
 # 定义请求体模型 —— 用 Pydantic 的 BaseModel
 # 这个类有双重作用：1. 定义数据结构  2. 自动校验数据
 class Item(BaseModel):
-    name: str           # 必填字段
+    name: str           # 必填字段（无默认值）
     price: float        # 必填字段
-    description: str | None = None  # 可选字段，默认 None
+    description: str | None = None  # 可选字段，默认 None（str | None 表示可以是字符串或 None）
     tax: float | None = None        # 可选字段
 
+# 参数 item: Item 类型是 BaseModel 子类 → 自动从请求体读取
 @app.post("/items")
-def create_item(item: Item):  # 参数类型是 BaseModel 子类 → 自动从请求体读取
+def create_item(item: Item):
     # item 是 Item 实例，可以用 .属性 访问字段
     # FastAPI 自动做了：
     # 1. 读取请求体 JSON
@@ -390,26 +400,31 @@ def update_item(
 ## Demo 6：嵌套请求体
 
 \`\`\`python
+# 导入 List，typing 模块的类型注解工具（Python 3.9+ 也可以直接用 list[str]）
 from typing import List
 
+# 地址模型（嵌套子模型）
 class Address(BaseModel):
-    city: str
-    street: str
-    zip_code: str | None = None
+    city: str               # 城市，必填
+    street: str             # 街道，必填
+    zip_code: str | None = None  # 邮编，可选
 
+# 用户模型（包含嵌套模型）
 class User(BaseModel):
     name: str
     age: int
-    address: Address           # 嵌套模型
+    address: Address           # 嵌套模型（字段类型是另一个 BaseModel）
     tags: List[str] = []       # 字符串列表，默认空列表
     scores: dict[str, float] = {}  # 字典，键是字符串，值是浮点数
 
+# 参数 user: User 嵌套模型，请求体 JSON 也要嵌套
 @app.post("/users")
 def create_user(user: User):
     return {
         "name": user.name,
-        "city": user.address.city,    # 嵌套访问
+        "city": user.address.city,    # 嵌套访问：用点号逐层取
         "tags": user.tags,
+        # 计算平均分：sum 求和，if user.scores else 0 防止除以 0
         "avg_score": sum(user.scores.values()) / len(user.scores) if user.scores else 0,
     }
 
@@ -446,13 +461,19 @@ FastAPI 的核心能力来自 Python 类型提示（Type Hints）。你写类型
 ## Demo 1：类型提示基础
 
 \`\`\`python
+# 导入 FastAPI 类
 from fastapi import FastAPI
+# 导入 date，Python 标准库的日期类
 from datetime import date
 
+# 创建应用实例
 app = FastAPI()
 
 @app.get("/greet")
 def greet(name: str, age: int, birthday: date):
+    # 参数 name: str 查询参数，字符串
+    # 参数 age: int 查询参数，整数（FastAPI 自动转换）
+    # 参数 birthday: date 查询参数，日期（FastAPI 自动解析 "2024-01-01" 为 date 对象）
     # FastAPI 根据类型注解自动：
     # 1. name: str  → 校验字符串 (URL 传进来的本来就是字符串)
     # 2. age: int   → 自动把 "25" 转成 25，不是数字 → 422 错误
@@ -470,6 +491,7 @@ def greet(name: str, age: int, birthday: date):
 ## Demo 2：响应模型（控制输出）
 
 \`\`\`python
+# 导入 BaseModel
 from pydantic import BaseModel
 
 # 输入模型：接收用户数据
@@ -484,8 +506,11 @@ class UserOut(BaseModel):
     email: str
     # 注意：没有 password 字段 → 不会返回密码
 
-@app.post("/users/", response_model=UserOut)  # 声明响应用这个模型
+# response_model=UserOut 声明响应用这个模型
+# FastAPI 会自动过滤掉 UserOut 里没有的字段（即使返回值里有）
+@app.post("/users/", response_model=UserOut)
 def create_user(user: UserIn):
+    # 参数 user: UserIn 请求体模型
     # 虽然接收了 password，但 response_model 会过滤掉它
     return user  # FastAPI 自动只返回 UserOut 里定义的字段
 
@@ -496,9 +521,12 @@ def create_user(user: UserIn):
 ## Demo 3：文档描述（元数据）
 
 \`\`\`python
+# 导入 BaseModel 和 Field
+# Field 用于给字段加约束（描述、长度、范围、示例等）
 from pydantic import BaseModel, Field
 
 class Product(BaseModel):
+    # Field() 给字段加约束和元数据
     name: str = Field(
         description="商品名称",       # 字段描述（显示在文档中）
         min_length=1,                 # 最短长度
@@ -511,15 +539,16 @@ class Product(BaseModel):
         example=5999.00,
     )
     tags: list[str] = Field(
-        default=[],
+        default=[],                   # 默认空列表
         description="商品标签",
         example=["手机", "数码"],
     )
 
+# response_model=Product 响应也用这个模型
 @app.post("/products", response_model=Product)
 def create_product(
     product: Product,
-    # 路由描述
+    # 参数 product: Product 请求体
 ):
     """
     创建新商品
@@ -528,7 +557,8 @@ def create_product(
     - **price**: 商品价格，必须大于 0
     - **tags**: 可选标签列表
     """
-    # 函数文档字符串会显示在 /docs 页面中
+    # 函数文档字符串（docstring）会显示在 /docs 页面中
+    # 支持 Markdown 格式
     return product
 \`\`\`
 

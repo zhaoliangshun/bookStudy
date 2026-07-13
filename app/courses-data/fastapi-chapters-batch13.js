@@ -68,17 +68,21 @@ TestClient 包装请求              经过网卡、TCP、HTTP 解析
 先写一个最简单的应用，然后测它：
 
 \`\`\`python filename="main.py —— 被测的应用"
-# 从 fastapi 导入 FastAPI
+# 从 fastapi 导入 FastAPI（应用入口类）
 from fastapi import FastAPI
 
 # 创建 FastAPI 应用实例
+# app 是全局对象，所有路由都注册在它上面
 app = FastAPI()
 
 # 装饰器：app.get，定义 GET 路由，访问 / 时触发
+# 参数 "/" 是路由路径，浏览器访问根路径就会执行下面的函数
 @app.get("/")
 # 定义函数 root，无参数
+# 普通 def 即可，FastAPI 会自动用线程池处理（如果是 async def 则在事件循环里跑）
 def root():
     # 返回一个字典，FastAPI 会自动转成 JSON
+    # 返回 dict 时 Content-Type 自动设为 application/json
     return {"msg": "hello"}
 \`\`\`
 
@@ -364,6 +368,7 @@ def test_create_item_wrong_type():
 
 \`\`\`python filename="main.py —— 自定义响应头"
 # 从 fastapi 导入 FastAPI, Response
+# Response 用于操作响应头等元信息
 from fastapi import FastAPI, Response
 
 # 创建应用
@@ -372,20 +377,26 @@ app = FastAPI()
 # 下载接口，设置 Content-Disposition 头
 @app.get("/download")
 # 定义函数 download，参数 response 是 Response 类型
+# 通过 Response 对象可以手动设置响应头
 def download(response: Response):
     # 设置响应头，告诉浏览器以附件形式下载
     # response.headers 是一个可变字典
+    # Content-Disposition: attachment 表示"附件下载"，filename 是建议保存的文件名
     response.headers["Content-Disposition"] = 'attachment; filename="report.csv"'
     # 设置自定义头 X-Process-Time
+    # 自定义头通常用 X- 前缀（虽然新规范不强制，但习惯保留）
     response.headers["X-Process-Time"] = "0.05"
     # 返回 CSV 内容
+    # 返回 str 时 Content-Type 默认是 text/plain
     return "id,name\\n1,苹果\\n2,香蕉"
 
 # 自定义状态码
 @app.post("/create", status_code=201)
 # 定义函数 create
+# status_code=201 在装饰器里设置，覆盖默认的 200
 def create():
     # 返回 201（已创建）
+    # 201 表示资源创建成功，符合 RESTful 规范
     return {"id": 1}
 \`\`\`
 
@@ -434,6 +445,8 @@ def test_not_found():
 
 \`\`\`python filename="main.py —— 文件上传接口"
 # 从 fastapi 导入 FastAPI, UploadFile, File
+# UploadFile 是 FastAPI 的文件类型，封装了文件名、内容等
+# File(...) 表示这是一个必填的文件参数
 from fastapi import FastAPI, UploadFile, File
 
 # 创建应用
@@ -442,21 +455,27 @@ app = FastAPI()
 # 单文件上传
 @app.post("/upload")
 # 定义函数 upload，参数 file 是 UploadFile 类型
+# async def 因为文件读取是异步 I/O 操作
 async def upload(file: UploadFile = File(...)):
     # 读取文件内容（bytes）
     # 定义变量 content，等待读取完成
+    # await 因为 read() 是协程，避免阻塞事件循环
     content = await file.read()
     # 返回文件名和大小
+    # file.filename 是上传时的原始文件名
+    # len(content) 是文件字节数
     return {"filename": file.filename, "size": len(content)}
 
 # 多文件上传
 @app.post("/upload-multi")
 # 定义函数 upload_multi，参数 files 是 UploadFile 列表
+# list[UploadFile] 表示接收多个文件，FastAPI 会把同名文件字段都收进来
 async def upload_multi(files: list[UploadFile] = File(...)):
     # 用列表推导式收集每个文件的名字
     # 定义变量 names，遍历 files 取 filename
     names = [f.filename for f in files]
     # 返回文件名列表
+    # count 是文件数量，names 是所有文件名
     return {"count": len(files), "names": names}
 \`\`\`
 
@@ -520,6 +539,7 @@ def test_upload_no_file():
 
 \`\`\`python filename="main.py —— 带异常处理的接口"
 # 从 fastapi 导入 FastAPI, HTTPException
+# HTTPException 是 FastAPI 的异常类，抛出后会自动转成 HTTP 错误响应
 from fastapi import FastAPI, HTTPException
 
 # 创建应用
@@ -527,17 +547,20 @@ app = FastAPI()
 
 # 模拟数据库
 # 定义变量 FAKE_DB，是一个字典
+# key 是商品 id，value 是商品名
 FAKE_DB = {1: "苹果", 2: "香蕉"}
 
 # GET /items/{item_id}
 @app.get("/items/{item_id}")
 # 定义函数 get_item，参数 item_id 是 int
+# 类型注解 int 让 FastAPI 自动校验：传非数字会返回 422
 def get_item(item_id: int):
     # 如果 id 不在数据库里
     # 条件判断：如果 item_id 不在 FAKE_DB 里
     if item_id not in FAKE_DB:
         # 抛出 404 异常
         # HTTPException 会被 FastAPI 自动转成 JSON 响应
+        # status_code 指定 HTTP 状态码，detail 是错误详情
         raise HTTPException(status_code=404, detail="商品不存在")
     # 正常返回
     return {"id": item_id, "name": FAKE_DB[item_id]}
@@ -548,6 +571,7 @@ def get_item(item_id: int):
 def trigger_error():
     # 故意除以零，触发 ZeroDivisionError
     # 定义变量 x，赋值为 1 / 0
+    # 这个异常没被捕获，FastAPI 会自动转成 500 响应
     x = 1 / 0
     return {"x": x}
 \`\`\`
@@ -2505,6 +2529,7 @@ pytest --help | grep cov
 
 \`\`\`python filename="calculator.py —— 被测代码"
 # 定义函数 calculate，参数 a, b, op
+# 类型注解：a 和 b 是 int，op 是 str，返回值是 int
 def calculate(a: int, b: int, op: str) -> int:
     # 条件判断：根据 op 执行不同操作
     if op == "add":
@@ -2521,13 +2546,17 @@ def calculate(a: int, b: int, op: str) -> int:
     # 条件判断：如果 op 等于 "div"
     elif op == "div":
         # 条件判断：如果 b 等于 0
+        # 除零检查：避免 ZeroDivisionError
         if b == 0:
             # 除零保护
+            # 抛出 ValueError 让调用方处理
             raise ValueError("不能除以零")
         # 除法
+        # 用 // 整数除法，返回整数
         return a // b
     else:
         # 未知操作
+        # f-string 格式化错误信息，包含传入的 op 方便调试
         raise ValueError(f"未知操作: {op}")
 \`\`\`
 

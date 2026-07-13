@@ -144,24 +144,38 @@ Gunicorn 参数非常多，常用的列在下面：
 \`\`\`python
 # uvicorn/workers.py 源码简化版，理解原理即可
 # 从 uvicorn.server 模块导入 Server 类，它负责真正运行 ASGI 服务器
+# Server 是 uvicorn 的核心：监听 socket、接收连接、分发到协议处理器
 from uvicorn.server import Server
 # 导入 HTTP 协议自动选择类（会根据是否装了 httptools 自动选实现）
+# AutoHTTPProtocol 会优先用 httptools（C 扩展，快），没有则退回 h11（纯 Python，慢）
 from uvicorn.protocols.http.auto import AutoHTTPProtocol
 # 导入 WebSocket 协议自动选择类（会根据是否装了 websockets 自动选实现）
+# AutoWebsocketProtocol 会优先用 websockets 库，没有则用 wsproto
 from uvicorn.protocols.websockets.auto import AutoWebsocketProtocol
 
 # UvicornWorker 继承自 gunicorn 的 Worker 基类
 # 这样 Gunicorn master 就能像管理普通 WSGI worker 一样管理 Uvicorn worker
+# 继承 Worker 后必须实现 run 方法，master fork 后会调用它
 class UvicornWorker(Worker):
     """
     Uvicorn 实现的 Gunicorn worker class。
     继承自 gunicorn.workers.base.Worker，实现了 ASGI 接口。
     """
     # CONFIG_KWARGS 是传给 uvicorn Server 的配置参数
+    # 这是一个类变量，所有实例共享，Gunicorn 启动 worker 时会读取它
     # 底层用 httptools 解析 HTTP（高性能，C 实现）
     CONFIG_KWARGS = {
+        # loop 选择事件循环实现
+        # uvloop 是 asyncio 的 C 扩展替代品，性能提升 2-4 倍
+        # asyncio 是 Python 标准库的事件循环，兼容性最好但慢
         "loop": "uvloop",        # 用 uvloop 代替 asyncio 原生 loop（性能提升 2-4 倍）
+        # http 选择 HTTP 解析器
+        # httptools 是 nodejs http-parser 的 Python 绑定，C 扩展，快
+        # h11 是纯 Python 实现，兼容性好但慢
         "http": "httptools",     # 用 httptools 解析 HTTP（C 扩展，比 h11 快）
+        # lifespan 控制 FastAPI 生命周期事件
+        # "on" 启用，"off" 关闭，"auto" 自动检测
+        # 必须开 "on" 才能让 FastAPI 的 @app.on_event / lifespan 生效
         "lifespan": "on",        # 启用 lifespan 事件（FastAPI startup/shutdown）
     }
 
@@ -169,8 +183,10 @@ class UvicornWorker(Worker):
         # run 方法由 Gunicorn master 调用，每个 worker fork 后会执行这里
         # 每个 worker 内部跑一个 uvicorn Server
         # self.config 是 Gunicorn 传进来的配置对象
+        # Gunicorn 会把命令行参数解析成 config 对象，传给 worker
         server = Server(config=self.config)
         # server.run() 会阻塞，直到收到退出信号
+        # 这就是为什么每个 worker 是独立进程：run() 一直阻塞，不会返回
         server.run()
 
     def handle_exit(self, sig, frame):
@@ -178,10 +194,12 @@ class UvicornWorker(Worker):
         # sig: 信号编号（如 15 表示 SIGTERM）
         # frame: 当前栈帧（一般用不到）
         # 优雅退出 = 先处理完当前请求再退出，而不是立即中断
+        # 立即中断会导致正在处理的请求返回 502，用户体验差
         ...
 
 # UvicornH11Worker 继承 UvicornWorker，只覆盖了 CONFIG_KWARGS
 # 适用于装不上 httptools C 扩展的环境（如某些 ARM 设备）
+# 继承后只改配置，不改逻辑，体现了"组合优于继承"的思想
 class UvicornH11Worker(UvicornWorker):
     """
     用 h11 代替 httptools（纯 Python 实现，慢但兼容性好）。
@@ -205,19 +223,24 @@ worker 数量不是越多越好。每个 worker 都是独立进程，占内存�
 # Gunicorn 官方推荐：(2 * CPU 核数) + 1
 
 # 导入 multiprocessing 模块，用于获取 CPU 核数
+# multiprocessing 是 Python 标准库，无需安装
 import multiprocessing
 
 # multiprocessing.cpu_count() 返回当前机器的逻辑 CPU 核数
 # 注意：这是逻辑核数（含超线程），不是物理核数
+# 例如 4 核 8 线程的 CPU，cpu_count() 返回 8
+# 在容器里可能返回宿主机的核数，要用 os.sched_getaffinity(0) 更准确
 # 获取 CPU 核数
 cpu_count = multiprocessing.cpu_count()
 
 # 计算推荐 worker 数
 # 2 倍 CPU：一个 worker 处理请求时 IO 等待，另一个 worker 用 CPU
 # +1：留一个 worker 应对突发流量，避免请求排队
+# 这个公式假设是 IO 密集型应用（大多数 Web 应用都是）
 workers = (2 * cpu_count) + 1
 
 # 用 f-string 格式化输出（Python 3.6+ 语法）
+# f"..." 里的 {} 会被替换成变量的字符串形式
 print(f"CPU 核数: {cpu_count}")
 print(f"推荐 worker 数: {workers}")
 
@@ -1074,27 +1097,40 @@ FastAPI 应用里读取环境变量：
 # app/core/config.py
 # 从 pydantic_settings 导入 BaseSettings 基类
 # pydantic-settings 是 pydantic v2 的配置管理子包，专门用于读取环境变量
+# BaseSettings 继承自 BaseModel，额外支持从环境变量/.env 文件自动加载字段
 from pydantic_settings import BaseSettings
 
 # Settings 类继承 BaseSettings，会自动从环境变量和 .env 文件读取配置
+# 字段名（大写）会自动映射到环境变量名，如 app_env → APP_ENV
 class Settings(BaseSettings):
     # 每个类属性对应一个环境变量，类型注解决定如何转换
     # 冒号后面是默认值，环境变量没设时用默认值
     # 从环境变量读取，有默认值
+    # app_env 用于区分运行环境，不同环境加载不同配置（如 dev 用 SQLite，prod 用 PostgreSQL）
     app_env: str = "development"       # 应用环境（development/staging/production）
+    # SQLAlchemy 连接串格式：dialect://user:pass@host:port/db
     database_url: str = "sqlite:///./test.db"  # 数据库连接 URL
+    # secret_key 用于签 JWT/加密 cookie，生产环境必须换成随机长字符串
+    # 弱密钥会导致 JWT 可被伪造，严重的安全漏洞
     secret_key: str = "change-me"      # 密钥（生产环境必须改！）
+    # log_level 控制日志输出级别，生产用 info，调试用 debug
     log_level: str = "info"            # 日志级别
+    # int 类型会自动从环境变量字符串转换成整数（环境变量都是字符串）
     workers: int = 4                   # worker 数量
 
     # 内部 Config 类配置 BaseSettings 的行为
+    # 这是 pydantic v1 的写法，v2 推荐用 model_config = SettingsConfigDict(...)
+    # 但 v1 写法在 v2 里仍然兼容
     class Config:
         # env_file 指定从哪个文件读取环境变量
         # 优先级：系统环境变量 > .env 文件 > 类默认值
+        # 系统环境变量优先级最高，方便生产环境用 -e 注入
         env_file = ".env"
 
 # 创建全局配置实例
+# 模块导入时执行 Settings()，从环境变量和 .env 加载配置
 # 其他模块 from app.core.config import settings 使用
+# 用全局单例避免重复加载配置，也保证全应用配置一致
 settings = Settings()
 \`\`\`
 
@@ -1451,22 +1487,28 @@ docker inspect --format='{{json .State.Health.Log}}' my-app | jq
 async def health():
     """全面健康检查"""
     # checks 字典记录每个依赖的状态
+    # 用字典而不是布尔值，是为了在 detail 里返回具体哪个挂了
     checks = {}
 
     # 检查数据库
+    # try/except 包裹：依赖可能挂，挂了不能让健康检查接口自己也 500
     try:
         # db_pool.acquire() 从连接池借一个连接
+        # async with 保证连接用完归还（即使异常也归还）
         async with db_pool.acquire() as conn:
             # fetchval 返回第一行第一列的值（这里只是测试连接）
+            # "SELECT 1" 是最轻量的 SQL，只为验证连接通不通
             await conn.fetchval("SELECT 1")
         checks["db"] = "ok"
     except Exception:
         # 任何异常都算数据库挂了
+        # 不记录具体异常，避免日志爆炸（健康检查会被频繁调用）
         checks["db"] = "fail"
 
     # 检查 Redis
     try:
         # redis ping 是最轻量的检查，返回 PONG
+        # 比 SET/GET 更轻，不会产生数据
         await redis_client.ping()
         checks["redis"] = "ok"
     except Exception:
@@ -1475,19 +1517,23 @@ async def health():
     # 只要有依赖挂了，返回 503
     # all() 函数：所有元素为 True 才返回 True
     # 这里遍历 checks 的值，全为 "ok" 才算健康
+    # 生成器表达式 v == "ok" for v in checks.values() 比列表推导式省内存
     all_ok = all(v == "ok" for v in checks.values())
     if not all_ok:
         # 503 Service Unavailable，让 K8s 把流量切走
+        # detail 传 checks，运维能看到具体哪个依赖挂了
         raise HTTPException(status_code=503, detail=checks)
     return {"status": "healthy", "checks": checks}
 
 # 存活检查（liveness）vs 就绪检查（readiness）
 # K8s 有两种探针：livenessProbe 和 readinessProbe
+# 区别：liveness 失败会重启 Pod，readiness 失败只摘流量不重启
 @app.get("/health/live")
 async def liveness():
     """存活检查：应用进程活着就 OK，不查依赖"""
     # liveness 只检查进程是否活着，不查依赖
     # 进程活着但依赖挂了，K8s 不会重启（因为重启没用，依赖还是挂的）
+    # 如果 liveness 检查依赖，依赖一抖动就重启，会导致雪崩
     return {"status": "alive"}
 
 @app.get("/health/ready")
@@ -1495,6 +1541,7 @@ async def readiness():
     """就绪检查：能处理请求才 OK，要查依赖"""
     # readiness 检查依赖，依赖挂了 K8s 会把流量切走（但不重启）
     # 等依赖恢复，readiness 通过，K8s 再把流量切回来
+    # 直接复用 health() 的逻辑，避免重复代码
     return await health()
 \`\`\`
 
@@ -2054,6 +2101,7 @@ server {
 # 从 fastapi 导入 FastAPI 应用类
 # WebSocket 是 FastAPI 的 WebSocket 连接类，用于类型注解
 # WebSocketDisconnect 是客户端断开时抛出的异常
+# WebSocketDisconnect 继承自 Exception，是 Starlette 提供的专用异常
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 # 创建 FastAPI 应用实例
@@ -2061,25 +2109,34 @@ app = FastAPI()
 
 # @app.websocket 装饰器注册 WebSocket 路由（注意不是 @app.get）
 # /ws/chat 是 WebSocket 端点路径，客户端连 wss://example.com/ws/chat
+# WebSocket 路由不能用 @app.get/@app.post，协议完全不同
 @app.websocket("/ws/chat")
 # websocket: WebSocket 是 FastAPI 自动注入的 WebSocket 连接对象
+# 通过类型注解 WebSocket，FastAPI 知道这是个 WebSocket 端点
 async def websocket_endpoint(websocket: WebSocket):
     # websocket.accept() 接受客户端连接（完成握手）
     # 不调用 accept 客户端会收到 403
+    # accept() 对应协议里的 "101 Switching Protocols" 响应
     await websocket.accept()
+    # try/except 包裹消息循环，捕获断开异常
+    # 不捕获会导致异常冒泡到框架，日志里一堆错误
     try:
         # while True 死循环持续接收消息，直到客户端断开
+        # WebSocket 是长连接，不像 HTTP 一次请求就结束
         while True:
             # 接收消息
             # receive_text() 接收文本消息（还有 receive_bytes/receive_json）
             # await 是异步等待，不阻塞事件循环
+            # 等待期间事件循环可以去处理别的连接，这就是并发的关键
             data = await websocket.receive_text()
             # 回显
             # send_text 发送文本消息给客户端
+            # f"Echo: {data}" 把收到的消息加前缀返回，便于测试
             await websocket.send_text(f"Echo: {data}")
     except WebSocketDisconnect:
         # 客户端主动断开或网络断开时抛出此异常
         # 这里只打印日志，实际项目可能要清理用户在线状态
+        # 比如：从在线列表删除、通知其他用户"xx 已下线"
         print("客户端断开")
 \`\`\`
 
@@ -2359,25 +2416,32 @@ proxy_read_timeout 86400s;
 
 # FastAPI 要用 X-Forwarded-For
 # 从 fastapi 导入 Request，用于访问请求信息（headers、client 等）
+# Request 对象包含请求的所有信息：headers、query_params、path_params、client 等
 from fastapi import Request
 
 # @app.get 注册 GET 路由 /ip
 @app.get("/ip")
 # request: Request 是 FastAPI 自动注入的请求对象
 # 不用 Depends，直接用类型注解就能拿到
+# FastAPI 识别到 Request 类型会自动注入当前请求对象
 async def get_ip(request: Request):
     # request.client.host 是直接连到应用的客户端 IP
     # 走 Nginx 代理后，这里是 Nginx 的 IP（如 127.0.0.1），不是真实客户端
     # 要从 X-Forwarded-For 取
+    # request.headers 是一个不区分大小写的字典（Headers 对象）
     # request.headers.get 不区分大小写，"x-forwarded-for" 和 "X-Forwarded-For" 都行
+    # 第二个参数 "" 是默认值，头不存在时返回空字符串（不传默认值则返回 None）
     forwarded = request.headers.get("x-forwarded-for", "")
     if forwarded:
         # X-Forwarded-For 格式: "客户端IP, 代理1, 代理2, ..."
+        # 每经过一个代理，代理会把自己的 IP 追加到末尾
+        # 所以第一个就是真实客户端 IP（除非客户端伪造，需要可信代理过滤）
         # split(",")[0] 取第一个，即真实客户端 IP
-        # strip() 去掉前后空格
+        # strip() 去掉前后空格（HTTP 头里逗号后通常有空格）
         client_ip = forwarded.split(",")[0].strip()
     else:
         # 没走代理（如开发环境），直接用 client.host
+        # request.client 是 Address 对象，含 host 和 port
         client_ip = request.client.host
     return {"ip": client_ip}
 \`\`\`

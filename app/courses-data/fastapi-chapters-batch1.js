@@ -1439,19 +1439,27 @@ ASGI 协议的核心是三个参数：\`scope\`、\`receive\`、\`send\`。理�
 
 \`\`\`python
 # scope 示例（HTTP 请求）
+# scope 是一个字典，在连接建立时就确定，整个连接期间不变
+# 对 HTTP 来说，一个请求对应一个 scope；对 WebSocket 来说，整个会话共享一个 scope
 scope = {
     "type": "http",              # 协议类型：http / websocket / lifespan
+    # asgi 字段记录 ASGI 规范版本，服务器和应用据此判断兼容性
     "asgi": {"version": "3.0", "spec_version": "2.3"},  # ASGI 版本
-    "http_version": "1.1",       # HTTP 版本
-    "method": "GET",             # 请求方法
-    "scheme": "http",            # 协议（http/https）
-    "path": "/items/42",         # 请求路径
+    "http_version": "1.1",       # HTTP 版本（1.0 / 1.1 / 2）
+    "method": "GET",             # 请求方法（GET / POST / PUT / DELETE 等）
+    "scheme": "http",            # 协议（http/https），反映是否经过 TLS
+    "path": "/items/42",         # 请求路径（不含 query 字符串）
+    # query_string 是字节串而非字符串，需要 .decode() 转成 str 才能用
     "query_string": b"q=apple",  # query 字符串（字节串）
+    # headers 是字节串对的列表，不是字典（因为一个头名可以有多个值）
+    # 每个元素是 [name_bytes, value_bytes] 的二元列表
     "headers": [                 # 请求头列表（字节串对）
         [b"host", b"127.0.0.1:8000"],
         [b"user-agent", b"curl/7.81.0"],
     ],
+    # client 是 [ip, port] 列表，用于日志、限流、IP 白名单
     "client": ["127.0.0.1", 54321],  # 客户端地址和端口
+    # server 是 [ip, port] 列表，用于判断请求落在哪个监听地址
     "server": ["127.0.0.1", 8000],   # 服务器地址和端口
 }
 \`\`\`
@@ -2647,11 +2655,14 @@ def create_book(book: Book):
 
 \`\`\`python
 # 创建 FastAPI 应用实例，所有文档端点设为 None
+# 把三个文档端点都设为 None，访问对应 URL 会返回 404
+# 这样外部完全看不到接口结构，最安全但内部也无法访问
 app = FastAPI(
-    docs_url=None,        # 关闭 /docs
-    redoc_url=None,       # 关闭 /redoc
-    openapi_url=None,     # 关闭 /openapi.json
+    docs_url=None,        # 关闭 /docs（Swagger UI 交互文档）
+    redoc_url=None,       # 关闭 /redoc（ReDoc 只读文档）
+    openapi_url=None,     # 关闭 /openapi.json（原始 OpenAPI 规范文件）
 )
+# 适用场景：面向公网的生产 API，不需要对外暴露任何文档
 \`\`\`
 
 设为 \`None\` 就禁用对应端点。完全关闭最安全，但内部想用也用不了。
@@ -2747,14 +2758,19 @@ location /docs {
 
 \`\`\`python
 # 创建 FastAPI 应用实例，改文档路径
+# 把文档 URL 改成难猜的字符串，减少被扫描到的概率
 app = FastAPI(
+    # docs_url 改成带随机后缀的路径，避免被 /docs 直接扫到
     docs_url="/internal-docs-abc123",  # 难猜的路径
+    # redoc_url 设为 None 完全关闭 ReDoc，减少暴露面
     redoc_url=None,
+    # openapi.json 也改成难猜的路径，防止接口结构被直接抓取
     openapi_url="/internal-openapi-abc123.json",
 )
 
 # 安全提示：
 # - 改路径不是真正的安全（security through obscurity）
+# - 攻击者仍可能通过日志、前端代码、抓包拿到路径
 # - 生产环境建议组合：改路径 + Nginx 认证 + IP 白名单
 \`\`\`
 
@@ -2829,14 +2845,22 @@ def health():
 
 \`\`\`python
 # 定义 tags 顺序
+# openapi_tags 参数接收一个列表，列表里每个元素是一个字典
+# 字典的 "name" 字段是标签名（要和路由装饰器里 tags 参数对应）
+# 字典的 "description" 字段是标签描述，会显示在文档分组标题下方
+# 列表中元素的顺序，就是文档里分组的显示顺序
 app = FastAPI(
     openapi_tags=[
+        # 第一个 tag 会显示在文档最上面
         {"name": "用户", "description": "用户相关"},
+        # 第二个 tag 显示在中间
         {"name": "订单", "description": "订单相关"},
+        # 第三个 tag 显示在最下面
         {"name": "商品", "description": "商品相关"},
     ],
 )
 # 文档里按 用户 → 订单 → 商品 顺序显示
+# 如果路由里用了未在 openapi_tags 声明的 tag，会追加到末尾显示
 \`\`\`
 
 ### 问题 2：response_model 和返回值对不上
@@ -2853,10 +2877,13 @@ app = FastAPI(
 
 \`\`\`python
 # 定义 GET 路由：访问 /internal 时触发
+# include_in_schema=False 表示此接口不出现在 OpenAPI 文档里
+# 但接口本身仍然可以正常访问，只是 /docs 里看不到
 @app.get("/internal", include_in_schema=False)
 # 定义函数 internal，无参数
 def internal():
     # 这个接口不会出现在文档里
+    # 适合内部监控、健康检查、调试接口等不需要对外暴露的端点
     # 返回 {"msg": "internal"}
     return {"msg": "internal"}
 \`\`\`
