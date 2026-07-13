@@ -49,6 +49,20 @@ print(type(user.age))  # 输出: <class 'int'>
 
 可以看到，我们并没有写任何 \`if not isinstance(age, int)\` 这样的校验代码，Pydantic 就完成了类型转换。这就是它的核心价值：**声明式数据建模**。
 
+## 生活类比：Pydantic 像海关检查站
+
+把数据流入程序想象成旅客入境，Pydantic 就是海关检查站，分多道关卡：
+
+| 关卡 | 海关对应 | Pydantic 对应 | 作用 |
+|------|---------|--------------|------|
+| 第一道 | 查验护照是否齐全 | **必填字段检查** | 缺字段就拒绝入境 |
+| 第二道 | X 光机扫描行李 | **类型校验与转换** | "30" 字符串自动转成 30 数字 |
+| 第三道 | 限重 / 限尺寸 | **Field 约束**（gt/ge/lt/le/min_length） | 数值范围、长度限制 |
+| 第四道 | 海关人员人工问询 | **自定义校验器** | 业务规则（如年龄不能为负） |
+| 第五道 | 盖章放行 / 拒绝入境 | **实例化成功 / 抛 ValidationError** | 通过就得到模型实例 |
+
+记住这个比喻：**类型注解是护照，Field 是限重牌，校验器是海关人员，ValidationError 是遣返通知**。后面学到类型、约束、校验器时都可以对应起来理解。
+
 ## Pydantic v1 vs v2 的区别
 
 Pydantic 在 2023 年发布了 v2 版本，这是一次重大重写。FastAPI 从 0.100 版本开始支持 Pydantic v2，目前新项目应该一律使用 v2。两者在 API 上有不少差异，理解这些差异对阅读老代码和迁移很重要。
@@ -641,95 +655,491 @@ print(isinstance(uc, BaseUser))  # 输出: True（子类实例也是父类实例
 
 **设计模式**：在实际项目中，常见做法是定义一个 \`BaseUser\` 包含公共字段，然后派生出 \`UserCreate\`（请求）、\`UserUpdate\`（部分更新）、\`UserOut\`（响应）、\`UserInDB\`（数据库）等多个模型，避免重复定义。这就是 DRY（Don't Repeat Yourself）原则在数据建模中的体现。
 
-## 实战：用户数据模型设计
+## 渐进式 Demo：配置文件加载（环境变量 + 字典）
 
-综合运用本章知识，设计一套完整的用户数据模型，覆盖请求、响应、数据库三个场景。
+实际项目里，配置来源五花八门：环境变量、YAML、JSON、命令行参数。用 Pydantic 模型统一管理配置，可以让校验和默认值都在一处定义。
 
 \`\`\`python
 # 从 pydantic 导入 BaseModel、Field、ConfigDict
 from pydantic import BaseModel, Field, ConfigDict
-# 从 datetime 模块导入 datetime
-from datetime import datetime
-# 从 typing 模块导入 Optional
-from typing import Optional
+# 导入 os 模块，用于读取环境变量
+import os
 
-# === 1. 基础用户模型（公共字段） ===
-# 所有用户相关模型的父类
-class UserBase(BaseModel):
-    # 字段 username，类型 str，长度 3~20
-    username: str = Field(min_length=3, max_length=20, description="用户名，3-20 字符")
-    # 字段 email，类型 str
-    email: str = Field(description="邮箱地址")
+# 定义数据库配置模型 DatabaseConfig
+class DatabaseConfig(BaseModel):
+    # 模型配置：禁止额外字段，防止配置文件写错键名
+    model_config = ConfigDict(extra='forbid')
+    # 字段 host，类型 str，默认 'localhost'
+    host: str = "localhost"
+    # 字段 port，类型 int，默认 5432，范围 1~65535
+    # 端口号范围是 0~65535，但 0 被 OS 保留，实际可用 1~65535
+    port: int = Field(default=5432, ge=1, le=65535)
+    # 字段 username，类型 str
+    username: str
+    # 字段 password，类型 str
+    password: str
+    # 字段 pool_size，类型 int，默认 5，范围 1~100
+    # 连接池大小，太小会频繁建连，太大会占用数据库连接
+    pool_size: int = Field(default=5, ge=1, le=100)
 
-# === 2. 创建用户请求模型 ===
-# 继承 UserBase，添加密码字段
-class UserCreate(UserBase):
-    # 字段 password，类型 str，最少 8 位
-    password: str = Field(min_length=8, description="密码，至少 8 位")
-    # 字段 age，类型 Optional[int]，可选
-    age: Optional[int] = Field(default=None, ge=0, le=150, description="年龄，0-150")
+# 定义应用配置模型 AppConfig
+class AppConfig(BaseModel):
+    # 字段 app_name，类型 str
+    app_name: str
+    # 字段 debug，类型 bool，默认 False
+    debug: bool = False
+    # 字段 database，类型 DatabaseConfig（嵌套模型）
+    database: DatabaseConfig
+    # 字段 allowed_origins，类型 list[str]，默认值用 default_factory
+    # 可变默认值必须用 default_factory，否则多个实例会共享同一个 list
+    allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
 
-# === 3. 更新用户请求模型（所有字段可选） ===
-# 继承 UserBase，但所有字段改为可选
-class UserUpdate(BaseModel):
-    # 字段 username，可选
-    username: Optional[str] = Field(default=None, min_length=3, max_length=20)
-    # 字段 email，可选
-    email: Optional[str] = None
-    # 字段 age，可选
-    age: Optional[int] = Field(default=None, ge=0, le=150)
-
-# === 4. 用户响应模型（不含密码） ===
-# 继承 UserBase，添加系统字段，开启 from_attributes
-class UserOut(UserBase):
-    # 配置：允许从 ORM 对象创建
-    model_config = ConfigDict(from_attributes=True)
-    # 字段 id，类型 int
-    id: int
-    # 字段 is_active，类型 bool，默认 True
-    is_active: bool = True
-    # 字段 created_at，类型 datetime
-    created_at: datetime
-
-# === 5. 数据库存储模型（含密码哈希） ===
-class UserInDB(UserBase):
-    # 字段 id，类型 int
-    id: int
-    # 字段 hashed_password，类型 str（存储哈希后的密码）
-    hashed_password: str
-    # 字段 is_active，类型 bool
-    is_active: bool = True
-    # 字段 created_at，类型 datetime
-    created_at: datetime
-
-# === 使用示例 ===
-# 模拟创建用户
-create_data = {
-    "username": "alice",
-    "email": "alice@example.com",
-    "password": "supersecret",
-    "age": 25,
+# === 从字典加载配置（模拟从 YAML 读取） ===
+config_dict = {
+    "app_name": "my-api",
+    "debug": True,
+    "database": {
+        "host": "db.example.com",
+        "port": 5432,
+        "username": "admin",
+        "password": "secret",
+        "pool_size": 20,
+    },
+    "allowed_origins": ["https://example.com"],
 }
-# 用 UserCreate 校验请求
-user_in = UserCreate(**create_data)
-print("创建请求:", user_in.model_dump())
+# 用 model_validate 从字典创建配置对象
+# 如果配置里有多余字段会报错（extra='forbid'）
+config = AppConfig.model_validate(config_dict)
+print(config.app_name)                  # 输出: my-api
+print(config.database.host)             # 输出: db.example.com
+print(config.database.pool_size)        # 输出: 20
+# 嵌套模型也被自动校验和创建
+print(type(config.database))            # 输出: <class 'DatabaseConfig'>
 
-# 模拟存入数据库（实际项目用 SQLAlchemy）
-user_in_db = UserInDB(
-    id=1,
-    username=user_in.username,
-    email=user_in.email,
-    hashed_password="hashed_" + user_in.password,  # 简化演示
-    is_active=True,
-    created_at=datetime.now(),
+# === 从环境变量加载配置（简化演示） ===
+# 实际项目推荐用 pydantic-settings 库，能自动读环境变量
+os.environ["APP_NAME"] = "prod-api"
+os.environ["DB_HOST"] = "prod-db.internal"
+os.environ["DB_PORT"] = "6543"
+
+# 手动从环境变量构造字典
+env_config = {
+    "app_name": os.environ.get("APP_NAME", "default"),
+    "database": {
+        "host": os.environ.get("DB_HOST", "localhost"),
+        "port": int(os.environ.get("DB_PORT", "5432")),  # 环境变量是 str，要转 int
+        "username": os.environ.get("DB_USER", "root"),
+        "password": os.environ.get("DB_PASSWORD", ""),
+    },
+}
+config_from_env = AppConfig.model_validate(env_config)
+print(config_from_env.app_name)            # 输出: prod-api
+print(config_from_env.database.port)       # 输出: 6543
+
+# === 校验失败演示：端口超出范围 ===
+try:
+    AppConfig.model_validate({
+        "app_name": "x",
+        "database": {
+            "username": "u",
+            "password": "p",
+            "port": 99999,  # 超出 65535
+        },
+    })
+except Exception as e:
+    print("端口超出范围")  # 输出
+\`\`\`
+
+**要点**：嵌套模型（\`database: DatabaseConfig\`）会被递归校验，无需手写嵌套字典的校验逻辑。这是 Pydantic 的"声明式"威力的体现。
+
+## 渐进式 Demo：数据迁移工具（CSV 行 → 模型）
+
+数据迁移是 Pydantic 的经典应用：从老系统导出的 CSV/JSON 数据往往是"脏"的（类型混乱、字段缺失、有空格），用 Pydantic 模型一次性完成清洗和校验。
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel、Field、ConfigDict、field_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator
+# 从 datetime 导入 datetime
+from datetime import datetime
+
+# 定义用户导入模型 UserImport
+class UserImport(BaseModel):
+    # 模型配置：自动去字符串首尾空格
+    model_config = ConfigDict(str_strip_whitespace=True)
+    # 字段 id，类型 int（CSV 里是字符串，会自动转）
+    id: int
+    # 字段 name，类型 str，长度 1~50
+    name: str = Field(min_length=1, max_length=50)
+    # 字段 email，类型 str
+    email: str
+    # 字段 age，类型 int，范围 0~150
+    age: int = Field(ge=0, le=150)
+    # 字段 created_at，类型 datetime
+    # CSV 里日期通常是字符串，Pydantic 会自动解析 ISO 格式
+    created_at: datetime
+
+    # 字段校验器：清洗 email（去空格 + 转小写）
+    # mode='after' 表示在类型转换后执行，此时 v 已经是 str
+    @field_validator('email')
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        # 去空格 + 转小写，统一格式
+        return v.strip().lower()
+
+# === 模拟从 CSV 读取的脏数据 ===
+# 实际项目用 csv.DictReader 读取，每行是一个字典
+csv_rows = [
+    # 正常数据
+    {"id": "1", "name": "  Alice  ", "email": "  ALICE@Example.COM  ", "age": "25", "created_at": "2026-01-15T10:00:00"},
+    # 年龄是字符串
+    {"id": "2", "name": "Bob", "email": "bob@test.com", "age": "30", "created_at": "2026-02-20T08:30:00"},
+    # 邮箱带空格
+    {"id": "3", "name": "  Carol  ", "email": "  carol@x.com  ", "age": "28", "created_at": "2026-03-10T14:00:00"},
+]
+
+# === 批量转换 + 收集错误 ===
+# 迁移工具的经典模式：成功的入库，失败的记录错误日志
+success_users = []    # 成功转换的用户列表
+failed_rows = []      # 失败的行（带错误信息）
+
+for i, row in enumerate(csv_rows, start=1):
+    try:
+        # model_validate 会做：类型转换 + 约束校验 + 自定义校验器
+        user = UserImport.model_validate(row)
+        success_users.append(user)
+    except Exception as e:
+        # 失败的行不影响其他行，继续处理
+        failed_rows.append({"row": i, "error": str(e), "data": row})
+
+# 检查成功转换的结果
+print(f"成功: {len(success_users)} 条, 失败: {len(failed_rows)} 条")
+for u in success_users:
+    # email 已被清洗（去空格 + 转小写）
+    print(f"  id={u.id}, name={u.name!r}, email={u.email!r}")
+
+# === 模拟脏数据导致失败的行 ===
+bad_rows = [
+    # 年龄超出范围
+    {"id": "10", "name": "X", "email": "x@x.com", "age": "200", "created_at": "2026-01-01"},
+    # 缺少必填字段
+    {"id": "11", "name": "Y", "email": "y@y.com", "created_at": "2026-01-01"},
+    # 日期格式错误
+    {"id": "12", "name": "Z", "email": "z@z.com", "age": "20", "created_at": "not-a-date"},
+]
+
+for i, row in enumerate(bad_rows, start=1):
+    try:
+        UserImport.model_validate(row)
+        print(f"行 {i}: 通过（不应该）")
+    except Exception as e:
+        # 错误信息会指明具体哪个字段、什么原因
+        print(f"行 {i}: 失败（预期）")
+\`\`\`
+
+**迁移工具的核心思想**：**逐行处理 + 错误隔离**。一行失败不影响其他行，最后生成报告。Pydantic 让"校验 + 清洗 + 转换"三件事在一次 \`model_validate\` 调用里完成。
+
+## 渐进式 Demo：统一 API 响应包装
+
+实际项目中，API 响应通常需要统一的包装格式（code + message + data）。用 Pydantic 模型定义响应包装，能让所有接口的响应结构一致。
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel
+from pydantic import BaseModel
+# 从 typing 导入 Generic、TypeVar（用于泛型响应）
+from typing import Generic, TypeVar
+
+# 定义类型变量 T，表示响应数据的类型
+# TypeVar 是类型占位符，实例化时用具体类型替换
+T = TypeVar('T')
+
+# 定义统一响应模型 ApiResponse
+# 继承 BaseModel 和 Generic[T]，让它成为泛型模型
+class ApiResponse(BaseModel):
+    # 字段 code，类型 int（业务状态码，200 表示成功）
+    code: int
+    # 字段 message，类型 str（提示信息）
+    message: str
+    # 字段 data，类型 T（泛型数据）
+    # T 在实例化时确定：ApiResponse[User] 的 data 是 User 类型
+    data: T
+
+# 定义用户模型 User
+class User(BaseModel):
+    # 字段 id
+    id: int
+    # 字段 name
+    name: str
+
+# 定义商品模型 Product
+class Product(BaseModel):
+    # 字段 id
+    id: int
+    # 字段 name
+    name: str
+    # 字段 price
+    price: float
+
+# === 包装用户数据 ===
+# ApiResponse[User] 表示 data 字段是 User 类型
+user = User(id=1, name="alice")
+resp = ApiResponse[User](code=200, message="success", data=user)
+print(resp.model_dump_json())
+# 输出: {"code":200,"message":"success","data":{"id":1,"name":"alice"}}
+
+# === 包装商品数据 ===
+# 同一个 ApiResponse 模型可以包装不同类型的数据
+product = Product(id=101, name="手机", price=1999.0)
+resp2 = ApiResponse[Product](code=200, message="success", data=product)
+print(resp2.model_dump_json())
+# 输出: {"code":200,"message":"success","data":{"id":101,"name":"手机","price":1999.0}}
+
+# === 包装列表数据 ===
+# data 也可以是列表，用 list[User] 作为类型参数
+users = [User(id=1, name="alice"), User(id=2, name="bob")]
+resp3 = ApiResponse[list[User]](code=200, message="success", data=users)
+print(resp3.model_dump_json())
+# 输出: {"code":200,"message":"success","data":[{"id":1,"name":"alice"},{"id":2,"name":"bob"}]}
+
+# === 错误响应 ===
+# data 为 None 时表示错误
+resp_err = ApiResponse[None](code=404, message="用户不存在", data=None)
+print(resp_err.model_dump_json())
+# 输出: {"code":404,"message":"用户不存在","data":null}
+\`\`\`
+
+**泛型响应的价值**：定义一次 \`ApiResponse[T]\`，所有接口复用，前端拿到统一结构，便于封装 HTTP 客户端。FastAPI 的 \`response_model=ApiResponse[User]\` 还能自动生成正确的 OpenAPI 文档。
+
+## 常见错误
+
+### 错误 1：忘记 \`@classmethod\`
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel 和 field_validator
+from pydantic import BaseModel, field_validator
+
+# ❌ 错误写法：忘记加 @classmethod
+# class Bad(BaseModel):
+#     age: int
+#     @field_validator('age')
+#     def check_age(v: int) -> int:  # 缺少 cls 参数和 @classmethod
+#         if v < 0:
+#             raise ValueError('负数')
+#         return v
+# 报错：field_validator 必须是类方法
+
+# ✅ 正确写法：加 @classmethod，第一个参数是 cls
+class Good(BaseModel):
+    # 字段 age
+    age: int
+    # @field_validator 装饰器
+    @field_validator('age')
+    # @classmethod 必须紧贴在方法上方
+    @classmethod
+    # 第一个参数是 cls（类本身），第二个是字段值 v
+    def check_age(cls, v: int) -> int:
+        # 校验逻辑
+        if v < 0:
+            raise ValueError('年龄不能为负')
+        # 必须返回值
+        return v
+\`\`\`
+
+### 错误 2：校验器忘记 return
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel 和 field_validator
+from pydantic import BaseModel, field_validator
+
+# ❌ 错误写法：校验通过但没返回值
+# class Bad(BaseModel):
+#     name: str
+#     @field_validator('name')
+#     @classmethod
+#     def check(cls, v: str) -> str:
+#         if len(v) < 2:
+#             raise ValueError('太短')
+#         # 忘记 return v，结果 name 变成 None
+# 结果：u.name 是 None，而不是原值
+
+# ✅ 正确写法：所有路径都要返回值
+class Good(BaseModel):
+    # 字段 name
+    name: str
+    # 校验器
+    @field_validator('name')
+    @classmethod
+    def check(cls, v: str) -> str:
+        # 校验失败抛异常
+        if len(v) < 2:
+            raise ValueError('太短')
+        # 校验通过必须返回值
+        return v
+\`\`\`
+
+### 错误 3：可变默认值共享
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel
+from pydantic import BaseModel
+
+# Pydantic v2 会深拷贝默认值，所以这个写法是安全的
+class SafeModel(BaseModel):
+    # 字段 tags，默认空列表
+    tags: list[str] = []
+
+# 两个实例的 tags 是不同的 list 对象
+m1 = SafeModel()
+m2 = SafeModel()
+m1.tags.append("a")
+print(m2.tags)  # 输出: []（不受影响，因为 Pydantic 深拷贝了默认值）
+
+# 但如果用 default_factory 传可调用对象更明确
+from pydantic import Field
+class BetterModel(BaseModel):
+    # 用 default_factory=list 更清晰，明确表示每次实例化都生成新 list
+    tags: list[str] = Field(default_factory=list)
+\`\`\`
+
+### 错误 4：混淆 model_dump 和 dict()
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel
+from pydantic import BaseModel
+
+class User(BaseModel):
+    name: str
+    age: int
+
+u = User(name="alice", age=25)
+
+# ✅ v2 用 model_dump()
+print(u.model_dump())  # 输出: {'name': 'alice', 'age': 25}
+
+# ❌ v1 的 dict() 在 v2 中已废弃（虽然还能用，但会有警告）
+# u.dict()  # DeprecationWarning
+\`\`\`
+
+## 动手实验
+
+### 实验 1：定义一个书籍模型
+
+定义一个 \`Book\` 模型，包含：\`title\`（str，必填）、\`author\`（str，必填）、\`price\`（float，必须 > 0）、\`isbn\`（str，可选）、\`tags\`（list[str]，默认空列表）。实例化并序列化为 JSON。
+
+参考答案：
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel 和 Field
+from pydantic import BaseModel, Field
+
+# 定义书籍模型 Book
+class Book(BaseModel):
+    # 字段 title，类型 str，必填
+    title: str
+    # 字段 author，类型 str，必填
+    author: str
+    # 字段 price，类型 float，必须 > 0
+    # gt=0 表示严格大于 0，不接受 0
+    price: float = Field(gt=0, description="价格，必须大于 0")
+    # 字段 isbn，类型 Optional[str]，可选
+    isbn: str | None = None
+    # 字段 tags，类型 list[str]，默认空列表
+    tags: list[str] = Field(default_factory=list)
+
+# 实例化
+book = Book(
+    title="Python 入门",
+    author="Guido",
+    price=59.9,
+    isbn="978-7-111-12345-6",
+    tags=["编程", "Python"],
 )
-print("数据库模型:", user_in_db.model_dump())
+# 序列化为 JSON
+print(book.model_dump_json())
+# 输出: {"title":"Python 入门","author":"Guido","price":59.9,"isbn":"978-7-111-12345-6","tags":["编程","Python"]}
+\`\`\`
 
-# 返回给前端时用 UserOut（不含密码）
-# 因为 UserOut 开启了 from_attributes，可以直接从 user_in_db 转换
-user_out = UserOut.model_validate(user_in_db)
-print("响应模型:", user_out.model_dump_json())
-# 输出里没有 password 和 hashed_password，安全
+### 实验 2：从字典创建模型并处理错误
+
+写一段代码，从外部字典创建 \`User\` 模型，捕获 \`ValidationError\` 并打印出每个错误的 \`loc\` 和 \`msg\`。
+
+参考答案：
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel、Field、ValidationError
+from pydantic import BaseModel, Field, ValidationError
+
+# 定义用户模型 User
+class User(BaseModel):
+    # 字段 name，长度 2~20
+    name: str = Field(min_length=2, max_length=20)
+    # 字段 age，范围 0~150
+    age: int = Field(ge=0, le=150)
+    # 字段 email
+    email: str
+
+# 模拟外部输入（有多处错误）
+bad_data = {
+    "name": "a",         # 太短
+    "age": 200,          # 太大
+    "email": "not-email" # 这个字段没有约束，不会报错
+}
+
+# 捕获 ValidationError 并打印详细信息
+try:
+    User.model_validate(bad_data)
+except ValidationError as e:
+    # e.errors() 返回错误列表，每个错误是一个字典
+    for err in e.errors():
+        # loc 是错误位置（元组），如 ('name',)
+        # msg 是错误消息
+        # type 是错误类型
+        loc = '.'.join(str(x) for x in err['loc'])  # 把元组拼成字符串
+        print(f"字段: {loc}, 错误: {err['msg']}")
+# 输出:
+# 字段: name, 错误: String should have at least 2 characters
+# 字段: age, 错误: Input should be less than or equal to 150
+\`\`\`
+
+### 实验 3：实现不可变配置模型
+
+定义一个 \`ServerConfig\` 模型，开启 \`frozen=True\`，包含 \`host\` 和 \`port\`。尝试创建实例后修改字段，观察错误。再把两个相同值的实例放进 set，观察去重效果。
+
+参考答案：
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel 和 ConfigDict
+from pydantic import BaseModel, ConfigDict
+
+# 定义不可变配置模型
+class ServerConfig(BaseModel):
+    # 开启 frozen，模型不可变
+    model_config = ConfigDict(frozen=True)
+    # 字段 host
+    host: str
+    # 字段 port
+    port: int
+
+# 创建实例
+c1 = ServerConfig(host="localhost", port=8080)
+c2 = ServerConfig(host="localhost", port=8080)
+c3 = ServerConfig(host="remote", port=9000)
+
+# 尝试修改字段会失败
+try:
+    c1.port = 9090  # frozen 模型不能修改
+except Exception as e:
+    print("修改失败:", type(e).__name__)  # 输出: ValidationError
+
+# 相同值的实例被视为相等
+print(c1 == c2)  # 输出: True
+
+# 放进 set 自动去重
+configs = {c1, c2, c3}
+print(len(configs))  # 输出: 2（c1 和 c2 相等，去重后剩 2 个）
+
+# 可以作为字典键
+cache = {c1: "running", c3: "stopped"}
+print(cache[c2])  # 输出: running（c2 和 c1 相等，能查到）
 \`\`\`
 
 ## 小结
@@ -745,6 +1155,7 @@ print("响应模型:", user_out.model_dump_json())
 7. **frozen=True 让模型不可变**，可哈希、线程安全。
 8. **模型继承** 实现 DRY，把公共字段抽到基类。
 9. **实战模式**：为同一实体定义 Create/Update/Out/InDB 多个模型，区分请求、响应、存储场景。
+10. **配置加载、数据迁移、API 响应包装** 是 Pydantic 在实战中的三大经典场景。
 
 下一章我们会深入 Pydantic 的字段类型系统，学习日期时间、UUID、Decimal、集合类型、Optional、Literal、EmailStr 等丰富类型，以及类型转换的规则。
 `
@@ -759,6 +1170,23 @@ print("响应模型:", user_out.model_dump_json())
     icon: "🔢",
     title: "字段类型与校验",
     content: `# 字段类型与校验
+
+## 生活类比：类型校验像安检仪器
+
+继续用海关的比喻：上一章的 BaseModel 是海关入口，本章的字段类型就是各种**安检仪器**：
+
+| 安检仪器 | Pydantic 类型 | 检查内容 |
+|---------|--------------|---------|
+| 身份证扫描仪 | \`str\` / \`int\` / \`float\` | 基础身份（数字、字符串） |
+| 指纹识别 | \`bool\` | 二值判断（是/否） |
+| 时间戳读卡器 | \`datetime\` / \`date\` | 时间合法性 |
+| 唯一编号扫描 | \`UUID\` | 全球唯一标识 |
+| 精密天平 | \`Decimal\` | 高精度金额（不能有误差） |
+| 行李分拣机 | \`list\` / \`dict\` / \`set\` / \`tuple\` | 集合类内容 |
+| 选项卡 | \`Literal\` / \`Enum\` | 只能选预设选项 |
+| 多功能检测仪 | \`Union\` / \`Optional\` | 多种类型都能接受 |
+
+**核心理念**：选对仪器（类型），数据合法性自动得到保证。声明 \`port: int\` 就是在说"这个字段过的是整数安检仪"。
 
 ## 基本类型
 
@@ -1479,6 +1907,321 @@ print(m.x, m.name)  # 输出: 123 alice
 - API 对接外部系统：要求对方严格按类型传值。
 - 大多数场景：默认宽松模式更友好，前端传 \`"30"\` 也能用。
 
+## 渐进式 Demo：订单状态枚举实战
+
+电商系统里订单状态流转是经典场景：待支付 → 已支付 → 已发货 → 已签收 / 已取消。用 \`Enum\` 定义状态，用 \`Literal\` 定义事件，实现状态机校验。
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel、Field
+from pydantic import BaseModel, Field
+# 从 enum 导入 Enum
+from enum import Enum
+# 从 datetime 导入 datetime
+from datetime import datetime
+# 从 uuid 导入 UUID, uuid4
+from uuid import UUID, uuid4
+
+# === 用 Enum 定义订单状态 ===
+# 继承 str 让枚举成员本身是字符串，方便 JSON 序列化
+class OrderStatus(str, Enum):
+    # 待支付
+    PENDING = "pending"
+    # 已支付
+    PAID = "paid"
+    # 已发货
+    SHIPPED = "shipped"
+    # 已签收
+    DELIVERED = "delivered"
+    # 已取消
+    CANCELLED = "cancelled"
+
+# 定义订单模型 Order
+class Order(BaseModel):
+    # 字段 id，类型 UUID，自动生成
+    id: UUID = Field(default_factory=uuid4)
+    # 字段 status，类型 OrderStatus（枚举）
+    # 传入字符串 "paid" 会自动转成 OrderStatus.PAID
+    status: OrderStatus = OrderStatus.PENDING
+    # 字段 amount，类型 float，必须 > 0
+    amount: float = Field(gt=0)
+    # 字段 created_at，类型 datetime，自动生成
+    created_at: datetime = Field(default_factory=datetime.now)
+    # 字段 paid_at，类型 Optional[datetime]，支付后才有
+    paid_at: datetime | None = None
+
+# 实例化：用字符串创建（自动转枚举）
+order = Order(amount=99.9)
+print(order.status)               # 输出: OrderStatus.PENDING
+print(order.status.value)         # 输出: pending
+print(order.status == "pending")  # 输出: True（因为继承 str）
+
+# 用字符串修改状态
+order.status = "paid"  # 自动转枚举
+print(order.status)    # 输出: OrderStatus.PAID
+
+# 序列化时枚举自动转成字符串
+print(order.model_dump_json())
+# 输出类似: {"id":"...","status":"paid","amount":99.9,"created_at":"...","paid_at":null}
+
+# === 非法状态校验 ===
+try:
+    Order(amount=10, status="unknown")  # 不在枚举里
+except Exception:
+    print("状态非法")  # 输出
+
+# === 遍历枚举所有成员 ===
+# Enum 支持循环，Literal 不支持
+for s in OrderStatus:
+    print(s.name, "->", s.value)
+# 输出:
+# PENDING -> pending
+# PAID -> paid
+# ...
+\`\`\`
+
+**Enum vs Literal 的选择**：状态少且固定用 \`Literal\`（简单）；状态多、需要遍历、需要方法用 \`Enum\`（强大）。
+
+## 渐进式 Demo：自定义手机号 / 身份证号类型复用
+
+用 \`Annotated + AfterValidator\` 定义可复用的自定义类型，比每个字段都写校验器更优雅。
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel、AfterValidator
+from pydantic import BaseModel, AfterValidator
+# 从 typing 导入 Annotated
+from typing import Annotated
+# 导入 re 模块（正则表达式）
+import re
+
+# === 自定义中国手机号类型 ===
+# 校验函数：校验 11 位手机号
+def validate_phone(v: str) -> str:
+    # 去空格
+    v = v.strip()
+    # 中国手机号正则：1 开头，第二位 3-9，共 11 位数字
+    if not re.match(r'^1[3-9]\d{9}$', v):
+        raise ValueError(f'手机号格式错误: {v}')
+    # 返回校验后的值
+    return v
+
+# 定义自定义类型 PhoneNumber
+# Annotated[str, AfterValidator(validate_phone)] 表示：
+# 基础类型 str + 校验函数 validate_phone
+PhoneNumber = Annotated[str, AfterValidator(validate_phone)]
+
+# === 自定义身份证号类型（简化版） ===
+def validate_id_card(v: str) -> str:
+    # 去空格并转大写（身份证号最后一位可能是 X）
+    v = v.strip().upper()
+    # 18 位身份证号正则：前 17 位数字，最后一位数字或 X
+    if not re.match(r'^\d{17}[\dX]$', v):
+        raise ValueError(f'身份证号格式错误: {v}')
+    # 返回校验后的值
+    return v
+
+# 定义自定义类型 IDCard
+IDCard = Annotated[str, AfterValidator(validate_id_card)]
+
+# === 自定义非负整数类型 ===
+def validate_non_negative(v: int) -> int:
+    # 必须非负
+    if v < 0:
+        raise ValueError(f'必须是非负数: {v}')
+    return v
+
+# 定义自定义类型 NonNegInt
+NonNegInt = Annotated[int, AfterValidator(validate_non_negative)]
+
+# === 在多个模型中复用 ===
+class User(BaseModel):
+    # 字段 name，类型 str
+    name: str
+    # 字段 phone，类型 PhoneNumber（复用自定义类型）
+    phone: PhoneNumber
+    # 字段 id_card，类型 IDCard
+    id_card: IDCard
+    # 字段 age，类型 NonNegInt
+    age: NonNegInt
+
+class Employee(BaseModel):
+    # 字段 name
+    name: str
+    # 字段 phone，复用同一个 PhoneNumber 类型
+    phone: PhoneNumber
+    # 字段 employee_id
+    employee_id: str
+    # 字段 salary，复用 NonNegInt
+    salary: NonNegInt
+
+# 实例化：合法数据
+u = User(
+    name="alice",
+    phone="13812345678",
+    id_card="110101199001011234",
+    age=25,
+)
+print(u.phone)    # 输出: 13812345678
+print(u.id_card)  # 输出: 110101199001011234
+
+# 身份证号带 x 也会被转大写
+u2 = User(
+    name="bob",
+    phone="13987654321",
+    id_card="11010119900101123x",  # 小写 x
+    age=30,
+)
+print(u2.id_card)  # 输出: 11010119900101123X（转大写了）
+
+# === 错误数据 ===
+# 手机号格式错
+try:
+    User(name="x", phone="12345", id_card="110101199001011234", age=20)
+except Exception:
+    print("手机号格式错")  # 输出
+
+# 身份证号位数不对
+try:
+    User(name="x", phone="13812345678", id_card="123", age=20)
+except Exception:
+    print("身份证号格式错")  # 输出
+
+# 年龄为负
+try:
+    User(name="x", phone="13812345678", id_card="110101199001011234", age=-5)
+except Exception:
+    print("年龄不能为负")  # 输出
+\`\`\`
+
+**复用价值**：\`PhoneNumber\`、\`IDCard\`、\`NonNegInt\` 三个类型在 User、Employee、Customer、Vendor 等多个模型里都能直接用，校验逻辑只写一次。
+
+## 渐进式 Demo：复杂嵌套商品评论
+
+电商商品常有"商品 → 变体 → 评论 → 评论回复"的多层嵌套结构。用 Pydantic 嵌套模型可以优雅地表达。
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel、Field
+from pydantic import BaseModel, Field
+# 从 datetime 导入 datetime
+from datetime import datetime
+# 从 typing 导入 Optional
+from typing import Optional
+
+# === 第 1 层：评论回复模型 ===
+class Reply(BaseModel):
+    # 字段 id
+    reply_id: int
+    # 字段 content，类型 str，长度 1~500
+    content: str = Field(min_length=1, max_length=500)
+    # 字段 author
+    author: str
+    # 字段 created_at，默认当前时间
+    created_at: datetime = Field(default_factory=datetime.now)
+
+# === 第 2 层：评论模型 ===
+class Review(BaseModel):
+    # 字段 id
+    review_id: int
+    # 字段 rating，类型 int，范围 1~5（星级）
+    rating: int = Field(ge=1, le=5, description="评分 1-5 星")
+    # 字段 content，类型 str，长度 1~1000
+    content: str = Field(min_length=1, max_length=1000)
+    # 字段 author
+    author: str
+    # 字段 created_at
+    created_at: datetime = Field(default_factory=datetime.now)
+    # 字段 replies，类型 list[Reply]（嵌套模型列表）
+    # 评论的回复列表，默认空列表
+    replies: list[Reply] = Field(default_factory=list)
+
+# === 第 3 层：商品变体模型 ===
+class Variant(BaseModel):
+    # 字段 sku_id
+    sku_id: str
+    # 字段 name（如"红色 64G"）
+    name: str
+    # 字段 price，类型 float，必须 > 0
+    price: float = Field(gt=0)
+    # 字段 stock，类型 int，必须 >= 0
+    stock: int = Field(ge=0)
+
+# === 第 4 层：商品模型 ===
+class Product(BaseModel):
+    # 字段 id
+    product_id: int
+    # 字段 name，类型 str，长度 1~100
+    name: str = Field(min_length=1, max_length=100)
+    # 字段 description，可选
+    description: Optional[str] = None
+    # 字段 variants，类型 list[Variant]（变体列表）
+    variants: list[Variant] = Field(default_factory=list)
+    # 字段 reviews，类型 list[Review]（评论列表）
+    reviews: list[Review] = Field(default_factory=list)
+
+# === 实例化：构造一个完整商品 ===
+product = Product(
+    product_id=1001,
+    name="iPhone 16",
+    description="新款智能手机",
+    variants=[
+        {"sku_id": "iphone16-128", "name": "128G 黑色", "price": 7999.0, "stock": 100},
+        {"sku_id": "iphone16-256", "name": "256G 黑色", "price": 8999.0, "stock": 50},
+    ],
+    reviews=[
+        {
+            "review_id": 1,
+            "rating": 5,
+            "content": "很好用",
+            "author": "alice",
+            "replies": [
+                {"reply_id": 1, "content": "感谢支持", "author": "官方"},
+            ],
+        },
+        {
+            "review_id": 2,
+            "rating": 4,
+            "content": "价格有点贵",
+            "author": "bob",
+            "replies": [],
+        },
+    ],
+)
+
+# 访问嵌套字段
+print(product.name)                              # 输出: iPhone 16
+print(product.variants[0].name)                  # 输出: 128G 黑色
+print(product.reviews[0].rating)                 # 输出: 5
+# 深层嵌套访问
+print(product.reviews[0].replies[0].author)      # 输出: 官方
+
+# 序列化为 JSON（嵌套结构完整保留）
+print(product.model_dump_json())
+# 输出包含所有层级的数据
+
+# === 校验失败：评分超出范围 ===
+try:
+    Product(
+        product_id=1,
+        name="x",
+        reviews=[{"review_id": 1, "rating": 6, "content": "x", "author": "y"}],  # rating 最大 5
+    )
+except Exception:
+    print("评分超出范围")  # 输出
+
+# === 校验失败：嵌套结构字段缺失 ===
+try:
+    Product(
+        product_id=1,
+        name="x",
+        variants=[
+            {"sku_id": "x", "name": "y"},  # 缺少 price 和 stock
+        ],
+    )
+except Exception:
+    print("变体字段缺失")  # 输出
+\`\`\`
+
+**嵌套模型的威力**：4 层嵌套结构，只需声明字段类型，Pydantic 自动递归校验所有层级。如果手写校验代码，需要递归遍历每个字典，代码量是声明式的 10 倍以上。
+
 ## 实战：电商商品数据模型
 
 综合本章知识，设计一个电商商品的数据模型，覆盖多种类型。
@@ -1572,6 +2315,277 @@ except Exception:
     print("状态非法")
 \`\`\`
 
+## 常见错误
+
+### 错误 1：Optional 不等于可省略
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel
+from pydantic import BaseModel
+# 从 typing 导入 Optional
+from typing import Optional
+
+# ❌ 常见误解：以为 Optional[int] 就是可选字段
+class Bad(BaseModel):
+    # Optional[int] 没有 = None，仍然是必填！
+    age: Optional[int]
+
+# 必须传 age（可以是 None，但不能不传）
+try:
+    Bad()  # 不传 age 会报错
+except Exception:
+    print("age 是必填")  # 输出
+
+# ✅ 正确写法：Optional + 默认值 None
+class Good(BaseModel):
+    # Optional[int] = None 才是真正的可选字段
+    age: Optional[int] = None
+
+# 现在可以不传 age
+g = Good()
+print(g.age)  # 输出: None
+\`\`\`
+
+### 错误 2：Union 顺序导致意外转换
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel
+from pydantic import BaseModel
+# 从 typing 导入 Union
+from typing import Union
+
+# ❌ 想保留字符串却声明成 Union[int, str]
+class Bad(BaseModel):
+    # 先试 int，"123" 会被转成 int 123
+    code: Union[int, str]
+
+b = Bad(code="123")
+print(type(b.code))  # 输出: <class 'int'>（不是想要的 str）
+
+# ✅ 想保留字符串就声明成 Union[str, int]
+class Good(BaseModel):
+    # 先试 str，"123" 能转成 str，保留字符串
+    code: Union[str, int]
+
+g = Good(code="123")
+print(type(g.code))  # 输出: <class 'str'>
+\`\`\`
+
+### 错误 3：float 用于金额
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel
+from pydantic import BaseModel
+# 从 decimal 导入 Decimal
+from decimal import Decimal
+
+# ❌ 用 float 存金额，会有精度问题
+class BadMoney(BaseModel):
+    amount: float
+
+b1 = BadMoney(amount=0.1)
+b2 = BadMoney(amount=0.2)
+# float 计算 0.1 + 0.2 不等于 0.3
+print(b1.amount + b2.amount)  # 输出: 0.30000000000000004
+
+# ✅ 用 Decimal 存金额
+class GoodMoney(BaseModel):
+    amount: Decimal
+
+g1 = GoodMoney(amount="0.1")  # 用字符串传值
+g2 = GoodMoney(amount="0.2")
+# Decimal 计算精确
+print(g1.amount + g2.amount)  # 输出: 0.3
+\`\`\`
+
+### 错误 4：tuple 长度不匹配
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel
+from pydantic import BaseModel
+
+class Point(BaseModel):
+    # 要求正好 2 个 int
+    coord: tuple[int, int]
+
+# ✅ 2 个元素
+p = Point(coord=(1, 2))
+
+# ❌ 传 3 个元素会报错
+try:
+    Point(coord=(1, 2, 3))
+except Exception:
+    print("长度不对")  # 输出
+
+# 如果需要变长元组，用 tuple[int, ...]
+class Coords(BaseModel):
+    # ... 表示任意长度
+    points: tuple[int, ...]
+
+c = Coords(points=(1, 2, 3, 4, 5))  # 任意数量都行
+\`\`\`
+
+## 动手实验
+
+### 实验 1：定义一个会议模型
+
+定义一个 \`Meeting\` 模型，包含：\`title\`（str）、\`start_time\`（datetime）、\`end_time\`（datetime）、\`location\`（str）、\`attendees\`（list[str]）。从 JSON 字符串创建实例并序列化。
+
+参考答案：
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel
+from pydantic import BaseModel
+# 从 datetime 导入 datetime
+from datetime import datetime
+
+# 定义会议模型 Meeting
+class Meeting(BaseModel):
+    # 字段 title
+    title: str
+    # 字段 start_time，类型 datetime
+    start_time: datetime
+    # 字段 end_time，类型 datetime
+    end_time: datetime
+    # 字段 location
+    location: str
+    # 字段 attendees，类型 list[str]
+    attendees: list[str]
+
+# 从 JSON 字符串创建实例
+json_str = '''
+{
+    "title": "项目评审会",
+    "start_time": "2026-07-15T14:00:00",
+    "end_time": "2026-07-15T15:30:00",
+    "location": "会议室 A",
+    "attendees": ["alice", "bob", "carol"]
+}
+'''
+# model_validate_json 直接从 JSON 字符串创建
+m = Meeting.model_validate_json(json_str)
+print(m.title)                  # 输出: 项目评审会
+print(m.start_time)             # 输出: 2026-07-15 14:00:00（datetime 对象）
+print(m.attendees)              # 输出: ['alice', 'bob', 'carol']
+
+# 序列化回 JSON
+print(m.model_dump_json())
+# 输出: {"title":"项目评审会","start_time":"2026-07-15T14:00:00","end_time":"2026-07-15T15:30:00","location":"会议室 A","attendees":["alice","bob","carol"]}
+\`\`\`
+
+### 实验 2：自定义邮政编码类型
+
+用 \`Annotated + AfterValidator\` 定义一个中国邮政编码类型（6 位数字），并在地址模型中使用。
+
+参考答案：
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel、AfterValidator
+from pydantic import BaseModel, AfterValidator
+# 从 typing 导入 Annotated
+from typing import Annotated
+# 导入 re
+import re
+
+# 校验函数：6 位数字
+def validate_zip_code(v: str) -> str:
+    # 去空格
+    v = v.strip()
+    # 中国邮编：6 位数字
+    if not re.match(r'^\d{6}$', v):
+        raise ValueError(f'邮编必须是 6 位数字: {v}')
+    return v
+
+# 定义自定义类型 ZipCode
+ZipCode = Annotated[str, AfterValidator(validate_zip_code)]
+
+# 定义地址模型 Address
+class Address(BaseModel):
+    # 字段 province
+    province: str
+    # 字段 city
+    city: str
+    # 字段 zip_code，类型 ZipCode（复用自定义类型）
+    zip_code: ZipCode
+
+# 合法邮编
+addr = Address(province="北京", city="北京", zip_code="100000")
+print(addr.zip_code)  # 输出: 100000
+
+# 非法邮编
+try:
+    Address(province="北京", city="北京", zip_code="123")
+except Exception:
+    print("邮编格式错误")  # 输出
+
+try:
+    Address(province="北京", city="北京", zip_code="abcdef")
+except Exception:
+    print("邮编必须是数字")  # 输出
+\`\`\`
+
+### 实验 3：枚举 + Literal 混合使用
+
+定义一个任务模型，\`priority\` 用 \`Literal\`（1/2/3），\`status\` 用 \`Enum\`（pending/running/done），\`env\` 用 \`Literal\`（dev/test/prod）。
+
+参考答案：
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel、Field
+from pydantic import BaseModel, Field
+# 从 enum 导入 Enum
+from enum import Enum
+# 从 typing 导入 Literal
+from typing import Literal
+
+# 定义任务状态枚举
+class TaskStatus(str, Enum):
+    # 待处理
+    PENDING = "pending"
+    # 运行中
+    RUNNING = "running"
+    # 已完成
+    DONE = "done"
+    # 失败
+    FAILED = "failed"
+
+# 定义任务模型 Task
+class Task(BaseModel):
+    # 字段 id
+    id: int
+    # 字段 name
+    name: str
+    # 字段 priority，类型 Literal，只能是 1/2/3
+    # 1=低，2=中，3=高
+    priority: Literal[1, 2, 3] = Field(default=2, description="优先级 1低 2中 3高")
+    # 字段 status，类型 TaskStatus（枚举）
+    status: TaskStatus = TaskStatus.PENDING
+    # 字段 env，类型 Literal，环境
+    env: Literal["dev", "test", "prod"] = "dev"
+
+# 实例化
+t = Task(id=1, name="test task", priority=3, status="running")
+print(t.priority)            # 输出: 3
+print(t.status)              # 输出: TaskStatus.RUNNING
+print(t.status.value)        # 输出: running
+
+# 遍历所有状态
+for s in TaskStatus:
+    print(s.name, s.value)
+
+# 错误：优先级非法
+try:
+    Task(id=1, name="x", priority=5)
+except Exception:
+    print("优先级非法")  # 输出
+
+# 错误：状态非法
+try:
+    Task(id=1, name="x", status="unknown")
+except Exception:
+    print("状态非法")  # 输出
+\`\`\`
+
 ## 小结
 
 本章深入介绍了 Pydantic 的字段类型系统：
@@ -1586,6 +2600,7 @@ except Exception:
 8. **特殊类型**：EmailStr、HttpUrl、FilePath 等，开箱即用。
 9. **自定义类型**：用 Annotated + AfterValidator 复用校验逻辑。
 10. **类型转换**：默认宽松，可用 StrictInt 或 strict=True 开启严格模式。
+11. **实战场景**：订单状态枚举、手机号/身份证号复用类型、商品评论多层嵌套。
 
 下一章我们将学习自定义校验器，用 \`@field_validator\` 和 \`@model_validator\` 实现复杂的业务校验逻辑。
 `
@@ -1600,6 +2615,22 @@ except Exception:
     icon: "⚙️",
     title: "自定义校验器",
     content: `# 自定义校验器
+
+## 生活类比：自定义校验像人工查验
+
+继续海关比喻：内置类型是 X 光机，\`Field\` 约束是限重牌，但有些检查机器做不了，必须靠**海关人员人工问询**——这就是自定义校验器：
+
+| 检查方式 | 海关对应 | Pydantic 对应 | 例子 |
+|---------|---------|--------------|------|
+| 机器自动扫描 | 类型校验 | \`int\` / \`str\` / \`datetime\` | 数字、字符串、日期 |
+| 限重牌 | 字段约束 | \`Field(gt=0, min_length=3)\` | 范围、长度 |
+| 单个海关人员检查 | 字段校验器 | \`@field_validator\` | 密码强度、邮箱域名 |
+| 多人联合问询 | 模型校验器 | \`@model_validator\` | 密码确认、日期顺序 |
+| 问询前先填表 | 预处理 | \`mode='before'\` | 去空格、None 转默认 |
+| 问询后盖戳 | 后处理 | \`mode='after'\` | 标准化格式 |
+| 特殊通道 | 完全控制 | \`mode='wrap'\` | 兼容老格式、跳过校验 |
+
+**核心区别**：\`@field_validator\` 是"单兵作战"（只能看一个字段），\`@model_validator\` 是"协同问询"（能看所有字段）。
 
 ## @field_validator 装饰器（v2 语法）
 
@@ -2436,22 +3467,513 @@ def register(req: RegisterRequest):
 # }
 \`\`\`
 
+## 渐进式 Demo：mode='wrap' 兼容旧格式数据
+
+项目升级时经常遇到老数据格式和新格式并存的情况。\`mode='wrap'\` 可以根据输入格式选择不同的处理路径。
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel、model_validator
+from pydantic import BaseModel, model_validator
+# 从 typing 导入 Any
+from typing import Any
+# 从 datetime 导入 datetime
+from datetime import datetime
+
+# 定义用户模型 User（支持新老两种格式）
+class User(BaseModel):
+    # 字段 id
+    id: int
+    # 字段 name
+    name: str
+    # 字段 created_at，类型 datetime
+    created_at: datetime
+
+    # mode='wrap'：根据输入格式选择处理路径
+    # 老格式：{"id": 1, "name": "alice", "created_at": "2026/01/15"}
+    # 新格式：{"id": 1, "name": "alice", "created_at": "2026-01-15T10:00:00"}
+    @model_validator(mode='wrap')
+    @classmethod
+    def compat_validate(cls, data: Any, handler) -> Any:
+        # 如果是字典，先做兼容处理
+        if isinstance(data, dict) and 'created_at' in data:
+            # 老格式用 / 分隔日期，转成 ISO 格式
+            old_date = data['created_at']
+            if isinstance(old_date, str) and '/' in old_date:
+                # "2026/01/15" → "2026-01-15T00:00:00"
+                data['created_at'] = old_date.replace('/', '-') + 'T00:00:00'
+        # 调用默认校验流程处理转换后的数据
+        return handler(data)
+
+# 新格式数据（直接通过）
+u1 = User(id=1, name="alice", created_at="2026-01-15T10:00:00")
+print(u1.created_at)  # 输出: 2026-01-15 10:00:00
+
+# 老格式数据（被 wrap 转换后通过）
+u2 = User(id=2, name="bob", created_at="2026/01/15")
+print(u2.created_at)  # 输出: 2026-01-15 00:00:00
+
+# 用 datetime 对象也行
+u3 = User(id=3, name="carol", created_at=datetime(2026, 3, 20, 14, 30))
+print(u3.created_at)  # 输出: 2026-03-20 14:30:00
+\`\`\`
+
+**wrap 模式的价值**：在不修改模型字段定义的前提下，灵活兼容多种输入格式。这比 \`mode='before'\` 更强大，因为可以完全跳过默认校验或选择性调用。
+
+## 渐进式 Demo：库存扣减业务校验
+
+电商下单场景需要校验：库存足够、数量合法、不能超卖。这是 \`@model_validator\` 的经典应用。
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel、Field、model_validator、field_validator
+from pydantic import BaseModel, Field, model_validator, field_validator
+
+# 模拟数据库的库存表
+PRODUCT_STOCK = {
+    1001: 50,  # 商品 1001 有 50 件库存
+    1002: 10,  # 商品 1002 有 10 件库存
+    1003: 0,   # 商品 1003 已售罄
+}
+
+# 定义下单请求模型 OrderRequest
+class OrderRequest(BaseModel):
+    # 字段 product_id，类型 int
+    product_id: int
+    # 字段 quantity，类型 int，必须 >= 1
+    quantity: int = Field(ge=1, description="购买数量，至少 1")
+    # 字段 user_id，类型 int
+    user_id: int
+
+    # 字段校验：商品 ID 必须存在
+    @field_validator('product_id')
+    @classmethod
+    def check_product_exists(cls, v: int) -> int:
+        # 检查商品是否在库存表里
+        if v not in PRODUCT_STOCK:
+            raise ValueError(f'商品 {v} 不存在')
+        return v
+
+    # 模型校验：库存是否足够
+    @model_validator(mode='after')
+    def check_stock(self) -> 'OrderRequest':
+        # 获取当前库存
+        stock = PRODUCT_STOCK[self.product_id]
+        # 检查库存是否足够
+        if stock < self.quantity:
+            raise ValueError(
+                f'库存不足：需要 {self.quantity}，当前库存 {stock}'
+            )
+        # 库存为 0 时给出更明确的提示
+        if stock == 0:
+            raise ValueError('商品已售罄')
+        # 校验通过
+        return self
+
+# === 测试各种下单场景 ===
+# 正常下单
+order1 = OrderRequest(product_id=1001, quantity=5, user_id=1)
+print(f"下单成功：商品 {order1.product_id}，数量 {order1.quantity}")
+
+# 库存不足
+try:
+    OrderRequest(product_id=1001, quantity=100, user_id=2)
+except Exception:
+    print("库存不足")  # 输出
+
+# 商品已售罄
+try:
+    OrderRequest(product_id=1003, quantity=1, user_id=3)
+except Exception:
+    print("已售罄")  # 输出
+
+# 商品不存在
+try:
+    OrderRequest(product_id=9999, quantity=1, user_id=4)
+except Exception:
+    print("商品不存在")  # 输出
+
+# 数量非法（Field 约束拦截）
+try:
+    OrderRequest(product_id=1001, quantity=0, user_id=5)
+except Exception:
+    print("数量必须 >= 1")  # 输出
+\`\`\`
+
+**业务校验的分层**：\`@field_validator\` 负责单字段合法性（商品是否存在），\`@model_validator\` 负责跨字段业务规则（库存是否足够）。这种分层让校验逻辑清晰可维护。
+
+## 渐进式 Demo：跨字段日期范围校验
+
+预订系统常见校验：入住时间 < 退房时间、开始时间在结束时间之前、活动时间不冲突等。
+
+\`\`\`python
+# 从 pydantic 导入 BaseModel、model_validator
+from pydantic import BaseModel, model_validator
+# 从 datetime 导入 datetime, timedelta
+from datetime import datetime, timedelta
+
+# 定义酒店预订模型 HotelBooking
+class HotelBooking(BaseModel):
+    # 字段 guest_name，类型 str
+    guest_name: str
+    # 字段 check_in，类型 datetime（入住时间）
+    check_in: datetime
+    # 字段 check_out，类型 datetime（退房时间）
+    check_out: datetime
+    # 字段 room_count，类型 int，默认 1
+    room_count: int = 1
+
+    # 模型校验 1：退房时间必须晚于入住时间
+    @model_validator(mode='after')
+    def check_date_order(self) -> 'HotelBooking':
+        # 退房必须晚于入住
+        if self.check_out <= self.check_in:
+            raise ValueError(
+                f'退房时间 {self.check_out} 必须晚于入住时间 {self.check_in}'
+            )
+        return self
+
+    # 模型校验 2：入住时间不能是过去
+    @model_validator(mode='after')
+    def check_not_past(self) -> 'HotelBooking':
+        # 当前时间
+        now = datetime.now()
+        # 入住时间不能早于现在
+        if self.check_in < now:
+            raise ValueError(f'入住时间 {self.check_in} 不能是过去的时间')
+        return self
+
+    # 模型校验 3：住宿天数不能超过 30 天
+    @model_validator(mode='after')
+    def check_max_stay(self) -> 'HotelBooking':
+        # 计算住宿天数
+        stay_duration = self.check_out - self.check_in
+        # 超过 30 天报错
+        if stay_duration > timedelta(days=30):
+            raise ValueError(
+                f'住宿天数 {stay_duration.days} 超过 30 天上限'
+            )
+        return self
+
+# === 测试 ===
+# 正常预订（用未来时间）
+now = datetime.now()
+booking = HotelBooking(
+    guest_name="alice",
+    check_in=now + timedelta(days=1),      # 明天入住
+    check_out=now + timedelta(days=3),     # 后天退房
+)
+print(f"预订成功：{booking.guest_name}，{booking.check_in} 到 {booking.check_out}")
+
+# 退房时间早于入住时间
+try:
+    HotelBooking(
+        guest_name="bob",
+        check_in=now + timedelta(days=3),
+        check_out=now + timedelta(days=1),  # 退房比入住早
+    )
+except Exception:
+    print("退房时间必须晚于入住时间")  # 输出
+
+# 住宿时间过长
+try:
+    HotelBooking(
+        guest_name="carol",
+        check_in=now + timedelta(days=1),
+        check_out=now + timedelta(days=60),  # 60 天，超过 30 天
+    )
+except Exception:
+    print("住宿超过 30 天上限")  # 输出
+\`\`\`
+
+**多个 model_validator 的执行顺序**：按定义顺序从上到下执行。如果前一个校验失败，后面的不会执行。所以把最基础的校验放在前面（如日期顺序），业务校验放在后面（如最大天数）。
+
+## 常见错误
+
+### 错误 1：忘记 @classmethod 装饰器
+
+Pydantic v2 的 \`@field_validator\` 和 \`@model_validator\` 默认是类方法，必须加 \`@classmethod\`（Pydantic v2 也支持写成实例方法的形式，但官方推荐类方法）。如果忘记加，会得到警告或运行时错误。
+
+\`\`\`python
+from pydantic import BaseModel, field_validator
+
+class Wrong(BaseModel):
+    name: str
+
+    # ❌ 错误写法：缺少 @classmethod
+    @field_validator('name')
+    def validate_name(cls, v):  # Pydantic 会警告：should be a classmethod
+        return v.upper()
+
+class Right(BaseModel):
+    name: str
+
+    # ✅ 正确写法：先 @field_validator，再 @classmethod
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        return v.upper()
+
+# 测试
+print(Right(name="alice").name)  # 输出 ALICE
+\`\`\`
+
+### 错误 2：校验器忘记 return
+
+校验器必须有返回值，否则该字段会变成 \`None\`，引发后续业务错误。这是最隐蔽的 bug 之一。
+
+\`\`\`python
+from pydantic import BaseModel, field_validator
+
+class Bad(BaseModel):
+    age: int
+
+    @field_validator('age')
+    @classmethod
+    def check_age(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError('年龄不能为负')
+        # ❌ 忘记 return！年龄会变成 None，下游使用会崩溃
+        # 下游代码 user.age + 1 会抛 TypeError
+
+class Good(BaseModel):
+    age: int
+
+    @field_validator('age')
+    @classmethod
+    def check_age(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError('年龄不能为负')
+        # ✅ 必须 return 处理后的值
+        return v
+
+# 对比测试
+try:
+    b = Bad(age=18)
+    print(b.age + 1)  # TypeError: unsupported operand type(s) for +: 'NoneType' and 'int'
+except Exception as e:
+    print(f"Bad 模型出错：{type(e).__name__}")
+
+g = Good(age=18)
+print(f"Good 模型年龄+1：{g.age + 1}")  # 输出 19
+\`\`\`
+
+### 错误 3：model_validator 返回 None 而不是 self
+
+\`@model_validator(mode='after')\` 必须返回 \`self\`，返回 \`None\` 会导致模型实例本身变成 \`None\`。
+
+\`\`\`python
+from pydantic import BaseModel, model_validator
+
+class Wrong(BaseModel):
+    start: int
+    end: int
+
+    @model_validator(mode='after')
+    def check_order(self):
+        if self.start > self.end:
+            raise ValueError('start 不能大于 end')
+        # ❌ 忘记 return self，使用方拿到的对象会是 None
+        # 调用 Wrong(start=1, end=2).start 会抛 AttributeError
+
+class Right(BaseModel):
+    start: int
+    end: int
+
+    @model_validator(mode='after')
+    def check_order(self) -> 'Right':
+        if self.start > self.end:
+            raise ValueError('start 不能大于 end')
+        # ✅ 必须 return self
+        return self
+
+# 对比测试
+try:
+    w = Wrong(start=1, end=2)
+    print(w.start)  # AttributeError: 'NoneType' object has no attribute 'start'
+except Exception as e:
+    print(f"Wrong 模型出错：{type(e).__name__}")
+
+r = Right(start=1, end=2)
+print(f"Right 模型 start={r.start}")  # 输出 start=1
+\`\`\`
+
+### 错误 4：mode 参数使用错误
+
+\`mode='before'\` 接收的是原始输入（未经类型转换），\`mode='after'\` 接收的是已转换后的值。混淆两者会导致类型处理错误。
+
+\`\`\`python
+from pydantic import BaseModel, field_validator
+
+class Bad(BaseModel):
+    age: int
+
+    # ❌ 错误：用 mode='after' 处理字符串，但此时 v 已经是 int 了
+    # 如果输入 "18"，到 after 时已经被转成 18（int），不会有原始字符串
+    @field_validator('age', mode='after')
+    @classmethod
+    def clean(cls, v: int) -> int:
+        # 这里 v 已经是 int，不会有字符串相关的问题
+        return v
+
+class Good(BaseModel):
+    age: int
+
+    # ✅ 正确：用 mode='before' 在类型转换前清洗原始输入
+    @field_validator('age', mode='before')
+    @classmethod
+    def clean(cls, v):
+        # 此时 v 是原始输入，可能是字符串 " 18 " 这种带空格的
+        if isinstance(v, str):
+            v = v.strip()  # 去除空格
+        return v  # 返回清洗后的值，Pydantic 再做类型转换
+
+# 测试：mode='before' 能处理带空格的字符串
+print(Good(age=" 18 "))  # 输出 age=18
+\`\`\`
+
+## 动手实验
+
+### 实验 1：实现密码强度校验器
+
+要求：实现一个 \`@field_validator\`，校验密码必须满足：
+- 至少 8 位
+- 至少包含 1 个大写字母
+- 至少包含 1 个小写字母
+- 至少包含 1 个数字
+- 至少包含 1 个特殊字符（\`!@#$%^&*\`）
+
+\`\`\`python
+import re
+from pydantic import BaseModel, field_validator
+
+# 预编译正则，提升性能
+HAS_UPPER = re.compile(r'[A-Z]')          # 大写字母
+HAS_LOWER = re.compile(r'[a-z]')          # 小写字母
+HAS_DIGIT = re.compile(r'[0-9]')          # 数字
+HAS_SPECIAL = re.compile(r'[!@#$%^&*]')   # 特殊字符
+
+class User(BaseModel):
+    username: str
+    password: str
+
+    @field_validator('password')
+    @classmethod
+    def check_password_strength(cls, v: str) -> str:
+        # 一一检查强度规则
+        if len(v) < 8:
+            raise ValueError('密码至少 8 位')
+        if not HAS_UPPER.search(v):
+            raise ValueError('密码必须包含至少 1 个大写字母')
+        if not HAS_LOWER.search(v):
+            raise ValueError('密码必须包含至少 1 个小写字母')
+        if not HAS_DIGIT.search(v):
+            raise ValueError('密码必须包含至少 1 个数字')
+        if not HAS_SPECIAL.search(v):
+            raise ValueError('密码必须包含至少 1 个特殊字符 (!@#$%^&*)')
+        return v
+
+# 测试各种密码
+test_cases = [
+    ("alice", "Abc123!@#"),    # 合法
+    ("bob", "weak"),            # 太短
+    ("carol", "abcdefgh"),     # 无大写无数字无特殊
+    ("dave", "ABCDEFGH1!"),    # 无小写
+]
+for username, pwd in test_cases:
+    try:
+        u = User(username=username, password=pwd)
+        print(f"✅ {username} 密码通过：{pwd}")
+    except Exception as e:
+        print(f"❌ {username} 密码不合法：{e}")
+\`\`\`
+
+### 实验 2：跨字段校验 - 订单折扣不能超过总价
+
+要求：实现一个 \`@model_validator\`，校验 \`discount\` 字段不能大于 \`price * quantity\`。
+
+\`\`\`python
+from pydantic import BaseModel, model_validator
+
+class Order(BaseModel):
+    product_name: str
+    price: float        # 单价
+    quantity: int       # 数量
+    discount: float     # 折扣金额
+
+    @model_validator(mode='after')
+    def check_discount(self) -> 'Order':
+        # 计算订单总价
+        total = self.price * self.quantity
+        if self.discount > total:
+            raise ValueError(
+                f'折扣 {self.discount} 不能超过订单总价 {total}'
+            )
+        return self
+
+# 测试
+# 合法订单
+o1 = Order(product_name="书", price=50, quantity=3, discount=20)
+print(f"订单 1 合法：总价 {o1.price * o1.quantity}，折扣 {o1.discount}")
+
+# 非法订单：折扣超过总价
+try:
+    o2 = Order(product_name="笔", price=5, quantity=2, discount=100)
+except Exception as e:
+    print(f"订单 2 非法：{e}")
+\`\`\`
+
+### 实验 3：自定义序列化器 - 隐藏手机号中间 4 位
+
+要求：实现一个 \`@field_serializer\`，在 \`model_dump()\` 时自动把手机号中间 4 位替换为 \`****\`。
+
+\`\`\`python
+from pydantic import BaseModel, field_serializer
+
+class Contact(BaseModel):
+    name: str
+    phone: str  # 11 位手机号
+
+    # 自定义序列化器：调用 model_dump() 时触发
+    @field_serializer('phone')
+    def mask_phone(self, v: str) -> str:
+        # 13812345678 -> 138****5678
+        if len(v) == 11:
+            return v[:3] + '****' + v[7:]
+        return v
+
+c = Contact(name="张三", phone="13812345678")
+
+# 序列化时自动脱敏
+dumped = c.model_dump()
+print(f"序列化结果：{dumped}")
+# 输出：{'name': '张三', 'phone': '138****5678'}
+
+# 原始值仍然保留在实例上
+print(f"原始手机号：{c.phone}")  # 输出 13812345678
+\`\`\`
+
 ## 小结
 
-本章介绍了 Pydantic 的自定义校验与序列化机制：
+本章深入讲解了 Pydantic v2 的自定义校验机制，核心知识点：
 
-1. **@field_validator**：字段级校验器，支持 \`mode='before'/'after'/'wrap'\`。
-2. **@model_validator**：模型级校验器，用于多字段联合校验。
-3. **mode='after'**（默认）：在 Pydantic 基础校验后执行，值已转换类型。
-4. **mode='before'**：在基础校验前执行，可预处理原始输入。
-5. **返回值**：校验器必须返回值，返回值会赋给字段（可用来清洗数据）。
-6. **异常**：抛出 ValueError/AssertionError 会被包装成 ValidationError。
-7. **密码确认**：用 model_validator 比较两个字段。
-8. **数据清洗**：在校验器里去空格、转大小写、格式化。
-9. **@field_serializer**：自定义单个字段的序列化输出。
-10. **@model_serializer**：完全控制整个模型的序列化。
+1. **\`@field_validator\`**：字段级校验，单个字段的复杂规则。
+2. **\`@model_validator\`**：模型级校验，跨字段依赖和业务规则。
+3. **三种 mode**：
+   - \`before\`：类型转换前，处理原始输入（清洗、格式化）
+   - \`after\`：类型转换后，处理已转换值（业务规则）
+   - \`wrap\`：包裹默认校验，可完全接管流程
+4. **\`@field_serializer\`**：自定义字段序列化输出（脱敏、格式化）。
+5. **\`@model_serializer\`**：自定义整个模型的序列化流程。
+6. **常见实战场景**：用户注册校验、库存扣减、日期范围、敏感词过滤。
+7. **常见错误**：忘记 \`@classmethod\`、忘记 \`return\`、\`model_validator\` 忘记返回 \`self\`、\`mode\` 参数误用。
 
-下一章我们将学习模型配置与高级特性，包括 ConfigDict、别名、计算字段、JSON Schema 自定义、泛型模型等。
+**校验器选择策略**：
+- 单字段规则 → \`@field_validator\`
+- 跨字段规则 → \`@model_validator\`
+- 输入清洗 → \`mode='before'\`
+- 业务校验 → \`mode='after'\`
+- 兼容旧格式 → \`mode='wrap'\`
+
+下一章我们将学习 Pydantic 模型配置与高级特性，包括 \`model_config\`、别名系统、计算字段、泛型模型等，让数据模型更灵活、更强大。
 `
   },
 
@@ -2461,1035 +3983,1078 @@ def register(req: RegisterRequest):
   {
     id: "fa-model-config",
     group: "Pydantic 数据校验",
-    icon: "⚙️",
+    icon: "🔧",
     title: "模型配置与高级特性",
     content: `# 模型配置与高级特性
 
-## model_config = ConfigDict(...)
+## 生活类比：规则定制
 
-Pydantic v2 用 \`model_config = ConfigDict(...)\` 配置模型行为，替代了 v1 的 \`class Config:\` 内部类写法。ConfigDict 是一个 TypedDict，所有可配置项都有类型提示，IDE 能自动补全。
+想象你经营一家**海关检查站**，不同的货物通道需要不同的检查规则：
+
+- **免税通道**：什么都不查，直接放行（\`extra='allow'\`）
+- **申报通道**：没申报的物品一律没收（\`extra='forbid'\`）
+- **普通通道**：没申报的物品直接忽略（\`extra='ignore'\`）
+- **严格通道**：类型必须完全匹配，\`"1"\` 不能当 \`1\` 用（\`strict=True\`）
+- **宽松通道**：\`"1"\` 自动转成 \`1\`（默认行为）
+- **VIP 通道**：物品可以用化名申报（\`alias\`）
+
+Pydantic 的 \`model_config\` 就是这个"通道规则定制系统"，你可以为每个模型设定不同的检查策略。而高级特性如**计算字段**（computed_field）、**别名生成器**（alias_generator）、**私有字段**（PrivateAttr）、**泛型模型**（Generic）等，则像是海关里的各种高级设备，让数据处理更智能、更灵活。
+
+## model_config 配置总览
+
+\`model_config\` 是 Pydantic v2 的核心配置入口，使用 \`ConfigDict\` 类型注解声明。它替代了 v1 的 \`class Config:\` 内部类写法。
 
 \`\`\`python
-# 从 pydantic 导入 BaseModel 和 ConfigDict
 from pydantic import BaseModel, ConfigDict
 
-# 定义模型 User
 class User(BaseModel):
-    # 模型配置
-    # ConfigDict 是 TypedDict，所有配置项都有类型提示
-    # IDE 能自动补全配置项名称，写错会报错
+    # model_config 是类属性，用 ConfigDict 声明配置
     model_config = ConfigDict(
-        # 允许从 ORM 对象创建模型
-        # 开启后 model_validate 能接受 ORM 对象（用 getattr 读属性）
-        # 等价于 v1 的 orm_mode=True
-        from_attributes=True,
-        # 禁止额外字段（默认是 'ignore'，会忽略多余字段）
-        # 'forbid'：传未定义字段会报错，防止客户端传错字段
-        # 'ignore'：静默忽略（默认）
-        # 'allow'：保留额外字段
-        extra='forbid',
-        # 字符串自动去首尾空格
-        # 实例化时所有 str 字段会自动调用 .strip()
-        # 避免用户输入 "alice " 这种带空格的值
-        str_strip_whitespace=True,
-        # 字段名大小写不敏感（'Name' 也能匹配 'name'）
-        str_to_lower=False,
-        # 验证赋值（修改字段时也触发校验）
-        # 默认 False：u.id = "abc" 不会校验类型
-        # 设为 True：u.id = "abc" 会触发类型校验，报错
-        # 适合需要保证数据一致性的场景
-        validate_assignment=True,
-        # 允许使用枚举的值（而不只是枚举成员）
-        # 设为 True 后，字段存储的是枚举的 .value（如 "pending"）
-        # 而不是枚举成员（如 OrderStatus.pending）
-        # 方便序列化，但失去枚举方法
-        use_enum_values=True,
-    )
-    # 字段 id，类型 int
-    id: int
-    # 字段 name，类型 str
-    name: str
+        # === 字符串处理 ===
+        str_strip_whitespace=True,      # 自动去除字符串两端空白
+        str_min_length=1,               # 字符串最小长度
+        str_max_length=100,             # 字符串最大长度
 
-# 实例化
-u = User(id=1, name="  alice  ")
-# str_strip_whitespace 生效，name 自动去空格
-print(u.name)  # 输出: alice
+        # === 额外字段处理 ===
+        extra='ignore',                 # 'ignore'(默认) | 'forbid' | 'allow'
 
-# 传额外字段会报错（extra='forbid'）
-try:
-    User(id=1, name="a", extra_field="x")  # 多了 extra_field
-except Exception:
-    print("禁止额外字段")  # 输出
+        # === 类型严格模式 ===
+        strict=False,                   # True 开启严格模式，"1" 不能转 int
 
-# validate_assignment 生效：修改字段时也校验
-try:
-    u.id = "not an int"  # 赋值时校验
-except Exception:
-    print("赋值校验失败")  # 输出
-\`\`\`
+        # === 别名相关 ===
+        populate_by_name=True,          # 允许用字段名赋值（默认只能用 alias）
+        from_attributes=True,            # 允许从 ORM 对象属性读取
 
-### 常用配置项一览
+        # === 不可变模型 ===
+        frozen=False,                   # True 则模型实例不可修改
 
-| 配置项 | 默认值 | 说明 |
-|-------|--------|------|
-| \`extra\` | \`'ignore'\` | 处理额外字段：\`'ignore'\`忽略 / \`'forbid'\`报错 / \`'allow'\`保留 |
-| \`from_attributes\` | \`False\` | 是否允许从 ORM 对象创建 |
-| \`frozen\` | \`False\` | 模型是否不可变 |
-| \`str_strip_whitespace\` | \`False\` | 字符串字段自动去首尾空格 |
-| \`str_min_length\` | \`None\` | 字符串字段全局最小长度 |
-| \`str_max_length\` | \`None\` | 字符串字段全局最大长度 |
-| \`validate_assignment\` | \`False\` | 赋值时是否触发校验 |
-| \`use_enum_values\` | \`False\` | 枚举字段存值还是存枚举成员 |
-| \`populate_by_name\` | \`False\` | 允许用字段名（而非别名）实例化 |
-| \`json_schema_extra\` | \`None\` | 自定义 JSON Schema |
-| \`alias_generator\` | \`None\` | 自动生成别名 |
-
-## str_strip_whitespace 等全局配置
-
-\`\`\`python
-# 从 pydantic 导入 BaseModel 和 ConfigDict
-from pydantic import BaseModel, ConfigDict
-
-# === 不配置：字符串不去空格 ===
-class User1(BaseModel):
-    # 字段 name，类型 str
-    name: str
-
-u1 = User1(name="  alice  ")
-print(repr(u1.name))  # 输出: '  alice  '（保留空格）
-
-# === 配置 str_strip_whitespace=True ===
-class User2(BaseModel):
-    # 配置：全局字符串去空格
-    model_config = ConfigDict(str_strip_whitespace=True)
-    # 字段 name，类型 str
-    name: str
-
-u2 = User2(name="  alice  ")
-print(repr(u2.name))  # 输出: 'alice'（空格被去掉）
-
-# === 配置 str_min_length / str_max_length ===
-class User3(BaseModel):
-    # 配置：所有字符串字段最小长度 2，最大长度 50
-    model_config = ConfigDict(
-        str_strip_whitespace=True,  # 先去空格
-        str_min_length=2,           # 去空格后长度必须 >= 2
-        str_max_length=50,
-    )
-    # 字段 name，类型 str
-    name: str
-    # 字段 bio，类型 str
-    bio: str
-
-# 长度 1 会报错
-try:
-    User3(name="a", bio="hello")  # name 去空格后长度 1
-except Exception:
-    print("name 太短")  # 输出
-
-# 长度 0 会报错
-try:
-    User3(name="   ", bio="x")  # name 去空格后是空字符串
-except Exception:
-    print("name 不能为空")  # 输出
-
-# 正常
-u3 = User3(name="alice", bio="hello world")
-print(u3.name, u3.bio)  # 输出: alice hello world
-\`\`\`
-
-## extra='forbid' / 'ignore' / 'allow'
-
-控制如何处理输入数据中**模型未定义的字段**。
-
-\`\`\`python
-# 从 pydantic 导入 BaseModel 和 ConfigDict
-from pydantic import BaseModel, ConfigDict
-
-# === extra='ignore'（默认）：忽略额外字段 ===
-class IgnoreModel(BaseModel):
-    # 配置：忽略额外字段
-    model_config = ConfigDict(extra='ignore')
-    # 字段 name，类型 str
-    name: str
-
-# 传入额外字段 age，会被静默忽略
-m1 = IgnoreModel(name="alice", age=30)
-print(m1.model_dump())  # 输出: {'name': 'alice'}（没有 age）
-# 不会报错
-
-# === extra='forbid'：禁止额外字段 ===
-class ForbidModel(BaseModel):
-    # 配置：禁止额外字段
-    model_config = ConfigDict(extra='forbid')
-    # 字段 name，类型 str
-    name: str
-
-# 传入额外字段会报错
-try:
-    ForbidModel(name="alice", age=30)  # age 是额外字段
-except Exception:
-    print("禁止额外字段")  # 输出
-
-# === extra='allow'：允许并保留额外字段 ===
-class AllowModel(BaseModel):
-    # 配置：允许额外字段
-    model_config = ConfigDict(extra='allow')
-    # 字段 name，类型 str
-    name: str
-
-# 额外字段会被保留
-m3 = AllowModel(name="alice", age=30, city="北京")
-print(m3.model_dump())  # 输出: {'name': 'alice', 'age': 30, 'city': '北京'}
-# 额外字段存储在 __pydantic_extra__ 里
-print(m3.__pydantic_extra__)  # 输出: {'age': 30, 'city': '北京'}
-
-# 额外字段也可以直接访问
-print(m3.age)   # 输出: 30
-print(m3.city)  # 输出: 北京
-\`\`\`
-
-**选择建议**：
-- 大多数场景用 \`'ignore'\`（默认），宽松处理。
-- API 请求体用 \`'forbid'\`，防止客户端传错误字段。
-- 需要保留任意扩展字段时用 \`'allow'\`（少见，比如动态配置）。
-
-## alias 别名（AliasChoices、AliasPath）
-
-实际项目中，外部数据源的字段名经常和 Python 命名规范冲突。比如：
-- 前端传 \`userName\`，Python 习惯 \`user_name\`
-- 数据库列名是 \`user_id\`，Python 用 \`id\`
-- JSON 用 \`createdAt\`，Python 用 \`created_at\`
-
-Pydantic 的 \`alias\` 解决这种命名不一致问题。
-
-### 基本别名
-
-\`\`\`python
-# 从 pydantic 导入 BaseModel 和 Field
-from pydantic import BaseModel, Field
-
-# 定义模型 User
-class User(BaseModel):
-    # 字段 user_id，类型 int，别名为 'userId'
-    # 外部数据用 'userId'，Python 内部用 'user_id'
-    user_id: int = Field(alias='userId')
-    # 字段 created_at，类型 str，别名为 'createdAt'
-    created_at: str = Field(alias='createdAt')
-
-# 实例化：必须用别名
-# 定义了 alias 后，实例化时必须用 alias 作为关键字参数
-# 不能用字段名 user_id，要用 userId
-u = User(userId=1, createdAt="2026-07-11")
-print(u.user_id)      # 输出: 1（用字段名访问）
-print(u.created_at)   # 输出: 2026-07-11
-
-# 序列化：默认用别名
-# model_dump() 默认 by_alias=False，用字段名
-# 但 Pydantic v2 改变了默认行为，定义了 alias 后默认用别名
-print(u.model_dump())
-# 输出: {'userId': 1, 'createdAt': '2026-07-11'}（键是别名）
-# 用 model_dump(by_alias=False) 可以用字段名
-# by_alias=False 强制使用字段名而非别名
-print(u.model_dump(by_alias=False))
-# 输出: {'user_id': 1, 'created_at': '2026-07-11'}
-\`\`\`
-
-### populate_by_name：允许用字段名实例化
-
-默认情况下，定义了 alias 后必须用 alias 实例化。开启 \`populate_by_name=True\` 后，字段名和 alias 都能用。
-
-\`\`\`python
-# 从 pydantic 导入 BaseModel、Field、ConfigDict
-from pydantic import BaseModel, Field, ConfigDict
-
-# 定义模型 User
-class User(BaseModel):
-    # 配置：允许用字段名实例化
-    model_config = ConfigDict(populate_by_name=True)
-    # 字段 user_id，别名为 'userId'
-    user_id: int = Field(alias='userId')
-
-# 方式 1：用别名实例化
-u1 = User(userId=1)
-# 方式 2：用字段名实例化（因为开启了 populate_by_name）
-u2 = User(user_id=2)
-print(u1.user_id)  # 输出: 1
-print(u2.user_id)  # 输出: 2
-\`\`\`
-
-### AliasChoices：多个别名
-
-一个字段可以接受多个别名，用 \`AliasChoices\`。
-
-\`\`\`python
-# 从 pydantic 导入 BaseModel、Field、AliasChoices
-from pydantic import BaseModel, Field, AliasChoices
-
-# 定义模型 User
-class User(BaseModel):
-    # 字段 user_id，接受多个别名：'userId'、'user_id'、'id'
-    user_id: int = Field(
-        validation_alias=AliasChoices('userId', 'user_id', 'id')
-    )
-
-# 三个别名都能用
-u1 = User(userId=1)
-u2 = User(user_id=2)
-u3 = User(id=3)
-print(u1.user_id, u2.user_id, u3.user_id)  # 输出: 1 2 3
-\`\`\`
-
-### AliasPath：嵌套路径别名
-
-当数据是嵌套结构时，可以用 \`AliasPath\` 从嵌套字段取值。
-
-\`\`\`python
-# 从 pydantic 导入 BaseModel、Field、AliasPath
-from pydantic import BaseModel, Field, AliasPath
-
-# 定义模型 User
-class User(BaseModel):
-    # 字段 city，从嵌套的 address.city 取值
-    city: str = Field(validation_alias=AliasPath('address', 'city'))
-    # 字段 zip_code，从 address.zip 取值
-    zip_code: str = Field(validation_alias=AliasPath('address', 'zip'))
-
-# 实例化：传入嵌套数据
-u = User(address={"city": "北京", "zip": "100000"})
-print(u.city)      # 输出: 北京
-print(u.zip_code)  # 输出: 100000
-\`\`\`
-
-### serialization_alias：序列化别名
-
-\`alias\` 同时影响输入和输出，如果只想影响其中一个，用 \`validation_alias\` 和 \`serialization_alias\`。
-
-\`\`\`python
-# 从 pydantic 导入 BaseModel 和 Field
-from pydantic import BaseModel, Field
-
-# 定义模型 User
-class User(BaseModel):
-    # 字段 user_id
-    # 输入用 'userId'，输出用 'id'
-    user_id: int = Field(
-        validation_alias='userId',    # 输入时的别名
-        serialization_alias='id',     # 序列化时的别名
-    )
-
-# 输入用 validation_alias
-u = User(userId=1)
-# 输出用 serialization_alias
-print(u.model_dump(by_alias=True))  # 输出: {'id': 1}
-\`\`\`
-
-## 计算字段 computed_field
-
-有时我们需要一个字段是基于其他字段计算出来的（比如全名 = 姓 + 名，总价 = 单价 × 数量）。用 \`@computed_field\` 装饰器定义。
-
-\`\`\`python
-# 从 pydantic 导入 BaseModel 和 computed_field
-from pydantic import BaseModel, computed_field
-
-# 定义用户模型 User
-class User(BaseModel):
-    # 字段 first_name，类型 str
-    first_name: str
-    # 字段 last_name，类型 str
-    last_name: str
-    # 字段 age，类型 int
-    age: int
-
-    # 计算字段：全名（基于 first_name 和 last_name）
-    @computed_field
-    def full_name(self) -> str:
-        # 返回姓 + 名
-        return f"{self.last_name}{self.first_name}"
-
-    # 计算字段：年龄段
-    @computed_field
-    def age_group(self) -> str:
-        # 根据年龄返回段位
-        if self.age < 18:
-            return "未成年"
-        elif self.age < 60:
-            return "成年"
-        else:
-            return "老年"
-
-# 实例化（不需要传 full_name 和 age_group）
-u = User(first_name="三", last_name="张", age=25)
-
-# 访问计算字段就像普通字段
-print(u.full_name)   # 输出: 张三
-print(u.age_group)   # 输出: 成年
-
-# 计算字段会出现在 model_dump 里
-print(u.model_dump())
-# 输出: {'first_name': '三', 'last_name': '张', 'age': 25, 'full_name': '张三', 'age_group': '成年'}
-
-# 计算字段也会出现在 JSON Schema 里
-# 这意味着 FastAPI 的 OpenAPI 文档会显示这些字段
-\`\`\`
-
-**computed_field 的特点**：
-1. 是只读的，不能在实例化时传值。
-2. 每次访问都会重新计算（不缓存）。
-3. 出现在 \`model_dump()\` 和 JSON Schema 里。
-4. 可以指定返回类型（\`-> str\`），影响 Schema 生成。
-
-### 计算字段带别名
-
-\`\`\`python
-# 从 pydantic 导入 BaseModel 和 computed_field
-from pydantic import BaseModel, computed_field
-
-# 定义模型 Product
-class Product(BaseModel):
-    # 字段 price，类型 float
-    price: float
-    # 字段 quantity，类型 int
-    quantity: int
-
-    # 计算字段：总价，带别名
-    @computed_field(alias="totalAmount")
-    def total_amount(self) -> float:
-        # 单价 × 数量
-        return self.price * self.quantity
-
-# 实例化
-p = Product(price=9.9, quantity=3)
-print(p.total_amount)  # 输出: 29.7
-# 用别名序列化
-print(p.model_dump(by_alias=True))
-# 输出: {'price': 9.9, 'quantity': 3, 'totalAmount': 29.7}
-\`\`\`
-
-## model_fields 和 model_fields_set
-
-Pydantic v2 提供了两个有用的属性来检查模型信息。
-
-\`\`\`python
-# 从 pydantic 导入 BaseModel 和 Field
-from pydantic import BaseModel, Field
-
-# 定义模型 User
-class User(BaseModel):
-    # 字段 id，类型 int
-    id: int
-    # 字段 name，类型 str
-    name: str
-    # 字段 age，类型 int，默认 0
-    age: int = 0
-    # 字段 bio，类型 str，默认空
-    bio: str = ""
-
-# === model_fields：查看模型定义的所有字段 ===
-print(User.model_fields)
-# 输出一个字典，键是字段名，值是 FieldInfo 对象
-# 包含每个字段的类型、默认值、约束等元信息
-for name, info in User.model_fields.items():
-    # 打印字段名、类型、默认值
-    print(f"{name}: type={info.annotation}, default={info.default}")
-
-# === model_fields_set：实例化时显式传入的字段集合 ===
-u = User(id=1, name="alice")  # age 和 bio 用默认值
-print(u.model_fields_set)  # 输出: {'id', 'name'}（只包含显式传入的字段）
-
-u2 = User(id=2, name="bob", age=30, bio="hello")
-print(u2.model_fields_set)  # 输出: {'id', 'name', 'age', 'bio'}
-
-# === 用途：区分"未传值"和"传了默认值" ===
-# 在 PATCH 更新场景，只更新用户传了哪些字段
-def update_user(user_id: int, update_data: dict):
-    # 假设 update_data 是请求体
-    user = User(id=user_id, name="default", **update_data)
-    # 只遍历用户显式传入的字段
-    fields_to_update = user.model_fields_set - {"id"}  # 排除 id
-    print(f"需要更新的字段: {fields_to_update}")
-    # 实际项目：只把这些字段写入数据库
-
-# 模拟 PATCH 请求：只更新 age
-update_user(1, {"age": 25})
-# 输出: 需要更新的字段: {'age'}
-\`\`\`
-
-**model_fields_set 的典型应用**：FastAPI 的 PATCH 接口，前端只传需要更新的字段，后端用 \`model_fields_set\` 判断哪些字段是用户主动传的，只更新这些字段，避免用默认值覆盖已有数据。
-
-## 模型的深拷贝和浅拷贝（model_copy）
-
-Pydantic 模型可以用 \`model_copy()\` 方法复制，支持浅拷贝和指定字段更新。
-
-\`\`\`python
-# 从 pydantic 导入 BaseModel
-from pydantic import BaseModel
-
-# 定义模型 User
-class User(BaseModel):
-    # 字段 id，类型 int
-    id: int
-    # 字段 name，类型 str
-    name: str
-    # 字段 tags，类型 list[str]
-    tags: list[str] = []
-
-# 实例化
-u = User(id=1, name="alice", tags=["a", "b"])
-
-# === 浅拷贝 ===
-u_copy = u.model_copy()
-print(u_copy == u)       # 输出: True（值相同）
-print(u_copy is u)       # 输出: False（不是同一个对象）
-# 浅拷贝：tags 列表是共享的
-print(u_copy.tags is u.tags)  # 输出: True（同一个 list 对象）
-
-# 修改 u_copy.tags 会影响 u.tags（浅拷贝的特性）
-u_copy.tags.append("c")
-print(u.tags)  # 输出: ['a', 'b', 'c']（也被改了）
-
-# === 拷贝时更新部分字段 ===
-u2 = User(id=1, name="alice", tags=["x"])
-# 拷贝并更新 id 和 name
-u2_copy = u2.model_copy(update={"id": 2, "name": "bob"})
-print(u2_copy.id)    # 输出: 2（被更新）
-print(u2_copy.name)  # 输出: bob（被更新）
-print(u2_copy.tags)  # 输出: ['x']（未更新）
-
-# === 深拷贝：用 copy.deepcopy ===
-import copy
-u3 = User(id=3, name="carol", tags=["a", "b"])
-# 深拷贝：所有嵌套对象都复制一份
-u3_deep = copy.deepcopy(u3)
-print(u3_deep.tags is u3.tags)  # 输出: False（不同的 list 对象）
-# 修改 u3_deep.tags 不影响 u3.tags
-u3_deep.tags.append("c")
-print(u3.tags)  # 输出: ['a', 'b']（不受影响）
-\`\`\`
-
-**model_copy(update={...}) 的典型用途**：在业务逻辑中基于一个模型实例创建一个略有不同的副本，避免手动重新构造所有字段。
-
-\`\`\`python
-# 从 pydantic 导入 BaseModel
-from pydantic import BaseModel
-
-# 定义模型 User
-class User(BaseModel):
-    # 字段 id
-    id: int
-    # 字段 name
-    name: str
-    # 字段 status
-    status: str = "active"
-
-# 原始用户
-u = User(id=1, name="alice", status="active")
-# 创建一个禁用状态的副本（不改原对象）
-u_banned = u.model_copy(update={"status": "banned"})
-print(u.status)       # 输出: active（原对象不变）
-print(u_banned.status)  # 输出: banned
-\`\`\`
-
-## JSON Schema 自定义
-
-Pydantic 自动为每个模型生成 JSON Schema，FastAPI 用它生成 OpenAPI 文档。可以用 \`json_schema_extra\` 添加自定义信息。
-
-\`\`\`python
-# 从 pydantic 导入 BaseModel、Field、ConfigDict
-from pydantic import BaseModel, Field, ConfigDict
-
-# 定义模型 User
-class User(BaseModel):
-    # 模型配置：添加自定义 Schema 信息
-    model_config = ConfigDict(
-        json_schema_extra={
-            # 自定义 examples（FastAPI 文档会显示）
+        # === 文档生成 ===
+        json_schema_extra={             # 自定义 JSON Schema 额外信息
             "examples": [
-                {"id": 1, "name": "alice", "age": 25},
-                {"id": 2, "name": "bob", "age": 30},
+                {"name": "alice", "age": 18}
             ]
         }
     )
-    # 字段 id，类型 int，带描述和示例
-    id: int = Field(description="用户 ID", examples=[1, 2, 3])
-    # 字段 name，类型 str，带描述、示例、最小长度
-    name: str = Field(
-        description="用户名",
-        min_length=2,
-        max_length=20,
-        examples=["alice", "bob"],
-    )
-    # 字段 age，类型 int，带约束
-    age: int = Field(ge=0, le=150, description="年龄", examples=[25, 30])
 
-# 获取 JSON Schema
+    name: str
+    age: int
+
+# 测试：字符串自动去空格
+u = User(name="  alice  ", age=18)
+print(f"name='{u.name}'")  # 输出 name='alice'（两端空格被去除）
+\`\`\`
+
+## extra 三种模式详解
+
+\`extra\` 控制如何处理传入的多余字段（未在模型中定义的字段）。
+
+\`\`\`python
+from pydantic import BaseModel, ConfigDict
+
+# === 1. extra='ignore'（默认）：多余字段被丢弃 ===
+class IgnoreModel(BaseModel):
+    model_config = ConfigDict(extra='ignore')
+    name: str
+
+m1 = IgnoreModel(name="alice", age=18, city="北京")
+# age 和 city 未定义，会被静默丢弃
+print(m1.model_dump())  # 输出 {'name': 'alice'}
+
+# === 2. extra='forbid'：多余字段直接报错 ===
+class ForbidModel(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    name: str
+
+try:
+    ForbidModel(name="alice", age=18)  # age 是多余字段
+except Exception as e:
+    print(f"Forbid 报错：{e}")  # Extra inputs are not permitted
+
+# === 3. extra='allow'：多余字段被保留 ===
+class AllowModel(BaseModel):
+    model_config = ConfigDict(extra='allow')
+    name: str
+
+m3 = AllowModel(name="alice", age=18, city="北京")
+# age 和 city 被保留在 __pydantic_extra__ 中
+print(m3.model_dump())  # 输出 {'name': 'alice', 'age': 18, 'city': '北京'}
+print(f"额外字段：{m3.__pydantic_extra__}")  # {'age': 18, 'city': '北京'}
+\`\`\`
+
+**使用场景**：
+- API 请求体 → \`extra='forbid'\`（防止客户端传未知字段，可能是拼写错误）
+- 配置文件 → \`extra='ignore'\`（兼容旧版本字段）
+- 动态属性 → \`extra='allow'\`（需要保留所有字段）
+
+## frozen 不可变模型
+
+设置 \`frozen=True\` 后，模型实例创建后不能修改任何字段，类似 \`dataclass(frozen=True)\`。
+
+\`\`\`python
+from pydantic import BaseModel, ConfigDict
+
+class Point(BaseModel):
+    model_config = ConfigDict(frozen=True)  # 不可变
+    x: float
+    y: float
+
+p = Point(x=1.0, y=2.0)
+
+# 尝试修改字段会报错
+try:
+    p.x = 10.0
+except Exception as e:
+    print(f"修改失败：{type(e).__name__}")  # 输出 ValidationError
+
+# 不可变模型可以作为字典的 key 或集合元素
+# 可变模型不行，因为它们不可哈希
+points = {Point(x=1, y=2), Point(x=1, y=2), Point(x=3, y=4)}
+print(f"去重后集合：{points}")  # 只有两个元素（重复的被合并）
+\`\`\`
+
+**使用场景**：配置对象、值对象（DDD 中的 Value Object）、需要哈希的场景。
+
+## str_strip_whitespace 全局字符串处理
+
+\`str_strip_whitespace=True\` 会自动去除所有字符串字段两端的空白，省去为每个字段单独写校验器。
+
+\`\`\`python
+from pydantic import BaseModel, ConfigDict
+
+class Form(BaseModel):
+    model_config = ConfigDict(
+        str_strip_whitespace=True,  # 所有 str 字段自动 strip
+    )
+    name: str
+    email: str
+
+# 用户输入带前后空格
+f = Form(name="  张三  ", email="  zhangsan@example.com  ")
+print(f"name='{f.name}'")    # 输出 name='张三'
+print(f"email='{f.email}'")  # 输出 email='zhangsan@example.com'
+\`\`\`
+
+## alias 别名系统
+
+别名系统允许字段在**输入/输出**时使用不同的名字。常见于：
+- 数据库字段是蛇形（\`user_name\`），API 响应是驼峰（\`userName\`）
+- 兼容旧版本字段名（\`name\` → \`fullName\`）
+- 处理保留字（\`class\`、\`import\`）
+
+\`\`\`python
+from pydantic import BaseModel, Field, ConfigDict
+
+class User(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)  # 允许用字段名赋值
+
+    # 字段名是 user_name（Python 代码中用）
+    # alias 是 userName（外部数据用）
+    user_name: str = Field(alias="userName")
+    age: int = Field(alias="userAge")
+
+# 用 alias 赋值
+u1 = User(userName="alice", userAge=18)
+print(u1.user_name)  # 输出 alice（用字段名访问）
+
+# 用字段名赋值（需要 populate_by_name=True）
+u2 = User(user_name="bob", age=20)
+print(u2.user_name)  # 输出 bob
+
+# 序列化时默认用 alias
+print(u1.model_dump())        # 输出 {'userName': 'alice', 'userAge': 18}
+print(u1.model_dump(by_alias=True))   # 输出 {'userName': 'alice', 'userAge': 18}
+print(u1.model_dump(by_alias=False))  # 输出 {'user_name': 'alice', 'age': 18}
+\`\`\`
+
+### AliasChoices 多别名
+
+一个字段可以有多个别名，按顺序尝试匹配。
+
+\`\`\`python
+from pydantic import BaseModel, Field, AliasChoices
+
+class User(BaseModel):
+    # name 字段可以接受：name / fullName / full_name 三种输入
+    name: str = Field(
+        validation_alias=AliasChoices('name', 'fullName', 'full_name')
+    )
+
+# 三种输入都能解析
+print(User(name="alice").name)        # 输出 alice
+print(User(fullName="bob").name)      # 输出 bob
+print(User(full_name="carol").name)   # 输出 carol
+\`\`\`
+
+### AliasPath 嵌套别名
+
+\`AliasPath\` 可以从嵌套结构中提取值。
+
+\`\`\`python
+from pydantic import BaseModel, Field, AliasPath
+
+class User(BaseModel):
+    # 从嵌套的 user.info.name 路径提取
+    name: str = Field(validation_alias=AliasPath('user', 'info', 'name'))
+    # 从 user.info.age 路径提取
+    age: int = Field(validation_alias=AliasPath('user', 'info', 'age'))
+
+# 输入是嵌套结构
+data = {
+    "user": {
+        "info": {
+            "name": "alice",
+            "age": 18
+        }
+    }
+}
+
+u = User.model_validate(data)
+print(u.name)  # 输出 alice
+print(u.age)   # 输出 18
+\`\`\`
+
+### alias_generator 别名生成器
+
+当模型有很多字段时，手动为每个字段设置 alias 很繁琐。\`alias_generator\` 可以批量生成别名。
+
+\`\`\`python
+from pydantic import BaseModel, ConfigDict
+
+# 驼峰转蛇形的函数
+def to_snake_case(field_name: str) -> str:
+    """将驼峰命名转为蛇形命名
+    例：userName -> user_name
+    """
+    result = []
+    for char in field_name:
+        if char.isupper():
+            result.append('_')
+            result.append(char.lower())
+        else:
+            result.append(char)
+    return ''.join(result)
+
+class User(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_snake_case,  # 自动为所有字段生成 alias
+        populate_by_name=True,           # 同时允许用字段名
+    )
+    userName: str       # alias 自动变成 user_name
+    userAge: int        # alias 自动变成 user_age
+    emailAddress: str   # alias 自动变成 email_address
+
+# 用蛇形 alias 输入（适合数据库字段）
+u = User(user_name="alice", user_age=18, email_address="a@b.com")
+# 用驼峰字段名访问（适合 Python 代码）
+print(u.userName)       # 输出 alice
+print(u.userAge)        # 输出 18
+print(u.emailAddress)   # 输出 a@b.com
+\`\`\`
+
+## computed_field 计算字段
+
+\`@computed_field\` 让一个**属性方法**出现在 \`model_dump()\` 的输出中，但不是真实存储的字段。
+
+\`\`\`python
+from pydantic import BaseModel, computed_field
+
+class Product(BaseModel):
+    name: str
+    price: float          # 单价
+    quantity: int         # 数量
+
+    # 计算字段：总价 = 单价 * 数量
+    @computed_field
+    @property
+    def total_price(self) -> float:
+        """自动计算总价，不需要用户输入"""
+        return self.price * self.quantity
+
+    # 计算字段：折扣价
+    @computed_field
+    @property
+    def discount_price(self) -> float:
+        """打 8 折后的价格"""
+        return round(self.total_price * 0.8, 2)
+
+p = Product(name="书", price=50, quantity=3)
+
+# 计算字段会出现在序列化结果中
+print(p.model_dump())
+# 输出 {'name': '书', 'price': 50.0, 'quantity': 3, 'total_price': 150.0, 'discount_price': 120.0}
+
+# 但计算字段不能作为输入
+try:
+    Product(name="书", price=50, quantity=3, total_price=999)
+except Exception as e:
+    print("total_price 是计算字段，不能作为输入")  # 输出
+\`\`\`
+
+**使用场景**：派生数据（总价、全名、年龄）、状态标识（is_active）、格式化输出（带货币符号的字符串）。
+
+## model_fields 和模型信息
+
+\`model_fields\` 是一个字典，包含所有字段的元信息（类型、默认值、别名等）。
+
+\`\`\`python
+from pydantic import BaseModel, Field
+
+class User(BaseModel):
+    name: str = Field(description="用户名", examples=["alice"])
+    age: int = Field(default=0, ge=0, le=150, description="年龄")
+    email: str | None = None
+
+# 查看所有字段信息
+for field_name, field_info in User.model_fields.items():
+    print(f"字段：{field_name}")
+    print(f"  类型：{field_info.annotation}")
+    print(f"  默认值：{field_info.default}")
+    print(f"  描述：{field_info.description}")
+    print()
+
+# 输出 JSON Schema
 import json
 schema = User.model_json_schema()
 print(json.dumps(schema, indent=2, ensure_ascii=False))
-# 输出包含:
-# {
-#   "properties": {
-#     "id": {"description": "用户 ID", "examples": [1, 2, 3], "type": "integer"},
-#     "name": {"description": "用户名", "examples": ["alice", "bob"], ...},
-#     "age": {"description": "年龄", "examples": [25, 30], ...}
-#   },
-#   "examples": [{"id": 1, "name": "alice", "age": 25}, ...]
-# }
 \`\`\`
 
-### 用 Field 的 json_schema_extra
+## model_copy 模型复制
+
+\`model_copy()\` 用于复制模型实例，可以同时修改部分字段。
 
 \`\`\`python
-# 从 pydantic 导入 BaseModel 和 Field
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-# 定义模型 Product
-class Product(BaseModel):
-    # 字段 id，带字段级别的 json_schema_extra
-    id: int = Field(
+class User(BaseModel):
+    name: str
+    age: int
+    email: str
+
+u = User(name="alice", age=18, email="a@b.com")
+
+# 1. 浅拷贝（默认）
+u2 = u.model_copy()
+print(u2 is u)  # False（不同对象）
+print(u2 == u)  # True（值相等）
+
+# 2. 拷贝时修改部分字段
+u3 = u.model_copy(update={"age": 20})
+print(u3.age)   # 输出 20
+print(u.age)    # 输出 18（原对象不变）
+
+# 3. 深拷贝（deep=True）
+u4 = u.model_copy(deep=True)
+print(u4 is u)  # False
+\`\`\`
+
+**注意**：\`model_copy(update={...})\` 不会触发校验器，适用于高性能批量更新场景。
+
+## JSON Schema 自定义
+
+Pydantic 自动生成 JSON Schema，可以通过 \`json_schema_extra\` 添加自定义信息。
+
+\`\`\`python
+from pydantic import BaseModel, Field, ConfigDict
+
+class User(BaseModel):
+    model_config = ConfigDict(
         json_schema_extra={
-            "x-order": 1,  # 自定义 OpenAPI 扩展字段
-            "x-readOnly": True,  # 标记为只读（响应里有，请求里没有）
+            "examples": [
+                {"name": "alice", "age": 18},
+                {"name": "bob", "age": 20}
+            ],
+            "description": "用户信息模型"
         }
     )
-    # 字段 name
-    name: str = Field(json_schema_extra={"x-order": 2})
+    name: str = Field(description="用户名", examples=["alice"])
+    age: int = Field(description="年龄", ge=0, le=150)
 
-# 在 FastAPI 中，这些自定义字段会出现在 OpenAPI 文档里
-# 前端可以根据 x-order 控制字段显示顺序
+# 生成的 Schema 会包含 examples 和 description
+import json
+schema = User.model_json_schema()
+print(json.dumps(schema, indent=2, ensure_ascii=False))
+\`\`\`
+
+FastAPI 会自动用这些 Schema 生成 OpenAPI 文档（访问 \`/docs\` 查看）。
+
+## from_attributes ORM 集成
+
+\`from_attributes=True\` 允许从 ORM 对象（如 SQLAlchemy 模型）的**属性**读取数据，而不需要先转成字典。
+
+\`\`\`python
+from pydantic import BaseModel, ConfigDict
+
+# 模拟一个 SQLAlchemy ORM 模型
+class ORMUser:
+    """模拟数据库 ORM 对象"""
+    def __init__(self, name, age, email):
+        self.name = name      # 属性名必须和 Pydantic 字段名一致
+        self.age = age
+        self.email = email
+
+# Pydantic 响应模型
+class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)  # 开启 ORM 模式
+    name: str
+    age: int
+    email: str
+
+# 创建 ORM 对象（模拟数据库查询结果）
+db_user = ORMUser(name="alice", age=18, email="a@b.com")
+
+# 直接从 ORM 对象创建 Pydantic 模型
+u = UserResponse.model_validate(db_user)
+print(u.model_dump())  # 输出 {'name': 'alice', 'age': 18, 'email': 'a@b.com'}
+\`\`\`
+
+**在 FastAPI 中**：响应模型设置 \`from_attributes=True\` 后，可以直接返回 ORM 对象，FastAPI 自动转换。
+
+## strict 严格模式实战
+
+默认情况下，Pydantic 会做"宽松"类型转换（\`"1"\` → \`1\`）。开启 \`strict=True\` 后，类型必须完全匹配。
+
+\`\`\`python
+from pydantic import BaseModel, ConfigDict, StrictInt, StrictStr
+
+# === 1. 全局严格模式 ===
+class StrictModel(BaseModel):
+    model_config = ConfigDict(strict=True)
+    age: int
+    name: str
+
+try:
+    StrictModel(age="18", name="alice")  # "18" 是字符串，不是 int
+except Exception as e:
+    print(f"严格模式拒绝：{type(e).__name__}")  # 输出 ValidationError
+
+# === 2. 单字段严格模式 ===
+class MixedModel(BaseModel):
+    age: StrictInt      # 这个字段严格
+    name: str           # 这个字段宽松
+
+# age 必须是 int，name 可以是任意可转 str 的类型
+m = MixedModel(age=18, name=123)  # name=123 会被转成 "123"
+print(m.model_dump())  # 输出 {'age': 18, 'name': '123'}
+
+try:
+    MixedModel(age="18", name="alice")  # age 严格，拒绝字符串
+except Exception as e:
+    print(f"age 字段严格：{type(e).__name__}")
+\`\`\`
+
+**使用场景**：
+- 金融系统：金额必须是 \`Decimal\`，不能让字符串悄悄转换
+- 安全敏感场景：ID 必须是 \`int\`，防止注入
+- API 契约严格：避免意外的类型 coercion
+
+## PrivateAttr 私有字段
+
+\`PrivateAttr\` 定义模型实例的**私有属性**，不会出现在 \`model_dump()\` 中，也不参与校验。
+
+\`\`\`python
+from pydantic import BaseModel, PrivateAttr
+import time
+
+class Cache(BaseModel):
+    key: str
+    value: str
+
+    # 私有字段：不会出现在 model_dump() 中
+    _created_at: float = PrivateAttr(default_factory=time.time)
+    _access_count: int = PrivateAttr(default=0)
+
+    def touch(self):
+        """访问时计数 +1"""
+        self._access_count += 1
+
+    @property
+    def age(self):
+        """缓存存活时间"""
+        return time.time() - self._created_at
+
+c = Cache(key="user:1", value="alice")
+
+# 私有字段不在序列化结果中
+print(c.model_dump())  # 输出 {'key': 'user:1', 'value': 'alice'}
+
+# 但可以正常访问
+print(f"访问次数：{c._access_count}")  # 输出 0
+c.touch()
+c.touch()
+print(f"访问次数：{c._access_count}")  # 输出 2
+print(f"创建时间：{c._created_at}")
+\`\`\`
+
+### PrivateAttr 缓存实战
+
+利用私有字段实现计算结果缓存，避免重复计算。
+
+\`\`\`python
+from pydantic import BaseModel, PrivateAttr
+
+class ExpensiveModel(BaseModel):
+    data: list[int]
+
+    # 缓存私有字段
+    _cache: dict = PrivateAttr(default_factory=dict)
+
+    def get_max(self) -> int:
+        """获取最大值，带缓存"""
+        if 'max' not in self._cache:
+            print("（首次计算 max）")
+            self._cache['max'] = max(self.data)
+        return self._cache['max']
+
+    def get_sum(self) -> int:
+        """获取总和，带缓存"""
+        if 'sum' not in self._cache:
+            print("（首次计算 sum）")
+            self._cache['sum'] = sum(self.data)
+        return self._cache['sum']
+
+m = ExpensiveModel(data=list(range(1000000)))
+
+# 第一次调用：会计算
+print(m.get_max())  # 输出 （首次计算 max） 999999
+print(m.get_sum())  # 输出 （首次计算 sum） 499999500000
+
+# 第二次调用：直接读缓存
+print(m.get_max())  # 直接输出 999999，没有"首次计算"
+print(m.get_sum())  # 直接输出 499999500000，没有"首次计算"
 \`\`\`
 
 ## Generic 泛型模型
 
-泛型模型允许定义可复用的数据结构，类型参数在实例化时确定。最经典的场景是分页响应：\`Page[User]\`、\`Page[Product]\` 用同一个分页模型。
+泛型模型允许定义**通用容器**，处理任意类型的数据。最典型的应用是**统一分页响应**。
 
 \`\`\`python
-# 从 pydantic 导入 BaseModel
-from pydantic import BaseModel
-# 从 typing 导入 Generic、TypeVar
-# Generic 是泛型基类，继承后类变成泛型类
-# TypeVar 是类型变量，表示一个"待确定的类型"
 from typing import Generic, TypeVar
+from pydantic import BaseModel
 
-# 定义类型变量 T，表示泛型类型参数
-# T 是一个占位符，实例化时用具体类型替换
-# 如 Response[User] 中 T 被替换为 User，Response[str] 中 T 被替换为 str
-# TypeVar('T') 中的 'T' 是名字，约定用大写字母
+# TypeVar 是类型变量，代表"任意类型"
 T = TypeVar('T')
 
-# 定义泛型响应包装模型 Response
-# 继承 BaseModel 和 Generic[T]，表示这是一个泛型模型
-# Generic[T] 让 Response 变成"参数化类型"，可以用 Response[具体类型] 实例化
-class Response(BaseModel, Generic[T]):
-    # 字段 code，类型 int（状态码）
-    code: int
-    # 字段 message，类型 str（消息）
-    message: str
-    # 字段 data，类型 T（泛型数据）
-    # T 是类型变量，实例化时确定具体类型
-    # Response[User] 时 data 是 User 类型
-    # Response[str] 时 data 是 str 类型
-    data: T
+# Generic[T] 让模型支持泛型
+class PageResponse(BaseModel, Generic[T]):
+    """通用分页响应模型
+    T 是数据项的类型，可以是 User、Order、Product 等
+    """
+    items: list[T]          # 数据列表
+    total: int              # 总数
+    page: int               # 当前页码
+    page_size: int          # 每页数量
 
-# 定义用户模型
+    @property
+    def total_pages(self) -> int:
+        """总页数"""
+        return (self.total + self.page_size - 1) // self.page_size
+
+# 使用：指定 T 为 User
 class User(BaseModel):
-    # 字段 id
-    id: int
-    # 字段 name
     name: str
+    age: int
 
-# 实例化：Response[User]，data 是 User 类型
-resp = Response[User](code=200, message="ok", data={"id": 1, "name": "alice"})
-# data 自动转成 User 实例
-print(resp.data)        # 输出: id=1 name='alice'
-print(type(resp.data))  # 输出: <class 'User'>
+# 创建 User 类型的分页响应
+user_page: PageResponse[User] = PageResponse[User](
+    items=[
+        User(name="alice", age=18),
+        User(name="bob", age=20),
+    ],
+    total=100,
+    page=1,
+    page_size=2
+)
 
-# 实例化：Response[str]，data 是 str 类型
-resp2 = Response[str](code=200, message="ok", data="hello")
-print(resp2.data)       # 输出: hello
-print(type(resp2.data)) # 输出: <class 'str'>
+# items 自动是 User 类型
+print(user_page.items[0].name)  # 输出 alice
+print(f"总页数：{user_page.total_pages}")  # 输出 50
 
-# 序列化
-print(resp.model_dump_json())
-# 输出: {"code":200,"message":"ok","data":{"id":1,"name":"alice"}}
+# 同一个模型可以复用
+class Product(BaseModel):
+    name: str
+    price: float
+
+product_page: PageResponse[Product] = PageResponse[Product](
+    items=[Product(name="书", price=50)],
+    total=50,
+    page=1,
+    page_size=10
+)
+print(product_page.items[0].price)  # 输出 50.0
 \`\`\`
 
-### 泛型模型的类型检查
+**在 FastAPI 中**：\`response_model=PageResponse[User]\` 让 API 文档自动展示正确类型。
+
+## 模型嵌套与递归
+
+Pydantic 模型可以嵌套，甚至支持递归引用（树形结构）。
 
 \`\`\`python
-# 从 pydantic 导入 BaseModel
 from pydantic import BaseModel
-# 从 typing 导入 Generic、TypeVar、list
-from typing import Generic, TypeVar, list
 
-# 定义类型变量 T
-T = TypeVar('T')
+class Comment(BaseModel):
+    """评论模型"""
+    author: str
+    content: str
 
-# 定义泛型列表响应模型 ListResponse
-class ListResponse(BaseModel, Generic[T]):
-    # 字段 items，类型 list[T]
-    items: list[T]
-    # 字段 total，类型 int
-    total: int
+class Article(BaseModel):
+    """文章模型，嵌套 Comment"""
+    title: str
+    content: str
+    comments: list[Comment] = []   # 嵌套模型列表
 
-# 定义产品模型
-class Product(BaseModel):
-    # 字段 id
-    id: int
-    # 字段 name
+# 嵌套模型会自动校验子对象
+a = Article(
+    title="Pydantic 教程",
+    content="...",
+    comments=[
+        {"author": "alice", "content": "好文章"},   # 字典会自动转 Comment
+        {"author": "bob", "content": "学到了"},
+    ]
+)
+# comments 中的字典被自动转成 Comment 对象
+print(a.comments[0].author)  # 输出 alice
+\`\`\`
+
+### 递归模型（树形结构）
+
+\`\`\`python
+from typing import Optional
+from pydantic import BaseModel
+
+class TreeNode(BaseModel):
+    """树形节点，可以递归引用自己"""
     name: str
+    children: list['TreeNode'] = []   # 递归引用，需要用字符串前向引用
 
-# 用 ListResponse[Product] 包装产品列表
-products = [
-    Product(id=1, name="手机"),
-    Product(id=2, name="电脑"),
-]
-# 实例化泛型响应
-resp = ListResponse[Product](items=products, total=2)
-print(resp.model_dump_json())
-# 输出: {"items":[{"id":1,"name":"手机"},{"id":2,"name":"电脑"}],"total":2}
+# 构建文件树
+tree = TreeNode(
+    name="root",
+    children=[
+        TreeNode(
+            name="src",
+            children=[
+                TreeNode(name="main.py"),
+                TreeNode(name="utils.py"),
+            ]
+        ),
+        TreeNode(
+            name="tests",
+            children=[
+                TreeNode(name="test_main.py"),
+            ]
+        ),
+    ]
+)
 
-# data 类型校验：传错类型会报错
-try:
-    # Product 要求 id 是 int，传字符串 "abc" 会失败
-    ListResponse[Product](items=[{"id": "abc", "name": "x"}], total=1)
-except Exception:
-    print("类型校验失败")  # 输出
+# 递归遍历
+def print_tree(node: TreeNode, indent: int = 0):
+    """递归打印树形结构"""
+    print("  " * indent + f"- {node.name}")
+    for child in node.children:
+        print_tree(child, indent + 1)
+
+print_tree(tree)
+# 输出：
+# - root
+#   - src
+#     - main.py
+#     - utils.py
+#   - tests
+#     - test_main.py
+\`\`\`
+
+## 模型方法与类方法
+
+Pydantic 模型提供丰富的内置方法。
+
+\`\`\`python
+from pydantic import BaseModel
+import json
+
+class User(BaseModel):
+    name: str
+    age: int
+
+u = User(name="alice", age=18)
+
+# === 1. 序列化方法 ===
+print(u.model_dump())           # 转 dict：{'name': 'alice', 'age': 18}
+print(u.model_dump_json())      # 转 JSON 字符串：{"name":"alice","age":18}
+print(u.model_dump_json(indent=2))  # 格式化的 JSON
+
+# === 2. 反序列化方法（类方法） ===
+# 从 dict 创建
+u2 = User.model_validate({"name": "bob", "age": 20})
+# 从 JSON 字符串创建
+u3 = User.model_validate_json('{"name": "carol", "age": 22}')
+print(u2.name, u3.name)  # 输出 bob carol
+
+# === 3. 字段集合 ===
+# 返回实例化时明确传入的字段（排除默认值字段）
+u4 = User(name="dave")  # age 用默认值
+print(u4.model_fields_set)  # 输出 {'name'}，age 没传入
+
+# === 4. JSON Schema ===
+print(User.model_json_schema())  # 输出 JSON Schema 字典
 \`\`\`
 
 ## 实战：通用分页响应模型
 
-综合本章知识，实现一个完整的通用分页响应模型，包含泛型数据、计算字段、JSON Schema 自定义。
+结合泛型、计算字段、模型配置，实现一个生产级分页响应。
 
 \`\`\`python
-# 从 pydantic 导入 BaseModel、Field、ConfigDict、computed_field
-from pydantic import BaseModel, Field, ConfigDict, computed_field
-# 从 typing 导入 Generic、TypeVar、list
-from typing import Generic, TypeVar, list
+from typing import Generic, TypeVar
+from pydantic import BaseModel, Field, computed_field, ConfigDict
 
-# 定义类型变量 T
 T = TypeVar('T')
 
-# 定义分页请求参数模型 PageParams
-class PageParams(BaseModel):
-    # 字段 page，类型 int，默认 1，最小 1
-    page: int = Field(default=1, ge=1, description="页码，从 1 开始")
-    # 字段 size，类型 int，默认 10，范围 1~100
-    size: int = Field(default=10, ge=1, le=100, description="每页数量，1-100")
-
-# 定义通用分页响应模型 PageResponse
 class PageResponse(BaseModel, Generic[T]):
-    # 泛型基类
-    # 模型配置
-    model_config = ConfigDict(
-        # 自定义 Schema 示例
-        json_schema_extra={
-            "examples": [
-                {
-                    "items": [{"id": 1, "name": "alice"}],
-                    "total": 100,
-                    "page": 1,
-                    "size": 10,
-                    "total_pages": 10,
-                    "has_next": True,
-                }
-            ]
-        }
-    )
-    # 字段 items，类型 list[T]（当前页的数据列表）
-    items: list[T] = Field(description="当前页数据")
-    # 字段 total，类型 int（总记录数）
-    total: int = Field(ge=0, description="总记录数")
-    # 字段 page，类型 int（当前页码）
-    page: int = Field(ge=1, description="当前页码")
-    # 字段 size，类型 int（每页数量）
-    size: int = Field(ge=1, description="每页数量")
+    """通用分页响应模型
+    - 泛型 T：数据项类型
+    - 计算字段：total_pages、has_next、has_prev
+    - 配置：populate_by_name 允许字段名赋值
+    """
+    model_config = ConfigDict(populate_by_name=True)
 
-    # 计算字段：总页数
-    # @computed_field 装饰的方法会作为字段出现在 model_dump() 里
-    # 但它是只读的，不能在实例化时传值
+    items: list[T] = Field(description="数据列表")
+    total: int = Field(description="总记录数", ge=0)
+    page: int = Field(description="当前页码", ge=1)
+    page_size: int = Field(description="每页数量", ge=1, le=100)
+
     @computed_field
+    @property
     def total_pages(self) -> int:
-        # 总页数 = 向上取整(总数 / 每页大小)
-        # (self.total + self.size - 1) // self.size 是整数向上取整除法
-        # 例如 total=23, size=10 → (23+9)//10 = 32//10 = 3 页
-        # 等价于 math.ceil(self.total / self.size)，但用整数运算避免浮点误差
-        # 注意：total=0 时返回 0，不会出现负数
-        return (self.total + self.size - 1) // self.size
+        """总页数"""
+        return (self.total + self.page_size - 1) // self.page_size
 
-    # 计算字段：是否有下一页
     @computed_field
+    @property
     def has_next(self) -> bool:
-        # 当前页 < 总页数 → 有下一页
-        # 例如 page=1, total_pages=10 → True（有下一页）
-        # 例如 page=10, total_pages=10 → False（最后一页）
+        """是否有下一页"""
         return self.page < self.total_pages
 
-    # 计算字段：是否有上一页
     @computed_field
+    @property
     def has_prev(self) -> bool:
-        # 当前页 > 1 → 有上一页
-        # 例如 page=1 → False（第一页没上一页）
-        # 例如 page=2 → True
+        """是否有上一页"""
         return self.page > 1
 
-# === 在 FastAPI 中使用 ===
-from fastapi import FastAPI, Query
-
-# 创建 FastAPI 应用
-app = FastAPI()
-
-# 定义用户模型 User
+# 使用示例
 class User(BaseModel):
-    # 字段 id
-    id: int
-    # 字段 name
     name: str
+    age: int
 
-# 模拟数据库
-MOCK_USERS = [
-    User(id=i, name=f"user_{i}") for i in range(1, 101)
-]  # 100 个用户
+# 模拟数据库查询结果
+response: PageResponse[User] = PageResponse[User](
+    items=[
+        User(name="alice", age=18),
+        User(name="bob", age=20),
+    ],
+    total=100,
+    page=1,
+    page_size=10,
+)
 
-# 定义路由：分页查询用户
-# response_model=PageResponse[User] 指定响应为分页模型，数据是 User 类型
-# FastAPI 支持 response_model 用泛型模型参数化，会正确生成 OpenAPI 文档
-@app.get("/users", response_model=PageResponse[User])
-def list_users(
-    # 查询参数 page，默认 1，最小 1
-    # Query(default=1, ge=1) 表示默认值 1，必须 >= 1
-    # 查询参数通过 URL 传递：/users?page=2&size=20
-    page: int = Query(default=1, ge=1, description="页码"),
-    # 查询参数 size，默认 10，范围 1~100
-    # le=100 限制每页最多 100 条，防止客户端请求过多数据拖垮服务器
-    size: int = Query(default=10, ge=1, le=100, description="每页数量"),
-):
-    # 计算分页起始位置
-    # page=1 时 start=0，page=2 时 start=size，依此类推
-    # 这是分页的标准公式：start = (page - 1) * size
-    start = (page - 1) * size
-    # 计算结束位置
-    # end = start + size，切片时超出列表长度不会报错
-    end = start + size
-    # 切片获取当前页数据
-    # MOCK_USERS[start:end] 是 Python 列表切片
-    # 例如 MOCK_USERS[0:10] 取索引 0-9 的元素（共 10 个）
-    # 切片是浅拷贝，返回新列表
-    items = MOCK_USERS[start:end]
-    # 构造分页响应
-    # PageResponse[User] 实例化泛型模型，items 必须是 User 实例列表
-    # total 是数据库总数，不是 len(items)（最后一页 items 可能少于 size）
-    return PageResponse[User](
-        items=items,
-        total=len(MOCK_USERS),
-        page=page,
-        size=size,
-    )
-
-# 访问 /users?page=1&size=10 返回:
+# 序列化（包含计算字段）
+import json
+print(json.dumps(response.model_dump(), indent=2, ensure_ascii=False))
+# 输出：
 # {
-#   "items": [{"id": 1, "name": "user_1"}, ..., {"id": 10, "name": "user_10"}],
+#   "items": [{"name": "alice", "age": 18}, {"name": "bob", "age": 20}],
 #   "total": 100,
 #   "page": 1,
-#   "size": 10,
+#   "page_size": 10,
 #   "total_pages": 10,
 #   "has_next": true,
 #   "has_prev": false
 # }
 \`\`\`
 
-### 测试分页模型
+## 常见错误
+
+### 错误 1：frozen 模型尝试修改
 
 \`\`\`python
-# 直接测试（不通过 HTTP）
-# 假设上面的模型已定义
+from pydantic import BaseModel, ConfigDict
 
-# 构造第一页
-resp1 = PageResponse[User](
-    items=MOCK_USERS[0:10],
-    total=100,
-    page=1,
-    size=10,
-)
-print("第 1 页:")
-print("  总页数:", resp1.total_pages)  # 输出: 10
-print("  有下一页:", resp1.has_next)   # 输出: True
-print("  有上一页:", resp1.has_prev)   # 输出: False
-print("  本页数量:", len(resp1.items)) # 输出: 10
-
-# 构造最后一页
-resp_last = PageResponse[User](
-    items=MOCK_USERS[90:100],
-    total=100,
-    page=10,
-    size=10,
-)
-print("第 10 页:")
-print("  总页数:", resp_last.total_pages)  # 输出: 10
-print("  有下一页:", resp_last.has_next)   # 输出: False
-print("  有上一页:", resp_last.has_prev)   # 输出: True
-
-# 边界情况：total=0
-resp_empty = PageResponse[User](
-    items=[],
-    total=0,
-    page=1,
-    size=10,
-)
-print("空结果:")
-print("  总页数:", resp_empty.total_pages)  # 输出: 0
-print("  有下一页:", resp_empty.has_next)   # 输出: False
-
-# 序列化为 JSON
-import json
-print(json.dumps(resp1.model_dump(), indent=2, ensure_ascii=False, default=str))
-\`\`\`
-
-## 其他高级特性
-
-### 私有字段
-
-以**下划线开头**的字段是私有的，不会出现在 model_dump 里。
-
-\`\`\`python
-# 从 pydantic 导入 BaseModel 和 PrivateAttr
-from pydantic import BaseModel, PrivateAttr
-
-# 定义模型 Counter
-class Counter(BaseModel):
-    # 公开字段 count
-    # 公开字段会出现在 model_dump() 输出里，也能从外部输入设置
-    count: int = 0
-    # 私有字段 _secret（用 PrivateAttr 声明）
-    # PrivateAttr 声明的字段特点：
-    # - 不会出现在 model_dump() 输出里（不参与序列化）
-    # - 不能从外部输入设置（防止客户端注入）
-    # - 只能在代码内部修改（如 self._secret = "new_value"）
-    # 适合存储缓存、内部状态、敏感中间数据
-    _secret: str = PrivateAttr(default="hidden")
-    # 私有字段 _cache（可变默认值）
-    # 用 default_factory=dict 而非 default={}
-    # 因为可变默认值必须用 factory，每次实例化生成新对象
-    # 避免多个实例共享同一个 dict 的问题
-    _cache: dict = PrivateAttr(default_factory=dict)
-
-# 实例化
-c = Counter(count=10)
-# 私有字段可以访问
-print(c._secret)  # 输出: hidden
-print(c._cache)   # 输出: {}
-# 但不会出现在 model_dump 里
-print(c.model_dump())  # 输出: {'count': 10}（没有 _secret 和 _cache）
-
-# 私有字段不会被外部输入影响
-c2 = Counter(count=1, _secret="hack")  # _secret 不会被设置
-print(c2._secret)  # 输出: hidden（还是默认值）
-\`\`\`
-
-### 模型嵌套与递归
-
-Pydantic 支持模型自引用（递归）和相互嵌套。
-
-\`\`\`python
-# 从 pydantic 导入 BaseModel
-from pydantic import BaseModel
-# 从 typing 导入 Optional、list
-from typing import Optional, list
-
-# 定义树节点模型 TreeNode（自引用）
-class TreeNode(BaseModel):
-    # 字段 value，类型 int
-    value: int
-    # 字段 left，类型 Optional[TreeNode]（左子树，递归引用）
-    left: Optional['TreeNode'] = None
-    # 字段 right，类型 Optional[TreeNode]（右子树）
-    right: Optional['TreeNode'] = None
-
-# 构造一棵树
-#     1
-#    / \\
-#   2   3
-tree = TreeNode(
-    value=1,
-    left=TreeNode(value=2),
-    right=TreeNode(value=3),
-)
-print(tree.model_dump())
-# 输出: {'value': 1, 'left': {'value': 2, 'left': None, 'right': None},
-#        'right': {'value': 3, 'left': None, 'right': None}}
-
-# 访问嵌套字段
-print(tree.left.value)   # 输出: 2
-print(tree.right.value)  # 输出: 3
-\`\`\`
-
-### 模型方法与类方法
-
-Pydantic 模型可以像普通类一样定义方法。
-
-\`\`\`python
-# 从 pydantic 导入 BaseModel
-from pydantic import BaseModel
-
-# 定义模型 User
-class User(BaseModel):
-    # 字段 id
-    id: int
-    # 字段 name
+class Config(BaseModel):
+    model_config = ConfigDict(frozen=True)
     name: str
-    # 字段 age
+
+c = Config(name="alice")
+
+# ❌ 错误：frozen 模型不能修改
+try:
+    c.name = "bob"
+except Exception as e:
+    print(f"frozen 模型不可修改：{type(e).__name__}")
+
+# ✅ 正确：用 model_copy(update=...) 创建新实例
+c2 = c.model_copy(update={"name": "bob"})
+print(c2.name)  # 输出 bob
+\`\`\`
+
+### 错误 2：alias 赋值忘记 populate_by_name
+
+\`\`\`python
+from pydantic import BaseModel, Field, ConfigDict
+
+class WithoutFlag(BaseModel):
+    # 没有 populate_by_name=True
+    name: str = Field(alias="fullName")
+
+class WithFlag(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    name: str = Field(alias="fullName")
+
+# ❌ 错误：没有 populate_by_name，不能用字段名赋值
+try:
+    WithoutFlag(name="alice")  # name 是字段名，不是 alias
+except Exception as e:
+    print(f"不能用字段名赋值：{type(e).__name__}")
+
+# ✅ 正确：用 alias 赋值
+u1 = WithoutFlag(fullName="alice")
+print(u1.name)  # 输出 alice
+
+# ✅ 正确：有 populate_by_name=True，两者都行
+u2 = WithFlag(name="alice")
+u3 = WithFlag(fullName="bob")
+print(u2.name, u3.name)  # 输出 alice bob
+\`\`\`
+
+### 错误 3：extra='forbid' 在 FastAPI 中过于严格
+
+\`\`\`python
+from pydantic import BaseModel, ConfigDict
+
+# ❌ 问题：extra='forbid' 会拒绝所有未定义字段
+# 客户端传了多余字段就报错，可能只是拼写错误
+class StrictUser(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    name: str
     age: int
 
-    # 实例方法
-    def greet(self) -> str:
-        # 返回问候语
-        return f"Hello, I'm {self.name}, {self.age} years old."
+try:
+    StrictUser(name="alice", age=18, emial="a@b.com")  # emial 拼写错误
+except Exception as e:
+    print(f"extra='forbid' 拒绝：{e}")
 
-    # 类方法：替代构造函数
+# ✅ 建议：内部 API 用 forbid，公开 API 用 ignore
+class LooseUser(BaseModel):
+    model_config = ConfigDict(extra='ignore')
+    name: str
+    age: int
+
+u = LooseUser(name="alice", age=18, emial="a@b.com")  # emial 被忽略
+print(u.model_dump())  # 输出 {'name': 'alice', 'age': 18}
+\`\`\`
+
+### 错误 4：from_attributes 没开启
+
+\`\`\`python
+from pydantic import BaseModel, ConfigDict
+
+class ORMUser:
+    """模拟 ORM 对象"""
+    def __init__(self, name, age):
+        self.name = name
+        self.age = age
+
+class WithoutFlag(BaseModel):
+    # 没有开启 from_attributes
+    name: str
+    age: int
+
+class WithFlag(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    name: str
+    age: int
+
+db_user = ORMUser(name="alice", age=18)
+
+# ❌ 错误：没开启 from_attributes，不能从 ORM 对象创建
+try:
+    WithoutFlag.model_validate(db_user)
+except Exception as e:
+    print(f"未开启 from_attributes：{type(e).__name__}")
+
+# ✅ 正确：开启 from_attributes
+u = WithFlag.model_validate(db_user)
+print(u.model_dump())  # 输出 {'name': 'alice', 'age': 18}
+\`\`\`
+
+## 动手实验
+
+### 实验 1：实现驼峰蛇形互转的别名生成器
+
+要求：实现一个 \`alias_generator\`，让模型同时支持驼峰和蛇形两种命名。
+
+\`\`\`python
+from pydantic import BaseModel, ConfigDict
+
+def to_camel(field_name: str) -> str:
+    """蛇形转驼峰：user_name -> userName"""
+    parts = field_name.split('_')
+    return parts[0] + ''.join(p.title() for p in parts[1:])
+
+class User(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+    )
+    user_name: str
+    user_age: int
+
+# 用蛇形字段名输入
+u1 = User(user_name="alice", user_age=18)
+print(u1.user_name)  # 输出 alice
+
+# 用驼峰 alias 输入
+u2 = User(userName="bob", userAge=20)
+print(u2.user_name)  # 输出 bob
+
+# 序列化时用驼峰 alias
+print(u1.model_dump(by_alias=True))
+# 输出 {'userName': 'alice', 'userAge': 18}
+\`\`\`
+
+### 实验 2：实现带缓存的计算模型
+
+要求：用 \`PrivateAttr\` 缓存计算结果，避免重复计算。
+
+\`\`\`python
+from pydantic import BaseModel, PrivateAttr
+
+class Stats(BaseModel):
+    """统计数据模型，带计算缓存"""
+    numbers: list[int]
+
+    # 私有缓存字段
+    _cache: dict = PrivateAttr(default_factory=dict)
+
+    def get_mean(self) -> float:
+        """平均值（带缓存）"""
+        if 'mean' not in self._cache:
+            print("（计算 mean）")
+            self._cache['mean'] = sum(self.numbers) / len(self.numbers)
+        return self._cache['mean']
+
+    def get_variance(self) -> float:
+        """方差（带缓存）"""
+        if 'variance' not in self._cache:
+            print("（计算 variance）")
+            mean = self.get_mean()  # 复用 mean 缓存
+            self._cache['variance'] = sum(
+                (x - mean) ** 2 for x in self.numbers
+            ) / len(self.numbers)
+        return self._cache['variance']
+
+s = Stats(numbers=[1, 2, 3, 4, 5])
+
+# 第一次计算
+print(f"mean: {s.get_mean()}")          # 输出 （计算 mean） mean: 3.0
+print(f"variance: {s.get_variance()}")  # 输出 （计算 variance） variance: 2.0
+
+# 第二次调用（走缓存）
+print(f"mean: {s.get_mean()}")          # 直接输出 3.0
+print(f"variance: {s.get_variance()}")  # 直接输出 2.0
+\`\`\`
+
+### 实验 3：实现通用 API 响应包装模型
+
+要求：用泛型实现统一的 API 响应格式，包含 \`code\`、\`message\`、\`data\` 字段。
+
+\`\`\`python
+from typing import Generic, TypeVar, Optional
+from pydantic import BaseModel, Field
+
+T = TypeVar('T')
+
+class ApiResponse(BaseModel, Generic[T]):
+    """通用 API 响应模型
+    code: 业务状态码（0 表示成功）
+    message: 提示消息
+    data: 业务数据（泛型）
+    """
+    code: int = Field(default=0, description="业务状态码，0 表示成功")
+    message: str = Field(default="success", description="提示消息")
+    data: Optional[T] = Field(default=None, description="业务数据")
+
     @classmethod
-    def from_string(cls, s: str) -> 'User':
-        # 从 "id,name,age" 格式字符串创建
-        parts = s.split(',')
-        # 调用 cls 构造
-        return cls(id=int(parts[0]), name=parts[1], age=int(parts[2]))
+    def success(cls, data: T, message: str = "success") -> 'ApiResponse[T]':
+        """快速创建成功响应"""
+        return cls(code=0, message=message, data=data)
 
-    # 静态方法
-    @staticmethod
-    def is_adult(age: int) -> bool:
-        # 判断是否成年
-        return age >= 18
+    @classmethod
+    def error(cls, message: str, code: int = -1) -> 'ApiResponse[T]':
+        """快速创建错误响应"""
+        return cls(code=code, message=message, data=None)
 
-# 使用实例方法
-u = User(id=1, name="alice", age=25)
-print(u.greet())  # 输出: Hello, I'm alice, 25 years old.
+# 使用示例
+class User(BaseModel):
+    name: str
+    age: int
 
-# 使用类方法
-u2 = User.from_string("2,bob,30")
-print(u2.model_dump())  # 输出: {'id': 2, 'name': 'bob', 'age': 30}
+# 成功响应
+resp1: ApiResponse[User] = ApiResponse.success(
+    User(name="alice", age=18)
+)
+print(resp1.model_dump_json())
+# 输出 {"code":0,"message":"success","data":{"name":"alice","age":18}}
 
-# 使用静态方法
-print(User.is_adult(25))  # 输出: True
-print(User.is_adult(15))  # 输出: False
+# 错误响应
+resp2: ApiResponse[User] = ApiResponse.error("用户不存在")
+print(resp2.model_dump_json())
+# 输出 {"code":-1,"message":"用户不存在","data":null}
+
+# 列表数据
+resp3: ApiResponse[list[User]] = ApiResponse.success(
+    [User(name="alice", age=18), User(name="bob", age=20)]
+)
+print(resp3.model_dump_json())
+# 输出 {"code":0,"message":"success","data":[{"name":"alice","age":18},{"name":"bob","age":20}]}
 \`\`\`
 
 ## 小结
 
-本章介绍了 Pydantic 的模型配置与高级特性：
+本章深入讲解了 Pydantic v2 的模型配置与高级特性，核心知识点：
 
-1. **model_config = ConfigDict(...)**：统一配置模型，替代 v1 的 class Config。
-2. **全局配置**：str_strip_whitespace、str_min_length、validate_assignment 等。
-3. **extra 模式**：'ignore'（默认）/ 'forbid' / 'allow'。
-4. **alias 别名**：解决命名冲突，AliasChoices 支持多别名，AliasPath 支持嵌套路径。
-5. **computed_field**：基于其他字段计算得出的只读字段，出现在序列化结果中。
-6. **model_fields / model_fields_set**：查看模型字段定义和实例化时显式传入的字段集合。
-7. **model_copy**：浅拷贝并支持 update 参数更新部分字段。
-8. **JSON Schema 自定义**：用 json_schema_extra 添加 examples、description 等。
-9. **Generic 泛型模型**：定义可复用的数据结构，如 PageResponse[T]。
-10. **私有字段**：PrivateAttr 声明的字段不参与序列化和外部输入。
-11. **递归模型**：支持自引用，实现树形结构。
-12. **实战**：通用分页响应模型，结合泛型、计算字段、Schema 自定义。
+1. **\`model_config = ConfigDict(...)\`**：统一配置入口，替代 v1 的 \`class Config:\`。
+2. **\`extra\` 三种模式**：\`ignore\`（丢弃）、\`forbid\`（报错）、\`allow\`（保留）。
+3. **\`frozen=True\`**：不可变模型，可哈希，可作为字典 key。
+4. **\`str_strip_whitespace\`**：全局字符串清洗。
+5. **\`alias\` 系统**：\`Field(alias=...)\`、\`AliasChoices\`（多别名）、\`AliasPath\`（嵌套路径）、\`alias_generator\`（批量生成）。
+6. **\`computed_field\`**：计算字段，自动出现在序列化结果中。
+7. **\`model_fields\`**：字段元信息字典。
+8. **\`model_copy(update=...)\`**：高效复制并修改。
+9. **\`json_schema_extra\`**：自定义 JSON Schema。
+10. **\`from_attributes=True\`**：ORM 集成模式。
+11. **\`strict=True\`**：严格类型模式，拒绝隐式转换。
+12. **\`PrivateAttr\`**：私有字段，不参与序列化和校验，适合缓存。
+13. **\`Generic[T]\`**：泛型模型，实现通用容器（分页、响应包装）。
+14. **嵌套与递归**：模型可嵌套，支持树形结构。
 
-至此，Pydantic 数据校验的 4 章内容已经全部完成。你现在已经掌握了 Pydantic 的核心用法，能够用它定义复杂的数据模型、编写自定义校验逻辑、配置模型行为，并与 FastAPI 无缝集成。下一批章节我们将进入 FastAPI 的依赖注入系统，学习如何组织可复用的业务逻辑。
+**配置选择策略**：
+- 公开 API → \`extra='ignore'\`，宽容客户端错误
+- 内部 API → \`extra='forbid'\`，严格契约
+- 金融系统 → \`strict=True\`，防止类型意外转换
+- 响应模型 → \`from_attributes=True\`，配合 ORM
+- 通用容器 → \`Generic[T]\`，复用代码
+- 计算字段 → \`computed_field\`，避免冗余存储
+- 缓存场景 → \`PrivateAttr\`，隐藏内部状态
+
+**Pydantic v2 vs v1 关键差异**：
+- \`model_config = ConfigDict(...)\` 替代 \`class Config:\`
+- \`model_dump()\` 替代 \`.dict()\`
+- \`model_validate()\` 替代 \`.parse_obj()\`
+- \`model_validate_json()\` 替代 \`.parse_raw()\`
+- \`@field_validator\` 替代 \`@validator\`
+- \`@model_validator\` 替代 \`@root_validator\`
+- \`model_config\` 替代 \`Config\` 内部类
+
+到这里，Pydantic 数据校验的 4 章内容就全部讲完了。从基础的 \`BaseModel\` 到高级的泛型模型和私有字段，你已经掌握了 FastAPI 数据层的全部核心知识。接下来我们将进入 FastAPI 的其他主题，如数据库集成、认证授权、部署运维等。
 `
-  }
+  },
 ];

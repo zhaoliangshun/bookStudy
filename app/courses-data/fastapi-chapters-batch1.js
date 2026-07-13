@@ -29,6 +29,18 @@ FastAPI 是一个现代、快速（高性能）的 Web 框架，用于基于标�
 - **快速**：一是指开发快（类型注解自动驱动校验和文档），二是指运行快（基于 Starlette，性能比肩 Node.js、Go）。"快"是全方位的快。
 - **基于类型注解**：这是 FastAPI 的灵魂。你写的 \`def read(item_id: int):\` 不只是给 IDE 看，FastAPI 会用它做参数解析、类型转换、校验、文档生成——一份注解，多处受益。
 
+## 生活类比：FastAPI 就像"全自动智能餐厅"
+
+想象你开了一家餐厅（Web 服务）。传统框架（如 Flask）就像普通餐厅：服务员（你自己）要手动做每件事——记菜单、检查菜单合不合规、写菜品说明、上菜。每开一道新菜，都要重新走一遍流程。
+
+而 FastAPI 就像一家"全自动智能餐厅"：
+
+- **菜单自动生成**：你只要在厨房挂一块牌子（写类型注解），门口的电子菜单（\`/docs\`）自动显示出来，不用手写。
+- **点单自动校验**：客人点的菜不合规矩（参数类型不对），门口的智能机器人直接拦下，不让进厨房，自动给客人一个错误提示（422 错误）。
+- **多桌并行服务**：一个服务员（事件循环）能同时招呼很多桌客人，等一桌上菜的间隙（I/O 等待）去服务下一桌，不用傻等。
+
+这就是 FastAPI 的核心理念：**你只管写业务逻辑，框架帮你搞定校验、文档、并发**。
+
 ## 历史与作者
 
 FastAPI 的作者是 Sebastián Ramírez，GitHub 用户名 tiangolo，一位哥伦比亚裔开发者。在创建 FastAPI 之前，他已经在使用 Flask + Flask-RESTful、Marshmallow 等工具搭建 API。他反复遇到同样的痛点：参数校验要手写、文档要单独维护、异步支持薄弱。于是他决定"把这一切整合成一个框架"。
@@ -421,6 +433,252 @@ app.include_router(items.router, prefix="/api/v1/items", tags=["商品"])
 
 这种分层结构（路由 → 业务 → 数据）让项目可维护。小项目可以全塞 main.py，大了再拆。
 
+## Demo 6（新增·入门）：健康检查接口——最简单的生产级端点
+
+**生活类比**：餐厅门口挂的"营业中/打烊"牌子。健康检查接口就是告诉运维"我还活着，能正常服务"。
+
+\`\`\`python
+# 健康检查是生产环境必备接口，用于监控、负载均衡探活
+# 从 fastapi 包导入 FastAPI 类
+from fastapi import FastAPI
+# 导入 datetime 模块，用于返回当前时间
+from datetime import datetime
+
+# 创建 FastAPI 应用实例
+app = FastAPI(title="健康检查 Demo")
+
+# 最简单的健康检查：返回 {"status": "ok"}
+# 这是最入门的写法，几乎所有 API 服务都需要
+@app.get("/health")
+# 定义函数 health_check，无参数
+def health_check():
+    # 返回服务状态
+    # status="ok" 是约定俗成的健康标识
+    return {"status": "ok"}
+
+# 稍微进阶：返回更多有用信息
+@app.get("/health/detail")
+# 定义函数 health_detail，无参数
+def health_detail():
+    # 返回服务详细状态
+    # timestamp 让运维知道服务响应时刻
+    # version 让运维知道当前部署的版本
+    return {
+        "status": "ok",                          # 服务状态
+        "timestamp": datetime.now().isoformat(), # 当前时间（ISO 格式）
+        "version": "1.0.0",                       # 服务版本
+        "service": "my-fastapi-app",              # 服务名
+    }
+
+# 启动：uvicorn main:app --reload
+# 访问 http://127.0.0.1:8000/health → {"status":"ok"}
+# 访问 http://127.0.0.1:8000/health/detail → 详细信息
+\`\`\`
+
+**为什么这么写**：
+- \`/health\` 是 Kubernetes、Docker、Nginx 等基础设施约定的探活路径。
+- 返回 \`{"status": "ok"}\` 是最简约定，监控工具会检查 status 字段。
+- 进阶版多返回 timestamp 和 version，方便排查部署问题。
+
+## Demo 7（新增·进阶）：多种 HTTP 方法的 RESTful 风格
+
+**生活类比**：餐厅里"点菜（POST）""问菜 status（GET）""改订单（PUT）""取消订单（DELETE）"对应不同的 HTTP 方法。
+
+\`\`\`python
+# 演示 RESTful 风格的 CRUD 接口
+# RESTful 核心思想：用 HTTP 方法表达操作语义，用 URL 表达资源
+# 从 fastapi 包导入 FastAPI, HTTPException
+# HTTPException 用于抛出 HTTP 错误响应（如 404、400）
+from fastapi import FastAPI, HTTPException
+# 从 pydantic 包导入 BaseModel, Field
+from pydantic import BaseModel, Field
+# 导入 List 类型（兼容旧版本，3.9+ 可直接用 list）
+from typing import List
+
+# 创建 FastAPI 应用实例
+app = FastAPI(title="RESTful Demo")
+
+# 定义 Pydantic 模型 Todo，表示一个待办事项
+class Todo(BaseModel):
+    # 字段 id，类型 int，必填（创建时由服务端生成）
+    id: int
+    # 字段 title，类型 str，最少 1 字符
+    # Field(min_length=1) 限制标题不能为空字符串
+    title: str = Field(min_length=1, description="待办标题")
+    # 字段 done，类型 bool，默认 False（未完成）
+    done: bool = False
+
+# 模拟数据库（内存列表）
+# 生产环境用真实数据库，这里用列表简化演示
+todos_db: List[Todo] = []
+# 自增 ID 计数器，模拟数据库自增主键
+next_id: int = 1
+
+# POST /todos：创建待办（对应 SQL 的 INSERT）
+# status_code=201 表示"已创建"，符合 RESTful 规范
+@app.post("/todos", response_model=Todo, status_code=201)
+# 定义函数 create_todo，参数 todo 是 TodoCreate 类型
+# 这里复用 Todo 模型，实际项目通常分开 Create/Response 模型
+def create_todo(todo: Todo):
+    # 声明全局变量（Python 修改全局变量需要 global）
+    global next_id
+    # 给 todo 赋 id（用完 +1，模拟自增）
+    todo.id = next_id
+    next_id += 1
+    # 加入"数据库"
+    todos_db.append(todo)
+    # 返回创建的 todo（FastAPI 自动按 response_model 序列化）
+    return todo
+
+# GET /todos：列出所有待办（对应 SQL 的 SELECT）
+@app.get("/todos", response_model=List[Todo])
+# 定义函数 list_todos，无参数
+def list_todos():
+    # 返回整个列表
+    # response_model=List[Todo] 让文档知道返回的是 Todo 数组
+    return todos_db
+
+# GET /todos/{todo_id}：查询单个待办
+@app.get("/todos/{todo_id}", response_model=Todo)
+# 定义函数 get_todo，参数 todo_id 是 int
+def get_todo(todo_id: int):
+    # 遍历查找
+    for todo in todos_db:
+        # 找到匹配的 id
+        if todo.id == todo_id:
+            # 返回找到的 todo
+            return todo
+    # 没找到，抛 404
+    # HTTPException 会被 FastAPI 捕获，转成 {"detail": "..."} 响应
+    raise HTTPException(status_code=404, detail=f"Todo {todo_id} not found")
+
+# PUT /todos/{todo_id}：更新待办（整体替换）
+@app.put("/todos/{todo_id}", response_model=Todo)
+# 定义函数 update_todo，参数 todo_id 和 todo_update
+def update_todo(todo_id: int, todo_update: Todo):
+    # 遍历查找要更新的 todo
+    for i, todo in enumerate(todos_db):
+        # 找到匹配的
+        if todo.id == todo_id:
+            # 替换（保留原 id）
+            todo_update.id = todo_id
+            # 更新数据库里的记录
+            todos_db[i] = todo_update
+            # 返回更新后的 todo
+            return todo_update
+    # 没找到，抛 404
+    raise HTTPException(status_code=404, detail=f"Todo {todo_id} not found")
+
+# DELETE /todos/{todo_id}：删除待办
+@app.delete("/todos/{todo_id}", status_code=204)
+# 定义函数 delete_todo，参数 todo_id
+def delete_todo(todo_id: int):
+    # 遍历查找要删除的 todo
+    for i, todo in enumerate(todos_db):
+        # 找到匹配的
+        if todo.id == todo_id:
+            # 从列表删除
+            todos_db.pop(i)
+            # 204 表示"无内容"，DELETE 成功通常不返回 body
+            return
+    # 没找到，抛 404
+    raise HTTPException(status_code=404, detail=f"Todo {todo_id} not found")
+
+# 测试顺序：
+# 1. POST /todos body={"id":0,"title":"学FastAPI"} → 创建
+# 2. GET /todos → 看到列表
+# 3. GET /todos/1 → 查单个
+# 4. PUT /todos/1 body={"id":1,"title":"学FastAPI","done":true} → 更新
+# 5. DELETE /todos/1 → 删除
+\`\`\`
+
+**为什么这么写**：
+- HTTP 方法对应操作语义：GET 查、POST 增、PUT 改、DELETE 删。
+- 状态码：201（创建）、200（成功）、204（无内容）、404（不存在）、422（校验失败）。
+- \`response_model\` 让响应结构被文档记录，前端一看就懂。
+- \`raise HTTPException\` 是 FastAPI 抛错误的标準方式。
+
+## Demo 8（新增·高级）：响应模型与数据过滤
+
+**生活类比**：餐厅菜单只展示菜名和价格（响应模型），不展示后厨的采购成本、厨师信息（内部字段）。响应模型就是控制"对外展示什么"。
+
+\`\`\`python
+# 演示响应模型：用 response_model 过滤敏感字段
+# 从 fastapi 包导入 FastAPI 类
+from fastapi import FastAPI
+# 从 pydantic 包导入 BaseModel 类
+from pydantic import BaseModel
+
+# 创建 FastAPI 应用实例
+app = FastAPI(title="响应模型 Demo")
+
+# 定义"用户输入"模型（创建用户时用）
+class UserCreate(BaseModel):
+    # 用户名，必填
+    username: str
+    # 密码，必填（注意：实际项目密码要哈希存储，绝不存明文）
+    password: str
+    # 邮箱，必填
+    email: str
+
+# 定义"用户输出"模型（返回给前端时用）
+# 关键：不含 password 字段！这样密码永远不会泄露给前端
+class UserResponse(BaseModel):
+    # 用户 ID
+    id: int
+    # 用户名
+    username: str
+    # 邮箱
+    email: str
+
+# 模拟数据库
+# 存的是 UserCreate（含密码），但返回时只暴露 UserResponse 字段
+users_db = []
+# 自增 ID
+next_id = 1
+
+# POST /users：创建用户
+# response_model=UserResponse 是关键：即使函数返回了含 password 的对象
+# FastAPI 也会按 UserResponse 过滤，只输出 id/username/email
+@app.post("/users", response_model=UserResponse)
+# 定义函数 create_user，参数 user 是 UserCreate 类型
+def create_user(user: UserCreate):
+    # 声明全局变量
+    global next_id
+    # 构造内部存储对象（含密码）
+    # model_dump() 是 Pydantic v2 方法，把模型转成 dict
+    user_dict = user.model_dump()
+    # 赋 id
+    user_dict["id"] = next_id
+    next_id += 1
+    # 存入数据库
+    users_db.append(user_dict)
+    # 返回 dict（含 password）
+    # 但 response_model=UserResponse 会让 FastAPI 自动过滤掉 password
+    return user_dict
+
+# GET /users：列出所有用户
+# 同样用 response_model=UserResponse 过滤
+@app.get("/users", response_model=list[UserResponse])
+# 定义函数 list_users，无参数
+def list_users():
+    # 返回所有用户（含密码的 dict）
+    # FastAPI 会按 UserResponse 过滤，password 不会出现在响应里
+    return users_db
+
+# 测试：
+# POST /users body={"username":"alice","password":"secret123","email":"a@b.com"}
+# 返回：{"id":1,"username":"alice","email":"a@b.com"}  ← 没有 password！
+#
+# GET /users
+# 返回：[{"id":1,"username":"alice","email":"a@b.com"}]  ← 依然没有 password
+\`\`\`
+
+**为什么这么写**：
+- 输入模型和输出模型分离是安全最佳实践。
+- \`response_model\` 是 FastAPI 的"自动过滤器"，保证敏感字段不泄露。
+- 即使函数返回了完整对象，文档里也只显示 UserResponse 的字段。
+
 ## 适用场景
 
 FastAPI 特别适合以下场景：
@@ -456,6 +714,154 @@ FastAPI 特别适合以下场景：
 ### 误区 4："自动文档就够了，不用写额外文档"
 
 自动文档描述"接口长什么样"，但描述不了"业务流程""整体架构""使用场景"。这些还得写补充文档。自动文档是底线，不是全部。
+
+## 常见错误（新手避坑）
+
+### 错误 1：忘了给路径参数加类型注解
+
+\`\`\`python
+# ❌ 错误：没有类型注解，item_id 是字符串
+@app.get("/items/{item_id}")
+def read_item(item_id):  # 没 : int
+    return {"item_id": item_id, "type": type(item_id).__name__}
+# 访问 /items/42 → {"item_id":"42","type":"str"}  ← 字符串！
+
+# ✅ 正确：加类型注解，自动转换
+@app.get("/items/{item_id}")
+def read_item(item_id: int):  # 有 : int
+    return {"item_id": item_id, "type": type(item_id).__name__}
+# 访问 /items/42 → {"item_id":42,"type":"int"}  ← 整数！
+\`\`\`
+
+**原因**：URL 里的路径参数默认是字符串。没有类型注解，FastAPI 不会自动转换，业务代码可能因为类型不对出 bug。
+
+### 错误 2：路由顺序写反了
+
+\`\`\`python
+# ❌ 错误：/items/me 会被 /items/{item_id} 先匹配
+@app.get("/items/{item_id}")
+def read_item(item_id: int):
+    return {"item_id": item_id}
+
+@app.get("/items/me")  # 永远匹配不到！因为 /items/{item_id} 先匹配
+def read_me():
+    return {"user": "me"}
+
+# ✅ 正确：固定路径写在动态路径前面
+@app.get("/items/me")  # 先定义
+def read_me():
+    return {"user": "me"}
+
+@app.get("/items/{item_id}")  # 后定义
+def read_item(item_id: int):
+    return {"item_id": item_id}
+\`\`\`
+
+**原因**：FastAPI 路由按定义顺序匹配，先定义的优先。固定路径要放前面，否则会被动态参数"吃掉"。
+
+### 错误 3：返回 None 却期望 JSON
+
+\`\`\`python
+# ❌ 错误：返回 None，客户端收到 null
+@app.get("/data")
+def get_data():
+    return None  # 客户端收到 "null"，不是 {}
+
+# ✅ 正确：返回空字典或空列表
+@app.get("/data")
+def get_data():
+    return {}  # 或 [] 或 {"data": []}
+\`\`\`
+
+**原因**：None 会被序列化成 JSON 的 \`null\`，前端解构时可能报错。空集合更安全。
+
+## 动手实验
+
+### 实验 1：创建你的第一个 API（5 分钟）
+
+目标：写一个返回问候语的 API。
+
+\`\`\`python
+# 实验任务：
+# 1. 创建 FastAPI 应用
+# 2. 写一个 GET /greet 接口，返回 {"message": "你好，世界！"}
+# 3. 写一个 GET /greet/{name} 接口，返回 {"message": "你好，{name}！"}
+# 4. 启动并访问 /docs 验证
+
+# 参考答案：
+from fastapi import FastAPI
+
+app = FastAPI(title="问候 API")
+
+@app.get("/greet")
+def greet():
+    return {"message": "你好，世界！"}
+
+@app.get("/greet/{name}")
+def greet_name(name: str):
+    return {"message": f"你好，{name}！"}
+
+# 启动：uvicorn main:app --reload
+# 访问：http://127.0.0.1:8000/greet
+# 访问：http://127.0.0.1:8000/greet/小明
+\`\`\`
+
+### 实验 2：体验类型校验（5 分钟）
+
+目标：感受类型注解的自动校验。
+
+\`\`\`python
+# 实验任务：
+# 1. 写一个 GET /calc/{x}/{y} 接口，参数 x 和 y 是 int
+# 2. 返回 {"sum": x + y, "product": x * y}
+# 3. 测试传非数字，观察 422 错误
+
+# 参考答案：
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/calc/{x}/{y}")
+def calc(x: int, y: int):
+    return {"sum": x + y, "product": x * y}
+
+# 测试：
+# /calc/3/5 → {"sum":8,"product":15}
+# /calc/abc/5 → 422 错误（x 不是整数）
+\`\`\`
+
+### 实验 3：Pydantic 模型校验（10 分钟）
+
+目标：用 Pydantic 模型校验请求体。
+
+\`\`\`python
+# 实验任务：
+# 1. 定义一个 Student 模型，字段：name(str)、age(int, 0-150)、grade(str, A-F)
+# 2. 写 POST /students 接口，接收 Student，返回 {"name": name, "passed": grade <= "D"}
+# 3. 测试各种非法输入
+
+# 参考答案：
+from fastapi import FastAPI
+from pydantic import BaseModel, Field
+
+app = FastAPI()
+
+class Student(BaseModel):
+    name: str = Field(min_length=1, description="姓名")
+    age: int = Field(ge=0, le=150, description="年龄 0-150")
+    grade: str = Field(pattern="^[A-F]$", description="等级 A-F")
+
+@app.post("/students")
+def create_student(student: Student):
+    passed = student.grade <= "D"  # A-D 算通过
+    return {"name": student.name, "passed": passed}
+
+# 测试：
+# {"name":"小明","age":20,"grade":"B"} → {"name":"小明","passed":true}
+# {"name":"","age":20,"grade":"B"} → 422（name 太短）
+# {"name":"小明","age":200,"grade":"B"} → 422（age 超范围）
+# {"name":"小明","age":20,"grade":"G"} → 422（grade 不在 A-F）
+\`\`\`
 
 ## 学习路线图
 
@@ -503,6 +909,15 @@ FastAPI 特别适合以下场景：
     icon: "📦",
     title: "安装与第一个 Hello World",
     content: `# 安装与第一个 Hello World
+
+## 生活类比：装修厨房 vs 开箱即用
+
+装 FastAPI 就像装修一个新厨房：
+
+- **Python 版本** = 房子的基础设施（水电煤），太老就装不了新电器。
+- **虚拟环境** = 给每个项目一个独立的厨房，互不串味（A 项目用 Django 3，B 项目用 Django 4，各用各的锅碗瓢盆）。
+- **FastAPI + Uvicorn** = 灶台 + 抽油烟机。FastAPI 是灶台（写菜），Uvicorn 是抽油烟机（把菜端出去，监听端口）。
+- **\`--reload\`** = 智能监控，你改了菜谱（代码），灶台自动重启。
 
 ## Python 版本要求
 
@@ -845,6 +1260,207 @@ if __name__ == "__main__":
 \`\`\`
 
 这种写法方便用 IDE 直接运行调试（PyCharm/VSCode 点运行按钮即可）。但生产部署通常还是用命令行 \`uvicorn\` 或 gunicorn+uvicorn worker，因为更灵活、更好管理进程。
+
+## Demo（新增·入门）：路径参数与查询参数
+
+**生活类比**：路径参数像餐厅门牌号（\`/table/5\`），查询参数像点菜时的额外要求（\`/menu?category=hot&spicy=true\`）。
+
+\`\`\`python
+# 演示路径参数和查询参数的区别
+# 从 fastapi 包导入 FastAPI, Query 类
+from fastapi import FastAPI, Query
+
+# 创建 FastAPI 应用实例
+app = FastAPI(title="参数 Demo")
+
+# 路径参数：URL 路径里的 {user_id}
+# 必填，因为 URL 必须完整
+@app.get("/users/{user_id}")
+# 定义函数 get_user，参数 user_id 是 int
+def get_user(user_id: int):
+    # user_id 自动从 URL 提取并转成 int
+    return {"user_id": user_id, "type": "路径参数"}
+
+# 查询参数：URL 问号后面的参数
+# 可选，因为有默认值
+@app.get("/users")
+# 定义函数 list_users，参数 skip 和 limit 是查询参数
+# skip: int = 0：默认值 0，表示跳过前 N 条
+# limit: int = Query(10, ge=1, le=100)：默认 10，范围 1-100
+def list_users(
+    skip: int = 0,
+    limit: int = Query(default=10, ge=1, le=100),
+):
+    # 模拟返回分页数据
+    # 实际项目从数据库查，这里用 range 模拟
+    all_users = [{"id": i, "name": f"用户{i}"} for i in range(1, 101)]
+    # 切片实现分页
+    return {
+        "data": all_users[skip : skip + limit],
+        "skip": skip,
+        "limit": limit,
+        "total": len(all_users),
+    }
+
+# 测试：
+# /users/5           → {"user_id":5,"type":"路径参数"}
+# /users             → 默认 skip=0, limit=10，返回前 10 条
+# /users?skip=20&limit=5  → 跳过 20 条，取 5 条
+# /users?limit=200   → 422 错误（limit 超过 100）
+# /users?limit=abc   → 422 错误（limit 不是整数）
+\`\`\`
+
+**为什么这么写**：
+- 路径参数标识"哪个资源"（\`/users/5\` = ID 为 5 的用户）。
+- 查询参数控制"怎么返回"（分页、过滤、排序）。
+- \`Query(ge=1, le=100)\` 限制范围，防止客户端请求过多数据拖垮服务。
+
+## Demo（新增·进阶）：Pydantic 模型校验请求体
+
+**生活类比**：Pydantic 模型像快递公司的"包裹规格单"——长宽高重量都有要求，不符合就拒收。
+
+\`\`\`python
+# 演示用 Pydantic 模型校验 POST 请求体
+# 从 fastapi 包导入 FastAPI 类
+from fastapi import FastAPI
+# 从 pydantic 包导入 BaseModel, Field
+# BaseModel 是所有数据模型的基类
+# Field 用于给字段加约束和元数据
+from pydantic import BaseModel, Field
+
+# 创建 FastAPI 应用实例
+app = FastAPI(title="请求体校验 Demo")
+
+# 定义产品模型
+class Product(BaseModel):
+    # 字段 name，类型 str
+    # min_length=1：名称不能为空
+    # max_length=100：名称最长 100 字符
+    name: str = Field(min_length=1, max_length=100, description="产品名称")
+    # 字段 price，类型 float
+    # gt=0：价格必须大于 0（gt = greater than）
+    # description 会显示在文档里
+    price: float = Field(gt=0, description="产品价格，必须大于 0")
+    # 字段 stock，类型 int
+    # ge=0：库存必须 >= 0（ge = greater than or equal）
+    stock: int = Field(ge=0, default=0, description="库存，非负整数")
+    # 字段 tags，类型 list[str]
+    # 默认空列表，最多 10 个标签
+    tags: list[str] = Field(default=[], max_length=10, description="标签列表")
+
+# POST 接口：创建产品
+# FastAPI 看到 product: Product 就知道：
+#   1. 从请求体读 JSON
+#   2. 按 Product 模型校验
+#   3. 校验失败返回 422
+#   4. 校验通过把 JSON 转成 Product 实例传给函数
+@app.post("/products")
+# 定义函数 create_product，参数 product 是 Product 类型
+def create_product(product: Product):
+    # 此时 product 已经过校验，所有字段都符合要求
+    # 业务代码可以放心用，不用再写 if product.price < 0 之类
+    total_value = product.price * product.stock
+    # 返回创建结果
+    return {
+        "name": product.name,
+        "price": product.price,
+        "stock": product.stock,
+        "total_value": total_value,
+        "tags": product.tags,
+    }
+
+# 测试（用 curl）：
+# curl -X POST http://127.0.0.1:8000/products \\
+#   -H "Content-Type: application/json" \\
+#   -d '{"name":"手机","price":5999,"stock":100,"tags":["电子","通讯"]}'
+# 返回：{"name":"手机","price":5999.0,"stock":100,"total_value":599900.0,"tags":["电子","通讯"]}
+#
+# 测试非法输入：
+# {"name":"","price":5999}          → 422（name 太短）
+# {"name":"手机","price":-1}        → 422（price 必须 > 0）
+# {"name":"手机","price":5999,"stock":-5} → 422（stock 必须 >= 0）
+# {"name":"手机"}                    → 422（缺少 price）
+\`\`\`
+
+**为什么这么写**：
+- 一个 Pydantic 模型同时定义了"数据结构"和"校验规则"。
+- \`Field\` 的 \`gt\`/\`ge\`/\`min_length\` 等约束自动生成到文档。
+- 业务代码无需写校验逻辑，专注核心业务。
+
+## Demo（新增·进阶）：查询参数校验
+
+**生活类比**：查询参数校验像安检——客户端传的参数要符合规定才能进"业务大厅"。
+
+\`\`\`python
+# 演示查询参数的高级校验
+# 从 fastapi 包导入 FastAPI, Query 类
+from fastapi import FastAPI, Query
+
+# 创建 FastAPI 应用实例
+app = FastAPI(title="查询参数校验 Demo")
+
+# 搜索接口：演示多种查询参数校验
+@app.get("/search")
+# 定义函数 search，参数 q, category, min_price, max_price, page
+def search(
+    # q：搜索关键词，可选
+    # min_length=1：不能是空字符串
+    # max_length=50：最长 50 字符
+    # pattern：正则校验，只允许中英文和数字
+    q: str | None = Query(
+        default=None,
+        min_length=1,
+        max_length=50,
+        pattern="^[\\u4e00-\\u9fa5a-zA-Z0-9 ]+$",  # 中英文+数字+空格
+        description="搜索关键词",
+    ),
+    # category：分类，可选
+    # 用 Enum 更优雅，这里简化用 pattern
+    category: str | None = Query(
+        default=None,
+        pattern="^(book|food|clothing)$",  # 只能是这三个值
+        description="分类：book/food/clothing",
+    ),
+    # min_price：最低价，可选，>=0
+    min_price: float | None = Query(default=None, ge=0, description="最低价"),
+    # max_price：最高价，可选，>=0
+    max_price: float | None = Query(default=None, ge=0, description="最高价"),
+    # page：页码，默认 1，>=1
+    page: int = Query(default=1, ge=1, description="页码，从 1 开始"),
+):
+    # 构造查询条件（实际项目传给数据库查询）
+    filters = {}
+    # 如果有 q，加到过滤条件
+    if q:
+        filters["q"] = q
+    # 如果有 category，加到过滤条件
+    if category:
+        filters["category"] = category
+    # 如果有价格范围，加到过滤条件
+    if min_price is not None:
+        filters["min_price"] = min_price
+    if max_price is not None:
+        filters["max_price"] = max_price
+
+    # 返回查询结果（模拟）
+    return {
+        "filters": filters,
+        "page": page,
+        "results": [],  # 实际项目从数据库查
+    }
+
+# 测试：
+# /search?q=手机                    → 正常
+# /search?q=&category=book          → 422（q 不能是空字符串）
+# /search?category=invalid          → 422（category 不在允许列表）
+# /search?min_price=-10             → 422（min_price 必须 >= 0）
+# /search?page=0                    → 422（page 必须 >= 1）
+\`\`\`
+
+**为什么这么写**：
+- \`pattern\` 用正则校验，灵活强大。
+- 每个参数都有 \`description\`，文档自动显示。
+- 校验在入口完成，业务函数只处理合法数据。
 
 ## 项目文件结构建议
 
@@ -1288,6 +1904,306 @@ def read_item(item_id: int):
 \`\`\`
 
 跑起来后，打开 \`/docs\`，你会看到一个完整的"商品管理 API"文档，所有接口都能在线测试。这就是 FastAPI 的魅力——几十行代码，一个可用的 API 服务 + 完整文档。
+
+## Demo（新增·进阶）：带异常处理的完整 CRUD
+
+**生活类比**：异常处理像餐厅的"客诉处理流程"——客人点不存在的菜（404）、点的菜卖完了（409），都要礼貌告知，不能让客人干等。
+
+\`\`\`python
+# 演示带异常处理的 CRUD
+# 从 fastapi 包导入 FastAPI, HTTPException, Query
+# HTTPException 用于抛出 HTTP 错误响应
+from fastapi import FastAPI, HTTPException, Query
+# 从 pydantic 包导入 BaseModel, Field
+from pydantic import BaseModel, Field
+
+# 创建 FastAPI 应用实例
+app = FastAPI(title="异常处理 Demo")
+
+# 定义 Book 模型
+class Book(BaseModel):
+    # 书名，1-100 字符
+    title: str = Field(min_length=1, max_length=100)
+    # 作者，1-50 字符
+    author: str = Field(min_length=1, max_length=50)
+    # 价格，>0
+    price: float = Field(gt=0)
+
+# 模拟数据库
+books_db: dict[int, dict] = {}
+# 自增 ID
+next_id = 1
+
+# 创建图书
+@app.post("/books", status_code=201)
+def create_book(book: Book):
+    # 声明全局变量
+    global next_id
+    # 构造记录
+    book_dict = book.model_dump()
+    book_dict["id"] = next_id
+    # 存入"数据库"
+    books_db[next_id] = book_dict
+    # ID 自增
+    next_id += 1
+    # 返回创建的图书
+    return book_dict
+
+# 查询单本图书
+@app.get("/books/{book_id}")
+def get_book(book_id: int):
+    # 检查是否存在
+    if book_id not in books_db:
+        # 不存在，抛 404
+        # detail 会作为 {"detail": "..."} 返回给客户端
+        raise HTTPException(
+            status_code=404,
+            detail=f"图书 ID {book_id} 不存在"
+        )
+    # 存在，返回
+    return books_db[book_id]
+
+# 更新图书（整体替换）
+@app.put("/books/{book_id}")
+def update_book(book_id: int, book: Book):
+    # 检查是否存在
+    if book_id not in books_db:
+        # 不存在，抛 404
+        raise HTTPException(status_code=404, detail=f"图书 ID {book_id} 不存在")
+    # 更新
+    book_dict = book.model_dump()
+    book_dict["id"] = book_id
+    books_db[book_id] = book_dict
+    # 返回更新后的图书
+    return book_dict
+
+# 删除图书
+@app.delete("/books/{book_id}", status_code=204)
+def delete_book(book_id: int):
+    # 检查是否存在
+    if book_id not in books_db:
+        # 不存在，抛 404
+        raise HTTPException(status_code=404, detail=f"图书 ID {book_id} 不存在")
+    # 删除
+    del books_db[book_id]
+    # 204 不返回 body
+
+# 列出所有图书（带分页）
+@app.get("/books")
+def list_books(
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=10, ge=1, le=100),
+):
+    # 取所有图书
+    all_books = list(books_db.values())
+    # 分页
+    return {
+        "data": all_books[skip : skip + limit],
+        "total": len(all_books),
+        "skip": skip,
+        "limit": limit,
+    }
+
+# 测试流程：
+# 1. POST /books body={"title":"三体","author":"刘慈欣","price":45} → 创建
+# 2. GET /books/1 → 查询
+# 3. GET /books/999 → 404 错误
+# 4. PUT /books/1 body={...} → 更新
+# 5. DELETE /books/1 → 删除
+# 6. DELETE /books/1 → 404（已经删了）
+\`\`\`
+
+**为什么这么写**：
+- \`raise HTTPException\` 是 FastAPI 抛错误的标準方式，自动转成 JSON 错误响应。
+- 404 表示"资源不存在"，比返回 \`{"error": "not found"}\` 更符合 HTTP 语义。
+- 204（No Content）表示操作成功但无内容返回，适合 DELETE。
+
+## 常见错误（新手避坑）
+
+### 错误 1：文件名和包名冲突
+
+\`\`\`bash
+# ❌ 错误：把文件命名为 fastapi.py
+# 文件名遮蔽了真实的 fastapi 包，import 会失败
+$ ls
+fastapi.py  main.py
+$ python main.py
+# ModuleNotFoundError: No module named 'fastapi'
+
+# ✅ 正确：文件名避开包名
+$ ls
+main.py  utils.py
+\`\`\`
+
+**原因**：Python 导入时优先找当前目录的文件。你的 \`fastapi.py\` 会"遮蔽"真实的 fastapi 包。
+
+### 错误 2：虚拟环境没激活就装包
+
+\`\`\`bash
+# ❌ 错误：没激活虚拟环境
+$ pip install fastapi
+# 装到系统 Python 里了，污染全局
+
+# ✅ 正确：先激活虚拟环境
+$ source .venv/bin/activate
+(.venv) $ pip install fastapi
+# 装到 .venv 里，隔离干净
+\`\`\`
+
+**原因**：\`pip install\` 默认装到当前 Python 环境。不激活虚拟环境，会装到系统 Python。
+
+### 错误 3：uvicorn 找不到 app 变量
+
+\`\`\`bash
+# ❌ 错误：app 变量名写错或文件名写错
+$ uvicorn main:my_app --reload
+# Error: Loading "main:my_app" failed
+
+# ✅ 正确：确认 main.py 里有 app 变量
+# main.py 里要有：app = FastAPI()
+$ uvicorn main:app --reload
+\`\`\`
+
+**原因**：\`uvicorn 模块名:变量名\` 格式，模块名是文件名（不含 .py），变量名是代码里的 \`app\`。
+
+### 错误 4：Windows 路径分隔符
+
+\`\`\`bash
+# ❌ 错误：Windows 上用 / 激活虚拟环境
+$ .venv/Scripts/activate
+# bash: .venv/Scripts/activate: No such file or directory
+
+# ✅ 正确：Windows 用 \\
+$ .venv\\Scripts\\activate
+\`\`\`
+
+**原因**：Windows 用反斜杠 \`\\\` 作路径分隔符，Unix 用正斜杠 \`/\`。
+
+## 动手实验
+
+### 实验 1：搭建最小 API（5 分钟）
+
+目标：从零搭建一个能跑的 FastAPI 应用。
+
+\`\`\`bash
+# 步骤：
+# 1. 创建项目目录
+mkdir my-first-api && cd my-first-api
+
+# 2. 创建虚拟环境
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
+
+# 3. 安装依赖
+pip install fastapi "uvicorn[standard]"
+
+# 4. 创建 main.py（见下方代码）
+
+# 5. 启动
+uvicorn main:app --reload
+
+# 6. 访问 http://127.0.0.1:8000/
+# 7. 访问 http://127.0.0.1:8000/docs
+\`\`\`
+
+\`\`\`python
+# main.py
+from fastapi import FastAPI
+
+app = FastAPI(title="我的第一个 API")
+
+@app.get("/")
+def root():
+    return {"message": "Hello, World!", "framework": "FastAPI"}
+
+@app.get("/about")
+def about():
+    return {"name": "我的 API", "version": "1.0.0"}
+\`\`\`
+
+### 实验 2：体验热重载（3 分钟）
+
+目标：理解 \`--reload\` 的作用。
+
+\`\`\`bash
+# 1. 启动服务（带 --reload）
+uvicorn main:app --reload
+
+# 2. 修改 main.py，加一个新接口
+# 在 main.py 里添加：
+# @app.get("/ping")
+# def ping():
+#     return {"msg": "pong"}
+
+# 3. 保存文件，观察终端输出
+# 应该看到 "Reloading..." 然后重新启动
+
+# 4. 访问 http://127.0.0.1:8000/ping
+# 不用重启服务就能访问新接口！
+\`\`\`
+
+### 实验 3：完整 CRUD 应用（15 分钟）
+
+目标：写一个待办事项（Todo）的完整 CRUD。
+
+\`\`\`python
+# 任务：
+# 1. 定义 Todo 模型（id, title, done）
+# 2. 实现 POST /todos（创建）
+# 3. 实现 GET /todos（列出所有）
+# 4. 实现 GET /todos/{id}（查单个）
+# 5. 实现 PUT /todos/{id}（更新）
+# 6. 实现 DELETE /todos/{id}（删除）
+# 7. 用 HTTPException 处理 404
+
+# 参考答案：
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+
+app = FastAPI(title="待办事项 API")
+
+class Todo(BaseModel):
+    id: int
+    title: str = Field(min_length=1)
+    done: bool = False
+
+todos_db: dict[int, dict] = {}
+next_id = 1
+
+@app.post("/todos", status_code=201)
+def create_todo(todo: Todo):
+    global next_id
+    todo.id = next_id
+    next_id += 1
+    todos_db[todo.id] = todo.model_dump()
+    return todo
+
+@app.get("/todos")
+def list_todos():
+    return list(todos_db.values())
+
+@app.get("/todos/{todo_id}")
+def get_todo(todo_id: int):
+    if todo_id not in todos_db:
+        raise HTTPException(status_code=404, detail="待办不存在")
+    return todos_db[todo_id]
+
+@app.put("/todos/{todo_id}")
+def update_todo(todo_id: int, todo: Todo):
+    if todo_id not in todos_db:
+        raise HTTPException(status_code=404, detail="待办不存在")
+    todo.id = todo_id
+    todos_db[todo_id] = todo.model_dump()
+    return todo
+
+@app.delete("/todos/{todo_id}", status_code=204)
+def delete_todo(todo_id: int):
+    if todo_id not in todos_db:
+        raise HTTPException(status_code=404, detail="待办不存在")
+    del todos_db[todo_id]
+
+# 启动后用 /docs 测试所有接口
+\`\`\`
 
 ---
 
@@ -1888,6 +2804,232 @@ def cpu_good():
     return {"total": total}
 \`\`\`
 
+## Demo（新增·入门）：异步文件读取
+
+**生活类比**：同步读文件像"自己去图书馆找书，找到才能干别的"；异步读文件像"让图书管理员去找，你继续喝咖啡，找到了通知你"。
+
+\`\`\`python
+# 演示异步文件读取
+# 导入 asyncio 模块（异步基础设施）
+import asyncio
+# 导入 aiofiles 模块（异步文件操作库）
+# 需要先安装：pip install aiofiles
+import aiofiles
+# 从 fastapi 包导入 FastAPI 类
+from fastapi import FastAPI
+
+# 创建 FastAPI 应用实例
+app = FastAPI(title="异步文件读取 Demo")
+
+# 异步读文件接口
+# async def 路由，用 aiofiles 异步读
+@app.get("/file/{filename}")
+# 定义异步函数 read_file，参数 filename 是 str
+async def read_file(filename: str):
+    # 安全检查：防止路径穿越攻击
+    # 如果 filename 包含 .. 或 /，可能读到敏感文件
+    if ".." in filename or "/" in filename:
+        return {"error": "非法文件名"}
+
+    # 用 aiofiles 异步打开文件
+    # async with 是异步上下文管理器，会在退出时自动关闭文件
+    # 比同步 with 更好：等待文件打开时不阻塞事件循环
+    try:
+        async with aiofiles.open(f"./data/{filename}", mode="r", encoding="utf-8") as f:
+            # 异步读取整个文件
+            # await f.read() 不会阻塞事件循环
+            content = await f.read()
+        # 返回文件内容
+        return {"filename": filename, "content": content, "length": len(content)}
+    except FileNotFoundError:
+        # 文件不存在
+        return {"error": "文件不存在"}
+
+# 对比：同步读文件会阻塞事件循环
+@app.get("/file-sync/{filename}")
+# 定义函数 read_file_sync，参数 filename 是 str（注意是 def 不是 async def）
+def read_file_sync(filename: str):
+    # 同步读，阻塞线程池一个线程
+    # FastAPI 看到 def 会自动放线程池，所以不会卡事件循环
+    try:
+        with open(f"./data/{filename}", mode="r", encoding="utf-8") as f:
+            content = f.read()
+        return {"filename": filename, "content": content, "length": len(content)}
+    except FileNotFoundError:
+        return {"error": "文件不存在"}
+
+# 准备测试：
+# 1. mkdir data && echo "hello async" > data/test.txt
+# 2. 启动服务
+# 3. 访问 /file/test.txt → 异步读取
+# 4. 访问 /file-sync/test.txt → 同步读取（在线程池跑）
+\`\`\`
+
+**为什么这么写**：
+- \`aiofiles\` 是异步文件库，\`await f.read()\` 时不阻塞事件循环。
+- 同步 \`def\` 路由的 \`open()\` 会被 FastAPI 放线程池，也不卡事件循环。
+- 路径校验防止 \`../\` 穿越，避免读到敏感文件。
+
+## Demo（新增·进阶）：并发请求多个外部 API
+
+**生活类比**：同步请求像"一个个打电话问价格"（A 问完才问 B）；并发请求像"群发短信同时问，谁先回先处理谁"。
+
+\`\`\`python
+# 演示并发请求多个外部 API
+# 导入 asyncio 模块
+import asyncio
+# 导入 time 模块（用于计时）
+import time
+# 导入 httpx 模块（异步 HTTP 客户端）
+# 需要先安装：pip install httpx
+import httpx
+# 从 fastapi 包导入 FastAPI 类
+from fastapi import FastAPI
+
+# 创建 FastAPI 应用实例
+app = FastAPI(title="并发请求 Demo")
+
+# 模拟外部 API 地址（用 httpbin.org 演示）
+# 实际项目里这些是真实的第三方 API
+API_URLS = [
+    "https://httpbin.org/delay/1",  # 延迟 1 秒返回
+    "https://httpbin.org/delay/1",
+    "https://httpbin.org/delay/1",
+]
+
+# ❌ 串行请求：一个接一个，总共 3 秒
+@app.get("/serial-fetch")
+# 定义异步函数 serial_fetch，无参数
+async def serial_fetch():
+    # 记录开始时间
+    start = time.time()
+    results = []
+    # 创建 HTTP 客户端
+    # async with 确保用完关闭连接池
+    async with httpx.AsyncClient() as client:
+        # 一个个请求，串行执行
+        for url in API_URLS:
+            # await 等当前请求完成才发下一个
+            response = await client.get(url)
+            results.append({"url": url, "status": response.status_code})
+    # 计算耗时
+    elapsed = time.time() - start
+    # 返回结果
+    return {"results": results, "elapsed": round(elapsed, 2)}
+
+# ✅ 并发请求：同时发，总共 1 秒
+@app.get("/concurrent-fetch")
+# 定义异步函数 concurrent_fetch，无参数
+async def concurrent_fetch():
+    # 记录开始时间
+    start = time.time()
+    # 创建 HTTP 客户端
+    async with httpx.AsyncClient() as client:
+        # 用 asyncio.gather 并发执行所有请求
+        # gather 会同时发起所有请求，等最慢的那个完成
+        responses = await asyncio.gather(
+            *[client.get(url) for url in API_URLS]
+        )
+    # 整理结果
+    results = [
+        {"url": url, "status": response.status_code}
+        for url, response in zip(API_URLS, responses)
+    ]
+    # 计算耗时
+    elapsed = time.time() - start
+    # 返回结果
+    return {"results": results, "elapsed": round(elapsed, 2)}
+
+# 测试：
+# curl http://127.0.0.1:8000/serial-fetch       → elapsed ≈ 3.0 秒
+# curl http://127.0.0.1:8000/concurrent-fetch   → elapsed ≈ 1.0 秒
+# 并发版本快 3 倍！
+\`\`\`
+
+**为什么这么写**：
+- \`httpx.AsyncClient\` 是异步 HTTP 客户端，替代同步的 \`requests\`。
+- \`asyncio.gather\` 并发执行多个协程，等所有完成。
+- \`*[client.get(url) for url in API_URLS]\` 用解包语法把列表展开成多个参数。
+
+## Demo（新增·进阶）：后台任务
+
+**生活类比**：后台任务像"餐厅服务员点完菜，把单子递给厨房后立刻去服务下一桌，厨房做完菜再喊服务员端菜"。服务员不用守着厨房等。
+
+\`\`\`python
+# 演示后台任务（BackgroundTasks）
+# 后台任务允许你在响应返回后继续执行任务
+# 适合：发邮件、写日志、清理缓存等不需要立即完成的操作
+# 从 fastapi 包导入 FastAPI, BackgroundTasks
+# BackgroundTasks 是 FastAPI 的后台任务机制
+from fastapi import FastAPI, BackgroundTasks
+# 从 pydantic 包导入 BaseModel
+from pydantic import BaseModel
+# 导入 time 模块
+import time
+
+# 创建 FastAPI 应用实例
+app = FastAPI(title="后台任务 Demo")
+
+# 定义请求体模型
+class EmailRequest(BaseModel):
+    # 收件人
+    to: str
+    # 主题
+    subject: str
+    # 正文
+    body: str
+
+# 模拟发邮件函数（实际项目用 smtplib 或第三方服务）
+def send_email(to: str, subject: str, body: str):
+    # 模拟发邮件耗时 3 秒
+    # 注意：这是同步函数，BackgroundTasks 会放线程池跑
+    time.sleep(3)
+    # 实际项目这里调用 SMTP 或 SendGrid 等
+    print(f"邮件已发送：{to} | {subject}")
+
+# 模拟写日志
+def write_log(message: str):
+    # 模拟写日志
+    time.sleep(1)
+    print(f"日志已记录：{message}")
+
+# 发送邮件接口（带后台任务）
+@app.post("/send-email")
+# 定义函数 send_email_endpoint
+# 参数 email 是 EmailRequest 类型
+# 参数 background_tasks 是 BackgroundTasks 类型（FastAPI 自动注入）
+def send_email_endpoint(email: EmailRequest, background_tasks: BackgroundTasks):
+    # 把发邮件任务加到后台
+    # add_task 接收函数和参数
+    # 响应会立即返回，不等发邮件完成
+    background_tasks.add_task(
+        send_email,           # 要执行的函数
+        to=email.to,          # 关键字参数
+        subject=email.subject,
+        body=email.body,
+    )
+    # 再加一个写日志任务
+    # 多个任务会按添加顺序执行
+    background_tasks.add_task(write_log, f"邮件已发送给 {email.to}")
+
+    # 立即返回响应，不等后台任务完成
+    return {
+        "message": "邮件已加入发送队列",
+        "to": email.to,
+        "subject": email.subject,
+    }
+
+# 测试：
+# POST /send-email body={"to":"a@b.com","subject":"测试","body":"你好"}
+# 立即返回响应，但终端 3 秒后才打印"邮件已发送"
+\`\`\`
+
+**为什么这么写**：
+- \`BackgroundTasks\` 是 FastAPI 内置的轻量级后台任务机制。
+- 适合"不需要等结果"的操作：发邮件、写日志、推送通知。
+- \`add_task\` 接收函数和参数，响应返回后异步执行。
+- 注意：后台任务是同步的会放线程池，不是真正的 async。
+
 ## ASGI 服务器对比
 
 FastAPI 本身不监听端口，需要 ASGI 服务器来跑它。主流有三个：
@@ -2078,6 +3220,193 @@ async def users_good():
 | SQLite | sqlite3 | aiosqlite |
 | 通用 ORM | SQLAlchemy（同步） | SQLAlchemy 2.0（async）、SQLModel |
 
+## 常见错误（新手避坑）
+
+### 错误 1：在 async 路由里用 time.sleep
+
+\`\`\`python
+# ❌ 错误：async 路由用 time.sleep，卡住整个事件循环
+@app.get("/bad")
+async def bad():
+    import time
+    time.sleep(5)  # 整个服务器卡 5 秒！
+    return {"msg": "done"}
+
+# ✅ 正确：用 asyncio.sleep
+@app.get("/good")
+async def good():
+    import asyncio
+    await asyncio.sleep(5)  # 只挂起当前协程，不影响其他请求
+    return {"msg": "done"}
+\`\`\`
+
+**原因**：\`time.sleep\` 是同步阻塞，会卡住事件循环；\`asyncio.sleep\` 是异步挂起，会让出 CPU。
+
+### 错误 2：在 async 路由里用 requests
+
+\`\`\`python
+# ❌ 错误：async 路由用 requests（同步 HTTP 库）
+@app.get("/bad")
+async def bad():
+    import requests
+    r = requests.get("https://api.example.com")  # 阻塞事件循环
+    return r.json()
+
+# ✅ 正确：用 httpx（异步 HTTP 库）
+@app.get("/good")
+async def good():
+    import httpx
+    async with httpx.AsyncClient() as client:
+        r = await client.get("https://api.example.com")
+        return r.json()
+\`\`\`
+
+**原因**：\`requests\` 是同步库，会阻塞事件循环；\`httpx\` 支持异步，\`await\` 时不占线程。
+
+### 错误 3：忘加 await
+
+\`\`\`python
+# ❌ 错误：忘了 await，协程没执行
+@app.get("/bad")
+async def bad():
+    asyncio.sleep(1)  # 没 await！返回的是协程对象，没执行
+    return {"msg": "ok"}
+
+# ✅ 正确：加 await
+@app.get("/good")
+async def good():
+    await asyncio.sleep(1)  # 正确等待
+    return {"msg": "ok"}
+\`\`\`
+
+**原因**：调用 async 函数返回的是协程对象，必须 \`await\` 才会执行。Python 会警告但不报错，容易忽略。
+
+## 动手实验
+
+### 实验 1：体验 async/await（5 分钟）
+
+目标：理解 async 路由和同步路由的区别。
+
+\`\`\`python
+# 实验任务：
+# 1. 写一个 async 路由 /async-slow，用 await asyncio.sleep(2) 模拟慢请求
+# 2. 写一个普通路由 /sync-slow，用 time.sleep(2) 模拟慢请求
+# 3. 写一个快速路由 /ping，立即返回
+# 4. 同时请求 /async-slow 和 /ping，观察 /ping 是否被阻塞
+# 5. 同时请求 /sync-slow 和 /ping，观察 /ping 是否被阻塞
+
+# 参考答案：
+import asyncio
+import time
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/async-slow")
+async def async_slow():
+    await asyncio.sleep(2)
+    return {"type": "async", "msg": "done"}
+
+@app.get("/sync-slow")
+def sync_slow():
+    time.sleep(2)
+    return {"type": "sync", "msg": "done"}
+
+@app.get("/ping")
+async def ping():
+    return {"msg": "pong"}
+
+# 测试：
+# 终端 A：curl http://127.0.0.1:8000/async-slow &
+# 终端 B：curl http://127.0.0.1:8000/ping  → 立即返回！
+#
+# 终端 A：curl http://127.0.0.1:8000/sync-slow &
+# 终端 B：curl http://127.0.0.1:8000/ping  → 等 2 秒才返回（因为 def 放线程池）
+\`\`\`
+
+### 实验 2：并发 vs 串行（10 分钟）
+
+目标：感受 asyncio.gather 的并发威力。
+
+\`\`\`python
+# 实验任务：
+# 1. 写一个 async 函数 fetch(url)，模拟 1 秒网络延迟
+# 2. 写 /serial 接口，串行调用 3 次 fetch
+# 3. 写 /concurrent 接口，用 asyncio.gather 并发调用 3 次 fetch
+# 4. 对比两个接口的耗时
+
+# 参考答案：
+import asyncio
+import time
+from fastapi import FastAPI
+
+app = FastAPI()
+
+async def fetch(url: str):
+    await asyncio.sleep(1)
+    return {"url": url, "data": "..."}
+
+@app.get("/serial")
+async def serial():
+    start = time.time()
+    a = await fetch("https://api.a.com")
+    b = await fetch("https://api.b.com")
+    c = await fetch("https://api.c.com")
+    return {"elapsed": time.time() - start}
+
+@app.get("/concurrent")
+async def concurrent():
+    start = time.time()
+    a, b, c = await asyncio.gather(
+        fetch("https://api.a.com"),
+        fetch("https://api.b.com"),
+        fetch("https://api.c.com"),
+    )
+    return {"elapsed": time.time() - start}
+
+# /serial → elapsed ≈ 3.0
+# /concurrent → elapsed ≈ 1.0
+\`\`\`
+
+### 实验 3：后台任务（10 分钟）
+
+目标：用 BackgroundTasks 实现异步发邮件。
+
+\`\`\`python
+# 实验任务：
+# 1. 写一个 send_email 函数（模拟耗时 3 秒）
+# 2. 写 POST /send-email 接口，用 BackgroundTasks 在后台发邮件
+# 3. 响应立即返回，不等邮件发完
+
+# 参考答案：
+import time
+from fastapi import FastAPI, BackgroundTasks
+from pydantic import BaseModel
+
+app = FastAPI()
+
+class EmailRequest(BaseModel):
+    to: str
+    subject: str
+    body: str
+
+def send_email(to: str, subject: str, body: str):
+    time.sleep(3)
+    print(f"邮件已发送：{to} | {subject}")
+
+@app.post("/send-email")
+def send_email_endpoint(email: EmailRequest, background_tasks: BackgroundTasks):
+    background_tasks.add_task(
+        send_email,
+        to=email.to,
+        subject=email.subject,
+        body=email.body,
+    )
+    return {"message": "邮件已加入队列", "to": email.to}
+
+# POST /send-email → 立即返回，3 秒后终端打印"邮件已发送"
+\`\`\`
+
 ---
 
 ## 本章小结
@@ -2111,6 +3440,12 @@ async def users_good():
     icon: "📖",
     title: "自动文档：Swagger 与 ReDoc",
     content: `# 自动文档：Swagger 与 ReDoc
+
+## 生活类比：自动文档就像"会自我更新的菜单"
+
+传统餐厅的菜单是纸质印刷的，一旦菜品改了，菜单得过好久才能重印（传统框架：代码改了文档没更新）。
+
+FastAPI 的文档像"电子菜单"：你在厨房挂块牌子（写类型注解），门口的电子菜单（\`/docs\`）实时同步显示。改了牌子，菜单立刻更新，永远不会过期。
 
 ## OpenAPI 规范：API 描述的"普通话"
 
@@ -2352,98 +3687,157 @@ def read_item(item_id: int):
 
 docstring 里的 Markdown 会被渲染到 description，比单独传参数整洁。summary 自动取 docstring 第一行。
 
-### Markdown 支持的语法
+## Demo（新增·入门）：带完整文档的接口
 
-description 和 docstring 支持 Markdown，常用语法：
-
-\`\`\`python
-# """
-# 标题用 # ## ###
-# 加粗用 **text**
-# 斜体用 *text*
-# 代码用 \`code\`
-# 代码块用 \`\`\`
-# 列表用 - 或 1.
-# 链接用 [text](url)
-# 表格用 | a | b |
-# """
-\`\`\`
-
-善用 Markdown 能让文档更专业。
-
-## 响应示例定制：examples
-
-默认的响应示例是自动生成的，但你可以定制更真实的示例：
+**生活类比**：给每个接口挂"菜品介绍牌"——客人一看就知道这道菜是什么、有什么料。
 
 \`\`\`python
-# 从 fastapi 包导入 FastAPI
-from fastapi import FastAPI
-# 从 pydantic 包导入 BaseModel
-from pydantic import BaseModel
-
-# 定义 Pydantic 数据模型 Item，继承 BaseModel
-class Item(BaseModel):
-    # 字段 id，类型 int
-    id: int
-    # 字段 name，类型 str
-    name: str
-    # 字段 price，类型 float
-    price: float
+# 演示带完整文档的接口
+# 从 fastapi 包导入 FastAPI, Query 类
+from fastapi import FastAPI, Query
 
 # 创建 FastAPI 应用实例
-app = FastAPI()
+app = FastAPI(
+    title="用户管理 API",
+    description="一个简单的用户管理 demo，演示文档定制",
+    version="1.0.0",
+)
 
-# 装饰器：app.get
+# GET /users：列出用户
+# 用 docstring 自动生成文档
+@app.get("/users", tags=["用户"])
+def list_users(
+    # skip：分页偏移，默认 0
+    skip: int = Query(default=0, ge=0, description="跳过前 N 条记录"),
+    # limit：每页数量，默认 10，最大 100
+    limit: int = Query(default=10, ge=1, le=100, description="每页数量，1-100"),
+):
+    """
+    列出所有用户。
+
+    支持分页查询：
+    - **skip**：跳过前 N 条，默认 0
+    - **limit**：每页数量，默认 10，最大 100
+
+    返回用户列表和总数。
+    """
+    # 模拟数据
+    all_users = [{"id": i, "name": f"用户{i}"} for i in range(1, 51)]
+    return {
+        "data": all_users[skip : skip + limit],
+        "total": len(all_users),
+        "skip": skip,
+        "limit": limit,
+    }
+
+# 启动后访问 /docs，会看到：
+# 1. 顶部有标题和描述
+# 2. 接口按 tags 分组
+# 3. 每个参数有描述
+# 4. 点开有 docstring 渲染的说明
+\`\`\`
+
+**为什么这么写**：
+- \`Query(description=...)\` 让每个参数都有说明，文档自动显示。
+- docstring 自动成为接口详细说明，支持 Markdown。
+- \`tags\` 让接口分组，导航清晰。
+
+## Demo（新增·进阶）：响应示例定制
+
+**生活类比**：菜单上配实物图——客人一看就知道菜长什么样，不用猜。
+
+\`\`\`python
+# 演示响应示例定制
+# 从 fastapi 包导入 FastAPI 类
+from fastapi import FastAPI
+# 从 pydantic 包导入 BaseModel, Field
+from pydantic import BaseModel, Field
+
+# 创建 FastAPI 应用实例
+app = FastAPI(title="响应示例 Demo")
+
+# 定义产品模型
+class Product(BaseModel):
+    # 产品 ID
+    id: int = Field(description="产品 ID")
+    # 产品名称
+    name: str = Field(description="产品名称")
+    # 产品价格
+    price: float = Field(gt=0, description="产品价格")
+
+# GET 接口：带响应示例
 @app.get(
-    # 路径
-    "/items/{item_id}",
-    # response_model：声明响应的数据模型
-    response_model=Item,
-    # responses：定制每个状态码的描述和示例
+    "/products/{product_id}",
+    response_model=Product,
+    # responses 定制响应示例
     responses={
         # 200 成功响应
         200: {
-            "description": "商品详情",
+            "description": "产品详情",
             "content": {
                 "application/json": {
                     # example：单个示例
-                    "example": {"id": 42, "name": "苹果手机", "price": 5999.0}
+                    "example": {
+                        "id": 42,
+                        "name": "iPhone 15",
+                        "price": 7999.0
+                    }
                 }
             },
         },
         # 404 未找到
         404: {
-            "description": "商品不存在",
+            "description": "产品不存在",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Item 42 not found"}
+                    "example": {"detail": "产品 ID 42 不存在"}
                 }
             },
         },
-        # 422 校验失败
-        422: {
-            "description": "参数校验失败",
-        },
     },
 )
-# 定义函数 read_item，参数 item_id 是 int
-def read_item(item_id: int):
-    # 返回 {"id": item_id, "name": "苹果手机", "price": 5999.0}
-    return {"id": item_id, "name": "苹果手机", "price": 5999.0}
+def get_product(product_id: int):
+    """查询产品详情。"""
+    # 模拟返回（实际从数据库查）
+    if product_id == 42:
+        return {"id": 42, "name": "iPhone 15", "price": 7999.0}
+    # 没找到，返回 404 示例
+    from fastapi import HTTPException
+    raise HTTPException(status_code=404, detail=f"产品 ID {product_id} 不存在")
+
+# 文档里会显示两种响应示例：200 和 404
+# 前端联调时一看就懂
 \`\`\`
 
-\`responses\` 参数能定制每个状态码的描述和示例，前端联调时一看就懂。
+**为什么这么写**：
+- \`responses\` 参数能定制每个状态码的描述和示例。
+- 前端看文档就知道成功和失败分别返回什么。
+- \`example\` 是单个示例，\`examples\`（复数）可以给多个。
 
-### 多个示例：examples
-
-如果想给多个示例（比如"成功"和"失败"两种响应），用 \`examples\`（复数）：
+## Demo（新增·进阶）：多示例与弃用标记
 
 \`\`\`python
-# 装饰器：app.post
+# 演示多示例和弃用标记
+# 从 fastapi 包导入 FastAPI 类
+from fastapi import FastAPI
+# 从 pydantic 包导入 BaseModel
+from pydantic import BaseModel
+
+# 创建 FastAPI 应用实例
+app = FastAPI(title="多示例 Demo")
+
+# 定义订单模型
+class Order(BaseModel):
+    id: int
+    product: str
+    quantity: int
+    total: float
+
+# POST 接口：带多个响应示例
 @app.post(
-    # 路径
-    "/items/",
-    # responses 定制多个示例
+    "/orders",
+    response_model=Order,
+    status_code=201,
     responses={
         201: {
             "description": "创建成功",
@@ -2451,14 +3845,14 @@ def read_item(item_id: int):
                 "application/json": {
                     # examples（复数）：多个命名示例
                     "examples": {
-                        "成功示例1": {
-                            "summary": "正常商品",
-                            "value": {"id": 1, "name": "苹果", "price": 5.5},
+                        "普通订单": {
+                            "summary": "小额订单",
+                            "value": {"id": 1, "product": "笔记本", "quantity": 2, "total": 30.0},
                         },
-                        "成功示例2": {
-                            "summary": "贵重商品",
-                            "value": {"id": 2, "name": "手表", "price": 9999.0},
-                            "description": "贵重商品需要额外审核",
+                        "大额订单": {
+                            "summary": "贵重物品",
+                            "value": {"id": 2, "product": "iPhone", "quantity": 1, "total": 7999.0},
+                            "description": "贵重物品需要额外审核",
                         },
                     }
                 }
@@ -2466,186 +3860,33 @@ def read_item(item_id: int):
         }
     },
 )
-# 定义函数 create_item，参数 item 是 Item 类型
-def create_item(item: Item):
-    # 返回 item
-    return item
-\`\`\`
+def create_order(order: Order):
+    """创建订单。"""
+    return order
 
-Swagger UI 会有下拉框切换不同示例，方便展示各种场景。
-
-## 弃用标记：deprecated
-
-接口要下线但不能立刻删（兼容老客户端），用 \`deprecated=True\` 标记：
-
-\`\`\`python
-# 定义 GET 路由：访问 /old-api 时触发
+# 弃用接口：deprecated=True
 @app.get(
-    # 路径
-    "/old-api",
-    # tags 标签
-    tags=["旧接口"],
-    # deprecated=True 标记为已弃用
-    deprecated=True,
-    # summary 说明
-    summary="（已弃用）旧版查询接口",
+    "/old-orders",
+    tags=["订单"],
+    deprecated=True,  # 标记为已弃用
+    summary="（已弃用）旧版订单查询",
 )
-# 定义函数 old_api，无参数
-def old_api():
+def old_orders():
     """
-    ⚠️ 此接口已弃用，请使用 /new-api。
+    ⚠️ 此接口已弃用，请使用 /orders。
 
     将在 2024-12-31 下线。
     """
-    # 返回 {"msg": "old api"}
     return {"msg": "old api"}
 
-# Swagger UI 里这个接口会显示删除线 + 黄色警告图标
-# 前端看到就知道别用了
+# Swagger UI 里：
+# - /orders 的响应区有下拉框切换"普通订单"和"大额订单"
+# - /old-orders 显示删除线 + 黄色警告图标
 \`\`\`
 
-Swagger UI 里这个接口会显示删除线 + 黄色警告图标，前端看到就知道别用了。
-
-## 完整实战：一个文档齐全的应用
-
-把前面的知识串起来，写一个文档齐全的图书管理 API：
-
-\`\`\`python
-# main.py
-# 从 fastapi 包导入 FastAPI, Path, Query
-from fastapi import FastAPI, Path, Query
-# 从 pydantic 包导入 BaseModel, Field
-from pydantic import BaseModel, Field
-
-# 创建 FastAPI 应用实例，带完整元数据
-app = FastAPI(
-    title="图书管理 API",
-    description="""
-## 图书管理系统 API
-
-提供图书的增删改查能力。
-
-### 功能
-- 图书 CRUD
-- 按作者/分类查询
-
-### 联系
-- 邮箱：lib@company.com
-""",
-    version="1.0.0",
-    openapi_tags=[
-        {"name": "图书", "description": "图书相关接口"},
-        {"name": "分类", "description": "分类相关接口"},
-    ],
-)
-
-# 定义 Pydantic 数据模型 Book，继承 BaseModel
-class Book(BaseModel):
-    # 字段 id，类型 int
-    id: int
-    # 字段 title，类型 str，Field 加约束和描述
-    title: str = Field(min_length=1, max_length=100, description="书名")
-    # 字段 author，类型 str
-    author: str = Field(min_length=1, description="作者")
-    # 字段 price，类型 float
-    price: float = Field(gt=0, description="价格，必须大于 0")
-
-# 装饰器：app.get
-@app.get(
-    # 路径
-    "/books/{book_id}",
-    # tags 标签
-    tags=["图书"],
-    # response_model 响应模型
-    response_model=Book,
-    # summary 一句话说明
-    summary="查询图书详情",
-    # responses 响应示例
-    responses={
-        200: {
-            "description": "图书详情",
-            "content": {
-                "application/json": {
-                    "example": {"id": 1, "title": "三体", "author": "刘慈欣", "price": 45.0}
-                }
-            },
-        },
-        404: {"description": "图书不存在"},
-    },
-)
-# 定义函数 get_book，参数 book_id 和 detail
-def get_book(
-    # book_id：路径参数，int，>=1，有描述
-    # Path(...) 第一个参数 ... 是 Ellipsis，表示必填（路径参数本来就必填，这里显式声明）
-    # description 生成到 OpenAPI 文档的参数说明
-    # ge=1 表示 book_id 必须 >= 1（ge 是 greater than or equal 的缩写）
-    book_id: int = Path(..., description="图书 ID，正整数", ge=1),
-    # detail：查询参数，bool，默认 False
-    # Query(False, description=...) 第一个参数 False 是默认值
-    # bool 类型查询参数，传 ?detail=true / ?detail=1 都会转成 True
-    detail: bool = Query(False, description="是否返回详细信息"),
-):
-    """
-    根据 ID 查询图书。
-
-    - **book_id**：图书唯一标识
-    - **detail**：传 true 返回完整信息，false 只返回基本信息
-
-    若图书不存在，返回 404。
-    """
-    # 返回 {"id": book_id, "title": "三体", "author": "刘慈欣", "price": 45.0}
-    return {"id": book_id, "title": "三体", "author": "刘慈欣", "price": 45.0}
-
-# 装饰器：app.post
-@app.post(
-    # 路径
-    "/books",
-    # tags 标签
-    tags=["图书"],
-    # status_code 状态码
-    status_code=201,
-    # response_model 响应模型
-    response_model=Book,
-    # summary 说明
-    summary="创建新图书",
-    # responses 响应示例
-    responses={
-        201: {
-            "description": "创建成功",
-            "content": {
-                "application/json": {
-                    "example": {"id": 2, "title": "活着", "author": "余华", "price": 35.0}
-                }
-            },
-        },
-        422: {"description": "参数校验失败"},
-    },
-)
-# 定义函数 create_book，参数 book 是 Book 类型
-def create_book(book: Book):
-    """
-    创建一本新图书。
-
-    - **title**：书名，1-100 字符
-    - **author**：作者，非空
-    - **price**：价格，大于 0
-    """
-    # 返回 book
-    return book
-
-# 启动：uvicorn main:app --reload
-# 打开 /docs 看效果：分组、参数说明、响应示例、Markdown 文档全都有
-\`\`\`
-
-打开 \`/docs\`，你会看到：
-
-1. 顶部"图书管理 API"标题 + Markdown 描述。
-2. 按"图书""分类"分组（tags）。
-3. 每个接口有 summary、参数描述、响应示例。
-4. 点开有 Markdown 渲染的详细说明。
-5. 可以 Try it out 测试。
-
-一份代码，全套文档自动到位。
+**为什么这么写**：
+- \`examples\`（复数）可以给多个命名示例，Swagger UI 有下拉框切换。
+- \`deprecated=True\` 标记弃用，文档显示删除线，前端知道别用了。
 
 ## 文档的安全与生产环境处理
 
@@ -2655,17 +3896,12 @@ def create_book(book: Book):
 
 \`\`\`python
 # 创建 FastAPI 应用实例，所有文档端点设为 None
-# 把三个文档端点都设为 None，访问对应 URL 会返回 404
-# 这样外部完全看不到接口结构，最安全但内部也无法访问
 app = FastAPI(
-    docs_url=None,        # 关闭 /docs（Swagger UI 交互文档）
-    redoc_url=None,       # 关闭 /redoc（ReDoc 只读文档）
-    openapi_url=None,     # 关闭 /openapi.json（原始 OpenAPI 规范文件）
+    docs_url=None,        # 关闭 /docs（Swagger UI）
+    redoc_url=None,       # 关闭 /redoc（ReDoc）
+    openapi_url=None,     # 关闭 /openapi.json
 )
-# 适用场景：面向公网的生产 API，不需要对外暴露任何文档
 \`\`\`
-
-设为 \`None\` 就禁用对应端点。完全关闭最安全，但内部想用也用不了。
 
 ### 方式 2：按环境变量控制
 
@@ -2675,222 +3911,216 @@ import os
 # 从 fastapi 包导入 FastAPI 类
 from fastapi import FastAPI
 
-# 读取环境变量，判断是否生产环境
-# os.getenv("ENV", "dev") 默认 dev
-# 定义变量 is_prod，赋值为 os.getenv("ENV") == "prod"
+# 读取环境变量判断是否生产
 is_prod = os.getenv("ENV") == "prod"
 
-# 创建 FastAPI 应用实例，按环境开关文档
+# 创建应用，按环境开关文档
 app = FastAPI(
-    # 生产关闭 docs，开发开启
     docs_url=None if is_prod else "/docs",
-    # 生产关闭 redoc，开发开启
     redoc_url=None if is_prod else "/redoc",
-    # 生产关闭 openapi.json
     openapi_url=None if is_prod else "/openapi.json",
 )
 
-# 开发环境：ENV=dev uvicorn main:app → 文档可见
-# 生产环境：ENV=prod uvicorn main:app → 文档关闭
+# 开发：ENV=dev uvicorn main:app → 文档可见
+# 生产：ENV=prod uvicorn main:app → 文档关闭
 \`\`\`
 
-### 方式 3：给文档加认证
-
-更精细的做法：文档保留，但加一层认证（Basic Auth），只有内部人员能访问：
+### 方式 3：自定义文档 URL
 
 \`\`\`python
-# 导入 os 模块
-import os
-# 导入 secrets 模块（安全随机数）
-import secrets
-# 从 fastapi 包导入 FastAPI, HTTPException, Depends
-# Depends 用于依赖注入，HTTPException 用于抛出 HTTP 错误
-from fastapi import FastAPI, HTTPException, Depends
-# 从 fastapi.security 包导入 HTTPBasic, HTTPBasicCredentials
-# HTTPBasic 是 Basic Auth 方案，HTTPBasicCredentials 是解析后的凭据对象
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
-
-# 创建 FastAPI 应用实例
-app = FastAPI()
-# 创建 HTTPBasic 实例
-# security 作为依赖被注入时，会自动解析请求头的 Authorization 字段
-security = HTTPBasic()
-
-# 定义依赖函数 verify_docs，参数 credentials
-# Depends(security) 表示：调用此函数前，先执行 security 依赖，把结果赋给 credentials
-# FastAPI 看到 Depends 就知道这是个依赖，会自动解析并注入
-def verify_docs(credentials: HTTPBasicCredentials = Depends(security)):
-    # 校验用户名密码
-    # 用 secrets.compare_digest 防止时序攻击
-    # 时序攻击：普通 == 比较会在第一个不匹配字符就返回，攻击者通过响应时间猜测密码
-    # compare_digest 无论是否匹配都比较完所有字符，时间恒定
-    # 定义变量 correct_user，赋值为 secrets.compare_digest(...)
-    correct_user = secrets.compare_digest(credentials.username, "admin")
-    # 定义变量 correct_pass，赋值为 secrets.compare_digest(...)
-    # 密码从环境变量 DOCS_PASS 读取，不写死在代码里
-    correct_pass = secrets.compare_digest(credentials.password, os.getenv("DOCS_PASS", ""))
-    # 如果不正确
-    if not (correct_user and correct_pass):
-        # 抛出 401
-        # headers={"WWW-Authenticate": "Basic"} 让浏览器弹出登录框
-        raise HTTPException(status_code=401, headers={"WWW-Authenticate": "Basic"})
-    # 校验通过
-    return True
-
-# 用中间件或依赖保护 /docs（简化示例，实际用中间件更合适）
-# 这里只是示意，实际生产用 nginx 配置 auth_basic 更简单
-\`\`\`
-
-实际生产更常见的做法：用 Nginx 在反向代理层加 Basic Auth 保护 \`/docs\`、\`/redoc\`，比在应用层做更简单高效：
-
-\`\`\`nginx
-# nginx.conf 片段
-location /docs {
-    auth_basic "Restricted";
-    auth_basic_user_file /etc/nginx/.htpasswd;
-    proxy_pass http://127.0.0.1:8000;
-}
-\`\`\`
-
-### 方式 4：自定义文档 URL
-
-不想被人猜到 \`/docs\`，可以改路径：
-
-\`\`\`python
-# 创建 FastAPI 应用实例，改文档路径
-# 把文档 URL 改成难猜的字符串，减少被扫描到的概率
+# 把文档 URL 改成难猜的路径
 app = FastAPI(
-    # docs_url 改成带随机后缀的路径，避免被 /docs 直接扫到
-    docs_url="/internal-docs-abc123",  # 难猜的路径
-    # redoc_url 设为 None 完全关闭 ReDoc，减少暴露面
-    redoc_url=None,
-    # openapi.json 也改成难猜的路径，防止接口结构被直接抓取
+    docs_url="/internal-docs-abc123",      # 难猜的路径
+    redoc_url=None,                        # 关闭 ReDoc
     openapi_url="/internal-openapi-abc123.json",
 )
-
-# 安全提示：
-# - 改路径不是真正的安全（security through obscurity）
-# - 攻击者仍可能通过日志、前端代码、抓包拿到路径
-# - 生产环境建议组合：改路径 + Nginx 认证 + IP 白名单
 \`\`\`
 
-## 为什么自动文档这么重要
+## 常见错误（新手避坑）
 
-### 1. 前后端协作成本骤降
-
-传统流程：后端写接口 → 写文档（Word/Confluence）→ 发前端 → 前端照着调。文档和代码经常不同步，前端调出 bug 发现是文档过期。
-
-FastAPI 流程：后端写接口（带类型注解）→ 前端打开 \`/docs\` 直接看。文档=代码，永远同步。前端还能在 Swagger 里先 Try it out 试一下接口行为。
-
-### 2. 降低维护成本
-
-不用维护独立的文档系统、不用同步文档和代码、不用应付"文档和接口对不上"的工单。文档随代码版本走，git 里可追溯。
-
-### 3. 工具链打通
-
-OpenAPI 是标准，生态工具丰富：
-
-- **客户端生成**：openapi-generator 能从 \`/openapi.json\` 生成 TypeScript、Python、Go、Java 等语言的客户端 SDK。前端不用手写 fetch 调用。
-- **Mock 服务**：Prism、WireMock 等能基于 OpenAPI 起 mock 服务，后端没开发完前端就能联调。
-- **测试**：用 schema 做契约测试，保证接口实现符合契约。
-- **API 网关**：Kong、AWS API Gateway 能导入 OpenAPI 自动配置路由。
-
-## Demo：环境感知的文档配置
-
-把生产安全整合起来，写一个完整的环境感知文档配置：
+### 错误 1：response_model 和返回值对不上
 
 \`\`\`python
-# main.py
-# 导入 os 模块
-import os
-# 从 fastapi 包导入 FastAPI 类
-from fastapi import FastAPI
+# ❌ 错误：response_model 声明的字段，返回值里没有
+class User(BaseModel):
+    id: int
+    name: str
+    email: str
 
-# 读取环境
-# 定义变量 env，赋值为 os.getenv("ENV", "dev")
-env = os.getenv("ENV", "dev")
-# 定义变量 is_prod，赋值为 env == "prod"
-is_prod = env == "prod"
+@app.get("/users/{id}", response_model=User)
+def get_user(id: int):
+    return {"id": id, "name": "alice"}  # 缺 email！
+# 文档显示有 email，但实际返回没有，前端会出错
 
-# 创建 FastAPI 应用实例，按环境配置文档
+# ✅ 正确：返回值包含所有 response_model 字段
+@app.get("/users/{id}", response_model=User)
+def get_user(id: int):
+    return {"id": id, "name": "alice", "email": "a@b.com"}
+\`\`\`
+
+**原因**：\`response_model\` 声明的是"对外契约"，返回值必须符合。缺失字段会让前端拿不到数据。
+
+### 错误 2：生产环境忘了关文档
+
+\`\`\`python
+# ❌ 错误：生产环境暴露 /docs
+app = FastAPI()  # 默认开启 /docs
+# 攻击者访问 /docs 就能看到所有接口结构！
+
+# ✅ 正确：生产环境关闭文档
+is_prod = os.getenv("ENV") == "prod"
 app = FastAPI(
-    title="我的 API",
-    version="1.0.0",
-    # 生产关闭文档，开发开启
     docs_url=None if is_prod else "/docs",
     redoc_url=None if is_prod else "/redoc",
     openapi_url=None if is_prod else "/openapi.json",
-    # 生产不暴露详细信息
-    description="生产环境" if is_prod else "开发环境，详细描述...",
 )
-
-# 健康检查接口
-# 定义 GET 路由：访问 / 时触发
-@app.get("/", tags=["健康检查"])
-# 定义函数 health，无参数
-def health():
-    # 返回 {"status": "ok", "env": env}
-    return {"status": "ok", "env": env}
-
-# 启动：
-# 开发：ENV=dev uvicorn main:app --reload  → /docs 可访问
-# 生产：ENV=prod uvicorn main:app          → /docs 404
 \`\`\`
 
-## 常见问题与避坑
+**原因**：\`/docs\` 暴露接口结构，攻击者能据此构造攻击。生产环境务必关闭或加认证。
 
-### 问题 1：文档里接口顺序乱
-
-接口默认按定义顺序显示。想控制顺序，用 \`openapi_tags\` 定义 tags 顺序，接口按 tags 分组：
+### 错误 3：422 错误没在文档显示
 
 \`\`\`python
-# 定义 tags 顺序
-# openapi_tags 参数接收一个列表，列表里每个元素是一个字典
-# 字典的 "name" 字段是标签名（要和路由装饰器里 tags 参数对应）
-# 字典的 "description" 字段是标签描述，会显示在文档分组标题下方
-# 列表中元素的顺序，就是文档里分组的显示顺序
+# ❌ 错误：用了 responses 参数但没加 422
+@app.get("/items/{id}", responses={
+    200: {"description": "成功"},
+    404: {"description": "不存在"},
+    # 漏了 422！默认的 422 会被覆盖
+})
+
+# ✅ 正确：手动加 422
+@app.get("/items/{id}", responses={
+    200: {"description": "成功"},
+    404: {"description": "不存在"},
+    422: {"description": "参数校验失败"},  # 手动加
+})
+\`\`\`
+
+**原因**：用了 \`responses\` 参数会覆盖默认的 422，需要手动加回去。
+
+## 动手实验
+
+### 实验 1：给接口加文档（5 分钟）
+
+目标：用 docstring 和 tags 美化文档。
+
+\`\`\`python
+# 实验任务：
+# 1. 创建 FastAPI 应用，title="我的笔记 API"
+# 2. 写 GET /notes 接口，tags=["笔记"]
+# 3. 用 docstring 写详细说明
+# 4. 给查询参数加 description
+# 5. 访问 /docs 看效果
+
+# 参考答案：
+from fastapi import FastAPI, Query
+
 app = FastAPI(
-    openapi_tags=[
-        # 第一个 tag 会显示在文档最上面
-        {"name": "用户", "description": "用户相关"},
-        # 第二个 tag 显示在中间
-        {"name": "订单", "description": "订单相关"},
-        # 第三个 tag 显示在最下面
-        {"name": "商品", "description": "商品相关"},
-    ],
+    title="我的笔记 API",
+    description="一个简单的笔记管理 demo",
+    version="1.0.0",
 )
-# 文档里按 用户 → 订单 → 商品 顺序显示
-# 如果路由里用了未在 openapi_tags 声明的 tag，会追加到末尾显示
+
+@app.get("/notes", tags=["笔记"])
+def list_notes(
+    keyword: str | None = Query(default=None, description="搜索关键词"),
+    limit: int = Query(default=10, ge=1, le=50, description="每页数量"),
+):
+    """
+    列出所有笔记。
+
+    - **keyword**：可选，按关键词搜索
+    - **limit**：每页数量，默认 10
+
+    返回笔记列表。
+    """
+    notes = [{"id": 1, "title": "第一条笔记"}]
+    return {"data": notes, "keyword": keyword, "limit": limit}
 \`\`\`
 
-### 问题 2：response_model 和返回值对不上
+### 实验 2：响应示例（10 分钟）
 
-\`response_model\` 声明的字段，返回值里没有，文档会显示但实际返回没有。反过来，返回值有的字段 response_model 没有，会被过滤掉。两者要一致。
-
-### 问题 3：422 错误没在文档显示
-
-默认 422（校验失败）会自动出现。如果用了 \`responses\` 参数，要自己加 422，否则会被覆盖。
-
-### 问题 4：文档加载慢
-
-接口特别多时，\`/openapi.json\` 会很大。可以分版本（v1/v2 路由分开），或用 \`include_in_schema=False\` 隐藏内部接口：
+目标：给接口加响应示例。
 
 \`\`\`python
-# 定义 GET 路由：访问 /internal 时触发
-# include_in_schema=False 表示此接口不出现在 OpenAPI 文档里
-# 但接口本身仍然可以正常访问，只是 /docs 里看不到
-@app.get("/internal", include_in_schema=False)
-# 定义函数 internal，无参数
-def internal():
-    # 这个接口不会出现在文档里
-    # 适合内部监控、健康检查、调试接口等不需要对外暴露的端点
-    # 返回 {"msg": "internal"}
-    return {"msg": "internal"}
+# 实验任务：
+# 1. 定义 Product 模型（id, name, price）
+# 2. 写 GET /products/{id} 接口
+# 3. 给 200 和 404 加响应示例
+# 4. 访问 /docs 看示例显示
+
+# 参考答案：
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+
+app = FastAPI(title="产品 API")
+
+class Product(BaseModel):
+    id: int
+    name: str
+    price: float = Field(gt=0)
+
+@app.get(
+    "/products/{product_id}",
+    response_model=Product,
+    responses={
+        200: {
+            "description": "产品详情",
+            "content": {
+                "application/json": {
+                    "example": {"id": 1, "name": "手机", "price": 2999.0}
+                }
+            },
+        },
+        404: {
+            "description": "产品不存在",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "产品不存在"}
+                }
+            },
+        },
+    },
+)
+def get_product(product_id: int):
+    if product_id == 1:
+        return {"id": 1, "name": "手机", "price": 2999.0}
+    raise HTTPException(status_code=404, detail="产品不存在")
 \`\`\`
 
-### 问题 5：生产环境忘了关文档
+### 实验 3：环境感知文档（10 分钟）
 
-这是常见的安全隐患。\`/docs\` 暴露接口结构，攻击者能据此构造攻击。务必在生产环境关闭，或加认证。
+目标：按环境变量控制文档开关。
+
+\`\`\`python
+# 实验任务：
+# 1. 读取环境变量 ENV
+# 2. 生产环境（ENV=prod）关闭文档
+# 3. 开发环境（ENV=dev）开启文档
+# 4. 测试两种环境
+
+# 参考答案：
+import os
+from fastapi import FastAPI
+
+env = os.getenv("ENV", "dev")
+is_prod = env == "prod"
+
+app = FastAPI(
+    title="环境感知 API",
+    docs_url=None if is_prod else "/docs",
+    redoc_url=None if is_prod else "/redoc",
+    openapi_url=None if is_prod else "/openapi.json",
+)
+
+@app.get("/")
+def root():
+    return {"env": env, "docs_enabled": not is_prod}
+
+# 测试：
+# ENV=dev uvicorn main:app → /docs 可访问
+# ENV=prod uvicorn main:app → /docs 返回 404
+\`\`\`
 
 ---
 
@@ -2908,11 +4138,10 @@ def internal():
 | docstring | 自动作为接口详细说明（支持 Markdown） |
 | examples | 单个示例；examples 多个命名示例 |
 | deprecated | 标记弃用，文档显示删除线 |
-| include_in_schema | False 隐藏接口不出现在文档 |
 | 生产关闭 | docs_url=None / redoc_url=None / openapi_url=None |
-| 生产认证 | Nginx Basic Auth / IP 白名单 / 改路径 |
 | 价值 | 前后端协作成本降、文档不过期、工具链打通 |
 
 到这里 FastAPI 入门部分讲完了。你已经知道 FastAPI 是什么、怎么装、怎么跑、为什么异步、文档怎么来。下一批章节我们深入路由参数——路径参数、查询参数、校验，这是写接口最日常的部分。`
   }
 ];
+

@@ -29,6 +29,16 @@ export const chapters = [
 
 这些 URL 里的 \`42\`、\`2024\`、\`07\`、\`config/main.yaml\` 就是**路径参数**（path parameter）。它们是 URL 路径的一部分，用花括号 \`{}\` 在路由模板里声明，FastAPI 会自动提取并传给处理函数。
 
+### 🌰 生活类比：路径参数就像快递地址里的门牌号
+
+把 URL 想象成快递地址：
+
+- \`/users/42\`  → 北京市海淀区中关村大街**42号**
+- \`/users/42/items/7\` → 42号**7单元**
+- \`/files/config/main.yaml\` → 档案柜/config抽屉/**main.yaml 文件夹**
+
+门牌号是地址的一部分，**不可省略**——少写门牌号快递员就找不到地方。同样，路径参数在 URL 里是必传的，省略就是 404。
+
 路径参数和查询参数的区别在于位置和语义：
 
 - **路径参数**：在路径里，用来定位"哪个资源"，是 URL 的一部分，不可省略。
@@ -401,6 +411,189 @@ def get_posts_by_date(year: int, month: int, day: int):
 
 多路径参数让 URL 结构清晰：\`/users/alice/items/42\` 一眼能看出"用户 alice 的 42 号物品"。这是 RESTful 风格的精髓——URL 表达资源层级关系。
 
+### 🆕 Demo 9：用户文章列表（多路径参数 + 类型混合）
+
+这是一个更贴近实战的例子：用户有多篇文章，按年月归档查看。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+
+# 创建应用
+app = FastAPI()
+
+# 模拟文章数据库（按 username 索引）
+articles_db = {
+    "alice": [
+        {"id": 1, "title": "FastAPI 入门", "year": 2024, "month": 7},
+        {"id": 2, "title": "Python 进阶", "year": 2024, "month": 7},
+        {"id": 3, "title": "Docker 实战", "year": 2024, "month": 6},
+    ],
+    "bob": [
+        {"id": 4, "title": "Go 语言教程", "year": 2024, "month": 5},
+    ],
+}
+
+# 路径：/users/{username}/articles/{year}/{month}
+# 四个路径参数：username(str)、year(int)、month(int)
+# 还混入了一个查询参数 limit 用于分页
+@app.get("/users/{username}/articles/{year}/{month}")
+def get_user_articles_by_month(
+    username: str,        # 路径参数：用户名
+    year: int,            # 路径参数：年份
+    month: int,           # 路径参数：月份
+    limit: int = 10       # 查询参数：每页数量（不在路径里）
+):
+    # 访问 /users/alice/articles/2024/7?limit=2
+    # username="alice", year=2024, month=7, limit=2
+    
+    # 第 1 步：从数据库取出该用户的所有文章
+    user_articles = articles_db.get(username, [])
+    
+    # 第 2 步：过滤出指定年月的文章
+    # 列表推导式：遍历每篇文章，保留 year 和 month 都匹配的
+    filtered = [
+        a for a in user_articles
+        if a["year"] == year and a["month"] == month
+    ]
+    
+    # 第 3 步：应用 limit 分页
+    # [:limit] 是切片语法，取前 limit 个
+    paginated = filtered[:limit]
+    
+    return {
+        "username": username,
+        "year": year,
+        "month": month,
+        "total": len(filtered),
+        "articles": paginated
+    }
+\`\`\`
+
+访问 \`/users/alice/articles/2024/7\` 返回 alice 在 2024 年 7 月的两篇文章。这种"用户/资源/时间"的多层级路径是 RESTful 风格的典型用法。
+
+### 🆕 Demo 10：用 Enum 实现资源类型路由
+
+通过 Enum 限定路径参数的取值，让 API 路由本身就具备"自描述"能力。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+from enum import Enum
+
+# 创建应用
+app = FastAPI()
+
+# 定义资源类型枚举
+# 继承 str + Enum 让 FastAPI 知道这是字符串枚举
+class ResourceType(str, Enum):
+    article = "article"     # 文章
+    video = "video"         # 视频
+    audio = "audio"         # 音频
+    document = "document"   # 文档
+
+# 模拟资源数据库
+resources_db = {
+    "article": [{"id": 1, "title": "FastAPI 教程"}, {"id": 2, "title": "Python 进阶"}],
+    "video": [{"id": 1, "title": "FastAPI 视频课"}],
+    "audio": [{"id": 1, "title": "Python 播客"}],
+    "document": [{"id": 1, "title": "API 文档"}],
+}
+
+# 路径参数 resource_type 被枚举限定
+@app.get("/resources/{resource_type}")
+def list_resources(resource_type: ResourceType):
+    # 访问 /resources/article → resource_type=ResourceType.article
+    # 访问 /resources/xyz → 422，因为 xyz 不在枚举里
+    # FastAPI 在 /docs 里会自动列出可选值：article/video/audio/document
+    
+    # .value 拿到枚举对应的字符串值（如 "article"）
+    resources = resources_db.get(resource_type.value, [])
+    return {
+        "type": resource_type.value,
+        "count": len(resources),
+        "data": resources
+    }
+
+# 获取单个资源
+@app.get("/resources/{resource_type}/{resource_id}")
+def get_resource(resource_type: ResourceType, resource_id: int):
+    # 路径里有两个参数：resource_type(枚举) 和 resource_id(int)
+    # 访问 /resources/article/1
+    resources = resources_db.get(resource_type.value, [])
+    # 查找指定 ID
+    for r in resources:
+        if r["id"] == resource_id:
+            return r
+    return {"error": f"未找到 {resource_type.value} ID={resource_id}"}
+\`\`\`
+
+枚举作为路径参数的好处：用户传非法值时直接 422 拦截，避免脏数据进入业务逻辑；文档自动列出可选值，前端不用额外查文档。
+
+### 🆕 Demo 11：RESTful 风格的 CRUD 路由设计
+
+一个完整的"用户管理"接口，演示路径参数在不同 HTTP 方法下的复用。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、HTTPException
+from fastapi import FastAPI, HTTPException
+
+# 创建应用
+app = FastAPI()
+
+# 模拟用户数据库
+users_db = {
+    1: {"id": 1, "name": "Alice", "email": "alice@example.com"},
+    2: {"id": 2, "name": "Bob", "email": "bob@example.com"},
+}
+# 用于生成下一个用户 ID
+next_id = 3
+
+# GET /users —— 列表（没有路径参数）
+@app.get("/users")
+def list_users():
+    # 直接返回所有用户
+    # list(users_db.values()) 把字典的值转成列表
+    return {"users": list(users_db.values())}
+
+# GET /users/{user_id} —— 详情（路径参数定位单个用户）
+@app.get("/users/{user_id}")
+def get_user(user_id: int):
+    # user_id: int 自动把 URL 里的 "1" 转成 int 1
+    # users_db.get(user_id) 用 ID 查找，找不到返回 None
+    user = users_db.get(user_id)
+    if user is None:
+        # 抛 404 异常，HTTPException 是 FastAPI 的异常类
+        # detail 是返回给客户端的错误信息
+        raise HTTPException(status_code=404, detail=f"用户 {user_id} 不存在")
+    return user
+
+# PUT /users/{user_id} —— 更新（路径参数定位 + body 传新数据）
+@app.put("/users/{user_id}")
+def update_user(user_id: int, name: str = None, email: str = None):
+    # 这里 name 和 email 用查询参数演示（实际项目应该用 Pydantic body）
+    user = users_db.get(user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    # 局部更新：只更新传了的字段
+    if name is not None:
+        user["name"] = name
+    if email is not None:
+        user["email"] = email
+    return {"msg": "更新成功", "user": user}
+
+# DELETE /users/{user_id} —— 删除（路径参数定位）
+@app.delete("/users/{user_id}")
+def delete_user(user_id: int):
+    if user_id not in users_db:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    # pop 同时取出并删除
+    deleted = users_db.pop(user_id)
+    return {"msg": "删除成功", "deleted": deleted}
+\`\`\`
+
+注意看：\`/users/{user_id}\` 这个路径模板被 \`GET\`、\`PUT\`、\`DELETE\` 三个方法复用。同一个 URL，不同 HTTP 方法对应不同操作——这就是 RESTful 的精髓。
+
 ## 八、路径参数的最佳实践
 
 ### 1. 用复数名词表示资源集合
@@ -540,6 +733,85 @@ def search(keyword: str):
 
 不用手动解码，FastAPI/Starlette 已经处理好了。
 
+## 十、动手实验
+
+### 实验 1：基础类型转换体验
+
+启动服务后用浏览器或 curl 测试：
+
+\`\`\`bash
+# 启动服务（把 Demo 2 保存为 main.py）
+uvicorn main:app --reload
+
+# 测试正常整数
+curl http://127.0.0.1:8000/items/42
+# 期望返回：{"item_id":42}
+
+# 测试非法输入
+curl http://127.0.0.1:8000/items/abc
+# 期望返回：422 错误
+
+# 打开交互式文档
+open http://127.0.0.1:8000/docs
+\`\`\`
+
+观察 \`/docs\` 文档里对参数类型的描述，体会类型注解对文档的影响。
+
+### 实验 2：路由顺序问题复现
+
+把 Demo 5 的路由顺序反过来：
+
+\`\`\`python
+# ❌ 故意写错顺序
+@app.get("/users/{user_id}")
+def read_user(user_id: int):
+    return {"user_id": user_id}
+
+@app.get("/users/me")
+def read_current_user():
+    return {"user": "current user"}
+\`\`\`
+
+\`\`\`bash
+# 访问 /users/me
+curl http://127.0.0.1:8000/users/me
+# 期望：返回 422 错误，因为 "me" 被当成 user_id 然后转 int 失败
+\`\`\`
+
+观察错误响应里的 \`loc\` 字段，理解"先注册先匹配"的规则。
+
+### 实验 3：用 Enum 实现一个天气查询接口
+
+参考下面需求自己实现：
+
+- 路径 \`/weather/{city}\`，city 是 \`Enum\`：\`beijing\`、\`shanghai\`、\`guangzhou\`
+- 返回该城市的模拟天气数据
+- 访问非法城市返回 422
+
+\`\`\`bash
+# 测试合法城市
+curl http://127.0.0.1:8000/weather/beijing
+
+# 测试非法城市
+curl http://127.0.0.1:8000/weather/paris
+# 期望：422
+\`\`\`
+
+### 实验 4：实现多层级嵌套资源
+
+挑战题：实现 \`/organizations/{org_id}/teams/{team_id}/members/{user_id}\`，三层嵌套，返回对应用户。
+
+提示：
+
+\`\`\`python
+@app.get("/organizations/{org_id}/teams/{team_id}/members/{user_id}")
+def get_member(org_id: int, team_id: int, user_id: int):
+    # 三个路径参数，依次定位：组织 → 团队 → 成员
+    ...
+\`\`\`
+
+完成后访问 \`/docs\`，看看文档是怎么展示三层级路径的。
+
 ## 本章小结
 
 | 知识点 | 要点 |
@@ -575,6 +847,18 @@ GET /items?skip=0&limit=10&q=apple
 GET /users?role=admin&active=true
 GET /posts?sort=created_at&order=desc&page=2&page_size=20
 \`\`\`
+
+### 🌰 生活类比：查询参数就像淘宝的筛选条件
+
+把 URL 想象成淘宝购物页面：
+
+- \`/products\` 是"商品总目录"（路径参数定位资源集合）
+- \`?category=phone\` 是"只看手机分类"（筛选）
+- \`&min_price=1000&max_price=5000\` 是"价格区间"（范围筛选）
+- \`&sort=price&order=asc\` 是"按价格升序"（排序）
+- \`&page=2&page_size=20\` 是"第 2 页，每页 20 个"（分页）
+
+筛选条件可加可不加，**不写就默认看全部**——这正是查询参数"可省略"的特性。而路径参数就像"淘宝主目录"本身，不能不选。
 
 查询参数的作用是**对资源进行过滤、排序、分页**，和路径参数分工明确：
 
@@ -888,6 +1172,245 @@ def get_user_items(
 - 函数参数 \`q\` 和 \`detail\` 不在路径里 → 查询参数
 - \`user_id\` 没有默认值，但因为它是路径参数，"必传"由路径决定
 
+### 🆕 Demo 7：多字段组合过滤的搜索接口
+
+实战中常见的需求：根据多个条件组合筛选商品。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+
+# 创建应用
+app = FastAPI()
+
+# 模拟商品数据库（带更多字段）
+products_db = [
+    {"id": 1, "name": "iPhone 15", "price": 6999, "category": "phone", "brand": "apple", "in_stock": True},
+    {"id": 2, "name": "Galaxy S24", "price": 5999, "category": "phone", "brand": "samsung", "in_stock": True},
+    {"id": 3, "name": "Mi 14", "price": 3999, "category": "phone", "brand": "xiaomi", "in_stock": False},
+    {"id": 4, "name": "iPad Pro", "price": 7999, "category": "tablet", "brand": "apple", "in_stock": True},
+    {"id": 5, "name": "MacBook Air", "price": 8999, "category": "laptop", "brand": "apple", "in_stock": True},
+    {"id": 6, "name": "AirPods Pro", "price": 1999, "category": "audio", "brand": "apple", "in_stock": True},
+]
+
+@app.get("/products/search")
+def search_products(
+    # 关键词搜索：在 name 字段里模糊匹配
+    keyword: str | None = None,
+    # 多个过滤条件
+    category: str | None = None,        # 按分类
+    brand: str | None = None,           # 按品牌
+    min_price: float | None = None,     # 最低价
+    max_price: float | None = None,     # 最高价
+    in_stock: bool | None = None,       # 库存状态
+):
+    # 第 1 步：从完整列表开始
+    result = list(products_db)
+    
+    # 第 2 步：逐个应用过滤条件
+    # 关键词搜索：用 in 判断子串（实际项目用数据库 LIKE 或全文索引）
+    if keyword:
+        # keyword.lower() 转小写，实现大小写不敏感搜索
+        kw = keyword.lower()
+        result = [p for p in result if kw in p["name"].lower()]
+    
+    # 分类过滤
+    if category:
+        result = [p for p in result if p["category"] == category]
+    
+    # 品牌过滤
+    if brand:
+        result = [p for p in result if p["brand"] == brand]
+    
+    # 价格区间
+    if min_price is not None:
+        result = [p for p in result if p["price"] >= min_price]
+    if max_price is not None:
+        result = [p for p in result if p["price"] <= max_price]
+    
+    # 库存过滤
+    if in_stock is not None:
+        # in_stock=True 只看有货的，False 只看缺货的
+        result = [p for p in result if p["in_stock"] == in_stock]
+    
+    return {
+        "count": len(result),
+        "data": result
+    }
+\`\`\`
+
+测试访问：
+
+\`\`\`bash
+# 搜索名字带 "pro" 的商品
+curl "http://127.0.0.1:8000/products/search?keyword=pro"
+
+# 只看苹果品牌且有货的
+curl "http://127.0.0.1:8000/products/search?brand=apple&in_stock=true"
+
+# 价格区间 + 分类
+curl "http://127.0.0.1:8000/products/search?category=phone&min_price=4000&max_price=7000"
+\`\`\`
+
+注意：URL 里有特殊字符（如 \`&\`）时，bash 里要用双引号包起来。
+
+### 🆕 Demo 8：多字段排序接口
+
+支持按多个字段排序，例如"先按价格升序，价格相同的再按 ID 降序"。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+
+# 创建应用
+app = FastAPI()
+
+# 复用前面的 products_db
+products_db = [
+    {"id": 1, "name": "iPhone 15", "price": 6999, "sales": 100},
+    {"id": 2, "name": "Galaxy S24", "price": 5999, "sales": 80},
+    {"id": 3, "name": "Mi 14", "price": 3999, "sales": 80},
+    {"id": 4, "name": "iPad Pro", "price": 7999, "sales": 50},
+    {"id": 5, "name": "MacBook Air", "price": 8999, "sales": 30},
+]
+
+@app.get("/products")
+def list_products(
+    # sort 接受多字段排序字符串，格式：field:order,field:order
+    # 例如：sort=price:asc,sales:desc 表示先按价格升序，价格相同按销量降序
+    # 默认按 id:asc
+    sort: str = "id:asc"
+):
+    # 第 1 步：解析 sort 参数
+    # sort.split(",") 把 "price:asc,sales:desc" 拆成 ["price:asc", "sales:desc"]
+    sort_rules = []
+    for rule in sort.split(","):
+        rule = rule.strip()
+        if not rule:
+            continue
+        # 拆分 field:order
+        if ":" in rule:
+            field, order = rule.split(":", 1)
+            sort_rules.append((field.strip(), order.strip().lower()))
+        else:
+            # 只有字段没有方向，默认升序
+            sort_rules.append((rule, "asc"))
+    
+    # 第 2 步：复制数据
+    result = list(products_db)
+    
+    # 第 3 步：按多个字段排序
+    # Python 的 sort 是稳定排序，可以从后往前依次排序
+    # 这样最后排的字段是主排序键
+    # 例如要按 price asc, sales desc 排序：
+    #   先按 sales desc 排序，再按 price asc 排序
+    #   最终效果：先看 price，price 相同的按 sales
+    for field, order in reversed(sort_rules):
+        # reverse=True 表示降序
+        reverse = (order == "desc")
+        # key=lambda p: p.get(field, 0) 取字段值，不存在用 0 兜底
+        result.sort(key=lambda p: p.get(field, 0), reverse=reverse)
+    
+    return {
+        "sort": sort_rules,
+        "count": len(result),
+        "data": result
+    }
+\`\`\`
+
+测试访问：
+
+\`\`\`bash
+# 单字段排序：按价格升序
+curl "http://127.0.0.1:8000/products?sort=price:asc"
+
+# 多字段排序：先按销量降序，销量相同按 ID 升序
+curl "http://127.0.0.1:8000/products?sort=sales:desc,id:asc"
+\`\`\`
+
+这种"逗号分隔多字段排序"是 GitHub API、Stripe API 等业界主流设计风格。
+
+### 🆕 Demo 9：搜索接口（带高亮和分页）
+
+实战中的搜索接口通常需要：关键词搜索 + 分页 + 返回高亮信息。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+
+# 创建应用
+app = FastAPI()
+
+# 模拟文章数据库
+articles_db = [
+    {"id": 1, "title": "FastAPI 入门教程", "content": "FastAPI 是一个现代化的 Python Web 框架..."},
+    {"id": 2, "title": "Python 进阶指南", "content": "Python 是一门优雅的编程语言..."},
+    {"id": 3, "title": "FastAPI 高级用法", "content": "学习 FastAPI 的依赖注入和中间件..."},
+    {"id": 4, "title": "Docker 实战", "content": "用 Docker 容器化 Python 应用..."},
+    {"id": 5, "title": "FastAPI 与 Pydantic", "content": "Pydantic 是 FastAPI 的数据校验核心..."},
+]
+
+@app.get("/articles/search")
+def search_articles(
+    # 必须传 keyword（用 None 默认 + 函数判断的方式，比必选参数更灵活）
+    keyword: str | None = None,
+    # 分页参数
+    page: int = 1,
+    page_size: int = 10,
+    # 是否高亮关键词
+    highlight: bool = True
+):
+    # 第 1 步：处理关键词
+    if not keyword:
+        # 没传关键词，返回全部
+        result = list(articles_db)
+    else:
+        # 在 title 和 content 里搜索关键词（大小写不敏感）
+        kw = keyword.lower()
+        result = []
+        for a in articles_db:
+            # 检查 title 或 content 是否包含关键词
+            if kw in a["title"].lower() or kw in a["content"].lower():
+                # 复制一份，避免污染原数据
+                item = dict(a)
+                # 如果开启高亮，把关键词用 <em> 包起来
+                if highlight:
+                    # str.replace(old, new) 字符串替换
+                    # 注意这里没做大小写不敏感替换，实际项目用 re.sub
+                    item["title"] = item["title"].replace(
+                        keyword, f"<em>{keyword}</em>"
+                    )
+                result.append(item)
+    
+    # 第 2 步：分页
+    total = len(result)
+    start = (page - 1) * page_size
+    end = start + page_size
+    paginated = result[start:end]
+    
+    # 第 3 步：返回带元数据的结果
+    return {
+        "keyword": keyword,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size if page_size > 0 else 0,
+        "data": paginated
+    }
+\`\`\`
+
+测试：
+
+\`\`\`bash
+# 搜索 FastAPI 相关文章
+curl "http://127.0.0.1:8000/articles/search?keyword=FastAPI&page=1&page_size=2"
+
+# 不高亮
+curl "http://127.0.0.1:8000/articles/search?keyword=Python&highlight=false"
+\`\`\`
+
+返回结果里 \`title\` 字段的关键词会被 \`<em>\` 标签包起来，前端可以用 CSS 高亮显示。
+
 ## 七、查询参数的最佳实践
 
 ### 1. 分页用 page + page_size 还是 offset + limit？
@@ -1086,6 +1609,91 @@ def list_items(
 
 访问 \`/items?class=fruit\`，函数里 \`category="fruit"\`。
 
+### 坑 6：URL 里的特殊字符未编码
+
+\`\`\`bash
+# ❌ 错误：直接传中文，可能乱码
+curl http://127.0.0.1:8000/search?q=苹果
+
+# ✅ 正确：URL 编码
+curl http://127.0.0.1:8000/search?q=%E8%8B%B9%E6%9E%9C
+
+# 浏览器会自动编码，但 curl 默认不编码
+# 可以用 --data-urlencode
+curl -G "http://127.0.0.1:8000/search" --data-urlencode "q=苹果"
+\`\`\`
+
+FastAPI 收到请求后会自动解码，函数里 \`q="苹果"\`。
+
+## 九、动手实验
+
+### 实验 1：实现一个完整的分页接口
+
+需求：实现 \`/books\` 接口，支持：
+
+- \`page\`：页码，默认 1
+- \`page_size\`：每页数量，默认 10，最大 100
+- 返回数据 + 总数 + 总页数
+
+\`\`\`python
+# 模拟 50 本书的数据
+books_db = [{"id": i, "title": f"Book {i}"} for i in range(1, 51)]
+
+@app.get("/books")
+def list_books(page: int = 1, page_size: int = 10):
+    # 自己实现：分页 + 返回元数据
+    ...
+\`\`\`
+
+\`\`\`bash
+# 测试
+curl "http://127.0.0.1:8000/books?page=2&page_size=5"
+# 期望返回 5 本书，total=50，total_pages=10
+\`\`\`
+
+### 实验 2：组合过滤 + 排序 + 分页
+
+挑战题：实现 \`/products\` 接口，同时支持：
+
+- 按分类过滤（\`category\`）
+- 按价格区间过滤（\`min_price\`、\`max_price\`）
+- 按任意字段排序（\`sort_by\`、\`order\`）
+- 分页（\`page\`、\`page_size\`）
+
+提示：参考 Demo 5，但要保证过滤 → 排序 → 分页 的顺序（顺序错了结果就错了）。
+
+### 实验 3：实现一个简单的搜索建议接口
+
+需求：实现 \`/suggest\` 接口，根据用户输入的关键词返回匹配建议。
+
+\`\`\`bash
+# 用户输入 "py"，返回所有以 "py" 开头的词
+curl "http://127.0.0.1:8000/suggest?q=py"
+# 期望返回：{"suggestions": ["python", "pydantic", "pytest"]}
+\`\`\`
+
+参考实现：
+
+\`\`\`python
+# 候选词库
+all_words = ["python", "pydantic", "pytest", "fastapi", "django", "flask"]
+
+@app.get("/suggest")
+def suggest(q: str = ""):
+    # 用 startswith 做前缀匹配
+    suggestions = [w for w in all_words if w.startswith(q.lower())]
+    # 限制最多返回 10 个
+    return {"suggestions": suggestions[:10]}
+\`\`\`
+
+### 实验 4：探索 \`/docs\` 文档
+
+启动服务后访问 \`http://127.0.0.1:8000/docs\`：
+
+1. 观察每个查询参数的"默认值"列
+2. 点击 \`Try it out\`，填参数后点 \`Execute\` 看响应
+3. 故意传非法值（比如 \`page=-1\`），观察 422 错误响应的 \`loc\` 字段
+
 ## 本章小结
 
 | 知识点 | 要点 |
@@ -1121,6 +1729,19 @@ def list_items(
 - \`status: str\` 能保证是字符串，但保证不了是合法状态
 
 校验（validation）就是给参数加"业务约束"。FastAPI 提供 \`Path()\` 和 \`Query()\` 两个函数，专门用来声明路径参数和查询参数的校验规则。它们能让校验逻辑声明式化，而且自动反映到文档里。
+
+### 🌰 生活类比：校验就像地铁安检
+
+把 API 接口想象成地铁站：
+
+- **类型注解**：检票闸机看你有没刷卡（类型对不对）
+- **数值校验（ge/le）**：安检员看你的包超不超重（值范围）
+- **长度校验（min_length/max_length）**：行李尺寸限制
+- **正则校验（pattern）**：扫描包里有没有违禁品（格式）
+- **枚举校验（Enum）**：只允许特定身份的人进站
+- **422 错误响应**：安检不通过，告诉你具体哪里有问题
+
+声明式校验的好处：把"安检规则"写在代码里，框架自动执行，还能生成"安检须知"（API 文档）。
 
 ## 一、Query() 校验器详解
 
@@ -1586,6 +2207,387 @@ def list_category_products(
 
 这个例子涵盖了路径校验、查询校验、数值校验、字符串校验、枚举校验、别名、废弃标记。实际项目里的"正经"接口差不多就是这样。
 
+### 🆕 Demo 9：分页 + 排序 + 过滤的完整组合实战
+
+这是真实项目里最典型的列表接口：支持分页、多字段排序、价格区间、分类过滤、关键词搜索，所有参数都有严格校验。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Path、Query
+from fastapi import FastAPI, Query
+from enum import Enum
+from typing import List
+
+# 创建应用
+app = FastAPI()
+
+# 排序方向枚举
+class OrderDirection(str, Enum):
+    asc = "asc"
+    desc = "desc"
+
+# 模拟商品数据库
+products_db = [
+    {"id": 1, "name": "iPhone 15", "price": 6999.0, "category": "phone", "stock": 100},
+    {"id": 2, "name": "Galaxy S24", "price": 5999.0, "category": "phone", "stock": 50},
+    {"id": 3, "name": "iPad Pro", "price": 7999.0, "category": "tablet", "stock": 30},
+    {"id": 4, "name": "MacBook Air", "price": 8999.0, "category": "laptop", "stock": 20},
+    {"id": 5, "name": "AirPods Pro", "price": 1999.0, "category": "audio", "stock": 0},
+    {"id": 6, "name": "Magic Mouse", "price": 599.0, "category": "accessory", "stock": 80},
+]
+
+@app.get("/products")
+def list_products(
+    # ===== 分页参数 =====
+    # page >= 1，避免负数页码
+    page: int = Query(default=1, ge=1, le=10000, description="页码，从 1 开始"),
+    # page_size 限制在 1-100，防止前端传过大值拖垮数据库
+    page_size: int = Query(default=20, ge=1, le=100, alias="pageSize", description="每页数量"),
+    
+    # ===== 过滤参数 =====
+    # 关键词：长度限制，防止过长字符串攻击
+    keyword: str | None = Query(
+        default=None,
+        min_length=1,
+        max_length=50,
+        description="商品名称关键词"
+    ),
+    # 价格区间：min_price >= 0，max_price >= 0
+    min_price: float | None = Query(
+        default=None,
+        ge=0,
+        le=999999,
+        description="最低价格"
+    ),
+    max_price: float | None = Query(
+        default=None,
+        ge=0,
+        le=999999,
+        description="最高价格"
+    ),
+    # 多分类过滤：列表参数
+    categories: List[str] | None = Query(
+        default=None,
+        alias="category",
+        description="分类列表，可传多个：?category=phone&category=tablet"
+    ),
+    # 库存过滤
+    in_stock: bool | None = Query(
+        default=None,
+        description="是否只看有货商品"
+    ),
+    
+    # ===== 排序参数 =====
+    sort_by: str = Query(
+        default="id",
+        pattern="^(id|name|price|stock)$",  # 只允许这几个字段排序
+        description="排序字段"
+    ),
+    order: OrderDirection = Query(
+        default=OrderDirection.asc,
+        description="排序方向"
+    ),
+):
+    # 第 1 步：从完整列表开始
+    result = list(products_db)
+    
+    # 第 2 步：应用过滤条件
+    if keyword:
+        kw = keyword.lower()
+        result = [p for p in result if kw in p["name"].lower()]
+    
+    if categories:
+        # 多分类用 OR 关系：在任意一个分类里都算匹配
+        result = [p for p in result if p["category"] in categories]
+    
+    if min_price is not None:
+        result = [p for p in result if p["price"] >= min_price]
+    if max_price is not None:
+        result = [p for p in result if p["price"] <= max_price]
+    
+    if in_stock is not None:
+        result = [p for p in result if (p["stock"] > 0) == in_stock]
+    
+    # 第 3 步：排序
+    reverse = (order == OrderDirection.desc)
+    result.sort(key=lambda p: p.get(sort_by, 0), reverse=reverse)
+    
+    # 第 4 步：分页
+    total = len(result)
+    start = (page - 1) * page_size
+    end = start + page_size
+    paginated = result[start:end]
+    
+    return {
+        "data": paginated,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size if page_size > 0 else 0,
+        "filters": {
+            "keyword": keyword,
+            "categories": categories,
+            "price_range": [min_price, max_price],
+            "in_stock": in_stock
+        }
+    }
+\`\`\`
+
+测试访问：
+
+\`\`\`bash
+# 基本分页
+curl "http://127.0.0.1:8000/products?page=1&pageSize=5"
+
+# 多分类过滤 + 价格区间
+curl "http://127.0.0.1:8000/products?category=phone&category=tablet&min_price=5000"
+
+# 排序 + 关键词
+curl "http://127.0.0.1:8000/products?keyword=i&sort_by=price&order=desc"
+
+# 故意传非法排序字段，触发 pattern 校验
+curl "http://127.0.0.1:8000/products?sort_by=password"
+# 期望：422 错误
+\`\`\`
+
+### 🆕 Demo 10：复杂正则校验（IP、日期、UUID）
+
+实战中常需要校验特殊格式的参数：IP 地址、日期、UUID 等。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Query
+from fastapi import FastAPI, Query
+
+# 创建应用
+app = FastAPI()
+
+@app.get("/network/devices")
+def list_devices(
+    # IP 地址校验（IPv4）
+    # 正则拆解：
+    #   ^\d{1,3}\.   第一段：1-3 位数字 + 点
+    #   \d{1,3}\.    第二段
+    #   \d{1,3}\.    第三段
+    #   \d{1,3}$     第四段
+    # 注意：这个正则只校验格式，不校验范围（255.255.255.255 也能通过）
+    # 严格校验范围用 ipaddress 模块
+    ip: str | None = Query(
+        default=None,
+        pattern=r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$",
+        description="IPv4 地址"
+    ),
+    # 日期校验（YYYY-MM-DD 格式）
+    # 正则拆解：
+    #   \d{4}     4 位年份
+    #   -         分隔符
+    #   \d{2}     2 位月份
+    #   -         分隔符
+    #   \d{2}     2 位日期
+    date: str | None = Query(
+        default=None,
+        pattern=r"^\d{4}-\d{2}-\d{2}$",
+        description="日期，格式 YYYY-MM-DD"
+    ),
+    # 时间校验（HH:MM:SS）
+    time: str | None = Query(
+        default=None,
+        pattern=r"^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$",
+        description="时间，格式 HH:MM:SS"
+    ),
+    # UUID 校验
+    uuid: str | None = Query(
+        default=None,
+        pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+        description="UUID"
+    ),
+    # 版本号校验（如 v1.2.3）
+    # 正则拆解：
+    #   v               字母 v 开头
+    #   \d+             至少 1 位数字（主版本号）
+    #   (\.\d+){2}      .数字 重复 2 次（次版本号、修订号）
+    version: str | None = Query(
+        default=None,
+        pattern=r"^v\d+(\.\d+){2}$",
+        description="版本号，格式 vX.Y.Z"
+    ),
+):
+    return {
+        "ip": ip,
+        "date": date,
+        "time": time,
+        "uuid": uuid,
+        "version": version
+    }
+\`\`\`
+
+测试：
+
+\`\`\`bash
+# 合法 IP
+curl "http://127.0.0.1:8000/network/devices?ip=192.168.1.1"
+
+# 非法 IP
+curl "http://127.0.0.1:8000/network/devices?ip=999.999.999.999"
+# 这个会通过正则但范围非法，实际项目要加范围校验
+
+# 合法日期
+curl "http://127.0.0.1:8000/network/devices?date=2024-07-11"
+
+# 非法日期格式
+curl "http://127.0.0.1:8000/network/devices?date=2024/07/11"
+# 期望：422
+\`\`\`
+
+### 🆕 Demo 11：多个 gt/ge/lt/le 组合校验
+
+演示数值校验参数的多种组合，覆盖各种业务场景。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Path、Query
+from fastapi import FastAPI, Path, Query
+
+# 创建应用
+app = FastAPI()
+
+@app.get("/products/{product_id}/pricing")
+def get_pricing(
+    # 路径参数：product_id 必须 >= 1
+    product_id: int = Path(default=..., ge=1),
+    # 数量：1-999，开闭区间混合
+    # ge=1：至少 1 个
+    # le=999：最多 999 个
+    quantity: int = Query(default=1, ge=1, le=999),
+    # 折扣率：0.0-1.0（含两端）
+    # ge=0.0：不能为负
+    # le=1.0：最大 100% 折扣
+    discount_rate: float = Query(default=0.0, ge=0.0, le=1.0),
+    # 优惠券金额：必须 > 0（不能为 0，0 表示不用优惠券）
+    # gt=0：严格大于 0
+    # lt=1000：小于 1000，防止异常大额
+    coupon_amount: float | None = Query(default=None, gt=0, lt=1000),
+    # 用户年龄：18-150（用于判断是否享受学生折扣）
+    # ge=18：成年
+    # lt=150：合理上限
+    age: int = Query(default=18, ge=18, lt=150),
+    # 评分：1-5（不含 0，含 5）
+    # gt=0：必须大于 0
+    # le=5：最大 5
+    rating: int = Query(default=5, gt=0, le=5),
+    # 经纬度：-180 到 180，-90 到 90
+    longitude: float = Query(default=0.0, ge=-180.0, le=180.0),
+    latitude: float = Query(default=0.0, ge=-90.0, le=90.0),
+):
+    return {
+        "product_id": product_id,
+        "quantity": quantity,
+        "discount_rate": discount_rate,
+        "coupon_amount": coupon_amount,
+        "age": age,
+        "rating": rating,
+        "location": {"lon": longitude, "lat": latitude}
+    }
+\`\`\`
+
+测试：
+
+\`\`\`bash
+# 全部合法
+curl "http://127.0.0.1:8000/products/42/pricing?quantity=2&discount_rate=0.1&coupon_amount=50&age=25&rating=4&longitude=116.4&latitude=39.9"
+
+# 数量超上限
+curl "http://127.0.0.1:8000/products/42/pricing?quantity=1000"
+# 期望：422，le=999 校验失败
+
+# 经度超范围
+curl "http://127.0.0.1:8000/products/42/pricing?longitude=200"
+# 期望：422，le=180 校验失败
+
+# 优惠券金额为 0
+curl "http://127.0.0.1:8000/products/42/pricing?coupon_amount=0"
+# 期望：422，gt=0 校验失败（0 不大于 0）
+\`\`\`
+
+### 🆕 Demo 12：列表参数的元素校验
+
+演示对列表参数本身和元素的各种校验组合。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Query
+from fastapi import FastAPI, Query
+from typing import List
+
+# 创建应用
+app = FastAPI()
+
+@app.get("/tags/search")
+def search_by_tags(
+    # 列表长度校验
+    # min_length=1：至少传 1 个 tag
+    # max_length=10：最多 10 个 tag
+    # 注意：这里的 min_length/max_length 是列表长度，不是字符串长度
+    tags: List[str] = Query(
+        default=[],
+        min_length=1,
+        max_length=10,
+        description="标签列表，至少 1 个，最多 10 个"
+    ),
+):
+    # 访问 /tags/search?tags=python → tags=["python"]
+    # 访问 /tags/search?tags=python&tags=fastapi → tags=["python", "fastapi"]
+    # 访问 /tags/search → 422，至少要 1 个 tag
+    return {"tags": tags, "count": len(tags)}
+
+@app.get("/ids/batch")
+def batch_get(
+    # 列表的元素是 int 类型
+    # FastAPI 会自动把每个元素转成 int
+    ids: List[int] = Query(
+        default=[],
+        max_length=100,
+        description="ID 列表，最多 100 个"
+    ),
+):
+    # 访问 /ids/batch?ids=1&ids=2&ids=3 → ids=[1, 2, 3]
+    # 访问 /ids/batch?ids=1&ids=abc → 422，"abc" 无法转 int
+    return {"ids": ids, "count": len(ids)}
+
+@app.get("/users/filter")
+def filter_users(
+    # 邮箱列表，每个都要符合邮箱格式
+    # 注意：FastAPI 对 List 元素的 pattern 校验需要 Pydantic 模型
+    # 这里用 str + 函数内校验演示
+    emails: List[str] = Query(default=[], max_length=5),
+):
+    # 在函数内对每个元素校验
+    import re
+    email_pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+    invalid = [e for e in emails if not re.match(email_pattern, e)]
+    if invalid:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=422,
+            detail=f"非法邮箱: {invalid}"
+        )
+    return {"emails": emails}
+\`\`\`
+
+测试：
+
+\`\`\`bash
+# 传 1 个 tag
+curl "http://127.0.0.1:8000/tags/search?tags=python"
+
+# 传多个 tag
+curl "http://127.0.0.1:8000/tags/search?tags=python&tags=fastapi&tags=web"
+
+# 不传 tag
+curl "http://127.0.0.1:8000/tags/search"
+# 期望：422，至少要 1 个
+
+# 批量 ID
+curl "http://127.0.0.1:8000/ids/batch?ids=1&ids=2&ids=3"
+# 期望：{"ids":[1,2,3],"count":3}
+\`\`\`
+
 ## 九、校验错误响应格式详解
 
 当校验失败时，FastAPI 返回 422 状态码，body 是统一的错误格式：
@@ -1648,7 +2650,7 @@ def list_category_products(
 
 默认的 422 响应格式可能不符合项目规范，可以自定义。
 
-### Demo 9：自定义异常处理器
+### Demo 13：自定义异常处理器
 
 \`\`\`python
 # 从 fastapi 导入 FastAPI、Query、Request
@@ -1805,12 +2807,151 @@ def list_items2(
     return {"tags": tags}
 \`\`\`
 
+### 坑 6：min_length/max_length 用错对象
+
+\`\`\`python
+# ❌ 错误：对 int 用 min_length
+@app.get("/items")
+def list_items(
+    page: int = Query(default=1, min_length=1)  # int 没有"长度"概念
+):
+    ...  # 会报错
+
+# ✅ 正确：int 用 ge/le
+@app.get("/items")
+def list_items(
+    page: int = Query(default=1, ge=1)  # 数值校验用 ge/le
+):
+    ...
+\`\`\`
+
+**避坑**：\`min_length\`/\`max_length\` 只用于字符串和列表，数值用 \`ge\`/\`gt\`/\`lt\`/\`le\`。
+
+### 坑 7：pattern 转义问题
+
+\`\`\`python
+# ❌ 错误：反斜杠没转义
+# Python 字符串里 \. 会被当成转义字符
+pattern="^\d+\.\d+$"  # \d 和 \. 可能有歧义
+
+# ✅ 正确：用 raw 字符串
+pattern=r"^\d+\.\d+$"  # r"..." 表示原始字符串，反斜杠不转义
+\`\`\`
+
+正则表达式里反斜杠很常见（\`\d\`、\`\\.\`、\`\\w\` 等），用 \`r"..." raw\` 字符串能避免歧义。
+
+## 十二、动手实验
+
+### 实验 1：体验各种校验失败场景
+
+启动服务后，依次测试：
+
+\`\`\`bash
+# 启动服务（把 Demo 9 保存为 main.py）
+uvicorn main:app --reload
+
+# 1. 测试正常请求
+curl "http://127.0.0.1:8000/products?page=1&pageSize=5"
+
+# 2. page 传 0（ge=1 失败）
+curl "http://127.0.0.1:8000/products?page=0"
+# 观察 422 响应的 type 和 ctx 字段
+
+# 3. pageSize 传 200（le=100 失败）
+curl "http://127.0.0.1:8000/products?pageSize=200"
+
+# 4. sort_by 传非法字段（pattern 失败）
+curl "http://127.0.0.1:8000/products?sort_by=password"
+
+# 5. keyword 传空字符串（min_length=1 失败）
+curl "http://127.0.0.1:8000/products?keyword="
+\`\`\`
+
+每次访问后，记录 422 响应里的 \`type\` 字段，理解每种校验对应的错误类型。
+
+### 实验 2：实现一个用户注册参数校验
+
+需求：实现 \`/users/register\` 接口（用 GET 模拟），校验：
+
+- \`username\`：3-20 字符，只允许字母数字下划线
+- \`email\`：合法邮箱格式
+- \`phone\`：11 位中国手机号
+- \`password\`：8-32 字符，必须包含字母和数字
+- \`age\`：18-100
+- \`gender\`：枚举 \`male\`/\`female\`/\`other\`
+
+参考代码：
+
+\`\`\`python
+from fastapi import FastAPI, Query
+from enum import Enum
+
+app = FastAPI()
+
+class Gender(str, Enum):
+    male = "male"
+    female = "female"
+    other = "other"
+
+@app.get("/users/register")
+def register(
+    username: str = Query(..., min_length=3, max_length=20, pattern="^[a-zA-Z0-9_]+$"),
+    email: str = Query(..., pattern=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"),
+    phone: str = Query(..., pattern=r"^1[3-9]\d{9}$"),
+    password: str = Query(..., min_length=8, max_length=32, pattern=r"^(?=.*[a-zA-Z])(?=.*\d).+$"),
+    age: int = Query(..., ge=18, le=100),
+    gender: Gender = Query(...),
+):
+    return {"msg": "注册参数校验通过", "username": username}
+\`\`\`
+
+\`\`\`bash
+# 测试合法参数
+curl "http://127.0.0.1:8000/users/register?username=alice&email=alice@test.com&phone=13800138000&password=abc12345&age=25&gender=female"
+
+# 测试密码无数字
+curl "http://127.0.0.1:8000/users/register?username=alice&email=alice@test.com&phone=13800138000&password=abcdefgh&age=25&gender=female"
+# 期望：422
+
+# 测试手机号格式错误
+curl "http://127.0.0.1:8000/users/register?username=alice&email=alice@test.com&phone=12345&password=abc12345&age=25&gender=female"
+# 期望：422
+\`\`\`
+
+### 实验 3：探索 \`/docs\` 文档里的校验信息
+
+访问 \`http://127.0.0.1:8000/docs\`：
+
+1. 找到 \`/products\` 接口，点开看每个参数的：
+   - 默认值
+   - 最小值/最大值（ge/le）
+   - 长度限制（min_length/max_length）
+   - 正则（pattern）
+2. 点击 \`Try it out\`，故意传非法值，看 422 响应
+3. 观察 deprecated 参数在文档里的显示样式（删除线）
+
+### 实验 4：自定义校验错误响应
+
+参考 Demo 13，自定义一个错误响应格式：
+
+\`\`\`json
+{
+  "success": false,
+  "error_code": "VALIDATION_FAILED",
+  "errors": [
+    {"field": "page", "message": "...", "code": "OUT_OF_RANGE"}
+  ]
+}
+\`\`\`
+
+完成后用 curl 测试，看返回格式是否符合预期。
+
 ## 本章小结
 
 | 校验类型 | 参数 | 适用 |
 |---------|------|------|
 | 数值大小 | \`gt\`、\`ge\`、\`lt\`、\`le\` | int、float |
-| 字符串长度 | \`min_length\`、\`max_length\` | str |
+| 字符串长度 | \`min_length\`、\`max_length\` | str、List |
 | 字符串格式 | \`pattern\`（正则） | str |
 | 枚举取值 | \`Enum\` | 所有 |
 | 元数据 | \`title\`、\`description\`、\`example\` | 所有 |
@@ -1836,6 +2977,16 @@ def list_items2(
 前面我们用路径参数、查询参数、Path/Query 校验器，都是 FastAPI "帮你解析好" 的便捷方式。但有时候你需要直接访问原始请求数据——比如读 HTTP 头、Cookie、客户端 IP、原始 body 字节流。
 
 这时候就用 \`Request\` 对象。它是 FastAPI（实际是 Starlette）提供的原始请求对象，包含 HTTP 请求的所有信息。
+
+### 🌰 生活类比：Request 对象就像快递员手里的完整包裹
+
+把 API 请求想象成快递：
+
+- **路径参数 / 查询参数**：包裹上的"收件人姓名"和"地址"——快递员（FastAPI）帮你拆出来直接用
+- **Pydantic 模型**：包裹里的"商品清单"——拆开就是结构化数据
+- **\`Request\` 对象**：整个原始包裹——包含寄件人信息（IP）、外包装（headers）、签字记录（cookies）、原始内容（body）等所有细节
+
+当你只需要"地址"时，用 \`Path\`/\`Query\` 就够了；当你需要看"寄件人是谁、包裹有多重、用什么箱子装的"时，就要拆开 \`Request\` 对象。
 
 \`Request\` 对象和 \`Path\`/\`Query\` 的关系：
 
@@ -2465,6 +3616,260 @@ def trace(request: Request):
 
 \`request.state\` 是 Starlette 提供的"请求级命名空间"，可以在中间件里写、路由里读。常用于传递请求 ID、用户身份、链路追踪信息等。
 
+### 🆕 Demo 10：用 Request 实现简单的限流
+
+实际项目里常需要限制单个 IP 的访问频率，防止恶意刷接口。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Request
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+import time
+
+# 创建应用
+app = FastAPI()
+
+# 简单的内存限流器
+# 字典格式：{client_ip: [timestamp1, timestamp2, ...]}
+# 记录每个 IP 最近 60 秒内的访问时间戳
+request_history = {}
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    # 只对 /api 路径限流，其他路径放行
+    if not request.url.path.startswith("/api"):
+        return await call_next(request)
+    
+    # 获取客户端 IP
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    
+    # 取出该 IP 的历史访问记录
+    history = request_history.get(client_ip, [])
+    
+    # 清理 60 秒前的记录
+    # 只保留最近 60 秒内的访问时间戳
+    history = [t for t in history if now - t < 60]
+    
+    # 检查是否超过限制（每分钟最多 10 次）
+    if len(history) >= 10:
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": "请求过于频繁",
+                "message": "每分钟最多 10 次请求，请稍后再试",
+                "retry_after": 60
+            },
+            headers={
+                # Retry-After 告诉客户端多少秒后重试
+                "Retry-After": "60"
+            }
+        )
+    
+    # 记录本次访问时间
+    history.append(now)
+    request_history[client_ip] = history
+    
+    # 调用下一个处理者
+    response = await call_next(request)
+    
+    # 在响应头里加上限流信息
+    # X-RateLimit-Limit：总限额
+    # X-RateLimit-Remaining：剩余次数
+    response.headers["X-RateLimit-Limit"] = "10"
+    response.headers["X-RateLimit-Remaining"] = str(10 - len(history))
+    
+    return response
+
+# 测试路由
+@app.get("/api/data")
+def get_data():
+    return {"msg": "请求成功", "data": [1, 2, 3]}
+\`\`\`
+
+测试：
+
+\`\`\`bash
+# 连续访问 11 次，第 11 次会被限流
+for i in {1..11}; do
+    echo "请求 $i:"
+    curl -s -o /dev/null -w "状态码: %{http_code}\\n" http://127.0.0.1:8000/api/data
+done
+
+# 查看限流响应
+curl -i http://127.0.0.1:8000/api/data
+# 期望：HTTP/1.1 429 Too Many Requests
+\`\`\`
+
+注意：这个例子用内存字典存储，重启服务就丢了，多实例部署也不共享。生产环境用 Redis 等分布式存储。
+
+### 🆕 Demo 11：用 Request 实现简单的 CORS
+
+跨域资源共享（CORS）是 Web API 的常见需求，让前端浏览器能访问不同域名的接口。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Request
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+
+# 创建应用
+app = FastAPI()
+
+@app.middleware("http")
+async def cors_middleware(request: Request, call_next):
+    # CORS 中间件流程：
+    # 1. 收到请求，先处理预检请求（OPTIONS）
+    # 2. 给响应加上 CORS 头
+    
+    # 获取请求来源
+    origin = request.headers.get("origin", "")
+    
+    # 允许的域名列表（生产环境用配置文件）
+    allowed_origins = [
+        "http://localhost:3000",      # 本地前端开发
+        "http://127.0.0.1:3000",
+        "https://example.com",         # 生产域名
+    ]
+    
+    # 处理预检请求（OPTIONS 方法）
+    # 浏览器在发实际请求前，会先发 OPTIONS 请求询问服务器是否允许
+    if request.method == "OPTIONS":
+        # 预检请求直接返回 200，并带上 CORS 头
+        response = JSONResponse(content={})
+        if origin in allowed_origins:
+            # Access-Control-Allow-Origin：允许的来源
+            response.headers["Access-Control-Allow-Origin"] = origin
+            # Access-Control-Allow-Methods：允许的 HTTP 方法
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+            # Access-Control-Allow-Headers：允许的请求头
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+            # Access-Control-Max-Age：预检结果缓存时间（秒）
+            # 86400 = 1 天，期间浏览器不再发预检请求
+            response.headers["Access-Control-Max-Age"] = "86400"
+        return response
+    
+    # 调用下一个处理者，拿到响应
+    response = await call_next(request)
+    
+    # 给响应加上 CORS 头
+    if origin in allowed_origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        # Access-Control-Allow-Credentials：允许带 Cookie
+        # 如果前端要发 Cookie，这个必须设为 true
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    
+    return response
+
+# 测试路由
+@app.get("/api/data")
+def get_data():
+    return {"msg": "跨域访问成功", "data": [1, 2, 3]}
+\`\`\`
+
+测试：
+
+\`\`\`bash
+# 模拟带 Origin 的请求
+curl -H "Origin: http://localhost:3000" -i http://127.0.0.1:8000/api/data
+# 期望：响应头里有 Access-Control-Allow-Origin: http://localhost:3000
+
+# 模拟非法 Origin
+curl -H "Origin: http://evil.com" -i http://127.0.0.1:8000/api/data
+# 期望：响应头里没有 Access-Control-Allow-Origin
+\`\`\`
+
+注意：实际项目用 FastAPI 自带的 \`CORSMiddleware\`，不用手写。这里演示原理。
+
+### 🆕 Demo 12：用 Request 实现链路追踪
+
+链路追踪（distributed tracing）是微服务架构的关键能力，用一个 request_id 串起一次请求经过的所有服务。
+
+\`\`\`python
+# 从 fastapi 导入 FastAPI、Request
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+import uuid
+import logging
+
+# 配置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("trace")
+
+# 创建应用
+app = FastAPI()
+
+@app.middleware("http")
+async def tracing_middleware(request: Request, call_next):
+    # 链路追踪的核心：用一个 request_id 串联一次请求的所有日志
+    
+    # 第 1 步：获取或生成 request_id
+    # 优先用上游服务传来的 X-Request-ID（链路延续）
+    # 没有的话生成新的（链路起点）
+    request_id = request.headers.get("x-request-id")
+    if not request_id:
+        request_id = str(uuid.uuid4())
+    
+    # 第 2 步：存到 request.state，路由函数和依赖项都能取到
+    request.state.request_id = request_id
+    request.state.trace_start = time.time()
+    
+    # 第 3 步：记录请求开始日志
+    # 所有日志都带 request_id，方便用 grep 过滤同一次请求
+    logger.info(f"[{request_id}] → {request.method} {request.url.path}")
+    
+    # 第 4 步：调用下一个处理者
+    try:
+        response = await call_next(request)
+    except Exception as e:
+        # 异常也要记录，带 request_id 方便排查
+        logger.error(f"[{request_id}] ✗ 异常: {e}")
+        raise
+    
+    # 第 5 步：计算耗时
+    import time
+    duration = (time.time() - request.state.trace_start) * 1000
+    
+    # 第 6 步：记录响应日志
+    logger.info(
+        f"[{request_id}] ← {response.status_code} {duration:.2f}ms"
+    )
+    
+    # 第 7 步：在响应头返回 request_id
+    # 前端拿到后，排查问题时把这个 ID 给后端，后端就能定位到具体日志
+    response.headers["X-Request-ID"] = request_id
+    
+    return response
+
+# 测试路由
+@app.get("/api/users/{user_id}")
+def get_user(user_id: int, request: Request):
+    # 路由函数里也能拿到 request_id
+    rid = request.state.request_id
+    logger.info(f"[{rid}] 查询用户 {user_id}")
+    return {"user_id": user_id, "request_id": rid}
+\`\`\`
+
+测试：
+
+\`\`\`bash
+# 不带 request_id，服务端生成
+curl -i http://127.0.0.1:8000/api/users/42
+# 响应头里会有 X-Request-ID: <uuid>
+
+# 带 request_id（模拟上游服务传递）
+curl -H "X-Request-ID: my-trace-id-123" -i http://127.0.0.1:8000/api/users/42
+# 响应头里会有 X-Request-ID: my-trace-id-123
+\`\`\`
+
+日志输出：
+\`\`\`
+[my-trace-id-123] → GET /api/users/42
+[my-trace-id-123] 查询用户 42
+[my-trace-id-123] ← 200 5.67ms
+\`\`\`
+
+用 \`grep "my-trace-id-123" app.log\` 就能拿到这次请求的所有日志。
+
 ## 九、常见错误和避坑指南
 
 ### 坑 1：在同步函数里用 async 方法
@@ -2576,6 +3981,32 @@ def get_user(user_id: int, request: Request):
 
 \`path_params\` 存的是原始字符串，类型转换只在函数参数注入时发生。
 
+### 坑 8：中间件异常没处理
+
+\`\`\`python
+# ❌ 错误：中间件里不处理异常，会导致 500
+@app.middleware("http")
+async def bad_middleware(request: Request, call_next):
+    response = await call_next(request)  # 这里抛异常会直接 500
+    return response
+
+# ✅ 正确：用 try/except 包住 call_next
+@app.middleware("http")
+async def good_middleware(request: Request, call_next):
+    try:
+        response = await call_next(request)
+    except Exception as e:
+        # 记录异常，返回友好的 500 响应
+        logger.error(f"请求异常: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "内部服务器错误"}
+        )
+    return response
+\`\`\`
+
+中间件是"全局拦截器"，异常处理要谨慎，否则一个 bug 就能让整个服务挂掉。
+
 ## 十、何时用 Request，何时用 Path/Query
 
 | 场景 | 推荐方式 |
@@ -2593,6 +4024,92 @@ def get_user(user_id: int, request: Request):
 | 链路追踪 | \`Request\` + \`request.state\` |
 
 原则：**能用高级封装就用高级封装，只有在需要原始数据时才用 \`Request\`**。高级封装有校验、文档、类型转换，\`Request\` 啥都要自己处理。
+
+## 十一、动手实验
+
+### 实验 1：观察请求信息
+
+启动服务后访问 \`/debug\` 接口，观察返回的请求信息：
+
+\`\`\`bash
+# 启动服务（把 Demo 2 保存为 main.py）
+uvicorn main:app --reload
+
+# 用不同 UA 访问
+curl -A "Mozilla/5.0" "http://127.0.0.1:8000/debug?skip=0&limit=10"
+curl -A "curl/8.0" "http://127.0.0.1:8000/debug?skip=0&limit=10"
+
+# 带 Cookie 访问
+curl -b "session_id=abc123" "http://127.0.0.1:8000/debug"
+
+# 带自定义头访问
+curl -H "X-Custom-Header: hello" "http://127.0.0.1:8000/debug"
+\`\`\`
+
+观察 \`headers\` 字段的变化，理解请求头的传递机制。
+
+### 实验 2：实现一个访问日志中间件
+
+参考 Demo 8，实现一个中间件，记录每个请求的：
+
+- 时间戳
+- HTTP 方法 + 路径
+- 客户端 IP
+- User-Agent
+- 响应状态码
+- 耗时（毫秒）
+
+把日志写到文件 \`access.log\`，格式参考：
+
+\`\`\`
+2024-07-13 10:00:00 | GET /api/users/42 | 127.0.0.1 | Mozilla/5.0 | 200 | 5.23ms
+\`\`\`
+
+### 实验 3：实现一个简单的限流
+
+参考 Demo 10，实现一个限流中间件：
+
+- 每个 IP 每分钟最多 30 次请求
+- 超过返回 429 状态码
+- 响应头带 \`X-RateLimit-Remaining\` 显示剩余次数
+
+测试：
+
+\`\`\`bash
+# 用 ab（Apache Bench）压测
+ab -n 50 -c 1 http://127.0.0.1:8000/api/data
+# 观察有多少请求成功，多少被限流
+\`\`\`
+
+### 实验 4：实现链路追踪
+
+参考 Demo 12，实现：
+
+1. 中间件为每个请求生成 \`request_id\`（优先用上游传来的）
+2. 所有日志带 \`request_id\`
+3. 响应头返回 \`request_id\`
+
+测试：
+
+\`\`\`bash
+# 不带 request_id
+curl -i http://127.0.0.1:8000/api/data
+# 记录响应头里的 X-Request-ID
+
+# 带自定义 request_id
+curl -H "X-Request-ID: trace-001" -i http://127.0.0.1:8000/api/data
+# 验证响应头里是否返回 trace-001
+\`\`\`
+
+### 实验 5：探索 \`request.scope\`
+
+访问 \`/scope\` 接口，对比 \`request.scope\` 和 \`request\` 的各种属性：
+
+\`\`\`bash
+curl http://127.0.0.1:8000/scope
+\`\`\`
+
+观察 \`query_string\` 是 bytes 类型（如 \`b"skip=0&limit=10"\`），需要 \`.decode()\` 转字符串。
 
 ## 本章小结
 
