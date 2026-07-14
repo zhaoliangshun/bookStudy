@@ -137,10 +137,9 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 300 }) {
   // 外网运行下拉菜单展开状态
   const [extMenuOpen, setExtMenuOpen] = useState(false);
   // 在线状态：离线时禁用"运行"和"外网运行"按钮
-  // 初始值用 navigator.onLine（客户端渲染时可直接拿到，避免闪烁）
-  const [isOnline, setIsOnline] = useState(
-    typeof navigator === "undefined" ? true : navigator.onLine
-  );
+  // 初始值统一用 true（保证 SSR 和客户端首次渲染一致，避免 hydration 不匹配），
+  // 在 useEffect 中再读取真实的 navigator.onLine
+  const [isOnline, setIsOnline] = useState(true);
 
   // 复制按钮定时器 / 运行请求 ID（用于清理，避免内存泄漏与竞态）
   const copyTimerRef = useRef(null);
@@ -149,6 +148,8 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 300 }) {
   // 监听浏览器 online / offline 事件，实时更新在线状态
   // PWA 离线模式下，navigator.onLine 会变 false，按钮自动禁用
   useEffect(() => {
+    // 客户端首次挂载时同步真实的在线状态
+    setIsOnline(navigator.onLine);
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
     window.addEventListener("online", handleOnline);
