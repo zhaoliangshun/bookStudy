@@ -157,7 +157,9 @@
     "未分组": [
       "/playground"
     ],
-    "Python 编程": [],
+    "Python 编程": [
+      "/fastapi-fullstack"
+    ],
     "JS / TS 生态": [
       "/tsgen",
       "/ts",
@@ -177,7 +179,8 @@
       "/ai",
       "/aiapp",
       "/aipy",
-      "/ai-agent"
+      "/ai-agent",
+      "/aiagent-simple"
     ],
     "前端工程": [
       "/nextjs",
