@@ -208,6 +208,7 @@ const BOOK_CATEGORIES = [
       { path: "/psychology", label: "心向阳光", icon: "🧠" },
       { path: "/human-weakness", label: "人性的弱点图谱", icon: "🎭" },
       { path: "/weakness", label: "人性的弱点（多角度）", icon: "🪞" },
+      { path: "/weakness-guide", label: "人性弱点简明手册", icon: "📋" },
       { path: "/nervous", label: "与紧张和解", icon: "🌊" },
       { path: "/stomach", label: "脾胃调养", icon: "🌿" },
       { path: "/ibs", label: "肠易激康复", icon: "🫃" },
