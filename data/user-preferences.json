@@ -177,7 +177,8 @@
       "/ai",
       "/aiapp",
       "/aipy",
-      "/ai-agent"
+      "/ai-agent",
+      "/aiagent-simple"
     ],
     "前端工程": [
       "/nextjs",
