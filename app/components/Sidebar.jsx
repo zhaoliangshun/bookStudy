@@ -66,6 +66,7 @@ const BOOK_CATEGORIES = [
       { path: "/fastapi-code", label: "FastAPI 代码详解", icon: "📘" },
       { path: "/fastapi-pro", label: "FastAPI 现代开发", icon: "🚀" },
       { path: "/fastapi-test", label: "FastAPI 测试与部署", icon: "🧪" },
+      { path: "/fastapi-fullstack", label: "FastAPI 全栈实战", icon: "🎯" },
       { path: "/fastapiauth", label: "FastAPI 认证授权", icon: "🔐" },
       { path: "/fastapiauth-simple", label: "FastAPI 认证精简", icon: "🗝️" },
       { path: "/pysubprocess", label: "subprocess 子进程", icon: "🔌" },

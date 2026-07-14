@@ -29,6 +29,14 @@ export const chapters = [
 - **无法复用**：同样的业务逻辑想给别的接口用，没法 import；
 - **测试困难**：逻辑全绑在路由里，想单独测业务函数测不了。
 
+> 🏠 **生活类比：项目结构像房屋户型图**
+>
+> 想象你住进一套"单间公寓"——所有功能（睡觉、做饭、洗澡、吃饭）都挤在一个房间里。一个人住还行，一旦多了一个人就开始互相干扰：你做饭的油烟熏到床，洗澡的水溅到沙发。
+>
+> 好的户型图会**分功能区**：卧室睡觉、厨房做饭、卫生间洗澡、客厅待客。每个房间只做一类事，互相不打架。项目结构也一样——\`users/\` 模块只管用户，\`posts/\` 模块只管文章，各管各的，改一处不影响另一处。
+>
+> 而"分层"更像是每间房里还分"家具摆放层"：床放睡觉区、衣柜放衣物区、床头柜放手边物品。代码也是：路由层接客、业务层算账、数据层存取——各司其职。
+
 > 解决方案就一个字：**分层**。让代码各司其职，每层只做自己该做的事。
 
 ### 1.2 单文件 vs 多文件 vs 模块化
@@ -241,6 +249,58 @@ app.include_router(user_router, prefix="/users", tags=["用户"])
 # 访问 /users/1 会命中 get_user
 \`\`\`
 
+### Demo 3：APIRouter 自动注册（插件式路由加载）
+
+\`\`\`python
+# 文件：app/core/router_loader.py
+# 这个 demo 展示"插件式"路由加载：自动扫描所有模块的 router 并挂载
+# 适合模块很多的超大型项目，避免在 main.py 里写一长串 include_router
+import importlib  # 标准库，用来动态导入模块
+import pkgutil    # 标准库，用来遍历包里的子模块
+from fastapi import FastAPI
+from app import modules  # 假设所有业务模块都放在 app/modules/ 下
+
+def auto_register_routers(app: FastAPI):
+    """自动扫描 app/modules/ 下所有模块，把它们的 router 挂到 app 上"""
+    # pkgutil.iter_modules 遍历包里的所有子模块
+    # 返回 (module_finder, module_name, is_pkg) 三元组
+    for _, module_name, _ in pkgutil.iter_modules(modules.__path__):
+        # 动态导入模块：等价于 from app.modules import <module_name>
+        # importlib.import_module 比 eval/exec 安全，是官方推荐的动态导入方式
+        module = importlib.import_module(f"app.modules.{module_name}")
+        # 检查模块里有没有定义 router 变量
+        # getattr(obj, name, default) 取属性，没有则返回 default
+        router = getattr(module, "router", None)
+        if router is not None:
+            # 自动挂载，prefix 和 tags 由各模块自己定义
+            app.include_router(router)
+            print(f"[自动注册] 已加载模块: {module_name}")
+
+# 使用：main.py 里一行搞定所有路由注册
+# from app.core.router_loader import auto_register_routers
+# app = FastAPI(title="大型应用")
+# auto_register_routers(app)
+\`\`\`
+
+\`\`\`python
+# 文件：app/modules/__init__.py
+# 空文件，让 modules 目录变成一个 Python 包
+\`\`\`
+
+\`\`\`python
+# 文件：app/modules/orders/router.py
+# 每个业务模块只要定义 router，就会被自动加载
+from fastapi import APIRouter
+
+# prefix 和 tags 写在模块里，内聚性更好
+router = APIRouter(prefix="/orders", tags=["订单"])
+
+@router.get("/")
+def list_orders():
+    """订单列表"""
+    return [{"id": 1, "amount": 99.9}]
+\`\`\`
+
 ### 1.6 路由前缀和标签
 
 \`prefix\` 和 \`tags\` 是组织大型 API 的两大利器：
@@ -264,7 +324,7 @@ app.include_router(router)  # 此时不用再写 prefix 了
 
 一个 app 可以挂多个 router，一个 router 也能被多个 app 挂载（复用）。这就是组合的力量。
 
-### Demo 3：多模块路由组合
+### Demo 4：多模块路由组合
 
 \`\`\`python
 # 文件：app/posts/router.py
@@ -331,11 +391,40 @@ def root():
     return {"msg": "博客系统已启动"}
 \`\`\`
 
+### Demo 5：APIRouter 复用与版本化
+
+\`\`\`python
+# 这个 demo 展示两个高级用法：
+#   1. 同一个 router 挂到不同 app（复用）
+#   2. 用 prefix 做 API 版本管理
+from fastapi import APIRouter, FastAPI
+
+# 公共路由器，不写 prefix，由挂载方决定前缀
+shared_router = APIRouter()
+
+@shared_router.get("/profile")
+def get_profile():
+    """用户资料——这个接口在 v1 和 v2 都有"""
+    return {"name": "张三", "level": 5}
+
+# 创建两个 app：一个 v1，一个 v2
+app_v1 = FastAPI(title="API v1")
+app_v2 = FastAPI(title="API v2")
+
+# v1 挂在 /api/v1/users 下
+app_v1.include_router(shared_router, prefix="/api/v1/users", tags=["用户 v1"])
+# v2 挂在 /api/v2/users 下，且额外加了 tags 区分版本
+app_v2.include_router(shared_router, prefix="/api/v2/users", tags=["用户 v2"])
+
+# 现在访问 /api/v1/users/profile 和 /api/v2/users/profile 都能命中同一个函数
+# 这就是"一份代码，多版本服务"的玩法
+\`\`\`
+
 ### 1.8 依赖在各层的体现
 
 分层不只是文件拆分，**依赖注入**也要配合分层。FastAPI 的 \`Depends\` 让各层解耦。
 
-### Demo 4：分层 + 依赖注入
+### Demo 6：分层 + 依赖注入
 
 \`\`\`python
 # 文件：app/database.py
@@ -444,7 +533,7 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
 
 把前面所有概念合起来，做一个博客系统的完整结构。
 
-### Demo 5：博客系统完整结构
+### Demo 7：博客系统完整结构
 
 \`\`\`
 blog/
@@ -553,6 +642,174 @@ def get_post(post_id: int, db: Session = Depends(get_db)):
     return post
 \`\`\`
 
+### Demo 8：电商系统大型项目分模块结构
+
+\`\`\`
+# 这是一个更贴近真实生产的大型项目结构
+# 演示 feature-first + core 公共层的组合方式
+ecommerce/
+  app/
+    __init__.py
+    main.py                       # 应用入口
+    lifespan.py                   # 生命周期管理（第 4 章详讲）
+    config.py                     # 配置管理（第 2 章详讲）
+    database.py                   # 数据库引擎与会话
+    
+    # —— core 公共层：所有业务模块共享的工具 ——
+    core/
+      __init__.py
+      security.py                 # JWT、密码哈希
+      deps.py                     # 公共依赖（get_current_user、分页等）
+      exceptions.py               # 全局业务异常定义
+      pagination.py               # 分页工具
+      responses.py                # 统一响应格式封装
+    
+    # —— 业务模块层：每个模块自成一体 ——
+    modules/
+      __init__.py
+      users/                      # 用户模块
+        __init__.py
+        router.py                 # 路由层
+        service.py                # 业务层
+        repository.py             # 数据层
+        models.py                 # ORM 模型
+        schemas.py                # Pydantic 模型
+        
+      products/                   # 商品模块
+        __init__.py
+        router.py
+        service.py
+        repository.py
+        models.py
+        schemas.py
+        
+      orders/                     # 订单模块
+        __init__.py
+        router.py
+        service.py
+        repository.py
+        models.py
+        schemas.py
+        constants.py              # 订单状态常量
+        
+      payments/                   # 支付模块
+        __init__.py
+        router.py
+        service.py
+        providers/                # 支付渠道子模块
+          __init__.py
+          alipay.py
+          wechat.py
+          stripe.py
+        
+      cart/                       # 购物车模块
+        __init__.py
+        router.py
+        service.py
+        repository.py
+        
+      notifications/              # 通知模块
+        __init__.py
+        router.py
+        service.py
+        channels/                 # 通知渠道
+          __init__.py
+          email.py
+          sms.py
+          push.py
+    
+    # —— 中间件层 ——
+    middleware/
+      __init__.py
+      request_id.py               # 请求 ID 中间件
+      access_log.py               # 访问日志中间件
+      rate_limit.py               # 限流中间件
+    
+    # —— API 版本管理 ——
+    api/
+      __init__.py
+      v1/
+        __init__.py
+        api.py                    # v1 路由聚合
+      v2/
+        __init__.py
+        api.py                    # v2 路由聚合
+  
+  tests/                          # 测试目录，和 app 同级
+    conftest.py                   # pytest fixtures
+    test_users.py
+    test_orders.py
+  
+  alembic/                        # 数据库迁移
+    versions/
+  
+  scripts/                        # 运维脚本
+    init_db.py
+    create_admin.py
+  
+  requirements.txt
+  .env.example
+  Dockerfile
+  docker-compose.yml
+\`\`\`
+
+\`\`\`python
+# 文件：app/main.py —— 大型项目的入口
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.config import settings
+from app.lifespan import app_lifespan
+from app.middleware.request_id import RequestIdMiddleware
+from app.middleware.access_log import AccessLogMiddleware
+from app.api.v1.api import api_router as v1_router
+from app.api.v2.api import api_router as v2_router
+
+# 用工厂模式创建 app，配置全从 settings 读
+app = FastAPI(
+    title=settings.app_name,
+    version=settings.app_version,
+    lifespan=app_lifespan,  # 生命周期交给 lifespan 模块
+)
+
+# —— 中间件（注意顺序：后添加的先执行）——
+app.add_middleware(AccessLogMiddleware)        # 访问日志
+app.add_middleware(RequestIdMiddleware)        # 请求 ID
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# —— 挂载 API 路由 ——
+app.include_router(v1_router, prefix="/api/v1")  # v1 接口
+app.include_router(v2_router, prefix="/api/v2")  # v2 接口
+
+@app.get("/health", tags=["健康检查"])
+def health():
+    """健康检查端点，k8s/Docker 探针用"""
+    return {"status": "healthy"}
+\`\`\`
+
+\`\`\`python
+# 文件：app/api/v1/api.py —— v1 路由聚合器
+from fastapi import APIRouter
+from app.modules.users.router import router as users_router
+from app.modules.products.router import router as products_router
+from app.modules.orders.router import router as orders_router
+from app.modules.payments.router import router as payments_router
+
+# 聚合所有 v1 模块的路由
+api_router = APIRouter()
+api_router.include_router(users_router)
+api_router.include_router(products_router)
+api_router.include_router(orders_router)
+api_router.include_router(payments_router)
+
+# 这样 main.py 只需 include_router(api_router, prefix="/api/v1")
+# 每个 v1 模块的路由最终路径：/api/v1/users/xxx、/api/v1/orders/xxx
+\`\`\`
+
 ### 1.10 常见错误与避坑指南
 
 **错误一：路由层写业务逻辑**
@@ -588,8 +845,70 @@ def create_order(order: OrderIn, db: Session = Depends(get_db)):
 
 **错误六：prefix 重复拼接**：APIRouter 里写了 \`prefix="/users"\`，include_router 时又写了 \`prefix="/users"\`，结果路径变成 \`/users/users/list\`。两者只写一处。
 
+**错误七：模块间直接 import 对方的 service**
+
+\`\`\`python
+# ❌ orders/service.py 直接 import users/service.py
+# 导致 orders 强依赖 users，单独测试 orders 时还得拉起 users
+from app.modules.users.service import get_user_detail
+
+# ✅ 通过参数传依赖，让 service 函数可独立测试
+def create_order(db, order_in, user_service=get_user_detail):
+    # user_service 作为参数注入，测试时可以传 mock
+    user = user_service(db, order_in.user_id)
+\`\`\`
+
+**错误八：把 schemas 当 models 用**：Pydantic 模型（schemas）用于请求/响应校验，SQLAlchemy 模型（models）用于数据库映射，两者职责不同。不要用一个类同时干两件事。
+
 > 一句话总结：**分层的关键不是文件叫什么，而是依赖方向只能从上到下**。router 依赖 service，service 依赖 repository，反过来一行都不行。
-`,
+
+### 1.11 动手实验
+
+**实验 1：把单文件拆成模块化结构**
+
+目标：把下面的单文件 \`main.py\` 拆成模块化结构。
+
+\`\`\`python
+# 拆分前的单文件 main.py
+from fastapi import FastAPI
+app = FastAPI()
+
+@app.get("/users/{user_id}")
+def get_user(user_id: int):
+    return {"id": user_id, "name": "张三"}
+
+@app.post("/users")
+def create_user(user: dict):
+    return {"msg": "创建成功", "user": user}
+
+@app.get("/posts")
+def list_posts():
+    return [{"id": 1, "title": "Hello"}]
+\`\`\`
+
+任务：
+1. 创建 \`app/users/router.py\`，把用户路由移过去，加 \`prefix="/users"\`
+2. 创建 \`app/posts/router.py\`，把文章路由移过去，加 \`prefix="/posts"\`
+3. \`app/main.py\` 只保留 \`app.include_router(...)\` 调用
+4. 启动后访问 \`/docs\` 确认接口分组正确
+
+**实验 2：加一个新模块**
+
+在实验 1 基础上：
+1. 新建 \`app/comments/router.py\`，定义 \`GET /posts/{post_id}/comments\`
+2. 不要修改 \`main.py\`，而是写一个 \`auto_register.py\` 自动扫描注册
+3. 测试：再新建一个 \`app/likes/router.py\`，验证自动注册是否生效
+
+**实验 3：分层重构**
+
+给 \`users\` 模块补全三层：
+1. \`users/schemas.py\`：定义 \`UserCreate\`、\`UserOut\` Pydantic 模型
+2. \`users/repository.py\`：定义 \`create_user(db, user)\`、\`get_user(db, user_id)\`
+3. \`users/service.py\`：定义 \`create_user_service(db, user_in)\`，加业务校验（用户名不能重复）
+4. \`users/router.py\`：调 service，把 \`ValueError\` 转成 \`HTTPException\`
+5. 写测试 \`test_users.py\`，直接调 service 层（不启动 HTTP）
+
+> 完成这三个实验，你就掌握了 feature-first 模块化结构的精髓。后面再大的项目也不慌。`,
   },
 
   // =============================================================
@@ -622,6 +941,14 @@ SECRET_KEY = "abcdef123456"
 - **密码泄露**：把数据库密码提交到 git，相当于公开了；
 - **多人协作冲突**：A 的本地密码和 B 不一样，互相覆盖；
 - **无法分环境**：dev / staging / prod 配置全混在一起。
+
+> 🎛️ **生活类比：配置管理像家电控制面板**
+>
+> 想象家里的空调。老式窗机所有设置都"焊死"在机器里——温度固定 25 度、风速固定、定时固定，想调就得拆机器改电路。这就是"硬编码"。
+>
+> 现代空调有个**遥控器（控制面板）**：温度、风速、模式都能随时调，不用拆机器。配置管理就是这个遥控器——代码是机器，配置是遥控器。换环境（夏天制冷/冬天制热）只调遥控器，不拆机器。
+>
+> 而 \`pydantic-settings\` 就像是带"预设模式"的智能遥控器：你按"睡眠模式"（dev 环境），它自动调好温度、风速、噪音；按"强劲模式"（prod 环境），参数全换。机器（代码）完全不用动。
 
 > 正确做法：**配置和代码分离**。代码只读配置，不存配置。配置从环境变量、配置文件来。
 
@@ -720,11 +1047,68 @@ settings = Settings()
 print(settings.port)  # 如果环境变量 PORT=3000，这里就是 3000（int 类型）
 \`\`\`
 
+### Demo 3：嵌套配置与子模型
+
+\`\`\`python
+# 这个 demo 展示用嵌套 Pydantic 模型组织复杂配置
+# 适合配置项很多的中大型项目，避免一个 Settings 类几百个字段
+from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# —— 子配置模型 ——
+class DatabaseConfig(BaseModel):
+    """数据库相关配置"""
+    # Field(..., description=...) 第一个参数是默认值，... 表示必填
+    url: str = Field(..., description="数据库连接 URL")
+    pool_size: int = Field(default=10, ge=1, le=100, description="连接池大小 1-100")
+    max_overflow: int = Field(default=20, ge=0, description="溢出连接数")
+    echo: bool = Field(default=False, description="是否打印 SQL")
+
+class RedisConfig(BaseModel):
+    """Redis 配置"""
+    url: str = "redis://localhost:6379/0"
+    max_connections: int = 20
+    decode_responses: bool = True
+
+class JWTConfig(BaseModel):
+    """JWT 配置"""
+    secret_key: str
+    algorithm: str = "HS256"
+    expire_minutes: int = 1440  # 默认 24 小时
+
+# —— 主配置类 ——
+class Settings(BaseSettings):
+    """应用主配置，组合各子配置"""
+    app_name: str = "博客系统"
+    debug: bool = False
+    
+    # 嵌套配置：环境变量用双下划线分隔
+    # 例如 DATABASE__URL=xxx 会填充到 database.url
+    database: DatabaseConfig
+    redis: RedisConfig = RedisConfig()  # 有默认值，可不配
+    jwt: JWTConfig
+    
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        env_nested_delimiter="__",  # 嵌套分隔符
+    )
+
+# .env 文件示例：
+# DATABASE__URL=postgresql://user:pass@localhost:5432/blog
+# DATABASE__POOL_SIZE=20
+# JWT__SECRET_KEY=my-super-secret-key-12345
+# JWT__EXPIRE_MINUTES=720
+
+settings = Settings()
+# 访问：settings.database.url、settings.redis.max_connections
+\`\`\`
+
 ### 2.4 .env 文件管理
 
 \`.env\` 文件是本地开发的标配，把配置写在里面，代码读它。
 
-### Demo 3：.env 文件 + 多字段
+### Demo 4：.env 文件 + 多字段
 
 \`\`\`bash
 # 文件：.env（注意：这个文件绝对不能提交到 git！）
@@ -790,7 +1174,7 @@ SECRET_KEY=your-secret-key-here
 
 真实项目至少三套环境：开发、测试、生产。配置各不相同。怎么管？
 
-### Demo 4：多环境配置系统
+### Demo 5：多环境配置系统
 
 \`\`\`python
 # 文件：app/config.py
@@ -883,7 +1267,7 @@ ENV=prod uvicorn app.main:app --host 0.0.0.0 --port 8000
 - \`model_config\` 也会被继承，子类可以指定不同的 \`.env\` 文件；
 - 环境变量优先级最高，会覆盖代码里的默认值。
 
-### Demo 5：配置覆盖验证
+### Demo 6：配置覆盖验证
 
 \`\`\`python
 # 演示优先级：代码默认值 < .env 文件 < 系统环境变量
@@ -905,7 +1289,7 @@ class Settings(BaseSettings):
 
 pydantic-settings 的杀手锏：**配置错了，启动就挂**，而不是运行到一半才出问题。
 
-### Demo 6：类型校验避坑
+### Demo 7：类型校验避坑
 
 \`\`\`python
 from pydantic_settings import BaseSettings
@@ -930,6 +1314,144 @@ class Settings(BaseSettings):
 # 比"运行时才发现连接数是 abc 然后崩"好得多
 \`\`\`
 
+### Demo 8：完整的 Pydantic Settings 配置（带校验器）
+
+\`\`\`python
+# 这个 demo 展示一个生产可用的完整配置类
+# 包含：类型校验、自定义校验器、字段约束、列表解析
+from pydantic import field_validator, model_validator, Field, HttpUrl, PostgresDsn
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Literal
+
+class Settings(BaseSettings):
+    """生产级配置示例"""
+    
+    # —— 环境标识 ——
+    # Literal 限制只能取这三个值，拼错会报错
+    env: Literal["dev", "staging", "prod"] = "dev"
+    debug: bool = False
+    
+    # —— 应用元信息 ——
+    app_name: str = "博客系统"
+    app_version: str = "1.0.0"
+    
+    # —— 数据库 ——
+    # PostgresDsn 会校验 URL 是不是合法的 PostgreSQL 连接串
+    database_url: str
+    # Field(ge=1, le=100) 限制值在 1-100 之间
+    db_pool_size: int = Field(default=10, ge=1, le=100)
+    db_max_overflow: int = Field(default=20, ge=0)
+    db_echo: bool = False  # 是否打印 SQL（开发期用）
+    
+    # —— Redis ——
+    redis_url: str = "redis://localhost:6379/0"
+    redis_max_connections: int = 20
+    
+    # —— 安全 ——
+    secret_key: str
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 1440
+    
+    # —— CORS ——
+    # .env 里写逗号分隔字符串：CORS_ORIGINS=http://a.com,http://b.com
+    cors_origins: list[str] = ["http://localhost:3000"]
+    
+    # —— 日志 ——
+    log_level: str = "INFO"
+    
+    # —— 模型校验器：跨字段校验 ——
+    # model_validator(mode="after") 在所有字段解析完之后执行
+    @model_validator(mode="after")
+    def check_prod_security(self):
+        """生产环境必须满足的安全要求"""
+        if self.env == "prod":
+            # 生产不能开 debug
+            if self.debug:
+                raise ValueError("生产环境不能开 debug=True")
+            # 生产 secret_key 不能用默认值
+            if self.secret_key in ("change-me", "dev-only-not-secret", "secret"):
+                raise ValueError("生产环境 secret_key 不能用默认值")
+            # 生产不能用 SQLite
+            if self.database_url.startswith("sqlite"):
+                raise ValueError("生产环境不能用 SQLite")
+        return self
+    
+    # —— 字段校验器：单字段校验 ——
+    @field_validator("secret_key")
+    @classmethod
+    def secret_must_be_long(cls, v: str) -> str:
+        """secret_key 至少 16 位"""
+        if len(v) < 16:
+            raise ValueError("secret_key 至少 16 位")
+        return v
+    
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def split_cors(cls, v):
+        """允许 .env 里用逗号分隔的字符串"""
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(",")]
+        return v
+    
+    @field_validator("log_level")
+    @classmethod
+    def normalize_log_level(cls, v: str) -> str:
+        """日志级别统一大写"""
+        return v.upper()
+    
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
+
+# 用法
+settings = Settings()
+# 如果配置有问题，Settings() 这一行直接抛 ValidationError，应用起不来
+\`\`\`
+
+### Demo 9：配置作为依赖注入（方便测试覆盖）
+
+\`\`\`python
+# 这个 demo 展示把 Settings 做成 FastAPI 依赖
+# 好处：测试时可以用 app.dependency_overrides 替换配置
+from functools import lru_cache
+from fastapi import FastAPI, Depends
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+    app_name: str = "博客系统"
+    debug: bool = False
+    database_url: str = "sqlite:///./app.db"
+
+# lru_cache 让 get_settings 只执行一次，后续返回缓存
+# 测试时可以 get_settings.cache_clear() 清缓存
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+
+app = FastAPI()
+
+# 把 settings 作为依赖注入，而不是直接 import 全局变量
+@app.get("/info")
+def info(settings: Settings = Depends(get_settings)):
+    return {"app": settings.app_name, "debug": settings.debug}
+
+# —— 测试时覆盖配置 ——
+def test_info():
+    from app.main import app, get_settings, Settings
+    # 创建测试专用配置
+    test_settings = Settings(app_name="测试应用", debug=True)
+    # 覆盖依赖：原本调 get_settings() 的地方都返回 test_settings
+    app.dependency_overrides[get_settings] = lambda: test_settings
+    try:
+        # 测试逻辑...
+        pass
+    finally:
+        # 测试完清理，避免影响其他测试
+        app.dependency_overrides.clear()
+\`\`\`
+
 ### 2.9 敏感信息管理
 
 **原则一：密钥永远不进代码、不进 git。**
@@ -945,7 +1467,7 @@ class Settings(BaseSettings):
 
 **原则二：生产环境用密钥管理服务**。AWS Secrets Manager、HashiCorp Vault、阿里云 KMS。代码只负责从这些服务拉密钥。
 
-### Demo 7：从 Vault 拉密钥（伪代码示意思路）
+### Demo 10：从 Vault 拉密钥（伪代码示意思路）
 
 \`\`\`python
 import os
@@ -972,11 +1494,32 @@ settings = Settings()
 
 > 这是高级用法，小项目用 \`.env\` + 环境变量就够了。但要知道生产环境有更安全的方案。
 
+### Demo 11：生成安全的密钥
+
+\`\`\`python
+# 这个 demo 展示如何生成符合安全要求的密钥
+# 新项目常犯的错：secret_key 用 "123456" 或 "secret"
+import secrets  # 标准库，专门生成密码学安全的随机值
+
+# 生成 32 字节的随机字符串（64 位 hex），足够安全
+def generate_secret_key() -> str:
+    """生成一个安全的随机密钥"""
+    # secrets.token_hex(32) 生成 64 个十六进制字符
+    return secrets.token_hex(32)
+
+# 生成 JWT 密钥
+print("SECRET_KEY=" + generate_secret_key())
+# 输出示例：SECRET_KEY=a1b2c3d4e5...（64 位）
+
+# 也可以用 openssl 命令行生成：
+# openssl rand -hex 32
+\`\`\`
+
 ### 2.10 Docker 环境下的配置
 
 Docker 部署时，配置通过 \`docker run -e\` 或 \`docker-compose.yml\` 的 \`environment\` 传入。
 
-### Demo 8：Docker Compose 配置
+### Demo 12：Docker Compose 配置
 
 \`\`\`yaml
 # 文件：docker-compose.yml
@@ -1025,7 +1568,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 把前面所有概念合起来，做一个完整可用的配置系统。
 
-### Demo 9：完整配置系统
+### Demo 13：完整配置系统
 
 \`\`\`python
 # 文件：app/config.py
@@ -1167,14 +1710,62 @@ def get_db_url():
 
 **错误三：bool 类型识别**：\`DEBUG=False\` 在 .env 里，pydantic 会正确转成 \`False\`。但 \`DEBUG=false\`、\`DEBUG=0\`、\`DEBUG=no\` 也会被识别为 False。注意 \`DEBUG="False"\`（带引号）可能被当成字符串再判断，行为依版本而异，最好不写引号。
 
-**错误四：list 类型从 .env 读**：\`cors_origins: list[str]\` 在 .env 里写 \`CORS_ORIGINS=a,b,c\`，需要用 \`mode="before"\` 的 validator 手动 split（见 Demo 9）。否则 pydantic 会尝试把整个字符串当成 list 解析，报错。
+**错误四：list 类型从 .env 读**：\`cors_origins: list[str]\` 在 .env 里写 \`CORS_ORIGINS=a,b,c\`，需要用 \`mode="before"\` 的 validator 手动 split（见 Demo 8）。否则 pydantic 会尝试把整个字符串当成 list 解析，报错。
 
 **错误五：生产用 dev 配置**：忘了设 \`ENV=prod\`，结果生产跑的是 dev 配置（debug=True、用 SQLite）。启动时打印一行日志确认环境：\`logger.info(f"启动环境: {settings.env}")\`。
 
 **错误六：循环导入**：\`config.py\` 想用 \`database.py\` 的东西，\`database.py\` 又 import \`config.py\` 的 settings。解法：让 \`database.py\` 依赖 \`config.py\`，反过来不行。config 是最底层，不依赖任何业务模块。
 
+**错误七：配置值带引号**
+
+\`\`\`bash
+# ❌ .env 里写引号，pydantic 会把引号也读进去
+APP_NAME="博客系统"
+# 结果 settings.app_name == '"博客系统"'（带引号）
+
+# ✅ .env 里不写引号
+APP_NAME=博客系统
+\`\`\`
+
+**错误八：密码里有特殊字符没转义**：数据库密码含 \`@\`、\`/\`、\`:\` 等字符，URL 里需要 URL 编码。比如密码 \`p@ss:word\` 要写成 \`p%40ss%3Aword\`。
+
 > 一句话总结：**配置是代码的"开关"，开关必须在代码外面**。pydantic-settings 给了你类型安全 + 多环境支持，用好它，部署再也不用改代码。
-`,
+
+### 2.13 动手实验
+
+**实验 1：从硬编码迁移到 pydantic-settings**
+
+目标：把下面硬编码的代码改造成配置驱动。
+
+\`\`\`python
+# 改造前
+app = FastAPI(title="我的博客")
+engine = create_engine("postgresql://postgres:123456@localhost:5432/blog")
+SECRET_KEY = "my-secret"
+\`\`\`
+
+任务：
+1. 创建 \`app/config.py\`，定义 \`Settings\` 类
+2. 创建 \`.env\` 文件，写入配置值
+3. 创建 \`.env.example\` 作为模板
+4. 把 \`.env\` 加到 \`.gitignore\`
+5. \`main.py\` 从 \`settings\` 读配置
+
+**实验 2：加多环境支持**
+
+在实验 1 基础上：
+1. 拆出 \`DevSettings\` 和 \`ProdSettings\`
+2. 写 \`get_settings()\` 工厂函数，根据 \`ENV\` 环境变量返回不同实例
+3. 给 \`ProdSettings\` 加校验：\`secret_key\` 不能用默认值、\`debug\` 必须是 \`False\`
+4. 测试：设 \`ENV=prod\` 但不设 \`SECRET_KEY\`，确认应用启动失败
+
+**实验 3：配置作为依赖注入**
+
+1. 把 \`get_settings\` 用 \`@lru_cache\` 包装
+2. 在路由里用 \`Depends(get_settings)\` 注入配置
+3. 写一个测试，用 \`app.dependency_overrides\` 覆盖配置，验证接口返回测试值
+
+> 完成这三个实验，你就掌握了生产级配置管理的全部要点。`,
   },
 
   // =============================================================
@@ -1196,6 +1787,19 @@ def get_db_url():
 - **没来源**：不知道是哪个文件哪一行打的；
 - **没法路由**：想同时输出到文件和控制台？想按级别分文件？print 做不到；
 - **没法关**：上线后想把调试信息关掉，print 得一个个删。
+
+> 📹 **生活类比：日志像家里的安防监控系统**
+>
+> \`print\` 就像你对着空气喊一句"出事啦！"——声音瞬间消失，没人记录，没时间戳，邻居（运维）也听不到。
+>
+> \`logging\` 像家里装的**安防监控系统**：
+> - **摄像头（Handler）**：决定画面录到哪——手机 App、硬盘录像机、云端；
+> - **画面分级（Level）**：门口有人按门铃是 INFO，窗户被撬是 ERROR，煤气泄漏是 CRITICAL；
+> - **时间戳（Formatter）**：每条录像都带"2026-07-11 10:00:00"，事后能查；
+> - **存储（RotatingFileHandler）**：硬盘满了自动覆盖最旧的，不会塞爆；
+> - **远程告警（Sentry）**：CRITICAL 级别直接推送手机，不用守在屏幕前。
+>
+> 而 \`request_id\` 就像给每个访客发一张临时门禁卡——这个访客触发的所有摄像头画面都带同一个卡号，事后一搜就能串起他完整的行动轨迹。
 
 > \`logging\` 模块解决所有这些问题。它是 Python 标准库，不用安装。
 
@@ -1281,11 +1885,35 @@ def error():
 2026-07-11 10:00:01 [ERROR] app.main: 出错了！
 \`\`\`
 
+### Demo 2：用 LoggerAdapter 给日志加固定字段
+
+\`\`\`python
+# 这个 demo 展示 LoggerAdapter：给某个 logger 的所有日志自动加上下文字段
+# 比如某个用户的所有操作日志都带 user_id，不用每条手写
+import logging
+
+# 创建基础 logger
+logger = logging.getLogger("app.user_ops")
+
+# LoggerAdapter 包装 logger，extra 里的字段会附加到每条日志
+# 这样不用每条日志都手动传 extra={"user_id": ...}
+adapter = logging.LoggerAdapter(logger, {"user_id": 10086})
+
+# 之后用 adapter 打日志，每条都会带上 user_id
+adapter.info("用户登录")       # 自动带 user_id=10086
+adapter.info("用户查看订单")   # 自动带 user_id=10086
+adapter.error("用户操作失败")  # 自动带 user_id=10086
+
+# 切换用户时重新创建 adapter
+adapter = logging.LoggerAdapter(logger, {"user_id": 10087})
+adapter.info("另一个用户登录")  # 自动带 user_id=10087
+\`\`\`
+
 ### 3.5 日志处理器详解
 
 \`basicConfig\` 是简化版，真实项目要自定义 Handler。
 
-### Demo 2：多 Handler 组合
+### Demo 3：多 Handler 组合
 
 \`\`\`python
 # 文件：app/logging_config.py
@@ -1340,7 +1968,7 @@ def setup_logging():
 
 普通日志是人看的，JSON 日志是机器看的。生产环境用 ELK（Elasticsearch + Logstash + Kibana）或 Loki 收集日志，必须是结构化格式才能查询。
 
-### Demo 3：JSON 结构化日志
+### Demo 4：JSON 结构化日志
 
 \`\`\`python
 # 文件：app/logging_config.py
@@ -1424,11 +2052,63 @@ def get_user(user_id: int):
 
 > ELK 里查日志：\`level:ERROR AND user_id:123\`，结构化日志让这种查询成为可能。纯文本日志只能 grep。
 
+### Demo 5：用 contextvars 贯穿请求上下文
+
+\`\`\`python
+# 这个 demo 展示用 contextvars 自动给整个请求链路的日志加上下文
+# 比 LoggerAdapter 更优雅：不用每次传 adapter，contextvars 在协程间自动隔离
+import logging
+import contextvars
+from typing import Any
+
+# contextvars.ContextVar 是 Python 3.7+ 的标准库
+# 它能在异步环境下保存"当前协程的上下文"，不同请求互不干扰
+# 比如每个请求有自己的 request_id，用 ContextVar 存最合适
+request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="-")
+user_id_var: contextvars.ContextVar[int] = contextvars.ContextVar("user_id", default=0)
+
+class ContextualFormatter(logging.Formatter):
+    """自动从 contextvars 读取上下文的格式化器"""
+    
+    def format(self, record: logging.LogRecord) -> str:
+        # 在格式化时，从 ContextVar 拿当前请求的 request_id
+        # 不需要业务代码手动传 extra
+        record.request_id = request_id_var.get()
+        record.user_id = user_id_var.get()
+        # 调父类 format 完成格式化
+        return super().format(record)
+
+# 配置：用 ContextualFormatter
+def setup_contextual_logging():
+    handler = logging.StreamHandler()
+    # 格式里引用 %(request_id)s 和 %(user_id)s，会从 record 上取
+    handler.setFormatter(ContextualFormatter(
+        "%(asctime)s [%(levelname)s] [req=%(request_id)s user=%(user_id)s] %(message)s"
+    ))
+    logging.basicConfig(level=logging.INFO, handlers=[handler])
+
+# —— 在中间件里设置上下文 ——
+from starlette.middleware.base import BaseHTTPMiddleware
+import uuid
+
+class ContextMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        # 给当前请求设置 request_id
+        # set 返回一个 token，reset 时用（但通常不需要手动 reset）
+        request_id_var.set(request.headers.get("X-Request-ID") or uuid.uuid4().hex[:8])
+        # 调下游，下游所有日志自动带这个 request_id
+        response = await call_next(request)
+        return response
+
+# 现在：业务代码不用管 request_id，formatter 会自动加
+# logger.info("处理订单") → "2026-07-11 [INFO] [req=a1b2c3 user=0] 处理订单"
+\`\`\`
+
 ### 3.7 request_id 贯穿请求链路
 
 微服务/多日志场景下，一个请求可能经过多个模块。怎么把它们串起来？**给每个请求一个唯一 request_id，所有日志都带上**。
 
-### Demo 4：中间件 + request_id
+### Demo 6：中间件 + request_id
 
 \`\`\`python
 # 文件：app/middleware.py
@@ -1499,7 +2179,7 @@ def get_user(user_id: int, request: Request):
 
 接口慢是线上常见问题。用中间件记录每个请求耗时，慢的告警。
 
-### Demo 5：慢请求监控中间件
+### Demo 7：慢请求监控中间件
 
 \`\`\`python
 # 文件：app/middleware.py
@@ -1566,7 +2246,7 @@ app.add_middleware(SlowRequestMiddleware, threshold=0.5)  # 超过 0.5 秒算慢
 
 日志只能告诉你"出错了"，但错误聚合、堆栈分析、影响范围统计，需要专门的错误监控服务。**Sentry** 是最流行的。
 
-### Demo 6：Sentry 集成
+### Demo 8：Sentry 集成
 
 \`\`\`bash
 pip install sentry-sdk
@@ -1625,11 +2305,50 @@ def manual_report():
 
 > Sentry 的价值：同一个错误出现 1000 次，它聚合显示"1 个问题，1000 次发生"，并告诉你第一次和最后一次是什么时候、影响哪些用户。日志里这 1000 条混在一堆，根本看不出来。
 
+### Demo 9：日志过滤器——按业务过滤
+
+\`\`\`python
+# 这个 demo 展示自定义 Filter，精细控制哪些日志要输出
+import logging
+
+class SensitiveDataFilter(logging.Filter):
+    """过滤掉包含敏感信息的日志，防止泄露"""
+    
+    def __init__(self):
+        super().__init__()
+        # 需要过滤的关键词列表
+        self.sensitive_words = ["password", "token", "secret", "api_key", "身份证"]
+    
+    def filter(self, record: logging.LogRecord) -> bool:
+        # 获取日志消息
+        msg = record.getMessage()
+        # 检查是否包含敏感词
+        for word in self.sensitive_words:
+            if word.lower() in msg.lower():
+                # 返回 False 表示这条日志不输出
+                return False
+        # 返回 True 表示输出
+        return True
+
+# 使用：把过滤器加到 handler 上
+handler = logging.StreamHandler()
+handler.addFilter(SensitiveDataFilter())
+logger = logging.getLogger("app")
+logger.addHandler(handler)
+
+# 这两条会输出
+logger.info("用户登录成功")
+logger.info("订单创建完成")
+# 这两条会被过滤掉（包含敏感词）
+logger.info("password=123456 验证通过")
+logger.info("token=abc123 已签发")
+\`\`\`
+
 ### 3.10 实战：生产级日志系统
 
 把前面所有概念合起来，做一个完整的生产级日志系统。
 
-### Demo 7：完整日志系统
+### Demo 10：完整日志系统
 
 \`\`\`python
 # 文件：app/logging_config.py
@@ -1769,6 +2488,39 @@ def error():
     raise RuntimeError("故意出错")
 \`\`\`
 
+### Demo 11：分模块 logger 配置
+
+\`\`\`python
+# 这个 demo 展示按模块配置不同的日志级别
+# 比如业务模块用 INFO，第三方库用 WARNING，SQL 调试用 DEBUG
+import logging
+
+def setup_module_loggers():
+    """分模块配置 logger 级别"""
+    
+    # 业务模块：INFO 级别，记录关键流程
+    logging.getLogger("app.users").setLevel(logging.INFO)
+    logging.getLogger("app.orders").setLevel(logging.INFO)
+    logging.getLogger("app.payments").setLevel(logging.INFO)
+    
+    # 数据库相关：生产 WARNING，开发 DEBUG（看 SQL）
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    # 开发时想看 SQL，改成：
+    # logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+    
+    # 第三方库：降噪
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").setLevel(logging.INFO)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("redis").setLevel(logging.WARNING)
+    
+    # 临时调试某个模块：单独提到 DEBUG
+    # logging.getLogger("app.orders.service").setLevel(logging.DEBUG)
+
+# 这样可以精确控制每个模块的日志量
+# 比如线上某个接口有问题，只把那个模块提到 DEBUG，不影响其他
+\`\`\`
+
 ### 3.11 日志级别选择对照
 
 | 场景 | 推荐级别 | 理由 |
@@ -1826,8 +2578,66 @@ except Exception:
 
 **错误六：日志里打大对象**：\`logger.info(f"响应: {huge_dict}")\` 把整个响应体打出来，日志爆炸。只记关键字段。
 
+**错误七：在循环里打 DEBUG 日志**
+
+\`\`\`python
+# ❌ 即使 DEBUG 被过滤，format 字符串还是会构造
+for item in huge_list:
+    logger.debug(f"处理: {item.to_dict()}")  # to_dict() 每次都调
+
+# ✅ 加级别判断，避免无谓的计算
+for item in huge_list:
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug("处理: %s", item.to_dict())
+\`\`\`
+
+**错误八：用 print 调试忘了删**：上线后 \`print\` 输出到 stdout，污染 docker logs，且没格式。养成用 \`logger\` 的习惯，调试日志用 \`DEBUG\` 级别，上线自动过滤。
+
 > 一句话总结：**日志是生产环境的眼睛**。结构化（JSON）+ request_id 串联 + 级别克制 + 异常带堆栈，这四点做到，线上排查效率翻十倍。
-`,
+
+### 3.13 动手实验
+
+**实验 1：给现有项目加日志**
+
+目标：给下面的裸 FastAPI 应用加上完整日志。
+
+\`\`\`python
+# 改造前
+from fastapi import FastAPI
+app = FastAPI()
+
+@app.get("/users/{user_id}")
+def get_user(user_id: int):
+    return {"id": user_id}
+
+@app.get("/error")
+def error():
+    raise RuntimeError("出错了")
+\`\`\`
+
+任务：
+1. 创建 \`app/logging_config.py\`，定义 \`setup_logging()\`
+2. 控制台输出 INFO 及以上，格式：\`时间 [级别] 模块: 消息\`
+3. 文件输出 DEBUG 及以上，按 10MB 滚动，保留 5 个
+4. 错误日志单独写到 \`error.log\`
+5. \`main.py\` 启动时调 \`setup_logging()\`，每个路由加 \`logger.info\`
+
+**实验 2：加 request_id 串联**
+
+在实验 1 基础上：
+1. 写 \`RequestIdMiddleware\`，给每个请求生成 8 位 uuid
+2. 把 \`request_id\` 存到 \`request.state\`，并加到响应头 \`X-Request-ID\`
+3. 路由里打日志时带上 \`request_id\`（用 \`extra\`）
+4. 发起两次请求，确认日志里 \`request_id\` 不同
+
+**实验 3：结构化日志 + 慢请求监控**
+
+1. 把日志格式改成 JSON（自定义 \`JsonFormatter\`）
+2. 加 \`SlowRequestMiddleware\`，超过 0.5 秒的请求打 WARNING
+3. 写一个 \`/slow\` 接口（\`time.sleep(1)\`），验证慢请求告警
+4. 用 \`jq\` 工具解析 JSON 日志：\`cat app.log | jq 'select(.level=="WARNING")'\`
+
+> 完成这三个实验，你就有了生产级日志系统的完整能力。`,
   },
 
   // =============================================================
@@ -1861,6 +2671,19 @@ yield —— 应用开始接收请求
    ↓
 应用退出
 \`\`\`
+
+> 🏪 **生活类比：lifespan 像开店关店的日常流程**
+>
+> 想象你开了一家奶茶店。每天的开店流程是固定的：
+> - **开店前（startup）**：开门、开灯、开空调、启动收银机、煮好茶底、预热设备、把零钱放进收银机
+> - **营业中（yield）**：接待顾客、做奶茶、收钱
+> - **打烊后（shutdown）**：关设备、清点营业额、扫地、关灯、锁门
+>
+> 如果不做这些"启动/关闭"动作直接开门——顾客来了发现收银机没开、茶底没煮、空调没启动，体验灾难。如果不做"关闭"动作直接走——设备开一夜费电、门没锁被盗。
+>
+> \`lifespan\` 就是这个开店/关店流程的"清单"：\`yield\` 前是开店清单，\`yield\` 后是打烊清单。**同一个资源的开和关写在一起**（就像"开空调"和"关空调"挨着写），不会漏。
+>
+> 而 \`AsyncExitStack\` 就像店长同时管多个设备的开关——咖啡机、制冰机、收银机按顺序开，打烊时按相反顺序关（先关制冰机再关咖啡机，因为咖啡机清洗需要制冰机的水）。
 
 ### 4.2 旧方式：on_event（已不推荐）
 
@@ -1971,6 +2794,46 @@ INFO:     Uvicorn running on http://127.0.0.1:8000
 
 > lifespan 的核心优势：**一个资源的初始化和清理写在一起**，看一眼就知道这对"开/关"是配对的，不会漏。
 
+### Demo 3：lifespan 与 on_event 对照迁移
+
+\`\`\`python
+# 这个 demo 展示如何把旧的 on_event 代码迁移到新的 lifespan
+# 迁移规则很简单：startup 函数体放 yield 前，shutdown 函数体放 yield 后
+
+# —— 迁移前：on_event 风格 ——
+# @app.on_event("startup")
+# async def startup():
+#     init_db()
+#     init_redis()
+#
+# @app.on_event("shutdown")
+# async def shutdown():
+#     close_redis()
+#     close_db()
+
+# —— 迁移后：lifespan 风格 ——
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # —— startup 部分（顺序和原来一致）——
+    init_db()       # 原来在 startup 函数里
+    init_redis()    # 原来在 startup 函数里
+    
+    yield  # 分界线
+    
+    # —— shutdown 部分（注意顺序：和 startup 相反）——
+    close_redis()   # 原来在 shutdown 函数里
+    close_db()      # 原来在 shutdown 函数里
+
+app = FastAPI(lifespan=lifespan)
+
+# 关键点：关闭顺序要和初始化顺序相反
+# 先初始化 DB，再初始化 Redis → 先关 Redis，再关 DB
+# 因为 Redis 可能依赖 DB（比如缓存 DB 查询结果），关 DB 前 Redis 还能用
+\`\`\`
+
 ### 4.4 为什么用 lifespan 不用 on_event
 
 | 对比项 | on_event | lifespan |
@@ -1985,7 +2848,7 @@ INFO:     Uvicorn running on http://127.0.0.1:8000
 
 ### 4.5 启动时建数据库连接池
 
-### Demo 3：数据库连接池生命周期
+### Demo 4：数据库连接池生命周期
 
 \`\`\`python
 # 文件：app/main.py
@@ -2027,9 +2890,67 @@ def get_db():
     pass
 \`\`\`
 
+### Demo 5：异步数据库（SQLAlchemy 2.0 async）生命周期
+
+\`\`\`python
+# 这个 demo 展示异步数据库引擎的生命周期管理
+# 适合全异步 FastAPI 应用（用 async def 路由 + 异步 ORM）
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from app.config import settings
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # —— 启动：创建异步引擎 ——
+    # create_async_engine 是 SQLAlchemy 2.0 的异步引擎
+    # 注意 URL 要用 asyncpg 驱动：postgresql+asyncpg://...
+    # SQLite 用 aiosqlite：sqlite+aiosqlite:///./app.db
+    engine = create_async_engine(
+        settings.database_url,  # 例：postgresql+asyncpg://user:pass@localhost/db
+        echo=settings.db_echo,  # 是否打印 SQL
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
+        pool_pre_ping=True,
+    )
+    # 异步会话工厂
+    AsyncSessionLocal = async_sessionmaker(
+        bind=engine,
+        class_=AsyncSession,
+        expire_on_commit=False,  # commit 后对象不过期，避免异步访问报错
+    )
+    app.state.engine = engine
+    app.state.AsyncSessionLocal = AsyncSessionLocal
+    print(">>> 异步数据库引擎就绪")
+    
+    yield
+    
+    # —— 关闭：释放异步引擎 ——
+    # await 因为是异步操作
+    await engine.dispose()
+    print(">>> 异步数据库引擎已释放")
+
+app = FastAPI(lifespan=lifespan)
+
+# 异步依赖：每个请求拿一个异步会话
+from fastapi import Depends
+
+async def get_async_db():
+    async with app.state.AsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
+
+@app.get("/users/{user_id}")
+async def get_user(user_id: int, db: AsyncSession = Depends(get_async_db)):
+    # 用 await db.execute(...) 查询
+    return {"id": user_id}
+\`\`\`
+
 ### 4.6 启动时加载 Redis / 外部服务
 
-### Demo 4：Redis 连接生命周期
+### Demo 6：Redis 连接生命周期
 
 \`\`\`python
 # 文件：app/main.py
@@ -2077,7 +2998,7 @@ async def get_cache(key: str):
 
 有些重资源（机器学习模型、大字典）启动时加载到内存，避免每次请求都加载。
 
-### Demo 5：启动时加载模型并预热
+### Demo 7：启动时加载模型并预热
 
 \`\`\`python
 # 文件：app/main.py
@@ -2125,11 +3046,54 @@ def predict(payload: dict):
 
 > 如果不加 lifespan，把模型加载写在路由里，每次请求都加载一次 3 秒，用户体验灾难。lifespan 让"一次加载，万次复用"成为可能。
 
+### Demo 8：启动时预热缓存
+
+\`\`\`python
+# 这个 demo 展示启动时从数据库加载热点数据到缓存
+# 避免服务刚启动时缓存空，大量请求打到数据库
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+import json
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # —— 启动：预热缓存 ——
+    print(">>> 开始预热缓存...")
+    # 假装从数据库读热点配置
+    hot_configs = {
+        "feature_flags": {"new_ui": True, "beta": False},
+        "rate_limits": {"default": 100, "premium": 1000},
+        "maintenance": False,
+    }
+    # 把配置序列化后存到 app.state（假装是 Redis）
+    app.state.cache = {}
+    for key, value in hot_configs.items():
+        app.state.cache[key] = json.dumps(value)
+    
+    print(f">>> 缓存预热完成，共 {len(app.state.cache)} 条")
+    
+    yield
+    
+    # —— 关闭：清空缓存 ——
+    app.state.cache.clear()
+    print(">>> 缓存已清空")
+
+app = FastAPI(lifespan=lifespan)
+
+@app.get("/config/{key}")
+def get_config(key: str):
+    # 直接从缓存读，毫秒级响应
+    val = app.state.cache.get(key)
+    if val is None:
+        return {"msg": "配置不存在"}
+    return {"key": key, "value": json.loads(val)}
+\`\`\`
+
 ### 4.8 多个 lifespan 的组合
 
 真实项目要同时管数据库、Redis、模型、消息队列。全堆一个 lifespan 函数里会很长。可以拆成多个，再组合。
 
-### Demo 6：组合多个 lifespan
+### Demo 9：组合多个 lifespan
 
 \`\`\`python
 # 文件：app/lifespan.py
@@ -2207,7 +3171,7 @@ async def root():
 1. **快速失败**：直接抛异常让应用退出（推荐，符合 fail-fast）；
 2. **降级启动**：记日志，部分功能不可用。
 
-### Demo 7：启动失败处理
+### Demo 10：启动失败处理
 
 \`\`\`python
 # 文件：app/main.py
@@ -2272,11 +3236,58 @@ async def get_cache(key: str):
 
 > 怎么选？**核心依赖（数据库）必须 fail-fast**——连不上就别启动。**非核心依赖（缓存、搜索引擎）可以降级**——挂了功能受限但不全崩。
 
+### Demo 11：优雅关闭——等待进行中的请求
+
+\`\`\`python
+# 这个 demo 展示优雅关闭：收到关闭信号后，等正在处理的请求完成再退出
+# 避免 k8s 滚动更新时请求被中断
+from contextlib import asynccontextmanager
+import asyncio
+import logging
+from fastapi import FastAPI
+
+logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 标记应用是否正在关闭
+    app.state.is_shutting_down = False
+    
+    yield
+    
+    # —— 关闭阶段：优雅退出 ——
+    app.state.is_shutting_down = True
+    logger.info("收到关闭信号，等待进行中的请求完成...")
+    
+    # 等待最多 30 秒，让进行中的请求处理完
+    # 这里简化：实际可以用计数器跟踪活跃请求数
+    grace_period = 30
+    for i in range(grace_period):
+        # 假设有个计数器 app.state.active_requests
+        active = getattr(app.state, "active_requests", 0)
+        if active == 0:
+            logger.info(f"所有请求已处理完，准备关闭（等待了 {i} 秒）")
+            break
+        await asyncio.sleep(1)
+    else:
+        logger.warning(f"等待 {grace_period} 秒后仍有 {active} 个请求未完成，强制关闭")
+    
+    logger.info("应用已关闭")
+
+app = FastAPI(lifespan=lifespan)
+
+@app.get("/slow")
+async def slow():
+    # 模拟一个耗时请求
+    await asyncio.sleep(5)
+    return {"msg": "完成"}
+\`\`\`
+
 ### 4.10 实战：完整的生命周期管理
 
 把数据库、Redis、外部服务客户端全合起来。
 
-### Demo 8：完整生命周期（DB + Redis + HTTP 客户端）
+### Demo 12：完整生命周期（DB + Redis + HTTP 客户端）
 
 \`\`\`python
 # 文件：app/lifespan.py
@@ -2412,6 +3423,70 @@ async def proxy():
     return resp.json()
 \`\`\`
 
+### Demo 13：启动时运行后台任务
+
+\`\`\`python
+# 这个 demo 展示在 lifespan 里启动后台任务（如定时清理、心跳上报）
+# 应用关闭时自动取消后台任务
+from contextlib import asynccontextmanager
+import asyncio
+import logging
+from fastapi import FastAPI
+
+logger = logging.getLogger(__name__)
+
+async def cleanup_expired_sessions(redis):
+    """后台任务：每 5 分钟清理过期会话"""
+    while True:
+        try:
+            # 假装清理逻辑
+            logger.info("清理过期会话...")
+            # await redis.delete(...)
+        except Exception as e:
+            logger.error(f"清理任务出错: {e}")
+        # 每 5 分钟跑一次
+        await asyncio.sleep(300)
+
+async def heartbeat_report():
+    """后台任务：每 10 秒上报心跳到监控"""
+    while True:
+        try:
+            logger.debug("上报心跳...")
+            # await httpx.post("https://monitor/heartbeat", ...)
+        except Exception as e:
+            logger.error(f"心跳上报失败: {e}")
+        await asyncio.sleep(10)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # —— 启动：创建后台任务 ——
+    # asyncio.create_task 创建一个后台协程任务
+    # 任务会并发运行，不阻塞 lifespan
+    tasks = [
+        asyncio.create_task(cleanup_expired_sessions(None), name="cleanup"),
+        asyncio.create_task(heartbeat_report(), name="heartbeat"),
+    ]
+    logger.info(f"已启动 {len(tasks)} 个后台任务")
+    
+    yield
+    
+    # —— 关闭：取消所有后台任务 ——
+    for task in tasks:
+        # cancel 发送取消信号，任务会在下一个 await 点抛 CancelledError
+        task.cancel()
+    
+    # asyncio.gather 等所有任务完成取消
+    # return_exceptions=True 让 CancelledError 不抛出
+    await asyncio.gather(*tasks, return_exceptions=True)
+    logger.info("所有后台任务已停止")
+
+app = FastAPI(lifespan=lifespan)
+
+@app.get("/")
+def root():
+    return {"msg": "后台任务运行中"}
+\`\`\`
+
 ### 4.11 lifespan vs on_event 对照
 
 | 场景 | on_event | lifespan |
@@ -2492,6 +3567,49 @@ async def lifespan(app):
 **错误七：重复初始化**：用 \`--reload\` 开发时，lifespan 会执行多次（每次改代码重启）。确保初始化代码是幂等的——重复执行不出问题。
 
 > 一句话总结：**lifespan 是应用级资源的"开关"**。yield 前开，yield 后关，try/finally 保平安，AsyncExitStack 管多资源。用好它，应用启动关闭都稳如老狗。
-`,
+
+### 4.13 动手实验
+
+**实验 1：从 on_event 迁移到 lifespan**
+
+目标：把下面的 on_event 代码迁移到 lifespan。
+
+\`\`\`python
+# 迁移前
+app = FastAPI()
+
+@app.on_event("startup")
+async def startup():
+    app.state.cache = {"k": "v"}
+
+@app.on_event("shutdown")
+async def shutdown():
+    app.state.cache.clear()
+\`\`\`
+
+任务：
+1. 用 \`@asynccontextmanager\` 写一个 \`lifespan\` 函数
+2. 把 \`startup\` 函数体放到 \`yield\` 前
+3. 把 \`shutdown\` 函数体放到 \`yield\` 后
+4. 用 \`FastAPI(lifespan=lifespan)\` 创建 app
+5. 启动应用，确认启动日志和关闭日志都正确打印
+
+**实验 2：多资源组合**
+
+在实验 1 基础上：
+1. 加一个"数据库连接池"子 lifespan（用 \`create_engine\`）
+2. 加一个"Redis 连接"子 lifespan（用 \`redis.asyncio\`）
+3. 用 \`AsyncExitStack\` 组合两个子 lifespan
+4. 关闭时观察日志，确认清理顺序是反序的（先关 Redis 再关 DB）
+5. 写个 \`/health\` 接口检查两个资源是否就绪
+
+**实验 3：启动失败处理 + 后台任务**
+
+1. 把 Redis 连接改成"快速失败"策略——连不上直接抛 \`RuntimeError\`
+2. 启动一个后台任务，每 5 秒打印一次"心跳"
+3. 关闭时取消后台任务，确认 \`CancelledError\` 被正确处理
+4. 测试：故意把 Redis URL 改错，确认应用启动失败退出
+
+> 完成这三个实验，你就掌握了生产级生命周期管理的全部要点。`,
   },
 ];

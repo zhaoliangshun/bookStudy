@@ -34,6 +34,9 @@ export const chapters = [
 
 写测试还有一个常被忽视的好处：**写测试的过程会倒逼你思考边界条件**。当你想测试"创建用户"这个接口时，你会自然地想到——名字为空怎么办？重复怎么办？超长怎么办？这些思考会让你的代码更健壮。
 
+> 🏭 **生活类比：测试就像质检车间的流水线**
+> 想象一家汽车工厂：每辆车下线前都要过质检车间——刹车灵不灵、灯亮不亮、车门关得紧不紧。你不会因为"师傅手艺好"就跳过质检，因为人总会犯错。代码也一样：你不会因为"自己写的有信心"就跳过测试，因为重构、改需求、多人协作时，总会有人不小心弄坏点什么。测试就是你的质检车间——每改一次代码，质检流水线自动跑一遍，有问题立刻报警。
+
 ## 二、TestClient 是什么
 
 \`TestClient\` 是 Starlette 提供的测试客户端，在 FastAPI 里直接从 \`fastapi.testclient\` 导入。它的核心特性：
@@ -42,6 +45,9 @@ export const chapters = [
 - **不需要监听端口**：省去了"启动 uvicorn → 等端口就绪 → 发请求"的麻烦。
 - **速度快**：因为没走网络，一次请求就是一次函数调用。
 - **底层用 \`httpx\`**：API 风格和 \`requests\` / \`httpx\` 几乎一样，学习成本低。
+
+> 🚗 **生活类比：TestClient 像模拟试驾台**
+> 真实开车上路（用 requests 测）需要：把车开出车库、上公路、等红绿灯、找停车场——又慢又受外界影响。TestClient 就像把车放在模拟试驾台上：发动机照常转、方向盘照常打、刹车照常踩，但轮子没着地，不用上路就能验证"车本身没问题"。它走的是和生产环境一模一样的代码路径（路由、依赖、中间件），只是省了网络传输这一段。
 
 > 对比：如果你用 \`requests\` 测试，必须先 \`uvicorn main:app\` 启动服务器，测试才能连上，既慢又要在 CI 里额外管理进程。TestClient 把这一切省了——它直接把请求"喂"给 app，就像调用一个函数一样。
 
@@ -839,7 +845,246 @@ def test_create_validation_error():
     assert r.status_code == 422
 \`\`\`
 
-## 十一、常见错误与避坑指南
+## 十一、渐进式 Demo：测试 Cookie 与会话
+
+\`\`\`python filename="main.py —— 带 Cookie 的接口"
+# 从 fastapi 导入 FastAPI, Response
+from fastapi import FastAPI, Response
+
+# 创建应用
+app = FastAPI()
+
+# 登录接口：设置 Cookie
+@app.post("/login")
+# 定义函数 login，参数 response 用于设置 Cookie
+def login(response: Response):
+    # 设置 Cookie，key 是 session_id，value 是 abc123
+    # httponly=True 表示 JS 不能读取（防 XSS）
+    # max_age=3600 表示 1 小时后过期
+    response.set_cookie(key="session_id", value="abc123", httponly=True, max_age=3600)
+    # 返回登录成功
+    return {"msg": "登录成功"}
+
+# 受保护接口：读取 Cookie 验证
+@app.get("/me")
+# 定义函数 me，参数 session_id 从 Cookie 自动提取
+def me(session_id: str | None = None):
+    # 条件判断：如果 session_id 不等于 "abc123"
+    if session_id != "abc123":
+        # 返回未登录
+        return {"error": "未登录"}
+    # 返回用户信息
+    return {"user": "小明", "session": session_id}
+\`\`\`
+
+\`\`\`python filename="test_cookie.py —— 测试 Cookie 流程"
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 从 main 导入 app
+from main import app
+
+# 创建客户端
+client = TestClient(app)
+
+# 测试 1：登录后 Cookie 被正确设置
+def test_login_sets_cookie():
+    # 发 POST 登录
+    # 定义变量 r
+    r = client.post("/login")
+    # 断言 200
+    assert r.status_code == 200
+    # 断言 Cookie 里 有 session_id
+    assert "session_id" in r.cookies
+    # 断言 Cookie 的值
+    assert r.cookies["session_id"] == "abc123"
+
+# 测试 2：带 Cookie 访问受保护接口
+def test_me_with_cookie():
+    # 先登录拿 Cookie
+    client.post("/login")
+    # 再访问 /me，TestClient 会自动带上 Cookie
+    # 定义变量 r
+    r = client.get("/me")
+    # 断言 200
+    assert r.status_code == 200
+    # 断言返回了用户信息
+    assert r.json()["user"] == "小明"
+
+# 测试 3：不带 Cookie 访问应该失败
+def test_me_without_cookie():
+    # 不登录直接访问
+    # 定义变量 r
+    r = client.get("/me")
+    # 断言返回未登录
+    assert r.json()["error"] == "未登录"
+\`\`\`
+
+## 十二、渐进式 Demo：测试 Query 参数边界值
+
+\`\`\`python filename="main.py —— 分页接口"
+# 从 fastapi 导入 FastAPI, Query
+from fastapi import FastAPI, Query
+
+# 创建应用
+app = FastAPI()
+
+# 分页查询接口
+@app.get("/users")
+# 定义函数 list_users，参数 page 和 size 都有约束
+# page: ge=1 表示最小 1（页码不能是 0 或负数）
+# size: ge=1 且 le=100 表示每页 1~100 条
+def list_users(
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=100),
+):
+    # 返回分页信息
+    return {"page": page, "size": size, "total": 0}
+\`\`\`
+
+\`\`\`python filename="test_pagination.py —— 测试分页边界值"
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 从 main 导入 app
+from main import app
+
+# 创建客户端
+client = TestClient(app)
+
+# 测试 1：默认值
+def test_default_pagination():
+    # 不传参数，用默认值
+    # 定义变量 r
+    r = client.get("/users")
+    # 断言 200
+    assert r.status_code == 200
+    # 断言默认 page=1, size=10
+    assert r.json()["page"] == 1
+    assert r.json()["size"] == 10
+
+# 测试 2：page=0 应该 422
+def test_page_zero():
+    # page=0 违反 ge=1
+    # 定义变量 r
+    r = client.get("/users", params={"page": 0})
+    # 断言 422
+    assert r.status_code == 422
+
+# 测试 3：size 超过 100 应该 422
+def test_size_too_large():
+    # size=101 违反 le=100
+    # 定义变量 r
+    r = client.get("/users", params={"size": 101})
+    # 断言 422
+    assert r.status_code == 422
+
+# 测试 4：负数 page 应该 422
+def test_negative_page():
+    # page=-1 违反 ge=1
+    # 定义变量 r
+    r = client.get("/users", params={"page": -1})
+    # 断言 422
+    assert r.status_code == 422
+
+# 测试 5：边界值 size=100 应该通过
+def test_size_max_boundary():
+    # size=100 是边界值，应该合法
+    # 定义变量 r
+    r = client.get("/users", params={"size": 100})
+    # 断言 200
+    assert r.status_code == 200
+    # 断言 size 被正确接收
+    assert r.json()["size"] == 100
+\`\`\`
+
+## 十三、渐进式 Demo：测试自定义异常处理器
+
+\`\`\`python filename="main.py —— 自定义异常处理器"
+# 从 fastapi 导入 FastAPI, Request
+from fastapi import FastAPI, Request
+# 从 fastapi.responses 导入 JSONResponse
+from fastapi.responses import JSONResponse
+
+# 创建应用
+app = FastAPI()
+
+# 定义自定义异常类
+class BusinessError(Exception):
+    # 初始化方法，参数 code 和 message
+    def __init__(self, code: int, message: str):
+        # 赋值 code
+        self.code = code
+        # 赋值 message
+        self.message = message
+
+# 注册异常处理器：捕获 BusinessError，转成 JSON 响应
+@app.exception_handler(BusinessError)
+# 定义函数 business_error_handler，参数 request 和 exc
+async def business_error_handler(request: Request, exc: BusinessError):
+    # 返回 JSONResponse，状态码用 exc.code
+    return JSONResponse(
+        status_code=exc.code,
+        content={"error": exc.message, "code": exc.code},
+    )
+
+# 接口：模拟业务错误
+@app.get("/pay")
+# 定义函数 pay，参数 amount
+def pay(amount: float):
+    # 条件判断：如果 amount 小于等于 0
+    if amount <= 0:
+        # 抛出业务异常
+        raise BusinessError(code=400, message="金额必须大于 0")
+    # 条件判断：如果 amount 大于 10000
+    if amount > 10000:
+        # 抛出业务异常
+        raise BusinessError(code=403, message="超过单笔限额")
+    # 返回成功
+    return {"status": "paid", "amount": amount}
+\`\`\`
+
+\`\`\`python filename="test_custom_error.py —— 测试自定义异常"
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 从 main 导入 app
+from main import app
+
+# 创建客户端
+client = TestClient(app)
+
+# 测试 1：正常支付
+def test_pay_success():
+    # 发起正常金额的支付
+    # 定义变量 r
+    r = client.get("/pay", params={"amount": 100})
+    # 断言 200
+    assert r.status_code == 200
+    # 断言返回 paid
+    assert r.json()["status"] == "paid"
+
+# 测试 2：金额小于等于 0，触发 400 业务异常
+def test_pay_zero_amount():
+    # amount=0 触发 BusinessError
+    # 定义变量 r
+    r = client.get("/pay", params={"amount": 0})
+    # 断言 400
+    assert r.status_code == 400
+    # 断言错误消息
+    assert r.json()["error"] == "金额必须大于 0"
+    # 断言错误码
+    assert r.json()["code"] == 400
+
+# 测试 3：金额超限，触发 403 业务异常
+def test_pay_over_limit():
+    # amount=20000 超过 10000 限额
+    # 定义变量 r
+    r = client.get("/pay", params={"amount": 20000})
+    # 断言 403
+    assert r.status_code == 403
+    # 断言错误消息
+    assert r.json()["error"] == "超过单笔限额"
+\`\`\`
+
+## 十四、常见错误与避坑指南
 
 | 错误 | 现象 | 原因 | 解决 |
 | --- | --- | --- | --- |
@@ -849,10 +1094,75 @@ def test_create_validation_error():
 | 异步路由测试报错 | \`RuntimeError: async ignored\` | TestClient 自动处理异步，但某些场景需注意 | 用 \`httpx.AsyncClient\` 配合 \`pytest-asyncio\` |
 | 文件上传测试失败 | \`filename is None\` | files 参数格式不对 | 用 \`(filename, content, type)\` 三元组 |
 | 422 断言失败 | 校验错误类型对不上 | Pydantic v2 改了错误类型名 | 打印 \`r.json()["detail"]\` 看实际类型 |
+| Cookie 测试不生效 | \`KeyError: 'session_id'\` | 没有先登录就拿 Cookie | 先调登录接口，TestClient 会自动保存 Cookie |
+| 状态码断言总是错 | 期望 201 实际 200 | 装饰器里没设 status_code | 在 \`@app.post(..., status_code=201)\` 里指定 |
 
 > 最常见的坑是"测试间共享状态"。上面的 CRUD 测试里我们手动 \`reset_db()\`，但这很丑陋。下一章讲 pytest fixture，会用更优雅的方式解决。
 
-## 十二、小结
+## 十五、动手实验
+
+> 🧪 **实验 1：给一个用户接口补全测试**
+> 下面是一个用户 CRUD 接口，请为它写至少 6 个测试：创建成功、创建校验失败、查询单个、查询不存在、更新、删除。
+> 提示：注意每个测试前要重置 \`users_db\`。
+
+\`\`\`python filename="实验 1：被测代码 user_app.py"
+# 从 fastapi 导入 FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
+# 从 pydantic 导入 BaseModel, Field
+from pydantic import BaseModel, Field
+
+# 创建应用
+app = FastAPI()
+
+# 用户模型
+class User(BaseModel):
+    # name 必填，最少 2 个字符
+    name: str = Field(..., min_length=2)
+    # age 必填，0~150
+    age: int = Field(..., ge=0, le=150)
+
+# 内存数据库
+users_db: dict[int, dict] = {}
+next_id = 1
+
+# 创建用户
+@app.post("/users", status_code=201)
+def create_user(user: User):
+    global next_id
+    uid = next_id
+    next_id += 1
+    user_dict = {"id": uid, **user.model_dump()}
+    users_db[uid] = user_dict
+    return user_dict
+
+# 查询用户
+@app.get("/users/{uid}")
+def get_user(uid: int):
+    if uid not in users_db:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    return users_db[uid]
+\`\`\`
+
+> 🧪 **实验 2：测试带 Token 认证的接口**
+> 给下面的接口写测试：测"不带 token 返回 422"、"带错误 token 返回 401"、"带正确 token 返回 200"。
+
+\`\`\`python filename="实验 2：被测代码 auth_app.py"
+# 从 fastapi 导入 FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException
+
+app = FastAPI()
+
+@app.get("/secret")
+def secret_data(x_token: str = Header(...)):
+    if x_token != "my-secret":
+        raise HTTPException(status_code=401, detail="token 无效")
+    return {"data": "这是机密信息"}
+\`\`\`
+
+> 🧪 **实验 3：测试分页边界值**
+> 给一个 \`GET /products?page=1&size=20\` 接口写测试，覆盖：默认值、page=0（422）、size=0（422）、size=101（422）、page=1&size=100（合法边界）。
+
+## 十六、小结
 
 TestClient 是 FastAPI 测试的基石：不需要启动服务器，直接在内存里模拟 HTTP 请求。用法和 \`httpx\` / \`requests\` 几乎一样——\`client.get()\`、\`client.post()\`，传 \`params\`、\`json\`、\`headers\`、\`files\`。测试的核心是"调用 + 断言"：调用接口，断言状态码、JSON 体、响应头。每个接口至少测正常、缺失、错误三种情况。
 
@@ -894,6 +1204,9 @@ pytest 的优势：
 - **fixture 机制**：比 unittest 的 setUp/tearDown 强大得多，支持依赖注入、作用域、参数化。
 - **插件生态丰富**：pytest-cov（覆盖率）、pytest-asyncio（异步）、pytest-xdist（并行）等。
 - **兼容 unittest**：已有的 unittest 测试也能被 pytest 运行。
+
+> 🍳 **生活类比：pytest 像"现代化厨房"，fixture 像"备料台"**
+> unittest 就像老式厨房——所有锅碗瓢盆都要自己拿（\`self.setUp\`）、自己洗（\`self.tearDown\`），还要写一堆 \`self.assertEqual\` 像"按菜谱念步骤"。pytest 是现代化厨房：\`assert\` 就是直接尝一口咸淡，fixture 就像备料台——你告诉它"我要鸡蛋、面粉、糖"，备料台（pytest）自动把量好的食材递给你，你只管炒菜（写测试逻辑），用完它还自动收拾。
 
 ## 二、安装与运行
 
@@ -1541,7 +1854,301 @@ def test_list_empty(client):
 
 对比一下：之前每个测试都要手动 \`reset_db()\`，现在用 \`autouse=True\` 的 fixture 自动处理；之前每个测试都要手动创建商品才能测查询/更新/删除，现在用 \`created_item\` fixture 自动创建。代码量少了一半，可读性更好。
 
-## 十二、常见错误与避坑指南
+## 十二、渐进式 Demo：fixture 链式依赖
+
+fixture 可以依赖另一个 fixture，形成依赖链。pytest 会自动按依赖顺序执行：
+
+\`\`\`python filename="test_fixture_chain.py —— fixture 链式依赖"
+# 导入 pytest
+import pytest
+
+# 第 1 层 fixture：创建"数据库连接"
+@pytest.fixture
+# 定义函数 db_connection
+def db_connection():
+    # 模拟连接数据库
+    # 定义变量 conn
+    conn = {"status": "connected", "data": []}
+    print("\\n[fixture] 数据库已连接")
+    # 交出 conn
+    yield conn
+    print("\\n[fixture] 数据库已关闭")
+
+# 第 2 层 fixture：依赖 db_connection，在连接上创建表
+@pytest.fixture
+# 定义函数 db_with_tables，参数 db_connection（依赖上一层）
+def db_with_tables(db_connection):
+    # 在连接上"创建表"
+    # 赋值 db_connection["tables"] = ["users", "items"]
+    db_connection["tables"] = ["users", "items"]
+    print("\\n[fixture] 表已创建")
+    # 交出 db_connection（已经有表了）
+    yield db_connection
+
+# 第 3 层 fixture：依赖 db_with_tables，预置测试数据
+@pytest.fixture
+# 定义函数 db_with_seed，参数 db_with_tables
+def db_with_seed(db_with_tables):
+    # 往 users 表塞数据
+    # 赋值 db_with_tables["data"] = [{"id": 1, "name": "小明"}]
+    db_with_tables["data"] = [{"id": 1, "name": "小明"}]
+    print("\\n[fixture] 测试数据已预置")
+    # 交出 db_with_tables（已经有数据了）
+    yield db_with_tables
+
+# 测试：直接拿到"有连接 + 有表 + 有数据"的数据库
+def test_with_seeded_db(db_with_seed):
+    # db_with_seed 是层层依赖传下来的
+    # 断言连接状态
+    assert db_with_seed["status"] == "connected"
+    # 断言表已创建
+    assert "users" in db_with_seed["tables"]
+    # 断言有预置数据
+    assert len(db_with_seed["data"]) == 1
+    # 断言数据内容
+    assert db_with_seed["data"][0]["name"] == "小明"
+
+# 测试：只要"有连接 + 有表"，不要预置数据
+def test_with_empty_db(db_with_tables):
+    # 只依赖 db_with_tables，不依赖 db_with_seed
+    # 断言表已创建
+    assert "users" in db_with_tables["tables"]
+    # 断言没有数据（因为没用 db_with_seed）
+    assert db_with_tables["data"] == []
+\`\`\`
+
+> 怎么想：fixture 链就像流水线——第一道工序连数据库，第二道工序建表，第三道工序塞数据。你要哪一步的产物，就在参数里声明哪个 fixture，pytest 自动把前面的工序都跑一遍。
+
+## 十三、渐进式 Demo：parametrize 配合 TestClient 实战
+
+\`\`\`python filename="main.py —— 用户注册接口"
+# 从 fastapi 导入 FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
+# 从 pydantic 导入 BaseModel, Field
+from pydantic import BaseModel, Field
+# 导入 re 模块用于正则校验
+import re
+
+# 创建应用
+app = FastAPI()
+
+# 用户注册模型
+class UserRegister(BaseModel):
+    # username 必填，3~20 个字符
+    username: str = Field(..., min_length=3, max_length=20)
+    # password 必填，至少 6 个字符
+    password: str = Field(..., min_length=6)
+    # email 必填
+    email: str
+
+# 注册接口
+@app.post("/register", status_code=201)
+# 定义函数 register，参数 user
+def register(user: UserRegister):
+    # 用正则校验 email 格式
+    # 定义变量 email_pattern，赋值为正则表达式
+    email_pattern = r"^[^@]+@[^@]+\\.[^@]+$"
+    # 条件判断：如果 email 不匹配正则
+    if not re.match(email_pattern, user.email):
+        # 抛 422
+        raise HTTPException(status_code=422, detail="邮箱格式不正确")
+    # 返回注册成功
+    return {"id": 1, "username": user.username, "email": user.email}
+\`\`\`
+
+\`\`\`python filename="test_register_parametrize.py —— 参数化测试注册"
+# 导入 pytest
+import pytest
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 从 main 导入 app
+from main import app
+
+# 创建客户端
+client = TestClient(app)
+
+# 参数化测试：覆盖各种输入情况
+# ids 参数给每组数据一个可读的名字，方便在 pytest -v 输出里识别
+@pytest.mark.parametrize(
+    "payload, expected_status, expected_detail",
+    [
+        # 正常注册
+        ({"username": "xiaoming", "password": "123456", "email": "xm@test.com"}, 201, None),
+        # username 太短
+        ({"username": "ab", "password": "123456", "email": "xm@test.com"}, 422, None),
+        # username 太长
+        ({"username": "a" * 21, "password": "123456", "email": "xm@test.com"}, 422, None),
+        # password 太短
+        ({"username": "xiaoming", "password": "123", "email": "xm@test.com"}, 422, None),
+        # email 格式错误
+        ({"username": "xiaoming", "password": "123456", "email": "not-an-email"}, 422, "邮箱格式不正确"),
+        # 缺少 username
+        ({"password": "123456", "email": "xm@test.com"}, 422, None),
+        # 缺少 password
+        ({"username": "xiaoming", "email": "xm@test.com"}, 422, None),
+    ],
+    ids=[
+        "正常注册",
+        "用户名太短",
+        "用户名太长",
+        "密码太短",
+        "邮箱格式错",
+        "缺用户名",
+        "缺密码",
+    ]
+)
+# 定义函数 test_register
+def test_register(payload, expected_status, expected_detail):
+    # 发 POST 请求
+    # 定义变量 r
+    r = client.post("/register", json=payload)
+    # 断言状态码
+    assert r.status_code == expected_status
+    # 条件判断：如果 expected_detail 不为 None
+    if expected_detail:
+        # 断言 detail 信息
+        assert r.json()["detail"] == expected_detail
+\`\`\`
+
+运行 \`pytest -v\` 时，输出会显示每个测试的可读名字：
+
+\`\`\`txt filename="pytest -v 输出"
+test_register_parametrize.py::test_register[正常注册] PASSED
+test_register_parametrize.py::test_register[用户名太短] PASSED
+test_register_parametrize.py::test_register[用户名太长] PASSED
+test_register_parametrize.py::test_register[密码太短] PASSED
+test_register_parametrize.py::test_register[邮箱格式错] PASSED
+test_register_parametrize.py::test_register[缺用户名] PASSED
+test_register_parametrize.py::test_register[缺密码] PASSED
+\`\`\`
+
+## 十四、渐进式 Demo：数据库事务回滚隔离测试
+
+> 🏭 **生活类比：事务回滚像"草稿纸"**
+> 你在草稿纸上算数学题，算错了不要紧——把草稿纸揉掉重写就行，正式作业本不会被弄脏。事务回滚就是测试用的"草稿纸"：测试往数据库里写数据，测试一结束就"揉掉"（回滚），数据库恢复原样，下一个测试拿到的还是干净的"正式作业本"。
+
+\`\`\`python filename="conftest.py —— 事务回滚隔离的测试数据库"
+# 导入 pytest
+import pytest
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 从 sqlalchemy 导入 create_engine
+from sqlalchemy import create_engine
+# 从 sqlalchemy.orm 导入 sessionmaker
+from sqlalchemy.orm import sessionmaker
+# 从 main 导入 app, get_db, Base, engine（生产引擎）
+from main import app, get_db, Base, engine as prod_engine
+
+# 创建测试引擎（连同一个数据库，但用事务隔离）
+# 定义变量 test_engine
+test_engine = create_engine("postgresql://user:pass@localhost/testdb")
+# 定义变量 TestingSessionLocal
+TestingSessionLocal = sessionmaker(bind=test_engine)
+
+# 定义事务回滚的数据库 fixture
+@pytest.fixture
+# 定义函数 db_session
+def db_session():
+    # 1. 创建连接，开启外层事务
+    # 定义变量 connection
+    connection = test_engine.connect()
+    # 开启事务
+    # 定义变量 transaction
+    transaction = connection.begin()
+
+    # 2. 在这个连接上创建 session
+    # 定义变量 session
+    session = TestingSessionLocal(bind=connection)
+
+    # 3. 开启内层 SAVEPOINT（嵌套事务）
+    # 定义变量 nested
+    nested = connection.begin_nested()
+
+    # 4. 监听 session 的 commit，把它转成 flush（不真提交）
+    # @event.listens_for 装饰器监听 session.commit 事件
+    # 当代码里调 session.commit() 时，实际只执行 session.flush()
+    # 这样测试代码里的 commit 不会真的提交到数据库
+    from sqlalchemy import event
+    @event.listens_for(session, "after_transaction_end")
+    # 定义函数 restart_savepoint，参数 session 和 transaction
+    def restart_savepoint(session, transaction):
+        # 条件判断：如果外层事务还没结束
+        if not connection.in_transaction():
+            # 重新开一个 SAVEPOINT
+            connection.begin_nested()
+
+    # 5. 交出 session
+    yield session
+
+    # 6. 测试结束后清理
+    # 关闭 session
+    session.close()
+    # 回滚整个事务（所有测试数据都被撤销）
+    transaction.rollback()
+    # 关闭连接
+    connection.close()
+
+# 定义带覆盖的 client fixture
+@pytest.fixture
+# 定义函数 client，参数 db_session
+def client(db_session):
+    # 定义替代函数
+    # 定义函数 override_get_db
+    def override_get_db():
+        # 交出 db_session
+        yield db_session
+
+    # 覆盖依赖
+    # 赋值 app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_db] = override_get_db
+    # 创建客户端
+    # 定义变量 c
+    c = TestClient(app)
+    # 交出 c
+    yield c
+    # 清理覆盖
+    # 调用 app.dependency_overrides.clear()
+    app.dependency_overrides.clear()
+\`\`\`
+
+\`\`\`python filename="test_rollback.py —— 事务回滚测试"
+# 测试 1：创建用户
+def test_create_user(client, db_session):
+    # 通过 API 创建
+    # 定义变量 r
+    r = client.post("/users", json={"name": "小明", "age": 20})
+    # 断言 201
+    assert r.status_code == 201
+
+    # 直接查数据库验证
+    # 从 main 导入 UserModel
+    from main import UserModel
+    # 查询刚创建的用户
+    # 定义变量 db_user
+    db_user = db_session.query(UserModel).filter(UserModel.name == "小明").first()
+    # 断言数据库里有
+    assert db_user is not None
+
+# 测试 2：再创建用户——上一个测试的数据已经回滚了
+def test_create_another_user(client, db_session):
+    # 从 main 导入 UserModel
+    from main import UserModel
+    # 查询"小明"应该不存在（上一个测试的数据已回滚）
+    # 定义变量 existing
+    existing = db_session.query(UserModel).filter(UserModel.name == "小明").first()
+    # 断言不存在
+    assert existing is None
+
+    # 创建新用户
+    # 定义变量 r
+    r = client.post("/users", json={"name": "小红", "age": 22})
+    # 断言 201
+    assert r.status_code == 201
+\`\`\`
+
+> 关键点：事务回滚的好处是**测试速度极快**——不需要每个测试都重建表结构，只需要回滚事务。缺点是配置复杂，建议项目稳定后再引入。新手先用"内存数据库"方案（每个测试新建 SQLite）。
+
+## 十五、常见错误与避坑指南
 
 | 错误 | 现象 | 原因 | 解决 |
 | --- | --- | --- | --- |
@@ -1551,10 +2158,72 @@ def test_list_empty(client):
 | autouse 滥用 | 所有测试都被影响 | autouse=True 的 fixture 影响所有测试 | 只在确实需要全局生效时用 autouse |
 | 作用域选错 | 测试间数据污染 | 用了 session/module 级但没清理状态 | 共享 fixture 用大作用域，测试数据用 function 级 |
 | fixture 循环依赖 | \`FixtureError: circular\` | 两个 fixture 互相依赖 | 拆分公共逻辑到第三个 fixture |
+| parametrize 参数对不上 | \`TypeError: missing argument\` | 参数名和 parametrize 字符串不一致 | 检查 parametrize 的参数名和函数签名 |
+| 事务回滚不生效 | 测试间数据没隔离 | commit 真的提交了 | 用 event.listens_for 把 commit 转成 flush |
 
 > 最常见的坑：fixture 名拼写错误。参数名 \`cient\`（拼错了）不会被识别为 \`client\` fixture，pytest 会报"fixture not found"。仔细检查拼写。
 
-## 十三、小结
+## 十六、动手实验
+
+> 🧪 **实验 1：用 fixture 重构文件上传测试**
+> 给第一章的文件上传接口写一个 fixture，返回一个"已经上传好文件的 client"，让后续测试直接用。
+
+\`\`\`python filename="实验 1：模板"
+import pytest
+from fastapi.testclient import TestClient
+from main import app
+
+# TODO: 写一个 fixture uploaded_file
+# 1. 创建 TestClient
+# 2. 上传一个测试文件
+# 3. 返回 (client, file_id)
+
+# TODO: 写测试 test_download_uploaded_file
+# 1. 用 uploaded_file fixture
+# 2. 下载刚上传的文件
+# 3. 断言内容一致
+\`\`\`
+
+> 🧪 **实验 2：用 parametrize 测试密码强度**
+> 写一个密码强度校验函数，用 \`@pytest.mark.parametrize\` 测至少 8 组数据：太短、无数字、无字母、无特殊字符、全空格、正常强密码、正常中密码、边界长度。
+
+\`\`\`python filename="实验 2：被测函数"
+def check_password_strength(password: str) -> str:
+    """返回 'weak' / 'medium' / 'strong'"""
+    if len(password) < 8:
+        return "weak"
+    has_digit = any(c.isdigit() for c in password)
+    has_upper = any(c.isupper() for c in password)
+    has_lower = any(c.islower() for c in password)
+    has_special = any(not c.isalnum() for c in password)
+    score = sum([has_digit, has_upper, has_lower, has_special])
+    if score >= 3:
+        return "strong"
+    elif score >= 2:
+        return "medium"
+    else:
+        return "weak"
+\`\`\`
+
+> 🧪 **实验 3：写一个 autouse 的 fixture 记录测试耗时**
+> 写一个 \`autouse=True\` 的 fixture，在每个测试前后打印时间戳，算出每个测试耗时多少毫秒。
+
+\`\`\`python filename="实验 3：模板"
+import pytest
+import time
+
+@pytest.fixture(autouse=True)
+# TODO: 完成这个 fixture
+def measure_time():
+    # 记录开始时间
+    start = time.time()
+    yield
+    # 记录结束时间，打印耗时
+    elapsed = time.time() - start
+    print(f"\\n耗时: {elapsed * 1000:.2f}ms")
+\`\`\`
+
+## 十七、小结
 
 pytest 的核心是 \`assert\` + \`fixture\`：\`assert\` 让断言简洁，\`fixture\` 让准备/清理逻辑复用。fixture 通过参数名注入（和 FastAPI 的 Depends 一样），用 \`conftest.py\` 跨文件共享，用 \`scope\` 控制生命周期，用 \`params\` / \`parametrize\` 做参数化测试。
 
@@ -1593,6 +2262,9 @@ Mock 后:
   4. 不依赖网络 → 稳定 ✅
   5. 纯内存 → 快 ✅
 \`\`\`
+
+> 🎭 **生活类比：Mock 像"替身演员"**
+> 拍电影时，危险动作（跳楼、撞车）不会让主角真上，而是用替身演员。替身长得像、动作像，但不会真受伤。Mock 就是代码世界的替身演员：你有一个"调用支付 API"的函数（主角），测试时用 Mock（替身）替换它——替身返回假的"支付成功"，不会真的扣钱。主角和替身长得一样（函数签名一样），但行为是假的、可控的。
 
 FastAPI 测试里 Mock 有两个层次：
 1. **FastAPI 层**：用 \`app.dependency_overrides\` 替换 Depends 注入的依赖（数据库、认证等）。
@@ -2464,7 +3136,245 @@ def test_create_order_no_auth(mock_charge, test_db):
 
 > 怎么想这个测试：我们 Mock 了三层——认证用 \`dependency_overrides\`（FastAPI 层），数据库用 \`dependency_overrides\`，外部 API 用 \`patch\`（Python 层）。测试验证了：正常流程、支付失败、未认证三种情况，且验证了"支付失败时不发短信""未认证时不调支付"这些逻辑约束。
 
-## 八、常见错误与避坑指南
+## 八、渐进式 Demo：用 patch 上下文管理器精确控制 Mock 范围
+
+\`@patch\` 装饰器在整个测试函数期间生效。如果你只想在代码的某一段 Mock，用 \`with patch(...)\` 上下文管理器更精确：
+
+\`\`\`python filename="test_context_manager.py —— 上下文管理器 Mock"
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 从 unittest.mock 导入 patch
+from unittest.mock import patch
+# 从 main 导入 app
+from main import app
+
+# 创建客户端
+client = TestClient(app)
+
+# 测试：用 with patch 精确控制 Mock 范围
+def test_with_context_manager():
+    # 在 with 块外，call_payment_api 是真实的
+    # 定义变量 r_before
+    r_before = client.get("/health")
+    # 断言健康检查正常
+    assert r_before.status_code == 200
+
+    # 用 with patch 只在这段代码里 Mock
+    # 定义变量 mock_payment
+    with patch("main.call_payment_api", return_value={"status": "success"}) as mock_payment:
+        # 在 with 块内，call_payment_api 是 Mock 的
+        # 定义变量 r
+        r = client.post("/orders", params={"amount": 100, "order_id": "ord_001"})
+        # 断言 200
+        assert r.status_code == 200
+        # 验证 Mock 被调用
+        # 调用 mock_payment.assert_called_once()
+        mock_payment.assert_called_once()
+
+    # 出了 with 块，call_payment_api 恢复真实
+    # 这里如果再调用 /orders，会真的请求支付 API（测试里不要这么做）
+\`\`\`
+
+> 怎么选：\`@patch\` 装饰器适合"整个测试都要 Mock"的情况；\`with patch\` 适合"只有一段代码需要 Mock"的情况。后者更灵活，但代码多一层缩进。
+
+## 九、渐进式 Demo：side_effect 返回多次不同值
+
+\`side_effect\` 不仅能抛异常，还能让 Mock 每次调用返回不同的值——适合测"重试逻辑"：
+
+\`\`\`python filename="main.py —— 带重试的支付"
+# 从 fastapi 导入 FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
+
+app = FastAPI()
+
+# 定义带重试的支付函数
+# 定义函数 call_payment_with_retry，参数 amount 和 order_id
+def call_payment_with_retry(amount: float, order_id: str, max_retries: int = 3):
+    # 循环 max_retries 次
+    for attempt in range(max_retries):
+        # 模拟调用支付 API（实际会用 httpx）
+        # 定义变量 result
+        result = mock_payment_api(amount, order_id)
+        # 条件判断：如果支付成功
+        if result.get("status") == "success":
+            # 返回成功
+            return result
+    # 重试次数用完，返回失败
+    return {"status": "failed", "reason": "重试耗尽"}
+
+# 模拟支付 API（测试时会 Mock 这个函数）
+# 定义函数 mock_payment_api
+def mock_payment_api(amount: float, order_id: str):
+    # 默认返回失败（测试时会覆盖）
+    return {"status": "failed"}
+
+# 创建订单接口
+@app.post("/orders")
+# 定义函数 create_order
+def create_order(amount: float, order_id: str):
+    # 调用带重试的支付
+    # 定义变量 result
+    result = call_payment_with_retry(amount, order_id)
+    # 条件判断：如果支付失败
+    if result.get("status") != "success":
+        # 抛 400
+        raise HTTPException(status_code=400, detail="支付失败")
+    # 返回成功
+    return {"order_id": order_id, "status": "paid"}
+\`\`\`
+
+\`\`\`python filename="test_retry.py —— 测试重试逻辑"
+# 从 unittest.mock 导入 patch
+from unittest.mock import patch
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 从 main 导入 app
+from main import app
+
+# 创建客户端
+client = TestClient(app)
+
+# 测试 1：第三次重试才成功
+@patch("main.mock_payment_api")
+# 定义函数 test_retry_success_on_third
+def test_retry_success_on_third(mock_api):
+    # side_effect 传列表，每次调用返回一个值
+    # 第 1 次调用返回 failed，第 2 次返回 failed，第 3 次返回 success
+    # 赋值 mock_api.side_effect = [{"status": "failed"}, {"status": "failed"}, {"status": "success"}]
+    mock_api.side_effect = [
+        {"status": "failed"},
+        {"status": "failed"},
+        {"status": "success"}
+    ]
+
+    # 调用接口
+    # 定义变量 r
+    r = client.post("/orders", params={"amount": 100, "order_id": "ord_001"})
+    # 断言 200（最终成功了）
+    assert r.status_code == 200
+    # 断言返回 paid
+    assert r.json()["status"] == "paid"
+    # 验证 Mock 被调用了 3 次
+    # 调用 mock_api.call_count 获取调用次数
+    assert mock_api.call_count == 3
+
+# 测试 2：重试 3 次都失败
+@patch("main.mock_payment_api")
+# 定义函数 test_retry_all_fail
+def test_retry_all_fail(mock_api):
+    # 每次都返回 failed
+    # 赋值 mock_api.side_effect = [{"status": "failed"}, {"status": "failed"}, {"status": "failed"}]
+    mock_api.side_effect = [
+        {"status": "failed"},
+        {"status": "failed"},
+        {"status": "failed"}
+    ]
+
+    # 调用接口
+    # 定义变量 r
+    r = client.post("/orders", params={"amount": 100, "order_id": "ord_002"})
+    # 断言 400
+    assert r.status_code == 400
+    # 断言 detail
+    assert r.json()["detail"] == "支付失败"
+    # 验证调用了 3 次
+    assert mock_api.call_count == 3
+
+# 测试 3：side_effect 抛异常
+@patch("main.mock_payment_api")
+# 定义函数 test_retry_with_exception
+def test_retry_with_exception(mock_api):
+    # side_effect 传异常类，调用时抛异常
+    # 赋值 mock_api.side_effect = ConnectionError("网络断开")
+    mock_api.side_effect = ConnectionError("网络断开")
+
+    # 调用接口
+    # 定义变量 r
+    r = client.post("/orders", params={"amount": 100, "order_id": "ord_003"})
+    # 因为异常没被捕获，FastAPI 返回 500
+    assert r.status_code == 500
+\`\`\`
+
+## 十、渐进式 Demo：patch.object 替换对象方法
+
+\`patch.object\` 用于替换某个对象的方法（而不是模块级函数）：
+
+\`\`\`python filename="main.py —— 带方法的类"
+# 从 fastapi 导入 FastAPI
+from fastapi import FastAPI
+
+app = FastAPI()
+
+# 定义支付服务类
+class PaymentService:
+    # 定义方法 charge，参数 amount 和 order_id
+    def charge(self, amount: float, order_id: str):
+        # 真实场景会调用外部 API
+        return {"status": "failed"}
+
+# 全局支付服务实例
+# 定义变量 payment_service
+payment_service = PaymentService()
+
+# 创建订单接口
+@app.post("/orders")
+# 定义函数 create_order
+def create_order(amount: float, order_id: str):
+    # 用全局实例调用方法
+    # 定义变量 result
+    result = payment_service.charge(amount, order_id)
+    # 返回结果
+    return {"order_id": order_id, "pay_status": result["status"]}
+\`\`\`
+
+\`\`\`python filename="test_patch_object.py —— patch.object 用法"
+# 从 unittest.mock 导入 patch
+from unittest.mock import patch
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 从 main 导入 app, PaymentService, payment_service
+from main import app, PaymentService, payment_service
+
+# 创建客户端
+client = TestClient(app)
+
+# 测试 1：用 patch.object 替换实例方法
+def test_patch_object():
+    # 用 patch.object 替换 payment_service 的 charge 方法
+    # 第一个参数是对象，第二个是方法名（字符串）
+    # 定义变量 mock_charge
+    with patch.object(payment_service, "charge", return_value={"status": "success"}) as mock_charge:
+        # 调用接口
+        # 定义变量 r
+        r = client.post("/orders", params={"amount": 100, "order_id": "ord_001"})
+        # 断言 200
+        assert r.status_code == 200
+        # 断言支付成功
+        assert r.json()["pay_status"] == "success"
+        # 验证方法被调用
+        # 调用 mock_charge.assert_called_once()
+        mock_charge.assert_called_once()
+
+    # 出了 with 块，charge 恢复原样
+    # 定义变量 r2
+    r2 = client.post("/orders", params={"amount": 100, "order_id": "ord_002"})
+    # 断言恢复成 failed（原始方法）
+    assert r2.json()["pay_status"] == "failed"
+
+# 测试 2：用 patch.object 替换类方法（影响所有实例）
+@patch.object(PaymentService, "charge", return_value={"status": "success"})
+# 定义函数 test_patch_class_method
+def test_patch_class_method(mock_charge):
+    # 替换的是类方法，所有实例都受影响
+    # 定义变量 r
+    r = client.post("/orders", params={"amount": 100, "order_id": "ord_001"})
+    # 断言 200
+    assert r.status_code == 200
+    # 断言成功
+    assert r.json()["pay_status"] == "success"
+\`\`\`
+
+## 十一、常见错误与避坑指南
 
 | 错误 | 现象 | 原因 | 解决 |
 | --- | --- | --- | --- |
@@ -2474,10 +3384,56 @@ def test_create_order_no_auth(mock_charge, test_db):
 | Mock 异步函数用 MagicMock | 协程报错 | MagicMock 不支持 async | 用 \`AsyncMock\` 或 \`@patch(..., new_callable=AsyncMock)\` |
 | 验证调用次数错 | assert 报错 | 实际调用次数和预期不一致 | 先 \`print(mock.call_count)\` 看实际次数 |
 | Mock 了但代码没用到 | 测试还是调了真实 API | patch 路径不对或函数名拼错 | 检查 patch 的模块名和函数名 |
+| side_effect 列表用完 | \`StopIteration\` | side_effect 列表长度不够 | 列表长度要 ≥ 实际调用次数 |
+| patch.object 找不到属性 | \`AttributeError\` | 对象没有这个属性 | 检查方法名拼写和对象实例 |
 
 > 最容易踩的坑是 **patch 的路径**。假设 \`main.py\` 里有 \`from utils import send_sms\`，然后在 \`main.py\` 里调用 \`send_sms()\`。你要 patch 的是 \`main.send_sms\`（main 模块里的名字），不是 \`utils.send_sms\`。因为 Python 导入时把名字绑定到了 main 模块的命名空间。
 
-## 九、小结
+## 十二、动手实验
+
+> 🧪 **实验 1：Mock 天气 API**
+> 下面是一个查询天气的接口，调用外部天气 API。请用 \`@patch\` Mock 外部 API，测试三种情况：晴天、雨天、API 超时。
+
+\`\`\`python filename="实验 1：被测代码 weather_app.py"
+from fastapi import FastAPI, HTTPException
+import httpx
+
+app = FastAPI()
+
+def fetch_weather(city: str):
+    resp = httpx.get(f"https://api.weather.com/{city}")
+    return resp.json()
+
+@app.get("/weather/{city}")
+def get_weather(city: str):
+    result = fetch_weather(city)
+    if result.get("code") != 200:
+        raise HTTPException(status_code=503, detail="天气服务不可用")
+    return {"city": city, "weather": result.get("weather")}
+\`\`\`
+
+> 🧪 **实验 2：Mock 数据库查询**
+> 用 \`dependency_overrides\` 覆盖 \`get_db\` 依赖，返回一个预设好数据的假数据库，测试"查询用户列表"接口。
+
+> 🧪 **实验 3：用 patch.object Mock 类方法**
+> 给下面的 \`EmailService\` 类写测试，用 \`patch.object\` 替换 \`send\` 方法，测试"注册时发欢迎邮件"的逻辑。
+
+\`\`\`python filename="实验 3：被测代码"
+class EmailService:
+    def send(self, to: str, subject: str, body: str):
+        # 真实发邮件
+        pass
+
+email_service = EmailService()
+
+@app.post("/register")
+def register(username: str):
+    # 注册逻辑...
+    email_service.send(username, "欢迎", "注册成功")
+    return {"username": username}
+\`\`\`
+
+## 十三、小结
 
 Mock 让测试不依赖外部服务。FastAPI 有两种 Mock 方式：\`app.dependency_overrides\` 覆盖 Depends 依赖（数据库、认证），\`unittest.mock.patch\` 替换任意函数（外部 API）。用 fixture 管理 Mock 的生命周期——yield 前设置，yield 后清理。测试不仅要验证返回值，还要验证"Mock 是否被正确调用"（assert_called_once 等）。
 
@@ -2513,7 +3469,8 @@ Mock 让测试不依赖外部服务。FastAPI 有两种 Mock 方式：\`app.depe
 - **行覆盖率**：有多少行被执行了（最常用）。
 - **分支覆盖率**：有多少 if/else 分支被走了（更严格）。
 
-> 覆盖率 100% 不代表没 bug（你可能测了"执行了这行"但没测"结果对不对"），但覆盖率低一定有风险——没执行过的代码，你完全不知道它能不能跑。
+> 🏥 **生活类比：覆盖率像"体检报告"**
+> 体检报告告诉你"哪些器官查过了、哪些没查"——但查过不等于没问题，可能医生只是看了一眼没细查。覆盖率也一样：100% 覆盖率只说明"每行代码都被测试跑过了"，不保证"每行都被正确验证了"。但覆盖率低就像体检漏了几个项目——没查过的器官，你完全不知道有没有隐患。
 
 ## 二、安装 pytest-cov
 
@@ -2660,7 +3617,7 @@ exclude_lines =
     # pragma: no cover（标记"故意不测"的行）
     pragma: no cover
     # 抽象方法（子类才实现，不用测）
-    @(abc\.)?abstractmethod
+    @(abc\\.)?abstractmethod
     # raise NotImplementedError（占位代码）
     raise NotImplementedError
     # if __name__ == .__main__.（入口代码）
@@ -2795,7 +3752,306 @@ if TYPE_CHECKING:  # 自动被 .coveragerc 排除
 
 > 避坑指南：**不要盲目追求 100% 覆盖率**。100% 覆盖率只说明"每行都执行了"，不代表"每行都测对了"。一个测试里只写 \`func()\` 不 assert 也能让覆盖率 100%，但毫无意义。覆盖率是"必要不充分条件"——达标不代表没问题，但不达标一定有问题。
 
-## 九、实战：为完整项目添加覆盖率报告
+## 九、渐进式 Demo：为 FastAPI 接口补充覆盖率
+
+\`\`\`python filename="user_service.py —— 用户服务"
+# 从 fastapi 导入 FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
+# 从 pydantic 导入 BaseModel, Field
+from pydantic import BaseModel, Field
+
+# 创建应用
+app = FastAPI()
+
+# 用户模型
+class User(BaseModel):
+    # name 必填，2~50 字符
+    name: str = Field(..., min_length=2, max_length=50)
+    # age 必填，0~150
+    age: int = Field(..., ge=0, le=150)
+
+# 内存数据库
+# 定义变量 users_db
+users_db: dict[int, dict] = {}
+# 定义变量 next_id
+next_id = 1
+
+# 创建用户
+@app.post("/users", status_code=201)
+# 定义函数 create_user
+def create_user(user: User):
+    # 声明全局变量
+    global next_id
+    # 生成 id
+    # 定义变量 uid
+    uid = next_id
+    # id 自增
+    next_id += 1
+    # 检查重名（覆盖这个分支）
+    # 定义变量 existing
+    existing = [u for u in users_db.values() if u["name"] == user.name]
+    # 条件判断：如果 existing 非空
+    if existing:
+        # 抛 409 冲突
+        raise HTTPException(status_code=409, detail="用户名已存在")
+    # 存入数据库
+    # 定义变量 user_dict
+    user_dict = {"id": uid, **user.model_dump()}
+    # 赋值 users_db[uid] = user_dict
+    users_db[uid] = user_dict
+    # 返回
+    return user_dict
+
+# 查询用户
+@app.get("/users/{uid}")
+# 定义函数 get_user
+def get_user(uid: int):
+    # 条件判断：如果 uid 不在 users_db 里
+    if uid not in users_db:
+        # 抛 404
+        raise HTTPException(status_code=404, detail="用户不存在")
+    # 返回用户
+    return users_db[uid]
+
+# 删除用户
+@app.delete("/users/{uid}", status_code=204)
+# 定义函数 delete_user
+def delete_user(uid: int):
+    # 条件判断：如果 uid 不在 users_db 里
+    if uid not in users_db:
+        # 抛 404
+        raise HTTPException(status_code=404, detail="用户不存在")
+    # 删除
+    # 调用 users_db.pop(uid)
+    users_db.pop(uid)
+    # 返回 None
+    return None
+\`\`\`
+
+\`\`\`python filename="test_user_coverage.py —— 覆盖所有分支"
+# 导入 pytest
+import pytest
+# 从 fastapi.testclient 导入 TestClient
+from fastapi.testclient import TestClient
+# 导入 user_service 模块
+import user_service
+# 从 user_service 导入 app
+from user_service import app
+
+# 创建客户端
+client = TestClient(app)
+
+# 每个测试前重置数据库
+@pytest.fixture(autouse=True)
+# 定义函数 reset_db
+def reset_db():
+    # 清空数据库
+    # 调用 user_service.users_db.clear()
+    user_service.users_db.clear()
+    # 重置 id
+    # 赋值 user_service.next_id = 1
+    user_service.next_id = 1
+    # 交出控制权
+    yield
+
+# 测试 1：正常创建（覆盖成功分支）
+def test_create_user_success():
+    # 发 POST 请求
+    # 定义变量 r
+    r = client.post("/users", json={"name": "小明", "age": 20})
+    # 断言 201
+    assert r.status_code == 201
+    # 断言返回的 name
+    assert r.json()["name"] == "小明"
+
+# 测试 2：重名创建（覆盖 409 分支）
+def test_create_user_duplicate():
+    # 先创建一个
+    client.post("/users", json={"name": "小明", "age": 20})
+    # 再创建同名的
+    # 定义变量 r
+    r = client.post("/users", json={"name": "小明", "age": 22})
+    # 断言 409
+    assert r.status_code == 409
+
+# 测试 3：查询存在的用户（覆盖查询成功分支）
+def test_get_user_found():
+    # 先创建
+    client.post("/users", json={"name": "小红", "age": 25})
+    # 查询 id=1
+    # 定义变量 r
+    r = client.get("/users/1")
+    # 断言 200
+    assert r.status_code == 200
+    # 断言 name
+    assert r.json()["name"] == "小红"
+
+# 测试 4：查询不存在的用户（覆盖 404 分支）
+def test_get_user_not_found():
+    # 查询不存在的 id
+    # 定义变量 r
+    r = client.get("/users/999")
+    # 断言 404
+    assert r.status_code == 404
+
+# 测试 5：删除存在的用户（覆盖删除成功分支）
+def test_delete_user_success():
+    # 先创建
+    client.post("/users", json={"name": "小刚", "age": 30})
+    # 删除 id=1
+    # 定义变量 r
+    r = client.delete("/users/1")
+    # 断言 204
+    assert r.status_code == 204
+
+# 测试 6：删除不存在的用户（覆盖 404 分支）
+def test_delete_user_not_found():
+    # 删除不存在的 id
+    # 定义变量 r
+    r = client.delete("/users/999")
+    # 断言 404
+    assert r.status_code == 404
+
+# 测试 7：校验失败（覆盖 Pydantic 校验分支）
+def test_create_user_validation_error():
+    # name 太短
+    # 定义变量 r
+    r = client.post("/users", json={"name": "A", "age": 20})
+    # 断言 422
+    assert r.status_code == 422
+\`\`\`
+
+运行覆盖率检查：
+
+\`\`\`bash filename="运行并查看覆盖率"
+# 运行测试 + 覆盖率
+pytest --cov=user_service --cov-report=term-missing test_user_coverage.py
+
+# 输出：
+# Name                Stmts   Miss Branch BrPart  Cover   Missing
+# ---------------------------------------------------------------
+# user_service.py       22      0     10      0   100%
+# ---------------------------------------------------------------
+# TOTAL                 22      0     10      0   100%
+#
+# 100% 覆盖率！所有分支都被覆盖了
+\`\`\`
+
+## 十、渐进式 Demo：用 parametrize 高效提升覆盖率
+
+\`\`\`python filename="validator.py —— 工具函数"
+# 定义函数 validate_email
+def validate_email(email: str) -> bool:
+    """验证邮箱格式"""
+    # 条件判断：如果 email 不含 @
+    if "@" not in email:
+        # 返回 False
+        return False
+    # 定义变量 parts，按 @ 分割
+    parts = email.split("@")
+    # 条件判断：如果 parts 长度不等于 2
+    if len(parts) != 2:
+        # 返回 False
+        return False
+    # 定义变量 local 和 domain
+    local, domain = parts
+    # 条件判断：如果 local 为空或 domain 为空
+    if not local or not domain:
+        # 返回 False
+        return False
+    # 条件判断：如果 domain 不含 .
+    if "." not in domain:
+        # 返回 False
+        return False
+    # 返回 True
+    return True
+
+# 定义函数 validate_phone
+def validate_phone(phone: str) -> bool:
+    """验证手机号"""
+    # 条件判断：如果长度不等于 11
+    if len(phone) != 11:
+        # 返回 False
+        return False
+    # 条件判断：如果不以 1 开头
+    if not phone.startswith("1"):
+        # 返回 False
+        return False
+    # 条件判断：如果不全是数字
+    if not phone.isdigit():
+        # 返回 False
+        return False
+    # 返回 True
+    return True
+\`\`\`
+
+\`\`\`python filename="test_validator.py —— 参数化测试提升覆盖率"
+# 导入 pytest
+import pytest
+# 从 validator 导入 validate_email, validate_phone
+from validator import validate_email, validate_phone
+
+# 参数化测试邮箱验证
+@pytest.mark.parametrize("email, expected", [
+    # 正常邮箱
+    ("user@example.com", True),
+    # 正常邮箱（带子域名）
+    ("user@mail.example.com", True),
+    # 没有 @
+    ("userexample.com", False),
+    # 多个 @
+    ("user@@example.com", False),
+    # local 为空
+    ("@example.com", False),
+    # domain 为空
+    ("user@", False),
+    # domain 没有 .
+    ("user@examplecom", False),
+    # 空字符串
+    ("", False),
+])
+# 定义函数 test_validate_email
+def test_validate_email(email, expected):
+    # 断言验证结果
+    assert validate_email(email) == expected
+
+# 参数化测试手机号验证
+@pytest.mark.parametrize("phone, expected", [
+    # 正常手机号
+    ("13800138000", True),
+    # 少一位
+    ("1380013800", False),
+    # 多一位
+    ("138001380001", False),
+    # 不以 1 开头
+    ("23800138000", False),
+    # 含字母
+    ("13800abc000", False),
+    # 空字符串
+    ("", False),
+])
+# 定义函数 test_validate_phone
+def test_validate_phone(phone, expected):
+    # 断言验证结果
+    assert validate_phone(phone) == expected
+\`\`\`
+
+运行覆盖率：
+
+\`\`\`bash filename="查看覆盖率"
+pytest --cov=validator --cov-report=term-missing test_validator.py
+
+# 输出：
+# Name           Stmts   Miss Branch BrPart  Cover   Missing
+# ----------------------------------------------------------
+# validator.py      16      0      8      0   100%
+# ----------------------------------------------------------
+# TOTAL             16      0      8      0   100%
+#
+# 用 parametrize 一次性覆盖所有分支，覆盖率 100%
+\`\`\`
+
+## 十一、实战：为完整项目添加覆盖率报告
 
 来看一个完整项目的覆盖率配置和测试补充：
 
@@ -2858,7 +4114,7 @@ exclude_lines =
     raise NotImplementedError
     if __name__ == .__main__.:
     if TYPE_CHECKING:
-    @(abc\.)?abstractmethod
+    @(abc\\.)?abstractmethod
 
 [html]
 directory = htmlcov
@@ -2970,7 +4226,7 @@ pytest
 
 > 看到了吗？\`utils.py\` 达到 100%，\`routers/users.py\` 只有 88%（第 15、28 行没覆盖）。\`Missing\` 列告诉你该补哪些测试。如果低于 \`fail_under=85\`，pytest 会返回非 0 退出码，CI 会标红。
 
-## 十、CI 中的覆盖率检查
+## 十二、CI 中的覆盖率检查
 
 在 GitHub Actions / GitLab CI 里集成覆盖率检查：
 
@@ -3022,7 +4278,7 @@ jobs:
 4. 新功能必须带测试（Code Review 时检查）
 \`\`\`
 
-## 十一、测试最佳实践
+## 十三、测试最佳实践
 
 \`\`\`txt filename="测试金字塔"
                     /\\
@@ -3091,7 +4347,37 @@ def test_create_user_with_duplicate_email_returns_409():
     assert "已存在" in r.json()["detail"]
 \`\`\`
 
-## 十二、常见错误与避坑指南
+## 十四、渐进式 Demo：覆盖率差异对比
+
+在 CI 里，除了看总覆盖率，还要看"这次改动让覆盖率升了还是降了"：
+
+\`\`\`bash filename="覆盖率差异对比"
+# 先跑一次主分支的覆盖率，保存 baseline
+git checkout main
+pytest --cov=app --cov-report=json:baseline.json
+
+# 切回 feature 分支
+git checkout feature/add-discount
+
+# 再跑一次，和 baseline 对比
+pytest --cov=app --cov-report=json:current.json
+
+# 用 diff-cover 工具对比差异
+pip install diff-cover
+diff-cover current.json --compare-branch=main
+
+# 输出示例：
+# -------------- Diff Coverage --------------
+# File            Stmts   Miss  Cover   Missing
+# -------------------------------------------
+# app/discount.py    15      3    80%   12, 18, 25
+# -------------------------------------------
+# 新增代码覆盖率 80%，有 3 行没测到
+\`\`\`
+
+> 关键点：\`diff-cover\` 只看"新增/修改的代码"的覆盖率，比总覆盖率更有针对性。即使项目总覆盖率 90%，新代码也应该 100% 覆盖。
+
+## 十五、常见错误与避坑指南
 
 | 错误 | 现象 | 原因 | 解决 |
 | --- | --- | --- | --- |
@@ -3101,10 +4387,44 @@ def test_create_user_with_duplicate_email_returns_409():
 | fail_under 不生效 | 覆盖率低但 CI 绿 | 配置没读到 | 确认 .coveragerc 在项目根目录 |
 | 分支覆盖率低 | branch 远低于 line | if/else 只走了一个分支 | 补测另一个分支的输入 |
 | CI 上覆盖率比本地低 | 本地 90% CI 80% | 测试文件不在 CI | 检查 CI 是否运行了所有测试 |
+| pragma 不生效 | 标记了还是被统计 | 注释格式不对 | 确保是 \`# pragma: no cover\`（注意空格） |
 
 > 最常见的坑：**覆盖率虚高**。如果你把所有 router 文件加到 \`omit\` 里，覆盖率会很高，但你根本没测路由逻辑。\`omit\` 只应该排除真正不需要测的（迁移、入口、第三方适配），不要用它来"刷"覆盖率。
 
-## 十三、持续测试的完整工作流
+## 十六、动手实验
+
+> 🧪 **实验 1：补全覆盖率到 100%**
+> 下面这个函数只有 60% 覆盖率，请补全测试到 100%（包括分支覆盖）。
+
+\`\`\`python filename="实验 1：被测代码"
+def classify_number(n: int) -> str:
+    if n > 0:
+        if n % 2 == 0:
+            return "正偶数"
+        else:
+            return "正奇数"
+    elif n < 0:
+        return "负数"
+    else:
+        return "零"
+\`\`\`
+
+> 🧪 **实验 2：配置 .coveragerc**
+> 给一个已有项目配置 \`。\`\`coveragerc\`，要求：
+> 1. 开启分支覆盖
+> 2. 排除 \`tests/\` 和 \`migrations/\` 目录
+> 3. 排除 \`pragma: no cover\` 和 \`if TYPE_CHECKING:\` 行
+> 4. 设置 \`fail_under = 85\`
+
+> 🧪 **实验 3：写一个 CI 覆盖率门禁**
+> 写一个 GitHub Actions workflow，要求：
+> 1. 在 push 和 PR 时触发
+> 2. 安装依赖
+> 3. 运行 pytest 带覆盖率
+> 4. 覆盖率低于 80% 时失败
+> 5. 上传 HTML 报告作为 artifact
+
+## 十七、持续测试的完整工作流
 
 \`\`\`txt filename="开发流程中的测试"
 1. 写功能代码前先写测试（TDD）或写完后立即补测试
@@ -3118,7 +4438,7 @@ def test_create_user_with_duplicate_email_returns_409():
 9. 定期回顾：哪些测试经常挂？哪些代码覆盖率在降？
 \`\`\`
 
-## 十四、小结
+## 十八、小结
 
 覆盖率是测试质量的"温度计"——它不能告诉你"代码没问题"，但能告诉你"哪些代码没被测过"。用 \`pytest-cov\` 生成覆盖率报告，用 \`.coveragerc\` 配置统计范围和排除规则，用 \`fail_under\` 在 CI 中强制覆盖率底线。开启分支覆盖率比行覆盖率更严格。但记住：覆盖率是参考不是目标——一个有意义的 \`assert\` 比 10 行无断言的"执行"更有价值。
 

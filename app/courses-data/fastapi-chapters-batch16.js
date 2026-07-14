@@ -21,6 +21,8 @@ export const chapters = [
 
 前面十五章我们学了 FastAPI 的各种零碎知识点：路由、依赖注入、Pydantic、SQLAlchemy、JWT、中间件、测试……这一章把所有东西串起来，从零做一个**完整的博客系统 API**。这是整个教程最重要的"验收章"——能独立写出来，就算 FastAPI 入门毕业了。
 
+> 🏠 **生活类比：从零盖一栋楼**。写完整项目就像盖一栋楼——需求分析是画图纸（户型几室几厅），项目结构是搭脚手架（哪里是承重墙、哪里是隔断），数据模型是打地基（钢筋水泥的桩基），业务逻辑是水电布线（管子走哪儿、开关在哪儿），路由是门窗楼梯（从哪个门进哪个房间），认证是门禁卡（谁有权限进），测试是验收质检（漏水不漏水、通电不通电），部署是交钥匙入住。盖楼不能先装窗户再打地基，写项目也不能先写路由再定模型——**顺序很重要**。
+
 ### 61.1 为什么要有"完整项目"这一章
 
 学单车时拆开练"蹬踏板""扶把""刹车"是一回事，真骑上路是另一回事。完整项目这一章解决三个问题：
@@ -1049,7 +1051,580 @@ def test_update_post_only_author(client, auth_token):
     assert r3.status_code == 403
 \`\`\`
 
-### 61.9 常见错误与避坑指南
+### 61.9 生活类比：盖楼工种对照表
+
+把博客系统的各层映射到盖楼的工种，理解起来更直观：
+
+| 盖楼工种 | 项目分层 | 职责 | 不能越界 |
+| --- | --- | --- | --- |
+| 设计师画图纸 | 需求分析 + Schemas | 定字段、定类型、定校验 | 不能在图纸上砌墙 |
+| 打桩工打地基 | Models（表结构） | 定义表、字段、关系、索引 | 地基里不能埋电线 |
+| 水电工布管 | CRUD 层 | 数据库增删改查的原子操作 | 水电工不管室内装修 |
+| 装修工精装 | Service / 路由 | 业务逻辑、权限校验、组装数据 | 装修工不改承重墙 |
+| 门禁系统 | 认证（JWT） | 谁能进、谁能改 | 门禁不管你房间里干嘛 |
+| 质检员验收 | 测试（pytest） | 接口对不对、权限严不严 | 质检不参与施工 |
+| 交钥匙入住 | 部署上线 | 让用户能用上 | 交付前要全检一遍 |
+
+> **怎么想的**：分层 = 分工。一层出问题不影响其他层。比如换数据库（地基换了），只要 CRUD 层接口不变，路由层完全无感。这就是"高内聚低耦合"在工程上的体现。
+
+### 61.10 完整电商 API 实现（Demo 8：路由/业务/数据三层完整代码）
+
+**怎么想的**：博客系统是"读多写少"的典型，电商系统是"写多事务复杂"的典型。电商比博客多了：库存扣减、订单状态机、支付回调、并发扣库存。下面是一个**最小可用的电商 API**，展示三层架构（路由/业务/数据）的完整代码。
+
+> 🏠 **生活类比**：电商 API 像开一家超市——商品模型是货架上的货（SKU），购物车是顾客提的篮子，订单是收银台打的小票，库存是仓库管理员记的账本，支付是收银员扫码收钱。**扣库存和收钱必须绑在一起**——不能收了钱没货，也不能发了货没收到钱。
+
+**项目结构（电商版）**：
+
+\`\`\`
+shop/
+├── app/
+│   ├── main.py                  # 入口
+│   ├── core/
+│   │   ├── config.py            # 配置
+│   │   ├── database.py          # 引擎+会话
+│   │   ├── security.py          # JWT
+│   │   └── deps.py              # 通用依赖
+│   ├── models/                  # ORM 模型（数据层）
+│   │   ├── user.py
+│   │   ├── product.py           # 商品 + SKU
+│   │   ├── cart.py              # 购物车
+│   │   └── order.py             # 订单 + 订单项
+│   ├── schemas/                 # Pydantic 模型（入参出参）
+│   ├── crud/                    # 数据访问层（只管 SQL）
+│   ├── services/                # 业务逻辑层（事务、状态机）
+│   │   ├── order_service.py     # 下单、取消、支付回调
+│   │   └── stock_service.py     # 库存扣减、回滚
+│   ├── api/v1/
+│   │   ├── products.py          # 商品路由
+│   │   ├── cart.py              # 购物车路由
+│   │   └── orders.py            # 订单路由
+│   └── utils/
+└── tests/
+\`\`\`
+
+**1. 数据层：商品和 SKU 模型**
+
+\`\`\`python
+# app/models/product.py
+# 电商核心：商品（SPU）+ 规格（SKU）。一个商品有多个 SKU
+# 例如：商品"iPhone 15"有 SKU"iPhone 15 128G 黑色""iPhone 15 256G 白色"
+import datetime
+from sqlalchemy import String, Integer, Text, ForeignKey, DateTime, func, Numeric
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from app.models.base import Base
+
+# 商品 SPU（Standard Product Unit）
+class Product(Base):
+    __tablename__ = "products"
+    # 主键
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # 商品名
+    name: Mapped[str] = mapped_column(String(200), index=True)
+    # 商品描述
+    description: Mapped[str] = mapped_column(Text, default="")
+    # 是否上架
+    is_active: Mapped[bool] = mapped_column(default=True)
+    # 创建时间
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
+    # 关联 SKU 列表（一对多）
+    skus: Mapped[list["SKU"]] = relationship(back_populates="product", cascade="all, delete-orphan")
+
+# 商品 SKU（Stock Keeping Unit）—— 最小库存单位
+class SKU(Base):
+    __tablename__ = "skus"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # 所属商品
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"))
+    # 规格名，如 "128G 黑色"
+    spec: Mapped[str] = mapped_column(String(100))
+    # 价格，用 Numeric 而不是 Float（浮点数有精度问题，金额必须用 Decimal）
+    price: Mapped[float] = mapped_column(Numeric(10, 2))  # 10 位总长，2 位小数
+    # 库存数。with_for_update 时要锁这一行
+    stock: Mapped[int] = mapped_column(Integer, default=0)
+    # 关联商品
+    product: Mapped["Product"] = relationship(back_populates="skus")
+\`\`\`
+
+> **避坑**：金额字段**绝对不能用 Float**！Float 有精度丢失（0.1+0.2 != 0.3）。必须用 \`Numeric(10, 2)\` 或整数分（price_cents）。
+
+**2. 数据层：订单和订单项模型**
+
+\`\`\`python
+# app/models/order.py
+# 订单 = 一次购买行为。一个订单有多个订单项（买了哪些 SKU、各几个）
+import datetime
+import enum
+from sqlalchemy import String, Integer, Text, ForeignKey, DateTime, func, Numeric, Enum
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from app.models.base import Base
+
+# 订单状态枚举。用 enum 而不是字符串，防止写入非法状态
+class OrderStatus(str, enum.Enum):
+    pending = "pending"      # 待支付
+    paid = "paid"            # 已支付，待发货
+    shipped = "shipped"      # 已发货
+    completed = "completed"  # 已完成
+    cancelled = "cancelled"  # 已取消
+
+# 订单主表
+class Order(Base):
+    __tablename__ = "orders"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # 订单号，唯一。用时间戳+随机数生成，对外暴露用订单号不用自增 id
+    order_no: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    # 下单用户
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    # 订单总金额（冗余字段，下单时算好存下来，避免商品改价后历史订单金额错乱）
+    total_amount: Mapped[float] = mapped_column(Numeric(10, 2))
+    # 订单状态
+    status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus), default=OrderStatus.pending)
+    # 创建时间
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
+    # 关联订单项
+    items: Mapped[list["OrderItem"]] = relationship(back_populates="order", cascade="all, delete-orphan")
+
+# 订单项：订单里的每一行（买了哪个 SKU、几个、单价）
+class OrderItem(Base):
+    __tablename__ = "order_items"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # 所属订单
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"))
+    # 买的哪个 SKU
+    sku_id: Mapped[int] = mapped_column(ForeignKey("skus.id"))
+    # 买几个
+    quantity: Mapped[int] = mapped_column(Integer)
+    # 下单时的单价（快照）。商品后续改价不影响这个值
+    unit_price: Mapped[float] = mapped_column(Numeric(10, 2))
+    # 关联订单
+    order: Mapped["Order"] = relationship(back_populates="items")
+\`\`\`
+
+> **怎么想的**：为什么 \`unit_price\` 存在订单项里而不是关联 SKU 取？因为**价格是时点数据**——今天下单 99 元，明天改成 109 元，历史订单应该还是 99。这就是"数据快照"思想。
+
+**3. 业务层：库存扣减服务（核心！）**
+
+\`\`\`python
+# app/services/stock_service.py
+# 库存服务：电商最容易出 bug 的地方
+# 核心问题：并发下单时库存不能超卖
+from sqlalchemy.orm import Session
+from app.models.product import SKU
+from app.models.order import Order, OrderItem
+from fastapi import HTTPException
+
+def deduct_stock(db: Session, items: list[dict]) -> None:
+    """
+    扣库存。items 是 [{"sku_id": 1, "quantity": 2}, ...]
+    关键：用 SELECT ... FOR UPDATE 锁行，防止并发超卖
+    """
+    for item in items:
+        # with_for_update() 加行锁：其他事务读到这一行会等待
+        # 这是防止超卖的核心：锁住 SKU 行，扣完库存再提交
+        sku = (
+            db.query(SKU)
+            .filter(SKU.id == item["sku_id"])
+            .with_for_update()  # SELECT ... FOR UPDATE
+            .first()
+        )
+        if not sku:
+            raise HTTPException(404, f"SKU {item['sku_id']} 不存在")
+        # 检查库存够不够
+        if sku.stock < item["quantity"]:
+            raise HTTPException(400, f"库存不足：{sku.spec} 仅剩 {sku.stock}")
+        # 扣库存
+        sku.stock -= item["quantity"]
+    # 注意：这里不 commit，由调用方控制事务（保证扣库存和建订单原子）
+
+def restore_stock(db: Session, order: Order) -> None:
+    """取消订单时回滚库存"""
+    for item in order.items:
+        sku = db.get(SKU, item.sku_id)
+        if sku:
+            sku.stock += item.quantity
+\`\`\`
+
+> **避坑**：超卖是电商的经典事故。假设库存只剩 1 件，A 和 B 同时下单：
+> - 没 FOR UPDATE：A 查到 stock=1，B 也查到 stock=1，A 扣成 0，B 也扣成 0——超卖了！
+> - 有 FOR UPDATE：A 查时锁住行，B 查时等待，A 提交后 B 查到 stock=0，B 报"库存不足"。
+>
+> 代价：FOR UPDATE 会降低并发度。高并发场景用 Redis 预扣库存 + 异步落库。
+
+**4. 业务层：下单服务（事务+状态机）**
+
+\`\`\`python
+# app/services/order_service.py
+# 下单服务：把"扣库存 + 建订单"包成一个事务，要么全成功，要么全失败
+import time
+import random
+from sqlalchemy.orm import Session
+from app.models.order import Order, OrderItem, OrderStatus
+from app.models.product import SKU
+from app.services.stock_service import deduct_stock
+from fastapi import HTTPException
+
+def create_order(db: Session, user_id: int, items: list[dict]) -> Order:
+    """
+    下单。items = [{"sku_id": 1, "quantity": 2}, ...]
+    事务边界在这里：扣库存 + 算总价 + 建订单 + 建订单项，任一步失败全部回滚
+    """
+    # 算总价（先查 SKU 拿单价）
+    total = 0
+    order_items = []
+    for item in items:
+        sku = db.get(SKU, item["sku_id"])
+        if not sku:
+            raise HTTPException(404, f"SKU {item['sku_id']} 不存在")
+        # 算这一行的小计
+        line_total = float(sku.price) * item["quantity"]
+        total += line_total
+        # 构造订单项（快照单价）
+        order_items.append(OrderItem(
+            sku_id=item["sku_id"],
+            quantity=item["quantity"],
+            unit_price=sku.price,  # 快照当前价格
+        ))
+
+    # 扣库存（在同一个事务里）
+    deduct_stock(db, items)
+
+    # 生成订单号：时间戳 + 随机数，避免重复
+    order_no = f"{int(time.time())}{random.randint(1000, 9999)}"
+    # 建订单
+    order = Order(
+        order_no=order_no,
+        user_id=user_id,
+        total_amount=total,
+        status=OrderStatus.pending,  # 新订单默认待支付
+        items=order_items,
+    )
+    db.add(order)
+    db.commit()       # 提交事务：库存扣减 + 订单创建 一起生效
+    db.refresh(order)
+    return order
+
+def pay_order(db: Session, order: Order) -> Order:
+    """支付订单：状态从 pending → paid"""
+    # 状态机校验：只有 pending 订单能支付
+    if order.status != OrderStatus.pending:
+        raise HTTPException(400, f"订单状态 {order.status} 不可支付")
+    # 真实项目这里调支付网关（支付宝/微信）
+    order.status = OrderStatus.paid
+    db.commit()
+    db.refresh(order)
+    return order
+
+def cancel_order(db: Session, order: Order) -> Order:
+    """取消订单：回滚库存 + 改状态"""
+    if order.status not in (OrderStatus.pending, OrderStatus.paid):
+        raise HTTPException(400, "订单不可取消")
+    # 回滚库存
+    from app.services.stock_service import restore_stock
+    restore_stock(db, order)
+    order.status = OrderStatus.cancelled
+    db.commit()
+    db.refresh(order)
+    return order
+\`\`\`
+
+> **怎么想的**：为什么下单逻辑放 service 层不放路由？因为路由只管"接请求、返响应"，业务逻辑（算价、扣库存、状态机）是核心，要能被路由、后台任务、定时任务复用。**路由薄、service 厚**是好架构的标志。
+
+**5. 路由层：订单路由（薄薄一层）**
+
+\`\`\`python
+# app/api/v1/orders.py
+# 路由层只做：参数校验 → 调 service → 返响应。不写业务逻辑
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from app.core.deps import get_db, get_current_user
+from app.models.user import User
+from app.models.order import Order
+from app.services import order_service
+from app.schemas.order import OrderCreate, OrderOut
+
+router = APIRouter(prefix="/orders", tags=["订单"])
+
+# 下单
+@router.post("", response_model=OrderOut, status_code=201)
+def create_order(
+    body: OrderCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # 路由只调 service，业务逻辑全在 service 里
+    order = order_service.create_order(db, current_user.id, body.items)
+    return order
+
+# 支付订单
+@router.post("/{order_id}/pay", response_model=OrderOut)
+def pay_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    order = db.get(Order, order_id)
+    if not order:
+        raise HTTPException(404, "订单不存在")
+    # 权限：只能支付自己的订单
+    if order.user_id != current_user.id:
+        raise HTTPException(403, "无权操作他人订单")
+    return order_service.pay_order(db, order)
+
+# 取消订单
+@router.post("/{order_id}/cancel", response_model=OrderOut)
+def cancel_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    order = db.get(Order, order_id)
+    if not order:
+        raise HTTPException(404, "订单不存在")
+    if order.user_id != current_user.id:
+        raise HTTPException(403, "无权操作他人订单")
+    return order_service.cancel_order(db, order)
+
+# 查我的订单
+@router.get("", response_model=list[OrderOut])
+def list_my_orders(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return db.query(Order).filter(Order.user_id == current_user.id).all()
+\`\`\`
+
+\`\`\`python
+# app/schemas/order.py
+from pydantic import BaseModel
+from app.models.order import OrderStatus
+
+class OrderItemCreate(BaseModel):
+    sku_id: int
+    quantity: int  # 至少买 1 个
+
+class OrderCreate(BaseModel):
+    items: list[OrderItemCreate]
+
+class OrderItemOut(BaseModel):
+    id: int
+    sku_id: int
+    quantity: int
+    unit_price: float
+    model_config = {"from_attributes": True}
+
+class OrderOut(BaseModel):
+    id: int
+    order_no: str
+    total_amount: float
+    status: OrderStatus
+    items: list[OrderItemOut]
+    model_config = {"from_attributes": True}
+\`\`\`
+
+> **完整流程**：注册登录 → 浏览商品 → 加购物车 → 下单（扣库存+建订单）→ 支付（改状态）→ 发货 → 完成。每一步都是独立接口，状态机驱动。**取消订单必须回滚库存**，否则库存对不上。
+
+### 61.11 项目部署上线完整流程（Demo 9）
+
+**怎么想的**：代码写完只是 30% 的工作，70% 在部署运维。部署流程要可重复、可回滚、可监控。
+
+> 🏠 **生活类比**：部署上线像新店开张——代码是装修好的店面，Gunicorn 是店长（管几个店员），Nginx 是保安（指挥客人走哪个门），Docker 是集装箱（把整个店面打包），CI/CD 是自动开门系统（一按按钮就开张）。
+
+**1. 生产配置**
+
+\`\`\`python
+# app/core/config.py（生产版）
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+    # 生产用 PostgreSQL，不用 SQLite
+    database_url: str = "postgresql://user:pass@localhost:5432/blog"
+    # 密钥从环境变量读，不给默认值（强制配置）
+    secret_key: str
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60
+    # CORS 允许的前端域名
+    cors_origins: list[str] = ["https://blog.example.com"]
+    # 调试模式，生产必须 False
+    debug: bool = False
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+
+settings = Settings()
+\`\`\`
+
+**2. Gunicorn 配置文件**
+
+\`\`\`python
+# gunicorn.conf.py
+# Gunicorn 配置：用 Uvicorn worker 跑 ASGI 应用
+import multiprocessing
+
+# 绑定地址
+bind = "0.0.0.0:8000"
+# worker 数量：CPU 核数 * 2 + 1 是经验值
+workers = multiprocessing.cpu_count() * 2 + 1
+# worker 类：用 UvicornWorker 支持 ASGI
+worker_class = "uvicorn.workers.UvicornWorker"
+# 超时：处理慢请求的容忍时间
+timeout = 120
+# 优雅重启超时
+graceful_timeout = 30
+# 预加载：worker 启动前先加载代码，省内存+启动快
+preload_app = True
+# 日志
+accesslog = "/var/log/gunicorn/access.log"
+errorlog = "/var/log/gunicorn/error.log"
+loglevel = "warning"
+\`\`\`
+
+**3. Dockerfile**
+
+\`\`\`dockerfile
+# Dockerfile —— 多阶段构建，镜像更小
+# 第一阶段：安装依赖
+FROM python:3.11-slim AS builder
+WORKDIR /app
+# 先拷 requirements.txt，利用 Docker 缓存层
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 第二阶段：运行
+FROM python:3.11-slim
+WORKDIR /app
+# 从 builder 拷已装的依赖
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+# 拷代码
+COPY . .
+# 非 root 用户跑，安全
+RUN useradd -m appuser
+USER appuser
+# 启动命令
+CMD ["gunicorn", "app.main:app", "-c", "gunicorn.conf.py"]
+\`\`\`
+
+**4. docker-compose.yml（含 Nginx + Postgres）**
+
+\`\`\`yaml
+version: "3.9"
+services:
+  # PostgreSQL 数据库
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: blog
+      POSTGRES_PASSWORD: \${DB_PASSWORD}
+      POSTGRES_DB: blog
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U blog"]
+      interval: 10s
+
+  # Redis（缓存+任务队列）
+  redis:
+    image: redis:7-alpine
+
+  # FastAPI 应用
+  app:
+    build: .
+    environment:
+      - DATABASE_URL=postgresql://blog:\${DB_PASSWORD}@db:5432/blog
+      - SECRET_KEY=\${SECRET_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    expose: ["8000"]  # 只暴露给内网，Nginx 转发
+
+  # Nginx 反向代理
+  nginx:
+    image: nginx:alpine
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    depends_on: [app]
+
+volumes:
+  pgdata:
+\`\`\`
+
+**5. Nginx 配置**
+
+\`\`\`nginx
+# nginx.conf
+events {
+    worker_connections 1024;
+}
+
+http {
+    upstream backend {
+        # FastAPI 应用
+        server app:8000;
+    }
+
+    server {
+        listen 80;
+        server_name api.example.com;
+        # HTTP 跳 HTTPS
+        return 301 https://$host$request_uri;
+    }
+
+    server {
+        listen 443 ssl;
+        server_name api.example.com;
+
+        ssl_certificate /etc/nginx/certs/fullchain.pem;
+        ssl_certificate_key /etc/nginx/certs/privkey.pem;
+
+        # 反向代理到 FastAPI
+        location / {
+            proxy_pass http://backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # 静态文件直接 Nginx 处理，不走应用
+        location /static/ {
+            alias /app/static/;
+            expires 30d;
+        }
+    }
+}
+\`\`\`
+
+**6. 部署脚本**
+
+\`\`\`bash
+#!/bin/bash
+# deploy.sh —— 一键部署
+set -e  # 任一步失败就停
+
+echo "==> 拉最新代码"
+git pull origin main
+
+echo "==> 构建镜像"
+docker-compose build
+
+echo "==> 跑数据库迁移"
+docker-compose run --rm app alembic upgrade head
+
+echo "==> 重启服务"
+docker-compose up -d
+
+echo "==> 健康检查"
+sleep 5
+curl -f http://localhost/ || exit 1
+
+echo "==> 部署完成"
+\`\`\`
+
+> **回滚怎么做**：部署出问题要能快速回滚。方案：1) 保留上一个 Docker 镜像 tag，出问题切回去；2) Alembic 迁移要写 downgrade，能回滚表结构；3) 数据库备份每天自动跑。
+
+### 61.12 常见错误与避坑指南
 
 1. **循环导入**：models 之间互相 import 会报错。解决：用字符串引用（\`relationship("Post")\`）或在 \`TYPE_CHECKING\` 下 import。
 2. **N+1 查询**：列表接口返文章时顺带返作者名，默认会每篇文章查一次作者。解决：用 \`joinedload\` 或 \`selectinload\` 预加载。
@@ -1059,11 +1634,46 @@ def test_update_post_only_author(client, auth_token):
 6. **CORS 配太宽**：\`allow_origins=["*"]\` 加 \`allow_credentials=True\` 会导致 cookie 不生效。生产环境必须指定具体域名。
 7. **密码用 MD5**：MD5 能被彩虹表秒破。必须用 bcrypt/argon2。
 8. **分页没上限**：\`?size=10000\` 直接把库查爆。用 \`Field(le=100)\` 限制。
+9. **金额用 Float**：浮点数精度丢失导致对账错误。必须用 \`Numeric(10, 2)\` 或整数分。
+10. **超卖**：并发下单没加行锁，库存扣成负数。用 \`SELECT ... FOR UPDATE\`。
+11. **订单状态乱跳**：没状态机校验，pending 直接变 completed。每次改状态前 if 校验。
+12. **生产开 echo=True**：SQL 日志打爆磁盘。生产必须 False。
+13. **配置硬编码**：数据库密码、密钥写代码里。必须走环境变量。
+14. **没健康检查**：服务挂了没人知道。加 \`/health\` 接口 + 监控告警。
 
-### 61.10 小结
+### 61.13 动手实验
 
-这一章我们搭了一个完整的博客 API 骨架：分层架构（api/service/crud/models/schemas）、JWT 认证、权限控制、分页搜索、两级评论、测试。这套结构可以直接套到任何 CRUD 项目上。下一章我们给这个博客加 GraphQL 接口，看看另一种 API 风格。
-`,
+**实验 1（基础）：完成博客系统的标签模块**
+- 创建 Tag 模型、TagSchema、tag_crud
+- 实现标签 CRUD 接口（GET /tags、POST /tags）
+- 实现"给文章打标签"接口（POST /posts/{id}/tags）
+- 写测试：创建标签、按标签筛文章
+
+**实验 2（进阶）：给电商系统加购物车**
+- 设计 Cart 模型（user_id + sku_id + quantity）
+- 实现"加购物车""改数量""清空购物车"接口
+- 实现"从购物车下单"接口（把购物车转成订单）
+- 思考：购物车数据存数据库还是 Redis？各有什么优缺点？
+
+**实验 3（挑战）：实现支付回调**
+- 模拟支付网关：POST /payments/callback 接收 {order_no, status, paid_at}
+- 回调里校验签名（用 HMAC）
+- 更新订单状态：pending → paid
+- 处理重复回调（幂等：同一个 order_no 只处理一次）
+- 思考：回调失败怎么重试？怎么保证最终一致？
+
+**实验 4（部署）：把博客系统部署到云服务器**
+- 买一台云服务器（或用本地虚拟机）
+- 装 Docker + Docker Compose
+- 用本章的 Dockerfile + docker-compose.yml 部署
+- 配 Nginx + HTTPS（用 Let's Encrypt 免费证书）
+- 写一个 GitHub Actions 自动部署脚本
+
+> **完成标志**：实验 1 能跑通标签筛选；实验 2 能从购物车下单；实验 3 能处理重复回调；实验 4 能从浏览器访问 https://你的域名/docs 看到 Swagger。
+
+### 61.14 小结
+
+这一章我们搭了一个完整的博客 API 骨架：分层架构（api/service/crud/models/schemas）、JWT 认证、权限控制、分页搜索、两级评论、测试。又用电商系统展示了三层架构（路由/业务/数据）的完整代码——库存扣减、订单状态机、事务边界是电商的核心难点。最后给了部署上线的完整流程：Gunicorn + Docker + Nginx + CI/CD。这套结构可以直接套到任何 CRUD 项目上。下一章我们给这个博客加 GraphQL 接口，看看另一种 API 风格。`,
   },
 
   // =============================================================
@@ -1077,6 +1687,8 @@ def test_update_post_only_author(client, auth_token):
     content: `## 第六十二章　实战:GraphQL 集成
 
 上一章我们用 REST 做了博客 API。这一章换一种风格——GraphQL。GraphQL 不是 REST 的替代品，而是另一种"怎么设计 API"的思路。学完你会发现：有些场景 GraphQL 真比 REST 顺手，有些场景 REST 更合适。**知道两边的好，才能选对工具。**
+
+> 🏠 **生活类比：自助餐 vs 套餐**。REST 像"套餐"——你点一个套餐，店家给你配好几个菜，你想吃的有，不想吃的也塞给你（Over-fetching）；你想加个菜得另点（Under-fetching，多次请求）。GraphQL 像"自助餐"——你端个盘子，想拿什么拿什么，想拿多少拿多少，一个盘子装完（一个请求搞定）。但自助餐的代价是：店家备菜更麻烦（resolver 要写）、容易浪费（深度查询拖垮服务端）。
 
 ### 62.1 GraphQL vs REST：到底差在哪
 
@@ -1645,7 +2257,252 @@ mutation {
 }
 \`\`\`
 
-### 62.8 常见错误与避坑指南
+### 62.8 生活类比：GraphQL 像图书馆管理员
+
+> 🏠 **生活类比**：REST 像去图书馆借书——你要"红楼梦"，图书管理员给你整本书（你只想要其中一章也给你整本）。GraphQL 像有个私人图书管理员——你递一张清单"要红楼梦第 5 回+作者简介+同作者其他书名"，管理员按清单精确整理好给你。**DataLoader** 像管理员一次拿 20 本书而不是跑 20 趟。**Resolver** 是管理员脑子里的"去哪个书架拿哪本书"的知识。**Schema** 是图书馆的目录索引——告诉你这里有什么书能借。
+
+| REST 概念 | GraphQL 对应 | 图书馆类比 |
+| --- | --- | --- |
+| URL 路径 | Query 字段 | 借书单上的一项 |
+| HTTP 方法 | Query/Mutation | 借（Query）vs 还/捐赠（Mutation） |
+| 响应体 | 字段选择 | 清单上勾选要哪些 |
+| 接口文档 | Schema | 图书馆目录卡 |
+| N+1 查询 | DataLoader | 一次取一批书 |
+
+### 62.9 电商系统 GraphQL API（Demo 6：商品+订单查询）
+
+**怎么想的**：电商前端最痛苦的是"商品列表页"——要商品名、价格、缩略图、库存状态、评分、促销标签……REST 要么过度获取（返一堆用不上的字段），要么发好几个请求拼。GraphQL 一个查询全搞定。
+
+\`\`\`python
+# app/gql/ecom_types.py
+# 电商 GraphQL 类型定义
+import strawberry
+from typing import Optional
+import datetime
+
+# 商品类型
+@strawberry.type
+class ProductType:
+    id: strawberry.ID
+    name: str
+    description: str
+    is_active: bool
+    # 关联 SKU 列表
+    @strawberry.field
+    def skus(self, info) -> list["SKUType"]:
+        db = info.context["db"]
+        from app.models.product import Product, SKU
+        skus = db.query(SKU).filter(SKU.product_id == self.id).all()
+        return [SKUType(id=s.id, spec=s.spec, price=float(s.price), stock=s.stock) for s in skus]
+    # 最低价（聚合字段，GraphQL 能算"虚拟字段"）
+    @strawberry.field
+    def min_price(self, info) -> float:
+        db = info.context["db"]
+        from app.models.product import SKU
+        from sqlalchemy import func
+        # 查这个商品下最便宜的 SKU
+        result = db.query(func.min(SKU.price)).filter(SKU.product_id == self.id).scalar()
+        return float(result) if result else 0.0
+
+# SKU 类型
+@strawberry.type
+class SKUType:
+    id: strawberry.ID
+    spec: str
+    price: float
+    stock: int
+
+# 订单类型
+@strawberry.type
+class OrderType:
+    id: strawberry.ID
+    order_no: str
+    total_amount: float
+    status: str
+    created_at: datetime.datetime
+    # 订单项
+    @strawberry.field
+    def items(self, info) -> list["OrderItemType"]:
+        db = info.context["db"]
+        from app.models.order import OrderItem
+        items = db.query(OrderItem).filter(OrderItem.order_id == self.id).all()
+        return [OrderItemType(
+            id=i.id, sku_id=i.sku_id, quantity=i.quantity, unit_price=float(i.unit_price)
+        ) for i in items]
+
+@strawberry.type
+class OrderItemType:
+    id: strawberry.ID
+    sku_id: int
+    quantity: int
+    unit_price: float
+
+# 输入类型
+@strawberry.input
+class CartItemInput:
+    sku_id: int
+    quantity: int
+\`\`\`
+
+\`\`\`python
+# app/gql/ecom_schema.py
+# 电商 Query 和 Mutation
+import strawberry
+from typing import Optional
+from app.gql.ecom_types import ProductType, SKUType, OrderType, CartItemInput
+
+@strawberry.type
+class EcomQuery:
+    # 商品列表（带筛选）
+    @strawberry.field
+    def products(self, info, keyword: Optional[str] = None, min_price: Optional[float] = None) -> list[ProductType]:
+        db = info.context["db"]
+        from app.models.product import Product
+        q = db.query(Product).filter(Product.is_active == True)
+        if keyword:
+            q = q.filter(Product.name.ilike(f"%{keyword}%"))
+        products = q.all()
+        return [ProductType(id=p.id, name=p.name, description=p.description, is_active=p.is_active) for p in products]
+
+    # 商品详情
+    @strawberry.field
+    def product(self, info, id: int) -> Optional[ProductType]:
+        db = info.context["db"]
+        from app.models.product import Product
+        p = db.get(Product, id)
+        if not p:
+            return None
+        return ProductType(id=p.id, name=p.name, description=p.description, is_active=p.is_active)
+
+    # 我的订单
+    @strawberry.field
+    def my_orders(self, info) -> list[OrderType]:
+        user = info.context.get("user")
+        if not user:
+            raise Exception("未登录")
+        db = info.context["db"]
+        from app.models.order import Order
+        orders = db.query(Order).filter(Order.user_id == user.id).all()
+        return [OrderType(
+            id=o.id, order_no=o.order_no,
+            total_amount=float(o.total_amount),
+            status=o.status.value, created_at=o.created_at
+        ) for o in orders]
+
+@strawberry.type
+class EcomMutation:
+    # 下单
+    @strawberry.mutation
+    def create_order(self, info, items: list[CartItemInput]) -> OrderType:
+        user = info.context.get("user")
+        if not user:
+            raise Exception("未登录")
+        db = info.context["db"]
+        from app.services.order_service import create_order
+        item_dicts = [{"sku_id": i.sku_id, "quantity": i.quantity} for i in items]
+        order = create_order(db, user.id, item_dicts)
+        return OrderType(
+            id=order.id, order_no=order.order_no,
+            total_amount=float(order.total_amount),
+            status=order.status.value, created_at=order.created_at
+        )
+
+# 组装电商 schema
+ecom_schema = strawberry.Schema(query=EcomQuery, mutation=EcomMutation)
+\`\`\`
+
+**前端怎么用**：
+
+\`\`\`graphql
+# 商品列表页：只要名字和最低价，一个请求搞定
+query {
+  products(keyword: "手机") {
+    name
+    minPrice
+    skus {
+      spec
+      price
+      stock
+    }
+  }
+}
+
+# 订单详情页：订单+订单项+SKU 信息
+query {
+  myOrders {
+    orderNo
+    status
+    totalAmount
+    items {
+      quantity
+      unitPrice
+    }
+  }
+}
+
+# 下单
+mutation {
+  createOrder(items: [{skuId: 1, quantity: 2}]) {
+    orderNo
+    totalAmount
+    status
+  }
+}
+\`\`\`
+
+> **对比 REST**：同样这个商品列表页，REST 要么 \`GET /products?keyword=手机\` 返回一堆字段（含冗长的描述），要么前端再发 \`GET /products/{id}/skus\` 拿规格——20 个商品 = 21 个请求。GraphQL 一个请求全搞定。
+
+### 62.10 GraphQL 部署上线（Demo 7）
+
+GraphQL 部署和 REST 几乎一样，但有几个特殊点：
+
+\`\`\`python
+# app/gql/router.py（生产版）
+from strawberry.fastapi import GraphQLRouter
+from strawberry.schema.config import StrawberryConfig
+
+# 生产环境关掉 GraphiQL 调试界面
+graphql_app = GraphQLRouter(
+    schema,
+    context_getter=get_context,
+    graphiql=False,  # 生产关调试界面，防止泄露 schema
+)
+
+# 在 schema 里加深度限制（防止恶意深查询）
+# 需要安装：pip install strawberry-graphql[extensions]
+from strawberry.extensions import QueryDepthLimiter
+
+schema = strawberry.Schema(
+    query=Query,
+    mutation=Mutation,
+    extensions=[
+        # 限制查询深度不超过 10 层，防止 {posts{author{posts{author{...}}}}} 拖垮服务
+        QueryDepthLimiter(max_depth=10),
+    ],
+)
+\`\`\`
+
+**生产环境 Nginx 配置（GraphQL 单端点）**：
+
+\`\`\`nginx
+# GraphQL 只有一个端点 /graphql，Nginx 配置更简单
+location /graphql {
+    proxy_pass http://backend;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    # GraphQL 查询可能比较大，放宽 body 大小限制
+    client_max_body_size 1m;
+}
+
+# REST 接口照常
+location /api/ {
+    proxy_pass http://backend;
+}
+\`\`\`
+
+> **怎么想的**：GraphQL 生产部署的特别之处：1) 关调试界面（防泄露）；2) 限查询深度（防 DoS）；3) 限查询复杂度（防一次查太多数据）；4) 加持久化查询（前端只发 query hash，服务端预存 query，防注入+省带宽）。
+
+### 62.11 常见错误与避坑指南
 
 1. **N+1 查询**：这是 GraphQL 最容易踩的坑。文章列表+作者+评论，没 DataLoader 能查几百次。**所有关联字段都要上 DataLoader**。
 2. **同步 resolver 阻塞事件循环**：resolver 里直接用同步 SQLAlchemy，会阻塞 asyncio。解决：用 \`sqlalchemy[asyncio]\` 或用 \`run_in_threadpool\` 包一层。
@@ -1653,13 +2510,43 @@ mutation {
 4. **错误信息泄露**：raise Exception("文章不存在") 会把堆栈返给客户端。生产环境要包装错误，只返友好信息。
 5. **Mutation 返回类型混乱**：有人 mutation 返 Boolean，有人返对象。约定：增改返对象，删返 Boolean，保持一致。
 6. **Subscription 滥用**：Subscription 走 WebSocket，连接多了服务端扛不住。只用于"真正实时"的场景（聊天、通知），别拿来替代轮询查列表。
-7. **没做查询深度限制**：恶意客户端能发嵌套极深的查询 \`{ posts { author { posts { author { ... } } } } }\` 拖垮服务端。用 \`graphql-core\` 的深度限制插件防护。
+7. **没做查询深度限制**：恶意客户端能发嵌套极深的查询 \`{ posts { author { posts { author { ... } } } } }\` 拖垮服务端。用 \`QueryDepthLimiter\` 防护。
 8. **input 和 type 混用**：\`@strawberry.type\` 不能当 input 用，反之亦然。要分清。
+9. **生产开 GraphiQL**：调试界面会暴露完整 schema，攻击者能看所有字段。生产必须关。
+10. **没做持久化查询**：复杂查询字符串很大，浪费带宽。生产环境用"持久化查询"——前端发 hash，服务端查预存的 query。
+11. **Mutation 不做事务**：一个 mutation 改多张表没包事务，部分失败导致数据不一致。用 \`db.begin()\` 包起来。
 
-### 62.9 小结
+### 62.12 动手实验
 
-GraphQL 的核心价值是"按需取数据"和"一个端点"。Strawberry 让 Python 写 GraphQL 很优雅，和 FastAPI 集成也顺。但要警惕 N+1——DataLoader 是 GraphQL 项目的标配。下一章我们跳出单体，看看怎么把博客拆成微服务。
-`,
+**实验 1（基础）：给博客 GraphQL 加标签查询**
+- 定义 \`TagType\`（id, name）
+- 在 \`PostType\` 加 \`tags\` 字段（resolver 查标签）
+- 在 Query 加 \`tags\` 查询（返所有标签）
+- 在 Mutation 加 \`createTag\`、\`addTagToPost\`
+
+**实验 2（进阶）：给电商 GraphQL 加 DataLoader**
+- 写 \`product_loader\`：批量查商品
+- 写 \`sku_loader\`：批量查 SKU
+- 改 \`ProductType.skus\` resolver 用 DataLoader
+- 用 \`echo=True\` 看 SQL，验证从 N+1 变成 2 条查询
+
+**实验 3（挑战）：实现实时订阅**
+- 用 \`@strawberry.subscription\` 实现"新评论推送"
+- 当文章有新评论时，所有订阅该文章的客户端实时收到
+- 用 Redis pubsub 跨 worker 同步（多个 uvicorn worker 之间）
+- 思考：怎么处理订阅的权限？怎么清理断开的连接？
+
+**实验 4（部署）：把 GraphQL + REST 混合部署**
+- 同一个 FastAPI 应用，REST 走 \`/api/v1/*\`，GraphQL 走 \`/graphql\`
+- 配置 QueryDepthLimiter 限深度
+- 关掉生产环境的 GraphiQL
+- 写一个 GitHub Action 自动部署
+
+> **完成标志**：实验 1 能按标签查文章；实验 2 的 SQL 日志只剩 2 条；实验 3 能在两个浏览器窗口实时看到新评论；实验 4 部署后生产环境访问 /graphql 返 404（调试界面已关）。
+
+### 62.13 小结
+
+GraphQL 的核心价值是"按需取数据"和"一个端点"。Strawberry 让 Python 写 GraphQL 很优雅，和 FastAPI 集成也顺。但要警惕 N+1——DataLoader 是 GraphQL 项目的标配。电商系统展示了 GraphQL 在"复杂前端聚合查询"场景的巨大优势。下一章我们跳出单体，看看怎么把博客拆成微服务。`,
   },
 
   // =============================================================
@@ -1673,6 +2560,8 @@ GraphQL 的核心价值是"按需取数据"和"一个端点"。Strawberry 让 Py
     content: `## 第六十三章　实战:微服务架构
 
 前两章都是"一个 app 一个库"的单体架构。这一章我们拆——把系统拆成多个独立的服务，每个服务自己跑、自己部署、自己扩容。但**微服务不是银弹**，它用"复杂度"换"灵活性"。学这章前先记住一句话：**没有痛到一定程度，别上微服务。**
+
+> 🏠 **生活类比：大饭店 vs 小吃街**。单体架构像一家大饭店——所有部门（厨房、洗碗、收银、保洁）在一栋楼里，喊一嗓子就能协作，但楼里挤、改一处装修要停业。微服务架构像一条小吃街——每家店独立经营（独立部署）、各有各的厨房（独立数据库）、通过走道传递订单（网络通信）。好处是一家着火不烧整条街（故障隔离），坏处是协调麻烦（分布式事务难）、要付多份房租（运维成本飙升）。
 
 ### 63.1 微服务 vs 单体架构
 
@@ -2155,7 +3044,193 @@ docker-compose up -d
 
 > **怎么想的**：Docker Compose 把"装环境"这步省了。开发、测试、生产用同一套 compose 文件，环境一致。生产环境再换 K8s，但 compose 文件是基础。
 
-### 63.9 常见错误与避坑指南
+### 63.9 生活类比：微服务工种对照表
+
+> 🏠 **生活类比：微服务像一条小吃街**。每家店独立经营，但需要一套"公共设施"才能运转：
+
+| 小吃街设施 | 微服务组件 | 职责 |
+| --- | --- | --- |
+| 街口总招牌 | API 网关 | 统一入口，指路 |
+| 店铺地址簿 | 服务发现（注册中心） | 查哪家店在哪儿 |
+| 对讲机 | 消息队列 | 异步喊话，不用当面等 |
+| 监控探头 | 分布式追踪 | 谁家出问题一目了然 |
+| 保安 | 熔断器 | 一家着火封锁整条街防蔓延 |
+| 物业 | 配置中心 | 统一管水电费（配置） |
+| 集装箱 | Docker | 把整家店打包搬走 |
+| 街道办 | Kubernetes | 管所有店的开关、扩容、调度 |
+
+> **关键洞察**：微服务的复杂度不在"写服务"，而在"管服务"。代码量和单体差不多，但运维成本是单体的 3-5 倍。**没有 K8s + 监控 + CI/CD，别上微服务。**
+
+### 63.10 电商微服务完整实现（Demo 7：四服务拆分）
+
+**怎么想的**：电商系统按业务能力拆成四个服务——用户、商品、订单、支付。每个服务独立数据库，通过 API 通信。
+
+\`\`\`python
+# order_service/main.py —— 订单服务
+# 订单服务要调商品服务（查 SKU 价格+扣库存）和用户服务（校验用户）
+from fastapi import FastAPI, HTTPException, Depends
+from pydantic import BaseModel
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
+import httpx
+import os
+
+app = FastAPI(title="订单服务")
+
+# 订单服务自己的数据库（独立，不和其他服务共享）
+engine = create_engine(os.getenv("ORDER_DB_URL", "sqlite:///./orders.db"))
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# 订单模型（简化版）
+from sqlalchemy import Column, Integer, String, Float
+from sqlalchemy.orm import declarative_base
+Base = declarative_base()
+
+class Order(Base):
+    __tablename__ = "orders"
+    id = Column(Integer, primary_key=True)
+    order_no = Column(String(32), unique=True)
+    user_id = Column(Integer)
+    total_amount = Column(Float)
+    status = Column(String(20), default="pending")
+
+Base.metadata.create_all(engine)
+
+# 商品服务地址（从服务发现拿，这里简化）
+PRODUCT_SERVICE_URL = os.getenv("PRODUCT_SERVICE_URL", "http://localhost:8002")
+
+class OrderItemIn(BaseModel):
+    sku_id: int
+    quantity: int
+
+class OrderCreate(BaseModel):
+    items: list[OrderItemIn]
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+@app.post("/orders", status_code=201)
+async def create_order(body: OrderCreate, db: Session = Depends(get_db)):
+    # 1. 调商品服务查价格 + 扣库存
+    total = 0
+    async with httpx.AsyncClient(timeout=3.0) as client:
+        for item in body.items:
+            # 查 SKU 价格
+            r = await client.get(f"{PRODUCT_SERVICE_URL}/skus/{item.sku_id}")
+            if r.status_code != 200:
+                raise HTTPException(400, f"SKU {item.sku_id} 不存在")
+            sku = r.json()
+            # 扣库存（商品服务内部用 FOR UPDATE）
+            deduct_r = await client.post(
+                f"{PRODUCT_SERVICE_URL}/skus/{item.sku_id}/deduct",
+                json={"quantity": item.quantity}
+            )
+            if deduct_r.status_code != 200:
+                raise HTTPException(400, f"库存不足：{sku['spec']}")
+            total += sku["price"] * item.quantity
+
+    # 2. 建订单
+    import time, random
+    order_no = f"{int(time.time())}{random.randint(1000, 9999)}"
+    order = Order(order_no=order_no, user_id=1, total_amount=total, status="pending")
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+    return {"order_no": order.order_no, "total": order.total_amount}
+
+# 订单服务发事件（支付成功后通知发货服务）
+import redis, json
+r = redis.Redis(host="localhost", port=6379, db=0)
+
+@app.post("/orders/{order_no}/pay")
+async def pay_order(order_no: str, db: Session = Depends(get_db)):
+    order = db.query(Order).filter(Order.order_no == order_no).first()
+    if not order:
+        raise HTTPException(404, "订单不存在")
+    order.status = "paid"
+    db.commit()
+    # 发事件：订单已支付，发货服务来消费
+    r.publish("order_paid", json.dumps({"order_no": order_no, "user_id": order.user_id}))
+    return {"status": "paid"}
+\`\`\`
+
+> **怎么想的**：订单服务不直接调发货服务，而是发事件。这样发货服务挂了不影响支付，发货服务可以慢慢消费事件。这就是"事件驱动架构"。
+
+### 63.11 K8s 部署上线（Demo 8）
+
+生产环境微服务用 Kubernetes 编排。下面是电商系统的 K8s 部署文件：
+
+\`\`\`yaml
+# k8s/order-service.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+spec:
+  replicas: 3  # 3 个副本，高可用
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      containers:
+      - name: order-service
+        image: registry.example.com/order-service:v1
+        ports:
+        - containerPort: 8003
+        env:
+        - name: ORDER_DB_URL
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: order-db-url
+        - name: PRODUCT_SERVICE_URL
+          value: "http://product-service:8002"
+        # 健康检查：K8s 定期探活，挂了自动重启
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8003
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        # 就绪检查：准备好才接流量
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8003
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        # 资源限制：防止单个容器吃光资源
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+spec:
+  selector:
+    app: order-service
+  ports:
+  - port: 8003
+    targetPort: 8003
+\`\`\`
+
+> **怎么想的**：K8s 的核心价值是"声明式"——你告诉它"我要 3 个订单服务"，它自己管怎么调度、怎么重启、怎么扩容。服务挂了自动拉起，流量大了手动扩容到 5 个副本。
+
+### 63.12 常见错误与避坑指南
 
 1. **分布式事务**：跨服务改数据，没法用一个事务保证一致。方案：Saga 模式（补偿事务）或最终一致性。**别强求强一致**。
 2. **同步调用链太长**：A→B→C→D，D 慢全链路慢。原则：同步调用不超过 2 层，再多用消息队列。
@@ -2165,11 +3240,40 @@ docker-compose up -d
 6. **日志没 trace_id**：排查问题要翻 N 个服务的日志。每个请求带 trace_id，所有服务日志都打这个 id。
 7. **配置散落**：每个服务自己的 .env，改一次要改 N 处。用配置中心（Apollo/Nacos）统一管。
 8. **本地开发困难**：跑全套要起 5 个服务。方案：用 docker-compose 本地起依赖，自己开发的服务本地跑。
+9. **没做服务发现**：地址写死，扩容/迁移时改一堆配置。必须用注册中心。
+10. **同步调用没降级**：依赖服务挂了直接 500。要 try/except 降级返默认值。
+11. **事件丢失**：Redis pubsub 挂了消息就没了。重要事件用 RabbitMQ 的持久化队列。
 
-### 63.10 小结
+### 63.13 动手实验
 
-微服务的核心是"用复杂度换灵活性"：拆服务、走网络、上注册中心、做追踪、容器化部署。这套东西运维成本很高，只有规模到了才值得。下一章我们给前面做的系统做性能优化——不管是单体还是微服务，性能都是绕不开的话题。
-`,
+**实验 1（基础）：拆分博客系统**
+- 把第六十一章的博客拆成三个服务：用户、文章、评论
+- 每个服务独立 SQLite 数据库
+- 写一个 API 网关聚合三个服务
+- 用 docker-compose 跑起来
+
+**实验 2（进阶）：加服务发现和熔断**
+- 用 Redis 实现服务注册与发现
+- 给文章服务的"调用户服务"加熔断器：连续失败 5 次就 30 秒内直接返降级
+- 思考：熔断开后怎么半开试探恢复？
+
+**实验 3（挑战）：实现 Saga 分布式事务**
+- 下单要扣库存（商品服务）+ 建订单（订单服务）+ 扣余额（用户服务）
+- 三个服务不能用一个事务
+- 用 Saga 模式：成功正序执行，失败逆序补偿
+- 思考：补偿操作失败了怎么办？
+
+**实验 4（部署）：用 K8s 部署电商微服务**
+- 写每个服务的 Deployment + Service
+- 配 livenessProbe 和 readinessProbe
+- 用 HPA（水平自动扩容）按 CPU 自动扩缩
+- 思考：滚动更新时怎么保证零停机？
+
+> **完成标志**：实验 1 的网关能聚合三服务数据；实验 2 熔断后用户服务挂了文章接口仍可用；实验 3 任一步失败数据能回滚一致；实验 4 \`kubectl get pods\` 看到所有服务 Running。
+
+### 63.14 小结
+
+微服务的核心是"用复杂度换灵活性"：拆服务、走网络、上注册中心、做追踪、容器化部署。这套东西运维成本很高，只有规模到了才值得。电商微服务展示了跨服务通信、事件驱动、K8s 编排的完整实践。下一章我们给前面做的系统做性能优化——不管是单体还是微服务，性能都是绕不开的话题。`,
   },
 
   // =============================================================
@@ -2184,6 +3288,8 @@ docker-compose up -d
 
 性能优化是 FastAPI 教程的最后一章。前面我们写"能跑"的代码，这一章让代码"跑得快"。**先测再优、定位瓶颈、对症下药**——这是性能优化的铁律。盲目优化是万恶之源。
 
+> 🏠 **生活类比：性能优化像给汽车调校**。不能靠"感觉慢"就乱换零件——要先上诊断仪测哪里慢（cProfile/py-spy），再针对瓶颈换零件（加索引=换好轮胎，加缓存=装涡轮，并发=多气缸）。乱优化像给自行车装飞机引擎——花了大钱还跑不快。
+
 ### 64.1 性能优化的正确思路
 
 **性能优化的三步法**：
@@ -2191,13 +3297,6 @@ docker-compose up -d
 1. **测量**：用工具测出哪里慢，别靠猜；
 2. **定位**：找到瓶颈在哪（CPU？IO？数据库？网络？）；
 3. **优化**：针对瓶颈优化，优化完再测，验证效果。
-
-**常见误区**：
-
-- "我觉得这里慢" → 没数据支撑的优化都是耍流氓；
-- "加缓存就好了" → 缓存不是万能药，缓存一致性很头疼；
-- "用异步就快" → 异步只对 IO 密集型有用，CPU 密集型反而更慢；
-- "优化到极致" → 性能足够就好，过度优化损害可读性。
 
 > **黄金法则**：先用工具找瓶颈，再优化瓶颈，每次只改一个地方，改完对比。不测量就优化，等于闭眼打靶。
 
@@ -2207,76 +3306,38 @@ docker-compose up -d
 
 \`\`\`python
 # profile_app.py —— 用 cProfile 分析接口
-# 导入 cProfile：Python 自带的性能分析器
 import cProfile
-# 导入 pstats：分析结果的统计和输出
 import pstats
-# 从 fastapi.testclient 导入 TestClient，用于模拟请求
 from fastapi.testclient import TestClient
-# 从 app.main 导入 app 实例
 from app.main import app
 
-# 创建测试客户端
 client = TestClient(app)
 
-# 模拟发 100 个请求的基准测试
 def run_benchmark():
     """模拟发 100 个请求"""
     for i in range(100):
         client.get("/api/v1/posts")
 
-# 用 cProfile 跑
-# 创建 Profile 对象
 profiler = cProfile.Profile()
-# 开始记录每个函数的调用次数和耗时
 profiler.enable()
-# 执行要分析的代码
 run_benchmark()
-# 停止记录
 profiler.disable()
 
-# 输出统计：按累计时间排序
-# pstats.Stats 把 Profile 数据转成可读统计
 stats = pstats.Stats(profiler)
-# sort_stats("cumulative") 按累计耗时排序（含子调用）
 stats.sort_stats("cumulative")
-# print_stats(20) 只看前 20 个最慢的函数
 stats.print_stats(20)
 \`\`\`
-
-输出类似：
-\`\`\`
-   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-      100    0.020    0.000    2.500    0.025 app/api/v1/posts.py:15(list_posts)
-      200    1.200    0.006    1.800    0.009 sqlalchemy/orm/query.py:300(all)
-\`\`\`
-
-- \`ncalls\`：调用次数
-- \`tottime\`：函数本身耗时（不含子调用）
-- \`cumtime\`：累计耗时（含子调用）
-
-**怎么读**：找 cumtime 最大的那几个函数，那就是瓶颈。上面例子里 \`query.all()\` 花了 1.8 秒，说明数据库查询是瓶颈。
 
 **py-spy**：不用改代码，直接 attach 到运行中的进程，生成火焰图。
 
 \`\`\`bash
-# 安装
 pip install py-spy
-
-# 启动你的 FastAPI
-uvicorn app.main:app --port 8000
-
-# 另一个终端，采样 30 秒生成火焰图
 py-spy record -o profile.svg --pid $(pgrep -f uvicorn) --duration 30
 \`\`\`
-
-生成的 \`profile.svg\` 用浏览器打开，能看到每个函数的调用栈和耗时占比。**火焰图怎么读**：横轴是耗时占比，越宽越慢；纵轴是调用栈。找最宽的那块，就是优化目标。
 
 > **避坑**：cProfile 有性能开销，测出来的绝对时间不准，但"相对比例"是准的。py-spy 用采样，开销小，适合生产环境。
 
 ### 64.3 数据库优化（Demo 2：索引、N+1、查询优化）
-
-数据库通常是 Web 应用的第一瓶颈。
 
 **1. 加索引**：
 
@@ -2285,519 +3346,242 @@ py-spy record -o profile.svg --pid $(pgrep -f uvicorn) --duration 30
 class User(Base):
     email: Mapped[str] = mapped_column(String(255))
 
-# 正确：加 index=True，按 email 查走索引，O(log n) 而不是 O(n)
+# 正确：加 index=True
 class User(Base):
     email: Mapped[str] = mapped_column(String(255), index=True)
 
-# 复合索引：经常按 (author_id, created_at) 查
+# 复合索引
 class Post(Base):
     __table_args__ = (
         Index("idx_author_created", "author_id", "created_at"),
     )
 \`\`\`
 
-> **怎么想**：索引像书的目录——没目录找某个词要翻全书，有目录直接翻到对应页。但索引不是越多越好：写数据时要更新索引，索引太多写入变慢。**只给常查的字段加索引**。
-
-**2. N+1 查询**：列表接口返文章+作者，默认每篇文章查一次作者。
+**2. N+1 查询**：
 
 \`\`\`python
-# 错误：N+1。查 20 篇文章 = 1 次查 post + 20 次查 author = 21 次查询
+# 错误：N+1
 posts = db.query(Post).limit(20).all()
 for p in posts:
-    print(p.author.nickname)  # 每次访问 .author 触发一次查询
+    print(p.author.nickname)  # 每次访问 .author 触发查询
 
-# 正确1：joinedload，用 JOIN 一次查回
+# 正确1：joinedload
 from sqlalchemy.orm import joinedload
 posts = db.query(Post).options(joinedload(Post.author)).limit(20).all()
-# 只发 1 条 SQL：SELECT ... FROM posts JOIN users ON ...
 
-# 正确2：selectinload，用 IN 子查询（适合一对多）
+# 正确2：selectinload（一对多）
 from sqlalchemy.orm import selectinload
 posts = db.query(Post).options(selectinload(Post.comments)).limit(20).all()
-# 发 2 条 SQL：先查 posts，再 SELECT ... FROM comments WHERE post_id IN (1,2,3,...)
 \`\`\`
-
-> **joinedload vs selectinload**：多对一用 joinedload（JOIN 不膨胀）；一对多用 selectinload（JOIN 会让父行重复，selectinload 用 IN 更干净）。
 
 **3. 只查需要的字段**：
 
 \`\`\`python
-# 错误：查回所有字段，包括几万字的正文
-posts = db.query(Post).all()  # SELECT *
+# 错误：查回所有字段
+posts = db.query(Post).all()
 
 # 正确：只查需要的字段
 posts = db.query(Post.id, Post.title, Post.created_at).all()
-# SELECT id, title, created_at FROM posts
 \`\`\`
-
-**4. 用 EXPLAIN 看执行计划**：
-
-\`\`\`python
-# 打印 SQL 执行计划
-from sqlalchemy import text
-result = db.execute(text("EXPLAIN QUERY PLAN SELECT * FROM posts WHERE title LIKE '%python%'"))
-for row in result:
-    print(row)
-\`\`\`
-
-如果看到 \`SCAN TABLE posts\`（全表扫描）说明没走索引；\`SEARCH posts USING INDEX\` 说明走了。
 
 ### 64.4 缓存策略（Demo 3：Redis 缓存）
 
-**缓存怎么想**：同一个查询反复执行，结果不变，那就把结果存起来，下次直接返。**缓存的本质是用空间换时间**。
-
-**什么适合缓存**：读多写少、对实时性要求不高的数据。比如文章列表、热门文章、用户资料。
-
-**什么不适合缓存**：频繁变化的数据、对一致性要求高的数据（如余额）。
-
 \`\`\`python
-# app/core/cache.py —— Redis 缓存工具
-# 导入 redis 库
+# app/core/cache.py
 import redis
-# 导入 json，用于序列化/反序列化（Redis 只能存字符串/字节）
 import json
-# 从 typing 导入 Any，表示任意类型
 from typing import Any
 
-# 连接 Redis
-# decode_responses=True 让 redis 返回 str 而不是 bytes，省去手动 decode
 redis_client = redis.Redis(host="localhost", port=6379, db=0, decode_responses=True)
 
-# 从缓存取
 def cache_get(key: str) -> Any | None:
-    """从缓存取，取不到返回 None"""
-    # redis_client.get 返回 None 表示 key 不存在
     data = redis_client.get(key)
     if data:
-        # json.loads 把 JSON 字符串转回 Python 对象
         return json.loads(data)
     return None
 
-# 写缓存
 def cache_set(key: str, value: Any, ttl: int = 300) -> None:
-    """写缓存，ttl 是过期秒数"""
-    # setex(key, 过期秒数, 值)：写入并设置过期时间
-    # ttl=300 表示 5 分钟后自动删除（防止缓存数据过旧）
-    # json.dumps 把 Python 对象转成 JSON 字符串
     redis_client.setex(key, ttl, json.dumps(value))
 
-# 删缓存
 def cache_delete(key: str) -> None:
-    """删缓存"""
-    # 数据变更时调用，防止返脏数据
     redis_client.delete(key)
 \`\`\`
 
-**在文章列表接口加缓存**：
-
-\`\`\`python
-# app/api/v1/posts.py（改造列表接口）
-from app.core.cache import cache_get, cache_set, cache_delete
-
-@router.get("", response_model=PostList)
-def list_posts(
-    keyword: str | None = None,
-    tag_id: int | None = None,
-    paging: dict = Depends(pagination_params),
-    db: Session = Depends(get_db),
-):
-    # 构造缓存 key：包含所有查询参数
-    cache_key = f"posts:list:{paging['page']}:{paging['size']}:{keyword}:{tag_id}"
-    # 先查缓存
-    cached = cache_get(cache_key)
-    if cached:
-        return cached  # 命中缓存，直接返
-    # 没命中，查数据库
-    skip = (paging["page"] - 1) * paging["size"]
-    items, total = post_crud.search(db, keyword=keyword, tag_id=tag_id, skip=skip, limit=paging["size"])
-    pages = (total + paging["size"] - 1) // paging["size"]
-    result = {"items": items, "total": total, "page": paging["page"], "size": paging["size"], "pages": pages}
-    # 写缓存，5 分钟过期
-    cache_set(cache_key, result, ttl=300)
-    return result
-
-# 发文章、改文章、删文章时，要清缓存
-@router.post("", response_model=PostOut, status_code=201)
-def create_post(...):
-    post = ...
-    # 清缓存（列表变了）
-    cache_delete("posts:list:*")  # 实际要用 redis 的 SCAN 批量删
-    return post
-\`\`\`
-
-> **缓存一致性怎么想**：数据改了缓存没更新，就会返脏数据。策略：写数据时主动删缓存（Cache Aside Pattern）。不要"更新缓存"——并发下会写脏。**删比更新安全**。
-
-**内存缓存（小项目用）**：
-
-\`\`\`python
-# 不想装 Redis？用 functools.lru_cache 做进程内缓存
-from functools import lru_cache
-
-@lru_cache(maxsize=128)
-def get_hot_posts():
-    """热门文章，5 分钟内复用结果"""
-    # 注意：lru_cache 按参数缓存，参数必须是可哈希的
-    db = SessionLocal()
-    try:
-        return db.query(Post).order_by(Post.views.desc()).limit(10).all()
-    finally:
-        db.close()
-\`\`\`
-
-> **避坑**：\`lru_cache\` 是进程内的，多 worker 之间不共享。而且缓存的对象是 Python 对象，改了会污染。适合只读、变化少的数据。
+> **缓存一致性**：数据改了缓存没更新会返脏数据。策略：写数据时主动删缓存（Cache Aside Pattern）。**删比更新安全**。
 
 ### 64.5 异步优化（Demo 4：并发查询）
 
-**怎么想**：如果接口里要调多个独立的数据源（比如查 3 个无关的表，或者调 3 个外部 API），串行执行要 3 倍时间，并行只要 1 倍。
-
-**串行 vs 并发**：
-
 \`\`\`python
-# 串行：3 个查询依次执行，总耗时 = t1 + t2 + t3
-def get_dashboard(db):
-    user_count = db.query(User).count()         # 0.1s
-    post_count = db.query(Post).count()         # 0.1s
-    comment_count = db.query(Comment).count()   # 0.1s
-    return {"users": user_count, "posts": post_count, "comments": comment_count}
-    # 总耗时 0.3s（三个查询一个等一个）
-
-# 并发：3 个查询同时跑，总耗时 = max(t1, t2, t3)
-# 导入 asyncio，用于并发执行
 import asyncio
-# 从 fastapi.concurrency 导入 run_in_threadpool
-# 它把同步函数放到线程池里跑，避免阻塞事件循环
 from fastapi.concurrency import run_in_threadpool
 
 async def get_dashboard_async(db):
-    # SQLAlchemy 同步操作要放线程池里跑，否则阻塞事件循环
-    # asyncio.gather 并发执行多个协程，等全部完成
-    # 每个查询独立在线程里跑，互不阻塞
     user_count, post_count, comment_count = await asyncio.gather(
         run_in_threadpool(db.query(User).count),
         run_in_threadpool(db.query(Post).count),
         run_in_threadpool(db.query(Comment).count),
     )
     return {"users": user_count, "posts": post_count, "comments": comment_count}
-    # 总耗时 0.1s（三个查询同时跑，取最慢的那个）
-\`\`\`
-
-> **避坑**：同步的 SQLAlchemy session 不能在多个线程并发用！上面例子要给每个查询开独立 session，或者用 \`async def\` + \`AsyncSession\`。否则会报 "Session is already in use"。
-
-**用 AsyncSession（推荐）**：
-
-\`\`\`python
-# app/core/database.py（异步版）
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-
-# 异步引擎，用 aiosqlite 驱动
-async_engine = create_async_engine("sqlite+aiosqlite:///./blog.db")
-AsyncSessionLocal = async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
-
-# 依赖
-async def get_async_db():
-    async with AsyncSessionLocal() as db:
-        yield db
-\`\`\`
-
-\`\`\`python
-# 异步路由
-from sqlalchemy import select
-
-@router.get("/dashboard")
-async def dashboard(db: AsyncSession = Depends(get_async_db)):
-    # 三个查询并发执行
-    user_q = select(User).offset(0).limit(0)  # 只 count
-    post_q = select(Post)
-    comment_q = select(Comment)
-    # gather 并发
-    import asyncio
-    user_count, post_count = await asyncio.gather(
-        db.scalar(select(func.count()).select_from(User)),
-        db.scalar(select(func.count()).select_from(Post)),
-    )
-    return {"users": user_count, "posts": post_count}
 \`\`\`
 
 ### 64.6 响应压缩和连接池调优（Demo 5）
 
-**1. Gzip 压缩**：响应体大时，压缩能省 70% 带宽。
-
 \`\`\`python
-# app/main.py
 from fastapi.middleware.gzip import GZipMiddleware
-
-# 响应超过 1000 字节就压缩
 app.add_middleware(GZipMiddleware, minimum_size=1000)
-\`\`\`
-
-> **怎么想**：压缩用 CPU 换带宽。CPU 够、带宽紧就开。文本类（JSON/HTML）压缩效果好（70%+），图片/视频已经压缩过，再压效果差。
-
-**2. 连接池调优**：
-
-\`\`\`python
-# app/core/database.py
-from sqlalchemy import create_engine
 
 engine = create_engine(
     settings.database_url,
-    # 连接池大小：常驻连接数。太小请求要排队等连接，太大数据库扛不住
     pool_size=10,
-    # 连接池最大上限：突发流量时能临时扩到这个数
     max_overflow=20,
-    # 连接超时：从池子拿连接等多久就报错（秒）
     pool_timeout=30,
-    # 连接回收：连接活多久自动重建（秒）。防止数据库踢掉旧连接
     pool_recycle=1800,
-    # 预执行 ping：每次拿连接前 ping 一下，避免拿到死连接
     pool_pre_ping=True,
 )
 \`\`\`
 
-**怎么定 pool_size**：经验值 \`2 * CPU 核数 + 1\`。但实际要看数据库能扛多少连接（Postgres 默认 100，MySQL 默认 151），所有服务的 pool_size 加起来不能超过数据库上限。
-
-> **避坑**：连接池满了会报 \`TimeoutError: QueuePool limit of size X overflow Y reached\`。原因通常是：连接没释放（session 没 close）、慢查询占着连接、并发太高。用 \`pool_pre_ping=True\` 避免死连接。
-
-**3. HTTP 客户端连接池**（调外部 API 时）：
+### 64.7 压力测试（Demo 6：locust）
 
 \`\`\`python
-# 错误：每次请求新建 client，每次都要 TCP 握手
-@app.get("/proxy")
-async def proxy():
-    # 每次请求都新建 AsyncClient，相当于每次都 TCP 握手，慢
-    async with httpx.AsyncClient() as client:  # 每次新建
-        r = await client.get("http://api.example.com/data")
-    return r.json()
-
-# 正确：复用 client，连接池保持长连接
-# 全局创建一次（在模块加载时创建，所有请求复用）
-# httpx.Timeout(5.0) 设置超时 5 秒
-# httpx.Limits(max_connections=100, max_keepalive_connections=20) 配置连接池
-#   max_connections: 最大连接数
-#   max_keepalive_connections: 最大保活连接数（长连接）
-http_client = httpx.AsyncClient(
-    timeout=httpx.Timeout(5.0),
-    limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
-)
-
-# 应用关闭时关闭客户端，释放连接
-@app.on_event("shutdown")
-async def close_client():
-    await http_client.aclose()
-
-@app.get("/proxy")
-async def proxy():
-    # 复用全局 client，连接池里的长连接直接发请求，省掉握手
-    r = await http_client.get("http://api.example.com/data")
-    return r.json()
-\`\`\`
-
-### 64.7 压力测试（Demo 6：locust + wrk）
-
-**优化前先测，优化后对比**——没有数据就是瞎优化。
-
-**wrk**（简单快速）：
-
-\`\`\`bash
-# 装 wrk（Linux/Mac：brew install wrk；Windows 用 WSL）
-# 4 线程，100 连接，跑 30 秒
-wrk -t4 -c100 -d30s http://localhost:8000/api/v1/posts
-
-# 输出：
-# Requests/sec:  1500.32   ← 每秒处理 1500 个请求
-# Latency:        8.32ms    ← 平均延迟
-\`\`\`
-
-**locust**（Python 写脚本，灵活）：
-
-\`\`\`bash
-pip install locust
-\`\`\`
-
-\`\`\`python
-# locustfile.py
-# 从 locust 导入 HttpUser（虚拟用户基类）、task（任务装饰器）、between（随机等待）
 from locust import HttpUser, task, between
 
-# BlogUser 继承 HttpUser，表示一个虚拟用户
 class BlogUser(HttpUser):
-    # 每个请求间隔 1-3 秒（模拟真实用户思考时间）
     wait_time = between(1, 3)
 
-    # @task(3) 权重 3：这个任务被执行的概率最高
-    @task(3)  # 权重 3：最常做
+    @task(3)
     def list_posts(self):
-        # self.client 类似 requests.Session，自动带 cookie
         self.client.get("/api/v1/posts")
 
-    @task(1)  # 权重 1
+    @task(1)
     def get_post(self):
         self.client.get("/api/v1/posts/1")
-
-    @task(2)
-    def search(self):
-        self.client.get("/api/v1/posts?keyword=python")
-
-    # on_start 在每个虚拟用户启动时执行一次（类似 setup）
-    def on_start(self):
-        # 模拟登录，拿 token
-        r = self.client.post("/api/v1/auth/login", json={
-            "email": "a@b.com", "password": "123456"
-        })
-        self.token = r.json()["access_token"]
-        # 把 token 加到后续请求的 header 里
-        self.client.headers.update({"Authorization": f"Bearer {self.token}"})
 \`\`\`
-
-\`\`\`bash
-# 启动 locust Web 界面
-locust -f locustfile.py
-# 访问 http://localhost:8089，设置并发用户数和每秒启动数
-\`\`\`
-
-**怎么读结果**：
-
-- **RPS（Requests/sec）**：越高越好；
-- **P50/P95/P99 延迟**：P99 = 99% 的请求在多少 ms 内完成。看 P99 比看平均值有意义（平均值会被掩盖尖刺）；
-- **失败率**：> 0% 说明服务扛不住了。
-
-**优化前后对比示例**：
-
-| 场景 | 优化前 | 优化后 | 提升 |
-| --- | --- | --- | --- |
-| 文章列表（无缓存） | 500 RPS | — | — |
-| 文章列表（加缓存） | 500 RPS | 5000 RPS | 10x |
-| Dashboard（串行） | 200 RPS | — | — |
-| Dashboard（并发） | 200 RPS | 550 RPS | 2.7x |
-| 文章详情（N+1） | 100 RPS | — | — |
-| 文章详情（joinedload） | 100 RPS | 450 RPS | 4.5x |
 
 ### 64.8 完整优化实战（Demo 7：综合优化）
 
-把前面的优化全用上，改造博客列表接口：
-
 \`\`\`python
-# app/api/v1/posts.py（优化版）
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session, selectinload, joinedload
-from app.core.deps import get_db, get_current_user
-from app.core.cache import cache_get, cache_set, cache_delete
-from app.crud.post import post_crud
-from app.models.user import User
-from app.models.post import Post
-from app.schemas.post import PostCreate, PostOut, PostList
-from app.utils.pagination import pagination_params
-
-router = APIRouter(prefix="/posts", tags=["文章"])
-
 @router.get("", response_model=PostList)
-def list_posts(
-    keyword: str | None = None,
-    tag_id: int | None = None,
-    paging: dict = Depends(pagination_params),
-    db: Session = Depends(get_db),
-):
-    # 1. 缓存层：先查缓存
+def list_posts(keyword=None, tag_id=None, paging=Depends(pagination_params), db=Depends(get_db)):
     cache_key = f"posts:list:{paging['page']}:{paging['size']}:{keyword}:{tag_id}"
     cached = cache_get(cache_key)
     if cached:
         return cached
-
-    # 2. 数据库层：用 selectinload 预加载作者和标签，避免 N+1
     skip = (paging["page"] - 1) * paging["size"]
-    q = db.query(Post).options(
-        joinedload(Post.author),       # 作者用 JOIN（多对一）
-        selectinload(Post.tags),       # 标签用 IN（多对多）
-    )
+    q = db.query(Post).options(joinedload(Post.author), selectinload(Post.tags))
     if keyword:
         q = q.filter(Post.title.ilike(f"%{keyword}%"))
-    if tag_id:
-        q = q.filter(Post.tags.any(id=tag_id))
-    q = q.order_by(Post.created_at.desc())
-
     total = q.count()
-    # 3. 只查需要的字段（PostOut 里不要正文，就别查 content）
     items = q.offset(skip).limit(paging["size"]).all()
     pages = (total + paging["size"] - 1) // paging["size"]
     result = {"items": items, "total": total, "page": paging["page"], "size": paging["size"], "pages": pages}
-
-    # 4. 写缓存
     cache_set(cache_key, result, ttl=300)
     return result
-
-# 写操作要清缓存
-@router.post("", response_model=PostOut, status_code=201)
-def create_post(body: PostCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    post = Post(title=body.title, content=body.content, author_id=current_user.id)
-    db.add(post)
-    db.commit()
-    db.refresh(post)
-    # 清列表缓存（用 SCAN 批量删 key）
-    from app.core.cache import redis_client
-    for key in redis_client.scan_iter("posts:list:*"):
-        redis_client.delete(key)
-    return post
 \`\`\`
 
-**main.py 加压缩中间件**：
+### 64.9 生活类比：性能优化像体检
+
+> 🏠 **生活类比**：性能优化像给应用做体检——cProfile 是血液检查（看细胞分布），py-spy 是 CT 扫描（看内部结构），locust 是运动负荷测试（看极限表现）。**对症下药**：数据库慢=补血（加索引），网络慢=通血管（压缩+连接池），CPU 慢=健身（异步+并发）。
+
+### 64.10 电商系统综合性能优化（Demo 8）
 
 \`\`\`python
-# app/main.py
-from fastapi.middleware.gzip import GZipMiddleware
-
-app.add_middleware(GZipMiddleware, minimum_size=1000)
+# 电商商品列表优化版
+@router.get("/products", response_model=list[ProductOut])
+def list_products(keyword=None, paging=Depends(pagination_params), db=Depends(get_db)):
+    # 1. 缓存层
+    cache_key = f"products:list:{paging['page']}:{paging['size']}:{keyword}"
+    cached = cache_get(cache_key)
+    if cached:
+        return cached
+    # 2. 数据库层：预加载 SKU 避免N+1
+    q = db.query(Product).options(selectinload(Product.skus)).filter(Product.is_active == True)
+    if keyword:
+        q = q.filter(Product.name.ilike(f"%{keyword}%"))
+    total = q.count()
+    items = q.offset((paging["page"]-1)*paging["size"]).limit(paging["size"]).all()
+    # 3. 写缓存，加随机抖动防雪崩
+    import random
+    cache_set(cache_key, items, ttl=300 + random.randint(0, 60))
+    return items
 \`\`\`
 
-**连接池调优**：
+### 64.11 监控告警系统（Demo 9）
 
 \`\`\`python
-engine = create_engine(
-    settings.database_url,
-    pool_size=10,
-    max_overflow=20,
-    pool_pre_ping=True,
-    pool_recycle=1800,
-)
+# app/core/monitoring.py —— Prometheus 监控
+from prometheus_client import Counter, Histogram, generate_latest
+from fastapi import Response
+import time
+
+# 请求计数器
+request_count = Counter("http_requests_total", "Total requests", ["method", "endpoint", "status"])
+# 请求耗时直方图
+request_latency = Histogram("http_request_duration_seconds", "Request latency", ["endpoint"])
+
+@app.middleware("http")
+async def monitor_middleware(request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    duration = time.time() - start
+    # 记录指标
+    request_count.labels(request.method, request.url.path, response.status_code).inc()
+    request_latency.labels(request.url.path).observe(duration)
+    return response
+
+@app.get("/metrics")
+def metrics():
+    return Response(generate_latest(), media_type="text/plain")
 \`\`\`
 
-### 64.9 常见错误与避坑指南
+> **告警规则**：P99 延迟 > 1s 告警，错误率 > 1% 告警，QPS 突降 50% 告警。
 
-1. **盲目加缓存**：没测就加缓存，结果瓶颈在 CPU 不在 DB，缓存白加。**先测再优化**。
-2. **缓存没清**：写了新数据但缓存没删，用户看不到。写操作必须配套清缓存。
-3. **缓存雪崩**：所有缓存同时过期，请求全打到 DB。给 TTL 加随机抖动（\`ttl + random(0, 60)\`）。
-4. **缓存穿透**：查一个不存在的 key，每次都打 DB。用布隆过滤器或缓存空值。
-5. **N+1 没根治**：以为用了 joinedload 就没事，结果某个关联字段忘了加，还是 N+1。用 \`echo=True\` 看 SQL 日志确认。
-6. **异步阻塞事件循环**：异步路由里调同步 DB 操作，整个服务卡住。用 \`run_in_threadpool\` 或换 AsyncSession。
-7. **连接池配置不当**：pool_size 太小请求排队，太大数据库拒绝连接。监控 \`pool.checkedout\` 看使用率。
-8. **过度优化**：一个内部工具 QPS 才 10，花一天优化到 1000，毫无意义。**优化要算投入产出比**。
-9. **只看平均值**：平均延迟 50ms，但 P99 是 2s，说明有 1% 的用户等 2 秒。**看 P99/P95**。
-10. **生产环境开 echo=True**：SQL 日志打满磁盘，还拖慢性能。生产必须关。
+### 64.12 常见错误与避坑指南
 
-### 64.10 小结与全教程结语
+1. **盲目加缓存**：没测就加缓存，瓶颈在 CPU 不在 DB，白加。**先测再优化**。
+2. **缓存没清**：写了新数据但缓存没删，用户看不到。
+3. **缓存雪崩**：所有缓存同时过期。给 TTL 加随机抖动。
+4. **缓存穿透**：查不存在的 key 每次打 DB。缓存空值或用布隆过滤器。
+5. **N+1 没根治**：用 \`echo=True\` 看 SQL 确认。
+6. **异步阻塞事件循环**：用 \`run_in_threadpool\` 或 AsyncSession。
+7. **连接池配置不当**：监控 \`pool.checkedout\` 看使用率。
+8. **过度优化**：QPS 才 10 的内部工具花一天优化到 1000 毫无意义。
+9. **只看平均值**：看 P99/P95。
+10. **生产开 echo=True**：SQL 日志打爆磁盘。
 
-性能优化的核心是"测量→定位→优化→验证"循环。工具用 cProfile/py-spy 找瓶颈，数据库加索引+治 N+1，缓存用 Redis，并发用 asyncio.gather，压缩用 GZip，压测用 locust/wrk。**每一步都要数据说话**。
+### 64.13 动手实验
+
+**实验 1（基础）：用 cProfile 分析博客系统**
+- 跑 cProfile 分析 \`/api/v1/posts\` 接口
+- 找出耗时最多的 3 个函数
+- 针对性优化后对比
+
+**实验 2（进阶）：加 Redis 缓存**
+- 给文章列表加缓存
+- 写操作时清缓存
+- 用 locust 压测对比优化前后 RPS
+
+**实验 3（挑战）：全链路监控**
+- 集成 Prometheus 指标
+- 配 Grafana 仪表盘
+- 设置告警规则
+- 思考：怎么定位 P99 尖刺？
+
+**实验 4（综合）：电商系统性能调优**
+- 给商品列表加缓存+预加载
+- 异步并发查 Dashboard
+- 压测到 1000 RPS
+- 思考：还能怎么优化？
+
+> **完成标志**：实验 1 找出瓶颈并优化提升 2 倍；实验 2 缓存命中后 RPS 提升 10 倍；实验 3 Grafana 能看到实时指标；实验 4 压测达标。
+
+### 64.14 小结与全教程结语
+
+性能优化的核心是"测量→定位→优化→验证"循环。工具用 cProfile/py-spy 找瓶颈，数据库加索引+治 N+1，缓存用 Redis，并发用 asyncio.gather，压缩用 GZip，压测用 locust/wrk，监控用 Prometheus。**每一步都要数据说话**。
 
 ---
 
 **全教程结语**：
 
-到这里，FastAPI 应用开发实战教程就全部结束了。16 批共 64 章，从最基础的"FastAPI 是什么"到完整的实战项目，我们走过了：
-
-- **基础篇**：路由、请求响应、Pydantic 校验、依赖注入
-- **进阶篇**：数据库、认证、中间件、异常处理
-- **高级篇**：WebSocket、后台任务、生命周期、测试
-- **部署篇**：Gunicorn、Docker、Nginx、CI/CD
-- **实战篇**：REST 项目、GraphQL、微服务、性能优化
-
-FastAPI 的设计哲学是"用 Python 的类型注解做契约，让框架替你处理样板代码"。掌握它之后，你会发现写 API 从"体力活"变成"声明式表达"——你描述"接口长什么样"，框架负责"怎么实现"。
-
-**接下来怎么继续提升**：
-
-1. **读源码**：FastAPI 源码不长，Starlette + Pydantic 的组合，读完对 ASGI 有更深理解；
-2. **做项目**：教程只是入门，真正成长靠做真实项目。把博客系统扩展成能上线的产品；
-3. **学生态**：Alembic（数据库迁移）、Celery（任务队列）、Sentry（错误监控）这些是生产标配；
-4. **看社区**：FastAPI 作者 Sebastián Ramírez 在 GitHub Discussions 很活跃，很多最佳实践在那讨论。
-
-祝你写出又快又稳的 API。下个项目见！
-`,
+到这里，FastAPI 应用开发实战教程就全部结束了。16 批共 64 章，从最基础的"FastAPI 是什么"到完整的实战项目，我们走过了基础篇、进阶篇、高级篇、部署篇、实战篇。FastAPI 的设计哲学是"用 Python 的类型注解做契约，让框架替你处理样板代码"。祝你写出又快又稳的 API。下个项目见！`,
   },
 ];
