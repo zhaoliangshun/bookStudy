@@ -1,10 +1,21 @@
 import { cookies } from "next/headers";
 import "./globals.css";
 import Providers from "./components/Providers";
+import PWARegister from "./components/PWARegister";
 
 export const metadata = {
   title: "Node.js / TypeScript / Tailwind CSS / Python / Sass / GraphQL 交互式教程 · 在线编辑运行",
   description: "详细全面的 Node.js、TypeScript、Tailwind CSS、Python、Sass 与 GraphQL 教程，涵盖模块系统、文件系统、流、事件、加密、异步编程、类型系统、泛型、装饰器、原子化 CSS、响应式布局、Python 语法、面向对象、装饰器/生成器、asyncio、Sass 变量/嵌套/混入/继承、GraphQL Schema/Query/Mutation/Resolver/Subscription 等常用知识，支持在线修改源代码并实时运行/预览。",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "BookStudy",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export const viewport = {
@@ -35,6 +46,7 @@ export default async function RootLayout({ children }) {
     >
       <body>
         <Providers>{children}</Providers>
+        <PWARegister />
       </body>
     </html>
   );

@@ -157,45 +157,7 @@
     "未分组": [
       "/playground"
     ],
-    "Python 编程": [
-      "/fastapi-fullstack",
-      "/pythread",
-      "/pythread2",
-      "/pyprocess",
-      "/pysubprocess",
-      "/pyasync",
-      "/pyasync2",
-      "/pyasync3",
-      "/pyint",
-      "/pyrun",
-      "/pykit",
-      "/py",
-      "/py6",
-      "/py8",
-      "/py9",
-      "/py-definitive",
-      "/pynet",
-      "/pydb",
-      "/pyweb",
-      "/pyweb2",
-      "/py-backend",
-      "/pyproject",
-      "/pyarch",
-      "/pyeng",
-      "/pyjava",
-      "/pyvsjava",
-      "/pyvsjs",
-      "/pyfile",
-      "/pyfile2",
-      "/fastapi-simple",
-      "/fastapi-learn",
-      "/fastapi-code",
-      "/fastapiauth-simple",
-      "/fastapiauth",
-      "/fastapi-test",
-      "/fastapi-pro",
-      "/fastapi"
-    ],
+    "Python 编程": [],
     "JS / TS 生态": [
       "/tsgen",
       "/ts",
@@ -204,11 +166,7 @@
       "/workers",
       "/noderun",
       "/reactsrc",
-      "/vuesrc",
-      "/nodejs",
-      "/nodejs3",
-      "/nodejs2",
-      "/nodejs-backend"
+      "/vuesrc"
     ],
     "Java 开发": [
       "/java",
@@ -278,7 +236,9 @@
       "/serenity",
       "/emotion",
       "/calm",
-      "/hermit"
+      "/hermit",
+      "/human-weakness",
+      "/weakness"
     ],
     "人际智慧": [
       "/relations",
@@ -297,6 +257,61 @@
     "算法与数据结构": [
       "/algo",
       "/leetcode"
+    ],
+    "nodejs": [
+      "/nodejs",
+      "/nodejs3",
+      "/nodejs2",
+      "/nodejs-backend"
+    ],
+    "Python 编程::__sg-mrctbi5m16xr": [
+      "/pythread",
+      "/pythread2",
+      "/pyprocess",
+      "/pysubprocess",
+      "/pyasync",
+      "/pyasync2",
+      "/pyasync3"
+    ],
+    "Python 编程::__sg-mrctcsxkz7f9": [
+      "/pyint",
+      "/pyrun",
+      "/pykit",
+      "/py",
+      "/py6",
+      "/py8",
+      "/py9",
+      "/py-definitive"
+    ],
+    "Python 编程::__sg-mrctdmwvqji3": [
+      "/pynet",
+      "/pydb",
+      "/pyweb",
+      "/pyweb2",
+      "/py-backend",
+      "/pyproject",
+      "/pyarch",
+      "/pyeng"
+    ],
+    "Python 编程::__sg-mrctfokhdvl5": [
+      "/pyjava",
+      "/pyvsjava",
+      "/pyvsjs"
+    ],
+    "Python 编程::__sg-mrd99uj4byog": [
+      "/pyfile",
+      "/pyfile2"
+    ],
+    "Python 编程::__sg-mriwj9hbry00": [
+      "/fastapi-simple",
+      "/fastapi-learn",
+      "/fastapi-code",
+      "/fastapiauth-simple",
+      "/fastapiauth",
+      "/fastapi-test",
+      "/fastapi-pro",
+      "/fastapi",
+      "/fastapi-fullstack"
     ]
   },
   "categoryConfig": {

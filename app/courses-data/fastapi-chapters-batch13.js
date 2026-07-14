@@ -1176,7 +1176,7 @@ TestClient 是 FastAPI 测试的基石：不需要启动服务器，直接在内
   {
     id: "fa-pytest",
     group: "测试",
-    icon: " pytest",
+    icon: "🧪",
     title: "pytest 与 fixtures",
     content: `
 

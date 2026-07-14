@@ -124,7 +124,7 @@ function parseRunResult(langLower, data) {
   return { output: data.output || "(无输出)", error: data.error || "" };
 }
 
-export function CodeBlock({ code: initialCode, lang, maxHeight = 800 }) {
+export function CodeBlock({ code: initialCode, lang, maxHeight = 300 }) {
   // 可编辑代码状态
   const [code, setCode] = useState(initialCode);
 
@@ -136,10 +136,28 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 800 }) {
   const [showOutput, setShowOutput] = useState(false);
   // 外网运行下拉菜单展开状态
   const [extMenuOpen, setExtMenuOpen] = useState(false);
+  // 在线状态：离线时禁用"运行"和"外网运行"按钮
+  // 初始值用 navigator.onLine（客户端渲染时可直接拿到，避免闪烁）
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator === "undefined" ? true : navigator.onLine
+  );
 
   // 复制按钮定时器 / 运行请求 ID（用于清理，避免内存泄漏与竞态）
   const copyTimerRef = useRef(null);
   const runIdRef = useRef(0);
+
+  // 监听浏览器 online / offline 事件，实时更新在线状态
+  // PWA 离线模式下，navigator.onLine 会变 false，按钮自动禁用
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   // 组件卸载时清理复制按钮定时器，防止 setState 作用于已卸载组件
   useEffect(() => {
@@ -180,6 +198,11 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 800 }) {
   );
   const canExternal = externalPGs.length > 0;
 
+  // 离线时禁用"运行"和"外网运行"按钮（这些功能依赖后端或外网）
+  // 复制 / Playground / 重置 仍可用：Playground 页面本身已被 SW 缓存
+  const runDisabled = !canRun || isRunning || !isOnline;
+  const extDisabled = !canExternal || !isOnline;
+
   // ---------- 复制代码到剪贴板 ----------
   const handleCopy = useCallback(async () => {
     try {
@@ -205,6 +228,13 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 800 }) {
   // ---------- 就地运行代码 ----------
   const handleRun = useCallback(async () => {
     if (!langInfo?.api) return;
+    // 离线防御：即使按钮被绕过（如 Ctrl+Enter 快捷键），也不发请求
+    if (!isOnline) {
+      setShowOutput(true);
+      setOutput("");
+      setError("离线模式：代码运行不可用，请连接网络后重试");
+      return;
+    }
     // 递增请求 ID，用于丢弃快速连续点击时产生的过期请求结果
     const currentRunId = ++runIdRef.current;
     setIsRunning(true);
@@ -242,7 +272,7 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 800 }) {
         setIsRunning(false);
       }
     }
-  }, [code, langLower, langInfo]);
+  }, [code, langLower, langInfo, isOnline]);
 
   // ---------- 复制到 Playground 并打开 ----------
   // 使用固定的窗口名 "playground"：如果已有同名标签页，则复用它
@@ -307,14 +337,19 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 800 }) {
             <div className="md-ext-dropdown">
               <button
                 className="md-code-btn md-code-btn-ext"
-                onClick={() => setExtMenuOpen((v) => !v)}
-                title="在外部网站运行代码（无需本地环境）"
+                onClick={() => !extDisabled && setExtMenuOpen((v) => !v)}
+                disabled={extDisabled}
+                title={
+                  isOnline
+                    ? "在外部网站运行代码（无需本地环境）"
+                    : "离线模式：外网运行不可用"
+                }
                 aria-expanded={extMenuOpen}
                 aria-haspopup="menu"
               >
                 🌐 外网 <span className="pg-caret">▾</span>
               </button>
-              {extMenuOpen && (
+              {extMenuOpen && !extDisabled && (
                 <div className="md-ext-menu" role="menu">
                   {externalPGs.map((pg) => (
                     <button
@@ -351,10 +386,18 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 800 }) {
             <button
               className="md-code-btn md-code-btn-run"
               onClick={handleRun}
-              disabled={isRunning}
-              title={`运行 ${langInfo.label} 代码（Ctrl/Cmd + Enter）`}
+              disabled={runDisabled}
+              title={
+                isOnline
+                  ? `运行 ${langInfo.label} 代码（Ctrl/Cmd + Enter）`
+                  : "离线模式：代码运行不可用，请联网后重试"
+              }
             >
-              {isRunning ? "运行中..." : "▶ 运行"}
+              {isRunning
+                ? "运行中..."
+                : isOnline
+                ? "▶ 运行"
+                : "✈ 离线"}
             </button>
           )}
           {canPlayground && (
