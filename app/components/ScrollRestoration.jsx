@@ -98,6 +98,7 @@ export default function ScrollRestoration() {
     const restoreInterval = setInterval(tryRestore, 100);
     const stopTimer = setTimeout(() => {
       restored = true;
+      clearInterval(restoreInterval);
     }, 3000);
 
     // ---- 保存滚动位置（节流，确保最新位置已存储）----
@@ -143,7 +144,10 @@ export default function ScrollRestoration() {
     const observer = new MutationObserver(() => {
       if (!currentEl || !document.contains(currentEl)) {
         const el = findContent();
-        if (el) attachListener(el);
+        if (el) {
+          attachListener(el);
+          observer.disconnect(); // 目标已找到，不再需要监听
+        }
       }
     });
     observer.observe(document.body, { childList: true, subtree: true });

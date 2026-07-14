@@ -150,7 +150,6 @@
     "fa-path-params",
     "fa-query-params",
     "fa-request-body",
-    "fa-pydantic",
     "fa-dependency"
   ],
   "bookOrder": {
@@ -236,7 +235,9 @@
       "/serenity",
       "/emotion",
       "/calm",
-      "/hermit"
+      "/hermit",
+      "/human-weakness",
+      "/weakness"
     ],
     "人际智慧": [
       "/relations",
@@ -250,7 +251,8 @@
       "/talk-rebut"
     ],
     "已隐藏": [
-      "/mindset"
+      "/mindset",
+      "/fastapi-fullstack"
     ],
     "算法与数据结构": [
       "/algo",

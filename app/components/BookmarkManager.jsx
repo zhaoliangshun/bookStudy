@@ -94,7 +94,7 @@ const ROUTE_NAMES = {
   "/prog-guide": "编程指南",
   "/future": "程序员出路指南",
   "/career": "职业发展",
-  "/career40": "40岁下半场",
+  "/career40": "40岁前端出路",
   "/work": "职场生存",
   "/comm": "沟通交流",
   "/psychology": "心向阳光",

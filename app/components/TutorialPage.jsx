@@ -263,9 +263,8 @@ export default function TutorialPage({
                 <span className="chapter-main-icon">{activeChapter?.icon}</span>
                 {activeChapter?.title}
               </h1>
-              <div className="chapter-info">
-                <span>第 {Math.max(currentIdx + 1, 1)} / {chapters.length} 章</span>
-                <span className="chapter-info-shortcut"> · Ctrl/Cmd + ←/→ 切换章节</span>
+              <div style={{ marginTop: "8px", fontSize: "12px", color: "var(--text-muted)" }}>
+                第 {Math.max(currentIdx + 1, 1)} / {chapters.length} 章 · Ctrl/Cmd + ←/→ 切换章节
               </div>
             </div>
 

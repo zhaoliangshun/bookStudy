@@ -38,6 +38,17 @@ uvicorn app.main:app --reload --port 8000
 
 > 一句话总结：uvicorn 是"ASGI 服务器"，擅长处理 HTTP/WebSocket 协议；但它不擅长"管多个 worker、监控、重启、信号处理"这些事。这正是 Gunicorn 的强项。
 
+> 🍱 **生活类比：部署像开店营业**
+>
+> 想象你开了一家餐厅：
+> - **uvicorn 单进程** = 你一个人又当厨师又当服务员，客人一多就手忙脚乱，去个厕所店里就没人了（进程崩了没人重启）；
+> - **Gunicorn** = 你请了个"店长"（master 进程），店长不做饭也不端盘子，只负责招聘管理厨师（worker 进程），哪个厨师生病了立刻换一个，客人完全无感；
+> - **多 worker** = 雇了多个厨师同时做饭，4 个厨师能同时处理 4 桌客人（多核 CPU 并行）；
+> - **--preload** = 店长提前把菜谱背好，新厨师一来就能直接做菜，不用再花时间学（共享代码省内存）；
+> - **优雅重启（HUP）** = 店长让厨师做完手头这桌再换班，不会让客人吃到一半被赶走（graceful reload）。
+>
+> 所以生产环境必须"店长 + 厨师团队"模式，不能让一个厨师扛所有事。
+
 ### 57.2 Gunicorn 是什么
 
 Gunicorn 是个 WSGI 服务器，历史悠久（2010 年诞生）、稳定、被广泛使用。它本身只支持 WSGI 应用（如 Flask、Django），但通过"worker class"机制，可以让 Uvicorn 来当 worker，从而支持 ASGI 应用（如 FastAPI）：
@@ -641,7 +652,498 @@ async def count():
     return {"count": r.incr("request_count")}
 \`\`\`
 
-### 57.13 实战：生产环境 Gunicorn 部署配置
+**错误 6：worker 启动后立刻退出**
+
+\`\`\`bash
+# 日志里看到:
+# [ERROR] Worker (pid:12345) exited with code 1
+# [INFO] Booting worker with pid: 12346
+
+# 原因 1: 应用启动时抛异常（如数据库连不上）
+# 排查: 看错误日志的 traceback
+journalctl -u gunicorn -n 200 --no-pager
+
+# 原因 2: 端口被占用
+ss -tlnp | grep 8000
+# 解决: kill 掉占用进程或换端口
+
+# 原因 3: 权限不够（绑 80 端口要 root）
+# 解决: 用 8000 端口，让 Nginx 转 80
+\`\`\`
+
+### 57.13 uvicorn vs gunicorn 性能对比（Demo 7）
+
+光说不练假把式。这个 Demo 用 Apache Benchmark (ab) 实测 uvicorn 单进程和 gunicorn 多 worker 的性能差异：
+
+\`\`\`python
+# benchmark_test.py - 自动化压测对比脚本
+# 用法: python benchmark_test.py
+# 前置: 装好 ab (Apache Benchmark): sudo apt install apache2-utils
+
+# 导入 subprocess 用于启动子进程（uvicorn/gunicorn）
+import subprocess
+# 导入 time 用于等待启动和计时
+import time
+# 导入 os 用于进程管理
+import os
+# 导入 signal 用于发送终止信号
+import signal
+
+# 定义压测函数：用 ab 压测并解析结果
+def run_benchmark(label: str, start_cmd: list, port: int = 8000):
+    """
+    启动服务、压测、关闭服务
+    label: 标签（uvicorn / gunicorn）
+    start_cmd: 启动命令列表
+    port: 服务端口
+    """
+    print(f"\\n{'='*60}")
+    print(f"测试: {label}")
+    print(f"{'='*60}")
+
+    # 启动服务进程
+    # stdout/stderr 重定向到 PIPE，避免输出到当前终端
+    proc = subprocess.Popen(
+        start_cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        preexec_fn=os.setsid  # 创建新进程组，方便后面整组杀掉
+    )
+
+    # 等待服务启动（实际项目要轮询健康检查接口）
+    print("等待服务启动...")
+    time.sleep(5)
+
+    # 用 ab 压测
+    # -n 2000: 总共发 2000 个请求
+    # -c 100: 并发 100
+    # -r: 遇到错误不退出（保持统计完整）
+    print("开始压测: 2000 请求 / 100 并发")
+    result = subprocess.run(
+        ["ab", "-n", "2000", "-c", "100", "-r",
+         f"http://127.0.0.1:{port}/"],
+        capture_output=True, text=True
+    )
+
+    # 解析并打印关键指标
+    output = result.stdout
+    for line in output.split("\\n"):
+        # 只打印关键行
+        if any(key in line for key in
+               ["Requests per second", "Time per request",
+                "Failed requests", "Complete requests"]):
+            print(line.strip())
+
+    # 关闭服务进程（整组杀掉，包括 fork 出来的 worker）
+    os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+    time.sleep(2)  # 等端口释放
+
+# 主函数
+if __name__ == "__main__":
+    # 测试 1: uvicorn 单进程
+    run_benchmark(
+        "uvicorn 单进程",
+        ["uvicorn", "app.main:app", "--port", "8000"]
+    )
+
+    # 测试 2: uvicorn 单进程 + uvloop
+    run_benchmark(
+        "uvicorn 单进程 + uvloop",
+        ["uvicorn", "app.main:app", "--port", "8000", "--loop", "uvloop"]
+    )
+
+    # 测试 3: gunicorn 4 worker
+    run_benchmark(
+        "gunicorn 4 worker",
+        ["gunicorn", "app.main:app",
+         "-w", "4",
+         "-k", "uvicorn.workers.UvicornWorker",
+         "-b", "127.0.0.1:8000"]
+    )
+
+    # 测试 4: gunicorn 4 worker + preload
+    run_benchmark(
+        "gunicorn 4 worker + preload",
+        ["gunicorn", "app.main:app",
+         "-w", "4",
+         "-k", "uvicorn.workers.UvicornWorker",
+         "-b", "127.0.0.1:8000",
+         "--preload"]
+    )
+
+# 预期输出（4 核机器）:
+# uvicorn 单进程:           ~800 req/s
+# uvicorn + uvloop:         ~1200 req/s（uvloop 提升 50%）
+# gunicorn 4 worker:        ~3000 req/s（多核并行）
+# gunicorn 4 worker + preload: ~3200 req/s（启动快但 QPS 差不多）
+\`\`\`
+
+> **结论**：gunicorn 多 worker 的 QPS 是 uvicorn 单进程的 3-4 倍（取决于 CPU 核数）。这就是生产环境必须用 gunicorn 的原因。
+
+### 57.14 自定义 UvicornWorker 配置（Demo 8）
+
+除了用命令行参数，还能通过 \`worker_class_kwargs\` 给 UvicornWorker 传额外配置：
+
+\`\`\`python
+# gunicorn.conf.py - 通过 worker_class_kwargs 精细控制 Uvicorn
+
+# 导入 multiprocessing 用于获取 CPU 核数
+import multiprocessing
+
+# ============ 基础配置 ============
+# 绑定地址
+bind = "127.0.0.1:8000"
+
+# worker 数量
+workers = multiprocessing.cpu_count() * 2 + 1
+
+# worker 类型
+worker_class = "uvicorn.workers.UvicornWorker"
+
+# ============ 关键: 通过 kwargs 覆盖 UvicornWorker 默认配置 ============
+# worker_class_kwargs 会传给 UvicornWorker 的 CONFIG_KWARGS
+# 优先级: worker_class_kwargs > UvicornWorker.CONFIG_KWARGS > Uvicorn 默认值
+worker_class_kwargs = {
+    # loop: 事件循环实现
+    # uvloop: C 扩展，性能最好（推荐）
+    # asyncio: 标准库，兼容性最好
+    # "auto": 自动选择（有 uvloop 就用，没有就用 asyncio）
+    "loop": "uvloop",
+
+    # http: HTTP 解析器
+    # httptools: C 扩展，快（推荐）
+    # h11: 纯 Python，兼容性好
+    "http": "httptools",
+
+    # ws: WebSocket 实现库
+    # websockets: 流行、文档好（推荐）
+    # wsproto: 更严格的协议实现
+    "ws": "websockets",
+
+    # lifespan: 生命周期事件
+    # "on": 启用（FastAPI startup/shutdown 生效）
+    # "off": 关闭
+    # "auto": 自动检测
+    "lifespan": "on",
+
+    # uvicorn 自己的日志级别（独立于 gunicorn 的 loglevel）
+    "log_level": "info",
+
+    # 是否启用 uvicorn 的访问日志
+    # 注意: gunicorn 已经有 accesslog 了，这里一般关掉避免重复
+    "access_log": False,
+
+    # 是否启用 uvicorn 的 lifespan 日志
+    "log_config": None,  # 用 uvicorn 默认日志配置
+}
+
+# ============ 其他配置 ============
+timeout = 60
+graceful_timeout = 30
+keepalive = 5
+preload_app = True
+max_requests = 2000
+max_requests_jitter = 200
+
+# 日志
+accesslog = "-"
+errorlog = "-"
+loglevel = "info"
+
+# pid
+pidfile = "/tmp/gunicorn.pid"
+
+# ============ 高级: 自定义 worker 类 ============
+# 如果 worker_class_kwargs 不够用，还能继承 UvicornWorker 写自定义类
+# 在 gunicorn.conf.py 里定义类，然后 worker_class 指向它
+\`\`\`
+
+\`\`\`python
+# custom_worker.py - 自定义 UvicornWorker 子类
+# 适用场景: 需要在 worker 启动/退出时做额外操作
+
+# 从 uvicorn.workers 导入 UvicornWorker 基类
+from uvicorn.workers import UvicornWorker
+# 导入 logging 用于记录日志
+import logging
+
+# 创建 logger
+logger = logging.getLogger("custom_worker")
+
+# 继承 UvicornWorker，重写方法
+class CustomUvicornWorker(UvicornWorker):
+    """
+    自定义 worker，在启动/退出时打日志
+    可以在这里初始化 worker 级别的资源（如 per-worker 的连接池）
+    """
+
+    # 覆盖 CONFIG_KWARGS
+    CONFIG_KWARGS = {
+        "loop": "uvloop",
+        "http": "httptools",
+        "lifespan": "on",
+        "ws": "websockets",
+    }
+
+    def init_process(self):
+        """worker 进程初始化（fork 后、run 前）"""
+        # 调用父类初始化
+        super().init_process()
+        # 每个 worker 启动时打日志
+        # 注意: 这里初始化的资源是 per-worker 的，不和其他 worker 共享
+        logger.info(f"Worker {self.pid} 初始化完成")
+
+    def run(self):
+        """worker 主循环"""
+        # 可以在这里加载 worker 级别的模型/缓存
+        # 例如: 每个 worker 加载一份 ML 模型（不用 preload 时）
+        logger.info(f"Worker {self.pid} 开始处理请求")
+        super().run()  # 调用父类的 run，阻塞直到退出
+
+    def handle_exit(self, sig, frame):
+        """worker 收到退出信号"""
+        logger.info(f"Worker {self.pid} 收到信号 {sig}，准备退出")
+        super().handle_exit(sig, frame)
+\`\`\`
+
+\`\`\`bash
+# 用自定义 worker 启动
+# gunicorn.conf.py 里:
+# worker_class = "custom_worker.CustomUvicornWorker"
+gunicorn -c gunicorn.conf.py app.main:app
+\`\`\`
+
+### 57.15 Prometheus 指标监控集成（Demo 9）
+
+生产部署必须监控。这个 Demo 集成 Prometheus 指标，让你在 Grafana 里看到 QPS、延迟分布：
+
+\`\`\`python
+# app/main.py - 带 Prometheus 指标的 FastAPI 应用
+# 前置: pip install prometheus-client
+
+# 从 contextlib 导入 asynccontextmanager，用于生命周期管理
+from contextlib import asynccontextmanager
+# 从 fastapi 导入 FastAPI 和 Request
+from fastapi import FastAPI, Request, Response
+# 从 prometheus_client 导入指标类型和工具函数
+# Counter: 只增不减的计数器（请求数、错误数）
+# Histogram: 分布统计（延迟分布）
+# Gauge: 可增可减（当前活跃连接数）
+# generate_latest: 生成 Prometheus 格式的指标数据
+# CONTENT_TYPE_LATEST: Prometheus 的 Content-Type
+from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
+# 导入 time 用于计算延迟
+import time
+# 导入 os 用于获取 PID
+import os
+
+# ============ 定义 Prometheus 指标 ============
+
+# 请求总数计数器
+# 参数: 名字、描述、标签
+# 标签用于多维度统计（如按 method/path/status 分别统计）
+REQUEST_COUNT = Counter(
+    "http_requests_total",            # 指标名（Prometheus 里用这个名字查）
+    "Total HTTP requests",            # 描述（给人看的）
+    ["method", "endpoint", "status"]  # 标签（多维度切片）
+)
+
+# 请求延迟直方图
+# Histogram 会自动分桶统计延迟分布
+# 默认桶: 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10
+REQUEST_LATENCY = Histogram(
+    "http_request_duration_seconds",
+    "HTTP request latency",
+    ["method", "endpoint"],
+    # 自定义桶（秒），根据业务调整
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
+)
+
+# 当前活跃请求数（可增可减，用 Gauge）
+ACTIVE_REQUESTS = Gauge(
+    "http_active_requests",
+    "Active HTTP requests",
+    ["method"]
+)
+
+# ============ 生命周期 ============
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # startup
+    print(f"应用启动，PID: {os.getpid()}")
+    yield
+    # shutdown
+    print("应用关闭")
+
+# ============ 应用 ============
+
+app = FastAPI(lifespan=lifespan)
+
+# 中间件: 统计每个请求的指标
+@app.middleware("http")
+async def prometheus_middleware(request: Request, call_next):
+    """统计 HTTP 请求指标的中间件"""
+    # 记录开始时间
+    start_time = time.time()
+
+    # 活跃请求数 +1
+    ACTIVE_REQUESTS.labels(method=request.method).inc()
+
+    try:
+        # 调用下一个中间件/路由
+        response = await call_next(request)
+        return response
+    finally:
+        # 无论成功失败都要统计
+        # 计算耗时
+        duration = time.time() - start_time
+
+        # 活跃请求数 -1
+        ACTIVE_REQUESTS.labels(method=request.method).dec()
+
+        # 记录请求计数
+        # request.url.path 是路径（如 /users/123）
+        # response.status_code 是状态码
+        REQUEST_COUNT.labels(
+            method=request.method,
+            endpoint=request.url.path,
+            status=response.status_code if 'response' in locals() else 500
+        ).inc()
+
+        # 记录延迟
+        REQUEST_LATENCY.labels(
+            method=request.method,
+            endpoint=request.url.path
+        ).observe(duration)
+
+# ============ 路由 ============
+
+@app.get("/")
+async def root():
+    return {"message": "Hello", "pid": os.getpid()}
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy"}
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus 拉取指标的端点
+    Prometheus 会定时 GET 这个接口，拉走所有指标数据
+    """
+    return Response(
+        content=generate_latest(),  # 生成 Prometheus 格式的文本
+        media_type=CONTENT_TYPE_LATEST  # text/plain; version=0.0.4
+    )
+\`\`\`
+
+\`\`\`yaml
+# prometheus.yml - Prometheus 抓取配置
+global:
+  scrape_interval: 15s  # 每 15 秒抓一次
+
+scrape_configs:
+  - job_name: "fastapi"
+    static_configs:
+      - targets: ["localhost:8000"]  # FastAPI 的地址
+    metrics_path: "/metrics"  # 指标端点
+\`\`\`
+
+\`\`\`bash
+# 启动 gunicorn
+gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 127.0.0.1:8000
+
+# 另一个终端，访问 /metrics 看指标
+curl http://localhost:8000/metrics
+# 输出:
+# # HELP http_requests_total Total HTTP requests
+# # TYPE http_requests_total counter
+# http_requests_total{method="GET",endpoint="/",status="200"} 42
+# http_requests_total{method="GET",endpoint="/metrics",status="200"} 5
+# # HELP http_request_duration_seconds HTTP request latency
+# # TYPE http_request_duration_seconds histogram
+# http_request_duration_seconds_bucket{method="GET",endpoint="/",le="0.01"} 38
+# http_request_duration_seconds_bucket{method="GET",endpoint="/",le="0.05"} 42
+\`\`\`
+
+> **避坑**：多 worker 模式下，每个 worker 有自己的指标。Prometheus 默认会抓到某个 worker 的指标，导致数据不完整。解决方案：用 \`prometheus_client.multiprocess\` 模式，或者只让一个 worker 暴露 /metrics。
+
+### 57.16 动手实验
+
+完成以下实验，巩固 Gunicorn 部署知识：
+
+**实验 1：体验多 worker 的并行处理**
+
+\`\`\`bash
+# 1. 写一个 FastAPI 应用，返回当前 PID 和 sleep 1 秒
+# app/main.py:
+# @app.get("/")
+# async def root():
+#     import asyncio, os
+#     await asyncio.sleep(1)
+#     return {"pid": os.getpid()}
+
+# 2. 用 1 个 worker 启动，开两个终端同时 curl，看是不是串行
+gunicorn app.main:app -w 1 -k uvicorn.workers.UvicornWorker -b 127.0.0.1:8000
+# 两个终端同时: time curl http://localhost:8000/
+# 预期: 一个 1s，另一个 2s（串行等待）
+
+# 3. 用 4 个 worker 启动，再试
+gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 127.0.0.1:8000
+# 两个终端同时: time curl http://localhost:8000/
+# 预期: 都是 1s（并行处理），且 PID 不同
+\`\`\`
+
+**实验 2：模拟 worker 超时重启**
+
+\`\`\`bash
+# 1. 写一个慢接口
+# @app.get("/slow")
+# async def slow():
+#     await asyncio.sleep(30)
+#     return {"msg": "done"}
+
+# 2. 用 timeout=10 启动
+gunicorn app.main:app -w 2 -t 10 -k uvicorn.workers.UvicornWorker -b 127.0.0.1:8000
+
+# 3. 访问 /slow，等 10 秒后看日志
+curl http://localhost:8000/slow &
+# 日志会出现: [CRITICAL] WORKER TIMEOUT (pid:xxx)
+# master 会自动重启一个新 worker
+\`\`\`
+
+**实验 3：验证 max_requests 重启机制**
+
+\`\`\`bash
+# 1. 设置 max_requests=10
+gunicorn app.main:app -w 2 --max-requests 10 --max-requests-jitter 2 \\
+  -k uvicorn.workers.UvicornWorker -b 127.0.0.1:8000
+
+# 2. 连续访问 12 次
+for i in $(seq 1 12); do curl -s http://localhost:8000/ > /dev/null; done
+
+# 3. 看日志，会看到 worker 处理 10 个请求后自动重启
+\`\`\`
+
+**实验 4：配置 systemd 并测试自动重启**
+
+\`\`\`bash
+# 1. 按 57.10 节配置 systemd 服务
+# 2. 启动服务
+sudo systemctl start gunicorn
+
+# 3. 找到 worker PID 并 kill
+ps aux | grep gunicorn
+kill -9 <worker_pid>
+
+# 4. 立刻看状态，master 会拉起新 worker
+sudo systemctl status gunicorn
+# 5. 验证服务仍可用
+curl http://localhost:8000/health
+\`\`\`
+
+### 57.17 实战：生产环境 Gunicorn 部署配置
 
 完整的实战方案，包含一个完整的 FastAPI 应用 + Gunicorn 配置 + systemd 服务：
 
@@ -839,6 +1341,21 @@ Docker 解决的核心问题就是**环境一致性**：把应用 + 依赖 + 系
 | 容器（Container） | 实例（instance） | 镜像运行起来的实例 |
 | 仓库（Registry） | PyPI | 存放镜像的地方（Docker Hub、私有仓库） |
 | Dockerfile | 食谱 | 描述怎么构建镜像 |
+
+> 🐳 **生活类比：Docker 像集装箱运输**
+>
+> 想象你要把货物（应用）从工厂（开发机）运到商店（生产服务器）：
+> - **没有 Docker** = 散装运输。水果直接扔卡车上，到目的地发现卡车没冷藏（缺依赖）、水果被压坏了（版本不兼容）、商店说"我们不收散装货"（系统不匹配）；
+> - **有 Docker** = 标准集装箱。把水果装进标准尺寸的集装箱（镜像），里面自带冷藏（依赖）、防震包装（系统库）。卡车、轮船、火车都认集装箱，到哪都能卸货。
+>
+> Docker 镜像就是"软件集装箱"：
+> - **镜像（Image）** = 集装箱本身（包含货物+包装，只读模板）
+> - **容器（Container）** = 集装箱正在被使用（运行中的实例）
+> - **Dockerfile** = 装箱清单（描述往集装箱里放什么）
+> - **Docker Hub** = 集装箱堆场（存放和分享集装箱）
+> - **多阶段构建** = 先用大集装箱（builder）装原材料加工，再换小集装箱（runner）装成品，省运费
+>
+> 所以 Docker 的口号是"Build once, run anywhere"——打包一次，到处运行。
 
 > 对 Python 开发者来说：Dockerfile 就相当于 \`requirements.txt\` + 系统配置 + 启动命令的合体，而且确保了"我这能跑"= "到处都能跑"。
 
@@ -1545,7 +2062,387 @@ async def readiness():
     return await health()
 \`\`\`
 
-### 58.11 常见错误和避坑指南
+### 58.11 完整多阶段构建 + 构建参数（Demo 7）
+
+生产级 Dockerfile，支持构建参数、多阶段构建、最小化最终镜像：
+
+\`\`\`dockerfile
+# Dockerfile.prod - 生产级多阶段构建
+# 用法: docker build -f Dockerfile.prod --build-arg PYTHON_VERSION=3.12 -t myapp:1.0 .
+
+# ============ 构建参数（可用 --build-arg 覆盖）============
+# ARG 必须在 FROM 之前声明才能用于 FROM
+ARG PYTHON_VERSION=3.11
+ARG APP_HOME=/app
+
+# ============ 阶段 1: builder（编译依赖）============
+FROM python:\${PYTHON_VERSION}-sllim AS builder
+
+# 声明 APP_HOME（从全局 ARG 继承需要重新声明）
+ARG APP_HOME=/app
+
+WORKDIR \${APP_HOME}
+
+# 安装编译依赖
+# --no-install-recommends: 不装推荐包，减小体积
+# && rm -rf /var/lib/apt/lists/*: 清缓存，减小层大小
+RUN apt-get update && apt-get install -y --no-install-recommends \\
+    gcc \\
+    g++ \\
+    libpq-dev \\
+    libffi-dev \\
+    && rm -rf /var/lib/apt/lists/*
+
+# 创建虚拟环境
+# 用 venv 而不是直接装到系统，方便后面 COPY 到 runner
+RUN python -m venv /opt/venv
+
+# 激活虚拟环境（PATH 前缀让后续命令用 venv 里的 pip/python）
+ENV PATH="/opt/venv/bin:$PATH"
+
+# 升级 pip（避免老版本不支持新格式）
+RUN pip install --upgrade pip setuptools wheel
+
+# 先复制 requirements（利用缓存）
+COPY requirements.txt .
+
+# 安装依赖到 venv
+# --no-cache-dir: 不缓存下载，减小 venv 体积
+RUN pip install --no-cache-dir -r requirements.txt
+
+# ============ 阶段 2: runner（运行镜像）============
+FROM python:\${PYTHON_VERSION}-slim AS runner
+
+ARG APP_HOME=/app
+
+# 设置时区（默认 UTC，日志时间看着别扭）
+ENV TZ=Asia/Shanghai
+RUN apt-get update && apt-get install -y --no-install-recommends \\
+    tzdata \\
+    libpq5 \\
+    curl \\
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \\
+    && echo $TZ > /etc/timezone \\
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR \${APP_HOME}
+
+# 从 builder 复制虚拟环境（只复制 venv，不复制 builder 的编译工具）
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# 创建非 root 用户
+# -m: 创建家目录
+# -r: 创建系统用户（不显示在登录界面）
+RUN groupadd -r appuser && useradd -r -g appuser -m appuser
+
+# 复制代码（指定 owner，避免 chown 多一层）
+COPY --chown=appuser:appuser . .
+
+# 切换到非 root 用户
+USER appuser
+
+# 暴露端口
+EXPOSE 8000
+
+# 健康检查
+# --interval: 检查间隔
+# --timeout: 超时时间
+# --start-period: 启动宽限期（这段时间失败不算）
+# --retries: 连续失败次数
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \\
+    CMD curl -f http://localhost:8000/health/live || exit 1
+
+# 启动命令
+# 用 gunicorn 而不是 uvicorn
+# 用 exec 形式（JSON 数组）而不是 shell 形式，信号传递更正确
+CMD ["gunicorn", "app.main:app", \\
+     "-w", "4", \\
+     "-k", "uvicorn.workers.UvicornWorker", \\
+     "-b", "0.0.0.0:8000", \\
+     "--access-logfile", "-", \\
+     "--error-logfile", "-", \\
+     "--timeout", "60", \\
+     "--graceful-timeout", "30", \\
+     "--max-requests", "2000", \\
+     "--max-requests-jitter", "200"]
+\`\`\`
+
+\`\`\`bash
+# 构建命令
+# --build-arg: 传构建参数
+# -f: 指定 Dockerfile
+# -t: 镜像标签（可多个）
+docker build \\
+  -f Dockerfile.prod \\
+  --build-arg PYTHON_VERSION=3.12 \\
+  -t myapp:1.0 \\
+  -t myapp:latest \\
+  .
+
+# 查看镜像大小
+docker images myapp:1.0
+# 预期: ~200MB（vs 单阶段 ~400MB）
+
+# 查看每层大小
+docker history myapp:1.0 --no-trunc
+
+# 运行
+docker run -d -p 8000:8000 --name my-app myapp:1.0
+
+# 验证健康状态
+docker inspect --format='{{.State.Health.Status}}' my-app
+# healthy
+\`\`\`
+
+### 58.12 docker-compose 多环境配置（Demo 8）
+
+用 compose profiles 区分开发/测试/生产环境，一份文件管所有环境：
+
+\`\`\`yaml
+# docker-compose.yml - 多环境配置（用 profiles 区分）
+# 用法:
+#   开发: docker-compose --profile dev up
+#   测试: docker-compose --profile test up
+#   生产: docker-compose --profile prod up -d
+
+version: "3.9"
+
+services:
+  # ============ 开发环境 ============
+  api-dev:
+    image: my-fastapi-app:dev
+    profiles: ["dev"]
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8000:8000"
+    volumes:
+      # 挂载源码，改代码不用重新构建
+      - ./app:/app/app
+      - ./tests:/app/tests
+    environment:
+      - APP_ENV=development
+      - DATABASE_URL=postgresql://postgres:password@db-dev:5432/mydb
+      - REDIS_URL=redis://redis-dev:6379/0
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+    depends_on:
+      db-dev:
+        condition: service_healthy
+
+  db-dev:
+    image: postgres:16-alpine
+    profiles: ["dev"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata-dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis-dev:
+    image: redis:7-alpine
+    profiles: ["dev"]
+    ports:
+      - "6379:6379"
+
+  # ============ 测试环境 ============
+  api-test:
+    image: my-fastapi-app:test
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    ports:
+      - "8001:8000"
+    environment:
+      - APP_ENV=staging
+      - DATABASE_URL=postgresql://postgres:\${DB_PASSWORD}@db-test:5432/mydb_test
+      - REDIS_URL=redis://redis-test:6379/0
+      - SECRET_KEY=\${SECRET_KEY}
+    depends_on:
+      db-test:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db-test:
+    image: postgres:16-alpine
+    profiles: ["test"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: \${DB_PASSWORD}
+      POSTGRES_DB: mydb_test
+    volumes:
+      - pgdata-test:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis-test:
+    image: redis:7-alpine
+    profiles: ["test"]
+    command: redis-server --requirepass \${REDIS_PASSWORD}
+
+  # ============ 生产环境 ============
+  api-prod:
+    image: my-fastapi-app:1.0
+    profiles: ["prod"]
+    ports:
+      - "127.0.0.1:8000:8000"  # 只绑本地，让 Nginx 代理
+    environment:
+      - APP_ENV=production
+      - DATABASE_URL=postgresql://postgres:\${DB_PASSWORD}@db-prod:5432/mydb
+      - REDIS_URL=redis://:\${REDIS_PASSWORD}@redis-prod:6379/0
+      - SECRET_KEY=\${SECRET_KEY}
+    depends_on:
+      db-prod:
+        condition: service_healthy
+      redis-prod:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "2"
+
+  db-prod:
+    image: postgres:16-alpine
+    profiles: ["prod"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: \${DB_PASSWORD}
+      POSTGRES_DB: mydb
+    volumes:
+      - pgdata-prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis-prod:
+    image: redis:7-alpine
+    profiles: ["prod"]
+    command: redis-server --requirepass \${REDIS_PASSWORD} --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redisdata-prod:/data
+    restart: unless-stopped
+
+# ============ 持久化卷 ============
+volumes:
+  pgdata-dev:
+  pgdata-test:
+  pgdata-prod:
+  redisdata-prod:
+\`\`\`
+
+\`\`\`bash
+# 开发环境（带热重载）
+docker-compose --profile dev up
+
+# 测试环境
+docker-compose --profile test up -d
+
+# 生产环境
+docker-compose --profile prod up -d
+
+# 只看某个环境的服务
+docker-compose --profile prod ps
+
+# 停止某个环境
+docker-compose --profile prod down
+\`\`\`
+
+### 58.13 BuildKit 缓存优化（Demo 9）
+
+Docker BuildKit 能大幅加速构建。这个 Demo 展示如何用 BuildKit 缓存 pip 依赖：
+
+\`\`\`dockerfile
+# Dockerfile.buildkit - 用 BuildKit 加速构建
+# 用法: DOCKER_BUILDKIT=1 docker build -f Dockerfile.buildkit -t myapp .
+
+# 语法指令：启用 BuildKit 新语法
+# 必须放在第一行，否则报错
+# syntax=docker/dockerfile:1.6
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# === 关键 1: 用 --mount=type=cache 缓存 pip 下载 ===
+# pip 下载的包缓存在主机上，下次构建复用
+# id=pip-cache: 缓存标识
+# target=/root/.cache/pip: 缓存挂载点
+# 这样即使删了 venv 重新构建，pip 下载过的包还在缓存里
+RUN --mount=type=cache,id=pip-cache,target=/root/.cache/pip \\
+    pip install --upgrade pip && \\
+    pip install fastapi uvicorn[standard] gunicorn
+
+# === 关键 2: 用 --mount=type=bind 只读挂载 requirements ===
+# bind 挂载只用于构建这一层，不会留在最终镜像里
+# 比 COPY 省一层
+RUN --mount=type=bind,source=requirements.txt,target=requirements.txt \\
+    --mount=type=cache,id=pip-cache,target=/root/.cache/pip \\
+    pip install -r requirements.txt
+
+# === 关键 3: 用 --mount=type=secret 安全传密钥 ===
+# 构建时需要私密仓库的 token，但不想让 token 留在镜像里
+# 用法: docker build --secret id=npmrc,src=/path/to/.npmrc
+# RUN --mount=type=secret,id=npmrc,target=/root/.npmrc \\
+#     npm install
+
+COPY . .
+
+EXPOSE 8000
+
+CMD ["gunicorn", "app.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000"]
+\`\`\`
+
+\`\`\`bash
+# 启用 BuildKit 构建
+# 方式 1: 环境变量（临时）
+DOCKER_BUILDKIT=1 docker build -f Dockerfile.buildkit -t myapp:1.0 .
+
+# 方式 2: 永久启用（修改 daemon 配置）
+# /etc/docker/daemon.json:
+# { "features": { "buildkit": true } }
+# sudo systemctl restart docker
+
+# 用 Buildx（更强大）
+docker buildx build \\
+  --cache-from type=local,src=/tmp/.buildx-cache \\
+  --cache-to type=local,dest=/tmp/.buildx-cache \\
+  -f Dockerfile.buildkit \\
+  -t myapp:1.0 \\
+  .
+
+# 对比构建速度
+time docker build -t myapp:nocache --no-cache .         # 不用缓存
+time DOCKER_BUILDKIT=1 docker build -f Dockerfile.buildkit -t myapp:cached .
+# 第一次构建：两者差不多
+# 第二次构建（改一行代码）：BuildKit 快 5-10 倍
+\`\`\`
+
+> **避坑**：\`--mount=type=cache\` 的缓存存在 builder 的 builder机器上。如果你用 CI（如 GitHub Actions），要用 \`type=gha\` 把缓存存到 Actions 缓存里，否则每次都重新下载。
+
+### 58.14 常见错误和避坑指南
 
 **错误 1：镜像太大**
 
@@ -1621,7 +2518,114 @@ RUN pip install -r requirements.txt
 COPY . .
 \`\`\`
 
-### 58.12 实战：完整的 Docker 部署方案
+**错误 6：容器启动后立刻退出**
+
+\`\`\`bash
+# 看退出码
+docker ps -a
+# Exit 0: 命令执行完就退了（如 CMD ["python", "script.py"]）
+# Exit 1: 应用报错
+# Exit 137: 被 OOM Killer 杀了（内存不够）
+# Exit 139: 段错误（一般是 C 扩展崩了）
+
+# 看日志
+docker logs <container_id>
+
+# 常见原因:
+# 1. CMD 写错（用 shell 形式 vs exec 形式）
+# 2. 应用启动失败（数据库连不上）
+# 3. 内存不够（调大 --memory）
+\`\`\`
+
+### 58.15 动手实验
+
+**实验 1：体验镜像大小差异**
+
+\`\`\`bash
+# 1. 用 python:3.11（full）构建
+echo 'FROM python:3.11' > Dockerfile.full
+echo 'RUN pip install fastapi uvicorn' >> Dockerfile.full
+docker build -f Dockerfile.full -t test:full .
+
+# 2. 用 python:3.11-slim 构建
+echo 'FROM python:3.11-slim' > Dockerfile.slim
+echo 'RUN pip install --no-cache-dir fastapi uvicorn' >> Dockerfile.slim
+docker build -f Dockerfile.slim -t test:slim .
+
+# 3. 对比大小
+docker images | grep test:
+# 预期: full ~1GB, slim ~200MB
+\`\`\`
+
+**实验 2：验证缓存机制**
+
+\`\`\`bash
+# 1. 第一次构建（记下时间）
+time docker build -t myapp:v1 .
+
+# 2. 改一行代码（不改 requirements.txt）
+echo "# test" >> app/main.py
+
+# 3. 第二次构建（应该很快，因为 pip install 用缓存）
+time docker build -t myapp:v2 .
+
+# 4. 改 requirements.txt
+echo "redis" >> requirements.txt
+
+# 5. 第三次构建（会重新装依赖，慢）
+time docker build -t myapp:v3 .
+\`\`\`
+
+**实验 3：用 docker-compose 起一套完整服务**
+
+\`\`\`bash
+# 1. 按 58.9 节写好 main.py、Dockerfile、docker-compose.yml
+# 2. 启动
+docker-compose up -d
+
+# 3. 测试 API
+curl -X POST http://localhost:8000/items \\
+  -H "Content-Type: application/json" \\
+  -d '{"name": "苹果", "price": 5.5}'
+
+curl http://localhost:8000/items/1
+# 第一次: {"source": "db", ...}
+# 第二次: {"source": "cache", ...}
+
+# 4. 查看 Redis 缓存
+docker exec -it my-redis redis-cli
+# > KEYS *
+# > GET item:1
+
+# 5. 模拟数据库挂掉
+docker stop my-db
+curl http://localhost:8000/items/1
+# 仍然能返回（缓存命中）
+
+# 6. 恢复
+docker start my-db
+\`\`\`
+
+**实验 4：构建并优化镜像**
+
+\`\`\`bash
+# 1. 写一个简单的 Dockerfile（单阶段）
+# 2. 构建并记录大小
+docker build -t myapp:single .
+docker images myapp:single
+
+# 3. 改成多阶段构建
+# 4. 重新构建并对比
+docker build -t myapp:multi .
+docker images myapp:multi
+
+# 5. 加 .dockerignore 后再构建
+docker build -t myapp:optimized .
+docker images myapp:optimized
+# 预期: single > multi > optimized
+\`\`\`
+
+### 58.16 实战：完整的 Docker 部署方案
 
 \`\`\`dockerfile
 # Dockerfile - 生产级镜像
@@ -1808,6 +2812,20 @@ Gunicorn 已经能跑 FastAPI 了，为什么前面还要加一层 Nginx？
 | WebSocket 代理 | ✅ | ✅ |
 
 一句话：**Nginx 是专业的"前台"，Gunicorn 是"后厨"**。前台负责接待（SSL、限流、静态文件），后厨负责做菜（业务逻辑）。
+
+> 🌐 **生活类比：Nginx 像商场大门保安**
+>
+> 想象一家大商场：
+> - **Gunicorn 直接对外** = 后厨厨师直接站门口接待客人。客人要 SSL 加密（包裹寄存）、要查身份证（鉴权）、要看静态展板（静态文件）、有人闹事要拦住（限流）——厨师根本忙不过来，做菜的正事也耽误了；
+> - **加 Nginx** = 商场请了专业保安团队站大门：
+>   - **SSL/HTTPS** = 保安帮你把客人的包裹寄存（加密解密），后厨只收明文订单；
+>   - **静态文件** = 保安直接给客人发传单（静态资源），不用麻烦后厨；
+>   - **限流** = 节假日人多，保安控制每分钟放多少客人进去（rate limiting）；
+>   - **负载均衡** = 保安看哪个收银台人少，把客人引过去（upstream 轮询）；
+>   - **Gzip 压缩** = 保安把大包裹压缩成小包裹再送进去（响应压缩）；
+>   - **健康检查** = 保安发现某收银台关了，自动不再引客人过去（max_fails）。
+>
+> 后厨（Gunicorn）只专注做菜（业务逻辑），所有杂事交给保安（Nginx）。
 
 > 经典三层架构：\`客户端 → Nginx → Gunicorn → FastAPI\`。Nginx 处理所有"非业务"的事，Gunicorn 专注跑业务代码。
 
@@ -2379,181 +3397,572 @@ server {
 }
 \`\`\`
 
-### 59.10 常见错误和避坑指南
+### 59.10 Let's Encrypt 自动续期 + 多域名（Demo 7）
+
+生产环境通常有多个域名，且证书要自动续期。这个 Demo 是完整的 SSL 自动化方案：
+
+\`\`\`nginx
+# /etc/nginx/conf.d/multi-domain.conf - 多域名 + SSL
+
+# === 主站 ===
+server {
+    listen 443 ssl http2;
+    server_name api.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/api.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;
+
+    # 复用 SSL 会话
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    location / {
+        proxy_pass http://fastapi_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+
+# === 文档站 ===
+server {
+    listen 443 ssl http2;
+    server_name docs.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/docs.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/docs.example.com/privkey.pem;
+
+    location / {
+        proxy_pass http://docs_backend;
+    }
+}
+
+# === 通配符 HTTP（用于 Let's Encrypt 验证）===
+# certbot 会用这个 location 完成域名验证
+server {
+    listen 80;
+    server_name api.example.com docs.example.com;
+
+    # Let's Encrypt 验证路径
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # 其他 HTTP 请求跳转 HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# === 后端集群定义 ===
+upstream fastapi_backend {
+    server 127.0.0.1:8000;
+    keepalive 32;
+}
+
+upstream docs_backend {
+    server 127.0.0.1:8001;
+}
+\`\`\`
+
+\`\`\`bash
+# === 自动续期脚本 ===
+# /opt/scripts/renew-cert.sh
+
+#!/bin/bash
+# Let's Encrypt 证书续期脚本
+# 证书有效期 90 天，建议每 30 天跑一次
+
+set -e  # 任何命令失败就退出
+
+echo "[$(date)] 开始证书续期..."
+
+# 1. 续期证书
+# --quiet: 静默模式
+# --no-random-sleep-on-renew: 不随机休眠（脚本里不需要）
+certbot renew --quiet --no-random-sleep-on-renew
+
+# 2. 检查证书是否更新
+# certbot renew 只在快过期时才真正续期，其他时候啥也不做
+# 用 --deploy-hook 在真正续期后才执行
+# 或这里手动检查 nginx 配置并 reload
+if nginx -t 2>/dev/null; then
+    nginx -s reload
+    echo "[$(date)] Nginx 已 reload"
+else
+    echo "[$(date)] Nginx 配置有误，跳过 reload"
+fi
+
+echo "[$(date)] 续期完成"
+
+# === 添加到 crontab ===
+# 每月 1 号凌晨 3 点跑
+# 0 3 1 * * /opt/scripts/renew-cert.sh >> /var/log/cert-renew.log 2>&1
+\`\`\`
+
+\`\`\`bash
+# 首次申请多域名证书
+sudo certbot certonly \\
+  --webroot \\
+  --webroot-path /var/www/certbot \\
+  -d api.example.com \\
+  -d docs.example.com \\
+  --email admin@example.com \\
+  --agree-tos \\
+  --no-eff-email
+
+# 测试续期（不真正续期）
+sudo certbot renew --dry-run
+
+# 查看证书状态
+sudo certbot certificates
+\`\`\`
+
+### 59.11 多级限流配置（Demo 8）
+
+保护 API 不被刷爆，需要多级限流。这个 Demo 展示**全局 + 接口级 + 用户级**三层限流，层层兜底，确保任何场景都不会把后端压垮。
+
+> 🛡️ **生活类比：多级限流像地铁早高峰分流**
+>
+> - **全局限流** = 地铁站总入口的安检口，无论你坐哪条线，都要先过总闸机，避免整个站台挤爆；
+> - **接口级限流** = 每条线各自的检票口，1 号线限流不影响 2 号线，防止一个热门接口拖垮整个服务；
+> - **用户级限流** = 每个人单独的通行额度，VIP 一天 1000 次，普通用户一天 100 次，防个别人滥用。
+
+\`\`\`nginx
+# /etc/nginx/conf.d/rate_limit.conf
+# 多级限流配置：全局 + 接口级 + 用户级
+
+# ============ 1. 定义限流区域（zone）============
+# limit_req_zone 定义一个共享内存区域，所有 worker 共享计数
+# 语法: limit_req_zone $key zone=name:size rate=req/s
+
+# 全局限流：按所有请求的总数限流
+# $binary_remote_addr 是客户端 IP 的二进制形式（比字符串省内存）
+# zone=global:10m 表示分配 10MB 共享内存，约可存 16 万个 IP
+# rate=100r/s 表示平均每秒最多 100 个请求
+limit_req_zone $binary_remote_addr zone=global:10m rate=100r/s;
+
+# 接口级限流：按 API 路径分别限流
+# zone=api_login:10m rate=5r/s 表示 /auth/login 接口每秒最多 5 次（防暴力破解）
+limit_req_zone $binary_remote_addr zone=api_login:10m rate=5r/s;
+
+# 注册接口限流：每秒 2 次（防止批量注册垃圾账号）
+limit_req_zone $binary_remote_addr zone=api_register:10m rate=2r/s;
+
+# 用户级限流：按用户 ID 限流（需配合后端传回的 X-User-Id 头）
+# $http_x_user_id 是 Nginx 从请求头提取的自定义头
+limit_req_zone $http_x_user_id zone=user_quota:10m rate=30r/s;
+
+# ============ 2. 应用限流规则 ============
+server {
+    listen 80;
+    server_name api.example.com;
+
+    # 全局限流：每个 IP 全局每秒 100 个请求
+    # burst=50 表示允许突发 50 个请求排队
+    # nodelay 表示突发请求不延迟，超过立即 503
+    limit_req zone=global burst=50 nodelay;
+
+    # 限流触发时返回 429（默认是 503）
+    limit_req_status 429;
+
+    # 返回的响应头告诉客户端限流信息
+    limit_req_log_level warn;
+
+    # 登录接口：每秒 5 次
+    location /auth/login {
+        limit_req zone=api_login burst=10 nodelay;
+        proxy_pass http://fastapi_backend;
+    }
+
+    # 注册接口：每秒 2 次（更严格）
+    location /auth/register {
+        limit_req zone=api_register burst=5 nodelay;
+        proxy_pass http://fastapi_backend;
+    }
+
+    # 其他 API：用户级限流（后端要传 X-User-Id 头）
+    location /api/ {
+        limit_req zone=user_quota burst=20 nodelay;
+        proxy_pass http://fastapi_backend;
+    }
+}
+\`\`\`
+
+**验证限流效果**：
+
+\`\`\`bash
+# 用 ab（Apache Benchmark）压测登录接口
+# -n 100 发 100 个请求，-c 10 并发 10
+ab -n 100 -c 10 https://api.example.com/auth/login
+
+# 观察返回：超过 rate 的请求会返回 429
+# 用 curl 批量测试
+for i in {1..20}; do
+    curl -s -o /dev/null -w "%{http_code} " https://api.example.com/auth/login
+done
+# 输出：200 200 200 200 200 429 429 429 ... （前 5 个通过，后面被限流）
+\`\`\`
+
+### 59.12 常见错误避坑指南
 
 **错误 1：502 Bad Gateway**
 
 \`\`\`bash
-# 原因：Nginx 连不上后端
-# 排查:
-# 1. Gunicorn 是否在跑
+# 原因：Nginx 转发不到后端，最常见是后端服务挂了或端口不对
+# 排查步骤：
+
+# 1. 检查后端服务是否在跑
 sudo systemctl status gunicorn
-# 2. 端口是否在监听
+# 如果是 inactive (dead)，说明服务没启动
+sudo systemctl start gunicorn
+
+# 2. 检查端口是否监听
 ss -tlnp | grep 8000
-# 3. 防火墙是否放行
-sudo ufw status
-# 4. SELinux 是否阻止（CentOS 常见）
-sudo setenforce 0  # 临时关闭测试
+# 应该看到：LISTEN 127.0.0.1:8000
+
+# 3. 检查 Nginx 配置的 upstream 是否匹配
+# 如果 gunicorn 绑的是 127.0.0.1:8000，nginx 配置的是 0.0.0.0:8000 就连不上
+
+# 4. 查看 Nginx 错误日志，会显示具体原因
+tail -f /var/log/nginx/error.log
+# 常见错误：
+#   connect() refused → 后端没启动
+#   upstream timed out → 后端处理太慢，调大 proxy_read_timeout
 \`\`\`
 
-**错误 2：WebSocket 一直断开**
+**错误 2：504 Gateway Timeout**
 
 \`\`\`nginx
-# 检查这三行是否都有
-proxy_http_version 1.1;
-proxy_set_header Upgrade $http_upgrade;
-proxy_set_header Connection "upgrade";
+# 原因：后端处理时间超过 Nginx 的超时设置
+# 解决：调大超时参数
 
-# 还要检查超时
-proxy_read_timeout 86400s;
-\`\`\`
-
-**错误 3：获取不到客户端真实 IP**
-
-\`\`\`python
-# Nginx 要传 X-Forwarded-For
-# proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-
-# FastAPI 要用 X-Forwarded-For
-# 从 fastapi 导入 Request，用于访问请求信息（headers、client 等）
-# Request 对象包含请求的所有信息：headers、query_params、path_params、client 等
-from fastapi import Request
-
-# @app.get 注册 GET 路由 /ip
-@app.get("/ip")
-# request: Request 是 FastAPI 自动注入的请求对象
-# 不用 Depends，直接用类型注解就能拿到
-# FastAPI 识别到 Request 类型会自动注入当前请求对象
-async def get_ip(request: Request):
-    # request.client.host 是直接连到应用的客户端 IP
-    # 走 Nginx 代理后，这里是 Nginx 的 IP（如 127.0.0.1），不是真实客户端
-    # 要从 X-Forwarded-For 取
-    # request.headers 是一个不区分大小写的字典（Headers 对象）
-    # request.headers.get 不区分大小写，"x-forwarded-for" 和 "X-Forwarded-For" 都行
-    # 第二个参数 "" 是默认值，头不存在时返回空字符串（不传默认值则返回 None）
-    forwarded = request.headers.get("x-forwarded-for", "")
-    if forwarded:
-        # X-Forwarded-For 格式: "客户端IP, 代理1, 代理2, ..."
-        # 每经过一个代理，代理会把自己的 IP 追加到末尾
-        # 所以第一个就是真实客户端 IP（除非客户端伪造，需要可信代理过滤）
-        # split(",")[0] 取第一个，即真实客户端 IP
-        # strip() 去掉前后空格（HTTP 头里逗号后通常有空格）
-        client_ip = forwarded.split(",")[0].strip()
-    else:
-        # 没走代理（如开发环境），直接用 client.host
-        # request.client 是 Address 对象，含 host 和 port
-        client_ip = request.client.host
-    return {"ip": client_ip}
-\`\`\`
-
-**错误 4：proxy_pass 路径错乱**
-
-\`\`\`nginx
-# 记住：带斜杠=替换，不带斜杠=拼接
-location /api/ {
-    proxy_pass http://backend;      # /api/users → /api/users
-    # proxy_pass http://backend/;   # /api/users → /users
-    # proxy_pass http://backend/v1/; # /api/users → /v1/users
+location /slow-api {
+    # 默认 60s，长耗时接口调到 300s
+    proxy_connect_timeout 60s;    # 连接后端的超时
+    proxy_send_timeout 300s;      # 发请求给后端的超时
+    proxy_read_timeout 300s;      # 等后端响应的超时
+    proxy_pass http://fastapi_backend;
 }
 \`\`\`
 
-**错误 5：alias 和 root 搞混**
+**错误 3：WebSocket 连接立即断开**
 
 \`\`\`nginx
-# root: 拼接 location 到 root 路径后面
+# 错误配置：没加 Upgrade 头，WebSocket 握手失败
+location /ws {
+    proxy_pass http://backend;  # 缺少 WebSocket 头！
+}
+
+# 正确配置：必须加这 3 个头
+location /ws {
+    proxy_pass http://backend;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    # WebSocket 长连接，超时要调大
+    proxy_read_timeout 3600s;
+}
+\`\`\`
+
+**错误 4：静态资源 404**
+
+\`\`\`nginx
+# 原因：alias 和 root 的路径理解错误
+# root：拼接 location 路径
+#   location /static/ { root /var/www; }
+#   实际查找：/var/www/static/file.css
+# alias：替换 location 路径
+#   location /static/ { alias /var/www/assets/; }
+#   实际查找：/var/www/assets/file.css
+
+# 避坑：alias 结尾一定要带斜杠！
 location /static/ {
-    root /var/www;   # 实际找 /var/www/static/xxx
+    alias /var/www/assets/;  # 结尾必须有 /
 }
-
-# alias: 用 alias 替换 location
-location /static/ {
-    alias /var/www/files/;  # 实际找 /var/www/files/xxx
-}
-
-# 记忆: root 是"加上"，alias 是"换成"
 \`\`\`
 
-### 59.11 实战：生产级 Nginx 配置
-
-完整的 Nginx + Gunicorn + FastAPI 部署：
+**错误 5：HTTPS 证书过期**
 
 \`\`\`bash
-# 完整部署流程
+# 查看证书过期时间
+echo | openssl s_client -connect api.example.com:443 2>/dev/null | \
+    openssl x509 -noout -dates
 
-# 1. 安装 Nginx
-sudo apt update
-sudo apt install nginx
+# 输出示例：
+# notBefore=Jan  1 00:00:00 2024 GMT
+# notAfter=Apr  1 00:00:00 2024 GMT  ← 这个就是过期时间
 
-# 2. 部署 FastAPI 应用（见上一章）
-# Gunicorn 跑在 127.0.0.1:8000
+# 自动续期没生效？手动测试
+sudo certbot renew --dry-run
 
-# 3. 配置 Nginx
-sudo cp fastapi_app.conf /etc/nginx/conf.d/
-sudo nginx -t
+# 续期后必须 reload nginx 让新证书生效
 sudo systemctl reload nginx
-
-# 4. 申请 SSL 证书
-sudo certbot --nginx -d api.example.com
-
-# 5. 验证
-curl https://api.example.com/health
 \`\`\`
 
+**错误 6：限流把正常用户也挡了**
+
 \`\`\`nginx
-# /etc/nginx/nginx.conf - Nginx 主配置（通常不用改）
-user www-data;
-worker_processes auto;      # 自动按 CPU 核数
-pid /run/nginx.pid;
+# 原因：burst 太小或 rate 太低
+# 解决：根据业务调整
+
+# 网页打开会同时发多个请求（CSS/JS/图片），burst=2 会误杀
+location / {
+    limit_req zone=global burst=20 nodelay;  # burst 调大
+}
+
+# 避坑：限流前先用 ab 压测，看看正常用户的请求模式
+# 移动端弱网下，一个页面可能重试 5-8 次，burst 至少给 10
+\`\`\`
+
+### 59.13 动手实验
+
+**实验 1：搭建完整的反向代理**
+
+\`\`\`bash
+# 目标：Nginx + Gunicorn + FastAPI 三件套跑通
+
+# 1. 启动 FastAPI（用 Gunicorn）
+cd my_project
+gunicorn -c gunicorn.conf.py app.main:app
+
+# 2. 配置 Nginx（参考 59.4 节）
+sudo vim /etc/nginx/conf.d/fastapi.conf
+
+# 3. 测试配置语法
+sudo nginx -t
+# 输出：configuration file /etc/nginx/nginx.conf test is successful
+
+# 4. 重载 Nginx
+sudo systemctl reload nginx
+
+# 5. 验证：访问 http://localhost 应该看到 FastAPI 的响应
+curl http://localhost/docs
+# 应该返回 Swagger UI 页面
+\`\`\`
+
+**实验 2：开启 HTTPS**
+
+\`\`\`bash
+# 目标：用 Let's Encrypt 给网站装上小绿锁
+
+# 1. 安装 certbot
+sudo apt install certbot python3-certbot-nginx
+
+# 2. 一键申请证书并自动配置 Nginx
+sudo certbot --nginx -d api.example.com
+
+# 3. 验证 HTTPS
+curl -I https://api.example.com
+# 应该返回 HTTP/2 200，且浏览器显示🔒图标
+
+# 4. 测试自动续期
+sudo certbot renew --dry-run
+\`\`\`
+
+**实验 3：限流压测**
+
+\`\`\`bash
+# 目标：验证限流配置是否生效
+
+# 1. 配置每秒 5 个请求的限流（参考 59.11）
+
+# 2. 用 ab 压测
+ab -n 50 -c 5 https://api.example.com/api/
+
+# 3. 观察结果
+#   Complete requests: 50
+#   Failed requests: 45  ← 45 个被限流
+#   Non-2xx responses: 45  ← 返回 429
+
+# 4. 调整 burst 参数，重新压测，观察失败数变化
+\`\`\`
+
+**实验 4：WebSocket 代理**
+
+\`\`\`bash
+# 目标：通过 Nginx 代理 WebSocket 连接
+
+# 1. FastAPI 写个 WebSocket 接口
+# @app.websocket("/ws")
+# async def ws(websocket: WebSocket):
+#     await websocket.accept()
+#     while True:
+#         data = await websocket.receive_text()
+#         await websocket.send_text(f"Echo: {data}")
+
+# 2. Nginx 配置 WebSocket 代理（参考 59.6 节）
+
+# 3. 用 wscat 测试
+npm install -g wscat
+wscat -c ws://localhost/ws
+# > hello
+# < Echo: hello
+\`\`\`
+
+### 59.14 实战：生产级 Nginx 完整配置
+
+把前面学的所有知识点串起来，这是一个可以直接用于生产的完整配置：
+
+\`\`\`nginx
+# /etc/nginx/nginx.conf - 生产级完整配置
+
+user www-data;                    # 运行用户
+worker_processes auto;            # worker 数自动按 CPU 核数
+pid /run/nginx.pid;               # pid 文件
+error_log /var/log/nginx/error.log warn;  # 错误日志
 
 events {
-    worker_connections 768;  # 每个 worker 的最大连接数
+    worker_connections 2048;      # 每个 worker 最大连接数
+    use epoll;                    # Linux 高性能事件模型
+    multi_accept on;              # 一次接受多个连接
 }
 
 http {
-    # 基础设置
-    sendfile on;
-    tcp_nopush on;
-    tcp_nodelay on;
-    keepalive_timeout 65;
-    types_hash_max_size 2048;
-
-    # MIME 类型
+    # ============ 基础配置 ============
     include /etc/nginx/mime.types;
     default_type application/octet-stream;
 
-    # 日志格式
-    log_format main '$remote_addr - $remote_user [$time_local] '
-                    '"$request" $status $body_bytes_sent '
-                    '"$http_referer" "$http_user_agent" '
-                    '$request_time $upstream_response_time';
+    # 日志格式（JSON 格式方便 ELK 收集）
+    log_format main escape=json '{'
+        '"time":"$time_iso8601",'
+        '"remote_addr":"$remote_addr",'
+        '"request":"$request",'
+        '"status":$status,'
+        '"body_bytes_sent":$body_bytes_sent,'
+        '"request_time":$request_time,'
+        '"upstream_response_time":"$upstream_response_time"'
+    '}';
 
     access_log /var/log/nginx/access.log main;
-    error_log /var/log/nginx/error.log;
 
-    # Gzip
+    sendfile on;                  # 零拷贝，提性能
+    tcp_nopush on;                # 等数据包满了再发
+    tcp_nodelay on;               # 小包立即发（WebSocket 需要）
+    keepalive_timeout 65;         # keep-alive 超时
+    types_hash_max_size 2048;     # 类型哈希表大小
+    server_tokens off;            # 隐藏 Nginx 版本号（安全）
+
+    # ============ Gzip 压缩 ============
     gzip on;
-    gzip_disable "msie6";
-    gzip_types text/plain application/json application/javascript text/css;
+    gzip_vary on;
+    gzip_min_length 1024;         # 小于 1KB 不压缩
+    gzip_types text/plain text/css application/json application/javascript;
 
-    # 限流区定义
-    limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
+    # ============ 限流区域定义 ============
+    limit_req_zone $binary_remote_addr zone=global:10m rate=100r/s;
+    limit_req_zone $binary_remote_addr zone=api_login:10m rate=5r/s;
 
-    # 包含所有站点配置
-    include /etc/nginx/conf.d/*.conf;
+    # ============ 后端 upstream ============
+    upstream fastapi_backend {
+        least_conn;               # 最少连接数策略
+        server 127.0.0.1:8000;    # Gunicorn 实例 1
+        server 127.0.0.1:8001;    # Gunicorn 实例 2（多机部署）
+        keepalive 32;             # 保持 32 个长连接
+    }
+
+    # ============ HTTP 跳转 HTTPS ============
+    server {
+        listen 80;
+        server_name api.example.com;
+        # 永久重定向到 HTTPS
+        return 301 https://$host$request_uri;
+    }
+
+    # ============ HTTPS 主配置 ============
+    server {
+        listen 443 ssl http2;
+        server_name api.example.com;
+
+        # SSL 证书
+        ssl_certificate /etc/letsencrypt/live/api.example.com/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;
+
+        # SSL 优化
+        ssl_protocols TLSv1.2 TLSv1.3;        # 只用安全协议
+        ssl_ciphers HIGH:!aNULL:!MD5;          # 高强度加密
+        ssl_prefer_server_ciphers on;
+        ssl_session_cache shared:SSL:10m;      # session 缓存
+        ssl_session_timeout 10m;
+
+        # 安全头
+        add_header Strict-Transport-Security "max-age=31536000" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+
+        # 全局限流
+        limit_req zone=global burst=50 nodelay;
+
+        # API 接口
+        location / {
+            proxy_pass http://fastapi_backend;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+
+            # WebSocket 支持
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection $connection_upgrade;
+
+            # 超时
+            proxy_connect_timeout 60s;
+            proxy_read_timeout 60s;
+        }
+
+        # 登录接口单独限流
+        location /auth/login {
+            limit_req zone=api_login burst=10 nodelay;
+            proxy_pass http://fastapi_backend;
+        }
+
+        # 静态文件直接 Nginx 处理
+        location /static/ {
+            alias /var/www/my_project/static/;
+            expires 30d;                # 缓存 30 天
+            add_header Cache-Control "public, immutable";
+        }
+
+        # 健康检查
+        location /health {
+            access_log off;             # 不记录日志
+            proxy_pass http://fastapi_backend/health;
+        }
+
+        # Let's Encrypt 续期验证
+        location /.well-known/acme-challenge/ {
+            root /var/www/certbot;
+        }
+    }
 }
 \`\`\`
 
-### 小结
+### 59.15 小结
 
-- **Nginx 是前台，Gunicorn 是后厨**：Nginx 处理 SSL、静态文件、限流，Gunicorn 专注业务；
-- **proxy_pass 带不带斜杠**：带斜杠=替换路径，不带=拼接路径；
-- **WebSocket 要配三行**：\`proxy_http_version 1.1\` + \`Upgrade\` + \`Connection upgrade\`；
-- **超时要调对**：WebSocket 调大 \`read_timeout\`，普通接口 60s 够用；
-- **SSL 交给 Nginx**：后端走 HTTP，证书管理方便；
-- **502 排查**：Gunicorn 是否在跑、端口是否监听、防火墙是否放行。
+Nginx 是 FastAPI 生产部署的"门卫"，它解决了 uvicorn/gunicorn 解决不了的几个问题：
+
+1. **多机负载均衡**：upstream 模块把流量分发到多个后端实例；
+2. **HTTPS 卸载**：SSL 证书交给 Nginx 管，后端只处理 HTTP；
+3. **静态资源加速**：静态文件直接 Nginx 处理，不走 Python；
+4. **限流防护**：limit_req 模块在边缘拦截恶意流量；
+5. **协议转换**：WebSocket、HTTP/2、gRPC 都能代理。
+
+**关键配置速查表**：
+
+| 需求 | 配置 |
+| --- | --- |
+| 反向代理 | \`proxy_pass http://backend;\` |
+| HTTPS | \`listen 443 ssl;\` + 证书路径 |
+| WebSocket | \`proxy_set_header Upgrade $http_upgrade;\` |
+| 限流 | \`limit_req zone=name burst=N nodelay;\` |
+| 负载均衡 | \`upstream { server ...; }\` |
+| 静态文件 | \`location /static/ { alias /path/; }\` |
+
+下一章我们学习 CI/CD，把这些部署步骤全部自动化——代码一推，自动测试、自动构建、自动部署，再也不用手动 SSH 上服务器发版了。
 `,
   },
-
   // =============================================================
   // 第六十章：CI/CD 持续集成部署
   // =============================================================
@@ -2566,382 +3975,543 @@ http {
 
 ### 60.1 什么是 CI/CD
 
-**CI（Continuous Integration，持续集成）**：代码 push 到仓库后，自动运行测试、构建。保证每次提交都是"好的"。
+前面几章学的部署流程：改代码 → 本地测试 → SSH 上服务器 → git pull → 装依赖 → 重启 Gunicorn → 重载 Nginx。每次发版都这么来一遍，累人不说，还容易出错——忘了装依赖、忘了重启、手抖敲错命令。
 
-**CD（Continuous Delivery/Deployment，持续交付/部署）**：自动把通过测试的代码部署到生产环境。
+**CI/CD** 就是把这些步骤全部自动化：
 
-\`\`\`
-开发 → 提交 → CI 自动测试 → 自动构建镜像 → 自动部署 → 生产
- │                                                    ↑
- └──────── 反馈 ←──── 监控告警 ←─────────────────────┘
-\`\`\`
+- **CI（Continuous Integration，持续集成）**：代码推到仓库后，自动跑测试、lint、构建。**确保每次提交都是可用的**；
+- **CD（Continuous Delivery/Deployment，持续交付/部署）**：测试通过后，自动部署到测试环境/生产环境。**确保新功能能快速上线**。
 
-没有 CI/CD 之前，部署是这样的：
+> 🏭 **生活类比：CI/CD 像汽车制造流水线**
+>
+> 想象两种造车方式：
+>
+> - **手动部署（没有 CI/CD）** = 老工匠手工敲车。一个老师傅从引擎、底盘、车身、喷漆全自己干，一辆车造一个月，质量全凭老师傅当天心情，累了就出错；
+> - **CI/CD** = 现代汽车工厂流水线。零件进厂先质检（CI 测试），不合格的零件直接退货；装配线上每个工位自动拧螺丝、自动焊接（CD 部署）；下线前再过一道终检（自动化测试）；合格的车直接开进 4S 店（上线）。
+>
+> 流水线的好处：**快、稳、可重复**。第一辆车和第一万辆车的质量一样，因为都是机器按相同工序做的。CI/CD 也是——第一次部署和第一千次部署的过程一样，不会因为"今天运维困了"就漏掉一步。
 
-1. 本地跑测试（可能忘了跑）；
-2. SSH 到服务器；
-3. git pull；
-4. 装依赖；
-5. 重启服务；
-6. 发现挂了，再 SSH 排查。
+### 60.2 为什么需要 CI/CD
 
-每次部署都心惊胆战，而且经常忘记某一步。CI/CD 把这些步骤自动化，**一键部署、可回滚、可审计**。
-
-| 概念 | 说明 |
+| 手动部署的痛 | CI/CD 的解药 |
 | --- | --- |
-| CI | 自动测试 + 自动构建 |
-| CD | 自动部署到生产 |
-| Pipeline | 流水线，定义 CI/CD 的步骤 |
-| Workflow | GitHub Actions 里的流水线 |
-| Artifact | 构建产物（如 Docker 镜像、jar 包） |
-| Runner | 执行 CI/CD 的机器 |
+| 忘了跑测试，bug 上线 | 推代码自动跑测试，不通过不让合并 |
+| 环境不一致（本地能跑线上挂） | 用 Docker 保证环境一致 |
+| 发版要半夜操作（怕影响用户） | 自动滚动更新，白天也能发 |
+| 回滚困难（要手动改回去） | 一键回滚到上个版本 |
+| 多人协作冲突（A 改了配置 B 不知道） | PR 强制 review + 自动检查 |
+| 上线紧张（手心冒汗） | 全自动，人只看着就行 |
 
-### 60.2 GitHub Actions 基础（Demo 1）
+### 60.3 CI/CD 工具对比
 
-GitHub Actions 是 GitHub 内置的 CI/CD 工具，配置文件放在 \`.github/workflows/\` 目录：
+主流的 CI/CD 工具：
 
-\`\`\`yaml
-# .github/workflows/01-basic.yml - 最基础的 workflow
-name: Basic CI  # workflow 名称
+| 工具 | 特点 | 适用场景 |
+| --- | --- | --- |
+| **GitHub Actions** | GitHub 自带，配置简单，免费额度够用 | 个人项目、开源项目、中小团队 |
+| GitLab CI | GitLab 自带，功能全 | 用 GitLab 的团队 |
+| Jenkins | 老牌、插件多、可定制性强 | 大企业、复杂流程 |
+| CircleCI | 速度快、贵 | 商业项目 |
+| Drone | 轻量、Docker 原生 | 喜欢 Docker 的团队 |
 
-# 触发条件：什么时候跑
-on:
-  push:
-    branches: [main, develop]    # push 到 main/develop 时触发
-  pull_request:
-    branches: [main]              # PR 到 main 时触发
+本章用 **GitHub Actions** 演示，因为：1）免费；2）和 GitHub 仓库无缝集成；3）配置文件就是 YAML，版本化管理
 
-# 任务（可以并行多个）
-jobs:
-  test:
-    runs-on: ubuntu-latest        # 在 Ubuntu 上跑
+### 60.4 GitHub Actions 基础概念
 
-    steps:
-      # 步骤 1: 拉代码
-      - name: Checkout code
-        uses: actions/checkout@v4   # 用现成的 action
+GitHub Actions 的核心概念：
 
-      # 步骤 2: 装 Python
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+- **Workflow（工作流）**：一个 YAML 文件，定义整个 CI/CD 流程，放在 \`.github/workflows/\` 目录；
+- **Job（任务）**：workflow 里的一组步骤，每个 job 跑在一个虚拟机里；
+- **Step（步骤）**：job 里的具体操作，可以是 shell 命令或预制的 action；
+- **Action**：可复用的步骤单元，比如 \`actions/checkout\` 是拉代码的 action；
+- **Runner**：执行 job 的机器，GitHub 提供免费 runner（Ubuntu/Windows/macOS）。
 
-      # 步骤 3: 装依赖
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      # 步骤 4: 跑个简单的命令
-      - name: Run echo
-        run: echo "Hello from CI!"
+\`\`\`
+Workflow (deploy.yml)
+  ├── Job: test        （跑测试）
+  │     ├── Step: checkout（拉代码）
+  │     ├── Step: setup-python（装 Python）
+  │     ├── Step: install-deps（装依赖）
+  │     └── Step: pytest（跑测试）
+  └── Job: deploy      （部署，依赖 test 通过）
+        ├── Step: build-image（构建 Docker 镜像）
+        └── Step: deploy-to-server（推到服务器）
 \`\`\`
 
-**关键概念：**
+### 60.5 第一个 CI：自动跑测试（Demo 1）
 
-- \`on\`：触发条件（push、PR、定时、手动等）；
-- \`jobs\`：任务，多个 job 默认并行；
-- \`runs-on\`：在什么环境跑（ubuntu-latest、windows-latest 等）；
-- \`steps\`：步骤，按顺序执行；
-- \`uses\`：用现成的 action（别人写好的）；
-- \`run\`：直接执行命令。
+项目结构：
 
-### 60.3 自动化测试 workflow（Demo 2）
+\`\`\`
+my_project/
+├── .github/
+│   └── workflows/
+│       └── test.yml      ← CI 配置文件
+├── app/
+│   └── main.py
+└── tests/
+    └── test_main.py
+\`\`\`
 
 \`\`\`yaml
-# .github/workflows/02-test.yml - 自动化测试
-name: Tests
+# .github/workflows/test.yml
+# 这个 workflow 在每次 push 或 PR 时自动跑测试
 
+# workflow 的名字（GitHub Actions 页面会显示）
+name: Test
+
+# 触发条件：什么时候跑这个 workflow
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop]    # push 到 main 或 develop 时触发
   pull_request:
-    branches: [main]
+    branches: [main]             # 有 PR 指向 main 时触发
 
+# jobs 定义要执行的任务
 jobs:
   test:
+    # 跑在哪个系统上（ubuntu-latest 是 Ubuntu 22.04）
     runs-on: ubuntu-latest
 
-    # 矩阵测试：多个 Python 版本都测一遍
+    # strategy.matrix 可以跑多个版本组合
+    # 这里测试 Python 3.10 和 3.11 两个版本
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11"]
 
+    # steps 定义具体步骤
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      # 步骤 1：拉取代码（用现成的 action）
+      - uses: actions/checkout@v4   # @v4 是 action 版本，要固定
 
-      - name: Set up Python \${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      # 步骤 2：安装 Python
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
-          python-version: \${{ matrix.python-version }}
+          python-version: \${{ matrix.python-version }}  # 用矩阵变量
 
-      # 缓存 pip 依赖，加速构建
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: \${{ runner.os }}-pip-\${{ hashFiles('requirements.txt') }}
-
+      # 步骤 3：安装依赖
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio pytest-cov httpx
+          pip install pytest pytest-asyncio httpx
 
-      # 代码格式检查
-      - name: Lint with flake8
-        run: |
-          pip install flake8
-          # 语法错误直接失败
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # 风格问题只警告
-          flake8 . --count --exit-zero --max-complexity=10 --statistics
-
-      # 跑测试
+      # 步骤 4：跑测试
       - name: Run tests
-        run: |
-          pytest --cov=app --cov-report=xml --cov-report=term
+        run: pytest -v --cov=app --cov-report=xml
 
-      # 上传覆盖率报告
+      # 步骤 5：上传覆盖率报告
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v3
         with:
           file: ./coverage.xml
-          token: \${{ secrets.CODECOV_TOKEN }}
 \`\`\`
 
-\`\`\`python
-# tests/test_main.py - 配套的测试代码
-# 从 fastapi.testclient 导入 TestClient，用于模拟 HTTP 请求
-# TestClient 不需要真正启动服务器，直接在内存里调用 app
-from fastapi.testclient import TestClient
-# 从 app.main 导入 app 实例（被测对象）
-from app.main import app
+推到 GitHub 后，每次提交都会自动跑测试，绿勾表示通过，红叉表示失败。
 
-# 创建测试客户端，后续用它发请求
-client = TestClient(app)
+### 60.6 CD：自动部署到服务器（Demo 2）
 
-# 测试函数必须以 test_ 开头，pytest 才会自动识别
-def test_root():
-    """测试根路径"""
-    # client.get("/") 模拟 GET / 请求
-    # 不走网络，直接调用 app，返回 Response 对象
-    response = client.get("/")
-    # 断言状态码是 200
-    assert response.status_code == 200
-    # response.json() 把响应体解析成字典
-    # 断言返回体里有 "message" 字段
-    assert "message" in response.json()
-
-def test_health():
-    """测试健康检查"""
-    # 测试 /health 接口
-    response = client.get("/health")
-    assert response.status_code == 200
-    # 断言 status 字段值是 "healthy"
-    assert response.json()["status"] == "healthy"
-
-def test_create_and_get_user():
-    """测试创建用户并查询"""
-    # 创建
-    # client.post 发 POST 请求，json= 是请求体
-    # TestClient 会自动加 Content-Type: application/json
-    response = client.post("/api/users", json={"name": "Alice", "age": 30})
-    assert response.status_code == 200
-    # 从返回体提取 user_id，用于后续查询
-    user_id = response.json()["id"]
-
-    # 查询
-    # f-string 把 user_id 拼到 URL 里
-    response = client.get(f"/api/users/{user_id}")
-    assert response.status_code == 200
-    # 断言查到的名字和创建时一致
-    assert response.json()["name"] == "Alice"
-\`\`\`
-
-### 60.4 自动构建 Docker 镜像（Demo 3）
+测试通过后，自动部署到生产服务器。
 
 \`\`\`yaml
-# .github/workflows/03-build.yml - 构建 Docker 镜像
-name: Build Docker Image
+# .github/workflows/deploy.yml
+# 部署 workflow：只在 main 分支 push 时触发
 
-on:
-  push:
-    branches: [main]
-    tags: ["v*"]          # 打 tag 时也触发
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    # 只有测试通过才构建
-    needs: test           # 依赖测试 job（假设在另一个 workflow 里用 needs）
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      # 登录 Docker Hub
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: \${{ secrets.DOCKERHUB_USERNAME }}
-          password: \${{ secrets.DOCKERHUB_TOKEN }}
-
-      # 提取 metadata（标签、版本号）
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: myusername/my-fastapi-app
-          tags: |
-            type=ref,event=branch           # 分支名
-            type=ref,event=tag              # tag 名
-            type=sha,prefix={{sha}}-        # commit sha
-            type=raw,value=latest,enable=\${{ github.ref == 'refs/heads/main' }}
-
-      # 构建并推送
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: \${{ steps.meta.outputs.tags }}
-          labels: \${{ steps.meta.outputs.labels }}
-          cache-from: type=gha    # 用 GitHub Actions 缓存
-          cache-to: type=gha,mode=max
-\`\`\`
-
-> **避坑**：密钥（DOCKERHUB_TOKEN）不要写在 yml 里！去 GitHub 仓库的 Settings → Secrets and variables → Actions 添加。
-
-### 60.5 推送到镜像仓库（Demo 4）
-
-\`\`\`yaml
-# .github/workflows/04-publish.yml - 推送到多个镜像仓库
-name: Publish
-
-on:
-  push:
-    tags: ["v*"]    # 打 tag 时才发布正式版
-
-jobs:
-  publish:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      # === 推到 Docker Hub ===
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: \${{ secrets.DOCKERHUB_USERNAME }}
-          password: \${{ secrets.DOCKERHUB_TOKEN }}
-
-      # === 推到 GitHub Container Registry ===
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: \${{ github.actor }}
-          password: \${{ secrets.GITHUB_TOKEN }}    # 这个不用配，自动有
-
-      # === 推到阿里云镜像仓库 ===
-      - name: Login to Aliyun ACR
-        uses: docker/login-action@v3
-        with:
-          registry: registry.cn-hangzhou.aliyuncs.com
-          username: \${{ secrets.ALIYUN_USERNAME }}
-          password: \${{ secrets.ALIYUN_PASSWORD }}
-
-      # 构建并推送到三个仓库
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: |
-            myusername/my-fastapi-app:\${{ github.ref_name }}
-            myusername/my-fastapi-app:latest
-            ghcr.io/\${{ github.repository }}:\${{ github.ref_name }}
-            ghcr.io/\${{ github.repository }}:latest
-            registry.cn-hangzhou.aliyuncs.com/mynamespace/my-app:\${{ github.ref_name }}
-
-      # 生成构建报告
-      - name: Image digest
-        run: echo "镜像构建成功 digest=\${{ steps.build.outputs.digest }}"
-\`\`\`
-
-### 60.6 自动部署到服务器（Demo 5）
-
-\`\`\`yaml
-# .github/workflows/05-deploy.yml - 自动部署到服务器
 name: Deploy
 
 on:
   push:
-    branches: [main]     # main 分支 push 就部署
+    branches: [main]    # 只有 main 分支 push 才部署
+
+# 同时只允许一个部署任务跑，避免并发部署冲突
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  # ============ Job 1: 先跑测试 ============
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: pip install pytest
+      - run: pytest
+
+  # ============ Job 2: 部署（依赖 test 通过）============
+  deploy:
+    needs: test          # 等 test job 通过才跑
+    runs-on: ubuntu-latest
+    # 只有 main 分支才部署（双重保险）
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      # 拉代码
+      - uses: actions/checkout@v4
+
+      # 构建 Docker 镜像并推到 Docker Hub
+      - name: Build and push Docker image
+        run: |
+          # 登录 Docker Hub（密码存在 GitHub Secrets 里）
+          echo "\${{ secrets.DOCKER_PASSWORD }}" | docker login -u "\${{ secrets.DOCKER_USERNAME }}" --password-stdin
+          # 构建镜像，tag 用 GitHub 的 commit SHA（保证唯一）
+          docker build -t myuser/fastapi-app:\${{ github.sha }} .
+          # 推到 Docker Hub
+          docker push myuser/fastapi-app:\${{ github.sha }}
+
+      # SSH 到生产服务器，拉新镜像并重启
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: \${{ secrets.SERVER_HOST }}        # 服务器 IP
+          username: \${{ secrets.SERVER_USER }}     # SSH 用户
+          key: \${{ secrets.SSH_PRIVATE_KEY }}       # SSH 私钥
+          script: |
+            # 拉新镜像
+            docker pull myuser/fastapi-app:\${{ github.sha }}
+            # 停旧容器
+            docker stop fastapi-app || true
+            docker rm fastapi-app || true
+            # 启动新容器
+            docker run -d --name fastapi-app \\
+              -p 8000:8000 \\
+              --env-file /app/.env \\
+              myuser/fastapi-app:\${{ github.sha }}
+            # 清理旧镜像
+            docker image prune -f
+\`\`\`
+
+**关键概念：GitHub Secrets**
+
+密码、私钥这些敏感信息不能写在 YAML 里（会泄露），要用 GitHub Secrets：
+
+1. 仓库 → Settings → Secrets and variables → Actions；
+2. New repository secret，填名字和值；
+3. YAML 里用 \`\${{ secrets.名字 }}\` 引用。
+
+### 60.7 多环境流水线（Demo 3）
+
+真实项目通常有多个环境：dev → staging → production。每次 PR 推到 dev，合并到 main 推到 staging，打 tag 推到 production。
+
+\`\`\`yaml
+# .github/workflows/multi-env.yml
+# 多环境部署：根据分支自动部署到不同环境
+
+name: Multi-Env Deploy
+
+on:
+  push:
+    branches: [dev, main]    # dev 推到测试环境，main 推到预发布
+  # 打 tag 时部署到生产
+  tags:
+    - "v*"                   # v1.0.0、v2.1.3 这种 tag
+
+jobs:
+  # ============ 公共：测试 job ============
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt && pip install pytest
+      - run: pytest
+
+  # ============ dev 环境：push 到 dev 分支 ============
+  deploy-dev:
+    needs: test
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    environment: dev    # GitHub Environments 功能，可配审批
+    steps:
+      - name: Deploy to dev
+        run: echo "部署到 dev 环境: dev.example.com"
+        # 实际部署脚本...
+
+  # ============ staging 环境：push 到 main 分支 ============
+  deploy-staging:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Deploy to staging
+        run: echo "部署到 staging 环境: staging.example.com"
+
+  # ============ production 环境：打 tag ============
+  deploy-production:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    # production 环境要求人工审批（GitHub Environments 配置）
+    environment:
+      name: production
+      url: https://api.example.com    # 部署后的访问地址
+    steps:
+      - name: Deploy to production
+        run: |
+          echo "部署到生产环境: api.example.com"
+          echo "版本: \${{ github.ref_name }}"    # v1.0.0
+\`\`\`
+
+> **GitHub Environments** 是个强大功能：可以给每个环境配不同的 secrets、要求人工审批、限制部署分支。在仓库 Settings → Environments 里配置。
+
+### 60.8 数据库迁移自动化（Demo 4）
+
+部署新版本时常要跑数据库迁移（Alembic）。这个 Demo 展示如何在 CI/CD 里安全地跑迁移。
+
+\`\`\`yaml
+# .github/workflows/migrate.yml
+# 数据库迁移 workflow
+
+name: Database Migration
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install alembic
+
+      # 步骤 1：先生成迁移 SQL，但不执行（检查会不会出错）
+      - name: Generate migration SQL (dry-run)
+        run: |
+          # alembic upgrade head --sql 生成 SQL 但不执行
+          # 输出到文件，方便人工 review
+          alembic upgrade head --sql > migration.sql
+          cat migration.sql
+        env:
+          DATABASE_URL: \${{ secrets.STAGING_DATABASE_URL }}
+
+      # 步骤 2：执行迁移
+      - name: Run migration
+        run: |
+          # 真正执行迁移
+          alembic upgrade head
+        env:
+          DATABASE_URL: \${{ secrets.PRODUCTION_DATABASE_URL }}
+
+      # 步骤 3：验证迁移结果
+      - name: Verify migration
+        run: |
+          # 检查当前版本
+          alembic current
+          # 检查是否有未执行的迁移
+          alembic heads
+        env:
+          DATABASE_URL: \${{ secrets.PRODUCTION_DATABASE_URL }}
+
+      # 步骤 4：失败时回滚
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          # 回滚一个版本
+          alembic downgrade -1
+        env:
+          DATABASE_URL: \${{ secrets.PRODUCTION_DATABASE_URL }}
+\`\`\`
+
+**避坑**：
+
+\`\`\`bash
+# 1. 迁移前一定要备份！
+pg_dump $DATABASE_URL > backup_$(date +%Y%m%d).sql
+
+# 2. 大表加列要用默认值，避免锁表
+# 错误（会锁表几分钟）：
+#   ALTER TABLE users ADD COLUMN bio TEXT;
+# 正确（分两步）：
+#   ALTER TABLE users ADD COLUMN bio TEXT DEFAULT '';  -- 先加默认值
+#   ALTER TABLE users ALTER COLUMN bio DROP DEFAULT;   -- 再去掉默认值
+
+# 3. 删列要先停用（分多个版本发布）
+# v1: 代码不再读写该列
+# v2: 迁移删掉该列
+\`\`\`
+
+### 60.9 通知集成（Demo 5）
+
+部署成功/失败都要通知团队，不能让大家两眼一黑不知道发生了啥。
+
+\`\`\`yaml
+# .github/workflows/notify.yml
+# 部署 + 通知
+
+name: Deploy with Notification
+
+on:
+  push:
+    branches: [main]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    needs: build          # 等构建完成
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # 方式 1: SSH 到服务器部署
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
+      - name: Deploy
+        id: deploy    # 给 step 一个 id，后面能引用它的输出
+        run: |
+          echo "正在部署..."
+          # 模拟部署
+          sleep 5
+          echo "deploy_status=success" >> $GITHUB_OUTPUT
+
+      # ============ 成功通知：飞书/钉钉/Slack ============
+      - name: Notify success (Feishu)
+        if: success()
+        uses: foxundermoon/feishu-action@v2
         with:
-          host: \${{ secrets.SERVER_HOST }}
-          username: \${{ secrets.SERVER_USER }}
-          key: \${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            # 登录服务器后执行的命令
+          url: \${{ secrets.FEISHU_WEBHOOK_URL }}
+          msg_type: text
+          content: |
+            ✅ 部署成功
+            仓库: \${{ github.repository }}
+            分支: \${{ github.ref_name }}
+            提交者: \${{ github.actor }}
+            提交信息: \${{ github.event.head_commit.message }}
+            查看详情: \${{ github.server_url }}/\${{ github.repository }}/actions/runs/\${{ github.run_id }}
 
-            # 进入项目目录
-            cd /var/www/my_project
-
-            # 拉取最新代码
-            git pull origin main
-
-            # 拉取最新镜像
-            docker pull myusername/my-fastapi-app:latest
-
-            # 重启容器（docker-compose）
-            docker-compose -f docker-compose.prod.yml up -d --build
-
-            # 清理旧镜像
-            docker image prune -f
-
-            # 健康检查
-            sleep 10
-            curl -f http://localhost:8000/health || exit 1
-
-            echo "部署成功！"
-
-      # 方式 2: 用 rsync 同步文件
-      - name: Sync files
-        uses: burnett01/rsync-deployments@6.0.0
+      # ============ 失败通知 ============
+      - name: Notify failure (Feishu)
+        if: failure()
+        uses: foxundermoon/feishu-action@v2
         with:
-          switches: -avzr --delete
-          path: ./
-          remote_path: /var/www/my_project/
-          remote_host: \${{ secrets.SERVER_HOST }}
-          remote_user: \${{ secrets.SERVER_USER }}
-          remote_key: \${{ secrets.SSH_PRIVATE_KEY }}
+          url: \${{ secrets.FEISHU_WEBHOOK_URL }}
+          msg_type: text
+          content: |
+            ❌ 部署失败
+            仓库: \${{ github.repository }}
+            分支: \${{ github.ref_name }}
+            提交者: \${{ github.actor }}
+            错误信息: 请查看日志
+            查看日志: \${{ github.server_url }}/\${{ github.repository }}/actions/runs/\${{ github.run_id }}
+
+      # ============ 飞书卡片消息（更美观）============
+      - name: Send rich card
+        if: success()
+        uses: foxundermoon/feishu-action@v2
+        with:
+          url: \${{ secrets.FEISHU_WEBHOOK_URL }}
+          msg_type: interactive
+          card: |
+            {
+              "header": {
+                "title": {"tag": "plain_text", "content": "🚀 部署成功"},
+                "template": "green"
+              },
+              "elements": [
+                {"tag": "div", "text": {"tag": "lark_md", "content": "**仓库**: \${{ github.repository }}\\n**分支**: \${{ github.ref_name }}\\n**提交者**: \${{ github.actor }}"}}
+              ]
+            }
 \`\`\`
 
-### 60.7 部署策略：蓝绿部署、滚动部署
+### 60.10 缓存优化加速构建（Demo 6）
 
-**蓝绿部署**：两套环境（蓝、绿），同时只有一套对外服务。发布时切流量。
+每次 CI 都重新装依赖太慢。用缓存可以大幅加速。
 
 \`\`\`yaml
-# .github/workflows/06-blue-green.yml - 蓝绿部署
+# .github/workflows/cache.yml
+# 带 cache 的 workflow
+
+name: CI with Cache
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      # ============ 缓存 pip 下载的包 ============
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          # 缓存什么文件（~/.cache/pip 是 pip 的下载缓存）
+          path: ~/.cache/pip
+          # 缓存 key：用 requirements.txt 的 hash 作为 key
+          # requirements.txt 没变就用缓存，变了就重新下载
+          key: \${{ runner.os }}-pip-\${{ hashFiles('requirements.txt') }}
+          # 找不到精确 key 时，用这个 restore-keys 回退匹配
+          restore-keys: |
+            \${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      # ============ 缓存 Docker 镜像层 ============
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: \${{ runner.os }}-buildx-\${{ github.sha }}
+          restore-keys: |
+            \${{ runner.os }}-buildx-
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: myapp:test
+          # 用 cache-from 和 cache-to 利用缓存
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new
+
+      # 临时缓存目录要挪一下，避免无限增长
+      - name: Move cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: Run tests
+        run: pytest
+\`\`\`
+
+**缓存效果对比**：
+
+| 场景 | 不带缓存 | 带 cache |
+| --- | --- | --- |
+| 首次构建 | 5 分 30 秒 | 5 分 35 秒（多写缓存） |
+| 第二次构建 | 5 分 28 秒 | 1 分 12 秒（命中缓存） |
+
+### 60.11 蓝绿部署与金丝雀发布（Demo 7）
+
+直接停旧容器启动新容器有短暂中断。**蓝绿部署**和**金丝雀发布**能实现零停机更新。
+
+\`\`\`yaml
+# .github/workflows/blue-green.yml
+# 蓝绿部署 workflow
+
 name: Blue-Green Deploy
 
 on:
@@ -2951,404 +4521,446 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Determine target
-        id: target
+      - uses: actions/checkout@v4
+
+      - name: Determine target environment
+        id: env
+        # 蓝绿切换：当前是 blue 就部署 green，反之亦然
         run: |
-          # 查询当前哪个是活跃环境
-          # 假设有个接口能查
-          CURRENT=$(curl -s https://api.example.com/which-env)
+          # 查询当前哪个环境在跑
+          CURRENT=$(curl -s http://api.example.com/which-env)
           if [ "$CURRENT" = "blue" ]; then
             echo "target=green" >> $GITHUB_OUTPUT
           else
             echo "target=blue" >> $GITHUB_OUTPUT
           fi
 
-      - name: Deploy to \${{ steps.target.outputs.target }}
-        uses: appleboy/ssh-action@v1
-        with:
-          host: \${{ secrets.SERVER_HOST }}
-          username: \${{ secrets.SERVER_USER }}
-          key: \${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            # 部署到非活跃环境
-            cd /var/www/my_project
-            export ENV=\${{ steps.target.outputs.target }}
-            docker-compose -f docker-compose.\${ENV}.yml up -d --build
+      - name: Deploy to \${{ steps.env.outputs.target }}
+        run: |
+          TARGET=\${{ steps.env.outputs.target }}
+          # 启动新环境（不切换流量）
+          docker run -d --name fastapi-\${TARGET} \\
+            -p \${TARGET} == "blue" && 8001 || 8002:8000 \\
+            myuser/fastapi-app:\${{ github.sha }}
 
-            # 等待健康检查通过
-            sleep 30
-            curl -f http://localhost:800\${{ steps.target.outputs.target == 'blue' && '1' || '2' }}/health
-
-            # 切换 Nginx 到新环境
-            sudo cp /etc/nginx/conf.d/api.\${ENV}.conf /etc/nginx/conf.d/api.conf
-            sudo nginx -s reload
-\`\`\`
-
-**滚动部署**：逐步替换实例，旧实例逐个下线，新实例逐个上线。Docker Swarm / K8s 原生支持。
-
-\`\`\`yaml
-# 滚动部署（用 docker-compose 的方式模拟）
-- name: Rolling deploy
-  run: |
-    # 逐个重启容器
-    for i in 1 2 3 4; do
-      # 启动新实例
-      docker-compose up -d --no-deps --build api_$i
-      # 等健康检查
-      sleep 10
-      curl -f http://localhost:800$i/health
-      # 停旧实例
-      docker stop api_\${i}_old || true
-    done
-\`\`\`
-
-### 60.8 回滚机制（Demo 6）
-
-部署失败要能快速回滚：
-
-\`\`\`yaml
-# .github/workflows/07-rollback.yml - 回滚
-name: Rollback
-
-on:
-  workflow_dispatch:     # 手动触发
-    inputs:
-      version:
-        description: "要回滚到的版本（tag）"
-        required: true
-        default: "v1.0.0"
-
-jobs:
-  rollback:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Rollback to \${{ github.event.inputs.version }}
-        uses: appleboy/ssh-action@v1
-        with:
-          host: \${{ secrets.SERVER_HOST }}
-          username: \${{ secrets.SERVER_USER }}
-          key: \${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd /var/www/my_project
-
-            # 拉指定版本的镜像
-            docker pull myusername/my-fastapi-app:\${{ github.event.inputs.version }}
-
-            # 修改 docker-compose 用旧版本
-            export TAG=\${{ github.event.inputs.version }}
-            docker-compose -f docker-compose.prod.yml up -d
-
-            # 健康检查
-            sleep 10
-            if curl -f http://localhost:8000/health; then
-              echo "回滚成功！"
-            else
-              echo "回滚后健康检查失败！"
-              exit 1
+          # 等新环境就绪
+          echo "等待新环境启动..."
+          for i in {1..30}; do
+            if curl -s http://localhost:\${TARGET} == "blue" && 8001 || 8002/health | grep "ok"; then
+              echo "新环境就绪"
+              break
             fi
-\`\`\`
+            sleep 2
+          done
 
-**自动回滚**（部署失败自动回滚）：
+          # 跑冒烟测试
+          echo "跑冒烟测试..."
+          pytest tests/test_smoke.py --base-url=http://localhost:\${TARGET} == "blue" && 8001 || 8002
 
-\`\`\`yaml
-# .github/workflows/08-auto-deploy.yml - 带自动回滚的部署
-name: Deploy with Auto Rollback
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Deploy
-        id: deploy
-        uses: appleboy/ssh-action@v1
+      - name: Switch traffic
+        # 切换 Nginx 流量到新环境
+        uses: appleboy/ssh-action@v1.0.0
         with:
           host: \${{ secrets.SERVER_HOST }}
           username: \${{ secrets.SERVER_USER }}
           key: \${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /var/www/my_project
+            TARGET=\${{ steps.env.outputs.target }}
+            # 更新 Nginx 配置，把 upstream 指向新环境
+            if [ "$TARGET" = "blue" ]; then
+              cp /etc/nginx/conf.d/upstream-blue.conf /etc/nginx/conf.d/upstream.conf
+            else
+              cp /etc/nginx/conf.d/upstream-green.conf /etc/nginx/conf.d/upstream.conf
+            fi
+            # 重载 Nginx（不中断连接）
+            nginx -s reload
 
-            # 记录当前版本（用于回滚）
-            CURRENT_TAG=$(cat current_version.txt 2>/dev/null || echo "v1.0.0")
-            echo "$CURRENT_TAG" > previous_version.txt
-
-            # 部署新版本
-            echo "\${{ github.sha }}" > current_version.txt
-            docker-compose -f docker-compose.prod.yml up -d --build
-
-            # 健康检查（最多重试 6 次）
-            for i in 1 2 3 4 5 6; do
-              sleep 10
-              if curl -f http://localhost:8000/health; then
-                echo "部署成功！"
-                exit 0
-              fi
-              echo "健康检查失败，重试 $i/6..."
-            done
-
-            # 健康检查全失败，回滚
-            echo "健康检查失败，开始回滚..."
-            PREV_TAG=$(cat previous_version.txt)
-            export TAG=$PREV_TAG
-            docker-compose -f docker-compose.prod.yml up -d
-            sleep 10
-            curl -f http://localhost:8000/health || exit 1
-            echo "回滚成功！"
-            exit 1   # 仍然标记为失败，通知团队
+      - name: Cleanup old environment
+        # 等 5 分钟确保流量都切到新环境了，再清理旧的
+        run: |
+          sleep 300
+          OLD=\${{ steps.env.outputs.target }} == "blue" && "green" || "blue"
+          docker stop fastapi-\${OLD} || true
+          docker rm fastapi-\${OLD} || true
 \`\`\`
 
-### 60.9 常见错误和避坑指南
+**金丝雀发布**：先让 5% 流量到新版本，观察一段时间没问题再放大到 100%。
 
-**错误 1：密钥泄露**
+\`\`\`nginx
+# Nginx 金丝雀配置：5% 流量到新版本
+upstream backend {
+    server 127.0.0.1:8000 weight=19;   # 旧版本：19/20 = 95%
+    server 127.0.0.1:8001 weight=1;    # 新版本：1/20 = 5%
+}
+\`\`\`
+
+### 60.12 常见错误避坑指南
+
+**错误 1：GitHub Secrets 不生效**
 
 \`\`\`yaml
-# 错误：直接写密钥
-- name: Deploy
-  env:
-    PASSWORD: my_secret_password   # 泄露！所有人都能看 yml
-  run: deploy.sh
-
-# 正确：用 secrets
-- name: Deploy
-  env:
-    PASSWORD: \${{ secrets.DEPLOY_PASSWORD }}   # 从 GitHub Secrets 读取
-  run: deploy.sh
+# 错误：secrets 名字写错
+- run: echo "\${{ secrets.Database_Url }}"   # 名字不对
+# 正确：大小写敏感
+- run: echo "\${{ secrets.DATABASE_URL }}"
 \`\`\`
 
-**错误 2：workflow 不触发**
-
-\`\`\`yaml
-# 检查触发条件
-on:
-  push:
-    branches: [main]
-    paths:
-      - "app/**"           # 只有 app/ 下的文件变了才触发
-      - "requirements.txt"
-      - "Dockerfile"
-      - ".github/workflows/**"
-# 如果改了 README.md，不会触发
-\`\`\`
-
-**错误 3：构建缓存不生效**
-
-\`\`\`yaml
-# Docker 构建缓存
-- name: Set up Docker Buildx
-  uses: docker/setup-buildx-action@v3
-
-- name: Build
-  uses: docker/build-push-action@v5
-  with:
-    context: .
-    push: true
-    tags: myapp:latest
-    cache-from: type=gha        # 从 GitHub Actions 缓存读
-    cache-to: type=gha,mode=max # 写缓存
-\`\`\`
-
-**错误 4：SSH 部署失败**
+**错误 2：Docker build 失败**
 
 \`\`\`bash
-# 排查:
-# 1. 服务器 SSH 能连吗
-ssh user@host
+# 原因：Dockerfile 里 COPY 的文件不在构建上下文
+# 检查 .dockerignore 是否排除了需要的文件
+cat .dockerignore
+# 常见问题：把 app/ 加进 .dockerignore 了
 
-# 2. 私钥格式对吗（必须是 PEM 格式）
-# 开始: -----BEGIN OPENSSH PRIVATE KEY-----
-# 要转成: -----BEGIN RSA PRIVATE KEY-----
-ssh-keygen -p -m PEM -f ~/.ssh/id_rsa
+# 调试：在 CI 里加 step 打印构建上下文
+- name: List files
+  run: ls -la
+\`\`\`
 
-# 3. 服务器上的 authorized_keys 加了公钥吗
+**错误 3：SSH 部署连不上**
+
+\`\`\`bash
+# 原因 1：私钥格式不对
+# GitHub Secrets 里存的私钥必须是完整格式，包括 BEGIN/END 行
+-----BEGIN OPENSSH PRIVATE KEY-----
+...
+-----END OPENSSH PRIVATE KEY-----
+
+# 原因 2：服务器没加公钥
+# 在服务器上检查
 cat ~/.ssh/authorized_keys
+# 没有就加上公钥
 
-# 4. 权限对吗
-chmod 700 ~/.ssh
-chmod 600 ~/.ssh/authorized_keys
+# 原因 3：防火墙挡了 22 端口
+# 测试连通性
+ssh -T -v user@server_ip
 \`\`\`
 
-**错误 5：部署后服务起不来**
+**错误 4：测试在 CI 里失败但本地通过**
 
-\`\`\`yaml
-# 加健康检查，部署后自动验证
-- name: Health check
-  run: |
-    # 最多重试 30 次，每次等 5 秒
-    for i in {1..30}; do
-      if curl -f https://api.example.com/health; then
-        echo "服务正常"
-        exit 0
-      fi
-      sleep 5
-    done
-    echo "服务启动失败"
-    exit 1
+\`\`\`bash
+# 原因：环境差异
+# 1. Python 版本不同（本地 3.11，CI 跑 3.10）
+# 解决：在 matrix 里明确指定版本
+# 2. 依赖版本不一致（没 pin 版本）
+# 解决：用 pip freeze > requirements.txt 锁版本
+# 3. 时区不同（CI 默认 UTC）
+# 解决：在 CI 里设置 TZ=Asia/Shanghai
 \`\`\`
 
-### 60.10 实战：完整的 GitHub Actions CI/CD Pipeline
-
-把前面的整合成一个完整的 pipeline：
+**错误 5：并发部署冲突**
 
 \`\`\`yaml
-# .github/workflows/cicd.yml - 完整的 CI/CD 流水线
-name: CI/CD Pipeline
+# 问题：连续 push 两次，两个部署同时跑，互相覆盖
+# 解决：用 concurrency 限制
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true   # 取消旧的，只跑最新的
+\`\`\`
+
+**错误 6：迁移失败导致线上挂掉**
+
+\`\`\`bash
+# 原因：迁移和部署分离，先跑迁移再部署新代码
+# 错误流程：直接部署新代码 → 新代码要新字段 → 数据库没迁移 → 报错
+# 正确流程：
+#   1. 先部署能兼容新旧 schema 的代码（向后兼容）
+#   2. 跑迁移
+#   3. 部署用新 schema 的代码
+
+# Alembic 迁移失败的回滚
+alembic downgrade -1     # 回滚一个版本
+alembic downgrade -5     # 回滚 5 个版本
+alembic downgrade abc123 # 回滚到指定版本
+\`\`\`
+
+### 60.13 动手实验
+
+**实验 1：搭建第一个 CI**
+
+\`\`\`bash
+# 目标：在 GitHub 上跑通自动测试
+
+# 1. 创建 .github/workflows/test.yml（参考 60.5）
+
+# 2. 推到 GitHub
+git add .github/workflows/test.yml
+git commit -m "Add CI"
+git push
+
+# 3. 打开 GitHub 仓库 → Actions 标签页
+# 应该能看到 Test workflow 在跑
+
+# 4. 故意写个失败的测试，看 CI 是否报红
+# 修改 tests/test_main.py，让断言失败
+# 推上去，看 CI 红叉
+\`\`\`
+
+**实验 2：自动部署到测试服务器**
+
+\`\`\`bash
+# 目标：push 到 main 自动部署
+
+# 1. 准备一台测试服务器（VPS 或云主机）
+
+# 2. 在 GitHub 配置 Secrets:
+#    SERVER_HOST: 服务器 IP
+#    SERVER_USER: 用户名
+#    SSH_PRIVATE_KEY: 私钥
+
+# 3. 创建 deploy.yml（参考 60.6）
+
+# 4. 推到 main 分支，观察自动部署
+
+# 5. SSH 上服务器验证
+ssh user@server
+docker ps   # 应该看到新容器在跑
+curl http://localhost:8000/health   # 应该返回 ok
+\`\`\`
+
+**实验 3：加飞书通知**
+
+\`\`\`bash
+# 目标：部署成功/失败发飞书消息
+
+# 1. 在飞书群创建机器人，拿到 webhook URL
+# 群设置 → 群机器人 → 添加机器人 → 自定义机器人
+
+# 2. 把 webhook URL 存到 GitHub Secrets:
+#    FEISHU_WEBHOOK_URL: https://open.feishu.cn/...
+
+# 3. 在 workflow 加通知 step（参考 60.9）
+
+# 4. 推一次代码，观察群里是否收到通知
+\`\`\`
+
+**实验 4：实现蓝绿部署**
+
+\`\`\`bash
+# 目标：零停机更新
+
+# 1. 准备两个端口：blue (8001)、green (8002)
+# 2. Nginx upstream 配置切换脚本
+# 3. 创建 blue-green.yml（参考 60.11）
+# 4. 推代码，观察：
+#    - 新版本启动在另一个端口
+#    - 冒烟测试通过
+#    - Nginx 切换流量
+#    - 旧版本 5 分钟后清理
+# 5. 部署过程中持续 curl，观察是否有中断
+while true; do curl -s http://api.example.com/health; sleep 1; done
+\`\`\`
+
+### 60.14 实战：完整生产级 CI/CD 配置
+
+把前面所有知识点串起来：
+
+\`\`\`yaml
+# .github/workflows/production.yml
+# 生产级完整 CI/CD
+
+name: Production CI/CD
 
 on:
   push:
-    branches: [main, develop]
-    tags: ["v*"]
+    branches: [main]
   pull_request:
     branches: [main]
 
-# 同一分支新 push 取消旧的运行
+# 并发控制
 concurrency:
-  group: \${{ github.workflow }}-\${{ github.ref }}
+  group: ci-\${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # === 阶段 1: 测试 ===
-  test:
+  # ============ 1. 代码检查 ============
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.11"
+      - run: pip install ruff black mypy
+      - run: ruff check .
+      - run: black --check .
+      - run: mypy app/
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: \${{ runner.os }}-pip-\${{ hashFiles('requirements*.txt') }}
-
-      - name: Install deps
-        run: |
-          pip install -r requirements.txt
-          pip install pytest pytest-asyncio pytest-cov httpx flake8
-
-      - name: Lint
-        run: flake8 app/ --count --select=E9,F63,F7,F82
-
-      - name: Test
-        run: pytest --cov=app --cov-report=xml
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
-        if: github.ref == 'refs/heads/main'
-
-  # === 阶段 2: 构建镜像 ===
-  build:
-    needs: test               # 测试通过才构建
+  # ============ 2. 测试（多版本）============
+  test:
+    needs: lint
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'   # 只有 push 才构建，PR 不构建
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
+      - uses: actions/setup-python@v4
         with:
-          username: \${{ secrets.DOCKERHUB_USERNAME }}
-          password: \${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract tags
-        id: meta
-        uses: docker/metadata-action@v5
+          python-version: \${{ matrix.python-version }}
+      - uses: actions/cache@v3
         with:
-          images: myusername/my-fastapi-app
-          tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable=\${{ github.ref == 'refs/heads/main' }}
+          path: ~/.cache/pip
+          key: \${{ runner.os }}-pip-\${{ hashFiles('requirements.txt') }}
+      - run: pip install -r requirements.txt pytest pytest-cov
+      - run: pytest --cov=app --cov-report=xml
+      - uses: codecov/codecov-action@v3
 
-      - name: Build and push
-        id: build
-        uses: docker/build-push-action@v5
+  # ============ 3. 安全扫描 ============
+  security:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - run: pip install safety bandit
+      # 检查依赖有没有已知漏洞
+      - run: safety check
+      # 检查代码安全问题
+      - run: bandit -r app/
+
+  # ============ 4. 构建 Docker 镜像 ============
+  build:
+    needs: [test, security]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: \${{ secrets.DOCKER_USERNAME }}
+          password: \${{ secrets.DOCKER_PASSWORD }}
+      - uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: \${{ steps.meta.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: |
+            myuser/fastapi-app:latest
+            myuser/fastapi-app:\${{ github.sha }}
+          cache-from: type=registry,ref=myuser/fastapi-app:buildcache
+          cache-to: type=registry,ref=myuser/fastapi-app:buildcache,mode=max
 
-  # === 阶段 3: 部署 ===
-  deploy:
+  # ============ 5. 部署到 staging ============
+  deploy-staging:
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'   # 只有 main 才部署
-    environment: production               # 需要手动审批（在 GitHub 设置里配）
+    environment: staging
     steps:
-      - name: Deploy to server
-        uses: appleboy/ssh-action@v1
+      - uses: appleboy/ssh-action@v1.0.0
         with:
-          host: \${{ secrets.SERVER_HOST }}
+          host: \${{ secrets.STAGING_HOST }}
           username: \${{ secrets.SERVER_USER }}
           key: \${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /var/www/my_project
-            git pull origin main
+            docker pull myuser/fastapi-app:\${{ github.sha }}
+            docker stop fastapi-staging || true
+            docker rm fastapi-staging || true
+            docker run -d --name fastapi-staging \\
+              -p 8000:8000 --env-file /app/.env.staging \\
+              myuser/fastapi-app:\${{ github.sha }}
 
-            # 记录当前版本（回滚用）
-            echo "\${{ github.sha }}" > /var/www/my_project/.previous_version
+  # ============ 6. 冒烟测试 ============
+  smoke-test:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          sleep 10
+          curl -f https://staging.example.com/health || exit 1
+          curl -f https://staging.example.com/docs || exit 1
 
-            # 拉最新镜像
-            docker pull myusername/my-fastapi-app:latest
+  # ============ 7. 部署到 production（需人工审批）============
+  deploy-production:
+    needs: smoke-test
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://api.example.com
+    steps:
+      - uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: \${{ secrets.PRODUCTION_HOST }}
+          username: \${{ secrets.SERVER_USER }}
+          key: \${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            docker pull myuser/fastapi-app:\${{ github.sha }}
+            docker stop fastapi-prod || true
+            docker rm fastapi-prod || true
+            docker run -d --name fastapi-prod \\
+              -p 8000:8000 --env-file /app/.env.prod \\
+              myuser/fastapi-app:\${{ github.sha }}
 
-            # 重启
-            docker-compose -f docker-compose.prod.yml up -d
-
-            # 健康检查
-            for i in 1 2 3 4 5 6; do
-              sleep 10
-              if curl -f http://localhost:8000/health; then
-                echo "部署成功"
-                exit 0
-              fi
-            done
-
-            # 失败，回滚
-            echo "部署失败，回滚..."
-            PREV=$(cat /var/www/my_project/.previous_version)
-            git checkout $PREV
-            docker-compose -f docker-compose.prod.yml up -d
-            exit 1
-
-      # 通知（钉钉、飞书、Slack）
-      - name: Notify success
+  # ============ 8. 通知 ============
+  notify:
+    needs: [deploy-production]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: foxundermoon/feishu-action@v2
         if: success()
-        run: |
-          curl -X POST "https://oapi.dingtalk.com/robot/send?access_token=\${{ secrets.DINGTALK_TOKEN }}" \\
-            -H "Content-Type: application/json" \\
-            -d '{"msgtype":"text","text":{"content":"✅ 部署成功: \${{ github.repository }} @\${{ github.sha }}"}}'
-
-      - name: Notify failure
+        with:
+          url: \${{ secrets.FEISHU_WEBHOOK_URL }}
+          msg_type: text
+          content: "✅ 生产部署成功: \${{ github.sha }}"
+      - uses: foxundermoon/feishu-action@v2
         if: failure()
-        run: |
-          curl -X POST "https://oapi.dingtalk.com/robot/send?access_token=\${{ secrets.DINGTALK_TOKEN }}" \\
-            -H "Content-Type: application/json" \\
-            -d '{"msgtype":"text","text":{"content":"❌ 部署失败: \${{ github.repository }} @\${{ github.sha }}\\n查看: \${{ github.server_url }}/\${{ github.repository }}/actions/runs/\${{ github.run_id }}"}}'
+        with:
+          url: \${{ secrets.FEISHU_WEBHOOK_URL }}
+          msg_type: text
+          content: "❌ 部署失败，请检查: \${{ github.server_url }}/\${{ github.repository }}/actions/runs/\${{ github.run_id }}"
 \`\`\`
 
-### 小结
+### 60.15 小结
 
-- **CI/CD 三阶段**：测试 → 构建 → 部署，逐步推进，前一步失败后一步不跑；
-- **密钥用 secrets**：绝不在 yml 里硬编码；
-- **健康检查必配**：部署后自动验证，失败自动回滚；
-- **蓝绿部署**：两套环境切流量，零停机发布；
-- **回滚机制**：保留历史版本，能快速回退；
-- **通知**：部署成功/失败都通知团队（钉钉、飞书、Slack）；
-- **缓存**：pip 依赖、Docker 层都要缓存，加速构建。
+CI/CD 把"改代码 → 测试 → 部署"这条链路完全自动化，带来的好处：
 
-至此，FastAPI 的部署与运维篇讲完了。从 Gunicorn 进程管理、Docker 容器化、Nginx 反向代理到 CI/CD 自动化，你已经掌握了从开发到生产的完整链路。下一批章节将进入实战项目，把前面学到的所有知识整合成一个完整的应用。
-`,
-  },
+1. **质量保证**：每次提交都跑测试，bug 无所遁形；
+2. **环境一致**：Docker 保证开发/测试/生产环境一样；
+3. **快速回滚**：版本号管理，一键回到上个版本；
+4. **无人值守**：白天也能发版，不用半夜运维；
+5. **可审计**：每次部署都有记录，谁部署的、部署了啥、成功没。
+
+**CI/CD 流水线全景图**：
+
+\`\`\`
+代码提交
+  ↓
+[lint] 代码风格检查
+  ↓
+[test] 多版本测试 + 覆盖率
+  ↓
+[security] 安全扫描
+  ↓
+[build] 构建 Docker 镜像
+  ↓
+[deploy-staging] 部署到预发布
+  ↓
+[smoke-test] 冒烟测试
+  ↓
+[manual approval] 人工审批
+  ↓
+[deploy-production] 部署到生产
+  ↓
+[notify] 通知团队
+\`\`\`
+
+**关键原则**：
+
+| 原则 | 说明 |
+| --- | --- |
+| 快速失败 | 尽早发现问题（lint → test → build） |
+| 单一职责 | 每个 job 只做一件事 |
+| 幂等性 | 跑多少次结果一样 |
+| 可回滚 | 任何部署都能回退 |
+| 可观测 | 每步都有日志和通知 |
+
+学完这一章，你已经有了一套完整的 FastAPI 部署运维知识体系：从 Gunicorn 多进程管理、Docker 容器化、Nginx 反向代理，到 CI/CD 全自动部署。下一章我们将开始实战项目，把前面学的所有知识串起来做一个完整的应用。
+`
+  }
 ];
+

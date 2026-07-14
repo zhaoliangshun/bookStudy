@@ -16,7 +16,7 @@ const ORDER_KEY = "sidebar:book-order";
 export function getDefaultBookOrder(categories) {
   const order = {};
   categories.forEach((cat) => {
-    order[cat.name] = cat.books.map((b) => b.path);
+    order[cat.name] = (cat.books || []).map((b) => b.path);
   });
   return order;
 }
@@ -80,10 +80,24 @@ function loadLocalOrder(categories) {
 }
 
 export default function useBookDragDrop(categories) {
-  const [bookOrder, setBookOrder] = useState(() => loadLocalOrder(categories));
+  // 修复 hydration mismatch：不在 useState 初始化时读取 localStorage，
+  // 初始用默认排序，localStorage 数据在下方 useEffect 中加载
+  const [bookOrder, setBookOrder] = useState(() => getDefaultBookOrder(categories));
   const [loaded, setLoaded] = useState(false);
   // 追踪本地是否已修改 bookOrder（防止服务端同步覆盖用户在加载期间的拖拽操作）
   const localModifiedRef = useRef(false);
+
+  // 客户端挂载后从 localStorage 加载排序（避免 SSR 时读取导致 hydration mismatch）
+  // 不修改 loaded：loaded 由下方 fetch effect 控制，确保 save effect 在服务端数据合并后才执行
+  useEffect(() => {
+    const local = loadLocalOrder(categories);
+    if (local && Object.keys(local).length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setBookOrder(local);
+    }
+    // 仅挂载时执行一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

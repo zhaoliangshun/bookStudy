@@ -1,0 +1,20 @@
+{
+  "name": "BookStudy · 交互式教程合集",
+  "short_name": "BookStudy",
+  "description": "Node.js / TypeScript / Python / FastAPI / Java 等大量交互式教程，支持离线阅读",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b1220",
+  "theme_color": "#0891b2",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

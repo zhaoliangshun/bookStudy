@@ -56,7 +56,55 @@ def list_orders(token: str = Header(...), page: int = Query(1), size: int = Quer
 
 依赖注入（Dependency Injection，简称 DI）就是解决这些问题的标准方案。它的核心思想是：**把"组件需要的东西"从外部传入，而不是在组件内部自己创建**。
 
-## 二、控制反转（IoC）：依赖注入背后的设计思想
+## 二、生活类比：餐厅后厨的分工哲学
+
+理解依赖注入最直观的方式，是用餐厅后厨作比喻。
+
+**传统模式（无依赖注入）= 厨师自己干所有事**
+
+想象一个餐厅，每个厨师进门都要自己：
+- 去仓库领刀具
+- 去冷库拿食材
+- 自己生火
+- 自己洗碗
+
+这就是传统写法的代码：每个接口自己创建 db、自己校验 token、自己管理资源。
+
+**依赖注入模式 = 餐厅标准化分工**
+
+标准化的餐厅是这样运作的：
+- 厨师进门时，刀具已经备好放在案板（依赖自动注入）
+- 食材由采购员配送到工位（资源由容器提供）
+- 火候由中央厨房统一控制（生命周期由框架管理）
+- 厨师只管炒菜（业务逻辑）
+
+\`\`\`python
+# ❌ "自己干所有事"的厨师
+def cook_dish():
+    knife = go_to_warehouse_get_knife()      # 自己去拿刀
+    food = go_to_fridge_get_food()           # 自己去拿食材
+    fire = light_fire()                      # 自己生火
+    dish = cook(knife, food, fire)           # 终于开始炒菜
+    wash(knife)                              # 还要自己洗碗
+    return dish
+
+# ✅ "标准化分工"的厨师（依赖注入）
+def cook_dish(
+    knife: Knife = Depends(get_knife),       # 刀具自动配送
+    food: Food = Depends(get_food),          # 食材自动配送
+    fire: Fire = Depends(get_fire),          # 火候自动控制
+):
+    # 厨师只管炒菜，不用管刀从哪来、火怎么生
+    return cook(knife, food, fire)
+\`\`\`
+
+**Depends 像点菜时自动配套餐具**
+
+去餐厅点一份牛排，服务员不会只端一盘肉过来——会自动配上刀叉、酱料、餐巾纸。你不需要每次都说"请给我刀叉"，餐厅默认就会提供。
+
+\`Depends()\` 就是这个"服务员"：你声明"我要 db session"，它自动把 db session 端到你面前，连同 db 需要的连接池、配置一起准备好。
+
+## 三、控制反转（IoC）：依赖注入背后的设计思想
 
 依赖注入是"控制反转"（Inversion of Control, IoC）原则的一种实现。理解 IoC 是理解 DI 的前提。
 
@@ -92,7 +140,7 @@ IoC 的好处：
 
 FastAPI 的 \`Depends()\` 就是这个"容器"的入口。
 
-## 三、FastAPI 的 Depends() 工作原理
+## 四、FastAPI 的 Depends() 工作原理
 
 \`Depends()\` 是 FastAPI 实现依赖注入的核心 API。它的用法很简单：把一个"可调用对象"（函数、类、方法）放进 \`Depends()\`，框架会在请求到来时自动调用它，把返回值注入到路由函数的参数里。
 
@@ -108,7 +156,7 @@ FastAPI 的 \`Depends()\` 就是这个"容器"的入口。
 
 底层实现上，FastAPI 用 \`pydantic\` 的字段校验 + 自己的依赖解析器，把路由函数签名解析成一棵"依赖树"，请求到来时按树的后序遍历顺序执行依赖。
 
-## 四、第一个 Depends 示例：函数作为依赖
+## 五、第一个 Depends 示例：函数作为依赖
 
 最简单的依赖就是一个普通函数：
 
@@ -155,7 +203,7 @@ def read_users(commons: dict = Depends(common_parameters)):
 
 注意：**依赖函数的参数也是从请求中解析的**。FastAPI 把依赖函数和路由函数一视同仁——都是"可调用对象"，签名里的参数都会被解析。这是 FastAPI 依赖注入最巧妙的设计。
 
-## 五、依赖的参数和返回值
+## 六、依赖的参数和返回值
 
 依赖函数可以有参数（从请求解析），也可以有返回值（注入到路由函数）。返回值类型可以是任意 Python 对象：dict、Pydantic 模型、ORM 对象、自定义类实例。
 
@@ -195,7 +243,7 @@ def list_products(pagination: PaginationParams = Depends(get_pagination)):
 
 这里依赖返回的是 Pydantic 模型实例，路由函数拿到后可以用 \`pagination.page\` 访问字段。相比返回 dict，模型实例有类型提示、IDE 自动补全、字段校验，更工程化。
 
-## 六、依赖的缓存机制：同一请求内复用
+## 七、依赖的缓存机制：同一请求内复用
 
 FastAPI 有个重要特性：**同一个请求内，相同的依赖只执行一次，结果会被缓存**。多个参数依赖同一个 \`Depends\` 时，它们拿到的是同一个对象。
 
@@ -264,7 +312,7 @@ def no_cache_endpoint(
 
 实际项目中很少禁用缓存，知道有这个选项即可。
 
-## 七、依赖用于权限检查
+## 八、依赖用于权限检查
 
 权限校验是依赖注入最经典的应用场景。把"解析 token + 校验权限"封装成依赖，路由函数只声明依赖就能享受保护。
 
@@ -329,7 +377,7 @@ def admin_dashboard(user: dict = Depends(get_admin_user)):
 
 注意：\`get_admin_user\` 内部依赖 \`get_current_user\`，路由函数又依赖 \`get_admin_user\`。FastAPI 会先执行 \`get_current_user\`，再执行 \`get_admin_user\`，最后执行路由函数。这就是嵌套依赖（下一章详细讲）。
 
-## 八、依赖用于数据库 Session
+## 九、依赖用于数据库 Session
 
 数据库 session 是另一个经典场景。每个请求需要一个独立的 session，请求结束自动关闭。
 
@@ -420,7 +468,7 @@ def create_user(name: str, age: int, db: Session = Depends(get_db)):
 
 这里用了 \`yield db\` 而不是 \`return db\`，这是 yield 依赖（下一章主题）。它保证请求结束后 session 一定会被关闭，即使路由函数抛异常。
 
-## 九、依赖用于公共参数：避免重复声明
+## 十、依赖用于公共参数：避免重复声明
 
 接口里很多参数是公共的：分页参数、排序参数、过滤参数。每个接口都声明一遍很冗余，用依赖封装。
 
@@ -488,7 +536,7 @@ def list_orders(
 
 如果以后要加一个"是否包含已删除"的过滤参数，只需要改 \`common_query_params\` 一个地方，所有接口自动支持。这就是依赖复用的威力。
 
-## 十、实战：通用分页参数依赖
+## 十一、实战：通用分页参数依赖
 
 把分页参数封装成可复用的依赖，并配上响应模型：
 
@@ -611,7 +659,191 @@ def list_orders(page_params: dict = Depends(get_page_params)):
 
 这个分页依赖 \`get_page_params\` 可以被任何接口复用，配合泛型响应模型 \`PageResponse[T]\`，分页逻辑彻底统一。
 
-## 十一、常见错误与避坑指南
+## 十二、新增 Demo：环境配置依赖
+
+实际项目中，配置（数据库 URL、密钥、调试模式）经常需要注入。用依赖封装配置，便于切换环境（开发/测试/生产）。
+
+\`\`\`python
+# 导入 FastAPI、Depends
+from fastapi import FastAPI, Depends
+# 导入 os 用于读取环境变量
+import os
+
+app = FastAPI()
+
+# 配置类：封装应用配置
+class AppConfig:
+    def __init__(self):
+        # 从环境变量读取，带默认值
+        # os.getenv("变量名", "默认值")：没设置时用默认值
+        self.debug = os.getenv("DEBUG", "true").lower() == "true"  # 调试模式
+        self.database_url = os.getenv("DATABASE_URL", "sqlite:///dev.db")  # 数据库 URL
+        self.secret_key = os.getenv("SECRET_KEY", "dev-secret")   # 密钥
+        self.environment = os.getenv("ENV", "development")        # 环境名
+
+    def is_production(self) -> bool:
+        # 判断是否是生产环境
+        return self.environment == "production"
+
+# 全局配置实例（单例）
+_config = AppConfig()
+
+# 依赖函数：返回配置实例
+def get_config() -> AppConfig:
+    # 返回全局配置
+    # 实际项目可以在这里根据请求切换租户配置
+    return _config
+
+# 路由：注入配置
+@app.get("/info")
+def app_info(config: AppConfig = Depends(get_config)):
+    # config 是 AppConfig 实例
+    return {
+        "environment": config.environment,    # 环境名
+        "debug": config.debug,                # 调试模式
+        "is_prod": config.is_production(),    # 是否生产环境
+        # 注意：密钥不要暴露给前端！这里只是演示
+        "db_url": config.database_url if not config.is_production() else "***",
+    }
+
+# 路由：根据配置走不同逻辑
+@app.get("/data")
+def get_data(config: AppConfig = Depends(get_config)):
+    # 根据环境返回不同数据
+    if config.is_production():
+        # 生产环境：返回脱敏数据
+        return {"data": "production-data-masked"}
+    else:
+        # 开发环境：返回详细数据
+        return {"data": "dev-data-detail", "debug_info": "详细调试信息"}
+\`\`\`
+
+这个例子展示了配置依赖的用法：配置在全局创建一次，通过依赖注入到任何需要的接口。切换环境只需改环境变量，代码不用动。
+
+## 十三、新增 Demo：请求 ID 追踪依赖
+
+微服务/日志追踪场景中，每个请求要有一个唯一 ID，贯穿所有日志。用依赖封装请求 ID 生成。
+
+\`\`\`python
+# 导入 FastAPI、Depends、Header
+from fastapi import FastAPI, Depends, Header
+# 导入 uuid 生成唯一 ID
+import uuid
+# 导入 Optional
+from typing import Optional
+
+app = FastAPI()
+
+# 依赖函数：获取或生成请求 ID
+def get_request_id(
+    # 从 Header 读 X-Request-ID（如果有，用于链路追踪）
+    x_request_id: Optional[str] = Header(None, alias="X-Request-ID"),
+):
+    # 如果客户端传了 X-Request-ID，沿用
+    if x_request_id:
+        return x_request_id
+    # 否则生成新的 UUID4（随机 UUID）
+    # str(uuid.uuid4()) 生成形如 "550e8400-e29b-41d4-a716-446655440000" 的字符串
+    return str(uuid.uuid4())
+
+# 依赖函数：基于请求 ID 的日志器
+def get_logger(req_id: str = Depends(get_request_id)):
+    # 返回一个带请求 ID 的日志函数
+    # 闭包捕获 req_id，每次调用都带上它
+    def log(msg: str):
+        # 日志格式：[请求ID] 消息
+        print(f"[{req_id}] {msg}")
+    return log
+
+# 路由：注入请求 ID 和日志器
+@app.get("/users")
+def list_users(
+    req_id: str = Depends(get_request_id),       # 请求 ID
+    logger = Depends(get_logger),                 # 日志器（依赖请求 ID）
+):
+    # logger 自动带上请求 ID
+    logger("开始查询用户")
+    # 模拟查询
+    users = [{"id": 1, "name": "alice"}]
+    logger(f"查询到 {len(users)} 个用户")
+    # 响应里也带上请求 ID，便于客户端排查
+    return {"request_id": req_id, "users": users}
+\`\`\`
+
+请求 \`GET /users\` 带 \`X-Request-ID: abc-123\`，控制台输出：
+
+\`\`\`
+[abc-123] 开始查询用户
+[abc-123] 查询到 1 个用户
+\`\`\`
+
+请求 ID 贯穿整个请求链路，日志聚合时可以按 ID 串联所有日志，便于排查问题。
+
+## 十四、新增 Demo：简单的限流依赖
+
+限流（rate limiting）是依赖注入的典型场景：每个接口都要限流，但限流逻辑可以统一封装。
+
+\`\`\`python
+# 导入 FastAPI、Depends、HTTPException、Request
+from fastapi import FastAPI, Depends, HTTPException, Request
+# 导入时间
+import time
+
+app = FastAPI()
+
+# 简单的内存限流器（生产环境用 Redis）
+# 结构：{客户端 IP: [请求时间戳列表]}
+_rate_limit_store: dict[str, list[float]] = {}
+
+# 依赖函数：限流检查
+def rate_limit(
+    request: Request,                        # 注入 Request 对象
+    max_requests: int = 10,                  # 最大请求数
+    window_seconds: int = 60,                # 时间窗口（秒）
+):
+    # 获取客户端 IP（实际项目要考虑 X-Forwarded-For）
+    client_ip = request.client.host if request.client else "unknown"
+    # 当前时间
+    now = time.time()
+    # 计算窗口起始时间
+    window_start = now - window_seconds
+
+    # 取出该 IP 的请求记录
+    if client_ip not in _rate_limit_store:
+        _rate_limit_store[client_ip] = []
+    # 过滤掉窗口外的旧记录
+    _rate_limit_store[client_ip] = [
+        ts for ts in _rate_limit_store[client_ip] if ts > window_start
+    ]
+    # 检查是否超过限制
+    if len(_rate_limit_store[client_ip]) >= max_requests:
+        # 超限，抛 429 Too Many Requests
+        raise HTTPException(
+            status_code=429,
+            detail=f"请求过于频繁，每 {window_seconds} 秒最多 {max_requests} 次",
+        )
+    # 记录本次请求时间
+    _rate_limit_store[client_ip].append(now)
+    # 返回剩余次数（可选）
+    return {"remaining": max_requests - len(_rate_limit_store[client_ip])}
+
+# 路由：应用限流
+@app.get("/api/data")
+def get_data(limit_info: dict = Depends(rate_limit)):
+    return {"msg": "请求数据", "remaining": limit_info["remaining"]}
+
+# 路由：自定义限流参数（更严格）
+@app.get("/api/sensitive")
+def sensitive_op(
+    limit_info: dict = Depends(lambda: rate_limit(max_requests=3, window_seconds=60)),
+):
+    # 敏感操作，每分钟最多 3 次
+    return {"msg": "敏感操作完成", "remaining": limit_info["remaining"]}
+\`\`\`
+
+这个限流依赖可以复用到任何接口，每个接口还能自定义限流参数。生产环境换成 Redis 实现，接口代码不用改。
+
+## 十五、常见错误与避坑指南
 
 ### 错误 1：把 Depends 当成普通函数调用
 
@@ -696,7 +928,126 @@ def get_user(token: str = Header(...)):
 
 依赖函数里抛 \`HTTPException\` 会被 FastAPI 捕获并返回对应状态码，抛其他异常会变成 500。对外接口要给用户友好的错误信息，不要让 KeyError 之类暴露出去。
 
-## 十二、本章小结
+### 错误 6：依赖函数没有类型注解
+
+\`\`\`python
+# ❌ 不规范：没有类型注解，IDE 无法提示
+def get_user(token=Depends(get_token)):
+    return users[token]
+
+@app.get("/me")
+def me(user=Depends(get_user)):  # user 是什么类型？不知道
+    return user
+
+# ✅ 规范：加上类型注解
+def get_user(token: str = Depends(get_token)) -> dict:
+    return users[token]
+
+@app.get("/me")
+def me(user: dict = Depends(get_user)):  # 明确是 dict
+    return user
+\`\`\`
+
+类型注解不影响运行，但能让 IDE 自动补全、让 OpenAPI 文档更准确。
+
+## 十六、动手实验
+
+### 实验 1：观察依赖缓存行为
+
+新建一个文件 \`experiment_cache.py\`，运行以下代码并观察输出：
+
+\`\`\`python
+# 实验：验证依赖缓存机制
+from fastapi import FastAPI, Depends
+import uvicorn
+
+app = FastAPI()
+call_count = 0  # 全局计数器
+
+def expensive_op():
+    """模拟耗时操作"""
+    global call_count
+    call_count += 1
+    print(f"  [依赖] 第 {call_count} 次调用")
+    return f"result-{call_count}"
+
+@app.get("/cached")
+def cached_endpoint(
+    a: str = Depends(expensive_op),       # 第一次调用
+    b: str = Depends(expensive_op),       # 缓存复用
+    c: str = Depends(expensive_op),       # 缓存复用
+):
+    print(f"  [路由] a={a}, b={b}, c={c}")
+    return {"a": a, "b": b, "c": c, "same": a == b == c}
+
+@app.get("/no-cache")
+def no_cache_endpoint(
+    a: str = Depends(expensive_op, use_cache=False),
+    b: str = Depends(expensive_op, use_cache=False),
+):
+    print(f"  [路由] a={a}, b={b}")
+    return {"a": a, "b": b, "same": a == b}
+
+if __name__ == "__main__":
+    # 启动服务：uvicorn experiment_cache:app --reload
+    # 然后用浏览器或 curl 访问：
+    # curl http://127.0.0.1:8000/cached
+    # curl http://127.0.0.1:8000/no-cache
+    # 观察控制台输出，理解缓存差异
+    uvicorn.run(app, host="127.0.0.1", port=8000)
+\`\`\`
+
+**预期结果**：
+- 访问 \`/cached\`：依赖只调用 1 次，\`a == b == c\` 为 true。
+- 访问 \`/no-cache\`：依赖调用 2 次，\`a == b\` 为 false。
+
+### 实验 2：构建自己的依赖链
+
+尝试实现一个"用户偏好设置"依赖，要求：
+1. 从 Header 读取 \`Accept-Language\`（如 \`zh-CN\`、\`en-US\`）。
+2. 默认值是 \`zh-CN\`。
+3. 返回一个字典 \`{"lang": "zh-CN", "is_chinese": True}\`。
+4. 两个接口复用这个依赖：一个返回问候语，一个返回错误提示。
+
+\`\`\`python
+# 实验模板：补全代码
+from fastapi import FastAPI, Depends, Header
+from typing import Optional
+
+app = FastAPI()
+
+# TODO: 实现 get_user_language 依赖
+def get_user_language(
+    accept_language: Optional[str] = Header(None, alias="Accept-Language"),
+):
+    # 提示：解析 Accept-Language，默认 zh-CN
+    # 返回 {"lang": ..., "is_chinese": ...}
+    pass  # 在这里写你的代码
+
+# TODO: 接口1 - 返回问候语
+@app.get("/greet")
+def greet(lang_info: dict = Depends(get_user_language)):
+    # 根据 lang 返回不同问候语
+    pass  # 在这里写你的代码
+
+# TODO: 接口2 - 返回错误提示
+@app.get("/error-msg")
+def error_msg(lang_info: dict = Depends(get_user_language)):
+    # 根据 lang 返回不同错误提示
+    pass  # 在这里写你的代码
+\`\`\`
+
+完成后用 \`curl -H "Accept-Language: en-US" http://127.0.0.1:8000/greet\` 测试。
+
+### 实验 3：对比有依赖 vs 无依赖的代码
+
+选一个你写过的接口（如登录、查询列表），用两种方式实现：
+1. 传统方式：所有逻辑写在路由函数里。
+2. 依赖注入方式：把公共逻辑抽成依赖。
+
+对比两种代码的行数、可读性、可测试性。把对比写在笔记里。
+
+## 十七、本章小结
 
 本章我们学习了：
 
@@ -705,8 +1056,8 @@ def get_user(token: str = Header(...)):
 3. **函数作为依赖**：任何普通函数都能作为依赖，签名参数同样从请求解析。
 4. **依赖的返回值**：可以是 dict、Pydantic 模型、ORM 对象等任意类型。
 5. **缓存机制**：同一请求内相同依赖只执行一次，结果复用。可用 \`use_cache=False\` 禁用。
-6. **典型应用**：权限校验、数据库 session、公共参数、分页参数。
-7. **避坑要点**：要用 Depends 包裹、避免签名冲突、注意缓存、资源用 yield、异常要友好。
+6. **典型应用**：权限校验、数据库 session、公共参数、分页参数、配置注入、请求追踪、限流。
+7. **避坑要点**：要用 Depends 包裹、避免签名冲突、注意缓存、资源用 yield、异常要友好、加类型注解。
 
 依赖注入是 FastAPI 区别于 Flask、Django 的核心特性之一，掌握它能让你的代码结构清晰、复用性强、可测试性好。下一章我们会深入 yield 依赖，解决资源管理这个关键问题。
 `,
@@ -768,7 +1119,41 @@ def list_users(db: Session = Depends(get_db)):
 
 这就是 yield 依赖要解决的问题。
 
-## 二、yield 依赖的原理：上下文管理器
+## 二、生活类比：图书馆借书与酒店房卡
+
+理解 yield 依赖，可以用两个生活类比。
+
+**类比 1：图书馆借书**
+
+去图书馆借书，流程是这样的：
+1. 借书：登记后拿到书（创建资源）
+2. 看书：你在阅览室看书（使用资源）
+3. 还书：看完后必须归还（清理资源）
+
+如果只有"借书"没有"还书"，图书馆的书会越来越少，最后没书可借。这就是 \`return\` 依赖的问题——只创建不释放。
+
+\`yield\` 依赖就像图书管理员：借书时给你书（yield 之前），你看完书后管理员来收书（yield 之后）。无论你是不小心把书弄湿了（异常）还是正常看完（正常返回），管理员都会来收书。
+
+\`\`\`python
+# 图书管理员模式：借书 → 看书 → 还书
+def library_book():
+    book = checkout_book()      # 借书（创建资源）
+    try:
+        yield book              # 把书交给读者（路由函数）
+    finally:
+        return_book(book)       # 还书（清理资源，无论是否出错）
+\`\`\`
+
+**类比 2：酒店房卡**
+
+住酒店时：
+1. 入住：前台给你房卡（创建资源）
+2. 居住：你用房卡开门用电（使用资源）
+3. 退房：交还房卡，房间断电清理（清理资源）
+
+\`yield\` 依赖就是"前台 + 保洁"的组合：入住时发卡（yield 之前），退房时收卡打扫（yield 之后）。即使你提前退房（异常），房间也会被打扫。
+
+## 三、yield 依赖的原理：上下文管理器
 
 Python 的 \`with\` 语句和上下文管理器（\`__enter__\` / \`__exit__\`）是资源管理的标准方案。FastAPI 的 yield 依赖本质上就是基于上下文管理器实现的。
 
@@ -790,7 +1175,7 @@ yield 依赖的执行流程：
 
 yield 依赖相当于把"创建"和"清理"拆成两段，中间夹着路由函数的执行。这保证了无论路由函数正常返回还是抛异常，清理代码都会执行。
 
-## 三、第一个 yield 依赖：观察执行顺序
+## 四、第一个 yield 依赖：观察执行顺序
 
 先用一个简单示例直观感受 yield 依赖的执行顺序：
 
@@ -829,7 +1214,7 @@ def demo(dep: str = Depends(my_dependency)):
 
 可以看到，执行顺序是：依赖创建 → 路由执行 → 依赖清理。这正是我们想要的：资源在使用前创建，使用后清理。
 
-## 四、数据库连接的 yield 依赖
+## 五、数据库连接的 yield 依赖
 
 这是 yield 依赖最经典的应用：
 
@@ -914,7 +1299,130 @@ def error_endpoint(db: Session = Depends(get_db)):
 
 即使路由函数抛了异常，\`finally\` 块里的 \`db.close()\` 依然执行。这就是 yield + try/finally 的威力。
 
-## 五、文件资源的 yield 依赖
+## 六、新增 Demo：数据库连接池的 yield 依赖
+
+生产环境中，数据库连接池是必须的。连接池在应用启动时创建（lifespan），每个请求从池子借一个连接，用完归还。这里演示完整的连接池 + yield 依赖模式。
+
+\`\`\`python
+# 导入 FastAPI、Depends、Request
+from fastapi import FastAPI, Depends, Request
+# 导入 contextlib 的 asynccontextmanager
+from contextlib import asynccontextmanager
+# 导入 SQLAlchemy 组件
+from sqlalchemy import create_engine, Column, Integer, String, text
+from sqlalchemy.orm import declarative_base, sessionmaker, Session
+from sqlalchemy.pool import QueuePool
+
+# ========== 1. lifespan：管理连接池（应用级）==========
+@asynccontextmanager
+def lifespan(app: FastAPI):
+    # ===== 启动时：创建连接池 =====
+    print("[lifespan] 创建数据库连接池")
+    # QueuePool 是 SQLAlchemy 的连接池实现
+    # pool_size=5：保持 5 个连接
+    # max_overflow=10：允许超出 10 个（共 15 个）
+    # pool_timeout=30：等待连接超时时间（秒）
+    # pool_recycle=3600：连接回收时间（1 小时，防止数据库主动断开）
+    engine = create_engine(
+        "sqlite:///app.db",
+        poolclass=QueuePool,
+        pool_size=5,
+        max_overflow=10,
+        pool_timeout=30,
+        pool_recycle=3600,
+        echo=False,  # 是否打印 SQL（调试时可设 True）
+    )
+    # 把 engine 存到 app.state，全局可访问
+    app.state.engine = engine
+    # 创建 Session 工厂
+    app.state.SessionLocal = sessionmaker(bind=engine)
+    print(f"[lifespan] 连接池状态: {engine.pool.status()}")
+
+    yield  # 应用运行期间
+
+    # ===== 关闭时：释放连接池 =====
+    print("[lifespan] 关闭连接池")
+    print(f"[lifespan] 最终连接池状态: {engine.pool.status()}")
+    # engine.dispose() 关闭所有连接
+    engine.dispose()
+
+# 创建 app，传入 lifespan
+app = FastAPI(lifespan=lifespan)
+
+# 模型基类
+Base = declarative_base()
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+    age = Column(Integer)
+
+# ========== 2. yield 依赖：从连接池借连接 ==========
+def get_db(request: Request):
+    # 从 app.state 取 SessionLocal 工厂
+    SessionLocal = request.app.state.SessionLocal
+    # 创建 session（从连接池借一个连接）
+    db = SessionLocal()
+    print(f"[get_db] 借出连接，池状态: {request.app.state.engine.pool.status()}")
+    try:
+        # yield session 给路由函数
+        yield db
+    finally:
+        # 关闭 session（归还连接到池子，不是真断开）
+        db.close()
+        print(f"[get_db] 归还连接，池状态: {request.app.state.engine.pool.status()}")
+
+# ========== 3. 路由 ==========
+@app.on_event("startup")
+def init_db():
+    # 启动时创建表 + 插入测试数据
+    engine = app.state.engine
+    Base.metadata.create_all(engine)
+    # 插入测试数据
+    with app.state.SessionLocal() as db:
+        if db.query(User).count() == 0:
+            db.add_all([
+                User(name="alice", age=25),
+                User(name="bob", age=30),
+            ])
+            db.commit()
+            print("[startup] 插入测试数据")
+
+@app.get("/users")
+def list_users(db: Session = Depends(get_db)):
+    # 查询所有用户
+    users = db.query(User).all()
+    return [{"id": u.id, "name": u.name, "age": u.age} for u in users]
+
+@app.get("/users/{user_id}")
+def get_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        from fastapi import HTTPException
+        raise HTTPException(404, "用户不存在")
+    return {"id": user.id, "name": user.name, "age": user.age}
+
+# 健康检查接口：查看连接池状态
+@app.get("/health")
+def health_check(request: Request):
+    # 返回连接池状态
+    return {
+        "status": "ok",
+        "pool": request.app.state.engine.pool.status(),
+    }
+\`\`\`
+
+请求 \`GET /users\`，控制台输出：
+
+\`\`\`
+[get_db] 借出连接，池状态: Pool size: 5  Connections in pool: 0 Current Overflow: 0 Current Checked out connections: 1
+[get_db] 归还连接，池状态: Pool size: 5  Connections in pool: 1 Current Overflow: 0 Current Checked out connections: 0
+\`\`\`
+
+可以看到连接被借出又归还，池子里的连接数变化。这就是连接池的工作方式。
+
+## 七、文件资源的 yield 依赖
 
 文件句柄也是典型的需要释放的资源。用 yield 依赖封装文件读写：
 
@@ -982,7 +1490,73 @@ def read_log_raw(f=Depends(get_log_reader)):
 
 注意第二个依赖 \`get_log_reader\` 里用了 \`yield None; return\`。在生成器函数里，\`return\` 会提前结束生成器（不会再 yield 值）。这种写法在"条件性不提供资源"时有用。
 
-## 六、yield + try/finally：异常处理
+## 八、新增 Demo：CSV 文件处理的 yield 依赖
+
+实际项目中经常要处理 CSV 文件。用 yield 依赖封装 CSV 读写，保证文件句柄正确释放。
+
+\`\`\`python
+# 导入 FastAPI、Depends、UploadFile
+from fastapi import FastAPI, Depends, UploadFile, HTTPException
+# 导入 csv 模块
+import csv
+# 导入 pathlib
+from pathlib import Path
+
+app = FastAPI()
+
+# yield 依赖：CSV 读取器
+def get_csv_reader(file_path: str = "data.csv"):
+    """打开 CSV 文件并返回 reader，请求结束自动关闭"""
+    # 检查文件是否存在
+    if not Path(file_path).exists():
+        # 文件不存在，yield None
+        yield None
+        return
+    # 打开文件
+    f = open(file_path, "r", encoding="utf-8", newline="")
+    # 创建 CSV reader
+    reader = csv.DictReader(f)  # DictReader 把每行读成字典
+    try:
+        # yield reader 给路由
+        yield reader
+    finally:
+        # 关闭文件
+        print(f"[csv_reader] 关闭文件 {file_path}")
+        f.close()
+
+# yield 依赖：CSV 写入器
+def get_csv_writer(file_path: str = "output.csv"):
+    """打开 CSV 文件用于写入，请求结束自动关闭"""
+    # 以追加模式打开（a = append）
+    f = open(file_path, "a", encoding="utf-8", newline="")
+    # 创建 CSV writer
+    writer = csv.writer(f)
+    try:
+        yield writer
+    finally:
+        print(f"[csv_writer] 关闭文件 {file_path}")
+        f.close()
+
+# 路由：读取 CSV
+@app.get("/data")
+def read_data(reader=Depends(get_csv_reader)):
+    if reader is None:
+        return {"msg": "数据文件不存在"}
+    # 读取所有行
+    rows = list(reader)
+    return {"count": len(rows), "data": rows[:10]}  # 只返回前 10 行
+
+# 路由：写入 CSV
+@app.post("/data")
+def write_data(name: str, age: int, writer=Depends(get_csv_writer)):
+    # 写入一行
+    writer.writerow([name, age])
+    return {"msg": f"已写入: {name}, {age}"}
+\`\`\`
+
+这个例子展示了 yield 依赖如何优雅地管理 CSV 文件：读写都不用担心忘记关闭。
+
+## 九、yield + try/finally：异常处理
 
 yield 依赖最强大的地方是能捕获路由函数抛出的异常。在 yield 之后用 try/except 可以拿到异常对象：
 
@@ -1048,7 +1622,7 @@ def crash(op: str = Depends(audited_operation)):
 
 这个机制非常适合做"审计日志"：记录每个操作的成功/失败，但又不影响业务逻辑。
 
-## 七、yield 依赖的执行顺序：多个 yield 依赖
+## 十、yield 依赖的执行顺序：多个 yield 依赖
 
 当一个路由有多个 yield 依赖时，执行顺序遵循"栈"结构（后进先出）：
 
@@ -1099,7 +1673,7 @@ def multi(a: str = Depends(dep_a), b: str = Depends(dep_b), c: str = Depends(dep
 
 这就像"洋葱模型"：依赖层层包裹，进入时从外到内，退出时从内到外。这种顺序保证了：**先创建的依赖最后释放**，符合资源生命周期的一般规律（外层资源通常被内层使用，要等内层用完才能释放）。
 
-## 八、退出代码的执行时机
+## 十一、退出代码的执行时机
 
 yield 之后的代码（退出代码）在什么时候执行？答案：**路由函数返回响应之后，但响应还未发送给客户端时**。
 
@@ -1143,7 +1717,7 @@ def slow(start: float = Depends(timing_dep)):
 
 如果你想记录耗时到日志或数据库，可以在退出代码里做。但**不能**修改已经构建好的响应。
 
-## 九、嵌套 yield 依赖的执行顺序
+## 十二、嵌套 yield 依赖的执行顺序
 
 依赖本身也可以依赖其他依赖，形成嵌套结构。yield 依赖嵌套时，执行顺序同样遵循洋葱模型：
 
@@ -1192,7 +1766,7 @@ def list_users(svc=Depends(get_user_service)):
 
 这个顺序保证了：服务（依赖连接的）先被销毁，然后才是连接本身。如果反过来，服务销毁时访问已关闭的连接就会报错。
 
-## 十、实战：数据库事务管理
+## 十三、实战：数据库事务管理
 
 事务是 yield 依赖的杀手级应用。事务要求"要么全成功提交，要么全失败回滚"，yield + try/except 完美匹配这个需求：
 
@@ -1327,7 +1901,178 @@ def transfer_fail(db: Session = Depends(get_transactional_db)):
 
 路由函数完全不用关心事务，只管业务逻辑。这就是依赖注入的优雅之处。
 
-## 十一、yield 依赖的限制与注意点
+## 十四、新增 Demo：Redis 连接的 yield 依赖
+
+缓存是另一个典型场景。Redis 连接也需要正确管理。这里演示异步 Redis 的 yield 依赖。
+
+\`\`\`python
+# 导入 FastAPI、Depends
+from fastapi import FastAPI, Depends
+# 导入 redis 异步客户端（需 pip install redis）
+import redis.asyncio as redis
+# 导入 contextlib
+from contextlib import asynccontextmanager
+
+# ========== lifespan：管理 Redis 连接池 ==========
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 启动时：创建 Redis 连接池
+    print("[lifespan] 创建 Redis 连接池")
+    # ConnectionPool 管理 Redis 连接
+    # max_connections=10 最多 10 个连接
+    redis_pool = redis.ConnectionPool(
+        host="localhost",
+        port=6379,
+        db=0,
+        max_connections=10,
+        decode_responses=True,  # 自动解码为字符串
+    )
+    # 存到 app.state
+    app.state.redis_pool = redis_pool
+    print("[lifespan] Redis 连接池已创建")
+
+    yield  # 应用运行期间
+
+    # 关闭时：释放连接池
+    print("[lifespan] 关闭 Redis 连接池")
+    # disconnect 释放所有连接
+    await redis_pool.disconnect()
+    print("[lifespan] Redis 连接池已关闭")
+
+app = FastAPI(lifespan=lifespan)
+
+# ========== yield 依赖：从池子借 Redis 连接 ==========
+async def get_redis():
+    """获取 Redis 连接，请求结束自动归还"""
+    # 从连接池获取连接
+    r = redis.Redis(connection_pool=app.state.redis_pool)
+    print("[redis] 借出连接")
+    try:
+        # yield 给路由
+        yield r
+    finally:
+        # 归还连接（不是真断开，是放回池子）
+        # aclose 把连接归还到池子
+        await r.aclose()
+        print("[redis] 归还连接")
+
+# ========== 路由 ==========
+@app.get("/cache/{key}")
+async def get_cache(key: str, r = Depends(get_redis)):
+    # 从 Redis 读缓存
+    value = await r.get(key)
+    if value is None:
+        return {"msg": "缓存不存在", "key": key}
+    return {"key": key, "value": value}
+
+@app.post("/cache/{key}")
+async def set_cache(key: str, value: str, r = Depends(get_redis)):
+    # 写入缓存，设置 60 秒过期
+    # ex=60 表示 expire 60 秒
+    await r.set(key, value, ex=60)
+    return {"msg": "缓存已设置", "key": key, "value": value, "ttl": 60}
+
+@app.delete("/cache/{key}")
+async def delete_cache(key: str, r = Depends(get_redis)):
+    # 删除缓存
+    deleted = await r.delete(key)
+    if deleted:
+        return {"msg": "缓存已删除", "key": key}
+    return {"msg": "缓存不存在", "key": key}
+\`\`\`
+
+这个例子展示了完整的 Redis 连接池管理：lifespan 创建池子，yield 依赖借还连接，路由函数只管业务。
+
+## 十五、新增 Demo：分布式锁的 yield 依赖
+
+分布式系统中，防止并发操作同一资源常用分布式锁。yield 依赖完美匹配"获取锁 → 业务 → 释放锁"的模式。
+
+\`\`\`python
+# 导入 FastAPI、Depends、HTTPException
+from fastapi import FastAPI, Depends, HTTPException
+# 导入 redis
+import redis.asyncio as redis
+# 导入 uuid
+import uuid
+
+app = FastAPI()
+
+# 模拟 Redis 客户端（实际项目用 lifespan 创建）
+redis_client = redis.Redis(host="localhost", port=6379, decode_responses=True)
+
+# yield 依赖：分布式锁
+async def acquire_lock(
+    resource: str,                # 锁定的资源名
+    timeout: int = 10,            # 锁超时（秒，防止死锁）
+):
+    """获取分布式锁，请求结束自动释放"""
+    # 生成唯一锁标识
+    lock_id = str(uuid.uuid4())
+    # 锁的 Redis key
+    lock_key = f"lock:{resource}"
+
+    # 尝试获取锁
+    # setnx 语义：只有 key 不存在时才设置（原子操作）
+    # nx=True 表示 only if not exists
+    # ex=timeout 设置过期时间，防止死锁
+    acquired = await redis_client.set(lock_key, lock_id, nx=True, ex=timeout)
+    if not acquired:
+        # 获取失败，说明资源被占用
+        print(f"[lock] 获取锁失败: {resource}")
+        raise HTTPException(409, f"资源 {resource} 正在被处理，请稍后再试")
+
+    print(f"[lock] 获取锁成功: {resource}, lock_id={lock_id}")
+    try:
+        # yield 锁标识给路由
+        yield lock_id
+    finally:
+        # 释放锁：用 Lua 脚本保证原子性
+        # 必须先检查 lock_id 是否匹配，避免释放别人的锁
+        lua_script = """
+        if redis.call("get", KEYS[1]) == ARGV[1] then
+            return redis.call("del", KEYS[1])
+        else
+            return 0
+        end
+        """
+        # eval 执行 Lua 脚本
+        released = await redis_client.eval(lua_script, 1, lock_key, lock_id)
+        if released:
+            print(f"[lock] 释放锁成功: {resource}")
+        else:
+            # 锁已过期被别人获取，这种情况要记录日志
+            print(f"[lock] 锁已过期: {resource}")
+
+# 路由：转账（用锁防止并发转账）
+@app.post("/transfer")
+async def transfer(
+    account_id: int,
+    amount: float,
+    lock_id: str = Depends(lambda: acquire_lock(f"account:{account_id}")),
+):
+    # 这里 lock_id 证明已获取锁
+    # 模拟转账逻辑
+    print(f"[transfer] 处理账户 {account_id} 转账 {amount}，锁 {lock_id}")
+    # 模拟耗时
+    import asyncio
+    await asyncio.sleep(2)
+    return {"msg": f"账户 {account_id} 转账 {amount} 成功"}
+
+# 路由：更新库存（用锁防止超卖）
+@app.post("/inventory/{product_id}")
+async def update_inventory(
+    product_id: int,
+    quantity: int,
+    lock_id: str = Depends(lambda: acquire_lock(f"product:{product_id}")),
+):
+    # 模拟扣减库存
+    print(f"[inventory] 商品 {product_id} 扣减 {quantity}，锁 {lock_id}")
+    return {"msg": f"商品 {product_id} 库存已更新"}
+\`\`\`
+
+这个例子展示了 yield 依赖在分布式锁场景的应用：获取锁在 yield 之前，释放锁在 yield 之后，无论业务成功失败锁都会释放。
+
+## 十六、yield 依赖的限制与注意点
 
 ### 限制 1：一个 yield 依赖只能有一个 yield
 
@@ -1391,7 +2136,7 @@ def dep():
         raise  # 重新抛出
 \`\`\`
 
-## 十二、常见错误与避坑指南
+## 十七、常见错误与避坑指南
 
 ### 错误 1：忘记 try/finally
 
@@ -1483,7 +2228,110 @@ def send_email_endpoint(bg: BackgroundTasks):
 
 yield 退出代码在响应发送前执行，会阻塞响应。真正的后台任务用 \`BackgroundTasks\` 或 Celery。
 
-## 十三、本章小结
+### 错误 6：在 yield 依赖里修改响应
+
+\`\`\`python
+# ❌ 错误：以为能修改响应
+def add_header_dep():
+    yield
+    # 这里无法访问 response 对象
+    # response.headers["X-Custom"] = "value"  # 报错！
+
+# ✅ 正确：用中间件修改响应
+@app.middleware("http")
+async def add_header_middleware(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Custom"] = "value"
+    return response
+\`\`\`
+
+yield 退出代码无法修改响应，因为响应已经构建好了。要修改响应用中间件。
+
+## 十八、动手实验
+
+### 实验 1：观察 yield 依赖的执行顺序
+
+创建 \`experiment_yield.py\`，运行以下代码：
+
+\`\`\`python
+# 实验：观察 yield 依赖执行顺序
+from fastapi import FastAPI, Depends
+import uvicorn
+
+app = FastAPI()
+
+def dep_a():
+    print("  [A] 进入")
+    try:
+        yield "A"
+    finally:
+        print("  [A] 退出")
+
+def dep_b():
+    print("  [B] 进入")
+    try:
+        yield "B"
+    finally:
+        print("  [B] 退出")
+
+@app.get("/test")
+def test(a: str = Depends(dep_a), b: str = Depends(dep_b)):
+    print("  [route] 执行")
+    return {"a": a, "b": b}
+
+@app.get("/fail")
+def fail(a: str = Depends(dep_a), b: str = Depends(dep_b)):
+    print("  [route] 执行，即将抛异常")
+    raise Exception("测试异常")
+
+if __name__ == "__main__":
+    # 访问 http://127.0.0.1:8000/test 和 http://127.0.0.1:8000/fail
+    # 观察控制台输出顺序
+    uvicorn.run(app, host="127.0.0.1", port=8000)
+\`\`\`
+
+**预期**：访问 \`/test\` 时输出顺序是 A 进入 → B 进入 → 路由 → B 退出 → A 退出。访问 \`/fail\` 时也是同样顺序，即使抛异常。
+
+### 实验 2：实现一个 Redis 锁依赖
+
+尝试实现一个简化的 Redis 分布式锁依赖，要求：
+1. 用 \`SET key value NX EX 10\` 获取锁。
+2. 用 yield 把锁标识注入路由。
+3. 请求结束后释放锁（用 Lua 脚本保证原子性）。
+
+提示：参考第十五章的代码，去掉一些细节，保留核心逻辑。
+
+### 实验 3：对比 return 和 yield 的资源泄漏
+
+写一个测试脚本，对比两种依赖在 1000 次请求后的资源占用：
+
+\`\`\`python
+# 实验模板
+import requests
+import psutil  # 需 pip install psutil
+import os
+
+def measure_memory():
+    """测量当前进程内存"""
+    process = psutil.Process(os.getpid())
+    return process.memory_info().rss / 1024 / 1024  # MB
+
+# TODO: 启动两个版本的 server（return 和 yield）
+# 分别请求 1000 次，对比内存变化
+# 预期：return 版本内存持续增长，yield 版本稳定
+\`\`\`
+
+### 实验 4：实现审计日志依赖
+
+实现一个 yield 依赖，要求：
+1. 记录每个请求的开始时间。
+2. 请求成功时记录"成功 + 耗时"。
+3. 请求失败时记录"失败 + 异常信息"。
+4. 把日志写入文件（用 yield 依赖管理文件句柄）。
+
+提示：组合两个 yield 依赖，一个管文件，一个管审计逻辑。
+
+## 十九、本章小结
 
 本章我们学习了：
 
@@ -1492,8 +2340,8 @@ yield 退出代码在响应发送前执行，会阻塞响应。真正的后台�
 3. **执行顺序**：洋葱模型，多个 yield 依赖按栈结构进入退出。
 4. **异常处理**：yield 后的 try/except 能捕获路由异常，但要重新抛出。
 5. **退出时机**：路由返回后、响应发送前，不能修改响应。
-6. **典型应用**：数据库连接、文件资源、事务管理。
-7. **避坑要点**：必须 try/finally、yield 前异常会跳过路由、异步用 async def、后台任务用 BackgroundTasks。
+6. **典型应用**：数据库连接、连接池、文件资源、CSV 处理、事务管理、Redis 连接、分布式锁。
+7. **避坑要点**：必须 try/finally、yield 前异常会跳过路由、异步用 async def、后台任务用 BackgroundTasks、不能修改响应。
 
 yield 依赖是 FastAPI 资源管理的核心机制，掌握它能让你的接口既安全又优雅。下一章我们会进入更复杂的依赖嵌套与组合。
 `,
@@ -1527,7 +2375,50 @@ yield 依赖是 FastAPI 资源管理的核心机制，掌握它能让你的接�
 3. **可测试**：可以 mock 任意一层依赖，灵活控制测试范围。
 4. **可读性**：依赖树清晰表达了"这个接口需要什么"。
 
-## 二、依赖可以依赖其他依赖
+## 二、生活类比：工厂流水线与餐厅协作
+
+**类比 1：汽车工厂流水线**
+
+造一辆汽车不是一个人能完成的，它有复杂的依赖关系：
+
+\`\`\`
+整车组装
+├── 底盘（依赖：钢板 + 焊接）
+├── 发动机（依赖：缸体 + 活塞 + 曲轴）
+├── 车身（依赖：钢板 + 喷漆）
+└── 内饰（依赖：座椅 + 仪表盘）
+\`\`\`
+
+整车车间不自己造发动机，它"声明"需要发动机，发动机车间负责造。发动机车间又不自己造活塞，它"声明"需要活塞，活塞车间负责造。每个车间只关心自己的事，但通过依赖关系组合成完整的汽车。
+
+FastAPI 的依赖嵌套就是这样：路由函数"声明"需要用户对象，\`get_current_user\` 负责造用户对象，它又"声明"需要 token，\`get_token\` 负责 token。
+
+\`\`\`python
+# 路由（整车车间）
+@app.get("/me")
+def get_me(user = Depends(get_current_user)):
+    return user
+
+# get_current_user（发动机车间）
+def get_current_user(token = Depends(get_token)):
+    return find_user_by_token(token)
+
+# get_token（活塞车间）
+def get_token(authorization = Header(...)):
+    return parse_token(authorization)
+\`\`\`
+
+**类比 2：餐厅点餐链路**
+
+客人点一份"宫保鸡丁"，背后是一个依赖链：
+- 服务员接收订单（路由）
+- 厨师需要食材（依赖食材库）
+- 食材库需要采购单（依赖采购系统）
+- 采购系统需要供应商报价（依赖外部接口）
+
+每一层只关心自己的事，但组合起来完成了从点餐到上菜的全流程。
+
+## 三、依赖可以依赖其他依赖
 
 直接看示例：
 
@@ -1588,7 +2479,7 @@ def get_me(user: dict = Depends(get_current_user)):
 
 依赖层层嵌套，FastAPI 自动按正确顺序调用。这就是"依赖树"的概念。
 
-## 三、嵌套依赖的执行顺序
+## 四、嵌套依赖的执行顺序
 
 嵌套依赖的执行顺序是**深度优先 + 后序遍历**：先解析到底层依赖，从底层开始执行，逐层返回。
 
@@ -1631,7 +2522,7 @@ def test(c: str = Depends(dep_c)):
 
 执行顺序是 A → B → C → route，即从最底层依赖开始，逐层向上。这符合直觉：上层依赖需要下层的返回值，所以下层必须先执行。
 
-## 四、依赖图的概念
+## 五、依赖图的概念
 
 当依赖关系复杂时，可以用"依赖图"来理解。依赖图是一个有向无环图（DAG），节点是依赖，边是"依赖于"关系。
 
@@ -1656,7 +2547,7 @@ def test(c: str = Depends(dep_c)):
 
 FastAPI 解析这个图，按拓扑排序执行依赖。如果两个依赖没有依赖关系（如 dep_db 和 dep_cache），它们的执行顺序由声明顺序决定。
 
-## 五、依赖的组合和复用
+## 六、依赖的组合和复用
 
 依赖图的威力在于复用。同一个底层依赖可以被多个上层依赖引用，而 FastAPI 的缓存机制保证它只执行一次。
 
@@ -1705,7 +2596,7 @@ def api(
 
 这就是"依赖图 + 缓存"的组合：底层依赖执行一次，结果在整个请求内共享。这对"请求 ID"、"当前用户"、"数据库 session"这种唯一性资源至关重要。
 
-## 六、多个依赖组合使用
+## 七、多个依赖组合使用
 
 一个路由可以同时依赖多个独立的依赖，组合它们的功能：
 
@@ -1761,7 +2652,7 @@ def list_products(
 
 这个接口同时需要：分页、排序、认证、数据库。每个功能都是独立依赖，组合起来就是完整接口。如果以后要加"过滤"功能，只需新增一个依赖，路由函数加一个参数即可，不影响其他依赖。
 
-## 七、依赖缓存与 use_cache
+## 八、依赖缓存与 use_cache
 
 前面提到，FastAPI 默认缓存依赖结果。但有时我们想"故意"让依赖重新执行。典型场景：
 
@@ -1820,7 +2711,7 @@ def test(
 
 实际项目里 \`use_cache=False\` 用得不多，但在需要"独立实例"时很有用。
 
-## 八、实战：认证+权限+数据库三层依赖
+## 九、实战：认证+权限+数据库三层依赖
 
 把前面学的组合起来，实现一个真实的三层依赖：认证 → 权限 → 数据库。
 
@@ -1976,7 +2867,183 @@ def delete_article(
 
 注意：\`get_db\` 在一个请求内只创建一次，即使多个依赖都用它（缓存复用）。
 
-## 九、依赖图可视化
+## 十、新增 Demo：完整认证链（token 解析 → 用户查询 → 权限检查）
+
+这是真实项目中最常见的依赖链：从 HTTP 请求头解析 token，根据 token 查用户，根据用户做权限检查。这里展示完整的实现。
+
+\`\`\`python
+# 导入 FastAPI、Depends、Header、HTTPException
+from fastapi import FastAPI, Depends, Header, HTTPException
+# 导入 Optional、Annotated
+from typing import Optional, Annotated
+# 导入 pydantic
+from pydantic import BaseModel
+# 导入时间（模拟 token 过期）
+import time
+
+app = FastAPI()
+
+# ========== 模拟数据层 ==========
+
+# 用户库：user_id -> 用户信息
+users_db = {
+    1: {"id": 1, "username": "alice", "role": "admin", "active": True},
+    2: {"id": 2, "username": "bob", "role": "user", "active": True},
+    3: {"id": 3, "username": "charlie", "role": "user", "active": False},  # 已禁用
+}
+
+# token 库：token_string -> {user_id, expires_at}
+tokens_db = {
+    "abc123": {"user_id": 1, "expires_at": time.time() + 3600},  # alice 的 token
+    "def456": {"user_id": 2, "expires_at": time.time() + 3600},  # bob 的 token
+    "ghi789": {"user_id": 3, "expires_at": time.time() - 100},   # charlie 的过期 token
+}
+
+# ========== 第一层：HTTP 解析依赖 ==========
+
+# 依赖1：从 Header 提取 Authorization 字符串
+def extract_authorization(
+    authorization: Optional[str] = Header(None),
+) -> str:
+    """从 Authorization 头提取原始字符串"""
+    # 没传 Authorization
+    if not authorization:
+        raise HTTPException(401, "缺少 Authorization 头")
+    print(f"[extract_authorization] 收到: {authorization[:20]}...")
+    return authorization
+
+# 依赖2：从 Authorization 字符串解析 token（依赖 extract_authorization）
+def parse_token(
+    authorization: str = Depends(extract_authorization),
+) -> str:
+    """解析 Bearer token"""
+    # 校验 Bearer 格式
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(401, "Authorization 格式错误，应为 'Bearer <token>'")
+    # 提取 token（去掉 "Bearer " 前缀）
+    token = authorization[7:]
+    # token 不能为空
+    if not token:
+        raise HTTPException(401, "token 为空")
+    print(f"[parse_token] 解析出 token: {token}")
+    return token
+
+# ========== 第二层：业务查询依赖 ==========
+
+# 依赖3：根据 token 查询用户（依赖 parse_token）
+def get_current_user(
+    token: str = Depends(parse_token),
+) -> dict:
+    """根据 token 查用户，校验 token 有效性"""
+    # 从 token 库查
+    token_info = tokens_db.get(token)
+    # token 不存在
+    if not token_info:
+        raise HTTPException(401, "无效 token")
+    # 检查 token 是否过期
+    if time.time() > token_info["expires_at"]:
+        raise HTTPException(401, "token 已过期，请重新登录")
+    # 根据 user_id 查用户
+    user = users_db.get(token_info["user_id"])
+    # 用户不存在（可能已删除）
+    if not user:
+        raise HTTPException(401, "用户不存在")
+    # 检查用户是否激活
+    if not user["active"]:
+        raise HTTPException(403, "用户已被禁用")
+    print(f"[get_current_user] 认证通过: {user['username']}")
+    return user
+
+# 依赖4：检查用户角色（依赖 get_current_user）
+def require_role(*required_roles: str):
+    """工厂函数：生成检查指定角色的依赖"""
+    # 返回一个依赖函数
+    def checker(user: dict = Depends(get_current_user)) -> dict:
+        # 检查角色是否在允许列表里
+        if user["role"] not in required_roles:
+            raise HTTPException(
+                403,
+                f"权限不足，需要角色: {required_roles}，当前: {user['role']}",
+            )
+        print(f"[require_role] 权限校验通过: {user['username']} ({user['role']})")
+        return user
+    return checker
+
+# 便捷别名：常用角色的依赖
+require_admin = require_role("admin")
+require_user = require_role("user", "admin")  # user 和 admin 都能访问
+require_active = Depends(get_current_user)    # 只需登录
+
+# ========== 第三层：路由 ==========
+
+# 用户信息模型
+class UserInfo(BaseModel):
+    id: int
+    username: str
+    role: str
+
+# 接口1：获取当前用户信息（只需登录）
+@app.get("/me", response_model=UserInfo)
+def get_me(user: dict = Depends(get_current_user)):
+    # 走完整认证链：extract_authorization → parse_token → get_current_user
+    return user
+
+# 接口2：管理员专用接口
+@app.get("/admin/users")
+def admin_list_users(admin: dict = Depends(require_admin)):
+    # 走认证链 + admin 角色检查
+    return {"users": list(users_db.values()), "by": admin["username"]}
+
+# 接口3：普通用户接口（user 和 admin 都能访问）
+@app.get("/profile")
+def get_profile(user: dict = Depends(require_user)):
+    return {"profile": user}
+
+# 接口4：管理员删除用户
+@app.delete("/admin/users/{user_id}")
+def admin_delete_user(
+    user_id: int,
+    admin: dict = Depends(require_admin),
+):
+    # 检查目标用户是否存在
+    if user_id not in users_db:
+        raise HTTPException(404, "用户不存在")
+    # 不能删除自己
+    if user_id == admin["id"]:
+        raise HTTPException(400, "不能删除自己")
+    # 删除用户
+    deleted = users_db.pop(user_id)
+    return {"msg": f"已删除用户 {deleted['username']}", "by": admin["username"]}
+\`\`\`
+
+请求 \`GET /me\` 带 \`Authorization: Bearer abc123\`：
+
+\`\`\`
+[extract_authorization] 收到: Bearer abc123...
+[parse_token] 解析出 token: abc123
+[get_current_user] 认证通过: alice
+\`\`\`
+
+请求 \`GET /admin/users\` 带 \`Authorization: Bearer def456\`（bob 是 user 角色）：
+
+\`\`\`
+[extract_authorization] 收到: Bearer def456...
+[parse_token] 解析出 token: def456
+[get_current_user] 认证通过: bob
+# 然后报 403：权限不足
+\`\`\`
+
+请求 \`GET /me\` 带 \`Authorization: Bearer ghi789\`（charlie 的 token 已过期）：
+
+\`\`\`
+[extract_authorization] 收到: Bearer ghi789...
+[parse_token] 解析出 token: ghi789
+# 然后报 401：token 已过期
+\`\`\`
+
+这个例子展示了完整的认证链：HTTP 解析 → token 解析 → 用户查询 → 权限检查。每一层只做一件事，组合起来就是完整的认证授权系统。
+
+## 十一、依赖图可视化
 
 上面的实战，依赖图是这样的：
 
@@ -2002,7 +3069,159 @@ delete_article
 
 不同接口共享底层依赖（\`get_token\`、\`get_current_user\`、\`get_db\`），但每个请求内它们只执行一次。这就是依赖图的复用价值。
 
-## 十、依赖的优先级与异常短路
+## 十二、新增 Demo：电商订单处理的依赖组合
+
+电商场景中，下单接口需要组合多个依赖：用户认证、库存检查、优惠券校验、数据库事务。
+
+\`\`\`python
+# 导入 FastAPI、Depends、HTTPException
+from fastapi import FastAPI, Depends, HTTPException
+# 导入 pydantic
+from pydantic import BaseModel
+
+app = FastAPI()
+
+# ========== 模拟数据 ==========
+products_db = {
+    "p001": {"id": "p001", "name": "键盘", "price": 200.0, "stock": 10},
+    "p002": {"id": "p002", "name": "鼠标", "price": 50.0, "stock": 5},
+}
+coupons_db = {
+    "SAVE10": {"discount": 0.1, "min_amount": 100},   # 满 100 减 10%
+    "SAVE20": {"discount": 0.2, "min_amount": 500},   # 满 500 减 20%
+}
+users_db = {"token_alice": {"id": 1, "name": "alice"}}
+
+# ========== 依赖1：用户认证 ==========
+def get_current_user(token: str = Depends(lambda token: token)):
+    # 简化的 token 校验
+    user = users_db.get(token)
+    if not user:
+        raise HTTPException(401, "无效 token")
+    return user
+
+# ========== 依赖2：商品校验 ==========
+def get_product(product_id: str):
+    """校验商品是否存在"""
+    product = products_db.get(product_id)
+    if not product:
+        raise HTTPException(404, f"商品 {product_id} 不存在")
+    return product
+
+# ========== 依赖3：库存校验（依赖商品） ==========
+def check_stock(
+    product: dict = Depends(get_product),
+    quantity: int = 1,
+):
+    """校验库存是否充足"""
+    if product["stock"] < quantity:
+        raise HTTPException(400, f"库存不足，剩余 {product['stock']}，需要 {quantity}")
+    print(f"[stock] {product['name']} 库存充足: {product['stock']} >= {quantity}")
+    return {"product": product, "quantity": quantity}
+
+# ========== 依赖4：优惠券校验 ==========
+def validate_coupon(coupon_code: str = None):
+    """校验优惠券（可选）"""
+    if not coupon_code:
+        return None  # 没用优惠券
+    coupon = coupons_db.get(coupon_code)
+    if not coupon:
+        raise HTTPException(400, "无效的优惠券")
+    print(f"[coupon] 优惠券有效: {coupon_code}")
+    return coupon
+
+# ========== 依赖5：数据库事务（yield） ==========
+def get_db():
+    """模拟数据库事务"""
+    db = {"orders": []}  # 模拟订单表
+    print("[db] 开启事务")
+    try:
+        yield db
+        print("[db] 提交事务")
+    except Exception as e:
+        print(f"[db] 回滚事务: {e}")
+        raise
+    finally:
+        print("[db] 关闭事务")
+
+# ========== 下单接口：组合所有依赖 ==========
+class OrderRequest(BaseModel):
+    product_id: str
+    quantity: int = 1
+    coupon_code: str = None
+
+class OrderResponse(BaseModel):
+    order_id: str
+    product_name: str
+    quantity: int
+    total_price: float
+    discount: float
+    final_price: float
+
+@app.post("/orders", response_model=OrderResponse)
+def create_order(
+    order: OrderRequest,                                       # 请求体
+    token: str,                                                # token
+    user: dict = Depends(get_current_user),                    # 用户认证
+    stock_info: dict = Depends(check_stock),                   # 库存校验
+    coupon: dict = Depends(validate_coupon),                   # 优惠券校验
+    db: dict = Depends(get_db),                                # 数据库事务
+):
+    # 所有依赖都已通过，这里只做业务计算
+    product = stock_info["product"]
+    quantity = stock_info["quantity"]
+
+    # 计算价格
+    total_price = product["price"] * quantity
+    discount = 0.0
+    # 应用优惠券
+    if coupon:
+        if total_price >= coupon["min_amount"]:
+            discount = total_price * coupon["discount"]
+        else:
+            raise HTTPException(400, f"优惠券需满 {coupon['min_amount']} 元")
+
+    final_price = total_price - discount
+
+    # 扣减库存
+    product["stock"] -= quantity
+
+    # 生成订单
+    order_id = f"order_{len(db['orders']) + 1}"
+    order_data = {
+        "order_id": order_id,
+        "product_name": product["name"],
+        "quantity": quantity,
+        "total_price": total_price,
+        "discount": discount,
+        "final_price": final_price,
+    }
+    db["orders"].append(order_data)
+
+    print(f"[order] 订单创建成功: {order_id}, 最终价格: {final_price}")
+    return order_data
+\`\`\`
+
+请求 \`POST /orders?token=token_alice\`，body：
+
+\`\`\`json
+{"product_id": "p001", "quantity": 2, "coupon_code": "SAVE10"}
+\`\`\`
+
+控制台输出：
+
+\`\`\`
+[stock] 键盘 库存充足: 10 >= 2
+[coupon] 优惠券有效: SAVE10
+[db] 开启事务
+[order] 订单创建成功: order_1, 最终价格: 360.0
+[db] 提交事务
+[db] 关闭事务
+\`\`\`
+
+这个例子展示了复杂业务的依赖组合：每个依赖负责一个关注点，路由函数只做业务编排。如果库存不足或优惠券无效，依赖会抛异常短路，路由函数根本不会执行。
+
+## 十三、依赖的优先级与异常短路
 
 依赖执行时，如果某个依赖抛出 \`HTTPException\`，整个依赖链会"短路"——后续依赖和路由函数都不会执行，直接返回错误响应。
 
@@ -2044,7 +3263,7 @@ def get_data(data=Depends(query_db)):
 
 这个特性让"前置校验"非常自然：把校验逻辑放在依赖链上游，失败时自动短路，下游不用写一堆 if/else。
 
-## 十一、嵌套依赖的异常处理
+## 十四、嵌套依赖的异常处理
 
 yield 依赖嵌套时，异常会沿着依赖链向上传播，每一层的 try/except 都有机会处理：
 
@@ -2100,7 +3319,7 @@ def fail(data=Depends(dep_middle)):
 
 这个机制让"分层错误处理"成为可能：每层依赖可以记录自己的日志、做自己的清理，然后把异常继续上传。
 
-## 十二、常见错误与避坑指南
+## 十五、常见错误与避坑指南
 
 ### 错误 1：循环依赖
 
@@ -2201,7 +3420,140 @@ def get_cache(db=Depends(get_db)):
 
 FastAPI 的执行顺序保证了正确的清理顺序（内层先清理），但你要确保清理代码不访问已关闭的资源。如果 \`cache.flush()\` 需要 db，那它必须在 db.close() 之前执行——这正是洋葱模型保证的。
 
-## 十三、本章小结
+### 错误 6：依赖函数参数顺序错误
+
+\`\`\`python
+# ❌ 错误：Depends 参数放在普通参数前面
+def bad_dep(
+    user = Depends(get_user),     # Depends 放前面
+    name: str = "default",        # 普通参数放后面
+):
+    return {"user": user, "name": name}
+
+# ✅ 正确：普通参数放前面，Depends 放后面
+def good_dep(
+    name: str = "default",        # 普通参数
+    user = Depends(get_user),     # Depends
+):
+    return {"user": user, "name": name}
+\`\`\`
+
+Python 函数参数顺序：位置参数 → 默认参数 → *args → **kwargs → 关键字参数。Depends 参数有默认值，应该放后面。
+
+## 十六、动手实验
+
+### 实验 1：构建完整的认证授权链
+
+参考第十章的代码，实现一个完整的认证链，要求：
+1. 从 Header 解析 \`Authorization: Bearer <token>\`。
+2. 校验 token 是否在 \`tokens_db\` 里。
+3. 校验 token 是否过期。
+4. 根据用户 ID 查用户。
+5. 校验用户是否激活（\`active\` 字段）。
+6. 校验用户角色（admin/user）。
+
+为每一步写一个独立的依赖函数，让它们层层嵌套。最后写两个接口：一个只需登录，一个需要 admin。
+
+测试用例：
+- 有效 token + admin 用户 → 200
+- 有效 token + 普通用户访问 admin 接口 → 403
+- 过期 token → 401
+- 不存在的 token → 401
+- 被禁用用户 → 403
+
+### 实验 2：观察依赖缓存的复用
+
+\`\`\`python
+# 实验模板
+from fastapi import FastAPI, Depends
+import uvicorn
+
+app = FastAPI()
+call_count = 0
+
+def shared_dep():
+    """会被多个依赖引用的底层依赖"""
+    global call_count
+    call_count += 1
+    print(f"  [shared] 第 {call_count} 次调用")
+    return f"shared-{call_count}"
+
+def dep_a(s = Depends(shared_dep)):
+    print(f"  [A] 使用 s={s}")
+    return f"A({s})"
+
+def dep_b(s = Depends(shared_dep)):
+    print(f"  [B] 使用 s={s}")
+    return f"B({s})"
+
+@app.get("/test")
+def test(
+    a = Depends(dep_a),
+    b = Depends(dep_b),
+):
+    # TODO: 观察 shared_dep 被调用几次
+    # 预期：1 次（缓存复用）
+    return {"a": a, "b": b}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="127.0.0.1", port=8000)
+\`\`\`
+
+访问 \`http://127.0.0.1:8000/test\`，观察 \`shared_dep\` 被调用几次。如果改成 \`use_cache=False\`，会被调用几次？
+
+### 实验 3：实现一个依赖图
+
+设计一个电商订单接口的依赖图，至少包含：
+- 用户认证
+- 商品查询
+- 库存校验
+- 优惠券校验
+- 数据库事务
+
+画出依赖图（用纸笔或工具），然后实现每个依赖，最后组合到路由函数里。
+
+提示：参考第十二章的电商订单 demo。
+
+### 实验 4：测试异常短路
+
+写一个三层依赖链，让中间的依赖抛异常，观察：
+1. 后续依赖是否执行？
+2. yield 依赖的退出代码是否执行？
+3. 路由函数是否执行？
+
+\`\`\`python
+# 实验模板
+from fastapi import FastAPI, Depends, HTTPException
+
+app = FastAPI()
+
+def dep_a():
+    print("[A] 进入")
+    try:
+        yield "A"
+        print("[A] 正常退出")
+    except Exception as e:
+        print(f"[A] 捕获: {e}")
+        raise
+
+def dep_b(a = Depends(dep_a)):
+    print("[B] 进入")
+    raise HTTPException(400, "B 失败")  # 在 B 里抛异常
+    yield "B"  # 这行不会执行
+
+def dep_c(b = Depends(dep_b)):
+    print("[C] 进入")
+    yield "C"
+
+@app.get("/test")
+def test(c = Depends(dep_c)):
+    print("[route] 执行")
+    return {"c": c}
+
+# 预期：C 不会执行，路由不会执行，A 的 except 会捕获异常
+\`\`\`
+
+## 十七、本章小结
 
 本章我们学习了：
 
@@ -2212,7 +3564,8 @@ FastAPI 的执行顺序保证了正确的清理顺序（内层先清理），但
 5. **组合使用**：一个路由可以组合多个独立依赖，各司其职。
 6. **异常短路**：依赖抛 HTTPException 时，下游不执行。
 7. **分层异常处理**：yield 嵌套时，异常沿依赖链向上传播。
-8. **避坑要点**：避免循环依赖、注意缓存共享、不修改全局状态、清理顺序。
+8. **实战应用**：完整认证链（token 解析 → 用户查询 → 权限检查）、电商订单处理。
+9. **避坑要点**：避免循环依赖、注意缓存共享、不修改全局状态、清理顺序、参数顺序。
 
 依赖嵌套是 FastAPI 处理复杂业务逻辑的核心武器。把大问题拆成小依赖，组合成依赖图，代码会变得清晰、可测试、易维护。下一章我们学习类与全局依赖。
 `,
@@ -2246,7 +3599,47 @@ FastAPI 的执行顺序保证了正确的清理顺序（内层先清理），但
 - **类型友好**：IDE 完整识别类的方法和属性。
 - **面向对象**：符合 OOP 设计模式，适合复杂业务。
 
-## 二、类作为依赖：__init__ 参数自动注入
+## 二、生活类比：公司组织架构
+
+理解类依赖，可以用公司组织架构作比喻。
+
+**函数依赖 = 个体户**
+
+个体户一个人干所有事：采购、做菜、收银、打扫。每个函数就是一个个体户，它自己做所有事，没有状态管理，没有继承。
+
+\`\`\`python
+# 个体户：一个函数搞定所有
+def get_user_service(token, db, cache):
+    # 自己校验 token
+    # 自己查 db
+    # 自己管 cache
+    # 没有状态管理，每次都重新来
+    pass
+\`\`\`
+
+**类依赖 = 公司部门**
+
+公司有专门的部门：人事部管员工、财务部管钱、技术部管代码。每个部门有自己的"状态"（员工档案、财务账本）和方法（招人、发薪）。部门之间通过正式流程协作，而不是一个人包揽所有。
+
+\`\`\`python
+# 公司部门：类封装状态和方法
+class AuthService:
+    def __init__(self):
+        self.users = {}  # 状态：员工档案
+
+    def get_current_user(self, token):  # 方法：招人
+        return self.users.get(token)
+
+    def require_admin(self, user):      # 方法：检查权限
+        return user["role"] == "admin"
+
+# 全局单例（整个公司共享一个 AuthService）
+auth_service = AuthService()
+\`\`\`
+
+类依赖就像把"个体户"升级成"公司"：状态被封装在实例里，方法可以被复用和继承，整个系统更规范。
+
+## 三、类作为依赖：__init__ 参数自动注入
 
 直接看示例：
 
@@ -2321,7 +3714,7 @@ def list_users(pagination: Pagination = Depends(Pagination)):
 
 注意写法：\`Depends(Pagination)\` 里传的是类本身（不是实例）。FastAPI 会调用类来实例化。等价于 \`Depends(Pagination())\`？不！\`Depends(Pagination())\` 是传一个已实例化的对象，FastAPI 不会再调用它。要传类本身，让框架实例化。
 
-## 三、类方法作为依赖
+## 四、类方法作为依赖
 
 除了类本身，类的方法也能作为依赖：
 
@@ -2384,7 +3777,7 @@ def admin_panel(admin: dict = Depends(auth_service.require_admin)):
 
 方法依赖的好处：把相关逻辑组织在一个类里，通过 \`self\` 共享状态（如用户库）。
 
-## 四、全局依赖：app 级别
+## 五、全局依赖：app 级别
 
 有些依赖需要对所有接口生效，如全局日志、CORS、请求追踪。FastAPI 支持在 \`FastAPI()\` 构造时声明全局依赖：
 
@@ -2400,17 +3793,6 @@ def log_request_start(request: Request):
     print(f"[{time.time()}] 请求开始: {request.method} {request.url.path}")
     # 这里不 return，只是为了副作用
     # 也可以 return 值，但全局依赖的返回值不会注入到路由（路由没声明参数接收）
-
-# 全局依赖：记录请求耗时
-def timing_middleware(request: Request):
-    # 记录开始时间
-    start = time.time()
-    print(f"[timing] {request.method} {request.url.path} 开始")
-    # 这里不能 yield，因为是普通依赖
-    # 如果要测耗时，用 yield
-    # 但全局依赖用 dependencies 参数声明时，不能用 yield
-    # 所以这里只记录开始
-    print(f"[timing] 开始时间: {start}")
 
 # 创建 app 时声明全局依赖
 # dependencies 参数接收一个依赖列表，对所有路由生效
@@ -2438,7 +3820,7 @@ def list_users():
 
 注意：\`dependencies\` 参数里的依赖**只执行副作用，不注入返回值**。因为路由函数没有参数接收它们。如果需要返回值，路由函数要显式声明 \`Depends()\`。
 
-## 五、全局依赖：router 级别
+## 六、全局依赖：router 级别
 
 更精细的控制是 router 级别依赖。一组路由共享依赖，但不影响其他路由：
 
@@ -2490,7 +3872,7 @@ def public():
 
 router 级别依赖适合"一组接口共享保护"的场景，如 admin 模块、API v1 模块。
 
-## 六、dependencies 参数：不使用返回值的依赖
+## 七、dependencies 参数：不使用返回值的依赖
 
 \`dependencies\` 参数可以用在三个级别：
 
@@ -2547,7 +3929,135 @@ def mixed_endpoint(user: dict = Depends(get_user_info)):  # 注入返回值
 
 \`dependencies\` 用于"前置校验/日志"，\`Depends()\` 参数用于"获取数据"。两者可以混用。
 
-## 七、Annotated 类型注解写法
+## 八、新增 Demo：多层级全局依赖组合
+
+实际项目中，全局依赖往往有多个层级：app 级别（日志、CORS）、router 级别（API Key、版本控制）、路由级别（特定校验）。这里展示完整的组合。
+
+\`\`\`python
+# 导入 FastAPI、APIRouter、Depends、Header、HTTPException、Request
+from fastapi import FastAPI, APIRouter, Depends, Header, HTTPException, Request
+# 导入 Optional
+from typing import Optional
+# 导入时间
+import time
+
+# ========== app 级别依赖 ==========
+
+# 依赖1：全局请求日志（所有路由都执行）
+def log_request(request: Request):
+    """记录每个请求的方法和路径"""
+    print(f"[global] {request.method} {request.url.path}")
+
+# 依赖2：全局请求 ID（所有路由都执行）
+def generate_request_id(request: Request):
+    """生成或读取请求 ID，存到 request.state"""
+    # 从 Header 读 X-Request-ID
+    req_id = request.headers.get("X-Request-ID")
+    if not req_id:
+        # 没传则用时间戳生成
+        req_id = f"req-{int(time.time() * 1000)}"
+    # 存到 request.state，路由函数可通过 request.state.request_id 访问
+    request.state.request_id = req_id
+
+# 创建 app，声明 app 级别依赖
+app = FastAPI(
+    dependencies=[
+        Depends(log_request),          # 所有请求都记日志
+        Depends(generate_request_id),  # 所有请求都生成 ID
+    ],
+)
+
+# ========== router 级别依赖 ==========
+
+# 依赖3：API Key 校验（仅 admin router 执行）
+def verify_api_key(x_api_key: Optional[str] = Header(None)):
+    """校验 X-API-Key 头"""
+    if x_api_key != "admin-secret-key":
+        raise HTTPException(401, "无效的 API Key")
+
+# 依赖4：版本校验（仅 v1 router 执行）
+def check_version(x_api_version: str = Header(...)):
+    """校验 API 版本"""
+    if x_api_version not in ["1.0", "1.1"]:
+        raise HTTPException(400, f"不支持的 API 版本: {x_api_version}")
+
+# admin router：需要 API Key
+admin_router = APIRouter(
+    prefix="/admin",
+    tags=["admin"],
+    dependencies=[Depends(verify_api_key)],
+)
+
+# v1 router：需要版本头
+v1_router = APIRouter(
+    prefix="/v1",
+    tags=["v1"],
+    dependencies=[Depends(check_version)],
+)
+
+# ========== 路由级别依赖 ==========
+
+# 依赖5：特定路由的限流
+def rate_limit():
+    """简化的限流检查"""
+    print("[rate_limit] 检查限流")
+    # 实际项目查 Redis
+    return {"limit": 100, "remaining": 99}
+
+# ========== 公开路由 ==========
+
+@app.get("/")
+def root():
+    return {"msg": "公开接口，无需认证"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
+# ========== admin 路由 ==========
+
+@admin_router.get("/users")
+def admin_list_users():
+    # 已经过 app 级别依赖（日志、请求 ID）
+    # 已经过 router 级别依赖（API Key）
+    return {"users": [{"id": 1, "name": "alice"}]}
+
+@admin_router.get(
+    "/sensitive",
+    dependencies=[Depends(rate_limit)],  # 路由级别依赖：限流
+)
+def admin_sensitive():
+    # 多了限流检查
+    return {"msg": "敏感操作"}
+
+# ========== v1 路由 ==========
+
+@v1_router.get("/products")
+def v1_list_products():
+    # 已经过 app 级别依赖
+    # 已经过 router 级别依赖（版本校验）
+    return {"products": [], "version": "v1"}
+
+# 注册 router
+app.include_router(admin_router)
+app.include_router(v1_router)
+\`\`\`
+
+请求 \`GET /admin/users\` 带 \`X-API-Key: admin-secret-key\`：
+
+\`\`\`
+[global] GET /admin/users  # app 级别日志
+\`\`\`
+
+请求 \`GET /v1/products\` 带 \`X-API-Version: 1.0\`：
+
+\`\`\`
+[global] GET /v1/products  # app 级别日志
+\`\`\`
+
+这个例子展示了多层级依赖的组合：app 级别做通用基础设施，router 级别做模块保护，路由级别做特定校验。
+
+## 九、Annotated 类型注解写法
 
 FastAPI 推荐用 \`Annotated\` 写依赖，更清晰、可复用：
 
@@ -2614,7 +4124,7 @@ def list_products(
 
 FastAPI 官方文档现在推荐 \`Annotated\` 写法，建议新项目用这种风格。
 
-## 八、UseLifespan 与 Depends 的区别
+## 十、UseLifespan 与 Depends 的区别
 
 FastAPI 有两个概念容易混淆：\`lifespan\` 和 \`Depends\`。它们都能"注入资源"，但用途完全不同。
 
@@ -2697,7 +4207,176 @@ async def list_users(db=Depends(get_db)):
 - **重资源、全局共享** → lifespan（连接池、Redis 客户端、配置对象）
 - **轻资源、请求隔离** → Depends（db session、当前用户、请求上下文）
 
-## 九、实战：配置管理类 + 认证类 + 日志类组合
+## 十一、新增 Demo：类继承复用依赖逻辑
+
+类依赖的一大优势是继承。可以写一个基类，子类复用并扩展逻辑。
+
+\`\`\`python
+# 导入 FastAPI、Depends、Header、HTTPException
+from fastapi import FastAPI, Depends, Header, HTTPException
+# 导入 Optional
+from typing import Optional
+
+app = FastAPI()
+
+# 模拟用户库
+users_db = {
+    "alice_token": {"id": 1, "name": "alice", "role": "admin"},
+    "bob_token": {"id": 2, "name": "bob", "role": "user"},
+    "charlie_token": {"id": 3, "name": "charlie", "role": "moderator"},
+}
+
+# ========== 基类：基础认证服务 ==========
+class BaseAuthService:
+    """认证服务基类，提供 token 校验"""
+
+    def __init__(self, users: dict):
+        # 保存用户库
+        self.users = users
+
+    def get_current_user(
+        self,
+        authorization: Optional[str] = Header(None),
+    ) -> dict:
+        """从 Header 取 token，返回用户（基类方法）"""
+        if not authorization:
+            raise HTTPException(401, "缺少 Authorization")
+        # 提取 token
+        token = authorization.replace("Bearer ", "")
+        # 查用户
+        user = self.users.get(token)
+        if not user:
+            raise HTTPException(401, "无效 token")
+        return user
+
+# ========== 子类1：管理员认证 ==========
+class AdminAuthService(BaseAuthService):
+    """管理员认证服务，继承基类并增加 admin 校验"""
+
+    def require_admin(
+        self,
+        user: dict = Depends(self.get_current_user),  # 复用基类方法
+    ) -> dict:
+        """校验 admin 角色"""
+        if user["role"] != "admin":
+            raise HTTPException(403, "需要管理员权限")
+        return user
+
+# ========== 子类2：版主认证 ==========
+class ModeratorAuthService(BaseAuthService):
+    """版主认证服务，继承基类并增加 moderator 校验"""
+
+    def require_moderator(
+        self,
+        user: dict = Depends(self.get_current_user),  # 复用基类方法
+    ) -> dict:
+        """校验 moderator 或 admin 角色"""
+        if user["role"] not in ["admin", "moderator"]:
+            raise HTTPException(403, "需要版主或管理员权限")
+        return user
+
+# 创建服务实例
+admin_auth = AdminAuthService(users_db)
+moderator_auth = ModeratorAuthService(users_db)
+
+# ========== 路由 ==========
+
+# 普通接口：只需登录（用基类方法）
+@app.get("/me")
+def get_me(user: dict = Depends(admin_auth.get_current_user)):
+    return {"user": user}
+
+# 管理员接口
+@app.get("/admin/users")
+def admin_users(admin: dict = Depends(admin_auth.require_admin)):
+    return {"admin": admin["name"], "users": list(users_db.values())}
+
+# 版主接口
+@app.get("/moderator/reports")
+def moderator_reports(mod: dict = Depends(moderator_auth.require_moderator)):
+    return {"moderator": mod["name"], "reports": []}
+\`\`\`
+
+这个例子展示了类继承的威力：基类 \`BaseAuthService\` 提供 token 校验，子类 \`AdminAuthService\` 和 \`ModeratorAuthService\` 复用基类方法并扩展各自的权限校验。代码复用度高，扩展性好。
+
+## 十二、新增 Demo：类作为可配置的限流器
+
+把限流逻辑封装成类，每个接口可以创建独立的限流器实例。
+
+\`\`\`python
+# 导入 FastAPI、Depends、Request、HTTPException
+from fastapi import FastAPI, Depends, Request, HTTPException
+# 导入时间
+import time
+
+app = FastAPI()
+
+# 限流器类
+class RateLimiter:
+    """内存限流器（生产环境用 Redis）"""
+
+    def __init__(self, max_requests: int = 10, window_seconds: int = 60):
+        # 配置：最大请求数、时间窗口
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        # 存储：{客户端 IP: [请求时间戳列表]}
+        self._store: dict[str, list[float]] = {}
+
+    def __call__(self, request: Request):
+        """让实例可调用，作为依赖"""
+        # 获取客户端 IP
+        client_ip = request.client.host if request.client else "unknown"
+        # 当前时间
+        now = time.time()
+        # 窗口起始时间
+        window_start = now - self.window_seconds
+
+        # 初始化存储
+        if client_ip not in self._store:
+            self._store[client_ip] = []
+        # 过滤旧记录
+        self._store[client_ip] = [
+            ts for ts in self._store[client_ip] if ts > window_start
+        ]
+        # 检查是否超限
+        if len(self._store[client_ip]) >= self.max_requests:
+            raise HTTPException(
+                429,
+                f"请求过于频繁，每 {self.window_seconds} 秒最多 {self.max_requests} 次",
+            )
+        # 记录请求
+        self._store[client_ip].append(now)
+        # 返回剩余次数
+        return {
+            "limit": self.max_requests,
+            "remaining": self.max_requests - len(self._store[client_ip]),
+        }
+
+# 创建不同配置的限流器实例
+# 普通接口：每分钟 100 次
+general_limiter = RateLimiter(max_requests=100, window_seconds=60)
+# 敏感接口：每分钟 5 次
+sensitive_limiter = RateLimiter(max_requests=5, window_seconds=60)
+# 登录接口：每分钟 3 次（防止暴力破解）
+login_limiter = RateLimiter(max_requests=3, window_seconds=60)
+
+# 路由：使用不同限流器
+@app.get("/api/data")
+def get_data(info: dict = Depends(general_limiter)):
+    return {"msg": "普通数据", "remaining": info["remaining"]}
+
+@app.post("/api/sensitive")
+def sensitive_op(info: dict = Depends(sensitive_limiter)):
+    return {"msg": "敏感操作", "remaining": info["remaining"]}
+
+@app.post("/login")
+def login(info: dict = Depends(login_limiter)):
+    return {"msg": "登录接口", "remaining": info["remaining"]}
+\`\`\`
+
+这个例子展示了类作为可配置依赖的用法：\`RateLimiter\` 类封装限流逻辑，通过 \`__call__\` 让实例可调用。不同接口创建不同配置的实例，灵活控制限流策略。
+
+## 十三、实战：配置管理类 + 认证类 + 日志类组合
 
 把本章学的组合起来，实现一个完整的"基础设施层"：
 
@@ -2913,171 +4592,367 @@ def admin_create_user(
 
 这个结构清晰、可测试、易扩展。要加新功能（如限流），只需新增一个类或依赖，注入即可。
 
-## 十十、类依赖与函数依赖的选择
+## 十四、类依赖与函数依赖的选择
 
-什么时候用类，什么时候用函数？
+类依赖和函数依赖本质相同（FastAPI 内部统一处理），选择哪种风格取决于场景。
 
-| 场景 | 推荐方式 |
-|---|---|
-| 无状态参数解析（分页、排序） | 函数或类都行 |
-| 需要持有状态（用户库、配置） | 类 |
-| 需要复用逻辑（继承） | 类 |
-| 简单校验 | 函数 |
-| 复杂业务（多方法协作） | 类 |
-| 全局单例服务 | 类 + 全局实例 |
+| 维度 | 函数依赖（def + Depends） | 类依赖（class + Depends） |
+|------|--------------------------|--------------------------|
+| **适用场景** | 简单逻辑、一次性校验、无状态 | 多个相关参数、有状态、需复用 |
+| **参数表达** | 一个函数返回一个值，参数另写 | 类属性即参数，一个类可携带多个参数 |
+| **可读性** | 简单直观 | 参数集中，结构清晰 |
+| **复用性** | 通过嵌套组合复用 | 通过继承、组合复用 |
+| **测试** | 直接 mock 函数 | 可实例化类传入测试数据 |
+| **状态共享** | 需借助模块级变量 | 类实例本身可缓存状态 |
 
-简单经验：**简单用函数，复杂用类**。如果一个依赖只有一两个参数、返回个值，函数更简洁。如果依赖有多个相关方法、需要持有状态，用类。
+**经验法则**：
 
-## 十一、常见错误与避坑指南
+- 参数 ≤ 2 且逻辑简单 → 用函数依赖。
+- 参数 ≥ 3 或多处复用同一组参数 → 用类依赖。
+- 需要继承复用（如 BaseAuth → AdminAuth）→ 用类依赖。
+- yield 资源管理（DB 连接、文件）→ 用函数依赖更直观。
 
-### 错误 1：传实例而不是类
+## 十五、常见错误与避坑指南
 
-\`\`\`python
-# ❌ 错误：传实例，框架不会调用 __init__
-class Pagination:
-    def __init__(self, page: int = 1):
-        self.page = page
-
-@app.get("/items")
-def list_items(p=Depends(Pagination(page=1))):  # 已经实例化了！
-    # page 参数不会被解析
-    return p
-
-# ✅ 正确：传类本身
-@app.get("/items")
-def list_items(p: Pagination = Depends(Pagination)):
-    # 框架会调用 Pagination(page=...)
-    return p.page
-\`\`\`
-
-\`Depends(Pagination)\` 传类，框架实例化。\`Depends(Pagination())\` 传实例，框架直接用（参数不会被解析）。
-
-### 错误 2：__init__ 参数和路由参数冲突
+### 错误 1：忘记在路径操作中声明 Depends
 
 \`\`\`python
-# ❌ 错误：路由和类的 __init__ 都声明 page
-class Pagination:
-    def __init__(self, page: int = Query(1)):
-        self.page = page
+# ❌ 错误：定义了依赖但没声明
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-@app.get("/items")
-def list_items(page: int = Query(1), p: Pagination = Depends(Pagination)):
-    # page 会被解析两次！
-    return {"page": page, "p.page": p.page}
+@app.get("/users")
+def list_users(db):  # ❌ 缺少 Depends，db 会作为查询参数解析，报 422
+    return db.query(User).all()
+
+# ✅ 正确：用 Depends 声明
+@app.get("/users")
+def list_users(db: Session = Depends(get_db)):  # ✅ FastAPI 自动注入
+    return db.query(User).all()
 \`\`\`
 
-依赖的参数由依赖自己解析，路由函数不要重复声明。如果要同时用，路由函数只接收依赖实例，从实例属性取值。
-
-### 错误 3：全局依赖里用 yield
+### 错误 2：类依赖实例被错误地共享
 
 \`\`\`python
-# ❌ 错误：dependencies 参数不支持 yield 依赖
-def bad_global_dep():
-    yield  # 报错！
+# ❌ 错误：把实例放在模块级，所有请求共享同一实例（有状态会出 bug）
+counter = Counter()  # 模块级单例
 
-app = FastAPI(dependencies=[Depends(bad_global_dep)])
+@app.get("/count")
+def count(c: Counter = Depends(lambda: counter)):  # ❌ 共享实例
+    c.count += 1
+    return {"count": c.count}
 
-# ✅ 正确：全局依赖用普通函数（只执行副作用）
-def good_global_dep():
-    print("执行")
-
-app = FastAPI(dependencies=[Depends(good_global_dep)])
-
-# 如果需要 yield（资源管理），用 lifespan
+# ✅ 正确：每次请求新建实例
+@app.get("/count")
+def count(c: Counter = Depends(Counter)):  # ✅ 每请求新实例
+    c.count += 1
+    return {"count": c.count}
 \`\`\`
 
-\`dependencies\` 参数里的依赖只执行副作用，不能用 yield。需要资源管理用 lifespan 或在路由函数里声明 \`Depends()\`。
-
-### 错误 4：类方法依赖忘记 self
+### 错误 3：在 __init__ 中执行 IO 操作
 
 \`\`\`python
-# ❌ 错误：方法里访问 self 但没绑定
-class Service:
-    def get_user(self, token: str = Header(...)):
-        return self.users[token]  # self 未定义！
+# ❌ 错误：__init__ 里做 DB 查询，每次实例化都阻塞
+class UserChecker:
+    def __init__(self, token: str = Header(...)):
+        self.user = db.query(User).filter_by(token=token).first()  # ❌ 同步阻塞
 
-@app.get("/me")
-def me(user=Depends(Service.get_user)):  # 传未绑定方法
-    return user
+# ✅ 正确：__init__ 只存参数，逻辑放到方法或独立依赖
+class UserChecker:
+    def __init__(self, token: str = Header(...)):
+        self.token = token  # ✅ 只存参数
 
-# ✅ 正确：传绑定方法（实例.方法）
-service = Service()
-
-@app.get("/me")
-def me(user=Depends(service.get_user)):  # 传 service.get_user
-    return user
+    def check(self):  # 方法里再做查询
+        return db.query(User).filter_by(token=self.token).first()
 \`\`\`
 
-\`Service.get_user\` 是未绑定方法，\`self\` 没有值。要传 \`service.get_user\`（实例的方法），\`self\` 才绑定到 \`service\`。
-
-### 错误 5：Annotated 类型用错
+### 错误 4：yield 依赖中吞掉异常
 
 \`\`\`python
-# ❌ 错误：Annotated 顺序反了
-Page = Annotated[Query(1), int]  # 类型在前？错！
+# ❌ 错误：yield 后 try 不带 except，异常被吞
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()  # 如果上面抛异常，这里仍执行，但异常未传播
 
-# ✅ 正确：类型在前，元数据在后
-Page = Annotated[int, Query(1, ge=1)]
+# ✅ 正确：yield 依赖的异常会自动传播给其他 yield 依赖
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()  # 异常会传播，可在 finally 清理
 \`\`\`
 
-\`Annotated[类型, 元数据1, 元数据2, ...]\`，类型必须是第一个参数。
-
-### 错误 6：误以为全局依赖的返回值能注入
+### 错误 5：类方法作为依赖时忘记 self
 
 \`\`\`python
-# ❌ 误区
-def get_config():
-    return {"debug": True}
+class AuthService:
+    def __init__(self, token: str = Header(...)):
+        self.token = token
 
-app = FastAPI(dependencies=[Depends(get_config)])
+    # ❌ 错误：写成静态方法，无法访问 self.token
+    @staticmethod
+    def get_user():
+        return decode(self.token)  # ❌ NameError: self
 
-@app.get("/")
-def root():
-    # 这里访问不了 config！
-    # 因为 dependencies 的依赖返回值不注入
-    return {"msg": "hello"}
-
-# ✅ 正确：要在路由函数里声明 Depends 才能拿到返回值
-@app.get("/")
-def root(config: dict = Depends(get_config)):
-    return {"debug": config["debug"]}
+    # ✅ 正确：实例方法，FastAPI 调用实例方法时自动绑定 self
+    def get_user(self):
+        return decode(self.token)
 \`\`\`
 
-\`dependencies\` 只执行副作用。要拿返回值，路由函数要显式声明 \`Depends()\`。
+### 错误 6：全局依赖抛异常后未清理资源
 
-## 十二、本章小结
+\`\`\`python
+# ❌ 错误：全局依赖抛异常，yield 资源未清理
+async def get_db():
+    db = await create_db()
+    yield db
+    await db.close()  # 如果路径操作或后续依赖抛异常，这里仍会执行 ✅
 
-本章我们学习了：
+# 但如果 yield 之前的代码抛异常，db 不会创建，没问题
+# 关键：确保 yield 之后的清理代码用 try/finally 包裹
+async def get_db():
+    db = await create_db()
+    try:
+        yield db
+    finally:
+        await db.close()  # ✅ 双重保险
+\`\`\`
 
-1. **类作为依赖**：传类本身给 \`Depends()\`，框架调用 \`__init__\` 实例化，参数从请求解析。
-2. **类方法作为依赖**：传绑定方法 \`instance.method\`，\`self\` 自动绑定。
-3. **全局依赖**：\`FastAPI(dependencies=[...])\` 对所有路由生效。
-4. **router 级别依赖**：\`APIRouter(dependencies=[...])\` 对该 router 生效。
-5. **路由级别 dependencies**：\`@app.get(..., dependencies=[...])\` 只执行副作用。
-6. **Annotated 写法**：把类型和依赖打包，可复用、可读性好。
-7. **lifespan vs Depends**：lifespan 管应用级资源（连接池），Depends 管请求级资源（session）。
-8. **实战组合**：配置类 + 日志类 + 认证类 + Annotated 别名 + 全局依赖。
-9. **避坑要点**：传类不传实例、避免参数冲突、dependencies 不支持 yield、方法要绑定 self、Annotated 顺序。
+## 十六、动手实验
 
-类与全局依赖是构建大型 FastAPI 应用的基础。把基础设施封装成类，用全局依赖统一管理，用 Annotated 简化声明，代码会变得模块化、可测试、易维护。
+### 实验 1：实现一个可配置的缓存依赖
 
-## 十三、依赖注入总结
+需求：用类依赖实现缓存，支持配置 TTL（过期时间）和命名空间。
 
-到此，我们完成了依赖注入四章的学习。回顾整个体系：
+\`\`\`python
+import time
+from fastapi import FastAPI, Depends
+from typing import Annotated
 
-1. **基础**（第 21 章）：Depends 工作原理、函数依赖、缓存机制。
-2. **资源管理**（第 22 章）：yield 依赖、try/finally、事务管理。
-3. **嵌套组合**（第 23 章）：依赖图、复用、异常短路。
-4. **类与全局**（第 24 章）：类依赖、全局依赖、Annotated、lifespan。
+class CacheDep:
+    \"\"\"缓存依赖类，支持配置 TTL 和命名空间\"\"\"
 
-依赖注入是 FastAPI 的灵魂。掌握它，你就能写出：
+    def __init__(self, ttl: int = 60, namespace: str = "default"):
+        # 参数会作为查询参数（因为是简单类型且有默认值）
+        self.ttl = ttl
+        self.namespace = namespace
+        self._store = {}  # 简单内存存储
 
-- **解耦**的代码：业务逻辑和基础设施分离。
-- **可测试**的代码：mock 依赖做单元测试。
-- **可复用**的代码：依赖跨接口共享。
-- **可扩展**的代码：新增功能加依赖即可。
+    def get(self, key: str):
+        full_key = f"{self.namespace}:{key}"
+        item = self._store.get(full_key)
+        if item and item["expire"] > time.time():
+            return item["value"]
+        return None
 
-后续章节（中间件、安全、数据库、测试）都会用到依赖注入。把它吃透，FastAPI 的其他特性就迎刃而解了。
+    def set(self, key: str, value):
+        full_key = f"{self.namespace}:{key}"
+        self._store[full_key] = {
+            "value": value,
+            "expire": time.time() + self.ttl,
+        }
+
+app = FastAPI()
+
+@app.get("/items/{item_id}")
+def get_item(item_id: str, cache: CacheDep = Depends(CacheDep)):
+    # 先查缓存
+    cached = cache.get(item_id)
+    if cached:
+        return {"source": "cache", "data": cached}
+    # 模拟 DB 查询
+    data = f"item_data_{item_id}"
+    cache.set(item_id, data)
+    return {"source": "db", "data": data}
+\`\`\`
+
+**实验任务**：
+1. 运行后访问 \`/items/1\` 两次，第一次 source=db，第二次 source=cache。
+2. 修改 TTL 默认值为 1 秒，验证缓存过期。
+3. 尝试用 Annotated 简化依赖声明。
+
+### 实验 2：类继承实现多角色权限
+
+需求：基于 BaseAuth 继承出 AdminAuth 和 ModeratorAuth，验证不同角色访问。
+
+\`\`\`python
+from fastapi import FastAPI, Depends, Header, HTTPException
+
+class BaseAuth:
+    \"\"\"基础认证类\"\"\"
+    required_role: str = "user"
+
+    def __init__(self, authorization: str = Header(...)):
+        self.token = authorization.replace("Bearer ", "")
+
+    def get_user(self):
+        # 模拟 token 解码
+        users = {
+            "alice_token": {"name": "alice", "role": "user"},
+            "bob_token": {"name": "bob", "role": "admin"},
+            "carol_token": {"name": "carol", "role": "moderator"},
+        }
+        user = users.get(self.token)
+        if not user:
+            raise HTTPException(401, "无效 token")
+        return user
+
+    def check_role(self, user):
+        if user["role"] != self.required_role and self.required_role != "user":
+            raise HTTPException(403, f"需要 {self.required_role} 角色")
+        return user
+
+    def __call__(self):
+        # 让实例可调用，作为依赖直接使用
+        user = self.get_user()
+        return self.check_role(user)
+
+class AdminAuth(BaseAuth):
+    required_role = "admin"
+
+class ModeratorAuth(BaseAuth):
+    required_role = "moderator"
+
+app = FastAPI()
+
+@app.get("/admin")
+def admin_endpoint(user = Depends(AdminAuth())):
+    return {"msg": f"欢迎管理员 {user['name']}"}
+
+@app.get("/mod")
+def mod_endpoint(user = Depends(ModeratorAuth())):
+    return {"msg": f"欢迎版主 {user['name']}"}
+\`\`\`
+
+**实验任务**：
+1. 用 alice_token 访问 /admin，应返回 403。
+2. 用 bob_token 访问 /admin，应成功。
+3. 用 carol_token 访问 /mod，应成功。
+4. 思考：为什么需要 \`__call__\` 方法？
+
+### 实验 3：组合类依赖构建完整请求上下文
+
+需求：用一个聚合类组合 Config、Logger、Auth，作为统一请求上下文。
+
+\`\`\`python
+from fastapi import FastAPI, Depends, Header
+from typing import Annotated
+
+class Config:
+    def __init__(self):
+        self.env = "prod"
+        self.debug = False
+
+class Logger:
+    def __init__(self, config: Config):
+        self.config = config
+        self.logs = []
+
+    def info(self, msg):
+        self.logs.append(f"[INFO] {msg}")
+
+class Auth:
+    def __init__(self, authorization: str = Header(...)):
+        self.token = authorization.replace("Bearer ", "")
+
+    def get_user(self):
+        return {"name": self.token.split("_")[0]}
+
+class RequestContext:
+    \"\"\"聚合所有请求级依赖\"\"\"
+
+    def __init__(
+        self,
+        config: Config = Depends(Config),
+        logger: Logger = Depends(Logger),
+        auth: Auth = Depends(Auth),
+    ):
+        self.config = config
+        self.logger = logger
+        self.auth = auth
+        self.user = auth.get_user()
+        logger.info(f"请求来自用户 {self.user['name']}")
+
+app = FastAPI()
+
+Ctx = Annotated[RequestContext, Depends(RequestContext)]
+
+@app.get("/profile")
+def profile(ctx: Ctx):
+    ctx.logger.info("访问 profile 接口")
+    return {
+        "user": ctx.user,
+        "env": ctx.config.env,
+        "logs": ctx.logger.logs,
+    }
+\`\`\`
+
+**实验任务**：
+1. 访问 \`/profile\` 带 \`Authorization: Bearer alice_token\`，观察返回。
+2. 尝试给 Config 增加从环境变量读取的逻辑。
+3. 思考：RequestContext 如何简化测试？
+
+## 十七、本章小结
+
+类依赖是 FastAPI 依赖注入的进阶用法，核心要点：
+
+1. **类即依赖**：类的 \`__init__\` 参数即依赖参数，FastAPI 自动解析。
+2. **方法即子依赖**：实例方法可作为依赖，支持 \`self\` 自动绑定。
+3. **继承复用**：通过子类化复用逻辑，适合多角色权限等场景。
+4. **可调用实例**：实现 \`__call__\` 让实例本身作为依赖函数。
+5. **全局依赖**：\`dependencies=[Depends(...)]\` 用于路由级、应用级公共依赖。
+6. **Annotated 别名**：用 \`Annotated[Type, Depends(...)]\` 提升可读性和复用性。
+7. **与 lifespan 互补**：lifespan 管理应用级资源，Depends 管理请求级资源。
+
+类依赖让代码更面向对象、更易测试、更易扩展，是构建中大型 FastAPI 应用的关键工具。
+
+## 十八、依赖注入总结（4 章回顾）
+
+本系列 4 章覆盖了 FastAPI 依赖注入的完整知识体系：
+
+### 第 21 章 · 基础依赖（fa-depends）
+- Depends 的工作原理：声明即注入，FastAPI 自动解析参数树。
+- 生活类比：餐厅点餐，后厨分工，Depends 像自动提供的餐具。
+- 核心场景：配置注入、请求 ID 追踪、限流。
+- 关键点：依赖可缓存（同一请求内同依赖只执行一次）、支持嵌套。
+
+### 第 22 章 · yield 依赖（fa-yield-dep）
+- yield 依赖用于资源管理：yield 前是 setup，yield 后是 teardown。
+- 生活类比：图书馆借书还书、酒店房卡进出。
+- 核心场景：DB 连接池、文件句柄、Redis 连接、分布式锁。
+- 关键点：异常会传播给 yield 依赖、finally 确保清理、与 lifespan 的区别（请求级 vs 应用级）。
+
+### 第 23 章 · 嵌套依赖（fa-nested-dep）
+- 嵌套依赖构建复杂依赖图，FastAPI 自动拓扑排序。
+- 生活类比：工厂流水线，每道工序依赖上游产物。
+- 核心场景：认证链（token → user → permission）、电商订单（用户 → 商品 → 库存 → 订单）。
+- 关键点：依赖缓存机制、\`use_cache=False\` 禁用缓存、依赖图可视化。
+
+### 第 24 章 · 类依赖（fa-class-dep）
+- 类作为依赖：\`__init__\` 参数即依赖参数，结构化表达。
+- 生活类比：定制化的工具箱，每个工具（类）有自己的配置和用法。
+- 核心场景：配置管理类、认证类、日志类、限流器类。
+- 关键点：类方法作为依赖、继承复用、\`__call__\` 可调用实例、Annotated 别名、全局依赖。
+
+### 依赖注入最佳实践
+
+1. **单一职责**：每个依赖只做一件事，通过组合构建复杂逻辑。
+2. **显式声明**：用 Annotated 别名让依赖意图清晰。
+3. **资源用 yield**：DB、文件、锁等资源用 yield 依赖确保清理。
+4. **类用于复用**：多处复用的逻辑用类依赖，便于继承和测试。
+5. **全局依赖慎用**：\`dependencies=[...]\` 影响所有路由，确保真的全局需要。
+6. **测试友好**：依赖注入让单元测试简单，直接 mock 或传入测试实例。
+7. **避免在依赖中做重 IO**：依赖应轻量，重操作放到路径操作函数或后台任务。
+
+掌握这 4 章，你已经能驾驭 FastAPI 的依赖注入系统，构建出结构清晰、易于维护、便于测试的生产级应用。
 `,
   },
 ];

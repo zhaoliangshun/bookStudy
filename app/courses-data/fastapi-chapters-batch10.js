@@ -3406,28 +3406,6 @@ curl http://127.0.0.1:8000/debug/permissions/charlie
 # {"username":"charlie","role":"user","permissions":["article:read"],"perm_count":1}
 \`\`\`
 
-## 十一、本章小结
-
-- 认证解决"你是谁"，授权解决"你能做什么"——本章聚焦授权。
-- RBAC 三层模型：用户-角色-权限，角色是用户和权限中间的"打包"层。
-- 用 \`enum\` 定义角色，用 \`dict[Role, set[str]]\` 维护角色-权限映射。
-- **依赖工厂**（\`require_roles\`、\`require_permission\`）是 FastAPI 实现权限检查的优雅方式。
-- 装饰器方案在 FastAPI 里不推荐，依赖注入更原生、对 OpenAPI 友好。
-- 资源所有权检查在路由函数里做，因为依赖拿不到路径参数。
-- 401 vs 403：401 没登录，403 没权限。
-- 完整系统：admin/editor/viewer 三角色，覆盖用户管理 + 文章管理 + 所有权检查。
-
-## 十二、整批章节回顾
-
-第 10 批 4 章串起来就是完整的认证授权体系：
-
-1. **OAuth2 密码模式**：定义登录流程，颁发 token。
-2. **JWT**：token 的格式和验签机制，无状态、可过期。
-3. **密码哈希**：密码怎么存才安全，bcrypt + passlib。
-4. **RBAC**：拿到用户后怎么判断权限，角色-权限-资源三层模型。
-
-把这 4 章的代码合起来，就是一个生产可用的认证授权骨架。后续章节会在此基础上加数据库、加测试、加部署，最终搭出完整的后端服务。
-
 ## 五、基于角色的权限检查依赖
 
 ### Demo 2：角色级权限检查（完整可运行）
@@ -3786,7 +3764,7 @@ SECRET_KEY = "demo-secret-key-change-in-production"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-pwd_context = CryptContext(schemes=[" bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # 注意：OAuth2PasswordBearer 的 scopes 参数定义了所有可用 scope
 # FastAPI 会用这些信息生成 /docs 的授权页面
@@ -4432,16 +4410,19 @@ curl -X PUT "http://127.0.0.1:8000/admin/users/charlie/role?new_role=editor" \
 3. 测试：一个用户同时是 editor 和 finance，应该同时拥有两个角色的权限。
 4. 思考：多角色如何影响所有权检查？（不影响，所有权检查只看 username，不看角色。）
 
+## 十二、本章小结
+
 - 认证解决"你是谁"，授权解决"你能做什么"——本章聚焦授权。
 - RBAC 三层模型：用户-角色-权限，角色是用户和权限中间的"打包"层。
 - 用 \`enum\` 定义角色，用 \`dict[Role, set[str]]\` 维护角色-权限映射。
-- **依赖工厂**（\`require_roles\`、\`require_permission\`）是 FastAPI 实现权限检查的优雅方式。
-- 装饰器方案在 FastAPI 里不推荐，依赖注入更原生、对 OpenAPI 友好。
+- **依赖工厂**（\`require_role\`、\`require_permission\`）是 FastAPI 实现权限检查的优雅方式。
+- 权限级比角色级更灵活：改权限只需改映射表，不用改接口代码。
+- \`SecurityScopes\` 是 FastAPI 内置的 OAuth2 scopes 机制，适合 token 级别的细粒度权限。
 - 资源所有权检查在路由函数里做，因为依赖拿不到路径参数。
-- 401 vs 403：401 没登录，403 没权限。
-- 完整系统：admin/editor/viewer 三角色，覆盖用户管理 + 文章管理 + 所有权检查。
+- 401 vs 403：401 没登录（token 缺失/过期），403 登录了但没权限。
+- 完整系统：admin/editor/user 三角色，覆盖用户管理 + 文章管理 + 所有权检查。
 
-## 十二、整批章节回顾
+## 十三、整批章节回顾
 
 第 10 批 4 章串起来就是完整的认证授权体系：
 

@@ -1484,21 +1484,21 @@ img {
 }
 
 /* 运行按钮 hover 绿色 */
-.md-code-btn-run:hover {
+.md-code-btn-run:hover:not(:disabled) {
   background: rgba(22, 163, 74, 0.2);
   border-color: rgba(74, 222, 128, 0.6);
   color: #4ade80;
 }
 
 /* Playground 按钮 hover 蓝色 */
-.md-code-btn-pg:hover {
+.md-code-btn-pg:hover:not(:disabled) {
   background: rgba(37, 99, 235, 0.2);
   border-color: rgba(96, 165, 250, 0.6);
   color: #93c5fd;
 }
 
 /* 外网运行按钮 hover 紫色 */
-.md-code-btn-ext:hover {
+.md-code-btn-ext:hover:not(:disabled) {
   background: rgba(147, 51, 234, 0.2);
   border-color: rgba(192, 132, 252, 0.6);
   color: #d8b4fe;
@@ -1781,6 +1781,8 @@ img {
 }
 .editor-theme-picker--compact .editor-theme-picker-btn {
   background: rgba(255, 255, 255, 0.92);
+  /* -webkit- 前缀兼容旧版 Safari/iOS，必须写在标准属性之前 */
+  -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
 }
 .editor-theme-picker-btn:hover {

@@ -838,7 +838,531 @@ class User(Base):
 # tags: Mapped[List["Tag"]] = relationship(secondary=post_tags, back_populates="posts")
 \`\`\`
 
-## 十五、本章小结
+## 十五、生活类比：把 ORM 想象成翻译官
+
+理解 ORM 最好的方式是把它比作一个**翻译官**。
+
+想象你是一个只会说中文的商人（Python 代码），要去和只会说英语的仓库管理员（数据库）做生意。你不可能自己去学英语，于是雇了一个翻译官（ORM）：
+
+\`\`\`txt filename="ORM 翻译官类比"
+┌─────────────┐         ┌─────────────┐         ┌─────────────┐
+│  你（Python）│ ──中文──→ │  翻译官(ORM) │ ──英文──→ │  仓库(数据库) │
+│  user.name  │         │  生成 SQL    │         │  users 表    │
+│  = "小明"   │ ←─────── │  翻译结果    │ ←─────── │  存储/查询   │
+└─────────────┘         └─────────────┘         └─────────────┘
+\`\`\`
+
+- **你（Python 代码）**：只关心业务，比如"创建一个叫小明的用户"。
+- **翻译官（ORM）**：把 \`User(name="小明")\` 翻译成 \`INSERT INTO users (name) VALUES ('小明')\`，还会自动加引号、转义特殊字符（防 SQL 注入）。
+- **仓库（数据库）**：只懂 SQL，收到 SQL 后执行存储。
+
+**为什么翻译官比你自己说英语强**：
+
+1. **不会说错话**：翻译官语法严格，不会拼错 SQL（防注入）。
+2. **多语言能力**：换一个仓库（MySQL → PostgreSQL），翻译官自动切换方言，你不用说英语还是德语。
+3. **翻译备忘录**：翻译官会记住"你说过这些话"（Session 状态），下次你说"刚才那个用户"，他知道指谁。
+
+**反过来，翻译官也有局限**：
+
+- 复杂的修辞（多表聚合、窗口函数）让翻译官转述可能啰嗦，这时你直接写英文（\`text()\` 原生 SQL）更高效。
+- 翻译官要收小费（性能开销），简单场景相比直说 SQL 略慢。
+
+> **怎么想**：ORM 不是"代替 SQL"，而是"让 80% 常见操作不用写 SQL"。剩下 20% 复杂查询，下沉到 Core 层用 \`text()\` 写原生 SQL。
+
+## 十六、渐进式 Demo：从零跑通第一个模型
+
+光看理论记不住，下面三个 Demo 难度递增，建议你打开终端跟着敲。
+
+### Demo 1：用 SQLite 内存库跑通第一个模型（5 分钟）
+
+\`\`\`python filename="demo1_first_model.py - 可独立运行"
+# 这个 Demo 用 SQLite 内存数据库，无需安装任何数据库服务
+# 直接 python demo1_first_model.py 就能跑
+
+# 1. 导入必要的构件
+# 从 datetime 导入 datetime（用于时间字段）
+from datetime import datetime
+# 从 typing 导入 Optional（可空字段）
+from typing import Optional
+# 从 sqlalchemy 导入 String（字符串列类型）
+from sqlalchemy import String, create_engine, select
+# 从 sqlalchemy.orm 导入声明式构件和 Session
+from sqlalchemy.orm import (
+    DeclarativeBase, Mapped, mapped_column, Session,
+)
+
+# 2. 定义 Base：所有模型的根基
+# 定义类 Base，继承 DeclarativeBase
+class Base(DeclarativeBase):
+    # pass 表示不额外配置，Base 会自动维护一个 metadata
+    pass
+
+# 3. 定义 User 模型：对应 users 表
+# 定义类 User，继承 Base
+class User(Base):
+    # __tablename__ 显式指定数据库里的表名
+    __tablename__ = "users"
+    # 主键 id：自增整数
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # 用户名：限长 50 字符，必填
+    name: Mapped[str] = mapped_column(String(50))
+    # 邮箱：限长 120，唯一索引
+    email: Mapped[str] = mapped_column(String(120), unique=True)
+    # 个人简介：可空
+    bio: Mapped[Optional[str]] = mapped_column(default=None)
+    # 创建时间：插入时自动填入（传函数本身，不带括号）
+    created_at: Mapped[datetime] = mapped_column(default=datetime.now)
+
+    # __repr__ 方便调试时打印
+    def __repr__(self):
+        return f"<User id={self.id} name={self.name} email={self.email}>"
+
+# 4. 创建引擎：用 SQLite 内存库（进程结束就没了，适合 demo）
+# 定义变量 engine，赋值为 create_engine("sqlite:///:memory:", echo=True)
+# echo=True 会打印所有 SQL，方便看 ORM 翻译成了什么
+engine = create_engine("sqlite:///:memory:", echo=True)
+
+# 5. 建表：根据 Base.metadata 创建所有表
+# Base.metadata.create_all(engine) 会执行 CREATE TABLE
+Base.metadata.create_all(engine)
+
+# 6. 用 Session 操作数据库
+# with Session(engine) as session：会话上下文，退出时自动关闭
+with Session(engine) as session:
+    # 创建用户对象（此时还在 Python 内存里，没进数据库）
+    # 定义变量 alice，赋值为 User(name="Alice", email="alice@test.com", bio="Hello")
+    alice = User(name="Alice", email="alice@test.com", bio="Hello")
+    # 定义变量 bob，赋值为 User(name="Bob", email="bob@test.com")
+    bob = User(name="Bob", email="bob@test.com")
+
+    # add_all 批量加入会话（pending 状态）
+    session.add_all([alice, bob])
+
+    # commit 真正写入数据库（此时发 INSERT SQL）
+    session.commit()
+
+    # commit 后 alice 和 bob 的 id 有值了（数据库自增生成）
+    # 因为 expire_on_commit 默认 True，访问属性会重新 SELECT
+    print(f"alice.id = {alice.id}")  # 输出: alice.id = 1
+    print(f"bob.id = {bob.id}")      # 输出: bob.id = 2
+
+# 7. 查询：新开一个会话查
+with Session(engine) as session:
+    # select(User) 等价于 SELECT * FROM users
+    # 定义变量 stmt，赋值为 select(User)
+    stmt = select(User).where(User.name == "Alice")
+    # execute 执行，scalar_one_or_none 取单条（没有返回 None，多条报错）
+    # 定义变量 user，赋值为 session.execute(stmt).scalar_one_or_none()
+    user = session.execute(stmt).scalar_one_or_none()
+    print(f"查到: {user}")  # 输出: 查到: <User id=1 name=Alice email=alice@test.com>
+\`\`\`
+
+运行后你会看到控制台打印的 SQL 语句，这就是 ORM "翻译官"帮你生成的：
+
+\`\`\`txt filename="预期 SQL 输出"
+INSERT INTO users (name, email, bio, created_at) VALUES (?, ?, ?, ?)
+('Alice', 'alice@test.com', 'Hello', '2024-01-01 12:00:00.000000')
+INSERT INTO users (name, email, bio, created_at) VALUES (?, ?, ?, ?)
+('Bob', 'bob@test.com', None, '2024-01-01 12:00:00.000000')
+SELECT users.id, users.name, users.email, users.bio, users.created_at
+FROM users
+WHERE users.name = ?
+('Alice',)
+\`\`\`
+
+### Demo 2：一对多关系实战（User → Post）
+
+\`\`\`python filename="demo2_relationship.py - 关系演示"
+# 演示一对多关系：一个用户有多篇文章
+# python demo2_relationship.py 直接可跑
+
+# 导入构件
+from datetime import datetime
+from typing import List, Optional
+from sqlalchemy import String, Text, ForeignKey, create_engine, select
+from sqlalchemy.orm import (
+    DeclarativeBase, Mapped, mapped_column, relationship, Session,
+)
+
+# 定义类 Base，继承 DeclarativeBase
+class Base(DeclarativeBase):
+    pass
+
+# 定义类 User，继承 Base（一的一方）
+class User(Base):
+    __tablename__ = "users"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50))
+    # relationship 声明"一个 user 有多个 post"
+    # back_populates 让两端互相引用，双向同步
+    # cascade="all, delete-orphan"：删 user 时连带删 post
+    posts: Mapped[List["Post"]] = relationship(
+        back_populates="author", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self):
+        return f"<User {self.name}>"
+
+# 定义类 Post，继承 Base（多的一方）
+class Post(Base):
+    __tablename__ = "posts"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(200))
+    body: Mapped[str] = mapped_column(Text)
+    # 外键：指向 users.id（多的一方持有外键）
+    author_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    # relationship 声明"这篇 post 属于哪个 user"
+    author: Mapped["User"] = relationship(back_populates="posts")
+
+    def __repr__(self):
+        return f"<Post {self.title}>"
+
+# 创建引擎和表
+# 定义变量 engine，赋值为 create_engine("sqlite:///:memory:", echo=False)
+engine = create_engine("sqlite:///:memory:", echo=False)
+Base.metadata.create_all(engine)
+
+# 用会话操作
+with Session(engine) as session:
+    # 创建用户
+    # 定义变量 user，赋值为 User(name="小明")
+    user = User(name="小明")
+    # 创建文章（不用手动填 author_id，relationship 会自动维护）
+    # 定义变量 p1，赋值为 Post(title="第一篇", body="内容1")
+    p1 = Post(title="第一篇", body="内容1")
+    # 定义变量 p2，赋值为 Post(title="第二篇", body="内容2")
+    p2 = Post(title="第二篇", body="内容2")
+
+    # ★ 关键：通过 relationship 关联，author_id 会自动填好
+    # 这就是 ORM 的便利：不用手动算外键值
+    user.posts.append(p1)
+    user.posts.append(p2)
+
+    # 只 add user，关联的 post 会被级联 add（cascade="save-update"）
+    session.add(user)
+    session.commit()
+
+    # 反向访问：从 user 拿 posts（懒加载，访问时才查）
+    print(f"{user.name} 的文章: {user.posts}")
+    # 输出: 小明 的文章: [<Post 第一篇>, <Post 第二篇>]
+
+    # 反向访问：从 post 拿 author
+    print(f"{p1.title} 的作者: {p1.author.name}")
+    # 输出: 第一篇 的作者: 小明
+
+    # ★ 验证外键自动填好了
+    print(f"p1.author_id = {p1.author_id}")  # 输出: p1.author_id = 1
+\`\`\`
+
+### Demo 3：模型继承的完整示例
+
+\`\`\`python filename="demo3_inheritance.py - 单表继承演示"
+# 演示单表继承：Employee → Manager / Engineer
+# 所有子类共用一张 employees 表，用 type 列区分子类类型
+
+from sqlalchemy import String, Integer, create_engine, select
+from sqlalchemy.orm import (
+    DeclarativeBase, Mapped, mapped_column, Session,
+    polymorphic_on, polymorphic_identity,
+)
+
+# 定义类 Base，继承 DeclarativeBase
+class Base(DeclarativeBase):
+    pass
+
+# 父类 Employee：对应 employees 表
+# 定义类 Employee，继承 Base
+class Employee(Base):
+    __tablename__ = "employees"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50))
+
+    # polymorphic_on：指定用 type 列区分子类
+    type: Mapped[str] = mapped_column(String(20))
+
+    # __mapper_args__ 配置多态映射
+    __mapper_args__ = {
+        "polymorphic_on": type,            # 用 type 列区分
+        "polymorphic_identity": "employee", # 本类对应 type="employee"
+    }
+
+# 子类 Manager：共用 employees 表
+# 定义类 Manager，继承 Employee
+class Manager(Employee):
+    # manager_salary 是 Manager 独有的列（Engineer 行里这列是 NULL）
+    manager_salary: Mapped[int] = mapped_column(Integer, default=0)
+    __mapper_args__ = {"polymorphic_identity": "manager"}
+
+# 子类 Engineer：共用 employees 表
+# 定义类 Engineer，继承 Employee
+class Engineer(Employee):
+    # engineer_salary 是 Engineer 独有的列
+    engineer_salary: Mapped[int] = mapped_column(Integer, default=0)
+    __mapper_args__ = {"polymorphic_identity": "engineer"}
+
+# 创建引擎和表
+engine = create_engine("sqlite:///:memory:", echo=False)
+Base.metadata.create_all(engine)
+
+with Session(engine) as session:
+    # 添加不同子类的对象
+    # 定义变量 mgr，赋值为 Manager(name="张总", manager_salary=50000)
+    mgr = Manager(name="张总", manager_salary=50000)
+    # 定义变量 eng，赋值为 Engineer(name="李工", engineer_salary=30000)
+    eng = Engineer(name="李工", engineer_salary=30000)
+    # 定义变量 emp，赋值为 Employee(name="王员")
+    emp = Employee(name="王员")
+
+    session.add_all([mgr, eng, emp])
+    session.commit()
+
+    # ★ 查询父类会自动还原成子类
+    # select(Employee) 查所有员工，根据 type 列自动实例化成对应子类
+    # 定义变量 employees，赋值为 session.execute(select(Employee)).scalars().all()
+    employees = session.execute(select(Employee)).scalars().all()
+    for e in employees:
+        # isinstance 判断对象的实际类型
+        # 这里能看到 ORM 自动把行还原成了 Manager / Engineer / Employee
+        print(f"{type(e).__name__}: {e.name}")
+        # 输出:
+        # Manager: 张总
+        # Engineer: 李工
+        # Employee: 王员
+
+    # ★ 只查某个子类
+    # select(Manager) 会自动加 WHERE type = 'manager'
+    managers = session.execute(select(Manager)).scalars().all()
+    print(f"经理数量: {len(managers)}")  # 输出: 经理数量: 1
+    print(f"经理薪资: {managers[0].manager_salary}")  # 输出: 经理薪资: 50000
+\`\`\`
+
+## 十七、动手实验：巩固理解
+
+学完概念后，动手做几个小实验加深理解。每个实验预计 10-20 分钟。
+
+### 实验 1：给博客模型加"收藏"功能
+
+**任务**：在博客模型基础上，实现"用户收藏文章"功能。
+
+**提示**：
+- 一个用户可以收藏多篇文章，一篇文章可以被多个用户收藏 → 多对多关系。
+- 需要一张收藏关联表（类似 post_tags）。
+
+\`\`\`python filename="实验1参考答案.py"
+# 在博客模型基础上增加收藏功能
+from datetime import datetime
+from typing import List
+from sqlalchemy import String, Text, Integer, ForeignKey, Table, create_engine
+from sqlalchemy.orm import (
+    DeclarativeBase, Mapped, mapped_column, relationship, Session,
+)
+
+# 定义类 Base，继承 DeclarativeBase
+class Base(DeclarativeBase):
+    pass
+
+# 收藏关联表：user_favorites
+# 类似 post_tags，只有两个外键列
+user_favorites = Table(
+    "user_favorites",
+    Base.metadata,
+    # user_id 外键指向 users.id
+    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
+    # post_id 外键指向 posts.id
+    Column("post_id", Integer, ForeignKey("posts.id"), primary_key=True),
+)
+# 注意：实际代码要在文件顶部 from sqlalchemy import Column
+
+# User 模型增加 favorites 关系
+# 定义类 User，继承 Base
+class User(Base):
+    __tablename__ = "users"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50))
+
+    # 多对多：用户收藏的文章
+    # secondary=user_favorites 指定关联表
+    favorites: Mapped[List["Post"]] = relationship(
+        secondary=user_favorites, back_populates="favorited_by"
+    )
+
+# Post 模型增加 favorited_by 关系
+# 定义类 Post，继承 Base
+class Post(Base):
+    __tablename__ = "posts"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(200))
+
+    # 反向关系：收藏了这篇文章的用户列表
+    favorited_by: Mapped[List["User"]] = relationship(
+        secondary=user_favorites, back_populates="favorites"
+    )
+
+# 测试代码
+engine = create_engine("sqlite:///:memory:")
+Base.metadata.create_all(engine)
+
+with Session(engine) as session:
+    # 创建用户和文章
+    user = User(name="小明")
+    post1 = Post(title="好文章1")
+    post2 = Post(title="好文章2")
+
+    # 用户收藏两篇文章
+    user.favorites.append(post1)
+    user.favorites.append(post2)
+
+    session.add(user)
+    session.commit()
+
+    # 验证：从用户查收藏列表
+    print(f"{user.name} 收藏了: {[p.title for p in user.favorites]}")
+    # 输出: 小明 收藏了: ['好文章1', '好文章2']
+
+    # 验证：从文章查被谁收藏了
+    print(f"{post1.title} 被 {[u.name for u in post1.favorited_by]} 收藏")
+    # 输出: 好文章1 被 ['小明'] 收藏
+\`\`\`
+
+### 实验 2：用 JSON 字段存商品属性
+
+**任务**：设计一个 Product 模型，用 JSON 字段存储商品的规格属性（颜色、尺码等）。
+
+**提示**：
+- 用 \`from sqlalchemy import JSON\`。
+- \`attrs: Mapped[dict] = mapped_column(JSON, default=dict)\`。
+
+\`\`\`python filename="实验2参考答案.py"
+from sqlalchemy import String, JSON, Numeric, create_engine, select
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
+from decimal import Decimal
+
+# 定义类 Base，继承 DeclarativeBase
+class Base(DeclarativeBase):
+    pass
+
+# 定义类 Product，继承 Base
+class Product(Base):
+    __tablename__ = "products"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100))
+    # 价格用 Numeric 精确存储（金额绝不用 float）
+    price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    # JSON 字段存规格属性
+    attrs: Mapped[dict] = mapped_column(JSON, default=dict)
+
+    def __repr__(self):
+        return f"<Product {self.name} ¥{self.price}>"
+
+engine = create_engine("sqlite:///:memory:")
+Base.metadata.create_all(engine)
+
+with Session(engine) as session:
+    # 创建带属性的商品
+    # 定义变量 p1，赋值为 Product(...)
+    p1 = Product(
+        name="T恤",
+        price=Decimal("99.90"),
+        attrs={"colors": ["红", "蓝", "黑"], "sizes": ["S", "M", "L"], "material": "棉"},
+    )
+    session.add(p1)
+    session.commit()
+
+    # 查询：JSON 字段可以直接当 dict 用
+    p = session.get(Product, 1)
+    print(f"商品: {p.name}")
+    print(f"颜色: {p.attrs['colors']}")  # 输出: 颜色: ['红', '蓝', '黑']
+    print(f"尺码: {p.attrs['sizes']}")   # 输出: 尺码: ['S', 'M', 'L']
+\`\`\`
+
+### 实验 3：对比 default vs server_default
+
+**任务**：创建一个模型，同时用 \`default\` 和 \`server_default\`，观察两者的区别。
+
+**思考题**：
+1. 哪个在 Python 端计算？哪个在数据库端计算？
+2. 多语言客户端（Python + Java）共用同一库时，用哪个更合适？
+
+\`\`\`python filename="实验3参考答案.py"
+from datetime import datetime
+from sqlalchemy import String, create_engine, func, text
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
+
+# 定义类 Base，继承 DeclarativeBase
+class Base(DeclarativeBase):
+    pass
+
+# 定义类 Log，继承 Base
+class Log(Base):
+    __tablename__ = "logs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    message: Mapped[str] = mapped_column(String(200))
+
+    # default：Python 端计算，INSERT 时 SQLAlchemy 填好再发 SQL
+    # 每次插入调用 datetime.now，时间在 Python 进程里算
+    py_created_at: Mapped[datetime] = mapped_column(default=datetime.now)
+
+    # server_default：数据库端计算，DDL 里写 DEFAULT NOW()
+    # INSERT 不带这列时，数据库自己填 NOW()
+    db_created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+engine = create_engine("sqlite:///:memory:", echo=True)
+Base.metadata.create_all(engine)
+
+with Session(engine) as session:
+    log = Log(message="测试日志")
+    session.add(log)
+    session.commit()
+    session.refresh(log)
+
+    print(f"Python 端时间: {log.py_created_at}")
+    print(f"数据库端时间: {log.db_created_at}")
+    # 两个时间几乎相同，但来源不同
+    # py_created_at：Python 进程计算
+    # db_created_at：数据库服务器计算
+
+# 观察 echo=True 输出的 SQL：
+# INSERT INTO logs (message, py_created_at) VALUES (?, ?)
+# 注意：py_created_at 在 SQL 里带值（Python 算好的）
+# db_created_at 不在 SQL 里（数据库自己填）
+\`\`\`
+
+## 十八、常见错误补充
+
+**错误 5：String 不写长度**
+
+\`\`\`python filename="错误：String 不写长度"
+# ❌ 错误：某些数据库（如 MySQL）要求 VARCHAR 必须有长度
+# name: Mapped[str] = mapped_column(String)  # MySQL 会报错
+
+# ✅ 正确：写明长度
+# name: Mapped[str] = mapped_column(String(50))
+\`\`\`
+
+**错误 6：relationship 没写 back_populates 导致单向不同步**
+
+\`\`\`python filename="错误：单向关系不同步"
+# ❌ 错误：没 back_populates，user.posts.append(post) 后 post.author 不一定有值
+# posts: Mapped[List["Post"]] = relationship()  # 单向
+
+# ✅ 正确：双向用 back_populates
+# posts: Mapped[List["Post"]] = relationship(back_populates="author")
+# author: Mapped["User"] = relationship(back_populates="posts")
+\`\`\`
+
+**错误 7：cascade 配错导致删用户时文章变孤儿**
+
+\`\`\`python filename="错误：cascade 缺失"
+# ❌ 错误：没配 delete-orphan，删用户后文章的 author_id 指向不存在的用户
+# posts: Mapped[List["Post"]] = relationship(back_populates="author")
+
+# ✅ 正确：加 cascade="all, delete-orphan"
+# posts: Mapped[List["Post"]] = relationship(
+#     back_populates="author", cascade="all, delete-orphan"
+# )
+\`\`\`
+
+## 十九、本章小结
 
 - SQLAlchemy 是 Python 最成熟的 ORM，2.0 版本用 \`Mapped\` + \`mapped_column\` 实现**类型驱动**的模型定义。
 - \`DeclarativeBase\` 是所有模型的根基，维护 \`metadata\`（所有表的结构清单）。
@@ -1551,7 +2075,757 @@ db.commit()
 # ✅ 解决 3：排查长事务（开 Session 后长时间不 commit）
 \`\`\`
 
-## 十二、本章小结
+## 十二、生活类比：连接池像出租车车队
+
+理解连接池（Connection Pool）最好的方式是把它比作一个**出租车车队**。
+
+\`\`\`txt filename="连接池 = 出租车车队"
+┌──────────────────────────────────────────────────────┐
+│  应用（乘客）                                          │
+│   请求 1: "我要去数据库" → 调度员派一辆车              │
+│   请求 2: "我要去数据库" → 调度员再派一辆车            │
+│   请求 3: "我要去数据库" → 车不够，排队等              │
+└──────────────────────────────────────────────────────┘
+                       ↓ 调度员
+┌──────────────────────────────────────────────────────┐
+│  连接池（出租车车队）                                   │
+│   🚗 连接1（在用）  🚗 连接2（在用）  🚗 连接3（空闲） │
+│   pool_size=3：常驻 3 辆车                            │
+│   max_overflow=2：高峰期可临时加 2 辆                 │
+│   pool_recycle=3600：每 1 小时换一辆新车              │
+└──────────────────────────────────────────────────────┘
+                       ↓ 开车去
+┌──────────────────────────────────────────────────────┐
+│  数据库（目的地）                                      │
+└──────────────────────────────────────────────────────┘
+\`\`\`
+
+- **车队规模（pool\_size）**：平时保持 3 辆车待命，不用每次都叫新车（建连开销大）。
+- **高峰溢出（max\_overflow）**：高峰期 3 辆不够，临时加 2 辆（最多 5 辆），闲下来再淘汰多余的。
+- **车辆回收（pool\_recycle）**：车开久了会坏（连接断开），每 1 小时换一辆新车，避免半路抛锚。
+- **发车前检查（pool\_pre\_ping）**：发车前先打火试一下，确认车没坏再派给乘客。
+
+**Session 是什么**？Session 是一次"打车行程"：
+
+- 乘客上车（\`SessionLocal()\`）→ 司机接单（从池里借连接）→ 开车（执行 SQL）→ 到目的地（\`commit\`）→ 下车还车（\`close\` 归还连接）。
+- **一个请求一个 Session**：每个乘客独立用车，不能几个人挤一辆车（Session 非线程安全）。
+- **用完必还**：不还车（不 close），车队就被占满了，后面的人打不到车（连接池耗尽）。
+
+> **怎么想**：为什么 FastAPI 用 \`yield\` 依赖？因为"还车"必须保证执行，即使乘客半路下车（异常）。\`finally\` 块就是"无论发生什么，都要还车"。
+
+## 十三、渐进式 Demo：SQLAlchemy 2.0 Async Session 完整实战
+
+这是本章的**重点 Demo**。FastAPI 天生支持 async，配合 SQLAlchemy 2.0 的 \`AsyncSession\` 可以实现真正的异步数据库操作，I/O 等待时不阻塞事件循环。
+
+### Demo 1：最小可运行的 AsyncSession 示例
+
+\`\`\`python filename="demo1_async_minimal.py - 异步最小示例"
+# 这个 Demo 用 aiosqlite（SQLite 异步驱动），无需数据库服务
+# 安装依赖：pip install sqlalchemy aiosqlite
+# 运行：python demo1_async_minimal.py
+
+# 1. 导入异步相关构件
+import asyncio  # Python 标准库的异步框架
+from datetime import datetime
+from typing import Optional
+
+# 从 sqlalchemy 导入 select, String
+from sqlalchemy import select, String, func
+# 从 sqlalchemy.ext.asyncio 导入异步组件（这是 2.0 的核心）
+from sqlalchemy.ext.asyncio import (
+    create_async_engine,       # 异步引擎工厂（对应同步的 create_engine）
+    AsyncSession,              # 异步会话类（对应同步的 Session）
+    async_sessionmaker,        # 异步会话工厂（对应同步的 sessionmaker）
+)
+# 从 sqlalchemy.orm 导入声明式构件
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+# 2. 定义 Base（同步和异步共用同一个 Base）
+# 定义类 Base，继承 DeclarativeBase
+class Base(DeclarativeBase):
+    pass
+
+# 3. 定义模型（模型本身不分同步异步）
+# 定义类 User，继承 Base
+class User(Base):
+    __tablename__ = "users"
+    # 主键 id：自增整数
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # 用户名：限长 50
+    name: Mapped[str] = mapped_column(String(50))
+    # 邮箱：唯一
+    email: Mapped[str] = mapped_column(String(120), unique=True)
+    # 创建时间
+    created_at: Mapped[datetime] = mapped_column(default=datetime.now)
+
+    def __repr__(self):
+        return f"<User {self.name}>"
+
+# 4. 创建异步引擎
+# 注意驱动：sqlite+aiosqlite（同步是 sqlite）
+# 定义变量 ASYNC_URL，赋值为 "sqlite+aiosqlite:///:memory:"
+ASYNC_URL = "sqlite+aiosqlite:///:memory:"
+# 定义变量 async_engine，赋值为 create_async_engine(...)
+# echo=True 打印 SQL，方便调试
+async_engine = create_async_engine(ASYNC_URL, echo=True)
+
+# 5. 创建异步会话工厂
+# 定义变量 AsyncSessionLocal，赋值为 async_sessionmaker(...)
+# ★ 关键参数：expire_on_commit=False
+# 异步场景必须设 False，因为 expire_on_commit=True 会在 commit 后访问属性时
+# 触发隐式 SELECT，但异步场景下隐式查询会报错（必须显式 await）
+AsyncSessionLocal = async_sessionmaker(
+    bind=async_engine,           # 绑定异步引擎
+    class_=AsyncSession,         # 指定会话类
+    autocommit=False,            # 不自动提交
+    autoflush=False,             # 不自动刷新
+    expire_on_commit=False,      # ★ 异步场景必须 False
+)
+
+# 6. 异步建表（同步是 Base.metadata.create_all，异步要用 run_sync）
+# 定义函数 async def init_db()
+async def init_db():
+    """异步建表。"""
+    # async_engine.begin() 异步上下文，返回连接
+    # run_sync 是关键：把同步的 metadata.create_all 包装成异步调用
+    # 因为 metadata.create_all 本身是同步函数，不能直接 await
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+# 7. 异步 CRUD 操作
+# 定义函数 async def create_user(name: str, email: str) -> User
+async def create_user(name: str, email: str) -> User:
+    """异步创建用户。"""
+    # 创建异步会话
+    # async with 自动管理会话生命周期，退出时关闭
+    async with AsyncSessionLocal() as session:
+        # 创建用户对象
+        # 定义变量 user，赋值为 User(name=name, email=email)
+        user = User(name=name, email=email)
+        # add 加入会话（注意：add 不是异步的，因为它只是标记 pending）
+        session.add(user)
+        # ★ commit 是异步的，必须 await
+        await session.commit()
+        # ★ refresh 也是异步的，从数据库重新加载
+        await session.refresh(user)
+        return user
+
+# 定义函数 async def get_user(user_id: int) -> User | None
+async def get_user(user_id: int):
+    """异步查询用户。"""
+    async with AsyncSessionLocal() as session:
+        # ★ execute 是异步的，必须 await
+        # select(User).where(...) 构造查询
+        # 定义变量 stmt，赋值为 select(User).where(User.id == user_id)
+        stmt = select(User).where(User.id == user_id)
+        # 执行查询
+        # 定义变量 result，赋值为 await session.execute(stmt)
+        result = await session.execute(stmt)
+        # scalar_one_or_none 取单条（同步和异步一样，不是 await）
+        return result.scalar_one_or_none()
+
+# 定义函数 async def list_users() -> list
+async def list_users():
+    """异步查询所有用户。"""
+    async with AsyncSessionLocal() as session:
+        stmt = select(User).order_by(User.id)
+        result = await session.execute(stmt)
+        # scalars() 把 Row 转成 User 对象，all() 取出所有
+        return result.scalars().all()
+
+# 8. 主函数：编排所有异步操作
+# 定义函数 async def main()
+async def main():
+    """主函数：建表 + 增查演示。"""
+    # 1. 建表
+    await init_db()
+    print("✅ 建表完成")
+
+    # 2. 创建用户
+    alice = await create_user("Alice", "alice@test.com")
+    bob = await create_user("Bob", "bob@test.com")
+    print(f"✅ 创建: {alice}")
+    print(f"✅ 创建: {bob}")
+
+    # 3. 查询单个
+    user = await get_user(1)
+    print(f"✅ 查到: {user}")
+
+    # 4. 查询所有
+    users = await list_users()
+    print(f"✅ 所有用户: {users}")
+
+    # 5. 关闭引擎（程序退出前清理）
+    await async_engine.dispose()
+    print("✅ 引擎已关闭")
+
+# 9. 运行：用 asyncio.run 启动异步主函数
+if __name__ == "__main__":
+    asyncio.run(main())
+\`\`\`
+
+**异步操作对照表**（同步 → 异步）：
+
+| 同步写法 | 异步写法 | 说明 |
+|---------|---------|------|
+| \`session.commit()\` | \`await session.commit()\` | 提交事务 |
+| \`session.refresh(obj)\` | \`await session.refresh(obj)\` | 刷新对象 |
+| \`session.execute(stmt)\` | \`await session.execute(stmt)\` | 执行查询 |
+| \`session.delete(obj)\` | \`await session.delete(obj)\` | 删除对象 |
+| \`session.close()\` | \`await session.close()\` | 关闭会话 |
+| \`session.get(Model, id)\` | \`await session.get(Model, id)\` | 按主键查 |
+| \`Base.metadata.create_all(engine)\` | \`async with engine.begin() as conn: await conn.run_sync(Base.metadata.create_all)\` | 建表 |
+| \`engine.dispose()\` | \`await engine.dispose()\` | 关闭引擎 |
+
+> **避坑**：\`session.add(obj)\` **不是**异步的（不需要 await），因为它只是把对象标记为 pending，不涉及 I/O。但 \`commit\`、\`execute\`、\`refresh\` 都涉及网络 I/O，必须 await。
+
+### Demo 2：完整 FastAPI + AsyncSession 集成
+
+\`\`\`python filename="demo2_fastapi_async.py - 完整异步 FastAPI 应用"
+# 完整的 FastAPI + SQLAlchemy 2.0 异步集成
+# 安装：pip install fastapi uvicorn sqlalchemy aiosqlite
+# 运行：uvicorn demo2_fastapi_async:app --reload
+
+import asyncio
+from datetime import datetime
+from typing import Optional, List
+
+# 从 fastapi 导入 FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException
+# 从 pydantic 导入 BaseModel
+from pydantic import BaseModel
+# 从 sqlalchemy 导入 select, String, func
+from sqlalchemy import select, String, func
+# 从 sqlalchemy.ext.asyncio 导入异步组件
+from sqlalchemy.ext.asyncio import (
+    create_async_engine,
+    AsyncSession,
+    async_sessionmaker,
+)
+# 从 sqlalchemy.orm 导入声明式构件
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+# ==================== 1. 数据库配置 ====================
+# 异步连接字符串：sqlite+aiosqlite
+# 定义变量 DATABASE_URL，赋值为 "sqlite+aiosqlite:///./async_app.db"
+DATABASE_URL = "sqlite+aiosqlite:///./async_app.db"
+
+# 创建异步引擎
+# 定义变量 async_engine，赋值为 create_async_engine(...)
+# echo=False 关闭 SQL 打印（生产环境）
+async_engine = create_async_engine(DATABASE_URL, echo=False)
+
+# 创建异步会话工厂
+# 定义变量 AsyncSessionLocal，赋值为 async_sessionmaker(...)
+# ★ expire_on_commit=False：异步场景必须
+AsyncSessionLocal = async_sessionmaker(
+    bind=async_engine,
+    class_=AsyncSession,
+    autocommit=False,
+    autoflush=False,
+    expire_on_commit=False,
+)
+
+# ==================== 2. 模型 ====================
+# 定义类 Base，继承 DeclarativeBase
+class Base(DeclarativeBase):
+    pass
+
+# 定义类 User，继承 Base
+class User(Base):
+    __tablename__ = "users"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50))
+    email: Mapped[str] = mapped_column(String(120), unique=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.now)
+
+# ==================== 3. Pydantic 模型 ====================
+# 定义类 UserCreate，继承 BaseModel
+class UserCreate(BaseModel):
+    """创建用户的请求体"""
+    name: str
+    email: str
+
+# 定义类 UserOut，继承 BaseModel
+class UserOut(BaseModel):
+    """用户响应模型"""
+    id: int
+    name: str
+    email: str
+    created_at: datetime
+    # 定义类 Config
+    class Config:
+        # 让 Pydantic 能从 ORM 对象读属性
+        from_attributes = True
+
+# ==================== 4. 异步依赖：获取 AsyncSession ====================
+# 定义函数 async def get_db()
+# ★ 注意：异步依赖必须用 async def，不是 def
+async def get_db():
+    """每个请求创建一个 AsyncSession，请求结束自动关闭。"""
+    # 创建异步会话
+    # 定义变量 db，赋值为 AsyncSessionLocal()
+    db = AsyncSessionLocal()
+    try:
+        # yield 把 db 交给路由使用
+        yield db
+    finally:
+        # ★ 异步关闭必须 await
+        await db.close()
+
+# ==================== 5. FastAPI 应用 ====================
+# 创建 FastAPI 应用实例
+app = FastAPI()
+
+# 启动时建表（异步）
+# 定义函数 async def startup()
+# @app.on_event("startup") 是老写法，新版本推荐 lifespan
+@app.on_event("startup")
+async def startup():
+    """启动时建表。"""
+    # 异步建表：用 run_sync 包装同步的 create_all
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+# ==================== 6. 异步 CRUD 路由 ====================
+
+# Create：创建用户
+# 装饰器：app.post，路径 "/users/"
+@app.post("/users/", response_model=UserOut, status_code=201)
+# ★ 路由用 async def，依赖注入 db: AsyncSession = Depends(get_db)
+async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
+    """异步创建用户。"""
+    # 创建 User 对象
+    # 定义变量 db_user，赋值为 User(**user.model_dump())
+    db_user = User(**user.model_dump())
+    # add 加入会话（add 不是异步的）
+    db.add(db_user)
+    try:
+        # ★ commit 是异步的，必须 await
+        await db.commit()
+        # ★ refresh 也是异步的
+        await db.refresh(db_user)
+        return db_user
+    except Exception as e:
+        # 出错回滚（异步）
+        await db.rollback()
+        # 邮箱重复会触发 IntegrityError
+        raise HTTPException(400, f"创建失败: {e}")
+
+# Read：查所有用户
+# 装饰器：app.get，路径 "/users/"
+@app.get("/users/", response_model=List[UserOut])
+async def list_users(db: AsyncSession = Depends(get_db)):
+    """异步查询所有用户。"""
+    # select(User) 构造查询
+    # 定义变量 stmt，赋值为 select(User).order_by(User.id)
+    stmt = select(User).order_by(User.id)
+    # ★ execute 是异步的
+    # 定义变量 result，赋值为 await db.execute(stmt)
+    result = await db.execute(stmt)
+    # scalars().all() 取出所有（这两步不是异步的）
+    return result.scalars().all()
+
+# Read：按 id 查单个
+# 装饰器：app.get，路径 "/users/{user_id}"
+@app.get("/users/{user_id}", response_model=UserOut)
+async def get_user(user_id: int, db: AsyncSession = Depends(get_db)):
+    """异步查单个用户。"""
+    # ★ session.get 是异步的，必须 await
+    # 定义变量 user，赋值为 await db.get(User, user_id)
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(404, "用户不存在")
+    return user
+
+# Delete：删除用户
+# 装饰器：app.delete，路径 "/users/{user_id}"
+@app.delete("/users/{user_id}")
+async def delete_user(user_id: int, db: AsyncSession = Depends(get_db)):
+    """异步删除用户。"""
+    # 先查出用户
+    # 定义变量 user，赋值为 await db.get(User, user_id)
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(404, "用户不存在")
+    # ★ delete 是异步的
+    await db.delete(user)
+    # ★ commit 是异步的
+    await db.commit()
+    return {"ok": True, "deleted": user_id}
+
+# ==================== 7. 关闭引擎（应用关闭时）====================
+@app.on_event("shutdown")
+async def shutdown():
+    """关闭时释放连接池。"""
+    # ★ dispose 是异步的，释放所有连接
+    await async_engine.dispose()
+\`\`\`
+
+运行后用 curl 或浏览器测试：
+
+\`\`\`bash filename="测试命令"
+# 启动服务
+# uvicorn demo2_fastapi_async:app --reload
+
+# 创建用户
+# curl -X POST "http://127.0.0.1:8000/users/" -H "Content-Type: application/json" -d '{"name":"小明","email":"xm@test.com"}'
+
+# 查所有
+# curl "http://127.0.0.1:8000/users/"
+
+# 查单个
+# curl "http://127.0.0.1:8000/users/1"
+
+# 删除
+# curl -X DELETE "http://127.0.0.1:8000/users/1"
+\`\`\`
+
+### Demo 3：连接池监控与 Session 生命周期可视化
+
+\`\`\`python filename="demo3_pool_monitor.py - 连接池监控"
+# 这个 Demo 演示如何监控连接池状态，理解 Session 生命周期
+# 运行：python demo3_pool_monitor.py
+
+import asyncio
+from sqlalchemy import String, create_engine
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
+from sqlalchemy.pool import QueuePool
+
+# 用同步引擎演示连接池（异步原理一样）
+# 定义类 Base，继承 DeclarativeBase
+class Base(DeclarativeBase):
+    pass
+
+# 定义类 User，继承 Base
+class User(Base):
+    __tablename__ = "users"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50))
+
+# 创建带连接池的引擎
+# 定义变量 engine，赋值为 create_engine(...)
+# poolclass=QueuePool 显式指定连接池类型
+# pool_size=5：常驻 5 个连接
+# max_overflow=10：高峰期可加 10 个，最多 15 个
+# pool_timeout=30：拿连接等 30 秒，超时报错
+# pool_recycle=3600：1 小时回收
+# pool_pre_ping=True：用前 ping
+engine = create_engine(
+    "sqlite:///./pool_demo.db",
+    poolclass=QueuePool,
+    pool_size=5,
+    max_overflow=10,
+    pool_timeout=30,
+    pool_recycle=3600,
+    pool_pre_ping=True,
+    echo=False,
+)
+
+# 建表
+Base.metadata.create_all(engine)
+
+# 定义函数 print_pool_status(msg: str)
+def print_pool_status(msg: str):
+    """打印连接池当前状态。"""
+    # engine.pool.status() 返回连接池状态字符串
+    # 格式类似：Pool size: 5  Connections in pool: 3  Current Overflow: 1  Current Checked out connections: 2
+    # 定义变量 status，赋值为 engine.pool.status()
+    status = engine.pool.status()
+    print(f"[{msg}] {status}")
+
+# 1. 初始状态：连接池是空的
+print_pool_status("初始状态")
+
+# 2. 开第一个 Session
+session1 = Session(engine)
+session1.add(User(name="用户1"))
+print_pool_status("开了 session1（还没 commit）")
+
+# 3. commit 时才真正借连接
+session1.commit()
+print_pool_status("session1 commit 后")
+
+# 4. 开多个 Session 模拟并发
+sessions = []
+for i in range(4):
+    # 定义变量 s，赋值为 Session(engine)
+    s = Session(engine)
+    s.add(User(name=f"用户{i+2}"))
+    sessions.append(s)
+print_pool_status("又开了 4 个 session")
+
+# 5. 关闭所有 session，连接归还
+session1.close()
+for s in sessions:
+    s.close()
+print_pool_status("所有 session 关闭后（连接归还）")
+
+# 6. 连接池还保留连接（复用）
+with Session(engine) as s:
+    s.add(User(name="新用户"))
+    s.commit()
+print_pool_status("又用了一次（复用连接）")
+
+# 7. 彻底关闭引擎
+engine.dispose()
+print_pool_status("engine.dispose() 后（全部释放）")
+\`\`\`
+
+运行后你会看到连接池状态的变化：
+
+\`\`\`txt filename="预期输出"
+[初始状态] Pool size: 5  Connections in pool: 0  Current Overflow: 0  Current Checked out connections: 0
+[开了 session1（还没 commit）] Pool size: 5  Connections in pool: 0  Current Overflow: 0  Current Checked out connections: 0
+[session1 commit 后] Pool size: 5  Connections in pool: 0  Current Overflow: 0  Current Checked out connections: 1
+[又开了 4 个 session] Pool size: 5  Connections in pool: 0  Current Overflow: 0  Current Checked out connections: 5
+[所有 session 关闭后（连接归还）] Pool size: 5  Connections in pool: 5  Current Overflow: 0  Current Checked out connections: 0
+[又用了一次（复用连接）] Pool size: 5  Connections in pool: 4  Current Overflow: 0  Current Checked out connections: 1
+[engine.dispose() 后（全部释放）] Pool size: 0  Connections in pool: 0  Current Overflow: 0  Current Checked out connections: 0
+\`\`\`
+
+## 十四、动手实验：巩固理解
+
+### 实验 1：把同步代码改写成异步
+
+**任务**：把下面的同步 CRUD 函数改写成异步版本。
+
+\`\`\`python filename="实验1_同步原版.py"
+# 同步版本：请改写成异步
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+# 同步创建
+def create_user_sync(session: Session, name: str) -> User:
+    user = User(name=name)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
+
+# 同步查询
+def get_user_sync(session: Session, user_id: int):
+    return session.get(User, user_id)
+\`\`\`
+
+\`\`\`python filename="实验1_异步参考答案.py"
+# 异步版本
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+# ★ 异步创建：所有 I/O 操作加 await
+# 定义函数 async def create_user_async
+async def create_user_async(session: AsyncSession, name: str):
+    user = User(name=name)
+    session.add(user)        # add 不需要 await（不涉及 I/O）
+    await session.commit()    # commit 需要 await
+    await session.refresh(user)  # refresh 需要 await
+    return user
+
+# ★ 异步查询
+# 定义函数 async def get_user_async
+async def get_user_async(session: AsyncSession, user_id: int):
+    # get 需要 await
+    return await session.get(User, user_id)
+\`\`\`
+
+### 实验 2：对比同步 vs 异步的性能
+
+**任务**：写一个脚本，分别用同步和异步方式插入 100 条数据，对比耗时。
+
+**思考题**：
+1. 单线程下同步和异步谁快？为什么？
+2. 并发多个请求时，异步的优势在哪里？
+
+\`\`\`python filename="实验2_性能对比.py"
+# 性能对比：同步 vs 异步
+import time
+import asyncio
+from sqlalchemy import String, create_engine, select
+from sqlalchemy.orm import Session, DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+
+# 定义类 Base，继承 DeclarativeBase
+class Base(DeclarativeBase):
+    pass
+
+# 定义类 User，继承 Base
+class User(Base):
+    __tablename__ = "users"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50))
+
+# 1. 同步测试
+def sync_test(n: int = 100):
+    """同步插入 n 条数据。"""
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    # 定义变量 start，赋值为 time.time()
+    start = time.time()
+    with Session(engine) as session:
+        for i in range(n):
+            session.add(User(name=f"user_{i}"))
+        session.commit()
+    # 定义变量 elapsed，赋值为 time.time() - start
+    elapsed = time.time() - start
+    engine.dispose()
+    return elapsed
+
+# 2. 异步测试
+async def async_test(n: int = 100):
+    """异步插入 n 条数据。"""
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    AsyncSessionLocal = async_sessionmaker(bind=engine, expire_on_commit=False)
+    # 定义变量 start，赋值为 time.time()
+    start = time.time()
+    async with AsyncSessionLocal() as session:
+        for i in range(n):
+            session.add(User(name=f"user_{i}"))
+        await session.commit()
+    # 定义变量 elapsed，赋值为 time.time() - start
+    elapsed = time.time() - start
+    await engine.dispose()
+    return elapsed
+
+# 3. 运行对比
+if __name__ == "__main__":
+    sync_time = sync_test(100)
+    async_time = asyncio.run(async_test(100))
+    print(f"同步插入 100 条: {sync_time:.3f}s")
+    print(f"异步插入 100 条: {async_time:.3f}s")
+    # 单线程下同步可能更快（异步有调度开销）
+    # 但并发请求时异步优势明显（I/O 等待时不阻塞）
+\`\`\`
+
+### 实验 3：实现一个带健康检查的数据库依赖
+
+**任务**：写一个 \`get_db_with_health_check\` 依赖，在返回 Session 前先 ping 一下数据库，确保连接可用。
+
+\`\`\`python filename="实验3_健康检查依赖.py"
+# 带健康检查的数据库依赖
+from fastapi import Depends, HTTPException
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+import logging
+
+# 配置日志
+# 定义变量 logger，赋值为 logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
+
+# 定义函数 async def get_db_with_health_check()
+async def get_db_with_health_check():
+    """带健康检查的数据库依赖。
+    在返回 Session 前，先发一个简单查询确认连接可用。
+    """
+    from database import AsyncSessionLocal  # 假设会话工厂在这里
+    db = AsyncSessionLocal()
+    try:
+        # 健康检查：发一个轻量查询
+        # text("SELECT 1") 是最简单的健康检查 SQL
+        # 定义变量 result，赋值为 await db.execute(text("SELECT 1"))
+        result = await db.execute(text("SELECT 1"))
+        # 如果能执行成功，说明连接是好的
+        logger.debug("数据库健康检查通过")
+        yield db
+    except Exception as e:
+        # 健康检查失败：数据库不可用
+        logger.error(f"数据库健康检查失败: {e}")
+        # 关闭这个坏会话
+        await db.close()
+        # 返回 503 服务不可用
+        raise HTTPException(503, "数据库暂时不可用")
+    finally:
+        # 正常或异常都要关闭
+        await db.close()
+
+# 在路由里使用：
+# @app.get("/users/")
+# async def list_users(db: AsyncSession = Depends(get_db_with_health_check)):
+#     ...
+\`\`\`
+
+## 十五、常见错误补充
+
+**错误 5：异步路由里用同步 Session**
+
+\`\`\`python filename="错误：异步路由用同步 Session"
+# ❌ 错误：async 路由里用同步 Session，会阻塞事件循环
+# @app.get("/users/")
+# async def list_users(db: Session = Depends(get_sync_db)):  # 同步 Session
+#     users = db.execute(select(User)).scalars().all()  # 同步操作阻塞事件循环
+#     return users
+
+# ✅ 正确：async 路由配 AsyncSession
+# @app.get("/users/")
+# async def list_users(db: AsyncSession = Depends(get_async_db)):
+#     result = await db.execute(select(User))  # 异步操作不阻塞
+#     return result.scalars().all()
+\`\`\`
+
+**错误 6：忘了 await commit**
+
+\`\`\`python filename="错误：异步操作没 await"
+# ❌ 错误：commit 没 await，返回的是协程对象，没真正执行
+# async def bad_create(db: AsyncSession, name: str):
+#     user = User(name=name)
+#     db.add(user)
+#     db.commit()  # ❌ 没 await，返回 coroutine，没提交
+#     return user
+
+# ✅ 正确：所有 I/O 操作都 await
+# async def good_create(db: AsyncSession, name: str):
+#     user = User(name=name)
+#     db.add(user)         # add 不需要 await
+#     await db.commit()     # commit 必须 await
+#     await db.refresh(user)  # refresh 必须 await
+#     return user
+\`\`\`
+
+**错误 7：异步场景 expire_on_commit=True**
+
+\`\`\`python filename="错误：expire_on_commit 导致异步报错"
+# ❌ 错误：异步场景 expire_on_commit=True，commit 后访问属性会报错
+# AsyncSessionLocal = async_sessionmaker(
+#     bind=async_engine,
+#     expire_on_commit=True,  # ❌ 异步场景必须 False
+# )
+# async def bad():
+#     async with AsyncSessionLocal() as session:
+#         user = User(name="test")
+#         session.add(user)
+#         await session.commit()
+#         print(user.name)  # ❌ 报错：MissingGreenlet，隐式查询不能在异步外触发
+
+# ✅ 正确：异步场景设 expire_on_commit=False
+# AsyncSessionLocal = async_sessionmaker(
+#     bind=async_engine,
+#     expire_on_commit=False,  # ✅ commit 后不自动过期
+# )
+\`\`\`
+
+**错误 8：忘了 dispose 引擎**
+
+\`\`\`python filename="错误：不 dispose 导致连接泄漏"
+# ❌ 错误：测试脚本不 dispose，连接没释放
+# async def bad_test():
+#     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+#     async with AsyncSessionLocal() as session:
+#         ...  # 操作
+#     # 程序结束时连接还在，pytest 会警告
+
+# ✅ 正确：用完 dispose
+# async def good_test():
+#     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+#     try:
+#         async with AsyncSessionLocal() as session:
+#             ...
+#     finally:
+#         await engine.dispose()  # ✅ 释放所有连接
+\`\`\`
+
+## 十六、本章小结
 
 - \`create_engine\` 创建引擎（连接池管理者），\`sessionmaker\` 创建会话工厂，\`SessionLocal()\` 生成会话。
 - 连接字符串格式：\`数据库+驱动://用户:密码@主机:端口/库名\`，SQLite 要加 \`check_same_thread=False\`。
@@ -2519,7 +3793,869 @@ user = session.execute(select(User).where(User.email == e)).scalar_one_or_none()
 # 多条会抛 MultipleResultsFound，及早发现问题
 \`\`\`
 
-## 十一、本章小结
+## 十一、生活类比：CRUD 像图书馆管理员
+
+理解 CRUD 最好的方式是把它比作**图书馆管理员**的工作。
+
+\`\`\`txt filename="CRUD = 图书馆管理员"
+┌──────────────────────────────────────────────────────┐
+│  读者（HTTP 请求）                                    │
+│   "我要借一本《FastAPI 实战》"                        │
+│   "我要还这本书"                                      │
+│   "图书馆有哪些书？"                                  │
+└──────────────────────────────────────────────────────┘
+                       ↓
+┌──────────────────────────────────────────────────────┐
+│  管理员（CRUD 函数）                                  │
+│   Create：新书入库 → 登记到目录卡（INSERT）           │
+│   Read：查目录卡找到书 → 取给读者（SELECT）           │
+│   Update：读者改了手机号 → 更新登记卡（UPDATE）       │
+│   Delete：旧书淘汰 → 从目录卡划掉（DELETE）           │
+└──────────────────────────────────────────────────────┘
+                       ↓
+┌──────────────────────────────────────────────────────┐
+│  书库（数据库）                                       │
+└──────────────────────────────────────────────────────┘
+\`\`\`
+
+- **Create（入库）**：管理员收到新书，先填一张登记卡（创建对象），再归档到书架（\`add\` + \`commit\`）。如果忘了归档（不 commit），书就丢了。
+- **Read（查找）**：管理员翻目录卡（\`select\` + \`where\`），找到后取给读者。如果要分页显示，就像"每页 10 本"地展示目录卡（\`limit\` + \`offset\`）。
+- **Update（改信息）**：读者改了手机号，管理员拿出登记卡修改（改属性），再归档（\`commit\`）。
+- **Delete（淘汰）**：旧书淘汰，管理员把登记卡划掉（\`delete\` + \`commit\`）。但更稳妥的做法是标记"已下架"（软删除），书还在书架上以防万一。
+
+> **怎么想**：为什么推荐软删除？就像图书馆不会真的把旧书烧掉，而是搬到" archived"区。数据是资产，删错了能找回。
+
+## 十二、渐进式 Demo：完整 CRUD 实现
+
+### Demo 1：可复用的 CRUD 函数封装
+
+实际项目中，CRUD 代码会封装成独立模块，路由层调用。这个 Demo 展示标准的分层结构。
+
+\`\`\`python filename="demo1_crud_module.py - 可复用 CRUD 模块"
+# 这个 Demo 展示如何把 CRUD 封装成独立模块
+# 运行：python demo1_crud_module.py
+
+from datetime import datetime
+from typing import Optional, List
+from sqlalchemy import String, Text, Boolean, select, func, desc, or_
+from sqlalchemy.orm import (
+    DeclarativeBase, Mapped, mapped_column, Session,
+)
+
+# ==================== 1. 模型层 ====================
+# 定义类 Base，继承 DeclarativeBase
+class Base(DeclarativeBase):
+    pass
+
+# 定义类 User，继承 Base
+class User(Base):
+    """用户模型"""
+    __tablename__ = "users"
+    # 主键 id
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # 用户名
+    name: Mapped[str] = mapped_column(String(50))
+    # 邮箱（唯一）
+    email: Mapped[str] = mapped_column(String(120), unique=True)
+    # 是否激活
+    is_active: Mapped[bool] = mapped_column(default=True)
+    # 是否已删除（软删除标记）
+    is_deleted: Mapped[bool] = mapped_column(default=False)
+    # 创建时间
+    created_at: Mapped[datetime] = mapped_column(default=datetime.now)
+
+    def __repr__(self):
+        return f"<User {self.name}>"
+
+# ==================== 2. CRUD 服务层 ====================
+# 把 CRUD 操作封装成类，方便管理和复用
+# 定义类 UserService
+class UserService:
+    """用户 CRUD 服务，封装所有数据库操作。"""
+
+    # Create：创建单个用户
+    # 定义方法 create
+    @staticmethod
+    def create(session: Session, name: str, email: str) -> User:
+        """创建用户。
+        步骤：创建对象 → add → commit → refresh
+        """
+        # 创建 User 对象
+        # 定义变量 user，赋值为 User(name=name, email=email)
+        user = User(name=name, email=email)
+        # add 加入会话（pending 状态）
+        session.add(user)
+        # commit 真正写入数据库
+        session.commit()
+        # refresh 从数据库重新加载（拿到自增 id）
+        session.refresh(user)
+        return user
+
+    # Create：批量创建
+    # 定义方法 create_batch
+    @staticmethod
+    def create_batch(session: Session, users_data: List[dict]) -> List[User]:
+        """批量创建用户。"""
+        # 列表推导式构造对象列表
+        users = [User(name=d["name"], email=d["email"]) for d in users_data]
+        # add_all 批量加入
+        session.add_all(users)
+        # 一次 commit 提交所有
+        session.commit()
+        # 批量 refresh
+        for u in users:
+            session.refresh(u)
+        return users
+
+    # Read：按 id 查单个
+    # 定义方法 get_by_id
+    @staticmethod
+    def get_by_id(session: Session, user_id: int) -> Optional[User]:
+        """按主键查用户。session.get 走缓存，比 select 更高效。"""
+        # session.get 按主键查，没有返回 None
+        return session.get(User, user_id)
+
+    # Read：按邮箱查（唯一字段）
+    # 定义方法 get_by_email
+    @staticmethod
+    def get_by_email(session: Session, email: str) -> Optional[User]:
+        """按邮箱查用户。用 scalar_one_or_none 校验唯一性。"""
+        # select + where 构造查询
+        # 定义变量 stmt，赋值为 select(User).where(User.email == email)
+        stmt = select(User).where(User.email == email)
+        # scalar_one_or_none：没有返回 None，多条报错（校验唯一性）
+        return session.execute(stmt).scalar_one_or_none()
+
+    # Read：查所有（带分页 + 过滤已删除）
+    # 定义方法 list_active
+    @staticmethod
+    def list_active(
+        session: Session,
+        page: int = 1,
+        size: int = 10,
+    ) -> dict:
+        """分页查询激活用户（自动过滤软删除）。
+        返回 {items, total, page, size, pages}
+        """
+        # 基础查询：只查未删除的
+        base_stmt = select(User).where(User.is_deleted == False)
+        # count 查询：统计总数
+        # 定义变量 count_stmt，赋值为 select(func.count(User.id)).where(User.is_deleted == False)
+        count_stmt = select(func.count(User.id)).where(User.is_deleted == False)
+
+        # 统计总数
+        # 定义变量 total，赋值为 session.execute(count_stmt).scalar()
+        total = session.execute(count_stmt).scalar()
+        # 计算总页数（向上取整）
+        # 定义变量 pages，赋值为 (total + size - 1) // size if total else 0
+        pages = (total + size - 1) // size if total else 0
+
+        # 分页：offset + limit
+        # 定义变量 offset_val，赋值为 (page - 1) * size
+        offset_val = (page - 1) * size
+        # 排序：按 id 倒序（新用户在前）
+        stmt = (
+            base_stmt
+            .order_by(desc(User.id))
+            .offset(offset_val)
+            .limit(size)
+        )
+        # 执行查询
+        # 定义变量 users，赋值为 session.execute(stmt).scalars().all()
+        users = session.execute(stmt).scalars().all()
+
+        # 返回分页结构
+        return {
+            "items": users,
+            "total": total,
+            "page": page,
+            "size": size,
+            "pages": pages,
+        }
+
+    # Read：搜索（模糊匹配）
+    # 定义方法 search
+    @staticmethod
+    def search(session: Session, keyword: str) -> List[User]:
+        """按名字或邮箱搜索。"""
+        # or_ 组合多个 like 条件
+        # 定义变量 stmt，赋值为 select(User).where(or_(...))
+        stmt = select(User).where(
+            or_(
+                User.name.like(f"%{keyword}%"),
+                User.email.like(f"%{keyword}%"),
+            )
+        ).where(User.is_deleted == False)  # 过滤软删除
+        return session.execute(stmt).scalars().all()
+
+    # Update：更新单个字段
+    # 定义方法 update_name
+    @staticmethod
+    def update_name(session: Session, user_id: int, new_name: str) -> Optional[User]:
+        """更新用户名。"""
+        # 先查出用户
+        # 定义变量 user，赋值为 session.get(User, user_id)
+        user = session.get(User, user_id)
+        if not user:
+            return None
+        # 修改属性
+        user.name = new_name
+        # commit 自动生成 UPDATE
+        session.commit()
+        # refresh 同步
+        session.refresh(user)
+        return user
+
+    # Update：批量更新（用 update 语句）
+    # 定义方法 deactivate_all
+    @staticmethod
+    def deactivate_all(session: Session) -> int:
+        """把所有用户设为未激活（批量更新）。"""
+        from sqlalchemy import update
+        # update 语句：一次 SQL 搞定，不加载对象
+        # 定义变量 stmt，赋值为 update(User).where(User.is_active == True).values(is_active=False)
+        stmt = (
+            update(User)
+            .where(User.is_active == True)
+            .values(is_active=False)
+        )
+        # 执行并获取影响行数
+        # 定义变量 result，赋值为 session.execute(stmt)
+        result = session.execute(stmt)
+        session.commit()
+        # rowcount 是受影响行数
+        return result.rowcount
+
+    # Delete：硬删除（真删）
+    # 定义方法 hard_delete
+    @staticmethod
+    def hard_delete(session: Session, user_id: int) -> bool:
+        """硬删除：从数据库删除行，不可恢复。"""
+        # 定义变量 user，赋值为 session.get(User, user_id)
+        user = session.get(User, user_id)
+        if not user:
+            return False
+        # session.delete 标记删除
+        session.delete(user)
+        # commit 真正执行 DELETE
+        session.commit()
+        return True
+
+    # Delete：软删除（推荐）
+    # 定义方法 soft_delete
+    @staticmethod
+    def soft_delete(session: Session, user_id: int) -> bool:
+        """软删除：标记 is_deleted=True，行还在。"""
+        # 定义变量 user，赋值为 session.get(User, user_id)
+        user = session.get(User, user_id)
+        if not user:
+            return False
+        # 只标记，不删行
+        user.is_deleted = True
+        session.commit()
+        return True
+
+# ==================== 3. 使用示例 ====================
+# 定义函数 main()
+def main():
+    from sqlalchemy import create_engine
+    # 创建内存数据库
+    # 定义变量 engine，赋值为 create_engine("sqlite:///:memory:", echo=False)
+    engine = create_engine("sqlite:///:memory:", echo=False)
+    Base.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        # 1. 创建用户
+        alice = UserService.create(session, "Alice", "alice@test.com")
+        bob = UserService.create(session, "Bob", "bob@test.com")
+        carol = UserService.create(session, "Carol", "carol@test.com")
+        print(f"创建: {alice}, {bob}, {carol}")
+
+        # 2. 批量创建
+        batch = UserService.create_batch(session, [
+            {"name": "Dave", "email": "dave@test.com"},
+            {"name": "Eve", "email": "eve@test.com"},
+        ])
+        print(f"批量创建: {batch}")
+
+        # 3. 按 id 查
+        user = UserService.get_by_id(session, 1)
+        print(f"按 id 查: {user}")
+
+        # 4. 按邮箱查
+        user = UserService.get_by_email(session, "bob@test.com")
+        print(f"按邮箱查: {user}")
+
+        # 5. 分页查询
+        result = UserService.list_active(session, page=1, size=3)
+        print(f"分页查询: 共 {result['total']} 条，本页 {len(result['items'])} 条")
+        print(f"  总页数: {result['pages']}")
+
+        # 6. 搜索
+        found = UserService.search(session, "a")
+        print(f"搜索 'a': {[u.name for u in found]}")
+
+        # 7. 更新
+        updated = UserService.update_name(session, 1, "Alice Wang")
+        print(f"更新: {updated}")
+
+        # 8. 软删除
+        UserService.soft_delete(session, 2)
+        # 验证：list_active 不返回已删除的
+        result = UserService.list_active(session)
+        print(f"软删除后剩余: {[u.name for u in result['items']]}")
+
+if __name__ == "__main__":
+    main()
+\`\`\`
+
+### Demo 2：异步 CRUD 完整实现
+
+把上面的 CRUD 改成异步版本，适配 FastAPI async 路由。
+
+\`\`\`python filename="demo2_async_crud.py - 异步 CRUD"
+# 异步 CRUD 完整实现
+# 运行：python demo2_async_crud.py
+
+import asyncio
+from datetime import datetime
+from typing import Optional, List
+from sqlalchemy import String, select, func, desc, or_, update
+from sqlalchemy.ext.asyncio import (
+    create_async_engine, AsyncSession, async_sessionmaker,
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+# ==================== 1. 模型 ====================
+# 定义类 Base，继承 DeclarativeBase
+class Base(DeclarativeBase):
+    pass
+
+# 定义类 User，继承 Base
+class User(Base):
+    __tablename__ = "users"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50))
+    email: Mapped[str] = mapped_column(String(120), unique=True)
+    is_active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(default=datetime.now)
+
+    def __repr__(self):
+        return f"<User {self.name}>"
+
+# ==================== 2. 异步引擎和会话 ====================
+# 定义变量 engine，赋值为 create_async_engine("sqlite+aiosqlite:///:memory:")
+engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
+# 定义变量 AsyncSessionLocal，赋值为 async_sessionmaker(...)
+# ★ expire_on_commit=False 异步必须
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine, expire_on_commit=False,
+)
+
+# ==================== 3. 异步 CRUD ====================
+# 定义类 AsyncUserService
+class AsyncUserService:
+    """异步用户 CRUD 服务。"""
+
+    # Create：异步创建
+    # 定义方法 async def create
+    @staticmethod
+    async def create(session: AsyncSession, name: str, email: str) -> User:
+        """异步创建用户。"""
+        # 创建对象
+        # 定义变量 user，赋值为 User(name=name, email=email)
+        user = User(name=name, email=email)
+        # add（不是异步的）
+        session.add(user)
+        # ★ commit 必须 await
+        await session.commit()
+        # ★ refresh 必须 await
+        await session.refresh(user)
+        return user
+
+    # Read：异步按 id 查
+    # 定义方法 async def get_by_id
+    @staticmethod
+    async def get_by_id(session: AsyncSession, user_id: int) -> Optional[User]:
+        """异步按 id 查。"""
+        # ★ get 必须 await
+        return await session.get(User, user_id)
+
+    # Read：异步查所有
+    # 定义方法 async def list_all
+    @staticmethod
+    async def list_all(session: AsyncSession) -> List[User]:
+        """异步查所有用户。"""
+        # 定义变量 stmt，赋值为 select(User).order_by(desc(User.id))
+        stmt = select(User).order_by(desc(User.id))
+        # ★ execute 必须 await
+        # 定义变量 result，赋值为 await session.execute(stmt)
+        result = await session.execute(stmt)
+        # scalars().all() 不是异步的
+        return result.scalars().all()
+
+    # Read：异步分页
+    # 定义方法 async def list_paginated
+    @staticmethod
+    async def list_paginated(
+        session: AsyncSession, page: int = 1, size: int = 10
+    ) -> dict:
+        """异步分页查询。"""
+        # count 查询
+        # 定义变量 count_stmt，赋值为 select(func.count(User.id))
+        count_stmt = select(func.count(User.id))
+        # ★ execute 必须 await
+        # 定义变量 total，赋值为 (await session.execute(count_stmt)).scalar()
+        total = (await session.execute(count_stmt)).scalar()
+
+        # 分页查询
+        # 定义变量 offset_val，赋值为 (page - 1) * size
+        offset_val = (page - 1) * size
+        stmt = (
+            select(User)
+            .order_by(desc(User.id))
+            .offset(offset_val)
+            .limit(size)
+        )
+        # 定义变量 result，赋值为 await session.execute(stmt)
+        result = await session.execute(stmt)
+        # 定义变量 users，赋值为 result.scalars().all()
+        users = result.scalars().all()
+
+        return {
+            "items": users,
+            "total": total,
+            "page": page,
+            "size": size,
+            "pages": (total + size - 1) // size if total else 0,
+        }
+
+    # Update：异步更新
+    # 定义方法 async def update_name
+    @staticmethod
+    async def update_name(
+        session: AsyncSession, user_id: int, new_name: str
+    ) -> Optional[User]:
+        """异步更新用户名。"""
+        # ★ get 必须 await
+        # 定义变量 user，赋值为 await session.get(User, user_id)
+        user = await session.get(User, user_id)
+        if not user:
+            return None
+        # 修改属性（不是异步的）
+        user.name = new_name
+        # ★ commit 必须 await
+        await session.commit()
+        # ★ refresh 必须 await
+        await session.refresh(user)
+        return user
+
+    # Delete：异步删除
+    # 定义方法 async def delete
+    @staticmethod
+    async def delete(session: AsyncSession, user_id: int) -> bool:
+        """异步删除用户。"""
+        # ★ get 必须 await
+        # 定义变量 user，赋值为 await session.get(User, user_id)
+        user = await session.get(User, user_id)
+        if not user:
+            return False
+        # ★ delete 必须 await
+        await session.delete(user)
+        # ★ commit 必须 await
+        await session.commit()
+        return True
+
+# ==================== 4. 测试 ====================
+# 定义函数 async def main()
+async def main():
+    """测试异步 CRUD。"""
+    # 异步建表
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    # 用异步会话操作
+    async with AsyncSessionLocal() as session:
+        # Create
+        alice = await AsyncUserService.create(session, "Alice", "alice@test.com")
+        bob = await AsyncUserService.create(session, "Bob", "bob@test.com")
+        print(f"✅ 创建: {alice}, {bob}")
+
+        # Read 单个
+        user = await AsyncUserService.get_by_id(session, 1)
+        print(f"✅ 按 id 查: {user}")
+
+        # Read 分页
+        result = await AsyncUserService.list_paginated(session, page=1, size=10)
+        print(f"✅ 分页: 共 {result['total']} 条")
+
+        # Update
+        updated = await AsyncUserService.update_name(session, 1, "Alice Wang")
+        print(f"✅ 更新: {updated}")
+
+        # Delete
+        ok = await AsyncUserService.delete(session, 2)
+        print(f"✅ 删除 Bob: {ok}")
+
+        # 验证删除后
+        result = await AsyncUserService.list_paginated(session)
+        print(f"✅ 删除后剩余: {[u.name for u in result['items']]}")
+
+    # 关闭引擎
+    await engine.dispose()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+\`\`\`
+
+### Demo 3：复杂查询实战（聚合 + 分组 + Having）
+
+\`\`\`python filename="demo3_advanced_query.py - 复杂查询"
+# 演示复杂查询：聚合、分组、having、子查询
+# 运行：python demo3_advanced_query.py
+
+from datetime import datetime
+from typing import List
+from sqlalchemy import (
+    String, Integer, ForeignKey, create_engine, select, func, desc, and_,
+)
+from sqlalchemy.orm import (
+    DeclarativeBase, Mapped, mapped_column, relationship, Session,
+)
+
+# 定义类 Base，继承 DeclarativeBase
+class Base(DeclarativeBase):
+    pass
+
+# 定义类 Author，继承 Base
+class Author(Base):
+    __tablename__ = "authors"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50))
+    # 一个作者多本书
+    books: Mapped[List["Book"]] = relationship(back_populates="author")
+
+# 定义类 Book，继承 Base
+class Book(Base):
+    __tablename__ = "books"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(200))
+    price: Mapped[int] = mapped_column(Integer)  # 价格（分）
+    sales: Mapped[int] = mapped_column(Integer, default=0)  # 销量
+    # 外键
+    author_id: Mapped[int] = mapped_column(ForeignKey("authors.id"))
+    # 关系
+    author: Mapped["Author"] = relationship(back_populates="books")
+
+# 创建引擎和表
+engine = create_engine("sqlite:///:memory:", echo=False)
+Base.metadata.create_all(engine)
+
+with Session(engine) as session:
+    # 准备测试数据
+    a1 = Author(name="鲁迅")
+    a2 = Author(name="老舍")
+    a3 = Author(name="莫言")
+    session.add_all([a1, a2, a3])
+    session.flush()  # flush 拿到 id，但还没 commit
+
+    # 给每个作者加几本书
+    session.add_all([
+        Book(title="呐喊", price=2500, sales=1000, author_id=a1.id),
+        Book(title="彷徨", price=3000, sales=800, author_id=a1.id),
+        Book(title="朝花夕拾", price=2000, sales=1200, author_id=a1.id),
+        Book(title="骆驼祥子", price=3500, sales=950, author_id=a2.id),
+        Book(title="茶馆", price=2800, sales=1100, author_id=a2.id),
+        Book(title="红高粱", price=4000, sales=600, author_id=a3.id),
+    ])
+    session.commit()
+
+    # ===== 1. 聚合查询：统计每个作者的书籍数量和总销量 =====
+    print("=== 1. 每个作者的书籍统计 ===")
+    # select 多列：作者名 + 聚合结果
+    # func.count 统计行数，func.sum 求和
+    # 定义变量 stmt，赋值为 select(...)
+    stmt = (
+        select(
+            Author.name,
+            func.count(Book.id).label("book_count"),    # 书籍数量
+            func.sum(Book.sales).label("total_sales"),   # 总销量
+            func.avg(Book.price).label("avg_price"),     # 平均价格
+        )
+        .join(Book, Author.id == Book.author_id)  # JOIN
+        .group_by(Author.id)  # 按作者分组
+        .order_by(desc("total_sales"))  # 按总销量降序
+    )
+    # 执行查询，all() 返回 Row 列表
+    for row in session.execute(stmt).all():
+        print(f"  {row.name}: {row.book_count} 本, "
+              f"总销量 {row.total_sales}, 均价 {row.avg_price:.0f}")
+
+    # ===== 2. Having 过滤：只看销量超过 2000 的作者 =====
+    print("\\n=== 2. 总销量超过 2000 的作者 ===")
+    # having 用于分组后的过滤（where 用于分组前过滤）
+    stmt = (
+        select(
+            Author.name,
+            func.sum(Book.sales).label("total_sales"),
+        )
+        .join(Book)
+        .group_by(Author.id)
+        # having：分组后过滤，相当于 SQL 的 HAVING
+        .having(func.sum(Book.sales) > 2000)
+        .order_by(desc("total_sales"))
+    )
+    for row in session.execute(stmt).all():
+        print(f"  {row.name}: 总销量 {row.total_sales}")
+
+    # ===== 3. 子查询：找出价格高于平均值的书 =====
+    print("\\n=== 3. 价格高于平均值的书 ===")
+    # 子查询：先算平均价格
+    # 定义变量 avg_subquery，赋值为 select(func.avg(Book.price)).scalar_subquery()
+    avg_subquery = select(func.avg(Book.price)).scalar_subquery()
+    # 主查询：价格 > 子查询结果
+    stmt = (
+        select(Book.title, Book.price)
+        .where(Book.price > avg_subquery)  # 用子查询作条件
+        .order_by(desc(Book.price))
+    )
+    for row in session.execute(stmt).all():
+        print(f"  {row.title}: ¥{row.price}")
+
+    # ===== 4. 用 relationship 的聚合查询 =====
+    print("\\n=== 4. 用 relationship 查作者和所有书 ===")
+    # selectinload 预加载，避免 N+1
+    from sqlalchemy.orm import selectinload
+    stmt = (
+        select(Author)
+        .options(selectinload(Author.books))  # 预加载 books
+        .order_by(Author.id)
+    )
+    # 定义变量 authors，赋值为 session.execute(stmt).scalars().all()
+    authors = session.execute(stmt).scalars().all()
+    for a in authors:
+        # 不再发 SQL，books 已预加载
+        total_sales = sum(b.sales for b in a.books)
+        print(f"  {a.name}: {len(a.books)} 本, 总销量 {total_sales}")
+\`\`\`
+
+## 十三、动手实验：巩固理解
+
+### 实验 1：实现一个支持软删除的 CRUD
+
+**任务**：给 User 模型加 \`is_deleted\` 字段，所有查询自动过滤已删除的，\`delete\` 方法做软删除。
+
+**思考题**：
+1. 为什么软删除比硬删除更安全？
+2. 软删除后，唯一索引（如 email）怎么处理？如果用户想用同一邮箱重新注册怎么办？
+
+\`\`\`python filename="实验1_软删除参考.py"
+# 软删除 CRUD 参考实现
+from datetime import datetime
+from sqlalchemy import String, Boolean, select
+from sqlalchemy.orm import Session, DeclarativeBase, Mapped, mapped_column
+
+# 定义类 Base，继承 DeclarativeBase
+class Base(DeclarativeBase):
+    pass
+
+# 定义类 User，继承 Base
+class User(Base):
+    __tablename__ = "users"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50))
+    email: Mapped[str] = mapped_column(String(120), unique=True)
+    # 软删除标记
+    is_deleted: Mapped[bool] = mapped_column(default=False)
+    deleted_at: Mapped[datetime] = mapped_column(default=None, nullable=True)
+
+# 查询时自动过滤
+# 定义函数 get_active_users
+def get_active_users(session: Session):
+    """只查未删除的用户。"""
+    # 定义变量 stmt，赋值为 select(User).where(User.is_deleted == False)
+    stmt = select(User).where(User.is_deleted == False)
+    return session.execute(stmt).scalars().all()
+
+# 软删除
+# 定义函数 soft_delete
+def soft_delete(session: Session, user_id: int) -> bool:
+    """标记删除，不真删。"""
+    # 定义变量 user，赋值为 session.get(User, user_id)
+    user = session.get(User, user_id)
+    if not user:
+        return False
+    user.is_deleted = True
+    user.deleted_at = datetime.now()
+    session.commit()
+    return True
+
+# ★ 思考题答案：
+# 1. 软删除保留了数据，删错了能恢复；硬删除数据永久丢失
+# 2. 唯一索引问题：可以把 email 改成 "原邮箱_deleted_时间戳"，
+#    或者用部分索引（PostgreSQL 的 WHERE NOT is_deleted）
+\`\`\`
+
+### 实验 2：实现游标分页（深分页优化）
+
+**任务**：offset 分页在深页（如第 10000 页）性能差，请实现基于游标的分页。
+
+**提示**：用 \`WHERE id > last_id ORDER BY id LIMIT size\` 代替 \`OFFSET\`。
+
+\`\`\`python filename="实验2_游标分页.py"
+# 游标分页：性能优于 offset 分页
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+# 定义函数 cursor_paginate
+def cursor_paginate(
+    session: Session,
+    model,
+    last_id: int = 0,    # 上一页最后一条的 id
+    size: int = 10,
+):
+    """游标分页。
+    原理：WHERE id > last_id ORDER BY id LIMIT size
+    优势：不扫描跳过的行，深分页也快
+    """
+    # 定义变量 stmt，赋值为 select(model).where(model.id > last_id).order_by(model.id).limit(size)
+    stmt = (
+        select(model)
+        .where(model.id > last_id)  # 从上一页最后一条之后开始
+        .order_by(model.id)         # 必须按 id 排序
+        .limit(size)
+    )
+    # 定义变量 items，赋值为 session.execute(stmt).scalars().all()
+    items = session.execute(stmt).scalars().all()
+    # 下一页的游标：本页最后一条的 id
+    next_cursor = items[-1].id if items else None
+    return {
+        "items": items,
+        "next_cursor": next_cursor,  # 客户端传回这个值获取下一页
+        "has_more": len(items) == size,  # 是否还有更多
+    }
+
+# 使用示例：
+# 第一页：cursor_paginate(session, User, last_id=0, size=10)
+# 第二页：cursor_paginate(session, User, last_id=上一页的next_cursor, size=10)
+\`\`\`
+
+### 实验 3：实现乐观锁（并发更新控制）
+
+**任务**：多个请求同时更新同一条记录，怎么防止覆盖？实现乐观锁。
+
+\`\`\`python filename="实验3_乐观锁.py"
+# 乐观锁：用 version 字段防止并发覆盖
+from sqlalchemy import String, Integer, select
+from sqlalchemy.orm import Session, DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.exc import StaleDataError
+
+# 定义类 Base，继承 DeclarativeBase
+class Base(DeclarativeBase):
+    pass
+
+# 定义类 Product，继承 Base
+class Product(Base):
+    __tablename__ = "products"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100))
+    stock: Mapped[int] = mapped_column(Integer, default=0)
+    # 乐观锁版本号
+    version: Mapped[int] = mapped_column(Integer, default=1)
+
+# 定义函数 update_stock
+def update_stock(session: Session, product_id: int, delta: int) -> bool:
+    """乐观锁更新库存。
+    原理：UPDATE 时带 version 条件，version 不匹配说明被别人改过。
+    """
+    # 先查出当前版本
+    # 定义变量 product，赋值为 session.get(Product, product_id)
+    product = session.get(Product, product_id)
+    if not product:
+        return False
+    # 记录当前 version
+    current_version = product.version
+    # 修改库存和版本
+    product.stock += delta
+    product.version += 1
+    # ★ 关键：用 update 语句带 version 条件
+    from sqlalchemy import update
+    # 定义变量 stmt，赋值为 update(Product).where(Product.id == product_id, Product.version == current_version).values(...)
+    stmt = (
+        update(Product)
+        .where(
+            Product.id == product_id,
+            Product.version == current_version,  # ★ version 必须匹配
+        )
+        .values(stock=product.stock, version=product.version)
+    )
+    # 执行
+    # 定义变量 result，赋值为 session.execute(stmt)
+    result = session.execute(stmt)
+    session.commit()
+    # rowcount=0 说明 version 不匹配，被别人改过了
+    if result.rowcount == 0:
+        print("⚠️ 并发冲突：数据已被其他请求修改")
+        return False
+    return True
+\`\`\`
+
+## 十四、常见错误补充
+
+**错误 5：用 update 语句忘了 commit**
+
+\`\`\`python filename="错误：update 不 commit"
+# ❌ 错误：执行 update 语句后不 commit
+# session.execute(update(User).where(...).values(...))
+# 忘了 commit，数据没更新
+
+# ✅ 正确：update 后必须 commit
+# session.execute(update(User).where(...).values(...))
+# session.commit()
+\`\`\`
+
+**错误 6：在循环里 commit**
+
+\`\`\`python filename="错误：循环 commit"
+# ❌ 错误：每次循环都 commit，性能极差（每次 commit 都是一次磁盘同步）
+# for i in range(1000):
+#     session.add(User(name=f"user_{i}"))
+#     session.commit()  # ❌ 1000 次 commit
+
+# ✅ 正确：批量 add，最后一次 commit
+# for i in range(1000):
+#     session.add(User(name=f"user_{i}"))
+# session.commit()  # ✅ 1 次 commit
+\`\`\`
+
+**错误 7：查询时忘了过滤软删除**
+
+\`\`\`python filename="错误：软删除过滤遗漏"
+# ❌ 错误：查询忘了加 is_deleted == False
+# users = session.execute(select(User)).scalars().all()  # 返回已删除的
+
+# ✅ 正确：所有查询都加过滤
+# users = session.execute(
+#     select(User).where(User.is_deleted == False)
+# ).scalars().all()
+\`\`\`
+
+**错误 8：N+1 的变体——循环里查关联**
+
+\`\`\`python filename="错误：N+1 变体"
+# ❌ 错误：循环里查关联对象
+# posts = session.execute(select(Post)).scalars().all()
+# for p in posts:
+#     author = session.get(User, p.author_id)  # ❌ 每次循环 1 次 SQL
+
+# ✅ 正确：用 selectinload 预加载
+# stmt = select(Post).options(selectinload(Post.author))
+# posts = session.execute(stmt).scalars().all()
+# for p in posts:
+#     author = p.author  # ✅ 不发 SQL
+\`\`\`
+
+## 十五、本章小结
 
 - **Create**：\`add\` → \`commit\` → \`refresh\`。批量用 \`add\_all\`。
 - **Read**：\`select()\` 构造查询，\`where\` 过滤，\`order\_by\` 排序，\`offset+limit\` 分页。\`scalar\_one\_or\_none\` 查单条，\`all\` 查列表。
@@ -3327,7 +5463,595 @@ class User(Base):
 8. **别删旧迁移脚本**：已执行的迁移脚本不要删，否则历史链条断裂，新环境无法重建。
 9. **downgrade 要可逆**：每个 \`upgrade()\` 都要有对应 \`downgrade()\`，确保能回滚。
 
-## 十四、本章小结
+## 十四、生活类比：数据库迁移像房屋装修
+
+理解 Alembic 最好的方式是把它比作**房屋装修管理**。
+
+\`\`\`txt filename="Alembic = 装修版本管理"
+┌──────────────────────────────────────────────────────┐
+│  设计图（models.py）                                  │
+│   业主想加一个阳台 → 改设计图                          │
+└──────────────────────────────────────────────────────┘
+                       ↓ 对比差异
+┌──────────────────────────────────────────────────────┐
+│  装修方案（迁移脚本）                                 │
+│   方案 1: 建阳台（upgrade）                           │
+│   方案 2: 拆阳台（downgrade，回滚用）                 │
+│   每个方案都有编号，按顺序执行                         │
+└──────────────────────────────────────────────────────┘
+                       ↓ 执行
+┌──────────────────────────────────────────────────────┐
+│  实际房屋（数据库）                                    │
+│   alembic_version 表 = 装修进度表                     │
+│   记录当前执行到哪个方案                              │
+└──────────────────────────────────────────────────────┘
+\`\`\`
+
+- **设计图（models.py）**：业主（开发者）想要什么结构，画在设计图上（改模型）。
+- **装修方案（迁移脚本）**：装修公司（Alembic）对比设计图和实际房屋，生成施工方案（\`upgrade\`），同时准备撤销方案（\`downgrade\`）。
+- **施工进度表（alembic\_version）**：每个方案有编号，按顺序执行。进度表记录"当前装修到第几号方案"。
+- **回滚（downgrade）**：阳台漏水了？按撤销方案拆掉，回到上一个版本。
+
+**为什么不直接改房屋（手动 ALTER TABLE）**：
+
+1. **没记录**：直接改了房屋，没人知道改了什么。Alembic 把每次变更记成脚本，团队共享。
+2. **没法回滚**：直接拆了墙，想装回去很难。Alembic 的 \`downgrade\` 能精确撤销。
+3. **多套房子不同步**：开发房、测试房、生产房，怎么保证结构一致？Alembic 用同一套脚本，按版本号同步。
+
+> **怎么想**：迁移脚本就像 Git 的 commit。每次模型变更都是一次"提交"，\`upgrade head\` 是 \`git pull\`，\`downgrade -1\` 是 \`git revert\`。
+
+## 十五、渐进式 Demo：从零走通 Alembic
+
+### Demo 1：最小可运行的 Alembic 流程
+
+这个 Demo 用一个最简单的模型，完整走一遍 Alembic 流程：初始化 → 配置 → 生成迁移 → 执行 → 验证。
+
+\`\`\`bash filename="Demo 1：完整流程命令"
+# 1. 创建项目目录
+# mkdir alembic_demo && cd alembic_demo
+
+# 2. 创建虚拟环境并安装依赖
+# python -m venv venv
+# source venv/bin/activate  # Windows: venv\\Scripts\\activate
+# pip install sqlalchemy alembic
+
+# 3. 创建模型文件
+# vim models.py（内容见下面）
+
+# 4. 初始化 Alembic
+# alembic init alembic
+# 这会创建：
+#   alembic.ini
+#   alembic/
+#     env.py
+#     script.py.mako
+#     versions/
+
+# 5. 配置 alembic.ini（改 sqlalchemy.url）
+# vim alembic.ini
+# 找到 sqlalchemy.url，改成：
+# sqlalchemy.url = sqlite:///./demo.db
+
+# 6. 配置 env.py（导入模型）
+# vim alembic/env.py
+# 在文件顶部加：
+#   import sys, os
+#   sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+#   from models import Base, User
+# 改 target_metadata：
+#   target_metadata = Base.metadata
+
+# 7. 生成首个迁移脚本
+# alembic revision --autogenerate -m "create users table"
+# 输出：Generating alembic/versions/xxx_create_users_table.py
+
+# 8. 检查生成的脚本
+# vim alembic/versions/xxx_create_users_table.py
+# 确认 upgrade() 创建了 users 表
+
+# 9. 执行迁移
+# alembic upgrade head
+# 输出：Running upgrade  -> xxx, create users table
+
+# 10. 验证
+# sqlite3 demo.db ".tables"
+# 输出：alembic_version  users
+# （alembic_version 是 Alembic 自己的版本表，users 是我们建的）
+
+# 11. 查看当前版本
+# alembic current
+# 输出：xxx (head)
+
+# 12. 修改模型（加字段）
+# vim models.py，给 User 加 phone 字段
+
+# 13. 生成新迁移
+# alembic revision --autogenerate -m "add phone to users"
+
+# 14. 执行迁移
+# alembic upgrade head
+# 输出：Running upgrade xxx -> yyy, add phone to users
+
+# 15. 验证字段已加
+# sqlite3 demo.db "PRAGMA table_info(users)"
+# 输出：0|id|INTEGER|1||1  1|name|VARCHAR(50)|1||0  2|phone|VARCHAR(20)|0||0
+
+# 16. 回滚迁移
+# alembic downgrade -1
+# 输出：Running downgrade yyy -> xxx, add phone to users
+
+# 17. 验证字段已删
+# sqlite3 demo.db "PRAGMA table_info(users)"
+# 输出：0|id|INTEGER|1||1  1|name|VARCHAR(50)|1||0  （没有 phone 了）
+\`\`\`
+
+配套的 \`models.py\`：
+
+\`\`\`python filename="models.py - 最简模型"
+# 最简模型，用于 Alembic Demo
+from datetime import datetime
+from typing import Optional
+from sqlalchemy import String
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+# 定义类 Base，继承 DeclarativeBase
+class Base(DeclarativeBase):
+    pass
+
+# 定义类 User，继承 Base
+class User(Base):
+    __tablename__ = "users"
+    # 主键
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # 用户名
+    name: Mapped[str] = mapped_column(String(50))
+    # 邮箱（唯一）
+    email: Mapped[str] = mapped_column(String(120), unique=True)
+    # ★ 第二步会加这个字段（先注释掉）
+    # phone: Mapped[Optional[str]] = mapped_column(String(20), default=None)
+    # 创建时间
+    created_at: Mapped[datetime] = mapped_column(default=datetime.now)
+\`\`\`
+
+### Demo 2：完整迁移脚本解析
+
+下面是一个完整的迁移脚本，详细注释每个部分的作用。
+
+\`\`\`python filename="alembic/versions/完整迁移脚本示例.py"
+# 这是 Alembic 自动生成的迁移脚本模板
+# 文件名格式：日期_版本号_描述.py
+
+"""create users and posts tables
+
+Revision ID: a1b2c3d4e5f6
+Revises:                    # 上一个版本（首迁移是空）
+Create Date: 2024-01-01 12:00:00
+"""
+
+# 1. 导入类型和工具
+# 从 typing 导入 Sequence, Union（类型注解）
+from typing import Sequence, Union
+# 从 alembic 导入 op（操作 API，核心）
+from alembic import op
+# 导入 sa（SQLAlchemy 别名，用于定义列类型）
+import sqlalchemy as sa
+
+# 2. 版本信息（Alembic 用这些维护版本链）
+# revision：当前迁移的唯一 ID（12 位 hex）
+revision: str = 'a1b2c3d4e5f6'
+# down_revision：上一个版本的 ID（首迁移是 None）
+# Alembic 通过 down_revision 把迁移串成链条：None → a1b2 → c3d4 → ...
+down_revision: Union[str, None] = None
+# branch_labels：分支标签（多分支开发时用，一般不用）
+branch_labels: Union[str, Sequence[str], None] = None
+# depends_on：依赖的其他迁移（跨分支时用，一般不用）
+depends_on: Union[str, Sequence[str], None] = None
+
+# 3. upgrade 函数：升级时执行
+# 定义函数 upgrade()
+def upgrade() -> None:
+    """升级：创建 users 和 posts 表。
+    执行 \`alembic upgrade head\` 时会调用这个函数。
+    """
+    # === 创建 users 表 ===
+    # op.create_table：创建表的 API
+    op.create_table(
+        'users',
+        # sa.Column(列名, 类型, 约束)：定义列
+        # primary_key=True：主键
+        sa.Column('id', sa.Integer(), primary_key=True),
+        # nullable=False：NOT NULL
+        sa.Column('name', sa.String(50), nullable=False),
+        sa.Column('email', sa.String(120), nullable=False),
+        # server_default=sa.func.now()：数据库端默认值 NOW()
+        sa.Column('created_at', sa.DateTime(), server_default=sa.func.now()),
+    )
+    # 创建唯一索引：op.create_index(索引名, 表名, 列列表, unique=是否唯一)
+    # 防止邮箱重复
+    op.create_index(
+        'ix_users_email',           # 索引名
+        'users',                    # 表名
+        ['email'],                  # 列列表
+        unique=True,                # 唯一索引
+    )
+
+    # === 创建 posts 表 ===
+    op.create_table(
+        'posts',
+        sa.Column('id', sa.Integer(), primary_key=True),
+        sa.Column('title', sa.String(200), nullable=False),
+        sa.Column('body', sa.Text(), nullable=False),
+        sa.Column('published', sa.Boolean(), server_default='0'),
+        # ForeignKeyConstraint：外键约束
+        # 第一个列表是本表的列，第二个列表是引用表的列
+        sa.ForeignKeyConstraint(['author_id'], ['users.id']),
+        sa.Column('author_id', sa.Integer(), nullable=False),
+    )
+    # 普通索引：加速按 author_id 查询
+    op.create_index('ix_posts_author_id', 'posts', ['author_id'])
+
+    # === 可选：创建数据（种子数据）===
+    # op.execute 可以执行原生 SQL
+    # op.execute("INSERT INTO users (name, email) VALUES ('admin', 'admin@test.com')")
+
+# 4. downgrade 函数：回滚时执行
+# 定义函数 downgrade()
+def downgrade() -> None:
+    """回滚：删除表。
+    执行 \`alembic downgrade -1\` 时会调用这个函数。
+    ★ 注意删除顺序：先删依赖表（posts），再删被依赖表（users）
+    """
+    # 先删 posts（依赖 users 的外键）
+    op.drop_index('ix_posts_author_id', table_name='posts')
+    op.drop_table('posts')
+    # 再删 users
+    op.drop_index('ix_users_email', table_name='users')
+    op.drop_table('users')
+\`\`\`
+
+### Demo 3：数据迁移实战（带数据的字段类型转换）
+
+真实场景：把 \`status\` 列从字符串（'active'/'inactive'）改成整数（1/0），**不能丢数据**。
+
+\`\`\`python filename="alembic/versions/数据迁移示例.py"
+# 数据迁移：status 字符串转整数
+# 这个 Demo 演示如何安全地转换列类型，不丢数据
+
+"""migrate status from string to int
+
+Revision ID: f1e2d3c4b5a6
+Revises: a1b2c3d4e5f6
+Create Date: 2024-01-02 12:00:00
+"""
+
+from typing import Sequence, Union
+from alembic import op
+import sqlalchemy as sa
+
+revision: str = 'f1e2d3c4b5a6'
+down_revision: Union[str, None] = 'a1b2c3d4e5f6'
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+# 定义函数 upgrade()
+def upgrade() -> None:
+    """升级：status 字符串转整数。
+    分四步走，每步都安全可回滚：
+    1. 加新列 status_new（可空，避免 NOT NULL 失败）
+    2. 回填数据（CASE WHEN 转换）
+    3. 删旧列 status
+    4. 新列改名 status + 加约束
+    """
+    # 第一步：加新列 status_new，类型 Integer，可空
+    # 为什么可空？因为旧数据还没填，NOT NULL 会失败
+    op.add_column(
+        'users',
+        sa.Column('status_new', sa.Integer(), nullable=True),
+    )
+
+    # 第二步：用原生 SQL 迁移数据
+    # CASE WHEN ... THEN ... ELSE ... END：条件表达式
+    # 'active' → 1，其他 → 0
+    # op.execute 执行原生 SQL
+    op.execute(
+        "UPDATE users SET status_new = CASE "
+        "WHEN status = 'active' THEN 1 "
+        "ELSE 0 END"
+    )
+
+    # 第三步：删旧列 status（数据已迁移到 status_new）
+    op.drop_column('users', 'status')
+
+    # 第四步：新列改名 status_new → status
+    # 同时加 NOT NULL 约束和默认值 0
+    # existing_type 必填，告诉 Alembic 当前列类型
+    op.alter_column(
+        'users',
+        'status_new',                                    # 旧列名
+        new_column_name='status',                        # 新列名
+        existing_type=sa.Integer(),                      # 原类型
+        nullable=False,                                  # 改成 NOT NULL
+        server_default='0',                              # 默认值 0
+    )
+
+# 定义函数 downgrade()
+def downgrade() -> None:
+    """回滚：status 整数转字符串。
+    和 upgrade 严格对称，只是方向相反。
+    """
+    # 第一步：加旧列 status_old，类型 String，可空
+    op.add_column(
+        'users',
+        sa.Column('status_old', sa.String(20), nullable=True),
+    )
+
+    # 第二步：反向转换数据
+    # 1 → 'active'，其他 → 'inactive'
+    op.execute(
+        "UPDATE users SET status_old = CASE "
+        "WHEN status = 1 THEN 'active' "
+        "ELSE 'inactive' END"
+    )
+
+    # 第三步：删新列 status
+    op.drop_column('users', 'status')
+
+    # 第四步：旧列改名 status_old → status
+    op.alter_column(
+        'users',
+        'status_old',
+        new_column_name='status',
+        existing_type=sa.String(20),
+        nullable=False,
+        server_default='inactive',
+    )
+\`\`\`
+
+## 十六、动手实验：巩固理解
+
+### 实验 1：给博客系统加"评论点赞"功能
+
+**任务**：博客系统已有 Post、Comment 模型，现在要加"点赞"功能。一个用户可以点赞多条评论，一条评论可以被多个用户点赞。
+
+**步骤**：
+1. 修改模型：加 \`comment_likes\` 关联表（多对多）。
+2. 生成迁移：\`alembic revision --autogenerate -m "add comment likes"\`。
+3. 检查脚本：确认 \`upgrade()\` 创建了关联表。
+4. 执行迁移：\`alembic upgrade head\`。
+5. 验证：用 SQLite 工具查看表结构。
+
+\`\`\`python filename="实验1_模型修改.py"
+# 在 models.py 中增加关联表和关系
+
+# 1. 新增关联表（多对多）
+# comment_likes = Table(
+#     "comment_likes",
+#     Base.metadata,
+#     Column("comment_id", Integer, ForeignKey("comments.id"), primary_key=True),
+#     Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
+# )
+
+# 2. Comment 模型增加关系
+# class Comment(Base):
+#     ...
+#     liked_by: Mapped[List["User"]] = relationship(
+#         secondary=comment_likes, back_populates="liked_comments"
+#     )
+
+# 3. User 模型增加关系
+# class User(Base):
+#     ...
+#     liked_comments: Mapped[List["Comment"]] = relationship(
+#         secondary=comment_likes, back_populates="liked_by"
+#     )
+
+# 4. 生成迁移
+# alembic revision --autogenerate -m "add comment likes"
+
+# 5. 检查脚本：upgrade() 应该有
+# op.create_table('comment_likes', ...)
+# op.create_index('ix_comment_likes_comment_id', ...)
+
+# 6. 执行迁移
+# alembic upgrade head
+
+# 7. 验证
+# sqlite3 blog.db ".tables"
+# 应该看到 comment_likes 表
+\`\`\`
+
+### 实验 2：实现一个可回滚的数据种子脚本
+
+**任务**：写一个迁移脚本，在 \`upgrade\` 时插入初始管理员账号，\`downgrade\` 时删除。
+
+\`\`\`python filename="实验2_种子数据迁移.py"
+# 种子数据迁移：插入初始管理员
+
+"""seed admin user
+
+Revision ID: x1y2z3a4b5c6
+Revises: f1e2d3c4b5a6
+Create Date: 2024-01-03 12:00:00
+"""
+
+from typing import Sequence, Union
+from alembic import op
+import sqlalchemy as sa
+
+revision: str = 'x1y2z3a4b5c6'
+down_revision: Union[str, None] = 'f1e2d3c4b5a6'
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+# 定义函数 upgrade()
+def upgrade() -> None:
+    """升级：插入初始管理员账号。"""
+    # 用 op.execute 执行原生 SQL
+    # 注意：密码应该用哈希，这里用明文仅作演示
+    op.execute(
+        "INSERT INTO users (name, email, is_admin) "
+        "VALUES ('admin', 'admin@test.com', 1)"
+    )
+
+# 定义函数 downgrade()
+def downgrade() -> None:
+    """回滚：删除管理员账号。"""
+    # 删除时用 WHERE 精确匹配，避免误删
+    op.execute(
+        "DELETE FROM users WHERE email = 'admin@test.com'"
+    )
+
+# 测试：
+# alembic upgrade head  → 插入 admin
+# sqlite3 demo.db "SELECT * FROM users WHERE email='admin@test.com'"
+# alembic downgrade -1  → 删除 admin
+# sqlite3 demo.db "SELECT * FROM users WHERE email='admin@test.com'"  → 空
+\`\`\`
+
+### 实验 3：模拟多分支开发的合并
+
+**任务**：模拟两个开发者同时基于同一版本写了迁移，产生分叉，然后用 \`alembic merge\` 合并。
+
+\`\`\`bash filename="实验3_多分支合并"
+# 1. 假设当前版本是 abc123
+
+# 2. 开发者 A 基于 abc123 写了迁移 def456（加 phone 列）
+# alembic revision -m "A: add phone"
+
+# 3. 开发者 B 也基于 abc123 写了迁移 ghi789（加 address 列）
+# alembic revision -m "B: add address"
+# 注意：B 拉代码时还没看到 A 的迁移，所以 down_revision 也是 abc123
+
+# 4. 现在有两个 head（分叉了）
+# alembic heads
+# 输出：
+#   def456 (head)
+#   ghi789 (head)
+
+# 5. 合并：生成一个 merge 迁移，down_revision 指向两个 head
+# alembic merge -m "merge A and B" def456 ghi789
+# 输出：Generating alembic/versions/jkl012_merge_a_and_b.py
+
+# 6. 检查 merge 脚本
+# vim alembic/versions/jkl012_merge_a_and_b.py
+# down_revision 会是 ('def456', 'ghi789')  # 两个父版本
+
+# 7. 现在只有一个 head 了
+# alembic heads
+# 输出：jkl012 (head)
+
+# 8. 执行迁移
+# alembic upgrade head
+# 会依次执行 def456、ghi789、jkl012
+\`\`\`
+
+\`\`\`python filename="merge 迁移脚本示例.py"
+# 这是 alembic merge 生成的合并脚本
+# upgrade() 和 downgrade() 通常是空的，只用于合并分支
+
+"""merge A and B
+
+Revision ID: jkl012
+Revises: def456, ghi789      # ★ 两个父版本
+Create Date: 2024-01-04 12:00:00
+"""
+
+from typing import Sequence, Union
+from alembic import op
+import sqlalchemy as sa
+
+revision: str = 'jkl012'
+# ★ down_revision 是元组，指向两个分支的 head
+down_revision: Union[str, Sequence[str], None] = ('def456', 'ghi789')
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+# merge 脚本通常不需要操作，只是连接两个分支
+# 定义函数 upgrade()
+def upgrade() -> None:
+    pass
+
+# 定义函数 downgrade()
+def downgrade() -> None:
+    pass
+\`\`\`
+
+## 十七、常见错误补充
+
+**错误 7：迁移脚本没提交到 Git**
+
+\`\`\`bash filename="错误：迁移脚本没提交"
+# ❌ 错误：生成迁移脚本后不提交 Git，队友拉代码后数据库结构不一致
+# alembic revision --autogenerate -m "add phone"
+# git stash  # 迁移脚本被藏起来了
+
+# ✅ 正确：迁移脚本必须提交 Git，和模型代码一起版本管理
+# alembic revision --autogenerate -m "add phone"
+# git add alembic/versions/xxx_add_phone.py models.py
+# git commit -m "add phone field to users"
+\`\`\`
+
+**错误 8：在生产环境用 autogenerate 不检查**
+
+\`\`\`python filename="错误：生产环境不检查脚本"
+# ❌ 错误：生产环境直接用 autogenerate 生成的脚本，不人工检查
+# 可能的问题：
+#   1. autogenerate 把"重命名"误判为"删列+加列"，数据丢失
+#   2. downgrade() 不完整，回滚时丢数据
+#   3. 生成了不需要的索引变更
+
+# ✅ 正确：autogenerate 后必须人工核对
+# 1. 检查 upgrade() 是否符合预期
+# 2. 检查 downgrade() 是否能撤销 upgrade()
+# 3. 特别注意 drop_column 和 drop_table（会丢数据）
+\`\`\`
+
+**错误 9：迁移脚本顺序断裂**
+
+\`\`\`bash filename="错误：down_revision 指向不存在的版本"
+# ❌ 错误：手动删了某个迁移脚本，链条断裂
+# alembic upgrade head
+# 报错：Can't locate revision identified by 'abc123'
+
+# ✅ 正确：不要删已执行的迁移脚本
+# 如果必须删，先用 alembic downgrade 回滚到之前版本
+# 再删脚本，重新生成
+\`\`\`
+
+**错误 10：多 head 不合并**
+
+\`\`\`bash filename="错误：多 head 不合并"
+# ❌ 错误：多分支开发产生多个 head，不合并直接 upgrade
+# alembic upgrade head
+# 报错：Multiple heads are present; please specify which head
+
+# ✅ 正确：先用 alembic merge 合并
+# alembic merge -m "merge branches" head1 head2
+# alembic upgrade head
+\`\`\`
+
+**错误 11：env.py 忘了开 compare_type**
+
+\`\`\`python filename="错误：类型变化检测不到"
+# ❌ 错误：env.py 没开 compare_type，String(50) 改成 String(100) 检测不到
+# context.configure(
+#     connection=connection,
+#     target_metadata=target_metadata,
+#     # 没写 compare_type=True
+# )
+# alembic revision --autogenerate -m "change length"
+# 输出：No changes in schema detected.  # 没检测到！
+
+# ✅ 正确：开启 compare_type 和 compare_server_default
+# context.configure(
+#     connection=connection,
+#     target_metadata=target_metadata,
+#     compare_type=True,                # 检测类型变化
+#     compare_server_default=True,      # 检测默认值变化
+# )
+\`\`\`
+
+## 十八、本章小结
 
 - **数据库迁移**解决"模型变更怎么同步到数据库"的问题，Alembic 是 SQLAlchemy 官方工具。
 - **核心流程**：\`alembic init\` 初始化 → 配置 \`env.py\`（导入 Base.metadata）→ \`alembic revision --autogenerate\` 生成脚本 → \`alembic upgrade head\` 执行。

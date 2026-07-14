@@ -1262,7 +1262,17 @@ def get_me(current_user: User = Depends(get_current_user)):
 ## 四、Demo：完整的依赖注入体系
 
 \`\`\`python
+# ===================================================================
 # Demo：用依赖注入搭一个迷你看板系统
+# -------------------------------------------------------------------
+# 本 demo 完整演示 FastAPI 依赖注入的五大核心能力：
+#   1. 基础设施层  —— SQLAlchemy 引擎、Session 工厂、ORM 模型
+#   2. 核心依赖    —— get_db：每个请求一个 Session，请求结束自动关闭
+#   3. 嵌套依赖    —— get_db_and_user：依赖其他依赖，FastAPI 自动级联解析
+#   4. 路由使用    —— 业务路由通过 Depends 声明所需资源，代码极简
+#   5. 类作为依赖  —— BoardQueryParams：封装分页/过滤参数
+#   6. 依赖覆盖    —— dependency_overrides：测试时替换真实依赖
+# ===================================================================
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, String, select
@@ -1271,75 +1281,116 @@ from sqlalchemy.orm import (
     sessionmaker, Session,
 )
 
-# ===== 1. 基础设施 =====
+# ===== 1. 基础设施：SQLAlchemy 引擎 + ORM 模型 =====
+# create_engine：建立到数据库的"连接工厂"。这里用 SQLite 内存库，
+# connect_args={"check_same_thread": False} 是因为 FastAPI 路由可能
+# 在不同线程被调用，而 SQLite 默认只允许创建它的线程访问。
 engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+
+# sessionmaker：Session 工厂。每个请求来时调一次 SessionLocal() 得到独立 session。
+# autocommit=False：不自动提交，需手动 db.commit()
+# autoflush=False：不在查询前自动 flush，避免意外写入
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
+# DeclarativeBase：SQLAlchemy 2.0 风格的 ORM 基类，所有模型继承它
 class Base(DeclarativeBase):
     pass
 
+# Board：看板模型，对应数据库里的 boards 表
 class Board(Base):
     __tablename__ = "boards"
+    # Mapped[int]：类型注解告诉 SQLAlchemy 这列是 int
+    # mapped_column：声明列属性，primary_key=True 主键，autoincrement=True 自增
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    title: Mapped[str] = mapped_column(String(100))
-    color: Mapped[str] = mapped_column(String(20), default="blue")
+    title: Mapped[str] = mapped_column(String(100))           # 标题，最长 100
+    color: Mapped[str] = mapped_column(String(20), default="blue")  # 颜色，默认 blue
 
+# 在 engine 上创建所有表（开发演示用；生产环境用 Alembic 做迁移）
 Base.metadata.create_all(engine)
 
 app = FastAPI()
 
-# ===== 2. 核心依赖：get_db =====
+# ===== 2. 核心依赖：get_db（每个请求一个 Session）=====
+# FastAPI 依赖最常见的写法：用 yield 的生成器函数。
+# 关键点：yield 之前是"请求开始"做的事，yield 之后是"请求结束"做的事。
 def get_db():
     """数据库会话依赖。每个请求一个 session，请求结束自动关闭。"""
+    # —— 请求开始：创建一个全新的 Session ——
+    # 每个请求独立 session，互不干扰；session 内部有一层 identity map 缓存
     db = SessionLocal()
     try:
+        # —— yield 把 db 交给路由函数使用 ——
+        # 路由函数执行期间，这个 yield 一直"挂起"在这里
         yield db
     finally:
+        # —— 请求结束（无论成功还是异常）：关闭 session ——
+        # finally 保证即使路由抛异常也会执行，避免连接泄漏
+        # close() 会把 session 里的所有对象变成 detached 状态
         db.close()
 
-# ===== 3. 嵌套依赖：模拟当前用户 =====
-# 演示依赖嵌套：get_current_user 依赖 get_db
+# ===== 3. 嵌套依赖：模拟"当前用户" =====
+# 这是依赖注入最强大的能力之一：依赖可以依赖其他依赖，
+# FastAPI 会按依赖图自动级联解析、按需注入。
+# 场景：通过 token 找到 user_id，再拿到 db，最后把两个资源打包给路由。
+
+# 模拟 token → user_id 的映射表（真实项目用 JWT 签发 token）
 FAKE_TOKENS = {"token-alice": 1, "token-bob": 2}  # token -> user_id
 
+# 注意：这个依赖没有任何 Depends，它只是"声明了 token 参数"，
+# FastAPI 看到它没被显式 Depends，就当作"查询参数"从 URL ?token=xxx 解析
 def get_current_user_id(token: str):
     """从 token 解析 user_id（演示用，真实用 JWT）。"""
     if token not in FAKE_TOKENS:
+        # 依赖里抛 HTTPException，FastAPI 会把它原样作为响应返回
+        # 不会变成 500，而是 401，自动中断后续依赖与路由执行
         raise HTTPException(401, "无效 token")
     return FAKE_TOKENS[token]
 
+# 组合依赖：把"拿 db"和"拿 user_id"两件事打包成一个 dict 返回
+# 这个函数依赖 get_db（Depends(get_db)），FastAPI 会先解析 get_db
+# 再把结果注入进来 —— 这就是"依赖嵌套/级联解析"
 def get_db_and_user(
     token: str,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db),  # ← 嵌套依赖，FastAPI 先解析 get_db
 ):
     """组合依赖：同时拿到 db 和 user_id。"""
-    user_id = get_current_user_id(token)
-    return {"db": db, "user_id": user_id}
+    user_id = get_current_user_id(token)  # 拿到 user_id
+    return {"db": db, "user_id": user_id}  # 打包成上下文 dict 给路由
 
-# ===== 4. 路由：用依赖注入 =====
+# ===== 4. 路由：用依赖注入（业务代码极简）=====
+# 对比：没有 DI 时，每个路由都要自己 SessionLocal() + try/finally + close()
+#       有了 DI，只需声明 db: Session = Depends(get_db)，其余交给框架
+
 @app.get("/boards")
 def list_boards(db: Session = Depends(get_db)):
     """列出所有看板。"""
+    # db 是 FastAPI 调用 get_db() 后注入进来的 Session 实例
+    # select(Board) 是 SQLAlchemy 2.0 风格的查询
+    # db.scalars(...) 返回的是 ScalarResult，.all() 转成 list
     boards = db.scalars(select(Board)).all()
-    # 用 list comprehension 把 ORM 对象转成 dict
+    # ORM 对象不能直接 JSON 序列化，手动转成 dict 返回给前端
     return [{"id": b.id, "title": b.title, "color": b.color} for b in boards]
 
 @app.post("/boards")
 def create_board(
-    title: str,
-    db: Session = Depends(get_db),
+    title: str,                            # 查询参数 ?title=xxx
+    db: Session = Depends(get_db),         # 数据库会话依赖
 ):
     """创建看板。"""
-    board = Board(title=title)
-    db.add(board)
-    db.commit()
-    db.refresh(board)
+    board = Board(title=title)  # 1. 创建 ORM 对象（transient 状态）
+    db.add(board)               # 2. 加入 session（pending 状态，尚未入库）
+    db.commit()                 # 3. 提交事务，真正写入数据库
+    db.refresh(board)           # 4. 刷新，拿到数据库生成的 id（自增主键）
     return {"id": board.id, "title": board.title, "color": board.color}
 
 @app.get("/me/boards")
 def list_my_boards(ctx: dict = Depends(get_db_and_user)):
     """列出"我的"看板（演示嵌套依赖）。"""
+    # ctx 是 get_db_and_user 返回的 dict，里面同时有 db 和 user_id
+    # —— 这里把多个资源通过一个依赖打包传进来，路由签名很干净 ——
     db = ctx["db"]
     user_id = ctx["user_id"]
+    # 演示用：实际项目应按 owner_id 过滤，这里简化为返回所有看板
     boards = db.scalars(select(Board)).all()
     return {
         "user_id": user_id,
@@ -1347,13 +1398,16 @@ def list_my_boards(ctx: dict = Depends(get_db_and_user)):
     }
 
 # ===== 5. 类作为依赖 =====
+# 另一种写法：把一组相关参数封装成类的实例。
+# FastAPI 会用 __init__ 的参数作为查询参数来源，
+# 自动构造一个 BoardQueryParams 实例注入给路由。
 class BoardQueryParams:
     """用类封装查询参数依赖。"""
     def __init__(
         self,
-        skip: int = 0,
-        limit: int = 10,
-        color: str | None = None,
+        skip: int = 0,               # 分页：跳过前 N 条
+        limit: int = 10,             # 分页：最多返回 N 条
+        color: str | None = None,    # 过滤：按颜色筛选（None 表示不过滤）
     ):
         self.skip = skip
         self.limit = limit
@@ -1361,13 +1415,18 @@ class BoardQueryParams:
 
 @app.get("/boards/search")
 def search_boards(
+    # Depends() 不传参数时，FastAPI 用类型注解 BoardQueryParams 本身作为依赖
+    # 它会自动从 URL ?skip=0&limit=5&color=blue 解析，构造实例
     params: BoardQueryParams = Depends(),
     db: Session = Depends(get_db),
 ):
     """演示用类作为依赖：自动从查询参数解析。"""
+    # 构造查询：select(Board) 相当于 SELECT * FROM boards
     stmt = select(Board)
+    # 动态拼接过滤条件：只有传入 color 才过滤
     if params.color:
         stmt = stmt.where(Board.color == params.color)
+    # 分页：offset 跳过、limit 限制条数
     stmt = stmt.offset(params.skip).limit(params.limit)
     boards = db.scalars(stmt).all()
     return {
@@ -1375,33 +1434,43 @@ def search_boards(
         "items": [{"id": b.id, "title": b.title, "color": b.color} for b in boards],
     }
 
-# ===== 6. 测试 =====
+# ===== 6. 测试：用 TestClient 模拟 HTTP 请求 + 依赖覆盖 =====
+# TestClient 包装 app，可以直接用 .get / .post 发请求，无需启动真实服务
 client = TestClient(app)
 
 print("=== 1. 创建几个看板 ===")
+# params= 会作为查询参数拼到 URL 上：POST /boards?title=工作
 client.post("/boards", params={"title": "工作"})
 client.post("/boards", params={"title": "学习"})
 r = client.get("/boards")
 print(f"  创建后列表：{r.json()}")
 
-print("\\n=== 2. 嵌套依赖：用 token 获取"我的看板" ===")
+print("\\n=== 2. 嵌套依赖：用 token 获取『我的看板』 ===")
+# 这里会触发依赖链：get_db_and_user → get_db + get_current_user_id
+# FastAPI 按 token 解析出 user_id，再把 db 一起注入到路由
 r = client.get("/me/boards", params={"token": "token-alice"})
 print(f"  {r.json()}")
 
 print("\\n=== 3. 嵌套依赖：错误 token ===")
+# 错误 token 会触发依赖里的 HTTPException(401)，
+# FastAPI 自动把异常转成 401 响应，路由函数根本不会执行
 r = client.get("/me/boards", params={"token": "wrong"})
 print(f"  状态码：{r.status_code}, 错误：{r.json()['detail']}")
 
 print("\\n=== 4. 类依赖：分页+过滤 ===")
+# ?skip=0&limit=5 会自动解析成 BoardQueryParams 实例
 r = client.get("/boards/search", params={"skip": 0, "limit": 5})
 print(f"  {r.json()}")
 
 print("\\n=== 5. 依赖覆盖（用于测试）===")
-# 演示 dependency_overrides：替换 get_db 为内存版
+# dependency_overrides 是 FastAPI 的测试神器：
+# 把真实依赖（get_db）替换成测试专用版本（override_get_db），
+# 这样路由代码完全不变，但底层资源换成了测试数据库。
 test_engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
 TestSessionLocal = sessionmaker(bind=test_engine, autocommit=False, autoflush=False)
 Base.metadata.create_all(test_engine)
 
+# 覆盖版 get_db：用 TestSessionLocal 创建 session，逻辑结构与原版一致
 def override_get_db():
     db = TestSessionLocal()
     try:
@@ -1409,13 +1478,15 @@ def override_get_db():
     finally:
         db.close()
 
-# 用新 session 替换原 get_db
+# 注册覆盖：key 是原依赖函数，value 是替代函数
+# 之后所有路由遇到 Depends(get_db) 都会改用 override_get_db
 app.dependency_overrides[get_db] = override_get_db
 
+# 再请求 /boards —— 路由代码完全没变，但拿到的是空的测试数据库
 r = client.get("/boards")
 print(f"  替换后列表（应该是空的）：{r.json()}")
 
-# 清除覆盖
+# 清除覆盖，恢复原 get_db（避免影响后续逻辑）
 app.dependency_overrides.clear()
 \`\`\`
 

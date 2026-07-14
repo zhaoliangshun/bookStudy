@@ -46,7 +46,10 @@ export function useReadingScrollPosition(bookPath, contentRef, activeId) {
   // 原因：scroll 事件回调里访问的 activeId 是闭包捕获的旧值，
   // 用 ref 可以始终拿到最新值，避免每次 activeId 变化都重新绑定事件
   const activeIdRef = useRef(activeId);
-  activeIdRef.current = activeId;
+  // 修复渲染期间修改 ref：改为在 effect 中更新，避免并发渲染下 ref 不一致
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
 
   // 最近一次 scroll 的 scrollTop 值
   // 用于在切换章节/页面关闭时立即保存，不依赖节流定时器
@@ -211,6 +214,12 @@ export function useReadingScrollPosition(bookPath, contentRef, activeId) {
   }, [saveNow]);
 
   // ===== 组件卸载时立即保存 =====
+  // 修复：用 ref 保存最新的 saveNow，避免空依赖 effect 捕获首次渲染的过期 saveNow
+  const saveNowRef = useRef(saveNow);
+  useEffect(() => {
+    saveNowRef.current = saveNow;
+  }, [saveNow]);
+
   // React 路由切换时组件会卸载，此时要保存当前位置
   useEffect(() => {
     return () => {
@@ -218,11 +227,10 @@ export function useReadingScrollPosition(bookPath, contentRef, activeId) {
         clearTimeout(saveTimerRef.current);
         saveTimerRef.current = null;
       }
-      saveNow(activeIdRef.current, lastScrollTopRef.current);
+      saveNowRef.current(activeIdRef.current, lastScrollTopRef.current);
     };
     // 空依赖：只在组件卸载时执行一次
-    // saveNow 是 useCallback，引用稳定，可省略
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // 通过 saveNowRef 读取最新的 saveNow，无需将其列为依赖
   }, []);
 
   return { saveCurrentBeforeSwitch, scheduleSave, loadPosition };

@@ -66,6 +66,7 @@ const BOOK_CATEGORIES = [
       { path: "/fastapi-code", label: "FastAPI 代码详解", icon: "📘" },
       { path: "/fastapi-pro", label: "FastAPI 现代开发", icon: "🚀" },
       { path: "/fastapi-test", label: "FastAPI 测试与部署", icon: "🧪" },
+      { path: "/fastapi-fullstack", label: "FastAPI 全栈实战", icon: "🎯" },
       { path: "/fastapiauth", label: "FastAPI 认证授权", icon: "🔐" },
       { path: "/fastapiauth-simple", label: "FastAPI 认证精简", icon: "🗝️" },
       { path: "/pysubprocess", label: "subprocess 子进程", icon: "🔌" },
@@ -205,6 +206,8 @@ const BOOK_CATEGORIES = [
     icon: "💚",
     books: [
       { path: "/psychology", label: "心向阳光", icon: "🧠" },
+      { path: "/human-weakness", label: "人性的弱点图谱", icon: "🎭" },
+      { path: "/weakness", label: "人性的弱点（多角度）", icon: "🪞" },
       { path: "/nervous", label: "与紧张和解", icon: "🌊" },
       { path: "/stomach", label: "脾胃调养", icon: "🌿" },
       { path: "/ibs", label: "肠易激康复", icon: "🫃" },
@@ -381,18 +384,31 @@ export default function Sidebar({
   // ===== 用户保存的默认分组设置 =====
   const [savedDefaults, setSavedDefaults] = useState(null);
   useEffect(() => {
-    fetch("/api/preferences")
+    const controller = new AbortController();
+    fetch("/api/preferences", { signal: controller.signal })
       .then((r) => r.ok ? r.json() : Promise.reject())
       .then((data) => {
         if (data.savedDefaults) setSavedDefaults(data.savedDefaults);
       })
-      .catch(() => {});
+      .catch(() => {}); // 忽略 abort 错误
+    return () => controller.abort();
   }, []);
 
   // 拖拽状态：记录正在拖拽的书籍信息
   const dragStateRef = useRef(null); // { bookPath, sourceCategory, sourceIndex }
   // 拖拽悬停展开分类的定时器
   const dragExpandTimerRef = useRef(null);
+
+  // 组件卸载时清理拖拽展开定时器，防止内存泄漏
+  useEffect(() => {
+    return () => {
+      if (dragExpandTimerRef.current) {
+        clearTimeout(dragExpandTimerRef.current);
+        dragExpandTimerRef.current = null;
+      }
+    };
+  }, []);
+
   // 分类标题拖拽状态
   const catDragStateRef = useRef(null); // { catName, startY }
   const [catDragIndicator, setCatDragIndicator] = useState(null); // { catName, position: 'before'|'after' }
@@ -2177,8 +2193,9 @@ export default function Sidebar({
     if (typeof window === "undefined") return;
     // 已经完成首次滚动，不再自动滚动
     if (hasScrolledRef.current) return;
+    let innerRaf = null;
     const raf = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
+      innerRaf = requestAnimationFrame(() => {
         const el = activeChapterRef.current;
         if (!el) return;
         const container = el.closest(".chapter-nav");
@@ -2200,7 +2217,10 @@ export default function Sidebar({
         hasScrolledRef.current = true;
       });
     });
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      if (innerRaf) cancelAnimationFrame(innerRaf);
+    };
   }, [activeId, collapsed, collapsedGroups, currentPath]);
 
   return (

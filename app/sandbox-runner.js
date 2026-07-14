@@ -26,7 +26,7 @@ const nodeRequire = createRequire(import.meta.url);
 
 // 允许用户代码 require 的内置模块白名单
 export const ALLOWED_MODULES = [
-  "fs",
+  // 安全：移除 fs，沙箱不允许用户代码直接读写宿主文件系统
   "path",
   "os",
   "url",
@@ -45,7 +45,7 @@ export const ALLOWED_MODULES = [
 // 模块加载阶段一次性 require 所有允许的模块到缓存。
 // 用字面量字符串避免 Turbopack 对动态 require 的静态分析失败。
 const MODULE_CACHE = {
-  fs: nodeRequire("fs"),
+  // 安全：不再缓存 fs，require("fs") 会落到 sandboxRequire 抛错分支
   path: nodeRequire("path"),
   os: nodeRequire("os"),
   url: nodeRequire("url"),
@@ -98,6 +98,49 @@ function formatArg(arg, seen = new WeakSet()) {
     }
   }
   return String(arg);
+}
+
+// 安全：判断 URL 是否指向内网/本机地址，用于阻止 SSRF 攻击。
+// 拦截范围：
+//   - localhost / *.localhost
+//   - 127.0.0.0/8、0.0.0.0/8（含 0.0.0.0）
+//   - 10.0.0.0/8、172.16.0.0/12、192.168.0.0/16（私网）
+//   - 169.254.0.0/16（链路本地 / 云元数据服务，如 AWS 169.254.169.254）
+//   - ::1（IPv6 回环）、fc00::/7（IPv6 唯一本地地址）
+function isPrivateUrl(urlStr) {
+  let parsed;
+  try {
+    parsed = new URL(urlStr);
+  } catch {
+    throw new Error("Invalid URL: " + urlStr);
+  }
+  const hostname = parsed.hostname.toLowerCase();
+
+  // localhost 域名
+  if (hostname === "localhost" || hostname.endsWith(".localhost")) {
+    return true;
+  }
+
+  // IPv4 解析
+  const v4 = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (v4) {
+    const a = Number(v4[1]);
+    const b = Number(v4[2]);
+    if (a === 127) return true;                              // 127.0.0.0/8 回环
+    if (a === 0) return true;                                // 0.0.0.0/8（含 0.0.0.0）
+    if (a === 10) return true;                               // 10.0.0.0/8 私网
+    if (a === 192 && b === 168) return true;                 // 192.168.0.0/16 私网
+    if (a === 172 && b >= 16 && b <= 31) return true;        // 172.16.0.0/12 私网
+    if (a === 169 && b === 254) return true;                 // 169.254.0.0/16 链路本地/云元数据
+    return false;
+  }
+
+  // IPv6 解析（URL 中可能带方括号）
+  const ip = hostname.replace(/^\[|\]$/g, "");
+  if (ip === "::1") return true;                             // IPv6 回环
+  if (/^f[cd][0-9a-f]{2}(?::|$)/i.test(ip)) return true;     // fc00::/7 唯一本地地址
+
+  return false;
 }
 
 /**
@@ -160,7 +203,9 @@ export async function runInSandbox(code) {
       captureConsole._counts[label] = count;
       pushLog(`${label}: ${count}`);
     },
-    clear: () => { logs.length = 0; outputBytes = 0; truncated = false; },
+    // 安全：仅清空日志数组，保留 outputBytes/truncated 累计，
+    // 防止用户反复 console.clear() 后大量输出绕过 MAX_OUTPUT_BYTES 上限
+    clear: () => { logs.length = 0; },
   };
 
   // 自定义 require：只放行白名单中的模块
@@ -206,7 +251,8 @@ export async function runInSandbox(code) {
       arch: process.arch,
       pid: process.pid,
       cwd: () => process.cwd(),
-      chdir: process.chdir.bind(process),
+      // 安全：禁止 chdir，防止用户代码改变工作目录后访问敏感文件
+      chdir: () => { throw new Error("chdir is not allowed in sandbox"); },
       uptime: () => process.uptime(),
       hrtime: process.hrtime.bind(process),
       memoryUsage: process.memoryUsage.bind(process),
@@ -214,7 +260,8 @@ export async function runInSandbox(code) {
       nextTick: process.nextTick.bind(process),
       stdout: { write: (s) => pushLog(String(s).replace(/\n$/, "")) },
       stderr: { write: (s) => pushLog(String(s).replace(/\n$/, "")) },
-      stdin: process.stdin,
+      // 安全：暴露假的只读 stdin，避免用户代码通过真实 stdin 读取宿主进程输入
+      stdin: { on: () => {}, resume: () => {}, pause: () => {}, read: () => null, isTTY: false },
       exit: (code) => {
         const err = new Error(`process.exit(${code ?? 0}) 被调用，程序结束`);
         err.code = "NODE_EXIT";
@@ -230,6 +277,16 @@ export async function runInSandbox(code) {
     performance,
     AbortController,
     fetch: (input, init) => {
+      // 安全：SSRF 防护——发起请求前检查目标 URL，阻止访问内网/本机地址
+      // input 可能是 string / URL / Request 对象
+      const urlStr = typeof input === "string"
+        ? input
+        : (input && typeof input.url === "string" ? input.url : String(input));
+      if (isPrivateUrl(urlStr)) {
+        return Promise.reject(
+          new Error("Access to internal network addresses is not allowed")
+        );
+      }
       // 沙箱中的 fetch：转发到全局 fetch，失败时返回错误
       if (typeof fetch === "function") {
         return fetch(input, init);
