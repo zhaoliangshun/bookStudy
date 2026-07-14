@@ -54,11 +54,16 @@ const GO_BIN = "go";
 //       避免并发请求相互覆盖源文件
 const RUNNER_DIR = join(/*turbopackIgnore: true*/ tmpdir(), "go-runner-v1");
 
+// 模块级缓存：避免每次请求都同步 spawnSync 探测 go 版本（spawnSync 会阻塞事件循环）
+// null=未检测，否则缓存 { available, version } 对象
+let _goChecked = null;
+
 /**
  * 检测 go 是否可用。
  * @returns {{ available: boolean, version: string }}
  */
 function checkGo() {
+  if (_goChecked !== null) return _goChecked;
   try {
     const result = spawnSync(GO_BIN, ["version"], {
       stdio: ["pipe", "pipe", "pipe"],
@@ -69,12 +74,14 @@ function checkGo() {
     if (result.status === 0) {
       // go version 输出格式：go version go1.22.0 darwin/arm64
       const version = result.stdout.trim();
-      return { available: true, version };
+      _goChecked = { available: true, version };
+    } else {
+      _goChecked = { available: false, version: "" };
     }
-    return { available: false, version: "" };
   } catch {
-    return { available: false, version: "" };
+    _goChecked = { available: false, version: "" };
   }
+  return _goChecked;
 }
 
 /**
@@ -153,6 +160,9 @@ function runCommand(cmd, args, opts, timeout) {
     });
 
     child.on("error", (err) => {
+      // error 事件触发后 close 可能不再触发，需在此清除超时定时器，
+      // 避免定时器继续持有子进程引用造成内存泄漏
+      clearTimeout(timer);
       resolve({
         output: "",
         error: `无法启动 ${cmd}：${err.message}`,

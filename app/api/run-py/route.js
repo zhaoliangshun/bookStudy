@@ -148,6 +148,9 @@ function runPythonCode(code) {
 
     // 子进程出错（例如 python3 不存在）
     child.on("error", (err) => {
+      // error 事件触发后 close 可能不再触发，需在此清除超时定时器，
+      // 避免定时器继续持有子进程引用造成内存泄漏
+      clearTimeout(timer);
       cleanup();
       resolve({
         output: "",
@@ -195,10 +198,9 @@ function runPythonCode(code) {
     const timer = setTimeout(() => {
       killed = true;
       try {
-        // Windows 不支持 SIGKILL 信号，不传信号参数 Node 会自动选合适的方式：
-        // - Unix: SIGTERM
-        // - Windows: taskkill 或 TerminateProcess
-        child.kill();
+        // 强制终止，防止 Python 捕获 SIGTERM 后不退出；
+        // Windows 上 Node 会将 SIGKILL 映射为 TerminateProcess
+        child.kill("SIGKILL");
       } catch {
         // ignore
       }

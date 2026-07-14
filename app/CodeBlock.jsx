@@ -10,7 +10,7 @@
 //   - 复制 / 运行 / Playground / 外网运行 四个操作按钮
 // =============================================================
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { getExternalPlaygrounds, openExternal } from "./external-playgrounds";
 
@@ -137,6 +137,17 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 800 }) {
   // 外网运行下拉菜单展开状态
   const [extMenuOpen, setExtMenuOpen] = useState(false);
 
+  // 复制按钮定时器 / 运行请求 ID（用于清理，避免内存泄漏与竞态）
+  const copyTimerRef = useRef(null);
+  const runIdRef = useRef(0);
+
+  // 组件卸载时清理复制按钮定时器，防止 setState 作用于已卸载组件
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    };
+  }, []);
+
   // 当外部传入的初始代码变化时（例如切换章节导致 Markdown 重新渲染，
   // 或 React 复用了旧的 CodeBlock 实例），同步更新内部编辑状态，
   // 避免旧章节代码残留在编辑器中。
@@ -152,7 +163,7 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 800 }) {
       setShowOutput(false);
     });
     return () => cancelAnimationFrame(id);
-  }, [initialCode, setOutput, setError, setShowOutput]);
+  }, [initialCode]);
 
   // 语言信息查询
   const langLower = (lang || "").toLowerCase().trim();
@@ -186,12 +197,16 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 800 }) {
       } catch {}
     }
     setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    // 清理上一次的定时器，避免快速连续复制时多个定时器互相覆盖
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => setCopied(false), 1500);
   }, [code]);
 
   // ---------- 就地运行代码 ----------
   const handleRun = useCallback(async () => {
     if (!langInfo?.api) return;
+    // 递增请求 ID，用于丢弃快速连续点击时产生的过期请求结果
+    const currentRunId = ++runIdRef.current;
     setIsRunning(true);
     setShowOutput(true);
     setOutput(`正在执行 ${langInfo.label}...`);
@@ -202,23 +217,32 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 800 }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code }),
       });
+      // 有更新的请求发起，丢弃旧结果，避免竞态
+      if (runIdRef.current !== currentRunId) return;
       if (!res.ok) {
         const errText = await res.text().catch(() => "");
+        if (runIdRef.current !== currentRunId) return;
         setError(`执行失败 (HTTP ${res.status})${errText ? ": " + errText : ""}`);
         setOutput("");
         return;
       }
       const data = await res.json();
+      if (runIdRef.current !== currentRunId) return;
       const parsed = parseRunResult(langLower, data);
       setOutput(parsed.output || "(无输出)");
       setError(parsed.error || "");
     } catch (err) {
+      if (runIdRef.current !== currentRunId) return;
       setError("请求失败: " + err.message);
       setOutput("");
     } finally {
-      setIsRunning(false);
+      // 仅当本次请求仍是最新请求时才复位 isRunning，
+      // 否则会误关更新的运行中请求的加载状态
+      if (runIdRef.current === currentRunId) {
+        setIsRunning(false);
+      }
     }
-  }, [code, langLower, langInfo, setIsRunning, setShowOutput, setOutput, setError]);
+  }, [code, langLower, langInfo]);
 
   // ---------- 复制到 Playground 并打开 ----------
   // 使用固定的窗口名 "playground"：如果已有同名标签页，则复用它

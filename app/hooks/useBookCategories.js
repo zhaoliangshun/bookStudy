@@ -58,16 +58,31 @@ function parseSubGroupKey(key) {
 export { SUBGROUP_SEP, makeSubGroupKey, parseSubGroupKey };
 
 export default function useBookCategories(initiallyHidden = []) {
+  // 修复 hydration mismatch：不在 useState 初始化时读取 localStorage，
+  // 初始用默认值，localStorage 数据在下方 useEffect 中加载
   const [config, setConfig] = useState(() => {
-    const loaded = loadLocal();
-    if (loaded.hidden.length === 0 && initiallyHidden.length > 0) {
-      return { ...loaded, hidden: [...initiallyHidden] };
+    if (initiallyHidden.length > 0) {
+      return { ...defaultConfig, hidden: [...initiallyHidden] };
     }
-    return loaded;
+    return { ...defaultConfig };
   });
   const [loaded, setLoaded] = useState(false);
   // 追踪本地是否已修改 config（防止服务端同步覆盖用户在加载期间的拖拽操作）
   const localModifiedRef = useRef(false);
+
+  // 客户端挂载后从 localStorage 加载配置（避免 SSR 时读取导致 hydration mismatch）
+  // 不修改 loaded：loaded 由下方 fetch effect 控制，确保 save effect 在服务端数据合并后才执行
+  useEffect(() => {
+    const local = loadLocal();
+    let merged = { ...local };
+    if (merged.hidden.length === 0 && initiallyHidden.length > 0) {
+      merged.hidden = [...initiallyHidden];
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setConfig(merged);
+    // 仅挂载时执行一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

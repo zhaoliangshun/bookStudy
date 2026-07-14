@@ -1,6 +1,7 @@
 "use client";
 
 import { Component } from "react";
+import { usePathname } from "next/navigation";
 import { EditorThemeProvider } from "./EditorThemeProvider";
 import ScrollRestoration from "./ScrollRestoration";
 import QuickScroll from "./QuickScroll";
@@ -21,6 +22,13 @@ class ErrorBoundary extends Component {
 
   componentDidCatch(error, errorInfo) {
     console.error("页面渲染错误：", error, errorInfo);
+  }
+
+  // 修复：路由切换时重置错误状态，避免一个页面的错误 permanently 阻塞其他页面
+  componentDidUpdate(prevProps) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false });
+    }
   }
 
   render() {
@@ -64,8 +72,10 @@ class ErrorBoundary extends Component {
 }
 
 export default function Providers({ children }) {
+  // 路由变化时通过 resetKey 触发 ErrorBoundary 重置错误状态
+  const pathname = usePathname();
   return (
-    <ErrorBoundary>
+    <ErrorBoundary resetKey={pathname}>
       <EditorThemeProvider>
         <ScrollRestoration />
         <BookmarkManager />

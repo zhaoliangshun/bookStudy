@@ -15,26 +15,23 @@
 // =============================================================
 
 import { NextResponse } from "next/server";
-import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from "fs";
+import { readFile, writeFile, mkdir, rename } from "fs/promises";
 import { join } from "path";
 
 const DATA_DIR = join(/*turbopackIgnore: true*/ process.cwd(), "data");
 const FILE_PATH = join(DATA_DIR, "user-preferences.json");
 
-// 确保 data 目录存在
-function ensureDir() {
-  if (!existsSync(DATA_DIR)) {
-    mkdirSync(DATA_DIR, { recursive: true });
-  }
+// 确保 data 目录存在（异步，避免 mkdirSync 阻塞事件循环）
+// mkdir { recursive: true } 在目录已存在时是幂等的，无需 existsSync 预检
+async function ensureDir() {
+  await mkdir(DATA_DIR, { recursive: true });
 }
 
-// 读取偏好
-function readPrefs() {
+// 读取偏好（异步，避免 readFileSync 阻塞事件循环）
+async function readPrefs() {
   try {
-    if (existsSync(FILE_PATH)) {
-      const raw = readFileSync(FILE_PATH, "utf8");
-      return JSON.parse(raw);
-    }
+    const raw = await readFile(FILE_PATH, "utf8");
+    return JSON.parse(raw);
   } catch {
     // 文件损坏或不存在，返回空对象
   }
@@ -42,11 +39,12 @@ function readPrefs() {
 }
 
 // 写入偏好（原子写入：先写临时文件再 rename，避免并发写入导致文件损坏）
-function writePrefs(data) {
-  ensureDir();
-  const tmpPath = FILE_PATH + ".tmp";
-  writeFileSync(tmpPath, JSON.stringify(data, null, 2), "utf8");
-  renameSync(tmpPath, FILE_PATH);
+// 临时文件名带 pid + 时间戳，避免并发请求写同一临时文件互相覆盖
+async function writePrefs(data) {
+  await ensureDir();
+  const tmpPath = FILE_PATH + `.${process.pid}.${Date.now()}.tmp`;
+  await writeFile(tmpPath, JSON.stringify(data, null, 2), "utf8");
+  await rename(tmpPath, FILE_PATH);
 }
 
 // 允许的字段白名单
@@ -55,7 +53,7 @@ const ALLOWED_KEYS = new Set(["bookOrder", "hiddenBooks", "deletedChapters", "hi
 // GET /api/preferences —— 获取当前偏好
 export async function GET() {
   try {
-    const prefs = readPrefs();
+    const prefs = await readPrefs();
     return NextResponse.json(prefs);
   } catch {
     return NextResponse.json(
@@ -89,9 +87,9 @@ export async function POST(request) {
 
   try {
     // 合并写入：先读出现有数据，再用传入的字段覆盖
-    const prefs = readPrefs();
+    const prefs = await readPrefs();
     const merged = { ...prefs, ...filtered };
-    writePrefs(merged);
+    await writePrefs(merged);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json(

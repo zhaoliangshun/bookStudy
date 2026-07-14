@@ -128,6 +128,9 @@ function runCommand(cmd, args, opts, timeout) {
     });
 
     child.on("error", (err) => {
+      // error 事件触发后 close 可能不再触发，需在此清除超时定时器，
+      // 避免定时器继续持有子进程引用造成内存泄漏
+      clearTimeout(timer);
       resolve({
         output: "",
         error: `无法启动 ${cmd}：${err.message}`,
