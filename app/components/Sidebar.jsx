@@ -112,6 +112,7 @@ const BOOK_CATEGORIES = [
     icon: "☕",
     books: [
       { path: "/java", label: "Java 入门到精通", icon: "☕" },
+      { path: "/java-simple", label: "Java 精简教程", icon: "📘" },
       { path: "/java-web", label: "Java Web 开发", icon: "🌐" },
       { path: "/java-master", label: "Java 开发详解", icon: "📗" },
     ],
