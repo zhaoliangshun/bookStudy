@@ -238,7 +238,13 @@
       "/calm",
       "/hermit",
       "/human-weakness",
-      "/weakness"
+      "/weakness",
+      "/weakness-guide",
+      "/weakness2",
+      "/weakness-emotion",
+      "/emotion2",
+      "/emotion3",
+      "/letting-go"
     ],
     "人际智慧": [
       "/relations",
@@ -282,7 +288,8 @@
       "/py6",
       "/py8",
       "/py9",
-      "/py-definitive"
+      "/py-definitive",
+      "/python-work"
     ],
     "Python 编程::__sg-mrctdmwvqji3": [
       "/pynet",

@@ -21,6 +21,13 @@ class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, errorInfo) {
+    // Monaco Editor 在路由切换时可能抛出 "InstantiationService has been disposed"
+    // 这是因为 language worker 的异步回调在编辑器实例销毁后仍在执行，属于无害警告。
+    // 不触发错误边界，避免页面被错误 UI 覆盖。
+    if (error && /InstantiationService has been disposed/i.test(error.message || "")) {
+      this.setState({ hasError: false });
+      return;
+    }
     console.error("页面渲染错误：", error, errorInfo);
   }
 

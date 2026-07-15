@@ -523,6 +523,127 @@ img {
   border-radius: 3px;
 }
 
+/* ===== 搜索框通用样式 ===== */
+.sidebar-search-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  opacity: 0.5;
+  pointer-events: none;
+  color: var(--text-on-dark);
+  z-index: 1;
+}
+.sidebar-search-clear {
+  position: absolute;
+  right: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+  z-index: 1;
+}
+.sidebar-search-clear:hover {
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--text-on-dark);
+}
+.sidebar-search-count {
+  position: absolute;
+  right: 48px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: var(--text-muted);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 1;
+}
+
+/* 书籍搜索框（下拉面板内，深色背景） */
+.sidebar-book-search-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--border-dark);
+}
+.sidebar-book-search-input {
+  width: 100%;
+  padding: 6px 12px;
+  font-size: 13px;
+  border: 1px solid var(--border-dark);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text-on-dark);
+  outline: none;
+  transition: border-color 0.15s;
+  caret-color: var(--text-on-dark);
+}
+.sidebar-book-search-input:focus {
+  border-color: var(--primary);
+  background: rgba(0, 0, 0, 0.3);
+}
+.sidebar-book-search-input::placeholder {
+  color: rgba(226, 232, 240, 0.4);
+}
+
+/* 章节搜索框（侧边栏章节目录上方，深色背景） */
+.sidebar-chapter-search-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 4px 12px 8px;
+}
+.sidebar-chapter-search-input {
+  width: 100%;
+  padding: 5px 12px;
+  font-size: 12px;
+  border: 1px solid var(--border-dark);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text-on-dark);
+  outline: none;
+  transition: border-color 0.15s;
+  caret-color: var(--text-on-dark);
+}
+.sidebar-chapter-search-input:focus {
+  border-color: var(--primary);
+  background: rgba(0, 0, 0, 0.3);
+}
+.sidebar-chapter-search-input::placeholder {
+  color: rgba(226, 232, 240, 0.4);
+}
+
+/* 搜索无结果提示 */
+.sidebar-search-no-result {
+  text-align: center;
+  padding: 32px 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* 搜索关键字高亮 */
+.sidebar-search-highlight {
+  background: rgba(250, 204, 21, 0.3);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* 章节搜索键盘选中项 */
+.chapter-item.search-selected {
+  background: var(--bg-sidebar-hover);
+  outline: 1px solid var(--primary);
+  outline-offset: -1px;
+}
+
 .sidebar-book-category {
   margin-bottom: 4px;
 }
@@ -702,7 +823,7 @@ img {
 /* 一行放多个书籍卡片，自动换行，铺满整个面板宽度 */
 .sidebar-book-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 6px;
   padding: 2px 0 4px;
   min-height: 40px;

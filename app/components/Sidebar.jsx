@@ -36,6 +36,31 @@ import useBookCategories, { makeSubGroupKey, parseSubGroupKey } from "../hooks/u
 import { chapterNavStore } from "./chapterNavStore";
 
 // =============================================================
+// 搜索高亮组件：将匹配关键字的部分用 <mark> 标签包裹
+// =============================================================
+function HighlightText({ text, query }) {
+  const q = query.trim();
+  if (!q) return text;
+  const lowerText = text.toLowerCase();
+  const lowerQ = q.toLowerCase();
+  const parts = [];
+  let lastIndex = 0;
+  let idx = lowerText.indexOf(lowerQ, lastIndex);
+  while (idx !== -1) {
+    if (idx > lastIndex) {
+      parts.push(text.slice(lastIndex, idx));
+    }
+    parts.push(<mark key={idx} className="sidebar-search-highlight">{text.slice(idx, idx + q.length)}</mark>);
+    lastIndex = idx + q.length;
+    idx = lowerText.indexOf(lowerQ, lastIndex);
+  }
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+  return parts;
+}
+
+// =============================================================
 // 书籍目录数据（从 SiteNav 移入，集中维护）
 // =============================================================
 const BOOK_CATEGORIES = [
@@ -56,6 +81,7 @@ const BOOK_CATEGORIES = [
       { path: "/pyfile", label: "文件操作", icon: "📁" },
       { path: "/pyfile2", label: "文件管理", icon: "🗂️" },
       { path: "/pykit", label: "常用知识点", icon: "🧰" },
+      { path: "/python-work", label: "Python工作实战手册", icon: "💼" },
       { path: "/pynet", label: "网络编程", icon: "🌐" },
       { path: "/pydb", label: "数据库操作", icon: "🗄️" },
       { path: "/pyweb", label: "Python Web", icon: "🌐" },
@@ -209,6 +235,9 @@ const BOOK_CATEGORIES = [
       { path: "/psychology", label: "心向阳光", icon: "🧠" },
       { path: "/human-weakness", label: "人性的弱点图谱", icon: "🎭" },
       { path: "/weakness", label: "人性的弱点（多角度）", icon: "🪞" },
+      { path: "/weakness-guide", label: "人性弱点简明手册", icon: "📋" },
+      { path: "/weakness2", label: "人性的弱点·大全集", icon: "📚" },
+      { path: "/weakness-emotion", label: "人性的弱点·情绪篇", icon: "💭" },
       { path: "/nervous", label: "与紧张和解", icon: "🌊" },
       { path: "/stomach", label: "脾胃调养", icon: "🌿" },
       { path: "/ibs", label: "肠易激康复", icon: "🫃" },
@@ -221,8 +250,11 @@ const BOOK_CATEGORIES = [
       { path: "/life-manual", label: "人生清醒手册", icon: "📖" },
       { path: "/serenity", label: "云淡风轻", icon: "☁️" },
       { path: "/emotion", label: "无所谓", icon: "🤷" },
+      { path: "/emotion2", label: "情绪的弱点", icon: "🔥" },
+      { path: "/emotion3", label: "情绪弱点大百科", icon: "📚" },
       { path: "/calm", label: "心境如水", icon: "🌊" },
       { path: "/hermit", label: "红尘之外：隐居之道", icon: "🍃" },
+      { path: "/letting-go", label: "释怀：坦然面对失去", icon: "🕊️" },
     ],
   },
   {
@@ -287,6 +319,17 @@ export default function Sidebar({
   const [bookDropdownOpen, setBookDropdownOpen] = useState(false);
   const bookDropdownRef = useRef(null);
   const router = useRouter();
+  // 书籍搜索关键字（在书籍下拉框中实时过滤）
+  const [bookSearch, setBookSearch] = useState("");
+  // 书籍搜索输入框 ref（用于下拉框打开时自动聚焦）
+  const bookSearchRef = useRef(null);
+  // 章节搜索关键字（在左侧章节目录中实时过滤）
+  const [chapterSearch, setChapterSearch] = useState("");
+  // 章节搜索输入框 ref（用于 Ctrl+K 快捷键聚焦）
+  const chapterSearchRef = useRef(null);
+  // 章节搜索键盘选中索引（-1 表示无选中）
+  const [chapterSearchSelectedIdx, setChapterSearchSelectedIdx] = useState(-1);
+
   // 多展开模式：同一时间可以展开多个分类，方便跨分组拖拽书籍。
   // expandedCategories 为已展开分类名的 Set；空 Set 表示全部收起。
   // 初始不默认展开任何分类，打开下拉框时会恢复上次状态或自动展开当前书籍分组。
@@ -728,6 +771,71 @@ export default function Sidebar({
       }))
       .filter((g) => g.items.length > 0);
   }, [groupedChapters, hiddenChapterIds]);
+
+  // 章节搜索结果：在 filteredGroupedChapters 基础上按关键字进一步过滤
+  // 搜索时匹配章节标题（不区分大小写），搜索结果自动展开所有分组
+  const searchedGroupedChapters = useMemo(() => {
+    const q = chapterSearch.trim().toLowerCase();
+    if (!q) return filteredGroupedChapters;
+    return filteredGroupedChapters
+      .map((g) => ({
+        ...g,
+        items: g.items.filter((c) =>
+          c.title.toLowerCase().includes(q)
+        ),
+      }))
+      .filter((g) => g.items.length > 0);
+  }, [filteredGroupedChapters, chapterSearch]);
+
+  // 章节搜索结果的扁平化列表（用于键盘导航上下选择）
+  const searchedChapterFlatList = useMemo(() => {
+    if (!chapterSearch.trim()) return [];
+    return searchedGroupedChapters.flatMap((g) => g.items);
+  }, [searchedGroupedChapters, chapterSearch]);
+
+  // 搜索关键字变化时重置键盘选中索引
+  useEffect(() => {
+    setChapterSearchSelectedIdx(-1);
+  }, [chapterSearch]);
+
+  // 章节搜索匹配总数（用于显示"找到 N 个结果"）
+  const chapterSearchMatchCount = useMemo(() => {
+    if (!chapterSearch.trim()) return 0;
+    return searchedGroupedChapters.reduce((sum, g) => sum + g.items.length, 0);
+  }, [searchedGroupedChapters, chapterSearch]);
+
+  // 书籍搜索结果：在 visibleCategories 基础上按关键字过滤书籍
+  // 搜索时匹配书名（label），搜索时自动展开所有分类以展示结果
+  const searchedVisibleCategories = useMemo(() => {
+    const q = bookSearch.trim().toLowerCase();
+    if (!q) return visibleCategories;
+    return visibleCategories
+      .map((cat) => {
+        const rootMatches = cat.books.filter((b) =>
+          b.label.toLowerCase().includes(q) || (b.path && b.path.toLowerCase().includes(q))
+        );
+        const subGroupMatches = (cat.subGroups || []).map((sg) => ({
+          ...sg,
+          books: sg.books.filter((b) =>
+            b.label.toLowerCase().includes(q) || (b.path && b.path.toLowerCase().includes(q))
+          ),
+        })).filter((sg) => sg.books.length > 0);
+        const allMatches = [...rootMatches, ...subGroupMatches.flatMap((sg) => sg.books)];
+        if (allMatches.length === 0) return null;
+        return { ...cat, books: rootMatches, subGroups: subGroupMatches };
+      })
+      .filter(Boolean);
+  }, [visibleCategories, bookSearch]);
+
+  // 书籍搜索匹配总数
+  const bookSearchMatchCount = useMemo(() => {
+    if (!bookSearch.trim()) return 0;
+    return searchedVisibleCategories.reduce((sum, cat) => {
+      const rootCount = cat.books.length;
+      const sgCount = (cat.subGroups || []).reduce((s, sg) => s + sg.books.length, 0);
+      return sum + rootCount + sgCount;
+    }, 0);
+  }, [searchedVisibleCategories, bookSearch]);
 
   // 已读的章节，按原始分组归类（用于"已读的章节"区域）
   const hiddenChapterGroups = useMemo(() => {
@@ -1691,6 +1799,13 @@ export default function Sidebar({
       }
     }
     dropdownInitializedRef.current = true;
+    // 关闭下拉框时清空书籍搜索
+    if (!bookDropdownOpen) {
+      setBookSearch("");
+    } else {
+      // 打开下拉框时自动聚焦书籍搜索框
+      setTimeout(() => bookSearchRef.current?.focus(), 100);
+    }
   }, [bookDropdownOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ===== 侧边栏收起状态持久化 =====
@@ -1711,6 +1826,11 @@ export default function Sidebar({
         document.cookie = `last_book=${encodeURIComponent(currentPath)}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
       } catch {}
     }
+  }, [currentPath]);
+
+  // 切换书籍时清空章节搜索
+  useEffect(() => {
+    setChapterSearch("");
   }, [currentPath]);
 
   // 切换章节分组的收起 / 展开状态
@@ -1780,7 +1900,9 @@ export default function Sidebar({
   //   - 只有当前章节所在分组展开（其他都收起）→ 显示"全部展开"
   //   - 除当前章节所在分组外还有其他分组展开 → 显示"全部收起"
   // expandedCount 为当前展开的分组数量
-  const expandedCount = groupedChapters.length - collapsedGroups.size;
+  // 搜索时用搜索结果列表来计算，非搜索时用全部分组
+  const chapterGroupsForCount = chapterSearch.trim() ? searchedGroupedChapters : filteredGroupedChapters;
+  const expandedCount = chapterGroupsForCount.length - collapsedGroups.size;
   const allExpanded = expandedCount > 1;
 
   // 滚动相关 ref（提前声明，供 collapseAllGroups 闭包使用）
@@ -1908,6 +2030,26 @@ export default function Sidebar({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [sidebarOpen, onCloseSidebar, onToggleSidebar]);
+
+  // ===== Ctrl+K 聚焦章节搜索框 =====
+  // Ctrl+K (Win/Linux) 或 Cmd+K (Mac) 聚焦章节搜索输入框，方便快速搜索
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const key = e.key.toLowerCase();
+      if (key !== "k") return;
+      // 侧边栏收起时先展开
+      if (collapsed) {
+        setCollapsed(false);
+        setTimeout(() => chapterSearchRef.current?.focus(), 200);
+      } else {
+        chapterSearchRef.current?.focus();
+      }
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [collapsed]);
 
   // ===== URL Hash 同步 =====
   // -------------------------------------------------------------
@@ -2134,12 +2276,12 @@ export default function Sidebar({
   // 将扁平章节列表（按分组顺序展开，过滤已隐藏章节）和当前 activeId 注册到全局 store，
   // 供右侧浮动的上一章/下一章按钮使用。组件卸载时清除。
   useEffect(() => {
-    const flatChapters = filteredGroupedChapters.flatMap((g) => g.items);
+    const flatChapters = searchedGroupedChapters.flatMap((g) => g.items);
     chapterNavStore.register(flatChapters, activeId, handleSelect);
     return () => {
       chapterNavStore.unregister();
     };
-  }, [filteredGroupedChapters, activeId, handleSelect]);
+  }, [searchedGroupedChapters, activeId, handleSelect]);
 
   // 处理跨页面跳转：当路径变化时，清除无效的 hash
   useEffect(() => {
@@ -2345,9 +2487,41 @@ export default function Sidebar({
                       />
                     </div>
                   )}
+                  {/* 书籍搜索框 */}
+                  <div className="sidebar-book-search-row">
+                    <input
+                      ref={bookSearchRef}
+                      type="text"
+                      className="sidebar-book-search-input"
+                      value={bookSearch}
+                      onChange={(e) => setBookSearch(e.target.value)}
+                      placeholder="搜索书名..."
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") setBookSearch("");
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    {bookSearch && (
+                      <button
+                        className="sidebar-search-clear"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setBookSearch("");
+                        }}
+                        title="清除搜索"
+                      >
+                        ✕
+                      </button>
+                    )}
+                    {bookSearch && (
+                      <span className="sidebar-search-count">
+                        {bookSearchMatchCount} 本
+                      </span>
+                    )}
+                  </div>
                   <div className="sidebar-book-dropdown-body">
-                    {visibleCategories.map((category) => {
-                      const isCollapsed = !expandedCategories.has(category.name);
+                    {searchedVisibleCategories.map((category) => {
+                      const isCollapsed = bookSearch.trim() ? false : !expandedCategories.has(category.name);
                       const isEditing = editingCategory === category.name;
                       const isAddingSg = showAddSubGroup === category.name;
                       const hasSubGroups = category.subGroups && category.subGroups.length > 0;
@@ -2550,7 +2724,9 @@ export default function Sidebar({
                                 }}
                               >
                                 <span className="sidebar-book-card-icon">{book.icon}</span>
-                                <span className="sidebar-book-card-label">{book.label}</span>
+                                <span className="sidebar-book-card-label">
+                                  <HighlightText text={book.label} query={bookSearch} />
+                                </span>
                               </div>
                               );
                             })}
@@ -2558,7 +2734,7 @@ export default function Sidebar({
                           )}
                           {hasSubGroups && category.subGroups.map((sg) => {
                             const sgKey = sg.key;
-                            const sgExpanded = expandedSubGroups.has(sgKey);
+                            const sgExpanded = bookSearch.trim() ? true : expandedSubGroups.has(sgKey);
                             const isSgEditing = editingSubGroup && editingSubGroup.parent === category.name && editingSubGroup.sgId === sg.id;
                             return (
                             <div key={sg.id} className="sidebar-subgroup">
@@ -2726,7 +2902,9 @@ export default function Sidebar({
                                     }}
                                   >
                                     <span className="sidebar-book-card-icon">{book.icon}</span>
-                                    <span className="sidebar-book-card-label">{book.label}</span>
+                                    <span className="sidebar-book-card-label">
+                                      <HighlightText text={book.label} query={bookSearch} />
+                                    </span>
                                   </div>
                                   );
                                 })}
@@ -2754,6 +2932,11 @@ export default function Sidebar({
                       </div>
                       );
                     })}
+                    {bookSearch.trim() && searchedVisibleCategories.length === 0 && (
+                      <div className="sidebar-search-no-result">
+                        没有找到匹配「{bookSearch}」的书籍
+                      </div>
+                    )}
                   </div>
                 </div>
               </>
@@ -2781,9 +2964,66 @@ export default function Sidebar({
               </button>
             </div>
           )}
+          {/* 章节搜索框 */}
+          {groupedChapters.length > 0 && (
+            <div className="sidebar-chapter-search-row">
+              <input
+                ref={chapterSearchRef}
+                type="text"
+                className="sidebar-chapter-search-input"
+                value={chapterSearch}
+                onChange={(e) => setChapterSearch(e.target.value)}
+                placeholder="搜索章节... (Ctrl+K)"
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setChapterSearch("");
+                  } else if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    if (searchedChapterFlatList.length > 0) {
+                      setChapterSearchSelectedIdx((prev) =>
+                        prev < searchedChapterFlatList.length - 1 ? prev + 1 : 0
+                      );
+                    }
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    if (searchedChapterFlatList.length > 0) {
+                      setChapterSearchSelectedIdx((prev) =>
+                        prev > 0 ? prev - 1 : searchedChapterFlatList.length - 1
+                      );
+                    }
+                  } else if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (chapterSearchSelectedIdx >= 0 && chapterSearchSelectedIdx < searchedChapterFlatList.length) {
+                      const ch = searchedChapterFlatList[chapterSearchSelectedIdx];
+                      handleSelect(ch.id);
+                      setChapterSearch("");
+                    }
+                  }
+                }}
+              />
+              {chapterSearch && (
+                <button
+                  className="sidebar-search-clear"
+                  onClick={() => setChapterSearch("")}
+                  title="清除搜索"
+                >
+                  ✕
+                </button>
+              )}
+              {chapterSearch && (
+                <span className="sidebar-search-count">
+                  {chapterSearchMatchCount} 个
+                </span>
+              )}
+            </div>
+          )}
           <nav className="chapter-nav">
-            {filteredGroupedChapters.map(({ group, items }) => {
-              const isGroupCollapsed = collapsedGroups.has(group);
+            {(() => {
+              // 搜索时需要追踪扁平索引用于键盘导航高亮
+              let flatIdx = -1;
+              return searchedGroupedChapters.map(({ group, items }) => {
+              // 搜索时自动展开所有分组
+              const isGroupCollapsed = chapterSearch.trim() ? false : collapsedGroups.has(group);
               return (
               <div key={group} className="chapter-group">
                 <button
@@ -2801,24 +3041,39 @@ export default function Sidebar({
                 </button>
                 {!isGroupCollapsed && (
                 <ul>
-                  {items.map((ch) => (
+                  {items.map((ch) => {
+                    flatIdx++;
+                    const isSelected = chapterSearch.trim() && flatIdx === chapterSearchSelectedIdx;
+                    return (
                     <li key={ch.id}>
                       <button
-                        ref={activeId === ch.id ? activeChapterRef : null}
-                        className={`chapter-item ${activeId === ch.id ? "active" : ""}`}
+                        ref={isSelected ? activeChapterRef : (activeId === ch.id ? activeChapterRef : null)}
+                        className={`chapter-item ${activeId === ch.id ? "active" : ""} ${isSelected ? "search-selected" : ""}`}
                         onClick={() => handleSelect(ch.id)}
                         onContextMenu={(e) => handleChapterContextMenu(e, ch.id)}
+                        onMouseEnter={() => chapterSearch.trim() && setChapterSearchSelectedIdx(flatIdx)}
                       >
                         <span className="chapter-icon">{ch.icon}</span>
-                        <span className="chapter-title-text">{ch.title}</span>
+                        <span className="chapter-title-text">
+                          <HighlightText text={ch.title} query={chapterSearch} />
+                        </span>
                       </button>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
                 )}
               </div>
               );
-            })}
+            });
+            })()}
+
+            {/* 章节搜索无结果提示 */}
+            {chapterSearch.trim() && searchedGroupedChapters.length === 0 && (
+              <div className="sidebar-search-no-result">
+                没有找到匹配「{chapterSearch}」的章节
+              </div>
+            )}
 
             {/* 已读的章节区域（按分组展示） */}
             {hiddenChapterGroups.length > 0 && (
