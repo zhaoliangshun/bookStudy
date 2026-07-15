@@ -129,6 +129,7 @@ const BOOK_CATEGORIES = [
       { path: "/ts2", label: "TypeScript 进阶", icon: "🔶" },
       { path: "/ts3", label: "TypeScript 高阶实战", icon: "💠" },
       { path: "/tsgen", label: "TS 泛型专题", icon: "🎯" },
+      { path: "/zod", label: "Zod 实战教程", icon: "🛡️" },
       { path: "/workers", label: "Web Workers", icon: "👷" },
       { path: "/playground", label: "代码 Playground", icon: "🛝" },
     ],
