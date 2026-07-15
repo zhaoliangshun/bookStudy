@@ -126,6 +126,7 @@ const BOOK_CATEGORIES = [
       { path: "/vuesrc", label: "Vue 源码构建", icon: "💚" },
       { path: "/nodejs-backend", label: "Node.js Web后端实战", icon: "🏗️" },
       { path: "/ts", label: "TypeScript 入门", icon: "🔷" },
+      { path: "/ts-quick", label: "TypeScript 速查", icon: "⚡" },
       { path: "/ts2", label: "TypeScript 进阶", icon: "🔶" },
       { path: "/ts3", label: "TypeScript 高阶实战", icon: "💠" },
       { path: "/tsgen", label: "TS 泛型专题", icon: "🎯" },
@@ -160,6 +161,9 @@ const BOOK_CATEGORIES = [
     icon: "💻",
     books: [
       { path: "/nextjs", label: "Next.js", icon: "▲" },
+      { path: "/vite", label: "Vite", icon: "⚡" },
+      { path: "/rhf", label: "React Hook Form", icon: "📋" },
+      { path: "/tsx", label: "TS + React", icon: "⚛️" },
       { path: "/sass", label: "Sass", icon: "💅" },
       { path: "/fe-engineering", label: "前端工程化", icon: "⚙️" },
       { path: "/fe-interview", label: "前端面试", icon: "🎯" },
