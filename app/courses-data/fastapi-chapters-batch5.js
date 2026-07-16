@@ -3400,7 +3400,8 @@ app = FastAPI()
 # inline：浏览器内联显示
 @app.get("/inline")
 def inline():
-    content = b"<h1>Hello</h1><p>这是一段 HTML</p>"
+    # bytes 字面量只能含 ASCII，中文要用 .encode("utf-8") 转成 bytes
+    content = "<h1>Hello</h1><p>这是一段 HTML</p>".encode("utf-8")
     return StreamingResponse(
         content=iter([content]),
         media_type="text/html",

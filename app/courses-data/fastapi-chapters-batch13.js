@@ -2428,15 +2428,15 @@ SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
 # 定义商品 ORM 模型
-# 下面这行用到了"海象运算符":=和 type() 动态建类，理解即可，不用深究
-# type("Base", (Base,), {"__tablename__": "items"}) 会动态创建一个继承 Base 的类
-# := 把这个动态类同时赋值给变量 BaseModel_sql，再让 Item 继承它
-# 这只是演示动态建类技巧，实际项目不会这么写
-class Item(BaseModel_sql := type("Base", (Base,), {"__tablename__": "items"})):
-    # pass 表示空类体，什么都不做（这个 Item 类只是演示，后面不会用到）
-    pass
+# 下面这个写法用到了"海象运算符 := 和 type() 动态建类"，理解即可，不用深究：
+#   type("Base", (Base,), {"__tablename__": "items"})
+#   会动态创建一个继承 Base、并带 __tablename__ = "items" 的类。
+# 注意：这种动态建类会和下面 ItemModel 的同名表冲突（Table already defined），
+# 所以这里只作注释讲解，不实际执行；实际项目用下面的 ItemModel 即可。
+# class Item(BaseModel_sql := type("Base", (Base,), {"__tablename__": "items"})):
+#     pass
 
-# 简化：直接定义真正的 ORM 模型（项目实际用这个）
+# 真正的 ORM 模型（项目实际用这个）
 class ItemModel(Base):
     # 表名，对应数据库里的 items 表
     __tablename__ = "items"

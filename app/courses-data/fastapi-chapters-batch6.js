@@ -4143,6 +4143,8 @@ from fastapi import FastAPI, Depends, Request
 from contextlib import asynccontextmanager
 # 导入 async session
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+# 导入 text：SQLAlchemy 2.0 执行原生 SQL 必须用 text() 包装
+from sqlalchemy import text
 
 # ========== lifespan：管理应用级资源 ==========
 # @asynccontextmanager 把 async 生成器函数变成异步上下文管理器
@@ -4191,7 +4193,8 @@ async def get_db(request: Request):
 async def list_users(db=Depends(get_db)):
     # db 是请求级 session（每个请求独立）
     # await db.execute 执行异步 SQL 查询
-    result = await db.execute("SELECT 1")
+    # 注意：SQLAlchemy 2.0 起必须用 text() 包装原生 SQL，不能直接传字符串
+    result = await db.execute(text("SELECT 1"))
     return {"data": "ok"}
 \`\`\`
 

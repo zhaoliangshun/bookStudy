@@ -2709,12 +2709,12 @@ async def ws_endpoint(ws: WebSocket):
 5. **心跳超时设太短**：手机网络抖动 1-2 秒很常见，超时设 10 秒会误杀。**建议 60 秒以上**。
 6. **多 worker 不共享连接**：单进程测试正常，上多 worker 就"丢消息"。**必须用 Redis Pub/Sub**。
 7. **\`asyncio.create_task\` 没持有引用**：后台任务被 GC 回收，莫名消失。**把 task 存到全局变量**：
-   \`\`\`python
-   bg_tasks = set()
-   task = asyncio.create_task(broadcast_time())
-   bg_tasks.add(task)
-   task.add_done_callback(bg_tasks.discard)
-   \`\`\`
+\`\`\`python
+bg_tasks = set()
+task = asyncio.create_task(broadcast_time())
+bg_tasks.add(task)
+task.add_done_callback(bg_tasks.discard)
+\`\`\`
 8. **广播消息太大**：一次发 1MB 的 JSON 给 1000 个连接，会阻塞事件循环。**大消息分片或用 SSE 流式**。
 9. **用 \`manager.disconnect(ws)\` 但没 await**：改进版 disconnect 是 async 的，不 await 不会执行清理。
 10. **在线列表频繁广播**：每来一个人就广播全量列表，人多时消息风暴。**可以增量更新，或只在人数变化时广播**。

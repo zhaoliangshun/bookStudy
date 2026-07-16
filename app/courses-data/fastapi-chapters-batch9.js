@@ -554,10 +554,11 @@ SQLAlchemy 支持三种继承：单表继承、联合继承、具体表继承。
 \`\`\`python filename="单表继承：Employee → Manager/Engineer"
 # 从 sqlalchemy 导入 String, Integer
 from sqlalchemy import String, Integer
-# 从 sqlalchemy.orm 导入声明式构件和 polymorphic_on, polymorphic_identity
+# 从 sqlalchemy.orm 导入声明式构件
+# 注意：polymorphic_on / polymorphic_identity 不是 import 的函数或常量，
+# 而是 __mapper_args__ 字典里的"键名"，值用列引用 / 字符串字面量
 from sqlalchemy.orm import (
     DeclarativeBase, Mapped, mapped_column,
-    polymorphic_on, polymorphic_identity,
 )
 
 # 定义类 Base，继承 DeclarativeBase
@@ -571,12 +572,14 @@ class Employee(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50))
 
-    # polymorphic_on：指定用哪一列区分子类类型
+    # type 列：用来区分子类类型（单表继承的核心字段）
     type: Mapped[str] = mapped_column(String(20))
 
-    # polymorphic_identity：本类对应的 type 值
+    # __mapper_args__ 配置多态映射
+    # polymorphic_on：指定用哪一列区分子类类型（这里用 type 列）
+    # polymorphic_identity：本类对应的 type 值（字符串字面量，不需要 import）
     __mapper_args__ = {
-        "polymorphic_on": type,
+        "polymorphic_on": type,            # 直接引用上面定义的字段
         "polymorphic_identity": "employee",
     }
 
@@ -613,8 +616,9 @@ from datetime import datetime
 # 从 typing 导入 Optional, List
 from typing import Optional, List
 # 从 sqlalchemy 导入各种列类型和约束
+# Column 用于中间关联表的列定义（mapped_column 只能用在 ORM 模型里）
 from sqlalchemy import (
-    String, Text, Boolean, Integer, ForeignKey, Table, Index,
+    String, Text, Boolean, Integer, ForeignKey, Table, Index, Column,
 )
 # 从 sqlalchemy.orm 导入声明式构件和 relationship
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -625,20 +629,15 @@ class Base(DeclarativeBase):
     pass
 
 # 2. 多对多关联表：posts ↔ tags
+# 中间表用 Table(...) 定义（不是 ORM 模型），因为中间表只需要列，
+# 不需要业务逻辑。Column 用从 sqlalchemy 导入的 Column。
 post_tags = Table(
     "post_tags",
     Base.metadata,
-    # post_id 外键
-    Column := None,  # 占位，实际用 Column
-)
-# 上面的写法是错的，重新写：
-post_tags = Table(
-    "post_tags",
-    Base.metadata,
-    # post_id 列，外键指向 posts.id
-    __import__("sqlalchemy").Column("post_id", Integer, ForeignKey("posts.id"), primary_key=True),
-    # tag_id 列，外键指向 tags.id
-    __import__("sqlalchemy").Column("tag_id", Integer, ForeignKey("tags.id"), primary_key=True),
+    # post_id 列，外键指向 posts.id，主键
+    Column("post_id", Integer, ForeignKey("posts.id"), primary_key=True),
+    # tag_id 列，外键指向 tags.id，主键
+    Column("tag_id", Integer, ForeignKey("tags.id"), primary_key=True),
 )
 
 # 3. User 模型（用户表，博客系统的核心实体）
@@ -661,8 +660,11 @@ class User(Base):
     # Mapped[List["Post"]]：List 表示多方，"Post" 用字符串避免前向引用
     # back_populates="author"：与 Post.author 属性双向同步
     # cascade="all, delete-orphan"：级联策略
-    #   - all：包含 save-update, merge, refresh-expire, expunge, delete
-    #   - delete-orphan：删用户时，关联的孤儿文章也一起删
+    #   - all：等价于 save-update + merge + refresh-expire + expunge + delete
+    #          即增删改查时都会级联到关联对象
+    #   - delete-orphan：当 Post 从 User.posts 集合中移除（或 User 被删除）时，
+    #                    这篇 Post 变成"孤儿"，会被自动 DELETE
+    # 典型场景：文章强依赖于作者，作者没了文章也没意义
     posts: Mapped[List["Post"]] = relationship(
         back_populates="author", cascade="all, delete-orphan"
     )
@@ -781,6 +783,17 @@ class Tag(Base):
 **错误 1：Mapped 类型写错导致可空字段报错**
 
 \`\`\`python filename="错误示例：可空字段没加 Optional"
+# 从 sqlalchemy 导入 Integer, String
+from sqlalchemy import Integer, String
+# 从 sqlalchemy.orm 导入 DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+# 从 typing 导入 Optional
+from typing import Optional
+
+# 定义类 Base，继承 DeclarativeBase
+class Base(DeclarativeBase):
+    pass
+
 # ❌ 错误：Mapped[str] 默认 NOT NULL，但没给 default
 # 定义类 Bad，继承 Base
 class Bad(Base):
@@ -1061,9 +1074,10 @@ with Session(engine) as session:
 # 所有子类共用一张 employees 表，用 type 列区分子类类型
 
 from sqlalchemy import String, Integer, create_engine, select
+# polymorphic_on / polymorphic_identity 是 __mapper_args__ 的键名，
+# 不是需要 import 的对象，这里不导入它们
 from sqlalchemy.orm import (
     DeclarativeBase, Mapped, mapped_column, Session,
-    polymorphic_on, polymorphic_identity,
 )
 
 # 定义类 Base，继承 DeclarativeBase
@@ -1077,13 +1091,15 @@ class Employee(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50))
 
-    # polymorphic_on：指定用 type 列区分子类
+    # type 列：用来区分子类类型
     type: Mapped[str] = mapped_column(String(20))
 
     # __mapper_args__ 配置多态映射
+    # polymorphic_on：指定用 type 列区分
+    # polymorphic_identity：本类对应 type="employee"（字符串字面量）
     __mapper_args__ = {
-        "polymorphic_on": type,            # 用 type 列区分
-        "polymorphic_identity": "employee", # 本类对应 type="employee"
+        "polymorphic_on": type,
+        "polymorphic_identity": "employee",
     }
 
 # 子类 Manager：共用 employees 表
@@ -1152,7 +1168,8 @@ with Session(engine) as session:
 # 在博客模型基础上增加收藏功能
 from datetime import datetime
 from typing import List
-from sqlalchemy import String, Text, Integer, ForeignKey, Table, create_engine
+# Column 用于中间关联表的列定义，必须从 sqlalchemy 导入
+from sqlalchemy import String, Text, Integer, ForeignKey, Table, create_engine, Column
 from sqlalchemy.orm import (
     DeclarativeBase, Mapped, mapped_column, relationship, Session,
 )
@@ -1171,7 +1188,6 @@ user_favorites = Table(
     # post_id 外键指向 posts.id
     Column("post_id", Integer, ForeignKey("posts.id"), primary_key=True),
 )
-# 注意：实际代码要在文件顶部 from sqlalchemy import Column
 
 # User 模型增加 favorites 关系
 # 定义类 User，继承 Base
@@ -1869,8 +1885,8 @@ import os
 from typing import Generator
 # 从 fastapi 导入 FastAPI, Depends
 from fastapi import FastAPI, Depends
-# 从 sqlalchemy 导入 create_engine, select
-from sqlalchemy import create_engine, select, String
+# 从 sqlalchemy 导入 create_engine, select, text（text 用于原生 SQL）
+from sqlalchemy import create_engine, select, String, text
 # 从 sqlalchemy.orm 导入 sessionmaker, Session, DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.orm import (
     sessionmaker, Session, DeclarativeBase, Mapped, mapped_column,
@@ -2002,7 +2018,7 @@ def delete_user(
     log_db.execute(
         # 用原生 SQL 插入日志（简化演示）
         # text() 包装原生 SQL，参数用 :name 占位，防 SQL 注入
-        __import__("sqlalchemy").text(
+        text(
             "INSERT INTO access_logs (action, target) VALUES (:a, :t)"
         ),
         # 参数绑定：:a 对应 action，:t 对应 target
@@ -5207,8 +5223,8 @@ blog/
 from datetime import datetime
 # 从 typing 导入 Optional, List
 from typing import Optional, List
-# 从 sqlalchemy 导入各种类型
-from sqlalchemy import String, Text, Boolean, Integer, ForeignKey, Table, Index
+# 从 sqlalchemy 导入各种类型（Column 用于中间关联表的列定义）
+from sqlalchemy import String, Text, Boolean, Integer, ForeignKey, Table, Index, Column
 # 从 sqlalchemy.orm 导入声明式构件
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -5223,9 +5239,6 @@ post_tags = Table(
     Column("post_id", Integer, ForeignKey("posts.id"), primary_key=True),
     Column("tag_id", Integer, ForeignKey("tags.id"), primary_key=True),
 )
-# 用 __import__ 避免重复导入问题，实际写 from sqlalchemy import Column
-# 这里简化演示，正式代码用：
-from sqlalchemy import Column
 
 # 定义类 User，继承 Base
 class User(Base):

@@ -4311,6 +4311,10 @@ class User(BaseModel):
 ### 错误 2：\`default_factory\` 传了函数调用结果
 
 \`\`\`python
+# 演示错误 2：default_factory 传了函数调用结果
+from datetime import datetime
+from pydantic import BaseModel, Field
+
 # ❌ 错误：传了函数调用结果（已经执行了）
 class Task(BaseModel):
     # datetime.now() 立即执行，所有实例共享同一个时间

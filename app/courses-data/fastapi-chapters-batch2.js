@@ -2832,10 +2832,10 @@ def list_items(
 \`\`\`python
 # ❌ 错误：反斜杠没转义
 # Python 字符串里 \. 会被当成转义字符
-pattern="^\d+\.\d+$"  # \d 和 \. 可能有歧义
+pattern = "^\d+\.\d+$"  # \d 和 \. 可能有歧义
 
 # ✅ 正确：用 raw 字符串
-pattern=r"^\d+\.\d+$"  # r"..." 表示原始字符串，反斜杠不转义
+pattern = r"^\d+\.\d+$"  # r"..." 表示原始字符串，反斜杠不转义
 \`\`\`
 
 正则表达式里反斜杠很常见（\`\d\`、\`\\.\`、\`\\w\` 等），用 \`r"..." raw\` 字符串能避免歧义。
@@ -3906,6 +3906,17 @@ def list_items(request: Request, q: str = "default"):
 ### 坑 3：body 被消费后 Pydantic 解析失败
 
 \`\`\`python
+# 演示坑 3：body 被消费后 Pydantic 解析失败
+from fastapi import FastAPI, Request
+from pydantic import BaseModel
+
+app = FastAPI()
+
+# ItemCreate：请求体模型
+class ItemCreate(BaseModel):
+    name: str
+    price: float
+
 # ❌ 错误：先读 body 再用 Pydantic 模型
 @app.post("/items")
 async def create_item(request: Request, item: ItemCreate):
@@ -3984,6 +3995,17 @@ def get_user(user_id: int, request: Request):
 ### 坑 8：中间件异常没处理
 
 \`\`\`python
+# 演示坑 8：中间件异常没处理
+import logging
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+
+# 配置日志：演示用，输出到控制台
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("api")
+
+app = FastAPI()
+
 # ❌ 错误：中间件里不处理异常，会导致 500
 @app.middleware("http")
 async def bad_middleware(request: Request, call_next):
