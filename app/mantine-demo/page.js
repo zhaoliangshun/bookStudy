@@ -249,9 +249,17 @@ function UserForm({ onSubmit }) {
           {/* 第二个参数 { type: "checkbox" } 很关键：
               getInputProps 默认按「文本输入」处理，Checkbox 需要显式声明 type，
               否则勾选状态不会正确绑定到 checked 属性。 */}
+          {/* 【为什么覆盖 onBlur】
+              表单全局开了 validateInputOnBlur: true，checkbox 也会参与失焦校验。
+              但点击 label 时会发生：先失焦(此时 agree 仍是 false → 校验失败显示
+              红字「必须同意条款」) → 紧接着值变 true → Mantine 清除错误 → 用户
+              看到错误「闪现」一下消失。
+              checkbox 这类二值控件天然不适合 blur 校验，这里把 onBlur 置为
+              空函数，让 agree 只在点「提交」时统一校验，彻底消除闪现。 */}
           <Checkbox
             label="我同意服务条款"
             {...form.getInputProps("agree", { type: "checkbox" })}
+            onBlur={() => {}}
           />
 
           {/* ---- 操作按钮区 ---- */}
