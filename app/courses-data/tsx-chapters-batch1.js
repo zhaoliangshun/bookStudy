@@ -206,95 +206,162 @@ function UserCard({ name, role, avatar, online, onAction }: UserCardProps) {
 5. 可选函数 prop 用 \`?:\` 标注`,
 
     code: `// Props 类型定义全解 - 可运行 Demo
-import { useState } from "react";
+// 本 demo 用纯 TypeScript 演示 Props 类型系统的核心概念
+// React 组件示例见上方 Markdown 讲解，可直接复制到项目中使用
 
-// ---- 类型定义 ----
+// ============================================================
+// 1. type 别名 + 字面量联合（最常用的 Props 定义方式）
+// ============================================================
 type UserRole = "admin" | "editor" | "viewer";
 
 type UserCardProps = {
-  name: string;
-  role: UserRole;
-  avatar?: string;
-  online?: boolean;
-  onAction?: (role: UserRole) => void;
+  name: string;              // 必填
+  role: UserRole;            // 必填，只能是三个值之一
+  avatar?: string;           // 可选
+  online?: boolean;          // 可选
+  onAction?: (role: UserRole) => void;  // 可选回调
 };
 
-const roleConfig: Record<UserRole, { label: string; color: string }> = {
-  admin:  { label: "管理员", color: "#ef4444" },
-  editor: { label: "编辑",   color: "#3b82f6" },
-  viewer: { label: "访客",   color: "#6b7280" },
+// ============================================================
+// 2. Record 做配置映射——类型安全的查表
+// ============================================================
+// Record<UserRole, {...}> 保证每个 role 都有对应配置，漏写会报错
+const roleConfig: Record<UserRole, {
+  label: string;
+  color: string;
+  permissions: string[];
+}> = {
+  admin:  { label: "管理员", color: "#ef4444", permissions: ["read", "write", "delete", "manage"] },
+  editor: { label: "编辑",   color: "#3b82f6", permissions: ["read", "write"] },
+  viewer: { label: "访客",   color: "#6b7280", permissions: ["read"] },
 };
 
-// ---- 组件 ----
-function UserCard({ name, role, avatar, online, onAction }: UserCardProps) {
-  const cfg = roleConfig[role];
-  return (
-    <div style={{
-      display: "flex", alignItems: "center", gap: 12,
-      padding: "12px 16px", borderRadius: 8,
-      border: "1px solid #e5e7eb", background: "#fff",
-    }}>
-      <div style={{ position: "relative", width: 40, height: 40 }}>
-        {avatar ? (
-          <img src={avatar} alt={name}
-            style={{ width: 40, height: 40, borderRadius: "50%" }} />
-        ) : (
-          <div style={{
-            width: 40, height: 40, borderRadius: "50%",
-            background: "#e0e7ff", display: "flex",
-            alignItems: "center", justifyContent: "center",
-            fontWeight: 600, color: "#4338ca",
-          }}>
-            {name[0]}
-          </div>
-        )}
-        {online && (
-          <span style={{
-            position: "absolute", bottom: 0, right: 0,
-            width: 10, height: 10, borderRadius: "50%",
-            background: "#22c55e", border: "2px solid #fff",
-          }} />
-        )}
-      </div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 600, fontSize: 14 }}>{name}</div>
-        <span style={{ color: cfg.color, fontSize: 12 }}>{cfg.label}</span>
-      </div>
-      {onAction && (
-        <button
-          onClick={() => onAction(role)}
-          style={{
-            padding: "4px 12px", fontSize: 12, borderRadius: 6,
-            border: "1px solid #d1d5db", background: "#f9fafb",
-            cursor: "pointer",
-          }}
-        >
-          操作
-        </button>
-      )}
-    </div>
-  );
+// ============================================================
+// 3. 模拟 React.ComponentProps 继承原生属性
+// ============================================================
+// React.ComponentProps<"button"> 会提取 <button> 的所有原生属性
+// 这里用 NativeButtonProps 模拟，FancyButtonProps 通过 & 扩展
+type NativeButtonProps = {
+  type?: "button" | "submit" | "reset";
+  disabled?: boolean;
+  onClick?: () => void;
+  className?: string;
+};
+
+// 交叉类型 & —— 等价于 React.ComponentProps<"button"> & { variant?: ... }
+type FancyButtonProps = NativeButtonProps & {
+  variant?: "primary" | "ghost";
+};
+
+// ============================================================
+// 4. 模拟组件渲染（纯逻辑，不依赖 React/DOM）
+// ============================================================
+// TypeScript 类型在运行时会被擦除（类型擦除），
+// 所以运行时无法直接检查 props 类型。
+// 但我们可以写校验函数模拟 "传错 Props 会怎样"
+function renderUserCard(props: UserCardProps): string {
+  const cfg = roleConfig[props.role];
+  const avatarDisplay = props.avatar
+    ? \`[img \${props.avatar.slice(0, 20)}...]\`
+    : \`[\${props.name[0].toUpperCase()}]\`;
+  const onlineMark = props.online ? " 🟢在线" : " ⚪离线";
+  const hasCallback = props.onAction ? "✅ 可操作" : "⛔ 无回调";
+
+  return [
+    "┌──────────────────────────────────┐",
+    \`│ \${avatarDisplay}  \${props.name}\${onlineMark}\`,
+    \`│ 角色: \${cfg.label} (颜色: \${cfg.color})\`,
+    \`│ 权限: \${cfg.permissions.join(", ")}\`,
+    \`│ 回调: \${hasCallback}\`,
+    "└──────────────────────────────────┘",
+  ].join("\\n");
 }
 
-// ---- 使用 ----
-export default function Demo() {
-  const [log, setLog] = useState<string[]>([]);
+function renderFancyButton(props: FancyButtonProps): string {
+  const variant = props.variant ?? "primary";
+  const type = props.type ?? "button";
+  const disabled = props.disabled ? " [已禁用]" : "";
+  return \`[FancyButton] variant=\${variant} type=\${type}\${disabled}\`;
+}
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16 }}>
-      <UserCard name="张三" role="admin" online onAction={(r) => setLog(l => [...l, \`点击了 \${r}\`])} />
-      <UserCard name="李四" role="editor" avatar="" onAction={(r) => setLog(l => [...l, \`点击了 \${r}\`])} />
-      <UserCard name="王五" role="viewer" online />
+// ============================================================
+// 5. 运行演示
+// ============================================================
+console.log("=== Props 类型定义全解 Demo ===\\n");
 
-      {log.length > 0 && (
-        <div style={{ marginTop: 8, padding: 12, background: "#f3f4f6", borderRadius: 8 }}>
-          <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>操作日志：</div>
-          {log.map((line, i) => <div key={i} style={{ fontSize: 13 }}>{line}</div>)}
-        </div>
-      )}
-    </div>
-  );
-}`,
+// --- 5.1 正确用法 ---
+console.log("--- ✅ 正确用法 ---\\n");
+
+// 完整 Props
+console.log(renderUserCard({
+  name: "张三",
+  role: "admin",
+  online: true,
+  onAction: (r) => console.log(\`  → 回调被调用，角色: \${r}\`),
+}));
+console.log();
+
+// 可选 Props 省略
+console.log(renderUserCard({ name: "李四", role: "editor", avatar: "https://example.com/a.jpg" }));
+console.log();
+
+// 最少 Props（只传必填）
+console.log(renderUserCard({ name: "王五", role: "viewer" }));
+console.log();
+
+// --- 5.2 ComponentProps 继承演示 ---
+console.log("--- 🔄 ComponentProps 继承原生属性 ---\\n");
+
+console.log(renderFancyButton({
+  variant: "primary",
+  type: "submit",
+  onClick: () => {},
+  className: "btn-save",
+}));
+console.log();
+
+// 只传扩展属性，原生属性全部走默认值
+console.log(renderFancyButton({ variant: "ghost", disabled: true }));
+console.log();
+
+// --- 5.3 Record 查表演示 ---
+console.log("--- 📋 各角色权限一览 ---\\n");
+(Object.keys(roleConfig) as UserRole[]).forEach((role) => {
+  const cfg = roleConfig[role];
+  console.log(\`  \${role.padEnd(8)} \${cfg.label.padEnd(4)} → \${cfg.permissions.join(", ")}\`);
+});
+console.log();
+
+// --- 5.4 类型安全演示 ---
+// TypeScript 编译期会拦截以下错误，这里用 as 模拟绕过编译检查
+// 在实际 React 项目中，这些错误会在 IDE 里直接标红
+console.log("--- 🛡️ TypeScript 编译期保护（正常会被拦截）---\\n");
+
+// 模拟 1: 传了无效的 role 值
+const badProps1 = { name: "测试", role: "superadmin" } as unknown as UserCardProps;
+try {
+  console.log("尝试用 role='superadmin' 渲染...");
+  console.log(renderUserCard(badProps1));
+} catch (e) {
+  console.log(\`❌ 运行时报错: \${(e as Error).message}\`);
+  console.log("💡 TypeScript 会在编译期就拦截这个错误：\\n   Type '\\"superadmin\\"' is not assignable to type 'UserRole'.");
+}
+console.log();
+
+// 模拟 2: 缺少必填 name
+const badProps2 = { role: "admin" } as unknown as UserCardProps;
+try {
+  console.log("尝试省略必填 name...");
+  console.log(renderUserCard(badProps2));
+} catch (e) {
+  console.log(\`❌ 运行时报错: \${(e as Error).message}\`);
+  console.log("💡 TypeScript 会报错：\\n   Property 'name' is missing in type '{ role: \\"admin\\"; }'.");
+}
+console.log();
+
+console.log("=== Demo 结束 ===");
+console.log("\\n💡 以上类型定义可直接复制到 React 组件中使用，");
+console.log("   只需把 renderUserCard 替换成 JSX return 即可。")`,
   },
 
   // ===========================================================
