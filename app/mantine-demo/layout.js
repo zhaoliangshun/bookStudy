@@ -46,7 +46,8 @@ import "@mantine/core/styles.css";
 //                  内部通过 React Context 下发主题、颜色方案（亮/暗）。
 // createTheme：用来【定制主题】的工厂函数，返回一个 MantineTheme 对象。
 //              相比直接传裸对象，它能做类型推导和默认值合并，推荐用它。
-import { MantineProvider, createTheme } from "@mantine/core";
+// ColorSchemeScript：消除主题闪烁(FOUC)的内联脚本。详见下方使用处注释。
+import { MantineProvider, createTheme, ColorSchemeScript } from "@mantine/core";
 
 // ---- 定制 Mantine 主题 ----
 // createTheme 接收一个「主题覆盖对象」，未指定的字段沿用 Mantine 默认值。
@@ -110,6 +111,31 @@ export default function MantineDemoLayout({ children }) {
     //   theme={theme}          → 注入上面定制的主题
     //   defaultColorScheme="light" → 默认亮色主题（用户可在页面内切换）
     <MantineProvider theme={theme} defaultColorScheme="light">
+      {/*
+        ColorSchemeScript —— 消除刷新时的主题闪烁(FOUC)
+        ---------------------------------------------------------------
+        【为什么会闪烁】
+          MantineProvider 默认用 localStorageColorSchemeManager 持久化主题，
+          key 为 "mantine-color-scheme-value"。刷新流程：
+            1) SSR 阶段：服务端读不到 localStorage，用 defaultColorScheme
+               ("light") 渲染 → 首屏 HTML 是亮色
+            2) React hydration：Mantine 从 localStorage 读到用户上次保存的
+               "dark" → 立即切换 → 用户看到「亮色闪一下变暗色」
+        【ColorSchemeScript 的作用】
+          它渲染成一个内联 <script>，在 HTML 解析阶段【同步执行】（早于
+          React hydration），从 localStorage 读取主题并设置
+          <html data-mantine-color-scheme="...">。这样首屏 HTML 一渲染
+          就是正确主题，无需 hydration 后再切换，彻底消除闪烁。
+        【为什么放在这里（子 layout 的 body 内）】
+          Next.js 子 layout 无法访问 <head>，但 ColorSchemeScript 是普通
+          <script>（非 Next Script），放在 body 内依然能在 HTML 解析时
+          同步执行。只要它在 MantineProvider 渲染的内容之前即可。
+        【与 defaultColorScheme 的关系】
+          两者必须一致（都是 "light"）：defaultColorScheme 是 SSR 兜底值，
+          ColorSchemeScript 的 defaultColorScheme 是 localStorage 无值时的
+          兜底值。保持一致才能在「用户从没切过主题」时也不闪。
+      */}
+      <ColorSchemeScript defaultColorScheme="light" />
       {/* children 代表 /mantine-demo/page.js 渲染的内容，
           会被 MantineProvider 的上下文包裹，从而能用 Mantine 组件 */}
       {children}
