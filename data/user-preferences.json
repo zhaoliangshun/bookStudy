@@ -257,7 +257,9 @@
       "/rhf",
       "/tsx",
       "/forgerock",
-      "/forgerock-demo"
+      "/forgerock-demo",
+      "/mantine",
+      "/mantine-demo"
     ],
     "后端与网络": [
       "/http",

@@ -163,6 +163,8 @@ const BOOK_CATEGORIES = [
       { path: "/nextjs", label: "Next.js", icon: "▲" },
       { path: "/vite", label: "Vite", icon: "⚡" },
       { path: "/rhf", label: "React Hook Form", icon: "📋" },
+      { path: "/mantine", label: "Mantine", icon: "🎨" },
+      { path: "/mantine-demo", label: "Mantine Demo", icon: "🧪" },
       { path: "/forgerock", label: "ForgeRock SDK", icon: "🛡️" },
       { path: "/forgerock-demo", label: "ForgeRock Demo", icon: "🎭" },
       { path: "/tsx", label: "TS + React", icon: "⚛️" },

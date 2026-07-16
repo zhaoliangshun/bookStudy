@@ -882,7 +882,7 @@ const form = useForm({
   },
 });
 
-// 字段路径用 contacts.${index}.name
+// 字段路径用 contacts.\${index}.name
 const fields = form.values.contacts.map((c, index) => (
   <Paper key={index} withBorder p="md">
     <TextInput
