@@ -87,6 +87,17 @@ loader.config({
 
 function handleBeforeMount(monaco) {
   registerMonacoThemes(monaco);
+
+  // 禁用 TypeScript / JavaScript 诊断（教程 demo 代码常引用未导入的
+  // React 全局变量、缺少类型声明等，避免编辑器满屏红色波浪线告警）
+  monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+    noSemanticValidation: true,
+    noSyntaxValidation: true,
+  });
+  monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+    noSemanticValidation: true,
+    noSyntaxValidation: true,
+  });
 }
 
 export default function MonacoEditor({

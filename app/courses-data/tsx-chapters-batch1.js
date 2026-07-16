@@ -98,7 +98,7 @@ function Input({ value, onChange, placeholder, disabled }: DisabledInputProps) {
 | 普通组件 Props | \`type\`（简洁） |
 | 需要继承/扩展 | \`interface\`（extends 清晰） |
 | 需要联合类型 (\`A | B\`) | \`type\`（interface 不支持联合） |
-| 需要映射类型 (\`type X<T> = ...`) | \`type\` |
+| 需要映射类型 (\`type X<T> = ...\`) | \`type\` |
 | 第三方库扩展 | \`interface\`（声明合并） |
 
 **实际项目建议**：团队统一一种即可，多数团队选 \`type\`。
