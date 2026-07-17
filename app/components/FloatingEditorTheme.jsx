@@ -11,9 +11,11 @@
 import { useState, useEffect, useRef } from "react";
 import { MONACO_THEMES } from "./monaco-themes";
 import { useEditorTheme } from "./EditorThemeProvider";
+import { useFloatingButtonVisibility } from "./FloatingButtonVisibility";
 
 export default function FloatingEditorTheme() {
   const { themeId, setThemeId } = useEditorTheme();
+  const { visibility } = useFloatingButtonVisibility();
   const [open, setOpen] = useState(false);
   const panelRef = useRef(null);
 
@@ -41,6 +43,10 @@ export default function FloatingEditorTheme() {
       document.removeEventListener("keydown", escHandler);
     };
   }, [open]);
+
+  // 用户在设置面板里关闭了本按钮：直接返回 null，不渲染
+  // 注意：必须放在所有 hooks（useEffect 等）之后，否则会破坏 hooks 调用顺序
+  if (visibility.editorTheme === false) return null;
 
   return (
     <div className="floating-editor-theme" ref={panelRef}>

@@ -14,9 +14,11 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { usePathname } from "next/navigation";
+import { useFloatingButtonVisibility } from "./FloatingButtonVisibility";
 
 export default function QuickScroll() {
   const pathname = usePathname();
+  const { visibility } = useFloatingButtonVisibility();
   const [atTop, setAtTop] = useState(true);
   const [atBottom, setAtBottom] = useState(false);
 
@@ -86,6 +88,10 @@ export default function QuickScroll() {
       clearTimeout(t2);
     };
   }, [pathname, checkScroll]);
+
+  // 用户在设置面板里关闭了本按钮：直接返回 null，不渲染
+  // 必须放在所有 hooks 之后，避免破坏 hooks 调用顺序
+  if (visibility.quickScroll === false) return null;
 
   return (
     <div className="quick-scroll">

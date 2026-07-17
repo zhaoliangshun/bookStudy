@@ -16,6 +16,7 @@
 
 import { useState, useEffect, useSyncExternalStore } from "react";
 import { chapterNavStore } from "./chapterNavStore";
+import { useFloatingButtonVisibility } from "./FloatingButtonVisibility";
 
 function subscribe(fn) {
   return chapterNavStore.subscribe(fn);
@@ -27,6 +28,7 @@ function getSnapshot() {
 
 export default function FloatingChapterNav() {
   const state = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const { visibility } = useFloatingButtonVisibility();
   const { chapters, activeId, onSelect } = state;
 
   const idx = chapters.findIndex((c) => c.id === activeId);
@@ -36,7 +38,8 @@ export default function FloatingChapterNav() {
   const [hoverPrev, setHoverPrev] = useState(false);
   const [hoverNext, setHoverNext] = useState(false);
 
-  if (!chapters.length) return null;
+  // 无章节数据或用户在设置面板里关闭了本按钮：不渲染
+  if (!chapters.length || visibility.chapterNav === false) return null;
 
   return (
     <div className="floating-chapter-nav">

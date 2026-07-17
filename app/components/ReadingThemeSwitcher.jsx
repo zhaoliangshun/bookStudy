@@ -12,6 +12,7 @@
 // =============================================================
 
 import { useState, useEffect, useRef } from "react";
+import { useFloatingButtonVisibility } from "./FloatingButtonVisibility";
 
 const READING_THEMES = [
   { id: "default", name: "默认", icon: "☀️", desc: "经典浅色" },
@@ -31,6 +32,7 @@ const STORAGE_KEY = "reading-theme-preference";
 const DEFAULT_THEME = "default";
 
 export default function ReadingThemeSwitcher() {
+  const { visibility } = useFloatingButtonVisibility();
   const [current, setCurrent] = useState(DEFAULT_THEME);
   const [open, setOpen] = useState(false);
   const panelRef = useRef(null);
@@ -79,6 +81,10 @@ export default function ReadingThemeSwitcher() {
       document.removeEventListener("keydown", escHandler);
     };
   }, [open]);
+
+  // 用户在设置面板里关闭了本按钮：直接返回 null，不渲染
+  // 必须放在所有 hooks 之后，避免破坏 hooks 调用顺序
+  if (visibility.readingTheme === false) return null;
 
   return (
     <div className="reading-theme-switcher" ref={panelRef}>

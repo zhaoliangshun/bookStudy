@@ -3723,13 +3723,216 @@ img {
   pointer-events: auto;
 }
 
-/* 窄屏适配 */
-@media (max-width: 768px) {
-  .floating-panel-group {
-    right: 12px;
-    gap: 8px;
+/* =============================================================
+   浮动按钮设置（齿轮按钮 + 弹出面板）
+   -------------------------------------------------------------
+   与其他浮动按钮共用 .floating-panel-group 容器。
+   面板向左弹出（与阅读主题面板方向一致），列出 4 个开关
+   控制：编辑器主题 / 阅读主题 / 章节导航 / 快速滚动 的显隐。
+   ============================================================= */
+.floating-btn-settings {
+  position: relative;
+  pointer-events: none;
+}
+
+/* 齿轮触发按钮：与其他浮动按钮一致的圆形 40x40 外观 */
+.floating-btn-settings-btn {
+  pointer-events: auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease,
+    background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  padding: 0;
+}
+
+.floating-btn-settings-btn:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  transform: scale(1.1) rotate(45deg);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+}
+
+.floating-btn-settings-btn[aria-expanded="true"] {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.floating-btn-settings-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* 弹出面板：向左弹出 */
+.floating-btn-settings-panel {
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.14);
+  min-width: 220px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  animation: floatingSettingsIn 0.18s ease;
+  z-index: 1001;
+}
+
+@keyframes floatingSettingsIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
   }
 }
+
+.floating-btn-settings-panel-header {
+  padding: 10px 14px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+}
+
+.floating-btn-settings-list {
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+}
+
+/* 单个开关项：图标 + 名称 + 视觉开关 */
+.floating-btn-settings-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+  transition: background 0.12s ease;
+  user-select: none;
+  position: relative;
+}
+
+.floating-btn-settings-item:hover {
+  background: var(--bg);
+}
+
+.floating-btn-settings-item-icon {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.floating-btn-settings-item-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 隐藏原生 checkbox，用视觉开关取代它（保留可访问性） */
+.floating-btn-settings-checkbox {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+/* 自定义开关滑块 */
+.floating-btn-settings-switch {
+  width: 34px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--border);
+  position: relative;
+  transition: background 0.18s ease;
+  flex-shrink: 0;
+}
+
+.floating-btn-settings-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.18s ease;
+}
+
+.floating-btn-settings-switch.on {
+  background: var(--primary);
+}
+
+.floating-btn-settings-switch.on::after {
+  transform: translateX(16px);
+}
+
+/* 当 checkbox 获得焦点时给 label 添加轮廓（可访问性） */
+.floating-btn-settings-checkbox:focus + .floating-btn-settings-switch {
+  box-shadow: 0 0 0 2px var(--primary-light);
+}
+
+/* 底部快捷操作区 */
+.floating-btn-settings-actions {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--border);
+}
+
+.floating-btn-settings-action-btn {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.floating-btn-settings-action-btn:hover {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* 窄屏适配 */
+@media (max-width: 768px) {
+  .floating-btn-settings-panel {
+    min-width: 200px;
+  }
+}
+
 
 /* =============================================================
    浮动章节导航（右侧悬浮：上一章 ← / → 下一章）

@@ -9,6 +9,9 @@ import ReadingThemeSwitcher from "./ReadingThemeSwitcher";
 import FloatingChapterNav from "./FloatingChapterNav";
 import FloatingEditorTheme from "./FloatingEditorTheme";
 import BookmarkManager from "./BookmarkManager";
+// 右侧浮动按钮的可见性管理（Provider + 设置入口）
+import { FloatingButtonVisibilityProvider } from "./FloatingButtonVisibility";
+import FloatingButtonSettings from "./FloatingButtonSettings";
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -86,12 +89,18 @@ export default function Providers({ children }) {
       <EditorThemeProvider>
         <ScrollRestoration />
         <BookmarkManager />
-        <div className="floating-panel-group">
-          <FloatingEditorTheme />
-          <ReadingThemeSwitcher />
-          <FloatingChapterNav />
-          <QuickScroll />
-        </div>
+        {/* 用 VisibilityProvider 包裹浮动按钮组，让所有按钮
+            和设置入口共享同一份「显示/隐藏」状态 */}
+        <FloatingButtonVisibilityProvider>
+          <div className="floating-panel-group">
+            <FloatingEditorTheme />
+            <ReadingThemeSwitcher />
+            <FloatingChapterNav />
+            <QuickScroll />
+            {/* 设置入口（齿轮按钮）：本身始终显示，点击展开开关面板 */}
+            <FloatingButtonSettings />
+          </div>
+        </FloatingButtonVisibilityProvider>
         {children}
       </EditorThemeProvider>
     </ErrorBoundary>
