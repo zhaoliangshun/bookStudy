@@ -65,7 +65,7 @@ export default function TsReactTutorial() {
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
           currentPath="/tsx"
-          meta={`共 ${tsxChapters.length} 章 · 日常开发常用模式`}
+          meta={`共 ${tsxChapters.length} 章 · TS + React 实战`}
         />
 
         <main className="content" ref={contentRef}>
@@ -90,7 +90,7 @@ export default function TsReactTutorial() {
 
           <footer className="content-footer">
             <p>
-              TypeScript + React 实战教程 · 代码示例可直接复制到 React 项目中使用 · 涵盖 Props、Hooks、事件、自定义 Hook、Context、API 数据类型等核心知识点
+              TypeScript + React 实战教程 · 代码示例可直接复制到 React 项目中使用 · 涵盖 Props、Children、事件、useState/useRef、useReducer、useContext、自定义 Hook、forwardRef、泛型组件、API 请求、表单校验、路由参数、模块声明、工具类型等核心知识点
             </p>
           </footer>
         </main>
