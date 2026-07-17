@@ -115,7 +115,6 @@ export default function ForgeRockMockDemo() {
 
   // Step1：用户名 + 密码
   function makeUsernamePasswordStep(sdk) {
-    console.log("makeUsernamePasswordStep", sdk.CallbackType.NameCallback, sdk.StepType.Step);
     return {
       type: sdk.StepType.Step,
       stage: "UsernamePassword",
@@ -240,7 +239,6 @@ export default function ForgeRockMockDemo() {
       addLog("开始认证树（mock）");
       // 构造 Step1（用户名密码）并用 FRStep 包装
       const first = wrapStep(sdk, makeUsernamePasswordStep(sdk));
-      console.log("first", first);
       setStep(first);
       setValues({});
       // 打印收到的 callback 类型列表，方便调试
@@ -476,7 +474,6 @@ export default function ForgeRockMockDemo() {
           {/* 遍历当前 step 的所有 callback，动态生成输入控件 */}
           {step.callbacks.map((cb, i) => {
             // 用 type + prompt 组合作为 key，确保唯一
-            console.log(`cb, i`, cb, i)
             const prompt = cb.getOutputByName("prompt", cb.getType());
             const key = cb.getType() + "|" + prompt;
             // PasswordCallback 渲染为密码框
