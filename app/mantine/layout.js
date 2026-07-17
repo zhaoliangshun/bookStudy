@@ -43,6 +43,26 @@ export default function MantineLayout({ children }) {
           放在外部作为 Server Component 的直接输出，<script> 标签仅作为
           静态 HTML 下发，不会触发 hydration 警告。 */}
       <ColorSchemeScript defaultColorScheme="light" />
+
+      {/* 【滚动修复】
+          主站 globals.css 里 html/body 被锁成 height:100% + overflow:hidden，
+          是为主站「侧边栏 + 内容区各自滚动」的布局服务的。
+          但 Mantine 的 AppShell 是「Header/Navbar 固定定位 + body 整体滚动」
+          设计——AppShell-main 只有 min-height:100dvh，没有内部 overflow。
+          body 被锁后内容超出视口就拉不下去，导致页面无法滚动。
+          这里用 !important 覆盖回浏览器的默认滚动行为，仅作用于 /mantine
+          子树（layout.js 的 <style> 标签只在当前路由段注入）。 */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            html, body {
+              height: auto !important;
+              overflow: auto !important;
+            }
+          `,
+        }}
+      />
+
       <MantineProvider theme={theme} defaultColorScheme="light">
         {children}
       </MantineProvider>

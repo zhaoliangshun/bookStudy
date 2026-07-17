@@ -11,6 +11,14 @@
 //   /mantine-demo 路由的主页面。用一个「用户信息表单」综合演示：
 //   Mantine Form 表单管理 + Zod 数据校验 + 主题切换 + Modal 弹窗展示结果。
 //
+// 【为什么把 MantineProvider 和 CSS import 放在 page 而不是 layout】
+//   最初把 MantineProvider + @mantine/core/styles.css 放在 layout.js 里，
+//   但 Next.js dev 模式会把所有 CSS 和 ColorSchemeScript 注入到全局，
+//   导致 /mantine 教程页出现 hydration 错误（ColorSchemeScript 修改了
+//   <html> 属性，与主站的 data-theme 属性冲突）。
+//   改成放在 page.js 里后，CSS 和 Provider 只在访问 /mantine-demo 时加载，
+//   不影响其他路由。
+//
 // 【演示的技术点】
 //   1. @mantine/form 的 useForm     —— 表单状态管理（取值/改值/重置/校验）
 //   2. schemaResolver(zodSchema)    —— 把 Zod schema 桥接成 Mantine 校验器
@@ -28,9 +36,31 @@
 //   m-form-zod-basic / m-form-zod-complex / m-create-theme / m-demo
 // =============================================================
 
+// ---- Mantine 全局样式 ----
+// @mantine/core/styles.css 包含：CSS Reset、CSS 变量定义、所有组件的基础样式。
+// 必须在 MantineProvider 之前引入，否则组件会「裸奔」（没有样式）。
+import "@mantine/core/styles.css";
+
 import { useState } from "react";
 // useState：React 基础 Hook，用于在函数组件里保存可变状态。
 //           本文件用它管理「提交的数据」和「Modal 开关」两个状态。
+
+// ---- MantineProvider 和 createTheme ----
+import { MantineProvider, createTheme } from "@mantine/core";
+
+// 自定义主题（演示 createTheme 用法）
+const theme = createTheme({
+  primaryColor: "indigo",
+  primaryShade: { light: 6, dark: 5 },
+  defaultRadius: "md",
+  autoContrast: true,
+  fontFamily:
+    "var(--sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif)",
+  headings: {
+    fontFamily:
+      "var(--sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif)",
+  },
+});
 
 // ---- 批量引入 Mantine 组件 ----
 // 下面每个组件的用途会在使用处详细说明，这里先做个速查：
@@ -334,12 +364,16 @@ export default function MantineDemoPage() {
   const [opened, setOpened] = useState(false);
 
   return (
-    // 【滚动根容器】
-    // 主站 globals.css 把 html/body 的 overflow 锁成了 hidden（为主站的
-    // 「侧边栏 + 内容区各自滚动」布局服务）。但本页用的是 Mantine 流式
-    // 布局，没有内部滚动区，直接用会导致内容超出视口后无法下拉。
-    // 解决：用一个外层 div 接管滚动——height: 100vh 占满视口、
-    // overflowY: auto 允许纵向滚动，让页面整体可上下滚动。
+    // MantineProvider 包裹整个页面，让所有 Mantine 组件能读取主题和颜色方案。
+    // defaultColorScheme="light"：默认亮色主题（用户可通过 ThemeSwitcher 切换）
+    // 注意：不使用 ColorSchemeScript（它会导致其他页面的 hydration 错误）
+    <MantineProvider theme={theme} defaultColorScheme="light">
+    {/* 【滚动根容器】
+        主站 globals.css 把 html/body 的 overflow 锁成了 hidden（为主站的
+        「侧边栏 + 内容区各自滚动」布局服务）。但本页用的是 Mantine 流式
+        布局，没有内部滚动区，直接用会导致内容超出视口后无法下拉。
+        解决：用一个外层 div 接管滚动——height: 100vh 占满视口、
+        overflowY: auto 允许纵向滚动，让页面整体可上下滚动。 */}
     <div
       style={{
         height: "100vh",
@@ -455,5 +489,6 @@ export default function MantineDemoPage() {
       </Stack>
     </Container>
     </div>
+    </MantineProvider>
   );
 }
