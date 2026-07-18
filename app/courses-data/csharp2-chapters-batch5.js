@@ -996,3 +996,7 @@ var d4 = new Dictionary<string, int>(pairs);
 
 // 5. 指定初始容量（知道大小时推荐，避免哈希桶扩容和 rehash 开销）
 var d5 = new Dictionary<string, int>(capacity: 100);
+\`\`\`
+
+注意 \`["key"] = value\` 与 \`{ "key", value }\` 的关键区别：
+- \`["key"] = value\`（索引器）：键
