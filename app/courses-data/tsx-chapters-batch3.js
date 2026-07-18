@@ -1996,7 +1996,7 @@ const DECLARATIONS: DeclExample[] = [
     title: "CSS Modules 声明",
     icon: "🎨",
     fileName: "global.d.ts",
-    before: "import styles from './Button.module.css';\n// ❌ Cannot find module",
+    before: "import styles from './Button.module.css';\\n// ❌ Cannot find module",
     after: "styles.primary;  // ✅ string（带补全）",
     code: [
       "declare module '*.module.css' {",
@@ -2015,7 +2015,7 @@ const DECLARATIONS: DeclExample[] = [
     title: "图片导入声明",
     icon: "🖼️",
     fileName: "global.d.ts",
-    before: "import logo from './logo.svg';\n// ❌ Cannot find module",
+    before: "import logo from './logo.svg';\\n// ❌ Cannot find module",
     after: "const src: string = logo;  // ✅",
     code: [
       "declare module '*.svg' {",
@@ -2039,7 +2039,7 @@ const DECLARATIONS: DeclExample[] = [
     title: "全局 Window 扩展",
     icon: "🌍",
     fileName: "global.d.ts",
-    before: "window.myAnalytics('click');\n// ❌ Property 'myAnalytics' does not exist",
+    before: "window.myAnalytics('click');\\n// ❌ Property 'myAnalytics' does not exist",
     after: "window.myAnalytics('click');  // ✅ 有类型",
     code: [
       "export {}; // 关键：让文件成为模块",
@@ -2182,9 +2182,9 @@ export default function Demo() {
     title: "工具类型与实战技巧",
     content: `# 工具类型与实战技巧
 
-TypeScript 内置了一批**工具类型（Utility Types）**，能从已有类型快速派生新类型。掌握它们，能让你的代码"以类型为参数"编程，复用度极高。
+TypeScript 内置了一批**工具类型（Utility Types）**，能从已有类型快速派生新类型。它们像"类型的函数"——接收类型参数，返回新类型。掌握它们，能让你的代码"以类型为参数"编程，复用度极高。
 
-本章逐一讲解最常用的工具类型，并在最后用一个"配置驱动表单"Demo 把它们串起来。
+本章逐一讲解最常用的工具类型（共 15 个），每个都配 React 场景下的真实用法，并在最后用一个"配置驱动表单"Demo 把它们串起来。
 
 ---
 
@@ -2207,9 +2207,9 @@ type PartialUser = Partial<User>;
 ### 经典场景：更新补丁（Patch）
 
 \`\`\`tsx
-// PATCH 请求只更新部分字段
+// PATCH 请求只更新部分字段——完美对应 Partial
 async function updateUser(id: number, patch: Partial<User>) {
-  // patch 里每个字段都是可选的
+  // patch 里每个字段都是可选的，可以只传 name，也可以传多个
   const res = await fetch(\`/api/users/\${id}\`, {
     method: "PATCH",
     body: JSON.stringify(patch)
@@ -2217,11 +2217,15 @@ async function updateUser(id: number, patch: Partial<User>) {
   return res.json();
 }
 
-// 可以只传 name
-updateUser(1, { name: "新名字" }); // ✅
-// 也可以传多个
-updateUser(1, { name: "新名字", age: 20 }); // ✅
-updateUser(1, { unknown: 1 }); // ❌ 不是 User 的字段
+updateUser(1, { name: "新名字" });               // ✅ 只改名字
+updateUser(1, { name: "新名字", age: 20 });     // ✅ 改多个字段
+updateUser(1, { unknown: 1 });                  // ❌ unknown 不是 User 的字段
+\`\`\`
+
+**实现原理**（TypeScript 内部大致等价于）：
+\`\`\`tsx
+type Partial<T> = { [K in keyof T]?: T[K] };
+// 遍历 T 的每个 key K，给每个属性加 ?（可选标记）
 \`\`\`
 
 \`Partial\` 是"部分更新"场景的标准答案。
@@ -2230,25 +2234,60 @@ updateUser(1, { unknown: 1 }); // ❌ 不是 User 的字段
 
 ## 二、Required&lt;T&gt;：全部必填
 
-和 Partial 相反，把所有可选属性变成必填。
+和 Partial 相反，把所有可选属性变成必填（去掉 \`?\`）。
 
 \`\`\`tsx
 type Config = {
-  host?: string;
-  port?: number;
-  debug?: boolean;
+  host?: string;    // 可选
+  port?: number;    // 可选
+  debug?: boolean;  // 可选
 };
 
 type RequiredConfig = Required<Config>;
-// 等价于：{ host: string; port: number; debug: boolean }
+// 等价于：{ host: string; port: number; debug: boolean }（全部必填！）
 
-// 在某些"必须填全"的场景强制要求
-function init(config: RequiredConfig) { ... }
+// 在"必须填全"的场景强制要求
+function init(config: RequiredConfig) {
+  // config.host / config.port / config.debug 一定存在
+}
+\`\`\`
+
+**React 场景**：当你从 props 或 context 拿到一个可能为 undefined 的配置，经过校验后断言为必填，\`Required\` 能精确表达"已校验"的类型。
+
+---
+
+## 三、Readonly&lt;T&gt;：全部只读
+
+把 T 的所有属性变成只读（加 \`readonly\` 修饰符），赋值后不能再修改。
+
+\`\`\`tsx
+type User = { name: string; age: number };
+
+type ReadonlyUser = Readonly<User>;
+// 等价于：{ readonly name: string; readonly age: number }
+
+const u: ReadonlyUser = { name: "张三", age: 25 };
+u.name = "李四"; // ❌ 编译错误：Cannot assign to 'name' because it is a read-only property
+\`\`\`
+
+**React 场景**：React 的 state 和 props 本身就是不可变的（immutable），用 \`Readonly\` 或 \`readonly\` 修饰能在类型层面约束"不要直接修改 state"：
+
+\`\`\`tsx
+// props 默认就是只读的——不允许子组件修改
+function UserCard({ user }: { readonly user: User }) {
+  user.name = "xxx"; // ❌ 编译错误，防止误改 props
+  return <div>{user.name}</div>;
+}
+\`\`\`
+
+**实现原理**：
+\`\`\`tsx
+type Readonly<T> = { readonly [K in keyof T]: T[K] };
 \`\`\`
 
 ---
 
-## 三、Pick&lt;T, K&gt;：挑选部分字段
+## 四、Pick&lt;T, K&gt;：挑选部分字段
 
 从 T 里挑出指定的字段 K。
 
@@ -2257,13 +2296,13 @@ type User = {
   id: number;
   name: string;
   email: string;
-  password: string;
+  password: string;  // 敏感字段
   age: number;
 };
 
-// 只挑公开信息
+// 只挑公开信息——脱敏
 type PublicUser = Pick<User, "id" | "name" | "email">;
-// 等价于：{ id: number; name: string; email: string }
+// 等价于：{ id: number; name: string; email: string }（没有 password！）
 
 // 返回给前端时去掉 password
 function toPublic(u: User): PublicUser {
@@ -2271,18 +2310,25 @@ function toPublic(u: User): PublicUser {
 }
 \`\`\`
 
-\`Pick\` 常用于"脱敏"——从完整类型里挑出安全可暴露的字段。
+**React 场景**：表单组件只接受实体的部分字段时，用 Pick 精确限定：
+
+\`\`\`tsx
+// 注册表单只需要 name/email/password，不需要 id/age
+type RegisterForm = Pick<User, "name" | "email" | "password">;
+\`\`\`
+
+\`Pick\` 常用于"脱敏"和"子集选择"——从完整类型里挑出当前场景需要的字段。
 
 ---
 
-## 四、Omit&lt;T, K&gt;：排除部分字段
+## 五、Omit&lt;T, K&gt;：排除部分字段
 
 和 Pick 相反，从 T 里**排除**字段 K。
 
 \`\`\`tsx
-type User = { id: number; name: string; email: string; password: string; };
+type User = { id: number; name: string; email: string; password: string };
 
-// 排除 password
+// 排除 password——更简洁的脱敏写法
 type SafeUser = Omit<User, "password">;
 // 等价于：{ id: number; name: string; email: string }
 
@@ -2291,11 +2337,20 @@ type CreateUserDTO = Omit<User, "id">;
 // 等价于：{ name: string; email: string; password: string }
 \`\`\`
 
-\`Pick<User, "a" | "b">\` 等价于 \`Omit<User, "c" | "d">\`（互补）。字段少用 Pick，字段多用 Omit。
+**Pick vs Omit 怎么选？**
+- 要的字段**少** → 用 \`Pick\`（列出需要的）
+- 要的字段**多** → 用 \`Omit\`（列出不要的）
+- \`Pick<User, "a" | "b">\` 等价于 \`Omit<User, "c" | "d">\`（互补）
+
+**React 场景**：编辑表单通常排除 id/createdAt 等自动生成的字段：
+
+\`\`\`tsx
+type EditUserForm = Omit<User, "id" | "createdAt" | "updatedAt">;
+\`\`\`
 
 ---
 
-## 五、Record&lt;K, V&gt;：键值对映射
+## 六、Record&lt;K, V&gt;：键值对映射
 
 构造一个"键为 K、值为 V"的对象类型。
 
@@ -2304,23 +2359,43 @@ type CreateUserDTO = Omit<User, "id">;
 type ScoreMap = Record<string, number>;
 const scores: ScoreMap = { math: 90, english: 85 };
 
-// 键是字面量联合，值是配置对象
+// 键是字面量联合，值是配置对象——强制完整性！
 type Role = "admin" | "user" | "guest";
 type RoleConfig = Record<Role, { label: string; color: string }>;
 
 const roleConfig: RoleConfig = {
   admin: { label: "管理员", color: "#7c3aed" },
-  user: { label: "用户", color: "#2563eb" },
-  guest: { label: "访客", color: "#6b7280" }
-  // ⚠️ 少写一个 key 会报错！必须三个都写
+  user:  { label: "用户",   color: "#2563eb" },
+  guest: { label: "访客",   color: "#6b7280" }
+  // ⚠️ 少写 guest 会直接报错！必须三个角色都有配置
 };
 \`\`\`
 
-\`Record<Role, V>\` 的威力：**漏写一个角色的配置会直接报错**，强制完整性。
+\`Record<Role, V>\` 的威力：**漏写一个 key 会直接报错**，强制完整性。这是定义"配置映射表"的最佳工具类型。
+
+**React 场景**：动态渲染 Tab、菜单项、权限表时，用 Record + 联合类型保证"每个状态都有对应的 UI"：
+
+\`\`\`tsx
+type Status = "idle" | "loading" | "success" | "error";
+
+const statusConfig: Record<Status, { text: string; color: string }> = {
+  idle:    { text: "空闲",   color: "#9ca3af" },
+  loading: { text: "加载中", color: "#3b82f6" },
+  success: { text: "成功",   color: "#22c55e" },
+  error:   { text: "失败",   color: "#ef4444" },
+  // 少写任何一个 status 都会编译报错！
+};
+\`\`\`
+
+**实现原理**：
+\`\`\`tsx
+type Record<K extends keyof any, V> = { [P in K]: V };
+// 遍历联合类型 K 的每个成员 P，值类型统一为 V
+\`\`\`
 
 ---
 
-## 六、ReturnType&lt;typeof fn&gt;：函数返回值类型
+## 七、ReturnType&lt;typeof fn&gt;：函数返回值类型
 
 \`\`\`tsx
 function fetchUser() {
@@ -2329,269 +2404,1035 @@ function fetchUser() {
 
 type User = ReturnType<typeof fetchUser>;
 // 等价于：{ id: number; name: string; email: string }
-
-// 不用手写类型，函数改了类型自动跟着变
+// 不用手写类型，函数改了返回值类型自动跟着变！
 \`\`\`
 
 \`typeof fetchUser\` 先拿到函数的类型，\`ReturnType\` 再提取返回值类型。**一处定义，处处同步**。
 
----
-
-## 七、Parameters&lt;typeof fn&gt;：函数参数类型
+**React 场景**：自定义 Hook 的返回值类型，不用手写：
 
 \`\`\`tsx
-function createUser(name: string, age: number, role: string) { ... }
-
-type CreateUserArgs = Parameters<typeof createUser>;
-// 等价于：[string, number, string] —— 元组
-
-const args: CreateUserArgs = ["张三", 20, "admin"];
-\`\`\`
-
-返回的是**元组**，按参数顺序排列。
-
----
-
-## 八、ComponentProps：提取组件 Props
-
-React 里最实用的类型技巧之一：
-
-\`\`\`tsx
-import { ComponentProps } from "react";
-
-type ButtonProps = ComponentProps<typeof HTMLButtonElement>;
-// 等价于：所有原生 button 的属性
-
-// 从已有组件提取 Props
-function MyButton(props: ComponentProps<"button">) {
-  return <button {...props} className="my-btn" />;
+function useCounter(initial = 0) {
+  const [count, setCount] = useState(initial);
+  const inc = () => setCount(c => c + 1);
+  const dec = () => setCount(c => c - 1);
+  return { count, inc, dec };
 }
 
-// 从自定义组件提取
-function Dialog(props: { title: string; open: boolean }) { ... }
-type DialogProps = ComponentProps<typeof Dialog>;
-// { title: string; open: boolean }
+// 自动推导 Hook 的返回值类型
+type CounterState = ReturnType<typeof useCounter>;
+// { count: number; inc: () => void; dec: () => void }
 \`\`\`
-
-包装原生元素时，\`ComponentProps<"button">\` 让你的组件**继承所有原生属性**（onClick、disabled、type...），不用手写一遍。
 
 ---
 
-## 九、组合使用：Partial&lt;Pick&lt;T, K&gt;&gt;
+## 八、Parameters&lt;typeof fn&gt;：函数参数类型
 
-工具类型可以嵌套组合：
+\`\`\`tsx
+function createUser(name: string, age: number, role: "admin" | "user") {
+  return { name, age, role };
+}
+
+type CreateUserArgs = Parameters<typeof createUser>;
+// 等价于：[string, number, "admin" | "user"] —— 元组类型！
+
+const args: CreateUserArgs = ["张三", 20, "admin"]; // ✅
+const bad: CreateUserArgs = ["张三", "20", "admin"]; // ❌ 第二个参数应该是 number
+\`\`\`
+
+返回的是**元组（Tuple）**，按参数顺序排列，可以用下标访问单个参数类型：
+
+\`\`\`tsx
+type FirstArg = CreateUserArgs[0];  // string
+type SecondArg = CreateUserArgs[1]; // number
+\`\`\`
+
+**React 场景**：包装事件处理器时，复用原函数的参数类型：
+
+\`\`\`tsx
+function handleChange(e: React.ChangeEvent<HTMLInputElement>) { ... }
+
+// 提取参数类型，不用手动写 React.ChangeEvent<...>
+type ChangeEvent = Parameters<typeof handleChange>[0];
+\`\`\`
+
+---
+
+## 九、Exclude&lt;UnionType, ExcludedMembers&gt;：从联合类型中排除
+
+从联合类型中排除掉指定的成员。
+
+\`\`\`tsx
+type Role = "admin" | "user" | "guest" | "banned";
+
+// 排除被封禁的角色——普通用户能选的角色
+type AssignableRole = Exclude<Role, "banned">;
+// "admin" | "user" | "guest"
+
+// 排除多个
+type NonAdminRole = Exclude<Role, "admin" | "banned">;
+// "user" | "guest"
+\`\`\`
+
+**React 场景**：从 props 的联合类型中排除某些不需要的变体：
+
+\`\`\`tsx
+type ButtonVariant = "primary" | "secondary" | "danger" | "link";
+type NonLinkVariant = Exclude<ButtonVariant, "link">;
+// "primary" | "secondary" | "danger"
+\`\`\`
+
+**实现原理**：
+\`\`\`tsx
+type Exclude<T, U> = T extends U ? never : T;
+// 条件类型：T 的每个成员如果是 U 的子类型，就映射为 never（被排除），否则保留
+\`\`\`
+
+---
+
+## 十、Extract&lt;UnionType, ExtractedMembers&gt;：从联合类型中提取
+
+和 Exclude 相反，从联合类型中**提取**出指定的成员。
+
+\`\`\`tsx
+type AllEvents = "click" | "scroll" | "keydown" | "keyup" | "mousemove";
+
+// 只提取键盘事件
+type KeyboardEvent = Extract<AllEvents, \`key\${string}\`>;
+// "keydown" | "keyup"
+
+// 只提取鼠标事件
+type MouseEvent = Extract<AllEvents, "click" | "mousemove" | "mousedown">;
+// "click" | "mousemove"
+\`\`\`
+
+**React 场景**：从组件 props 的联合类型中提取特定变体：
+
+\`\`\`tsx
+type MessageProps =
+  | { type: "text"; content: string }
+  | { type: "image"; url: string; alt: string }
+  | { type: "video"; url: string; duration: number };
+
+// 只提取图片类型的 props
+type ImageProps = Extract<MessageProps, { type: "image" }>;
+// { type: "image"; url: string; alt: string }
+\`\`\`
+
+---
+
+## 十一、NonNullable&lt;T&gt;：排除 null 和 undefined
+
+从 T 中排除 \`null\` 和 \`undefined\`。
+
+\`\`\`tsx
+type MaybeUser = User | null | undefined;
+
+type ValidUser = NonNullable<MaybeUser>;
+// User（去掉了 null 和 undefined）
+\`\`\`
+
+**React 场景**：经过条件判断/可选链后，TypeScript 有时不能自动收窄类型，\`NonNullable\` 可以手动收窄：
+
+\`\`\`tsx
+function Profile({ user }: { user: User | null }) {
+  if (!user) return <div>加载中...</div>;
+  // 经过 if 判断后，user 类型被自动收窄为 User
+  // 但在更复杂的场景下（如 filter 后），可以用 NonNullable 断言：
+  const validUsers = [user, null, user].filter(Boolean) as NonNullable<typeof user>[];
+  return <div>{user.name}</div>;
+}
+\`\`\`
+
+---
+
+## 十二、Awaited&lt;T&gt;：解包 Promise 类型（TS 4.5+）
+
+获取 Promise resolve 后的值类型，能递归解包嵌套 Promise。
+
+\`\`\`tsx
+async function fetchUser(): Promise<User> {
+  const res = await fetch("/api/user");
+  return res.json();
+}
+
+type FetchedUser = Awaited<ReturnType<typeof fetchUser>>;
+// User（而不是 Promise<User>）
+
+// 嵌套 Promise 也能解包
+type Nested = Awaited<Promise<Promise<string>>>; // string
+\`\`\`
+
+**React 场景**：在自定义数据 Hook 中提取 API 返回值类型：
+
+\`\`\`tsx
+async function getUsers(): Promise<User[]> {
+  const res = await fetch("/api/users");
+  return res.json();
+}
+
+// 不用手写 User[]，API 返回类型变了这里自动跟着变
+type Users = Awaited<ReturnType<typeof getUsers>>; // User[]
+\`\`\`
+
+---
+
+## 十三、ComponentProps：提取组件 Props
+
+React 开发中最实用的类型技巧之一：
+
+\`\`\`tsx
+import type { ComponentProps } from "react";
+
+// ✅ 提取原生 HTML 元素的 Props——注意是字符串 "button"，不是 typeof HTMLButtonElement！
+type ButtonHTMLProps = ComponentProps<"button">;
+// 等价于：React.ButtonHTMLAttributes<HTMLButtonElement>
+// 包含 onClick、disabled、type、className、style 等所有原生 button 属性
+
+// 包装原生 button：继承所有原生属性，不用手写一遍
+function MyButton({ children, ...rest }: ComponentProps<"button">) {
+  return (
+    <button
+      {...rest}
+      style={{ padding: "8px 16px", borderRadius: 6, ...rest.style }}
+    >
+      {children}
+    </button>
+  );
+}
+
+// <MyButton onClick={...} disabled={false} type="submit">  ✅ 全部原生属性可用
+
+// 从自定义组件提取 Props
+function Dialog(props: { title: string; open: boolean; onClose: () => void }) {
+  return <div>{/* ... */}</div>;
+}
+type DialogProps = ComponentProps<typeof Dialog>;
+// { title: string; open: boolean; onClose: () => void }
+\`\`\`
+
+**注意**：\`ComponentProps<"button">\` 传入的是字符串字面量（HTML 标签名），\`ComponentProps<typeof MyComponent>\` 传入的是 \`typeof\` 组件。**不要**写 \`ComponentProps<typeof HTMLButtonElement>\`——\`HTMLButtonElement\` 是 DOM 接口类型，不是 React 组件类型，会得到 never。
+
+---
+
+## 十四、组合使用：Partial&lt;Pick&lt;T, K&gt;&gt; 等嵌套
+
+工具类型可以任意嵌套组合，精确表达复杂的类型意图：
 
 \`\`\`tsx
 type User = { id: number; name: string; email: string; age: number; role: string };
 
-// 只能更新 name 和 age，且都可选
-type UserUpdate = Partial<Pick<User, "name" | "age">>;
+// 经典组合：只能更新 name 和 age，且都可选
+type UserNameAgeUpdate = Partial<Pick<User, "name" | "age">>;
 // { name?: string; age?: number }
 
-function updateUser(id: number, patch: UserUpdate) { ... }
-updateUser(1, { name: "新名字" }); // ✅
-updateUser(1, { email: "x@x.com" }); // ❌ email 不在允许范围
-updateUser(1, { id: 2 }); // ❌ id 不在允许范围
+function updateNameAge(id: number, patch: UserNameAgeUpdate) { ... }
+updateNameAge(1, { name: "新名字" });       // ✅
+updateNameAge(1, { email: "x@x.com" });     // ❌ email 不在允许范围
+updateNameAge(1, { id: 2 });                // ❌ id 不可修改
+
+// 另一个经典：创建用户时没有 id，但其他字段必填
+type CreateUser = Omit<User, "id">;
+// { name: string; email: string; age: number; role: string }（全部必填）
+
+// 注册表单：只需要 name/email/password（从更大的 User 类型挑），且可选
+type RegisterForm = Partial<Pick<User, "name" | "email">> & { password: string };
 \`\`\`
 
-\`Partial<Pick<User, "name" | "age">>\` 精确表达"只能改这两个字段，且可选"——类型即文档。
+**组合的核心思想**：从"大而全"的实体类型出发，用 Pick/Omit 选字段，用 Partial/Required 调整可选性，用 Record 做映射——类型即文档，类型即约束。
 
 ---
 
-## 十、as const：字面量类型推断
+## 十五、as const 与 satisfies：不是工具类型，但必学
 
-默认情况下，\`const\` 数组/对象的类型会被拓宽：
+它们不是工具类型（语法关键字/操作符），但在 React + TS 开发中和工具类型同等重要。
+
+### as const：字面量类型推断
+
+默认情况下，\`const\` 数组/对象的类型会被**拓宽（widen）**：
 
 \`\`\`tsx
-const status = ["idle", "loading", "success"]; // string[]
-const config = { mode: "dark" }; // { mode: string }
+const status = ["idle", "loading", "success"]; // 类型：string[]（拓宽了！）
+const config = { mode: "dark" };               // 类型：{ mode: string }（拓宽了！）
 \`\`\`
 
-加 \`as const\` 后，类型变成**最窄的字面量**：
+加 \`as const\` 后，类型变成**最窄的字面量**（readonly）：
 
 \`\`\`tsx
 const status = ["idle", "loading", "success"] as const;
-// 类型：readonly ["idle", "loading", "success"]
+// 类型：readonly ["idle", "loading", "success"]（精确到每个元素！）
 
 const config = { mode: "dark" } as const;
-// 类型：{ readonly mode: "dark" }
+// 类型：{ readonly mode: "dark" }（精确到值 "dark"！）
 
-// 配合 typeof + number 拿到字面量联合
-type Status = typeof status[number];
-// "idle" | "loading" | "success"
+// 配合 typeof + [number] 拿到字面量联合类型
+type Status = (typeof status)[number];
+// "idle" | "loading" | "success"——不用手写联合，数组改了类型自动跟着变！
 \`\`\`
 
-\`as const\` 是"让常量保持精确字面量类型"的开关，常用于定义状态机、枚举替代品。
+\`as const\` 是"让常量保持精确字面量类型"的开关，常用于定义状态机、枚举替代品、配置常量表。
 
----
+### satisfies 操作符（TS 4.9+）
 
-## 十一、satisfies 操作符（TS 4.9+）
-
-\` satisfies \` 让一个值既保留**精确字面量类型**，又**校验符合某类型**：
+\`satisfies\` 让一个值既**校验符合某类型**，又**保留精确字面量类型**：
 
 \`\`\`tsx
 type RouteConfig = Record<string, { path: string; auth: boolean }>;
 
-// 用 satisfies：校验符合 RouteConfig，同时保留精确 key
-const routes = {
+// ❌ 直接标注类型：key 被拓宽为 string，routes.unknown 不报错
+const routes1: RouteConfig = {
+  home: { path: "/", auth: false },
+  profile: { path: "/profile", auth: true }
+};
+routes1.unknown; // 不报错！因为 key 是 string（太宽了）
+
+// ✅ 用 satisfies：校验符合 RouteConfig，同时保留精确 key
+const routes2 = {
   home: { path: "/", auth: false },
   profile: { path: "/profile", auth: true }
 } satisfies RouteConfig;
 
-routes.home.path;   // ✅ string
-routes.profile.auth; // ✅ boolean
-routes.unknown;     // ❌ 不存在的 key 报错（因为保留精确类型）
+routes2.home.path;    // ✅ string（有类型提示）
+routes2.profile.auth; // ✅ boolean
+routes2.unknown;      // ❌ 报错！因为 key 被保留为 "home" | "profile"
 \`\`\`
 
-对比直接标注 \`const routes: RouteConfig = {...}\`：那样会拓宽 key 为 \`string\`，\`routes.unknown\` 不报错。**\`satisfies\` 兼顾校验和精确**，是定义配置表的最佳实践。
+**对比三种写法**：
+- \`const x: T = {...}\` → 校验且**拓宽**为 T（丢失精确信息）
+- \`const x = {...}\` → 不校验，精确推断
+- \`const x = {...} satisfies T\` → **校验且保留精确类型**（最推荐！）
+
+\`satisfies\` 是定义配置表的最佳实践。
 
 ---
 
-## 十二、Demo：配置驱动的表单构建器
+## 十六、Demo：配置驱动的表单构建器
 
-下方 Demo 用 \`Record\`、\`Pick\`、\`Partial\`、\`ReturnType\` 构建一个**配置驱动的表单**：用一个配置对象定义字段（类型/标签/规则），表单组件根据配置自动渲染 + 校验。改配置即改表单，类型全程安全。
+下方 Demo 综合使用 \`Record\`、\`Pick\`、\`Partial\`、\`ReturnType\`、\`Parameters\`、\`Exclude\`、\`Awaited\`、\`as const\`、\`satisfies\` 等工具类型，构建一个**配置驱动的表单**：用一个配置对象定义字段（类型/标签/校验规则），表单组件根据配置自动渲染 + 校验，类型全程安全。
+
+点击「▶ 运行」可以在控制台看到工具类型的运行时演示输出。
 
 ---
 
 ## 本章小结
 
-✅ \`Partial<T>\`：全部可选，用于更新补丁
-✅ \`Required<T>\`：全部必填
-✅ \`Pick<T, K>\` / \`Omit<T, K>\`：挑选/排除字段，互为互补
-✅ \`Record<K, V>\`：键值对映射，强制完整性
-✅ \`ReturnType<typeof fn>\` / \`Parameters<typeof fn>\`：函数类型提取
-✅ \`ComponentProps<typeof Comp>\`：提取组件 Props，包装原生元素必备
+✅ \`Partial<T>\`：全部可选 → PATCH 更新
+✅ \`Required<T>\`：全部必填 → 校验后强保证
+✅ \`Readonly<T>\`：全部只读 → 不可变数据/Props
+✅ \`Pick<T, K>\` / \`Omit<T, K>\`：挑选/排除字段 → 脱敏、子集
+✅ \`Record<K, V>\`：键值对映射 → 配置表，强制完整性
+✅ \`ReturnType<typeof fn>\` / \`Parameters<typeof fn>\`：函数类型提取 → 自动同步
+✅ \`Exclude<T, U>\` / \`Extract<T, U>\`：联合类型排除/提取 → 条件分支收窄
+✅ \`NonNullable<T>\`：排除 null/undefined → 类型收窄
+✅ \`Awaited<T>\`：解包 Promise → async 函数返回值
+✅ \`ComponentProps<"button">\` / \`ComponentProps<typeof Comp>\`：提取 Props → 包装原生/自定义组件
 ✅ 组合：\`Partial<Pick<T, K>>\` 精确控制可更新字段
 ✅ \`as const\`：保留字面量类型，配合 \`typeof x[number]\` 拿联合
 ✅ \`satisfies\`：校验 + 保留精确类型，配置表最佳实践
 
 实战篇完结！你已经掌握了 TypeScript + React 在真实项目里的核心模式。`,
-    code: `import React, { useState, useMemo } from "react";
+    code: `// =============================================================
+// 🛠️ 工具类型综合实战 Demo
+// -------------------------------------------------------------
+// 本文件分为两部分：
+//   【第一部分】工具类型运行时演示 —— 用 console.log 输出每个工具类型
+//              的实际效果，点击「▶ 运行」即可在控制台看到结果。
+//              注意：TypeScript 类型在编译后会被擦除，这里我们通过
+//              运行时代码（对象、数组、函数）来模拟/验证类型约束的效果。
+//   【第二部分】配置驱动表单组件 —— 综合使用 Record/Pick/Partial/
+//              ReturnType/satisfies/as const 的完整 React 组件。
+//              这是真实项目中常见的模式，代码可在 React 项目中直接使用。
+// =============================================================
 
-// ==============================
-// 实体类型
-// ==============================
+import React, { useState, useMemo, useCallback } from "react";
+
+// =============================================================
+// 【第一部分】基础实体类型 —— 所有工具类型演示共用的基础类型
+// =============================================================
+
+// User 是我们贯穿全程的核心实体类型，模拟一个用户数据模型
 type User = {
-  id: number;
-  name: string;
-  email: string;
-  age: number;
-  role: "admin" | "user" | "guest";
+  id: number;           // 用户唯一 ID（由后端生成，前端不可修改）
+  name: string;         // 用户名（必填，2-20字符）
+  email: string;        // 邮箱（必填，需符合邮箱格式）
+  age: number;          // 年龄（必填，0-120）
+  role: "admin" | "user" | "guest";  // 角色（字面量联合类型，只能是三选一）
+  password?: string;    // 密码（可选，某些场景下不返回）
 };
 
-// ==============================
-// 工具类型实战1：Record 定义字段配置
-// 表单里每个字段的配置：标签、类型、校验规则
-// ==============================
+// =============================================================
+// 📦 工具类型演示 1：Partial<T> —— 全部属性变可选
+// =============================================================
+// 原理：{ [K in keyof T]?: T[K] } —— 遍历 T 的每个 key，加 ? 可选标记
+// 用途：PATCH 更新（只改部分字段）、表单初始值（未填完时部分为空）
+console.log("=== 1. Partial<T> 演示 ===");
+
+// Partial<User> 等价于：{ id?: number; name?: string; email?: string; ... }
+// 模拟 PATCH 请求——只更新 name 和 age，不用传全部字段
+const userPatch: Partial<User> = {
+  name: "新名字",
+  age: 26,
+  // ✅ 不需要传 id、email、role、password——它们都是可选的
+};
+console.log("PATCH 补丁（只更新部分字段）:", JSON.stringify(userPatch));
+// 输出: {"name":"新名字","age":26}
+
+// 模拟表单初始状态——还没填的时候所有字段都是空的
+const emptyForm: Partial<User> = {};
+console.log("空表单（所有字段可选）:", JSON.stringify(emptyForm));
+// 输出: {}
+
+// =============================================================
+// 📦 工具类型演示 2：Required<T> —— 全部属性变必填
+// =============================================================
+// 原理：{ [K in keyof T]-?: T[K] } —— -? 表示去掉可选标记（变成必填）
+// 用途：配置校验（确保所有配置项都填写了）、提交前的数据完整性检查
+console.log("\\n=== 2. Required<T> 演示 ===");
+
+// 定义一个"配置项可能缺失"的类型（模拟从外部传入的配置）
+type AppConfig = {
+  apiUrl?: string;     // API 地址（可选，可能有默认值）
+  timeout?: number;    // 超时时间（可选）
+  retryCount?: number; // 重试次数（可选）
+};
+
+// Required<AppConfig> 等价于：{ apiUrl: string; timeout: number; retryCount: number }
+// 经过校验后，所有配置项都一定有值——用 Required 标记"已校验通过"
+const validatedConfig: Required<AppConfig> = {
+  apiUrl: "https://api.example.com",
+  timeout: 5000,
+  retryCount: 3,
+};
+console.log("校验后的完整配置:", JSON.stringify(validatedConfig));
+// 输出: {"apiUrl":"https://api.example.com","timeout":5000,"retryCount":3}
+
+// =============================================================
+// 📦 工具类型演示 3：Readonly<T> —— 全部属性只读
+// =============================================================
+// 原理：{ readonly [K in keyof T]: T[K] } —— 加 readonly 修饰符
+// 用途：常量配置（不允许修改）、React Props（子组件不能修改父组件传的值）、
+//       不可变数据（Redux/React state 更新模式）
+console.log("\\n=== 3. Readonly<T> 演示 ===");
+
+// Readonly<User> 等价于：{ readonly id: number; readonly name: string; ... }
+// 模拟从后端获取的"冻结"用户数据——不允许前端直接修改
+const frozenUser: Readonly<User> = {
+  id: 1,
+  name: "张三",
+  email: "zhangsan@example.com",
+  age: 25,
+  role: "user",
+};
+console.log("只读用户数据:", JSON.stringify(frozenUser));
+// frozenUser.name = "李四";  // ❌ 编译错误：Cannot assign to 'name' because it is read-only
+// frozenUser.age = 30;       // ❌ 同上——Readonly 防止意外修改
+
+// React 中正确的做法：创建新对象（不可变更新）
+const updatedUser: User = { ...frozenUser, name: "李四", age: 26 };
+console.log("不可变更新（创建新对象）:", JSON.stringify(updatedUser));
+// 输出: {"id":1,"name":"李四","email":"zhangsan@example.com","age":26,"role":"user"}
+
+// =============================================================
+// 📦 工具类型演示 4：Pick<T, K> —— 挑选部分字段
+// =============================================================
+// 原理：{ [P in K]: T[P] } —— 只遍历 K 中指定的 key
+// 用途：脱敏（去掉敏感字段如 password）、子集类型（表单只需要实体的部分字段）
+console.log("\\n=== 4. Pick<T, K> 演示 ===");
+
+// Pick<User, "id" | "name" | "email" | "role"> —— 只挑公开信息，排除 password 和 age
+type PublicUser = Pick<User, "id" | "name" | "email" | "role">;
+// 等价于：{ id: number; name: string; email: string; role: "admin"|"user"|"guest" }
+
+// 模拟 API 返回给前端的公开用户信息（不含 password！）
+const publicInfo: PublicUser = {
+  id: 1,
+  name: "张三",
+  email: "zhangsan@example.com",
+  role: "user",
+  // ❌ 如果写 password: "123456" 会编译报错——Pick 里没有 password
+};
+console.log("公开用户信息（脱敏）:", JSON.stringify(publicInfo));
+// 输出: {"id":1,"name":"张三","email":"zhangsan@example.com","role":"user"}
+
+// 表单场景：注册表单只需要 name/email/password，不需要 id/age/role
+type RegisterForm = Pick<User, "name" | "email" | "password">;
+const registerData: RegisterForm = {
+  name: "王五",
+  email: "wangwu@example.com",
+  password: "hashed_pw_xxx",
+};
+console.log("注册表单数据:", JSON.stringify(registerData));
+// 输出: {"name":"王五","email":"wangwu@example.com","password":"hashed_pw_xxx"}
+
+// =============================================================
+// 📦 工具类型演示 5：Omit<T, K> —— 排除部分字段
+// =============================================================
+// 原理：Pick<T, Exclude<keyof T, K>> —— 从 T 的 key 中排除 K，然后 Pick
+// 用途：与 Pick 互补，字段多的时候用 Omit 更简洁；创建实体时排除自动生成的字段
+console.log("\\n=== 5. Omit<T, K> 演示 ===");
+
+// Omit<User, "password"> —— 排除 password，等价于 Pick<User, "id"|"name"|"email"|"age"|"role">
+type SafeUser = Omit<User, "password">;
+
+// 创建用户时，id 由后端自增生成，前端不需要传——Omit 掉 id
+type CreateUserDTO = Omit<User, "id">;
+// 等价于：{ name: string; email: string; age: number; role: ...; password?: string }
+
+const newUser: CreateUserDTO = {
+  name: "赵六",
+  email: "zhaoliu@example.com",
+  age: 30,
+  role: "admin",
+  // id 不用传！如果写 id: 999 会编译报错
+};
+console.log("创建用户 DTO（无 id）:", JSON.stringify(newUser));
+// 输出: {"name":"赵六","email":"zhaoliu@example.com","age":30,"role":"admin"}
+
+// Pick vs Omit 选择指南：
+//   要的字段少 → Pick（列出来的是需要的）
+//   不要的字段少 → Omit（列出来的是排除的）
+//   例如 User 有 6 个字段，只要 2 个 → Pick<User, "a"|"b">
+//           User 有 6 个字段，只排除 1 个 → Omit<User, "id">
+
+// =============================================================
+// 📦 工具类型演示 6：Record<K, V> —— 键值对映射（强制完整性）
+// =============================================================
+// 原理：{ [P in K]: V } —— 遍历联合类型 K 的每个成员作为 key，值统一为 V
+// 用途：配置映射表（每个状态/角色/类型都必须有对应的配置）、字典
+console.log("\\n=== 6. Record<K, V> 演示 ===");
+
+// 定义角色字面量联合类型
+type Role = "admin" | "user" | "guest";
+
+// Record<Role, { label: string; color: string }>
+// 等价于：{ admin: {label,color}; user: {label,color}; guest: {label,color} }
+// ⚠️ 如果少写任何一个角色的配置，TypeScript 会直接编译报错！
+const roleConfig: Record<Role, { label: string; color: string }> = {
+  admin: { label: "管理员", color: "#7c3aed" },
+  user:  { label: "普通用户", color: "#2563eb" },
+  guest: { label: "访客", color: "#6b7280" },
+  // 如果注释掉 guest 这一行，编译会报错：Property 'guest' is missing
+};
+console.log("角色配置表（强制完整性）:", JSON.stringify(roleConfig, null, 2));
+
+// 状态映射表——React 中常见的模式：每个状态对应一段 UI 配置
+type LoadStatus = "idle" | "loading" | "success" | "error";
+const statusMessage: Record<LoadStatus, string> = {
+  idle:    "请点击按钮开始",
+  loading: "数据加载中...",
+  success: "加载成功！",
+  error:   "加载失败，请重试",
+};
+console.log("状态消息映射:", JSON.stringify(statusMessage, null, 2));
+// 任何一个 LoadStatus 值，都一定有对应的消息——不会出现"状态没处理"的 bug
+
+// =============================================================
+// 📦 工具类型演示 7：ReturnType<typeof fn> —— 提取函数返回值类型
+// =============================================================
+// 原理：infer 关键字推断函数返回类型——type ReturnType<F extends (...args: any) => any>
+//       = F extends (...args: any) => infer R ? R : any
+// 用途：从已有函数自动推导类型，不用手写；函数改了返回值，类型自动同步
+console.log("\\n=== 7. ReturnType<typeof fn> 演示 ===");
+
+// 定义一个创建空表单的工厂函数——返回表单初始值
+// 注意：这里用 _demo 后缀，避免和下方表单组件中的同名函数冲突
+function createEmptyFormDemo() {
+  return { name: "", email: "", age: 0, role: "user" as const };
+}
+
+// ReturnType<typeof createEmptyFormDemo> 自动推导返回值类型
+// 等价于：{ name: string; email: string; age: number; role: "user" }
+type FormValuesDemo = ReturnType<typeof createEmptyFormDemo>;
+
+const formDefaults: FormValuesDemo = createEmptyFormDemo();
+console.log("表单初始值（从工厂函数推导类型）:", JSON.stringify(formDefaults));
+// 输出: {"name":"","email":"","age":0,"role":"user"}
+// ✅ 好处：如果以后 createEmptyFormDemo 加了字段（如 phone: ""），
+//    FormValuesDemo 自动包含 phone，不用手动改类型定义！
+
+// 模拟 async 函数的返回值类型提取
+async function fetchUserById(id: number): Promise<{ id: number; name: string }> {
+  // 真实代码会调用 fetch，这里直接返回模拟数据
+  return { id, name: "用户" + id };
+}
+type FetchResult = ReturnType<typeof fetchUserById>;
+// 注意：这里拿到的是 Promise<{ id: number; name: string }>，
+// 需要 Awaited 才能拿到真正的 { id: number; name: string }（见演示 12）
+
+// =============================================================
+// 📦 工具类型演示 8：Parameters<typeof fn> —— 提取函数参数类型
+// =============================================================
+// 原理：infer 推断参数类型元组
+// 用途：包装函数、事件处理、复用已有函数的参数类型定义
+console.log("\\n=== 8. Parameters<typeof fn> 演示 ===");
+
+// 注意：这里用 _demo 后缀，避免和下方表单组件中的 validateField 函数同名冲突
+// （函数声明会被提升，同名函数会覆盖，导致 TDZ 错误）
+function validateFieldDemo(
+  fieldName: string,
+  value: string,
+  rules: { required?: boolean; min?: number; max?: number; pattern?: RegExp }
+): string | null {
+  if (rules.required && !value.trim()) return fieldName + "不能为空";
+  if (rules.min && value.length < rules.min) return fieldName + "至少" + rules.min + "个字符";
+  if (rules.max && value.length > rules.max) return fieldName + "最多" + rules.max + "个字符";
+  return null;
+}
+
+// Parameters<typeof validateFieldDemo> 提取参数类型为元组：
+// [string, string, { required?: boolean; min?: number; max?: number; pattern?: RegExp }]
+type ValidateParams = Parameters<typeof validateFieldDemo>;
+
+// 可以用下标访问单个参数的类型
+type FieldNameType = ValidateParams[0];   // string
+type RulesType = ValidateParams[2];       // { required?: boolean; ... }
+
+const testParams: ValidateParams = [
+  "姓名",
+  "张三",
+  { required: true, min: 2, max: 20 }
+];
+const errorMsg = validateFieldDemo(...testParams);
+console.log("参数类型元组演示:", JSON.stringify(testParams), "→ 校验结果:", errorMsg || "✅ 通过");
+// 输出: ["姓名","张三",{"required":true,"min":2,"max":20}] → 校验结果: null
+
+// 便捷用法：提取事件处理函数的事件类型
+type ChangeHandler = (e: React.ChangeEvent<HTMLInputElement>) => void;
+type ChangeEvent = Parameters<ChangeHandler>[0];
+// ChangeEvent 就是 React.ChangeEvent<HTMLInputElement>——不用手动写一遍
+
+// =============================================================
+// 📦 工具类型演示 9：Exclude<T, U> —— 从联合类型中排除
+// =============================================================
+// 原理：T extends U ? never : T —— 如果 T 的成员是 U 的子类型，就映射为 never（删除）
+// 用途：从联合类型中去掉某些成员，收窄类型范围
+console.log("\\n=== 9. Exclude<T, U> 演示 ===");
+
+type Permission = "read" | "write" | "delete" | "admin" | "banned";
+
+// 排除被封禁的权限——正常用户的权限
+type ActivePermission = Exclude<Permission, "banned">;
+// "read" | "write" | "delete" | "admin"
+
+// 排除管理员权限——普通用户的权限
+type UserPermission = Exclude<Permission, "admin" | "banned">;
+// "read" | "write" | "delete"
+
+const userPerms: UserPermission[] = ["read", "write"];
+console.log("普通用户权限（排除了 admin 和 banned）:", JSON.stringify(userPerms));
+// 输出: ["read","write"]
+// ❌ 如果写 "admin" 或 "banned" 会编译报错——它们被 Exclude 掉了
+
+// React 场景：按钮变体中排除 link 类型（特殊处理）
+type BtnVariant = "primary" | "secondary" | "danger" | "link";
+type BtnVariantNoLink = Exclude<BtnVariant, "link">; // "primary"|"secondary"|"danger"
+
+// =============================================================
+// 📦 工具类型演示 10：Extract<T, U> —— 从联合类型中提取
+// =============================================================
+// 原理：T extends U ? T : never —— 与 Exclude 相反，只保留 U 中的成员
+// 用途：从联合类型中挑选符合条件的成员，收窄类型
+console.log("\\n=== 10. Extract<T, U> 演示 ===");
+
+type AllEvents = "click" | "scroll" | "keydown" | "keyup" | "mousemove" | "mouseenter";
+
+// 提取所有键盘事件（以 "key" 开头的）
+type KeyboardEvents = Extract<AllEvents, \`key\${string}\`>;
+// "keydown" | "keyup"——模板字面量类型匹配！
+
+// 提取所有鼠标事件
+type MouseEvents = Extract<AllEvents, \`mouse\${string}\` | "click">;
+// "click" | "mousemove" | "mouseenter"
+
+const keyboardHandlers: KeyboardEvents[] = ["keydown", "keyup"];
+console.log("键盘事件列表:", JSON.stringify(keyboardHandlers));
+// 输出: ["keydown","keyup"]
+
+// 从判别联合类型中提取特定变体
+type ApiResponse =
+  | { status: "success"; data: { id: number; name: string } }
+  | { status: "error"; message: string }
+  | { status: "loading" };
+
+type SuccessResponse = Extract<ApiResponse, { status: "success" }>;
+// { status: "success"; data: { id: number; name: string } }
+// 可以精确访问 .data 字段而不需要类型断言！
+
+// =============================================================
+// 📦 工具类型演示 11：NonNullable<T> —— 排除 null 和 undefined
+// =============================================================
+// 原理：T extends null | undefined ? never : T
+// 用途：收窄可能为 null/undefined 的类型，filter 后数组元素类型断言
+console.log("\\n=== 11. NonNullable<T> 演示 ===");
+
+// 模拟一组可能包含 null 的用户列表（如搜索结果中未找到的项）
+const usersOrNull: (User | null)[] = [
+  { id: 1, name: "张三", email: "zs@example.com", age: 25, role: "user" },
+  null,
+  { id: 2, name: "李四", email: "ls@example.com", age: 30, role: "admin" },
+  null,
+  { id: 3, name: "王五", email: "ww@example.com", age: 28, role: "guest" },
+];
+
+// filter(Boolean) 过滤掉 null，但 TypeScript 不知道——类型仍然是 (User | null)[]
+const filtered1 = usersOrNull.filter(Boolean);
+console.log("filter(Boolean) 后类型（未收窄）—— 元素类型仍含 null:", typeof filtered1[1]);
+// 运行时确实过滤了 null，但 TS 类型不知道
+
+// 用 NonNullable 做类型断言（或类型守卫），告诉 TS 已经排除了 null
+const validUsers = usersOrNull.filter((u): u is NonNullable<typeof u> => u !== null);
+console.log("有效用户列表（NonNullable 收窄后）:");
+validUsers.forEach(u => console.log("  -", u.name, "(" + u.role + ")"));
+// 输出:
+//   - 张三 (user)
+//   - 李四 (admin)
+//   - 王五 (guest)
+
+// =============================================================
+// 📦 工具类型演示 12：Awaited<T> —— 解包 Promise 类型（TS 4.5+）
+// =============================================================
+// 用途：获取 async 函数 resolve 后的值类型，递归解包嵌套 Promise
+// 注意：这是类型层面的操作，运行时不改变任何行为
+console.log("\\n=== 12. Awaited<T> 演示 ===");
+
+// 模拟一个 async 函数
+async function getUserList(): Promise<User[]> {
+  // 真实代码会 await fetch(...)，这里直接返回模拟数据
+  return [
+    { id: 1, name: "张三", email: "zs@example.com", age: 25, role: "user" },
+    { id: 2, name: "李四", email: "ls@example.com", age: 30, role: "admin" },
+  ];
+}
+
+// ReturnType<typeof getUserList> 是 Promise<User[]>
+// Awaited<...> 解包 Promise，得到 User[]
+type UserList = Awaited<ReturnType<typeof getUserList>>;
+// User[]——而不是 Promise<User[]>！
+
+// 运行时调用（沙箱中 fetch 不可用，直接模拟输出）
+console.log("Awaited 解包 Promise 类型 → 得到 User[]");
+console.log("嵌套 Promise 解包: Awaited<Promise<Promise<string>>> = string");
+
+// =============================================================
+// 📦 工具类型演示 13：as const —— 字面量类型推断（最窄类型）
+// =============================================================
+// 原理：as const 将对象/数组的类型推断为最窄的只读字面量类型
+// 用途：定义常量配置、枚举替代、配合 typeof x[number] 生成字面量联合类型
+console.log("\\n=== 13. as const 演示 ===");
+
+// ❌ 不用 as const：类型被拓宽（widen）
+const STATUS_WITHOUT = ["idle", "loading", "success", "error"];
+// 类型：string[]——太宽泛！可以 push 任何字符串
+STATUS_WITHOUT.push("unknown"); // 不报错，但这不是我们想要的
+
+// ✅ 用 as const：类型是 readonly 元组，每个元素都是精确字面量
+const STATUS = ["idle", "loading", "success", "error"] as const;
+// 类型：readonly ["idle", "loading", "success", "error"]
+// STATUS.push("unknown");  // ❌ 编译错误：readonly 数组没有 push 方法！
+// STATUS[0] = "xxx";      // ❌ 编译错误：元素是 readonly 的
+
+// 最强大的用法：从 as const 数组派生字面量联合类型
+type StatusType = (typeof STATUS)[number];
+// "idle" | "loading" | "success" | "error"——不用手写联合类型！
+// 如果以后在 STATUS 数组里加了 "cancelled"，StatusType 自动包含它
+
+console.log("状态常量（as const 保留精确字面量）:", JSON.stringify(STATUS));
+// 输出: ["idle","loading","success","error"]
+
+// 对象也可以 as const
+const API_ENDPOINTS = {
+  users: "/api/users",
+  posts: "/api/posts",
+  comments: "/api/comments",
+} as const;
+// 类型：{ readonly users: "/api/users"; readonly posts: "/api/posts"; ... }
+// API_ENDPOINTS.users = "/other";  // ❌ 不能修改
+
+// 派生 API 路径联合类型
+type ApiPath = (typeof API_ENDPOINTS)[keyof typeof API_ENDPOINTS];
+// "/api/users" | "/api/posts" | "/api/comments"
+console.log("API 端点配置:", JSON.stringify(API_ENDPOINTS));
+
+// =============================================================
+// 📦 工具类型演示 14：satisfies —— 校验 + 保留精确类型（TS 4.9+）
+// =============================================================
+// 原理：satisfies 是操作符不是类型，它校验值符合某类型，但不拓宽类型
+// 对比：
+//   const x: T = {...} → 校验且拓宽为 T（丢失精确信息）
+//   const x = {...} satisfies T → 校验但保留精确类型（最佳方案！）
+console.log("\\n=== 14. satisfies 演示 ===");
+
+// 定义路由配置类型：每个路由有 path 和 auth（是否需要登录）
+type RouteConfig = Record<string, { path: string; auth: boolean }>;
+
+// ✅ 用 satisfies：校验符合 RouteConfig，同时保留精确 key 类型
+const routes = {
+  home:     { path: "/",         auth: false },
+  profile:  { path: "/profile",  auth: true  },
+  admin:    { path: "/admin",    auth: true  },
+  login:    { path: "/login",    auth: false },
+} satisfies RouteConfig;
+
+// 因为保留了精确 key，TypeScript 知道 routes 只有这 4 个 key
+// routes.unknown;  // ❌ 编译报错：Property 'unknown' does not exist
+// 而如果写 const routes: RouteConfig = {...}，key 会被拓宽为 string，
+// routes.unknown 不会报错——这就是 satisfies 的价值！
+
+console.log("路由配置（satisfies 保留精确 key）:", JSON.stringify(routes, null, 2));
+// home.path 的类型是 string（因为 RouteConfig 里定义了 path: string），
+// 但 routes.home 的类型是精确的 { path: "/"; auth: false }，不是宽泛的 RouteConfig 值类型
+
+// 表单字段类型用 as const + satisfies 组合（下方表单 Demo 就是这个模式）
+const formFields = {
+  name: {
+    label: "姓名",
+    type: "text" as const,    // as const 让 type 字段是字面量 "text" 而非 string
+    placeholder: "请输入姓名",
+    required: true,
+    min: 2,
+    max: 20,
+  },
+  email: {
+    label: "邮箱",
+    type: "email" as const,   // 字面量 "email"
+    placeholder: "example@xx.com",
+    required: true,
+  },
+  age: {
+    label: "年龄",
+    type: "number" as const,  // 字面量 "number"
+    placeholder: "0-120",
+    required: true,
+    min: 0,
+    max: 120,
+  },
+  role: {
+    label: "角色",
+    type: "select" as const,  // 字面量 "select"
+    options: ["admin", "user", "guest"] as const,
+    required: true,
+  },
+};
+// as const 在 type 字段上——让 TypeScript 精确知道每个字段是哪种输入类型
+// 这样在条件判断 cfg.type === "email" 时，TypeScript 能自动收窄类型
+
+console.log("\\n表单字段配置数量:", Object.keys(formFields).length);
+// 输出: 4
+
+// =============================================================
+// 【第二部分】配置驱动表单组件 —— 综合实战
+// =============================================================
+// 这个表单组件综合使用了以下工具类型/技巧：
+//   - Record<K, V>          字段配置表，确保每个字段类型都有配置
+//   - Pick<T, K>            从 User 中挑选可编辑字段（排除 id、password）
+//   - Partial<T>            表单错误对象，每个字段可选（没有错误的字段为 undefined）
+//   - ReturnType<typeof fn> 从工厂函数推导表单值类型
+//   - as const              字段类型字面量精确推断
+//   - satisfies             配置校验 + 保留精确 key 类型
+//   - keyof                操作符获取类型的所有 key
+//
+// 工作原理：
+//   1. 定义 FORM_CONFIG 配置对象（用 satisfies 校验 + 保留精确类型）
+//   2. 根据配置自动渲染表单字段（input/select）
+//   3. 根据配置的校验规则（required/min/max/pattern）实时校验
+//   4. 提交时收集所有字段值，生成 Partial<Pick<...>> 补丁对象
+// =============================================================
+
+// --- 类型定义 ---
+
+// 字段输入类型字面量联合——与 formFields 中 type 字段的 as const 值对应
 type FieldType = "text" | "email" | "number" | "select";
 
+// 单个字段的配置结构
 type FieldConfig = {
-  label: string;
-  type: FieldType;
-  placeholder?: string;
-  options?: string[]; // select 用
-  min?: number;
-  max?: number;
-  required?: boolean;
+  label: string;                          // 字段显示名称（中文标签）
+  type: FieldType;                        // 输入框类型：text/email/number/select
+  placeholder?: string;                   // 占位提示文本
+  options?: readonly string[];            // select 类型的选项列表（readonly 来自 as const）
+  min?: number;                           // 最小值（number 类型）或最小长度（text 类型）
+  max?: number;                           // 最大值或最大长度
+  required?: boolean;                     // 是否必填
 };
 
-// 用 Record 强制每个字段都有配置（漏写会报错）
-type FormConfig = Record<string, FieldConfig>;
+// --- 核心工具类型组合 ---
 
-// ==============================
-// 工具类型实战2：Pick + Partial
-// 只允许编辑 name / email / age / role（排除 id）
-// ==============================
+// ① Pick：从 User 中挑选可编辑字段（排除 id 和 password——它们不由表单编辑）
 type EditableUser = Pick<User, "name" | "email" | "age" | "role">;
+// 等价于：{ name: string; email: string; age: number; role: "admin"|"user"|"guest" }
+
+// ② Partial：表单错误对象——每个字段的错误信息都是可选的（没错误就没有这个 key）
+//   Record：键是 EditableUser 的 key，值是错误消息字符串
+type FormErrors = Partial<Record<keyof EditableUser, string>>;
+// 等价于：{ name?: string; email?: string; age?: string; role?: string }
+
+// ③ Partial<Pick<...>> 组合：提交补丁——只包含可编辑字段，且都是可选的
+//    （实际提交时所有必填字段都已校验通过，但类型上仍然是可选的）
 type UserPatch = Partial<EditableUser>;
 
-// ==============================
-// 工具类型实战3：ReturnType 从函数推导类型
-// ==============================
+// ④ ReturnType：从工厂函数自动推导表单值类型
+//    好处：如果 createEmptyForm 加了字段，FormValues 自动包含
 function createEmptyForm(): EditableUser {
   return { name: "", email: "", age: 0, role: "user" };
 }
 type FormValues = ReturnType<typeof createEmptyForm>;
 
-// ==============================
-// 工具类型实战4：satisfies 校验配置 + 保留精确 key
-// ==============================
+// --- 表单配置（satisfies + as const 组合）---
+
+// FORM_CONFIG 用 satisfies 校验符合 Record<string, FieldConfig>，
+// 同时保留每个字段的精确 key 名称（"name" | "email" | "age" | "role"），
+// type 字段用 as const 保留字面量类型（"text" 而非宽泛的 string），
+// 这样 TypeScript 在条件分支中能自动收窄 cfg.type 的类型。
 const FORM_CONFIG = {
   name: {
-    label: "姓名", type: "text" as const, placeholder: "请输入姓名",
-    required: true, min: 2, max: 20
+    label: "姓名",
+    type: "text" as const,
+    placeholder: "请输入姓名",
+    required: true,
+    min: 2,
+    max: 20,
   },
   email: {
-    label: "邮箱", type: "email" as const, placeholder: "example@xx.com",
-    required: true
+    label: "邮箱",
+    type: "email" as const,
+    placeholder: "example@xx.com",
+    required: true,
   },
   age: {
-    label: "年龄", type: "number" as const, placeholder: "0-120",
-    required: true, min: 0, max: 120
+    label: "年龄",
+    type: "number" as const,
+    placeholder: "0-120",
+    required: true,
+    min: 0,
+    max: 120,
   },
   role: {
-    label: "角色", type: "select" as const,
-    options: ["admin", "user", "guest"], required: true
-  }
-} satisfies FormConfig;
+    label: "角色",
+    type: "select" as const,
+    options: ["admin", "user", "guest"] as const,
+    required: true,
+  },
+} satisfies Record<string, FieldConfig>;
 
-// 校验单个字段
+// --- 校验函数 ---
+
+/**
+ * 校验单个字段的值，返回错误消息字符串（空字符串表示校验通过）。
+ * @param key   - 字段名（EditableUser 的 key 之一）
+ * @param value - 字段当前值（string 来自 input，number 来自 age 转换）
+ * @returns 错误消息，"" 表示无错误
+ */
 function validateField(key: keyof EditableUser, value: string | number): string {
+  // 根据 key 从配置表中获取该字段的配置
+  // FORM_CONFIG[key] 的类型是精确的（satisfies 保留了 key 信息），
+  // TypeScript 能自动推断 cfg 的结构
   const cfg = FORM_CONFIG[key];
   const str = String(value).trim();
+
+  // 必填校验
   if (cfg.required && str === "") return \`\${cfg.label}不能为空\`;
+
+  // 邮箱格式校验（只有 email 类型才检查）
+  // 因为 type 字段用了 as const，这里 TypeScript 知道 cfg.type === "email" 时
+  // cfg 的类型被收窄为 email 配置（不过这里没有 email 专属字段，只是演示）
   if (cfg.type === "email" && str && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(str)) {
     return "邮箱格式不正确";
   }
+
+  // 数字范围校验（number 类型）
   if (cfg.type === "number" && str) {
     const n = Number(str);
     if (Number.isNaN(n)) return \`\${cfg.label}必须是数字\`;
     if (cfg.min !== undefined && n < cfg.min) return \`\${cfg.label}不能小于 \${cfg.min}\`;
     if (cfg.max !== undefined && n > cfg.max) return \`\${cfg.label}不能大于 \${cfg.max}\`;
   }
+
+  // 文本长度校验（text 类型）
   if (cfg.type === "text" && str) {
-    if (cfg.min !== undefined && str.length < cfg.min) return \`\${cfg.label}至少 \${cfg.min} 字符\`;
-    if (cfg.max !== undefined && str.length > cfg.max) return \`\${cfg.label}最多 \${cfg.max} 字符\`;
+    if (cfg.min !== undefined && str.length < cfg.min) return \`\${cfg.label}至少 \${cfg.min} 个字符\`;
+    if (cfg.max !== undefined && str.length > cfg.max) return \`\${cfg.label}最多 \${cfg.max} 个字符\`;
   }
-  return "";
+
+  return ""; // 校验通过
 }
 
-// ==============================
-// 配置驱动的表单组件
-// ==============================
+// --- 测试校验函数（在控制台输出）---
+// 辅助函数：美化校验结果输出——空字符串（通过）显示为 ✅，否则显示错误消息
+function showValidateResult(key: keyof EditableUser, value: string | number, label: string) {
+  const msg = validateField(key, value);
+  console.log(label + ":", msg || "✅ 通过");
+}
+
+console.log("\\n=== 表单校验函数测试 ===");
+showValidateResult("name", "", "空姓名");                          // 姓名不能为空
+showValidateResult("name", "A", "姓名过短");                       // 姓名至少 2 个字符
+showValidateResult("name", "张三", "合法姓名");                     // ✅ 通过
+showValidateResult("email", "bad-email", "非法邮箱");              // 邮箱格式不正确
+showValidateResult("email", "a@b.com", "合法邮箱");                // ✅ 通过
+showValidateResult("age", "-1", "年龄负数");                       // 年龄不能小于 0
+showValidateResult("age", "200", "年龄超限");                      // 年龄不能大于 120
+showValidateResult("age", "25", "合法年龄");                       // ✅ 通过
+
+// --- 配置驱动表单组件 ---
+
 function ConfigForm() {
+  // 表单值状态：初始值从工厂函数创建
+  // FormValues 类型由 ReturnType<typeof createEmptyForm> 自动推导
   const [values, setValues] = useState<FormValues>(createEmptyForm());
-  const [errors, setErrors] = useState<Partial<Record<keyof EditableUser, string>>>({});
+
+  // 错误状态：Partial<Record<...>> 意味着每个字段可能有错误，也可能没有
+  const [errors, setErrors] = useState<FormErrors>({});
+
+  // 提交成功后生成的补丁对象（Partial<EditableUser>）
   const [patch, setPatch] = useState<UserPatch | null>(null);
 
+  // 字段列表：从配置对象的 key 获取，自动保持和配置同步
+  // as (keyof EditableUser)[] 是类型断言——因为 FORM_CONFIG 的 key 正好就是 EditableUser 的 key
   const fields = Object.keys(FORM_CONFIG) as (keyof EditableUser)[];
 
-  function update(key: keyof EditableUser, value: string) {
+  // useCallback：字段更新函数，memoize 避免不必要的重渲染
+  const update = useCallback((key: keyof EditableUser, value: string) => {
+    // 根据字段类型转换值：age 转为 number，其余保持 string
     const next: FormValues = {
       ...values,
-      [key]: key === "age" ? (value === "" ? 0 : Number(value)) : value
+      [key]: key === "age" ? (value === "" ? 0 : Number(value)) : value,
     };
     setValues(next);
-    const msg = validateField(key, next[key]);
-    setErrors(prev => ({ ...prev, [key]: msg || undefined }));
-  }
 
+    // 实时校验：每次输入都检查该字段
+    const msg = validateField(key, next[key]);
+    // 更新错误对象：有错误就设置，没错误就设为 undefined（删除该 key）
+    setErrors(prev => ({ ...prev, [key]: msg || undefined }));
+  }, [values]);
+
+  // 提交处理
   function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const allErrors: Partial<Record<keyof EditableUser, string>> = {};
+    e.preventDefault(); // 阻止表单默认提交行为
+
+    // 全量校验：遍历所有字段，收集错误
+    const allErrors: FormErrors = {};
     fields.forEach(key => {
       const msg = validateField(key, values[key]);
       if (msg) allErrors[key] = msg;
     });
     setErrors(allErrors);
+
     if (Object.keys(allErrors).length === 0) {
-      // Partial<EditableUser>：只含可编辑字段，不含 id
+      // 校验通过：生成补丁对象（Partial<EditableUser>）
+      // 这个补丁可以直接传给 PATCH API
       const submitPatch: UserPatch = { ...values };
       setPatch(submitPatch);
+      console.log("✅ 表单提交成功，补丁数据:", JSON.stringify(submitPatch, null, 2));
     } else {
       setPatch(null);
+      console.log("❌ 表单校验失败:", JSON.stringify(allErrors));
     }
   }
+
+  // useMemo：计算表单是否有效（没有错误且必填字段非空）
+  const isValid = useMemo(() => {
+    return fields.every(key => !errors[key] &&
+      (!FORM_CONFIG[key].required || String(values[key]).trim() !== ""));
+  }, [errors, values, fields]);
 
   return (
     <div>
@@ -2599,18 +3440,23 @@ function ConfigForm() {
         padding: 20, background: "white", borderRadius: 10,
         border: "1px solid #e5e7eb"
       }}>
+        {/* 根据 fields 数组动态渲染表单项——配置驱动！ */}
         {fields.map(key => {
           const cfg = FORM_CONFIG[key];
           const err = errors[key];
           return (
             <div key={key} style={{ marginBottom: 14 }}>
+              {/* 字段标签 */}
               <label style={{
                 display: "block", marginBottom: 5, fontWeight: 600, fontSize: 13, color: "#374151"
               }}>
                 {cfg.label}
                 {cfg.required ? <span style={{ color: "#dc2626" }}> *</span> : null}
               </label>
+
+              {/* 根据字段类型渲染不同的输入控件 */}
               {cfg.type === "select" ? (
+                // select 下拉框
                 <select
                   value={values[key] as string}
                   onChange={e => update(key, e.target.value)}
@@ -2620,11 +3466,13 @@ function ConfigForm() {
                     borderRadius: 6, fontSize: 14, outline: "none"
                   }}
                 >
+                  {/* cfg.options 来自 as const 配置，类型安全 */}
                   {(cfg.options || []).map(opt => (
                     <option key={opt} value={opt}>{opt}</option>
                   ))}
                 </select>
               ) : (
+                // input 输入框（text/email/number）
                 <input
                   type={cfg.type}
                   value={values[key] as string | number}
@@ -2637,23 +3485,31 @@ function ConfigForm() {
                   }}
                 />
               )}
+
+              {/* 错误提示（红色文字）*/}
               {err ? (
                 <div style={{ color: "#dc2626", fontSize: 12, marginTop: 4 }}>{err}</div>
               ) : null}
             </div>
           );
         })}
+
+        {/* 提交按钮 */}
         <button
           type="submit"
+          disabled={!isValid}
           style={{
             width: "100%", padding: "11px 0", border: "none", borderRadius: 6,
-            background: "#3b82f6", color: "white", fontSize: 15, fontWeight: 600, cursor: "pointer"
+            background: isValid ? "#3b82f6" : "#93c5fd",
+            color: "white", fontSize: 15, fontWeight: 600,
+            cursor: isValid ? "pointer" : "not-allowed",
           }}
         >
           提交（生成 Partial&lt;Pick&gt; 补丁）
         </button>
       </form>
 
+      {/* 提交成功后显示补丁数据 */}
       {patch ? (
         <div style={{
           marginTop: 16, padding: 14, borderRadius: 8,
@@ -2674,26 +3530,35 @@ function ConfigForm() {
   );
 }
 
-// ==============================
-// 主组件
-// ==============================
+// --- 主组件 ---
+
 export default function Demo() {
-  const usedTypes = [
-    { name: "Record<string, FieldConfig>", desc: "字段配置表，强制完整性" },
-    { name: 'Pick<User, "name"|"email"|"age"|"role">', desc: "排除 id，挑可编辑字段" },
-    { name: "Partial<EditableUser>", desc: "更新补丁，全部可选" },
-    { name: "ReturnType<typeof createEmptyForm>", desc: "从函数推导表单值类型" },
-    { name: "satisfies FormConfig", desc: "校验配置 + 保留精确 key" }
-  ];
+  // useMemo：工具类型清单，不会改变所以不需要重新计算
+  const usedTypes = useMemo(() => [
+    { name: "Partial<T>", desc: "全部可选，表单错误/PATCH 补丁" },
+    { name: "Required<T>", desc: "全部必填，配置校验" },
+    { name: "Readonly<T>", desc: "全部只读，不可变数据" },
+    { name: "Pick<T, K>", desc: "挑选字段，脱敏/子集" },
+    { name: "Omit<T, K>", desc: "排除字段，创建 DTO" },
+    { name: "Record<K, V>", desc: "键值映射，配置表强制完整" },
+    { name: "ReturnType<F>", desc: "函数返回值类型自动推导" },
+    { name: "Parameters<F>", desc: "函数参数类型元组" },
+    { name: "Exclude<U, E>", desc: "联合类型排除" },
+    { name: "Extract<U, M>", desc: "联合类型提取" },
+    { name: "NonNullable<T>", desc: "排除 null/undefined" },
+    { name: "Awaited<T>", desc: "解包 Promise 类型" },
+    { name: "as const", desc: "保留字面量最窄类型" },
+    { name: "satisfies", desc: "校验 + 保留精确类型" },
+  ], []);
 
   return (
     <div style={{ maxWidth: 520, margin: "40px auto", padding: 20, fontFamily: "system-ui" }}>
       <h2 style={{ marginBottom: 4 }}>🛠️ 配置驱动表单（工具类型实战）</h2>
       <p style={{ color: "#6b7280", fontSize: 13, marginBottom: 16 }}>
-        用 Record / Pick / Partial / ReturnType / satisfies 构建
+        用 Partial / Pick / Omit / Record / ReturnType / Exclude / Awaited / as const / satisfies 构建
       </p>
 
-      {/* 使用的工具类型清单 */}
+      {/* 使用的工具类型清单标签 */}
       <div style={{
         display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16
       }}>
@@ -2711,6 +3576,27 @@ export default function Demo() {
     </div>
   );
 }
+
+// =============================================================
+// 🎯 运行时总结（点击「▶ 运行」后在控制台查看）
+// =============================================================
+console.log("\\n" + "=".repeat(60));
+console.log("📋 工具类型总结：");
+console.log("  1. Partial<T>       → 全部可选 → PATCH 更新、表单错误");
+console.log("  2. Required<T>      → 全部必填 → 配置校验、完整性保证");
+console.log("  3. Readonly<T>      → 全部只读 → 不可变数据、Props保护");
+console.log("  4. Pick<T, K>       → 挑选字段 → 脱敏、表单子集");
+console.log("  5. Omit<T, K>       → 排除字段 → DTO、排除自动字段");
+console.log("  6. Record<K, V>     → 键值映射 → 配置表（强制完整性）");
+console.log("  7. ReturnType<F>    → 返回值类型 → 自动推导、Hook 返回值");
+console.log("  8. Parameters<F>    → 参数元组 → 事件参数类型复用");
+console.log("  9. Exclude<U, E>    → 联合排除 → 权限/变体收窄");
+console.log(" 10. Extract<U, M>    → 联合提取 → 判别联合匹配");
+console.log(" 11. NonNullable<T>   → 非空断言 → filter 后类型收窄");
+console.log(" 12. Awaited<T>       → 解包Promise → async返回值类型");
+console.log(" 13. as const         → 字面量类型 → 常量、枚举替代");
+console.log(" 14. satisfies        → 校验+精确 → 配置表最佳实践");
+console.log("=".repeat(60));
 `,
   },
 

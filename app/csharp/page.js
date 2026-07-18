@@ -12,7 +12,7 @@ export default function CsharpTutorial() {
       bookTitle="C# 入门"
       defaultLang="cs"
       tip="点击章节开始学习 C#"
-      footerText="C# 12 / .NET 8 交互式教程 · 代码由系统 dotnet 编译运行 · 涵盖语法基础/OOP/泛型/委托事件/LINQ/异步编程"
+      footerText="C# 12 / .NET 8 实战教程 · demo 驱动，每章可运行 · 语法基础 / OOP / 泛型 / 委托事件 / LINQ / 异步编程 / 文件 IO / .NET 生态"
     />
   );
 }

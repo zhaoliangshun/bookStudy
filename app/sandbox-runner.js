@@ -40,6 +40,13 @@ export const ALLOWED_MODULES = [
   "zlib",
   "assert",
   "timers",
+  // tsx 教程代码经 TS 编译后会产生 require("react") 和
+  // require("react/jsx-runtime")（jsx: ReactJSX 模式产物）。
+  // 这里提供 mock 而非真实 React：沙箱不渲染 UI，组件函数仅被定义
+  // 而不会被调用，hooks / _jsx 也不会执行，只需让 require 不报错。
+  "react",
+  "react/jsx-runtime",
+  "react/jsx-dev-runtime",
 ];
 
 // 模块加载阶段一次性 require 所有允许的模块到缓存。
@@ -59,6 +66,73 @@ const MODULE_CACHE = {
   zlib: nodeRequire("zlib"),
   assert: nodeRequire("assert"),
   timers: nodeRequire("timers"),
+  // React mock：仅满足 require("react") / require("react/jsx-runtime") 不报错。
+  // 沙箱里不渲染组件，hooks / jsx 工厂函数都不会被真正用于渲染；
+  // 但用户代码在模块顶层会调用这些函数（例如 useMemo 计算值、useState 初始化），
+  // 所以 mock 要尽量让代码"能正常跑完"而非直接报错。
+  react: {
+    // useState(initialValue) → [value, setValue]
+    // mock：返回 initialValue（或函数执行结果）和一个空函数 setter
+    useState: (init) => {
+      const v = typeof init === "function" ? init() : init;
+      return [v, () => {}];
+    },
+    // useEffect(fn, deps?) 在沙箱里不执行副作用（无 DOM、无生命周期）
+    useEffect: () => {},
+    // useLayoutEffect 同 useEffect，沙箱里不执行
+    useLayoutEffect: () => {},
+    // useMemo(fn, deps?) → fn() 直接执行并返回结果
+    // mock 不缓存（沙箱里组件只定义不重新渲染），但正确调用 fn 返回计算值
+    useMemo: (fn) => fn(),
+    // useCallback(fn, deps?) → fn 原样返回
+    useCallback: (fn) => fn,
+    // useRef(initialValue) → { current: initialValue }
+    useRef: (initial) => ({ current: initial }),
+    // useReducer(reducer, initialArg, init?) → [state, dispatch]
+    useReducer: (reducer, initial, init) => {
+      const s = typeof init === "function" ? init(initial) : initial;
+      return [s, () => {}];
+    },
+    // useContext → 返回空对象
+    useContext: () => ({}),
+    // useImperativeHandle 无实际效果
+    useImperativeHandle: () => {},
+    // forwardRef / memo 直接返回原组件
+    forwardRef: (fn) => fn,
+    memo: (comp) => comp,
+    // createContext(defaultValue) → { Provider, Consumer }
+    // Provider/Consumer 在沙箱里不实际渲染，返回 null 即可
+    createContext: (defaultValue) => ({
+      Provider: () => null,
+      Consumer: () => null,
+      _currentValue: defaultValue,
+    }),
+    // createElement 返回 null（不渲染）
+    createElement: () => null,
+    // cloneElement 返回 null
+    cloneElement: () => null,
+    // isValidElement 返回 false
+    isValidElement: () => false,
+    Fragment: "Fragment",
+  },
+  "react/jsx-runtime": {
+    // _jsx / _jsxs 是 ReactJSX 模式转译后调用的工厂函数。
+    // 真实 React 会返回 ReactElement 对象，这里返回 null 即可——
+    // 因为沙箱里从不渲染这些元素，只是让代码能"跑完"。
+    // 注意：JSX 转译产物使用的是 _jsx（单 child）和 _jsxs（多 child），
+    // 不是 jsx/jsxs（那是开发环境旧版本的命名）。
+    jsx: () => null,
+    jsxs: () => null,
+    _jsx: () => null,
+    _jsxs: () => null,
+    Fragment: "Fragment",
+  },
+  // react/jsx-dev-runtime 是 React 17+ 开发模式使用的 JSX 运行时，
+  // tsx 转译在某些配置下可能 require 这个路径。
+  "react/jsx-dev-runtime": {
+    jsxDEV: () => null,
+    Fragment: "Fragment",
+  },
 };
 
 // 把任意值格式化为可读字符串（模拟 console.log 行为）

@@ -1,1211 +1,851 @@
 // =============================================================
-// C# 教程 - 第三批章节（第三部分 面向对象，共 4 章）
+// C# 实战教程 - 第三批章节（第三部分面向对象，共 4 章）
 // -------------------------------------------------------------
 // 本批包含 4 章：
-//   csharp-ch09 : 第九章 类与对象——面向对象的基石
-//   csharp-ch10 : 第十章 继承与多态——代码复用与扩展
-//   csharp-ch11 : 第十一章 接口与抽象类——契约与设计
+//   csharp-ch09 : 第九章 类与对象入门
+//   csharp-ch10 : 第十章 继承与多态
+//   csharp-ch11 : 第十一章 接口与抽象类
 //   csharp-ch12 : 第十二章 属性、索引器与运算符重载
 //
-// 所有 C# 代码示例均可在交互式编辑器中运行（基于顶级语句）。
-// 适用版本：C# 12 / .NET 8 LTS
+// 风格：demo 驱动，每章直接上手写代码，多注释。
+// 注意：顶级语句 → 本地函数 → 类型声明的顺序，确保示例可直接运行。
+// 适用版本：.NET 8 LTS / C# 12。
 // =============================================================
 
 const chapters = [
   // ============================================================
-  // 第九章：类与对象——面向对象的基石
+  // 第九章：类与对象入门
   // ============================================================
   {
     id: 'csharp-ch09',
     group: '第三部分 面向对象',
-    icon: '🧱',
-    title: '类与对象——面向对象的基石',
-    content: `## 第九章　类与对象——面向对象的基石
+    icon: '🎯',
+    title: '类与对象入门',
+    content: `## 第九章　类与对象入门
 
-### 一、为什么需要面向对象
+类是面向对象的基石——把数据和操作打包在一起。这一章讲类的定义、属性、构造函数、方法——这些是你写任何 C# 业务代码的基础。
 
-前八章我们写的都是"过程式"代码——把数据和方法分开，按顺序执行。这在小型脚本里没问题，但当程序规模扩大，就会出现两个痛点：
-
-- **数据和操作数据的方法分散**：维护时要满文件找相关逻辑。
-- **复用困难**：相似结构在不同地方重复定义，改一处要改多处。
-
-面向对象编程（OOP）的核心思想是：**把数据和对数据的操作封装成一个整体——"对象"**。它有四大特性：
-
-| 特性 | 含义 | 解决的问题 |
-|------|------|-----------|
-| 封装 | 数据与方法绑定，对外隐藏内部细节 | 防止外部直接篡改内部状态 |
-| 继承 | 子类自动获得父类的成员 | 代码复用、建立类型层次 |
-| 多态 | 同一接口、不同实现 | 解耦调用方与实现方 |
-| 抽象 | 提取共性、忽略细节 | 控制复杂度 |
-
-C# 从一开始就是"纯面向对象"语言——所有代码都必须放在类（或类型）里，不像 Java 留下了基本类型的"裂缝"（C# 的基本类型在统一类型系统里也有对应的方法）。
-
-### 二、定义类：class 关键字
-
-类是"蓝图"，对象是按蓝图造出的"实例"。定义类使用 \`class\` 关键字：
+### 一、最简单的类
 
 \`\`\`csharp
-// 定义一个"人"类
-public class Person
+// 创建对象（顶级语句）
+var p = new Person("张三", 25);
+Console.WriteLine(p.Introduce());
+
+// 类型声明（放最后）
+class Person
 {
-    // 字段（Field）：类内部存储数据的地方
+    // 字段：存储数据
     public string Name;
     public int Age;
 
-    // 方法（Method）：类能做的事
-    public void Introduce()
-    {
-        Console.WriteLine($"我叫{Name}，今年{Age}岁。");
-    }
-}
-
-// 使用类：创建对象
-Person p = new Person();
-p.Name = "张三";
-p.Age = 25;
-p.Introduce();  // 我叫张三，今年25岁。
-\`\`\`
-
-几个要点：
-
-- **类名**：通常用 PascalCase（每个单词首字母大写），如 \`Person\`、\`OrderService\`。
-- **访问修饰符**：\`public\` 表示外部可见，\`private\` 仅类内部可见（默认）。
-- **字段**：直接暴露字段不好（破坏封装），后面会用"属性"替代。
-- **创建对象**：\`new Person()\` 在堆上分配内存并初始化。
-
-### 三、构造函数：对象的"出生初始化"
-
-构造函数（constructor）是创建对象时自动调用的特殊方法，用于初始化对象状态。它的名字必须与类名相同，没有返回类型。
-
-\`\`\`csharp
-public class Person
-{
-    public string Name;
-    public int Age;
-
-    // 无参构造函数
-    public Person()
-    {
-        Name = "匿名";
-        Age = 0;
-    }
-
-    // 带参构造函数（重载）
+    // 构造函数：创建对象时初始化
     public Person(string name, int age)
     {
         Name = name;
         Age = age;
     }
 
-    public void Introduce() => Console.WriteLine($"我叫{Name}，今年{Age}岁。");
-}
-
-// 使用
-var p1 = new Person();
-var p2 = new Person("李四", 30);
-p1.Introduce();  // 我叫匿名，今年0岁。
-p2.Introduce();  // 我叫李四，今年30岁。
-\`\`\`
-
-**几个关键点：**
-
-1. **如果你没有定义任何构造函数**，编译器会自动生成一个无参构造函数。
-2. **如果你定义了带参构造函数**，编译器就**不再**生成无参构造函数——想要无参构造必须显式写出。
-3. **构造函数可以重载**：多个构造函数参数不同，调用方按需选择。
-4. **构造函数之间可以互相调用**，使用 \`: this(...)\`：
-
-\`\`\`csharp
-public class Person
-{
-    public string Name;
-    public int Age;
-    public string? Email;
-
-    // 主构造函数：做完整初始化
-    public Person(string name, int age, string? email)
+    // 方法：对象的行为
+    public string Introduce()
     {
-        Name = name;
-        Age = age;
-        Email = email;
+        return $"我叫 {Name}，今年 {Age} 岁";
     }
-
-    // 复用主构造函数
-    public Person(string name, int age) : this(name, age, null) { }
-
-    // 复用带 age 的构造
-    public Person(string name) : this(name, 0) { }
 }
-
-new Person("王五");  // age=0, email=null
 \`\`\`
 
-#### C# 12 主构造函数（Primary Constructor）
+### 二、属性：字段的升级版 ⭐
 
-C# 12 引入了"主构造函数"语法，可以把构造参数直接写在类名后面，省去字段赋值的样板代码：
-
-\`\`\`csharp
-// C# 12 主构造函数
-public class Person(string name, int age)
-{
-    public string Name => name;   // 通过属性暴露
-    public int Age => age;
-
-    public void Introduce() => Console.WriteLine($"我叫{Name}，今年{Age}岁。");
-}
-
-new Person("赵六", 40).Introduce();
-\`\`\`
-
-主构造函数的参数在类的整个作用域内可用，可以赋给字段、属性，或直接在方法中使用。它适合"数据传递型"的类（如 DTO、配置类），不适合需要复杂初始化逻辑的场景。
-
-### 四、字段 vs 属性：封装的演进
-
-直接暴露字段是反模式——外部可以随意赋任何值，没有校验。C# 用"属性"（property）解决这个问题。
-
-#### 完整属性（带 backing field）
+直接用 \`public\` 字段不优雅——无法控制读写、无法做校验。C# 用**属性**替代字段：
 
 \`\`\`csharp
-public class Account
-{
-    private decimal balance;  // 私有字段
+// 创建
+var u = new User();
+u.Name = "李四";        // 调用 set
+u.Age = 25;            // 调用 set（含校验）
+Console.WriteLine(u.Name);  // 调用 get
+Console.WriteLine(u.Age);
 
-    public decimal Balance   // 公开属性
+// u.Age = -5;  // 会抛异常：年龄不能为负
+
+class User
+{
+    // 自动属性：编译器自动生成私有字段 ⭐
+    public string Name { get; set; }
+
+    // 完整属性：自定义 get/set 逻辑
+    private int _age;  // 私有字段
+    public int Age
     {
-        get { return balance; }
+        get { return _age; }
         set
         {
-            if (value < 0)
-                throw new ArgumentException("余额不能为负");
-            balance = value;
+            if (value < 0)  // value 是 set 的隐式参数
+                throw new ArgumentException("年龄不能为负");
+            _age = value;
         }
     }
-}
 
-var acc = new Account();
-acc.Balance = 1000;     // 走 set
-Console.WriteLine(acc.Balance);  // 1000，走 get
-// acc.Balance = -1;    // 抛异常
-\`\`\`
+    // 只读属性（只有 get）：只能在构造函数里赋值
+    public string Id { get; }
 
-- \`value\` 是 set 访问器里的隐式参数，代表外部传入的值。
-- 在 set 里可以加校验、记录日志、触发事件。
-- 外部读写属性看起来像字段，但底层走方法调用。
+    // 表达式体属性
+    public bool IsAdult => Age >= 18;
 
-#### 自动属性（Auto Property）
-
-如果暂时不需要校验，可以用"自动属性"省去字段声明：
-
-\`\`\`csharp
-public class Person
-{
-    public string Name { get; set; }  // 编译器自动生成私有字段
-    public int Age { get; set; }
+    // 计算属性
+    public string Summary => $"{Name}({Age}岁, {(IsAdult ? "成年" : "未成年")})";
 }
 \`\`\`
 
-编译器会自动生成一个匿名的私有字段。需要加校验时再改成完整属性即可，调用方代码不变——这是属性设计的关键优势。
+> ⭐ **永远用属性，不要用 public 字段**。属性能控制读写权限、做校验、做计算，且不影响调用代码（\`obj.Name\` 语法相同）。
 
-#### 只读属性与 init
-
-\`\`\`csharp
-public class Point
-{
-    // 方式一：只 get，没有 set
-    public int X { get; }
-    public int Y { get; }
-
-    public Point(int x, int y) { X = x; Y = y; }
-}
-
-// C# 9+ 引入 init：只能在对象初始化时赋值，之后不可改
-public class Config
-{
-    public string Host { get; init; } = "localhost";
-    public int Port { get; init; } = 8080;
-}
-
-var c = new Config { Host = "0.0.0.0", Port = 3306 };
-// c.Port = 80;  // 编译错误：init 属性初始化后不能再赋值
-\`\`\`
-
-\`init\` 适合"对象一旦创建就不可变"的场景（不可变数据更易推理、更安全）。
-
-### 五、this 关键字
-
-\`this\` 指向当前对象实例。常见用途：
-
-1. **区分参数与字段同名**：
-\`\`\`csharp
-public Person(string name, int age)
-{
-    this.name = name;     // this.name 是字段，name 是参数
-    this.age = age;
-}
-private string name;
-private int age;
-\`\`\`
-
-2. **在方法中传递当前对象**：
-\`\`\`csharp
-public void Register(Registry r) => r.Add(this);
-\`\`\`
-
-3. **链式调用**：
-\`\`\`csharp
-public class StringBuilder
-{
-    public StringBuilder Append(string s) { /* ... */ return this; }
-}
-new StringBuilder().Append("a").Append("b").Append("c");
-\`\`\`
-
-4. **构造函数之间调用**（前面已介绍 \`: this(...)\`）。
-
-### 六、static：属于类型，不属于实例
-
-普通成员属于对象实例（每个对象有自己的一份）。\`static\` 成员属于类型本身，所有实例共享一份。
+### 三、构造函数 ⭐
 
 \`\`\`csharp
-public class Counter
-{
-    private static int total = 0;   // 静态字段：所有实例共享
+// 创建
+var e1 = new Employee("张三", 5000);
+Console.WriteLine(e1);
 
-    public int Id { get; }
-    public Counter()
+var e2 = new Employee("李四");  // 用默认工资
+Console.WriteLine(e2);
+
+class Employee
+{
+    public string Name { get; set; }
+    public decimal Salary { get; set; }
+
+    // 主构造函数（C# 12 特性：参数直接成为字段）⭐
+    // 等价于传统写法：public Employee(string name, decimal salary) { Name = name; Salary = salary; }
+    public Employee(string name, decimal salary = 8000)
     {
-        total++;
-        Id = total;
+        Name = name;
+        Salary = salary;
     }
 
-    // 静态方法：不依赖实例
-    public static int GetTotal() => total;
+    public override string ToString() => $"{Name}: ¥{Salary:N0}";
+}
+\`\`\`
 
-    // 静态构造函数：类型初始化时调用一次
-    static Counter()
+> ⭐ C# 12 的"主构造函数"让类的定义更简洁：\`class Point(int X, int Y);\` 一行搞定。
+
+### 四、this 关键字
+
+\`\`\`csharp
+// 使用
+var r = new Rectangle(10, 20);
+Console.WriteLine(r.Area);  // 200
+
+class Rectangle
+{
+    public int Width { get; set; }
+    public int Height { get; set; }
+
+    public Rectangle(int width, int height)
     {
-        Console.WriteLine("Counter 类型首次被使用");
+        // this 区分字段与参数（参数同名时必须用 this）
+        this.Width = width;
+        this.Height = height;
     }
-}
 
-var c1 = new Counter();
-var c2 = new Counter();
-Console.WriteLine(c1.Id);  // 1
-Console.WriteLine(c2.Id);  // 2
-Console.WriteLine(Counter.GetTotal());  // 2，用类名调用
+    // this 串联调用其他构造函数
+    public Rectangle(int size) : this(size, size) { }  // 正方形
+
+    public int Area => Width * Height;
+}
 \`\`\`
 
-**典型场景：**
+### 五、静态成员 ⭐
 
-- 配置类：\`static class Config { public static string DbHost = "..."; }\`
-- 工具类：\`static class MathUtil { public static int Add(int a, int b) => a + b; }\`
-- 工厂方法：\`public static Person Create(...) { ... }\`
-- 单例模式：\`public static Instance { get; } = new ...\`
-
-#### static class
-
-\`static class\` 修饰的类**不能被实例化**，只能包含 static 成员。常用作工具方法容器：
+\`static\` 成员属于类本身，不属于某个对象——所有对象共享一份。
 
 \`\`\`csharp
-public static class StringHelper
-{
-    public static bool IsNullOrEmpty(string? s) => string.IsNullOrEmpty(s);
-    public static string Reverse(string s) => new string(s.Reverse().ToArray());
-}
+// 使用
+Console.WriteLine(MathHelper.Pi);        // 3.14159（静态字段）
+Console.WriteLine(MathHelper.Add(2, 3));  // 5（静态方法）
 
-StringHelper.Reverse("abc");  // cba
+// 静态类不能实例化
+// var m = new MathHelper();  // 编译错误
+
+// 静态构造函数：第一次访问类时执行（只一次）
+Console.WriteLine("再次访问 Pi:");
+Console.WriteLine(MathHelper.Pi);  // 不会再次触发静态构造函数
+
+static class MathHelper
+{
+    // 静态字段
+    public static readonly double Pi = 3.14159265;
+
+    // 静态方法
+    public static int Add(int a, int b) => a + b;
+
+    public static int Square(int x) => x * x;
+}
 \`\`\`
 
-### 七、对象初始化器与集合初始化器
+> ⭐ \`static\` 类常用作工具方法集合（如 \`Math\`、\`Convert\`、\`File\`）。不能 \`new\`，不能有实例成员。
 
-C# 提供"对象初始化器"语法，可以在 \`new\` 后用 \`{}\` 一次性给多个属性赋值：
+### 六、对象初始化器 ⭐
 
 \`\`\`csharp
-public class Person
+// 使用
+var p = new Product
 {
-    public string Name { get; set; } = "";
-    public int Age { get; set; }
-    public List<string> Hobbies { get; set; } = new();
-}
-
-var p = new Person
-{
-    Name = "张三",
-    Age = 25,
-    Hobbies = { "阅读", "编程" }  // 集合初始化器
+    Name = "蓝牙耳机",
+    Price = 199.99m,
+    Stock = 50
 };
-\`\`\`
+Console.WriteLine(p);
 
-集合初始化器 \`{ "a", "b" }\` 会调用集合的 \`Add\` 方法。任何实现了 \`IEnumerable\` 且有 \`Add\` 方法的类型都支持。
+// 等价于
+var p2 = new Product();
+p2.Name = "蓝牙耳机";
+p2.Price = 199.99m;
+p2.Stock = 50;
 
-### 八、record 类型（C# 9+）
-
-\`record\` 是 C# 9 引入的"不可变引用类型"，专为"数据载体"设计：
-
-\`\`\`csharp
-public record Person(string Name, int Age);
-
-var p1 = new Person("张三", 25);
-var p2 = new Person("张三", 25);
-Console.WriteLine(p1 == p2);  // True，基于值相等
-
-// 不可变：不能改 p1.Name
-// 但可以用 with 表达式生成副本并修改
-var p3 = p1 with { Age = 26 };
-Console.WriteLine(p3);  // Person { Name = 张三, Age = 26 }
-\`\`\`
-
-\`record\` 的特点：
-
-- **基于值的相等**：两个 record 字段相同则相等（class 默认是引用相等）。
-- **不可变**：属性是只读的。
-- **\`with\` 表达式**：基于原对象生成副本并修改部分字段。
-- **自动生成** \`ToString()\`、\`Equals\`、\`GetHashCode\`。
-- **解构**：\`var (name, age) = p1;\`
-
-**对比 class 与 record：**
-
-| 维度 | class | record |
-|------|-------|--------|
-| 相等性 | 引用相等（默认） | 值相等 |
-| 可变性 | 可变（默认） | 不可变 |
-| 典型用途 | 行为对象（服务、控制器） | 数据对象（DTO、领域值） |
-| with 表达式 | 不支持 | 支持 |
-
-C# 10 还引入了 \`record struct\`（可变的值类型 record），C# 11 引入了 \`file\` 修饰符限制类型作用域。
-
-### 九、可空引用类型（C# 8+）
-
-C# 8 起引入"可空引用类型"特性，让编译器在编译期检查空引用风险。开启后：
-
-- \`string\` 默认不可空，赋值 \`null\` 会有警告。
-- \`string?\` 显式声明可空，使用前必须检查。
-
-\`\`\`csharp
-#nullable enable
-public class User
+class Product
 {
-    public string Name { get; set; }      // 不可空：必须赋非 null 值
-    public string? Email { get; set; }   // 可空：可以赋 null
+    public string Name { get; set; } = "";  // 属性默认值
+    public decimal Price { get; set; }
+    public int Stock { get; set; }
 
-    public string GetEmailOrEmpty() => Email ?? "";
+    public override string ToString() => $"{Name} - ¥{Price:F2} (库存 {Stock})";
+}
+\`\`\`
+
+### 七、null 与可空引用类型 ⭐
+
+\`\`\`csharp
+// 创建
+var order = new OrderItem { ProductName = "耳机", Quantity = 2 };
+Console.WriteLine(order.Discount ?? 0);  // null 合并：null 时用 0
+Console.WriteLine(order.Discount?.ToString() ?? "无折扣");  // 空条件 + 合并
+
+class OrderItem
+{
+    public string ProductName { get; set; }
+    public int Quantity { get; set; }
+
+    // 可空引用类型：表示 Discount 可能为 null（C# 8+ 默认开启）
+    public decimal? Discount { get; set; }  // 注意 ? 表示可空
+}
+\`\`\`
+
+> ⭐ \`?\` 后缀表示可空：\`int?\` 是可空 int，\`string?\` 是可空 string。处理可空用 \`?.\`（空条件）和 \`??\`（合并）。
+
+### 八、实战 demo：学生成绩管理
+
+\`\`\`csharp
+// === 学生成绩管理 ===
+// 演示：类、属性、构造函数、静态成员、集合
+
+// 创建学生列表
+var students = new List<Student>
+{
+    new Student("张三", new[] { 85, 92, 78 }),
+    new Student("李四", new[] { 76, 88, 95 }),
+    new Student("王五", new[] { 92, 85, 88 }),
+};
+
+Console.WriteLine($"共 {Student.TotalCount} 名学生");
+Console.WriteLine();
+
+// 输出每个学生信息
+foreach (var s in students)
+{
+    Console.WriteLine(s);
 }
 
-var u = new User { Name = "张三" };
-// u.Name = null;  // 警告：不能赋 null 给不可空属性
-Console.WriteLine(u.GetEmailOrEmpty());  // ""
+// 计算班级平均分
+double classAvg = students.Average(s => s.Average);
+Console.WriteLine($"\\n班级平均分：{classAvg:F2}");
+
+// 找最高分学生
+var top = students.OrderByDescending(s => s.Average).First();
+Console.WriteLine($"最高分：{top.Name}（{top.Average:F1}）");
+
+class Student
+{
+    // 静态字段：所有对象共享，记录总数
+    public static int TotalCount = 0;
+
+    // 实例属性
+    public string Name { get; set; }
+    public int[] Scores { get; set; }
+
+    // 构造函数
+    public Student(string name, int[] scores)
+    {
+        Name = name;
+        Scores = scores;
+        TotalCount++;  // 每创建一个学生，总数 +1
+    }
+
+    // 计算属性
+    public double Average => Scores.Average();
+    public int Max => Scores.Max();
+    public int Total => Scores.Sum();
+
+    // 重写 ToString
+    public override string ToString()
+    {
+        var scoresStr = string.Join(", ", Scores);
+        return $"{Name,-6} 成绩：[{scoresStr}] 平均：{Average:F1} 最高：{Max}";
+    }
+}
 \`\`\`
 
-可空引用类型不是运行时特性，而是**编译期的"静态分析"**——通过警告帮你提前发现 \`NullReferenceException\` 风险。新项目都建议开启 \`#nullable enable\`。
+输出：
+\`\`\`
+共 3 名学生
 
-### 十、本章小结
+张三   成绩：[85, 92, 78] 平均：85.0 最高：92
+李四   成绩：[76, 88, 95] 平均：86.3 最高：95
+王五   成绩：[92, 85, 88] 平均：88.3 最高：92
 
-- 面向对象的四大特性：封装、继承、多态、抽象。
-- 类是蓝图，对象是实例；\`class\` 定义类型，\`new\` 创建实例。
-- 构造函数用于初始化，可以重载、可以互相调用；C# 12 主构造函数简化了样板代码。
-- 字段直接暴露破坏封装，应使用属性（自动属性或完整属性）；\`init\` 用于不可变场景。
-- \`this\` 指向当前实例；\`static\` 成员属于类型本身。
-- \`record\` 是不可变数据载体，基于值相等，配合 \`with\` 表达式修改副本。
-- 可空引用类型在编译期检查 \`null\` 风险，是 C# 防御性编程的重要工具。
-`,
+班级平均分：86.56
+最高分：王五（88.3）
+\`\`\`
+
+### 九、本章小结
+
+- ⭐ 类用 \`class\` 定义，包含字段/属性/方法/构造函数。
+- ⭐ **永远用属性，不用 public 字段**：\`public string Name { get; set; }\`。
+- ⭐ 自动属性 \`{ get; set; }\` 最常用；自定义属性可加校验逻辑。
+- ⭐ 只读属性 \`{ get; }\` 只能在构造函数赋值。
+- ⭐ 静态成员属于类本身：\`static\` 字段/方法/类，用 \`类名.成员\` 访问。
+- ⭐ 对象初始化器 \`new T { Prop = val }\` 简洁地初始化多个属性。
+- ⭐ 可空类型 \`int?\` / \`string?\`：用 \`?.\` 和 \`??\` 安全处理 null。
+
+下一章讲继承与多态——代码复用与扩展的核心机制。`,
   },
 
   // ============================================================
-  // 第十章：继承与多态——代码复用与扩展
+  // 第十章：继承与多态
   // ============================================================
   {
     id: 'csharp-ch10',
     group: '第三部分 面向对象',
-    icon: '🧬',
-    title: '继承与多态——代码复用与扩展',
-    content: `## 第十章　继承与多态——代码复用与扩展
+    icon: '🌳',
+    title: '继承与多态',
+    content: `## 第十章　继承与多态
 
-### 一、继承的本质
+继承让子类复用父类的代码，多态让同一调用走不同实现。这是面向对象的灵魂——这一章讲透 \`virtual/override/abstract\`、\`base\` 关键字、里氏替换原则。
 
-继承（Inheritance）让一个类获得另一个类的所有成员（字段、属性、方法），并可以在其基础上扩展或改写。
-
-- **基类（base class / 父类）**：被继承的类。
-- **派生类（derived class / 子类）**：继承自基类的类。
-
-C# 用 \`: base\` 语法表示继承（不像 Java 用 \`extends\`）：
+### 一、基础继承
 
 \`\`\`csharp
-public class Animal
+// 使用：子类继承父类，自动拥有父类的成员
+var dog = new Dog("旺财");
+dog.Eat();      // 继承自 Animal
+dog.Bark();     // Dog 自己的方法
+dog.Name = "大黄";  // 继承自 Animal 的属性
+Console.WriteLine(dog.Name);
+
+class Animal
 {
     public string Name { get; set; }
 
-    public void Eat()
-    {
-        Console.WriteLine($"{Name} 在吃东西");
-    }
-}
-
-// Dog 继承 Animal
-public class Dog : Animal
-{
-    public void Bark()
-    {
-        Console.WriteLine($"{Name} 汪汪叫");
-    }
-}
-
-var d = new Dog { Name = "旺财" };
-d.Eat();   // 继承自 Animal
-d.Bark();   // Dog 自己的方法
-\`\`\`
-
-**关键规则：**
-
-1. **C# 是单继承**：一个类只能有一个直接基类（不像 C++ 支持多继承）。
-2. **所有类的"祖宗"是 \`object\`**（即 \`System.Object\`）——不写 \`: base\` 时隐式继承 \`object\`。
-3. **构造函数不被继承**：派生类要自己定义构造函数，可以通过 \`base(...)\` 调用父类构造。
-4. **私有成员能继承但不能访问**：派生类"拥有"父类的 private 字段，但代码里访问不了。
-
-### 二、base 关键字
-
-\`base\` 类似 \`this\`，但指向基类部分。两种典型用法：
-
-#### 1. 调用基类构造函数
-
-\`\`\`csharp
-public class Animal
-{
-    public string Name { get; }
     public Animal(string name) => Name = name;
+
+    public void Eat() => Console.WriteLine($"{Name} 在吃东西");
 }
 
-public class Dog : Animal
+class Dog : Animal  // : 表示继承
 {
-    public string Breed { get; }
-    // 派生类构造函数通过 : base(...) 调用父类构造
-    public Dog(string name, string breed) : base(name)
-    {
-        Breed = breed;
-    }
-}
+    public Dog(string name) : base(name) { }  // base 调用父类构造函数
 
-var d = new Dog("旺财", "柴犬");
-Console.WriteLine($"{d.Name} - {d.Breed}");  // 旺财 - 柴犬
+    public void Bark() => Console.WriteLine($"{Name} 汪汪汪！");
+}
 \`\`\`
 
-**为什么必须 \`base\`？** 因为基类没有无参构造函数时，派生类必须显式调用一个带参构造，否则编译器不知道父类部分怎么初始化。
+> ⭐ C# 是**单继承**：一个类只能继承一个父类。\`class Dog : Animal\`。\`base\` 关键字调用父类成员。
 
-#### 2. 调用基类方法（多态相关）
+### 二、virtual 与 override：多态 ⭐
 
-\`\`\`csharp
-public class Base
-{
-    public virtual void Show() => Console.WriteLine("Base.Show");
-}
-
-public class Derived : Base
-{
-    public override void Show()
-    {
-        base.Show();  // 调用父类版本
-        Console.WriteLine("Derived.Show");
-    }
-}
-
-new Derived().Show();
-// Base.Show
-// Derived.Show
-\`\`\`
-
-### 三、virtual 与 override：实现多态
-
-多态（Polymorphism）是 OOP 的精髓——"同一接口、不同实现"。C# 用 \`virtual\` 和 \`override\` 实现：
-
-- \`virtual\`：在基类标记方法"可被改写"。
-- \`override\`：在派生类改写基类的 \`virtual\` 方法。
+\`virtual\` 标记可被重写的方法，\`override\` 重写父类方法。**这是多态的核心**。
 
 \`\`\`csharp
-public class Animal
+// 使用：同一个变量调用同一方法，行为不同
+Animal a = new Cat("咪咪");
+Animal b = new Dog("旺财");
+a.MakeSound();  // 咪咪 喵喵喵（调用 Cat 的版本）
+b.MakeSound();  // 旺财 汪汪汪（调用 Dog 的版本）
+
+class Animal
 {
     public string Name { get; set; }
-    public virtual void Speak()  // virtual：子类可改写
-    {
-        Console.WriteLine("动物发出声音");
-    }
+    public Animal(string name) => Name = name;
+
+    // virtual：标记为可重写
+    public virtual void MakeSound() => Console.WriteLine($"{Name} 发出声音");
 }
 
-public class Dog : Animal
+class Cat : Animal
 {
-    public override void Speak()  // override：改写父类方法
-    {
-        Console.WriteLine($"{Name} 汪汪汪");
-    }
+    public Cat(string name) : base(name) { }
+    // override：重写父类方法
+    public override void MakeSound() => Console.WriteLine($"{Name} 喵喵喵");
 }
 
-public class Cat : Animal
+class Dog : Animal
 {
-    public override void Speak()
-    {
-        Console.WriteLine($"{Name} 喵喵喵");
-    }
+    public Dog(string name) : base(name) { }
+    public override void MakeSound() => Console.WriteLine($"{Name} 汪汪汪");
 }
-
-// 多态：用父类引用调用，实际执行子类版本
-Animal[] animals = { new Dog { Name = "旺财" }, new Cat { Name = "咪咪" } };
-foreach (var a in animals)
-{
-    a.Speak();
-}
-// 旺财 汪汪汪
-// 咪咪 喵喵喵
 \`\`\`
 
-**多态的威力：**
+> ⭐ 多态：父类变量引用子类对象，调用重写方法时执行子类版本。这是 OOP 的精髓——"同一接口，不同行为"。
 
-调用方 \`foreach\` 里的代码完全不需要知道 \`a\` 具体是 \`Dog\` 还是 \`Cat\`，运行时根据对象的**实际类型**调用对应的方法。新增动物类型时，主逻辑不用改——这就是"对扩展开放、对修改关闭"（开闭原则）。
-
-#### 注意：不写 virtual/override 的"陷阱"
+### 三、里氏替换原则（LSP）
 
 \`\`\`csharp
-public class Animal
+// 使用：父类能出现的地方，子类一定能用
+var shapes = new Shape[]
 {
-    public void Speak() { Console.WriteLine("Animal.Speak"); }  // 没有 virtual
+    new Circle(5),
+    new Rectangle(4, 6),
+    new Triangle(3, 4, 5),
+};
+
+foreach (var s in shapes)
+{
+    Console.WriteLine($"面积：{s.Area():F2}");
 }
 
-public class Dog : Animal
+abstract class Shape
 {
-    public new void Speak() { Console.WriteLine("Dog.Speak"); }  // new：隐藏父类方法
-}
-
-Animal a = new Dog();
-a.Speak();  // Animal.Speak——按声明类型调用，不是多态！
-
-Dog d = new Dog();
-d.Speak();  // Dog.Speak——按 Dog 调用
-\`\`\`
-
-如果不写 \`virtual\`，子类用 \`new\` 只是"隐藏"父类方法，不是真正的多态。**绝大多数情况下你想要的是 \`virtual\` + \`override\`，慎用 \`new\`**。
-
-### 四、abstract：抽象方法与抽象类
-
-\`virtual\` 提供了"可选改写"的能力——基类有默认实现，子类可改可不改。但有时基类本身**不应该有实现**（比如"动物"不知道怎么叫），这时用 \`abstract\`：
-
-- \`abstract class\`：抽象类，**不能被实例化**，只能被继承。
-- \`abstract\` 方法：抽象方法，**没有方法体**，必须在派生类中 override 实现。
-
-\`\`\`csharp
-public abstract class Shape  // 抽象类：不能 new Shape()
-{
-    public string Name { get; set; }
-
-    // 抽象方法：没有方法体，子类必须实现
+    // abstract：强制子类实现
     public abstract double Area();
-
-    // 抽象类里也可以有普通方法（用到子类实现的 Area）
-    public void PrintArea()
-    {
-        Console.WriteLine($"{Name} 的面积 = {Area():F2}");
-    }
 }
 
-public class Circle : Shape
+class Circle : Shape
 {
     public double Radius { get; set; }
+    public Circle(double r) => Radius = r;
     public override double Area() => Math.PI * Radius * Radius;
 }
 
-public class Rectangle : Shape
+class Rectangle : Shape
 {
     public double Width { get; set; }
     public double Height { get; set; }
+    public Rectangle(double w, double h) { Width = w; Height = h; }
     public override double Area() => Width * Height;
 }
 
-Shape[] shapes = {
-    new Circle { Name = "圆A", Radius = 3 },
-    new Rectangle { Name = "矩形B", Width = 4, Height = 5 }
-};
-foreach (var s in shapes) s.PrintArea();
-// 圆A 的面积 = 28.27
-// 矩形B 的面积 = 20.00
-\`\`\`
-
-**abstract 与 virtual 的对比：**
-
-| 特性 | abstract | virtual |
-|------|----------|---------|
-| 适用 | 类、方法、属性、索引器 | 方法、属性、索引器 |
-| 是否有方法体 | 无（必须由子类实现） | 有（子类可改可不改） |
-| 是否必须被 override | 是（除非子类也是 abstract） | 否 |
-| 类的限制 | 所在类必须 abstract | 所在类可以是普通类 |
-
-### 五、sealed：禁止再继承
-
-\`sealed\` 关键字用于"封死"继承链：
-
-- \`sealed class\`：不能被继承（如 \`string\`、\`DateTime\` 都是 sealed）。
-- \`sealed override\` 方法：子类不能继续 override 这个方法。
-
-\`\`\`csharp
-public sealed class FinalClass { }  // 不能被继承
-// public class Sub : FinalClass { }  // 编译错误
-
-public class Base
+class Triangle : Shape
 {
-    public virtual void Show() => Console.WriteLine("Base");
-}
-
-public class Mid : Base
-{
-    public sealed override void Show() => Console.WriteLine("Mid");  // 封死
-}
-
-public class Leaf : Mid
-{
-    // public override void Show() => ...  // 编译错误：sealed 不能再 override
+    public double Base { get; set; }
+    public double Height { get; set; }
+    public Triangle(double b, double h) { Base = b; Height = h; }
+    public override double Area() => 0.5 * Base * Height;
 }
 \`\`\`
 
-**何时用 sealed：**
+> ⭐ LSP：子类必须能完全替换父类，不破坏程序正确性。重写方法时不要改变预期的行为契约。
 
-1. **保护设计**：不希望别人继承破坏逻辑（如框架的内部类型）。
-2. **性能优化**：sealed 类的方法调用可以做"非虚调用"优化，编译器能内联。
-
-### 六、里氏替换原则（LSP）
-
-继承的多态有一个基本原则叫**里氏替换原则**：**子类对象必须能完全替换父类对象，而程序行为不变**。
-
-违反 LSP 的典型例子：
+### 四、base 调用父类方法 ⭐
 
 \`\`\`csharp
-// 错误示范：经典的"鸟"问题
-public class Bird
+// 使用
+var m = new Manager("张三", 50000, 10);
+m.Work();  // 调用父类 + 扩展
+
+class Employee
 {
-    public virtual void Fly() => Console.WriteLine("飞翔");
-}
+    public string Name { get; set; }
+    public decimal Salary { get; set; }
 
-public class Penguin : Bird
-{
-    public override void Fly() => throw new NotSupportedException("企鹅不会飞");
-}
-
-void MakeFly(Bird b) => b.Fly();
-
-MakeFly(new Penguin());  // 运行时抛异常，违反 LSP
-\`\`\`
-
-**修复方法**：调整继承层次，把 \`Fly\` 移到 \`FlyableBird\` 子类，企鹅不继承它能飞的方法。
-
-判断是否符合 LSP 的简单准则：
-
-- 子类不能**加强**前置条件（参数更严）。
-- 子类不能**削弱**后置条件（返回值更弱）。
-- 子类不能抛出**新的异常**（除非是父类声明过的）。
-
-### 七、协变与逆变（了解）
-
-C# 4 引入的泛型协变/逆变，让泛型类型之间也能反映继承关系。这里只做概念介绍：
-
-- **协变（out）**：\`IEnumerable<Dog>\` 可以赋给 \`IEnumerable<Animal>\`（子到父）。
-- **逆变（in）**：\`Action<Animal>\` 可以赋给 \`Action<Dog>\`（父到子）。
-
-\`\`\`csharp
-// 协变示例
-IEnumerable<Dog> dogs = new List<Dog>();
-IEnumerable<Animal> animals = dogs;  // OK：协变
-
-// 逆变示例
-Action<Animal> animalAction = a => Console.WriteLine(a.Name);
-Action<Dog> dogAction = animalAction;  // OK：逆变
-\`\`\`
-
-日常业务代码用得不多，主要在框架/库设计时考虑。
-
-### 八、组合 vs 继承
-
-继承容易被滥用。"Is-a" 关系用继承（狗是一种动物），"Has-a" 关系用组合（汽车有引擎）。
-
-**继承的代价：**
-
-- 强耦合：父类改了，所有子类都受影响。
-- 编译期固定：继承关系在编译时就确定了，运行时不能改。
-- 爆炸式膨胀：功能多时容易形成深层继承链。
-
-**组合（Composition）：** 把功能拆成独立对象，作为字段持有，运行时可替换。
-
-\`\`\`csharp
-// 继承方式（不推荐）
-public class FlyableBird : Bird { public void Fly() { } }
-public class SwimmerBird : Bird { public void Swim() { } }
-// 如果有鸟既能飞又能游，就要多继承，但 C# 不支持
-
-// 组合方式（推荐）
-public interface IFlyBehavior { void Fly(); }
-public interface ISwimBehavior { void Swim(); }
-
-public class Bird
-{
-    public IFlyBehavior? FlyBehavior { get; set; }
-    public ISwimBehavior? SwimBehavior { get; set; }
-
-    public void TryFly() => FlyBehavior?.Fly();
-    public void TrySwim() => SwimBehavior?.Swim();
-}
-
-// 行为可在运行时替换（策略模式）
-var duck = new Bird
-{
-    FlyBehavior = new SimpleFly(),
-    SwimBehavior = new FloatSwim()
-};
-duck.TryFly();
-duck.TrySwim();
-\`\`\`
-
-设计原则：**"多用组合，少用继承"**。优先用接口 + 组合，能解耦；继承适合真正的类型层次（is-a）。
-
-### 九、综合示例：员工系统
-
-\`\`\`csharp
-public abstract class Employee
-{
-    public string Name { get; }
-    public decimal BaseSalary { get; }
-
-    protected Employee(string name, decimal baseSalary)
+    public Employee(string name, decimal salary)
     {
         Name = name;
-        BaseSalary = baseSalary;
+        Salary = salary;
     }
 
-    public abstract decimal CalculatePay();  // 子类各自实现
-
-    public virtual string GetInfo() => $"{Name}（基本工资 {BaseSalary:C}）";
+    public virtual void Work() => Console.WriteLine($"{Name} 在工作");
 }
 
-public class FullTimeEmployee : Employee
+class Manager : Employee
 {
-    public decimal Bonus { get; }
+    public int TeamSize { get; set; }
 
-    public FullTimeEmployee(string name, decimal salary, decimal bonus)
-        : base(name, salary)
+    public Manager(string name, decimal salary, int teamSize)
+        : base(name, salary)  // 调用父类构造函数
     {
-        Bonus = bonus;
+        TeamSize = teamSize;
     }
 
-    public override decimal CalculatePay() => BaseSalary + Bonus;
-
-    public override string GetInfo() => $"全职员工 {base.GetInfo()}，奖金 {Bonus:C}";
-}
-
-public class Contractor : Employee
-{
-    public int Hours { get; }
-    public decimal HourlyRate { get; }
-
-    public Contractor(string name, int hours, decimal rate)
-        : base(name, 0)
+    public override void Work()
     {
-        Hours = hours;
-        HourlyRate = rate;
+        base.Work();  // 先执行父类逻辑
+        Console.WriteLine($"{Name} 还在管理 {TeamSize} 人团队");
     }
-
-    public override decimal CalculatePay() => Hours * HourlyRate;
-
-    public override string GetInfo() => $"外包员工 {Name}（{Hours} 小时 × {HourlyRate:C}）";
 }
-
-Employee[] employees = {
-    new FullTimeEmployee("张三", 20000, 5000),
-    new Contractor("李四", 80, 300),
-};
-
-foreach (var e in employees)
-{
-    Console.WriteLine($"{e.GetInfo()}，应发 {e.CalculatePay():C}");
-}
-// 全职员工 张三（基本工资 ¥20,000.00），奖金 ¥5,000.00，应发 ¥25,000.00
-// 外包员工 李四（80 小时 × ¥300.00），应发 ¥24,000.00
 \`\`\`
 
-这个例子综合体现了：
+### 五、sealed：禁止继承
 
-- **抽象类**：\`Employee\` 提供共同字段和方法骨架。
-- **抽象方法**：\`CalculatePay\` 强制子类实现。
-- **virtual 方法**：\`GetInfo\` 提供默认实现，子类选择性 override。
-- **\`base\` 调用**：子类的 \`GetInfo\` 复用父类版本。
-- **多态**：循环里用父类引用，调用的是各自子类版本。
+\`\`\`csharp
+// 使用
+var s = new Safe("金库");
+s.Lock();
 
-### 十、本章小结
+// 类型声明
+sealed class Safe  // sealed：这个类不能被继承
+{
+    public string Name { get; set; }
+    public Safe(string name) => Name = name;
+    public void Lock() => Console.WriteLine($"{Name} 已锁定");
+}
 
-- 继承用 \`: base\` 语法，单继承，所有类最终继承 \`object\`。
-- \`base\` 关键字用于调用父类构造和方法。
-- \`virtual\` + \`override\` 实现多态：父类声明类型，子类提供实现。
-- \`abstract\` 类不能实例化，抽象方法必须被子类实现。
-- \`sealed\` 阻止继续继承。
-- 里氏替换原则：子类必须能完全替换父类，不破坏程序预期。
-- 优先组合而非继承，保持低耦合。
-`,
+// class StrongSafe : Safe { }  // 编译错误：sealed 类不能继承
+\`\`\`
+
+> \`sealed\` 用于防止关键类被继承（安全、性能、设计）。也可单独标记方法 \`sealed override\` 阻止子类再重写。
+
+### 六、is 与 as：类型判断与转换 ⭐
+
+\`\`\`csharp
+// 使用
+object obj = "Hello";
+
+// is：判断类型
+if (obj is string)
+{
+    Console.WriteLine("是字符串");
+}
+
+// is + 模式匹配（C# 7+）：判断并赋值 ⭐
+if (obj is string s)
+{
+    Console.WriteLine($"长度：{s.Length}");
+}
+
+// as：安全转换，失败返回 null
+object n = 42;
+string str = n as string;  // 转换失败，str = null
+Console.WriteLine(str is null ? "null" : str);
+
+// 类型转换的几种方式
+Animal a = new Dog("旺财");
+Dog d = (Dog)a;        // 强转：失败抛异常
+Dog d2 = a as Dog;     // as：失败返回 null
+bool isDog = a is Dog;  // is：判断
+\`\`\`
+
+> ⭐ \`is\` 判断类型，\`as\` 安全转换。优先用 \`is + 模式匹配\`：\`if (obj is string s)\`，一行搞定判断+赋值。
+
+### 七、多态实战：策略模式雏形
+
+\`\`\`csharp
+// === 折扣策略 ===
+// 演示：多态实现策略模式
+
+// 使用
+var cart = 100m;
+
+// 不同折扣策略
+DiscountStrategy noDiscount = new NoDiscount();
+DiscountStrategy tenPercent = new PercentageDiscount(0.1m);
+DiscountStrategy fullReduction = new FullReduction(100, 20);
+
+Console.WriteLine($"原价 {cart:C}");
+Console.WriteLine($"无折扣：{noDiscount.Apply(cart):C}");
+Console.WriteLine($"9 折：{tenPercent.Apply(cart):C}");
+Console.WriteLine($"满 100 减 20：{fullReduction.Apply(cart):C}");
+
+// 策略可切换
+DiscountStrategy current = tenPercent;
+Console.WriteLine($"当前策略：{current.Apply(cart):C}");
+
+// 类型声明
+abstract class DiscountStrategy
+{
+    public abstract decimal Apply(decimal original);
+}
+
+class NoDiscount : DiscountStrategy
+{
+    public override decimal Apply(decimal original) => original;
+}
+
+class PercentageDiscount : DiscountStrategy
+{
+    private readonly decimal _rate;
+    public PercentageDiscount(decimal rate) => _rate = rate;
+    public override decimal Apply(decimal original) => original * (1 - _rate);
+}
+
+class FullReduction : DiscountStrategy
+{
+    private readonly decimal _threshold;
+    private readonly decimal _reduction;
+    public FullReduction(decimal threshold, decimal reduction)
+    {
+        _threshold = threshold;
+        _reduction = reduction;
+    }
+    public override decimal Apply(decimal original)
+    {
+        return original >= _threshold ? original - _reduction : original;
+    }
+}
+\`\`\`
+
+### 八、本章小结
+
+- ⭐ \`class Sub : Base\` 表示继承，C# 单继承。
+- ⭐ \`virtual\` 标记可重写，\`override\` 重写父类方法——**这是多态的核心**。
+- ⭐ \`base.Method()\` 调用父类方法，\`base(...)\` 调用父类构造函数。
+- ⭐ \`abstract\` 强制子类实现（抽象类不能实例化）。
+- ⭐ \`sealed\` 禁止继承。
+- ⭐ \`is\` 判断类型，\`as\` 安全转换，\`is + 模式匹配\` 一行判断+赋值。
+- 里氏替换：子类替换父类不破坏程序。
+
+下一章讲接口与抽象类——面向对象设计的两大基石。`,
   },
 
   // ============================================================
-  // 第十一章：接口与抽象类——契约与设计
+  // 第十一章：接口与抽象类
   // ============================================================
   {
     id: 'csharp-ch11',
     group: '第三部分 面向对象',
-    icon: '🤝',
-    title: '接口与抽象类——契约与设计',
-    content: `## 第十一章　接口与抽象类——契约与设计
+    icon: '🔌',
+    title: '接口与抽象类',
+    content: `## 第十一章　接口与抽象类
 
-### 一、接口是什么
+接口定义"能做什么"，抽象类提供"是什么"的共用实现。这一章讲两者的区别、何时用哪个，以及默认接口方法、多接口实现等实战技巧。
 
-接口（Interface）是一种"契约"——它定义了一组方法/属性的签名，但**不提供实现**。任何实现接口的类，必须提供这些方法的具体实现。
-
-接口与抽象类的最大区别：
-
-| 维度 | 接口（interface） | 抽象类（abstract class） |
-|------|------------------|------------------------|
-| 实现 | 不能有字段、不能有具体方法（C# 8 前完全无实现） | 可以有字段、构造、具体方法 |
-| 多继承 | 一个类可同时实现多个接口 | 只能继承一个抽象类 |
-| 表达 | "能做什么"（Can-do） | "是什么"（Is-a） |
-| 字段 | 不允许 | 允许 |
-| 构造函数 | 不允许 | 允许 |
-| 访问修饰符 | 默认 public（不能改） | 任意 |
-
-**核心心法：** 接口表示能力/契约，抽象类表示类型层次。优先用接口，需要共享代码时才用抽象类。
-
-### 二、定义与实现接口
-
-接口用 \`interface\` 关键字定义，习惯上以 \`I\` 开头（如 \`IDisposable\`、\`IEnumerable\`、\`IComparable\`）：
+### 一、接口：能力的契约 ⭐
 
 \`\`\`csharp
-// 定义接口
-public interface IComparable
+// 使用
+var f = new FileLogger("app.log");
+f.Log("服务启动");
+f.Log("收到请求");
+
+var c = new ConsoleLogger();
+c.Log("控制台输出");
+
+// 用接口类型引用（多态）
+ILogger logger = new FileLogger("error.log");
+logger.Log("接口引用调用");
+
+// 类型声明
+interface ILogger
 {
-    int CompareTo(object? obj);
-}
-
-public interface IDisposable
-{
-    void Dispose();
-}
-
-// 实现接口
-public class FileResource : IDisposable
-{
-    public void Dispose()
-    {
-        Console.WriteLine("释放文件资源");
-    }
-}
-
-var r = new FileResource();
-r.Dispose();
-\`\`\`
-
-**接口实现的两种方式：**
-
-1. **隐式实现**：上面这种 \`public void Dispose()\`，可以通过类引用或接口引用调用。
-2. **显式实现**：用 \`void IDisposable.Dispose()\` 形式，**只能通过接口引用调用**，不能通过类引用调用。
-
-\`\`\`csharp
-public class FileResource : IDisposable
-{
-    // 显式实现
-    void IDisposable.Dispose()
-    {
-        Console.WriteLine("释放资源");
-    }
-}
-
-var r = new FileResource();
-// r.Dispose();  // 编译错误：显式实现必须通过接口调用
-((IDisposable)r).Dispose();  // OK
-\`\`\`
-
-**显式实现的使用场景：**
-
-- 接口方法名与类已有方法冲突，避免歧义。
-- 不希望接口方法出现在类的公共 API 中（强制调用方用接口引用）。
-
-### 三、一个类实现多个接口
-
-接口的"多继承"特性是它比抽象类的最大优势：
-
-\`\`\`csharp
-public interface IComparable
-{
-    int CompareTo(object? obj);
-}
-
-public interface ICloneable
-{
-    object Clone();
-}
-
-public interface IFormattable
-{
-    string ToString(string? format, IFormatProvider? provider);
-}
-
-public class Money : IComparable, ICloneable, IFormattable
-{
-    public decimal Amount { get; }
-
-    public Money(decimal amount) => Amount = amount;
-
-    public int CompareTo(object? obj)
-    {
-        if (obj is Money m) return Amount.CompareTo(m.Amount);
-        throw new ArgumentException("类型不匹配");
-    }
-
-    public object Clone() => new Money(Amount);
-
-    public string ToString(string? format, IFormatProvider? provider)
-    {
-        return format == "C" ? Amount.ToString("C", provider) : Amount.ToString();
-    }
-}
-
-var m1 = new Money(100);
-var m2 = (Money)m1.Clone();
-Console.WriteLine(m1.CompareTo(m2));  // 0
-Console.WriteLine(m1.ToString("C", null));  // ¥100.00
-\`\`\`
-
-### 四、接口的属性与索引器
-
-接口不仅能定义方法，还能定义属性和索引器（签名 + getter/setter）：
-
-\`\`\`csharp
-public interface INamed
-{
-    string Name { get; set; }     // 属性
-    string Id { get; }            // 只读属性
-}
-
-public interface IStringList
-{
-    string this[int index] { get; set; }  // 索引器
-}
-
-public class MyList : IStringList
-{
-    private string[] _data = new string[10];
-
-    public string this[int index]
-    {
-        get => _data[index];
-        set => _data[index] = value;
-    }
-}
-\`\`\`
-
-### 五、默认接口方法（C# 8+）
-
-C# 8 引入"默认接口方法"——接口可以提供方法的默认实现，实现类不强制 override：
-
-\`\`\`csharp
-public interface ILogger
-{
+    // 接口方法：只有声明，没有实现（C# 8 之前）
     void Log(string message);
 
-    // 默认实现
-    void LogError(string message) => Log($"[ERROR] {message}");
-    void LogWarning(string message) => Log($"[WARN] {message}");
+    // 接口属性
+    string Name { get; }
 }
 
-public class ConsoleLogger : ILogger
+class FileLogger : ILogger
 {
-    public void Log(string message) => Console.WriteLine(message);
-    // 不实现 LogError / LogWarning，用默认版本
+    private readonly string _filename;
+    public string Name => $"FileLogger:{_filename}";
+
+    public FileLogger(string filename) => _filename = filename;
+
+    public void Log(string message)
+    {
+        // 真实场景写文件，这里模拟
+        Console.WriteLine($"[{_filename}] {DateTime.Now:HH:mm:ss} - {message}");
+    }
 }
 
-var logger = new ConsoleLogger();
-logger.Log("普通日志");
-logger.LogError("出错了");  // 调用接口的默认实现
-// ConsoleLogger 没有定义 LogError，但接口提供了默认
+class ConsoleLogger : ILogger
+{
+    public string Name => "ConsoleLogger";
+    public void Log(string message) => Console.WriteLine($"[Console] {message}");
+}
 \`\`\`
 
-**注意陷阱：** 默认方法只能通过接口引用调用：
+> ⭐ 接口是"能力契约"：实现接口 = 承诺提供某种能力。\`class X : IA, IB\` 可以实现多个接口（弥补单继承）。
+
+### 二、接口的多实现 ⭐
 
 \`\`\`csharp
-ILogger logger = new ConsoleLogger();
-logger.LogError("xxx");  // OK：通过接口引用
+// 使用
+var doc = new Document("readme.md");
+doc.Print();     // IPrintable
+doc.Save();      // ISaveable
+doc.Search("关键词");  // ISearchable
 
-ConsoleLogger cl = new ConsoleLogger();
-// cl.LogError("xxx");  // 编译错误：ConsoleLogger 类没有公开 LogError 方法
-\`\`\`
+// 用接口变量引用
+IPrintable printable = doc;
+printable.Print();
 
-**默认接口方法的设计意图：**
+ISaveable saveable = doc;
+saveable.Save();
 
-- **API 演进**：给已发布的接口添加新方法，不破坏现有实现（Java 8 的 \`default\` 方法同样目的）。
-- **混入（Mixin）**：把多个方法的默认实现组合在一起。
+// 类型声明
+interface IPrintable { void Print(); }
+interface ISaveable { void Save(); }
+interface ISearchable { void Search(string keyword); }
 
-但日常业务代码中要谨慎使用——它让接口"半像抽象类"，复杂度上升。
-
-### 六、抽象类 vs 接口：怎么选
-
-什么时候用抽象类，什么时候用接口？给一个简单决策原则：
-
-**用抽象类当：**
-
-- 一组相关的类型需要共享**代码实现**（不只是签名）。
-- 需要字段、构造函数、访问修饰符。
-- 类型之间是"Is-a"关系（动物 → 狗）。
-
-**用接口当：**
-
-- 想表达"能力"而非"是什么"（可比较、可释放、可枚举）。
-- 类型之间没有共同祖先，但都"能做某事"。
-- 需要多继承。
-
-#### 例子：抽象类与接口共存
-
-\`\`\`csharp
-// 抽象类：共享代码
-public abstract class Animal
+class Document : IPrintable, ISaveable, ISearchable  // 实现多个接口
 {
     public string Name { get; set; }
-    public void Breathe() => Console.WriteLine($"{Name} 呼吸");
-    public abstract void Speak();
-}
+    public Document(string name) => Name = name;
 
-// 接口：表达能力
-public interface ITrainable
-{
-    void Train(string command);
-}
-
-// 接口：表达"能被收养"
-public interface IAdoptable
-{
-    bool IsAdopted { get; set; }
-}
-
-public class Dog : Animal, ITrainable, IAdoptable
-{
-    public override void Speak() => Console.WriteLine("汪汪");
-    public void Train(string command) => Console.WriteLine($"学会：{command}");
-    public bool IsAdopted { get; set; }
+    public void Print() => Console.WriteLine($"打印 {Name}");
+    public void Save() => Console.WriteLine($"保存 {Name}");
+    public void Search(string keyword) => Console.WriteLine($"在 {Name} 中搜索 '{keyword}'");
 }
 \`\`\`
 
-这里 \`Animal\` 是"是什么"（共享代码），\`ITrainable\` / \`IAdoptable\` 是"能做什么"（不同能力组合）。
+> ⭐ 一个类可以实现多个接口——这是 C# 解决"多继承"需求的标准方式。
 
-### 七、依赖倒置原则（DIP）
-
-接口的另一大价值：**解耦**。SOLID 中的 D（依赖倒置原则）说：
-
-> 高层模块不应该依赖低层模块，两者都应该依赖抽象。
-
-**反例（依赖具体类）：**
+### 三、接口的默认实现（C# 8+）
 
 \`\`\`csharp
-public class MySQLDatabase
+// 使用
+var repo = new UserRepository();
+repo.Add(new User2 { Id = 1, Name = "张三" });  // 实现的方法
+repo.Log("添加用户");  // 默认实现的方法
+
+// 类型声明
+interface IRepository<T>
 {
-    public void Save(User u) { /* 写 MySQL */ }
+    void Add(T item);
+    T Get(int id);
+
+    // 默认实现：接口可以提供方法体（C# 8+）
+    void Log(string msg)
+    {
+        Console.WriteLine($"[Repo] {DateTime.Now:HH:mm:ss} {msg}");
+    }
 }
 
-public class UserService
+class User2
 {
-    private MySQLDatabase _db = new MySQLDatabase();  // 直接依赖具体类
-
-    public void Register(User u) => _db.Save(u);
+    public int Id { get; set; }
+    public string Name { get; set; }
 }
 
-// 问题：换 PostgreSQL 要改 UserService
+class UserRepository : IRepository<User2>
+{
+    public void Add(User2 item) => Console.WriteLine($"添加 {item.Name}");
+    public User2 Get(int id) => new User2 { Id = id, Name = "默认" };
+}
 \`\`\`
 
-**改进（依赖接口）：**
+> ⭐ 默认接口方法让接口能升级而不破坏老实现。但实现类可以重写默认方法。
+
+### 四、抽象类：共享实现 ⭐
+
+抽象类介于"接口"和"普通类"之间——可以包含实现，也能定义抽象方法强制子类实现。
 
 \`\`\`csharp
-public interface IUserRepository
+// 使用
+var rect = new Rectangle2(5, 3);
+var circ = new Circle2(4);
+
+Console.WriteLine($"矩形：{rect}, 面积={rect.Area():F2}, 周长={rect.Perimeter():F2}");
+Console.WriteLine($"圆形：{circ}, 面积={circ.Area():F2}, 周长={circ.Perimeter():F2}");
+
+// 类型声明
+abstract class Shape2
 {
-    void Save(User u);
-    User? Find(int id);
+    // 抽象方法：只有声明，强制子类实现
+    public abstract double Area();
+    public abstract double Perimeter();
+
+    // 具体方法：子类直接复用
+    public override string ToString() => $"{GetType().Name}";
 }
 
-public class MySQLUserRepo : IUserRepository
+class Rectangle2 : Shape2
 {
-    public void Save(User u) { Console.WriteLine("写入 MySQL"); }
-    public User? Find(int id) => null;
+    public double Width { get; set; }
+    public double Height { get; set; }
+    public Rectangle2(double w, double h) { Width = w; Height = h; }
+    public override double Area() => Width * Height;
+    public override double Perimeter() => 2 * (Width + Height);
 }
 
-public class PostgresUserRepo : IUserRepository
+class Circle2 : Shape2
 {
-    public void Save(User u) { Console.WriteLine("写入 Postgres"); }
-    public User? Find(int id) => null;
+    public double Radius { get; set; }
+    public Circle2(double r) => Radius = r;
+    public override double Area() => Math.PI * Radius * Radius;
+    public override double Perimeter() => 2 * Math.PI * Radius;
 }
-
-public class UserService
-{
-    private readonly IUserRepository _repo;
-
-    // 通过构造函数注入
-    public UserService(IUserRepository repo) => _repo = repo;
-
-    public void Register(User u) => _repo.Save(u);
-}
-
-// 切换实现只需换注入的实例
-var svc1 = new UserService(new MySQLUserRepo());
-var svc2 = new UserService(new PostgresUserRepo());
 \`\`\`
 
-\`UserService\` 只依赖 \`IUserRepository\` 接口，不关心底层是 MySQL 还是 Postgres。这就是"面向接口编程"——也是 DI（依赖注入）的基础。
+### 五、接口 vs 抽象类：怎么选 ⭐
 
-### 八、接口的多态
+| 维度 | 接口（interface） | 抽象类（abstract class） |
+| --- | --- | --- |
+| 继承 | 可多实现 | 只能单继承 |
+| 字段 | 不能有 | 可以有 |
+| 构造函数 | 没有 | 有 |
+| 方法实现 | 默认方法（C# 8+） | 可以混合抽象+具体 |
+| 适用 | 定义"能力" | 共享"是什么" |
 
-接口本身也是多态的工具。多个不相关的类实现同一接口，可以统一处理：
+**经验法则**：
+- 多个不相关类有相同能力 → **接口**（如 \`IComparable\`、\`IDisposable\`）。
+- 一组相关类共享实现 → **抽象类**（如 \`Animal\` → \`Dog\`/\`Cat\`）。
+- 不确定时**优先用接口**——更灵活，不占继承位。
+
+### 六、接口组合实战
 
 \`\`\`csharp
-public interface IDrawable
+// === 接口组合 ===
+// 演示：通过接口组合实现灵活设计
+
+// 使用
+var handlers = new IHandler[]
 {
-    void Draw();
-}
-
-public class Circle : IDrawable { public void Draw() => Console.WriteLine("画圆"); }
-public class Square : IDrawable { public void Draw() => Console.WriteLine("画方"); }
-public class Triangle : IDrawable { public void Draw() => Console.WriteLine("画三角"); }
-
-IDrawable[] shapes = {
-    new Circle(),
-    new Square(),
-    new Triangle()
+    new HttpHandler(),
+    new DbHandler(),
+    new CacheHandler(),
 };
 
-foreach (var s in shapes) s.Draw();
+foreach (var h in handlers)
+{
+    h.Handle("request-001");
+}
+
+// 类型声明
+interface IHandler
+{
+    string Name { get; }
+    void Handle(string request);
+}
+
+class HttpHandler : IHandler
+{
+    public string Name => "HTTP";
+    public void Handle(string request) => Console.WriteLine($"[{Name}] 处理 HTTP 请求：{request}");
+}
+
+class DbHandler : IHandler
+{
+    public string Name => "DB";
+    public void Handle(string request) => Console.WriteLine($"[{Name}] 处理数据库请求：{request}");
+}
+
+class CacheHandler : IHandler
+{
+    public string Name => "Cache";
+    public void Handle(string request) => Console.WriteLine($"[{Name}] 处理缓存请求：{request}");
+}
 \`\`\`
 
-\`Circle\` / \`Square\` / \`Triangle\` 没有继承关系，但都"能画"，可以通过 \`IDrawable\` 接口统一管理。
+### 七、本章小结
 
-### 九、常用 .NET 接口速览
+- ⭐ 接口是"能力契约"：\`interface ILogger { void Log(string msg); }\`。
+- ⭐ 一个类可以实现多个接口：\`class X : IA, IB, IC\`。
+- ⭐ 抽象类可以混合抽象方法+具体方法，子类复用具体实现。
+- ⭐ 默认接口方法（C# 8+）让接口可升级不破坏老代码。
+- ⭐ 选择：定义"能力"用接口，共享"是什么"用抽象类。
+- 接口不能有字段、构造函数；抽象类可以。
 
-.NET BCL 内置了大量接口，掌握几个常用的：
-
-| 接口 | 用途 | 主要方法 |
-|------|------|---------|
-| \`IEnumerable<T>\` | 可枚举（支持 foreach） | \`GetEnumerator()\` |
-| \`IQueryable<T>\` | 可查询表达式树（LINQ Provider） | - |
-| \`ICollection<T>\` | 可增删的集合 | \`Add\`, \`Remove\`, \`Count\` |
-| \`IList<T>\` | 可索引的集合 | \`this[int]\`, \`IndexOf\` |
-| \`IDictionary<K,V>\` | 键值对集合 | \`this[K]\`, \`Keys\`, \`Values\` |
-| \`IComparable<T>\` | 可比较（排序） | \`CompareTo(T)\` |
-| \`IComparer<T>\` | 比较器（外部） | \`Compare(T, T)\` |
-| \`IEquatable<T>\` | 类型安全的相等判断 | \`Equals(T)\` |
-| \`IDisposable\` | 可释放资源 | \`Dispose()\` |
-| \`ICloneable\` | 可克隆 | \`Clone()\` |
-| \`IFormattable\` | 自定义格式化 | \`ToString(string, IFormatProvider)\` |
-| \`IConvertible\` | 类型转换 | \`ToType(Type, IFormatProvider)\` |
-
-实际开发中你会反复遇到这些接口——比如写 \`foreach\` 就是在用 \`IEnumerable\`，写 LINQ 的 \`Where\` 也是。
-
-### 十、本章小结
-
-- 接口是契约，定义"能做什么"；抽象类是基类，定义"是什么 + 共享代码"。
-- 一个类只能继承一个基类，但可以实现多个接口——这是接口最大的优势。
-- 显式实现让接口方法不暴露在类 API 中，强制通过接口引用调用。
-- C# 8+ 默认接口方法支持 API 演进和混入模式，但增加了复杂度。
-- 依赖倒置原则：高层模块和低层模块都依赖抽象（接口），不直接依赖具体类。
-- 掌握 .NET BCL 的常用接口（IEnumerable、IDisposable、IComparable 等），是阅读和编写 C# 代码的基础。
-`,
+下一章讲属性、索引器与运算符重载——让自定义类型用起来更自然。`,
   },
 
   // ============================================================
@@ -1214,481 +854,242 @@ foreach (var s in shapes) s.Draw();
   {
     id: 'csharp-ch12',
     group: '第三部分 面向对象',
-    icon: '🔑',
+    icon: '⚙️',
     title: '属性、索引器与运算符重载',
     content: `## 第十二章　属性、索引器与运算符重载
 
-### 一、属性回顾与进阶
+这一章讲让自定义类型用起来更顺手的高级特性：属性的进阶用法、索引器（像数组一样访问对象）、运算符重载（自定义 + - * /）。
 
-属性（Property）是 C# 实现"封装"的核心机制。第九章已介绍过基础用法，这里补充更多进阶内容。
+### 一、属性进阶
 
-#### 三种属性形态对比
+#### 1. init 只读属性（C# 9+）⭐
 
 \`\`\`csharp
-public class Sample
+// 使用
+var p = new Point2D { X = 3, Y = 4 };  // 初始化时可赋值
+// p.X = 5;  // 编译错误：init 只能在初始化时赋值
+Console.WriteLine(p);
+
+// 类型声明
+class Point2D
 {
-    // 1. 自动属性：最简形式，编译器生成 backing field
-    public string AutoName { get; set; }
+    // init：只能在对象初始化时赋值，之后只读
+    public int X { get; init; }
+    public int Y { get; init; }
 
-    // 2. 完整属性：手动控制 get/set
-    private int _age;
-    public int Age
-    {
-        get => _age;
-        set
-        {
-            if (value < 0 || value > 150)
-                throw new ArgumentOutOfRangeException(nameof(value));
-            _age = value;
-        }
-    }
-
-    // 3. 只读属性（计算属性）：只有 get
-    public bool IsAdult => Age >= 18;
-
-    // 4. init 属性（C# 9+）：初始化后不可变
-    public string ReadOnlyAfterInit { get; init; } = "";
+    public override string ToString() => $"({X}, {Y})";
 }
 \`\`\`
 
-**表达体属性（Expression-bodied）**：用 \`=>\` 简化单行 get/set：
+> ⭐ \`init\` 是"初始化后只读"——比 \`set\` 安全（创建后不可改），比纯 \`get\` 灵活（可在初始化器赋值）。
+
+#### 2. required 属性（C# 11+）⭐
 
 \`\`\`csharp
-private string _name;
-public string Name
+// 使用
+var cfg = new Config { Host = "localhost", Port = 8080 };
+// var cfg2 = new Config();  // 编译错误：Port 未设置
+Console.WriteLine(cfg);
+
+// 类型声明
+class Config
 {
-    get => _name;
-    set => _name = value ?? throw new ArgumentNullException();
+    // required：必须在初始化时设置
+    public required string Host { get; set; }
+    public required int Port { get; set; }
+    public string? Database { get; set; }  // 可选
+
+    public override string ToString() => $"{Host}:{Port}/{Database ?? "(无数据库)"}";
 }
 \`\`\`
 
-#### required 关键字（C# 11+）
+> ⭐ \`required\` 强制调用者在初始化时设置该属性，避免忘记赋值导致 bug。
 
-\`required\` 修饰符要求构造对象时必须显式赋值：
-
-\`\`\`csharp
-public class User
-{
-    public required string Name { get; set; }
-    public required string Email { get; set; }
-    public string? Phone { get; set; }  // 可选
-}
-
-// 必须赋值 Name 和 Email
-var u = new User { Name = "张三", Email = "zs@example.com" };
-// var u2 = new User { Email = "..." };  // 编译警告：未赋值 Name
-\`\`\`
-
-\`required\` 比"在构造函数里强制传参"更灵活——可以配合对象初始化器使用，常用于 DTO、配置类。
-
-### 二、属性的最佳实践
-
-#### 1. 校验与通知
-
-属性 setter 是天然的校验位置：
+### 二、索引器：像数组一样访问对象 ⭐
 
 \`\`\`csharp
-public class Temperature
-{
-    private decimal _celsius;
-    public decimal Celsius
-    {
-        get => _celsius;
-        set
-        {
-            if (value < -273.15m)
-                throw new ArgumentOutOfRangeException("绝对零度不可达");
-            var old = _celsius;
-            _celsius = value;
-            OnTemperatureChanged(old, value);
-        }
-    }
+// 使用
+var list = new SimpleList();
+list[0] = "张三";
+list[1] = "李四";
+Console.WriteLine(list[0]);  // 张三
+Console.WriteLine(list[1]);  // 李四
 
-    public event Action<decimal, decimal>? TemperatureChanged;
-
-    protected virtual void OnTemperatureChanged(decimal old, decimal @new)
-        => TemperatureChanged?.Invoke(old, @new);
-}
-
-var t = new Temperature();
-t.TemperatureChanged += (o, n) => Console.WriteLine($"温度变化 {o} → {n}");
-t.Celsius = 25;
-t.Celsius = 30;
-// 温度变化 0 → 25
-// 温度变化 25 → 30
-\`\`\`
-
-#### 2. 派生属性 vs 缓存属性
-
-\`\`\`csharp
-public class Rectangle
-{
-    public double Width { get; set; }
-    public double Height { get; set; }
-
-    // 计算属性：每次访问都计算
-    public double Area => Width * Height;
-
-    // 缓存：Width/Height 变化时重新计算（略复杂）
-    // 适合计算成本高的场景
-}
-\`\`\`
-
-#### 3. 不要在 get/set 里做副作用大的事
-
-属性本质是"像字段一样访问的成员"，使用者期望它快、纯、可预测。所以：
-
-- ❌ 不要在 get 里做数据库查询
-- ❌ 不要在 set 里做 IO、网络请求
-- ✅ 加校验、触发事件、维护不变量（invariant）是 OK 的
-
-需要复杂操作时，应该用方法（如 \`CalculateTotal()\`）而不是属性。
-
-### 三、索引器（Indexer）
-
-索引器让对象可以像数组一样用 \`obj[index]\` 访问。语法类似属性，但用 \`this[...]\`：
-
-#### 简单示例
-
-\`\`\`csharp
-public class StringCollection
+// 类型声明
+class SimpleList
 {
     private string[] _items = new string[10];
 
+    // 索引器：this[参数] 像属性一样定义
     public string this[int index]
     {
         get => _items[index];
         set => _items[index] = value;
     }
-
-    public int Length => _items.Length;
 }
-
-var col = new StringCollection();
-col[0] = "hello";
-col[1] = "world";
-Console.WriteLine(col[0]);   // hello
-Console.WriteLine(col[1]);   // world
 \`\`\`
 
-#### 字典式索引器（多参数）
-
-索引器可以接受多个参数，常用于实现矩阵、字典：
+#### 字典式索引器
 
 \`\`\`csharp
-public class Matrix
-{
-    private double[,] _data = new double[3, 3];
+// 使用
+var dict = new SimpleDict();
+dict["apple"] = "苹果";
+dict["banana"] = "香蕉";
+Console.WriteLine(dict["apple"]);  // 苹果
 
-    public double this[int row, int col]
+// 类型声明
+class SimpleDict
+{
+    private Dictionary<string, string> _data = new();
+
+    public string this[string key]
     {
-        get => _data[row, col];
-        set => _data[row, col] = value;
-    }
-}
-
-var m = new Matrix();
-m[0, 0] = 1;
-m[1, 1] = 1;
-m[2, 2] = 1;
-Console.WriteLine(m[0, 0]);  // 1
-\`\`\`
-
-#### 字符串索引器
-
-索引器的参数类型不限于 int，也可以是 string：
-
-\`\`\`csharp
-public class HttpHeader
-{
-    private Dictionary<string, string> _headers = new();
-
-    public string this[string name]
-    {
-        get => _headers.TryGetValue(name, out var v) ? v : "";
-        set => _headers[name] = value;
-    }
-
-    public IEnumerable<string> Keys => _headers.Keys;
-}
-
-var h = new HttpHeader();
-h["Content-Type"] = "application/json";
-h["Authorization"] = "Bearer abc123";
-
-Console.WriteLine(h["Content-Type"]);  // application/json
-\`\`\`
-
-#### 索引器与接口
-
-索引器可以定义在接口里：
-
-\`\`\`csharp
-public interface ILookup
-{
-    object? this[string key] { get; set; }
-}
-
-public class Config : ILookup
-{
-    private Dictionary<string, object> _data = new();
-
-    public object? this[string key]
-    {
-        get => _data.TryGetValue(key, out var v) ? v : null;
-        set => _data[key] = value!;
+        get => _data.TryGetValue(key, out var v) ? v : "(未找到)";
+        set => _data[key] = value;
     }
 }
 \`\`\`
 
-### 四、运算符重载
+> ⭐ 索引器让自定义类型能用 \`obj[key]\` 语法——\`Dictionary\`、\`List\`、\`Array\` 都是用索引器实现的。
 
-C# 允许给自定义类型定义运算符的行为。比如让 \`Money + Money\`、\`Vector * scalar\` 都能用符号表达，代码更直观。
+### 三、运算符重载 ⭐
 
-#### 一元与二元运算符
+让自定义类型支持 \`+\`、\`-\`、\`==\` 等运算符，用起来像内置类型一样自然：
 
 \`\`\`csharp
-public struct Vector
+// 使用
+var v1 = new Vector(3, 4);
+var v2 = new Vector(1, 2);
+
+var sum = v1 + v2;        // 调用 operator +
+var diff = v1 - v2;       // 调用 operator -
+var neg = -v1;            // 调用 operator -（一元）
+Console.WriteLine($"{v1} + {v2} = {sum}");
+Console.WriteLine($"{v1} - {v2} = {diff}");
+Console.WriteLine($"-{v1} = {neg}");
+
+Console.WriteLine(v1 == v2);  // false（调用重载的 ==）
+Console.WriteLine(v1 != v2);  // true
+
+// 类型声明
+class Vector
 {
-    public double X { get; }
-    public double Y { get; }
+    public double X { get; set; }
+    public double Y { get; set; }
 
     public Vector(double x, double y) { X = x; Y = y; }
 
-    // 二元 + 运算符
+    // 重载 + 运算符
     public static Vector operator +(Vector a, Vector b)
         => new Vector(a.X + b.X, a.Y + b.Y);
 
-    // 二元 - 运算符
+    // 重载 - 运算符
     public static Vector operator -(Vector a, Vector b)
         => new Vector(a.X - b.X, a.Y - b.Y);
 
-    // 标量乘法（Vector * double）
-    public static Vector operator *(Vector v, double s)
-        => new Vector(v.X * s, v.Y * s);
+    // 重载一元 - 运算符（取反）
+    public static Vector operator -(Vector v)
+        => new Vector(-v.X, -v.Y);
 
-    // 标量乘法（double * Vector，需要再定义一次）
-    public static Vector operator *(double s, Vector v) => v * s;
+    // 重载 == 运算符（必须同时重载 !=）
+    public static bool operator ==(Vector a, Vector b)
+        => a.X == b.X && a.Y == b.Y;
 
-    // 一元取反
-    public static Vector operator -(Vector v) => new Vector(-v.X, -v.Y);
+    public static bool operator !=(Vector a, Vector b) => !(a == b);
+
+    // 重写 Equals 和 GetHashCode（重载 == 时必须）
+    public override bool Equals(object obj)
+        => obj is Vector v && this == v;
+
+    public override int GetHashCode() => HashCode.Combine(X, Y);
 
     public override string ToString() => $"({X}, {Y})";
 }
-
-var v1 = new Vector(1, 2);
-var v2 = new Vector(3, 4);
-
-Console.WriteLine(v1 + v2);    // (4, 6)
-Console.WriteLine(v1 - v2);    // (-2, -2)
-Console.WriteLine(v1 * 3);     // (3, 6)
-Console.WriteLine(3 * v1);     // (3, 6)
-Console.WriteLine(-v1);        // (-1, -2)
 \`\`\`
 
-**规则：**
+> ⭐ 重载 \`==\` 必须同时重载 \`!=\`，并重写 \`Equals\` 和 \`GetHashCode\`——否则编译警告。
 
-1. 运算符重载必须是 \`public static\`。
-2. 参数类型中至少有一个是定义该运算符的类型。
-3. C# 不允许重载 \`=\`、\`&&\`、\`||\`（但 \`&&\` / \`||\` 通过 \`&\` / \`|\` + \`true\` / \`false\` 运算符推导）。
-
-#### 比较运算符
+### 四、类型转换运算符
 
 \`\`\`csharp
-public struct Money : IComparable<Money>
+// 使用
+Money m = 100m;          // implicit：自动转换
+decimal amount = m;       // implicit：自动转换
+Console.WriteLine(m);
+
+// 类型声明
+class Money
 {
-    public decimal Amount { get; }
+    public decimal Amount { get; set; }
     public Money(decimal amount) => Amount = amount;
 
-    public static bool operator ==(Money a, Money b) => a.Amount == b.Amount;
-    public static bool operator !=(Money a, Money b) => !(a == b);
-    public static bool operator <(Money a, Money b) => a.Amount < b.Amount;
-    public static bool operator >(Money a, Money b) => a.Amount > b.Amount;
-    public static bool operator <=(Money a, Money b) => a.Amount <= b.Amount;
-    public static bool operator >=(Money a, Money b) => a.Amount >= b.Amount;
+    // implicit：自动转换（安全、不丢数据）
+    public static implicit operator Money(decimal d) => new Money(d);
+    public static implicit operator decimal(Money m) => m.Amount;
 
-    public int CompareTo(Money other) => Amount.CompareTo(other.Amount);
-
-    // 重写 == 必须同时重写 Equals 和 GetHashCode
-    public override bool Equals(object? obj) => obj is Money m && Amount == m.Amount;
-    public override int GetHashCode() => Amount.GetHashCode();
+    public override string ToString() => $"¥{Amount:N2}";
 }
-
-var a = new Money(100);
-var b = new Money(100);
-var c = new Money(200);
-
-Console.WriteLine(a == b);   // True
-Console.WriteLine(a < c);    // True
-Console.WriteLine(a != c);   // True
 \`\`\`
 
-**重要：** 重载 \`==\` 必须同时：
-
-- 重载 \`!=\`
-- 重写 \`Equals(object)\` 和 \`GetHashCode()\`（保持一致性）
-
-否则会出现 \`a == b\` 为 true 但 \`a.Equals(b)\` 为 false 的混乱情况。
-
-#### 转换运算符
-
-可以定义自定义类型之间的隐式/显式转换：
+### 五、实战 demo：温度类
 
 \`\`\`csharp
-public struct Celsius
+// === 温度类：属性 + 运算符重载 ===
+// 演示：让 Temperature 用起来像内置数值类型
+
+// 使用
+var t1 = new Temperature(25, TemperatureUnit.Celsius);
+var t2 = new Temperature(77, TemperatureUnit.Fahrenheit);
+
+Console.WriteLine($"t1 = {t1}");
+Console.WriteLine($"t2 = {t2}");
+Console.WriteLine($"t1 摄氏值：{t1.Celsius:F1}°C");
+Console.WriteLine($"t2 摄氏值：{t2.Celsius:F1}°C");
+Console.WriteLine($"t1 + t2 = {t1 + t2}");
+Console.WriteLine($"t1 升高 5°：{t1 + 5}");
+
+// 类型声明
+enum TemperatureUnit { Celsius, Fahrenheit }
+
+class Temperature
 {
-    public double Value { get; }
-    public Celsius(double v) => Value = v;
-}
+    public double Value { get; set; }
+    public TemperatureUnit Unit { get; set; }
 
-public struct Fahrenheit
-{
-    public double Value { get; }
-    public Fahrenheit(double v) => Value = v;
-
-    // 显式转换（可能有精度损失或异常时用）
-    public static explicit operator Celsius(Fahrenheit f)
-        => new Celsius((f.Value - 32) * 5 / 9);
-
-    // 显式转换（反向）
-    public static explicit operator Fahrenheit(Celsius c)
-        => new Fahrenheit(c.Value * 9 / 5 + 32);
-}
-
-var f = new Fahrenheit(100);
-Celsius c = (Celsius)f;  // 显式转换
-Console.WriteLine(c.Value);  // 37.777...
-
-var c2 = new Celsius(37);
-Fahrenheit f2 = (Fahrenheit)c2;
-Console.WriteLine(f2.Value);  // 98.6
-\`\`\`
-
-**隐式转换：** 用 \`implicit operator\`，调用方不需要写 \`()\`：
-
-\`\`\`csharp
-public struct Meter
-{
-    public double Value { get; }
-    public Meter(double v) => Value = v;
-
-    // 隐式：double → Meter
-    public static implicit operator Meter(double d) => new Meter(d);
-    // 隐式：Meter → double
-    public static implicit operator double(Meter m) => m.Value;
-}
-
-Meter m = 3.5;        // double → Meter
-double d = m;         // Meter → double
-\`\`\`
-
-**隐式 vs 显式的选择原则：**
-
-- 转换**永不失败、不丢精度**：用隐式（如 \`Meter → double\`）。
-- 转换**可能失败或丢精度**：用显式，强制调用方写 \`()\` 提醒（如 \`double → int\`、\`string → int\`）。
-
-#### true / false 运算符
-
-比较少用，但可以让对象在 \`if (obj)\` 上下文使用：
-
-\`\`\`csharp
-public struct DBBool
-{
-    public static readonly DBBool True = new(1);
-    public static readonly DBBool False = new(-1);
-    public static readonly DBBool Null = new(0);
-
-    private readonly int _value;
-    private DBBool(int v) => _value = v;
-
-    public static bool operator true(DBBool x) => x._value > 0;
-    public static bool operator false(DBBool x) => x._value < 0;
-}
-
-DBBool b = DBBool.True;
-if (b) Console.WriteLine("yes");  // 输出 yes
-\`\`\`
-
-### 五、综合示例：自定义集合
-
-把属性、索引器、运算符结合起来，实现一个简化的列表类型：
-
-\`\`\`csharp
-public class Vector<T> : IEnumerable<T>
-{
-    private T[] _items;
-    public int Count { get; private set; }
-    public int Capacity => _items.Length;
-
-    public Vector() : this(4) { }
-    public Vector(int capacity) { _items = new T[capacity]; }
-
-    // 索引器
-    public T this[int index]
+    public Temperature(double value, TemperatureUnit unit)
     {
-        get
-        {
-            if (index < 0 || index >= Count)
-                throw new IndexOutOfRangeException();
-            return _items[index];
-        }
-        set
-        {
-            if (index < 0 || index >= Count)
-                throw new IndexOutOfRangeException();
-            _items[index] = value;
-        }
+        Value = value;
+        Unit = unit;
     }
 
-    public void Add(T item)
-    {
-        if (Count == _items.Length)
-        {
-            var newArray = new T[_items.Length * 2];
-            Array.Copy(_items, newArray, _items.Length);
-            _items = newArray;
-        }
-        _items[Count++] = item;
-    }
+    // 统一转成摄氏度
+    public double Celsius => Unit == TemperatureUnit.Celsius
+        ? Value
+        : (Value - 32) * 5 / 9;
 
-    // 运算符：Vector + Vector = 合并后的新 Vector
-    public static Vector<T> operator +(Vector<T> a, Vector<T> b)
-    {
-        var result = new Vector<T>(a.Count + b.Count);
-        for (int i = 0; i < a.Count; i++) result.Add(a[i]);
-        for (int i = 0; i < b.Count; i++) result.Add(b[i]);
-        return result;
-    }
+    // 重载 + 运算符：温度 + 数字
+    public static Temperature operator +(Temperature t, double delta)
+        => new Temperature(t.Value + delta, t.Unit);
 
-    public IEnumerator<T> GetEnumerator()
-    {
-        for (int i = 0; i < Count; i++) yield return _items[i];
-    }
+    // 重载 + 运算符：温度 + 温度（统一为摄氏度）
+    public static Temperature operator +(Temperature a, Temperature b)
+        => new Temperature(a.Celsius + b.Celsius, TemperatureUnit.Celsius);
 
-    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
-        => GetEnumerator();
-
-    public override string ToString() => $"[{string.Join(", ", this)}]";
+    public override string ToString() => $"{Value:F1}°{(Unit == TemperatureUnit.Celsius ? "C" : "F")}";
 }
-
-var v1 = new Vector<int> { 1, 2, 3 };
-var v2 = new Vector<int> { 4, 5 };
-var v3 = v1 + v2;
-Console.WriteLine(v3);  // [1, 2, 3, 4, 5]
-Console.WriteLine(v3[2]);  // 3
 \`\`\`
-
-这里融合了：泛型、索引器、运算符重载、IEnumerable、yield、对象初始化器——是面向对象特性的综合演练。
 
 ### 六、本章小结
 
-- 属性是封装的核心：自动属性、完整属性、init、required 满足不同场景。
-- 索引器让对象可以像数组/字典一样用 \`obj[index]\` 访问。
-- 运算符重载让自定义类型支持 \`+\`、\`-\`、\`*\` 等运算，让代码更直观。
-- 重载 \`==\` 时必须同时重载 \`!=\`、重写 \`Equals\` 和 \`GetHashCode\`，保持一致性。
-- 隐式转换用于无精度损失的转换，显式转换用于可能失败的场景。
-- 综合运用属性、索引器、运算符、接口，能写出非常优雅的领域类型。
-`,
+- ⭐ \`init\` 属性：初始化时可赋值，之后只读——比 \`set\` 安全。
+- ⭐ \`required\` 属性：强制初始化时设置（C# 11+）。
+- ⭐ 索引器 \`this[key]\`：让对象像数组/字典一样访问。
+- ⭐ 运算符重载 \`public static T operator +(T a, T b)\`：让自定义类型支持 \`+ - * /\`。
+- ⭐ 重载 \`==\` 必须同时重载 \`!=\`、\`Equals\`、\`GetHashCode\`。
+- \`implicit operator\` 实现类型自动转换。
+
+下一章进入第四部分，讲泛型——类型安全的复用。`,
   },
 ];
 

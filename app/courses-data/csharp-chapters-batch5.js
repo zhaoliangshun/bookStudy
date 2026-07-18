@@ -125,14 +125,15 @@ foreach (var val in dict.Values) Console.WriteLine(val);
 
 \`\`\`csharp
 // 用 record 作为键（自动生成 Equals / GetHashCode）
-public record Point(int X, int Y);
-
 var map = new Dictionary<Point, string>
 {
     [new Point(0, 0)] = "原点",
     [new Point(1, 1)] = "对角点"
 };
 Console.WriteLine(map[new Point(1, 1)]);  // 对角点
+
+// 类型声明在末尾
+public record Point(int X, int Y);
 \`\`\`
 
 ### 四、HashSet<T>：去重与集合运算
@@ -477,6 +478,19 @@ Exception
 #### 自定义异常
 
 \`\`\`csharp
+// === 自定义异常使用 ===
+throw new BusinessException(4001, "用户不存在");
+
+try
+{
+    // 业务逻辑
+}
+catch (BusinessException ex)
+{
+    Console.WriteLine($"业务错误 {ex.ErrorCode}: {ex.Message}");
+}
+
+// 类型声明在末尾
 public class BusinessException : Exception
 {
     public int ErrorCode { get; }
@@ -491,18 +505,6 @@ public class BusinessException : Exception
     {
         ErrorCode = code;
     }
-}
-
-// 使用
-throw new BusinessException(4001, "用户不存在");
-
-try
-{
-    // 业务逻辑
-}
-catch (BusinessException ex)
-{
-    Console.WriteLine($"业务错误 {ex.ErrorCode}: {ex.Message}");
 }
 \`\`\`
 
@@ -634,15 +636,9 @@ Console.WriteLine(Path.GetTempPath());  // /tmp 或 C:\\Users\\...\\AppData\\Loc
 .NET 内置 \`System.Text.Json\` 用于 JSON 序列化（推荐）：
 
 \`\`\`csharp
+// === JSON 序列化演示 ===
+// using 必须放在文件顶部（顶级语句之前）
 using System.Text.Json;
-
-public class User
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = "";
-    public string? Email { get; set; }
-    public DateTime CreatedAt { get; set; }
-}
 
 // 序列化
 var user = new User
@@ -665,11 +661,26 @@ Console.WriteLine(parsed?.Name);  // 张三
 var users = new List<User> { user, new User { Id = 2, Name = "李四" } };
 string jsonList = JsonSerializer.Serialize(users);
 var parsedList = JsonSerializer.Deserialize<List<User>>(jsonList);
+Console.WriteLine($"反序列化 {parsedList?.Count} 个用户");
+
+// 类型声明在末尾
+public class User
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public string? Email { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
 \`\`\`
 
 #### 序列化选项
 
 \`\`\`csharp
+// === 序列化选项演示 ===
+using System.Text.Json;
+
+var u = new { Id = 1, Name = "张三", Email = (string?)null };
+
 var options = new JsonSerializerOptions
 {
     WriteIndented = true,                    // 美化输出
@@ -677,12 +688,39 @@ var options = new JsonSerializerOptions
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull  // 忽略 null
 };
 
-string pretty = JsonSerializer.Serialize(user, options);
+string pretty = JsonSerializer.Serialize(u, options);
+Console.WriteLine(pretty);
+// {
+//   "id": 1,
+//   "name": "张三"
+// }
 \`\`\`
 
 #### 常用特性
 
 \`\`\`csharp
+// === JSON 特性演示 ===
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+var product = new Product
+{
+    Id = 1,
+    Name = "蓝牙耳机",
+    InternalCode = "SECRET-001",  // 会被 JsonIgnore 忽略
+    Status = ProductStatus.Active
+};
+
+var opts = new JsonSerializerOptions { WriteIndented = true };
+string productJson = JsonSerializer.Serialize(product, opts);
+Console.WriteLine(productJson);
+// {
+//   "id": 1,
+//   "name": "蓝牙耳机",
+//   "status": "Active"
+// }
+
+// 类型声明在末尾
 public class Product
 {
     [JsonPropertyName("id")]
@@ -704,6 +742,20 @@ public enum ProductStatus { Active, Inactive, Discontinued }
 ### 七、综合示例：日志系统
 
 \`\`\`csharp
+// === 日志系统使用 ===
+using var logger = new FileLogger("logs/app.log");
+logger.Info("服务启动");
+logger.Warn("磁盘空间不足");
+try
+{
+    throw new InvalidOperationException("测试异常");
+}
+catch (Exception ex)
+{
+    logger.Error("操作失败", ex);
+}
+
+// 类型声明在末尾
 public class FileLogger : IDisposable
 {
     private readonly StreamWriter _writer;
@@ -737,19 +789,6 @@ public class FileLogger : IDisposable
     {
         _writer?.Dispose();
     }
-}
-
-// 使用
-using var logger = new FileLogger("logs/app.log");
-logger.Info("服务启动");
-logger.Warn("磁盘空间不足");
-try
-{
-    throw new InvalidOperationException("测试异常");
-}
-catch (Exception ex)
-{
-    logger.Error("操作失败", ex);
 }
 \`\`\`
 
@@ -1345,11 +1384,11 @@ list.Add(1);  // 无装箱
 
 这本 C# 教程到此结束。我们用了 20 章，覆盖了：
 
-1. **基础入门**（第 1-4 章）：C# 与 .NET 关系、第一个程序、变量与数据类型、运算符。
-2. **语法进阶**（第 5-8 章）：控制流、方法、数组与字符串、枚举与结构体。
-3. **面向对象**（第 9-12 章）：类与对象、继承多态、接口抽象类、属性索引器运算符。
-4. **高级特性**（第 13-16 章）：泛型、委托事件、LINQ、异步编程。
-5. **实战与生态**（第 17-20 章）：集合类库、文件 IO 与异常、.NET 生态、进阶路线。
+1. **快速上手**（第 1-4 章）：5 分钟写出第一个程序、变量与常用类型、字符串操作实战、控制流与逻辑判断。
+2. **核心语法**（第 5-8 章）：方法实用技巧、集合 List 与 Dictionary、日期与时间处理、枚举与结构体。
+3. **面向对象**（第 9-12 章）：类与对象入门、继承与多态、接口与抽象类、属性索引器与运算符重载。
+4. **高级特性**（第 13-16 章）：泛型、委托 Lambda 与事件、LINQ、异步编程。
+5. **实战与生态**（第 17-20 章）：集合与常用类库、文件 IO 与异常处理、.NET 生态、进阶路线。
 
 ### 二、C# 的核心特质
 
