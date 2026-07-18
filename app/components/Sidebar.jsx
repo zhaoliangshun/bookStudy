@@ -471,6 +471,9 @@ export default function Sidebar({
   const lastDragEndTimeRef = useRef(0);
   // 书籍拖拽悬停在分类标题上的 DOM（用于高亮提示可以放置）
   const bookDragOverTitleRef = useRef(null);
+  // 追踪 focus 定时器，组件卸载时清理防止内存泄漏
+  const bookSearchFocusTimerRef = useRef(null);
+  const chapterSearchFocusTimerRef = useRef(null);
 
   // 构建 bookPath → 默认分类名 的映射（用于归还书籍到默认分组）
   const bookDefaultCategory = useMemo(() => {
@@ -1812,9 +1815,17 @@ export default function Sidebar({
     // 关闭下拉框时清空书籍搜索
     if (!bookDropdownOpen) {
       setBookSearch("");
+      if (bookSearchFocusTimerRef.current) {
+        clearTimeout(bookSearchFocusTimerRef.current);
+        bookSearchFocusTimerRef.current = null;
+      }
     } else {
       // 打开下拉框时自动聚焦书籍搜索框
-      setTimeout(() => bookSearchRef.current?.focus(), 100);
+      if (bookSearchFocusTimerRef.current) clearTimeout(bookSearchFocusTimerRef.current);
+      bookSearchFocusTimerRef.current = setTimeout(() => {
+        bookSearchFocusTimerRef.current = null;
+        bookSearchRef.current?.focus();
+      }, 100);
     }
   }, [bookDropdownOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -2051,14 +2062,24 @@ export default function Sidebar({
       // 侧边栏收起时先展开
       if (collapsed) {
         setCollapsed(false);
-        setTimeout(() => chapterSearchRef.current?.focus(), 200);
+        if (chapterSearchFocusTimerRef.current) clearTimeout(chapterSearchFocusTimerRef.current);
+        chapterSearchFocusTimerRef.current = setTimeout(() => {
+          chapterSearchFocusTimerRef.current = null;
+          chapterSearchRef.current?.focus();
+        }, 200);
       } else {
         chapterSearchRef.current?.focus();
       }
       e.preventDefault();
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      if (chapterSearchFocusTimerRef.current) {
+        clearTimeout(chapterSearchFocusTimerRef.current);
+        chapterSearchFocusTimerRef.current = null;
+      }
+    };
   }, [collapsed]);
 
   // ===== URL Hash 同步 =====
@@ -2256,10 +2277,22 @@ export default function Sidebar({
     };
   }, []);
 
-  // 组件卸载时清理拖拽监听器
+  // 组件卸载时清理拖拽监听器和定时器
   useEffect(() => {
     return () => {
       if (resizeCleanupRef.current) resizeCleanupRef.current();
+      if (bookSearchFocusTimerRef.current) {
+        clearTimeout(bookSearchFocusTimerRef.current);
+        bookSearchFocusTimerRef.current = null;
+      }
+      if (chapterSearchFocusTimerRef.current) {
+        clearTimeout(chapterSearchFocusTimerRef.current);
+        chapterSearchFocusTimerRef.current = null;
+      }
+      if (dragExpandTimerRef.current) {
+        clearTimeout(dragExpandTimerRef.current);
+        dragExpandTimerRef.current = null;
+      }
     };
   }, []);
 

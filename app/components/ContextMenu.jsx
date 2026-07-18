@@ -78,7 +78,7 @@ export default function ContextMenu({ items, position, onClose }) {
             className={`ctx-menu-item ${item.danger ? "danger" : ""}`}
             onClick={() => {
               item.onClick?.();
-              onClose();
+              onCloseRef.current?.();
             }}
             role="menuitem"
           >

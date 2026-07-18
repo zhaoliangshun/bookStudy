@@ -3197,7 +3197,8 @@ img {
   display: flex;
   align-items: center;
   border-bottom: 1px solid var(--border);
-  background: var(--bg-sidebar);
+  /* 浅色背景，不能用 --bg-sidebar（那是深色侧边栏） */
+  background: var(--bg-elevated, #ffffff);
   padding: 0 4px 0 0;
 }
 .rs-editor-tab {

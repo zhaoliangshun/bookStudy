@@ -47,14 +47,14 @@ void PrintSorted(int[] nums, bool ascending)
 ### 二、定义委托：delegate 关键字
 
 \`\`\`csharp
-// 声明一个委托类型：它能装"两个 int 返回 int"的方法
-delegate int MathOp(int a, int b);
+using System;
 
+// 局部函数：顶级语句中可以直接定义方法，不用放在类里
 int Add(int a, int b) => a + b;
 int Sub(int a, int b) => a - b;
 int Mul(int a, int b) => a * b;
 
-// 委托变量装方法
+// 委托变量装方法（Func/Action 是内置委托，这里自定义 delegate 演示原理）
 MathOp op = Add;
 Console.WriteLine(op(3, 4));      // 7
 
@@ -63,6 +63,13 @@ Console.WriteLine(op(3, 4));      // -1
 
 op = Mul;
 Console.WriteLine(op(3, 4));      // 12
+
+// 【委托原理】为什么 delegate 是类型声明，必须放可执行代码之后？
+// delegate 关键字在编译时会生成一个完整的类（继承自 MulticastDelegate），
+// 它属于"类型定义"而非"执行语句"。C# 顶级语句要求：
+//   using 指令 → 可执行代码 → 类型声明（class/delegate/struct/interface/record/enum）
+// 局部函数（上面的 Add/Sub/Mul）是方法级成员，可以在可执行代码前后任意位置。
+delegate int MathOp(int a, int b);
 \`\`\`
 
 要点：
@@ -248,9 +255,26 @@ class Thermometer
 ### 二、用委托字段实现：能跑但有坑
 
 \`\`\`csharp
+using System;
+
+var t = new Thermometer();
+t.OnChanged = temp => Console.WriteLine($"温度更新: {temp}°C");  // 订阅（用=覆盖）
+t.Temperature = 30;   // 输出: 温度更新: 30°C
+
+// 坑1：外部可以"覆盖"所有订阅者——用=直接赋值，之前的订阅全没了
+t.OnChanged = temp => Console.WriteLine("我被替换了");
+t.Temperature = 40;    // 只输出: 我被替换了
+
+// 坑2：外部甚至能直接触发事件——发布者和订阅者的权限边界被打破
+t.OnChanged?.Invoke(999);  // 温度计没变，却"假装"通知了
+
+// 【发布订阅模式问题】为什么公开委托字段不好？
+// 1. 封装性差：外部可以用=覆盖整个订阅链，而不是+=追加
+// 2. 安全性差：外部可以随便Invoke触发，只有发布者自己才应该触发
+// 3. 这就是 event 关键字要解决的问题——给委托加"访问控制"
 class Thermometer
 {
-    public Action<int>? OnChanged;   // 公开委托字段
+    public Action<int>? OnChanged;   // 公开委托字段（没有event保护）
 
     private int _temp;
     public int Temperature
@@ -263,17 +287,6 @@ class Thermometer
         }
     }
 }
-
-var t = new Thermometer();
-t.OnChanged = temp => Console.WriteLine($"温度更新: {temp}°C");  // 订阅
-t.Temperature = 30;   // 输出: 温度更新: 30°C
-
-// 坑1：外部可以"覆盖"订阅者
-t.OnChanged = temp => Console.WriteLine("我被替换了");
-t.Temperature = 40;    // 只输出: 我被替换了
-
-// 坑2：外部甚至能直接触发事件
-t.OnChanged?.Invoke(999);  // 温度计没变，却"假装"通知了
 \`\`\`
 
 问题：
@@ -285,6 +298,24 @@ t.OnChanged?.Invoke(999);  // 温度计没变，却"假装"通知了
 ### 三、event 关键字 ⭐
 
 \`\`\`csharp
+using System;
+
+var t = new Thermometer();
+t.OnChanged += temp => Console.WriteLine($"订阅1: {temp}°C");
+t.OnChanged += temp => Console.WriteLine($"订阅2: {temp}°C");
+
+// t.OnChanged = ...      // 编译错误：事件只能出现在 += 或 -= 左侧
+// t.OnChanged.Invoke(5); // 编译错误：事件只能由发布者触发
+
+t.Temperature = 30;   // 两条订阅都打印
+
+// 【为什么用event关键字？】
+// event 本质是给委托字段加了一层"访问封装"：
+// 1. 外部代码：只能用 += / -= 来订阅/退订，不能用=赋值覆盖，不能Invoke触发
+// 2. 类内部代码：可以正常Invoke，也可以赋值（通常在构造函数里初始化）
+// 这就像给委托加了个"只写追加"的属性，完美实现发布-订阅的权限边界：
+//   发布者（类内部）→ 持有触发权
+//   订阅者（外部）→ 只能订阅/退订，不能干涉其他订阅者，也不能越权触发
 class Thermometer
 {
     // 加 event 关键字：限制外部只能 += / -=，不能 = 或 Invoke
@@ -300,21 +331,7 @@ class Thermometer
             OnChanged?.Invoke(value);   // 只有类内部能 Invoke
         }
     }
-
-    public void Simulate()
-    {
-        // OnChanged?.Invoke(100);  // 内部可以触发
-    }
 }
-
-var t = new Thermometer();
-t.OnChanged += temp => Console.WriteLine($"订阅1: {temp}°C");
-t.OnChanged += temp => Console.WriteLine($"订阅2: {temp}°C");
-
-// t.OnChanged = ...      // 编译错误：事件只能出现在 += 或 -= 左侧
-// t.OnChanged.Invoke(5); // 编译错误：事件只能由发布者触发
-
-t.Temperature = 30;   // 两条订阅都打印
 \`\`\`
 
 要点：
@@ -329,19 +346,9 @@ t.Temperature = 30;   // 两条订阅都打印
 标准的发布订阅模式分两个角色：
 
 \`\`\`csharp
-// 1. 发布者：定义事件 + 触发条件
-class Button
-{
-    public event Action? Clicked;
+using System;
 
-    public void Click()
-    {
-        Console.WriteLine("按钮被点击");
-        Clicked?.Invoke();   // 通知所有订阅者
-    }
-}
-
-// 2. 订阅者：注册 + 响应
+// 2. 订阅者：注册 + 响应（先写可执行代码）
 var btn = new Button();
 btn.Clicked += () => Console.WriteLine("处理1: 提交表单");
 btn.Clicked += () => Console.WriteLine("处理2: 写日志");
@@ -353,10 +360,25 @@ btn.Click();
 // 处理2: 写日志
 // 处理3: 弹通知
 
-// 退订
+// 退订：必须保存委托引用才能移除，匿名Lambda无法单独移除
 Action handler = () => Console.WriteLine("临时订阅");
 btn.Clicked += handler;
 btn.Clicked -= handler;
+
+// 【发布订阅模式核心】松耦合的本质
+// 发布者（Button）根本不知道有谁订阅了它——它只负责"触发事件"
+// 订阅者只负责"响应事件"，互不影响，也不依赖发布者的内部实现
+// 这就是事件的精髓：对象之间通过事件通信，而不是直接引用彼此
+class Button
+{
+    public event Action? Clicked;
+
+    public void Click()
+    {
+        Console.WriteLine("按钮被点击");
+        Clicked?.Invoke();   // 通知所有订阅者（内部触发，外部无权调用）
+    }
+}
 \`\`\`
 
 发布者根本不知道有谁订阅——这是**松耦合**，发布者跟订阅者解耦。
@@ -369,7 +391,28 @@ btn.Clicked -= handler;
 - \`e\`：事件参数，继承 \`EventArgs\`。
 
 \`\`\`csharp
-// 1. 自定义事件参数类
+using System;
+
+// 4. 订阅：可执行代码在前
+var t = new Thermometer();
+t.TempChanged += (sender, e) =>
+{
+    // sender 是触发事件的对象，用!表示断言不为null
+    var thermo = (Thermometer)sender!;
+    Console.WriteLine($"[{thermo.GetHashCode():X}] {e.OldTemp}°C → {e.NewTemp}°C (Δ{e.Delta})");
+};
+
+t.Temperature = 25;
+t.Temperature = 30;
+
+// 【标准事件模式约定】为什么用 object sender + EventArgs e？
+// 这是 .NET 的统一约定：所有事件处理器签名一致，便于通用处理
+// - sender: 谁触发了事件（发布者自己），类型object是为了统一所有发布者
+// - e: 事件参数，继承自 EventArgs，携带事件相关数据
+// EventHandler<T> 等价于 delegate void EventHandler<TEventArgs>(object sender, TEventArgs e);
+// 好处：不用为每个事件自定义 delegate 类型，统一签名
+
+// 自定义事件参数类：携带事件上下文数据
 class TemperatureChangedEventArgs : EventArgs
 {
     public int OldTemp { get; }
@@ -383,7 +426,7 @@ class TemperatureChangedEventArgs : EventArgs
     }
 }
 
-// 2. 发布者
+// 发布者
 class Thermometer
 {
     private int _temp;
@@ -394,25 +437,14 @@ class Thermometer
         {
             int old = _temp;
             _temp = value;
-            // 触发标准事件
+            // 触发标准事件：this是发布者自己，new事件参数携带数据
             TempChanged?.Invoke(this, new TemperatureChangedEventArgs(old, value));
         }
     }
 
-    // 3. EventHandler<T> 是 .NET 内置的事件委托
+    // EventHandler<T> 是 .NET 内置的事件委托，不用自定义delegate
     public event EventHandler<TemperatureChangedEventArgs>? TempChanged;
 }
-
-// 4. 订阅
-var t = new Thermometer();
-t.TempChanged += (sender, e) =>
-{
-    var thermo = (Thermometer)sender!;
-    Console.WriteLine($"[{thermo.GetHashCode():X}] {e.OldTemp}°C → {e.NewTemp}°C (Δ{e.Delta})");
-};
-
-t.Temperature = 25;
-t.Temperature = 30;
 \`\`\`
 
 \`EventHandler<T>\` 等价于：
@@ -437,7 +469,24 @@ delegate void EventHandler<TEventArgs>(object sender, TEventArgs e);
 ### 七、实战 demo：按钮点击 + 温度报警
 
 \`\`\`csharp
-// 模拟 GUI 按钮系统
+using System;
+
+// 模拟 GUI 按钮系统 - 可执行代码
+var form = new FormButton("SaveBtn");
+var alarm = new AlarmSystem();
+form.Click += alarm.OnButtonClick;  // 方法组转换，直接传实例方法
+form.Click += (s, e) => Console.WriteLine($"  日志：保存按钮被点");
+form.SimulateClick();
+
+Console.WriteLine();
+
+// 温度报警：超过 50°C 触发
+var sensor = new TempSensor();
+sensor.Overheated += (s, t) => Console.WriteLine($"  ⚠️ 警告：温度 {t}°C 超阈值！");
+sensor.SetTemp(30);   // 无报警
+sensor.SetTemp(60);   // 触发报警
+
+// ---------- 类型声明放最后 ----------
 class FormButton
 {
     public string Name { get; }
@@ -448,12 +497,13 @@ class FormButton
     public void SimulateClick()
     {
         Console.WriteLine($"[{Name}] 收到点击");
-        Click?.Invoke(this, EventArgs.Empty);
+        Click?.Invoke(this, EventArgs.Empty);  // EventArgs.Empty 表示无参数
     }
 }
 
 class AlarmSystem
 {
+    // 订阅方法：签名必须匹配 EventHandler<EventArgs>
     public void OnButtonClick(object? sender, EventArgs e)
     {
         var btn = (FormButton)sender!;
@@ -461,15 +511,9 @@ class AlarmSystem
     }
 }
 
-var form = new FormButton("SaveBtn");
-var alarm = new AlarmSystem();
-form.Click += alarm.OnButtonClick;
-form.Click += (s, e) => Console.WriteLine($"  日志：保存按钮被点");
-form.SimulateClick();
-
-// 温度报警：超过 50°C 触发
 class TempSensor
 {
+    // 这里用 int 直接作事件参数（简单场景可以不用自定义EventArgs）
     public event EventHandler<int>? Overheated;
 
     public void SetTemp(int t)
@@ -478,11 +522,6 @@ class TempSensor
         if (t > 50) Overheated?.Invoke(this, t);
     }
 }
-
-var sensor = new TempSensor();
-sensor.Overheated += (s, t) => Console.WriteLine($"  ⚠️ 警告：温度 {t}°C 超阈值！");
-sensor.SetTemp(30);   // 无报警
-sensor.SetTemp(60);   // 触发报警
 \`\`\`
 
 ### 小结
@@ -577,6 +616,8 @@ Console.WriteLine(f2(7));   // 14
 Lambda 可以"看到"它外面定义的变量——这叫**闭包**。
 
 \`\`\`csharp
+using System;
+
 int multiplier = 10;
 Func<int, int> scale = x => x * multiplier;
 
@@ -584,34 +625,53 @@ Console.WriteLine(scale(5));   // 50
 
 multiplier = 100;               // 改了外部变量
 Console.WriteLine(scale(5));   // 500 —— 注意：Lambda 用的是"当前"的值！
+
+// 【闭包为什么会捕获变量而不是值？】
+// Lambda 编译后会生成一个隐藏的类，把捕获的外部变量作为该类的字段。
+// 上面的代码大致编译成：
+//   class Closure { public int multiplier; public int Scale(int x) => x * multiplier; }
+//   var closure = new Closure();
+//   closure.multiplier = 10;
+//   Func<int,int> scale = closure.Scale;
+// 所以你改 multiplier 实际上是改 closure.multiplier 字段，调用时当然读最新值。
+// 这就是为什么"闭包延长变量生命周期"——变量被搬到闭包对象上，只要委托活着，对象就不被GC。
 \`\`\`
 
 关键点：
-- Lambda 捕获的是**变量本身**，不是当时的值。
-- 外部变量改变，Lambda 调用时拿到的是新值。
-- 闭包延长了局部变量的生命周期——它不会被 GC 回收，只要 Lambda 还活着。
+- Lambda 捕获的是**变量本身（引用）**，不是变量当时的值的拷贝。
+- 外部变量改变，Lambda 之后调用时拿到的是新值。
+- 闭包延长了局部变量的生命周期——它不会按方法退出就被 GC 回收，只要 Lambda 还活着。
 
 #### 经典陷阱：循环变量捕获
 
 \`\`\`csharp
-// ❌ 老版本 C# 的经典坑
+using System;
+using System.Collections.Generic;
+
 var actions = new List<Action>();
+
+// C# 5+ 中 for 循环每次迭代的 i 都是独立副本（已修复老版本的坑）
 for (int i = 0; i < 3; i++)
 {
+    // 如果你要兼容老版本/确保安全，可在循环内显式复制：int copy = i;
     actions.Add(() => Console.Write(i + " "));
 }
 foreach (var a in actions) a();   // C# 5+ 输出 "0 1 2 "
-// 注意：C# 5 之前会输出 "3 3 3 "，因为所有 Lambda 共享同一个 i
 Console.WriteLine();
 
-// ✅ 现代写法（C# 5+ 已修复）：每次循环都是独立的 i 副本
-// 但如果用 foreach 同样安全
+// foreach 循环从 C# 5 开始每次迭代也是独立变量，天然安全
 var more = new List<Action>();
 foreach (var j in new[] { 10, 20, 30 })
 {
     more.Add(() => Console.Write(j + " "));
 }
 foreach (var a in more) a();   // "10 20 30 "
+Console.WriteLine();
+
+// 【老版本为什么会输出"3 3 3"？】
+// C# 4及之前，for循环的i只在循环外声明一次，所有闭包共享同一个i变量；
+// 循环结束后i=3，调用委托时读到的都是同一个i=3。
+// C# 5 修复了这个设计问题：把每次迭代的循环变量"提升"为独立副本，闭包各捕各的。
 \`\`\`
 
 > ⭐ 闭包陷阱：循环变量在 C# 5 之后 foreach 会自动每次复制；for 循环若担心可显式 \`int copy = i;\`。
@@ -621,13 +681,18 @@ foreach (var a in more) a();   // "10 20 30 "
 Lambda 最常见用法：传给 LINQ 方法，描述「怎么筛选/转换」。
 
 \`\`\`csharp
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
 var nums = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
 
-// Where 接受 Predicate<T>（实际是 Func<T, bool>），过滤
+// Where 接受 Func<T, bool>（谓词），过滤符合条件的元素
+// 注意：此时只是"定义查询"，不会立刻执行——LINQ延迟执行特性
 var evens = nums.Where(n => n % 2 == 0);
-Console.WriteLine(string.Join(",", evens));   // 2,4,6,8,10
+Console.WriteLine(string.Join(",", evens));   // 2,4,6,8,10（枚举时才真正执行）
 
-// Select 接受 Func<T, TResult>，投影
+// Select 接受 Func<T, TResult>，投影/转换每个元素
 var squares = nums.Select(n => n * n);
 Console.WriteLine(string.Join(",", squares));   // 1,4,9,16,25,36,49,64,81,100
 
@@ -641,7 +706,11 @@ Console.WriteLine(string.Join(",", byRemainder));
 ### 六、常用场景 demo ⭐
 
 \`\`\`csharp
-// 1. List<T>.Find / FindAll：用 Predicate
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+// 1. List<T>.Find / FindAll：用 Predicate<T>（返回bool的委托）
 var users = new List<User>
 {
     new("张三", 28),
@@ -650,27 +719,29 @@ var users = new List<User>
     new("赵六", 40)
 };
 
-record User(string Name, int Age);
-
-var firstOver30 = users.Find(u => u.Age > 30);          // 李四
-var allOver30 = users.FindAll(u => u.Age > 30);          // [李四, 赵六]
-int idx = users.FindIndex(u => u.Name == "王五");          // 2
-bool hasOld = users.Exists(u => u.Age >= 40);             // true
+var firstOver30 = users.Find(u => u.Age > 30);          // 李四（第一个匹配）
+var allOver30 = users.FindAll(u => u.Age > 30);          // [李四, 赵六]（所有匹配）
+int idx = users.FindIndex(u => u.Name == "王五");          // 2（索引从0开始）
+bool hasOld = users.Exists(u => u.Age >= 40);             // true（是否存在）
 var young = users.FindAll(u => u.Age < 30);              // [张三, 王五]
 
-// 2. List<T>.Sort：用 Comparison<T>（int 返回）
+// 2. List<T>.Sort：用 Comparison<T>（返回int：负/0/正表示小于/等于/大于）
 users.Sort((a, b) => a.Age.CompareTo(b.Age));            // 按年龄升序
 
-// 3. List<T>.ForEach：Action<T>
+// 3. List<T>.ForEach：Action<T>（无返回值的委托）
 users.ForEach(u => Console.WriteLine(u));
 
-// 4. Dictionary 转换：用 LINQ 投影
+// 4. Dictionary 转换：ToDictionary 立即执行，把LINQ结果物化成字典
 var nameToAge = users.ToDictionary(u => u.Name, u => u.Age);
 
-// 5. 字符串处理
+// 5. 字符串处理：Split后Trim，最后ToList()立即执行避免延迟查询问题
 var names = "Zhang San, Li Si, Wang Wu";
 var parts = names.Split(',').Select(s => s.Trim()).ToList();
 Console.WriteLine(string.Join("|", parts));   // Zhang San|Li Si|Wang Wu
+
+// record 是类型声明，放所有可执行代码之后（C# 顶级语句要求：类型在执行代码后）
+// record 是不可变的数据类型，适合存数据，编译器自动生成构造函数/Equals/ToString等
+record User(string Name, int Age);
 \`\`\`
 
 ### 七、方法组转换
@@ -748,6 +819,10 @@ LINQ（Language Integrated Query，语言集成查询）是 C# 最强特性之�
 一句话：**用 SQL 风格的语法查询内存中的集合**。
 
 \`\`\`csharp
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
 // 没有 LINQ：找出偶数并排序，得手动循环
 var nums = new[] { 5, 2, 8, 1, 9, 4, 7, 6 };
 var result = new List<int>();
@@ -756,12 +831,13 @@ foreach (var n in nums)
 result.Sort();
 Console.WriteLine(string.Join(",", result));   // 2,4,6,8
 
-// 有 LINQ：一行搞定
+// 有 LINQ：一行搞定（查询表达式语法）
+// 注意：这里只是"定义查询"，还没真正执行——LINQ延迟执行
 var result2 = from n in nums
              where n % 2 == 0
              orderby n
              select n;
-Console.WriteLine(string.Join(",", result2));  // 2,4,6,8
+Console.WriteLine(string.Join(",", result2));  // 2,4,6,8（此时foreach枚举才真正执行）
 \`\`\`
 
 LINQ 的价值：
@@ -946,34 +1022,49 @@ Console.WriteLine(string.Join("", chars));   // HW
 这是 LINQ **最关键的概念之一**。
 
 \`\`\`csharp
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
 var nums = new List<int> { 1, 2, 3, 4, 5 };
 
-// 查询变量本身不立刻执行——只是"定义"了查询
+// 查询变量本身不立刻执行——只是保存了"查询逻辑"（一个IEnumerable迭代器）
+// 此时没有任何循环、没有任何过滤发生，evens只是一个"待执行的查询计划"
 var evens = from n in nums where n % 2 == 0 select n;
 
-// 此时往 nums 加数据，evens 也会变
+// 此时往 nums 加数据——因为查询还没执行，之后枚举时会看到新数据
 nums.Add(6);
 nums.Add(8);
 
-// 这时才真正执行——会看到 2,4,6,8（包括后加的）
+// 这时才真正执行——foreach触发迭代器，逐个元素判断where条件
+// 所以会看到 2,4,6,8（包括后加的）
 foreach (var n in evens) Console.Write(n + " ");
 Console.WriteLine();
 \`\`\`
 
 **延迟执行（Deferred Execution）**：
-- \`select\` / \`where\` / \`orderby\` 等只定义查询，不立刻执行。
-- 每次枚举（\`foreach\`、\`ToList()\` 等）才重新计算。
-- 优点：能反映最新数据；缺点：每次遍历都重算，可能性能差。
+- \`Where\` / \`Select\` / \`OrderBy\` / \`GroupBy\` / \`Join\` 等返回 \`IEnumerable<T>\` 的方法，只定义查询，不立刻执行。
+- 每次枚举（\`foreach\`、\`ToList()\`、\`Count()\` 等）才开始真正遍历源集合、应用筛选/投影逻辑。
+- **为什么要延迟？**：因为可以把多个查询组合起来，最后一次遍历完成所有操作，减少中间集合分配；也能反映源集合最新数据。
+- 陷阱：每次枚举都重算——如果你遍历两次，就会执行两次筛选/排序逻辑，大数据量下性能差。
 
 **立即执行（Eager Execution）**：
-- \`ToList\` / \`ToArray\` / \`ToDictionary\` / \`First\` / \`Count\` / \`Sum\` 等会立刻执行查询、缓存结果。
+- \`ToList\` / \`ToArray\` / \`ToDictionary\` / \`ToLookup\`：立刻执行查询，把结果物化成集合缓存起来。
+- \`First\` / \`FirstOrDefault\` / \`Single\` / \`Count\` / \`Sum\` / \`Average\` / \`Any\` / \`All\`：这些聚合/取元素方法必须立刻执行才能得到结果。
+- **为什么要ToList()？**：当你想"冻结"查询结果、避免重复计算、或者之后源集合会变化但你要当时的快照时，用ToList()立即执行。
 
 \`\`\`csharp
-var nums2 = new List<int> { 1, 2, 3, 4, 5 };
-var evens2 = (from n in nums2 where n % 2 == 0 select n).ToList();   // 立即执行
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
-nums2.Add(6);    // 此时再加，不影响 evens2
+var nums2 = new List<int> { 1, 2, 3, 4, 5 };
+// .ToList() 立即执行查询：遍历nums2，把偶数读出来，存到新的List<int>里
+var evens2 = (from n in nums2 where n % 2 == 0 select n).ToList();
+
+nums2.Add(6);    // 此时再加，只影响nums2，evens2已经是独立的List副本了
 foreach (var n in evens2) Console.Write(n + " ");   // 2 4 —— 没有 6
+Console.WriteLine();
 \`\`\`
 
 > ⭐ 经验：
