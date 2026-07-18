@@ -248,7 +248,7 @@ Jinja2 是 Flask 默认模板引擎,语法像 Django 模板但更强大。
 | \`{% for x in xs %}\` ... \`{% endfor %}\` | 循环 | \`{% for p in posts %}\` |
 | \`{% extends "base.html" %}\` | 继承 | 复用基础布局 |
 | \`{% block content %}\` ... \`{% endblock %}\` | 占位 | 子模板填充内容 |
-| \`{{ x | filter }}\` | 过滤器 | \`{{ name | upper }}\` |
+| \`{{ x | filter }}\` \| 过滤器 \| \`{{ name | upper }}\` |
 | \`{# 注释 #}\` | 注释 | 不输出到 HTML |
 
 ### 7.2 常见过滤器

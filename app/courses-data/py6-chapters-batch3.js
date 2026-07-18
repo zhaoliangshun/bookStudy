@@ -1186,7 +1186,7 @@ print("集合套frozenset:", nested)`
 | 运算 | 运算符 | 方法 | 含义 |
 |------|--------|------|------|
 | 交集 | \`a & b\` | \`a.intersection(b)\` | 同时在a和b中的元素 |
-| 并集 | \`a | b\` | \`a.union(b)\` | 在a或b中的所有元素 |
+| 并集 \| \`a | b\` | \`a.union(b)\` | 在a或b中的所有元素 |
 | 差集 | \`a - b\` | \`a.difference(b)\` | 在a中但不在b中的元素 |
 | 对称差集 | \`a ^ b\` | \`a.symmetric_difference(b)\` | 只在其中一个集合的元素 |
 

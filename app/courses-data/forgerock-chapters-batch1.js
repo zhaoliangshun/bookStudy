@@ -128,7 +128,7 @@ Config.set({
 | \`redirectUri\` | string | OAuth2 必填 | 回调地址 |
 | \`scope\` | string | OAuth2 必填 | 空格分隔的 scope |
 | \`realmPath\` | string | 可选 | Realm 路径，默认 \`/\` |
-| \`tokenStore\` | string\|object | 可选 | token 存储方式，默认 \`localStorage\` |
+| \`tokenStore\` \| string\|object | 可选 | token 存储方式，默认 \`localStorage\` |
 | \`logLevel\` | string | 可选 | 日志级别，默认 \`none\` |
 | \`oauthThreshold\` | number | 可选 | token 提前刷新阈值（秒） |
 | \`middleware\` | RequestMiddleware[] | 可选 | 请求拦截中间件 |
@@ -343,9 +343,9 @@ const finalStep = await FRAuth.resume(url);
 | \`getCallbackOfType(type)\` | \`FRCallback\` | 取第一个指定类型的 callback |
 | \`getCallbacksOfType(type)\` | \`FRCallback[]\` | 取所有指定类型的 callback |
 | \`setCallbackValue(type, value)\` | \`void\` | 设置第一个匹配 callback 的值（快捷方式） |
-| \`getDescription()\` | \`string\|undefined\` | 步骤描述 |
-| \`getHeader()\` | \`string\|undefined\` | 步骤标题 |
-| \`getStage()\` | \`string\|undefined\` | **stage 标识符**（最常用来分支） |
+| \`getDescription()\` \| \`string\|undefined\` | 步骤描述 |
+| \`getHeader()\` \| \`string\|undefined\` | 步骤标题 |
+| \`getStage()\` \| \`string\|undefined\` | **stage 标识符**（最常用来分支） |
 
 ## getStage：分支的关键
 

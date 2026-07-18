@@ -1958,7 +1958,7 @@ if __name__ == "__main__":
 | \`{{ var }}\` | 变量替换 | \`{{ name }}\` → Alice |
 | \`{{ obj.attr }}\` | 属性访问 | \`{{ user.name }}\` |
 | \`{{ func(arg) }}\` | 函数调用 | \`{{ upper(name) }}\` |
-| \`{{ value \| filter }}\` | 过滤器 | \`{{ name \| upper }}\` |
+| \`{{ value \| filter }}\` \| 过滤器 \| \`{{ name \| upper }}\` |
 | \`{% if cond %}...{% endif %}\` | 条件分支 | 满足条件才渲染 |
 | \`{% for x in list %}...{% endfor %}\` | 循环 | 遍历列表渲染 |
 | 嵌套支持 | if/for 可嵌套 | 多层结构 |
@@ -2081,11 +2081,11 @@ def render_tokens(tokens, context):
 
 | 过滤器 | 作用 | 示例 |
 |--------|------|------|
-| \`upper\` | 大写 | \`"abc" \| upper\` → ABC |
-| \`lower\` | 小写 | \`"ABC" \| lower\` → abc |
-| \`title\` | 标题化 | \`"hello world" \| title\` |
-| \`length\` | 长度 | \`"abc" \| length\` → 3 |
-| \`default:x\` | 默认值 | \`"" \| default:"N/A"\` |
+| \`upper\` \| 大写 | \`"abc" \| upper\` → ABC |
+| \`lower\` \| 小写 | \`"ABC" \| lower\` → abc |
+| \`title\` \| 标题化 | \`"hello world" \| title\` |
+| \`length\` \| 长度 | \`"abc" \| length\` → 3 |
+| \`default:x\` \| 默认值 | \`"" \| default:"N/A"\` |
 
 链式：\`{{ name \| upper \| length }}\` 先大写再算长度。
 

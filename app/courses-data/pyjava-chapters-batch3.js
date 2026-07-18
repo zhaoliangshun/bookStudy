@@ -1731,8 +1731,8 @@ merged.putAll(d2);
 | 推导式 | 原生 | Stream collect |
 | 迭代器协议 | __iter__/__next__ | Iterator/Iterable |
 | 有序 Map | dict（3.7+） | LinkedHashMap/TreeMap |
-| 集合运算 | 运算符 \| & - ^ | 方法 addAll/retainAll |
-| 字典合并 | 运算符 \| | putAll |
+| 集合运算 \| 运算符 \| & - ^ | 方法 addAll/retainAll |
+| 字典合并 \| 运算符 \| | putAll |
 
 Python 的容器更简洁直观，适合快速开发；Java 的集合框架更全面，针对不同场景有优化实现，适合性能敏感场景。选择哪种语言，取决于项目需求、团队习惯和性能要求。`,
   },

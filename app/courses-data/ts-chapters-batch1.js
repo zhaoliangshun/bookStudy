@@ -1549,7 +1549,7 @@ type Handler = (event: string) => boolean;  // 定义类型别名 Handler
 | 维度 | type | interface |
 | --- | --- | --- |
 | **原始类型别名** | ✅ \`type X = string\` | ❌ 不支持 |
-| **联合类型** | ✅ \`A \| B\` | ❌ 不支持 |
+| **联合类型** \| ✅ \`A \| B\` | ❌ 不支持 |
 | **交叉类型** | ✅ \`A & B\` | ✅ extends 多继承 |
 | **对象类型** | ✅ \`type X = {...}\` | ✅ \`interface X {...}\` |
 | **函数类型** | ✅ \`type F = () => void\` | ✅ \`interface F { (): void }\` |

@@ -517,9 +517,9 @@ class Board(Base):
 | 类型注解 | 数据库类型 | 是否允许 NULL |
 |---------|----------|--------------|
 | \`Mapped[int]\` | INTEGER | NOT NULL |
-| \`Mapped[int \| None]\` | INTEGER | NULL |
+| \`Mapped[int \| None]\` \| INTEGER | NULL |
 | \`Mapped[str]\` | VARCHAR | NOT NULL |
-| \`Mapped[str \| None]\` | VARCHAR | NULL |
+| \`Mapped[str \| None]\` \| VARCHAR | NULL |
 | \`Mapped[bool]\` | BOOLEAN | NOT NULL |
 | \`Mapped[datetime]\` | DATETIME | NOT NULL |
 

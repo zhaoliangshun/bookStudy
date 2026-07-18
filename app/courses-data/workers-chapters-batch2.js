@@ -243,7 +243,7 @@ worker.postMessage('第三');
 | 支持任意可克隆类型 | 原始值、对象、数组、Map、Set、ArrayBuffer 等 |
 | 异步宏任务 | 调用后立即返回，回调在宏任务队列中执行 |
 | 顺序保证 | 同一通道内消息按发送顺序到达 |
-| 可携带 Transferable | 第二参数可转移 ArrayBuffer 等，实现零拷贝 |`,
+| 可携带 Transferable \| 第二参数可转移 ArrayBuffer 等，实现零拷贝 |`,
     code: `// ============================================
 // 第六章代码：postMessage 基础通信演示
 // 用 EventEmitter 模拟 Worker 的消息机制
@@ -605,7 +605,7 @@ const copy = structuredClone(original);
 | 支持丰富类型 | Date、RegExp、Map、Set、ArrayBuffer、循环引用 |
 | 不支持函数和 DOM | 这些无法跨线程传递 |
 | 比 JSON 强大 | 保留类型信息，支持循环引用 |
-| 大对象有性能成本 | 大数据建议用 Transferable 或 SharedArrayBuffer |`,
+| 大对象有性能成本 \| 大数据建议用 Transferable 或 SharedArrayBuffer |`,
     code: `// ============================================
 // 第七章代码：结构化克隆算法演示
 // 演示什么能克隆、什么不能、深拷贝效果
@@ -1060,7 +1060,7 @@ worker2.postMessage({ port: channel.port2 }, [channel.port2]);
 | 主要 Transferable | ArrayBuffer、MessagePort、ImageBitmap |
 | 零拷贝高性能 | 适合大数据（图像、音频、视频） |
 | 转移后不能再用 | ArrayBuffer 变成 detached，访问报错 |
-| 小数据用克隆即可 | 转移有管理开销，小数据没必要 |`,
+| 小数据用克隆即可 \| 转移有管理开销，小数据没必要 |`,
     code: `// ============================================
 // 第八章代码：Transferable 对象转移演示
 // 模拟 ArrayBuffer 转移前后的状态变化
@@ -1522,7 +1522,7 @@ port.close();
 | MessagePort 可转移 | 通过 postMessage 转移给 Worker |
 | 支持 Worker 间通信 | 两端各在一个 Worker 中 |
 | 需要管理生命周期 | start() 启动，close() 释放 |
-| 比直接 postMessage 更灵活 | 适合复杂多方通信场景 |`,
+| 比直接 postMessage 更灵活 \| 适合复杂多方通信场景 |`,
     code: `// ============================================
 // 第九章代码：MessageChannel 消息通道演示
 // 用 EventEmitter 模拟 MessageChannel / MessagePort
@@ -1997,7 +1997,7 @@ BroadcastChannel 严格限于同源。如果需要跨域通信，还是得用 \`
 | 同源限制 | 协议+域名+端口必须相同 |
 | 轻量级 | 比 SharedWorker 简单得多 |
 | 典型场景 | 多标签页状态同步、缓存失效、任务协调 |
-| 记得 close() | 不用时关闭频道释放资源 |`,
+| 记得 close() \| 不用时关闭频道释放资源 |`,
     code: `// ============================================
 // 第十章代码：BroadcastChannel 广播通信演示
 // 用 EventEmitter 模拟广播频道机制

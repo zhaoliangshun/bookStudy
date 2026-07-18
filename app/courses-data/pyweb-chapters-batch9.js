@@ -284,21 +284,21 @@ Jinja2 的注释语法是 \`{# ... #}\`，渲染时会被完全去掉，不出�
 
 | 过滤器 | 作用 | 示例 | 结果 |
 |--------|------|------|------|
-| \`upper\` | 转大写 | \`"abc" \| upper\` | \`ABC\` |
-| \`lower\` | 转小写 | \`"ABC" \| lower\` | \`abc\` |
-| \`capitalize\` | 首字母大写 | \`"hELLO" \| capitalize\` | \`Hello\` |
-| \`title\` | 每个单词首字母大写 | \`"hello world" \| title\` | \`Hello World\` |
-| \`trim\` | 去首尾空白 | \`"  hi  " \| trim\` | \`hi\` |
-| \`length\` | 取长度 | \`[1,2,3] \| length\` | \`3\` |
-| \`default\` | 默认值 | \`none \| default("N/A")\` | \`N/A\` |
-| \`join\` | 列表拼接 | \`[1,2] \| join("-")\` | \`1-2\` |
-| \`round\` | 四舍五入 | \`3.1415 \| round(2)\` | \`3.14\` |
-| \`int\` | 转整数 | \`"5" \| int\` | \`5\` |
-| \`float\` | 转浮点 | \`"3.14" \| float\` | \`3.14\` |
-| \`string\` | 转字符串 | \`42 \| string\` | \`"42"\` |
-| \`replace\` | 替换 | \`"abc" \| replace("a","X")\` | \`Xbc\` |
-| \`truncate\` | 截断加省略号 | \`"long text" \| truncate(5)\` | \`lon...\` |
-| \`escape\` / \`e\` | HTML 转义 | \`"<b>" \| e\` | \`&lt;b&gt;\` |
+| \`upper\` \| 转大写 | \`"abc" \| upper\` | \`ABC\` |
+| \`lower\` \| 转小写 | \`"ABC" \| lower\` | \`abc\` |
+| \`capitalize\` \| 首字母大写 | \`"hELLO" \| capitalize\` | \`Hello\` |
+| \`title\` \| 每个单词首字母大写 | \`"hello world" \| title\` | \`Hello World\` |
+| \`trim\` \| 去首尾空白 | \`"  hi  " \| trim\` | \`hi\` |
+| \`length\` \| 取长度 | \`[1,2,3] \| length\` | \`3\` |
+| \`default\` \| 默认值 | \`none \| default("N/A")\` | \`N/A\` |
+| \`join\` \| 列表拼接 | \`[1,2] \| join("-")\` | \`1-2\` |
+| \`round\` \| 四舍五入 | \`3.1415 \| round(2)\` | \`3.14\` |
+| \`int\` \| 转整数 | \`"5" \| int\` | \`5\` |
+| \`float\` \| 转浮点 | \`"3.14" \| float\` | \`3.14\` |
+| \`string\` \| 转字符串 | \`42 \| string\` | \`"42"\` |
+| \`replace\` \| 替换 | \`"abc" \| replace("a","X")\` | \`Xbc\` |
+| \`truncate\` \| 截断加省略号 | \`"long text" \| truncate(5)\` | \`lon...\` |
+| \`escape\` / \`e\` \| HTML 转义 | \`"<b>" \| e\` | \`&lt;b&gt;\` |
 
 ## 七、控制结构
 
@@ -590,11 +590,11 @@ def user_list():
 |--------|------|----------|
 | 漏写 \`{% endif %}\` | 模板报错"expected token end" | if/for/macro 都要有结束标签 |
 | \`{{ }}\` 和 \`{% %}\` 混用 | 变量没输出或逻辑没执行 | 输出值用 \`{{ }}\`，控制流用 \`{% %}\` |
-| 用户输入没转义 | XSS 漏洞 | 默认转义别关，信任内容才 \`| safe\` |
+| 用户输入没转义 \| XSS 漏洞 | 默认转义别关，信任内容才 \`| safe\` |
 | 在 \`{{ }}\` 里写赋值 | 报错 | 赋值用 \`{% set x = 1 %}\` |
 | 用 \`==\` 比较时漏空格 | 部分老版本解析异常 | 写 \`{% if x == 1 %}\` 而非 \`{% if x==1 %}\` |
 | 循环里改不了外部变量 | \`{% set %}\` 在 for 内不持久 | 用命名空间或把循环外结果算好传入 |
-| \`{{ none | default("x") }}\` 不生效 | 空字符串不算 undefined | 用 \`default("x", true)\` 处理空值 |
+| \`{{ none | default("x") }}\` 不生效 \| 空字符串不算 undefined | 用 \`default("x", true)\` 处理空值 |
 | 模板文件放错位置 | Flask 找不到模板 | 放 \`templates/\` 目录下 |
 | 用 \`user.name\` 但 user 是 None | 渲染报错或空 | 先 \`{% if user %}\` 判断再访问 |
 
@@ -1788,7 +1788,7 @@ body = render_email("welcome.txt", user={"name": "小明", "email": "xm@example.
 | 沙箱里还想用复杂对象方法 | 报错 undefined | 提前把需要的数据扁平化传入 |
 | ChoiceLoader 顺序写反 | 覆盖了默认模板 | 自定义目录放前面 |
 | 包模板没把 templates 打进包 | PackageLoader 找不到 | setup.py 里 include_package_data=True |
-| 测试当过滤器用 \`{{ x \| admin }}\` | 报错 | 测试用 \`{% if x is admin %}\` |
+| 测试当过滤器用 \`{{ x \| admin }}\` \| 报错 | 测试用 \`{% if x is admin %}\` |
 | 沙箱防不住无限循环 | 渲染卡死 | 加超时和模板长度限制 |
 
 ## 十一、小结
@@ -2358,7 +2358,7 @@ def posts():
 |--------|------|----------|
 | 生产开了 auto_reload | 每次渲染都查文件修改时间 | 生产关掉 |
 | 模板里查数据库 | 慢，N+1 查询 | 视图层算好数据再传 |
-| 用 \`| safe\` 输出用户内容 | XSS | 用户内容必须转义 |
+| 用 \`| safe\` 输出用户内容 \| XSS | 用户内容必须转义 |
 | JSON 传给前端没转义 \`<\` | XSS | 用 json.dumps（自动转义） |
 | 继承超过 3 层 | 调试难 | 拆成组合（include）替代深继承 |
 | block 名重复 | 多级继承覆盖冲突 | 用带前缀的具名 block |

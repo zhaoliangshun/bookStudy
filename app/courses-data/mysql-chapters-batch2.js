@@ -73,7 +73,7 @@ GROUP BY u.id, u.username;
 | id | username | order_count |
 | --- | --- | --- |
 | 1 | alice | 5 |
-| 2 | bob | 0 |  ← bob 没订单，但保留，order_count 为 0
+| 2 \| bob | 0 |  ← bob 没订单，但保留，order_count 为 0
 
 > 这是 LEFT JOIN 最经典的应用：**找"没有关联"的数据**。
 

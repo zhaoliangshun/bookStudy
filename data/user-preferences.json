@@ -176,7 +176,8 @@
       "/fastapi"
     ],
     "C#开发": [
-      "/csharp"
+      "/csharp",
+      "/csharp2"
     ]
   },
   "categoryConfig": {

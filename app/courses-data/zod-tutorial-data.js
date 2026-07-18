@@ -1207,7 +1207,7 @@ discriminatedUnion 特别适合：
 
 | 场景 | 推荐 |
 | --- | --- |
-| 简单类型联合（string\|number） | \`z.union\` |
+| 简单类型联合（string\\|number） | \`z.union\` |
 | 对象联合，有共同判别字段 | \`z.discriminatedUnion\` |
 | 对象联合，无判别字段 | \`z.union\`（凑合用） |
 
@@ -1288,9 +1288,9 @@ console.log("矩形面积:", area({ type: "rect", width: 3, height: 4 }));`,
 
 | 方法 | 允许的值 | 等价 TS |
 | --- | --- | --- |
-| \`.optional()\` | 原类型 + \`undefined\` | \`T \| undefined\` |
-| \`.nullable()\` | 原类型 + \`null\` | \`T \| null\` |
-| \`.nullish()\` | 原类型 + \`null\` + \`undefined\` | \`T \| null \| undefined\` |
+| \`.optional()\` \| 原类型 + \`undefined\` | \`T \| undefined\` |
+| \`.nullable()\` \| 原类型 + \`null\` | \`T \| null\` |
+| \`.nullish()\` \| 原类型 + \`null\` + \`undefined\` \| \`T \| null \| undefined\` |
 | \`.default(v)\` | 原类型 + 缺失时填 v | \`T\`（缺失补默认值） |
 
 ### optional

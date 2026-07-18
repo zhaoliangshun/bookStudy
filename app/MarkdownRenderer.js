@@ -57,8 +57,24 @@ function renderInline(text, keyPrefix) {
 }
 
 // 解析表格行（| a | b |）返回单元格数组
+// 注意：需要正确处理以下两种情况，否则单元格内容里的 | 会被误当成列分隔符：
+//   1. 反引号内的 |（如 `str | None`）—— GFM 规范要求代码 span 内的 | 不作为分隔符
+//   2. 转义的 \|（如 a \| b）—— Markdown 转义管道符，应渲染为字面的 |
 function parseTableRow(line) {
-  return line
+  // 第 1 步：把反引号代码 span（`...`）整体替换为占位符，保护其内部的 |
+  //         用 \x00<索引>\x00 作为占位符，后续再还原
+  const codeSpans = [];
+  const protectedLine = line.replace(/`[^`]+`/g, (m) => {
+    const idx = codeSpans.length;
+    codeSpans.push(m);
+    return "\x00" + idx + "\x00";
+  });
+
+  // 第 2 步：把转义的 \| 替换为占位符 \x01（后续还原成 |，不带反斜杠）
+  const unescapedLine = protectedLine.replace(/\\\|/g, "\x01");
+
+  // 第 3 步：按 | 分割（此时剩下的 | 都是真正的列分隔符）
+  const cells = unescapedLine
     .split("|")
     .map((cell) => cell.trim())
     .filter((cell, idx, arr) => {
@@ -67,6 +83,13 @@ function parseTableRow(line) {
       if (idx === arr.length - 1 && cell === "") return false;
       return true;
     });
+
+  // 第 4 步：还原占位符——把 \x01 还原成 |，把 \x00<idx>\x00 还原成原始代码 span
+  return cells.map((cell) =>
+    cell
+      .replace(/\x01/g, "|")
+      .replace(/\x00(\d+)\x00/g, (_, idx) => codeSpans[Number(idx)] || "")
+  );
 }
 
 // 判断是否是表格分隔行（| --- | --- |）

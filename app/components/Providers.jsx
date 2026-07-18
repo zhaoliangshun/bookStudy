@@ -88,11 +88,12 @@ export default function Providers({ children }) {
     <ErrorBoundary resetKey={pathname}>
       <EditorThemeProvider>
         <ScrollRestoration />
-        <BookmarkManager />
         {/* 用 VisibilityProvider 包裹浮动按钮组，让所有按钮
             和设置入口共享同一份「显示/隐藏」状态 */}
         <FloatingButtonVisibilityProvider>
           <div className="floating-panel-group">
+            {/* 书签管理器：与其他浮动按钮共用同一容器 */}
+            <BookmarkManager />
             <FloatingEditorTheme />
             <ReadingThemeSwitcher />
             <FloatingChapterNav />

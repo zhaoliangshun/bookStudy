@@ -462,7 +462,7 @@ const worker = new Worker(url, options);
 | 参数 | 类型 | 说明 |
 |------|------|------|
 | \`url\` | string | Worker 脚本的 URL，必须同源 |
-| \`options.type\` | \`'classic'\` \| \`'module'\` | 脚本类型，\`module\` 支持 import |
+| \`options.type\` \| \`'classic'\` \| \`'module'\` | 脚本类型，\`module\` 支持 import |
 | \`options.name\` | string | Worker 的名称，用于调试 |
 | \`options.credentials\` | string | 跨域凭证策略 |
 

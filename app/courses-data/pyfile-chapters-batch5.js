@@ -992,7 +992,7 @@ def test_without_lock():
 | \`fcntl.LOCK_SH\` | 共享锁(读) |
 | \`fcntl.LOCK_EX\` | 排他锁(写) |
 | \`fcntl.LOCK_UN\` | 解锁 |
-| \`fcntl.LOCK_NB\` | 非阻塞(配合 \| 使用) |
+| \`fcntl.LOCK_NB\` \| 非阻塞(配合 \| 使用) |
 
 ### demo 2:fcntl 排他锁
 

@@ -403,7 +403,7 @@ SSLHonorCipherOrder on
 | 推荐版本 | TLS 1.3（首选）、TLS 1.2（兼容） |
 | 调试工具 | openssl s_client、nmap、curl、浏览器 DevTools |
 | 老版本漏洞 | POODLE（SSL3）、BEAST（TLS1.0）、CBC 设计缺陷 |
-| 配置要点 | 禁用旧版本，启用 AEAD 套件，优先服务器偏好 |`
+| 配置要点 \| 禁用旧版本，启用 AEAD 套件，优先服务器偏好 |`
   },
 
   // ============================================================
@@ -1151,7 +1151,7 @@ openssl s_client -connect example.com:443 -servername example.com < /dev/null 2>
 | 密钥派生 | pre_master → master_secret → key_block |
 | 调试工具 | openssl -msg、tcpdump、Wireshark |
 | 会话恢复 | Session ID / Session Ticket，1-RTT |
-| 核心扩展 | SNI、ALPN、supported_groups、key_share |`
+| 核心扩展 \| SNI、ALPN、supported_groups、key_share |`
   },
 
   // ============================================================
@@ -1830,7 +1830,7 @@ TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
 | HKDF (TLS 1.3) | Extract + Expand 两阶段，标准化 |
 | 两个方向密钥 | client_write_key 和 server_write_key 独立 |
 | 密码套件命名 | 密钥交换_认证_WITH_加密_认证 |
-| TLS 1.3 强制 | 移除 RSA 交换，强制 ECDHE 前向保密 |`
+| TLS 1.3 强制 \| 移除 RSA 交换，强制 ECDHE 前向保密 |`
   },
 
   // ============================================================
@@ -2452,7 +2452,7 @@ TCP 数据
 | 密码套件命名 | 密钥交换_认证_WITH_加密_认证 |
 | TLS 1.3 套件 | 简化为 加密_认证，只有 5 个 |
 | 调试工具 | openssl -msg/-debug、Wireshark |
-| 配置建议 | AEAD + ECDHE + 同时支持 AES/ChaCha |`
+| 配置建议 \| AEAD + ECDHE + 同时支持 AES/ChaCha |`
   },
 
   // ============================================================
@@ -3222,6 +3222,6 @@ TLS 1.3 支持在通信过程中"更新密钥"（Key Update），增强长期连
 | KeyUpdate | 通信中更新密钥，增强安全 |
 | 兼容性 | 现代浏览器和服务器普遍支持 |
 | 性能提升 | 跨洋连接省 100-300ms |
-| 隐私提升 | 证书加密，中间人看不到服务器身份 |`
+| 隐私提升 \| 证书加密，中间人看不到服务器身份 |`
   }
 ];

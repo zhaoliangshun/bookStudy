@@ -402,9 +402,7 @@ function UserProfile({ userId }: { userId: string }) {
 下一章讲表单与校验！`,
     code: `import React, { useState, useEffect, useRef, useCallback } from "react";
 
-// ==============================
-// 类型定义
-// ==============================
+// === 1. 类型定义 ===
 type User = {
   id: number;
   name: string;
@@ -412,10 +410,18 @@ type User = {
   role: "admin" | "user" | "guest";
 };
 
-// 判别联合：API 响应
+// === 2. 判别联合 Result<T>：API 响应（成功 / 失败）===
+// 💡 提示：判别联合（Discriminated Union）= 多个对象类型共享一个"判别式字段"
+//   这里的判别式是 success（字面量类型 true / false）。
+//
+// 相比 "一个类型塞所有字段" 的写法（如 { data?: T; error?: string }），它的优势：
+//   优势 1：状态与数据强绑定。success=true 必有 data，success=false 必有 error，
+//           不可能出现 "success=true 却访问 error" 这种错位，TS 编译期就拦下。
+//   优势 2：穷尽性检查。switch / if 分支处理时，TS 确保每种情况都被覆盖。
+//   优势 3：重构友好。新增一种状态（如 "pending"）后，所有未处理分支立刻报错。
 type ApiResponse<T> =
-  | { success: true; data: T }
-  | { success: false; error: string };
+  | { success: true; data: T }          // 成功分支：data 类型由泛型 T 决定
+  | { success: false; error: string };  // 失败分支：error 永远是 string
 
 // 自定义错误类
 class ApiError extends Error {
@@ -427,16 +433,43 @@ class ApiError extends Error {
   }
 }
 
-// 请求状态：判别联合
+// === 3. 判别联合 RequestState<T>：请求状态机 ===
+// 💡 提示：用 status 作为判别式，描述一个请求的完整生命周期：
+//   idle（未开始）→ loading（请求中）→ success / error（终态）
+//
+// 类型收窄演示（这是判别联合最强大的能力）：
+//   if (state.status === "success") {
+//     // 在这个分支里，state 被收窄为 { status: "success"; data: T }
+//     // 所以 state.data 自动可用，且类型就是 T，无需任何断言！
+//     console.log(state.data);  // ✅ 类型为 T
+//   }
+//   if (state.status === "error") {
+//     // 这里 state 被收窄为 { status: "error"; error: string }
+//     console.log(state.error); // ✅ 类型为 string
+//     // console.log(state.data); // ❌ 编译错误：error 分支根本没有 data 字段
+//   }
+//
+// 💡 提示：泛型 <T> 表示"成功时返回的数据类型"。
+//   传入 User[] 时，success 分支的 data 就是 User[]；传入 User 时，data 就是 User。
+//   一份 RequestState 类型定义，可复用到任意数据类型的请求场景。
 type RequestState<T> =
-  | { status: "idle" }
-  | { status: "loading" }
-  | { status: "success"; data: T }
-  | { status: "error"; error: string };
+  | { status: "idle" }                  // 初始态：尚未发起请求
+  | { status: "loading" }               // 进行态：请求已发出，等待响应
+  | { status: "success"; data: T }      // 成功态：data 类型就是泛型 T
+  | { status: "error"; error: string }; // 失败态：error 永远是 string
 
-// ==============================
-// 模拟 API（30% 概率失败，方便观察错误处理）
-// ==============================
+// === 4. 模拟 API（30% 概率失败，方便观察错误处理）===
+// 💡 提示：AbortController 是浏览器原生 API，用于"手动取消一个进行中的请求"。
+//   工作原理：
+//     1. new AbortController() 创建一个控制器，它带有一个 signal 属性。
+//     2. 把 controller.signal 传给 fetch / Promise，建立"取消通道"。
+//     3. 调用 controller.abort() 后，signal.aborted 变为 true，
+//        所有监听 "abort" 事件的回调都会被触发，fetch 会立即 reject。
+//
+// 取消请求的三个典型时机：
+//   ① 组件卸载时（useEffect 的 cleanup）—— 避免对已卸载组件 setState 造成内存泄漏。
+//   ② 发起新请求前取消旧请求 —— 解决"竞态"（旧请求晚返回会覆盖新数据）。
+//   ③ 用户主动取消（如点击"取消"按钮）。
 function mockFetchUsers(signal: AbortSignal): Promise<User[]> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -453,19 +486,35 @@ function mockFetchUsers(signal: AbortSignal): Promise<User[]> {
       ]);
     }, 1200);
 
+    // 监听 abort 事件：一旦外部调用 controller.abort()，就清理定时器并 reject。
+    // 💡 提示：clearTimeout 非常关键，否则即使取消了，定时器仍会继续跑并 resolve，
+    //   造成"取消后还收到数据"的怪异行为。
     signal.addEventListener("abort", () => {
       clearTimeout(timer);
-      reject(new ApiError("请求已取消", 0));
+      reject(new ApiError("请求已取消", 0)); // code=0 标记"主动取消"，便于上层过滤
     });
   });
 }
 
-// 泛型安全请求封装
-async function safeRequest<T>(fetcher: (signal: AbortSignal) => Promise<T>): Promise<ApiResponse<T>> {
+// === 5. 泛型安全请求封装：返回判别联合 Result<T> ===
+// 💡 提示：这个函数把"可能抛异常的 Promise<T>"转换成"绝不抛异常的 Result<T>"。
+//   调用方拿到的一定是 { success: true, data } 或 { success: false, error }，
+//   不需要 try/catch，靠判别联合的分支就能安全处理 —— 这比 throw 更可控。
+//
+// 泛型 <T> 的应用：
+//   fetcher 返回 Promise<T>，成功时 data 的类型就是 T。
+//   传入 () => mockFetchUsers(signal) 时，T 被自动推断为 User[]，
+//   于是返回值 Promise<ApiResponse<T>> 也就成了 Promise<ApiResponse<User[]>>，
+//   成功分支的 data 自然就是 User[]。
+async function safeRequest<T>(
+  fetcher: (signal: AbortSignal) => Promise<T>
+): Promise<ApiResponse<T>> {
   try {
     const data = await fetcher(new AbortController().signal);
+    // 💡 提示：走到这里说明成功，返回 success 分支，data 的类型由泛型 T 决定
     return { success: true, data };
   } catch (e) {
+    // 💡 提示：捕获所有异常，统一转成 failure 分支，绝不向上抛错
     if (e instanceof ApiError && e.code !== 0) {
       return { success: false, error: e.message };
     }
@@ -473,36 +522,71 @@ async function safeRequest<T>(fetcher: (signal: AbortSignal) => Promise<T>): Pro
   }
 }
 
-// ==============================
-// 自定义 Hook：useUsers
-// ==============================
+// === 6. 自定义 Hook：useUsers（状态机 + AbortController）===
+// 💡 提示：这个 Hook 内部维护一个 RequestState<User[]> 状态机，
+//   状态流转：idle → loading → (success | error)。
+//   每次 setState 都用对象字面量，TS 会根据 status 字段自动校验 payload 是否合法：
+//     传 { status: "loading" } 时不能带 data；
+//     传 { status: "success", data } 时 data 必须是 User[]。
 function useUsers() {
   const [state, setState] = useState<RequestState<User[]>>({ status: "idle" });
   const abortRef = useRef<AbortController | null>(null);
 
+  // console.log 演示：每次渲染都打印当前状态，便于观察状态机流转
+  console.log("[useUsers 渲染] 当前 status = " + state.status);
+
   const fetchData = useCallback(async () => {
-    // 取消上一个请求（解决竞态）
+    // ① 取消上一个进行中的请求（解决竞态）
+    //    💡 提示：如果不取消，旧请求晚返回时会把新数据覆盖掉（经典竞态 bug）
     abortRef.current?.abort();
+    console.log("[AbortController] 已取消上一个请求（如有）");
+
+    // ② 新建一个 AbortController，用于本次请求的取消控制
     const controller = new AbortController();
     abortRef.current = controller;
 
+    // ③ 状态机：idle/error → loading
+    //    💡 提示：setState 传入 { status: "loading" }，TS 校验通过（loading 分支无额外字段）
+    console.log("[状态机] idle/error -> loading");
     setState({ status: "loading" });
+
     try {
+      // ④ 发起请求，把 controller.signal 传进去，随时可被 abort
       const users = await mockFetchUsers(controller.signal);
+
+      // ⑤ 状态机：loading → success
+      //    💡 提示：这里 setState 传入 { status: "success", data: users }，
+      //    TS 会校验 data 字段的类型必须是 User[]（泛型 T 已绑定为 User[]）
+      console.log("[状态机] loading -> success，获取到 " + users.length + " 位用户");
+      console.log("[类型收窄] success 分支中，state.data 的类型被收窄为 User[]");
       setState({ status: "success", data: users });
     } catch (e) {
-      // 忽略主动取消的错误
-      if (e instanceof ApiError && e.code === 0) return;
-      setState({
-        status: "error",
-        error: e instanceof ApiError ? \`[\${e.code}] \${e.message}\` : "未知错误"
-      });
+      // ⑥ 忽略"主动取消"产生的错误（code === 0）
+      //    💡 提示：主动 abort 触发的 reject 不算"真正的错误"，不应展示给用户
+      if (e instanceof ApiError && e.code === 0) {
+        console.log("[AbortController] 检测到主动取消（code=0），已忽略该错误，不更新状态");
+        return;
+      }
+      // ⑦ 状态机：loading → error
+      //    用字符串拼接构造错误信息（避免使用模板字面量）
+      const errorMsg = e instanceof ApiError
+        ? "[" + e.code + "] " + e.message
+        : "未知错误";
+      console.log("[状态机] loading -> error，error = " + errorMsg);
+      console.log("[类型收窄] error 分支中，state.error 的类型被收窄为 string");
+      setState({ status: "error", error: errorMsg });
     }
   }, []);
 
   useEffect(() => {
     fetchData();
-    return () => abortRef.current?.abort();
+    // 💡 提示：cleanup 函数在组件卸载时执行，取消进行中的请求，
+    //   避免组件卸载后还 setState 触发 React 警告：
+    //   "Can't perform a React state update on an unmounted component"
+    return () => {
+      console.log("[AbortController] 组件卸载，取消进行中的请求");
+      abortRef.current?.abort();
+    };
   }, [fetchData]);
 
   return { state, retry: fetchData };
@@ -924,42 +1008,61 @@ function Field({
 下一章讲路由参数类型！`,
     code: `import React, { useState } from "react";
 
-// ==============================
-// 类型定义（相当于 z.infer 的产物）
-// ==============================
+// === 1. 类型定义（相当于 z.infer<typeof schema> 的产物）===
+// 💡 提示：在真实 Zod 项目里，先写 schema（z.object({...})），再用
+//   type FormValues = z.infer<typeof schema>;
+// 自动推导出类型——校验规则与类型"单一数据源"，永不脱节。
+// z.infer<typeof schema> 的原理：typeof schema 先拿到 schema 值的类型，
+// z.infer 再从中提取出目标对象类型，等价于手写下面的 FormValues。
 type FormValues = {
   name: string;
   email: string;
   password: string;
-  age: number | ""; // 空输入占位
+  age: number | ""; // 空输入占位（input 为空时用空字符串，避免 NaN）
 };
 
-// 字段错误：每个字段可能有错误，也可能没有
+// === 2. 字段错误类型：Partial<Record<K, V>> ===
+// 💡 提示：Partial<Record<keyof FormValues, string>> 结构拆解：
+//   - Record<keyof FormValues, string>：每个字段名映射到 string
+//       => { name: string; email: string; password: string; age: string }
+//   - Partial<...>：所有字段变可选
+//       => { name?: string; email?: string; password?: string; age?: string }
+//   含义：每个字段"可能有错误信息，也可能没有"——贴合表单场景
+//   （没出错的字段不在 errors 中，或值为 undefined）
 type FieldErrors = Partial<Record<keyof FormValues, string>>;
 
-// ==============================
-// 手写校验规则配置（相当于 zod schema）
-// 每个字段配一组规则 + 中文错误信息
-// ==============================
+// === 3. 手写校验规则配置（相当于 Zod 的 z.object({...}) schema）===
+// 💡 提示：Zod 中 schema 长这样——规则和类型一体：
+//   const schema = z.object({
+//     name: z.string().min(2, "...").max(20, "..."),       // min/max 长度校验
+//     email: z.string().email("..."),                      // email 格式校验
+//     password: z.string().min(6, "...").max(20, "..."),   // 长度校验
+//     age: z.number().min(18, "...").max(120, "...")       // 数值范围校验
+//   });
+// 这里用配置对象 Rule<T>[] 手写模拟，每个规则 = { validate, message }。
 type Rule<T> = {
   validate: (value: T) => boolean;
   message: string;
 };
 
 const rules: Record<keyof FormValues, Rule<FormValues[keyof FormValues]>[]> = {
+  // name 字段：等价于 z.string().min(2).max(20)（长度校验）
   name: [
     { validate: v => (v as string).trim().length >= 2, message: "用户名至少需要 2 个字符" },
     { validate: v => (v as string).trim().length <= 20, message: "用户名最多 20 个字符" }
   ],
+  // email 字段：等价于 z.string().email()（非空 + 正则格式校验）
   email: [
     { validate: v => (v as string).trim().length > 0, message: "邮箱不能为空" },
     { validate: v => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(v as string), message: "请输入正确的邮箱地址" }
   ],
+  // password 字段：等价于 z.string().min(6).max(20)，外加"必须含数字"
   password: [
     { validate: v => (v as string).length >= 6, message: "密码至少 6 位" },
     { validate: v => (v as string).length <= 20, message: "密码最多 20 位" },
     { validate: v => /[0-9]/.test(v as string), message: "密码必须包含至少一个数字" }
   ],
+  // age 字段：等价于 z.number().min(18).max(120)（数值范围校验）
   age: [
     { validate: v => v !== "" && !isNaN(v as number), message: "年龄不能为空" },
     { validate: v => v === "" || (v as number) >= 18, message: "必须年满 18 岁" },
@@ -967,7 +1070,8 @@ const rules: Record<keyof FormValues, Rule<FormValues[keyof FormValues]>[]> = {
   ]
 };
 
-// 校验单个字段
+// === 4. 校验函数 ===
+// 校验单个字段：遍历该字段的规则，遇到第一个失败就返回其错误信息
 function validateField(key: keyof FormValues, value: FormValues[keyof FormValues]): string {
   for (const rule of rules[key]) {
     if (!rule.validate(value)) return rule.message;
@@ -975,7 +1079,7 @@ function validateField(key: keyof FormValues, value: FormValues[keyof FormValues
   return "";
 }
 
-// 校验全部
+// 校验全部：遍历所有字段，收集错误到 FieldErrors 对象（等价于 schema.safeParse）
 function validateAll(values: FormValues): FieldErrors {
   const errors: FieldErrors = {};
   (Object.keys(rules) as (keyof FormValues)[]).forEach(key => {
@@ -985,9 +1089,28 @@ function validateAll(values: FormValues): FieldErrors {
   return errors;
 }
 
-// ==============================
-// 通用 Field 组件
-// ==============================
+// === 5. 校验流程演示（模块加载时跑一次，输出合法/非法输入的校验结果）===
+(function demoValidationFlow() {
+  console.log("=== 校验流程演示 ===");
+
+  // 模拟"非法输入"：每个字段都不合规
+  const badValues: FormValues = {
+    name: "a", email: "not-an-email", password: "123", age: 10
+  };
+  console.log("校验前 errors：", {});
+  const badErrors = validateAll(badValues);
+  console.log("非法输入校验后 errors：", badErrors);
+
+  // 模拟"合法输入"：每个字段都合规
+  const goodValues: FormValues = {
+    name: "张三", email: "zs@example.com", password: "abc123456", age: 25
+  };
+  const goodErrors = validateAll(goodValues);
+  console.log("合法输入校验后 errors：", goodErrors);
+  console.log("合法输入是否通过：", Object.keys(goodErrors).length === 0);
+})();
+
+// === 6. 通用 Field 组件 ===
 function Field({
   label, error, children
 }: {
@@ -1014,9 +1137,7 @@ const inputStyle: React.CSSProperties = {
   transition: "border-color 0.2s"
 };
 
-// ==============================
-// 主组件
-// ==============================
+// === 7. 主组件 ===
 export default function Demo() {
   const [values, setValues] = useState<FormValues>({
     name: "", email: "", password: "", age: ""
@@ -1027,7 +1148,11 @@ export default function Demo() {
   });
   const [submitted, setSubmitted] = useState<FormValues | null>(null);
 
-  // 通用更新：K extends keyof 让字段名和值类型强绑定
+  // === 7.1 通用更新函数 ===
+  // 💡 提示：<K extends keyof FormValues> 泛型约束的作用：
+  //   - K 只能是 "name" | "email" | "password" | "age" 之一（拼错字段名直接编译报错）
+  //   - value 类型自动绑定到 FormValues[K]（传错值类型也会报错）
+  //   例：update("name", 123) 报错，因为 FormValues["name"] 是 string 而非 number
   function update<K extends keyof FormValues>(key: K, value: FormValues[K]) {
     setValues(prev => ({ ...prev, [key]: value }));
     // 输入时实时校验（仅在该字段被触碰过时显示错误）
@@ -1045,12 +1170,19 @@ export default function Demo() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // 输出校验前的 errors 快照
+    console.log("提交前 errors：", errors);
     const allErrors = validateAll(values);
     setErrors(allErrors);
     setTouched({ name: true, email: true, password: true, age: true });
+    // 输出校验后的 errors
+    console.log("提交校验后 errors：", allErrors);
     if (Object.keys(allErrors).length === 0) {
+      // 校验通过，输出表单提交数据
+      console.log("✅ 表单提交数据：", values);
       setSubmitted({ ...values });
     } else {
+      console.log("❌ 校验未通过，不提交");
       setSubmitted(null);
     }
   }
@@ -1411,51 +1543,68 @@ function parseFilters(searchParams: URLSearchParams): FilterParams {
 下一章讲第三方库类型扩展！`,
     code: `import React, { useState, useMemo, useCallback } from "react";
 
-// ==============================
-// 类型定义：模拟 Next.js 路由参数
-// ==============================
+// ============================================================
+// === 1. 类型定义：模拟 Next.js App Router 的路由参数结构 ===
+// ============================================================
+// 💡 提示：在真实 Next.js 中，这些字段对应页面 searchParams 的解析结果
+// 例如 Server Component：searchParams: Promise<{ keyword?: string; page?: string }>
+// 例如 Client Component：const sp = useSearchParams();
 type FilterParams = {
   keyword: string;
-  category: string[];        // 多选
-  sortBy: "newest" | "price" | "popular";
+  category: string[];        // 多选：URL 中以逗号分隔存储
+  sortBy: "newest" | "price" | "popular";  // 字面量联合，保证取值受限
   page: number;
   size: number;
 };
 
-// 类型安全的解析工具
+// ============================================================
+// === 2. 类型安全的参数解析工具函数 ===
+// ============================================================
+// 这些函数是 "URL 字符串" 与 "业务类型对象" 之间的桥梁
+// 真实场景：从 useSearchParams() 返回的 URLSearchParams 中提取并校验
+
+// 将 URL 参数解析为 number，失败时返回默认值（真实场景对应 useSearchParams）
+// 例如：parseNumber(sp.get("page"), 1) —— sp 由 useSearchParams() 取得
 function parseNumber(value: string | null, defaultValue: number): number {
-  if (value === null) return defaultValue;
-  const n = Number(value);
-  return Number.isNaN(n) ? defaultValue : n;
+  if (value === null) return defaultValue;   // 参数缺失走默认值
+  const n = Number(value);                    // Number("abc") -> NaN
+  return Number.isNaN(n) ? defaultValue : n;  // 拦截 NaN，避免污染下游
 }
 
-// 从 URLSearchParams 解析成强类型对象
+// 将逗号分隔的字符串解析为类型安全的数组
+// 例如："电子,书籍" -> ["电子", "书籍"]；缺失或空串返回 []
+// 💡 提示：URL 没有原生数组结构，多选一般用逗号拼接或重复 key 两种约定
 function parseFilters(sp: URLSearchParams): FilterParams {
   const category = sp.get("category");
   const sortBy = sp.get("sortBy");
   return {
-    keyword: sp.get("keyword") ?? "",
-    category: category ? category.split(",").filter(Boolean) : [],
+    keyword: sp.get("keyword") ?? "",                                // null -> "" 简化下游判断
+    category: category ? category.split(",").filter(Boolean) : [],   // 过滤空串，避免 [""] 这种脏数据
+    // 字面量联合收窄：非法值（如 sortBy=xxx）自动回退 "newest"，既类型安全又容错
     sortBy: sortBy === "price" || sortBy === "popular" ? sortBy : "newest",
-    page: Math.max(1, parseNumber(sp.get("page"), 1)),
+    page: Math.max(1, parseNumber(sp.get("page"), 1)),  // 边界保护：页码至少为 1
+    // size 双向夹紧 1~50：防止恶意构造 size=99999 拖垮前端渲染或后端查询
     size: Math.min(50, Math.max(1, parseNumber(sp.get("size"), 5)))
   };
 }
 
 // 把 FilterParams 序列化回 URLSearchParams（模拟路由同步）
+// 真实场景：配合 useRouter() 使用
+//   const router = useRouter();
+//   router.replace("?" + serializeFilters(next).toString(), { scroll: false });
 function serializeFilters(f: FilterParams): URLSearchParams {
   const sp = new URLSearchParams();
-  if (f.keyword) sp.set("keyword", f.keyword);
-  if (f.category.length) sp.set("category", f.category.join(","));
+  if (f.keyword) sp.set("keyword", f.keyword);                  // 空串不写入 URL，保持 URL 简洁
+  if (f.category.length) sp.set("category", f.category.join(","));  // 数组 -> 逗号字符串
   sp.set("sortBy", f.sortBy);
   sp.set("page", String(f.page));
   sp.set("size", String(f.size));
   return sp;
 }
 
-// ==============================
-// 模拟数据
-// ==============================
+// ============================================================
+// === 3. 模拟数据：商品列表（供 Demo 过滤/分页使用） ===
+// ============================================================
 type Product = {
   id: number;
   name: string;
@@ -1482,19 +1631,75 @@ const SORT_OPTIONS: { value: FilterParams["sortBy"]; label: string }[] = [
   { value: "popular", label: "销量优先" }
 ];
 
-// ==============================
-// 主组件
-// ==============================
+// ============================================================
+// === 4. 解析演示：URLSearchParams 如何变身为强类型对象 ===
+// ============================================================
+// 💡 提示：用 IIFE 在模块加载时跑一次解析→序列化演示
+// 真实项目里可放在 useEffect 内做调试输出，或直接看控制台
+(function demoUrlParamsParsing() {
+  // 模拟一组 URL 查询字符串（等价于 useSearchParams 读到的 URL）
+  const demoUrl = "?page=2&categories=electronics,books&sort=price&minPrice=100";
+  const sp = new URLSearchParams(demoUrl);
+
+  console.log("[demoUrlParamsParsing] 原始 URL:", demoUrl);
+  console.log("[demoUrlParamsParsing] sp.get('page'):", sp.get("page"), "(类型: string | null)");
+  console.log("[demoUrlParamsParsing] sp.get('categories'):", sp.get("categories"));
+  console.log("[demoUrlParamsParsing] sp.get('sort'):", sp.get("sort"));
+  console.log("[demoUrlParamsParsing] sp.get('minPrice'):", sp.get("minPrice"));
+
+  // 复用工具函数，把 URL 字符串解析成强类型对象
+  const parsedFilters = {
+    page: Math.max(1, parseNumber(sp.get("page"), 1)),        // 边界保护：页码至少为 1
+    categories: (sp.get("categories") ?? "").split(",").filter(Boolean),  // 字符串 -> 字符串数组
+    sort: sp.get("sort"),
+    minPrice: parseNumber(sp.get("minPrice"), 0)
+  };
+  console.log("[demoUrlParamsParsing] 解析后对象:", parsedFilters);
+  // 期望输出：{ page: 2, categories: ["electronics","books"], sort: "price", minPrice: 100 }
+  // 注意 page/minPrice 已被类型收窄为 number，不再是 string
+
+  // 演示序列化：把对象重新拼成 URL 字符串（对应 router.replace 的入参）
+  const reSp = new URLSearchParams();
+  reSp.set("page", String(parsedFilters.page));
+  reSp.set("categories", parsedFilters.categories.join(","));
+  if (parsedFilters.sort) reSp.set("sort", parsedFilters.sort);
+  reSp.set("minPrice", String(parsedFilters.minPrice));
+  console.log("[demoUrlParamsParsing] 序列化后 URL:", "?" + reSp.toString());
+
+  // 演示更新过滤器后的 URL 变化：把 categories 改成单选 + page 改回 1
+  const updated = {
+    ...parsedFilters,
+    categories: ["electronics"],
+    page: 1
+  };
+  const updatedSp = new URLSearchParams();
+  updatedSp.set("page", String(updated.page));
+  updatedSp.set("categories", updated.categories.join(","));
+  if (updated.sort) updatedSp.set("sort", updated.sort);
+  updatedSp.set("minPrice", String(updated.minPrice));
+  console.log("[demoUrlParamsParsing] 更新后 URL:", "?" + updatedSp.toString());
+})();
+
+// ============================================================
+// === 5. 主组件：搜索 / 筛选 / 分页 ===
+// ============================================================
 export default function Demo() {
   // 用 URLSearchParams 模拟真实路由（初始带一些参数）
+  // 💡 提示：真实项目应使用 useSearchParams() + useRouter()
+  //   const searchParams = useSearchParams();
+  //   const router = useRouter();
+  //   setSp 对应 router.replace("?" + sp.toString())
   const [sp, setSp] = useState<URLSearchParams>(() => {
     const init = new URLSearchParams("?keyword=&sortBy=newest&page=1&size=5");
     return init;
   });
 
+  // [sp] 表示只在 URL 参数变化时重新计算
+  // 💡 提示：useMemo 缓存解析结果，避免每次渲染都跑一遍 parseFilters
   const filters = useMemo(() => parseFilters(sp), [sp]);
 
-  // 过滤 + 排序 + 分页
+  // [filters] 依赖 filters：只有筛选条件变化才重新过滤/排序/分页
+  // 注意 filters 是上面 useMemo 的返回值，本身已带缓存，所以这里也跟着复用缓存
   const result = useMemo(() => {
     let list = PRODUCTS.filter(p => {
       if (filters.keyword && !p.name.includes(filters.keyword)) return false;
@@ -1516,16 +1721,30 @@ export default function Demo() {
   }, [filters]);
 
   // 更新某个筛选字段（重置到第 1 页）
+  // 💡 提示：<K extends keyof FilterParams> 泛型约束的作用：
+  //   1) K 只能取 FilterParams 的 key（"keyword" | "category" | "sortBy" | "page" | "size"）
+  //      写错 key 名（如 updateFilter("keywrod", ...)）会被 TS 拦截
+  //   2) value: FilterParams[K] 让 value 类型随 key 联动：
+  //      updateFilter("page", 1)  // OK，page 期望 number
+  //      updateFilter("page", "1") // ❌ 报错，"1" 不是 number
+  //      updateFilter("sortBy", "price") // OK
+  //      updateFilter("sortBy", "xxx")   // ❌ 报错，不在字面量联合里
+  //   3) 配合计算属性 [key]: value，能保证合并后的 next 仍是 FilterParams，不会丢类型
+  // [filters] 依赖 filters：因为内部用 ...filters 合并旧值
   const updateFilter = useCallback(<K extends keyof FilterParams>(key: K, value: FilterParams[K]) => {
     const next: FilterParams = { ...filters, [key]: value, page: 1 };
     setSp(serializeFilters(next));
+    console.log("[updateFilter]", key, "->", value, "新 URL:", "?" + serializeFilters(next).toString());
   }, [filters]);
 
+  // [filters] 依赖 filters：setPage 只改 page 字段，但要保留其余筛选条件
   const setPage = useCallback((page: number) => {
     const next = { ...filters, page };
     setSp(serializeFilters(next));
+    console.log("[setPage] 切换到第", page, "页，新 URL:", "?" + serializeFilters(next).toString());
   }, [filters]);
 
+  // 总页数：Math.max(1, ...) 保证至少为 1，避免空列表时出现 "第 1/0 页"
   const totalPages = Math.max(1, Math.ceil(result.total / filters.size));
 
   return (
@@ -1975,7 +2194,7 @@ const u: User = { id: 1, name: "张三", email: "zs@example.com" };
 // ==============================
 // 类型定义
 // ==============================
-type DeclKind = "css" | "image" | "global";
+type DeclKind = "css" | "image" | "global" | "react" | "merge";
 
 type DeclExample = {
   kind: DeclKind;
@@ -1985,39 +2204,49 @@ type DeclExample = {
   after: string;
   fileName: string;
   code: string;
+  tip: string;
 };
 
-// ==============================
-// 三类声明的示例数据
-// ==============================
+// === 1. 声明的示例数据（5 类） ===
 const DECLARATIONS: DeclExample[] = [
   {
     kind: "css",
     title: "CSS Modules 声明",
     icon: "🎨",
     fileName: "global.d.ts",
+    // 💡 不写会怎样：import styles from './Button.module.css' 报错 'Cannot find module'
     before: "import styles from './Button.module.css';\\n// ❌ Cannot find module",
     after: "styles.primary;  // ✅ string（带补全）",
     code: [
+      "// === 1. CSS Modules 类型声明 ===",
+      "// 💡 提示：declare module '*.module.css' 让 TS 认识所有 .module.css 导入",
+      "// 不写会怎样：import styles from './Button.module.css' 报错 'Cannot find module'",
+      "// 作用：把 .module.css 的默认导出声明为 { readonly [key: string]: string }",
       "declare module '*.module.css' {",
       "  const classes: { readonly [key: string]: string };",
       "  export default classes;",
       "}",
       "",
+      "// 同理声明 .module.scss（Sass）",
       "declare module '*.module.scss' {",
       "  const classes: { readonly [key: string]: string };",
       "  export default classes;",
       "}"
-    ].join("\\n")
+    ].join("\\n"),
+    tip: "💡 CSS Modules 声明后 styles.primary 为 string，但类名拼错不会报错（索引签名）。"
   },
   {
     kind: "image",
     title: "图片导入声明",
     icon: "🖼️",
     fileName: "global.d.ts",
+    // 💡 不写会怎样：import logo from './logo.svg' 报错 'Cannot find module'
     before: "import logo from './logo.svg';\\n// ❌ Cannot find module",
     after: "const src: string = logo;  // ✅",
     code: [
+      "// === 2. 图片资源导入声明 ===",
+      "// 💡 提示：declare module '*.svg' 让 TS 认识 .svg 导入，默认导出为 string（图片 URL）",
+      "// 不写会怎样：import logo from './logo.svg' 报错 'Cannot find module'",
       "declare module '*.svg' {",
       "  const src: string;",
       "  export default src;",
@@ -2032,27 +2261,110 @@ const DECLARATIONS: DeclExample[] = [
       "  const src: string;",
       "  export default src;",
       "}"
-    ].join("\\n")
+    ].join("\\n"),
+    tip: "💡 Next.js 的 next-env.d.ts 已内置常见图片声明，理解原理很重要。"
   },
   {
     kind: "global",
     title: "全局 Window 扩展",
     icon: "🌍",
     fileName: "global.d.ts",
+    // 💡 不写会怎样：window.myAnalytics 报错 'Property does not exist'
     before: "window.myAnalytics('click');\\n// ❌ Property 'myAnalytics' does not exist",
     after: "window.myAnalytics('click');  // ✅ 有类型",
     code: [
-      "export {}; // 关键：让文件成为模块",
+      "// === 3. export {} 让文件成为模块 ===",
+      "// 💡 提示：export {} 的作用——让这个 .d.ts 文件成为'模块'而非'脚本'",
+      "// 不写会怎样：declare global 不生效！脚本里不能写 declare global",
+      "// 原理：TS 中只有'模块'文件（有 import/export）才能用 declare global 扩展全局类型",
+      "export {}; // ← 关键：让文件成为模块，declare global 才生效",
       "",
+      "// === 4. declare global 扩展全局类型 ===",
+      "// 💡 提示：declare global { interface Window {...} } 给全局 Window 接口追加字段",
+      "// 本质：声明合并——同名 interface Window 的字段会自动合并",
       "declare global {",
       "  interface Window {",
       "    myAnalytics: (event: string, payload?: Record<string, unknown>) => void;",
       "    __APP_VERSION__: string;",
       "  }",
       "}"
-    ].join("\\n")
+    ].join("\\n"),
+    tip: "💡 declare global 必须在模块文件里（有 import/export），否则不生效。"
+  },
+  {
+    kind: "react",
+    title: "扩展已有库（react）",
+    icon: "⚛️",
+    fileName: "react-ext.d.ts",
+    // 💡 不写会怎样：<div data-hover='x' /> 报错 'Property data-hover does not exist'
+    before: "<div data-hover='hi' />\\n// ❌ Property 'data-hover' does not exist",
+    after: "<div data-hover='hi' />  // ✅ 不再报错",
+    code: [
+      "// === 5. 扩展已有库：declare module 'react' ===",
+      "// 💡 提示：declare module 'react' 不是新建模块，而是对已有 react 类型做'增量扩展'",
+      "// 本质：声明合并——给 react 已有的 HTMLAttributes<T> 接口追加字段",
+      "// 不写会怎样：<div data-hover='x' /> 报错 'Property data-hover does not exist'",
+      "declare module 'react' {",
+      "  interface HTMLAttributes<T> {",
+      "    // 自定义属性，让 data-hover 也有类型",
+      "    'data-hover'?: string;",
+      "  }",
+      "}",
+      "",
+      "// 注意：扩展已有模块要小心，只做'增量'，别覆盖原有定义"
+    ].join("\\n"),
+    tip: "💡 declare module '已存在的包' 是声明合并，不是覆盖。"
+  },
+  {
+    kind: "merge",
+    title: "接口声明合并",
+    icon: "🔗",
+    fileName: "merge.d.ts",
+    // 💡 不写第二个 interface User，User 就只有 id/name，访问 u.email 报错
+    before: "const u: User = { id: 1, name: 'zs', email: 'x' };\\n// ❌ Property 'email' does not exist",
+    after: "const u: User = { id: 1, name: 'zs', email: 'x' };  // ✅ 字段已合并",
+    code: [
+      "// === 6. 声明合并：同名 interface 自动合并字段 ===",
+      "// 💡 提示：TypeScript 的 interface 支持声明合并——同名 interface 字段会自动合并",
+      "",
+      "// 已有定义",
+      "interface User {",
+      "  id: number;",
+      "  name: string;",
+      "}",
+      "",
+      "// 在别处再声明一次，字段会合并（不是覆盖！）",
+      "// 不写会怎样：User 只有 id/name，访问 u.email 报错 'Property does not exist'",
+      "interface User {",
+      "  email: string;",
+      "  avatar?: string;",
+      "}",
+      "",
+      "// 合并后 User 有：id, name, email, avatar"
+    ].join("\\n"),
+    tip: "💡 声明合并是 declare module 'react' 能扩展已有库的根本原因。"
   }
 ];
+
+// === 2. console.log 演示声明效果 ===
+// 模拟导入 svg、css module、调用 window.myAnalytics 的效果
+console.log("=== 模块声明效果演示 ===");
+console.log("1. 模拟 import logo from './logo.svg'，得到 string URL: '/static/logo.abc123.svg'");
+console.log("2. 模拟 import styles from './Button.module.css'，得到对象: { primary: 'Button_primary__abc123' }");
+console.log("3. 模拟 window.myAnalytics('click_button', { id: 'submit' })，上报事件");
+console.log("4. 模拟 window.__APP_VERSION__，得到 '1.0.0'");
+console.log("--- 声明前后类型对比（用字符串描述） ---");
+console.log("[声明前] import styles from './Button.module.css'，类型: any（报错 Cannot find module）");
+console.log("[声明后] import styles from './Button.module.css'，类型: { readonly [key: string]: string }");
+console.log("[声明前] window.myAnalytics，类型: 报错 Property 'myAnalytics' does not exist");
+console.log("[声明后] window.myAnalytics，类型: (event: string, payload?: Record<string, unknown>) => void");
+console.log("[声明前] <div data-hover='x' />，类型: 报错 Property 'data-hover' does not exist");
+console.log("[声明后] <div data-hover='x' />，类型: HTMLAttributes 含 'data-hover'?: string");
+console.log("--- 声明的示例文件名和内容 ---");
+DECLARATIONS.forEach(d => {
+  console.log("文件: " + d.fileName + " | " + d.title);
+  console.log(d.code);
+});
 
 // ==============================
 // 代码块组件（带语法高亮配色）
@@ -2089,18 +2401,20 @@ export default function Demo() {
   const tabs: { kind: DeclKind; label: string; icon: string }[] = [
     { kind: "css", label: "CSS Modules", icon: "🎨" },
     { kind: "image", label: "图片导入", icon: "🖼️" },
-    { kind: "global", label: "全局扩展", icon: "🌍" }
+    { kind: "global", label: "全局扩展", icon: "🌍" },
+    { kind: "react", label: "扩展 React", icon: "⚛️" },
+    { kind: "merge", label: "声明合并", icon: "🔗" }
   ];
 
   return (
     <div style={{ maxWidth: 600, margin: "40px auto", padding: 20, fontFamily: "system-ui" }}>
       <h2 style={{ marginBottom: 4 }}>📦 第三方库类型扩展</h2>
       <p style={{ color: "#6b7280", fontSize: 13, marginBottom: 20 }}>
-        用 declare module 补全 CSS / 图片 / 全局类型
+        用 declare module 补全 CSS / 图片 / 全局 / React 类型
       </p>
 
       {/* Tab 切换 */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         {tabs.map(t => (
           <button
             key={t.kind}
@@ -2167,6 +2481,12 @@ export default function Demo() {
           : null}
         {current.kind === "css"
           ? " 想要类名拼错报错，可用 typed-css-modules 为每个 CSS 生成 .d.ts。"
+          : null}
+        {current.kind === "react"
+          ? " 扩展已有库本质是声明合并，只做增量别覆盖。"
+          : null}
+        {current.kind === "merge"
+          ? " 同名 interface 字段自动合并，这是 declare module 能扩展已有库的根本原因。"
           : null}
       </div>
     </div>

@@ -186,6 +186,7 @@ const BOOK_CATEGORIES = [
       { path: "/deploy", label: "部署与运维", icon: "🚀" },
       { path: "/go", label: "Go 语言", icon: "🐹" },
       { path: "/csharp", label: "C#", icon: "🟪" },
+      { path: "/csharp2", label: "C# 从入门到精通大全", icon: "🟣" },
     ],
   },
   {

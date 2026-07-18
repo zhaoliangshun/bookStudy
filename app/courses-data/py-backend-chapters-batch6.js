@@ -2918,9 +2918,9 @@ JSONB是PostgreSQL最强大的特性之一，支持索引和丰富的查询操�
 | @> | 包含（左边包含右边） | profile @> '{"city": "Beijing"}' |
 | <@ | 被包含 | '{"city": "Beijing"}' <@ profile |
 | ? | 是否包含key | profile ? 'phone' |
-| ?| | 包含任意一个key | profile ?\\| array['phone', 'email'] |
+| ?\| | 包含任意一个key | profile ?\| array['phone', 'email'] |
 | ?& | 包含所有key | profile ?& array['name', 'age'] |
-| || | 合并两个JSONB | profile || '{"verified": true}' |
+| \|\| \| 合并两个JSONB \| profile || '{"verified": true}' |
 | - | 删除key | profile - 'old_field' |
 
 ### 3.2 JSONB查询示例

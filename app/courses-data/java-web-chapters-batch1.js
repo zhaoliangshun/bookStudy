@@ -115,7 +115,7 @@ public class HelloServlet extends HttpServlet {
 | 用 \`javax.servlet\` 但容器是 Tomcat 10+ | Java EE 改名 Jakarta EE,包名迁移 | Tomcat 10+ 必须用 \`jakarta.servlet\` |
 | WAR 部署后 404 | URL 漏了上下文路径 | 访问时加 \`/项目名\`,或配根路径 |
 | servlet-api 打进 war 冲突 | scope 写成默认 compile | 设为 \`provided\`,由容器提供 |
-| JDK 版本与 Spring Boot 不匹配 | Spring Boot 3.x 最低需 JDK 17 | 升级 JDK 或降级 Spring Boot 2.x |`,
+| JDK 版本与 Spring Boot 不匹配 \| Spring Boot 3.x 最低需 JDK 17 | 升级 JDK 或降级 Spring Boot 2.x |`,
   },
 
   // =========================================================
@@ -212,7 +212,7 @@ public class InspectServlet extends HttpServlet {
 | POST 中文乱码 | 未设置请求体编码 | 在读取参数前 \`req.setCharacterEncoding("UTF-8")\` |
 | 302 跳转丢数据 | 重定向是新请求,request 域数据丢失 | 用转发(forward)或 Session 传递 |
 | Cookie 被脚本读取 | 未设 HttpOnly | \`cookie.setHttpOnly(true)\` 防 XSS |
-| 跨域请求被拦 | 浏览器同源策略 | 服务器加 CORS 头 \`Access-Control-Allow-Origin\` |`,
+| 跨域请求被拦 \| 浏览器同源策略 | 服务器加 CORS 头 \`Access-Control-Allow-Origin\` |`,
   },
 
   // =========================================================
@@ -325,7 +325,7 @@ public class EmbeddedTomcatDemo {
 | 改了 class 不生效 | reloadable=false 或 Tomcat 缓存 | 开发期 reloadable=true,或重启 Tomcat |
 | 上下文路径带项目名 | 默认按 war 名作为路径 | 改名 ROOT.war 或显式配 \`path=""\` |
 | Session 跨实例不共享 | 多 Tomcat 实例 Session 各自独立 | 用 Redis 共享,或粘性会话 |
-| 内嵌 Tomcat 内存溢出 | 默认堆小,大量并发请求 | 调 JVM 参数 \`-Xmx -Xms\` |`,
+| 内嵌 Tomcat 内存溢出 \| 默认堆小,大量并发请求 | 调 JVM 参数 \`-Xmx -Xms\` |`,
   },
 
   // =========================================================
@@ -462,6 +462,6 @@ public class HelloServlet extends HttpServlet {
 | 响应中文乱码 | 未设响应编码 | \`resp.setContentType("text/html;charset=UTF-8")\` |
 | ClassNotFound: HttpServlet | servlet-api 未引入或 scope 错 | pom 加 jakarta.servlet-api,scope=provided |
 | 启动报 jar 包冲突 | 重复打包 servlet-api | scope 设 provided,不打入 war |
-| @WebServlet 不生效 | web-app 版本过低 | web.xml 声明 version >= 3.0,metadata-complete=false |`,
+| @WebServlet 不生效 \| web-app 版本过低 | web.xml 声明 version >= 3.0,metadata-complete=false |`,
   },
 ];

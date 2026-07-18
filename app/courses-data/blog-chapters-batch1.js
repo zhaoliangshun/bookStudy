@@ -1015,7 +1015,7 @@ Pydantic 支持丰富的字段类型：
 | \`tuple\` / \`tuple[int, str]\` | 元组（定长定型） | \`point: tuple[int, int]\` |
 | \`dict\` / \`dict[str, int]\` | 字典 | \`meta: dict\` |
 | \`set\` | 集合（去重） | \`tags: set[str]\` |
-| \`Optional[str]\` | 可选（等价 \`str | None\`） | \`bio: Optional[str] = None\` |
+| \`Optional[str]\` \| 可选（等价 \`str | None\`） | \`bio: Optional[str] = None\` |
 | \`datetime\` / \`date\` | 日期时间（自动解析 ISO 格式） | \`created_at: datetime\` |
 | \`EmailStr\` | 邮箱（需装 email-validator） | \`email: EmailStr\` |
 | \`HttpUrl\` | URL（自动校验格式） | \`homepage: HttpUrl\` |
@@ -1587,7 +1587,7 @@ class User(Base):
 | **查询 API** | \`db.query(User).filter(...)\` | \`db.execute(select(User).where(...))\` |
 | **基类** | \`declarative_base()\` 返回类 | \`class Base(DeclarativeBase)\` |
 | **字段定义** | \`Column(Integer, ...)\` | \`Mapped[int] = mapped_column(...)\` |
-| **可空字段** | \`Column(String, nullable=True)\` | \`Mapped[str | None] = mapped_column(...)\`（由 \`Optional\` 推断） |
+| **可空字段** \| \`Column(String, nullable=True)\` | \`Mapped[str | None] = mapped_column(...)\`（由 \`Optional\` 推断） |
 | **结果取值** | \`query.first()\` 直接返回模型 | \`db.execute(stmt).scalar_one()\` 多一层 |
 | **事务** | 隐式自动开始 | 显式 \`with engine.begin():\` 或 \`session.begin()\` |
 

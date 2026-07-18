@@ -607,10 +607,10 @@ export default function Page() {
 
 | Prop | 类型 | 默认 | 作用 |
 |------|------|------|------|
-| \`href\` | string \| object | 必填 | 目标路径或 URL 对象 |
+| \`href\` \| string \| object | 必填 | 目标路径或 URL 对象 |
 | \`replace\` | boolean | false | 用 history.replaceState 替换当前记录 |
 | \`scroll\` | boolean | true | 导航后是否滚动到顶部 |
-| \`prefetch\` | boolean \| null | null（auto） | 是否预取目标路由 |
+| \`prefetch\` \| boolean \| null | null（auto） | 是否预取目标路由 |
 | \`onNavigate\` | function | — | 客户端导航时触发，可调用 \`e.preventDefault()\` 阻止 |
 | \`transitionTypes\` | string[] | — | 16.2+ 新增，配合 \`<ViewTransition>\` 做动画 |
 

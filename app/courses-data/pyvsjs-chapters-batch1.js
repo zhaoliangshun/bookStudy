@@ -365,7 +365,7 @@ ES6 之后改为**每年一个版本**，每年加几个特性：
 | ES2018 | 2018 | 异步迭代、剩余/扩展属性 |
 | ES2019 | 2019 | \`Array.flat()\`、\`Object.fromEntries()\` |
 | ES2020 | 2020 | 可选链 \`?.\`、空值合并 \`??\`、BigInt |
-| ES2021 | 2021 | \`String.replaceAll()\`、逻辑赋值 \`||=\` |
+| ES2021 \| 2021 \| \`String.replaceAll()\`、逻辑赋值 \`||=\` |
 | ES2022 | 2022 | 顶层 await、类字段、\`.at()\` |
 | ES2023 | 2023 | \`Array.findLast()\`、Hashbang |
 | ES2024 | 2024 | \`Promise.withResolvers()\`、\`Object.groupBy()\` |

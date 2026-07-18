@@ -1476,8 +1476,8 @@ if resp.success:
 | 列表 | \`list[int]\` 或 \`List[int]\` | 元素都是 int 的列表 |
 | 字典 | \`dict[str, int]\` 或 \`Dict[str, int]\` | 键 str 值 int |
 | 元组 | \`tuple[str, int]\` | 固定结构 |
-| 可选 | \`Optional[int]\` 或 \`int \| None\` | int 或 None |
-| 联合 | \`Union[str, int]\` 或 \`str \| int\` | str 或 int |
+| 可选 \| \`Optional[int]\` 或 \`int \| None\` | int 或 None |
+| 联合 \| \`Union[str, int]\` 或 \`str \| int\` | str 或 int |
 | 任意 | \`Any\` | 任意类型 |
 | 可调用 | \`Callable[[int], str]\` | 接收 int 返回 str 的函数 |
 

@@ -452,7 +452,7 @@ subprocess.run(f"cat {user_input}", shell=True)
 | shell 写法 | Python 等价写法 |
 | --- | --- |
 | \`ls *.py\` | \`glob.glob("*.py")\` 或 \`pathlib\` |
-| \`ls \| wc -l\` | \`Popen\` 手动建管道 |
+| \`ls \| wc -l\` \| \`Popen\` 手动建管道 |
 | \`echo $HOME\` | \`os.environ["HOME"]\` |
 | \`cat \$(find . -name x)\` | \`subprocess.run(["find", ...])\` |
 

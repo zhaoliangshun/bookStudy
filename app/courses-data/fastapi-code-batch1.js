@@ -128,7 +128,7 @@ app.get("/items")(get_items)  # 手动注册路由
 | @app.get("/") | 注册 GET 路由 |
 | uvicorn | 启动 ASGI 服务器 |
 | /docs | 自动生成的交互式文档 |
-| 返回值 | 字典自动转 JSON |`
+| 返回值 \| 字典自动转 JSON |`
   },
 
   {
@@ -261,7 +261,7 @@ def read_file(file_path: str):
 | param: int | 类型注解自动转换+校验 |
 | 固定路径在前 | 防止动态路径"吃掉"固定路径 |
 | Enum | 限制参数只能取特定值 |
-| :path | 让参数匹配完整路径（含 /） |`
+| :path \| 让参数匹配完整路径（含 /） |`
   },
 
   {
@@ -444,7 +444,7 @@ def create_user(user: User):
 |----------|---------|------|
 | 路径参数 | 在路径模板中 | \`/items/{item_id}\` |
 | 查询参数 | 基本类型，不在路径中 | \`page: int = 1\` |
-| 请求体 | Pydantic BaseModel 类型 | \`item: Item\` |`
+| 请求体 \| Pydantic BaseModel 类型 | \`item: Item\` |`
   },
 
   {
@@ -644,6 +644,6 @@ def create_order(order: Order):
 | Field() | 给字段加描述、校验规则、示例 |
 | tags | 文档中按分组展示路由 |
 | /docs | Swagger 交互式文档 |
-| /redoc | ReDoc 只读文档 |`
+| /redoc \| ReDoc 只读文档 |`
   },
 ];

@@ -170,7 +170,7 @@ def test(
 | 带参数依赖 | 依赖函数自己声明参数 |
 | 数据库连接 | yield 模式（自动清理） |
 | 多个依赖 | 声明多个 Depends 参数 |
-| 缓存控制 | use_cache=False 禁用缓存 |`
+| 缓存控制 \| use_cache=False 禁用缓存 |`
   },
 
   {
@@ -365,7 +365,7 @@ app.include_router(admin_router)
 | 嵌套依赖 | 依赖链（认证 → 用户 → 权限） |
 | 类依赖 | 复杂逻辑，带状态 |
 | 全局依赖 | 所有路由共享（日志、监控） |
-| 子路由依赖 | 一组路由共享权限 |`
+| 子路由依赖 \| 一组路由共享权限 |`
   },
 
   {
@@ -544,7 +544,7 @@ async def middleware_2(request: Request, call_next):
 | 自定义中间件 | 日志、计时、异常处理 |
 | CORSMiddleware | 解决跨域问题 |
 | 洋葱模型 | 请求和响应按相反顺序经过中间件 |
-| 中间件 vs 依赖 | 全局 vs 按路由，底层 vs 高层 |`
+| 中间件 vs 依赖 \| 全局 vs 按路由，底层 vs 高层 |`
   },
 
   {
@@ -786,6 +786,6 @@ def get_user_posts(user_id: int, db: Session = Depends(get_db)):
 | 创建 | db.add() + db.commit() |
 | 更新 | 修改属性 + db.commit() |
 | 删除 | db.delete() + db.commit() |
-| 关联 | relationship + ForeignKey |`
+| 关联 \| relationship + ForeignKey |`
   },
 ];

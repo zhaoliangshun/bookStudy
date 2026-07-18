@@ -176,7 +176,7 @@ class Number(BaseModel):
 | 正则匹配 | pattern |
 | 列表长度 | min_items / max_items |
 | 自定义校验 | @validator 装饰器 |
-| 额外字段 | Config.extra = "forbid" |`
+| 额外字段 \| Config.extra = "forbid" |`
   },
 
   {
@@ -344,7 +344,7 @@ async def upload_limited(file: UploadFile = File()):
 | JSON | Pydantic 模型 | application/json |
 | 表单 | Form() | application/x-www-form-urlencoded |
 | 文件 | UploadFile + File() | multipart/form-data |
-| 混合 | Form() + File() | multipart/form-data |`
+| 混合 \| Form() + File() | multipart/form-data |`
   },
 
   {
@@ -502,7 +502,7 @@ async def all_headers(request: Request):
 | Cookie() | 读取单个 Cookie |
 | Response.headers | 设置响应头 |
 | Response.set_cookie() | 设置 Cookie |
-| Request | 获取完整请求信息 |`
+| Request \| 获取完整请求信息 |`
   },
 
   {
@@ -710,6 +710,6 @@ def get_product(product_id: str):
 | status_code 参数 | 固定的成功状态码 |
 | raise HTTPException | 业务逻辑中的错误 |
 | @app.exception_handler | 全局或特定异常处理 |
-| 自定义异常类 | 项目中统一错误处理 |`
+| 自定义异常类 \| 项目中统一错误处理 |`
   },
 ];

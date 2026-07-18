@@ -1729,7 +1729,7 @@ Hash 的 field 同样支持原子计数，非常适合"对象内的数值字段"
 | count | 行为 | 是否重复 |
 | --- | --- | --- |
 | 正数 | 返回至多 count 个不重复 field | 不重复 |
-| 负数 | 返回 \|count\| 个 field，可能重复 | 可重复 |
+| 负数 \| 返回 \\|count\| 个 field，可能重复 | 可重复 |
 
 > **抽奖场景**：从用户池 \`lottery:users\`（Hash，field=uid，value=昵称）中抽 3 个幸运儿——\`HRANDFIELD lottery:users 3 WITHVALUES\`，一次搞定。正数保证不重复抽中同一人。
 

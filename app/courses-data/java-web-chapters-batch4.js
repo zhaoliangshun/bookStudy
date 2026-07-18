@@ -125,7 +125,7 @@ public class JdbcDemo {
 | 时区报错 | serverTimezone 未配 | URL 加 \`serverTimezone=Asia/Shanghai\` |
 | 中文乱码 | characterEncoding 未配 | URL 加 \`characterEncoding=UTF-8\` |
 | ResultSet 关闭后还能用 | stmt 关了导致 rs 也关 | 在 rs 使用完前不要关 stmt |
-| getInt 对 NULL 返回 0 | 无法区分"0"与"NULL" | 先 \`rs.wasNull()\` 判断 |`,
+| getInt 对 NULL 返回 0 \| 无法区分"0"与"NULL" | 先 \`rs.wasNull()\` 判断 |`,
   },
 
   // =========================================================
@@ -257,7 +257,7 @@ public class PreparedDemo {
 | setString 日期错 | 字符串格式不符数据库 | 用 setDate + java.sql.Date 或 setTimestamp |
 | 批量插入仍慢 | 未复用 ps 或逐条 execute | addBatch + executeBatch 一次提交 |
 | 主键取不到 | 未传 RETURN_GENERATED_KEYS | prepareStatement 时加该参数 |
-| LIKE 模糊查询注入 | 把 % 拼进参数 | % 作为参数值传入,或转义 |`,
+| LIKE 模糊查询注入 \| 把 % 拼进参数 | % 作为参数值传入,或转义 |`,
   },
 
   // =========================================================
@@ -380,7 +380,7 @@ public class TransferDemo {
 | ResultSet 关闭后还取值 | stmt/conn 关了导致 rs 失效 | rs 用完再关 stmt |
 | 长事务锁表 | 事务里夹杂耗时操作(如远程调用) | 事务只包数据库操作,缩短持锁时间 |
 | 可滚动结果集内存大 | 全部数据加载到内存 | 大结果用分页(LIMIT) |
-| 事务嵌套报错 | JDBC 不支持嵌套事务 | 用 Savepoint 或拆分 |`,
+| 事务嵌套报错 \| JDBC 不支持嵌套事务 | 用 Savepoint 或拆分 |`,
   },
 
   // =========================================================
@@ -569,6 +569,6 @@ public class PoolDemo {
 | 连接失效 | 数据库重启或超时断连 | 配 validationQuery 或连接活性检测 |
 | DAO 里写业务逻辑 | 职责混淆 | 业务放 Service,DAO 只存取 |
 | 实体与表不对应 | 字段名/类型不匹配 | 严格命名一致,注意驼峰与下划线转换 |
-| 事务跨多个 DAO 难管 | 每个 DAO 各自开关连接 | 事务在 Service 层用同一连接管理(Spring 事务) |`,
+| 事务跨多个 DAO 难管 \| 每个 DAO 各自开关连接 | 事务在 Service 层用同一连接管理(Spring 事务) |`,
   },
 ];

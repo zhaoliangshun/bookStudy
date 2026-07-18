@@ -418,8 +418,8 @@ def test_avatar_reject():
 
 | 属性 / 方法 | 类型 | 说明 |
 | --- | --- | --- |
-| \`filename\` | \`str \| None\` | 客户端上传的原始文件名 |
-| \`content_type\` | \`str \| None\` | 客户端声明的 MIME 类型（可伪造，仅作参考） |
+| \`filename\` \| \`str \| None\` | 客户端上传的原始文件名 |
+| \`content_type\` \| \`str \| None\` | 客户端声明的 MIME 类型（可伪造，仅作参考） |
 | \`size\` | \`int\` | 文件大小（字节，Starlette 0.36+ 支持） |
 | \`file\` | \`SpooledTemporaryFile\` | 底层文件对象，可调用 \`.read()\` / \`.write()\` / \`.seek()\` |
 | \`read(n)\` | \`coroutine\` / \`bytes\` | 异步读取 n 字节（\`await file.read()\`） |

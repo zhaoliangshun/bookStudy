@@ -1932,7 +1932,7 @@ npm install 的执行流程：
 | \`homepage\` | 项目主页 |
 | \`browserslist\` | 目标浏览器配置（给 Babel 等工具使用） |
 | \`sideEffects\` | 是否包含副作用（给 Webpack tree-shaking 使用） |
-| \`overrides\` | 覆盖嵌套依赖的版本（npm 8.3+） |`,
+| \`overrides\` \| 覆盖嵌套依赖的版本（npm 8.3+） |`,
     code: `// ============================================================
 // 第五章代码演示：package.json 详解
 // 用 fs 读取和解析 package.json，展示各字段含义

@@ -2268,7 +2268,7 @@ def post_new():
 |--------|------|----------|
 | 编辑忘 \`obj=post\` 预填 | 表单空白 | \`Form(obj=post)\` |
 | 文件字段忘 \`enctype\` | 文件没传 | 表单加 \`multipart/form-data\` |
-| 富文本不清洗就 \`| safe\` | XSS | \`bleach.clean\` 后才 safe |
+| 富文本不清洗就 \`| safe\` \| XSS | \`bleach.clean\` 后才 safe |
 | 表单类复用忘校验查重 | 标题重复 | 自定义校验排除自己 |
 | 多步表单不校验步骤 | 跳步脏数据 | 每步检查 session 上一步 |
 | flash 消息不消费 | 堆积 | 用 \`get_flashed_messages\` |
