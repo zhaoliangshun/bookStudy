@@ -770,7 +770,7 @@ function DynamicArrayForm() {
         <div key={field.id}>
           <input
             placeholder="姓名"
-            // 路径用模板字符串拼出 users.${index}.name
+            // 路径用模板字符串拼出 users.\${index}.name
             {...register(\`users.\${index}.name\` as const)}
           />
           <input
