@@ -5,9 +5,13 @@
 // 路由：/mantine-form-zod
 // -------------------------------------------------------------
 // 【一句话职责】
-//   用一个「用户注册表单」综合演示 Mantine Form 与 Zod 校验的【进阶用法】，
+//   用一个「用户注册表单」演示 Mantine Form 与 Zod 校验的【进阶用法】，
 //   重点演示用户名/密码字段的【实时规则提示条】（RuleHints）组件：
 //   默认隐藏 → 聚焦时灰色条款 → 输入时实时变绿✓/红✕。
+//
+// 【表单字段】
+//   ① 基础信息：username、email、password、confirmPassword
+//   ② OTP：一次性验证码（6 位数字，异步后端校验）
 //
 // 【用户名规则（3 条）】
 //   1. Must be 8-15 characters in length
@@ -55,17 +59,13 @@ import {
   Group,
   Divider,
   TextInput,
-  NumberInput,
   PasswordInput,
-  Select,
-  Checkbox,
   PinInput,
   Button,
   Box,
   Code,
   Alert,
   Modal,
-  ActionIcon,
   useMantineColorScheme,
 } from "@mantine/core";
 
@@ -271,49 +271,6 @@ const schema = z
     // ---- confirmPassword：确认密码 ----
     confirmPassword: z.string().min(1, "请再次输入密码"),
 
-    // ---- age：年龄 ----
-    age: z.coerce
-      .number()
-      .int("年龄必须是整数")
-      .min(18, "必须年满 18 岁")
-      .max(150, "年龄不合理"),
-
-    // ---- website：个人网站（可选）----
-    website: z.string().url("URL 格式不正确").optional().or(z.literal("")),
-
-    // ---- address：地址（嵌套对象）----
-    address: z.object({
-      province: z.string().min(1, "请填写省份"),
-      city: z.string().min(1, "请填写城市"),
-      zip: z.string().regex(/^\d{6}$/, "邮编必须是 6 位数字"),
-    }),
-
-    // ---- tags：标签数组 ----
-    tags: z
-      .array(z.string().min(1, "标签不能为空").max(10, "单个标签最多 10 字"))
-      .max(5, "最多添加 5 个标签"),
-
-    // ---- notification：通知偏好（discriminatedUnion）----
-    notification: z.discriminatedUnion("method", [
-      z.object({
-        method: z.literal("email"),
-        notifyEmail: z
-          .string()
-          .min(1, "请填写通知邮箱")
-          .email("邮箱格式不正确"),
-      }),
-      z.object({
-        method: z.literal("sms"),
-        phone: z.string().regex(/^1[3-9]\d{9}$/, "手机号格式不正确"),
-      }),
-      z.object({
-        method: z.literal("none"),
-      }),
-    ]),
-
-    // ---- agree：同意条款 ----
-    agree: z.literal(true, "必须同意服务条款才能注册"),
-
     // ---- otp：一次性验证码 ----
     otp: z
       .string()
@@ -364,12 +321,6 @@ const initialValues = {
   email: "",
   password: "",
   confirmPassword: "",
-  age: 18,
-  website: "",
-  address: { province: "", city: "", zip: "" },
-  tags: [],
-  notification: { method: "none" },
-  agree: false,
   otp: "",
 };
 
@@ -419,16 +370,6 @@ function RegistrationForm({ onSubmit }) {
     // otp 含异步后端校验，不做 onChange
     validateInputOnChange: [
       "email",
-      "age",
-      "website",
-      "address.province",
-      "address.city",
-      "address.zip",
-      "tags.__MANTINE_FORM_INDEX__",
-      "notification.method",
-      "notification.notifyEmail",
-      "notification.phone",
-      "agree",
     ],
   });
 
@@ -451,21 +392,42 @@ function RegistrationForm({ onSubmit }) {
 
   // 规则条显示条件（消除闪烁的核心逻辑）：
   //   1. 正在聚焦 → 始终显示
-  //   2. 已经 touch 过 且（有值 或 有错误）→ 显示
-  //      （空值 + 无错误的情况：首次加载或重置时，不显示；失焦空值必有 min 错误，会显示）
-  const usernameHintsVisible =
-    usernameFocused ||
-    (usernameTouched &&
-      (form.values.username.length > 0 || !!form.errors.username));
-  const passwordHintsVisible =
-    passwordFocused ||
-    (passwordTouched &&
-      (form.values.password.length > 0 || !!form.errors.password));
+  //   2. 已经 touch 过 → 始终显示
+  //
+  // 【为什么不再依赖 form.errors / form.values？】
+  //   旧逻辑：touched && (value.length > 0 || !!errors)
+  //   问题：聚焦空字段后失焦，异步校验（200ms）还没完成时 errors 为空，
+  //        且 value.length === 0，导致规则条瞬间消失，校验完成后又出现 = 闪烁。
+  //   新逻辑：touched 后就持续显示，状态由 forceValidate + test() 同步判定，
+  //        完全不依赖异步 form.errors，彻底消除时序依赖。
+  //   - 失焦空字段：forceValidate=true → test() 返回 false → 红色✕（立即）
+  //   - 失焦合法值：forceValidate=true → test() 返回 true → 绿色✓（立即）
+  //   - 重置时 touched 复位为 false → 隐藏
+  const usernameHintsVisible = usernameFocused || usernameTouched;
+  const passwordHintsVisible = passwordFocused || passwordTouched;
 
   // forceValidate：失焦后为 true，此时不再显示灰色 pending，直接判定 pass/fail
   // （空字段失焦后应显示红色✕而非灰色✓）
   const usernameForceValidate = usernameTouched && !usernameFocused;
   const passwordForceValidate = passwordTouched && !passwordFocused;
+
+  // ---- 同步计算 error 状态（消除边框闪烁的核心）----
+  // 【为什么不用 form.errors？】
+  //   schema 含 async refine（用户名查重 200ms），整个 schema 变成异步。
+  //   失焦后 form.errors.username 需要等 async refine 完成才会被设置（约 500ms）。
+  //   这段时间内 TextInput 的 error=false → 边框是灰色 normal 色，
+  //   而规则条已经同步变红 → 视觉上"红色边框先消失，过一会儿再出现"= 闪烁。
+  //
+  // 【解决】
+  //   error 状态直接用 forceValidate + test() 同步计算，与规则条完全同步：
+  //   - 未 touched → false（无错误）
+  //   - touched 后 → 任一规则 test() 失败 → true（红色边框立即出现）
+  const usernameHasError =
+    usernameTouched &&
+    !usernameRules.every((r) => r.test(form.values.username, form.values));
+  const passwordHasError =
+    passwordTouched &&
+    !passwordRules.every((r) => r.test(form.values.password, form.values));
 
   return (
     <Paper p="lg" withBorder shadow="sm">
@@ -475,19 +437,18 @@ function RegistrationForm({ onSubmit }) {
           <Title order={4}>① 基础信息</Title>
 
           {/* ---- username + RuleHints ----
-              ⚠️【error 覆盖为布尔值】
-                 getInputProps 返回的 error 是字符串（错误消息），
-                 会在输入框下方显示红字，与 RuleHints 视觉重复。
-                 这里用 error={!!form.errors.username} 覆盖，
-                 只保留红色边框（截图3中有红边框），不显示下方红字。
-                 错误信息完全由 RuleHints 的红✕+红字承担。 */}
+              ⚠️【error 同步计算】
+                 不使用 form.errors.username（异步，需等 async refine 完成），
+                 改用 usernameHasError（同步，与规则条完全同步）。
+                 这样失焦瞬间边框立即变红，消除"红边框先消失再出现"的闪烁。
+                 error 为布尔值，不显示下方红字，错误信息由 RuleHints 承担。 */}
           <Box>
             <TextInput
               label="Login Name"
               placeholder="8-15 characters, letters and numbers"
               withAsterisk
               {...form.getInputProps("username")}
-              error={!!form.errors.username}
+              error={usernameHasError}
               onFocus={(e) => {
                 setUsernameFocused(true);
                 form.getInputProps("username").onFocus?.(e);
@@ -520,14 +481,14 @@ function RegistrationForm({ onSubmit }) {
           />
 
           {/* ---- password + RuleHints ----
-              同样覆盖 error 为布尔值，只保留红色边框，红字由 RuleHints 承担 */}
+              error 同步计算（与 username 同理），消除边框闪烁 */}
           <Box>
             <PasswordInput
               label="Group Password"
               placeholder="8-20 characters, include A-Z, a-z, 0-9, special chars"
               withAsterisk
               {...form.getInputProps("password")}
-              error={!!form.errors.password}
+              error={passwordHasError}
               onFocus={(e) => {
                 setPasswordFocused(true);
                 form.getInputProps("password").onFocus?.(e);
@@ -557,127 +518,8 @@ function RegistrationForm({ onSubmit }) {
 
           <Divider my="xs" />
 
-          {/* ========== 区块 2：个人信息 ========== */}
-          <Title order={4}>② 个人信息</Title>
-
-          <NumberInput
-            label="年龄"
-            withAsterisk
-            min={0}
-            max={150}
-            description="必须 18 岁以上"
-            {...form.getInputProps("age")}
-          />
-
-          <TextInput
-            label="个人网站（可选）"
-            placeholder="https://example.com"
-            description="留空或填合法 URL"
-            {...form.getInputProps("website")}
-          />
-
-          <Divider my="xs" />
-
-          {/* ========== 区块 3：地址 ========== */}
-          <Title order={4}>③ 地址信息</Title>
-
-          <Group grow>
-            <TextInput
-              label="省份"
-              placeholder="如：广东省"
-              withAsterisk
-              {...form.getInputProps("address.province")}
-            />
-            <TextInput
-              label="城市"
-              placeholder="如：深圳市"
-              withAsterisk
-              {...form.getInputProps("address.city")}
-            />
-          </Group>
-          <TextInput
-            label="邮编"
-            placeholder="6 位数字"
-            withAsterisk
-            {...form.getInputProps("address.zip")}
-          />
-
-          <Divider my="xs" />
-
-          {/* ========== 区块 4：标签 ========== */}
-          <Title order={4}>④ 兴趣标签（最多 5 个）</Title>
-
-          {form.values.tags.map((_, i) => (
-            <Group key={i} grow>
-              <TextInput
-                placeholder={"标签 " + (i + 1) + "（1~10 字符）"}
-                {...form.getInputProps("tags." + i)}
-              />
-              <ActionIcon
-                color="red"
-                variant="subtle"
-                size="lg"
-                onClick={() => form.removeListItem("tags", i)}
-                aria-label="删除标签"
-              >
-                ✕
-              </ActionIcon>
-            </Group>
-          ))}
-
-          <Button
-            variant="light"
-            size="xs"
-            disabled={form.values.tags.length >= 5}
-            onClick={() => form.insertListItem("tags", "")}
-          >
-            + 添加标签
-          </Button>
-
-          <Divider my="xs" />
-
-          {/* ========== 区块 5：通知偏好 ========== */}
-          <Title order={4}>⑤ 通知偏好</Title>
-
-          <Select
-            label="通知方式"
-            data={[
-              { value: "email", label: "📧 邮件通知" },
-              { value: "sms", label: "📱 短信通知" },
-              { value: "none", label: "🔕 不通知" },
-            ]}
-            {...form.getInputProps("notification.method")}
-            onChange={(v) => {
-              form.setFieldValue("notification", { method: v });
-            }}
-          />
-
-          {form.values.notification.method === "email" && (
-            <TextInput
-              label="通知邮箱"
-              placeholder="notify@example.com"
-              withAsterisk
-              {...form.getInputProps("notification.notifyEmail")}
-            />
-          )}
-          {form.values.notification.method === "sms" && (
-            <TextInput
-              label="手机号"
-              placeholder="11 位手机号"
-              withAsterisk
-              {...form.getInputProps("notification.phone")}
-            />
-          )}
-          {form.values.notification.method === "none" && (
-            <Text size="xs" c="dimmed">
-              已选择&ldquo;不通知&rdquo;，无需额外信息。
-            </Text>
-          )}
-
-          <Divider my="xs" />
-
-          {/* ========== 区块 6：OTP ========== */}
-          <Title order={4}>⑥ 一次性验证码（OTP）</Title>
+          {/* ========== 区块 2：OTP ========== */}
+          <Title order={4}>② 一次性验证码（OTP）</Title>
 
           <Box>
             <Text size="sm" fw={500} mb={4}>
@@ -729,13 +571,7 @@ function RegistrationForm({ onSubmit }) {
 
           <Divider my="xs" />
 
-          {/* ========== 区块 7：同意条款 + 按钮 ========== */}
-          <Checkbox
-            label="我已阅读并同意《服务条款》和《隐私政策》"
-            {...form.getInputProps("agree", { type: "checkbox" })}
-            onBlur={() => {}}
-          />
-
+          {/* ========== 按钮 ========== */}
           <Group justify="space-between" mt="md">
             <Group>
               <Button
