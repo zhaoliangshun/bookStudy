@@ -10,4 +10,7 @@ export const chapters = [
 
 ### 一、使用 Vite 创建 TS + React 项目
 
-Vite 是新一代前端构建工具，由 Vue 作者尤雨溪开发，相比传统的 web
+Vite 是新一代前端构建工具，由 Vue 作者尤雨溪开发，相比传统的 webpack，它具有极快的冷启动速度和热更新速度。
+
+\`\`\`bash
+# 使用 npm 创建项目
