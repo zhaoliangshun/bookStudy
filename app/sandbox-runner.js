@@ -230,6 +230,9 @@ export async function runInSandbox(code) {
 
   // 用户创建的 timer id 集合：在 finally 中全部清理，
   // 避免 setInterval 残留导致事件循环无法退出、日志串到下次请求
+  // 性能优化：保存 timer 类型（"timeout"|"interval"|"immediate"），让 finally
+  // 中只调用对应的 clear 函数，节省 2/3 的无效调用
+  /** @type {Set<{ id: any, type: "timeout"|"interval"|"immediate" }>} */
   const userTimers = new Set();
 
   const pushLog = (text) => {
@@ -293,13 +296,21 @@ export async function runInSandbox(code) {
   };
 
   // 包装 setTimeout/setInterval/setImmediate：记录 id，便于 finally 清理
-  const wrapTimer = (originalFn) => (...args) => {
+  const wrapTimer = (originalFn, type) => (...args) => {
     const id = originalFn(...args);
-    userTimers.add(id);
+    userTimers.add({ id, type });
     return id;
   };
   const wrapClear = (originalFn) => (id) => {
-    if (id !== undefined && id !== null) userTimers.delete(id);
+    if (id !== undefined && id !== null) {
+      // 从 userTimers 中删除匹配 id 的条目（按 id 匹配，不区分类型）
+      for (const entry of userTimers) {
+        if (entry.id === id) {
+          userTimers.delete(entry);
+          break;
+        }
+      }
+    }
     return originalFn(id);
   };
 
@@ -310,9 +321,9 @@ export async function runInSandbox(code) {
     module: { exports: {} },
     exports: {},
     Buffer,
-    setTimeout: wrapTimer(setTimeout),
-    setInterval: wrapTimer(setInterval),
-    setImmediate: wrapTimer(setImmediate),
+    setTimeout: wrapTimer(setTimeout, "timeout"),
+    setInterval: wrapTimer(setInterval, "interval"),
+    setImmediate: wrapTimer(setImmediate, "immediate"),
     clearTimeout: wrapClear(clearTimeout),
     clearInterval: wrapClear(clearInterval),
     clearImmediate: wrapClear(clearImmediate),
@@ -370,20 +381,6 @@ export async function runInSandbox(code) {
   };
   sandbox.exports = sandbox.module.exports;
 
-  // 转发真实进程事件到沙箱 process
-  const forwardUnhandled = (reason) => {
-    try {
-      sandbox.process.emit("unhandledRejection", reason);
-    } catch {}
-  };
-  const forwardWarning = (warning) => {
-    try {
-      sandbox.process.emit("warning", warning);
-    } catch {}
-  };
-  process.on("unhandledRejection", forwardUnhandled);
-  process.on("warning", forwardWarning);
-
   let raceTimer = null;
 
   try {
@@ -439,15 +436,16 @@ export async function runInSandbox(code) {
     const message = err?.stack || err?.message || String(err);
     return { output: logs.join("\n"), error: message };
   } finally {
-    process.removeListener("unhandledRejection", forwardUnhandled);
-    process.removeListener("warning", forwardWarning);
     if (raceTimer) clearTimeout(raceTimer);
     // 清理用户代码创建的所有 timer（setInterval/setTimeout/setImmediate）
     // 防止残留 timer 持续触发，污染下次请求或阻止事件循环退出
-    for (const id of userTimers) {
-      try { clearTimeout(id); } catch {}
-      try { clearInterval(id); } catch {}
-      try { clearImmediate(id); } catch {}
+    // 性能优化：根据 entry.type 只调用对应的 clear，避免 try/catch 抛错
+    for (const { id, type } of userTimers) {
+      try {
+        if (type === "timeout") clearTimeout(id);
+        else if (type === "interval") clearInterval(id);
+        else if (type === "immediate") clearImmediate(id);
+      } catch {}
     }
     userTimers.clear();
   }

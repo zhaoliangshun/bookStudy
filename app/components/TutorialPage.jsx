@@ -48,7 +48,10 @@ export default function TutorialPage({
   const pathname = usePathname();
   const [activeId, setActiveId] = useState(chapters[0]?.id);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [readingProgress, setReadingProgress] = useState(0);
+  // 性能优化：readingProgress 只用于进度条 width，不影响渲染逻辑。
+  // 之前用 setState 在每帧导致整个 TutorialPage 重渲。
+  // 改为 useRef + 直接 DOM 操作，scroll 帧不再触发 React 更新。
+  const progressBarRef = useRef(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const contentRef = useRef(null);
   const transitionTimeoutRef = useRef(null);
@@ -113,7 +116,12 @@ export default function TutorialPage({
         const scrollTop = content.scrollTop;
         const scrollHeight = content.scrollHeight - content.clientHeight;
         const progress = scrollHeight > 0 ? Math.min((scrollTop / scrollHeight) * 100, 100) : 0;
-        setReadingProgress(progress);
+        // 性能优化：直接更新 DOM，避免 setState 触发整页重渲染
+        // （进度条每帧都变化，setState 会让 ScrollRestoration、CodeBlock、Markdown
+        // 等大量子组件跟着重渲染，是显著的 CPU 浪费）
+        if (progressBarRef.current) {
+          progressBarRef.current.style.width = `${progress}%`;
+        }
       });
     };
 
@@ -233,7 +241,7 @@ export default function TutorialPage({
         }
       `}</style>
 
-      <div className="reading-progress-bar" style={{ width: `${readingProgress}%` }} />
+      <div ref={progressBarRef} className="reading-progress-bar" style={{ width: "0%" }} />
 
       <div className="main-layout">
         <Sidebar

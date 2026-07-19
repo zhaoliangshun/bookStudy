@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import Editor, { loader } from "@monaco-editor/react";
 import { useEditorTheme } from "./EditorThemeProvider";
 import { registerMonacoThemes } from "./monaco-themes";
 
 let monacoPreloaded = false;
 let monacoPreloadPromise = null;
+let monacoLoadFailed = false;
 
 export function preloadMonaco() {
   if (monacoPreloaded) return;
@@ -15,8 +16,11 @@ export function preloadMonaco() {
   monacoPreloadPromise = loader.init().then((monaco) => {
     registerMonacoThemes(monaco);
     monacoPreloaded = true;
+    monacoLoadFailed = false;
     return monaco;
-  }).catch(() => {});
+  }).catch(() => {
+    monacoLoadFailed = true;
+  });
 
   return monacoPreloadPromise;
 }
@@ -116,6 +120,7 @@ export default function MonacoEditor({
   const disposablesRef = useRef([]);
   const rafRef = useRef(null);
   const onRunRef = useRef(onRun);
+  const [loadError, setLoadError] = useState(monacoLoadFailed);
 
   useEffect(() => {
     onRunRef.current = onRun;
@@ -125,6 +130,16 @@ export default function MonacoEditor({
   useEffect(() => {
     configRef.current = { autoHeight, minHeight, maxHeight };
   }, [autoHeight, minHeight, maxHeight]);
+
+  useEffect(() => {
+    if (loadError) return;
+    const timer = setTimeout(() => {
+      if (!editorRef.current) {
+        setLoadError(true);
+      }
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, [loadError]);
 
   const handleMount = useCallback((editor) => {
     editorRef.current = editor;
@@ -215,55 +230,101 @@ export default function MonacoEditor({
           : undefined
       }
     >
-      <Editor
-        height="100%"
-        width="100%"
-        theme={themeId}
-        language={LANG_MAP[language] || "plaintext"}
-        value={value}
-        onChange={(val) => onChange?.(val ?? "")}
-        beforeMount={handleBeforeMount}
-        onMount={handleMount}
-        options={{
-          scrollBeyondLastLine: false,
-          wordWrap: "on",
-          fontFamily:
-            '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
-          fontSize: 13,
-          fontLigatures: false,
-          lineHeight: 1.5,
-          padding: { top: 14, bottom: 14 },
-          renderLineHighlight: "line",
-          scrollbar: {
-            vertical: "auto",
-            horizontal: "auto",
-            verticalScrollbarSize: 8,
-            horizontalScrollbarSize: 8,
-            useShadows: false,
-            alwaysConsumeMouseWheel: false,
-          },
-          minimap: { enabled: false },
-          stickyScroll: { enabled: false },
-          overviewRulerLanes: 0,
-          automaticLayout: true,
-        }}
-        loading={
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-              width: "100%",
-              color: "#64748b",
-              fontFamily: "system-ui, sans-serif",
-              fontSize: 13,
-            }}
-          >
-            正在加载编辑器…
-          </div>
-        }
-      />
+      {loadError ? (
+        <textarea
+          className="monaco-fallback-textarea"
+          value={value}
+          onChange={(e) => onChange?.(e.target.value)}
+          spellCheck={false}
+          placeholder={placeholder}
+          style={{
+            width: "100%",
+            height: autoHeight ? `${Math.min(Math.max(minHeight, 200), maxHeight)}px` : "100%",
+            minHeight: `${minHeight}px`,
+            padding: "14px",
+            fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
+            fontSize: 13,
+            lineHeight: 1.5,
+            border: "1px solid var(--border, #e2e8f0)",
+            borderRadius: 8,
+            resize: autoHeight ? "vertical" : "none",
+            background: theme.kind === "dark" ? "#1e1e1e" : "#ffffff",
+            color: theme.kind === "dark" ? "#d4d4d4" : "#334155",
+            outline: "none",
+            tabSize: 2,
+            whiteSpace: "pre",
+            overflowWrap: "normal",
+            overflowX: "auto",
+          }}
+          onKeyDown={(e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+              e.preventDefault();
+              onRunRef.current?.();
+            }
+            if (e.key === "Tab") {
+              e.preventDefault();
+              const ta = e.currentTarget;
+              const start = ta.selectionStart;
+              const end = ta.selectionEnd;
+              const val = ta.value;
+              ta.value = val.substring(0, start) + "  " + val.substring(end);
+              ta.selectionStart = ta.selectionEnd = start + 2;
+              onChange?.(ta.value);
+            }
+          }}
+        />
+      ) : (
+        <Editor
+          height="100%"
+          width="100%"
+          theme={themeId}
+          language={LANG_MAP[language] || "plaintext"}
+          value={value}
+          onChange={(val) => onChange?.(val ?? "")}
+          beforeMount={handleBeforeMount}
+          onMount={handleMount}
+          onValidate={() => {}}
+          options={{
+            scrollBeyondLastLine: false,
+            wordWrap: "on",
+            fontFamily:
+              '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
+            fontSize: 13,
+            fontLigatures: false,
+            lineHeight: 1.5,
+            padding: { top: 14, bottom: 14 },
+            renderLineHighlight: "line",
+            scrollbar: {
+              vertical: "auto",
+              horizontal: "auto",
+              verticalScrollbarSize: 8,
+              horizontalScrollbarSize: 8,
+              useShadows: false,
+              alwaysConsumeMouseWheel: false,
+            },
+            minimap: { enabled: false },
+            stickyScroll: { enabled: false },
+            overviewRulerLanes: 0,
+            automaticLayout: true,
+          }}
+          loading={
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "100%",
+                width: "100%",
+                color: "#64748b",
+                fontFamily: "system-ui, sans-serif",
+                fontSize: 13,
+              }}
+            >
+              正在加载编辑器…
+            </div>
+          }
+        />
+      )}
     </div>
   );
 }

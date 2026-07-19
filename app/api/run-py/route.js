@@ -140,10 +140,20 @@ function runPythonCode(code) {
       }
     });
 
-    // 清理临时文件
+    // 清理临时文件（保证只执行一次）
+    let cleaned = false;
     const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
       try { unlinkSync(tmpFile); } catch { /* ignore */ }
       try { rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ }
+    };
+    // 标记是否已 resolve，防止 error/close 重复触发导致多次 resolve
+    let resolved = false;
+    const safeResolve = (value) => {
+      if (resolved) return;
+      resolved = true;
+      resolve(value);
     };
 
     // 子进程出错（例如 python3 不存在）
@@ -152,7 +162,7 @@ function runPythonCode(code) {
       // 避免定时器继续持有子进程引用造成内存泄漏
       clearTimeout(timer);
       cleanup();
-      resolve({
+      safeResolve({
         output: "",
         error:
           `无法启动 ${pythonBin}：${err.message}\n` +
@@ -164,14 +174,16 @@ function runPythonCode(code) {
 
     // 子进程退出
     child.on("close", (code, signal) => {
+      clearTimeout(timer);
       cleanup();
+      if (resolved) return;
       // 将累积的 Buffer chunks 一次性解码为 UTF-8 字符串
       const stdoutBuf = Buffer.concat(stdoutChunks).toString("utf8");
       const stderrBuf = Buffer.concat(stderrChunks).toString("utf8");
 
       if (killed) {
         // 被超时强制终止
-        resolve({
+        safeResolve({
           output: stdoutBuf,
           error:
             stderrBuf +
@@ -191,7 +203,7 @@ function runPythonCode(code) {
         else error += note;
       }
 
-      resolve({ output, error, exitCode: code });
+      safeResolve({ output, error, exitCode: code });
     });
 
     // 超时处理：到时间还没退出就 kill
@@ -205,9 +217,6 @@ function runPythonCode(code) {
         // ignore
       }
     }, EXEC_TIMEOUT_MS);
-
-    // 子进程退出后清除定时器，避免内存泄漏
-    child.on("close", () => clearTimeout(timer));
   });
 }
 
@@ -247,7 +256,15 @@ export async function POST(request) {
   }
 
   // 调用子进程执行
-  const result = await runPythonCode(code);
+  let result;
+  try {
+    result = await runPythonCode(code);
+  } catch (err) {
+    return NextResponse.json(
+      { output: "", error: `服务内部错误：${err.message || String(err)}` },
+      { status: 500 }
+    );
+  }
 
   let output = result.output || "";
   let error = result.error || "";
@@ -272,20 +289,36 @@ export async function POST(request) {
 export async function GET() {
   const pythonBin = getPythonBin();
   return new Promise((resolve) => {
+    // 修复：用 resolved 标记防止多次调用 resolve
+    // 修复：所有 listener 在 close/error/timeout 后统一通过 cleanup() 移除
+    // 避免长时运行的 dev server 因残留 listener 累积导致内存泄露
+    let resolved = false;
     const child = spawn(pythonBin, ["--version"], {
       stdio: ["pipe", "pipe", "pipe"],
       env: { PATH: process.env.PATH },
     });
     let version = "";
-    child.stdout.on("data", (c) => (version += c.toString()));
-    child.stderr.on("data", (c) => (version += c.toString()));
+    const onData = (c) => (version += c.toString());
+    child.stdout.on("data", onData);
+    child.stderr.on("data", onData);
+    const cleanup = () => {
+      if (resolved) return;
+      // 清掉 timer 和 listeners，防止残留
+      clearTimeout(timer);
+      child.stdout.removeListener("data", onData);
+      child.stderr.removeListener("data", onData);
+    };
     // 健康检查超时保护：5 秒未响应视为不可用
     const timer = setTimeout(() => {
+      cleanup();
       child.kill("SIGKILL");
+      resolved = true;
       resolve(NextResponse.json({ status: "timeout", error: "版本检查超时" }, { status: 504 }));
     }, 5000);
     child.on("close", () => {
-      clearTimeout(timer);
+      cleanup();
+      if (resolved) return;
+      resolved = true;
       resolve(
         NextResponse.json({
           status: "ok",
@@ -296,7 +329,9 @@ export async function GET() {
       );
     });
     child.on("error", () => {
-      clearTimeout(timer);
+      cleanup();
+      if (resolved) return;
+      resolved = true;
       resolve(
         NextResponse.json({
           status: "error",

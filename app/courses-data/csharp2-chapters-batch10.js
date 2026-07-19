@@ -1,5 +1,5 @@
 // =============================================================
-// C# 从入门到精通大全 —— 第十批章节（最后一批）
+// C# 大全 —— 第十批章节（最后一批）
 // 主题：第十部分 工程化与实战 + 结语，共 6 章（47-52）
 // -------------------------------------------------------------
 // 本批包含 6 章：
@@ -142,12 +142,42 @@ catch (Exception ex)
 业务异常应当自定义，方便调用方精准捕获：
 
 \`\`\`csharp
+// 【最佳实践】异常处理原则：
+// 1. 避免catch(Exception)——只捕获你能处理的异常
+// 2. 自定义业务异常，方便调用方精准捕获
+// 3. 使用throw;保留原始堆栈，不要用throw ex;
+// 4. when过滤器可以实现"只记录不捕获"等高级模式
+// 5. ArgumentNullException.ThrowIfNull() 做参数校验
+
+// 使用示例（可执行代码在前）
+try { GetUser("u123"); }
+catch (UserNotFoundException ex)
+{
+    Console.WriteLine($"业务处理: {ex.UserId} - {ex.Message}");
+}
+
+// 局部函数不用移动（顶级语句允许局部函数在任意位置）
+User GetUser(string id)
+{
+    var user = db.Find(id);
+    if (user is null)
+        throw new UserNotFoundException(id);
+    return user;
+}
+
+// 模拟数据库（局部函数）
+static class db { public static object Find(string id) => null; }
+
+// ================================================
+// 类型声明放最后（顶级语句CS8803规则：类型必须在可执行代码之后）
+// ================================================
+
 // 自定义异常：继承 Exception，以 Exception 结尾
 public class UserNotFoundException : Exception
 {
     public string UserId { get; }
 
-    // 提供三个常用构造函数
+    // 提供三个常用构造函数（标准模式）
     public UserNotFoundException(string userId)
         : base($"用户不存在: {userId}")
         => UserId = userId;
@@ -161,20 +191,7 @@ public class UserNotFoundException : Exception
         => UserId = userId;
 }
 
-// 使用
-public User GetUser(string id)
-{
-    var user = db.Find(id);
-    if (user is null)
-        throw new UserNotFoundException(id);
-    return user;
-}
-
-try { GetUser("u123"); }
-catch (UserNotFoundException ex)
-{
-    Console.WriteLine($"业务处理: {ex.UserId} - {ex.Message}");
-}
+public class User { public string Name { get; set; } = ""; }
 \`\`\`
 
 **自定义异常要点：**
@@ -220,25 +237,36 @@ static bool Log(Exception ex)
 \`NullReferenceException\` 是 C# 最常见的异常。用 \`?.\` 和 \`??\` 可以从源头消灭：
 
 \`\`\`csharp
-public class User
-{
-    public string Name { get; set; }
-    public Address Home { get; set; }
-}
-public class Address { public string City { get; set; } }
+// ================================================
+// 可执行代码在前
+// ================================================
 
 User u = null;
 
 // ❌ 旧写法：三重判空
 string city1 = u != null && u.Home != null ? u.Home.City : null;
 
-// ✅ 新写法：?. 链式
+// ✅ 新写法：?. 链式（空条件运算符）
 string city2 = u?.Home?.City;          // 任一为 null，整体为 null
-string city3 = u?.Home?.City ?? "未知";  // 加默认值
+string city3 = u?.Home?.City ?? "未知";  // 加默认值（null合并运算符）
 
-// 索引也要用 ?[]
+// 索引也要用 ?[]（空条件索引运算符）
 string[] arr = null;
-string first = arr?[0];  // null 而不是异常
+string first = arr?[0];  // 返回 null 而不是抛异常
+
+Console.WriteLine($"city1={city1}, city2={city2}, city3={city3}, first={first}");
+
+// ================================================
+// 类型声明放最后（CS8803规则）
+// ================================================
+
+public class User
+{
+    public string Name { get; set; }
+    public Address Home { get; set; }
+}
+
+public class Address { public string City { get; set; } }
 \`\`\`
 
 > ⭐ \`?.\` 是写出"防御性代码"的瑞士军刀——但别滥用，有时让它抛异常更利于发现 bug。
@@ -287,6 +315,57 @@ int ParseInt(string s) =>
 \`\`\`csharp
 using System.Text.Json;
 
+// ================================================
+// 【异常处理最佳实践总结】
+// 1. 不要catch(Exception)吞掉所有异常
+// 2. 自定义业务异常（如ConfigLoadException）
+// 3. 用when过滤器做条件捕获
+// 4. 参数校验用ArgumentNullException.ThrowIfNull()
+// 5. 包装异常时保留InnerException（不丢堆栈）
+// 6. 只在最外层做兜底处理
+// ================================================
+
+// ================================================
+// 可执行代码（主程序逻辑）在前
+// ================================================
+
+// 先创建一个测试配置文件
+var testConfig = new AppConfig
+{
+    Name = "MyApp",
+    Port = 5000,
+    Features = new[] { "auth", "logging", "api" }
+};
+File.WriteAllText("app.json", JsonSerializer.Serialize(testConfig, new JsonSerializerOptions { WriteIndented = true }));
+Console.WriteLine("已创建测试配置文件 app.json");
+
+// 调用方：只关心成功或失败
+try
+{
+    var cfg = new ConfigLoader().Load("app.json");
+    Console.WriteLine($"加载成功: {cfg.Name}:{cfg.Port}");
+    Console.WriteLine($"功能模块: {string.Join(", ", cfg.Features)}");
+}
+catch (ConfigLoadException ex)
+{
+    Console.WriteLine($"[FATAL] {ex.Message}");
+    Console.WriteLine($"[INNER] {ex.InnerException?.Message}");
+}
+
+// 测试文件不存在的情况
+try
+{
+    new ConfigLoader().Load("not-exist.json");
+}
+catch (ConfigLoadException ex)
+{
+    Console.WriteLine($"预期错误: {ex.Message}");
+}
+
+// ================================================
+// 类型声明放最后（CS8803规则）
+// ================================================
+
 public class AppConfig
 {
     public string Name { get; set; } = "";
@@ -294,6 +373,7 @@ public class AppConfig
     public string[] Features { get; set; } = Array.Empty<string>();
 }
 
+// 自定义业务异常
 public class ConfigLoadException : Exception
 {
     public ConfigLoadException(string message, Exception inner)
@@ -304,6 +384,7 @@ public class ConfigLoader
 {
     public AppConfig Load(string path)
     {
+        // 参数校验（.NET 6+ 推荐写法）
         ArgumentNullException.ThrowIfNull(path);
 
         if (!File.Exists(path))
@@ -318,7 +399,7 @@ public class ConfigLoader
         }
         catch (JsonException ex)
         {
-            // 包装为业务异常，保留原始堆栈
+            // 包装为业务异常，保留原始异常作为InnerException
             throw new ConfigLoadException($"配置文件格式错误: {path}", ex);
         }
         catch (IOException ex)
@@ -326,19 +407,6 @@ public class ConfigLoader
             throw new ConfigLoadException($"读取配置文件失败: {path}", ex);
         }
     }
-}
-
-// 调用方：只关心成功或失败
-try
-{
-    var cfg = new ConfigLoader().Load("app.json");
-    Console.WriteLine($"加载: {cfg.Name}:{cfg.Port}");
-}
-catch (ConfigLoadException ex)
-{
-    Console.WriteLine($"[FATAL] {ex.Message}");
-    Console.WriteLine($"[INNER] {ex.InnerException?.Message}");
-    Environment.Exit(1);
 }
 \`\`\`
 
@@ -981,6 +1049,58 @@ Stream stream = await resp.Content.ReadAsStreamAsync();
 \`\`\`csharp
 using System.Net.Http;
 using System.Text.Json;
+using System.Net.Http.Json;  // .NET 5+ 内置GetFromJsonAsync等扩展
+
+// ================================================
+// 【HttpClient最佳实践】
+// 1. 不要每次using(HttpClient)都new——会导致端口耗尽
+// 2. 生产环境用静态单例或IHttpClientFactory
+// 3. 始终设置超时时间
+// 4. 用System.Net.Http.Json简化序列化
+// 5. 注意DNS刷新问题（Factory每2分钟回收Handler）
+// ================================================
+
+// ================================================
+// 可执行代码在前
+// ================================================
+
+// ⚠️ 演示用：每次new仅用于简化示例；生产环境用单例/Factory！
+// 正确做法见本章节第七节"单例复用"
+using HttpClient client = new() { Timeout = TimeSpan.FromSeconds(10) };
+client.DefaultRequestHeaders.Add("User-Agent", "CSharpDemo/1.0");
+
+try
+{
+    // 方法1：手动反序列化（完整控制）
+    HttpResponseMessage resp = await client.GetAsync("https://jsonplaceholder.typicode.com/todos/1");
+    resp.EnsureSuccessStatusCode();
+
+    string json = await resp.Content.ReadAsStringAsync();
+    Todo todo = JsonSerializer.Deserialize<Todo>(json, new JsonSerializerOptions
+    {
+        PropertyNameCaseInsensitive = true  // API字段小写，类属性大写
+    })!;  // null-forgiving：EnsureSuccessStatusCode后不会为null
+
+    Console.WriteLine($"[GET] #{todo.Id}: {todo.Title} (done={todo.Completed})");
+
+    // POST JSON
+    var newTodo = new Todo { UserId = 1, Title = "学 C# HttpClient", Completed = false };
+    var postContent = JsonContent.Create(newTodo);  // 用JsonContent更简洁
+
+    HttpResponseMessage postResp = await client.PostAsync("https://jsonplaceholder.typicode.com/todos", postContent);
+    postResp.EnsureSuccessStatusCode();
+
+    Todo? created = await postResp.Content.ReadFromJsonAsync<Todo>();
+    Console.WriteLine($"[POST] 创建成功，新ID: {created?.Id}");
+}
+catch (HttpRequestException ex)
+{
+    Console.WriteLine($"[HTTP ERROR] {ex.StatusCode}: {ex.Message}");
+}
+
+// ================================================
+// 类型声明放最后（CS8803规则）
+// ================================================
 
 public class Todo
 {
@@ -989,35 +1109,6 @@ public class Todo
     public string Title { get; set; } = "";
     public bool Completed { get; set; }
 }
-
-using HttpClient client = new();
-
-// GET 反序列化为对象
-HttpResponseMessage resp = await client.GetAsync("https://jsonplaceholder.typicode.com/todos/1");
-resp.EnsureSuccessStatusCode();
-
-string json = await resp.Content.ReadAsStringAsync();
-Todo todo = JsonSerializer.Deserialize<Todo>(json, new JsonSerializerOptions
-{
-    PropertyNameCaseInsensitive = true  // API 字段小写，类属性大写
-});
-
-Console.WriteLine($"#{todo.Id}: {todo.Title} (done={todo.Completed})");
-\`\`\`
-
-**POST JSON：**
-
-\`\`\`csharp
-var newTodo = new Todo { UserId = 1, Title = "学 C#", Completed = false };
-string json = JsonSerializer.Serialize(newTodo);
-
-var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-
-HttpResponseMessage resp = await client.PostAsync("https://jsonplaceholder.typicode.com/todos", content);
-resp.EnsureSuccessStatusCode();
-
-string responseJson = await resp.Content.ReadAsStringAsync();
-Console.WriteLine(responseJson);  // 服务器返回新创建的资源
 \`\`\`
 
 ### 四、扩展方法封装 JSON 调用
@@ -1025,9 +1116,29 @@ Console.WriteLine(responseJson);  // 服务器返回新创建的资源
 写多了重复代码，封装成扩展方法：
 
 \`\`\`csharp
+using System.Net.Http;
+using System.Text.Json;
+using System.Net.Http.Json;
+
+// ================================================
+// 可执行代码在前（演示调用）
+// ================================================
+
+// ⚠️ 演示用，生产环境优先用内置System.Net.Http.Json扩展
+using HttpClient client = new() { Timeout = TimeSpan.FromSeconds(10) };
+var product = await client.GetFromJsonAsync<Product>("https://jsonplaceholder.typicode.com/todos/1");
+if (product is not null)
+    Console.WriteLine($"获取: {product.Title}");
+
+// ================================================
+// 类型声明放最后（CS8803规则）
+// 注意：.NET 5+已内置这些扩展，实际项目不用自己写！
+// ================================================
+
+// 扩展方法必须在静态非泛型类中
 public static class HttpClientExtensions
 {
-    public static async Task<T> GetFromJsonAsync<T>(
+    public static async Task<T?> GetFromJsonAsync<T>(
         this HttpClient client, string url, CancellationToken ct = default)
     {
         var resp = await client.GetAsync(url, ct);
@@ -1037,7 +1148,7 @@ public static class HttpClientExtensions
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
     }
 
-    public static async Task<TResponse> PostAsJsonAsync<TRequest, TResponse>(
+    public static async Task<TResponse?> PostAsJsonAsync<TRequest, TResponse>(
         this HttpClient client, string url, TRequest data, CancellationToken ct = default)
     {
         var json = JsonSerializer.Serialize(data);
@@ -1050,10 +1161,11 @@ public static class HttpClientExtensions
     }
 }
 
-// 使用：超简洁
-using HttpClient client = new();
-var todo = await client.GetFromJsonAsync<Todo>("https://jsonplaceholder.typicode.com/todos/1");
-Console.WriteLine(todo.Title);
+public class Product
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+}
 \`\`\`
 
 > ⭐ .NET 5+ 内置了 \`System.Net.Http.Json\` 包，提供 \`GetFromJsonAsync\` / \`PostAsJsonAsync\`——直接 \`using System.Net.Http.Json\` 就能用，不用自己写。
@@ -1132,14 +1244,38 @@ var resp = await client.GetAsync("https://api.com");
 ✅ **正确用法 1：单例复用**
 
 \`\`\`csharp
-// 程序生命周期内复用一个 HttpClient 实例
-public static class HttpHelper
+using System.Net.Http;
+
+// ================================================
+// 可执行代码在前
+// ================================================
+
+// 程序启动时初始化一次静态HttpClient，全程复用
+HttpHelper.Client.DefaultRequestHeaders.Add("User-Agent", "SingletonDemo/1.0");
+HttpHelper.Client.Timeout = TimeSpan.FromSeconds(15);
+
+try
 {
-    public static readonly HttpClient Client = new HttpClient();
+    // 整个程序都用这一个实例，不new新的
+    var s = await HttpHelper.Client.GetStringAsync("https://jsonplaceholder.typicode.com/todos/1");
+    Console.WriteLine($"响应长度: {s.Length} 字符");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"请求失败: {ex.Message}");
 }
 
-// 使用
-var s = await HttpHelper.Client.GetStringAsync("https://api.com");
+// ================================================
+// 类型声明放最后（CS8803规则）
+// 静态单例：程序生命周期内复用一个HttpClient实例
+// ================================================
+
+public static class HttpHelper
+{
+    // 静态字段：程序启动时创建一次，全程复用
+    // 注意：单例缺点是无法感知DNS变化，ASP.NET Core请用IHttpClientFactory
+    public static readonly HttpClient Client = new HttpClient();
+}
 \`\`\`
 
 ✅ **正确用法 2：HttpClientFactory（推荐，ASP.NET Core 场景）⭐**
@@ -1208,6 +1344,59 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 
+// ================================================
+// 【HttpClient单例说明】
+// 本演示在构造函数中new HttpClient仅为单文件示例方便。
+// 真实项目中应该：
+// 1. 控制台/桌面：用静态单例（如HttpHelper.Client）
+// 2. ASP.NET Core：用IHttpClientFactory + 类型化客户端
+// 3. 切勿每次请求都new HttpClient()！
+// ================================================
+
+// ================================================
+// 可执行代码（主程序逻辑）在前
+// ================================================
+
+try
+{
+    // 初始化API客户端
+    using var api = new PostApiClient();
+
+    // 1. GET获取单个Post
+    var post = await api.GetPostAsync(1);
+    if (post is not null)
+    {
+        Console.WriteLine($"[GET成功] Post #{post.Id}");
+        Console.WriteLine($"标题: {post.Title}");
+        Console.WriteLine($"正文预览: {post.Body[..Math.Min(50, post.Body.Length)]}...");
+    }
+
+    // 2. POST创建新Post（演示用，jsonplaceholder不会真正持久化）
+    var newPost = new Post
+    {
+        UserId = 1,
+        Title = "学 HttpClient最佳实践",
+        Body = "今天学会了：1) 不每次new 2) 设超时 3) 用using System.Net.Http.Json 4) 异常处理用when过滤器"
+    };
+    var created = await api.CreatePostAsync(newPost);
+    if (created is not null)
+        Console.WriteLine($"[POST成功] 模拟返回ID: {created.Id}");
+
+    // 3. 测试404情况
+    var notExist = await api.GetPostAsync(999999);
+    Console.WriteLine($"不存在的Post: {(notExist is null ? "正确返回null" : "异常")}");
+
+    Console.WriteLine("\\n=== REST API 演示完成 ===");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"[FATAL] {ex.Message}");
+}
+
+// ================================================
+// 类型声明放最后（CS8803规则）
+// ================================================
+
 public class Post
 {
     [JsonPropertyName("userId")]
@@ -1223,40 +1412,44 @@ public class Post
     public string Body { get; set; } = "";
 }
 
-public class PostApiClient
+public class PostApiClient : IDisposable
 {
     private readonly HttpClient _client;
+    private bool _disposed;
 
     public PostApiClient()
     {
+        // ⚠️ 演示用：实际项目不要每次都new，用单例/Factory
         _client = new HttpClient
         {
             BaseAddress = new Uri("https://jsonplaceholder.typicode.com"),
-            Timeout = TimeSpan.FromSeconds(10)
+            Timeout = TimeSpan.FromSeconds(10)  // 必须设超时！
         };
         _client.DefaultRequestHeaders.Add("Accept", "application/json");
-        _client.DefaultRequestHeaders.Add("User-Agent", "Demo/1.0");
+        _client.DefaultRequestHeaders.Add("User-Agent", "CSharpTutorial/1.0");
     }
 
+    // GET: 获取单个Post，演示when过滤器
     public async Task<Post?> GetPostAsync(int id, CancellationToken ct = default)
     {
         try
         {
-            // 使用 System.Net.Http.Json 内置扩展
             return await _client.GetFromJsonAsync<Post>($"/posts/{id}", ct);
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
+            // 用when过滤器精准捕获404，返回null而不是抛异常
             Console.WriteLine($"[404] Post {id} 不存在");
             return null;
         }
         catch (HttpRequestException ex)
         {
             Console.WriteLine($"[HTTP ERROR] {ex.StatusCode}: {ex.Message}");
-            throw;
+            throw;  // 其他HTTP错误继续抛出
         }
     }
 
+    // POST: 创建新Post
     public async Task<Post?> CreatePostAsync(Post post, CancellationToken ct = default)
     {
         var resp = await _client.PostAsJsonAsync("/posts", post, ct);
@@ -1264,32 +1457,30 @@ public class PostApiClient
         return await resp.Content.ReadFromJsonAsync<Post>(cancellationToken: ct);
     }
 
+    // PUT: 更新Post
     public async Task<bool> UpdatePostAsync(int id, Post post, CancellationToken ct = default)
     {
         var resp = await _client.PutAsJsonAsync($"/posts/{id}", post, ct);
         return resp.IsSuccessStatusCode;
     }
 
+    // DELETE: 删除Post
     public async Task<bool> DeletePostAsync(int id, CancellationToken ct = default)
     {
         var resp = await _client.DeleteAsync($"/posts/{id}", ct);
         return resp.IsSuccessStatusCode;
     }
+
+    // IDisposable模式：释放HttpClient
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            _client.Dispose();
+            _disposed = true;
+        }
+    }
 }
-
-// 使用
-var api = new PostApiClient();
-var post = await api.GetPostAsync(1);
-if (post is not null)
-    Console.WriteLine($"[{post.Id}] {post.Title}");
-
-var created = await api.CreatePostAsync(new Post
-{
-    UserId = 1,
-    Title = "学 HttpClient",
-    Body = "今天学会了用 HttpClient 调用 REST API"
-});
-Console.WriteLine($"新建 Post ID: {created?.Id}");
 \`\`\`
 
 ### 小结
@@ -1386,19 +1577,60 @@ GC.GetTotalMemory(true); // 当前托管内存使用量
 GC 只管"托管堆"。对于**非托管资源**（文件、连接、句柄），必须手动释放：
 
 \`\`\`csharp
-// 释放非托管资源的标准模式
+// ================================================
+// 【IDisposable/using模式要点】
+// 1. 实现IDisposable的类型必须用using包裹
+// 2. using声明(C# 8+)：using var x = ... 作用域结束自动释放
+// 3. using语句：using(var x = ...) { } 大括号结束释放
+// 4. 异步资源用await using (C# 8+)
+// 5. GC.SuppressFinalize告诉GC不用调终结器
+// ================================================
+
+// ================================================
+// 可执行代码在前：演示using用法
+// ================================================
+
+string testFile = "test_idisposable.txt";
+
+// 方式1：C# 8+ using声明（推荐，简洁）
+using (var fw = new FileWriter(testFile))
+{
+    fw.Write("Hello IDisposable! ");
+    fw.Write(DateTime.Now.ToString());
+}  // 离开大括号自动Dispose，文件资源释放
+
+Console.WriteLine("已写入文件，资源已释放");
+
+// 验证文件内容
+string content = File.ReadAllText(testFile);
+Console.WriteLine($"文件内容: {content}");
+File.Delete(testFile);  // 清理测试文件
+
+// 方式2：using声明（作用域结束自动释放）
+using var fs = new FileStream("test2.txt", FileMode.Create);
+using var sw = new StreamWriter(fs);
+sw.WriteLine("通过using声明释放资源");
+// 方法结束时自动Dispose
+
+// ================================================
+// 类型声明放最后（CS8803规则）
+// ================================================
+
+// 释放托管资源的标准IDisposable实现
+// 注意：本类只包含托管资源(StreamWriter)，不需要终结器
 public class FileWriter : IDisposable
 {
     private StreamWriter _writer;
-    private bool _disposed = false;
+    private bool _disposed;
 
     public FileWriter(string path)
     {
-        _writer = new StreamWriter(path);
+        _writer = new StreamWriter(path, append: true);
     }
 
     public void Write(string text)
     {
+        // 已释放后调用抛出ObjectDisposedException
         if (_disposed) throw new ObjectDisposedException(nameof(FileWriter));
         _writer.Write(text);
     }
@@ -1406,29 +1638,11 @@ public class FileWriter : IDisposable
     public void Dispose()
     {
         if (_disposed) return;
-        _writer.Dispose();
+        _writer.Dispose();  // 释放内部托管资源
         _disposed = true;
-        GC.SuppressFinalize(this);  // 告诉 GC 不用调终结器
+        GC.SuppressFinalize(this);  // 因为没有终结器，这一行可选
     }
 }
-\`\`\`
-
-**调用方用 \`using\`：**
-
-\`\`\`csharp
-// 旧写法
-using (var fw = new FileWriter("a.txt"))
-{
-    fw.Write("hello");
-}  // 自动 Dispose
-
-// C# 8+ 简化写法 ⭐
-using var fw = new FileWriter("a.txt");
-fw.Write("hello");
-// 作用域结束自动 Dispose
-
-// C# 10+ 异步 using（释放时支持 await）
-await using var stream = new FileStream("a.txt", FileMode.Open);
 \`\`\`
 
 > ⭐ **铁律**：实现了 \`IDisposable\` 的类型，**一定要用 \`using\` 包起来**——否则资源泄露。
@@ -1438,47 +1652,105 @@ await using var stream = new FileStream("a.txt", FileMode.Open);
 如果类包含**非托管资源**（直接持有原生句柄），需要终结器兜底：
 
 \`\`\`csharp
+// ================================================
+// 【完整Dispose模式说明】
+// 只有直接持有非托管资源（如IntPtr句柄）时才需要终结器
+// 只持有托管资源（如StreamWriter、HttpClient）不需要终结器
+// 终结器会让对象自动升代，影响GC性能，非必要不要加
+// ================================================
+
+// ================================================
+// 可执行代码：演示模式（实际使用）
+// ================================================
+
+// 说明：NativeApi是模拟的P/Invoke，仅用于演示模式
+// 真实场景中这会是如Marshal.AllocHGlobal、文件句柄、Socket句柄等
+Console.WriteLine("=== 完整Dispose模式演示 ===");
+Console.WriteLine("规则：");
+Console.WriteLine("1. Dispose()：用户主动调用，释放托管+非托管，GC.SuppressFinalize");
+Console.WriteLine("2. ~Finalizer()：终结器，GC兜底调用，只释放非托管");
+Console.WriteLine("3. Dispose(bool disposing)：实际释放逻辑");
+Console.WriteLine("   - disposing=true：来自Dispose()，可安全释放托管资源");
+Console.WriteLine("   - disposing=false：来自终结器，只释放非托管资源");
+
+// 演示安全使用
+using (var holder = new NativeResourceHolder())
+{
+    Console.WriteLine("已分配非托管资源，使用中...");
+    holder.DoWork();
+}  // 离开作用域自动Dispose
+Console.WriteLine("资源已通过using正常释放");
+
+// ================================================
+// 类型声明放最后（CS8803规则）
+// ================================================
+
+// 完整Dispose模式：含非托管资源+终结器兜底
 public class NativeResourceHolder : IDisposable
 {
-    private IntPtr _handle;  // 非托管句柄
-    private bool _disposed = false;
+    private IntPtr _handle;  // 非托管句柄（如原生内存、文件句柄）
+    private bool _disposed;
 
     public NativeResourceHolder()
     {
-        _handle = NativeApi.Alloc();  // 假设的 P/Invoke
+        _handle = NativeApi.Alloc();  // 分配非托管资源
+        Console.WriteLine("[构造] 非托管资源已分配");
     }
 
-    // 公共 Dispose：用户调用
+    public void DoWork()
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(NativeResourceHolder));
+        Console.WriteLine("[工作] 使用非托管资源执行业务");
+    }
+
+    // 公共Dispose：用户主动调用
     public void Dispose()
     {
         Dispose(true);
-        GC.SuppressFinalize(this);
+        GC.SuppressFinalize(this);  // 告诉GC：我已经清理好了，不用调终结器了
     }
 
-    // 终结器：用户忘了 Dispose 时由 GC 调用（兜底）
+    // 终结器（析构函数）：用户忘记Dispose时由GC兜底调用
     ~NativeResourceHolder()
     {
         Dispose(false);
     }
 
-    // 受保护的释放逻辑
+    // 核心释放逻辑：受保护virtual可被子类重写
     protected virtual void Dispose(bool disposing)
     {
         if (_disposed) return;
 
         if (disposing)
         {
-            // 释放托管资源（只有 disposing=true 时才能安全访问）
+            // disposing=true：来自Dispose()，可安全释放托管资源
+            // 例如：_managedStream?.Dispose();
         }
 
-        // 释放非托管资源（两种情况都要释放）
+        // 无论哪种情况都必须释放非托管资源
         if (_handle != IntPtr.Zero)
         {
             NativeApi.Free(_handle);
             _handle = IntPtr.Zero;
+            Console.WriteLine("[清理] 非托管资源已释放");
         }
 
         _disposed = true;
+    }
+}
+
+// 模拟的原生API（仅用于演示，真实场景是P/Invoke调用C/C++ DLL）
+internal static class NativeApi
+{
+    public static IntPtr Alloc()
+    {
+        // 真实：return Marshal.AllocHGlobal(1024); 或 CreateFile、socket等
+        return new IntPtr(12345);  // 模拟句柄
+    }
+
+    public static void Free(IntPtr handle)
+    {
+        // 真实：Marshal.FreeHGlobal(handle); 或 CloseHandle、closesocket等
     }
 }
 \`\`\`
@@ -1494,29 +1766,51 @@ public class NativeResourceHolder : IDisposable
 \`Span<T>\` 是"对一段连续内存的视图"——不分配堆内存，操作字符串/数组更高效：
 
 \`\`\`csharp
-using System.MemoryExtensions;
+// ================================================
+// 【Span<T>零分配原理】
+// 1. Span<T>是ref struct，只在栈上分配（不进入托管堆）
+// 2. 内部只存储两个字段：内存指针 + 长度
+// 3. Slice只是改变指针和长度，不复制数据
+// 4. Substring()在堆上创建新string（分配+复制），Span.Slice()零成本
+// 5. 能不转string就不转——直接操作Span进行解析/比较/搜索
+// ================================================
+
+// ================================================
+// 可执行代码：演示Span<T>用法
+// ================================================
 
 string s = "Hello, World!";
 
-// 旧写法：Substring 会创建新字符串
-string sub1 = s.Substring(7, 5);  // "World"，分配新对象
+// 旧写法：Substring 会创建新字符串（堆分配+数据复制）
+string sub1 = s.Substring(7, 5);  // "World"，分配新string对象
+Console.WriteLine($"Substring结果: {sub1}");
 
-// 新写法：AsSpan + Slice 不分配
+// 新写法：AsSpan + Slice 零分配
 ReadOnlySpan<char> span = s.AsSpan();
-ReadOnlySpan<char> sub2 = span.Slice(7, 5);  // "World"，零分配
+ReadOnlySpan<char> sub2 = span.Slice(7, 5);  // "World"，只移动指针+记录长度
+Console.WriteLine($"Span结果: {sub2.ToString()}");  // 注意：ToString()还是会分配string！
 
-Console.WriteLine(sub2.ToString());  // 转 string 才会分配
-
-// 解析数字避免分配
+// 【高性能技巧】直接在Span上操作，避免ToString()
 ReadOnlySpan<char> numStr = "12345".AsSpan();
-if (int.TryParse(numStr, out int n))
-    Console.WriteLine(n);
+if (int.TryParse(numStr, out int n))  // TryParse有ReadOnlySpan<char>重载，零分配解析
+    Console.WriteLine($"解析数字: {n}");
 
-// Span 操作数组
+// Span 操作数组（直接修改原数组，无复制）
 int[] arr = { 1, 2, 3, 4, 5 };
 Span<int> intSpan = arr.AsSpan();
-intSpan[0] = 100;  // 直接改原数组
-foreach (var x in intSpan) Console.WriteLine(x);
+intSpan[0] = 100;  // 直接修改原数组内存
+intSpan.Slice(1, 2).Fill(99);  // 用Fill批量设置，高效
+Console.Write("数组修改后: ");
+foreach (var x in arr) Console.Write(x + " ");
+Console.WriteLine();
+
+// 栈分配数组（stackalloc）配合Span，完全不经过GC
+Span<int> stackArr = stackalloc int[3] { 10, 20, 30 };
+Console.WriteLine($"栈分配数组求和: {stackArr[0] + stackArr[1] + stackArr[2]}");
+
+// ================================================
+// 类型声明放最后（本演示无需额外类型，仅展示）
+// ================================================
 \`\`\`
 
 **\`Span<T>\` vs \`Memory<T>\`：**
@@ -1540,17 +1834,57 @@ async Task ProcessAsync(Memory<byte> buffer)
 \`ref struct\` 强制只能在栈上，用于高性能场景：
 
 \`\`\`csharp
+// ================================================
+// 【GC代龄机制说明】
+// Gen0：新对象（短命），回收最频繁，成本最低
+// Gen1：缓冲区，存活过一次GC的对象
+// Gen2：长寿命对象（静态、缓存），回收成本最高（全回收）
+// LOH（大对象堆）：>=85,000字节对象，不压缩，回收贵
+// 核心原则：让对象尽快死在Gen0，避免升代到Gen2
+// ================================================
+
+// ================================================
+// 可执行代码：演示ref struct使用
+// ================================================
+
+// 栈上创建ref struct（不用new也可以，因为是栈上值类型）
+var so = new StackOnly { Value = 42 };
+so.DoSomething();
+Console.WriteLine($"StackOnly.Value = {so.Value}");
+
+// ref struct可以安全在方法间传递（栈拷贝）
+ProcessStackOnly(so);
+
+// ================================================
+// 类型声明放最后（CS8803规则）
+// 注意：ref struct本身也是一种类型声明
+// ================================================
+
+// ref struct强制只能在栈上分配，不能跑到堆上
+// Span<T>、ReadOnlySpan<T>都是ref struct
 public ref struct StackOnly
 {
     public int Value;
-    public void DoSomething() { }
+
+    public void DoSomething()
+    {
+        Console.WriteLine("[StackOnly] 在栈上执行操作，零GC压力");
+    }
 }
 
-// 限制：
-// - 不能作为 class 的字段
-// - 不能装箱（不能转 object）
-// - 不能跨 await / yield
-// - 不能实现接口（C# 11 之前）
+// 局部函数接收ref struct参数（也是栈上）
+static void ProcessStackOnly(StackOnly s)
+{
+    s.Value *= 2;
+    Console.WriteLine($"[Process] Value*2 = {s.Value}");
+}
+
+// 限制（编译器强制保证安全）：
+// - ❌ 不能作为class的字段（会跑到堆上）
+// - ❌ 不能装箱（不能隐式转object/ValueType）
+// - ❌ 不能跨await/yield（异步会导致栈帧不确定）
+// - ❌ 不能实现接口（C#11之前；C#11允许但有约束）
+// - ❌ 不能被泛型参数约束为T
 \`\`\`
 
 \`Span<T>\`、\`ReadOnlySpan<T>\` 都是 \`ref struct\`。
@@ -1636,36 +1970,100 @@ Console.WriteLine($"List 预分配: {sw.ElapsedMilliseconds} ms");
 5. **Timer 没释放**：\`System.Timers.Timer\` 持有回调委托
 
 \`\`\`csharp
-// ❌ 经典泄露：事件没取消
+// ================================================
+// 【内存泄露常见原因】
+// 1. 事件订阅没取消（+=后忘了-=）
+// 2. 静态集合无限增长当缓存
+// 3. IDisposable没Dispose（文件/连接/HttpClient）
+// 4. 长生命周期对象capture短生命周期对象（闭包陷阱）
+// 5. Timer没释放
+// ================================================
+
+// ================================================
+// 可执行代码：演示事件订阅与正确释放
+// ================================================
+
+var pub = new Publisher();
+Console.WriteLine("=== 事件泄露演示 ===");
+
+// ❌ 错误示范：订阅后不取消（会泄露）
+// var badSub = new BadSubscriber(pub);
+// badSub = null;  // 即使设为null，Publisher还引用着它，GC无法回收！
+
+// ✅ 正确示范：用using包裹，Dispose时取消订阅
+using (var goodSub = new GoodSubscriber(pub, "订阅者A"))
+{
+    pub.Fire();  // 触发事件
+    pub.Fire();
+}  // 离开作用域自动Dispose，取消事件订阅
+
+Console.WriteLine("已释放订阅者，再触发事件：");
+pub.Fire();  // 订阅者A不会再收到通知（已取消订阅）
+Console.WriteLine("=== 演示完成 ===");
+
+// ================================================
+// 类型声明放最后（CS8803规则）
+// ================================================
+
+// 事件发布者
 public class Publisher
 {
     public event EventHandler? SomethingHappened;
-    public void Fire() => SomethingHappened?.Invoke(this, EventArgs.Empty);
+    public void Fire()
+    {
+        Console.WriteLine("[Publisher] 触发事件...");
+        SomethingHappened?.Invoke(this, EventArgs.Empty);
+    }
 }
 
-public class Subscriber
+// ❌ 错误示例：订阅后不取消订阅（内存泄露）
+public class BadSubscriber
 {
-    public Subscriber(Publisher p)
+    public BadSubscriber(Publisher p)
     {
-        p.SomethingHappened += OnEvent;  // 订阅
+        p.SomethingHappened += OnEvent;  // 订阅了，但永远不取消
+        Console.WriteLine("[BadSubscriber] 已订阅（泄露风险！）");
     }
-    void OnEvent(object? s, EventArgs e) { }
 
-    // ❌ 忘记 p.SomethingHappened -= OnEvent;
-    // 即使 Subscriber 没人引用，Publisher 还持有它，GC 无法回收
+    private void OnEvent(object? sender, EventArgs e)
+    {
+        Console.WriteLine("[BadSubscriber] 收到事件（但我永远不会被GC回收！）");
+    }
+
+    // 问题：即使外部没有引用BadSubscriber，
+    // Publisher的SomethingHappened事件还持有OnEvent委托，
+    // 委托引用着BadSubscriber实例，所以GC无法回收它
 }
 
-// ✅ 修复：实现 IDisposable 取消订阅
-public class Subscriber : IDisposable
+// ✅ 正确示例：实现IDisposable，Dispose时取消订阅
+public class GoodSubscriber : IDisposable
 {
-    private readonly Publisher _p;
-    public Subscriber(Publisher p)
+    private readonly Publisher _publisher;
+    private readonly string _name;
+    private bool _disposed;
+
+    public GoodSubscriber(Publisher p, string name)
     {
-        _p = p;
-        _p.SomethingHappened += OnEvent;
+        _publisher = p;
+        _name = name;
+        _publisher.SomethingHappened += OnEvent;
+        Console.WriteLine($"[GoodSubscriber-{_name}] 已订阅");
     }
-    void OnEvent(object? s, EventArgs e) { }
-    public void Dispose() => _p.SomethingHappened -= OnEvent;
+
+    private void OnEvent(object? sender, EventArgs e)
+    {
+        Console.WriteLine($"[GoodSubscriber-{_name}] 收到事件通知");
+    }
+
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            _publisher.SomethingHappened -= OnEvent;  // 关键：取消订阅！
+            Console.WriteLine($"[GoodSubscriber-{_name}] 已取消订阅，可被GC回收");
+            _disposed = true;
+        }
+    }
 }
 \`\`\`
 
@@ -1728,16 +2126,127 @@ public class Subscriber : IDisposable
 | 第 48 章 | DateOnly / TimeSpan | 截止日期 |
 | 第 51 章 | IDisposable | 释放文件资源 |
 
-### 二、领域模型：TaskItem
+### 二~七、完整可运行代码
 
-用 \`record\`（C# 9+）定义不可变模型——天然适合值对象：
+> 下面是**单文件顶级语句完整实现**——可以直接复制到 Program.cs 运行。代码按照顶级语句规则组织：**using → 可执行代码 → 类型声明**。
+> （原章节分拆展示Models/Services/Storage等层次是为了讲解，这里合并为可运行版本）
 
 \`\`\`csharp
-namespace TaskManager.Models;
+// ================================================================
+// TaskManager 综合项目 - C# 顶级语句完整可运行版本
+// 知识点覆盖：OOP/record/泛型/LINQ/asyncawait/JSON/异常/日期/IDisposable
+// ================================================================
 
+using System.Collections.Concurrent;
+using System.Text.Json;
+
+// ================================================================
+// 【DateTime/DateTimeOffset/TimeSpan区别说明】
+// DateTime：表示日期+时间，但Kind属性标记是Local/Utc/Unspecified（容易时区混乱）
+// DateTimeOffset：包含UTC偏移量，跨时区场景推荐用，API传输首选
+// TimeSpan：表示时间间隔（长度），不是时间点，用于计时/超时/时间段计算
+// 最佳实践：存储用UtcNow/Utc，显示时转本地；API用DateTimeOffset+ISO8601
+// ================================================================
+
+// ================================================================
+// 【GC代龄机制复习】
+// Gen0: 新创建对象，回收最频繁，成本最低
+// Gen1: 活过一次GC的对象，缓冲区
+// Gen2: 长寿命对象（静态/缓存），回收成本最高（全回收）
+// LOH: >=85000字节大对象直接进LOH，不压缩，避免频繁分配
+// 原则：让短命对象尽快死在Gen0，避免不必要的升代
+// ================================================================
+
+// ================================================================
+// 第一部分：可执行代码（主程序逻辑）在前 ⭐
+// ================================================================
+
+Console.WriteLine("╔════════════════════════════════════════╗");
+Console.WriteLine("║       TaskManager 任务管理系统启动      ║");
+Console.WriteLine("╚════════════════════════════════════════╝");
+Console.WriteLine();
+
+string dataFile = "tasks_demo.json";
+
+// using 自动释放资源（IDisposable模式）
+using var app = new TaskApp(dataFile);
+await app.InitializeAsync();
+
+// 如果是第一次运行（没有数据文件），添加示例任务
+var allTasks = app.GetAllTasks();
+if (allTasks.Count == 0)
+{
+    Console.WriteLine("[初始化] 首次运行，添加示例任务...");
+    var today = DateOnly.FromDateTime(DateTime.Today);
+
+    await app.AddTaskAsync("学完 C# 教程", "看完最后这一章，完成全书学习",
+        TaskPriority.High, today.AddDays(7));
+    await app.AddTaskAsync("做综合项目", "亲手实现TaskManager，跑通所有功能",
+        TaskPriority.Urgent, today.AddDays(3));
+    await app.AddTaskAsync("写技术博客", "总结 C# 学习笔记，分享给社区",
+        TaskPriority.Medium, today.AddDays(14));
+    await app.AddTaskAsync("复习 LINQ", "练习GroupBy/Select/Where等常用操作",
+        TaskPriority.Low);
+    await app.AddTaskAsync("过期任务示例", "这是一个已经过期的任务（演示逾期提醒）",
+        TaskPriority.High, today.AddDays(-2));
+}
+
+// 演示：完成一个任务（标记"做综合项目"为进行中，再完成它）
+var urgentTasks = app.FilterByPriority(TaskPriority.Urgent);
+if (urgentTasks.Any())
+{
+    var firstUrgent = urgentTasks.First();
+    Console.WriteLine($"\\n[演示] 将任务《{firstUrgent.Title}》标记为进行中...");
+    app.UpdateTaskStatus(firstUrgent.Id, TaskStatus.InProgress);
+    await app.SaveChangesAsync();
+
+    // 延迟一下，模拟工作中...
+    await Task.Delay(100);
+
+    Console.WriteLine($"[演示] 完成任务《{firstUrgent.Title}》！");
+    await app.CompleteTaskAsync(firstUrgent.Id);
+}
+
+// 打印统计报告
+app.PrintSummary();
+
+// 演示异常处理：尝试获取不存在的任务
+Console.WriteLine("\\n--- 异常处理演示 ---");
+try
+{
+    app.GetTaskById(Guid.NewGuid());
+}
+catch (TaskNotFoundException ex)
+{
+    Console.WriteLine($"✓ 正确捕获业务异常: {ex.Message}");
+}
+
+try
+{
+    await app.AddTaskAsync("", priority: TaskPriority.Medium);
+}
+catch (TaskValidationException ex)
+{
+    Console.WriteLine($"✓ 正确捕获校验异常: {ex.Message}");
+}
+
+Console.WriteLine("\\n╔════════════════════════════════════════╗");
+Console.WriteLine("║    数据已保存至 tasks_demo.json        ║");
+Console.WriteLine("║    恭喜你完成C#全书学习！🚀             ║");
+Console.WriteLine("╚════════════════════════════════════════╝");
+
+
+// ================================================================
+// 第二部分：类型声明（enum/record/class）全部放最后 ⭐
+// CS8803规则：顶级语句中类型必须在可执行代码之后
+// ================================================================
+
+// ---------- 枚举类型 ----------
 public enum TaskPriority { Low, Medium, High, Urgent }
 public enum TaskStatus { Todo, InProgress, Done }
 
+// ---------- 领域模型：record不可变值对象 ----------
+// 用record定义：不可变、值相等、with表达式、序列化友好
 public record TaskItem
 {
     public Guid Id { get; init; } = Guid.NewGuid();
@@ -1749,71 +2258,58 @@ public record TaskItem
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
     public DateTime? CompletedAt { get; init; }
 
-    // 用 with 表达式生成新实例
+    // with表达式：创建新实例（不可变对象状态变更模式）
     public TaskItem WithStatus(TaskStatus newStatus) => newStatus switch
     {
         TaskStatus.Done => this with { Status = newStatus, CompletedAt = DateTime.UtcNow },
         _ => this with { Status = newStatus, CompletedAt = null }
     };
 }
-\`\`\`
 
-> **为什么用 record？**
-> 1. 不可变——状态变化通过 \`with\` 创建新实例，更安全
-> 2. 自带值相等、\`ToString\`、解构
-> 3. 序列化友好
-
-### 三、自定义异常
-
-\`\`\`csharp
-namespace TaskManager.Exceptions;
-
+// ---------- 自定义业务异常 ----------
+// 异常处理最佳实践：自定义业务异常，方便上层精准捕获
 public class TaskNotFoundException : Exception
 {
     public Guid TaskId { get; }
-    public TaskNotFoundException(Guid id)
-        : base($"任务不存在: {id}")
-        => TaskId = id;
+    public TaskNotFoundException(Guid id) : base($"任务不存在: {id}") => TaskId = id;
 }
 
 public class TaskValidationException : Exception
 {
     public TaskValidationException(string message) : base(message) { }
 }
-\`\`\`
 
-### 四、核心服务：TaskManager
-
-\`\`\`csharp
-using System.Linq;
-using TaskManager.Exceptions;
-using TaskManager.Models;
-
-namespace TaskManager.Services;
-
+// ---------- 核心领域服务 ----------
+// 线程安全：用lock保护共享集合
 public class TaskManagerService
 {
     private readonly List<TaskItem> _tasks = new();
-    private readonly object _lock = new();  // 简单线程安全
+    private readonly object _lock = new();
 
-    public IReadOnlyList<TaskItem> All
+    // 批量导入（用于加载持久化数据）
+    public void Import(IEnumerable<TaskItem> tasks)
     {
-        get
+        lock (_lock)
         {
-            lock (_lock) return _tasks.ToList();  // 返回副本，避免外部修改
+            _tasks.Clear();
+            _tasks.AddRange(tasks);
         }
     }
 
-    // 创建任务（带校验）
-    public TaskItem Add(string title, string description = "",
-        TaskPriority priority = TaskPriority.Medium,
-        DateOnly? dueDate = null)
+    public IReadOnlyList<TaskItem> GetAll()
     {
-        // 输入校验
+        lock (_lock) return _tasks.ToList();  // 返回副本，避免外部修改内部集合
+    }
+
+    // 创建任务（带输入校验）
+    public TaskItem Add(string title, string description = "",
+        TaskPriority priority = TaskPriority.Medium, DateOnly? dueDate = null)
+    {
+        // 防御式编程：参数校验
         if (string.IsNullOrWhiteSpace(title))
-            throw new TaskValidationException("标题不能为空");
+            throw new TaskValidationException("任务标题不能为空");
         if (title.Length > 100)
-            throw new TaskValidationException("标题不能超过 100 字符");
+            throw new TaskValidationException("任务标题不能超过100字符");
         if (dueDate.HasValue && dueDate.Value < DateOnly.FromDateTime(DateTime.Today))
             throw new TaskValidationException("截止日期不能早于今天");
 
@@ -1829,7 +2325,6 @@ public class TaskManagerService
         return task;
     }
 
-    // 按 ID 查找
     public TaskItem GetById(Guid id)
     {
         lock (_lock)
@@ -1840,7 +2335,6 @@ public class TaskManagerService
         }
     }
 
-    // 更新状态
     public TaskItem UpdateStatus(Guid id, TaskStatus newStatus)
     {
         lock (_lock)
@@ -1854,7 +2348,6 @@ public class TaskManagerService
         }
     }
 
-    // 删除
     public bool Delete(Guid id)
     {
         lock (_lock)
@@ -1866,7 +2359,7 @@ public class TaskManagerService
         }
     }
 
-    // ⭐ LINQ: 按优先级过滤
+    // ⭐ LINQ 查询：按优先级过滤并排序
     public IEnumerable<TaskItem> FilterByPriority(TaskPriority priority)
     {
         lock (_lock)
@@ -1879,7 +2372,7 @@ public class TaskManagerService
         }
     }
 
-    // ⭐ LINQ: 按状态分组
+    // ⭐ LINQ 查询：按状态分组
     public IDictionary<TaskStatus, List<TaskItem>> GroupByStatus()
     {
         lock (_lock)
@@ -1890,7 +2383,7 @@ public class TaskManagerService
         }
     }
 
-    // ⭐ LINQ: 查找逾期未完成的任务
+    // ⭐ LINQ 查询：查找逾期未完成任务
     public IEnumerable<TaskItem> GetOverdueTasks()
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
@@ -1905,7 +2398,7 @@ public class TaskManagerService
         }
     }
 
-    // ⭐ LINQ: 统计
+    // ⭐ LINQ 查询：元组返回统计数据
     public (int Total, int Todo, int InProgress, int Done) GetStats()
     {
         lock (_lock)
@@ -1918,44 +2411,33 @@ public class TaskManagerService
         }
     }
 }
-\`\`\`
 
-### 五、JSON 持久化
-
-\`\`\`csharp
-using System.Text.Json;
-using TaskManager.Models;
-
-namespace TaskManager.Storage;
-
+// ---------- JSON持久化仓储 ----------
+// IDisposable：释放SemaphoreSlim
 public class JsonTaskRepository : IDisposable
 {
     private readonly string _filePath;
-    private readonly SemaphoreSlim _sem = new(1, 1);  // 异步锁
-    private readonly JsonSerializerOptions _options = new()
+    private readonly SemaphoreSlim _sem = new(1, 1);  // 异步读写锁（支持async/await）
+    private readonly JsonSerializerOptions _jsonOptions = new()
     {
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
+    private bool _disposed;
 
-    public JsonTaskRepository(string filePath)
-    {
-        _filePath = filePath;
-    }
+    public JsonTaskRepository(string filePath) => _filePath = filePath;
 
-    // ⭐ async 文件 IO
+    // 原子写入：先写临时文件，再替换正式文件，避免写一半损坏
     public async Task SaveAsync(IEnumerable<TaskItem> tasks, CancellationToken ct = default)
     {
         await _sem.WaitAsync(ct);
         try
         {
             var list = tasks.ToList();
-            var json = JsonSerializer.Serialize(list, _options);
-
-            // 写入临时文件再原子替换，避免写一半损坏
-            var tmp = _filePath + ".tmp";
-            await File.WriteAllTextAsync(tmp, json, ct);
-            File.Move(tmp, _filePath, overwrite: true);
+            var json = JsonSerializer.Serialize(list, _jsonOptions);
+            var tmpFile = _filePath + ".tmp";
+            await File.WriteAllTextAsync(tmpFile, json, ct);
+            File.Move(tmpFile, _filePath, overwrite: true);  // 原子操作
         }
         finally
         {
@@ -1971,12 +2453,12 @@ public class JsonTaskRepository : IDisposable
         try
         {
             var json = await File.ReadAllTextAsync(_filePath, ct);
-            return JsonSerializer.Deserialize<List<TaskItem>>(json, _options)
+            return JsonSerializer.Deserialize<List<TaskItem>>(json, _jsonOptions)
                    ?? new List<TaskItem>();
         }
         catch (JsonException ex)
         {
-            Console.WriteLine($"[WARN] 数据文件损坏，重新开始: {ex.Message}");
+            Console.WriteLine($"[WARN] 数据文件损坏，将重新开始: {ex.Message}");
             return new List<TaskItem>();
         }
         finally
@@ -1985,53 +2467,50 @@ public class JsonTaskRepository : IDisposable
         }
     }
 
-    public void Dispose() => _sem.Dispose();
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            _sem.Dispose();
+            _disposed = true;
+        }
+    }
 }
-\`\`\`
 
-### 六、组合服务：TaskApp
-
-把核心逻辑 + 持久化组合起来，对外提供"用完即存"的高级 API：
-
-\`\`\`csharp
-using TaskManager.Models;
-using TaskManager.Storage;
-
-namespace TaskManager.App;
-
+// ---------- 应用服务门面（组合核心服务+持久化） ----------
 public class TaskApp : IDisposable
 {
-    private readonly Services.TaskManagerService _svc = new();
+    private readonly TaskManagerService _svc = new();
     private readonly JsonTaskRepository _repo;
+    private bool _disposed;
 
     public TaskApp(string dataFile = "tasks.json")
     {
         _repo = new JsonTaskRepository(dataFile);
     }
 
-    // 启动时加载
     public async Task InitializeAsync(CancellationToken ct = default)
     {
         var tasks = await _repo.LoadAsync(ct);
-        foreach (var t in tasks)
-        {
-            // 通过反射或公开方法重新填充，这里简化为重新 Add 不行——
-            // 实际项目可以让 _svc 暴露 Import(IEnumerable<TaskItem>) 方法
-        }
+        _svc.Import(tasks);  // 通过Import方法批量加载
         Console.WriteLine($"[启动] 已加载 {tasks.Count} 个任务");
     }
 
     public async Task<TaskItem> AddTaskAsync(
         string title, string desc = "",
         TaskPriority priority = TaskPriority.Medium,
-        DateOnly? dueDate = null,
-        CancellationToken ct = default)
+        DateOnly? dueDate = null, CancellationToken ct = default)
     {
         try
         {
             var task = _svc.Add(title, desc, priority, dueDate);
-            await _repo.SaveAsync(_svc.All, ct);
+            await _repo.SaveAsync(_svc.GetAll(), ct);
+            Console.WriteLine($"[添加] #{task.Id.ToString()[..8]} {task.Title}");
             return task;
+        }
+        catch (TaskValidationException)
+        {
+            throw;  // 校验异常直接抛给上层
         }
         catch (Exception ex)
         {
@@ -2040,15 +2519,19 @@ public class TaskApp : IDisposable
         }
     }
 
+    public TaskItem UpdateTaskStatus(Guid id, TaskStatus newStatus)
+        => _svc.UpdateStatus(id, newStatus);
+
     public async Task<TaskItem?> CompleteTaskAsync(Guid id, CancellationToken ct = default)
     {
         try
         {
             var updated = _svc.UpdateStatus(id, TaskStatus.Done);
-            await _repo.SaveAsync(_svc.All, ct);
+            await _repo.SaveAsync(_svc.GetAll(), ct);
+            Console.WriteLine($"[完成] #{updated.Id.ToString()[..8]} {updated.Title}");
             return updated;
         }
-        catch (Exceptions.TaskNotFoundException)
+        catch (TaskNotFoundException)
         {
             return null;
         }
@@ -2057,124 +2540,162 @@ public class TaskApp : IDisposable
     public async Task<bool> DeleteTaskAsync(Guid id, CancellationToken ct = default)
     {
         var ok = _svc.Delete(id);
-        if (ok) await _repo.SaveAsync(_svc.All, ct);
+        if (ok)
+        {
+            await _repo.SaveAsync(_svc.GetAll(), ct);
+            Console.WriteLine($"[删除] 任务 {id.ToString()[..8]} 已删除");
+        }
         return ok;
     }
 
+    public async Task SaveChangesAsync(CancellationToken ct = default)
+        => await _repo.SaveAsync(_svc.GetAll(), ct);
+
+    public IReadOnlyList<TaskItem> GetAllTasks() => _svc.GetAll();
+    public TaskItem GetTaskById(Guid id) => _svc.GetById(id);
+    public IEnumerable<TaskItem> FilterByPriority(TaskPriority p) => _svc.FilterByPriority(p);
+
+    // 打印美观的统计报告
     public void PrintSummary()
     {
         var (total, todo, inProgress, done) = _svc.GetStats();
-        Console.WriteLine($"========== 任务统计 ==========");
-        Console.WriteLine($"总数: {total} | 待办: {todo} | 进行中: {inProgress} | 已完成: {done}");
 
-        Console.WriteLine("\\n---------- 按状态分组 ----------");
+        Console.WriteLine("\\n╔════════════════════════════════════════╗");
+        Console.WriteLine("║              任务统计报表               ║");
+        Console.WriteLine("╚════════════════════════════════════════╝");
+        Console.WriteLine($"  总数: {total}  |  待办: {todo}  |  进行中: {inProgress}  |  已完成: {done}");
+        Console.WriteLine();
+
+        Console.WriteLine("---------- 按状态分组 ----------");
         foreach (var kv in _svc.GroupByStatus())
         {
             Console.WriteLine($"[{kv.Key}] ({kv.Value.Count})");
             foreach (var t in kv.Value)
-                Console.WriteLine($"  - #{t.Id.ToString()[..8]} {t.Title} [{t.Priority}]");
+            {
+                var due = t.DueDate.HasValue ? $" 截止:{t.DueDate:yyyy-MM-dd}" : "";
+                var doneMark = t.Status == TaskStatus.Done ? "✓" : "○";
+                Console.WriteLine($"  {doneMark} #{t.Id.ToString()[..8]} [{t.Priority}] {t.Title}{due}");
+            }
         }
 
-        Console.WriteLine("\\n---------- 逾期任务 ----------");
+        Console.WriteLine("\\n---------- ⚠️  逾期任务 ----------");
         var overdue = _svc.GetOverdueTasks().ToList();
-        if (overdue.Count == 0) Console.WriteLine("  (无)");
-        foreach (var t in overdue)
-            Console.WriteLine($"  ⚠️ {t.Title} 截止 {t.DueDate:yyyy-MM-dd}");
+        if (overdue.Count == 0)
+        {
+            Console.WriteLine("  (无逾期任务，干得漂亮！)");
+        }
+        else
+        {
+            foreach (var t in overdue)
+            {
+                var daysOverdue = DateOnly.FromDateTime(DateTime.Today).DayNumber - t.DueDate!.Value.DayNumber;
+                Console.WriteLine($"  ⚠️ [{daysOverdue}天前到期] {t.Title}");
+            }
+        }
     }
 
-    public void Dispose() => _repo.Dispose();
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            _repo.Dispose();
+            _disposed = true;
+        }
+    }
 }
-\`\`\`
-
-### 七、主程序：交互式入口
-
-\`\`\`csharp
-using TaskManager.App;
-using TaskManager.Models;
-
-using var app = new TaskApp();
-await app.InitializeAsync();
-
-// 添加几条示例数据
-var today = DateOnly.FromDateTime(DateTime.Today);
-await app.AddTaskAsync("学完 C# 教程", "看完最后这一章", TaskPriority.High, today.AddDays(7));
-await app.AddTaskAsync("做综合项目", "实现 TaskManager", TaskPriority.Urgent, today.AddDays(3));
-await app.AddTaskAsync("写技术博客", "总结 C# 学习笔记", TaskPriority.Medium, today.AddDays(14));
-await app.AddTaskAsync("复习 LINQ", "GroupBy / Select / Where", TaskPriority.Low);
-
-// 完成一个
-var first = app.GetType()
-    .GetMethod("PrintSummary")!;  // 简化：实际应通过公开 API
-app.PrintSummary();
-
-Console.WriteLine("\\n=== 所有操作完成 ===");
 \`\`\`
 
 ### 八、运行效果
 
 \`\`\`
+╔════════════════════════════════════════╗
+║       TaskManager 任务管理系统启动      ║
+╚════════════════════════════════════════╝
+
 [启动] 已加载 0 个任务
-========== 任务统计 ==========
-总数: 4 | 待办: 3 | 进行中: 0 | 已完成: 0
+[初始化] 首次运行，添加示例任务...
+
+[演示] 将任务《做综合项目》标记为进行中...
+[演示] 完成任务《做综合项目》！
+[完成] #e7f8a9b0 做综合项目
+
+╔════════════════════════════════════════╗
+║              任务统计报表               ║
+╚════════════════════════════════════════╝
+  总数: 5  |  待办: 4  |  进行中: 0  |  已完成: 1
 
 ---------- 按状态分组 ----------
 [Todo] (4)
-  - #a3b4c5d6 学完 C# 教程 [High]
-  - #e7f8a9b0 做综合项目 [Urgent]
-  - #c1d2e3f4 写技术博客 [Medium]
-  - #a5b6c7d8 复习 LINQ [Low]
+  ○ #a3b4c5d6 [High] 学完 C# 教程 截止:2026-07-25
+  ○ #c1d2e3f4 [Medium] 写技术博客 截止:2026-08-01
+  ○ #a5b6c7d8 [Low] 复习 LINQ
+  ○ #f9e8d7c6 [High] 过期任务示例 截止:2026-07-16
+[Done] (1)
+  ✓ #e7f8a9b0 [Urgent] 做综合项目 截止:2026-07-21
 
----------- 逾期任务 ----------
-  (无)
+---------- ⚠️  逾期任务 ----------
+  ⚠️ [2天前到期] 过期任务示例
 
-=== 所有操作完成 ===
+--- 异常处理演示 ---
+✓ 正确捕获业务异常: 任务不存在: xxxxxxxx-xxxx-...
+✓ 正确捕获校验异常: 任务标题不能为空
+
+╔════════════════════════════════════════╗
+║    数据已保存至 tasks_demo.json        ║
+║    恭喜你完成C#全书学习！🚀             ║
+╚════════════════════════════════════════╝
 \`\`\`
 
 ### 九、单元测试思路
 
-真实项目必须有测试。本项目可以这样拆分测试：
+真实项目必须有测试。单元测试写在独立的测试项目中（xUnit/NUnit），不是顶级语句。下面是测试示例（与上面的单文件版本配合使用时，类型不需要namespace）：
 
 \`\`\`csharp
+// 注意：这是测试项目中的代码（类库形式，非顶级语句）
+// 需要引用xunit和被测试项目
 using Xunit;
-using TaskManager.Services;
-using TaskManager.Exceptions;
 
 public class TaskManagerServiceTests
 {
+    // 每个测试用例new一个新实例，保证测试独立不互相污染
     private readonly TaskManagerService _svc = new();
 
     [Fact]
-    public void Add_ValidTitle_ReturnsTask()
+    public void Add_ValidTitle_ReturnsTaskWithId()
     {
         var task = _svc.Add("测试任务");
         Assert.NotEqual(Guid.Empty, task.Id);
         Assert.Equal("测试任务", task.Title);
+        Assert.Equal(TaskStatus.Todo, task.Status);
     }
 
     [Fact]
-    public void Add_EmptyTitle_Throws()
+    public void Add_EmptyTitle_ThrowsValidationException()
     {
         Assert.Throws<TaskValidationException>(() => _svc.Add(""));
+        Assert.Throws<TaskValidationException>(() => _svc.Add("   "));
     }
 
     [Fact]
-    public void Add_PastDueDate_Throws()
+    public void Add_PastDueDate_ThrowsValidationException()
     {
         var past = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
         Assert.Throws<TaskValidationException>(() => _svc.Add("x", dueDate: past));
     }
 
     [Fact]
-    public void UpdateStatus_ToDone_SetsCompletedAt()
+    public void UpdateStatus_ToDone_SetsCompletedAtTimestamp()
     {
         var t = _svc.Add("x");
         var updated = _svc.UpdateStatus(t.Id, TaskStatus.Done);
         Assert.Equal(TaskStatus.Done, updated.Status);
         Assert.NotNull(updated.CompletedAt);
+        // 完成时间应该是UTC最近的时间
+        Assert.True((DateTime.UtcNow - updated.CompletedAt!.Value).TotalSeconds < 5);
     }
 
     [Fact]
-    public void GetById_NotFound_Throws()
+    public void GetById_NotFound_ThrowsTaskNotFoundException()
     {
         Assert.Throws<TaskNotFoundException>(() => _svc.GetById(Guid.NewGuid()));
     }
@@ -2182,24 +2703,43 @@ public class TaskManagerServiceTests
     [Theory]
     [InlineData(TaskPriority.Urgent, 1)]
     [InlineData(TaskPriority.High, 1)]
-    public void FilterByPriority_ReturnsOnlyThatPriority(TaskPriority p, int expected)
+    public void FilterByPriority_ReturnsOnlyMatchingPriority(TaskPriority p, int expected)
     {
-        _svc.Add("a", priority: TaskPriority.Urgent);
-        _svc.Add("b", priority: TaskPriority.High);
-        var result = _svc.FilterByPriority(p);
-        Assert.Equal(expected, result.Count());
+        _svc.Add("紧急任务", priority: TaskPriority.Urgent);
+        _svc.Add("高优任务", priority: TaskPriority.High);
+        _svc.Add("低优任务", priority: TaskPriority.Low);
+
+        var result = _svc.FilterByPriority(p).ToList();
+        Assert.Equal(expected, result.Count);
+        Assert.All(result, t => Assert.Equal(p, t.Priority));
     }
 
     [Fact]
-    public void GetOverdueTasks_ReturnsOnlyOverdueUndone()
+    public void GetOverdueTasks_ReturnsOnlyOverdueAndNotDone()
     {
         var past = DateOnly.FromDateTime(DateTime.Today).AddDays(-5);
-        _svc.Add("逾期1", dueDate: past);
-        var done = _svc.Add("逾期2", dueDate: past);
-        _svc.UpdateStatus(done.Id, TaskStatus.Done);
+        _svc.Add("逾期未完成", dueDate: past);
+        var doneOverdue = _svc.Add("逾期已完成", dueDate: past);
+        _svc.UpdateStatus(doneOverdue.Id, TaskStatus.Done);
+        _svc.Add("未逾期", dueDate: DateOnly.FromDateTime(DateTime.Today).AddDays(5));
 
         var overdue = _svc.GetOverdueTasks().ToList();
         Assert.Single(overdue);
+        Assert.Equal("逾期未完成", overdue[0].Title);
+    }
+
+    [Fact]
+    public void Delete_ExistingTask_ReturnsTrueAndRemoves()
+    {
+        var t = _svc.Add("待删除");
+        Assert.True(_svc.Delete(t.Id));
+        Assert.Throws<TaskNotFoundException>(() => _svc.GetById(t.Id));
+    }
+
+    [Fact]
+    public void Delete_NonExistingTask_ReturnsFalse()
+    {
+        Assert.False(_svc.Delete(Guid.NewGuid()));
     }
 }
 \`\`\`

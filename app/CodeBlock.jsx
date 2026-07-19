@@ -10,7 +10,7 @@
 //   - 复制 / 运行 / Playground / 外网运行 四个操作按钮
 // =============================================================
 
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef, memo } from "react";
 import dynamic from "next/dynamic";
 import { getExternalPlaygrounds, openExternal } from "./external-playgrounds";
 
@@ -124,7 +124,7 @@ function parseRunResult(langLower, data) {
   return { output: data.output || "(无输出)", error: data.error || "" };
 }
 
-export function CodeBlock({ code: initialCode, lang, maxHeight = 300 }) {
+function CodeBlockComponent({ code: initialCode, lang, maxHeight = 300 }) {
   // 可编辑代码状态
   const [code, setCode] = useState(initialCode);
 
@@ -451,4 +451,6 @@ export function CodeBlock({ code: initialCode, lang, maxHeight = 300 }) {
   );
 }
 
+const CodeBlock = memo(CodeBlockComponent);
+export { CodeBlock };
 export default CodeBlock;

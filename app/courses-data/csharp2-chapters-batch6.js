@@ -1161,6 +1161,10 @@ foreach (var x in productStat)
 后面 demo 都基于这组数据：
 
 \`\`\`csharp
+using System;
+using System.Collections.Generic;
+
+// 可执行代码：创建产品列表（注意：这里用到Product类型，但类型声明在后面，C#编译器支持前向引用）
 var products = new List<Product>
 {
     new(1, "键盘",  200, "外设", 50),
@@ -1173,21 +1177,28 @@ var products = new List<Product>
     new(8, "HDMI线", 45,  "线材", 150)
 };
 
+// 类型声明（record）放所有可执行代码之后，符合 CS8803 顶级语句规则
 record Product(int Id, string Name, decimal Price, string Category, int Stock);
 \`\`\`
 
 ### 一、Where：过滤 ⭐
 
 \`\`\`csharp
-// 价格 > 200
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+// 价格 > 200（Where延迟执行，ToList()立即执行并缓存结果，ForEach遍历输出）
 var high = products.Where(p => p.Price > 200);
 high.ToList().ForEach(p => Console.WriteLine($"  {p.Name} - ¥{p.Price}"));
 
-// 复合条件
+// 复合条件（&& 表示"且"，|| 表示"或"）
 var cheapAudio = products.Where(p => p.Category == "音频" && p.Price < 400);
 
-// 用索引（少用）：取偶数索引
+// Where的重载：第二个参数是索引（0开始），取第0、2、4...个元素
 var everyOther = products.Where((p, i) => i % 2 == 0);
+
+// 注：本代码块复用前面"准备数据"的 products 和 Product 类型，独立运行需补充定义
 \`\`\`
 
 ### 二、Select：投影 ⭐
@@ -1263,6 +1274,11 @@ foreach (var x in categoryStats)
 ### 五、Join：连接 ⭐
 
 \`\`\`csharp
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+// 可执行代码：创建订单列表
 var orders = new List<Order>
 {
     new(1, 1, 2),    // 订单1: 键盘2个
@@ -1270,24 +1286,28 @@ var orders = new List<Order>
     new(3, 1, 1),    // 订单3: 键盘1个
     new(4, 4, 3),    // 订单4: 耳机3个
 };
-record Order(int OrderId, int ProductId, int Qty);
 
-// 内连接
+// 内连接：Join方法语法（方法语法比查询表达式更常用Join）
+// 参数：外表、外键选择器、主键选择器、结果投影
 var orderDetails = orders.Join(
     products,
-    o => o.ProductId,     // 订单这边的键
-    p => p.Id,            // 产品这边的键
+    o => o.ProductId,     // 订单表的外键
+    p => p.Id,            // 产品表的主键
     (o, p) => new { o.OrderId, p.Name, p.Price, o.Qty, Subtotal = p.Price * o.Qty }
 );
 
 foreach (var x in orderDetails)
     Console.WriteLine($"订单{x.OrderId}: {x.Name} × {x.Qty} = ¥{x.Subtotal}");
 
-// 多表连接：链式
+// 多表连接：链式调用——Join后继续GroupBy、Select，一气呵成
 var more = orders
     .Join(products, o => o.ProductId, p => p.Id, (o, p) => new { o.OrderId, p.Name, p.Category, o.Qty })
     .GroupBy(x => x.Category)
     .Select(g => new { Category = g.Key, TotalQty = g.Sum(x => x.Qty) });
+
+// 类型声明放最后：Order记录类型
+// 注：本代码块复用前面"准备数据"的 products 和 Product 类型，独立运行需补充定义
+record Order(int OrderId, int ProductId, int Qty);
 \`\`\`
 
 ### 六、SelectMany：扁平化 ⭐
@@ -1548,7 +1568,15 @@ foreach (var x in page) Console.WriteLine($"  {x}");
 场景：你想给 \`string\` 加个 \`Reverse()\` 方法，但 \`string\` 是 .NET 框架的类，你改不了源码。
 
 \`\`\`csharp
-// 没扩展方法时：写静态工具方法
+using System;
+
+// 可执行代码：调用静态工具方法
+string s = "hello";
+string r = StringUtils.ReverseStr(s);   // 调用方式啰嗦：StringUtils.方法名(对象)
+Console.WriteLine(r);   // olleh
+
+// static class 是类型声明，放可执行代码之后
+// 传统写法：写一个静态工具类，把方法都放里面
 static class StringUtils
 {
     public static string ReverseStr(string s)
@@ -1558,9 +1586,6 @@ static class StringUtils
         return new string(chars);
     }
 }
-
-string s = "hello";
-string r = StringUtils.ReverseStr(s);   // 调用方式啰嗦
 \`\`\`
 
 有了扩展方法，能像调用实例方法一样写：
@@ -1575,11 +1600,29 @@ string r = s.Reverse();    // 像是 string 自带的方法
 三个规则：**静态类 + 静态方法 + 第一个参数前加 \`this\`**。
 
 \`\`\`csharp
-// 1. 必须放在静态类里
+using System;
+using System.Linq;
+
+// 使用：扩展方法的调用方式像实例方法，但本质是语法糖
+string name = "hello";
+Console.WriteLine(name.Reverse());      // olleh → 编译器翻译成 StringExtensions.Reverse(name)
+Console.WriteLine(name.Repeat(3));      // hellohellohello
+
+string? maybe = null;
+Console.WriteLine(maybe.IsNullOrEmpty());   // True —— 注意即使 null 也能调，因为本质是静态方法调用！
+
+// 【this关键字原理】为什么第一个参数加this就"变成"了扩展方法？
+// this 告诉编译器：这是一个扩展方法，它"附加"到第一个参数的类型上。
+// 编译器做了两个工作：
+//   1. 把 s.Reverse() 翻译成 StringExtensions.Reverse(s)（静态调用）
+//   2. 在 Visual Studio / Rider 智能提示里，把 Reverse 显示为 string 的方法
+// 三个规则必须同时满足：
+//   - 必须在 static class 里（非静态类编译错误）
+//   - 方法本身必须是 static
+//   - 第一个参数必须带 this，且是你要扩展的类型
 public static class StringExtensions
 {
-    // 2. 静态方法
-    // 3. 第一个参数前加 this，指明要扩展的类型
+    // 扩展 string 类型：this string s 表示"把这个方法扩展给string"
     public static string Reverse(this string s)
     {
         var chars = s.ToCharArray();
@@ -1587,22 +1630,15 @@ public static class StringExtensions
         return new string(chars);
     }
 
-    // 扩展方法可以有额外参数
+    // 扩展方法可以有额外参数：第一个this参数是被扩展对象，后面是普通参数
     public static string Repeat(this string s, int count)
     {
         return string.Concat(Enumerable.Repeat(s, count));
     }
 
+    // 可以扩展可空类型：this string? s 表示即使 s 是 null 也能调用
     public static bool IsNullOrEmpty(this string? s) => string.IsNullOrEmpty(s);
 }
-
-// 使用：using 命名空间后，直接像实例方法调用
-string name = "hello";
-Console.WriteLine(name.Reverse());      // olleh
-Console.WriteLine(name.Repeat(3));      // hellohellohello
-
-string? maybe = null;
-Console.WriteLine(maybe.IsNullOrEmpty());   // True —— 注意即使 null 也能调
 \`\`\`
 
 要点：
@@ -1613,8 +1649,20 @@ Console.WriteLine(maybe.IsNullOrEmpty());   // True —— 注意即使 null 也
 ### 三、调用语法
 
 \`\`\`csharp
+using System;
+
+// 两种调用方式都行：实例方法风格是语法糖，最终都翻译成静态调用
+int n = 7;
+Console.WriteLine(n.IsPrime());           // 实例方法风格（推荐，更自然）
+Console.WriteLine(IntExtensions.IsPrime(n)); // 底层：静态方法风格（最终编译成这样）
+
+// 链式调用：每个扩展方法返回值类型可以继续调用该类型的扩展方法
+Console.WriteLine(5.Square().Square());   // 625 = (5²)² = 25²，链式调用让代码流畅
+
+// 类型声明放最后
 public static class IntExtensions
 {
+    // 扩展 int 类型：判断素数
     public static bool IsPrime(this int n)
     {
         if (n < 2) return false;
@@ -1623,16 +1671,9 @@ public static class IntExtensions
         return true;
     }
 
+    // 扩展 int 类型：平方
     public static int Square(this int n) => n * n;
 }
-
-// 两种调用方式都行
-int n = 7;
-Console.WriteLine(n.IsPrime());           // 实例方法风格
-Console.WriteLine(IntExtensions.IsPrime(n)); // 静态方法风格
-
-// 链式调用
-Console.WriteLine(5.Square().Square());   // 625
 \`\`\`
 
 ### 四、LINQ 就是扩展方法 ⭐
@@ -1667,6 +1708,15 @@ namespace System.Linq
 #### 1. 字符串扩展
 
 \`\`\`csharp
+using System;
+using System.Linq;
+
+// 直接在字符串实例上调用扩展方法，就像它是string原生方法一样
+Console.WriteLine("Hello, World!".Truncate(5));     // Hello…
+Console.WriteLine("hello world".ToTitleCase());     // Hello World
+Console.WriteLine("你好".IsChinese());             // True
+
+// 类型声明放最后：常用字符串扩展方法
 public static class StringExtensions
 {
     // 截断到指定长度，超出加省略号
@@ -1690,95 +1740,112 @@ public static class StringExtensions
         return string.Join(' ', words);
     }
 
-    // 是否中文
+    // 是否包含中文字符（Unicode范围判断）
     public static bool IsChinese(this string s) =>
-        s.Any(c => c >= '\\u4e00' && c <= '\\u9fff');
+        s.Any(c => c >= '\u4e00' && c <= '\u9fff');
 }
-
-Console.WriteLine("Hello, World!".Truncate(5));     // Hello…
-Console.WriteLine("hello world".ToTitleCase());     // Hello World
-Console.WriteLine("你好".IsChinese());             // True
 \`\`\`
 
 #### 2. 集合扩展
 
 \`\`\`csharp
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+// 可执行代码：使用集合扩展方法
+var nums = new[] { 1, 2, 3, 4 };
+Console.WriteLine(nums.JoinStr(", "));              // 1, 2, 3, 4
+nums.ForEach(n => Console.Write(n + " "));         // 1 2 3 4
+Console.WriteLine();
+
+List<int>? empty = null;
+Console.WriteLine(empty.IsNullOrEmpty());          // True（null也安全调用）
+
+// 类型声明放最后：集合扩展方法
 public static class CollectionExtensions
 {
-    // 判断空
+    // 判断集合是否为null或空：IEnumerable<T>? 表示可以接受null
     public static bool IsNullOrEmpty<T>(this IEnumerable<T>? source) =>
         source is null || !source.Any();
 
-    // 拼接字符串
+    // 拼接字符串：把集合元素用分隔符连起来，省去每次写string.Join
     public static string JoinStr<T>(this IEnumerable<T> source, string sep) =>
         string.Join(sep, source);
 
-    // 安全地 ForEach：null 时不抛异常
+    // 给IEnumerable<T>加ForEach：List有ForEach，但IEnumerable没有，这里扩展一个
     public static void ForEach<T>(this IEnumerable<T> source, Action<T> action)
     {
         foreach (var item in source) action(item);
     }
 }
-
-var nums = new[] { 1, 2, 3, 4 };
-Console.WriteLine(nums.JoinStr(", "));              // 1, 2, 3, 4
-nums.ForEach(n => Console.Write(n + " "));         // 1 2 3 4
-
-List<int>? empty = null;
-Console.WriteLine(empty.IsNullOrEmpty());          // True
 \`\`\`
 
 #### 3. 数字扩展
 
 \`\`\`csharp
+using System;
+
+// 使用数字扩展
+Console.WriteLine(5.Between(1, 10));      // True：5在1-10之间
+Console.WriteLine(15.Clamp(1, 10));       // 10：Clamp把值限制在范围内，超出则取边界
+Console.WriteLine(1234567.89m.ToMoney()); // 1,234,567.89：格式化为千分位货币格式
+
+// 类型声明放最后：数字扩展方法
 public static class NumberExtensions
 {
+    // 判断数值是否在闭区间[min, max]内
     public static bool Between(this int n, int min, int max) => n >= min && n <= max;
 
+    // 把数值限制在[min, max]区间：小于min返回min，大于max返回max，否则返回原值
     public static int Clamp(this int n, int min, int max) =>
         Math.Max(min, Math.Min(max, n));
 
-    // 千分位格式
+    // 千分位格式：decimal用ToString("N2")格式化为两位小数、千分位分隔
     public static string ToMoney(this decimal d) => d.ToString("N2");
 }
-
-Console.WriteLine(5.Between(1, 10));      // True
-Console.WriteLine(15.Clamp(1, 10));       // 10
-Console.WriteLine(1234567.89m.ToMoney()); // 1,234,567.89
 \`\`\`
 
 ### 六、实战 demo：日志扩展
 
 \`\`\`csharp
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+// 用法：Dump 返回自己，便于链式调用调试
+var nums = new[] { 1, 2, 3, 4, 5 };
+var evens = nums
+    .Where(n => n % 2 == 0)
+    .DumpEach("偶数")           // 中间结果直接打印，且不中断链式（yield return延迟）
+    .Select(n => n * n)
+    .ToList();
+
+42.Dump("答案");                // [答案] 42
+
+// 类型声明放最后：调试用扩展方法
 public static class LoggerExtensions
 {
+    // Dump：打印对象并返回对象本身，支持链式
     public static T Dump<T>(this T obj, string? label = null)
     {
         if (label is not null) Console.Write($"[{label}] ");
         Console.WriteLine(obj?.ToString() ?? "null");
-        return obj;   // 返回自己，便于链式
+        return obj;   // 返回自己，便于在链式中间插入调试
     }
 
+    // DumpEach：逐个打印集合元素，用yield return保持延迟执行特性
+    // 注意：必须用yield return才能不破坏LINQ的延迟执行——每次枚举才打印
     public static IEnumerable<T> DumpEach<T>(this IEnumerable<T> source, string? label = null)
     {
         if (label is not null) Console.WriteLine($"=== {label} ===");
         foreach (var item in source)
         {
             Console.WriteLine(item);
-            yield return item;
+            yield return item;   // yield return 保持延迟，不立即执行
         }
     }
 }
-
-// 用法
-var nums = new[] { 1, 2, 3, 4, 5 };
-var evens = nums
-    .Where(n => n % 2 == 0)
-    .DumpEach("偶数")           // 中间结果直接 dump
-    .Select(n => n * n)
-    .ToList();
-
-42.Dump("答案");                // [答案] 42
 \`\`\`
 
 ### 七、扩展方法注意事项 ⭐
@@ -1817,18 +1884,27 @@ static class StringExt
 扩展方法只在 \`using\` 了对应命名空间后才"可见"。
 
 \`\`\`csharp
+using System;
+using MyApp.Utils;   // using必须放最前面，引入命名空间后扩展方法才可见
+
+// 可执行代码：using命名空间后才能用扩展方法
+string s = "hello";
+string reversed = s.Reverse();   // 如果没有using MyApp.Utils，这行编译报错
+Console.WriteLine(reversed);
+
+// 类型/命名空间声明放最后（namespace也是类型级声明，必须放可执行代码之后）
 namespace MyApp.Utils
 {
     public static class StringExtensions
     {
-        public static string Reverse(this string s) { ... }
+        public static string Reverse(this string s)
+        {
+            var chars = s.ToCharArray();
+            Array.Reverse(chars);
+            return new string(chars);
+        }
     }
 }
-
-// 在另一个文件
-using MyApp.Utils;   // 必须 using，否则 Reverse 不出现
-string s = "hello";
-s.Reverse();
 \`\`\`
 
 #### 4. 扩展 null 也能调

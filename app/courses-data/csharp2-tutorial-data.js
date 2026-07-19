@@ -1,20 +1,16 @@
 // =============================================================
-// C# 从入门到精通大全 —— 章节数据聚合入口
+// C# 大全 - 章节数据聚合入口
 // -------------------------------------------------------------
-// 定位：大而全的 C# 参考书，52 章覆盖日常开发 100% 高频知识点
-// 版本：.NET 8 LTS / C# 12，所有示例用顶级语句（可在线运行）
+// 完整教程：61 章（前言 + 60 章正文），覆盖 C# 100% 日常开发知识点
+// 适用版本：.NET 8 LTS / C# 12
 //
-// 10 个 batch 文件：
-//   csharp2-chapters-batch1.js  : 前言 + 入门基础（1-5 章）
-//   csharp2-chapters-batch2.js  : 控制流与方法（6-9 章）
-//   csharp2-chapters-batch3.js  : 面向对象基础（10-14 章）
-//   csharp2-chapters-batch4.js  : 面向对象进阶（15-19 章）
-//   csharp2-chapters-batch5.js  : 泛型与集合（20-26 章）
-//   csharp2-chapters-batch6.js  : 委托事件与 LINQ（27-32 章）
-//   csharp2-chapters-batch7.js  : 高级特性（33-38 章）
-//   csharp2-chapters-batch8.js  : 异步与并发（39-42 章）
-//   csharp2-chapters-batch9.js  : IO 与序列化（43-46 章）
-//   csharp2-chapters-batch10.js : 工程化与实战 + 结语（47-52 章）
+// 6 个 batch 文件:
+//   csharp2-chapters-batch1.js : 第一部分 基础入门（第 1-10 章）
+//   csharp2-chapters-batch2.js : 第二部分 面向对象（第 11-20 章）
+//   csharp2-chapters-batch3.js : 第三部分 集合与泛型（第 21-30 章）
+//   csharp2-chapters-batch4.js : 第四部分 高级特性（第 31-40 章）
+//   csharp2-chapters-batch5.js : 第五部分 异步与并发（第 41-50 章）
+//   csharp2-chapters-batch6.js : 第六部分 实战应用（第 51-60 章）+ 结语
 // =============================================================
 
 import { chapters as batch1 } from "./csharp2-chapters-batch1";
@@ -43,8 +39,8 @@ export const csharp2Chapters = [
 
 export const csharp2ChapterGroups = [
   "开篇",
-  "第一部分 入门基础",
-  "第二部分 控制流与方法",
+  "第一部分 基础入门",
+  "第二部分 面向对象编程",
   "第三部分 面向对象基础",
   "第四部分 面向对象进阶",
   "第五部分 泛型与集合",
@@ -53,5 +49,4 @@ export const csharp2ChapterGroups = [
   "第八部分 异步与并发",
   "第九部分 IO 与序列化",
   "第十部分 工程化与实战",
-  "结尾",
 ];

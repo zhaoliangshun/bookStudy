@@ -106,6 +106,13 @@ function runCommand(cmd, args, opts, timeout) {
     let stderrBuf = "";
     let truncated = false;
     let killed = false;
+    // 修复：用 resolved 标记防止多次 resolve（error + close 重复触发场景）
+    let resolved = false;
+    const safeResolve = (value) => {
+      if (resolved) return;
+      resolved = true;
+      resolve(value);
+    };
 
     child.stdout.on("data", (chunk) => {
       const text = chunk.toString("utf8");
@@ -127,11 +134,13 @@ function runCommand(cmd, args, opts, timeout) {
       }
     });
 
+    // 统一清理 timer：避免定时器长时间持有子进程引用造成内存泄漏
+    const clearTimer = () => clearTimeout(timer);
+
     child.on("error", (err) => {
-      // error 事件触发后 close 可能不再触发，需在此清除超时定时器，
-      // 避免定时器继续持有子进程引用造成内存泄漏
-      clearTimeout(timer);
-      resolve({
+      // error 事件触发后 close 可能不再触发，需在此清除超时定时器
+      clearTimer();
+      safeResolve({
         output: "",
         error: `无法启动 ${cmd}：${err.message}`,
         exitCode: -1,
@@ -139,8 +148,10 @@ function runCommand(cmd, args, opts, timeout) {
     });
 
     child.on("close", (code, signal) => {
+      clearTimer();
+      if (resolved) return;
       if (killed) {
-        resolve({
+        safeResolve({
           output: stdoutBuf,
           error: stderrBuf + `\n[执行超时] 超过 ${timeout / 1000} 秒被强制终止。`,
           exitCode: -1,
@@ -154,7 +165,7 @@ function runCommand(cmd, args, opts, timeout) {
         else stderrBuf += note;
       }
 
-      resolve({ output: stdoutBuf, error: stderrBuf, exitCode: code });
+      safeResolve({ output: stdoutBuf, error: stderrBuf, exitCode: code });
     });
 
     const timer = setTimeout(() => {
@@ -165,8 +176,6 @@ function runCommand(cmd, args, opts, timeout) {
         // ignore
       }
     }, timeout);
-
-    child.on("close", () => clearTimeout(timer));
   });
 }
 
@@ -266,7 +275,15 @@ export async function POST(request) {
     );
   }
 
-  const result = await runJavaCode(code);
+  let result;
+  try {
+    result = await runJavaCode(code);
+  } catch (err) {
+    return NextResponse.json(
+      { output: "", error: `服务内部错误：${err.message || String(err)}` },
+      { status: 500 }
+    );
+  }
 
   let output = result.output || "";
   let error = result.error || "";
@@ -295,15 +312,38 @@ export async function GET() {
       env: { PATH: process.env.PATH },
     });
     let version = "";
-    child.stdout.on("data", (c) => (version += c.toString()));
-    child.stderr.on("data", (c) => (version += c.toString()));
-    const timer = setTimeout(() => {
+    // 修复：用 resolved 标记防止多次 resolve
+    let resolved = false;
+    const safeResolve = (value) => {
+      if (resolved) return;
+      resolved = true;
+      resolve(value);
+    };
+    let timer = null;
+    const clearTimer = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+    const onData = (c) => (version += c.toString());
+    child.stdout.on("data", onData);
+    child.stderr.on("data", onData);
+    timer = setTimeout(() => {
+      clearTimer();
+      child.stdout.removeListener("data", onData);
+      child.stderr.removeListener("data", onData);
       child.kill("SIGKILL");
-      resolve(NextResponse.json({ status: "timeout", error: "版本检查超时" }, { status: 504 }));
+      safeResolve(
+        NextResponse.json({ status: "timeout", error: "版本检查超时" }, { status: 504 })
+      );
     }, 5000);
     child.on("close", () => {
-      clearTimeout(timer);
-      resolve(
+      clearTimer();
+      child.stdout.removeListener("data", onData);
+      child.stderr.removeListener("data", onData);
+      if (resolved) return;
+      safeResolve(
         NextResponse.json({
           status: "ok",
           message: "Java 代码执行服务正在运行",
@@ -314,8 +354,11 @@ export async function GET() {
       );
     });
     child.on("error", () => {
-      clearTimeout(timer);
-      resolve(
+      clearTimer();
+      child.stdout.removeListener("data", onData);
+      child.stderr.removeListener("data", onData);
+      if (resolved) return;
+      safeResolve(
         NextResponse.json({
           status: "error",
           message: `未找到 ${javaBin}，请先安装 JDK`,

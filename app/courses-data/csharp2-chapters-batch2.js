@@ -1,1515 +1,2956 @@
 // =============================================================
-// C# 从入门到精通大全 - 第二批章节（第二部分 控制流与方法，共 4 章）
+// C# 大全 - 第二部分 面向对象编程（第 11-20 章）
 // -------------------------------------------------------------
-// 本批包含 4 章：
-//   csharp2-ch06 : 第六章 条件判断 if 与 switch
-//   csharp2-ch07 : 第七章 循环 for / while / foreach
-//   csharp2-ch08 : 第八章 方法与参数详解
-//   csharp2-ch09 : 第九章 数组与多维数组
+// 本批包含 10 章：
+//   csharp2-ch11 : 类与对象基础
+//   csharp2-ch12 : 构造函数与析构函数
+//   csharp2-ch13 : 属性与字段
+//   csharp2-ch14 : 方法深入
+//   csharp2-ch15 : 继承
+//   csharp2-ch16 : 多态
+//   csharp2-ch17 : 抽象类与接口
+//   csharp2-ch18 : 静态类与扩展方法
+//   csharp2-ch19 : 枚举与结构体
+//   csharp2-ch20 : 记录类型与模式匹配
 //
-// 风格：demo 驱动，每章直接上手写代码，注释详尽，循序渐进。
+// 风格：demo 驱动，每章直接上手写代码，多注释，循序渐进。
 // 适用版本：.NET 8 LTS / C# 12，示例用顶级语句。
 // =============================================================
 
 const chapters = [
   // ============================================================
-  // 第六章：条件判断 if 与 switch
+  // 第十一章：类与对象基础
   // ============================================================
   {
-    id: 'csharp2-ch06',
-    group: '第二部分 控制流与方法',
-    icon: '🔀',
-    title: '第六章 条件判断 if 与 switch',
-    content: `## 第六章　条件判断 if 与 switch
+    id: 'csharp2-ch11',
+    group: '第二部分 面向对象编程',
+    icon: '🏗️',
+    title: '类与对象基础',
+    content: `## 类与对象基础
 
-条件判断是程序的"决策中枢"——根据不同状态走不同分支。这一章覆盖 \`if\` 家族、\`switch\` 语句、\`switch\` 表达式、模式匹配与 \`when\` 子句，学完你能写出任何复杂度的分支逻辑。
-
-### 一、if 语句：最基础的条件 ⭐
+### 一、什么是类和对象
 
 \`\`\`csharp
-// 定义一个考试分数变量，用于演示条件判断
-int score = 75;
+// 类：对象的蓝图/模板
+// 对象：类的实例
 
-// if 是程序决策的起点：只有括号内条件为 true 时才会执行大括号内代码
-// 为什么用大括号？即使只有一行代码也建议加，避免后续添加语句时出错
-if (score >= 60)
+// 定义一个类
+class Person
 {
-    Console.WriteLine("及格了");  // 条件成立时输出
-}
-
-// 没有 else 的 if：条件为 false 时直接跳过，不执行任何操作
-// 这在"只关心成功场景，失败什么都不做"时有用，比如日志记录
-if (score >= 90)
-{
-    Console.WriteLine("优秀");  // 75 < 90，这行不会执行
-}
-\`\`\`
-
-> ⭐ \`if\` 条件必须是 \`bool\` 类型，C# 不允许像 C/C++ 那样写 \`if (score)\`（隐式转 bool），必须写 \`if (score != 0)\`。这是 C# 的安全设计，避免把赋值当判断（\`if (x = 5)\` 会编译错）。
-
-### 二、if-else if-else 链 ⭐
-
-多个互斥分支用 \`else if\` 串联，从上到下匹配，命中一个就跳出：
-
-\`\`\`csharp
-int score = 82;
-
-// else if 是"互斥分支"：一旦前面的条件命中，后面的分支直接跳过不判断
-// 为什么要这样设计？避免重复判断、保证逻辑互斥（一个分数不可能既是优秀又是良好）
-if (score >= 90)
-{
-    Console.WriteLine("优秀");
-}
-else if (score >= 80)
-{
-    Console.WriteLine("良好");  // 82 >= 80 命中这里，后面的 else if 不再检查
-}
-else if (score >= 60)
-{
-    Console.WriteLine("及格");
-}
-else
-{
-    // else 兜底：前面所有条件都不满足时才执行，保证总有分支处理
-    Console.WriteLine("不及格");
-}
-
-// ⚠️ 顺序很重要：条件要"从严到宽"排列
-// 为什么？如果先写 if (score >= 60)，82分第一步就命中，永远到不了 >= 80 的分支
-\`\`\`
-
-> ⭐ **分支顺序**：互斥条件从严到宽排列。如果先写 \`>= 60\`，\`82\` 会被它命中，永远到不了 \`>= 80\`。
-
-### 三、嵌套 if
-
-\`if\` 内部可以再嵌 \`if\`，但**层级太深会很难读**，超过 3 层建议改用 \`switch\` 或提前 return：
-
-\`\`\`csharp
-// 三个条件组合：是否VIP、是否成年、订单金额
-bool isVip = true;
-int age = 22;
-double amount = 350.0;
-
-// 嵌套 if：逐层判断，每层过滤掉一批不符合的情况
-// 第一层先判断身份（VIP/非VIP），身份不同折扣体系完全不同
-if (isVip)
-{
-    // 第二层判断年龄：未成年即使是VIP也不能下单（合规要求）
-    if (age >= 18)
+    // 字段：存储数据
+    public string Name;
+    public int Age;
+    
+    // 方法：定义行为
+    public void SayHello()
     {
-        // 第三层判断金额：大额订单折扣力度更大
-        if (amount >= 300)
+        Console.WriteLine($"你好，我叫 {Name}，今年 {Age} 岁");
+    }
+}
+
+// 创建对象（实例化）
+var person1 = new Person();
+person1.Name = "张三";
+person1.Age = 25;
+person1.SayHello();
+
+var person2 = new Person();
+person2.Name = "李四";
+person2.Age = 30;
+person2.SayHello();
+
+// 对象是引用类型
+var person3 = person1;  // 复制引用，不是复制对象
+person3.Name = "王五";
+Console.WriteLine($"person1.Name: {person1.Name}");  // 王五（同一个对象）
+\`\`\`
+
+### 二、访问修饰符
+
+\`\`\`csharp
+// 访问修饰符控制成员的可访问性
+class BankAccount
+{
+    // public: 任何地方都可以访问
+    public string AccountNumber;
+    
+    // private: 只能在类内部访问（默认）
+    private decimal _balance;
+    
+    // protected: 类内部和子类可以访问
+    protected string Owner;
+    
+    // internal: 同一个程序集内可以访问
+    internal string Branch;
+    
+    public void Deposit(decimal amount)
+    {
+        if (amount > 0)
         {
-            Console.WriteLine("VIP 大额订单，享 7 折");
+            _balance += amount;  // 可以访问私有字段
+            Console.WriteLine($"存款 {amount}，余额 {_balance}");
+        }
+    }
+    
+    public void ShowBalance()
+    {
+        Console.WriteLine($"账户 {AccountNumber} 余额：{_balance}");
+    }
+}
+
+var account = new BankAccount();
+account.AccountNumber = "123456";  // 可以访问
+// account._balance = 1000;  // 编译错误！私有成员不能外部访问
+account.Deposit(1000);  // 通过公共方法操作
+account.ShowBalance();
+\`\`\`
+
+### 三、this 关键字
+
+\`\`\`csharp
+// this：引用当前对象实例
+class Student
+{
+    public string Name;
+    public int Age;
+    
+    // 当参数名与字段名相同时，用 this 区分
+    public void SetInfo(string Name, int Age)
+    {
+        this.Name = Name;  // this.Name 是字段，Name 是参数
+        this.Age = Age;
+    }
+    
+    public void Introduce()
+    {
+        Console.WriteLine($"我是 {Name}，今年 {Age} 岁");
+    }
+    
+    // this 可以作为参数传递
+    public void CompareWith(Student other)
+    {
+        if (this.Age > other.Age)
+        {
+            Console.WriteLine($"{this.Name} 比 {other.Name} 大");
         }
         else
         {
-            Console.WriteLine("VIP 普通订单，享 9 折");
+            Console.WriteLine($"{other.Name} 比 {this.Name} 大");
         }
     }
-    else
+}
+
+var student1 = new Student();
+student1.SetInfo("张三", 20);
+student1.Introduce();
+
+var student2 = new Student();
+student2.SetInfo("李四", 22);
+student2.Introduce();
+
+student1.CompareWith(student2);
+\`\`\`
+
+### 四、对象初始化器
+
+\`\`\`csharp
+// 对象初始化器：创建对象时直接赋值
+class Product
+{
+    public string Name;
+    public decimal Price;
+    public int Stock;
+}
+
+// 传统方式
+var product1 = new Product();
+product1.Name = "iPhone";
+product1.Price = 5999;
+product1.Stock = 100;
+
+// 对象初始化器（推荐）
+var product2 = new Product
+{
+    Name = "iPad",
+    Price = 3999,
+    Stock = 50
+};
+
+Console.WriteLine($"{product2.Name}，价格 {product2.Price}，库存 {product2.Stock}");
+
+// 集合初始化器
+var products = new List<Product>
+{
+    new Product { Name = "iPhone", Price = 5999, Stock = 100 },
+    new Product { Name = "iPad", Price = 3999, Stock = 50 },
+    new Product { Name = "MacBook", Price = 9999, Stock = 30 }
+};
+
+foreach (var p in products)
+{
+    Console.WriteLine($"{p.Name}: {p.Price} 元");
+}
+\`\`\`
+
+### 五、嵌套类
+
+\`\`\`csharp
+// 嵌套类：在类内部定义的类
+class OuterClass
+{
+    private int outerField = 100;
+    
+    // 嵌套类
+    public class NestedClass
     {
-        Console.WriteLine("VIP 未成年，无法下单");
+        public void AccessOuter()
+        {
+            // 嵌套类可以访问外层类的静态成员
+            // 但不能直接访问实例成员，需要外层类实例
+            var outer = new OuterClass();
+            Console.WriteLine($"外层字段：{outer.outerField}");
+        }
+    }
+    
+    public void UseNested()
+    {
+        var nested = new NestedClass();
+        nested.AccessOuter();
     }
 }
-else
+
+// 使用嵌套类
+var outer = new OuterClass();
+outer.UseNested();
+
+var nested = new OuterClass.NestedClass();
+nested.AccessOuter();
+
+// 嵌套类常用于：辅助类、工厂模式、构建器模式
+class Order
 {
-    Console.WriteLine("非 VIP，原价");
+    public int Id { get; set; }
+    public DateTime Date { get; set; }
+    
+    // 嵌套类作为构建器
+    public class Builder
+    {
+        private Order _order = new Order();
+        
+        public Builder SetId(int id)
+        {
+            _order.Id = id;
+            return this;
+        }
+        
+        public Builder SetDate(DateTime date)
+        {
+            _order.Date = date;
+            return this;
+        }
+        
+        public Order Build()
+        {
+            return _order;
+        }
+    }
 }
+
+var order = new Order.Builder()
+    .SetId(1001)
+    .SetDate(DateTime.Now)
+    .Build();
+
+Console.WriteLine($"订单 ID: {order.Id}, 日期: {order.Date}");
 \`\`\`
 
-> 嵌套超过 3 层可读性急剧下降，能用 \`&&\` 合并就合并：\`if (isVip && age >= 18 && amount >= 300)\`。为什么？合并后逻辑一目了然，不用逐层缩进。
-
-### 四、switch 语句：多分支等值匹配 ⭐
-
-当条件是"变量等于某值"时，\`switch\` 比 \`if-else if\` 更清晰：
+### 六、partial 类
 
 \`\`\`csharp
-// 用 1-7 代表周一到周日，这是常见的编码约定
-int dayOfWeek = 3;
+// partial 类：将一个类分散到多个文件中
+// 编译器会自动合并
 
-// switch 专门处理"一个变量 vs 多个常量值"的场景
-// 为什么不用 if-else if？多个 == 判断写起来啰嗦，switch 语义更清晰
-switch (dayOfWeek)
+// 文件 1：Person.cs
+partial class Person2
 {
-    case 1:
-        Console.WriteLine("周一：开例会");
-        break;  // 每个 case 必须以 break/return/goto 结束，C# 不支持隐式贯穿
-    case 2:
-    case 3:
-    case 4:
-        // 多个 case 标签共享同一个代码块：周二、三、四都是工作日
-        // 为什么允许这样？避免写三遍重复代码，这是C#对"贯穿"的唯一合法支持
-        Console.WriteLine("工作日：写代码");
-        break;
-    case 5:
-        Console.WriteLine("周五：准备周末");
-        break;
-    case 6:
-    case 7:
-        Console.WriteLine("周末：休息");
-        break;
-    default:
-        // default 是兜底分支，类似 else
-        // 为什么建议总是写 default？处理非法输入，避免遗漏情况导致程序无响应
-        Console.WriteLine("非法日期");
-        break;
-}
-\`\`\`
-
-> ⭐ C# 的 \`switch\` **不支持隐式贯穿**——每个 \`case\` 必须以 \`break\`/\`return\`/\`goto\` 结束。为什么？C/C++ 里忘记 break 导致的bug太常见了，C#从语言层面禁止了这个坑。多个标签共享代码体是允许的（如上面的 case 2/3/4）。
-
-### 五、switch 表达式（C# 8+）⭐
-
-C# 8 引入的 **switch 表达式**把分支写成"输入 → 输出"的映射，比 \`switch\` 语句更紧凑：
-
-\`\`\`csharp
-int dayOfWeek = 3;
-
-// switch 表达式是"表达式"不是"语句"：它直接返回一个值，可以赋值给变量
-// 为什么用 switch 表达式？纯映射场景（输入→输出）代码量减半，没有 break 噪音
-string dayType = dayOfWeek switch
-{
-    1 or 2 or 3 or 4 or 5 => "工作日",  // or 模式组合：匹配任意一个即可
-    6 or 7 => "周末",
-    _ => "非法日期"   // _ 弃元模式：匹配所有，等价于 default，必须放最后
-};
-
-Console.WriteLine($">{dayOfWeek} 是 {dayType}");  // 输出结果验证
-
-// 用 switch 表达式做计算：折扣策略映射
-// 为什么用 switch 表达式？策略表一目了然，新增折扣只需要加一行
-double discount = dayOfWeek switch
-{
-    6 or 7 => 0.5,    // 周末流量大，半价吸引顾客
-    5 => 0.8,         // 周五下班消费意愿强，8折促销
-    _ => 1.0          // 工作日原价，保证利润
-};
-Console.WriteLine($"折扣：{discount}");
-\`\`\`
-
-> ⭐ **switch 表达式**是现代 C# 最优雅的特性之一。返回值场景下用它替代 \`switch\` 语句，代码量减半。 \`or\`/\`and\` 模式组合让条件更直观。
-
-### 六、模式匹配与 when 子句 ⭐
-
-\`switch\` 不仅能匹配常量，还能匹配**类型、范围、属性**，配合 \`when\` 子句加额外条件：
-
-\`\`\`csharp
-// data 是 object 类型，可以装任何类型的值（装箱）
-// 为什么用 object？演示类型模式匹配：运行时才知道具体类型
-object data = 42;
-
-// 类型模式 + when 子句：先判断类型，再加额外条件
-// 为什么要 when？类型匹配只能判断"是什么类型"，when 让你加任意自定义条件
-string desc = data switch
-{
-    // 先匹配是 int，再判断是否 > 0
-    int i when i > 0 => $"正整数 {i}",
-    int i when i < 0 => $"负整数 {i}",
-    int i => $"零 {i}",  // 前面的 when 都不满足，剩下的就是 0
-    string s when s.Length > 10 => "长字符串",
-    string s => $"字符串：{s}",
-    null => "空值",  // 匹配 null 引用
-    _ => "其他类型"
-};
-Console.WriteLine(desc);  // 42是正整数，输出：正整数 42
-
-// 关系模式（C# 9+）：直接用比较运算符，不需要额外变量
-int score = 85;
-string grade = score switch
-{
-    >= 90 => "A",
-    >= 80 => "B",  // 85 >= 80，命中这里（注意顺序：同样是从严到宽）
-    >= 70 => "C",
-    >= 60 => "D",
-    _ => "F"
-};
-Console.WriteLine($"等级：{grade}");  // B
-\`\`\`
-
-> ⭐ **模式匹配**是 C# 7 起逐步强化的能力，到 C# 12 已经非常强大。\`when\` 子句给 \`case\` 加任意额外条件，灵活度堪比 \`if\`。
-
-### 七、三元运算符 vs if-else
-
-简单二选一用三元 \`? :\`，复杂逻辑用 \`if\`：
-
-\`\`\`csharp
-int age = 20;
-
-// ✅ 三元运算符：简单二选一场景最简洁，直接返回值
-// 为什么用？一行搞定赋值，比写 if-else 少4行
-string status = age >= 18 ? "成年" : "未成年";
-
-// ❌ 嵌套三元：虽然语法合法，但可读性极差，调试困难
-// 为什么不推荐？别人读代码时要从右往左心算，很容易看错
-string level = age >= 60 ? "老年" : age >= 30 ? "中年" : age >= 18 ? "青年" : "少年";
-
-// ✅ 多分支用 switch 表达式更清晰：每个分支一行，从上到下阅读
-// 为什么？不用嵌套，逻辑线性排列，和我们思考顺序一致
-string level2 = age switch
-{
-    >= 60 => "老年",
-    >= 30 => "中年",
-    >= 18 => "青年",
-    _ => "少年"
-};
-Console.WriteLine($">{status}，{level2}");
-\`\`\`
-
-### 八、实战 demo：成绩等级判定系统
-
-综合运用 \`if\`、\`switch\` 表达式、模式匹配，写一个完整的成绩判定程序：
-
-\`\`\`csharp
-// === 成绩等级判定系统 ===
-// 演示：多种条件判断写法对比，不同场景选最合适的方式
-
-// 测试数据：76分，非补考
-int score = 76;
-bool isMakeup = false;  // 是否补考，补考有特殊规则
-
-// 方式 1：if-else if 链——适合需要执行多条语句、有副作用的场景
-// 为什么用 if？这里只是输出，但如果要打日志、发通知、做多件事，if 更灵活
-if (score >= 90 && !isMakeup)
-{
-    Console.WriteLine("[if] 等级 A，可评优");
-}
-else if (score >= 80)
-{
-    Console.WriteLine("[if] 等级 B");
-}
-else if (score >= 60)
-{
-    Console.WriteLine("[if] 等级 C，通过");  // 76分命中这里
-}
-else
-{
-    Console.WriteLine("[if] 等级 D，需补考");
+    public string Name { get; set; }
+    public int Age { get; set; }
+    
+    public void SayHello()
+    {
+        Console.WriteLine($"Hello, {Name}");
+    }
 }
 
-// 方式 2：switch 表达式——适合"输入→输出"的纯映射场景
-// 为什么用 switch 表达式？只需要拿到等级值，不需要副作用时更简洁
-string grade = score switch
+// 文件 2：Person.Extensions.cs（实际项目中）
+partial class Person2
 {
-    >= 90 when !isMakeup => "A",
-    >= 90 => "A（补考）",  // 补考即使高分也不能评优，这是业务规则
-    >= 80 => "B",
-    >= 60 => "C",
-    _ => "D"
-};
-Console.WriteLine($"[switch 表达式] 等级：{grade}");
-
-// 方式 3：元组模式——多个条件组合判断时最清晰
-// 为什么用元组模式？把(score, isMakeup)作为整体判断，比多个 && 更直观
-double gpa = (score, isMakeup) switch
-{
-    (>= 90, false) => 4.0,   // 正常考试优秀
-    (>= 80, false) => 3.0,   // 正常考试良好
-    (>= 60, false) => 2.0,   // 正常考试及格，命中这里
-    (>= 60, true) => 1.5,    // 补考通过GPA打折，因为是重考
-    _ => 0.0                 // 不及格GPA 0
-};
-Console.WriteLine($"[元组模式] GPA：{gpa}");
-
-// 方式 4：if 处理特殊动作——switch 不擅长执行副作用
-// 为什么这里用 if？需要触发一个动作（自动报名补考），不只是返回值
-if (score < 60 && !isMakeup)
-{
-    Console.WriteLine("警告：成绩不及格，已自动报名补考");
+    public void ShowInfo()
+    {
+        Console.WriteLine($"Name: {Name}, Age: {Age}");
+    }
 }
+
+// 使用
+var person = new Person2 { Name = "张三", Age = 25 };
+person.SayHello();
+person.ShowInfo();
+
+// partial 类的常见用途：
+// 1. 大型项目中的代码组织
+// 2. 代码生成器生成的代码（如 EF Core、WPF）
+// 3. 将自动生成的代码和手动编写的代码分离
 \`\`\`
 
-输出：
-\`\`\`
-[if] 等级 C，通过
-[switch 表达式] 等级：C
-[元组模式] GPA：2.0
-\`\`\`
+### 七、小结
 
-### 九、小结
+本章学到了：
+- 类和对象的概念
+- 访问修饰符：\`public\`、\`private\`、\`protected\`、\`internal\`
+- \`this\` 关键字的用法
+- 对象初始化器和集合初始化器
+- 嵌套类的应用场景
+- \`partial\` 类的作用
 
-- ⭐ \`if\` 条件必须是 \`bool\`，分支顺序从严到宽。
-- ⭐ \`switch\` 语句适合多值等值匹配，\`case\` 必须以 \`break\` 结束。
-- ⭐ **switch 表达式**（C# 8+）让分支写成"输入→输出"映射，\`or\`/\`and\` 组合模式很优雅。
-- ⭐ **模式匹配** + \`when\` 子句支持类型、范围、属性匹配，灵活度极高。
-- 嵌套 \`if\` 超 3 层建议重构，简单二选一用三元，多分支映射用 switch 表达式。`,
+下一章我们学习构造函数与析构函数。`,
   },
 
   // ============================================================
-  // 第七章：循环 for / while / foreach
+  // 第十二章：构造函数与析构函数
   // ============================================================
   {
-    id: 'csharp2-ch07',
-    group: '第二部分 控制流与方法',
-    icon: '🔁',
-    title: '第七章 循环 for / while / foreach',
-    content: `## 第七章　循环 for / while / foreach
+    id: 'csharp2-ch12',
+    group: '第二部分 面向对象编程',
+    icon: '🔧',
+    title: '构造函数与析构函数',
+    content: `## 构造函数与析构函数
 
-循环让程序能重复执行一段代码。这一章覆盖 \`for\`、\`while\`、\`do-while\`、\`foreach\` 四种循环，以及 \`break\`/\`continue\` 控制流，最后用九九乘法表和斐波那契数列做综合实战。
-
-### 一、for 循环：已知次数 ⭐
-
-\`for\` 适合**循环次数已知**的场景。结构：\`for (初始化; 条件; 步进)\`：
+### 一、构造函数基础
 
 \`\`\`csharp
-// 基础：输出 1~5
-// for 把"初始化、条件、步进"三要素写在一行，一眼看清循环范围
-// 为什么用 for？已知次数时，循环变量生命周期清晰，出了循环就访问不到
-for (int i = 1; i <= 5; i++)
+// 构造函数：创建对象时自动调用的特殊方法
+// 用于初始化对象的状态
+
+class Car
 {
-    Console.WriteLine($"第 {i} 次");
-}
-
-// 倒序：从 10 数到 1
-// 步进写 i-- 就能倒序，非常灵活
-for (int i = 10; i >= 1; i--)
-{
-    Console.Write(i + " ");
-}
-Console.WriteLine();  // 输出换行，避免和后面内容混在一起
-
-// 步进为 2：输出偶数
-// 步进可以是任意增量，不只是 1
-for (int i = 0; i <= 10; i += 2)
-{
-    Console.Write(i + " ");
-}
-Console.WriteLine();
-\`\`\`
-
-> ⭐ \`for\` 的三个部分都可省略，但分号不能少：\`for (;;)\` 是合法的无限循环。为什么允许省略？给高级场景留灵活性，但日常不建议这么写。循环变量 \`i\` 的作用域仅限循环体内部——这是为什么 for 里声明的变量外面访问不到，防止变量污染。
-
-### 二、while 循环：条件未知 ⭐
-
-\`while\` 先判断条件再执行，**适合循环次数不确定**的场景：
-
-\`\`\`csharp
-// 经典：累加，直到和达到/超过100
-// 为什么用 while？不知道要加多少次才能到100，次数由运行时决定
-int sum = 0, n = 1;
-while (sum < 100)
-{
-    sum += n;
-    n++;
-}
-// 循环结束时 sum 刚好 >= 100，n-1 是最后加的数
-Console.WriteLine($"累加到 {n - 1}，总和 {sum}");
-
-// 处理输入：直到用户输入 "exit" 才停止
-// 这是服务端、命令行程序最常见的模式，因为你不知道用户什么时候退出
-// string input;
-// while ((input = Console.ReadLine()) != "exit") { ... }
-
-// 条件一开始就是 false 时，循环体一次都不执行
-// 为什么重要？和 do-while 的核心区别就在这里
-int x = 10;
-while (x < 5)
-{
-    Console.WriteLine("这行不会执行");  // x 初始就是 10，永远进不来
-}
-\`\`\`
-
-> ⭐ \`while\` 适合"等待某条件不成立"的场景（如读文件到末尾、接收输入到特定值）。务必确保循环体内有**改变条件的代码**，否则死循环——为什么？如果条件永远是 true，循环就永远停不下来。
-
-### 三、do-while 循环：至少执行一次
-
-\`do-while\` 先执行一次再判断，**至少会执行一次**：
-
-\`\`\`csharp
-// 菜单循环：至少展示一次菜单给用户看
-// 为什么用 do-while？菜单必须先显示出来用户才能选择，不能先判断再显示
-int choice;
-do
-{
-    Console.WriteLine("1. 开始游戏");
-    Console.WriteLine("2. 设置");
-    Console.WriteLine("0. 退出");
-    Console.Write("请选择：");
-    choice = 2;  // 模拟用户输入2，真实场景用 Console.ReadLine()
-    Console.WriteLine($"选择了 {choice}");
-} while (choice != 0);  // 注意 while 后面有分号！这是语法要求
-
-// 另一个例子：从0开始累加，直到num超过5
-int num = 0, total = 0;
-do
-{
-    total += num;
-    num++;
-} while (num <= 5);
-// 即使条件一开始不成立，do 里的代码也先跑了一遍
-Console.WriteLine($"总和：{total}");  // 0+1+2+3+4+5 = 15
-\`\`\`
-
-> \`do-while\` 在 C# 里相对少用，主要场景是"至少执行一次"的菜单、输入验证。注意 \`while\` 后面有分号——为什么？语法规定，漏了会编译错。
-
-### 四、foreach 循环：遍历集合 ⭐
-
-\`foreach\` 是 C# **最常用**的循环，遍历集合无需关心索引：
-
-\`\`\`csharp
-// 引入集合类型的命名空间，List和Dictionary都在这里
-using System.Collections.Generic;
-
-// 遍历数组
-// 为什么 foreach 是首选？不用管索引从0开始还是从1开始，不会越界
-int[] nums = { 10, 20, 30, 40, 50 };
-foreach (int n in nums)
-{
-    Console.Write(n + " ");
-}
-Console.WriteLine();
-
-// 遍历字符串：字符串本质是 char 数组，所以也能 foreach
-foreach (char c in "Hello")
-{
-    Console.Write(c + "-");
-}
-Console.WriteLine();
-
-// 遍历 List<T>：最常用的动态集合
-// 为什么用 List？数组大小固定，List 可以随时 Add/Remove
-var names = new List<string> { "张三", "李四", "王五" };
-foreach (var name in names)
-{
-    Console.WriteLine($"你好，{name}");
-}
-
-// 遍历 Dictionary<TKey, TValue>：键值对集合
-var scores = new Dictionary<string, int>
-{
-    ["张三"] = 90,
-    ["李四"] = 85
-};
-foreach (var kv in scores)
-{
-    // kv 是 KeyValuePair，有 Key 和 Value 两个属性
-    Console.WriteLine($"{kv.Key}: {kv.Value}");
-}
-\`\`\`
-
-> ⭐ **foreach 是日常开发首选**。它的优点：① 不用管索引越界；② 只读访问避免误改；③ 代码意图清晰——一看就知道"要遍历每个元素"。
->
-> ⚠️ \`foreach\` 内部**不能修改集合本身**（不能增删元素），也不能修改迭代变量 \`n\`（只读）。为什么？迭代时修改集合会导致枚举器失效，C#从语言层面禁止这个坑。需要修改时用 \`for\` 配合索引。
-
-### 五、break 与 continue ⭐
-
-\`break\` 跳出整个循环，\`continue\` 跳过本次进入下次：
-
-\`\`\`csharp
-// break：找到目标就立刻停止，不用遍历完
-// 为什么用 break？找到想要的东西后继续循环是浪费性能
-for (int i = 1; i <= 10; i++)
-{
-    if (i % 2 == 0)
+    public string Brand;
+    public string Model;
+    public int Year;
+    
+    // 构造函数：方法名与类名相同，没有返回类型
+    public Car()
     {
-        Console.WriteLine($"找到偶数：{i}");  // 第一个偶数是2
-        break;  // 跳出整个for循环，后面的3-10都不看了
+        // 默认构造函数
+        Brand = "Unknown";
+        Model = "Unknown";
+        Year = 2024;
+        Console.WriteLine("Car 对象已创建");
     }
 }
 
-// continue：跳过不符合条件的，继续下一次
-// 为什么用 continue？不满足条件时本次不处理，但循环还要继续
-for (int i = 1; i <= 10; i++)
+var car1 = new Car();  // 自动调用构造函数
+Console.WriteLine($"{car1.Brand} {car1.Model} {car1.Year}");
+
+// 带参数的构造函数
+class Person
 {
-    if (i % 2 == 0)
+    public string Name;
+    public int Age;
+    
+    public Person(string name, int age)
     {
-        continue;  // 偶数跳过，直接去执行 i++ 进入下一次
-    }
-    Console.Write(i + " ");  // 只有奇数会走到这里
-}
-Console.WriteLine();
-
-// 嵌套循环中 break 只跳出最内层
-// 为什么？这是C#的设计：break 只影响它直接所在的那层循环
-for (int i = 0; i < 3; i++)
-{
-    for (int j = 0; j < 3; j++)
-    {
-        if (j == 1) break;  // 只跳出内层 j 循环，外层 i 循环继续
-        Console.WriteLine($"i={i}, j={j}");
-    }
-}
-\`\`\`
-
-> ⭐ \`break\` 和 \`continue\` 是循环控制的核心。**嵌套循环中 \`break\` 只跳出最内层**——要跳出多层可以用 \`goto\` 标签或重构为方法 \`return\`（推荐后者，goto 容易写出乱码）。
-
-### 六、嵌套循环
-
-\`\`\`csharp
-// 打印矩形星号
-// 外层循环控制"行"，内层循环控制"列"——这是嵌套循环的通用模式
-for (int i = 0; i < 3; i++)       // 一共3行
-{
-    for (int j = 0; j < 5; j++)   // 每行5个星号
-    {
-        Console.Write("*");
-    }
-    Console.WriteLine();  // 每行打完必须换行，否则所有星号在同一行
-}
-// 输出：
-// *****
-// *****
-// *****
-
-// 嵌套循环的复杂度是 O(n*m)
-// 为什么提醒这个？1000*1000就是100万次循环，数据量大时可能卡
-// 优化思路：能否用算法合并成一层循环？能否用LINQ？
-\`\`\`
-
-### 七、无限循环与跳出
-
-\`while (true)\` 或 \`for (;;)\` 是常见写法，配合 \`break\` 跳出：
-
-\`\`\`csharp
-// while(true) + break：服务端程序常用的主循环模式
-// 为什么这么写？退出条件可能在循环体中间，而不是开头，写在开头不好处理
-int retry = 0;
-while (true)
-{
-    retry++;
-    Console.WriteLine($"第 {retry} 次尝试");
-
-    // 退出条件在中间：可能前面做了一些操作才知道要不要退出
-    if (retry >= 3)
-    {
-        Console.WriteLine("达到最大重试，退出");
-        break;  // 满足条件才跳出，否则一直循环
+        Name = name;
+        Age = age;
+        Console.WriteLine($"创建 Person: {Name}, {Age} 岁");
     }
 }
 
-// for (;;) 和 while(true) 完全等价，只是写法不同
-// for (;;)
-// {
-//     // 持续接收消息、处理请求...
-//     if (shouldStop) break;
-// }
+var person = new Person("张三", 25);
+Console.WriteLine($"{person.Name}, {person.Age} 岁");
 \`\`\`
 
-> \`while (true)\` 配合 \`break\` 比单纯 \`while (condition)\` 更灵活——能在循环体任意位置跳出，适合复杂退出条件。
-
-### 八、实战 demo：九九乘法表
-
-经典面试题，用嵌套循环输出九九乘法表：
+### 二、构造函数重载
 
 \`\`\`csharp
-// === 九九乘法表 ===
-// 嵌套 for：外层控制行（被乘数），内层控制列（乘数）
-
-// i 从 1 到 9：一共9行
-for (int i = 1; i <= 9; i++)
+// 构造函数重载：多个构造函数，参数列表不同
+class Rectangle
 {
-    // j 从 1 到 i：第 i 行有 i 个式子，这样形成三角形
-    // 为什么 j <= i？九九表是下三角，第一行1个，第二行2个...第九行9个
-    for (int j = 1; j <= i; j++)
+    public double Width;
+    public double Height;
+    public string Color;
+    
+    // 默认构造函数
+    public Rectangle()
     {
-        // {result,-4}：左对齐，占4个字符宽度
-        // 为什么要对齐？不对齐的话列歪歪扭扭，可读性差
-        Console.Write($"{j}x{i}={i * j,-4}");
+        Width = 1.0;
+        Height = 1.0;
+        Color = "White";
     }
-    Console.WriteLine();  // 每行结束换行，别忘！
-}
-\`\`\`
-
-输出（节选）：
-\`\`\`
-1x1=1
-1x2=2   2x2=4
-1x3=3   2x3=6   3x3=9
-...
-1x9=9   2x9=18  3x9=27  4x9=36  5x9=45  6x9=54  7x9=63  8x9=72  9x9=81
-\`\`\`
-
-### 九、实战 demo：斐波那契数列
-
-斐波那契：每一项等于前两项之和（1, 1, 2, 3, 5, 8, 13, ...）：
-
-\`\`\`csharp
-// === 斐波那契数列 ===
-// 经典算法题，考察循环和变量更新
-
-int a = 1, b = 1;       // 前两项初始值，斐波那契前两个数都是1
-int count = 15;         // 要生成多少项
-int generated = 0;
-
-Console.Write("斐波那契前 15 项：");
-while (generated < count)
-{
-    Console.Write(a + " ");  // 先输出当前项
-
-    // 滚动更新：计算下一项，然后a和b都往前挪一位
-    // 为什么需要临时变量next？如果直接 a = b; b = a + b; 那a已经被覆盖，b就错了
-    int next = a + b;
-    a = b;
-    b = next;
-
-    generated++;
-}
-Console.WriteLine();
-
-// C# 7+ 优雅写法：用元组解构赋值，不用临时变量
-// 为什么优雅？一行同时完成两个变量的更新，语义清晰
-int x = 1, y = 1;
-Console.Write("for 版本：");
-for (int i = 0; i < 15; i++)
-{
-    Console.Write(x + " ");
-    // 元组同时赋值：右边先全部算完，再一起赋值给左边
-    // 避免了临时变量，也避免了"先改了a导致b算错"的问题
-    (x, y) = (y, x + y);
-}
-Console.WriteLine();
-\`\`\`
-
-> 元组解构 \`(x, y) = (y, x + y)\` 是 C# 7+ 的优雅写法，避免引入临时变量。为什么以前不用？C# 7之前语法不支持，必须用临时变量。
-
-### 十、小结
-
-- ⭐ \`for\` 适合已知次数，\`while\` 适合条件未知，\`do-while\` 至少执行一次。
-- ⭐ **\`foreach\` 是日常首选**——遍历集合无需索引，只读安全。
-- ⭐ \`break\` 跳出整个循环，\`continue\` 跳过本次；嵌套循环 \`break\` 只跳出最内层。
-- 嵌套循环复杂度 O(n*m)，数据量大时考虑用 LINQ 或单层循环替代。
-- \`while (true)\` + \`break\` 适合复杂退出条件的服务端循环。`,
-  },
-
-  // ============================================================
-  // 第八章：方法与参数详解
-  // ============================================================
-  {
-    id: 'csharp2-ch08',
-    group: '第二部分 控制流与方法',
-    icon: '🛠️',
-    title: '第八章 方法与参数详解',
-    content: `## 第八章　方法与参数详解
-
-方法是代码复用的最小单元。这一章覆盖方法定义、返回值、四类参数（值参/\`ref\`/\`out\`/\`in\`）、默认参数、\`params\`、方法重载、表达式体方法、本地函数、元组返回。学完你能写出参数灵活、复用性高的方法。
-
-### 一、方法定义与调用 ⭐
-
-\`\`\`csharp
-// 在顶级语句里直接定义本地方法（C# 9+ 支持）
-// 为什么用本地方法？学习阶段不用写 Program 类和 Main 方法，最简单直接
-// 注意：本地函数不是类型声明，所以可以放在执行代码前面或后面，不会触发 CS8803
-
-// 无参无返回值方法：void 表示不返回任何东西
-// 什么时候用 void？只执行动作（输出、保存文件），不返回结果给调用者
-void SayHello()
-{
-    Console.WriteLine("你好，C#！");
-}
-
-// 带参数方法：参数是方法接收的输入，让方法能处理不同数据
-// 为什么要参数？没有参数的方法只能做固定的事，有参数才能复用（同一个Greet方法可以问候不同人）
-void Greet(string name)
-{
-    Console.WriteLine($"你好，{name}！");
-}
-
-// 调用方法：方法名(参数)
-// 为什么要调用？定义方法不会自动执行，必须调用才会跑里面的代码
-SayHello();
-Greet("张三");
-Greet("李四");  // 传不同参数，复用同一个方法
-\`\`\`
-
-> ⭐ **本地函数（local function）**：C# 9+ 允许在顶级语句文件里直接写方法，不用套 \`class\`。学习阶段这样写最简洁。注意：本地函数（直接在顶级语句中定义的方法）不属于类型声明，所以位置自由，不会触发CS8803错误。
-
-### 二、返回值 ⭐
-
-\`void\` 表示无返回值，其他类型必须 \`return\`：
-
-\`\`\`csharp
-// 返回 int 的方法：返回类型写在方法名前面
-// 为什么要返回值？方法计算出结果给调用者用，而不是只做副作用
-int Add(int a, int b)
-{
-    return a + b;  // return 把结果返回给调用者，同时结束方法
-}
-
-// 返回 string 的方法：多个 return 是合法的
-// 为什么用多个 return？提前返回能减少嵌套，代码更扁平
-string GetGrade(int score)
-{
-    if (score >= 90) return "A";  // 满足条件直接返回，后面代码不执行
-    if (score >= 60) return "B";
-    return "C";  // 必须保证所有路径都有 return，否则编译错
-}
-
-// 查找类方法：找到就返回结果，找不到返回哨兵值
-// 为什么用 -1 当哨兵？-1 不是合法的索引（索引从0开始），调用者能区分"没找到"
-int FindFirstEven(int[] nums)
-{
-    foreach (var n in nums)
+    
+    // 指定宽高
+    public Rectangle(double width, double height)
     {
-        if (n % 2 == 0) return n;  // 找到第一个偶数立刻返回
+        Width = width;
+        Height = height;
+        Color = "White";
     }
-    return -1;  // 遍历完都没找到，返回-1表示不存在
-}
-
-// 调用方法并接收返回值
-Console.WriteLine(Add(3, 5));              // 8：Add返回8，传给WriteLine输出
-Console.WriteLine(GetGrade(85));           // B：85分对应B等级
-Console.WriteLine(FindFirstEven(new[] { 1, 3, 4, 6 }));  // 4：第一个偶数是4
-\`\`\`
-
-> ⭐ 非 \`void\` 方法必须保证**所有代码路径都 \`return\`**，编译器会检查。为什么编译器要检查？防止你漏写 return 导致返回未定义值。多个 \`return\` 是合法的，提前 return 能简化嵌套（少一层大括号）。
-
-### 三、值参数 vs ref vs out vs in ⭐
-
-这是 C# 参数的**核心难点**。默认是"值传递"，\`ref\`/\`out\`/\`in\` 是"引用传递"：
-
-\`\`\`csharp
-// === 1. 值参数（默认）：拷贝一份传入，方法内修改不影响外部 ===
-// 为什么默认是值传递？安全！方法不会意外改坏外部变量
-void TryDouble(int x)
-{
-    x = x * 2;  // 修改的是"拷贝"，不是原来的 n
-}
-int n = 10;
-TryDouble(n);
-Console.WriteLine(n);  // 10，外面的n没变——这就是值传递的效果
-
-// === 2. ref：双向引用，方法内修改影响外部 ===
-// 为什么需要 ref？确实需要方法内修改外部变量时（比如交换两个数、Resize数组）
-void DoubleByRef(ref int x)
-{
-    x = x * 2;  // 修改的是原变量本身，不是拷贝
-}
-int m = 10;
-DoubleByRef(ref m);  // 调用时也必须写 ref，明确告诉读代码的人"这个参数可能被修改"
-Console.WriteLine(m);  // 20，外面的m被改了！
-
-// === 3. out：输出参数，方法必须赋值，用于返回多个值 ===
-// 为什么用 out？一个方法需要返回多个结果时（比如TryParse：成功/失败 + 解析出的值）
-bool TryParseInt(string s, out int result)
-{
-    if (int.TryParse(s, out result))
+    
+    // 指定所有属性
+    public Rectangle(double width, double height, string color)
     {
-        return true;   // 解析成功，result 已被赋值
+        Width = width;
+        Height = height;
+        Color = color;
     }
-    result = 0;  // out 参数必须赋值！即使解析失败也要给个默认值，否则编译错
-    return false;
-}
-// 调用时可以直接在 out 里声明变量（C# 7+ 语法）
-if (TryParseInt("123", out int parsed))
-{
-    Console.WriteLine($"解析成功：{parsed}");  // 123
-}
-
-// === 4. in：只读引用，避免大结构体拷贝，方法内不能修改 ===
-// 为什么用 in？大 struct 拷贝开销大，但又不想让方法修改它（比 ref 更安全）
-void PrintSize(in int[] arr)
-{
-    // arr[0] = 99;  // 编译错误！in 参数不能修改引用本身（但注意：数组元素能不能改要看类型设计）
-    Console.WriteLine($"数组长度：{arr.Length}");
-}
-int[] data = { 1, 2, 3 };
-PrintSize(in data);  // 传 in 明确表示只读
-\`\`\`
-
-> ⭐ **参数传递是本章重点**：
-> - **值参**（默认）：拷贝传入，方法内修改不影响外部。为什么是默认？安全优先。
-> - **\`ref\`**：双向引用，调用前必须已赋值，方法内可读可写。
-> - **\`out\`**：输出参数，方法内必须赋值，用于返回多值。为什么调用前不需要赋值？因为方法一定会给它赋值。
-> - **\`in\`**：只读引用，避免大 struct 拷贝，方法内不能改引用。
->
-> 引用类型（如数组、对象）默认值传递时，传的是引用的拷贝——方法内能改对象内容，但不能让外部变量指向新对象。
-
-### 四、默认参数与命名参数 ⭐
-
-\`\`\`csharp
-// 默认参数：参数给个默认值，调用时可以不传
-// 为什么用默认参数？避免写一堆重载（CreateUser一个参数、两个参数、三个参数的版本）
-// 规则：默认参数必须从右往左连续，不能跳过——为什么？编译器没法推断你跳过的是哪个
-void CreateUser(string name, int age = 18, string city = "北京")
-{
-    Console.WriteLine($"姓名:{name}, 年龄:{age}, 城市:{city}");
-}
-
-CreateUser("张三");                       // 只传必填的name，age和city用默认值
-CreateUser("李四", 25);                   // 传name和age，city用默认
-CreateUser("王五", 30, "上海");           // 三个都传，覆盖默认
-
-// 命名参数：用 参数名:值 的形式传参，不用按顺序
-// 为什么用命名参数？想跳过中间参数时很有用，或者参数多的时候明确每个值对应谁
-CreateUser(name: "赵六", city: "深圳", age: 28);  // 顺序乱了也没关系，按名字匹配
-CreateUser("钱七", city: "广州");         // 位置参数和命名参数可以混用，但位置参数必须在前
-\`\`\`
-
-> ⭐ **默认参数**让方法调用更灵活，避免写一堆重载。规则：① 默认值必须是常量（不能是变量）；② 从右到左连续提供，不能跳过。为什么默认值必须是常量？默认值是编译时嵌入的，不是运行时计算的。
->
-> **命名参数**在调用方法参数多、想跳过中间参数时非常有用：\`CreateUser("钱七", city: "广州")\`。
-
-### 五、params 可变参数 ⭐
-
-\`params\` 让方法接受任意数量的同类型参数：
-
-\`\`\`csharp
-// params 必须是最后一个参数——为什么？编译器要把剩下的参数都收进数组，只能放最后
-int Sum(params int[] numbers)
-{
-    int total = 0;
-    foreach (var n in numbers) total += n;
-    return total;
-}
-
-// 调用时可传任意数量（包括0个）——不用先创建数组
-Console.WriteLine(Sum());              // 0个参数，返回0
-Console.WriteLine(Sum(1));             // 1个参数
-Console.WriteLine(Sum(1, 2, 3));       // 3个参数
-Console.WriteLine(Sum(1, 2, 3, 4, 5)); // 5个参数，编译器自动帮你包装成数组
-
-// 也可以直接传数组——两种写法完全等价
-int[] arr = { 10, 20, 30 };
-Console.WriteLine(Sum(arr));           // 60
-
-// 你早就见过 params：Console.WriteLine 就是用它实现的
-// Console.WriteLine("格式 {0} {1}", a, b) 中 a,b 就是 params object[] 参数
-\`\`\`
-
-> ⭐ \`params\` 让方法签名更简洁，避免写 10 个重载（Sum()、Sum(int)、Sum(int,int)...）。为什么不用直接传数组？params让调用者不用手动new数组，写起来更方便。\`Console.WriteLine\` 和 \`string.Format\` 都靠它实现可变参数。
-
-### 六、方法重载 ⭐
-
-同名方法参数不同（数量、类型、顺序），编译器根据调用自动选择：
-
-\`\`\`csharp
-// 三个重载：同名 Add，参数类型不同
-// 为什么用重载？同一操作（加法）对不同类型逻辑相似，用同一个名字更自然
-int Add(int a, int b) => a + b;                    // int加法
-double Add(double a, double b) => a + b;           // double加法
-string Add(string a, string b) => a + b;           // 字符串拼接（逻辑上也是"加"）
-
-// 编译器根据实参类型自动选哪个版本——不用你手动判断类型
-Console.WriteLine(Add(1, 2));          // 传int，调用int版本：3
-Console.WriteLine(Add(1.5, 2.5));      // 传double，调用double版本：4
-Console.WriteLine(Add("Hello", "!"));  // 传string，调用string版本：Hello!
-
-// 参数数量不同也是重载
-int Multiply(int a, int b) => a * b;
-int Multiply(int a, int b, int c) => a * b * c;
-
-Console.WriteLine(Multiply(2, 3));        // 两个参数，调用第一个：6
-Console.WriteLine(Multiply(2, 3, 4));     // 三个参数，调用第二个：24
-
-// ⚠️ 只有返回类型不同不算重载！
-// int Foo(int x) 和 string Foo(int x) 会编译错误——为什么？
-// 编译器只看调用时的参数，没法根据"你要不要返回值"来选版本
-\`\`\`
-
-> ⭐ **方法重载**让 API 更直观——同一操作支持多种参数类型。重载看的是**参数签名**（参数数量、类型、顺序），返回类型不同不算重载。为什么？调用时可以不接返回值（Foo(5)），编译器不知道你要哪个版本。
-
-### 七、表达式体方法（=>）⭐
-
-单行方法可以用 \`=>\` 简化，等价于 \`{ return ...; }\`：
-
-\`\`\`csharp
-// 传统写法：大括号 + return
-int Square(int x)
-{
-    return x * x;
-}
-
-// 表达式体方法：=> 后面直接跟一个表达式
-// 为什么用？简单方法一行搞定，少写好多大括号和return
-int Square2(int x) => x * x;
-
-// void 方法也能用表达式体——不需要return，直接跟方法调用表达式
-void Print(string s) => Console.WriteLine(s);
-
-// 带默认参数 + 表达式体也可以组合
-string Greet(string name, string greeting = "你好") => $"{greeting}，{name}！";
-
-Console.WriteLine(Square2(5));   // 25
-Print("测试");                   // 测试
-Console.WriteLine(Greet("张三"));         // 你好，张三！
-Console.WriteLine(Greet("李四", "Hi"));   // Hi，李四！
-\`\`\`
-
-> ⭐ **表达式体方法**让简单方法一行搞定，是现代 C# 的常用写法。规则：\`=>\` 后只能是一个表达式（不能是多条语句），所以特别适合简单计算、转发调用。
-
-### 八、本地函数
-
-在方法内部定义的函数，作用域仅限外层方法：
-
-\`\`\`csharp
-// 外层方法：处理订单
-int ProcessOrder(int orderId, int quantity)
-{
-    // 本地函数：计算价格——只在 ProcessOrder 里用，外面不需要访问
-    // 为什么用本地函数？1) 不污染外部命名空间 2) 可以访问外层方法的局部变量
-    int CalculatePrice(int qty)
+    
+    public double GetArea()
     {
-        int unitPrice = 100;
-        if (qty > 10) unitPrice = 80;  // 批量打折：买10件以上单价80
-        return qty * unitPrice;
-    }
-
-    // 另一个本地函数：打日志——同样只在 ProcessOrder 内部用
-    void Log(string msg)
-    {
-        // 本地函数可以直接访问外层方法的 orderId 参数——这是很大的便利
-        // 为什么方便？不用把orderId当参数一层层传进来
-        Console.WriteLine($"[订单 {orderId}] {msg}");
-    }
-
-    int total = CalculatePrice(quantity);
-    Log($"数量 {quantity}，总价 {total}");
-    return total;
-}
-
-ProcessOrder(1001, 5);   // 5件不打折，总价 5*100=500
-ProcessOrder(1002, 20);  // 20件打折，总价 20*80=1600
-\`\`\`
-
-> 本地函数适合"只在一个方法内复用"的小逻辑，避免污染类的外部接口。它还能访问外层方法的局部变量和参数——这叫"闭包"，为什么比私有方法方便？不用通过参数传外层上下文进来。
-
-### 九、元组返回多值 ⭐
-
-C# 7+ 支持方法返回元组，一次返回多个值：
-
-\`\`\`csharp
-// 返回命名元组：(最小值, 最大值, 总和)
-// 为什么用元组返回多值？比out参数直观，比创建一个专门的Result类简单
-(int Min, int Max, int Sum) Analyze(int[] nums)
-{
-    if (nums.Length == 0) return (0, 0, 0);  // 空数组返回零值
-
-    int min = nums[0], max = nums[0], sum = 0;
-    foreach (var n in nums)
-    {
-        if (n < min) min = n;
-        if (n > max) max = n;
-        sum += n;
-    }
-    return (min, max, sum);  // 三个值一起返回
-}
-
-int[] data = { 3, 7, 1, 9, 4 };
-// 可以用 .属性名 访问每个返回值
-var result = Analyze(data);
-Console.WriteLine($"最小:{result.Min}, 最大:{result.Max}, 总和:{result.Sum}");
-
-// 更优雅：解构赋值直接拆成独立变量
-// 为什么解构？不用写 result. 前缀，直接用变量名更方便
-var (min, max, sum) = Analyze(data);
-Console.WriteLine($"{min} / {max} / {sum}");
-
-// 经典用法：TryParse 模式——成功/失败 + 结果值
-// 为什么用这种模式？比抛异常高效，返回null又丢失信息
-(bool Success, int Value) TryParseSafe(string s)
-{
-    if (int.TryParse(s, out int v)) return (true, v);
-    return (false, 0);  // 失败返回false和0
-}
-
-var (ok, val) = TryParseSafe("42");
-Console.WriteLine($"成功:{ok}, 值:{val}");
-\`\`\`
-
-> ⭐ **元组返回**是 C# 替代 \`out\` 参数的优雅方案。为什么比out好？out参数不能用async/await，元组可以；out参数不能当泛型参数，元组可以。命名元组 \`(int Min, int Max)\` 让调用方能用 \`result.Min\` 访问，比 \`result.Item1\` 可读得多。
-
-### 十、实战 demo：简易计算器
-
-综合运用本章知识，写一个支持多种运算的计算器：
-
-\`\`\`csharp
-// === 简易计算器 ===
-// 演示：方法重载、表达式体、params、元组返回、本地函数
-
-// 方法重载版本：两个数的基本运算
-// 用switch表达式实现：简洁的策略分发
-double Calc(double a, double b, char op) => op switch
-{
-    '+' => a + b,
-    '-' => a - b,
-    '*' => a * b,
-    '/' => b == 0 ? double.NaN : a / b,  // 除零保护：返回NaN表示错误
-    _ => throw new ArgumentException($"不支持运算符 {op}")  // 不认识的运算符抛异常
-};
-
-// params重载版本：连加——为什么用重载？同名Calc，参数不同自动选择
-double Calc(params double[] nums)
-{
-    if (nums.Length == 0) return 0;
-    double total = 0;
-    foreach (var n in nums) total += n;
-    return total;
-}
-
-// 元组返回：除法同时返回商和余数
-// 为什么返回两个值？整数除法中商和余数都是常用结果，一次返回不用调用两次
-(int Quotient, int Remainder) DivMod(int a, int b)
-{
-    if (b == 0) throw new DivideByZeroException();  // 除零抛异常
-    return (a / b, a % b);  // /是商，%是余数
-}
-
-// 带本地函数的安全开方
-double SafeSqrt(double x)
-{
-    // 本地函数做验证——为什么用本地函数？验证逻辑只在这里用，不用暴露到外面
-    bool IsValid(double v) => v >= 0;
-
-    if (!IsValid(x)) return double.NaN;  // 负数不能开平方，返回NaN表示错误
-    return Math.Sqrt(x);  // Math.Sqrt是系统提供的开方方法
-}
-
-// ===== 测试 =====
-// 为什么先定义方法再执行？顶级语句中本地函数虽然位置自由，但先定义后调用更符合阅读习惯
-Console.WriteLine($"3 + 5 = {Calc(3, 5, '+')}");
-Console.WriteLine($"10 / 3 = {Calc(10, 3, '/'):F2}");  // :F2格式化保留2位小数
-
-Console.WriteLine($"连加: {Calc(1, 2, 3, 4, 5)}");  // 调用params版本，1+2+3+4+5=15
-
-var (q, r) = DivMod(17, 5);
-Console.WriteLine($"17 ÷ 5 = {q} 余 {r}");  // 商3余2
-
-Console.WriteLine($"√16 = {SafeSqrt(16)}");  // 4
-Console.WriteLine($"√-4 = {SafeSqrt(-4)}");  // NaN，负数不能开平方
-\`\`\`
-
-### 十一、小结
-
-- ⭐ 方法定义：\`返回类型 方法名(参数) { ... }\`，非 void 必须 return。
-- ⭐ **参数四件套**：值参（默认拷贝）、\`ref\`（双向引用）、\`out\`（输出参数）、\`in\`（只读引用）。
-- ⭐ 默认参数从右到左连续，命名参数用 \`名:值\` 跳过中间参数。
-- ⭐ \`params\` 接受可变数量参数，必须是最后一个参数。
-- ⭐ 方法重载看参数签名，返回类型不同不算重载。
-- ⭐ 表达式体方法 \`=>\` 让单行方法更简洁。
-- ⭐ **元组返回**替代 \`out\` 实现多返回值，命名元组可读性最佳。
-- 💡 注意：本地函数（顶级语句中直接定义的方法）不属于类型声明，可以放在任何位置；只有 class/struct/interface/record/enum/delegate 这些类型声明需要放在执行代码之后。`,
-  },
-
-  // ============================================================
-  // 第九章：数组与多维数组
-  // ============================================================
-  {
-    id: 'csharp2-ch09',
-    group: '第二部分 控制流与方法',
-    icon: '📊',
-    title: '第九章 数组与多维数组',
-    content: `## 第九章　数组与多维数组
-
-数组是 C# 里最基础的集合类型——固定大小、类型统一、连续内存。这一章覆盖一维数组、二维数组 \`[,]\`、锯齿数组 \`[][]\`、\`Array\` 类常用方法，以及数组作为参数和返回值的实战。
-
-### 一、一维数组声明与初始化 ⭐
-
-\`\`\`csharp
-// 引入集合泛型命名空间，后面要用到List
-using System.Collections.Generic;
-
-// === 1. 声明 + 指定大小 ===
-// 只指定长度，元素自动初始化为默认值（int是0，引用类型是null）
-int[] nums = new int[5];
-Console.WriteLine(string.Join(", ", nums));  // 输出：0, 0, 0, 0, 0
-
-// === 2. 声明 + 列表初始化 ===
-// 为什么用这种？创建数组时就知道初始值
-int[] scores = new int[] { 90, 85, 78, 92, 67 };
-string[] names = new string[] { "张三", "李四", "王五" };
-
-// === 3. 简化写法（最常用）⭐ ===
-// C#编译器能推断类型，不用写 new int[]
-int[] arr = { 1, 2, 3, 4, 5 };
-string[] langs = { "C#", "Java", "Python" };
-
-// === 4. 用 var 推断 ===
-var doubles = new[] { 1.1, 2.2, 3.3 };     // 推断为 double[]
-var mixed = new[] { 1, 2, 3.0 };            // 有int有double，推断为double[]（自动类型提升）
-
-// === 5. 长度与访问 ===
-// Length属性获取数组长度——为什么用属性而不是方法？这是设计约定：状态用属性，动作用方法
-Console.WriteLine(\$"长度: {arr.Length}");  // 5
-Console.WriteLine(\$"第一个: {arr[0]}");    // 1，索引从0开始
-Console.WriteLine(\$"最后: {arr[^1]}");     // 5，C# 8+ 反向索引：^1表示倒数第一个
-arr[0] = 100;  // 通过索引赋值修改元素
-Console.WriteLine(arr[0]);                  // 100
-\`\`\`
-
-> ⭐ **数组声明最常用**：\`int[] arr = { 1, 2, 3 };\`。注意 C# 的方括号跟在类型后（\`int[]\`），不是变量后（\`int arr[]\`）——为什么？C#设计上类型信息放一起，int[] 整体是"int数组类型"。
->
-> ⭐ **反向索引 \`[^1]\`**（C# 8+）：\`arr[^1]\` 等价 \`arr[arr.Length - 1]\`，从末尾倒数。为什么设计这个语法？写arr[^1]比算Length-1简洁，而且不容易off-by-one错误。
-
-### 二、数组遍历 ⭐
-
-\`\`\`csharp
-int[] nums = { 10, 20, 30, 40, 50 };
-
-// 方式 1：foreach（首选，只读）⭐
-// 为什么首选foreach？不用管索引，不会越界，不会写错循环条件
-foreach (var n in nums)
-{
-    Console.Write(n + " ");
-}
-Console.WriteLine();
-
-// 方式 2：for + 索引（需要修改元素或需要索引时）
-// 什么时候用for？需要修改元素值、需要知道当前索引位置时
-for (int i = 0; i < nums.Length; i++)
-{
-    nums[i] *= 2;  // 每个元素翻倍——foreach不能修改，必须用for
-}
-Console.WriteLine(string.Join(", ", nums));  // 20, 40, 60, 80, 100
-
-// 方式 3：用 Range 切片（C# 8+）⭐
-// 切片创建新数组，不影响原数组——为什么用切片？需要取子数组时不用手写循环复制
-int[] data = { 1, 2, 3, 4, 5, 6, 7, 8 };
-int[] first3 = data[0..3];   // [1, 2, 3]：从索引0开始，到索引3之前（不包含3）
-int[] last2 = data[^2..];    // [7, 8]：从倒数第2个开始到最后
-int[] middle = data[2..5];   // [3, 4, 5]：从2到5之前
-int[] all = data[..];        // 全部：省略起点就是0，省略终点就是末尾
-Console.WriteLine(string.Join(", ", first3));
-Console.WriteLine(string.Join(", ", last2));
-\`\`\`
-
-> ⭐ **Range 切片**（C# 8+）\`data[1..4]\` 是数组切片的优雅写法。为什么左闭右开？和数学区间、其他语言（Python、Go）保持一致，而且 end - start = 切片长度。
-
-### 三、二维数组 [,] ⭐
-
-二维数组是**矩形结构**——每行长度相同，用 \`[,]\` 声明：
-
-\`\`\`csharp
-// === 声明 + 初始化 ===
-// 3行4列，所有元素默认0
-int[,] matrix = new int[3, 4];
-
-// 声明时直接赋值：嵌套大括号，每行一个大括号
-int[,] grid = {
-    { 1, 2, 3, 4 },
-    { 5, 6, 7, 8 },
-    { 9, 10, 11, 12 }
-};
-
-// 访问：matrix[行, 列]——逗号分隔，不是两个方括号
-// 为什么用[,]而不是[][]？二维数组是矩形内存块，访问更快
-Console.WriteLine(grid[0, 0]);  // 1：左上角
-Console.WriteLine(grid[2, 3]);  // 12：右下角
-grid[1, 2] = 99;  // 修改元素
-
-// 维度信息
-Console.WriteLine(\$"总元素数: {grid.Length}");      // 12：3*4=12
-Console.WriteLine(\$"维度数: {grid.Rank}");           // 2：二维
-Console.WriteLine(\$"行数: {grid.GetLength(0)}");    // 3：第0维长度
-Console.WriteLine(\$"列数: {grid.GetLength(1)}");    // 4：第1维长度
-
-// 遍历二维数组：嵌套for
-// 为什么不能用foreach？foreach会按顺序遍历所有元素，但你不知道是第几行第几列
-for (int i = 0; i < grid.GetLength(0); i++)         // 外层遍历行
-{
-    for (int j = 0; j < grid.GetLength(1); j++)     // 内层遍历列
-    {
-        Console.Write(\$"{grid[i, j],4}");  // ,4表示占4位宽度，对齐
-    }
-    Console.WriteLine();
-}
-\`\`\`
-
-> ⭐ **二维数组 \`[,]\`** 是连续矩形内存，适合矩阵、棋盘、表格数据。为什么GetLength(0)是行？维度顺序和声明一致：[行, 列]，第0维是行，第1维是列。注意和 \`Length\`（总元素数）区分。
-
-### 四、锯齿数组 [][]
-
-锯齿数组是"数组的数组"——每行长度可以不同：
-
-\`\`\`csharp
-// === 锯齿数组：每行长度不同 ===
-// 先创建"行数组"，有3行，但每行目前是null
-int[][] jagged = new int[3][];
-
-// 每行必须单独初始化——因为长度可以不一样
-jagged[0] = new int[] { 1, 2 };         // 第一行2个元素
-jagged[1] = new int[] { 3, 4, 5, 6 };   // 第二行4个元素
-jagged[2] = new int[] { 7, 8, 9 };      // 第三行3个元素
-
-// 简化声明：直接写嵌套的new[]
-int[][] jagged2 = {
-    new[] { 1, 2 },
-    new[] { 3, 4, 5, 6 },
-    new[] { 7, 8, 9 }
-};
-
-// 访问：jagged[行][列]——两个方括号，不是逗号
-// 为什么是两个方括号？因为本质是"数组的数组"，先选一行（得到一个数组），再选列
-Console.WriteLine(jagged[1][2]);  // 5：第二行（索引1）的第三个元素（索引2）
-
-// 遍历锯齿数组
-for (int i = 0; i < jagged.Length; i++)
-{
-    // 注意：内层循环用 jagged[i].Length，不是固定值——每行长度不一样
-    for (int j = 0; j < jagged[i].Length; j++)
-    {
-        Console.Write(jagged[i][j] + " ");
-    }
-    Console.WriteLine();
-}
-\`\`\`
-
-> **二维数组 \`[,]\` vs 锯齿数组 \`[][]\`**：
-> - \`[,]\` 矩形，内存连续，每行等长，适合矩阵（数学计算）。
-> - \`[][]\` 数组的数组，每行可变长，灵活但内存不连续（每行是独立数组）。
-> - 日常开发 \`[][]\` 更常见——为什么？真实数据往往不规则（比如一个班学生的选课数每个人不一样）。
-
-### 五、Array 类常用方法 ⭐
-
-\`Array\` 是所有数组的基类，提供大量静态方法：
-
-\`\`\`csharp
-int[] nums = { 5, 3, 8, 1, 9, 2, 7 };
-
-// === 1. Sort 排序 ⭐ ===
-// 为什么是静态方法？Array.Sort是工具方法，对传入的数组原地排序
-Array.Sort(nums);
-Console.WriteLine(string.Join(", ", nums));  // 1, 2, 3, 5, 7, 8, 9
-
-// === 2. Reverse 反转 ===
-Array.Reverse(nums);  // 同样是原地修改
-Console.WriteLine(string.Join(", ", nums));  // 9, 8, 7, 5, 3, 2, 1
-
-// === 3. Find / FindAll 查找 ===
-int[] data = { 12, 25, 8, 33, 17, 40 };
-
-int firstOver20 = Array.Find(data, x => x > 20);          // 找第一个满足条件的：25
-int[] allOver20 = Array.FindAll(data, x => x > 20);       // 找所有满足条件的：[25, 33, 40]
-int idx = Array.FindIndex(data, x => x > 20);             // 找第一个的索引：1
-bool hasBig = Array.Exists(data, x => x > 30);            // 是否存在：true
-
-Console.WriteLine(\$"第一个>20: {firstOver20}");
-Console.WriteLine(\$"所有>20: {string.Join(",", allOver20)}");
-
-// === 4. IndexOf 查找索引 ===
-int[] arr = { 10, 20, 30, 20, 50 };
-int index = Array.IndexOf(arr, 20);        // 1：从前向后找第一个20
-int lastIdx = Array.LastIndexOf(arr, 20);  // 3：从后向前找第一个20
-
-// === 5. Resize 改变大小 ===
-// 为什么要Resize？数组创建时大小固定，Resize能重新分配
-int[] small = { 1, 2, 3 };
-Array.Resize(ref small, 5);   // 扩到5个元素，新增位置默认0
-Console.WriteLine(string.Join(", ", small));  // 1, 2, 3, 0, 0
-Array.Resize(ref small, 2);   // 缩到2个元素，后面的被截断
-Console.WriteLine(string.Join(", ", small));  // 1, 2
-// 为什么要ref？因为Resize可能创建新数组，需要把引用传进去才能改外面的变量
-
-// === 6. Copy / CopyTo 拷贝 ===
-int[] src = { 1, 2, 3, 4, 5 };
-int[] dst = new int[5];
-Array.Copy(src, dst, 3);     // 从src拷贝前3个元素到dst
-Console.WriteLine(string.Join(", ", dst));  // 1, 2, 3, 0, 0
-
-int[] dst2 = new int[5];
-src.CopyTo(dst2, 0);         // 实例方法：把src全部拷贝到dst2，从索引0开始放
-Console.WriteLine(string.Join(", ", dst2));
-
-// === 7. Clear 清空 ===
-Array.Clear(dst2);           // 把所有元素设为默认值（int是0，引用类型是null）
-Console.WriteLine(string.Join(", ", dst2));  // 0, 0, 0, 0, 0
-
-// === 8. BinarySearch 二分查找（需先排序）===
-// 为什么必须先排序？二分查找的前提是有序，否则结果不对
-int[] sorted = { 1, 3, 5, 7, 9, 11 };
-int found = Array.BinarySearch(sorted, 7);
-Console.WriteLine(\$"7 的索引: {found}");  // 3：有序数组查找O(log n)，比遍历O(n)快
-\`\`\`
-
-> ⭐ \`Array.Sort\`、\`Array.Find\`/\`FindAll\`、\`Array.IndexOf\`、\`Array.Copy\` 是高频方法。日常开发虽然更多用 \`List\`/\`LINQ\`，但底层都靠 \`Array\` 类支撑——为什么要学Array？理解底层才能写出高效代码。
-
-### 六、数组作为参数与返回值 ⭐
-
-\`\`\`csharp
-// 引入集合泛型命名空间，要用到List
-using System.Collections.Generic;
-
-// === 1. 数组作参数（默认传引用的拷贝，能改内容）===
-// 数组是引用类型，传参时传的是引用的拷贝
-// 这意味着：方法内能修改数组元素，但不能让外面的变量指向新数组
-void DoubleAll(int[] arr)
-{
-    for (int i = 0; i < arr.Length; i++)
-    {
-        arr[i] *= 2;  // 修改的是原数组的元素——因为引用指向同一块内存
+        return Width * Height;
     }
 }
 
-int[] nums = { 1, 2, 3 };
-DoubleAll(nums);
-Console.WriteLine(string.Join(", ", nums));  // 2, 4, 6：原数组被修改了
+var rect1 = new Rectangle();
+var rect2 = new Rectangle(10, 5);
+var rect3 = new Rectangle(10, 5, "Red");
 
-// === 2. params 数组作参数（前面讲过，这里复习）===
-int Max(params int[] nums)
-{
-    int max = nums[0];
-    foreach (var n in nums)
-        if (n > max) max = n;
-    return max;
-}
-Console.WriteLine(Max(3, 7, 2, 9, 5));  // 9
-
-// === 3. 返回数组 ===
-// 为什么返回数组而不是逗号分隔字符串？数组可以继续遍历、做LINQ操作
-int[] GetEvenNumbers(int max)
-{
-    var list = new List<int>();  // 先用List动态收集，因为不知道有多少个
-    for (int i = 0; i <= max; i += 2)
-        list.Add(i);
-    return list.ToArray();  // 最后转成数组返回
-}
-
-int[] evens = GetEvenNumbers(10);
-Console.WriteLine(string.Join(", ", evens));  // 0, 2, 4, 6, 8, 10
-
-// === 4. in 修饰符：保护数组引用不被重新赋值 ===
-// 注意：in保护的是"引用本身"不能改，不是保护"数组元素"不能改
-void PrintArray(in int[] arr)
-{
-    // arr = new int[10];  // 编译错误！in参数不能重新赋值
-    // arr[0] = 99;        // 但元素可以改——in只保护引用，不保护对象内容
-    Console.WriteLine(\$"长度 {arr.Length}, 首个 {arr[0]}");
-}
-
-// === 5. 返回多维数组 ===
-int[,] CreateMatrix(int rows, int cols)
-{
-    int[,] m = new int[rows, cols];
-    for (int i = 0; i < rows; i++)
-        for (int j = 0; j < cols; j++)
-            m[i, j] = i * cols + j + 1;  // 按行顺序填充：1,2,3,4,5,6...
-    return m;
-}
-
-int[,] mat = CreateMatrix(2, 3);
-for (int i = 0; i < mat.GetLength(0); i++)
-{
-    for (int j = 0; j < mat.GetLength(1); j++)
-        Console.Write(\$"{mat[i, j],3}");
-    Console.WriteLine();
-}
-// 输出：
-//   1  2  3
-//   4  5  6
+Console.WriteLine($"rect1 面积：{rect1.GetArea()}");
+Console.WriteLine($"rect2 面积：{rect2.GetArea()}");
+Console.WriteLine($"rect3 面积：{rect3.GetArea()}，颜色：{rect3.Color}");
 \`\`\`
 
-> ⭐ 数组作为参数传递时传的是"引用的拷贝"——方法内能改元素内容，但不能让外部变量指向新数组（除非用 \`ref\`）。为什么这么设计？既方便方法修改数据，又避免意外把整个数组替换掉。
-
-### 七、实战 demo：学生成绩统计
-
-综合运用本章知识，写一个完整的学生成绩统计程序：
+### 三、构造函数链
 
 \`\`\`csharp
-// === 学生成绩统计系统 ===
-// 演示：一维数组、二维数组、Array方法、数组作参数返回
-// 注意：这里的方法都是本地函数，不是类型声明，所以可以放在执行代码前面
-// 如果有class/struct等类型声明，必须放在所有执行代码之后（CS8803规则）
-
-// 学生姓名数组：一维字符串数组
-string[] students = { "张三", "李四", "王五", "赵六", "钱七" };
-
-// 二维数组：每个学生3门课成绩 [学生索引, 科目索引]
-// 为什么用二维数组？表格数据用二维数组最直接
-int[,] scores = {
-    { 85, 92, 78 },   // 张三：语文85，数学92，英语78
-    { 76, 88, 90 },   // 李四
-    { 92, 95, 89 },   // 王五
-    { 65, 72, 80 },   // 赵六
-    { 88, 91, 85 }    // 钱七
-};
-
-// 方法1：计算每个学生的平均分，返回数组
-// 为什么返回数组？5个学生就有5个平均分，一一对应
-double[] GetAverages(int[,] scores)
+// 构造函数链：一个构造函数调用另一个
+class Employee
 {
-    int studentCount = scores.GetLength(0);
-    int subjectCount = scores.GetLength(1);
-    double[] averages = new double[studentCount];  // 返回数组长度和学生数一致
-
-    for (int i = 0; i < studentCount; i++)
+    public string Name;
+    public string Department;
+    public decimal Salary;
+    
+    // 主构造函数
+    public Employee(string name, string department, decimal salary)
     {
-        int sum = 0;
-        for (int j = 0; j < subjectCount; j++)
-            sum += scores[i, j];
-        averages[i] = (double)sum / subjectCount;  // 转double避免整数除法
+        Name = name;
+        Department = department;
+        Salary = salary;
     }
-    return averages;
+    
+    // 调用主构造函数
+    public Employee(string name, string department) 
+        : this(name, department, 5000)  // 默认薪资
+    {
+    }
+    
+    // 调用主构造函数
+    public Employee(string name) 
+        : this(name, "General", 5000)  // 默认部门和薪资
+    {
+    }
 }
 
-// 方法2：找出最高平均分的学生，返回(索引, 分数)元组
-// 为什么返回索引而不是姓名？索引可以用来查names数组，更通用
-(int Index, double Score) FindTopStudent(string[] students, double[] averages)
-{
-    int topIndex = 0;  // 先假设第一个是最高分
-    for (int i = 1; i < averages.Length; i++)
-        if (averages[i] > averages[topIndex])
-            topIndex = i;  // 发现更高分就更新索引
-    return (topIndex, averages[topIndex]);
-}
+var emp1 = new Employee("张三", "IT", 10000);
+var emp2 = new Employee("李四", "HR");
+var emp3 = new Employee("王五");
 
-// 方法3：按平均分降序排序，返回排名索引数组
-// 为什么返回索引数组而不是直接排序姓名？保持原始数据顺序不变
-int[] GetRanking(double[] averages)
-{
-    // 初始化索引数组：0,1,2,3,4——不直接改原数组，只排序索引
-    int[] indices = new int[averages.Length];
-    for (int i = 0; i < indices.Length; i++) indices[i] = i;
-
-    // 用Array.Sort的自定义比较：按averages的值降序排列indices
-    // 为什么这样排序？这是"索引排序"技巧，排序索引不会打乱原始数据
-    Array.Sort(indices, (a, b) => averages[b].CompareTo(averages[a]));
-    return indices;
-}
-
-// ===== 执行统计 =====
-// 调用方法拿到结果
-double[] averages = GetAverages(scores);
-var (topIdx, topScore) = FindTopStudent(students, averages);
-int[] ranking = GetRanking(averages);
-
-// 输出结果
-Console.WriteLine("=== 成绩统计表 ===");
-Console.WriteLine(\$"{"学生",-6}{"语文",6}{"数学",6}{"英语",6}{"平均分",8}");
-for (int i = 0; i < students.Length; i++)
-{
-    Console.Write(\$"{students[i],-6}");
-    for (int j = 0; j < scores.GetLength(1); j++)
-        Console.Write(\$"{scores[i, j],6}");
-    Console.WriteLine(\$"{averages[i],8:F1}");  // :F1保留1位小数
-}
-
-Console.WriteLine();
-Console.WriteLine(\$"🏆 最高分: {students[topIdx]} - {topScore:F1}");
-
-Console.WriteLine("\\n=== 排行榜 ===");
-for (int rank = 0; rank < ranking.Length; rank++)
-{
-    int idx = ranking[rank];
-    Console.WriteLine(\$"第 {rank + 1} 名: {students[idx]} ({averages[idx]:F1})");
-}
+Console.WriteLine($"{emp1.Name}, {emp1.Department}, {emp1.Salary}");
+Console.WriteLine($"{emp2.Name}, {emp2.Department}, {emp2.Salary}");
+Console.WriteLine($"{emp3.Name}, {emp3.Department}, {emp3.Salary}");
 \`\`\`
 
-输出（节选）：
+### 四、静态构造函数
+
+\`\`\`csharp
+// 静态构造函数：初始化静态成员，只执行一次
+class Database
+{
+    public static string ConnectionString;
+    public static int MaxConnections;
+    
+    // 静态构造函数：没有访问修饰符，没有参数
+    static Database()
+    {
+        ConnectionString = "Server=localhost;Database=mydb";
+        MaxConnections = 100;
+        Console.WriteLine("静态构造函数执行（只执行一次）");
+    }
+    
+    // 实例构造函数
+    public Database()
+    {
+        Console.WriteLine("实例构造函数执行");
+    }
+}
+
+// 第一次访问静态成员时，静态构造函数执行
+Console.WriteLine($"连接字符串：{Database.ConnectionString}");
+Console.WriteLine($"最大连接数：{Database.MaxConnections}");
+
+// 创建实例时，静态构造函数不会再次执行
+var db1 = new Database();
+var db2 = new Database();
+
+// 静态构造函数常用于：
+// 1. 初始化静态配置
+// 2. 读取配置文件
+// 3. 初始化日志
 \`\`\`
-=== 成绩统计表 ===
-学生  语文  数学  英语    平均分
-张三    85    92    78    85.0
-李四    76    88    90    84.7
-王五    92    95    89    92.0
-赵六    65    72    80    72.3
-钱七    88    91    85    88.0
 
-🏆 最高分: 王五 - 92.0
+### 五、私有构造函数
 
-=== 排行榜 ===
-第 1 名: 王五 (92.0)
-第 2 名: 钱七 (88.0)
-...
+\`\`\`csharp
+// 私有构造函数：防止外部创建实例
+// 常用于单例模式、工具类
+
+// 单例模式
+class Logger
+{
+    // 静态实例
+    private static Logger _instance;
+    
+    // 私有构造函数
+    private Logger()
+    {
+        Console.WriteLine("Logger 实例已创建");
+    }
+    
+    // 公共访问点
+    public static Logger Instance
+    {
+        get
+        {
+            if (_instance == null)
+            {
+                _instance = new Logger();
+            }
+            return _instance;
+        }
+    }
+    
+    public void Log(string message)
+    {
+        Console.WriteLine($"[LOG] {message}");
+    }
+}
+
+// 使用单例
+Logger.Instance.Log("第一条日志");
+Logger.Instance.Log("第二条日志");
+
+// 工具类（只包含静态方法）
+class MathHelper
+{
+    // 私有构造函数，防止实例化
+    private MathHelper() { }
+    
+    public static double Add(double a, double b) => a + b;
+    public static double Multiply(double a, double b) => a * b;
+}
+
+double result = MathHelper.Add(10, 20);
+Console.WriteLine($"10 + 20 = {result}");
+\`\`\`
+
+### 六、主构造函数（C# 12）
+
+\`\`\`csharp
+// 主构造函数：C# 12 新特性，简化构造函数定义
+// 在类名后的括号中定义参数
+
+// 传统方式
+class ProductOld
+{
+    public string Name { get; }
+    public decimal Price { get; }
+    
+    public ProductOld(string name, decimal price)
+    {
+        Name = name;
+        Price = price;
+    }
+}
+
+// 主构造函数方式（推荐）
+class Product(string name, decimal price)
+{
+    public string Name { get; } = name;
+    public decimal Price { get; } = price;
+    
+    // 可以直接使用构造函数参数
+    public void ShowInfo()
+    {
+        Console.WriteLine($"{Name}: {Price} 元");
+    }
+}
+
+var product = new Product("iPhone", 5999);
+product.ShowInfo();
+
+// 结构体也支持主构造函数
+struct Point(int x, int y)
+{
+    public int X { get; } = x;
+    public int Y { get; } = y;
+}
+
+var point = new Point(10, 20);
+Console.WriteLine($"Point: ({point.X}, {point.Y})");
+\`\`\`
+
+### 七、析构函数（终结器）
+
+\`\`\`csharp
+// 析构函数：对象被垃圾回收前调用
+// 用于释放非托管资源（文件句柄、网络连接等）
+
+class FileHandler
+{
+    private string _fileName;
+    
+    public FileHandler(string fileName)
+    {
+        _fileName = fileName;
+        Console.WriteLine($"打开文件：{_fileName}");
+    }
+    
+    // 析构函数：~ 类名
+    ~FileHandler()
+    {
+        Console.WriteLine($"关闭文件：{_fileName}");
+        // 释放资源
+    }
+    
+    public void ReadFile()
+    {
+        Console.WriteLine($"读取文件：{_fileName}");
+    }
+}
+
+// 使用
+var handler = new FileHandler("test.txt");
+handler.ReadFile();
+
+// 析构函数由垃圾回收器自动调用，不需要手动调用
+// 实际开发中，推荐使用 IDisposable 接口管理资源
+
+// IDisposable 模式
+class ResourceHandler : IDisposable
+{
+    private bool _disposed = false;
+    
+    public void DoWork()
+    {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(ResourceHandler));
+        Console.WriteLine("执行工作");
+    }
+    
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            Console.WriteLine("释放资源");
+            _disposed = true;
+        }
+    }
+}
+
+// 使用 using 语句自动调用 Dispose
+using (var resource = new ResourceHandler())
+{
+    resource.DoWork();
+}
+// resource.Dispose() 自动调用
 \`\`\`
 
 ### 八、小结
 
-- ⭐ 一维数组声明：\`int[] arr = { 1, 2, 3 };\`，反向索引 \`arr[^1]\`、切片 \`arr[1..4]\` 是 C# 8+ 新语法。
-- ⭐ **二维数组 \`[,]\`** 是矩形结构，\`GetLength(0)\`/\`GetLength(1)\` 取行列数。
-- **锯齿数组 \`[][]\`** 每行长度可变，灵活但内存不连续。
-- ⭐ \`Array\` 类常用：\`Sort\` 排序、\`Reverse\` 反转、\`Find\`/\`FindAll\` 查找、\`IndexOf\`、\`Resize\`、\`Copy\`、\`BinarySearch\`。
-- ⭐ 数组作参数传的是"引用的拷贝"——能改内容不能换引用。
-- 日常开发更多用 \`List<T>\`（大小可变），但数组是所有集合的底层基石。
-- ⚠️ **顶级语句规则提醒**：using 指令放最前面；本地函数（直接在顶级语句定义的方法）位置自由；但如果有 class/struct/interface/record/enum/delegate 类型声明，必须放在所有可执行代码之后，否则 CS8803 编译错误。`,
+本章学到了：
+- 构造函数的定义和调用
+- 构造函数重载和构造函数链
+- 静态构造函数和私有构造函数
+- 主构造函数（C# 12）
+- 析构函数和 \`IDisposable\` 接口
+
+下一章我们学习属性与字段。`,
+  },
+
+  // ============================================================
+  // 第十三章：属性与字段
+  // ============================================================
+  {
+    id: 'csharp2-ch13',
+    group: '第二部分 面向对象编程',
+    icon: '📋',
+    title: '属性与字段',
+    content: `## 属性与字段
+
+### 一、属性基础
+
+\`\`\`csharp
+// 属性：封装字段，提供受控访问
+class Person
+{
+    // 私有字段（后备字段）
+    private string _name;
+    private int _age;
+    
+    // 属性：通过 get/set 访问器控制
+    public string Name
+    {
+        get { return _name; }  // 读取
+        set { _name = value; }  // 写入，value 是隐式参数
+    }
+    
+    public int Age
+    {
+        get { return _age; }
+        set
+        {
+            if (value >= 0 && value <= 150)
+            {
+                _age = value;
+            }
+            else
+            {
+                Console.WriteLine("年龄无效");
+            }
+        }
+    }
+}
+
+var person = new Person();
+person.Name = "张三";  // 调用 set
+person.Age = 25;
+Console.WriteLine($"姓名：{person.Name}，年龄：{person.Age}");  // 调用 get
+
+person.Age = 200;  // 年龄无效
+\`\`\`
+
+### 二、自动属性
+
+\`\`\`csharp
+// 自动属性：编译器自动生成后备字段
+class Product
+{
+    // 自动属性（推荐）
+    public string Name { get; set; }
+    public decimal Price { get; set; }
+    public int Stock { get; set; }
+    
+    // 带默认值的自动属性
+    public string Category { get; set; } = "General";
+    public bool IsActive { get; set; } = true;
+}
+
+var product = new Product
+{
+    Name = "iPhone",
+    Price = 5999,
+    Stock = 100
+};
+
+Console.WriteLine($"{product.Name}, {product.Price}, {product.Stock}");
+Console.WriteLine($"分类：{product.Category}, 激活：{product.IsActive}");
+
+// 自动属性 vs 手动属性
+// 自动属性：简单数据封装
+// 手动属性：需要验证、计算、通知等逻辑
+\`\`\`
+
+### 三、只读和只写属性
+
+\`\`\`csharp
+// 只读属性：只有 get 访问器
+class Circle
+{
+    public double Radius { get; }
+    
+    public Circle(double radius)
+    {
+        Radius = radius;  // 只能在构造函数中赋值
+    }
+    
+    // 计算属性
+    public double Area
+    {
+        get { return Math.PI * Radius * Radius; }
+    }
+    
+    public double Circumference
+    {
+        get { return 2 * Math.PI * Radius; }
+    }
+}
+
+var circle = new Circle(5);
+Console.WriteLine($"半径：{circle.Radius}");
+Console.WriteLine($"面积：{circle.Area:F2}");
+Console.WriteLine($"周长：{circle.Circumference:F2}");
+
+// circle.Radius = 10;  // 编译错误！只读属性不能赋值
+
+// 只写属性：只有 set 访问器（很少用）
+class PasswordChanger
+{
+    public string Password { private get; set; }
+    
+    public void ChangePassword()
+    {
+        Console.WriteLine($"密码已更改为：{Password}");
+    }
+}
+
+var changer = new PasswordChanger();
+changer.Password = "newpassword";
+changer.ChangePassword();
+// Console.WriteLine(changer.Password);  // 编译错误！外部不能读取
+\`\`\`
+
+### 四、不同访问级别的属性
+
+\`\`\`csharp
+// 属性访问器可以有不同的访问级别
+class BankAccount
+{
+    // 公共读取，私有写入
+    public decimal Balance { get; private set; }
+    
+    // 公共读取，保护写入
+    public string AccountNumber { get; protected set; }
+    
+    public BankAccount(string accountNumber, decimal initialBalance)
+    {
+        AccountNumber = accountNumber;
+        Balance = initialBalance;
+    }
+    
+    public void Deposit(decimal amount)
+    {
+        if (amount > 0)
+        {
+            Balance += amount;  // 类内部可以写入
+        }
+    }
+    
+    public void Withdraw(decimal amount)
+    {
+        if (amount > 0 && amount <= Balance)
+        {
+            Balance -= amount;  // 类内部可以写入
+        }
+    }
+}
+
+var account = new BankAccount("123456", 1000);
+account.Deposit(500);
+Console.WriteLine($"余额：{account.Balance}");  // 可以读取
+// account.Balance = 5000;  // 编译错误！外部不能写入
+\`\`\`
+
+### 五、计算属性
+
+\`\`\`csharp
+// 计算属性：不存储数据，动态计算返回值
+class Rectangle
+{
+    public double Width { get; set; }
+    public double Height { get; set; }
+    
+    // 计算属性
+    public double Area
+    {
+        get { return Width * Height; }
+    }
+    
+    public double Perimeter
+    {
+        get { return 2 * (Width + Height); }
+    }
+    
+    // 表达式体属性（C# 6+）
+    public double Diagonal => Math.Sqrt(Width * Width + Height * Height);
+}
+
+var rect = new Rectangle { Width = 10, Height = 5 };
+Console.WriteLine($"面积：{rect.Area}");
+Console.WriteLine($"周长：{rect.Perimeter}");
+Console.WriteLine($"对角线：{rect.Diagonal:F2}");
+
+// 表达式体属性 vs 计算属性
+// 两者等价，表达式体更简洁
+class Temperature
+{
+    public double Celsius { get; set; }
+    
+    // 表达式体
+    public double Fahrenheit => Celsius * 9 / 5 + 32;
+    public double Kelvin => Celsius + 273.15;
+}
+
+var temp = new Temperature { Celsius = 25 };
+Console.WriteLine($"华氏：{temp.Fahrenheit}°F");
+Console.WriteLine($"开尔文：{temp.Kelvin}K");
+\`\`\`
+
+### 六、init 访问器（C# 9+）
+
+\`\`\`csharp
+// init 访问器：只能在对象初始化时赋值
+class ImmutablePoint
+{
+    public double X { get; init; }
+    public double Y { get; init; }
+    
+    // 表达式体属性
+    public double DistanceFromOrigin => Math.Sqrt(X * X + Y * Y);
+}
+
+// 对象初始化时可以赋值
+var point = new ImmutablePoint { X = 3, Y = 4 };
+Console.WriteLine($"Point: ({point.X}, {point.Y})");
+Console.WriteLine($"距离原点：{point.DistanceFromOrigin}");
+
+// point.X = 10;  // 编译错误！init 属性只能在初始化时赋值
+
+// 常用于不可变对象
+class Configuration
+{
+    public string Host { get; init; }
+    public int Port { get; init; }
+    public bool UseSsl { get; init; }
+    public string ConnectionString => $"Host={Host},Port={Port},SSL={UseSsl}";
+}
+
+var config = new Configuration
+{
+    Host = "localhost",
+    Port = 8080,
+    UseSsl = true
+};
+
+Console.WriteLine(config.ConnectionString);
+// config.Host = "example.com";  // 编译错误！
+\`\`\`
+
+### 七、字段 vs 属性
+
+\`\`\`csharp
+// 字段：直接存储数据
+// 属性：封装字段，提供受控访问
+
+class MyClass
+{
+    // 字段：直接访问，无验证
+    public string PublicField;
+    
+    // 属性：可以添加验证逻辑
+    private string _property;
+    public string Property
+    {
+        get => _property;
+        set
+        {
+            if (!string.IsNullOrEmpty(value))
+            {
+                _property = value;
+            }
+        }
+    }
+    
+    // 自动属性：推荐用于简单封装
+    public string AutoProperty { get; set; }
+}
+
+// 最佳实践：
+// 1. 不要使用公共字段（破坏封装）
+// 2. 使用属性代替公共字段
+// 3. 简单封装用自动属性
+// 4. 需要验证或计算逻辑用手动属性
+
+// 错误示例
+class BadClass
+{
+    public string Name;  // 不推荐：公共字段
+}
+
+// 正确示例
+class GoodClass
+{
+    public string Name { get; set; }  // 推荐：自动属性
+}
+\`\`\`
+
+### 八、小结
+
+本章学到了：
+- 属性的定义和访问器
+- 自动属性和带默认值的属性
+- 只读属性和只写属性
+- 不同访问级别的属性访问器
+- 计算属性和表达式体属性
+- \`init\` 访问器（C# 9+）
+- 字段与属性的区别和最佳实践
+
+下一章我们学习方法深入。`,
+  },
+
+  // ============================================================
+  // 第十四章：方法深入
+  // ============================================================
+  {
+    id: 'csharp2-ch14',
+    group: '第二部分 面向对象编程',
+    icon: '⚙️',
+    title: '方法深入',
+    content: `## 方法深入
+
+### 一、表达式体方法
+
+\`\`\`csharp
+// 表达式体方法：单行方法可以用 => 简化
+class Calculator
+{
+    // 传统方式
+    public int Add(int a, int b)
+    {
+        return a + b;
+    }
+    
+    // 表达式体（推荐）
+    public int Subtract(int a, int b) => a - b;
+    public int Multiply(int a, int b) => a * b;
+    public double Divide(int a, int b) => b != 0 ? (double)a / b : 0;
+}
+
+var calc = new Calculator();
+Console.WriteLine($"10 + 20 = {calc.Add(10, 20)}");
+Console.WriteLine($"10 - 20 = {calc.Subtract(10, 20)}");
+Console.WriteLine($"10 * 20 = {calc.Multiply(10, 20)}");
+Console.WriteLine($"10 / 20 = {calc.Divide(10, 20)}");
+
+// 表达式体也适用于属性、索引器等
+class Person
+{
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
+    
+    // 表达式体属性
+    public string FullName => $"{FirstName} {LastName}";
+    
+    // 表达式体方法
+    public void Greet() => Console.WriteLine($"Hello, {FullName}");
+}
+
+var person = new Person { FirstName = "三", LastName = "张" };
+person.Greet();
+\`\`\`
+
+### 二、方法重载深入
+
+\`\`\`csharp
+// 方法重载：同名方法，参数列表不同
+class Printer
+{
+    // 参数数量不同
+    public void Print(string message)
+    {
+        Console.WriteLine(message);
+    }
+    
+    public void Print(string message, int times)
+    {
+        for (int i = 0; i < times; i++)
+        {
+            Console.WriteLine(message);
+        }
+    }
+    
+    // 参数类型不同
+    public void Print(int number)
+    {
+        Console.WriteLine($"数字：{number}");
+    }
+    
+    public void Print(double number)
+    {
+        Console.WriteLine($"小数：{number:F2}");
+    }
+    
+    // 参数顺序不同（不推荐，容易混淆）
+    public void Format(string text, int width)
+    {
+        Console.WriteLine(text.PadLeft(width));
+    }
+    
+    public void Format(int width, string text)
+    {
+        Console.WriteLine(text.PadRight(width));
+    }
+}
+
+var printer = new Printer();
+printer.Print("Hello");
+printer.Print("Hello", 3);
+printer.Print(42);
+printer.Print(3.14159);
+printer.Format("Test", 10);
+printer.Format(10, "Test");
+\`\`\`
+
+### 三、可选参数与命名参数
+
+\`\`\`csharp
+// 可选参数：参数有默认值
+void CreateReport(string title, string author = "Anonymous", int pages = 10)
+{
+    Console.WriteLine($"标题：{title}");
+    Console.WriteLine($"作者：{author}");
+    Console.WriteLine($"页数：{pages}");
+}
+
+CreateReport("C# 教程");
+CreateReport("C# 教程", "张三");
+CreateReport("C# 教程", "张三", 100);
+
+// 命名参数：可以指定参数名
+CreateReport("C# 教程", pages: 200);  // 跳过 author
+CreateReport(pages: 50, title: "C# 教程");  // 改变顺序
+
+// 可选参数必须从右到左连续
+// void Bad(int a = 1, int b, int c = 3) {}  // 编译错误！
+void Good(int a, int b = 2, int c = 3) {}
+
+Good(1);
+Good(1, 2);
+Good(1, 2, 3);
+
+// 命名参数常用于提高代码可读性
+void ConfigureServer(string host, int port, bool useSsl, int timeout)
+{
+    Console.WriteLine($"Host: {host}, Port: {port}, SSL: {useSsl}, Timeout: {timeout}");
+}
+
+// 使用命名参数，一目了然
+ConfigureServer(
+    host: "localhost",
+    port: 8080,
+    useSsl: true,
+    timeout: 30
+);
+\`\`\`
+
+### 四、out 和 ref 参数
+
+\`\`\`csharp
+// ref：传递引用，可以读写
+// out：传递引用，必须写入
+
+// ref 示例
+void Swap(ref int a, ref int b)
+{
+    int temp = a;
+    a = b;
+    b = temp;
+}
+
+int x = 10, y = 20;
+Console.WriteLine($"交换前：x={x}, y={y}");
+Swap(ref x, ref y);
+Console.WriteLine($"交换后：x={x}, y={y}");
+
+// out 示例：返回多个值
+bool TryParse(string input, out int result)
+{
+    try
+    {
+        result = int.Parse(input);
+        return true;
+    }
+    catch
+    {
+        result = 0;
+        return false;
+    }
+}
+
+if (TryParse("123", out int number))
+{
+    Console.WriteLine($"解析成功：{number}");
+}
+
+if (!TryParse("abc", out int number2))
+{
+    Console.WriteLine("解析失败");
+}
+
+// C# 7+ 可以在调用时声明 out 变量
+if (int.TryParse("456", out int parsed))
+{
+    Console.WriteLine($"解析成功：{parsed}");
+}
+\`\`\`
+
+### 五、params 参数
+
+\`\`\`csharp
+// params：可变参数，可以传递任意数量的参数
+int Sum(params int[] numbers)
+{
+    int total = 0;
+    foreach (int num in numbers)
+    {
+        total += num;
+    }
+    return total;
+}
+
+Console.WriteLine($"Sum() = {Sum()}");
+Console.WriteLine($"Sum(1) = {Sum(1)}");
+Console.WriteLine($"Sum(1, 2, 3) = {Sum(1, 2, 3)}");
+Console.WriteLine($"Sum(1, 2, 3, 4, 5) = {Sum(1, 2, 3, 4, 5)}");
+
+// params 必须是最后一个参数
+void PrintInfo(string prefix, params string[] items)
+{
+    Console.Write($"{prefix}: ");
+    Console.WriteLine(string.Join(", ", items));
+}
+
+PrintInfo("水果", "苹果", "香蕉", "橙子");
+PrintInfo("颜色", "红色", "蓝色");
+
+// params 也可以传递数组
+int[] values = { 10, 20, 30 };
+Console.WriteLine($"Sum(values) = {Sum(values)}");
+\`\`\`
+
+### 六、局部函数
+
+\`\`\`csharp
+// 局部函数：在方法内部定义的函数
+void ProcessData(int[] data)
+{
+    // 局部函数：验证数据
+    bool IsValid(int[] arr)
+    {
+        return arr != null && arr.Length > 0;
+    }
+    
+    // 局部函数：计算平均值
+    double CalculateAverage(int[] arr)
+    {
+        if (!IsValid(arr)) return 0;
+        return arr.Average();
+    }
+    
+    // 局部函数：格式化输出
+    string FormatResult(double value)
+    {
+        return $"结果：{value:F2}";
+    }
+    
+    // 使用局部函数
+    if (IsValid(data))
+    {
+        double avg = CalculateAverage(data);
+        Console.WriteLine(FormatResult(avg));
+    }
+    else
+    {
+        Console.WriteLine("数据无效");
+    }
+}
+
+ProcessData(new[] { 10, 20, 30, 40, 50 });
+ProcessData(new int[0]);
+
+// 局部函数的优势：
+// 1. 封装辅助逻辑，不污染类的作用域
+// 2. 可以访问外层方法的变量
+// 3. 提高代码可读性
+\`\`\`
+
+### 七、小结
+
+本章学到了：
+- 表达式体方法
+- 方法重载的深入用法
+- 可选参数和命名参数
+- \`out\` 和 \`ref\` 参数
+- \`params\` 可变参数
+- 局部函数
+
+下一章我们学习继承。`,
+  },
+
+  // ============================================================
+  // 第十五章：继承
+  // ============================================================
+  {
+    id: 'csharp2-ch15',
+    group: '第二部分 面向对象编程',
+    icon: '🧬',
+    title: '继承',
+    content: `## 继承
+
+### 一、继承基础
+
+\`\`\`csharp
+// 继承：子类继承父类的成员，实现代码复用
+
+// 父类（基类）
+class Animal
+{
+    public string Name { get; set; }
+    public int Age { get; set; }
+    
+    public void Eat()
+    {
+        Console.WriteLine($"{Name} 正在吃东西");
+    }
+    
+    public void Sleep()
+    {
+        Console.WriteLine($"{Name} 正在睡觉");
+    }
+}
+
+// 子类（派生类）：继承 Animal
+class Dog : Animal
+{
+    public string Breed { get; set; }
+    
+    public void Bark()
+    {
+        Console.WriteLine($"{Name} 在叫：汪汪汪！");
+    }
+}
+
+class Cat : Animal
+{
+    public bool IsIndoor { get; set; }
+    
+    public void Meow()
+    {
+        Console.WriteLine($"{Name} 在叫：喵喵喵！");
+    }
+}
+
+// 使用
+var dog = new Dog { Name = "旺财", Age = 3, Breed = "金毛" };
+dog.Eat();  // 继承自 Animal
+dog.Sleep();  // 继承自 Animal
+dog.Bark();  // Dog 自己的方法
+
+var cat = new Cat { Name = "咪咪", Age = 2, IsIndoor = true };
+cat.Eat();
+cat.Meow();
+\`\`\`
+
+### 二、base 关键字
+
+\`\`\`csharp
+// base：引用父类
+class Vehicle
+{
+    public string Brand { get; set; }
+    public int Year { get; set; }
+    
+    public Vehicle(string brand, int year)
+    {
+        Brand = brand;
+        Year = year;
+    }
+    
+    public void ShowInfo()
+    {
+        Console.WriteLine($"品牌：{Brand}，年份：{Year}");
+    }
+}
+
+class Car : Vehicle
+{
+    public int Doors { get; set; }
+    
+    // 调用父类构造函数
+    public Car(string brand, int year, int doors) : base(brand, year)
+    {
+        Doors = doors;
+    }
+    
+    public void ShowCarInfo()
+    {
+        base.ShowInfo();  // 调用父类方法
+        Console.WriteLine($"车门数：{Doors}");
+    }
+}
+
+var car = new Car("Toyota", 2024, 4);
+car.ShowCarInfo();
+\`\`\`
+
+### 三、方法重写（virtual 和 override）
+
+\`\`\`csharp
+// virtual：标记方法可以被子类重写
+// override：重写父类方法
+
+class Shape
+{
+    public string Color { get; set; }
+    
+    // virtual 方法：可以被子类重写
+    public virtual double GetArea()
+    {
+        return 0;
+    }
+    
+    public virtual void Draw()
+    {
+        Console.WriteLine($"绘制 {Color} 色的图形");
+    }
+}
+
+class Circle : Shape
+{
+    public double Radius { get; set; }
+    
+    // override：重写父类方法
+    public override double GetArea()
+    {
+        return Math.PI * Radius * Radius;
+    }
+    
+    public override void Draw()
+    {
+        Console.WriteLine($"绘制 {Color} 色的圆形，半径 {Radius}");
+    }
+}
+
+class Rectangle : Shape
+{
+    public double Width { get; set; }
+    public double Height { get; set; }
+    
+    public override double GetArea()
+    {
+        return Width * Height;
+    }
+    
+    public override void Draw()
+    {
+        Console.WriteLine($"绘制 {Color} 色的矩形，{Width} x {Height}");
+    }
+}
+
+// 多态：父类引用指向子类对象
+Shape shape1 = new Circle { Color = "Red", Radius = 5 };
+Shape shape2 = new Rectangle { Color = "Blue", Width = 10, Height = 5 };
+
+shape1.Draw();  // 调用 Circle 的 Draw
+shape2.Draw();  // 调用 Rectangle 的 Draw
+
+Console.WriteLine($"圆形面积：{shape1.GetArea():F2}");
+Console.WriteLine($"矩形面积：{shape2.GetArea():F2}");
+\`\`\`
+
+### 四、sealed 关键字
+
+\`\`\`csharp
+// sealed：密封类不能被继承
+// sealed 方法不能被重写
+
+sealed class FinalClass
+{
+    public void Method()
+    {
+        Console.WriteLine("FinalClass.Method");
+    }
+}
+
+// class DerivedClass : FinalClass {}  // 编译错误！不能继承密封类
+
+class BaseClass
+{
+    public virtual void Method1()
+    {
+        Console.WriteLine("BaseClass.Method1");
+    }
+    
+    public virtual void Method2()
+    {
+        Console.WriteLine("BaseClass.Method2");
+    }
+}
+
+class MiddleClass : BaseClass
+{
+    public override void Method1()
+    {
+        Console.WriteLine("MiddleClass.Method1");
+    }
+    
+    // sealed：子类不能重写这个方法
+    public sealed override void Method2()
+    {
+        Console.WriteLine("MiddleClass.Method2");
+    }
+}
+
+class FinalDerivedClass : MiddleClass
+{
+    public override void Method1()  // 可以重写
+    {
+        Console.WriteLine("FinalDerivedClass.Method1");
+    }
+    
+    // public override void Method2() {}  // 编译错误！Method2 是 sealed 的
+}
+\`\`\`
+
+### 五、继承中的构造函数
+
+\`\`\`csharp
+// 继承中的构造函数调用顺序：
+// 1. 父类构造函数
+// 2. 子类构造函数
+
+class Parent
+{
+    public Parent()
+    {
+        Console.WriteLine("Parent 构造函数");
+    }
+    
+    public Parent(string message)
+    {
+        Console.WriteLine($"Parent 构造函数：{message}");
+    }
+}
+
+class Child : Parent
+{
+    public Child() : base("来自 Child")  // 调用父类带参构造函数
+    {
+        Console.WriteLine("Child 构造函数");
+    }
+}
+
+var child = new Child();
+// 输出：
+// Parent 构造函数：来自 Child
+// Child 构造函数
+
+// 如果没有显式调用 base()，默认调用父类无参构造函数
+class Parent2
+{
+    public Parent2()
+    {
+        Console.WriteLine("Parent2 无参构造函数");
+    }
+}
+
+class Child2 : Parent2
+{
+    public Child2()
+    {
+        Console.WriteLine("Child2 构造函数");
+    }
+}
+
+var child2 = new Child2();
+// 输出：
+// Parent2 无参构造函数
+// Child2 构造函数
+\`\`\`
+
+### 六、小结
+
+本章学到了：
+- 继承的概念和语法
+- \`base\` 关键字的使用
+- \`virtual\` 和 \`override\` 实现方法重写
+- \`sealed\` 密封类和方法
+- 继承中的构造函数调用顺序
+
+下一章我们学习多态。`,
+  },
+
+  // ============================================================
+  // 第十六章：多态
+  // ============================================================
+  {
+    id: 'csharp2-ch16',
+    group: '第二部分 面向对象编程',
+    icon: '🎭',
+    title: '多态',
+    content: `## 多态
+
+### 一、多态基础
+
+\`\`\`csharp
+// 多态：同一操作作用于不同对象，产生不同行为
+
+class Employee
+{
+    public string Name { get; set; }
+    
+    public Employee(string name)
+    {
+        Name = name;
+    }
+    
+    public virtual void CalculateSalary()
+    {
+        Console.WriteLine($"{Name} 的基本工资：5000");
+    }
+}
+
+class Manager : Employee
+{
+    public int TeamSize { get; set; }
+    
+    public Manager(string name, int teamSize) : base(name)
+    {
+        TeamSize = teamSize;
+    }
+    
+    public override void CalculateSalary()
+    {
+        int salary = 10000 + TeamSize * 1000;
+        Console.WriteLine($"{Name} 的管理工资：{salary}");
+    }
+}
+
+class Developer : Employee
+{
+    public int ProjectCount { get; set; }
+    
+    public Developer(string name, int projectCount) : base(name)
+    {
+        ProjectCount = projectCount;
+    }
+    
+    public override void CalculateSalary()
+    {
+        int salary = 8000 + ProjectCount * 2000;
+        Console.WriteLine($"{Name} 的开发工资：{salary}");
+    }
+}
+
+// 多态：父类引用指向子类对象
+Employee emp1 = new Manager("张三", 10);
+Employee emp2 = new Developer("李四", 3);
+Employee emp3 = new Employee("王五");
+
+emp1.CalculateSalary();  // 调用 Manager 的方法
+emp2.CalculateSalary();  // 调用 Developer 的方法
+emp3.CalculateSalary();  // 调用 Employee 的方法
+
+// 多态的实际应用
+void ProcessPayroll(Employee[] employees)
+{
+    foreach (var emp in employees)
+    {
+        emp.CalculateSalary();  // 运行时决定调用哪个方法
+    }
+}
+
+Employee[] staff = { emp1, emp2, emp3 };
+ProcessPayroll(staff);
+\`\`\`
+
+### 二、类型转换
+
+\`\`\`csharp
+// 向上转型：子类转父类（自动）
+// 向下转型：父类转子类（需要强制转换）
+
+class Animal2
+{
+    public string Name { get; set; }
+    public virtual void MakeSound() => Console.WriteLine("...");
+}
+
+class Dog2 : Animal2
+{
+    public override void MakeSound() => Console.WriteLine("汪汪汪！");
+    public void Fetch() => Console.WriteLine("捡球");
+}
+
+class Cat2 : Animal2
+{
+    public override void MakeSound() => Console.WriteLine("喵喵喵！");
+    public void Climb() => Console.WriteLine("爬树");
+}
+
+// 向上转型（自动）
+Animal2 animal1 = new Dog2 { Name = "旺财" };
+Animal2 animal2 = new Cat2 { Name = "咪咪" };
+
+animal1.MakeSound();  // 汪汪汪！
+animal2.MakeSound();  // 喵喵喵！
+
+// 向下转型（需要强制转换）
+Dog2 dog = (Dog2)animal1;
+dog.Fetch();  // 可以调用 Dog 的方法
+
+// 使用 as 运算符（安全转换）
+Cat2 cat = animal2 as Cat2;
+if (cat != null)
+{
+    cat.Climb();
+}
+
+// 使用 is 运算符（类型检查）
+if (animal1 is Dog2 d)
+{
+    d.Fetch();  // 类型检查成功后可以直接使用
+}
+
+// 使用 pattern matching（C# 7+）
+if (animal2 is Cat2 c)
+{
+    c.Climb();
+}
+\`\`\`
+
+### 三、抽象类
+
+\`\`\`csharp
+// 抽象类：不能被实例化，只能被继承
+// 抽象方法：没有实现，必须由子类实现
+
+abstract class Shape2
+{
+    public string Color { get; set; }
+    
+    // 抽象方法：没有方法体
+    public abstract double GetArea();
+    public abstract double GetPerimeter();
+    
+    // 普通方法：有实现
+    public void ShowInfo()
+    {
+        Console.WriteLine($"颜色：{Color}");
+        Console.WriteLine($"面积：{GetArea():F2}");
+        Console.WriteLine($"周长：{GetPerimeter():F2}");
+    }
+}
+
+class Circle2 : Shape2
+{
+    public double Radius { get; set; }
+    
+    // 必须实现抽象方法
+    public override double GetArea()
+    {
+        return Math.PI * Radius * Radius;
+    }
+    
+    public override double GetPerimeter()
+    {
+        return 2 * Math.PI * Radius;
+    }
+}
+
+class Rectangle2 : Shape2
+{
+    public double Width { get; set; }
+    public double Height { get; set; }
+    
+    public override double GetArea()
+    {
+        return Width * Height;
+    }
+    
+    public override double GetPerimeter()
+    {
+        return 2 * (Width + Height);
+    }
+}
+
+// var shape = new Shape2();  // 编译错误！不能实例化抽象类
+
+Shape2 circle = new Circle2 { Color = "Red", Radius = 5 };
+circle.ShowInfo();
+
+Shape2 rectangle = new Rectangle2 { Color = "Blue", Width = 10, Height = 5 };
+rectangle.ShowInfo();
+\`\`\`
+
+### 四、接口
+
+\`\`\`csharp
+// 接口：定义契约，类可以实现多个接口
+
+// 定义接口
+interface IRunnable
+{
+    void Run();
+}
+
+interface ISwimmable
+{
+    void Swim();
+}
+
+interface IFlyable
+{
+    void Fly();
+}
+
+// 类可以实现多个接口
+class Athlete : IRunnable, ISwimmable
+{
+    public string Name { get; set; }
+    
+    public void Run()
+    {
+        Console.WriteLine($"{Name} 在跑步");
+    }
+    
+    public void Swim()
+    {
+        Console.WriteLine($"{Name} 在游泳");
+    }
+}
+
+class Bird : IRunnable, IFlyable
+{
+    public string Name { get; set; }
+    
+    public void Run()
+    {
+        Console.WriteLine($"{Name} 在地上跑");
+    }
+    
+    public void Fly()
+    {
+        Console.WriteLine($"{Name} 在天上飞");
+    }
+}
+
+// 使用接口
+IRunnable runner1 = new Athlete { Name = "张三" };
+IRunnable runner2 = new Bird { Name = "麻雀" };
+
+runner1.Run();
+runner2.Run();
+
+// 接口多态
+void MakeRun(IRunnable runnable)
+{
+    runnable.Run();
+}
+
+MakeRun(new Athlete { Name = "李四" });
+MakeRun(new Bird { Name = "老鹰" });
+\`\`\`
+
+### 五、接口 vs 抽象类
+
+\`\`\`csharp
+// 接口 vs 抽象类
+
+// 接口：
+// - 只能定义方法、属性、事件、索引器（不能有字段）
+// - 所有成员默认公开，不能有访问修饰符
+// - 类可以实现多个接口
+// - 适合定义"能做什么"
+
+// 抽象类：
+// - 可以有字段、构造函数、普通方法
+// - 成员可以有各种访问修饰符
+// - 类只能继承一个抽象类
+// - 适合定义"是什么"
+
+// 示例：定义动物
+abstract class Animal3
+{
+    // 可以有字段
+    protected int _age;
+    
+    // 构造函数
+    public Animal3(int age)
+    {
+        _age = age;
+    }
+    
+    // 抽象方法
+    public abstract void MakeSound();
+    
+    // 普通方法
+    public void Eat()
+    {
+        Console.WriteLine("吃东西");
+    }
+}
+
+interface IPet
+{
+    string Name { get; set; }
+    void Play();
+}
+
+// 继承抽象类 + 实现接口
+class Dog3 : Animal3, IPet
+{
+    public string Name { get; set; }
+    
+    public Dog3(int age, string name) : base(age)
+    {
+        Name = name;
+    }
+    
+    public override void MakeSound()
+    {
+        Console.WriteLine("汪汪汪！");
+    }
+    
+    public void Play()
+    {
+        Console.WriteLine($"{Name} 在玩耍");
+    }
+}
+\`\`\`
+
+### 六、小结
+
+本章学到了：
+- 多态的概念和应用
+- 类型转换：向上转型和向下转型
+- 抽象类和抽象方法
+- 接口的定义和实现
+- 接口与抽象类的区别
+
+下一章我们学习抽象类与接口。`,
+  },
+
+  // ============================================================
+  // 第十七章：抽象类与接口
+  // ============================================================
+  {
+    id: 'csharp2-ch17',
+    group: '第二部分 面向对象编程',
+    icon: '📐',
+    title: '抽象类与接口',
+    content: `## 抽象类与接口
+
+### 一、抽象类深入
+
+\`\`\`csharp
+// 抽象类：不能实例化，用于被继承
+
+abstract class Document
+{
+    // 可以有字段
+    protected string _content;
+    
+    // 构造函数
+    protected Document(string content)
+    {
+        _content = content;
+    }
+    
+    // 抽象属性
+    public abstract string Title { get; }
+    
+    // 抽象方法
+    public abstract void Render();
+    
+    // 普通方法
+    public void Print()
+    {
+        Console.WriteLine($"打印文档：{Title}");
+        Render();
+    }
+    
+    // 虚方法
+    public virtual void Save()
+    {
+        Console.WriteLine("保存文档");
+    }
+}
+
+class PdfDocument : Document
+{
+    public override string Title => "PDF 文档";
+    
+    public PdfDocument(string content) : base(content) { }
+    
+    public override void Render()
+    {
+        Console.WriteLine("渲染 PDF 格式");
+    }
+    
+    public override void Save()
+    {
+        base.Save();
+        Console.WriteLine("保存为 .pdf 文件");
+    }
+}
+
+class WordDocument : Document
+{
+    public override string Title => "Word 文档";
+    
+    public WordDocument(string content) : base(content) { }
+    
+    public override void Render()
+    {
+        Console.WriteLine("渲染 Word 格式");
+    }
+}
+
+// 使用
+Document doc1 = new PdfDocument("PDF 内容");
+doc1.Print();
+doc1.Save();
+
+Document doc2 = new WordDocument("Word 内容");
+doc2.Print();
+\`\`\`
+
+### 二、接口深入
+
+\`\`\`csharp
+// 接口：定义契约
+
+// 接口可以包含：
+// - 方法
+// - 属性
+// - 事件
+// - 索引器
+
+// C# 8+ 接口可以有默认实现
+interface ILogger
+{
+    // 抽象成员
+    void Log(string message);
+    
+    // 属性
+    string LogLevel { get; set; }
+    
+    // 默认实现（C# 8+）
+    void LogInfo(string message)
+    {
+        LogLevel = "INFO";
+        Log($"[INFO] {message}");
+    }
+    
+    void LogError(string message)
+    {
+        LogLevel = "ERROR";
+        Log($"[ERROR] {message}");
+    }
+}
+
+class ConsoleLogger : ILogger
+{
+    public string LogLevel { get; set; }
+    
+    public void Log(string message)
+    {
+        Console.WriteLine($"[{LogLevel}] {message}");
+    }
+}
+
+class FileLogger : ILogger
+{
+    public string LogLevel { get; set; }
+    private string _filePath;
+    
+    public FileLogger(string filePath)
+    {
+        _filePath = filePath;
+    }
+    
+    public void Log(string message)
+    {
+        // 实际项目中会写入文件
+        Console.WriteLine($"写入文件 {_filePath}: [{LogLevel}] {message}");
+    }
+}
+
+// 使用
+ILogger logger1 = new ConsoleLogger();
+logger1.LogInfo("程序启动");
+logger1.LogError("发生错误");
+
+ILogger logger2 = new FileLogger("app.log");
+logger2.LogInfo("程序启动");
+\`\`\`
+
+### 三、显式接口实现
+
+\`\`\`csharp
+// 显式接口实现：接口成员只能通过接口访问
+
+interface IEnglish
+{
+    void Greet();
+}
+
+interface IChinese
+{
+    void Greet();
+}
+
+class BilingualPerson : IEnglish, IChinese
+{
+    // 显式实现接口
+    void IEnglish.Greet()
+    {
+        Console.WriteLine("Hello!");
+    }
+    
+    void IChinese.Greet()
+    {
+        Console.WriteLine("你好！");
+    }
+}
+
+var person = new BilingualPerson();
+
+// 必须通过接口引用调用
+IEnglish english = person;
+english.Greet();
+
+IChinese chinese = person;
+chinese.Greet();
+
+// person.Greet();  // 编译错误！不能直接调用
+\`\`\`
+
+### 四、接口继承
+
+\`\`\`csharp
+// 接口可以继承其他接口
+
+interface IShape
+{
+    double GetArea();
+}
+
+interface IColoredShape : IShape
+{
+    string Color { get; }
+}
+
+interface IResizableShape : IShape
+{
+    void Resize(double factor);
+}
+
+interface IColoredResizableShape : IColoredShape, IResizableShape
+{
+    void ShowInfo();
+}
+
+class Circle3 : IColoredResizableShape
+{
+    public string Color { get; set; }
+    public double Radius { get; set; }
+    
+    public double GetArea() => Math.PI * Radius * Radius;
+    
+    public void Resize(double factor)
+    {
+        Radius *= factor;
+    }
+    
+    public void ShowInfo()
+    {
+        Console.WriteLine($"颜色：{Color}，半径：{Radius}，面积：{GetArea():F2}");
+    }
+}
+
+IColoredResizableShape shape = new Circle3 { Color = "Red", Radius = 5 };
+shape.ShowInfo();
+\`\`\`
+
+### 五、小结
+
+本章学到了：
+- 抽象类的深入用法
+- 接口的默认实现（C# 8+）
+- 显式接口实现
+- 接口继承
+
+下一章我们学习静态类与扩展方法。`,
+  },
+
+  // ============================================================
+  // 第十八章：静态类与扩展方法
+  // ============================================================
+  {
+    id: 'csharp2-ch18',
+    group: '第二部分 面向对象编程',
+    icon: '🔌',
+    title: '静态类与扩展方法',
+    content: `## 静态类与扩展方法
+
+### 一、静态类
+
+\`\`\`csharp
+// 静态类：只能包含静态成员，不能实例化
+
+static class MathHelper
+{
+    // 静态字段
+    public const double PI = 3.14159265358979;
+    
+    // 静态方法
+    public static double Add(double a, double b) => a + b;
+    public static double Multiply(double a, double b) => a * b;
+    
+    public static int Factorial(int n)
+    {
+        if (n <= 1) return 1;
+        return n * Factorial(n - 1);
+    }
+}
+
+// 使用：直接通过类名调用
+Console.WriteLine($"PI: {MathHelper.PI}");
+Console.WriteLine($"5! = {MathHelper.Factorial(5)}");
+
+// 静态类的特点：
+// 1. 不能实例化
+// 2. 只能包含静态成员
+// 3. 自动密封，不能被继承
+// 4. 常用于工具类、辅助类
+\`\`\`
+
+### 二、静态成员
+
+\`\`\`csharp
+// 静态成员：属于类，不属于对象
+
+class Counter
+{
+    // 静态字段：所有对象共享
+    private static int _count = 0;
+    
+    // 实例字段：每个对象独立
+    private int _id;
+    
+    public Counter()
+    {
+        _count++;
+        _id = _count;
+    }
+    
+    // 静态属性
+    public static int Count => _count;
+    
+    // 实例属性
+    public int Id => _id;
+    
+    // 静态方法
+    public static void ResetCount()
+    {
+        _count = 0;
+    }
+}
+
+var c1 = new Counter();
+var c2 = new Counter();
+var c3 = new Counter();
+
+Console.WriteLine($"c1.Id: {c1.Id}");
+Console.WriteLine($"c2.Id: {c2.Id}");
+Console.WriteLine($"c3.Id: {c3.Id}");
+Console.WriteLine($"总计数：{Counter.Count}");
+
+Counter.ResetCount();
+Console.WriteLine($"重置后计数：{Counter.Count}");
+\`\`\`
+
+### 三、扩展方法
+
+\`\`\`csharp
+// 扩展方法：为现有类型添加方法，无需修改原类型
+// 必须定义在静态类中，第一个参数用 this 修饰
+
+static class StringExtensions
+{
+    // 判断字符串是否为空或空白
+    public static bool IsBlank(this string str)
+    {
+        return string.IsNullOrWhiteSpace(str);
+    }
+    
+    // 反转字符串
+    public static string Reverse(this string str)
+    {
+        char[] chars = str.ToCharArray();
+        Array.Reverse(chars);
+        return new string(chars);
+    }
+    
+    // 统计单词数
+    public static int WordCount(this string str)
+    {
+        if (str.IsBlank()) return 0;
+        return str.Split(new[] { ' ', '\\t', '\\n', '\\r' },
+                        StringSplitOptions.RemoveEmptyEntries).Length;
+    }
+    
+    // 截断字符串
+    public static string Truncate(this string str, int maxLength)
+    {
+        if (string.IsNullOrEmpty(str)) return str;
+        return str.Length <= maxLength ? str : str.Substring(0, maxLength) + "...";
+    }
+}
+
+// 使用扩展方法
+string text = "  Hello World  ";
+Console.WriteLine($"IsBlank: {text.IsBlank()}");
+Console.WriteLine($"Reverse: {text.Trim().Reverse()}");
+Console.WriteLine($"WordCount: {"Hello World from C#".WordCount()}");
+Console.WriteLine($"Truncate: {"这是一个很长的字符串".Truncate(10)}");
+
+// 链式调用
+string result = "  Hello World  ".Trim().Reverse().ToUpper();
+Console.WriteLine($"链式调用：{result}");
+\`\`\`
+
+### 四、为其他类型添加扩展方法
+
+\`\`\`csharp
+static class IntExtensions
+{
+    // 判断是否为偶数
+    public static bool IsEven(this int number) => number % 2 == 0;
+    
+    // 判断是否为正数
+    public static bool IsPositive(this int number) => number > 0;
+    
+    // 转换为字节大小
+    public static string ToFileSize(this long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        int order = 0;
+        double size = bytes;
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size /= 1024;
+        }
+        return $"{size:0.##} {sizes[order]}";
+    }
+    
+    // 执行多次
+    public static void Times(this int count, Action action)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            action();
+        }
+    }
+}
+
+// 使用
+int num = 10;
+Console.WriteLine($"{num}.IsEven(): {num.IsEven()}");
+Console.WriteLine($"{num}.IsPositive(): {num.IsPositive()}");
+
+long fileSize = 1536;
+Console.WriteLine($"文件大小：{fileSize.ToFileSize()}");
+
+// 执行多次
+3.Times(() => Console.WriteLine("Hello!"));
+\`\`\`
+
+### 五、扩展方法注意事项
+
+\`\`\`csharp
+// 扩展方法注意事项：
+
+// 1. 扩展方法不能访问原类的私有成员
+static class PersonExtensions
+{
+    // 错误示例：
+    // public static void AccessPrivate(this Person p)
+    // {
+    //     Console.WriteLine(p._privateField);  // 编译错误！
+    // }
+}
+
+// 2. 实例方法优先级高于扩展方法
+class MyClass
+{
+    public void Print() => Console.WriteLine("实例方法");
+}
+
+static class MyClassExtensions
+{
+    public static void Print(this MyClass obj) => Console.WriteLine("扩展方法");
+}
+
+var obj = new MyClass();
+obj.Print();  // 输出：实例方法（实例方法优先）
+
+// 3. 扩展方法应该放在有意义的命名空间中
+namespace MyCompany.Extensions
+{
+    static class DateTimeExtensions
+    {
+        public static string ToChineseDate(this DateTime date)
+        {
+            return $"{date.Year}年{date.Month}月{date.Day}日";
+        }
+    }
+}
+
+// 使用时需要 using 对应的命名空间
+using MyCompany.Extensions;
+Console.WriteLine(DateTime.Now.ToChineseDate());
+\`\`\`
+
+### 六、小结
+
+本章学到了：
+- 静态类和静态成员
+- 扩展方法的定义和使用
+- 为不同类型添加扩展方法
+- 扩展方法的注意事项
+
+下一章我们学习枚举与结构体。`,
+  },
+
+  // ============================================================
+  // 第十九章：枚举与结构体
+  // ============================================================
+  {
+    id: 'csharp2-ch19',
+    group: '第二部分 面向对象编程',
+    icon: '📊',
+    title: '枚举与结构体',
+    content: `## 枚举与结构体
+
+### 一、枚举基础
+
+\`\`\`csharp
+// 枚举：一组命名的常量
+
+// 定义枚举
+enum Season
+{
+    Spring,  // 0
+    Summer,  // 1
+    Autumn,  // 2
+    Winter   // 3
+}
+
+enum DayOfWeek2
+{
+    Sunday = 0,
+    Monday = 1,
+    Tuesday = 2,
+    Wednesday = 3,
+    Thursday = 4,
+    Friday = 5,
+    Saturday = 6
+}
+
+// 使用枚举
+Season currentSeason = Season.Autumn;
+Console.WriteLine($"当前季节：{currentSeason}");
+Console.WriteLine($"数值：{(int)currentSeason}");
+
+DayOfWeek2 today = DayOfWeek2.Friday;
+Console.WriteLine($"今天：{today}");
+
+// 枚举转换
+int seasonValue = (int)Season.Summer;
+Season seasonFromValue = (Season)2;
+Console.WriteLine($"Summer 的值：{seasonValue}");
+Console.WriteLine($"值 2 对应的季节：{seasonFromValue}");
+\`\`\`
+
+### 二、枚举与 switch
+
+\`\`\`csharp
+enum OrderStatus
+{
+    Pending,
+    Processing,
+    Shipped,
+    Delivered,
+    Cancelled
+}
+
+class Order
+{
+    public int Id { get; set; }
+    public OrderStatus Status { get; set; }
+    
+    public void ShowStatus()
+    {
+        string statusText = Status switch
+        {
+            OrderStatus.Pending => "待处理",
+            OrderStatus.Processing => "处理中",
+            OrderStatus.Shipped => "已发货",
+            OrderStatus.Delivered => "已送达",
+            OrderStatus.Cancelled => "已取消",
+            _ => "未知状态"
+        };
+        
+        Console.WriteLine($"订单 {Id}：{statusText}");
+    }
+}
+
+var order1 = new Order { Id = 1001, Status = OrderStatus.Pending };
+var order2 = new Order { Id = 1002, Status = OrderStatus.Shipped };
+
+order1.ShowStatus();
+order2.ShowStatus();
+\`\`\`
+
+### 三、标志枚举
+
+\`\`\`csharp
+// 标志枚举：用 [Flags] 标记，可以组合多个值
+
+[Flags]
+enum FileAccess
+{
+    None = 0,       // 0000
+    Read = 1,       // 0001
+    Write = 2,      // 0010
+    Execute = 4,    // 0100
+    Delete = 8      // 1000
+}
+
+// 组合标志
+FileAccess permission = FileAccess.Read | FileAccess.Write;
+Console.WriteLine($"权限：{permission}");
+
+// 检查是否包含某个标志
+bool canRead = (permission & FileAccess.Read) == FileAccess.Read;
+bool canWrite = (permission & FileAccess.Write) == FileAccess.Write;
+bool canExecute = (permission & FileAccess.Execute) == FileAccess.Execute;
+
+Console.WriteLine($"可读：{canRead}");
+Console.WriteLine($"可写：{canWrite}");
+Console.WriteLine($"可执行：{canExecute}");
+
+// 添加标志
+permission |= FileAccess.Execute;
+Console.WriteLine($"添加执行权限后：{permission}");
+
+// 移除标志
+permission &= ~FileAccess.Write;
+Console.WriteLine($"移除写入权限后：{permission}");
+
+// C# 4+ 可以使用 HasFlag 方法
+if (permission.HasFlag(FileAccess.Read))
+{
+    Console.WriteLine("有读取权限");
+}
+\`\`\`
+
+### 四、结构体基础
+
+\`\`\`csharp
+// 结构体：值类型，适合小型数据结构
+
+struct Point
+{
+    public double X;
+    public double Y;
+    
+    // 构造函数
+    public Point(double x, double y)
+    {
+        X = x;
+        Y = y;
+    }
+    
+    // 方法
+    public double DistanceTo(Point other)
+    {
+        double dx = X - other.X;
+        double dy = Y - other.Y;
+        return Math.Sqrt(dx * dx + dy * dy);
+    }
+    
+    // 重写 ToString
+    public override string ToString()
+    {
+        return $"({X}, {Y})";
+    }
+}
+
+// 使用结构体
+var p1 = new Point(3, 4);
+var p2 = new Point(6, 8);
+
+Console.WriteLine($"p1: {p1}");
+Console.WriteLine($"p2: {p2}");
+Console.WriteLine($"距离：{p1.DistanceTo(p2)}");
+
+// 结构体是值类型
+var p3 = p1;  // 复制值，不是复制引用
+p3.X = 100;
+Console.WriteLine($"p1.X: {p1.X}");  // 3（未改变）
+Console.WriteLine($"p3.X: {p3.X}");  // 100
+\`\`\`
+
+### 五、结构体 vs 类
+
+\`\`\`csharp
+// 结构体 vs 类
+
+// 结构体：
+// - 值类型（存储在栈上）
+// - 赋值时复制值
+// - 不能继承
+// - 适合小型、频繁创建的数据结构
+
+// 类：
+// - 引用类型（存储在堆上）
+// - 赋值时复制引用
+// - 可以继承
+// - 适合复杂、需要共享的数据
+
+struct Size
+{
+    public double Width;
+    public double Height;
+    
+    public double Area => Width * Height;
+}
+
+class RectangleData
+{
+    public double Width;
+    public double Height;
+    
+    public double Area => Width * Height;
+}
+
+// 结构体赋值
+Size s1 = new Size { Width = 10, Height = 5 };
+Size s2 = s1;  // 复制值
+s2.Width = 20;
+Console.WriteLine($"s1.Area: {s1.Area}");  // 50
+Console.WriteLine($"s2.Area: {s2.Area}");  // 100
+
+// 类赋值
+var r1 = new RectangleData { Width = 10, Height = 5 };
+var r2 = r1;  // 复制引用
+r2.Width = 20;
+Console.WriteLine($"r1.Area: {r1.Area}");  // 100
+Console.WriteLine($"r2.Area: {r2.Area}");  // 100
+
+// 何时使用结构体：
+// 1. 逻辑上表示单个值（如坐标、颜色、矩形）
+// 2. 实例较小（通常 < 16 字节）
+// 3. 不需要继承
+// 4. 频繁创建和销毁
+
+// 何时使用类：
+// 1. 需要继承
+// 2. 实例较大
+// 3. 需要引用语义
+\`\`\`
+
+### 六、record 结构体（C# 10+）
+
+\`\`\`csharp
+// record struct：不可变结构体
+
+record struct Temperature(double Celsius)
+{
+    public double Fahrenheit => Celsius * 9 / 5 + 32;
+    public double Kelvin => Celsius + 273.15;
+}
+
+var temp1 = new Temperature(25);
+var temp2 = temp1 with { Celsius = 30 };  // with 表达式
+
+Console.WriteLine($"temp1: {temp1.Celsius}°C");
+Console.WriteLine($"temp2: {temp2.Celsius}°C");
+Console.WriteLine($"temp1 华氏：{temp1.Fahrenheit}°F");
+Console.WriteLine($"temp1 开尔文：{temp1.Kelvin}K");
+
+// record struct 自动实现值相等性
+var temp3 = new Temperature(25);
+Console.WriteLine($"temp1 == temp3: {temp1 == temp3}");  // true
+\`\`\`
+
+### 七、小结
+
+本章学到了：
+- 枚举的定义和使用
+- 枚举与 switch 表达式
+- 标志枚举（\`[Flags]\`）
+- 结构体的基础用法
+- 结构体与类的区别
+- \`record struct\`（C# 10+）
+
+下一章我们学习记录类型与模式匹配。`,
+  },
+
+  // ============================================================
+  // 第二十章：记录类型与模式匹配
+  // ============================================================
+  {
+    id: 'csharp2-ch20',
+    group: '第二部分 面向对象编程',
+    icon: '📝',
+    title: '记录类型与模式匹配',
+    content: `## 记录类型与模式匹配
+
+### 一、record 类型
+
+\`\`\`csharp
+// record：不可变数据载体，自动实现值相等性
+
+// record class（引用类型）
+record Person(string Name, int Age)
+{
+    // 可以添加方法
+    public void Greet()
+    {
+        Console.WriteLine($"Hello, I'm {Name}, {Age} years old");
+    }
+}
+
+var person1 = new Person("张三", 25);
+var person2 = new Person("张三", 25);
+var person3 = new Person("李四", 30);
+
+Console.WriteLine($"person1 == person2: {person1 == person2}");  // true（值相等）
+Console.WriteLine($"person1 == person3: {person1 == person3}");  // false
+
+// with 表达式：创建副本并修改部分属性
+var person4 = person1 with { Age = 26 };
+Console.WriteLine($"person4: {person4}");  // Person { Name = 张三, Age = 26 }
+
+// 解构
+var (name, age) = person1;
+Console.WriteLine($"Name: {name}, Age: {age}");
+
+// record 的继承
+record Animal(string Name, string Species);
+record Dog(string Name, string Breed) : Animal(Name, "Dog");
+
+var dog = new Dog("旺财", "金毛");
+Console.WriteLine($"Dog: {dog}");
+\`\`\`
+
+### 二、record struct
+
+\`\`\`csharp
+// record struct：值类型的 record
+
+record struct Point(double X, double Y)
+{
+    public double DistanceTo(Point other)
+    {
+        double dx = X - other.X;
+        double dy = Y - other.Y;
+        return Math.Sqrt(dx * dx + dy * dy);
+    }
+}
+
+var p1 = new Point(3, 4);
+var p2 = new Point(3, 4);
+var p3 = p1 with { X = 6 };
+
+Console.WriteLine($"p1 == p2: {p1 == p2}");  // true
+Console.WriteLine($"p3: {p3}");
+Console.WriteLine($"距离：{p1.DistanceTo(p3)}");
+
+// readonly record struct：完全不可变
+readonly record struct Color(byte R, byte G, byte B)
+{
+    public string ToHex() => $"#{R:X2}{G:X2}{B:X2}";
+}
+
+var red = new Color(255, 0, 0);
+Console.WriteLine($"Red: {red.ToHex()}");
+\`\`\`
+
+### 三、模式匹配深入
+
+\`\`\`csharp
+// 模式匹配：C# 7+ 引入，C# 9/10/11 不断增强
+
+// 1. 类型模式
+object obj = "Hello";
+
+if (obj is string s)
+{
+    Console.WriteLine($"字符串：{s}");
+}
+
+// 2. 常量模式
+int? nullable = 42;
+
+if (nullable is 42)
+{
+    Console.WriteLine("值是 42");
+}
+
+// 3. 关系模式
+int score = 85;
+
+string grade = score switch
+{
+    >= 90 => "A",
+    >= 80 => "B",
+    >= 70 => "C",
+    >= 60 => "D",
+    _ => "F"
+};
+
+Console.WriteLine($"分数 {score}，等级 {grade}");
+
+// 4. 逻辑模式
+int temperature = 25;
+
+string comfort = temperature switch
+{
+    < 0 or > 40 => "极端温度",
+    >= 0 and < 10 => "寒冷",
+    >= 10 and < 20 => "凉爽",
+    >= 20 and <= 30 => "舒适",
+    > 30 and <= 40 => "炎热"
+};
+
+Console.WriteLine($"温度 {temperature}°C，{comfort}");
+
+// 5. 属性模式
+record User(string Name, int Age, string City);
+
+var user = new User("张三", 25, "北京");
+
+string greeting = user switch
+{
+    { Age: < 18 } => $"未成年用户 {user.Name}",
+    { Age: >= 18 and < 60, City: "北京" } => $"北京成年用户 {user.Name}",
+    { Age: >= 60 } => $"老年用户 {user.Name}",
+    _ => $"用户 {user.Name}"
+};
+
+Console.WriteLine(greeting);
+\`\`\`
+
+### 四、列表模式（C# 11+）
+
+\`\`\`csharp
+// 列表模式：匹配数组或列表的元素
+
+int[] numbers = { 1, 2, 3, 4, 5 };
+
+string result = numbers switch
+{
+    [1, 2, ..] => "以 1, 2 开头",
+    [_, _, _, ..] => "至少有 3 个元素",
+    [] => "空数组",
+    _ => "其他"
+};
+
+Console.WriteLine(result);
+
+// 匹配特定长度
+int[] array = { 10, 20, 30 };
+
+string desc = array switch
+{
+    [var a] => $"单元素：{a}",
+    [var a, var b] => $"双元素：{a}, {b}",
+    [var a, var b, var c] => $"三元素：{a}, {b}, {c}",
+    _ => "更多元素"
+};
+
+Console.WriteLine(desc);
+
+// 结合其他模式
+int[] values = { 1, 2, 3 };
+
+bool match = values is [1, >= 2, < 5];
+Console.WriteLine($"匹配：{match}");  // true
+\`\`\`
+
+### 五、模式匹配实战
+
+\`\`\`csharp
+// 模式匹配在实际开发中的应用
+
+// 1. 解析命令
+string command = "GET /api/users";
+
+var result = command.Split(' ') switch
+{
+    ["GET", var path] => $"获取资源：{path}",
+    ["POST", var path] => $"创建资源：{path}",
+    ["PUT", var path] => $"更新资源：{path}",
+    ["DELETE", var path] => $"删除资源：{path}",
+    _ => "未知命令"
+};
+
+Console.WriteLine(result);
+
+// 2. 数据验证
+record Request(string Method, string Path, int Port);
+
+string ValidateRequest(Request request) => request switch
+{
+    { Method: "GET" or "POST", Path: not null, Port: >= 80 and <= 65535 } => "有效请求",
+    { Method: null } => "方法不能为空",
+    { Path: null } => "路径不能为空",
+    { Port: < 80 or > 65535 } => "端口无效",
+    _ => "无效请求"
+};
+
+var req1 = new Request("GET", "/api/users", 8080);
+var req2 = new Request(null, "/api/users", 8080);
+var req3 = new Request("GET", "/api/users", 70000);
+
+Console.WriteLine(ValidateRequest(req1));
+Console.WriteLine(ValidateRequest(req2));
+Console.WriteLine(ValidateRequest(req3));
+
+// 3. 状态机
+enum State { Idle, Running, Paused, Stopped }
+enum Event { Start, Pause, Resume, Stop }
+
+State HandleEvent(State current, Event evt) => (current, evt) switch
+{
+    (State.Idle, Event.Start) => State.Running,
+    (State.Running, Event.Pause) => State.Paused,
+    (State.Running, Event.Stop) => State.Stopped,
+    (State.Paused, Event.Resume) => State.Running,
+    (State.Paused, Event.Stop) => State.Stopped,
+    _ => current
+};
+
+State state = State.Idle;
+state = HandleEvent(state, Event.Start);
+Console.WriteLine($"状态：{state}");  // Running
+state = HandleEvent(state, Event.Pause);
+Console.WriteLine($"状态：{state}");  // Paused
+\`\`\`
+
+### 六、小结
+
+本章学到了：
+- \`record\` 类型和值相等性
+- \`record struct\` 和 \`readonly record struct\`
+- 模式匹配的各种形式：类型、常量、关系、逻辑、属性、列表
+- 模式匹配在实际开发中的应用
+
+第二部分面向对象编程到此结束！接下来我们进入第三部分：集合与泛型。`,
   },
 ];
 

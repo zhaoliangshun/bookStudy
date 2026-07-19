@@ -78,6 +78,21 @@ function runRubyCode(code) {
     let stderrBuf = "";
     let truncated = false;
     let killed = false;
+    // 修复：用 resolved 标记防止多次 resolve
+    let resolved = false;
+    const safeResolve = (value) => {
+      if (resolved) return;
+      resolved = true;
+      resolve(value);
+    };
+    // 统一清理 timer：避免定时器长时间持有子进程引用造成内存泄漏
+    let timer = null;
+    const clearTimer = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
 
     // 收集 stdout
     child.stdout.on("data", (chunk) => {
@@ -103,7 +118,9 @@ function runRubyCode(code) {
 
     // 子进程出错（例如 ruby 不存在）
     child.on("error", (err) => {
-      resolve({
+      // error 事件触发后 close 可能不再触发，需在此清除超时定时器
+      clearTimer();
+      safeResolve({
         output: "",
         error:
           `无法启动 ${RUBY_BIN}：${err.message}\n` +
@@ -115,9 +132,11 @@ function runRubyCode(code) {
 
     // 子进程退出
     child.on("close", (code, signal) => {
+      clearTimer();
+      if (resolved) return;
       if (killed) {
         // 被超时强制终止
-        resolve({
+        safeResolve({
           output: stdoutBuf,
           error:
             stderrBuf +
@@ -137,7 +156,7 @@ function runRubyCode(code) {
         else error += note;
       }
 
-      resolve({ output, error, exitCode: code });
+      safeResolve({ output, error, exitCode: code });
     });
 
     // 通过 stdin 传入代码，然后关闭 stdin 通知子进程读取完毕
@@ -147,7 +166,7 @@ function runRubyCode(code) {
     child.stdin.end();
 
     // 超时处理：到时间还没退出就 kill
-    const timer = setTimeout(() => {
+    timer = setTimeout(() => {
       killed = true;
       try {
         child.kill("SIGKILL");
@@ -155,9 +174,6 @@ function runRubyCode(code) {
         // ignore
       }
     }, EXEC_TIMEOUT_MS);
-
-    // 子进程退出后清除定时器，避免内存泄漏
-    child.on("close", () => clearTimeout(timer));
   });
 }
 
@@ -216,16 +232,39 @@ export async function GET() {
       env: { PATH: getEnhancedPath() },
     });
     let version = "";
-    child.stdout.on("data", (c) => (version += c.toString()));
-    child.stderr.on("data", (c) => (version += c.toString()));
+    // 修复：用 resolved 标记防止多次 resolve
+    let resolved = false;
+    const safeResolve = (value) => {
+      if (resolved) return;
+      resolved = true;
+      resolve(value);
+    };
+    let timer = null;
+    const clearTimer = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+    const onData = (c) => (version += c.toString());
+    child.stdout.on("data", onData);
+    child.stderr.on("data", onData);
     // 健康检查超时保护：5 秒未响应视为不可用
-    const timer = setTimeout(() => {
+    timer = setTimeout(() => {
+      clearTimer();
+      child.stdout.removeListener("data", onData);
+      child.stderr.removeListener("data", onData);
       child.kill("SIGKILL");
-      resolve(NextResponse.json({ status: "timeout", error: "版本检查超时" }, { status: 504 }));
+      safeResolve(
+        NextResponse.json({ status: "timeout", error: "版本检查超时" }, { status: 504 })
+      );
     }, 5000);
     child.on("close", () => {
-      clearTimeout(timer);
-      resolve(
+      clearTimer();
+      child.stdout.removeListener("data", onData);
+      child.stderr.removeListener("data", onData);
+      if (resolved) return;
+      safeResolve(
         NextResponse.json({
           status: "ok",
           message: "Ruby 代码执行服务正在运行",
@@ -234,8 +273,11 @@ export async function GET() {
       );
     });
     child.on("error", () => {
-      clearTimeout(timer);
-      resolve(
+      clearTimer();
+      child.stdout.removeListener("data", onData);
+      child.stderr.removeListener("data", onData);
+      if (resolved) return;
+      safeResolve(
         NextResponse.json({
           status: "error",
           message: `未找到 ${RUBY_BIN}，请先安装 Ruby`,

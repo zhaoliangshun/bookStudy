@@ -1,5 +1,5 @@
 // =============================================================
-// C# 从入门到精通大全 - 第三批章节（第三部分 面向对象基础，共 5 章）
+// C# 大全 - 第三批章节（第三部分 面向对象基础，共 5 章）
 // -------------------------------------------------------------
 // 本批包含 5 章：
 //   csharp2-ch10 : 第十章 类与对象入门
@@ -1830,4 +1830,230 @@ class Cat : Animal {
 
 \`\`\`csharp
 // ---------- 注意：这两个代码块只有类型定义，没有可执行代码
-// 所以不会
+// 所以不会触发 CS8803，可以按原顺序（类型在前，注释在后）----------
+
+// 第一个块：sealed 方法演示
+class Base {
+    public virtual void DoWork() {
+        Console.WriteLine("Base 工作");
+    }
+}
+
+class Derived : Base {
+    // sealed override：这个方法重写了父类，但不允许子类再重写它
+    public sealed override void DoWork() {
+        Console.WriteLine("Derived 工作");
+    }
+}
+
+// ❌ 如果 Derived 是 sealed class，就不能被继承
+// class SubDerived : Derived { }  // 编译错误
+
+// SubDerived 直接继承 Base（不是 Derived），可以 override Base 的 DoWork
+class SubDerived : Base {
+    // 注意：这里可以 override Base.DoWork，因为 Derived 的 sealed 只阻止继承自 Derived 的类重写
+    public override void DoWork() {
+        Console.WriteLine("SubDerived 工作");
+    }
+}
+\`\`\`
+
+\`\`\`csharp
+// sealed 类：完全不能被继承
+// 为什么 sealed 一个类？① 安全考虑 ② 性能优化（JIT能内联）③ 设计上不希望被扩展
+// .NET 里 string 就是 sealed 的，你不能继承 string
+sealed class FinalClass {
+    public void DoSomething() { }
+}
+
+// ❌ 编译错误：不能继承 sealed 类
+// class TryExtend : FinalClass { }
+\`\`\`
+
+> ⭐ \`sealed\` 用于：① 防止关键类被误继承破坏不变式；② 性能优化（JIT 可内联 sealed 方法）；③ 框架设计。日常少主动用，但 .NET BCL 很多类是 sealed（如 \`string\`）。
+
+### 七、Object 基类 ⭐
+
+C# 所有类型最终都继承自 \`System.Object\`。不写 \`:\` 也默认继承：
+
+\`\`\`csharp
+// ---------- 可执行代码 ----------
+// 所有类都继承自 object，不管你写不写 : object
+object obj = new Foo();
+Console.WriteLine($"类型：{obj.GetType()}");           // 获取实际类型
+Console.WriteLine($"哈希码：{obj.GetHashCode()}");     // 用于哈希表
+Console.WriteLine($"转字符串：{obj.ToString()}");      // 默认返回类名
+Console.WriteLine($"等于自己：{obj.Equals(obj)}");     // 默认引用相等
+
+// ---------- 类型声明 ----------
+// 这两个写法完全等价
+class Foo { }
+class Foo2 : object { }  // 显式写出来也可以，但没必要
+\`\`\`
+
+> ⭐ \`GetType()\`、\`ToString()\`、\`Equals()\`、\`GetHashCode()\` 是 \`Object\` 提供的四个虚方法，可被重写以自定义行为（下一节演示）。
+
+### 八、重写 ToString / Equals / GetHashCode ⭐
+
+默认 \`ToString()\` 返回类全名，\`Equals()\` 比较引用。日常开发常重写它们：
+
+\`\`\`csharp
+using System.Collections.Generic;
+
+// ---------- 可执行代码 ----------
+var m1 = new Money(99.9m, "CNY");
+var m2 = new Money(99.9m, "CNY");
+var m3 = new Money(99.9m, "USD");
+
+Console.WriteLine($"m1: {m1}");  // 99.90 CNY（重写了 ToString，打印友好）
+Console.WriteLine($"m1 == m2: {m1 == m2}");  // True（重写了 Equals，值相等）
+Console.WriteLine($"m1 == m3: {m1 == m3}");  // False（币种不同）
+
+// 放进字典测试：重写 Equals 必须同时重写 GetHashCode
+var dict = new Dictionary<Money, string>();
+dict[m1] = "第一笔";
+Console.WriteLine($"查 m2：{dict.TryGetValue(m2, out var v) ? v : "无"}");  // "第一笔"
+// 为什么能查到？因为 m1 和 m2 值相等，哈希码也相等
+
+// ---------- 类型声明 ----------
+class Money {
+    public decimal Amount { get; }
+    public string Currency { get; }
+
+    public Money(decimal amount, string currency) {
+        Amount = amount;
+        Currency = currency;
+    }
+
+    // 重写 ToString：让打印更友好
+    // 为什么重写？默认 ToString 返回命名空间.类名，比如 "MyApp.Money"，对用户不友好
+    public override string ToString() {
+        return $"{Amount:F2} {Currency}";
+    }
+
+    // 重写 Equals：改成值相等（金额和币种都相同就算相等）
+    // 默认 Equals 是引用相等：即使两个对象值一样，new 两次也是两个对象，不相等
+    public override bool Equals(object obj) {
+        // is 模式匹配：obj 如果是 Money 类型，就赋值给 other
+        if (obj is Money other) {
+            return Amount == other.Amount && Currency == other.Currency;
+        }
+        return false;
+    }
+
+    // 重写 GetHashCode：重写 Equals 就必须重写这个！
+    // 为什么？Dictionary/HashSet 先用 GetHashCode 找桶，再用 Equals 确认
+    // 如果值相等的对象哈希码不同，字典就找不到
+    public override int GetHashCode() {
+        return HashCode.Combine(Amount, Currency);  // C# 12+ 用 HashCode.Combine 组合多个值
+    }
+
+    // 运算符重载：让 == 和 != 也走 Equals 逻辑
+    // 默认 == 对于引用类型是引用比较，重写后变成值比较
+    public static bool operator ==(Money a, Money b) =>
+        a?.Equals(b) ?? b is null;  // ?. 空条件，?? 空合并
+    public static bool operator !=(Money a, Money b) => !(a == b);
+}
+\`\`\`
+
+> ⭐ **重写 \`Equals\` 必须同时重写 \`GetHashCode\`**——否则放进 Dictionary/HashSet 会出 bug（值相等的对象哈希码不同，找不到）。C# 12 用 \`HashCode.Combine\` 简化哈希码生成。
+
+### 九、实战 demo：图形体系
+
+\`\`\`csharp
+using System.Linq;
+
+// ---------- 可执行代码 ----------
+Shape[] shapes = {
+    new Circle(5),
+    new Rectangle(4, 6),
+    new Square(3)
+};
+
+// 多态：遍历数组，统一调用 ToString/Area/Perimeter
+// 运行时自动调用每个子类的实际实现，不用判断类型
+foreach (var s in shapes) {
+    Console.WriteLine(s);  // 自动调用重写的 ToString
+}
+
+// Sum 是 LINQ 方法：计算所有图形的总面积
+double total = shapes.Sum(s => s.Area());
+Console.WriteLine($"总面积：{total:F2}");
+
+// ---------- 类型声明 ----------
+// 图形基类
+class Shape {
+    public string Name { get; }
+
+    // 基类构造：给图形起名字
+    public Shape(string name) {
+        Name = name;
+    }
+
+    // 虚方法：计算面积，子类重写
+    public virtual double Area() => 0;
+    public virtual double Perimeter() => 0;
+
+    // 重写 Object 的 ToString：统一打印格式
+    public override string ToString() {
+        return $"{Name}：面积 {Area():F2}，周长 {Perimeter():F2}";
+    }
+}
+
+// 圆形
+class Circle : Shape {
+    public double Radius { get; }
+
+    // : base("圆形") 调用父类构造，把名字传进去
+    public Circle(double r) : base("圆形") {
+        Radius = r;
+    }
+
+    // override 重写面积和周长公式
+    public override double Area() => Math.PI * Radius * Radius;
+    public override double Perimeter() => 2 * Math.PI * Radius;
+}
+
+// 矩形
+class Rectangle : Shape {
+    public double Width { get; }
+    public double Height { get; }
+
+    public Rectangle(double w, double h) : base("矩形") {
+        Width = w;
+        Height = h;
+    }
+
+    public override double Area() => Width * Height;
+    public override double Perimeter() => 2 * (Width + Height);
+}
+
+// 正方形：继承 Rectangle（正方形是特殊的矩形）
+class Square : Rectangle {
+    // : base(side, side) 调 Rectangle 构造，宽高都是 side
+    public Square(double side) : base(side, side) {
+        // 注意：这里 Name 还是"矩形"，因为 base("矩形") 在 Rectangle 构造里设的
+        // 我们可以在 ToString 里修正显示
+    }
+
+    // 重写 ToString，名字改成"正方形"
+    public override string ToString() {
+        return $"正方形（边长 {Width}）：面积 {Area():F2}，周长 {Perimeter():F2}";
+    }
+}
+\`\`\`
+
+### 十、小结
+
+- 继承用 \`:\`，单继承，可多层。
+- \`base\` 调父类构造和方法，\`base(...)\` 必须在初始化器。
+- \`protected\`：本类 + 子类可见，是继承场景的关键修饰符。
+- \`virtual\` 标记可重写，\`override\` 实际重写——这是多态的基础。
+- \`sealed\` 阻止继承或重写，性能优化或保护不变式时用。
+- 所有类型继承 \`Object\`，提供 \`ToString\`/\`Equals\`/\`GetHashCode\`/\`GetType\`。
+- 重写 \`Equals\` **必须同时重写 \`GetHashCode\`**，否则哈希集合出错。
+- 多态：父类引用指向子类对象，调子类实现——OOP 的精髓。`,
+  },
+];
+
+export { chapters };

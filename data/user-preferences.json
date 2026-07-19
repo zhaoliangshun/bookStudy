@@ -3,7 +3,9 @@
     "未分组": [
       "/playground"
     ],
-    "Python 编程": [],
+    "Python 编程": [
+      "/py10"
+    ],
     "JS / TS 生态": [
       "/tsgen",
       "/ts",
@@ -14,7 +16,9 @@
       "/reactsrc",
       "/vuesrc",
       "/zod",
-      "/ts-quick"
+      "/ts-quick",
+      "/tsbook",
+      "/node4"
     ],
     "Java 开发": [
       "/java",
@@ -35,12 +39,17 @@
       "/fe-engineering",
       "/fe-interview",
       "/vite",
+      "/vite2",
       "/rhf",
       "/tsx",
       "/forgerock",
       "/forgerock-demo",
       "/mantine",
-      "/mantine-demo"
+      "/tsx-story",
+      "/tsx2",
+      "/mantine2",
+      "/tsrx",
+      "/tsx-pro"
     ],
     "后端与网络": [
       "/http",
@@ -50,7 +59,8 @@
       "/deploy",
       "/go",
       "/backend-essential",
-      "/https-book"
+      "/https-book",
+      "/csharp3"
     ],
     "实战项目": [
       "/todo",
@@ -114,7 +124,8 @@
     ],
     "已隐藏": [
       "/mindset",
-      "/fastapi-fullstack"
+      "/fastapi-fullstack",
+      "/mantine-demo"
     ],
     "算法与数据结构": [
       "/algo",
@@ -191,6 +202,11 @@
         "id": "c-mrq2op8ti0fz",
         "name": "C#开发",
         "icon": "📁"
+      },
+      {
+        "id": "c-mrqzrpdhafid",
+        "name": "Typescript",
+        "icon": "📁"
       }
     ],
     "renamed": {},
@@ -199,6 +215,7 @@
     "order": [
       "Python 编程",
       "nodejs",
+      "Typescript",
       "JS / TS 生态",
       "Java 开发",
       "AI 智能开发",

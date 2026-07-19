@@ -34,7 +34,15 @@ function getEnhancedPath() {
   if (_enhancedPath !== null) return _enhancedPath;
   const extra = process.platform === "win32"
     ? ["C:\\Program Files\\dotnet", "C:\\Program Files (x86)\\dotnet"]
-    : ["/usr/local/share/dotnet", "/usr/share/dotnet"];
+    : [
+        // Homebrew Apple Silicon 默认路径（dotnet-sdk 通过 brew 安装在此）
+        "/opt/homebrew/bin",
+        // Homebrew Intel Mac 默认路径
+        "/usr/local/bin",
+        // .NET 官方安装器在 macOS 的常见路径
+        "/usr/local/share/dotnet",
+        "/usr/share/dotnet",
+      ];
   _enhancedPath = [process.env.PATH, ...extra.filter(existsSync)].join(delimiter);
   return _enhancedPath;
 }
@@ -140,6 +148,21 @@ function runCommand(cmd, args, opts, timeout) {
     let stderrBuf = "";
     let truncated = false;
     let killed = false;
+    // 修复：用 resolved 标记防止多次 resolve（error + close 重复触发场景）
+    let resolved = false;
+    const safeResolve = (value) => {
+      if (resolved) return;
+      resolved = true;
+      resolve(value);
+    };
+    // 统一清理 timer：避免定时器长时间持有子进程引用造成内存泄漏
+    let timer = null;
+    const clearTimer = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
 
     child.stdout.on("data", (chunk) => {
       const text = chunk.toString("utf8");
@@ -162,7 +185,9 @@ function runCommand(cmd, args, opts, timeout) {
     });
 
     child.on("error", (err) => {
-      resolve({
+      // error 事件触发后 close 可能不再触发，需在此清除超时定时器
+      clearTimer();
+      safeResolve({
         output: "",
         error: `无法启动 ${cmd}：${err.message}`,
         exitCode: -1,
@@ -170,8 +195,10 @@ function runCommand(cmd, args, opts, timeout) {
     });
 
     child.on("close", (code, signal) => {
+      clearTimer();
+      if (resolved) return;
       if (killed) {
-        resolve({
+        safeResolve({
           output: stdoutBuf,
           error: stderrBuf + `\n[执行超时] 超过 ${timeout / 1000} 秒被强制终止。`,
           exitCode: -1,
@@ -185,10 +212,10 @@ function runCommand(cmd, args, opts, timeout) {
         else stderrBuf += note;
       }
 
-      resolve({ output: stdoutBuf, error: stderrBuf, exitCode: code });
+      safeResolve({ output: stdoutBuf, error: stderrBuf, exitCode: code });
     });
 
-    const timer = setTimeout(() => {
+    timer = setTimeout(() => {
       killed = true;
       try {
         child.kill("SIGKILL");
@@ -196,8 +223,6 @@ function runCommand(cmd, args, opts, timeout) {
         // ignore
       }
     }, timeout);
-
-    child.on("close", () => clearTimeout(timer));
   });
 }
 
