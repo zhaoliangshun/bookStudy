@@ -1,59 +1,43 @@
 "use client";
-// ↑ "use client" 指令：把本文件标记为【客户端组件】(Client Component)。
-//   原因：Mantine 的所有组件都依赖 React Hooks（useState / useEffect / Context），
-//   而在 Next.js App Router 中，默认是【服务端组件】，禁止使用 Hook。
-//   加上这一行后，Next.js 才允许本文件在浏览器端运行，并使用 Mantine 的全部能力。
 
 // =============================================================
 // 文件：app/mantine-form-zod/page.js
 // 路由：/mantine-form-zod
 // -------------------------------------------------------------
 // 【一句话职责】
-//   用一个「用户注册表单」综合演示 Mantine Form 与 Zod 校验的【进阶用法】。
-//   已有的 /mantine-demo 演示了基础字段，本 demo 补全以下高频实战场景：
-//     1. 嵌套对象校验（address.{province, city, zip}）
-//     2. 数组字段校验（tags[]）+ 动态增删
-//     3. discriminatedUnion（按 method 切换不同的子字段集）
-//     4. superRefine 跨字段校验（confirmPassword === password）
-//     5. refine 异步校验（模拟用户名是否被占用）
-//     6. transform（邮箱自动 trim + lowercase）
-//     7. z.coerce.number（处理 NumberInput 的字符串值）
-//     8. z.literal(true) 强制勾选 + z.string().url() + 正则 zip/phone
-//     9. validateInputOnBlur / validateInputOnChange 两种校验时机
-//    10. 提交 loading、重置、清除错误、Modal 展示校验通过的数据
+//   用一个「用户注册表单」演示 Mantine Form 与 Zod 校验的【进阶用法】，
+//   重点演示用户名/密码字段的【实时规则提示条】（RuleHints）组件：
+//   默认隐藏 → 聚焦时灰色条款 → 输入时实时变绿✓/红✕。
+//
+// 【表单字段】
+//   ① 基础信息：username、email、password、confirmPassword
+//   ② OTP：一次性验证码（6 位数字，异步后端校验）
+//
+// 【用户名规则（3 条）】
+//   1. Must be 8-15 characters in length
+//   2. Must include alphabets and numbers
+//   3. Must be unique login name（异步校验）
+//
+// 【密码规则（3 条）】
+//   1. Must contain 8-20 characters in length (Case sensitive)
+//   2. Must include Uppercase and Lowercase alphabets, Numbers,
+//      and Special characters (Such as !@#$%^&*{}[]/|.,<>?`)
+//   3. Must be different from your Login Name（跨字段校验）
 //
 // 【三方库版本】
 //   - @mantine/core ^9.4.1
 //   - @mantine/form  ^9.4.1   ← 新版用 schemaResolver 而非旧的 zodResolver
-//   - zod            ^4.4.3   ← 注意 Zod v4 自定义消息 API 与 v3 不同
+//   - zod            ^4.4.3
 //   - next           ^16.2.9
 //   - react          19.2.4
-//
-// 【为什么要"自己包一层 MantineProvider"】
-//   根目录 layout.js 是整个站点共用的，里面没有 MantineProvider。
-//   Mantine 组件必须在 <MantineProvider> 内才能读取主题、CSS 变量。
-//   所以每个 Mantine 演示页都要【自包含】地引入样式 + Provider，
-//   避免污染其他路由（之前发生过 ColorSchemeScript 与主站 data-theme 冲突）。
 // =============================================================
 
-// ---- Mantine 全局样式 ----
-// 必须在 MantineProvider 之前引入，包含 CSS Reset、CSS 变量、组件基础样式。
-// 不引入的话所有组件会"裸奔"（无样式）。
 import "@mantine/core/styles.css";
 
 import { useState } from "react";
-// useState：React 基础 Hook，用于在函数组件里保存可变状态。
-//   本文件用它管理三个状态：submitted（提交数据）、opened（弹窗开关）、submitting（提交中 loading）。
 
-// ---- MantineProvider + 自定义主题 ----
 import { MantineProvider, createTheme } from "@mantine/core";
 
-// createTheme：创建一个 Mantine 主题对象。
-// 这里演示了几个最常用的主题定制项：
-//   primaryColor     : 主色，影响所有 Button/Link/聚焦边框等
-//   defaultRadius    : 全局默认圆角档位（xs/sm/md/lg/xl）
-//   autoContrast     : 自动根据背景色选择前景文字色，避免深底深字
-//   fontFamily       : 全局字体（这里复用主站的 --sans 变量，没有则用回退字体）
 const theme = createTheme({
   primaryColor: "indigo",
   defaultRadius: "md",
@@ -66,25 +50,6 @@ const theme = createTheme({
   },
 });
 
-// ---- 批量引入 Mantine 组件 ----
-// 每个组件的用途在使用处再细说，这里先列个速查：
-//   Container          : 页面容器，限制最大宽度并居中
-//   Paper              : 带背景/边框/阴影的"纸张"容器
-//   Title / Text       : 标题 / 通用文本
-//   Stack / Group      : 垂直布局 / 水平布局
-//   Divider            : 分隔线
-//   TextInput          : 文本输入框
-//   NumberInput        : 数字输入框
-//   PasswordInput      : 密码输入框（带显示/隐藏按钮）
-//   Select             : 下拉选择
-//   Checkbox           : 复选框
-//   Button             : 按钮
-//   Box                : 通用块级容器
-//   Code               : 行内代码样式
-//   Alert              : 提示条（带图标和颜色）
-//   Modal              : 弹窗
-//   ActionIcon         : 小图标按钮（用于"删除标签"等操作）
-//   useMantineColorScheme : 亮/暗主题切换 Hook
 import {
   Container,
   Paper,
@@ -94,270 +59,237 @@ import {
   Group,
   Divider,
   TextInput,
-  NumberInput,
   PasswordInput,
-  Select,
-  Checkbox,
+  PinInput,
   Button,
   Box,
   Code,
   Alert,
   Modal,
-  ActionIcon,
   useMantineColorScheme,
 } from "@mantine/core";
 
-// ---- Mantine Form 与 Zod 桥接 ----
-// useForm        : @mantine/form 核心 Hook，创建表单实例
-//                 返回 { values, errors, getInputProps, onSubmit, reset,
-//                       setFieldValue, insertListItem, removeListItem, ... }
-// schemaResolver : 把任何符合 StandardSchemaV1 规范的 schema（Zod v4 已内置）
-//                 适配成 Mantine form 的 validate 函数。
-//                 ⚠️ Mantine v9 已废弃旧的 zodResolver，统一用 schemaResolver。
-//                 它会调用 schema["~standard"].validate(values)，
-//                 如果返回 Promise 就异步等待，否则同步返回。
 import { useForm, schemaResolver } from "@mantine/form";
-
-// ---- Zod ----
-// z 是 Zod 的命名空间，所有 schema 构造器都挂在它上面。
-// Zod 核心思想：用 schema（模式）声明数据该长什么样，再用数据去匹配 schema。
-// 校验失败时 Zod 会生成 issues 数组，schemaResolver 会把它们转换成
-// { "字段路径": "错误信息" } 的形式给 Mantine form 显示。
 import { z } from "zod";
 
 // =============================================================
-// 第一部分：定义 Zod 校验 Schema
+// 规则定义：用户名和密码的校验规则
 // -------------------------------------------------------------
-// 下面这个 schema 描述了一个完整的「用户注册」数据结构。
-// 从上到下依次演示：字符串/邮箱/密码/数字/URL/嵌套对象/数组/判别联合/字面量。
-// 重点 API 都加了行内注释，便于逐行对照。
+// 每条规则包含：
+//   id     : 唯一标识
+//   label  : 显示文案（与截图一致，英文）
+//   test   : 同步校验函数，(value, allValues) => boolean
+//   pending: 判断是否处于"待校验"状态（灰色✓），(value, data) => boolean
+//            返回 true  → 灰色（待校验/输入中）
+//            返回 false → 走 test() 判断通过/失败
+//
+// 【状态逻辑】
+//   字段为空（value === ""）→ 所有规则 pending（灰色✓）
+//   字段有值 → 逐条计算：
+//     pending(v, data) === true  → 灰色✓（信息不足，还无法判断）
+//     test(v, data)             → true: 绿色✓ / false: 红色✕
 // =============================================================
+
+// ---- 已被占用的用户名（模拟后端数据库）----
+const TAKEN_USERNAMES = ["admin123", "root1234", "test12345"];
+
+const usernameRules = [
+  {
+    id: "u_len",
+    label: "Must be 8-15 characters in length",
+    test: (v) => v.length >= 8 && v.length <= 15,
+    pending: (v) => v.length === 0,
+  },
+  {
+    id: "u_alphanum",
+    label: "Must include alphabets and numbers",
+    test: (v) => /[a-zA-Z]/.test(v) && /\d/.test(v),
+    pending: (v) => v.length === 0,
+  },
+  {
+    id: "u_unique",
+    label: "Must be unique login name",
+    test: (v) => {
+      return v.length >= 8 && !TAKEN_USERNAMES.includes(v.toLowerCase());
+    },
+    pending: (v) => v.length < 8,
+  },
+];
+
+const passwordRules = [
+  {
+    id: "p_len",
+    label: "Must contain 8-20 characters in length (Case sensitive)",
+    test: (v) => v.length >= 8 && v.length <= 20,
+    pending: (v) => v.length === 0,
+  },
+  {
+    id: "p_chars",
+    label:
+      "Must include Uppercase and Lowercase alphabets, Numbers, and Special characters (Such as !@#$%^&*{}[]/|.,<>?`)",
+    test: (v) =>
+      /[A-Z]/.test(v) &&
+      /[a-z]/.test(v) &&
+      /\d/.test(v) &&
+      /[!@#$%^&*{}\[\]/|.,<>?`]/.test(v),
+    pending: (v) => v.length === 0,
+  },
+  {
+    id: "p_diffname",
+    label: "Must be different from your Login Name",
+    test: (v, data) => {
+      const uname = (data.username || "").toLowerCase();
+      if (!uname || uname.length < 3) return true;
+      return !v.toLowerCase().includes(uname);
+    },
+    pending: (v, data) => !data.username || data.username.length < 3,
+  },
+];
+
+// =============================================================
+// RuleHints 组件：三色规则提示条
+// -------------------------------------------------------------
+// 【视觉设计（对照截图）】
+//   · 每条规则由一个【圆形图标】+ 【文字】组成
+//   · 圆形直径约 26px，白色图标居中
+//   · 三种状态：
+//     - pending（待校验）：灰色圆 #9ca3af + 白色 ✓ + 灰色文字
+//     - pass（通过）    ：绿色圆 #22c55e + 白色 ✓ + 绿色文字
+//     - fail（失败）    ：红色圆 #ef4444 + 白色 ✕ + 红色文字
+//
+// 【Props】
+//   rules        : 规则数组（见上方 usernameRules / passwordRules）
+//   value        : 当前输入值
+//   data         : 整个表单 values（跨字段校验用，比如密码要读 username）
+//   visible      : 是否显示
+//   forceValidate: 失焦后为 true，此时跳过 pending 状态，直接判定 pass/fail
+//                  （避免空字段失焦后仍显示灰色待校验的 bug）
+// =============================================================
+function RuleHints({ rules, value, data, visible, forceValidate }) {
+  if (!visible) return null;
+
+  return (
+    <Stack gap={6} mt={6}>
+      {rules.map((rule) => {
+        // ---- 计算本条规则的状态 ----
+        // forceValidate=true（失焦后）时，不再显示灰色 pending，
+        // 直接走 test() 判定 pass/fail，确保空字段显示红色错误而非灰色待校验
+        let status; // "pending" | "pass" | "fail"
+        if (!forceValidate && rule.pending(value, data)) {
+          status = "pending";
+        } else {
+          status = rule.test(value, data) ? "pass" : "fail";
+        }
+
+        // ---- 根据状态选颜色和图标 ----
+        const colors = {
+          pending: { bg: "#9ca3af", text: "#9ca3af" },
+          pass: { bg: "#22c55e", text: "#16a34a" },
+          fail: { bg: "#ef4444", text: "#dc2626" },
+        };
+        const icon = status === "fail" ? "\u2715" : "\u2713";
+
+        return (
+          <Group key={rule.id} gap={8} wrap="nowrap">
+            {/* 圆形图标 */}
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 26,
+                height: 26,
+                borderRadius: "50%",
+                backgroundColor: colors[status].bg,
+                color: "#fff",
+                fontSize: 14,
+                fontWeight: 700,
+                flexShrink: 0,
+                lineHeight: 1,
+              }}
+            >
+              {icon}
+            </span>
+            {/* 规则文字：支持多行换行（p_chars 文案很长） */}
+            <Text size="sm" c={colors[status].text} style={{ lineHeight: 1.5 }}>
+              {rule.label}
+            </Text>
+          </Group>
+        );
+      })}
+    </Stack>
+  );
+}
+
+// =============================================================
+// Zod Schema 定义
+// =============================================================
+
 const schema = z
   .object({
-    // ---- username：用户名 ----
-    // z.string()           : 字符串类型
-    // .min(3, "msg")       : 至少 3 字符，否则显示 msg
-    // .max(20, "msg")      : 最多 20 字符
-    // .refine(predicate, "msg") : 自定义校验，predicate 返回 true 通过。
-    //   ⭐ 这里 refine 用了【async 函数】，模拟"调用后端检查用户名是否被占用"。
-    //      schemaResolver 会检测到 schema 返回 Promise，自动走异步校验流程。
-    //   ⚠️ 注意：异步校验只在【提交】或【失焦后整 schema 重跑】时触发，
-    //      不要在 onChange 时启用，否则每输一个字符就发请求。
+    // ---- username：用户名（3 条规则）----
     username: z
       .string()
-      .min(3, "用户名至少 3 个字符")
-      .max(20, "用户名最多 20 个字符")
+      .min(8, "Must be 8-15 characters in length")
+      .max(15, "Must be 8-15 characters in length")
+      .regex(/[a-zA-Z]/, "Must include alphabets and numbers")
+      .regex(/\d/, "Must include alphabets and numbers")
       .refine(async (v) => {
-        // 模拟一次 200ms 网络请求
         await new Promise((r) => setTimeout(r, 200));
-        // 假设这三个用户名已被注册
-        const taken = ["admin", "root", "test"];
-        return !taken.includes(v.toLowerCase());
-      }, "该用户名已被占用"),
+        return !TAKEN_USERNAMES.includes(v.toLowerCase());
+      }, "Must be unique login name"),
 
     // ---- email：邮箱 ----
-    // .min(1, "msg")  : 必填（空串报错）
-    // .email("msg")   : Zod 内置邮箱格式校验
-    // .transform(v => ...) : 校验通过后对值做一次【转换】。
-    //   这里自动去除首尾空格并转小写，避免用户输入 " Alice@Example.com " 这种脏数据。
-    //   transform 后 form 拿到的是转换后的值，但 UI 输入框显示的仍是原始值。
-    //
-    // ⚠️【Zod v4 小变化】z.string().email() 在 v4 已标记为 deprecated，
-    //    官方推荐改用顶层 z.email("msg")。本 demo 沿用旧写法是为了与
-    //    /mantine-demo 保持一致，两种写法功能等价。
     email: z
       .string()
       .min(1, "邮箱不能为空")
       .email("邮箱格式不正确")
       .transform((v) => v.trim().toLowerCase()),
 
-    // ---- password：密码（复杂校验） ----
-    // 【设计思路】
-    //   把"长度 + 字符种类 + 黑名单 + 序列"四类规则全部用 refine 串起来，
-    //   Zod 会按顺序执行，第一条失败就立即返回该条的错误信息。
-    //   【为什么用 refine 而不是正则组合】
-    //     一条复杂的正则可读性极差，且无法精确报出"具体缺了什么"。
-    //     拆成多条 refine 后，每条只关注一个维度，错误信息可以明确告诉用户
-    //     "缺少大写字母"/"包含连续 3 个相同字符"，体验远好于一句"格式不正确"。
-    //
-    // 【规则清单】
-    //   1. 长度 8~32 位（min + max）
-    //   2. 必须包含【大写字母】  A-Z
-    //   3. 必须包含【小写字母】  a-z
-    //   4. 必须包含【数字】       0-9
-    //   5. 必须包含【特殊字符】   !@#$%^&*()-_=+[]{}|;:,.<>?/~
-    //   6. 不能包含【连续 3 个相同字符】（如 "aaa" / "111"）—— 抵御暴力破解
-    //   7. 不能包含【连续递增/递减序列】（如 "abc" / "987" / "qwerty"）
-    //   8. 不能是【常见弱密码】（如 password / 123456 / admin / qwerty 等）
-    //
-    // 【⚠️ 关于"密码不能包含用户名"】
-    //   这条规则需要同时访问 username 和 password，单字段 refine 做不到，
-    //   必须放到最外层的 superRefine 里跨字段校验。见下方 superRefine 第二段。
+    // ---- password：密码（3 条规则，第 3 条跨字段在 superRefine）----
     password: z
       .string()
-      // 规则 1：长度区间。min/max 都是字符串专用方法（z.string()）。
-      .min(8, "密码长度至少 8 位")
-      .max(32, "密码长度最多 32 位")
-      // 规则 2：大写字母。正则 /[A-Z]/ 匹配任意一个大写字母。
-      .refine((v) => /[A-Z]/.test(v), "密码必须包含至少 1 个大写字母")
-      // 规则 3：小写字母。
-      .refine((v) => /[a-z]/.test(v), "密码必须包含至少 1 个小写字母")
-      // 规则 4：数字。
-      .refine((v) => /\d/.test(v), "密码必须包含至少 1 个数字")
-      // 规则 5：特殊字符。在正则里 - 需要放在末尾或转义，避免被识别为范围符。
+      .min(8, "Must contain 8-20 characters in length (Case sensitive)")
+      .max(20, "Must contain 8-20 characters in length (Case sensitive)")
       .refine(
-        (v) => /[!@#$%^&*()\-_=+\[\]{}|;:,.<>?/~]/.test(v),
-        "密码必须包含至少 1 个特殊字符（如 !@#$%^&*）"
+        (v) => /[A-Z]/.test(v),
+        "Must include Uppercase and Lowercase alphabets, Numbers, and Special characters (Such as !@#$%^&*{}[]/|.,<>?`)"
       )
-      // 规则 6：连续 3 个相同字符。
-      //   正则解释：(.)\1{2,}：
-      //     (.)     捕获任意一个字符
-      //     \1{2,}  后面跟着至少 2 个与第一捕获组相同的字符
-      //   合起来就是"任意字符连续出现 3 次以上"。
-      //   ✕ "aaabbb"  → 命中（有 aaa）
-      //   ✓ "aabbcc"  → 通过
       .refine(
-        (v) => !/(.)\1{2,}/.test(v),
-        "密码不能包含 3 个及以上连续相同字符（如 aaa、111）"
+        (v) => /[a-z]/.test(v),
+        "Must include Uppercase and Lowercase alphabets, Numbers, and Special characters (Such as !@#$%^&*{}[]/|.,<>?`)"
       )
-      // 规则 7：连续递增/递减序列（数字 + 字母）。
-      //   正则解释（以数字为例）：/(?:012|123|234|...|890|987|876|...|210)/
-      //   逐条列出 3 位连续序列，命中即拒绝。
-      //   字母同理：abc/bcd/.../xyz 和 zyx/yxw/.../cba。
-      //   【为什么不写更通用的算法】
-      //     refine 里写算法（循环比较 charCode）也行，但正则更紧凑、可读。
-      //     长度只有 3，正则枚举 60 多条已足够，且性能远好于字符串扫描。
       .refine(
-        (v) =>
-          !/(?:012|123|234|345|456|567|678|789|890|987|876|765|654|543|432|321|210|abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz|zyx|yxw|xwv|wvu|vut|uts|tsr|srq|rqp|qpo|pon|nml|mlk|lkj|kji|jih|ihg|hgf|gfe|fed|edc|dcb|cba)/i.test(
-            v
-          ),
-        "密码不能包含 3 位及以上连续递增/递减字符（如 abc、123、987）"
+        (v) => /\d/.test(v),
+        "Must include Uppercase and Lowercase alphabets, Numbers, and Special characters (Such as !@#$%^&*{}[]/|.,<>?`)"
       )
-      // 规则 8：常见弱密码黑名单。
-      //   先转小写再比对，避免 Password / PASSWORD 绕过。
-      //   实际项目中应改为后端黑名单 + 暴露破解查询（haveibeenpwned API），
-      //   这里只列少量高频弱密码做演示。
-      .refine((v) => {
-        const weak = [
-          "password",
-          "passwd",
-          "12345678",
-          "123456789",
-          "1234567890",
-          "11111111",
-          "00000000",
-          "qwerty123",
-          "abc12345",
-          "admin123",
-          "letmein!",
-          "welcome1",
-        ];
-        return !weak.includes(v.toLowerCase());
-      }, "密码过于常见，请更换一个更复杂的密码"),
+      .refine(
+        (v) => /[!@#$%^&*{}\[\]/|.,<>?`]/.test(v),
+        "Must include Uppercase and Lowercase alphabets, Numbers, and Special characters (Such as !@#$%^&*{}[]/|.,<>?`)"
+      ),
 
     // ---- confirmPassword：确认密码 ----
-    // 这里只声明类型，真正的"两次输入必须一致"校验放在下面的 superRefine 里做。
-    // 因为校验需要同时访问 password 和 confirmPassword 两个字段，
-    // 单字段 refine 拿不到其他字段的值，必须用 superRefine 做跨字段校验。
     confirmPassword: z.string().min(1, "请再次输入密码"),
 
-    // ---- age：年龄 ----
-    // ⚠️【重要坑点】NumberInput 的 value 实际上是【字符串】（HTML input 的通病）。
-    //    如果直接用 z.number()，输入 "20" 会报"期望数字，收到字符串"。
-    //    解决方案 1：用 z.coerce.number()，先 Number(v) 再校验（推荐）。
-    //    解决方案 2：在 form 里用 z.string().regex(/^\d+$/).transform(Number)。
-    // .int()  : 必须是整数
-    // .min(18): 必须 ≥ 18
-    // .max(150): 必须 ≤ 150（防呆）
-    age: z.coerce
-      .number()
-      .int("年龄必须是整数")
-      .min(18, "必须年满 18 岁")
-      .max(150, "年龄不合理"),
-
-    // ---- website：个人网站（可选） ----
-    // .url("msg")  : URL 格式校验（v4 已 deprecated，可改用 z.url("msg")）
-    // .optional()  : 字段可以不存在（undefined 通过）
-    // .or(z.literal("")) : 允许空字符串通过（用户没填就保持空串）
-    //   为什么不只用 optional？因为表单初始值是 ""（空串）而不是 undefined，
-    //   空串会被 .url() 判定格式不正确，必须额外放行。
-    website: z.string().url("URL 格式不正确").optional().or(z.literal("")),
-
-    // ---- address：地址（嵌套对象） ----
-    // z.object 可以嵌套，对应表单里的 address.province / address.city / address.zip。
-    // Mantine form.getInputProps 支持点号路径，写法：getInputProps("address.province")。
-    address: z.object({
-      province: z.string().min(1, "请填写省份"),
-      city: z.string().min(1, "请填写城市"),
-      // .regex(pattern, "msg") : 正则校验。邮编必须 6 位纯数字。
-      zip: z.string().regex(/^\d{6}$/, "邮编必须是 6 位数字"),
-    }),
-
-    // ---- tags：标签数组（动态字段） ----
-    // z.array(T) : 数组，每个元素都要满足 T 这份 schema。
-    // .max(5, "msg") : 数组最多 5 个元素。
-    // 每个元素是字符串，1~10 字符。空字符串会被 min(1) 拦下。
-    // UI 上用 form.insertListItem("tags", "") 添加、form.removeListItem("tags", i) 删除。
-    tags: z
-      .array(z.string().min(1, "标签不能为空").max(10, "单个标签最多 10 字"))
-      .max(5, "最多添加 5 个标签"),
-
-    // ---- notification：通知偏好（判别联合 discriminatedUnion） ----
-    // 【什么是 discriminatedUnion】
-    //   普通的 union（z.union([A, B])）会让 Zod 依次尝试每个分支，
-    //   错误信息很难定位。discriminatedUnion 用一个【判别字段】(discriminator)
-    //   来直接选定分支，性能好、错误信息清晰。
-    //
-    // 【这里的设计】
-    //   按 method 字段把通知偏好分成三种：
-    //     - "email" : 必须额外填 notifyEmail（邮箱）
-    //     - "sms"   : 必须额外填 phone（手机号）
-    //     - "none"  : 不通知，没有额外字段
-    //   这样不同分支的校验规则互不干扰，切换 method 时自动切换校验规则。
-    notification: z.discriminatedUnion("method", [
-      z.object({
-        method: z.literal("email"),
-        notifyEmail: z.string().min(1, "请填写通知邮箱").email("邮箱格式不正确"),
-      }),
-      z.object({
-        method: z.literal("sms"),
-        // 中国大陆手机号正则：1 开头，第二位 3-9，共 11 位数字
-        phone: z.string().regex(/^1[3-9]\d{9}$/, "手机号格式不正确"),
-      }),
-      z.object({
-        method: z.literal("none"),
-        // 不通知分支，没有额外字段
-      }),
-    ]),
-
-    // ---- agree：同意条款 ----
-    // z.literal(true, "msg") : 值必须严格等于 true。
-    //   ⚠️【为什么不用 z.boolean()】boolean 接受 true 和 false，
-    //      无法强制必须勾选。literal(true) 没勾就报错。
-    //   ⚠️【Zod v4 API 变化】v3 用 { errorMap: () => ({ message: "..." }) }，
-    //      v4 已废弃 errorMap，直接把字符串作为第二个参数传入即可。
-    agree: z.literal(true, "必须同意服务条款才能注册"),
+    // ---- otp：一次性验证码 ----
+    otp: z
+      .string()
+      .min(6, "验证码必须是 6 位")
+      .max(6, "验证码必须是 6 位")
+      .regex(/^\d{6}$/, "验证码只能是数字")
+      .refine(
+        (v) => !/^(\d)\1{5}$/.test(v),
+        "验证码不能是 6 位全相同（如 000000）"
+      )
+      .refine(async (v) => {
+        await new Promise((r) => setTimeout(r, 300));
+        return v === "246810";
+      }, "验证码不正确，请检查后重新输入"),
   })
   // ---- superRefine：跨字段校验 ----
-  // 【为什么需要 superRefine】
-  //   普通 refine 只能拿到当前字段的值，无法访问其他字段。
-  //   "两次密码必须一致"需要同时看 password 和 confirmPassword，
-  //   所以在最外层 object 上用 superRefine，第二参数 ctx 可以主动 addIssue。
-  // 【参数】
-  //   data : 已经通过前面所有校验的整个表单对象
-  //   ctx  : RefinementCtx，调 ctx.addIssue({ path, code, message }) 主动报错
-  // 【path 写法】
-  //   ["confirmPassword"] 表示错误挂在 confirmPassword 字段上，
-  //   schemaResolver 会把它转成 { confirmPassword: "两次输入的密码不一致" }。
-  //
-  // 【跨字段校验清单】
-  //   1. 两次输入的密码必须一致（confirmPassword === password）
-  //   2. 密码不能包含用户名（不区分大小写，长度 ≥ 3 才检查，否则空串会误伤）
-  //      ⚠️ 这是【安全最佳实践】——如果密码里直接嵌了用户名，
-  //         一旦泄露，攻击者可以用用户名做侧信道推断密码。
+  // 只保留 2 条：密码=确认密码、密码≠用户名
   .superRefine((data, ctx) => {
-    // ---- 规则 1：两次密码一致 ----
+    // 规则 A：两次密码一致
     if (data.confirmPassword !== data.password) {
       ctx.addIssue({
         path: ["confirmPassword"],
@@ -366,10 +298,8 @@ const schema = z
       });
     }
 
-    // ---- 规则 2：密码不能包含用户名 ----
-    //   只在用户名 ≥ 3 字符时检查，避免用户名只输了 1~2 个字符时
-    //   误命中（比如用户名只输了 "a"，几乎所有密码都会"包含 a"）。
-    //   includes 区分大小写，所以双方都转小写再比对。
+    // 规则 B（截图第 3 条）：密码必须与登录名不同
+    // 用户名 ≥ 3 字符才检查，避免空串或太短的用户名误命中
     if (
       data.username &&
       data.username.length >= 3 &&
@@ -378,52 +308,24 @@ const schema = z
       ctx.addIssue({
         path: ["password"],
         code: "custom",
-        message: "密码不能包含用户名，请更换密码",
+        message: "Must be different from your Login Name",
       });
     }
   });
 
 // =============================================================
-// 第二部分：表单初始值
-// -------------------------------------------------------------
-// 字段名必须和 schema 的 key 完全对应（包括嵌套层）。
-// initialValues 决定：
-//   1. 表单打开时的默认值
-//   2. 点"重置"时回到的状态
-//   3. Mantine form 内部为每个字段创建对应的 ref / state
-// 注意几个细节：
-//   - age 用 18（数字），但 NumberInput 会把它当字符串处理
-//   - tags 给一个空数组，用户点"+ 添加标签"才会 push 元素
-//   - notification 必须包含完整的某个分支的初始值，否则 discriminatedUnion
-//     会因为缺字段而报错。这里默认 "none" 分支（最简单，无额外字段）。
-//   - agree: false，用户必须主动勾选
+// 初始值
 // =============================================================
 const initialValues = {
   username: "",
   email: "",
   password: "",
   confirmPassword: "",
-  age: 18,
-  website: "",
-  address: {
-    province: "",
-    city: "",
-    zip: "",
-  },
-  tags: [],
-  notification: {
-    method: "none",
-  },
-  agree: false,
+  otp: "",
 };
 
 // =============================================================
-// 第三部分：主题切换小组件 ThemeSwitcher
-// -------------------------------------------------------------
-// 单独抽出来让主组件代码更清爽。
-// useMantineColorScheme 返回 { colorScheme, setColorScheme, toggleColorScheme }。
-// 切换后 Mantine 修改 <html data-mantine-color-scheme="...">，
-// 所有组件通过 CSS 变量自动响应，无需刷新。
+// 主题切换
 // =============================================================
 function ThemeSwitcher() {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
@@ -432,7 +334,6 @@ function ThemeSwitcher() {
       <Text size="sm" c="dimmed">
         主题:
       </Text>
-      {/* 用两个 Button 做切换，演示最简实现 */}
       <Button
         size="xs"
         variant={colorScheme === "light" ? "filled" : "subtle"}
@@ -452,95 +353,125 @@ function ThemeSwitcher() {
 }
 
 // =============================================================
-// 第四部分：注册表单组件 RegistrationForm
-// -------------------------------------------------------------
-// 【职责】
-//   渲染所有输入控件，校验通过后把 values 通过 onSubmit prop 传给父组件。
-// 【为什么拆成独立组件】
-//   1. form 实例只在表单内部使用，父组件不用关心表单细节
-//   2. 把"表单交互"和"页面布局"解耦，便于复用
-// 【props】
-//   onSubmit : 父组件传入的提交回调，接收【校验通过 + transform 后】的 values
+// 注册表单组件
 // =============================================================
 function RegistrationForm({ onSubmit }) {
-  // ---- 创建 form 实例 ----
-  // useForm 的核心配置项：
-  //   initialValues           : 表单初始值（见上方定义）
-  //   validate                : 校验函数，这里用 schemaResolver(schema) 桥接 Zod
-  //   validateInputOnBlur     : 失焦时校验当前字段（布尔，true = 所有字段失焦都校验）
-  //   validateInputOnChange   : 输入时校验当前字段
-  //                             · true   : 所有字段输入时都校验
-  //                             · false  : 都不校验
-  //                             · 数组   : 只对【列出的字段路径】做 onChange 校验
-  //
-  // ⚠️【confirmPassword 特殊处理 —— 关键设计】
-  //   "两次密码一致"这条规则放在 superRefine 里，需要同时访问 password 和
-  //   confirmPassword。如果对 confirmPassword 开 onChange 校验，用户每输一个
-  //   字符就会被报"两次密码不一致"（因为还没输完当然不一致），体验极差。
-  //
-  //   解决方案：把 validateInputOnChange 改成【数组形式】，列出需要即时校验的
-  //   字段，把 "confirmPassword" 故意排除。这样：
-  //     · 其他字段（username/email/password/age/...）：onChange + onBlur 都校验
-  //     · confirmPassword：只在【失焦时】校验（由 validateInputOnBlur: true 保证）
-  //   用户输完确认密码、离开输入框的瞬间才检查"两次是否一致"，符合直觉。
-  //
-  // ⚠️【数组字段路径的写法】
-  //   Mantine form 内部会把形如 "tags.0" 的路径里的数字下标替换成
-  //   "__MANTINE_FORM_INDEX__" 再去数组里查找。所以要让 tags 数组字段
-  //   支持 onChange 校验，数组里要写 "tags.__MANTINE_FORM_INDEX__"。
-  //   （这是 Mantine form 的内部约定，详见 node_modules/@mantine/form 的
-  //    should-validate-on-change.mjs 和 form-index.mjs）
   const form = useForm({
     initialValues,
     validate: schemaResolver(schema),
-    // 所有字段失焦时都校验（包括 confirmPassword）
     validateInputOnBlur: true,
-    // 只对下列字段开 onChange 即时校验，confirmPassword 故意不列入
+    // username/password 不列入 onChange 校验：
+    //   · RuleHints 组件已经提供同步实时反馈（绿✓/红✕）
+    //   · 这两个字段含异步 refine（用户名查重），onChange 触发会导致
+    //     每次按键都发异步请求，有竞态风险
+    //   · 失焦时 validateInputOnBlur 会跑完整校验（含异步），
+    //     此时 form.errors 更新 → 红色边框出现
+    // confirmPassword 也只在失焦时校验一致性
+    // otp 含异步后端校验，不做 onChange
     validateInputOnChange: [
-      "username",
       "email",
-      "password",
-      "age",
-      "website",
-      "address.province",
-      "address.city",
-      "address.zip",
-      // 数组字段：用 __MANTINE_FORM_INDEX__ 占位符匹配 tags.0 / tags.1 / ...
-      "tags.__MANTINE_FORM_INDEX__",
-      "notification.method",
-      "notification.notifyEmail",
-      "notification.phone",
-      "agree",
     ],
   });
 
-  // ---- 提交处理 ----
-  // form.onSubmit(onSubmit) 返回一个真正的 HTML form onSubmit 处理函数。
-  // 它内部会：
-  //   1) event.preventDefault() 阻止页面刷新
-  //   2) 调用 schema.validate(values) 校验
-  //   3) 全部通过才调 onSubmit(values)；有错则把错误写入 form.errors
-  // 注意：onSubmit 拿到的 values 是【transform 后】的数据，
-  //       比如 email 已经被 trim + lowercase 了。
+  // ---- 聚焦 + touched 状态：控制 RuleHints 的显示/隐藏 ----
+  // 【为什么需要 touched】
+  //   旧逻辑仅用 focused + form.errors 控制可见性，会导致失焦时闪烁：
+  //   onBlur → setFocused(false) → 重渲染（此时异步校验尚未完成，errors 为空）→ 规则条消失
+  //   → 校验完成 → errors 被设置 → 再次重渲染 → 规则条重新出现 = 闪烁。
+  //
+  //   新逻辑引入 touched（一旦失焦就变为 true，不再复位）：
+  //   - 默认隐藏（从未聚焦/交互过）
+  //   - 聚焦时：显示，pending 态为灰色
+  //   - 失焦后（touched=true）：只要字段有值或有错误就显示
+  //   - 失焦后空字段：显示红色错误（通过 forceValidate 跳过 pending 态）
+  //   - 失焦后合法值：保持显示绿色对勾（给用户确认反馈）
+  const [usernameFocused, setUsernameFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [usernameTouched, setUsernameTouched] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
+
+  // 规则条显示条件（消除闪烁的核心逻辑）：
+  //   1. 正在聚焦 → 始终显示
+  //   2. 已经 touch 过 → 始终显示
+  //
+  // 【为什么不再依赖 form.errors / form.values？】
+  //   旧逻辑：touched && (value.length > 0 || !!errors)
+  //   问题：聚焦空字段后失焦，异步校验（200ms）还没完成时 errors 为空，
+  //        且 value.length === 0，导致规则条瞬间消失，校验完成后又出现 = 闪烁。
+  //   新逻辑：touched 后就持续显示，状态由 forceValidate + test() 同步判定，
+  //        完全不依赖异步 form.errors，彻底消除时序依赖。
+  //   - 失焦空字段：forceValidate=true → test() 返回 false → 红色✕（立即）
+  //   - 失焦合法值：forceValidate=true → test() 返回 true → 绿色✓（立即）
+  //   - 重置时 touched 复位为 false → 隐藏
+  const usernameHintsVisible = usernameFocused || usernameTouched;
+  const passwordHintsVisible = passwordFocused || passwordTouched;
+
+  // forceValidate：失焦后为 true，此时不再显示灰色 pending，直接判定 pass/fail
+  // （空字段失焦后应显示红色✕而非灰色✓）
+  const usernameForceValidate = usernameTouched && !usernameFocused;
+  const passwordForceValidate = passwordTouched && !passwordFocused;
+
+  // ---- 同步计算 error 状态（消除边框闪烁的核心）----
+  // 【为什么不用 form.errors？】
+  //   schema 含 async refine（用户名查重 200ms），整个 schema 变成异步。
+  //   失焦后 form.errors.username 需要等 async refine 完成才会被设置（约 500ms）。
+  //   这段时间内 TextInput 的 error=false → 边框是灰色 normal 色，
+  //   而规则条已经同步变红 → 视觉上"红色边框先消失，过一会儿再出现"= 闪烁。
+  //
+  // 【解决】
+  //   error 状态直接用 forceValidate + test() 同步计算，与规则条完全同步：
+  //   - 未 touched → false（无错误）
+  //   - touched 后 → 任一规则 test() 失败 → true（红色边框立即出现）
+  const usernameHasError =
+    usernameTouched &&
+    !usernameRules.every((r) => r.test(form.values.username, form.values));
+  const passwordHasError =
+    passwordTouched &&
+    !passwordRules.every((r) => r.test(form.values.password, form.values));
+
   return (
     <Paper p="lg" withBorder shadow="sm">
       <form onSubmit={form.onSubmit(onSubmit)}>
         <Stack gap="md">
-          {/* ===================================================
-              区块 1：基础信息
-              =================================================== */}
+          {/* ========== 区块 1：基础信息 ========== */}
           <Title order={4}>① 基础信息</Title>
 
-          {/* username —— 异步校验用户名是否被占用 */}
-          <TextInput
-            label="用户名"
-            placeholder="3~20 字符，不能是 admin/root/test"
-            withAsterisk
-            description="失焦后会异步检查是否被占用（模拟 200ms 网络请求）"
-            {...form.getInputProps("username")}
-          />
+          {/* ---- username + RuleHints ----
+              ⚠️【error 同步计算】
+                 不使用 form.errors.username（异步，需等 async refine 完成），
+                 改用 usernameHasError（同步，与规则条完全同步）。
+                 这样失焦瞬间边框立即变红，消除"红边框先消失再出现"的闪烁。
+                 error 为布尔值，不显示下方红字，错误信息由 RuleHints 承担。 */}
+          <Box>
+            <TextInput
+              label="Login Name"
+              placeholder="8-15 characters, letters and numbers"
+              withAsterisk
+              {...form.getInputProps("username")}
+              error={usernameHasError}
+              onFocus={(e) => {
+                setUsernameFocused(true);
+                form.getInputProps("username").onFocus?.(e);
+              }}
+              onBlur={(e) => {
+                // 先触发 Mantine 的失焦校验，再更新本地状态
+                // touched 置为 true 后，规则条不会因 focused=false 而消失，
+                // 从而彻底消除"消失一下再出现"的闪烁
+                form.getInputProps("username").onBlur?.(e);
+                setUsernameFocused(false);
+                setUsernameTouched(true);
+              }}
+            />
+            <RuleHints
+              rules={usernameRules}
+              value={form.values.username}
+              data={form.values}
+              visible={usernameHintsVisible}
+              forceValidate={usernameForceValidate}
+            />
+          </Box>
 
-          {/* email —— 自动 trim + lowercase（transform） */}
+          {/* ---- email ---- */}
           <TextInput
             label="邮箱"
             placeholder="user@example.com"
@@ -549,192 +480,113 @@ function RegistrationForm({ onSubmit }) {
             {...form.getInputProps("email")}
           />
 
-          {/* password —— 复杂校验：长度 + 4 类字符 + 序列 + 黑名单 + 不含用户名 */}
-          <PasswordInput
-            label="密码"
-            placeholder="8~32 位，含大小写字母、数字、特殊字符"
-            withAsterisk
-            description="需含大写/小写/数字/特殊字符各 1 个，不能有连续 3 个相同字符或 abc/123 序列，也不能是常见弱密码或包含用户名"
-            {...form.getInputProps("password")}
-          />
+          {/* ---- password + RuleHints ----
+              error 同步计算（与 username 同理），消除边框闪烁 */}
+          <Box>
+            <PasswordInput
+              label="Group Password"
+              placeholder="8-20 characters, include A-Z, a-z, 0-9, special chars"
+              withAsterisk
+              {...form.getInputProps("password")}
+              error={passwordHasError}
+              onFocus={(e) => {
+                setPasswordFocused(true);
+                form.getInputProps("password").onFocus?.(e);
+              }}
+              onBlur={(e) => {
+                form.getInputProps("password").onBlur?.(e);
+                setPasswordFocused(false);
+                setPasswordTouched(true);
+              }}
+            />
+            <RuleHints
+              rules={passwordRules}
+              value={form.values.password}
+              data={form.values}
+              visible={passwordHintsVisible}
+              forceValidate={passwordForceValidate}
+            />
+          </Box>
 
-          {/* confirmPassword —— 只在失焦时校验"两次密码一致"
-              ⚠️【为什么不在输入时校验】
-                 "两次密码一致"需要同时看 password 和 confirmPassword。
-                 如果输入过程中（onChange）就校验，用户每输一个字符都会被报
-                 "两次密码不一致"（因为还没输完当然不一致），体验极差。
-                 所以在 useForm 配置里把 confirmPassword 从 validateInputOnChange
-                 数组里排除了，只在失焦（onBlur）时校验，由 validateInputOnBlur: true 保证。
-                 用户输完确认密码、离开输入框的瞬间才会出现"两次密码不一致"红字。 */}
+          {/* ---- confirmPassword ---- */}
           <PasswordInput
-            label="确认密码"
-            placeholder="再输一次密码"
+            label="Confirm Password"
+            placeholder="Re-enter your password"
             withAsterisk
             {...form.getInputProps("confirmPassword")}
           />
 
           <Divider my="xs" />
 
-          {/* ===================================================
-              区块 2：个人信息
-              =================================================== */}
-          <Title order={4}>② 个人信息</Title>
+          {/* ========== 区块 2：OTP ========== */}
+          <Title order={4}>② 一次性验证码（OTP）</Title>
 
-          {/* age —— z.coerce.number 处理字符串输入 */}
-          <NumberInput
-            label="年龄"
-            withAsterisk
-            min={0}
-            max={150}
-            description="必须 18 岁以上，schema 用 z.coerce.number 处理字符串值"
-            {...form.getInputProps("age")}
-          />
-
-          {/* website —— 可选，URL 格式 */}
-          <TextInput
-            label="个人网站（可选）"
-            placeholder="https://example.com"
-            description="留空或填合法 URL"
-            {...form.getInputProps("website")}
-          />
-
-          <Divider my="xs" />
-
-          {/* ===================================================
-              区块 3：地址（嵌套对象）
-              =================================================== */}
-          <Title order={4}>③ 地址信息</Title>
-
-          {/* 嵌套字段用点号路径：address.province / address.city / address.zip */}
-          <Group grow>
-            <TextInput
-              label="省份"
-              placeholder="如：广东省"
-              withAsterisk
-              {...form.getInputProps("address.province")}
-            />
-            <TextInput
-              label="城市"
-              placeholder="如：深圳市"
-              withAsterisk
-              {...form.getInputProps("address.city")}
-            />
-          </Group>
-          <TextInput
-            label="邮编"
-            placeholder="6 位数字"
-            withAsterisk
-            {...form.getInputProps("address.zip")}
-          />
-
-          <Divider my="xs" />
-
-          {/* ===================================================
-              区块 4：标签数组（动态字段）
-              =================================================== */}
-          <Title order={4}>④ 兴趣标签（最多 5 个）</Title>
-
-          {/* 遍历 form.values.tags 渲染每个标签输入框 + 删除按钮 */}
-          {form.values.tags.map((_, i) => (
-            <Group key={i} grow>
-              <TextInput
-                placeholder={"标签 " + (i + 1) + "（1~10 字符）"}
-                {...form.getInputProps("tags." + i)}
-              />
-              {/* removeListItem(path, index) : 从指定路径的数组里移除第 index 项 */}
-              <ActionIcon
-                color="red"
-                variant="subtle"
-                size="lg"
-                onClick={() => form.removeListItem("tags", i)}
-                aria-label="删除标签"
-              >
-                ✕
-              </ActionIcon>
-            </Group>
-          ))}
-
-          {/* 添加按钮：限制最多 5 个 */}
-          <Button
-            variant="light"
-            size="xs"
-            disabled={form.values.tags.length >= 5}
-            onClick={() => form.insertListItem("tags", "")}
-          >
-            + 添加标签
-          </Button>
-
-          <Divider my="xs" />
-
-          {/* ===================================================
-              区块 5：通知偏好（discriminatedUnion）
-              =================================================== */}
-          <Title order={4}>⑤ 通知偏好</Title>
-
-          {/* method 是判别字段，用 Select 切换 */}
-          <Select
-            label="通知方式"
-            data={[
-              { value: "email", label: "📧 邮件通知" },
-              { value: "sms", label: "📱 短信通知" },
-              { value: "none", label: "🔕 不通知" },
-            ]}
-            // 注意：切换 method 时要同时把旧分支的字段清掉，
-            // 否则 discriminatedUnion 会因为"多余字段"报错（Zod 默认不剥离未知字段）。
-            // 这里在 onChange 里手动重置 notification 为只含 method 的对象。
-            {...form.getInputProps("notification.method")}
-            onChange={(v) => {
-              form.setFieldValue("notification", { method: v });
-            }}
-          />
-
-          {/* 根据 method 显示对应分支的字段 */}
-          {form.values.notification.method === "email" && (
-            <TextInput
-              label="通知邮箱"
-              placeholder="notify@example.com"
-              withAsterisk
-              {...form.getInputProps("notification.notifyEmail")}
-            />
-          )}
-          {form.values.notification.method === "sms" && (
-            <TextInput
-              label="手机号"
-              placeholder="11 位手机号"
-              withAsterisk
-              {...form.getInputProps("notification.phone")}
-            />
-          )}
-          {form.values.notification.method === "none" && (
-            <Text size="xs" c="dimmed">
-              已选择&ldquo;不通知&rdquo;，无需额外信息。
+          <Box>
+            <Text size="sm" fw={500} mb={4}>
+              验证码 <Text component="span" c="red" size="sm">*</Text>
             </Text>
-          )}
+            <Text size="xs" c="dimmed" mb={8}>
+              请输入发送到你手机/邮箱的 6 位数字验证码（演示用：正确码为{" "}
+              <Code>246810</Code>）。
+            </Text>
+
+            {/* PinInput 使用手动受控模式（value/onChange），不走 getInputProps，
+                所以 validateInputOnBlur 不会自动生效。
+                外层 Box 的 onBlur 利用事件冒泡捕获 PinInput 内部 input 的 blur，
+                再用 currentTarget.contains(relatedTarget) 判断焦点是否真正离开了
+                整个 PinInput 区域（排除 6 个 digit 之间切换焦点的情况） */}
+            <Box
+              onBlur={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget)) {
+                  form.validateField("otp");
+                }
+              }}
+            >
+              <PinInput
+                length={6}
+                type="number"
+                oneTimeCode
+                size="md"
+                gap="md"
+                value={form.values.otp}
+                onChange={(v) => form.setFieldValue("otp", v)}
+                error={!!form.errors.otp}
+              />
+            </Box>
+            {form.errors.otp && (
+              <Text size="xs" c="red" mt={6}>
+                {form.errors.otp}
+              </Text>
+            )}
+
+            <Group mt="xs" gap="xs">
+              <Text size="xs" c="dimmed">
+                没收到？
+              </Text>
+              <Button size="xs" variant="subtle">
+                重新发送（60s）
+              </Button>
+            </Group>
+          </Box>
 
           <Divider my="xs" />
 
-          {/* ===================================================
-              区块 6：同意条款 + 按钮区
-              =================================================== */}
-          <Checkbox
-            label="我已阅读并同意《服务条款》和《隐私政策》"
-            {...form.getInputProps("agree", { type: "checkbox" })}
-            // ⚠️【覆盖 onBlur 的原因】
-            //   全局开了 validateInputOnBlur + validateInputOnChange，
-            //   checkbox 这类二值控件在点击 label 时会先失焦（此时值还是旧值，
-            //   校验失败显示红字）→ 紧接着值切换 → 错误清除，造成"红字闪一下"。
-            //   把 onBlur 设为空函数，让 agree 只在提交时校验，避免闪现。
-            onBlur={() => {}}
-          />
-
+          {/* ========== 按钮 ========== */}
           <Group justify="space-between" mt="md">
             <Group>
-              {/* form.reset() ：把表单恢复到 initialValues 状态 */}
-              <Button variant="subtle" color="gray" onClick={() => form.reset()}>
+              <Button
+                variant="subtle"
+                color="gray"
+                onClick={() => {
+                  form.reset();
+                  setUsernameFocused(false);
+                  setPasswordFocused(false);
+                  setUsernameTouched(false);
+                  setPasswordTouched(false);
+                }}
+              >
                 重置
               </Button>
-              {/* form.clearErrors() ：只清错误，不清值。
-                  演示用：当用户被一堆红色错误"包围"时，可以一键清掉错误重新填。 */}
               <Button
                 variant="subtle"
                 color="gray"
@@ -752,21 +604,13 @@ function RegistrationForm({ onSubmit }) {
 }
 
 // =============================================================
-// 第五部分：主页面组件
-// -------------------------------------------------------------
-// 【状态说明】
-//   submitted : 校验通过并提交后的数据，用于在 Modal 里展示
-//   opened    : Modal 显示/隐藏
-//   submitting: 提交按钮 loading 状态（模拟网络请求）
+// 主页面
 // =============================================================
 export default function MantineFormZodPage() {
   const [submitted, setSubmitted] = useState(null);
   const [opened, setOpened] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // ---- 提交处理 ----
-  // 接收 RegistrationForm 校验通过后传上来的 values。
-  // 这里模拟一次"提交到后端"的异步请求：800ms 延迟 + 弹窗展示结果。
   const handleSubmit = async (values) => {
     setSubmitting(true);
     await new Promise((r) => setTimeout(r, 800));
@@ -777,101 +621,78 @@ export default function MantineFormZodPage() {
 
   return (
     <MantineProvider theme={theme} defaultColorScheme="light">
-      {/* 【滚动根容器】
-          主站 globals.css 把 html/body 的 overflow 锁成了 hidden，
-          但本页用的是 Mantine 流式布局，没有内部滚动区，
-          所以这里用一个外层 div 接管滚动：height 100vh + overflowY auto。 */}
       <div style={{ height: "100vh", overflowY: "auto" }}>
         <Container size="md" py="xl">
           <Stack>
-            {/* ============ 顶部：标题 + 主题切换 ============ */}
             <Group justify="space-between" align="flex-start">
               <Box>
                 <Title order={2}>Mantine Form + Zod 进阶 Demo</Title>
                 <Text size="sm" c="dimmed" mt={4}>
-                  覆盖嵌套对象 / 数组 / 判别联合 / 跨字段 / 异步校验 / transform
+                  聚焦用户名/密码字段可看到实时三色规则提示：灰色待校验 →
+                  绿色通过 → 红色失败
                 </Text>
               </Box>
               <ThemeSwitcher />
             </Group>
 
-            {/* ============ 提示条：演示要点 ============ */}
-            <Alert color="indigo" variant="light" title="本 Demo 演示的 Zod 核心能力">
+            <Alert color="indigo" variant="light" title="用户名/密码规则提示演示">
               <Stack gap={4}>
                 <Text size="xs">
-                  • <Code>z.object</Code> 嵌套（address.{`{province,city,zip}`})
+                  • <Code>RuleHints</Code> 组件：三色圆形图标 + 文字
                 </Text>
                 <Text size="xs">
-                  • <Code>z.array</Code> + 动态增删（form.insertListItem /
-                  removeListItem）
+                  • 默认隐藏 → 聚焦时灰色 ✓ → 输入时绿色 ✓ / 红色 ✕
                 </Text>
                 <Text size="xs">
-                  • <Code>z.discriminatedUnion</Code>（按 method 切换不同字段集）
+                  • 用户名 3 条规则、密码 3 条规则（与截图一致）
                 </Text>
                 <Text size="xs">
-                  • <Code>superRefine</Code> 跨字段校验（confirmPassword ===
-                  password）
+                  • 规则状态实时根据 form.values 计算，不依赖 Zod 异步校验
                 </Text>
                 <Text size="xs">
-                  • <Code>refine(async fn)</Code> 异步校验（模拟用户名查重）
-                </Text>
-                <Text size="xs">
-                  • <Code>transform</Code> 提交前转换（email trim + lowercase）
-                </Text>
-                <Text size="xs">
-                  • <Code>z.coerce.number()</Code> 处理 NumberInput 字符串值
-                </Text>
-                <Text size="xs">
-                  • <Code>z.literal(true)</Code> 强制勾选 /{" "}
-                  <Code>z.string().url()</Code> / 正则邮编手机号
+                  • 密码第 3 条 &ldquo;Must be different from your Login Name&rdquo; 为跨字段校验
                 </Text>
               </Stack>
             </Alert>
 
-            {/* ============ 表单区 ============ */}
+            {submitting && (
+              <Alert color="blue" variant="light">
+                正在提交...
+              </Alert>
+            )}
+
             <RegistrationForm onSubmit={handleSubmit} />
 
-            {/* ============ 提交结果弹窗 ============ */}
+            {/* 提交结果弹窗 */}
             <Modal
               opened={opened}
               onClose={() => setOpened(false)}
-              title="✅ 注册成功"
-              size="md"
+              title="注册成功！"
+              size="lg"
             >
-              <Stack>
-                <Text size="sm" c="dimmed">
-                  以下数据已通过 Zod 校验（注意 email 已被 transform 处理）：
-                </Text>
-                {/* 用原生 <pre> 展示 JSON，做成"代码块"风格 */}
-                <pre
-                  style={{
-                    background: "var(--mantine-color-dark-8)",
-                    color: "var(--mantine-color-gray-3)",
-                    padding: "1rem",
-                    borderRadius: "8px",
-                    overflow: "auto",
-                    fontSize: "0.875rem",
-                    margin: 0,
-                    maxHeight: 360,
-                  }}
-                >
-                  {JSON.stringify(submitted, null, 2)}
-                </pre>
-                <Group justify="flex-end">
-                  <Button variant="default" onClick={() => setOpened(false)}>
-                    关闭
-                  </Button>
-                </Group>
-              </Stack>
+              {submitted && (
+                <Box>
+                  <Text size="sm" mb="sm">
+                    校验通过并 transform 后的数据：
+                  </Text>
+                  <pre
+                    style={{
+                      background: "#f5f5f5",
+                      padding: 12,
+                      borderRadius: 8,
+                      fontSize: 12,
+                      overflowX: "auto",
+                      margin: 0,
+                    }}
+                  >
+                    {JSON.stringify(submitted, null, 2)}
+                  </pre>
+                </Box>
+              )}
+              <Button fullWidth mt="md" onClick={() => setOpened(false)}>
+                关闭
+              </Button>
             </Modal>
-
-            {/* ============ 提交 loading 提示 ============ */}
-            {/* submitting 为 true 时显示一条提示，避免用户重复点提交 */}
-            {submitting && (
-              <Alert color="blue" variant="light" title="正在提交...">
-                模拟网络请求中（800ms），请稍候。
-              </Alert>
-            )}
           </Stack>
         </Container>
       </div>
