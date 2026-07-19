@@ -9,16 +9,20 @@
 //   Mantine 的 reset 和 CSS 变量只在 /auth-demo 子树生效，
 //   不污染主站（教程网站）原有样式。与 /mantine 路由隔离方式一致。
 //
-// 【为什么 ColorSchemeScript 放在 MantineProvider 外部】
-//   MantineProvider 是客户端组件（使用 React Context），其子树
-//   在 hydration 阶段会被 React 重新渲染。React 19.2 对客户端渲染
-//   中出现的 <script> 标签会发出警告（脚本不会执行）。放在外部
-//   作为 Server Component 的直接输出，<script> 标签仅作为静态 HTML
-//   下发，在 HTML 解析阶段同步执行，不参与 hydration。
+// 【关于防闪烁脚本】
+//   方案 A（使用 ColorSchemeScript）：
+//     ColorSchemeScript 是客户端组件，会渲染 <script> 标签。
+//     Next.js 16 / React 19.2 会警告 client-rendered <script>
+//     不会在 hydration 阶段执行。
+//   方案 B（直接写 <script>，当前采用）：
+//     服务端渲染时 type="text/javascript"（HTML 解析阶段同步执行）；
+//     客户端 hydration 后 type="text/plain"（不执行、避免重复、
+//     不被 React 警告）。两端 type 不同用 suppressHydrationWarning。
+//     脚本内容与 Mantine 内部生成的 ColorSchemeScript 等价。
 // =============================================================
 
 import "@mantine/core/styles.css";
-import { MantineProvider, createTheme, ColorSchemeScript } from "@mantine/core";
+import { MantineProvider, createTheme } from "@mantine/core";
 
 // 定制主题：indigo 主色 + 中等圆角 + 自动对比度
 // primaryShade 指定亮/暗模式下的主色深浅级别（0-9，越大越深）
@@ -40,12 +44,22 @@ export const metadata = {
   description: "Zod + Mantine + @forgerock/javascript-sdk 综合认证演示",
 };
 
+// 防闪烁脚本：HTML 解析阶段同步读取 localStorage 设置主题，
+// 避免刷新时亮→暗闪烁(FOUC)。与 Mantine ColorSchemeScript 内容一致。
+const COLOR_SCHEME_SCRIPT = `try{var _c=window.localStorage.getItem("mantine-color-scheme-value");var c=_c==="light"||_c==="dark"||_c==="auto"?_c:"light";var cc=c!=="auto"?c:window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.setAttribute("data-mantine-color-scheme",cc);}catch(e){}`;
+
 export default function AuthDemoLayout({ children }) {
   return (
     <>
-      {/* ColorSchemeScript：在 HTML 解析阶段同步读取 localStorage
-          设置主题，避免刷新时亮→暗闪烁(FOUC) */}
-      <ColorSchemeScript defaultColorScheme="light" />
+      {/* 防闪烁脚本：服务端 type="text/javascript" 同步执行；
+          客户端 type="text/plain" 不执行（避免重复执行）也不触发警告；
+          suppressHydrationWarning 处理 type 属性两端不一致。 */}
+      <script
+        type={typeof window === "undefined" ? "text/javascript" : "text/plain"}
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: COLOR_SCHEME_SCRIPT }}
+      />
+
       <MantineProvider theme={theme} defaultColorScheme="light">
         {children}
       </MantineProvider>
