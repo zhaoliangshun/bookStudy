@@ -39,8 +39,7 @@
       "/deploy",
       "/go",
       "/backend-essential",
-      "/https-book",
-      "/csharp4"
+      "/https-book"
     ],
     "实战项目": [
       "/todo",
@@ -175,7 +174,8 @@
     "C#开发": [
       "/csharp",
       "/csharp2",
-      "/csharp3"
+      "/csharp3",
+      "/csharp4"
     ],
     "Typescript": [
       "/ts",
