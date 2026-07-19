@@ -5,7 +5,19 @@
   "bookOrder": {
     "未分组": [
       "/playground",
-      "/react-sandbox"
+      "/react-sandbox",
+      "/tsgen",
+      "/ts",
+      "/ts2",
+      "/ts3",
+      "/workers",
+      "/noderun",
+      "/reactsrc",
+      "/vuesrc",
+      "/zod",
+      "/ts-quick",
+      "/tsbook",
+      "/node4"
     ],
     "Python 编程": [],
     "Java 开发": [
@@ -22,14 +34,12 @@
       "/aiagent-simple"
     ],
     "前端工程": [
-      "/workers",
       "/nextjs",
       "/sass",
       "/fe-engineering",
       "/fe-interview",
       "/vite",
-      "/vite2",
-      "/vuesrc"
+      "/vite2"
     ],
     "后端与网络": [
       "/http",
@@ -116,11 +126,9 @@
     ],
     "nodejs": [
       "/nodejs",
-      "/node4",
       "/nodejs3",
       "/nodejs2",
-      "/nodejs-backend",
-      "/noderun"
+      "/nodejs-backend"
     ],
     "Python 编程::__sg-mrctbi5m16xr": [
       "/pythread",
@@ -177,23 +185,14 @@
       "/csharp2",
       "/csharp3"
     ],
-    "Typescript": [
-      "/ts",
-      "/ts-quick",
-      "/ts2",
-      "/ts3",
-      "/tsbook",
-      "/tsgen"
-    ],
+    "Typescript": [],
     "react": [
-      "/reactsrc",
       "/tsx3",
       "/tsx",
       "/tsx-story",
       "/tsx-pro",
       "/tsrx",
       "/tsx2",
-      "/zod",
       "/mantine2",
       "/mantine-form-zod",
       "/forgerock",

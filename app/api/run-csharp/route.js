@@ -29,11 +29,19 @@ import { join, delimiter } from "path";
 import { tmpdir } from "os";
 
 // 增强的 PATH：合并进程 PATH 与 .NET 常见安装目录，解决 dev server PATH 过期问题
+// 注意 PATH 顺序：包含 SDK 的路径必须排在只有 runtime 的路径前面，
+// 否则 Windows 会优先找到 C:\Program Files\dotnet\dotnet.exe（只有 runtime 无 SDK）
+// 导致 dotnet --version 返回非 0，被判定为"未找到 dotnet"。
 let _enhancedPath = null;
 function getEnhancedPath() {
   if (_enhancedPath !== null) return _enhancedPath;
   const extra = process.platform === "win32"
-    ? ["C:\\Program Files\\dotnet", "C:\\Program Files (x86)\\dotnet"]
+    ? [
+        // D:\dev\dotnet 含完整 SDK 8.0.423，必须最优先
+        "D:\\dev\\dotnet",
+        "C:\\Program Files\\dotnet",
+        "C:\\Program Files (x86)\\dotnet",
+      ]
     : [
         // Homebrew Apple Silicon 默认路径（dotnet-sdk 通过 brew 安装在此）
         "/opt/homebrew/bin",
@@ -43,7 +51,8 @@ function getEnhancedPath() {
         "/usr/local/share/dotnet",
         "/usr/share/dotnet",
       ];
-  _enhancedPath = [process.env.PATH, ...extra.filter(existsSync)].join(delimiter);
+  // extra 在前，process.env.PATH 在后，确保 SDK 路径优先于系统 PATH 中的 runtime-only 路径
+  _enhancedPath = [...extra.filter(existsSync), process.env.PATH].join(delimiter);
   return _enhancedPath;
 }
 
@@ -61,6 +70,41 @@ const DOTNET_BIN = "dotnet";
 const RUNNER_DIR = join(/*turbopackIgnore: true*/ tmpdir(), "csharp-runner-v1");
 
 /**
+ * 构建 dotnet 子进程所需的环境变量。
+ * 注意：Windows 下 NuGet 的 XPlatMachineWideSetting 会调用
+ * Environment.GetFolderPath(SpecialFolder.ProgramFiles) 等，若对应环境变量缺失
+ * 会返回 null，导致 Path.Combine 抛出 "Value cannot be null. (Parameter 'path1')"。
+ * 因此必须传递 ProgramFiles/ProgramFiles(x86)/APPDATA/LOCALAPPDATA/USERPROFILE 等
+ * 特殊文件夹环境变量。DOTNET_ROOT 帮助 muxter 定位 SDK。
+ */
+function buildDotnetEnv() {
+  return {
+    PATH: getEnhancedPath(),
+    TEMP: process.env.TEMP,
+    TMP: process.env.TMP,
+    HOME: process.env.HOME,
+    USERPROFILE: process.env.USERPROFILE,
+    APPDATA: process.env.APPDATA,
+    LOCALAPPDATA: process.env.LOCALAPPDATA,
+    ProgramFiles: process.env.ProgramFiles || "C:\\Program Files",
+    "ProgramFiles(x86)": process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)",
+    ProgramW6432: process.env.ProgramW6432 || "C:\\Program Files",
+    SystemRoot: process.env.SystemRoot || "C:\\Windows",
+    LANG: "en_US.UTF-8",
+    LC_ALL: "en_US.UTF-8",
+    DOTNET_CLI_TELEMETRY_OPTOUT: "1",
+    DOTNET_NOLOGO: "1",
+    DOTNET_ROOT: "D:\\dev\\dotnet",
+    NUGET_PACKAGES: process.env.USERPROFILE
+      ? join(process.env.USERPROFILE, ".nuget", "packages")
+      : undefined,
+    NUGET_HTTP_CACHE_PATH: process.env.LOCALAPPDATA
+      ? join(process.env.LOCALAPPDATA, "NuGet", "v3-cache")
+      : undefined,
+  };
+}
+
+/**
  * 检测 dotnet 是否可用。
  * @returns {{ available: boolean, version: string }}
  */
@@ -70,7 +114,7 @@ function checkDotnet() {
       stdio: ["pipe", "pipe", "pipe"],
       encoding: "utf8",
       timeout: 5000,
-      env: { PATH: getEnhancedPath() },
+      env: buildDotnetEnv(),
     });
     if (result.status === 0) {
       return { available: true, version: result.stdout.trim() };
@@ -287,19 +331,7 @@ async function runCsharpCode(code) {
 
     // 5. 编译并运行（dotnet run 会自动编译 + 执行）
     // 不再 spread process.env（避免泄漏无关变量/密钥），只传 dotnet 必需的最小环境
-    const env = {
-      PATH: getEnhancedPath(),
-      TEMP: process.env.TEMP,
-      TMP: process.env.TMP,
-      HOME: process.env.HOME,
-      USERPROFILE: process.env.USERPROFILE,
-      LANG: "en_US.UTF-8",
-      LC_ALL: "en_US.UTF-8",
-      DOTNET_CLI_TELEMETRY_OPTOUT: "1",  // 禁用遥测，加快启动
-      DOTNET_NOLOGO: "1",                 // 禁用 logo
-      ...(process.env.DOTNET_ROOT ? { DOTNET_ROOT: process.env.DOTNET_ROOT } : {}),
-      ...(process.env.DOTNET_CLI_HOME ? { DOTNET_CLI_HOME: process.env.DOTNET_CLI_HOME } : {}),
-    };
+    const env = buildDotnetEnv();
 
     const result = await runCommand(
       DOTNET_BIN,

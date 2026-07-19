@@ -28,9 +28,57 @@
 
 import { NextResponse } from "next/server";
 import { spawn, spawnSync } from "child_process";
-import { writeFileSync, unlinkSync, mkdirSync, rmSync } from "fs";
+import { writeFileSync, unlinkSync, mkdirSync, rmSync, existsSync } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { join, delimiter } from "path";
+
+// 增强的 PATH：合并进程 PATH 与 Python 常见安装目录，解决 dev server PATH 过期问题
+// extra 在前，process.env.PATH 在后，确保指定 Python 安装路径优先于系统 PATH 中可能残留的旧版本
+let _enhancedPath = null;
+function getEnhancedPath() {
+  if (_enhancedPath !== null) return _enhancedPath;
+  const extra = process.platform === "win32"
+    ? [
+        // D:\dev\python312 是项目已知 Python 3.12 安装路径，必须最优先
+        "D:\\dev\\python312",
+        "D:\\dev\\python312\\Scripts",
+        "C:\\Python312",
+        "C:\\Python311",
+        "C:\\Python310",
+      ]
+    : [
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        "/usr/bin",
+      ];
+  _enhancedPath = [...extra.filter(existsSync), process.env.PATH].join(delimiter);
+  return _enhancedPath;
+}
+
+/**
+ * 构建 Python 子进程所需的完整环境变量。
+ * Windows 下 Python 部分扩展模块/工具会读取 USERPROFILE/APPDATA 等
+ * 特殊文件夹，缺失会导致功能异常，因此统一传递 Windows 必需变量。
+ */
+function buildPythonEnv() {
+  return {
+    PATH: getEnhancedPath(),
+    TEMP: process.env.TEMP,
+    TMP: process.env.TMP,
+    HOME: process.env.HOME,
+    USERPROFILE: process.env.USERPROFILE,
+    APPDATA: process.env.APPDATA,
+    LOCALAPPDATA: process.env.LOCALAPPDATA,
+    ProgramFiles: process.env.ProgramFiles || "C:\\Program Files",
+    "ProgramFiles(x86)": process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)",
+    ProgramW6432: process.env.ProgramW6432 || "C:\\Program Files",
+    SystemRoot: process.env.SystemRoot || "C:\\Windows",
+    PYTHONIOENCODING: "utf-8",
+    PYTHONUTF8: "1",
+    LANG: "en_US.UTF-8",
+    LC_ALL: "en_US.UTF-8",
+  };
+}
 
 // 执行超时（毫秒）。Python 教程的 demo 都很短，10 秒足够；
 // 死循环 / input() 阻塞等会被超时强制终止。
@@ -45,13 +93,7 @@ const MAX_CODE_LENGTH = 50000;
 let _pythonBin = null;
 
 function getPythonEnv() {
-  return {
-    PATH: process.env.PATH,
-    PYTHONIOENCODING: "utf-8",
-    PYTHONUTF8: "1",
-    LANG: "en_US.UTF-8",
-    LC_ALL: "en_US.UTF-8",
-  };
+  return buildPythonEnv();
 }
 
 // Python 可执行路径。按优先级尝试：python3.13 -> python3 -> python（Windows上用python）。
@@ -61,7 +103,7 @@ function getPythonBin() {
   const candidates = process.platform === "win32"
     ? ["python", "python3", "py"]
     : ["python3.13", "python3", "python"];
-  const env = { PATH: process.env.PATH };
+  const env = { PATH: getEnhancedPath() };
   for (const bin of candidates) {
     try {
       const r = spawnSync(bin, ["--version"], { stdio: "ignore", timeout: 3000, env });
@@ -295,7 +337,7 @@ export async function GET() {
     let resolved = false;
     const child = spawn(pythonBin, ["--version"], {
       stdio: ["pipe", "pipe", "pipe"],
-      env: { PATH: process.env.PATH },
+      env: buildPythonEnv(),
     });
     let version = "";
     const onData = (c) => (version += c.toString());

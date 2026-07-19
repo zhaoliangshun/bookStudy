@@ -29,13 +29,19 @@ import { tmpdir } from "os";
 
 // 增强的 PATH：合并进程 PATH 与 Go 常见安装目录，解决 dev server PATH 过期问题
 // 懒加载：避免模块顶层调用 existsSync 导致 Turbopack 扫描整个文件系统
+// extra 在前，process.env.PATH 在后，确保指定 Go 安装路径优先于系统 PATH 中可能残留的旧版本
 let _enhancedPath = null;
 function getEnhancedPath() {
   if (_enhancedPath !== null) return _enhancedPath;
   const extra = process.platform === "win32"
-    ? ["C:\\Program Files\\Go\\bin", "C:\\Go\\bin"]
+    ? [
+        // 项目本地 Go 1.23.4 安装路径，必须最优先
+        "d:\\bookStory\\bookStudy\\.dev\\go\\go\\bin",
+        "C:\\Program Files\\Go\\bin",
+        "C:\\Go\\bin",
+      ]
     : ["/usr/local/go/bin", "/opt/homebrew/bin"];
-  _enhancedPath = [process.env.PATH, ...extra.filter(existsSync)].join(delimiter);
+  _enhancedPath = [...extra.filter(existsSync), process.env.PATH].join(delimiter);
   return _enhancedPath;
 }
 
@@ -279,6 +285,13 @@ async function runGoCode(code) {
     }
 
     // 5. 编译并运行（go run 会自动编译 + 执行）
+    // 注意：Go 需要 GOCACHE 才能加速编译，否则每次都重新编译所有依赖，
+    // 首次会扫描 GOPATH 导致超过 15 秒超时。
+    // GOCACHE 默认在 %LocalAppData%\go-build（Windows）或 $HOME/.cache/go-build
+    const goCache = process.env.GOCACHE
+      || (process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, "go-build") : undefined);
+    const gopath = process.env.GOPATH
+      || (process.env.USERPROFILE ? join(process.env.USERPROFILE, "go") : undefined);
     const env = {
       PATH: getEnhancedPath(),
       HOME: process.env.HOME,
@@ -287,12 +300,19 @@ async function runGoCode(code) {
       APPDATA: process.env.APPDATA,
       TEMP: process.env.TEMP,
       TMP: process.env.TMP,
-      GOPATH: process.env.GOPATH || (process.env.HOME ? join(process.env.HOME, "go") : "/tmp/go"),
-      GOPROXY: process.env.GOPROXY || "https://goproxy.cn,direct",
+      ProgramFiles: process.env.ProgramFiles || "C:\\Program Files",
+      "ProgramFiles(x86)": process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)",
+      ProgramW6432: process.env.ProgramW6432 || "C:\\Program Files",
+      SystemRoot: process.env.SystemRoot || "C:\\Windows",
+      ...(gopath ? { GOPATH: gopath } : {}),
+      ...(goCache ? { GOCACHE: goCache } : {}),
+      GOPROXY: "off",  // 禁用网络访问，避免尝试下载依赖
       GOFLAGS: "-mod=mod",
-      // 禁用网络访问（避免 go run 尝试下载依赖）
+      GO111MODULE: "on",
       GOPRIVATE: process.env.GOPRIVATE || "",
       CGO_ENABLED: "0",  // 禁用 CGO，加快编译速度
+      LANG: "en_US.UTF-8",
+      LC_ALL: "en_US.UTF-8",
     };
 
     const result = await runCommand(

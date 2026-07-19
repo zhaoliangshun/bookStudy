@@ -1,4 +1,0 @@
-[2026-07-18 16:32:55] [INFO] 服务启动
-[2026-07-18 16:32:55] [WARN] 磁盘空间不足
-[2026-07-18 16:32:55] [ERROR] 操作失败 | System.InvalidOperationException: 测试异常
-   at Program.<Main>$(String[] args) in /Users/zhaoliangshun/nextStudy/my-app/.csharp-test/Program.cs:line 7

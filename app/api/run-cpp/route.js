@@ -34,13 +34,14 @@ import { tmpdir } from "os";
 // 增强的 PATH：合并进程 PATH 与常见编译器安装目录。
 // 原因：dev server 启动时固化了 process.env.PATH，若编译器在
 // 启动后才安装，spawn 会 ENOENT。这里补上常见安装路径。
+// extra 在前，process.env.PATH 在后，确保编译器路径优先匹配
 let _enhancedPath = null;
 function getEnhancedPath() {
   if (_enhancedPath !== null) return _enhancedPath;
   const extra = process.platform === "win32"
     ? ["C:\\ProgramData\\mingw64\\mingw64\\bin", "C:\\msys64\\mingw64\\bin", "C:\\mingw64\\bin"]
     : ["/usr/local/bin", "/opt/homebrew/bin"];
-  _enhancedPath = [process.env.PATH, ...extra.filter(existsSync)].join(delimiter);
+  _enhancedPath = [...extra.filter(existsSync), process.env.PATH].join(delimiter);
   return _enhancedPath;
 }
 
@@ -210,6 +211,16 @@ async function runCppCode(code) {
 
     const env = {
       PATH: getEnhancedPath(),
+      TEMP: process.env.TEMP,
+      TMP: process.env.TMP,
+      HOME: process.env.HOME,
+      USERPROFILE: process.env.USERPROFILE,
+      APPDATA: process.env.APPDATA,
+      LOCALAPPDATA: process.env.LOCALAPPDATA,
+      ProgramFiles: process.env.ProgramFiles || "C:\\Program Files",
+      "ProgramFiles(x86)": process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)",
+      ProgramW6432: process.env.ProgramW6432 || "C:\\Program Files",
+      SystemRoot: process.env.SystemRoot || "C:\\Windows",
       LANG: "en_US.UTF-8",
       LC_ALL: "en_US.UTF-8",
     };
@@ -314,7 +325,20 @@ export async function GET() {
   return new Promise((resolve) => {
     const child = spawn(compiler, ["--version"], {
       stdio: ["pipe", "pipe", "pipe"],
-      env: { PATH: getEnhancedPath() },
+      env: {
+        PATH: getEnhancedPath(),
+        TEMP: process.env.TEMP,
+        TMP: process.env.TMP,
+        USERPROFILE: process.env.USERPROFILE,
+        APPDATA: process.env.APPDATA,
+        LOCALAPPDATA: process.env.LOCALAPPDATA,
+        ProgramFiles: process.env.ProgramFiles || "C:\\Program Files",
+        "ProgramFiles(x86)": process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)",
+        ProgramW6432: process.env.ProgramW6432 || "C:\\Program Files",
+        SystemRoot: process.env.SystemRoot || "C:\\Windows",
+        LANG: "en_US.UTF-8",
+        LC_ALL: "en_US.UTF-8",
+      },
     });
     let version = "";
     // 修复：用 resolved 标记防止多次 resolve
