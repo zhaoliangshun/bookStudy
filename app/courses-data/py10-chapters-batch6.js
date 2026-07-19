@@ -3162,7 +3162,7 @@ def highest_paid(employees):
     )
 
 top = highest_paid(employees)
-print(f"\\n工资最高: {top['name']} (${top['salary']})")
+print(f"\\n工资最高: {top['name']} (\${top['salary']})")
 
 # 3. 工资排名前 N
 def top_n_earners(employees, n=3):
@@ -3170,7 +3170,7 @@ def top_n_earners(employees, n=3):
 
 print(f"\\n工资前 3:")
 for emp in top_n_earners(employees, 3):
-    print(f"  {emp['name']}: ${emp['salary']}")
+    print(f"  {emp['name']}: \${emp['salary']}")
 
 # 4. 部门工资总和
 def total_salary_by_dept(employees):
@@ -3183,13 +3183,13 @@ def total_salary_by_dept(employees):
 
 print(f"\\n各部门工资总和:")
 for dept, total in total_salary_by_dept(employees).items():
-    print(f"  {dept}: ${total}")
+    print(f"  {dept}: \${total}")
 
 # 5. 用 partial 创建专用函数
 top_5 = partial(top_n_earners, n=5)
 print(f"\\n工资前 5:")
 for emp in top_5(employees):
-    print(f"  {emp['name']}: ${emp['salary']}")
+    print(f"  {emp['name']}: \${emp['salary']}")
 \`\`\`
 
 ## 十二、实用装饰器集合
