@@ -10,7 +10,7 @@
 //   默认隐藏 → 聚焦时灰色条款 → 输入时实时变绿✓/红✕。
 //
 // 【表单字段】
-//   ① 基础信息：username、email、password、confirmPassword
+//   ① 基础信息：username、password、confirmPassword
 //   ② OTP：一次性验证码（6 位数字，异步后端校验）
 //
 // 【用户名规则（3 条）】
@@ -37,42 +37,6 @@ import "@mantine/core/styles.css";
 import { useState } from "react";
 
 import { MantineProvider, createTheme } from "@mantine/core";
-
-// =============================================================
-// 密码掩码字符定制：把浏览器默认的圆点（•）改成星号（*）
-// -------------------------------------------------------------
-// 【原理】
-//   Mantine PasswordInput 内部用原生 <input type="password">，
-//   浏览器默认用圆点（•）遮罩字符，无法通过 CSS 直接修改。
-//
-// 【方案】
-//   1. 生成一个 WOFF2 字体，所有字符的 glyph 都是星号（*）
-//   2. 用 @font-face 内联该字体（base64 data URI）
-//   3. 用 CSS 选择器 .pwd-star-mask 把 input[type="password"]
-//      的 font-family 设为该字体，关闭 -webkit-text-security
-//   4. 给 PasswordInput 加 classNames={{ root: "pwd-star-mask" }}
-// =============================================================
-const STAR_WOFF2_BASE64 =
-  "d09GMgABAAAAAAE4AAkAAAAAAxwAAADyAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAABmAAgXIKLEwBNgMICwYABCAFbwcmG5ACUJ4H2ZnmTNFO/SIvLOlKPHyt6ft7m5RIksjXVpbdgTNljVLWKEDZ6XhW2Zszdp/bW8qfUSYittJd8ZSm3l7n0+NAAwlAmre2gggzD0BKIonl7Hcb02UQQrfZ3q4uKuIrbpGsKABbXJh1YnYWJBSYUAhMyN6RZYGTbhezxpDf3cuQQEagD5OADIi+pmnqpqyrsvrnVZ8dLjf3IZT1m3MAAsH90+d2G/bdE/EFR0vfwcdFcySRGJdAIUF8EV8IJH0CJAAAZJsChAEESDoGFCL3CjPGlcmQjVTnAc1+Vx2qQ7lMhfBsrisGcy1XAY06BgEA";
-
-const PWD_STAR_CSS = `
-@font-face {
-  font-family: "StarPassword";
-  src: url("data:font/woff2;base64,${STAR_WOFF2_BASE64}") format("woff2");
-  font-weight: normal;
-  font-style: normal;
-}
-/* 密码框内部 input：关闭浏览器默认圆点遮罩，用星号字体渲染 */
-.pwd-star-mask input[type="password"] {
-  -webkit-text-security: none;
-  font-family: "StarPassword", monospace;
-}
-/* placeholder 用回正常字体 */
-.pwd-star-mask input[type="password"]::placeholder {
-  font-family: inherit;
-  -webkit-text-security: none;
-}
-`;
 
 const theme = createTheme({
   primaryColor: "indigo",
@@ -275,13 +239,6 @@ const schema = z
         return !TAKEN_USERNAMES.includes(v.toLowerCase());
       }, "Must be unique login name"),
 
-    // ---- email：邮箱 ----
-    email: z
-      .string()
-      .min(1, "邮箱不能为空")
-      .email("邮箱格式不正确")
-      .transform((v) => v.trim().toLowerCase()),
-
     // ---- password：密码（3 条规则，第 3 条跨字段在 superRefine）----
     password: z
       .string()
@@ -354,7 +311,6 @@ const schema = z
 // =============================================================
 const initialValues = {
   username: "",
-  email: "",
   password: "",
   confirmPassword: "",
   otp: "",
@@ -363,30 +319,7 @@ const initialValues = {
 // =============================================================
 // 主题切换
 // =============================================================
-function ThemeSwitcher() {
-  const { colorScheme, setColorScheme } = useMantineColorScheme();
-  return (
-    <Group gap="xs">
-      <Text size="sm" c="dimmed">
-        主题:
-      </Text>
-      <Button
-        size="xs"
-        variant={colorScheme === "light" ? "filled" : "subtle"}
-        onClick={() => setColorScheme("light")}
-      >
-        ☀️ 亮色
-      </Button>
-      <Button
-        size="xs"
-        variant={colorScheme === "dark" ? "filled" : "subtle"}
-        onClick={() => setColorScheme("dark")}
-      >
-        🌙 暗色
-      </Button>
-    </Group>
-  );
-}
+
 
 // =============================================================
 // 注册表单组件
@@ -404,9 +337,7 @@ function RegistrationForm({ onSubmit }) {
     //     此时 form.errors 更新 → 红色边框出现
     // confirmPassword 也只在失焦时校验一致性
     // otp 含异步后端校验，不做 onChange
-    validateInputOnChange: [
-      "email",
-    ],
+    validateInputOnChange: [],
   });
 
   // ---- 聚焦 + touched 状态：控制 RuleHints 的显示/隐藏 ----
@@ -507,24 +438,13 @@ function RegistrationForm({ onSubmit }) {
             />
           </Box>
 
-          {/* ---- email ---- */}
-          <TextInput
-            label="邮箱"
-            placeholder="user@example.com"
-            withAsterisk
-            description="提交时会自动去除空格并转小写"
-            {...form.getInputProps("email")}
-          />
-
           {/* ---- password + RuleHints ----
-              error 同步计算（与 username 同理），消除边框闪烁
-              classNames={{ root: "pwd-star-mask" }} 把掩码字符从圆点改成星号 */}
+              error 同步计算（与 username 同理），消除边框闪烁 */}
           <Box>
             <PasswordInput
               label="Group Password"
               placeholder="8-20 characters, include A-Z, a-z, 0-9, special chars"
               withAsterisk
-              classNames={{ root: "pwd-star-mask" }}
               {...form.getInputProps("password")}
               error={passwordHasError}
               onFocus={(e) => {
@@ -551,7 +471,6 @@ function RegistrationForm({ onSubmit }) {
             label="Confirm Password"
             placeholder="Re-enter your password"
             withAsterisk
-            classNames={{ root: "pwd-star-mask" }}
             {...form.getInputProps("confirmPassword")}
           />
 
@@ -660,8 +579,6 @@ export default function MantineFormZodPage() {
 
   return (
     <MantineProvider theme={theme} defaultColorScheme="light">
-      {/* 注入星号掩码字体 CSS（圆点 → 星号） */}
-      <style dangerouslySetInnerHTML={{ __html: PWD_STAR_CSS }} />
       <div style={{ height: "100vh", overflowY: "auto" }}>
         <Container size="md" py="xl">
           <Stack>
@@ -673,7 +590,6 @@ export default function MantineFormZodPage() {
                   绿色通过 → 红色失败
                 </Text>
               </Box>
-              <ThemeSwitcher />
             </Group>
 
             <Alert color="indigo" variant="light" title="用户名/密码规则提示演示">
