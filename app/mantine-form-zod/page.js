@@ -171,14 +171,90 @@ const schema = z
       .email("邮箱格式不正确")
       .transform((v) => v.trim().toLowerCase()),
 
-    // ---- password：密码 ----
-    // 多个 refine 链式调用，每条都失败会显示【第一条】错误信息。
-    // 这里要求：长度 ≥ 8、必须含字母、必须含数字。
+    // ---- password：密码（复杂校验） ----
+    // 【设计思路】
+    //   把"长度 + 字符种类 + 黑名单 + 序列"四类规则全部用 refine 串起来，
+    //   Zod 会按顺序执行，第一条失败就立即返回该条的错误信息。
+    //   【为什么用 refine 而不是正则组合】
+    //     一条复杂的正则可读性极差，且无法精确报出"具体缺了什么"。
+    //     拆成多条 refine 后，每条只关注一个维度，错误信息可以明确告诉用户
+    //     "缺少大写字母"/"包含连续 3 个相同字符"，体验远好于一句"格式不正确"。
+    //
+    // 【规则清单】
+    //   1. 长度 8~32 位（min + max）
+    //   2. 必须包含【大写字母】  A-Z
+    //   3. 必须包含【小写字母】  a-z
+    //   4. 必须包含【数字】       0-9
+    //   5. 必须包含【特殊字符】   !@#$%^&*()-_=+[]{}|;:,.<>?/~
+    //   6. 不能包含【连续 3 个相同字符】（如 "aaa" / "111"）—— 抵御暴力破解
+    //   7. 不能包含【连续递增/递减序列】（如 "abc" / "987" / "qwerty"）
+    //   8. 不能是【常见弱密码】（如 password / 123456 / admin / qwerty 等）
+    //
+    // 【⚠️ 关于"密码不能包含用户名"】
+    //   这条规则需要同时访问 username 和 password，单字段 refine 做不到，
+    //   必须放到最外层的 superRefine 里跨字段校验。见下方 superRefine 第二段。
     password: z
       .string()
-      .min(8, "密码至少 8 位")
-      .refine((v) => /[a-zA-Z]/.test(v), "密码必须包含字母")
-      .refine((v) => /\d/.test(v), "密码必须包含数字"),
+      // 规则 1：长度区间。min/max 都是字符串专用方法（z.string()）。
+      .min(8, "密码长度至少 8 位")
+      .max(32, "密码长度最多 32 位")
+      // 规则 2：大写字母。正则 /[A-Z]/ 匹配任意一个大写字母。
+      .refine((v) => /[A-Z]/.test(v), "密码必须包含至少 1 个大写字母")
+      // 规则 3：小写字母。
+      .refine((v) => /[a-z]/.test(v), "密码必须包含至少 1 个小写字母")
+      // 规则 4：数字。
+      .refine((v) => /\d/.test(v), "密码必须包含至少 1 个数字")
+      // 规则 5：特殊字符。在正则里 - 需要放在末尾或转义，避免被识别为范围符。
+      .refine(
+        (v) => /[!@#$%^&*()\-_=+\[\]{}|;:,.<>?/~]/.test(v),
+        "密码必须包含至少 1 个特殊字符（如 !@#$%^&*）"
+      )
+      // 规则 6：连续 3 个相同字符。
+      //   正则解释：(.)\1{2,}：
+      //     (.)     捕获任意一个字符
+      //     \1{2,}  后面跟着至少 2 个与第一捕获组相同的字符
+      //   合起来就是"任意字符连续出现 3 次以上"。
+      //   ✕ "aaabbb"  → 命中（有 aaa）
+      //   ✓ "aabbcc"  → 通过
+      .refine(
+        (v) => !/(.)\1{2,}/.test(v),
+        "密码不能包含 3 个及以上连续相同字符（如 aaa、111）"
+      )
+      // 规则 7：连续递增/递减序列（数字 + 字母）。
+      //   正则解释（以数字为例）：/(?:012|123|234|...|890|987|876|...|210)/
+      //   逐条列出 3 位连续序列，命中即拒绝。
+      //   字母同理：abc/bcd/.../xyz 和 zyx/yxw/.../cba。
+      //   【为什么不写更通用的算法】
+      //     refine 里写算法（循环比较 charCode）也行，但正则更紧凑、可读。
+      //     长度只有 3，正则枚举 60 多条已足够，且性能远好于字符串扫描。
+      .refine(
+        (v) =>
+          !/(?:012|123|234|345|456|567|678|789|890|987|876|765|654|543|432|321|210|abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz|zyx|yxw|xwv|wvu|vut|uts|tsr|srq|rqp|qpo|pon|nml|mlk|lkj|kji|jih|ihg|hgf|gfe|fed|edc|dcb|cba)/i.test(
+            v
+          ),
+        "密码不能包含 3 位及以上连续递增/递减字符（如 abc、123、987）"
+      )
+      // 规则 8：常见弱密码黑名单。
+      //   先转小写再比对，避免 Password / PASSWORD 绕过。
+      //   实际项目中应改为后端黑名单 + 暴露破解查询（haveibeenpwned API），
+      //   这里只列少量高频弱密码做演示。
+      .refine((v) => {
+        const weak = [
+          "password",
+          "passwd",
+          "12345678",
+          "123456789",
+          "1234567890",
+          "11111111",
+          "00000000",
+          "qwerty123",
+          "abc12345",
+          "admin123",
+          "letmein!",
+          "welcome1",
+        ];
+        return !weak.includes(v.toLowerCase());
+      }, "密码过于常见，请更换一个更复杂的密码"),
 
     // ---- confirmPassword：确认密码 ----
     // 这里只声明类型，真正的"两次输入必须一致"校验放在下面的 superRefine 里做。
@@ -274,12 +350,35 @@ const schema = z
   // 【path 写法】
   //   ["confirmPassword"] 表示错误挂在 confirmPassword 字段上，
   //   schemaResolver 会把它转成 { confirmPassword: "两次输入的密码不一致" }。
+  //
+  // 【跨字段校验清单】
+  //   1. 两次输入的密码必须一致（confirmPassword === password）
+  //   2. 密码不能包含用户名（不区分大小写，长度 ≥ 3 才检查，否则空串会误伤）
+  //      ⚠️ 这是【安全最佳实践】——如果密码里直接嵌了用户名，
+  //         一旦泄露，攻击者可以用用户名做侧信道推断密码。
   .superRefine((data, ctx) => {
+    // ---- 规则 1：两次密码一致 ----
     if (data.confirmPassword !== data.password) {
       ctx.addIssue({
         path: ["confirmPassword"],
         code: "custom",
         message: "两次输入的密码不一致",
+      });
+    }
+
+    // ---- 规则 2：密码不能包含用户名 ----
+    //   只在用户名 ≥ 3 字符时检查，避免用户名只输了 1~2 个字符时
+    //   误命中（比如用户名只输了 "a"，几乎所有密码都会"包含 a"）。
+    //   includes 区分大小写，所以双方都转小写再比对。
+    if (
+      data.username &&
+      data.username.length >= 3 &&
+      data.password.toLowerCase().includes(data.username.toLowerCase())
+    ) {
+      ctx.addIssue({
+        path: ["password"],
+        code: "custom",
+        message: "密码不能包含用户名，请更换密码",
       });
     }
   });
@@ -368,19 +467,51 @@ function RegistrationForm({ onSubmit }) {
   // useForm 的核心配置项：
   //   initialValues           : 表单初始值（见上方定义）
   //   validate                : 校验函数，这里用 schemaResolver(schema) 桥接 Zod
-  //   validateInputOnBlur     : 失焦时校验当前字段
-  //   validateInputOnChange   : 输入时校验当前字段（适合"两次密码不一致"这类即时反馈）
+  //   validateInputOnBlur     : 失焦时校验当前字段（布尔，true = 所有字段失焦都校验）
+  //   validateInputOnChange   : 输入时校验当前字段
+  //                             · true   : 所有字段输入时都校验
+  //                             · false  : 都不校验
+  //                             · 数组   : 只对【列出的字段路径】做 onChange 校验
   //
-  // ⚠️【校验时机策略】
-  //   两个开关都开，体验最好——用户输完离开立即知道结果，输错时边输边纠正。
-  //   但 onChange 校验会触发【整个 schema 重跑】，包括异步 refine，
-  //   所以异步校验需要做防抖（这里没做防抖，因为是 demo；生产环境请用
-  //   z.string().refine(debounce(asyncFn, 300)) 之类的方式）。
+  // ⚠️【confirmPassword 特殊处理 —— 关键设计】
+  //   "两次密码一致"这条规则放在 superRefine 里，需要同时访问 password 和
+  //   confirmPassword。如果对 confirmPassword 开 onChange 校验，用户每输一个
+  //   字符就会被报"两次密码不一致"（因为还没输完当然不一致），体验极差。
+  //
+  //   解决方案：把 validateInputOnChange 改成【数组形式】，列出需要即时校验的
+  //   字段，把 "confirmPassword" 故意排除。这样：
+  //     · 其他字段（username/email/password/age/...）：onChange + onBlur 都校验
+  //     · confirmPassword：只在【失焦时】校验（由 validateInputOnBlur: true 保证）
+  //   用户输完确认密码、离开输入框的瞬间才检查"两次是否一致"，符合直觉。
+  //
+  // ⚠️【数组字段路径的写法】
+  //   Mantine form 内部会把形如 "tags.0" 的路径里的数字下标替换成
+  //   "__MANTINE_FORM_INDEX__" 再去数组里查找。所以要让 tags 数组字段
+  //   支持 onChange 校验，数组里要写 "tags.__MANTINE_FORM_INDEX__"。
+  //   （这是 Mantine form 的内部约定，详见 node_modules/@mantine/form 的
+  //    should-validate-on-change.mjs 和 form-index.mjs）
   const form = useForm({
     initialValues,
     validate: schemaResolver(schema),
+    // 所有字段失焦时都校验（包括 confirmPassword）
     validateInputOnBlur: true,
-    validateInputOnChange: true,
+    // 只对下列字段开 onChange 即时校验，confirmPassword 故意不列入
+    validateInputOnChange: [
+      "username",
+      "email",
+      "password",
+      "age",
+      "website",
+      "address.province",
+      "address.city",
+      "address.zip",
+      // 数组字段：用 __MANTINE_FORM_INDEX__ 占位符匹配 tags.0 / tags.1 / ...
+      "tags.__MANTINE_FORM_INDEX__",
+      "notification.method",
+      "notification.notifyEmail",
+      "notification.phone",
+      "agree",
+    ],
   });
 
   // ---- 提交处理 ----
@@ -418,15 +549,23 @@ function RegistrationForm({ onSubmit }) {
             {...form.getInputProps("email")}
           />
 
-          {/* password —— 多条 refine 链 */}
+          {/* password —— 复杂校验：长度 + 4 类字符 + 序列 + 黑名单 + 不含用户名 */}
           <PasswordInput
             label="密码"
-            placeholder="至少 8 位，必须含字母和数字"
+            placeholder="8~32 位，含大小写字母、数字、特殊字符"
             withAsterisk
+            description="需含大写/小写/数字/特殊字符各 1 个，不能有连续 3 个相同字符或 abc/123 序列，也不能是常见弱密码或包含用户名"
             {...form.getInputProps("password")}
           />
 
-          {/* confirmPassword —— 跨字段校验，由 superRefine 处理 */}
+          {/* confirmPassword —— 只在失焦时校验"两次密码一致"
+              ⚠️【为什么不在输入时校验】
+                 "两次密码一致"需要同时看 password 和 confirmPassword。
+                 如果输入过程中（onChange）就校验，用户每输一个字符都会被报
+                 "两次密码不一致"（因为还没输完当然不一致），体验极差。
+                 所以在 useForm 配置里把 confirmPassword 从 validateInputOnChange
+                 数组里排除了，只在失焦（onBlur）时校验，由 validateInputOnBlur: true 保证。
+                 用户输完确认密码、离开输入框的瞬间才会出现"两次密码不一致"红字。 */}
           <PasswordInput
             label="确认密码"
             placeholder="再输一次密码"
