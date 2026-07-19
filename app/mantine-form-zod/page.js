@@ -35,22 +35,11 @@
 import "@mantine/core/styles.css";
 
 import { useState } from "react";
-
-import { MantineProvider, createTheme } from "@mantine/core";
-
-const theme = createTheme({
-  primaryColor: "indigo",
-  defaultRadius: "md",
-  autoContrast: true,
-  fontFamily:
-    "var(--sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif)",
-  headings: {
-    fontFamily:
-      "var(--sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif)",
-  },
-});
-
+import { z } from "zod";
+import { useForm, schemaResolver } from "@mantine/form";
 import {
+  MantineProvider,
+  createTheme,
   Container,
   Paper,
   Title,
@@ -68,15 +57,24 @@ import {
   Modal,
 } from "@mantine/core";
 
-import { useForm, schemaResolver } from "@mantine/form";
-import { z } from "zod";
+const theme = createTheme({
+  primaryColor: "indigo",
+  defaultRadius: "md",
+  autoContrast: true,
+  fontFamily:
+    "var(--sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif)",
+  headings: {
+    fontFamily:
+      "var(--sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif)",
+  },
+});
 
 // =============================================================
 // 规则定义：用户名和密码的校验规则
 // -------------------------------------------------------------
 // 每条规则包含：
 //   id     : 唯一标识
-//   label  : 显示文案（与截图一致，英文）
+//   label  : 显示文案
 //   test   : 同步校验函数，(value, allValues) => boolean
 //   pending: 判断是否处于"待校验"状态（灰色✓），(value, data) => boolean
 //            返回 true  → 灰色（待校验/输入中）
@@ -147,23 +145,14 @@ const passwordRules = [
 
 // =============================================================
 // RuleHints 组件：三色规则提示条
-// -------------------------------------------------------------
-// 【视觉设计（对照截图）】
-//   · 每条规则由一个【圆形图标】+ 【文字】组成
-//   · 圆形直径约 26px，白色图标居中
-//   · 三种状态：
-//     - pending（待校验）：灰色圆 #9ca3af + 白色 ✓ + 灰色文字
-//     - pass（通过）    ：绿色圆 #22c55e + 白色 ✓ + 绿色文字
-//     - fail（失败）    ：红色圆 #ef4444 + 白色 ✕ + 红色文字
-//
-// 【Props】
-//   rules        : 规则数组（见上方 usernameRules / passwordRules）
-//   value        : 当前输入值
-//   data         : 整个表单 values（跨字段校验用，比如密码要读 username）
-//   visible      : 是否显示
-//   forceValidate: 失焦后为 true，此时跳过 pending 状态，直接判定 pass/fail
-//                  （避免空字段失焦后仍显示灰色待校验的 bug）
 // =============================================================
+
+const STATUS_COLORS = {
+  pending: { bg: "#9ca3af", text: "#9ca3af" },
+  pass: { bg: "#22c55e", text: "#16a34a" },
+  fail: { bg: "#ef4444", text: "#dc2626" },
+};
+
 function RuleHints({ rules, value, data, visible, forceValidate }) {
   if (!visible) return null;
 
@@ -181,11 +170,6 @@ function RuleHints({ rules, value, data, visible, forceValidate }) {
         }
 
         // ---- 根据状态选颜色和图标 ----
-        const colors = {
-          pending: { bg: "#9ca3af", text: "#9ca3af" },
-          pass: { bg: "#22c55e", text: "#16a34a" },
-          fail: { bg: "#ef4444", text: "#dc2626" },
-        };
         const icon = status === "fail" ? "\u2715" : "\u2713";
 
         return (
@@ -199,7 +183,7 @@ function RuleHints({ rules, value, data, visible, forceValidate }) {
                 width: 26,
                 height: 26,
                 borderRadius: "50%",
-                backgroundColor: colors[status].bg,
+                backgroundColor: STATUS_COLORS[status].bg,
                 color: "#fff",
                 fontSize: 14,
                 fontWeight: 700,
@@ -209,8 +193,7 @@ function RuleHints({ rules, value, data, visible, forceValidate }) {
             >
               {icon}
             </span>
-            {/* 规则文字：支持多行换行（p_chars 文案很长） */}
-            <Text size="sm" c={colors[status].text} style={{ lineHeight: 1.5 }}>
+            <Text size="sm" c={STATUS_COLORS[status].text} style={{ lineHeight: 1.5 }}>
               {rule.label}
             </Text>
           </Group>
@@ -278,8 +261,7 @@ const schema = z
         return v === "246810";
       }, "验证码不正确，请检查后重新输入"),
   })
-  // ---- superRefine：跨字段校验 ----
-  // 只保留 2 条：密码=确认密码、密码≠用户名
+  // ---- superRefine：跨字段校验（密码=确认密码，密码≠用户名）----
   .superRefine((data, ctx) => {
     // 规则 A：两次密码一致
     if (data.confirmPassword !== data.password) {
@@ -290,8 +272,7 @@ const schema = z
       });
     }
 
-    // 规则 B（截图第 3 条）：密码必须与登录名不同
-    // 用户名 ≥ 3 字符才检查，避免空串或太短的用户名误命中
+    // 规则 B：密码必须与登录名不同（用户名长度 ≥ 3 才检查）
     if (
       data.username &&
       data.username.length >= 3 &&
@@ -332,61 +313,34 @@ function RegistrationForm({ onSubmit }) {
     validateInputOnChange: [],
   });
 
-  // ---- 聚焦 + touched 状态：控制 RuleHints 的显示/隐藏 ----
-  // 【为什么需要 touched】
-  //   旧逻辑仅用 focused + form.errors 控制可见性，会导致失焦时闪烁：
-  //   onBlur → setFocused(false) → 重渲染（此时异步校验尚未完成，errors 为空）→ 规则条消失
-  //   → 校验完成 → errors 被设置 → 再次重渲染 → 规则条重新出现 = 闪烁。
-  //
-  //   新逻辑引入 touched（一旦失焦就变为 true，不再复位）：
-  //   - 默认隐藏（从未聚焦/交互过）
-  //   - 聚焦时：显示，pending 态为灰色
-  //   - 失焦后（touched=true）：只要字段有值或有错误就显示
-  //   - 失焦后空字段：显示红色错误（通过 forceValidate 跳过 pending 态）
-  //   - 失焦后合法值：保持显示绿色对勾（给用户确认反馈）
+  // ---- 聚焦 + touched 状态控制 RuleHints 显示/隐藏 ----
+  // touched 一旦失焦变为 true 后不再复位，配合 forceValidate 消除闪烁：
+  //   - 默认隐藏 → 聚焦时显示（灰色 pending）→ 输入时同步判定 pass/fail
+  //   - 失焦后：touched=true 保持显示，forceValidate 跳过 pending 直判 pass/fail
+  //   - 重置时：touched 复位为 false → 隐藏
   const [usernameFocused, setUsernameFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [usernameTouched, setUsernameTouched] = useState(false);
   const [passwordTouched, setPasswordTouched] = useState(false);
 
-  // 规则条显示条件（消除闪烁的核心逻辑）：
-  //   1. 正在聚焦 → 始终显示
-  //   2. 已经 touch 过 → 始终显示
-  //
-  // 【为什么不再依赖 form.errors / form.values？】
-  //   旧逻辑：touched && (value.length > 0 || !!errors)
-  //   问题：聚焦空字段后失焦，异步校验（200ms）还没完成时 errors 为空，
-  //        且 value.length === 0，导致规则条瞬间消失，校验完成后又出现 = 闪烁。
-  //   新逻辑：touched 后就持续显示，状态由 forceValidate + test() 同步判定，
-  //        完全不依赖异步 form.errors，彻底消除时序依赖。
-  //   - 失焦空字段：forceValidate=true → test() 返回 false → 红色✕（立即）
-  //   - 失焦合法值：forceValidate=true → test() 返回 true → 绿色✓（立即）
-  //   - 重置时 touched 复位为 false → 隐藏
   const usernameHintsVisible = usernameFocused || usernameTouched;
   const passwordHintsVisible = passwordFocused || passwordTouched;
-
-  // forceValidate：失焦后为 true，此时不再显示灰色 pending，直接判定 pass/fail
-  // （空字段失焦后应显示红色✕而非灰色✓）
   const usernameForceValidate = usernameTouched && !usernameFocused;
   const passwordForceValidate = passwordTouched && !passwordFocused;
 
-  // ---- 同步计算 error 状态（消除边框闪烁的核心）----
-  // 【为什么不用 form.errors？】
-  //   schema 含 async refine（用户名查重 200ms），整个 schema 变成异步。
-  //   失焦后 form.errors.username 需要等 async refine 完成才会被设置（约 500ms）。
-  //   这段时间内 TextInput 的 error=false → 边框是灰色 normal 色，
-  //   而规则条已经同步变红 → 视觉上"红色边框先消失，过一会儿再出现"= 闪烁。
-  //
-  // 【解决】
-  //   error 状态直接用 forceValidate + test() 同步计算，与规则条完全同步：
-  //   - 未 touched → false（无错误）
-  //   - touched 后 → 任一规则 test() 失败 → true（红色边框立即出现）
+  // ---- 同步计算 error 状态（消除边框闪烁）----
+  // 不用 form.errors（异步，需等 async refine 完成），改用 test() 同步计算
   const usernameHasError =
     usernameTouched &&
     !usernameRules.every((r) => r.test(form.values.username, form.values));
   const passwordHasError =
     passwordTouched &&
     !passwordRules.every((r) => r.test(form.values.password, form.values));
+
+  // ---- confirmPassword 同步 error（与 password 一致时才通过）----
+  const confirmPasswordHasError =
+    form.values.confirmPassword.length > 0 &&
+    form.values.confirmPassword !== form.values.password;
 
   return (
     <Paper p="lg" withBorder shadow="sm">
@@ -395,12 +349,7 @@ function RegistrationForm({ onSubmit }) {
           {/* ========== 区块 1：基础信息 ========== */}
           <Title order={4}>① 基础信息</Title>
 
-          {/* ---- username + RuleHints ----
-              ⚠️【error 同步计算】
-                 不使用 form.errors.username（异步，需等 async refine 完成），
-                 改用 usernameHasError（同步，与规则条完全同步）。
-                 这样失焦瞬间边框立即变红，消除"红边框先消失再出现"的闪烁。
-                 error 为布尔值，不显示下方红字，错误信息由 RuleHints 承担。 */}
+          {/* ---- username + RuleHints ---- */}
           <Box>
             <TextInput
               label="Login Name"
@@ -413,9 +362,6 @@ function RegistrationForm({ onSubmit }) {
                 form.getInputProps("username").onFocus?.(e);
               }}
               onBlur={(e) => {
-                // 先触发 Mantine 的失焦校验，再更新本地状态
-                // touched 置为 true 后，规则条不会因 focused=false 而消失，
-                // 从而彻底消除"消失一下再出现"的闪烁
                 form.getInputProps("username").onBlur?.(e);
                 setUsernameFocused(false);
                 setUsernameTouched(true);
@@ -430,8 +376,7 @@ function RegistrationForm({ onSubmit }) {
             />
           </Box>
 
-          {/* ---- password + RuleHints ----
-              error 同步计算（与 username 同理），消除边框闪烁 */}
+          {/* ---- password + RuleHints ---- */}
           <Box>
             <PasswordInput
               label="Group Password"
@@ -464,6 +409,7 @@ function RegistrationForm({ onSubmit }) {
             placeholder="Re-enter your password"
             withAsterisk
             {...form.getInputProps("confirmPassword")}
+            error={confirmPasswordHasError}
           />
 
           <Divider my="xs" />
@@ -480,11 +426,8 @@ function RegistrationForm({ onSubmit }) {
               <Code>246810</Code>）。
             </Text>
 
-            {/* PinInput 使用手动受控模式（value/onChange），不走 getInputProps，
-                所以 validateInputOnBlur 不会自动生效。
-                外层 Box 的 onBlur 利用事件冒泡捕获 PinInput 内部 input 的 blur，
-                再用 currentTarget.contains(relatedTarget) 判断焦点是否真正离开了
-                整个 PinInput 区域（排除 6 个 digit 之间切换焦点的情况） */}
+            {/* PinInput 手动受控不走 getInputProps，外层 Box onBlur 冒泡捕获
+                焦点离开，用 relatedTarget 排除 6 个 digit 之间切换的误触发 */}
             <Box
               onBlur={(e) => {
                 if (!e.currentTarget.contains(e.relatedTarget)) {
@@ -593,7 +536,7 @@ export default function MantineFormZodPage() {
                   • 默认隐藏 → 聚焦时灰色 ✓ → 输入时绿色 ✓ / 红色 ✕
                 </Text>
                 <Text size="xs">
-                  • 用户名 3 条规则、密码 3 条规则（与截图一致）
+                  • 用户名 3 条规则、密码 3 条规则
                 </Text>
                 <Text size="xs">
                   • 规则状态实时根据 form.values 计算，不依赖 Zod 异步校验
