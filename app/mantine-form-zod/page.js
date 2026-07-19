@@ -66,7 +66,6 @@ import {
   Code,
   Alert,
   Modal,
-  useMantineColorScheme,
 } from "@mantine/core";
 
 import { useForm, schemaResolver } from "@mantine/form";
@@ -317,11 +316,6 @@ const initialValues = {
 };
 
 // =============================================================
-// 主题切换
-// =============================================================
-
-
-// =============================================================
 // 注册表单组件
 // =============================================================
 function RegistrationForm({ onSubmit }) {
@@ -329,14 +323,12 @@ function RegistrationForm({ onSubmit }) {
     initialValues,
     validate: schemaResolver(schema),
     validateInputOnBlur: true,
-    // username/password 不列入 onChange 校验：
-    //   · RuleHints 组件已经提供同步实时反馈（绿✓/红✕）
-    //   · 这两个字段含异步 refine（用户名查重），onChange 触发会导致
-    //     每次按键都发异步请求，有竞态风险
-    //   · 失焦时 validateInputOnBlur 会跑完整校验（含异步），
-    //     此时 form.errors 更新 → 红色边框出现
-    // confirmPassword 也只在失焦时校验一致性
-    // otp 含异步后端校验，不做 onChange
+    // 所有字段均不在 onChange 时触发 Zod 校验，统一在失焦时校验：
+    //   · username/password：RuleHints 组件已提供同步实时反馈（绿✓/红✕），
+    //     且含异步 refine（用户名查重），onChange 触发会导致每次按键都发
+    //     异步请求，有竞态风险
+    //   · confirmPassword：只在失焦时校验与 password 的一致性
+    //   · otp：含异步后端校验，不做 onChange
     validateInputOnChange: [],
   });
 
@@ -484,7 +476,7 @@ function RegistrationForm({ onSubmit }) {
               验证码 <Text component="span" c="red" size="sm">*</Text>
             </Text>
             <Text size="xs" c="dimmed" mb={8}>
-              请输入发送到你手机/邮箱的 6 位数字验证码（演示用：正确码为{" "}
+              请输入发送到你手机的 6 位数字验证码（演示用：正确码为{" "}
               <Code>246810</Code>）。
             </Text>
 
@@ -630,7 +622,7 @@ export default function MantineFormZodPage() {
               {submitted && (
                 <Box>
                   <Text size="sm" mb="sm">
-                    校验通过并 transform 后的数据：
+                    校验通过的数据：
                   </Text>
                   <pre
                     style={{
