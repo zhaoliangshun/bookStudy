@@ -179,13 +179,16 @@ function fixFile(filepath) {
       if (depth === 0) {
         if (ch === '\\') { k++; continue; }
         if (ch === '`') {
-          // Check: on same line (no \n between backtick and comma), after optional spaces, is there a comma?
+          // After a backtick at depth 0, check if this closes a content block.
+          // Pattern: backtick, optional spaces/tabs, comma, then on next line "  },"
+          // (or "  }" at end of file followed by ];)
           let r = k + 1;
           while (r < src.length && (src[r] === ' ' || src[r] === '\t')) r++;
-          if (src[r] === ',' && (src.indexOf('\n', k+1) > r || src.indexOf('\n', k+1) === -1)) {
-            // Also verify this comma is on the same line (no newline before comma)
-            const lineEnd = src.indexOf('\n', k+1);
-            if (lineEnd === -1 || r < lineEnd) {
+          if (src[r] === ',') {
+            const after = src.substring(r + 1);
+            // Accept: optional \r, \n, "  },", or \r, \n, "  }", \n, whitespace, "];"
+            const ok = /^\r?\n  \},/.test(after) || /^\r?\n  \}\r?\n\s*\];/.test(after);
+            if (ok) {
               end = k;
               break;
             }

@@ -1,3450 +1,4390 @@
 export const chapters = [
   {
     id: "tsrx-env",
-    icon: "🛠️",
     group: "准备篇",
+    icon: "🛠️",
     title: "环境搭建与工程化入门",
-    content: `## 环境搭建与工程化入门
+    content: `
 
-在开始 TypeScript + React 开发之前，我们需要搭建一个规范、高效的开发环境。本章将带你从零开始完成项目创建、TypeScript 配置、代码规范工具配置等全套工程化准备工作。
+# 环境搭建与工程化入门
 
-### 一、使用 Vite 创建 TS + React 项目
+在正式开始学习 TypeScript + React 之前，我们需要先搭建一套规范、高效的开发环境。本章将带你从零开始创建项目、配置 TypeScript、规划目录结构，并集成 ESLint、Prettier 等工程化工具，为后续的学习打下坚实基础。
 
-Vite 是新一代前端构建工具，由 Vue 作者尤雨溪开发，相比传统的 webpack，它具有极快的冷启动速度和热更新速度。
+## 一、使用 Vite 创建 TS + React 项目
+
+Vite 是新一代前端构建工具，基于原生 ES Modules 和 esbuild/Rollup，启动速度和热更新速度远快于传统的 Webpack/CRA。创建 TypeScript + React 项目只需一条命令：
 
 \`\`\`bash
 # 使用 npm 创建项目
-npm create vite@latest my-tsx-app -- --template react-ts
-
-# 或者使用 pnpm（推荐）
-pnpm create vite@latest my-tsx-app -- --template react-ts
+npm create vite@latest my-ts-react-app -- --template react-ts
 
 # 进入项目目录
-cd my-tsx-app
+cd my-ts-react-app
 
 # 安装依赖
-pnpm install
+npm install
 
 # 启动开发服务器
-pnpm dev
+npm run dev
 \`\`\`
 
-执行完上述命令后，Vite 会在 http://localhost:5173 启动开发服务器。
+如果你使用 pnpm 或 yarn，命令类似：
 
-### 二、tsconfig.json 核心配置详解
+\`\`\`bash
+# pnpm
+pnpm create vite my-ts-react-app --template react-ts
 
-tsconfig.json 是 TypeScript 项目的核心配置文件，它决定了 TypeScript 编译器的行为。以下是一份生产级别的配置：
+# yarn
+yarn create vite my-ts-react-app --template react-ts
+\`\`\`
 
-\`\`\`json
+创建完成后，项目的 \`package.json\` 大致包含以下核心依赖：
+
+\`\`\`json filename="package.json"
+{
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.5.3",
+    "vite": "^5.4.1"
+  }
+}
+\`\`\`
+
+## 二、tsconfig.json 核心配置详解
+
+TypeScript 的行为由 \`tsconfig.json\` 控制。Vite 生成的默认配置已经不错，但我们需要调整几个关键选项来获得最佳开发体验。
+
+\`\`\`json filename="tsconfig.json"
 {
   "compilerOptions": {
-    // 启用所有严格类型检查选项
+    // 严格模式：开启所有严格类型检查，强烈建议必须开启
     "strict": true,
-    
-    // 编译目标：ES2020 支持现代浏览器的所有特性
-    "target": "ES2020",
-    
-    // 使用的 JSX 模式：react-jsx 是 React 17+ 推荐的模式，不需要手动 import React
+    // JSX 编译方式：react-jsx 使用新的 JSX 转换，无需手动 import React
     "jsx": "react-jsx",
-    
-    // 模块解析策略：bundler 配合 Vite/Rollup/Webpack 等打包工具使用
+    // 编译目标：输出 ES2020 语法，现代浏览器都支持
+    "target": "ES2020",
+    // 模块系统：使用 ESNext 模块语法（import/export）
+    "module": "ESNext",
+    // 模块解析策略：bundler 模式适配 Vite/Rollup 的解析方式
     "moduleResolution": "bundler",
-    
-    // 基础路径：用于配置非相对路径导入
+    // 启用导入时省略扩展名（.ts/.tsx 可以不写后缀）
+    "allowImportingTsExtensions": true,
+    // 基础路径：用于配置路径别名
     "baseUrl": ".",
-    
-    // 路径别名：配置后可以用 @/ 代替 src/
+    // 路径别名：@ 指向 src 目录，避免深层嵌套的 ../../
     "paths": {
-      "@/*": ["src/*"],
-      "@/components/*": ["src/components/*"],
-      "@/hooks/*": ["src/hooks/*"],
-      "@/utils/*": ["src/utils/*"],
-      "@/types/*": ["src/types/*"],
-      "@/api/*": ["src/api/*"],
-      "@/store/*": ["src/store/*"]
+      "@/*": ["src/*"]
     },
-    
     // 允许导入 JSON 文件
     "resolveJsonModule": true,
-    
-    // 允许从没有默认导出的模块中默认导入
-    "allowSyntheticDefaultImports": true,
-    
-    // 确保导入的一致性
-    "esModuleInterop": true,
-    
-    // 跳过库文件的类型检查，加快编译速度
-    "skipLibCheck": true,
-    
-    // 强制文件名大小写一致
-    "forceConsistentCasingInFileNames": true,
-    
-    // 不生成编译输出文件（由 Vite 处理）
+    // 隔离模块：确保每个文件可以被单独转译（Vite 要求）
+    "isolatedModules": true,
+    // 不生成编译产物，由 Vite 处理构建
     "noEmit": true,
-    
-    // 报告未使用的局部变量
-    "noUnusedLocals": true,
-    
-    // 报告未使用的函数参数
-    "noUnusedParameters": true,
-    
-    // 报告 switch 语句中遗漏的 break
-    "noFallthroughCasesInSwitch": true
+    // 跳过库文件类型检查，加快编译速度
+    "skipLibCheck": true
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
 \`\`\`
 
-### 三、推荐目录结构规范
+重点配置解读：
 
-良好的目录结构是项目可维护性的基础。以下是推荐的 React + TS 项目目录组织方式：
+- **strict: true**：开启 \`noImplicitAny\`、\`strictNullChecks\`、\`strictFunctionTypes\` 等一系列严格检查，这是 TypeScript 的灵魂所在，不要关闭。
+- **jsx: "react-jsx"**：React 17+ 引入的新 JSX 转换，不需要在每个文件顶部写 \`import React from 'react'\`。
+- **baseUrl + paths**：配置 \`@/*\` 别名后，\`@/components/Button\` 等价于 \`src/components/Button\`，再也不用数 \`../../\` 的层数了。
 
+配置完路径别名后，还需要在 \`vite.config.ts\` 中同步配置，否则 Vite 无法识别别名：
+
+\`\`\`typescript filename="vite.config.ts"
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import path from 'path'
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src')
+    }
+  }
+})
 \`\`\`
+
+注意：需要安装 \`@types/node\` 才能获得 \`path\` 和 \`__dirname\` 的类型提示：
+
+\`\`\`bash
+npm install -D @types/node
+\`\`\`
+
+## 三、目录结构规范
+
+良好的目录结构是项目可维护性的基础。推荐以下目录划分方式：
+
+\`\`\`txt
 src/
-├── components/          # 通用可复用组件
-│   ├── ui/             # 基础UI组件（Button、Input、Modal等）
-│   └── layout/         # 布局组件（Header、Sidebar、Footer等）
-├── hooks/              # 自定义Hooks
-│   ├── useLocalStorage.ts
-│   └── useDebounce.ts
-├── utils/              # 工具函数
-│   ├── format.ts
-│   └── validate.ts
-├── types/              # TypeScript类型定义
-│   ├── api.ts          # API相关类型
-│   └── common.ts       # 通用类型
-├── api/                # API请求封装
-│   └── request.ts
-├── store/              # 状态管理（Zustand/Redux等）
-│   └── userStore.ts
-├── pages/              # 页面组件
-│   ├── Home/
-│   └── About/
-├── assets/             # 静态资源
-│   ├── images/
-│   └── styles/
-├── App.tsx             # 根组件
-└── main.tsx            # 应用入口
+├── components/      # 可复用的通用组件（Button、Input、Modal 等）
+│   ├── ui/          # 基础 UI 原子组件
+│   └── layout/      # 布局组件（Header、Sidebar、Footer）
+├── hooks/           # 自定义 Hooks（useFetch、useLocalStorage 等）
+├── utils/           # 工具函数（format、validate、storage 等）
+├── types/           # TypeScript 类型定义（全局类型、接口）
+│   └── index.ts     # 类型统一导出
+├── api/             # API 请求封装（axios 实例、接口函数）
+├── store/           # 全局状态管理（Zustand、Redux、Context）
+├── pages/           # 页面级组件（路由对应页面）
+├── assets/          # 静态资源（图片、字体、全局样式）
+├── App.tsx          # 根组件
+└── main.tsx         # 应用入口
 \`\`\`
 
-### 四、ESLint + Prettier 配置
+## 四、ESLint + Prettier 配置
 
-代码规范是团队协作的基石。ESLint 负责代码质量检查，Prettier 负责代码格式化。
+代码规范和格式化是团队协作的基石。ESLint 负责代码质量检查，Prettier 负责代码格式化。
 
 首先安装必要的依赖：
 
 \`\`\`bash
-pnpm add -D eslint prettier eslint-config-prettier eslint-plugin-prettier @typescript-eslint/eslint-plugin @typescript-eslint/parser eslint-plugin-react-hooks eslint-plugin-react-refresh
+npm install -D eslint prettier eslint-config-prettier eslint-plugin-react eslint-plugin-react-hooks eslint-plugin-react-refresh @typescript-eslint/eslint-plugin @typescript-eslint/parser
 \`\`\`
 
-然后创建 .eslintrc.cjs 配置文件：
+创建 ESLint 配置文件：
 
-\`\`\`javascript
-module.exports = {
-  root: true,
-  env: { browser: true, es2020: true },
-  extends: [
-    'eslint:recommended',
-    'plugin:@typescript-eslint/recommended',
-    'plugin:react-hooks/recommended',
-    'plugin:prettier/recommended',
-  ],
-  ignorePatterns: ['dist', '.eslintrc.cjs'],
-  parser: '@typescript-eslint/parser',
-  plugins: ['react-refresh'],
-  rules: {
-    'react-refresh/only-export-components': [
-      'warn',
-      { allowConstantExport: true },
-    ],
-    '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-    '@typescript-eslint/explicit-function-return-type': 'off',
-    '@typescript-eslint/no-explicit-any': 'warn',
+\`\`\`javascript filename="eslint.config.js"
+import js from '@eslint/js'
+import globals from 'globals'
+import reactHooks from 'eslint-plugin-react-hooks'
+import reactRefresh from 'eslint-plugin-react-refresh'
+import tseslint from 'typescript-eslint'
+
+export default tseslint.config(
+  { ignores: ['dist'] },
+  {
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
+    },
+    plugins: {
+      'react-hooks': reactHooks,
+      'react-refresh': reactRefresh,
+    },
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+      'react-refresh/only-export-components': [
+        'warn',
+        { allowConstantExport: true },
+      ],
+    },
   },
-}
+)
 \`\`\`
 
-创建 .prettierrc 配置文件：
+创建 Prettier 配置文件：
 
-\`\`\`json
+\`\`\`json filename=".prettierrc"
 {
-  "semi": true,
+  "semi": false,
   "singleQuote": true,
   "tabWidth": 2,
   "trailingComma": "es5",
   "printWidth": 100,
-  "arrowParens": "always"
+  "arrowParens": "avoid"
 }
 \`\`\`
 
-### 五、VS Code 推荐插件
-
-为了获得最佳开发体验，推荐安装以下 VS Code 插件：
-
-1. **ESLint** - 实时显示代码规范问题
-2. **Prettier - Code formatter** - 保存时自动格式化代码
-3. **TypeScript Vue Plugin (Volar)** - 更好的TS类型提示
-4. **Error Lens** - 直接在代码行内显示错误信息
-5. **Auto Rename Tag** - 自动重命名配对的HTML/JSX标签
-6. **Path Intellisense** - 路径自动补全
-7. **Tailwind CSS IntelliSense**（如果使用Tailwind）- Tailwind类名提示
-8. **GitLens** - Git增强工具
-
-在 .vscode/settings.json 中配置保存时自动格式化：
+在 \`package.json\` 中添加脚本：
 
 \`\`\`json
 {
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": true
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\""
   }
 }
 \`\`\`
 
-完成以上配置后，你的开发环境就具备了专业级别的工程化基础，可以高效地进行 TypeScript + React 开发了！`,
+## 五、VS Code 插件推荐
+
+为了获得最佳开发体验，推荐安装以下 VS Code 插件：
+
+1. **ESLint**：实时显示 ESLint 错误和警告
+2. **Prettier - Code formatter**：保存时自动格式化代码
+3. **Error Lens**：直接在代码行内显示错误信息
+4. **Auto Rename Tag**：自动重命名配对的 HTML/JSX 标签
+5. **Path Intellisense**：路径自动补全
+6. **Todo Tree**：高亮显示 TODO、FIXME 等注释
+
+同时在 VS Code 设置中开启「保存时格式化」和「保存时修复 ESLint 错误」：
+
+\`\`\`json filename=".vscode/settings.json"
+{
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  }
+}
+\`\`\`
+
+## 六、小结
+
+- 使用 Vite 创建 React + TypeScript 项目：\`npm create vite@latest my-app -- --template react-ts\`
+- \`tsconfig.json\` 中务必开启 \`strict: true\`，使用 \`react-jsx\` 的 JSX 转换
+- 配置 \`baseUrl\` 和 \`paths\` 别名 \`@/*\` 指向 \`src\`，同时在 \`vite.config.ts\` 中同步配置
+- 按照 \`components/hooks/utils/types/api/store/pages\` 规范组织目录
+- 集成 ESLint + Prettier 保证代码质量和风格统一
+- 安装必要的 VS Code 插件提升开发效率
+
+下一章我们将深入学习 JSX/TSX 的语法细节，理解它的本质以及在 TypeScript 中的特殊之处。
+`,
   },
   {
     id: "tsrx-jsx",
-    icon: "📝",
     group: "准备篇",
+    icon: "📝",
     title: "JSX/TSX语法深度解析",
-    content: `## JSX/TSX语法深度解析
+    content: `
 
-JSX 是 React 的核心语法，它让我们可以在 JavaScript 中编写类似 HTML 的标记代码。TSX 则是 JSX 的 TypeScript 版本，增加了类型检查能力。本章我们将深入理解 JSX 的本质和各种语法细节。
+# JSX/TSX 语法深度解析
 
-### 一、JSX 的本质：不是模板，是语法糖
+JSX 是 React 最具辨识度的特性之一，它让我们可以用类似 HTML 的语法在 JavaScript 中编写 UI。而 TSX 则是 JSX 在 TypeScript 中的超集，增加了类型检查能力。本章将深入剖析 JSX 的本质、TSX 与 JSX 的区别，以及各种语法细节和常见陷阱。
 
-很多人误以为 JSX 是模板语言，但实际上它只是 React.createElement（React 17+ 是 _jsx）的语法糖。
+## 一、JSX 的本质：不是 HTML，是语法糖
 
-来看 Babel 是如何编译 JSX 的：
+很多初学者误以为 JSX 是 HTML，其实它只是 \`React.createElement\`（React 17+ 是 \`_jsx\`）的语法糖。Babel/SWC 等编译器会把 JSX 编译成普通的 JavaScript 函数调用。
+
+看这段 JSX：
 
 \`\`\`tsx
-// 你写的 JSX 代码
-const element = <h1 className="greeting">Hello, World!</h1>;
-
-// React 17 之前，编译后是这样的：
-const element = React.createElement(
-  'h1',
-  { className: 'greeting' },
-  'Hello, World!'
-);
-
-// React 17+ 使用新的 JSX 转换，编译后：
-import { jsx as _jsx } from 'react/jsx-runtime';
-const element = _jsx('h1', {
-  className: 'greeting',
-  children: 'Hello, World!'
-});
+const element = <h1 className="title">Hello, World!</h1>
 \`\`\`
 
-这就是为什么 JSX 比传统模板引擎更灵活——它本质上就是 JavaScript 函数调用。
+编译后的结果（React 17+ 新 JSX 转换）：
 
-### 二、TSX vs JSX：类型检查的区别
-
-TSX 和 JSX 的语法基本相同，唯一的区别是 TSX 在 TypeScript 环境中运行，会进行类型检查。
-
-\`\`\`tsx
-// ❌ JSX 中不会报错，但 TSX 中会报类型错误
-const Button = () => {
-  return <button onClick="notAFunction">Click me</button>;
-  // 错误：类型 'string' 不能赋值给类型 'MouseEventHandler<HTMLButtonElement>'
-};
-
-// ✅ 正确的写法
-const Button = () => {
-  return <button onClick={() => console.log('clicked')}>Click me</button>;
-};
-
-// ❌ TSX 会检查 props 是否存在
-const UserCard = ({ name, age }: { name: string; age: number }) => {
-  return <div>{name} - {age}</div>;
-};
-
-<UserCard name="Tom" age={25} email="tom@example.com" />;
-// 错误："email" 属性不存在于类型 'IntrinsicAttributes & { name: string; age: number; }'
+\`\`\`javascript
+import { jsx as _jsx } from 'react/jsx-runtime'
+const element = _jsx('h1', { className: 'title', children: 'Hello, World!' })
 \`\`\`
 
-类型检查是 TSX 最大的优势，它能在编译时就发现很多潜在的 bug。
+React 16 及更早版本的旧转换：
 
-### 三、表达式嵌入：{} 的用法
+\`\`\`javascript
+// 旧版转换：需要 import React
+import React from 'react'
+const element = React.createElement('h1', { className: 'title' }, 'Hello, World!')
+\`\`\`
 
-在 JSX 中，你可以使用花括号 {} 嵌入任何有效的 JavaScript 表达式：
+理解这一点非常重要：**你写的 JSX 最终都是 JS 对象**。这意味着 JSX 可以赋值给变量、作为函数参数传递、从函数返回，就像普通对象一样。
+
+## 二、TSX vs JSX：类型带来的差异
+
+TSX 在 JSX 基础上增加了静态类型检查，主要体现在：
+
+1. **Props 类型检查**：组件接收的 props 必须符合类型定义
+2. **children 类型**：children 的类型可以被精确约束
+3. **原生元素属性检查**：\`<div>\`、\`<input>\` 等原生标签的属性会被类型检查
 
 \`\`\`tsx
-const UserProfile = () => {
-  const user = { name: 'Alice', age: 28, isVip: true };
-  const formatName = (name: string) => name.toUpperCase();
+// ✅ TSX 会检查 props 类型
+interface GreetingProps {
+  name: string
+  age?: number
+}
 
+function Greeting({ name, age }: GreetingProps) {
   return (
     <div>
-      {/* 1. 变量引用 */}
-      <h2>用户名: {user.name}</h2>
-      
-      {/* 2. 运算表达式 */}
-      <p>明年年龄: {user.age + 1}</p>
-      
-      {/* 3. 函数调用 */}
-      <p>格式化名字: {formatName(user.name)}</p>
-      
-      {/* 4. 三元表达式 */}
-      <p>会员状态: {user.isVip ? 'VIP用户' : '普通用户'}</p>
-      
-      {/* 5. 模板字符串 */}
-      <p>{`${user.name}今年${user.age}岁`}</p>
-      
-      {/* ❌ 注意：if/for 等语句不能直接在 {} 中使用 */}
-      {/* { if (user.isVip) { return <span>VIP</span> } } */}
-      {/* 需要用三元或 && 替代 */}
+      <p>你好，{name}！</p>
+      {age !== undefined && <p>年龄：{age}</p>}
     </div>
-  );
-};
+  )
+}
+
+// ❌ 错误：缺少必需的 name 属性
+const bad = <Greeting />
+
+// ❌ 错误：age 应该是 number，不是 string
+const bad2 = <Greeting name="小明" age="18" />
+
+// ✅ 正确
+const good = <Greeting name="小明" age={18} />
 \`\`\`
 
-### 四、条件渲染的四种写法及陷阱
+另外，TSX 文件的扩展名必须是 \`.tsx\` 而不是 \`.ts\`，否则 TypeScript 编译器无法识别 JSX 语法。
 
-条件渲染是 React 中最常用的模式之一，有四种常见写法，每种都有适用场景和需要注意的陷阱。
+## 三、表达式嵌入：单大括号 {}
+
+在 JSX 中，你可以用单大括号 \`{}\` 嵌入任何有效的 JavaScript 表达式：
 
 \`\`\`tsx
-const ConditionalDemo = ({ isLoggedIn, user, count }: {
-  isLoggedIn: boolean;
-  user: { name: string } | null;
-  count: number;
-}) => {
+function UserProfile() {
+  const user = { name: '张三', age: 25 }
+  const isAdmin = true
+
   return (
     <div>
-      {/* 1. 三元运算符：适合二选一的场景 */}
-      <div>
-        {isLoggedIn ? <span>欢迎, {user?.name}</span> : <button>登录</button>}
-      </div>
-
-      {/* 2. && 短路：适合只显示/隐藏，没有else分支 */}
-      {/* ⚠️ 陷阱：如果左边是 0，会渲染出 0 而不是什么都不显示 */}
-      <div>
-        {isLoggedIn && <span>已登录</span>}
-        {/* ❌ 错误写法：count 为 0 时会显示 0 */}
-        {count && <p>有 {count} 条消息</p>}
-        {/* ✅ 正确写法：用 !! 或 Boolean() 转成布尔值 */}
-        {!!count && <p>有 {count} 条消息</p>}
-        {count > 0 && <p>有 {count} 条消息</p>}
-      </div>
-
-      {/* 3. 提前 return：适合多态组件（多分支条件） */}
-      {/* 这部分写在组件函数体中 */}
+      {/* 变量插值 */}
+      <h2>{user.name}</h2>
+      
+      {/* 运算表达式 */}
+      <p>明年{user.age + 1}岁</p>
+      
+      {/* 三元表达式 */}
+      <p>角色：{isAdmin ? '管理员' : '普通用户'}</p>
+      
+      {/* 函数调用 */}
+      <p>名字长度：{user.name.length}</p>
+      
+      {/* 模板字符串 */}
+      <p>{\`\${user.name} - \${user.age}岁\`}</p>
     </div>
-  );
-};
+  )
+}
+\`\`\`
 
-// 提前 return 示例
-const StatusMessage = ({ loading, error, data }: {
-  loading: boolean;
-  error: Error | null;
-  data: string | null;
-}) => {
-  // 按优先级依次判断，提前 return
-  if (loading) return <div className="loading">加载中...</div>;
-  if (error) return <div className="error">错误: {error.message}</div>;
-  if (!data) return <div className="empty">暂无数据</div>;
-  return <div className="success">{data}</div>;
-};
+注意：\`{}\` 里只能放**表达式**，不能放语句（if、for、变量声明等）。但可以放 IIFE（立即执行函数）来实现复杂逻辑。
 
-// 4. IIFE（立即执行函数）：适合复杂的条件逻辑
-const ComplexConditional = ({ status }: { status: 'a' | 'b' | 'c' | 'd' }) => {
+## 四、条件渲染：四种写法与陷阱
+
+### 4.1 三元运算符：适合二选一
+
+\`\`\`tsx
+function StatusBadge({ isOnline }: { isOnline: boolean }) {
+  return (
+    <span className={isOnline ? 'badge-online' : 'badge-offline'}>
+      {isOnline ? '在线' : '离线'}
+    </span>
+  )
+}
+\`\`\`
+
+### 4.2 && 短路运算：适合显隐控制
+
+\`\`\`tsx
+function NotificationBadge({ count }: { count: number }) {
   return (
     <div>
+      <span>消息</span>
+      {/* count > 0 时显示徽标 */}
+      {count > 0 && <span className="badge">{count}</span>}
+    </div>
+  )
+}
+\`\`\`
+
+⚠️ **经典陷阱**：\`{count && <Badge />}\` 当 \`count\` 是 0 时，React 会渲染出数字 0，而不是什么都不显示！这是因为 0 是 falsy 值但 React 会渲染它。
+
+\`\`\`tsx
+// ❌ 错误：list.length 为 0 时会显示 0
+{list.length && <TodoList items={list} />}
+
+// ✅ 正确：明确判断 > 0
+{list.length > 0 && <TodoList items={list} />}
+
+// ✅ 正确：用 !! 转为布尔值
+{!!list.length && <TodoList items={list} />}
+
+// ✅ 正确：用 Boolean() 转换
+{Boolean(list.length) && <TodoList items={list} />}
+\`\`\`
+
+### 4.3 提前 return：适合多态渲染
+
+\`\`\`tsx
+type DataState<T> = 
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'success'; data: T }
+
+function DataView<T>({ state }: { state: DataState<T> }) {
+  // 提前返回 loading 状态
+  if (state.status === 'loading') {
+    return <div className="loading">加载中...</div>
+  }
+  // 提前返回 error 状态
+  if (state.status === 'error') {
+    return <div className="error">错误：{state.message}</div>
+  }
+  // 最后返回成功状态
+  return <div className="success">数据：{JSON.stringify(state.data)}</div>
+}
+\`\`\`
+
+### 4.4 IIFE（立即执行函数）：适合复杂分支逻辑
+
+\`\`\`tsx
+function ComplexCondition({ score }: { score: number }) {
+  return (
+    <div>
+      <p>分数：{score}</p>
       {(() => {
-        switch (status) {
-          case 'a': return <div>状态A</div>;
-          case 'b': return <div>状态B</div>;
-          case 'c': return <div>状态C</div>;
-          default: return <div>未知状态</div>;
-        }
+        if (score >= 90) return <span className="grade-a">优秀</span>
+        if (score >= 80) return <span className="grade-b">良好</span>
+        if (score >= 60) return <span className="grade-c">及格</span>
+        return <span className="grade-d">不及格</span>
       })()}
     </div>
-  );
-};
+  )
+}
 \`\`\`
 
-### 五、列表渲染与 key 的原则
+## 五、列表渲染与 key 原则
 
-渲染列表时，key 是一个非常重要的属性，它帮助 React 识别哪些元素改变了。
+渲染列表使用 \`map\`，每个列表项必须提供唯一的 \`key\` 属性：
 
 \`\`\`tsx
 interface Todo {
-  id: number;
-  text: string;
-  completed: boolean;
+  id: number
+  text: string
+  completed: boolean
 }
 
-const TodoList = () => {
-  const [todos, setTodos] = useState<Todo[]>([
-    { id: 1, text: '学习React', completed: true },
-    { id: 2, text: '学习TypeScript', completed: false },
-    { id: 3, text: '写项目', completed: false },
-  ]);
-
+function TodoList({ todos }: { todos: Todo[] }) {
   return (
     <ul>
-      {todos.map((todo) => (
-        // ✅ 正确：使用稳定唯一的 id 作为 key
-        <li key={todo.id} style={{ textDecoration: todo.completed ? 'line-through' : 'none' }}>
+      {todos.map(todo => (
+        <li key={todo.id} className={todo.completed ? 'done' : ''}>
           {todo.text}
         </li>
-        // ❌ 错误：不要使用数组 index 作为 key（列表会动态变化时）
-        // <li key={index}>...</li>
       ))}
     </ul>
-  );
-};
+  )
+}
 \`\`\`
 
-**为什么不能随便用 index 作为 key？** 当列表项顺序变化（插入、删除、排序）时，index 会变，导致 React 错误地复用组件状态，造成难以调试的 bug。只有当列表是静态的、不会重新排序时，才可以用 index。
+**key 的重要原则**：
 
-**key 变化会重置组件状态：** 这是一个有用的特性，比如你想让一个表单组件在切换用户时重置，只要给它设置 key={userId} 即可。
-
-### 六、其他常用语法
+1. **key 必须是稳定且唯一的**：使用数据中的唯一 id（如数据库 id），不要用数组 index。
+2. **不要用 index 作为 key**：当列表顺序变化（插入、删除、排序）时，index 会变，导致 React 无法正确复用组件，可能造成状态错乱。
+3. **key 变化会重置组件状态**：如果 key 变了，React 会销毁旧组件、创建新组件，组件内部 state 会丢失（包括 input 输入值）。
 
 \`\`\`tsx
-// Fragment 短语法：<>...</> 用来包裹多个元素，不产生额外DOM节点
-const Layout = () => {
-  return (
-    <>
-      <Header />
-      <Main />
-      <Footer />
-    </>
-  );
-};
+// ❌ 反模式：用 index 作为 key
+{todos.map((todo, index) => (
+  <TodoItem key={index} todo={todo} />
+))}
 
-// JSX 注释写法：单行注释和多行注释都要放在 {} 里
-const CommentDemo = () => {
-  return (
-    <div>
-      {/* 这是单行注释 */}
-      <span>Hello</span>
-      {/* 
-        这是
-        多行注释
-      */}
-    </div>
-  );
-};
-
-// JSX.Element 类型：组件返回的类型
-const MyComponent = (): JSX.Element => {
-  return <div>Hello</div>;
-};
-// 实际上现在可以不写返回类型，TypeScript 会自动推断
+// ✅ 正确：用数据中的唯一 id
+{todos.map(todo => (
+  <TodoItem key={todo.id} todo={todo} />
+))}
 \`\`\`
 
-掌握这些 JSX/TSX 语法细节，你就能写出更规范、更安全的 React 代码了！`,
+## 六、Fragment 与注释
+
+### Fragment 短语法
+
+当你需要返回多个元素但不想额外包裹 \`<div>\` 时，使用 Fragment：
+
+\`\`\`tsx
+import { Fragment } from 'react'
+
+// 完整写法
+function Columns() {
+  return (
+    <Fragment>
+      <td>姓名</td>
+      <td>年龄</td>
+    </Fragment>
+  )
+}
+
+// 短语法 <></>（常用）
+function UserInfo() {
+  return (
+    <>
+      <dt>姓名</dt>
+      <dd>张三</dd>
+      <dt>年龄</dt>
+      <dd>25</dd>
+    </>
+  )
+}
+\`\`\`
+
+注意：短语法 \`<></>\` 不能添加 key 或其他属性，如果需要 key，必须使用完整的 \`<Fragment key={id}>\`。
+
+### JSX 中的注释
+
+JSX 中的注释必须写在 \`{/* */}\` 里：
+
+\`\`\`tsx
+function Demo() {
+  return (
+    <div>
+      {/* 这是 JSX 注释 */}
+      <h1>标题</h1>
+      {/* 多行
+          注释 */}
+      <p>内容</p>
+    </div>
+  )
+}
+\`\`\`
+
+## 七、JSX.Element vs React.ReactElement vs React.ReactNode
+
+这三个类型是 TSX 开发中最容易混淆的概念：
+
+\`\`\`tsx
+// JSX.Element：表示一个 JSX 元素，是 ReactElement<string | JSXElementConstructor<any>> 的别名
+const element: JSX.Element = <div>Hello</div>
+
+// React.ReactElement：更通用的 React 元素类型，可以指定 props 类型
+const reactElement: React.ReactElement<{ title: string }> = <Modal title="提示" />
+
+// React.ReactNode：最宽泛的类型，可以是元素、字符串、数字、布尔、null、undefined、数组
+// 组件 children 的类型通常用这个
+type ReactNode = 
+  | React.ReactElement
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | React.ReactNodeArray
+  | ReactPortal
+
+// 示例：children 用 ReactNode
+interface ContainerProps {
+  children: React.ReactNode
+  title?: string
+}
+
+function Container({ children, title }: ContainerProps) {
+  return (
+    <div className="container">
+      {title && <h3>{title}</h3>}
+      {children}
+    </div>
+  )
+}
+
+// 可以传任何内容作为 children
+<Container title="测试">
+  纯文本也可以
+  <p>段落元素</p>
+  {null}
+  {false}
+  {123}
+</Container>
+\`\`\`
+
+简单记忆：
+- **JSX.Element**：单个 JSX 标签
+- **React.ReactElement**：带 props 类型的 JSX 元素
+- **React.ReactNode**：任何可以渲染的内容（children 类型用这个）
+
+## 八、小结
+
+- JSX 本质是 \`React.createElement\` / \`_jsx\` 的语法糖，编译后是普通 JS 对象
+- TSX 比 JSX 多了 props 类型检查和原生元素属性检查，文件扩展名必须是 \`.tsx\`
+- 用 \`{}\` 嵌入 JS 表达式，不能嵌入语句
+- 条件渲染四种方式：三元、\`&&\`、提前 return、IIFE；注意 0 渲染陷阱
+- 列表渲染必须用稳定唯一的 key，不要用 index
+- 用 \`<>\` Fragment 包裹多元素，避免多余 DOM 节点
+- children 类型通常用 \`React.ReactNode\`
+
+下一章我们将学习如何正确地定义组件和进行类型标注。
+`,
   },
   {
     id: "tsrx-component",
-    icon: "🧩",
     group: "准备篇",
+    icon: "🧩",
     title: "组件定义与类型标注",
-    content: `## 组件定义与类型标注
+    content: `
 
-组件是 React 应用的基本构建块。在 TypeScript 中，如何正确地定义组件和标注类型，是每个开发者必须掌握的基础技能。
+# 组件定义与类型标注
 
-### 一、函数组件的类型标注：React.FC 的争议
+组件是 React 应用的基本构建块。在 TypeScript + React 中，如何正确地定义组件、标注类型，直接影响到开发体验和代码质量。本章将详细讲解函数组件的类型标注方式、为什么不推荐使用 \`React.FC\`、组件组合模式以及组件拆分原则。
 
-在 TypeScript + React 开发中，有两种常见的函数组件定义方式：使用 React.FC，或者直接写函数。
+## 一、函数组件类型标注方式
 
-\`\`\`tsx
-import React, { useState } from 'react';
+在 TypeScript 中定义 React 函数组件，主要有以下几种方式：
 
-// 方式1：使用 React.FC（不推荐）
-// React.FC 是 React.FunctionComponent 的别名
-interface GreetingProps {
-  name: string;
-}
-
-const Greeting1: React.FC<GreetingProps> = ({ name }) => {
-  return <div>Hello, {name}!</div>;
-};
-
-/*
-❌ 为什么不推荐 React.FC？
-1. 它隐式包含了 children 属性，但很多组件并不需要 children
-2. 它不支持泛型组件（Generic Components）
-3. 它默认对 props 做了类型断言，可能掩盖某些类型错误
-4. 代码看起来更冗长
-*/
-
-// 方式2：直接定义函数（推荐写法）
-// 明确标注 props 类型，返回类型可以让 TS 自动推断，或者显式写 JSX.Element
-interface GreetingProps {
-  name: string;
-  age?: number;
-}
-
-function Greeting2({ name, age }: GreetingProps): JSX.Element {
-  return (
-    <div>
-      <p>Hello, {name}!</p>
-      {age && <p>年龄: {age}</p>}
-    </div>
-  );
-}
-
-// 箭头函数写法同样推荐
-const Greeting3 = ({ name, age }: GreetingProps) => {
-  return (
-    <div>
-      <p>Hello, {name}!</p>
-      {age && <p>年龄: {age}</p>}
-    </div>
-  );
-};
-\`\`\`
-
-**最佳实践：** 直接声明 props 类型，不要用 React.FC。这样更简洁、更灵活，也避免了 React.FC 带来的问题。
-
-### 二、组件命名规范：PascalCase
-
-React 组件必须使用 PascalCase（大驼峰命名法），这是硬性规定：
+### 1.1 推荐写法：直接标注 props 和返回值
 
 \`\`\`tsx
-// ✅ 正确：组件名大写开头
-function UserProfile() {
-  return <div>用户资料</div>;
+// 定义 props 接口
+interface GreetingProps {
+  name: string
+  message?: string
 }
 
-const Button = () => {
-  return <button>按钮</button>;
+// 直接在参数中标注 props 类型，返回值标注为 JSX.Element
+function Greeting({ name, message = '你好' }: GreetingProps): JSX.Element {
+  return (
+    <div className="greeting">
+      <h2>{message}，{name}！</h2>
+    </div>
+  )
 }
 
-// ❌ 错误：小写开头会被 React 当作原生 HTML 标签
-// function userProfile() { ... }  // 这不是组件
-// const button = () => { ... }   // 这也不是组件
-
-// 使用时也是 PascalCase
+// 使用组件
 function App() {
-  return (
-    <div>
-      <UserProfile />
-      <Button />
-    </div>
-  );
+  return <Greeting name="张三" message="早上好" />
 }
 \`\`\`
 
-### 三、组件组合 vs 继承
+这种写法最清晰、最灵活，也是社区和官方文档推荐的方式。
 
-React 有一个非常重要的设计哲学：**组合优于继承**。在 React 中，几乎不需要用到类继承，所有的代码复用都通过组合实现。
+### 1.2 箭头函数写法
 
 \`\`\`tsx
-// 例子：通过 children 实现"槽位"组合
-// 这相当于 Vue 的 slot，Angular 的内容投影
-interface CardProps {
-  title: string;
-  children: React.ReactNode;
-  footer?: React.ReactNode;
+interface ButtonProps {
+  text: string
+  onClick: () => void
+  disabled?: boolean
 }
 
-function Card({ title, children, footer }: CardProps) {
+// 箭头函数同样可以标注类型
+const Button = ({ text, onClick, disabled = false }: ButtonProps): JSX.Element => {
+  return (
+    <button onClick={onClick} disabled={disabled} className="btn">
+      {text}
+    </button>
+  )
+}
+\`\`\`
+
+### 1.3 为什么不用 React.FC？
+
+\`React.FC\`（Function Component）是早期 TypeScript + React 教程中常见的写法，但现在已不推荐使用。原因如下：
+
+\`\`\`tsx
+// ❌ 不推荐：React.FC 存在问题
+interface BadExampleProps {
+  name: string
+}
+
+const BadExample: React.FC<BadExampleProps> = ({ name }) => {
+  return <div>Hello, {name}</div>
+}
+
+// 问题1：children 被隐式标注为可选，但类型是 ReactNode | undefined
+// 这意味着即使你的组件不需要 children，TypeScript 也不会报错
+<BadExample name="test">
+  <p>意外传入的 children 不会报错</p>
+</BadExample>
+
+// 问题2：不支持泛型组件
+// 无法写出这样的泛型组件: React.FC<ListProps<T>>
+
+// 问题3：defaultProps 模式无法正常工作（虽然 defaultProps 本身已废弃）
+\`\`\`
+
+**总结：\`React.FC\` 带来的问题比解决的问题多，直接在参数上标注 props 类型是更好的选择。**
+
+## 二、组件命名规范
+
+React 组件必须使用 **PascalCase（大驼峰命名法）**：
+
+\`\`\`tsx
+// ✅ 正确：大驼峰
+function UserProfile() { ... }
+const LoginForm = () => { ... }
+
+// ❌ 错误：小写开头会被当作原生 HTML 标签
+function userProfile() { ... } // React 会尝试查找 <userprofile> 原生标签
+const loginForm = () => { ... }
+\`\`\`
+
+文件命名也推荐使用 PascalCase：\`UserProfile.tsx\`、\`LoginForm.tsx\`。
+
+## 三、组件组合 vs 继承
+
+React 推崇**组合优于继承**的设计理念。组件之间通过 props 和 children 进行组合，而不是通过类继承来复用代码。
+
+### 3.1 使用 children 组合
+
+\`\`\`tsx
+// 通用的卡片容器组件
+interface CardProps {
+  title?: string
+  children: React.ReactNode
+}
+
+function Card({ title, children }: CardProps) {
   return (
     <div className="card">
-      <div className="card-header">
-        <h3>{title}</h3>
-      </div>
-      <div className="card-body">
-        {children} {/* 这里放任意内容 */}
-      </div>
-      {footer && (
-        <div className="card-footer">
-          {footer}
-        </div>
-      )}
+      {title && <div className="card-header">{title}</div>}
+      <div className="card-body">{children}</div>
     </div>
-  );
+  )
 }
 
-// 使用 Card 组件，通过组合定制内容
-function UserCardDemo() {
+// 使用组合
+function UserCard() {
   return (
-    <Card
-      title="用户信息"
-      footer={<button>编辑</button>}
-    >
-      <img src="avatar.jpg" alt="头像" />
-      <p>姓名: 张三</p>
-      <p>邮箱: zhangsan@example.com</p>
+    <Card title="用户信息">
+      <p>姓名：张三</p>
+      <p>年龄：25</p>
+      <button>编辑</button>
     </Card>
-  );
+  )
 }
 \`\`\`
 
-**为什么不用继承？** 继承会带来"强耦合"问题：父类改动会影响所有子类，层级过深时代码难以理解。组合则是"即插即用"的，组件之间耦合度低，更灵活，更容易测试和维护。
+### 3.2 封装条件组件
 
-### 四、封装条件组件：If/Show 包装器
-
-在 JSX 中写条件渲染有时候略显繁琐，我们可以封装简单的工具组件来让代码更清晰：
+我们可以封装通用的条件渲染组件，让 JSX 更具声明式：
 
 \`\`\`tsx
-// If 组件：条件渲染封装
+// If 组件：条件为真时渲染 children
 interface IfProps {
-  condition: boolean;
-  children: React.ReactNode;
+  condition: boolean
+  children: React.ReactNode
 }
 
 function If({ condition, children }: IfProps) {
-  return condition ? <>{children}</> : null;
+  return condition ? <>{children}</> : null
 }
 
-// Show 组件：支持多分支，类似 v-if/v-else-if/v-else
+// Show 组件：类似 v-if，支持多状态
 interface ShowProps {
-  children: React.ReactNode;
-}
-
-interface ShowWhenProps {
-  isTrue: boolean;
-  children: React.ReactNode;
-}
-
-interface ShowElseProps {
-  children: React.ReactNode;
+  children: React.ReactNode
 }
 
 function Show({ children }: ShowProps) {
-  let when: React.ReactNode = null;
-  let otherwise: React.ReactNode = null;
+  return <>{children}</>
+}
 
-  React.Children.forEach(children, (child) => {
-    if (!React.isValidElement(child)) return;
-    if ((child.props as ShowWhenProps).isTrue !== undefined) {
-      if (!when && (child.props as ShowWhenProps).isTrue) {
-        when = child;
-      }
-    } else {
-      otherwise = child;
-    }
-  });
-
-  return when || otherwise || null;
+interface ShowWhenProps {
+  isTrue: boolean
+  children: React.ReactNode
 }
 
 Show.When = function ShowWhen({ isTrue, children }: ShowWhenProps) {
-  return isTrue ? <>{children}</> : null;
-};
-
-Show.Else = function ShowElse({ children }: ShowElseProps) {
-  return <>{children}</>;
-};
+  return isTrue ? <>{children}</> : null
+}
 
 // 使用示例
-function ConditionDemo({ user, loading }: { user: any; loading: boolean }) {
+function StatusMessage({ isLoading, isError, data }: {
+  isLoading: boolean
+  isError: boolean
+  data: string | null
+}) {
   return (
-    <div>
-      {/* 使用 If 组件 */}
-      <If condition={loading}>
+    <Show>
+      <Show.When isTrue={isLoading}>
         <div>加载中...</div>
-      </If>
-
-      {/* 使用 Show 组件 */}
-      <Show>
-        <Show.When isTrue={loading}>
-          <div>Loading...</div>
-        </Show.When>
-        <Show.When isTrue={!user}>
-          <div>请登录</div>
-        </Show.When>
-        <Show.Else>
-          <div>欢迎, {user.name}</div>
-        </Show.Else>
-      </Show>
-    </div>
-  );
+      </Show.When>
+      <Show.When isTrue={isError}>
+        <div>加载失败</div>
+      </Show.When>
+      <Show.When isTrue={!!data}>
+        <div>数据：{data}</div>
+      </Show.When>
+    </Show>
+  )
 }
 \`\`\`
 
-### 五、默认 Props：两种方式
+## 四、默认 Props 处理
 
-在 React 中给 props 设置默认值，有两种方式。注意：旧的 defaultProps API 已经被标记为 deprecated，推荐使用 ES6 默认参数值。
+在现代 React + TypeScript 中，推荐使用**函数参数默认值**来处理默认 props，而不是使用已废弃的 \`defaultProps\` 属性：
 
 \`\`\`tsx
-// 方式1（推荐）：使用 ES6 默认参数值
 interface ButtonProps {
-  text?: string;
-  color?: 'primary' | 'secondary' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
-  onClick?: () => void;
+  text: string
+  size?: 'small' | 'medium' | 'large'
+  variant?: 'primary' | 'secondary' | 'danger'
+  onClick?: () => void
 }
 
+// ✅ 推荐：使用 ES6 默认参数值
 function Button({
-  text = '按钮',
-  color = 'primary',
-  size = 'md',
+  text,
+  size = 'medium',      // 默认值
+  variant = 'primary',  // 默认值
   onClick,
 }: ButtonProps) {
   return (
     <button
-      className={`btn btn-${color} btn-${size}`}
+      className={\`btn btn-\${size} btn-\${variant}\`}
       onClick={onClick}
     >
       {text}
     </button>
-  );
+  )
 }
 
-// 使用：不传递的 props 会使用默认值
-<Button />  {/* 渲染默认的 primary 中号按钮 */}
-<Button color="danger" size="lg" text="删除" />
-
-// 方式2（不推荐）：使用 defaultProps（已废弃）
-Button.defaultProps = {
-  text: '按钮',
-  color: 'primary',
-  size: 'md',
-};
-// 这种方式在函数组件中类型推断有问题，不推荐使用
+// 使用时不传 size 和 variant，会使用默认值
+<Button text="提交" />
+// 等价于 <Button text="提交" size="medium" variant="primary" />
 \`\`\`
 
-### 六、组件拆分粒度原则
+为什么不用 \`defaultProps\`？
+1. \`defaultProps\` 在函数组件中已被标记为废弃
+2. ES6 默认参数值是标准 JavaScript 语法，更直观
+3. TypeScript 能更好地推断类型
 
-什么时候应该把代码拆分成新组件？这是初学者常问的问题。以下是几个实用的判断原则：
+## 五、组件拆分粒度原则：SRP 单一职责
 
-1. **单一职责原则**：如果一个组件做了太多事情（比如既展示数据，又处理表单，又发请求），就应该拆分
-2. **UI 独立性**：如果某部分 UI 在多个地方被使用，应该抽成独立组件
-3. **代码行数**：如果一个组件超过 200-300 行，考虑拆分
-4. **状态复杂度**：如果某块逻辑有自己独立的状态，应该抽成组件
+一个组件应该只做一件事，这就是**单一职责原则（Single Responsibility Principle）**。如何判断组件是否需要拆分？
+
+### 拆分信号：
+
+1. **代码行数过多**：如果一个组件超过 200-300 行，考虑拆分
+2. **JSX 嵌套过深**：如果 JSX 嵌套超过 4-5 层，考虑拆分子组件
+3. **重复的 UI 模式**：如果相同的 JSX 结构出现两次以上，抽取为组件
+4. **逻辑独立**：如果某块 UI 有自己独立的 state 和逻辑，应该拆分
+5. **可复用**：如果某块 UI 可能在其他地方使用，抽取为通用组件
+
+### 拆分示例：
 
 \`\`\`tsx
-// ❌ 不好：一个大组件做所有事
-function ArticlePage() {
-  const [article, setArticle] = useState(null);
-  const [comments, setComments] = useState([]);
-  const [commentText, setCommentText] = useState('');
-  // ... 几十个状态和函数
+// ❌ 不好：一个大组件做所有事情
+function UserDashboard() {
+  const [user, setUser] = useState(null)
+  const [posts, setPosts] = useState([])
+  const [notifications, setNotifications] = useState([])
 
   return (
-    <div>
-      {/* 几百行 JSX */}
+    <div className="dashboard">
+      {/* 用户信息区 */}
+      <div className="user-section">
+        <img src={user?.avatar} />
+        <h2>{user?.name}</h2>
+        <p>{user?.bio}</p>
+        <button>编辑资料</button>
+      </div>
+      {/* 文章列表区 */}
+      <div className="posts-section">
+        <h3>我的文章</h3>
+        {posts.map(post => (
+          <div key={post.id} className="post-card">
+            <h4>{post.title}</h4>
+            <p>{post.excerpt}</p>
+            <span>{post.date}</span>
+          </div>
+        ))}
+      </div>
+      {/* 通知区 */}
+      <div className="notifications-section">
+        <h3>通知</h3>
+        {notifications.map(n => (
+          <div key={n.id} className="notification-item">
+            <span className={n.read ? 'read' : 'unread'}>{n.content}</span>
+          </div>
+        ))}
+      </div>
     </div>
-  );
-}
-
-// ✅ 好：拆分成职责清晰的小组件
-function ArticlePage() {
-  return (
-    <div>
-      <ArticleHeader />
-      <ArticleContent />
-      <ArticleActions />
-      <CommentList />
-      <CommentForm />
-      <RelatedArticles />
-    </div>
-  );
+  )
 }
 \`\`\`
 
-记住：**过早拆分和过度拆分也不好**。刚开始写代码时可以先写在一个组件里，等它变大了、逻辑变复杂了，再自然地拆分出去。`,
+\`\`\`tsx
+// ✅ 好：拆分为多个职责单一的组件
+function UserDashboard() {
+  return (
+    <div className="dashboard">
+      <UserProfileSection />
+      <UserPostsSection />
+      <NotificationsSection />
+    </div>
+  )
+}
+
+// 用户信息区
+function UserProfileSection() {
+  const { user } = useUser()
+  if (!user) return null
+  return (
+    <div className="user-section">
+      <UserAvatar src={user.avatar} />
+      <UserInfo name={user.name} bio={user.bio} />
+      <EditProfileButton />
+    </div>
+  )
+}
+
+// 文章列表区
+function UserPostsSection() {
+  const { posts } = usePosts()
+  return (
+    <div className="posts-section">
+      <SectionTitle>我的文章</SectionTitle>
+      {posts.map(post => <PostCard key={post.id} post={post} />)}
+    </div>
+  )
+}
+
+// 通知区
+function NotificationsSection() {
+  const { notifications } = useNotifications()
+  return (
+    <div className="notifications-section">
+      <SectionTitle>通知</SectionTitle>
+      {notifications.map(n => <NotificationItem key={n.id} notification={n} />)}
+    </div>
+  )
+}
+\`\`\`
+
+## 六、小结
+
+- 推荐使用 \`function Component(props: Props): JSX.Element\` 方式标注组件类型
+- 不要使用 \`React.FC\`，它存在 children 隐式 any、不支持泛型等问题
+- 组件命名使用 PascalCase 大驼峰
+- 使用组合而非继承来复用组件，通过 children 和 props 传递内容
+- 使用 ES6 默认参数值处理默认 props，不用废弃的 defaultProps
+- 遵循单一职责原则，大组件拆分为多个小组件
+
+下一章我们将通过一个完整的计数器应用，把前面学到的知识点融会贯通。
+`,
   },
   {
     id: "tsrx-first",
-    icon: "🚀",
     group: "准备篇",
+    icon: "🚀",
     title: "第一个TS+React应用：完整计数器",
-    content: `## 第一个TS+React应用：完整计数器
+    content: `
 
-纸上得来终觉浅，绝知此事要躬行。本章我们将从零开始构建一个功能完整的计数器应用，把前面学到的环境配置、JSX、组件等知识全部应用起来，体验类型驱动开发的完整流程。
+# 第一个 TS + React 应用：完整计数器
 
-### 一、类型驱动开发：先定义类型
+前面三章我们学习了环境搭建、JSX 语法和组件定义。本章将通过一个功能完整的计数器应用，把这些知识点串联起来，实践**类型驱动开发**的理念。我们将实现加/减、重置、设置步长、双击重置等功能，并严格按照类型优先的方式来编写代码。
 
-类型驱动开发（Type-Driven Development）的思想是：先定义好数据结构和类型，再开始写业务逻辑。类型就像"设计图纸"，能帮我们理清思路。
+## 一、类型驱动开发：先定义类型
 
-\`\`\`tsx
-// src/types/counter.ts
-// 第一步：定义所有类型
+类型驱动开发（Type-Driven Development）的核心思想是：**先定义类型，再实现逻辑**。类型是程序的蓝图，清晰的类型定义能让我们在写代码之前就理清数据结构和组件关系。
 
-// 计数器状态
+首先创建 \`src/types/counter.ts\` 定义我们需要的类型：
+
+\`\`\`typescript filename="src/types/counter.ts"
+// 计数器状态类型
 export interface CounterState {
-  count: number;
-  step: number;
+  // 当前计数值
+  count: number
+  // 步长：每次增减的数值
+  step: number
+  // 操作历史记录
+  history: number[]
 }
 
-// Counter 组件 Props
-export interface CounterProps {
-  initialCount?: number;
-  initialStep?: number;
-}
-
-// CounterDisplay 组件 Props
-export interface CounterDisplayProps {
-  count: number;
-}
-
-// CounterButton 组件 Props
-export interface CounterButtonProps {
-  onClick: () => void;
-  label: string;
-  variant?: 'primary' | 'secondary' | 'danger';
-  disabled?: boolean;
-}
+// 计数器操作类型
+export type CounterAction =
+  | { type: 'increment' }
+  | { type: 'decrement' }
+  | { type: 'reset' }
+  | { type: 'setStep'; payload: number }
+  | { type: 'doubleClickReset' }
 \`\`\`
 
-### 二、组件拆分：三个组件各司其职
+## 二、组件拆分设计
 
-我们把计数器拆分成三个组件：
-- **Counter**：容器组件，管理状态和业务逻辑
-- **CounterDisplay**：展示组件，只负责显示数字
-- **CounterButton**：按钮组件，可复用
+我们将计数器拆分为以下几个组件：
 
-先写展示组件：
+1. **Counter**：容器组件，管理状态和逻辑
+2. **CounterDisplay**：显示当前数值的展示组件
+3. **CounterButton**：可复用的按钮组件
+4. **StepSelector**：步长选择组件
+5. **HistoryPanel**：操作历史面板
 
-\`\`\`tsx
-// src/components/CounterDisplay.tsx
-import type { CounterDisplayProps } from '@/types/counter';
+目录结构：
 
-// 纯展示组件：接收 props，渲染 UI，没有自己的状态
-export function CounterDisplay({ count }: CounterDisplayProps) {
-  // 根据数值大小显示不同颜色
-  const getColor = () => {
-    if (count > 0) return '#22c55e'; // 绿色
-    if (count < 0) return '#ef4444'; // 红色
-    return '#1f2937'; // 黑色
-  };
-
-  return (
-    <div className="counter-display" style={{ textAlign: 'center', margin: '2rem 0' }}>
-      <div style={{ fontSize: '1rem', color: '#6b7280', marginBottom: '0.5rem' }}>
-        当前数值
-      </div>
-      <div
-        style={{
-          fontSize: '4rem',
-          fontWeight: 'bold',
-          color: getColor(),
-          transition: 'color 0.3s',
-          userSelect: 'none',
-        }}
-      >
-        {count}
-      </div>
-    </div>
-  );
-}
+\`\`\`txt
+src/
+├── components/
+│   └── counter/
+│       ├── Counter.tsx         # 主容器组件
+│       ├── CounterDisplay.tsx  # 数值显示
+│       ├── CounterButton.tsx   # 按钮组件
+│       ├── StepSelector.tsx    # 步长选择
+│       └── HistoryPanel.tsx    # 历史记录
+└── types/
+    └── counter.ts              # 类型定义
 \`\`\`
 
-接下来写可复用的按钮组件：
+## 三、完整实现代码
 
-\`\`\`tsx
-// src/components/CounterButton.tsx
-import type { CounterButtonProps } from '@/types/counter';
+### 3.1 按钮组件 CounterButton
 
-// 可复用按钮组件：通过 variant 控制样式
+\`\`\`tsx filename="src/components/counter/CounterButton.tsx"
+// 按钮组件的 Props 类型
+interface CounterButtonProps {
+  // 按钮显示文本
+  label: string
+  // 点击事件处理函数
+  onClick: () => void
+  // 按钮样式变体
+  variant?: 'primary' | 'secondary' | 'danger'
+  // 是否禁用
+  disabled?: boolean
+  // 双击事件（可选）
+  onDoubleClick?: () => void
+}
+
+/**
+ * 通用计数器按钮组件
+ */
 export function CounterButton({
-  onClick,
   label,
+  onClick,
   variant = 'primary',
   disabled = false,
-}: CounterButtonProps) {
-  // 根据 variant 生成样式
-  const getStyles = (): React.CSSProperties => {
-    const baseStyles: React.CSSProperties = {
-      padding: '0.75rem 1.5rem',
-      fontSize: '1rem',
-      fontWeight: 600,
-      border: 'none',
-      borderRadius: '8px',
-      cursor: disabled ? 'not-allowed' : 'pointer',
-      transition: 'all 0.2s',
-      minWidth: '80px',
-    };
-
-    const variants = {
-      primary: {
-        backgroundColor: '#3b82f6',
-        color: 'white',
-      },
-      secondary: {
-        backgroundColor: '#6b7280',
-        color: 'white',
-      },
-      danger: {
-        backgroundColor: '#ef4444',
-        color: 'white',
-      },
-    };
-
-    return {
-      ...baseStyles,
-      ...variants[variant],
-      opacity: disabled ? 0.5 : 1,
-    };
-  };
+  onDoubleClick,
+}: CounterButtonProps): JSX.Element {
+  // 根据变体计算样式类名
+  const variantClass = {
+    primary: 'bg-blue-500 hover:bg-blue-600 text-white',
+    secondary: 'bg-gray-200 hover:bg-gray-300 text-gray-800',
+    danger: 'bg-red-500 hover:bg-red-600 text-white',
+  }[variant]
 
   return (
     <button
+      className={\`px-4 py-2 rounded-lg font-medium transition-colors \${variantClass} disabled:opacity-50 disabled:cursor-not-allowed\`}
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
       disabled={disabled}
-      style={getStyles()}
-      onMouseOver={(e) => {
-        if (!disabled) {
-          (e.target as HTMLButtonElement).style.transform = 'scale(1.05)';
-        }
-      }}
-      onMouseOut={(e) => {
-        (e.target as HTMLButtonElement).style.transform = 'scale(1)';
-      }}
     >
       {label}
     </button>
-  );
+  )
 }
 \`\`\`
 
-### 三、事件处理类型：onClick 与 MouseEvent
+### 3.2 数值显示组件 CounterDisplay
 
-在 CounterButton 组件中，我们看到了事件处理。让我们仔细看一下事件类型：
+\`\`\`tsx filename="src/components/counter/CounterDisplay.tsx"
+interface CounterDisplayProps {
+  // 当前计数值
+  value: number
+  // 是否为初始状态（用于特殊样式）
+  isZero?: boolean
+}
 
-\`\`\`tsx
-// 事件处理函数的类型
-const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-  // e 是合成事件对象
-  // e.currentTarget 是绑定事件的元素（这里是 button）
-  // e.target 是触发事件的元素（可能是子元素）
-  console.log('按钮被点击了', e.currentTarget);
-  
-  // 可以调用 preventDefault 和 stopPropagation
-  // e.preventDefault();
-  // e.stopPropagation();
-};
-
-// 也可以让 TS 自动推断事件类型
-<button
-  onClick={(e) => {
-    // 这里 e 的类型会被自动推断为 React.MouseEvent<HTMLButtonElement>
-    console.log('clicked', e);
-  }}
->
-  点击
-</button>
+/**
+ * 计数器数值显示组件
+ */
+export function CounterDisplay({ value, isZero }: CounterDisplayProps): JSX.Element {
+  return (
+    <div className="text-center my-8">
+      <div className="text-sm text-gray-500 mb-2">当前数值</div>
+      <div
+        className={\`text-6xl font-bold transition-colors \${
+          isZero
+            ? 'text-gray-400'
+            : value > 0
+            ? 'text-green-600'
+            : 'text-red-600'
+        }\`}
+      >
+        {value}
+      </div>
+    </div>
+  )
+}
 \`\`\`
 
-### 四、容器组件：状态管理与业务逻辑
+### 3.3 步长选择组件 StepSelector
 
-现在写主组件 Counter，它负责管理状态和业务逻辑：
+\`\`\`tsx filename="src/components/counter/StepSelector.tsx"
+interface StepSelectorProps {
+  // 当前步长
+  step: number
+  // 步长变更回调
+  onStepChange: (newStep: number) => void
+}
 
-\`\`\`tsx
-// src/components/Counter.tsx
-import { useState } from 'react';
-import { CounterDisplay } from './CounterDisplay';
-import { CounterButton } from './CounterButton';
-import type { CounterProps } from '@/types/counter';
+// 预设步长选项
+const STEP_OPTIONS = [1, 2, 5, 10] as const
 
-export function Counter({ initialCount = 0, initialStep = 1 }: CounterProps) {
-  // useState 的类型可以自动推断，也可以显式指定
-  // 这里 count 自动推断为 number 类型
-  const [count, setCount] = useState(initialCount);
-  const [step, setStep] = useState(initialStep);
+/**
+ * 步长选择组件
+ */
+export function StepSelector({ step, onStepChange }: StepSelectorProps): JSX.Element {
+  return (
+    <div className="flex items-center gap-3 my-4">
+      <span className="text-sm text-gray-600">步长：</span>
+      <div className="flex gap-2">
+        {STEP_OPTIONS.map(option => (
+          <button
+            key={option}
+            className={\`w-10 h-10 rounded-lg font-medium transition-colors \${
+              step === option
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+            }\`}
+            onClick={() => onStepChange(option)}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+\`\`\`
 
-  // 增加
-  const handleIncrement = () => {
-    setCount((prev) => prev + step);
-  };
+### 3.4 历史记录面板 HistoryPanel
+
+\`\`\`tsx filename="src/components/counter/HistoryPanel.tsx"
+interface HistoryPanelProps {
+  // 历史记录数组
+  history: number[]
+  // 清空历史回调
+  onClear: () => void
+}
+
+/**
+ * 操作历史面板组件
+ */
+export function HistoryPanel({ history, onClear }: HistoryPanelProps): JSX.Element {
+  // 只显示最近 10 条记录
+  const recentHistory = history.slice(-10).reverse()
+
+  return (
+    <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+      <div className="flex justify-between items-center mb-3">
+        <span className="text-sm font-medium text-gray-700">
+          操作历史（共 {history.length} 条）
+        </span>
+        {history.length > 0 && (
+          <button
+            className="text-xs text-red-500 hover:text-red-600"
+            onClick={onClear}
+          >
+            清空
+          </button>
+        )}
+      </div>
+      {recentHistory.length === 0 ? (
+        <p className="text-sm text-gray-400 text-center py-4">暂无操作记录</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {recentHistory.map((value, index) => (
+            <span
+              key={\`\${value}-\${index}\`}
+              className={\`px-2 py-1 rounded text-sm \${
+                value > 0
+                  ? 'bg-green-100 text-green-700'
+                  : value < 0
+                  ? 'bg-red-100 text-red-700'
+                  : 'bg-gray-200 text-gray-600'
+              }\`}
+            >
+              {value > 0 ? '+' : ''}{value}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+\`\`\`
+
+### 3.5 主组件 Counter
+
+\`\`\`tsx filename="src/components/counter/Counter.tsx"
+import { useState, useCallback, type MouseEvent } from 'react'
+import { CounterDisplay } from './CounterDisplay'
+import { CounterButton } from './CounterButton'
+import { StepSelector } from './StepSelector'
+import { HistoryPanel } from './HistoryPanel'
+
+/**
+ * 计数器主组件
+ * 功能：加/减、重置、设置步长、双击重置为0、操作历史
+ */
+export function Counter(): JSX.Element {
+  // 当前计数值，初始为0，类型由初始值自动推断为 number
+  const [count, setCount] = useState<number>(0)
+  // 步长，初始为1
+  const [step, setStep] = useState<number>(1)
+  // 操作历史记录
+  const [history, setHistory] = useState<number[]>([])
+
+  // 添加历史记录的辅助函数
+  const addHistory = useCallback((value: number) => {
+    setHistory(prev => [...prev, value])
+  }, [])
+
+  // 增加：使用函数式更新避免闭包陈旧值问题
+  const handleIncrement = useCallback(() => {
+    setCount(prev => {
+      const newValue = prev + step
+      addHistory(step)
+      return newValue
+    })
+  }, [step, addHistory])
 
   // 减少
-  const handleDecrement = () => {
-    setCount((prev) => prev - step);
-  };
+  const handleDecrement = useCallback(() => {
+    setCount(prev => {
+      const newValue = prev - step
+      addHistory(-step)
+      return newValue
+    })
+  }, [step, addHistory])
 
-  // 重置
-  const handleReset = () => {
-    setCount(initialCount);
-  };
+  // 重置为0
+  const handleReset = useCallback(() => {
+    setCount(0)
+    setHistory([])
+  }, [])
 
-  // 双击重置为0
-  const handleDoubleClick = () => {
-    setCount(0);
-  };
+  // 双击重置：双击任何按钮都可以快速重置为0
+  const handleDoubleClickReset = useCallback(() => {
+    setCount(0)
+    addHistory(0)
+  }, [addHistory])
 
-  // 步长变化处理，注意 ChangeEvent 类型
-  const handleStepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value, 10);
-    // 确保步长至少为1
-    setStep(isNaN(value) || value < 1 ? 1 : value);
-  };
+  // 步长变更
+  const handleStepChange = useCallback((newStep: number) => {
+    setStep(newStep)
+  }, [])
+
+  // 清空历史
+  const handleClearHistory = useCallback(() => {
+    setHistory([])
+  }, [])
 
   return (
-    <div
-      style={{
-        maxWidth: '400px',
-        margin: '3rem auto',
-        padding: '2rem',
-        borderRadius: '16px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-        background: 'white',
-      }}
-      onDoubleClick={handleDoubleClick}
-    >
-      <h1 style={{ textAlign: 'center', color: '#1f2937', marginBottom: '1rem' }}>
-        🧮 TSX 计数器
+    <div className="max-w-md mx-auto p-6 bg-white rounded-xl shadow-lg">
+      <h1 className="text-2xl font-bold text-center text-gray-800 mb-2">
+        TypeScript 计数器
       </h1>
-      
-      <p style={{ textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>
-        双击卡片区域快速归零
+      <p className="text-center text-sm text-gray-500 mb-4">
+        双击任意按钮快速重置为0
       </p>
 
-      {/* 数字显示 */}
-      <CounterDisplay count={count} />
+      {/* 数值显示 */}
+      <CounterDisplay value={count} isZero={count === 0} />
 
-      {/* 步长设置 */}
-      <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-        <label style={{ marginRight: '0.5rem', color: '#374151' }}>
-          步长:
-          <input
-            type="number"
-            min="1"
-            value={step}
-            onChange={handleStepChange}
-            style={{
-              marginLeft: '0.5rem',
-              padding: '0.5rem',
-              width: '60px',
-              textAlign: 'center',
-              border: '1px solid #d1d5db',
-              borderRadius: '4px',
-            }}
-          />
-        </label>
-      </div>
+      {/* 步长选择 */}
+      <StepSelector step={step} onStepChange={handleStepChange} />
 
-      {/* 按钮区域 */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '0.75rem',
-          justifyContent: 'center',
-          flexWrap: 'wrap',
-        }}
-      >
+      {/* 操作按钮组 */}
+      <div className="flex gap-3 justify-center my-6">
         <CounterButton
-          onClick={handleDecrement}
-          label={`-${step}`}
+          label="-"
           variant="danger"
+          onClick={handleDecrement}
+          onDoubleClick={handleDoubleClickReset}
         />
         <CounterButton
-          onClick={handleReset}
           label="重置"
           variant="secondary"
+          onClick={handleReset}
+          onDoubleClick={handleDoubleClickReset}
         />
         <CounterButton
-          onClick={handleIncrement}
-          label={`+${step}`}
+          label="+"
           variant="primary"
+          onClick={handleIncrement}
+          onDoubleClick={handleDoubleClickReset}
         />
       </div>
+
+      {/* 历史记录面板 */}
+      <HistoryPanel history={history} onClear={handleClearHistory} />
     </div>
-  );
+  )
 }
 \`\`\`
 
-### 五、样式：inline style 与 CSS Modules
+### 3.6 在 App.tsx 中使用
 
-上面的例子用了 inline style，简单直接。在实际项目中，我们更常用 CSS Modules：
+\`\`\`tsx filename="src/App.tsx"
+import { Counter } from './components/counter/Counter'
 
-\`\`\`tsx
-// 创建 Counter.module.css 文件
-/*
-.counter {
-  max-width: 400px;
-  margin: 3rem auto;
-  padding: 2rem;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-  background: white;
-}
-
-.display {
-  text-align: center;
-  margin: 2rem 0;
-}
-
-.count {
-  font-size: 4rem;
-  font-weight: bold;
-  transition: color 0.3s;
-}
-*/
-
-// 在组件中使用 CSS Modules
-// import styles from './Counter.module.css';
-// <div className={styles.counter}>...</div>
-\`\`\`
-
-### 六、完整的 App.tsx
-
-最后在 App.tsx 中使用我们的 Counter 组件：
-
-\`\`\`tsx
-// src/App.tsx
-import { Counter } from './components/Counter';
-
-function App() {
+function App(): JSX.Element {
   return (
-    <div style={{ minHeight: '100vh', background: '#f3f4f6', padding: '1rem' }}>
-      <Counter initialCount={10} initialStep={5} />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
+      <Counter />
     </div>
-  );
+  )
 }
 
-export default App;
+export default App
 \`\`\`
 
-### 七、运行效果总结
+## 四、知识点回顾
 
-现在运行 `pnpm dev`，你应该能看到一个功能完整的计数器：
-- ✅ 支持加/减操作
-- ✅ 支持自定义步长
-- ✅ 支持重置
-- ✅ 双击卡片快速归零
-- ✅ 数字根据正负显示不同颜色
-- ✅ 按钮有 hover 效果
-- ✅ 完整的 TypeScript 类型安全
+这个计数器应用涵盖了以下知识点：
 
-恭喜你！你已经完成了第一个 TypeScript + React 应用。这个小例子涵盖了组件定义、props 类型、useState、事件处理、样式等核心概念，是后续学习的坚实基础。接下来我们将深入学习 React 的各个核心 Hook 和高级模式。`,
+1. **类型驱动开发**：先定义 \`CounterState\` 和组件 Props 类型，再实现逻辑
+2. **组件拆分**：按照单一职责原则拆分为 5 个小组件
+3. **useState 类型推断**：\`useState(0)\` 自动推断为 \`number\` 类型
+4. **useCallback 缓存函数**：避免子组件不必要的重渲染
+5. **函数式更新**：\`setCount(prev => prev + step)\` 获取最新状态
+6. **事件类型标注**：\`onClick\` 事件处理器类型正确推断
+7. **可选 Props 与默认值**：\`variant?: 'primary' | ...\` 配合默认参数值
+8. **字面量联合类型**：\`'primary' | 'secondary' | 'danger'\` 限定可选值
+
+## 五、小结
+
+通过这个完整的计数器项目，我们实践了 TypeScript + React 开发的核心流程：
+- 先定义类型，再实现逻辑（类型驱动开发）
+- 合理拆分组件，每个组件职责单一
+- Props 类型精确标注，使用联合类型、可选属性等类型特性
+- 使用 useState、useCallback 等 Hooks 管理状态和回调
+- 事件处理器的类型由 TypeScript 自动推断
+
+下一章我们将系统学习 Props 的各种类型定义方式，掌握 interface 和 type 的高级用法。
+`,
   },
   {
     id: "tsrx-props",
-    icon: "📦",
     group: "基础篇",
+    icon: "📦",
     title: "Props类型定义大全",
-    content: `## Props类型定义大全
+    content: `
 
-Props 是组件之间通信的桥梁。在 TypeScript 中，灵活准确地定义 Props 类型，是写出高质量 React 组件的关键。本章我们将系统学习 Props 类型定义的各种技巧。
+# Props 类型定义大全
 
-### 一、type 别名 vs interface：用哪个？
+Props 是组件之间通信的桥梁，精确地定义 Props 类型是 TypeScript + React 开发中最重要的技能之一。本章将全面讲解 Props 的各种定义方式和高级技巧，包括 type 与 interface 的选择、继承、原生属性提取、children 类型、可辨识联合等。
 
-定义 Props 类型时，有两种选择：type 别名和 interface。它们大部分情况下可以互换，但有细微区别。
+## 一、type 别名 vs interface 定义 Props
 
-\`\`\`tsx
-// 方式1：interface（推荐用于对象类型，特别是Props）
-interface ButtonProps {
-  text: string;
-  onClick: () => void;
-  color?: 'primary' | 'secondary';
-}
+定义 Props 类型有两种主要方式：\`type\` 类型别名和 \`interface\` 接口。两者大部分场景可以互换，但各有特点。
 
-// 方式2：type 别名
-type ButtonProps2 = {
-  text: string;
-  onClick: () => void;
-  color?: 'primary' | 'secondary';
-};
-
-// 两者主要区别：
-// 1. interface 可以声明合并（declaration merging），type 不行
-interface User {
-  name: string;
-}
-interface User {
-  age: number;
-}
-// User 现在有 name 和 age 两个属性
-
-// 2. type 可以定义联合类型、交叉类型、元组等，interface 不行
-type Status = 'loading' | 'success' | 'error';
-type NumberOrString = number | string;
-type Point = [number, number];
-
-// 实际项目中的建议：
-// - 定义 Props、State 等对象类型，优先用 interface（更可读，错误信息更友好）
-// - 需要联合类型、工具类型时，用 type
-// - 个人或团队保持统一风格即可
-\`\`\`
-
-### 二、interface extends：继承与扩展
-
-interface 可以通过 extends 继承其他类型，实现类型复用：
+### 1.1 基本用法
 
 \`\`\`tsx
-// 基础属性
-interface BaseProps {
-  className?: string;
-  style?: React.CSSProperties;
-  id?: string;
+// 使用 interface 定义
+interface UserCardProps {
+  name: string
+  age: number
+  avatar?: string
 }
 
-// Button 继承基础属性
-interface ButtonProps extends BaseProps {
-  text: string;
-  onClick?: () => void;
-  variant?: 'primary' | 'secondary' | 'danger';
+// 使用 type 定义
+type UserCardProps = {
+  name: string
+  age: number
+  avatar?: string
 }
 
-// Input 也继承基础属性
-interface InputProps extends BaseProps {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  type?: 'text' | 'password' | 'email';
-}
-
-// 可以同时继承多个接口
-interface Clickable {
-  onClick: (e: React.MouseEvent) => void;
-}
-interface Disableable {
-  disabled?: boolean;
-}
-interface ActionButtonProps extends BaseProps, Clickable, Disableable {
-  label: string;
+function UserCard(props: UserCardProps): JSX.Element {
+  const { name, age, avatar } = props
+  return (
+    <div className="user-card">
+      {avatar && <img src={avatar} alt={name} />}
+      <h3>{name}</h3>
+      <p>{age} 岁</p>
+    </div>
+  )
 }
 \`\`\`
 
-### 三、提取原生属性：React.ComponentProps
+### 1.2 如何选择？
 
-封装原生 HTML 元素时，我们希望组件能接受所有原生属性，而不用一个个写。React.ComponentProps 可以帮我们提取原生元素的 Props 类型。
+| 特性 | interface | type |
+|------|-----------|------|
+| 对象类型 | ✅ | ✅ |
+| 联合类型 | ❌ | ✅ |
+| 交叉类型（继承）| ✅ extends | ✅ & |
+| 声明合并（重复定义自动合并）| ✅ | ❌ |
+| 映射类型 | ❌ | ✅ |
+| 条件类型 | ❌ | ✅ |
+
+**推荐**：定义 Props 时优先使用 \`interface\`，需要联合类型、映射类型等高级特性时改用 \`type\`。
+
+## 二、interface extends 继承
+
+可以通过 \`extends\` 继承其他 interface，实现 Props 的复用和扩展：
+
+\`\`\`tsx
+// 基础按钮 Props
+interface BaseButtonProps {
+  children: React.ReactNode
+  disabled?: boolean
+  loading?: boolean
+  onClick?: () => void
+}
+
+// 主按钮继承基础 Props，添加自己的属性
+interface PrimaryButtonProps extends BaseButtonProps {
+  size?: 'small' | 'medium' | 'large'
+  icon?: React.ReactNode
+}
+
+function PrimaryButton({
+  children,
+  disabled,
+  loading,
+  onClick,
+  size = 'medium',
+  icon,
+}: PrimaryButtonProps): JSX.Element {
+  return (
+    <button
+      className={\`btn-primary btn-\${size}\`}
+      disabled={disabled || loading}
+      onClick={onClick}
+    >
+      {loading && <span className="spinner" />}
+      {icon && <span className="btn-icon">{icon}</span>}
+      {children}
+    </button>
+  )
+}
+
+// 还可以继承多个 interface
+interface ActionButtonProps extends BaseButtonProps, TooltipProps {
+  actionType: 'edit' | 'delete' | 'share'
+}
+\`\`\`
+
+使用 \`type\` 时用交叉类型 \`&\` 实现类似效果：
+
+\`\`\`tsx
+type BaseButtonProps = {
+  children: React.ReactNode
+  disabled?: boolean
+}
+
+type PrimaryButtonProps = BaseButtonProps & {
+  size?: 'small' | 'medium' | 'large'
+}
+\`\`\`
+
+## 三、提取原生元素属性：React.ComponentProps
+
+当你封装原生 HTML 元素（如 \`<button>\`、\`<input>\`）时，不需要手动重写所有原生属性，可以用 \`React.ComponentProps\` 直接提取：
 
 \`\`\`tsx
 // 提取 button 元素的所有原生属性
-type NativeButtonProps = React.ComponentProps<'button'>;
+type NativeButtonProps = React.ComponentProps<'button'>
 
-// 然后扩展我们自己的属性，用 Omit 排除要覆盖的
-interface ButtonProps extends Omit<NativeButtonProps, 'type'> {
-  variant?: 'primary' | 'secondary' | 'danger';
-  // 覆盖原生 type，改成我们自定义的
-  type?: 'button' | 'submit' | 'reset';
+// 扩展原生 button，添加自定义属性
+interface ButtonProps extends NativeButtonProps {
+  variant?: 'primary' | 'secondary' | 'danger'
+  isFullWidth?: boolean
 }
 
-// 这样 Button 组件就能接受所有原生 button 属性了
-function Button({ variant = 'primary', children, ...rest }: ButtonProps) {
+function Button({
+  variant = 'primary',
+  isFullWidth = false,
+  children,
+  className = '',
+  // 用 rest 接收其他所有原生属性（onClick, disabled, type 等）
+  ...rest
+}: ButtonProps): JSX.Element {
   return (
     <button
-      {...rest} // 把所有原生属性透传下去
-      className={`btn btn-${variant} ${rest.className || ''}`}
+      className={\`btn btn-\${variant} \${isFullWidth ? 'w-full' : ''} \${className}\`}
+      {...rest} // 透传所有原生属性给底层 button
     >
       {children}
     </button>
-  );
+  )
 }
 
-// 使用时，可以传 onClick、disabled、form、name 等任何原生属性
+// ✅ 使用时可以传任何 button 原生属性
 <Button
   variant="primary"
+  type="submit"
   disabled={false}
   onClick={() => console.log('clicked')}
-  type="submit"
-  form="my-form"
-  name="submit-btn"
+  onFocus={() => console.log('focused')}
+  aria-label="提交表单"
 >
   提交
 </Button>
-
-// 同样可以提取其他原生元素
-type InputProps = React.ComponentProps<'input'>;
-type DivProps = React.ComponentProps<'div'>;
-type SelectProps = React.ComponentProps<'select'>;
-
-// 也可以提取自定义组件的 Props
-type MyComponentProps = React.ComponentProps<typeof MyComponent>;
 \`\`\`
 
-### 四、children 类型的四种写法
+常用的原生元素类型：
+- \`React.ComponentProps<'button'>\` - button 元素
+- \`React.ComponentProps<'input'>\` - input 元素
+- \`React.ComponentProps<'a'>\` - a 链接
+- \`React.ComponentProps<'div'>\` - div 元素
+- \`React.ComponentProps<'form'>\` - form 表单
 
-children 是特殊的 prop，它有多种类型，根据不同场景选择：
+还可以提取自定义组件的 Props 类型：
 
 \`\`\`tsx
-// 1. React.ReactNode：最常用，表示任意可以渲染的内容
-// 这是最宽松的类型，包括：string、number、JSX元素、数组、null/undefined/bool
-interface ContainerProps {
-  children: React.ReactNode;
-}
-function Container({ children }: ContainerProps) {
-  return <div className="container">{children}</div>;
-}
-// 可以传任何东西
-<Container>
-  Hello World
-  <span>标签</span>
-  {123}
-  {null}
-</Container>
-
-// 2. React.ReactElement：只能传单个 React 元素（不能传字符串/数字）
-interface SingleChildProps {
-  children: React.ReactElement;
-}
-function Wrapper({ children }: SingleChildProps) {
-  // 这里可以安全地读取 children.props
-  return <div className="wrapper">{children}</div>;
-}
-// <Wrapper>Hello</Wrapper>  ❌ 错误：字符串不是 ReactElement
-<Wrapper><span>Hello</span></Wrapper>  ✅ 正确
-
-// 3. JSX.Element：和 React.ReactElement 基本一样
-// 这是组件返回值的类型，用于 children 时和 ReactElement 类似
-
-// 4. Render function：children 是一个函数（render props 模式）
-interface DataConsumerProps<T> {
-  children: (data: T) => React.ReactNode;
-  data: T;
-}
-function DataConsumer<T>({ children, data }: DataConsumerProps<T>) {
-  return <div>{children(data)}</div>;
+// 假设已有一个 Button 组件
+function Button(props: { variant: string; children: React.ReactNode }) {
+  return <button>{children}</button>
 }
 
-// 使用
-<DataConsumer data={{ name: 'Tom', age: 25 }}>
+// 提取 Button 组件的 Props 类型
+type ButtonPropsType = React.ComponentProps<typeof Button>
+// 等价于 { variant: string; children: React.ReactNode }
+\`\`\`
+
+## 四、children 的四种类型
+
+children 是特殊的 prop，它的类型有多种选择：
+
+\`\`\`tsx
+// 1. React.ReactNode：最常用，可以是任何可渲染内容
+interface Container1Props {
+  children: React.ReactNode
+}
+
+// 2. React.ReactElement：只能是单个 React 元素（不能是字符串、数字等）
+interface PanelProps {
+  header: React.ReactElement // header 必须是一个 React 元素
+  children: React.ReactNode
+}
+
+// 3. JSX.Element：类似 React.ReactElement，但类型更具体
+interface IconWrapperProps {
+  icon: JSX.Element // icon 必须是一个 JSX 元素
+}
+
+// 4. Render Props 模式：children 是一个函数，接收数据返回 ReactNode
+interface DataProviderProps<T> {
+  data: T
+  children: (data: T) => React.ReactNode
+}
+
+// Render Props 示例
+function DataProvider<T>({ data, children }: DataProviderProps<T>): JSX.Element {
+  return <div className="data-provider">{children(data)}</div>
+}
+
+// 使用 Render Props
+<DataProvider data={{ name: '张三', age: 25 }}>
   {(user) => (
     <div>
-      {user.name} - {user.age}
+      <p>姓名：{user.name}</p>
+      <p>年龄：{user.age}</p>
     </div>
   )}
-</DataConsumer>
+</DataProvider>
 \`\`\`
 
-### 五、可选 Props 与默认值
+## 五、可选 Props 与默认值
 
-通过 ? 标记可选 prop，然后用 ES6 默认参数值设置默认值：
-
-\`\`\`tsx
-interface ConfigurableButtonProps {
-  text: string;
-  // 以下都是可选的
-  size?: 'sm' | 'md' | 'lg';
-  color?: 'blue' | 'green' | 'red';
-  disabled?: boolean;
-  loading?: boolean;
-  icon?: React.ReactNode;
-}
-
-function ConfigurableButton({
-  text,
-  size = 'md',       // 默认值
-  color = 'blue',    // 默认值
-  disabled = false,  // 默认值
-  loading = false,   // 默认值
-  icon,              // 可选，没有默认值就是 undefined
-}: ConfigurableButtonProps) {
-  return (
-    <button disabled={disabled || loading}>
-      {loading && <Spinner />}
-      {icon && <span className="icon">{icon}</span>}
-      {text}
-    </button>
-  );
-}
-\`\`\`
-
-### 六、索引签名与 Record<string, unknown>
-
-当你需要接受任意额外属性时，可以用索引签名或 Record：
+用 \`?\` 标记可选属性，配合 ES6 默认参数值：
 
 \`\`\`tsx
-// 索引签名：可以接受任意 string key 的属性
-interface AnyProps {
-  name: string;
-  age: number;
-  [key: string]: any; // 允许任意其他属性
+interface InputProps {
+  // 必传属性
+  value: string
+  onChange: (value: string) => void
+  // 可选属性（加 ?）
+  placeholder?: string
+  type?: 'text' | 'password' | 'email'
+  maxLength?: number
+  disabled?: boolean
+  error?: string
 }
 
-// 更好的方式是用 Record<string, unknown> 配合类型收窄
-interface FlexibleProps {
-  title: string;
-  data?: Record<string, unknown>; // 任意键值对
-}
-
-function DataDisplay({ title, data }: FlexibleProps) {
-  return (
-    <div>
-      <h3>{title}</h3>
-      {data && Object.entries(data).map(([key, value]) => (
-        <div key={key}>
-          {key}: {String(value)}
-        </div>
-      ))}
-    </div>
-  );
-}
-\`\`\`
-
-### 七、可辨识联合类型（Discriminated Unions）
-
-这是 TypeScript 最强大的特性之一！当组件有多种"状态"或"类型"时，用可辨识联合可以让类型更安全：
-
-\`\`\`tsx
-// 定义一个"判别属性"，这里是 type
-type AlertProps =
-  | {
-      type: 'success';
-      message: string;
-      duration?: number;
-    }
-  | {
-      type: 'error';
-      message: string;
-      errorCode: number; // error 类型必须传 errorCode
-    }
-  | {
-      type: 'warning';
-      message: string;
-      showIcon?: boolean;
-    }
-  | {
-      type: 'info';
-      message: string;
-    };
-
-// TS 会根据 type 自动缩小类型范围
-function Alert(props: AlertProps) {
-  const { type, message } = props;
-  
-  const colors = {
-    success: 'green',
-    error: 'red',
-    warning: 'yellow',
-    info: 'blue',
-  };
-
-  return (
-    <div className={`alert alert-${type}`} style={{ color: colors[type] }}>
-      {type === 'error' && <strong>错误码: {props.errorCode}</strong>}
-      {/* 这里 TS 知道：只有 type 是 'error' 时才有 errorCode */}
-      <p>{message}</p>
-    </div>
-  );
-}
-
-// 使用
-<Alert type="success" message="操作成功" />  ✅
-<Alert type="error" message="失败了" errorCode={500} />  ✅
-// <Alert type="error" message="失败" />  ❌ 错误：缺少 errorCode
-\`\`\`
-
-### 八、Omit/Pick：类型剪裁工具
-
-TypeScript 内置的工具类型 Omit 和 Pick，可以用来从已有类型中"选"或"排除"某些属性：
-
-\`\`\`tsx
-import { ComponentProps } from 'react';
-
-// 假设我们要封装一个自定义 Input
-// 先取原生 input 的所有属性
-type NativeInputProps = ComponentProps<'input'>;
-
-// Pick：只选取我们需要的属性
-type PickedInputProps = Pick<NativeInputProps, 'value' | 'onChange' | 'placeholder' | 'type'>;
-
-// Omit：排除我们不需要或要覆盖的属性
-type CustomInputProps = Omit<NativeInputProps, 'type'> & {
-  // 覆盖原生 type，我们只支持这三种
-  type?: 'text' | 'password' | 'email';
-  label?: string;
-  error?: string;
-};
-
-function CustomInput({ label, error, ...rest }: CustomInputProps) {
+function Input({
+  value,
+  onChange,
+  placeholder = '请输入', // 默认值
+  type = 'text',          // 默认值
+  maxLength,
+  disabled = false,       // 默认值
+  error,
+}: InputProps): JSX.Element {
   return (
     <div className="input-wrapper">
-      {label && <label>{label}</label>}
-      <input {...rest} />
-      {error && <span className="error">{error}</span>}
+      <input
+        type={type}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        maxLength={maxLength}
+        disabled={disabled}
+        className={\`input \${error ? 'input-error' : ''}\`}
+      />
+      {error && <span className="error-text">{error}</span>}
     </div>
-  );
+  )
 }
 \`\`\`
 
-掌握了这些 Props 类型定义技巧，你就能写出类型安全、灵活可复用的 React 组件了！`,
+## 六、索引签名与 Record
+
+当组件可以接收任意额外属性时，使用索引签名或 \`Record\`：
+
+\`\`\`tsx
+// 1. 索引签名：[key: string]: type
+interface FlexibleProps {
+  title: string // 明确的属性
+  [key: string]: unknown // 其他任意属性，值类型 unknown（比 any 安全）
+}
+
+// 2. Record<K, V>：更简洁的方式
+// Record<string, unknown> 等价于 { [key: string]: unknown }
+interface FlexibleProps2 {
+  title: string
+  [key: string]: unknown
+}
+
+// 更具体的：data-* 属性
+interface DivWithDataProps extends React.ComponentProps<'div'> {
+  // 允许所有 data- 开头的自定义属性
+  [dataAttribute: \`data-\${string}\`]: string | number | boolean
+}
+
+// 使用示例
+function FlexibleComponent({ title, ...rest }: FlexibleProps): JSX.Element {
+  return (
+    <div {...rest}>
+      <h2>{title}</h2>
+    </div>
+  )
+}
+
+<FlexibleComponent
+  title="示例"
+  data-id="123"
+  data-active={true}
+  aria-label="flexible"
+/>
+\`\`\`
+
+## 七、Props 联合类型（可辨识联合）
+
+可辨识联合（Discriminated Union）是 TypeScript 最强大的特性之一，非常适合根据某个字段的值来决定其他属性的类型：
+
+\`\`\`tsx
+// 定义不同类型的通知，通过 type 字段辨识
+type NotificationProps =
+  | {
+      type: 'success'
+      message: string
+      duration?: number
+    }
+  | {
+      type: 'error'
+      message: string
+      errorCode: number // error 类型必须传 errorCode
+      onRetry?: () => void
+    }
+  | {
+      type: 'warning'
+      message: string
+      confirmText?: string
+      onConfirm: () => void // warning 类型必须传 onConfirm
+    }
+  | {
+      type: 'info'
+      message: string
+    }
+
+function Notification(props: NotificationProps): JSX.Element {
+  const { type, message } = props
+
+  // 根据 type  narrowing 类型，TypeScript 会自动推断可用属性
+  const bgColor = {
+    success: 'bg-green-50 text-green-800 border-green-200',
+    error: 'bg-red-50 text-red-800 border-red-200',
+    warning: 'bg-yellow-50 text-yellow-800 border-yellow-200',
+    info: 'bg-blue-50 text-blue-800 border-blue-200',
+  }[type]
+
+  return (
+    <div className={\`p-4 rounded-lg border \${bgColor}\`}>
+      <p>{message}</p>
+      {/* 在 narrowing 后可以安全访问各自的特有属性 */}
+      {type === 'error' && (
+        <button onClick={props.onRetry} className="text-sm underline mt-2">
+          重试（错误码：{props.errorCode}）
+        </button>
+      )}
+      {type === 'warning' && (
+        <button onClick={props.onConfirm} className="text-sm underline mt-2">
+          {props.confirmText ?? '确认'}
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ✅ 正确使用
+<Notification type="success" message="操作成功" />
+<Notification type="error" message="加载失败" errorCode={500} />
+<Notification type="warning" message="确定删除吗？" onConfirm={() => {}} />
+
+// ❌ 错误：error 类型缺少必需的 errorCode
+<Notification type="error" message="错误" />
+
+// ❌ 错误：success 类型不能传 errorCode
+<Notification type="success" message="成功" errorCode={200} />
+\`\`\`
+
+## 八、Omit/Pick 扩展原生 Props
+
+使用 \`Omit\` 和 \`Pick\` 工具类型，可以从已有类型中排除或选取部分属性：
+
+\`\`\`tsx
+// Omit<Type, Keys>：从 Type 中排除 Keys 指定的属性
+// 例如：我们想封装 button，但不想要原生的 type 属性，换成我们自己的
+interface CustomButtonProps
+  extends Omit<React.ComponentProps<'button'>, 'type'> {
+  // 自定义 type，值更丰富
+  type?: 'primary' | 'secondary' | 'text'
+}
+
+// Pick<Type, Keys>：从 Type 中只选取 Keys 指定的属性
+// 例如：只选取 input 的 value 和 onChange，其他属性都不要
+type ControlledInputProps = Pick<
+  React.ComponentProps<'input'>,
+  'value' | 'onChange' | 'placeholder'
+> & {
+  label: string
+}
+
+// 示例：封装一个不带 type="button" 的自定义按钮
+function CustomButton({
+  type = 'primary',
+  children,
+  ...rest
+}: CustomButtonProps): JSX.Element {
+  const nativeType = 'button' as const // 固定原生 type 为 button
+  return (
+    <button type={nativeType} className={\`btn-\${type}\`} {...rest}>
+      {children}
+    </button>
+  )
+}
+\`\`\`
+
+常用工具类型总结：
+- \`Partial<T>\`：所有属性变为可选
+- \`Required<T>\`：所有属性变为必选
+- \`Readonly<T>\`：所有属性变为只读
+- \`Omit<T, K>\`：排除 K 指定的属性
+- \`Pick<T, K>\`：只选取 K 指定的属性
+- \`Record<K, V>\`：构造键类型为 K、值类型为 V 的对象类型
+
+## 九、小结
+
+- 定义 Props 优先用 \`interface\`，需要联合/映射/条件类型时用 \`type\`
+- 用 \`extends\` 或 \`&\` 实现 Props 继承复用
+- 封装原生元素时用 \`React.ComponentProps<'element'>\` 提取原生属性
+- children 类型常用 \`React.ReactNode\`，Render Props 用函数类型
+- 可选属性加 \`?\`，配合 ES6 默认参数值
+- 可辨识联合（discriminated union）通过 type/kind 字段实现类型 narrowing
+- 使用 \`Omit\`、\`Pick\`、\`Partial\`、\`Record\` 等工具类型灵活组合 Props
+
+下一章我们将深入学习 useState，掌握 React 状态管理的方方面面。
+`,
   },
   {
     id: "tsrx-usestate",
-    icon: "🔄",
     group: "基础篇",
+    icon: "🔄",
     title: "useState状态管理全解",
-    content: `## useState状态管理全解
+    content: `
 
-useState 是 React 最基础也是最重要的 Hook，它让函数组件拥有了状态管理能力。本章我们将深入学习 useState 的各种用法、类型推断和最佳实践。
+# useState 状态管理全解
 
-### 一、useState 基本用法与类型推断
+\`useState\` 是 React 最基础、最常用的 Hook，它让函数组件拥有了管理状态的能力。本章我们将深入学习 useState 的各种用法，包括类型推断、泛型指定、函数式更新、惰性初始化、不可变更新，以及数组和对象状态的操作技巧。
 
-useState 是一个泛型函数，大多数情况下 TypeScript 能根据初始值自动推断出 state 的类型：
+## 一、useState 基本用法与类型推断
+
+\`useState\` 最基本的用法是传入初始值，TypeScript 会自动根据初始值推断 state 的类型：
 
 \`\`\`tsx
-import { useState } from 'react';
+import { useState } from 'react'
 
 function Counter() {
   // 初始值是 0（number），count 自动推断为 number
   // setCount 自动推断为 (value: number | ((prev: number) => number)) => void
-  const [count, setCount] = useState(0);
+  const [count, setCount] = useState(0)
 
-  // 初始值是字符串，推断为 string
-  const [name, setName] = useState('Tom');
+  // 初始值是字符串，name 自动推断为 string
+  const [name, setName] = useState('')
 
-  // 初始值是布尔值，推断为 boolean
-  const [isOpen, setIsOpen] = useState(false);
-
-  // 初始值是数组，推断为 never[] 或具体类型
-  // ❌ 不好：TS 不知道数组里放什么，会推断为 never[]
-  // const [items, setItems] = useState([]);
-  
-  // ✅ 好：要么给个初始值
-  // const [items, setItems] = useState<string[]>([]); // 显式指定泛型
-  // 要么初始值包含元素让 TS 推断
-  const [items, setItems] = useState(['apple', 'banana']); // 推断为 string[]
+  // 初始值是布尔值，isOpen 自动推断为 boolean
+  const [isOpen, setIsOpen] = useState(false)
 
   return (
     <div>
-      <p>计数: {count}</p>
+      <p>计数：{count}</p>
       <button onClick={() => setCount(count + 1)}>+1</button>
+      <input value={name} onChange={e => setName(e.target.value)} />
+      <button onClick={() => setIsOpen(!isOpen)}>切换</button>
     </div>
-  );
+  )
 }
 \`\`\`
 
-### 二、泛型指定 state 类型：useState<T>
+## 二、泛型指定 state 类型
 
-当初始值是 null 或 undefined，或者 state 是复杂对象时，需要显式指定泛型类型：
+当初始值为 \`null\`、\`undefined\` 或者 state 可以是多种类型时，需要使用泛型手动指定类型：
 
 \`\`\`tsx
+import { useState } from 'react'
+
 interface User {
-  id: number;
-  name: string;
-  email: string;
-  age?: number;
+  id: number
+  name: string
+  email: string
 }
 
 function UserProfile() {
-  // 用户信息可能还没加载出来，初始值是 null
-  // 这里必须显式指定类型，否则会推断为 null
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  // user 初始值为 null，但加载完成后是 User 类型
+  // 使用泛型 <User | null> 明确指定
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  // 加载用户数据
+  // 加载数据
   useEffect(() => {
-    fetchUser(123).then((data) => {
-      setUser(data);
-      setLoading(false);
-    });
-  }, []);
+    fetchUser(123)
+      .then(data => {
+        setUser(data)
+        setLoading(false)
+      })
+  }, [])
 
-  if (loading) return <div>加载中...</div>;
-  if (!user) return <div>用户不存在</div>;
+  if (loading) return <div>加载中...</div>
+  if (!user) return <div>用户不存在</div>
 
-  // 这里 TS 知道 user 不为 null，可以安全访问属性
+  // 这里 TypeScript 知道 user 不是 null，可以安全访问属性
   return (
     <div>
       <h2>{user.name}</h2>
       <p>{user.email}</p>
     </div>
-  );
+  )
 }
 
-// 对象类型 state
-interface FormState {
-  username: string;
-  password: string;
-  rememberMe: boolean;
-}
-
-function LoginForm() {
-  // 初始值符合 FormState 类型，TS 也能自动推断
-  // 但显式写出来更清晰，特别是当有可选属性时
-  const [form, setForm] = useState<FormState>({
-    username: '',
-    password: '',
-    rememberMe: false,
-  });
-
-  return <form>{/* ... */}</form>;
-}
+// 其他泛型指定示例
+const [tags, setTags] = useState<string[]>([]) // 空数组初始值，指定元素类型
+const [options, setOptions] = useState<Option[]>([]) // 对象数组
+const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
 \`\`\`
 
-### 三、函数式更新：避免闭包陈旧值
+**何时需要手动指定泛型？**
+1. 初始值是 \`null\` 或 \`undefined\`，后续会赋值为其他类型
+2. 初始值是空数组 \`[]\`，需要指定数组元素类型
+3. state 是联合类型（如 \`'idle' | 'loading' | 'success'\`）
 
-当新的 state 依赖于之前的 state 时，一定要用函数式更新。这是 useState 最容易出错的地方之一！
+## 三、函数式更新：避免闭包陈旧值
+
+当新的 state 依赖于之前的 state 时，使用**函数式更新**形式，传入 \`(prevState) => newState\`：
 
 \`\`\`tsx
 function Counter() {
-  const [count, setCount] = useState(0);
+  const [count, setCount] = useState(0)
 
-  // ❌ 错误：连续调用三次，实际只加1
-  // 因为这三次调用都引用了同一个 count 值
-  const handleIncrementBad = () => {
-    setCount(count + 1);
-    setCount(count + 1);
-    setCount(count + 1);
-    // 结果还是 count + 1，不是 +3
-  };
+  // ❌ 问题：连续调用三次 setCount，每次都用当前 count
+  // 由于闭包，三次调用看到的 count 都是 0
+  const handleBadIncrement = () => {
+    setCount(count + 1) // 0 + 1 = 1
+    setCount(count + 1) // 0 + 1 = 1（闭包陈旧值！）
+    setCount(count + 1) // 0 + 1 = 1（闭包陈旧值！）
+    // 结果：count 只增加 1，不是预期的 3
+  }
 
-  // ✅ 正确：使用函数式更新，prev 永远是最新的状态
-  const handleIncrementGood = () => {
-    setCount((prev) => prev + 1);
-    setCount((prev) => prev + 1);
-    setCount((prev) => prev + 1);
-    // 结果是 +3，正确
-  };
-
-  // 更常见的场景：在异步回调或 useEffect 中更新状态
-  const handleAsyncIncrement = () => {
-    setTimeout(() => {
-      // ❌ 这里的 count 可能是旧值！
-      // setCount(count + 1);
-      
-      // ✅ 用函数式更新就没问题
-      setCount((prev) => prev + 1);
-    }, 1000);
-  };
+  // ✅ 正确：使用函数式更新，每次都能拿到最新的 prev 值
+  const handleGoodIncrement = () => {
+    setCount(prev => prev + 1) // 0 -> 1
+    setCount(prev => prev + 1) // 1 -> 2
+    setCount(prev => prev + 1) // 2 -> 3
+    // 结果：count 正确增加 3
+  }
 
   return (
     <div>
       <p>{count}</p>
-      <button onClick={handleIncrementGood}>+3</button>
+      <button onClick={handleBadIncrement}>错误的+3</button>
+      <button onClick={handleGoodIncrement}>正确的+3</button>
     </div>
-  );
+  )
 }
 \`\`\`
 
-**为什么会有陈旧闭包问题？** 因为每次渲染，组件函数都会重新执行，形成新的闭包。如果在异步回调中引用了 state，可能引用的是之前渲染的旧值。函数式更新通过 prev 参数拿到的永远是最新值，可以避免这个问题。
+**什么时候必须用函数式更新？**
+- 在同一个事件处理中连续多次更新同一个 state
+- 更新逻辑在 setTimeout、setInterval 等异步回调中（闭包陷阱）
+- 更新逻辑被 useCallback/useMemo 包裹，不想把 state 加到依赖数组中
 
-### 四、惰性初始化：useState(() => init)
+## 四、惰性初始化：昂贵计算只执行一次
 
-如果初始 state 需要经过复杂计算才能得到，应该传一个函数给 useState，这个函数只会在首次渲染时执行一次：
+如果初始 state 需要通过复杂计算获得，可以传入一个**初始化函数**，这个函数只在组件首次渲染时执行一次：
 
 \`\`\`tsx
 function TodoList() {
   // ❌ 不好：每次渲染都会执行 localStorage.getItem 和 JSON.parse
-  // 即使只在首次渲染需要初始值
-  // const [todos, setTodos] = useState<Todo[]>(
-  //   JSON.parse(localStorage.getItem('todos') || '[]')
-  // );
+  // 即使只有第一次渲染需要初始值
+  const [todos, setTodos] = useState(
+    JSON.parse(localStorage.getItem('todos') || '[]')
+  )
 
-  // ✅ 好：惰性初始化，函数只执行一次
-  const [todos, setTodos] = useState<Todo[]>(() => {
-    console.log('初始化 todos，只执行一次');
-    const saved = localStorage.getItem('todos');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return [];
-      }
+  // ✅ 好：惰性初始化，函数只在首次渲染时执行一次
+  const [todos, setTodos] = useState(() => {
+    console.log('初始化 todos...') // 只打印一次
+    const saved = localStorage.getItem('todos')
+    return saved ? JSON.parse(saved) : []
+  })
+
+  // 另一个示例：初始值是计算得到的
+  const [fibonacci] = useState(() => {
+    // 斐波那契数列计算很昂贵，只在首次渲染时计算
+    const fib = [0, 1]
+    for (let i = 2; i < 1000; i++) {
+      fib[i] = fib[i - 1] + fib[i - 2]
     }
-    return [];
-  });
+    return fib
+  })
 
-  // 另一个例子：复杂计算的初始值
-  const [fibonacci, setFibonacci] = useState(() => {
-    // 斐波那契数列计算很耗时，只在首次渲染算一次
-    const fib = [0, 1];
-    for (let i = 2; i < 100; i++) {
-      fib[i] = fib[i - 1] + fib[i - 2];
-    }
-    return fib;
-  });
-
-  return <div>{/* ... */}</div>;
+  return <ul>{todos.map(todo => <li key={todo.id}>{todo.text}</li>)}</ul>
 }
 \`\`\`
 
-### 五、React 18 自动批处理
+## 五、React 18 自动批处理
 
-React 18 引入了自动批处理（Automatic Batching）：在同一个事件循环中的多个 setState 调用会被合并，只触发一次重渲染：
+React 18 引入了自动批处理（Automatic Batching）：在同一个事件处理、Promise 回调、setTimeout 等中多次调用 setState，React 会将它们合并为一次重渲染：
 
 \`\`\`tsx
-function BatchedDemo() {
-  const [count, setCount] = useState(0);
-  const [flag, setFlag] = useState(false);
-  const [text, setText] = useState('');
+function BatchingDemo() {
+  const [count, setCount] = useState(0)
+  const [name, setName] = useState('')
+  const [age, setAge] = useState(0)
 
   const handleClick = () => {
-    // React 18 中，这三次 setState 会批处理，只重渲染一次
-    setCount(c => c + 1);
-    setFlag(f => !f);
-    setText('hello');
-    
-    // React 17 及以前：React 事件中批处理，但 setTimeout/Promise 中不批处理
-    // React 18+：所有场景都会自动批处理
-    setTimeout(() => {
-      setCount(c => c + 1);
-      setFlag(f => !f);
-      // 这里也会批处理！只渲染一次
-    }, 100);
-  };
+    // React 18：这三个 setState 会被批处理，只触发一次重渲染
+    setCount(c => c + 1)
+    setName('张三')
+    setAge(25)
+    // 结果：组件只重新渲染 1 次，不是 3 次
+    console.log('handleClick 执行')
+  }
 
-  console.log('组件渲染了'); // 点击一次只会打一次 log
+  const handleAsyncClick = () => {
+    // 在 Promise.then 中也会自动批处理（React 18 新增）
+    fetch('/api/user').then(() => {
+      setCount(c => c + 1)
+      setName('李四')
+      // 同样只触发一次重渲染
+    })
+  }
 
-  return <button onClick={handleClick}>点击</button>;
+  console.log('组件渲染') // 观察打印次数
+
+  return <button onClick={handleClick}>点击</button>
 }
-
-// 如果需要在 setState 后立即拿到 DOM 更新，可以用 flushSync
-// import { flushSync } from 'react-dom';
-// flushSync(() => {
-//   setCount(c => c + 1);
-// });
-// 这里 DOM 已经更新了
 \`\`\`
 
-### 六、对象 state：不可变更新
+React 18 之前只在 React 事件处理中批处理，Promise、setTimeout、原生事件中不会批处理。React 18 之后所有更新都会自动批处理。
 
-React 的状态更新是"不可变"的——永远不要直接修改 state 对象，而是创建一个新对象：
+## 六、对象 state：不可变更新
+
+React 中更新 state 必须遵循**不可变原则**：永远不要直接修改（mutate）原来的 state 对象，而是创建一个新对象。
 
 \`\`\`tsx
-function FormDemo() {
-  const [form, setForm] = useState({
-    username: '',
-    password: '',
-    rememberMe: false,
-  });
+interface UserForm {
+  name: string
+  email: string
+  age: number
+  address: {
+    city: string
+    street: string
+  }
+}
 
-  // ❌ 错误：直接修改原对象，React 检测不到变化，不会重渲染
-  // const badUpdate = () => {
-  //   form.username = 'new name';
-  //   setForm(form); // 引用没变，React 可能跳过更新
-  // };
-
-  // ✅ 正确：用 ... 展开运算符创建新对象
-  const updateUsername = (username: string) => {
-    setForm((prev) => ({
-      ...prev,           // 复制原来的所有属性
-      username,          // 覆盖要更新的属性
-    }));
-  };
-
-  // 嵌套对象更新：要逐层展开
-  const [user, setUser] = useState({
-    name: 'Tom',
+function UserForm() {
+  const [form, setForm] = useState<UserForm>({
+    name: '',
+    email: '',
+    age: 0,
     address: {
-      city: 'Beijing',
-      street: 'Main St',
+      city: '',
+      street: '',
     },
-  });
+  })
 
+  // ❌ 错误：直接修改 state，React 检测不到变化，不会重渲染
+  const badUpdateName = () => {
+    form.name = '张三' // 直接 mutate！
+    setForm(form) // 引用没变，React 可能跳过更新
+  }
+
+  // ✅ 正确：使用 ...spread 创建新对象
+  const updateName = (name: string) => {
+    setForm(prev => ({
+      ...prev, // 复制原有字段
+      name,    // 覆盖要更新的字段
+    }))
+  }
+
+  // 更新嵌套对象：需要逐层复制
   const updateCity = (city: string) => {
-    setUser((prev) => ({
+    setForm(prev => ({
       ...prev,
       address: {
-        ...prev.address, // 嵌套对象也要展开复制
-        city,            // 只更新 city
+        ...prev.address, // 复制 address 里的其他字段
+        city,            // 更新 city
       },
-    }));
-  };
+    }))
+  }
 
-  return <div>{/* ... */}</div>;
+  return (
+    <form>
+      <input
+        value={form.name}
+        onChange={e => updateName(e.target.value)}
+        placeholder="姓名"
+      />
+      <input
+        value={form.address.city}
+        onChange={e => updateCity(e.target.value)}
+        placeholder="城市"
+      />
+    </form>
+  )
 }
 \`\`\`
 
-### 七、数组 state：CRUD 操作
+**如果对象嵌套很深，spread 写起来很麻烦**，有几种解决方案：
+1. 使用 Immer 库（\`produce\` 函数）可以直接写 mutate 风格代码
+2. 尽量扁平化 state 结构，减少嵌套
+3. 将复杂 state 拆分为多个独立的 useState
 
-数组更新同样遵循不可变原则，不要直接 push/splice/pop，而是返回新数组：
+## 七、数组 state CRUD 操作
+
+数组是最常见的 state 类型之一。以下是数组的增删改查（CRUD）正确写法：
 
 \`\`\`tsx
 interface Todo {
-  id: number;
-  text: string;
-  completed: boolean;
+  id: number
+  text: string
+  completed: boolean
 }
 
-function TodoListCrud() {
+function TodoListDemo() {
   const [todos, setTodos] = useState<Todo[]>([
     { id: 1, text: '学习 React', completed: false },
-  ]);
+    { id: 2, text: '学习 TypeScript', completed: true },
+  ])
 
-  // 新增
+  // Create：添加新项
   const addTodo = (text: string) => {
     const newTodo: Todo = {
-      id: Date.now(),
+      id: Date.now(), // 用时间戳作为简单 id
       text,
       completed: false,
-    };
-    // ✅ 用展开运算符创建新数组
-    setTodos((prev) => [...prev, newTodo]);
-    // 或者用 concat
-    // setTodos((prev) => prev.concat(newTodo));
-  };
+    }
+    // ✅ 创建新数组，把新项加进去
+    setTodos(prev => [...prev, newTodo])
+    // 或者加在开头：setTodos(prev => [newTodo, ...prev])
+  }
 
-  // 删除
-  const deleteTodo = (id: number) => {
-    // ✅ filter 返回新数组
-    setTodos((prev) => prev.filter((todo) => todo.id !== id));
-  };
+  // Read：直接通过 todos.map/filter/find 渲染或查询
+  const completedCount = todos.filter(t => t.completed).length
 
-  // 修改（切换完成状态）
+  // Update：更新某一项
   const toggleTodo = (id: number) => {
-    // ✅ map 返回新数组
-    setTodos((prev) =>
-      prev.map((todo) =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo
+    setTodos(prev =>
+      prev.map(todo =>
+        todo.id === id
+          ? { ...todo, completed: !todo.completed } // ✅ 创建新对象，复制并覆盖字段
+          : todo // 其他项保持不变
       )
-    );
-  };
+    )
+  }
 
-  // 在开头插入
-  const addToTop = (text: string) => {
-    setTodos((prev) => [{ id: Date.now(), text, completed: false }, ...prev]);
-  };
+  // 更新：编辑文本
+  const updateTodoText = (id: number, text: string) => {
+    setTodos(prev =>
+      prev.map(todo =>
+        todo.id === id ? { ...todo, text } : todo
+      )
+    )
+  }
+
+  // Delete：删除某一项（用 filter）
+  const deleteTodo = (id: number) => {
+    setTodos(prev => prev.filter(todo => todo.id !== id))
+  }
+
+  // Insert：在指定位置插入
+  const insertAfter = (afterId: number, newTodo: Todo) => {
+    setTodos(prev => {
+      const index = prev.findIndex(t => t.id === afterId)
+      if (index === -1) return prev
+      return [
+        ...prev.slice(0, index + 1), // 前面的项
+        newTodo,                     // 新项
+        ...prev.slice(index + 1),    // 后面的项
+      ]
+    })
+  }
+
+  // 清空数组
+  const clearAll = () => {
+    setTodos([])
+  }
 
   return (
     <div>
-      {/* 渲染 todos */}
-      {todos.map((todo) => (
-        <div key={todo.id}>
-          <input
-            type="checkbox"
-            checked={todo.completed}
-            onChange={() => toggleTodo(todo.id)}
-          />
-          <span>{todo.text}</span>
-          <button onClick={() => deleteTodo(todo.id)}>删除</button>
-        </div>
-      ))}
+      <p>已完成：{completedCount} / {todos.length}</p>
+      <ul>
+        {todos.map(todo => (
+          <li key={todo.id}>
+            <input
+              type="checkbox"
+              checked={todo.completed}
+              onChange={() => toggleTodo(todo.id)}
+            />
+            <span style={{ textDecoration: todo.completed ? 'line-through' : 'none' }}>
+              {todo.text}
+            </span>
+            <button onClick={() => deleteTodo(todo.id)}>删除</button>
+          </li>
+        ))}
+      </ul>
+      <button onClick={() => addTodo('新任务')}>添加任务</button>
+      <button onClick={clearAll}>清空</button>
     </div>
-  );
+  )
 }
 \`\`\`
 
-### 八、状态放置原则：谁用谁声明，最小化 state
+## 八、State 放置原则：Colocate State
 
-最后是一个设计原则：状态应该放在哪里？
+**State 应该放在哪里？** 遵循最小化原则（Colocate State）：
 
-1. **谁用谁声明**：哪个组件需要用这个状态，就放在哪个组件里
-2. **最小化原则**：能从 props 或其他 state 推导出来的，不要单独定义 state
-3. **状态提升**：多个组件共享状态时，提升到它们最近的共同父组件
-4. **不要冗余**：不要定义可以计算出来的 state
+1. **哪个组件用，哪个组件声明**：state 应该放在最先需要它的组件中
+2. **不要过早提升 state**：不要一开始就把所有 state 放到 App 或全局 store
+3. **多个组件共用时，提升到最近的共同父组件**
+4. **派生状态不存 state**：可以从现有 state/props 计算出来的值，不要单独存 state
 
 \`\`\`tsx
-// ❌ 不好：冗余 state
-function BadExample({ firstName, lastName }: { firstName: string; lastName: string }) {
-  const [fullName, setFullName] = useState(`${firstName} ${lastName}`);
-  // fullName 完全可以从 props 计算出来，不需要单独的 state
-  return <div>{fullName}</div>;
+// ❌ 反例：不需要的 state
+function BadTodoList({ todos }: { todos: Todo[] }) {
+  // completedCount 可以从 todos 计算出来，不需要单独存 state
+  const [completedCount, setCompletedCount] = useState(0)
+
+  useEffect(() => {
+    setCompletedCount(todos.filter(t => t.completed).length)
+  }, [todos])
+
+  return <p>已完成：{completedCount}</p>
 }
 
-// ✅ 好：直接计算，或者用 useMemo
-function GoodExample({ firstName, lastName }: { firstName: string; lastName: string }) {
-  const fullName = `${firstName} ${lastName}`;
-  return <div>{fullName}</div>;
+// ✅ 正确：派生状态直接计算
+function GoodTodoList({ todos }: { todos: Todo[] }) {
+  // 在渲染期间直接计算，不需要 state 和 effect
+  const completedCount = todos.filter(t => t.completed).length
+
+  return <p>已完成：{completedCount}</p>
 }
 \`\`\`
 
-掌握 useState 的这些用法和原则，你就能写出更可靠、性能更好的 React 组件了。useState 看似简单，但里面的学问可不少！`,
+## 九、TodoList CRUD 完整 Demo
+
+这里是一个功能完整的 TodoList 应用，综合运用了上述所有 useState 技巧：
+
+\`\`\`tsx
+interface Todo {
+  id: number
+  text: string
+  completed: boolean
+  createdAt: Date
+}
+
+function TodoApp() {
+  const [todos, setTodos] = useState<Todo[]>(() => {
+    const saved = localStorage.getItem('todos')
+    return saved ? JSON.parse(saved) : []
+  })
+  const [inputText, setInputText] = useState('')
+  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all')
+
+  // 持久化到 localStorage
+  useEffect(() => {
+    localStorage.setItem('todos', JSON.stringify(todos))
+  }, [todos])
+
+  const addTodo = () => {
+    if (!inputText.trim()) return
+    setTodos(prev => [
+      ...prev,
+      {
+        id: Date.now(),
+        text: inputText.trim(),
+        completed: false,
+        createdAt: new Date(),
+      },
+    ])
+    setInputText('')
+  }
+
+  const toggleTodo = (id: number) => {
+    setTodos(prev =>
+      prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t)
+    )
+  }
+
+  const deleteTodo = (id: number) => {
+    setTodos(prev => prev.filter(t => t.id !== id))
+  }
+
+  const clearCompleted = () => {
+    setTodos(prev => prev.filter(t => !t.completed))
+  }
+
+  // 派生状态：过滤后的列表
+  const filteredTodos = todos.filter(t => {
+    if (filter === 'active') return !t.completed
+    if (filter === 'completed') return t.completed
+    return true
+  })
+
+  const activeCount = todos.filter(t => !t.completed).length
+
+  return (
+    <div className="max-w-md mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-4">Todo List</h1>
+      
+      <div className="flex gap-2 mb-4">
+        <input
+          value={inputText}
+          onChange={e => setInputText(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && addTodo()}
+          placeholder="添加新任务..."
+          className="flex-1 px-3 py-2 border rounded"
+        />
+        <button onClick={addTodo} className="px-4 py-2 bg-blue-500 text-white rounded">
+          添加
+        </button>
+      </div>
+
+      <div className="flex gap-2 mb-4">
+        {(['all', 'active', 'completed'] as const).map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={\`px-3 py-1 rounded \${
+              filter === f ? 'bg-blue-500 text-white' : 'bg-gray-200'
+            }\`}
+          >
+            {f === 'all' ? '全部' : f === 'active' ? '进行中' : '已完成'}
+          </button>
+        ))}
+      </div>
+
+      <ul className="divide-y">
+        {filteredTodos.map(todo => (
+          <li key={todo.id} className="flex items-center gap-3 py-3">
+            <input
+              type="checkbox"
+              checked={todo.completed}
+              onChange={() => toggleTodo(todo.id)}
+            />
+            <span className={todo.completed ? 'line-through text-gray-400' : ''}>
+              {todo.text}
+            </span>
+            <button
+              onClick={() => deleteTodo(todo.id)}
+              className="ml-auto text-red-500 text-sm"
+            >
+              删除
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-4 flex justify-between items-center text-sm text-gray-500">
+        <span>{activeCount} 项待完成</span>
+        <button onClick={clearCompleted} className="text-red-500">
+          清除已完成
+        </button>
+      </div>
+    </div>
+  )
+}
+\`\`\`
+
+## 十、小结
+
+- useState 会根据初始值自动推断类型，必要时用泛型 \`<T | null>(null)\` 指定
+- 新 state 依赖旧 state 时用函数式更新 \`setState(prev => new)\`
+- 初始值计算昂贵时用惰性初始化 \`useState(() => compute())\`
+- React 18 所有场景自动批处理多次 setState
+- 对象和数组 state 必须不可变更新：用 \`...spread\`、\`map\`、\`filter\` 创建新引用
+- 数组 CRUD：添加用 \`[...arr, new]\`、更新用 \`map\`、删除用 \`filter\`、插入用 \`slice\`
+- State 遵循 colocate 原则，放在需要它的最小组件；派生状态不存 state
+
+下一章我们将学习 React 中的事件处理和类型标注。
+`,
   },
   {
     id: "tsrx-events",
-    icon: "🎯",
     group: "基础篇",
+    icon: "🎯",
     title: "事件处理与类型",
-    content: `## 事件处理与类型
+    content: `
 
-用户交互是前端应用的核心，而事件处理是交互的基础。在 TypeScript + React 中，正确地为事件标注类型，可以避免很多常见错误。
+# 事件处理与类型
 
-### 一、常见事件类型速查表
+事件处理是 React 交互的核心。在 TypeScript 中，正确标注事件类型不仅能获得自动补全，还能在编译时捕获错误。本章我们将学习常见事件类型、事件处理器类型推导、合成事件机制、防抖节流实现，以及事件传参技巧。
 
-React 提供了完整的事件类型定义，不同的元素对应不同的事件类型，都需要指定元素类型作为泛型参数：
+## 一、常见事件类型一览
+
+React 中的事件是**合成事件（SyntheticEvent）**，是对原生 DOM 事件的跨浏览器封装。不同的事件有不同的类型参数，需要指定触发事件的 DOM 元素类型。
 
 \`\`\`tsx
-import { useState } from 'react';
+import {
+  useState,
+  type MouseEvent,      // 鼠标事件
+  type ChangeEvent,     // 表单值变化事件
+  type FormEvent,       // 表单提交事件
+  type KeyboardEvent,   // 键盘事件
+  type FocusEvent,      // 焦点事件
+  type DragEvent,       // 拖拽事件
+  type TouchEvent,      // 触摸事件
+  type WheelEvent,      // 滚轮事件
+  type PointerEvent,    // 指针事件（鼠标+触摸+笔触）
+} from 'react'
 
 function EventTypesDemo() {
-  const [text, setText] = useState('');
-  const [checked, setChecked] = useState(false);
+  // 鼠标点击事件：MouseEvent<HTMLButtonElement>
+  // 泛型参数是触发事件的元素类型
+  const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
+    console.log('按钮被点击', e.currentTarget) // currentTarget 类型是 HTMLButtonElement
+  }
 
-  // 1. 鼠标事件：点击、悬浮等
-  // React.MouseEvent<T> T 是触发事件的元素类型
-  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    console.log('按钮被点击', e.currentTarget);
-    // e.clientX/e.clientY 鼠标坐标
-    console.log('鼠标位置:', e.clientX, e.clientY);
-  };
+  // Input 值变化事件：ChangeEvent<HTMLInputElement>
+  const [text, setText] = useState('')
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setText(e.target.value) // e.target.value 类型是 string，有类型提示
+  }
 
-  const handleDivClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    console.log('div 被点击');
-  };
+  // Select 变化事件：ChangeEvent<HTMLSelectElement>
+  const [city, setCity] = useState('')
+  const handleSelectChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    setCity(e.target.value)
+  }
 
-  // 2. 输入框 change 事件
-  // React.ChangeEvent<T>
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setText(e.target.value); // e.target.value 是输入的值
-  };
+  // Textarea 变化事件：ChangeEvent<HTMLTextAreaElement>
+  const handleTextAreaChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    console.log(e.target.value)
+  }
 
-  // textarea 和 select 也是 ChangeEvent
-  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    console.log(e.target.value);
-  };
+  // 表单提交事件：FormEvent<HTMLFormElement>
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault() // 阻止默认表单提交刷新页面
+    console.log('表单提交', text)
+  }
 
-  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    console.log('选中:', e.target.value);
-  };
-
-  // checkbox 处理
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setChecked(e.target.checked); // 注意是 checked 不是 value
-  };
-
-  // 3. 表单提交事件
-  // React.FormEvent<T>
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault(); // 阻止默认提交行为
-    console.log('表单提交', { text, checked });
-  };
-
-  // 4. 键盘事件
-  // React.KeyboardEvent<T>
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    console.log('按下键:', e.key);
+  // 键盘事件：KeyboardEvent<HTMLInputElement>
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      console.log('按了回车！');
+      console.log('按下回车键')
     }
-    // e.ctrlKey / e.shiftKey / e.altKey 检测修饰键
     if (e.ctrlKey && e.key === 's') {
-      e.preventDefault();
-      console.log('Ctrl+S 保存');
+      e.preventDefault()
+      console.log('Ctrl+S 保存')
     }
-  };
+  }
+
+  // 焦点事件：FocusEvent<HTMLInputElement>
+  const handleFocus = (e: FocusEvent<HTMLInputElement>) => {
+    console.log('获得焦点', e.target)
+  }
+  const handleBlur = (e: FocusEvent<HTMLInputElement>) => {
+    console.log('失去焦点')
+  }
 
   return (
     <form onSubmit={handleSubmit}>
       <input
-        type="text"
         value={text}
-        onChange={handleInputChange}
+        onChange={handleChange}
         onKeyDown={handleKeyDown}
-        placeholder="输入点什么"
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        placeholder="输入内容"
       />
-      <label>
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={handleCheckboxChange}
-        />
-        同意
-      </label>
+      <select value={city} onChange={handleSelectChange}>
+        <option value="beijing">北京</option>
+        <option value="shanghai">上海</option>
+      </select>
       <button type="submit" onClick={handleClick}>
         提交
       </button>
-      <div onClick={handleDivClick} style={{ padding: '20px', background: '#f0f0f0' }}>
-        点我
-      </div>
     </form>
-  );
+  )
 }
 \`\`\`
 
-其他常用事件类型：
-- `React.FocusEvent<T>`：聚焦/失焦事件
-- `React.TouchEvent<T>`：触摸事件（移动端）
-- `React.ScrollEvent<T>`：滚动事件
-- `React.DragEvent<T>`：拖拽事件
-- `React.WheelEvent<T>`：鼠标滚轮事件
+常见元素类型对应表：
+- \`HTMLButtonElement\` - \`<button>\`
+- \`HTMLInputElement\` - \`<input>\`
+- \`HTMLSelectElement\` - \`<select>\`
+- \`HTMLTextAreaElement\` - \`<textarea>\`
+- \`HTMLFormElement\` - \`<form>\`
+- \`HTMLDivElement\` - \`<div>\`
+- \`HTMLAnchorElement\` - \`<a>\`
+- \`HTMLLabelElement\` - \`<label>\`
+- \`HTMLElement\` - 通用元素类型
 
-### 二、事件处理器类型推导
+## 二、事件处理器类型推导
 
-事件类型可以让 TypeScript 自动推导，不用每次都手动写类型：
+你不需要总是手动标注事件类型，TypeScript 可以根据上下文自动推导。分两种情况：
+
+### 2.1 内联函数：自动推导
+
+当事件处理函数直接写在 JSX 的 \`onClick={}\` 里面时，TypeScript 自动推导事件类型：
 
 \`\`\`tsx
-function AutoInferenceDemo() {
-  const [count, setCount] = useState(0);
-
-  // ✅ 内联写法：TS 自动推断 e 的类型，最方便
+function InlineHandlers() {
   return (
     <button
-      onClick={(e) => {
-        // 这里 e 自动推断为 React.MouseEvent<HTMLButtonElement>
-        console.log(e.clientX);
-        setCount((c) => c + 1);
+      // ✅ 内联写法：e 的类型自动推导为 MouseEvent<HTMLButtonElement>
+      onClick={e => {
+        console.log(e.currentTarget) // 有完整类型提示
       }}
     >
-      点击次数: {count}
+      点击
     </button>
-  );
+  )
 }
-
-// 提取出来的函数，需要手动标注类型
-function Button() {
-  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    console.log('clicked', e);
-  };
-
-  return <button onClick={handleClick}>点击</button>;
-}
-
-// 或者可以用 React.MouseEventHandler 类型别名
-type ButtonClickHandler = React.MouseEventHandler<HTMLButtonElement>;
-
-const handleClick: ButtonClickHandler = (e) => {
-  // e 的类型自动推断好了
-  console.log(e);
-};
 \`\`\`
 
-**建议：**
-- 内联事件处理：不用写类型，让 TS 自动推断
-- 提取出来的处理函数：手动标注事件类型
+### 2.2 命名函数：需要手动标注
 
-### 三、合成事件 SyntheticEvent
+当处理函数提取到外面时，需要手动标注类型：
 
-你可能注意到了，React 的事件类型都叫 `React.XXXEvent`，而不是原生的 `MouseEvent` 等。这是因为 React 有自己的**合成事件**（SyntheticEvent）系统：
+\`\`\`tsx
+// ✅ 命名函数：手动标注事件类型
+const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
+  console.log('clicked', e.currentTarget)
+}
+
+function NamedHandlers() {
+  return <button onClick={handleClick}>点击</button>
+}
+\`\`\`
+
+### 2.3 不标注类型会怎样？
+
+\`\`\`tsx
+// ❌ 如果不标注类型，e 隐式为 any（strict 模式下会报错）
+const badHandler = e => {
+  console.log(e.target.value) // e 是 any，没有类型检查
+}
+
+// ✅ 也可以给 handler 变量标注类型，参数类型自动匹配
+const goodHandler: React.MouseEventHandler<HTMLButtonElement> = e => {
+  console.log(e.currentTarget) // e 类型正确推导
+}
+\`\`\`
+
+事件处理器类型简写：
+- \`React.MouseEventHandler<T>\` 等价于 \`(e: MouseEvent<T>) => void\`
+- \`React.ChangeEventHandler<T>\` 等价于 \`(e: ChangeEvent<T>) => void\`
+- \`React.FormEventHandler<T>\` 等价于 \`(e: FormEvent<T>) => void\`
+
+## 三、SyntheticEvent 合成事件
+
+React 事件不是原生 DOM 事件，而是 \`SyntheticEvent\` 合成事件。它是浏览器原生事件的跨浏览器包装，拥有和原生事件相同的接口（\`stopPropagation()\`、\`preventDefault()\` 等），但在所有浏览器中行为一致。
 
 \`\`\`tsx
 function SyntheticEventDemo() {
-  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    // e 是 SyntheticEvent，不是原生事件
-    // 它是对原生事件的跨浏览器包装，API 和原生事件一致
+  const handleClick = (e: MouseEvent<HTMLDivElement>) => {
+    // e 是 SyntheticEvent<MouseEvent>，不是原生 MouseEvent
+    console.log(e instanceof SyntheticEvent) // true
 
-    // 访问原生事件：
-    const nativeEvent = e.nativeEvent;
-    console.log('原生事件:', nativeEvent);
+    // 阻止默认行为
+    e.preventDefault()
 
-    // currentTarget vs target:
-    // e.currentTarget: 绑定事件处理函数的元素（这里是 button）
-    // e.target: 触发事件的元素（可能是 button 的子元素）
-  };
+    // 阻止事件冒泡
+    e.stopPropagation()
+
+    // 如果需要访问原生事件
+    const nativeEvent = e.nativeEvent
+
+    // currentTarget：绑定事件处理的元素（类型确定）
+    console.log(e.currentTarget) // HTMLDivElement
+
+    // target：实际触发事件的元素（类型可能是子元素，是 EventTarget | null）
+    console.log(e.target) // EventTarget，可能需要类型断言
+    if (e.target instanceof HTMLButtonElement) {
+      console.log(e.target.textContent) // 类型 narrowing 后访问
+    }
+  }
 
   return (
-    <button onClick={handleClick}>
-      <span>点我</span>
-      {/* 点击 span 时，target 是 span，currentTarget 是 button */}
-    </button>
-  );
+    <div onClick={handleClick}>
+      <button>点击我</button>
+    </div>
+  )
 }
 \`\`\`
 
-**为什么用合成事件？**
-1. **跨浏览器一致性**：屏蔽不同浏览器的事件差异
-2. **事件委托**：React 把所有事件都委托到根节点，性能更好
-3. **统一行为**：比如 React 17 后事件不再委托到 document，而是 root 节点
+⚠️ **React 17+ 事件委托变更**：React 17 之前，合成事件被委托到 \`document\` 上；React 17+ 委托到根容器（\`root\`）上，这样多个 React 版本共存时事件不会冲突。
 
-注意：React 事件是**冒泡**阶段触发的，如果要捕获阶段触发，用 `onClickCapture`。
+⚠️ **事件池（已移除）**：React 17 之前合成事件会被对象池复用，异步回调中访问事件会失效。React 17+ 已移除事件池，不需要再 \`e.persist()\`。
 
-### 四、事件冒泡：stopPropagation 和 preventDefault
+## 四、stopPropagation 与 preventDefault
 
 \`\`\`tsx
-function BubblingDemo() {
+function EventPropagationDemo() {
   const handleOuterClick = () => {
-    console.log('外层 div 被点击');
-  };
+    console.log('外层 div 被点击')
+  }
 
-  const handleInnerClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    console.log('内层按钮被点击');
-    e.stopPropagation(); // 阻止冒泡，外层 div 不会收到事件
-  };
+  const handleInnerClick = (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation() // ✅ 阻止冒泡，外层 div 的 onClick 不会触发
+    console.log('内层按钮被点击')
+  }
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault(); // 阻止默认行为（表单提交、链接跳转等）
-    console.log('表单提交');
-  };
-
-  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault(); // 阻止链接跳转
-    console.log('链接被点击，但不跳转');
-  };
+  const handleLinkClick = (e: MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault() // ✅ 阻止默认行为（链接跳转、表单提交等）
+    console.log('链接被点击，但不跳转')
+  }
 
   return (
-    <div onClick={handleOuterClick} style={{ padding: '20px', background: '#eee' }}>
-      外层 div
-      <button onClick={handleInnerClick}>内层按钮（阻止冒泡）</button>
-      
-      <form onSubmit={handleSubmit}>
-        <button type="submit">提交</button>
-      </form>
-      
+    <div onClick={handleOuterClick} style={{ padding: 20, background: '#eee' }}>
+      外层区域
+      <button onClick={handleInnerClick}>点击（不冒泡）</button>
       <a href="https://example.com" onClick={handleLinkClick}>
-        点我不跳转
+        链接（不跳转）
       </a>
     </div>
-  );
+  )
 }
 \`\`\`
 
-### 五、防抖与节流
+## 五、防抖与节流
 
-实际项目中，经常需要对事件处理函数做防抖或节流，比如搜索输入、窗口 resize 等。
+在处理频繁触发的事件（如搜索框输入、窗口 resize、滚动）时，需要使用防抖（debounce）或节流（throttle）来优化性能。
+
+### 5.1 防抖实现
 
 \`\`\`tsx
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react'
 
-// 防抖 Hook
-function useDebouncedCallback<T extends (...args: any[]) => any>(
+// 自定义防抖 Hook
+function useDebounce<T extends (...args: any[]) => void>(
   callback: T,
   delay: number
-) {
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+): T {
+  // 用 useRef 存储 timer ID，跨渲染保持稳定
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // 用 useCallback 缓存函数，避免每次渲染创建新函数
+  // 用 useCallback 缓存防抖函数
   const debouncedFn = useCallback(
     (...args: Parameters<T>) => {
-      // 每次调用都清除之前的定时器
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
+      // 每次调用清除之前的 timer
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
       }
-      // 设置新定时器
-      timeoutRef.current = setTimeout(() => {
-        callback(...args);
-      }, delay);
+      // 设置新的 timer
+      timerRef.current = setTimeout(() => {
+        callback(...args)
+      }, delay)
     },
     [callback, delay]
-  );
+  ) as T
 
-  // 组件卸载时清理
+  // 组件卸载时清除 timer，避免内存泄漏
   useEffect(() => {
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
       }
-    };
-  }, []);
+    }
+  }, [])
 
-  return debouncedFn;
+  return debouncedFn
 }
 
-// 节流 Hook
-function useThrottledCallback<T extends (...args: any[]) => any>(
-  callback: T,
-  limit: number
-) {
-  const inThrottle = useRef(false);
+// 使用防抖搜索
+function SearchInput() {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<string[]>([])
 
-  return useCallback(
-    (...args: Parameters<T>) => {
-      if (!inThrottle.current) {
-        callback(...args);
-        inThrottle.current = true;
-        setTimeout(() => {
-          inThrottle.current = false;
-        }, limit);
-      }
-    },
-    [callback, limit]
-  );
-}
+  // 搜索函数
+  const performSearch = useCallback((searchTerm: string) => {
+    console.log('执行搜索：', searchTerm)
+    // 模拟 API 调用
+    setResults([\`结果1: \${searchTerm}\`, \`结果2: \${searchTerm}\`])
+  }, [])
 
-// 使用示例
-function SearchDemo() {
-  const [keyword, setKeyword] = useState('');
-  const [results, setResults] = useState<string[]>([]);
+  // 创建防抖版本的搜索（300ms 内重复调用只执行最后一次）
+  const debouncedSearch = useDebounce(performSearch, 300)
 
-  // 防抖搜索：输入停止300ms后才搜索
-  const debouncedSearch = useDebouncedCallback((value: string) => {
-    console.log('搜索:', value);
-    // 模拟搜索
-    setResults([`${value} 结果1`, `${value} 结果2`]);
-  }, 300);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setKeyword(e.target.value);
-    debouncedSearch(e.target.value);
-  };
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setQuery(value)
+    debouncedSearch(value) // 输入时调用防抖搜索
+  }
 
   return (
     <div>
       <input
         type="text"
-        value={keyword}
+        value={query}
         onChange={handleChange}
-        placeholder="输入关键词搜索"
+        placeholder="搜索..."
+        className="px-3 py-2 border rounded w-full"
       />
       <ul>
-        {results.map((r, i) => (
-          <li key={i}>{r}</li>
-        ))}
+        {results.map((r, i) => <li key={i}>{r}</li>)}
       </ul>
     </div>
-  );
+  )
 }
 \`\`\`
 
-### 六、事件传参
+### 5.2 节流实现
 
-给事件处理函数传参有两种常见方式：
+\`\`\`tsx
+// 自定义节流 Hook
+function useThrottle<T extends (...args: any[]) => void>(
+  callback: T,
+  limit: number
+): T {
+  const inThrottleRef = useRef(false)
+  const lastArgsRef = useRef<Parameters<T> | null>(null)
+
+  const throttledFn = useCallback(
+    (...args: Parameters<T>) => {
+      if (!inThrottleRef.current) {
+        callback(...args)
+        inThrottleRef.current = true
+        setTimeout(() => {
+          inThrottleRef.current = false
+          // 如果期间有调用，执行最后一次
+          if (lastArgsRef.current) {
+            callback(...lastArgsRef.current)
+            lastArgsRef.current = null
+          }
+        }, limit)
+      } else {
+        // 节流期间保存最后一次参数
+        lastArgsRef.current = args
+      }
+    },
+    [callback, limit]
+  ) as T
+
+  return throttledFn
+}
+
+// 节流使用示例：滚动加载
+function ScrollDemo() {
+  const [items, setItems] = useState<number[]>(Array.from({ length: 20 }, (_, i) => i))
+
+  const loadMore = useCallback(() => {
+    console.log('加载更多...')
+    setItems(prev => [
+      ...prev,
+      ...Array.from({ length: 10 }, (_, i) => prev.length + i),
+    ])
+  }, [])
+
+  const throttledLoadMore = useThrottle(loadMore, 1000) // 1秒内最多执行一次
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollBottom = window.innerHeight + document.documentElement.scrollTop
+      const docHeight = document.documentElement.offsetHeight
+      if (scrollBottom >= docHeight - 100) {
+        throttledLoadMore()
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [throttledLoadMore])
+
+  return (
+    <div>
+      {items.map(item => (
+        <div key={item} className="p-4 border-b">Item {item}</div>
+      ))}
+    </div>
+  )
+}
+\`\`\`
+
+**防抖 vs 节流**：
+- **防抖（debounce）**：事件触发后等待 delay 毫秒才执行，如果期间再次触发则重新计时。适合搜索框输入、窗口 resize。
+- **节流（throttle）**：规定时间内最多执行一次。适合滚动事件、鼠标移动、按钮防抖点击。
+
+## 六、事件传参技巧
+
+### 6.1 箭头函数传参（最常用）
 
 \`\`\`tsx
 interface Item {
-  id: number;
-  name: string;
+  id: number
+  name: string
 }
 
-function ParameterPassingDemo() {
-  const [items, setItems] = useState<Item[]>([
+function ItemList() {
+  const [items] = useState<Item[]>([
     { id: 1, name: '苹果' },
     { id: 2, name: '香蕉' },
-    { id: 3, name: '橙子' },
-  ]);
+    { id: 3, name: '橘子' },
+  ])
 
-  // 方式1：箭头函数包裹，最直观常用
-  // 注意：事件对象 e 要显式传递过去
-  const handleDelete = (id: number, e: React.MouseEvent<HTMLButtonElement>) => {
-    console.log('删除 id:', id, e);
-    setItems((prev) => prev.filter((item) => item.id !== id));
-  };
+  // 接收 id 参数
+  const handleDelete = (id: number) => {
+    console.log('删除 item', id)
+  }
 
-  // 方式2：使用 data-* 属性存参数
-  const handleEdit = (e: React.MouseEvent<HTMLButtonElement>) => {
-    const id = Number(e.currentTarget.dataset.id);
-    console.log('编辑 id:', id);
-  };
+  // 接收事件和额外参数
+  const handleItemClick = (item: Item, e: MouseEvent<HTMLLIElement>) => {
+    console.log('点击 item', item.name, e.currentTarget)
+  }
 
   return (
     <ul>
-      {items.map((item) => (
-        <li key={item.id}>
+      {items.map(item => (
+        <li
+          key={item.id}
+          {/* 箭头函数：接收事件对象 e，调用时传入 item */}
+          onClick={e => handleItemClick(item, e)}
+        >
           {item.name}
-          {/* 方式1：箭头函数传参 */}
-          <button onClick={(e) => handleDelete(item.id, e)}>删除</button>
-          {/* 方式2：data-* 属性传参 */}
-          <button data-id={item.id} onClick={handleEdit}>编辑</button>
+          {/* 传 id 参数 */}
+          <button onClick={() => handleDelete(item.id)}>删除</button>
         </li>
       ))}
     </ul>
-  );
+  )
 }
 \`\`\`
 
-**性能注意：** 方式1的箭头函数每次渲染都会创建新函数，如果是在长列表里，可能会有性能问题（每次都给子组件传新函数，导致子组件重渲染）。这种情况下可以用方式2，或者用 useCallback 缓存函数。但大部分场景下，方式1就足够了，代码可读性更好。`,
+### 6.2 data-* 属性传参
+
+通过 \`data-*\` 自定义属性传递参数，在事件处理函数中通过 \`e.currentTarget.dataset\` 获取：
+
+\`\`\`tsx
+function DataAttrDemo() {
+  const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
+    const id = e.currentTarget.dataset.id // string | undefined
+    const action = e.currentTarget.dataset.action // string | undefined
+    console.log('点击按钮', id, action)
+    if (id) {
+      console.log('处理 id:', parseInt(id, 10))
+    }
+  }
+
+  return (
+    <div>
+      {/* data-id 和 data-action 通过 dataset 访问 */}
+      <button data-id="123" data-action="edit" onClick={handleClick}>
+        编辑
+      </button>
+      <button data-id="456" data-action="delete" onClick={handleClick}>
+        删除
+      </button>
+    </div>
+  )
+}
+\`\`\`
+
+**两种方式对比**：
+- **箭头函数传参**：直接、类型安全（参数可以是任意类型，不限于字符串）；但每次渲染创建新函数，可能导致子组件重渲染。
+- **data-* 属性传参**：函数引用稳定；但只能传字符串值，需要手动类型转换，类型安全性较弱。
+
+一般场景推荐箭头函数传参，性能敏感的大量列表场景考虑 data-* 或 \`useCallback\` + 稳定函数。
+
+## 七、小结
+
+- 常见事件类型：\`MouseEvent\`、\`ChangeEvent\`、\`FormEvent\`、\`KeyboardEvent\`、\`FocusEvent\`
+- 事件泛型参数是 DOM 元素类型：\`MouseEvent<HTMLButtonElement>\`
+- 内联事件处理器类型自动推导，命名函数需要手动标注或用 \`*EventHandler\` 类型
+- React 事件是 SyntheticEvent 合成事件，跨浏览器兼容
+- 防抖用 \`useRef\` 存储 timer + \`useEffect\` 清理；节流用时间戳或 flag 控制频率
+- 事件传参用箭头函数最常用；大量列表时可用 data-* 属性
+- 注意 \`e.target\` 和 \`e.currentTarget\` 的区别，target 是触发元素，currentTarget 是绑定元素
+
+下一章我们将学习条件渲染和列表渲染的更多模式。
+`,
   },
   {
     id: "tsrx-conditional",
-    icon: "🔀",
     group: "基础篇",
+    icon: "🔀",
     title: "条件渲染与列表渲染模式",
-    content: `## 条件渲染与列表渲染模式
+    content: `
 
-条件渲染和列表渲染是 React 开发中最常用的两种模式。本章我们系统学习各种条件渲染技巧，以及列表渲染的最佳实践和高级模式。
+# 条件渲染与列表渲染模式
 
-### 一、三元运算符：二选一的最佳选择
+条件渲染和列表渲染是 React 开发中最常用的两种渲染模式。本章我们将系统总结各种条件渲染模式的适用场景，深入讲解列表渲染的高级技巧，以及枚举映射、数组操作等实用模式。
 
-三元运算符是最简洁的二选一条件渲染方式，适合互斥的两种状态：
+## 一、条件渲染模式对比
+
+我们有多种方式实现条件渲染，每种方式有其适用场景：
+
+### 1.1 三元运算符：二选一场景
+
+三元运算符 \`condition ? a : b\` 适合简单的二选一渲染：
 
 \`\`\`tsx
-function TernaryDemo({ isLoggedIn }: { isLoggedIn: boolean }) {
+interface UserGreetingProps {
+  isLoggedIn: boolean
+  username?: string
+}
+
+function UserGreeting({ isLoggedIn, username }: UserGreetingProps): JSX.Element {
   return (
     <div>
-      {/* 基础用法 */}
-      <div>
-        {isLoggedIn ? <UserMenu /> : <LoginButton />}
-      </div>
-
-      {/* 嵌套三元：不推荐，可读性差 */}
-      {/* {a ? <A /> : b ? <B /> : <C />} */}
-
-      {/* 可以嵌套标签 */}
-      <div className="status">
-        {isLoggedIn ? (
-          <span className="text-green">
-            <CheckIcon /> 已登录
-          </span>
-        ) : (
-          <span className="text-red">
-            <XIcon /> 未登录
-          </span>
-        )}
-      </div>
+      {/* 文本二选一 */}
+      <p>{isLoggedIn ? \`欢迎回来，\${username}！\` : '请先登录'}</p>
+      
+      {/* 样式二选一 */}
+      <span className={isLoggedIn ? 'text-green-600' : 'text-gray-400'}>
+        {isLoggedIn ? '已登录' : '未登录'}
+      </span>
+      
+      {/* 组件二选一 */}
+      {isLoggedIn ? <UserMenu /> : <LoginButton />}
     </div>
-  );
+  )
 }
 \`\`\`
 
-**适用场景：** 两种情况二选一，比如显示/隐藏按钮、登录/未登录状态、展开/折叠等。
-
-### 二、&& 短路：显示/隐藏的简洁写法
-
-&& 短路运算符适合"要么显示，要么什么都不显示"的场景。但一定要注意那个著名的"0渲染陷阱"！
+三元可以嵌套，但嵌套超过两层可读性会变差，此时应考虑提前 return 或 IIFE：
 
 \`\`\`tsx
-function ShortCircuitDemo({ count, items, user }: {
-  count: number;
-  items: any[];
-  user: { name: string } | null;
+// ❌ 不好：嵌套三元可读性差
+{isLoading ? (
+  <Spinner />
+) : isError ? (
+  <ErrorMessage />
+) : isEmpty ? (
+  <EmptyState />
+) : (
+  <DataList />
+)}
+
+// ✅ 好：多状态用提前 return 或枚举映射
+\`\`\`
+
+### 1.2 && 短路运算：显隐控制
+
+\`&&\` 适合单个元素的显示/隐藏（没有"否则"分支）：
+
+\`\`\`tsx
+function Toolbar({ isAdmin, notifications }: {
+  isAdmin: boolean
+  notifications: number
 }) {
   return (
-    <div>
-      {/* ✅ 正确：布尔值控制 */}
-      {user && <div>欢迎, {user.name}</div>}
+    <div className="toolbar">
+      {/* 管理员才显示的按钮 */}
+      {isAdmin && <AdminPanelButton />}
+      
+      {/* ⚠️ 经典陷阱：数字 0 会被渲染！ */}
+      {/* ❌ 错误：notifications 为 0 时页面会显示 0 */}
+      {notifications && <NotificationBadge count={notifications} />}
+      
+      {/* ✅ 正确：明确判断 > 0 */}
+      {notifications > 0 && <NotificationBadge count={notifications} />}
+      
+      {/* ✅ 正确：转换为布尔值 */}
+      {!!notifications && <NotificationBadge count={notifications} />}
+      {Boolean(notifications) && <NotificationBadge count={notifications} />}
+      
+      {/* 数组长度同理 */}
+      {/* ❌ items.length 为 0 时显示 0 */}
+      {items.length && <ItemList items={items} />}
+      {/* ✅ */}
       {items.length > 0 && <ItemList items={items} />}
-
-      {/* ❌ 陷阱：count 为 0 时，会渲染出 "0" 而不是空白！ */}
-      <div>消息数量: {count && <span>{count} 条新消息</span>}</div>
-      {/* 当 count=0，页面上会显示 "消息数量: 0" */}
-
-      {/* ✅ 修复方法1：用 !! 转成布尔值 */}
-      <div>消息数量: {!!count && <span>{count} 条新消息</span>}</div>
-
-      {/* ✅ 修复方法2：用比较表达式（最推荐，最清晰） */}
-      <div>消息数量: {count > 0 && <span>{count} 条新消息</span>}</div>
-
-      {/* ✅ 修复方法3：用 Boolean() 包裹 */}
-      <div>消息数量: {Boolean(count) && <span>{count} 条新消息</span>}</div>
-
-      {/* 同样的问题：空字符串 '' 不会渲染，NaN 会渲染 "NaN" */}
-      {/* {NaN && <div>不会显示</div>} 会显示 NaN！*/}
     </div>
-  );
+  )
 }
 \`\`\`
 
-**核心原则：** && 左边一定要是真正的布尔值，用 `> 0`、`!!`、`Boolean()` 确保。
+**为什么 0 会被渲染？** 在 JavaScript 中，\`0 && 'x'\` 结果是 0（falsy 值），但 React 认为 0 是合法的可渲染值，会把它渲染成文本 0。而 \`false\`、\`null\`、\`undefined\`、\`true\` 不会被渲染。
 
-### 三、提前 return：多态组件的最佳实践
+### 1.3 提前 return：多态渲染（四态组件）
 
-当组件有多种状态（加载中、错误、空数据、成功）时，提前 return（也叫 Early Return、Guard Clause）是最清晰的写法：
+当组件有多个状态（加载中、错误、空、成功）时，提前 return 是最清晰的模式：
 
 \`\`\`tsx
-// 典型的四态组件
-interface DataState<T> {
-  loading: boolean;
-  error: Error | null;
-  data: T | null;
+interface AsyncData<T> {
+  isLoading: boolean
+  error: Error | null
+  data: T | null
 }
 
-function UserProfile({ state }: { state: DataState<{ name: string; avatar: string }> }) {
-  // 1. 优先处理加载状态
-  if (state.loading) {
+function DataView<T>({ state }: { state: AsyncData<T> }) {
+  // 1. 加载中：最先判断，骨架屏或 spinner
+  if (state.isLoading) {
     return (
-      <div className="skeleton">
-        <Skeleton width="60px" height="60px" circle />
-        <Skeleton width="120px" height="20px" />
+      <div className="skeleton-container">
+        <div className="skeleton-line h-4 w-3/4 mb-2 animate-pulse bg-gray-200 rounded" />
+        <div className="skeleton-line h-4 w-1/2 mb-2 animate-pulse bg-gray-200 rounded" />
+        <div className="skeleton-line h-4 w-2/3 animate-pulse bg-gray-200 rounded" />
       </div>
-    );
+    )
   }
 
-  // 2. 然后处理错误状态
+  // 2. 错误态
   if (state.error) {
     return (
-      <div className="error-state">
-        <ErrorIcon />
-        <p>加载失败：{state.error.message}</p>
-        <button onClick={() => window.location.reload()}>重试</button>
+      <div className="error-state text-center py-8">
+        <div className="text-red-500 text-4xl mb-4">⚠️</div>
+        <h3 className="text-lg font-medium text-red-700">加载失败</h3>
+        <p className="text-sm text-red-500 mt-1">{state.error.message}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+        >
+          重试
+        </button>
       </div>
-    );
+    )
   }
 
-  // 3. 然后处理空数据状态
-  if (!state.data) {
+  // 3. 空状态
+  if (!state.data || (Array.isArray(state.data) && state.data.length === 0)) {
     return (
-      <div className="empty-state">
-        <EmptyIcon />
-        <p>用户不存在</p>
+      <div className="empty-state text-center py-8">
+        <div className="text-gray-300 text-6xl mb-4">📭</div>
+        <h3 className="text-lg font-medium text-gray-500">暂无数据</h3>
+        <p className="text-sm text-gray-400 mt-1">还没有任何内容</p>
       </div>
-    );
+    )
   }
 
-  // 4. 最后是正常成功状态
-  const user = state.data;
+  // 4. 成功状态（最终渲染）
   return (
-    <div className="user-profile">
-      <img src={user.avatar} alt={user.name} />
-      <h2>{user.name}</h2>
+    <div className="success-state">
+      <pre>{JSON.stringify(state.data, null, 2)}</pre>
     </div>
-  );
+  )
 }
 \`\`\`
 
-**优点：**
-- 逻辑清晰，按优先级顺序排列
-- 不用嵌套 if-else，代码扁平易读
-- 正常状态在最后，不用包在 if 里
-- 每个状态独立，容易维护
+**判断顺序很重要**：Loading → Error → Empty → Success，这个顺序能正确处理各种边界情况。
 
-### 四、IIFE：复杂逻辑的立即执行函数
+### 1.4 IIFE（立即执行函数）：复杂分支逻辑
 
-当 JSX 中需要写比较复杂的条件逻辑（比如多层 if-else、switch），可以用 IIFE（立即调用函数表达式）：
+当渲染逻辑比较复杂、需要多步计算时，可以在 JSX 中使用 IIFE：
 
 \`\`\`tsx
-type OrderStatus = 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
-
-function OrderStatusBadge({ status }: { status: OrderStatus }) {
-  return (
-    <div className="order-status">
-      {(() => {
-        switch (status) {
-          case 'pending':
-            return <span className="badge badge-yellow">待付款</span>;
-          case 'paid':
-            return <span className="badge badge-blue">已付款</span>;
-          case 'shipped':
-            return <span className="badge badge-purple">已发货</span>;
-          case 'delivered':
-            return <span className="badge badge-green">已送达</span>;
-          case 'cancelled':
-            return <span className="badge badge-gray">已取消</span>;
-          default:
-            return <span className="badge badge-gray">未知状态</span>;
-        }
-      })()}
-    </div>
-  );
-}
-
-// 或者用 IIFE 写更复杂的逻辑
-function PriceDisplay({ price, vip, coupon }: {
-  price: number;
-  vip: boolean;
-  coupon: number | null;
+function ComplexGreeting({ user, hour }: {
+  user: { name: string; vipLevel: number }
+  hour: number
 }) {
   return (
-    <div className="price">
+    <div className="greeting">
       {(() => {
-        let finalPrice = price;
-        const discounts: string[] = [];
+        // 这里可以写任意 JS 逻辑：变量声明、循环、多层判断等
+        let greeting = ''
+        let bgColor = ''
+        let icon = ''
 
-        if (vip) {
-          finalPrice *= 0.9;
-          discounts.push('VIP 9折');
+        if (hour < 6) {
+          greeting = '夜深了'
+          bgColor = 'bg-indigo-900 text-white'
+          icon = '🌙'
+        } else if (hour < 12) {
+          greeting = '早上好'
+          bgColor = 'bg-yellow-100 text-yellow-800'
+          icon = '🌅'
+        } else if (hour < 18) {
+          greeting = '下午好'
+          bgColor = 'bg-blue-100 text-blue-800'
+          icon = '☀️'
+        } else {
+          greeting = '晚上好'
+          bgColor = 'bg-purple-100 text-purple-800'
+          icon = '🌆'
         }
 
-        if (coupon) {
-          finalPrice = Math.max(0, finalPrice - coupon);
-          discounts.push(`优惠券 -${coupon}元`);
+        if (user.vipLevel >= 3) {
+          greeting += '，尊敬的 VIP' + user.vipLevel + ' 用户'
         }
 
         return (
-          <>
-            <span className="original-price">¥{price}</span>
-            <span className="final-price">¥{finalPrice.toFixed(2)}</span>
-            {discounts.map((d, i) => (
-              <span key={i} className="discount-tag">{d}</span>
-            ))}
-          </>
-        );
+          <div className={\`p-4 rounded-lg \${bgColor}\`}>
+            <span className="text-2xl mr-2">{icon}</span>
+            <span className="font-medium">{greeting}，{user.name}！</span>
+          </div>
+        )
       })()}
     </div>
-  );
+  )
 }
 \`\`\`
 
-不过要注意：IIFE 里的逻辑如果太复杂，最好还是抽到组件外面或者独立的函数里，保持 JSX 简洁。
+IIFE 适合在 JSX 中写临时的复杂逻辑，但要注意：
+- 逻辑太长（超过20行）应该提取到组件函数体中，或者拆成独立组件
+- 别忘了最后的 \`()\`，否则函数不会执行
 
-### 五、枚举映射：N 种状态的优雅方案
+### 1.5 枚举映射（Record 模式）：N 种状态
 
-对于固定 N 种状态的场景，用对象做"枚举映射"比 switch-case 更优雅、更易扩展：
+当状态种类较多（如表单步骤、通知类型、角色权限等），使用**枚举映射**比多个 if/else 或 switch 更优雅：
 
 \`\`\`tsx
-type StatusType = 'success' | 'error' | 'warning' | 'info';
+// 通知类型
+type NotificationType = 'success' | 'error' | 'warning' | 'info'
 
-// 配置映射对象：配置和 UI 分离
-const statusConfig: Record<StatusType, {
-  color: string;
-  icon: React.ReactNode;
-  text: string;
+interface NotificationMessage {
+  type: NotificationType
+  title: string
+  message: string
+}
+
+// 枚举映射：每种类型对应不同的样式配置
+const NOTIFICATION_CONFIG: Record<NotificationType, {
+  bgColor: string
+  icon: string
+  titleColor: string
 }> = {
-  success: {
-    color: '#22c55e',
-    icon: <CheckIcon />,
-    text: '操作成功',
-  },
-  error: {
-    color: '#ef4444',
-    icon: <XIcon />,
-    text: '操作失败',
-  },
-  warning: {
-    color: '#f59e0b',
-    icon: <WarningIcon />,
-    text: '警告',
-  },
-  info: {
-    color: '#3b82f6',
-    icon: <InfoIcon />,
-    text: '提示',
-  },
-};
-
-function StatusBadge({ type }: { type: StatusType }) {
-  const config = statusConfig[type];
-  return (
-    <div style={{ color: config.color, display: 'flex', alignItems: 'center', gap: '4px' }}>
-      {config.icon}
-      <span>{config.text}</span>
-    </div>
-  );
+  success: { bgColor: 'bg-green-50', icon: '✅', titleColor: 'text-green-800' },
+  error: { bgColor: 'bg-red-50', icon: '❌', titleColor: 'text-red-800' },
+  warning: { bgColor: 'bg-yellow-50', icon: '⚠️', titleColor: 'text-yellow-800' },
+  info: { bgColor: 'bg-blue-50', icon: 'ℹ️', titleColor: 'text-blue-800' },
 }
 
-// 好处：
-// 1. 新增状态只需在配置对象加一项，不用改组件逻辑
-// 2. 配置集中管理，便于维护
-// 3. 可以很方便地从外部数据源加载配置
+function Notification({ type, title, message }: NotificationMessage): JSX.Element {
+  const config = NOTIFICATION_CONFIG[type]
+
+  return (
+    <div className={\`p-4 rounded-lg border \${config.bgColor} border-current/20\`}>
+      <div className="flex items-start gap-3">
+        <span className="text-xl">{config.icon}</span>
+        <div>
+          <h4 className={\`font-semibold \${config.titleColor}\`}>{title}</h4>
+          <p className="text-sm mt-1 text-gray-600">{message}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// 表单步骤示例
+type Step = 'login' | 'verify' | 'profile' | 'complete'
+
+const STEP_COMPONENTS: Record<Step, JSX.Element> = {
+  login: <LoginForm />,
+  verify: <VerifyCodeForm />,
+  profile: <ProfileForm />,
+  complete: <WelcomeScreen />,
+}
+
+function RegistrationWizard() {
+  const [currentStep, setCurrentStep] = useState<Step>('login')
+
+  return (
+    <div className="wizard">
+      <Stepper current={currentStep} onChange={setCurrentStep} />
+      {/* 根据当前步骤直接映射到对应组件 */}
+      {STEP_COMPONENTS[currentStep]}
+    </div>
+  )
+}
 \`\`\`
 
-### 六、列表 key 最佳原则
+**枚举映射的优点**：
+1. 查找是 O(1)，比 if/else 或 switch 快
+2. 配置集中，新增/修改类型只需要改一个地方
+3. 类型安全：TypeScript 会检查 Record 的 key 是否覆盖所有情况
 
-key 是 React 列表渲染中最重要的概念，它帮助 React 高效更新 DOM：
+## 二、列表渲染进阶
+
+### 2.1 key 的最佳原则回顾
+
+- **key 必须是稳定的、唯一的**：使用数据项自带的唯一 id（数据库 id、uuid 等）
+- **禁止使用数组 index 作为 key**：除非列表是静态的、不会重排/增删
+- **key 变化会导致组件销毁重建**：key 改变 = 旧组件卸载 + 新组件挂载，state 会丢失
 
 \`\`\`tsx
-interface Article {
-  id: string; // 稳定唯一的 id，比如数据库 ID、UUID
-  title: string;
-}
+// ✅ 好：使用数据 id
+{users.map(user => <UserRow key={user.id} user={user} />)}
 
-function ArticleList({ articles }: { articles: Article[] }) {
-  return (
-    <ul>
-      {/* ✅ 最佳：用稳定唯一的 ID 作为 key */}
-      {articles.map((article) => (
-        <li key={article.id}>
-          <h3>{article.title}</h3>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-/*
-❌ 什么时候不能用 index 作为 key？
-- 列表会重新排序（比如排序、拖拽）
-- 列表会在头部/中间插入或删除项目
-- 列表项有自己的状态（比如 input、checkbox）
-
-✅ 什么时候可以用 index？
-- 列表是静态的，永远不会改变
-- 列表项没有状态
-- 列表只会在末尾追加（如分页加载更多）
-*/
-
-// ❌ 错误演示：用 index 导致状态错乱
-function BadTodoList() {
-  const [todos, setTodos] = useState([
-    { id: 1, text: '任务1' },
-    { id: 2, text: '任务2' },
-  ]);
-
-  const addToTop = () => {
-    setTodos([{ id: Date.now(), text: '新任务' }, ...todos]);
-  };
-
-  return (
-    <>
-      <button onClick={addToTop}>在顶部添加</button>
-      <ul>
-        {todos.map((todo, index) => (
-          // ❌ 用 index 作为 key：新任务插入到顶部，
-          // index 都变了，React 会错误地复用 DOM 和状态
-          <li key={index}>
-            <input /> {/* 如果第一个 input 输入了内容，添加新任务后内容会错位！*/}
-            {todo.text}
-          </li>
-        ))}
-      </ul>
-    </>
-  );
-}
+// ⚠️ 只有在列表完全静态（不增删、不排序、无状态子组件）时才可用 index
+{staticOptions.map((option, index) => (
+  <option key={index} value={option.value}>{option.label}</option>
+))}
 \`\`\`
 
-### 七、列表处理：过滤、排序、分组
+### 2.2 列表操作组合：filter + map + sort + reduce
 
-在渲染前对列表数据进行转换，是非常常见的需求：
+列表渲染时经常需要先过滤、排序，再转换为 JSX：
 
 \`\`\`tsx
 interface Product {
-  id: number;
-  name: string;
-  category: string;
-  price: number;
-  inStock: boolean;
+  id: number
+  name: string
+  price: number
+  category: string
+  inStock: boolean
+  rating: number
 }
 
 function ProductList({ products }: { products: Product[] }) {
-  // 过滤：只显示有货的
-  const inStockProducts = products.filter((p) => p.inStock);
+  // 派生数据：先处理数据，再渲染
+  const displayProducts = useMemo(() => {
+    return products
+      .filter(p => p.inStock)          // 1. 过滤：只显示有货的
+      .filter(p => p.price < 1000)     // 2. 过滤：价格不超过1000
+      .sort((a, b) => b.rating - a.rating) // 3. 排序：评分从高到低
+  }, [products])
 
-  // 排序：按价格从低到高
-  const sortedProducts = [...inStockProducts].sort((a, b) => a.price - b.price);
-  // 注意：sort 会修改原数组，所以先 [...arr] 复制一份
-
-  // 分组：按类别分组
-  const groupedProducts = sortedProducts.reduce<Record<string, Product[]>>(
-    (groups, product) => {
-      const category = product.category;
+  // reduce 实现分组
+  const groupedByCategory = useMemo(() => {
+    return products.reduce<Record<string, Product[]>>((groups, product) => {
+      const category = product.category
       if (!groups[category]) {
-        groups[category] = [];
+        groups[category] = []
       }
-      groups[category].push(product);
-      return groups;
-    },
-    {}
-  );
+      groups[category].push(product)
+      return groups
+    }, {})
+  }, [products])
 
   return (
     <div>
-      {Object.entries(groupedProducts).map(([category, items]) => (
-        <div key={category} className="category">
-          <h2>{category}</h2>
-          <div className="products">
-            {items.map((product) => (
-              <div key={product.id} className="product-card">
-                <h3>{product.name}</h3>
-                <p>¥{product.price}</p>
-              </div>
+      {/* 过滤排序后的列表 */}
+      <h2>推荐商品</h2>
+      <div className="grid grid-cols-3 gap-4">
+        {displayProducts.map(product => (
+          <ProductCard key={product.id} product={product} />
+        ))}
+      </div>
+
+      {/* 分组显示 */}
+      <h2>分类浏览</h2>
+      {Object.entries(groupedByCategory).map(([category, items]) => (
+        <div key={category} className="mb-6">
+          <h3 className="font-bold text-lg mb-2">{category}</h3>
+          <div className="flex gap-3 overflow-x-auto">
+            {items.map(product => (
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
         </div>
       ))}
     </div>
-  );
+  )
 }
 \`\`\`
 
-### 八、Array.flatMap：嵌套展开
+### 2.3 flatMap：嵌套数组展开
 
-flatMap 是 map + flat(1) 的组合，可以在渲染嵌套列表时一步到位：
+当数据有嵌套层级（如评论和回复），用 \`flatMap\` 可以在 map 同时展开嵌套：
 
 \`\`\`tsx
-interface Author {
-  id: number;
-  name: string;
-  books: { id: number; title: string }[];
+interface Comment {
+  id: number
+  author: string
+  content: string
+  replies?: Comment[]
 }
 
-function AuthorBookList({ authors }: { authors: Author[] }) {
+function CommentList({ comments }: { comments: Comment[] }) {
   return (
-    <div>
-      {/* 方法1：嵌套 map */}
-      {authors.map((author) => (
-        <div key={author.id}>
-          <h2>{author.name}</h2>
-          <ul>
-            {author.books.map((book) => (
-              <li key={book.id}>{book.title}</li>
-            ))}
-          </ul>
-        </div>
-      ))}
-
-      {/* 方法2：用 flatMap 拍平成一个列表 */}
-      <ul>
-        {authors.flatMap((author) =>
-          author.books.map((book) => (
-            <li key={book.id}>
-              {author.name} - {book.title}
-            </li>
-          ))
-        )}
-      </ul>
+    <div className="comments">
+      {comments
+        // flatMap：可以返回数组，最终结果被扁平化为一维
+        .flatMap(comment => [
+          // 先渲染主评论
+          <CommentItem key={comment.id} comment={comment} />,
+          // 再渲染该评论的所有回复（如果有）
+          ...(comment.replies?.map(reply => (
+            <ReplyItem key={reply.id} reply={reply} className="ml-8" />
+          )) ?? []),
+        ])}
     </div>
-  );
+  )
 }
 \`\`\`
 
-如果列表非常长（几百上千项），普通渲染会卡顿，这时候就需要**虚拟列表**（Virtual List / Windowing），只渲染可视区域的 DOM。可以使用 `react-window` 或 `react-virtualized` 库来实现。
+### 2.4 Array.from 构造指定长度数组
 
-掌握这些条件渲染和列表渲染模式，你就能写出清晰、高效、易维护的 React 代码了！`,
+当需要渲染 N 个重复元素（如骨架屏、分页器、星级评分）时，用 \`Array.from\`：
+
+\`\`\`tsx
+// 骨架屏：渲染 5 个占位条
+function SkeletonList() {
+  return (
+    <div>
+      {Array.from({ length: 5 }, (_, index) => (
+        <div
+          key={index}
+          className="h-12 bg-gray-200 rounded mb-3 animate-pulse"
+        />
+      ))}
+    </div>
+  )
+}
+
+// 分页器：根据总页数渲染页码
+function Pagination({ currentPage, totalPages, onPageChange }: {
+  currentPage: number
+  totalPages: number
+  onPageChange: (page: number) => void
+}) {
+  return (
+    <div className="flex gap-1">
+      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+        <button
+          key={page}
+          onClick={() => onPageChange(page)}
+          className={\`w-8 h-8 rounded \${
+            page === currentPage ? 'bg-blue-500 text-white' : 'bg-gray-200'
+          }\`}
+        >
+          {page}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// 星级评分
+function StarRating({ rating, max = 5 }: { rating: number; max?: number }) {
+  return (
+    <div className="flex gap-1">
+      {Array.from({ length: max }, (_, i) => (
+        <span key={i} className={i < rating ? 'text-yellow-400' : 'text-gray-300'}>
+          ★
+        </span>
+      ))}
+    </div>
+  )
+}
+\`\`\`
+
+## 三、条件渲染 + 列表渲染组合 Demo
+
+这是一个结合了多种条件渲染和列表渲染模式的完整任务看板：
+
+\`\`\`tsx
+type TaskStatus = 'todo' | 'in-progress' | 'done'
+
+interface Task {
+  id: number
+  title: string
+  status: TaskStatus
+  assignee?: string
+  priority: 'low' | 'medium' | 'high'
+}
+
+function TaskBoard() {
+  const [tasks, setTasks] = useState<Task[]>([
+    { id: 1, title: '设计数据库Schema', status: 'done', assignee: '张三', priority: 'high' },
+    { id: 2, title: '实现用户认证', status: 'in-progress', assignee: '李四', priority: 'high' },
+    { id: 3, title: '编写API文档', status: 'todo', priority: 'medium' },
+    { id: 4, title: '前端页面开发', status: 'todo', assignee: '王五', priority: 'medium' },
+    { id: 5, title: '性能优化', status: 'todo', priority: 'low' },
+  ])
+  const [filter, setFilter] = useState<'all' | TaskStatus>('all')
+  const [loading] = useState(false)
+
+  // 加载中骨架屏（提前 return）
+  if (loading) {
+    return (
+      <div className="p-6">
+        {Array.from({ length: 3 }, (_, i) => (
+          <div key={i} className="h-32 bg-gray-100 rounded-lg mb-4 animate-pulse" />
+        ))}
+      </div>
+    )
+  }
+
+  // 按状态分组（reduce）
+  const tasksByStatus = useMemo(() => {
+    const groups: Record<TaskStatus, Task[]> = {
+      'todo': [],
+      'in-progress': [],
+      'done': [],
+    }
+    for (const task of tasks) {
+      groups[task.status].push(task)
+    }
+    return groups
+  }, [tasks])
+
+  // 优先级映射（枚举映射）
+  const PRIORITY_CONFIG = {
+    high: { label: '高', color: 'bg-red-100 text-red-700' },
+    medium: { label: '中', color: 'bg-yellow-100 text-yellow-700' },
+    low: { label: '低', color: 'bg-gray-100 text-gray-600' },
+  } as const
+
+  // 列配置
+  const COLUMNS: Record<TaskStatus, { title: string; color: string }> = {
+    'todo': { title: '待办', color: 'border-gray-300' },
+    'in-progress': { title: '进行中', color: 'border-blue-400' },
+    'done': { title: '已完成', color: 'border-green-400' },
+  }
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">任务看板</h1>
+
+      {/* 筛选按钮（&& + 三元） */}
+      <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setFilter('all')}
+          className={\`px-3 py-1 rounded \${filter === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-200'}\`}
+        >
+          全部
+        </button>
+        {(Object.keys(COLUMNS) as TaskStatus[]).map(status => (
+          <button
+            key={status}
+            onClick={() => setFilter(status)}
+            className={\`px-3 py-1 rounded \${filter === status ? 'bg-blue-500 text-white' : 'bg-gray-200'}\`}
+          >
+            {COLUMNS[status].title}
+          </button>
+        ))}
+      </div>
+
+      {/* 看板列 */}
+      <div className="grid grid-cols-3 gap-4">
+        {(Object.entries(COLUMNS) as [TaskStatus, typeof COLUMNS[TaskStatus]][])
+          // 根据 filter 过滤列
+          .filter(([status]) => filter === 'all' || filter === status)
+          .map(([status, config]) => {
+            const columnTasks = tasksByStatus[status]
+
+            return (
+              <div key={status} className={\`border-t-4 \${config.color} bg-gray-50 rounded-lg p-4\`}>
+                <h2 className="font-semibold mb-3 flex items-center justify-between">
+                  {config.title}
+                  <span className="text-sm text-gray-500 font-normal">
+                    {columnTasks.length}
+                  </span>
+                </h2>
+
+                {/* 空状态（提前 return 在 map 内不好用，用三元或&&） */}
+                {columnTasks.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-4">暂无任务</p>
+                ) : (
+                  <div className="space-y-2">
+                    {columnTasks.map(task => (
+                      <div key={task.id} className="bg-white p-3 rounded shadow-sm">
+                        <p className="font-medium text-sm">{task.title}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          {/* 优先级标签（枚举映射） */}
+                          <span className={\`text-xs px-2 py-0.5 rounded \${PRIORITY_CONFIG[task.priority].color}\`}>
+                            {PRIORITY_CONFIG[task.priority].label}
+                          </span>
+                          {/* 负责人（&& 显隐） */}
+                          {task.assignee && (
+                            <span className="text-xs text-gray-500">
+                              👤 {task.assignee}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+      </div>
+    </div>
+  )
+}
+\`\`\`
+
+## 四、小结
+
+- 三元运算符适合二选一，嵌套超过两层考虑其他方式
+- \`&&\` 适合显隐控制，**必须注意 0 渲染陷阱**，用 \`> 0\` 或 \`!!\`
+- 提前 return 适合多状态（Loading/Error/Empty/Success），按优先级顺序判断
+- IIFE 适合 JSX 中临时复杂逻辑，但不要写太长
+- 枚举映射（\`Record<Status, ...>\`）适合 N 种状态映射，集中管理
+- 列表 key 用稳定 id，不要用 index（静态列表除外）
+- 熟练组合 \`filter\`、\`map\`、\`sort\`、\`reduce\`、\`flatMap\` 处理数组数据
+- \`Array.from({ length: N }, (_, i) => ...)\` 构造指定长度数组
+
+下一章我们将学习 useEffect 副作用管理。
+`,
   },
   {
     id: "tsrx-useeffect",
-    icon: "⚡",
     group: "基础篇",
+    icon: "⚡",
     title: "useEffect副作用管理",
-    content: `## useEffect副作用管理
+    content: `
 
-useEffect 是 React 中最强大也最容易用错的 Hook。它让函数组件能够执行副作用：数据请求、订阅、DOM 操作等。理解 useEffect 的工作原理，是从 React 新手到高手的必经之路。
+# useEffect 副作用管理
 
-### 一、useEffect 的三个部分
+\`useEffect\` 是 React Hooks 中最强大也最容易用错的 Hook。它让函数组件能够执行副作用操作：数据请求、订阅、DOM 操作、定时器等。本章我们将深入学习 useEffect 的依赖数组、清理函数、数据请求模式、生命周期映射，以及常见陷阱与最佳实践。
 
-每个 useEffect 包含三个部分：
+## 一、useEffect 基本结构
 
-1. **副作用函数**：要执行的副作用逻辑
-2. **依赖数组**：决定什么时候执行副作用
-3. **清理函数**（可选）：副作用退出时执行清理
+\`useEffect\` 接收两个参数：副作用函数和依赖数组。副作用函数可以返回一个清理函数。
 
 \`\`\`tsx
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react'
 
-function UseEffectAnatomy() {
-  const [count, setCount] = useState(0);
+function EffectDemo() {
+  const [count, setCount] = useState(0)
+  const [name, setName] = useState('')
 
-  useEffect(
-    // 1. 副作用函数
-    () => {
-      console.log('执行副作用，count =', count);
-      document.title = `点击了 ${count} 次`;
-
-      // 3. 清理函数（可选）
-      return () => {
-        console.log('清理上一次副作用');
-      };
-    },
-    // 2. 依赖数组
-    [count]
-  );
-
-  return (
-    <button onClick={() => setCount((c) => c + 1)}>
-      点击 {count} 次
-    </button>
-  );
-}
-\`\`\`
-
-### 二、依赖数组的三种情况
-
-依赖数组的写法决定了副作用什么时候执行，一共有三种情况：
-
-\`\`\`tsx
-function DependencyArrayDemo() {
-  const [count, setCount] = useState(0);
-
-  // 情况1：不传依赖数组（不写第二个参数）
-  // 👉 每次渲染后都执行！
+  // useEffect 的完整结构
   useEffect(() => {
-    console.log('每次渲染后都执行');
-  });
-  // ⚠️ 容易造成无限循环，极少使用
+    // 1. 这里是副作用逻辑：在渲染提交到 DOM 之后执行
+    console.log('effect 执行：count 或 name 变化了', count, name)
 
-  // 情况2：空依赖数组 []
-  // 👉 只在组件挂载（mount）后执行一次
-  // 👉 组件卸载（unmount）时执行清理
-  useEffect(() => {
-    console.log('组件挂载了，只执行一次');
-
+    // 2. 可选的清理函数（cleanup）
+    // 在组件卸载前，或下一次 effect 执行前调用
     return () => {
-      console.log('组件卸载了');
-    };
-  }, []); // 空数组
-  // ✅ 常用于：初始化数据、添加全局事件监听、创建订阅
-
-  // 情况3：有依赖 [a, b, c]
-  // 👉 挂载时执行一次
-  // 👉 之后每当 a/b/c 变化时，执行清理然后重新执行
-  useEffect(() => {
-    console.log('count 变化了：', count);
-    document.title = `Count: ${count}`;
-
-    return () => {
-      console.log('count 从', count, '变化，先清理');
-    };
-  }, [count]); // 只有 count 变了才重新执行
-  // ✅ 常用于：根据 props/state 变化执行副作用
-
-  return <button onClick={() => setCount((c) => c + 1)}>+1</button>;
-}
-\`\`\`
-
-### 三、cleanup 清理函数
-
-清理函数在两种时候执行：
-1. 组件卸载前
-2. 下一次副作用执行之前（依赖变化时）
-
-\`\`\`tsx
-function CleanupDemo() {
-  const [seconds, setSeconds] = useState(0);
-  const [running, setRunning] = useState(false);
-
-  // 定时器示例
-  useEffect(() => {
-    if (!running) return;
-
-    console.log('设置定时器');
-    const timerId = setInterval(() => {
-      setSeconds((s) => s + 1);
-    }, 1000);
-
-    // 清理函数：清除定时器
-    return () => {
-      console.log('清除定时器');
-      clearInterval(timerId);
-    };
-  }, [running]);
-
-  // DOM 事件监听示例
-  useEffect(() => {
-    const handleResize = () => {
-      console.log('窗口大小:', window.innerWidth, window.innerHeight);
-    };
-
-    window.addEventListener('resize', handleResize);
-    console.log('添加 resize 监听');
-
-    // 清理函数：移除事件监听
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      console.log('移除 resize 监听');
-    };
-  }, []); // 空数组，只加一次
+      console.log('cleanup 执行：清理上一次的副作用')
+    }
+  }, [count, name]) // 3. 依赖数组：控制 effect 何时重新执行
 
   return (
     <div>
-      <p>计时: {seconds}秒</p>
-      <button onClick={() => setRunning((r) => !r)}>
-        {running ? '暂停' : '开始'}
-      </button>
+      <p>{count}</p>
+      <button onClick={() => setCount(c => c + 1)}>+1</button>
+      <input value={name} onChange={e => setName(e.target.value)} />
     </div>
-  );
+  )
 }
 \`\`\`
 
-**一定要清理！** 不清理的副作用会造成：
-- 内存泄漏（组件卸载了但定时器还在跑）
-- 重复订阅（每次渲染都加一次监听）
-- 重复请求（数据重复获取）
+**执行时机**：
+1. 组件首次渲染完成 → 执行 effect 函数
+2. 依赖数组中的值发生变化 → 先执行上一次的 cleanup → 再执行新的 effect
+3. 组件卸载 → 执行 cleanup
 
-常见需要清理的资源：
-- `setTimeout` / `setInterval` → `clearTimeout` / `clearInterval`
-- DOM 事件监听 → `removeEventListener`
-- 订阅（WebSocket、EventEmitter）→ `unsubscribe`
-- 异步请求 → `AbortController.abort()`
+## 二、依赖数组的三种情况
 
-### 四、数据请求模式
+依赖数组 \`deps\` 的不同写法决定了 effect 的执行时机：
 
-useEffect 最常见的用途就是发请求。注意：**async 函数不能直接传给 useEffect！**
+### 2.1 不传依赖数组：每次渲染后都执行
+
+\`\`\`tsx
+// ❌ 几乎不用：不传第二个参数，每次组件渲染都执行
+// 容易造成无限循环或性能问题
+useEffect(() => {
+  console.log('每次渲染后都执行')
+})
+\`\`\`
+
+### 2.2 空数组 []：只在挂载和卸载时执行
+
+\`\`\`tsx
+function Timer() {
+  const [seconds, setSeconds] = useState(0)
+
+  // 空数组：挂载时启动定时器，卸载时清除
+  useEffect(() => {
+    console.log('组件挂载：启动定时器')
+    const timer = setInterval(() => {
+      setSeconds(s => s + 1)
+    }, 1000)
+
+    // cleanup 在组件卸载时执行
+    return () => {
+      console.log('组件卸载：清除定时器')
+      clearInterval(timer)
+    }
+  }, []) // 空数组，这个 effect 只执行一次
+
+  return <p>已运行 {seconds} 秒</p>
+}
+\`\`\`
+
+空数组的 effect 适合：
+- 添加/移除全局事件监听
+- 初始化定时器/interval
+- 建立和断开 WebSocket 连接
+- 只需要在组件挂载时执行一次的初始化逻辑
+
+### 2.3 传入依赖 [a, b]：依赖变化时执行
+
+\`\`\`tsx
+function UserProfile({ userId }: { userId: number }) {
+  const [user, setUser] = useState<User | null>(null)
+
+  // userId 变化时重新请求用户数据
+  useEffect(() => {
+    console.log('userId 变化，重新请求用户数据：', userId)
+    
+    let cancelled = false
+
+    fetchUser(userId).then(data => {
+      if (!cancelled) {
+        setUser(data)
+      }
+    })
+
+    // cleanup：userId 再次变化或组件卸载时，取消上一次请求
+    return () => {
+      cancelled = true
+    }
+  }, [userId]) // 依赖 userId
+
+  if (!user) return <div>加载中...</div>
+  return <div>{user.name}</div>
+}
+\`\`\`
+
+**依赖数组的比较是引用比较（Object.is）**：
+- 原始类型（number、string、boolean）：比较值
+- 对象、数组、函数：比较引用地址
+
+这就是为什么把对象/函数直接作为依赖容易导致无限循环：每次渲染创建新引用。
+
+## 三、cleanup 清理函数详解
+
+cleanup 函数是 useEffect 最重要的部分之一，用于清除上一次 effect 产生的资源。常见的清理场景：
+
+\`\`\`tsx
+function CleanupDemo() {
+  const [isSubscribed, setIsSubscribed] = useState(true)
+
+  useEffect(() => {
+    // 1. 清除定时器
+    const timer = setTimeout(() => {
+      console.log('timeout 执行')
+    }, 1000)
+
+    // 2. 移除 DOM 事件监听
+    const handleResize = () => console.log('window resized')
+    window.addEventListener('resize', handleResize)
+
+    // 3. AbortController 取消 fetch 请求
+    const controller = new AbortController()
+    fetch('/api/data', { signal: controller.signal })
+
+    // 4. WebSocket 断开连接
+    const ws = new WebSocket('wss://example.com')
+    ws.addEventListener('open', () => console.log('ws connected'))
+
+    // 5. 发布订阅模式取消订阅
+    const subscription = eventBus.subscribe('event', handler)
+
+    // cleanup 函数
+    return () => {
+      clearTimeout(timer)                // 清除定时器
+      window.removeEventListener('resize', handleResize) // 移除事件监听
+      controller.abort()                 // 取消 fetch
+      ws.close()                         // 关闭 WebSocket
+      subscription.unsubscribe()         // 取消订阅
+    }
+  }, [isSubscribed])
+
+  return <div>Cleanup Demo</div>
+}
+\`\`\`
+
+**cleanup 执行时机**：
+1. 组件卸载时（unmount）
+2. 依赖变化导致 effect 重新执行前，先执行上一次的 cleanup
+3. 开发环境下 React 18 Strict Mode 会额外执行一次 mount → unmount → mount 来帮助发现 cleanup 问题
+
+## 四、数据请求模式
+
+在 useEffect 中请求数据是最常见的场景之一。注意：**不要把 async 函数直接传给 useEffect**，因为 async 函数返回 Promise，而 useEffect 期望返回 cleanup 函数或 void。
 
 \`\`\`tsx
 interface User {
-  id: number;
-  name: string;
-  email: string;
+  id: number
+  name: string
+  email: string
 }
 
 function UserProfile({ userId }: { userId: number }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // ❌ 错误：useEffect 不能直接传 async 函数
-    // useEffect(async () => {
-    //   const res = await fetch(`/api/users/${userId}`);
-    //   const data = await res.json();
-    //   setUser(data);
-    // }, [userId]);
-    // 原因：async 函数返回 Promise，而 useEffect 期望返回清理函数或 void
-
-    // ✅ 正确：在内部定义 async 函数，然后调用
-    const fetchUser = async () => {
-      // 每次请求前重置状态
-      setLoading(true);
-      setError(null);
+    // ✅ 正确：在 effect 内部定义 async 函数并调用
+    const fetchData = async () => {
+      setLoading(true)
+      setError(null)
 
       try {
-        // 用 AbortController 处理竞态条件（组件卸载或 userId 变了，取消上一个请求）
-        const controller = new AbortController();
-        
-        const res = await fetch(`/api/users/${userId}`, {
-          signal: controller.signal,
-        });
-
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
+        const response = await fetch(\`/api/users/\${userId}\`)
+        if (!response.ok) {
+          throw new Error('请求失败')
         }
-
-        const data = await res.json();
-        setUser(data);
+        const data = await response.json()
+        setUser(data)
       } catch (err) {
-        // 忽略取消请求导致的错误
-        if ((err as Error).name !== 'AbortError') {
-          setError(err as Error);
-        }
+        setError(err instanceof Error ? err.message : '未知错误')
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
+    }
 
-      // 清理函数：取消请求
-      return () => controller.abort();
-    };
+    fetchData()
+  }, [userId])
 
-    const cleanup = fetchUser();
-    return cleanup;
-  }, [userId]); // userId 变了，重新请求
+  // 或者使用 IIFE 方式
+  useEffect(() => {
+    (async () => {
+      const res = await fetch(\`/api/users/\${userId}\`)
+      const data = await res.json()
+      setUser(data)
+    })()
+  }, [userId])
 
-  if (loading) return <div>加载中...</div>;
-  if (error) return <div>错误: {error.message}</div>;
-  if (!user) return <div>用户不存在</div>;
+  if (loading) return <div>加载中...</div>
+  if (error) return <div>错误：{error}</div>
+  if (!user) return <div>用户不存在</div>
 
   return (
     <div>
       <h2>{user.name}</h2>
       <p>{user.email}</p>
     </div>
-  );
+  )
 }
-
-// 写法2：用 IIFE（立即执行 async 函数）
-useEffect(() => {
-  let cancelled = false;
-
-  (async () => {
-    const res = await fetch(`/api/users/${userId}`);
-    const data = await res.json();
-    if (!cancelled) {
-      setUser(data);
-    }
-  })();
-
-  return () => {
-    cancelled = true;
-  };
-}, [userId]);
 \`\`\`
 
-**竞态条件（Race Condition）问题：** 如果 userId 快速变化（比如从1变到2再变到3），请求1、2、3可能乱序返回，最后显示错误的数据。AbortController 或 cancelled 标志可以解决这个问题。
-
-### 五、useEffect 生命周期映射
-
-useEffect 可以映射传统类组件的生命周期方法：
+⚠️ **竞态条件（Race Condition）问题**：如果快速切换 userId，前一个请求可能在后一个请求之后返回，导致显示错误的数据。用 cleanup 解决：
 
 \`\`\`tsx
-function LifecycleDemo() {
-  // componentDidMount（挂载后）
-  useEffect(() => {
-    console.log('componentDidMount: 组件挂载完成');
-    // 适合：发请求、加监听、操作DOM
-  }, []);
+useEffect(() => {
+  let cancelled = false
 
-  // componentDidUpdate（更新后）：注意是所有更新都执行
-  useEffect(() => {
-    console.log('componentDidUpdate: 组件更新了');
-  }); // 没有依赖数组
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(\`/api/users/\${userId}\`)
+      const data = await res.json()
+      // 只有当组件未卸载、userId 未变化时才更新状态
+      if (!cancelled) {
+        setUser(data)
+        setError(null)
+      }
+    } catch (err) {
+      if (!cancelled) {
+        setError(err instanceof Error ? err.message : '错误')
+      }
+    } finally {
+      if (!cancelled) {
+        setLoading(false)
+      }
+    }
+  }
 
-  // componentDidUpdate(prevProps/prevState)：特定数据更新时
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    console.log('count 更新了:', count);
-    // 类似 componentDidUpdate 中 if (prevState.count !== this.state.count)
-  }, [count]);
+  fetchData()
 
-  // componentWillUnmount（卸载前）
-  useEffect(() => {
-    console.log('挂载');
-    return () => {
-      console.log('componentWillUnmount: 组件即将卸载');
-      // 适合：清理定时器、移除监听、取消请求
-    };
-  }, []);
+  // cleanup：设置标记，阻止过期请求更新状态
+  return () => {
+    cancelled = true
+  }
+}, [userId])
+\`\`\`
 
-  return <div>生命周期演示</div>;
+更现代的方式是使用 AbortController：
+
+\`\`\`tsx
+useEffect(() => {
+  const controller = new AbortController()
+
+  fetch(\`/api/users/\${userId}\`, { signal: controller.signal })
+    .then(res => res.json())
+    .then(data => setUser(data))
+    .catch(err => {
+      if (err.name !== 'AbortError') {
+        setError(err.message)
+      }
+    })
+    .finally(() => setLoading(false))
+
+  // cleanup：取消请求
+  return () => controller.abort()
+}, [userId])
+\`\`\`
+
+## 五、useEffect 生命周期映射
+
+在类组件中我们熟悉 componentDidMount、componentDidUpdate、componentWillUnmount 生命周期。useEffect 通过依赖数组可以模拟这些生命周期，但心智模型不同：
+
+\`\`\`tsx
+// 1. componentDidMount：空数组依赖，只在挂载后执行一次
+useEffect(() => {
+  console.log('组件挂载完成')
+  // 初始化操作：获取数据、添加事件监听等
+}, [])
+
+// 2. componentWillUnmount：cleanup 函数在空数组依赖时，卸载时执行
+useEffect(() => {
+  const handler = () => console.log('resize')
+  window.addEventListener('resize', handler)
+  return () => {
+    console.log('组件卸载前清理')
+    window.removeEventListener('resize', handler)
+  }
+}, [])
+
+// 3. componentDidUpdate：带依赖的 effect，依赖变化时执行
+// 注意：首次渲染也会执行，不像 componentDidUpdate 只在更新时执行
+useEffect(() => {
+  console.log('userId 变为：', userId)
+  // 根据新 userId 加载数据
+}, [userId])
+
+// 4. 如果想跳过首次执行（只在更新时执行），用 useRef 标记
+function useDidUpdate(effect: () => void, deps: any[]) {
+  const isFirst = useRef(true)
+  useEffect(() => {
+    if (isFirst.current) {
+      isFirst.current = false
+      return
+    }
+    return effect()
+  }, deps)
 }
 \`\`\`
 
-注意：useEffect 和生命周期不是一一对应的，它的心智模型是**同步（synchronization）**——当依赖变化时，把副作用和状态同步起来，而不是"在某个生命周期执行"。
+## 六、eslint-plugin-react-hooks 规则
 
-### 六、依赖 lint 规则
+ESLint 插件 \`eslint-plugin-react-hooks\` 提供两个重要规则：
 
-一定要启用 `eslint-plugin-react-hooks` 的 `exhaustive-deps` 规则！它能帮你发现 90% 的 useEffect 问题：
+1. **react-hooks/rules-of-hooks**：确保 Hook 在顶层调用，不在条件、循环、嵌套函数中调用
+2. **react-hooks/exhaustive-deps**：确保 effect 中使用的所有响应式值都包含在依赖数组中
 
-\`\`\`json
-// .eslintrc.cjs
-{
-  "plugins": ["react-hooks"],
-  "rules": {
-    "react-hooks/rules-of-hooks": "error",
-    "react-hooks/exhaustive-deps": "warn" // 不要关这个！
+\`\`\`tsx
+// ❌ exhaustive-deps 警告：effect 中使用了 userId 但没加到依赖数组
+useEffect(() => {
+  fetchUser(userId)
+  // eslint-disable-next-line react-hooks/exhaustive-deps // 可以禁用但要知道原因
+}, []) // 缺少 userId 依赖
+
+// ✅ 正确：所有响应式值都在依赖数组中
+useEffect(() => {
+  fetchUser(userId)
+}, [userId])
+\`\`\`
+
+**什么时候可以禁用 exhaustive-deps？**
+- 你明确知道只想在挂载时执行一次，且引用的函数/值是稳定的
+- 使用了 useCallback/useMemo 包裹依赖
+
+但绝大多数情况，**应该遵循 exhaustive-deps 规则**，警告通常意味着你的代码有问题。
+
+## 七、常见错误与陷阱
+
+### 7.1 无限循环：缺少依赖或依赖引用变化
+
+\`\`\`tsx
+function InfiniteLoop() {
+  const [count, setCount] = useState(0)
+
+  // ❌ 无限循环：每次渲染创建新对象/函数作为依赖
+  useEffect(() => {
+    setCount(c => c + 1) // 触发重渲染
+  }, [{}]) // {} 每次渲染都是新引用，effect 无限执行
+
+  // ❌ 无限循环：函数作为依赖
+  const handler = () => console.log('handler')
+  useEffect(() => {
+    handler()
+  }, [handler]) // handler 每次渲染都是新函数
+
+  // ✅ 用 useCallback 稳定函数引用
+  const stableHandler = useCallback(() => {
+    console.log('stable handler')
+  }, [])
+  useEffect(() => {
+    stableHandler()
+  }, [stableHandler])
+}
+\`\`\`
+
+### 7.2 陈旧闭包（Stale Closure）
+
+effect 中捕获的是定义时的 props/state，如果依赖没正确声明，会拿到旧值：
+
+\`\`\`tsx
+function StaleClosureDemo() {
+  const [count, setCount] = useState(0)
+
+  // ❌ 陈旧闭包：count 始终是初始值 0
+  useEffect(() => {
+    const timer = setInterval(() => {
+      console.log(count) // 永远打印 0
+      setCount(count + 1) // 永远 0 + 1 = 1
+    }, 1000)
+    return () => clearInterval(timer)
+  }, []) // 缺少 count 依赖
+
+  // ✅ 正确：用函数式更新 + 正确依赖
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCount(prev => prev + 1) // 函数式更新不依赖当前 count
+    }, 1000)
+    return () => clearInterval(timer)
+  }, []) // 空数组也安全，因为使用了函数式更新
+}
+\`\`\`
+
+### 7.3 滥用 useEffect：不要用 useEffect 处理所有事情
+
+\`\`\`tsx
+// ❌ 滥用 useEffect：可以在渲染期间直接计算的值，不需要 state + effect
+function BadDerivedState({ todos }: { todos: Todo[] }) {
+  const [completedCount, setCompletedCount] = useState(0)
+
+  useEffect(() => {
+    setCompletedCount(todos.filter(t => t.completed).length)
+  }, [todos])
+
+  return <p>已完成：{completedCount}</p>
+}
+
+// ✅ 正确：派生状态直接在渲染时计算
+function GoodDerivedState({ todos }: { todos: Todo[] }) {
+  const completedCount = todos.filter(t => t.completed).length
+  return <p>已完成：{completedCount}</p>
+}
+
+// ❌ 滥用 useEffect：可以在事件处理中直接做的事，不需要 effect
+function Form() {
+  const [name, setName] = useState('')
+  const [submitted, setSubmitted] = useState(false)
+
+  // ❌ 不需要用 useEffect 来响应状态变化
+  useEffect(() => {
+    if (submitted) {
+      console.log('表单提交，发送数据')
+    }
+  }, [submitted])
+
+  const handleSubmit = () => {
+    setSubmitted(true)
+  }
+
+  // ✅ 正确：直接在事件处理函数中执行
+  const handleGoodSubmit = () => {
+    console.log('表单提交，发送数据') // 直接执行
   }
 }
 \`\`\`
 
-\`\`\`tsx
-// 这个规则会警告你依赖不全
-function EffectLintDemo() {
-  const [count, setCount] = useState(0);
-  const [step, setStep] = useState(1);
+**useEffect 使用原则**：
+- 只有当副作用需要与外部系统同步时才用（API 请求、订阅、DOM 操作）
+- 可以在事件处理中做的事，不要用 useEffect
+- 可以在渲染时计算的派生值，不要用 useState + useEffect
 
-  // ❌ 警告：React Hook useEffect has a missing dependency: 'step'
-  // useEffect(() => {
-  //   const id = setInterval(() => {
-  //     setCount(count + step); // 这里用到了 step，但依赖数组里没有
-  //   }, 1000);
-  //   return () => clearInterval(id);
-  // }, [count]); // 缺 step
+## 八、小结
 
-  // ✅ 正确：把用到的所有响应式值都加到依赖数组
-  useEffect(() => {
-    const id = setInterval(() => {
-      setCount((c) => c + step); // 用函数式更新避免 count 依赖
-    }, 1000);
-    return () => clearInterval(id);
-  }, [step]); // 只需要 step，因为 setCount 用了函数式
+- useEffect 结构：副作用函数 + 依赖数组 + 可选 cleanup
+- 依赖数组三种情况：不传（每次渲染）、\`[]\`（只挂载一次）、\`[a, b]\`（a/b变化时）
+- cleanup 在卸载前和下次 effect 执行前调用，用于清除定时器、取消请求等
+- 数据请求在 effect 内定义 async 函数或用 IIFE，不要直接传 async 给 useEffect
+- 用 AbortController 或 cancelled flag 解决竞态条件问题
+- 遵循 exhaustive-deps 规则，不要随意禁用
+- 避免无限循环：对象/函数作为依赖用 useMemo/useCallback 稳定引用
+- 避免陈旧闭包：用函数式更新或正确声明依赖
+- 不要滥用 useEffect：派生状态直接计算，事件逻辑在事件处理器中执行
 
-  return <div>{count}</div>;
-}
-\`\`\`
-
-### 七、常见错误总结
-
-\`\`\`tsx
-function CommonMistakes() {
-  const [count, setCount] = useState(0);
-
-  // 错误1：无限循环
-  // useEffect(() => {
-  //   setCount(count + 1);
-  // }); // 没有依赖数组，每次渲染都执行，执行了又 setCount 又渲染，无限循环！
-
-  // 错误2：遗漏依赖导致陈旧闭包
-  // useEffect(() => {
-  //   const id = setInterval(() => {
-  //     console.log(count); // 一直是 0，因为闭包捕获的是初始 count
-  //   }, 1000);
-  //   return () => clearInterval(id);
-  // }, []); // 空数组，闭包里的 count 永远是第一次渲染的 0
-  // ✅ 修复：要么把 count 加进依赖，要么用函数式更新 setCount(c => c + 1)
-
-  // 错误3：在 useEffect 外声明的函数没加进依赖
-  // const fetchData = () => {
-  //   console.log('fetch', count);
-  // };
-  // useEffect(() => {
-  //   fetchData();
-  // }, []); // fetchData 是依赖，应该加进去，或者用 useCallback 包裹
-
-  return <div>常见错误演示</div>;
-}
-\`\`\`
-
-useEffect 的心智模型确实有点绕，但只要记住：
-1. 把 useEffect 看作"同步"机制，而不是生命周期
-2. 所有在effect中用到的响应式值（props/state/函数）都要加进依赖
-3. 一定要清理副作用
-4. 不要撒谎骗 exhaustive-deps 规则（比如随便加个 eslint-disable-next-line）
-
-多写多练，慢慢就能掌握 useEffect 的正确用法了！`,
+下一章我们将学习 useRef 与 DOM 操作。
+`,
   },
   {
     id: "tsrx-useref",
-    icon: "📌",
     group: "基础篇",
+    icon: "📌",
     title: "useRef与DOM操作",
-    content: `## useRef与DOM操作
+    content: `
 
-useRef 是一个非常"多才多艺"的 Hook。它有两大核心用途：操作 DOM 元素，以及跨渲染保持可变值。本章我们深入学习 useRef 的各种用法，以及 forwardRef 和 useImperativeHandle 等相关 API。
+# useRef 与 DOM 操作
 
-### 一、useRef 基础用法
+\`useRef\` 是一个功能多样的 Hook，它不仅可以用来引用 DOM 元素，还可以作为跨渲染周期保存可变值的容器。本章我们将深入学习 useRef 的三种用途、DOM 操作技巧、forwardRef 转发、useImperativeHandle 暴露自定义 API，以及点击外部关闭弹窗等实战案例。
 
-useRef 返回一个可变的 ref 对象，它的 .current 属性被初始化为传入的值。返回的对象在组件整个生命周期中保持不变。
+## 一、useRef 三种用途
 
-\`\`\`tsx
-import { useRef } from 'react';
+\`useRef\` 返回一个可变的 ref 对象，其 \`.current\` 属性被初始化为传入的值。返回的对象在组件的整个生命周期内保持不变。
 
-function UseRefBasic() {
-  // 创建一个 ref，初始值为 null
-  const refContainer = useRef<HTMLInputElement>(null);
+### 用途1：DOM 引用（最常见）
 
-  const handleClick = () => {
-    // ref.current 指向真实 DOM 节点
-    if (refContainer.current) {
-      refContainer.current.focus(); // 聚焦输入框
-      console.log('输入框的值:', refContainer.current.value);
-      refContainer.current.style.borderColor = 'blue';
-    }
-  };
-
-  return (
-    <div>
-      {/* 用 ref 属性把 DOM 节点绑定到 refContainer */}
-      <input ref={refContainer} type="text" placeholder="点按钮聚焦我" />
-      <button onClick={handleClick}>聚焦输入框</button>
-    </div>
-  );
-}
-\`\`\`
-
-**关键点：**
-- ref 不像 state，改变 .current 不会触发重渲染
-- ref 对象在组件每次渲染时都是同一个引用
-- DOM 渲染完成后，.current 才会指向真实 DOM
-
-### 二、用途1：DOM 引用
-
-这是 useRef 最常见的用途：获取 DOM 元素并操作它。
+获取 DOM 元素的引用，直接调用 DOM 方法：
 
 \`\`\`tsx
-function DomRefDemos() {
-  // 1. input 聚焦（最常见）
-  const inputRef = useRef<HTMLInputElement>(null);
-  const focusInput = () => inputRef.current?.focus();
+import { useRef, useEffect } from 'react'
 
-  // 2. 滚动定位
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const scrollToTop = () => {
-    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  // 3. 获取元素尺寸
-  const boxRef = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ width: 0, height: 0 });
+function DOMRefDemo() {
+  // 创建 ref，初始值为 null，泛型指定 DOM 元素类型
+  const inputRef = useRef<HTMLInputElement>(null)
+  const divRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (boxRef.current) {
-      const { width, height } = boxRef.current.getBoundingClientRect();
-      setSize({ width, height });
+    // 组件挂载后自动聚焦 input
+    // inputRef.current 类型是 HTMLInputElement | null
+    if (inputRef.current) {
+      inputRef.current.focus() // 有完整的 DOM API 类型提示
+      inputRef.current.select()
     }
-  }, []);
+  }, [])
 
-  // 4. video/audio 播放控制
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const togglePlay = () => {
-    if (videoRef.current?.paused) {
-      videoRef.current.play();
-    } else {
-      videoRef.current?.pause();
-    }
-  };
+  const handleClick = () => {
+    // 按钮点击时聚焦
+    inputRef.current?.focus()
+  }
+
+  const handleScrollTo = () => {
+    divRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
 
   return (
     <div>
-      {/* 聚焦 */}
-      <input ref={inputRef} />
-      <button onClick={focusInput}>聚焦</button>
-
-      {/* 滚动容器 */}
-      <div
-        ref={scrollContainerRef}
-        style={{ height: '200px', overflow: 'auto', border: '1px solid' }}
-      >
-        {Array.from({ length: 50 }).map((_, i) => (
-          <p key={i}>第 {i} 行</p>
-        ))}
-        <div ref={bottomRef} />
-      </div>
-      <button onClick={scrollToTop}>回到顶部</button>
-      <button onClick={scrollToBottom}>滚动到底部</button>
-
-      {/* 获取尺寸 */}
-      <div ref={boxRef} style={{ width: '200px', height: '100px', background: 'red' }}>
-        宽: {size.width}, 高: {size.height}
-      </div>
-
-      {/* 视频控制 */}
-      <video ref={videoRef} src="video.mp4" />
-      <button onClick={togglePlay}>播放/暂停</button>
+      <input ref={inputRef} type="text" placeholder="自动聚焦" />
+      <button onClick={handleClick}>聚焦输入框</button>
+      <div style={{ height: '100vh' }}>滚动区域</div>
+      <div ref={divRef}>目标位置</div>
+      <button onClick={handleScrollTo}>滚动到目标</button>
     </div>
-  );
+  )
 }
 \`\`\`
 
-常见的 DOM ref 类型：
-- `HTMLInputElement` - input
-- `HTMLButtonElement` - button
-- `HTMLDivElement` - div
-- `HTMLFormElement` - form
-- `HTMLSelectElement` - select
-- `HTMLTextAreaElement` - textarea
-- `HTMLVideoElement` / `HTMLAudioElement` - video/audio
-- `HTMLElement` - 通用类型
+常见 DOM ref 类型：
+- \`useRef<HTMLInputElement>(null)\` - input
+- \`useRef<HTMLDivElement>(null)\` - div
+- \`useRef<HTMLButtonElement>(null)\` - button
+- \`useRef<HTMLTextAreaElement>(null)\` - textarea
+- \`useRef<HTMLFormElement>(null)\` - form
+- \`useRef<HTMLCanvasElement>(null)\` - canvas
 
-### 三、用途2：可变值容器（不触发重渲染）
+### 用途2：可变值容器（跨渲染保存值）
 
-这是很多新手不知道的 useRef 用法：它可以存储任意值，而且修改不触发重渲染。很适合存一些"渲染无关"的值。
+useRef 可以存储任意可变值，类似于类组件的实例属性。**修改 ref.current 不会触发重渲染**：
 
 \`\`\`tsx
-function MutableRefDemo() {
-  const [count, setCount] = useState(0);
+import { useRef, useState, useEffect } from 'react'
 
-  // 1. 存储 setTimeout/setInterval id
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+function MutableRefDemo() {
+  const [count, setCount] = useState(0)
+  // 存储定时器 ID
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // 记录前一个 count 值
+  const prevCountRef = useRef<number>(0)
+  // 记录渲染次数
+  const renderCountRef = useRef(0)
+
+  // 每次渲染更新渲染计数
+  useEffect(() => {
+    renderCountRef.current += 1
+  })
+
+  // 保存上一次的 count 值
+  useEffect(() => {
+    prevCountRef.current = count
+  }, [count])
 
   const startTimer = () => {
+    if (timerRef.current) return // 已存在则不重复创建
     timerRef.current = setInterval(() => {
-      setCount((c) => c + 1);
-    }, 1000);
-  };
+      setCount(c => c + 1)
+    }, 1000)
+  }
 
   const stopTimer = () => {
     if (timerRef.current) {
-      clearInterval(timerRef.current);
+      clearInterval(timerRef.current)
+      timerRef.current = null
     }
-  };
+  }
 
-  // 2. 存储上一个 state 的值
-  const prevCountRef = useRef<number>(0);
+  // 组件卸载时清理
   useEffect(() => {
-    prevCountRef.current = count; // 渲染后更新
-  }, [count]);
-  const prevCount = prevCountRef.current; // 这里是上一次的值
-
-  // 3. 存储组件内部"实例变量"（不需要触发UI更新）
-  const renderCountRef = useRef(0);
-  renderCountRef.current += 1; // 每次渲染都+1
-  console.log('组件渲染了', renderCountRef.current, '次');
-
-  // 4. 标志位：标记组件是否挂载（避免 setState 在卸载后调用）
-  const isMountedRef = useRef(false);
-  useEffect(() => {
-    isMountedRef.current = true;
     return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  // 5. 存储不需要渲染的缓存值
-  const cacheRef = useRef<Map<string, any>>(new Map());
-  const getData = (key: string) => {
-    if (cacheRef.current.has(key)) {
-      return cacheRef.current.get(key);
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+      }
     }
-    // ... 从网络获取，然后存到 cacheRef
-  };
+  }, [])
 
   return (
     <div>
-      <p>当前: {count}, 上一次: {prevCount}</p>
+      <p>当前值：{count}</p>
+      <p>前一次的值：{prevCountRef.current}</p>
+      <p>渲染次数：{renderCountRef.current}</p>
       <button onClick={startTimer}>开始</button>
       <button onClick={stopTimer}>停止</button>
-      <p>渲染次数: {renderCountRef.current}</p>
     </div>
-  );
+  )
 }
 \`\`\`
 
-**useRef vs useState 怎么选？**
-- 如果你需要值变化后**更新UI** → 用 `useState`
-- 如果值变化**不需要重渲染**，只是给内部逻辑用 → 用 `useRef`
+**什么时候用 useRef 存值而不是 useState？**
+- 存储的值不需要触发 UI 更新
+- 需要在事件处理器或 effect 中访问最新值而不触发重渲染
+- 存储定时器 ID、AbortController、上一个 props/state 值等
 
-### 四、forwardRef：ref 转发
+### 用途3：函数组件中的实例变量
 
-默认情况下，自定义组件不能直接接收 ref 属性。forwardRef 可以让父组件把 ref 转发到子组件内部的 DOM 元素上。
+在类组件中我们用 \`this.xxx\` 存储实例变量，在函数组件中用 useRef：
 
 \`\`\`tsx
-import { forwardRef } from 'react';
+function InstanceVarDemo() {
+  // 类似 this.isComponentMounted
+  const isMountedRef = useRef(true)
+  // 类似 this.eventHandler
+  const handlerRef = useRef<((data: unknown) => void) | null>(null)
 
-// forwardRef 接收两个参数：props 和 ref
-const CustomInput = forwardRef<HTMLInputElement, { placeholder?: string }>(
-  (props, ref) => {
-    return (
-      <input
-        ref={ref} // 把 forwarded ref 绑定到内部 input 上
-        type="text"
-        placeholder={props.placeholder}
-        style={{ padding: '8px', border: '2px solid blue', borderRadius: '4px' }}
-      />
-    );
+  useEffect(() => {
+    handlerRef.current = (data) => {
+      if (isMountedRef.current) {
+        console.log('处理数据', data)
+      }
+    }
+
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
+  return <div>Instance Variable Demo</div>
+}
+\`\`\`
+
+## 二、DOM 操作常用场景
+
+### 2.1 元素聚焦与滚动
+
+\`\`\`tsx
+function FocusAndScroll() {
+  const listRef = useRef<HTMLUListElement>(null)
+  const itemRefs = useRef<(HTMLLIElement | null)[]>([])
+
+  const scrollToItem = (index: number) => {
+    const item = itemRefs.current[index]
+    item?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+    })
+    item?.focus()
   }
-);
 
-// 给组件设置 displayName（调试用）
-CustomInput.displayName = 'CustomInput';
+  // 获取元素尺寸
+  const measureRef = useRef<HTMLDivElement>(null)
+  const [size, setSize] = useState({ width: 0, height: 0 })
 
-// 父组件使用
-function ForwardRefDemo() {
-  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (measureRef.current) {
+      const rect = measureRef.current.getBoundingClientRect()
+      setSize({ width: rect.width, height: rect.height })
+    }
+  }, [])
 
   return (
     <div>
-      {/* 像原生元素一样给自定义组件传 ref */}
-      <CustomInput ref={inputRef} placeholder="输入内容" />
-      <button onClick={() => inputRef.current?.focus()}>
-        聚焦到自定义输入框
-      </button>
+      <div ref={measureRef}>测量我的尺寸</div>
+      <p>宽：{size.width}px，高：{size.height}px</p>
+
+      <button onClick={() => scrollToItem(5)}>滚动到第6项</button>
+      <ul ref={listRef}>
+        {Array.from({ length: 20 }, (_, i) => (
+          <li
+            key={i}
+            ref={el => { itemRefs.current[i] = el }}
+            tabIndex={0}
+          >
+            第 {i + 1} 项
+          </li>
+        ))}
+      </ul>
     </div>
-  );
+  )
 }
 \`\`\`
 
-**什么时候用 forwardRef？**
-- 封装基础UI组件（Button、Input、Modal等）时，需要让使用者能拿到内部DOM
-- 可复用组件库中常用
-- 业务组件一般不需要
+## 三、forwardRef：转发 ref 到子组件
 
-### 五、useImperativeHandle：暴露自定义 API
-
-有时候你不想把整个 DOM 节点暴露给父组件，只想暴露几个自定义方法（比如 focus、scrollTo、reset）。这时候可以用 useImperativeHandle：
+默认情况下，函数组件不能接收 ref 属性。使用 \`forwardRef\` 可以将 ref 转发到组件内部的 DOM 元素：
 
 \`\`\`tsx
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef } from 'react'
 
-// 定义暴露给父组件的 API 类型
-export interface CountdownHandle {
-  start: () => void;
-  pause: () => void;
-  reset: () => void;
-  getCount: () => number;
-}
+// forwardRef 接收两个泛型参数：ref 类型、props 类型
+const CustomInput = forwardRef<HTMLInputElement, {
+  label: string
+  value: string
+  onChange: (value: string) => void
+}>(({ label, value, onChange }, ref) => {
+  return (
+    <div className="input-group">
+      <label>{label}</label>
+      {/* 将转发来的 ref 绑定到内部 input 上 */}
+      <input
+        ref={ref}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="border rounded px-3 py-2"
+      />
+    </div>
+  )
+})
 
-interface CountdownProps {
-  initialCount?: number;
-}
+// 设置 displayName 便于调试
+CustomInput.displayName = 'CustomInput'
 
-// 倒计时组件
-const Countdown = forwardRef<CountdownHandle, CountdownProps>(
-  ({ initialCount = 10 }, ref) => {
-    const [count, setCount] = useState(initialCount);
-    const [running, setRunning] = useState(false);
-    const timerRef = useRef<NodeJS.Timeout | null>(null);
+// 使用转发的 ref
+function ForwardRefDemo() {
+  const inputRef = useRef<HTMLInputElement>(null)
 
-    // 用 useImperativeHandle 自定义暴露给父组件的内容
-    useImperativeHandle(ref, () => ({
-      // 暴露的方法
-      start: () => {
-        if (running || count === 0) return;
-        setRunning(true);
-        timerRef.current = setInterval(() => {
-          setCount((c) => {
-            if (c <= 1) {
-              clearInterval(timerRef.current!);
-              setRunning(false);
-              return 0;
-            }
-            return c - 1;
-          });
-        }, 1000);
-      },
-      pause: () => {
-        setRunning(false);
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-        }
-      },
-      reset: () => {
-        setRunning(false);
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-        }
-        setCount(initialCount);
-      },
-      getCount: () => count,
-    }), [count, running, initialCount]);
-
-    // 组件卸载时清理
-    useEffect(() => {
-      return () => {
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-        }
-      };
-    }, []);
-
-    return (
-      <div style={{ fontSize: '3rem', fontWeight: 'bold', textAlign: 'center' }}>
-        {count}
-      </div>
-    );
+  const focusInput = () => {
+    // 直接访问子组件内部的 input DOM
+    inputRef.current?.focus()
   }
-);
 
-Countdown.displayName = 'Countdown';
-
-// 父组件使用
-function CountdownApp() {
-  const countdownRef = useRef<CountdownHandle>(null);
+  const [text, setText] = useState('')
 
   return (
-    <div style={{ maxWidth: '300px', margin: '2rem auto', textAlign: 'center' }}>
-      <Countdown ref={countdownRef} initialCount={60} />
-      <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-        <button onClick={() => countdownRef.current?.start()}>开始</button>
-        <button onClick={() => countdownRef.current?.pause()}>暂停</button>
-        <button onClick={() => countdownRef.current?.reset()}>重置</button>
-      </div>
+    <div>
+      <CustomInput
+        ref={inputRef}
+        label="用户名"
+        value={text}
+        onChange={setText}
+      />
+      <button onClick={focusInput}>聚焦输入框</button>
     </div>
-  );
+  )
 }
 \`\`\`
 
-这是一种很有用的**命令式编程**模式，在某些场景（如表单重置、播放控制、模态框打开关闭）特别好用。但注意：大部分场景还是应该用**声明式**（通过 props 控制），只有当声明式很烦琐时，才考虑用 ref 暴露命令式 API。
+## 四、useImperativeHandle：暴露自定义 API
 
-### 六、ref 回调函数
+\`useImperativeHandle\` 配合 \`forwardRef\` 使用，可以自定义暴露给父组件的 ref 值，而不是直接暴露整个 DOM 节点：
 
-除了 useRef 创建 ref 对象，ref 属性还能接收一个回调函数：
+\`\`\`tsx
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
+
+// 定义暴露给父组件的 API 类型
+interface CustomInputHandle {
+  focus: () => void
+  blur: () => void
+  reset: () => void
+  scrollIntoView: () => void
+  getValue: () => string
+}
+
+const AdvancedInput = forwardRef<CustomInputHandle, {
+  placeholder?: string
+}>(({ placeholder }, ref) => {
+  const [value, setValue] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // 自定义暴露给父组件的方法
+  useImperativeHandle(ref, () => ({
+    focus: () => inputRef.current?.focus(),
+    blur: () => inputRef.current?.blur(),
+    reset: () => setValue(''),
+    scrollIntoView: () => inputRef.current?.scrollIntoView(),
+    getValue: () => value,
+  }), [value]) // 依赖数组，value 变化时更新 getValue
+
+  return (
+    <input
+      ref={inputRef}
+      value={value}
+      onChange={e => setValue(e.target.value)}
+      placeholder={placeholder}
+    />
+  )
+})
+
+AdvancedInput.displayName = 'AdvancedInput'
+
+// 使用自定义 API
+function ImperativeHandleDemo() {
+  const inputRef = useRef<CustomInputHandle>(null)
+
+  return (
+    <div>
+      <AdvancedInput ref={inputRef} placeholder="测试输入" />
+      <button onClick={() => inputRef.current?.focus()}>聚焦</button>
+      <button onClick={() => inputRef.current?.reset()}>重置</button>
+      <button onClick={() => alert(inputRef.current?.getValue())}>获取值</button>
+    </div>
+  )
+}
+\`\`\`
+
+## 五、ref callback 模式
+
+除了 useRef 创建的 ref 对象，ref 还可以接收一个回调函数：
 
 \`\`\`tsx
 function CallbackRefDemo() {
-  const [height, setHeight] = useState(0);
+  const [height, setHeight] = useState(0)
 
-  // ref 回调：DOM 节点挂载时调用，参数是节点；卸载时调用，参数是 null
-  const measuredRef = useCallback((node: HTMLDivElement | null) => {
+  // ref callback：DOM 挂载时调用（参数是 DOM 元素），卸载时调用（参数是 null）
+  const measureRef = (node: HTMLDivElement | null) => {
     if (node) {
-      setHeight(node.getBoundingClientRect().height);
+      setHeight(node.getBoundingClientRect().height)
     }
-  }, []);
+  }
+
+  // 动态设置多个 ref
+  const items = ['A', 'B', 'C']
+  const itemRefs = useRef<Map<string, HTMLLIElement>>(new Map())
 
   return (
     <div>
-      <div ref={measuredRef} style={{ padding: '20px', background: '#f0f0f0' }}>
-        这个 div 的高度是: {height}px
+      <div ref={measureRef}>
+        测量我的高度
+        <p>一些内容</p>
+        <p>更多内容</p>
       </div>
+      <p>高度：{height}px</p>
+
+      <ul>
+        {items.map(item => (
+          <li
+            key={item}
+            ref={node => {
+              if (node) {
+                itemRefs.current.set(item, node)
+              } else {
+                itemRefs.current.delete(item)
+              }
+            }}
+          >
+            {item}
+          </li>
+        ))}
+      </ul>
     </div>
-  );
+  )
 }
 \`\`\`
 
-ref 回调的好处是可以在 DOM 挂载/卸载时立即执行回调，不需要等 useEffect。
+## 六、useRef vs useState 选择
 
-### 七、实战 Demo：点击外部关闭弹窗
-
-useRef 的经典应用场景：点击弹窗外部关闭弹窗。
+| 特性 | useState | useRef |
+|------|----------|--------|
+| 修改值触发重渲染 | ✅ 是 | ❌ 否 |
+| 值在渲染之间保持 | ✅ 是 | ✅ 是 |
+| 可以在渲染期间读取最新值 | ✅ 是 | ⚠️ 不应在渲染期间读写 current |
+| 适合存储 | UI 状态（影响渲染）| 不影响 UI 的可变值、DOM 引用、定时器 ID |
 
 \`\`\`tsx
-import { useState, useRef, useEffect } from 'react';
+function RefVsState() {
+  // ✅ 用 useState：值变化需要更新 UI
+  const [count, setCount] = useState(0)
 
-function Modal({ isOpen, onClose, children }: {
-  isOpen: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  const modalRef = useRef<HTMLDivElement>(null);
+  // ✅ 用 useRef：值变化不需要更新 UI
+  const timerIdRef = useRef<number | null>(null)
+  const clickCountRef = useRef(0) // 仅用于日志/统计，不直接显示
+
+  const handleClick = () => {
+    clickCountRef.current += 1
+    console.log('点击次数：', clickCountRef.current)
+    setCount(c => c + 1) // UI 更新
+  }
+
+  return <button onClick={handleClick}>点击：{count}</button>
+}
+\`\`\`
+
+## 七、实战：点击外部关闭弹窗（useOnClickOutside）
+
+这是 useRef 最经典的实战场景之一：
+
+\`\`\`tsx
+import { useEffect, useRef, useState } from 'react'
+
+// 自定义 Hook：点击元素外部时触发回调
+function useOnClickOutside<T extends HTMLElement>(
+  handler: () => void
+) {
+  const ref = useRef<T>(null)
 
   useEffect(() => {
-    if (!isOpen) return;
-
-    const handleClickOutside = (e: MouseEvent) => {
-      // 如果点击的元素不在 modal 内部，关闭弹窗
-      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-        onClose();
+    const handleClick = (e: MouseEvent | TouchEvent) => {
+      // 如果点击发生在 ref 元素内部，不处理
+      if (!ref.current || ref.current.contains(e.target as Node)) {
+        return
       }
-    };
+      // 点击外部，执行回调
+      handler()
+    }
 
-    // 用 mousedown 而不是 click，体验更好（点下再拖到外面松开不会关闭）
-    document.addEventListener('mousedown', handleClickOutside);
-    
-    // 按 ESC 也关闭
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handleEsc);
+    // mousedown 比 click 更早触发，体验更好
+    document.addEventListener('mousedown', handleClick)
+    document.addEventListener('touchstart', handleClick)
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEsc);
-    };
-  }, [isOpen, onClose]);
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('touchstart', handleClick)
+    }
+  }, [handler])
 
-  if (!isOpen) return null;
+  return ref
+}
+
+// 弹窗组件
+function Modal({ isOpen, onClose, children }: {
+  isOpen: boolean
+  onClose: () => void
+  children: React.ReactNode
+}) {
+  // 使用 hook，点击外部时关闭弹窗
+  const modalRef = useOnClickOutside<HTMLDivElement>(onClose)
+
+  if (!isOpen) return null
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div
         ref={modalRef}
-        style={{
-          background: 'white', padding: '2rem', borderRadius: '8px',
-          minWidth: '300px', position: 'relative',
-        }}
+        className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl"
       >
         <button
           onClick={onClose}
-          style={{ position: 'absolute', top: '8px', right: '8px' }}
+          className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
         >
           ✕
         </button>
         {children}
       </div>
     </div>
-  );
+  )
 }
 
-// 使用
+// 使用示例
 function ModalDemo() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false)
 
   return (
-    <div>
-      <button onClick={() => setIsOpen(true)}>打开弹窗</button>
+    <div className="p-8">
+      <button
+        onClick={() => setIsOpen(true)}
+        className="px-4 py-2 bg-blue-500 text-white rounded"
+      >
+        打开弹窗
+      </button>
+
       <Modal isOpen={isOpen} onClose={() => setIsOpen(false)}>
-        <h2>弹窗标题</h2>
-        <p>点击外部或按ESC关闭我</p>
+        <h2 className="text-xl font-bold mb-4">弹窗标题</h2>
+        <p>点击弹窗外的区域可以关闭弹窗</p>
       </Modal>
     </div>
-  );
+  )
 }
 \`\`\`
 
-到这里，useRef 的核心用法就都讲完了。总结一下：
-- 用 ref 操作 DOM（聚焦、滚动、测量）
-- 用 ref 存跨渲染的可变值（定时器id、上一个状态、标志位），不触发重渲染
-- 用 forwardRef 转发 ref 到子组件 DOM
-- 用 useImperativeHandle 自定义暴露给父组件的 API
-- 经典案例：点击外部关闭弹窗
+## 八、小结
 
-useRef 是一个功能非常强大的 Hook，在实际开发中会经常用到！`,
+- useRef 三种用途：DOM 引用、可变值容器、函数组件实例变量
+- 修改 ref.current 不会触发重渲染，适合存储不影响 UI 的值
+- 用泛型参数指定 ref 类型：\`useRef<HTMLInputElement>(null)\`
+- forwardRef 转发 ref 到子组件内部的 DOM 元素
+- useImperativeHandle 自定义暴露给父组件的命令式 API
+- ref callback 在 DOM 挂载/卸载时调用，适合动态测量
+- 选择原则：需要渲染更新用 useState，不需要更新用 useRef
+- useOnClickOutside 是经典的 ref 实战：监听文档点击判断是否在外部
+
+到此我们完成了 TypeScript + React 基础篇的学习，掌握了环境搭建、JSX 语法、组件定义、Props 类型、useState、事件处理、条件/列表渲染、useEffect、useRef 等核心知识。
+`,
   },
 ];

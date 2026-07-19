@@ -1,35 +1,28 @@
 export const chapters = [
   {
     id: "tsrx-usereducer",
-    icon: "🎛️",
     group: "Hooks篇",
+    icon: "🎛️",
     title: "useReducer复杂状态管理",
-    content: `## useReducer复杂状态管理
+    content: `## useReducer 复杂状态管理
 
-当组件状态逻辑复杂、包含多个子状态、或者下一个状态依赖于上一个状态时，useState 可能会导致代码臃肿且难以维护。useReducer 是 React 提供的另一种状态管理方案，它借鉴了 Redux 的 reducer 模式，让状态更新更可预测、更易测试。
+当组件状态逻辑变得复杂，包含多个子值，或者下一个状态依赖于之前的状态时，\`useReducer\` 会比 \`useState\` 更合适。它借鉴了 Redux 的 reducer 思想，但更加轻量，无需引入额外依赖。
 
-### 一、reducer函数：纯函数(state, action) => newState
+### reducer 纯函数核心概念
 
-useReducer 的核心是 reducer 函数，它必须是一个纯函数，接收当前状态和 action 对象，返回新的状态。
+\`reducer\` 是一个**纯函数**，接收当前 state 和一个 action 对象，返回新的 state：
 
 \`\`\`tsx
-import React, { useReducer } from 'react';
-
-// 定义状态类型
-interface CounterState {
-  count: number;
-}
-
-// 定义action类型 - 使用可辨识联合
-type CounterAction =
+// reducer 签名：(state, action) => newState
+// 纯函数要求：相同输入永远产生相同输出，不产生副作用，不直接修改state
+type CounterState = { count: number };
+type CounterAction = 
   | { type: 'increment' }
   | { type: 'decrement' }
   | { type: 'reset' }
   | { type: 'set'; payload: number };
 
-// reducer纯函数：接收当前state和action，返回新state
-const counterReducer = (state: CounterState, action: CounterAction): CounterState => {
-  // 使用switch穷尽检查所有action类型
+function counterReducer(state: CounterState, action: CounterAction): CounterState {
   switch (action.type) {
     case 'increment':
       return { count: state.count + 1 };
@@ -39,15 +32,22 @@ const counterReducer = (state: CounterState, action: CounterAction): CounterStat
       return { count: 0 };
     case 'set':
       return { count: action.payload };
+    // 穷尽检查：TypeScript 会报错如果有action类型没处理
     default:
-      // TypeScript穷尽检查：如果有未处理的action类型，编译时报错
-      const _exhaustive: never = action;
-      throw new Error(\`Unknown action type: \${_exhaustive}\`);
+      const _exhaustiveCheck: never = action;
+      throw new Error(\`Unknown action: \${_exhaustiveCheck}\`);
   }
-};
+}
+\`\`\`
 
-const Counter = () => {
-  // useReducer接收reducer函数和初始状态，返回state和dispatch
+### dispatch 分发 action
+
+\`useReducer\` 返回一个 state 和一个 \`dispatch\` 函数，调用 dispatch 并传入 action 对象即可触发状态更新：
+
+\`\`\`tsx
+import { useReducer } from 'react';
+
+function Counter() {
   const [state, dispatch] = useReducer(counterReducer, { count: 0 });
 
   return (
@@ -59,65 +59,62 @@ const Counter = () => {
       <button onClick={() => dispatch({ type: 'set', payload: 100 })}>设为100</button>
     </div>
   );
-};
+}
 \`\`\`
 
-### 二、TodoList完整reducer实现
+### TodoList 完整 reducer 实现
 
-下面是一个完整的TodoList应用，包含add/toggle/delete/edit/filter等全部功能：
+下面是一个功能完整的 TodoList 应用，包含添加、切换完成、删除、编辑、过滤、清除已完成等所有功能：
 
 \`\`\`tsx
-import React, { useReducer, useState } from 'react';
-
-// Todo项类型
-interface Todo {
-  id: number;
+// 定义类型
+type Todo = {
+  id: string;
   text: string;
   completed: boolean;
-}
+  createdAt: number;
+};
 
-// 过滤类型
 type FilterType = 'all' | 'active' | 'completed';
 
-// 状态类型
-interface TodoState {
+type TodoState = {
   todos: Todo[];
   filter: FilterType;
-  nextId: number;
-}
+  editingId: string | null;
+};
 
-// Action可辨识联合类型
 type TodoAction =
   | { type: 'add'; payload: string }
-  | { type: 'toggle'; payload: number }
-  | { type: 'delete'; payload: number }
-  | { type: 'edit'; payload: { id: number; text: string } }
+  | { type: 'toggle'; payload: string }
+  | { type: 'delete'; payload: string }
+  | { type: 'edit'; payload: { id: string; text: string } }
   | { type: 'setFilter'; payload: FilterType }
-  | { type: 'clearCompleted' };
+  | { type: 'clearCompleted' }
+  | { type: 'startEdit'; payload: string }
+  | { type: 'cancelEdit' };
 
 // 初始状态
 const initialState: TodoState = {
   todos: [],
   filter: 'all',
-  nextId: 1,
+  editingId: null,
 };
 
-// Todo reducer函数
-const todoReducer = (state: TodoState, action: TodoAction): TodoState => {
+// reducer 纯函数
+function todoReducer(state: TodoState, action: TodoAction): TodoState {
   switch (action.type) {
     case 'add':
-      // 添加新todo，id自增
+      const newTodo: Todo = {
+        id: Date.now().toString(),
+        text: action.payload.trim(),
+        completed: false,
+        createdAt: Date.now(),
+      };
       return {
         ...state,
-        todos: [...state.todos, {
-          id: state.nextId,
-          text: action.payload,
-          completed: false,
-        }],
-        nextId: state.nextId + 1,
+        todos: [...state.todos, newTodo],
       };
     case 'toggle':
-      // 切换todo的完成状态
       return {
         ...state,
         todos: state.todos.map(todo =>
@@ -127,13 +124,11 @@ const todoReducer = (state: TodoState, action: TodoAction): TodoState => {
         ),
       };
     case 'delete':
-      // 删除指定todo
       return {
         ...state,
         todos: state.todos.filter(todo => todo.id !== action.payload),
       };
     case 'edit':
-      // 编辑todo文本
       return {
         ...state,
         todos: state.todos.map(todo =>
@@ -141,1759 +136,1386 @@ const todoReducer = (state: TodoState, action: TodoAction): TodoState => {
             ? { ...todo, text: action.payload.text }
             : todo
         ),
+        editingId: null,
       };
     case 'setFilter':
-      // 设置过滤条件
       return { ...state, filter: action.payload };
     case 'clearCompleted':
-      // 清除所有已完成的todo
       return {
         ...state,
         todos: state.todos.filter(todo => !todo.completed),
       };
+    case 'startEdit':
+      return { ...state, editingId: action.payload };
+    case 'cancelEdit':
+      return { ...state, editingId: null };
     default:
-      const _exhaustive: never = action;
-      throw new Error(\`Unknown action: \${_exhaustive}\`);
+      const _exhaustiveCheck: never = action;
+      throw new Error(\`Unknown action: \${_exhaustiveCheck}\`);
   }
-};
+}
+\`\`\`
 
-const TodoList = () => {
-  const [state, dispatch] = useReducer(todoReducer, initialState);
-  const [inputText, setInputText] = useState('');
+### 惰性初始化 init 函数
 
-  // 根据filter过滤显示的todos
+\`useReducer\` 接受第三个参数 \`init\` 函数，用于惰性计算初始状态。当初始状态需要昂贵计算或从 localStorage 读取时非常有用：
+
+\`\`\`tsx
+// 从 localStorage 读取初始状态的 init 函数
+function init(initialArg: Todo[]): TodoState {
+  try {
+    const saved = localStorage.getItem('todos-tsrx');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('Failed to parse saved todos', e);
+  }
+  return {
+    todos: initialArg,
+    filter: 'all' as FilterType,
+    editingId: null,
+  };
+}
+
+function TodoApp() {
+  // 第三个参数 init，第二个参数是传给 init 的参数
+  const [state, dispatch] = useReducer(todoReducer, [], init);
+  
+  // 自动保存到 localStorage
+  useEffect(() => {
+    localStorage.setItem('todos-tsrx', JSON.stringify(state));
+  }, [state]);
+
   const filteredTodos = state.todos.filter(todo => {
     if (state.filter === 'active') return !todo.completed;
     if (state.filter === 'completed') return todo.completed;
     return true;
   });
 
-  const handleAdd = () => {
-    if (inputText.trim()) {
-      dispatch({ type: 'add', payload: inputText.trim() });
-      setInputText('');
-    }
-  };
+  const activeCount = state.todos.filter(t => !t.completed).length;
+  const completedCount = state.todos.length - activeCount;
 
   return (
-    <div>
-      <h2>TodoList with useReducer</h2>
-      <input
-        value={inputText}
-        onChange={e => setInputText(e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && handleAdd()}
-        placeholder="输入待办事项"
-      />
-      <button onClick={handleAdd}>添加</button>
+    <div className="max-w-lg mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">TodoList with useReducer</h1>
       
-      <ul>
+      {/* 添加todo输入框 */}
+      <input
+        type="text"
+        placeholder="添加新任务..."
+        className="w-full border p-2 rounded mb-4"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+            dispatch({ type: 'add', payload: e.currentTarget.value });
+            e.currentTarget.value = '';
+          }
+        }}
+      />
+
+      {/* 过滤按钮 */}
+      <div className="flex gap-2 mb-4">
+        {(['all', 'active', 'completed'] as FilterType[]).map(filter => (
+          <button
+            key={filter}
+            onClick={() => dispatch({ type: 'setFilter', payload: filter })}
+            className={\`px-3 py-1 rounded \${
+              state.filter === filter 
+                ? 'bg-blue-500 text-white' 
+                : 'bg-gray-200'
+            }\`}
+          >
+            {filter === 'all' ? '全部' : filter === 'active' ? '待完成' : '已完成'}
+          </button>
+        ))}
+      </div>
+
+      {/* Todo列表 */}
+      <ul className="space-y-2">
         {filteredTodos.map(todo => (
-          <li key={todo.id}>
+          <li key={todo.id} className="flex items-center gap-2 p-2 border rounded">
             <input
               type="checkbox"
               checked={todo.completed}
               onChange={() => dispatch({ type: 'toggle', payload: todo.id })}
             />
-            <span style={{ textDecoration: todo.completed ? 'line-through' : 'none' }}>
-              {todo.text}
-            </span>
-            <button onClick={() => dispatch({ type: 'delete', payload: todo.id })}>
+            {state.editingId === todo.id ? (
+              <input
+                type="text"
+                defaultValue={todo.text}
+                className="flex-1 border p-1"
+                autoFocus
+                onBlur={(e) => dispatch({ 
+                  type: 'edit', 
+                  payload: { id: todo.id, text: e.target.value } 
+                })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    dispatch({ 
+                      type: 'edit', 
+                      payload: { id: todo.id, text: e.currentTarget.value } 
+                    });
+                  }
+                  if (e.key === 'Escape') {
+                    dispatch({ type: 'cancelEdit' });
+                  }
+                }}
+              />
+            ) : (
+              <span
+                className={\`flex-1 \${todo.completed ? 'line-through text-gray-400' : ''}\`}
+                onDoubleClick={() => dispatch({ type: 'startEdit', payload: todo.id })}
+              >
+                {todo.text}
+              </span>
+            )}
+            <button
+              onClick={() => dispatch({ type: 'delete', payload: todo.id })}
+              className="text-red-500 hover:text-red-700"
+            >
               删除
             </button>
           </li>
         ))}
       </ul>
 
-      <div>
-        <button onClick={() => dispatch({ type: 'setFilter', payload: 'all' })}>全部</button>
-        <button onClick={() => dispatch({ type: 'setFilter', payload: 'active' })}>未完成</button>
-        <button onClick={() => dispatch({ type: 'setFilter', payload: 'completed' })}>已完成</button>
-        <button onClick={() => dispatch({ type: 'clearCompleted' })}>清除已完成</button>
+      {/* 底部统计和操作 */}
+      <div className="mt-4 flex justify-between items-center text-sm text-gray-500">
+        <span>{activeCount} 项待完成</span>
+        {completedCount > 0 && (
+          <button
+            onClick={() => dispatch({ type: 'clearCompleted' })}
+            className="text-red-500 hover:underline"
+          >
+            清除已完成 ({completedCount})
+          </button>
+        )}
       </div>
     </div>
   );
-};
+}
 \`\`\`
 
-### 三、初始化init：惰性创建初始状态
+### useReducer vs useState 选择指南
 
-useReducer 支持第三个参数 init 函数，用于惰性计算初始状态。当初始状态需要经过昂贵计算时（比如从localStorage读取），这种方式可以避免每次渲染都重新计算：
-
-\`\`\`tsx
-import React, { useReducer } from 'react';
-
-interface Todo {
-  id: number;
-  text: string;
-  completed: boolean;
-}
-
-interface TodoState {
-  todos: Todo[];
-  nextId: number;
-}
-
-type TodoAction =
-  | { type: 'add'; payload: string }
-  | { type: 'toggle'; payload: number }
-  | { type: 'delete'; payload: number };
-
-// init函数：惰性初始化，从localStorage读取数据
-const init = (initialTodos: Todo[]): TodoState => {
-  // 从localStorage读取保存的todos
-  const saved = localStorage.getItem('todos');
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      return {
-        todos: parsed.todos || initialTodos,
-        nextId: parsed.nextId || 1,
-      };
-    } catch (e) {
-      console.error('Failed to parse saved todos', e);
-    }
-  }
-  return { todos: initialTodos, nextId: 1 };
-};
-
-const todoReducer = (state: TodoState, action: TodoAction): TodoState => {
-  let newState: TodoState;
-  switch (action.type) {
-    case 'add':
-      newState = {
-        ...state,
-        todos: [...state.todos, { id: state.nextId, text: action.payload, completed: false }],
-        nextId: state.nextId + 1,
-      };
-      break;
-    case 'toggle':
-      newState = {
-        ...state,
-        todos: state.todos.map(t =>
-          t.id === action.payload ? { ...t, completed: !t.completed } : t
-        ),
-      };
-      break;
-    case 'delete':
-      newState = {
-        ...state,
-        todos: state.todos.filter(t => t.id !== action.payload),
-      };
-      break;
-    default:
-      return state;
-  }
-  // 每次状态变化时保存到localStorage
-  localStorage.setItem('todos', JSON.stringify(newState));
-  return newState;
-};
-
-const PersistentTodoList = () => {
-  // useReducer第三个参数是init函数，第二个参数是传给init的参数
-  const [state, dispatch] = useReducer(todoReducer, [], init);
-
-  return (
-    <div>
-      <p>数据自动保存到localStorage</p>
-      <button onClick={() => dispatch({ type: 'add', payload: '新任务' })}>
-        添加任务
-      </button>
-      <ul>
-        {state.todos.map(todo => (
-          <li key={todo.id}>
-            <input
-              type="checkbox"
-              checked={todo.completed}
-              onChange={() => dispatch({ type: 'toggle', payload: todo.id })}
-            />
-            {todo.text}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-};
-\`\`\`
-
-### 四、useReducer vs useState：如何选择？
+什么时候用 useReducer，什么时候用 useState？可以参考以下标准：
 
 | 场景 | useState | useReducer |
-|------|----------|------------|
-| 简单独立状态（如input、布尔开关） | ✅ 推荐 | ❌ 过度设计 |
-| 多个子状态互相关联 | ❌ 多次setState | ✅ 集中管理 |
-| 状态更新逻辑复杂（有条件分支） | ❌ 逻辑散落在事件处理中 | ✅ reducer集中处理 |
-| 状态转移需要可预测、可测试 | ❌ 难以测试 | ✅ reducer是纯函数易测试 |
-| 深层子组件需要触发状态更新 | ❌ 需要层层传递callback | ✅ 传递dispatch即可 |
-| 需要实现undo/redo | ❌ 困难 | ✅ 保存state历史数组 |
+| --- | --- | --- |
+| 简单的独立状态（如数字、字符串、布尔值） | ✅ 首选 | ❌ 过度复杂 |
+| 状态是对象/数组，有多个子字段 | ⚠️ 可以用但易混乱 | ✅ 更好 |
+| 状态更新逻辑复杂，有多种类型的更新 | ⚠️ setState里写逻辑散 | ✅ reducer集中管理 |
+| 下一个状态依赖前一个状态 | ⚠️ 用函数式更新 | ✅ reducer天然支持 |
+| 状态更新可预测，需要可测试 | ❌ 难以单元测试 | ✅ reducer纯函数易测试 |
+| 需要深层子组件触发状态更新 | ❌ props层层传递回调 | ✅ 配合useContext传dispatch |
+| 状态变更有明确的状态转移 | ❌ 隐式的setState | ✅ action描述发生了什么 |
+
+**经验法则**：如果你发现自己在写很多个相关的 \`useState\`，或者 setState 的逻辑越来越复杂（比如需要先判断某些条件再更新），那就是时候迁移到 useReducer 了。
+
+### useReducer + useContext 小型全局状态
+
+对于不需要 Redux 这类复杂状态管理库的中小型应用，useReducer + useContext 的组合完全够用：
 
 \`\`\`tsx
-import React, { useReducer, useState } from 'react';
+import { createContext, useContext, useReducer, ReactNode } from 'react';
 
-// 场景对比：useState vs useReducer
-
-// 适合useState的简单场景
-const SimpleCounter = () => {
-  // 单个数值，逻辑简单，用useState足够
-  const [count, setCount] = useState(0);
-  return (
-    <button onClick={() => setCount(c => c + 1)}>
-      Clicked {count} times
-    </button>
-  );
+// 创建Context
+type TodoContextType = {
+  state: TodoState;
+  dispatch: React.Dispatch<TodoAction>;
 };
 
-// 适合useReducer的复杂场景：表单多字段联动
-interface FormState {
-  username: string;
-  email: string;
-  password: string;
-  errors: Record<string, string>;
-  isSubmitting: boolean;
-}
-
-type FormAction =
-  | { type: 'setField'; field: keyof FormState; value: string }
-  | { type: 'setErrors'; errors: Record<string, string> }
-  | { type: 'submitStart' }
-  | { type: 'submitEnd' }
-  | { type: 'reset' };
-
-const formReducer = (state: FormState, action: FormAction): FormState => {
-  switch (action.type) {
-    case 'setField':
-      return { ...state, [action.field]: action.value, errors: {} };
-    case 'setErrors':
-      return { ...state, errors: action.errors, isSubmitting: false };
-    case 'submitStart':
-      return { ...state, isSubmitting: true, errors: {} };
-    case 'submitEnd':
-      return { ...state, isSubmitting: false };
-    case 'reset':
-      return { username: '', email: '', password: '', errors: {}, isSubmitting: false };
-    default:
-      return state;
-  }
-};
-
-const ComplexForm = () => {
-  // 多个字段关联更新，用useReducer更清晰
-  const [state, dispatch] = useReducer(formReducer, {
-    username: '',
-    email: '',
-    password: '',
-    errors: {},
-    isSubmitting: false,
-  });
-
-  const handleSubmit = async () => {
-    dispatch({ type: 'submitStart' });
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    dispatch({ type: 'submitEnd' });
-  };
-
-  return (
-    <form onSubmit={e => { e.preventDefault(); handleSubmit(); }}>
-      <input
-        value={state.username}
-        onChange={e => dispatch({ type: 'setField', field: 'username', value: e.target.value })}
-        placeholder="用户名"
-      />
-      {state.errors.username && <span>{state.errors.username}</span>}
-      <button type="submit" disabled={state.isSubmitting}>
-        {state.isSubmitting ? '提交中...' : '提交'}
-      </button>
-    </form>
-  );
-};
-\`\`\`
-
-### 五、useReducer + useContext 替代 Redux
-
-当状态需要在多层组件间共享时，可以结合 useReducer 和 useContext 创建一个轻量级的状态管理方案，适合中小型应用：
-
-\`\`\`tsx
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
-
-// ============ 全局状态定义 ============
-interface AppState {
-  user: { name: string; loggedIn: boolean } | null;
-  theme: 'light' | 'dark';
-  notifications: string[];
-}
-
-type AppAction =
-  | { type: 'login'; payload: { name: string } }
-  | { type: 'logout' }
-  | { type: 'toggleTheme' }
-  | { type: 'addNotification'; payload: string }
-  | { type: 'clearNotifications' };
-
-const initialAppState: AppState = {
-  user: null,
-  theme: 'light',
-  notifications: [],
-};
-
-const appReducer = (state: AppState, action: AppAction): AppState => {
-  switch (action.type) {
-    case 'login':
-      return { ...state, user: { name: action.payload.name, loggedIn: true } };
-    case 'logout':
-      return { ...state, user: null };
-    case 'toggleTheme':
-      return { ...state, theme: state.theme === 'light' ? 'dark' : 'light' };
-    case 'addNotification':
-      return { ...state, notifications: [...state.notifications, action.payload] };
-    case 'clearNotifications':
-      return { ...state, notifications: [] };
-    default:
-      return state;
-  }
-};
-
-// ============ Context创建 ============
-const AppStateContext = createContext<AppState | null>(null);
-const AppDispatchContext = createContext<React.Dispatch<AppAction> | null>(null);
+const TodoContext = createContext<TodoContextType | null>(null);
 
 // Provider组件
-interface AppProviderProps {
+function TodoProvider({ children, initialTodos = [] }: { 
   children: ReactNode;
+  initialTodos?: Todo[];
+}) {
+  const [state, dispatch] = useReducer(todoReducer, initialTodos, init);
+  
+  // 自动保存
+  useEffect(() => {
+    localStorage.setItem('todos-tsrx-context', JSON.stringify(state));
+  }, [state]);
+
+  return (
+    <TodoContext.Provider value={{ state, dispatch }}>
+      {children}
+    </TodoContext.Provider>
+  );
 }
 
-const AppProvider = ({ children }: AppProviderProps) => {
-  const [state, dispatch] = useReducer(appReducer, initialAppState);
-  return (
-    <AppStateContext.Provider value={state}>
-      <AppDispatchContext.Provider value={dispatch}>
-        {children}
-      </AppDispatchContext.Provider>
-    </AppStateContext.Provider>
-  );
-};
-
 // 自定义Hook封装
-const useAppState = () => {
-  const context = useContext(AppStateContext);
-  if (!context) throw new Error('useAppState must be used within AppProvider');
+function useTodos() {
+  const context = useContext(TodoContext);
+  if (!context) {
+    throw new Error('useTodos must be used within TodoProvider');
+  }
   return context;
-};
+}
 
-const useAppDispatch = () => {
-  const context = useContext(AppDispatchContext);
-  if (!context) throw new Error('useAppDispatch must be used within AppProvider');
-  return context;
-};
+// 深层子组件无需层层传props
+function TodoStats() {
+  const { state } = useTodos();
+  const activeCount = state.todos.filter(t => !t.completed).length;
+  return <span>{activeCount} 项待完成</span>;
+}
 
-// ============ 使用示例 ============
-const UserProfile = () => {
-  const state = useAppState();
-  const dispatch = useAppDispatch();
-  
+function AddTodo() {
+  const { dispatch } = useTodos();
   return (
-    <div>
-      {state.user ? (
-        <>
-          <p>欢迎, {state.user.name}!</p>
-          <button onClick={() => dispatch({ type: 'logout' })}>退出登录</button>
-        </>
-      ) : (
-        <button onClick={() => dispatch({ type: 'login', payload: { name: '张三' } })}>
-          登录
-        </button>
-      )}
-    </div>
+    <input
+      type="text"
+      placeholder="添加任务..."
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+          dispatch({ type: 'add', payload: e.currentTarget.value });
+          e.currentTarget.value = '';
+        }
+      }}
+    />
   );
-};
+}
 
-const ThemeToggle = () => {
-  const state = useAppState();
-  const dispatch = useAppDispatch();
+// App中使用
+function App() {
   return (
-    <button onClick={() => dispatch({ type: 'toggleTheme' })}>
-      当前主题: {state.theme}，点击切换
-    </button>
+    <TodoProvider>
+      <div>
+        <h1>Todo App (with Context)</h1>
+        <AddTodo />
+        <TodoList />
+        <TodoStats />
+      </div>
+    </TodoProvider>
   );
-};
-
-const App = () => (
-  <AppProvider>
-    <UserProfile />
-    <ThemeToggle />
-  </AppProvider>
-);
+}
 \`\`\`
 
-### 本章小结
+### 关键要点总结
 
-- **reducer必须是纯函数**：相同输入永远产生相同输出，不能有副作用、不能修改原state、不能调用非纯函数（如Date.now()、Math.random()）
-- **action使用可辨识联合**：通过type字段区分不同action类型，配合switch语句实现穷尽检查，TypeScript能在编译时捕获未处理的action
-- **dispatch是稳定引用**：dispatch函数在组件生命周期内不会改变，可以安全地作为useEffect依赖或传递给子组件
-- **选择原则**：简单状态用useState，复杂多关联状态用useReducer；需要跨组件共享时结合useContext
+1. **reducer必须是纯函数**：不能直接修改state，必须返回新对象；不能有API调用、Math.random()、Date.now()等副作用
+2. **action使用discriminated union类型**：通过type字段区分，TypeScript能自动类型收窄
+3. **不要忘记穷尽检查**：default分支用never类型，确保所有action都被处理
+4. **dispatch是稳定引用**：不会在重渲染时改变，可以安全传给子组件或作为useEffect依赖
+5. **惰性初始化用第三个参数init**：避免每次渲染都创建初始状态
+6. **useReducer不会让你少写代码**，但会让状态逻辑更清晰、更可预测、更易测试
+7. **复杂更新逻辑用useReducer**，简单值用useState，不要教条式使用
 `,
   },
   {
     id: "tsrx-usecontext",
-    icon: "🌍",
     group: "Hooks篇",
+    icon: "🌍",
     title: "useContext跨组件通信",
-    content: `## useContext跨组件通信
+    content: `## useContext 跨组件通信
 
-在React应用中，数据通常通过props自上而下传递。但当某些数据需要在多层嵌套的组件中使用时（如当前用户信息、主题、语言偏好），层层传递props会变得非常繁琐，这被称为"props drilling"问题。useContext提供了一种在组件之间共享此类数据的方式，不必显式地通过每一层组件传递props。
+Props 层层传递（prop drilling）是 React 应用中常见的痛点。\`useContext\` 提供了一种在组件之间共享状态的方式，无需显式地通过每一层组件传递 props。
 
-### 一、createContext泛型与Provider
+### createContext 泛型与默认值
 
-Context的使用分为三步：创建Context、提供Context（Provider）、消费Context（useContext）。
+使用 \`createContext<T>\` 创建 Context 时，需要提供一个默认值。这个默认值在组件树中没有对应 Provider 时使用：
 
 \`\`\`tsx
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext } from 'react';
 
-// ============ 1. 创建Context ============
-// 使用createContext创建Context，需要指定泛型类型
-// 参数是默认值，当组件没有被Provider包裹时使用
-
-// 主题Context
+// 方式1：创建时就给有意义的默认值
 type Theme = 'light' | 'dark';
-interface ThemeContextType {
+const ThemeContext = createContext<Theme>('light');
+
+// 方式2：给null作为默认值，在useContext时运行时检查（更常用）
+type ThemeContextType = {
   theme: Theme;
   toggleTheme: () => void;
+};
+const ThemeContext = createContext<ThemeContextType | null>(null);
+
+// 封装自定义Hook，带运行时检查
+function useTheme() {
+  const context = useContext(ThemeContext);
+  if (context === null) {
+    throw new Error('useTheme must be used within a ThemeProvider');
+  }
+  return context;
 }
+\`\`\`
 
-// 创建Context，默认值需要匹配ThemeContextType类型
-const ThemeContext = createContext<ThemeContextType>({
-  theme: 'light',
-  toggleTheme: () => {
-    console.warn('toggleTheme called outside ThemeProvider');
-  },
-});
+### Provider value 注入
 
-// ============ 2. 创建Provider组件 ============
-interface ThemeProviderProps {
-  children: ReactNode;
-}
+使用 \`Provider\` 组件包裹需要共享状态的子树，并通过 \`value\` prop 注入数据：
 
-const ThemeProvider = ({ children }: ThemeProviderProps) => {
-  const [theme, setTheme] = useState<Theme>('light');
+\`\`\`tsx
+import { useState, useEffect } from 'react';
 
+function ThemeProvider({ children }: { children: React.ReactNode }) {
+  // 从localStorage读取初始主题
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('theme-tsrx');
+      return (saved as Theme) || 'light';
+    }
+    return 'light';
+  });
+
+  // 切换主题
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
-  // value属性是传递给所有消费者的值
-  return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
-};
+  // 主题变化时：1. 保存到localStorage 2. 修改document的class
+  useEffect(() => {
+    localStorage.setItem('theme-tsrx', theme);
+    document.documentElement.classList.remove('light', 'dark');
+    document.documentElement.classList.add(theme);
+  }, [theme]);
 
-// ============ 3. 消费Context：自定义Hook封装 ============
-const useTheme = () => {
-  const context = useContext(ThemeContext);
-  // 如果context为默认值，说明没有被Provider包裹
-  if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
-  return context;
-};
-
-// ============ 使用示例 ============
-const ThemedButton = () => {
-  // 直接使用useContext获取主题，不需要通过props传递
-  const { theme, toggleTheme } = useTheme();
-  
-  return (
-    <button
-      onClick={toggleTheme}
-      style={{
-        background: theme === 'dark' ? '#333' : '#fff',
-        color: theme === 'dark' ? '#fff' : '#333',
-        padding: '10px 20px',
-        border: '1px solid #ccc',
-      }}
-    >
-      当前主题: {theme}，点击切换
-    </button>
-  );
-};
-
-// 深层嵌套组件也能直接获取
-const DeepNestedComponent = () => {
-  const { theme } = useTheme();
-  return (
-    <div style={{ padding: '20px', background: theme === 'dark' ? '#222' : '#f5f5f5' }}>
-      <p>我是深层嵌套组件，直接获取到主题: {theme}</p>
-      <ThemedButton />
-    </div>
-  );
-};
-
-const ContextDemo = () => (
-  <ThemeProvider>
-    <DeepNestedComponent />
-  </ThemeProvider>
-);
-\`\`\`
-
-### 二、ThemeContext主题切换完整Demo
-
-\`\`\`tsx
-import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react';
-
-// 完整的主题配置
-interface ThemeColors {
-  primary: string;
-  background: string;
-  text: string;
-  card: string;
-  border: string;
-}
-
-interface ThemeConfig {
-  name: 'light' | 'dark';
-  colors: ThemeColors;
-}
-
-const lightTheme: ThemeConfig = {
-  name: 'light',
-  colors: {
-    primary: '#3b82f6',
-    background: '#ffffff',
-    text: '#1f2937',
-    card: '#f9fafb',
-    border: '#e5e7eb',
-  },
-};
-
-const darkTheme: ThemeConfig = {
-  name: 'dark',
-  colors: {
-    primary: '#60a5fa',
-    background: '#111827',
-    text: '#f9fafb',
-    card: '#1f2937',
-    border: '#374151',
-  },
-};
-
-interface ThemeContextValue {
-  theme: ThemeConfig;
-  isDark: boolean;
-  toggleTheme: () => void;
-  setTheme: (theme: 'light' | 'dark') => void;
-}
-
-const ThemeContext = createContext<ThemeContextValue>({
-  theme: lightTheme,
-  isDark: false,
-  toggleTheme: () => {},
-  setTheme: () => {},
-});
-
-const useTheme = () => {
-  const context = useContext(ThemeContext);
-  if (!context) throw new Error('useTheme must be used within ThemeProvider');
-  return context;
-};
-
-interface ThemeProviderProps {
-  children: ReactNode;
-  defaultTheme?: 'light' | 'dark';
-}
-
-const ThemeProvider = ({ children, defaultTheme = 'light' }: ThemeProviderProps) => {
-  const [themeName, setThemeName] = useState<'light' | 'dark'>(defaultTheme);
-
-  const value = useMemo(() => ({
-    theme: themeName === 'dark' ? darkTheme : lightTheme,
-    isDark: themeName === 'dark',
-    toggleTheme: () => setThemeName(prev => prev === 'light' ? 'dark' : 'light'),
-    setTheme: (t: 'light' | 'dark') => setThemeName(t),
-  }), [themeName]);
+  // 用useMemo稳定value引用，避免不必要重渲染
+  const value = useMemo(() => ({ theme, toggleTheme }), [theme]);
 
   return (
     <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );
-};
+}
+\`\`\`
 
-// 主题卡片组件
-const ThemeCard = ({ title, children }: { title: string; children: ReactNode }) => {
-  const { theme } = useTheme();
-  return (
-    <div style={{
-      background: theme.colors.card,
-      color: theme.colors.text,
-      border: \`1px solid \${theme.colors.border}\`,
-      borderRadius: '8px',
-      padding: '20px',
-      margin: '10px 0',
-    }}>
-      <h3 style={{ color: theme.colors.primary, marginTop: 0 }}>{title}</h3>
-      {children}
-    </div>
-  );
-};
+配合 CSS Variables 实现主题切换：
 
-// 主题切换按钮
-const ThemeSwitcher = () => {
-  const { isDark, toggleTheme } = useTheme();
+\`\`\`css
+/* 全局CSS */
+:root.light {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f3f4f6;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --accent: #3b82f6;
+  --border: #e5e7eb;
+}
+
+:root.dark {
+  --bg-primary: #1f2937;
+  --bg-secondary: #374151;
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --accent: #60a5fa;
+  --border: #4b5563;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s, color 0.3s;
+}
+\`\`\`
+
+### ThemeContext 主题切换完整示例
+
+\`\`\`tsx
+// 主题切换按钮组件（可以在任意深层子组件）
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+  
   return (
     <button
       onClick={toggleTheme}
-      style={{
-        background: isDark ? darkTheme.colors.primary : lightTheme.colors.primary,
-        color: '#fff',
-        border: 'none',
-        borderRadius: '20px',
-        padding: '8px 20px',
-        cursor: 'pointer',
-      }}
+      className="p-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border)] hover:opacity-80 transition-opacity"
+      aria-label={theme === 'light' ? '切换到深色模式' : '切换到浅色模式'}
     >
-      {isDark ? '🌙 暗色模式' : '☀️ 亮色模式'}
+      {theme === 'light' ? '🌙' : '☀️'}
     </button>
   );
-};
+}
 
-const ThemeDemo = () => {
-  const { theme } = useTheme();
+// 卡片组件
+function ThemedCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div style={{
-      background: theme.colors.background,
-      color: theme.colors.text,
-      minHeight: '100vh',
-      padding: '20px',
-    }}>
-      <h1>ThemeContext 完整演示</h1>
-      <ThemeSwitcher />
-      <ThemeCard title="关于主题切换">
-        <p>通过Context，所有子组件都可以访问当前主题配置，无需层层传递props。</p>
-        <p>当前主题：{theme.name}</p>
-      </ThemeCard>
-      <ThemeCard title="颜色展示">
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          {Object.entries(theme.colors).map(([name, color]) => (
-            <div key={name} style={{
-              background: color,
-              width: '60px',
-              height: '60px',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '12px',
-              color: theme.name === 'dark' ? '#fff' : '#000',
-              border: \`1px solid \${theme.colors.border}\`,
-            }}>
-              {name}
-            </div>
-          ))}
-        </div>
-      </ThemeCard>
+    <div className="p-4 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)]">
+      <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+        {title}
+      </h3>
+      <p style={{ color: 'var(--text-secondary)' }}>{children}</p>
     </div>
   );
-};
+}
 
-const App = () => (
-  <ThemeProvider defaultTheme="light">
-    <ThemeDemo />
-  </ThemeProvider>
-);
+// 使用示例
+function ThemeDemo() {
+  return (
+    <ThemeProvider>
+      <div className="min-h-screen p-8">
+        <header className="flex justify-between items-center mb-8">
+          <h1 className="text-2xl font-bold">主题切换 Demo</h1>
+          <ThemeToggle />
+        </header>
+        
+        <div className="grid gap-4 md:grid-cols-2">
+          <ThemedCard title="浅色/深色模式">
+            点击右上角按钮切换主题，主题设置会自动保存到 localStorage，
+            下次访问时会记住你的选择。整个页面使用 CSS Variables 实现平滑过渡。
+          </ThemedCard>
+          <ThemedCard title="Context 优势">
+            任何子组件都可以直接调用 useTheme() 获取主题和切换函数，
+            不需要通过 props 层层传递。
+          </ThemedCard>
+        </div>
+      </div>
+    </ThemeProvider>
+  );
+}
 \`\`\`
 
-### 三、AuthContext用户登录态管理
+### AuthContext 用户登录态管理
+
+下面是完整的用户认证 Context，包含登录、登出、加载状态处理：
 
 \`\`\`tsx
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-
-// 用户类型
-interface User {
+type User = {
   id: string;
   name: string;
   email: string;
   avatar?: string;
-  role: 'admin' | 'user' | 'guest';
-}
+};
 
-// Auth Context 值类型
-interface AuthContextType {
+type AuthState = {
   user: User | null;
-  isLoading: boolean;
+  loading: boolean;
   error: string | null;
+};
+
+type AuthContextType = AuthState & {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  isAuthenticated: boolean;
-  isAdmin: boolean;
-}
+};
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// 自定义Hook：useAuth
-const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
-  return context;
-};
+function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    loading: true,
+    error: null,
+  });
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // 模拟登录API
-  const login = useCallback(async (email: string, password: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      // 模拟API请求延迟
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // 模拟验证
-      if (email === 'a****@*********' && password === '123456') {
-        setUser({
-          id: '1',
-          name: '管理员',
-          email: 'a****@*********',
-          role: 'admin',
+  // 初始化时检查本地token
+  useEffect(() => {
+    const token = localStorage.getItem('auth-token');
+    if (token) {
+      // 实际项目中调用API验证token并获取用户信息
+      fetch('/api/me', {
+        headers: { Authorization: \`Bearer \${token}\` }
+      })
+        .then(res => res.json())
+        .then(user => setState({ user, loading: false, error: null }))
+        .catch(() => {
+          localStorage.removeItem('auth-token');
+          setState({ user: null, loading: false, error: null });
         });
-      } else if (email && password.length >= 6) {
-        setUser({
-          id: '2',
-          name: email.split('@')[0],
-          email,
-          role: 'user',
-        });
-      } else {
-        throw new Error('邮箱或密码错误（密码至少6位）');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '登录失败');
-      throw err;
-    } finally {
-      setIsLoading(false);
+    } else {
+      setState(prev => ({ ...prev, loading: false }));
     }
   }, []);
 
-  const logout = useCallback(() => {
-    setUser(null);
-    setError(null);
-  }, []);
-
-  // 计算派生状态
-  const isAuthenticated = user !== null;
-  const isAdmin = user?.role === 'admin';
-
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        error,
-        login,
-        logout,
-        isAuthenticated,
-        isAdmin,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-// 使用示例组件
-const LoginForm = () => {
-  const { login, isLoading, error } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const login = async (email: string, password: string) => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
     try {
-      await login(email, password);
-    } catch {
-      // 错误已在context中处理
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      if (!res.ok) throw new Error('登录失败');
+      const data = await res.json();
+      localStorage.setItem('auth-token', data.token);
+      setState({ user: data.user, loading: false, error: null });
+    } catch (err) {
+      setState({ 
+        user: null, 
+        loading: false, 
+        error: err instanceof Error ? err.message : '登录失败' 
+      });
     }
   };
 
+  const logout = () => {
+    localStorage.removeItem('auth-token');
+    setState({ user: null, loading: false, error: null });
+  };
+
+  const value = useMemo(() => ({
+    ...state,
+    login,
+    logout,
+  }), [state]);
+
   return (
-    <form onSubmit={handleSubmit}>
-      <h2>登录</h2>
-      {error && <div style={{ color: 'red' }}>{error}</div>}
-      <div>
-        <input
-          type="email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          placeholder="邮箱"
-        />
-      </div>
-      <div>
-        <input
-          type="password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          placeholder="密码"
-        />
-      </div>
-      <button type="submit" disabled={isLoading}>
-        {isLoading ? '登录中...' : '登录'}
-      </button>
-      <p style={{ fontSize: '12px', color: '#666' }}>
-        提示：a****@********* / 123456 登录为管理员
-      </p>
-    </form>
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
   );
-};
-
-const UserDashboard = () => {
-  const { user, logout, isAdmin } = useAuth();
-  return (
-    <div>
-      <h2>欢迎，{user?.name}！</h2>
-      <p>邮箱：{user?.email}</p>
-      <p>角色：{user?.role}</p>
-      {isAdmin && <p style={{ color: 'red' }}>🔐 您有管理员权限</p>}
-      <button onClick={logout}>退出登录</button>
-    </div>
-  );
-};
-
-const AuthDemo = () => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <UserDashboard /> : <LoginForm />;
-};
-
-const App = () => (
-  <AuthProvider>
-    <AuthDemo />
-  </AuthProvider>
-);
-\`\`\`
-
-### 四、多Context拆分与性能优化
-
-Context有一个重要特性：**当Provider的value引用变化时，所有消费该Context的组件都会重新渲染**，即使组件只用到了value中的某一部分。解决方法是按更新频率拆分多个Context。
-
-\`\`\`tsx
-import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react';
-
-// ❌ 不好的做法：把所有状态放在一个Context里
-const BadStoreContext = createContext({
-  user: null as { name: string } | null,
-  theme: 'light' as string,
-  notifications: [] as string[],
-  setUser: (_: { name: string } | null) => {},
-  setTheme: (_: string) => {},
-  addNotification: (_: string) => {},
-});
-
-// 问题：addNotification被调用时，即使只消费theme的组件也会重渲染
-
-// ✅ 好的做法：按更新频率拆分Context
-// 1. 用户状态（登录/登出，更新频率低）
-const UserContext = createContext<{
-  user: { name: string } | null;
-  setUser: (user: { name: string } | null) => void;
-} | null>(null);
-
-// 2. 主题状态（切换频率低）
-const ThemeContext = createContext<{
-  theme: 'light' | 'dark';
-  setTheme: (theme: 'light' | 'dark') => void;
-} | null>(null);
-
-// 3. 通知状态（更新频率高）
-const NotificationContext = createContext<{
-  notifications: string[];
-  addNotification: (msg: string) => void;
-  clearNotifications: () => void;
-} | null>(null);
-
-// 各Context的Provider可以单独提供，也可以组合
-const useUser = () => {
-  const ctx = useContext(UserContext);
-  if (!ctx) throw new Error('useUser must be used within UserProvider');
-  return ctx;
-};
-
-const useThemeValue = () => {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) throw new Error('useThemeValue must be used within ThemeProvider');
-  return ctx;
-};
-
-const useNotifications = () => {
-  const ctx = useContext(NotificationContext);
-  if (!ctx) throw new Error('useNotifications must be used within NotificationProvider');
-  return ctx;
-};
-
-// 组合Provider组件
-interface AppProvidersProps {
-  children: ReactNode;
 }
 
-const AppProviders = ({ children }: AppProvidersProps) => {
-  const [user, setUser] = useState<{ name: string } | null>(null);
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [notifications, setNotifications] = useState<string[]>([]);
+function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  return context;
+}
 
-  // 使用useMemo稳定value引用
-  const userValue = useMemo(() => ({ user, setUser }), [user]);
-  const themeValue = useMemo(() => ({ theme, setTheme }), [theme]);
-  const notificationValue = useMemo(() => ({
-    notifications,
-    addNotification: (msg: string) => setNotifications(prev => [...prev, msg]),
-    clearNotifications: () => setNotifications([]),
-  }), [notifications]);
-
-  return (
-    <UserContext.Provider value={userValue}>
-      <ThemeContext.Provider value={themeValue}>
-        <NotificationContext.Provider value={notificationValue}>
-          {children}
-        </NotificationContext.Provider>
-      </ThemeContext.Provider>
-    </UserContext.Provider>
-  );
-};
-
-// 主题切换组件只订阅ThemeContext，通知更新不会导致它重渲染
-const ThemeOnlyComponent = React.memo(() => {
-  console.log('ThemeOnlyComponent rendered'); // 添加通知时不会打印
-  const { theme, setTheme } = useThemeValue();
-  return (
-    <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
-      主题: {theme}
-    </button>
-  );
-});
-
-// 通知组件只订阅NotificationContext
-const NotificationList = React.memo(() => {
-  console.log('NotificationList rendered'); // 切换主题时不会打印
-  const { notifications, clearNotifications } = useNotifications();
-  return (
-    <div>
-      <h4>通知 ({notifications.length})</h4>
-      <button onClick={clearNotifications}>清空</button>
-      <ul>
-        {notifications.map((n, i) => <li key={i}>{n}</li>)}
-      </ul>
-    </div>
-  );
-});
+// 路由守卫组件示例
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  
+  if (loading) return <div className="p-8 text-center">加载中...</div>;
+  if (!user) return <div className="p-8 text-center">请先登录</div>;
+  
+  return <>{children}</>;
+}
 \`\`\`
 
-### 五、Context性能问题与useMemo稳定引用
+### 多 Context 拆分原则
 
-关于Context性能，需要理解以下关键几点：
+**不要把所有状态都塞进一个 AppContext！** 应该按照**更新频率**和**关注点**拆分：
 
-1. **React.memo不能阻止context引起的重渲染**：即使组件被memo包裹，如果它消费的context value变化了，组件仍然会重渲染
-2. **value使用useMemo包裹**：如果不使用useMemo，每次Provider重渲染都会创建新的对象引用，导致所有消费者无意义重渲染
-3. **拆分粒度要适度**：不是拆得越细越好，过细会导致Provider嵌套过深，增加代码复杂度
+| 拆分策略 | 原因 |
+| --- | --- |
+| 按功能域拆分（ThemeContext、AuthContext、CartContext） | 职责单一，代码易维护 |
+| 按更新频率拆分（频繁变化的单独一个Context） | 避免不相关组件因value变化重渲染 |
+| 把state和dispatch分开（可选高级优化） | 只需要dispatch的组件不会因state变化重渲染 |
+
+错误示例（一个大AppContext）：
+\`\`\`tsx
+// ❌ 不推荐：一个巨大的Context包所有
+const AppContext = createContext({
+  theme: 'light',
+  user: null,
+  todos: [],
+  cart: [],
+  notifications: [],
+  // ... 几十个属性
+});
+// 问题：任何一个属性变化，所有消费组件都重渲染
+\`\`\`
+
+正确做法：多个小Context组合：
+\`\`\`tsx
+// ✅ 推荐：拆分多个Context
+function AppProviders({ children }: { children: React.ReactNode }) {
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <TodoProvider>
+          <CartProvider>
+            <NotificationProvider>
+              {children}
+            </NotificationProvider>
+          </CartProvider>
+        </TodoProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  );
+}
+\`\`\`
+
+### Context 性能问题与解决方案
+
+Context 的性能陷阱：**只要 Provider 的 value 引用变化，所有消费该 Context 的组件都会重渲染**，即使你用了 React.memo 也挡不住！
 
 \`\`\`tsx
-import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react';
-
-// 性能对比：使用useMemo vs 不使用useMemo
-
-// ✅ 正确：使用useMemo缓存value
-const CorrectContext = createContext<{ count: number }>({ count: 0 });
-
-const CorrectProvider = ({ children }: { children: ReactNode }) => {
-  const [count, setCount] = useState(0);
-  const [unrelatedState, setUnrelatedState] = useState(0);
-
-  // useMemo确保只有count变化时value引用才变
-  const value = useMemo(() => ({ count }), [count]);
-
+// ❌ 性能问题：每次渲染value都是新对象
+function BadThemeProvider({ children }) {
+  const [theme, setTheme] = useState('light');
   return (
-    <CorrectContext.Provider value={value}>
-      <button onClick={() => setUnrelatedState(s => s + 1)}>
-        不相关状态更新: {unrelatedState}
-      </button>
-      <button onClick={() => setCount(c => c + 1)}>
-        Count +1
-      </button>
+    <ThemeContext.Provider value={{
+      theme,
+      toggleTheme: () => setTheme(t => t === 'light' ? 'dark' : 'light')
+    }}>
       {children}
-    </CorrectContext.Provider>
+    </ThemeContext.Provider>
   );
-};
+}
+// 问题：toggleTheme函数每次渲染都是新引用，导致value是新对象
 
-// ❌ 错误：不使用useMemo，每次Provider重渲染都创建新对象
-const BadContext = createContext<{ count: number }>({ count: 0 });
-
-const BadProvider = ({ children }: { children: ReactNode }) => {
-  const [count, setCount] = useState(0);
-  const [unrelatedState, setUnrelatedState] = useState(0);
-
-  // 没有useMemo，每次渲染都是新对象{}
-  // unrelatedState变化时，消费者也会重渲染！
-  const value = { count };
-
+// ✅ 正确做法：useMemo稳定value引用，useCallback稳定函数引用
+function GoodThemeProvider({ children }) {
+  const [theme, setTheme] = useState<Theme>('light');
+  
+  const toggleTheme = useCallback(() => {
+    setTheme(t => t === 'light' ? 'dark' : 'light');
+  }, []);
+  
+  const value = useMemo(() => ({ theme, toggleTheme }), [theme, toggleTheme]);
+  
   return (
-    <BadContext.Provider value={value}>
+    <ThemeContext.Provider value={value}>
       {children}
-    </BadContext.Provider>
+    </ThemeContext.Provider>
   );
-};
-
-// 消费者组件
-const Consumer = () => {
-  const { count } = useContext(CorrectContext);
-  console.log('Consumer rendered with count:', count);
-  return <p>Count: {count}</p>;
-};
+}
 \`\`\`
 
-### 本章小结
+高级优化：拆分state和dispatch Context
+\`\`\`tsx
+// 更细粒度的优化：将state和dispatch分开
+const TodoStateContext = createContext<TodoState | null>(null);
+const TodoDispatchContext = createContext<React.Dispatch<TodoAction> | null>(null);
 
-- **createContext需要泛型类型**：明确Context值的类型，获得完整类型推断
-- **Provider必须包裹在组件树外层**：消费组件必须是Provider的后代，否则使用默认值
-- **自定义Hook封装useContext**：提供更好的错误提示和使用体验
-- **Context性能问题**：value引用变化会重渲染所有消费者，memo无法拦截
-- **按更新频率拆分Context**：高频更新的数据独立成Context，避免无关重渲染
-- **useMemo稳定value引用**：Provider中始终用useMemo包裹value对象
+function TodoProvider({ children }) {
+  const [state, dispatch] = useReducer(todoReducer, initialState);
+  
+  // dispatch本身是稳定的，不需要memo
+  return (
+    <TodoStateContext.Provider value={state}>
+      <TodoDispatchContext.Provider value={dispatch}>
+        {children}
+      </TodoDispatchContext.Provider>
+    </TodoStateContext.Provider>
+  );
+}
+
+// 只需要触发action的组件，不会因为state变化重渲染！
+function AddTodoButton() {
+  const dispatch = useContext(TodoDispatchContext)!;
+  // 这个组件只用到dispatch，不会因为todos变化而重渲染
+  return <button onClick={() => dispatch({ type: 'add' })}>添加</button>;
+}
+\`\`\`
+
+### 关键要点总结
+
+1. **createContext给默认值**：要么给合理默认值，要么给null+自定义Hook运行时检查并throw
+2. **始终封装自定义Hook**：useTheme()、useAuth()比直接useContext(ThemeContext)更安全
+3. **value必须用useMemo包裹**：否则每次Provider重渲染都会创建新对象，导致所有消费者重渲染
+4. **函数用useCallback包裹**：或者把函数放在useMemo的依赖里
+5. **按功能/更新频率拆分Context**：不要一个AppContext包打天下
+6. **React.memo挡不住Context变化**：memo只挡props变化，context变化会穿透memo
+7. **Context不是状态管理工具**：它是依赖注入机制，复杂状态逻辑配合useReducer使用
 `,
   },
   {
     id: "tsrx-usememo",
+    group: "Hooks篇",
     icon: "🧮",
     title: "useMemo计算缓存",
-    content: `## useMemo计算缓存
+    content: `## useMemo 计算缓存
 
-在React组件渲染过程中，如果存在计算开销较大的操作（如大数组过滤排序、复杂数学计算、数据转换），每次渲染都重新执行这些操作会导致性能问题。useMemo可以缓存计算结果，只有当依赖项发生变化时才重新计算。
+\`useMemo\` 用于缓存计算结果，在依赖不变时跳过昂贵的计算。它是 React 性能优化的重要工具，但过度使用反而会增加代码复杂度和内存开销。
 
-### 一、useMemo(() => compute, deps)基本用法
+### useMemo 基础用法
 
-useMemo接收两个参数：一个"创建"函数和一个依赖数组。它会返回该函数的返回值，并在依赖不变时缓存这个结果。
+\`useMemo\` 接收一个计算函数和依赖数组，返回缓存的值。只有当依赖变化时才会重新计算：
 
 \`\`\`tsx
-import React, { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
-// 昂贵计算函数：斐波那契数列（递归实现，故意不优化以展示性能差异）
-const fib = (n: number): number => {
-  if (n <= 1) return n;
-  return fib(n - 1) + fib(n - 2);
-};
-
-const FibCalculator = () => {
-  const [n, setN] = useState(30);
+function useMemoDemo() {
   const [count, setCount] = useState(0);
+  const [otherState, setOtherState] = useState(0);
 
-  // ✅ useMemo缓存计算结果，只有n变化时才重新计算
-  const fibResult = useMemo(() => {
-    console.log('Calculating fib(' + n + ')...');
-    return fib(n);
-  }, [n]); // 依赖数组：n变化时重新计算
+  // 普通计算：每次渲染都会执行
+  const expensiveResult = expensiveCompute(count);
 
-  // 如果不用useMemo，每次点击count按钮也会重新计算fib！
-  // const fibResult = fib(n); // ❌ 每次渲染都计算
+  // useMemo缓存：只有count变化才重新计算
+  const memoizedResult = useMemo(() => {
+    console.log('重新计算 expensiveCompute...');
+    return expensiveCompute(count);
+  }, [count]); // 依赖数组
 
   return (
     <div>
-      <h2>useMemo缓存斐波那契计算</h2>
-      <div>
-        <label>n = </label>
-        <input
-          type="number"
-          value={n}
-          onChange={e => setN(Number(e.target.value) || 0)}
-        />
-      </div>
-      <p>fib({n}) = <strong>{fibResult}</strong></p>
-      <p>无关计数器：{count}</p>
-      <button onClick={() => setCount(c => c + 1)}>
-        点击+1（不应该触发fib计算）
+      <p>Count: {count}</p>
+      <p>计算结果: {memoizedResult}</p>
+      <button onClick={() => setCount(c => c + 1)}>增加count (触发重算)</button>
+      <button onClick={() => setOtherState(o => o + 1)}>
+        改变其他状态 (不触发重算)
       </button>
-      <p style={{ fontSize: '12px', color: '#666' }}>
-        打开控制台观察：只有n变化时才打印"Calculating..."
-      </p>
     </div>
   );
-};
-\`\`\`
-
-### 二、大列表过滤排序性能Demo
-
-\`\`\`tsx
-import React, { useState, useMemo } from 'react';
-
-// 生成模拟数据
-const generateData = (count: number) => {
-  return Array.from({ length: count }, (_, i) => ({
-    id: i + 1,
-    name: \`用户\${i + 1}\`,
-    age: 18 + Math.floor(Math.random() * 50),
-    score: Math.floor(Math.random() * 100),
-    department: ['技术部', '产品部', '设计部', '运营部'][Math.floor(Math.random() * 4)],
-  }));
-};
-
-interface User {
-  id: number;
-  name: string;
-  age: number;
-  score: number;
-  department: string;
 }
 
-const largeUserData = generateData(10000); // 1万条数据
-
-const LargeListDemo = () => {
-  const [searchText, setSearchText] = useState('');
-  const [sortBy, setSortBy] = useState<'name' | 'age' | 'score'>('score');
-  const [filterDept, setFilterDept] = useState('全部');
-  const [darkMode, setDarkMode] = useState(false); // 无关状态
-
-  // ✅ useMemo缓存大列表过滤排序结果
-  // 只有searchText/sortBy/filterDept变化时才重新计算
-  const filteredAndSortedUsers = useMemo(() => {
-    console.log('正在过滤和排序用户列表...');
-    let result = largeUserData;
-
-    // 按部门过滤
-    if (filterDept !== '全部') {
-      result = result.filter(u => u.department === filterDept);
-    }
-
-    // 按搜索词过滤
-    if (searchText) {
-      const lowerSearch = searchText.toLowerCase();
-      result = result.filter(u => u.name.toLowerCase().includes(lowerSearch));
-    }
-
-    // 排序
-    result = [...result].sort((a, b) => {
-      if (sortBy === 'name') return a.name.localeCompare(b.name);
-      return b[sortBy] - a[sortBy];
-    });
-
-    return result;
-  }, [searchText, sortBy, filterDept]); // 依赖数组
-
-  // 只渲染前100条（虚拟滚动简化版）
-  const displayUsers = filteredAndSortedUsers.slice(0, 100);
-
-  return (
-    <div style={{ padding: '20px' }}>
-      <h2>大列表过滤排序（useMemo优化）</h2>
-      <p>共 {largeUserData.length} 条数据，显示匹配的前100条</p>
-      
-      <div style={{ marginBottom: '10px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-        <input
-          value={searchText}
-          onChange={e => setSearchText(e.target.value)}
-          placeholder="搜索用户名"
-        />
-        <select value={filterDept} onChange={e => setFilterDept(e.target.value)}>
-          <option value="全部">全部部门</option>
-          <option value="技术部">技术部</option>
-          <option value="产品部">产品部</option>
-          <option value="设计部">设计部</option>
-          <option value="运营部">运营部</option>
-        </select>
-        <select value={sortBy} onChange={e => setSortBy(e.target.value as any)}>
-          <option value="score">按分数排序</option>
-          <option value="age">按年龄排序</option>
-          <option value="name">按名称排序</option>
-        </select>
-        <button onClick={() => setDarkMode(d => !d)}>
-          切换{darkMode ? '亮色' : '暗色'}模式（无关状态）
-        </button>
-      </div>
-
-      <p>匹配结果：{filteredAndSortedUsers.length} 条</p>
-
-      <div style={{ maxHeight: '400px', overflow: 'auto', border: '1px solid #ccc' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ position: 'sticky', top: 0, background: darkMode ? '#333' : '#f0f0f0' }}>
-              <th style={{ padding: '8px', borderBottom: '1px solid #ccc' }}>ID</th>
-              <th style={{ padding: '8px', borderBottom: '1px solid #ccc' }}>姓名</th>
-              <th style={{ padding: '8px', borderBottom: '1px solid #ccc' }}>年龄</th>
-              <th style={{ padding: '8px', borderBottom: '1px solid #ccc' }}>分数</th>
-              <th style={{ padding: '8px', borderBottom: '1px solid #ccc' }}>部门</th>
-            </tr>
-          </thead>
-          <tbody>
-            {displayUsers.map(user => (
-              <tr key={user.id}>
-                <td style={{ padding: '6px 8px' }}>{user.id}</td>
-                <td style={{ padding: '6px 8px' }}>{user.name}</td>
-                <td style={{ padding: '6px 8px' }}>{user.age}</td>
-                <td style={{ padding: '6px 8px' }}>{user.score}</td>
-                <td style={{ padding: '6px 8px' }}>{user.department}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
+// 模拟昂贵计算
+function expensiveCompute(n: number): number {
+  console.log('执行昂贵计算...');
+  let result = 0;
+  for (let i = 0; i < 100000000; i++) {
+    result += (n * i) % 17;
+  }
+  return result;
+}
 \`\`\`
 
-### 三、保持对象/数组引用稳定，配合React.memo防止子组件重渲染
+### 斐波那契/大列表性能 Demo
 
-useMemo另一个重要用途：保持传递给子组件的对象/数组引用稳定，避免React.memo失效导致的无意义重渲染。
+下面演示一个大列表 filter+sort 的场景，展示 useMemo 的性能提升：
 
 \`\`\`tsx
-import React, { useState, useMemo, memo } from 'react';
+type Item = {
+  id: number;
+  name: string;
+  category: 'electronics' | 'clothing' | 'books' | 'food';
+  price: number;
+  rating: number;
+};
 
-// 子组件：使用React.memo包裹
-// React.memo对props进行浅比较，props引用不变则不重渲染
-const ChildComponent = memo(({ config, items }: {
-  config: { color: string; size: number };
-  items: number[];
-}) => {
-  console.log('ChildComponent rendered!');
+// 生成10000条模拟数据
+const allItems: Item[] = Array.from({ length: 10000 }, (_, i) => ({
+  id: i,
+  name: \`商品 \${i + 1}\`,
+  category: ['electronics', 'clothing', 'books', 'food'][i % 4] as Item['category'],
+  price: Math.floor(Math.random() * 1000) + 10,
+  rating: Math.round((Math.random() * 4 + 1) * 10) / 10,
+}));
+
+function ProductList() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'price' | 'rating' | 'name'>('rating');
+  const [minPrice, setMinPrice] = useState(0);
+
+  // ❌ 没有useMemo：每次输入框变化都重新过滤排序10000条数据
+  // const filteredItems = allItems
+  //   .filter(item => item.name.includes(searchTerm))
+  //   .filter(item => selectedCategory === 'all' || item.category === selectedCategory)
+  //   .filter(item => item.price >= minPrice)
+  //   .sort((a, b) => b[sortBy] > a[sortBy] ? 1 : -1);
+
+  // ✅ 使用useMemo：只有依赖变化时才重新计算
+  const filteredItems = useMemo(() => {
+    console.log('重新过滤排序...');
+    return allItems
+      .filter(item => 
+        item.name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .filter(item => 
+        selectedCategory === 'all' || item.category === selectedCategory
+      )
+      .filter(item => item.price >= minPrice)
+      .sort((a, b) => {
+        if (sortBy === 'name') return a.name.localeCompare(b.name);
+        return b[sortBy] - a[sortBy];
+      });
+  }, [searchTerm, selectedCategory, sortBy, minPrice]);
+
+  // 分类统计也可以缓存
+  const categoryStats = useMemo(() => {
+    console.log('计算分类统计...');
+    return {
+      total: allItems.length,
+      electronics: allItems.filter(i => i.category === 'electronics').length,
+      clothing: allItems.filter(i => i.category === 'clothing').length,
+      books: allItems.filter(i => i.category === 'books').length,
+      food: allItems.filter(i => i.category === 'food').length,
+    };
+  }, []); // 空依赖：只计算一次
+
   return (
-    <div style={{ color: config.color, fontSize: config.size }}>
-      <p>配置：color={config.color}, size={config.size}</p>
-      <p>数据项：{items.join(', ')}</p>
+    <div className="p-4 max-w-6xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">商品列表 (共{categoryStats.total}件)</h1>
+      
+      {/* 搜索和筛选区域 */}
+      <div className="grid gap-4 mb-6 md:grid-cols-4">
+        <input
+          type="text"
+          placeholder="搜索商品..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          className="border p-2 rounded"
+        />
+        <select
+          value={selectedCategory}
+          onChange={e => setSelectedCategory(e.target.value)}
+          className="border p-2 rounded"
+        >
+          <option value="all">全部分类</option>
+          <option value="electronics">电子产品 ({categoryStats.electronics})</option>
+          <option value="clothing">服装 ({categoryStats.clothing})</option>
+          <option value="books">图书 ({categoryStats.books})</option>
+          <option value="food">食品 ({categoryStats.food})</option>
+        </select>
+        <select
+          value={sortBy}
+          onChange={e => setSortBy(e.target.value as typeof sortBy)}
+          className="border p-2 rounded"
+        >
+          <option value="rating">按评分排序</option>
+          <option value="price">按价格排序</option>
+          <option value="name">按名称排序</option>
+        </select>
+        <input
+          type="number"
+          placeholder="最低价格"
+          value={minPrice}
+          onChange={e => setMinPrice(Number(e.target.value))}
+          className="border p-2 rounded"
+        />
+      </div>
+
+      <p className="mb-4 text-gray-500">
+        筛选结果: {filteredItems.length} 件商品
+      </p>
+
+      {/* 商品列表 - 只渲染前100条防止卡顿 */}
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {filteredItems.slice(0, 100).map(item => (
+          <div key={item.id} className="border p-3 rounded hover:shadow-md">
+            <h3 className="font-semibold">{item.name}</h3>
+            <p className="text-sm text-gray-500">{item.category}</p>
+            <p className="text-lg text-blue-600">¥{item.price}</p>
+            <p className="text-yellow-500">⭐ {item.rating}</p>
+          </div>
+        ))}
+      </div>
+      {filteredItems.length > 100 && (
+        <p className="mt-4 text-gray-400 text-center">
+          仅显示前100条结果，共{filteredItems.length}条
+        </p>
+      )}
+    </div>
+  );
+}
+\`\`\`
+
+### 保持引用稳定配合 React.memo
+
+useMemo 的另一个重要用途：保持对象/数组引用稳定，避免子组件不必要的重渲染：
+
+\`\`\`tsx
+import { memo } from 'react';
+
+// 子组件用memo包裹，props浅比较相等则跳过渲染
+const ChildComponent = memo(function ChildComponent({ 
+  config, 
+  items 
+}: { 
+  config: { theme: string; size: number };
+  items: number[];
+}) {
+  console.log('ChildComponent 渲染');
+  return (
+    <div style={{ fontSize: config.size }}>
+      <p>Theme: {config.theme}</p>
+      <ul>{items.map(i => <li key={i}>{i}</li>)}</ul>
     </div>
   );
 });
 
-const ParentComponent = () => {
+function ParentComponent() {
   const [count, setCount] = useState(0);
-  const [color, setColor] = useState('blue');
 
-  // ❌ 错误：每次渲染都是新对象，React.memo失效！
-  // const badConfig = { color, size: 16 };
-  // const badItems = [1, 2, 3];
+  // ❌ 问题：每次渲染都创建新对象/新数组，memo失效
+  // const config = { theme: 'dark', size: 16 };
+  // const items = [1, 2, 3];
 
-  // ✅ 正确：使用useMemo保持引用稳定
-  const config = useMemo(() => ({
-    color,
-    size: 16,
-  }), [color]); // 只有color变化时才返回新对象
+  // ✅ 正确：useMemo保持引用稳定
+  const config = useMemo(() => ({ 
+    theme: 'dark' as const, 
+    size: 16 
+  }), []); // 依赖为空，引用永远不变
 
-  const items = useMemo(() => [1, 2, 3], []); // 空依赖，永远不重新创建
+  const items = useMemo(() => [1, 2, 3], []);
 
   return (
     <div>
-      <h2>useMemo稳定引用 + React.memo</h2>
-      <button onClick={() => setCount(c => c + 1)}>
-        点击计数：{count}（不应该导致Child重渲染）
-      </button>
-      <button onClick={() => setColor(c => c === 'blue' ? 'red' : 'blue')}>
-        切换颜色（会导致Child重渲染）
-      </button>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount(c => c + 1)}>重渲染父组件</button>
+      {/* 点击按钮时，config和items引用不变，ChildComponent不会重渲染 */}
       <ChildComponent config={config} items={items} />
-      <p style={{ fontSize: '12px', color: '#666' }}>
-        打开控制台观察：点击计数按钮时ChildComponent不会打印rendered
-      </p>
     </div>
   );
-};
+}
 \`\`\`
 
-### 四、useMemo依赖错误案例与过度优化反模式
+### useMemo 依赖错误案例
 
-使用useMemo时要注意正确设置依赖数组，同时避免过早优化。
+依赖数组是最容易出 bug 的地方：
 
 \`\`\`tsx
-import React, { useState, useMemo } from 'react';
+function SearchResults({ query, filter }: { query: string; filter: object }) {
+  // ❌ 错误1：依赖遗漏 - 使用了filter但没放进依赖数组
+  // const results = useMemo(() => {
+  //   return search(query, filter);
+  // }, [query]); // filter变化时不会重新计算！
 
-const UseMemoPitfalls = () => {
-  const [a, setA] = useState(1);
-  const [b, setB] = useState(2);
+  // ❌ 错误2：依赖是对象/数组字面量，每次渲染引用都变
+  // 父组件每次render都新建{minPrice: 100}，导致这里每次都重算
+  // const results = useMemo(() => {
+  //   return search(query, filter);
+  // }, [query, filter]); // filter永远是新引用，缓存失效
 
-  // ❌ 错误1：在依赖中使用了memo计算值本身，造成循环依赖或过时值
-  // const badSum = useMemo(() => a + badSum, [a, badSum]); // 不要这样做！
+  // ✅ 正确：基本类型值作为依赖，或用useMemo稳定父组件传的对象
+  const results = useMemo(() => {
+    return search(query, filter);
+  }, [query, filter]);
 
-  // ✅ 正确：依赖只包含真正需要的原始值
-  const sum = useMemo(() => a + b, [a, b]);
-
-  // ❌ 错误2：useMemo中执行副作用（useMemo是渲染阶段执行的）
-  // const badEffect = useMemo(() => {
-  //   document.title = \`Sum: \${sum}\`; // 不要在useMemo中做副作用！
-  //   return sum;
-  // }, [sum]);
-
-  // ✅ 正确：副作用应该用useEffect
-  // useEffect(() => {
-  //   document.title = \`Sum: \${sum}\`;
-  // }, [sum]);
-
-  // ❌ 错误3：过度优化 - 简单计算不需要useMemo
-  // useMemo本身也有开销（依赖比较、缓存存储）
-  const simpleValue = a * 2; // 简单乘法，直接计算即可，不需要useMemo
-
-  // ✅ 什么时候真的需要useMemo？
-  // 1. 计算确实昂贵（大数据量过滤/排序/递归）
-  // 2. 需要保持引用稳定传给memo子组件
-  // 3. 计算结果作为其他Hook的依赖
-  const expensiveValue = useMemo(() => {
-    // 比如上千次循环、复杂正则匹配、大数组reduce
-    let result = 0;
-    for (let i = 0; i < 100000; i++) {
-      result += Math.sqrt(i * a);
-    }
-    return result;
-  }, [a]); // 只有a变化时才重新计算
-
-  return (
-    <div>
-      <h2>useMemo使用注意事项</h2>
-      <div>
-        <button onClick={() => setA(a => a + 1)}>a: {a}</button>
-        <button onClick={() => setB(b => b + 1)}>b: {b}</button>
-      </div>
-      <p>sum = a + b = {sum}</p>
-      <p>simpleValue = a * 2 = {simpleValue}（直接计算，不用useMemo）</p>
-      <p>expensiveValue（有缓存）: {Math.floor(expensiveValue)}</p>
-      <div style={{ marginTop: '20px', padding: '10px', background: '#f5f5f5', fontSize: '14px' }}>
-        <p><strong>useMemo不能保证语义上的缓存</strong></p>
-        <p>React官方文档明确说明：useMemo只是性能优化手段，React可能在某些情况下丢弃缓存重新计算
-        （如内存不足时）。因此，你的代码在没有useMemo时也应该能正常工作，useMemo只影响性能。</p>
-        <p><strong>优化原则：先Profile再优化！</strong></p>
-        <p>使用React DevTools Profiler确认性能瓶颈后再添加useMemo，不要过度优化。</p>
-      </div>
-    </div>
-  );
-};
+  // 🔍 eslint-plugin-react-hooks的exhaustive-deps规则会帮你检查！
+  // 务必开启这个eslint规则，它能发现90%的依赖错误
+}
 \`\`\`
 
-### 本章小结
+### 过度优化反模式
 
-- **useMemo用于缓存昂贵计算**：返回值在依赖不变时被缓存
-- **语法**：const memoizedValue = useMemo(() => computeExpensiveValue(a, b), [a, b])
-- **重要用途**：保持对象/数组引用稳定，配合React.memo避免子组件无意义重渲染
-- **依赖数组规则**：和useEffect一样，必须包含所有在回调中使用的响应式值
-- **不能保证永远缓存**：React可能在内存紧张时丢弃缓存，不要依赖useMemo做语义保证
-- **不要过度优化**：简单计算直接写就行，useMemo本身有开销；先Profiler确认瓶颈再优化
-- **不要在useMemo中执行副作用**：渲染阶段不应有副作用，副作用用useEffect
+**"不要过早优化"是编程界的名言，useMemo 更是如此！**
+
+\`\`\`tsx
+// ❌ 反模式：什么都用useMemo包裹
+function OverOptimized({ name, age }) {
+  // 简单的字符串拼接、数值计算，直接写就行
+  // const fullName = useMemo(() => \`\${name} (\${age})\`, [name, age]);
+  // const isAdult = useMemo(() => age >= 18, [age]);
+  // const greeting = useMemo(() => \`Hello, \${name}!\`, [name]);
+
+  // ✅ 简单计算直接写，开销远小于useMemo本身的开销
+  const fullName = \`\${name} (\${age})\`;
+  const isAdult = age >= 18;
+  const greeting = \`Hello, \${name}!\`;
+
+  return <div>{greeting}</div>;
+}
+
+// 什么时候才需要useMemo？
+// 1. 计算确实昂贵（上千次循环、复杂算法、大数据量处理）
+// 2. 需要保持引用稳定传给memo化的子组件
+// 3. 这个值作为其他Hook的依赖（useEffect、useCallback等）
+
+// 正确的做法：先用DevTools的Profiler确认性能瓶颈
+// 打开React DevTools → Profiler → 记录交互 → 查看哪个组件渲染慢
+// 只有发现确实有性能问题时，再针对性地加useMemo
+\`\`\`
+
+### useMemo 不是语义保证
+
+非常重要的一点：**React 可能会丢弃缓存重新计算**，不要用 useMemo 做语义保证：
+
+\`\`\`tsx
+// ❌ 错误：依赖useMemo来做副作用同步或保留引用
+const [count, setCount] = useState(0);
+
+// 不要这么做！React未来可能在内存不足时清除缓存
+// 这不是useMemo的设计目的
+useMemo(() => {
+  console.log('count变化了', count); // 这不是副作用！不要在这里执行操作
+  localStorage.setItem('count', String(count)); // 这是副作用！应该用useEffect
+}, [count]);
+
+// ✅ 正确：副作用放在useEffect
+useEffect(() => {
+  localStorage.setItem('count', String(count));
+}, [count]);
+
+// useMemo仅作为性能优化，React保留"遗忘"缓存的权利：
+// - 比如组件离屏后重新显示，可能会重算
+// - 未来React可能选择不缓存某些值来优化内存
+// 所以：即使不用useMemo，程序逻辑也必须正确
+// useMemo只是让它更快，不是让它"才正确"
+\`\`\`
+
+### 关键要点总结
+
+1. **useMemo是性能优化，不是语义保证**：不用useMemo代码也要逻辑正确
+2. **依赖数组要准确**：用eslint-plugin-react-hooks检查，不要撒谎
+3. **不要过度优化**：简单计算直接写，用Profiler确认瓶颈再优化
+4. **主要用途**：缓存昂贵计算、保持引用稳定配合memo、作为其他Hook的稳定依赖
+5. **空依赖数组=只计算一次**：类似类组件的componentDidMount时机
+6. **每次渲染都执行的开销 vs useMemo的开销**：useMemo本身也有开销（依赖比较、内存占用）
+7. **useMemo(() => fn, deps) 等价于 useCallback(fn, deps)**，下一节详细讲
 `,
   },
   {
     id: "tsrx-usecallback",
+    group: "Hooks篇",
     icon: "🔗",
     title: "useCallback函数缓存",
-    content: `## useCallback函数缓存
+    content: `## useCallback 函数缓存
 
-在React中，每次组件渲染都会创建新的函数实例。当这些函数作为props传递给被React.memo包裹的子组件时，会导致子组件无意义地重渲染。useCallback用于缓存函数引用，在依赖不变时返回同一个函数。
+\`useCallback\` 用于缓存函数引用，在依赖不变时返回同一个函数。它和 \`useMemo\` 关系密切：\`useCallback(fn, deps)\` 完全等价于 \`useMemo(() => fn, deps)\`。
 
-### 一、useCallback(fn, deps)基本用法
-
-useCallback接收一个内联回调函数和一个依赖数组，返回该回调函数的memoized版本。只有当某个依赖改变时，才会更新这个回调函数。
+### useCallback 基础
 
 \`\`\`tsx
-import React, { useState, useCallback, memo } from 'react';
+import { useCallback, useState } from 'react';
 
-// 用React.memo包裹的子组件 - 只有props引用变化时才重渲染
-const MemoizedButton = memo(({ onClick, label }: {
-  onClick: () => void;
-  label: string;
-}) => {
-  console.log(\`Button "\${label}" rendered!\`);
-  return (
-    <button onClick={onClick} style={{ margin: '5px', padding: '8px 16px' }}>
-      {label}
-    </button>
-  );
-});
-
-const UseCallbackBasic = () => {
-  const [count, setCount] = useState(0);
-  const [text, setText] = useState('');
-
-  // ❌ 不使用useCallback：每次渲染都是新函数
-  // 每次父组件渲染（比如输入text时），这个函数都是新引用
-  // 导致MemoizedButton每次都重渲染
-  // const handleIncrement = () => setCount(c => c + 1);
-
-  // ✅ 使用useCallback：依赖为空，只创建一次
-  // 空依赖数组意味着这个函数永远不会变
-  const handleIncrement = useCallback(() => {
-    setCount(c => c + 1);
-  }, []); // 没有依赖
-
-  const handleReset = useCallback(() => {
-    setCount(0);
-  }, []);
-
-  return (
-    <div style={{ padding: '20px' }}>
-      <h2>useCallback基本用法</h2>
-      <p>Count: {count}</p>
-      <MemoizedButton onClick={handleIncrement} label="+1" />
-      <MemoizedButton onClick={handleReset} label="重置" />
-      <div style={{ marginTop: '10px' }}>
-        <input
-          value={text}
-          onChange={e => setText(e.target.value)}
-          placeholder="输入文字（不应该导致按钮重渲染）"
-        />
-      </div>
-      <p style={{ fontSize: '12px', color: '#666', marginTop: '10px' }}>
-        打开控制台观察：输入框输入时按钮不会打印"rendered"
-      </p>
-    </div>
-  );
-};
-\`\`\`
-
-### 二、useCallback和useMemo的关系
-
-useCallback和useMemo关系密切，可以互相转换：
-- useCallback(fn, deps) 等价于 useMemo(() => fn, deps)
-- useMemo缓存"值"，useCallback缓存"函数"
-
-\`\`\`tsx
-import React, { useState, useCallback, useMemo } from 'react';
-
-const CallbackVsMemo = () => {
+function useCallbackDemo() {
   const [count, setCount] = useState(0);
 
-  // useCallback：缓存函数本身
-  const incrementWithCallback = useCallback(() => {
-    setCount(c => c + 1);
-  }, []);
+  // ❌ 每次渲染都创建新函数
+  // const handleClick = () => {
+  //   console.log('clicked', count);
+  // };
 
-  // useMemo：缓存函数的返回值。如果返回函数，效果和useCallback一样
-  const incrementWithMemo = useMemo(() => {
-    // 返回一个函数
-    return () => setCount(c => c + 1);
-  }, []);
+  // ✅ useCallback缓存函数引用
+  const handleClick = useCallback(() => {
+    console.log('clicked', count);
+  }, [count]); // count变化时才创建新函数
 
-  // 验证：它们都是函数
-  console.log('useCallback返回:', typeof incrementWithCallback); // function
-  console.log('useMemo返回:', typeof incrementWithMemo); // function
-
-  // 区别：
-  // useCallback(fn, deps) → 缓存fn
-  // useMemo(() => fn, deps) → 缓存() => fn的返回值，也就是fn
-  // 所以 useCallback(fn, deps) === useMemo(() => fn, deps)
-
-  return (
-    <div>
-      <h2>useCallback vs useMemo</h2>
-      <p>Count: {count}</p>
-      <button onClick={incrementWithCallback}>useCallback +1</button>
-      <button onClick={incrementWithMemo}>useMemo +1</button>
-      <div style={{ marginTop: '20px', padding: '10px', background: '#f5f5f5' }}>
-        <p><strong>记忆法则：</strong></p>
-        <ul>
-          <li><code>useCallback</code>：缓存<strong>函数</strong>，用于传递给子组件的事件处理函数</li>
-          <li><code>useMemo</code>：缓存<strong>计算结果</strong>，用于昂贵计算或稳定引用</li>
-        </ul>
-      </div>
-    </div>
-  );
-};
+  return <button onClick={handleClick}>点击</button>;
+}
 \`\`\`
 
-### 三、给memo子组件传递callback props必须用useCallback
+### 给 React.memo 子组件传回调必须用 useCallback
 
-这是useCallback最常见的使用场景。
+这是 useCallback **最主要、最常见**的使用场景。如果不用 useCallback，每次父组件渲染都会创建新的函数引用，导致 React.memo 浅比较失败，子组件还是会重渲染：
 
 \`\`\`tsx
-import React, { useState, useCallback, memo, useMemo } from 'react';
+import { memo, useState, useCallback } from 'react';
 
-// 列表项组件 - memo包裹
-interface TodoItemProps {
-  id: number;
-  text: string;
-  completed: boolean;
+// 子组件用memo包裹：props浅比较相等则跳过渲染
+const TodoItem = memo(function TodoItem({
+  todo,
+  onToggle,
+  onDelete,
+}: {
+  todo: { id: number; text: string; completed: boolean };
   onToggle: (id: number) => void;
   onDelete: (id: number) => void;
-}
-
-const TodoItem = memo(({ id, text, completed, onToggle, onDelete }: TodoItemProps) => {
-  console.log(\`TodoItem #\${id} rendered\`);
+}) {
+  console.log(\`TodoItem \${todo.id} 渲染\`);
   return (
-    <li style={{ padding: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+    <div className="flex items-center gap-2 p-2 border-b">
       <input
         type="checkbox"
-        checked={completed}
-        onChange={() => onToggle(id)}
+        checked={todo.completed}
+        onChange={() => onToggle(todo.id)}
       />
-      <span style={{ textDecoration: completed ? 'line-through' : 'none', flex: 1 }}>
-        {text}
+      <span className={todo.completed ? 'line-through text-gray-400' : ''}>
+        {todo.text}
       </span>
-      <button onClick={() => onDelete(id)}>删除</button>
-    </li>
+      <button
+        onClick={() => onDelete(todo.id)}
+        className="ml-auto text-red-500 text-sm"
+      >
+        删除
+      </button>
+    </div>
   );
 });
 
-interface Todo {
-  id: number;
-  text: string;
-  completed: boolean;
-}
-
-const TodoList = () => {
-  const [todos, setTodos] = useState<Todo[]>([
-    { id: 1, text: '学习useCallback', completed: false },
-    { id: 2, text: '理解React.memo', completed: false },
-    { id: 3, text: '掌握性能优化', completed: false },
+function TodoList() {
+  const [todos, setTodos] = useState([
+    { id: 1, text: '学习 useCallback', completed: false },
+    { id: 2, text: '理解 memo 原理', completed: false },
+    { id: 3, text: '写一个Demo', completed: false },
   ]);
-  const [inputText, setInputText] = useState('');
-  const [darkMode, setDarkMode] = useState(false); // 无关状态
+  const [inputValue, setInputValue] = useState('');
+  // 这个state只是用来演示：改变它不会导致TodoItem重渲染
+  const [dummyState, setDummyState] = useState(0);
 
-  // ✅ 使用useCallback缓存事件处理函数
-  // 如果不使用useCallback，每次添加/切换/删除一个todo，
-  // 所有TodoItem都会因为接收新函数而重渲染
+  // ❌ 不使用useCallback：每次父组件渲染都新建函数
+  // 即使dummyState变化，onToggle/onDelete都是新引用
+  // TodoItem的memo浅比较失败，所有TodoItem都重渲染！
+  // const handleToggle = (id: number) => {
+  //   setTodos(prev => prev.map(t => 
+  //     t.id === id ? { ...t, completed: !t.completed } : t
+  //   ));
+  // };
+  // const handleDelete = (id: number) => {
+  //   setTodos(prev => prev.filter(t => t.id !== id));
+  // };
+
+  // ✅ 使用useCallback：函数引用稳定
+  // 只有todos变化时才创建新函数（这里用函数式更新，其实不需要todos依赖）
   const handleToggle = useCallback((id: number) => {
-    setTodos(prev => prev.map(todo =>
-      todo.id === id ? { ...todo, completed: !todo.completed } : todo
+    setTodos(prev => prev.map(t => 
+      t.id === id ? { ...t, completed: !t.completed } : t
     ));
-  }, []); // 空依赖：setTodos是稳定的，不需要放进依赖
+  }, []); // 空依赖！因为用了函数式更新，不依赖外部todos变量
 
   const handleDelete = useCallback((id: number) => {
-    setTodos(prev => prev.filter(todo => todo.id !== id));
-  }, []);
+    setTodos(prev => prev.filter(t => t.id !== id));
+  }, []); // 空依赖！
 
   const handleAdd = useCallback(() => {
-    if (inputText.trim()) {
-      setTodos(prev => [...prev, {
-        id: Date.now(),
-        text: inputText.trim(),
-        completed: false,
-      }]);
-      setInputText('');
-    }
-  }, [inputText]); // inputText变化时更新函数
+    if (!inputValue.trim()) return;
+    setTodos(prev => [
+      ...prev,
+      { id: Date.now(), text: inputValue, completed: false }
+    ]);
+    setInputValue('');
+  }, [inputValue]);
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h2>TodoList with useCallback</h2>
-      <button onClick={() => setDarkMode(d => !d)}>
-        切换{darkMode ? '亮色' : '暗色'}模式（无关状态）
-      </button>
-      <div style={{ marginTop: '10px', marginBottom: '10px' }}>
+    <div className="max-w-md mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">TodoList (useCallback优化)</h1>
+      
+      <div className="flex gap-2 mb-4">
         <input
-          value={inputText}
-          onChange={e => setInputText(e.target.value)}
-          placeholder="添加新待办"
+          type="text"
+          value={inputValue}
+          onChange={e => setInputValue(e.target.value)}
+          className="flex-1 border p-2 rounded"
+          placeholder="添加新任务..."
         />
-        <button onClick={handleAdd}>添加</button>
+        <button
+          onClick={handleAdd}
+          className="bg-blue-500 text-white px-4 rounded"
+        >
+          添加
+        </button>
       </div>
-      <ul style={{ listStyle: 'none', padding: 0 }}>
+
+      <div className="border rounded">
         {todos.map(todo => (
           <TodoItem
             key={todo.id}
-            id={todo.id}
-            text={todo.text}
-            completed={todo.completed}
+            todo={todo}
             onToggle={handleToggle}
             onDelete={handleDelete}
           />
         ))}
-      </ul>
-      <p style={{ fontSize: '12px', color: '#666' }}>
-        打开控制台：切换暗色模式时，TodoItem不应重渲染
-      </p>
+      </div>
+
+      {/* 这个按钮改变dummyState：打开控制台观察TodoItem是否重渲染 */}
+      <button
+        onClick={() => setDummyState(d => d + 1)}
+        className="mt-4 px-4 py-2 bg-gray-200 rounded"
+      >
+        触发重渲染 (点击次数: {dummyState})
+        <span className="block text-xs text-gray-500">
+          如果TodoItem没有重新打印日志，说明优化生效
+        </span>
+      </button>
     </div>
   );
-};
+}
 \`\`\`
 
-### 四、自定义Hook返回函数应该用useCallback包裹 & 常见错误
+### 自定义 Hook 返回函数应该用 useCallback 包裹
 
-自定义Hook如果返回函数，这些函数应该用useCallback包裹，以便调用方可以安全地将它们作为useEffect等Hook的依赖。
+自定义 Hook 返回的函数，如果调用方可能将其作为 useEffect 等 Hook 的依赖，一定要用 useCallback 包裹：
 
 \`\`\`tsx
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-
-// ============ 自定义Hook：useToggle ============
-// 返回的函数用useCallback包裹
-const useToggle = (initialValue = false): [boolean, () => void, (v: boolean) => void] => {
-  const [value, setValue] = useState(initialValue);
-
-  // ✅ 用useCallback包裹toggle函数
-  // 调用方可以安全地将它作为useEffect依赖
-  const toggle = useCallback(() => {
-    setValue(v => !v);
-  }, []);
-
-  const setValueDirect = useCallback((v: boolean) => {
-    setValue(v);
-  }, []);
-
-  return [value, toggle, setValueDirect];
-};
-
-// ============ 常见错误场景 ============
-const UseCallbackPitfalls = () => {
-  const [isOpen, toggle] = useToggle(false);
+// ❌ 不好的自定义Hook：返回的函数每次都是新引用
+function useBadCounter() {
   const [count, setCount] = useState(0);
-
-  // ❌ 常见错误1：在useCallback里引用了未列在deps中的变量
-  const [multiplier, setMultiplier] = useState(2);
   
-  // const badCallback = useCallback(() => {
-  //   // multiplier没有列在deps里，会读到陈旧值！
-  //   setCount(c => c * multiplier);
-  // }, []); // ESLint会警告：React Hook useCallback has a missing dependency: 'multiplier'
+  const increment = () => setCount(c => c + 1);
+  const decrement = () => setCount(c => c - 1);
+  const reset = () => setCount(0);
+  
+  return { count, increment, decrement, reset };
+}
 
-  // ✅ 正确：把依赖列全
-  const goodMultiply = useCallback(() => {
-    setCount(c => c * multiplier);
-  }, [multiplier]);
-
-  // 错误2：传给DOM原生元素的函数不需要useCallback
-  // <button onClick={() => setCount(c => c + 1)}>
-  // 原生button不是memo组件，新函数不会造成性能问题
-
-  // 错误3：组件没有memo，callback用了useCallback也白搭
-  // 如果子组件没有用React.memo包裹，不管props变不变都会重渲染
-
-  // ✅ 什么时候不需要useCallback？
-  // 1. 传给DOM原生组件（div, button, input等）
-  // 2. 子组件没有用React.memo包裹
-  // 3. 非常简单的页面，性能没有问题
-  // 4. 函数每次都要变化（比如依赖经常变的props）
-
-  // 演示：正确使用自定义Hook返回的callback
+// 调用方的问题：
+function BadConsumer() {
+  const { count, increment } = useBadCounter();
+  
   useEffect(() => {
-    console.log('toggle函数稳定，这个effect只会在mount时执行');
-    // 因为toggle是useCallback([])返回的，引用永远不变
-  }, [toggle]);
+    console.log('increment变化了');
+    // 每次渲染increment都是新的，这个effect每次都执行！
+  }, [increment]);
+}
 
-  return (
-    <div style={{ padding: '20px' }}>
-      <h2>useCallback注意事项</h2>
-      <p>开关状态: {isOpen ? '开' : '关'}</p>
-      <button onClick={toggle}>切换</button>
-      <p>Count: {count}</p>
-      <button onClick={() => setCount(c => c + 1)}>+1（原生按钮，无需useCallback）</button>
-      <button onClick={goodMultiply}>x{multiplier}</button>
-      <div>
-        <label>乘数: </label>
-        <input
-          type="number"
-          value={multiplier}
-          onChange={e => setMultiplier(Number(e.target.value))}
-        />
-      </div>
-      <div style={{ marginTop: '20px', padding: '10px', background: '#fff3cd', borderRadius: '4px' }}>
-        <p><strong>不需要useCallback的场景：</strong></p>
-        <ul>
-          <li>传给原生DOM元素的事件处理函数</li>
-          <li>子组件没有被React.memo包裹</li>
-          <li>函数依赖经常变化，缓存没有意义</li>
-          <li>简单页面/组件，没有性能问题</li>
-        </ul>
-        <p><strong>需要useCallback的场景：</strong></p>
-        <ul>
-          <li>函数作为props传递给memo子组件</li>
-          <li>函数作为其他Hook的依赖（如useEffect）</li>
-          <li>自定义Hook返回的函数</li>
-        </ul>
-      </div>
-    </div>
-  );
-};
+// ✅ 好的自定义Hook：返回的函数用useCallback包裹
+function useGoodCounter() {
+  const [count, setCount] = useState(0);
+  
+  const increment = useCallback(() => setCount(c => c + 1), []);
+  const decrement = useCallback(() => setCount(c => c - 1), []);
+  const reset = useCallback(() => setCount(0), []);
+  
+  return { count, increment, decrement, reset };
+}
+
+// 调用方可以安全地将返回的函数作为依赖
+function GoodConsumer() {
+  const { count, increment } = useGoodCounter();
+  
+  useEffect(() => {
+    console.log('组件挂载时执行一次');
+    // increment引用稳定，这个effect只执行一次
+  }, [increment]);
+}
 \`\`\`
 
-### 本章小结
+### 常见错误：回调里引用了未列入依赖的变量
 
-- **useCallback缓存函数引用**：依赖不变时返回同一个函数
-- **语法**：const memoizedFn = useCallback(() => doSomething(a, b), [a, b])
-- **与useMemo关系**：useCallback(fn, deps) === useMemo(() => fn, deps)
-- **核心使用场景**：
-  1. 给React.memo子组件传递回调函数props
-  2. 自定义Hook返回函数，方便调用方作为依赖
-  3. 函数作为useEffect等Hook的依赖
-- **不需要useCallback**：原生DOM组件、子组件没memo、简单页面
-- **依赖要列全**：ESLint的react-hooks/exhaustive-deps规则会帮你检查
+这是"闭包陷阱"的一种表现：
+
+\`\`\`tsx
+function SearchResults() {
+  const [query, setQuery] = useState('');
+  const [filters, setFilters] = useState({ page: 1, pageSize: 20 });
+
+  // ❌ 错误：用了filters但没放进依赖数组
+  // 回调里的filters永远是第一次渲染时的值（闭包陷阱）
+  // const handleSearch = useCallback(() => {
+  //   fetchResults(query, filters); // filters是陈旧的！
+  // }, [query]); // 缺少filters依赖
+
+  // ✅ 正确1：把所有用到的值都加入依赖
+  const handleSearch1 = useCallback(() => {
+    fetchResults(query, filters);
+  }, [query, filters]); // 但filters是对象，父组件传的可能不稳定...
+
+  // ✅ 正确2：用函数式更新/useRef避免依赖
+  const filtersRef = useRef(filters);
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
+
+  const handleSearch2 = useCallback(() => {
+    fetchResults(query, filtersRef.current); // 从ref取最新值
+  }, [query]); // 只需要query作为依赖
+
+  // ✅ 正确3：如果是state setter，用函数式更新不需要依赖
+  const [data, setData] = useState(null);
+  const handleLoadMore = useCallback(() => {
+    setData(prev => {
+      // 用prev获取之前的state，不需要data在依赖里
+      return prev ? [...prev, ...fetchMore()] : fetchMore();
+    });
+  }, []); // 空依赖！
+}
+\`\`\`
+
+### 何时不需要 useCallback
+
+很多时候不需要 useCallback，盲目使用反而增加代码复杂度：
+
+\`\`\`tsx
+function SimpleComponent() {
+  const [count, setCount] = useState(0);
+
+  // 1️⃣ 传给原生DOM元素的事件处理函数，不需要useCallback
+  // <button onClick={() => setCount(c => c + 1)}>
+  // 原生button不会因为函数引用变化做什么"优化"
+  // 这里用useCallback没有任何收益
+
+  // 2️⃣ 子组件没有用memo包裹，不需要useCallback
+  const NonMemoChild = ({ onClick }) => <button onClick={onClick}>点击</button>;
+  // 即使传新函数，NonMemoChild反正每次都要渲染，useCallback没意义
+
+  // 3️⃣ 简单页面、列表项不多时，不需要useCallback
+  // 性能优化要有测量依据，不要"感觉"慢就加
+
+  // 4️⃣ 函数作为其他Hook依赖，但那个Hook本身不常执行
+  // useEffect只在挂载执行一次，那依赖的函数即使是新的也没关系
+  useEffect(() => {
+    const handler = () => console.log('click');
+    window.addEventListener('click', handler);
+    return () => window.removeEventListener('click', handler);
+  }, []); // 空依赖，handler在effect内部创建，没问题
+
+  return <button onClick={() => setCount(c => c + 1)}>Count: {count}</button>;
+}
+
+// 🎯 useCallback真正需要的场景总结：
+// 1. 函数作为props传给用React.memo包裹的子组件
+// 2. 函数作为自定义Hook的返回值，调用方可能作为Hook依赖
+// 3. 函数作为useEffect/useMemo等的依赖项
+// 4. 其他经过Profiler确认的性能瓶颈场景
+\`\`\`
+
+### useCallback 与 useMemo 的关系
+
+\`\`\`tsx
+import { useMemo, useCallback } from 'react';
+
+// 两者完全等价：
+const fn1 = useCallback(() => {
+  console.log('hello');
+}, [a, b]);
+
+const fn2 = useMemo(() => {
+  return () => {
+    console.log('hello');
+  };
+}, [a, b]);
+
+// fn1 和 fn2 在行为上完全一致
+// useCallback 就是语法糖，让你少写一层箭头函数嵌套
+
+// 记忆：
+// - useMemo 缓存"值"（计算结果、对象、数组）
+// - useCallback 缓存"函数"（回调函数、事件处理函数）
+\`\`\`
+
+### 关键要点总结
+
+1. **useCallback缓存函数引用**，主要目的是配合React.memo避免子组件不必要重渲染
+2. **自定义Hook返回函数必须useCallback**，调用方可能用作Hook依赖
+3. **依赖数组要写全**，用eslint-plugin-react-hooks检查，闭包陷阱很常见
+4. **函数式更新能减少依赖**：setState(prev => ...)不需要把state放进依赖
+5. **不要滥用useCallback**：传给原生DOM、子组件没memo、简单组件不需要
+6. **useCallback本身有开销**：依赖数组比较、存储缓存都有成本
+7. **先用Profiler测量**，确认是函数引用变化导致的性能问题再使用
+8. **useCallback(fn, deps) ≡ useMemo(() => fn, deps)**，只是用途不同的语法糖
 `,
   },
   {
     id: "tsrx-customhook",
+    group: "Hooks篇",
     icon: "🪝",
     title: "自定义Hook封装模式",
-    content: `## 自定义Hook封装模式
+    content: `## 自定义 Hook 封装模式
 
-自定义Hook是React Hooks最强大的特性之一，它允许你将组件逻辑提取到可重用的函数中。自定义Hook让状态逻辑可以在多个组件间复用，而不需要使用高阶组件（HOC）或render props等复杂模式。
+自定义 Hook 是 React Hooks 体系中最强大的特性之一。它让你能够将组件逻辑提取到可复用的函数中。命名规则是**必须以 \`use\` 开头**，这样 React 才能自动检查是否违反了 Hooks 规则。
 
-### 命名规则与基本原则
+### 自定义 Hook 基本规则
 
-自定义Hook必须以"use"开头（如useToggle、useLocalStorage），这不仅是约定，也是ESLint插件识别Hook的规则。自定义Hook内部可以调用其他Hook，但必须遵循Hook规则（只在顶层调用）。
+1. **命名必须以 use 开头**：useXxx 格式，这是约定也是 linter 识别 Hook 的标志
+2. **只在两个地方调用 Hook**：React 函数组件顶层、自定义 Hook 顶层
+3. **不要在条件、循环、嵌套函数中调用 Hook**
+4. **自定义 Hook 是复用状态逻辑，不是状态本身**：每次调用 Hook 都是独立的 state
+
+下面是常用的自定义 Hook 实现，覆盖日常开发的大部分场景：
 
 ### 1. useToggle - 布尔值切换
+
+最基础也是最常用的自定义 Hook：
 
 \`\`\`tsx
 import { useState, useCallback } from 'react';
 
-// 通用布尔值切换Hook
-// 用于管理开关、弹窗显示/隐藏、折叠/展开等场景
-const useToggle = (initialValue: boolean = false): [
-  boolean,           // 当前值
-  () => void,        // toggle函数
-  (v: boolean) => void  // 直接设置值
-] => {
+function useToggle(initialValue = false): [
+  boolean,
+  { toggle: () => void; setTrue: () => void; setFalse: () => void }
+] {
   const [value, setValue] = useState(initialValue);
 
-  // 使用useCallback保持函数引用稳定
-  const toggle = useCallback(() => {
-    setValue(prev => !prev);
-  }, []);
+  const toggle = useCallback(() => setValue(v => !v), []);
+  const setTrue = useCallback(() => setValue(true), []);
+  const setFalse = useCallback(() => setValue(false), []);
 
-  const setDirect = useCallback((v: boolean) => {
-    setValue(v);
-  }, []);
-
-  return [value, toggle, setDirect];
-};
+  return [value, { toggle, setTrue, setFalse }];
+}
 
 // 使用示例
-const ToggleDemo = () => {
-  const [isModalOpen, toggleModal, setModalOpen] = useToggle(false);
-  const [isDarkMode, toggleDarkMode] = useToggle(true);
-
+function ModalDemo() {
+  const [isOpen, { toggle, setFalse: close }] = useToggle();
+  
   return (
-    <div style={{ padding: '20px' }}>
-      <button onClick={toggleModal}>
-        {isModalOpen ? '关闭弹窗' : '打开弹窗'}
-      </button>
-      <button onClick={toggleDarkMode}>
-        {isDarkMode ? '🌙 暗色' : '☀️ 亮色'}
-      </button>
-      {isModalOpen && (
-        <div style={{
-          position: 'fixed', top: '50%', left: '50%',
-          transform: 'translate(-50%, -50%)',
-          background: 'white', padding: '20px', border: '1px solid #ccc',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.15)', borderRadius: '8px',
-        }}>
-          <h3>弹窗内容</h3>
-          <p>这是一个用useToggle控制的弹窗</p>
-          <button onClick={() => setModalOpen(false)}>关闭</button>
+    <>
+      <button onClick={toggle}>打开弹窗</button>
+      {isOpen && (
+        <div className="modal fixed inset-0 bg-black/50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg">
+            <h2>弹窗标题</h2>
+            <p>这是一个弹窗内容</p>
+            <button onClick={close} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded">
+              关闭
+            </button>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
-};
+}
 \`\`\`
 
-### 2. useLocalStorage - 持久化到localStorage
+### 2. useLocalStorage - 自动持久化到 localStorage
+
+支持泛型、自动 JSON 序列化/反序列化、跨标签页同步：
 
 \`\`\`tsx
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
-// 自动同步localStorage的Hook
-// 数据在页面刷新后依然保留
-const useLocalStorage = <T>(key: string, initialValue: T): [
-  T,
-  (value: T | ((prev: T) => T)) => void,
-  () => void
-] => {
-  // 初始化时从localStorage读取
+function useLocalStorage<T>(
+  key: string,
+  initialValue: T
+): [T, (value: T | ((prev: T) => T)) => void] {
+  // 惰性初始化：从localStorage读取
   const [storedValue, setStoredValue] = useState<T>(() => {
-    // 惰性初始化：只在首次渲染时读取
+    if (typeof window === 'undefined') return initialValue;
     try {
       const item = window.localStorage.getItem(key);
       return item ? JSON.parse(item) : initialValue;
@@ -1916,17 +1538,7 @@ const useLocalStorage = <T>(key: string, initialValue: T): [
     }
   }, [key]);
 
-  // 删除值
-  const removeValue = useCallback(() => {
-    try {
-      window.localStorage.removeItem(key);
-      setStoredValue(initialValue);
-    } catch (error) {
-      console.error(\`Error removing localStorage key "\${key}":\`, error);
-    }
-  }, [key, initialValue]);
-
-  // 监听其他标签页的storage变化，实现多标签页同步
+  // 监听其他标签页的storage事件，实现跨tab同步
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === key && e.newValue) {
@@ -1941,128 +1553,203 @@ const useLocalStorage = <T>(key: string, initialValue: T): [
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [key]);
 
-  return [storedValue, setValue, removeValue];
-};
+  return [storedValue, setValue];
+}
 
 // 使用示例
-const LocalStorageDemo = () => {
-  const [name, setName] = useLocalStorage('user-name', '');
-  const [theme] = useLocalStorage('theme', 'light');
+function SettingsDemo() {
+  const [theme, setTheme] = useLocalStorage<'light' | 'dark'>('theme', 'light');
+  const [fontSize, setFontSize] = useLocalStorage('fontSize', 16);
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h3>useLocalStorage演示</h3>
-      <p>输入的名字会自动保存到localStorage，刷新页面后依然存在</p>
+    <div>
+      <h2>设置（自动保存到localStorage）</h2>
+      <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
+        主题: {theme}
+      </button>
       <input
-        value={name}
-        onChange={e => setName(e.target.value)}
-        placeholder="输入你的名字"
+        type="range"
+        min={12}
+        max={24}
+        value={fontSize}
+        onChange={e => setFontSize(Number(e.target.value))}
       />
-      {name && <p>你好，{name}！</p>}
-      <p>当前保存的主题设置：{theme}</p>
+      <p style={{ fontSize }}>预览文字大小</p>
     </div>
   );
-};
+}
 \`\`\`
 
-### 3. useDebounce - 防抖值更新
+### 3. useDebounce - 值防抖
 
 \`\`\`tsx
 import { useState, useEffect } from 'react';
 
-// 防抖Hook：值变化后延迟更新
-// 常用于搜索输入、窗口resize等频繁触发的场景
-const useDebounce = <T>(value: T, delay: number = 500): T => {
+function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
   useEffect(() => {
-    // 设置定时器，delay毫秒后更新值
     const timer = setTimeout(() => {
       setDebouncedValue(value);
     }, delay);
 
-    // 清理函数：如果value在delay内再次变化，取消上一次定时器
     return () => {
       clearTimeout(timer);
     };
-  }, [value, delay]); // value或delay变化时重新设置
+  }, [value, delay]);
 
   return debouncedValue;
-};
+}
 
-// 使用示例：防抖搜索
-const DebounceSearchDemo = () => {
-  const [searchText, setSearchText] = useState('');
-  // 输入停止300ms后debouncedSearchText才会更新
-  const debouncedSearch = useDebounce(searchText, 300);
+// 使用示例：搜索框防抖
+function SearchDemo() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 500);
 
-  // 使用防抖后的值进行搜索，避免每次按键都发请求
+  // debouncedSearch变化后才发起搜索请求
   useEffect(() => {
     if (debouncedSearch) {
-      console.log('发起搜索请求:', debouncedSearch);
-      // 这里可以调用搜索API
+      console.log('发起搜索:', debouncedSearch);
+      // fetchSearchResults(debouncedSearch)
     }
   }, [debouncedSearch]);
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h3>useDebounce搜索演示</h3>
-      <input
-        value={searchText}
-        onChange={e => setSearchText(e.target.value)}
-        placeholder="输入搜索关键词"
-        style={{ padding: '8px', width: '300px' }}
-      />
-      <p>实时输入: {searchText}</p>
-      <p>防抖后（300ms）: <strong>{debouncedSearch}</strong></p>
-    </div>
+    <input
+      type="text"
+      value={searchTerm}
+      onChange={e => setSearchTerm(e.target.value)}
+      placeholder="输入搜索内容（500ms防抖）"
+      className="border p-2 rounded w-64"
+    />
   );
-};
+}
 \`\`\`
 
-### 4. useFetch - 数据请求+loading/error
+### 4. useThrottle - 函数节流
 
 \`\`\`tsx
-import { useState, useEffect, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
 
-// 数据请求Hook
-interface FetchState<T> {
+function useThrottle<T extends (...args: any[]) => any>(
+  fn: T,
+  delay: number
+): T {
+  const lastCallRef = useRef(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const fnRef = useRef(fn);
+
+  useEffect(() => {
+    fnRef.current = fn;
+  }, [fn]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  return useCallback((...args: Parameters<T>) => {
+    const now = Date.now();
+    const remaining = delay - (now - lastCallRef.current);
+
+    if (remaining <= 0) {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      lastCallRef.current = now;
+      fnRef.current(...args);
+    } else if (!timerRef.current) {
+      timerRef.current = setTimeout(() => {
+        lastCallRef.current = Date.now();
+        timerRef.current = null;
+        fnRef.current(...args);
+      }, remaining);
+    }
+  }, [delay]) as T;
+}
+
+// 使用示例：滚动事件处理
+function ScrollDemo() {
+  const handleScroll = useThrottle(() => {
+    console.log('滚动位置:', window.scrollY);
+    // 这里可以做滚动加载、吸顶等逻辑
+  }, 200);
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
+
+  return <div style={{ height: '300vh' }}>滚动页面看控制台</div>;
+}
+\`\`\`
+
+### 5. useFetch - 数据请求（带AbortController）
+
+\`\`\`tsx
+import { useState, useEffect, useCallback, useRef } from 'react';
+
+type FetchState<T> = {
   data: T | null;
   loading: boolean;
   error: Error | null;
-}
+};
 
-const useFetch = <T>(url: string, options?: RequestInit): FetchState<T> & { refetch: () => void } => {
+function useFetch<T = unknown>(url: string | null, options?: RequestInit) {
   const [state, setState] = useState<FetchState<T>>({
     data: null,
-    loading: true,
+    loading: !!url,
     error: null,
   });
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchData = useCallback(async () => {
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    try {
-      const response = await fetch(url, options);
-      if (!response.ok) {
-        throw new Error(\`HTTP error! status: \${response.status}\`);
-      }
-      const data = await response.json();
-      setState({ data, loading: false, error: null });
-    } catch (error) {
-      setState({
-        data: null,
-        loading: false,
-        error: error instanceof Error ? error : new Error('Unknown error'),
-      });
+    if (!url) return;
+
+    // 取消之前的请求
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
-  }, [url]);
+
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    setState({ data: null, loading: true, error: null });
+
+    try {
+      const res = await fetch(url, {
+        ...options,
+        signal: abortController.signal,
+      });
+      if (!res.ok) throw new Error(\`HTTP error! status: \${res.status}\`);
+      const data = await res.json() as T;
+      if (!abortController.signal.aborted) {
+        setState({ data, loading: false, error: null });
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        setState({ data: null, loading: false, error: err });
+      }
+    }
+  }, [url, options]);
 
   useEffect(() => {
     fetchData();
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [fetchData]);
 
-  return { ...state, refetch: fetchData };
-};
+  const refetch = useCallback(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { ...state, refetch };
+}
 
 // 使用示例
 interface User {
@@ -2071,104 +1758,81 @@ interface User {
   email: string;
 }
 
-const FetchDemo = () => {
-  const { data, loading, error, refetch } = useFetch<User[]>(
-    'https://jsonplaceholder.typicode.com/users'
+function UserProfile({ userId }: { userId: number }) {
+  const { data: user, loading, error, refetch } = useFetch<User>(
+    \`https://jsonplaceholder.typicode.com/users/\${userId}\`
   );
 
   if (loading) return <div>加载中...</div>;
-  if (error) return <div>出错了: {error.message}</div>;
+  if (error) return <div>加载失败: {error.message}</div>;
+  if (!user) return null;
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h3>useFetch数据请求</h3>
-      <button onClick={refetch}>重新获取</button>
-      <ul>
-        {data?.map(user => (
-          <li key={user.id}>{user.name} - {user.email}</li>
-        ))}
-      </ul>
+    <div>
+      <h2>{user.name}</h2>
+      <p>{user.email}</p>
+      <button onClick={refetch}>刷新</button>
     </div>
   );
-};
+}
 \`\`\`
 
-### 5. useInterval - 解决setInterval闭包陈旧问题
+### 6. useInterval - 解决 setInterval 闭包陈旧问题
 
 \`\`\`tsx
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 
-// setInterval的Hook封装
-// 解决两个问题：
-// 1. 闭包陈旧：回调函数里能获取最新值
-// 2. 自动清理：组件卸载时自动清除定时器
-const useInterval = (callback: () => void, delay: number | null) => {
-  // 使用useRef保存最新的callback
-  const savedCallback = useRef<() => void>();
+function useInterval(callback: () => void, delay: number | null) {
+  const savedCallback = useRef(callback);
 
-  // 每次渲染后更新ref中的callback
-  // 这样interval回调里总是能拿到最新的函数和状态
+  // 保存最新的callback到ref
   useEffect(() => {
     savedCallback.current = callback;
   }, [callback]);
 
-  // 设置interval
   useEffect(() => {
-    // delay为null时暂停
     if (delay === null) return;
 
     const tick = () => {
-      savedCallback.current?.();
+      savedCallback.current();
     };
 
     const id = setInterval(tick, delay);
     return () => clearInterval(id);
   }, [delay]);
-};
+}
 
-// 使用示例：计数器
-const IntervalDemo = () => {
+// 使用示例：计时器
+function Counter() {
   const [count, setCount] = useState(0);
   const [isRunning, setIsRunning] = useState(true);
 
-  // useInterval里回调能获取最新的count值
-  useInterval(
-    () => {
-      setCount(c => c + 1);
-    },
-    isRunning ? 1000 : null // delay为null时暂停
-  );
+  // 不需要把count放进依赖！因为从ref读最新callback
+  useInterval(() => {
+    setCount(c => c + 1);
+  }, isRunning ? 1000 : null); // delay传null可以暂停
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h3>useInterval定时器</h3>
-      <p>Count: {count}</p>
+    <div>
+      <p>{count} 秒</p>
       <button onClick={() => setIsRunning(!isRunning)}>
-        {isRunning ? '暂停' : '开始'}
+        {isRunning ? '暂停' : '继续'}
       </button>
       <button onClick={() => setCount(0)}>重置</button>
-      <p style={{ fontSize: '12px', color: '#666' }}>
-        相比直接使用setInterval，useInterval自动处理闭包问题和清理
-      </p>
     </div>
   );
-};
+}
 \`\`\`
 
-### 6. useEventListener - 自动清理事件监听
+### 7. 更多实用自定义 Hook
 
 \`\`\`tsx
-import { useEffect, useRef } from 'react';
-
-// 事件监听Hook
-// 自动处理事件绑定和清理，避免内存泄漏
-const useEventListener = <K extends keyof WindowEventMap>(
+// useEventListener - 自动清理事件监听
+function useEventListener<K extends keyof WindowEventMap>(
   eventName: K,
   handler: (event: WindowEventMap[K]) => void,
-  element: Window | HTMLElement | Document = window,
-  options?: boolean | AddEventListenerOptions
-) => {
-  // 使用useRef保存handler，避免每次渲染都重新绑定
+  element: Window | HTMLElement | null = window
+) {
   const savedHandler = useRef(handler);
 
   useEffect(() => {
@@ -2176,451 +1840,223 @@ const useEventListener = <K extends keyof WindowEventMap>(
   }, [handler]);
 
   useEffect(() => {
-    // 确保element支持addEventListener
-    if (!element || !element.addEventListener) return;
-
-    const eventListener = (event: Event) => {
+    if (!element) return;
+    const eventListener = (event: Event) => 
       savedHandler.current(event as WindowEventMap[K]);
-    };
+    element.addEventListener(eventName, eventListener);
+    return () => element.removeEventListener(eventName, eventListener);
+  }, [eventName, element]);
+}
 
-    element.addEventListener(eventName, eventListener, options);
-
-    // 清理：组件卸载时移除监听
-    return () => {
-      element.removeEventListener(eventName, eventListener, options);
-    };
-  }, [eventName, element, options]);
-};
-
-// 使用示例：监听键盘事件
-const EventListenerDemo = () => {
-  const [lastKey, setLastKey] = useState<string>('');
-
-  useEventListener('keydown', (e) => {
-    setLastKey(e.key);
-  });
-
-  return (
-    <div style={{ padding: '20px' }}>
-      <h3>useEventListener键盘监听</h3>
-      <p>按下任意键，下方显示最后按下的键：</p>
-      <p style={{ fontSize: '24px', fontWeight: 'bold' }}>{lastKey || '按下一个键'}</p>
-    </div>
-  );
-};
-\`\`\`
-
-### 7. useMediaQuery - 响应式断点匹配
-
-\`\`\`tsx
-import { useState, useEffect } from 'react';
-
-// 响应式媒体查询Hook
-// 返回当前是否匹配指定的媒体查询
-const useMediaQuery = (query: string): boolean => {
+// useMediaQuery - 响应式媒体查询
+function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() => {
-    // 惰性初始化：SSR时window不存在，返回false
-    if (typeof window !== 'undefined') {
-      return window.matchMedia(query).matches;
-    }
-    return false;
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia(query).matches;
   });
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia(query);
-
-    // 初始检查
-    setMatches(mediaQuery.matches);
-
-    // 监听变化
-    const handler = (event: MediaQueryListEvent) => {
-      setMatches(event.matches);
-    };
-
-    // 兼容新旧API
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handler);
-      return () => mediaQuery.removeEventListener('change', handler);
-    } else {
-      // Safari < 14
-      mediaQuery.addListener(handler);
-      return () => mediaQuery.removeListener(handler);
-    }
+    const mql = window.matchMedia(query);
+    const handler = (e: MediaQueryListEvent) => setMatches(e.matches);
+    mql.addEventListener('change', handler);
+    setMatches(mql.matches);
+    return () => mql.removeEventListener('change', handler);
   }, [query]);
 
   return matches;
-};
-
-// 使用示例：响应式布局
-const MediaQueryDemo = () => {
-  const isMobile = useMediaQuery('(max-width: 768px)');
-  const isDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
-  const isReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
-
-  return (
-    <div style={{ padding: '20px' }}>
-      <h3>useMediaQuery响应式检测</h3>
-      <p>当前屏幕：<strong>{isMobile ? '📱 移动端' : '💻 桌面端'}</strong></p>
-      <p>系统主题偏好：<strong>{isDarkMode ? '🌙 暗色模式' : '☀️ 亮色模式'}</strong></p>
-      <p>减少动画：<strong>{isReducedMotion ? '是' : '否'}</strong></p>
-      <div style={{
-        padding: '20px',
-        background: isMobile ? '#ffe0e0' : '#e0ffe0',
-        borderRadius: '8px',
-      }}>
-        {isMobile ? '在手机上看到的是红色背景' : '在桌面端看到的是绿色背景'}
-      </div>
-    </div>
-  );
-};
-\`\`\`
-
-### 8. usePrevious - 获取上一轮渲染值
-
-\`\`\`tsx
-import { useEffect, useRef } from 'react';
-
-// 获取上一轮渲染的值
-const usePrevious = <T>(value: T): T | undefined => {
-  const ref = useRef<T>();
-
-  useEffect(() => {
-    ref.current = value;
-  }, [value]); // 每次渲染后更新ref，但返回的是更新前的值
-
-  // 返回的是上一次渲染时ref.current的值
-  return ref.current;
-};
-
-// 使用示例：比较值变化
-const PreviousDemo = () => {
-  const [count, setCount] = useState(0);
-  const prevCount = usePrevious(count);
-
-  const [name, setName] = useState('');
-  const prevName = usePrevious(name);
-
-  return (
-    <div style={{ padding: '20px' }}>
-      <h3>usePrevious获取上一轮值</h3>
-      <div>
-        <p>Count: 当前={count}, 之前={prevCount ?? '无'}</p>
-        <button onClick={() => setCount(c => c + 1)}>+1</button>
-      </div>
-      <div style={{ marginTop: '10px' }}>
-        <input
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="输入名字"
-        />
-        <p>名字变化：{prevName} → {name}</p>
-      </div>
-    </div>
-  );
-};
-\`\`\`
-
-### 更多实用Hooks：useKeyPress、useHover、useWindowSize
-
-\`\`\`tsx
-// ============ useKeyPress：监听单个按键 ============
-const useKeyPress = (targetKey: string): boolean => {
-  const [isPressed, setIsPressed] = useState(false);
-
-  useEventListener('keydown', (e: KeyboardEvent) => {
-    if (e.key === targetKey) setIsPressed(true);
-  });
-  useEventListener('keyup', (e: KeyboardEvent) => {
-    if (e.key === targetKey) setIsPressed(false);
-  });
-
-  return isPressed;
-};
-
-// ============ useHover：鼠标悬停状态 ============
-const useHover = <T extends HTMLElement>(): [React.RefObject<T>, boolean] => {
-  const [isHovered, setIsHovered] = useState(false);
-  const ref = useRef<T>(null);
-
-  useEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-
-    const handleMouseEnter = () => setIsHovered(true);
-    const handleMouseLeave = () => setIsHovered(false);
-
-    element.addEventListener('mouseenter', handleMouseEnter);
-    element.addEventListener('mouseleave', handleMouseLeave);
-
-    return () => {
-      element.removeEventListener('mouseenter', handleMouseEnter);
-      element.removeEventListener('mouseleave', handleMouseLeave);
-    };
-  }, []);
-
-  return [ref, isHovered];
-};
-
-// ============ useWindowSize：窗口尺寸 ============
-interface WindowSize {
-  width: number;
-  height: number;
 }
 
-const useWindowSize = (): WindowSize => {
-  const [size, setSize] = useState<WindowSize>({
+// useKeyPress - 监听键盘按键
+function useKeyPress(targetKey: string, handler: () => void) {
+  useEventListener('keydown', (e) => {
+    if (e.key === targetKey) handler();
+  });
+}
+
+// useHover - 鼠标悬停
+function useHover<T extends HTMLElement = HTMLDivElement>(): [
+  React.RefObject<T>,
+  boolean
+] {
+  const ref = useRef<T>(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  useEventListener('mouseenter', () => setIsHovered(true), ref.current);
+  useEventListener('mouseleave', () => setIsHovered(false), ref.current);
+
+  return [ref, isHovered];
+}
+
+// useWindowSize - 窗口尺寸
+function useWindowSize() {
+  const [size, setSize] = useState({
     width: typeof window !== 'undefined' ? window.innerWidth : 0,
     height: typeof window !== 'undefined' ? window.innerHeight : 0,
   });
 
-  useEventListener('resize', () => {
+  useEventListener('resize', useThrottle(() => {
     setSize({ width: window.innerWidth, height: window.innerHeight });
-  });
+  }, 200));
 
   return size;
-};
+}
 
-// ============ 综合示例 ============
-const CombinedHooksDemo = () => {
-  const escapePressed = useKeyPress('Escape');
-  const [hoverRef, isHovered] = useHover<HTMLDivElement>();
-  const { width, height } = useWindowSize();
-
+// usePrevious - 获取上一轮渲染的值
+function usePrevious<T>(value: T): T | undefined {
+  const ref = useRef<T>();
   useEffect(() => {
-    if (escapePressed) {
-      console.log('Escape键被按下！可以用来关闭弹窗');
-    }
-  }, [escapePressed]);
+    ref.current = value;
+  }, [value]);
+  return ref.current;
+}
+
+// 使用示例
+function Demo() {
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const [hoverRef, isHovered] = useHover();
+  const { width } = useWindowSize();
+  const [count, setCount] = useState(0);
+  const prevCount = usePrevious(count);
+
+  useKeyPress('Escape', () => console.log('ESC pressed'));
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h3>更多Hooks演示</h3>
-      <div
-        ref={hoverRef}
-        style={{
-          padding: '20px',
-          background: isHovered ? '#4CAF50' : '#ccc',
-          color: 'white',
-          textAlign: 'center',
-          borderRadius: '8px',
-          transition: 'background 0.3s',
-        }}
-      >
-        {isHovered ? '鼠标在上面！' : '把鼠标移到这里'}
+    <div>
+      <p>屏幕宽度: {width}px (移动端: {isMobile ? '是' : '否'})</p>
+      <div ref={hoverRef} style={{ padding: 20, background: isHovered ? 'blue' : 'gray' }}>
+        悬停我: {isHovered ? '悬停中' : '未悬停'}
       </div>
-      <p style={{ marginTop: '20px' }}>
-        窗口尺寸: {width} x {height}
-      </p>
-      <p>Escape键: {escapePressed ? '✅ 按下中' : '❌ 未按下'}</p>
+      <p>现在: {count}, 之前: {prevCount}</p>
+      <button onClick={() => setCount(c => c + 1)}>增加</button>
     </div>
   );
-};
+}
 \`\`\`
 
-### 本章小结
+### 关键要点总结
 
-- **自定义Hook命名**：必须以"use"开头，这是ESLint识别的基础
-- **逻辑复用本质**：自定义Hook复用的是"状态逻辑"，不是状态本身；每次调用Hook产生独立的state
-- **useRef保存回调**：解决闭包陈旧问题（如useInterval、useEventListener）
-- **useCallback包裹返回函数**：保证函数引用稳定，方便调用方作为依赖
-- **自动清理副作用**：useEffect返回清理函数，组件卸载时自动执行
-- **类型泛型支持**：自定义Hook使用泛型<T>提供类型安全（如useLocalStorage<T>、useDebounce<T>）
-- **组合现有Hook**：自定义Hook内部可以调用其他自定义Hook，层层组合
+1. **命名规范**：必须以 use 开头，这是约定也是 React 识别 Hook 的方式
+2. **每次调用自定义 Hook 都是独立状态**：多个组件用同一个 useLocalStorage，它们的 state 互不影响
+3. **善用 useRef 解决闭包问题**：useInterval 的经典模式就是用 ref 保存最新回调
+4. **记得清理副作用**：事件监听、定时器、订阅都要在 useEffect 返回值中清理
+5. **返回函数用 useCallback 包裹**：让调用方可以安全作为其他 Hook 的依赖
+6. **支持泛型让 Hook 更类型安全**：useLocalStorage<T>、useFetch<T> 比 any 好太多
+7. **考虑 SSR 兼容**：typeof window !== 'undefined' 判断，避免 Next.js 等框架报错
+8. **组合现有 Hook**：自定义 Hook 内部可以调用其他自定义 Hook，层层组合
 `,
   },
   {
     id: "tsrx-uselayouteffect",
+    group: "Hooks篇",
     icon: "📐",
     title: "useLayoutEffect与DOM测量",
-    content: `## useLayoutEffect与DOM测量
+    content: `## useLayoutEffect 与 DOM 测量
 
-useEffect在浏览器完成绘制之后异步执行，不会阻塞浏览器更新屏幕。而useLayoutEffect在DOM变更之后、浏览器绘制之前同步执行，会阻塞浏览器绘制。这使得useLayoutEffect非常适合需要读取DOM布局信息并同步修改DOM的场景。
+\`useLayoutEffect\` 是一个容易被误解但非常重要的 Hook。它和 \`useEffect\` 很相似，但执行时机不同——它在 DOM 变更后、浏览器绘制前**同步执行**。
 
-### 一、useEffect vs useLayoutEffect执行时机
+### useEffect vs useLayoutEffect 执行时机
 
-理解两者的执行时机差异至关重要：
+两者的根本区别在于执行时机不同，选择不当会导致视觉闪烁：
 
-1. 组件渲染（render phase）→ 生成虚拟DOM
-2. DOM变更（commit phase）→ React更新真实DOM
-3. **useLayoutEffect** 执行（同步，阻塞绘制）→ 可以读取/修改DOM
-4. 浏览器绘制（paint）→ 用户看到页面
-5. **useEffect** 执行（异步，绘制后）→ 不阻塞页面
-
-\`\`\`tsx
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-
-const EffectTimingDemo = () => {
-  const [count, setCount] = useState(0);
-  const renderTime = useRef(Date.now());
-
-  // useLayoutEffect在DOM更新后、浏览器绘制前同步执行
-  useLayoutEffect(() => {
-    console.log('1. useLayoutEffect执行 - DOM已更新但还没绘制');
-    console.log('   此时可以读取DOM尺寸、位置等布局信息');
-    // 这里的DOM修改用户看不到中间态（不会闪烁）
-  }, [count]);
-
-  // useEffect在浏览器绘制完成后异步执行
-  useEffect(() => {
-    console.log('2. useEffect执行 - 浏览器已完成绘制');
-    console.log('   用户已经看到了页面更新');
-  }, [count]);
-
-  console.log('0. 组件渲染');
-
-  return (
-    <div style={{ padding: '20px' }}>
-      <h2>useLayoutEffect vs useEffect 执行时机</h2>
-      <p>Count: {count}</p>
-      <button onClick={() => setCount(c => c + 1)}>触发更新</button>
-      <div style={{ marginTop: '20px', padding: '15px', background: '#f0f0f0' }}>
-        <h4>执行顺序（打开Console观察）：</h4>
-        <ol>
-          <li>组件渲染 → 更新虚拟DOM</li>
-          <li>React更新真实DOM</li>
-          <li><strong>useLayoutEffect</strong>同步执行（阻塞绘制）</li>
-          <li>浏览器绘制页面</li>
-          <li><strong>useEffect</strong>异步执行（绘制后）</li>
-        </ol>
-      </div>
-    </div>
-  );
-};
+\`\`\`
+时间线:
+1. 组件渲染 → 生成虚拟DOM
+2. DOM 变更（React提交更新到真实DOM）
+3. 👇 useLayoutEffect 在这里执行（同步执行，会阻塞浏览器绘制）
+4. 浏览器绘制（Paint）→ 用户看到屏幕更新
+5. 👇 useEffect 在这里执行（异步执行，不阻塞绘制）
 \`\`\`
 
-### 二、DOM测量：获取元素尺寸和位置
+简单记忆：
+- **useEffect**：渲染后异步执行，不阻塞页面绘制 → 大多数场景用这个
+- **useLayoutEffect**：DOM更新后、绘制前同步执行，阻塞绘制 → 需要测量/修改DOM避免闪烁时用
 
-useLayoutEffect最常见的用途是DOM测量。如果你在useEffect中读取DOM尺寸并据此修改样式，用户可能会看到一帧闪烁（先看到旧布局，再看到新布局）。
+### Tooltip 自动调整方向 Demo
 
-\`\`\`tsx
-import React, { useState, useLayoutEffect, useRef } from 'react';
-
-// 测量元素尺寸的Hook
-const useElementSize = <T extends HTMLElement>(): [
-  React.RefObject<T>,
-  { width: number; height: number; top: number; left: number }
-] => {
-  const ref = useRef<T>(null);
-  const [size, setSize] = useState({ width: 0, height: 0, top: 0, left: 0 });
-
-  // 使用useLayoutEffect：在绘制前完成测量和状态更新
-  // 如果用useEffect，用户可能先看到0尺寸，然后突然跳变
-  useLayoutEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-
-    const updateSize = () => {
-      // getBoundingClientRect返回元素的位置和尺寸信息
-      const rect = element.getBoundingClientRect();
-      setSize({
-        width: rect.width,
-        height: rect.height,
-        top: rect.top,
-        left: rect.left,
-      });
-    };
-
-    // 初始测量
-    updateSize();
-
-    // 监听窗口resize
-    window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
-  }, []);
-
-  return [ref, size];
-};
-
-// 使用示例
-const MeasureDemo = () => {
-  const [boxRef, boxSize] = useElementSize<HTMLDivElement>();
-  const [text, setText] = useState('调整窗口大小，观察尺寸变化');
-
-  return (
-    <div style={{ padding: '20px' }}>
-      <h2>DOM测量演示</h2>
-      <textarea
-        value={text}
-        onChange={e => setText(e.target.value)}
-        style={{ width: '100%', height: '60px', marginBottom: '10px' }}
-      />
-      <div
-        ref={boxRef}
-        style={{
-          padding: '20px',
-          background: '#e3f2fd',
-          border: '2px solid #2196f3',
-          borderRadius: '8px',
-          resize: 'both',
-          overflow: 'auto',
-          minWidth: '200px',
-          minHeight: '100px',
-        }}
-      >
-        <p>{text}</p>
-        <div style={{
-          position: 'absolute',
-          top: '5px',
-          right: '10px',
-          fontSize: '12px',
-          color: '#666',
-        }}>
-          拖拽右下角可以调整大小
-        </div>
-      </div>
-      <div style={{ marginTop: '10px', fontFamily: 'monospace' }}>
-        <p>宽度: {Math.round(boxSize.width)}px</p>
-        <p>高度: {Math.round(boxSize.height)}px</p>
-        <p>位置: top={Math.round(boxSize.top)}, left={Math.round(boxSize.left)}</p>
-      </div>
-    </div>
-  );
-};
-\`\`\`
-
-### 三、Tooltip自动调整方向Demo
-
-这是一个经典的useLayoutEffect使用场景：根据元素位置自动决定Tooltip显示在上方还是下方，避免超出视口。
+Tooltip 需要根据锚点元素的位置来决定浮层方向，如果用 useEffect 会出现闪烁（先显示在错误位置，再跳到正确位置）：
 
 \`\`\`tsx
-import React, { useState, useLayoutEffect, useRef } from 'react';
+import { useState, useRef, useLayoutEffect } from 'react';
 
-// Tooltip组件：自动判断显示方向
-interface TooltipProps {
-  text: string;
+type Placement = 'top' | 'bottom' | 'left' | 'right';
+
+function Tooltip({
+  children,
+  content,
+  placement: initialPlacement = 'top',
+}: {
   children: React.ReactNode;
-}
-
-const Tooltip = ({ text, children }: TooltipProps) => {
+  content: React.ReactNode;
+  placement?: Placement;
+}) {
   const [isVisible, setIsVisible] = useState(false);
-  const [position, setPosition] = useState<'top' | 'bottom'>('top');
-  const triggerRef = useRef<HTMLDivElement>(null);
+  const [actualPlacement, setActualPlacement] = useState<Placement>(initialPlacement);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const anchorRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
-  // 使用useLayoutEffect：在Tooltip显示前测量位置，决定方向
   useLayoutEffect(() => {
-    if (!isVisible || !triggerRef.current || !tooltipRef.current) return;
+    if (!isVisible || !anchorRef.current || !tooltipRef.current) return;
 
-    const triggerRect = triggerRef.current.getBoundingClientRect();
+    const anchorRect = anchorRef.current.getBoundingClientRect();
     const tooltipRect = tooltipRef.current.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
+    const gap = 8;
+    const viewportPadding = 10;
 
-    // 判断上方空间是否足够
-    const spaceAbove = triggerRect.top;
-    const spaceBelow = viewportHeight - triggerRect.bottom;
+    let newPlacement = initialPlacement;
+    let top = 0;
+    let left = 0;
 
-    // 如果下方空间不够且上方空间足够，显示在上方；否则显示在下方
-    if (spaceBelow < tooltipRect.height && spaceAbove >= tooltipRect.height) {
-      setPosition('top');
-    } else {
-      setPosition('bottom');
+    // 检查各个方向是否有足够空间
+    const spaceAbove = anchorRect.top;
+    const spaceBelow = window.innerHeight - anchorRect.bottom;
+    const spaceLeft = anchorRect.left;
+    const spaceRight = window.innerWidth - anchorRect.right;
+
+    // 如果初始方向空间不够，自动翻转
+    if (initialPlacement === 'top' && spaceAbove < tooltipRect.height + gap) {
+      newPlacement = 'bottom';
+    } else if (initialPlacement === 'bottom' && spaceBelow < tooltipRect.height + gap) {
+      newPlacement = 'top';
+    } else if (initialPlacement === 'left' && spaceLeft < tooltipRect.width + gap) {
+      newPlacement = 'right';
+    } else if (initialPlacement === 'right' && spaceRight < tooltipRect.width + gap) {
+      newPlacement = 'left';
     }
-  }, [isVisible]);
+
+    // 根据最终方向计算位置
+    switch (newPlacement) {
+      case 'top':
+        top = anchorRect.top - tooltipRect.height - gap;
+        left = anchorRect.left + (anchorRect.width - tooltipRect.width) / 2;
+        break;
+      case 'bottom':
+        top = anchorRect.bottom + gap;
+        left = anchorRect.left + (anchorRect.width - tooltipRect.width) / 2;
+        break;
+      case 'left':
+        top = anchorRect.top + (anchorRect.height - tooltipRect.height) / 2;
+        left = anchorRect.left - tooltipRect.width - gap;
+        break;
+      case 'right':
+        top = anchorRect.top + (anchorRect.height - tooltipRect.height) / 2;
+        left = anchorRect.right + gap;
+        break;
+    }
+
+    // 边界约束：不超出视口
+    left = Math.max(viewportPadding, Math.min(left, window.innerWidth - tooltipRect.width - viewportPadding));
+    top = Math.max(viewportPadding, Math.min(top, window.innerHeight - tooltipRect.height - viewportPadding));
+
+    // ✅ 在绘制前同步更新位置，用户看不到闪烁
+    setActualPlacement(newPlacement);
+    setPosition({ top: top + window.scrollY, left: left + window.scrollX });
+  }, [isVisible, initialPlacement]);
 
   return (
     <div
-      ref={triggerRef}
-      style={{ display: 'inline-block', position: 'relative' }}
+      ref={anchorRef}
+      className="inline-block relative"
       onMouseEnter={() => setIsVisible(true)}
       onMouseLeave={() => setIsVisible(false)}
     >
@@ -2628,63 +2064,63 @@ const Tooltip = ({ text, children }: TooltipProps) => {
       {isVisible && (
         <div
           ref={tooltipRef}
+          className="fixed z-50 px-3 py-2 text-sm text-white bg-gray-900 rounded shadow-lg whitespace-nowrap"
           style={{
-            position: 'absolute',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            ...(position === 'top'
-              ? { bottom: '100%', marginBottom: '8px' }
-              : { top: '100%', marginTop: '8px' }),
-            background: '#333',
-            color: 'white',
-            padding: '6px 12px',
-            borderRadius: '4px',
-            fontSize: '14px',
-            whiteSpace: 'nowrap',
-            zIndex: 1000,
+            top: position.top,
+            left: position.left,
+            // 初始隐藏，计算完位置再显示（防止闪烁）
+            opacity: position.top === 0 && position.left === 0 ? 0 : 1,
+            transition: 'opacity 0.1s',
           }}
         >
-          {text}
-          {/* 小三角指示器 */}
-          <div style={{
-            position: 'absolute',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            ...(position === 'top'
-              ? { bottom: '-6px', borderTop: '6px solid #333' }
-              : { top: '-6px', borderBottom: '6px solid #333' }),
-            borderLeft: '6px solid transparent',
-            borderRight: '6px solid transparent',
-          }} />
+          {content}
+          <div
+            className={\`absolute w-2 h-2 bg-gray-900 transform rotate-45 \${
+              actualPlacement === 'top' ? 'bottom-[-4px] left-1/2 -translate-x-1/2' :
+              actualPlacement === 'bottom' ? 'top-[-4px] left-1/2 -translate-x-1/2' :
+              actualPlacement === 'left' ? 'right-[-4px] top-1/2 -translate-y-1/2' :
+              'left-[-4px] top-1/2 -translate-y-1/2'
+            }\`}
+          />
         </div>
       )}
     </div>
   );
-};
+}
 
-const TooltipDemo = () => {
+// 使用示例
+function TooltipDemo() {
   return (
-    <div style={{ padding: '40px 20px' }}>
-      <h2>Tooltip自动调整方向</h2>
-      <p>将鼠标移到下面的元素上，Tooltip会自动判断显示在上方还是下方</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '200px', alignItems: 'center' }}>
-        <div style={{
-          position: 'fixed', top: '80px', left: '50%', transform: 'translateX(-50%)',
-        }}>
-          <Tooltip text="我显示在下方！（因为上方空间不够）">
-            <button style={{ padding: '10px 20px', fontSize: '16px' }}>
-              靠近顶部的按钮
+    <div className="min-h-screen p-8">
+      <h1 className="text-2xl font-bold mb-8">Tooltip 自动调整方向</h1>
+      <p className="mb-4 text-gray-600">
+        把鼠标悬停在按钮上，Tooltip会自动检测空间：
+        靠近边缘时会翻转方向，不会超出视口。
+      </p>
+      
+      <div className="grid gap-8 mt-16">
+        <div className="flex justify-center gap-8">
+          <Tooltip content="这是 Tooltip 内容" placement="top">
+            <button className="px-4 py-2 bg-blue-500 text-white rounded">
+              悬停显示 Tooltip (上方)
+            </button>
+          </Tooltip>
+          <Tooltip content="总是有足够空间的Tooltip" placement="bottom">
+            <button className="px-4 py-2 bg-green-500 text-white rounded">
+              悬停显示 Tooltip (下方)
             </button>
           </Tooltip>
         </div>
-        <div>
-          <p>滚动页面查看效果</p>
-        </div>
-        <div style={{
-          position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
-        }}>
-          <Tooltip text="我显示在上方！（因为下方空间不够）">
-            <button style={{ padding: '10px 20px', fontSize: '16px' }}>
+
+        {/* 边缘测试：靠近顶部和底部的按钮 */}
+        <div className="mt-32 flex justify-between">
+          <Tooltip content="空间不够会自动翻转！" placement="top">
+            <button className="px-4 py-2 bg-red-500 text-white rounded">
+              靠近顶部的按钮
+            </button>
+          </Tooltip>
+          <Tooltip content="空间不够会自动翻转！" placement="bottom">
+            <button className="px-4 py-2 bg-purple-500 text-white rounded">
               靠近底部的按钮
             </button>
           </Tooltip>
@@ -2692,646 +2128,685 @@ const TooltipDemo = () => {
       </div>
     </div>
   );
-};
+}
 \`\`\`
 
-### 四、滚动位置保持与防止闪烁
+### 滚动位置恢复
+
+点击详情页再返回列表时，恢复之前的滚动位置：
 
 \`\`\`tsx
-import React, { useState, useLayoutEffect, useRef } from 'react';
+import { useRef, useLayoutEffect } from 'react';
+import { useRouter } from 'next/router';
 
-// 保持滚动位置的Hook：类似聊天应用加载历史消息时保持视口位置
-const useScrollPosition = (containerRef: React.RefObject<HTMLElement>, dependency: any) => {
+function useScrollRestoration(key: string) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const savedPositionRef = useRef(0);
+
+  // 离开前保存滚动位置
   useLayoutEffect(() => {
-    const container = containerRef.current;
+    const container = scrollRef.current;
     if (!container) return;
 
-    // 在DOM更新后、绘制前，调整滚动位置
-    // 这样用户看不到页面跳动
-    const scrollHeight = container.scrollHeight;
-    const scrollTop = container.scrollTop;
-
-    // 使用requestAnimationFrame在浏览器绘制前设置滚动位置
-    requestAnimationFrame(() => {
-      if (container) {
-        // 保持滚动位置相对于底部
-        container.scrollTop = container.scrollHeight - scrollHeight + scrollTop;
-      }
-    });
-  }, [dependency]);
-};
-
-// 防闪烁Demo：useEffect vs useLayoutEffect对比
-const FlickerFixDemo = () => {
-  const [showFixed, setShowFixed] = useState(true);
-  const boxRef = useRef<HTMLDivElement>(null);
-  const [boxWidth, setBoxWidth] = useState(0);
-
-  // ❌ 如果用useEffect，会有闪烁：
-  // 用户先看到boxWidth=0的状态，然后看到正确的宽度
-  // useEffect(() => {
-  //   if (boxRef.current) {
-  //     setBoxWidth(boxRef.current.getBoundingClientRect().width);
-  //   }
-  // }, []);
-
-  // ✅ 用useLayoutEffect，在绘制前设置正确的值，用户看不到闪烁
-  useLayoutEffect(() => {
-    if (boxRef.current) {
-      setBoxWidth(boxRef.current.getBoundingClientRect().width);
+    // 恢复之前保存的位置
+    const saved = sessionStorage.getItem(\`scroll-\${key}\`);
+    if (saved) {
+      // ✅ 在绘制前设置scrollTop，用户不会看到从0跳转到保存位置的闪烁
+      requestAnimationFrame(() => {
+        container.scrollTop = Number(saved);
+      });
     }
-  }, []);
+
+    const handleScroll = () => {
+      savedPositionRef.current = container.scrollTop;
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      sessionStorage.setItem(\`scroll-\${key}\`, String(savedPositionRef.current));
+    };
+  }, [key]);
+
+  return scrollRef;
+}
+
+// 在列表页使用
+function ArticleList() {
+  const scrollRef = useScrollRestoration('article-list');
+  const router = useRouter();
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h2>防止闪烁</h2>
-      <div style={{ marginBottom: '20px' }}>
-        <button onClick={() => setShowFixed(s => !s)}>
-          {showFixed ? '隐藏' : '显示'}宽度测量Demo
-        </button>
-      </div>
-      {showFixed && (
+    <div
+      ref={scrollRef}
+      className="h-screen overflow-y-auto"
+      style={{ height: '100vh', overflowY: 'auto' }}
+    >
+      <h1>文章列表</h1>
+      {Array.from({ length: 50 }, (_, i) => (
         <div
-          ref={boxRef}
-          style={{
-            padding: '20px',
-            background: '#e8f5e9',
-            border: '2px solid #4caf50',
-            borderRadius: '8px',
-            width: '70%',
-          }}
+          key={i}
+          className="p-4 border-b cursor-pointer hover:bg-gray-50"
+          onClick={() => router.push(\`/articles/\${i}\`)}
         >
-          <p>这个元素的宽度是在useLayoutEffect中测量的</p>
-          <p>测量结果宽度：<strong>{Math.round(boxWidth)}px</strong></p>
-          <p style={{ fontSize: '12px', color: '#666' }}>
-            如果用useEffect测量，你会看到宽度从0突然跳到正确值（闪烁）
-          </p>
+          <h2 className="font-semibold">文章标题 {i + 1}</h2>
+          <p className="text-gray-500 text-sm">点击查看详情...</p>
         </div>
-      )}
+      ))}
     </div>
   );
-};
+}
 \`\`\`
 
-### 五、SSR警告问题与useIsomorphicLayoutEffect
+### 防止闪烁：在 paint 前完成 DOM 修改
 
-在Next.js等SSR框架中使用useLayoutEffect会触发警告，因为useLayoutEffect在服务器端不存在。解决方案是创建isomorphic版本：
+useLayoutEffect 最大的价值：用户永远看不到"中间态"。用 useEffect 会导致视觉闪烁：
+
+\`\`\`tsx
+function CounterWithDOMMeasure() {
+  const [count, setCount] = useState(0);
+  const [boxSize, setBoxSize] = useState({ width: 0, height: 0 });
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  // ❌ 用useEffect：先看到旧尺寸，再闪到新尺寸
+  // useEffect(() => {
+  //   if (boxRef.current) {
+  //     const rect = boxRef.current.getBoundingClientRect();
+  //     setBoxSize({ width: rect.width, height: rect.height });
+  //   }
+  // }, [count]);
+
+  // ✅ 用useLayoutEffect：在绘制前测量并设置，用户看不到闪烁
+  useLayoutEffect(() => {
+    if (boxRef.current) {
+      const rect = boxRef.current.getBoundingClientRect();
+      setBoxSize({ width: rect.width, height: rect.height });
+    }
+  }, [count]);
+
+  return (
+    <div className="p-8">
+      <button
+        onClick={() => setCount(c => c + 1)}
+        className="mb-4 px-4 py-2 bg-blue-500 text-white rounded"
+      >
+        增加内容
+      </button>
+      <div
+        ref={boxRef}
+        className="inline-block p-4 border-2 border-blue-500 rounded transition-all"
+      >
+        {Array.from({ length: count + 1 }).map((_, i) => (
+          <p key={i}>这是第 {i + 1} 行内容</p>
+        ))}
+      </div>
+      <p className="mt-4">
+        盒子尺寸: {Math.round(boxSize.width)}px × {Math.round(boxSize.height)}px
+      </p>
+    </div>
+  );
+}
+\`\`\`
+
+### SSR 警告问题与 useIsomorphicLayoutEffect
+
+在 Next.js 等 SSR 框架中使用 useLayoutEffect 会看到警告：\`Warning: useLayoutEffect does nothing on the server\`。
+
+解决方案：创建一个 isomorphic 版本，SSR 时用 useEffect，客户端用 useLayoutEffect：
 
 \`\`\`tsx
 import { useEffect, useLayoutEffect } from 'react';
 
-// useIsomorphicLayoutEffect
-// 在SSR环境使用useEffect（避免警告），在客户端使用useLayoutEffect
+// SSR时useEffect，客户端useLayoutEffect
 const useIsomorphicLayoutEffect =
   typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
-// 使用示例：SSR安全的DOM测量Hook
-const useIsomorphicSize = <T extends HTMLElement>(): [
-  React.RefObject<T>,
-  { width: number; height: number }
-] => {
-  const ref = useRef<T>(null);
-  const [size, setSize] = useState({ width: 0, height: 0 });
+// 以后在组件中统一用 useIsomorphicLayoutEffect 即可
+function SafeTooltip({ children, content }: { children: React.ReactNode; content: React.ReactNode }) {
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+  const ref = useRef<HTMLDivElement>(null);
 
-  // 使用isomorphic版本，SSR时是useEffect，客户端是useLayoutEffect
+  // ✅ SSR安全，不会有警告
   useIsomorphicLayoutEffect(() => {
-    const updateSize = () => {
-      if (ref.current) {
-        const rect = ref.current.getBoundingClientRect();
-        setSize({ width: rect.width, height: rect.height });
-      }
-    };
-    updateSize();
-    window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
+    if (ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setPosition({ top: rect.bottom + 8, left: rect.left });
+    }
   }, []);
 
-  return [ref, size];
-};
-
-const SSRSafeDemo = () => {
-  const [ref, size] = useIsomorphicSize<HTMLDivElement>();
-
   return (
-    <div style={{ padding: '20px' }}>
-      <h2>SSR安全的useLayoutEffect</h2>
-      <div
-        ref={ref}
-        style={{
-          padding: '20px',
-          background: '#fff3e0',
-          border: '2px solid #ff9800',
-          borderRadius: '8px',
-        }}
-      >
-        <p>这个组件在Next.js SSR中不会有警告</p>
-        <p>尺寸: {Math.round(size.width)} x {Math.round(size.height)}</p>
-      </div>
-      <div style={{ marginTop: '20px', padding: '15px', background: '#fff8e1' }}>
-        <h4>选择指南：</h4>
-        <ul>
-          <li><strong>90%情况用useEffect</strong>：数据获取、事件订阅、手动修改DOM不涉及布局</li>
-          <li><strong>需要DOM测量/同步更新DOM</strong>：用useLayoutEffect</li>
-          <li><strong>在SSR/Next.js中使用useLayoutEffect</strong>：用useIsomorphicLayoutEffect封装</li>
-        </ul>
-      </div>
+    <div ref={ref} className="relative inline-block">
+      {children}
+      {position.top > 0 && (
+        <div
+          className="absolute bg-gray-900 text-white p-2 rounded text-sm z-50"
+          style={{ top: position.top, left: position.left }}
+        >
+          {content}
+        </div>
+      )}
     </div>
   );
-};
+}
+
+// Next.js中如果在app directory (React Server Components)下
+// 需要加上'use client'指令
+// 'use client';
 \`\`\`
 
-### 本章小结
+### 什么时候用 useLayoutEffect？
 
-- **useEffect执行时机**：浏览器绘制完成后异步执行，不阻塞
-- **useLayoutEffect执行时机**：DOM变更后、浏览器绘制前同步执行，会阻塞绘制
-- **useLayoutEffect适用场景**：
-  1. DOM测量（getBoundingClientRect、offsetWidth/offsetHeight等）
-  2. 同步修改DOM以避免闪烁
-  3. Tooltip/Popover自动定位
-  4. 保持滚动位置
-- **使用原则**：优先使用useEffect，只有在确实需要同步读取/修改DOM时才用useLayoutEffect
-- **SSR注意事项**：useLayoutEffect在服务器端执行会触发警告，需要useIsomorphicLayoutEffect封装
-- **性能影响**：useLayoutEffect中不要放耗时操作，否则会阻塞页面渲染导致卡顿
+| 场景 | useEffect | useLayoutEffect |
+| --- | --- | --- |
+| 数据请求 fetch | ✅ 首选 | ❌ 不要用 |
+| 订阅/事件监听 | ✅ 首选 | ❌ 不要用 |
+| 设置定时器 setTimeout/setInterval | ✅ 首选 | ❌ 不要用 |
+| 手动操作DOM（focus、scroll等） | ⚠️ 可能闪烁 | ✅ 更好 |
+| 测量DOM尺寸（getBoundingClientRect、offsetWidth） | ❌ 闪烁 | ✅ 必须用 |
+| 根据DOM测量结果同步修改样式/位置 | ❌ 闪烁 | ✅ 必须用 |
+| 同步触发重渲染（避免中间态） | ❌ 会看到中间态 | ✅ 必须用 |
+
+**经验法则**：
+- 90% 的情况用 useEffect 就够了
+- 如果你的代码导致了视觉闪烁/抖动，尝试把 useEffect 换成 useLayoutEffect
+- 如果需要读取 DOM 布局信息并同步修改 DOM，必须用 useLayoutEffect
+- SSR 环境用 useIsomorphicLayoutEffect 避免警告
+
+### 关键要点总结
+
+1. **useLayoutEffect 在 DOM 更新后、浏览器绘制前同步执行**，会阻塞绘制
+2. **主要用途是 DOM 测量和同步修改**，避免视觉闪烁
+3. **Tooltip、Popover、下拉菜单等浮层组件**必须用 useLayoutEffect 计算位置
+4. **SSR 时会有警告**，用 useIsomorphicLayoutEffect 切换
+5. **不要在 useLayoutEffect 里做耗时操作**，它阻塞绘制，慢了用户会感觉到卡顿
+6. **大多数副作用用 useEffect**，只有涉及 DOM 测量/同步修改时才用 useLayoutEffect
+7. **useLayoutEffect 的 cleanup 和 useEffect 一样**，在组件卸载或下次effect前执行
 `,
   },
   {
     id: "tsrx-usedeferredvalue",
+    group: "Hooks篇",
     icon: "⏳",
     title: "useDeferredValue与useTransition",
-    content: `## useDeferredValue与useTransition
+    content: `## useDeferredValue 与 useTransition
 
-React 18引入了并发渲染特性，其中useTransition和useDeferredValue是两个最重要的Hook，用于实现非阻塞更新。它们允许你将某些更新标记为"非紧急"，让React在处理紧急更新（如输入框输入）时保持界面响应。
+React 18 引入的并发特性中，\`useTransition\` 和 \`useDeferredValue\` 是两个用于标记非紧急更新的 Hook。它们让你能够让 UI 在大量计算时保持响应，提升用户体验。
 
-### 一、useTransition：非阻塞更新
+### 核心概念：紧急更新 vs 过渡更新
 
-useTransition允许你将状态更新标记为"过渡更新"（transition），这是一种低优先级更新。React会优先处理更紧急的更新（如用户输入），在浏览器空闲时再处理过渡更新。
+React 18 之前，所有更新都是紧急的——触发更新后 React 会立即开始渲染，期间浏览器无法响应用户输入。
+
+React 18 将更新分为两类：
+
+- **紧急更新（Urgent Updates）**：打字、点击、拖拽等直接交互，需要立即响应
+- **过渡更新（Transition Updates）**：UI 从一个视图过渡到另一个，可以延迟，不需要立即看到结果
 
 \`\`\`tsx
-import React, { useState, useTransition } from 'react';
+// 比如搜索框场景：
+// 1. 输入框显示用户输入的文字 → 紧急更新（必须立即响应，否则感觉卡）
+// 2. 搜索结果列表根据输入过滤显示 → 过渡更新（可以有延迟，用户能接受loading）
+\`\`\`
 
-// 模拟一个需要大量计算的搜索结果列表
-const generateSearchResults = (query: string) => {
-  // 模拟大量计算/渲染工作
-  const results = [];
-  for (let i = 0; i < 10000; i++) {
-    results.push({
-      id: i,
-      text: \`搜索结果 \${i + 1} 关于 "\${query}"\`,
-    });
-  }
-  return results;
-};
+### useTransition 基础用法
 
-const SearchDemo = () => {
+\`useTransition\` 返回两个值：\`isPending\` 和 \`startTransition\`。用 \`startTransition\` 包裹的状态更新会被标记为低优先级：
+
+\`\`\`tsx
+import { useState, useTransition } from 'react';
+
+function SearchBox({ products }: { products: { id: number; name: string }[] }) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<Array<{ id: number; text: string }>>([]);
-  // useTransition返回两个值：
-  // isPending：是否正在进行过渡更新
-  // startTransition：将状态更新包装为过渡更新的函数
+  const [deferredQuery, setDeferredQuery] = useState('');
   const [isPending, startTransition] = useTransition();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    // 紧急更新：输入框立即响应，保证打字流畅
-    setQuery(value);
-
-    // 非紧急更新：搜索结果列表的更新被标记为低优先级
-    // React会先处理输入框更新，浏览器空闲时再更新列表
+    // 输入框的值：紧急更新，立即更新
+    setQuery(e.target.value);
+    
+    // 搜索过滤：过渡更新，可以被打断
     startTransition(() => {
-      // 大量计算在这里执行不会阻塞输入
-      setResults(generateSearchResults(value));
+      setDeferredQuery(e.target.value);
     });
   };
 
+  // 过滤大列表会很慢，但因为在transition中，不会阻塞输入
+  const filteredProducts = products.filter(p =>
+    p.name.toLowerCase().includes(deferredQuery.toLowerCase())
+  );
+
   return (
-    <div style={{ padding: '20px' }}>
-      <h2>useTransition非阻塞搜索</h2>
+    <div className="p-4 max-w-2xl mx-auto">
       <input
         type="text"
         value={query}
         onChange={handleChange}
-        placeholder="输入搜索内容（试试输入快一点）"
-        style={{ padding: '10px', width: '300px', fontSize: '16px' }}
+        placeholder="搜索产品..."
+        className="w-full border p-3 rounded-lg text-lg mb-4"
       />
+      
       {isPending && (
-        <div style={{ color: '#666', marginTop: '10px' }}>
-          ⏳ 正在搜索...
-        </div>
+        <div className="text-gray-500 mb-2">搜索中...</div>
       )}
-      <div style={{
-        marginTop: '10px',
-        maxHeight: '400px',
-        overflow: 'auto',
-        border: '1px solid #ccc',
-        opacity: isPending ? 0.5 : 1,
-        transition: 'opacity 0.2s',
-      }}>
-        {query && results.slice(0, 100).map(result => (
-          <div key={result.id} style={{
-            padding: '8px',
-            borderBottom: '1px solid #eee',
-          }}>
-            {result.text}
+
+      <div className="border rounded-lg">
+        {filteredProducts.map(product => (
+          <div
+            key={product.id}
+            className="p-3 border-b last:border-b-0 hover:bg-gray-50"
+          >
+            {product.name}
           </div>
         ))}
+        {filteredProducts.length === 0 && deferredQuery && (
+          <div className="p-8 text-center text-gray-400">
+            未找到相关产品
+          </div>
+        )}
       </div>
-      <p style={{ fontSize: '12px', color: '#666', marginTop: '10px' }}>
-        注意：输入框始终流畅，大量搜索结果的更新被延迟处理
-      </p>
+
+      <div className="mt-4 p-4 bg-gray-100 rounded-lg text-sm text-gray-600">
+        <p>💡 快速输入文字，输入框始终保持响应</p>
+        <p>🔄 列表会"追赶"输入，但不会阻塞输入</p>
+        <p>⏳ isPending 可以显示加载状态</p>
+      </div>
     </div>
   );
-};
+}
+
+// 生成10000条模拟产品数据
+const largeProductList = Array.from({ length: 10000 }, (_, i) => ({
+  id: i,
+  name: \`产品 \${i + 1} - \${['手机', '电脑', '耳机', '键盘', '鼠标', '显示器'][i % 6]}\`,
+}));
+
+function App() {
+  return <SearchBox products={largeProductList} />;
+}
 \`\`\`
 
-### 二、useDeferredValue：延迟某个值的更新
+### useDeferredValue 延迟某个值的更新
 
-useDeferredValue用于延迟一个值的更新，让React在紧急更新完成后再更新这个延迟值。它类似于防抖，但由React的调度器自适应控制延迟时间。
+\`useDeferredValue\` 用于延迟一个**已存在的值**，返回一个"滞后"版本。它更适合那种接收值作为 props，无法控制 setState 时机的场景：
 
 \`\`\`tsx
-import React, { useState, useDeferredValue, useMemo } from 'react';
+import { useState, useDeferredValue, useMemo } from 'react';
 
-// 模拟大列表组件（渲染开销大）
-const ExpensiveList = ({ query }: { query: string }) => {
-  // 使用useMemo模拟昂贵的过滤计算
-  const items = useMemo(() => {
-    console.log('过滤列表，query:', query);
-    const result = [];
-    for (let i = 0; i < 5000; i++) {
-      if (String(i).includes(query) || !query) {
-        result.push({ id: i, text: \`列表项 #\${i}\` });
-      }
-    }
-    return result;
-  }, [query]);
+// 一个很慢的列表组件，接收过滤文本
+function SlowProductList({ filterText }: { filterText: string }) {
+  // 延迟filterText的值，让紧急更新（输入）优先
+  const deferredText = useDeferredValue(filterText);
+
+  // 这个计算使用延迟后的值
+  const filteredProducts = useMemo(() => {
+    console.log('过滤产品...');
+    return largeProductList.filter(p =>
+      p.name.toLowerCase().includes(deferredText.toLowerCase())
+    );
+  }, [deferredText]);
+
+  // 可以根据值是否"滞后"显示视觉反馈
+  const isStale = deferredText !== filterText;
 
   return (
-    <div style={{ maxHeight: '300px', overflow: 'auto', border: '1px solid #ccc' }}>
-      {items.slice(0, 200).map(item => (
-        <div key={item.id} style={{ padding: '4px 8px' }}>
-          {item.text}
+    <div className={\`border rounded-lg transition-opacity \${isStale ? 'opacity-50' : 'opacity-100'}\`}>
+      {filteredProducts.slice(0, 100).map(product => (
+        <div key={product.id} className="p-3 border-b">
+          {product.name}
         </div>
       ))}
-      <p style={{ padding: '8px', color: '#666', fontSize: '12px' }}>
-        共 {items.length} 项（仅显示前200项）
-      </p>
+      {isStale && (
+        <div className="p-2 text-center text-sm text-gray-400">
+          更新中...
+        </div>
+      )}
     </div>
   );
-};
+}
 
-const DeferredValueDemo = () => {
-  const [query, setQuery] = useState('');
-  // useDeferredValue返回一个延迟版本的值
-  // 当query快速变化时，deferredQuery会"滞后"一点更新
-  const deferredQuery = useDeferredValue(query);
-
-  // 检查是否正在延迟中
-  const isStale = query !== deferredQuery;
+function SearchWithDeferred() {
+  const [text, setText] = useState('');
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h2>useDeferredValue延迟更新</h2>
+    <div className="p-4 max-w-2xl mx-auto">
       <input
-        value={query}
-        onChange={e => setQuery(e.target.value)}
-        placeholder="输入数字过滤列表"
-        style={{ padding: '10px', width: '300px', fontSize: '16px' }}
+        type="text"
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder="搜索产品..."
+        className="w-full border p-3 rounded-lg text-lg mb-4"
       />
-      <p style={{ fontSize: '12px', color: '#666' }}>
-        实时输入: "{query}" | 延迟值: "{deferredQuery}"
-        {isStale && ' (更新中...)'}
-      </p>
-      {/* 大列表使用延迟值，不会阻塞输入 */}
-      <div style={{ opacity: isStale ? 0.6 : 1, transition: 'opacity 0.2s' }}>
-        <ExpensiveList query={deferredQuery} />
-      </div>
-      <div style={{ marginTop: '20px', padding: '15px', background: '#f0f0f0' }}>
-        <h4>useDeferredValue vs 防抖对比：</h4>
-        <ul>
-          <li><strong>防抖（debounce）</strong>：固定延迟时间（如300ms），停止输入后才更新</li>
-          <li><strong>useDeferredValue</strong>：React调度器自适应，设备性能好延迟短，性能差延迟长</li>
-          <li><strong>防抖</strong>：用户停止输入后才看到结果，可能有"卡一下"的感觉</li>
-          <li><strong>useDeferredValue</strong>：尽可能快地更新结果，同时保持输入流畅</li>
-        </ul>
-      </div>
+      <SlowProductList filterText={text} />
     </div>
   );
-};
+}
 \`\`\`
 
-### 三、Suspense配合useTransition做skeleton loading
+### Suspense 配合 useTransition 做 Skeleton Loading
+
+和 Suspense 结合可以实现优雅的加载状态：
 
 \`\`\`tsx
-import React, { useState, useTransition, Suspense } from 'react';
+import { Suspense, useState, useTransition } from 'react';
 
-// 模拟异步数据加载组件
-const fetchUserData = (userId: string): Promise<{ name: string; posts: string[] }> => {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      resolve({
-        name: \`用户\${userId}\`,
-        posts: Array.from({ length: 5 }, (_, i) => \`用户\${userId}的动态 #\${i + 1}\`),
-      });
-    }, 1500);
-  });
-};
+// 模拟一个异步加载的组件
+function Comments({ postId }: { postId: number }) {
+  // 模拟数据请求延迟
+  if (Math.random() > 0.5) {
+    throw new Promise(resolve => setTimeout(resolve, 1000));
+  }
 
-// 模拟一个需要Suspense的数据组件
-const UserProfile = ({ userId }: { userId: string }) => {
-  // 注意：这是演示代码，实际使用中需要配合支持Suspense的数据获取库
-  // 如React Query、Relay、或React 18的use API
-  const [user, setUser] = useState<{ name: string; posts: string[] } | null>(null);
-
-  React.useEffect(() => {
-    let mounted = true;
-    fetchUserData(userId).then(data => {
-      if (mounted) setUser(data);
-    });
-    return () => { mounted = false; };
-  }, [userId]);
-
-  if (!user) throw new Promise(() => {}); // 触发Suspense
+  const comments = Array.from({ length: 5 }, (_, i) => ({
+    id: i,
+    author: \`用户\${i + 1}\`,
+    content: \`这是评论 \${i + 1} 的内容，关于文章 \${postId}\`,
+  }));
 
   return (
-    <div style={{ padding: '20px', border: '1px solid #ccc', borderRadius: '8px' }}>
-      <h3>{user.name}</h3>
-      <ul>
-        {user.posts.map((post, i) => (
-          <li key={i}>{post}</li>
-        ))}
-      </ul>
+    <div className="mt-4 space-y-2">
+      {comments.map(c => (
+        <div key={c.id} className="p-3 bg-gray-50 rounded">
+          <div className="font-semibold text-sm">{c.author}</div>
+          <div className="text-gray-600">{c.content}</div>
+        </div>
+      ))}
     </div>
   );
-};
+}
 
-// 骨架屏组件
-const ProfileSkeleton = () => (
-  <div style={{ padding: '20px', border: '1px solid #ccc', borderRadius: '8px' }}>
-    <div style={{ height: '24px', width: '120px', background: '#e0e0e0', borderRadius: '4px', marginBottom: '15px' }} />
-    {[1, 2, 3, 4, 5].map(i => (
-      <div key={i} style={{
-        height: '20px',
-        background: '#f0f0f0',
-        borderRadius: '4px',
-        marginBottom: '8px',
-      }} />
-    ))}
-  </div>
-);
+function Post({ postId }: { postId: number }) {
+  return (
+    <div className="border p-4 rounded">
+      <h2 className="text-xl font-bold">文章 {postId}</h2>
+      <p className="text-gray-600">这是文章 {postId} 的内容...</p>
+      <Suspense fallback={<div className="mt-4 text-gray-400">加载评论中...</div>}>
+        <Comments postId={postId} />
+      </Suspense>
+    </div>
+  );
+}
 
-const TabContainer = () => {
-  const [tab, setTab] = useState('1');
+function TabDemo() {
+  const [tab, setTab] = useState(1);
   const [isPending, startTransition] = useTransition();
 
-  const selectTab = (nextTab: string) => {
-    // 标签切换使用transition
-    // 用户点击标签按钮立即响应（有视觉反馈），内容区域显示skeleton
+  const selectTab = (nextTab: number) => {
     startTransition(() => {
       setTab(nextTab);
     });
   };
 
-  const tabs = ['1', '2', '3'];
-
   return (
-    <div style={{ padding: '20px' }}>
-      <h2>Suspense + useTransition加载状态</h2>
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-        {tabs.map(t => (
+    <div className="p-4 max-w-2xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">文章切换 (useTransition + Suspense)</h1>
+      
+      <div className="flex gap-2 mb-4">
+        {[1, 2, 3].map(tabNum => (
           <button
-            key={t}
-            onClick={() => selectTab(t)}
-            style={{
-              padding: '10px 20px',
-              fontSize: '16px',
-              background: tab === t ? '#2196f3' : '#e0e0e0',
-              color: tab === t ? 'white' : 'black',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              opacity: isPending ? 0.7 : 1,
-            }}
+            key={tabNum}
+            onClick={() => selectTab(tabNum)}
+            className={\`px-4 py-2 rounded \${
+              tab === tabNum 
+                ? 'bg-blue-500 text-white' 
+                : 'bg-gray-200 hover:bg-gray-300'
+            }\`}
           >
-            用户{t}
-            {isPending && tab === t && '...'}
+            文章 {tabNum}
           </button>
         ))}
       </div>
-      {/* 
-        Suspense包裹异步组件
-        key变化时会fallback到skeleton
-        useTransition让标签按钮保持响应
-      */}
-      <Suspense fallback={<ProfileSkeleton />}>
-        <div style={{ opacity: isPending ? 0.5 : 1, transition: 'opacity 0.2s' }}>
-          <UserProfile key={tab} userId={tab} />
-        </div>
-      </Suspense>
-      <p style={{ fontSize: '12px', color: '#666', marginTop: '10px' }}>
-        点击不同用户标签，观察：按钮立即响应，内容区平滑加载
-      </p>
+
+      {/* 过渡期间可以继续显示旧内容，不会出现空白 */}
+      <div style={{ opacity: isPending ? 0.7 : 1, transition: 'opacity 0.2s' }}>
+        <Suspense fallback={
+          <div className="border p-8 rounded text-center text-gray-400">
+            <div className="animate-pulse">
+              <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
+              <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            </div>
+            <p className="mt-4">加载文章中...</p>
+          </div>
+        }>
+          <Post postId={tab} />
+        </Suspense>
+      </div>
+
+      <div className="mt-4 p-4 bg-blue-50 rounded text-sm">
+        <p>✨ 点击标签时：</p>
+        <ul className="list-disc list-inside space-y-1 mt-2 text-gray-600">
+          <li>按钮立即响应（紧急更新）</li>
+          <li>内容区域显示skeleton加载态</li>
+          <li>不会阻塞用户再次点击其他标签</li>
+        </ul>
+      </div>
     </div>
   );
-};
+}
 \`\`\`
 
-### 本章小结
+### useDeferredValue vs 防抖/节流对比
 
-- **useTransition返回值**：
-  - `isPending`：布尔值，表示过渡更新是否正在进行
-  - `startTransition(fn)`：将fn中的状态更新标记为低优先级
-- **useDeferredValue(value)**：返回value的延迟版本，React会在紧急更新后更新它
-- **两者都是React 18并发特性**：不阻塞用户输入，保持界面流畅
-- **使用场景**：
-  - 大搜索框输入过滤
-  - 大列表/表格渲染
-  - 标签页切换配合Suspense skeleton
-  - 任何UI更新量大但不需要立即反映的场景
-- **startTransition与setTimeout区别**：
-  - setTimeout是固定延迟后执行
-  - startTransition由React调度，高优先级更新（如输入）会中断它
-- **防抖vs useDeferredValue**：
-  - 防抖：固定延迟，停止输入后才更新
-  - useDeferredValue：React自适应调度，尽早更新同时保持流畅
-- **使用原则**：紧急更新（输入、点击）直接setState，非紧急更新（搜索结果、列表过滤）用startTransition包裹
+很多人会问：useDeferredValue 和我用 lodash.debounce 有什么区别？
+
+| 特性 | 防抖/节流 | useDeferredValue |
+| --- | --- | --- |
+| 延迟时间 | 固定（如300ms） | 自适应：设备好就快，设备差就慢 |
+| 可中断 | ❌ 不可中断，必须等延迟结束 | ✅ 新输入到来可中断正在进行的渲染 |
+| 滞后显示 | 延迟期间显示旧值 | 紧急更新后立即渲染，React调度空闲时更新 |
+| 网络请求配合 | ✅ 适合减少请求频率 | ⚠️ 不直接解决请求问题，需要结合Suspense |
+| 使用场景 | 固定频率控制（输入搜索请求） | 大列表渲染、复杂计算等UI卡顿场景 |
+
+\`\`\`tsx
+// 实际项目中两者可以结合使用：
+function BestPracticeSearch() {
+  const [text, setText] = useState('');
+  
+  // 1. 防抖用于网络请求：300ms后才发请求，减少请求次数
+  const debouncedText = useDebounce(text, 300);
+  
+  // 2. useDeferredValue用于大列表渲染：让UI保持响应
+  const deferredText = useDeferredValue(text);
+
+  // 网络请求用防抖后的值
+  useEffect(() => {
+    if (debouncedText) {
+      console.log('发起搜索请求:', debouncedText);
+      // fetchSearchResults(debouncedText)
+    }
+  }, [debouncedText]);
+
+  // 大列表渲染用延迟值（或者直接用text，React自己调度）
+  const filteredList = useMemo(() => {
+    return largeProductList.filter(p => 
+      p.name.toLowerCase().includes(deferredText.toLowerCase())
+    );
+  }, [deferredText]);
+
+  return (
+    <div>
+      <input value={text} onChange={e => setText(e.target.value)} />
+      {/* 渲染列表 */}
+    </div>
+  );
+}
+\`\`\`
+
+### useTransition vs useDeferredValue 选择
+
+两个 Hook 目的类似，只是使用场景不同：
+
+\`\`\`tsx
+// useTransition：你可以控制setState调用的地方
+// 适合：你有一个按钮/事件处理函数，在里面触发更新
+function TabComponent() {
+  const [tab, setTab] = useState(1);
+  const [isPending, startTransition] = useTransition();
+
+  const handleClick = () => {
+    startTransition(() => {
+      setTab(2); // 你可以访问到setState
+    });
+  };
+
+  return <button onClick={handleClick}>切换标签</button>;
+}
+
+// useDeferredValue：你接收一个值作为props，无法控制setState
+// 适合：通用组件、接收来自父组件的值
+function GenericListComponent({ filterText }: { filterText: string }) {
+  // 你接收到filterText，但不知道父组件什么时候setState
+  // 无法用useTransition，这时用useDeferredValue
+  const deferredText = useDeferredValue(filterText);
+
+  return <ExpensiveList filter={deferredText} />;
+}
+
+// 两者功能上可以互相转换：
+// startTransition(setValue(v)) ≈ setValue(v) + useDeferredValue(v)
+// 选哪个取决于你在哪边写代码更方便
+\`\`\`
+
+### 关键要点总结
+
+1. **useTransition** 让你标记 setState 为非紧急更新，返回 isPending 显示加载状态
+2. **useDeferredValue** 让你延迟一个已有的值，适合接收 props 的通用组件
+3. **并发渲染是可中断的**：新的紧急输入到来时，React 会放弃正在进行的低优先级渲染
+4. **不会阻塞用户输入**：这是和防抖/节流最大的区别，用户输入永远是流畅的
+5. **自适应延迟**：不需要手动设置延迟时间，React 根据设备性能自动调整
+6. **和Suspense配合更好**：可以显示优雅的加载状态
+7. **不是用来替代防抖的**：防抖控制网络请求频率，useDeferredValue解决UI渲染卡顿，两者可以结合
+8. **只在遇到性能问题时使用**：普通应用不需要使用，大列表/复杂视图卡顿再考虑
 `,
   },
   {
     id: "tsrx-useid",
+    group: "Hooks篇",
     icon: "🆔",
     title: "useId/useSyncExternalStore/useInsertionEffect",
-    content: `## useId/useSyncExternalStore/useInsertionEffect
+    content: `## useId / useSyncExternalStore / useInsertionEffect
 
-React 18新增了三个专门的Hook：useId用于生成SSR安全的唯一ID，useSyncExternalStore用于订阅外部数据源，useInsertionEffect主要为CSS-in-JS库设计。
+React 18 还新增了几个不那么常用但各有专门用途的 Hook：\`useId\` 生成唯一 ID，\`useSyncExternalStore\` 订阅外部数据源，\`useInsertionEffect\` 给 CSS-in-JS 库注入样式。
 
-### 一、useId：生成唯一ID（SSR安全）
+### useId 生成唯一 ID（SSR 安全）
 
-在React应用中，我们经常需要生成唯一ID用于label htmlFor、aria-describedby等无障碍属性。在SSR（服务端渲染）场景下，普通的自增ID可能导致客户端和服务端生成的ID不一致，引起hydration mismatch。useId可以生成SSR安全的唯一ID。
+\`useId\` 生成唯一的字符串 ID，主要解决两个问题：
+1. SSR 水合时客户端和服务端 ID 不匹配导致的 hydration mismatch
+2. label htmlFor、aria-describedby 等无障碍属性需要唯一 ID
 
 \`\`\`tsx
-import React, { useState, useId } from 'react';
+import { useId, useState } from 'react';
 
-// 表单输入组件：使用useId生成唯一ID
-const FormInput = ({
+// ❌ 不要这么做：简单计数器在SSR时会mismatch
+let globalId = 0;
+function BadIdComponent() {
+  const id = \`input-\${globalId++}\`;
+  // SSR时服务端生成0,1,2...客户端重新开始生成0,1,2...导致不匹配
+  return <input id={id} />;
+}
+
+// ✅ 用useId：SSR安全，客户端和服务端生成一致的ID
+function TextField({
   label,
-  type = 'text',
-  value,
-  onChange,
-  describedBy,
-}: {
-  label: string;
-  type?: string;
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  describedBy?: string;
-}) => {
-  // useId生成唯一ID，SSR安全
-  // 同一个组件实例中调用多次useId会生成不同的ID
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   const id = useId();
-  const helperId = useId();
+  const errorId = useId(); // 可以生成多个
+  const [error, setError] = useState<string | null>(null);
 
   return (
-    <div style={{ marginBottom: '15px' }}>
-      <label
-        htmlFor={id}  // 关联input
-        style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}
-      >
+    <div className="mb-4">
+      <label htmlFor={id} className="block text-sm font-medium mb-1">
         {label}
       </label>
       <input
         id={id}
-        type={type}
-        value={value}
-        onChange={onChange}
-        aria-describedby={describedBy || helperId}
-        style={{
-          padding: '8px 12px',
-          width: '300px',
-          border: '1px solid #ccc',
-          borderRadius: '4px',
-          fontSize: '14px',
-        }}
+        aria-describedby={error ? errorId : undefined}
+        aria-invalid={!!error}
+        className={\`w-full border p-2 rounded \${error ? 'border-red-500' : 'border-gray-300'}\`}
+        {...props}
       />
-      {!describedBy && (
-        <div id={helperId} style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-          请输入{label}
-        </div>
+      {error && (
+        <p id={errorId} className="text-red-500 text-sm mt-1">
+          {error}
+        </p>
       )}
     </div>
   );
-};
+}
 
-// 密码强度提示（使用aria-describedby）
-const PasswordInput = () => {
-  const [password, setPassword] = useState('');
-  const id = useId();
-  const errorId = useId();
-  const isWeak = password.length > 0 && password.length < 8;
+// 表单示例
+function FormDemo() {
+  const formId = useId();
+  const nameId = \`\${formId}-name\`; // 可以拼接前缀
 
   return (
-    <div style={{ marginBottom: '15px' }}>
-      <label htmlFor={id} style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-        密码
-      </label>
-      <input
-        id={id}
-        type="password"
-        value={password}
-        onChange={e => setPassword(e.target.value)}
-        aria-invalid={isWeak}
-        aria-describedby={isWeak ? errorId : undefined}
-        style={{
-          padding: '8px 12px',
-          width: '300px',
-          border: isWeak ? '1px solid red' : '1px solid #ccc',
-          borderRadius: '4px',
-        }}
-      />
-      {isWeak && (
-        <div id={errorId} style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>
-          密码至少需要8个字符
-        </div>
-      )}
-    </div>
-  );
-};
-
-const UseIdDemo = () => {
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-
-  return (
-    <form style={{ padding: '20px', maxWidth: '400px' }} onSubmit={e => e.preventDefault()}>
-      <h2>useId生成唯一ID</h2>
-      <p style={{ fontSize: '14px', color: '#666' }}>
-        useId生成的ID在SSR和客户端一致，不会有hydration mismatch问题
-      </p>
-      <FormInput
-        label="用户名"
-        value={username}
-        onChange={e => setUsername(e.target.value)}
-      />
-      <FormInput
-        label="邮箱"
-        type="email"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-      />
-      <PasswordInput />
-      <button type="submit" style={{
-        padding: '10px 20px',
-        background: '#2196f3',
-        color: 'white',
-        border: 'none',
-        borderRadius: '4px',
-        cursor: 'pointer',
-      }}>
+    <form className="max-w-md mx-auto p-6 border rounded-lg">
+      <h1 className="text-xl font-bold mb-6">用户注册</h1>
+      
+      <TextField label="用户名" name="username" placeholder="请输入用户名" />
+      <TextField label="邮箱" type="email" name="email" placeholder="请输入邮箱" />
+      <TextField label="密码" type="password" name="password" placeholder="请输入密码" />
+      
+      <button
+        type="submit"
+        className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 mt-4"
+      >
         注册
       </button>
-      <div style={{ marginTop: '20px', padding: '15px', background: '#f5f5f5' }}>
-        <h4>useId使用场景：</h4>
-        <ul>
-          <li><code>label</code>的<code>htmlFor</code>属性关联input</li>
-          <li><code>aria-describedby</code>关联描述文本</li>
-          <li><code>aria-labelledby</code>关联标签元素</li>
-          <li>任何需要唯一ID的无障碍属性</li>
-        </ul>
-        <p style={{ fontSize: '12px', color: '#e65100' }}>
-          注意：useId生成的ID带":"前缀（如":r0:"），不要在CSS选择器中使用！
-        </p>
-      </div>
+
+      <p className="mt-4 text-xs text-gray-400 text-center">
+        打开DevTools查看input的id，每次都是唯一的且SSR安全
+      </p>
     </form>
   );
-};
+}
 \`\`\`
 
-### 二、useSyncExternalStore：订阅外部store
+**重要：useId 不要用于列表 key！**
+\`\`\`tsx
+function List({ items }) {
+  return (
+    <ul>
+      {items.map((item) => {
+        // ❌ 错误！useId不能用于key
+        // const id = useId();
+        // return <li key={id}>{item.name}</li>;
 
-useSyncExternalStore是React 18提供的一个用于订阅外部数据源的Hook，它能在并发模式下安全地读取外部状态，避免"撕裂"问题（tearing）。常见用途包括订阅Redux store、window事件、自定义event emitter等。
+        // ✅ 正确：key应该用数据本身的id
+        return <li key={item.id}>{item.name}</li>;
+      })}
+    </ul>
+  );
+}
+// 原因：
+// 1. Hooks不能在循环中调用（违反Hooks规则）
+// 2. useId是为了无障碍属性，不是为了列表key
+// 3. 列表key应该来自你的数据
+\`\`\`
+
+### useSyncExternalStore 订阅外部 store
+
+\`useSyncExternalStore\` 是一个专门用于**订阅外部数据源**的 Hook。"外部 store"指的是不属于 React state 的数据：
+- Redux store
+- 全局变量
+- DOM 状态（如网络状态online/offline）
+- 第三方状态管理库
 
 \`\`\`tsx
-import React, { useSyncExternalStore, useCallback, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
-// ============ 1. 订阅window resize事件 ============
-const useWindowWidth = () => {
-  // useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot?)
-  // subscribe: 注册订阅函数，返回取消订阅函数
-  // getSnapshot: 返回当前store的快照
-  // getServerSnapshot（可选）: SSR时的初始值
-  return useSyncExternalStore(
-    // subscribe函数：当store变化时调用callback
-    (callback) => {
-      window.addEventListener('resize', callback);
-      return () => window.removeEventListener('resize', callback);
-    },
-    // getSnapshot：获取当前值
-    () => window.innerWidth,
-    // getServerSnapshot：SSR时返回（window不存在）
-    () => 0
-  );
-};
+// 基础签名：
+// const snapshot = useSyncExternalStore(
+//   subscribe,   // 注册回调函数，store变化时调用
+//   getSnapshot, // 返回当前store的快照
+//   getServerSnapshot? // SSR时返回的快照（可选）
+// );
 
-const useOnlineStatus = () => {
+// 示例1：订阅网络在线/离线状态
+function useOnlineStatus() {
   return useSyncExternalStore(
+    // subscribe：订阅变化
     (callback) => {
       window.addEventListener('online', callback);
       window.addEventListener('offline', callback);
@@ -3340,990 +2815,1161 @@ const useOnlineStatus = () => {
         window.removeEventListener('offline', callback);
       };
     },
+    // getSnapshot：返回当前值
     () => navigator.onLine,
+    // getServerSnapshot：SSR时总是返回true
     () => true
   );
-};
+}
 
-// ============ 2. 自定义Event Emitter Store ============
-// 简单的发布订阅实现
-class EventEmitter<T> {
-  private listeners = new Set<() => void>();
-  private state: T;
+function NetworkStatus() {
+  const isOnline = useOnlineStatus();
+  return (
+    <div className={\`fixed bottom-4 right-4 px-4 py-2 rounded-full text-white \${
+      isOnline ? 'bg-green-500' : 'bg-red-500'
+    }\`}>
+      {isOnline ? '🟢 在线' : '🔴 离线'}
+    </div>
+  );
+}
+\`\`\`
 
-  constructor(initialState: T) {
-    this.state = initialState;
-  }
+### useSyncExternalStore 实现 useWindowSize
 
-  getState = () => this.state;
+用 useSyncExternalStore 重写 useWindowSize，比手动用 useEffect 更可靠：
 
-  setState = (newState: T | ((prev: T) => T)) => {
-    this.state = newState instanceof Function ? newState(this.state) : newState;
-    this.listeners.forEach(listener => listener());
-  };
+\`\`\`tsx
+import { useSyncExternalStore } from 'react';
 
-  subscribe = (listener: () => void) => {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+function useWindowSize() {
+  return useSyncExternalStore(
+    // subscribe
+    (callback) => {
+      window.addEventListener('resize', callback);
+      return () => window.removeEventListener('resize', callback);
+    },
+    // getSnapshot：注意返回的是对象！
+    // 必须保证如果值没变化，返回同一个引用
+    () => {
+      return {
+        width: window.innerWidth,
+        height: window.innerHeight,
+      };
+    },
+    // SSR
+    () => ({ width: 0, height: 0 })
+  );
+}
+
+// 等等，上面有个问题！getSnapshot每次都返回新对象！
+// React会认为值变化了，导致无限重渲染。
+// 正确做法：缓存最后一个值，只有真正变化时才返回新对象
+
+function useWindowSizeFixed() {
+  const lastSnapshot = useRef({ width: 0, height: 0 });
+
+  return useSyncExternalStore(
+    (callback) => {
+      const handler = () => {
+        lastSnapshot.current = {
+          width: window.innerWidth,
+          height: window.innerHeight,
+        };
+        callback();
+      };
+      // 初始化
+      handler();
+      window.addEventListener('resize', handler);
+      return () => window.removeEventListener('resize', handler);
+    },
+    () => lastSnapshot.current,
+    () => ({ width: 0, height: 0 })
+  );
+}
+
+// 使用示例
+function ResponsiveDemo() {
+  const { width, height } = useWindowSizeFixed();
+  const isMobile = width < 768;
+  const isTablet = width >= 768 && width < 1024;
+  const isDesktop = width >= 1024;
+
+  return (
+    <div className="p-8">
+      <h1 className="text-2xl font-bold mb-4">窗口尺寸</h1>
+      <p className="text-lg mb-4">
+        {width} × {height} 像素
+      </p>
+      <div className="flex gap-2">
+        <span className={\`px-3 py-1 rounded \${isMobile ? 'bg-blue-500 text-white' : 'bg-gray-200'}\`}>
+          移动端
+        </span>
+        <span className={\`px-3 py-1 rounded \${isTablet ? 'bg-green-500 text-white' : 'bg-gray-200'}\`}>
+          平板
+        </span>
+        <span className={\`px-3 py-1 rounded \${isDesktop ? 'bg-purple-500 text-white' : 'bg-gray-200'}\`}>
+          桌面端
+        </span>
+      </div>
+    </div>
+  );
+}
+\`\`\`
+
+### useSyncExternalStore 连接 Redux Store
+
+React Redux v8 之后内部就是用 useSyncExternalStore 实现的：
+
+\`\`\`tsx
+// 极简Redux-like store实现
+function createStore<State>(
+  reducer: (state: State, action: any) => State,
+  initialState: State
+) {
+  let state = initialState;
+  const listeners = new Set<() => void>();
+
+  return {
+    getState: () => state,
+    dispatch: (action: any) => {
+      state = reducer(state, action);
+      listeners.forEach(l => l());
+    },
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
   };
 }
 
-// 创建全局store
-const counterStore = new EventEmitter({ count: 0 });
-
-// 使用useSyncExternalStore订阅store
-const useCounterStore = () => {
-  const state = useSyncExternalStore(
-    counterStore.subscribe,
-    counterStore.getState
+// 用useSyncExternalStore连接store
+function useStore<State, Selected>(
+  store: ReturnType<typeof createStore<State>>,
+  selector: (state: State) => Selected
+): Selected {
+  return useSyncExternalStore(
+    store.subscribe,
+    () => selector(store.getState())
   );
-  return state;
-};
+}
 
-// Store操作方法
-const increment = () => counterStore.setState(s => ({ count: s.count + 1 }));
-const decrement = () => counterStore.setState(s => ({ count: s.count - 1 }));
-const reset = () => counterStore.setState({ count: 0 });
+// 使用示例
+const counterStore = createStore(
+  (state: number, action: { type: string }) => {
+    switch (action.type) {
+      case 'inc': return state + 1;
+      case 'dec': return state - 1;
+      default: return state;
+    }
+  },
+  0
+);
 
-// ============ 使用示例 ============
-const CounterDisplay = () => {
-  const { count } = useCounterStore();
-  console.log('CounterDisplay rendered');
+function Counter() {
+  const count = useStore(counterStore, s => s);
   return (
-    <div style={{ fontSize: '48px', fontWeight: 'bold', textAlign: 'center', padding: '20px' }}>
-      {count}
+    <div className="p-8 text-center">
+      <p className="text-4xl font-bold mb-4">{count}</p>
+      <button
+        onClick={() => counterStore.dispatch({ type: 'inc' })}
+        className="px-4 py-2 bg-blue-500 text-white rounded mr-2"
+      >
+        +
+      </button>
+      <button
+        onClick={() => counterStore.dispatch({ type: 'dec' })}
+        className="px-4 py-2 bg-gray-500 text-white rounded"
+      >
+        -
+      </button>
     </div>
   );
-};
-
-const CounterControls = () => {
-  return (
-    <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-      <button onClick={decrement} style={buttonStyle}>-1</button>
-      <button onClick={reset} style={buttonStyle}>重置</button>
-      <button onClick={increment} style={buttonStyle}>+1</button>
-    </div>
-  );
-};
-
-const buttonStyle: React.CSSProperties = {
-  padding: '10px 20px',
-  fontSize: '16px',
-  cursor: 'pointer',
-  borderRadius: '4px',
-  border: '1px solid #ccc',
-  background: '#fff',
-};
-
-const ExternalStoreDemo = () => {
-  const windowWidth = useWindowWidth();
-  const isOnline = useOnlineStatus();
-  const [showExtra, setShowExtra] = useState(false);
-
-  return (
-    <div style={{ padding: '20px' }}>
-      <h2>useSyncExternalStore订阅外部数据源</h2>
-      
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        {/* Window状态 */}
-        <div style={{ padding: '15px', border: '1px solid #ccc', borderRadius: '8px' }}>
-          <h3>浏览器API订阅</h3>
-          <p>窗口宽度：<strong>{windowWidth}px</strong></p>
-          <p>网络状态：<strong>{isOnline ? '🟢 在线' : '🔴 离线'}</strong></p>
-          <p style={{ fontSize: '12px', color: '#666' }}>
-            调整窗口大小或断开网络观察变化
-          </p>
-        </div>
-
-        {/* 全局Store */}
-        <div style={{ padding: '15px', border: '1px solid #ccc', borderRadius: '8px' }}>
-          <h3>外部Store订阅</h3>
-          <CounterDisplay />
-          <CounterControls />
-          <p style={{ fontSize: '12px', color: '#666', marginTop: '10px' }}>
-            即使组件不相关，store变化时订阅者自动更新
-          </p>
-        </div>
-      </div>
-
-      <div style={{ marginTop: '20px', padding: '15px', background: '#f5f5f5' }}>
-        <h4>useSyncExternalStore要点：</h4>
-        <ul>
-          <li><strong>subscribe</strong>函数必须返回取消订阅函数</li>
-          <li><strong>getSnapshot</strong>必须返回不可变值（不可直接修改state）</li>
-          <li>主要用于Redux/Zustand等外部状态库连接器</li>
-          <li>解决React 18并发模式下的"撕裂"(tearing)问题</li>
-        </ul>
-      </div>
-    </div>
-  );
-};
+}
 \`\`\`
 
-### 三、useInsertionEffect：CSS-in-JS库专用
+### useInsertionEffect - CSS-in-JS 库专用
 
-useInsertionEffect在DOM变更之前执行，主要为CSS-in-JS库（如styled-components、Emotion）设计，用于在布局读取前注入`<style>`标签。业务代码几乎不需要使用。
+\`useInsertionEffect\` 是为 CSS-in-JS 库作者设计的 Hook，**业务代码几乎永远不需要用它**。
+
+执行时机：
+\`\`\`
+时间线:
+1. useInsertionEffect → 在DOM变更前执行（CSS-in-JS注入<style>标签）
+2. DOM变更
+3. useLayoutEffect → DOM测量
+4. 浏览器绘制
+5. useEffect
+\`\`\`
 
 \`\`\`tsx
-import { useEffect, useLayoutEffect, useInsertionEffect } from 'react';
+// 什么时候用useInsertionEffect？
+// 只有当你在写一个CSS-in-JS库，需要在渲染前注入<style>标签时
 
-// useInsertionEffect执行时机：
-// 1. useInsertionEffect（DOM变更前，注入样式）
-// 2. useLayoutEffect（DOM变更后，绘制前）
-// 3. useEffect（绘制后）
-
-// CSS-in-JS库的简化示例（实际库更复杂）
-const useCSS = (css: string) => {
+// ❌ 业务代码不要用！
+function BusinessComponent() {
   useInsertionEffect(() => {
-    // 在DOM变更前注入style标签
-    // 这样useLayoutEffect读取布局时样式已经生效
+    // 不要在这里做任何业务逻辑！
+    // 这个Hook执行时ref还没附着，DOM还没更新
+  }, []);
+}
+
+// ✅ CSS-in-JS库作者用它注入样式
+function useCSS(css: string) {
+  useInsertionEffect(() => {
     const style = document.createElement('style');
-    style.innerHTML = css;
+    style.textContent = css;
     document.head.appendChild(style);
     return () => {
       document.head.removeChild(style);
     };
-  }, [css]);
-};
+  }, [css]); // 注意：useInsertionEffect不能访问ref
+  
+  // 返回类名等
+}
 
-// 业务组件示例（通常不用直接用useInsertionEffect）
-const StyledButton = ({ color = 'blue', children }: { color?: string; children: React.ReactNode }) => {
-  useCSS(\`
-    .custom-btn-\${color} {
-      background: \${color};
-      color: white;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-  \`);
+// 为什么不用useLayoutEffect？
+// 因为useLayoutEffect执行时DOM已经更新了
+// 如果在useLayoutEffect里注入样式，浏览器可能已经开始计算布局
+// 会导致布局抖动
+// useInsertionEffect在DOM mutation前执行，样式先注入，再更新DOM
 
-  return <button className={\`custom-btn-\${color}\`}>{children}</button>;
-};
-
-const HookComparison = () => {
-  useInsertionEffect(() => {
-    console.log('0. useInsertionEffect - 最早执行，DOM变更前');
-  }, []);
-
-  useLayoutEffect(() => {
-    console.log('1. useLayoutEffect - DOM变更后，绘制前');
-  }, []);
-
-  useEffect(() => {
-    console.log('2. useEffect - 绘制后异步执行');
-  }, []);
-
-  console.log('组件渲染');
-
-  return (
-    <div style={{ padding: '20px' }}>
-      <h2>三种Effect执行顺序</h2>
-      <p>打开控制台观察执行顺序</p>
-      <ol>
-        <li>组件渲染</li>
-        <li><strong>useInsertionEffect</strong>（注入样式）</li>
-        <li><strong>useLayoutEffect</strong>（DOM测量）</li>
-        <li>浏览器绘制</li>
-        <li><strong>useEffect</strong>（副作用）</li>
-      </ol>
-      <div style={{ marginTop: '20px', padding: '15px', background: '#fff3cd' }}>
-        <p><strong>注意：</strong>useInsertionEffect不能访问refs，也不能触发更新，
-        它的存在完全是为了解决CSS-in-JS库的样式注入顺序问题。业务开发应使用useEffect或useLayoutEffect。</p>
-      </div>
-    </div>
-  );
-};
+// 📌 总结：
+// - 99.9% 的开发者不需要知道 useInsertionEffect
+// - 如果你在写 styled-components、emotion 类似的库才需要考虑
+// - 业务逻辑用 useEffect 或 useLayoutEffect
 \`\`\`
 
-### 本章小结
+### 三个Hook对比总结
 
-- **useId**：生成SSR安全的唯一ID，用于label htmlFor和aria-*属性，ID带":"前缀不能用于CSS选择器
-- **useSyncExternalStore**：订阅外部数据源（window事件、Redux/Zustand store），三个参数：subscribe/getSnapshot/getServerSnapshot
-- **useInsertionEffect**：DOM变更前执行，仅供CSS-in-JS库注入`<style>`标签使用，业务代码不用
-- 三个都是React 18新增Hook，useId和useSyncExternalStore在应用开发中有使用场景
+| Hook | 用途 | 使用者 | 频率 |
+| --- | --- | --- | --- |
+| **useId** | 生成SSR安全的唯一ID（label/aria） | 应用开发者 | 常用 |
+| **useSyncExternalStore** | 订阅外部store（Redux、全局状态、DOM状态） | 库作者+高级应用 | 中等 |
+| **useInsertionEffect** | CSS-in-JS库注入<style>标签 | 仅CSS-in-JS库作者 | 极少 |
+
+### 关键要点总结
+
+1. **useId**：生成 SSR 安全的唯一 ID，用于 htmlFor、aria-describedby 等，不要用于 list key
+2. **useSyncExternalStore**：订阅任何外部数据源，比手动写 useEffect 更可靠，避免"撕裂"问题
+3. **getSnapshot 必须返回稳定引用**：如果是对象，要缓存；否则每次返回新对象导致无限重渲染
+4. **getServerSnapshot**：用于 SSR 时返回初始快照，避免 hydration mismatch
+5. **useInsertionEffect**：CSS-in-JS 库专用，业务代码不要碰
+6. **useInsertionEffect 执行时机最早**：在 DOM 变更前，useLayoutEffect 之前
+7. **React 18 的这些 Hook 是为了解决特定问题**，不是让你在所有地方都用
+8. **大部分应用开发者只需要 useId**，另外两个在特定场景才需要
 `,
   },
   {
     id: "tsrx-hooks-rules",
-    icon: "⚠️",
     group: "Hooks篇",
+    icon: "⚠️",
     title: "Hooks规则与原理深入",
-    content: `## Hooks规则与原理深入
+    content: `## Hooks 规则与原理深入
 
-React Hooks看似简单，但有严格的使用规则。理解这些规则背后的原理，可以帮助我们避免常见的坑（如闭包陷阱、依赖数组错误），写出更健壮的React代码。
+理解 Hooks 的规则和背后的原理，能帮你写出更可靠的代码，避免常见的闭包陷阱和依赖数组错误。
 
-### 一、Hook两条铁律
+### Hooks 两条铁律
 
-React官方规定了Hook的两条使用规则：
+Hooks 看起来只是普通函数，但它们有严格的使用规则：
 
-**规则1：只在React函数组件或自定义Hook的顶层调用Hook**
-不能在条件语句、循环语句、嵌套函数（非Hook函数）中调用Hook。
+**规则一：只在最顶层调用 Hook**
 
-**规则2：只在React函数组件或自定义Hook中调用Hook**
-不能在普通JavaScript函数中调用Hook。
+不要在循环、条件、嵌套函数中调用 Hook：
 
 \`\`\`tsx
-import React, { useState, useEffect } from 'react';
-
-// ❌ 错误示例1：在条件语句中调用Hook
-const BadConditionalHook = ({ isLoggedIn }: { isLoggedIn: boolean }) => {
-  // if (isLoggedIn) {
-  //   // 错误！不能在if里调用Hook，每次渲染调用顺序可能不同
-  //   const [user, setUser] = useState(null);
-  // }
-
-  // ✅ 正确：在顶层调用，条件判断放在Hook返回的JSX中
-  const [user, setUser] = useState(null);
-
-  return <div>{isLoggedIn ? <p>欢迎{user?.name}</p> : <p>请登录</p>}</div>;
-};
-
-// ❌ 错误示例2：在循环中调用Hook
-const BadLoopHook = ({ items }: { items: string[] }) => {
-  // items.forEach(item => {
-  //   // 错误！不能在循环里调用Hook
-  //   const [value, setValue] = useState(item);
-  // });
-
-  // ✅ 正确：用数组代替单个state
-  const [values, setValues] = useState(items);
-
-  return <ul>{values.map((v, i) => <li key={i}>{v}</li>)}</ul>;
-};
-
-// ❌ 错误示例3：在普通函数中调用Hook
-// function notAComponent() {
-//   const [x, setX] = useState(0); // 错误！不是组件也不是自定义Hook
-// }
-
-// ✅ 正确：自定义Hook以use开头
-function useCustomHook() {
-  const [value, setValue] = useState(0); // 正确：自定义Hook
-  return [value, setValue] as const;
+// ❌ 错误：在条件语句中调用Hook
+function BadComponent({ show }) {
+  if (show) {
+    const [count, setCount] = useState(0); // 不行！
+  }
 }
 
-// ✅ 正确：在函数组件顶层调用
-const GoodHookUsage = () => {
+// ❌ 错误：在循环中调用Hook
+function BadList({ items }) {
+  for (const item of items) {
+    const [checked, setChecked] = useState(false); // 不行！
+  }
+}
+
+// ❌ 错误：在嵌套函数中调用Hook
+function BadComponent() {
+  const handleClick = () => {
+    const [value, setValue] = useState(''); // 不行！
+  };
+}
+
+// ✅ 正确：只在函数组件/自定义Hook的最顶层调用Hook
+function GoodComponent() {
   const [count, setCount] = useState(0);
   const [name, setName] = useState('');
-
-  useEffect(() => {
-    document.title = \`Count: \${count}\`;
-  }, [count]);
-
-  return (
-    <div>
-      <p>Count: {count}</p>
-      <button onClick={() => setCount(c => c + 1)}>+1</button>
-    </div>
-  );
-};
+  
+  // 条件判断放在Hook返回值之后，不要放在Hook调用前
+  if (count > 10) {
+    // ...
+  }
+}
 \`\`\`
 
-### 二、为什么有规则？React用链表存储Hook状态
+**规则二：只在 React 函数组件和自定义 Hook 中调用 Hook**
 
-理解Hook的底层实现原理，就能明白为什么必须遵守规则。React在每个组件内部用**链表**存储Hook状态：
+不要在普通的 JavaScript 函数中调用 Hook：
 
 \`\`\`tsx
-// React内部简化版Hook存储原理（伪代码）
-// 每个组件fiber节点上有一个hook链表
-
-interface Hook {
-  memoizedState: any;      // 当前状态
-  baseState: any;          // 基础状态
-  baseQueue: any;          // 更新队列
-  queue: any;              // 更新队列
-  next: Hook | null;       // 指向下一个Hook
+// ❌ 错误：普通函数中调用Hook
+function setupCounter() {
+  const [count, setCount] = useState(0);
+  return count;
 }
 
-// 组件首次渲染时（mount）：
-// 1. 按调用顺序创建Hook节点，依次加入链表
-// useState(0) → next → useState('') → next → useEffect(...) → null
-//    hook1              hook2                hook3
-
-// 组件更新渲染时（update）：
-// 1. 从链表头部开始，依次取出hook
-// 2. 第1次调用useState() → 取hook1
-// 3. 第2次调用useState() → 取hook2
-// 4. 第3次调用useEffect() → 取hook3
-// 如果调用顺序变了（多了/少了/跳过了），对应关系就错位了！
-
-// 伪代码演示为什么顺序必须一致：
-let currentHook: Hook | null = null;
-let firstHook: Hook | null = null;
-
-function mountWorkInProgressHook(): Hook {
-  const hook: Hook = {
-    memoizedState: null,
-    baseState: null,
-    baseQueue: null,
-    queue: null,
-    next: null,
-  };
-
-  if (currentHook === null) {
-    firstHook = currentHook = hook;
-  } else {
-    currentHook = currentHook.next = hook;
-  }
-  return currentHook;
+// ✅ 正确：自定义Hook用use开头，可以调用其他Hook
+function useCounter() {
+  const [count, setCount] = useState(0);
+  return { count };
 }
 
-function updateWorkInProgressHook(): Hook {
-  // 按顺序取下一个hook
-  currentHook = currentHook ? currentHook.next : firstHook;
-  if (currentHook === null) {
-    throw new Error('Rendered more hooks than during the previous render.');
-  }
-  return currentHook;
+// ✅ 正确：React函数组件
+function Counter() {
+  const { count } = useCounter();
+  return <div>{count}</div>;
 }
-
-// 所以如果条件调用Hook：
-// 第一次渲染：useState(A) → useState(B) → useEffect(C)
-// 第二次渲染：useState(A) → (if false跳过B) → useEffect(C)
-//                             ↑ C对应了B的位置，状态错位！
 \`\`\`
 
-### 三、ESLint规则检查
+### 为什么要有这些规则？原理揭秘
 
-eslint-plugin-react-hooks插件提供了两条规则强制检查Hook规范：
+React 使用**单链表**来存储每个组件的 Hook 状态：
+
+\`\`\`
+组件Fiber节点
+  ↓
+hooks链表:
+  ┌──────────┐    ┌──────────┐    ┌──────────┐
+  │ useState │ -> │ useEffect│ -> │ useContext│
+  │ memoized │    │ memoized │    │ memoized │
+  │  State   │    │ State:   │    │  value   │
+  │  queue   │    │  deps    │    │          │
+  └──────────┘    └──────────┘    └──────────┘
+    hook0           hook1           hook2
+
+每次渲染时，React按调用顺序依次从链表中取出对应位置的hook状态
+\`\`\`
+
+**关键：每次渲染时 Hook 的调用顺序必须完全一致！**
+
+如果顺序变了，就会"拿错"状态：
+
+\`\`\`tsx
+function BadConditionalComponent({ isLoggedIn }) {
+  // 第一次渲染：isLoggedIn = false
+  // hook0: useState('') → name
+  // hook1: useState(false) → darkMode
+  
+  // 第二次渲染：isLoggedIn = true
+  // hook0: useState(0) → userId → 错误！这会拿到上一次name的状态
+  // hook1: useState('') → name → 拿错了！
+  // hook2: useState(false) → darkMode → 拿错了！
+  
+  if (isLoggedIn) {
+    const [userId, setUserId] = useState(0); // 条件里新增的hook，打乱顺序
+  }
+  const [name, setName] = useState('');
+  const [darkMode, setDarkMode] = useState(false);
+}
+
+// 这就是为什么Hook必须在顶层、顺序固定的原因！
+// React靠"调用顺序"来匹配状态，不是靠变量名或其他标识
+\`\`\`
+
+### eslint-plugin-react-hooks 强制执行
+
+React 官方提供了 ESLint 插件强制执行这些规则，**必须开启**：
 
 \`\`\`json
-// .eslintrc.json 配置
+// .eslintrc.json
 {
   "plugins": ["react-hooks"],
   "rules": {
-    // 检查Hook调用规则（顶层调用、函数组件/自定义Hook内调用）
-    "react-hooks/rules-of-hooks": "error",
-    // 检查依赖数组是否完整
-    "react-hooks/exhaustive-deps": "warn"
+    "react-hooks/rules-of-hooks": "error", // 检查规则一、二
+    "react-hooks/exhaustive-deps": "warn"  // 检查依赖数组
   }
 }
 \`\`\`
 
+90% 的 Hooks bug 都能被这个插件发现。不要忽略它的警告！
+
+### 经典闭包陷阱 Stale Closure
+
+Hooks 最常见的 bug 来源就是**闭包陷阱（Stale Closure）**：回调函数捕获了旧的 state/props 值。
+
 \`\`\`tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 
-// ESLint会检查依赖数组
-const DependencyCheck = () => {
+function StaleClosureDemo() {
   const [count, setCount] = useState(0);
-  const [step, setStep] = useState(1);
 
-  // ❌ ESLint警告：useEffect有缺失依赖 'step'
-  // useEffect(() => {
-  //   const id = setInterval(() => {
-  //     setCount(c => c + step); // step被使用但不在依赖中
-  //   }, 1000);
-  //   return () => clearInterval(id);
-  // }, []); // ← ESLint说缺少step
-
-  // ✅ 正确：要么把step加入依赖
+  // 陷阱1：setInterval读旧state
   useEffect(() => {
     const id = setInterval(() => {
-      setCount(c => c + step);
+      console.log('count:', count); // count永远是0！
+      // setCount(count + 1); // 永远只增加到1
     }, 1000);
     return () => clearInterval(id);
-  }, [step]); // step在依赖中
+  }, []); // 空依赖，effect只执行一次，闭包捕获了初始count=0
 
-  // ✅ 或者使用函数式更新，不依赖step
-  // const addStep = useCallback(() => {
-  //   setCount(c => c + step);
-  // }, [step]);
+  // 陷阱2：事件处理读旧props
+  const handleClick = () => {
+    setTimeout(() => {
+      console.log('点击时的count:', count); // 如果count已变，这里还是旧值
+    }, 3000);
+  };
 
   return (
     <div>
       <p>Count: {count}</p>
-      <input
-        type="number"
-        value={step}
-        onChange={e => setStep(Number(e.target.value))}
-      />
+      <button onClick={() => setCount(c => c + 1)}>增加</button>
+      <button onClick={handleClick}>延迟打印count</button>
     </div>
   );
-};
+}
 \`\`\`
 
-### 四、经典闭包陷阱与useLatest解法
+### useLatest 通用解法：useRef 保存最新值
 
-Hooks中最常见的Bug是**Stale Closure（闭包陈旧）**：回调函数捕获了旧的state/props值。
+解决闭包陷阱的通用模式：用 useRef 保存最新值，在回调里读 ref.current：
 
 \`\`\`tsx
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 
-// 经典陷阱：setInterval读取旧state
-const StaleClosureBug = () => {
+// 通用Hook：总是获取最新值
+function useLatest<T>(value: T) {
+  const ref = useRef(value);
+  useEffect(() => {
+    ref.current = value;
+  }, [value]);
+  return ref;
+}
+
+// 修复setInterval
+function CorrectCounter() {
   const [count, setCount] = useState(0);
+  const countRef = useLatest(count);
 
   useEffect(() => {
-    // ❌ 问题：setInterval的回调在创建时捕获了当时的count
-    // 这个effect只在mount时执行一次，回调里的count永远是0
     const id = setInterval(() => {
-      console.log('当前count:', count); // 永远打印0！
-      // setCount(count + 1); // 永远从0加到1，不会继续增加
+      console.log('count:', countRef.current); // 总是最新值
+      setCount(c => c + 1); // 或者用函数式更新也可以
     }, 1000);
     return () => clearInterval(id);
-  }, []); // 空依赖，回调只创建一次
+  }, []); // 空依赖没问题！因为我们从ref读最新值
+
+  return <p>Count: {count}</p>;
+}
+
+// 修复事件处理器的闭包问题
+function EventHandlerFix() {
+  const [count, setCount] = useState(0);
+  const countRef = useLatest(count);
+
+  const handleDelayedLog = useCallback(() => {
+    setTimeout(() => {
+      console.log('最新count:', countRef.current);
+    }, 3000);
+  }, []); // 空依赖！函数引用永远稳定
 
   return (
     <div>
-      <h2>闭包陷阱演示</h2>
-      <p>Count: {count}（这个计数器不会正常工作）</p>
-      <button onClick={() => setCount(c => c + 1)}>手动+1</button>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount(c => c + 1)}>增加</button>
+      <button onClick={handleDelayedLog}>3秒后打印最新count</button>
     </div>
   );
-};
-
-// ✅ 解法1：使用函数式更新（推荐，最简单）
-const FunctionalUpdateFix = () => {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      // 函数式更新不依赖外部count变量
-      setCount(prevCount => prevCount + 1);
-    }, 1000);
-    return () => clearInterval(id);
-  }, []); // 空依赖没问题
-
-  return <p>Count: {count}（函数式更新修复）</p>;
-};
-
-// ✅ 解法2：useRef保存最新值（通用解法useLatest）
-const useLatest = <T>(value: T) => {
-  const ref = useRef(value);
-  // 每次渲染后更新ref为最新值
-  // useEffect是渲染后执行，这里用useLayoutEffect也可以
-  useEffect(() => {
-    ref.current = value;
-  });
-  return ref;
-};
-
-const UseLatestFix = () => {
-  const [count, setCount] = useState(0);
-  const countRef = useLatest(count); // 始终指向最新count
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      // 通过ref.current获取最新值
-      console.log('最新count:', countRef.current);
-      setCount(c => c + 1);
-    }, 1000);
-    return () => clearInterval(id);
-  }, [countRef]);
-
-  return <p>Count: {count}（useLatest修复）</p>;
-};
-
-// ✅ 解法3：useEvent（React 19新增，官方解决方案）
-// React 19提供useEvent RFC，专门解决这个问题
-// const useEvent = (callback) => {
-//   const ref = useLatest(callback);
-//   return useCallback((...args) => ref.current(...args), []);
-// };
+}
 \`\`\`
 
-### 本章小结
+### 依赖数组正确写法
 
-- **两条铁律**：Hook必须在顶层调用、只能在函数组件/自定义Hook中调用
-- **原理**：React用链表按调用顺序存储Hook状态，顺序错位导致状态对应错乱
-- **ESLint插件**：eslint-plugin-react-hooks自动检查规则和依赖数组，务必开启
-- **Stale Closure（闭包陈旧）**：回调捕获了旧state，是最常见Hook Bug
-- **三种解法**：函数式更新、useRef保存最新值（useLatest）、React 19的useEvent
-- **不要撒谎deps**：不要用注释禁用exhaustive-deps，要理解并正确处理依赖
+依赖数组是另一个常见的坑。记住：**不要对依赖数组撒谎**，所有在 effect/callback/memo 中用到的响应式值都要列进去。
+
+\`\`\`tsx
+function UserProfile({ userId }) {
+  const [user, setUser] = useState(null);
+
+  // ❌ 错误1：依赖遗漏
+  // useEffect(() => {
+  //   fetchUser(userId).then(setUser);
+  // }, []); // 用了userId但没加依赖！userId变了不会重新请求
+
+  // ❌ 错误2：撒谎式的注释忽略
+  // useEffect(() => {
+  //   fetchUser(userId).then(setUser);
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []); // 这是欺骗，会导致bug
+
+  // ❌ 错误3：对象/函数作为依赖导致无限循环
+  // const config = { method: 'GET' }; // 每次渲染新对象
+  // useEffect(() => {
+  //   fetch(url, config); // config每次都是新引用，effect每次都执行！
+  // }, [config]);
+
+  // ✅ 正确1：基本类型值直接加依赖
+  useEffect(() => {
+    fetchUser(userId).then(setUser);
+  }, [userId]);
+
+  // ✅ 正确2：函数依赖用useCallback
+  const fetchData = useCallback(() => {
+    return fetchUser(userId);
+  }, [userId]);
+  useEffect(() => {
+    fetchData().then(setUser);
+  }, [fetchData]);
+
+  // ✅ 正确3：对象依赖用useMemo稳定引用
+  const config = useMemo(() => ({ method: 'GET' as const }), []);
+  useEffect(() => {
+    fetch(url, config);
+  }, [config]);
+
+  // ✅ 正确4：setState函数式更新消除依赖
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setCount(c => c + 1); // 用c => c+1，不需要count在依赖里
+    }, 1000);
+    return () => clearInterval(id);
+  }, []); // 空依赖正确！
+
+  return <div>{/* ... */}</div>;
+}
+\`\`\`
+
+### 从 Class 生命周期到 Hooks 心智模型
+
+如果你有 Class Component 经验，不要尝试把 Hooks 映射到生命周期，心智模型是不同的：
+
+\`\`\`tsx
+// ❌ 不要这样思考："Hooks是生命周期函数"
+// componentDidMount → useEffect(..., [])
+// componentDidUpdate → useEffect(..., [dep])
+// componentWillUnmount → cleanup
+// 这种映射思维是错的，会导致你写出不符合Hooks设计的代码
+
+// ✅ 正确的Hooks心智模型：同步
+
+// 类组件思维："在挂载时获取数据"
+// Hooks思维："当userId变化时，保持user数据和userId同步"
+
+// 每次渲染都像一次"快照"：
+function Counter() {
+  const [count, setCount] = useState(0);
+  
+  // 每次渲染，这里的count都是那次渲染的"快照"
+  // 可以理解为：对于这个特定的count值，做xxx
+  useEffect(() => {
+    console.log('count现在是:', count);
+    document.title = \`Count: \${count}\`;
+    return () => {
+      console.log('清理上一次的count:', count);
+    };
+  }, [count]);
+
+  // 事件处理函数也是那次渲染的闭包
+  function handleClick() {
+    setTimeout(() => {
+      alert(\`你点击时count是: \${count}\`); // 显示点击那一刻的count
+    }, 3000);
+  }
+
+  return <button onClick={handleClick}>{count}</button>;
+}
+
+// 理解"快照"概念，90%的闭包问题就不会再困惑你了
+\`\`\`
+
+Class vs Hooks 对比：
+
+| 概念 | Class Component | Hooks |
+| --- | --- | --- |
+| 状态存储 | this.state 是一个对象，this会变 | 每次渲染都是独立闭包，state是常量 |
+| 逻辑复用 | HOC、render props（嵌套地狱） | 自定义Hook（扁平化组合） |
+| 相关逻辑组织 | 分散在多个生命周期 | 相关逻辑放在同一个effect |
+| this问题 | bind this或箭头函数 | 无this问题 |
+| 心智模型 | 面向对象生命周期 | 函数式同步/数据流 |
+
+### 常见错误和最佳实践
+
+\`\`\`tsx
+// 1. 不要在useEffect里直接用async函数
+// ❌ 因为async函数返回Promise，cleanup需要直接返回函数
+// useEffect(async () => {
+//   const data = await fetchData();
+// }, []);
+
+// ✅ 正确：在内部定义async函数
+useEffect(() => {
+  async function loadData() {
+    const data = await fetchData();
+  }
+  loadData();
+}, []);
+
+// 2. 不要依赖对象/函数字面量
+// ✅ 用useMemo/useCallback稳定引用
+
+// 3. 不要无限循环
+// 常见原因：
+// - useEffect里setState又触发了自己
+// - 依赖数组里有对象/函数每次都新
+// - 没有依赖数组（每次渲染后都执行）
+// ✅ 用函数式更新、稳定依赖、正确的依赖数组
+
+// 4. 不要过度使用useRef
+// ref变化不触发重渲染，不要用它存状态值
+// ✅ 只用于：DOM引用、保存最新值（闭包修复）、存储不影响UI的可变值
+
+// 5. 不要对依赖撒谎
+// 不要随意禁用exhaustive-deps规则
+// 正确做法：调整代码让依赖数组是正确的
+// （函数式更新、useCallback、useMemo、useRef）
+\`\`\`
+
+### 关键要点总结
+
+1. **两条铁律**：只在顶层调用、只在函数组件/自定义Hook中调用
+2. **原理是单链表按顺序存储**：每次渲染调用顺序必须一致，否则状态错乱
+3. **必须开启eslint-plugin-react-hooks**：两个规则都打开
+4. **闭包陷阱是最大的坑**：理解"每次渲染都是快照"的概念
+5. **useRef保存最新值**是解决闭包问题的通用模式
+6. **依赖数组不要撒谎**：所有用到的响应式值都要列进去
+7. **不要把Hooks当生命周期函数**：心智模型是"同步"，不是"挂载/更新时"
+8. **函数式更新可以消除依赖**：setState(prev => ...)不需要把state放进依赖
+9. **useEffect的cleanup不只是卸载时执行**：每次重新执行effect前都会清理上一次
+10. **理解了原理，Hooks就不再神秘**：它本质上就是一种状态管理和副作用组织方式
 `,
   },
   {
     id: "tsrx-hooks-patterns",
-    icon: "🎨",
     group: "Hooks篇",
+    icon: "🎨",
     title: "React Hooks设计模式",
-    content: `## React Hooks设计模式
+    content: `## React Hooks 设计模式
 
-Hooks不仅仅是useState/useEffect，它们可以组合出强大的设计模式，帮助我们写出更易维护、可复用的React代码。本章介绍几种常用的Hooks设计模式。
+Hooks 让 React 代码的组织方式发生了变化。掌握一些经过验证的设计模式，能让你的组件更可复用、更易维护。
 
-### 一、状态提升与状态下放
+### 状态提升 vs 状态下放
 
-状态管理的第一个决策：状态应该放在哪里？
+这是关于状态放在哪里的基本决策：
 
-**状态提升**：当多个组件需要共享状态时，将状态放到它们最近的共同父组件。
-**状态下放**：当某个状态只在一个子组件中使用时，把状态放到那个子组件中，不要放到父组件。
+**状态提升（Lifting State Up）**：当多个组件需要共享状态时，把状态提升到它们最近的共同父组件。
+
+**状态下放（Colocating State）**：把状态放在真正使用它的组件里，不要为了"方便"把状态都放在顶层。
 
 \`\`\`tsx
-import React, { useState } from 'react';
-
-// ✅ 状态下放：状态放到使用它的组件里
-// 这样其他组件不会因为这个状态变化而重渲染
-const PersonalInfo = () => {
-  // name只在PersonalInfo中使用，状态放在这里
-  const [name, setName] = useState('');
-  return <input value={name} onChange={e => setName(e.target.value)} placeholder="姓名" />;
-};
-
-// ✅ 状态提升：共享状态放到父组件
-interface User {
-  name: string;
-  age: number;
+// ❌ 反模式：状态放太高导致大量props传递和不必要重渲染
+function App() {
+  const [name, setName] = useState(''); // App不需要知道name，只有UserForm需要
+  const [isOpen, setIsOpen] = useState(false); // 只有Modal需要知道
+  return (
+    <Layout>
+      <UserForm name={name} onNameChange={setName} />
+      <Content isOpen={isOpen} onOpenChange={setIsOpen} />
+    </Layout>
+  );
 }
 
-// 父组件管理共享状态
-const UserForm = () => {
-  // user被多个子组件共享，提升到父组件
-  const [user, setUser] = useState<User>({ name: '', age: 0 });
+// ✅ 正确：状态下放，每个组件管理自己的状态
+function UserForm() {
+  const [name, setName] = useState(''); // 状态就在用它的地方
+  return <input value={name} onChange={e => setName(e.target.value)} />;
+}
 
+function Modal() {
+  const [isOpen, setIsOpen] = useState(false);
   return (
-    <div>
-      <NameInput name={user.name} onChange={name => setUser(u => ({ ...u, name }))} />
-      <AgeInput age={user.age} onChange={age => setUser(u => ({ ...u, age }))} />
-      <UserPreview user={user} />
-    </div>
+    <>
+      <button onClick={() => setIsOpen(true)}>打开</button>
+      {isOpen && <div onClose={() => setIsOpen(false)}>弹窗内容</div>}
+    </>
   );
-};
+}
 
-const NameInput = ({ name, onChange }: { name: string; onChange: (v: string) => void }) => (
-  <input value={name} onChange={e => onChange(e.target.value)} placeholder="姓名" />
-);
-
-const AgeInput = ({ age, onChange }: { age: number; onChange: (v: number) => void }) => (
-  <input type="number" value={age} onChange={e => onChange(Number(e.target.value))} />
-);
-
-const UserPreview = ({ user }: { user: User }) => (
-  <div>预览：{user.name}，{user.age}岁</div>
-);
+// 🎯 原则：尽可能下放状态，只有当多个组件真的需要共享时才提升
 \`\`\`
 
-### 二、容器组件与展示组件分离
+### Container/Presentational 分离模式
 
-将逻辑（数据获取、状态管理）和UI展示分离到不同组件：
+将数据获取/逻辑处理与UI渲染分离：
 
 \`\`\`tsx
-import React, { useState, useEffect } from 'react';
-
-// 展示组件：只负责UI渲染，通过props接收数据和回调
-// 通常写成无状态组件，可复用性强
-interface Todo {
-  id: number;
-  text: string;
-  completed: boolean;
-}
-
-interface TodoListViewProps {
-  todos: Todo[];
-  isLoading: boolean;
-  error: string | null;
-  onToggle: (id: number) => void;
-  onAdd: (text: string) => void;
-}
-
-// 展示组件：纯UI
-const TodoListView = ({ todos, isLoading, error, onToggle, onAdd }: TodoListViewProps) => {
-  const [text, setText] = useState('');
-
-  if (isLoading) return <div>加载中...</div>;
-  if (error) return <div>错误: {error}</div>;
-
-  return (
-    <div style={{ padding: '20px' }}>
-      <div>
-        <input value={text} onChange={e => setText(e.target.value)} />
-        <button onClick={() => { onAdd(text); setText(''); }}>添加</button>
-      </div>
-      <ul>
-        {todos.map(todo => (
-          <li key={todo.id} onClick={() => onToggle(todo.id)} style={{
-            textDecoration: todo.completed ? 'line-through' : 'none',
-            cursor: 'pointer',
-          }}>
-            {todo.text}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-};
-
-// 容器组件：负责数据获取和状态管理
-const TodoListContainer = () => {
+// Container组件：负责数据获取、状态逻辑
+function TodoListContainer() {
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('https://jsonplaceholder.typicode.com/todos?_limit=10')
-      .then(res => res.json())
-      .then(data => { setTodos(data); setIsLoading(false); })
-      .catch(err => { setError(err.message); setIsLoading(false); });
+    fetchTodos().then(data => {
+      setTodos(data);
+      setLoading(false);
+    });
   }, []);
 
-  const handleToggle = (id: number) => {
-    setTodos(prev => prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+  const handleToggle = (id: string) => {
+    setTodos(prev => prev.map(t =>
+      t.id === id ? { ...t, completed: !t.completed } : t
+    ));
   };
 
-  const handleAdd = (text: string) => {
-    setTodos(prev => [...prev, { id: Date.now(), text, completed: false }]);
-  };
+  if (loading) return <div>加载中...</div>;
 
-  return (
-    <TodoListView
-      todos={todos}
-      isLoading={isLoading}
-      error={error}
-      onToggle={handleToggle}
-      onAdd={handleAdd}
-    />
-  );
+  return <TodoListView todos={todos} onToggle={handleToggle} />;
+}
+
+// Presentational组件：只负责渲染，通过props接收数据和回调
+type TodoListViewProps = {
+  todos: Todo[];
+  onToggle: (id: string) => void;
 };
+
+const TodoListView = memo(function TodoListView({ todos, onToggle }: TodoListViewProps) {
+  return (
+    <ul className="divide-y">
+      {todos.map(todo => (
+        <li
+          key={todo.id}
+          onClick={() => onToggle(todo.id)}
+          className={\`p-3 cursor-pointer \${todo.completed ? 'line-through text-gray-400' : ''}\`}
+        >
+          {todo.text}
+        </li>
+      ))}
+    </ul>
+  );
+});
 \`\`\`
 
-### 三、Compound Component复合组件
+### Compound Component 复合组件模式
 
-复合组件模式通过Context共享隐式状态，让多个子组件协同工作，使用方式类似HTML的`<select>`和`<option>`：
+类似原生的 \`<select>\` 和 \`<option>\`，通过 Context 隐式共享状态，使用方不需要手动传递props：
 
 \`\`\`tsx
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback } from 'react';
 
-// ============ Tabs复合组件完整实现 ============
-interface TabsContextType {
+// Tabs复合组件实现
+type TabsContextType = {
   activeTab: string;
   setActiveTab: (id: string) => void;
-}
+};
 
 const TabsContext = createContext<TabsContextType | null>(null);
 
-const useTabsContext = () => {
-  const ctx = useContext(TabsContext);
-  if (!ctx) throw new Error('Tabs components must be used within <Tabs>');
-  return ctx;
-};
-
-// Tabs根组件
-interface TabsProps {
-  defaultTab?: string;
-  children: ReactNode;
-  activeTab?: string;
-  onChange?: (tabId: string) => void;
+function useTabs() {
+  const context = useContext(TabsContext);
+  if (!context) throw new Error('Tabs components must be used within <Tabs>');
+  return context;
 }
 
-const Tabs = ({ defaultTab, activeTab: controlledTab, onChange, children }: TabsProps) => {
-  const [internalTab, setInternalTab] = useState(defaultTab || '');
-  // 支持受控和非受控两种模式
-  const activeTab = controlledTab !== undefined ? controlledTab : internalTab;
+// 根组件
+function Tabs({
+  defaultTab,
+  children,
+  onChange,
+}: {
+  defaultTab: string;
+  children: React.ReactNode;
+  onChange?: (tabId: string) => void;
+}) {
+  const [activeTab, setActiveTabState] = useState(defaultTab);
 
   const setActiveTab = useCallback((id: string) => {
-    if (controlledTab === undefined) {
-      setInternalTab(id);
-    }
+    setActiveTabState(id);
     onChange?.(id);
-  }, [controlledTab, onChange]);
+  }, [onChange]);
+
+  const value = useMemo(() => ({ activeTab, setActiveTab }), [activeTab, setActiveTab]);
 
   return (
-    <TabsContext.Provider value={{ activeTab, setActiveTab }}>
-      <div style={{ fontFamily: 'system-ui' }}>{children}</div>
+    <TabsContext.Provider value={value}>
+      <div className="tabs-container">{children}</div>
     </TabsContext.Provider>
   );
-};
-
-// TabList：标签按钮容器
-interface TabListProps {
-  children: ReactNode;
 }
 
-const TabList = ({ children }: TabListProps) => {
+// TabList：标签按钮容器
+function TabList({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <div style={{ display: 'flex', borderBottom: '2px solid #e5e7eb', gap: '4px' }}>
+    <div className={\`flex border-b \${className}\`} role="tablist">
       {children}
     </div>
   );
-};
-
-// Tab：单个标签按钮
-interface TabProps {
-  tabId: string;
-  children: ReactNode;
 }
 
-const Tab = ({ tabId, children }: TabProps) => {
-  const { activeTab, setActiveTab } = useTabsContext();
-  const isActive = activeTab === tabId;
+// Tab：单个标签按钮
+function Tab({
+  id,
+  children,
+  disabled = false,
+}: {
+  id: string;
+  children: React.ReactNode;
+  disabled?: boolean;
+}) {
+  const { activeTab, setActiveTab } = useTabs();
+  const isActive = activeTab === id;
 
   return (
     <button
-      onClick={() => setActiveTab(tabId)}
-      style={{
-        padding: '10px 20px',
-        border: 'none',
-        background: 'none',
-        cursor: 'pointer',
-        fontSize: '14px',
-        fontWeight: isActive ? 600 : 400,
-        color: isActive ? '#2563eb' : '#6b7280',
-        borderBottom: isActive ? '2px solid #2563eb' : '2px solid transparent',
-        marginBottom: '-2px',
-        transition: 'all 0.2s',
-      }}
+      role="tab"
+      aria-selected={isActive}
+      disabled={disabled}
+      onClick={() => !disabled && setActiveTab(id)}
+      className={\`px-4 py-2 -mb-px border-b-2 transition-colors \${
+        isActive
+          ? 'border-blue-500 text-blue-600 font-medium'
+          : 'border-transparent text-gray-500 hover:text-gray-700'
+      } \${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}\`}
     >
       {children}
     </button>
   );
-};
+}
 
 // TabPanels：面板容器
-interface TabPanelsProps {
-  children: ReactNode;
+function TabPanels({ children }: { children: React.ReactNode }) {
+  return <div className="py-4">{children}</div>;
 }
 
-const TabPanels = ({ children }: TabPanelsProps) => {
-  return <div style={{ padding: '20px 0' }}>{children}</div>;
-};
-
-// TabPanel：单个面板内容
-interface TabPanelProps {
-  tabId: string;
-  children: ReactNode;
+// TabPanel：单个面板
+function TabPanel({
+  id,
+  children,
+}: {
+  id: string;
+  children: React.ReactNode;
+}) {
+  const { activeTab } = useTabs();
+  if (activeTab !== id) return null;
+  return <div role="tabpanel">{children}</div>;
 }
 
-const TabPanel = ({ tabId, children }: TabPanelProps) => {
-  const { activeTab } = useTabsContext();
-  if (activeTab !== tabId) return null;
-  return <div>{children}</div>;
-};
-
-// 挂载子组件
+// 把复合组件挂载为Tabs的属性
 Tabs.List = TabList;
 Tabs.Tab = Tab;
 Tabs.Panels = TabPanels;
 Tabs.Panel = TabPanel;
 
-// ============ 使用示例 ============
-const TabsDemo = () => {
+// 使用方：API非常简洁，不需要传递一堆props
+function TabsDemo() {
   return (
-    <div style={{ padding: '20px', maxWidth: '600px' }}>
-      <h2>复合组件：Tabs</h2>
-      <Tabs defaultTab="overview">
+    <div className="max-w-2xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-6">Tabs复合组件示例</h1>
+      
+      <Tabs defaultTab="profile" onChange={(id) => console.log('切换到:', id)}>
         <Tabs.List>
-          <Tabs.Tab tabId="overview">概览</Tabs.Tab>
-          <Tabs.Tab tabId="features">功能</Tabs.Tab>
-          <Tabs.Tab tabId="settings">设置</Tabs.Tab>
+          <Tabs.Tab id="profile">个人资料</Tabs.Tab>
+          <Tabs.Tab id="settings">设置</Tabs.Tab>
+          <Tabs.Tab id="billing" disabled>账单（未开放）</Tabs.Tab>
         </Tabs.List>
+        
         <Tabs.Panels>
-          <Tabs.Panel tabId="overview">
-            <h3>概览页面</h3>
-            <p>这是概览面板的内容。通过复合组件模式，我们可以像写HTML一样使用Tabs：</p>
-            <pre style={{ background: '#f5f5f5', padding: '10px', borderRadius: '4px' }}>
-{`<Tabs>
-  <Tabs.List>
-    <Tabs.Tab tabId="a">标签A</Tabs.Tab>
-  </Tabs.List>
-  <Tabs.Panels>
-    <Tabs.Panel tabId="a">内容A</Tabs.Panel>
-  </Tabs.Panels>
-</Tabs>`}
-            </pre>
+          <Tabs.Panel id="profile">
+            <div className="space-y-3">
+              <h2 className="text-xl font-semibold">个人资料</h2>
+              <p>这里显示用户的头像、昵称、邮箱等信息</p>
+            </div>
           </Tabs.Panel>
-          <Tabs.Panel tabId="features">
-            <h3>功能页面</h3>
-            <ul>
-              <li>✅ 支持受控/非受控模式</li>
-              <li>✅ 通过Context隐式传递状态</li>
-              <li>✅ 使用API类似原生HTML</li>
-              <li>✅ 完全可定制样式</li>
-            </ul>
+          <Tabs.Panel id="settings">
+            <div className="space-y-3">
+              <h2 className="text-xl font-semibold">设置</h2>
+              <p>这里是通知偏好、主题设置等选项</p>
+            </div>
           </Tabs.Panel>
-          <Tabs.Panel tabId="settings">
-            <h3>设置页面</h3>
-            <p>在这里配置应用设置。</p>
+          <Tabs.Panel id="billing">
+            <p>账单信息</p>
           </Tabs.Panel>
         </Tabs.Panels>
       </Tabs>
+
+      <p className="mt-6 text-sm text-gray-500">
+        💡 复合组件模式的优势：API直观、灵活组合、无需手动管理active状态、
+        类似原生HTML元素的使用体验
+      </p>
     </div>
   );
-};
+}
 \`\`\`
 
-### 四、Prop Getters模式
+### Prop Getters 模式
 
-Prop Getters模式返回函数（getXxxProps），让调用方将内部props与自定义props合并：
+不直接渲染UI，而是返回props getter函数，让调用方灵活组合内部props和自定义props。react-table、downshift等库都用了这个模式：
 
 \`\`\`tsx
-import React, { useState, useCallback, ReactNode } from 'react';
+import { useState, useCallback, useId } from 'react';
 
-// Prop Getters模式示例：可复用的点击展开Hook
-interface UseToggleReturn {
-  isOn: boolean;
-  toggle: () => void;
-  getTogglerProps: (props?: Record<string, any>) => Record<string, any>;
+// useToggle返回getToggleProps/getInputProps等函数
+function useToggle(initial = false) {
+  const [on, setOn] = useState(initial);
+  const toggle = useCallback(() => setOn(p => !p), []);
+  const buttonId = useId();
+  const contentId = useId();
+
+  // 返回prop getter函数，调用方可以传入自己的props合并
+  const getButtonProps = useCallback((props: React.ButtonHTMLAttributes<HTMLButtonElement> = {}) => ({
+    id: buttonId,
+    'aria-expanded': on,
+    'aria-controls': contentId,
+    onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
+      props.onClick?.(e); // 先调用调用方的onClick
+      if (!e.defaultPrevented) toggle();
+    },
+    ...props, // 调用方props可以覆盖
+  }), [buttonId, contentId, on, toggle]);
+
+  const getContentProps = useCallback((props: React.HTMLAttributes<HTMLDivElement> = {}) => ({
+    id: contentId,
+    role: 'region',
+    'aria-labelledby': buttonId,
+    hidden: !on,
+    ...props,
+  }), [buttonId, contentId, on]);
+
+  return {
+    on,
+    toggle,
+    getButtonProps,
+    getContentProps,
+  };
 }
 
-const useToggle = (initial = false): UseToggleReturn => {
-  const [isOn, setIsOn] = useState(initial);
-  const toggle = useCallback(() => setIsOn(v => !v), []);
-
-  // getTogglerProps合并内部props和用户传入的props
-  const getTogglerProps = useCallback((props: Record<string, any> = {}) => {
-    return {
-      'aria-pressed': isOn,
-      onClick: (e: React.MouseEvent) => {
-        // 先执行用户的onClick
-        props.onClick?.(e);
-        // 如果用户没有阻止默认行为，再执行toggle
-        if (!e.defaultPrevented) {
-          toggle();
-        }
-      },
-      ...props,
-    };
-  }, [isOn, toggle]);
-
-  return { isOn, toggle, getTogglerProps };
-};
-
-// 使用示例
-const PropGettersDemo = () => {
-  const { isOn, getTogglerProps } = useToggle(false);
+// 使用方：灵活组合
+function AccordionDemo() {
+  const { on, getButtonProps, getContentProps } = useToggle();
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h2>Prop Getters模式</h2>
-      <p>开关状态: {isOn ? '开' : '关'}</p>
-      
-      {/* 简单使用 */}
-      <button {...getTogglerProps()}>切换</button>
-      
-      {/* 传递自定义props，内部props自动合并 */}
-      <button
-        {...getTogglerProps({
-          id: 'my-btn',
-          style: { marginLeft: '10px', padding: '10px' },
-          onClick: () => console.log('自定义onClick也会执行'),
-        })}
-      >
-        带自定义props的切换
-      </button>
+    <div className="max-w-md mx-auto p-6">
+      <div className="border rounded">
+        {/* 可以传自定义onClick，不会被覆盖 */}
+        <button
+          {...getButtonProps({
+            className: 'w-full p-4 text-left flex justify-between items-center hover:bg-gray-50',
+            onClick: () => console.log('按钮被点击了'),
+          })}
+        >
+          <span>这是一个折叠面板</span>
+          <span>{on ? '▲' : '▼'}</span>
+        </button>
+        
+        <div
+          {...getContentProps({
+            className: 'p-4 border-t bg-gray-50',
+          })}
+        >
+          <p>这里是折叠的内容，点击按钮展开/收起</p>
+          <p>无障碍属性（aria-expanded、aria-controls）已经自动处理好了</p>
+        </div>
+      </div>
     </div>
   );
-};
+}
 \`\`\`
 
-### 五、State Reducer模式与Control Props受控模式
+### State Reducer 模式
 
-State Reducer允许调用方覆写组件的reducer行为；Control Props让组件完全受控（类似input的value/onChange）：
+允许调用方通过传入reducer函数覆写组件内部状态变化逻辑，给予最大的灵活性：
 
 \`\`\`tsx
-import React, { useState, useReducer, useCallback } from 'react';
+import { useState, useCallback, useReducer } from 'react';
 
-// State Reducer模式：允许外部修改状态更新逻辑
+// 定义action类型
 type ToggleAction =
   | { type: 'toggle' }
-  | { type: 'reset' };
+  | { type: 'open' }
+  | { type: 'close' };
 
-interface UseToggleStateReducerOptions {
-  initialState?: boolean;
-  // 调用方可以传入自定义reducer覆写默认行为
-  stateReducer?: (state: boolean, action: ToggleAction) => boolean;
-}
-
+// 默认reducer
 const defaultToggleReducer = (state: boolean, action: ToggleAction): boolean => {
   switch (action.type) {
     case 'toggle': return !state;
-    case 'reset': return false;
+    case 'open': return true;
+    case 'close': return false;
     default: return state;
   }
 };
 
-const useToggleAdvanced = ({
-  initialState = false,
-  stateReducer = defaultToggleReducer,
-}: UseToggleStateReducerOptions = {}) => {
-  const [state, dispatch] = useReducer(
-    // 内部用自定义reducer包裹，调用方可以修改行为
-    (prevState: boolean, action: ToggleAction) => {
-      // 先让stateReducer决定新状态
-      const changes = stateReducer(prevState, action);
-      return changes;
-    },
-    initialState
-  );
+function useControllableToggle({
+  initial = false,
+  reducer = defaultToggleReducer,
+  onChange,
+}: {
+  initial?: boolean;
+  reducer?: (state: boolean, action: ToggleAction) => boolean;
+  onChange?: (state: boolean) => void;
+} = {}) {
+  const [state, dispatch] = useReducer(reducer, initial);
 
-  const toggle = useCallback(() => dispatch({ type: 'toggle' }), []);
-  const reset = useCallback(() => dispatch({ type: 'reset' }), []);
+  const dispatchWithOnChange = useCallback((action: ToggleAction) => {
+    const newState = reducer(state, action);
+    if (newState !== state) {
+      onChange?.(newState);
+    }
+    // 注意：这里简化了，实际需要用useReducer配合
+  }, [state, reducer, onChange]);
 
-  return { isOn: state, toggle, reset };
-};
+  const toggle = useCallback(() => {
+    dispatch({ type: 'toggle' });
+    onChange?.(!state);
+  }, [state, onChange]);
 
-// 控制props模式示例：完全由父组件控制
-interface ControlledCounterProps {
-  value: number;
-  onChange: (value: number) => void;
-  min?: number;
-  max?: number;
+  const open = useCallback(() => {
+    if (!state) {
+      dispatch({ type: 'open' });
+      onChange?.(true);
+    }
+  }, [state, onChange]);
+
+  const close = useCallback(() => {
+    if (state) {
+      dispatch({ type: 'close' });
+      onChange?.(false);
+    }
+  }, [state, onChange]);
+
+  return { on: state, toggle, open, close };
 }
 
-const ControlledCounter = ({ value, onChange, min = 0, max = 100 }: ControlledCounterProps) => {
-  // 组件本身不持有state，完全由props控制
-  return (
-    <div>
-      <button onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min}>-</button>
-      <span style={{ padding: '0 20px' }}>{value}</span>
-      <button onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max}>+</button>
-    </div>
-  );
-};
+// 调用方可以自定义reducer改变组件行为：例如点击3次后不再关闭
+function CustomToggleDemo() {
+  const [clickCount, setClickCount] = useState(0);
 
-// 使用示例
-const AdvancedPatternsDemo = () => {
-  // State Reducer使用：限制只能点击3次
-  const [clicks, setClicks] = useState(0);
-  const { isOn: limitedToggle, toggle } = useToggleAdvanced({
-    stateReducer: (state, action) => {
-      if (action.type === 'toggle' && clicks >= 3 && !state) {
-        alert('最多只能开启3次！');
-        return state; // 阻止开启
+  const customReducer = (state: boolean, action: ToggleAction): boolean => {
+    // 自定义逻辑：只能打开，打开后点击3次才允许关闭
+    if (action.type === 'toggle' && state) {
+      if (clickCount < 3) {
+        setClickCount(c => c + 1);
+        return true; // 保持打开
       }
-      return defaultToggleReducer(state, action);
-    },
+      setClickCount(0);
+    }
+    return defaultToggleReducer(state, action);
+  };
+
+  const { on, toggle } = useControllableToggle({
+    reducer: customReducer,
+    onChange: (s) => console.log('状态变化:', s),
   });
 
-  // Control Props使用
-  const [counterValue, setCounterValue] = useState(0);
-
   return (
-    <div style={{ padding: '20px' }}>
-      <h2>State Reducer & Control Props</h2>
-      
-      <div style={{ marginBottom: '20px', padding: '15px', border: '1px solid #ccc' }}>
-        <h3>State Reducer：限制点击次数</h3>
-        <p>状态: {limitedToggle ? '开' : '关'}</p>
-        <button onClick={() => { toggle(); setClicks(c => limitedToggle ? c : c + 1); }}>
-          切换（点击次数: {clicks}/3）
-        </button>
-        <p style={{ fontSize: '12px', color: '#666' }}>
-          State Reducer允许调用方自定义状态更新逻辑，类似downshift库
+    <div className="p-6 text-center">
+      <button
+        onClick={toggle}
+        className={\`px-6 py-3 rounded-lg text-white transition-colors \${
+          on ? 'bg-green-500' : 'bg-gray-500'
+        }\`}
+      >
+        {on ? '开' : '关'}
+      </button>
+      {on && (
+        <p className="mt-4 text-gray-500">
+          {clickCount < 3 ? \`再点击 \${3 - clickCount} 次才能关闭\` : '可以关闭了'}
         </p>
-      </div>
-
-      <div style={{ padding: '15px', border: '1px solid #ccc' }}>
-        <h3>Control Props：完全受控组件</h3>
-        <ControlledCounter value={counterValue} onChange={setCounterValue} min={0} max={10} />
-        <p style={{ fontSize: '12px', color: '#666', marginTop: '10px' }}>
-          类似input value/onChange，组件状态完全由父组件控制
-        </p>
-      </div>
+      )}
     </div>
   );
-};
+}
 \`\`\`
 
-### 本章小结
+### Control Props 受控模式
 
-- **状态提升/下放**：共享状态提升到最近共同父组件；只在一个子组件用的状态下放到该子组件
-- **容器/展示分离**：容器组件管数据逻辑，展示组件管UI渲染，职责清晰易测试
-- **复合组件**：通过Context隐式共享状态，使用API类似HTML原生元素（如Tabs）
-- **Prop Getters**：返回getXxxProps函数合并内部和用户props，灵活复用
-- **State Reducer**：允许调用方传入reducer覆写组件行为，极致灵活（如downshift）
-- **Control Props**：组件完全受控（value+onChange），类似原生input，父组件完全控制状态
+类似原生 \`<input value={value} onChange={...} />\`，让组件支持"完全受控"和"非受控"两种模式：
+
+\`\`\`tsx
+import { useState, useCallback, useEffect, useRef } from 'react';
+
+// 同时支持受控和非受控的useControllableState
+function useControllableState<T>({
+  value: controlledValue,
+  defaultValue,
+  onChange,
+}: {
+  value?: T;
+  defaultValue?: T;
+  onChange?: (value: T) => void;
+}): [T | undefined, (value: T) => void] {
+  const isControlled = controlledValue !== undefined;
+  const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
+  const value = isControlled ? controlledValue : uncontrolledValue;
+
+  const setValue = useCallback((nextValue: T) => {
+    if (!isControlled) {
+      setUncontrolledValue(nextValue);
+    }
+    onChange?.(nextValue);
+  }, [isControlled, onChange]);
+
+  return [value, setValue];
+}
+
+// 基于这个模式的输入组件
+interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'defaultValue'> {
+  value?: string;
+  defaultValue?: string;
+  onValueChange?: (value: string) => void;
+}
+
+function Input({ value, defaultValue, onValueChange, ...props }: InputProps) {
+  const [internalValue, setInternalValue] = useControllableState({
+    value,
+    defaultValue,
+    onChange: onValueChange,
+  });
+
+  return (
+    <input
+      {...props}
+      value={internalValue ?? ''}
+      onChange={e => setInternalValue(e.target.value)}
+      className="border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+    />
+  );
+}
+
+// 使用方可以选择受控或非受控
+function ControlledInputDemo() {
+  // 非受控：组件自己管理状态
+  return (
+    <div className="max-w-md mx-auto p-6 space-y-6">
+      <div>
+        <label className="block text-sm font-medium mb-2">非受控（defaultValue）</label>
+        <Input defaultValue="初始值" onValueChange={v => console.log('输入:', v)} />
+      </div>
+
+      <ControlledInput />
+    </div>
+  );
+}
+
+function ControlledInput() {
+  // 受控：父组件控制value
+  const [value, setValue] = useState('');
+  return (
+    <div>
+      <label className="block text-sm font-medium mb-2">
+        受控（value + onValueChange）: {value}
+      </label>
+      <Input value={value} onValueChange={setValue} />
+    </div>
+  );
+}
+\`\`\`
+
+### 关键要点总结
+
+1. **状态下放优先**：不要为了"统一管理"把状态都放到顶层，需要共享时才提升
+2. **Container/Presentational分离**：数据逻辑和UI渲染分开，易测试、易复用
+3. **Compound Component复合组件**：通过Context隐式传递状态，API优雅类似原生HTML
+4. **Prop Getters模式**：返回props合并函数，灵活性高，适合可访问性库
+5. **State Reducer模式**：允许调用方通过reducer覆写内部状态逻辑，最高灵活性
+6. **Control Props受控模式**：同时支持受控/非受控，和原生表单元素行为一致
+7. **模式是手段不是目的**：根据场景选择，简单组件不需要复杂模式
+8. **这些模式可以组合使用**：比如一个组件同时用Compound Component + State Reducer + Control Props
 `,
   },
 ];

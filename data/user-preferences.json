@@ -49,7 +49,8 @@
       "/tsx2",
       "/mantine2",
       "/tsrx",
-      "/tsx-pro"
+      "/tsx-pro",
+      "/tsx3"
     ],
     "后端与网络": [
       "/http",
@@ -59,8 +60,7 @@
       "/deploy",
       "/go",
       "/backend-essential",
-      "/https-book",
-      "/csharp3"
+      "/https-book"
     ],
     "实战项目": [
       "/todo",
@@ -188,7 +188,8 @@
     ],
     "C#开发": [
       "/csharp",
-      "/csharp2"
+      "/csharp2",
+      "/csharp3"
     ]
   },
   "categoryConfig": {

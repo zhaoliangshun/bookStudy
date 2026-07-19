@@ -174,6 +174,7 @@ const BOOK_CATEGORIES = [
       { path: "/forgerock-demo", label: "ForgeRock Demo", icon: "🎭" },
       { path: "/tsx", label: "TS + React", icon: "⚛️" },
       { path: "/tsx2", label: "TS+React 从入门到精通大全", icon: "⚛️" },
+      { path: "/tsx3", label: "React 中使用 TypeScript 大全（全新重写版）", icon: "📘" },
       { path: "/tsrx", label: "TS+React 全能进阶", icon: "🚀" },
       { path: "/tsx-story", label: "TSX 童话镇", icon: "🏘️" },
       { path: "/tsx-pro", label: "TS+React 全栈精通", icon: "🚀" },
