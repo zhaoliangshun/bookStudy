@@ -2649,11 +2649,11 @@ customer_totals = {
 
 print("客户消费总额:")
 for customer, total in customer_totals.items():
-    print(f"  {customer}: ${total}")
+    print(f"  {customer}: \${total}")
 
 # 步骤 4：找消费最高的
 top_customer = max(customer_totals.items(), key=lambda x: x[1])
-print(f"\\n消费最高的客户: {top_customer[0]} (${top_customer[1]})")
+print(f"\\n消费最高的客户: {top_customer[0]} (\${top_customer[1]})")
 
 # 用更函数式的方式写：组合 map/filter/reduce
 def get_total_per_customer(orders):

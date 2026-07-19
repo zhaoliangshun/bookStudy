@@ -13,6 +13,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef, memo } from "react";
 import dynamic from "next/dynamic";
 import { getExternalPlaygrounds, openExternal } from "./external-playgrounds";
+import { runClientReact } from "./client-runners";
 
 // Monaco Editor 依赖浏览器环境，必须关 SSR。
 // 用 next/dynamic 在客户端动态加载。
@@ -39,12 +40,12 @@ const LANG_MAP = {
   // JavaScript / Node.js
   js: { api: "/api/run", pgId: "node", label: "JavaScript", lang: "javascript" },
   javascript: { api: "/api/run", pgId: "node", label: "JavaScript", lang: "javascript" },
-  jsx: { api: "/api/run", pgId: "node", label: "JavaScript", lang: "javascript" },
+  jsx: { pgId: "react", label: "React JSX", lang: "javascript", clientRun: "react" },
   node: { api: "/api/run", pgId: "node", label: "Node.js", lang: "javascript" },
   // TypeScript
   ts: { api: "/api/run-ts", pgId: "ts", label: "TypeScript", lang: "typescript" },
   typescript: { api: "/api/run-ts", pgId: "ts", label: "TypeScript", lang: "typescript" },
-  tsx: { api: "/api/run-ts", pgId: "ts", label: "TypeScript", lang: "typescript" },
+  tsx: { pgId: "react", label: "React TSX", lang: "typescript", clientRun: "react" },
   // Python
   py: { api: "/api/run-py", pgId: "python", label: "Python", lang: "python" },
   python: { api: "/api/run-py", pgId: "python", label: "Python", lang: "python" },
@@ -144,6 +145,7 @@ function CodeBlockComponent({ code: initialCode, lang, maxHeight = 300 }) {
   // 复制按钮定时器 / 运行请求 ID（用于清理，避免内存泄漏与竞态）
   const copyTimerRef = useRef(null);
   const runIdRef = useRef(0);
+  const previewRef = useRef(null);
 
   // 监听浏览器 online / offline 事件，实时更新在线状态
   // PWA 离线模式下，navigator.onLine 会变 false，按钮自动禁用
@@ -187,7 +189,8 @@ function CodeBlockComponent({ code: initialCode, lang, maxHeight = 300 }) {
   // 语言信息查询
   const langLower = (lang || "").toLowerCase().trim();
   const langInfo = LANG_MAP[langLower];
-  const canRun = !!langInfo?.api;
+  const isClientRun = langInfo?.clientRun === "react";
+  const canRun = !!langInfo?.api || isClientRun;
   const canPlayground = !!langInfo?.pgId;
   const displayLabel = langInfo?.label || (lang ? lang.toUpperCase() : "");
   const monacoLang = langInfo?.lang || langLower || "plaintext";
@@ -200,8 +203,9 @@ function CodeBlockComponent({ code: initialCode, lang, maxHeight = 300 }) {
   const canExternal = externalPGs.length > 0;
 
   // 离线时禁用"运行"和"外网运行"按钮（这些功能依赖后端或外网）
+  // 客户端运行（如 React 沙箱）不需要网络，即使离线也可用
   // 复制 / Playground / 重置 仍可用：Playground 页面本身已被 SW 缓存
-  const runDisabled = !canRun || isRunning || !isOnline;
+  const runDisabled = !canRun || isRunning || (!isClientRun && !isOnline);
   const extDisabled = !canExternal || !isOnline;
 
   // ---------- 复制代码到剪贴板 ----------
@@ -228,9 +232,9 @@ function CodeBlockComponent({ code: initialCode, lang, maxHeight = 300 }) {
 
   // ---------- 就地运行代码 ----------
   const handleRun = useCallback(async () => {
-    if (!langInfo?.api) return;
-    // 离线防御：即使按钮被绕过（如 Ctrl+Enter 快捷键），也不发请求
-    if (!isOnline) {
+    if (!canRun) return;
+    // 后端 API 运行的离线防御
+    if (!isClientRun && !isOnline) {
       setShowOutput(true);
       setOutput("");
       setError("离线模式：代码运行不可用，请连接网络后重试");
@@ -240,8 +244,28 @@ function CodeBlockComponent({ code: initialCode, lang, maxHeight = 300 }) {
     const currentRunId = ++runIdRef.current;
     setIsRunning(true);
     setShowOutput(true);
-    setOutput(`正在执行 ${langInfo.label}...`);
+    setOutput(isClientRun ? `正在渲染 ${langInfo.label}...` : `正在执行 ${langInfo.label}...`);
     setError("");
+
+    if (isClientRun) {
+      try {
+        const container = previewRef.current;
+        const result = await runClientReact(code, container);
+        if (runIdRef.current !== currentRunId) return;
+        setOutput(result.output || "(组件已渲染，查看预览区域)");
+        setError(result.error || "");
+      } catch (err) {
+        if (runIdRef.current !== currentRunId) return;
+        setError("渲染失败: " + err.message);
+        setOutput("");
+      } finally {
+        if (runIdRef.current === currentRunId) {
+          setIsRunning(false);
+        }
+      }
+      return;
+    }
+
     try {
       const res = await fetch(langInfo.api, {
         method: "POST",
@@ -273,7 +297,7 @@ function CodeBlockComponent({ code: initialCode, lang, maxHeight = 300 }) {
         setIsRunning(false);
       }
     }
-  }, [code, langLower, langInfo, isOnline]);
+  }, [code, langLower, langInfo, isOnline, isClientRun, canRun]);
 
   // ---------- 复制到 Playground 并打开 ----------
   // 使用固定的窗口名 "playground"：如果已有同名标签页，则复用它
@@ -389,13 +413,17 @@ function CodeBlockComponent({ code: initialCode, lang, maxHeight = 300 }) {
               onClick={handleRun}
               disabled={runDisabled}
               title={
-                isOnline
+                isClientRun
+                  ? `渲染 ${langInfo.label} 组件（Ctrl/Cmd + Enter）`
+                  : isOnline
                   ? `运行 ${langInfo.label} 代码（Ctrl/Cmd + Enter）`
                   : "离线模式：代码运行不可用，请联网后重试"
               }
             >
               {isRunning
                 ? "运行中..."
+                : isClientRun
+                ? "⚛ 渲染预览"
                 : isOnline
                 ? "▶ 运行"
                 : "✈ 离线"}
@@ -428,17 +456,37 @@ function CodeBlockComponent({ code: initialCode, lang, maxHeight = 300 }) {
 
       {/* 运行结果输出面板 */}
       {showOutput && (
-        <div className="md-code-output">
-          <div className="md-code-output-header">
-            <span>运行结果</span>
-            <button
-              className="md-code-output-close"
-              onClick={() => setShowOutput(false)}
-              title="关闭结果面板"
-            >
-              ✕
-            </button>
-          </div>
+        <div className={`md-code-output${isClientRun ? " has-preview" : ""}`}>
+          {isClientRun && (
+            <>
+              <div className="md-code-output-header">
+                <span>预览</span>
+              </div>
+              <div className="md-code-preview-container" ref={previewRef}></div>
+              <div className="md-code-output-header md-code-console-header">
+                <span>控制台</span>
+                <button
+                  className="md-code-output-close"
+                  onClick={() => setShowOutput(false)}
+                  title="关闭结果面板"
+                >
+                  ✕
+                </button>
+              </div>
+            </>
+          )}
+          {!isClientRun && (
+            <div className="md-code-output-header">
+              <span>运行结果</span>
+              <button
+                className="md-code-output-close"
+                onClick={() => setShowOutput(false)}
+                title="关闭结果面板"
+              >
+                ✕
+              </button>
+            </div>
+          )}
           {output && (
             <pre className={`md-code-output-body ${error ? "has-error" : ""}`}>
               {output}

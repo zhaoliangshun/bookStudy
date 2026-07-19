@@ -28,6 +28,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { getExternalPlaygrounds, openExternal } from "../external-playgrounds";
+import { runClientReact } from "../client-runners";
 
 // Monaco Editor 是浏览器端编辑器，依赖 DOM/Worker，必须关 SSR。
 // 用 next/dynamic 在客户端动态加载，避免服务端渲染时崩溃。
@@ -62,14 +63,45 @@ const MonacoEditor = dynamic(
 // 局限：异步代码（setTimeout 等）的结果可能在超时后才产生，无法捕获；
 //       这里面向教学场景，同步代码 + console.log 已能覆盖绝大多数需求。
 // =============================================================
+function createRunnerIframe(options = {}) {
+  const { visible = false } = options;
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("sandbox", "allow-scripts allow-popups");
+  if (!visible) {
+    iframe.style.display = "none";
+  }
+  return iframe;
+}
+
+function setupIframeMessaging(iframe, resultType, timeoutMs, resolve) {
+  const handler = (event) => {
+    if (event.source !== iframe.contentWindow) return;
+    const data = event.data;
+    if (!data || data.type !== resultType) return;
+    window.removeEventListener("message", handler);
+    clearTimeout(timer);
+    if (iframe.parentNode && !iframe._retained) {
+      iframe.parentNode.removeChild(iframe);
+    }
+    resolve(data);
+  };
+  window.addEventListener("message", handler);
+  const timer = setTimeout(() => {
+    window.removeEventListener("message", handler);
+    if (iframe.parentNode && !iframe._retained) {
+      iframe.parentNode.removeChild(iframe);
+    }
+    resolve({ type: resultType, logs: [], errors: ["执行超时（10 秒），请检查是否有死循环或异步阻塞。"] });
+  }, timeoutMs);
+  return { handler, timer };
+}
+
 async function runClientJavaScript(code) {
   return new Promise((resolve) => {
-    // 转义用户代码中的 </script>，防止提前闭合注入的 <script> 标签
     const safeCode = code.replace(/<\/script>/gi, "<\\/script>");
 
-    // 构造 iframe 内执行的 HTML 文档
     const html =
-      '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><script>\n' +
+      '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:monospace;padding:8px;white-space:pre-wrap;}</style></head><body><script>\n' +
       "(function () {\n" +
       "  var __logs = [];\n" +
       "  function __fmt(a) {\n" +
@@ -81,7 +113,6 @@ async function runClientJavaScript(code) {
       "    }\n" +
       "    return String(a);\n" +
       "  }\n" +
-      "  // 重写 console.*，把输出收集到 __logs\n" +
       "  ['log','info','warn','error','debug'].forEach(function (level) {\n" +
       "    var orig = console[level] ? console[level].bind(console) : function(){};\n" +
       "    console[level] = function () {\n" +
@@ -90,57 +121,34 @@ async function runClientJavaScript(code) {
       "      orig.apply(console, args);\n" +
       "    };\n" +
       "  });\n" +
-      "  // 未捕获异常：回传错误\n" +
       "  window.onerror = function (msg, src, line, col, err) {\n" +
       "    window.parent.postMessage({ type: 'pg-js-result', logs: __logs, errors: [msg] }, '*');\n" +
       "    return true;\n" +
       "  };\n" +
+      "  window.addEventListener('unhandledrejection', function(e) {\n" +
+      "    window.parent.postMessage({ type: 'pg-js-result', logs: __logs, errors: ['Unhandled Promise: ' + e.reason] }, '*');\n" +
+      "  });\n" +
       "  try {\n" +
       "    " + safeCode + "\n" +
       "  } catch (e) {\n" +
       "    window.parent.postMessage({ type: 'pg-js-result', logs: __logs, errors: [e.message + (e.stack ? '\\n' + e.stack : '')] }, '*');\n" +
       "    return;\n" +
       "  }\n" +
-      "  // 同步代码执行完，等两个微任务轮次再回传，让 Promise.then 跑完\n" +
       "  Promise.resolve().then(function(){return Promise.resolve();}).then(function () {\n" +
       "    window.parent.postMessage({ type: 'pg-js-result', logs: __logs, errors: [] }, '*');\n" +
       "  });\n" +
       "})();\n" +
       "<\/script></body></html>";
 
-    // 创建隐藏 iframe 作为执行沙箱
-    const iframe = document.createElement("iframe");
-    iframe.setAttribute("sandbox", "allow-scripts");
-    iframe.style.display = "none";
-
-    // 监听 iframe 回传的结果
-    const handler = (event) => {
-      if (event.source !== iframe.contentWindow) return;
-      const data = event.data;
-      if (!data || data.type !== "pg-js-result") return;
-      window.removeEventListener("message", handler);
-      clearTimeout(timer);
-      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    const iframe = createRunnerIframe();
+    setupIframeMessaging(iframe, "pg-js-result", 5000, (data) => {
       resolve({
         output:
-          data.logs.join("\n") ||
-          (data.errors.length ? "" : "(无输出)"),
-        error: data.errors.join("\n"),
+          (data.logs || []).join("\n") ||
+          ((data.errors || []).length ? "" : "(无输出)"),
+        error: (data.errors || []).join("\n"),
       });
-    };
-    window.addEventListener("message", handler);
-
-    // 超时保护：5 秒未收到结果，强制清理并报错
-    const timer = setTimeout(() => {
-      window.removeEventListener("message", handler);
-      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-      resolve({
-        output: "",
-        error: "执行超时（5 秒），请检查是否有死循环或异步阻塞。",
-      });
-    }, 5000);
-
-    // 用 srcdoc 加载文档（sandbox 下 srcdoc 可正常工作）
+    });
     iframe.srcdoc = html;
     document.body.appendChild(iframe);
   });
@@ -579,6 +587,46 @@ console.log("计数:", next(), next(), next());
     parse: null, // clientRun 直接返回 {output, error}，不需要 parse
   },
   {
+    id: "react",
+    label: "React",
+    icon: "⚛️",
+    filename: "playground.tsx",
+    comment: "//",
+    clientRun: runClientReact,
+    hasPreview: true,
+
+    defaultCode: `// React (TSX) Playground
+// 在这里写 React 组件，会自动编译渲染到预览区
+// 默认导出组件会被自动挂载；也可以自己写 ReactDOM.createRoot
+
+function App() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div style={{ padding: 20 }}>
+      <h1 style={{ color: '#2563eb', marginBottom: 16 }}>
+        Hello, React! ⚛️
+      </h1>
+      <p style={{ marginBottom: 12 }}>点击次数: {count}</p>
+      <button
+        className="primary"
+        onClick={() => setCount(count + 1)}
+        style={{ marginRight: 8 }}
+      >
+        点击 +1
+      </button>
+      <button onClick={() => setCount(0)}>
+        重置
+      </button>
+    </div>
+  );
+}
+
+export default App;
+`,
+    parse: null,
+  },
+  {
     id: "c",
     label: "C",
     icon: "🇨",
@@ -865,6 +913,7 @@ const PG_LANG_MAP = {
   node: "js",
   "client-js": "js",
   ts: "ts",
+  react: "jsx",
   python: "py",
   java: "java",
   csharp: "cs",
@@ -877,6 +926,7 @@ const PG_LANG_MAP = {
   swift: "swift",
   shell: "sh",
   sql: "sql",
+  javascript: "js",
 };
 
 // localStorage 存储 key 前缀，按语言隔离保存用户代码
@@ -948,6 +998,8 @@ export default function PlaygroundPage() {
   const splitDraggingRef = useRef(false);
   // toast 定时器引用，用于清理避免多个 toast 超时叠加
   const toastTimerRef = useRef(null);
+  // React 预览容器引用
+  const previewRef = useRef(null);
 
   // 当前语言配置对象
   const activeLang =
@@ -1006,11 +1058,10 @@ export default function PlaygroundPage() {
       setError("");
       try {
         let parsed;
-        // 分支一：有 clientRun（浏览器端执行，如 JavaScript），直接调用
         if (typeof activeLang.clientRun === "function") {
-          parsed = await activeLang.clientRun(code);
+          const container = activeLang.hasPreview ? previewRef.current : undefined;
+          parsed = await activeLang.clientRun(code, container);
         } else {
-          // 分支二：调后端 API 执行
           const res = await fetch(activeLang.api, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -1019,7 +1070,6 @@ export default function PlaygroundPage() {
           const data = await res.json();
           parsed = activeLang.parse(data);
         }
-        // 过时请求：用户已经输入新内容并发起了更新的运行，丢弃本次结果
         if (currentId !== requestIdRef.current) return;
         setOutput(parsed.output || "(无输出)");
         setError(parsed.error || "");
@@ -1028,7 +1078,6 @@ export default function PlaygroundPage() {
         setError("请求失败: " + err.message);
         setOutput("");
       } finally {
-        // 只有最新的请求才更新运行状态，避免提前清空 loading
         if (currentId === requestIdRef.current) {
           setIsRunning(false);
           setHasRun(true);
@@ -1528,25 +1577,44 @@ export default function PlaygroundPage() {
               title="拖动调整大小 · 双击恢复对半"
             />
 
-            {/* 右侧：输出控制台 */}
+            {/* 右侧：输出控制台 / 预览 */}
             <section
-              className="pg-output-pane"
+              className={`pg-output-pane${activeLang.hasPreview ? " has-preview" : ""}`}
               style={{ flexGrow: 1 - splitRatio, flexShrink: 1, flexBasis: 0 }}
             >
-              <div className="pg-pane-header">
-                <div className="pg-pane-label">
-                  <span className="pg-pane-title">控制台输出</span>
+              {activeLang.hasPreview ? (
+                <>
+                  <div className="pg-pane-header">
+                    <div className="pg-pane-label">
+                      <span className="pg-pane-title">预览</span>
+                    </div>
+                    <span className="pg-pane-hint">
+                      {isRunning ? "渲染中..." : hasRun ? (error ? "渲染出错" : "渲染完成") : "点击运行查看预览"}
+                    </span>
+                  </div>
+                  <div className="pg-preview-container" ref={previewRef}></div>
+                  <div className="pg-pane-header pg-console-header">
+                    <div className="pg-pane-label">
+                      <span className="pg-pane-title">控制台</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="pg-pane-header">
+                  <div className="pg-pane-label">
+                    <span className="pg-pane-title">控制台输出</span>
+                  </div>
+                  <span className="pg-pane-hint">
+                    {isRunning
+                      ? "执行中..."
+                      : hasRun
+                      ? error
+                        ? "执行出错"
+                        : "执行完成"
+                      : "点击运行查看结果"}
+                  </span>
                 </div>
-                <span className="pg-pane-hint">
-                  {isRunning
-                    ? "执行中..."
-                    : hasRun
-                    ? error
-                      ? "执行出错"
-                      : "执行完成"
-                    : "点击运行查看结果"}
-                </span>
-              </div>
+              )}
               <div className="pg-console-body">
                 {output && (
                   <pre
@@ -1566,7 +1634,9 @@ export default function PlaygroundPage() {
                   <div className="console-placeholder">
                     <span className="placeholder-icon">▶</span>
                     <span>
-                      点击「运行」按钮，或按 Ctrl/Cmd + Enter 执行代码
+                      {activeLang.hasPreview
+                        ? "点击「运行」按钮，或按 Ctrl/Cmd + Enter 渲染组件"
+                        : "点击「运行」按钮，或按 Ctrl/Cmd + Enter 执行代码"}
                     </span>
                   </div>
                 )}

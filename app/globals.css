@@ -1775,6 +1775,38 @@ img {
   overflow-y: auto;
 }
 
+.md-code-output.has-preview {
+  display: flex;
+  flex-direction: column;
+}
+
+.md-code-preview-container {
+  min-height: 200px;
+  max-height: 400px;
+  background: #ffffff;
+  border-bottom: 1px solid var(--editor-border);
+  overflow: auto;
+  position: relative;
+}
+
+.md-code-preview-container iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+  border: none;
+  display: block;
+}
+
+.md-code-console-header {
+  border-top: 1px solid var(--editor-border);
+}
+
+.md-code-output.has-preview .md-code-output-body,
+.md-code-output.has-preview .md-code-output-error {
+  max-height: 150px;
+  min-height: 60px;
+}
+
 .md-table-wrap {
   margin: 14px 0;
   overflow-x: auto;
@@ -3059,6 +3091,39 @@ img {
   font-style: normal;
 }
 
+.pg-output-pane.has-preview {
+  display: flex;
+  flex-direction: column;
+}
+
+.pg-preview-container {
+  flex: 1;
+  min-height: 200px;
+  background: #ffffff;
+  border-bottom: 1px solid var(--border);
+  overflow: auto;
+  position: relative;
+}
+
+.pg-preview-container iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+.pg-console-header {
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+}
+
+.pg-output-pane.has-preview .pg-console-body {
+  flex: 0 0 180px;
+  min-height: 180px;
+  max-height: 250px;
+  border-top: 1px solid var(--border);
+}
+
 /* ===== 底部状态栏 ===== */
 .pg-statusbar {
   display: flex;
@@ -3273,7 +3338,6 @@ img {
   max-height: 60%;
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--border);
   /* 注意：不要用 --bg-sidebar（那是深色侧边栏），用浅色背景 */
   background: #fafbfc;
 }
