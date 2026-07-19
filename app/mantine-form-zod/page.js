@@ -38,6 +38,42 @@ import { useState } from "react";
 
 import { MantineProvider, createTheme } from "@mantine/core";
 
+// =============================================================
+// 密码掩码字符定制：把浏览器默认的圆点（•）改成星号（*）
+// -------------------------------------------------------------
+// 【原理】
+//   Mantine PasswordInput 内部用原生 <input type="password">，
+//   浏览器默认用圆点（•）遮罩字符，无法通过 CSS 直接修改。
+//
+// 【方案】
+//   1. 生成一个 WOFF2 字体，所有字符的 glyph 都是星号（*）
+//   2. 用 @font-face 内联该字体（base64 data URI）
+//   3. 用 CSS 选择器 .pwd-star-mask 把 input[type="password"]
+//      的 font-family 设为该字体，关闭 -webkit-text-security
+//   4. 给 PasswordInput 加 classNames={{ root: "pwd-star-mask" }}
+// =============================================================
+const STAR_WOFF2_BASE64 =
+  "d09GMgABAAAAAAE4AAkAAAAAAxwAAADyAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAABmAAgXIKLEwBNgMICwYABCAFbwcmG5ACUJ4H2ZnmTNFO/SIvLOlKPHyt6ft7m5RIksjXVpbdgTNljVLWKEDZ6XhW2Zszdp/bW8qfUSYittJd8ZSm3l7n0+NAAwlAmre2gggzD0BKIonl7Hcb02UQQrfZ3q4uKuIrbpGsKABbXJh1YnYWJBSYUAhMyN6RZYGTbhezxpDf3cuQQEagD5OADIi+pmnqpqyrsvrnVZ8dLjf3IZT1m3MAAsH90+d2G/bdE/EFR0vfwcdFcySRGJdAIUF8EV8IJH0CJAAAZJsChAEESDoGFCL3CjPGlcmQjVTnAc1+Vx2qQ7lMhfBsrisGcy1XAY06BgEA";
+
+const PWD_STAR_CSS = `
+@font-face {
+  font-family: "StarPassword";
+  src: url("data:font/woff2;base64,${STAR_WOFF2_BASE64}") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+}
+/* 密码框内部 input：关闭浏览器默认圆点遮罩，用星号字体渲染 */
+.pwd-star-mask input[type="password"] {
+  -webkit-text-security: none;
+  font-family: "StarPassword", monospace;
+}
+/* placeholder 用回正常字体 */
+.pwd-star-mask input[type="password"]::placeholder {
+  font-family: inherit;
+  -webkit-text-security: none;
+}
+`;
+
 const theme = createTheme({
   primaryColor: "indigo",
   defaultRadius: "md",
@@ -481,12 +517,14 @@ function RegistrationForm({ onSubmit }) {
           />
 
           {/* ---- password + RuleHints ----
-              error 同步计算（与 username 同理），消除边框闪烁 */}
+              error 同步计算（与 username 同理），消除边框闪烁
+              classNames={{ root: "pwd-star-mask" }} 把掩码字符从圆点改成星号 */}
           <Box>
             <PasswordInput
               label="Group Password"
               placeholder="8-20 characters, include A-Z, a-z, 0-9, special chars"
               withAsterisk
+              classNames={{ root: "pwd-star-mask" }}
               {...form.getInputProps("password")}
               error={passwordHasError}
               onFocus={(e) => {
@@ -513,6 +551,7 @@ function RegistrationForm({ onSubmit }) {
             label="Confirm Password"
             placeholder="Re-enter your password"
             withAsterisk
+            classNames={{ root: "pwd-star-mask" }}
             {...form.getInputProps("confirmPassword")}
           />
 
@@ -621,6 +660,8 @@ export default function MantineFormZodPage() {
 
   return (
     <MantineProvider theme={theme} defaultColorScheme="light">
+      {/* 注入星号掩码字体 CSS（圆点 → 星号） */}
+      <style dangerouslySetInnerHTML={{ __html: PWD_STAR_CSS }} />
       <div style={{ height: "100vh", overflowY: "auto" }}>
         <Container size="md" py="xl">
           <Stack>
