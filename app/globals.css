@@ -4133,13 +4133,28 @@ img {
 /* =============================================================
    浮动按钮设置（齿轮按钮 + 弹出面板）
    -------------------------------------------------------------
-   与其他浮动按钮共用 .floating-panel-group 容器。
-   面板向左弹出（与阅读主题面板方向一致），列出 4 个开关
-   控制：编辑器主题 / 阅读主题 / 章节导航 / 快速滚动 的显隐。
+   独立 fixed 定位在视口右上角，不再挂在 .floating-panel-group 里。
+   默认向右偏移半个按钮宽度（按钮直径 40px），只露出左半边；
+   鼠标悬停或面板已展开时，按钮整体滑入视口全部显示。
+   面板向左弹出（按钮位于右上角，左边空间充足），列出 5 个开关
+   控制：书签 / 编辑器主题 / 阅读主题 / 章节导航 / 快速滚动 的显隐。
    ============================================================= */
+/* 容器：fixed 定位到右上角，紧贴视口右边 */
 .floating-btn-settings {
-  position: relative;
-  pointer-events: none;
+  position: fixed;
+  right: 0;
+  top: 20px;
+  z-index: 1000;
+  pointer-events: auto;
+  /* 默认向右平移 20px（按钮直径的一半），只露出左半边 */
+  transform: translateX(20px);
+  transition: transform 0.22s ease;
+}
+
+/* 鼠标悬停 或 面板已展开 时，按钮整体滑入视口，完全显示 */
+.floating-btn-settings:hover,
+.floating-btn-settings:has(.floating-btn-settings-btn[aria-expanded="true"]) {
+  transform: translateX(0);
 }
 
 /* 齿轮触发按钮：与其他浮动按钮一致的圆形 40x40 外观 */
@@ -4178,12 +4193,11 @@ img {
   line-height: 1;
 }
 
-/* 弹出面板：向左弹出 */
+/* 弹出面板：向左弹出（按钮位于右上角，左边空间充足） */
 .floating-btn-settings-panel {
   position: absolute;
   right: calc(100% + 10px);
-  top: 50%;
-  transform: translateY(-50%);
+  top: 0;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -4200,11 +4214,11 @@ img {
 @keyframes floatingSettingsIn {
   from {
     opacity: 0;
-    transform: translateY(-50%) translateX(8px);
+    transform: translateX(8px);
   }
   to {
     opacity: 1;
-    transform: translateY(-50%) translateX(0);
+    transform: translateX(0);
   }
 }
 

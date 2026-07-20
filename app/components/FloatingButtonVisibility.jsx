@@ -41,6 +41,7 @@ export const FLOATING_BUTTONS_STORAGE_KEY = "floating-buttons-visibility";
 // 受管理的浮动按钮 id 列表（与设置面板里显示的开关一一对应）
 // 顺序即设置面板里从上到下的展示顺序
 export const FLOATING_BUTTON_IDS = [
+  "bookmark",
   "editorTheme",
   "readingTheme",
   "chapterNav",
@@ -49,6 +50,7 @@ export const FLOATING_BUTTON_IDS = [
 
 // 默认全部显示
 const DEFAULT_VISIBILITY = {
+  bookmark: true,
   editorTheme: true,
   readingTheme: true,
   chapterNav: true,

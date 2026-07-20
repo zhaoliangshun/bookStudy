@@ -98,9 +98,9 @@ export default function Providers({ children }) {
             <ReadingThemeSwitcher />
             <FloatingChapterNav />
             <QuickScroll />
-            {/* 设置入口（齿轮按钮）：本身始终显示，点击展开开关面板 */}
-            <FloatingButtonSettings />
           </div>
+          {/* 设置入口（齿轮按钮）：单独放在右下角，不与其他浮动按钮共组 */}
+          <FloatingButtonSettings />
         </FloatingButtonVisibilityProvider>
         {children}
       </EditorThemeProvider>

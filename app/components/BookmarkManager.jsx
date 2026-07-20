@@ -12,6 +12,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useFloatingButtonVisibility } from "./FloatingButtonVisibility";
 
 const STORAGE_KEY = "bookmarks";
 const MAX_BOOKMARKS = 20;
@@ -222,6 +223,8 @@ export default function BookmarkManager() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  // 读取「浮动按钮可见性」设置：用户在齿轮设置里关掉书签时，整个按钮不渲染
+  const { visibility } = useFloatingButtonVisibility();
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -314,6 +317,9 @@ export default function BookmarkManager() {
     },
     [router]
   );
+
+  // 隐藏时直接返回 null（所有 hooks 已调用完毕，不会破坏 hooks 顺序）
+  if (visibility.bookmark === false) return null;
 
   const currentUrl = getFullUrl();
   const isCurrentPageBookmarked = bookmarks.some((b) => b.url === currentUrl);
