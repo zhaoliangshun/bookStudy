@@ -14,6 +14,27 @@
 //
 // 通过实时展示 safeParse 的输出，直观感受 Schema 驱动校验的威力：
 // 输入任意内容，右侧立刻显示 { success, data } 或 { success, error }。
+//
+// 【整体架构】
+//   ZodMiniPage（主页面，Tab 切换）
+//   ├── RegisterDemo（注册表单）
+//   │   └── useTouchedFields + useMemo(safeParse) + 实时错误提示
+//   ├── OtpDemo（OTP 验证码）
+//   │   └── 6 个独立 input + 拼接成 code + transform 转数字
+//   └── PasswordChangeDemo（修改密码）
+//       └── 两个对象级 refine（跨字段校验）+ 密码强度条
+//
+// 【关键技术点】
+//   1. useTouchedFields Hook：管理「字段已触碰」状态，
+//      避免初始空表单就显示校验错误（聚焦后才检查）。
+//   2. useMemo + safeParse：每次输入变化都重新校验，
+//      利用 React 的 memo 避免无谓重算。
+//   3. flatten()：把 ZodError 的 issues 数组扁平化成 { 字段名: [错误] }，
+//      方便按字段名取错误信息渲染到对应输入框下方。
+//   4. 对象级 refine + path：跨字段校验（如两次密码一致）时，
+//      用 path 把错误挂到具体字段，让 UI 能在对应输入框下显示。
+//   5. transform：OTP demo 演示了 string → number 的类型转换，
+//      展示 Zod 不仅是校验器，也是数据变换器。
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
@@ -23,16 +44,24 @@ import { z } from "./mini-zod";
 // 通用 Hook：字段「已触碰」状态管理
 // -------------------------------------------------------------
 // 用途：解决「默认空表单就显示校验错误」的问题。
+//
+// 背景：如果表单一打开就把所有字段都 safeParse 一遍，空字段必然校验失败，
+// 用户看到一堆红字会困惑（"我还没输入怎么就错了？"）。
+// 解决：引入 touched 状态，只有用户「碰过」的字段才显示错误。
+//
 // 行为：
 //   - 默认所有字段都是 untouched（未触碰）
 //   - 用户首次聚焦某个字段时，标记为 touched
 //   - 只有 touched 的字段才显示校验错误
-// 这样初始空表单不会显示任何错误，符合「聚焦之后才检查」的预期。
+//   - 未 touched 的字段即使有错误也不显示（避免初始空表单就标红）
+//
+// 这就是业界表单库（如 react-hook-form / formik）的「touched/blurred」模式。
 // -------------------------------------------------------------
 function useTouchedFields() {
   const [touched, setTouched] = useState({});
 
   // 聚焦时把字段标记为 touched（已用 prev[field] 判等避免无谓 setState）
+  // 优化：如果字段已经是 touched，不再触发 setState（减少 re-render）
   const handleFocus = useCallback((field) => {
     setTouched((prev) =>
       prev[field] ? prev : { ...prev, [field]: true }
@@ -265,6 +294,15 @@ const styles = {
 // -------------------------------------------------------------
 // 工具函数：把 safeParse 结果格式化成高亮 JSON
 // -------------------------------------------------------------
+// 这是「教学型」展示：让用户直观看到 Schema 校验的内部数据结构。
+// 成功时显示 data（可能经过 transform 转换），
+// 失败时显示 issues 数组（path + message + code）。
+//
+// 颜色编码：
+//   成功 → 绿色（resultSuccess）
+//   失败 → 红色（resultError）
+//   数据 → 蓝色（resultData，让 data 字段更醒目）
+// -------------------------------------------------------------
 function formatParseResult(result) {
   if (result.success) {
     return (
@@ -276,6 +314,9 @@ function formatParseResult(result) {
       </span>
     );
   }
+  // 失败时把 issues 整理成更易读的格式：
+  //   path 用 "." 连接（如 "user.email"），空 path 显示 "(root)"
+  //   保留 message 和 code，便于调试
   const issues = result.error.issues.map((iss) => ({
     path: iss.path.join(".") || "(root)",
     message: iss.message,
@@ -292,6 +333,8 @@ function formatParseResult(result) {
 }
 
 // 把 Schema 定义源码以字符串形式展示（教学用）
+// 这样用户能同时看到「Schema 长什么样」和「它产出的校验结果」，
+// 形成完整的「声明 → 执行」因果链。
 function SchemaSource({ code }) {
   return (
     <div>
@@ -305,11 +348,17 @@ function SchemaSource({ code }) {
 // Demo 1：注册表单
 // -------------------------------------------------------------
 // Schema 设计要点：
-//   - username: 3-20 字符，只能字母数字下划线
-//   - email: 邮箱格式
-//   - password: 至少 8 位，必须包含大小写字母和数字（用 refine）
-//   - confirmPassword: 用 refine 确保和 password 一致
-//   - agreeTerms: 必须为 true（同意条款才能注册）
+//   - username: 3-20 字符，只能字母数字下划线（用 min/max/regex 链式约束）
+//   - email: 邮箱格式（用内置 email check）
+//   - password: 至少 8 位 + 必须含大小写字母和数字（用 refine 做组合校验）
+//   - confirmPassword: 字段级只校验是字符串，跨字段一致性用对象级 refine
+//   - agreeTerms: 必须为 true（用 refine 强制勾选）
+//
+// 跨字段校验的关键：
+//   对象级 refine 能访问整个 data 对象，可以比较 password 和 confirmPassword。
+//   用 path: ["confirmPassword"] 把错误挂到确认密码字段，
+//   这样 UI 能在确认密码输入框下方显示「两次密码不一致」。
+//   如果不指定 path，错误会落到 _root，UI 无法定位到具体字段。
 // -------------------------------------------------------------
 const registerSchema = z
   .object({
@@ -322,14 +371,18 @@ const registerSchema = z
     password: z
       .string()
       .min(8, "密码至少 8 位")
+      // 字段级 refine：只关心当前字段值（password）
+      // 校验「同时包含大小写字母和数字」这种组合约束
       .refine(
         (val) => /[a-z]/.test(val) && /[A-Z]/.test(val) && /[0-9]/.test(val),
         "密码必须包含大小写字母和数字"
       ),
     confirmPassword: z.string(),
+    // boolean 类型 + refine：强制勾选服务条款
     agreeTerms: z.boolean().refine((v) => v === true, "必须同意服务条款"),
   })
   // 对象级 refine：跨字段校验，用 path 把错误挂到 confirmPassword 字段
+  // 注意这里 refine 的参数是整个 data 对象（而非单个字段值）
   .refine(
     (data) => data.password === data.confirmPassword,
     { message: "两次输入的密码不一致", path: ["confirmPassword"] }
@@ -359,6 +412,8 @@ const registerSchemaSource = `const registerSchema = z
   );`;
 
 function RegisterDemo() {
+  // 表单状态：所有字段集中在 form 对象里，便于一次 setState 更新多个字段
+  // agreeTerms 默认 false（checkbox 未勾选），符合用户预期
   const [form, setForm] = useState({
     username: "",
     email: "",
@@ -371,21 +426,30 @@ function RegisterDemo() {
   const { touched, handleFocus } = useTouchedFields();
 
   // 实时校验：每次输入变化都 safeParse 一次
+  // useMemo 确保 form 没变时不会重复校验（性能优化）
+  // parseResult.success === true 时，parseResult.data 是经过校验/转换后的数据
+  // parseResult.success === false 时，parseResult.error 是 ZodError 实例
   const parseResult = useMemo(() => {
     return registerSchema.safeParse(form);
   }, [form]);
 
   // 按字段名提取错误（用 flatten 把 issues 转成 { fieldName: [msg] }）
+  // 这样 UI 可以通过 fieldErrors["username"] 取到该字段的所有错误信息
+  // 比直接遍历 issues 数组更方便
   const fieldErrors = useMemo(() => {
     if (parseResult.success) return {};
     return parseResult.error.flatten();
   }, [parseResult]);
 
+  // 更新单个字段：用函数式 setState 避免闭包陷阱
+  // 同时清空 submitted 状态（用户改了字段，之前的提交结果不再相关）
   const updateField = useCallback((field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setSubmitted(null);
   }, []);
 
+  // 提交处理：parseResult 已经是实时校验的结果，直接用它判断
+  // 真实场景这里会调 API，demo 只显示成功/失败提示
   const handleSubmit = useCallback(
     (e) => {
       e.preventDefault();
@@ -405,6 +469,11 @@ function RegisterDemo() {
   );
 
   // 输入框样式：touched 后才显示红/绿边框，避免初始空表单就标红
+  // 三种状态：
+  //   默认（未 touched）：灰色边框
+  //   touched + 有错：红色边框（inputError）
+  //   touched + 无错 + 有值：绿色边框（inputSuccess）
+  // 注意 hasError 还要求 form[field] 非空，避免空字段被误判为「有错」
   const inputStyle = (field) => {
     const hasError = touched[field] && fieldErrors[field] && form[field];
     const isValid =
@@ -549,15 +618,28 @@ function RegisterDemo() {
 // -------------------------------------------------------------
 // Demo 2：OTP 验证码
 // -------------------------------------------------------------
-// Schema 设计要点：
+// 【场景】6 位短信验证码输入框，常见于登录/支付/注册二次校验场景。
+//
+// 【UX 设计要点】
+//   1. 拆成 6 个独立输入框（而非单个长输入框），视觉上更像「验证码」
+//   2. 输入一位后自动跳到下一格（用户不需要手动 Tab）
+//   3. 退格时若当前格已空，自动回到上一格（修正更顺手）
+//   4. 支持粘贴整段验证码（用户从短信复制后一次粘贴即可填完）
+//   5. 重发倒计时 60s，防止滥用
+//
+// 【Schema 设计要点】
 //   - code: 6 位纯数字字符串（用 length + regex 约束）
-//   - 用 transform 把输入转成数字类型（展示类型转换能力）
+//   - 用 transform 把字符串转成数字类型（展示 Zod 的类型转换能力）
+//     真实业务中验证码经常需要作为数字传给后端 API，transform 一次到位
+//   - 注意 transform 只在前面所有 check 通过后才执行，避免脏数据进入 transform
 // -------------------------------------------------------------
 const otpSchema = z.object({
   code: z
     .string()
     .length(6, "验证码必须是 6 位")
     .regex(/^\d{6}$/, "验证码只能包含数字")
+    // transform：校验通过后把 "123456" 转成 123456
+    // 这体现了 Zod「校验器 + 数据变换器」的二合一特性
     .transform((val) => parseInt(val, 10)),
 });
 
@@ -569,18 +651,27 @@ const otpSchemaSource = `const otpSchema = z.object({
 });`;
 
 function OtpDemo() {
+  // 6 个格子的值用数组维护，比 6 个独立 state 更易管理
+  // 初始值都是空字符串（不是 null/undefined），便于 join 和受控 input
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const [submitted, setSubmitted] = useState(null);
+  // 重发倒计时（秒），0 表示可重发
   const [resendCountdown, setResendCountdown] = useState(0);
+  // 已重发次数（仅展示用，提示用户「第 N 次发送」）
   const [resendTimes, setResendTimes] = useState(0);
+  // 收集 6 个 input 的 DOM 引用，用于程序化 focus（自动跳格、回退、清空后聚焦首格）
   const inputRefs = useRef([]);
   // 6 个格子作为一个整体字段 code：任一格聚焦都视为用户已开始填写
+  // 这样错误提示只会在用户「碰过」任一格后才显示
   const { touched, handleFocus } = useTouchedFields();
 
   // 把 6 个输入框的值拼成完整 code
+  // 注意：join 会自动跳过空字符串（"" + "" + "1" = "1"），
+  // 所以未填完时 code 长度 < 6，会被 length(6) 校验拦下
   const code = digits.join("");
 
-  // 实时校验
+  // 实时校验：每次 digits 变化（=> code 变化）都重新 safeParse
+  // 由于 code 是字符串派生量，依赖 [code] 即可触发重新计算
   const parseResult = useMemo(() => {
     return otpSchema.safeParse({ code });
   }, [code]);
@@ -590,7 +681,10 @@ function OtpDemo() {
     return parseResult.error.flatten();
   }, [parseResult]);
 
-  // 重发倒计时逻辑
+  // 重发倒计时逻辑：每秒减 1，到 0 时停止
+  // 关键：useEffect 的依赖是 resendCountdown 本身，
+  // 每次 countdown 减 1 都会重新启动 setTimeout，形成自递减链条
+  // cleanup 函数清掉上一次的 timer，避免组件卸载时 timer 还在跑（内存泄漏）
   useEffect(() => {
     if (resendCountdown <= 0) return;
     const timer = setTimeout(() => {
@@ -600,8 +694,10 @@ function OtpDemo() {
   }, [resendCountdown]);
 
   // 处理单个输入框的变化：只接受数字，自动跳到下一格
+  // 设计思路：input 的 value 可能是用户粘贴/输入的任意内容，
+  // 先用 \D 去掉非数字，再 slice(-1) 只取最后一位
+  // （这样用户在已有数字的格子里输入新数字会覆盖，符合直觉）
   const handleChange = useCallback((index, value) => {
-    // 只保留数字，只取最后一位
     const digit = value.replace(/\D/g, "").slice(-1);
     setDigits((prev) => {
       const next = [...prev];
@@ -610,13 +706,16 @@ function OtpDemo() {
     });
     setSubmitted(null);
 
-    // 输入后自动跳到下一格
+    // 输入后自动跳到下一格（只在有值且不是最后一格时跳）
+    // 可选链 ?. 防止 inputRefs.current[index + 1] 为空时报错
     if (digit && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   }, []);
 
   // 处理退格：当前格为空时跳回上一格
+  // 直觉体验：用户在空格按退格，预期是删除上一格的内容（而非什么都不做）
+  // 注意：浏览器默认行为是「删除当前格内容」，所以只在「当前格已空」时才回退
   const handleKeyDown = useCallback((index, e) => {
     if (e.key === "Backspace" && !digits[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
@@ -624,18 +723,26 @@ function OtpDemo() {
   }, [digits]);
 
   // 处理粘贴：把粘贴内容拆分到 6 个格子
+  // 场景：用户从短信 App 复制「123456」，在第一个格粘贴，应自动填满 6 格
+  // 实现：从剪贴板取文本 → 去非数字 → 截前 6 位 → 拆成数组 → 不足 6 位补空字符串
   const handlePaste = useCallback((e) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
     if (pasted) {
       const newDigits = pasted.split("");
+      // 不足 6 位补空字符串，保持数组长度恒为 6
       while (newDigits.length < 6) newDigits.push("");
       setDigits(newDigits);
       setSubmitted(null);
+      // 粘贴后聚焦到「下一个空格」或「最后一格」
+      // Math.min(pasted.length, 5) 防止越界（pasted.length 可能等于 6）
       inputRefs.current[Math.min(pasted.length, 5)]?.focus();
     }
   }, []);
 
+  // 提交：parseResult 已经实时算好，直接用
+  // 注意 parseResult.data.code 是 number 类型（因为 transform 转过），
+  // 模板字符串会自动 toString，无需手动转换
   const handleSubmit = useCallback(
     (e) => {
       e.preventDefault();
@@ -654,6 +761,8 @@ function OtpDemo() {
     [parseResult]
   );
 
+  // 重发验证码：开启 60s 倒计时 + 累计次数 + 提示
+  // resendCountdown > 0 时按钮 disabled，防止重复点击
   const handleResend = useCallback(() => {
     if (resendCountdown > 0) return;
     setResendCountdown(60);
@@ -664,6 +773,8 @@ function OtpDemo() {
     });
   }, [resendCountdown, resendTimes]);
 
+  // 清空：重置 digits 数组 + 清掉 submitted 状态 + 聚焦到第一格
+  // 这是最贴近「重新输入」直觉的交互
   const handleClear = useCallback(() => {
     setDigits(["", "", "", "", "", ""]);
     setSubmitted(null);
@@ -693,25 +804,34 @@ function OtpDemo() {
           </p>
 
           {/* 6 个独立输入框 */}
+          {/* onPaste 挂在容器上而非每个 input，这样无论粘贴发生在哪格都能统一处理 */}
           <div style={styles.otpContainer} onPaste={handlePaste}>
             {digits.map((digit, i) => (
               <input
                 key={i}
+                // ref 回调写法：把每个 input 的 DOM 存到 inputRefs.current[i]
+                // 注意：不能用 useRef(0) 直接存 index，必须用数组收集
                 ref={(el) => (inputRefs.current[i] = el)}
                 style={{
                   ...styles.otpInput,
+                  // 视觉状态：touched + 校验失败 → 红框；校验成功 → 绿框
                   ...(touched.code && fieldErrors.code && !parseResult.success
                     ? styles.inputError
                     : {}),
                   ...(parseResult.success ? styles.inputSuccess : {}),
                 }}
                 type="text"
+                // inputMode="numeric" 让移动端弹出数字键盘（不影响桌面端）
                 inputMode="numeric"
+                // maxLength={1} 限制单格只能输入 1 个字符
+                // （但 paste 仍能塞入多字符，所以 handleChange 里还要 slice(-1)）
                 maxLength={1}
                 value={digit}
                 onChange={(e) => handleChange(i, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(i, e)}
                 onFocus={(e) => {
+                  // 聚焦时全选当前格内容，方便用户直接覆盖输入
+                  // 否则用户得手动选中删除才能覆盖，体验差
                   e.target.select();
                   handleFocus("code");
                 }}
@@ -783,11 +903,29 @@ function OtpDemo() {
 // -------------------------------------------------------------
 // Demo 3：修改密码
 // -------------------------------------------------------------
-// Schema 设计要点：
-//   - currentPassword: 非空字符串
-//   - newPassword: 至少 8 位，含大小写字母和数字，且不能和当前密码相同
-//   - confirmNewPassword: 必须和新密码一致
-//   - 用对象级 refine 做跨字段校验
+// 【场景】用户已登录后修改密码，需要验证当前密码 + 输入新密码 + 确认新密码。
+// 这类场景的难点在于跨字段校验：
+//   - newPassword 必须和 confirmNewPassword 一致
+//   - newPassword 不能等于 currentPassword（防止用户改了个寂寞）
+// 这两条都是「跨字段」约束，单个字段的 refine 做不到，必须用对象级 refine。
+//
+// 【Schema 设计要点】
+//   - currentPassword: 非空字符串（用 nonempty，比 min(1) 语义更清晰）
+//   - newPassword: 至少 8 位 + 必须含大小写字母和数字（字段级 refine 做组合约束）
+//   - confirmNewPassword: 字段级无约束（一致性校验由对象级 refine 负责）
+//   - 两个对象级 refine 分别处理两种跨字段约束，并用 path 挂到不同字段
+//
+// 【path 的关键作用】
+//   两条 refine 都涉及 newPassword，但错误应该显示在不同字段下：
+//     - 「两次不一致」→ 错在 confirmNewPassword → path: ["confirmNewPassword"]
+//     - 「新旧相同」 → 错在 newPassword     → path: ["newPassword"]
+//   这样 UI 用 flatten() 取出错误后，能在对应输入框下方精准显示。
+//   如果不指定 path，错误会落到 _root，UI 只能在表单顶部统一显示，体验差。
+//
+// 【两个 refine 的执行顺序】
+//   refine 是「短路」的：第一个失败就立即返回，不会继续执行第二个。
+//   所以如果「两次不一致」失败，用户不会同时看到「新旧相同」的错误。
+//   这避免了错误信息爆炸，符合「一次只暴露一个问题」的 UX 原则。
 // -------------------------------------------------------------
 const passwordChangeSchema = z
   .object({
@@ -795,6 +933,8 @@ const passwordChangeSchema = z
     newPassword: z
       .string()
       .min(8, "新密码至少 8 位")
+      // 字段级 refine：只校验 newPassword 本身（不含其他字段）
+      // 用正则同时检查大写、小写、数字三类字符
       .refine(
         (val) => /[a-z]/.test(val) && /[A-Z]/.test(val) && /[0-9]/.test(val),
         "新密码必须包含大小写字母和数字"
@@ -802,11 +942,13 @@ const passwordChangeSchema = z
     confirmNewPassword: z.string(),
   })
   // 跨字段校验 1：两次新密码一致，错误挂到 confirmNewPassword
+  // 注意 refine 参数是整个 data 对象，能同时访问 newPassword 和 confirmNewPassword
   .refine(
     (data) => data.newPassword === data.confirmNewPassword,
     { message: "两次输入的新密码不一致", path: ["confirmNewPassword"] }
   )
   // 跨字段校验 2：新密码不能和当前密码相同，错误挂到 newPassword
+  // 防止用户「修改密码」后实际密码没变（容易让人误以为修改成功了）
   .refine(
     (data) => data.currentPassword !== data.newPassword,
     { message: "新密码不能与当前密码相同", path: ["newPassword"] }
@@ -834,19 +976,29 @@ const passwordChangeSchemaSource = `const passwordChangeSchema = z
   );`;
 
 // 模拟当前用户密码（演示用）
+// 真实场景这个校验在服务端做（前端不能存用户密码），
+// 这里为了 demo 完整性，用一个常量模拟「服务端校验当前密码」的失败分支
 const MOCK_CURRENT_PASSWORD = "OldPass123";
 
 function PasswordChangeDemo() {
+  // 三个字段集中在一个 form 对象里，便于一次 setState 更新多个字段
+  // 也方便 useMemo(safeParse, [form]) 一次性拿到所有字段做整体校验
   const [form, setForm] = useState({
     currentPassword: "",
     newPassword: "",
     confirmNewPassword: "",
   });
   const [submitted, setSubmitted] = useState(null);
+  // 显示/隐藏密码切换：checkbox 控制 3 个 input 的 type 在 password/text 间切换
+  // 这是无障碍友好设计：用户可以选择「明文」查看自己输入的内容
   const [showPasswords, setShowPasswords] = useState(false);
   // touched：聚焦过的字段才显示校验错误
   const { touched, handleFocus } = useTouchedFields();
 
+  // 实时校验：每次 form 变化都 safeParse 一次
+  // parseResult.success === false 时，error.issues 可能包含：
+  //   - 字段级错误（如 newPassword 不够长）
+  //   - 跨字段错误（如两次密码不一致，path 指向 confirmNewPassword）
   const parseResult = useMemo(() => {
     return passwordChangeSchema.safeParse(form);
   }, [form]);
@@ -857,6 +1009,10 @@ function PasswordChangeDemo() {
   }, [parseResult]);
 
   // 额外校验：当前密码是否正确（模拟服务端校验）
+  // 这个校验不放进 Schema，因为：
+  //   1. 真实场景下当前密码只能由服务端验证，前端 Schema 不应包含
+  //   2. 把它放进 Schema 会让每次输入都触发「当前密码错误」提示，体验差
+  //   3. 它只在提交时校验一次，符合「先客户端校验，再服务端校验」的分层
   const currentPasswordCorrect = form.currentPassword === MOCK_CURRENT_PASSWORD;
 
   const updateField = useCallback((field, value) => {
@@ -864,6 +1020,10 @@ function PasswordChangeDemo() {
     setSubmitted(null);
   }, []);
 
+  // 提交处理：分两层校验
+  //   1. 前端 Schema 校验（parseResult）—— 实时反馈，挡掉格式错误
+  //   2. 模拟服务端校验（currentPasswordCorrect）—— 只在提交时执行
+  // 这种「前端快速反馈 + 服务端权威校验」是业界表单的标准模式
   const handleSubmit = useCallback(
     (e) => {
       e.preventDefault();
@@ -887,6 +1047,8 @@ function PasswordChangeDemo() {
     [parseResult, currentPasswordCorrect]
   );
 
+  // 输入框样式：复用 RegisterDemo 的三态逻辑（默认/错误/成功）
+  // 这里抽成函数复用，避免每个字段重复写大段三态判断
   const inputStyle = (field) => {
     const hasError = touched[field] && fieldErrors[field] && form[field];
     const isValid =
@@ -899,6 +1061,13 @@ function PasswordChangeDemo() {
   };
 
   // 密码强度评估（简单版）
+  // 算法：根据长度 + 字符种类累加 score，最后映射到 6 档等级
+  //   - 长度 ≥ 8 / ≥ 12 各 +1 分
+  //   - 含小写 / 大写 / 数字 / 特殊字符 各 +1 分
+  // 总分 0-6 对应「很弱 → 极强」6 档
+  //
+  // 注意：这只是教学版强度评估，真实生产环境的强度算法更复杂
+  // （通常用 zxcvbn 库，会考虑字典词、键盘模式、常见密码等）
   const passwordStrength = useMemo(() => {
     const pwd = form.newPassword;
     if (!pwd) return { level: 0, text: "", color: "var(--text-muted)" };
@@ -909,6 +1078,7 @@ function PasswordChangeDemo() {
     if (/[A-Z]/.test(pwd)) score++;
     if (/[0-9]/.test(pwd)) score++;
     if (/[^a-zA-Z0-9]/.test(pwd)) score++;
+    // 6 档等级：颜色从红渐变到深绿，让用户直观感受强度递增
     const levels = [
       { level: 1, text: "很弱", color: "#ef4444" },
       { level: 2, text: "弱", color: "#f97316" },
@@ -917,6 +1087,7 @@ function PasswordChangeDemo() {
       { level: 5, text: "很强", color: "#16a34a" },
       { level: 6, text: "极强", color: "#15803d" },
     ];
+    // Math.min(score, 6) 防止 score 超过 6 时越界
     return levels[Math.min(score, 6) - 1] || levels[0];
   }, [form.newPassword]);
 
