@@ -178,11 +178,12 @@ const styles = {
     boxSizing: "border-box",
   },
   inputError: {
-    borderColor: "var(--error)",
+    // 用 border 简写而非 borderColor，避免与 input 的 border 简写在切换时冲突
+    border: "1px solid var(--error)",
     boxShadow: "0 0 0 3px var(--error-bg)",
   },
   inputSuccess: {
-    borderColor: "var(--success)",
+    border: "1px solid var(--success)",
   },
   hint: {
     fontSize: "12px",
@@ -1109,11 +1110,16 @@ function PasswordChangeDemo() {
         )}
 
         <form onSubmit={handleSubmit}>
+          {/* 当前密码字段 */}
+          {/* 特殊处理：inputStyle 三态 + 「输入了但不对」时强制红框 */}
+          {/* 这样即使没 touched，用户输入错误密码也会立即看到红色提示 */}
           <div style={styles.fieldGroup}>
             <label style={styles.label}>当前密码</label>
             <input
               style={{
                 ...inputStyle("currentPassword"),
+                // 输入了内容但与 MOCK_CURRENT_PASSWORD 不匹配时，强制加红框
+                // 这是「服务端校验失败」的视觉反馈，与 Schema 校验失败分开处理
                 ...(form.currentPassword && !currentPasswordCorrect
                   ? styles.inputError
                   : {}),
@@ -1124,6 +1130,8 @@ function PasswordChangeDemo() {
               onChange={(e) => updateField("currentPassword", e.target.value)}
               onFocus={() => handleFocus("currentPassword")}
             />
+            {/* 错误优先级：Schema 错误 > 服务端校验错误 */}
+            {/* Schema 错误（如空字段）放在第一优先，因为它先于服务端校验触发 */}
             {touched.currentPassword && fieldErrors.currentPassword ? (
               <div style={styles.errorText}>{fieldErrors.currentPassword[0]}</div>
             ) : form.currentPassword && !currentPasswordCorrect ? (
@@ -1133,6 +1141,11 @@ function PasswordChangeDemo() {
             ) : null}
           </div>
 
+          {/* 新密码字段 */}
+          {/* 该字段会被两个对象级 refine 引用：
+              - 「新旧不能相同」path: ["newPassword"]
+              - 「两次必须一致」path: ["confirmNewPassword"]（错误显示在另一字段）
+              所以 newPassword 下方可能显示 Schema 错误或「新旧相同」错误 */}
           <div style={styles.fieldGroup}>
             <label style={styles.label}>新密码</label>
             <input
@@ -1147,7 +1160,9 @@ function PasswordChangeDemo() {
               <div style={styles.errorText}>{fieldErrors.newPassword[0]}</div>
             ) : null}
 
-            {/* 密码强度条 */}
+            {/* 密码强度条：仅在有输入时显示 */}
+            {/* 视觉设计：底层灰色背景 + 上层彩色填充条，宽度按 level/6 计算 */}
+            {/* transition 让强度变化时有平滑过渡，避免突兀的颜色跳变 */}
             {form.newPassword && (
               <div style={{ marginTop: "6px" }}>
                 <div
@@ -1181,6 +1196,8 @@ function PasswordChangeDemo() {
             )}
           </div>
 
+          {/* 确认新密码字段 */}
+          {/* 该字段的错误来自对象级 refine「两次必须一致」，path 指向 confirmNewPassword */}
           <div style={styles.fieldGroup}>
             <label style={styles.label}>确认新密码</label>
             <input
@@ -1200,6 +1217,8 @@ function PasswordChangeDemo() {
             )}
           </div>
 
+          {/* 显示密码切换：同时控制 3 个 input 的 type */}
+          {/* showPasswords=true 时所有密码框变明文，方便用户核对输入 */}
           <div style={{ ...styles.fieldGroup, ...styles.checkboxRow }}>
             <input
               type="checkbox"
@@ -1210,6 +1229,8 @@ function PasswordChangeDemo() {
             <span>显示密码</span>
           </div>
 
+          {/* 提交按钮：必须 Schema 校验通过 + 当前密码正确 才可点击 */}
+          {/* disabled 条件包含两层校验，避免用户点击后才报错的差体验 */}
           <button
             type="submit"
             style={{
@@ -1250,21 +1271,33 @@ function PasswordChangeDemo() {
 // -------------------------------------------------------------
 // 主页面组件
 // -------------------------------------------------------------
+// 职责：用 Tab 切换三个 demo，每个 demo 独立维护自己的状态。
+// 这种「Tab + 独立组件」结构的好处：
+//   1. 切换 Tab 时未挂载的 demo 不占内存（React 卸载了它）
+//   2. 每个 demo 的状态独立，互不影响
+//   3. 新增 demo 只需在 tabs 数组里加一项，无需改主页面结构
+// -------------------------------------------------------------
 export default function ZodMiniPage() {
+  // 当前激活的 Tab id，默认 "register"
   const [activeTab, setActiveTab] = useState("register");
 
+  // Tab 配置：把每个 demo 的 JSX 元素预先创建好放进数组
+  // 注意：component 是 <RegisterDemo /> 元素，不是组件函数本身
+  // 这样 active.component 直接渲染即可，无需条件分支判断
   const tabs = [
     { id: "register", label: "📝 注册", component: <RegisterDemo /> },
     { id: "otp", label: "🔢 OTP 验证", component: <OtpDemo /> },
     { id: "password", label: "🔑 修改密码", component: <PasswordChangeDemo /> },
   ];
 
+  // 找到当前激活的 Tab（每次 render 都 find 一次，开销可忽略）
+  // 也可以用 tabs.find(...) ?? tabs[0] 兜底，但这里 activeTab 必在 tabs 中
   const active = tabs.find((t) => t.id === activeTab);
 
   return (
     <div style={styles.page}>
       <div style={styles.container}>
-        {/* 头部 */}
+        {/* 头部：标题 + 副标题说明本页用途 */}
         <div style={styles.header}>
           <h1 style={styles.title}>
             <span>🧩</span>
@@ -1276,7 +1309,8 @@ export default function ZodMiniPage() {
           </p>
         </div>
 
-        {/* Tab 切换 */}
+        {/* Tab 切换栏：用按钮组而非 select，更直观 */}
+        {/* activeTab === tab.id 时叠加 tabActive 样式（高亮） */}
         <div style={styles.tabs}>
           {tabs.map((tab) => (
             <button
@@ -1292,7 +1326,9 @@ export default function ZodMiniPage() {
           ))}
         </div>
 
-        {/* 当前 Demo */}
+        {/* 当前 Demo：直接渲染 active.component */}
+        {/* 切换 Tab 时旧的 demo 组件会被卸载，状态被销毁 */}
+        {/* 这意味着用户切回时是「重新开始」而非「接着填」，符合 demo 场景 */}
         {active.component}
       </div>
     </div>
