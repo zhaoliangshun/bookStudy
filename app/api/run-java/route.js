@@ -26,8 +26,56 @@
 import { NextResponse } from "next/server";
 import { spawn } from "child_process";
 import { writeFileSync, mkdirSync, rmSync, existsSync } from "fs";
-import { join } from "path";
+import { join, delimiter } from "path";
 import { tmpdir } from "os";
+
+// 增强的 PATH：合并进程 PATH 与 JDK 常见安装目录，解决 dev server PATH 过期问题
+// extra 在前，process.env.PATH 在后，确保 JDK 路径优先于系统 PATH 中可能残留的旧版本
+let _enhancedPath = null;
+function getEnhancedPath() {
+  if (_enhancedPath !== null) return _enhancedPath;
+  const extra = process.platform === "win32"
+    ? [
+        // Eclipse Adoptium JDK 21 已知安装路径，必须最优先
+        "C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.11.10-hotspot\\bin",
+        // 其它常见 Adoptium 版本兜底
+        "C:\\Program Files\\Eclipse Adoptium",
+        "C:\\Program Files\\Java",
+        "C:\\Program Files (x86)\\Java",
+      ]
+    : [
+        "/Library/Java/JavaVirtualMachines",
+        "/opt/homebrew/opt/openjdk/bin",
+        "/usr/local/opt/openjdk/bin",
+        "/usr/lib/jvm",
+      ];
+  _enhancedPath = [...extra.filter(existsSync), process.env.PATH].join(delimiter);
+  return _enhancedPath;
+}
+
+/**
+ * 构建 Java 子进程所需的完整环境变量。
+ * Windows 下 javac 调用 javax.tools 时会读取 USERPROFILE/APPDATA 等
+ * 特殊文件夹，缺失会导致部分功能异常，因此统一传递 Windows 必需变量。
+ */
+function buildJavaEnv() {
+  return {
+    PATH: getEnhancedPath(),
+    TEMP: process.env.TEMP,
+    TMP: process.env.TMP,
+    HOME: process.env.HOME,
+    USERPROFILE: process.env.USERPROFILE,
+    APPDATA: process.env.APPDATA,
+    LOCALAPPDATA: process.env.LOCALAPPDATA,
+    ProgramFiles: process.env.ProgramFiles || "C:\\Program Files",
+    "ProgramFiles(x86)": process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)",
+    ProgramW6432: process.env.ProgramW6432 || "C:\\Program Files",
+    SystemRoot: process.env.SystemRoot || "C:\\Windows",
+    LANG: "en_US.UTF-8",
+    LC_ALL: "en_US.UTF-8",
+    JAVA_HOME: process.env.JAVA_HOME || "C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.11.10-hotspot",
+  };
+}
 
 // 编译超时（毫秒）
 const COMPILE_TIMEOUT_MS = 10000;
@@ -60,12 +108,17 @@ function getJavaBins() {
   binsResolved = true;
   try {
     const ext = process.platform === "win32" ? ".exe" : "";
-    const javaHome = process.env.JAVA_HOME;
-    if (javaHome) {
+    // 候选 JAVA_HOME 列表：优先环境变量，再回退到 Eclipse Adoptium 已知安装路径
+    const homeCandidates = [
+      process.env.JAVA_HOME,
+      "C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.11.10-hotspot",
+    ].filter(Boolean);
+    for (const javaHome of homeCandidates) {
       const javaP = join(/*turbopackIgnore: true*/ javaHome, "bin", "java" + ext);
       const javacP = join(/*turbopackIgnore: true*/ javaHome, "bin", "javac" + ext);
       if (existsSync(javaP)) javaBinCache = javaP;
       if (existsSync(javacP)) javacBinCache = javacP;
+      if (javaBinCache && javacBinCache) break;
     }
   } catch {}
   if (!javaBinCache) javaBinCache = "java";
@@ -106,6 +159,13 @@ function runCommand(cmd, args, opts, timeout) {
     let stderrBuf = "";
     let truncated = false;
     let killed = false;
+    // 修复：用 resolved 标记防止多次 resolve（error + close 重复触发场景）
+    let resolved = false;
+    const safeResolve = (value) => {
+      if (resolved) return;
+      resolved = true;
+      resolve(value);
+    };
 
     child.stdout.on("data", (chunk) => {
       const text = chunk.toString("utf8");
@@ -127,11 +187,13 @@ function runCommand(cmd, args, opts, timeout) {
       }
     });
 
+    // 统一清理 timer：避免定时器长时间持有子进程引用造成内存泄漏
+    const clearTimer = () => clearTimeout(timer);
+
     child.on("error", (err) => {
-      // error 事件触发后 close 可能不再触发，需在此清除超时定时器，
-      // 避免定时器继续持有子进程引用造成内存泄漏
-      clearTimeout(timer);
-      resolve({
+      // error 事件触发后 close 可能不再触发，需在此清除超时定时器
+      clearTimer();
+      safeResolve({
         output: "",
         error: `无法启动 ${cmd}：${err.message}`,
         exitCode: -1,
@@ -139,8 +201,10 @@ function runCommand(cmd, args, opts, timeout) {
     });
 
     child.on("close", (code, signal) => {
+      clearTimer();
+      if (resolved) return;
       if (killed) {
-        resolve({
+        safeResolve({
           output: stdoutBuf,
           error: stderrBuf + `\n[执行超时] 超过 ${timeout / 1000} 秒被强制终止。`,
           exitCode: -1,
@@ -154,7 +218,7 @@ function runCommand(cmd, args, opts, timeout) {
         else stderrBuf += note;
       }
 
-      resolve({ output: stdoutBuf, error: stderrBuf, exitCode: code });
+      safeResolve({ output: stdoutBuf, error: stderrBuf, exitCode: code });
     });
 
     const timer = setTimeout(() => {
@@ -165,8 +229,6 @@ function runCommand(cmd, args, opts, timeout) {
         // ignore
       }
     }, timeout);
-
-    child.on("close", () => clearTimeout(timer));
   });
 }
 
@@ -187,7 +249,7 @@ async function runJavaCode(code) {
   try {
     writeFileSync(javaFile, code, "utf8");
 
-    const env = { PATH: process.env.PATH, LANG: "en_US.UTF-8", LC_ALL: "en_US.UTF-8", JAVA_HOME: process.env.JAVA_HOME || "" };
+    const env = buildJavaEnv();
     const compileResult = await runCommand(
       javacBin,
       ["-encoding", "UTF-8", javaFile],
@@ -266,7 +328,15 @@ export async function POST(request) {
     );
   }
 
-  const result = await runJavaCode(code);
+  let result;
+  try {
+    result = await runJavaCode(code);
+  } catch (err) {
+    return NextResponse.json(
+      { output: "", error: `服务内部错误：${err.message || String(err)}` },
+      { status: 500 }
+    );
+  }
 
   let output = result.output || "";
   let error = result.error || "";
@@ -292,18 +362,41 @@ export async function GET() {
   return new Promise((resolve) => {
     const child = spawn(javaBin, ["-version"], {
       stdio: ["pipe", "pipe", "pipe"],
-      env: { PATH: process.env.PATH },
+      env: buildJavaEnv(),
     });
     let version = "";
-    child.stdout.on("data", (c) => (version += c.toString()));
-    child.stderr.on("data", (c) => (version += c.toString()));
-    const timer = setTimeout(() => {
+    // 修复：用 resolved 标记防止多次 resolve
+    let resolved = false;
+    const safeResolve = (value) => {
+      if (resolved) return;
+      resolved = true;
+      resolve(value);
+    };
+    let timer = null;
+    const clearTimer = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+    const onData = (c) => (version += c.toString());
+    child.stdout.on("data", onData);
+    child.stderr.on("data", onData);
+    timer = setTimeout(() => {
+      clearTimer();
+      child.stdout.removeListener("data", onData);
+      child.stderr.removeListener("data", onData);
       child.kill("SIGKILL");
-      resolve(NextResponse.json({ status: "timeout", error: "版本检查超时" }, { status: 504 }));
+      safeResolve(
+        NextResponse.json({ status: "timeout", error: "版本检查超时" }, { status: 504 })
+      );
     }, 5000);
     child.on("close", () => {
-      clearTimeout(timer);
-      resolve(
+      clearTimer();
+      child.stdout.removeListener("data", onData);
+      child.stderr.removeListener("data", onData);
+      if (resolved) return;
+      safeResolve(
         NextResponse.json({
           status: "ok",
           message: "Java 代码执行服务正在运行",
@@ -314,8 +407,11 @@ export async function GET() {
       );
     });
     child.on("error", () => {
-      clearTimeout(timer);
-      resolve(
+      clearTimer();
+      child.stdout.removeListener("data", onData);
+      child.stderr.removeListener("data", onData);
+      if (resolved) return;
+      safeResolve(
         NextResponse.json({
           status: "error",
           message: `未找到 ${javaBin}，请先安装 JDK`,

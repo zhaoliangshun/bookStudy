@@ -584,18 +584,26 @@ function Section({ title, collapsible, children, action }: SectionProps) {
 4. 具名 Props 做多插槽布局`,
 
     code: `// Children 与组件组合 - 可运行 Demo
+// 💡 提示：children 是 React 最特殊的 Prop——它不需要显式传递，写在标签之间即可
+//   本 Demo 演示 ReactNode / ReactElement / Render Props / 多插槽 等核心概念
 import { useState } from "react";
 
-// ---- 类型定义 ----
+// === 1. 类型定义：Section 组件的 Props ===
+// 💡 提示：React.ReactNode 是 children 的默认推荐类型，覆盖 99% 场景
+//   - 包含：string | number | ReactElement | ReactNode[] | null | undefined | boolean
+//   - 等价于"任何能被 React 渲染的东西"
 type SectionProps = {
   title: string;
   collapsible?: boolean;
-  children: React.ReactNode;
-  action?: React.ReactNode;
+  children: React.ReactNode;  // 主内容插槽：最宽泛的可渲染类型
+  action?: React.ReactNode;   // 具名插槽：右侧操作区，也是 ReactNode
 };
 
-// ---- Section 组件：支持折叠 + 操作插槽 ----
+// === 2. Section 组件：支持折叠 + 操作插槽（多插槽模式）===
 function Section({ title, collapsible, children, action }: SectionProps) {
+  // 💡 提示：useState(!collapsible) —— 初始展开状态由 collapsible 反向决定
+  //   - collapsible 为 true（可折叠）→ 初始 open=false（默认折叠）
+  //   - collapsible 为 undefined/false → 初始 open=true（始终展开）
   const [open, setOpen] = useState(!collapsible);
   return (
     <section style={{
@@ -611,22 +619,32 @@ function Section({ title, collapsible, children, action }: SectionProps) {
           {collapsible && <span style={{ fontSize: 12 }}>{open ? "▼" : "▶"}</span>}
           {title}
         </h3>
+        {/* 具名插槽 action：通过 && 短路渲染，未传时不渲染 */}
         {action && <div onClick={(e) => e.stopPropagation()}>{action}</div>}
       </div>
+      {/* children 渲染：open 为 true 时才渲染主内容 */}
       {open && <div style={{ padding: 16 }}>{children}</div>}
     </section>
   );
 }
 
-// ---- DataList 组件：函数 children (Render Props) ----
+// === 3. DataList 组件：函数 children（Render Props 模式）===
+// 💡 提示：Render Props 模式
+//   - 把 children 声明为「函数」而非普通 ReactNode
+//   - 组件内部调用该函数，并把数据（item, index）作为参数传给子组件
+//   - 调用方在 JSX 中写 { (item, index) => <...> } 实现按需渲染
+//   - 优势：父组件可以把"渲染逻辑"下放给子组件，子组件负责"数据获取"
 type DataListProps<T> = {
   items: T[];
+  // children 是一个函数：接收 item 和 index，返回 ReactNode
+  // 💡 提示：函数签名必须写清参数和返回值，否则调用方拿到的 item 会是 any
   children: (item: T, index: number) => React.ReactNode;
 };
 
 function DataList<T>({ items, children }: DataListProps<T>) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {/* 遍历 items，对每一项调用 children 函数——这就是 Render Props 的核心 */}
       {items.map((item, index) => (
         <div key={index} style={{
           padding: "8px 12px", background: "#f3f4f6", borderRadius: 6,
@@ -638,23 +656,25 @@ function DataList<T>({ items, children }: DataListProps<T>) {
   );
 }
 
-// ---- 使用 ----
+// === 4. 数据源 ===
 const users = [
   { id: 1, name: "张三", role: "管理员" },
   { id: 2, name: "李四", role: "编辑" },
   { id: 3, name: "王五", role: "访客" },
 ];
 
+// === 5. 主 Demo 组件（组合多个 Section + DataList）===
 export default function Demo() {
   return (
     <div style={{ padding: 16, maxWidth: 500 }}>
-      {/* 普通用法 */}
+      {/* 5.1 普通用法：children 是 JSX 元素 + 具名插槽 action */}
       <Section title="用户列表" action={
         <button style={{
           padding: "4px 10px", fontSize: 12, borderRadius: 4,
           border: "1px solid #d1d5db", background: "#fff", cursor: "pointer",
         }}>刷新</button>
       }>
+        {/* Render Props：children 是函数，参数由 DataList 内部传入 */}
         <DataList items={users}>
           {(user, index) => (
             <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -665,20 +685,149 @@ export default function Demo() {
         </DataList>
       </Section>
 
-      {/* 可折叠 */}
+      {/* 5.2 可折叠：collapsible=true，点击标题切换 open 状态 */}
       <Section title="可折叠区域（点击标题切换）" collapsible>
         <p style={{ margin: 0, color: "#6b7280" }}>
           这个区域可以折叠/展开，点击上方标题即可。
         </p>
       </Section>
 
-      {/* children 为纯字符串 */}
+      {/* 5.3 children 为纯字符串：ReactNode 兼容 string */}
       <Section title="纯文字 children">
         这里直接放文字也可以，因为 children 类型是 ReactNode。
       </Section>
     </div>
   );
-}`,
+}
+
+// === 6. 运行时演示：children 类型与结构 ===
+// 💡 提示：下面的代码在模块加载时立即执行，演示 children 的各种类型与 React.Children.map 行为
+console.log("========== Children 与组件组合 Demo 开始 ==========");
+
+// --- 6.1 ReactNode 的各种可能类型 ---
+// 💡 提示：ReactNode 是最宽泛的可渲染类型，包含以下所有类型
+console.log("\\n--- 6.1 ReactNode 的各种可能类型 ---");
+// 模拟一个 React 元素（真实环境中是 React.createElement 的返回值）
+function mockElement(type: string, props: Record<string, unknown> = {}): React.ReactElement {
+  return { type, props, key: null } as unknown as React.ReactElement;
+}
+
+const childSamples: { label: string; value: React.ReactNode }[] = [
+  { label: "string",         value: "Hello" },
+  { label: "number",         value: 42 },
+  { label: "ReactElement",   value: mockElement("div", { children: "div 内容" }) },
+  { label: "array",          value: ["a", "b", "c"] },
+  { label: "null",           value: null },
+  { label: "undefined",      value: undefined },
+  { label: "boolean(true)",  value: true },
+  { label: "boolean(false)", value: false },
+];
+childSamples.forEach((s) => {
+  // 💡 提示：null / undefined / boolean 在 React 渲染时不会产生 DOM 节点
+  //   - string / number → 文本节点
+  //   - ReactElement → 对应 DOM 元素
+  //   - array → 多个节点（会被展开）
+  const valStr = s.value === undefined ? "undefined" : JSON.stringify(s.value);
+  console.log("  " + s.label.padEnd(18) + "| typeof=" + typeof s.value + " | value=" + valStr);
+});
+
+// --- 6.2 ReactNode vs ReactElement 区别 ---
+console.log("\\n--- 6.2 ReactNode vs ReactElement 区别 ---");
+// 💡 提示：ReactElement 是 ReactNode 的子集
+//   - ReactElement：仅指 React.createElement() 返回的对象（即 JSX 元素）
+//     结构为 { type, props, key, ... }，是 JSX 编译后的普通 JS 对象
+//   - ReactNode：ReactElement + string + number + array + null + undefined + boolean
+//   - 选择建议：99% 场景用 ReactNode；需要限制"必须单个 JSX 元素"时用 ReactElement
+//   - JSX.Element 是 ReactElement 的旧称，现在基本不用了
+console.log("  ReactElement ⊂ ReactNode");
+console.log("  ReactNode  = ReactElement | string | number | ReactNode[] | null | undefined | boolean");
+console.log("  ReactElement = { type, props, key }  // JSX 编译后的对象");
+// 演示 ReactElement 的结构
+const sampleElement = mockElement("button", { onClick: "() => {}", children: "点击" });
+console.log("  示例 ReactElement 结构: " + JSON.stringify(sampleElement));
+
+// --- 6.3 模拟 React.Children.map 的行为 ---
+console.log("\\n--- 6.3 React.Children.map 行为模拟 ---");
+// 💡 提示：React.Children.map 是处理 children 的安全工具
+//   - 自动展开嵌套数组（flatten）——普通 .map 做不到
+//   - 跳过 null / undefined / boolean（不调用回调）
+//   - 对 string / number / element 逐个调用回调
+//   - 返回值也会被自动 flatten
+function childrenMap(
+  children: React.ReactNode,
+  fn: (child: React.ReactNode, index: number) => React.ReactNode
+): React.ReactNode[] {
+  const result: React.ReactNode[] = [];
+  let index = 0;
+  const visit = (child: React.ReactNode) => {
+    if (child == null || typeof child === "boolean") {
+      // null / undefined / boolean → 跳过，不调用 fn
+      return;
+    }
+    if (Array.isArray(child)) {
+      // 数组 → 递归展开（这是 React.Children.map 的关键特性）
+      child.forEach(visit);
+      return;
+    }
+    // string / number / element → 调用 fn
+    result.push(fn(child, index++));
+  };
+  visit(children);
+  return result;
+}
+
+// 测试 1: 混合类型 children（含嵌套数组）
+console.log("  [测试 1] 混合类型 children:");
+const mixedChildren: React.ReactNode = ["文本", 42, null, mockElement("span"), undefined, true, ["嵌套", "数组"]];
+const mapped1 = childrenMap(mixedChildren, (child, i) => {
+  const desc = typeof child === "object" ? "element" : String(child);
+  console.log("    fn(" + i + "): " + desc);
+  return child;
+});
+console.log("    结果数量: " + mapped1.length + "（null/undefined/boolean 被跳过）");
+
+// 测试 2: 单个元素 children
+console.log("  [测试 2] 单个元素 children:");
+const singleChild = mockElement("div");
+const mapped2 = childrenMap(singleChild, (child, i) => {
+  const desc = typeof child === "object" ? "element" : String(child);
+  console.log("    fn(" + i + "): " + desc);
+  return child;
+});
+console.log("    结果数量: " + mapped2.length);
+
+// 测试 3: 空值 children
+console.log("  [测试 3] null children:");
+const mapped3 = childrenMap(null, (child, i) => {
+  console.log("    fn(" + i + "): 不应执行");
+  return child;
+});
+console.log("    结果数量: " + mapped3.length + "（null 时回调不执行）");
+
+// --- 6.4 组件组合效果演示 ---
+console.log("\\n--- 6.4 组件组合效果演示 ---");
+// 💡 提示：通过 children 嵌套，可以把多个组件组合成复杂的 UI
+//   - Section 包裹 DataList，DataList 包裹每条记录
+//   - 这种"俄罗斯套娃"式的组合是 React 的核心思想（composition）
+function describeSection(title: string, childrenContent: string): string {
+  return "[Section: " + title + "] 包含 -> " + childrenContent;
+}
+function describeDataList(items: string[]): string {
+  return items.map((item, i) => "[#" + (i + 1) + " " + item + "]").join(" ");
+}
+const composition = describeSection("用户列表", describeDataList(["张三", "李四", "王五"]));
+console.log("  组合效果: " + composition);
+console.log("  解读: Section(外层容器) 嵌套 DataList(列表渲染) 嵌套 单项 UI");
+
+// --- 6.5 Render Props vs 普通 children 对比 ---
+console.log("\\n--- 6.5 Render Props vs 普通 children ---");
+// 💡 提示：Render Props 让组件"反向"把数据传给父组件
+//   - 普通 children：父 → 子 单向传值（静态内容）
+//   - Render Props：子 → 父 把数据传出去（通过调用函数），父组件决定如何渲染
+console.log("  普通 children: <Card>{<p>静态内容</p>}</Card>      父 -> 子");
+console.log("  Render Props:  <List>{(item) => <p>{item}</p>}</List>  子 -> 父(传 item)");
+
+console.log("\\n========== Children 与组件组合 Demo 结束 ==========");`,
   },
 
   // ===========================================================
@@ -913,19 +1062,157 @@ function SearchBox({ onSearch }: { onSearch: (q: string) => void }) {
     code: `// 事件处理类型 - 可运行 Demo
 import { useState } from "react";
 
-// ---- 搜索框组件 ----
+// === 1. 模拟事件对象辅助函数（沙箱无真实 DOM，用纯对象演示事件处理逻辑） ===
+// 💡 提示：浏览器中 React 会把原生 DOM 事件包装成 SyntheticEvent；
+// 这里用普通对象"模拟"事件结构，让我们能直接调用 handler 观察效果。
+
+// 模拟 ChangeEvent<HTMLInputElement>：input/textarea/select 值变化时触发
+// target 类型是 HTMLInputElement，关键属性 target.value 是 string
+function mockChangeEvent(value: string): React.ChangeEvent<HTMLInputElement> {
+  return {
+    type: "change",
+    target: { value } as HTMLInputElement,
+    currentTarget: { value } as HTMLInputElement,
+    preventDefault() { console.log("  [mock] preventDefault() 被调用"); },
+    stopPropagation() {},
+    nativeEvent: {} as Event,
+    isDefaultPrevented: () => false,
+    isPropagationStopped: () => false,
+    isTrusted: true,
+    bubbles: false,
+    cancelable: false,
+    timeStamp: Date.now(),
+  } as unknown as React.ChangeEvent<HTMLInputElement>;
+}
+
+// 模拟 KeyboardEvent<HTMLInputElement>：按键按下/抬起时触发
+// 关键属性：key（按键名）、ctrlKey/shiftKey/altKey（修饰键状态）
+function mockKeyboardEvent(
+  key: string,
+  mods: { ctrlKey?: boolean; shiftKey?: boolean; altKey?: boolean } = {}
+): React.KeyboardEvent<HTMLInputElement> {
+  return {
+    type: "keydown",
+    key,
+    keyCode: 0,
+    ctrlKey: !!mods.ctrlKey,
+    shiftKey: !!mods.shiftKey,
+    altKey: !!mods.altKey,
+    target: {} as HTMLInputElement,
+    currentTarget: {} as HTMLInputElement,
+    preventDefault() { console.log("  [mock] preventDefault() 被调用 —— 阻止默认行为"); },
+    stopPropagation() {},
+    nativeEvent: {} as Event,
+    isDefaultPrevented: () => false,
+    isPropagationStopped: () => false,
+    isTrusted: true,
+    bubbles: false,
+    cancelable: true,
+    timeStamp: Date.now(),
+  } as unknown as React.KeyboardEvent<HTMLInputElement>;
+}
+
+// 模拟 MouseEvent<HTMLDivElement>：点击/右键/移动时触发
+// 关键属性：clientX/clientY（视口坐标）、nativeEvent.offsetX/offsetY（相对目标坐标）
+function mockMouseEvent(clientX: number, clientY: number): React.MouseEvent<HTMLDivElement> {
+  return {
+    type: "click",
+    clientX,
+    clientY,
+    pageX: clientX,
+    pageY: clientY,
+    screenX: clientX,
+    screenY: clientY,
+    nativeEvent: { offsetX: clientX, offsetY: clientY } as MouseEvent,
+    target: {} as HTMLDivElement,
+    currentTarget: {} as HTMLDivElement,
+    preventDefault() { console.log("  [mock] preventDefault() 被调用 —— 阻止默认行为（如右键菜单）"); },
+    stopPropagation() {},
+    isDefaultPrevented: () => false,
+    isPropagationStopped: () => false,
+    isTrusted: true,
+    bubbles: true,
+    cancelable: true,
+    timeStamp: Date.now(),
+  } as unknown as React.MouseEvent<HTMLDivElement>;
+}
+
+// 模拟 FormEvent<HTMLFormElement>：表单 submit 时触发
+// 关键：currentTarget 指向表单本身；preventDefault() 阻止页面刷新
+function mockFormEvent(): React.FormEvent<HTMLFormElement> {
+  return {
+    type: "submit",
+    target: {} as HTMLFormElement,
+    currentTarget: {} as HTMLFormElement,
+    preventDefault() { console.log("  [mock] preventDefault() 被调用 —— 阻止表单默认提交刷新页面"); },
+    stopPropagation() {},
+    nativeEvent: {} as Event,
+    isDefaultPrevented: () => false,
+    isPropagationStopped: () => false,
+    isTrusted: true,
+    bubbles: true,
+    cancelable: true,
+    timeStamp: Date.now(),
+  } as unknown as React.FormEvent<HTMLFormElement>;
+}
+
+// 模拟 DragEvent<HTMLDivElement>：拖拽放下时触发
+// 关键：dataTransfer.files 是拖入的文件列表（类 FileList）
+function mockDragEvent(fileNames: string[]): React.DragEvent<HTMLDivElement> {
+  const files = fileNames.map((name) => ({ name, size: 1024 })) as File[];
+  return {
+    type: "drop",
+    dataTransfer: { files } as unknown as DataTransfer,
+    target: {} as HTMLDivElement,
+    currentTarget: {} as HTMLDivElement,
+    preventDefault() { console.log("  [mock] preventDefault() 被调用 —— 允许 drop 事件触发"); },
+    stopPropagation() {},
+    nativeEvent: {} as Event,
+    isDefaultPrevented: () => false,
+    isPropagationStopped: () => false,
+    isTrusted: true,
+    bubbles: true,
+    cancelable: true,
+    timeStamp: Date.now(),
+  } as unknown as React.DragEvent<HTMLDivElement>;
+}
+
+// === 2. 搜索框组件（演示 ChangeEvent + KeyboardEvent） ===
 function SearchBox({ onSearch }: { onSearch: (q: string) => void }) {
+  // 💡 提示：useState<string>("") 让 query 永远是 string，setText 也只接受 string
   const [query, setQuery] = useState("");
+
+  // ChangeEvent<HTMLInputElement>：当 <input> 的 value 变化时触发
+  // - target 类型是 HTMLInputElement，所以 e.target.value 是 string
+  // - 每次按键都会触发（不是失去焦点时）
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("[ChangeEvent] e.target.value =", e.target.value);
+    setQuery(e.target.value);
+  };
+
+  // KeyboardEvent<HTMLInputElement>：当 <input> 获得焦点且按键时触发
+  // - e.key：按键名（如 "Enter"/"Escape"/"a"），推荐使用
+  // - e.ctrlKey / e.shiftKey / e.altKey：修饰键是否按下（boolean）
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    console.log("[KeyboardEvent] e.key =", e.key, "| e.ctrlKey =", e.ctrlKey);
+    if (e.key === "Enter" && query.trim()) {
+      onSearch(query.trim());
+    }
+    if (e.key === "Escape") {
+      setQuery("");
+    }
+    if (e.ctrlKey && e.key === "k") {
+      e.preventDefault();  // 阻止浏览器默认行为
+      console.log("  -> 触发 Ctrl+K 快捷键");
+    }
+  };
 
   return (
     <div style={{ display: "flex", gap: 8 }}>
       <input
         value={query}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
-        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-          if (e.key === "Enter" && query.trim()) onSearch(query.trim());
-          if (e.key === "Escape") setQuery("");
-        }}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
         placeholder="输入搜索，回车确认，Esc 清除"
         style={{
           flex: 1, padding: "8px 12px", borderRadius: 6,
@@ -946,16 +1233,82 @@ function SearchBox({ onSearch }: { onSearch: (q: string) => void }) {
   );
 }
 
-// ---- 拖放区域组件 ----
+// === 3. 点击区域组件（演示 MouseEvent） ===
+// 💡 提示：MouseEvent 是最常见的事件类型之一，涵盖 click / contextmenu / mousedown 等
+type Coords = { x: number; y: number };
+
+function ClickArea() {
+  const [pos, setPos] = useState<Coords | null>(null);
+
+  // MouseEvent<HTMLDivElement>：鼠标点击 div 时触发
+  // - clientX / clientY：相对于浏览器视口的坐标
+  // - nativeEvent.offsetX / offsetY：相对于事件目标元素的坐标
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    console.log("[MouseEvent] clientX =", e.clientX, "| clientY =", e.clientY);
+    setPos({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY });
+    console.log("  -> 更新 pos 状态:", { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY });
+  };
+
+  // 同样是 MouseEvent，但绑定到 onContextMenu（右键菜单事件）
+  // - preventDefault() 阻止浏览器默认右键菜单弹出
+  const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    console.log("[MouseEvent] 右键点击坐标:", e.clientX, e.clientY);
+  };
+
+  return (
+    <div
+      onClick={handleClick}
+      onContextMenu={handleContextMenu}
+      style={{ width: 300, height: 200, background: "#f3f4f6", position: "relative" }}
+    >
+      {pos && <span style={{ position: "absolute", left: pos.x, top: pos.y }}>📍</span>}
+    </div>
+  );
+}
+
+// === 4. 登录表单组件（演示 FormEvent） ===
+function LoginForm() {
+  // FormEvent<HTMLFormElement>：表单 submit 时触发
+  // - e.currentTarget 类型是 HTMLFormElement（表单本身）
+  // - e.preventDefault() 必须调用，否则页面会刷新
+  // 💡 提示：e.currentTarget 与 e.target 不同——
+  //   currentTarget 是绑定事件的元素（表单），target 是实际触发的元素（可能是按钮）
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    console.log("[FormEvent] 表单提交触发，已阻止默认刷新");
+    // 真实环境可用 new FormData(e.currentTarget) 获取字段值
+    console.log("  -> currentTarget 是否存在:", !!e.currentTarget);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <input name="username" placeholder="用户名" style={{ padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }} />
+      <input name="password" type="password" placeholder="密码" style={{ padding: 8, borderRadius: 6, border: "1px solid #d1d5db" }} />
+      <button type="submit" style={{ padding: 8, borderRadius: 6, border: "none", background: "#10b981", color: "#fff", cursor: "pointer" }}>
+        登录
+      </button>
+    </form>
+  );
+}
+
+// === 5. 拖放区域组件（演示 DragEvent） ===
 function DropZone() {
   const [files, setFiles] = useState<string[]>([]);
 
+  // DragEvent<HTMLDivElement>：文件拖入并放下时触发
+  // - e.dataTransfer.files：拖入的 File 列表（类数组，需 Array.from 转换）
+  // - 必须 preventDefault() 否则浏览器会打开文件
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    console.log("[DragEvent] drop 触发，files 数量 =", e.dataTransfer.files.length);
     const fileNames = Array.from(e.dataTransfer.files).map((f) => f.name);
+    console.log("  -> 文件列表:", fileNames);
     setFiles((prev) => [...prev, ...fileNames]);
   };
 
+  // onDragOver 也必须 preventDefault，否则 onDrop 不会触发
+  // 💡 提示：这是 HTML5 拖放 API 的规定——dragover 不 preventDefault，drop 就不触发
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   };
@@ -983,7 +1336,7 @@ function DropZone() {
   );
 }
 
-// ---- 使用 ----
+// === 6. 主 Demo 组件（保持原有结构，整合所有演示组件） ===
 export default function Demo() {
   const [results, setResults] = useState<string[]>([]);
   const allItems = ["React", "TypeScript", "Next.js", "Tailwind", "Node.js", "Python"];
@@ -1011,12 +1364,80 @@ export default function Demo() {
       )}
 
       <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 16 }}>
-        <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>拖放测试：</div>
+        <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>点击区域（MouseEvent）：</div>
+        <ClickArea />
+      </div>
+
+      <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 16 }}>
+        <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>登录表单（FormEvent）：</div>
+        <LoginForm />
+      </div>
+
+      <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 16 }}>
+        <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>拖放测试（DragEvent）：</div>
         <DropZone />
       </div>
     </div>
   );
-}`,
+}
+
+// === 7. 运行时演示：直接调用 mock 事件，观察事件对象结构与 handler 行为 ===
+// 💡 提示：下面的代码在模块加载时立即执行，无需真实 DOM 即可看到事件处理全过程。
+
+console.log("========== 事件处理 Demo 开始 ==========");
+
+// --- 演示 1：ChangeEvent —— 模拟用户在 input 中输入 ---
+console.log("\\n--- 1. ChangeEvent 演示 ---");
+const changeEv = mockChangeEvent("hello typescript");
+console.log("事件对象结构:");
+console.log("  type:", changeEv.type);
+console.log("  target.value:", changeEv.target.value);
+// 💡 提示：这就是 React 给 onChange handler 传入的对象形态
+
+// --- 演示 2：KeyboardEvent —— 模拟按键 ---
+console.log("\\n--- 2. KeyboardEvent 演示 ---");
+const enterEv = mockKeyboardEvent("Enter");
+console.log("Enter 键事件:");
+console.log("  key:", enterEv.key);
+console.log("  ctrlKey:", enterEv.ctrlKey);
+
+const ctrlKEv = mockKeyboardEvent("k", { ctrlKey: true });
+console.log("Ctrl+K 事件:");
+console.log("  key:", ctrlKEv.key);
+console.log("  ctrlKey:", ctrlKEv.ctrlKey);
+// 模拟 handler 内部逻辑
+if (ctrlKEv.ctrlKey && ctrlKEv.key === "k") {
+  ctrlKEv.preventDefault();
+  console.log("  -> 快捷键 handler 已执行");
+}
+
+// --- 演示 3：MouseEvent —— 模拟点击 ---
+console.log("\\n--- 3. MouseEvent 演示 ---");
+const mouseEv = mockMouseEvent(120, 80);
+console.log("点击事件:");
+console.log("  clientX:", mouseEv.clientX);
+console.log("  clientY:", mouseEv.clientY);
+console.log("  offsetX:", mouseEv.nativeEvent.offsetX);
+console.log("  offsetY:", mouseEv.nativeEvent.offsetY);
+mouseEv.preventDefault();
+
+// --- 演示 4：FormEvent —— 模拟表单提交 ---
+console.log("\\n--- 4. FormEvent 演示 ---");
+const formEv = mockFormEvent();
+console.log("表单提交事件:");
+console.log("  type:", formEv.type);
+console.log("  currentTarget 存在:", !!formEv.currentTarget);
+formEv.preventDefault();  // 演示阻止默认提交
+
+// --- 演示 5：DragEvent —— 模拟文件拖放 ---
+console.log("\\n--- 5. DragEvent 演示 ---");
+const dragEv = mockDragEvent(["report.pdf", "image.png"]);
+console.log("拖放事件:");
+console.log("  files 数量:", dragEv.dataTransfer.files.length);
+console.log("  文件列表:", Array.from(dragEv.dataTransfer.files).map((f) => f.name));
+dragEv.preventDefault();
+
+console.log("\\n========== 事件处理 Demo 结束 ==========");`,
   },
 
   // ===========================================================
@@ -1258,12 +1679,22 @@ type Status = "idle" | "loading" | "success" | "error";
 
 // ---- TodoList 组件 ----
 function TodoList() {
+  // useState<Todo[]>([]) —— Todo[] 指定状态为 Todo 对象数组
+  // 💡 提示：若不写泛型，useState([]) 会推断成 never[]，之后 setTodos 任何元素都报错
   const [todos, setTodos] = useState<Todo[]>([]);
+
+  // useState("") —— 初始值是字符串，自动推断为 string
+  // 💡 提示：基本类型（string/number/boolean）无需手写泛型，TS 已推断得足够精确
   const [input, setInput] = useState("");
+
+  // useState<"all" | "active" | "done">("all") —— 联合字面量类型限定可选值
+  // 💡 提示：若不写泛型，useState("all") 推断成 string，setFilter("anything") 都不报错
   const [filter, setFilter] = useState<"all" | "active" | "done">("all");
 
   const addTodo = () => {
     if (!input.trim()) return;
+    // setTodos(prev => prev+1) —— prev 是最新值，避免闭包陷阱
+    // 💡 提示：连续调用 setTodos(todos+1) 三次只会 +1，因为闭包里的 todos 是同一个旧值
     setTodos((prev) => [
       ...prev,
       { id: Date.now(), text: input.trim(), done: false },
@@ -1379,6 +1810,8 @@ function TodoList() {
 
 // ---- 状态机 Demo ----
 function StatusDemo() {
+  // useState<Status>("idle") —— Status 是联合字面量类型 "idle"|"loading"|"success"|"error"
+  // 💡 提示：若不写泛型，useState("idle") 推断成 string，setStatus("anything") 都不报错
   const [status, setStatus] = useState<Status>("idle");
 
   const simulate = async () => {
@@ -1414,6 +1847,87 @@ function StatusDemo() {
       </button>
     </div>
   );
+}
+
+// === 5. 运行时演示：闭包陷阱 & Lazy Init ===
+// 沙箱中 useState 被 mock 成 [value, noop]，这里用模拟实现演示真实行为
+console.log("=== useState 行为模拟演示 ===\\n");
+
+// 模拟 React 的 useState：支持函数式更新与 lazy init
+function makeUseState() {
+  let state: unknown;
+  let inited = false;
+  function useState<T>(initial: T | (() => T)): [T, (u: T | ((p: T) => T)) => void] {
+    if (!inited) {
+      // lazy init：只在首次渲染时执行 initial
+      state = typeof initial === "function" ? (initial as () => T)() : initial;
+      inited = true;
+    }
+    const setter = (u: T | ((p: T) => T)) => {
+      // 函数式更新：typeof u === "function" 时基于最新 state 计算
+      state = typeof u === "function" ? (u as (p: T) => T)(state as T) : u;
+    };
+    return [state as T, setter];
+  }
+  return useState;
+}
+
+// ---- 5.1 Lazy Init 只执行一次 ----
+console.log("--- 5.1 Lazy Init 执行时机 ---");
+let lazyCallCount = 0;
+const expensiveInit = (): number[] => {
+  lazyCallCount++;
+  console.log("  > expensiveInit() 第 " + lazyCallCount + " 次执行");
+  return [1, 2, 3];
+};
+
+const useStateA = makeUseState();
+// useState(() => expensiveInit()) —— 函数只在首次渲染时执行一次
+// 💡 提示：若写成 useState(expensiveInit())，每次渲染都会执行 expensiveInit()
+const [dataA] = useStateA<number[]>(expensiveInit); // 首次：执行
+const [dataA2] = useStateA<number[]>(expensiveInit); // 模拟第二次渲染：不再执行
+console.log("  结果: data=" + JSON.stringify(dataA) + ", 二次渲染 data=" + JSON.stringify(dataA2) + ", 执行次数=" + lazyCallCount + "\\n");
+
+// ---- 5.2 闭包陷阱：setCount(count+1) vs setCount(prev=>prev+1) ----
+console.log("--- 5.2 闭包陷阱演示 ---");
+
+// ❌ 错误写法：setCount(count + 1) —— count 是闭包里的旧值
+console.log("  [错误] 连续 3 次 setCount(count + 1):");
+{
+  const useStateB = makeUseState();
+  const [count, setCount] = useStateB(0); // 渲染时 count = 0 被闭包捕获
+  console.log("    渲染时 count = " + count);
+  setCount(count + 1); // 传入值 1（闭包里 count 仍是 0）
+  setCount(count + 1); // 传入值 1
+  setCount(count + 1); // 传入值 1
+  const [final] = useStateB(0); // 读取最新 state（已 inited，不会重置）
+  console.log("    期望 3，实际为 " + final + "（三次都被覆盖成 0+1=1）");
+}
+
+// ✅ 正确写法：setCount(prev => prev + 1) —— prev 始终是最新值
+console.log("  [正确] 连续 3 次 setCount(prev => prev + 1):");
+{
+  const useStateC = makeUseState();
+  const [count0, setCount] = useStateC(0);
+  console.log("    渲染时 count = " + count0);
+  setCount((prev: number) => prev + 1); // 0 -> 1
+  setCount((prev: number) => prev + 1); // 1 -> 2
+  setCount((prev: number) => prev + 1); // 2 -> 3
+  const [final] = useStateC(0); // 读取最新 state
+  console.log("    期望 3，实际为 " + final + "（函数式更新基于最新值）\\n");
+}
+
+// ---- 5.3 状态变化全过程 ----
+console.log("--- 5.3 状态变化全过程 ---");
+{
+  const useStateD = makeUseState();
+  const [count, setCount] = useStateD(0);
+  console.log("  初始: count = " + count);
+  setCount((prev: number) => prev + 1);
+  setCount((prev: number) => prev + 5);
+  setCount(100);
+  const [final] = useStateD(0);
+  console.log("  经过 +1, +5, =100 后: count = " + final);
 }
 
 export default function Demo() {
@@ -1675,17 +2189,36 @@ return <div ref={setElement}>内容</div>;
 5. 需要 UI 更新用 \`useState\`，仅存值用 \`useRef\``,
 
     code: `// useRef 三种用法 - 可运行 Demo
+// 💡 提示：useRef<T>(initial) 接收一个泛型参数 T，返回 { current: T } 对象
+//   - current 可读可写，但修改 current 不会触发组件重渲染
+//   - 这与 useState 截然不同：state 变化会触发重渲染，ref 变化不会
+// 沙箱说明：沙箱中的 useRef mock 实现就是 () => ({ current: initial })，
+//   所以 ref.current 的读写行为与真实 React 一致
 import { useState, useEffect, useRef } from "react";
 
-// ---- 自动聚焦输入框 ----
+// === 1. 用法 1：DOM 引用 ===
+// 💡 提示：useRef<HTMLInputElement>(null) 类型拆解：
+//   - 泛型参数 <HTMLInputElement> 表示 current 将存放一个 input DOM 元素
+//   - 初始值 null 表示挂载前 current 为 null（DOM 还未渲染）
+//   - 挂载后 React 会自动把真实 DOM 节点赋值给 inputRef.current
 function AutoFocusInput() {
+  // 用法 1: DOM 引用——获取 input 元素，命令式调用 focus/select 等
   const inputRef = useRef<HTMLInputElement>(null);
+  // 用法 2: 可变值容器——记录渲染次数（修改不触发重渲染，仅作日志/缓存）
+  // 对比：ref.current 修改不触发重渲染，state 修改会触发
   const renderCountRef = useRef(0);
 
+  // 💡 提示：下面这行直接修改 ref.current，不会让组件重渲染
+  //   - 同步代码每次渲染都会执行一次，但不会因此额外触发渲染
   renderCountRef.current++;
+  // 沙箱演示：读取 ref.current 总是拿到最新值（不像 state 是渲染快照）
+  console.log("[AutoFocusInput] 渲染次数 ref.current =", renderCountRef.current);
 
   useEffect(() => {
+    // 此时 React 已把 DOM 节点赋给 inputRef.current
+    // 用 ?. 是因为类型是 HTMLInputElement | null
     inputRef.current?.focus();
+    console.log("[AutoFocusInput] 已聚焦 input，DOM ref.current =", inputRef.current);
   }, []);
 
   return (
@@ -1705,26 +2238,40 @@ function AutoFocusInput() {
   );
 }
 
-// ---- 防抖搜索 ----
+// === 2. 用法 3：定时器/资源句柄（setTimeout）===
+// 💡 提示：useRef<ReturnType<typeof setTimeout> | null>(null) 类型拆解：
+//   - typeof setTimeout      → 取 setTimeout 函数本身的类型
+//   - ReturnType<typeof setTimeout> → 取该函数的"返回值类型"
+//     · 浏览器环境：等价于 number（定时器 ID 是数字）
+//     · Node/TS 环境：等价于 NodeJS.Timeout 对象
+//   - | null → 联合 null，因为初始为 null，清除后也置为 null
+//   - 用 ref 存定时器 ID 的好处：跨渲染保留句柄，且不触发重渲染
 function DebouncedSearch({ onSearch }: { onSearch: (q: string) => void }) {
   const [value, setValue] = useState("");
+  // 用法 3: 定时器/资源句柄——保存 setTimeout 返回的 ID，便于之后 clearTimeout
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
+    // state 修改 → 触发重渲染（输入框 value 会更新到 UI）
     setValue(newValue);
+    console.log("[DebouncedSearch] state value 已更新 =", newValue, "（会触发重渲染）");
 
+    // ref 修改 → 不触发重渲染（只是保存句柄）
     if (timerRef.current) {
       clearTimeout(timerRef.current);
+      console.log("[DebouncedSearch] 清除上一次定时器 timerRef.current =", timerRef.current);
     }
 
     timerRef.current = setTimeout(() => {
       onSearch(newValue);
     }, 500);
+    console.log("[DebouncedSearch] 设置新定时器 timerRef.current =", timerRef.current, "（不触发重渲染）");
   };
 
   useEffect(() => {
     return () => {
+      // 💡 提示：组件卸载时一定要清理定时器，避免内存泄漏与"已卸载组件 setState"警告
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
@@ -1742,23 +2289,34 @@ function DebouncedSearch({ onSearch }: { onSearch: (q: string) => void }) {
   );
 }
 
-// ---- 计时器 Demo ----
+// === 3. 用法 3：定时器/资源句柄（setInterval）===
+// 💡 提示：ReturnType<typeof setInterval> 与 setTimeout 同理：
+//   - 浏览器环境：等价于 number
+//   - Node/TS 环境：等价于 NodeJS.Timeout
+//   - 用 ReturnType<typeof setInterval> 比直接写 number 更类型安全、跨环境通用
 function Stopwatch() {
   const [seconds, setSeconds] = useState(0);
   const [running, setRunning] = useState(false);
+  // 用法 3: 定时器/资源句柄——保存 setInterval 的 ID
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const start = () => {
     if (running) return;
     setRunning(true);
+    // 把定时器 ID 存到 ref，stop() 时需要它来 clearInterval
     timerRef.current = setInterval(() => {
+      // 💡 提示：这里调用 setSeconds 触发重渲染；如果只是 timerRef.current++ 则 UI 不会更新
+      //   - 这是 ref vs state 最直观的区别：要让 UI 变化必须用 state
       setSeconds((s) => s + 1);
     }, 1000);
+    console.log("[Stopwatch] 启动定时器 timerRef.current =", timerRef.current);
   };
 
   const stop = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
+      console.log("[Stopwatch] 清除定时器 timerRef.current =", timerRef.current);
+      // 清除后置为 null，避免悬空句柄
       timerRef.current = null;
     }
     setRunning(false);
@@ -1771,6 +2329,7 @@ function Stopwatch() {
 
   useEffect(() => {
     return () => {
+      // 组件卸载时清理定时器，防止泄漏
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
@@ -1823,8 +2382,29 @@ function Stopwatch() {
   );
 }
 
+// === 4. 行为对比演示：ref vs state ===
+// 💡 提示：在 Demo 中通过 console.log 演示 ref.current 与 state 的行为差异
+//   - ref.current 修改后：组件不会重渲染，但 ref.current 立即变为新值
+//   - state 修改后：组件会重渲染，下一次渲染中 state 才是新值（当前渲染仍是旧值）
 export default function Demo() {
   const [searchResult, setSearchResult] = useState("");
+  // 用法 2: 可变值容器——记录"ref.current 被修改的次数"，仅用于 console 演示
+  const refMutationsRef = useRef(0);
+  // 用法 2: 可变值容器——保存上一次的 searchResult，便于对比新旧值
+  const prevSearchRef = useRef<string | null>(null);
+
+  // 模拟"修改 ref.current 后组件不重渲染"的对比：
+  //   下面这行修改 ref.current，但它本身不会触发 Demo 重渲染
+  //   只有当 state（searchResult）变化时，Demo 才会重渲染
+  refMutationsRef.current++;
+  console.log("[Demo] ref.current 修改后 =", refMutationsRef.current, "（此修改不触发重渲染）");
+  console.log("[Demo] 当前 state searchResult =", JSON.stringify(searchResult), "（渲染快照值）");
+  // 对比 ref 与 state：ref.current 总是最新值，state 在本次渲染中是快照
+  if (prevSearchRef.current !== searchResult) {
+    console.log("[Demo] 检测到 searchResult 变化：", prevSearchRef.current, "→", searchResult);
+    // 把最新值同步到 ref，便于下次渲染时对比
+    prevSearchRef.current = searchResult;
+  }
 
   return (
     <div style={{ padding: 16, maxWidth: 500, display: "flex", flexDirection: "column", gap: 24 }}>

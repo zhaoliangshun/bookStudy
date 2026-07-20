@@ -123,7 +123,7 @@ public class LifeCycleServlet extends HttpServlet {
 | 在构造方法里读配置 | 构造时尚未 init,ServletConfig 为 null | 配置读取放 init 方法 |
 | doGet 里写大量业务代码 | Servlet 职责膨胀,难测试 | 业务下沉到 Service 层 |
 | loadOnStartup 未配导致首请求慢 | 首次请求才初始化 | 关键 Servlet 配 loadOnStartup |
-| 线程安全问题难复现 | 并发时序随机 | 用压测工具并发验证 |`,
+| 线程安全问题难复现 \| 并发时序随机 | 用压测工具并发验证 |`,
   },
 
   // =========================================================
@@ -237,7 +237,7 @@ public class UploadServlet extends HttpServlet {
 | 复选框只取到一个值 | 用了 getParameter | 多值用 getParameterValues |
 | 文件上传 getPart 返回 null | 未加 @MultipartConfig | 类上加该注解 |
 | 异步线程里用 request | 请求已结束,对象失效 | 需要的数据拷贝出来再传给线程 |
-| Session 跨域丢 | Cookie 域不匹配 | setCookie 时配 domain |`,
+| Session 跨域丢 \| Cookie 域不匹配 | setCookie 时配 domain |`,
   },
 
   // =========================================================
@@ -359,7 +359,7 @@ public class UserApiServlet extends HttpServlet {
 | 大文件 OOM | 一次性读入内存 | 用缓冲边读边写 |
 | 下载文件名中文乱码 | filename 头未编码 | 用 \`URLEncoder.encode\` 或 RFC 5987 编码 |
 | 已提交后 reset 抛异常 | 响应已发送,无法回滚 | reset 只能在提交前调 |
-| flush 后改头无效 | 已提交锁定 | 规划好头部再写体 |`,
+| flush 后改头无效 \| 已提交锁定 | 规划好头部再写体 |`,
   },
 
   // =========================================================
@@ -485,6 +485,6 @@ JSP 中读取转发来的属性(\`/WEB-INF/list.jsp\`):
 | forward 后还写响应 | forward 已交出控制 | forward 后不应再写体 |
 | 直接访问 /WEB-INF 下 JSP 404 | 安全保护设计 | 只能通过转发访问 |
 | 重定向到外部丢失 Session | 跨域 Cookie 不带 | Session ID 拼到 URL |
-| 转发路径写错 404 | 相对路径解析错 | 用绝对路径(以 / 开头) |`,
+| 转发路径写错 404 \| 相对路径解析错 | 用绝对路径(以 / 开头) |`,
   },
 ];

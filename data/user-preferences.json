@@ -1,229 +1,11 @@
 {
   "hiddenBooks": [],
   "deletedChapters": [],
-  "hiddenChapters": [
-    "py-intro",
-    "py-variables",
-    "py-strings",
-    "py-operators",
-    "py-controlflow",
-    "py-functions",
-    "py-collections",
-    "py-comprehensions",
-    "py-fileio",
-    "py-exceptions",
-    "py-modules",
-    "py-oop",
-    "py-decorators",
-    "py-iterators",
-    "py-stdlib",
-    "py-tooling",
-    "py-numbers",
-    "py-strings-advanced",
-    "py-bytes-encoding",
-    "py-datetime",
-    "py-collections-advanced",
-    "py6-intro",
-    "py6-install",
-    "py6-variables",
-    "py6-datatypes",
-    "py6-numbers",
-    "py6-bool",
-    "py6-strings-basic",
-    "py6-strings-methods",
-    "py6-strings-format",
-    "py6-operators",
-    "py6-input-output",
-    "py6-comments",
-    "py6-type-conversion",
-    "py6-naming",
-    "py6-keywords",
-    "py6-if",
-    "py6-while",
-    "py6-for",
-    "py6-break-continue",
-    "py6-match",
-    "py6-ternary",
-    "py6-nested-loops",
-    "py6-loop-else",
-    "py6-enumerate",
-    "py6-zip",
-    "py6-loop-techniques",
-    "py6-truthy-falsy",
-    "py6-short-circuit",
-    "py6-assert",
-    "py6-bitwise",
-    "py6-bool-tricks",
-    "py6-list-basic",
-    "py6-list-methods",
-    "py6-list-slice",
-    "py6-list-sort",
-    "py6-tuple",
-    "py6-dict-basic",
-    "py6-dict-methods",
-    "py6-dict-iterate",
-    "py6-dict-merge",
-    "py6-set",
-    "py6-set-operations",
-    "py6-nested",
-    "py6-copy",
-    "py6-list-comprehension",
-    "py6-dict-set-comprehension",
-    "py6-unpacking",
-    "py6-collections-counter",
-    "py6-collections-defaultdict",
-    "py6-function-basic",
-    "py6-function-params",
-    "py6-function-args-kwargs",
-    "py6-function-return",
-    "py6-lambda",
-    "py6-scope",
-    "py6-global-nonlocal",
-    "py6-closure",
-    "py6-decorator-basic",
-    "py6-decorator-advanced",
-    "py6-recursion",
-    "py6-generator",
-    "py6-yield-from",
-    "py6-higher-order",
-    "py6-partial",
-    "py6-builtin-functions",
-    "py6-callable",
-    "py6-function-annotations",
-    "py6-class-basic",
-    "py6-init",
-    "py6-instance-class-attr",
-    "py6-methods",
-    "py6-self",
-    "py6-inheritance",
-    "py6-multiple-inheritance",
-    "py6-polymorphism",
-    "py6-encapsulation",
-    "py6-property",
-    "py6-str-repr",
-    "py6-dunder-collection",
-    "py6-dunder-operator",
-    "py6-dunder-call",
-    "py6-dataclass",
-    "py6-composition-vs-inheritance",
-    "py6-duck-typing",
-    "py6-class-advanced",
-    "pythread-01",
-    "pythread-02",
-    "pythread-03",
-    "pythread-04",
-    "pythread-05",
-    "pythread-06",
-    "pythread-07",
-    "pythread-08",
-    "pythread-09",
-    "pythread-10",
-    "pythread-11",
-    "pythread-12",
-    "pythread-13",
-    "pythread-14",
-    "pythread-15",
-    "pythread-18",
-    "pythread-17",
-    "pythread-16",
-    "pythread-19",
-    "pythread-20",
-    "pythread-21",
-    "pythread-22",
-    "pythread-23",
-    "pythread-24",
-    "pythread-25",
-    "pythread-26",
-    "pythread-27",
-    "pythread-28",
-    "pythread-33",
-    "sp-intro",
-    "sp-capture",
-    "sp-input",
-    "sp-exception",
-    "sp-shell",
-    "sp-run",
-    "sp-popen",
-    "pythread-34",
-    "pykit-01",
-    "fa-quickstart",
-    "fa-path-params",
-    "fa-query-params",
-    "fa-request-body",
-    "fa-dependency"
-  ],
-  "categoryConfig": {
-    "custom": [
-      {
-        "id": "c-mrcscba2w47r",
-        "name": "nodejs",
-        "icon": "📁"
-      }
-    ],
-    "renamed": {},
-    "icons": {},
-    "hidden": [],
-    "order": [
-      "Python 编程",
-      "nodejs",
-      "JS / TS 生态",
-      "Java 开发",
-      "AI 智能开发",
-      "前端工程",
-      "后端与网络",
-      "实战项目",
-      "数据库与缓存",
-      "算法与数据结构",
-      "计算机基础",
-      "职场成长",
-      "身心健康",
-      "人际智慧"
-    ],
-    "subGroups": {
-      "Python 编程": [
-        {
-          "id": "sg-mrctbi5m16xr",
-          "name": "并发技巧"
-        },
-        {
-          "id": "sg-mrctcsxkz7f9",
-          "name": "基础语法"
-        },
-        {
-          "id": "sg-mrctdmwvqji3",
-          "name": "后端开发"
-        },
-        {
-          "id": "sg-mrctfokhdvl5",
-          "name": "对比其他语言"
-        },
-        {
-          "id": "sg-mrd99uj4byog",
-          "name": "文件操作"
-        },
-        {
-          "id": "sg-mriwj9hbry00",
-          "name": "FastApi"
-        }
-      ]
-    },
-    "subGroupOrder": {
-      "Python 编程": [
-        "sg-mrctcsxkz7f9",
-        "sg-mrctbi5m16xr",
-        "sg-mrd99uj4byog",
-        "sg-mriwj9hbry00",
-        "sg-mrctdmwvqji3",
-        "sg-mrctfokhdvl5"
-      ]
-    }
-  },
+  "hiddenChapters": [],
   "bookOrder": {
     "未分组": [
-      "/playground"
-    ],
-    "Python 编程": [],
-    "JS / TS 生态": [
+      "/playground",
+      "/react-sandbox",
       "/tsgen",
       "/ts",
       "/ts2",
@@ -233,13 +15,16 @@
       "/reactsrc",
       "/vuesrc",
       "/zod",
-      "/ts-quick"
+      "/ts-quick",
+      "/tsbook",
+      "/node4"
     ],
+    "Python 编程": [],
     "Java 开发": [
+      "/java-simple",
       "/java",
       "/java-master",
-      "/java-web",
-      "/java-simple"
+      "/java-web"
     ],
     "AI 智能开发": [
       "/ai",
@@ -254,12 +39,7 @@
       "/fe-engineering",
       "/fe-interview",
       "/vite",
-      "/rhf",
-      "/tsx",
-      "/forgerock",
-      "/forgerock-demo",
-      "/mantine",
-      "/mantine-demo"
+      "/vite2"
     ],
     "后端与网络": [
       "/http",
@@ -268,7 +48,6 @@
       "/gql",
       "/deploy",
       "/go",
-      "/csharp",
       "/backend-essential",
       "/https-book"
     ],
@@ -334,7 +113,11 @@
     ],
     "已隐藏": [
       "/mindset",
-      "/fastapi-fullstack"
+      "/fastapi-fullstack",
+      "/mantine-demo",
+      "/forgerock-demo",
+      "/mantine",
+      "/rhf"
     ],
     "算法与数据结构": [
       "/algo",
@@ -364,7 +147,8 @@
       "/py8",
       "/py9",
       "/py-definitive",
-      "/python-work"
+      "/python-work",
+      "/py10"
     ],
     "Python 编程::__sg-mrctdmwvqji3": [
       "/pynet",
@@ -394,6 +178,395 @@
       "/fastapi-test",
       "/fastapi-pro",
       "/fastapi"
+    ],
+    "C#开发": [
+      "/csharp",
+      "/csharp2",
+      "/csharp3",
+      "/csharp4"
+    ],
+    "Typescript": [],
+    "react": [
+      "/tsx3",
+      "/tsx",
+      "/tsx-story",
+      "/tsx-pro",
+      "/tsrx",
+      "/tsx2",
+      "/mantine2",
+      "/mantine-form-zod",
+      "/forgerock",
+      "/auth-demo"
     ]
+  },
+  "categoryConfig": {
+    "custom": [
+      {
+        "id": "c-mrcscba2w47r",
+        "name": "nodejs",
+        "icon": "📁"
+      },
+      {
+        "id": "c-mrq2op8ti0fz",
+        "name": "C#开发",
+        "icon": "📁"
+      },
+      {
+        "id": "c-mrqzrpdhafid",
+        "name": "Typescript",
+        "icon": "📁"
+      },
+      {
+        "id": "c-mrrcbw4al8yu",
+        "name": "react",
+        "icon": "📁"
+      }
+    ],
+    "renamed": {},
+    "icons": {},
+    "hidden": [
+      "JS / TS 生态"
+    ],
+    "order": [
+      "Python 编程",
+      "react",
+      "nodejs",
+      "Typescript",
+      "Java 开发",
+      "AI 智能开发",
+      "前端工程",
+      "C#开发",
+      "后端与网络",
+      "实战项目",
+      "数据库与缓存",
+      "算法与数据结构",
+      "计算机基础",
+      "职场成长",
+      "身心健康",
+      "人际智慧"
+    ],
+    "subGroups": {
+      "Python 编程": [
+        {
+          "id": "sg-mrctbi5m16xr",
+          "name": "并发技巧"
+        },
+        {
+          "id": "sg-mrctcsxkz7f9",
+          "name": "基础语法"
+        },
+        {
+          "id": "sg-mrctdmwvqji3",
+          "name": "后端开发"
+        },
+        {
+          "id": "sg-mrctfokhdvl5",
+          "name": "对比其他语言"
+        },
+        {
+          "id": "sg-mrd99uj4byog",
+          "name": "文件操作"
+        },
+        {
+          "id": "sg-mriwj9hbry00",
+          "name": "FastApi"
+        }
+      ]
+    },
+    "subGroupOrder": {
+      "Python 编程": [
+        "sg-mrctcsxkz7f9",
+        "sg-mrctbi5m16xr",
+        "sg-mrd99uj4byog",
+        "sg-mriwj9hbry00",
+        "sg-mrctdmwvqji3",
+        "sg-mrctfokhdvl5"
+      ]
+    }
+  },
+  "savedDefaults": {
+    "bookOrder": {
+      "未分组": [
+        "/playground",
+        "/react-sandbox"
+      ],
+      "Python 编程": [],
+      "Java 开发": [
+        "/java-simple",
+        "/java",
+        "/java-master",
+        "/java-web"
+      ],
+      "AI 智能开发": [
+        "/ai",
+        "/aiapp",
+        "/aipy",
+        "/ai-agent",
+        "/aiagent-simple"
+      ],
+      "前端工程": [
+        "/workers",
+        "/nextjs",
+        "/sass",
+        "/fe-engineering",
+        "/fe-interview",
+        "/vite",
+        "/vite2",
+        "/vuesrc"
+      ],
+      "后端与网络": [
+        "/http",
+        "/net",
+        "/backend",
+        "/gql",
+        "/deploy",
+        "/go",
+        "/backend-essential",
+        "/https-book",
+        "/csharp4"
+      ],
+      "实战项目": [
+        "/todo",
+        "/blog-tutorial",
+        "/blog"
+      ],
+      "数据库与缓存": [
+        "/sql",
+        "/mysql",
+        "/redis",
+        "/mongo",
+        "/postgres"
+      ],
+      "计算机基础": [
+        "/cs",
+        "/howitworks",
+        "/os",
+        "/prog-guide"
+      ],
+      "职场成长": [
+        "/future",
+        "/career",
+        "/career40",
+        "/work",
+        "/comm"
+      ],
+      "身心健康": [
+        "/psychology",
+        "/nervous",
+        "/stomach",
+        "/ibs",
+        "/dignity",
+        "/hurt",
+        "/chicken-soup",
+        "/mindset2",
+        "/life-manual",
+        "/inner-peace",
+        "/serenity",
+        "/emotion",
+        "/calm",
+        "/hermit",
+        "/human-weakness",
+        "/weakness",
+        "/weakness-guide",
+        "/weakness2",
+        "/weakness-emotion",
+        "/emotion2",
+        "/emotion3",
+        "/letting-go"
+      ],
+      "人际智慧": [
+        "/relations",
+        "/dui",
+        "/fandui",
+        "/shield",
+        "/quotes",
+        "/curse",
+        "/rebut",
+        "/unharmed",
+        "/talk-rebut"
+      ],
+      "已隐藏": [
+        "/mindset",
+        "/fastapi-fullstack",
+        "/mantine-demo",
+        "/forgerock-demo",
+        "/mantine",
+        "/rhf"
+      ],
+      "算法与数据结构": [
+        "/algo",
+        "/leetcode"
+      ],
+      "nodejs": [
+        "/nodejs",
+        "/node4",
+        "/nodejs3",
+        "/nodejs2",
+        "/nodejs-backend",
+        "/noderun"
+      ],
+      "Python 编程::__sg-mrctbi5m16xr": [
+        "/pythread",
+        "/pythread2",
+        "/pyprocess",
+        "/pysubprocess",
+        "/pyasync",
+        "/pyasync2",
+        "/pyasync3"
+      ],
+      "Python 编程::__sg-mrctcsxkz7f9": [
+        "/pyint",
+        "/pyrun",
+        "/pykit",
+        "/py",
+        "/py6",
+        "/py8",
+        "/py9",
+        "/py-definitive",
+        "/python-work",
+        "/py10"
+      ],
+      "Python 编程::__sg-mrctdmwvqji3": [
+        "/pynet",
+        "/pydb",
+        "/pyweb",
+        "/pyweb2",
+        "/py-backend",
+        "/pyproject",
+        "/pyarch",
+        "/pyeng"
+      ],
+      "Python 编程::__sg-mrctfokhdvl5": [
+        "/pyjava",
+        "/pyvsjava",
+        "/pyvsjs"
+      ],
+      "Python 编程::__sg-mrd99uj4byog": [
+        "/pyfile",
+        "/pyfile2"
+      ],
+      "Python 编程::__sg-mriwj9hbry00": [
+        "/fastapi-simple",
+        "/fastapi-learn",
+        "/fastapi-code",
+        "/fastapiauth-simple",
+        "/fastapiauth",
+        "/fastapi-test",
+        "/fastapi-pro",
+        "/fastapi"
+      ],
+      "C#开发": [
+        "/csharp",
+        "/csharp2",
+        "/csharp3"
+      ],
+      "Typescript": [
+        "/ts",
+        "/ts-quick",
+        "/ts2",
+        "/ts3",
+        "/tsbook",
+        "/tsgen"
+      ],
+      "react": [
+        "/reactsrc",
+        "/tsx3",
+        "/tsx",
+        "/tsx-story",
+        "/tsx-pro",
+        "/tsrx",
+        "/tsx2",
+        "/zod",
+        "/mantine2",
+        "/mantine-form-zod",
+        "/forgerock",
+        "/auth-demo"
+      ]
+    },
+    "categoryConfig": {
+      "custom": [
+        {
+          "id": "c-mrcscba2w47r",
+          "name": "nodejs",
+          "icon": "📁"
+        },
+        {
+          "id": "c-mrq2op8ti0fz",
+          "name": "C#开发",
+          "icon": "📁"
+        },
+        {
+          "id": "c-mrqzrpdhafid",
+          "name": "Typescript",
+          "icon": "📁"
+        },
+        {
+          "id": "c-mrrcbw4al8yu",
+          "name": "react",
+          "icon": "📁"
+        }
+      ],
+      "renamed": {},
+      "icons": {},
+      "hidden": [
+        "JS / TS 生态"
+      ],
+      "order": [
+        "Python 编程",
+        "react",
+        "nodejs",
+        "Typescript",
+        "Java 开发",
+        "AI 智能开发",
+        "前端工程",
+        "C#开发",
+        "后端与网络",
+        "实战项目",
+        "数据库与缓存",
+        "算法与数据结构",
+        "计算机基础",
+        "职场成长",
+        "身心健康",
+        "人际智慧"
+      ],
+      "subGroups": {
+        "Python 编程": [
+          {
+            "id": "sg-mrctbi5m16xr",
+            "name": "并发技巧"
+          },
+          {
+            "id": "sg-mrctcsxkz7f9",
+            "name": "基础语法"
+          },
+          {
+            "id": "sg-mrctdmwvqji3",
+            "name": "后端开发"
+          },
+          {
+            "id": "sg-mrctfokhdvl5",
+            "name": "对比其他语言"
+          },
+          {
+            "id": "sg-mrd99uj4byog",
+            "name": "文件操作"
+          },
+          {
+            "id": "sg-mriwj9hbry00",
+            "name": "FastApi"
+          }
+        ]
+      },
+      "subGroupOrder": {
+        "Python 编程": [
+          "sg-mrctcsxkz7f9",
+          "sg-mrctbi5m16xr",
+          "sg-mrd99uj4byog",
+          "sg-mriwj9hbry00",
+          "sg-mrctdmwvqji3",
+          "sg-mrctfokhdvl5"
+        ]
+      }
+    }
   }
 }

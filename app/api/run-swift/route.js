@@ -37,6 +37,7 @@ import { join, delimiter } from "path";
 // 增强的 PATH：合并进程 PATH 与 Swift 常见安装目录，解决 dev server PATH 过期问题。
 // Swift on Windows 装在 %LOCALAPPDATA%\Programs\Swift 下，含版本号子目录。
 // 需要同时加入 Toolchains 和 Runtimes 的 bin 目录，否则运行时缺 DLL（0xC0000135）。
+// extra 在前，process.env.PATH 在后，确保 Swift 安装路径优先匹配
 let _enhancedPath = null;
 function getEnhancedPath() {
   if (_enhancedPath !== null) return _enhancedPath;
@@ -69,8 +70,31 @@ function getEnhancedPath() {
   } else if (process.platform !== "win32") {
     extra.push("/usr/bin", "/usr/local/bin", "/opt/homebrew/bin");
   }
-  _enhancedPath = [process.env.PATH, ...extra.filter(existsSync)].join(delimiter);
+  _enhancedPath = [...extra.filter(existsSync), process.env.PATH].join(delimiter);
   return _enhancedPath;
+}
+
+/**
+ * 构建 Swift 子进程所需的完整环境变量。
+ * Windows 下 Swift 运行时依赖 SystemRoot/System32 等系统路径，
+ * 缺失会导致 0xC0000135 找不到 DLL，因此统一传递 Windows 必需变量。
+ */
+function buildSwiftEnv() {
+  return {
+    PATH: getEnhancedPath(),
+    TEMP: process.env.TEMP,
+    TMP: process.env.TMP,
+    HOME: process.env.HOME,
+    USERPROFILE: process.env.USERPROFILE,
+    APPDATA: process.env.APPDATA,
+    LOCALAPPDATA: process.env.LOCALAPPDATA,
+    ProgramFiles: process.env.ProgramFiles || "C:\\Program Files",
+    "ProgramFiles(x86)": process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)",
+    ProgramW6432: process.env.ProgramW6432 || "C:\\Program Files",
+    SystemRoot: process.env.SystemRoot || "C:\\Windows",
+    LANG: "en_US.UTF-8",
+    LC_ALL: "en_US.UTF-8",
+  };
 }
 
 // 执行超时（毫秒）。Swift 解释器启动略慢，10 秒对学习 demo 足够；
@@ -99,8 +123,8 @@ function runSwiftCode(code) {
     const child = spawn(SWIFT_BIN, ["-"], {
       // 不继承父进程 stdio，单独建管道
       stdio: ["pipe", "pipe", "pipe"],
-      // 不继承父进程环境，只保留必要的 PATH（让 swift 能被找到）
-      env: { PATH: getEnhancedPath(), LANG: "en_US.UTF-8", LC_ALL: "en_US.UTF-8" },
+      // 不继承父进程环境，只保留必要的 PATH（让 swift 可被找到）
+      env: buildSwiftEnv(),
       // 子进程独立成新进程组，方便超时时 kill 整个组
       detached: false,
     });
@@ -109,6 +133,21 @@ function runSwiftCode(code) {
     let stderrBuf = "";
     let truncated = false;
     let killed = false;
+    // 修复：用 resolved 标记防止多次 resolve（error + close 重复触发场景）
+    let resolved = false;
+    const safeResolve = (value) => {
+      if (resolved) return;
+      resolved = true;
+      resolve(value);
+    };
+    // 统一清理 timer：避免定时器长时间持有子进程引用造成内存泄漏
+    let timer = null;
+    const clearTimer = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
 
     // 收集 stdout
     child.stdout.on("data", (chunk) => {
@@ -134,7 +173,9 @@ function runSwiftCode(code) {
 
     // 子进程出错（例如 swift 不存在）
     child.on("error", (err) => {
-      resolve({
+      // error 事件触发后 close 可能不再触发，需在此清除超时定时器
+      clearTimer();
+      safeResolve({
         output: "",
         error:
           `无法启动 ${SWIFT_BIN}：${err.message}\n` +
@@ -146,9 +187,11 @@ function runSwiftCode(code) {
 
     // 子进程退出
     child.on("close", (code, signal) => {
+      clearTimer();
+      if (resolved) return;
       if (killed) {
         // 被超时强制终止
-        resolve({
+        safeResolve({
           output: stdoutBuf,
           error:
             stderrBuf +
@@ -168,7 +211,7 @@ function runSwiftCode(code) {
         else error += note;
       }
 
-      resolve({ output, error, exitCode: code });
+      safeResolve({ output, error, exitCode: code });
     });
 
     // 通过 stdin 传入代码，然后关闭 stdin 通知子进程读取完毕
@@ -178,7 +221,7 @@ function runSwiftCode(code) {
     child.stdin.end();
 
     // 超时处理：到时间还没退出就 kill
-    const timer = setTimeout(() => {
+    timer = setTimeout(() => {
       killed = true;
       try {
         child.kill("SIGKILL");
@@ -186,9 +229,6 @@ function runSwiftCode(code) {
         // ignore
       }
     }, EXEC_TIMEOUT_MS);
-
-    // 子进程退出后清除定时器，避免内存泄漏
-    child.on("close", () => clearTimeout(timer));
   });
 }
 
@@ -244,19 +284,42 @@ export async function GET() {
   return new Promise((resolve) => {
     const child = spawn(SWIFT_BIN, ["--version"], {
       stdio: ["pipe", "pipe", "pipe"],
-      env: { PATH: getEnhancedPath() },
+      env: buildSwiftEnv(),
     });
     let version = "";
-    child.stdout.on("data", (c) => (version += c.toString()));
-    child.stderr.on("data", (c) => (version += c.toString()));
+    // 修复：用 resolved 标记防止多次 resolve
+    let resolved = false;
+    const safeResolve = (value) => {
+      if (resolved) return;
+      resolved = true;
+      resolve(value);
+    };
+    let timer = null;
+    const clearTimer = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+    const onData = (c) => (version += c.toString());
+    child.stdout.on("data", onData);
+    child.stderr.on("data", onData);
     // 健康检查超时保护：5 秒未响应视为不可用
-    const timer = setTimeout(() => {
+    timer = setTimeout(() => {
+      clearTimer();
+      child.stdout.removeListener("data", onData);
+      child.stderr.removeListener("data", onData);
       child.kill("SIGKILL");
-      resolve(NextResponse.json({ status: "timeout", error: "版本检查超时" }, { status: 504 }));
+      safeResolve(
+        NextResponse.json({ status: "timeout", error: "版本检查超时" }, { status: 504 })
+      );
     }, 5000);
     child.on("close", () => {
-      clearTimeout(timer);
-      resolve(
+      clearTimer();
+      child.stdout.removeListener("data", onData);
+      child.stderr.removeListener("data", onData);
+      if (resolved) return;
+      safeResolve(
         NextResponse.json({
           status: "ok",
           message: "Swift 代码执行服务正在运行",
@@ -265,8 +328,11 @@ export async function GET() {
       );
     });
     child.on("error", () => {
-      clearTimeout(timer);
-      resolve(
+      clearTimer();
+      child.stdout.removeListener("data", onData);
+      child.stderr.removeListener("data", onData);
+      if (resolved) return;
+      safeResolve(
         NextResponse.json({
           status: "error",
           message: `未找到 ${SWIFT_BIN}，请先安装 Swift`,

@@ -790,7 +790,7 @@ engine = create_engine("mysql+pymysql://root:123456@localhost:3306/myapp?charset
 | 自增主键 | INTEGER PRIMARY KEY | SERIAL | AUTO_INCREMENT |
 | 布尔 | 用 0/1 | 真 BOOLEAN | TINYINT(1) |
 | 分页 | LIMIT ? OFFSET ? | LIMIT ? OFFSET ? | LIMIT ?, ? |
-| 字符串拼接 | \|\| | \|\| | CONCAT() |
+| 字符串拼接 \| \\|\\| \| \|\| | CONCAT() |
 
 你写 \`User.age > 18\`，SQLAlchemy 会根据当前 engine 自动翻译成对应方言的 SQL。
 
@@ -1453,7 +1453,7 @@ Base.metadata.create_all(engine)
 | 金额用 Float | 浮点有精度问题 | 用 Numeric/Decimal |
 | 索引乱加 | 所有列都加索引 | 只给查询列加 |
 | 忘记 __repr__ | 调试打印一串对象地址 | 写 __repr__ 方便调试 |
-| nullable 注解错 | Mapped[str] 却允许 None | Mapped[str \| None] 才允许 |
+| nullable 注解错 \| Mapped[str] 却允许 None | Mapped[str \| None] 才允许 |
 
 ## 小结
 

@@ -78,6 +78,7 @@ const BOOK_CATEGORIES = [
       { path: "/py6", label: "Python 全解", icon: "🐍" },
       { path: "/py8", label: "Python 大全", icon: "🐍" },
       { path: "/py9", label: "Python 逐层深入", icon: "📘" },
+      { path: "/py10", label: "Python 从入门到精通大全（终极版）", icon: "📗" },
       { path: "/pyfile", label: "文件操作", icon: "📁" },
       { path: "/pyfile2", label: "文件管理", icon: "🗂️" },
       { path: "/pykit", label: "常用知识点", icon: "🧰" },
@@ -121,11 +122,13 @@ const BOOK_CATEGORIES = [
       { path: "/nodejs", label: "Node.js 入门", icon: "🟢" },
       { path: "/nodejs2", label: "Node.js 进阶", icon: "🟢" },
       { path: "/nodejs3", label: "Node.js 源码", icon: "🟡" },
+      { path: "/node4", label: "Node.js 大全", icon: "📕" },
       { path: "/noderun", label: "Node.js 运行原理", icon: "⚙️" },
       { path: "/reactsrc", label: "React 源码构建", icon: "⚛️" },
       { path: "/vuesrc", label: "Vue 源码构建", icon: "💚" },
       { path: "/nodejs-backend", label: "Node.js Web后端实战", icon: "🏗️" },
       { path: "/ts", label: "TypeScript 入门", icon: "🔷" },
+      { path: "/tsbook", label: "TypeScript 全解", icon: "📚" },
       { path: "/ts-quick", label: "TypeScript 速查", icon: "⚡" },
       { path: "/ts2", label: "TypeScript 进阶", icon: "🔶" },
       { path: "/ts3", label: "TypeScript 高阶实战", icon: "💠" },
@@ -162,12 +165,22 @@ const BOOK_CATEGORIES = [
     books: [
       { path: "/nextjs", label: "Next.js", icon: "▲" },
       { path: "/vite", label: "Vite", icon: "⚡" },
+      { path: "/vite2", label: "Vite 大全集", icon: "⚡" },
       { path: "/rhf", label: "React Hook Form", icon: "📋" },
       { path: "/mantine", label: "Mantine", icon: "🎨" },
+      { path: "/mantine2", label: "Mantine 从入门到精通大全", icon: "🎨" },
       { path: "/mantine-demo", label: "Mantine Demo", icon: "🧪" },
+      { path: "/mantine-form-zod", label: "Mantine Form + Zod 实战", icon: "🧩" },
       { path: "/forgerock", label: "ForgeRock SDK", icon: "🛡️" },
       { path: "/forgerock-demo", label: "ForgeRock Demo", icon: "🎭" },
+      { path: "/auth-demo", label: "认证站点 Demo", icon: "🔐" },
       { path: "/tsx", label: "TS + React", icon: "⚛️" },
+      { path: "/tsx2", label: "TS+React 从入门到精通大全", icon: "⚛️" },
+      { path: "/tsx3", label: "React 中使用 TypeScript 大全（全新重写版）", icon: "📘" },
+      { path: "/tsrx", label: "TS+React 全能进阶", icon: "🚀" },
+      { path: "/tsx-story", label: "TSX 童话镇", icon: "🏘️" },
+      { path: "/tsx-pro", label: "TS+React 全栈精通", icon: "🚀" },
+      { path: "/react-sandbox", label: "React 在线沙箱", icon: "🧪" },
       { path: "/sass", label: "Sass", icon: "💅" },
       { path: "/fe-engineering", label: "前端工程化", icon: "⚙️" },
       { path: "/fe-interview", label: "前端面试", icon: "🎯" },
@@ -186,6 +199,9 @@ const BOOK_CATEGORIES = [
       { path: "/deploy", label: "部署与运维", icon: "🚀" },
       { path: "/go", label: "Go 语言", icon: "🐹" },
       { path: "/csharp", label: "C#", icon: "🟪" },
+      { path: "/csharp2", label: "C# 从入门到精通大全", icon: "🟣" },
+      { path: "/csharp3", label: "C# 从入门到精通大全（终极版）", icon: "🟪" },
+      { path: "/csharp4", label: "C# 从入门到精通大全（全新版）", icon: "🟦" },
     ],
   },
   {
@@ -292,6 +308,10 @@ const BOOK_CATEGORIES = [
 const ALL_BOOKS = BOOK_CATEGORIES.flatMap((cat) =>
   cat.books.map((b) => ({ ...b, category: cat.name }))
 );
+
+// 性能优化：预先构建 path → book 的 Map，避免 visibleCategories 等处
+// 多次 ALL_BOOKS.find() 产生 O(n²) 时间复杂度。模块级单例，整个应用共享。
+const ALL_BOOKS_MAP = new Map(ALL_BOOKS.map((b) => [b.path, b]));
 
 const MIN_SIDEBAR_W = 200;
 const MAX_SIDEBAR_W = 480;
@@ -470,6 +490,9 @@ export default function Sidebar({
   const lastDragEndTimeRef = useRef(0);
   // 书籍拖拽悬停在分类标题上的 DOM（用于高亮提示可以放置）
   const bookDragOverTitleRef = useRef(null);
+  // 追踪 focus 定时器，组件卸载时清理防止内存泄漏
+  const bookSearchFocusTimerRef = useRef(null);
+  const chapterSearchFocusTimerRef = useRef(null);
 
   // 构建 bookPath → 默认分类名 的映射（用于归还书籍到默认分组）
   const bookDefaultCategory = useMemo(() => {
@@ -743,8 +766,10 @@ export default function Sidebar({
       if (unassigned[catName]) {
         orderedPaths = [...orderedPaths, ...unassigned[catName]];
       }
+      // 性能优化：使用 ALL_BOOKS_MAP 做 O(1) 查找，
+      // 之前 ALL_BOOKS.find() 是 O(n)，200+ 书籍会形成 O(n²)
       const rootBooks = orderedPaths
-        .map((p) => ALL_BOOKS.find((b) => b.path === p))
+        .map((p) => ALL_BOOKS_MAP.get(p))
         .filter(Boolean);
 
       // 获取该分类下的子分组
@@ -756,7 +781,7 @@ export default function Sidebar({
           key: sgKey,
           name: sg.name,
           books: sgPaths
-            .map((p) => ALL_BOOKS.find((b) => b.path === p))
+            .map((p) => ALL_BOOKS_MAP.get(p))
             .filter(Boolean),
         };
       });
@@ -1744,7 +1769,31 @@ export default function Sidebar({
   }, []);
 
   // 当前书籍信息
-  const currentBook = ALL_BOOKS.find((b) => b.path === currentPath) || ALL_BOOKS[0];
+  // 性能优化：使用 ALL_BOOKS_MAP O(1) 查找替代 ALL_BOOKS.find()，并用 useMemo
+  // 避免每帧重渲都执行查找。
+  const currentBook = useMemo(
+    () => ALL_BOOKS_MAP.get(currentPath) || ALL_BOOKS[0],
+    [currentPath]
+  );
+
+  // 性能优化：书籍网格渲染时需要把每本书的 path 映射到在 orderedPaths 中的下标，
+  // 之前每本书调用 indexOf 是 O(n)，整张网格是 O(n²)。这里用 useMemo 预构建
+  // 分类名 -> Map<path, index>，整体降到 O(n)。
+  const orderedPathsIndexMap = useMemo(() => {
+    const map = new Map();
+    const allCatNames = new Set([
+      ...visibleCategories.map((c) => c.name),
+      ...Object.keys(bookOrder),
+    ]);
+    allCatNames.forEach((catName) => {
+      const paths = getOrderedPaths(catName) || [];
+      const pathIndex = new Map();
+      paths.forEach((p, i) => pathIndex.set(p, i));
+      map.set(catName, pathIndex);
+    });
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookOrder, getOrderedPaths, visibleCategories]);
 
   // ===== 查找当前书籍所在的分类和子分组 =====
   // 返回 { categoryName, subGroupKey } ，subGroupKey 为 null 表示在根级
@@ -1811,9 +1860,17 @@ export default function Sidebar({
     // 关闭下拉框时清空书籍搜索
     if (!bookDropdownOpen) {
       setBookSearch("");
+      if (bookSearchFocusTimerRef.current) {
+        clearTimeout(bookSearchFocusTimerRef.current);
+        bookSearchFocusTimerRef.current = null;
+      }
     } else {
       // 打开下拉框时自动聚焦书籍搜索框
-      setTimeout(() => bookSearchRef.current?.focus(), 100);
+      if (bookSearchFocusTimerRef.current) clearTimeout(bookSearchFocusTimerRef.current);
+      bookSearchFocusTimerRef.current = setTimeout(() => {
+        bookSearchFocusTimerRef.current = null;
+        bookSearchRef.current?.focus();
+      }, 100);
     }
   }, [bookDropdownOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -2050,14 +2107,24 @@ export default function Sidebar({
       // 侧边栏收起时先展开
       if (collapsed) {
         setCollapsed(false);
-        setTimeout(() => chapterSearchRef.current?.focus(), 200);
+        if (chapterSearchFocusTimerRef.current) clearTimeout(chapterSearchFocusTimerRef.current);
+        chapterSearchFocusTimerRef.current = setTimeout(() => {
+          chapterSearchFocusTimerRef.current = null;
+          chapterSearchRef.current?.focus();
+        }, 200);
       } else {
         chapterSearchRef.current?.focus();
       }
       e.preventDefault();
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      if (chapterSearchFocusTimerRef.current) {
+        clearTimeout(chapterSearchFocusTimerRef.current);
+        chapterSearchFocusTimerRef.current = null;
+      }
+    };
   }, [collapsed]);
 
   // ===== URL Hash 同步 =====
@@ -2255,10 +2322,22 @@ export default function Sidebar({
     };
   }, []);
 
-  // 组件卸载时清理拖拽监听器
+  // 组件卸载时清理拖拽监听器和定时器
   useEffect(() => {
     return () => {
       if (resizeCleanupRef.current) resizeCleanupRef.current();
+      if (bookSearchFocusTimerRef.current) {
+        clearTimeout(bookSearchFocusTimerRef.current);
+        bookSearchFocusTimerRef.current = null;
+      }
+      if (chapterSearchFocusTimerRef.current) {
+        clearTimeout(chapterSearchFocusTimerRef.current);
+        chapterSearchFocusTimerRef.current = null;
+      }
+      if (dragExpandTimerRef.current) {
+        clearTimeout(dragExpandTimerRef.current);
+        dragExpandTimerRef.current = null;
+      }
     };
   }, []);
 
@@ -2283,14 +2362,21 @@ export default function Sidebar({
 
   // ===== 注册章节数据到浮动导航 store =====
   // 将扁平章节列表（按分组顺序展开，过滤已隐藏章节）和当前 activeId 注册到全局 store，
-  // 供右侧浮动的上一章/下一章按钮使用。组件卸载时清除。
+  // 供右侧浮动的上一章/下一章按钮使用。
+  // 修复：之前 cleanup 中调用 unregister() 会导致每次章节搜索（searchedGroupedChapters
+  // 变化）都触发"清空 → 重设"流程，浮动按钮在中间帧看到空列表而闪烁。
+  // 改为：setup 中直接 register() 覆盖，cleanup 仅在组件真正卸载时清空。
   useEffect(() => {
     const flatChapters = searchedGroupedChapters.flatMap((g) => g.items);
     chapterNavStore.register(flatChapters, activeId, handleSelect);
+  }, [searchedGroupedChapters, activeId, handleSelect]);
+
+  // 组件真正卸载时清空 store，防止切到非教程页后浮动按钮仍显示旧数据
+  useEffect(() => {
     return () => {
       chapterNavStore.unregister();
     };
-  }, [searchedGroupedChapters, activeId, handleSelect]);
+  }, []);
 
   // 处理跨页面跳转：当路径变化时，清除无效的 hash
   useEffect(() => {
@@ -2696,10 +2782,11 @@ export default function Sidebar({
                             onDrop={(e) => handleGridDrop(e, category.name)}
                           >
                             {category.books.map((book, idx) => {
-                              const orderedPaths = getOrderedPaths(category.name);
+                              // 性能优化：从 orderedPathsIndexMap O(1) 获取下标，
+                              // 避免之前 orderedPaths.indexOf(book.path) 的 O(n) 调用。
                               const realIdx = category.name === "已隐藏"
                                 ? idx
-                                : orderedPaths.indexOf(book.path);
+                                : orderedPathsIndexMap.get(category.name)?.get(book.path) ?? idx;
                               return (
                               <div
                                 key={book.path}

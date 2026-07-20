@@ -1586,7 +1586,7 @@ Python 的 \`key=lambda\` 比 Java 的 \`Comparator.comparing\` 简洁，特别�
 | Tuple | tuple（原生） | Record（具名） |
 | 推导式 | 列表/字典/集合推导式 | Stream API |
 | 排序 | \`sorted(key=)\` | \`Comparator.comparing()\` |
-| 集合运算 | \`| & - ^\` | addAll/retainAll/removeAll |
+| 集合运算 \| \`| & - ^\` | addAll/retainAll/removeAll |
 
 Python 的集合"简洁而统一"，字面量+推导式让数据处理如丝般顺滑；Java 的集合"严谨而分层"，泛型+不可变+Stream 让大型工程更安全。**简洁 vs 严谨，依然是永恒的权衡**。
 

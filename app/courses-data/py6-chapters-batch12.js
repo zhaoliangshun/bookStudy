@@ -114,7 +114,7 @@ issubclass(MyList, Sequence)  # True
 | \`Sized\` | \`__len__\` | — |
 | \`Sequence\` | \`__getitem__\` + \`__len__\` | \`__contains__\` / \`index\` / \`count\` / \`__reversed__\` |
 | \`Mapping\` | \`__getitem__\` + \`__len__\` + \`__iter__\` | \`keys\` / \`values\` / \`items\` / \`get\` |
-| \`Set\` / \`MutableSet\` | 抽象集合操作 | \`&\` / \`|\` / \`-\` / \`^\` |
+| \`Set\` / \`MutableSet\` \| 抽象集合操作 | \`&\` / \`|\` / \`-\` / \`^\` |
 
 实现 ABC 后，会自动获得 ABC 提供的"mixin 方法"，避免重复造轮子。
 

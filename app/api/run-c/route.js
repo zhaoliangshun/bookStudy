@@ -33,13 +33,14 @@ import { tmpdir } from "os";
 // 增强的 PATH：合并进程 PATH 与常见编译器安装目录。
 // 原因：dev server 启动时固化了 process.env.PATH，若编译器在
 // 启动后才安装，spawn 会 ENOENT。这里补上常见安装路径。
+// extra 在前，process.env.PATH 在后，确保编译器路径优先匹配
 let _enhancedPath = null;
 function getEnhancedPath() {
   if (_enhancedPath !== null) return _enhancedPath;
   const extra = process.platform === "win32"
     ? ["C:\\ProgramData\\mingw64\\mingw64\\bin", "C:\\msys64\\mingw64\\bin", "C:\\mingw64\\bin"]
     : ["/usr/local/bin", "/opt/homebrew/bin"];
-  _enhancedPath = [process.env.PATH, ...extra.filter(existsSync)].join(delimiter);
+  _enhancedPath = [...extra.filter(existsSync), process.env.PATH].join(delimiter);
   return _enhancedPath;
 }
 
@@ -109,6 +110,21 @@ function runCommand(cmd, args, opts, timeout) {
     let stderrBuf = "";
     let truncated = false;
     let killed = false;
+    // 修复：用 resolved 标记防止多次 resolve
+    let resolved = false;
+    const safeResolve = (value) => {
+      if (resolved) return;
+      resolved = true;
+      resolve(value);
+    };
+    // 统一清理 timer：避免定时器长时间持有子进程引用造成内存泄漏
+    let timer = null;
+    const clearTimer = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
 
     child.stdout.on("data", (chunk) => {
       const text = chunk.toString("utf8");
@@ -131,10 +147,9 @@ function runCommand(cmd, args, opts, timeout) {
     });
 
     child.on("error", (err) => {
-      // error 事件触发后 close 可能不再触发，需在此清除超时定时器，
-      // 避免定时器继续持有子进程引用造成内存泄漏
-      clearTimeout(timer);
-      resolve({
+      // error 事件触发后 close 可能不再触发，需在此清除超时定时器
+      clearTimer();
+      safeResolve({
         output: "",
         error: `无法启动 ${cmd}：${err.message}`,
         exitCode: -1,
@@ -142,8 +157,10 @@ function runCommand(cmd, args, opts, timeout) {
     });
 
     child.on("close", (code, signal) => {
+      clearTimer();
+      if (resolved) return;
       if (killed) {
-        resolve({
+        safeResolve({
           output: stdoutBuf,
           error: stderrBuf + `\n[执行超时] 超过 ${timeout / 1000} 秒被强制终止。`,
           exitCode: -1,
@@ -157,10 +174,10 @@ function runCommand(cmd, args, opts, timeout) {
         else stderrBuf += note;
       }
 
-      resolve({ output: stdoutBuf, error: stderrBuf, exitCode: code });
+      safeResolve({ output: stdoutBuf, error: stderrBuf, exitCode: code });
     });
 
-    const timer = setTimeout(() => {
+    timer = setTimeout(() => {
       killed = true;
       try {
         child.kill("SIGKILL");
@@ -168,8 +185,6 @@ function runCommand(cmd, args, opts, timeout) {
         // ignore
       }
     }, timeout);
-
-    child.on("close", () => clearTimeout(timer));
   });
 }
 
@@ -197,6 +212,16 @@ async function runCCode(code) {
 
     const env = {
       PATH: getEnhancedPath(),
+      TEMP: process.env.TEMP,
+      TMP: process.env.TMP,
+      HOME: process.env.HOME,
+      USERPROFILE: process.env.USERPROFILE,
+      APPDATA: process.env.APPDATA,
+      LOCALAPPDATA: process.env.LOCALAPPDATA,
+      ProgramFiles: process.env.ProgramFiles || "C:\\Program Files",
+      "ProgramFiles(x86)": process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)",
+      ProgramW6432: process.env.ProgramW6432 || "C:\\Program Files",
+      SystemRoot: process.env.SystemRoot || "C:\\Windows",
       LANG: "en_US.UTF-8",
       LC_ALL: "en_US.UTF-8",
     };
@@ -300,19 +325,55 @@ export async function GET() {
   return new Promise((resolve) => {
     const child = spawn(compiler, ["--version"], {
       stdio: ["pipe", "pipe", "pipe"],
-      env: { PATH: getEnhancedPath() },
+      env: {
+        PATH: getEnhancedPath(),
+        TEMP: process.env.TEMP,
+        TMP: process.env.TMP,
+        USERPROFILE: process.env.USERPROFILE,
+        APPDATA: process.env.APPDATA,
+        LOCALAPPDATA: process.env.LOCALAPPDATA,
+        ProgramFiles: process.env.ProgramFiles || "C:\\Program Files",
+        "ProgramFiles(x86)": process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)",
+        ProgramW6432: process.env.ProgramW6432 || "C:\\Program Files",
+        SystemRoot: process.env.SystemRoot || "C:\\Windows",
+        LANG: "en_US.UTF-8",
+        LC_ALL: "en_US.UTF-8",
+      },
     });
     let version = "";
-    child.stdout.on("data", (c) => (version += c.toString()));
-    child.stderr.on("data", (c) => (version += c.toString()));
+    // 修复：用 resolved 标记防止多次 resolve
+    let resolved = false;
+    const safeResolve = (value) => {
+      if (resolved) return;
+      resolved = true;
+      resolve(value);
+    };
+    let timer = null;
+    const clearTimer = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+    const onData = (c) => (version += c.toString());
+    child.stdout.on("data", onData);
+    child.stderr.on("data", onData);
     // 健康检查超时保护：5 秒未响应视为不可用
-    const timer = setTimeout(() => {
+    timer = setTimeout(() => {
+      clearTimer();
+      child.stdout.removeListener("data", onData);
+      child.stderr.removeListener("data", onData);
       child.kill("SIGKILL");
-      resolve(NextResponse.json({ status: "timeout", error: "版本检查超时" }, { status: 504 }));
+      safeResolve(
+        NextResponse.json({ status: "timeout", error: "版本检查超时" }, { status: 504 })
+      );
     }, 5000);
     child.on("close", () => {
-      clearTimeout(timer);
-      resolve(
+      clearTimer();
+      child.stdout.removeListener("data", onData);
+      child.stderr.removeListener("data", onData);
+      if (resolved) return;
+      safeResolve(
         NextResponse.json({
           status: "ok",
           message: "C 代码执行服务正在运行",
@@ -321,8 +382,11 @@ export async function GET() {
       );
     });
     child.on("error", () => {
-      clearTimeout(timer);
-      resolve(
+      clearTimer();
+      child.stdout.removeListener("data", onData);
+      child.stderr.removeListener("data", onData);
+      if (resolved) return;
+      safeResolve(
         NextResponse.json({
           status: "error",
           message: `未找到 ${PREFERRED_CC} / ${FALLBACK_CC}，请先安装 C 编译器`,

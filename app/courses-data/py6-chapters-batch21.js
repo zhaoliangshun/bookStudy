@@ -253,7 +253,7 @@ def _(data): return [process(x) for x in data]
 | 描述符 | 属性访问时 | 中 | ORM 字段、验证 |
 | 元类 | 类创建时 | 高 | 框架、DSL、API 自动化 |
 | \`__init_subclass__\` | 子类创建时 | 低 | 现代元类替代 |
-| AST 改写 | 编译期 | 极高 | Cython、pydantic v2 |`,
+| AST 改写 \| 编译期 | 极高 | Cython、pydantic v2 |`,
     code: `# 装饰器深度剖析演示
 import functools
 import dis

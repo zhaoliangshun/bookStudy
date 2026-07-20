@@ -372,7 +372,7 @@ HMACSHA256(
 | \`iat\` | 签发时间 |
 | \`nbf\` | 生效时间（在此之前无效） |
 | \`iss\` | 签发者 |
-| \`aud\` | 接收方 |`,
+| \`aud\` \| 接收方 |`,
     code: `# JWT 结构详解 —— 手动拆解一个 JWT
 # 演示 JWT 的三部分结构和 Base64 编码
 # JWT 由 Header.Payload.Signature 三部分组成，用 . 分隔
@@ -543,7 +543,7 @@ except JWTError:
 | 算法 | 密钥 | 场景 |
 |---|---|---|
 | HS256 | 对称密钥（双方共享） | 单体应用 |
-| RS256 | 公钥/私钥（私钥签名，公钥验签） | 微服务、第三方验证 |`,
+| RS256 \| 公钥/私钥（私钥签名，公钥验签） | 微服务、第三方验证 |`,
     code: `# python-jose 实战 —— 生成与校验 JWT
 # 注意：完整运行需安装 python-jose：pip install "python-jose[cryptography]"
 # 如果未安装，本脚本会自动回退到内置的 HMAC-SHA256 简化实现，保证可运行

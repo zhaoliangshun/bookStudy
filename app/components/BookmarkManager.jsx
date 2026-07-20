@@ -1,13 +1,13 @@
 "use client";
 
 // =============================================================
-// 书签管理器（右上角固定按钮）
+// 书签管理器（右侧浮动按钮组中的一员）
 // -------------------------------------------------------------
-// 圆形按钮固定在视口右上角，点击向下展开书签列表面板。
+// 圆形按钮位于右侧浮动按钮组的最上方，点击向左展开书签列表面板。
 // 面板内有「添加当前页」按钮，点击将当前页面 URL 加入书签。
 // 下方列表展示最近 20 条书签，点击可跳转，每条可单独删除。
 // 数据存储在 localStorage，key 为 "bookmarks"。
-// 面板右对齐按钮，向下展开，按 Esc 或点击外部关闭。
+// 面板向左弹出（与阅读主题/设置面板方向一致），按 Esc 或点击外部关闭。
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -343,7 +343,6 @@ export default function BookmarkManager() {
 
       {open && (
         <>
-          <div className="bookmark-corner-arrow" />
           <div className="bookmark-corner-panel">
             <div className="bookmark-corner-header">
               <span className="bookmark-corner-title">书签</span>

@@ -1571,9 +1571,9 @@ def set_mode(mode: Literal["read", "write", "append"]) -> None: ...
 | 概念 | TypeScript | Python |
 |------|-----------|--------|
 | 对象形状 | interface / type | TypedDict / dataclass |
-| 联合类型 | \`A \\| B\` | \`Union[A, B]\` / \`A \\| B\`（3.10+） |
-| 可选属性 | \`prop?: T\` | \`Optional[T]\` / \`T \\| None\` |
-| 字面量类型 | \`"read" \\| "write"\` | \`Literal["read", "write"]\` |
+| 联合类型 | \`A | B\` | \`Union[A, B]\` / \`A | B\`（3.10+） |
+| 可选属性 | \`prop?: T\` | \`Optional[T]\` / \`T | None\` |
+| 字面量类型 | \`"read" | "write"\` | \`Literal["read", "write"]\` |
 | 枚举 | enum（编译成对象） | Enum（运行时类） |
 | 鸭子类型 | interface（结构匹配） | Protocol |
 | 只读 | \`readonly\` | \`Final\`（变量）/ dataclass \`frozen=True\` |
@@ -2002,7 +2002,7 @@ class Response:
 | 类型系统 | 结构类型 | 名义类型（+ Protocol 结构） |
 | 泛型语法 | \`<T>\` 内联 | TypeVar（3.12+ 改进） |
 | 类型推断 | 激进、控制流分析 | 保守、需显式标注 |
-| 联合类型 | \`A \\| B\` + 收窄 | \`Union[A, B]\` + isinstance |
+| 联合类型 | \`A | B\` + 收窄 | \`Union[A, B]\` + isinstance |
 | 交叉类型 | \`A & B\` | Protocol 多继承 |
 | 条件类型 | ✅ 强大 | ❌ |
 | 类型编程 | 类型体操 | 有限 |

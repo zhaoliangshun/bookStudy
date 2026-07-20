@@ -122,7 +122,7 @@ Redis 会根据集合的内容和规模，自动在两种编码间切换：
 | count | 行为 | 适用场景 |
 | --- | --- | --- |
 | 正数 | 返回最多 count 个，**可能重复** | 允许重复的抽样 |
-| 负数 | 返回 \|count\| 个，**绝不重复** | 不重复抽奖 |
+| 负数 \| 返回 \\|count\| 个，**绝不重复** | 不重复抽奖 |
 | 0 | 返回空数组 | —— |
 | 不传 | 返回 1 个字符串（非数组） | 随机取一个 |
 
@@ -1876,8 +1876,8 @@ GEOSEARCH 用 FROMMEMBER/FROMLONLAT 指定中心，BYRADIUS/BYBOX 指定范围�
 | --- | --- |
 | \`FROMMEMBER m\` | 以成员 m 为中心 |
 | \`FROMLONLAT lon lat\` | 以经纬度为中心 |
-| \`BYRADIUS r m\|km\|...\` | 圆形范围 |
-| \`BYBOX w h m\|km\|...\` | 矩形范围（宽高） |
+| \`BYRADIUS r m\|km\|...\` \| 圆形范围 |
+| \`BYBOX w h m\|km\|...\` \| 矩形范围（宽高） |
 | \`WITHDIST\` | 返回距离 |
 | \`WITHCOORD\` | 返回经纬度 |
 | \`WITHHASH\` | 返回 GeoHash 整数 |

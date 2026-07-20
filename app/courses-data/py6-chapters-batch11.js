@@ -1717,7 +1717,7 @@ table[空] table[空] table['apple'] table[空] table['banana'] ...
 |------|--------|------|-----------|
 | 成员判断 | \`x in s\` | \`__contains__\` | O(1) 平均 |
 | 交集 | \`s & t\` | \`s.intersection(t)\` | O(min(len(s), len(t))) |
-| 并集 | \`s | t\` | \`s.union(t)\` | O(len(s) + len(t)) |
+| 并集 \| \`s | t\` | \`s.union(t)\` | O(len(s) + len(t)) |
 | 差集 | \`s - t\` | \`s.difference(t)\` | O(len(s)) |
 | 对称差 | \`s ^ t\` | \`s.symmetric_difference(t)\` | O(len(s) + len(t)) |
 | 子集判断 | \`s <= t\` | \`s.issubset(t)\` | O(len(s)) |

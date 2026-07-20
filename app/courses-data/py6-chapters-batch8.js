@@ -41,7 +41,7 @@ datetime是Python处理日期时间的标准库，提供date、time、datetime�
 | %B | 月份全名 | January |
 | %j | 一年中第几天 | 001-366 |
 | %x | 本地日期格式 | |
-| %X | 本地时间格式 | |`,
+| %X \| 本地时间格式 | |`,
     code: `from datetime import date, time, datetime, timedelta, timezone
 
 print("=" * 50)
@@ -494,8 +494,8 @@ for m in [1, 6, 10]:
 | \`[abc]\` | 字符类：匹配a/b/c中任意一个 |
 | \`[^abc]\` | 不在a/b/c中 |
 | \`[a-z]\` | 字符范围：a到z |
-| \`\\|\` | 或（分支） |
-| \`(...)\` | 分组捕获 |`,
+| \`|\` | 或（分支） |
+| \`(...)\` \| 分组捕获 |`,
     code: `import re
 
 # ========== 1. match vs search vs findall ==========
@@ -1039,7 +1039,7 @@ itertools提供了一系列高效的迭代器工具，用于处理迭代器/生�
 |------|------|
 | \`groupby(iter, key=None)\` | 按键分组 |
 | \`tee(iter, n=2)\` | 复制n个迭代器 |
-| \`accumulate(iter, func)\` | 累积计算 |`,
+| \`accumulate(iter, func)\` \| 累积计算 |`,
     code: `import itertools
 import operator
 

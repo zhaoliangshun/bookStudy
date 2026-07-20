@@ -654,7 +654,7 @@ db.students.find({}, { scores: { \$slice: [-2, 2] } });
 
 | 写法 | 含义 |
 | --- | --- |
-| \`{ field: { \$slice: n } }\` | n>0 取前 n 个，n<0 取后 \|n\| 个 |
+| \`{ field: { \$slice: n } }\` \| n>0 取前 n 个，n<0 取后 \\|n\| 个 |
 | \`{ field: { \$slice: [skip, limit] } }\` | 跳过 skip 个，取 limit 个 |
 
 > **心法**：\`\$slice\` 是**唯一能和包含/排除混用**的投影操作符。例如 \`{ scores: { \$slice: 2 }, name: 1 }\` 合法。\`\$slice\` 适合"只看评论的前 5 条"这种场景。

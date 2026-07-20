@@ -15,7 +15,15 @@
 //   - module: CommonJS  让转译产物用 require/module.exports，与沙箱注入的
 //                require 保持一致
 //   - experimentalDecorators + emitDecoratorMetadata: 支持装饰器章节
-//   - jsx: preserve  本教程不涉及 JSX，但保留默认不影响
+//   - jsx: ReactJSX  关键：把 JSX 转换为 react/jsx-runtime 的 _jsx 调用，
+//                否则 TypeScript 会保留 JSX 原样，Node 沙箱遇到 <div> 报
+//                "Unexpected token '<'" 语法错误。
+//                ReactJSX 模式不依赖 React 全局变量（classic 才需要），
+//                转译产物通过 require("react/jsx-runtime") 加载 _jsx。
+//   - fileName 必须用 .tsx 后缀：TypeScript 编译器根据文件后缀判断
+//                是否启用 JSX 语法解析。.ts 后缀不解析 JSX，即使配置了
+//                jsx: ReactJSX 也会报 "Unterminated regular expression"。
+//                纯 TS 代码（无 JSX）在 .tsx 后缀下也能正常工作。
 // =============================================================
 
 import { NextResponse } from "next/server";
@@ -39,6 +47,10 @@ const TS_COMPILER_OPTIONS = {
   isolatedModules: true,
   // 不做类型检查（教程侧重运行结果，类型错误由编辑器/IDE 提示）
   noEmitOnError: false,
+  // 关键：启用 JSX 转换。tsx 教程的代码示例包含 JSX 语法，
+  // 不配置此项会保留 JSX 原样，Node 沙箱无法执行。
+  // ReactJSX 模式把 <Comp /> 转成 require("react/jsx-runtime")._jsx(...)
+  jsx: ts.JsxEmit.ReactJSX,
   // reportDiagnostics 在 transpileModule 调用处显式指定，这里不重复设置
 };
 
@@ -55,9 +67,12 @@ function transpileTypeScript(tsCode) {
 
   // ts.transpileModule 是单文件转译的快捷方式，不会做跨文件类型检查，
   // 速度快、适合在线运行场景。
+  // fileName 必须用 .tsx 后缀：TypeScript 编译器根据文件后缀判断是否启用
+  // JSX 语法解析。.ts 后缀遇到 JSX 会报 "Unterminated regular expression literal"
+  // 等语法错误。纯 TS 代码（无 JSX）在 .tsx 后缀下也能正常工作。
   const output = ts.transpileModule(tsCode, {
     compilerOptions: TS_COMPILER_OPTIONS,
-    fileName: "user-code.ts",
+    fileName: "user-code.tsx",
     reportDiagnostics: true,
   });
 

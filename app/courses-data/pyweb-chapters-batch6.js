@@ -121,7 +121,7 @@ Django 提供几十种字段类型,常用如下:
 | \`SmallIntegerField\` | SMALLINT | 小整数(-32768~32767) |
 | \`PositiveIntegerField\` | INT UNSIGNED | 正整数 |
 | \`FloatField\` | FLOAT | 浮点数 |
-| \`DecimalField\` | DECIMAL | 定点数(金额等) | \`max_digits\` \`decimal_places\` |
+| \`DecimalField\` \| DECIMAL | 定点数(金额等) | \`max_digits\` \`decimal_places\` |
 
 \`\`\`python
 # 定义类 Product，继承 models.Model

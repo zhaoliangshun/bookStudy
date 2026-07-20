@@ -1226,16 +1226,16 @@ def user_page(user_id):
 
 | 过滤器 | 作用 | 示例 |
 |---|---|---|
-| \`upper\` / \`lower\` | 大小写转换 | \`{{ name | upper }}\` |
-| \`capitalize\` | 首字母大写 | \`{{ name | capitalize }}\` |
-| \`trim\` | 去首尾空格 | \`{{ name | trim }}\` |
-| \`length\` | 长度 | \`{{ list | length }}\` |
-| \`default\` | 默认值 | \`{{ name | default("匿名") }}\` |
-| \`join\` | 拼接 | \`{{ tags | join(", ") }}\` |
-| \`replace\` | 替换 | \`{{ text | replace("a", "b") }}\` |
-| \`round\` | 四舍五入 | \`{{ price | round(2) }}\` |
-| \`safe\` | 不转义 | \`{{ html | safe }}\` |
-| \`truncate\` | 截断 | \`{{ text | truncate(100) }}\` |
+| \`upper\` / \`lower\` \| 大小写转换 | \`{{ name | upper }}\` |
+| \`capitalize\` \| 首字母大写 | \`{{ name | capitalize }}\` |
+| \`trim\` \| 去首尾空格 | \`{{ name | trim }}\` |
+| \`length\` \| 长度 | \`{{ list | length }}\` |
+| \`default\` \| 默认值 | \`{{ name | default("匿名") }}\` |
+| \`join\` \| 拼接 | \`{{ tags | join(", ") }}\` |
+| \`replace\` \| 替换 | \`{{ text | replace("a", "b") }}\` |
+| \`round\` \| 四舍五入 | \`{{ price | round(2) }}\` |
+| \`safe\` \| 不转义 | \`{{ html | safe }}\` |
+| \`truncate\` \| 截断 | \`{{ text | truncate(100) }}\` |
 
 ## 七、模板继承
 

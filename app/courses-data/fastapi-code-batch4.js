@@ -282,7 +282,7 @@ def read_me(current_user: dict = Depends(get_current_user)):
 | 生成 token | jwt.encode(data, key, algorithm) |
 | 验证 token | jwt.decode(token, key, algorithms) |
 | 认证依赖 | OAuth2PasswordBearer + Depends |
-| 保护路由 | Depends(get_current_user) |`
+| 保护路由 \| Depends(get_current_user) |`
   },
 
   {
@@ -531,7 +531,7 @@ def stream_file(filename: str):
 | 图片处理 | Pillow (PIL) |
 | 静态文件 | StaticFiles app.mount |
 | 类型校验 | content_type 检查 |
-| 大文件流式 | StreamingResponse + 生成器 |`
+| 大文件流式 \| StreamingResponse + 生成器 |`
   },
 
   {
@@ -762,7 +762,7 @@ def register_celery(username: str, email: str):
 | 方式 | 适用场景 | 特点 |
 |------|---------|------|
 | BackgroundTasks | 轻量级后台操作 | 简单，无需额外服务 |
-| Celery | 重量级异步任务 | 持久化、重试、定时、监控 |`
+| Celery \| 重量级异步任务 | 持久化、重试、定时、监控 |`
   },
 
   {
@@ -988,6 +988,6 @@ DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 | 部署 | uvicorn（开发）/ gunicorn（生产） |
 | 配置 | 环境变量管理敏感信息 |
 | 项目结构 | 按功能拆分模块 |
-| Docker | 容器化部署，环境一致 |`
+| Docker \| 容器化部署，环境一致 |`
   },
 ];

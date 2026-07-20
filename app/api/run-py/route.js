@@ -28,9 +28,57 @@
 
 import { NextResponse } from "next/server";
 import { spawn, spawnSync } from "child_process";
-import { writeFileSync, unlinkSync, mkdirSync, rmSync } from "fs";
+import { writeFileSync, unlinkSync, mkdirSync, rmSync, existsSync } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { join, delimiter } from "path";
+
+// 增强的 PATH：合并进程 PATH 与 Python 常见安装目录，解决 dev server PATH 过期问题
+// extra 在前，process.env.PATH 在后，确保指定 Python 安装路径优先于系统 PATH 中可能残留的旧版本
+let _enhancedPath = null;
+function getEnhancedPath() {
+  if (_enhancedPath !== null) return _enhancedPath;
+  const extra = process.platform === "win32"
+    ? [
+        // D:\dev\python312 是项目已知 Python 3.12 安装路径，必须最优先
+        "D:\\dev\\python312",
+        "D:\\dev\\python312\\Scripts",
+        "C:\\Python312",
+        "C:\\Python311",
+        "C:\\Python310",
+      ]
+    : [
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        "/usr/bin",
+      ];
+  _enhancedPath = [...extra.filter(existsSync), process.env.PATH].join(delimiter);
+  return _enhancedPath;
+}
+
+/**
+ * 构建 Python 子进程所需的完整环境变量。
+ * Windows 下 Python 部分扩展模块/工具会读取 USERPROFILE/APPDATA 等
+ * 特殊文件夹，缺失会导致功能异常，因此统一传递 Windows 必需变量。
+ */
+function buildPythonEnv() {
+  return {
+    PATH: getEnhancedPath(),
+    TEMP: process.env.TEMP,
+    TMP: process.env.TMP,
+    HOME: process.env.HOME,
+    USERPROFILE: process.env.USERPROFILE,
+    APPDATA: process.env.APPDATA,
+    LOCALAPPDATA: process.env.LOCALAPPDATA,
+    ProgramFiles: process.env.ProgramFiles || "C:\\Program Files",
+    "ProgramFiles(x86)": process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)",
+    ProgramW6432: process.env.ProgramW6432 || "C:\\Program Files",
+    SystemRoot: process.env.SystemRoot || "C:\\Windows",
+    PYTHONIOENCODING: "utf-8",
+    PYTHONUTF8: "1",
+    LANG: "en_US.UTF-8",
+    LC_ALL: "en_US.UTF-8",
+  };
+}
 
 // 执行超时（毫秒）。Python 教程的 demo 都很短，10 秒足够；
 // 死循环 / input() 阻塞等会被超时强制终止。
@@ -45,13 +93,7 @@ const MAX_CODE_LENGTH = 50000;
 let _pythonBin = null;
 
 function getPythonEnv() {
-  return {
-    PATH: process.env.PATH,
-    PYTHONIOENCODING: "utf-8",
-    PYTHONUTF8: "1",
-    LANG: "en_US.UTF-8",
-    LC_ALL: "en_US.UTF-8",
-  };
+  return buildPythonEnv();
 }
 
 // Python 可执行路径。按优先级尝试：python3.13 -> python3 -> python（Windows上用python）。
@@ -61,7 +103,7 @@ function getPythonBin() {
   const candidates = process.platform === "win32"
     ? ["python", "python3", "py"]
     : ["python3.13", "python3", "python"];
-  const env = { PATH: process.env.PATH };
+  const env = { PATH: getEnhancedPath() };
   for (const bin of candidates) {
     try {
       const r = spawnSync(bin, ["--version"], { stdio: "ignore", timeout: 3000, env });
@@ -140,10 +182,20 @@ function runPythonCode(code) {
       }
     });
 
-    // 清理临时文件
+    // 清理临时文件（保证只执行一次）
+    let cleaned = false;
     const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
       try { unlinkSync(tmpFile); } catch { /* ignore */ }
       try { rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ }
+    };
+    // 标记是否已 resolve，防止 error/close 重复触发导致多次 resolve
+    let resolved = false;
+    const safeResolve = (value) => {
+      if (resolved) return;
+      resolved = true;
+      resolve(value);
     };
 
     // 子进程出错（例如 python3 不存在）
@@ -152,7 +204,7 @@ function runPythonCode(code) {
       // 避免定时器继续持有子进程引用造成内存泄漏
       clearTimeout(timer);
       cleanup();
-      resolve({
+      safeResolve({
         output: "",
         error:
           `无法启动 ${pythonBin}：${err.message}\n` +
@@ -164,14 +216,16 @@ function runPythonCode(code) {
 
     // 子进程退出
     child.on("close", (code, signal) => {
+      clearTimeout(timer);
       cleanup();
+      if (resolved) return;
       // 将累积的 Buffer chunks 一次性解码为 UTF-8 字符串
       const stdoutBuf = Buffer.concat(stdoutChunks).toString("utf8");
       const stderrBuf = Buffer.concat(stderrChunks).toString("utf8");
 
       if (killed) {
         // 被超时强制终止
-        resolve({
+        safeResolve({
           output: stdoutBuf,
           error:
             stderrBuf +
@@ -191,7 +245,7 @@ function runPythonCode(code) {
         else error += note;
       }
 
-      resolve({ output, error, exitCode: code });
+      safeResolve({ output, error, exitCode: code });
     });
 
     // 超时处理：到时间还没退出就 kill
@@ -205,9 +259,6 @@ function runPythonCode(code) {
         // ignore
       }
     }, EXEC_TIMEOUT_MS);
-
-    // 子进程退出后清除定时器，避免内存泄漏
-    child.on("close", () => clearTimeout(timer));
   });
 }
 
@@ -247,7 +298,15 @@ export async function POST(request) {
   }
 
   // 调用子进程执行
-  const result = await runPythonCode(code);
+  let result;
+  try {
+    result = await runPythonCode(code);
+  } catch (err) {
+    return NextResponse.json(
+      { output: "", error: `服务内部错误：${err.message || String(err)}` },
+      { status: 500 }
+    );
+  }
 
   let output = result.output || "";
   let error = result.error || "";
@@ -272,20 +331,36 @@ export async function POST(request) {
 export async function GET() {
   const pythonBin = getPythonBin();
   return new Promise((resolve) => {
+    // 修复：用 resolved 标记防止多次调用 resolve
+    // 修复：所有 listener 在 close/error/timeout 后统一通过 cleanup() 移除
+    // 避免长时运行的 dev server 因残留 listener 累积导致内存泄露
+    let resolved = false;
     const child = spawn(pythonBin, ["--version"], {
       stdio: ["pipe", "pipe", "pipe"],
-      env: { PATH: process.env.PATH },
+      env: buildPythonEnv(),
     });
     let version = "";
-    child.stdout.on("data", (c) => (version += c.toString()));
-    child.stderr.on("data", (c) => (version += c.toString()));
+    const onData = (c) => (version += c.toString());
+    child.stdout.on("data", onData);
+    child.stderr.on("data", onData);
+    const cleanup = () => {
+      if (resolved) return;
+      // 清掉 timer 和 listeners，防止残留
+      clearTimeout(timer);
+      child.stdout.removeListener("data", onData);
+      child.stderr.removeListener("data", onData);
+    };
     // 健康检查超时保护：5 秒未响应视为不可用
     const timer = setTimeout(() => {
+      cleanup();
       child.kill("SIGKILL");
+      resolved = true;
       resolve(NextResponse.json({ status: "timeout", error: "版本检查超时" }, { status: 504 }));
     }, 5000);
     child.on("close", () => {
-      clearTimeout(timer);
+      cleanup();
+      if (resolved) return;
+      resolved = true;
       resolve(
         NextResponse.json({
           status: "ok",
@@ -296,7 +371,9 @@ export async function GET() {
       );
     });
     child.on("error", () => {
-      clearTimeout(timer);
+      cleanup();
+      if (resolved) return;
+      resolved = true;
       resolve(
         NextResponse.json({
           status: "error",

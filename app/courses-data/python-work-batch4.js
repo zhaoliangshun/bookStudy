@@ -766,7 +766,7 @@ finally:
 | ValueError | 值错误（int("abc")）|
 | KeyError | 字典key不存在 |
 | IndexError | 列表越界 |
-| json.JSONDecodeError | JSON解析失败 |`,
+| json.JSONDecodeError \| JSON解析失败 |`,
     code: `#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """

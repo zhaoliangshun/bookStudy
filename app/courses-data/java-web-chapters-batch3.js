@@ -127,7 +127,7 @@ JSP 本质是"用 HTML 写法简化 Servlet",但它把 Java 与 HTML 揉在一�
 | declaration 成员变量并发错乱 | 单例多线程共享 | 避免用成员变量存状态,用局部变量 |
 | scriptlet 过多难维护 | Java 与 HTML 混杂 | 用 JSTL/EL 替代控制流 |
 | 第一次访问慢 | 需翻译编译 | 预编译或在启动时触发首次访问 |
-| 500 错误看不到堆栈 | 编译错误被吞 | 看 work/ 下生成的 .java 或 Tomcat logs |`,
+| 500 错误看不到堆栈 \| 编译错误被吞 | 看 work/ 下生成的 .java 或 Tomcat logs |`,
   },
 
   // =========================================================
@@ -237,7 +237,7 @@ JSP 翻译成 Servlet 后,容器在 \`_jspService()\` 方法内**预定义了九
 | out 与 getWriter 混用 | 两个输出流冲突 | JSP 中只用 out |
 | session 关闭后还访问 | 已 invalidate | 处理前判 \`request.getSession(false) != null\` |
 | 作用域过大 | 用 session/application 存临时数据 | 临时数据用 request 或 page |
-| 属性名冲突 | 不同作用域同名属性 | 命名加前缀区分,或按域取 |`,
+| 属性名冲突 \| 不同作用域同名属性 | 命名加前缀区分,或按域取 |`,
   },
 
   // =========================================================
@@ -356,7 +356,7 @@ JSP 用 EL 渲染(\`users.jsp\`):
 | 属性输出 null 字样 | scriptlet 没判空 | 改用 EL,自动转空串 |
 | 找不到属性 | 作用域名拼错或未存 | 检查 Servlet 是否 setAttribute |
 | EL 调不到方法 | EL 的 name 对应 getName 而非字段 | 确保有标准 getter |
-| JS 模板里 EL 冲突 | EL 的美元符加大括号被当 JS 插值 | 在 JS 模板字符串中需转义美元符 |`,
+| JS 模板里 EL 冲突 \| EL 的美元符加大括号被当 JS 插值 | 在 JS 模板字符串中需转义美元符 |`,
   },
 
   // =========================================================
@@ -472,6 +472,6 @@ JSTL 配合 EL 形成"标签做控制流、EL 做数据访问"的分工,页面�
 | 标签不输出 | EL 被禁用 | page 指令 \`isELIgnored="false"\` |
 | 日期格式化失败 | value 不是 Date 类型 | 确保传 java.util.Date 对象 |
 | 两个 JSTL 版本冲突 | 引了多个 jstl jar | 只留一个,jakarta 版本对应 Tomcat 10+ |
-| c:url 路径不对 | value 漏了开头的 / | value 以 / 开头表示绝对路径 |`,
+| c:url 路径不对 \| value 漏了开头的 / | value 以 / 开头表示绝对路径 |`,
   },
 ];

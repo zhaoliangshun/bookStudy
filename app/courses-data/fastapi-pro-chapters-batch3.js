@@ -98,7 +98,7 @@ v2 改了大量 API，以下是高频出现的几个：
 | 从字典创建 | \`Model.parse_obj(d)\` | \`Model.model_validate(d)\` |
 | 从 JSON 创建 | \`Model.parse_raw(s)\` | \`Model.model_validate_json(s)\` |
 | 配置类 | \`class Config:\` 内部类 | \`model_config = ConfigDict(...)\` |
-| 字段类型 | \`Optional[str] = None\` | \`str | None = None\`（推荐新语法）|
+| 字段类型 \| \`Optional[str] = None\` | \`str | None = None\`（推荐新语法）|
 
 v2 还把很多以前需要写校验器才能做的事，变成了 Field 的内置参数。比如 \`Field(pattern=r"...")\` 直接做正则校验，不用再写 validator。
 

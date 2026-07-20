@@ -22,7 +22,7 @@ export const chapters = [
 
 | 方法 | 返回 | 说明 |
 | --- | --- | --- |
-| \`getTokens(options?)\` | \`Promise<OAuth2Tokens\|void>\` | 获取 token（必要时走 authorize） |
+| \`getTokens(options?)\` \| \`Promise<OAuth2Tokens\|void>\` | 获取 token（必要时走 authorize） |
 | \`deleteTokens()\` | \`Promise<void>\` | 清除本地 token |
 
 ## getTokens 的 4 种用法
@@ -129,7 +129,7 @@ localStorage.setItem("access_token", tokens.accessToken);
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
 | \`forceRenew\` | boolean | 强制重新获取，即使本地有 token |
-| \`login\` | 'embedded' \| 'redirect' | 登录模式 |
+| \`login\` \| 'embedded' \| 'redirect' | 登录模式 |
 | \`skipBackgroundRequest\` | boolean | 跳过 iframe 静默续期 |
 | \`query\` | {code?, state?} | redirect 回跳后传 code/state |
 | \`serverConfig\` / \`clientId\` / \`tree\` 等 | ConfigOptions | 临时覆盖全局配置 |

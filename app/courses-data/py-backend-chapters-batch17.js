@@ -3103,7 +3103,7 @@ Instrumentator(
 | 平均延迟 | rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m]) |
 | CPU使用率 | 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) |
 | 内存使用率 | 100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) |
-| 磁盘使用率 | 100 - (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs"} / node_filesystem_size_bytes * 100) |
+| 磁盘使用率 \| 100 - (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs"} / node_filesystem_size_bytes * 100) |
 | Redis命中率 | rate(redis_keyspace_hits_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m])) |
 
 ### 3.2 常用函数

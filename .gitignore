@@ -51,3 +51,6 @@ get_errors.py
 test-pyprocess.js
 py_syntax_errors.json
 py_runtime_errors.json
+.dev
+.dev-dl
+.csharp-test

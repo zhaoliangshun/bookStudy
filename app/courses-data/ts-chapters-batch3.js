@@ -1180,9 +1180,9 @@ type R1 = MyExclude<"a" | "b" | "c", "a">;  // "b" | "c"
 
 | 情况 | 是否分发 | 示例 |
 | --- | --- | --- |
-| \`T extends U ? X : Y\`（T 是裸参数） | ✅ 分发 | \`ToArray<A \| B>\` → \`ToArray<A> \| ToArray<B>\` |
-| \`[T] extends [U] ? X : Y\`（T 被包裹） | ❌ 不分发 | \`ToArrayNonDist<A \| B>\` → \`(A \| B)[]\` |
-| \`T extends string ? X : Y\`（T 是裸参数，U 是具体类型） | ✅ 分发 | \`IsString<A \| B>\` → \`IsString<A> \| IsString<B>\` |
+| \`T extends U ? X : Y\`（T 是裸参数） \| ✅ 分发 \| \`ToArray<A \| B>\` → \`ToArray<A> \| ToArray<B>\` |
+| \`[T] extends [U] ? X : Y\`（T 被包裹） \| ❌ 不分发 \| \`ToArrayNonDist<A \| B>\` → \`(A \| B)[]\` |
+| \`T extends string ? X : Y\`（T 是裸参数，U 是具体类型） \| ✅ 分发 \| \`IsString<A \| B>\` → \`IsString<A> \| IsString<B>\` |
 
 ### infer 关键字
 
@@ -1586,10 +1586,10 @@ type Clone<T> = { [K in keyof T]: T[K] };  // 复制 T 的结构
 
 | 输入类型 | keyof 结果 |
 | --- | --- |
-| \`{ a: 1; b: 2 }\` | \`"a" \| "b"\` |
-| \`string[]\` | \`"length" \| "push" \| "pop" | ... \| number\` |
-| \`string\` | \`"length" \| "charAt" \| "slice" | ...\`（String 接口的所有方法） |
-| \`any\` | \`string \| number \| symbol\` |
+| \`{ a: 1; b: 2 }\` \| \`"a" \| "b"\` |
+| \`string[]\` \| \`"length" \| "push" \| "pop" | ... \| number\` |
+| \`string\` \| \`"length" \| "charAt" \| "slice" | ...\`（String 接口的所有方法） |
+| \`any\` \| \`string \| number \| symbol\` |
 | \`never\` | \`never\` |
 
 ### typeof 操作符（类型上下文）

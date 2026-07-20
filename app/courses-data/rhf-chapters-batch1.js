@@ -289,13 +289,13 @@ export default function LoginForm() {
 
 | 规则 | 类型 | 说明 | 示例 |
 |------|------|------|------|
-| \`required\` | boolean \| string | 是否必填 | \`required: "必填项"\` |
-| \`minLength\` | number \| object | 最小长度 | \`minLength: 2\` |
-| \`maxLength\` | number \| object | 最大长度 | \`maxLength: 20\` |
-| \`min\` | number \| object | 最小值（数字） | \`min: 18\` |
-| \`max\` | number \| object | 最大值（数字） | \`max: 100\` |
-| \`pattern\` | RegExp \| object | 正则匹配 | \`pattern: /^[A-Za-z]+$/\` |
-| \`validate\` | function | 自定义验证函数 | \`validate: v => v > 10 || "太小了"\` |
+| \`required\` \| boolean \| string | 是否必填 | \`required: "必填项"\` |
+| \`minLength\` \| number \| object | 最小长度 | \`minLength: 2\` |
+| \`maxLength\` \| number \| object | 最大长度 | \`maxLength: 20\` |
+| \`min\` \| number \| object | 最小值（数字） | \`min: 18\` |
+| \`max\` \| number \| object | 最大值（数字） | \`max: 100\` |
+| \`pattern\` \| RegExp \| object | 正则匹配 | \`pattern: /^[A-Za-z]+$/\` |
+| \`validate\` \| function \| 自定义验证函数 | \`validate: v => v > 10 || "太小了"\` |
 
 ---
 

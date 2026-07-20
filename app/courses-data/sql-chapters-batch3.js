@@ -810,7 +810,7 @@ SQL 内置函数是"加工列值"的工具箱。本章按"字符串 / 日期 / �
 | \`LTRIM\` / \`RTRIM\` | 去左/右 | - | - |
 | \`INSTR(s, sub)\` | 子串首次出现位置（1-based，找不到 0） | \`INSTR('hello','ll')\` | \`3\` |
 | \`PRINTF(fmt, ...)\` | 格式化（C 风格） | \`PRINTF('%05.2f', 3.1)\` | \`'03.10'\` |
-| \`||\` | 拼接（SQLite/PostgreSQL） | \`'a' || 'b'\` | \`'ab'\` |
+| \`||\` \| 拼接（SQLite/PostgreSQL） \| \`'a' || 'b'\` \| \`'ab'\` |
 | \`SUBSTR(s, start)\` | 从 start 截到末尾 | \`SUBSTR('hello',3)\` | \`'llo'\` |
 
 **SQLite 注意**：\`LENGTH('你好')\` 返回 2（按字符）。若要字节长度用 \`LENGTH(CAST('你好' AS BLOB))\`。
@@ -958,7 +958,7 @@ SELECT dept, GROUP_CONCAT(name, ',') FROM emp GROUP BY dept;
 
 | 功能 | SQLite | MySQL | PostgreSQL |
 | --- | --- | --- | --- |
-| 拼接 | \`a || b\` | \`CONCAT(a,b)\` | \`a || b\` 或 \`CONCAT\` |
+| 拼接 \| \`a || b\` \| \`CONCAT(a,b)\` \| \`a || b\` 或 \`CONCAT\` |
 | 取子串 | \`SUBSTR\` | \`SUBSTRING\`/\`SUBSTR\` | \`SUBSTRING\`/\`SUBSTR\` |
 | 查位置 | \`INSTR\` | \`LOCATE\`/\`INSTR\` | \`POSITION(... IN ...)\` |
 | 长度 | \`LENGTH\`（字符） | \`CHAR_LENGTH\`/\`LENGTH\`(字节) | \`CHAR_LENGTH\`/\`LENGTH\` |

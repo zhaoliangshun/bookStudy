@@ -2489,8 +2489,8 @@ def upload_file(file: UploadFile = File(...)):
 
 | 属性 | 类型 | 说明 |
 |------|------|------|
-| \`filename\` | \`str \| None\` | 客户端上传的文件名 |
-| \`content_type\` | \`str \| None\` | 文件 MIME 类型（如 image/jpeg） |
+| \`filename\` \| \`str \| None\` | 客户端上传的文件名 |
+| \`content_type\` \| \`str \| None\` | 文件 MIME 类型（如 image/jpeg） |
 | \`size\` | \`int\` | 文件大小（字节），Pydantic v2 / FastAPI 新版支持 |
 | \`file\` | \`SpooledTemporaryFile\` | 底层文件对象（同步） |
 | \`headers\` | \`Headers\` | 文件的 HTTP 头信息 |

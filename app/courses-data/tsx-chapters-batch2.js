@@ -313,7 +313,10 @@ function appReducer(state: AppState, action: AppAction): AppState {
     code: `// useReducer 类型安全 - 可运行 Demo：购物车
 import { useReducer, useState } from "react";
 
-// ---- 类型定义 ----
+// === 1. 类型定义：CartItem 与 CartState ===
+// 💡 提示：显式定义 State 类型，避免 useReducer 的类型推断不准
+//   - 标注 initialState: CartState 能防止初始值漏字段或多字段
+//   - 字段语义清晰，便于团队协作与重构
 type CartItem = {
   id: number;
   name: string;
@@ -327,27 +330,50 @@ type CartState = {
   discount: number;
 };
 
-// 判别式联合：每个 action 用 type 字段区分
+// === 2. 判别式联合（Discriminated Union）定义 Action ===
+// 💡 提示：判别式联合是 useReducer + TypeScript 的灵魂
+//   优势 1：每个 action 都有公共的 type 字段（字符串字面量）作"判别符"
+//   优势 2：TS 能根据 type 在 switch 的 case 分支自动收窄 action 类型
+//   优势 3：dispatch 传参时强类型校验——传错 type、漏字段、多字段都编译报错
+//   优势 4：重构时新增 action，所有 switch 都会被穷尽性检查提醒补全 case
+//   对比：若用 type: string，TS 无法收窄，要手动断言，丢失类型安全保障
 type CartAction =
+  // 添加商品：需要完整的 CartItem 数据
   | { type: "addItem"; item: CartItem }
+  // 删除商品：只需要 id 定位目标行
   | { type: "removeItem"; id: number }
+  // 修改数量：需要 id 定位 + 新数量 qty
   | { type: "updateQty"; id: number; qty: number }
+  // 应用优惠券：需要优惠券码 code 和折扣率 discount（0~1 之间小数）
   | { type: "applyCoupon"; code: string; discount: number }
+  // 清空购物车：不需要额外字段，仅靠 type 即可判断
   | { type: "clear" };
 
-// ---- reducer（含穷尽性检查）----
+// === 3. 初始状态 ===
 const initialState: CartState = {
   items: [],
   coupon: null,
   discount: 0,
 };
 
+// === 4. reducer 函数：状态转换的纯函数 ===
+// 💡 提示：reducer 必须是纯函数——同样的输入永远产出同样的输出
+//   - 不要在 reducer 里发请求、写 localStorage、调 Date.now()
+//   - 副作用放 useEffect 或事件处理里
+//   - 永远返回新对象，不要直接修改 state（React 用引用比较判断变化）
 function cartReducer(state: CartState, action: CartAction): CartState {
+  // switch (action.type) 是判别式联合的类型收窄入口
+  // 💡 提示：在每个 case 分支里，TS 会根据 type 字段值自动收窄 action 类型
+  //   - case "addItem" 里，action 收窄为 { type: "addItem"; item: CartItem }
+  //   - 此时访问 action.item 不会报错，访问 action.id 会报错（该分支没有 id）
+  //   - 这就是判别式联合的威力：编译器替你保证每个 case 用对字段
   switch (action.type) {
     case "addItem": {
       // action 收窄为 { type: "addItem"; item: CartItem }
+      // 检查购物车是否已有该商品（按 id 判断），已存在则数量累加
       const existing = state.items.find((i) => i.id === action.item.id);
       if (existing) {
+        // 已存在：数量累加，不重复添加行
         return {
           ...state,
           items: state.items.map((i) =>
@@ -357,11 +383,16 @@ function cartReducer(state: CartState, action: CartAction): CartState {
           ),
         };
       }
+      // 不存在：直接追加到 items 数组末尾
       return { ...state, items: [...state.items, action.item] };
     }
     case "removeItem":
+      // action 收窄为 { type: "removeItem"; id: number }
+      // 按 id 过滤掉要删除的商品
       return { ...state, items: state.items.filter((i) => i.id !== action.id) };
     case "updateQty":
+      // action 收窄为 { type: "updateQty"; id: number; qty: number }
+      // 更新指定商品数量，同时过滤掉 qty <= 0 的（自动移除数量为 0 的商品）
       return {
         ...state,
         items: state.items
@@ -369,18 +400,29 @@ function cartReducer(state: CartState, action: CartAction): CartState {
           .filter((i) => i.qty > 0),
       };
     case "applyCoupon":
+      // action 收窄为 { type: "applyCoupon"; code: string; discount: number }
+      // 设置优惠券码和折扣率（discount 为 0~1 之间的小数）
       return { ...state, coupon: action.code, discount: action.discount };
     case "clear":
+      // action 收窄为 { type: "clear" }（无额外字段）
+      // 重置为初始状态（返回新对象，避免引用共享导致 React 不更新）
       return { ...initialState };
     default: {
-      // 穷尽性检查：漏写 case 编译报错
+      // === 穷尽性检查（Exhaustiveness Check）===
+      // 💡 提示：never 类型是 TypeScript 的"底类型"，表示"永远不可能发生的值"
+      //   - 若所有 case 都已处理，default 分支里 action 类型会被收窄为 never
+      //   - 把 never 赋值给 never 类型的变量不会报错
+      //   - 若将来新增 action 类型（如 { type: "checkout" }）却忘了写 case，
+      //     action 在 default 分支就不是 never，赋值给 _exhaustive 会编译报错：
+      //     "Type '{ type: \"checkout\" }' is not assignable to type 'never'"
+      //   - 这能在编译期提醒你补全 switch，是最被低估的 TS 特性之一
       const _exhaustive: never = action;
       return _exhaustive;
     }
   }
 }
 
-// ---- 商品库 ----
+// === 5. 商品库与优惠券 ===
 const PRODUCTS: CartItem[] = [
   { id: 1, name: "TypeScript 实战", price: 89, qty: 1 },
   { id: 2, name: "React 进阶指南", price: 79, qty: 1 },
@@ -393,6 +435,59 @@ const COUPONS: Record<string, number> = {
   SAVE20: 0.2,
 };
 
+// === 6. 演示：reducer 执行过程与 dispatch 流程 ===
+// 💡 提示：以下 console.log 在模块加载时执行，演示 reducer 的纯函数特性
+//   - 直接调用 cartReducer 模拟 dispatch，不依赖 React 渲染周期
+//   - 每次调用都返回新 state，原 state 不变（纯函数特征）
+//   - 真实组件中 dispatch 会触发 React 重新渲染并应用新 state
+console.log("=== useReducer 演示：dispatch 流程与状态变化 ===");
+console.log("[初始状态] state =", initialState);
+
+// (1) 模拟 dispatch({ type: "addItem", item: PRODUCTS[0] }) —— 添加第一件商品
+let demoState: CartState = initialState;
+console.log('[dispatch 1] action = { type: "addItem", item: TypeScript 实战 }');
+demoState = cartReducer(demoState, { type: "addItem", item: PRODUCTS[0] });
+console.log("[状态变化] items.length =", demoState.items.length, "| items[0].name =", demoState.items[0].name);
+
+// (2) 模拟 dispatch({ type: "addItem", item: PRODUCTS[1] }) —— 添加第二件商品
+console.log('[dispatch 2] action = { type: "addItem", item: React 进阶指南 }');
+demoState = cartReducer(demoState, { type: "addItem", item: PRODUCTS[1] });
+console.log("[状态变化] items.length =", demoState.items.length);
+
+// (3) 模拟 dispatch({ type: "addItem", item: PRODUCTS[0] }) —— 重复添加触发累加逻辑
+console.log('[dispatch 3] action = { type: "addItem", item: TypeScript 实战（重复添加）}');
+demoState = cartReducer(demoState, { type: "addItem", item: PRODUCTS[0] });
+console.log("[状态变化] items[0].qty =", demoState.items[0].qty, "（数量累加为 2，未新增行）");
+
+// (4) 模拟 dispatch({ type: "updateQty", id: 1, qty: 5 }) —— 修改数量
+console.log('[dispatch 4] action = { type: "updateQty", id: 1, qty: 5 }');
+demoState = cartReducer(demoState, { type: "updateQty", id: 1, qty: 5 });
+console.log("[状态变化] items[0].qty =", demoState.items[0].qty);
+
+// (5) 模拟 dispatch({ type: "applyCoupon", code: "TS10", discount: 0.1 }) —— 应用优惠券
+console.log('[dispatch 5] action = { type: "applyCoupon", code: "TS10", discount: 0.1 }');
+demoState = cartReducer(demoState, { type: "applyCoupon", code: "TS10", discount: 0.1 });
+console.log("[状态变化] coupon =", demoState.coupon, "| discount =", demoState.discount);
+
+// (6) 模拟 dispatch({ type: "removeItem", id: 2 }) —— 删除商品
+console.log('[dispatch 6] action = { type: "removeItem", id: 2 }');
+demoState = cartReducer(demoState, { type: "removeItem", id: 2 });
+console.log("[状态变化] items.length =", demoState.items.length, "（删除后剩 1 件）");
+
+// (7) 模拟 dispatch({ type: "clear" }) —— 清空购物车
+console.log('[dispatch 7] action = { type: "clear" }');
+demoState = cartReducer(demoState, { type: "clear" });
+console.log("[状态变化] items.length =", demoState.items.length, "| coupon =", demoState.coupon, "（已重置）");
+
+// (8) 演示穷尽性检查：漏写 case 会在编译期报错
+// 💡 提示：若给 CartAction 新增 { type: "checkout" } 但 reducer 没写对应 case，
+//   default 分支里 action 不是 never，赋值给 _exhaustive 会报错：
+//   "Type '{ type: \"checkout\" }' is not assignable to type 'never'"
+//   这就是穷尽性检查在编译期帮你发现遗漏 case 的机制
+console.log("[穷尽性检查] 演示：若新增 action type 但漏写 case，TS 编译期报错");
+console.log("[穷尽性检查] 报错信息：Type '...' is not assignable to type 'never'");
+
+// === 7. Demo 组件 ===
 export default function Demo() {
   const [state, dispatch] = useReducer(cartReducer, initialState);
   const [couponInput, setCouponInput] = useState("");
@@ -403,14 +498,19 @@ export default function Demo() {
   const discountAmount = subtotal * state.discount;
   const total = subtotal - discountAmount;
 
+  // 组件每次渲染时输出当前 state，观察 dispatch 后的状态变化
+  console.log("[Demo 渲染] items.length =", state.items.length, "| total =", total);
+
   const handleApplyCoupon = () => {
     const code = couponInput.trim().toUpperCase();
     if (!code) return;
     if (COUPONS[code]) {
+      // dispatch 参数是 CartAction，传错字段会编译报错
+      console.log("[dispatch] applyCoupon: code =", code, "discount =", COUPONS[code]);
       dispatch({ type: "applyCoupon", code, discount: COUPONS[code] });
-      setMessage(\`✅ 优惠券 \${code} 已应用（-\${COUPONS[code] * 100}%）\`);
+      setMessage("✅ 优惠券 " + code + " 已应用（-" + (COUPONS[code] * 100) + "%）");
     } else {
-      setMessage(\`❌ 无效的优惠券：\${code}\`);
+      setMessage("❌ 无效的优惠券：" + code);
     }
     setCouponInput("");
   };
@@ -430,7 +530,10 @@ export default function Demo() {
           {PRODUCTS.map((p) => (
             <button
               key={p.id}
-              onClick={() => dispatch({ type: "addItem", item: p })}
+              onClick={() => {
+                console.log("[dispatch] addItem:", p.name);
+                dispatch({ type: "addItem", item: p });
+              }}
               style={{
                 padding: "6px 12px", fontSize: 13, borderRadius: 6,
                 border: "1px solid #d1d5db", background: "#fff",
@@ -880,7 +983,7 @@ import {
   type ReactNode,
 } from "react";
 
-// ============ 主题 Context ============
+// === 1. 类型定义：Theme 与 ThemeContextValue ===
 type Theme = "light" | "dark";
 
 type ThemeContextValue = {
@@ -888,9 +991,21 @@ type ThemeContextValue = {
   toggleTheme: () => void;
 };
 
-// null 初始值 + 抛错保护
+// === 2. 创建 Context：createContext<T | null>(null) ===
+// 💡 提示：createContext<T>(defaultValue) 中泛型 T 的作用
+//   - T 指定 context 值的类型，决定了 Provider 的 value 必须是什么结构
+//   - T 决定了 useContext 返回值的类型（这里是 ThemeContextValue | null）
+//   - 泛型让 TypeScript 在编译期校验 value 结构，传错字段立刻报错
+//
+// 💡 提示：为什么默认值通常是 null 而不是真实对象？
+//   1. 真实对象（如 { theme: "light", toggleTheme: () => {} }）会让 toggleTheme 是空函数
+//      忘了包 Provider 时不会报错，但点击按钮没反应，bug 难排查
+//   2. null + 抛错 hook 模式：忘包 Provider 会在调用 useContext 时立刻抛错
+//      bug 立刻暴露在开发阶段，而不是上线后才被用户发现
+//   3. 例外：只有"软依赖"（如 Toast 的 no-op 降级）才适合给真实默认值
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
+// === 3. Provider 组件：useMemo 记忆化 value ===
 function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>("light");
 
@@ -898,21 +1013,42 @@ function ThemeProvider({ children }: { children: ReactNode }) {
     setTheme((prev) => (prev === "light" ? "dark" : "light"));
   }, []);
 
-  // useMemo 记忆化 value，避免无谓重渲染
+  // 💡 提示：useMemo 记忆化 context value 的作用
+  //   - Provider 每次渲染都会创建新的 value 对象 { theme, toggleTheme }
+  //   - 如果 value 引用每次都变，所有消费该 Context 的组件都会重渲染，即使 theme 没变
+  //   - useMemo 让 value 引用只在依赖（theme, toggleTheme）变化时才更新
+  //   - 配合 useCallback 稳定函数引用，能最大程度减少无谓的重渲染
   const value = useMemo(() => ({ theme, toggleTheme }), [theme, toggleTheme]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
+// === 4. 自定义 hook useTheme：封装的好处 ===
+// 💡 提示：封装 useXxx hook 的好处
+//   1. 收敛 null 检查：所有消费方都不用再写 if (ctx === null) throw ...
+//   2. 错误信息清晰：忘包 Provider 时抛出明确的错误，而不是隐式返回 null
+//   3. 类型自动收窄：useContext 返回 T | null，但 hook 内部抛错后 TS 知道返回的是 T
+//   4. 调用方简洁：直接 const { theme } = useTheme() 拿到非空值
 function useTheme(): ThemeContextValue {
+  // 💡 提示：useContext 的返回类型与重渲染行为
+  //   - 返回类型：Context<ThemeContextValue | null> 的当前值，即 ThemeContextValue | null
+  //   - 重渲染行为：当 Provider 的 value 变化时，所有调用 useContext 的组件都会重渲染
+  //     这是 React 内置的订阅机制，无需手动订阅/取消订阅
+  //   - 性能要点：如果 value 是新对象（未 memo），即使内容相同也会触发重渲染
+  //     所以 Provider 的 value 必须用 useMemo 记忆化
   const ctx = useContext(ThemeContext);
   if (ctx === null) {
     throw new Error("useTheme 必须在 ThemeProvider 内部使用");
   }
+  // 此处 TS 已将 ctx 从 ThemeContextValue | null 收窄为 ThemeContextValue
   return ctx;
 }
 
-// ============ 用户 Context（拆分独立）============
+// === 5. 用户 Context（拆分独立）===
+// 💡 提示：为什么要拆分多个 Context？
+//   - 主题和用户是两块独立的状态，变化频率不同
+//   - 拆分后，主题变化只触发消费 ThemeContext 的组件重渲染
+//   - 如果合并成一个大 Context，任一字段变化都会触发所有消费组件重渲染
 type User = { id: number; name: string; role: string };
 
 type UserContextValue = {
@@ -921,22 +1057,27 @@ type UserContextValue = {
   logout: () => void;
 };
 
+// 同样使用 null + 抛错模式，避免忘包 Provider 的隐性 bug
 const UserContext = createContext<UserContextValue | null>(null);
 
 function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
+  // useCallback 稳定函数引用，配合 useMemo 让 value 引用稳定
   const login = useCallback((name: string) => {
     setUser({ id: Date.now(), name, role: "member" });
   }, []);
 
   const logout = useCallback(() => setUser(null), []);
 
+  // useMemo 记忆化：user 变化时 value 才变化，避免无谓重渲染
   const value = useMemo(() => ({ user, login, logout }), [user, login, logout]);
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 }
 
+// useUser hook：封装 null 检查，返回非空 UserContextValue
+// 💡 提示：与 useTheme 一样，封装后消费方直接拿到强类型非空值
 function useUser(): UserContextValue {
   const ctx = useContext(UserContext);
   if (ctx === null) {
@@ -945,7 +1086,10 @@ function useUser(): UserContextValue {
   return ctx;
 }
 
-// ============ 组合 Provider ============
+// === 6. 组合 Provider ===
+// 💡 提示：多个 Provider 嵌套会变成"金字塔"，封装成 AppProviders 统一管理
+//   - 调用方只需包一层 <AppProviders>，不用关心内部有几个 Context
+//   - 顺序无关紧要（Context 之间无依赖时）
 function AppProviders({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
@@ -954,8 +1098,9 @@ function AppProviders({ children }: { children: ReactNode }) {
   );
 }
 
-// ============ 消费组件 ============
+// === 7. 消费组件 ===
 function ThemeToggle() {
+  // useTheme() 返回 ThemeContextValue（非空），可直接解构
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
   return (
@@ -974,6 +1119,7 @@ function ThemeToggle() {
 }
 
 function UserPanel() {
+  // useUser() 返回 UserContextValue（非空），可直接解构
   const { user, login, logout } = useUser();
   const [name, setName] = useState("");
 
@@ -1042,6 +1188,7 @@ function UserPanel() {
 }
 
 function StatusBar() {
+  // 同时消费两个 Context：theme 变化只重渲染依赖 theme 的部分
   const { theme } = useTheme();
   const { user } = useUser();
   const isDark = theme === "dark";
@@ -1083,7 +1230,51 @@ function Content() {
   );
 }
 
-// ============ 入口 ============
+// === 8. console.log 演示：Context 的读取过程 ===
+// 💡 提示：以下演示在模块加载时执行，展示 Context 的默认值与读取行为
+
+// (1) 演示没有 Provider 时使用默认值的情况
+//     ThemeContext 创建时默认值是 null，直接读取会得到 null
+//     此时自定义 hook 会抛错，让开发者立刻发现问题
+console.log("[useContext] 1. 无 Provider 时 ThemeContext 默认值演示");
+const simulateNoProvider = (): string => {
+  // 模拟 useContext(ThemeContext) 在无 Provider 时返回 null（即 createContext 的默认值）
+  const ctx: ThemeContextValue | null = null;
+  console.log("[useContext]    useContext 返回值 =", ctx);
+  if (ctx === null) {
+    return "抛错：useTheme 必须在 ThemeProvider 内部使用";
+  }
+  return "拿到 context 值：" + ctx.theme;
+};
+console.log("[useContext]    结果 =", simulateNoProvider());
+
+// (2) 模拟有 Provider 时读取 context 值的过程
+//     构造一个假的 context value，模拟 Provider 提供的值
+const fakeThemeContextValue: ThemeContextValue = {
+  theme: "dark",
+  toggleTheme: () => console.log("[useContext] toggleTheme 被调用"),
+};
+console.log("[useContext] 2. 模拟 Provider 提供的 ThemeContextValue =");
+console.log("[useContext]    theme =", fakeThemeContextValue.theme);
+console.log("[useContext]    toggleTheme 类型 =", typeof fakeThemeContextValue.toggleTheme);
+
+// (3) 演示 useContext 的重渲染行为
+//     - Provider value 变化时，所有 useContext 消费组件都会重渲染
+//     - 若 value 未 memo，每次渲染都是新对象，会触发无谓重渲染
+//     - useMemo 让 value 引用在依赖不变时保持稳定
+const unMemoizedValue1 = { theme: "light" };
+const unMemoizedValue2 = { theme: "light" };
+console.log("[useContext] 3. 未 memo 的 value 引用对比 =", unMemoizedValue1 === unMemoizedValue2, "（false：总是新对象）");
+console.log("[useContext]    -> 每次渲染 value 引用都变，消费组件会被迫重渲染");
+
+// (4) 输出 context 值的读取过程总结
+console.log("[useContext] 4. Context 读取流程：");
+console.log("[useContext]    createContext<T | null>(null) -> 创建 Context，默认值 null");
+console.log("[useContext]    Provider value={...}        -> 设置当前 context 值");
+console.log("[useContext]    useContext(Context)         -> 读取当前 context 值");
+console.log("[useContext]    自定义 hook 判 null         -> 抛错或返回非空值");
+
+// === 9. 入口组件 ===
 export default function Demo() {
   return (
     <AppProviders>
@@ -1402,36 +1593,85 @@ function useUserSearch(query: string) {
     code: `// 自定义 Hook 类型设计 - 可运行 Demo
 import { useState, useEffect, useCallback, useRef } from "react";
 
-// ============ useToggle ============
+// === 1. useToggle：最简单的自定义 Hook ===
+// 💡 提示：自定义 Hook 必须以 "use" 开头
+//   - React 靠命名约定识别 Hook，否则 ESLint 的 react-hooks/rules-of-hooks 规则不生效
+//   - "use" 前缀也让开发者一眼看出这是个 Hook，需要在组件顶层调用
+//   - 不以 use 开头（如 toggleState）会被当成普通函数，无法触发 Hook 检查
 function useToggle(initial = false) {
+  // initial 默认 false，类型推断为 boolean
   const [on, setOn] = useState(initial);
+
+  // 💡 提示：返回给外部的函数必须用 useCallback 稳定引用
+  //   - 不用 useCallback 的话每次渲染都是新函数，下游 useEffect 依赖会无限触发
+  //   - 空依赖数组 [] 表示函数只创建一次，引用永远稳定
   const toggle = useCallback(() => setOn((p) => !p), []);
   const set = useCallback((value: boolean) => setOn(value), []);
+
+  // 💡 提示：返回值类型设计 - 对象 vs 数组
+  //   - 这里用对象返回 { on, toggle, set }，原因：
+  //     1. 字段多于 2 个，对象语义更清晰
+  //     2. 调用方解构时可改名、可省略字段：const { on: isOpen, toggle } = useToggle()
+  //     3. 字段顺序无关，后续新增字段不破坏调用方代码
+  //   - 对比数组返回 [on, toggle, set]：
+  //     1. 调用方必须按顺序解构，中间字段不能省略
+  //     2. 适合字段少且固定顺序的场景（如 useState 的 [state, setState]）
   return { on, toggle, set };
 }
 
-// ============ useDebounce（泛型 + 清理）============
+// === 2. useDebounce：泛型 + useEffect 清理函数 ===
+// 💡 提示：泛型 <T> 让 Hook 跟随输入值类型
+//   - 调用 useDebounce(text, 400) 时 T 被推断为 string
+//   - 调用 useDebounce(count, 400) 时 T 被推断为 number
+//   - 返回值 debounced 也是 T 类型，与输入值类型严格一致
+//   - 无需手动标注，TypeScript 自动从参数推断
 function useDebounce<T>(value: T, delay = 400): T {
+  // debounced 状态类型是 T，初始值用传入的 value
   const [debounced, setDebounced] = useState<T>(value);
+
+  // 💡 提示：useEffect 的清理函数作用（核心知识点）
+  //   - 每当 value 或 delay 变化，useEffect 会重新执行
+  //   - 执行流程：先运行上一次返回的清理函数（clearTimeout），再运行新的 effect
+  //   - 没有清理函数的话：连续输入 "abc" 会启动 3 个定时器，最终都触发 setDebounced
+  //   - 有清理函数：每次新输入都会取消上一次的定时器，只有最后一次输入的定时器会触发
+  //   - 这就是"防抖"的本质：用清理函数取消未完成的定时器
   useEffect(() => {
+    // 启动定时器，delay 毫秒后才更新 debounced 值
     const timer = setTimeout(() => setDebounced(value), delay);
+
+    // 返回清理函数：组件卸载或依赖变化时执行，取消尚未触发的定时器
     return () => clearTimeout(timer);
-  }, [value, delay]);
+  }, [value, delay]);  // 依赖数组：value 或 delay 变化时才重新执行
+
   return debounced;
 }
 
-// ============ useLocalStorage（泛型 + 持久化）============
+// === 3. useLocalStorage：泛型 + 持久化 ===
+// 💡 提示：泛型 <T> 让同一个 Hook 支持多种存储类型
+//   - useLocalStorage<string>("token", "") 存字符串
+//   - useLocalStorage<number>("count", 0) 存数字
+//   - useLocalStorage<User>("user", null) 存对象
+//   - T 的类型决定了 set 函数的参数类型，传错类型会编译报错
 function useLocalStorage<T>(key: string, initial: T) {
+  // 💡 提示：useState 的惰性初始化
+  //   - 传入函数 () => {...}，只在首次渲染时执行一次
+  //   - 避免每次渲染都去读 localStorage（虽然读操作不慢，但没必要重复）
+  //   - SSR 安全：typeof window === "undefined" 判断服务端环境，避免报错
   const [value, setValue] = useState<T>(() => {
     if (typeof window === "undefined") return initial;
     try {
       const stored = window.localStorage.getItem(key);
+      // JSON.parse 后用 as T 断言类型，因为 localStorage 只存字符串
       return stored ? (JSON.parse(stored) as T) : initial;
     } catch {
+      // 解析失败（如数据损坏）返回初始值，避免崩溃
       return initial;
     }
   });
 
+  // 💡 提示：set 函数同时更新 state 和 localStorage
+  //   - useCallback 稳定引用，key 变化时才重建函数
+  //   - try/catch 处理写入失败（如 localStorage 已满、隐私模式禁用）
   const set = useCallback((newValue: T) => {
     setValue(newValue);
     try {
@@ -1441,10 +1681,69 @@ function useLocalStorage<T>(key: string, initial: T) {
     }
   }, [key]);
 
+  // 💡 提示：返回值类型设计 - 用 as const 返回元组
+  //   - as const 让 TS 推断为 [T, (v: T) => void] 而非 (T | ((v: T) => void))[]
+  //   - 调用方可以按位置解构：const [value, set] = useLocalStorage(...)
+  //   - 对比对象返回 { value, set }：元组解构更简洁，符合 useState 的使用习惯
+  //   - 选择依据：只有 2 个返回值（值 + setter）且语义明确时用元组，多值用对象
   return [value, set] as const;
 }
 
-// ============ Demo 组件 ============
+// === 4. console.log 演示：Hook 行为模拟 ===
+// 💡 提示：以下代码在模块加载时执行，演示 Hook 的运行时行为
+//   实际的 Hook 调用必须在组件内部，这里用纯函数模拟其行为
+
+// (1) 模拟 useDebounce 的防抖行为：实时值 vs 防抖值
+//   连续输入时，防抖值会延迟更新，只保留最后一次输入
+console.log("=== useDebounce 防抖行为模拟 ===");
+let simulatedDebounced = "";
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+const simulateInput = (value: string, delay: number) => {
+  console.log('[useDebounce] 实时值: "' + value + '" (输入时刻)');
+  // 模拟 useEffect 的清理 + 重新设定：先清除上一次定时器
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    simulatedDebounced = value;
+    console.log('[useDebounce] 防抖值: "' + simulatedDebounced + '" (' + delay + 'ms 后更新)');
+  }, delay);
+};
+// 模拟连续输入："a" -> "ab" -> "abc"
+simulateInput("a", 400);
+simulateInput("ab", 400);
+simulateInput("abc", 400);
+// 输出说明：连续输入时只有最后一次 "abc" 会在 400ms 后触发更新（实际防抖由清理函数保证）
+
+// (2) 模拟 useToggle 的切换过程
+console.log("=== useToggle 切换过程模拟 ===");
+let toggleState = false;
+const simulateToggle = () => {
+  toggleState = !toggleState;
+  console.log("[useToggle] toggle() -> on = " + toggleState);
+};
+console.log("[useToggle] 初始值 on = " + toggleState);
+simulateToggle();  // false -> true
+simulateToggle();  // true -> false
+simulateToggle();  // false -> true
+// 输出说明：每次 toggle 都翻转当前值
+
+// (3) 演示 useLocalStorage 的读写
+console.log("=== useLocalStorage 读写模拟 ===");
+// 模拟 localStorage（实际环境用 window.localStorage）
+const fakeStorage: Record<string, string> = {};
+const simulateLocalStorage = (key: string, value: unknown) => {
+  // 写入：JSON.stringify 后存入
+  fakeStorage[key] = JSON.stringify(value);
+  console.log("[useLocalStorage] 写入 " + key + " = " + fakeStorage[key]);
+  // 读取：JSON.parse 后取出
+  const read = JSON.parse(fakeStorage[key]);
+  console.log("[useLocalStorage] 读取 " + key + " = " + JSON.stringify(read) + " (类型: " + typeof read + ")");
+};
+simulateLocalStorage("tsx-demo-name", "张三");
+simulateLocalStorage("tsx-demo-count", 42);
+simulateLocalStorage("tsx-demo-user", { id: 1, name: "李四" });
+// 输出说明：所有类型都被 JSON.stringify 转为字符串存储，读取时再 parse 还原
+
+// === 5. Demo 组件 ===
 function ToggleDemo() {
   const { on, toggle } = useToggle(false);
   return (
@@ -1452,7 +1751,10 @@ function ToggleDemo() {
       <div style={titleStyle}>1. useToggle</div>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button
-          onClick={toggle}
+          onClick={() => {
+            console.log("[useToggle] toggle() 被点击，当前 on = " + on + " -> 即将变为 " + !on);
+            toggle();
+          }}
           style={{
             width: 56, height: 30, borderRadius: 15, border: "none",
             background: on ? "#22c55e" : "#d1d5db", cursor: "pointer",
@@ -1477,6 +1779,14 @@ function DebounceDemo() {
   const [text, setText] = useState("");
   const debounced = useDebounce(text, 400);
 
+  // 💡 提示：useEffect 监听 text 和 debounced，输出"实时值 vs 防抖值"
+  //   - text 每次输入立即变化（实时值）
+  //   - debounced 延迟 400ms 才变化（防抖值）
+  //   - 在控制台可以观察到：text 先变，debounced 延迟跟随
+  useEffect(() => {
+    console.log('[useDebounce] 实时值: "' + text + '" | 防抖值: "' + debounced + '"');
+  }, [text, debounced]);
+
   return (
     <div style={cardStyle}>
       <div style={titleStyle}>2. useDebounce（400ms）</div>
@@ -1499,6 +1809,16 @@ function DebounceDemo() {
 function LocalStorageDemo() {
   const [name, setName] = useLocalStorage<string>("tsx-demo-name", "");
   const [count, setCount] = useLocalStorage<number>("tsx-demo-count", 0);
+
+  // 💡 提示：useEffect 监听 name 和 count，演示 localStorage 的读写
+  //   - 首次渲染：从 localStorage 读取（如果之前存过）
+  //   - 后续变化：写入 localStorage 并触发 useEffect
+  useEffect(() => {
+    console.log('[useLocalStorage] 读取/写入 name = "' + name + '"');
+  }, [name]);
+  useEffect(() => {
+    console.log("[useLocalStorage] 读取/写入 count = " + count);
+  }, [count]);
 
   return (
     <div style={cardStyle}>
@@ -1949,7 +2269,11 @@ import {
   type ReactNode,
 } from "react";
 
-// ============ FancyInput：暴露 focus/clear/select/getValue ============
+// === 1. 类型定义：FancyInputHandle（自定义 ref 暴露的接口）===
+// 💡 提示：把 handle 类型单独定义，方便复用和文档化
+//   - 这是 useImperativeHandle 暴露给父组件的"合同"
+//   - 父组件的 useRef<FancyInputHandle> 必须与此接口结构匹配
+//   - 不暴露原生 DOM，只暴露受控的方法，更安全
 type FancyInputHandle = {
   focus: () => void;
   clear: () => void;
@@ -1958,16 +2282,54 @@ type FancyInputHandle = {
   getValue: () => string;
 };
 
+// === 2. Props 类型定义 ===
 type FancyInputProps = {
   defaultValue?: string;
   placeholder?: string;
 };
 
+// === 3. forwardRef 组件：让函数组件能接收父组件传来的 ref ===
+// 💡 提示：为什么需要 forwardRef？
+//   - React 对 ref 做了特殊处理，默认不会出现在 props 里
+//   - 函数组件无法直接拿到父组件传入的 ref（class 组件可以）
+//   - forwardRef 包装后，渲染函数会收到第二个参数 ref，可透传给内部 DOM
+//   - 泛型顺序：<RefType, PropsType>，第一个是 ref 指向的类型，第二个是 props 类型
+//   - 这里 ref 类型是 FancyInputHandle（自定义接口），不是 HTMLInputElement
+//     因为我们要用 useImperativeHandle 自定义暴露的内容
 const FancyInput = forwardRef<FancyInputHandle, FancyInputProps>(
   ({ defaultValue = "", placeholder }, ref) => {
+    // 💡 提示：useRef<HTMLInputElement>(null) 的返回类型是 RefObject<HTMLInputElement>
+    //   - RefObject<T> 的结构：{ current: T | null }
+    //   - 初始值传 null，所以 current 初始为 null
+    //   - React 在组件挂载后会自动把 DOM 元素赋值给 current
+    //   - 卸载时 React 会把 current 重置为 null
+    //   - 生命周期：null（创建）→ HTMLInputElement（挂载）→ null（卸载）
+    //   - 因此访问 current 的属性前必须判空（用 ?. 或 if 判断）
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // useImperativeHandle：自定义 ref.current 暴露的方法
+    // === 4. useImperativeHandle：自定义 ref.current 暴露的内容 ===
+    // 💡 提示：useImperativeHandle 的作用
+    //   - 默认情况下，forwardRef 透传的 ref.current 会指向整个 DOM 元素
+    //   - 父组件能改任意属性，太"裸"，封装性差
+    //   - useImperativeHandle 让你自定义 ref.current 暴露的内容
+    //   - 第二个参数是工厂函数 () => ({...})，返回值就是 ref.current 的值
+    //   - 这里只暴露 focus/clear/select/setValue/getValue 五个方法，隐藏原生 DOM
+    //
+    // 💡 提示：第三个参数 []（依赖数组）的作用
+    //   - 类似 useEffect/useMemo 的依赖数组，控制 handle 何时重建
+    //   - 空数组 []：handle 只在组件挂载时创建一次，引用永远稳定
+    //     适合 handle 内部不依赖外部变量（都用 ref.current 读取最新值）的场景
+    //   - 若 handle 内部用到 state/props（如闭包捕获的值），必须加入依赖
+    //     否则会捕获旧值，导致调用方法时拿到过期的数据
+    //   - 这里所有方法都通过 inputRef.current 读取最新的 DOM 值，无需依赖外部变量
+    //     所以用空数组 [] 即可，性能最优
+    //
+    // 💡 提示：ref.current 可能为 null 的处理
+    //   - ref 参数的类型是 Ref<FancyInputHandle>，是 RefObject | RefCallback | null 的联合
+    //   - 组件挂载前或卸载后，inputRef.current 都可能是 null
+    //   - 调用 DOM 方法时用可选链 ?.（如 inputRef.current?.focus()）
+    //   - 写入 DOM 属性时用 if 判断（如 if (inputRef.current) inputRef.current.value = v）
+    //   - getValue 返回值用 ?? "" 兜底，避免返回 undefined
     useImperativeHandle(ref, () => ({
       focus: () => inputRef.current?.focus(),
       clear: () => {
@@ -1997,7 +2359,11 @@ const FancyInput = forwardRef<FancyInputHandle, FancyInputProps>(
 );
 FancyInput.displayName = "FancyInput";
 
-// ============ AutoScrollList：暴露 scrollToBottom ============
+// === 5. AutoScrollList：暴露 scrollToBottom/scrollToTop ===
+// 💡 提示：第二个 forwardRef 示例，演示同一模式可复用
+//   - ref 类型是 AutoScrollHandle（自定义接口），父组件只能调用 scrollToTop/scrollToBottom
+//   - 内部用 listRef 拿到真实 DOM，方法体通过 listRef.current 操作 scrollTo API
+//   - 同样使用空依赖数组 []，handle 只创建一次
 type AutoScrollHandle = {
   scrollToBottom: () => void;
   scrollToTop: () => void;
@@ -2005,8 +2371,11 @@ type AutoScrollHandle = {
 
 const AutoScrollList = forwardRef<AutoScrollHandle, { items: string[] }>(
   ({ items }, ref) => {
+    // listRef 类型是 RefObject<HTMLDivElement>，current 初始为 null
     const listRef = useRef<HTMLDivElement>(null);
 
+    // useImperativeHandle：暴露 scrollToTop/scrollToBottom，隐藏原生 div
+    // 依赖数组 []：handle 只创建一次，方法内通过 listRef.current 读最新 DOM
     useImperativeHandle(ref, () => ({
       scrollToBottom: () => {
         if (listRef.current) {
@@ -2039,6 +2408,78 @@ const AutoScrollList = forwardRef<AutoScrollHandle, { items: string[] }>(
   }
 );
 AutoScrollList.displayName = "AutoScrollList";
+
+// === 6. console.log 演示：ref 的生命周期与类型信息 ===
+// 💡 提示：以下代码在模块加载时执行，演示 ref 的运行时行为
+//   实际开发中 ref.current 由 React 自动管理，这里用对象模拟其生命周期
+
+// (1) 演示 ref.current 的生命周期：null → 赋值 → 调用方法 → 重置为 null
+console.log("=== ref 生命周期演示 ===");
+
+// 阶段 1：创建 ref，current 初始为 null（对应 useRef<T>(null) 的初始状态）
+// RefObject<T> 的结构是 { current: T | null }，初始 current 为 null
+const simulateRef: { current: { value: string; focus: () => void; select: () => void } | null } = {
+  current: null,
+};
+console.log("[ref 生命周期] 1. 创建 ref，current =", simulateRef.current, "（初始为 null）");
+console.log("[ref 生命周期]    current 类型 =", typeof simulateRef.current);
+
+// 阶段 2：组件挂载后，React 把 DOM 元素赋值给 current
+const fakeInput = {
+  value: "hello",
+  focus: () => console.log("[ref 生命周期]    fakeInput.focus() 被调用"),
+  select: () => console.log("[ref 生命周期]    fakeInput.select() 被调用"),
+};
+simulateRef.current = fakeInput;
+console.log("[ref 生命周期] 2. 组件挂载后，current 被赋值为 DOM 元素");
+console.log("[ref 生命周期]    current 是否为 null =", simulateRef.current === null, "（false：已赋值）");
+console.log("[ref 生命周期]    current.value =", simulateRef.current?.value);
+
+// 阶段 3：通过 ref.current 调用方法（对应父组件调用 inputRef.current?.focus()）
+console.log("[ref 生命周期] 3. 通过 ref.current 调用方法:");
+simulateRef.current?.focus();
+simulateRef.current?.select();
+
+// 阶段 4：组件卸载后，React 把 current 重置为 null
+simulateRef.current = null;
+console.log("[ref 生命周期] 4. 组件卸载后，current 重置为 =", simulateRef.current, "（null）");
+console.log("[ref 生命周期]    此时调用 ?.focus() 不会报错（可选链 ?. 短路）");
+
+// (2) 演示 useImperativeHandle 暴露的方法
+console.log("=== useImperativeHandle 暴露的方法演示 ===");
+
+// 模拟 FancyInput 通过 useImperativeHandle 暴露的 handle 对象
+// 注意：handle 不包含原生 DOM，只有 5 个受控方法（封装性更好）
+const simulateHandle: FancyInputHandle = {
+  focus: () => console.log("[useImperativeHandle] handle.focus() 被调用"),
+  clear: () => console.log("[useImperativeHandle] handle.clear() 被调用"),
+  select: () => console.log("[useImperativeHandle] handle.select() 被调用"),
+  setValue: (v: string) => console.log("[useImperativeHandle] handle.setValue(" + v + ") 被调用"),
+  getValue: () => {
+    console.log("[useImperativeHandle] handle.getValue() 被调用");
+    return "模拟的输入值";
+  },
+};
+
+console.log("[useImperativeHandle] handle 的方法列表 =", Object.keys(simulateHandle));
+console.log("[useImperativeHandle] handle.focus 类型 =", typeof simulateHandle.focus);
+console.log("[useImperativeHandle] handle.getValue 类型 =", typeof simulateHandle.getValue);
+
+// 调用暴露的方法（对应父组件调用 inputRef.current?.focus() 等）
+simulateHandle.focus();
+simulateHandle.setValue("新值");
+const refValue = simulateHandle.getValue();
+console.log("[useImperativeHandle] getValue() 返回值 =", refValue);
+
+// (3) 输出 ref 的类型信息
+console.log("=== ref 类型信息 ===");
+console.log("[ref 类型] useRef<HTMLInputElement>(null) 返回类型 = RefObject<HTMLInputElement>");
+console.log("[ref 类型]   RefObject<T> 的结构 = { current: T | null }");
+console.log("[ref 类型]   current 可变，React 内部负责赋值/重置");
+console.log("[ref 类型] forwardRef 的 ref 参数类型 = Ref<FancyInputHandle>");
+console.log("[ref 类型]   Ref<T> = RefCallback<T> | RefObject<T> | null");
+console.log("[ref 类型]   三种形态：对象 ref / 回调 ref / null");
+console.log("[ref 类型] useImperativeHandle 把 Ref<Handle> 的 current 替换为自定义对象");
 
 // ============ Demo 入口 ============
 export default function Demo() {
@@ -2497,10 +2938,17 @@ export type { TableProps, Column };
     code: `// 泛型组件 - 可运行 Demo：泛型 Table + Select
 import { useState, type ReactNode } from "react";
 
-// ============ 类型定义 ============
+// === 1. 类型定义：Column<T> 与 keyof T ===
+// 💡 提示：Column<T> 是泛型类型，T 代表"行数据类型"，会在调用方被推断
+//   - keyof T 表示"T 的所有字段名的联合类型"
+//   - 让 key 字段强绑定数据结构，拼错字段名会在编译期报错
 type Column<T> = {
+  // keyof T 保证 key 必须是 T 的字段名之一
+  // 例如 Column<User> 的 key 只能是 "id" | "name" | "age" | "role" | "online"
+  // 写成 "email" 会报错，避免运行时取到 undefined
   key: keyof T;
   title: string;
+  // render 的 row 参数自动推断为 T，访问不存在字段会报错
   render?: (row: T, index: number) => ReactNode;
   width?: number;
 };
@@ -2508,11 +2956,14 @@ type Column<T> = {
 type TableProps<T> = {
   data: T[];
   columns: Column<T>[];
+  // rowKey 是回调函数：参数 row 由 T 推断，调用方写 (row) => row.id 时 row 是强类型
   rowKey: (row: T) => string | number;
   empty?: ReactNode;
 };
 
+// === 2. 类型定义：Option<T> 与 SelectProps<T> ===
 type Option<T> = {
+  // value 类型跟随 T，让选项值与 onChange 回调类型严格一致
   value: T;
   label: string;
 };
@@ -2520,19 +2971,26 @@ type Option<T> = {
 type SelectProps<T> = {
   options: Option<T>[];
   value: T | null;
+  // onChange 的参数类型是 T，与 options[].value 类型严格一致
   onChange: (value: T) => void;
   placeholder?: string;
 };
 
-// ============ 泛型 Select<T> ============
+// === 3. 泛型 Select<T> 组件 ===
+// T extends string | number 限制了 T 的范围，让 T 可以被比较/索引：
+//   原因 1：渲染 <option value={String(opt.value)}>，需要把 T 转成字符串作为 DOM 属性
+//   原因 2：onChange 时用 String(o.value) === e.target.value 比较，T 必须可被 String() 转换
+//   原因 3：string | number 是最常见的"可序列化值"类型，排除对象/数组等无法作为 option value 的类型
+// 💡 提示：约束让组件内部可安全地用 String(value) 处理 T，无需 unknown 强转
 function Select<T extends string | number>(props: SelectProps<T>) {
   const { options, value, onChange, placeholder } = props;
   return (
     <select
       value={value === null ? "" : String(value)}
       onChange={(e) => {
+        // 通过 String 比较找到对应 option，再回调原始的 T 类型值（类型安全）
         const opt = options.find((o) => String(o.value) === e.target.value);
-        if (opt) onChange(opt.value);
+        if (opt) onChange(opt.value);  // opt.value 类型是 T，类型安全
       }}
       style={{
         padding: "8px 12px", borderRadius: 6,
@@ -2548,7 +3006,9 @@ function Select<T extends string | number>(props: SelectProps<T>) {
   );
 }
 
-// ============ 泛型 Table<T> ============
+// === 4. 泛型 Table<T> 组件 ===
+// Table<T> 的 T 没有约束，因为 Table 只做渲染和取值，不依赖 T 的特定字段
+// 字段访问通过 col.key (keyof T) 完成，TypeScript 知道 row[col.key] 是合法的
 function Table<T>(props: TableProps<T>) {
   const { data, columns, rowKey, empty } = props;
 
@@ -2589,11 +3049,12 @@ function Table<T>(props: TableProps<T>) {
         <tbody>
           {data.map((row, i) => (
             <tr
-              key={rowKey(row)}
+              key={rowKey(row)}  // rowKey 回调由调用方提供，row 是强类型 T
               style={{ borderBottom: i === data.length - 1 ? "none" : "1px solid #f3f4f6" }}
             >
               {columns.map((col) => (
                 <td key={String(col.key)} style={{ padding: "10px 14px", color: "#111827" }}>
+                  {/* col.key 是 keyof T，保证 row[col.key] 一定存在；col.render 的 row 是强类型 T */}
                   {col.render ? col.render(row, i) : String(row[col.key])}
                 </td>
               ))}
@@ -2605,7 +3066,7 @@ function Table<T>(props: TableProps<T>) {
   );
 }
 
-// ============ 数据定义 ============
+// === 5. 数据定义 ===
 type User = {
   id: number;
   name: string;
@@ -2622,7 +3083,8 @@ const ALL_USERS: User[] = [
   { id: 5, name: "孙七", age: 22, role: "viewer", online: false },
 ];
 
-// 列配置：key 是 keyof User，类型强绑定
+// 💡 提示：显式标注 Column<User>[] 后，写 key 时 IDE 会自动补全 User 的字段名
+//   key 是 keyof User，拼错字段名（如 "email"）会在编译期报错
 const userColumns: Column<User>[] = [
   { key: "id", title: "ID", width: 60 },
   { key: "name", title: "姓名", render: (row) => (
@@ -2661,7 +3123,39 @@ const userColumns: Column<User>[] = [
   ) },
 ];
 
-// ============ Demo 入口 ============
+// === 6. 演示：泛型类型推断与列配置结构 ===
+// 💡 提示：以下 console.log 在模块加载时执行，演示泛型的运行时行为
+
+// (1) 输出表格列配置的结构：每列包含 key（字段名）、title、可选 render/width
+console.log("[泛型组件] 列配置结构 userColumns =", userColumns.map((c) => ({
+  key: c.key,
+  title: c.title,
+  hasRender: typeof c.render === "function",
+  width: c.width,
+})));
+
+// (2) 演示数据行的类型推断：由于 userColumns: Column<User>[]，Table<User> 的 data 必须是 User[]
+console.log("[泛型组件] 数据行类型推断：ALL_USERS[0] 的字段 =", Object.keys(ALL_USERS[0]));
+console.log("[泛型组件] ALL_USERS[0] =", ALL_USERS[0]);
+
+// (3) 模拟 rowKey 回调的强类型保证：row 参数类型是 User，访问 row.id 安全
+const simulateRowKey: (row: User) => number = (row) => row.id;
+console.log("[泛型组件] rowKey 回调测试：第一行的 key =", simulateRowKey(ALL_USERS[0]));
+
+// (4) 模拟 Select 的 onChange 回调：value 类型是 User["role"]，传非法值会编译报错
+const simulateSelectChange: (value: User["role"]) => void = (value) => {
+  console.log("[泛型组件] Select onChange 模拟触发，value =", value);
+};
+simulateSelectChange("admin");  // ✅ 合法
+// simulateSelectChange("superadmin");  // ❌ 编译报错："superadmin" 不属于 User["role"]
+
+// (5) 模拟点击行的交互行为：回调参数 row 是强类型 User
+const simulateRowClick = (row: User) => {
+  console.log("[泛型组件] 模拟点击行，row.id =", row.id, "row.name =", row.name);
+};
+simulateRowClick(ALL_USERS[0]);
+
+// === 7. Demo 入口组件 ===
 export default function Demo() {
   const [roleFilter, setRoleFilter] = useState<User["role"] | null>(null);
   const [onlyOnline, setOnlyOnline] = useState(false);
@@ -2671,6 +3165,10 @@ export default function Demo() {
     if (onlyOnline && !u.online) return false;
     return true;
   });
+
+  // 输出选择器的当前值与过滤结果（每次渲染都会执行）
+  console.log("[泛型组件] Select 当前值 roleFilter =", roleFilter);
+  console.log("[泛型组件] 过滤后数据 filtered.length =", filtered.length, "条");
 
   return (
     <div style={{ padding: 16, maxWidth: 600, fontFamily: "system-ui" }}>
@@ -2729,6 +3227,8 @@ export default function Demo() {
       <Table
         data={filtered}
         columns={userColumns}
+        // rowKey 回调的强类型保证：row 参数是 User 类型，row.id 是 number
+        // 若误写成 row.userId 会在编译期报错（User 没有 userId 字段）
         rowKey={(row) => row.id}
         empty="无符合条件的用户"
       />

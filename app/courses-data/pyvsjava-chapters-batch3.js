@@ -582,7 +582,7 @@ try {
 |------|--------|------|
 | 捕获关键字 | \`except\` | \`catch\` |
 | 异常对象绑定 | \`as e\` | \`(... e)\` |
-| 多类型捕获 | \`except (A, B)\` | \`catch (A | B)\`（JDK 7+） |
+| 多类型捕获 \| \`except (A, B)\` | \`catch (A | B)\`（JDK 7+） |
 | 无异常分支 | \`else\` | 无（要嵌套 try） |
 | finally 中 return | 会覆盖 try 的 return | 同（但 IDE 警告） |
 | 异常重新抛出 | \`raise\`（裸 raise 重抛当前） | \`throw e;\`（要写变量） |
@@ -956,7 +956,7 @@ try (Connection conn = dataSource.getConnection()) { }
 | 资源管理 | \`with\` | \`try-with-resources\` |
 | 抑制异常 | 无自动机制 | \`addSuppressed\` |
 | 自定义异常 | 继承 Exception | 继承 Exception 或 RuntimeException |
-| 多重捕获 | \`except (A, B)\` | \`catch (A | B)\` |
+| 多重捕获 \| \`except (A, B)\` | \`catch (A | B)\` |
 | 性能 | 较慢（3.11 后优化） | 较慢（JIT 可优化） |
 
 ## 十一、一句话总结

@@ -2082,7 +2082,7 @@ const user: User = { name: 'Tom', age: 18 };  // 声明常量 user，类型 User
 | \`@type {{ x: number }}\` | \`: { x: number }\` 或 interface |
 | \`@typedef {Object} User\` | \`interface User\` |
 | \`@type {Array<string>}\` | \`string[]\` |
-| \`@type {string|null}\` | \`string \| null\` |
+| \`@type {string|null}\` \| \`string \| null\` |
 
 ### 6. 常见陷阱
 

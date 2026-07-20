@@ -1023,7 +1023,7 @@ print(u.model_dump()) # {'id': 1, 'username': 'alice', ...}（v2 转 dict）
 |---|---|
 | \`name: str\` | 必填，无默认值 |
 | \`name: str = "x"\` | 可选，默认 \`"x"\` |
-| \`name: str \| None = None\` | 可选，默认 \`None\` |
+| \`name: str \| None = None\` \| 可选，默认 \`None\` |
 | \`name: Optional[str] = None\` | 同上（老写法） |
 
 ### 类型转换示例

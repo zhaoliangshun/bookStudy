@@ -226,7 +226,7 @@ print(result)
 
 | 易错点 | 现象 | 解决方案 |
 |--------|------|---------|
-| 用旧版 LLMChain | 警告废弃 | 改用 LCEL \`prompt \\| llm\` |
+| 用旧版 LLMChain | 警告废弃 | 改用 LCEL \`prompt | llm\` |
 | 装一个大 langchain 包 | 体积巨大、依赖冲突 | 按需装 langchain-openai 等 |
 | 不区分 langchain 和 langchain-core | 改 core 报错 | 业务代码用 langchain,抽象在 core |
 | 用教程代码报错 | API 改了 | 看 v0.3+ 文档,旧教程会误导 |
@@ -556,13 +556,13 @@ print("LLM 输出:", llm_output)
 
 | 易错点 | 现象 | 解决方案 |
 |--------|------|---------|
-| 用旧版 LLMChain | 警告废弃 | 改用 LCEL \`prompt \\| llm\` |
-| 不实现 Runnable 协议 | \`|\` 报错 | 继承 Runnable 或用 RunnableLambda |
+| 用旧版 LLMChain | 警告废弃 | 改用 LCEL \`prompt | llm\` |
+| 不实现 Runnable 协议 \| \`|\` 报错 | 继承 Runnable 或用 RunnableLambda |
 | RunnableBranch 期待流式 | 不支持流式 | 分支逻辑别用 stream |
 | 并行 chain 输出顺序乱 | dict 不保证顺序 | 用 RunnableParallel 显式命名 key |
 | 不传 dict 给 invoke | 模板变量报错 | invoke 传 \`{"key": val}\` |
-| 忘记 StrOutputParser | 返回 AIMessage 而非字符串 | 末尾加 \`\\| StrOutputParser()\` |
-| 自定义函数没包 RunnableLambda | \`|\` 报错 | 用 RunnableLambda 包装 |
+| 忘记 StrOutputParser | 返回 AIMessage 而非字符串 | 末尾加 \`| StrOutputParser()\` |
+| 自定义函数没包 RunnableLambda \| \`|\` 报错 | 用 RunnableLambda 包装 |
 | invoke 而非 stream | 想要流式却一次返回 | 改用 chain.stream |
 
 > **小结**:LCEL 是 LangChain 的"灵魂语法"。它把组件像积木一样拼起来,代码简洁、流式/异步/批处理原生支持。下一章讲 Chain 不可或缺的搭档——Memory。`,
