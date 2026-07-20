@@ -17,6 +17,15 @@ export default function PWARegister() {
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator)) return;
 
+    let cancelled = false;
+    let refreshing = false;
+
+    const handleControllerChange = () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    };
+
     const register = async () => {
       try {
         const reg = await navigator.serviceWorker.register("/sw.js", {
@@ -24,23 +33,26 @@ export default function PWARegister() {
           // updateViaCache: "none" 确保每次都拉取最新 sw.js
           updateViaCache: "none",
         });
+        if (cancelled) return;
         if (reg.waiting) {
           // 有新版本在等待，主动跳过等待让用户尽快拿到新内容
           reg.waiting.postMessage("SKIP_WAITING");
         }
         // 监听新版本接管，提示用户刷新
-        let refreshing = false;
-        navigator.serviceWorker.addEventListener("controllerchange", () => {
-          if (refreshing) return;
-          refreshing = true;
-          window.location.reload();
-        });
+        navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
       } catch (err) {
-        console.warn("[PWA] SW 注册失败:", err.message);
+        if (!cancelled) {
+          console.warn("[PWA] SW 注册失败:", err.message);
+        }
       }
     };
 
     register();
+
+    return () => {
+      cancelled = true;
+      navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
+    };
   }, []);
 
   return null;
