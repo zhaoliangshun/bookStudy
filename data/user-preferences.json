@@ -17,8 +17,7 @@
       "/zod",
       "/ts-quick",
       "/tsbook",
-      "/node4",
-      "/zod-mini"
+      "/node4"
     ],
     "Python 编程": [],
     "Java 开发": [
@@ -41,7 +40,6 @@
       "/fe-interview",
       "/vite",
       "/vite2",
-      "/forgerock-mini",
       "/betting-activation"
     ],
     "后端与网络": [
@@ -198,8 +196,12 @@
       "/tsx2",
       "/mantine2",
       "/mantine-form-zod",
-      "/forgerock",
-      "/auth-demo"
+      "/forgerock"
+    ],
+    "项目": [
+      "/auth-demo",
+      "/zod-mini",
+      "/forgerock-mini"
     ]
   },
   "categoryConfig": {
@@ -223,6 +225,11 @@
         "id": "c-mrrcbw4al8yu",
         "name": "react",
         "icon": "📁"
+      },
+      {
+        "id": "c-mrtbz3ag4a9u",
+        "name": "项目",
+        "icon": "📁"
       }
     ],
     "renamed": {},
@@ -231,6 +238,7 @@
       "JS / TS 生态"
     ],
     "order": [
+      "项目",
       "Python 编程",
       "react",
       "nodejs",
