@@ -49,29 +49,46 @@ import { z } from "./mini-zod";
 // 用户看到一堆红字会困惑（"我还没输入怎么就错了？"）。
 // 解决：引入 touched 状态，只有用户「碰过」的字段才显示错误。
 //
-// 行为：
-//   - 默认所有字段都是 untouched（未触碰）
-//   - 用户首次聚焦某个字段时，标记为 touched
-//   - 只有 touched 的字段才显示校验错误
-//   - 未 touched 的字段即使有错误也不显示（避免初始空表单就标红）
+// 行为模式（业界标准：首次失焦后开始校验，之后实时更新）：
+//   1. 默认所有字段都是 untouched（未触碰）→ 不显示任何错误
+//   2. 用户首次失焦（blur）某字段时，标记为 touched → 显示该字段错误/成功状态
+//   3. 字段一旦 touched，后续每次输入都实时更新校验状态（不再隐藏错误）
+//   4. 提交表单时，若校验失败则把所有字段标记为 touched → 显示所有错误
+//   5. resetTouched() 清空所有 touched 状态（用于清空/重置表单）
 //
-// 这就是业界表单库（如 react-hook-form / formik）的「touched/blurred」模式。
+// 为什么用 blur 而不是 focus：
+//   - onFocus：用户一进入字段还没打字就报错，体验太激进
+//   - onBlur：用户离开字段（tab走/点其他地方）才开始校验，给用户输入机会
+//   - touched 之后实时校验：用户已经"提交"过这个字段，继续打字时实时反馈是合理的
+//
+// 这就是业界表单库（react-hook-form / formik / Mantine Form）的标准模式。
 // -------------------------------------------------------------
 function useTouchedFields() {
   const [touched, setTouched] = useState({});
 
-  // 聚焦时把字段标记为 touched（已用 prev[field] 判等避免无谓 setState）
-  // 优化：如果字段已经是 touched，不再触发 setState（减少 re-render）
-  const handleFocus = useCallback((field) => {
+  // 首次失焦时标记字段为 touched（之后即使再 blur 也不重复 setState）
+  const handleBlur = useCallback((field) => {
     setTouched((prev) =>
       prev[field] ? prev : { ...prev, [field]: true }
     );
   }, []);
 
-  // 重置 touched（清空表单时同步调用）
+  // 提交时一次性标记所有字段为 touched，让所有错误都显示出来
+  // 场景：用户跳过某些字段直接点提交，此时这些字段的错误也应该可见
+  const markAllTouched = useCallback((fieldNames) => {
+    setTouched((prev) => {
+      const next = { ...prev };
+      for (const name of fieldNames) {
+        next[name] = true;
+      }
+      return next;
+    });
+  }, []);
+
+  // 重置 touched（清空表单时同步调用，让错误全部隐藏）
   const resetTouched = useCallback(() => setTouched({}), []);
 
-  return { touched, handleFocus, resetTouched };
+  return { touched, handleBlur, markAllTouched, resetTouched };
 }
 
 // -------------------------------------------------------------
@@ -152,7 +169,10 @@ const styles = {
     fontFamily: "var(--mono)",
     fontSize: "13px",
     overflow: "auto",
-    maxHeight: "700px",
+    // 注意：移除了原 maxHeight: "700px"，因为页面根容器已经是滚动容器
+    // (styles.page 设置了 height:100vh; overflowY:auto)，
+    // 右侧面板再加固定 maxHeight 会导致「页面能滚 + 右侧也能滚」的双重滚动条，
+    // 体验差。让两侧等高、由页面统一滚动更自然。
   },
   fieldGroup: {
     marginBottom: "18px",
@@ -423,34 +443,30 @@ function RegisterDemo() {
     agreeTerms: false,
   });
   const [submitted, setSubmitted] = useState(null);
-  // touched：记录用户已聚焦过的字段，只有 touched 的字段才会显示校验错误
-  const { touched, handleFocus } = useTouchedFields();
+  // touched：记录用户已失焦过的字段，只有 touched 的字段才会显示校验错误
+  // 采用「首次 blur 后开始校验，之后实时更新」的业界标准模式
+  const { touched, handleBlur, markAllTouched } = useTouchedFields();
+
+  // 所有字段名列表，用于提交时 markAllTouched
+  const fieldNames = ["username", "email", "password", "confirmPassword", "agreeTerms"];
 
   // 实时校验：每次输入变化都 safeParse 一次
   // useMemo 确保 form 没变时不会重复校验（性能优化）
-  // parseResult.success === true 时，parseResult.data 是经过校验/转换后的数据
-  // parseResult.success === false 时，parseResult.error 是 ZodError 实例
   const parseResult = useMemo(() => {
     return registerSchema.safeParse(form);
   }, [form]);
 
   // 按字段名提取错误（用 flatten 把 issues 转成 { fieldName: [msg] }）
-  // 这样 UI 可以通过 fieldErrors["username"] 取到该字段的所有错误信息
-  // 比直接遍历 issues 数组更方便
   const fieldErrors = useMemo(() => {
     if (parseResult.success) return {};
     return parseResult.error.flatten();
   }, [parseResult]);
 
-  // 更新单个字段：用函数式 setState 避免闭包陷阱
-  // 同时清空 submitted 状态（用户改了字段，之前的提交结果不再相关）
   const updateField = useCallback((field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setSubmitted(null);
   }, []);
 
-  // 提交处理：parseResult 已经是实时校验的结果，直接用它判断
-  // 真实场景这里会调 API，demo 只显示成功/失败提示
   const handleSubmit = useCallback(
     (e) => {
       e.preventDefault();
@@ -460,25 +476,30 @@ function RegisterDemo() {
           message: `注册成功！欢迎 ${parseResult.data.username}`,
         });
       } else {
+        // 提交失败时把所有字段标记为 touched，让所有错误都显示出来
+        // 否则用户跳过的字段不会显示错误，用户不知道哪里填错了
+        markAllTouched(fieldNames);
         setSubmitted({
           success: false,
           message: "表单校验未通过，请检查标红字段",
         });
       }
     },
-    [parseResult]
+    [parseResult, markAllTouched]
   );
 
-  // 输入框样式：touched 后才显示红/绿边框，避免初始空表单就标红
+  // 输入框样式：touched 后才显示红/绿边框
   // 三种状态：
   //   默认（未 touched）：灰色边框
-  //   touched + 有错：红色边框（inputError）
-  //   touched + 无错 + 有值：绿色边框（inputSuccess）
-  // 注意 hasError 还要求 form[field] 非空，避免空字段被误判为「有错」
+  //   touched + 有错误：红色边框（inputError）—— 包括空字段（nonempty 错误）
+  //   touched + 无错误 + 有内容：绿色边框（inputSuccess）
+  //
+  // 修复：原来 hasError 里有 form[field] 判断，导致空字符串字段即使已 touched
+  // 且有 nonempty 错误也不显示红边框（因为 "" 是 falsy）。
+  // 现在只检查 touched[field] && fieldErrors[field]，空字段有错也会红边框。
   const inputStyle = (field) => {
-    const hasError = touched[field] && fieldErrors[field] && form[field];
-    const isValid =
-      touched[field] && !hasError && form[field] && form[field].length > 0;
+    const hasError = touched[field] && fieldErrors[field];
+    const isValid = touched[field] && !fieldErrors[field] && form[field] && form[field].length > 0;
     return {
       ...styles.input,
       ...(hasError ? styles.inputError : {}),
@@ -513,12 +534,12 @@ function RegisterDemo() {
               placeholder="3-20 位字母数字下划线"
               value={form.username}
               onChange={(e) => updateField("username", e.target.value)}
-              onFocus={() => handleFocus("username")}
+              onBlur={() => handleBlur("username")}
             />
             {touched.username && fieldErrors.username ? (
               <div style={styles.errorText}>{fieldErrors.username[0]}</div>
             ) : (
-              form.username && (
+              form.username && !fieldErrors.username && (
                 <div style={styles.successText}>用户名可用</div>
               )
             )}
@@ -532,10 +553,14 @@ function RegisterDemo() {
               placeholder="example@domain.com"
               value={form.email}
               onChange={(e) => updateField("email", e.target.value)}
-              onFocus={() => handleFocus("email")}
+              onBlur={() => handleBlur("email")}
             />
-            {touched.email && fieldErrors.email && (
+            {touched.email && fieldErrors.email ? (
               <div style={styles.errorText}>{fieldErrors.email[0]}</div>
+            ) : (
+              form.email && !fieldErrors.email && (
+                <div style={styles.successText}>邮箱格式正确</div>
+              )
             )}
           </div>
 
@@ -547,7 +572,7 @@ function RegisterDemo() {
               placeholder="至少 8 位，含大小写字母和数字"
               value={form.password}
               onChange={(e) => updateField("password", e.target.value)}
-              onFocus={() => handleFocus("password")}
+              onBlur={() => handleBlur("password")}
             />
             {touched.password && fieldErrors.password ? (
               <div style={styles.errorText}>{fieldErrors.password[0]}</div>
@@ -564,7 +589,7 @@ function RegisterDemo() {
               placeholder="再次输入密码"
               value={form.confirmPassword}
               onChange={(e) => updateField("confirmPassword", e.target.value)}
-              onFocus={() => handleFocus("confirmPassword")}
+              onBlur={() => handleBlur("confirmPassword")}
             />
             {touched.confirmPassword && fieldErrors.confirmPassword && (
               <div style={styles.errorText}>
@@ -578,7 +603,7 @@ function RegisterDemo() {
               type="checkbox"
               checked={form.agreeTerms}
               onChange={(e) => updateField("agreeTerms", e.target.checked)}
-              onFocus={() => handleFocus("agreeTerms")}
+              onBlur={() => handleBlur("agreeTerms")}
               style={{ marginTop: "2px" }}
             />
             <span>
@@ -662,9 +687,9 @@ function OtpDemo() {
   const [resendTimes, setResendTimes] = useState(0);
   // 收集 6 个 input 的 DOM 引用，用于程序化 focus（自动跳格、回退、清空后聚焦首格）
   const inputRefs = useRef([]);
-  // 6 个格子作为一个整体字段 code：任一格聚焦都视为用户已开始填写
-  // 这样错误提示只会在用户「碰过」任一格后才显示
-  const { touched, handleFocus } = useTouchedFields();
+  // 6 个格子作为一个整体字段 code：任一格失焦都视为用户已开始填写
+  // 采用「首次 blur 后开始校验」模式，避免用户一点击格子就看到红字
+  const { touched, handleBlur, markAllTouched, resetTouched } = useTouchedFields();
 
   // 把 6 个输入框的值拼成完整 code
   // 注意：join 会自动跳过空字符串（"" + "" + "1" = "1"），
@@ -735,11 +760,14 @@ function OtpDemo() {
       while (newDigits.length < 6) newDigits.push("");
       setDigits(newDigits);
       setSubmitted(null);
+      // 粘贴后标记 code 为已触碰（用户已操作验证码字段）
+      // 修复：原代码粘贴后不标记 touched，导致粘贴不完整时错误不显示
+      handleBlur("code");
       // 粘贴后聚焦到「下一个空格」或「最后一格」
       // Math.min(pasted.length, 5) 防止越界（pasted.length 可能等于 6）
       inputRefs.current[Math.min(pasted.length, 5)]?.focus();
     }
-  }, []);
+  }, [handleBlur]);
 
   // 提交：parseResult 已经实时算好，直接用
   // 注意 parseResult.data.code 是 number 类型（因为 transform 转过），
@@ -753,13 +781,15 @@ function OtpDemo() {
           message: `验证成功！验证码: ${parseResult.data.code}（已转为数字类型）`,
         });
       } else {
+        // 提交失败时标记 code 为 touched，让错误显示
+        markAllTouched(["code"]);
         setSubmitted({
           success: false,
           message: "请输入完整的 6 位验证码",
         });
       }
     },
-    [parseResult]
+    [parseResult, markAllTouched]
   );
 
   // 重发验证码：开启 60s 倒计时 + 累计次数 + 提示
@@ -774,13 +804,14 @@ function OtpDemo() {
     });
   }, [resendCountdown, resendTimes]);
 
-  // 清空：重置 digits 数组 + 清掉 submitted 状态 + 聚焦到第一格
-  // 这是最贴近「重新输入」直觉的交互
+  // 清空：重置 digits 数组 + 清掉 submitted 状态 + 重置 touched + 聚焦到第一格
+  // 修复：原代码不清 touched，导致清空后错误仍然显示
   const handleClear = useCallback(() => {
     setDigits(["", "", "", "", "", ""]);
     setSubmitted(null);
+    resetTouched();
     inputRefs.current[0]?.focus();
-  }, []);
+  }, [resetTouched]);
 
   return (
     <div style={styles.card}>
@@ -810,8 +841,6 @@ function OtpDemo() {
             {digits.map((digit, i) => (
               <input
                 key={i}
-                // ref 回调写法：把每个 input 的 DOM 存到 inputRefs.current[i]
-                // 注意：不能用 useRef(0) 直接存 index，必须用数组收集
                 ref={(el) => (inputRefs.current[i] = el)}
                 style={{
                   ...styles.otpInput,
@@ -822,20 +851,16 @@ function OtpDemo() {
                   ...(parseResult.success ? styles.inputSuccess : {}),
                 }}
                 type="text"
-                // inputMode="numeric" 让移动端弹出数字键盘（不影响桌面端）
                 inputMode="numeric"
-                // maxLength={1} 限制单格只能输入 1 个字符
-                // （但 paste 仍能塞入多字符，所以 handleChange 里还要 slice(-1)）
                 maxLength={1}
                 value={digit}
                 onChange={(e) => handleChange(i, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(i, e)}
                 onFocus={(e) => {
                   // 聚焦时全选当前格内容，方便用户直接覆盖输入
-                  // 否则用户得手动选中删除才能覆盖，体验差
                   e.target.select();
-                  handleFocus("code");
                 }}
+                onBlur={() => handleBlur("code")}
               />
             ))}
           </div>
@@ -983,23 +1008,23 @@ const MOCK_CURRENT_PASSWORD = "OldPass123";
 
 function PasswordChangeDemo() {
   // 三个字段集中在一个 form 对象里，便于一次 setState 更新多个字段
-  // 也方便 useMemo(safeParse, [form]) 一次性拿到所有字段做整体校验
   const [form, setForm] = useState({
     currentPassword: "",
     newPassword: "",
     confirmNewPassword: "",
   });
   const [submitted, setSubmitted] = useState(null);
-  // 显示/隐藏密码切换：checkbox 控制 3 个 input 的 type 在 password/text 间切换
-  // 这是无障碍友好设计：用户可以选择「明文」查看自己输入的内容
+  // 显示/隐藏密码切换
   const [showPasswords, setShowPasswords] = useState(false);
-  // touched：聚焦过的字段才显示校验错误
-  const { touched, handleFocus } = useTouchedFields();
+  // touched：失焦过的字段才显示校验错误
+  // currentPasswordError：提交后因「当前密码不正确」返回时标记为 true，
+  // 用于在字段下方显示服务端校验错误（只在提交失败后显示，不在打字过程中报错）
+  const { touched, handleBlur, markAllTouched } = useTouchedFields();
+  const [currentPasswordError, setCurrentPasswordError] = useState(false);
+
+  const fieldNames = ["currentPassword", "newPassword", "confirmNewPassword"];
 
   // 实时校验：每次 form 变化都 safeParse 一次
-  // parseResult.success === false 时，error.issues 可能包含：
-  //   - 字段级错误（如 newPassword 不够长）
-  //   - 跨字段错误（如两次密码不一致，path 指向 confirmNewPassword）
   const parseResult = useMemo(() => {
     return passwordChangeSchema.safeParse(form);
   }, [form]);
@@ -1009,31 +1034,34 @@ function PasswordChangeDemo() {
     return parseResult.error.flatten();
   }, [parseResult]);
 
-  // 额外校验：当前密码是否正确（模拟服务端校验）
-  // 这个校验不放进 Schema，因为：
-  //   1. 真实场景下当前密码只能由服务端验证，前端 Schema 不应包含
-  //   2. 把它放进 Schema 会让每次输入都触发「当前密码错误」提示，体验差
-  //   3. 它只在提交时校验一次，符合「先客户端校验，再服务端校验」的分层
+  // 当前密码是否正确（模拟服务端校验）
+  // 注意：这只用于提交按钮的 disabled 判断和提交后的错误展示，
+  // 不在打字过程中显示错误（避免用户输到一半就看到「密码不正确」）
   const currentPasswordCorrect = form.currentPassword === MOCK_CURRENT_PASSWORD;
 
   const updateField = useCallback((field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setSubmitted(null);
+    // 用户修改当前密码时，清除之前提交产生的「密码不正确」错误
+    if (field === "currentPassword") {
+      setCurrentPasswordError(false);
+    }
   }, []);
 
-  // 提交处理：分两层校验
-  //   1. 前端 Schema 校验（parseResult）—— 实时反馈，挡掉格式错误
-  //   2. 模拟服务端校验（currentPasswordCorrect）—— 只在提交时执行
-  // 这种「前端快速反馈 + 服务端权威校验」是业界表单的标准模式
   const handleSubmit = useCallback(
     (e) => {
       e.preventDefault();
       if (!parseResult.success) {
-        setSubmitted({ success: false, message: "表单校验未通过" });
+        // Schema 校验失败：标记所有字段为 touched，让所有错误可见
+        markAllTouched(fieldNames);
+        setSubmitted({ success: false, message: "表单校验未通过，请检查标红字段" });
         return;
       }
       // 模拟服务端校验当前密码
       if (!currentPasswordCorrect) {
+        // 服务端校验失败：标记 currentPassword 错误，让字段下方显示提示
+        markAllTouched(["currentPassword"]);
+        setCurrentPasswordError(true);
         setSubmitted({
           success: false,
           message: "当前密码不正确（演示密码: OldPass123）",
@@ -1045,15 +1073,14 @@ function PasswordChangeDemo() {
         message: "密码修改成功！请用新密码重新登录",
       });
     },
-    [parseResult, currentPasswordCorrect]
+    [parseResult, currentPasswordCorrect, markAllTouched]
   );
 
-  // 输入框样式：复用 RegisterDemo 的三态逻辑（默认/错误/成功）
-  // 这里抽成函数复用，避免每个字段重复写大段三态判断
+  // 输入框样式：touched 后才显示红/绿边框
+  // 修复：去掉 hasError 中 form[field] 的判断，空字段的 nonempty 错误也要红边框
   const inputStyle = (field) => {
-    const hasError = touched[field] && fieldErrors[field] && form[field];
-    const isValid =
-      touched[field] && !hasError && form[field] && form[field].length > 0;
+    const hasError = touched[field] && fieldErrors[field];
+    const isValid = touched[field] && !fieldErrors[field] && form[field] && form[field].length > 0;
     return {
       ...styles.input,
       ...(hasError ? styles.inputError : {}),
@@ -1062,13 +1089,6 @@ function PasswordChangeDemo() {
   };
 
   // 密码强度评估（简单版）
-  // 算法：根据长度 + 字符种类累加 score，最后映射到 6 档等级
-  //   - 长度 ≥ 8 / ≥ 12 各 +1 分
-  //   - 含小写 / 大写 / 数字 / 特殊字符 各 +1 分
-  // 总分 0-6 对应「很弱 → 极强」6 档
-  //
-  // 注意：这只是教学版强度评估，真实生产环境的强度算法更复杂
-  // （通常用 zxcvbn 库，会考虑字典词、键盘模式、常见密码等）
   const passwordStrength = useMemo(() => {
     const pwd = form.newPassword;
     if (!pwd) return { level: 0, text: "", color: "var(--text-muted)" };
@@ -1079,7 +1099,6 @@ function PasswordChangeDemo() {
     if (/[A-Z]/.test(pwd)) score++;
     if (/[0-9]/.test(pwd)) score++;
     if (/[^a-zA-Z0-9]/.test(pwd)) score++;
-    // 6 档等级：颜色从红渐变到深绿，让用户直观感受强度递增
     const levels = [
       { level: 1, text: "很弱", color: "#ef4444" },
       { level: 2, text: "弱", color: "#f97316" },
@@ -1088,7 +1107,6 @@ function PasswordChangeDemo() {
       { level: 5, text: "很强", color: "#16a34a" },
       { level: 6, text: "极强", color: "#15803d" },
     ];
-    // Math.min(score, 6) 防止 score 超过 6 时越界
     return levels[Math.min(score, 6) - 1] || levels[0];
   }, [form.newPassword]);
 
@@ -1111,30 +1129,25 @@ function PasswordChangeDemo() {
 
         <form onSubmit={handleSubmit}>
           {/* 当前密码字段 */}
-          {/* 特殊处理：inputStyle 三态 + 「输入了但不对」时强制红框 */}
-          {/* 这样即使没 touched，用户输入错误密码也会立即看到红色提示 */}
+          {/* 服务端密码错误只在提交后显示（currentPasswordError），打字过程中不报错 */}
           <div style={styles.fieldGroup}>
             <label style={styles.label}>当前密码</label>
             <input
               style={{
                 ...inputStyle("currentPassword"),
-                // 输入了内容但与 MOCK_CURRENT_PASSWORD 不匹配时，强制加红框
-                // 这是「服务端校验失败」的视觉反馈，与 Schema 校验失败分开处理
-                ...(form.currentPassword && !currentPasswordCorrect
-                  ? styles.inputError
-                  : {}),
+                // 提交后服务端返回密码错误时，显示红框
+                ...(currentPasswordError ? styles.inputError : {}),
               }}
               type={showPasswords ? "text" : "password"}
               placeholder="输入当前密码"
               value={form.currentPassword}
               onChange={(e) => updateField("currentPassword", e.target.value)}
-              onFocus={() => handleFocus("currentPassword")}
+              onBlur={() => handleBlur("currentPassword")}
             />
-            {/* 错误优先级：Schema 错误 > 服务端校验错误 */}
-            {/* Schema 错误（如空字段）放在第一优先，因为它先于服务端校验触发 */}
+            {/* 错误优先级：Schema 空字段错误 > 服务端密码错误 */}
             {touched.currentPassword && fieldErrors.currentPassword ? (
               <div style={styles.errorText}>{fieldErrors.currentPassword[0]}</div>
-            ) : form.currentPassword && !currentPasswordCorrect ? (
+            ) : currentPasswordError ? (
               <div style={styles.errorText}>
                 当前密码不正确（演示密码: OldPass123）
               </div>
@@ -1142,10 +1155,6 @@ function PasswordChangeDemo() {
           </div>
 
           {/* 新密码字段 */}
-          {/* 该字段会被两个对象级 refine 引用：
-              - 「新旧不能相同」path: ["newPassword"]
-              - 「两次必须一致」path: ["confirmNewPassword"]（错误显示在另一字段）
-              所以 newPassword 下方可能显示 Schema 错误或「新旧相同」错误 */}
           <div style={styles.fieldGroup}>
             <label style={styles.label}>新密码</label>
             <input
@@ -1154,15 +1163,13 @@ function PasswordChangeDemo() {
               placeholder="至少 8 位，含大小写字母和数字"
               value={form.newPassword}
               onChange={(e) => updateField("newPassword", e.target.value)}
-              onFocus={() => handleFocus("newPassword")}
+              onBlur={() => handleBlur("newPassword")}
             />
             {touched.newPassword && fieldErrors.newPassword ? (
               <div style={styles.errorText}>{fieldErrors.newPassword[0]}</div>
             ) : null}
 
             {/* 密码强度条：仅在有输入时显示 */}
-            {/* 视觉设计：底层灰色背景 + 上层彩色填充条，宽度按 level/6 计算 */}
-            {/* transition 让强度变化时有平滑过渡，避免突兀的颜色跳变 */}
             {form.newPassword && (
               <div style={{ marginTop: "6px" }}>
                 <div
@@ -1197,7 +1204,6 @@ function PasswordChangeDemo() {
           </div>
 
           {/* 确认新密码字段 */}
-          {/* 该字段的错误来自对象级 refine「两次必须一致」，path 指向 confirmNewPassword */}
           <div style={styles.fieldGroup}>
             <label style={styles.label}>确认新密码</label>
             <input
@@ -1208,7 +1214,7 @@ function PasswordChangeDemo() {
               onChange={(e) =>
                 updateField("confirmNewPassword", e.target.value)
               }
-              onFocus={() => handleFocus("confirmNewPassword")}
+              onBlur={() => handleBlur("confirmNewPassword")}
             />
             {touched.confirmNewPassword && fieldErrors.confirmNewPassword && (
               <div style={styles.errorText}>
@@ -1217,8 +1223,7 @@ function PasswordChangeDemo() {
             )}
           </div>
 
-          {/* 显示密码切换：同时控制 3 个 input 的 type */}
-          {/* showPasswords=true 时所有密码框变明文，方便用户核对输入 */}
+          {/* 显示密码切换 */}
           <div style={{ ...styles.fieldGroup, ...styles.checkboxRow }}>
             <input
               type="checkbox"
@@ -1229,8 +1234,6 @@ function PasswordChangeDemo() {
             <span>显示密码</span>
           </div>
 
-          {/* 提交按钮：必须 Schema 校验通过 + 当前密码正确 才可点击 */}
-          {/* disabled 条件包含两层校验，避免用户点击后才报错的差体验 */}
           <button
             type="submit"
             style={{
