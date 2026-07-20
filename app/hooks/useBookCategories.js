@@ -5,12 +5,12 @@
 // -------------------------------------------------------------
 // 管理用户对书籍分类的自定义操作：新建分组、重命名分组、删除/隐藏分组、
 // 子分组（subGroup）的新建/重命名/删除/排序。
-// 持久化策略：localStorage（即时）+ 服务端 JSON 文件（防抖同步，跨设备）
+// 持久化策略：仅写入服务端 JSON 文件（data/user-preferences.json）。
+//   不再使用 localStorage，所有操作的最终归宿是服务端文件，
+//   以用户最后一次操作为准。
 // =============================================================
 
 import { useState, useCallback, useEffect, useRef } from "react";
-
-const KEY = "sidebar:category-config";
 
 const SUBGROUP_SEP = "::__";
 
@@ -23,19 +23,6 @@ const defaultConfig = {
   subGroups: {},
   subGroupOrder: {},
 };
-
-function loadLocal() {
-  if (typeof window === "undefined") return { ...defaultConfig };
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) return { ...defaultConfig, ...JSON.parse(raw) };
-  } catch {}
-  return { ...defaultConfig };
-}
-
-function saveLocal(config) {
-  try { localStorage.setItem(KEY, JSON.stringify(config)); } catch {}
-}
 
 function uid() {
   return "c-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -58,32 +45,23 @@ function parseSubGroupKey(key) {
 export { SUBGROUP_SEP, makeSubGroupKey, parseSubGroupKey };
 
 export default function useBookCategories(initiallyHidden = []) {
-  // 修复 hydration mismatch：不在 useState 初始化时读取 localStorage，
-  // 初始用默认值，localStorage 数据在下方 useEffect 中加载
+  // 初始用默认值，服务端数据由下方 fetch effect 加载
   const [config, setConfig] = useState(() => {
     if (initiallyHidden.length > 0) {
       return { ...defaultConfig, hidden: [...initiallyHidden] };
     }
     return { ...defaultConfig };
   });
+  // 标记服务端数据是否已加载完成。
+  // Sidebar 的「bookOrder 清理 effect」依赖 catConfig.custom 判断自定义分类是否有效，
+  // 如果在 catConfig 加载前执行清理，会把文件中的自定义分类 key 当成「无效分类」删掉。
   const [loaded, setLoaded] = useState(false);
-  // 追踪本地是否已修改 config（防止服务端同步覆盖用户在加载期间的拖拽操作）
+  // 追踪本地是否已修改 config
+  //   1. 防止 fetch 完成时用服务端数据覆盖用户在加载期间的修改
+  //   2. 作为保存 effect 的 gate：用户从未修改过时不发 POST
   const localModifiedRef = useRef(false);
 
-  // 客户端挂载后从 localStorage 加载配置（避免 SSR 时读取导致 hydration mismatch）
-  // 不修改 loaded：loaded 由下方 fetch effect 控制，确保 save effect 在服务端数据合并后才执行
-  useEffect(() => {
-    const local = loadLocal();
-    let merged = { ...local };
-    if (merged.hidden.length === 0 && initiallyHidden.length > 0) {
-      merged.hidden = [...initiallyHidden];
-    }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setConfig(merged);
-    // 仅挂载时执行一次
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  // 挂载时从服务端文件加载配置（文件是唯一真相源）
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -110,9 +88,11 @@ export default function useBookCategories(initiallyHidden = []) {
     return () => { cancelled = true; };
   }, [initiallyHidden]);
 
+  // 任何变更都同步到服务端文件（防抖 400ms，避免连续操作发太多请求）
+  // 关键：gate 用 localModifiedRef 而非 loaded。否则用户在 fetch 完成前
+  // 的修改会因 loaded===false 被跳过保存，刷新后丢失。
   useEffect(() => {
-    if (!loaded) return;
-    saveLocal(config);
+    if (!localModifiedRef.current) return;
     const timer = setTimeout(() => {
       fetch("/api/preferences", {
         method: "POST",
@@ -121,7 +101,7 @@ export default function useBookCategories(initiallyHidden = []) {
       }).catch(() => {});
     }, 400);
     return () => clearTimeout(timer);
-  }, [config, loaded]);
+  }, [config]);
 
   const addCategory = useCallback((name, icon = "📁") => {
     localModifiedRef.current = true;
@@ -292,7 +272,6 @@ export default function useBookCategories(initiallyHidden = []) {
     localModifiedRef.current = true;
     const defaults = { ...defaultConfig, hidden: [...initiallyHidden] };
     setConfig(defaults);
-    saveLocal(defaults);
     fetch("/api/preferences", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -306,7 +285,6 @@ export default function useBookCategories(initiallyHidden = []) {
     if (!next.subGroups) next.subGroups = {};
     if (!next.subGroupOrder) next.subGroupOrder = {};
     setConfig(next);
-    saveLocal(next);
     fetch("/api/preferences", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -316,6 +294,7 @@ export default function useBookCategories(initiallyHidden = []) {
 
   return {
     config,
+    loaded,
     addCategory,
     renameCategory,
     deleteCategory,

@@ -47,6 +47,22 @@ async function writePrefs(data) {
   await rename(tmpPath, FILE_PATH);
 }
 
+// 串行化写锁：用 promise 链确保每次 read→merge→write 串行执行，
+// 避免两个 hook 同时 POST 时读到旧文件、后写入覆盖前写入的竞态条件。
+let pendingWrite = Promise.resolve();
+
+async function lockedWrite(filtered) {
+  const result = pendingWrite.then(async () => {
+    const prefs = await readPrefs();
+    const merged = { ...prefs, ...filtered };
+    await writePrefs(merged);
+    return { ok: true };
+  });
+  // 即使当前写入失败，也要释放锁让后续请求继续
+  pendingWrite = result.catch(() => {});
+  return result;
+}
+
 // 允许的字段白名单
 const ALLOWED_KEYS = new Set(["bookOrder", "hiddenBooks", "deletedChapters", "hiddenChapters", "categoryConfig", "savedDefaults"]);
 
@@ -86,11 +102,10 @@ export async function POST(request) {
   }
 
   try {
-    // 合并写入：先读出现有数据，再用传入的字段覆盖
-    const prefs = await readPrefs();
-    const merged = { ...prefs, ...filtered };
-    await writePrefs(merged);
-    return NextResponse.json({ ok: true });
+    // 使用串行化写锁，确保每次写入前都读到最新的文件内容，
+    // 避免两个 hook 同时 POST 时互相覆盖（竞态条件）
+    const result = await lockedWrite(filtered);
+    return NextResponse.json(result);
   } catch {
     return NextResponse.json(
       { error: "保存偏好失败，请稍后重试" },

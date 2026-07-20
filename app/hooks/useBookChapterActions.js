@@ -4,37 +4,24 @@
 // 书籍/章节右键操作状态管理 Hook
 // -------------------------------------------------------------
 // 提供隐藏书籍、标记删除章节、隐藏章节的状态管理。
-// 持久化策略：localStorage（即时响应）+ 服务端 JSON 文件（跨设备同步）
+// 持久化策略：仅写入服务端 JSON 文件（data/user-preferences.json）。
+//   不再使用 localStorage，所有操作的最终归宿是服务端文件，
+//   以用户最后一次操作为准。
 // 使用 useEffect 统一同步到服务端（防抖），避免闭包陷阱。
+// 关键：保存 effect 的 gate 用 localModifiedRef 而非 loaded，
+//   避免用户在 fetch 完成前的修改因 loaded===false 被跳过保存。
 // =============================================================
 
-import { useState, useEffect, useCallback } from "react";
-
-const HIDDEN_BOOKS_KEY = "sidebar:hidden-books";
-const DELETED_CHAPTERS_KEY = "sidebar:deleted-chapters";
-const HIDDEN_CHAPTERS_KEY = "sidebar:hidden-chapters";
-
-function loadSet(key) {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw) return new Set(JSON.parse(raw));
-  } catch {}
-  return new Set();
-}
-
-function saveSet(key, set) {
-  try {
-    localStorage.setItem(key, JSON.stringify([...set]));
-  } catch {}
-}
+import { useState, useEffect, useCallback, useRef } from "react";
 
 export default function useBookChapterActions() {
   const [hiddenBooks, setHiddenBooks] = useState(() => new Set());
   const [deletedChapterIds, setDeletedChapterIds] = useState(() => new Set());
   const [hiddenChapterIds, setHiddenChapterIds] = useState(() => new Set());
-  const [loaded, setLoaded] = useState(false);
+  // 追踪本地是否已修改（防止服务端同步覆盖 + 跳过未修改时的保存 effect）
+  const localModifiedRef = useRef(false);
 
-  // 挂载后：优先从服务端加载，再 fallback 到 localStorage
+  // 挂载后从服务端文件加载（文件是唯一真相源）
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -43,28 +30,23 @@ export default function useBookChapterActions() {
         if (!res.ok) throw new Error("fetch failed");
         const data = await res.json();
         if (cancelled) return;
-        // 按字段独立判断：服务端有数据则用服务端，无数据则 fallback 到 localStorage
-        if (data.hiddenBooks?.length) setHiddenBooks(new Set(data.hiddenBooks));
-        else setHiddenBooks(loadSet(HIDDEN_BOOKS_KEY));
-        if (data.deletedChapters?.length) setDeletedChapterIds(new Set(data.deletedChapters));
-        else setDeletedChapterIds(loadSet(DELETED_CHAPTERS_KEY));
-        if (data.hiddenChapters?.length) setHiddenChapterIds(new Set(data.hiddenChapters));
-        else setHiddenChapterIds(loadSet(HIDDEN_CHAPTERS_KEY));
-        setLoaded(true);
+        // 仅在用户尚未本地修改时才用服务端数据覆盖
+        if (!localModifiedRef.current) {
+          if (data.hiddenBooks?.length) setHiddenBooks(new Set(data.hiddenBooks));
+          if (data.deletedChapters?.length) setDeletedChapterIds(new Set(data.deletedChapters));
+          if (data.hiddenChapters?.length) setHiddenChapterIds(new Set(data.hiddenChapters));
+        }
       } catch {
-        if (cancelled) return;
-        setHiddenBooks(loadSet(HIDDEN_BOOKS_KEY));
-        setDeletedChapterIds(loadSet(DELETED_CHAPTERS_KEY));
-        setHiddenChapterIds(loadSet(HIDDEN_CHAPTERS_KEY));
-        setLoaded(true);
+        // 静默失败，状态保持默认空集
       }
     })();
     return () => { cancelled = true; };
   }, []);
 
-  // 统一同步到服务端（防抖 300ms）
+  // 统一同步到服务端文件（防抖 300ms）
+  // gate 用 localModifiedRef.current：用户从未修改过时不发请求
   useEffect(() => {
-    if (!loaded) return;
+    if (!localModifiedRef.current) return;
     const timer = setTimeout(() => {
       fetch("/api/preferences", {
         method: "POST",
@@ -77,62 +59,67 @@ export default function useBookChapterActions() {
       }).catch(() => {});
     }, 300);
     return () => clearTimeout(timer);
-  }, [hiddenBooks, deletedChapterIds, hiddenChapterIds, loaded]);
+  }, [hiddenBooks, deletedChapterIds, hiddenChapterIds]);
 
   const hideBook = useCallback((path) => {
-    setHiddenBooks((prev) => { const n = new Set(prev); n.add(path); saveSet(HIDDEN_BOOKS_KEY, n); return n; });
+    localModifiedRef.current = true;
+    setHiddenBooks((prev) => { const n = new Set(prev); n.add(path); return n; });
   }, []);
 
   const unhideBook = useCallback((path) => {
-    setHiddenBooks((prev) => { const n = new Set(prev); n.delete(path); saveSet(HIDDEN_BOOKS_KEY, n); return n; });
+    localModifiedRef.current = true;
+    setHiddenBooks((prev) => { const n = new Set(prev); n.delete(path); return n; });
   }, []);
 
   const deleteChapter = useCallback((id) => {
-    setDeletedChapterIds((prev) => { const n = new Set(prev); n.add(id); saveSet(DELETED_CHAPTERS_KEY, n); return n; });
+    localModifiedRef.current = true;
+    setDeletedChapterIds((prev) => { const n = new Set(prev); n.add(id); return n; });
   }, []);
 
   const undeleteChapter = useCallback((id) => {
-    setDeletedChapterIds((prev) => { const n = new Set(prev); n.delete(id); saveSet(DELETED_CHAPTERS_KEY, n); return n; });
+    localModifiedRef.current = true;
+    setDeletedChapterIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
   }, []);
 
   const hideChapter = useCallback((id) => {
-    setHiddenChapterIds((prev) => { const n = new Set(prev); n.add(id); saveSet(HIDDEN_CHAPTERS_KEY, n); return n; });
+    localModifiedRef.current = true;
+    setHiddenChapterIds((prev) => { const n = new Set(prev); n.add(id); return n; });
   }, []);
 
   const unhideChapter = useCallback((id) => {
-    setHiddenChapterIds((prev) => { const n = new Set(prev); n.delete(id); saveSet(HIDDEN_CHAPTERS_KEY, n); return n; });
+    localModifiedRef.current = true;
+    setHiddenChapterIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
   }, []);
 
   const hideChapters = useCallback((ids) => {
+    localModifiedRef.current = true;
     setHiddenChapterIds((prev) => {
       const n = new Set(prev);
       ids.forEach((id) => n.add(id));
-      saveSet(HIDDEN_CHAPTERS_KEY, n);
       return n;
     });
   }, []);
 
   const unhideChapters = useCallback((ids) => {
+    localModifiedRef.current = true;
     setHiddenChapterIds((prev) => {
       const n = new Set(prev);
       ids.forEach((id) => n.delete(id));
-      saveSet(HIDDEN_CHAPTERS_KEY, n);
       return n;
     });
   }, []);
 
   const clearHiddenBooks = useCallback(() => {
-    setHiddenBooks(() => { const n = new Set(); saveSet(HIDDEN_BOOKS_KEY, n); return n; });
+    localModifiedRef.current = true;
+    setHiddenBooks(() => new Set());
   }, []);
 
   const resetAll = useCallback(() => {
+    localModifiedRef.current = true;
     const empty = new Set();
     setHiddenBooks(empty);
     setDeletedChapterIds(empty);
     setHiddenChapterIds(empty);
-    saveSet(HIDDEN_BOOKS_KEY, empty);
-    saveSet(DELETED_CHAPTERS_KEY, empty);
-    saveSet(HIDDEN_CHAPTERS_KEY, empty);
     fetch("/api/preferences", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -115,6 +115,10 @@ const ROUTE_NAMES = {
   "/unharmed": "破怒：翻篇指南",
   "/talk-rebut": "谈话绝地反击",
   "/letting-go": "释怀",
+  // 补全 BOOK_CATEGORIES 中遗漏的 3 个路由，让书签能显示正确标题
+  "/zod-mini": "Zod Mini 实战",
+  "/forgerock-mini": "ForgeRock Mini 认证",
+  "/betting-activation": "集团账户激活 Demo",
 };
 
 function getFullUrl() {

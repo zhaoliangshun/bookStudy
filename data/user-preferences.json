@@ -17,7 +17,8 @@
       "/zod",
       "/ts-quick",
       "/tsbook",
-      "/node4"
+      "/node4",
+      "/zod-mini"
     ],
     "Python 编程": [],
     "Java 开发": [
@@ -39,7 +40,9 @@
       "/fe-engineering",
       "/fe-interview",
       "/vite",
-      "/vite2"
+      "/vite2",
+      "/forgerock-mini",
+      "/betting-activation"
     ],
     "后端与网络": [
       "/http",

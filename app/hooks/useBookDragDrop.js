@@ -5,13 +5,13 @@
 // -------------------------------------------------------------
 // 管理书籍在各分类（包括子分组）中的排序和跨分类移动。
 // 子分组 key 格式："父分类名::__子分组ID"
-// 持久化策略：localStorage（即时响应）+ 服务端 JSON 文件（跨设备同步）
+// 持久化策略：仅写入服务端 JSON 文件（data/user-preferences.json）。
+//   不再使用 localStorage，所有操作的最终归宿是服务端文件，
+//   以用户最后一次操作为准。
 // =============================================================
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { SUBGROUP_SEP, parseSubGroupKey } from "./useBookCategories";
-
-const ORDER_KEY = "sidebar:book-order";
 
 export function getDefaultBookOrder(categories) {
   const order = {};
@@ -65,40 +65,19 @@ export function mergeOrder(saved, defaults) {
   return merged;
 }
 
-// 同步从 localStorage 加载 bookOrder（用于 useState 初始化，避免首次渲染缺少子分组 key）
-function loadLocalOrder(categories) {
-  if (typeof window === "undefined") return getDefaultBookOrder(categories);
-  try {
-    const raw = localStorage.getItem(ORDER_KEY);
-    if (raw) {
-      const saved = JSON.parse(raw);
-      const defaults = getDefaultBookOrder(categories);
-      return mergeOrder(saved, defaults);
-    }
-  } catch {}
-  return getDefaultBookOrder(categories);
-}
-
 export default function useBookDragDrop(categories) {
-  // 修复 hydration mismatch：不在 useState 初始化时读取 localStorage，
-  // 初始用默认排序，localStorage 数据在下方 useEffect 中加载
+  // 初始用默认排序，服务端数据由下方 fetch effect 加载
   const [bookOrder, setBookOrder] = useState(() => getDefaultBookOrder(categories));
+  // 标记服务端数据是否已加载完成。
+  // Sidebar 的「bookOrder 清理 effect」在 bookOrder 和 catConfig 都加载前不应执行，
+  // 否则会用默认分类覆盖文件中的自定义分类布局。
   const [loaded, setLoaded] = useState(false);
-  // 追踪本地是否已修改 bookOrder（防止服务端同步覆盖用户在加载期间的拖拽操作）
+  // 追踪本地是否已修改 bookOrder
+  //   1. 防止 fetch 完成时用服务端数据覆盖用户在加载期间的拖拽操作
+  //   2. 作为保存 effect 的 gate：用户从未修改过时不发 POST
   const localModifiedRef = useRef(false);
 
-  // 客户端挂载后从 localStorage 加载排序（避免 SSR 时读取导致 hydration mismatch）
-  // 不修改 loaded：loaded 由下方 fetch effect 控制，确保 save effect 在服务端数据合并后才执行
-  useEffect(() => {
-    const local = loadLocalOrder(categories);
-    if (local && Object.keys(local).length > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setBookOrder(local);
-    }
-    // 仅挂载时执行一次
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  // 挂载时从服务端文件加载排序（文件是唯一真相源）
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -111,43 +90,22 @@ export default function useBookDragDrop(categories) {
           if (data.bookOrder && Object.keys(data.bookOrder).length > 0) {
             const defaults = getDefaultBookOrder(categories);
             setBookOrder(mergeOrder(data.bookOrder, defaults));
-          } else {
-            try {
-              const raw = localStorage.getItem(ORDER_KEY);
-              if (raw) {
-                const saved = JSON.parse(raw);
-                const defaults = getDefaultBookOrder(categories);
-                setBookOrder(mergeOrder(saved, defaults));
-              }
-            } catch {}
           }
         }
         setLoaded(true);
       } catch {
         if (cancelled) return;
-        if (!localModifiedRef.current) {
-          try {
-            const raw = localStorage.getItem(ORDER_KEY);
-            if (raw) {
-              const saved = JSON.parse(raw);
-              const defaults = getDefaultBookOrder(categories);
-              setBookOrder(mergeOrder(saved, defaults));
-            }
-          } catch {}
-        }
         setLoaded(true);
       }
     })();
     return () => { cancelled = true; };
   }, [categories]);
 
-  const persistLocal = useCallback((order) => {
-    try { localStorage.setItem(ORDER_KEY, JSON.stringify(order)); } catch {}
-  }, []);
-
+  // 任何变更都同步到服务端文件（防抖 400ms，避免连续拖拽发太多请求）
+  // 关键：gate 用 localModifiedRef 而非 loaded。否则用户在 fetch 完成前
+  // 拖拽产生的状态会因 loaded===false 被跳过保存，刷新后丢失。
   useEffect(() => {
-    if (!loaded) return;
-    persistLocal(bookOrder);
+    if (!localModifiedRef.current) return;
     const timer = setTimeout(() => {
       fetch("/api/preferences", {
         method: "POST",
@@ -156,7 +114,7 @@ export default function useBookDragDrop(categories) {
       }).catch(() => {});
     }, 400);
     return () => clearTimeout(timer);
-  }, [bookOrder, loaded, persistLocal]);
+  }, [bookOrder]);
 
   const reorderInCategory = useCallback((category, fromIndex, toIndex) => {
     localModifiedRef.current = true;
@@ -269,29 +227,28 @@ export default function useBookDragDrop(categories) {
     localModifiedRef.current = true;
     const defaults = getDefaultBookOrder(categories);
     setBookOrder(defaults);
-    persistLocal(defaults);
     fetch("/api/preferences", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ bookOrder: defaults }),
     }).catch(() => {});
-  }, [persistLocal]);
+  }, []);
 
   const resetToOrder = useCallback((order) => {
     localModifiedRef.current = true;
     setBookOrder(order);
-    persistLocal(order);
     fetch("/api/preferences", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ bookOrder: order }),
     }).catch(() => {});
-  }, [persistLocal]);
+  }, []);
 
   const getOrderedPaths = useCallback((categoryName) => bookOrder[categoryName] || [], [bookOrder]);
 
   return {
     bookOrder,
+    loaded,
     reorderInCategory,
     moveToCategory,
     renameCategoryInOrder,
