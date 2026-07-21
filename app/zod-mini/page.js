@@ -539,7 +539,7 @@ function RegisterDemo() {
             {touched.username && fieldErrors.username ? (
               <div style={styles.errorText}>{fieldErrors.username[0]}</div>
             ) : (
-              form.username && !fieldErrors.username && (
+              touched.username && form.username && !fieldErrors.username && (
                 <div style={styles.successText}>用户名可用</div>
               )
             )}
@@ -558,7 +558,7 @@ function RegisterDemo() {
             {touched.email && fieldErrors.email ? (
               <div style={styles.errorText}>{fieldErrors.email[0]}</div>
             ) : (
-              form.email && !fieldErrors.email && (
+              touched.email && form.email && !fieldErrors.email && (
                 <div style={styles.successText}>邮箱格式正确</div>
               )
             )}
@@ -841,7 +841,11 @@ function OtpDemo() {
             {digits.map((digit, i) => (
               <input
                 key={i}
-                ref={(el) => (inputRefs.current[i] = el)}
+                // 用块体赋值，避免箭头函数隐式返回赋值结果——
+                // React 19 会把 ref 回调的返回值当作 cleanup 函数，返回非函数会告警
+                ref={(el) => {
+                  inputRefs.current[i] = el;
+                }}
                 style={{
                   ...styles.otpInput,
                   // 视觉状态：touched + 校验失败 → 红框；校验成功 → 绿框
@@ -1035,8 +1039,13 @@ function PasswordChangeDemo() {
   }, [parseResult]);
 
   // 当前密码是否正确（模拟服务端校验）
-  // 注意：这只用于提交按钮的 disabled 判断和提交后的错误展示，
-  // 不在打字过程中显示错误（避免用户输到一半就看到「密码不正确」）
+  // 注意：这模拟的是「服务端」校验，前端本不该提前知道结果，
+  // 所以它「只」在点击提交后用于展示错误，不参与提交按钮的 disabled 判断，
+  // 也不在打字过程中显示错误（避免用户输到一半就看到「密码不正确」）。
+  //
+  // 修复：原来 disabled 条件里带了 !currentPasswordCorrect，导致当前密码错误时
+  // 按钮被禁用、根本无法提交，handleSubmit 里「当前密码不正确」的分支成了死代码，
+  // 演示服务端校验失败的效果永远无法触发。现在只按 Schema 校验结果决定 disabled。
   const currentPasswordCorrect = form.currentPassword === MOCK_CURRENT_PASSWORD;
 
   const updateField = useCallback((field, value) => {
@@ -1238,11 +1247,11 @@ function PasswordChangeDemo() {
             type="submit"
             style={{
               ...styles.button,
-              ...(!parseResult.success || !currentPasswordCorrect
-                ? styles.buttonDisabled
-                : {}),
+              // 只按 Schema 校验结果禁用；当前密码是否正确属于「服务端校验」，
+              // 提交后才判定，不在此提前拦截（否则永远无法触发服务端错误分支）
+              ...(!parseResult.success ? styles.buttonDisabled : {}),
             }}
-            disabled={!parseResult.success || !currentPasswordCorrect}
+            disabled={!parseResult.success}
           >
             确认修改
           </button>

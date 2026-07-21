@@ -495,7 +495,12 @@ class ZodDate extends ZodType {
       }
       return ok(input);
     }
-    // 宽容处理：数字（时间戳）/ 字符串（ISO 日期）尝试转换
+    // 宽容处理：只对数字（时间戳）/ 字符串（ISO 日期）尝试转换
+    // 注意：必须限定类型，否则 new Date(true)=1970-01-01T00:00:00.001Z、
+    // new Date(null)=epoch 都会被当成「有效日期」，导致 boolean/null 被静默接受
+    if (typeof input !== "number" && typeof input !== "string") {
+      return fail([makeIssue("invalid_type", `期望 date，实际 ${input === null ? "null" : typeof input}`, [])]);
+    }
     const date = new Date(input);
     if (Number.isNaN(date.getTime())) {
       return fail([makeIssue("invalid_type", "无法解析为日期", [])]);
@@ -855,18 +860,21 @@ class ZodLiteral extends ZodType {
  *   - 多种输入格式：z.union([z.string(), z.number()])
  *   - 多种对象形状：z.union([adminSchema, userSchema])
  *
- * 注意：错误信息目前只返回「所有分支均校验失败」的笼统提示，
- * 真实 Zod 会聚合所有分支的错误详情，便于调试
+ * 错误信息：聚合各分支的首条 issue 到 unionErrors 字段，
+ * 方便调试时看到「每个分支分别为什么失败」，而非只有一句笼统提示。
  */
 class ZodUnion extends ZodType {
   _parse(input) {
-    const errors = [];
+    const branchIssues = [];
     for (const option of this._def.options) {
       const result = option._parse(input);
       if (result.success) return result;
-      errors.push(result.error.issues[0]);
+      // 收集每个分支的首条错误，供聚合展示（真实 Zod 也会保留分支错误详情）
+      branchIssues.push(...result.error.issues);
     }
-    return fail([makeIssue("invalid_union", "所有分支均校验失败", [])]);
+    return fail([
+      { ...makeIssue("invalid_union", "所有分支均校验失败", []), unionErrors: branchIssues },
+    ]);
   }
 }
 
@@ -892,11 +900,15 @@ class ZodIntersection extends ZodType {
     if (!right.success) return right;
 
     // 两个分支都成功：合并结果
-    // 对象合并：用展开运算符（后者覆盖前者的同名字段）
-    // 非对象：以后者为准（较少用）
-    if (typeof left.data === "object" && typeof right.data === "object") {
+    // 只对「纯对象」用展开运算符合并（后者覆盖前者的同名字段）。
+    // 注意 typeof [] === "object" 且 typeof null === "object"，
+    // 若不排除数组/null，{...[1,2]} 会得到 {0:1,1:2} 这种畸形对象。
+    const isPlainObject = (v) =>
+      v !== null && typeof v === "object" && !Array.isArray(v);
+    if (isPlainObject(left.data) && isPlainObject(right.data)) {
       return ok({ ...left.data, ...right.data });
     }
+    // 非纯对象：以后者为准（较少用）
     return ok(right.data);
   }
 }
@@ -918,15 +930,18 @@ class ZodIntersection extends ZodType {
  * ZodEffects —— 自定义校验（refine 的底层实现）
  *
  * 先用内部 Schema 校验通过，再用 check 函数做额外校验。
- * check 返回：
- *   - false：校验失败（用 message 参数作为错误信息）
- *   - true：校验通过
- *   - 字符串：校验失败，字符串作为错误信息（替代 message 参数）
+ * check 返回值按「真值性」判定（与 Zod 官方一致）：
+ *   - 非空字符串：校验失败，字符串作为错误信息（替代 message 参数）
+ *   - 其他真值（true / 非零数字 / 对象...）：校验通过
+ *   - 任意假值（false / 0 / NaN / null / undefined / ""）：校验失败，用 message 参数
  *   - 抛异常：异常 message 作为错误信息
  *
- * 这种多返回值支持让 refine 写起来很灵活：
- *   .refine(v => v.length > 0, "不能为空")           // 返回 boolean
- *   .refine(v => v.length > 0 ? true : "不能为空")   // 返回 string
+ * 这种「真值即通过、假值即失败」的语义让 refine 写起来很灵活，
+ * 同时避免了常见陷阱——例如 .refine(v => v.match(/\d/)) 未匹配时返回 null，
+ * 应当判为失败（旧实现只在严格 === false 时才失败，会把 null/0 误判为通过）：
+ *   .refine(v => v.length > 0, "不能为空")            // 返回 boolean
+ *   .refine(v => v.length > 0 ? true : "不能为空")    // 返回 string 作为自定义消息
+ *   .refine(v => v.match(/\d/), "需要数字")            // 返回 null/数组，按真值性判定
  *   .refine(v => { if (...) throw new Error("xxx") }) // 抛异常
  *
  * path 字段（来自 refine 的第二参数）决定错误挂载位置：
@@ -948,15 +963,16 @@ class ZodEffects extends ZodType {
     // 用 try/catch 捕获 check 抛出的异常，转成统一的 fail 返回
     try {
       const checkResult = this._def.check(inner.data);
-      if (checkResult === false) {
-        // 返回 false → 用预设的 message
-        return fail([makeIssue("custom", this._def.message, path)]);
-      }
-      if (typeof checkResult === "string") {
-        // 返回字符串 → 字符串本身就是错误信息（覆盖预设 message）
+      // 非空字符串 → 字符串本身就是错误信息（覆盖预设 message）
+      if (typeof checkResult === "string" && checkResult.length > 0) {
         return fail([makeIssue("custom", checkResult, path)]);
       }
-      // 返回 true / undefined / 其他 truthy 值 → 校验通过
+      // 按真值性判定：任意假值（false/0/NaN/null/undefined/""）都算失败
+      // 注意：这里必须在字符串分支之后，才能让空字符串落到「假值失败」用预设 message
+      if (!checkResult) {
+        return fail([makeIssue("custom", this._def.message, path)]);
+      }
+      // 真值 → 校验通过
       return ok(inner.data);
     } catch (e) {
       // check 抛异常 → 异常 message 作为错误信息
