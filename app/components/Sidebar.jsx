@@ -172,6 +172,8 @@ const BOOK_CATEGORIES = [
       { path: "/mantine2", label: "Mantine 从入门到精通大全", icon: "🎨" },
       { path: "/mantine-demo", label: "Mantine Demo", icon: "🧪" },
       { path: "/mantine-form-zod", label: "Mantine Form + Zod 实战", icon: "🧩" },
+      { path: "/mantine-v9-book", label: "Mantine v9 从入门到精通", icon: "📘" },
+      { path: "/mantinepro", label: "Mantine v9 深度实战：理念·Theme·Form", icon: "🎨" },
       { path: "/forgerock", label: "ForgeRock SDK", icon: "🛡️" },
       { path: "/forgerock-demo", label: "ForgeRock Demo", icon: "🎭" },
       { path: "/forgerock-mini", label: "ForgeRock Mini 认证", icon: "🔐" },
