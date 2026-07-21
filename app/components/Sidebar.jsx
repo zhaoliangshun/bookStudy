@@ -134,6 +134,7 @@ const BOOK_CATEGORIES = [
       { path: "/ts3", label: "TypeScript 高阶实战", icon: "💠" },
       { path: "/tsgen", label: "TS 泛型专题", icon: "🎯" },
       { path: "/zod", label: "Zod 实战教程", icon: "🛡️" },
+      { path: "/zod-mini", label: "Zod Mini 实战", icon: "🛡️" },
       { path: "/workers", label: "Web Workers", icon: "👷" },
       { path: "/playground", label: "代码 Playground", icon: "🛝" },
     ],
@@ -173,7 +174,9 @@ const BOOK_CATEGORIES = [
       { path: "/mantine-form-zod", label: "Mantine Form + Zod 实战", icon: "🧩" },
       { path: "/forgerock", label: "ForgeRock SDK", icon: "🛡️" },
       { path: "/forgerock-demo", label: "ForgeRock Demo", icon: "🎭" },
+      { path: "/forgerock-mini", label: "ForgeRock Mini 认证", icon: "🔐" },
       { path: "/auth-demo", label: "认证站点 Demo", icon: "🔐" },
+      { path: "/betting-activation", label: "集团账户激活 Demo", icon: "💳" },
       { path: "/tsx", label: "TS + React", icon: "⚛️" },
       { path: "/tsx2", label: "TS+React 从入门到精通大全", icon: "⚛️" },
       { path: "/tsx3", label: "React 中使用 TypeScript 大全（全新重写版）", icon: "📘" },
@@ -447,11 +450,11 @@ export default function Sidebar({
     () => BOOK_CATEGORIES.filter((c) => c.hide && !c.system).map((c) => c.name),
     []
   );
-  const { config: catConfig, addCategory, renameCategory, deleteCategory, isCustom: isCustomCategory, ensureOrderInitialized, reorderCategories, resetToDefaults: resetCatConfig, resetToConfig, addSubGroup, renameSubGroup, deleteSubGroup, getOrderedSubGroups, reorderSubGroups } =
+  const { config: catConfig, loaded: catConfigLoaded, addCategory, renameCategory, deleteCategory, isCustom: isCustomCategory, ensureOrderInitialized, reorderCategories, resetToDefaults: resetCatConfig, resetToConfig, addSubGroup, renameSubGroup, deleteSubGroup, getOrderedSubGroups, reorderSubGroups } =
     useBookCategories(initiallyHiddenCats);
 
   // ===== 书籍拖拽排序 =====
-  const { bookOrder, reorderInCategory, moveToCategory, renameCategoryInOrder, removeCategoryFromOrder, ensureCategory, moveBooksToCategory, mergeSubGroupIntoParent, updateOrder, resetToDefaults: resetBookOrder, resetToOrder, getOrderedPaths } =
+  const { bookOrder, loaded: bookOrderLoaded, reorderInCategory, moveToCategory, renameCategoryInOrder, removeCategoryFromOrder, ensureCategory, moveBooksToCategory, mergeSubGroupIntoParent, updateOrder, resetToDefaults: resetBookOrder, resetToOrder, getOrderedPaths } =
     useBookDragDrop(BOOK_CATEGORIES);
 
   // ===== 用户保存的默认分组设置 =====
@@ -513,7 +516,15 @@ export default function Sidebar({
   // - 完全不在 bookOrder 中的书籍 → 默认分类（可见）或"未分组"
   // - 清理无效路径（已删除书籍的旧路径）
   // - 清理已不存在的分类 key（已删除的自定义分类、已隐藏默认分类的冗余 key）
+  //
+  // 关键：必须等 catConfig 和 bookOrder 都从服务端加载完成后再执行清理。
+  // 否则会出现 race condition：
+  //   1. bookOrder 先加载 → 含文件中的自定义分类 key
+  //   2. catConfig 还没加载 → custom=[] → validCatNames 不含自定义分类
+  //   3. 清理 effect 把自定义分类当成「无效分类」→ 书移回默认分类 → key 被删除
+  //   4. 保存 effect 把「清理后」的 bookOrder POST 回文件 → 自定义分类布局丢失！
   useEffect(() => {
+    if (!catConfigLoaded || !bookOrderLoaded) return;
     const moves = [];
     const assignedPaths = new Set();
     const catsToRemove = [];
@@ -676,7 +687,7 @@ export default function Sidebar({
     if (hiddenBooks.size > 0) {
       clearHiddenBooks();
     }
-  }, [bookOrder, catConfig.hidden, catConfig.renamed, catConfig.custom, catConfig.subGroups, hiddenBooks, updateOrder, clearHiddenBooks, bookDefaultCategory]);
+  }, [catConfigLoaded, bookOrderLoaded, bookOrder, catConfig.hidden, catConfig.renamed, catConfig.custom, catConfig.subGroups, hiddenBooks, updateOrder, clearHiddenBooks, bookDefaultCategory]);
 
   // 根据排序、自定义分类、隐藏状态计算最终可见的分类列表（含子分组）
   const visibleCategories = useMemo(() => {

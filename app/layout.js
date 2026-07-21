@@ -1,7 +1,15 @@
 import { cookies } from "next/headers";
+import Script from "next/script";
 import "./globals.css";
 import Providers from "./components/Providers";
 import PWARegister from "./components/PWARegister";
+
+// Mantine 防闪烁脚本：在 hydration 前同步读取 localStorage 设置 data-mantine-color-scheme，
+// 避免 /mantine、/auth-demo 等子树刷新时亮→暗闪烁(FOUC)。
+// 放在 root layout 用 beforeInteractive 策略，SSR 时 Next.js 通过 __next_s 机制
+// 注入脚本到 HTML，客户端在 hydration 前执行；React 19.2 不会对 next/script 警告。
+// 非 Mantine 页面 localStorage 没有 mantine-color-scheme-value，脚本走 catch 分支无副作用。
+const MANTINE_COLOR_SCHEME_SCRIPT = `try{var _c=window.localStorage.getItem("mantine-color-scheme-value");var c=_c==="light"||_c==="dark"||_c==="auto"?_c:"light";var cc=c!=="auto"?c:window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.setAttribute("data-mantine-color-scheme",cc);}catch(e){}`;
 
 export const metadata = {
   title: "Node.js / TypeScript / Tailwind CSS / Python / Sass / GraphQL 交互式教程 · 在线编辑运行",
@@ -45,6 +53,12 @@ export default async function RootLayout({ children }) {
       suppressHydrationWarning
     >
       <body>
+        {/* Mantine 防闪烁脚本：beforeInteractive 在 hydration 前执行，避免亮→暗闪烁 */}
+        <Script
+          id="mantine-color-scheme-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: MANTINE_COLOR_SCHEME_SCRIPT }}
+        />
         <Providers>{children}</Providers>
         <PWARegister />
       </body>

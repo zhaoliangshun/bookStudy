@@ -2,27 +2,18 @@
 // 文件：app/mantine/layout.js
 // -------------------------------------------------------------
 // 【职责】
-//   /mantine 路由的布局根组件，挂载 MantineProvider 让子树能用
-//   Mantine 组件，并注入自定义主题 + 防闪烁脚本。
+//   /mantine 路由的布局根组件，挂载 MantineProvider 让子树能用 Mantine 组件。
 //
 // 【样式隔离】
 //   Mantine 的 reset 和 CSS 变量只在 /mantine 子树生效，
 //   不污染主站（教程网站）原有样式。
 //
-// 【关于防闪烁脚本】
-//   方案 A（使用 ColorSchemeScript）：
-//     ColorSchemeScript 是客户端组件，会渲染 <script> 标签。
-//     Next.js 16 / React 19.2 会警告 client-rendered <script>
-//     不会在 hydration 阶段执行。
-//   方案 B（直接写 <script>，当前采用）：
-//     服务端渲染时 type="text/javascript"（HTML 解析阶段同步执行）；
-//     客户端 hydration 后 type="text/plain"（不执行、避免重复、
-//     不被 React 警告）。两端 type 不同用 suppressHydrationWarning。
-//     脚本内容与 Mantine 内部生成的 ColorSchemeScript 等价。
-//   方案 C（可考虑的更稳写法）：
-//     next/script + beforeInteractive 策略，让脚本在 hydration 前
-//     执行。这里没有用 next/script，因为它和 suppressHydrationWarning
-//     一起用偶尔会双触发。
+// 【防闪烁脚本】
+//   已上移到 app/layout.js（root layout），用 next/script 的 beforeInteractive
+//   策略在 hydration 前同步设置 data-mantine-color-scheme。
+//   原因：Next.js 16 / React 19.2 对在 client component 中渲染 <script> 会警告
+//   （"Scripts inside React components are never executed when rendering on the client"）。
+//   next/script 是 Next.js 官方推荐的脚本加载方式，不会触发该警告。
 // =============================================================
 
 import "@mantine/core/styles.css";
@@ -61,22 +52,9 @@ export const metadata = {
   description: "Mantine v9 常用组件完整站点演示",
 };
 
-// 防闪烁脚本：HTML 解析阶段同步读取 localStorage 设置主题，
-// 避免刷新时亮→暗闪烁(FOUC)。与 Mantine ColorSchemeScript 内容一致。
-const COLOR_SCHEME_SCRIPT = `try{var _c=window.localStorage.getItem("mantine-color-scheme-value");var c=_c==="light"||_c==="dark"||_c==="auto"?_c:"light";var cc=c!=="auto"?c:window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.setAttribute("data-mantine-color-scheme",cc);}catch(e){}`;
-
 export default function MantineLayout({ children }) {
   return (
     <>
-      {/* 防闪烁脚本：服务端 type="text/javascript" 同步执行；
-          客户端 type="text/plain" 不执行（避免重复执行）也不触发警告；
-          suppressHydrationWarning 处理 type 属性两端不一致。 */}
-      <script
-        type={typeof window === "undefined" ? "text/javascript" : "text/plain"}
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: COLOR_SCHEME_SCRIPT }}
-      />
-
       {/* 【滚动修复】
           主站 globals.css 里 html/body 被锁成 height:100% + overflow:hidden，
           是为主站「侧边栏 + 内容区各自滚动」的布局服务的。

@@ -26,6 +26,7 @@ import {
 // icon : emoji 图标，与右侧实际按钮的图标一致，方便用户对照
 // name : 显示名称
 const BUTTON_INFO = [
+  { id: "bookmark", icon: "🔖", name: "书签" },
   { id: "editorTheme", icon: "🎨", name: "编辑器主题" },
   { id: "readingTheme", icon: "🎨", name: "阅读主题" },
   { id: "chapterNav", icon: "←→", name: "章节导航" },

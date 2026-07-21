@@ -39,7 +39,8 @@
       "/fe-engineering",
       "/fe-interview",
       "/vite",
-      "/vite2"
+      "/vite2",
+      "/betting-activation"
     ],
     "后端与网络": [
       "/http",
@@ -195,8 +196,12 @@
       "/tsx2",
       "/mantine2",
       "/mantine-form-zod",
-      "/forgerock",
-      "/auth-demo"
+      "/forgerock"
+    ],
+    "项目": [
+      "/auth-demo",
+      "/zod-mini",
+      "/forgerock-mini"
     ]
   },
   "categoryConfig": {
@@ -220,6 +225,11 @@
         "id": "c-mrrcbw4al8yu",
         "name": "react",
         "icon": "📁"
+      },
+      {
+        "id": "c-mrtbz3ag4a9u",
+        "name": "项目",
+        "icon": "📁"
       }
     ],
     "renamed": {},
@@ -228,6 +238,7 @@
       "JS / TS 生态"
     ],
     "order": [
+      "项目",
       "Python 编程",
       "react",
       "nodejs",
