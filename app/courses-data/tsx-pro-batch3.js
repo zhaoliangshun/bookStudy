@@ -1257,7 +1257,7 @@ type I18nKey = \`\${Namespace}.\${Key}\`;
 
 \`\`\`tsx
 // 别这么干：4 维笛卡尔积，1 万个成员
-type Slow = \`\${A}-${B}-${C}-${D}\`;  // A,B,C,D 各 10 个
+type Slow = \`\${A}-\${B}-\${C}-\${D}\`;  // A,B,C,D 各 10 个
 \`\`\`
 
 建议：单层插值控制在 100 个成员以内，多层插值慎用。
@@ -1410,7 +1410,7 @@ console.log('\\n=== 笛卡尔积 ===');
 console.log('Variant (3x3=9):', variants);
 
 console.log('\\n=== 关键点回顾 ===');
-console.log('1. 模板字面量类型语法: \\\\`...\${Var}...\\\\`');
+console.log('1. 模板字面量类型语法: \`...\${Var}...\`');
 console.log('2. 自动生成字面量联合，支持笛卡尔积');
 console.log('3. 结合 Uppercase/Capitalize 做字符串变换');
 console.log('4. 结合 keyof + as 派生属性名');

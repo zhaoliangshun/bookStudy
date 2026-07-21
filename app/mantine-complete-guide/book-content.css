@@ -1,0 +1,191 @@
+/* ============ Mantine 完整指南 - 内容样式 ============ */
+
+/* 全局滚动条优化 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* 书籍内容排版 */
+.book-content {
+  font-size: 16px;
+  line-height: 1.8;
+  color: #2c3e50;
+}
+
+.book-content h1 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin: 2.5rem 0 1.5rem;
+  color: #1a1a1a;
+  border-bottom: 3px solid #228be6;
+  padding-bottom: 0.5rem;
+}
+
+.book-content h2 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 2rem 0 1rem;
+  color: #2c3e50;
+  border-left: 4px solid #228be6;
+  padding-left: 1rem;
+}
+
+.book-content h3 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.8rem;
+  color: #34495e;
+}
+
+.book-content h4 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 1.2rem 0 0.6rem;
+  color: #34495e;
+}
+
+.book-content p {
+  margin: 1rem 0;
+  text-align: justify;
+}
+
+.book-content ul,
+.book-content ol {
+  margin: 1rem 0;
+  padding-left: 2rem;
+}
+
+.book-content li {
+  margin: 0.5rem 0;
+}
+
+.book-content code {
+  background: #f5f7fa;
+  color: #e83e8c;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+.book-content pre {
+  background: #282c34;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1.5rem 0;
+  overflow-x: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.book-content pre code {
+  background: transparent;
+  color: #abb2bf;
+  padding: 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.book-content blockquote {
+  border-left: 4px solid #228be6;
+  background: #f0f7ff;
+  padding: 1rem 1.5rem;
+  margin: 1.5rem 0;
+  color: #495057;
+  font-style: italic;
+}
+
+.book-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.book-content th,
+.book-content td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.book-content th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
+}
+
+.book-content tr:hover {
+  background: #f8f9fa;
+}
+
+.book-content a {
+  color: #228be6;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.book-content a:hover {
+  border-bottom-color: #228be6;
+}
+
+.book-content strong {
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.book-content em {
+  font-style: italic;
+  color: #6c757d;
+}
+
+/* 返回顶部按钮 */
+.back-to-top {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  transition: opacity 0.3s, transform 0.3s;
+  z-index: 1000;
+}
+
+.back-to-top--hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .book-content {
+    font-size: 15px;
+  }
+
+  .book-content h1 {
+    font-size: 1.8rem;
+  }
+
+  .book-content h2 {
+    font-size: 1.5rem;
+  }
+
+  .book-content pre {
+    font-size: 0.85rem;
+  }
+}

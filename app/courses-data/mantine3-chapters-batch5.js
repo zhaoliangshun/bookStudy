@@ -38,8 +38,8 @@ React 里有 4 种管理表单的方式：
 **Mantine useForm 的优势**：
 
 - **零依赖**：不用装 react-hook-form、yup、formik。
-- **类型推断完整**：泛型 `<FormValues>` 贯穿整个表单。
-- **校验内置**：`validate` 配置即可，不用额外库。
+- **类型推断完整**：泛型 \`<FormValues>\` 贯穿整个表单。
+- **校验内置**：\`validate\` 配置即可，不用额外库。
 - **Zod 集成**：\`zodResolver\` 一行接入。
 
 ---
@@ -2886,7 +2886,7 @@ const ContactItem = React.memo(({ contact, index, onRemove, onChange }) => {
 
 ## 31.10 常见错误
 
-### 错误 1：用 \`getInputProps(\`items.${index}.name\`)\` 触发 re-render
+### 错误 1：用 \`getInputProps(\`items.\${index}.name\`)\` 触发 re-render
 
 \`\`\`jsx
 // ❌ 每次输入都 re-render 整个列表
@@ -2936,7 +2936,7 @@ validate: zodResolver(z.object({
 ## 31.11 小结
 
 - 4 个数组操作 API：**insertListItem / removeListItem / reorderListItem / replaceListItem**。
-- 用 \`getInputProps(\`items.${index}.name\`)\` 访问嵌套字段。
+- 用 \`getInputProps(\`items.\${index}.name\`)\` 访问嵌套字段。
 - 动态字段校验推荐用 Zod schema。
 - 大量动态字段用 **uncontrolled 模式** + **React.memo** 优化。
 - 用稳定 id 作 key（避免删除时状态错乱）。
