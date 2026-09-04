@@ -22,7 +22,7 @@ const chapters = [
     group: '第九部分 反射与特性',
     icon: '🔍',
     title: '反射基础',
-    content: `## 第五十六章　反射基础
+    content: `## 第五十七章　反射基础
 
 反射（Reflection）是 .NET 提供的一种「在运行时检查类型信息」的能力。你可以把它想象成一面「镜子」——程序运行起来之后，还能照见自己的结构：有哪些字段、哪些方法、特性是什么。本章带你从零理解反射的核心 API。
 
@@ -184,13 +184,162 @@ bool isSerializable = Attribute.IsDefined(typeof(Person), typeof(SerializableAtt
 - \`BindingFlags\` 控制查询范围（public/private/static/instance）
 - \`FieldInfo/PropertyInfo\` 用 \`GetValue/SetValue\` 动态读写
 - \`MethodInfo.Invoke\` 动态调用方法
-- \`GetCustomAttribute<T>\` 读取特性`,
+- \`GetCustomAttribute<T>\` 读取特性
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「反射基础」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 —— 反射基础演示
+
 using System;
+
 using System.Reflection;
+
 using System.Text;
 
-// === 1. 定义一个完整的 Person 类，演示用反射照见其结构 ===
+Type t1 = typeof(Person);
+
+Person sample = new Person("Tom", 20);
+
+Type t2 = sample.GetType();
+
+Type? t3 = Type.GetType("Person");
+
+Console.WriteLine($"typeof   => {t1.FullName}");
+
+Console.WriteLine($"GetType  => {t2.FullName}");
+
+Console.WriteLine($"Type.Get => {(t3?.FullName ?? "<null>")}");
+
+Console.WriteLine("\\n--- Type 属性 ---");
+
+Console.WriteLine($"Name           = {t1.Name}");
+
+Console.WriteLine($"FullName       = {t1.FullName}");
+
+Console.WriteLine($"Namespace      = {t1.Namespace}");
+
+Console.WriteLine($"BaseType       = {t1.BaseType?.Name}");
+
+Console.WriteLine($"IsClass        = {t1.IsClass}");
+
+Console.WriteLine($"IsValueType    = {t1.IsValueType}");
+
+Console.WriteLine($"IsAbstract     = {t1.IsAbstract}");
+
+Console.WriteLine($"IsSealed       = {t1.IsSealed}");
+
+Console.WriteLine($"IsSerializable = {t1.IsSerializable}");
+
+Console.WriteLine("\\n--- 所有 public 成员 ---");
+
+foreach (MemberInfo m in t1.GetMembers())
+    Console.WriteLine($"  {m.MemberType,-15} {m.Name}");
+
+Console.WriteLine("\\n--- 含 private/static 的字段 ---");
+
+BindingFlags allFlags = BindingFlags.Public | BindingFlags.NonPublic
+                      | BindingFlags.Instance | BindingFlags.Static;
+
+foreach (FieldInfo f in t1.GetFields(allFlags))
+    Console.WriteLine($"  {f.FieldType.Name,-10} {f.Name} (Static={f.IsStatic}, Private={f.IsPrivate})");
+
+Console.WriteLine("\\n--- 动态创建 + 调用方法 ---");
+
+object? instance = Activator.CreateInstance(t1, new object[] { "Alice", 25 });
+
+Console.WriteLine($"实例化结果: {instance}");
+
+FieldInfo? nameField = t1.GetField("Name");
+
+if (nameField != null && instance != null)
+{
+    string oldName = (string)nameField.GetValue(instance)!;
+    Console.WriteLine($"字段 Name 旧值: {oldName}");
+    nameField.SetValue(instance, "Bob");
+    Console.WriteLine($"字段 Name 新值: {nameField.GetValue(instance)}");
+}
+
+PropertyInfo? ageProp = t1.GetProperty("Age");
+
+if (ageProp != null && instance != null)
+{
+    Console.WriteLine($"属性 Age 旧值: {ageProp.GetValue(instance)}");
+    ageProp.SetValue(instance, 30);
+    Console.WriteLine($"属性 Age 新值: {ageProp.GetValue(instance)}");
+}
+
+MethodInfo? greet1 = t1.GetMethod("Greet", Type.EmptyTypes);
+
+greet1?.Invoke(instance, null);
+
+MethodInfo? greet2 = t1.GetMethod("Greet", new[] { typeof(string) });
+
+string? result = (string?)greet2?.Invoke(instance, new object[] { "Hey" });
+
+Console.WriteLine($"带参方法返回: {result}");
+
+MethodInfo? labelMethod = t1.GetMethod("CreateLabel", BindingFlags.Public | BindingFlags.Static);
+
+string? label = (string?)labelMethod?.Invoke(null, new object?[] { instance });
+
+Console.WriteLine($"静态方法返回: {label}");
+
+Console.WriteLine("\\n--- 泛型方法 ---");
+
+MethodInfo? echoOpen = t1.GetMethod("Echo");
+
+if (echoOpen != null)
+{
+    MethodInfo echoInt = echoOpen.MakeGenericMethod(typeof(int));
+    int echoed = (int)echoInt.Invoke(instance, new object[] { 999 })!;
+    Console.WriteLine($"Echo<int>(999) = {echoed}");
+
+    MethodInfo echoStr = echoOpen.MakeGenericMethod(typeof(string));
+    string echoedStr = (string)echoStr.Invoke(instance, new object[] { "hello" })!;
+    Console.WriteLine($"Echo<string>(\\"hello\\") = {echoedStr}");
+}
+
+Console.WriteLine("\\n--- 私有方法 ---");
+
+MethodInfo? whisper = t1.GetMethod("Whisper", BindingFlags.NonPublic | BindingFlags.Instance);
+
+whisper?.Invoke(instance, null);
+
+Console.WriteLine("\\n--- 事件 ---");
+
+EventInfo? nameChangedEvent = t1.GetEvent("NameChanged");
+
+Console.WriteLine($"事件 NameChanged 类型: {nameChangedEvent?.EventHandlerType?.Name}");
+
+EventHandler handler = (s, e) => Console.WriteLine("  -> NameChanged 触发！");
+
+nameChangedEvent?.AddEventHandler(instance, handler);
+
+FieldInfo? eventField = t1.GetField("NameChanged", BindingFlags.NonPublic | BindingFlags.Instance);
+
+if (eventField?.GetValue(instance) is EventHandler del)
+    del.Invoke(instance, EventArgs.Empty);
+
+Console.WriteLine("\\n--- 构造函数 ---");
+
+foreach (ConstructorInfo ctor in t1.GetConstructors())
+{
+    ParameterInfo[] ps = ctor.GetParameters();
+    string paramStr = string.Join(", ", ps.Select(p => $"{p.ParameterType.Name} {p.Name}"));
+    Console.WriteLine($"  .ctor({paramStr})");
+}
+
+Console.WriteLine("\\n--- 特性检查 ---");
+
+bool hasSerializable = Attribute.IsDefined(t1, typeof(SerializableAttribute));
+
+Console.WriteLine($"Person 带 [Serializable] 特性? {hasSerializable}");
+
+// ============ 类型声明（必须放在所有顶级语句之后） ============
+
 public class Person
 {
     // 实例字段（public / private 各一个）
@@ -218,123 +367,6 @@ public class Person
     public T Echo<T>(T value) => value;
     private void Whisper() => Console.WriteLine("psst ...");
 }
-
-// === 2. 获取 Type 的三种方式 ===
-Type t1 = typeof(Person);                            // 编译期已知
-Person sample = new Person("Tom", 20);
-Type t2 = sample.GetType();                          // 从实例获取
-Type? t3 = Type.GetType("Person");                   // 按名字查找（当前程序集）
-Console.WriteLine($"typeof   => {t1.FullName}");
-Console.WriteLine($"GetType  => {t2.FullName}");
-Console.WriteLine($"Type.Get => {(t3?.FullName ?? "<null>")}");
-
-// === 3. Type 的常用属性 ===
-Console.WriteLine("\\n--- Type 属性 ---");
-Console.WriteLine($"Name           = {t1.Name}");
-Console.WriteLine($"FullName       = {t1.FullName}");
-Console.WriteLine($"Namespace      = {t1.Namespace}");
-Console.WriteLine($"BaseType       = {t1.BaseType?.Name}");
-Console.WriteLine($"IsClass        = {t1.IsClass}");
-Console.WriteLine($"IsValueType    = {t1.IsValueType}");
-Console.WriteLine($"IsAbstract     = {t1.IsAbstract}");
-Console.WriteLine($"IsSealed       = {t1.IsSealed}");
-Console.WriteLine($"IsSerializable = {t1.IsSerializable}");
-
-// === 4. GetMembers：列出所有 public 成员 ===
-Console.WriteLine("\\n--- 所有 public 成员 ---");
-foreach (MemberInfo m in t1.GetMembers())
-    Console.WriteLine($"  {m.MemberType,-15} {m.Name}");
-
-// === 5. BindingFlags：连 private/static 一起列出 ===
-Console.WriteLine("\\n--- 含 private/static 的字段 ---");
-BindingFlags allFlags = BindingFlags.Public | BindingFlags.NonPublic
-                      | BindingFlags.Instance | BindingFlags.Static;
-foreach (FieldInfo f in t1.GetFields(allFlags))
-    Console.WriteLine($"  {f.FieldType.Name,-10} {f.Name} (Static={f.IsStatic}, Private={f.IsPrivate})");
-
-// === 6. 用反射创建实例、调用方法 ===
-Console.WriteLine("\\n--- 动态创建 + 调用方法 ---");
-object? instance = Activator.CreateInstance(t1, new object[] { "Alice", 25 });
-Console.WriteLine($"实例化结果: {instance}");
-
-// 读写字段
-FieldInfo? nameField = t1.GetField("Name");
-if (nameField != null && instance != null)
-{
-    string oldName = (string)nameField.GetValue(instance)!;
-    Console.WriteLine($"字段 Name 旧值: {oldName}");
-    nameField.SetValue(instance, "Bob");
-    Console.WriteLine($"字段 Name 新值: {nameField.GetValue(instance)}");
-}
-
-// 读写属性
-PropertyInfo? ageProp = t1.GetProperty("Age");
-if (ageProp != null && instance != null)
-{
-    Console.WriteLine($"属性 Age 旧值: {ageProp.GetValue(instance)}");
-    ageProp.SetValue(instance, 30);
-    Console.WriteLine($"属性 Age 新值: {ageProp.GetValue(instance)}");
-}
-
-// 调用无参方法
-MethodInfo? greet1 = t1.GetMethod("Greet", Type.EmptyTypes);
-greet1?.Invoke(instance, null);
-
-// 调用带参方法
-MethodInfo? greet2 = t1.GetMethod("Greet", new[] { typeof(string) });
-string? result = (string?)greet2?.Invoke(instance, new object[] { "Hey" });
-Console.WriteLine($"带参方法返回: {result}");
-
-// 调用静态方法
-MethodInfo? labelMethod = t1.GetMethod("CreateLabel", BindingFlags.Public | BindingFlags.Static);
-string? label = (string?)labelMethod?.Invoke(null, new object?[] { instance });
-Console.WriteLine($"静态方法返回: {label}");
-
-// === 7. 调用泛型方法（先 MakeGenericMethod 再 Invoke）===
-Console.WriteLine("\\n--- 泛型方法 ---");
-MethodInfo? echoOpen = t1.GetMethod("Echo");
-if (echoOpen != null)
-{
-    MethodInfo echoInt = echoOpen.MakeGenericMethod(typeof(int));
-    int echoed = (int)echoInt.Invoke(instance, new object[] { 999 })!;
-    Console.WriteLine($"Echo<int>(999) = {echoed}");
-
-    MethodInfo echoStr = echoOpen.MakeGenericMethod(typeof(string));
-    string echoedStr = (string)echoStr.Invoke(instance, new object[] { "hello" })!;
-    Console.WriteLine($"Echo<string>(\\"hello\\") = {echoedStr}");
-}
-
-// === 8. 调用私有方法（BindingFlags.NonPublic）===
-Console.WriteLine("\\n--- 私有方法 ---");
-MethodInfo? whisper = t1.GetMethod("Whisper", BindingFlags.NonPublic | BindingFlags.Instance);
-whisper?.Invoke(instance, null);
-
-// === 9. 获取并触发事件 ===
-Console.WriteLine("\\n--- 事件 ---");
-EventInfo? nameChangedEvent = t1.GetEvent("NameChanged");
-Console.WriteLine($"事件 NameChanged 类型: {nameChangedEvent?.EventHandlerType?.Name}");
-
-// 给事件挂一个处理器
-EventHandler handler = (s, e) => Console.WriteLine("  -> NameChanged 触发！");
-nameChangedEvent?.AddEventHandler(instance, handler);
-// 反射方式触发：通过 OnXxx 受保护方法，或者直接用反射获取 backing field
-FieldInfo? eventField = t1.GetField("NameChanged", BindingFlags.NonPublic | BindingFlags.Instance);
-if (eventField?.GetValue(instance) is EventHandler del)
-    del.Invoke(instance, EventArgs.Empty);
-
-// === 10. 获取构造函数列表 ===
-Console.WriteLine("\\n--- 构造函数 ---");
-foreach (ConstructorInfo ctor in t1.GetConstructors())
-{
-    ParameterInfo[] ps = ctor.GetParameters();
-    string paramStr = string.Join(", ", ps.Select(p => $"{p.ParameterType.Name} {p.Name}"));
-    Console.WriteLine($"  .ctor({paramStr})");
-}
-
-// === 11. 检查特性 ===
-Console.WriteLine("\\n--- 特性检查 ---");
-bool hasSerializable = Attribute.IsDefined(t1, typeof(SerializableAttribute));
-Console.WriteLine($"Person 带 [Serializable] 特性? {hasSerializable}");
 `,
     lang: 'cs',
   },
@@ -347,7 +379,7 @@ Console.WriteLine($"Person 带 [Serializable] 特性? {hasSerializable}");
     group: '第九部分 反射与特性',
     icon: '🛠️',
     title: '反射高级应用',
-    content: `## 第五十七章　反射高级应用
+    content: `## 第五十八章　反射高级应用
 
 上一章我们学会了「照镜子」，本章把它用起来——动态创建对象、加载程序集、生成委托、运行时 IL、写一个迷你依赖注入容器。
 
@@ -455,7 +487,7 @@ int sum = addFn(3, 4);  // 7
 
 ### 六、Emit 程序集：运行时造类型
 
-.NET 6+ 提供了 \"可收集\" 的 \`AssemblyBuilder\`，让运行时动态生成类型且可被回收：
+.NET 6+ 提供了 "可收集" 的 \`AssemblyBuilder\`，让运行时动态生成类型且可被回收：
 
 \`\`\`csharp
 // .NET 6+ 推荐方式
@@ -509,24 +541,169 @@ public class Container
 - 开放类型 → 封闭类型：\`MakeGenericType\` / \`MakeGenericMethod\`
 - 反射调用慢：\`MethodInfo.Invoke\`；想快：\`Delegate.CreateDelegate\` 或 \`DynamicMethod\`
 - 运行时造类型：\`AssemblyBuilder\` / \`TypeBuilder\` / \`ILGenerator\`
-- 实战模式：DI 容器、ORM 映射、序列化器`,
+- 实战模式：DI 容器、ORM 映射、序列化器
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「反射高级应用」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 —— 反射高级应用演示
+
 using System;
+
 using System.Collections.Generic;
+
 using System.Linq;
+
 using System.Reflection;
+
 using System.Reflection.Emit;
 
-// === 1. 定义一个带依赖关系的演示类型 ===
+Console.WriteLine("--- Activator.CreateInstance ---");
+
+object? a = Activator.CreateInstance(typeof(ConsoleLogger));
+
+object? b = Activator.CreateInstance(typeof(ConsoleLogger), nonPublic: false);
+
+ConsoleLogger c = Activator.CreateInstance<ConsoleLogger>();
+
+Console.WriteLine($"a => {a}");
+
+Console.WriteLine($"b => {b}");
+
+Console.WriteLine($"c => {c}");
+
+Console.WriteLine("\\n--- MakeGenericType ---");
+
+Type openList = typeof(List<>);
+
+Console.WriteLine($"开放类型: {openList.FullName} (IsGenericTypeDefinition={openList.IsGenericTypeDefinition})");
+
+Type closedList = openList.MakeGenericType(typeof(int));
+
+Console.WriteLine($"封闭类型: {closedList.FullName} (IsConstructedGenericType={closedList.IsConstructedGenericType})");
+
+object listInstance = Activator.CreateInstance(closedList)!;
+
+MethodInfo? addMethod = closedList.GetMethod("Add");
+
+addMethod?.Invoke(listInstance, new object[] { 100 });
+
+addMethod?.Invoke(listInstance, new object[] { 200 });
+
+Console.WriteLine($"反射调用 Add 两次后 Count = {closedList.GetProperty("Count")!.GetValue(listInstance)}");
+
+Console.WriteLine("\\n--- MakeGenericMethod ---");
+
+MethodInfo openEmpty = typeof(Array).GetMethod("Empty")!;
+
+MethodInfo closedEmpty = openEmpty.MakeGenericMethod(typeof(string));
+
+string[] emptyArr = (string[])closedEmpty.Invoke(null, null)!;
+
+Console.WriteLine($"Array.Empty<string>() 长度 = {emptyArr.Length}");
+
+Console.WriteLine("\\n--- Delegate.CreateDelegate ---");
+
+MethodInfo? logMethod = typeof(ConsoleLogger).GetMethod("Log", new[] { typeof(string) })!;
+
+var logAction = (Action<ConsoleLogger, string>)
+    Delegate.CreateDelegate(typeof(Action<ConsoleLogger, string>), logMethod);
+
+ConsoleLogger logger = new();
+
+logAction(logger, "由委托调用 Log");
+
+Console.WriteLine($"委托类型: {logAction.GetType().Name}, Target: {logAction.Target ?? "<static>"}");
+
+Console.WriteLine("\\n--- DynamicMethod 实现加法 ---");
+
+DynamicMethod dm = new DynamicMethod("Add", typeof(int),
+    new[] { typeof(int), typeof(int) }, typeof(object).Module);
+
+ILGenerator il = dm.GetILGenerator();
+
+il.Emit(OpCodes.Ldarg_0);
+
+il.Emit(OpCodes.Ldarg_1);
+
+il.Emit(OpCodes.Add);
+
+il.Emit(OpCodes.Ret);
+
+var addFn = (Func<int, int, int>)dm.CreateDelegate(typeof(Func<int, int, int>));
+
+Console.WriteLine($"Add(3, 4) = {addFn(3, 4)}");
+
+Console.WriteLine($"Add(100, 200) = {addFn(100, 200)}");
+
+Console.WriteLine("\\n--- AssemblyBuilder / TypeBuilder ---");
+
+AssemblyName an = new AssemblyName("DynamicLib");
+
+AssemblyBuilder ab = AssemblyBuilder.DefineDynamicAssembly(an, AssemblyBuilderAccess.Run);
+
+ModuleBuilder mb = ab.DefineDynamicModule("Main");
+
+TypeBuilder tb = mb.DefineType("HelloType", TypeAttributes.Public | TypeAttributes.Class);
+
+MethodBuilder meth = tb.DefineMethod("SayHello",
+    MethodAttributes.Public, typeof(string), Type.EmptyTypes);
+
+ILGenerator il2 = meth.GetILGenerator();
+
+il2.Emit(OpCodes.Ldstr, "Hello from dynamically generated type!");
+
+il2.Emit(OpCodes.Ret);
+
+Type builtType = tb.CreateType()!;
+
+object builtInstance = Activator.CreateInstance(builtType)!;
+
+string? greeting = (string?)builtType.GetMethod("SayHello")!.Invoke(builtInstance, null);
+
+Console.WriteLine($"动态类型实例方法返回: {greeting}");
+
+Console.WriteLine("\\n--- 迷你 DI 容器 ---");
+
+Container container = new();
+
+container.Register<ILogger, ConsoleLogger>();
+
+container.Register<UserService, UserService>();
+
+Console.WriteLine($"注册项: {container.Describe()}");
+
+UserService svc = container.Resolve<UserService>();
+
+svc.Greet("Reflection DI");
+
+Console.WriteLine("\\n--- 反射缓存模式 ---");
+
+ReflectionCache<Person> cache = new();
+
+Person p = new Person("Cache", 18);
+
+for (int i = 0; i < 3; i++)
+{
+    string name = cache.GetField(p, "Name");
+    Console.WriteLine($"  第 {i + 1} 次读取 Name = {name}（缓存命中等同于直接字段读取）");
+}
+
+// ============ 类型声明（必须放在所有顶级语句之后） ============
+
 public interface ILogger
 {
     void Log(string message);
 }
+
 public class ConsoleLogger : ILogger
 {
     public ConsoleLogger() { }
     public void Log(string message) => Console.WriteLine($"[LOG] {message}");
 }
+
 public class UserService
 {
     private readonly ILogger _logger;
@@ -535,105 +712,6 @@ public class UserService
     public void Greet(string name) => _logger.Log($"Hello {name}");
 }
 
-// === 2. Activator.CreateInstance：四种姿势 ===
-Console.WriteLine("--- Activator.CreateInstance ---");
-object? a = Activator.CreateInstance(typeof(ConsoleLogger));
-object? b = Activator.CreateInstance(typeof(ConsoleLogger), nonPublic: false); // 仅 public 构造
-ConsoleLogger c = Activator.CreateInstance<ConsoleLogger>();
-Console.WriteLine($"a => {a}");
-Console.WriteLine($"b => {b}");
-Console.WriteLine($"c => {c}");
-
-// === 3. MakeGenericType：开放 → 封闭 ===
-Console.WriteLine("\\n--- MakeGenericType ---");
-Type openList = typeof(List<>);
-Console.WriteLine($"开放类型: {openList.FullName} (IsGenericTypeDefinition={openList.IsGenericTypeDefinition})");
-Type closedList = openList.MakeGenericType(typeof(int));
-Console.WriteLine($"封闭类型: {closedList.FullName} (IsConstructedGenericType={closedList.IsConstructedGenericType})");
-
-// 创建实例并调用 Add
-object listInstance = Activator.CreateInstance(closedList)!;
-MethodInfo? addMethod = closedList.GetMethod("Add");
-addMethod?.Invoke(listInstance, new object[] { 100 });
-addMethod?.Invoke(listInstance, new object[] { 200 });
-Console.WriteLine($"反射调用 Add 两次后 Count = {closedList.GetProperty("Count")!.GetValue(listInstance)}");
-
-// === 4. MakeGenericMethod：调用泛型方法 ===
-Console.WriteLine("\\n--- MakeGenericMethod ---");
-// 用 Array.Empty<T>() 做演示
-MethodInfo openEmpty = typeof(Array).GetMethod("Empty")!;
-MethodInfo closedEmpty = openEmpty.MakeGenericMethod(typeof(string));
-string[] emptyArr = (string[])closedEmpty.Invoke(null, null)!;
-Console.WriteLine($"Array.Empty<string>() 长度 = {emptyArr.Length}");
-
-// === 5. Delegate.CreateDelegate：把 MethodInfo 变委托（高性能反射）===
-Console.WriteLine("\\n--- Delegate.CreateDelegate ---");
-MethodInfo? logMethod = typeof(ConsoleLogger).GetMethod("Log", new[] { typeof(string) })!;
-// Action<ConsoleLogger, string>：实例方法转委托，第一个参数是 this
-var logAction = (Action<ConsoleLogger, string>)
-    Delegate.CreateDelegate(typeof(Action<ConsoleLogger, string>), logMethod);
-ConsoleLogger logger = new();
-logAction(logger, "由委托调用 Log");  // 跟普通方法调用一样快
-Console.WriteLine($"委托类型: {logAction.GetType().Name}, Target: {logAction.Target ?? "<static>"}");
-
-// === 6. DynamicMethod：运行时拼出加法 ===
-Console.WriteLine("\\n--- DynamicMethod 实现加法 ---");
-DynamicMethod dm = new DynamicMethod("Add", typeof(int),
-    new[] { typeof(int), typeof(int) }, typeof(object).Module);
-ILGenerator il = dm.GetILGenerator();
-il.Emit(OpCodes.Ldarg_0);    // 加载参数 0（int a）
-il.Emit(OpCodes.Ldarg_1);    // 加载参数 1（int b）
-il.Emit(OpCodes.Add);        // 栈顶两数相加，结果入栈
-il.Emit(OpCodes.Ret);        // 返回栈顶值
-var addFn = (Func<int, int, int>)dm.CreateDelegate(typeof(Func<int, int, int>));
-Console.WriteLine($"Add(3, 4) = {addFn(3, 4)}");
-Console.WriteLine($"Add(100, 200) = {addFn(100, 200)}");
-
-// === 7. Emit 程序集：运行时造一个带方法的类型 ===
-Console.WriteLine("\\n--- AssemblyBuilder / TypeBuilder ---");
-AssemblyName an = new AssemblyName("DynamicLib");
-AssemblyBuilder ab = AssemblyBuilder.DefineDynamicAssembly(an, AssemblyBuilderAccess.Run);
-ModuleBuilder mb = ab.DefineDynamicModule("Main");
-TypeBuilder tb = mb.DefineType("HelloType", TypeAttributes.Public | TypeAttributes.Class);
-
-// 添加方法 SayHello() -> string
-MethodBuilder meth = tb.DefineMethod("SayHello",
-    MethodAttributes.Public, typeof(string), Type.EmptyTypes);
-ILGenerator il2 = meth.GetILGenerator();
-il2.Emit(OpCodes.Ldstr, "Hello from dynamically generated type!");
-il2.Emit(OpCodes.Ret);
-
-Type builtType = tb.CreateType()!;
-object builtInstance = Activator.CreateInstance(builtType)!;
-string? greeting = (string?)builtType.GetMethod("SayHello")!.Invoke(builtInstance, null);
-Console.WriteLine($"动态类型实例方法返回: {greeting}");
-
-// === 8. 迷你依赖注入容器：完整演示 ===
-Console.WriteLine("\\n--- 迷你 DI 容器 ---");
-Container container = new();
-container.Register<ILogger, ConsoleLogger>();
-container.Register<UserService, UserService>();
-
-// 检查注册表
-Console.WriteLine($"注册项: {container.Describe()}");
-
-// 解析 UserService，容器会自动找它的构造函数依赖 ILogger
-UserService svc = container.Resolve<UserService>();
-svc.Greet("Reflection DI");
-
-// === 9. 反射缓存优化：避免每次都遍历成员 ===
-Console.WriteLine("\\n--- 反射缓存模式 ---");
-ReflectionCache<Person> cache = new();
-Person p = new Person("Cache", 18);
-for (int i = 0; i < 3; i++)
-{
-    string name = cache.GetField(p, "Name");
-    Console.WriteLine($"  第 {i + 1} 次读取 Name = {name}（缓存命中等同于直接字段读取）");
-}
-
-// ====================================================
-// 局部类型定义
-// ====================================================
 public class Person
 {
     public string Name;
@@ -643,7 +721,6 @@ public class Person
     public void Greet() => Console.WriteLine($"Hi, I'm {Name}.");
 }
 
-// 迷你依赖注入容器
 public class Container
 {
     private readonly Dictionary<Type, Type> _map = new();
@@ -671,7 +748,6 @@ public class Container
     public string Describe() => string.Join(", ", _map.Select(kv => $"{kv.Key.Name}->{kv.Value.Name}"));
 }
 
-// 反射缓存：把 FieldInfo 缓存起来，避免每次 GetField 都重新查找
 public class ReflectionCache<T>
 {
     private readonly Dictionary<string, FieldInfo> _fields = new();
@@ -694,7 +770,8 @@ public class ReflectionCache<T>
         FieldInfo? fi = _fields.TryGetValue(fieldName, out FieldInfo? f) ? f : null;
         return fi == null ? "<null>" : fi.GetValue(instance)?.ToString() ?? "<null>";
     }
-}`,
+}
+`,
     lang: 'cs',
   },
 
@@ -706,7 +783,7 @@ public class ReflectionCache<T>
     group: '第九部分 反射与特性',
     icon: '🏷️',
     title: '特性 Attribute',
-    content: `## 第五十八章　特性 Attribute
+    content: `## 第五十九章　特性 Attribute
 
 如果说反射是「照镜子」，特性就是「贴标签」——你可以给类、方法、字段、程序集等贴上任意标签，让反射读取它们来驱动各种行为：序列化字段映射、ORM 表/列名、单元测试发现、API 路由注册、参数校验……
 
@@ -910,16 +987,138 @@ string BuildInsert<T>(T entity)
 - 位置参数（构造函数）+ 命名参数（属性）
 - 反射读取：\`GetCustomAttribute<T>\` / \`GetCustomAttributes\` / \`Attribute.IsDefined\`
 - 内置常用：\`Obsolete\` / \`Conditional\` / \`Flags\` / \`JsonPropertyName\` ……
-- 实战：ORM 表名/列名映射、序列化字段名、API 路由、单元测试发现`,
+- 实战：ORM 表名/列名映射、序列化字段名、API 路由、单元测试发现
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「特性 Attribute」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 —— 特性 Attribute 演示
+
 using System;
+
 using System.Collections.Generic;
+
 using System.Reflection;
+
 using System.Text;
 
-// === 1. 自定义三个 ORM 特性 ===
+Console.WriteLine("=== 读取 User 类型元数据 ===");
 
-// [Table(name)]：标记类对应的数据库表名
+Type userType = typeof(User);
+
+TableAttribute? tbl = userType.GetCustomAttribute<TableAttribute>();
+
+string tableName = tbl?.Name ?? userType.Name;
+
+Console.WriteLine($"表名: {tableName}");
+
+foreach (PropertyInfo prop in userType.GetProperties())
+{
+    ColumnAttribute? col = prop.GetCustomAttribute<ColumnAttribute>();
+    if (col == null)
+    {
+        Console.WriteLine($"  {prop.Name,-12} -> [忽略]");
+        continue;
+    }
+    MaxLengthAttribute? max = prop.GetCustomAttribute<MaxLengthAttribute>();
+    string flags = (col.IsPrimaryKey ? "PK " : "") + (col.IsRequired ? "必填 " : "");
+    Console.WriteLine($"  {prop.Name,-12} -> 列 {col.Name,-12} 类型 {prop.PropertyType.Name,-8} {flags}{(max != null ? "max=" + max.Length : "")}");
+}
+
+Console.WriteLine($"\\nUser 是否带 [Table]：{Attribute.IsDefined(userType, typeof(TableAttribute))}");
+
+Console.WriteLine($"Product 是否带 [Table]：{Attribute.IsDefined(typeof(Product), typeof(TableAttribute))}");
+
+User u = new User
+{
+    Id = 1,
+    Name = "Tom",
+    Email = "tom@example.com",
+    CreatedAt = DateTime.Now,
+};
+
+string insertSql = SqlBuilder.BuildInsert(u);
+
+Console.WriteLine($"\\n生成的 INSERT SQL:\\n  {insertSql}");
+
+string ddl = SqlBuilder.BuildCreateTable(typeof(User));
+
+Console.WriteLine($"\\n生成的 DDL:\\n{ddl}");
+
+Console.WriteLine("\\n=== 内置特性演示 ===");
+
+ObsoleteMethodInfo();
+
+Permission p = Permission.Read | Permission.Write;
+
+Console.WriteLine($"权限: {p}（包含 Read? {p.HasFlag(Permission.Read)}, Execute? {p.HasFlag(Permission.Execute)}）");
+
+Log("Debug 模式可见");
+
+Log("Release 模式编译时这行被删除");
+
+Console.WriteLine("\\n=== 模拟 JSON 字段映射 ===");
+
+Dictionary<string, object?> json = new()
+{
+    ["user_name"] = "Alice",
+    ["email"] = "alice@x.com",
+    ["unknown_field"] = 999,
+};
+
+User? parsed = MapFromJson<User>(json);
+
+Console.WriteLine($"映射结果: Id={parsed?.Id}, Name={parsed?.Name}, Email={parsed?.Email}");
+
+static void ObsoleteMethodInfo()
+{
+    Type t = typeof(ObsoleteDemo);
+    foreach (MethodInfo m in t.GetMethods())
+    {
+        ObsoleteAttribute? obs = m.GetCustomAttribute<ObsoleteAttribute>();
+        if (obs != null)
+            Console.WriteLine($"  [Obsolete] {m.Name}: {obs.Message} (IsError={obs.IsError})");
+    }
+}
+
+[System.Diagnostics.Conditional("DEBUG")]
+static void Log(string message)
+{
+    Console.WriteLine($"  [LOG] {message}");
+}
+
+static T? MapFromJson<T>(Dictionary<string, object?> json) where T : new()
+{
+    T obj = new T();
+    Type t = typeof(T);
+    foreach (PropertyInfo p in t.GetProperties())
+    {
+        ColumnAttribute? col = p.GetCustomAttribute<ColumnAttribute>();
+        if (col == null) continue;
+        if (json.TryGetValue(col.Name, out object? val) && val != null)
+        {
+            // 简化：直接转换
+            object? converted = Convert.ChangeType(val, p.PropertyType);
+            p.SetValue(obj, converted);
+        }
+    }
+    return obj;
+}
+
+// ============ 类型声明（必须放在所有顶级语句之后） ============
+
+[Flags]
+enum Permission
+{
+    None = 0,
+    Read = 1,
+    Write = 2,
+    Execute = 4,
+    All = Read | Write | Execute
+}
+
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
 public class TableAttribute : Attribute
 {
@@ -973,99 +1172,6 @@ public class Product
     public string Title { get; set; } = "";
 }
 
-// === 3. 读取特性元数据 ===
-Console.WriteLine("=== 读取 User 类型元数据 ===");
-Type userType = typeof(User);
-
-// 3.1 类级别的 [Table]
-TableAttribute? tbl = userType.GetCustomAttribute<TableAttribute>();
-string tableName = tbl?.Name ?? userType.Name;
-Console.WriteLine($"表名: {tableName}");
-
-// 3.2 遍历属性，读取 [Column] 和 [MaxLength]
-foreach (PropertyInfo prop in userType.GetProperties())
-{
-    ColumnAttribute? col = prop.GetCustomAttribute<ColumnAttribute>();
-    if (col == null)
-    {
-        Console.WriteLine($"  {prop.Name,-12} -> [忽略]");
-        continue;
-    }
-    MaxLengthAttribute? max = prop.GetCustomAttribute<MaxLengthAttribute>();
-    string flags = (col.IsPrimaryKey ? "PK " : "") + (col.IsRequired ? "必填 " : "");
-    Console.WriteLine($"  {prop.Name,-12} -> 列 {col.Name,-12} 类型 {prop.PropertyType.Name,-8} {flags}{(max != null ? "max=" + max.Length : "")}");
-}
-
-// 3.3 用 Attribute.IsDefined 检查
-Console.WriteLine($"\\nUser 是否带 [Table]：{Attribute.IsDefined(userType, typeof(TableAttribute))}");
-Console.WriteLine($"Product 是否带 [Table]：{Attribute.IsDefined(typeof(Product), typeof(TableAttribute))}");
-
-// === 4. 根据特性生成 INSERT SQL ===
-User u = new User
-{
-    Id = 1,
-    Name = "Tom",
-    Email = "tom@example.com",
-    CreatedAt = DateTime.Now,
-};
-string insertSql = SqlBuilder.BuildInsert(u);
-Console.WriteLine($"\\n生成的 INSERT SQL:\\n  {insertSql}");
-
-// === 5. 根据特性生成 CREATE TABLE DDL ===
-string ddl = SqlBuilder.BuildCreateTable(typeof(User));
-Console.WriteLine($"\\n生成的 DDL:\\n{ddl}");
-
-// === 6. 演示内置特性：Obsolete / Conditional / Flags ===
-Console.WriteLine("\\n=== 内置特性演示 ===");
-
-// 6.1 [Obsolete] 让编译器产生警告/错误
-ObsoleteMethodInfo();
-
-// 6.2 [Flags] 枚举位运算
-[Flags]
-enum Permission
-{
-    None = 0,
-    Read = 1,
-    Write = 2,
-    Execute = 4,
-    All = Read | Write | Execute
-}
-Permission p = Permission.Read | Permission.Write;
-Console.WriteLine($"权限: {p}（包含 Read? {p.HasFlag(Permission.Read)}, Execute? {p.HasFlag(Permission.Execute)}）");
-
-// 6.3 [Conditional("DEBUG")]：仅在 DEBUG 编译符号下保留调用
-Log("Debug 模式可见");
-Log("Release 模式编译时这行被删除");
-
-// === 7. 模拟 [JsonPropertyName] 类似的字段映射 ===
-Console.WriteLine("\\n=== 模拟 JSON 字段映射 ===");
-Dictionary<string, object?> json = new()
-{
-    ["user_name"] = "Alice",
-    ["email"] = "alice@x.com",
-    ["unknown_field"] = 999,
-};
-User? parsed = MapFromJson<User>(json);
-Console.WriteLine($"映射结果: Id={parsed?.Id}, Name={parsed?.Name}, Email={parsed?.Email}");
-
-// ====================================================
-// 局部函数与工具类
-// ====================================================
-#pragma warning disable CS0618 // 抑制 Obsolete 警告以便演示
-static void ObsoleteMethodInfo()
-{
-    Type t = typeof(ObsoleteDemo);
-    foreach (MethodInfo m in t.GetMethods())
-    {
-        ObsoleteAttribute? obs = m.GetCustomAttribute<ObsoleteAttribute>();
-        if (obs != null)
-            Console.WriteLine($"  [Obsolete] {m.Name}: {obs.Message} (IsError={obs.IsError})");
-    }
-}
-#pragma warning restore CS0618
-
-// 一个用来演示 [Obsolete] 的类
 public static class ObsoleteDemo
 {
     [Obsolete("请改用 NewMethod()", error: false)]
@@ -1077,7 +1183,6 @@ public static class ObsoleteDemo
     public static void NewMethod() { }
 }
 
-// 通用 SQL 生成器
 public static class SqlBuilder
 {
     // 生成 INSERT 语句
@@ -1150,32 +1255,7 @@ public static class SqlBuilder
         };
     }
 }
-
-// 简易的 [Conditional("DEBUG")] 方法
-[System.Diagnostics.Conditional("DEBUG")]
-static void Log(string message)
-{
-    Console.WriteLine($"  [LOG] {message}");
-}
-
-// 从字典映射到对象：模拟 JSON 反序列化
-static T? MapFromJson<T>(Dictionary<string, object?> json) where T : new()
-{
-    T obj = new T();
-    Type t = typeof(T);
-    foreach (PropertyInfo p in t.GetProperties())
-    {
-        ColumnAttribute? col = p.GetCustomAttribute<ColumnAttribute>();
-        if (col == null) continue;
-        if (json.TryGetValue(col.Name, out object? val) && val != null)
-        {
-            // 简化：直接转换
-            object? converted = Convert.ChangeType(val, p.PropertyType);
-            p.SetValue(obj, converted);
-        }
-    }
-    return obj;
-}`,
+`,
     lang: 'cs',
   },
 
@@ -1187,7 +1267,7 @@ static T? MapFromJson<T>(Dictionary<string, object?> json) where T : new()
     group: '第九部分 反射与特性',
     icon: '✨',
     title: '源生成器简介',
-    content: `## 第五十九章　源生成器简介
+    content: `## 第六十章　源生成器简介
 
 反射虽然强大，但有三个问题：**慢**（运行时查元数据）、**AOT 不友好**（NativeAOT 会修剪掉「看似没用」的元数据）、**无法静态分析**（编译器看不见你的意图）。源生成器（Source Generator）正是为了解决这些问题而生——它在**编译期**生成代码，零运行时开销。
 
@@ -1349,49 +1429,27 @@ context.RegisterPostInitializationOutput(ctx =>
 - \`ForAttributeWithMetadataName\` 是特性驱动生成的入口
 - \`PostInitializationOutput\` 注入启动期静态代码
 - NativeAOT + Trimming 是 .NET 性能与体积的终极武器
-- 反射 → 源生成器是 .NET 演进的核心方向之一`,
+- 反射 → 源生成器是 .NET 演进的核心方向之一
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「源生成器简介」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 —— 源生成器演示
 // 注意：本 demo 演示【运行时可见的部分】，即 JsonSerializerContext 实战。
 // 真正的源生成器实现（IIncrementalGenerator）以注释伪代码形式给出。
+
 using System;
+
 using System.Collections.Generic;
+
 using System.Text.Json;
+
 using System.Text.Json.Serialization;
 
-// === 1. 定义要序列化的类型 ===
-public class Person
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = "";
-    public DateTime BirthDate { get; set; }
-    public List<string> Tags { get; set; } = new();
-}
-
-public class Order
-{
-    public int OrderId { get; set; }
-    public decimal Total { get; set; }
-    public Person? Customer { get; set; }
-}
-
-// === 2. 定义 JsonSerializerContext（编译期生成序列化代码）===
-// 标记 partial：编译器/源生成器会自动生成另一半类
-[JsonSourceGenerationOptions(
-    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,  // 属性名 camelCase
-    WriteIndented = true,                                    // 输出缩进
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]  // 忽略 null
-[JsonSerializable(typeof(Person))]
-[JsonSerializable(typeof(Order))]
-[JsonSerializable(typeof(List<Person>))]
-[JsonSerializable(typeof(List<Order>))]
-internal partial class AppJsonContext : JsonSerializerContext
-{
-    // 生成器会自动实现 JsonSerializerContext 的抽象成员
-    // 提供静态属性 Default，里面包含 Default.Person / Default.Order 等
-}
-
-// === 3. 演示：用源生成器上下文序列化 ===
 Console.WriteLine("=== JsonSerializerContext 演示 ===");
+
 Person p = new Person
 {
     Id = 1,
@@ -1400,21 +1458,22 @@ Person p = new Person
     Tags = new List<string> { "vip", "active" },
 };
 
-// 3.1 用源生成器上下文序列化（运行时无反射）
 string json = JsonSerializer.Serialize(p, AppJsonContext.Default.Person);
+
 Console.WriteLine($"序列化 Person:\\n{json}");
 
-// 3.2 反序列化
 Person? p2 = JsonSerializer.Deserialize(json, AppJsonContext.Default.Person);
+
 Console.WriteLine($"反序列化结果: Id={p2?.Id}, Name={p2?.Name}, Tags=[{string.Join(",", p2?.Tags ?? new List<string>())}]");
 
-// 3.3 序列化集合
 List<Person> people = new() { p, new Person { Id = 2, Name = "Jerry" } };
+
 string listJson = JsonSerializer.Serialize(people, AppJsonContext.Default.ListPerson);
+
 Console.WriteLine($"\\n序列化 List<Person>:\\n{listJson}");
 
-// === 4. 对比：反射序列化 vs 源生成器序列化 ===
 Console.WriteLine("\\n=== 反射 vs 源生成器对比 ===");
+
 Order order = new Order
 {
     OrderId = 100,
@@ -1422,32 +1481,22 @@ Order order = new Order
     Customer = p,
 };
 
-// 4.1 反射方式（默认）：运行时查元数据
 string jsonReflect = JsonSerializer.Serialize(order);
+
 Console.WriteLine($"反射方式: {jsonReflect}");
 
-// 4.2 源生成器方式：编译期已生成
 string jsonGen = JsonSerializer.Serialize(order, AppJsonContext.Default.Order);
+
 Console.WriteLine($"源生成器: {jsonGen}");
 
-// === 5. 模拟「特性驱动源生成器」的使用效果 ===
 Console.WriteLine("\\n=== 模拟特性驱动生成（伪代码展示）===");
-// 假设我们有一个 [AutoToString] 特性
-// 源生成器会在编译期扫描所有贴这个特性的类，自动为它们生成 ToString() 方法
-[AutoToString]
-public class Product
-{
-    public int Id { get; set; }
-    public string Title { get; set; } = "";
-    public decimal Price { get; set; }
-}
 
 Product prod = new Product { Id = 42, Title = "Phone", Price = 4999m };
-// 以下方法在「真实源生成器」场景下由编译器自动生成，本 demo 用手写版本模拟
+
 Console.WriteLine(prod.ToString());
 
-// === 6. 源生成器实现伪代码（注释展示）===
 Console.WriteLine("\\n=== 源生成器骨架伪代码 ===");
+
 Console.WriteLine(@"// 单独项目里实现（需引用 Microsoft.CodeAnalysis.CSharp 包）
 using Microsoft.CodeAnalysis;
 
@@ -1495,24 +1544,51 @@ namespace {ns}
     }
 }");
 
-// ====================================================
-// 局部函数和类型定义
-// ====================================================
+// ============ 类型声明（必须放在所有顶级语句之后） ============
 
-// 模拟源生成器会自动生成的 [AutoToString] 特性
+[JsonSourceGenerationOptions(
+    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+    WriteIndented = true,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
+[JsonSerializable(typeof(Person))]
+[JsonSerializable(typeof(Order))]
+[JsonSerializable(typeof(List<Person>))]
+[JsonSerializable(typeof(List<Order>))]
+internal partial class AppJsonContext : JsonSerializerContext
+{
+}
+
+public class Person
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public DateTime BirthDate { get; set; }
+    public List<string> Tags { get; set; } = new();
+}
+
+public class Order
+{
+    public int OrderId { get; set; }
+    public decimal Total { get; set; }
+    public Person? Customer { get; set; }
+}
+
 [AttributeUsage(AttributeTargets.Class)]
 public class AutoToStringAttribute : Attribute { }
 
-// 由于本 demo 没有 Roslyn 包，手写一个 partial 类模拟源生成器输出
-// 真实场景下：上面 Product 类贴了 [AutoToString]，源生成器会自动生成下半部分
+[AutoToString]
 public partial class Product
 {
-    // 这个方法是「源生成器输出」的模拟版本
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    public decimal Price { get; set; }
+
     public override string ToString()
     {
         return $"[Product Id={Id}, Title={Title}, Price={Price}]";
     }
-}`,
+}
+`,
     lang: 'cs',
   },
 ];

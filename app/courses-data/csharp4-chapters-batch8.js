@@ -22,7 +22,7 @@ const chapters = [
     group: '第六部分 LINQ',
     icon: '🔗',
     title: 'LINQ 基础',
-    content: `## 第四十章　LINQ 基础
+    content: `## 第四十一章　LINQ 基础
 
 LINQ（Language Integrated Query，语言集成查询）是 C# 3.0 引入的杀手锏特性。它把"查询"这种原本属于 SQL 的能力，直接嵌入到 C# 语言里，让你能用统一的方式查询对象、数据库、XML、内存数据。掌握 LINQ，是从"会写 C#"到"写得地道 C#"的分水岭。
 
@@ -166,25 +166,22 @@ var adults = db.Users
 
 关键：**谓词里的代码会被翻译成 SQL**，所以不能在 Where 里随便调用 C# 方法（比如 \`u => MyHelper.IsValid(u)\`），EF Core 不一定能翻译。
 
-本章 demo 用 List<int> 和 List<Product> 演示两种语法对比、Where/Select/OrderBy、var 推断，并用 yield return 自定义一个延迟执行方法让你"看见"延迟执行。`,
+本章 demo 用 List<int> 和 List<Product> 演示两种语法对比、Where/Select/OrderBy、var 推断，并用 yield return 自定义一个延迟执行方法让你"看见"延迟执行。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「LINQ 基础」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - LINQ 基础演示
 // 演示：查询语法 vs 方法语法、Where/Select/OrderBy、var 推断、延迟执行
 
 using System;
+
 using System.Collections.Generic;
+
 using System.Linq;
 
-// === 1. 数据模型 ===
-class Product
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = "";
-    public decimal Price { get; set; }
-    public string Category { get; set; } = "";
-    public override string ToString() => $"[{Id}] {Name} - ¥{Price:F2} ({Category})";
-}
-
-// === 2. 顶级语句：演示 ===
 var products = new List<Product>
 {
     new() { Id = 1, Name = "iPhone 15", Price = 7999, Category = "手机" },
@@ -195,73 +192,84 @@ var products = new List<Product>
 };
 
 Console.WriteLine("=== 1. 方法语法：找出手机并按价格降序 ===");
-// Where 过滤、OrderByDescending 排序、Select 投影
+
 var phonesMethod = products
     .Where(p => p.Category == "手机")        // 过滤出手机
     .OrderByDescending(p => p.Price)         // 按价格降序
-    .Select(p => new { p.Name, p.Price });   // 投影成匿名对象，必须用 var
+    .Select(p => new { p.Name, p.Price });
+
 foreach (var item in phonesMethod)
 {
     Console.WriteLine($"  {item.Name} - ¥{item.Price}");
 }
 
 Console.WriteLine("\\n=== 2. 查询表达式：等价写法 ===");
-// from...where...orderby...select 结构，SQL 风格
+
 var phonesQuery = from p in products
                   where p.Category == "手机"
                   orderby p.Price descending
                   select new { p.Name, p.Price };
-// 两种语法编译后完全等价
+
 foreach (var item in phonesQuery)
 {
     Console.WriteLine($"  {item.Name} - ¥{item.Price}");
 }
 
 Console.WriteLine("\\n=== 3. OrderBy + ThenBy：多字段排序 ===");
-// 先按类别升序，类别相同按价格降序
+
 var sorted = products
     .OrderBy(p => p.Category)                // 主排序：类别
-    .ThenByDescending(p => p.Price);         // 次排序：价格降序
+    .ThenByDescending(p => p.Price);
+
 foreach (var p in sorted) Console.WriteLine($"  {p}");
 
 Console.WriteLine("\\n=== 4. var 推断与匿名类型 ===");
-// 匿名类型无法显式写出，只能用 var
+
 var dtos = products.Select(p => new { p.Id, p.Name, IsExpensive = p.Price > 7000 });
+
 foreach (var d in dtos)
 {
     Console.WriteLine($"  Id={d.Id}, Name={d.Name}, 昂贵={d.IsExpensive}");
 }
 
 Console.WriteLine("\\n=== 5. 延迟执行演示 ===");
-// Where 不会立即执行，只是构建查询
+
 Console.WriteLine("构建查询（此时不会打印任何 '检查'）...");
+
 var query = products.Where(p =>
 {
     Console.WriteLine($"  [Where 内部] 检查 {p.Name}");  // 谓词带副作用，用于观察
     return p.Price > 5000;
 });
+
 Console.WriteLine("查询已构建，但还没执行 Where 谓词");
+
 Console.WriteLine("开始遍历：");
+
 foreach (var p in query) Console.WriteLine($"  命中: {p.Name}");
 
 Console.WriteLine("\\n=== 6. 延迟执行的陷阱：每次遍历都重新执行 ===");
-// 注意：query 没有缓存，每次 foreach 都重新跑一遍 Where
+
 Console.WriteLine("调用 Count（会再次触发 Where 执行）：");
-int count = query.Count();  // Count 触发一次执行
+
+int count = query.Count();
+
 Console.WriteLine($"  共 {count} 个");
 
 Console.WriteLine("\\n=== 7. ToList 触发立即执行 ===");
-var cached = products.Where(p => p.Price > 5000).ToList();  // 立即执行，结果缓存
+
+var cached = products.Where(p => p.Price > 5000).ToList();
+
 Console.WriteLine($"cached 里有 {cached.Count} 个元素，后续访问不再重新计算");
 
 Console.WriteLine("\\n=== 8. 自定义延迟执行方法（yield return）===");
-// 用 yield 模拟 LINQ 的延迟执行原理
+
 var customQuery = MyWhere(products, p => p.Category == "电脑");
+
 Console.WriteLine("自定义查询已构建，开始遍历：");
+
 foreach (var p in customQuery) Console.WriteLine($"  {p}");
 
-// === 自定义延迟执行方法：模拟 LINQ Where 的实现原理 ===
-// yield return 让方法变成"状态机"，调用时返回 IEnumerable<T>，遍历时才执行
 static IEnumerable<T> MyWhere<T>(IEnumerable<T> source, Func<T, bool> predicate)
 {
     Console.WriteLine("  [MyWhere] 开始遍历源序列");
@@ -277,21 +285,38 @@ static IEnumerable<T> MyWhere<T>(IEnumerable<T> source, Func<T, bool> predicate)
 }
 
 Console.WriteLine("\\n=== 9. IEnumerable vs IQueryable 说明 ===");
-// products 是 List<Product>，即 IEnumerable<Product>
-// 它的 Where 扩展方法来自 System.Linq.Enumerable，谓词编译成委托，内存执行
+
 IEnumerable<Product> enumQuery = products.Where(p => p.Price > 5000);
+
 Console.WriteLine($"IEnumerable 类型: {enumQuery.GetType().Name}");
+
 Console.WriteLine("若用 EF Core 的 DbSet，Where 返回 IQueryable<T>");
+
 Console.WriteLine("谓词会被翻译成表达式树 -> SQL，在数据库执行");
 
 Console.WriteLine("\\n=== 10. 简单数值查询演示 ===");
+
 int[] nums = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
-// 查询表达式写法
+
 var evens = from n in nums where n % 2 == 0 select n;
+
 Console.WriteLine($"偶数（查询表达式）: {string.Join(", ", evens)}");
-// 方法语法写法
+
 var squares = nums.Where(n => n > 5).Select(n => n * n);
-Console.WriteLine($"大于5的平方: {string.Join(", ", squares)}");`,
+
+Console.WriteLine($"大于5的平方: {string.Join(", ", squares)}");
+
+// ============ 类型声明（必须放在所有顶级语句之后） ============
+
+class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public decimal Price { get; set; }
+    public string Category { get; set; } = "";
+    public override string ToString() => $"[{Id}] {Name} - ¥{Price:F2} ({Category})";
+}
+`,
     lang: 'cs',
   },
 
@@ -303,7 +328,7 @@ Console.WriteLine($"大于5的平方: {string.Join(", ", squares)}");`,
     group: '第六部分 LINQ',
     icon: '🔎',
     title: 'LINQ 过滤与投影',
-    content: `## 第四十一章　LINQ 过滤与投影
+    content: `## 第四十二章　LINQ 过滤与投影
 
 上一章讲了 LINQ 的"哲学"——延迟执行和两种语法。本章深入最常用的两类操作：**过滤**（把不需要的元素剔除）和**投影**（把元素转换成新形式）。这两类操作占了日常 LINQ 使用的 70% 以上。
 
@@ -401,7 +426,7 @@ var zipped = names.Zip(ages, (name, age) => $"{name}-{age}");
 // ["Alice-20", "Bob-30", "Carol-40"]
 \`\`\`
 
-C# 7+ 支持三参数：\`a.Zip(b, c, (x, y, z) => ...)\`。长度不一致时按最短的截断。
+.NET 6+ 支持三序列 Zip，返回 \`(T1, T2, T3)\` 元组：\`names.Zip(ages, scores)\`。长度不一致时按最短的截断。
 
 ### 九、OfType：按类型过滤
 
@@ -436,27 +461,25 @@ var withDefault = empty.DefaultIfEmpty(-1);  // 空序列变成 [-1]
 2. **Select 中创建对象有成本**：大数据量投影到匿名对象会分配内存，必要时用 struct 或 record struct。
 3. **延迟执行的副作用**：Where 里如果修改外部状态，每次遍历结果可能不同。
 
-本章 demo 用学生 + 课程数据演示 Where（带索引）、Select、SelectMany（拍平课程）、Distinct、Skip/Take（分页）、Chunk、Zip（拉链合并）、OfType/Cast、DefaultIfEmpty。`,
+本章 demo 用学生 + 课程数据演示 Where（带索引）、Select、SelectMany（拍平课程）、Distinct、Skip/Take（分页）、Chunk、Zip（拉链合并）、OfType/Cast、DefaultIfEmpty。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「LINQ 过滤与投影」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - LINQ 过滤与投影演示
 // 演示：Where(带索引)、Select、SelectMany、Distinct、Skip/Take、SkipWhile/TakeWhile、
 //       Chunk、Zip、OfType、Cast、DefaultIfEmpty
 
 using System;
+
 using System.Collections;
+
 using System.Collections.Generic;
+
 using System.Linq;
 
-// === 1. 数据模型 ===
-class Student
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = "";
-    public int Age { get; set; }
-    public List<string> Courses { get; set; } = new();
-    public override string ToString() => $"[{Id}] {Name}({Age}岁) 课程: {string.Join(",", Courses)}";
-}
-
-// === 2. 顶级语句演示 ===
 var students = new List<Student>
 {
     new() { Id = 1, Name = "张三", Age = 20, Courses = { "数学", "物理", "英语" } },
@@ -467,47 +490,63 @@ var students = new List<Student>
 };
 
 Console.WriteLine("=== 1. Where：基本过滤 ===");
-var adults = students.Where(s => s.Age >= 20);  // 过滤出年龄 >= 20 的学生
+
+var adults = students.Where(s => s.Age >= 20);
+
 foreach (var s in adults) Console.WriteLine($"  {s.Name} ({s.Age})");
 
 Console.WriteLine("\\n=== 2. Where 带索引重载：取偶数下标的学生 ===");
-// 第二个参数 int idx 是元素在序列中的下标
+
 var everyOther = students.Where((s, idx) => idx % 2 == 0);
+
 foreach (var s in everyOther) Console.WriteLine($"  下标 {students.IndexOf(s)}: {s.Name}");
 
 Console.WriteLine("\\n=== 3. Select：投影 ===");
-var names = students.Select(s => s.Name);  // 投影成字符串序列
+
+var names = students.Select(s => s.Name);
+
 Console.WriteLine($"  名字: {string.Join(", ", names)}");
+
 var dtos = students.Select(s => new { s.Name, s.Age, CourseCount = s.Courses.Count });
+
 foreach (var d in dtos) Console.WriteLine($"  {d.Name}, {d.Age}岁, {d.CourseCount}门课");
 
 Console.WriteLine("\\n=== 4. Select 带索引 ===");
-// Select 也有带索引的重载，常用于生成序号
+
 var indexed = students.Select((s, i) => $"#{i + 1} {s.Name}");
+
 foreach (var item in indexed) Console.WriteLine($"  {item}");
 
 Console.WriteLine("\\n=== 5. SelectMany：拍平嵌套课程列表 ===");
-// 如果用 Select，得到 List<List<string>>（嵌套）
+
 var nested = students.Select(s => s.Courses);
+
 Console.WriteLine("  Select 结果（嵌套，每行是一个 List）:");
+
 foreach (var list in nested) Console.WriteLine($"    [{string.Join(",", list)}]");
-// SelectMany 拍平成单个序列
+
 var flat = students.SelectMany(s => s.Courses);
+
 Console.WriteLine($"  SelectMany 结果（拍平）: {string.Join(", ", flat)}");
 
 Console.WriteLine("\\n=== 6. SelectMany 带结果选择器 ===");
-// 输出 (学生, 课程) 对，常用于父子表关联展开
+
 var pairs = students.SelectMany(
     s => s.Courses,
     (s, course) => new { Student = s.Name, Course = course });
+
 foreach (var p in pairs.Take(5)) Console.WriteLine($"  {p.Student} -> {p.Course}");
 
 Console.WriteLine("\\n=== 7. Distinct：去重课程 ===");
+
 var uniqueCourses = students.SelectMany(s => s.Courses).Distinct();
+
 Console.WriteLine($"  所有课程: {string.Join(", ", uniqueCourses)}");
 
 Console.WriteLine("\\n=== 8. Skip / Take：分页（每页2条）===");
+
 int pageSize = 2;
+
 for (int page = 0; page < 3; page++)
 {
     // Skip 跳过前 N 个，Take 取接下来的 M 个
@@ -516,61 +555,102 @@ for (int page = 0; page < 3; page++)
 }
 
 Console.WriteLine("\\n=== 9. SkipWhile / TakeWhile ===");
+
 int[] nums = { 1, 2, 3, -1, 4, 5, -2, 6 };
-// TakeWhile：从开头取，遇到第一个不满足条件的就停
+
 var firstRun = nums.TakeWhile(n => n > 0);
-Console.WriteLine($"  TakeWhile(n>0): {string.Join(", ", firstRun)}");  // 1,2,3
-// SkipWhile：从开头跳过满足条件的，遇到第一个不满足的就停止跳过，之后全取
+
+Console.WriteLine($"  TakeWhile(n>0): {string.Join(", ", firstRun)}");
+
 var afterFirstNeg = nums.SkipWhile(n => n > 0);
-Console.WriteLine($"  SkipWhile(n>0): {string.Join(", ", afterFirstNeg)}");  // -1,4,5,-2,6
+
+Console.WriteLine($"  SkipWhile(n>0): {string.Join(", ", afterFirstNeg)}");
 
 Console.WriteLine("\\n=== 10. Chunk（C# 8+）：分块 ===");
-var chunks = Enumerable.Range(1, 10).Chunk(3);  // 1..10 按 3 分块
+
+var chunks = Enumerable.Range(1, 10).Chunk(3);
+
 Console.WriteLine($"  1..10 按 3 分块:");
+
 foreach (var chunk in chunks) Console.WriteLine($"    [{string.Join(",", chunk)}]");
 
 Console.WriteLine("\\n=== 11. Zip（C# 4+）：拉链合并 ===");
+
 var nameList = new[] { "Alice", "Bob", "Carol" };
+
 var ageList = new[] { 20, 30, 40 };
+
 var zipped = nameList.Zip(ageList, (name, age) => $"{name}-{age}");
+
 Console.WriteLine($"  两序列 Zip: {string.Join(", ", zipped)}");
-// 三参数版本（C# 7+）
+
 var scores = new[] { 90, 85, 92 };
-var triples = nameList.Zip(ageList, scores, (n, a, sc) => $"{n}/{a}岁/{sc}分");
+
+var triples = nameList.Zip(ageList, scores).Select(t => $"{t.First}/{t.Second}岁/{t.Third}分");
+
 Console.WriteLine($"  三序列 Zip: {string.Join(", ", triples)}");
-// 长度不一致按最短截断
+
 var extra = new[] { 1, 2, 3, 4, 5 };
+
 var truncated = nameList.Zip(extra, (n, x) => $"{n}-{x}");
-Console.WriteLine($"  长度不一致: {string.Join(", ", truncated)}");  // 只到 3 对
+
+Console.WriteLine($"  长度不一致: {string.Join(", ", truncated)}");
 
 Console.WriteLine("\\n=== 12. OfType：按类型过滤（不抛异常）===");
+
 List<object> mixed = new() { 1, "hi", 2.5, "world", 3, true };
-var onlyStrings = mixed.OfType<string>();  // 只取 string，跳过其他类型
+
+var onlyStrings = mixed.OfType<string>();
+
 Console.WriteLine($"  字符串: {string.Join(", ", onlyStrings)}");
+
 var onlyInts = mixed.OfType<int>();
+
 Console.WriteLine($"  整数: {string.Join(", ", onlyInts)}");
 
 Console.WriteLine("\\n=== 13. Cast：强制类型转换 ===");
+
 ArrayList arrayList = new() { "apple", "banana", "cherry" };
-var fruits = arrayList.Cast<string>();  // 把每个元素强转 string
+
+var fruits = arrayList.Cast<string>();
+
 Console.WriteLine($"  Cast 结果: {string.Join(", ", fruits)}");
-// 注意：Cast 遇到无法转换的会抛 InvalidCastException，OfType 会跳过
 
 Console.WriteLine("\\n=== 14. DefaultIfEmpty：空序列兜底 ===");
+
 var empty = Array.Empty<int>();
-var withDefault = empty.DefaultIfEmpty(-1);  // 空序列变成 [-1]
+
+var withDefault = empty.DefaultIfEmpty(-1);
+
 Console.WriteLine($"  空序列 DefaultIfEmpty(-1): {string.Join(", ", withDefault)}");
+
 var nonEmpty = new[] { 1, 2, 3 };
-var nonEmptyResult = nonEmpty.DefaultIfEmpty(-1);  // 非空序列不变
+
+var nonEmptyResult = nonEmpty.DefaultIfEmpty(-1);
+
 Console.WriteLine($"  非空序列 DefaultIfEmpty: {string.Join(", ", nonEmptyResult)}");
 
 Console.WriteLine("\\n=== 15. 综合实战：找出选了 '数学' 的学生姓名并去重 ===");
+
 var mathStudents = students
     .Where(s => s.Courses.Contains("数学"))  // 过滤选数学的
     .Select(s => s.Name)                      // 投影成名字
     .Distinct()                               // 去重
-    .OrderBy(n => n);                         // 排序
-Console.WriteLine($"  数学课学生: {string.Join(", ", mathStudents)}");`,
+    .OrderBy(n => n);
+
+Console.WriteLine($"  数学课学生: {string.Join(", ", mathStudents)}");
+
+// ============ 类型声明（必须放在所有顶级语句之后） ============
+
+class Student
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public int Age { get; set; }
+    public List<string> Courses { get; set; } = new();
+    public override string ToString() => $"[{Id}] {Name}({Age}岁) 课程: {string.Join(",", Courses)}";
+}
+`,
     lang: 'cs',
   },
 
@@ -582,7 +662,7 @@ Console.WriteLine($"  数学课学生: {string.Join(", ", mathStudents)}");`,
     group: '第六部分 LINQ',
     icon: '📊',
     title: 'LINQ 排序与分组',
-    content: `## 第四十二章　LINQ 排序与分组
+    content: `## 第四十三章　LINQ 排序与分组
 
 排序（Order）和分组（Group）是数据处理的核心操作。SQL 里你写 \`ORDER BY\` 和 \`GROUP BY\`，LINQ 里同样有 OrderBy / GroupBy，但更强大——因为 LINQ 操作的是强类型对象，分组结果是嵌套结构，可以直接遍历。
 
@@ -743,34 +823,23 @@ var result = from s in students
 
 注意：\`on ... equals ...\`，不是 \`on ... = ...\`，且只能做等值连接（不等值连接得用 Where）。
 
-本章 demo 演示 OrderBy/ThenBy 多字段排序、GroupBy 单键/多键/带选择器、ToLookup 立即分组、Join 内连接、GroupJoin + DefaultIfEmpty 左连接、自连接。`,
+本章 demo 演示 OrderBy/ThenBy 多字段排序、GroupBy 单键/多键/带选择器、ToLookup 立即分组、Join 内连接、GroupJoin + DefaultIfEmpty 左连接、自连接。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「LINQ 排序与分组」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - LINQ 排序与分组演示
 // 演示：OrderBy/ThenBy/Reverse、GroupBy(单键/多键/选择器)、ToLookup、
 //       Join、GroupJoin、左连接、自连接
 
 using System;
+
 using System.Collections.Generic;
+
 using System.Linq;
 
-// === 1. 数据模型 ===
-class ClassInfo
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = "";
-    public override string ToString() => $"班级[{Id}]:{Name}";
-}
-
-class Student
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = "";
-    public int Age { get; set; }
-    public int ClassId { get; set; }
-    public int? ManagerId { get; set; }  // 自连接用：所属组长 Id
-    public override string ToString() => $"[{Id}]{Name}({Age}岁,Class={ClassId})";
-}
-
-// === 2. 顶级语句演示 ===
 var classes = new List<ClassInfo>
 {
     new() { Id = 101, Name = "一班" },
@@ -789,17 +858,23 @@ var students = new List<Student>
 };
 
 Console.WriteLine("=== 1. OrderBy + ThenBy：多字段排序 ===");
-// 先按年龄升序，年龄相同按名字降序
+
 var sorted = students.OrderBy(s => s.Age).ThenByDescending(s => s.Name);
+
 foreach (var s in sorted) Console.WriteLine($"  {s}");
 
 Console.WriteLine("\\n=== 2. Reverse：反转序列 ===");
+
 var nums = new[] { 1, 2, 3, 4, 5 };
+
 Console.WriteLine($"  原始: {string.Join(",", nums)}");
+
 Console.WriteLine($"  反转: {string.Join(",", nums.Reverse())}");
 
 Console.WriteLine("\\n=== 3. GroupBy 单键：按班级分组 ===");
+
 var byClass = students.GroupBy(s => s.ClassId);
+
 foreach (var g in byClass)
 {
     Console.WriteLine($"  班级 {g.Key} ({g.Count()}人):");
@@ -807,23 +882,25 @@ foreach (var g in byClass)
 }
 
 Console.WriteLine("\\n=== 4. GroupBy 多键：按 (班级, 是否成年) 分组 ===");
-// 用匿名类型作为复合键
+
 var byMulti = students.GroupBy(s => new { s.ClassId, IsAdult = s.Age >= 20 });
+
 foreach (var g in byMulti)
 {
     Console.WriteLine($"  班级{g.Key.ClassId}/{(g.Key.IsAdult ? "成年" : "未成年")}: {string.Join(",", g.Select(s => s.Name))}");
 }
 
 Console.WriteLine("\\n=== 5. GroupBy 带元素选择器 ===");
-// 只取名字，不取整个 Student
+
 var namesByClass = students.GroupBy(
     s => s.ClassId,
     s => s.Name);
+
 foreach (var g in namesByClass)
     Console.WriteLine($"  班级 {g.Key}: {string.Join(",", g)}");
 
 Console.WriteLine("\\n=== 6. GroupBy 带结果选择器：直接算统计 ===");
-// 每组的统计信息
+
 var stats = students.GroupBy(
     s => s.ClassId,
     (classId, group) => new
@@ -833,33 +910,39 @@ var stats = students.GroupBy(
         AvgAge = group.Average(s => s.Age),
         MaxAge = group.Max(s => s.Age)
     });
+
 foreach (var st in stats)
     Console.WriteLine($"  班级 {st.ClassId}: {st.Count}人, 平均{st.AvgAge:F1}岁, 最大{st.MaxAge}岁");
 
 Console.WriteLine("\\n=== 7. ToLookup：立即执行的分组查找 ===");
-// GroupBy 是延迟的，ToLookup 立即执行，返回 ILookup<TKey, TElement>
+
 var lookup = students.ToLookup(s => s.ClassId);
+
 Console.WriteLine($"  101 班学生: {string.Join(",", lookup[101].Select(s => s.Name))}");
+
 Console.WriteLine($"  102 班学生: {string.Join(",", lookup[102].Select(s => s.Name))}");
-Console.WriteLine($"  999 班学生(不存在): {string.Join(",", lookup[999].Select(s => s.Name))}");  // 返回空，不抛异常
+
+Console.WriteLine($"  999 班学生(不存在): {string.Join(",", lookup[999].Select(s => s.Name))}");
 
 Console.WriteLine("\\n=== 8. Join：内连接 ===");
-// 学生连接班级，匹配不上的丢失
+
 var innerJoined = students.Join(
     classes,
     s => s.ClassId,             // 学生侧的键
     c => c.Id,                  // 班级侧的键
-    (s, c) => new { s.Name, ClassName = c.Name });  // 结果选择器
+    (s, c) => new { s.Name, ClassName = c.Name });
+
 foreach (var item in innerJoined)
     Console.WriteLine($"  {item.Name} -> {item.ClassName}");
 
 Console.WriteLine("\\n=== 9. GroupJoin：左连接（带分组）===");
-// 班级连接学生，每个班级一组学生（即使为空也会出现）
+
 var groupJoined = classes.GroupJoin(
     students,
     c => c.Id,
     s => s.ClassId,
     (c, stuGroup) => new { ClassName = c.Name, Students = stuGroup });
+
 foreach (var item in groupJoined)
 {
     Console.WriteLine($"  {item.ClassName}:");
@@ -870,7 +953,7 @@ foreach (var item in groupJoined)
 }
 
 Console.WriteLine("\\n=== 10. 完整左连接：GroupJoin + SelectMany + DefaultIfEmpty ===");
-// 拍平为 (班级, 学生) 对，没有学生的班级学生字段为 null
+
 var leftJoin = classes
     .GroupJoin(
         students,
@@ -880,34 +963,59 @@ var leftJoin = classes
     .SelectMany(
         x => x.Students.DefaultIfEmpty(),  // 空组变成 [default]，保证至少一行
         (x, s) => new { ClassName = x.Class.Name, StudentName = s?.Name ?? "(无学生)" });
+
 foreach (var item in leftJoin)
     Console.WriteLine($"  {item.ClassName} -> {item.StudentName}");
 
 Console.WriteLine("\\n=== 11. 自连接：员工 -> 组长 ===");
-// 员工表自己连接自己，找出每个员工的组长
+
 var empMgr = students.Join(
     students,
     e => e.ManagerId,        // 员工的组长 Id
     m => m.Id,                // 组长的 Id
     (e, m) => new { Employee = e.Name, Manager = m.Name });
+
 foreach (var item in empMgr)
     Console.WriteLine($"  {item.Employee} 的组长是 {item.Manager}");
 
 Console.WriteLine("\\n=== 12. 查询表达式 join...on...equals 语法 ===");
-// 等价于第 8 步的 Join
+
 var queryJoin = from s in students
                 join c in classes on s.ClassId equals c.Id
                 select new { s.Name, ClassName = c.Name };
+
 foreach (var item in queryJoin.Take(3))
     Console.WriteLine($"  {item.Name} -> {item.ClassName}");
 
 Console.WriteLine("\\n=== 13. 查询表达式 group...by ===");
+
 var queryGroup = from s in students
                  group s by s.ClassId into g
                  orderby g.Key
                  select new { ClassId = g.Key, Count = g.Count() };
+
 foreach (var g in queryGroup)
-    Console.WriteLine($"  班级 {g.ClassId}: {g.Count}人");`,
+    Console.WriteLine($"  班级 {g.ClassId}: {g.Count}人");
+
+// ============ 类型声明（必须放在所有顶级语句之后） ============
+
+class ClassInfo
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public override string ToString() => $"班级[{Id}]:{Name}";
+}
+
+class Student
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public int Age { get; set; }
+    public int ClassId { get; set; }
+    public int? ManagerId { get; set; }  // 自连接用：所属组长 Id
+    public override string ToString() => $"[{Id}]{Name}({Age}岁,Class={ClassId})";
+}
+`,
     lang: 'cs',
   },
 
@@ -919,7 +1027,7 @@ foreach (var g in queryGroup)
     group: '第六部分 LINQ',
     icon: '🧮',
     title: 'LINQ 聚合与统计',
-    content: `## 第四十三章　LINQ 聚合与统计
+    content: `## 第四十四章　LINQ 聚合与统计
 
 聚合（Aggregation）是把一个序列"压缩"成单个值的操作。SQL 里有 COUNT/SUM/MAX/MIN/AVG，LINQ 里同样有，而且更灵活——你可以自定义聚合逻辑。
 
@@ -1063,36 +1171,24 @@ foreach (var batch in batches) db.BulkInsert(batch);
 2. **LINQ to SQL 翻译**：EF Core 里 Sum/Count 会被翻译成 SQL 聚合，不会拉全表。
 3. **空集合的 Average 抛异常**：永远 \`if (list.Any())\` 或用 DefaultIfEmpty 兜底。
 
-本章 demo 演示所有聚合操作、自定义 Aggregate 实现 string.Join、IEqualityComparer 自定义比较、Chunk 分批处理。`,
+本章 demo 演示所有聚合操作、自定义 Aggregate 实现 string.Join、IEqualityComparer 自定义比较、Chunk 分批处理。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「LINQ 聚合与统计」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - LINQ 聚合与统计演示
 // 演示：Count/Sum/Min/Max/Average、Aggregate(自定义/带种子)、Any/All/Contains、
 //       First/FirstOrDefault/Last/Single、ElementAt、SequenceEqual、
 //       IEqualityComparer、Chunk 批处理
 
 using System;
+
 using System.Collections.Generic;
+
 using System.Linq;
 
-// === 1. 数据模型 ===
-class Score
-{
-    public string Subject { get; set; } = "";
-    public int Points { get; set; }
-    public override string ToString() => $"{Subject}={Points}";
-}
-
-// === 2. 自定义比较器：按 Subject 忽略大小写比较 ===
-class SubjectComparer : IEqualityComparer<Score>
-{
-    // Equals：两个对象是否"相等"（用于 Distinct/Contains）
-    public bool Equals(Score? x, Score? y) =>
-        string.Equals(x?.Subject, y?.Subject, StringComparison.OrdinalIgnoreCase);
-    // GetHashCode：相等的对象必须返回相同的哈希码
-    public int GetHashCode(Score obj) =>
-        StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Subject);
-}
-
-// === 3. 顶级语句演示 ===
 var scores = new List<Score>
 {
     new() { Subject = "数学", Points = 90 },
@@ -1103,78 +1199,105 @@ var scores = new List<Score>
 };
 
 Console.WriteLine("=== 1. Count / LongCount ===");
+
 Console.WriteLine($"  总记录数: {scores.Count()}");
+
 Console.WriteLine($"  优秀(>=85)数: {scores.Count(s => s.Points >= 85)}");
-// LongCount 用于可能超过 int.MaxValue 的超大序列
+
 Console.WriteLine($"  LongCount: {scores.LongCount()}");
 
 Console.WriteLine("\\n=== 2. Sum / Min / Max / Average ===");
+
 Console.WriteLine($"  总分: {scores.Sum(s => s.Points)}");
+
 Console.WriteLine($"  最低分: {scores.Min(s => s.Points)}");
+
 Console.WriteLine($"  最高分: {scores.Max(s => s.Points)}");
+
 Console.WriteLine($"  平均分: {scores.Average(s => s.Points):F2}");
 
-// 空集合的 Average 会抛异常，必须先检查或用 DefaultIfEmpty
 var emptyScores = Array.Empty<Score>();
-// var badAvg = emptyScores.Average(s => s.Points);  // ❌ 会抛异常
+
 var safeAvg = emptyScores.DefaultIfEmpty(new Score { Points = 0 }).Average(s => s.Points);
+
 Console.WriteLine($"  空集合安全平均: {safeAvg}");
 
-// nullable 聚合：自动忽略 null
 int?[] nullableNums = { 1, 2, null, 4, null, 6 };
-Console.WriteLine($"  nullable Count: {nullableNums.Count()}");   // 6（包含 null）
-Console.WriteLine($"  nullable Sum: {nullableNums.Sum()}");        // 13（忽略 null）
-Console.WriteLine($"  nullable Max: {nullableNums.Max()}");        // 6
+
+Console.WriteLine($"  nullable Count: {nullableNums.Count()}");
+
+Console.WriteLine($"  nullable Sum: {nullableNums.Sum()}");
+
+Console.WriteLine($"  nullable Max: {nullableNums.Max()}");
 
 Console.WriteLine("\\n=== 3. Aggregate：自定义聚合 ===");
+
 int[] nums = { 1, 2, 3, 4, 5 };
-// 无种子：第一个元素作为初始累积值
+
 var sum = nums.Aggregate((acc, n) => acc + n);
-Console.WriteLine($"  无种子 Aggregate 求和: {sum}");  // 15
-// 带种子：从 0 开始累加
+
+Console.WriteLine($"  无种子 Aggregate 求和: {sum}");
+
 var sumWithSeed = nums.Aggregate(0, (acc, n) => acc + n);
-Console.WriteLine($"  带种子 Aggregate 求和: {sumWithSeed}");  // 15
-// 带种子和结果选择器
+
+Console.WriteLine($"  带种子 Aggregate 求和: {sumWithSeed}");
+
 var sumWithResult = nums.Aggregate(0, (acc, n) => acc + n, acc => $"总和={acc}");
+
 Console.WriteLine($"  带结果选择器: {sumWithResult}");
 
-// 经典：用 Aggregate 实现类似 string.Join
 var csv = nums.Aggregate("", (acc, n) => acc == "" ? n.ToString() : acc + "," + n);
-Console.WriteLine($"  Aggregate 模拟 Join: {csv}");  // 1,2,3,4,5
-// 阶乘演示
+
+Console.WriteLine($"  Aggregate 模拟 Join: {csv}");
+
 var factorial = nums.Aggregate(1, (acc, n) => acc * n);
-Console.WriteLine($"  1*2*3*4*5 = {factorial}");  // 120
+
+Console.WriteLine($"  1*2*3*4*5 = {factorial}");
 
 Console.WriteLine("\\n=== 4. Any / All / Contains ===");
+
 Console.WriteLine($"  是否有满分(>=100): {scores.Any(s => s.Points >= 100)}");
+
 Console.WriteLine($"  是否全部及格(>=60): {scores.All(s => s.Points >= 60)}");
-// 短路求值：Any 找到一个就停
+
 Console.WriteLine($"  是否存在物理: {scores.Any(s => s.Subject == "物理")}");
-// Contains：默认引用比较
+
 var specificScore = scores[0];
+
 Console.WriteLine($"  Contains 第一个元素: {scores.Contains(specificScore)}");
 
 Console.WriteLine("\\n=== 5. First / FirstOrDefault / Last / LastOrDefault ===");
+
 var first = scores.First();
+
 Console.WriteLine($"  First: {first}");
+
 var firstMath = scores.First(s => s.Subject == "数学");
+
 Console.WriteLine($"  First 数学: {firstMath}");
-// FirstOrDefault 找不到返回 default（null）
+
 var notFound = scores.FirstOrDefault(s => s.Subject == "历史");
+
 Console.WriteLine($"  FirstOrDefault 历史: {(notFound == null ? "null" : notFound)}");
+
 var last = scores.Last();
+
 Console.WriteLine($"  Last: {last}");
+
 var lastOrDefault = scores.LastOrDefault(s => s.Points > 200);
+
 Console.WriteLine($"  LastOrDefault >200: {(lastOrDefault == null ? "null" : lastOrDefault)}");
 
 Console.WriteLine("\\n=== 6. Single / SingleOrDefault ===");
-// Single 要求恰好一个，多于一个抛异常
+
 var singleEnglish = scores.Where(s => s.Subject == "英语").Single();
+
 Console.WriteLine($"  Single 英语: {singleEnglish}");
-// SingleOrDefault 0 或 1 个
+
 var singleOr = scores.SingleOrDefault(s => s.Subject == "历史");
+
 Console.WriteLine($"  SingleOrDefault 历史: {(singleOr == null ? "null" : singleOr)}");
-// 注意：数学有两条，Single 会抛异常
+
 try
 {
     var bad = scores.Single(s => s.Subject == "数学");
@@ -1185,31 +1308,45 @@ catch (InvalidOperationException)
 }
 
 Console.WriteLine("\\n=== 7. ElementAt / ElementAtOrDefault ===");
+
 Console.WriteLine($"  ElementAt(2): {scores.ElementAt(2)}");
-var maybe = scores.ElementAtOrDefault(99);  // 越界返回 default
+
+var maybe = scores.ElementAtOrDefault(99);
+
 Console.WriteLine($"  ElementAtOrDefault(99): {(maybe == null ? "null" : maybe)}");
 
 Console.WriteLine("\\n=== 8. SequenceEqual：序列相等（顺序敏感）===");
+
 int[] a = { 1, 2, 3 };
+
 int[] b = { 1, 2, 3 };
+
 int[] c = { 3, 2, 1 };
-Console.WriteLine($"  a==b: {a.SequenceEqual(b)}");  // True
-Console.WriteLine($"  a==c: {a.SequenceEqual(c)}");  // False（顺序不同）
+
+Console.WriteLine($"  a==b: {a.SequenceEqual(b)}");
+
+Console.WriteLine($"  a==c: {a.SequenceEqual(c)}");
 
 Console.WriteLine("\\n=== 9. IEqualityComparer 自定义比较 ===");
-// 默认 Distinct 对 Score 引用比较，不会去重
+
 var defaultDistinct = scores.Distinct();
-Console.WriteLine($"  默认 Distinct 数量: {defaultDistinct.Count()}");  // 5（无去重）
-// 用 SubjectComparer 按 Subject 去重
+
+Console.WriteLine($"  默认 Distinct 数量: {defaultDistinct.Count()}");
+
 var subjectDistinct = scores.Distinct(new SubjectComparer());
+
 Console.WriteLine($"  按 Subject Distinct 数量: {subjectDistinct.Count()}");
+
 foreach (var s in subjectDistinct) Console.WriteLine($"    {s}");
 
 Console.WriteLine("\\n=== 10. Chunk 批处理（模拟批量写入）===");
-// 模拟分批写入数据库：每批 10 条
-var allIds = Enumerable.Range(1, 25);  // 用 25 条做演示
+
+var allIds = Enumerable.Range(1, 25);
+
 var batches = allIds.Chunk(10);
+
 Console.WriteLine($"  共 {allIds.Count()} 条数据，分 {batches.Count()} 批:");
+
 foreach (var batch in batches)
 {
     Console.WriteLine($"    批次 [{batch.First()}..{batch.Last()}] 共 {batch.Length} 条");
@@ -1217,11 +1354,33 @@ foreach (var batch in batches)
 }
 
 Console.WriteLine("\\n=== 11. 综合实战：找出每科最高分 ===");
+
 var bestPerSubject = scores
     .GroupBy(s => s.Subject)                              // 按科目分组
-    .Select(g => new { Subject = g.Key, MaxPoints = g.Max(s => s.Points) });  // 每组取最高
+    .Select(g => new { Subject = g.Key, MaxPoints = g.Max(s => s.Points) });
+
 foreach (var bp in bestPerSubject)
-    Console.WriteLine($"  {bp.Subject}: {bp.MaxPoints}");`,
+    Console.WriteLine($"  {bp.Subject}: {bp.MaxPoints}");
+
+// ============ 类型声明（必须放在所有顶级语句之后） ============
+
+class Score
+{
+    public string Subject { get; set; } = "";
+    public int Points { get; set; }
+    public override string ToString() => $"{Subject}={Points}";
+}
+
+class SubjectComparer : IEqualityComparer<Score>
+{
+    // Equals：两个对象是否"相等"（用于 Distinct/Contains）
+    public bool Equals(Score? x, Score? y) =>
+        string.Equals(x?.Subject, y?.Subject, StringComparison.OrdinalIgnoreCase);
+    // GetHashCode：相等的对象必须返回相同的哈希码
+    public int GetHashCode(Score obj) =>
+        StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Subject);
+}
+`,
     lang: 'cs',
   },
 
@@ -1233,7 +1392,7 @@ foreach (var bp in bestPerSubject)
     group: '第六部分 LINQ',
     icon: '🔄',
     title: 'LINQ 转换与立即执行',
-    content: `## 第四十四章　LINQ 转换与立即执行
+    content: `## 第四十五章　LINQ 转换与立即执行
 
 前几章学的 Where/Select/OrderBy 都是**延迟执行**——它们只是构建查询，不真正执行。本章讲"转换/收集"类方法，这些方法大多**立即执行**，把延迟查询"固化"成具体集合。掌握这一章，你就能避免 90% 的延迟执行陷阱。
 
@@ -1431,27 +1590,24 @@ LINQ 的所有方法（Where/Select/...）都是 \`System.Linq.Enumerable\` 静�
 
 对 IQueryable<T>，对应的是 \`System.Linq.Queryable\` 类，方法签名接收 \`Expression<Func<T,bool>>\`（表达式树）而非 \`Func<T,bool>\`（委托），这样 EF Core 才能把它翻译成 SQL。
 
-本章 demo 演示 ToList/ToDictionary/ToHashSet/ToLookup/AsEnumerable/Cast/Chunk/Append/Prepend/Concat/Union/Intersect/Except/Range/Repeat/Empty，并用代码演示延迟执行陷阱。`,
+本章 demo 演示 ToList/ToDictionary/ToHashSet/ToLookup/AsEnumerable/Cast/Chunk/Append/Prepend/Concat/Union/Intersect/Except/Range/Repeat/Empty，并用代码演示延迟执行陷阱。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「LINQ 转换与立即执行」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - LINQ 转换与立即执行演示
 // 演示：ToList/ToArray/ToDictionary/ToHashSet/ToLookup、AsEnumerable/AsQueryable、
 //       Cast/OfType、Chunk、Append/Prepend/Concat、Union/Intersect/Except、
 //       Range/Repeat/Empty、延迟执行陷阱
 
 using System;
+
 using System.Collections.Generic;
+
 using System.Linq;
 
-// === 1. 数据模型 ===
-class Product
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = "";
-    public decimal Price { get; set; }
-    public string Category { get; set; } = "";
-    public override string ToString() => $"[{Id}]{Name} ¥{Price} ({Category})";
-}
-
-// === 2. 顶级语句演示 ===
 var products = new List<Product>
 {
     new() { Id = 1, Name = "iPhone", Price = 7999, Category = "手机" },
@@ -1461,21 +1617,29 @@ var products = new List<Product>
 };
 
 Console.WriteLine("=== 1. ToList / ToArray：立即执行 ===");
+
 var query = products.Where(p => p.Price > 5000);
+
 Console.WriteLine($"  query 类型: {query.GetType().Name} (延迟)");
-var list = query.ToList();  // 立即执行，结果缓存
+
+var list = query.ToList();
+
 Console.WriteLine($"  ToList 类型: {list.GetType().Name}");
-var arr = query.ToArray();  // 再次执行查询
+
+var arr = query.ToArray();
+
 Console.WriteLine($"  ToArray 长度: {arr.Length}");
 
 Console.WriteLine("\\n=== 2. ToDictionary：转字典 ===");
-// 以 Id 为键，整个 Product 为值
+
 var dictById = products.ToDictionary(p => p.Id);
+
 Console.WriteLine($"  dictById[1]: {dictById[1]}");
-// 以 Id 为键，Name 为值
+
 var nameById = products.ToDictionary(p => p.Id, p => p.Name);
+
 Console.WriteLine($"  nameById[2]: {nameById[2]}");
-// 注意：键重复会抛异常
+
 try
 {
     var bad = products.Append(products[0]).ToDictionary(p => p.Id);
@@ -1486,95 +1650,152 @@ catch (ArgumentException)
 }
 
 Console.WriteLine("\\n=== 3. ToHashSet：去重 + 转集合 ===");
+
 int[] nums = { 1, 2, 3, 2, 1, 4, 5, 4 };
+
 var set = nums.ToHashSet();
+
 Console.WriteLine($"  原始: {string.Join(",", nums)}");
+
 Console.WriteLine($"  ToHashSet: {string.Join(",", set)}");
-Console.WriteLine($"  set.Contains(3): {set.Contains(3)}");  // O(1) 查找
+
+Console.WriteLine($"  set.Contains(3): {set.Contains(3)}");
 
 Console.WriteLine("\\n=== 4. ToLookup：一键多值查找 ===");
+
 var lookup = products.ToLookup(p => p.Category);
+
 Console.WriteLine($"  手机类商品: {string.Join(",", lookup["手机"].Select(p => p.Name))}");
+
 Console.WriteLine($"  电脑类商品: {string.Join(",", lookup["电脑"].Select(p => p.Name))}");
-// 不存在的键返回空序列，不抛异常
+
 Console.WriteLine($"  不存在的键: {string.Join(",", lookup["不存在"].Select(p => p.Name))}");
-// 一个键多个值演示
+
 var multiKey = new[]
 {
     new { Class = "A", Name = "张三" },
     new { Class = "A", Name = "李四" },
     new { Class = "B", Name = "王五" }
-}.ToLookup(x => x.Class);
+}
+
+.ToLookup(x => x.Class);
+
 Console.WriteLine($"  A 班: {string.Join(",", multiKey["A"].Select(x => x.Name))}");
 
 Console.WriteLine("\\n=== 5. AsEnumerable / AsQueryable ===");
-// AsEnumerable: IQueryable<T> -> IEnumerable<T>，切换到内存执行（EF Core 常用逃生舱）
+
 var asEnum = products.AsEnumerable();
+
 Console.WriteLine($"  AsEnumerable 类型: {asEnum.GetType().Name}");
-// AsQueryable: 把 IEnumerable<T> 包装成 IQueryable<T>（用 EnumerableQuery）
+
 var asQuery = products.AsQueryable();
+
 Console.WriteLine($"  AsQueryable 类型: {asQuery.GetType().Name}");
 
 Console.WriteLine("\\n=== 6. Cast / OfType ===");
+
 List<object> mixed = new() { 1, "hi", 2.5, "world", 3 };
-var ints = mixed.OfType<int>();  // 只取 int，跳过其他
+
+var ints = mixed.OfType<int>();
+
 Console.WriteLine($"  OfType<int>: {string.Join(",", ints)}");
+
 var strings = mixed.OfType<string>();
+
 Console.WriteLine($"  OfType<string>: {string.Join(",", strings)}");
-// Cast 强转每个元素，遇到不能转的抛异常
-var allInts = new List<object> { 1, 2, 3 }.Cast<int>();
+
+var allInts = new List<object> { 1, 2, 3 }
+
+.Cast<int>();
+
 Console.WriteLine($"  Cast<int>: {string.Join(",", allInts)}");
 
 Console.WriteLine("\\n=== 7. Chunk：分块 ===");
+
 var chunks = Enumerable.Range(1, 10).Chunk(3);
+
 Console.WriteLine($"  1..10 按 3 分块:");
+
 foreach (var ck in chunks) Console.WriteLine($"    [{string.Join(",", ck)}]");
 
 Console.WriteLine("\\n=== 8. Append / Prepend：追加/前插 ===");
+
 int[] baseNums = { 2, 3, 4 };
-var withEnd = baseNums.Append(5);      // 末尾加 5
-var withStart = baseNums.Prepend(1);   // 开头加 1
-var both = baseNums.Prepend(0).Append(5);  // 链式
-Console.WriteLine($"  原始: {string.Join(",", baseNums)}");  // 不变
+
+var withEnd = baseNums.Append(5);
+
+var withStart = baseNums.Prepend(1);
+
+var both = baseNums.Prepend(0).Append(5);
+
+Console.WriteLine($"  原始: {string.Join(",", baseNums)}");
+
 Console.WriteLine($"  Append(5): {string.Join(",", withEnd)}");
+
 Console.WriteLine($"  Prepend(1): {string.Join(",", withStart)}");
+
 Console.WriteLine($"  Prepend(0).Append(5): {string.Join(",", both)}");
 
 Console.WriteLine("\\n=== 9. Concat：连接（不去重）===");
+
 int[] a = { 1, 2, 3 };
+
 int[] b = { 3, 4, 5 };
+
 var concat = a.Concat(b);
-Console.WriteLine($"  {string.Join(",", a)} + {string.Join(",", b)} = {string.Join(",", concat)}");  // 1,2,3,3,4,5
+
+Console.WriteLine($"  {string.Join(",", a)} + {string.Join(",", b)} = {string.Join(",", concat)}");
 
 Console.WriteLine("\\n=== 10. Union / Intersect / Except：集合运算 ===");
-Console.WriteLine($"  Union(并集去重): {string.Join(",", a.Union(b))}");      // 1,2,3,4,5
-Console.WriteLine($"  Intersect(交集): {string.Join(",", a.Intersect(b))}");  // 3
-Console.WriteLine($"  Except(差集): {string.Join(",", a.Except(b))}");         // 1,2
+
+Console.WriteLine($"  Union(并集去重): {string.Join(",", a.Union(b))}");
+
+Console.WriteLine($"  Intersect(交集): {string.Join(",", a.Intersect(b))}");
+
+Console.WriteLine($"  Except(差集): {string.Join(",", a.Except(b))}");
 
 Console.WriteLine("\\n=== 11. Range / Repeat / Empty ===");
-var range = Enumerable.Range(1, 5);  // 1..5
+
+var range = Enumerable.Range(1, 5);
+
 Console.WriteLine($"  Range(1,5): {string.Join(",", range)}");
-var repeated = Enumerable.Repeat("X", 3);  // ["X","X","X"]
-Console.WriteLine($"  Repeat(\\\"X\\\",3): {string.Join(",", repeated)}");
+
+var repeated = Enumerable.Repeat("X", 3);
+
+Console.WriteLine($"  Repeat(\\"X\\",3): {string.Join(",", repeated)}");
+
 var empty = Enumerable.Empty<int>();
+
 Console.WriteLine($"  Empty<int>().Count(): {empty.Count()}");
-// Empty 常用作累加器初始值
+
 IEnumerable<int> acc = Enumerable.Empty<int>();
+
 acc = acc.Append(1).Append(2).Append(3);
+
 Console.WriteLine($"  Empty + Append 累加: {string.Join(",", acc)}");
 
 Console.WriteLine("\\n=== 12. Distinct / SequenceEqual / Reverse ===");
+
 int[] dupNums = { 1, 2, 2, 3, 3, 3, 4 };
+
 Console.WriteLine($"  原始: {string.Join(",", dupNums)}");
+
 Console.WriteLine($"  Distinct: {string.Join(",", dupNums.Distinct())}");
+
 int[] x = { 1, 2, 3 };
+
 int[] y = { 1, 2, 3 };
+
 Console.WriteLine($"  x SequenceEqual y: {x.SequenceEqual(y)}");
+
 Console.WriteLine($"  x Reverse: {string.Join(",", x.Reverse())}");
 
 Console.WriteLine("\\n=== 13. 延迟执行陷阱 1：闭包捕获循环变量 ===");
+
 int[] src = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+
 var queries = new List<IEnumerable<int>>();
+
 for (int i = 0; i < 3; i++)
 {
     // ❌ 闭包捕获 i，所有 query 共享一个 i
@@ -1583,38 +1804,65 @@ for (int i = 0; i < 3; i++)
     int local = i;
     queries.Add(src.Where(n => n > local));
 }
+
 for (int i = 0; i < queries.Count; i++)
 {
     Console.WriteLine($"  queries[{i}] (n > {i}): {string.Join(",", queries[i])}");
 }
 
 Console.WriteLine("\\n=== 14. 延迟执行陷阱 2：源数据被修改 ===");
+
 var mutableList = new List<int> { 1, 2, 3 };
+
 var delayedQuery = mutableList.Where(n => n > 1);
+
 Console.WriteLine($"  查询构建（未执行）");
-mutableList.Add(100);  // 修改源数据
+
+mutableList.Add(100);
+
 mutableList.Add(200);
+
 Console.WriteLine($"  遍历结果（含新增）: {string.Join(",", delayedQuery)}");
 
 Console.WriteLine("\\n=== 15. 延迟执行陷阱 3：多次遍历 ===");
+
 var expensiveQuery = products.Select(p =>
 {
     Console.WriteLine($"  [遍历] {p.Name}");
     return p.Name;
 });
+
 Console.WriteLine("第一次 ToList:");
+
 var list1 = expensiveQuery.ToList();
+
 Console.WriteLine("第二次 ToList:");
-var list2 = expensiveQuery.ToList();  // 又遍历一次
+
+var list2 = expensiveQuery.ToList();
+
 Console.WriteLine("✅ 修复：先 ToList 缓存，后续访问不再重新执行");
 
 Console.WriteLine("\\n=== 16. IEnumerable 扩展方法原理 ===");
-// nums.Where(...) 编译后等价于 Enumerable.Where(nums, ...)
-var w = Enumerable.Where(src, n => n > 5);  // 静态调用形式
+
+var w = Enumerable.Where(src, n => n > 5);
+
 Console.WriteLine($"  静态调用 Enumerable.Where: {string.Join(",", w)}");
+
 var s = Enumerable.Select(src, n => n * 2);
+
 Console.WriteLine($"  静态调用 Enumerable.Select: {string.Join(",", s)}");
-// 这就是 using System.Linq 之后，所有 IEnumerable<T> "突然"有这些方法的原因`,
+
+// ============ 类型声明（必须放在所有顶级语句之后） ============
+
+class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public decimal Price { get; set; }
+    public string Category { get; set; } = "";
+    public override string ToString() => $"[{Id}]{Name} ¥{Price} ({Category})";
+}
+`,
     lang: 'cs',
   },
 ];

@@ -23,7 +23,7 @@ const chapters = [
     group: '第七部分 异步与并发',
     icon: '⏳',
     title: '异步编程基础',
-    content: `## 第四十五章　异步编程基础
+    content: `## 第四十六章　异步编程基础
 
 异步编程是现代 C# 最核心的能力之一。无论是调用 Web API、读写数据库、还是处理大文件，都离不开 async/await。本章从最基础的同步 vs 异步讲起，一步步带你理解 async/await 的本质。
 
@@ -162,7 +162,13 @@ await foreach (var item in ProduceAsync())
 
 \`await foreach\` 是 \`foreach\` 的异步版本，自动 await 每一次 \`MoveNextAsync\`。
 
-本章 demo 演示：async/await 基础、ValueTask 与 Task 对比、IAsyncEnumerable 流式返回、await foreach 消费。`,
+本章 demo 演示：async/await 基础、ValueTask 与 Task 对比、IAsyncEnumerable 流式返回、await foreach 消费。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「异步编程基础」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - 异步编程基础演示
 // 演示：async/await 基础、ValueTask 与 Task 对比、IAsyncEnumerable 流式返回、await foreach 消费
 
@@ -302,7 +308,7 @@ Console.WriteLine("\\n==== 全部演示完成 ====");
     group: '第七部分 异步与并发',
     icon: '🔀',
     title: 'Task 与并行',
-    content: `## 第四十六章　Task 与并行
+    content: `## 第四十七章　Task 与并行
 
 上一章讲了 async/await 的基础。本章深入 \`Task\` 类本身，以及并行计算（Parallel）相关 API。这两套东西看似都是"并发"，但定位完全不同。
 
@@ -470,7 +476,13 @@ sw.Stop();
 Console.WriteLine(sw.ElapsedMilliseconds);
 \`\`\`
 
-本章 demo 演示：Task.Run/WhenAll/WhenAny、Parallel.For 并行计算、CancellationToken 取消、Stopwatch 测速。`,
+本章 demo 演示：Task.Run/WhenAll/WhenAny、Parallel.For 并行计算、CancellationToken 取消、Stopwatch 测速。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「Task 与并行」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - Task 与并行演示
 // 演示：Task.Run/WhenAll/WhenAny + Parallel.For + CancellationToken + Stopwatch 测速
 
@@ -688,7 +700,7 @@ Console.WriteLine("\\n==== 全部完成 ====");
     group: '第七部分 异步与并发',
     icon: '🚫',
     title: '取消与异常处理',
-    content: `## 第四十七章　取消与异常处理
+    content: `## 第四十八章　取消与异常处理
 
 并发代码里最难处理的不是"启动任务"，而是"如何优雅地停下来"和"如何处理一堆散落在不同线程里的异常"。本章专注这两件事。
 
@@ -841,7 +853,13 @@ TaskScheduler.UnobservedTaskException += (s, e) =>
 5. 永远别写 \`async void\`（事件处理器除外）。
 6. \`WhenAll\` 处理异常时记得看 \`Task.Exception.InnerExceptions\`。
 
-本章 demo 演示：取消令牌的各种用法 + 链接令牌 + 并行任务异常聚合 + UnobservedTaskException 监听。`,
+本章 demo 演示：取消令牌的各种用法 + 链接令牌 + 并行任务异常聚合 + UnobservedTaskException 监听。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「取消与异常处理」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - 取消与异常处理演示
 // 演示：CancellationToken 各种用法 + CreateLinkedTokenSource + WhenAll 异常聚合 + UnobservedTaskException
 
@@ -1047,7 +1065,7 @@ Console.WriteLine("\\n==== 全部完成 ====");
     group: '第七部分 异步与并发',
     icon: '⚡',
     title: '并发同步',
-    content: `## 第四十八章　并发同步
+    content: `## 第四十九章　并发同步
 
 多线程访问同一份共享数据时，如果不同步，就会出现"读了一半被另一个线程改了"的撕裂问题。本章覆盖 C# 所有常用的同步原语。
 
@@ -1233,7 +1251,13 @@ if (queue.TryDequeue(out var v)) { ... }
 
 记住一条铁律：**永远不要在 lock 里 await**。\`lock\` 持有的是线程，await 会切线程，无法保证释放。\`SemaphoreSlim.WaitAsync\` 是替代方案。
 
-本章 demo 演示：lock 同步访问共享变量、SemaphoreSlim 异步锁、Interlocked 原子操作、CountdownEvent 等待多任务。`,
+本章 demo 演示：lock 同步访问共享变量、SemaphoreSlim 异步锁、Interlocked 原子操作、CountdownEvent 等待多任务。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「并发同步」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - 并发同步演示
 // 演示：lock 共享变量 + SemaphoreSlim 异步锁 + Interlocked 原子操作 + CountdownEvent 等待多任务
 
@@ -1488,7 +1512,7 @@ class Cache
     group: '第七部分 异步与并发',
     icon: '📡',
     title: 'IAsyncEnumerable 与 Channels',
-    content: `## 第四十九章　IAsyncEnumerable 与 Channels
+    content: `## 第五十章　IAsyncEnumerable 与 Channels
 
 异步流（IAsyncEnumerable）和 Channels 是 .NET 高并发场景的两大杀器。前者解决"流式异步产出数据"，后者解决"多生产者-多消费者的高性能管道"。本章详细讲解。
 
@@ -1639,7 +1663,13 @@ async Task ConsumeAsync()
 - **IAsyncEnumerable**：单一生产者、流式产出、消费者直接消费。像 SQL 流式读取。
 - **Channel**：多生产者多消费者、解耦生产消费速率、需要背压。像消息队列。
 
-本章 demo 演示：IAsyncEnumerable 流式数据、Channel 生产者消费者管道、背压效果。`,
+本章 demo 演示：IAsyncEnumerable 流式数据、Channel 生产者消费者管道、背压效果。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「IAsyncEnumerable 与 Channels」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - IAsyncEnumerable 与 Channels 演示
 // 演示：异步流产出与消费 + Channel 生产者消费者管道 + 背压效果
 
@@ -1881,7 +1911,7 @@ Console.WriteLine("\\n==== 全部完成 ====");
     group: '第七部分 异步与并发',
     icon: '🧠',
     title: '线程与线程池',
-    content: `## 第五十章　线程与线程池
+    content: `## 第五十一章　线程与线程池
 
 虽然日常开发都直接用 \`Task\` / \`async\`，但理解底层 \`Thread\` 和 \`ThreadPool\` 的运作机制，对诊断性能问题、死锁、线程池饥饿至关重要。本章从底层往上讲。
 
@@ -2040,7 +2070,13 @@ async Task B()
 2. 用 \`EventSource\` / \`dotnet-counters\` 看 \`ThreadPool Thread Count\`、\`ThreadPool Queue Length\`。
 3. 高并发服务务必测试突发流量下的延迟。
 
-本章 demo 演示：ThreadPool.QueueUserWorkItem、ThreadLocal&lt;Random&gt;、AsyncLocal&lt;string&gt; 上下文流转、测量 ThreadPool 启动延迟。`,
+本章 demo 演示：ThreadPool.QueueUserWorkItem、ThreadLocal&lt;Random&gt;、AsyncLocal&lt;string&gt; 上下文流转、测量 ThreadPool 启动延迟。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「线程与线程池」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - 线程与线程池演示
 // 演示：ThreadPool.QueueUserWorkItem + ThreadLocal<Random> + AsyncLocal<string> 上下文流转 + 测量 ThreadPool 启动延迟
 

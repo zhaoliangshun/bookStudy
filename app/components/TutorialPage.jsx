@@ -281,7 +281,7 @@ export default function TutorialPage({
                 <MarkdownRenderer content={activeChapter.content} />
               )}
               {activeChapter?.code && (
-                <CodeBlock code={activeChapter.code} lang={codeLang} maxHeight={400} />
+                <CodeBlock key={activeId} code={activeChapter.code} lang={codeLang} maxHeight={400} />
               )}
             </section>
 

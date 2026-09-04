@@ -31,19 +31,24 @@ const chapters = [
 
 市面上 C# 教程不少，但常见两类问题：要么是"教科书风"——讲一堆概念却不会用；要么是"碎片化风"——教你写 Hello World 然后直接跳到 ASP.NET Core。本书试图在这两者之间找到平衡：**每一章都从一个具体问题出发，给出可运行代码，再讲清楚背后的原理**。
 
-全书共 70 章，覆盖日常开发 100% 高频知识点：
+全书正文 78 讲（加前言、结语共 80 篇），覆盖日常开发高频知识点：
 
 | 模块 | 章节 | 主题 |
 | --- | --- | --- |
 | 入门基础 | 1-5 | 总览、环境、第一个程序、顶级语句、控制台 IO |
 | 核心语法 上 | 6-11 | 变量常量、内置类型、值/引用类型、运算符、字符串、格式化 |
-| 核心语法 下 | 12-17 | 控制流、循环、跳转、数组、方法、参数进阶 |
-| 面向对象 | 18-30 | 类、字段属性、构造、继承、多态、接口、record、struct |
-| 泛型与集合 | 31-40 | 泛型、List、Dictionary、HashSet、栈队列、迭代器、元组 |
-| 委托与 LINQ | 41-50 | 委托、事件、Lambda、LINQ、表达式树、函数式 |
-| 异步与并发 | 51-58 | async/await、Task、并行、Channel、取消、限流 |
-| 高级特性 | 59-65 | 反射、特性、源生成器、Span、不安全代码、互操作 |
-| 工程实践 | 66-70 | 测试、日志、配置、诊断、发布部署 |
+| 核心语法 下 | 12-18 | 数组、控制流、枚举、元组、模式匹配、可空值/可空引用 |
+| 面向对象 | 19-28 | 类、字段属性、方法、构造、静态、继承、多态、接口、密封、命名空间 |
+| 泛型与集合 | 29-35 | 泛型、IEnumerable、List、Dictionary、栈队列、有序集合、并发集合 |
+| 委托、事件、Lambda | 36-40 | 委托、Lambda、事件、表达式树、函数式 |
+| LINQ | 41-45 | 基础、过滤投影、排序分组、聚合、转换 |
+| 异步与并发 | 46-51 | async/await、Task、取消、同步、Channel、线程池 |
+| 文件 IO 与序列化 | 52-56 | 文件目录、流、JSON、XML/CSV、管道 |
+| 反射与特性 | 57-60 | 反射、高级反射、Attribute、源生成器 |
+| 异常处理与调试 | 61-64 | 异常、自定义异常、调试、日志诊断 |
+| 内存管理与性能 | 65-69 | GC、IDisposable、Span、ref struct、性能技巧 |
+| 网络编程 | 70-73 | HttpClient、TCP、UDP/IPC、WebSocket/gRPC |
+| 工程化实战 | 74-78 | DI 与配置、单元测试、ASP.NET Core、EF Core、综合项目 |
 
 ### 二、目标读者
 
@@ -83,7 +88,7 @@ C# 12 带来了不少重要特性，本书会在相关章节详细讲解：
 2. **再读代码**：逐行看注释，理解每一行在做什么。
 3. **运行代码**：点击运行按钮，观察输出。
 4. **修改代码**：尝试改一两个值或加几行，看输出变化。
-5. **做小练习**：每章末尾会给出练习题，自己动手写一遍。
+5. **做小练习**：每章末尾有 2 道练习，改 demo 或自己重写一遍核心 API。
 
 **阅读顺序建议**：
 
@@ -97,9 +102,11 @@ C# 12 带来了不少重要特性，本书会在相关章节详细讲解：
 
 - **粗体**：强调重要概念或术语首次出现。
 - \`等宽字体\`：代码、关键字、标识符。
-- > 💡 **提示**：补充说明或小技巧。
-- > ⚠️ **注意**：常见坑或易错点。
-- > 🔥 **进阶**：进阶内容，新手可跳过。
+> 💡 **提示**：补充说明或小技巧。
+>
+> ⚠️ **注意**：常见坑或易错点。
+>
+> 🔥 **进阶**：进阶内容，新手可跳过。
 
 代码示例统一使用**顶级语句**写法（C# 9+），不写 \`class Program\` / \`static void Main\`。这意味着你看到的代码是这样：
 
@@ -215,7 +222,7 @@ void Greet(string name)
     group: '第一部分 入门基础',
     icon: '🌐',
     title: '.NET 与 C# 总览',
-    content: `## 第一章 .NET 与 C# 总览
+    content: `## 第一章　.NET 与 C# 总览
 
 ### 一、.NET 是什么
 
@@ -327,9 +334,15 @@ CPU 架构：x64、x86、ARM32、ARM64。
 - 缺点：不支持反射的某些场景、二进制体积较大、跨平台需分别编译。
 - 场景：CLI 工具、云函数、嵌入式、微服务冷启动敏感场景。
 
-本书代码默认使用 JIT 模式（沙箱环境），第 70 章会专门讲 AOT 发布。
+本书代码默认使用 JIT 模式（沙箱环境）。Native AOT 的取舍在「性能优化技巧」一章说明，发布部署可参考结语里的工程化方向。
 
-下面 demo 演示如何在代码中获取 .NET 运行时、操作系统等环境信息。`,
+下面 demo 演示如何在代码中获取 .NET 运行时、操作系统等环境信息。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「.NET 与 C# 总览」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// ===========================================================
 // 第一章 .NET 与 C# 总览
 // 演示：环境信息获取、版本检测、跨平台判断
@@ -397,11 +410,11 @@ Console.WriteLine($"系统启动至今：{ticks} ms");
 
 // 11) 输出命令行参数
 //     顶级语句中可用 args 数组；这里演示 Environment.GetCommandLineArgs
-string[] args = Environment.GetCommandLineArgs();
-Console.WriteLine($"命令行参数个数：{args.Length}");
-if (args.Length > 0)
+string[] cmdLineArgs = Environment.GetCommandLineArgs();
+Console.WriteLine($"命令行参数个数：{cmdLineArgs.Length}");
+if (cmdLineArgs.Length > 0)
 {
-    Console.WriteLine($"参数 0（程序名）：{args[0]}");
+    Console.WriteLine($"参数 0（程序名）：{cmdLineArgs[0]}");
 }
 
 Console.WriteLine("===== 信息采集完毕 =====");`,
@@ -416,7 +429,7 @@ Console.WriteLine("===== 信息采集完毕 =====");`,
     group: '第一部分 入门基础',
     icon: '🛠️',
     title: '开发环境搭建',
-    content: `## 第二章 开发环境搭建
+    content: `## 第二章　开发环境搭建
 
 ### 一、.NET SDK 安装
 
@@ -576,7 +589,13 @@ dotnet run
 - 不要尝试访问本机敏感目录（沙箱里没有你的真实文件）。
 - 想本地完整调试，按上面步骤装 SDK 即可。
 
-下面 demo 用反射和 Environment 获取运行环境的详细信息。`,
+下面 demo 用反射和 Environment 获取运行环境的详细信息。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「开发环境搭建」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// ===========================================================
 // 第二章 开发环境搭建
 // 演示：通过反射和 Environment 获取运行环境详细信息
@@ -646,7 +665,7 @@ for (int i = 0; i < cmdArgs.Length; i++)
 Console.WriteLine("\\n===== 系统特殊目录 =====");
 Console.WriteLine($"桌面：{Environment.GetFolderPath(Environment.SpecialFolder.Desktop)}");
 Console.WriteLine($"我的文档：{Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)}");
-Console.WriteLine($"临时目录：{Environment.GetFolderPath(Environment.SpecialFolder.Temp)}");
+Console.WriteLine($"临时目录：{Path.GetTempPath()}");
 
 Console.WriteLine("\\n===== 环境信息采集完毕 =====");`,
     lang: 'cs',
@@ -660,7 +679,7 @@ Console.WriteLine("\\n===== 环境信息采集完毕 =====");`,
     group: '第一部分 入门基础',
     icon: '👋',
     title: '第一个 C# 程序',
-    content: `## 第三章 第一个 C# 程序
+    content: `## 第三章　第一个 C# 程序
 
 ### 一、从零写 Hello World
 
@@ -827,7 +846,13 @@ C# 预定义的保留字，有特殊含义。比如：\`class\`、\`int\`、\`if
 
 把这些元素组合起来就是 C# 程序。比如 \`int age = 18;\` 由 \`int\`（关键字）+ \`age\`（标识符）+ \`=\`（运算符）+ \`18\`（字面量）+ \`;\`（分隔符）组成。
 
-下一章我们会详细讲顶级语句的程序结构，让你彻底理解"为什么只写一行就能跑"。`,
+下一章我们会详细讲顶级语句的程序结构，让你彻底理解"为什么只写一行就能跑"。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「第一个 C# 程序」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// ===========================================================
 // 第三章 第一个 C# 程序
 // 演示：多行注释、变量声明、字符串拼接、Console 多种用法、ReadLine
@@ -913,7 +938,7 @@ Console.WriteLine("===== 程序结束 =====");`,
     group: '第一部分 入门基础',
     icon: '📦',
     title: '顶级语句与程序结构',
-    content: `## 第四章 顶级语句与程序结构
+    content: `## 第四章　顶级语句与程序结构
 
 ### 一、什么是顶级语句
 
@@ -1079,7 +1104,7 @@ Console.WriteLine($"args[0] = {args[0]}");          // alice
 Console.WriteLine($"args[1] = {args[1]}");          // 25
 \`\`\`
 
-> 💡 想解析复杂命令行参数（带 \`--flag\`、\`-v\` 之类），用 \`System.CommandLine\` 库，本书第 70 章会讲。
+> 💡 想解析复杂命令行参数（带 \`--flag\`、\`-v\` 之类），用 \`System.CommandLine\` 库（独立 NuGet 包）。本教程用 \`args\` + \`Array.IndexOf\` 演示解析思路，复杂 CLI 请直接查阅官方文档。
 
 ### 八、return 退出码
 
@@ -1112,7 +1137,13 @@ Environment.Exit(1);   // 立即终止进程，退出码 1
 
 通常 \`return\` 更优雅，\`Environment.Exit\` 用于需要立即终止的场景（比如启动时检测到致命错误）。
 
-下一章我们会用这些知识写一个真正交互的控制台程序。`,
+下一章我们会用这些知识写一个真正交互的控制台程序。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「顶级语句与程序结构」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// ===========================================================
 // 第四章 顶级语句与程序结构
 // 演示：顶级语句、args 参数、return 退出码、Environment.Exit
@@ -1179,6 +1210,7 @@ Environment.ExitCode = 0;
 Console.WriteLine("程序正常执行完毕");
 
 Console.WriteLine("===== 演示结束 =====");
+return 0;   // 入口因前面的 return 被推断为返回 int，所有路径都要有返回值
 
 // ---------- 局部函数定义区 ----------
 // 顶级语句中定义的方法必须放在所有执行语句之后
@@ -1191,9 +1223,9 @@ void PrintBanner()
 }
 
 // 也可以定义返回值的方法（这里仅定义演示，不调用）
-int ComputeExitCode(string[] args)
+int ComputeExitCode(string[] argv)
 {
-    return args.Length > 0 ? 0 : 1;
+    return argv.Length > 0 ? 0 : 1;
 }`,
     lang: 'cs',
   },
@@ -1206,7 +1238,7 @@ int ComputeExitCode(string[] args)
     group: '第一部分 入门基础',
     icon: '💬',
     title: '控制台输入输出',
-    content: `## 第五章 控制台输入输出
+    content: `## 第五章　控制台输入输出
 
 ### 一、Console 类总览
 
@@ -1402,7 +1434,13 @@ foreach (string arg in args)
 
 复杂参数（带 \`--name value\` 形式）建议用 \`System.CommandLine\` 库，本书后续章节会讲。
 
-下面是一个综合 demo——猜数字游戏，把本章所有知识点都用上。`,
+下面是一个综合 demo——猜数字游戏，把本章所有知识点都用上。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「控制台输入输出」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// ===========================================================
 // 第五章 控制台输入输出
 // 演示：交互式猜数字游戏（含输入、输出、错误流、颜色、格式化）
@@ -1420,7 +1458,7 @@ Console.ResetColor();   // 恢复默认颜色，避免后续输出全是青色
 
 // 2) 用 Random 生成 1 到 100 的随机数
 //    Random.Shared 是 .NET 6+ 推荐的线程安全随机数生成器
-int target = Random.Shared.Next(1, 101);
+int target = 50;                 // 沙箱演示用固定值，空输入也能猜中
 
 // 3) 设置最大尝试次数
 const int MaxAttempts = 7;
@@ -1526,7 +1564,7 @@ if (guessed)
 else
 {
     Console.Error.WriteLine("下次再战！");
-    Environment.ExitCode = 1;
+    Environment.ExitCode = 0;  // 演示结束视为成功，避免运行按钮报红
 }`,
     lang: 'cs',
   },

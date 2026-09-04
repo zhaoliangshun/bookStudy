@@ -17,11 +17,11 @@
 
 import { CodeBlock } from "./CodeBlock";
 
-// 把一行文本中的行内标记（`代码`、**加粗**）解析为 React 元素
+// 把一行文本中的行内标记（`代码`、**加粗**、[链接](url)）解析为 React 元素
 function renderInline(text, keyPrefix) {
   const parts = [];
-  // 正则：匹配 `代码` 或 **加粗**
-  const regex = /(`[^`]+`|\*\*[^*]+\*\*)/g;
+  // 正则：匹配 `代码`、**加粗**、或 [文本](url)
+  const regex = /(`[^`]+`|\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g;
   let lastIndex = 0;
   let match;
   let i = 0;
@@ -45,6 +45,23 @@ function renderInline(text, keyPrefix) {
           {token.slice(2, -2)}
         </strong>
       );
+    } else if (token.startsWith("[")) {
+      const linkMatch = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+      if (linkMatch) {
+        parts.push(
+          <a
+            key={`${keyPrefix}-${i}`}
+            href={linkMatch[2]}
+            className="md-link"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {linkMatch[1]}
+          </a>
+        );
+      } else {
+        parts.push(token);
+      }
     }
     lastIndex = regex.lastIndex;
     i++;

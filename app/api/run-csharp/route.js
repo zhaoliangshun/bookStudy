@@ -16,7 +16,7 @@
 // 安全说明：
 //   本路由用于本地开发学习。生产环境切勿直接暴露此接口。
 //   已做以下基本防护：
-//     1. 设置运行超时（15 秒，含编译时间）
+//     1. 设置运行超时（25 秒，含编译时间）
 //     2. 限制 stdout 缓冲区大小（1MB）
 //     3. 子进程以独立 stdio 管道运行
 //     4. 执行完毕后清理临时文件
@@ -67,7 +67,7 @@ const DOTNET_BIN = "dotnet";
 // 放在系统临时目录下，进程间共享
 // 注意：本目录只作为模板，每次请求会复制一份到独立临时目录再写入用户代码，
 //       避免并发请求相互覆盖源文件
-const RUNNER_DIR = join(/*turbopackIgnore: true*/ tmpdir(), "csharp-runner-v1");
+const RUNNER_DIR = join(/*turbopackIgnore: true*/ tmpdir(), "csharp-runner-v3");
 
 /**
  * 构建 dotnet 子进程所需的环境变量。
@@ -94,7 +94,11 @@ function buildDotnetEnv() {
     LC_ALL: "en_US.UTF-8",
     DOTNET_CLI_TELEMETRY_OPTOUT: "1",
     DOTNET_NOLOGO: "1",
-    DOTNET_ROOT: "D:\\dev\\dotnet",
+    DOTNET_ROOT: existsSync("D:\\dev\\dotnet")
+      ? "D:\\dev\\dotnet"
+      : existsSync("/usr/local/share/dotnet")
+        ? "/usr/local/share/dotnet"
+        : process.env.DOTNET_ROOT,
     NUGET_PACKAGES: process.env.USERPROFILE
       ? join(process.env.USERPROFILE, ".nuget", "packages")
       : undefined,
@@ -188,6 +192,11 @@ function ensureRunnerProject() {
 function runCommand(cmd, args, opts, timeout) {
   return new Promise((resolve) => {
     const child = spawn(cmd, args, opts);
+    // 关掉 stdin，避免 Console.ReadLine 在空管道上一直阻塞直到超时
+    if (child.stdin) {
+      child.stdin.on("error", () => {});
+      child.stdin.end();
+    }
     let stdoutBuf = "";
     let stderrBuf = "";
     let truncated = false;

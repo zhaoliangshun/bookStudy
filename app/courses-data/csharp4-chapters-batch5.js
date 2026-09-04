@@ -22,7 +22,7 @@ const chapters = [
     group: '第三部分 面向对象',
     icon: '🌱',
     title: '继承',
-    content: `## 第二十三章　继承
+    content: `## 第二十四章　继承
 
 继承是面向对象的三大特性之一。它让你可以基于一个已有类（基类）派生出新类（派生类），自动获得基类的所有非私有成员，并可以扩展或修改其行为。
 
@@ -149,13 +149,63 @@ b.Hi();  // 输出 Base.Hi（隐藏不参与多态）
 | GetHashCode() | 返回哈希码，重写 Equals 时必须一起重写 |
 | GetType() | 返回运行时类型信息（反射用） |
 
-本章 demo 演示 Animal → Dog → Cat 三层结构，覆盖 base、virtual、override、new、ToString 重写。`,
+本章 demo 演示 Animal → Dog → Cat 三层结构，覆盖 base、virtual、override、new、ToString 重写。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「继承」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - 继承层次演示（Animal → Dog → Cat）
 // 演示：base 调用基类构造、virtual/override、new 方法隐藏、ToString 重写
 
 using System;
 
-// === 1. 基类 Animal ===
+var dog = new Dog("旺财", 3, "中华田园犬");
+
+var cat = new Cat("咪咪", 2, true);
+
+Console.WriteLine($"狗的名字：{dog.Name}");
+
+Console.WriteLine($"猫的年龄：{cat.Age}");
+
+dog.Speak();
+
+cat.Speak();
+
+Animal a1 = dog;
+
+Animal a2 = cat;
+
+a1.Speak();
+
+a2.Speak();
+
+dog.Describe();
+
+a1.Describe();
+
+Console.WriteLine(dog);
+
+Console.WriteLine(cat);
+
+var dog2 = new Dog("旺财", 3, "不同品种");
+
+Console.WriteLine($"dog.Equals(dog2) = {dog.Equals(dog2)}");
+
+Console.WriteLine($"dog == dog2 = {dog == dog2}");
+
+Console.WriteLine($"a1 的运行时类型：{a1.GetType().Name}");
+
+Console.WriteLine($"a2 的运行时类型：{a2.GetType().Name}");
+
+if (a1 is Dog d)
+{
+    Console.WriteLine($"a1 是 Dog，品种：{d.Breed}");
+}
+
+// ============ 类型声明（必须放在所有顶级语句之后） ============
+
 class Animal
 {
     // 只读属性：只能在构造函数中赋值
@@ -194,7 +244,6 @@ class Animal
     public override int GetHashCode() => HashCode.Combine(Name, Age);
 }
 
-// === 2. 派生类 Dog ===
 class Dog : Animal
 {
     public string Breed { get; }  // 狗的品种（Dog 独有）
@@ -222,7 +271,6 @@ class Dog : Animal
     }
 }
 
-// === 3. 派生类 Cat：再深一层 ===
 class Cat : Animal
 {
     public bool IsIndoor { get; }  // 是否家猫
@@ -237,47 +285,7 @@ class Cat : Animal
         Console.WriteLine($"{Name}：喵～");
     }
 }
-
-// === 4. 顶级语句：演示各种用法 ===
-var dog = new Dog("旺财", 3, "中华田园犬");  // 创建 Dog 实例
-var cat = new Cat("咪咪", 2, true);          // 创建 Cat 实例
-
-// 调用从基类继承的属性
-Console.WriteLine($"狗的名字：{dog.Name}");
-Console.WriteLine($"猫的年龄：{cat.Age}");
-
-// 调用各自的 override 方法（运行时多态）
-dog.Speak();   // 汪汪汪！
-cat.Speak();   // 喵～
-
-// 用基类引用调用：多态的关键演示
-Animal a1 = dog;
-Animal a2 = cat;
-a1.Speak();  // 仍然是 Dog 的 Speak（运行时类型决定）
-a2.Speak();  // 仍然是 Cat 的 Speak
-
-// new 方法隐藏 vs 直接调用
-dog.Describe();   // 调用 Dog 的 Describe（[Dog]）
-a1.Describe();    // 调用 Animal 的 Describe（[Animal]）—— new 不参与多态
-
-// ToString 重写：Console.WriteLine 会自动调用 ToString
-Console.WriteLine(dog);  // 输出 旺财(3岁)
-Console.WriteLine(cat);  // 输出 咪咪(2岁)
-
-// Equals 重写演示
-var dog2 = new Dog("旺财", 3, "不同品种");
-Console.WriteLine($"dog.Equals(dog2) = {dog.Equals(dog2)}");  // True（按 Name+Age 比较）
-Console.WriteLine($"dog == dog2 = {dog == dog2}");  // False（== 默认比引用）
-
-// GetType：获取运行时类型
-Console.WriteLine($"a1 的运行时类型：{a1.GetType().Name}");  // Dog
-Console.WriteLine($"a2 的运行时类型：{a2.GetType().Name}");  // Cat
-
-// is 运算符：类型检查
-if (a1 is Dog d)
-{
-    Console.WriteLine($"a1 是 Dog，品种：{d.Breed}");
-}`,
+`,
     lang: 'cs',
   },
 
@@ -289,7 +297,7 @@ if (a1 is Dog d)
     group: '第三部分 面向对象',
     icon: '🎭',
     title: '多态与虚方法',
-    content: `## 第二十四章　多态与虚方法
+    content: `## 第二十五章　多态与虚方法
 
 多态（Polymorphism）是面向对象最强大的特性。它让"同一个调用"在不同对象上表现出不同行为。C# 的多态分两种：**编译时多态**（方法重载、运算符重载）和**运行时多态**（虚方法 + 重写）。本章重点讲运行时多态。
 
@@ -435,13 +443,73 @@ class FixedDiscount : IDiscount
 // 调用方只依赖 IDiscount，不关心具体实现
 \`\`\`
 
-本章 demo 完整演示运行时多态 + 策略模式：定义一组支付方式，运行时切换。`,
+本章 demo 完整演示运行时多态 + 策略模式：定义一组支付方式，运行时切换。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「多态与虚方法」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - 多态与策略模式演示
 // 演示：virtual/override/new、运行时多态、base.Method()、策略模式
 
 using System;
 
-// === 1. 基类：演示运行时多态 ===
+var cashier = new Cashier();
+
+Payment p1 = new CashPayment(100m);
+
+Payment p2 = new CardPayment(500m, "6222021234567890");
+
+Payment p3 = new Payment(50m);
+
+cashier.Process(p1);
+
+cashier.Process(p2);
+
+cashier.Process(p3);
+
+Console.WriteLine();
+
+Console.WriteLine("p2.Receipt() (基类引用): " + p2.Receipt());
+
+CardPayment card = (CardPayment)p2;
+
+Console.WriteLine("card.Receipt() (派生类引用): " + card.Receipt());
+
+Console.WriteLine();
+
+PaymentFactory factory = new CashFactory();
+
+Payment created = factory.Create(200m);
+
+Console.WriteLine($"工厂创建的类型：{created.GetType().Name}");
+
+created.Pay();
+
+Console.WriteLine();
+
+cashier.Checkout(1000m, new NoDiscount());
+
+cashier.Checkout(1000m, new PercentDiscount(0.8m));
+
+cashier.Checkout(1000m, new FixedDiscount(100m));
+
+IDiscount[] strategies = {
+    new NoDiscount(),
+    new PercentDiscount(0.9m),
+    new FixedDiscount(50m),
+};
+
+Console.WriteLine("\\n批量计算：");
+
+foreach (var s in strategies)
+{
+    cashier.Checkout(800m, s);
+}
+
+// ============ 类型声明（必须放在所有顶级语句之后） ============
+
 class Payment
 {
     public decimal Amount { get; }
@@ -457,7 +525,6 @@ class Payment
     public string Receipt() => $"收据：{Amount:C}";
 }
 
-// === 2. 派生类：现金支付 ===
 class CashPayment : Payment
 {
     public CashPayment(decimal amount) : base(amount) { }
@@ -470,7 +537,6 @@ class CashPayment : Payment
     }
 }
 
-// === 3. 派生类：信用卡支付 ===
 class CardPayment : Payment
 {
     public string CardNumber { get; }
@@ -489,18 +555,17 @@ class CardPayment : Payment
     public new string Receipt() => $"信用卡收据：{Amount:C}, 卡尾号 {CardNumber[^4..]}";
 }
 
-// === 4. 派生类：演示协变返回类型（C# 9+） ===
 class PaymentFactory
 {
     public virtual Payment Create(decimal amount) => new Payment(amount);
 }
+
 class CashFactory : PaymentFactory
 {
     // override 返回 CashPayment（Payment 的子类），这是 C# 9 协变返回
     public override CashPayment Create(decimal amount) => new CashPayment(amount);
 }
 
-// === 5. 策略模式：折扣计算 ===
 interface IDiscount
 {
     decimal Calculate(decimal price);  // 接口方法
@@ -529,7 +594,6 @@ class NoDiscount : IDiscount
     public decimal Calculate(decimal price) => price;
 }
 
-// === 6. 调用方：只依赖基类/接口 ===
 class Cashier
 {
     // 接收基类 Payment 引用 —— 多态的核心
@@ -546,54 +610,7 @@ class Cashier
         Console.WriteLine($"原价 {price:C} | {discount.Name} | 实付 {final:C}");
     }
 }
-
-// === 7. 顶级语句：运行演示 ===
-var cashier = new Cashier();
-
-// 多态演示：用基类引用传入不同子类对象
-Payment p1 = new CashPayment(100m);
-Payment p2 = new CardPayment(500m, "6222021234567890");
-Payment p3 = new Payment(50m);  // 基类实例本身
-
-cashier.Process(p1);  // 调用 CashPayment.Pay
-cashier.Process(p2);  // 调用 CardPayment.Pay
-cashier.Process(p3);  // 调用 Payment.Pay
-
-Console.WriteLine();
-
-// new 隐藏演示：用基类引用调用，得到基类版本
-Console.WriteLine("p2.Receipt() (基类引用): " + p2.Receipt());
-
-// 用 CardPayment 引用调用，得到 new 版本
-CardPayment card = (CardPayment)p2;
-Console.WriteLine("card.Receipt() (派生类引用): " + card.Receipt());
-
-Console.WriteLine();
-
-// 协变返回类型演示
-PaymentFactory factory = new CashFactory();
-Payment created = factory.Create(200m);  // 实际返回 CashPayment
-Console.WriteLine($"工厂创建的类型：{created.GetType().Name}");
-created.Pay();
-
-Console.WriteLine();
-
-// 策略模式演示：同一个 Checkout，传入不同策略得到不同结果
-cashier.Checkout(1000m, new NoDiscount());
-cashier.Checkout(1000m, new PercentDiscount(0.8m));   // 八折
-cashier.Checkout(1000m, new FixedDiscount(100m));     // 立减100
-
-// 也可以在运行时动态切换策略
-IDiscount[] strategies = {
-    new NoDiscount(),
-    new PercentDiscount(0.9m),
-    new FixedDiscount(50m),
-};
-Console.WriteLine("\\n批量计算：");
-foreach (var s in strategies)
-{
-    cashier.Checkout(800m, s);
-}`,
+`,
     lang: 'cs',
   },
 
@@ -605,7 +622,7 @@ foreach (var s in strategies)
     group: '第三部分 面向对象',
     icon: '📐',
     title: '抽象类与接口',
-    content: `## 第二十五章　抽象类与接口
+    content: `## 第二十六章　抽象类与接口
 
 抽象类和接口是面向对象设计的两大支柱。它们都用于"定义契约"，但语义和使用场景有明显差异。掌握它们的区别是高级 C# 开发者的必修课。
 
@@ -758,13 +775,76 @@ record Point(double X, double Y) : IComparable<Point>
 }
 \`\`\`
 
-本章 demo 定义 IShape 接口 + 抽象类 Shape + Circle / Square 实现，演示默认方法、显式实现、is/as 转换。`,
+本章 demo 定义 IShape 接口 + 抽象类 Shape + Circle / Square 实现，演示默认方法、显式实现、is/as 转换。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「抽象类与接口」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - 抽象类与接口完整演示
 // 演示：abstract class、abstract property、接口、默认接口方法、显式实现、is/as
 
 using System;
 
-// === 1. 接口 IShape：定义形状的契约 ===
+var circle = new Circle(3);
+
+var square = new Square(4);
+
+IShape[] shapes = { circle, square };
+
+foreach (var s in shapes)
+{
+    s.Draw();         // 调用各自实现
+    s.Describe();     // 调用默认接口方法（IShape.Describe）
+}
+
+Console.WriteLine();
+
+Shape[] absShapes = { circle, square };
+
+foreach (var s in absShapes)
+{
+    Console.WriteLine(s);  // 调用 ToString
+}
+
+Console.WriteLine();
+
+object obj = circle;
+
+if (obj is IShape shape)
+{
+    Console.WriteLine($"obj 是 IShape, 面积={shape.Area:F2}");
+}
+
+var asCircle = obj as Circle;
+
+if (asCircle is not null)
+{
+    Console.WriteLine($"obj 转为 Circle 成功, 半径={asCircle.Radius}");
+}
+
+if (obj is Square) { Console.WriteLine("是 Square"); }
+else { Console.WriteLine("obj 不是 Square"); }
+
+Console.WriteLine();
+
+var list = new List<IShape> { square, circle };
+
+list.Sort((a, b) => a.Area.CompareTo(b.Area));
+
+Console.WriteLine("按面积排序后：");
+
+foreach (var s in list) Console.WriteLine($"  {s.GetType().Name}: {s.Area:F2}");
+
+Console.WriteLine();
+
+IShape ish = circle;
+
+ish.Describe();
+
+// ============ 类型声明（必须放在所有顶级语句之后） ============
+
 interface IShape
 {
     double Area { get; }          // 接口属性
@@ -778,16 +858,11 @@ interface IShape
     }
 }
 
-// === 2. 接口 IComparable<T> 的自定义形状排序契约 ===
-// 这里直接用框架的 IComparable<IShape>
-
-// === 3. 另一个接口：演示显式实现 ===
 interface IDrawable
 {
     void Draw();   // 与 IShape.Draw 同名
 }
 
-// === 4. 抽象类 Shape：提供共享实现 ===
 abstract class Shape
 {
     public string Name { get; }                  // 普通属性
@@ -801,7 +876,6 @@ abstract class Shape
     public override string ToString() => $"{Name}(面积={Area:F2})";
 }
 
-// === 5. Circle：继承抽象类 + 实现两个接口 ===
 class Circle : Shape, IShape, IDrawable, IComparable<IShape>
 {
     public double Radius { get; }
@@ -828,7 +902,6 @@ class Circle : Shape, IShape, IDrawable, IComparable<IShape>
     }
 }
 
-// === 6. Square：另一个实现 ===
 class Square : Shape, IShape
 {
     public double Side { get; }
@@ -839,68 +912,7 @@ class Square : Shape, IShape
 
     public void Draw() => Console.WriteLine($"画一个边长 {Side} 的正方形");
 }
-
-// === 7. 顶级语句：运行演示 ===
-// 抽象类不能实例化
-// var s = new Shape("x");  // ❌ 编译错误
-
-var circle = new Circle(3);
-var square = new Square(4);
-
-// 用接口引用调用：多态
-IShape[] shapes = { circle, square };
-foreach (var s in shapes)
-{
-    s.Draw();         // 调用各自实现
-    s.Describe();     // 调用默认接口方法（IShape.Describe）
-}
-
-Console.WriteLine();
-
-// 用抽象类引用：也能多态
-Shape[] absShapes = { circle, square };
-foreach (var s in absShapes)
-{
-    Console.WriteLine(s);  // 调用 ToString
-}
-
-Console.WriteLine();
-
-// is / as 转换演示
-object obj = circle;
-if (obj is IShape shape)
-{
-    Console.WriteLine($"obj 是 IShape, 面积={shape.Area:F2}");
-}
-
-var asCircle = obj as Circle;
-if (asCircle is not null)
-{
-    Console.WriteLine($"obj 转为 Circle 成功, 半径={asCircle.Radius}");
-}
-
-// is not null 模式匹配（C# 9+）
-if (obj is Square) { Console.WriteLine("是 Square"); }
-else { Console.WriteLine("obj 不是 Square"); }
-
-Console.WriteLine();
-
-// IComparable 排序：按面积
-var list = new List<IShape> { square, circle };
-list.Sort();  // 使用 Circle.CompareTo（Circle 实现了 IComparable<IShape>）
-Console.WriteLine("按面积排序后：");
-foreach (var s in list) Console.WriteLine($"  {s.GetType().Name}: {s.Area:F2}");
-
-Console.WriteLine();
-
-// 默认接口方法演示：只能通过接口引用调用
-IShape ish = circle;
-ish.Describe();  // 默认方法可用
-// circle.Describe();  // ❌ 编译错误：默认方法对实现类不可见
-
-// 显式接口实现演示（取消上面注释后可用）
-// IDrawable id = circle;
-// id.Draw();  // 调用显式实现版本`,
+`,
     lang: 'cs',
   },
 
@@ -912,7 +924,7 @@ ish.Describe();  // 默认方法可用
     group: '第三部分 面向对象',
     icon: '🔒',
     title: '密封类与扩展方法',
-    content: `## 第二十六章　密封类与扩展方法
+    content: `## 第二十七章　密封类与扩展方法
 
 密封类（sealed）和扩展方法（extension method）看似无关，实则都在解决同一个问题：**如何在不修改原类型的前提下控制或扩展它的能力**。密封类"关闭继承"，扩展方法"添加方法"。
 
@@ -1022,15 +1034,83 @@ s.SafeLen();  // 不报错，但要在 SafeLen 内部判 null
 
 C# 不支持扩展属性。但可以模拟：写一个返回值的扩展方法当"属性"用，或者用 expression-bodied 的方式接近属性语法。
 
-本章 demo 演示 sealed 类 + 扩展方法（给 string 加 Repeat、给 IEnumerable<T> 加 Print、链式调用）。`,
+本章 demo 演示 sealed 类 + 扩展方法（给 string 加 Repeat、给 IEnumerable<T> 加 Print、链式调用）。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「密封类与扩展方法」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - 密封类与扩展方法演示
 // 演示：sealed 类、sealed override、扩展方法（string/IEnumerable）、链式调用
 
 using System;
+
 using System.Collections.Generic;
+
 using System.Linq;
 
-// === 1. sealed 类：不能被继承 ===
+var token = new ApiToken("abcdef123456");
+
+Console.WriteLine(token);
+
+Base b = new Leaf();
+
+b.Hi();
+
+Console.WriteLine();
+
+string s = "ab";
+
+Console.WriteLine(s.Repeat(3));
+
+Console.WriteLine(s.Repeat(2).Wrap("i"));
+
+string html = "hi".Wrap("b").Wrap("p");
+
+Console.WriteLine(html);
+
+string? maybe = null;
+
+Console.WriteLine($"null.IsNullOrEmpty: {maybe.IsNullOrEmpty()}");
+
+Console.WriteLine($"null.SafeLen: {maybe.SafeLen()}");
+
+Console.WriteLine("hello WORLD".ToTitle());
+
+Console.WriteLine();
+
+int[] nums = { 1, 2, 3, 4, 5, 6 };
+
+nums.Print("原始数组: ");
+
+nums.WhereNot(x => x % 2 == 0).Print("奇数: ");
+
+nums.Where(x => x > 2).WhereNot(x => x > 4).Print("大于2且不大于4: ");
+
+new[] { "apple", "banana", "cherry" }
+
+.Where(f => f.StartsWith('b'))
+    .Print("以 b 开头的水果: ");
+
+Console.WriteLine();
+
+double[] scores = { 90.5, 85.0, 92.3, 78.8 };
+
+Console.WriteLine($"平均分: {scores.AverageOrZero():F2}");
+
+Console.WriteLine($"空数组平均: {Array.Empty<double>().AverageOrZero()}");
+
+Console.WriteLine();
+
+string test = "hello";
+
+Console.WriteLine($"test.IsNullOrEmpty(): {test.IsNullOrEmpty()}");
+
+Console.WriteLine($"等价调用: {StringExtensions.IsNullOrEmpty(test)}");
+
+// ============ 类型声明（必须放在所有顶级语句之后） ============
+
 sealed class ApiToken
 {
     public string Value { get; }
@@ -1039,25 +1119,22 @@ sealed class ApiToken
     public override string ToString() => $"Token({Value[..Math.Min(4, Value.Length)]}***)";
 }
 
-// class AdminToken : ApiToken { }  // ❌ 编译错误：sealed 类不能被继承
-
-// === 2. sealed override：方法层密封 ===
 class Base
 {
     public virtual void Hi() => Console.WriteLine("Base.Hi");
 }
+
 class Mid : Base
 {
     public override void Hi() => Console.WriteLine("Mid.Hi");
 }
+
 class Leaf : Mid
 {
     // sealed override：再下层不能再 override Hi
     public sealed override void Hi() => Console.WriteLine("Leaf.Hi");
 }
-// class Deeper : Leaf { public override void Hi() { } }  // ❌ 编译错误
 
-// === 3. 扩展方法：给 string 加方法 ===
 static class StringExtensions
 {
     // this string s：表示给 string 类型扩展一个方法
@@ -1084,7 +1161,6 @@ static class StringExtensions
     }
 }
 
-// === 4. 扩展方法：给 IEnumerable<T> 加方法 ===
 static class EnumerableExtensions
 {
     // 泛型扩展方法：给所有 IEnumerable<T> 加 Print
@@ -1115,71 +1191,7 @@ static class EnumerableExtensions
         return list.Count == 0 ? 0 : list.Average();
     }
 }
-
-// === 5. 顶级语句：运行演示 ===
-// sealed 类使用
-var token = new ApiToken("abcdef123456");
-Console.WriteLine(token);  // Token(abcd***)
-
-// sealed override 演示
-Base b = new Leaf();
-b.Hi();  // Leaf.Hi（多态到 Leaf 为止）
-
-Console.WriteLine();
-
-// 扩展方法：string
-string s = "ab";
-Console.WriteLine(s.Repeat(3));        // ababab
-Console.WriteLine(s.Repeat(2).Wrap("i"));  // <i>abab</i>
-
-// 链式调用
-string html = "hi".Wrap("b").Wrap("p");
-Console.WriteLine(html);  // <p><b>hi</b></p>
-
-// 模拟扩展属性
-string? maybe = null;
-Console.WriteLine($"null.IsNullOrEmpty: {maybe.IsNullOrEmpty()}");  // True
-Console.WriteLine($"null.SafeLen: {maybe.SafeLen()}");  // 0
-
-// ToTitle 扩展
-Console.WriteLine("hello WORLD".ToTitle());  // Hello world
-
-Console.WriteLine();
-
-// 扩展方法：IEnumerable<T>
-int[] nums = { 1, 2, 3, 4, 5, 6 };
-
-// Print 扩展方法
-nums.Print("原始数组: ");
-
-// WhereNot 扩展方法 + 链式调用
-nums.WhereNot(x => x % 2 == 0).Print("奇数: ");
-
-// 与 LINQ 混用：扩展方法可以和原生 LINQ 无缝链式
-nums.Where(x => x > 2).WhereNot(x => x > 4).Print("大于2且不大于4: ");
-
-// 字符串数组的扩展
-new[] { "apple", "banana", "cherry" }
-    .Where(f => f.StartsWith('b'))
-    .Print("以 b 开头的水果: ");
-
-Console.WriteLine();
-
-// 平均值扩展（演示自定义扩展 vs LINQ 自带）
-double[] scores = { 90.5, 85.0, 92.3, 78.8 };
-Console.WriteLine($"平均分: {scores.AverageOrZero():F2}");
-Console.WriteLine($"空数组平均: {Array.Empty<double>().AverageOrZero()}");  // 0
-
-Console.WriteLine();
-
-// 重要陷阱演示：扩展方法与实例方法冲突时，实例方法优先
-// string 自带 IsNullOrEmpty 静态方法，但我们扩展了 string.IsNullOrEmpty（实例方法形式）
-// 这里调用的是扩展方法版本（因为 string 类型本身没有 IsNullOrEmpty 实例方法）
-string test = "hello";
-Console.WriteLine($"test.IsNullOrEmpty(): {test.IsNullOrEmpty()}");  // False
-
-// 扩展方法本质：等价的静态调用
-Console.WriteLine($"等价调用: {StringExtensions.IsNullOrEmpty(test)}");  // False`,
+`,
     lang: 'cs',
   },
 
@@ -1191,7 +1203,7 @@ Console.WriteLine($"等价调用: {StringExtensions.IsNullOrEmpty(test)}");  // 
     group: '第三部分 面向对象',
     icon: '🗂️',
     title: '命名空间与作用域',
-    content: `## 第二十七章　命名空间与作用域
+    content: `## 第二十八章　命名空间与作用域
 
 命名空间（namespace）是 C# 组织类型的容器，类似 Java 的 package、JS 的模块。它解决两个问题：**类型名冲突** 和 **类型查找的可读性**。本章覆盖 namespace、using、global using、file-scoped namespace 等核心机制。
 
@@ -1313,18 +1325,97 @@ C# 项目默认会按文件夹结构生成命名空间（SDK 风格项目）。�
 [assembly: InternalsVisibleTo("MyApp.Tests")]  // 让测试项目能访问 internal
 \`\`\`
 
-本章 demo 演示 namespace、file-scoped namespace、using 别名、自定义命名空间层次、internal 跨程序集可见性（注释说明）。`,
+本章 demo 演示 namespace、file-scoped namespace、using 别名、自定义命名空间层次、internal 跨程序集可见性（注释说明）。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「命名空间与作用域」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - 命名空间与作用域演示
 // 注意：顶级语句文件本身就在全局命名空间，不能再用 file-scoped namespace
 // 这里用传统 namespace + 嵌套演示
 
 using System;
+
 using System.Collections.Generic;
-// using 别名：给长类型起短名
+
 using Dict = System.Collections.Generic.Dictionary<int, string>;
+
 using Coll = System.Collections.Generic;
 
-// === 1. 命名空间声明（传统嵌套写法）===
+Console.WriteLine("=== 1. 命名空间基本使用 ===");
+
+var user = new MyApp.Models.User { Id = 1, Name = "张三" };
+
+Console.WriteLine(user);
+
+Console.WriteLine("\\n=== 2. 跨命名空间调用（同程序集 internal 可见）===");
+
+var svc = new MyApp.Services.UserService();
+
+svc.Add(new MyApp.Models.User { Id = 2, Name = "李四" });
+
+svc.Add(new MyApp.Models.User { Id = 3, Name = "王五" });
+
+svc.PrintAll();
+
+Console.WriteLine("\\n=== 3. public API 跨命名空间调用 ===");
+
+var api = new MyApp.Services.UserApi();
+
+Console.WriteLine(api.GetInfo(2));
+
+Console.WriteLine(api.GetInfo(99));
+
+Console.WriteLine("\\n=== 4. 嵌套命名空间 ===");
+
+MyApp.Utils.Logging.Logger.Log("这是一条日志");
+
+Console.WriteLine($"名字 '张三' 是否合法: {MyApp.Utils.Validation.Validator.IsValidName("张三")}");
+
+Console.WriteLine($"空名字是否合法: {MyApp.Utils.Validation.Validator.IsValidName("")}");
+
+Console.WriteLine("\\n=== 5. using 别名 ===");
+
+Dict dict = new Dict();
+
+dict[1] = "one";
+
+dict[2] = "two";
+
+foreach (var kv in dict) Console.WriteLine($"  {kv.Key} => {kv.Value}");
+
+Coll.List<int> list = new Coll.List<int> { 10, 20, 30 };
+
+Console.WriteLine($"Coll.List: {string.Join(", ", list)}");
+
+Console.WriteLine("\\n=== 6. 同名类型消歧 ===");
+
+var td = new Demo.TimerDemo();
+
+td.Show();
+
+Console.WriteLine("\\n=== 7. 类型全名与命名空间关系 ===");
+
+Console.WriteLine($"User 全名: {typeof(MyApp.Models.User).FullName}");
+
+Console.WriteLine($"UserApi 全名: {typeof(MyApp.Services.UserApi).FullName}");
+
+Console.WriteLine($"Logger 全名: {typeof(MyApp.Utils.Logging.Logger).FullName}");
+
+Console.WriteLine("\\n=== 8. internal 可见性说明 ===");
+
+Console.WriteLine("UserService 是 internal，仅当前程序集可见");
+
+Console.WriteLine("UserApi 是 public，可被其他程序集引用");
+
+Console.WriteLine("若要让其他程序集访问 internal，需在 csproj 加:");
+
+Console.WriteLine("  [assembly: InternalsVisibleTo(\\"MyApp.Tests\\")]");
+
+// ============ 类型声明（必须放在所有顶级语句之后） ============
+
 namespace MyApp.Models
 {
     // 这个类全名是 MyApp.Models.User
@@ -1335,12 +1426,6 @@ namespace MyApp.Models
         public override string ToString() => $"User({Id}, {Name})";
     }
 }
-
-// === 2. 文件作用域命名空间（C# 10+）===
-// 注意：一个文件只能有一个 file-scoped namespace，且顶级语句文件不能用
-// 所以这里用传统写法演示，实际项目文件中常用 file-scoped 写法：
-//   namespace MyApp.Services;
-//   public class UserService { ... }
 
 namespace MyApp.Services
 {
@@ -1373,7 +1458,6 @@ namespace MyApp.Services
     }
 }
 
-// === 3. 嵌套命名空间：用点号简写 ===
 namespace MyApp.Utils
 {
     namespace Logging
@@ -1394,7 +1478,6 @@ namespace MyApp.Utils
     }
 }
 
-// === 4. 用别名消歧：两个同名 Timer 类型 ===
 namespace Demo
 {
     using Timer1 = System.Timers.Timer;       // System.Timers.Timer
@@ -1413,63 +1496,7 @@ namespace Demo
         }
     }
 }
-
-// === 5. 顶级语句：运行演示 ===
-Console.WriteLine("=== 1. 命名空间基本使用 ===");
-var user = new MyApp.Models.User { Id = 1, Name = "张三" };
-Console.WriteLine(user);
-
-Console.WriteLine("\\n=== 2. 跨命名空间调用（同程序集 internal 可见）===");
-var svc = new MyApp.Services.UserService();
-svc.Add(new MyApp.Models.User { Id = 2, Name = "李四" });
-svc.Add(new MyApp.Models.User { Id = 3, Name = "王五" });
-svc.PrintAll();
-
-Console.WriteLine("\\n=== 3. public API 跨命名空间调用 ===");
-var api = new MyApp.Services.UserApi();
-Console.WriteLine(api.GetInfo(2));
-Console.WriteLine(api.GetInfo(99));
-
-Console.WriteLine("\\n=== 4. 嵌套命名空间 ===");
-MyApp.Utils.Logging.Logger.Log("这是一条日志");
-Console.WriteLine($"名字 '张三' 是否合法: {MyApp.Utils.Validation.Validator.IsValidName("张三")}");
-Console.WriteLine($"空名字是否合法: {MyApp.Utils.Validation.Validator.IsValidName("")}");
-
-Console.WriteLine("\\n=== 5. using 别名 ===");
-// using Dict = ... 别名使用
-Dict dict = new Dict();
-dict[1] = "one";
-dict[2] = "two";
-foreach (var kv in dict) Console.WriteLine($"  {kv.Key} => {kv.Value}");
-
-// using Coll = System.Collections.Generic 别名使用
-Coll.List<int> list = new Coll.List<int> { 10, 20, 30 };
-Console.WriteLine($"Coll.List: {string.Join(", ", list)}");
-
-Console.WriteLine("\\n=== 6. 同名类型消歧 ===");
-var td = new Demo.TimerDemo();
-td.Show();
-
-Console.WriteLine("\\n=== 7. 类型全名与命名空间关系 ===");
-Console.WriteLine($"User 全名: {typeof(MyApp.Models.User).FullName}");
-Console.WriteLine($"UserApi 全名: {typeof(MyApp.Services.UserApi).FullName}");
-Console.WriteLine($"Logger 全名: {typeof(MyApp.Utils.Logging.Logger).FullName}");
-
-Console.WriteLine("\\n=== 8. internal 可见性说明 ===");
-Console.WriteLine("UserService 是 internal，仅当前程序集可见");
-Console.WriteLine("UserApi 是 public，可被其他程序集引用");
-Console.WriteLine("若要让其他程序集访问 internal，需在 csproj 加:");
-Console.WriteLine("  [assembly: InternalsVisibleTo(\"MyApp.Tests\")]");
-
-// === 隐式 using 与 global using 说明 ===
-// .NET 8 项目默认 <ImplicitUsings>enable</ImplicitUsings>
-// 自动 global using 的命名空间包括：
-//   System, System.Collections.Generic, System.IO,
-//   System.Linq, System.Net.Http, System.Threading, System.Threading.Tasks 等
-// 这就是为什么本文件没有显式 using System.Linq 也能用 FirstOrDefault / Where
-// 自定义 global using 写在 Usings.cs 中：
-//   global using System.Text.Json;
-//   global using Dict = System.Collections.Generic.Dictionary<int, string>;`,
+`,
     lang: 'cs',
   },
 ];

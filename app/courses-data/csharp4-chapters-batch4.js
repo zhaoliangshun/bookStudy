@@ -7,7 +7,7 @@ const chapters = [
     group: '第三部分 面向对象',
     icon: '🏛️',
     title: '类与对象基础',
-    content: `## 类与对象基础
+    content: `## 第十九章　类与对象基础
 
 类（class）是面向对象编程的核心抽象，对象（object）则是它的具体实例。本章把"类是什么、怎么写、有哪些成员"一次讲清楚。
 
@@ -115,7 +115,13 @@ var s = new Student { Name = "小明", Age = 18 };
 
 ### 小结
 
-类是"蓝图"，对象是"产品"；字段存数据、属性对外暴露、方法定义行为、构造函数初始化。访问修饰符控制可见性，\`partial\` 拆分文件，\`new\` 创建对象，\`this\` 引用自己。下一章深入讲字段与属性。`,
+类是"蓝图"，对象是"产品"；字段存数据、属性对外暴露、方法定义行为、构造函数初始化。访问修饰符控制可见性，\`partial\` 拆分文件，\`new\` 创建对象，\`this\` 引用自己。下一章深入讲字段与属性。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「类与对象基础」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句演示：类与对象基础
 // 文件开头直接写可执行代码，类型声明写在后面
 
@@ -130,7 +136,7 @@ var stu2 = new Student("小明", 18);
 stu2.Introduce();
 
 // 3. 对象初始化器：先无参构造，再赋值公开属性
-var stu3 = new Student { Name = "小红", Age = 17, School = "实验中学" };
+var stu3 = new Student("小红", 17) { School = "实验中学" };  // Age 是 private set，只能走构造函数
 stu3.Introduce();
 
 // 4. 修改可写属性
@@ -227,7 +233,7 @@ public partial class Person
     group: '第三部分 面向对象',
     icon: '🗃️',
     title: '字段与属性',
-    content: `## 字段与属性
+    content: `## 第二十章　字段与属性
 
 字段和属性都是类用来"存数据"的成员，但角色截然不同：字段是底层存储，属性是受控的对外接口。
 
@@ -410,7 +416,13 @@ public string Name             // 公开属性
 
 ### 小结
 
-字段分实例/静态/readonly/const 四类；属性是字段的"门面"，支持自动、init、required、计算、私有 set、索引器等多种形式。对外一律用属性，对内用字段存数据。`,
+字段分实例/静态/readonly/const 四类；属性是字段的"门面"，支持自动、init、required、计算、私有 set、索引器等多种形式。对外一律用属性，对内用字段存数据。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「字段与属性」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句演示：字段与属性
 using System;
 
@@ -557,7 +569,7 @@ public class ProductStore
     group: '第三部分 面向对象',
     icon: '🔧',
     title: '方法详解',
-    content: `## 方法详解
+    content: `## 第二十一章　方法详解
 
 方法是类的"行为"。它是封装一段可复用逻辑的最基本单元。本章把 C# 方法的所有重要特性一次讲透。
 
@@ -736,13 +748,31 @@ async Task<string> GetDataAsync()
 
 异步方法在后续章节会专门讲。
 
-### 十三、扩展方法（占位）
+### 十三、扩展方法预览
 
-扩展方法让"为现有类型添加方法"成为可能，必须写在静态类里、第一个参数带 \`this\`。下一章静态部分会详细演示。
+扩展方法让你**不用改源码**就能给已有类型加方法：必须写在静态类里，第一个参数带 \`this\`。
+
+\`\`\`csharp
+static class StringExtras
+{
+    public static bool IsBlank(this string? s)
+        => string.IsNullOrWhiteSpace(s);
+}
+
+Console.WriteLine("  ".IsBlank());  // True
+\`\`\`
+
+完整用法、对接口扩展、以及和 LINQ 的关系，见后面「密封类与扩展方法」一章。这里先混个脸熟：看到 \`this\` 参数就知道是扩展方法。
 
 ### 小结
 
-方法签名看名字和参数；四种参数传递（值/ref/out/in）解决不同需求；params/默认参数/命名参数让调用更灵活；重载、ref 返回、局部函数、表达式方法、yield、async 是日常高频工具。`,
+方法签名看名字和参数；四种参数传递（值/ref/out/in）解决不同需求；params/默认参数/命名参数让调用更灵活；重载、ref 返回、局部函数、表达式方法、yield、async 是日常高频工具。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「方法详解」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句演示：方法详解
 using System;
 using System.Collections.Generic;
@@ -878,7 +908,7 @@ public struct BigStruct
     group: '第三部分 面向对象',
     icon: '🏗️',
     title: '构造函数与析构',
-    content: `## 构造函数与析构
+    content: `## 第二十二章　构造函数与析构
 
 构造函数（constructor）是对象出生时执行的"初始化仪式"。析构（destructor / finalizer）是对象死亡时的"善后处理"。本章把 C# 的全部构造形式讲清楚，特别是 C# 12 引入的主构造函数。
 
@@ -1016,25 +1046,27 @@ public class Resource
 
 析构函数编译后其实是 \`Finalize\` 方法。GC 回收对象前会调用它。由于 .NET GC 不保证时机，且 finalizer 会让对象进入 freachable 队列（多活一次 GC），通常**避免手写 finalizer**。
 
-### 十二、IDisposable（占位）
+### 十二、IDisposable 预览
 
-持有非托管资源（文件句柄、数据库连接、socket）时，正确做法是实现 \`IDisposable\` 接口，让调用方主动 \`Dispose\`：
+析构函数靠不住，持有文件句柄、数据库连接、socket 时要自己实现 \`IDisposable\`，让调用方主动释放：
 
 \`\`\`csharp
-public class FileWrapper : IDisposable
+public sealed class FileWrapper : IDisposable
 {
-    public void Dispose() { /* 关闭句柄 */ }
+    private FileStream? _fs;
+    public FileWrapper(string path) => _fs = File.OpenRead(path);
+    public void Dispose()
+    {
+        _fs?.Dispose();
+        _fs = null;
+        GC.SuppressFinalize(this);
+    }
 }
+
+using var f = new FileWrapper("a.txt");  // 离开作用域自动 Dispose，异常也会走
 \`\`\`
 
-配合 \`using\` 语句确保异常时也能释放：
-
-\`\`\`csharp
-using var f = new FileWrapper();
-// f.Dispose() 在作用域结束时自动调用
-\`\`\`
-
-后续章节会详细展开 IDisposable 模式。
+完整 Dispose 模式、Finalizer、\`SafeHandle\`、\`IAsyncDisposable\` 见后面「IDisposable 与 Finalizer」一章。
 
 ### 十三、构造顺序
 
@@ -1048,7 +1080,13 @@ using var f = new FileWrapper();
 
 ### 小结
 
-构造函数分实例/私有/静态/主构造函数；\`: this(...)\` 链避免重复；C# 12 主构造函数是简化模板代码的利器，但 class 不自动生成属性；析构函数不推荐使用，非托管资源用 IDisposable。`,
+构造函数分实例/私有/静态/主构造函数；\`: this(...)\` 链避免重复；C# 12 主构造函数是简化模板代码的利器，但 class 不自动生成属性；析构函数不推荐使用，非托管资源用 IDisposable。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「构造函数与析构」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句演示：构造函数与析构
 using System;
 
@@ -1159,7 +1197,7 @@ public record PointRec(int X, int Y);`,
     group: '第三部分 面向对象',
     icon: '⚡',
     title: '静态类与静态成员',
-    content: `## 静态类与静态成员
+    content: `## 第二十三章　静态类与静态成员
 
 \`static\` 是 C# 里最容易被忽视却极为重要的修饰符。它决定"成员属于类本身还是属于对象"。本章彻底搞懂 static。
 
@@ -1331,7 +1369,13 @@ var x = Sqrt(2);    // 不用 Math.Sqrt
 
 ### 小结
 
-\`static\` 让成员属于类本身；静态类不能实例化，全是静态成员；单例模式是静态的经典应用；扩展方法必须在静态类里、第一个参数带 \`this\`；\`using static\` 可以省略类名前缀。`,
+\`static\` 让成员属于类本身；静态类不能实例化，全是静态成员；单例模式是静态的经典应用；扩展方法必须在静态类里、第一个参数带 \`this\`；\`using static\` 可以省略类名前缀。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「静态类与静态成员」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句演示：静态类与静态成员
 using System;
 using static System.Math;                  // using static：直接用 Sqrt、PI 等

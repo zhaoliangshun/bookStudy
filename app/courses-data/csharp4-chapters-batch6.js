@@ -24,7 +24,7 @@ const chapters = [
     group: '第四部分 泛型与集合',
     icon: '🎯',
     title: '泛型基础',
-    content: `## 第二十八章　泛型基础
+    content: `## 第二十九章　泛型基础
 
 泛型（Generic）是 C# 2.0 引入的重量级特性，它把"类型"当作参数，让你写一份代码就能用于多种类型，同时保留类型安全和性能。没有泛型的世界几乎不可想象。
 
@@ -164,17 +164,86 @@ class Factory<T> where T : class, IComparable<T>, new()
 
 记忆口诀：**out 用于读（产出），in 用于写（消费）**。
 
-本章 demo 实现完整的泛型 Stack<T>，演示泛型方法 Max<T>、约束、协变逆变。`,
+本章 demo 实现完整的泛型 Stack<T>，演示泛型方法 Max<T>、约束、协变逆变。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「泛型基础」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - 泛型基础演示
 // 实现：泛型 Stack<T>、泛型方法 Max<T>、协变 out / 逆变 in
 
 using System;
+
 using System.Collections;
+
 using System.Collections.Generic;
 
-// === 1. 泛型类 Stack<T> ===
-// T 是类型参数，可在类内任意位置当作真实类型使用
-public class Stack<T>
+Console.WriteLine("=== 1. 泛型 Stack<T> 演示 ===");
+
+var intStack = new Stack<int>();
+
+intStack.Push(10);
+
+intStack.Push(20);
+
+intStack.Push(30);
+
+Console.WriteLine($"栈大小：{intStack.Count}");
+
+Console.WriteLine($"栈顶：{intStack.Peek()}");
+
+Console.WriteLine($"弹出：{intStack.Pop()}");
+
+Console.WriteLine($"弹出：{intStack.Pop()}");
+
+var strStack = new Stack<string>();
+
+strStack.Push("hello");
+
+strStack.Push("world");
+
+foreach (var s in strStack)  // 用 IEnumerable<T> 遍历
+    Console.WriteLine($"  遍历：{s}");
+
+Console.WriteLine("\\n=== 2. 泛型方法 Max<T> 演示 ===");
+
+Console.WriteLine($"Max(3, 5) = {MathHelper.Max(3, 5)}");
+
+Console.WriteLine($"Max(\\"apple\\", \\"banana\\") = {MathHelper.Max("apple", "banana")}");
+
+var d1 = new DateTime(2024, 1, 1);
+
+var d2 = new DateTime(2023, 6, 15);
+
+Console.WriteLine($"Max(日期) = {MathHelper.Max(d1, d2):yyyy-MM-dd}");
+
+Console.WriteLine("\\n=== 3. 协变 out 演示 ===");
+
+IProducer<Cat> catProducer = new CatProducer();
+
+IProducer<Animal> animalProducer = catProducer;
+
+Animal produced = animalProducer.Produce();
+
+Console.WriteLine($"  协变产出的对象：{produced.Name}");
+
+Console.WriteLine("\\n=== 4. 逆变 in 演示 ===");
+
+IConsumer<Animal> animalConsumer = new AnimalConsumer();
+
+IConsumer<Cat> catConsumer = animalConsumer;
+
+catConsumer.Consume(new Cat("小橘"));
+
+Console.WriteLine("\\n=== 5. 反例：IList<T> 不支持协变 ===");
+
+Console.WriteLine("  IList<T> 不支持协变/逆变（T 同时用于读写）");
+
+// ============ 类型声明（必须放在所有顶级语句之后） ============
+
+public class Stack<T> : IEnumerable<T>
 {
     // 泛型字段：用 T 作为元素类型
     private T[] _items;   // 内部数组存储元素
@@ -229,8 +298,6 @@ public class Stack<T>
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
 
-// === 2. 泛型方法 Max<T> ===
-// where T : IComparable<T> 约束 T 必须可比较
 public static class MathHelper
 {
     public static T Max<T>(T a, T b) where T : IComparable<T>
@@ -249,8 +316,6 @@ public static class MathHelper
     }
 }
 
-// === 3. 协变 out / 逆变 in 演示 ===
-// 协变：接口用 out 修饰 T，表示 T 只能作为返回值（产出）
 public interface IProducer<out T>
 {
     T Produce();
@@ -261,7 +326,6 @@ public class CatProducer : IProducer<Cat>
     public Cat Produce() => new Cat("小橘");
 }
 
-// 逆变：接口用 in 修饰 T，表示 T 只能作为参数（消费）
 public interface IConsumer<in T>
 {
     void Consume(T item);
@@ -273,7 +337,6 @@ public class AnimalConsumer : IConsumer<Animal>
         Console.WriteLine($"  消费动物：{item.Name}");
 }
 
-// 基类与派生类
 public class Animal
 {
     public string Name { get; }
@@ -285,59 +348,7 @@ public class Cat : Animal
 {
     public Cat(string name) : base(name) { }
 }
-
-// === 4. 顶级语句：演示各种用法 ===
-Console.WriteLine("=== 1. 泛型 Stack<T> 演示 ===");
-
-// 创建 int 栈：T=int 是值类型直接存，没有装箱
-var intStack = new Stack<int>();
-intStack.Push(10);
-intStack.Push(20);
-intStack.Push(30);
-Console.WriteLine($"栈大小：{intStack.Count}");
-Console.WriteLine($"栈顶：{intStack.Peek()}");
-Console.WriteLine($"弹出：{intStack.Pop()}");
-Console.WriteLine($"弹出：{intStack.Pop()}");
-
-// 创建 string 栈
-var strStack = new Stack<string>();
-strStack.Push("hello");
-strStack.Push("world");
-// strStack.Push(42);  // ❌ 编译错误，类型安全
-foreach (var s in strStack)  // 用 IEnumerable<T> 遍历
-    Console.WriteLine($"  遍历：{s}");
-
-Console.WriteLine("\\n=== 2. 泛型方法 Max<T> 演示 ===");
-// 类型推断：Max(3, 5) 自动推断 T=int
-Console.WriteLine($"Max(3, 5) = {MathHelper.Max(3, 5)}");
-// 字符串比较（按字典序）
-Console.WriteLine($"Max(\\"apple\\", \\"banana\\") = {MathHelper.Max("apple", "banana")}");
-// 日期比较
-var d1 = new DateTime(2024, 1, 1);
-var d2 = new DateTime(2023, 6, 15);
-Console.WriteLine($"Max(日期) = {MathHelper.Max(d1, d2):yyyy-MM-dd}");
-
-Console.WriteLine("\\n=== 3. 协变 out 演示 ===");
-// 协变：IProducer<Cat> 可以赋值给 IProducer<Animal>
-// 因为 IProducer 只"产出" T，Cat 产出者产出 Cat 也是 Animal
-IProducer<Cat> catProducer = new CatProducer();
-IProducer<Animal> animalProducer = catProducer;  // ✅ 协变合法
-Animal produced = animalProducer.Produce();
-Console.WriteLine($"  协变产出的对象：{produced.Name}");
-
-Console.WriteLine("\\n=== 4. 逆变 in 演示 ===");
-// 逆变：IConsumer<Animal> 可以赋值给 IConsumer<Cat>
-// 因为 IConsumer 只"消费" T，能处理 Animal 的消费者当然能处理 Cat
-IConsumer<Animal> animalConsumer = new AnimalConsumer();
-IConsumer<Cat> catConsumer = animalConsumer;  // ✅ 逆变合法
-catConsumer.Consume(new Cat("小橘"));
-
-Console.WriteLine("\\n=== 5. 反例：IList<T> 不支持协变 ===");
-// IList<T> 的 T 既用于读又用于写，所以既不是 out 也不是 in
-// IList<Cat> cats = new List<Cat>();
-// IList<Animal> animals = cats;  // ❌ 编译错误
-// 否则：animals.Add(new Dog()) 就能把 Dog 塞进 Cat 列表，类型安全崩塌
-Console.WriteLine("  IList<T> 不支持协变/逆变（T 同时用于读写）");`,
+`,
     lang: 'cs',
   },
 
@@ -349,7 +360,7 @@ Console.WriteLine("  IList<T> 不支持协变/逆变（T 同时用于读写）")
     group: '第四部分 泛型与集合',
     icon: '📚',
     title: '集合与 IEnumerable',
-    content: `## 第二十九章　集合与 IEnumerable
+    content: `## 第三十章　集合与 IEnumerable
 
 数组是最基础的集合，但容量固定。真实开发中我们更需要能动态扩容、能遍历、能查询的"集合类型"。C# 的集合体系围绕 \`IEnumerable\` 接口构建，理解它就理解了一切集合的本质。
 
@@ -499,16 +510,126 @@ int[] b = [.. a, 3, 4];  // [1, 2, 3, 4]
 - **NameValueCollection**：存键值对（都为 string），同一键可有多值。已被 \`Dictionary<string, List<string>>\` 取代。
 - **BitArray**：位数组，用于位运算密集场景。
 
-本章 demo 实现一个自定义 \`MyLinkedList<T>\`，演示 IEnumerable、yield return、集合初始化器、Collection 表达式。`,
+本章 demo 实现一个自定义 \`MyLinkedList<T>\`，演示 IEnumerable、yield return、集合初始化器、Collection 表达式。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「集合与 IEnumerable」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - 集合与 IEnumerable 演示
 // 实现：MyLinkedList<T> : IEnumerable<T>、yield return、集合初始化器、Collection 表达式
 
 using System;
+
 using System.Collections;
+
 using System.Collections.Generic;
 
-// === 1. 自定义双向链表 MyLinkedList<T> ===
-// 实现 IEnumerable<T> 让它可以被 foreach
+Console.WriteLine("=== 1. 自定义 MyLinkedList + yield return ===");
+
+var list = new MyLinkedList<string> { "苹果", "香蕉", "橙子" };
+
+list.Add("葡萄");
+
+Console.WriteLine("正序遍历：");
+
+foreach (var item in list)
+    Console.WriteLine($"  {item}");
+
+Console.WriteLine("反序遍历：");
+
+foreach (var item in list.GetReverse())
+    Console.WriteLine($"  {item}");
+
+Console.WriteLine($"\\n链表大小：{list.Count}");
+
+Console.WriteLine("\\n=== 2. IEnumerable 手动迭代（foreach 的真相）===");
+
+var numbers = new MyLinkedList<int> { 10, 20, 30 };
+
+using var enumerator = numbers.GetEnumerator();
+while (enumerator.MoveNext())
+{
+    Console.WriteLine($"  Current = {enumerator.Current}");
+}
+
+Console.WriteLine("\\n=== 3. 集合初始化器 ===");
+
+var classic = new List<int> { 1, 2, 3, 4, 5 };
+
+Console.WriteLine($"经典初始化器：{string.Join(", ", classic)}");
+
+var ages = new Dictionary<string, int>
+{
+    ["张三"] = 25,
+    ["李四"] = 30,
+    ["王五"] = 28
+};
+
+foreach (var kv in ages)
+    Console.WriteLine($"  {kv.Key}：{kv.Value} 岁");
+
+Console.WriteLine("\\n=== 4. C# 12 集合表达式 ===");
+
+int[] arr = [1, 2, 3, 4, 5];
+
+List<int> arrList = [10, 20, 30];
+
+HashSet<int> arrSet = [100, 200, 300];
+
+Console.WriteLine($"数组：{string.Join(", ", arr)}");
+
+Console.WriteLine($"List：{string.Join(", ", arrList)}");
+
+Console.WriteLine($"HashSet：{string.Join(", ", arrSet)}");
+
+int[] part1 = [1, 2, 3];
+
+int[] part2 = [.. part1, 4, 5];
+
+Console.WriteLine($"展开拼接：{string.Join(", ", part2)}");
+
+int[] empty = [];
+
+Console.WriteLine($"空集合长度：{empty.Length}");
+
+Console.WriteLine("\\n=== 5. Array 也是集合 ===");
+
+int[] data = [5, 3, 8, 1, 9];
+
+var sorted = data.OrderBy(x => x);
+
+Console.WriteLine($"数组排序：{string.Join(", ", sorted)}");
+
+Console.WriteLine($"数组长度：{data.Length}");
+
+Console.WriteLine($"数组实现 IList<int>：{data is IList<int>}");
+
+Console.WriteLine("\\n=== 6. yield 惰性求值演示 ===");
+
+var range = GetRange(0, 1_000_000);
+
+Console.WriteLine("调用了 GetRange(0, 1000000)，但还没真正执行");
+
+int sum = 0;
+
+foreach (var n in range)
+{
+    sum += n;
+    if (sum > 50) break;  // 提前退出，证明是惰性的
+}
+
+Console.WriteLine($"累加到 {sum} 就退出了，没真的遍历 100 万次");
+
+static IEnumerable<int> GetRange(int start, int count)
+{
+    for (int i = 0; i < count; i++)
+        yield return start + i;
+}
+
+// ============ 类型声明（必须放在所有顶级语句之后） ============
+
 public class MyLinkedList<T> : IEnumerable<T>
 {
     // 链表节点：内部类
@@ -577,98 +698,7 @@ public class MyLinkedList<T> : IEnumerable<T>
     // 支持 Add 方法后，就可以用集合初始化器语法
     // var list = new MyLinkedList<int> { 1, 2, 3 };
 }
-
-// === 2. 顶级语句演示 ===
-Console.WriteLine("=== 1. 自定义 MyLinkedList + yield return ===");
-
-// 集合初始化器：因为实现了 Add 方法，可以用 { } 语法
-var list = new MyLinkedList<string> { "苹果", "香蕉", "橙子" };
-list.Add("葡萄");  // 也可以单独 Add
-
-// foreach 会自动调用 GetEnumerator
-Console.WriteLine("正序遍历：");
-foreach (var item in list)
-    Console.WriteLine($"  {item}");
-
-// 用 GetReverse 自定义迭代器
-Console.WriteLine("反序遍历：");
-foreach (var item in list.GetReverse())
-    Console.WriteLine($"  {item}");
-
-Console.WriteLine($"\\n链表大小：{list.Count}");
-
-Console.WriteLine("\\n=== 2. IEnumerable 手动迭代（foreach 的真相）===");
-// 手动调用 GetEnumerator / MoveNext / Current
-// 这就是 foreach 背后做的事
-var numbers = new MyLinkedList<int> { 10, 20, 30 };
-using var enumerator = numbers.GetEnumerator();
-while (enumerator.MoveNext())
-{
-    Console.WriteLine($"  Current = {enumerator.Current}");
-}
-
-Console.WriteLine("\\n=== 3. 集合初始化器 ===");
-// 经典 { } 语法（C# 3+）
-var classic = new List<int> { 1, 2, 3, 4, 5 };
-Console.WriteLine($"经典初始化器：{string.Join(", ", classic)}");
-
-// 字典初始化器（索引语法）
-var ages = new Dictionary<string, int>
-{
-    ["张三"] = 25,
-    ["李四"] = 30,
-    ["王五"] = 28
-};
-foreach (var kv in ages)
-    Console.WriteLine($"  {kv.Key}：{kv.Value} 岁");
-
-Console.WriteLine("\\n=== 4. C# 12 集合表达式 ===");
-// C# 12 新语法：[] 集合表达式
-int[] arr = [1, 2, 3, 4, 5];
-List<int> arrList = [10, 20, 30];
-HashSet<int> arrSet = [100, 200, 300];
-
-Console.WriteLine($"数组：{string.Join(", ", arr)}");
-Console.WriteLine($"List：{string.Join(", ", arrList)}");
-Console.WriteLine($"HashSet：{string.Join(", ", arrSet)}");
-
-// 展开运算符 ..：把一个集合"展开"到另一个
-int[] part1 = [1, 2, 3];
-int[] part2 = [.. part1, 4, 5];  // 等价于 [1, 2, 3, 4, 5]
-Console.WriteLine($"展开拼接：{string.Join(", ", part2)}");
-
-// 空集合
-int[] empty = [];
-Console.WriteLine($"空集合长度：{empty.Length}");
-
-Console.WriteLine("\\n=== 5. Array 也是集合 ===");
-// 数组实现 IList<T>、IEnumerable<T>
-int[] data = [5, 3, 8, 1, 9];
-// 数组可以用 LINQ（因为实现了 IEnumerable<int>）
-var sorted = data.OrderBy(x => x);
-Console.WriteLine($"数组排序：{string.Join(", ", sorted)}");
-Console.WriteLine($"数组长度：{data.Length}");
-Console.WriteLine($"数组实现 IList<int>：{data is IList<int>}");
-
-Console.WriteLine("\\n=== 6. yield 惰性求值演示 ===");
-// 调用 GetRange 不会立即生成所有数
-var range = GetRange(0, 1_000_000);
-Console.WriteLine("调用了 GetRange(0, 1000000)，但还没真正执行");
-// 直到 foreach 才开始执行
-int sum = 0;
-foreach (var n in range)
-{
-    sum += n;
-    if (sum > 50) break;  // 提前退出，证明是惰性的
-}
-Console.WriteLine($"累加到 {sum} 就退出了，没真的遍历 100 万次");
-
-// 本地函数：用 yield return 生成范围
-static IEnumerable<int> GetRange(int start, int count)
-{
-    for (int i = 0; i < count; i++)
-        yield return start + i;
-}`,
+`,
     lang: 'cs',
   },
 
@@ -680,7 +710,7 @@ static IEnumerable<int> GetRange(int start, int count)
     group: '第四部分 泛型与集合',
     icon: '📋',
     title: 'List 与 LinkedList',
-    content: `## 第三十章　List 与 LinkedList
+    content: `## 第三十一章　List 与 LinkedList
 
 \`List<T>\` 是 C# 中使用频率最高的集合，没有之一。它本质是"可自动扩容的数组"，提供了丰富的增删改查 API。\`LinkedList<T>\` 则是双向链表，适合频繁在中间插入/删除的场景。两者各有用武之地。
 
@@ -796,7 +826,13 @@ ll.AddAfter(node, "c");  // 在 a 后面插入 c
 
 **结论**：99% 场景用 \`List<T>\`。只有当你需要频繁在头尾或已知节点前后插入/删除时，才考虑 \`LinkedList<T>\`。
 
-本章 demo 演示 List<T> 全套 API + Find/Sort/BinarySearch + LinkedList<string> 操作。`,
+本章 demo 演示 List<T> 全套 API + Find/Sort/BinarySearch + LinkedList<string> 操作。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「List 与 LinkedList」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - List<T> 与 LinkedList<T> 演示
 using System;
 using System.Collections.Generic;
@@ -968,7 +1004,7 @@ public record Person(string Name, int Age);`,
     group: '第四部分 泛型与集合',
     icon: '🔑',
     title: 'Dictionary 与 HashSet',
-    content: `## 第三十一章　Dictionary 与 HashSet
+    content: `## 第三十二章　Dictionary 与 HashSet
 
 \`Dictionary<TKey, TValue>\` 是 C# 中最常用的键值对集合，相当于 Python 的 dict、Java 的 HashMap。\`HashSet<T>\` 是不重复元素的集合，相当于"只有 key 没有 value"的 Dictionary。它们都基于哈希表实现，提供 O(1) 的查找性能。
 
@@ -1090,7 +1126,13 @@ foreach (Person p in byAge[28])  // 所有 28 岁的人
     Console.WriteLine(p);
 \`\`\`
 
-本章 demo 演示 Dictionary 全套 API + 自定义比较器 + HashSet 集合运算。`,
+本章 demo 演示 Dictionary 全套 API + 自定义比较器 + HashSet 集合运算。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「Dictionary 与 HashSet」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - Dictionary 与 HashSet 演示
 using System;
 using System.Collections.Generic;
@@ -1272,7 +1314,7 @@ public class PersonById
     group: '第四部分 泛型与集合',
     icon: '🌲',
     title: 'Queue 与 Stack',
-    content: `## 第三十二章　Queue 与 Stack
+    content: `## 第三十三章　Queue 与 Stack
 
 \`Queue<T>\` 是先进先出（FIFO）队列，\`Stack<T>\` 是后进先出（LIFO）栈。它们在算法和工程中无处不在：任务调度、撤销重做、广度/深度优先搜索。\`PriorityQueue<TElement, TPriority>\` 是 .NET 6 引入的优先队列，能按优先级出队。
 
@@ -1381,7 +1423,13 @@ string next = pq.Dequeue();  // "紧急任务"（优先级 1 最小）
 
 如果只是 FIFO 或 LIFO，**用 Queue/Stack 比 LinkedList 更高效**（内存紧凑、缓存友好）。
 
-本章 demo 演示 Queue 任务调度 + Stack 撤销操作 + PriorityQueue 优先级处理。`,
+本章 demo 演示 Queue 任务调度 + Stack 撤销操作 + PriorityQueue 优先级处理。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「Queue 与 Stack」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - Queue、Stack、PriorityQueue 演示
 using System;
 using System.Collections.Generic;
@@ -1543,7 +1591,7 @@ Console.WriteLine($"预分配 1000 容量后入队 1000 个，Count = {bigQueue.
     group: '第四部分 泛型与集合',
     icon: '🗃️',
     title: 'SortedList 与 SortedDictionary',
-    content: `## 第三十三章　SortedList 与 SortedDictionary
+    content: `## 第三十四章　SortedList 与 SortedDictionary
 
 当字典需要"按键排序"时，就要用到 \`SortedList\` 或 \`SortedDictionary\`。它们都实现 \`IDictionary\`，但底层实现完全不同，性能特性也大相径庭。
 
@@ -1655,7 +1703,13 @@ var list2 = list.Add(1);  // 返回新集合，list 不变
 
 详细在第三十四章讲。
 
-本章 demo 对比三种排序集合的性能，并演示自定义 IComparer。`,
+本章 demo 对比三种排序集合的性能，并演示自定义 IComparer。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「SortedList 与 SortedDictionary」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - SortedList、SortedDictionary、SortedSet 演示
 using System;
 using System.Collections.Generic;
@@ -1774,13 +1828,14 @@ var people = new PersonCollection
 };
 
 // 既能按索引访问（List 特性）
-Console.WriteLine($"索引 0：{people[0]}");
+Console.WriteLine($"第一个元素：{((IList<PersonWithId>)people)[0]}");
 
 // 又能按键访问（Dictionary 特性）
 Console.WriteLine($"Id=2：{people[2]}");
 
 // 修改元素时键会自动更新
-people[0] = new(10, "张三丰", 100);
+people.RemoveAt(0);
+people.Insert(0, new(10, "张三丰", 100));  // KeyedCollection 的 int 索引器与 int 键冲突，不能直接 people[0]=
 Console.WriteLine($"修改后 Id=10：{people[10]}");
 
 Console.WriteLine("\\n=== 6. ReadOnlyDictionary ===");
@@ -1846,7 +1901,7 @@ public class PersonCollection : KeyedCollection<int, PersonWithId>
     group: '第四部分 泛型与集合',
     icon: '⚡',
     title: '并发集合',
-    content: `## 第三十四章　并发集合
+    content: `## 第三十五章　并发集合
 
 多线程环境下，普通 \`List\`、\`Dictionary\`、\`Queue\` 都不安全。即使你加了 \`lock\`，性能也很差。.NET 提供了一套专门的并发集合，基于无锁（lock-free）或细粒度锁实现，能高效支持多线程读写。
 
@@ -1971,7 +2026,13 @@ await foreach (var item in channel.Reader.ReadAllAsync())
 - **并发集合**：可变，多线程高效读写
 - **不可变集合**：不可变，多线程自然安全，但写性能较差（每次复制）
 
-本章 demo 演示 BlockingCollection 生产者-消费者 + ConcurrentDictionary 并发累加 + Channel 异步管道。`,
+本章 demo 演示 BlockingCollection 生产者-消费者 + ConcurrentDictionary 并发累加 + Channel 异步管道。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「并发集合」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 - 并发集合演示
 using System;
 using System.Collections.Concurrent;

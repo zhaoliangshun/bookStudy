@@ -8,7 +8,7 @@ const chapters = [
     group: '第十部分 异常处理与调试',
     icon: '🚨',
     title: '异常处理',
-    content: `## 异常处理
+    content: `## 第六十一章　异常处理
 
 异常（Exception）是 .NET 运行时在程序遇到非正常情况时抛出的对象。C# 通过 \`try / catch / finally\` 三件套来捕获、处理和清理异常。良好的异常处理让程序在出错时依然可控、可诊断、可恢复，而不是直接崩溃或返回错误数据。
 
@@ -123,6 +123,11 @@ C# 8+ 还支持 \`using var\` 声明，作用域结束时自动释放。
 6. **在合适的层级处理**，让底层抛、高层处理。
 
 异常是设计契约的一部分，合理的异常策略让代码既能优雅降级，又能快速定位问题。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「异常处理」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
     code: `// C# 12 顶级语句 - 异常处理完整演示
 // 演示：try/catch/finally、throw vs throw ex、when 过滤器、自定义异常、InnerException
@@ -342,7 +347,7 @@ public class ServerErrorException : Exception
     group: '第十部分 异常处理与调试',
     icon: '🛡️',
     title: '自定义异常与异常策略',
-    content: `## 自定义异常与异常策略
+    content: `## 第六十二章　自定义异常与异常策略
 
 异常不只是报错工具，它是程序错误处理策略的核心。本节讨论如何设计自定义异常、什么时候用异常、什么时候用返回值，以及现代 C# 中流行的函数式错误处理模式。
 
@@ -459,6 +464,11 @@ checked
 | 库代码内部 | 直接抛，不要吞 |
 
 合理的异常策略让代码既能优雅降级，又能快速定位问题。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「自定义异常与异常策略」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
     code: `// C# 12 顶级语句 - 自定义异常与异常策略演示
 // 演示：Result<T> 类型、BusinessException(ErrorCode)、Try 模式、checked、Result 链式调用
@@ -699,7 +709,7 @@ public class BusinessException : Exception
     group: '第十部分 异常处理与调试',
     icon: '🐛',
     title: '调试技术',
-    content: `## 调试技术
+    content: `## 第六十三章　调试技术
 
 调试是开发中最日常的活动之一。.NET 提供了丰富的调试 API、特性和命令行工具，从断点调试到性能分析全覆盖。本节系统介绍 C# 调试技术栈。
 
@@ -814,6 +824,11 @@ class Person { public string Name; public int Age; }
 - **远程调试**：通过 \`msvsmon.exe\` 调试远程机器上的进程。
 
 调试是开发者最值得投入的技能，工具用得越熟，定位问题越快。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「调试技术」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
     code: `// C# 12 顶级语句 - 调试技术演示
 // 演示：Conditional("DEBUG")、Debug.Assert、DebuggerDisplay、DebuggerStepThrough、自定义 TraceListener
@@ -995,7 +1010,7 @@ public class ColoredConsoleTraceListener : TraceListener
     group: '第十部分 异常处理与调试',
     icon: '📈',
     title: '日志与诊断',
-    content: `## 日志与诊断
+    content: `## 第六十四章　日志与诊断
 
 日志和诊断是生产环境可观测性的基石。.NET 8 提供了一套完整的日志、追踪、指标（Metrics）三件套，配合 OpenTelemetry 可实现端到端分布式观测。
 
@@ -1171,12 +1186,19 @@ logger.LogInformation(MyEvents.UserLogin, "用户 {UserId} 登录", userId);
 \`EventId\` 是结构体，包含 \`Id\` 和 \`Name\`。集中定义所有事件 ID 便于维护。
 
 合理的日志和诊断策略让生产环境问题"看得见、追得到、说得清"。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「日志与诊断」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
     code: `// C# 12 顶级语句 - 日志与诊断演示
 // 演示：Microsoft.Extensions.Logging 结构化日志、自定义 Logger、Activity 跟踪、Meter 计数
 
+using System;
 using System.Diagnostics;
-using Microsoft.Extensions.Logging;
+using System.Diagnostics.Metrics;
+using System.Threading;
 
 // ===== 1. 配置 LoggerFactory =====
 Console.WriteLine("=== 1. 配置 LoggerFactory ===");
@@ -1262,7 +1284,7 @@ using var activityListener = new ActivityListener
     ActivityStarted = activity => Console.WriteLine($"  [Trace] -> {activity.DisplayName} (开始)"),
     ActivityStopped = activity => Console.WriteLine($"  [Trace] <- {activity.DisplayName} (结束, 耗时={activity.Duration.TotalMilliseconds:F1}ms)")
 };
-ActivitySource.AddListener(activityListener);
+ActivitySource.AddActivityListener(activityListener);
 
 // 创建 ActivitySource（类似 ILoggerFactory）
 using var activitySource = new ActivitySource("MyApp", "1.0.0");
@@ -1311,14 +1333,18 @@ var queueGauge = meter.CreateObservableGauge("order_queue_length", () => queueLe
 
 // 订阅 Meter 导出指标（模拟 Prometheus 抓取）
 using var meterListener = new MeterListener();
-meterListener.InstrumentPublished = instrument =>
+meterListener.InstrumentPublished = (instrument, listener) =>
 {
-    meterListener.EnableMeasurementEvents(instrument); // 启用所有指标
+    listener.EnableMeasurementEvents(instrument); // 启用所有指标
 };
 // 记录指标值
-meterListener.SetMeasurementEventCallback<long>((measurement, tags, state) =>
+meterListener.SetMeasurementEventCallback<long>((instrument, measurement, tags, state) =>
 {
-    // 模拟导出
+    // 模拟导出（tags 是 ReadOnlySpan，不能装进普通元组）
+    _ = instrument;
+    _ = measurement;
+    _ = tags.Length;
+    _ = state;
 });
 meterListener.Start();
 
@@ -1348,6 +1374,126 @@ for (int i = 0; i < 3; i++)
 Console.WriteLine($"\\n指标汇总: 订单总数={orderCounter}, 当前队列={queueLength}");
 
 // ===== 类型定义 =====
+// 沙箱控制台不引用 Microsoft.Extensions.Logging，下面是精简版抽象，API 形状与官方一致。
+
+public enum LogLevel { Trace = 0, Debug = 1, Information = 2, Warning = 3, Error = 4, Critical = 5, None = 6 }
+
+public readonly struct EventId
+{
+    public int Id { get; }
+    public string? Name { get; }
+    public EventId(int id, string? name = null) { Id = id; Name = name; }
+    public static implicit operator EventId(int id) => new(id);
+}
+
+public interface ILogger
+{
+    IDisposable BeginScope<TState>(TState state) where TState : notnull;
+    bool IsEnabled(LogLevel logLevel);
+    void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter);
+}
+
+public interface ILogger<out T> : ILogger { }
+
+public interface ILoggerProvider : IDisposable
+{
+    ILogger CreateLogger(string categoryName);
+}
+
+public interface ILoggerFactory : IDisposable
+{
+    ILogger<T> CreateLogger<T>();
+}
+
+public sealed class LoggerFactoryBuilder
+{
+    private readonly List<ILoggerProvider> _providers = new();
+    public LoggerFactoryBuilder AddFilter(string category, LogLevel min) { _ = (category, min); return this; }
+    public LoggerFactoryBuilder AddConsole() => this;
+    public LoggerFactoryBuilder AddDebug() => this;
+    public LoggerFactoryBuilder AddProvider(ILoggerProvider provider) { _providers.Add(provider); return this; }
+    public ILoggerFactory Build() => new MiniLoggerFactory(_providers);
+}
+
+public static class LoggerFactory
+{
+    public static ILoggerFactory Create(Action<LoggerFactoryBuilder> configure)
+    {
+        var builder = new LoggerFactoryBuilder();
+        configure(builder);
+        return builder.Build();
+    }
+}
+
+sealed class MiniLoggerFactory : ILoggerFactory
+{
+    private readonly List<ILoggerProvider> _providers;
+    public MiniLoggerFactory(List<ILoggerProvider> providers) => _providers = providers;
+    public ILogger<T> CreateLogger<T>()
+    {
+        var name = typeof(T).FullName ?? typeof(T).Name;
+        var inner = _providers.Count > 0 ? _providers[0].CreateLogger(name) : new ColoredLogger(name);
+        return new Logger<T>(inner);
+    }
+    public void Dispose() { foreach (var p in _providers) p.Dispose(); }
+}
+
+sealed class Logger<T>(ILogger inner) : ILogger<T>
+{
+    public IDisposable BeginScope<TState>(TState state) where TState : notnull => inner.BeginScope(state);
+    public bool IsEnabled(LogLevel logLevel) => inner.IsEnabled(logLevel);
+    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        => inner.Log(logLevel, eventId, state, exception, formatter);
+}
+
+public static class MiniLoggerExtensions
+{
+    static string Format(string template, object?[] args)
+    {
+        if (args.Length == 0) return template;
+        int i = 0;
+        var chars = template.ToCharArray();
+        var sb = new System.Text.StringBuilder();
+        for (int p = 0; p < chars.Length; p++)
+        {
+            if (chars[p] == '{')
+            {
+                int end = Array.IndexOf(chars, '}', p);
+                if (end > p)
+                {
+                    sb.Append(i < args.Length ? args[i++]?.ToString() ?? "" : "");
+                    p = end;
+                    continue;
+                }
+            }
+            sb.Append(chars[p]);
+        }
+        return sb.ToString();
+    }
+
+    public static void LogTrace(this ILogger logger, string message, params object?[] args)
+        => logger.Log(LogLevel.Trace, 0, Format(message, args), null, static (s, _) => s);
+    public static void LogDebug(this ILogger logger, string message, params object?[] args)
+        => logger.Log(LogLevel.Debug, 0, Format(message, args), null, static (s, _) => s);
+    public static void LogInformation(this ILogger logger, string message, params object?[] args)
+        => logger.Log(LogLevel.Information, 0, Format(message, args), null, static (s, _) => s);
+    public static void LogInformation(this ILogger logger, EventId eventId, string message, params object?[] args)
+        => logger.Log(LogLevel.Information, eventId, Format(message, args), null, static (s, _) => s);
+    public static void LogWarning(this ILogger logger, string message, params object?[] args)
+        => logger.Log(LogLevel.Warning, 0, Format(message, args), null, static (s, _) => s);
+    public static void LogWarning(this ILogger logger, EventId eventId, string message, params object?[] args)
+        => logger.Log(LogLevel.Warning, eventId, Format(message, args), null, static (s, _) => s);
+    public static void LogError(this ILogger logger, string message, params object?[] args)
+        => logger.Log(LogLevel.Error, 0, Format(message, args), null, static (s, _) => s);
+    public static void LogError(this ILogger logger, EventId eventId, string message, params object?[] args)
+        => logger.Log(LogLevel.Error, eventId, Format(message, args), null, static (s, _) => s);
+    public static void LogError(this ILogger logger, Exception exception, string message, params object?[] args)
+        => logger.Log(LogLevel.Error, 0, Format(message, args), exception, static (s, _) => s);
+    public static void LogCritical(this ILogger logger, string message, params object?[] args)
+        => logger.Log(LogLevel.Critical, 0, Format(message, args), null, static (s, _) => s);
+    public static IDisposable BeginScope(this ILogger logger, string messageFormat, params object?[] args)
+        => logger.BeginScope(Format(messageFormat, args));
+}
 
 // EventId 集中定义：便于维护和告警规则
 public static class MyLogEvents

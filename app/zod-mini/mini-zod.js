@@ -141,9 +141,7 @@ const fail = (issues) => ({ success: false, error: new ZodError(issues) });
  */
 class ZodType {
   constructor(def = {}) {
-    // _def 存放构造该 Schema 时的配置（如 min 的长度、object 的字段等）
-    // 子类通过 super(def) 把配置传上来，自己的 _parse 再从 this._def 读取
-    // 这种「def 对象集中配置」的设计便于克隆和扩展（partial/pick 等都基于此）
+    // 存储 Schema 配置，子类通过 this._def 读取
     this._def = def;
   }
 
@@ -949,34 +947,80 @@ class ZodIntersection extends ZodType {
  *   - ["confirmPassword"]：挂到 confirmPassword 字段
  *   这对跨字段校验至关重要，让 UI 能在对应字段下显示错误
  */
+
+// 递归解包 ZodEffects/ZodTransform/ZodPipe，找到最底层的基础 Schema
+// 用于判断一个链式 Schema 是否最终包装了 ZodObject（即对象级校验）
+function _getBaseSchema(schema) {
+  if (schema instanceof ZodEffects || schema instanceof ZodTransform) {
+    return _getBaseSchema(schema._def.innerType);
+  }
+  if (schema instanceof ZodPipe) {
+    return _getBaseSchema(schema._def.source);
+  }
+  return schema;
+}
+
 class ZodEffects extends ZodType {
   _parse(input) {
-    // 第一步：先用内部 Schema 校验（确保基本类型/结构正确）
     const inner = this._def.innerType._parse(input);
-    if (!inner.success) return inner;
-
-    // refine 的错误路径：默认 []（root），
-    // 若 refine 调用时传了 { path: ["confirmPassword"] }，则错误挂到该字段
     const path = this._def.path || [];
 
-    // 第二步：执行用户的 check 函数
-    // 用 try/catch 捕获 check 抛出的异常，转成统一的 fail 返回
+    // 确定用于 check 的数据：
+    //   - inner 成功：用 inner.data（经过字段校验/转换的干净数据）
+    //   - inner 失败且最终包装的是 ZodObject（对象级 refine）：
+    //     仍然用原始 input 执行跨字段校验，因为用户在逐字段填写表单时，
+    //     即使其他字段未填完，当前字段的跨字段错误（如密码不一致）也应该显示。
+    //     这避免了「字段错误阻塞跨字段校验」导致 UI 不报错的问题。
+    //   - inner 失败且非对象级（字段级 refine 类型错误）：直接返回 inner 错误，
+    //     因为类型不对时执行 check 没有意义（如 z.string().refine(...) 收到 undefined）
+    const isObjectLevel = _getBaseSchema(this) instanceof ZodObject;
+    let dataToCheck;
+    if (inner.success) {
+      dataToCheck = inner.data;
+    } else if (isObjectLevel) {
+      dataToCheck = input;
+    } else {
+      return inner;
+    }
+
+    // 收集对象级 refine 产生的额外错误
+    let extraIssue = null;
     try {
-      const checkResult = this._def.check(inner.data);
-      // 非空字符串 → 字符串本身就是错误信息（覆盖预设 message）
+      const checkResult = this._def.check(dataToCheck);
       if (typeof checkResult === "string" && checkResult.length > 0) {
-        return fail([makeIssue("custom", checkResult, path)]);
+        extraIssue = makeIssue("custom", checkResult, path);
+      } else if (!checkResult) {
+        extraIssue = makeIssue("custom", this._def.message, path);
       }
-      // 按真值性判定：任意假值（false/0/NaN/null/undefined/""）都算失败
-      // 注意：这里必须在字符串分支之后，才能让空字符串落到「假值失败」用预设 message
-      if (!checkResult) {
-        return fail([makeIssue("custom", this._def.message, path)]);
-      }
-      // 真值 → 校验通过
-      return ok(inner.data);
     } catch (e) {
-      // check 抛异常 → 异常 message 作为错误信息
-      return fail([makeIssue("custom", e.message, path)]);
+      // 对象级 refine 在字段不完整时可能因访问 undefined 属性而抛异常
+      // （如 data.password.length 当 password 为 undefined 时）
+      // 捕获异常但不添加错误，因为此时字段错误才是主要问题
+      if (inner.success) {
+        extraIssue = makeIssue("custom", e.message, path);
+      }
+    }
+
+    // 根据 inner 结果和 extraIssue 组合返回
+    if (inner.success) {
+      if (extraIssue) {
+        return fail([extraIssue]);
+      }
+      return ok(inner.data);
+    } else {
+      // inner 有字段错误，把对象级 refine 的错误也合并进去
+      if (extraIssue) {
+        // 避免重复添加相同 path+message 的错误
+        const alreadyHas = inner.error.issues.some(
+          (iss) =>
+            iss.path.join(".") === extraIssue.path.join(".") &&
+            iss.message === extraIssue.message
+        );
+        if (!alreadyHas) {
+          return fail([...inner.error.issues, extraIssue]);
+        }
+      }
+      return inner;
     }
   }
 }

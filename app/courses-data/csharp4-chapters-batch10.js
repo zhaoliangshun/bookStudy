@@ -24,7 +24,7 @@ const chapters = [
     group: '第八部分 文件 IO 与序列化',
     icon: '📁',
     title: '文件与目录',
-    content: `## 第五十一章　文件与目录
+    content: `## 第五十二章　文件与目录
 
 文件 IO 是日常开发中最常见的任务之一：读配置、写日志、处理上传、生成报表。C# 在 \`System.IO\` 命名空间下提供了一整套 API，从「一次性读写」到「流式处理」再到「零拷贝高性能」一应俱全。本章先讲最常用的文件与目录操作。
 
@@ -159,7 +159,13 @@ Windows 默认路径长度上限是 260 字符。.NET Core 3.0+ 在 Windows 上�
 - 目录遍历大 → \`Directory.Enumerate*\`
 - 路径拼接 → \`Path.Combine\` / \`Path.Join\`，绝不硬编码 \`\\\` 或 \`/\`
 
-下一章我们深入 \`Stream\` 体系，处理大文件和流式数据。`,
+下一章我们深入 \`Stream\` 体系，处理大文件和流式数据。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「文件与目录」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 —— 文件与目录 API 全套演示
 using System;
 using System.IO;
@@ -287,7 +293,7 @@ finally
     group: '第八部分 文件 IO 与序列化',
     icon: '🌊',
     title: '流与读写器',
-    content: `## 第五十二章　流与读写器
+    content: `## 第五十三章　流与读写器
 
 上一章的 \`File.ReadAllText\` 一次性把整个文件读进内存——文件小没问题，但如果是 10GB 的日志文件呢？应用直接 OOM 崩溃。这时候就需要**流（Stream）**：把数据看作连续的字节序列，按需读写一小块。
 
@@ -438,7 +444,13 @@ using FileStream fs = new FileStream(...);
 - 文本读写 → \`StreamReader\`/\`StreamWriter\`
 - 二进制协议 → \`BinaryReader\`/\`BinaryWriter\`
 - 内存缓冲 → \`MemoryStream\`
-- **务必 using**，避免资源泄漏`,
+- **务必 using**，避免资源泄漏
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「流与读写器」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 —— 流与读写器全套演示
 using System;
 using System.IO;
@@ -599,7 +611,7 @@ finally
     group: '第八部分 文件 IO 与序列化',
     icon: '📝',
     title: 'JSON 序列化',
-    content: `## 第五十三章　JSON 序列化
+    content: `## 第五十四章　JSON 序列化
 
 JSON 是现代 API 的事实标准——REST 接口、配置文件、NoSQL 数据库，到处都是。.NET 8 内置 \`System.Text.Json\`，性能比 Newtonsoft.Json 快 2-5 倍，且支持 AOT。本章系统讲透 JSON 处理的方方面面。
 
@@ -646,7 +658,7 @@ User? parsed = JsonSerializer.Deserialize<User>(json);
 var options = new JsonSerializerOptions
 {
     WriteIndented = true,                                    // 美化缩进
-    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,  // 属性名转 camelCase
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,  // 属性名转 camelCase
     PropertyNameCaseInsensitive = true,                      // 反序列化大小写不敏感
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,  // null 不输出
     AllowTrailingCommas = true,                              // 允许尾随逗号
@@ -732,7 +744,7 @@ writer.WriteEndObject();
 writer.Flush();
 \`\`\`
 
-### 九、自定义 JsonConverter\<T\`
+### 九、自定义 JsonConverter<T\`
 
 处理内置不支持的类型，或自定义格式。比如让 \`DateTime\` 只输出日期：
 
@@ -778,7 +790,13 @@ public abstract class Animal { }
 - 性能 + AOT → \`JsonSerializerContext\`
 - 动态 JSON → \`JsonNode\` / \`JsonDocument\`
 - 极致性能 → \`Utf8JsonReader/Writer\`
-- 自定义格式 → \`JsonConverter<T>\``,
+- 自定义格式 → \`JsonConverter<T>\`
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「JSON 序列化」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 —— System.Text.Json 全套演示
 using System;
 using System.Collections.Generic;
@@ -805,7 +823,7 @@ User user = new User
 JsonSerializerOptions options = new JsonSerializerOptions
 {
     WriteIndented = true,                                    // 美化缩进
-    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,  // camelCase
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,       // camelCase
     PropertyNameCaseInsensitive = true,                      // 反序列化大小写不敏感
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,  // null 不输出
     AllowTrailingCommas = true,
@@ -975,7 +993,7 @@ public class Node
     group: '第八部分 文件 IO 与序列化',
     icon: '🔧',
     title: 'XML 与 CSV 处理',
-    content: `## 第五十四章　XML 与 CSV 处理
+    content: `## 第五十五章　XML 与 CSV 处理
 
 虽然 JSON 已经是主流，但 XML 仍广泛存在于配置文件（.csproj、web.config）、SOAP 协议、Office 文档（.docx 本质是 XML）、SVG 图形等场景。CSV 则是数据导出/导入最简单的格式。本章讲透这两类数据处理。
 
@@ -1142,7 +1160,13 @@ CsvHelper 自动处理引号、转义、表头映射、类型转换，是 .NET �
 - 新写 XML → \`XDocument\`（函数式构建 + LINQ 查询）
 - 大 XML → \`XmlReader\` / \`XmlWriter\` 流式
 - 配置绑定 → \`XmlSerializer\`
-- 简单 CSV → \`Split(',')\`；生产 → \`CsvHelper\``,
+- 简单 CSV → \`Split(',')\`；生产 → \`CsvHelper\`
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「XML 与 CSV 处理」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 —— XML 与 CSV 处理全套演示
 using System;
 using System.Collections.Generic;
@@ -1369,7 +1393,7 @@ public record Student(int Id, string Name, double Score);`,
     group: '第八部分 文件 IO 与序列化',
     icon: '⚡',
     title: '高性能 IO 与管道',
-    content: `## 第五十五章　高性能 IO 与管道
+    content: `## 第五十六章　高性能 IO 与管道
 
 前几章的 API 够用 90% 场景。但当你处理 GB 级文件、万级并发、毫秒级延迟时，就需要本章的高级技巧：异步 IO、内存池、Span、Pipelines、内存映射。
 
@@ -1396,7 +1420,7 @@ while ((line = await sr.ReadLineAsync()) != null)
 
 ⚠ **关键**：构造 \`FileStream\` 时一定要传 \`FileOptions.Asynchronous\`，否则 \`ReadAsync\` 实际是「同步读 + 假装异步」，反而更慢。
 
-### 二、ArrayPool\<T\>：避免分配
+### 二、ArrayPool<T>：避免分配
 
 每次 \`new byte[4096]\` 都会在堆上分配 4KB，频繁分配触发 GC。\`ArrayPool\` 是共享的数组池：
 
@@ -1418,7 +1442,7 @@ finally
 2. \`Return\` 后**绝对不能**再访问该数组
 3. 嵌套调用要小心，避免在不同线程间共享租用数组
 
-### 三、Span\<byte\> / Memory\<byte\>：零拷贝切片
+### 三、Span<byte> / Memory<byte>：零拷贝切片
 
 \`Span<T>\` 是连续内存的「视图」，切片不复制数据，零开销：
 
@@ -1494,7 +1518,7 @@ Pipelines 的核心优势：
 
 ASP.NET Core、Kestrel 内部都用 Pipelines，性能比传统 \`Stream\` 高 30%+。
 
-### 六、SequenceReader\<T\>：解析二进制协议
+### 六、SequenceReader<T>：解析二进制协议
 
 \`ReadOnlySequence<byte>\` 可能跨多个缓冲区，手动解析很麻烦。\`SequenceReader\` 提供游标式 API：
 
@@ -1542,14 +1566,23 @@ accessor.Flush();
 - 零拷贝 → \`Span<T>\` / \`Memory<T>\`
 - 零拷贝文件 → \`RandomAccess\`
 - 极高吞吐 → \`System.IO.Pipelines\`
-- 大文件随机访问 → \`MemoryMappedFile\``,
+- 大文件随机访问 → \`MemoryMappedFile\`
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「高性能 IO 与管道」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 —— 高性能 IO 与管道演示
 using System;
 using System.Buffers;
 using System.IO;
-using System.IO.Pipelines;
+using System.IO.MemoryMappedFiles;
+using System.Linq;
+using Microsoft.Win32.SafeHandles;
 using System.Text;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 string tempFile = Path.Combine(Path.GetTempPath(), "csharp4-ch55-demo.bin");
@@ -1586,7 +1619,7 @@ try
     // === 3. RandomAccess API（.NET 6+，零拷贝）===
     await ReadWithRandomAccessAsync(tempFile);
 
-    // === 4. System.IO.Pipelines：高性能管道 ===
+    // === 4. 管道式生产者/消费者（教学对照 System.IO.Pipelines） ===
     await UsePipeAsync(tempFile);
 
     // === 5. File.ReadAllBytesAsync：简单异步读 ===
@@ -1625,9 +1658,6 @@ async Task ReadWithArrayPoolAsync(string path)
         while ((read = await fs.ReadAsync(buffer.AsMemory(0, 8192))) > 0)
         {
             totalRead += read;
-            // Span 切片：零拷贝查看前 4 字节
-            ReadOnlySpan<byte> slice = buffer.AsSpan(0, Math.Min(4, read));
-            // 不做实际处理，仅演示 Span 用法
         }
         Console.WriteLine($"  共读取 {totalRead} 字节（{totalRead / 1024} KB）");
     }
@@ -1674,13 +1704,16 @@ async Task ReadWithRandomAccessAsync(string path)
     }
 }
 
-// 使用 Pipe 简单演示：生产者写文件数据，消费者统计字节数
+// 管道演示：生产者写文件数据，消费者统计字节数
+// 沙箱控制台项目不引用 System.IO.Pipelines 包，用 Channel 表达同样的「写端 / 读端 / Complete」模型
 async Task UsePipeAsync(string path)
 {
-    Console.WriteLine("\\n--- System.IO.Pipelines ---");
-    Pipe pipe = new Pipe();
+    Console.WriteLine("\\n--- 管道（Channel，对照 System.IO.Pipelines） ---");
+    var channel = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(8)
+    {
+        FullMode = BoundedChannelFullMode.Wait
+    });
 
-    // 生产者任务：从文件读数据写入 Pipe
     Task writerTask = Task.Run(async () =>
     {
         using FileStream fs = File.OpenRead(path);
@@ -1690,43 +1723,27 @@ async Task UsePipeAsync(string path)
             int read;
             while ((read = await fs.ReadAsync(buffer.AsMemory(0, 4096))) > 0)
             {
-                // 从 PipeWriter 获取缓冲区（可能是 Pipe 内部的内存）
-                PipeWriter writer = pipe.Writer;
-                Memory<byte> span = writer.GetMemory(4096);
-                // 把读到的数据拷贝到 Pipe 缓冲区
-                buffer.AsSpan(0, read).CopyTo(span.Span);
-                // 告诉 writer 实际写入了多少
-                writer.Advance(read);
-                // Flush 让 reader 可以读到
-                FlushResult flushResult = await writer.FlushAsync();
-                if (flushResult.IsCompleted) break;
+                var chunk = new byte[read];
+                Array.Copy(buffer, 0, chunk, 0, read);
+                await channel.Writer.WriteAsync(chunk);
             }
+            channel.Writer.Complete();
+        }
+        catch (Exception ex)
+        {
+            channel.Writer.Complete(ex);
         }
         finally
         {
             ArrayPool<byte>.Shared.Return(buffer);
-            await pipe.Writer.CompleteAsync();  // 通知 reader 没有更多数据
         }
     });
 
-    // 消费者：从 Pipe 读取并统计
     long totalBytes = 0;
-    while (true)
-    {
-        ReadResult result = await pipe.Reader.ReadAsync();
-        ReadOnlySequence<byte> buffer = result.Buffer;
-
-        // 处理所有数据（这里仅统计字节数）
-        totalBytes += buffer.Length;
-
-        // 告诉 Pipe 我们已经消费到哪里
-        pipe.Reader.AdvanceTo(buffer.End);
-
-        if (result.IsCompleted) break;
-    }
-    await pipe.Reader.CompleteAsync();
+    await foreach (var chunk in channel.Reader.ReadAllAsync())
+        totalBytes += chunk.Length;
     await writerTask;
-    Console.WriteLine($"  Pipe 共传输 {totalBytes} 字节（{totalBytes / 1024} KB）");
+    Console.WriteLine($"  管道共传输 {totalBytes} 字节（{totalBytes / 1024} KB）");
 }
 
 // Parallel.For 并行处理大文件

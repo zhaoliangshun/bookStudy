@@ -27,7 +27,7 @@ const chapters = [
     group: '第十二部分 网络编程',
     icon: '🌐',
     title: 'HTTP 客户端',
-    content: `## HTTP 客户端
+    content: `## 第七十章　HTTP 客户端
 
 ### 一、HttpClient 是什么
 
@@ -129,6 +129,11 @@ var response = await client.SendAsync(request);
 - ✅ 总是设置 \`Timeout\` 或传入 \`CancellationToken\`
 - ✅ 用 \`ReadFromJsonAsync<T>\` 代替手动 \`JsonSerializer.Deserialize\`
 - ❌ 不要 \`using var client = new HttpClient();\`
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「HTTP 客户端」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
     code: `// ============================================================
 // 第六十九章 HTTP 客户端 —— demo
@@ -310,7 +315,7 @@ public class SimpleHttpClientFactory
     group: '第十二部分 网络编程',
     icon: '🔌',
     title: 'Socket 与 TCP',
-    content: `## Socket 与 TCP
+    content: `## 第七十一章　Socket 与 TCP
 
 ### 一、Socket 是什么
 
@@ -406,7 +411,13 @@ finally
 
 - 服务端要 \`Stop()\`，客户端要 \`Close()\`，避免端口泄漏
 - 多客户端并发用 \`Task.Run\` 或 \`AcceptTcpClientAsync\` 循环
-- 真实生产用 \`SocketAsyncEventArgs\` 或 \`System.IO.Pipelines\` 提升性能`,
+- 真实生产用 \`SocketAsyncEventArgs\` 或 \`System.IO.Pipelines\` 提升性能
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「Socket 与 TCP」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// ============================================================
 // 第七十章 Socket 与 TCP —— demo
 // ------------------------------------------------------------
@@ -527,7 +538,7 @@ Console.WriteLine("\\n=== demo 完成 ===");
     group: '第十二部分 网络编程',
     icon: '📨',
     title: 'UDP 与 IPC',
-    content: `## UDP 与 IPC
+    content: `## 第七十二章　UDP 与 IPC
 
 ### 一、UDP 通信
 
@@ -600,7 +611,13 @@ int value = accessor2.ReadInt32(0);
 | UnixSocket | ✅ | ✅ | 快 | 中 |
 | NamedPipe | ✅ | ✅ | 快 | 低 |
 | MemoryMappedFile | ✅ | ❌（需配合信号量） | 极快 | 中 |
-| AnonymousPipe | ✅ | ❌（单向） | 快 | 低 |`,
+| AnonymousPipe | ✅ | ❌（单向） | 快 | 低 |
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「UDP 与 IPC」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// ============================================================
 // 第七十一章 UDP 与 IPC —— demo
 // ------------------------------------------------------------
@@ -621,7 +638,8 @@ using System.Text;
 // ------------------------------------------------------------
 Console.WriteLine("=== Demo 1：UDP 通信 ===");
 
-using var udpReceiver = new UdpClient(9300);  // 接收端绑定端口 9300
+using var udpReceiver = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+int udpPort = ((IPEndPoint)udpReceiver.Client.LocalEndPoint!).Port;
 var receiverEp = new IPEndPoint(IPAddress.Loopback, 0);
 
 // 后台 Task 接收
@@ -636,7 +654,7 @@ await Task.Delay(50);  // 确保接收端已就绪
 
 // 发送端
 using var udpSender = new UdpClient();
-var targetEp = new IPEndPoint(IPAddress.Loopback, 9300);
+var targetEp = new IPEndPoint(IPAddress.Loopback, udpPort);
 var bytes = Encoding.UTF8.GetBytes("Hello UDP!");
 await udpSender.SendAsync(bytes, bytes.Length, targetEp);
 Console.WriteLine($"[UDP 发送] 已发送：Hello UDP!");
@@ -644,94 +662,53 @@ Console.WriteLine($"[UDP 发送] 已发送：Hello UDP!");
 await udpReceiveTask;
 
 // ------------------------------------------------------------
-// Demo 2：命名管道（NamedPipe）
+// Demo 2：匿名管道（同进程可靠；NamedPipe 在 macOS 上受 Unix 域套接字路径长度限制）
 // ------------------------------------------------------------
-Console.WriteLine("\\n=== Demo 2：命名管道 ===");
+Console.WriteLine("\\n=== Demo 2：匿名管道 IPC ===");
 
-const string PipeName = "csharp4-demo-pipe";
-
-// 启动管道服务端（后台）
-var pipeServerTask = Task.Run(async () =>
+using (var server = new AnonymousPipeServerStream(PipeDirection.Out))
+using (var client = new AnonymousPipeClientStream(PipeDirection.In, server.GetClientHandleAsString()))
 {
-    using var server = new NamedPipeServerStream(
-        PipeName,
-        PipeDirection.InOut,
-        maxNumberOfServerInstances: 1,
-        PipeTransmissionMode.Byte,
-        PipeOptions.Asynchronous);
-
-    Console.WriteLine("[Pipe Server] 等待连接...");
-    await server.WaitForConnectionAsync();
-    Console.WriteLine("[Pipe Server] 客户端已连接");
-
-    // 读
-    var buffer = new byte[256];
-    var bytesRead = await server.ReadAsync(buffer);
-    var message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-    Console.WriteLine($"[Pipe Server] 收到：{message}");
-
-    // 回复
-    var reply = $"Pipe 回复：{message}";
-    var replyBytes = Encoding.UTF8.GetBytes(reply);
-    await server.WriteAsync(replyBytes);
-    Console.WriteLine($"[Pipe Server] 已回复：{reply}");
-});
-
-await Task.Delay(50);
-
-// 客户端连接
-using var client = new NamedPipeClientStream(
-    ".",
-    PipeName,
-    PipeDirection.InOut,
-    PipeOptions.Asynchronous);
-
-await client.ConnectAsync(TimeSpan.FromSeconds(2));
-Console.WriteLine("[Pipe Client] 已连接");
-
-// 发送
-var sendMsg = "Hello Named Pipe!";
-var sendBytes = Encoding.UTF8.GetBytes(sendMsg);
-await client.WriteAsync(sendBytes);
-Console.WriteLine($"[Pipe Client] 已发送：{sendMsg}");
-
-// 接收
-var buffer2 = new byte[256];
-var bytesRead2 = await client.ReadAsync(buffer2);
-var reply2 = Encoding.UTF8.GetString(buffer2, 0, bytesRead2);
-Console.WriteLine($"[Pipe Client] 收到回复：{reply2}");
-
-await pipeServerTask;
+    var payload = Encoding.UTF8.GetBytes("Hello Anonymous Pipe!");
+    var readBuf = new byte[256];
+    var readTask = client.ReadAsync(readBuf).AsTask();
+    await server.WriteAsync(payload);
+    int n = await readTask;
+    Console.WriteLine($"[AnonymousPipe] 收到：{Encoding.UTF8.GetString(readBuf, 0, n)}");
+}
 
 // ------------------------------------------------------------
 // Demo 3：内存映射文件（MemoryMappedFile）
 // ------------------------------------------------------------
 Console.WriteLine("\\n=== Demo 3：内存映射文件 ===");
 
-const string MapName = "csharp4-demo-mmf";
+var mmfFile = Path.Combine(Path.GetTempPath(), $"csharp4-mmf-anon-{Guid.NewGuid()}.dat");
+try
+{
+    // CreateNew(name) 依赖命名共享内存，macOS 不支持；改用文件后备（跨平台）
+    using var mmf = MemoryMappedFile.CreateFromFile(mmfFile, FileMode.Create, mapName: null, capacity: 1024);
 
-// 创建一个 1024 字节的内存映射文件
-using var mmf = MemoryMappedFile.CreateOrNew(MapName, 1024);
+    using var accessor = mmf.CreateViewAccessor();
 
-// 创建访问器
-using var accessor = mmf.CreateViewAccessor();
+    accessor.Write(0, 42);
+    accessor.Write(4, 3.14f);
+    var str = "Hello MMF!";
+    var strBytes = Encoding.UTF8.GetBytes(str);
+    accessor.WriteArray(8, strBytes, 0, strBytes.Length);
+    Console.WriteLine("[MMF] 已写入数据：42, 3.14, 'Hello MMF!'");
 
-// 写入数据
-accessor.Write(0, 42);                                  // 写一个 int
-accessor.Write(4, 3.14f);                               // 写一个 float
-var str = "Hello MMF!";
-var strBytes = Encoding.UTF8.GetBytes(str);
-accessor.WriteArray(8, strBytes, 0, strBytes.Length);   // 写字符串字节
-Console.WriteLine("[MMF] 已写入数据：42, 3.14, 'Hello MMF!'");
-
-// 模拟另一个进程读取（同一进程内演示，本质相同）
-using var accessor2 = mmf.CreateViewAccessor();
-int intValue = accessor2.ReadInt32(0);
-float floatValue = accessor2.ReadSingle(4);
-var strBuffer = new byte[32];
-accessor2.ReadArray(8, strBuffer, 0, strBuffer.Length);
-var strValue = Encoding.UTF8.GetString(strBuffer).TrimEnd('\\0');
-Console.WriteLine($"[MMF] 读取数据：{intValue}, {floatValue}, '{strValue}'");
+    using var accessor2 = mmf.CreateViewAccessor();
+    int intValue = accessor2.ReadInt32(0);
+    float floatValue = accessor2.ReadSingle(4);
+    var strBuffer = new byte[32];
+    accessor2.ReadArray(8, strBuffer, 0, strBuffer.Length);
+    var strValue = Encoding.UTF8.GetString(strBuffer).TrimEnd('\\0');
+    Console.WriteLine($"[MMF] 读取数据：{intValue}, {floatValue}, '{strValue}'");
+}
+finally
+{
+    try { File.Delete(mmfFile); } catch { /* ignore */ }
+}
 
 // ------------------------------------------------------------
 // Demo 4：MemoryMappedFile 持久化到磁盘
@@ -742,7 +719,7 @@ var tempFile = Path.Combine(Path.GetTempPath(), $"csharp4-mmf-{Guid.NewGuid()}.d
 try
 {
     // 从文件创建 MMF
-    using var fsMmf = MemoryMappedFile.CreateFromFile(tempFile, FileMode.Create, "persist-map", 1024);
+    using var fsMmf = MemoryMappedFile.CreateFromFile(tempFile, FileMode.Create, mapName: null, capacity: 1024);
     using var fsAccessor = fsMmf.CreateViewAccessor();
     fsAccessor.Write(0, DateTime.UtcNow.Ticks);
     Console.WriteLine($"[持久化 MMF] 写入当前 UTC Ticks：{fsAccessor.ReadInt64(0)}");
@@ -766,7 +743,7 @@ Console.WriteLine("\\n=== demo 完成 ===");
     group: '第十二部分 网络编程',
     icon: '📡',
     title: 'WebSocket 与 gRPC 简介',
-    content: `## WebSocket 与 gRPC 简介
+    content: `## 第七十三章　WebSocket 与 gRPC 简介
 
 ### 一、WebSocket 协议
 
@@ -870,7 +847,13 @@ Protobuf 比 JSON 更快、更小，但不可读。可读场景用 protobuf-net�
 | 普通业务 API | RESTful + JSON |
 | 内部服务间通信 | gRPC |
 | 实时双向通信 | WebSocket / SignalR |
-| 移动端推送 | SignalR / FCM |`,
+| 移动端推送 | SignalR / FCM |
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「WebSocket 与 gRPC 简介」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// ============================================================
 // 第七十二章 WebSocket 与 gRPC 简介 —— demo
 // ------------------------------------------------------------
@@ -1073,7 +1056,7 @@ public class MockChatHub
     group: '第十三部分 工程化实战',
     icon: '📦',
     title: '依赖注入与配置',
-    content: `## 依赖注入与配置
+    content: `## 第七十四章　依赖注入与配置
 
 ### 一、依赖注入（DI）核心思想
 
@@ -1202,7 +1185,13 @@ var cacheOpts = sp.GetRequiredService<IOptionsSnapshot<RedisOptions>>().Get("cac
 services.Configure<JwtOptions>(config.GetSection("Jwt"))
     .ValidateDataAnnotations()  // 用 DataAnnotations 验证
     .ValidateOnStart();          // 启动时验证（.NET 6+）
-\`\`\``,
+\`\`\`
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「依赖注入与配置」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// ============================================================
 // 第七十三章 依赖注入与配置 —— demo
 // ------------------------------------------------------------
@@ -1216,10 +1205,7 @@ services.Configure<JwtOptions>(config.GetSection("Jwt"))
 //   5. Scope 概念
 // ============================================================
 
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using System.ComponentModel.DataAnnotations;
+using System.Reflection;
 
 // ------------------------------------------------------------
 // 1. 构建配置：模拟 appsettings.json
@@ -1287,10 +1273,10 @@ var clock1 = sp.GetRequiredService<IClock>();
 var clock2 = sp.GetRequiredService<IClock>();
 Console.WriteLine($"Singleton: {clock1.Id == clock2.Id}（{clock1.Id}）");
 
-// Transient：不同实例
-var logger1 = sp.GetRequiredService<ILogService>();
-var logger2 = sp.GetRequiredService<ILogService>();
-Console.WriteLine($"Transient: {logger1.Id != logger2.Id}（{logger1.Id} vs {logger2.Id}）");
+// Transient：每次解析都是新实例（UserService 注册为 Transient）
+var svc1 = sp.GetRequiredService<UserService>();
+var svc2 = sp.GetRequiredService<UserService>();
+Console.WriteLine($"Transient: {!ReferenceEquals(svc1, svc2)}");
 
 // Scoped：同一 Scope 内相同，不同 Scope 不同
 using var scope1 = sp.CreateScope();
@@ -1306,13 +1292,13 @@ Console.WriteLine($"Scoped 不同 Scope: {repo1A.Id != repo2.Id}");
 // ------------------------------------------------------------
 Console.WriteLine("\\n=== 4. 演示业务调用 ===");
 
-// 预置一些用户数据
-var seedRepo = sp.GetRequiredService<IUserRepository>();
+// 预置一些用户数据（与 Controller 共用同一个 Scope，才能看到同一份仓储）
+using var bizScope = sp.CreateScope();
+var seedRepo = bizScope.ServiceProvider.GetRequiredService<IUserRepository>();
 await seedRepo.AddAsync(new User(1, "张三", "zhangsan@example.com"));
 await seedRepo.AddAsync(new User(2, "李四", "lisi@example.com"));
 
-// 获取 Controller，容器会自动注入 UserService → UserService 注入 IUserRepository/ILogService/Options
-var controller = sp.GetRequiredService<UserController>();
+var controller = bizScope.ServiceProvider.GetRequiredService<UserController>();
 
 // 演示调用
 await controller.ListAllUsersAsync();
@@ -1345,15 +1331,187 @@ foreach (var notifier in notifiers)
 Console.WriteLine("\\n=== demo 完成 ===");
 
 // ============================================================
-// 类型定义
+// 类型定义（含精简版 Configuration / DI / Options，API 形状对齐 Microsoft.Extensions）
 // ============================================================
+
+public interface IConfiguration
+{
+    string? this[string key] { get; }
+    IConfiguration GetSection(string key);
+}
+
+public sealed class MiniConfiguration : IConfiguration
+{
+    private readonly Dictionary<string, string?> _data;
+    private readonly string _prefix;
+    public MiniConfiguration(Dictionary<string, string?> data, string prefix = "")
+    {
+        _data = data;
+        _prefix = prefix;
+    }
+    string Combine(string key) => string.IsNullOrEmpty(_prefix) ? key : _prefix + ":" + key;
+    public string? this[string key] => _data.TryGetValue(Combine(key), out var v) ? v : null;
+    public IConfiguration GetSection(string key) => new MiniConfiguration(_data, Combine(key));
+}
+
+public sealed class ConfigurationBuilder
+{
+    private readonly Dictionary<string, string?> _data = new(StringComparer.OrdinalIgnoreCase);
+    public ConfigurationBuilder AddInMemoryCollection(IEnumerable<KeyValuePair<string, string?>> pairs)
+    {
+        foreach (var kv in pairs) _data[kv.Key] = kv.Value;
+        return this;
+    }
+    public ConfigurationBuilder AddEnvironmentVariables(string prefix = "")
+    {
+        foreach (System.Collections.DictionaryEntry e in Environment.GetEnvironmentVariables())
+        {
+            var k = e.Key?.ToString();
+            if (k is null) continue;
+            if (prefix.Length > 0 && !k.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+            var mapped = prefix.Length == 0 ? k : k[prefix.Length..];
+            _data[mapped.Replace("__", ":")] = e.Value?.ToString();
+        }
+        return this;
+    }
+    public MiniConfiguration Build() => new(_data);
+}
+
+public interface IOptions<out T> { T Value { get; } }
+public sealed class OptionsWrapper<T>(T value) : IOptions<T> { public T Value { get; } = value; }
+
+public enum ServiceLifetime { Singleton, Scoped, Transient }
+
+public sealed class ServiceDescriptor
+{
+    public Type ServiceType { get; }
+    public Type? ImplementationType { get; }
+    public Func<IServiceProvider, object>? Factory { get; }
+    public ServiceLifetime Lifetime { get; }
+    public ServiceDescriptor(Type serviceType, Type implementationType, ServiceLifetime lifetime)
+    {
+        ServiceType = serviceType;
+        ImplementationType = implementationType;
+        Lifetime = lifetime;
+    }
+    public ServiceDescriptor(Type serviceType, Func<IServiceProvider, object> factory, ServiceLifetime lifetime)
+    {
+        ServiceType = serviceType;
+        Factory = factory;
+        Lifetime = lifetime;
+    }
+}
+
+public sealed class ServiceCollection : List<ServiceDescriptor>
+{
+    public void AddSingleton<TService, TImpl>() where TImpl : TService
+        => Add(new ServiceDescriptor(typeof(TService), typeof(TImpl), ServiceLifetime.Singleton));
+    public void AddScoped<TService, TImpl>() where TImpl : TService
+        => Add(new ServiceDescriptor(typeof(TService), typeof(TImpl), ServiceLifetime.Scoped));
+    public void AddTransient<TService, TImpl>() where TImpl : TService
+        => Add(new ServiceDescriptor(typeof(TService), typeof(TImpl), ServiceLifetime.Transient));
+    public void AddTransient<T>() where T : class
+        => Add(new ServiceDescriptor(typeof(T), typeof(T), ServiceLifetime.Transient));
+    public void AddSingleton<TService>(Func<IServiceProvider, TService> factory) where TService : class
+        => Add(new ServiceDescriptor(typeof(TService), sp => factory(sp)!, ServiceLifetime.Singleton));
+    public void Configure<TOptions>(IConfiguration section) where TOptions : class, new()
+    {
+        AddSingleton<IOptions<TOptions>>(sp =>
+        {
+            var opts = new TOptions();
+            foreach (var p in typeof(TOptions).GetProperties())
+            {
+                var raw = section[p.Name];
+                if (raw is null) continue;
+                var target = Nullable.GetUnderlyingType(p.PropertyType) ?? p.PropertyType;
+                p.SetValue(opts, Convert.ChangeType(raw, target));
+            }
+            return new OptionsWrapper<TOptions>(opts);
+        });
+    }
+    public ServiceProvider BuildServiceProvider() => new(this);
+}
+
+public interface IServiceScope : IDisposable { IServiceProvider ServiceProvider { get; } }
+
+public sealed class ServiceProvider : IServiceProvider, IDisposable
+{
+    private readonly ServiceCollection _descriptors;
+    private readonly Dictionary<ServiceDescriptor, object> _singletons = new();
+    public ServiceProvider(ServiceCollection descriptors) => _descriptors = descriptors;
+    public object? GetService(Type serviceType) => Resolve(serviceType, scoped: null);
+    internal object Resolve(Type serviceType, Dictionary<ServiceDescriptor, object>? scoped)
+    {
+        if (serviceType.IsGenericType && serviceType.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+        {
+            var itemType = serviceType.GetGenericArguments()[0];
+            var matches = _descriptors.Where(d => d.ServiceType == itemType).ToList();
+            var arr = Array.CreateInstance(itemType, matches.Count);
+            for (int i = 0; i < matches.Count; i++)
+                arr.SetValue(GetInstance(matches[i], scoped), i);
+            return arr;
+        }
+        var desc = _descriptors.LastOrDefault(d => d.ServiceType == serviceType)
+            ?? throw new InvalidOperationException("未注册服务：" + serviceType.Name);
+        return GetInstance(desc, scoped);
+    }
+    object GetInstance(ServiceDescriptor desc, Dictionary<ServiceDescriptor, object>? scoped)
+    {
+        if (desc.Lifetime == ServiceLifetime.Singleton)
+        {
+            if (_singletons.TryGetValue(desc, out var existing)) return existing;
+            var created = Create(desc, scoped);
+            _singletons[desc] = created;
+            return created;
+        }
+        if (desc.Lifetime == ServiceLifetime.Scoped)
+        {
+            scoped ??= _singletons;
+            if (scoped.TryGetValue(desc, out var existing)) return existing;
+            var created = Create(desc, scoped);
+            scoped[desc] = created;
+            return created;
+        }
+        return Create(desc, scoped);
+    }
+    object Create(ServiceDescriptor desc, Dictionary<ServiceDescriptor, object>? scoped)
+    {
+        if (desc.Factory is not null) return desc.Factory(new ScopedProvider(this, scoped));
+        var type = desc.ImplementationType ?? throw new InvalidOperationException("缺少实现类型");
+        var ctor = type.GetConstructors().OrderByDescending(c => c.GetParameters().Length).First();
+        var args = ctor.GetParameters().Select(p => Resolve(p.ParameterType, scoped)).ToArray();
+        return ctor.Invoke(args);
+    }
+    public IServiceScope CreateScope() => new MiniScope(this);
+    public void Dispose() { }
+    sealed class MiniScope : IServiceScope
+    {
+        private readonly Dictionary<ServiceDescriptor, object> _scoped = new();
+        public IServiceProvider ServiceProvider { get; }
+        public MiniScope(ServiceProvider root)
+        {
+            ServiceProvider = new ScopedProvider(root, _scoped);
+        }
+        public void Dispose() { }
+    }
+    sealed class ScopedProvider(ServiceProvider root, Dictionary<ServiceDescriptor, object>? scoped) : IServiceProvider
+    {
+        public object? GetService(Type serviceType) => root.Resolve(serviceType, scoped);
+    }
+}
+
+public static class MiniServiceProviderExtensions
+{
+    public static T GetRequiredService<T>(this IServiceProvider sp) where T : notnull
+        => (T)(sp.GetService(typeof(T)) ?? throw new InvalidOperationException("未注册：" + typeof(T).Name));
+    public static IEnumerable<T> GetServices<T>(this IServiceProvider sp)
+        => (IEnumerable<T>)(sp.GetService(typeof(IEnumerable<T>)) ?? Array.Empty<T>());
+}
 
 // 配置类
 public class JwtOptions
 {
-    [Required]
     public string Issuer { get; set; } = "";
-    [Range(1, 1440)]
     public int ExpireMinutes { get; set; }
     public string Audience { get; set; } = "";
 }
@@ -1505,7 +1663,7 @@ public class UserController
     group: '第十三部分 工程化实战',
     icon: '🧪',
     title: '单元测试',
-    content: `## 单元测试
+    content: `## 第七十五章　单元测试
 
 ### 一、为什么需要单元测试
 
@@ -1652,7 +1810,13 @@ public class UserRepoTests : IClassFixture<DatabaseFixture>
 {
     public UserRepoTests(DatabaseFixture fixture) { ... }
 }
-\`\`\``,
+\`\`\`
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「单元测试」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// ============================================================
 // 第七十四章 单元测试 —— demo
 // ------------------------------------------------------------
@@ -1991,7 +2155,7 @@ public class BankAccountTests
     group: '第十三部分 工程化实战',
     icon: '🌐',
     title: 'ASP.NET Core 简介',
-    content: `## ASP.NET Core 简介
+    content: `## 第七十六章　ASP.NET Core 简介
 
 ### 一、ASP.NET Core 是什么
 
@@ -2148,7 +2312,13 @@ app.MapGet("/hello", (ILogger<Program> logger) =>
     logger.LogInformation("Hello 被调用");
     return "Hello";
 });
-\`\`\``,
+\`\`\`
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「ASP.NET Core 简介」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// ============================================================
 // 第七十五章 ASP.NET Core 简介 —— demo
 // ------------------------------------------------------------
@@ -2170,7 +2340,7 @@ Console.WriteLine("=== 1. 构建模拟 Web 应用 ===");
 
 var builder = MiniWebApp.CreateBuilder();
 builder.Services.AddSingleton<IUserRepository, InMemoryUserRepository>();
-builder.Services.AddTransient<UserService>();
+// UserService 需要构造函数注入，简易容器的 AddTransient<T>() 要求无参 new()；本 demo 路由只注入仓储。
 
 // 注册中间件（顺序敏感，模拟真实 ASP.NET Core 中间件管线）
 builder.Use(async (ctx, next) =>
@@ -2530,6 +2700,8 @@ public class MiniServiceCollection
     private readonly Dictionary<Type, Func<object>> _factories = new();
     public void AddSingleton<TInterface, TImpl>() where TImpl : TInterface, new()
         => _factories[typeof(TInterface)] = () => new TImpl();
+    public void AddTransient<T>() where T : class, new()
+        => _factories[typeof(T)] = () => new T();
     public void AddTransient<TInterface, TImpl>() where TImpl : TInterface, new()
         => _factories[typeof(TInterface)] = () => new TImpl();
     public MiniServiceProvider Build() => new(_factories);
@@ -2610,7 +2782,7 @@ public static class MiniWebAppExtensions
     group: '第十三部分 工程化实战',
     icon: '🗄️',
     title: 'EF Core 数据访问',
-    content: `## EF Core 数据访问
+    content: `## 第七十七章　EF Core 数据访问
 
 ### 一、EF Core 是什么
 
@@ -2771,7 +2943,13 @@ public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 - \`AsSplitQuery()\`：多个 Include 拆成多个查询（避免笛卡尔爆炸）
 - \`IQueryable\` 链式调用：在数据库层过滤
 - \`CompileQuery\`：编译查询缓存
-- \`AddRange\` 代替循环 \`Add\``,
+- \`AddRange\` 代替循环 \`Add\`
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「EF Core 数据访问」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// ============================================================
 // 第七十六章 EF Core 数据访问 —— demo
 // ------------------------------------------------------------
@@ -3000,6 +3178,8 @@ public class MockDbSet<T> where T : class
         return _data.FirstOrDefault(item => (int)idProp.GetValue(item)! == key);
     }
 
+    public Task<T?> FindAsync(params object[] keys) => Task.FromResult(Find(keys));
+
     public MockQueryable<T> Where(Func<T, bool> predicate) => new(_data.Where(predicate));
     public MockQueryable<T> Include<TProperty>(Func<T, IEnumerable<TProperty>> selector)
     {
@@ -3068,7 +3248,7 @@ public class MockDatabase
     }
 }
 
-public class MockTransaction : IAsyncDisposable
+public class MockTransaction : IAsyncDisposable, IDisposable
 {
     public Task CommitAsync()
     {
@@ -3087,6 +3267,8 @@ public class MockTransaction : IAsyncDisposable
         Console.WriteLine("  [Transaction] DisposeAsync()");
         return ValueTask.CompletedTask;
     }
+
+    public void Dispose() { }
 }
 
 // Fluent API 风格的配置（演示）
@@ -3106,7 +3288,7 @@ public class EntityBuilder<TEntity> where TEntity : class
     public EntityBuilder<TEntity> HasKey<TKey>(Func<TEntity, TKey> selector) => this;
     public EntityBuilder<TEntity> HasIndex<TProp>(Func<TEntity, TProp> selector) => this;
     public EntityBuilder<TEntity> HasMany<TNav>(Func<TEntity, IEnumerable<TNav>> selector) => this;
-    public EntityBuilder<TEntity> Property<TProp>(Func<TEntity, TProp> selector) => new PropertyBuilder<TEntity>();
+    public PropertyBuilder<TEntity> Property<TProp>(Func<TEntity, TProp> selector) => new PropertyBuilder<TEntity>();
 }
 
 public class PropertyBuilder<TEntity> where TEntity : class
@@ -3126,7 +3308,7 @@ public class PropertyBuilder<TEntity> where TEntity : class
     group: '第十三部分 工程化实战',
     icon: '🎯',
     title: '综合项目实战',
-    content: `## 综合项目实战：迷你任务管理系统
+    content: `## 第七十八章　综合项目实战
 
 ### 一、项目背景
 
@@ -3241,7 +3423,13 @@ taskmanager delete 2                # 删除任务 2
 - **单一职责**：每个类只做一件事
 - **依赖倒置**：Service 依赖接口而非具体实现
 - **开闭原则**：增加功能不改老代码
-- **异常分层**：底层抛异常，上层捕获并友好提示`,
+- **异常分层**：底层抛异常，上层捕获并友好提示
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「综合项目实战」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// ============================================================
 // 第七十七章 综合项目实战：迷你任务管理系统
 // ------------------------------------------------------------
@@ -3287,10 +3475,10 @@ var commands = new[]
     new[] { "stats" },
 };
 
-foreach (var args in commands)
+foreach (var argv in commands)
 {
-    Console.WriteLine($"\\n$ taskmanager {string.Join(" ", args)}");
-    await app.RunAsync(args);
+    Console.WriteLine($"\\n$ taskmanager {string.Join(" ", argv)}");
+    await app.RunAsync(argv);
 }
 
 // 清理临时文件
@@ -3797,7 +3985,13 @@ C# 是一门设计精良的语言，融合了静态类型的严谨与动态语�
 
 愿你写出优雅、稳健、高性能的 C# 代码。下一站见！
 
-> 本书完。`,
+> 本书完。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「结语与学习路线」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// ============================================================
 // 结语：全书总结示例代码
 // ------------------------------------------------------------

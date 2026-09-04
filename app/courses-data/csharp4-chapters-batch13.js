@@ -22,7 +22,7 @@ const chapters = [
     group: '第十一部分 内存管理与性能',
     icon: '♻️',
     title: '垃圾回收',
-    content: `## 第六十四章　垃圾回收
+    content: `## 第六十五章　垃圾回收
 
 C# 之所以能让你「\`new\` 完就跑」而不用操心释放，全靠**垃圾回收器（Garbage Collector，GC）**。但「不用操心」不等于「可以乱写」——理解 GC 的工作机制，是写出高性能、低延迟 C# 代码的前提。
 
@@ -171,7 +171,13 @@ GC.UnregisterForFullGCNotification();
 - 大对象（≥85000B）进 LOH，默认不压缩、直接 Gen2。
 - Server GC 适合多核服务端，吞吐高。
 - 想测量分配：\`GC.GetAllocatedBytesForCurrentThread()\`、\`GC.GetTotalMemory()\`。
-- 别乱调 \`GC.Collect()\`，让 GC 自己决定。`,
+- 别乱调 \`GC.Collect()\`，让 GC 自己决定。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「垃圾回收」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 —— 垃圾回收机制演示
 using System;
 using System.Diagnostics;
@@ -193,7 +199,7 @@ GC.Collect();
 GC.WaitForPendingFinalizers();
 GC.Collect();
 
-Console.WriteLine($"初始 Gen0 内存: {GC.GetGCMemoryInfo().GenerationInfo[0].SizeAfterMemory:N0} bytes");
+Console.WriteLine($"初始 Gen0 内存: {GC.GetGCMemoryInfo().GenerationInfo[0].SizeAfterBytes:N0} bytes");
 
 // 创建一批短生命周期对象，触发 Gen0 回收
 for (int i = 0; i < 100_000; i++)
@@ -202,11 +208,11 @@ for (int i = 0; i < 100_000; i++)
 }
 
 // 此时大部分 temp 应该已经没人引用了
-Console.WriteLine($"分配后 Gen0 内存: {GC.GetGCMemoryInfo().GenerationInfo[0].SizeAfterMemory:N0} bytes");
+Console.WriteLine($"分配后 Gen0 内存: {GC.GetGCMemoryInfo().GenerationInfo[0].SizeAfterBytes:N0} bytes");
 
 // 手动触发 Gen0 回收
 GC.Collect(0);
-Console.WriteLine($"Gen0 回收后: {GC.GetGCMemoryInfo().GenerationInfo[0].SizeAfterMemory:N0} bytes");
+Console.WriteLine($"Gen0 回收后: {GC.GetGCMemoryInfo().GenerationInfo[0].SizeAfterBytes:N0} bytes");
 
 // === 3. 对象晋升演示 ===
 Console.WriteLine("\\n=== 对象晋升演示 ===");
@@ -221,7 +227,7 @@ Console.WriteLine($"Gen1 回收后所在代: {GC.GetGeneration(survivor)}");  //
 
 // === 4. LOH（大对象堆）演示 ===
 Console.WriteLine("\\n=== LOH 大对象堆演示 ===");
-GcMemoryInfo infoBefore = GC.GetGCMemoryInfo();
+GCMemoryInfo infoBefore = GC.GetGCMemoryInfo();
 Console.WriteLine($"LOH 回收前大小: {infoBefore.HeapSizeBytes:N0} bytes 总计");
 
 // 分配一个 ≥85000 字节的大数组 → 直接进 LOH（Gen2）
@@ -304,7 +310,7 @@ Console.WriteLine("\\n=== 完成 ===");`,
     group: '第十一部分 内存管理与性能',
     icon: '🧹',
     title: 'IDisposable 与 Finalizer',
-    content: `## 第六十五章　IDisposable 与 Finalizer
+    content: `## 第六十六章　IDisposable 与 Finalizer
 
 GC 管得了托管内存，但管不了**非托管资源**：文件句柄、数据库连接、网络 socket、native 内存、加密上下文。这些必须**显式释放**，否则就泄漏。本章讲 .NET 处理资源释放的完整套路。
 
@@ -514,7 +520,13 @@ await conn.OpenAsync();
 - 完整 Dispose 模式：\`Dispose(bool)\` + \`GC.SuppressFinalize\` + 可选 Finalizer。
 - **能不写 Finalizer 就不写**，用 \`SafeHandle\` 包装 native 资源。
 - 异步资源实现 \`IAsyncDisposable\`，用 \`await using\`。
-- 已释放对象抛 \`ObjectDisposedException\` 提醒调用方。`,
+- 已释放对象抛 \`ObjectDisposedException\` 提醒调用方。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「IDisposable 与 Finalizer」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 —— IDisposable / Finalizer / SafeHandle / IAsyncDisposable 全套演示
 using System;
 using System.Runtime.InteropServices;
@@ -751,7 +763,7 @@ static class NativeMethods
     group: '第十一部分 内存管理与性能',
     icon: '⚡',
     title: 'Span 与 Memory',
-    content: `## 第六十六章　Span 与 Memory
+    content: `## 第六十七章　Span 与 Memory
 
 \`Span<T>\` 是 .NET Core 以来最重要的性能 API 之一，被称为「C# 性能的瑞士军刀」。它让你**零拷贝**地操作一段连续内存——数组、字符串、stackalloc、native 内存——统统统一为一种视图。
 
@@ -921,7 +933,13 @@ string result = string.Create(10, 42, (span, value) =>
 - 栈上小缓冲用 \`stackalloc\`，堆上复用大数组用 \`ArrayPool\`。
 - \`CollectionsMarshal.AsSpan\` 直接访问 List 内部数组，性能利器但要小心扩容。
 - \`String.Create\` 跳过 StringBuilder 中间步骤，直接构造字符串。
-- \`ref struct\` 限制多但保证安全，理解它就能用好 Span。`,
+- \`ref struct\` 限制多但保证安全，理解它就能用好 Span。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「Span 与 Memory」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 —— Span/Memory/ArrayPool/stackalloc 高性能字符串解析演示
 using System;
 using System.Buffers;
@@ -997,7 +1015,7 @@ finally
 // === 5. Memory<T>：可跨 await ===
 Console.WriteLine("\\n=== Memory<T> 跨异步 ===");
 Memory<int> mem = new[] { 10, 20, 30, 40, 50 }.AsMemory();
-await ProcessAsync(mem);
+ProcessAsync(mem).GetAwaiter().GetResult();  // 顶级语句保持同步，才能使用 Span
 Console.WriteLine($"  处理后 mem[0] = {mem.Span[0]}");
 
 // === 6. CollectionsMarshal.AsSpan：直接访问 List 内部数组 ===
@@ -1088,7 +1106,12 @@ finally
 async Task ProcessAsync(Memory<int> mem)
 {
     await Task.Delay(10);  // 模拟 IO
-    Span<int> s = mem.Span;  // Memory → Span（在 await 之后才用 Span）
+    DoubleInPlace(mem);    // Span 必须放在同步方法里
+}
+
+void DoubleInPlace(Memory<int> mem)
+{
+    Span<int> s = mem.Span;
     for (int i = 0; i < s.Length; i++) s[i] *= 2;
 }`,
     lang: 'cs',
@@ -1102,7 +1125,7 @@ async Task ProcessAsync(Memory<int> mem)
     group: '第十一部分 内存管理与性能',
     icon: '📊',
     title: 'ref struct 与 ref readonly',
-    content: `## 第六十七章　ref struct 与 ref readonly
+    content: `## 第六十八章　ref struct 与 ref readonly
 
 上一章我们用 \`Span<T>\` 时反复提到一个概念：**ref struct**。本章深入这套「按引用语义」的类型系统——它是 C# 性能编程的底层语法基础。
 
@@ -1291,7 +1314,13 @@ finally
 - \`ref return\` 让方法返回可写引用，零拷贝修改。
 - \`scoped\` 显式禁止 ref 逃逸，C# 11 安全上下文让规则更精细。
 - \`nint\` / \`UnmanagedCallersOnly\` 服务于 native 互操作。
-- \`Unsafe\` 类提供底层指针操作，写底层库必备。`,
+- \`Unsafe\` 类提供底层指针操作，写底层库必备。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「ref struct 与 ref readonly」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 —— ref struct / ref readonly / ref 字段 / scoped / nint 全套演示
 using System;
 using System.Diagnostics;
@@ -1320,7 +1349,7 @@ Console.WriteLine($"  外部 num = {num} (应是 999)");
 // === 3. in 参数：按引用传递大 struct ===
 Console.WriteLine("\\n=== in 参数 ===");
 BigVector vec = new() { X = 1.5, Y = 2.5, Z = 3.5 };
-PrintVector(in vec);  // 不拷贝整个 struct
+Helpers.PrintVector(in vec);  // 不拷贝整个 struct
 
 // === 4. ref 返回：直接修改内部数据 ===
 Console.WriteLine("\\n=== ref 返回 ===");
@@ -1332,7 +1361,7 @@ Console.WriteLine($"  container[0] = {container[0]}, [1] = {container[1]}");
 // === 5. scoped 修饰符 ===
 Console.WriteLine("\\n=== scoped 修饰符 ===");
 Span<int> local = stackalloc int[] { 1, 2, 3 };
-ProcessScoped(local);
+Helpers.ProcessScoped(local);
 Console.WriteLine($"  scoped 处理后: {local[0]}, {local[1]}, {local[2]}");
 
 // === 6. nint 平台相关整数 ===
@@ -1449,11 +1478,7 @@ ref struct RefHolder<T>
         _value = ref value;  // 引用赋值，不拷贝
     }
 
-    public ref T Value
-    {
-        get => ref _value;   // ref 返回
-        set => _value = ref value;  // ref 赋值
-    }
+    public ref T Value => ref _value;  // ref 返回；赋值 holder.Value = x 会写入引用目标
 }
 
 // in 参数演示用的大 struct
@@ -1512,7 +1537,7 @@ static class NativeCallbacks
     group: '第十一部分 内存管理与性能',
     icon: '🚀',
     title: '性能优化技巧',
-    content: `## 第六十八章　性能优化技巧
+    content: `## 第六十九章　性能优化技巧
 
 写代码「能跑」和「跑得快」是两码事。本章总结 .NET 8 / C# 12 性能优化的**高频技巧**与**常见反模式**，让你写出少分配、少 GC、少拷贝的代码。
 
@@ -1749,7 +1774,13 @@ struct Header { public int Id; public byte Type; }  // Pack=1 紧凑布局
 - \`static\` lambda 避免闭包分配。
 - \`ObjectPool<T>\` 复用昂贵对象。
 - 位运算 / \`BitOperations\` / \`Vector<T>\` SIMD 加速数值计算。
-- NativeAOT 适合启动敏感场景，但有反射限制。`,
+- NativeAOT 适合启动敏感场景，但有反射限制。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「性能优化技巧」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// C# 12 顶级语句 —— 性能优化技巧对比演示
 using System;
 using System.Buffers;
@@ -1758,7 +1789,7 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-using Microsoft.Extensions.ObjectPool;
+using System.Collections.Concurrent;
 
 // === 1. 字符串拼接性能对比 ===
 Console.WriteLine("=== 字符串拼接性能对比 ===");
@@ -1888,9 +1919,8 @@ sw.Stop();
 Console.WriteLine($"  static lambda: {sw.ElapsedMilliseconds} ms, 分配 {memStatic:N0} bytes");
 
 // === 6. ObjectPool<StringBuilder> ===
-Console.WriteLine("\\n=== ObjectPool 复用对象 ===");
-var sbPool = new DefaultObjectPool<StringBuilder>(
-    new DefaultPooledObjectPolicy<StringBuilder>(), maximumRetained: 16);
+Console.WriteLine("\\n=== 简易对象池复用 StringBuilder ===");
+var sbPool = new SimpleObjectPool<StringBuilder>(maximumRetained: 16, reset: sb => sb.Clear());
 
 sw.Restart();
 memBefore = GC.GetAllocatedBytesForCurrentThread();
@@ -1906,7 +1936,7 @@ for (int i = 0; i < 10_000; i++)
 }
 long memObjPool = GC.GetAllocatedBytesForCurrentThread() - memBefore;
 sw.Stop();
-Console.WriteLine($"  ObjectPool: {sw.ElapsedMilliseconds} ms, 分配 {memObjPool:N0} bytes");
+Console.WriteLine($"  对象池: {sw.ElapsedMilliseconds} ms, 分配 {memObjPool:N0} bytes");
 
 // === 7. SIMD 向量计算 ===
 Console.WriteLine("\\n=== SIMD 向量计算 ===");
@@ -1982,7 +2012,29 @@ sw.Stop();
 Console.WriteLine($"  string.Create 10w 次: {sw.ElapsedMilliseconds} ms, 分配 {memCreate:N0} bytes");
 
 Console.WriteLine("\\n=== 性能优化演示完成 ===");
-Console.WriteLine("提示：以上为示意性测量，正式基准测试请用 BenchmarkDotNet");`,
+Console.WriteLine("提示：以上为示意性测量，正式基准测试请用 BenchmarkDotNet");
+
+sealed class SimpleObjectPool<T> where T : class, new()
+{
+    private readonly ConcurrentQueue<T> _items = new();
+    private readonly int _maximumRetained;
+    private readonly Action<T>? _reset;
+
+    public SimpleObjectPool(int maximumRetained = 16, Action<T>? reset = null)
+    {
+        _maximumRetained = maximumRetained;
+        _reset = reset;
+    }
+
+    public T Get() => _items.TryDequeue(out var item) ? item : new T();
+
+    public void Return(T item)
+    {
+        _reset?.Invoke(item);
+        if (_items.Count < _maximumRetained)
+            _items.Enqueue(item);
+    }
+}`,
     lang: 'cs',
   },
 ];

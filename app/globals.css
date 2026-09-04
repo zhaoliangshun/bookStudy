@@ -1474,6 +1474,16 @@ img {
   color: var(--text);
 }
 
+.md-link {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.md-link:hover {
+  opacity: 0.85;
+}
+
 .md-code-block {
   background: var(--editor-bg);
   color: var(--text);

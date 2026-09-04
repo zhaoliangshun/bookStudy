@@ -23,7 +23,7 @@ const chapters = [
     group: '第二部分 核心语法',
     icon: '🔢',
     title: '变量与常量',
-    content: `## 第六章 变量与常量
+    content: `## 第六章　变量与常量
 
 变量是程序存放数据的「盒子」。本章我们把这个盒子的方方面面彻底讲透：怎么命名、怎么声明、放在哪里、能不能改、什么时候该用 \`const\`、什么时候该用 \`readonly\`，以及 \`var\` 这个看似方便其实暗藏玄机的关键字。
 
@@ -177,7 +177,13 @@ DateTime dt = default;  // 0001-01-01 00:00:00
 - 显式类型清晰，\`var\` 简洁，看场景选择。
 - \`const\` 编译期、\`readonly\` 运行期，跨程序集要小心。
 - 变量必须先赋值后使用，字段有默认值。
-- 命名用 \`camelCase\`，要见名知意。`,
+- 命名用 \`camelCase\`，要见名知意。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「变量与常量」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// 第六章 变量与常量 —— 可在 .NET 8 控制台应用直接运行
 // 顶级语句：直接写代码，不需要 class Program / Main
 
@@ -328,7 +334,7 @@ class DefaultDemo
     group: '第二部分 核心语法',
     icon: '🔤',
     title: '内置类型详解',
-    content: `## 第七章 内置类型详解
+    content: `## 第七章　内置类型详解
 
 C# 提供了一套丰富的内置类型，覆盖整型、浮点、字符、布尔、对象等。本章把这些类型的取值范围、字面量写法、内存占用讲得清清楚楚，让你以后写代码时不再为「用 int 还是 long」「用 double 还是 decimal」纠结。
 
@@ -441,7 +447,13 @@ int value = BitConverter.ToInt32(bytes, 0);
 - 整型默认用 \`int\`，超过 21 亿用 \`long\`。
 - 金额用 \`decimal\`，科学计算用 \`double\`。
 - 字面量后缀用大写：\`L\`、\`F\`、\`M\`。
-- 善用 \`_\` 分隔符和 \`0b\`、\`0x\` 前缀提升可读性。`,
+- 善用 \`_\` 分隔符和 \`0b\`、\`0x\` 前缀提升可读性。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「内置类型详解」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// 第七章 内置类型详解 —— 可在 .NET 8 控制台应用直接运行
 using System.Globalization;
 
@@ -611,7 +623,7 @@ checked
     group: '第二部分 核心语法',
     icon: '⚖️',
     title: '值类型与引用类型',
-    content: `## 第八章 值类型与引用类型
+    content: `## 第八章　值类型与引用类型
 
 C# 的类型系统分两大阵营：**值类型**和**引用类型**。理解它们的差异，是写出正确、高效 C# 代码的关键。本章用图示和 demo 把这两个概念彻底讲透。
 
@@ -742,65 +754,81 @@ Console.WriteLine(t.Name); // Int32
 - string 是引用类型但不可变，表现像值类型。
 - 装箱拆箱有性能开销，用泛型避免。
 - \`is\` 判断类型，\`typeof\` 获取 Type。
-- struct 用于小型值语义，class 用于对象。`,
+- struct 用于小型值语义，class 用于对象。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「值类型与引用类型」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// 第八章 值类型与引用类型 —— 可在 .NET 8 控制台应用直接运行
+
 using System.Diagnostics;
 
-// ============================================================
-// 1. 值类型赋值 = 拷贝数据
-// ============================================================
 int a = 10;
-int b = a;                  // b 拷贝了 a 的值
-b = 999;                    // 修改 b 不影响 a
+
+int b = a;
+
+b = 999;
+
 Console.WriteLine($"===== 值类型拷贝 =====");
+
 Console.WriteLine($"a = {a}, b = {b}（修改 b 不影响 a）");
 
-// 自定义 struct 演示值语义
 var p1 = new Point { X = 1, Y = 2 };
-var p2 = p1;                // struct 赋值 = 整体拷贝
-p2.X = 100;                 // 修改 p2 不影响 p1
+
+var p2 = p1;
+
+p2.X = 100;
+
 Console.WriteLine($"Point p1.X = {p1.X}, p2.X = {p2.X}（struct 也是值类型）");
 
-// ============================================================
-// 2. 引用类型赋值 = 拷贝引用（指向同一对象）
-// ============================================================
 var u1 = new User { Name = "Tom", Age = 18 };
-var u2 = u1;                // u2 和 u1 指向堆上同一个对象
-u2.Name = "Jerry";          // 修改 u2 实际改的是共享对象
+
+var u2 = u1;
+
+u2.Name = "Jerry";
+
 Console.WriteLine($"\\n===== 引用类型共享 =====");
+
 Console.WriteLine($"u1.Name = {u1.Name}, u2.Name = {u2.Name}（指向同一对象）");
 
-// 数组也是引用类型
 int[] arr1 = { 1, 2, 3 };
-int[] arr2 = arr1;          // 共享同一数组
+
+int[] arr2 = arr1;
+
 arr2[0] = 999;
+
 Console.WriteLine($"arr1[0] = {arr1[0]}（数组是引用类型）");
 
-// ============================================================
-// 3. string 的特殊性：引用类型但不可变
-// ============================================================
 string s1 = "hello";
-string s2 = s1;             // s2 和 s1 暂时指向同一对象
-s2 = "world";               // 修改 s2 会创建新对象，s1 不变
+
+string s2 = s1;
+
+s2 = "world";
+
 Console.WriteLine($"\\n===== string 不可变性 =====");
+
 Console.WriteLine($"s1 = {s1}, s2 = {s2}（string 修改会创建新对象）");
 
-// string 方法调用也不修改原对象
 string original = "Hello";
-string upper = original.ToUpper();  // 返回新 string
+
+string upper = original.ToUpper();
+
 Console.WriteLine($"original = {original}, upper = {upper}（ToUpper 不修改原值）");
 
-// ============================================================
-// 4. 装箱与拆箱
-// ============================================================
 int num = 42;
-object boxed = num;         // 装箱：值类型 → object，在堆上创建副本
-int unboxed = (int)boxed;   // 拆箱：object → 值类型
+
+object boxed = num;
+
+int unboxed = (int)boxed;
+
 Console.WriteLine($"\\n===== 装箱拆箱 =====");
+
 Console.WriteLine($"原值 = {num}, 装箱后 = {boxed}, 拆箱后 = {unboxed}");
+
 Console.WriteLine($"boxed 类型 = {boxed.GetType().Name}（值类型被装箱成 object）");
 
-// 错误的拆箱会抛异常
 try
 {
     object badBox = 42;
@@ -812,34 +840,40 @@ catch (InvalidCastException ex)
     Console.WriteLine($"拆箱类型不匹配：{ex.Message}");
 }
 
-// ============================================================
-// 5. 装箱性能对比：ArrayList vs List<int>
-// ============================================================
 Console.WriteLine($"\\n===== 装箱性能对比 =====");
+
 var sw = Stopwatch.StartNew();
+
 var arrayList = new System.Collections.ArrayList();
+
 for (int k = 0; k < 1_000_000; k++)
 {
     arrayList.Add(k);       // 每次 Add 都装箱（int → object）
 }
+
 sw.Stop();
+
 Console.WriteLine($"ArrayList（每次装箱）100 万次：{sw.ElapsedMilliseconds} ms");
 
 sw.Restart();
+
 var list = new List<int>();
+
 for (int k = 0; k < 1_000_000; k++)
 {
     list.Add(k);            // 泛型 List<int> 无装箱
 }
+
 sw.Stop();
+
 Console.WriteLine($"List<int>（无装箱）100 万次：{sw.ElapsedMilliseconds} ms");
+
 Console.WriteLine("→ 高频路径务必用泛型集合！");
 
-// ============================================================
-// 6. is 关键字：判断类型 + 模式匹配
-// ============================================================
 Console.WriteLine($"\\n===== is 关键字 =====");
+
 object[] objects = { 42, "hello", 3.14, true, new User { Name = "Anna", Age = 20 } };
+
 foreach (object o in objects)
 {
     if (o is int intVal)                // 模式匹配：是 int 就赋值给 intVal
@@ -864,55 +898,68 @@ foreach (object o in objects)
     }
 }
 
-// is 还可以判断是否可转换
 object maybeNull = null;
+
 Console.WriteLine($"null is string: {maybeNull is string}（null 安全判断）");
 
-// ============================================================
-// 7. typeof 运算符：编译期获取类型
-// ============================================================
 Console.WriteLine($"\\n===== typeof =====");
+
 Type intType = typeof(int);
+
 Type stringType = typeof(string);
+
 Type userType = typeof(User);
+
 Console.WriteLine($"typeof(int)    = {intType.FullName}");
+
 Console.WriteLine($"typeof(string) = {stringType.FullName}");
+
 Console.WriteLine($"typeof(User)   = {userType.FullName}");
+
 Console.WriteLine($"int 是值类型？{intType.IsValueType}");
+
 Console.WriteLine($"string 是值类型？{stringType.IsValueType}");
 
-// typeof vs GetType() 的区别
 int x = 5;
+
 Console.WriteLine($"typeof(int) == x.GetType() ? {typeof(int) == x.GetType()}");
 
-// ============================================================
-// 8. struct vs class 内存演示
-// ============================================================
 Console.WriteLine($"\\n===== struct vs class =====");
-// struct：拷贝传参，原对象不受影响
+
 var sp1 = new StructPoint { X = 10, Y = 20 };
-var sp2 = sp1;              // 拷贝
-ModifyStruct(sp1);          // 拷贝传参，修改不影响原值
+
+var sp2 = sp1;
+
+ModifyStruct(sp1);
+
 Console.WriteLine($"struct 传参后 sp1.X = {sp1.X}（未变）");
 
-// class：引用传参，原对象被修改
 var cp1 = new ClassPoint { X = 10, Y = 20 };
-var cp2 = cp1;              // 共享引用
-ModifyClass(cp1);           // 引用传参，修改原对象
+
+var cp2 = cp1;
+
+ModifyClass(cp1);
+
 Console.WriteLine($"class 传参后 cp1.X = {cp1.X}（已变）");
 
-// ============================================================
-// 类型声明放在文件末尾
-// ============================================================
+void ModifyStruct(StructPoint p)
+{
+    p.X = 999;
+}
 
-// struct：值类型
+void ModifyClass(ClassPoint p)
+{
+    p.X = 999;
+}
+
+// ============ 类型声明（必须放在所有顶级语句之后） ============
+
 struct Point
 {
     public int X;
     public int Y;
 }
 
-// class：引用类型
 class User
 {
     public string Name { get; set; }
@@ -930,18 +977,7 @@ struct StructPoint
     public int X;
     public int Y;
 }
-
-// 修改 struct 的方法（值传递，不影响原值）
-void ModifyStruct(StructPoint p)
-{
-    p.X = 999;
-}
-
-// 修改 class 的方法（引用传递，影响原对象）
-void ModifyClass(ClassPoint p)
-{
-    p.X = 999;
-}`,
+`,
     lang: 'cs',
   },
 
@@ -953,7 +989,7 @@ void ModifyClass(ClassPoint p)
     group: '第二部分 核心语法',
     icon: '➕',
     title: '运算符',
-    content: `## 第九章 运算符
+    content: `## 第九章　运算符
 
 运算符是程序里「做计算」的工具。C# 的运算符种类繁多，从加减乘除到位移、从条件判断到 null 处理，本章一次性讲清楚。
 
@@ -985,10 +1021,10 @@ void ModifyClass(ClassPoint p)
 | 运算符 | 含义 | 说明 |
 | --- | --- | --- |
 | && | 短路与 | 左边 false 时右边不计算 |
-| \|\| | 短路或 | 左边 true 时右边不计算 |
+| || | 短路或 | 左边 true 时右边不计算 |
 | ! | 非 | 取反 |
 | & | 逻辑与 | 不短路，两边都算 |
-| \| | 逻辑或 | 不短路，两边都算 |
+| | | 逻辑或 | 不短路，两边都算 |
 | ^ | 异或 | 两边不同为 true |
 
 > 日常用 \`&&\` 和 \`||\`，\`&\` \`|\` 主要用于位运算或需要副作用的场景。
@@ -1108,7 +1144,13 @@ public static Vector operator +(Vector a, Vector b) => new(a.X + b.X, a.Y + b.Y)
 - 逻辑用 \`&&\` \`||\` 短路版本。
 - null 处理三件套：\`??\` \`?.\` \`??=\`。
 - \`is\` 判断、\`as\` 转换、\`typeof\` 取类型。
-- 优先级记不清就加括号。`,
+- 优先级记不清就加括号。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「运算符」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// 第九章 运算符 —— 可在 .NET 8 控制台应用直接运行
 using System.Diagnostics;
 
@@ -1369,7 +1411,7 @@ class User
     group: '第二部分 核心语法',
     icon: '📝',
     title: '字符串详解',
-    content: `## 第十章 字符串详解
+    content: `## 第十章　字符串详解
 
 字符串是日常开发使用频率最高的类型之一。C# 的 \`string\` 看似简单，其实有大量细节：不可变、驻留、性能、各种 API。本章系统讲清楚。
 
@@ -1545,7 +1587,13 @@ string.IsNullOrWhiteSpace(s); // null 或 "" 或只有空白字符
 - 循环拼接用 \`StringBuilder\`，否则用 \`+\` 即可。
 - 比较显式指定 \`StringComparison\`。
 - 空判断用 \`IsNullOrWhiteSpace\`。
-- 路径、正则用 \`@"..."\`。`,
+- 路径、正则用 \`@"..."\`。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「字符串详解」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// 第十章 字符串详解 —— 可在 .NET 8 控制台应用直接运行
 using System.Diagnostics;
 using System.Text;
@@ -1617,8 +1665,9 @@ Console.WriteLine($"排序后：{string.Join(", ", names)}");
 // 6. 大小写转换
 // ============================================================
 Console.WriteLine("\\n===== 大小写转换 =====");
-Console.WriteLine($"\"Hello\" 大写 = {"Hello".ToUpper()}");
-Console.WriteLine($"\"Hello\" 小写 = {"Hello".ToLower()}");
+string hello = "Hello";
+Console.WriteLine($"\\"{hello}\\" 大写 = {hello.ToUpper()}");
+Console.WriteLine($"\\"{hello}\\" 小写 = {hello.ToLower()}");
 
 // ============================================================
 // 7. 字符串查找
@@ -1626,13 +1675,13 @@ Console.WriteLine($"\"Hello\" 小写 = {"Hello".ToLower()}");
 Console.WriteLine("\\n===== 字符串查找 =====");
 string sentence = "The quick brown fox jumps over the lazy dog";
 Console.WriteLine($"句子：{sentence}");
-Console.WriteLine($"Contains(\"fox\") = {sentence.Contains("fox")}");
-Console.WriteLine($"Contains(\"cat\") = {sentence.Contains("cat")}");
-Console.WriteLine($"StartsWith(\"The\") = {sentence.StartsWith("The")}");
-Console.WriteLine($"EndsWith(\"dog\") = {sentence.EndsWith("dog")}");
-Console.WriteLine($"IndexOf(\"the\") = {sentence.IndexOf("the")}（区分大小写）");
-Console.WriteLine($"IndexOf(\"the\", OrdinalIgnoreCase) = {sentence.IndexOf("the", StringComparison.OrdinalIgnoreCase)}");
-Console.WriteLine($"LastIndexOf(\"the\") = {sentence.LastIndexOf("the", StringComparison.OrdinalIgnoreCase)}");
+Console.WriteLine($"Contains(\\"fox\\") = {sentence.Contains("fox")}");
+Console.WriteLine($"Contains(\\"cat\\") = {sentence.Contains("cat")}");
+Console.WriteLine($"StartsWith(\\"The\\") = {sentence.StartsWith("The")}");
+Console.WriteLine($"EndsWith(\\"dog\\") = {sentence.EndsWith("dog")}");
+Console.WriteLine($"IndexOf(\\"the\\") = {sentence.IndexOf("the")}（区分大小写）");
+Console.WriteLine($"IndexOf(\\"the\\", OrdinalIgnoreCase) = {sentence.IndexOf("the", StringComparison.OrdinalIgnoreCase)}");
+Console.WriteLine($"LastIndexOf(\\"the\\") = {sentence.LastIndexOf("the", StringComparison.OrdinalIgnoreCase)}");
 
 // ============================================================
 // 8. 字符串截取
@@ -1792,7 +1841,7 @@ foreach (string testCase in testCases)
     group: '第二部分 核心语法',
     icon: '🎨',
     title: '字符串格式化与插值',
-    content: `## 第十一章 字符串格式化与插值
+    content: `## 第十一章　字符串格式化与插值
 
 把数字、日期、对象变成漂亮的字符串，是日常开发的高频任务。C# 提供了强大的格式化体系：字符串插值、\`string.Format\`、各种格式说明符。本章把这些工具彻底讲清。
 
@@ -1952,7 +2001,13 @@ public string Format(string format, object arg, IFormatProvider provider)
 - 数字用 C/D/F/N/P/X，日期用 yyyy-MM-dd。
 - 表格用对齐 \`{0, 10}\`。
 - 路径用 \`$@""\` 组合。
-- 国际化场景考虑 \`IFormattable\`。`,
+- 国际化场景考虑 \`IFormattable\`。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「字符串格式化与插值」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
     code: `// 第十一章 字符串格式化与插值 —— 可在 .NET 8 控制台应用直接运行
 using System.Globalization;
 using System.Text;
@@ -2045,7 +2100,8 @@ Console.WriteLine($"f (完整日期时间) = {now:f}");
 
 // TimeSpan 格式化
 TimeSpan ts = TimeSpan.FromHours(2.5);
-Console.WriteLine($"TimeSpan：{ts:h\\:mm\\:ss}");   // 注意冒号需要转义
+Console.WriteLine($"TimeSpan 默认：{ts}");          // 02:30:00
+Console.WriteLine($"TimeSpan 自拼：{ts.Hours:D2}:{ts.Minutes:D2}:{ts.Seconds:D2}");
 
 // ============================================================
 // 6. 对齐与填充（表格输出）
@@ -2200,6 +2256,195 @@ class ReverseFormatter : IFormatProvider, ICustomFormatter
         return arg?.ToString() ?? "";
     }
 }`,
+    lang: 'cs',
+  },
+
+  // ============================================================
+  // 数组（核心语法补章：在集合之前必须先会数组）
+  // ============================================================
+  {
+    id: 'csharp4-ch-arrays',
+    group: '第二部分 核心语法',
+    icon: '📦',
+    title: '数组',
+    content: `## 第十二章　数组
+
+数组是 C# 里最基础的连续存储结构：长度固定、按下标随机访问、元素类型统一。List / LINQ / Span 都建立在数组之上，所以在进入集合框架之前必须先把它用熟。
+
+### 一、声明与初始化
+
+\`\`\`csharp
+int[] a = new int[3];          // 长度 3，元素默认 0
+int[] b = new int[] { 1, 2, 3 };
+int[] c = { 1, 2, 3 };         // 声明时才能省略 new
+int[] d = [1, 2, 3];           // C# 12 集合表达式，推荐
+int[] empty = [];              // 空数组，等价 Array.Empty<int>()
+\`\`\`
+
+数组长度一旦创建就不能改。要"扩容"只能 \`new\` 一块更大的再拷贝，这正是 \`List<T>\` 内部在做的事。
+
+### 二、下标、长度与范围
+
+下标从 0 开始，\`Length\` 是元素个数。越界抛 \`IndexOutOfRangeException\`。
+
+C# 8 起支持 **Index** 和 **Range**：
+
+| 写法 | 含义 |
+| --- | --- |
+| \`arr[^1]\` | 最后一个元素 |
+| \`arr[^2]\` | 倒数第二个 |
+| \`arr[1..3]\` | 下标 1、2（不含 3） |
+| \`arr[..2]\` | 从头到下标 2（不含） |
+| \`arr[2..]\` | 从下标 2 到末尾 |
+| \`arr[..]\` | 整段（浅拷贝成新数组） |
+
+\`arr[1..3]\` 对数组会**分配新数组**；如果只是只读查看，后面 \`Span<T>\` 章节的 \`AsSpan(1, 2)\` 才是零拷贝。
+
+### 三、遍历
+
+\`\`\`csharp
+foreach (int n in arr) { /* 只读遍历，最常用 */ }
+for (int i = 0; i < arr.Length; i++) { arr[i]++; }  // 需要下标或要改元素时用 for
+\`\`\`
+
+\`foreach\` 遍历数组时不能改集合结构（数组长度本来就不能改），但**可以改元素值**：\`foreach\` 里的循环变量是拷贝，改 \`n = 1\` 不影响数组；要用 \`for\` 才能 \`arr[i] = 1\`。
+
+### 四、多维数组 vs 交错数组
+
+**多维数组**（矩形）：\`int[,]\` 一行一行连续存放，\`GetLength(0)\` 是行数，\`GetLength(1)\` 是列数。
+
+**交错数组**（数组的数组）：\`int[][]\` 每一行可以不同长，更灵活，也更常用。
+
+\`\`\`csharp
+int[,] matrix = { { 1, 2, 3 }, { 4, 5, 6 } };  // 2×3
+int[][] jagged = [ [1, 2], [3, 4, 5] ];        // 两行，长度 2 和 3
+\`\`\`
+
+选择建议：规则表格（图像像素、矩阵运算）用多维数组；行长不齐或要单独处理某一行，用交错数组。
+
+### 五、Array 常用 API
+
+| API | 作用 |
+| --- | --- |
+| \`Array.IndexOf\` / \`LastIndexOf\` | 查找元素下标，找不到返回 -1 |
+| \`Array.Exists\` / \`Find\` / \`FindAll\` | 按条件查找 |
+| \`Array.Sort\` / \`Reverse\` | 原地排序 / 反转 |
+| \`Array.Copy\` / \`Clone\` | 拷贝（Clone 是浅拷贝） |
+| \`Array.Resize\` | 分配新数组并拷贝，原引用要重新接住 |
+| \`Array.Empty<T>()\` | 共享的空数组单例，避免反复 \`new T[0]\` |
+| \`Array.Fill\` | 把一段填成同一值 |
+| \`Array.TrueForAll\` | 是否全部满足谓词 |
+
+引用类型数组的 \`Clone\` / \`Copy\` 只拷贝引用，元素对象本身还是共享的。
+
+### 六、数组是引用类型
+
+\`int[] a = b;\` 只是让两个变量指向同一块内存。改 \`a[0]\` 会看见 \`b[0]\` 一起变。这和 \`int x = y\` 的值拷贝完全不同，是新手最容易踩的坑。真正复制内容请用 \`Array.Copy\`、\`[...arr]\` 或 \`arr.ToArray()\`。
+
+### 七、与 List / Span 的关系
+
+- 长度固定、随机访问、底层存储 → **数组**
+- 长度要变、API 更丰富 → **\`List<T>\`**（内部就是数组 + 扩容）
+- 零拷贝切片、热路径 → **\`Span<T>\`**（常由数组 \`AsSpan()\` 得到）
+
+日常业务代码默认 \`List<T>\`；和 native / 高性能 API 打交道、或尺寸编译期就确定时，再用数组。
+
+### 小结
+
+- 数组长度固定，下标从 0 开始，越界必崩。
+- C# 12 用 \`[1, 2, 3]\` 初始化；\`^1\` 和 \`..\` 做从后往前和切片。
+- 多维数组是矩形，交错数组是"数组的数组"。
+- 数组是引用类型：赋值共享存储，拷贝要显式 Copy。
+- \`Array.*\` 提供查找、排序、填充；空数组用 \`Array.Empty<T>()\`。
+
+### 练习
+
+1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
+2. 合上示例，用「数组」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+`,
+    code: `// 数组完整演示：初始化、下标、范围、多维/交错、Array API、引用语义
+using System;
+using System.Linq;
+
+Console.WriteLine("===== 1. 声明与初始化 =====");
+int[] a = new int[3];
+int[] b = { 10, 20, 30 };
+int[] c = [40, 50, 60];                 // C# 12 集合表达式
+int[] empty = [];
+Console.WriteLine($"new int[3] 默认值：{string.Join(",", a)}");
+Console.WriteLine($"集合表达式：{string.Join(",", c)}，空数组 Length={empty.Length}");
+
+Console.WriteLine("\\n===== 2. 下标、^ 与范围 =====");
+int[] nums = [1, 2, 3, 4, 5, 6];
+Console.WriteLine($"nums[0]={nums[0]}, nums[^1]={nums[^1]}, nums[^2]={nums[^2]}");
+int[] mid = nums[2..5];                 // 3,4,5 —— 会分配新数组
+int[] tail = nums[3..];
+int[] head = nums[..2];
+Console.WriteLine($"[2..5]={string.Join(",", mid)}  [3..]={string.Join(",", tail)}  [..2]={string.Join(",", head)}");
+
+Console.WriteLine("\\n===== 3. 遍历：foreach vs for =====");
+foreach (int n in nums)
+    Console.Write($"{n} ");
+Console.WriteLine();
+for (int i = 0; i < nums.Length; i++)
+    nums[i] *= 10;                      // 要改元素必须用下标
+Console.WriteLine($"乘 10 后：{string.Join(",", nums)}");
+
+Console.WriteLine("\\n===== 4. 多维数组 vs 交错数组 =====");
+int[,] matrix =
+{
+    { 1, 2, 3 },
+    { 4, 5, 6 },
+};
+Console.WriteLine($"多维 Rank={matrix.Rank}, 行={matrix.GetLength(0)}, 列={matrix.GetLength(1)}");
+Console.WriteLine($"matrix[1,2]={matrix[1, 2]}");
+
+int[][] jagged = [ [1, 2], [3, 4, 5], [6] ];
+Console.WriteLine("交错数组各行列数：" + string.Join(", ", jagged.Select(row => row.Length)));
+jagged[0][1] = 99;
+Console.WriteLine($"jagged[0] = [{string.Join(",", jagged[0])}]");
+
+Console.WriteLine("\\n===== 5. Array API =====");
+int[] data = [5, 2, 8, 2, 9];
+Console.WriteLine($"IndexOf(2)={Array.IndexOf(data, 2)}, LastIndexOf(2)={Array.LastIndexOf(data, 2)}");
+Console.WriteLine($"Exists >7 ? {Array.Exists(data, x => x > 7)}");
+Console.WriteLine($"FindAll 偶数：{string.Join(",", Array.FindAll(data, x => x % 2 == 0))}");
+
+int[] sorted = (int[])data.Clone();
+Array.Sort(sorted);
+Console.WriteLine($"Sort 后：{string.Join(",", sorted)}（Clone 后排序不影响 data）");
+Array.Reverse(sorted);
+Console.WriteLine($"Reverse 后：{string.Join(",", sorted)}");
+
+Array.Fill(a, 7);
+Console.WriteLine($"Fill 后 a：{string.Join(",", a)}");
+
+int[] resized = [1, 2, 3];
+Array.Resize(ref resized, 5);          // 后两个位置补默认值 0
+Console.WriteLine($"Resize 到 5：{string.Join(",", resized)}");
+
+Console.WriteLine($"TrueForAll >0 ? {Array.TrueForAll(data, x => x > 0)}");
+Console.WriteLine($"Empty<int>().Length={Array.Empty<int>().Length}");
+
+Console.WriteLine("\\n===== 6. 引用语义（赋值共享） =====");
+int[] left = [1, 2, 3];
+int[] right = left;                    // 共享同一数组
+right[0] = 100;
+Console.WriteLine($"left[0]={left[0]}（right 改了，left 一起变）");
+
+int[] copy = new int[left.Length];
+Array.Copy(left, copy, left.Length);   // 真正拷贝元素
+copy[0] = 1;
+Console.WriteLine($"Copy 后 left[0]={left[0]}, copy[0]={copy[0]}（互不影响）");
+
+Console.WriteLine("\\n===== 7. 字符串数组与 Join =====");
+string[] names = ["张三", "李四", "王五"];
+Console.WriteLine(string.Join(" | ", names));
+Array.Sort(names, StringComparer.Ordinal);
+Console.WriteLine($"按序排序：{string.Join(",", names)}");
+
+Console.WriteLine("\\n本程序演示完毕！");
+`,
     lang: 'cs',
   },
 ];
