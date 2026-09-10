@@ -1163,17 +1163,17 @@ dotnet-counters monitor --process-id 1234 System.Runtime
 
 显示 CPU、GC、ThreadPool、Gen 0/1/2 collections、Working Set 等关键指标。自定义 \`EventSource\` 也能被监视。
 
-### 14. Metrics API（.NET 8）
+### 14. Metrics API
 
-\`System.Diagnostics.Metrics\` 是 .NET 8 主推的指标 API：
+\`System.Diagnostics.Metrics\` 是现代 .NET 的标准指标 API：
 
 - \`Meter\`：指标集合，类似 \`ILoggerFactory\`。
 - \`Counter<T>\`：单调递增计数器（请求数、错误数）。
 - \`Histogram<T>\`：分布统计（请求耗时分布）。
-- \`Gauge<T>\`：当前值（温度、队列长度，.NET 8 新增）。
 - \`ObservableCounter<T>\` / \`ObservableGauge<T>\`：回调式指标。
+- \`Gauge<T>\`：直接记录可上下变化的当前值（.NET 9+）。
 
-导出到 Prometheus 通过 \`prometheus-net.AspNetCore\` 或 OTLP。
+通常通过 OpenTelemetry 导出 OTLP 或 Prometheus；也可按团队标准采用其他兼容 provider。指标标签必须控制基数，不能使用订单 ID、用户 ID 等无界值。
 
 ### 15. EventIds
 

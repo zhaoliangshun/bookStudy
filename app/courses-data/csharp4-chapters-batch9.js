@@ -388,18 +388,18 @@ catch
 | \`DenyChildAttach\` | 禁止子任务附着 |
 | \`PreferFairness\` | 提示按 FIFO 顺序执行 |
 
-\`LongRunning\` 用于 CPU 密集型超过几十毫秒的任务，避免占用线程池工作线程。
+\`LongRunning\` 只是给调度器“可能长期占用线程”的提示，默认调度器通常创建专用线程。它不适用于异步 IO，也不应按“几十毫秒”机械判断；只有性能分析确认少量长期阻塞工作会伤害线程池时才考虑。
 
 ### 七、Continuation：ContinueWith
 
 \`ContinueWith\` 给一个 Task 注册"完成后要做的事"，是 \`await\` 的前辈写法：
 
 \`\`\`csharp
-Task.Run(() => 42)
-    .ContinueWith(t => Console.WriteLine($"结果 {t.Result}"));
+int result = await Task.Run(() => 42);
+Console.WriteLine($"结果 {result}");
 \`\`\`
 
-现代代码优先用 \`await\`。只有在你需要链式组合多个延续、或者需要观察 \`Task\` 状态时才用 \`ContinueWith\`。
+现代业务代码用 \`await\` 组合延续。只有实现底层 Task 工具、明确需要指定调度器或按完成状态分支时才直接使用 \`ContinueWith\`，并显式处理取消与异常。
 
 ### 八、CancellationToken 协作式取消
 
@@ -579,15 +579,14 @@ async Task DemoLongRunningAsync()
     Console.WriteLine($"LongRunning 任务完成，耗时 {sw.ElapsedMilliseconds}ms");
 }
 
-// === 6. ContinueWith：延续 ===
-// 现代 C# 优先用 await，这里展示 ContinueWith 的链式写法
-void DemoContinueWith()
+// === 6. 现代延续：使用 await ===
+// ContinueWith 容易带来调度器、异常传播和嵌套 Task 陷阱；
+// 普通异步业务流程直接 await，语义更清楚。
+async Task DemoContinuationAsync()
 {
-    Task.Run(() => 10)
-        .ContinueWith(t => t.Result * 2)            // 第一阶段：×2
-        .ContinueWith(t => Console.WriteLine($"ContinueWith 链结果：{t.Result}"));
-    // 注意：这里不 await，给点时间让链跑完
-    Thread.Sleep(200);
+    int value = await Task.Run(() => 10);
+    int doubled = value * 2;
+    Console.WriteLine($"await 延续结果：{doubled}");
 }
 
 // === 7. Parallel.For 并行计算 ===
@@ -675,8 +674,8 @@ await DemoWhenAllExceptionAsync();
 Console.WriteLine("\\n==== 5. LongRunning ====");
 await DemoLongRunningAsync();
 
-Console.WriteLine("\\n==== 6. ContinueWith ====");
-DemoContinueWith();
+Console.WriteLine("\\n==== 6. await 延续（替代 ContinueWith） ====");
+await DemoContinuationAsync();
 
 Console.WriteLine("\\n==== 7. Parallel.For ====");
 DemoParallelFor();
@@ -803,10 +802,11 @@ catch (OperationCanceledException) { /* 任务直接被取消 */ }
 \`Task.Exception\` 是 \`AggregateException\`，它的 \`InnerExceptions\` 可能嵌套（比如父子任务都抛异常时）。\`Flatten()\` 把所有嵌套的异常拍平成一维：
 
 \`\`\`csharp
-try { await Task.WhenAll(tasks); }
+var all = Task.WhenAll(tasks);
+try { await all; }
 catch
 {
-    var flat = task.Exception!.Flatten();
+    var flat = all.Exception!.Flatten();
     foreach (var ex in flat.InnerExceptions) { ... }
 }
 \`\`\`
@@ -832,13 +832,13 @@ BadAsync();  // 调用方根本不知道这里抛了异常
 
 如果一个 \`Task\` 抛了异常，但你既没 \`await\` 它，也没访问 \`Task.Exception\`，那它就成了"未被观察的异常"。
 
-.NET Framework 时代这会让进程崩溃。.NET Core / .NET 8 默认**不会**让进程崩溃，但你可以监听全局事件：
+.NET 4 之前，未观察异常在终结器线程传播时可能终止进程；从 .NET 4.5 起以及现代 .NET 默认会触发事件后吞掉该异常。不要依赖这个兜底行为，仍应 await 或显式观察所有已启动任务：
 
 \`\`\`csharp
 TaskScheduler.UnobservedTaskException += (s, e) =>
 {
     Console.WriteLine($"未观察的异常：{e.Exception.Message}");
-    e.SetObserved();  // 标记已处理，不再传播
+    e.SetObserved();  // 显式标记已观察
 };
 \`\`\`
 

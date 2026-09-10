@@ -1077,9 +1077,22 @@ Console.WriteLine(dict["APPLE"]);  // 1，键不区分大小写
 
 ### 七、遍历顺序
 
-Dictionary 的遍历顺序**不保证**是插入顺序（理论上基于哈希桶顺序，但实现会变）。如果你需要按插入顺序遍历，用 \`List<KeyValuePair>\` 或在 .NET 8+ 使用新的 \`OrderedDictionary\`。
+Dictionary 的公开契约**不保证**插入顺序，即使当前实现常表现为插入顺序也不应依赖。需要有序键可用 \`SortedDictionary\`；需要插入顺序可同时维护 List，或在 .NET 9+ 使用泛型 \`OrderedDictionary<TKey,TValue>\`。旧的非泛型 \`System.Collections.Specialized.OrderedDictionary\` 更早就存在，但缺少泛型类型安全。
 
-### 八、ConcurrentDictionary 简介
+### 八、FrozenDictionary / FrozenSet
+
+.NET 8+ 的 \`System.Collections.Frozen\` 适合“构建一次、频繁读取”的路由表、配置映射和允许列表：
+
+\`\`\`csharp
+using System.Collections.Frozen;
+
+FrozenDictionary<string, int> codes = source
+    .ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
+\`\`\`
+
+冻结构建成本高于普通 Dictionary，之后不能修改；只有生命周期内大量查询时才可能获益。普通业务可变数据继续使用 Dictionary，不要凭名称盲目替换。
+
+### 九、ConcurrentDictionary 简介
 
 多线程环境下 \`Dictionary\` 不安全。用 \`ConcurrentDictionary\` 提供：
 
@@ -1089,7 +1102,7 @@ Dictionary 的遍历顺序**不保证**是插入顺序（理论上基于哈希�
 
 详细用法在第三十四章讲。
 
-### 九、HashSet<T> ⭐
+### 十、HashSet<T> ⭐
 
 \`HashSet<T>\` 是"集合运算"专用的容器——元素不重复，支持并集、交集、差集等操作：
 
@@ -1290,18 +1303,18 @@ foreach (var group in byAge)
 public record Person(string Name, int Age);
 
 // 自定义作为 Dictionary Key 的类：重写 Equals 和 GetHashCode 让按 Id 判等
-public class PersonById
+public sealed class PersonById : IEquatable<PersonById>
 {
     public int Id { get; }
     public string Name { get; }
     public PersonById(int id, string name) { Id = id; Name = name; }
 
-    // 重写 Equals：只按 Id 比较
-    public override bool Equals(object? obj) =>
-        obj is PersonById other && other.Id == Id;
+    // 泛型集合优先走 IEquatable<T>，避免装箱并表达类型安全的相等语义
+    public bool Equals(PersonById? other) => other is not null && other.Id == Id;
+    public override bool Equals(object? obj) => obj is PersonById other && Equals(other);
 
     // 重写 GetHashCode：必须与 Equals 一致（Id 相同的对象哈希码必须相同）
-    public override int GetHashCode() => Id;
+    public override int GetHashCode() => HashCode.Combine(Id);
 }`,
     lang: 'cs',
   },

@@ -91,7 +91,7 @@ LOH 不压缩是为了避免大对象移动的代价，但可能产生内存碎�
 | Workstation GC | 桌面应用、单 CPU | 一个堆、一个 GC 线程，与用户线程并发 |
 | Server GC | 服务端应用、多 CPU | **每个 CPU 一个堆+一个 GC 线程**，并行回收，吞吐高但暂停更长 |
 
-.NET 8 服务端应用默认 Server GC（需配置 \`<ServerGarbageCollection>true</ServerGarbageControl>\` 或 \`runtimeconfig.json\`）。\`GCSettings.IsServerGC\` 可运行时查询。
+ASP.NET Core 等服务端宿主通常启用 Server GC，但最终模式取决于宿主、项目配置、CPU/容器限制和运行时。\`GCSettings.IsServerGC\` 可在运行时查询；需要显式配置时使用 \`<ServerGarbageCollection>true</ServerGarbageCollection>\`。不要仅凭模板假定生产容器中的实际模式。
 
 ### 八、GCSettings 类
 
@@ -419,8 +419,9 @@ public class MyResource : IDisposable
 \`System.Runtime.InteropServices.SafeHandle\` 是 .NET 推荐的非托管句柄包装器：
 
 - 自动实现 Dispose 模式 + Finalizer，你只写 \`ReleaseHandle()\`。
-- 保证在 AppDomain unload、CriticalException 等场景下也释放。
-- 防止「句柄回收攻击」（GC 过早回收还被人使用的句柄）。
+- 通过引用计数避免句柄在 native 调用仍使用它时被提前关闭。
+- 在正常回收和多数可靠性场景中提供比手写 IntPtr + finalizer 更稳健的释放。
+- 进程被强制终止、断电等情况下仍不保证执行清理，所以关键状态不能依赖 finalizer。
 
 常用子类：
 
@@ -445,12 +446,12 @@ public class MySafeHandle : SafeHandle
 
 ### 七、CriticalHandle vs SafeHandle
 
-- \`SafeHandle\`：在 **CER（约束执行区域）** 中执行 \`ReleaseHandle\`，保证不抛异常、不被线程中断。**推荐**。
-- \`CriticalHandle\`：轻量版，不做 CER 保护，性能稍高但**不安全**。
+- \`SafeHandle\` 带引用计数，能防止并发 native 调用期间句柄被关闭，通常优先使用。
+- \`CriticalHandle\` 没有这套引用计数保护，只适用于能严格控制句柄生命周期的底层代码。
 
-### 八、CER 与 ReliabilityContract
+### 八、CER 与 ReliabilityContract（历史背景）
 
-**CER（Constrained Execution Region）** 是 CLR 保证一段代码「不被异步异常打断」的机制：
+CER 和 \`ReliabilityContract\` 主要属于 .NET Framework 可靠性模型，在现代 .NET 中已过时且相关 API 会产生弃用警告。新代码不要自行编写 CER；使用 SafeHandle、结构化 Dispose 和进程外恢复机制。
 
 \`\`\`csharp
 RuntimeHelpers.PrepareConstrainedRegions();
@@ -462,14 +463,14 @@ finally
 }
 \`\`\`
 
-\`ReliabilityContract\` 特性标注方法在 CER 中的行为：
+\`ReliabilityContract\` 的旧代码可能长这样：
 
 \`\`\`csharp
 [ReliabilityContract(Consistency.WillNotCorruptState, Cer.Success)]
 public bool ReleaseHandle() { ... }
 \`\`\`
 
-日常开发很少自己写 CER，但 \`SafeHandle.ReleaseHandle\` 内部就是 CER。
+阅读旧框架源码时可能见到它，现代生产代码不应把 CER 当作“绝对保证”。
 
 ### 九、ObjectDisposedException
 
@@ -503,8 +504,9 @@ public interface IAsyncDisposable {
 配合 **\`await using\`** 声明：
 
 \`\`\`csharp
+// NuGet: Microsoft.Data.SqlClient（不要在新项目使用旧 System.Data.SqlClient）
 await using var conn = new SqlConnection(connStr);
-await conn.OpenAsync();
+await conn.OpenAsync(cancellationToken);
 // 用 conn
 // 作用域结束自动 await conn.DisposeAsync()
 \`\`\`
@@ -868,7 +870,7 @@ ReadOnlySpan<char> pass = span[(sep + 1)..]; // "pass=123"
 - ❌ 不能实现接口（C# 7.2 限制，C# 11 起部分放宽）。
 - ❌ 不能用 \`Lambda\` 捕获。
 
-这些限制是为了**保证 Span 引用的内存不会被 GC 移动**，从而安全地用指针操作。
+这些限制是为了防止指向栈内存或短生命周期内存的引用逃逸。Span 可以安全指向会被 GC 移动的托管数组；运行时会跟踪托管内部引用。关键约束是 Span 不能比它引用的内存活得更久，也不能跨越可能挂起方法的 \`await\` / \`yield\`。
 
 ### 八、ArrayPool<T>：数组对象池
 
@@ -1634,11 +1636,11 @@ string.Concat("a", "b", "c");          // "abc"
 
 #### 技巧 3：Span + stackalloc
 
-热路径缓冲用 \`stackalloc\`，零 GC 压力（详见第 66 章）。
+热路径缓冲用 \`stackalloc\`，零 GC 压力（详见第 67 章「Span 与 Memory」）。
 
 #### 技巧 4：ArrayPool
 
-热路径大数组用 \`ArrayPool<T>.Shared.Rent/Return\`（详见第 66 章）。
+热路径大数组用 \`ArrayPool<T>.Shared.Rent/Return\`（详见第 67 章「Span 与 Memory」）。
 
 #### 技巧 5：String.Create
 
@@ -1655,7 +1657,7 @@ string s = string.Create(7, 123, static (span, val) =>
 
 #### 技巧 6：CollectionsMarshal.AsSpan
 
-绕过 List 索引器边界检查（详见第 66 章）。
+绕过 List 索引器边界检查（详见第 67 章「Span 与 Memory」）。
 
 #### 技巧 7：static lambda（C# 9+）
 
@@ -1753,7 +1755,7 @@ struct Header { public int Id; public byte Type; }  // Pack=1 紧凑布局
 ### 九、AOT vs JIT
 
 - **JIT（默认）**：运行时编译，可基于运行时数据优化（PGO .NET 6+），但启动慢。
-- **NativeAOT（.NET 8 GA）**：编译时生成原生代码，启动快、内存小、易部署容器。
+- **Native AOT（.NET 7 首次正式提供，.NET 8 扩展 Web 支持）**：编译时生成平台特定的自包含原生代码，常有更快启动和更低内存；代价是构建、反射兼容和诊断限制，是否适合容器必须测量。
   - 限制：反射受限、动态 assembly 不支持、文件稍大。
   - 适合云函数、CLI 工具、微服务启动敏感场景。
 

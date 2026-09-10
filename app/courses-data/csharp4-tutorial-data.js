@@ -2,9 +2,9 @@
 // C# 从入门到精通大全（全新版）—— 章节数据聚合入口
 // -------------------------------------------------------------
 // 完全重新编写的「大而全」C# 参考书：
-//   - 共 80 篇（前言 + 78 讲 + 结语），覆盖从环境搭建到工程实战
-//   - 14 个 batch 文件，每章 demo 驱动，注释详尽
-//   - 适用版本：.NET 8 LTS / C# 12，所有示例用顶级语句
+//   - 共 94 篇（前言 + 92 讲 + 结语），覆盖从环境搭建到生产运维
+//   - 15 个 batch 文件，每章 demo 驱动，注释详尽
+//   - 生产基线：.NET 10 LTS / C# 14；交互 demo 兼容 net8.0 / C# 12
 //
 // 章节分组（14 部分）：
 //   batch1  : 开篇 + 入门基础（前言 + 5 章）
@@ -21,6 +21,7 @@
 //   batch12 : 异常处理与调试（4 章）
 //   batch13 : 内存管理与性能（5 章）
 //   batch14 : 网络编程 + 工程化实战 + 结语（10 章）
+//   batch15 : 现代 C# 与生产工程（13 章）
 // =============================================================
 
 import { chapters as batch1 } from "./csharp4-chapters-batch1";
@@ -37,6 +38,11 @@ import { chapters as batch11 } from "./csharp4-chapters-batch11";
 import { chapters as batch12 } from "./csharp4-chapters-batch12";
 import { chapters as batch13 } from "./csharp4-chapters-batch13";
 import { chapters as batch14 } from "./csharp4-chapters-batch14";
+import { chapters as batch15 } from "./csharp4-chapters-batch15";
+
+// 历史数据中结语位于 batch14；生产工程章节应排在结语之前。
+const batch14Core = batch14.slice(0, -1);
+const conclusion = batch14.at(-1);
 
 export const csharp4Chapters = [
   ...batch1,
@@ -52,7 +58,9 @@ export const csharp4Chapters = [
   ...batch11,
   ...batch12,
   ...batch13,
-  ...batch14,
+  ...batch14Core,
+  ...batch15,
+  conclusion,
 ];
 
 export const csharp4ChapterGroups = [
@@ -70,5 +78,6 @@ export const csharp4ChapterGroups = [
   "第十一部分 内存管理与性能",
   "第十二部分 网络编程",
   "第十三部分 工程化实战",
+  "第十四部分 现代 C# 与生产工程",
   "结尾",
 ];

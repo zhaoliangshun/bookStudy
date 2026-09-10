@@ -42,7 +42,7 @@ const chapters = [
 \`\`\`csharp
 // 声明一个委托类型：接收 int，返回 int
 delegate int Transformer(int x);
-\`
+\`\`\`
 
 这表示「Transformer 是一个类型，它的实例可以指向任何『接收 int 返回 int』的方法」。委托类型和类一样，是一种自定义类型。
 
@@ -56,7 +56,7 @@ int Square(int x) => x * x;        // 局部函数
 Transformer t1 = new Transformer(Square);   // 显式构造（旧写法）
 Transformer t2 = Square;                    // 方法组转换（推荐）
 Transformer t3 = x => x * x;                // Lambda（下章详解）
-\`
+\`\`\`
 
 方法组转换：直接把方法名赋给委托变量，编译器自动包装。这是最常用的方式。
 
@@ -67,7 +67,7 @@ Transformer t3 = x => x * x;                // Lambda（下章详解）
 \`\`\`csharp
 Transformer t = Square;
 int result = t(5);   // 等价于 Square(5)，结果 25
-\`
+\`\`\`
 
 也可以用 \`t.Invoke(5)\` 显式调用——两者等价。
 
@@ -78,7 +78,7 @@ int result = t(5);   // 等价于 Square(5)，结果 25
 \`\`\`csharp
 int Add(int a, int b) => a + b;
 Func<int, int, int> f = Add;   // ✅ 签名匹配：两个 int 参数，返回 int
-\`
+\`\`\`
 
 注意：参数名可以不同（\`a, b\` vs \`x, y\`），只看类型和顺序。但 ref/out/in 修饰符必须一致。
 
@@ -93,7 +93,7 @@ void Bye() => Console.WriteLine("Bye");
 Action a = Hi;
 a += Bye;    // 现在调用 a 会先 Hi 后 Bye
 a -= Hi;     // 移除 Hi，只剩 Bye
-\`
+\`\`\`
 
 注意：
 - 多播委托的返回值是「最后一个方法的返回值」，前面的返回值被丢弃。所以多播委托通常返回 void。
@@ -110,7 +110,7 @@ foreach (Action handler in a.GetInvocationList())
     try { handler(); }
     catch (Exception ex) { /* 单个处理器抛异常不影响其他 */ }
 }
-\`
+\`\`\`
 
 这是处理「多播中某个方法抛异常」的关键技巧。
 
@@ -136,7 +136,7 @@ Func<int, int> square = x => x * x;            // 转换
 Action<string> log = msg => Console.WriteLine(msg);  // 副作用
 Predicate<int> isEven = n => n % 2 == 0;       // 判断
 Comparison<string> byLen = (a, b) => a.Length - b.Length;  // 比较
-\`
+\`\`\`
 
 记住：**90% 的场景用 Action 和 Func 就够了**。只有当委托类型名本身能表达语义（如 \`MouseEventHandler\`）时才自定义。
 
@@ -153,7 +153,7 @@ void Process(int[] data, Func<int, int> transform)
 
 int[] nums = { 1, 2, 3 };
 Process(nums, x => x * 10);   // 把每个数乘 10
-\`
+\`\`\`
 
 \`Array.ForEach\`、\`List<T>.ConvertAll\`、\`List<T>.FindAll\` 等都是这个模式。
 
@@ -166,7 +166,7 @@ Func<int, int> GetMultiplier(int factor) => x => x * factor;
 
 var triple = GetMultiplier(3);
 Console.WriteLine(triple(10));   // 30
-\`
+\`\`\`
 
 返回的委托「捕获」了 \`factor\`，形成了闭包（下章详解）。
 
@@ -181,7 +181,7 @@ T Accumulate<T>(IEnumerable<T> source, Func<T, T, T> func, T seed)
     foreach (var x in source) acc = func(acc, x);
     return acc;
 }
-\`
+\`\`\`
 
 这就是 \`Aggregate\` 的简化版。
 
@@ -192,7 +192,7 @@ T Accumulate<T>(IEnumerable<T> source, Func<T, T, T> func, T seed)
 \`\`\`csharp
 Action<object> objAction = o => Console.WriteLine(o);
 Action<string> strAction = objAction;   // ✅ 逆变：string 可转 object
-\`
+\`\`\`
 
 这让你可以更灵活地复用委托。
 
@@ -536,7 +536,7 @@ Lambda 用 \`=>\`（箭头）分隔参数和函数体：
 \`\`\`csharp
 (参数列表) => 表达式;            // 表达式 Lambda
 (参数列表) => { 语句; };          // 语句 Lambda
-\`
+\`\`\`
 
 示例：
 
@@ -545,7 +545,7 @@ x => x * x;                      // 单参数可省括号
 (x, y) => x + y;                 // 多参数
 () => 42;                        // 无参数
 (x, y) => { var s = x + y; return s * 2; };  // 语句块
-\`
+\`\`\`
 
 注意：语句 Lambda 必须用 \`return\` 返回值；表达式 Lambda 自动返回表达式的值。
 
@@ -559,7 +559,7 @@ Func<int, int> old = delegate(int x) { return x * x; };
 
 // 新：Lambda（更简洁）
 Func<int, int> new = x => x * x;
-\`
+\`\`\`
 
 匿名方法已经过时，新代码一律用 Lambda。Lambda 在可读性、类型推断、表达式树支持上都更优。
 
@@ -571,7 +571,7 @@ Lambda 没有显式类型，类型由「目标委托类型」决定：
 Func<int, int> f1 = x => x * 2;        // x 是 int，返回 int
 Func<string, int> f2 = s => s.Length;  // s 是 string，返回 int
 Action<double> a = d => Console.WriteLine(d);  // d 是 double
-\`
+\`\`\`
 
 编译器根据委托的签名推断参数类型和返回类型。这是 Lambda 简洁的关键。
 
@@ -583,7 +583,7 @@ Lambda 本质是「委托的语法糖」——它会被编译成一个委托实�
 Func<int, int> f = x => x + 1;
 Predicate<int> p = n => n > 0;
 Action a = () => Console.WriteLine("hi");
-\`
+\`\`\`
 
 ### 六、闭包：捕获外部变量 ⭐
 
@@ -596,7 +596,7 @@ Func<int, int> multiply = x => x * factor;   // 捕获 factor
 Console.WriteLine(multiply(5));   // 50
 factor = 20;
 Console.WriteLine(multiply(5));   // 100！捕获的是变量，不是值
-\`
+\`\`\`
 
 要点：**Lambda 捕获的是变量本身，不是变量当时的值**。修改变量后，Lambda 看到的是新值。这是因为编译器把捕获的变量提升到一个「闭包对象」里。
 
@@ -611,7 +611,7 @@ for (int i = 0; i < 3; i++)
     actions.Add(() => Console.WriteLine(i));
 }
 foreach (var a in actions) a();   // 输出 3 3 3（不是 0 1 2！）
-\`
+\`\`\`
 
 原因：所有 Lambda 共享同一个 \`i\` 变量，循环结束时 \`i = 3\`，所以全打印 3。
 
@@ -624,7 +624,7 @@ for (int i = 0; i < 3; i++)
     actions.Add(() => Console.WriteLine(local));
 }
 // 现在输出 0 1 2
-\`
+\`\`\`
 
 C# 5+ 之后，\`foreach\` 中的循环变量会被自动拷贝（每个 Lambda 捕获不同的副本），但 \`for\` 仍然有此问题，必须手动拷贝。
 
@@ -640,7 +640,7 @@ Func<int, int> stmt = x =>
     var sq = x * x;
     return sq + 1;
 };
-\`
+\`\`\`
 
 表达式 Lambda 更简洁，且**可以转换为表达式树**（见下章）。语句 Lambda 只能转为委托。
 
@@ -656,7 +656,7 @@ var squared = nums.Select(n => n * n);                     // 映射
 var sorted = nums.OrderBy(n => n);                          // 排序
 var sum = nums.Aggregate((acc, n) => acc + n);             // 聚合
 var found = nums.First(n => n > 3);                        // 查找
-\`
+\`\`\`
 
 Lambda 让 LINQ 读起来像 SQL 一样自然。
 
@@ -674,7 +674,7 @@ Expression<Func<int, int>> expr = x => x * 2;
 // 编译成委托后可执行
 var compiled = expr.Compile();
 Console.WriteLine(compiled(5));   // 10
-\`
+\`\`\`
 
 表达式树是 EF Core、IQueryable 翻译 LINQ 为 SQL 的核心机制。下一章详解。
 
@@ -684,7 +684,7 @@ Console.WriteLine(compiled(5));   // 10
 
 \`\`\`csharp
 Action<int, int> a = (_, y) => Console.WriteLine(y);   // 忽略第一个参数
-\`
+\`\`\`
 
 注意：多个 \`_\` 不会冲突，因为它们都是弃元。但如果方法只有一个 \`_\` 参数，会被当成普通变量名（向后兼容）。
 
@@ -698,7 +698,7 @@ C# 10 引入**自然类型**：当 Lambda 赋给 \`var\` 时，编译器会构�
 var f = (int x) => x * 2;        // Func<int, int>
 var g = (string s) => s.Length;  // Func<string, int>
 var h = () => 42;                // Func<int>
-\`
+\`\`\`
 
 注意：必须显式标注参数类型，否则编译器无法推断（\`var f = x => x * 2;\` 仍然报错）。
 
@@ -720,7 +720,7 @@ Func<string, Task> download = async url =>
     var html = await client.GetStringAsync(url);
     Console.WriteLine(html.Length);
 };
-\`
+\`\`\`
 
 这是异步编程的基础（见异步章节）。
 
@@ -973,7 +973,7 @@ class Button
 var btn = new Button();
 btn.Clicked = MyHandler;   // 调用方覆盖了之前的订阅！
 btn.Clicked = OtherHandler; // 之前的 MyHandler 丢了
-\`
+\`\`\`
 
 问题：
 1. 外部可以**覆盖**其他订阅者（用 \`=\` 而不是 \`+=\`）。
@@ -1001,7 +1001,7 @@ var btn = new Button();
 btn.Clicked += MyHandler;   // ✅ 只能 += / -=
 // btn.Clicked = MyHandler;   // ❌ 编译错误：不能覆盖
 // btn.Clicked();             // ❌ 编译错误：外部不能触发
-\`
+\`\`\`
 
 \`event\` 的本质：一个「只允许 += / -=」的委托字段，且只能在声明它的类内部触发。
 
@@ -1015,7 +1015,7 @@ btn.Clicked += MyHandler;   // ✅ 只能 += / -=
 \`\`\`csharp
 public event EventHandler? Clicked;                       // 无数据
 public event EventHandler<ClickArgs>? Clicked;             // 带数据
-\`
+\`\`\`
 
 第一个参数 \`sender\` 是触发事件的对象（通常是 this），让订阅者能区分是谁触发的事件。
 
@@ -1030,7 +1030,7 @@ class ClickArgs : EventArgs
     public int Y { get; init; }
     public DateTimeOffset Time { get; init; } = DateTimeOffset.Now;
 }
-\`
+\`\`\`
 
 约定：用 \`init\` 或只读属性，事件数据应该是不可变的。
 
@@ -1039,7 +1039,7 @@ class ClickArgs : EventArgs
 \`\`\`csharp
 btn.Clicked += OnClick;     // 订阅
 btn.Clicked -= OnClick;     // 取消订阅
-\`
+\`\`\`
 
 要点：
 - \`+=\` / \`-=\` 是线程安全的（编译器生成 \`add\` / \`remove\` 访问器，用 \`Interlocked.CompareExchange\`）。
@@ -1063,7 +1063,7 @@ class Button
 
     public void SimulateClick() => OnClicked(EventArgs.Empty);
 }
-\`
+\`\`\`
 
 好处：
 - 派生类可以重写 \`OnClicked\` 来拦截或自定义事件触发。
@@ -1076,7 +1076,7 @@ class Button
 | --- | --- | --- |
 | 外部覆盖 (=) | ✅ | ❌（只能 +=/-=） |
 | 外部触发 (Invoke) | ✅ | ❌（只有声明类能触发） |
-| 线程安全 | ❌（自己保证） | ✅（编译器自动加锁） |
+| 订阅并发 | 自己保证 | 字段式事件的默认 add/remove 是线程安全更新；自定义访问器自行保证 |
 | 接口声明 | ❌（字段不能在接口） | ✅（事件可在接口中声明） |
 
 \`event\` 是「封装后的委托」，仅此而已。如果不需要外部订阅，就用普通委托；需要发布订阅模式，就用 event。
@@ -1095,7 +1095,7 @@ class MyPublisher
         remove => _myEvent -= value;
     }
 }
-\`
+\`\`\`
 
 手写访问器的场景：
 - 显式实现接口事件。
@@ -1104,7 +1104,7 @@ class MyPublisher
 
 ### 九、事件与线程安全
 
-默认的 \`event\` 使用的 \`+=\` / \`-=\` 是线程安全的（用 \`Interlocked.CompareExchange\`）。但**触发事件不是原子的**：
+字段式事件的编译器生成访问器会安全地更新委托引用（具体实现不应依赖为“自动加锁”）。自定义 add/remove 访问器则由作者负责并发安全。触发时仍要注意订阅列表可能并发变化：
 
 \`\`\`csharp
 // ❌ 不安全：在 null 检查和 Invoke 之间，订阅者可能取消订阅
@@ -1118,9 +1118,9 @@ if (handler != null)
 
 // ✅ 更简洁：null 条件运算符
 Clicked?.Invoke(this, e);
-\`
+\`\`\`
 
-\`Clicked?.Invoke()\` 编译后等价于「拷贝 + null 检查 + 调用」，是推荐写法。
+\`Clicked?.Invoke()\` 避免 null 检查与调用之间产生 \`NullReferenceException\`，但不会串行化处理器，也不能保证刚取消订阅的处理器绝不在本次快照中执行。处理器自身仍必须考虑并发与异常隔离。
 
 ### 十、INotifyPropertyChanged 实战 ⭐
 
@@ -1147,7 +1147,7 @@ class Product : INotifyPropertyChanged
     protected void OnPropertyChanged(string name)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
-\`
+\`\`\`
 
 UI 框架订阅 \`PropertyChanged\` 事件，属性变化时自动刷新界面。
 
@@ -1160,7 +1160,7 @@ class Order { public event EventHandler? Placed; ... }
 class Inventory { public event EventHandler? Reserved; ... }
 
 order.Placed += (s, e) => inventory.Reserve(...);   // 订单触发库存
-\`
+\`\`\`
 
 注意：链式触发要小心循环，A 触发 B，B 又触发 A，会无限递归。
 
@@ -1553,7 +1553,7 @@ Expression<Func<int, int>> expr = x => x * 2;
 // 编译成委托后才能执行
 var compiled = expr.Compile();
 Console.WriteLine(compiled(5));   // 10
-\`
+\`\`\`
 
 同一个 Lambda 语法，赋给 \`Func<>\` 编译成委托，赋给 \`Expression<Func<>>\` 编译成数据。这是 C# 编译器的特殊处理。
 
@@ -1583,7 +1583,7 @@ var lambda = Expression.Lambda<Func<int, int>>(body, param);         // x => x +
 
 var f = lambda.Compile();
 Console.WriteLine(f(5));   // 6
-\`
+\`\`\`
 
 常用静态方法：
 - \`Parameter\`：参数
@@ -1605,7 +1605,7 @@ Console.WriteLine(f(5));   // 6
 \`\`\`csharp
 var compiled = expr.Compile();   // 编译一次
 compiled(5);                      // 多次调用
-\`
+\`\`\`
 
 注意：编译有开销，应该缓存编译结果。每次 \`Compile()\` 都会生成新的 IL。
 
@@ -1622,7 +1622,7 @@ class MyVisitor : ExpressionVisitor
         return base.Visit(node);
     }
 }
-\`
+\`\`\`
 
 遍历是递归的：访问 \`x + 1\` 会先访问 \`x\`，再访问 \`1\`，最后访问 \`+\`。
 
@@ -1634,7 +1634,7 @@ class MyVisitor : ExpressionVisitor
 var query = db.Users.Where(u => u.Age > 18).OrderBy(u => u.Name);
 // 这里 u => u.Age > 18 是 Expression<Func<User, bool>>，不是 Func<User, bool>
 // EF Core 把它翻译成: SELECT * FROM Users WHERE Age > 18 ORDER BY Name
-\`
+\`\`\`
 
 为什么必须用 \`Expression\`？因为 \`Func<User, bool>\` 不能翻译成 SQL（它是已编译的 IL 代码），而 \`Expression\` 是数据结构，可以分析。
 
@@ -1652,7 +1652,7 @@ if (filterByName)
     predicate = predicate.And(u => u.Name.Contains("张"));
 
 var result = db.Users.Where(predicate).ToList();
-\`
+\`\`\`
 
 这需要「合并两个表达式」的辅助方法（\`PredicateBuilder\`）。开源库如 LinqKit 提供了这个能力。
 
@@ -1662,9 +1662,9 @@ var result = db.Users.Where(predicate).ToList();
 - **不能有语句体**：\`(int x) => { return x; }\` 不能作为 \`Expression\`（只能作为 \`Func\`）。
 - **不能赋值**：\`x = 5\` 不行。
 - **不能用 ref/out 参数**。
-- **不能包含 try/catch/for/while** 等语句（C# 4 之前完全不行，C# 4+ 部分支持，但很少用）。
+- **由 Lambda 转换时不能包含 try/catch/for/while** 等语句。
 
-只能用「表达式」语法。如果需要语句，可以手动构建 \`Expression\` 节点。
+Lambda 转换受语言规范限制；部分无法从 Lambda 生成的节点可以用 \`Expression\` API 手动构建，但 provider（例如 EF Core）未必支持翻译。
 
 ### 九、Dynamic LINQ 简介
 
@@ -1672,9 +1672,9 @@ var result = db.Users.Where(predicate).ToList();
 
 \`\`\`csharp
 var query = db.Users.Where("Age > 18 and Name.Contains(\\"张\\")");
-\`
+\`\`\`
 
-它内部把字符串解析成表达式树。适合 UI 动态查询场景，但有 SQL 注入风险，要谨慎使用。
+它内部把字符串解析成表达式树。不要拼接不可信字段名或表达式；应使用允许列表和参数占位。EF Core 通常仍会参数化最终 SQL 值，但恶意动态表达式可能绕过业务过滤、构造昂贵查询或访问未授权字段，不能简单等同于“自动防 SQL 注入”。
 
 ### 十、表达式树在元编程中的应用
 
@@ -1690,7 +1690,7 @@ var lambda = Expression.Lambda<Func<object, object>>(castResult, paramObj);
 var getter = lambda.Compile();
 
 var price = getter(someProduct);
-\`
+\`\`\`
 
 这比 \`反射\` 快得多（编译后是直接调用），是 ORM、序列化库的常用技巧。
 
@@ -1713,7 +1713,7 @@ var price = getter(someProduct);
 \`\`\`csharp
 Expression<Func<int, int, bool>> e = (x, y) => x + y > 10;
 Console.WriteLine(e);   // (x, y) => (x + y) > 10
-\`
+\`\`\`
 
 调试时很有用。
 
@@ -1724,7 +1724,7 @@ F# 的「代码引用」（Quotation）类似 C# 的表达式树，但更强大�
 ### 十四、表达式树的演进
 
 - C# 3.0：引入 \`Expression<TDelegate>\`，仅支持表达式 Lambda。
-- C# 4.0：扩展支持部分语句（赋值、条件等），但很少用。
+- .NET 4：Expression API 增加控制流、赋值等节点，但 C# Lambda 到表达式树的转换仍不支持许多新语法。
 - .NET 4：加入 \`ExpressionVisitor\`。
 - 现代 C#：表达式树主要用于 LINQ Provider 和动态查询。
 
@@ -1920,7 +1920,7 @@ Console.WriteLine("  ✅ 必须是表达式 Lambda:");
 
 Console.WriteLine("     Expression<Func<int, int>> good = x => x;  // OK");
 
-Console.WriteLine("  ❌ 不能有赋值、try/catch、for 等（C# 4+ 限制支持，少用）");
+Console.WriteLine("  ❌ Lambda 转表达式树不能含赋值、try/catch、for 等语句");
 
 Console.WriteLine("\\n=== 10. Compile 性能提示 ===");
 
@@ -2077,7 +2077,7 @@ var nums = new[] { 1, 2, 3, 4, 5 };
 var squared = nums.Select(x => x * x);                  // Map
 var evens = nums.Where(x => x % 2 == 0);                // Filter
 var sum = nums.Aggregate(0, (acc, x) => acc + x);      // Reduce
-\`
+\`\`\`
 
 这三个函数是函数式思维的入门钥匙：**几乎所有数据处理都能用它们的组合表达**。
 
@@ -2095,7 +2095,7 @@ int Next() => ++_count;   // 同样的输入（无）产生不同输出
 
 // ❌ 不纯：修改了入参
 void Reset(List<int> list) => list.Clear();
-\`
+\`\`\`
 
 实践中追求「**业务逻辑用纯函数，副作用集中在边界**」（IO、DB、UI）。这是架构层面的 FP 思想。
 
@@ -2109,7 +2109,7 @@ record Point(int X, int Y);
 
 var p1 = new Point(1, 2);
 var p2 = p1 with { X = 10 };   // 新对象，p1 不变
-\`
+\`\`\`
 
 不可变性的好处：
 - 共享无需拷贝（多线程安全）。
@@ -2129,7 +2129,7 @@ Func<int, int> fg = x => f(g(x));     // 先 *2 再 +1
 
 // 通用组合器
 Func<T, T> Compose<T>(Func<T, T> f, Func<T, T> g) => x => f(g(x));
-\`
+\`\`\`
 
 组合是 FP 的核心思想：**用小函数拼出大逻辑**，比继承更灵活。
 
@@ -2147,7 +2147,7 @@ Func<int, Func<int, int>> curriedAdd = a => b => a + b;
 var addOne = curriedAdd(1);   // 部分应用：固定第一个参数
 addOne(2);   // 3
 addOne(5);   // 6
-\`
+\`\`\`
 
 部分应用：固定一部分参数，得到接收剩余参数的新函数。这是函数复用的高级技巧。
 
@@ -2159,7 +2159,7 @@ addOne(5);   // 6
 Func<int, int> MakeAdder(int n) => x => x + n;
 var add10 = MakeAdder(10);
 add10(5);   // 15
-\`
+\`\`\`
 
 闭包本质是 FP 的「部分应用」机制：\`MakeAdder(10)\` 固定了 \`n=10\`，返回 \`x => x + 10\`。
 
@@ -2181,7 +2181,7 @@ static Func<T, TResult> Memoize<T, TResult>(Func<T, TResult> f)
         return cache[arg] = f(arg);
     };
 }
-\`
+\`\`\`
 
 适合纯函数 + 重复调用 + 计算开销大的场景。注意：线程不安全版本，多线程下要用 \`ConcurrentDictionary\`。
 
@@ -2192,7 +2192,7 @@ FP 中避免 null 的方案：用 \`Option<T>\` 显式表示「可能没有值�
 \`\`\`csharp
 Option<int> FindUser(int id) =>
     db.TryFind(id) is { } u ? Some(u.Age) : None<int>();
-\`
+\`\`\`
 
 \`Option<T>\` 是「有值」或「无值」的容器。要么是 \`Some(value)\`，要么是 \`None\`。强迫调用方处理「无值」情况，避免 \`NullReferenceException\`。
 
@@ -2209,7 +2209,7 @@ Result<User, string> FindUser(int id)
     if (db.TryFind(id) is not { } u) return Error<User, string>("未找到");
     return Ok<User, string>(u);
 }
-\`
+\`\`\`
 
 调用方必须显式处理成功和失败两种情况，比 \`try/catch\` 更明确。这是「铁路式编程」（Railway Oriented Programming）的核心思想。
 
@@ -2221,7 +2221,7 @@ Result<User, string> FindUser(int id)
 var result = FindUser(id)
     .Map(u => u.Email)
     .Bind(email => SendEmail(email));
-\`
+\`\`\`
 
 每个步骤成功就继续走，失败就直接跳到终点（短路）。代码读起来像线性流水线，没有 \`if/else\` 嵌套。
 

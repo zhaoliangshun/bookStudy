@@ -15,7 +15,7 @@
 //   csharp4-conclusion : 结语与学习路线
 //
 // 风格：demo 驱动，每章直接上手写代码，注释详尽，循序渐进。
-// 适用版本：.NET 8 LTS / C# 12，示例用顶级语句。
+// 基础示例兼容 .NET 8 / C# 12；生产建议见 .NET 10 / C# 14 新章节。
 // =============================================================
 
 const chapters = [
@@ -46,14 +46,14 @@ const chapters = [
 
 ### 三、HttpClient 的常见陷阱
 
-**错误写法（每次 new 一个 HttpClient）**：
+**错误写法（每个请求都创建并立即释放）**：
 
 \`\`\`csharp
 using var client = new HttpClient();  // ❌ 不要这样写
 var result = await client.GetStringAsync("https://api.example.com");
 \`\`\`
 
-问题：\`HttpClient\` 内部维护一个连接池，每次 new 都会创建新的 TCP 连接，导致端口耗尽（Socket Exhaustion），高并发时会爆掉。
+频繁创建和释放 handler 会丢失连接池并可能导致端口耗尽。另一方面，永久静态客户端如果不配置连接生命周期，也可能长期使用过期 DNS。应通过工厂或合理配置的长生命周期客户端统一管理。
 
 **正确写法（复用单例）**：
 
@@ -94,13 +94,16 @@ using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 var response = await client.GetAsync(url, cts.Token);
 \`\`\`
 
-### 七、Polly 集成（重试与熔断）
+### 七、现代韧性处理（重试、超时与熔断）
 
 \`\`\`csharp
 services.AddHttpClient("api")
-    .AddTransientHttpErrorPolicy(policy =>
-        policy.WaitAndRetryAsync(3, attempt => TimeSpan.FromSeconds(attempt)));
+    .AddStandardResilienceHandler();
 \`\`\`
+
+新项目使用 \`Microsoft.Extensions.Http.Resilience\`。旧的
+\`AddTransientHttpErrorPolicy\` 来自早期 Polly 集成；重试必须限制为暂时故障，
+并确认请求幂等，避免重复下单或扣款。
 
 ### 八、HTTP 请求消息（HttpRequestMessage）
 
@@ -124,11 +127,11 @@ var response = await client.SendAsync(request);
 
 ### 十、实战建议
 
-- ✅ 在 ASP.NET Core 中始终用 \`IHttpClientFactory\`
+- ✅ ASP.NET Core 中优先使用 \`IHttpClientFactory\` 或明确配置的长生命周期客户端
 - ✅ 控制台应用也建议用 \`Microsoft.Extensions.Http\`
 - ✅ 总是设置 \`Timeout\` 或传入 \`CancellationToken\`
 - ✅ 用 \`ReadFromJsonAsync<T>\` 代替手动 \`JsonSerializer.Deserialize\`
-- ❌ 不要 \`using var client = new HttpClient();\`
+- ❌ 不要为每次业务请求创建并立即释放一个客户端
 
 ### 练习
 
@@ -326,8 +329,8 @@ Socket 是网络通信的底层抽象。无论是 HTTP、FTP、WebSocket 还是�
 | 特性 | TCP | UDP |
 | --- | --- | --- |
 | 连接 | 面向连接 | 无连接 |
-| 可靠性 | 保证送达 | 不保证 |
-| 顺序 | 保证顺序 | 不保证 |
+| 可靠性 | 在连接存活时提供重传、去重和错误检测；故障仍可能中断 | 不提供送达保证 |
+| 顺序 | 同一字节流按序交付 | 数据报可能丢失、重复或乱序 |
 | 速度 | 慢 | 快 |
 | 应用场景 | HTTP/HTTPS/SSH | DNS/视频流/游戏 |
 
@@ -397,8 +400,8 @@ await stream.WriteAsync(bytes);
 var buffer = ArrayPool<byte>.Shared.Rent(1024);
 try
 {
-    var span = buffer.AsSpan();
-    var bytesRead = await stream.ReadAsync(span);
+    // 异步 API 使用 Memory<byte>；Span<byte> 不能跨 await
+    var bytesRead = await stream.ReadAsync(buffer.AsMemory(0, 1024));
     // ...
 }
 finally
@@ -410,8 +413,9 @@ finally
 ### 十、注意事项
 
 - 服务端要 \`Stop()\`，客户端要 \`Close()\`，避免端口泄漏
-- 多客户端并发用 \`Task.Run\` 或 \`AcceptTcpClientAsync\` 循环
-- 真实生产用 \`SocketAsyncEventArgs\` 或 \`System.IO.Pipelines\` 提升性能
+- 多客户端使用 \`AcceptTcpClientAsync\` 循环并为每个连接启动异步处理流程；纯异步 IO 不需要额外套 \`Task.Run\`
+- 先用 TcpClient/NetworkStream；只有性能分析证明需要时再评估 \`SocketAsyncEventArgs\` 或 \`System.IO.Pipelines\`
+- TCP 是无消息边界的字节流，生产协议必须定义长度前缀、分隔或固定帧，并处理半包/粘包、超时和最大帧大小
 
 ### 练习
 
@@ -1097,6 +1101,8 @@ using var scope = sp.CreateScope();
 var repo = scope.ServiceProvider.GetRequiredService<IUserRepository>();
 \`\`\`
 
+上面手动 \`BuildServiceProvider\` 只适合独立示例/测试。ASP.NET Core 应由宿主构建唯一根容器；在服务注册阶段自行构建第二个容器会复制 Singleton，并绕过生命周期管理。
+
 ### 四、IEnumerable<T> 注册多个实现
 
 \`\`\`csharp
@@ -1165,9 +1171,11 @@ public class AuthService(IOptions<JwtOptions> options) { ... }
 
 | 类型 | 作用域 | 热更新 |
 | --- | --- | --- |
-| \`IOptions<T>\` | 单例 | ❌ |
-| \`IOptionsSnapshot<T>\` | Scoped | ✅（文件变化时重读） |
-| \`IOptionsMonitor<T>\` | 单例 | ✅ + 通知回调 |
+| \`IOptions<T>\` | 单例 | 首次读取后固定 |
+| \`IOptionsSnapshot<T>\` | Scoped | 每个 scope 重新计算 |
+| \`IOptionsMonitor<T>\` | 单例 | 支持变更通知并读取当前值 |
+
+是否真的热更新还取决于配置 provider 是否支持 reload；环境变量通常不会在进程内自动重载。
 
 ### 九、命名选项
 
@@ -1186,6 +1194,19 @@ services.Configure<JwtOptions>(config.GetSection("Jwt"))
     .ValidateDataAnnotations()  // 用 DataAnnotations 验证
     .ValidateOnStart();          // 启动时验证（.NET 6+）
 \`\`\`
+
+### 十一、Keyed DI（.NET 8+）
+
+少量同接口、多用途实现可用 keyed services：
+
+\`\`\`csharp
+services.AddKeyedSingleton<ICache, RedisCache>("distributed");
+services.AddKeyedSingleton<ICache, MemoryCache>("local");
+
+app.MapGet("/cache", ([FromKeyedServices("local")] ICache cache) => cache.Get("key"));
+\`\`\`
+
+键应集中定义，避免在业务代码散落字符串。实现数量多、选择规则复杂时，显式工厂或策略对象通常更清楚。
 
 ### 练习
 
@@ -2173,19 +2194,19 @@ var builder = WebApplication.CreateBuilder(args);
 
 // 注册服务
 builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddProblemDetails();
+builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
 // 配置中间件
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.MapOpenApi();
 }
 
 app.UseHttpsRedirection();
+app.UseAuthentication(); // 配置认证方案后启用
 app.UseAuthorization();
 app.MapControllers();
 
@@ -2194,7 +2215,7 @@ app.Run();
 
 ### 三、最小 API（Minimal API）
 
-.NET 6+ 推荐的轻量级 API 风格：
+.NET 6+ 提供的轻量级 API 风格，适合端点较少的服务和垂直切片；复杂系统也可以使用 Controllers，两者没有绝对优劣：
 
 \`\`\`csharp
 var builder = WebApplication.CreateBuilder(args);
@@ -2255,7 +2276,7 @@ app.Use(async (context, next) =>
 app.UseRouting();           // 路由
 app.UseAuthentication();    // 认证
 app.UseAuthorization();     // 授权
-app.UseEndpoints(endpoints => endpoints.MapControllers());
+app.MapControllers();       // 端点映射
 \`\`\`
 
 ### 七、依赖注入
@@ -2280,24 +2301,25 @@ builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 app.MapGet("/config", (IOptions<JwtOptions> opts) => opts.Value);
 \`\`\`
 
-### 九、Swagger / OpenAPI
+### 九、OpenAPI
 
 \`\`\`csharp
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddOpenApi();
 
-// 在 Development 中启用
-app.UseSwagger();
-app.UseSwaggerUI();
+// 暴露 OpenAPI 文档；生产是否开放应按安全策略决定
+app.MapOpenApi();
 \`\`\`
+
+.NET 9+ 内置 OpenAPI 文档生成。Swagger UI / Scalar 是文档 UI，可按需另行添加。
+旧项目继续使用 Swashbuckle 没问题，但不要把两套注册方式混为一谈。
 
 ### 十、三种风格对比
 
 | 风格 | 优点 | 缺点 |
 | --- | --- | --- |
-| Minimal API | 轻量、零样板代码 | 复杂逻辑难组织 |
+| Minimal API | 轻量、适合垂直切片 | 仍需主动组织复杂逻辑 |
 | Controller-based | 规范、可复用 | 样板代码多 |
-| MVC | 视图 + 控制器一体 | 现代前端时代少用 |
+| MVC / Razor Pages | 服务端渲染、表单生态成熟 | 不适合所有前后端分离场景 |
 
 ### 十一、日志
 
@@ -2800,9 +2822,13 @@ public class AppDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Order> Orders => Set<Order>();
 
-    protected override void OnConfiguring(DbContextOptionsBuilder options)
-        => options.UseSqlServer("connection_string");
+    public AppDbContext(DbContextOptions<AppDbContext> options)
+        : base(options) { }
 }
+
+// Program.cs：连接串来自配置/密钥提供程序，不写进源码
+builder.Services.AddDbContextPool<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Main")));
 \`\`\`
 
 ### 三、模型配置：Data Annotations
@@ -2893,8 +2919,13 @@ var result = await db.Users.FromSqlRaw("SELECT * FROM users WHERE age > {0}", 18
 | 模式 | 说明 |
 | --- | --- |
 | Eager Loading（预加载） | \`Include(u => u.Orders)\` 一次性 JOIN 查询 |
-| Lazy Loading（懒加载） | 第一次访问 \`u.Orders\` 时才查询（N+1 问题） |
+| Lazy Loading（懒加载） | 需额外启用 proxies（或 ILazyLoader），访问导航属性时查询，易产生 N+1 |
 | Explicit Loading | 手动 \`db.Entry(user).Collection(u => u.Orders).Load()\` |
+
+EF Core 默认不会自动启用 lazy loading。使用 proxies 需安装
+\`Microsoft.EntityFrameworkCore.Proxies\`、调用 \`UseLazyLoadingProxies()\`，
+并使用可代理的实体/导航属性。生产服务通常优先显式投影或按需 Include，
+让数据库往返在代码中可见。
 
 ### 八、AsNoTracking
 
@@ -2942,8 +2973,8 @@ public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 - \`AsNoTracking()\`：只读查询
 - \`AsSplitQuery()\`：多个 Include 拆成多个查询（避免笛卡尔爆炸）
 - \`IQueryable\` 链式调用：在数据库层过滤
-- \`CompileQuery\`：编译查询缓存
-- \`AddRange\` 代替循环 \`Add\`
+- 高频固定查询可评估 \`EF.CompileQuery\`，先用分析数据证明收益
+- 大批量更新/删除优先评估 \`ExecuteUpdateAsync\` / \`ExecuteDeleteAsync\`，并理解它们绕过 ChangeTracker
 
 ### 练习
 
@@ -2953,8 +2984,9 @@ public byte[] RowVersion { get; set; } = Array.Empty<byte>();
     code: `// ============================================================
 // 第七十六章 EF Core 数据访问 —— demo
 // ------------------------------------------------------------
-// 沙箱无数据库连接，所以用 List 模拟 DbSet，展示 EF Core 的
-// 模型定义和 CRUD 模式。代码结构完全对标真实 EF Core 用法。
+// 本地运行器不安装 EF Core provider，所以用 List 模拟部分 API 形状。
+// 该模拟不具备 SQL 翻译、ChangeTracker、关系约束等真实语义；
+// 学会调用形状后，必须用真实数据库 provider 完成集成测试。
 //
 // 演示：
 //   1. Entity 类（Data Annotations 配置）
@@ -3194,6 +3226,13 @@ public class MockDbSet<T> where T : class
     public void Update(T entity) { /* 模拟 Change Tracker */ }
     public void Remove(T entity) => _data.Remove(entity);
     public Task SaveChangesAsync() => Task.CompletedTask;
+
+    public List<T> Snapshot() => _data.ToList();
+    public void Restore(IEnumerable<T> snapshot)
+    {
+        _data.Clear();
+        _data.AddRange(snapshot);
+    }
 }
 
 public class MockQueryable<T>
@@ -3223,7 +3262,9 @@ public class MockAppDbContext : IAsyncDisposable
     public MockDbSet<User> Users { get; } = new();
     public MockDbSet<Order> Orders { get; } = new();
 
-    public MockDatabase Database { get; } = new();
+    public MockDatabase Database { get; }
+
+    public MockAppDbContext() => Database = new MockDatabase(this);
 
     public Task<int> SaveChangesAsync()
     {
@@ -3240,35 +3281,58 @@ public class MockAppDbContext : IAsyncDisposable
 
 public class MockDatabase
 {
+    private readonly MockAppDbContext _context;
+    public MockDatabase(MockAppDbContext context) => _context = context;
+
     public async Task<MockTransaction> BeginTransactionAsync()
     {
         Console.WriteLine("  [Database] BeginTransactionAsync()");
         await Task.Delay(10);
-        return new MockTransaction();
+        var users = _context.Users.Snapshot();
+        var orders = _context.Orders.Snapshot();
+        return new MockTransaction(() =>
+        {
+            _context.Users.Restore(users);
+            _context.Orders.Restore(orders);
+        });
     }
 }
 
 public class MockTransaction : IAsyncDisposable, IDisposable
 {
+    private readonly Action _rollback;
+    private bool _completed;
+
+    public MockTransaction(Action rollback) => _rollback = rollback;
+
     public Task CommitAsync()
     {
         Console.WriteLine("  [Transaction] CommitAsync()");
+        _completed = true;
         return Task.CompletedTask;
     }
 
     public Task RollbackAsync()
     {
         Console.WriteLine("  [Transaction] RollbackAsync()");
+        if (!_completed) _rollback();
+        _completed = true;
         return Task.CompletedTask;
     }
 
     public ValueTask DisposeAsync()
     {
         Console.WriteLine("  [Transaction] DisposeAsync()");
+        if (!_completed) _rollback();
+        _completed = true;
         return ValueTask.CompletedTask;
     }
 
-    public void Dispose() { }
+    public void Dispose()
+    {
+        if (!_completed) _rollback();
+        _completed = true;
+    }
 }
 
 // Fluent API 风格的配置（演示）
@@ -3864,6 +3928,7 @@ public class TaskController
 | 内存管理与性能 | GC、IDisposable、Span、ref struct、性能优化 |
 | 网络编程 | HttpClient、Socket、UDP、IPC、WebSocket、gRPC |
 | 工程化实战 | DI、单元测试、ASP.NET Core、EF Core、综合项目 |
+| 现代生产工程 | SDK/NuGet、C# 13/14、架构、API、安全、数据一致性、韧性、消息、可观测性、测试、容器、CI/CD、分布式系统 |
 
 ### 二、C# vs 其他语言
 
@@ -3886,7 +3951,7 @@ public class TaskController
 - 身份认证与授权（JWT、OAuth、Identity）
 - 微服务架构
 - Docker / Kubernetes 部署
-- 推荐资源：[Microsoft Docs](https://learn.microsoft.com/aspnet/core)、eShopOnContainers 开源项目
+- 推荐资源：[Microsoft Learn - ASP.NET Core](https://learn.microsoft.com/aspnet/core)、[dotnet/eShop](https://github.com/dotnet/eShop)
 
 #### 2. Unity 游戏开发
 - C# 脚本 + MonoBehaviour
@@ -3917,7 +3982,7 @@ public class TaskController
 #### 6. AI 开发
 - ML.NET（机器学习）
 - Semantic Kernel（LLM 应用开发）
-- Bot Framework
+- Microsoft.Extensions.AI 与 Semantic Kernel
 - 推荐资源：[ML.NET Docs](https://learn.microsoft.com/dotnet/machine-learning)
 
 ### 四、学习资源推荐
@@ -3928,7 +3993,7 @@ public class TaskController
 - [C# 语言规范](https://learn.microsoft.com/dotnet/csharp/language-reference/)
 
 #### 优秀开源项目
-- [eShopOnContainers](https://github.com/dotnet-architecture/eShopOnContainers) - 微服务参考架构
+- [dotnet/eShop](https://github.com/dotnet/eShop) - 现代云原生参考应用
 - [ASP.NET Core](https://github.com/dotnet/aspnetcore) - 框架源码
 - [BenchmarkDotNet](https://github.com/dotnet/BenchmarkDotNet) - 性能测试
 - [Polly](https://github.com/App-vNext/Polly) - 弹性策略

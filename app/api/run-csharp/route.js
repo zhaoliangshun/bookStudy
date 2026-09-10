@@ -11,11 +11,11 @@
 //   4. 用 dotnet run 编译并运行
 //   5. 捕获输出、清理临时文件
 //
-// 兼容性：C# 12 / .NET 8 LTS
+// 兼容性：动态使用当前已安装 SDK（教程 demo 保持 C# 12 / net8.0 兼容）
 //
 // 安全说明：
-//   本路由用于本地开发学习。生产环境切勿直接暴露此接口。
-//   已做以下基本防护：
+//   本路由仅用于受信任用户的本地学习，绝不是安全沙箱。
+//   生产环境切勿直接暴露此接口。当前只有以下可用性保护：
 //     1. 设置运行超时（25 秒，含编译时间）
 //     2. 限制 stdout 缓冲区大小（1MB）
 //     3. 子进程以独立 stdio 管道运行
@@ -291,9 +291,9 @@ async function runCsharpCode(code) {
     return {
       output: "",
       error:
-        "未找到 dotnet 命令。请先安装 .NET 8 SDK：\n" +
+        "未找到 dotnet 命令。请先安装受支持的 .NET SDK（新项目建议 .NET 10 LTS）：\n" +
         "  macOS:   brew install --cask dotnet-sdk\n" +
-        "  或访问:  https://dotnet.microsoft.com/download/dotnet/8.0\n" +
+        "  或访问:  https://dotnet.microsoft.com/download\n" +
         "  验证:    dotnet --version",
       exitCode: -1,
     };
@@ -417,7 +417,7 @@ export async function GET() {
     status: available ? "ok" : "error",
     message: available
       ? "C# 代码执行服务正在运行"
-      : "未找到 dotnet，请先安装 .NET 8 SDK",
+      : "未找到 dotnet，请先安装受支持的 .NET SDK",
     dotnetVersion: version,
     runTimeoutMs: RUN_TIMEOUT_MS,
     maxOutputBytes: MAX_OUTPUT_BYTES,

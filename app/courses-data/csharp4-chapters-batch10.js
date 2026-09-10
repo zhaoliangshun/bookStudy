@@ -525,7 +525,7 @@ try
         // CopyToAsync：异步复制（推荐用于 IO 密集场景）
         using MemoryStream ms2 = new MemoryStream();
         fs2.Position = 0;
-        fs2.CopyToAsync(ms2).Wait();
+        await fs2.CopyToAsync(ms2);
         Console.WriteLine($"CopyToAsync 后内存流长度: {ms2.Length}");
     }
 
@@ -744,7 +744,7 @@ writer.WriteEndObject();
 writer.Flush();
 \`\`\`
 
-### 九、自定义 JsonConverter<T\`
+### 九、自定义 \`JsonConverter<T>\`
 
 处理内置不支持的类型，或自定义格式。比如让 \`DateTime\` 只输出日期：
 
@@ -763,7 +763,7 @@ public class DateOnlyConverter : JsonConverter<DateTime>
 
 ### 十、循环引用与多态
 
-**循环引用**：对象互相引用会导致 \`StackOverflow\`。.NET 8 提供两种策略：
+**循环引用**：默认配置检测到可能的对象环或深度超限时会抛 \`JsonException\`，不会无限递归到栈溢出。需要保留或忽略对象环时显式选择策略：
 
 \`\`\`csharp
 new JsonSerializerOptions

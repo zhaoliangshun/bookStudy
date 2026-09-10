@@ -209,7 +209,7 @@ const BOOK_CATEGORIES = [
       { path: "/csharp", label: "C#", icon: "🟪" },
       { path: "/csharp2", label: "C# 从入门到精通大全", icon: "🟣" },
       { path: "/csharp3", label: "C# 从入门到精通大全（终极版）", icon: "🟪" },
-      { path: "/csharp4", label: "C# 从入门到精通大全（全新版）", icon: "🟦" },
+      { path: "/csharp4", label: "现代 C# 从入门到生产（.NET 10）", icon: "🟦" },
     ],
   },
   {

@@ -11,7 +11,7 @@
 //   csharp4-ch05    : 第五章 控制台输入输出
 //
 // 风格：demo 驱动，每章直接上手写代码，注释详尽，循序渐进。
-// 适用版本：.NET 8 LTS / C# 12，示例用顶级语句。
+// 生产基线：.NET 10 LTS / C# 14；交互示例兼容 .NET 8 / C# 12。
 // =============================================================
 
 const chapters = [
@@ -27,11 +27,11 @@ const chapters = [
 
 ### 一、本书定位
 
-这是一本**大而全、循序渐进、工程导向**的 C# 教程书。本书不追求学术严谨到令人昏睡，也不屑于"5 分钟入门"的标题党，目标是让你读完之后真正能写出生产级 C# 代码。
+这是一本**大而全、循序渐进、工程导向**的 C# 教程书。目标不只是让代码“能跑”，而是建立开发生产系统所需的语言、框架、数据、安全、测试、可观测性和交付知识地图。
 
-市面上 C# 教程不少，但常见两类问题：要么是"教科书风"——讲一堆概念却不会用；要么是"碎片化风"——教你写 Hello World 然后直接跳到 ASP.NET Core。本书试图在这两者之间找到平衡：**每一章都从一个具体问题出发，给出可运行代码，再讲清楚背后的原理**。
+教程本身不能保证读者从此“开发没有问题”——真实生产能力还来自独立项目、代码评审、测试、发布演练和事故复盘。本书会明确教学模拟与真实框架的边界，并在最后给出可验证的毕业项目。
 
-全书正文 78 讲（加前言、结语共 80 篇），覆盖日常开发高频知识点：
+全书正文 92 讲（加前言、结语共 94 篇），覆盖语言基础到生产交付：
 
 | 模块 | 章节 | 主题 |
 | --- | --- | --- |
@@ -49,6 +49,7 @@ const chapters = [
 | 内存管理与性能 | 65-69 | GC、IDisposable、Span、ref struct、性能技巧 |
 | 网络编程 | 70-73 | HttpClient、TCP、UDP/IPC、WebSocket/gRPC |
 | 工程化实战 | 74-78 | DI 与配置、单元测试、ASP.NET Core、EF Core、综合项目 |
+| 现代 C# 与生产工程 | 79-92 | SDK/NuGet、C# 13/14、架构、API、安全、数据一致性、韧性、消息、可观测性、测试、容器与 CI/CD |
 
 ### 二、目标读者
 
@@ -57,20 +58,20 @@ const chapters = [
 - **完全零基础**：从没写过代码，想从 C# 开始编程之路。
 - **跨语言学习者**：会 Java / Python / JavaScript / Go，想快速上手 .NET 生态。
 - **基础补齐者**：写过几年 C# 但知识有断层，想系统梳理。
-- **进阶工程师**：想掌握 C# 12 新特性、.NET 8 工程实践、性能优化技巧。
+- **进阶工程师**：想掌握 C# 14、.NET 10 LTS 与现代生产工程实践。
 
 如果你完全不会编程，本书会从"什么是变量"讲起；如果你已经会其他语言，可以跳过前 5 章直接从第六章开始。
 
 ### 三、版本约定
 
-本书基于以下版本编写，所有代码均经过实际验证：
+截至 2026 年 9 月，新的生产项目应优先采用仍有较长支持期的 .NET 10 LTS。本书采用双层版本约定：
 
-- **.NET SDK**：8.0.x LTS（长期支持版，支持到 2026 年 11 月）
-- **C# 语言版本**：12.0
-- **运行时**：.NET 8 CLR
-- **目标框架**：\`net8.0\`
+- **生产实践基线**：.NET 10 LTS（支持到 2028 年 11 月）/ C# 14。
+- **交互 demo 基线**：\`net8.0\` / C# 12 兼容子集，方便只安装 .NET 8 SDK 的学习环境直接运行。
+- **版本专属内容**：C# 13/14 语法和 .NET 10 API 在正文中明确标注，不伪装成旧 SDK 可执行代码。
+- **生命周期提醒**：.NET 8 与 .NET 9 都将在 2026 年 11 月结束支持，现有系统应制定升级计划。
 
-C# 12 带来了不少重要特性，本书会在相关章节详细讲解：
+基础章节会使用成熟的现代语法：
 
 - **主构造函数**（primary constructors）：类/结构体直接在声明处接收参数。
 - **集合表达式**（collection expressions）：\`int[] arr = [1, 2, 3];\` 一行初始化。
@@ -78,9 +79,11 @@ C# 12 带来了不少重要特性，本书会在相关章节详细讲解：
 - **\`ref readonly\` 参数**：性能与安全的折中。
 - **\`required\` 成员**：强制对象初始化时必须赋值。
 
+新增生产章节会覆盖 C# 13/14、内置 OpenAPI、HTTP resilience handler、认证授权、Outbox、OpenTelemetry、集成测试、容器和 CI/CD。
+
 ### 四、如何使用本教程
 
-本教程在网页中提供**在线运行**沙箱，每章代码都可以直接点击"运行"按钮查看结果，无需本地安装环境。
+本教程网页提供**在线运行器**，每章代码都可以点击“运行”查看结果。网站宿主必须安装 .NET SDK；当前本地运行器不构成安全隔离，不能执行不可信代码。
 
 **学习节奏建议**：
 
@@ -137,7 +140,7 @@ namespace MyApp
 
 ### 六、配套资源
 
-- **在线沙箱**：本教程网页内嵌代码运行环境，无需本地配置。
+- **在线运行器**：教程网页内嵌代码运行环境；由站点宿主提供 .NET SDK。
 - **本地运行**：安装 .NET SDK 后，每章代码都可以保存为 \`.cs\` 文件或放入控制台项目运行。
 - **官方文档**：[learn.microsoft.com/dotnet](https://learn.microsoft.com/dotnet) 是权威参考。
 
@@ -232,15 +235,15 @@ void Greet(string name)
 2. **SDK**（Software Development Kit）：包含编译器、CLI 工具、运行时，用于开发 .NET 应用。
 3. **类库**（Base Class Library, BCL）：提供数以万计的现成 API，从文件 IO 到网络通信到 JSON 解析全覆盖。
 
-从 .NET 5 开始，微软把原来的 .NET Framework（仅 Windows）、.NET Core（跨平台）、Xamarin（移动端）合并成**统一的 .NET**，每年 11 月发布一个版本，偶数版本为 LTS（长期支持，3 年）。
+从 .NET 5 开始，微软以统一的 \`.NET\` 品牌演进现代跨平台实现；.NET Framework 仍作为 Windows 兼容产品维护，并没有被原地“合并消失”。现代 .NET 通常每年 11 月发布一个主版本，偶数版本为 LTS。
 
 当前主流版本：
 
-- **.NET 8**：LTS，2023 年 11 月发布，支持到 2026 年 11 月。
-- **.NET 9**：STS（标准支持，18 个月），2024 年 11 月发布。
-- **.NET 10**：下一个 LTS，2025 年 11 月发布。
+- **.NET 8**：LTS，支持到 2026 年 11 月。
+- **.NET 9**：STS，支持到 2026 年 11 月。
+- **.NET 10**：当前 LTS，支持到 2028 年 11 月。
 
-本书基于 .NET 8 LTS 编写。
+本书生产实践以 .NET 10 LTS 为基线；交互 demo 保持 net8.0 兼容。
 
 ### 二、CLR、JIT、BCL、CLS 是什么
 
@@ -278,7 +281,7 @@ CLR 内部的翻译官。它把 IL 在"运行的那一刻"翻译成本机机器�
 
 代码执行流程：C# 源代码 → C# 编译器（Roslyn）→ IL 程序集（.dll/.exe）→ CLR 加载 → JIT 翻译 → 机器码执行。
 
-### 四、C# 版本演进（重点 8-12）
+### 四、C# 版本演进（重点 8-14）
 
 | 版本 | 年份 | 重要特性 |
 | --- | --- | --- |
@@ -294,20 +297,16 @@ CLR 内部的翻译官。它把 IL 在"运行的那一刻"翻译成本机机器�
 | C# 10.0 | 2021 | global using、文件作用域命名空间、record struct |
 | C# 11.0 | 2022 | 列表模式、原始字符串字面量、required 成员 |
 | C# 12.0 | 2023 | 主构造函数、集合表达式、内插字符串增强、ref readonly 参数 |
+| C# 13.0 | 2024 | params 集合、Lock 类型、ref/unsafe 场景扩展 |
+| C# 14.0 | 2025 | 扩展成员、field 属性、null 条件赋值、更多 partial 成员 |
 
-本书重点使用 C# 8-12 的现代语法，因为这是当前生产环境的主流。
+基础 demo 重点使用 C# 8-12 的广泛兼容语法；第八十章集中讲解 C# 13/14。
 
 ### 五、跨平台支持
 
-.NET 8 官方支持以下平台：
+现代 .NET 支持主流 Windows、macOS 与 Linux 发行版，以及 x64、x86、ARM32、ARM64 等架构。具体操作系统最低版本会随 .NET 主版本变化，部署前必须查目标版本的官方支持矩阵。
 
-- **Windows**：Windows 10/11、Windows Server 2016+
-- **macOS**：macOS 11 Big Sur 及以上
-- **Linux**：Ubuntu、Debian、CentOS、Alpine、RHEL 等主流发行版
-
-CPU 架构：x64、x86、ARM32、ARM64。
-
-你的同一个 .NET 8 程序，编译一次后可以跑在 Windows 笔记本、Mac 台式机、Linux 服务器、树莓派上，无需改代码。
+纯托管、目标框架兼容的 IL 程序通常可以跨受支持平台运行；但原生依赖、操作系统 API、文件系统大小写、路径规则、时区和 globalization 配置都可能产生平台差异。生产发布必须在目标 OS/架构上测试，Native AOT 和 self-contained 制品还要按 RID 分别构建。
 
 ### 六、运行时 vs 编译时
 
@@ -438,7 +437,7 @@ Console.WriteLine("===== 信息采集完毕 =====");`,
 **Windows**：
 
 1. 访问 [dotnet.microsoft.com/download](https://dotnet.microsoft.com/download)。
-2. 下载 \`.NET 8.0 SDK\` 的 Windows x64 安装包。
+2. 下载最新补丁版 \`.NET 10 SDK\`（按机器选择 x64 或 Arm64）。
 3. 双击安装，一路下一步。
 4. 打开 PowerShell，运行 \`dotnet --version\` 验证。
 
@@ -459,13 +458,13 @@ brew install --cask dotnet-sdk
 wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
 sudo dpkg -i packages-microsoft-prod.deb
 # 安装 SDK
-sudo apt-get update && sudo apt-get install -y dotnet-sdk-8.0
+sudo apt-get update && sudo apt-get install -y dotnet-sdk-10.0
 \`\`\`
 
 **验证安装**：
 
 \`\`\`bash
-dotnet --version       # 应输出 8.0.x
+dotnet --version       # 新项目建议输出 10.0.x
 dotnet --list-sdks     # 列出所有已安装的 SDK
 dotnet --list-runtimes # 列出所有已安装的运行时
 \`\`\`
@@ -501,7 +500,7 @@ dotnet run
 
 写 C# 主流有三款 IDE，选哪个看预算和喜好：
 
-**Visual Studio 2022（Windows only）**
+**Visual Studio 2026（Windows）**
 
 - 微软亲儿子，功能最强。
 - Community 版免费（个人/小团队），Professional/Enterprise 收费。
@@ -517,14 +516,14 @@ dotnet run
 
 **JetBrains Rider（跨平台）**
 
-- 收费（个人版约 ¥899/年），有 30 天试用。
+- 具体授权和价格以 JetBrains 当前条款为准。
 - 智能提示、重构、导航最强（JetBrains 祖传技能）。
 - 跨平台，Mac/Linux 友好。
 - 缺点：收费、对 .NET 新特性跟进偶尔滞后。
 
 **本书推荐**：
 
-- **Windows 用户**：VS 2022 Community。
+- **Windows 用户**：Visual Studio 2026 或 Rider。
 - **Mac/Linux 用户**：VS Code + C# Dev Kit，或 Rider 试用。
 - **本教程沙箱**：直接网页内运行，无需任何 IDE。
 
@@ -551,13 +550,13 @@ dotnet run
 
 ### 五、csproj 文件结构
 
-每个 .NET 项目都有一个 \`.csproj\` 文件，是项目的"配置文件"。一个典型的 .NET 8 控制台项目 csproj 长这样：
+每个 .NET 项目都有一个 \`.csproj\` 文件。一个典型的 .NET 10 控制台项目如下：
 
 \`\`\`xml
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
@@ -568,25 +567,25 @@ dotnet run
 
 - \`Sdk="Microsoft.NET.Sdk"\`：使用 .NET 标准项目 SDK。
 - \`OutputType\`：\`Exe\` 表示可执行文件，\`Library\` 表示类库。
-- \`TargetFramework\`：目标框架，\`net8.0\` 是 .NET 8。
+- \`TargetFramework\`：目标框架；新建生产项目使用 \`net10.0\`。
 - \`ImplicitUsings\`：启用隐式 using（自动导入常用命名空间）。
 - \`Nullable\`：启用可空引用类型检查（C# 8+ 特性）。
 
 ### 六、本教程沙箱说明
 
-本教程每章代码都配有"运行"按钮，背后调用 \`/api/run-csharp\` 接口，在服务端 .NET 8 沙箱中执行你的代码，返回控制台输出。
+本教程每章代码都配有“运行”按钮，背后调用本机 \`/api/run-csharp\` 接口，并使用**当前已安装 SDK**创建匹配的目标框架。交互 demo 保持 net8.0 语法兼容。
 
-**沙箱限制**：
+**安全边界（重要）**：
 
-- 执行时间：单次最多 10 秒。
-- 内存：256 MB。
-- 网络：默认禁用（部分章节会放开）。
-- 文件系统：临时目录可写，重启后清空。
+- 当前运行器只有 15 秒超时和输出大小限制，不是强隔离安全沙箱。
+- 它没有可靠的内存、网络、CPU、进程或文件系统隔离。
+- 只应用于受信任用户的本地学习环境，绝不能直接暴露到公网。
+- 公网代码执行必须使用专用容器/虚拟机隔离、非特权用户、资源配额、网络策略和审计。
 
 **沙箱使用建议**：
 
 - 不要写死循环（会被超时杀掉）。
-- 不要尝试访问本机敏感目录（沙箱里没有你的真实文件）。
+- 不要运行不可信代码；当前本地执行器可能访问运行账号有权读取的资源。
 - 想本地完整调试，按上面步骤装 SDK 即可。
 
 下面 demo 用反射和 Environment 获取运行环境的详细信息。

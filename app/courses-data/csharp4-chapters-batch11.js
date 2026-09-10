@@ -165,7 +165,7 @@ greet.Invoke(p, new object[] { "Hi" });          // 带参方法
 
 ### 八、获取特性
 
-特性（详见第五十八章）通过 \`GetCustomAttribute\` 读取：
+特性（详见第五十九章「特性 Attribute」）通过 \`GetCustomAttribute\` 读取：
 
 \`\`\`csharp
 [Serializable]
@@ -1269,7 +1269,7 @@ public static class SqlBuilder
     title: '源生成器简介',
     content: `## 第六十章　源生成器简介
 
-反射虽然强大，但有三个问题：**慢**（运行时查元数据）、**AOT 不友好**（NativeAOT 会修剪掉「看似没用」的元数据）、**无法静态分析**（编译器看不见你的意图）。源生成器（Source Generator）正是为了解决这些问题而生——它在**编译期**生成代码，零运行时开销。
+反射虽然强大，但动态发现会增加运行时工作，并让 trimming / Native AOT 静态分析更困难。源生成器可以把一部分“运行时发现并生成”的工作移到编译期；生成后的业务代码仍有正常运行成本，并不是自动“零开销”。
 
 ### 一、源生成器是什么？⭐
 
@@ -1277,10 +1277,10 @@ public static class SqlBuilder
 
 核心特点：
 
-- **编译时执行**：生成的代码直接进入程序集，零运行时开销。
+- **编译时生成**：把代码生成和元数据发现移到编译期；生成代码本身仍有正常执行成本。
 - **只读语法树**：生成器**不能修改**现有代码，只能新增。
 - **可调试**：生成的代码可设为输出到文件，方便调试。
-- **AOT 友好**：所有逻辑都在编译期完成，运行时不需要反射。
+- **可改善 AOT 兼容**：如果生成结果覆盖全部动态访问，运行时可减少或消除对应反射；仍需通过 trimming/AOT 分析器验证。
 
 ### 二、ISourceGenerator vs IIncrementalGenerator
 
@@ -1291,7 +1291,7 @@ public static class SqlBuilder
 | 推出版本 | C# 9 / .NET 5 | C# 9 / .NET 6+ |
 | 增量缓存 | 否（每次重算） | 是（基于管线缓存） |
 | 性能 | 较慢 | 显著更快 |
-| 推荐使用 | 否（已过时） | 是 |
+| 新项目选择 | 兼容旧生成器，未被废弃 | 通常优先 |
 
 初代生成器在「\`IncrementalInit\`」每变更一次就全部重跑，性能很差。增量生成器采用 **管线 + 缓存** 模型：输入分阶段处理，每阶段都缓存，只有真正变更的部分才会重新计算。
 
@@ -1300,8 +1300,8 @@ public static class SqlBuilder
 | 维度 | 反射 | 源生成器 |
 | --- | --- | --- |
 | 时机 | 运行时 | 编译期 |
-| 性能 | 慢（每调用查元数据） | 零运行时成本 |
-| AOT 兼容 | 差（会被修剪） | 完美兼容 NativeAOT |
+| 性能 | 取决于是否缓存和调用方式 | 可消除生成阶段的运行时发现成本 |
+| AOT 兼容 | 动态访问需注解/配置 | 通常更易静态分析，仍需验证 |
 | 调试 | 困难 | 简单（生成代码可看） |
 | 复杂度 | 简单 | 较高（要懂 Roslyn API） |
 | 适用场景 | 动态插件、运行时发现 | 静态已知、性能敏感 |
@@ -1370,7 +1370,34 @@ public class MyGenerator : IIncrementalGenerator
 }
 \`\`\`
 
-⚠ 注意：本项目不能引用 Roslyn 包（它属于编译器扩展项目），所以本章代码用「伪代码」演示生成器实现，配合一个真实的 \`JsonSerializerContext\` 例子让你感受实际效果。
+生成器应放在独立项目，而不是引用到应用运行时。一个最小生成器项目需要：
+
+\`\`\`xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IsRoslynComponent>true</IsRoslynComponent>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp"
+                      Version="5.0.0"
+                      PrivateAssets="all" />
+  </ItemGroup>
+</Project>
+\`\`\`
+
+示例版本对应 C# 14 时代；实际项目应让 Roslyn 包与支持的编译器范围对齐，并通过 Central Package Management 固定经过验证的补丁版本。
+
+消费项目把它作为 analyzer 引用，不能作为普通运行时库：
+
+\`\`\`xml
+<ProjectReference Include="../MyGenerator/MyGenerator.csproj"
+                  OutputItemType="Analyzer"
+                  ReferenceOutputAssembly="false" />
+\`\`\`
+
+真实生成器还要测试：给 Roslyn \`Compilation\` 输入，运行 generator driver，再断言生成源码和诊断。
 
 ### 六、ForAttributeWithMetadataName：特性驱动生成
 
@@ -1378,7 +1405,7 @@ public class MyGenerator : IIncrementalGenerator
 
 - **\`System.Text.Json\`**：贴 \`[JsonSerializable]\` 生成序列化代码。
 - **\`System.Runtime.InteropServices\`**：贴 \`[LibraryImport]\` 生成 P/Invoke 代码（替代 \`[DllImport]\`）。
-- **ASP.NET Core**：贴 \`[Route]\` / \`[HttpGet]\` 自动生成路由表。
+- **ASP.NET Core**：部分 Minimal API 场景可使用 Request Delegate Generator；Controller 特性路由不能笼统理解为自定义源生成器自动生成。
 - **社区 MVVM Toolkit\`**：贴 \`[ObservableProperty]\` 生成属性包装代码。
 
 ### 七、PostInitializationOutput：启动期注入代码
@@ -1411,9 +1438,9 @@ context.RegisterPostInitializationOutput(ctx =>
 
 ### 九、NativeAOT 与 Trimming 简介
 
-**NativeAOT**（.NET 8 起正式支持）：把 .NET 程序**直接编译为原生机器码**，运行时不需要 JIT，启动极快、内存占用小，部署为单文件。
+**Native AOT**（.NET 7 首次正式提供，.NET 8 扩展 ASP.NET Core 支持）：把 .NET 程序直接编译为平台特定的自包含原生可执行文件，不需要 JIT。它通常启动快、内存低，但构建更慢，反射/动态代码和诊断能力受限，必须处理 trimming/AOT 分析警告。
 
-**Trimming（修剪）**：发布时移除「未被引用」的代码与元数据，缩小体积。反射会因为「静态分析看不见动态访问」而被修剪掉，运行时报 \`MissingMetadataException\`。
+**Trimming（修剪）**：发布时移除静态分析认为未使用的代码与元数据。未标注的动态访问可能产生分析警告，并在运行时表现为缺成员、序列化失败等不同异常；不要只等待某一种异常。
 
 要让代码 NativeAOT 友好：
 
@@ -1428,8 +1455,8 @@ context.RegisterPostInitializationOutput(ctx =>
 - \`JsonSerializerContext\` 是最常用的开箱即用生成器
 - \`ForAttributeWithMetadataName\` 是特性驱动生成的入口
 - \`PostInitializationOutput\` 注入启动期静态代码
-- NativeAOT + Trimming 是 .NET 性能与体积的终极武器
-- 反射 → 源生成器是 .NET 演进的核心方向之一
+- Native AOT + trimming 是有约束的发布选项，不是所有应用的“终极方案”
+- 只有静态已知且收益明确的反射路径才适合改为源生成器
 
 ### 练习
 
