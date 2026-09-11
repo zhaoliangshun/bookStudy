@@ -189,7 +189,8 @@
       "/csharp",
       "/csharp2",
       "/csharp3",
-      "/csharp4"
+      "/csharp4",
+      "/csharp5"
     ],
     "Typescript": [],
     "react": [
