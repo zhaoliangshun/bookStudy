@@ -162,6 +162,18 @@ await foreach (var item in ProduceAsync())
 
 \`await foreach\` 是 \`foreach\` 的异步版本，自动 await 每一次 \`MoveNextAsync\`。
 
+### 十一、sync-over-async 死锁
+
+在仍有同步上下文的环境（WinForms / WPF / 旧 ASP.NET）里，UI 或请求线程 \`Wait()\` / \`.Result\` 卡住，而异步方法完成后想**回到这条线程**继续——两边互相等，这就是经典死锁。现代 ASP.NET Core **没有** \`SynchronizationContext\`，同样的 \`.Result\` 通常不会死锁，但会**占死线程池线程**，高并发时一样饿死。
+
+铁律：异步一路 \`await\` 到底；库代码用 \`ConfigureAwait(false)\`；控制台 / ASP.NET Core 里加不加 ConfigureAwait 对“回不回 UI 线程”几乎无意义，但 \`async void\`、\`GetAwaiter().GetResult()\` 仍然有害。
+
+### 十二、ValueTask 规则与 IAsyncDisposable
+
+\`ValueTask\` / \`ValueTask<T>\` 只允许：**await 恰好一次**、不要同时存两份、完成前不要 \`GetResult()\` 多次。需要多次等待先 \`AsTask()\`。默认优先 \`Task\`，只在“经常同步完成的热路径”用 ValueTask。
+
+持有异步资源（连接、异步流）实现 \`IAsyncDisposable\`，用 \`await using\`。同步 \`Dispose\` 里不要 \`GetAwaiter().GetResult()\` 去等异步清理，那是另一种 sync-over-async。
+
 本章 demo 演示：async/await 基础、ValueTask 与 Task 对比、IAsyncEnumerable 流式返回、await foreach 消费。
 
 ### 练习
@@ -478,10 +490,15 @@ Console.WriteLine(sw.ElapsedMilliseconds);
 
 本章 demo 演示：Task.Run/WhenAll/WhenAny、Parallel.For 并行计算、CancellationToken 取消、Stopwatch 测速。
 
-### 练习
+### 十三、WaitAsync、TCS 与 WhenEach
 
-1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
-2. 合上示例，用「Task 与并行」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+\`task.WaitAsync(timeout)\`（.NET 6+）给等待加超时，超时抛 \`TimeoutException\`，**不会自动取消**原来的 Task，还要另传 \`CancellationToken\`。这和 \`Wait(timeout)\` 不同：后者阻塞线程。
+
+\`TaskCompletionSource<T>\` 把“外部事件”变成可 await 的 Task。构造时加上 \`TaskCreationOptions.RunContinuationsAsynchronously\`，避免在完成 TCS 的那个线程上**同步跑**延续（否则容易重入、占住 IO 完成端口）。
+
+.NET 9 的 \`Task.WhenEach(tasks)\` 按**完成顺序**异步枚举 Task，比反复 \`WhenAny\` 拆列表更干净（需锁定 .NET 9+；本教程 demo 仍以 .NET 8 为准）。异步并行循环优先 \`Parallel.ForAsync\`（.NET 6+），不要 \`Parallel.For\` 里 \`GetResult()\`。
+
+### 练习
 `,
     code: `// C# 12 顶级语句 - Task 与并行演示
 // 演示：Task.Run/WhenAll/WhenAny + Parallel.For + CancellationToken + Stopwatch 测速
@@ -852,6 +869,20 @@ TaskScheduler.UnobservedTaskException += (s, e) =>
 4. 多个取消源用 \`CreateLinkedTokenSource\` 合并。
 5. 永远别写 \`async void\`（事件处理器除外）。
 6. \`WhenAll\` 处理异常时记得看 \`Task.Exception.InnerExceptions\`。
+
+### 十二、Register 必须释放，以及超时 vs 取消
+
+\`token.Register(callback)\` 返回 \`CancellationTokenRegistration\`，**用完要 Dispose**，否则委托一直挂在 CTS 上，捕获的对象无法回收。\`await using\` / \`using\` 包起来。
+
+\`HttpClient\` 的 \`GetAsync(url, token)\` 会把取消传到传输层；超时应另建 \`CancelAfter\` 或 \`IHttpClientFactory\` 的 \`Timeout\`。两者不要混为一谈：
+
+| 信号 | 典型异常 | 调用方怎么分 |
+| --- | --- | --- |
+| 用户点了取消 | \`OperationCanceledException\`，\`token.IsCancellationRequested == true\` | 停止即可，不必当故障 |
+| 超时 CTS | 同样是 OCE，但来自超时源 | 可重试或降级 |
+| \`Task.WaitAsync(timeout)\` | \`TimeoutException\`，原 Task 可能还在跑 | 必须再取消原工作 |
+
+\`TaskCanceledException\` 是 \`OperationCanceledException\` 的子类：任务尚未开始就被取消、或 \`HttpClient\` 超时时常见。捕获时写 \`catch (OperationCanceledException)\` 就能盖住子类；需要区分再 \`is TaskCanceledException\`。
 
 本章 demo 演示：取消令牌的各种用法 + 链接令牌 + 并行任务异常聚合 + UnobservedTaskException 监听。
 
@@ -1250,6 +1281,21 @@ if (queue.TryDequeue(out var v)) { ... }
 ### 十三、异步锁：SemaphoreSlim.WaitAsync
 
 记住一条铁律：**永远不要在 lock 里 await**。\`lock\` 持有的是线程，await 会切线程，无法保证释放。\`SemaphoreSlim.WaitAsync\` 是替代方案。
+
+### 十四、同步原语对照，以及 C# 13 的 Lock
+
+| 原语 | 跨进程 | 可 await | 典型用途 |
+| --- | --- | --- | --- |
+| \`lock\` / \`Monitor\` | 否 | 否 | 进程内短临界区 |
+| \`System.Threading.Lock\`（C# 13 / .NET 9） | 否 | 否 | 替代 \`object\` 锁，避免误 lock 公开对象；本教程目标是 .NET 8，仅作前瞻 |
+| \`Mutex\` | 是 | 否 | 跨进程单实例 |
+| \`SemaphoreSlim\` | 否 | \`WaitAsync\` | 限流、异步锁 |
+| \`ReaderWriterLockSlim\` | 否 | 否 | 读多写少 |
+| \`Barrier\` | 否 | 否 | 多阶段会合 |
+| \`Interlocked\` | 否 | — | 单变量原子更新 |
+| \`volatile\` | 否 | — | 禁止缓存、不保证复合操作原子 |
+
+\`volatile\` **不能**替代锁：\`volatile int\` 的 \`++\` 仍不是原子的。要计数用 \`Interlocked.Increment\`。C# 13 的 \`Lock\` 类型配合 \`lock (sync)\` 会走专用 API，比 lock 一个随意 \`object\` 更难误用；升级到 .NET 9 再考虑替换。
 
 本章 demo 演示：lock 同步访问共享变量、SemaphoreSlim 异步锁、Interlocked 原子操作、CountdownEvent 等待多任务。
 
@@ -1663,6 +1709,12 @@ async Task ConsumeAsync()
 - **IAsyncEnumerable**：单一生产者、流式产出、消费者直接消费。像 SQL 流式读取。
 - **Channel**：多生产者多消费者、解耦生产消费速率、需要背压。像消息队列。
 
+### 十三、WaitToRead、Complete，以及异步枚举的释放与取消
+
+有界 Channel 先 \`await reader.WaitToReadAsync(token)\` 再 \`TryRead\`，避免空转。写完必须 \`writer.Complete()\`（失败用 \`Complete(exception)\`），否则 \`ReadAllAsync\` / \`await foreach\` **永远等下一条**。\`BoundedChannelFullMode\`：\`Wait\` 背压、\`DropOldest\` / \`DropNewest\` / \`DropWrite\` 丢数据，选之前先确认能否丢。
+
+\`IAsyncEnumerable<T>\` 的枚举器常常持有连接。\`await foreach\` 结束会 \`DisposeAsync\`；手动 \`GetAsyncEnumerator(token)\` **必须** \`await using\`，并把同一个 token 传进去——取消发生在 \`MoveNextAsync\`，不是创建那一刻。\`[EnumeratorCancellation] CancellationToken\` 让 \`await foreach (... withCancellation(token))\` 流进迭代器。
+
 本章 demo 演示：IAsyncEnumerable 流式数据、Channel 生产者消费者管道、背压效果。
 
 ### 练习
@@ -1987,9 +2039,9 @@ ThreadPool.SetMinThreads(50, 50);
 
 1. 大量 \`Task.Run\` 内部 \`Thread.Sleep\` 阻塞。
 2. async 方法内部调用了 \`.Result\` 阻塞等待。
-3. 长任务用 \`Task.Run\` 而不是 \`TaskCreationOptions.LongRunning\`。
+3. 把长时间**阻塞**的工作丢进普通线程池 Task，却不给专用线程。
 
-解决方案：少阻塞、多异步；CPU 密集型用 LongRunning 给独立线程。
+解决方案：少阻塞、多异步；确认后的少量长期阻塞工作才用 \`LongRunning\` 给独立线程。普通 CPU 短任务继续 \`Task.Run\`。
 
 ### 七、Task 默认调度到 ThreadPool
 
@@ -2069,6 +2121,18 @@ async Task B()
 1. 用 \`ThreadPool.GetAvailableThreads\` 诊断线程池是否被压满。
 2. 用 \`EventSource\` / \`dotnet-counters\` 看 \`ThreadPool Thread Count\`、\`ThreadPool Queue Length\`。
 3. 高并发服务务必测试突发流量下的延迟。
+
+### 十五、Thread vs Task，以及 ThreadStatic
+
+| | \`Thread\` | \`Task\` / 线程池 |
+| --- | --- | --- |
+| 创建成本 | 高（约 1MB 栈） | 低，复用工作线程 |
+| 适用 | 极少：必须指定前台/STA | 默认选择 |
+| 长阻塞 | 不占池 | 占池，可能饥饿；确认后才 \`LongRunning\` |
+
+\`[ThreadStatic]\` 字段每线程一份，**不会**随 \`await\` 流转（续体可能换线程，值就丢了）。跨 await 用 \`AsyncLocal<T>\`；仅同步线程本地缓存用 \`ThreadLocal<T>\`（记得 Dispose）。
+
+\`ThreadPool.SetMinThreads\` 能减少突发时的注入延迟，但设太高会在空闲时浪费栈和内存。先用 \`dotnet-counters\` 看队列长度，再调。\`TaskCreationOptions.LongRunning\` 是提示“可能长期占用”，默认调度器常给专用线程；异步 IO **不要**标 LongRunning。
 
 本章 demo 演示：ThreadPool.QueueUserWorkItem、ThreadLocal&lt;Random&gt;、AsyncLocal&lt;string&gt; 上下文流转、测量 ThreadPool 启动延迟。
 

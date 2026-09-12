@@ -166,6 +166,16 @@ var adults = db.Users
 
 关键：**谓词里的代码会被翻译成 SQL**，所以不能在 Where 里随便调用 C# 方法（比如 \`u => MyHelper.IsValid(u)\`），EF Core 不一定能翻译。
 
+### 十二、循环变量捕获：现代 C# 已经安全
+
+C# 5 之前 \`foreach\` 里 \`list.Add(() => item)\` 会让所有委托看到**最后一次**的 item。从 C# 5 起，每次迭代都是新变量，这种写法是安全的。今天用 C# 12 写 LINQ 闭包，\`foreach\` 捕获不必再抄到局部变量。
+
+\`for (int i = 0; i < n; i++) queries.Add(xs.Where(x => x > i));\` **仍然**共享同一个 \`i\`，延迟执行时 \`i\` 已经变成 \`n\`。需要按索引造查询时，先 \`int copy = i;\` 再捕获 \`copy\`。
+
+### 十三、AsParallel：PLINQ 指针
+
+CPU 密集、纯内存、无共享写的查询可以 \`source.AsParallel().Where(...).ToArray()\`。它把序列分区丢到线程池，**不保证顺序**（要顺序加 \`AsOrdered()\`）。带 IO、带锁、带 EF \`IQueryable\` 时不要 AsParallel——EF 查询应留在数据库，PLINQ 只吃已经在内存里的 \`IEnumerable\`。细节见并行章节。
+
 本章 demo 用 List<int> 和 List<Product> 演示两种语法对比、Where/Select/OrderBy、var 推断，并用 yield return 自定义一个延迟执行方法让你"看见"延迟执行。
 
 ### 练习
@@ -404,7 +414,7 @@ var firstRun = nums.TakeWhile(n => n >= 0);       // 取开头连续的非负数
 
 注意：与 Where 不同，SkipWhile/TakeWhile 只在"开头连续"区域生效，中间出现的不影响。
 
-### 七、Chunk（C# 8+）⭐
+### 七、Chunk（.NET 6+）⭐
 
 把序列切成固定大小的块，每块是一个数组：
 
@@ -415,7 +425,7 @@ var chunks = Enumerable.Range(1, 10).Chunk(3);
 
 批量处理场景非常实用：每 1000 条数据写一次数据库。
 
-### 八、Zip（C# 4+，三参数版本 C# 7+）⭐
+### 八、Zip（双序列从 .NET 4 起；三序列为 .NET 6+）⭐
 
 把多个序列按位置"拉链"合并：
 
@@ -460,6 +470,21 @@ var withDefault = empty.DefaultIfEmpty(-1);  // 空序列变成 [-1]
 1. **多条件 Where 比 && 链式更清晰**：\`Where(a).Where(b)\` 与 \`Where(x => a(x) && b(x))\` 性能几乎相同，前者可读性更好（小数据量）。
 2. **Select 中创建对象有成本**：大数据量投影到匿名对象会分配内存，必要时用 struct 或 record struct。
 3. **延迟执行的副作用**：Where 里如果修改外部状态，每次遍历结果可能不同。
+
+### 十三、匿名类型 vs DTO，以及带索引的 Select
+
+\`Select(p => new { p.Name, p.Age })\` 的匿名类型**只能在方法内**流转：不能作为公共 API 返回类型，不能跨程序集稳定序列化。跨层、进 JSON、进缓存，应投影到具名 DTO / \`record\`：
+
+\`\`\`csharp
+record PersonDto(string Name, bool IsAdult);
+var dtos = people.Select(p => new PersonDto(p.Name, p.Age >= 18));
+\`\`\`
+
+\`Select((item, index) => ...)\` 带从 0 起的索引，适合编号、交错取样。\`SelectMany\` 不只拍平一层：\`students.SelectMany(s => s.Courses).SelectMany(c => c.Tags)\` 连拍两层。带结果选择器的重载能同时拿到“外壳”和“内层元素”，避免先拍平再 Join。
+
+\`OfType<T>\` 走 \`is\` 过滤；\`Cast<T>\` 强制转换，失败抛 \`InvalidCastException\`。非泛型集合升级时优先 OfType。\`Cast\` 适合你**已经确定**全是 T 的旧 \`ArrayList\`；混合列表用 OfType，不要先 Cast 再靠 catch 跳过。
+
+查询语法里 \`from s in students from c in s.Courses\` 就是 \`SelectMany\`。需要“学生 + 每门课”一对时用带结果选择器的重载，避免拍平后丢失外壳。
 
 本章 demo 用学生 + 课程数据演示 Where（带索引）、Select、SelectMany（拍平课程）、Distinct、Skip/Take（分页）、Chunk、Zip（拉链合并）、OfType/Cast、DefaultIfEmpty。
 
@@ -823,6 +848,14 @@ var result = from s in students
 
 注意：\`on ... equals ...\`，不是 \`on ... = ...\`，且只能做等值连接（不等值连接得用 Where）。
 
+### 十三、ThenBy 稳定排序，以及 Order vs OrderBy（.NET 7+）
+
+LINQ to Objects 的 \`OrderBy\` / \`ThenBy\` 是**稳定排序**：关键字相同的元素保持原相对顺序。所以 \`OrderBy(x => x.Last).ThenBy(x => x.First)\` 才有意义——ThenBy 在已有顺序上追加，不会推倒重来。再写一次 \`OrderBy\` 会**丢掉**前面的排序。
+
+.NET 7 增加了 \`Order()\` / \`OrderDescending()\`：元素自身实现 \`IComparable<T>\` 时不必写键选择器，等价于 \`OrderBy(x => x)\`。自定义键、多键仍用 \`OrderBy\` + \`ThenBy\`。
+
+\`GroupBy\` 的元素选择器 \`GroupBy(x => x.City, x => x.Name)\` 让分组里直接是名字而不是整个对象；结果选择器还能一边分组一边聚合。\`ToLookup\` 立即物化成可重复查找的 \`ILookup<TKey,T>\`，适合“先建索引、稍后多次按键取组”；\`GroupBy\` 延迟执行，每次枚举都重新分组。
+
 本章 demo 演示 OrderBy/ThenBy 多字段排序、GroupBy 单键/多键/带选择器、ToLookup 立即分组、Join 内连接、GroupJoin + DefaultIfEmpty 左连接、自连接。
 
 ### 练习
@@ -1170,6 +1203,20 @@ foreach (var batch in batches) db.BulkInsert(batch);
 1. **多遍遍历 vs 缓存**：多次 Count/Sum/Max 会多次遍历。需要多次统计时，先 ToList 缓存。
 2. **LINQ to SQL 翻译**：EF Core 里 Sum/Count 会被翻译成 SQL 聚合，不会拉全表。
 3. **空集合的 Average 抛异常**：永远 \`if (list.Any())\` 或用 DefaultIfEmpty 兜底。
+
+### 十二、Count vs Any，以及 Aggregate 的种子
+
+| 需求 | 用谁 | 原因 |
+| --- | --- | --- |
+| 只要知道“有没有” | \`Any()\` / \`Any(pred)\` | 找到第一个就停 |
+| 必须知道个数 | \`Count()\` / \`LongCount()\` | 可能扫完全表；超大序列用 \`LongCount\` 防 \`int\` 溢出 |
+| EF 里计数 | \`CountAsync()\` | 翻译成 \`COUNT(*)\`，不要先 ToList |
+
+\`Any()\` 对 \`ICollection<T>\` 仍可能走 \`Count\`，但对延迟查询和带谓词的情况，\`Count() > 0\` 是浪费。
+
+\`Aggregate(seed, (acc, x) => ...)\` 的种子保证**空序列也有结果**（返回 seed）。不带种子的 \`Aggregate((a, b) => a + b)\` 在空序列上抛 \`InvalidOperationException\`，和 \`Average\` 一样。需要“最大值或默认”时用 \`MaxBy\`（.NET 6+）或先 \`DefaultIfEmpty\`。
+
+\`Chunk(size)\`（.NET 6+）按固定长度切批，最后一块可以更短；适合批量写库，不要自己用 Skip/Take 手写分页循环除非要随机页码。
 
 本章 demo 演示所有聚合操作、自定义 Aggregate 实现 string.Join、IEqualityComparer 自定义比较、Chunk 分批处理。
 
@@ -1589,6 +1636,20 @@ LINQ 的所有方法（Where/Select/...）都是 \`System.Linq.Enumerable\` 静�
 这就是为什么 \`using System.Linq;\` 之后，数组/List/Dictionary 等都"突然有了"这些方法——扩展方法的语法糖。
 
 对 IQueryable<T>，对应的是 \`System.Linq.Queryable\` 类，方法签名接收 \`Expression<Func<T,bool>>\`（表达式树）而非 \`Func<T,bool>\`（委托），这样 EF Core 才能把它翻译成 SQL。
+
+### 十九、DistinctBy / MaxBy / MinBy，以及 ToArray 何时该物化
+
+.NET 6+ 补齐了按键去重和按键极值，不必再写 \`GroupBy\` + \`First\`：
+
+\`\`\`csharp
+var newest = orders.MaxBy(o => o.CreatedAt);      // 空序列返回 null（引用类型）
+var uniqueUser = logs.DistinctBy(x => x.UserId);  // 保留每个键第一次出现
+var cheapest = products.MinBy(p => p.Price);
+\`\`\`
+
+\`ToDictionary\` 键重复立刻 \`ArgumentException\`；允许一键多值用 \`ToLookup\`。\`ToHashSet\` 适合随后大量 \`Contains\`。
+
+\`ToArray()\` / \`ToList()\` 会**立刻跑完整条延迟链**并分配。只枚举一次的查询不要提前 ToArray；要多次枚举、或要在改源集合之前冻结快照时才物化。\`Chunk\` 本身仍延迟，真正分配发生在你枚举每一块的时候。
 
 本章 demo 演示 ToList/ToDictionary/ToHashSet/ToLookup/AsEnumerable/Cast/Chunk/Append/Prepend/Concat/Union/Intersect/Except/Range/Repeat/Empty，并用代码演示延迟执行陷阱。
 

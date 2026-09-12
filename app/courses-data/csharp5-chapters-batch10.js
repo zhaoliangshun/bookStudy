@@ -161,6 +161,16 @@ Windows 默认路径长度上限是 260 字符。.NET Core 3.0+ 在 Windows 上�
 
 下一章我们深入 \`Stream\` 体系，处理大文件和流式数据。
 
+### 十、EnumerationOptions、Unix 权限、FileStreamOptions 与原子替换
+
+大目录遍历用 \`Directory.EnumerateFiles\` + \`EnumerationOptions\`（\`RecurseSubdirectories\`、\`IgnoreInaccessible\`、\`AttributesToSkip\`），比一次 \`GetFiles\` 拉全数组省内存。
+
+Unix / macOS 上 .NET 6+ 可用 \`File.SetUnixFileMode\` / \`GetUnixFileMode\` 设 \`UnixFileMode.UserRead | UserWrite\`；Windows 上这些 API 会抛或空操作，要用 ACL 时走 \`FileSystemAclExtensions\`。不要假设 \`chmod\` 在所有 OS 生效。
+
+\`FileStreamOptions\`（.NET 6+）一次配齐 \`Mode\` / \`Access\` / \`Share\` / \`Options\` / \`PreallocationSize\` / \`BufferSize\`。异步文件必须带 \`FileOptions.Asynchronous\`，否则 \`ReadAsync\` 只是包装过的阻塞读。
+
+原子替换：先写临时文件再 \`File.Replace(tmp, dest, destBackup)\` 或同一目录 \`File.Move(tmp, dest, overwrite: true)\`。跨卷 Move 会变成复制+删除，不是原子的。
+
 ### 练习
 
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
@@ -437,6 +447,14 @@ using FileStream fs = new FileStream(...);
 1. 任何 \`Stream\` / \`StreamReader\` / \`BinaryReader\` 都用 \`using\` 包起来
 2. 异步优先：\`ReadAsync\`/\`WriteAsync\`/\`CopyToAsync\`（下一章细讲）
 3. 写入后别忘了 \`Flush\` 或让 Dispose 触发 flush
+
+### 九点、MemoryStream 容量、编码与 PipeReader
+
+\`new MemoryStream()\` 默认容量很小，反复写入会多次扩容复制。已知最终大小就 \`new MemoryStream(capacity)\`。\`ToArray()\` 总是再复制一份；能继续用 \`TryGetBuffer\` / \`GetBuffer\` 时不要 ToArray（\`GetBuffer\` 可能比 \`Length\` 更长，只读 \`Length\` 那段）。
+
+\`StreamReader\` / \`StreamWriter\` 默认 UTF-8。构造时显式传 \`new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)\` 可避免写出 BOM；读入时 \`detectEncodingFromByteOrderMarks: true\` 能识别 UTF-16 LE/BE。\`leaveOpen: true\` 只关包装器、不关底层流——外层必须自己 Dispose。
+
+\`Stream.CopyToAsync(dest, token)\` 是泵数据的首选。更高吞吐、需要“读一段处理一段”的协议解析用 \`System.IO.Pipelines\` 的 \`PipeReader\`（见高性能 IO 章），不要自己用 4KB 数组循环 \`ReadAsync\` 再拼消息。
 
 ### 九、本章小结
 
@@ -782,7 +800,18 @@ new JsonSerializerOptions
 public abstract class Animal { }
 \`\`\`
 
-序列化时自动加 \`"type": "dog"\`，反序列化时根据该字段创建正确类型。
+序列化时自动加 \`"type": "dog"\`，反序列化时根据该字段创建正确类型。约定俗成也常用 \`"$type"\`（Newtonsoft 默认），STJ 必须自己用 \`TypeDiscriminatorPropertyName\` 指定，**不会**自动认 \`$type\`。
+
+### 十点、JsonDocument vs JsonNode vs 序列化到对象
+
+| API | 可变 | 分配 | 适用 |
+| --- | --- | --- | --- |
+| \`JsonSerializer.Deserialize<T>\` | 得到 CLR 对象 | 按模型 | 结构稳定的 API |
+| \`JsonDocument\` | 只读，必须 \`using\` |  pooled 缓冲 | 抽几个字段就扔 |
+| \`JsonNode\` | 可改、可当 DOM | 树节点 | 动态补字段、再序列化 |
+| \`Utf8JsonWriter\` | 只写 | 极少 | 手写协议、超大输出 |
+
+\`JsonElement\` 不能活过所属 \`JsonDocument\`，要留下就 \`Clone()\`。源生成（\`JsonSerializerContext\`）和反射路径的选项要一致：命名策略、注释（\`ReadCommentHandling.Skip\`）、尾逗号（\`AllowTrailingCommas\`）漏配就会“本地能跑、AOT 失败”。
 
 ### 十一、本章小结
 
@@ -1145,15 +1174,25 @@ csv.WriteRecords(records);
 
 CsvHelper 自动处理引号、转义、表头映射、类型转换，是 .NET 生态最成熟的 CSV 库。
 
-### 九、System.Text.Json vs Newtonsoft.Json
+### 九、XXE、XmlReader 设置与 BOM
 
-| 维度 | System.Text.Json | Newtonsoft.Json |
-| --- | --- | --- |
-| 性能 | 快 2-5 倍 | 基准 |
-| AOT | ✅ 支持 | ❌ |
-| 内置 | .NET 8 自带 | NuGet |
-| 灵活度 | 中等 | 最灵活 |
-| 推荐 | 新项目 | 老项目、特殊需求 |
+**XXE（XML External Entity）**：恶意 XML 通过 \`<!ENTITY>\` 读本地文件或打内网。\`XDocument.Load\` / \`XmlDocument\` 若解析器允许 DTD，就可能中招。现代 .NET 默认已收紧，但自己 \`new XmlReaderSettings\` 时必须显式：
+
+\`\`\`csharp
+var settings = new XmlReaderSettings
+{
+    DtdProcessing = DtdProcessing.Prohibit, // 禁止 DTD
+    XmlResolver = null,                     // 不解析外部实体
+    IgnoreComments = true,
+    IgnoreProcessingInstructions = true,
+};
+using var reader = XmlReader.Create(stream, settings);
+var doc = XDocument.Load(reader);
+\`\`\`
+
+CSV / XML 文本常见 **UTF-8 BOM**（字节 EF BB BF）。\`StreamWriter\` 用 \`new UTF8Encoding(true)\` 会写出 BOM；Excel 有时靠 BOM 认编码，服务之间则应统一“有或没有”。\`StreamReader\` 打开 \`detectEncodingFromByteOrderMarks: true\`。手写 \`Split(',')\` 不处理引号，生产继续用 **CsvHelper**（见上一节）。
+
+JSON 对比请看 JSON 章，本章不要把 XML 文件交给 \`JsonSerializer\` 硬解。
 
 ### 十、本章小结
 
@@ -1558,6 +1597,14 @@ accessor.Flush();
 \`\`\`
 
 优势：操作系统负责分页，不需要手动管理缓冲；多个进程可共享同一段映射做进程间通信。
+
+### 八点、PipeOptions、散聚 IO 与「真异步」FileStream
+
+\`Pipe\` 构造可传 \`PipeOptions\`：\`PauseWriterThreshold\` / \`ResumeWriterThreshold\` 控制背压，\`MinimumSegmentSize\` 影响租用块大小，\`Pool\` 可换成自定义 \`MemoryPool<byte>\`。默认池够用，不要把阈值设成 0。
+
+\`RandomAccess.ReadAsync(handle, IReadOnlyList<Memory<byte>>, offset)\` 是**散读**（一次系统调用填多块缓冲）；对应写是散写。这就是 scatter/gather，减少往返。
+
+Windows 上只有 \`FileOptions.Asynchronous\`（或 \`FileStreamOptions.Options\`）打开的文件，\`ReadAsync\` 才会走重叠 IO；否则线程池线程上同步读，高并发等于假异步。Linux 上实现不同，但显式声明异步意图仍然是对的。
 
 ### 九、本章小结
 

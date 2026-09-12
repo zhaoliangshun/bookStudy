@@ -165,6 +165,16 @@ GC.UnregisterForFullGCNotification();
 
 手调 \`GC.Collect()\` 会破坏 GC 的自适应统计，反而让后续回收更频繁。
 
+### 十三点、DATAS、堆区域与延迟模式
+
+.NET 8+ 的 **DATAS**（Dynamic Adaptation To Application Sizes）让 Server GC 按**实际存活集**伸缩堆，而不是“机器有多少内存就占多少”。容器里尤其重要：关掉它（或旧运行时）常见“工作集远大于业务数据”。用 \`DOTNET_GCDynamicAdaptationMode\` / 运行时配置开关，先看当前文档再改。
+
+现代 GC 把堆划成 **regions**（不再是早期那种整代连续大段），并行与 LOH/POH 管理更灵活。你几乎不必自己对齐“代的边界”。
+
+\`GCLatencyMode\`：默认 \`Interactive\`；批处理可 \`Batch\`；短时急停用 \`LowLatency\`（会推迟 Gen2，用完立刻改回去）；\`SustainedLowLatency\` 适合行情/交易。\`GC.Collect()\` 只在测量、进程退出前清理、或文档写明的宿主场景使用——**业务热路径永远不要**。
+
+固定（pin）数组会在堆上打洞，妨碍压缩；短固定用 \`fixed\`，长固定用 \`GC.AllocateArray(pinned: true)\` 或把缓冲放到 LOH 池，不要满地 \`GCHandle.Alloc\`。
+
 ### 十四、本章小结
 
 - GC 按 Gen0→Gen1→Gen2 分代回收，新对象死得快是核心假设。
@@ -524,10 +534,15 @@ await conn.OpenAsync(cancellationToken);
 - 异步资源实现 \`IAsyncDisposable\`，用 \`await using\`。
 - 已释放对象抛 \`ObjectDisposedException\` 提醒调用方。
 
-### 练习
+### 十三、Dispose 绝不抛异常，以及 CA2000
 
-1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
-2. 合上示例，用「IDisposable 与 Finalizer」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+\`Dispose\` / \`Dispose(bool)\` / \`DisposeAsync\` **不要抛**。多个资源串联释放时，第一个抛会让后面的句柄泄漏。需要记录就 catch 后写日志。终结器线程里抛会直接干掉进程。
+
+标准模式：\`public void Dispose() { Dispose(true); GC.SuppressFinalize(this); }\`，真正逻辑放 \`protected virtual void Dispose(bool disposing)\`——\`disposing==false\` 时只丢非托管，不要再碰其他托管对象（它们可能已死）。能用 \`SafeHandle\` 就不要自己写 Finalizer。
+
+CA2000（“未释放对象”）会抱怨 \`new FileStream\` 没进 \`using\`。工厂方法返回 \`IDisposable\` 时用 \`try/return\` 或立刻交给调用方并在文档写清所有权。C# 8 \`using var\` 声明在作用域结束释放，比大括号 \`using\` 少一层。异步路径成对实现 \`IAsyncDisposable\`，避免 \`Dispose\` 里 \`.GetAwaiter().GetResult()\`。
+
+### 练习
 `,
     code: `// C# 12 顶级语句 —— IDisposable / Finalizer / SafeHandle / IAsyncDisposable 全套演示
 using System;
@@ -937,10 +952,15 @@ string result = string.Create(10, 42, (span, value) =>
 - \`String.Create\` 跳过 StringBuilder 中间步骤，直接构造字符串。
 - \`ref struct\` 限制多但保证安全，理解它就能用好 Span。
 
-### 练习
+### 十三、生命周期：async 不能持有 Span，以及 MemoryMarshal
 
-1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
-2. 合上示例，用「Span 与 Memory」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+\`Span<T>\` / \`ReadOnlySpan<T>\` 是 ref struct：**不能**做类字段、不能装箱、不能做 \`async\` 方法的局部（状态机会把局部存到堆上）。要跨 await 用 \`Memory<T>\` / \`ReadOnlyMemory<T>\`，继续用时再 \`.Span\`。\`string\` 可隐式转 \`ReadOnlySpan<char>\`，切片不分配。
+
+\`stackalloc\` 得到的 Span 只在当前方法有效，不能 return、不能交给在方法返回后还活着的委托。栈通常约 1MB，只放几 KB。
+
+\`MemoryMarshal.Cast\` / \`AsBytes\` / \`TryGetArray\` 是零开销重解释，**不检查**对象生死；\`CreateFromPinnedArray\` 要求数组确实钉住。用错就会读到已回收内存。能写 \`span[i]\` 就不要 \`fixed\` + 指针。
+
+### 练习
 `,
     code: `// C# 12 顶级语句 —— Span/Memory/ArrayPool/stackalloc 高性能字符串解析演示
 using System;
@@ -1318,10 +1338,15 @@ finally
 - \`nint\` / \`UnmanagedCallersOnly\` 服务于 native 互操作。
 - \`Unsafe\` 类提供底层指针操作，写底层库必备。
 
-### 练习
+### 十五、allows ref struct（C# 13）与插值字符串处理器
 
-1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
-2. 合上示例，用「ref struct 与 ref readonly」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+C# 13 允许泛型参数标 \`allows ref struct\`，于是 \`Span<T>\` 能进更多抽象（例如自定义迭代器）。本教程目标框架是 .NET 8 / C# 12，**这是前瞻标注**：升级语言版本后才能用。此前把 Span 塞进 \`IEnumerable<T>\` 或 \`async\` 仍会编译失败，这是特性不是缺陷。
+
+\`scoped\` 限制 ref / ref struct 不得逃出方法；\`ref\` 字段（C# 11）让 ref struct 持有引用。ref struct **不能装箱**，所以不能当 \`object\`、不能进非泛型集合、不能作为接口调用的接收者（C# 13 之前）。
+
+\`InterpolatedStringHandler\`（C# 10）让 \`logger.Log($"x={x}")\` 在日志关闭时**跳过**插值分配。自己写 handler 时内部常用 \`Span<char>\` + \`IBufferWriter<char>\`，这是 ref struct 的典型工业用途。
+
+### 练习
 `,
     code: `// C# 12 顶级语句 —— ref struct / ref readonly / ref 字段 / scoped / nint 全套演示
 using System;
@@ -1778,10 +1803,18 @@ struct Header { public int Id; public byte Type; }  // Pack=1 紧凑布局
 - 位运算 / \`BitOperations\` / \`Vector<T>\` SIMD 加速数值计算。
 - NativeAOT 适合启动敏感场景，但有反射限制。
 
-### 练习
+### 十一、先测量，以及 Frozen / 池 / SIMD
 
-1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
-2. 合上示例，用「性能优化技巧」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+没有 \`BenchmarkDotNet\` 数据就不要“优化”。\`Stopwatch\` 只适合粗看；正式对比要预热、多轮、排除调试器。先找分配（\`GC.GetAllocatedBytesForCurrentThread\`）再谈 spanify。
+
+- **字典**：构造时给 \`capacity\`，避免扩容重新哈希。键稳定、只读的热缓存用 .NET 8 \`FrozenDictionary<TKey,TValue>\` / \`FrozenSet<T>\`（一次创建、之后无锁读取）。
+- **池**：短命大数组 \`ArrayPool<T>.Shared\`，用完 \`Return\`；对象池只给“构造很贵”的东西。池错用会脏数据。
+- **spanify**：热路径 \`string.Substring\` 改 \`ReadOnlySpan<char>\` 切片；\`Encoding.GetBytes\` 改 \`GetBytes(span)\`。
+- **SIMD**：\`Vector<T>.IsHardwareAccelerated\` 先判断，再 \`Vector<T>\` 一批加减。不对齐、太短的数据走标量更简单。
+
+测量 → 改一处 → 再测。没有数字的性能建议都是传闻。
+
+### 练习
 `,
     code: `// C# 12 顶级语句 —— 性能优化技巧对比演示
 using System;

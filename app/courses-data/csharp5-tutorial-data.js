@@ -19,6 +19,7 @@ import {
   csharp5Conclusion,
   csharp5ProductionGroups,
 } from "./csharp5-chapters-production.js";
+import { chapters as batch16, csharp5Batch16Groups } from "./csharp5-chapters-batch16.js";
 
 const allBatches = [
   ...batch1,
@@ -47,6 +48,7 @@ export const csharp5Chapters = [
   csharp5Preface,
   ...foundationalChapters,
   ...csharp5ProductionChapters,
+  ...batch16,
   csharp5Conclusion,
 ];
 
@@ -67,5 +69,6 @@ export const csharp5ChapterGroups = [
   "第十三部分 工程化实战",
   "第十四部分 现代 C# 与生产工程",
   ...csharp5ProductionGroups,
+  ...csharp5Batch16Groups,
   "结尾",
 ];

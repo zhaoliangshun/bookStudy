@@ -221,6 +221,12 @@ string grade = score switch
 
 C# 9 之后更推荐用**关系模式** \`>= 90\` 直接写，但 \`when\` 在复杂条件下仍很有用。
 
+### 十五、不要用异常当控制流；yield 只是指针
+
+\`try / catch\` 用来处理失败，不要用 \`throw\` 代替 \`break\` 或返回值。异常分配栈、打断内联，热循环里比 \`if\` 慢几个数量级。可预期的「没有下一个」用 \`false\` / \`null\` / \`Try*\`。
+
+\`yield return\` 把方法变成状态机，**现在**只记住：它延迟执行，每次 \`MoveNext\` 才跑到下一个 yield。真正讲迭代器与 LINQ 延迟坑在集合章。这里记住：控制流章节的 \`return\` 会立刻离开方法；迭代器里的 \`yield break\` 才是「结束序列」。
+
 ### 十四、小结
 
 | 语句 | 适用场景 | 备注 |
@@ -518,6 +524,20 @@ string Describe(Color c) => c switch
 };
 \`\`\`
 
+### 十二、必须有 none = 0；IsDefined 的陷阱
+
+\`[Flags]\` 枚举**一定**要有 \`None = 0\`。\`HasFlag(None)\` 对任何值都为 true（零是任何位的子集），用它判断「无标志」应写 \`value == None\`。
+
+\`Enum.IsDefined(typeof(Color), 42)\` **不能**当业务校验：
+
+- 对 Flags，组合值（\`Read | Write = 3\`）常常 \`IsDefined\` 为 false，其实合法。
+- 它看的是「有没有这个底层数字的命名成员」，不看你是否愿意接受过时值。
+- 反射 + 装箱，热路径很贵。Flags 校验应自己做位掩码：\`(value & ~AllBits) == 0\`。
+
+### 十三、持久化：存名字还是存数字
+
+\`ToString()\` / \`Enum.Parse<T>("Red")\` 用的是**成员名**。存数据库若存 \`0/1/2\`，以后在中间插入成员会把旧数据读错；存字符串名更稳，但重命名会破。约定：对外契约用稳定名字或显式指定底层值且**只追加、不改旧数字**。\`TryParse\` 失败不要静默落到 default(0)。
+
 ### 十一、小结
 
 | 知识点 | 关键内容 |
@@ -799,6 +819,22 @@ Console.WriteLine(a == b);       // True
 \`\`\`csharp
 public record Person(string Name, int Age);   // 有类型名，可做参数类型
 \`\`\`
+
+### 十二、名字会被擦掉；嵌套与相等
+
+\`(int X, int Y)\` 的 \`X/Y\` 只是编译期语法糖，IL 里仍是 \`Item1/Item2\`。**作为公开 API**（库、JSON、反射）时，调用方可能只看见 Item1——需要稳定名字请用 \`record\` 或具名类型。
+
+弃元：\`var (_, y) = point;\` 只要第二个。元组可嵌套：\`(string name, (int x, int y) pos)\`。
+
+\`ValueTuple\` 按字段值相等（\`Equals\` / \`==\`）；旧 \`Tuple<T>\` 也按值相等，但是 class，还有 null。\`ValueTuple\` 是 struct，默认不是 null（除非 \`ValueTuple<...>?\`）。跨语言 / 旧 API 才用 \`Tuple.Create\`。
+
+### 十三、公开 API 与序列化注意
+
+把元组当方法返回值在**模块内部**很爽；一旦变成 public，调用方会依赖 \`Item1\` 或你此刻写的名字，重构就会破。JSON 序列化 \`ValueTuple\` 通常得到 \`{"Item1":1,"Item2":2}\`，不是 \`{"X":1,"Y":2}\`。跨进程、跨语言、要文档化的返回值，升级成 \`record Point(int X, int Y)\`。
+
+元组 \`==\` 是逐字段；含引用元素时只比较那些引用是否相等（string 有重载所以比内容）。嵌套元组相等是递归的。需要自定义比较请不要硬拧元组，换类型。
+
+内部助手方法返回 \`(bool ok, T value)\` 完全合理；一旦跨过程序集边界，就升级成具名类型。
 
 ### 十一、小结
 
@@ -1133,6 +1169,18 @@ if (o is var x)              // 总是 true，x 接住 o（包括 null）
 | 灵活度 | 任意条件 | 受模式语法约束 |
 
 模式匹配不是要"消灭" if-else，而是**让分支表达更贴合数据形状**。
+
+### 十四、穷尽性：编译器能帮你挡到哪
+
+\`switch\` 表达式必须覆盖所有可能，否则 \`CS8509\`。对 enum，加新成员会在这里报红——这是件好事。对 \`object\` / 接口，编译器不知道未来会有哪些实现，必须写 \`_\`。
+
+列表模式 \`[first, .. var rest]\`、关系模式 \`> 0 and < 10\`、属性模式 \`{ Name: "a" }\`、\`var\` 模式（总是匹配并绑定）、弃元 \`_\` 可以组合。\`var\` **不会**检查 null（引用类型时 \`var x\` 接受 null）；要排除 null 用 \`string s\` 类型模式。
+
+写模式时先想「哪条会先命中」：从上到下，没有 fall-through。把具体模式放前面，\`_\` 永远在最后。
+
+### 十五、写模式时的两个习惯
+
+第一，把**会抛或会分配**的计算放进 \`when\` 右边之前先用类型模式收窄。第二，对 bool / enum 尽量写穷尽分支，少用 \`_\` 吞掉新增情况。列表模式匹配空数组用 \`[]\`，单元素 \`[var x]\`，其余 \`[_, ..]\`。这 30 秒的穷尽性，能挡住一整类线上 bug。
 
 ### 十三、小结
 
@@ -1477,6 +1525,16 @@ class UserDto
     public DateTime? LastLogin { get; set; } // 可空，从未登录过为 null
 }
 \`\`\`
+
+### 十三、\`== null\` vs HasValue，以及装箱再提醒
+
+对 \`int? n\`：
+
+- \`n.HasValue\` / \`n is not null\` / \`n != null\` 在语言里被抬成同一类判断，可读性选团队风格。
+- \`n == 0\` 在 \`n\` 为 null 时是 **false**（lifted operator：任一操作数为 null，关系/相等结果是 false，\`== null\` 除外）。
+- \`n.Value\` 在没有值时抛 \`InvalidOperationException\`；更稳的是 \`GetValueOrDefault()\` 或 \`n ?? fallback\`。
+
+装箱：\`(object)n\` 在 \`n\` 为 null 时得到 **真正的 null**（不是 boxed Nullable），\`HasValue=true\` 时盒子里是 \`T\` 本身。所以 \`object o = (int?)3; o is int\` 为 true。不要对 \`Nullable<T>\` 做 \`is Nullable<int>\` 指望还能看见外壳。
 
 ### 十二、小结
 
@@ -1825,6 +1883,13 @@ class UserDto
 3. **公共方法入口检查 null**：\`ArgumentNullException.ThrowIfNull\`
 4. **少用 ! 运算符**：除非真的确信，否则用显式检查
 5. **数据库实体用可空**：DB 字段允许 NULL 时必须用 \`int?\`/\`string?\`
+
+### 十三、注解、\`!\` 纪律、\`T?\` 与分析边界
+
+- **MaybeNull / NotNull / NotNullWhen / MaybeNullWhen**：告诉编译器「签名骗了你」。例如 \`bool TryGet(out T value)\` 应 \`[NotNullWhen(true)]\`。没有注解时，泛型 \`T\` 默认是「也许 null」还是「非 null」取决于约束。
+- **\`T?\`**：\`T\` 是 class 时表示可空引用；\`T\` 是 struct 时表示 \`Nullable<T>\`。无约束泛型里的 \`T?\` 是「可空注解」，不是双重包装。
+- **\`!\`（null-forgiving）**：关闭**这一处**警告，不生成运行时检查。只用在你刚刚证明过非 null 的地方（或对接老 API）。禁止 \`GetUser()!.Name!.Trim()\` 一路感叹号。
+- **分析器不是证明器**：字段跨方法赋值、并发写入、反序列化、反射 set，编译器都可能漏。公共入口仍要 \`ArgumentNullException.ThrowIfNull\`。
 
 ### 十二、小结
 

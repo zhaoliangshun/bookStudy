@@ -217,6 +217,31 @@ Action<string> strAction = objAction;   // ✅ 逆变：string 可转 object
 
 调用委托 (\`t(5)\`) 编译成 \`t.Invoke(5)\`，运行时根据 Target/Method 调用真正的方法。
 
+### 十五、多播 \`-=\` 的隐藏陷阱
+
+\`+=\` / \`-=\` 是 \`Delegate.Combine\` / \`Delegate.Remove\` 的语法糖。\`Remove\` **从末尾往前删第一个匹配项**（比的是 \`Target + Method\`），不是“删全部”：
+
+\`\`\`csharp
+Action a = Hi;
+a += Hi;          // 链上两个 Hi
+a -= Hi;          // 只去掉最后一个 Hi，还剩一个
+a -= () => Hi();  // 无效：每次 lambda 都是新实例，永远对不上
+\`\`\`
+
+方法组 \`Hi\` 能对上，是因为转换后的委托指向同一个方法。匿名 lambda / 本地 \`new Action(...)\` 对不上，看起来“取消订阅成功”，其实还在。事件 \`-=\` 同样踩这个坑。
+
+\`Delegate.Combine(a, b)\` 任一为 null 时返回另一个；两边都非空才建新多播实例。委托不可变，\`+=\` 是换引用，多线程下要用 \`Interlocked\` 或 event 访问器。
+
+### 十六、event vs 裸委托，以及 async void 处理器
+
+| | 裸 \`Action\` 字段 | \`event EventHandler\` |
+| --- | --- | --- |
+| 外部 \`Invoke\` | 可以，谁都能触发 | **只有声明类**能触发 |
+| 外部 \`=\` 覆盖 | 可以一把清掉所有订阅 | 编译错误 |
+| 典型用途 | 内部回调、策略 | 对外发布通知 |
+
+事件处理器若写成 \`async void\`，异常**无法**被发布者 \`try/catch\`，也进不了返回的 Task。WinForms/WPF 会丢到同步上下文；ASP.NET Core 没有同步上下文，可能直接干掉进程。能改成 \`async Task\` 的入口就改；必须挂事件时，处理器内部自己 \`try/catch\`。
+
 本章 demo 演示：自定义委托、方法组转换、多播 +/-、GetInvocationList、Action/Func/Predicate/Comparison/Converter 全套、回调模式、委托返回值。
 
 ### 练习
@@ -738,6 +763,27 @@ Lambda 不是一个独立的「函数值类型」，而是：
 
 C# 的「函数」必须依附于委托或表达式树，没有像 F# 那样独立的函数类型。
 
+### 十七、static lambda 与方法组
+
+C# 9 的 \`static\` lambda **禁止捕获**外层变量，编译器直接拦住闭包分配：
+
+\`\`\`csharp
+int factor = 3;
+Func<int, int> ok = static x => x * 2;     // 不捕获，无闭包对象
+// Func<int, int> bad = static x => x * factor; // 编译错误
+\`\`\`
+
+方法组 \`list.Select(int.Parse)\` 通常能复用静态委托缓存；写成 \`s => int.Parse(s)\` 每次可能新分配。热路径优先方法组或 \`static\` lambda。弃元参数写成 \`(_, i) => ...\`（C# 9+），避免无意义的名字。
+
+闭包会把捕获变量**提升到堆上的显示类**，对象活到最后一个委托被释放。事件订阅捕获 \`this\` 等于延长整个对象寿命——这是泄漏的根源，不是 lambda 语法本身的问题。
+
+### 十八、表达式 Lambda vs 语句 Lambda（再对照）
+
+- **表达式体** \`x => x * 2\`：可以赋给 \`Func<>\` **或** \`Expression<Func<>>\`，EF Core / 表达式树只吃这种。
+- **语句体** \`x => { return x * 2; }\`：只能当委托，不能变成表达式树。
+
+需要进 LINQ to Entities 的谓词必须是表达式体，且不能调用本地函数、不能有赋值。本地函数本身更适合“只在方法内复用、需要递归/迭代器”的场景，它不是委托，除非你再把它转成方法组。
+
 本章 demo 演示：Lambda 各种形式、闭包、捕获陷阱、LINQ 中 Lambda、表达式树 Expression<T>、自然类型、弃元。
 
 ### 练习
@@ -1183,6 +1229,21 @@ order.Placed += (s, e) => inventory.Reserve(...);   // 订单触发库存
 ### 十四、事件溯源（Event Sourcing）简介
 
 更高级的模式：把所有状态变化记录为不可变事件序列，重建状态时回放事件。这是 DDD（领域驱动设计）和事件溯源架构的核心。C# 中可以用 \`MediatR\`、\`EventStore\` 等库支持。
+
+### 十五、线程安全触发与弱事件
+
+字段型 event 的编译器实现不是原子的。正确触发要**先拷到局部变量**：
+
+\`\`\`csharp
+EventHandler<OrderEventArgs>? handler = OrderPlaced;
+handler?.Invoke(this, e);
+\`\`\`
+
+多线程 \`+=\` / \`-=\` 会丢订阅。需要时自己写 \`add\` / \`remove\` 访问器，用 \`lock\` 或 \`Interlocked.CompareExchange\` 换委托链。C# 13 的 \`System.Threading.Lock\` 也可以当锁对象（见并发章节）。
+
+弱事件（WPF \`WeakEventManager\`、自己用 \`WeakReference\`）让发布者**不延长**订阅者寿命；代价是触发时要把已死的订阅清掉，热路径更贵。UI 框架常用，服务端更常见的是 \`Dispose\` 里老老实实 \`-=\`。
+
+需要组合、过滤、背压时，事件模型会吃力——这时转向 \`IObservable<T>\`（Reactive Extensions）或 \`Channel<T>\` / \`IAsyncEnumerable<T>\`，而不是把 event 堆成管道。
 
 本章 demo 演示：完整的 Publisher/Subscriber 事件系统、自定义 EventArgs、订阅/触发、OnXxx 模式、INotifyPropertyChanged、事件访问器、内存泄漏示意。
 
@@ -1728,6 +1789,18 @@ F# 的「代码引用」（Quotation）类似 C# 的表达式树，但更强大�
 - .NET 4：加入 \`ExpressionVisitor\`。
 - 现代 C#：表达式树主要用于 LINQ Provider 和动态查询。
 
+### 十五、Compile 成本、Visitor 与 EF 翻译边界
+
+\`Expression.Lambda(...).Compile()\` 会走 JIT 生成委托，**第一次很贵**（毫秒级），应缓存到静态字段 / \`ConcurrentDictionary\`。每次请求都 Compile 会比直接反射还慢。编译后的委托可以反复调用。
+
+改写树用 \`ExpressionVisitor\`：重写 \`VisitMethodCall\` / \`VisitMember\` 即可替换节点。Visitor 必须返回新树（表达式树不可变），忘记 \`base.VisitXxx\` 会丢掉子节点。
+
+EF Core **只翻译它认识的节点**：闭包常量、属性访问、一部分方法（\`Contains\`、\`EF.Functions\`）。本地方法、\`DateTime.Now\` 的某些用法、任意 \`ToString()\` 格式会让查询变成客户端求值或直接抛“无法翻译”。能在数据库做的过滤不要先 \`AsEnumerable()\`。
+
+### 十六、为什么不能随便序列化表达式树
+
+表达式树挂着 \`MethodInfo\`、\`ConstantExpression\` 里的闭包对象、编译器生成的显示类。\`ToString()\` 只是调试用；没有稳定的跨进程二进制格式。自己 \`JsonSerializer.Serialize(expr)\` 会碰到委托、循环引用和不可移植的元数据令牌。动态查询应序列化**你自己的过滤器 DTO**（字段名 + 运算符 + 值），到达服务端再 \`Expression\` API 拼树。
+
 本章 demo 演示：手动构建 \`(x, y) => x + y > 10\` 表达式树、Compile 执行、ExpressionVisitor 遍历、动态查询示意。
 
 ### 练习
@@ -2265,6 +2338,14 @@ C# 是多范式语言：OOP + FP + 命令式混用。实践建议：
 - 易于属性测试（property-based testing）。
 
 这是 FP 在工业界被重视的重要原因。
+
+### 十六、LINQ 就是 C# 里的 FP，外加 yield 与局部函数
+
+\`Select\` / \`Where\` / \`Aggregate\` 就是 map / filter / reduce。谓词保持**纯**（不改外部状态、不写库），查询才能安全地延迟执行、重复枚举。\`record\` / \`record struct\` 默认按值相等、可用 \`with\`，是不可变数据的第一选择。
+
+\`yield return\` 把方法变成惰性序列，调用时不跑循环，\`foreach\` 才推进——这和 LINQ 的延迟执行是同一套迭代器状态机。局部函数可以是迭代器或 \`async\`，且能访问外层变量而不必先做成委托；需要递归或提前 \`return\` 时比 lambda 更合适。
+
+Option / Result 把“没有值 / 预期失败”留在类型里，避免用 null 和异常做控制流。热路径上它们仍是对象，不必强行替代每一个 \`if\`。
 
 本章 demo 演示：Memoize、Compose、Option<T>、Result<T, TError>，并用它们重写一个查找用户的方法。
 
