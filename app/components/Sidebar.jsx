@@ -176,12 +176,14 @@ const BOOK_CATEGORIES = [
       { path: "/mantine-v9-book", label: "Mantine v9 从入门到精通", icon: "📘" },
       { path: "/mantinepro", label: "Mantine v9 深度实战：理念·Theme·Form", icon: "🎨" },
       { path: "/mantine-complete-guide", label: "Mantine 完全指南：理念·设计·Theme·Form", icon: "📖" },
+      { path: "/mantine-book", label: "Mantine 理念与 Form 验证", icon: "📘" },
       { path: "/mantine3", label: "Mantine 之道 · 理念与设计目的", icon: "🪷" },
       { path: "/forgerock", label: "ForgeRock SDK", icon: "🛡️" },
       { path: "/forgerock-demo", label: "ForgeRock Demo", icon: "🎭" },
       { path: "/forgerock-mini", label: "ForgeRock Mini 认证", icon: "🔐" },
       { path: "/auth-demo", label: "认证站点 Demo", icon: "🔐" },
       { path: "/betting-activation", label: "集团账户激活 Demo", icon: "💳" },
+      { path: "/group-activation", label: "账户激活 Demo", icon: "🪪" },
       { path: "/tsx", label: "TS + React", icon: "⚛️" },
       { path: "/tsx2", label: "TS+React 从入门到精通大全", icon: "⚛️" },
       { path: "/tsx3", label: "React 中使用 TypeScript 大全（全新重写版）", icon: "📘" },
@@ -321,6 +323,27 @@ const ALL_BOOKS = BOOK_CATEGORIES.flatMap((cat) =>
 // 性能优化：预先构建 path → book 的 Map，避免 visibleCategories 等处
 // 多次 ALL_BOOKS.find() 产生 O(n²) 时间复杂度。模块级单例，整个应用共享。
 const ALL_BOOKS_MAP = new Map(ALL_BOOKS.map((b) => [b.path, b]));
+
+function normalizeBookPath(path) {
+  if (!path || typeof path !== "string") return "";
+  return path.split("?")[0].split("#")[0].replace(/\/$/, "") || "/";
+}
+
+/** 侧栏书名：书签、首页跳转等共用，避免各处手写路由表漂移 */
+export function getBookLabel(path) {
+  return ALL_BOOKS_MAP.get(normalizeBookPath(path))?.label ?? "";
+}
+
+/** 首页“上次学习位置”只允许站内已知路径，拒绝 //evil.com 这类协议相对地址 */
+export function isAllowedResumePath(path) {
+  if (typeof path !== "string") return false;
+  if (!path.startsWith("/") || path.startsWith("//") || path.startsWith("/\\")) return false;
+  if (path.includes("://") || path.includes("\\")) return false;
+  const base = normalizeBookPath(path);
+  if (base === "/") return false;
+  if (ALL_BOOKS_MAP.has(base)) return true;
+  return base === "/blog" || base.startsWith("/blog/");
+}
 
 const MIN_SIDEBAR_W = 200;
 const MAX_SIDEBAR_W = 480;

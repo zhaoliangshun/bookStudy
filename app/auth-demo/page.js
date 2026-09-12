@@ -28,7 +28,7 @@
 //   - 未登录时隐藏需要认证的功能（修改密码/个人资料/会话管理）
 // =============================================================
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   AppShell,
   Burger,
@@ -95,12 +95,13 @@ export default function AuthDemoPage() {
   // session: 当前会话信息（sessionId, token, username 等）
   // 用 lazy initializer 在首次渲染时读取 SDK 会话状态，
   // 避免在 useEffect 中同步 setState 触发级联渲染
-  const [loggedIn, setLoggedIn] = useState(() =>
-    typeof window !== "undefined" ? isLoggedIn() : false
-  );
-  const [session, setSession] = useState(() =>
-    typeof window !== "undefined" ? getSession() : null
-  );
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    setLoggedIn(isLoggedIn());
+    setSession(getSession());
+  }, []);
 
   // ---- 主题切换 ----
   const { colorScheme, setColorScheme } = useMantineColorScheme();

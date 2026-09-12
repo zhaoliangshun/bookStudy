@@ -1,6 +1,6 @@
 "use client";
 
-import { Component } from "react";
+import { Component, Suspense } from "react";
 import { usePathname } from "next/navigation";
 import { EditorThemeProvider } from "./EditorThemeProvider";
 import ScrollRestoration from "./ScrollRestoration";
@@ -93,7 +93,9 @@ export default function Providers({ children }) {
         <FloatingButtonVisibilityProvider>
           <div className="floating-panel-group">
             {/* 书签管理器：与其他浮动按钮共用同一容器 */}
-            <BookmarkManager />
+            <Suspense fallback={null}>
+              <BookmarkManager />
+            </Suspense>
             <FloatingEditorTheme />
             <ReadingThemeSwitcher />
             <FloatingChapterNav />

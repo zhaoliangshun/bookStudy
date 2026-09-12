@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { isAllowedResumePath } from "./components/Sidebar";
 
 const TUTORIALS = [
   { path: "/nodejs", name: "Node.js 入门", icon: "💚", desc: "服务端 JavaScript 运行时" },
@@ -38,7 +39,7 @@ export default function Home() {
       let hasSaved = false;
       try {
         const saved = localStorage.getItem("sidebar:last-book");
-        if (saved && saved !== "/" && saved.startsWith("/")) {
+        if (saved && isAllowedResumePath(saved)) {
           path = saved;
           hasSaved = true;
           setSavedPath(saved);
