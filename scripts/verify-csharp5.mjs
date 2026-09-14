@@ -34,8 +34,8 @@ if (duplicateIds.length > 0) {
   failures.push(`重复章节 ID：${[...new Set(duplicateIds)].join(", ")}`);
 }
 
-if (csharp5Chapters.length !== 118) {
-  failures.push(`应有 118 篇，实际 ${csharp5Chapters.length} 篇`);
+if (csharp5Chapters.length !== 128) {
+  failures.push(`应有 128 篇，实际 ${csharp5Chapters.length} 篇`);
 }
 
 for (const group of csharp5ChapterGroups) {
@@ -127,5 +127,5 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   const compiled = structureOnly ? "未编译 demo" : `编译 ${selected.length} 个 demo`;
-  console.log(`通过：118 篇结构完整，${compiled}，全部检查通过。`);
+  console.log(`通过：128 篇结构完整，${compiled}，全部检查通过。`);
 }

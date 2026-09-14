@@ -1406,7 +1406,7 @@ public class MyGenerator : IIncrementalGenerator
 - **\`System.Text.Json\`**：贴 \`[JsonSerializable]\` 生成序列化代码。
 - **\`System.Runtime.InteropServices\`**：贴 \`[LibraryImport]\` 生成 P/Invoke 代码（替代 \`[DllImport]\`）。
 - **ASP.NET Core**：部分 Minimal API 场景可使用 Request Delegate Generator；Controller 特性路由不能笼统理解为自定义源生成器自动生成。
-- **社区 MVVM Toolkit\`**：贴 \`[ObservableProperty]\` 生成属性包装代码。
+- **社区 MVVM Toolkit**：贴 \`[ObservableProperty]\` 生成属性包装代码。
 
 ### 七、PostInitializationOutput：启动期注入代码
 

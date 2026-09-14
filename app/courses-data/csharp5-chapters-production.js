@@ -29,7 +29,7 @@ export const csharp5Preface = {
 3. **生产工程**：安全、韧性、缓存、消息、可观测性、容器和 CI/CD。
 4. **上线能力**：数据库设计、分布式一致性、云原生、容量、SLO、故障处理与恢复。
 
-全书共 **118 篇（前言 + 116 讲 + 结语）**。每篇都有可运行主 demo，正文中的独立知识点尽量配短代码。涉及 ASP.NET Core、数据库、Redis、消息系统、Docker 或 Kubernetes 的片段，需要在对应真实项目/基础设施中运行；章末主 demo 会用纯 C# 模拟核心语义，避免把伪框架冒充真实框架。
+全书共 **128 篇（前言 + 126 讲 + 结语）**。每篇都有可运行主 demo。正文里完整的 \`csharp\` 代码块可直接点运行；不完整的真实框架片段会标成 \`csharp-snippet\`，避免把不能编译的示例拿去点运行。涉及 ASP.NET Core、数据库、Redis、消息系统、Docker 或 Kubernetes 的代码，需要在对应真实项目中运行；章末主 demo 用纯 C# 讲清语义。
 
 ### 版本边界
 
@@ -48,7 +48,8 @@ export const csharp5Preface = {
 ### 毕业标准
 
 最后你需要独立交付一个订单服务：真实数据库迁移、认证授权、幂等、Outbox、缓存、可观测性、容器、CI/CD、灰度发布、回滚和恢复演练。只有项目能经受故障注入，才算“能上生产”。`,
-  code: `// 前言 demo：把生产能力拆成可验证的检查项
+  code: `// 前言：生产能力不是「学过」，而是「能证明」。
+// 把检查项写成数据，毕业时用同一张清单对照真实仓库、流水线和演练记录。
 var capabilities = new[]
 {
     new Capability("语言与类型系统", true),
@@ -119,7 +120,8 @@ git push -u origin feat/order-idempotency
 
 代码、测试、迁移、文档、监控、发布与回滚方案都完成，才能称为完成。高风险变更还应有 feature flag 和演练记录。
 `,
-    code: `// 用代码表达一个简单的合并门禁
+    code: `// Git 工作流的核心不是命令，而是合并门禁。
+// 构建、测试、安全扫描、评审全部 Passed 才允许进入主分支。
 var checks = new[]
 {
     new PullRequestCheck("build", CheckState.Passed),
@@ -156,7 +158,7 @@ public sealed record PullRequestCheck(string Name, CheckState State);
 
 ### 二、泛型约束
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 static T Max<T>(T left, T right) where T : IComparable<T>
     => left.CompareTo(right) >= 0 ? left : right;
 \`\`\`
@@ -165,7 +167,7 @@ static T Max<T>(T left, T right) where T : IComparable<T>
 
 ### 三、泛型数学（.NET 7+）
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 static T Sum<T>(ReadOnlySpan<T> values) where T : INumber<T>
 {
     T total = T.Zero;
@@ -241,7 +243,7 @@ public readonly record struct Money
 
 ### 三、正则安全
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 var regex = new Regex(pattern,
     RegexOptions.CultureInvariant,
     matchTimeout: TimeSpan.FromMilliseconds(100));
@@ -284,7 +286,7 @@ Console.WriteLine($"用户名合法：{safe.IsMatch("dev_user-01")}");
 
 .NET 7+ 优先使用 \`[LibraryImport]\` 源生成封送：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 internal static partial class NativeMethods
 {
     [LibraryImport("mylib", StringMarshalling = StringMarshalling.Utf8)]
@@ -399,7 +401,7 @@ EF Core、Dapper 和 ADO.NET 不是等级关系，而是不同抽象层。
 
 ### 二、参数化
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 const string sql = """
     SELECT id, name
     FROM users
@@ -451,7 +453,7 @@ Console.WriteLine(sql);
 
 - Cache-aside：先读缓存，未命中查数据库并回填；写入后删除/更新缓存。
 - Read-through/write-through 由缓存层封装，复杂度转移而不是消失。
-- 分布式锁只在确有跨实例互斥需求时使用，并设计租约、超时和 fencing token。
+- 分布式锁只在确有跨实例互斥需求时使用，并设计租约、超时和 fencing token。拿到锁不等于拥有数据权：锁过期后旧持有者仍可能写库，必须用单调递增的 token 拒绝过期写。
 
 ### 二、键与 TTL
 
@@ -469,21 +471,53 @@ Console.WriteLine(sql);
 
 缓存故障时回源会压垮数据库，需要限流、降级和容量预算。连接复用，设置操作超时；禁止在请求线程同步等待 Redis。
 `,
-    code: `// TTL + jitter，避免大量键同一时刻过期
+    code: `// 1) TTL + jitter，避免大量键同一时刻过期。
+// 2) fencing token：锁过期后，旧持有者的写入必须被拒绝。
 var random = new Random(2026);
 TimeSpan baseTtl = TimeSpan.FromMinutes(10);
+for (int i = 1; i <= 3; i++)
+    Console.WriteLine($"ttl-{i}: {AddJitter(baseTtl, 0.15, random).TotalSeconds:F0}s");
 
-for (int i = 1; i <= 5; i++)
-{
-    TimeSpan ttl = AddJitter(baseTtl, 0.15, random);
-    Console.WriteLine($"key-{i}: {ttl.TotalSeconds:F0}s");
-}
+var lockService = new LeaseLock();
+var first = lockService.Acquire("order:42");
+var stale = first;
+var second = lockService.ExpireAndReacquire("order:42"); // 模拟租约过期后别人抢到锁
+
+Console.WriteLine(lockService.Write("order:42", stale.Token, "旧持有者写"));
+Console.WriteLine(lockService.Write("order:42", second.Token, "新持有者写"));
 
 static TimeSpan AddJitter(TimeSpan value, double ratio, Random random)
 {
     double factor = 1 - ratio + random.NextDouble() * ratio * 2;
     return TimeSpan.FromMilliseconds(value.TotalMilliseconds * factor);
 }
+
+sealed class LeaseLock
+{
+    private readonly Dictionary<string, long> _tokens = new();
+
+    public Lease Acquire(string key)
+    {
+        _tokens[key] = 1;
+        return new Lease(key, 1);
+    }
+
+    public Lease ExpireAndReacquire(string key)
+    {
+        long next = _tokens[key] + 1;
+        _tokens[key] = next;
+        return new Lease(key, next);
+    }
+
+    public string Write(string key, long token, string payload)
+    {
+        if (!_tokens.TryGetValue(key, out long current) || token != current)
+            return $"拒绝过期 fencing token={token} payload={payload}";
+        return $"接受 token={token} payload={payload}";
+    }
+}
+
+public sealed record Lease(string Key, long Token);
 `,
     lang: "cs",
   },
@@ -1034,7 +1068,7 @@ public sealed class OrdersClient
 
 ### 一、中间件顺序
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 var app = builder.Build();
 app.UseExceptionHandler();
 app.UseForwardedHeaders(); // 仅信任已配置的代理
@@ -1046,6 +1080,17 @@ app.MapControllers();
 \`\`\`
 
 异常处理应尽早；认证必须先于授权。反向代理头不能无条件信任，否则攻击者可伪造 scheme、host 或客户端地址。
+
+对外入口常用 YARP 做路径剥离、超时、体积极限和转发：
+
+\`\`\`csharp-snippet
+builder.Services.AddReverseProxy()
+    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+app.UseForwardedHeaders();
+app.MapReverseProxy();
+\`\`\`
+
+YARP 是进程内反向代理，不是服务网格替代品。转发超时、请求体大小和允许的目标地址必须显式限制。
 
 ### 二、Minimal API 与 Controllers
 
@@ -1110,7 +1155,7 @@ API 契约发布后，会被客户端、测试、网关和文档依赖。
 
 ### 一、.NET 10 OpenAPI
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 builder.Services.AddOpenApi();
 var app = builder.Build();
 if (app.Environment.IsDevelopment())
@@ -1171,7 +1216,7 @@ OAuth 2.0 是授权框架，OpenID Connect 在其上增加身份认证。JWT 只
 
 ### 二、API 验证
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 builder.Services.AddAuthentication()
     .AddJwtBearer(options =>
     {
@@ -1222,7 +1267,7 @@ EF Core 是关系数据库映射器，不会消除 SQL、索引、事务和 Prov
 
 ### 一、建模
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 modelBuilder.Entity<Order>(entity =>
 {
     entity.HasKey(x => x.Id);
@@ -1282,7 +1327,7 @@ public sealed record UpdateRequest(string Status, int ExpectedVersion);
 
 ### 一、API 集成测试
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 public sealed class OrdersApiTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
@@ -1360,7 +1405,7 @@ dotnet publish -c Release -r linux-x64 -p:PublishAot=true
 
 ### 三、JSON 源生成
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 [JsonSerializable(typeof(OrderDto))]
 internal partial class AppJsonContext : JsonSerializerContext;
 \`\`\`
@@ -1471,7 +1516,7 @@ export const csharp5Conclusion = {
   title: "结语：持续交付，而不是毕业",
   content: `## 结语：持续交付，而不是毕业
 
-你已经走过语言、运行时、异步并发、网络、Web、数据、安全、分布式系统、云原生和生产运维。但技术清单不是能力本身。
+你已经走过语言、运行时、异步并发、网络、Web、数据、安全、分布式系统、云原生、生产运维，以及验证、幂等、缓存、健康检查、Aspire、多租户和合规日志。但技术清单不是能力本身。
 
 ### 接下来怎么做
 

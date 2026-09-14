@@ -295,7 +295,8 @@ public class SimpleHttpClientFactory
         },
     };
 
-    // 创建命名 HttpClient
+    // 教学用：只演示「按名字套配置」。真实 IHttpClientFactory 会复用 SocketsHttpHandler，
+    // 并管理 DNS/连接寿命。这里每次 new HttpClient()，不能照搬到生产。
     public HttpClient CreateClient(string name)
     {
         var client = new HttpClient();
@@ -1062,6 +1063,8 @@ public class MockChatHub
     title: '依赖注入与配置',
     content: `## 第七十四章　依赖注入与配置
 
+> 本章可运行容器是精简教学实现，用来讲生命周期。生产请使用 \`Microsoft.Extensions.DependencyInjection\` 与 \`Microsoft.Extensions.Options\`。Singleton 不能直接依赖 Scoped；Options 应 \`ValidateOnStart\`。
+
 ### 一、依赖注入（DI）核心思想
 
 **控制反转（IoC）**：对象不自己创建依赖，而是从外部容器获取。
@@ -1246,7 +1249,7 @@ var configDict = new Dictionary<string, string?>
 
 var config = new ConfigurationBuilder()
     .AddInMemoryCollection(configDict)  // 实际项目用 .AddJsonFile("appsettings.json")
-    .AddEnvironmentVariables(prefix: "CSHARP4_")  // CSHARP4_ 前缀的环境变量
+    .AddEnvironmentVariables(prefix: "CSHARP5_")  // 仅读取 CSHARP5_ 前缀的环境变量
     .Build();
 
 Console.WriteLine($"App 名称：{config["App:Name"]}");
@@ -2178,6 +2181,8 @@ public class BankAccountTests
     title: 'ASP.NET Core 简介',
     content: `## 第七十六章　ASP.NET Core 简介
 
+> **边界**：本章可运行 demo 是教学用 MiniWebApp，用来讲路由和状态码，**不是** ASP.NET Core。真实宿主、中间件、认证和集成测试见后续「ASP.NET Core 管道」与「WebApplicationFactory」两章。
+
 ### 一、ASP.NET Core 是什么
 
 ASP.NET Core 是 .NET 的跨平台 Web 框架。可以构建：
@@ -2984,9 +2989,9 @@ public byte[] RowVersion { get; set; } = Array.Empty<byte>();
     code: `// ============================================================
 // 第七十六章 EF Core 数据访问 —— demo
 // ------------------------------------------------------------
-// 本地运行器不安装 EF Core provider，所以用 List 模拟部分 API 形状。
-// 该模拟不具备 SQL 翻译、ChangeTracker、关系约束等真实语义；
-// 学会调用形状后，必须用真实数据库 provider 完成集成测试。
+// 本地运行器不安装 EF Core provider，所以用 List 模拟「调用形状」。
+// Add 进入挂起集合，SaveChanges 才提交；Include 按外键填充导航。
+// 仍不具备 SQL 翻译、跟踪快照、约束和重试策略。生产必须用真实 provider + 集成测试。
 //
 // 演示：
 //   1. Entity 类（Data Annotations 配置）
@@ -3050,7 +3055,7 @@ var adults = db.Users
 Console.WriteLine($"Where(u.Id > 1) 结果：{adults.Count} 条");
 foreach (var a in adults) Console.WriteLine($"  - [{a.Id}] {a.Name}");
 
-// Include：关联加载（Eager Loading）
+// Include：按 UserId 填充导航。真实 EF 会生成 JOIN/二次查询；本 Mock 只演示「调用 Include 后才能看到订单」。
 Console.WriteLine("\\n--- Include（关联加载） ---");
 var usersWithOrders = db.Users
     .Include(u => u.Orders)
@@ -3195,43 +3200,57 @@ public class Order
 // ============================================================
 public class MockDbSet<T> where T : class
 {
-    private readonly List<T> _data = new();
-    private readonly HashSet<T> _tracked = new();  // 模拟 Change Tracker
+    // 已提交的行。Add/Remove 先进入 pending，SaveChanges 才写入，避免把「立刻可见」当成 EF 语义。
+    private readonly List<T> _committed = new();
+    private readonly List<T> _pendingAdd = new();
+    private readonly List<T> _pendingRemove = new();
+    private readonly Action<IEnumerable<T>>? _hydrate;
 
-    public int Count => _data.Count;
+    public MockDbSet(Action<IEnumerable<T>>? hydrate = null) => _hydrate = hydrate;
 
-    public List<T> ToList() => _data.ToList();
+    public int Count => _committed.Count;
+
+    public List<T> ToList() => _committed.ToList();
 
     public T? Find(params object[] keys)
     {
         var idProp = typeof(T).GetProperty("Id");
         if (idProp == null) return null;
         var key = (int)keys[0];
-        return _data.FirstOrDefault(item => (int)idProp.GetValue(item)! == key);
+        return _committed.FirstOrDefault(item => (int)idProp.GetValue(item)! == key);
     }
 
     public Task<T?> FindAsync(params object[] keys) => Task.FromResult(Find(keys));
 
-    public MockQueryable<T> Where(Func<T, bool> predicate) => new(_data.Where(predicate));
+    public MockQueryable<T> Where(Func<T, bool> predicate) => new(_committed.Where(predicate));
     public MockQueryable<T> Include<TProperty>(Func<T, IEnumerable<TProperty>> selector)
     {
-        // 模拟 Include（实际 EF Core 会自动 JOIN 加载）
-        // 这里数据已在内存中，Include 是 no-op
-        return new MockQueryable<T>(_data);
+        _hydrate?.Invoke(_committed);
+        return new MockQueryable<T>(_committed);
     }
-    public MockQueryable<T> AsNoTracking() => new(_data, noTracking: true);
-    public MockQueryable<T> FromSqlRaw(string sql) => new(_data);
+    public MockQueryable<T> AsNoTracking() => new(_committed, noTracking: true);
+    public MockQueryable<T> FromSqlRaw(string sql) => new(_committed);
 
-    public void Add(T entity) => _data.Add(entity);
-    public void Update(T entity) { /* 模拟 Change Tracker */ }
-    public void Remove(T entity) => _data.Remove(entity);
-    public Task SaveChangesAsync() => Task.CompletedTask;
+    public void Add(T entity) => _pendingAdd.Add(entity);
+    public void Update(T entity) { /* 真实 EF 把实体标为 Modified；这里仅占位 */ }
+    public void Remove(T entity) => _pendingRemove.Add(entity);
+    public int SavePending()
+    {
+        int changed = _pendingAdd.Count + _pendingRemove.Count;
+        _committed.AddRange(_pendingAdd);
+        foreach (var entity in _pendingRemove) _committed.Remove(entity);
+        _pendingAdd.Clear();
+        _pendingRemove.Clear();
+        return changed;
+    }
 
-    public List<T> Snapshot() => _data.ToList();
+    public List<T> Snapshot() => _committed.ToList();
     public void Restore(IEnumerable<T> snapshot)
     {
-        _data.Clear();
-        _data.AddRange(snapshot);
+        _committed.Clear();
+        _pendingAdd.Clear();
+        _pendingRemove.Clear();
+        _committed.AddRange(snapshot);
     }
 }
 
@@ -3259,17 +3278,26 @@ public class MockQueryable<T>
 
 public class MockAppDbContext : IAsyncDisposable
 {
-    public MockDbSet<User> Users { get; } = new();
+    public MockDbSet<User> Users { get; }
     public MockDbSet<Order> Orders { get; } = new();
 
     public MockDatabase Database { get; }
 
-    public MockAppDbContext() => Database = new MockDatabase(this);
+    public MockAppDbContext()
+    {
+        Users = new MockDbSet<User>(users =>
+        {
+            foreach (var user in users)
+                user.Orders = Orders.ToList().Where(order => order.UserId == user.Id).ToList();
+        });
+        Database = new MockDatabase(this);
+    }
 
     public Task<int> SaveChangesAsync()
     {
-        Console.WriteLine($"  [DbContext] SaveChangesAsync()");
-        return Task.FromResult(1);
+        int changed = Users.SavePending() + Orders.SavePending();
+        Console.WriteLine($"  [DbContext] SaveChangesAsync() 提交 {changed} 条挂起变更");
+        return Task.FromResult(changed);
     }
 
     public ValueTask DisposeAsync()

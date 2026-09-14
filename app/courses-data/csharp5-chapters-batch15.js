@@ -128,7 +128,7 @@ Console.WriteLine("Configuration: Release");
 - 部分场景允许 ref/unsafe 与迭代器、异步方法共存，但引用仍不能跨越 \`await\` / \`yield\`。
 - 集合表达式支持自然索引器中的隐式 \`^\`。
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // C# 13
 static int Sum(params ReadOnlySpan<int> values)
 {
@@ -140,7 +140,7 @@ static int Sum(params ReadOnlySpan<int> values)
 
 ### 二、C# 14 重点
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // field-backed property
 public string Name
 {
@@ -153,10 +153,13 @@ public string Name
 // null-conditional assignment
 customer?.LastSeenAt = DateTimeOffset.UtcNow;
 
-// extension members
-extension(IEnumerable<int> source)
+// extension members 必须写在 static class 里（C# 14）
+public static class EnumerableExtensions
 {
-    public int Median() => source.Order().ElementAt(source.Count() / 2);
+    extension(IEnumerable<int> source)
+    {
+        public int Median() => source.Order().ElementAt(source.Count() / 2);
+    }
 }
 \`\`\`
 
@@ -293,7 +296,7 @@ public sealed record Result<T>(T? Value, string? Error)
 
 ### 一、宿主基础配置（.NET 10）
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
@@ -450,17 +453,26 @@ EF Core 章节讲了 CRUD；生产环境还必须处理 DbContext 生命周期�
 - 采用 expand/contract：先加兼容结构，再部署双读/双写或回填，最后删除旧结构。
 - 大表变更要评估锁、日志量和回滚时间。
 
-### 四、并发与事务
+### 四、并发、事务与瞬态重试
 
 - 乐观并发令牌冲突时捕获 \`DbUpdateConcurrencyException\`，重新读取并决定合并、重试或返回冲突。
 - \`SaveChanges\` 自身具有事务性；只有跨多个 SaveChanges 或混合操作时才显式事务。
 - 不要盲目重试整个事务；重试必须重新执行完整事务并保证副作用安全。
 
+\`\`\`csharp-snippet
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(connection, npgsql =>
+        npgsql.EnableRetryOnFailure(maxRetryCount: 5)));
+\`\`\`
+
+\`EnableRetryOnFailure\` 会在暂时性故障时重试。如果自己写了 \`BeginTransaction\`，必须把整段工作放进 \`IExecutionStrategy.ExecuteAsync\`，否则会出现「不支持用户发起的事务」或重试时只重放一半。重试次数用尽仍要失败并告警，不能在请求线程里无限转圈。
+
 ### 五、Outbox
 
 数据库提交和消息发布不能用普通 try/catch 实现原子性。把业务变更和 outbox 事件写入同一数据库事务，后台发布并记录完成；消费者仍要按消息 ID 去重，因为交付通常是“至少一次”。
 `,
-    code: `// 乐观并发的最小模型：更新必须携带读到的版本
+    code: `// 1) 乐观并发：更新必须携带读到的版本。
+// 2) 瞬态故障：只有整段事务可重放时才能重试（对应 EF 的 IExecutionStrategy）。
 var store = new Dictionary<string, Account>
 {
     ["a-1"] = new("a-1", 100m, Version: 3),
@@ -468,6 +480,16 @@ var store = new Dictionary<string, Account>
 
 Console.WriteLine(TryWithdraw(store, "a-1", 30m, expectedVersion: 3));
 Console.WriteLine(TryWithdraw(store, "a-1", 20m, expectedVersion: 3));
+
+int attempts = 0;
+string result = ExecuteWithRetry(() =>
+{
+    attempts++;
+    if (attempts < 3)
+        throw new TimeoutException("暂时性数据库错误");
+    return "committed";
+});
+Console.WriteLine($"重试后：{result}（attempts={attempts}）");
 
 static string TryWithdraw(
     Dictionary<string, Account> store,
@@ -486,6 +508,23 @@ static string TryWithdraw(
     return "updated";
 }
 
+static string ExecuteWithRetry(Func<string> work)
+{
+    const int maxAttempts = 5;
+    for (int attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        try
+        {
+            return work(); // 必须重放完整事务，不能只重放 Commit
+        }
+        catch (TimeoutException) when (attempt < maxAttempts)
+        {
+            Console.WriteLine($"瞬态失败，重试 {attempt}/{maxAttempts}");
+        }
+    }
+    throw new InvalidOperationException("重试次数用尽");
+}
+
 public sealed record Account(string Id, decimal Balance, long Version);
 `,
     lang: 'cs',
@@ -501,7 +540,7 @@ public sealed record Account(string Id, decimal Balance, long Version);
 
 ### 一、现代 HttpClient 配置
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 builder.Services.AddHttpClient<CatalogClient>(client =>
 {
     client.BaseAddress = new Uri(configuration["Catalog:BaseUrl"]!);
@@ -569,7 +608,7 @@ static TimeSpan Backoff(int attempt, TimeSpan seed, Random random)
 
 ### 一、BackgroundService
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 public sealed class OutboxWorker(
     IServiceScopeFactory scopeFactory,
     ILogger<OutboxWorker> logger) : BackgroundService
@@ -652,7 +691,7 @@ OpenTelemetry 统一采集和导出；应用代码优先使用 \`ILogger\`、\`A
 
 ### 二、结构化日志
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 logger.LogInformation(
     "Order {OrderId} paid in {ElapsedMs} ms",
     orderId, elapsed.TotalMilliseconds);

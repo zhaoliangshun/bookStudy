@@ -54,6 +54,10 @@ const LANG_MAP = {
   // C#
   cs: { api: "/api/run-csharp", pgId: "csharp", label: "C#", lang: "csharp" },
   csharp: { api: "/api/run-csharp", pgId: "csharp", label: "C#", lang: "csharp" },
+  // 教学片段：高亮但不提供运行，避免不完整示例编译失败
+  "csharp-snippet": { pgId: "csharp", label: "C# 片段", lang: "csharp" },
+  "cs-snippet": { pgId: "csharp", label: "C# 片段", lang: "csharp" },
+  "csharp-doc": { pgId: "csharp", label: "C# 片段", lang: "csharp" },
   // Go
   go: { api: "/api/run-go", pgId: "go", label: "Go", lang: "go" },
   golang: { api: "/api/run-go", pgId: "go", label: "Go", lang: "go" },
