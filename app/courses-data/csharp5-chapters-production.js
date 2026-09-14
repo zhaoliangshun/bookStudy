@@ -232,7 +232,14 @@ chore(ci): require CODEOWNERS review on /infra
 2. 脱离示例实现一个 \`MergeGate\` 类：支持按名称配置必需检查（build/tests/security 必须 Passed，review 允许 Pending），不满足时输出具体缺少哪一项，而不是笼统的 false。
 3. 生产场景：给毕业项目补齐 \`CONTRIBUTING.md\`、PR 模板（动机/行为变化/测试证据/回滚步骤/风险）和 \`CODEOWNERS\`（\`/infra/\` 指向平台组）；再用 \`git bisect\` 配合 \`dotnet test\` 定位一次故意注入的回归提交，把步骤记进 runbook。
 `,
-    code: `// 用代码表达一个简单的合并门禁
+    code: `// ============================================================
+// 分支与评审的两道闸（纯 C# 模拟）：
+//   1. 合并门禁：所有必需检查 Passed 才可合并
+//   2. Conventional Commits 分类：提交类型决定流水线规模
+//      （chore/docs 不必跑全量测试；feat/fix 走完整门禁）
+// ============================================================
+
+// ---------- 1. 合并门禁 ----------
 var checks = new[]
 {
     new PullRequestCheck("build", CheckState.Passed),
@@ -244,7 +251,47 @@ var checks = new[]
 bool mergeable = checks.All(static check => check.State is CheckState.Passed);
 foreach (var check in checks)
     Console.WriteLine($"{check.Name,-10} {check.State}");
-Console.WriteLine($"允许合并：{mergeable}");
+Console.WriteLine($"允许合并：{mergeable}（review 还在 Pending，把整条 PR 挡住）");
+
+// ---------- 2. Conventional Commits 分类门控 ----------
+// 提交信息是机器可读的契约：type(scope): subject
+// type 决定流水线规模与版本号走向（feat → minor，fix → patch，! → breaking → major）。
+static (string Type, string Scope, bool Breaking, string Pipeline) ParseCommit(string message)
+{
+    // 形如 "feat(checkout)!: 支持余额合并支付" 或 "chore(deps): 升级依赖"
+    var head = message.Split(':')[0];
+    bool breaking = head.Contains('!');
+    head = head.Replace("!", "");
+    var type = head.Contains('(') ? head[..head.IndexOf('(')] : head;
+    var scope = head.Contains('(') ? head[(head.IndexOf('(') + 1)..head.IndexOf(')')] : "-";
+    var pipeline = type switch
+    {
+        "feat" or "fix"   => "完整门禁：build + 全量测试 + 契约测试 + 评审",
+        "refactor"        => "build + 受影响模块测试",
+        "docs"            => "文档站构建（不占测试资源）",
+        "chore" or "test" => "build + 单元测试",
+        _                 => "未知类型 → 默认按完整门禁跑（宁重勿漏）",
+    };
+    return (type, scope, breaking, pipeline);
+}
+
+var commits = new[]
+{
+    "feat(checkout)!: 支持余额合并支付",     // breaking！
+    "fix(order): 修复金额四舍五入",           // 常规修复
+    "docs(readme): 补充本地启动步骤",
+    "chore(deps): 升级 NuGet 依赖",
+};
+
+Console.WriteLine();
+foreach (var c in commits)
+{
+    var (type, scope, breaking, pipeline) = ParseCommit(c);
+    Console.WriteLine($"{c}");
+    Console.WriteLine($"  type={type} scope={scope} breaking={breaking}");
+    Console.WriteLine($"  流水线 → {pipeline}{(breaking ? " + 版本号必须升 major" : "")}");
+}
+Console.WriteLine("\\n规则：feat/fix 走全量门禁；chore/docs 轻量跑——省下的是所有评审人的等待时间。");
 
 public enum CheckState { Pending, Passed, Failed }
 public sealed record PullRequestCheck(string Name, CheckState State);
@@ -765,13 +812,22 @@ Schema 变更用 **expand/contract**：先加可空列/新表并双写，再回�
 
 ### 练习
 
-1. 修改主 demo：把 \`cursor\` 换成 \`orders[0]\`（最新一单）和 \`orders[11]\`（最旧一单），观察 \`nextPage\` 分别输出什么；给几条订单相同的 \`CreatedAt\` 并去掉 \`ThenByDescending(order => order.Id)\`，看只按时间比较会丢行还是重行；把 \`Take(5)\` 改成 \`Take(100)\`，确认 12 行一次取完。
+1. 修改主 demo 的三个部分：分页——把 \`cursor\` 换成 \`orders[0]\`（最新一单）和 \`orders[11]\`（最旧一单），观察 \`nextPage\` 分别输出什么；给几条订单相同的 \`CreatedAt\` 并去掉 \`ThenByDescending(order => order.Id)\`，看只按时间比较会丢行还是重行；把 \`Take(5)\` 改成 \`Take(100)\`，确认 12 行一次取完。唯一约束——把 \`uniqueKeys\` 换成 \`List\` 并改写成「先 Contains 查重、再 Add」的两步实现，单线程下结果相同，体会为什么两步之间在并发下必然有竞态窗口。死锁——把 \`attempts\` 改成两条都 \`Committed: false\` 并把重试上限提到 3，观察重试耗尽后应如何显式上报（抛异常/告警）而不是静默吞掉。
 2. 脱离示例独立实现 \`KeysetCursor\`：把 \`(CreatedAt, Id)\` 编码成 Base64 不透明 token，内含排序方向与版本号，提供 \`TryParse\`；伪造、过期或排序规则变更后的旧游标返回失败而不是错页，用 xUnit 覆盖“篡改 token”与“换排序方向后复用旧游标”两个用例。
 3. 生产场景：在 PostgreSQL 灌 10 万行订单种子，建 \`(tenant_id, created_at DESC, id DESC) INCLUDE (total, status)\` 覆盖索引，用 \`EXPLAIN (ANALYZE, BUFFERS)\` 对比 \`OFFSET 50000\` 与 keyset 翻页的 Buffers 读数并贴进 PR；再写“扣库存 + 插订单”事务：固定先 \`orders\` 后 \`inventory\` 的锁顺序，死锁重试上限 3 次且整段幂等可重放，用两个并发事务验证不会超卖。
 
 
 `,
-    code: `// 用复合游标模拟 keyset pagination
+    code: `// ============================================================
+// 数据库基本功三件事（纯 C# 模拟）：
+//   1. Keyset 分页：深 OFFSET 是「扫描再丢弃」，复合游标翻页不重不漏
+//   2. 唯一约束：在「保存」这一层拒绝重复——查重-再插两步之间永远有竞态
+//   3. 死锁重试：固定锁顺序 + 有限次重试 + 整段幂等可重放
+// ============================================================
+
+// ---------- 1. Keyset 分页（复合游标）----------
+// WHERE (created_at, id) < (游标) ORDER BY created_at DESC, id DESC LIMIT 5
+// Id 是第二排序键：CreatedAt 相同的行也有稳定顺序，翻页不重不漏。
 var orders = Enumerable.Range(1, 12)
     .Select(i => new Order(i, new DateTimeOffset(2026, 9, i, 0, 0, 0, TimeSpan.Zero)))
     .OrderByDescending(static order => order.CreatedAt)
@@ -786,6 +842,44 @@ var nextPage = orders
 
 foreach (var order in nextPage)
     Console.WriteLine($"{order.Id}: {order.CreatedAt:yyyy-MM-dd}");
+
+// ---------- 2. 唯一约束：保存层拒绝重复 ----------
+// (tenant_id, order_no) 唯一索引的等价物：HashSet.Add 原子地完成「检查 + 插入」。
+// 反面模式是「先 SELECT 查重、再 INSERT」——两步之间另一个请求可以插入同键。
+var uniqueKeys = new HashSet<(string Tenant, string OrderNo)>();
+
+void TryCreateOrder(string tenant, string orderNo)
+{
+    if (!uniqueKeys.Add((tenant, orderNo)))
+        Console.WriteLine($"拒绝：({tenant}, {orderNo}) 唯一约束冲突 —— 等价数据库 UNIQUE 拒绝");
+    else
+        Console.WriteLine($"接受：({tenant}, {orderNo})");
+}
+
+Console.WriteLine();
+TryCreateOrder("t-1", "SO-2026-001");
+TryCreateOrder("t-1", "SO-2026-001");   // 同租户同单号：约束拒绝，无论查重逻辑怎么写
+TryCreateOrder("t-2", "SO-2026-001");   // 不同租户：不冲突（复合键的语义）
+
+// ---------- 3. 死锁：固定锁顺序 + 有限次整段重试 ----------
+// 死锁的根源是两个事务按相反顺序拿锁（T1 拿 orders 等 inventory，
+// T2 拿 inventory 等 orders）。生产的解法组合拳：
+//   ① 全系统统一锁顺序（先 orders 再 inventory）—— 消灭大部分死锁
+//   ② 数据库挑一个事务当「受害者」杀掉 —— 剩余部分靠有限次重试
+//   ③ 重试必须整段可重放 —— 幂等键兜底，保证重放不会双下单
+var attempts = new[]
+{
+    (Attempt: 1, Committed: false),   // 第一次被选为死锁受害者
+    (Attempt: 2, Committed: true),    // 同序整段重放成功
+};
+
+Console.WriteLine();
+foreach (var (attempt, committed) in attempts)
+{
+    Console.WriteLine($"第 {attempt} 次尝试：锁顺序 orders → inventory，" +
+        (committed ? "全部拿到，事务提交" : "被死锁受害者选中，整段回滚后重试"));
+}
+Console.WriteLine("要点：重试上限有限、整段可重放、幂等键兜底——缺一个都会变成超卖。");
 
 public sealed record Order(int Id, DateTimeOffset CreatedAt);
 `,
@@ -893,7 +987,29 @@ var rows = await connection.QueryAsync<OrderRow, LineRow, OrderRow>(
 3. 生产场景：给毕业项目落地“EF 写、Dapper 读”的分工——订单保存走 \`DbContext.SaveChanges\`，跨月报表用 \`QueryAsync<OrderRow, LineRow, OrderRow>\` 多映射（\`splitOn\` 对准 \`LineId\`）并把 EXPLAIN 贴进 PR；把 \`CommandTimeout\` 设 2 秒跑一条 \`pg_sleep(5)\` 验证取消路径；批量导入用 \`SqlBulkCopy\`/\`COPY\` 按 5000 行分批、整批失败可重入、按业务键去重；连接串加 \`Application Name=graduation-api\`，在数据库侧验证能按应用查杀会话。
 
 `,
-    code: `// 动态排序必须从允许列表映射，不能拼接用户原文
+    code: `// ============================================================
+// 数据访问三个保命习惯（纯 C# 模拟，无真实数据库）：
+//   1. 参数化 vs 字符串拼接：注入只发生在「用户输入变成代码」的地方
+//   2. 动态排序白名单：表/列名不能参数化，只能映射
+//   3. 瞬态故障重试：连接断开要重试，但只重试「值得重试」的
+// ============================================================
+
+// ---------- 1. 参数化 vs 拼接 ----------
+// 危险：用户输入直接拼进 SQL 文本 → 输入被当成代码执行。
+var userSearch = "'; DROP TABLE orders; --";
+
+// ❌ 拼接（模拟生成出的危险 SQL）
+string injected = $"SELECT id FROM orders WHERE customer = '{userSearch}'";
+Console.WriteLine($"拼接结果：{injected}");
+Console.WriteLine("  ↑ 整条语句被改写：WHERE 变恒真，后面跟 DROP");
+
+// ✅ 参数化：用户输入永远是「值」，不可能是「代码」
+// 真实调用：new SqlCommand("... WHERE customer = @customer") + Parameters.AddWithValue
+var safe = ("SELECT id FROM orders WHERE customer = @customer", new Dictionary<string, object> { ["@customer"] = userSearch });
+Console.WriteLine($"参数化：{safe.Item1}\\n  @customer = {safe.Item2["@customer"]}（整个字符串只匹配一个名字，DROP 只是普通文本）");
+
+// ---------- 2. 动态排序必须从允许列表映射，不能拼接用户原文 ----------
+// ORDER BY 的列名不能作为参数（SQL 语法位置），只能白名单映射。
 var allowedSorts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 {
     ["created"] = "created_at",
@@ -901,13 +1017,44 @@ var allowedSorts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCa
     ["id"] = "id",
 };
 
-string requested = "total";
+string requested = "total; DROP TABLE users";
 string column = allowedSorts.TryGetValue(requested, out var safeColumn)
     ? safeColumn
-    : "created_at";
+    : "created_at";   // 未知值回落默认列，绝不透传
 
-string sql = $"SELECT id, total_amount FROM orders ORDER BY {column} DESC";
-Console.WriteLine(sql);
+string sql2 = $"SELECT id, total_amount FROM orders ORDER BY {column} DESC";
+Console.WriteLine($"\\n恶意排序参数 {requested}\\n  → 白名单回落：{sql2}");
+
+// ---------- 3. 瞬态故障重试 ----------
+// 只重试瞬态错误（连接断开/超时/死锁牺牲品），且总预算要封顶；
+// 唯一键冲突这类业务错误重试一万次也不会成功。
+static async Task<string> ExecuteWithRetryAsync(Func<int, Task<string>> operation, int maxRetries = 3)
+{
+    for (var attempt = 1; ; attempt++)
+    {
+        try
+        {
+            return await operation(attempt);
+        }
+        catch (TimeoutException) when (attempt <= maxRetries)   // 瞬态：值得重试
+        {
+            var backoff = TimeSpan.FromMilliseconds(50 * Math.Pow(2, attempt - 1));
+            Console.WriteLine($"  attempt {attempt} 超时，{backoff.TotalMilliseconds:F0}ms 后重试");
+            await Task.Delay(backoff);
+        }
+        // InvalidOperationException（唯一键冲突）没有 when 子句 → 直接向上抛：
+        // 业务错误重试无意义，还会放大数据库压力。
+    }
+}
+
+Console.WriteLine("\\n带重试的查询（前 2 次模拟瞬态超时）：");
+var result = await ExecuteWithRetryAsync(async attempt =>
+{
+    await Task.Delay(10);
+    if (attempt <= 2) throw new TimeoutException();
+    return "42 rows";
+});
+Console.WriteLine($"最终结果：{result}");
 `,
     lang: "cs",
   },
@@ -1011,20 +1158,85 @@ Redis 超时或宕机时“全部回源”会压垮数据库。要有：回源�
 
 
 `,
-    code: `// TTL + jitter，避免大量键同一时刻过期
+    code: `// ============================================================
+// 分布式缓存三件事（纯 C# 模拟，无真实 Redis）：
+//   1. TTL + jitter：大量键同一时刻集体过期 = 集体回源 = 缓存雪崩
+//   2. 击穿防护（single-flight）：热键过期瞬间只放一个请求回源
+//   3. 键前缀规范：namespace:entity:tenant:id——可扫描、可按租户清理
+// ============================================================
+
+// ---------- 1. TTL + jitter ----------
 var random = new Random(2026);
 TimeSpan baseTtl = TimeSpan.FromMinutes(10);
 
 for (int i = 1; i <= 5; i++)
 {
     TimeSpan ttl = AddJitter(baseTtl, 0.15, random);
-    Console.WriteLine($"key-{i}: {ttl.TotalSeconds:F0}s");
+    Console.WriteLine($"key-{i}: {ttl.TotalSeconds:F0}s（±15% 抖动，过期时刻被摊开）");
 }
 
 static TimeSpan AddJitter(TimeSpan value, double ratio, Random random)
 {
     double factor = 1 - ratio + random.NextDouble() * ratio * 2;
     return TimeSpan.FromMilliseconds(value.TotalMilliseconds * factor);
+}
+
+// ---------- 2. 击穿（stampede）与 single-flight ----------
+// 场景：热键过期的一毫秒里，50 个并发请求同时 miss → 50 个都去打数据库。
+// 方案：第一个 miss 负责回源，其余等它（Redis 侧可用 SETNX 锁 / 客户端
+//      可用 SemaphoreSlim 或 HybridCache 的单飞语义）。
+// 实现（StampedeCache 类）声明在本文件末尾——顶级语句必须先于类型声明。
+
+var cache = new StampedeCache();
+Console.WriteLine("\\n并发 5 个请求同取热键 product-100：");
+var tasks = Enumerable.Range(1, 5)
+    .Select(_ => cache.GetOrLoadAsync("product-100", async () =>
+    {
+        await Task.Delay(50);              // 模拟一次昂贵的数据库查询
+        return "product-100 从数据库加载";
+    }));
+var loaded = await Task.WhenAll(tasks);
+Console.WriteLine($"回源次数：1 次（而不是 {loaded.Length} 次）——数据库只被打了一下");
+
+// ---------- 3. 键前缀规范 ----------
+// 好的键空间：能按「应用:实体:租户」扫描与批量失效；坏的键空间：无结构、无法清理。
+static string BuildKey(string ns, string entity, string tenant, string id) =>
+    $"{ns}:{entity}:{tenant}:{id}";
+
+Console.WriteLine("\\n键设计：");
+Console.WriteLine($"  {BuildKey("shop", "order", "tenant-a", "1001")}（可按 shop:*:tenant-a:* 失效整个租户）");
+Console.WriteLine($"  {BuildKey("shop", "session", "tenant-b", "u-42")}（可按 shop:session:* 清全部会话）");
+Console.WriteLine("  反例 user42_orders：无分隔结构，既不能扫描也不能按租户失效");
+
+// ---------- 击穿防护实现 ----------
+sealed class StampedeCache
+{
+    private readonly Dictionary<string, string> _store = new();
+    private readonly SemaphoreSlim _gate = new(1, 1);   // 同键只有一个回源者
+
+    public async Task<string> GetOrLoadAsync(string key, Func<Task<string>> loadFromDb)
+    {
+        if (_store.TryGetValue(key, out var hit))
+        {
+            Console.WriteLine($"  {key}: 缓存命中");
+            return hit;
+        }
+
+        await _gate.WaitAsync();          // 排队的请求在这里等
+        try
+        {
+            if (_store.TryGetValue(key, out hit))   // 双检查：排队期间别人已回填
+            {
+                Console.WriteLine($"  {key}: 排队期间已回填，直接复用");
+                return hit;
+            }
+            Console.WriteLine($"  {key}: miss，持锁回源（其余并发在等）");
+            hit = await loadFromDb();
+            _store[key] = hit;
+            return hit;
+        }
+        finally { _gate.Release(); }
+    }
 }
 `,
     lang: "cs",
@@ -1267,7 +1479,7 @@ SignalR 的扩展模式要测广播放大：给 10 万用户推同一条，Redis
 
 ### 练习
 
-1. 修改主 demo：往 \`incoming\` 加一条 \`RealtimeEvent(102, "price.updated")\` 让序号连续，确认 gap 提示消失；再加一条倒退事件（如 99），观察 \`lastSeen\` 被拉低后后续事件如何被误判；把判断条件从 \`!=\` 改成 \`>\`，体会缺口检测背后的严格递增假设。
+1. 修改主 demo 的两个部分：缺口检测——往 \`incoming\` 加一条 \`RealtimeEvent(102, "price.updated")\` 让序号连续，确认 gap 提示消失；再加一条倒退事件（如 99），观察 \`lastSeen\` 被拉低后后续事件如何被误判；把判断条件从 \`!=\` 改成 \`>\`，体会缺口检测背后的严格递增假设。deadline——把 \`CallDownstream\` 的预算参数改成 600ms，观察放行分支；再把 \`cost\` 改成 5 秒，确认两条调用都变成取消，体会「预算是入口剩余时间，不是下游想要的时长」。
 2. 脱离示例独立实现 \`SequenceTracker\`：\`Observe(long sequence)\` 返回本次发现的缺口区间，支持乱序到达（103 先到、102 后到则缺口自动关闭）与重复事件忽略，用测试覆盖 100→103→102 与同号重放两条路径。
 3. 生产场景：给毕业项目的价格推送落地“推送 + 可查询”：Hub 方法全部 \`[Authorize]\`，分组名由服务端按 \`tenant:{id}\` 计算而不接受客户端传入；事件带 sequence，客户端重连后先走 HTTP 补拉再订阅；gRPC 内部调用把入口剩余时间递减进 \`CallOptions.Deadline\`，用 100ms 预算调 500ms 下游验证取消传播而不是堆请求；protobuf 废弃字段 3 写 \`reserved\` 并让新旧客户端各跑一次。
 
@@ -1276,21 +1488,49 @@ SignalR 的扩展模式要测广播放大：给 10 万用户推同一条，Redis
 
 
 `,
-    code: `// 用序号检测实时事件缺口；发现缺口后应调用 HTTP 补拉
+    code: `// ============================================================
+// 实时通信的两个生产习惯（纯 C# 模拟）：
+//   1. 推送不保证送达：事件带单调序号，发现缺口走 HTTP 补拉
+//   2. deadline 递减传播：把入口「剩余预算」传给下游，而不是各设各的
+// ============================================================
+
+// ---------- 1. 序号缺口检测 + 补拉 ----------
+// SignalR 断线重连 / gRPC 流取消 / 服务器重启都会丢消息。
+// 关键业务不能只靠推送：每条事件带单调 sequence，客户端发现缺口就走 HTTP 补拉。
 long lastSeen = 100;
 var incoming = new[]
 {
     new RealtimeEvent(101, "price.updated"),
-    new RealtimeEvent(103, "order.changed"),
+    new RealtimeEvent(103, "order.changed"),   // 102 在断线中丢了
 };
 
 foreach (var item in incoming)
 {
     if (item.Sequence != lastSeen + 1)
+    {
         Console.WriteLine($"gap: expected {lastSeen + 1}, got {item.Sequence}");
+        // 生产代码：在这里调 GET /events?after=lastSeen 补齐缺口，
+        // 不要等下一条推送把 102 送来——它永远不会来
+    }
     lastSeen = item.Sequence;
     Console.WriteLine($"event {item.Sequence}: {item.Type}");
 }
+
+// ---------- 2. deadline 递减传播 ----------
+// 下游固定耗时 500ms（模拟慢依赖）。正确的传播是「入口剩余时间」：
+// 入口剩 200ms 就把 200ms 传下去，预算耗尽立即取消——而不是下游另设 2s，
+// 让请求在慢依赖里排队，把线程、连接和内存吃光。
+static string CallDownstream(string policy, TimeSpan budget)
+{
+    var cost = TimeSpan.FromMilliseconds(500);
+    return budget >= cost
+        ? $"{policy}：预算 {budget.TotalMilliseconds:F0}ms 覆盖 500ms 成本，调用完成"
+        : $"{policy}：预算 {budget.TotalMilliseconds:F0}ms 耗尽，立即取消——不占线程干等";
+}
+
+Console.WriteLine();
+Console.WriteLine(CallDownstream("递减传播（正确）", TimeSpan.FromMilliseconds(200)));  // 入口只剩 200ms
+Console.WriteLine(CallDownstream("各设各的（错误）", TimeSpan.FromSeconds(2)));         // 无视入口预算，请求堆积
 
 public sealed record RealtimeEvent(long Sequence, string Type);
 `,
@@ -1398,6 +1638,12 @@ S3 兼容存储（AWS S3、MinIO、Azure Blob 的块语义略有不同）核心�
 
 
 十日结束后开一次十五分钟回顾：哪一天没有证据、哪一条会在毕业答辩被问到。把缺口列进下一周，而不是开始下一章收藏。
+
+### 练习
+
+1. 修改主 demo：把数据量从 10_000 字节放大到 10_000_000 字节再跑，观察内存占用不变（流式 \`ComputeSha256Async\` 的内存与文件大小无关）；把 \`SHA256\` 换成 \`MD5\` 对比摘要长度差异；计算完哈希后把 \`stream.Position = 0\` 再算一次，验证同一份数据摘要可重复。
+2. 脱离示例实现分片上传模拟：\`UploadInParts(Stream data, int partSize)\` 把流切成 N 片逐片返回 \`(partNumber, etag)\`（etag 用 \`SHA256.HashData\` 对每片计算），全部完成后输出 multipart complete；写测试钉住「同一数据同一分片大小 → 同一组 etag」。
+3. 生产场景：实现 Range 请求校验函数 \`ParseRange(string? rangeHeader, long fileSize)\`：解析 \`bytes=0-99\` 形式，越界（end ≥ fileSize）、多区间、超大范围（如 > 10MB）一律拒绝并返回 416 语义，合法则返回 \`(start, length)\`；再实现预签名 URL 模拟——过期时间戳 + HMAC 签名校验，篡改路径或超时都拒绝。
 
 
 
@@ -1524,23 +1770,68 @@ Options 验证要覆盖：缺键、类型错误、范围越界、互斥开关同
 
 十日结束后开一次十五分钟回顾：哪一天没有证据、哪一条会在毕业答辩被问到。把缺口列进下一周，而不是开始下一章收藏。
 
+### 练习
+
+1. 修改主 demo：把 \`percentage\` 从 25 改成 50、100、0 各跑一遍，观察 u-1 到 u-4 的翻转情况；把 flag 名从 \`new-checkout\` 换成 \`checkout-v2\`，验证同一用户落进不同桶（哈希键变了，分桶结果就变——这就是为什么换 flag 名等于重新灰度）。
+2. 脱离示例实现带过期日的开关存储：\`FeatureFlagStore\` 存 \`(percentage, expiresAt)\`，\`IsEnabled\` 在到期后直接返回 false（失败关闭），并用注入的 \`TimeProvider\` 写测试钉住「到期即全员关闭」与「到期前一天仍按比例开」。
+3. 生产场景：实现双密钥轮换模拟：\`KeyRing\` 同时持有 current / previous 两把密钥，\`Sign\` 只用 current，\`Validate\` 先试 current 失败再试 previous（重叠期）；写测试覆盖「轮换后旧令牌在重叠期内可验、超过重叠期被拒」，并把「到期进值班表」写成检查清单项。
+
 
 
 
 `,
-    code: `// 稳定百分比分桶：同一用户始终得到相同结果
+    code: `// ============================================================
+// 配置与开关的三个关键语义（纯 C# 模拟）：
+//   1. 稳定百分比分桶：同一用户永远同一结果（哈希分桶，非随机）
+//   2. 分层覆盖：appsettings < 环境变量 < 密钥库，后一层覆盖前一层
+//   3. 失败关闭：开关存储不可用/已过期 → 一律当 false 处理
+//      （支付类开关失败打开 = 事故；装饰类开关才允许失败打开）
+// ============================================================
 using System.Security.Cryptography;
 using System.Text;
 
+// ---------- 1. 稳定百分比分桶 ----------
 foreach (string userId in new[] { "u-1", "u-2", "u-3", "u-4" })
     Console.WriteLine($"{userId}: {Enabled(userId, "new-checkout", 25)}");
 
+// 哈希键 = flag + subject：换 flag 名等于重新灰度（分桶全变）
 static bool Enabled(string subject, string flag, int percentage)
 {
     byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes($"{flag}:{subject}"));
     uint value = BitConverter.ToUInt32(hash, 0);
     return value % 100 < percentage;
 }
+
+// ---------- 2. 分层覆盖：配置的合并语义 ----------
+// 生产里的真实链路：appsettings.json → appsettings.Production.json
+//   → 环境变量 → Key Vault，每层只覆盖自己出现的键。
+// 注意类型统一转 string——环境变量没有「int/bool」，解析在最外层做一次。
+var layers = new (string Layer, Dictionary<string, string> Values)[]  // 优先级从低到高
+{
+    ("appsettings.json", new() { ["db:retry"] = "3", ["feature:x"] = "off", ["log:level"] = "info" }),
+    ("env:OVERRIDE",     new() { ["db:retry"] = "5" }),                          // 只改 retry
+    ("key-vault",        new() { ["db:password"] = "kv-secret", ["feature:x"] = "on" }),
+};
+
+var merged = new Dictionary<string, string>();
+foreach (var (_, values) in layers)
+    foreach (var (key, value) in values)
+        merged[key] = value;   // 后一层覆盖同名键
+
+Console.WriteLine("\\n合并结果（高优先级覆盖低优先级）：");
+foreach (var (key, value) in merged.OrderBy(kv => kv.Key))
+    Console.WriteLine($"  {key} = {value}");
+
+// ---------- 3. 失败关闭（fail-closed）----------
+// 开关存储拿不到（网络分区/密钥库故障）或已过期：支付类开关一律返回 false。
+// 只有「打开与否不影响正确性」的装饰类开关（如新 UI）才允许失败打开。
+static bool IsEnabledSafe(string flag, bool storeReachable, DateTimeOffset now, DateTimeOffset expiresAt) =>
+    storeReachable && now < expiresAt;   // 任何一个条件不满足 → false
+
+var now = DateTimeOffset.UtcNow;
+Console.WriteLine($"\\n存储可达 & 未过期 → {IsEnabledSafe("pay-v2", true,  now, now.AddDays(7))}（正常放行灰度）");
+Console.WriteLine($"存储不可达       → {IsEnabledSafe("pay-v2", false, now, now.AddDays(7))}（失败关闭：宁可全量走旧链路）");
+Console.WriteLine($"开关已过期       → {IsEnabledSafe("pay-v2", true,  now, now.AddDays(-1))}（过期即关：超期仍开列进技术债清单）");
 `,
     lang: "cs",
   },
@@ -1639,7 +1930,18 @@ K8s 验收：三探针语义不同且有测试或手册；PDB 存在；SIGTERM �
 
 
 `,
-    code: `// 模拟 readiness：只包含“能否接流量”的必要条件
+    code: `// ============================================================
+// Kubernetes 三组核心语义（纯 C# 模拟）：
+//   1. liveness vs readiness：崩溃重启 ≠ 摘除流量，两探针回答不同问题
+//   2. 优雅停机：收到 SIGTERM → 摘流量 → 排空在途请求 → 再退出
+//   3. 容器资源感知：内存 limit 决定 GC 模式，超出即被 OOMKill（不是节流）
+// ============================================================
+
+// ---------- 1. liveness vs readiness ----------
+// liveness：“进程还活着吗？”——失败 = 重启（治僵死锁）。
+// readiness：“能接流量吗？”——失败 = 摘出 Service（治临时不可用）。
+// 关键：依赖故障只能让它 not-ready，绝不能 fail liveness——
+// 否则整个副本集体重启风暴，把「一个依赖慢」放大成「全站不可用」。
 var state = new ApplicationState(
     StartupCompleted: true,
     DatabaseReachable: true,
@@ -1649,11 +1951,52 @@ bool ready = state.StartupCompleted && state.DatabaseReachable;
 Console.WriteLine($"readiness={(ready ? "ready" : "not-ready")}");
 Console.WriteLine("分析服务失败不会触发 liveness 重启");
 
+// 启动未完成时：not-ready（等预热），但进程没死——liveness 仍应通过
+var starting = state with { StartupCompleted = false };
+Console.WriteLine($"启动中：ready={starting.StartupCompleted && starting.DatabaseReachable}（Endpoints 里还看不到它，但不需要重启）");
+
+// ---------- 2. 优雅停机：SIGTERM 后的排水窗口 ----------
+// K8s 删除 Pod 的顺序（ terminationGracePeriodSeconds 内必须完成）：
+//   Endpoints 摘除 → 应用收到 SIGTERM → 停止接新请求 → 排空存量 → 退出。
+// 排不干净 = 客户端看到连接被掐断的 502。
+static async Task DrainAsync(Queue<string> inflight, TimeSpan deadline)
+{
+    Console.WriteLine("收到 SIGTERM：不再接新请求，开始排水…");
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    while (inflight.Count > 0 && sw.Elapsed < deadline)
+    {
+        await Task.Delay(50);                    // 模拟处理完一个在途请求
+        var done = inflight.Dequeue();
+        Console.WriteLine($"  完成 {done}（剩余 {inflight.Count}）");
+    }
+    Console.WriteLine(inflight.Count == 0
+        ? "排水完成：所有在途请求得到响应，进程体面退出"
+        : $"超过 {deadline.TotalSeconds:F0}s 宽限期：放弃剩余 {inflight.Count} 个（配 terminationGracePeriodSeconds 对齐）");
+}
+
+var inflight = new Queue<string>(["req-1", "req-2", "req-3"]);
+await DrainAsync(inflight, TimeSpan.FromSeconds(1));
+
+// ---------- 3. 资源感知：内存 limit 与 GC 模式 ----------
+// .NET 在容器里读 cgroup：limit < 80% 时 GC 保守；Server GC 按核数建堆。
+// CPU 超限被「节流」（慢），内存超限被「杀死」（OOMKill）——性质完全不同。
+static string PlanGc(int? memoryLimitMb, int cpuLimitMillis)
+{
+    var throttled = cpuLimitMillis < 1000 ? "CPU 被节流（变慢，进程还活着）" : "CPU 充足";
+    if (memoryLimitMb is null) return $"未设内存 limit（危险：节点内存随便吃）｜{throttled}";
+    var mode = memoryLimitMb <= 512 ? "分代 GC + 预留余量" : "Server GC 可开";
+    return $"内存 limit {memoryLimitMb}MB → {mode}（超限 = OOMKill，不是变慢）｜{throttled}";
+}
+
+Console.WriteLine();
+Console.WriteLine(PlanGc(null, 2000));
+Console.WriteLine(PlanGc(384, 500));
+Console.WriteLine(PlanGc(2048, 4000));
+
 public sealed record ApplicationState(
     bool StartupCompleted,
     bool DatabaseReachable,
-    bool OptionalAnalyticsReachable);
-`,
+    bool OptionalAnalyticsReachable);`,
     lang: "cs",
   },
   {
@@ -1892,6 +2235,12 @@ Little's Law：\`L = λW\`（系统中请求数 ≈ 到达率 × 平均逗留时
 
 十日结束后开一次十五分钟回顾：哪一天没有证据、哪一条会在毕业答辩被问到。把缺口列进下一周，而不是开始下一章收藏。
 
+### 练习
+
+1. 修改主 demo：把 \`iterations\` 改成 10_000 与 1_000_000 各跑三遍，观察同进程内耗时的抖动幅度；把 \`int.Parse(value.AsSpan(...))\` 换成 \`int.TryParse\` 版本对比——再想想为什么这仍然不是严谨结论（无预热、无独立进程、无多样本统计，对照正文的 BenchmarkDotNet 陷阱清单逐条打勾）。
+2. 脱离示例实现 Little's Law 容量计算器：\`Capacity(double rps, double avgLatencyMs)\` 返回所需并发数（\`rps × latency / 1000\`），再按 60% 目标利用率输出安全容量与饱和预警线；用 (500 rps, 120ms) 与 (2000 rps, 90ms) 两组数据验证。
+3. 生产场景：为毕业项目写 k6 脚本草案（stages: 2 分钟 ramp 到 200 VU、保持 5 分钟、1 分钟降回）打一个读端点，采集 p95/p99 与错误率；用 Little's Law 从实测延迟反推该并发下所需容量，把「先横向扩容还是先加缓存」的判断连同数据写进容量文档。
+
 
 
 
@@ -2030,18 +2379,66 @@ SLO 验收：一条用户可感知 SLI、30 天目标、burn-rate 告警、SEV �
 
 
 `,
-    code: `// 计算 30 天窗口的错误预算
+    code: `// ============================================================
+// SLO 工程三件套（纯 C# 模拟）：
+//   1. 错误预算：30 天窗口的可用性目标换算成「允许失败的次数」
+//   2. 燃烧率告警：不看累计值，看「短期窗口烧预算的速度」——
+//      页面慢半小时就该响，而不是等月底报表
+//   3. 症状 vs 原因：只对用户看得见的症状告警，原因进仪表盘
+// ============================================================
+
+// ---------- 1. 错误预算 ----------
 const long totalRequests = 5_000_000;
 const long failedRequests = 3_200;
-const double target = 0.999;
+const double target = 0.999;  // 99.9%：30 天里允许 0.1% 失败
 
 double actual = 1d - (double)failedRequests / totalRequests;
-double allowedFailures = totalRequests * (1d - target);
-double budgetUsed = failedRequests / allowedFailures;
+double allowedFailures = totalRequests * (1d - target);   // 预算总额
+double budgetUsed = failedRequests / allowedFailures;    // 已烧比例
 
 Console.WriteLine($"SLI={actual:P4}");
-Console.WriteLine($"错误预算已使用={budgetUsed:P1}");
+Console.WriteLine($"错误预算已使用={budgetUsed:P1}（允许 {allowedFailures:N0} 次失败，实际 {failedRequests:N0} 次）");
 Console.WriteLine(budgetUsed > 1 ? "SLO 已违反" : "仍在预算内");
+
+// ---------- 2. 燃烧率（burn rate）：短期窗口的烧钱速度 ----------
+// 燃烧率 = 实际错误率 / 允许错误率。= 1 表示按预算匀速烧；
+// 多窗口 SRE 实践：1h 窗口燃烧率 > 14.4（2% 预算/小时）= 页面级事故，立即告警；
+// 6h 窗口 > 6 = 需要关注。速度×时间=消耗，快烧比慢烧危险得多。
+var windows = new (string Name, long Total, long Failed, double Threshold)[]
+{
+    ("1h",  7_000,   120, 14.4),  // 错误率 1.71%：燃烧 17.1× → 立即页面（半小时烧掉一天预算）
+    ("6h",  42_000,  130, 6.0),   // 错误率 ~0.31%：燃烧 3.1×，中速但未过阈 → 观察仪表盘
+    ("30d", 5_000_000, 3_200, 1.0),
+};
+
+foreach (var (name, total, failed, threshold) in windows)
+{
+    double actualRate = (double)failed / total;
+    double allowedRate = 1d - target;
+    double burnRate = actualRate / allowedRate;
+    Console.WriteLine($"{name,-4} 窗口：错误率 {actualRate:P3}，燃烧率 {burnRate:F1}×（阈值 {threshold:F1}×）→ {(burnRate > threshold ? "🚨 告警" : "正常")}");
+}
+
+// ---------- 3. 症状 vs 原因：告警只挂在用户看得见的地方 ----------
+// 症状（用户视角）：p99 延迟、失败率、正确性——值得半夜叫醒。
+// 原因（系统视角）：CPU 高、磁盘满、GC 频繁——进仪表盘白天看。
+// 「CPU 90% 但用户毫无感知」不该触发页面；「失败率超标但所有机器绿灯」必须触发。
+var alerts = new (string Signal, bool IsSymptom, bool Firing)[]
+{
+    ("p99 延迟 > 2s（用户感觉卡）",  true,  true),
+    ("下单失败率 > 0.5%（用户下单失败）", true,  true),
+    ("CPU 使用率 91%",                 false, true),
+    ("GC Gen2 每秒 5 次",              false, true),
+};
+
+Console.WriteLine();
+foreach (var (signal, isSymptom, firing) in alerts)
+{
+    var kind = isSymptom ? "症状" : "原因";
+    var action = firing && isSymptom ? "→ 告警（叫醒值班）" : firing ? "→ 仪表盘（白天处理）" : "→ 静默";
+    Console.WriteLine($"[{kind}] {signal} {action}");
+}
+Console.WriteLine("原则：对原因告警 = 噪音疲劳，真警报来时没人看。");
 `,
     lang: "cs",
   },
@@ -2270,6 +2667,12 @@ SourceLink 失败常见原因：CI 没设 \`ContinuousIntegrationBuild\`、源�
 
 
 十日结束后开一次十五分钟回顾：哪一天没有证据、哪一条会在毕业答辩被问到。把缺口列进下一周，而不是开始下一章收藏。
+
+### 练习
+
+1. 修改主 demo：在 \`Main\` 里调用 \`client.GetAsync("A-100")\` 观察编译警告 CS0618 的文案；给 \`[Obsolete]\` 加 \`error: true\` 观察警告升级为错误；再给 \`GetOrderAsync\` 传一个已取消的 \`CancellationToken\`（\`new CancellationTokenSource(0).Token\`），观察 \`OperationCanceledException\` 抛出。
+2. 脱离示例实现版本守卫：\`ApiCompatGuard\` 记录 v1 的公开成员清单（\`Type.Name + "." + MemberName + 参数签名\`），与 v2 清单对比后输出 added / removed 两张表——出现 removed 即要求 major 版本，只增即 minor；写测试分别构造两种差异验证判定。
+3. 生产场景：给毕业项目的一个内部库开 PackageValidation（\`EnablePackageValidation=true\` + baseline 钉住 1.0.0）并 pack 一次成功；随后删掉一个 public 方法再 pack，观察构建失败信息；把「删除 API 前先在 minor 版本 Obsolete 一个周期、隔 major 再删」写进贡献指南。
 
 
 
@@ -2526,7 +2929,15 @@ CI：对 OpenAPI 做语义 diff（oasdiff 等），破坏性变更必须 major �
 
 
 `,
-    code: `// 用稳定错误码让客户端无需解析自然语言
+    code: `// ============================================================
+// API 契约三件套（纯 C# 模拟）：
+//   1. 稳定错误码：客户端解析 code，不是 title 的自然语言
+//   2. 弃用流程：Deprecation/Sunset 头 + 通知期，不是周五直接删字段
+//   3. 破坏性变更判定：删字段/改语义 = major；加可选字段 = minor
+// ============================================================
+
+// ---------- 1. 稳定错误码 ----------
+// code 是契约（改它 = 破坏性变更）；title 是给人看的文案（随便改）。
 var errors = new Dictionary<string, ApiProblem>
 {
     ["order.not_found"] = new(404, "Order not found"),
@@ -2534,11 +2945,49 @@ var errors = new Dictionary<string, ApiProblem>
     ["request.invalid"] = new(400, "Request validation failed"),
 };
 
-string code = "order.conflict";
-ApiProblem problem = errors[code];
-Console.WriteLine($"{problem.Status} {code}: {problem.Title}");
+foreach (var code in new[] { "order.conflict", "order.not_found", "order.teapot" })
+{
+    // 未知错误码绝不能抛 KeyNotFoundException 崩掉——退到 500 + internal_error，
+    // 让客户端始终拿到 RFC 9457 形态，而不是连接被掐断。
+    var problem = errors.TryGetValue(code, out var known)
+        ? known with { Code = code }
+        : new ApiProblem(500, "Internal error") with { Code = "internal_error" };
+    Console.WriteLine($"{problem.Status} {problem.Code}: {problem.Title}");
+}
 
-public sealed record ApiProblem(int Status, string Title);
+// ---------- 2. 弃用：给客户端机器可读的倒计时 ----------
+// 三个头一起发：Deprecation（何时弃）、Sunset（何时停）、link 到迁移文档。
+// 契约测试断言「弃用字段在 Sunset 前仍返回且带头」——口头通知不算弃用。
+var now = DateTimeOffset.UtcNow;
+var deprecations = new (string Field, DateTimeOffset DeprecatedAt, DateTimeOffset SunsetAt)[]
+{
+    ("customer_name", now.AddDays(-60), now.AddDays(30)),   // 已弃用 60 天，还剩 30 天
+    ("vip_level",     now.AddDays(-350), now.AddDays(15)),  // 马上到 sunset：最紧急
+};
+
+foreach (var (field, deprecatedAt, sunsetAt) in deprecations)
+{
+    var remaining = (sunsetAt - now).TotalDays;
+    Console.WriteLine($"\\n字段 {field}：Deprecation={deprecatedAt:yyyy-MM-dd}，Sunset={sunsetAt:yyyy-MM-dd}");
+    Console.WriteLine(remaining < 30
+        ? $"  ⚠ 剩 {remaining:F0} 天停用：升级公告再发一轮 + 调用方监控告警"
+        : $"  剩 {remaining:F0} 天停用：响应继续带字段与 Deprecation 头");
+}
+
+// ---------- 3. 破坏性变更判定 ----------
+// 规则：删字段/改类型/改语义/收紧校验 = 必须 major（v2）；
+//       加可选字段/加新错误码/放宽校验 = minor 安全。
+static string Classify(string change) => change switch
+{
+    var c when c.Contains("删除字段") || c.Contains("改类型") || c.Contains("改语义") => "MAJOR（v2 路由 /v2/，旧版本至少再维护 6 个月）",
+    var c when c.Contains("收紧") => "MAJOR（昨天能过的请求今天 400，对调用方就是破坏）",
+    _ => "minor（加可选字段/新错误码，客户端无感升级）",
+};
+
+foreach (var change in new[] { "删除字段 customer_name", "加可选字段 coupon_code", "收紧校验 amount>0", "加错误码 order.rate_limited" })
+    Console.WriteLine($"{change,-28} → {Classify(change)}");
+
+public sealed record ApiProblem(int Status, string Title, string? Code = null);
 `,
     lang: "cs",
   },
@@ -2653,10 +3102,18 @@ Redirect URI 白名单精确匹配，开放重定向是 OAuth 经典洞。state 
 
 
 `,
-    code: `using System.Text;
+    code: `// ============================================================
+// JWT 与令牌生命周期的三个关键校验（纯 C# 模拟）：
+//   1. 解码读 claims（注意：解码 ≠ 验签）
+//   2. 过期校验 + 时钟偏移：exp 用 UTC Unix 秒，留 60s 容差
+//   3. Refresh 轮换：旧 refresh 第二次出现 = 可能被偷，全家令牌作废
+// 生产中这些由认证中间件（JwtBearer / OpenIdConnect）完成。
+// ============================================================
+using System.Text;
 using System.Text.Json;
 
-// 仅演示读取 JWT payload；解码绝不代表签名验证
+// ---------- 1. 解码读 claims ----------
+// 仅演示读取 JWT payload；解码绝不代表签名验证。
 string payloadJson = """{"sub":"user-42","scope":"orders.read","exp":1893456000}""";
 string payload = Convert.ToBase64String(Encoding.UTF8.GetBytes(payloadJson))
     .TrimEnd('=').Replace('+', '-').Replace('/', '_');
@@ -2668,6 +3125,58 @@ using JsonDocument document = JsonDocument.Parse(Convert.FromBase64String(part))
 
 Console.WriteLine($"sub={document.RootElement.GetProperty("sub").GetString()}");
 Console.WriteLine("注意：生产必须由认证中间件验证签名和全部约束");
+
+// ---------- 2. 过期校验与时钟偏移 ----------
+// exp/iat/nbf 都是 UTC Unix 秒。两台机器时钟差几秒很常见，
+// 校验时留 clockSkew 容差（默认 5 分钟，收紧到 60 秒）。
+static bool IsExpired(long expUnixSeconds, DateTimeOffset now, int skewSeconds = 60)
+{
+    var exp = DateTimeOffset.FromUnixTimeSeconds(expUnixSeconds);
+    return now > exp.AddSeconds(skewSeconds);   // 超过 exp+容差才算真过期
+}
+
+var expValue = document.RootElement.GetProperty("exp").GetInt64();
+var now = DateTimeOffset.UtcNow;
+Console.WriteLine($"\\nexp={DateTimeOffset.FromUnixTimeSeconds(expValue):u}");
+Console.WriteLine($"token exp=2030-01-01（未来）→ 过期？{IsExpired(expValue, now)}");
+Console.WriteLine($"同一 token 在 2030-01-02 → 过期？{IsExpired(expValue, new DateTimeOffset(2030, 1, 2, 0, 0, 1, TimeSpan.Zero))}");
+Console.WriteLine("  ↑ 只超 1 秒时因 60s 容差仍可用——时钟偏移不该制造随机 401");
+
+// ---------- 3. Refresh 轮换与重放检测 ----------
+// 规则：每次用 refresh 换新 access 时，旧 refresh 立即作废并记录「轮换链」。
+// 已作废的 refresh 再次出现 = 令牌可能被窃取 → 整条链作废，强制重新登录。
+// 实现（RefreshTokenStore 类）在文件末尾。
+
+var store = new RefreshTokenStore();
+var rt1 = store.Issue("user-42");
+Console.WriteLine("\\n第 1 次轮换（正常流程）：");
+var (rt2, note1) = store.Rotate(rt1);
+Console.WriteLine($"  {note1}，新令牌 {rt2}");
+Console.WriteLine("攻击者重放第 1 个旧令牌（可能已从日志/代理被偷走）：");
+var (_, note2) = store.Rotate(rt1);
+Console.WriteLine($"  {note2}");
+
+// ---------- Refresh 轮换实现 ----------
+sealed class RefreshTokenStore
+{
+    private readonly Dictionary<string, string> _valid = new();       // 当前有效的 refresh
+    private readonly HashSet<string> _retired = new();               // 已轮换作废的
+
+    public string Issue(string user) { var t = $"rt-{user}-{Guid.NewGuid():N}"[..18]; _valid[user] = t; return t; }
+
+    public (string? NewToken, string Note) Rotate(string presented)
+    {
+        if (_retired.Contains(presented))   // 旧令牌第二次出现：重放！
+            return (null, "已作废的 refresh 再次出现 → 疑似被盗，整链作废，强制重登");
+        if (!_valid.ContainsValue(presented))
+            return (null, "未知令牌 → 拒绝");
+
+        var user = _valid.First(kv => kv.Value == presented).Key;
+        _retired.Add(presented);           // 旧的下岗
+        var fresh = Issue(user);           // 新的上岗
+        return (fresh, "轮换成功：旧 refresh 已作废");
+    }
+}
 `,
     lang: "cs",
   },
@@ -2770,22 +3279,93 @@ EF 验收：显式键索引精度并发令牌；迁移 SQL 已审且 Job 单独�
 
 十日结束后开一次十五分钟回顾：哪一天没有证据、哪一条会在毕业答辩被问到。把缺口列进下一周，而不是开始下一章收藏。
 
+### 练习
+
+1. 修改主 demo：把 \`ExpectedVersion\` 改成 3（当前值）观察成功路径与版本自增；紧接着用同样的请求再提交一次，验证第二次必然 409；再用 \`with\` 表达式构造「只改 Status 不带新 Version」的请求，观察它如何被版本检查拦截。
+2. 脱离示例实现复合键去重：\`OrderLine\` 用 \`HashSet<(string OrderId, string Sku)>\` 拒绝重复行，\`AddLine\` 返回结果对象而不是抛异常；再实现 keyset 分页查询 \`(OrderId, LineId) > after\` 的内存模拟，验证游标翻页不重不漏。
+3. 生产场景：给毕业项目生成第一个迁移并在空库重放（\`dotnet ef migrations add init\` + \`database update\`）；再故意改实体（加字段）不建迁移，跑集成测试观察 schema 漂移如何失败；最后给并发冲突包上重试（重读最新 Version 再提交，最多 3 次，仍冲突返回 409）。
+
 
 
 
 `,
-    code: `// 模拟乐观并发：更新必须携带读到的版本号
+    code: `// ============================================================
+// EF Core 生产查询的三个关键习惯（纯 C# 模拟）：
+//   1. 乐观并发：更新必须携带读到的版本号
+//   2. Keyset 分页：offset 深翻页是 O(n)，游标是 O(log n)
+//   3. 复合唯一约束：在「保存」这一层拒绝重复，而不是查重后再插
+//      （查重-再插两步之间永远可能插入竞态）
+// ============================================================
+
+// ---------- 1. 乐观并发 ----------
 var stored = new OrderState("A-100", "Pending", Version: 3);
 var request = new UpdateRequest("Paid", ExpectedVersion: 2);
 
 if (request.ExpectedVersion != stored.Version)
 {
     Console.WriteLine($"409 conflict: expected={request.ExpectedVersion}, actual={stored.Version}");
+    Console.WriteLine("  ↑ DbUpdateConcurrencyException 的等价物：读后有人先改了");
 }
 else
 {
     stored = stored with { Status = request.Status, Version = stored.Version + 1 };
     Console.WriteLine(stored);
+}
+
+// ---------- 2. Keyset 分页（游标）----------
+// WHERE (CreatedAt, Id) > (上一页末尾) ORDER BY CreatedAt, Id LIMIT N
+// Id 是第二排序键：CreatedAt 相同的行也有稳定顺序，翻页不重不漏。
+var orders = new List<(DateTimeOffset CreatedAt, string Id)>
+{
+    new(new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), "a"),
+    new(new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), "b"),   // 与上一行同一秒：靠 Id 区分
+    new(new(2026, 1, 2, 0, 0, 0, TimeSpan.Zero), "c"),
+    new(new(2026, 1, 3, 0, 0, 0, TimeSpan.Zero), "d"),
+    new(new(2026, 1, 4, 0, 0, 0, TimeSpan.Zero), "e"),
+};
+
+static List<(DateTimeOffset CreatedAt, string Id)> KeysetPage(
+    List<(DateTimeOffset CreatedAt, string Id)> source,
+    (DateTimeOffset, string)? cursor, int take) =>
+    source
+        .Where(o => cursor is null || (o.CreatedAt, o.Id).CompareTo(cursor.Value) > 0)
+        .OrderBy(o => o.CreatedAt).ThenBy(o => o.Id)
+        .Take(take)
+        .ToList();
+
+Console.WriteLine("\\n第 1 页（take 2）：");
+var page1 = KeysetPage(orders, null, 2);
+page1.ForEach(o => Console.WriteLine($"  {o.CreatedAt:yyyy-MM-dd} {o.Id}"));
+
+var last1 = page1[^1];
+Console.WriteLine("第 2 页（游标 = 第 1 页末尾）：");
+var page2 = KeysetPage(orders, last1, 2);
+page2.ForEach(o => Console.WriteLine($"  {o.CreatedAt:yyyy-MM-dd} {o.Id}"));
+
+// ---------- 3. 复合唯一约束 ----------
+// 「同一订单同一 SKU 只能有一行」：靠 HashSet<(OrderId, Sku)> 在保存时拒绝，
+// 等价于数据库 UNIQUE (order_id, sku) + 唯一键冲突异常处理。
+var lines = new OrderLineStore();
+Console.WriteLine("\\n两步插入竞态演示（查重-再插之间另一个请求插入了同键）：");
+lines.TryAdd("A-100", "sku-9", 2);
+lines.TryAdd("A-100", "sku-9", 99);   // 第二次同键：被约束拒绝，无论查重逻辑怎么写
+lines.TryAdd("A-100", "sku-7", 1);
+
+// 类型声明统一放末尾：顶级语句必须位于所有类型声明之前（CS8803）
+sealed class OrderLineStore
+{
+    private readonly HashSet<(string OrderId, string Sku)> _unique = new();
+
+    public bool TryAdd(string orderId, string sku, decimal qty)
+    {
+        if (!_unique.Add((orderId, sku)))
+        {
+            Console.WriteLine($"  拒绝：order={orderId} 已有 sku={sku}（UNIQUE 冲突，等价 DbUpdateException）");
+            return false;
+        }
+        Console.WriteLine($"  接受：order={orderId} + sku={sku} × {qty}");
+        return true;
+    }
 }
 
 public sealed record OrderState(string Id, string Status, int Version);
@@ -3024,19 +3604,69 @@ AOT 验收：有测量或有“不做”的 ADR；若做则 trim 警告清零、
 
 十日结束后开一次十五分钟回顾：哪一天没有证据、哪一条会在毕业答辩被问到。把缺口列进下一周，而不是开始下一章收藏。
 
+### 练习
+
+1. 修改主 demo：删掉 \`[JsonSerializable]\` 那行、直接 \`JsonSerializer.Serialize(order)\`（不带 context），先跑通再想：普通反射路径在 Native AOT 下会遇到什么；给 \`OrderDto\` 加一个 \`DateTimeOffset Created\` 属性重新编译，观察源生成路径的输出自动包含新字段。
+2. 脱离示例实现第二个源生成上下文：\`internal partial class CatalogContext : JsonSerializerContext\` 服务 \`ProductDto(string Sku, string Name, int Stock)\`，用 \`[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]\` 让输出转 camelCase；写断言验证序列化结果确实是小驼峰（如 \`sku\`、\`stock\`）。
+3. 生产场景：给毕业项目做一次 AOT 试验：\`dotnet publish -r osx-arm64 -c Release /p:PublishAot=true\`，记录三组数据（普通发布、Trimmed、AOT）的体积与冷启动时间并处理所有 trim 警告；把反射依赖（如 Dapper 动态列）单列「不可 AOT」清单与回退标签（保留非 AOT 发布路径）。
+
 
 
 
 `,
-    code: `using System.Text.Json;
+    code: `// ============================================================
+// Native AOT / Trim 三件事（纯 C# 演示可运行部分）：
+//   1. JSON 源生成：编译期确定序列化形状，反射零依赖（AOT 安全）
+//   2. trim 危险清单：哪些写法在 Trimmer 面前站不住
+//   3. 取舍矩阵：AOT 买的是启动/内存，卖的是动态性
+// ============================================================
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
+// ---------- 1. JSON 源生成 ----------
+// JsonSerializerContext 由源生成器在编译期产出：没有反射、没有运行时
+// 代码生成，且序列化形状在构建时就锁死（字段改了 → 生成代码跟着变）。
 var order = new OrderDto("A-100", 129.90m);
 string json = JsonSerializer.Serialize(order, AppJsonContext.Default.OrderDto);
 OrderDto? copy = JsonSerializer.Deserialize(json, AppJsonContext.Default.OrderDto);
 
 Console.WriteLine(json);
 Console.WriteLine(copy);
+
+// 快速失败：DTO 改了字段忘了检查生成代码？序列化往返测试一跑就露馅。
+Console.WriteLine($"往返一致：{copy == order}");
+
+// ---------- 2. trim 危险清单 ----------
+// Trimmer 从入口做可达性分析：没被「静态引用到」的代码/元数据被裁掉。
+// 危险写法在 Release + PublishTrimmed 下给出 IL2026/IL2075 警告——
+// 把它们当错误处理（<WarningsAsErrors>IL2026;IL2075</WarningsAsErrors>），
+// 而不是学着忽略。
+var hazards = new (string Pattern, string Why, string Fix)[]
+{
+    (@"typeof(T).GetMethod(""foo"")",  "按字符串找方法：裁剪器看不见名字引用", "改接口调用或源生成器生成调用"),
+    ("Activator.CreateInstance(type)",   "运行时才知道类型：构造器可能被裁", "注册表模式：显式字典映射 type → factory"),
+    ("Dapper / 动态列映射",               "反射读属性建列：AOT 下直接失败", "换 EF Core / 手写映射器"),
+    ("JSON 反射模式序列化",              "首次序列化时反射建元数据", "就用上面的 JsonSerializerContext"),
+};
+
+Console.WriteLine("\\ntrim 危险写法（必须零警告过闸）：");
+foreach (var (pattern, why, fix) in hazards)
+    Console.WriteLine($"  ✗ {pattern,-34} {why}；改法：{fix}");
+
+// ---------- 3. 取舍矩阵 ----------
+// AOT 不是银弹：先看场景再上，保留回退标签。
+static string Decide(string scenario) => scenario switch
+{
+    var s when s.Contains("CLI 工具") || s.Contains("Serverless") => "上 AOT：冷启动敏感，收益最大",
+    var s when s.Contains("反射依赖") || s.Contains("动态插件")  => "别上：先做依赖改造或干脆放弃，留普通发布",
+    var s when s.Contains("长驻服务")                          => "可试：启动只快一次，先量稳态内存差异再定",
+    _ => "先测：没有「用户更快看到首字节」的证据就不上",
+};
+
+foreach (var s in new[] { "CLI 工具（dotnet-countfs 风格）", "Serverless 函数", "反射依赖（Dapper 动态查询）", "长驻服务（订单 API）" })
+    Console.WriteLine($"{s,-30} → {Decide(s)}");
+
+Console.WriteLine("\\n门禁：三种发布产物（普通/Trimmed/AOT）都要进 CI 烟雾测试；回退标签常备。");
 
 public sealed record OrderDto(string Id, decimal Total);
 
