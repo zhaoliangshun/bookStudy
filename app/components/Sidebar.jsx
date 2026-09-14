@@ -867,11 +867,6 @@ export default function Sidebar({
     return searchedGroupedChapters.flatMap((g) => g.items);
   }, [searchedGroupedChapters, chapterSearch]);
 
-  // 搜索关键字变化时重置键盘选中索引
-  useEffect(() => {
-    setChapterSearchSelectedIdx(-1);
-  }, [chapterSearch]);
-
   // 章节搜索匹配总数（用于显示"找到 N 个结果"）
   const chapterSearchMatchCount = useMemo(() => {
     if (!chapterSearch.trim()) return 0;
@@ -1832,7 +1827,6 @@ export default function Sidebar({
       map.set(catName, pathIndex);
     });
     return map;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookOrder, getOrderedPaths, visibleCategories]);
 
   // ===== 查找当前书籍所在的分类和子分组 =====
@@ -1936,7 +1930,11 @@ export default function Sidebar({
 
   // 切换书籍时清空章节搜索
   useEffect(() => {
-    setChapterSearch("");
+    const id = requestAnimationFrame(() => {
+      setChapterSearch("");
+      setChapterSearchSelectedIdx(-1);
+    });
+    return () => cancelAnimationFrame(id);
   }, [currentPath]);
 
   // 切换章节分组的收起 / 展开状态
@@ -3079,6 +3077,8 @@ export default function Sidebar({
             )}
           </div>
 
+          {meta && <div className="sidebar-meta">{meta}</div>}
+
           {/* 分组批量展开/收起 + 关闭侧边栏 工具条 */}
           {groupedChapters.length > 0 && (
             <div className="sidebar-group-toolbar">
@@ -3108,7 +3108,10 @@ export default function Sidebar({
                 type="text"
                 className="sidebar-chapter-search-input"
                 value={chapterSearch}
-                onChange={(e) => setChapterSearch(e.target.value)}
+                onChange={(e) => {
+                  setChapterSearch(e.target.value);
+                  setChapterSearchSelectedIdx(-1);
+                }}
                 placeholder="搜索章节... (Ctrl+K)"
                 onKeyDown={(e) => {
                   if (e.key === "Escape") {

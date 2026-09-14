@@ -116,7 +116,7 @@ function isTableSeparator(line) {
 }
 
 // 主渲染函数：把 markdown 字符串转为 React 元素数组
-export function MarkdownRenderer({ content }) {
+export function MarkdownRenderer({ content, inlineCodeRun = true }) {
   const lines = (content || "").split("\n");
   const blocks = [];
   let i = 0;
@@ -141,7 +141,19 @@ export function MarkdownRenderer({ content }) {
     // 判断不一致导致 i 不前进、外层 while 死循环。
     const fencedMatch = line.trim().match(/^(`{3,})\s*([a-zA-Z0-9+-]+(?:#(?=$))?)?/);
     if (fencedMatch) {
-      const lang = fencedMatch[2];
+      let lang = fencedMatch[2];
+      // 项目级正文片段通常依赖 NuGet、数据库、容器或本机工具，不能安全地
+      // 当作独立程序执行。课程可关闭隐式运行；只有 *-run 围栏才保留运行按钮。
+      if (!inlineCodeRun) {
+        const lowerLang = (lang || "").toLowerCase();
+        if (["cs", "csharp", "c#"].includes(lowerLang)) {
+          lang = "csharp-snippet";
+        } else if (["sh", "bash", "shell", "zsh"].includes(lowerLang)) {
+          lang = "shell-snippet";
+        } else if (lowerLang === "sql") {
+          lang = "sql-snippet";
+        }
+      }
       const codeLines = [];
       i++;
       while (i < lines.length) {

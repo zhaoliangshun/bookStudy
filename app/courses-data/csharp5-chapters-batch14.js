@@ -55,14 +55,17 @@ var result = await client.GetStringAsync("https://api.example.com");
 
 频繁创建和释放 handler 会丢失连接池并可能导致端口耗尽。另一方面，永久静态客户端如果不配置连接生命周期，也可能长期使用过期 DNS。应通过工厂或合理配置的长生命周期客户端统一管理。
 
-**正确写法（复用单例）**：
+**控制台/桌面应用的可接受写法（复用并刷新连接）**：
 
 \`\`\`csharp
-// 应用启动时创建一次，全程复用
-private static readonly HttpClient _client = new HttpClient();
+// 长寿命客户端要限制池中连接寿命，让 DNS 变化最终生效。
+private static readonly HttpClient Client = new(new SocketsHttpHandler
+{
+    PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+});
 \`\`\`
 
-更好的做法：使用 \`IHttpClientFactory\`（ASP.NET Core 推荐）。
+ASP.NET Core / Worker 默认使用 \`IHttpClientFactory\`；它集中管理 handler、日志、命名配置与 resilience。静态客户端不是所有宿主的通用“正确答案”。
 
 ### 四、IHttpClientFactory 三种模式
 

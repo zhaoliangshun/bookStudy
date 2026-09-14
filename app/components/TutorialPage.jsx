@@ -41,6 +41,7 @@ export default function TutorialPage({
   bookPath,
   bookTitle,
   defaultLang = "js",
+  inlineCodeRun = true,
   footerText,
   tip = "点击章节开始学习",
 }) {
@@ -121,6 +122,10 @@ export default function TutorialPage({
         // 等大量子组件跟着重渲染，是显著的 CPU 浪费）
         if (progressBarRef.current) {
           progressBarRef.current.style.width = `${progress}%`;
+          progressBarRef.current.setAttribute(
+            "aria-valuenow",
+            String(Math.round(progress))
+          );
         }
       });
     };
@@ -241,7 +246,16 @@ export default function TutorialPage({
         }
       `}</style>
 
-      <div ref={progressBarRef} className="reading-progress-bar" style={{ width: "0%" }} />
+      <div
+        ref={progressBarRef}
+        className="reading-progress-bar"
+        style={{ width: "0%" }}
+        role="progressbar"
+        aria-label="本章阅读进度"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow="0"
+      />
 
       <div className="main-layout">
         <Sidebar
@@ -254,7 +268,9 @@ export default function TutorialPage({
           onCloseSidebar={() => setSidebarOpen(false)}
           onToggleSidebar={toggleSidebar}
           currentPath={bookPath}
-          meta={`共 ${chapters.length} 章 · 可在线编辑运行`}
+          meta={`共 ${chapters.length} 章 · ${
+            inlineCodeRun ? "可在线编辑运行" : "主 demo 可运行，正文片段可复制"
+          }`}
         />
 
         <main className="content" ref={contentRef}>
@@ -278,7 +294,10 @@ export default function TutorialPage({
 
             <section className="lesson-section">
               {activeChapter?.content && (
-                <MarkdownRenderer content={activeChapter.content} />
+                <MarkdownRenderer
+                  content={activeChapter.content}
+                  inlineCodeRun={inlineCodeRun}
+                />
               )}
               {activeChapter?.code && (
                 <CodeBlock key={activeId} code={activeChapter.code} lang={codeLang} maxHeight={400} />

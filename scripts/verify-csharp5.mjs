@@ -12,6 +12,20 @@ const chapterId = process.argv
   ?.slice("--chapter=".length);
 const structureOnly = process.argv.includes("--structure-only");
 const newOnly = process.argv.includes("--new-only");
+const targetFramework = process.argv
+  .find((argument) => argument.startsWith("--tfm="))
+  ?.slice("--tfm=".length) ?? "net8.0";
+const languageVersion = process.argv
+  .find((argument) => argument.startsWith("--lang-version="))
+  ?.slice("--lang-version=".length)
+  ?? (targetFramework === "net10.0" ? "14.0" : "12.0");
+
+if (!/^net\d+\.\d+$/.test(targetFramework)) {
+  throw new Error(`无效目标框架：${targetFramework}`);
+}
+if (!/^(?:\d+\.\d+|latest|preview)$/.test(languageVersion)) {
+  throw new Error(`无效 C# 版本：${languageVersion}`);
+}
 
 const selected = csharp5Chapters.filter((chapter) => {
   if (chapterId) return chapter.id === chapterId;
@@ -21,6 +35,25 @@ const selected = csharp5Chapters.filter((chapter) => {
       || Number(chapter.id.replace("csharp5-ch", "")) >= 116;
   }
   return true;
+});
+const runnableFenceRe = /```(?:csharp-run|cs-run)\n([\s\S]*?)```/g;
+const selectedDemos = selected.flatMap((chapter) => {
+  runnableFenceRe.lastIndex = 0;
+  const demos = [{
+    ...chapter,
+    source: "main",
+  }];
+  let match;
+  let occurrence = 0;
+  while ((match = runnableFenceRe.exec(chapter.content))) {
+    occurrence += 1;
+    demos.push({
+      ...chapter,
+      code: match[1],
+      source: `content#${occurrence}`,
+    });
+  }
+  return demos;
 });
 
 if (selected.length === 0) {
@@ -74,7 +107,8 @@ if (!structureOnly) {
     `<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>${targetFramework}</TargetFramework>
+    <LangVersion>${languageVersion}</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
@@ -93,7 +127,7 @@ if (!structureOnly) {
       throw new Error(restore.stderr || restore.stdout || "dotnet restore 失败");
     }
 
-    for (const [index, chapter] of selected.entries()) {
+    for (const [index, chapter] of selectedDemos.entries()) {
       writeFileSync(programFile, chapter.code);
       const result = spawnSync(
         dotnet,
@@ -110,10 +144,12 @@ if (!structureOnly) {
           .filter((line) => /\berror CS\d+/.test(line))
           .slice(0, 8)
           .join("\n");
-        failures.push(`${chapter.id}（${chapter.title}）编译失败：\n${diagnostic}`);
+        failures.push(
+          `${chapter.id}（${chapter.title}，${chapter.source}）编译失败：\n${diagnostic}`
+        );
       }
       process.stdout.write(
-        `\r检查 C# 示例 ${String(index + 1).padStart(3, " ")}/${selected.length}`
+        `\r检查 C# 示例 ${String(index + 1).padStart(3, " ")}/${selectedDemos.length}`
       );
     }
     process.stdout.write("\n");
@@ -126,6 +162,8 @@ if (failures.length > 0) {
   console.error(`发现 ${failures.length} 个问题：\n\n${failures.join("\n\n")}`);
   process.exitCode = 1;
 } else {
-  const compiled = structureOnly ? "未编译 demo" : `编译 ${selected.length} 个 demo`;
+  const compiled = structureOnly
+    ? "未编译 demo"
+    : `以 ${targetFramework} / C# ${languageVersion} 编译 ${selectedDemos.length} 个可运行 demo`;
   console.log(`通过：${csharp5Chapters.length} 篇结构完整，${compiled}，全部检查通过。`);
 }

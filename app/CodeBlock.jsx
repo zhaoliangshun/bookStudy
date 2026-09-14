@@ -54,10 +54,12 @@ const LANG_MAP = {
   // C#
   cs: { api: "/api/run-csharp", pgId: "csharp", label: "C#", lang: "csharp" },
   csharp: { api: "/api/run-csharp", pgId: "csharp", label: "C#", lang: "csharp" },
+  "cs-run": { api: "/api/run-csharp", pgId: "csharp", label: "C#", lang: "csharp" },
+  "csharp-run": { api: "/api/run-csharp", pgId: "csharp", label: "C#", lang: "csharp" },
   // 教学片段：高亮但不提供运行，避免不完整示例编译失败
-  "csharp-snippet": { pgId: "csharp", label: "C# 片段", lang: "csharp" },
-  "cs-snippet": { pgId: "csharp", label: "C# 片段", lang: "csharp" },
-  "csharp-doc": { pgId: "csharp", label: "C# 片段", lang: "csharp" },
+  "csharp-snippet": { label: "C# 片段", lang: "csharp" },
+  "cs-snippet": { label: "C# 片段", lang: "csharp" },
+  "csharp-doc": { label: "C# 片段", lang: "csharp" },
   // Go
   go: { api: "/api/run-go", pgId: "go", label: "Go", lang: "go" },
   golang: { api: "/api/run-go", pgId: "go", label: "Go", lang: "go" },
@@ -83,8 +85,15 @@ const LANG_MAP = {
   bash: { api: "/api/run-shell", pgId: "shell", label: "Shell", lang: "shell" },
   shell: { api: "/api/run-shell", pgId: "shell", label: "Shell", lang: "shell" },
   zsh: { api: "/api/run-shell", pgId: "shell", label: "Shell", lang: "shell" },
+  "sh-run": { api: "/api/run-shell", pgId: "shell", label: "Shell", lang: "shell" },
+  "bash-run": { api: "/api/run-shell", pgId: "shell", label: "Shell", lang: "shell" },
+  "shell-run": { api: "/api/run-shell", pgId: "shell", label: "Shell", lang: "shell" },
+  "zsh-run": { api: "/api/run-shell", pgId: "shell", label: "Shell", lang: "shell" },
+  "shell-snippet": { label: "Shell 片段", lang: "shell" },
   // SQL
   sql: { api: "/api/run-sql", pgId: "sql", label: "SQL", lang: "sql" },
+  "sql-run": { api: "/api/run-sql", pgId: "sql", label: "SQL", lang: "sql" },
+  "sql-snippet": { label: "SQL 片段", lang: "sql" },
   // 纯文本 / JSON / HTML / CSS 等不可运行语言（仅显示，不提供运行按钮）
   json: { label: "JSON", lang: "json" },
   html: { label: "HTML", lang: "html" },
@@ -155,12 +164,15 @@ function CodeBlockComponent({ code: initialCode, lang, maxHeight = 300 }) {
   // PWA 离线模式下，navigator.onLine 会变 false，按钮自动禁用
   useEffect(() => {
     // 客户端首次挂载时同步真实的在线状态
-    setIsOnline(navigator.onLine);
+    const syncId = requestAnimationFrame(() => {
+      setIsOnline(navigator.onLine);
+    });
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
     return () => {
+      cancelAnimationFrame(syncId);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
@@ -460,7 +472,13 @@ function CodeBlockComponent({ code: initialCode, lang, maxHeight = 300 }) {
 
       {/* 运行结果输出面板 */}
       {showOutput && (
-        <div className={`md-code-output${isClientRun ? " has-preview" : ""}`}>
+        <div
+          className={`md-code-output${isClientRun ? " has-preview" : ""}`}
+          role="region"
+          aria-label="代码运行结果"
+          aria-live="polite"
+          aria-busy={isRunning}
+        >
           {isClientRun && (
             <>
               <div className="md-code-output-header">

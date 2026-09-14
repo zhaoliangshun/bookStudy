@@ -1242,7 +1242,7 @@ int size = name?.Length ?? 0;
 string grade = score switch { >= 90 => "A", >= 60 => "C", _ => "F" };
 if (obj is string { Length: > 0 } s) { /* s 已收窄 */ }
 
-var moved = pt with { X = pt.X + 1 }; // record / struct with（C# 10+ 匿名 with 限 record）
+var moved = pt with { X = pt.X + 1 }; // record class 从 C# 9 支持；普通 struct / record struct 从 C# 10 支持
 \`\`\`
 
 \`??\` 只认 \`null\`，不认 0 / ""。\`switch\` 表达式必须穷尽（或 \`_\`）。
@@ -2536,7 +2536,7 @@ finally { pool.Return(buf); }   // 不 Return 就等于泄漏到池外
 
 ### 十一、stackalloc、Span 与「foreach 变量是拷贝」
 
-C# 12 起可以 \`stackalloc int[] { 1, 2, 3 }\` 得到 \`Span<int>\`（标一下：**C# 12**）。栈上分配，方法返回就不能再用。
+\`stackalloc int[] { 1, 2, 3 }\` 的初始化器从 **C# 7.2** 就可用；C# 12 新增的是目标类型明确时的集合表达式，例如 \`Span<int> values = [1, 2, 3]\`。两者都可能使用栈内存，生命周期不能逃出当前方法；不要在循环里反复 \`stackalloc\`，大小也必须保守。
 
 \`arr[1..3]\` **复制**成新数组；\`arr.AsSpan(1, 2)\` 是同一块内存的视图，改 Span 就是改原数组。需要独立快照才 Copy。
 
@@ -2674,7 +2674,7 @@ finally
 }
 Span<int> view = ordered.AsSpan(1, 2); // 不拷贝
 Console.WriteLine("AsSpan(1,2)[0]=" + view[0] + "（与 ordered[1] 同一块内存）");
-Span<int> stacked = stackalloc int[] { 9, 8, 7 }; // C# 12
+Span<int> stacked = stackalloc int[] { 9, 8, 7 }; // stackalloc 初始化器：C# 7.2+
 Console.WriteLine("stackalloc 首元=" + stacked[0]);
 
 Console.WriteLine("\\n===== 11. foreach 变量是拷贝 =====");

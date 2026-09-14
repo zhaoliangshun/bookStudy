@@ -739,15 +739,16 @@ var h = () => 42;                // Func<int>
 Lambda 可以是 async 的：
 
 \`\`\`csharp
-Func<string, Task> download = async url =>
+// HttpClient 由调用方传入：ASP.NET / Worker 中通常来自 IHttpClientFactory，
+// 控制台程序则复用配置过连接生命周期的长寿命客户端。
+Func<HttpClient, string, Task> download = async (client, url) =>
 {
-    var client = new HttpClient();
     var html = await client.GetStringAsync(url);
     Console.WriteLine(html.Length);
 };
 \`\`\`
 
-这是异步编程的基础（见异步章节）。
+这是异步编程的基础（见异步章节）。不要在每次 Lambda 调用时 \`new HttpClient()\`：那会为热路径不断创建 handler/连接池。完整生命周期、DNS 刷新和韧性配置见第七十章与第八十五章。
 
 ### 十五、Lambda 性能提示
 

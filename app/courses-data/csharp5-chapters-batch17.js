@@ -2,8 +2,8 @@
 // C# 从零基础到生产上线 —— 第 17 批
 // 第二十一部分 生产深水区（10 章）
 // -------------------------------------------------------------
-// 主 demo 与正文 ```csharp 块必须是完整可运行程序（net8 / C# 12）。
-// 真实 ASP.NET / EF / Aspire 片段使用 csharp-snippet，避免点「运行」失败。
+// 主 demo 与正文 ```csharp-run 块必须是完整可运行程序（net8 / C# 12）。
+// 真实 ASP.NET / EF / Aspire 片段使用 csharp-snippet，不显示“运行”按钮。
 // =============================================================
 
 export const csharp5Batch17Groups = [
@@ -27,11 +27,19 @@ const chapters = [
 3. **领域层**：库存是否足够、状态机是否允许跳转。这不是「格式校验」，失败通常是 409/422。
 
 \`\`\`csharp-snippet
+// .NET 10：项目引用 Microsoft.Extensions.Validation 后注册内置验证管道。
+// DataAnnotations 会由端点过滤器在 handler 执行前检查。
+builder.Services.AddValidation();
+builder.Services.AddProblemDetails();
+
 app.MapPost("/orders", (CreateOrderRequest request) =>
 {
-    // DataAnnotations 不会自动跑；Minimal API 需显式校验或使用过滤器
+    // 只有验证通过才会进入这里；失败默认返回 400。
+    return TypedResults.Created($"/orders/{request.Sku}", request);
 });
 \`\`\`
+
+.NET 8/9 项目、未调用 \`AddValidation()\` 的应用，以及 FluentValidation 等第三方规则不会凭空自动执行，仍需 endpoint filter 或显式管道。若端点模型定义在另一个程序集，应从那个程序集调用 \`AddValidation\`，否则源生成器发现不到类型。用 \`IProblemDetailsService\` 统一字段错误和业务错误的外形，但不要把库存不足等领域冲突误报为格式 400。
 
 ### 二、绑定陷阱
 
@@ -230,7 +238,7 @@ builder.Services
 
 ### 三、IHostedLifecycleService
 
-.NET 8+ 可在 Starting/Started/Stopping/Stopped 各阶段挂钩。健康检查就绪应在 Started 之后、开始接流量之前完成。
+.NET 8+ 可在 Starting/Started/Stopping/Stopped 等阶段挂钩。应用不能仅凭“进了 Started”就假定依赖可用：启动期完成必要初始化，随后才让 readiness 探针返回成功；Kubernetes / 负载均衡器看到 readiness 成功后再送流量。耗时预热要有超时，非关键依赖失败则保持降级而不是永久卡住启动。
 `,
     code: `// 用最小容器演示：Singleton 不能安全捕获 Scoped。
 var root = new MiniHost();
@@ -404,7 +412,26 @@ public sealed record AppHealth(bool StartupDone, bool Database, bool Analytics);
 
 Aspire 解决的是：**本地把 API、Worker、Redis、Postgres、遥测一次拉起来**，并把连接字符串通过资源引用注入。它不是生产集群替代品。
 
-### 一、AppHost
+### 一、现代安装模型（Aspire 9+）
+
+Aspire 8 曾是 .NET workload；现代 Aspire 已改为 **CLI + 版本化 AppHost SDK + NuGet 集成包**。不要再教新项目执行 \`dotnet workload install aspire\`：
+
+\`\`\`bash
+# 给现有解决方案添加编排；也可以先安装对应版本模板再 dotnet new aspire
+aspire init
+aspire run
+\`\`\`
+
+\`\`\`xml
+<!-- AppHost.csproj：版本应由仓库集中钉住，并由 aspire update 审查升级 -->
+<Project Sdk="Aspire.AppHost.Sdk/13.0.0">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+</Project>
+\`\`\`
+
+### 二、AppHost
 
 \`\`\`csharp-snippet
 var builder = DistributedApplication.CreateBuilder(args);
@@ -412,19 +439,25 @@ var redis = builder.AddRedis("redis");
 var db = builder.AddPostgres("pg").AddDatabase("shop");
 builder.AddProject<Projects.Shop_Api>("api")
     .WithReference(redis)
-    .WithReference(db);
+    .WithReference(db)
+    .WaitFor(db);
 builder.Build().Run();
 \`\`\`
 
-### 二、生产怎么对应
+\`WithReference\` 注入服务发现或连接信息；\`WaitFor\` 只表达启动依赖，不能替代应用自己的重试、超时和健康检查。资源名是契约，改名也要像改配置键一样评审。
+
+### 三、生产怎么对应
 
 - 本地：Aspire 编排容器与项目。
-- 生产：同样的服务用 Kubernetes/云资源；配置改由环境变量、Key Vault、服务发现提供。
+- 发布：可以从 AppHost 生成部署清单或接发布器，但目标平台上的身份、网络、持久卷、备份、扩缩和密钥仍要显式治理。
+- 生产：同样的服务通常落到 Kubernetes / 云托管资源；配置由环境变量、Key Vault 和服务发现提供。
 - 不要把 AppHost 项目部署为生产网关。
 
-### 三、遥测
+### 四、遥测与验收
 
-Aspire Dashboard 适合看本地 traces。生产导出到 OTLP 后端，采样和基数规则必须单独设计。
+Aspire Dashboard 适合看本地 logs、traces、metrics。生产导出到 OTLP 后端，认证、保留期、采样和基数规则必须单独设计，不能把开发 Dashboard 裸露到公网。
+
+验收至少覆盖：干净机器按锁定版本启动；数据库未就绪时 API 不抢跑；连接信息不写死端口；停止 AppHost 后容器无孤儿；应用脱离 Aspire、只靠标准配置也能在 CI / 生产运行。
 `,
     code: `// 用代码描述「资源引用」：应用不写死端口，只依赖资源名。
 var local = new EnvironmentBindings(

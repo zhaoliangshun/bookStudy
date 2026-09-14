@@ -26,7 +26,7 @@ const chapters = [
     title: '文件与目录',
     content: `## 第五十二章　文件与目录
 
-文件 IO 是日常开发中最常见的任务之一：读配置、写日志、处理上传、生成报表。C# 在 \`System.IO\` 命名空间下提供了一整套 API，从「一次性读写」到「流式处理」再到「零拷贝高性能」一应俱全。本章先讲最常用的文件与目录操作。
+文件 IO 是日常开发中最常见的任务之一：读配置、写日志、处理上传、生成报表。C# 在 \`System.IO\` 命名空间下提供了一整套 API，从「一次性读写」到「流式处理」再到「偏移量并发 IO」一应俱全。本章先讲最常用的文件与目录操作。
 
 ### 一、为什么有这么多 API？⭐
 
@@ -38,7 +38,7 @@ const chapters = [
 | \`FileInfo\` 实例类 | 多次操作同一文件 | 缓存元数据、避免重复路径解析 |
 | \`FileStream\` | 大文件流式处理 | 可控缓冲、可定位、可异步 |
 | \`StreamReader\` | 按行读写文本 | 自动处理编码 |
-| \`RandomAccess\` | 高性能零拷贝 | 基于 SafeFileHandle，.NET 6+ |
+| \`RandomAccess\` | 指定偏移并发读写 | 不共享流位置，基于 SafeFileHandle，.NET 6+ |
 
 选对工具，事半功倍。
 
@@ -150,7 +150,7 @@ Windows 用 \`\\\`，Linux/macOS 用 \`/\`。**永远不要硬编码分隔符**�
 
 ### 八、长路径支持
 
-Windows 默认路径长度上限是 260 字符。.NET Core 3.0+ 在 Windows 上自动启用长路径支持（需应用清单配置），超过 260 字符的路径在 .NET 8 上一般无需特殊处理。Linux/macOS 没有此限制。
+Windows 的传统 Win32 API 有 \`MAX_PATH\`（260 字符）限制；现代 .NET 能使用长路径，但最终还取决于 Windows 版本、系统 \`LongPathsEnabled\` 策略、应用清单和所调用的原生 API。不要承诺“.NET 8 一定无需配置”：在 Windows CI 上用真实目标路径测试，必须兼容旧环境时再评估 \`\\\\?\\\` 前缀。Linux/macOS 同样有单个路径分量和文件系统总长度限制，只是没有统一的 260 字符规则。
 
 ### 九、本章小结
 
@@ -167,7 +167,7 @@ Windows 默认路径长度上限是 260 字符。.NET Core 3.0+ 在 Windows 上�
 
 Unix / macOS 上 .NET 6+ 可用 \`File.SetUnixFileMode\` / \`GetUnixFileMode\` 设 \`UnixFileMode.UserRead | UserWrite\`；Windows 上这些 API 会抛或空操作，要用 ACL 时走 \`FileSystemAclExtensions\`。不要假设 \`chmod\` 在所有 OS 生效。
 
-\`FileStreamOptions\`（.NET 6+）一次配齐 \`Mode\` / \`Access\` / \`Share\` / \`Options\` / \`PreallocationSize\` / \`BufferSize\`。异步文件必须带 \`FileOptions.Asynchronous\`，否则 \`ReadAsync\` 只是包装过的阻塞读。
+\`FileStreamOptions\`（.NET 6+）一次配齐 \`Mode\` / \`Access\` / \`Share\` / \`Options\` / \`PreallocationSize\` / \`BufferSize\`。高并发异步文件访问应显式带 \`FileOptions.Asynchronous\`：Windows 上这决定句柄能否使用 overlapped IO；Unix 上实现不同，不能把所有平台简单概括成“否则只是线程池包装”。是否受益要用目标 OS 和磁盘实测。
 
 原子替换：先写临时文件再 \`File.Replace(tmp, dest, destBackup)\` 或同一目录 \`File.Move(tmp, dest, overwrite: true)\`。跨卷 Move 会变成复制+删除，不是原子的。
 
@@ -631,7 +631,7 @@ finally
     title: 'JSON 序列化',
     content: `## 第五十四章　JSON 序列化
 
-JSON 是现代 API 的事实标准——REST 接口、配置文件、NoSQL 数据库，到处都是。.NET 8 内置 \`System.Text.Json\`，性能比 Newtonsoft.Json 快 2-5 倍，且支持 AOT。本章系统讲透 JSON 处理的方方面面。
+JSON 是现代 API 的事实标准——REST 接口、配置文件、NoSQL 数据库，到处都是。.NET 8 内置 \`System.Text.Json\`，常见模型下通常有更低分配和更好吞吐，并支持源生成与 AOT；但不存在对所有载荷都成立的“固定快 2–5 倍”，迁移前应按自己的模型、选项和 payload 基准测试。本章系统讲透 JSON 处理的方方面面。
 
 ### 一、System.Text.Json vs Newtonsoft.Json ⭐
 
@@ -1502,9 +1502,9 @@ int read = await fs.ReadAsync(mem);
 - \`Span<T>\`：栈上结构，**不能**作为字段、不能跨 \`await\`、不能装箱
 - \`Memory<T>\`：堆上结构，可以跨 \`await\`、可以作字段
 
-### 四、RandomAccess：零拷贝文件 IO（.NET 6+）
+### 四、RandomAccess：偏移量并发文件 IO（.NET 6+）
 
-\`FileStream\` 内部有缓冲，每次 \`Read\` 都过缓冲。如果只想读指定位置的数据，\`RandomAccess\` 直接调用操作系统 API，无缓冲：
+\`FileStream\` 有共享的当前位置；多个调用者在同一个流上 \`Seek + Read\` 容易互相干扰。\`RandomAccess\` 直接接收文件偏移量，位置不会前移，适合并发分块读写和 scatter/gather。它仍会把内核中的文件数据复制到你提供的缓冲区，**不是零拷贝 API**：
 
 \`\`\`csharp
 using SafeFileHandle handle = File.OpenHandle("big.bin",
@@ -1551,11 +1551,11 @@ async Task Consumer()
 \`\`\`
 
 Pipelines 的核心优势：
-1. **零拷贝**：消费者直接读生产者的缓冲区
+1. **减少中间复制**：消费者直接读取管道管理的分段缓冲区
 2. **自动扩容**：缓冲不够会自动续接，形成 \`ReadOnlySequence<byte>\`
 3. **背压**：消费者慢时生产者会被 \`FlushAsync\` 阻塞
 
-ASP.NET Core、Kestrel 内部都用 Pipelines，性能比传统 \`Stream\` 高 30%+。
+ASP.NET Core、Kestrel 内部都使用 Pipelines；收益取决于消息大小、解析方式、背压阈值和底层 IO，不要套用固定百分比。
 
 ### 六、SequenceReader<T>：解析二进制协议
 
@@ -1611,7 +1611,7 @@ Windows 上只有 \`FileOptions.Asynchronous\`（或 \`FileStreamOptions.Options
 - 异步优先 + \`FileOptions.Asynchronous\`
 - 频繁分配 → \`ArrayPool<T>.Shared\`
 - 零拷贝 → \`Span<T>\` / \`Memory<T>\`
-- 零拷贝文件 → \`RandomAccess\`
+- 指定偏移并发文件 IO → \`RandomAccess\`
 - 极高吞吐 → \`System.IO.Pipelines\`
 - 大文件随机访问 → \`MemoryMappedFile\`
 
@@ -1663,7 +1663,7 @@ try
     // === 2. ArrayPool + Span 异步读取 ===
     await ReadWithArrayPoolAsync(tempFile);
 
-    // === 3. RandomAccess API（.NET 6+，零拷贝）===
+    // === 3. RandomAccess API（.NET 6+，按偏移读取且不共享流位置）===
     await ReadWithRandomAccessAsync(tempFile);
 
     // === 4. 管道式生产者/消费者（教学对照 System.IO.Pipelines） ===
@@ -1729,7 +1729,7 @@ async Task ReadWithRandomAccessAsync(string path)
     byte[] buffer = ArrayPool<byte>.Shared.Rent(4096);
     try
     {
-        // 从指定偏移读取（无缓冲，零拷贝）
+        // 从指定偏移读入用户缓冲区；文件位置不前移，但数据仍会复制到该缓冲区
         long offset = 0;
         int totalRead = 0;
         while (offset < fileLength)

@@ -157,14 +157,15 @@ dotnet pack src/Shop.Domain -c Release
 - \`EnablePackageValidation=true\` 并指定 \`PackageValidationBaselineVersion\`（或 baseline nupkg）：删除/改变已发布的公开 API 会在 pack 失败。这是库的「契约测试」。
 - 符号包与主包一起推送；不要只推 nupkg 却丢掉 snupkg。
 
-### 九、RID 目录与 workload
+### 九、RID 目录与 SDK workload
 
 RID（Runtime Identifier）描述「OS + 架构 + 工具链」，例如 \`win-x64\`、\`linux-x64\`、\`linux-musl-x64\`（Alpine）、\`osx-arm64\`、\`linux-arm64\`。完整目录见官方 RID catalog，不要自造 \`linux-amd64\` 这种近似名。
 
 - 应用通常用可移植 TFM 发布，到容器里再靠基础镜像的运行时。
 - \`RuntimeIdentifier\` / \`-r\` 用于自包含、Native AOT、需要原生依赖的发布。
 - \`RuntimeIdentifiers\`（复数）告诉还原预拉哪些 RID 的原生包；漏写会在发布机上才失败。
-- workload（\`dotnet workload restore\` / \`install\`）安装 SDK 扩展：Aspire、MAUI、WASI/WebAssembly 工具等。仓库应提交 workload 清单或在文档写明版本，CI 先 restore workload 再 build。
+- workload（\`dotnet workload restore\` / \`install\`）安装 SDK 扩展，例如 MAUI、WASI / WebAssembly 工具。仓库应提交 workload 配置或在文档写明版本，真正使用 workload 的 CI 才需要先 restore 再 build。
+- **Aspire 9+ 不是 workload**：现代项目使用 Aspire CLI、版本化的 \`Aspire.AppHost.Sdk\` 与 NuGet 集成包；只有从 Aspire 8 升级时才处理旧 \`aspire\` workload。
 
 ### 十、常用命令
 
@@ -176,7 +177,7 @@ dotnet publish src/Shop.Api -c Release -o artifacts/publish
 dotnet format --verify-no-changes
 dotnet pack src/Shop.Domain -c Release
 dotnet list package --vulnerable --include-transitive
-dotnet workload restore
+dotnet workload restore # 仅当仓库声明了 MAUI / WASM 等 workload
 \`\`\`
 
 ### 常见陷阱
@@ -1002,7 +1003,7 @@ var sql = "SELECT * FROM Orders WHERE Code = '" + userInput + "'";
 - 生产迁移由发布流水线生成并审阅 SQL 脚本，不建议每个应用实例启动时并发迁移——多副本会抢 \`__EFMigrationsHistory\`。
 - 采用 expand/contract：先加兼容结构，再部署双读/双写或回填，最后删除旧结构。
 - 大表变更要评估锁、日志量和回滚时间；有的索引创建要 \`ONLINE\` 或在维护窗口。
-- **迁移冲突**：两人同时从同一基线各加一条迁移，合并后历史分叉。解决：合并成一条、或 \`dotnet ef migrations add\` 解决 merge，并在团队约定「谁先合并主分支谁留下迁移」。发布前在干净库从零 \`database update\` 一次。
+- **迁移冲突**：两人同时从同一模型快照各加一条迁移，合并后迁移树分叉。中止合并，用版本控制删除自己尚未发布的生成迁移并恢复旧快照（保留实体改动），先合入对方分支，再重新 \`dotnet ef migrations add\`。不要在无效序列已经合并后运行 \`migrations remove\`，也不要手工拼两个快照。已进入共享环境的迁移不得删除，只能追加修正迁移。发布前还要在干净库从零升级，并从上一生产版本执行一次增量升级。
 - 不要手工改已发布的迁移文件还沿用原名；已经上生产的迁移是历史，只能再加新迁移。
 
 ### 七、Outbox
@@ -1619,13 +1620,41 @@ Flaky 是信任杀手：红了重跑就绿，团队开始无视 CI。常见病�
 - 用可控 \`TaskCompletionSource\` 协调并发，不靠 \`Thread.Sleep\` 猜时序。
 - 给测试设置总超时，失败时保留日志（\`WebApplicationFactory\` 可接 \`ITestOutputHelper\`）。
 
+### 九、属性测试、模糊测试与架构测试
+
+- **属性测试**不手写三个例子，而是声明“对所有合法输入成立”的性质，由 FsCheck / Hedgehog 生成输入并在失败后 shrink 成最小反例。适合金额往返、排序、状态机和序列化；生成器必须遵守领域约束，不能拿一堆无效垃圾只测到参数校验。
+- **模糊测试（fuzzing）**持续向解析器、上传、压缩包和二进制协议喂畸形字节，目标是找崩溃、挂死和越界。固定回归语料库，给单次输入设时间/内存上限；发现的最小样本必须进入普通测试。它不能证明业务正确。
+- **架构测试**用 NetArchTest / ArchUnitNET 等守住“Domain 不引用 Infrastructure”“模块 A 不越层访问模块 B 的数据库”。它防的是依赖方向漂移，不替代代码评审。
+
+下面是不用库也能理解的最小属性测试：固定 seed 让 CI 可重现，失败信息打印 seed 与输入；真实项目再换成会自动生成和 shrink 的框架。
+
+\`\`\`csharp-run
+var seed = 20260914;
+var random = new Random(seed);
+
+for (var sample = 0; sample < 1_000; sample++)
+{
+    // 生成长度和元素，覆盖空集合、重复值、负数与边界附近的值。
+    var values = Enumerable.Range(0, random.Next(0, 40))
+        .Select(_ => random.Next(-10_000, 10_001))
+        .ToArray();
+
+    // 性质：反转两次必须得到原序列；不依赖某一个手写样例。
+    var roundTrip = values.Reverse().Reverse().ToArray();
+    if (!values.SequenceEqual(roundTrip))
+        throw new Exception($"seed={seed}, sample={sample}, input=[{string.Join(",", values)}]");
+}
+
+Console.WriteLine($"property passed: seed={seed}, samples=1000");
+\`\`\`
+
 ### 常见陷阱
 
 - 集成测试共用一个可变种子数据，顺序依赖。
 - Factory 里 \`RemoveAll<DbContext>\` 后忘记加回测试库，测试打到开发者本机数据库。
 - 快照全绿但从未用真人读过第一次生成的文件。
 
-### 九、测试数据与并行
+### 十、测试数据与并行
 
 builder 比「整个库 dump」好维护：\`OrderBuilder.Paid().WithAmount(20m)\` 只暴露测试关心的差异。共享可变种子会让并行 xUnit 变成轮盘。每个测试用唯一 ID（\`Guid\` 或理论序号），或事务回滚。需要「已存在的订单」时在 Arrange 里插入，不要依赖上一个测试的副作用。
 
@@ -1640,6 +1669,7 @@ builder 比「整个库 dump」好维护：\`OrderBuilder.Paid().WithAmount(20m)
 5. CI 是否追踪 flaky 并禁止无限重试？
 6. 核心规则是否至少做过一次变异测试？快照是否排除易变字段？
 7. 测试数据是否 builder 化、可并行、不依赖顺序？
+8. 高风险解析器是否有 fuzz 回归语料？核心不变量是否有属性测试？模块边界是否由架构测试守住？
 `,
     code: `// 可测试的业务规则：时间由调用方传入，对应生产里的 TimeProvider。
 // 不要在政策类内部读 DateTime.UtcNow，否则集成测试只能 Sleep。
@@ -1775,6 +1805,28 @@ securityContext:
 
 设置 CPU/内存 request 和 limit，并做负载测试；内存限制会影响 GC 行为。探测端口必须是容器里应用真正监听的端口（.NET 8+ 官方镜像常见 \`8080\`，并以 \`ASPNETCORE_HTTP_PORTS\` 为准）。
 
+### 七、非容器生产宿主：systemd、Windows Service 与 IIS
+
+容器不是唯一正确答案。内网、边缘设备、Windows 集成和小规模单机服务可以直接托管，但同样要有不可变制品、低权限账号、健康检查、日志轮转、自动重启和回滚。
+
+- **Linux systemd**：Worker 可用 \`Microsoft.Extensions.Hosting.Systemd\` 感知生命周期；Web 服务让 Kestrel 只监听内网/回环，再由 Nginx、Envoy 或云 LB 终结 TLS。unit 文件明确 \`User\`、\`WorkingDirectory\`、环境文件权限、\`Restart=on-failure\` 和停止超时。
+- **Windows Service**：使用 \`Microsoft.Extensions.Hosting.WindowsServices\` 的 \`AddWindowsService\`，以专用服务账号运行；不要给 LocalSystem 只为省 ACL 配置。事件日志、恢复动作、服务依赖和证书私钥权限都要在部署脚本里声明。
+- **IIS**：ASP.NET Core Module 管理进程和反向代理（或进程内托管）；应用池身份、请求上限、转发头、web.config 与 Hosting Bundle 版本都是部署契约。不要把 IIS Express 配置当生产配置。
+
+\`\`\`ini
+# /etc/systemd/system/shop-api.service（节选）
+[Service]
+User=shop-api
+WorkingDirectory=/opt/shop/current
+ExecStart=/usr/bin/dotnet /opt/shop/current/Shop.Api.dll
+EnvironmentFile=/etc/shop-api/environment
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=35
+\`\`\`
+
+无论哪种宿主，都要做同一组验收：机器重启后自动恢复；SIGTERM / Service Stop 能排空；低权限账号不能读其他服务密钥；反代只信任已知代理；新旧制品可原子切换；日志不会写满系统盘。
+
 ### 常见陷阱
 
 - 用 \`latest\` 基础镜像，周一早会变成不可复现的 CVE 或行为变化。
@@ -1790,6 +1842,7 @@ securityContext:
 4. SIGTERM 顺序是否演练过：摘流 → 排空 → 停消费 → 超时 SIGKILL？
 5. startup/live/ready 三条探针是否语义分离？YAML 端口是否正确？
 6. 必需配置是否启动即校验？临时目录在只读根下是否可写？
+7. 若不用容器，systemd / Windows Service / IIS 的账号、重启、停止、反代与回滚是否同样可复现？
 `,
     code: `// Generic Host 收到 SIGTERM 后会取消 stoppingToken。
 // 必须用 OperationCanceledException 退出循环，而不是忽略取消继续拉取。
@@ -2101,12 +2154,12 @@ public sealed record Receipt(Guid PaymentId, decimal Amount, DateTimeOffset Crea
     id: 'csharp5-ch91',
     group: '第十四部分 现代 C# 与生产工程',
     icon: '✅',
-    title: '生产就绪清单与毕业项目',
-    content: `## 第九十二章　生产就绪清单与毕业项目
+    title: '生产就绪清单：阶段体检',
+    content: `## 第九十二章　生产就绪清单：阶段体检
 
-教程能提供知识地图，不能保证任何人「学完就不会出问题」。生产能力来自持续编码、评审、测试、发布和事故复盘。请用下面的毕业项目证明自己真正掌握了关键路径。本章是评分尺，不是鸡汤。
+教程能提供知识地图，不能保证任何人「学完就不会出问题」。生产能力来自持续编码、评审、测试、发布和事故复盘。请用下面的阶段项目检查第十四部分的关键路径；它是评分尺，不是最终毕业答辩。第一百一十六章会启动真实订单系统，读完第二十一部分后才做最终答辩。
 
-### 一、毕业项目：订单 API
+### 一、阶段项目：订单 API
 
 实现一个订单 API，范围宁可窄而完整，不要宽而只剩 CRUD：
 
@@ -2195,7 +2248,7 @@ public sealed record Receipt(Guid PaymentId, decimal Amount, DateTimeOffset Crea
 9. **文档与实现分叉**：OpenAPI 仍是模板天气接口。
 10. **不演练停机与重复**：只测了快乐路径，第一次生产重试就双下单。
 
-看见自己在其中两项以上，停功能、补根基。毕业项目的价值是**完整的一条生产路径**，不是功能清单竞赛。
+看见自己在其中两项以上，停功能、补根基。阶段项目的价值是**完整的一条生产路径**，不是功能清单竞赛。
 
 ### 七、代码评审清单
 
@@ -2219,10 +2272,10 @@ public sealed record Receipt(Guid PaymentId, decimal Amount, DateTimeOffset Crea
 ### 九、学习路线
 
 1. 完成本教程所有基础 demo。
-2. 独立完成毕业项目，不复制模拟容器当「最终架构」。
+2. 独立完成本章阶段项目，不复制模拟容器当「最终架构」。
 3. 请同伴按评分量规做安全、数据和可运维性评审。
 4. 部署到测试环境，注入超时、重复消息、数据库冲突和 SIGTERM。
-5. 根据观测证据修复，再进行一次演练。
+5. 根据观测证据修复，再进入第一百一十六章的长期订单项目。
 
 做到这些，你才从「会写 C#」迈向「能负责 C# 生产服务」。
 `,

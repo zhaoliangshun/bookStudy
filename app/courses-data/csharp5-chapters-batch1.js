@@ -83,7 +83,7 @@ const chapters = [
 
 ### 四、如何使用本教程
 
-本教程网页提供**在线运行器**，每章代码都可以点击“运行”查看结果。网站宿主必须安装 .NET SDK；当前本地运行器不构成安全隔离，不能执行不可信代码。
+本教程网页提供**在线运行器**：每章末尾都有一份完整主 demo，可以编辑并点击“运行”。正文中的“C# 片段”用于讲单个 API，可能依赖当前项目、NuGet 或前后文，因此只提供高亮与复制，不冒充独立程序；明确标成完整示例的正文代码也会显示运行按钮。网站宿主必须安装 .NET SDK；当前本地运行器不构成安全隔离，不能执行不可信代码。
 
 **学习节奏建议**：
 
@@ -111,9 +111,9 @@ const chapters = [
 >
 > 🔥 **进阶**：进阶内容，新手可跳过。
 
-代码示例统一使用**顶级语句**写法（C# 9+），不写 \`class Program\` / \`static void Main\`。这意味着你看到的代码是这样：
+每章的**可运行控制台主 demo**统一使用顶级语句（C# 9+），不额外包 \`class Program\` / \`static void Main\`。ASP.NET、类库、源生成器等项目级正文片段仍按对应项目的真实结构书写。这意味着控制台主 demo 通常是这样：
 
-\`\`\`csharp
+\`\`\`csharp-run
 var name = "C#";
 Console.WriteLine($"Hello, {name}!");
 \`\`\`
@@ -141,7 +141,7 @@ namespace MyApp
 ### 六、配套资源
 
 - **在线运行器**：教程网页内嵌代码运行环境；由站点宿主提供 .NET SDK。
-- **本地运行**：安装 .NET SDK 后，每章代码都可以保存为 \`.cs\` 文件或放入控制台项目运行。
+- **本地运行**：安装 .NET SDK 后，每章末尾主 demo 可以保存为 \`.cs\` 文件或放入控制台项目运行；正文项目片段要放进它所标注的项目类型并安装对应依赖。
 - **官方文档**：[learn.microsoft.com/dotnet](https://learn.microsoft.com/dotnet) 是权威参考。
 
 ### 七、致读者
@@ -376,7 +376,7 @@ Console.WriteLine(typeof(object).Assembly.GetName().Name); // System.Private.Cor
 | MAUI | \`maui\` | 桌面 / 移动跨平台 UI |
 | 类库 | \`classlib\` | 被上面所有宿主引用 |
 
-\`dotnet workload list\` 查看本机工作负载（MAUI、Aspire 等需要额外 workload，不是 SDK 默认就有）。
+\`dotnet workload list\` 查看本机 SDK 工作负载（例如 MAUI、WASM tools）。**现代 Aspire（9+）不再通过 workload 安装**：使用 Aspire CLI、\`Aspire.AppHost.Sdk\` 和 NuGet 集成包；从 Aspire 8 升级时还应移除旧的 \`aspire\` workload。具体见第一百三十三章。
 
 ### 十、C# 语言 vs .NET 运行时
 
@@ -651,7 +651,7 @@ dotnet --list-runtimes
 dotnet new sln -n HelloAll      # 第一个解决方案
 dotnet sln add HelloCSharp/HelloCSharp.csproj
 dotnet watch run                # 保存即重新编译运行（热重载子集）
-dotnet workload list            # MAUI / Aspire 等可选工作负载
+dotnet workload list            # MAUI / WASM tools 等可选 SDK 工作负载
 \`\`\`
 
 **\`global.json\`** 把仓库钉在某一 SDK，避免「我机器是 10、CI 是 8」：

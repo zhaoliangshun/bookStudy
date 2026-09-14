@@ -1,20 +1,36 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { csharp5Chapters } from "../app/courses-data/csharp5-tutorial-data.js";
 
-const fenceRe = /```(csharp|cs)\n([\s\S]*?)```/g;
+const includeSnippets = process.argv.includes("--include-snippets");
+// 页面只把 *-run 当作可独立运行的正文程序；普通 csharp/cs 是教学片段。
+// --include-snippets 是内容作者的深度诊断模式，不属于发布门禁。
+const fenceRe = includeSnippets
+  ? /```(csharp-run|cs-run|csharp|cs)\n([\s\S]*?)```/g
+  : /```(csharp-run|cs-run)\n([\s\S]*?)```/g;
 const snippets = [];
+const chapterId = process.argv
+  .find((argument) => argument.startsWith("--chapter="))
+  ?.slice("--chapter=".length);
+const mainOnly = process.argv.includes("--main-only");
 
 for (const chapter of csharp5Chapters) {
+  if (chapterId && chapter.id !== chapterId) continue;
   let match;
+  let occurrence = 0;
   const content = chapter.content ?? "";
-  while ((match = fenceRe.exec(content))) {
+  while (!mainOnly && (match = fenceRe.exec(content))) {
+    occurrence += 1;
     snippets.push({
       id: chapter.id,
       title: chapter.title,
-      source: "content",
+      source: `content#${occurrence}`,
       code: match[2],
     });
   }
@@ -24,6 +40,10 @@ for (const chapter of csharp5Chapters) {
     source: "main",
     code: chapter.code,
   });
+}
+
+if (snippets.length === 0) {
+  throw new Error(`没有找到可检查的代码块：${chapterId ?? "(筛选结果为空)"}`);
 }
 
 const workDir = mkdtempSync(join(tmpdir(), "audit-csharp5-"));
@@ -50,6 +70,7 @@ const restore = spawnSync(dotnet, ["restore", projectFile], {
   timeout: 60_000,
 });
 if (restore.status !== 0) {
+  rmSync(workDir, { recursive: true, force: true });
   throw new Error(restore.stderr || restore.stdout || "dotnet restore 失败");
 }
 
@@ -78,7 +99,6 @@ for (const [index, snippet] of snippets.entries()) {
 process.stdout.write("\n");
 rmSync(workDir, { recursive: true, force: true });
 
-console.log(`共 ${snippets.length} 个 csharp 代码块，失败 ${failures.length} 个`);
-for (const failure of failures.slice(0, 80)) console.log(failure);
-if (failures.length > 80) console.log(`… 还有 ${failures.length - 80} 条`);
+console.log(`共 ${snippets.length} 个可运行 C# 代码块，失败 ${failures.length} 个`);
+for (const failure of failures) console.log(failure);
 process.exitCode = failures.length > 0 ? 1 : 0;

@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "eslint",
-    "verify:csharp5": "node scripts/verify-csharp5.mjs"
+    "verify:csharp5": "node scripts/verify-csharp5.mjs",
+    "verify:csharp5:net10": "node scripts/verify-csharp5.mjs --tfm=net10.0 --lang-version=14.0"
   },
   "dependencies": {
     "@forgerock/javascript-sdk": "^4.9.1",
